@@ -1,7 +1,10 @@
-import { Component, type VNode } from 'preact';
+import { Component, type ComponentChildren, type VNode } from 'preact';
 
 interface Props {
-  children: VNode | VNode[] | string | null;
+  // ComponentChildren (bukan VNode | VNode[] | string | null) karena boundary
+  // ini membungkus anak hasil conditional rendering, yang bisa berupa false,
+  // undefined, number, atau array campuran — semuanya valid di Preact.
+  children: ComponentChildren;
   fallback?: VNode | string;
 }
 
