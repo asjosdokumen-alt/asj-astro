@@ -108,8 +108,10 @@ export async function apiClient<T = ApiResponse>(
     const cached = getCached(action, args);
     if (cached) return cached as T;
   } else {
-    // P5 fix: Invalidate only keys for this action's prefix, not all cache entries.
-    invalidateCache(action);
+    // P5 fix: write actions never match cache keys (only CACHEABLE_READS are
+    // cached), so clear the whole asj_cache_ prefix — targeted invalidation
+    // was a silent no-op that left stale reads for 30s TTL.
+    invalidateCache();
     // P6 fix: Bump generation so any in-flight reads skip caching stale data.
     writeGeneration++;
   }

@@ -8,7 +8,14 @@ async function queryPaged(table: string, { page = 1, pageSize = 50, q = '' } = {
   const end = start + pageSize - 1;
   const params = { select: '*' };
   if (q && q.trim()) {
-    const needle = q.trim().replace(/'/g, "''");
+    // P31 fix: buang karakter metagrammar PostgREST ( ) , * sebelum interpolasi
+    // ke or= — needle user tidak boleh mengubah struktur filter.
+    const needle = q
+      .trim()
+      .replace(/'/g, "''")
+      .replace(/[()*,]/g, ' ')
+      .replace(/s+/g, ' ')
+      .trim();
     // PostgREST or= wajib dibungkus kurung, kalau tidak gagal (HTTP 400).
     // @ts-expect-error JS→TS migration
     params.or = `(nama_lengkap.ilike.*${needle}*,no_wa.ilike.*${needle}*)`;

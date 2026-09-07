@@ -49,13 +49,14 @@ const HANDLERS: Record<string, (payload: Record<string, unknown>) => Promise<unk
   // upload flow, A11 parity). Worker removed to avoid a dead NOT_IMPL path.
 
   // WA broadcast (kirimTawaranMassal) — surface notify men-queue payload
-  // { payload, sessionToken }; worker ini yang benar-benar mengirim lewat
+  // { payload, createdBy }; worker ini yang benar-benar mengirim lewat
   // handleKirimTawaranMassal (parity legacy bulk invite dengan jeda interval
-  // antar pesan). Sebelumnya NOT_IMPL → undangan grup tidak pernah terkirim.
+  // antar pesan). Jalur internal=true: sesi admin sudah divalidasi saat
+  // enqueue, dan token TIDAK disimpan di payload job (keamanan getJobStatus).
   'wa.broadcast': async (payload) => {
     const { handleKirimTawaranMassal } = await import('./contexts/notifications');
     const inner = payload as { payload?: unknown[]; sessionToken?: string };
-    return handleKirimTawaranMassal(inner.payload || [], inner.sessionToken);
+    return handleKirimTawaranMassal(inner.payload || [], undefined, { internal: true });
   },
 };
 

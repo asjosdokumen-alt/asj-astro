@@ -9,6 +9,7 @@
  *   const { data, error } = await supabaseServer(Astro).from('table').select('*');
  */
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AstroGlobal } from 'astro';
 
@@ -52,9 +53,13 @@ export function supabaseServer(astro: AstroGlobal): SupabaseClient {
  * Uses the service role key for admin operations.
  */
 export function supabaseServiceRole(): SupabaseClient {
-  const { createClient } = require('@supabase/supabase-js');
-  return createClient(
-    import.meta.env.PUBLIC_SUPABASE_URL || '',
-    import.meta.env.SUPABASE_SERVICE_ROLE_KEY || import.meta.env.PUBLIC_SUPABASE_ANON_KEY || '',
-  );
+  // Secret server dibaca dari process.env (bukan import.meta.env) supaya
+  // tidak ada deklarasi ImportMetaEnv server yang ikut ter-bundle/merge ke
+  // sisi klien — src/env.d.ts hanya mendeklarasikan PUBLIC_*.
+  const url = process.env.PUBLIC_SUPABASE_URL || '';
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  if (!url || !key) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY tidak terkonfigurasi — fungsi admin tidak bisa dipanggil.');
+  }
+  return createClient(url, key);
 }

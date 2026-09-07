@@ -106,13 +106,20 @@ async function handleAction(action: string, payload: unknown[], sessionToken: st
 async function dispatchAction(action: string, payload: unknown[], sessionToken: string) {
   // B4 fix: Read idempotencyKey from AsyncLocalStorage context, not globalThis.
   const idempotencyKey = (asyncLocalStorage.getStore() as any)?.idempotencyKey as string | undefined;
-  if (idempotencyKey && isMutatingAction(action)) {
+  // P35 fix: kunci idempotensi di-scope ke <identitas>|<action>|<key> — klien
+  // yang menebak key milik orang lain tidak mendapat result-nya, dan retry
+  // dengan action berbeda tidak memakai hasil action lain.
+  const idempotencyScope =
+    idempotencyKey && isMutatingAction(action)
+      ? (sessionIdentity(sessionToken) || 'anon') + '|' + action + '|' + idempotencyKey
+      : undefined;
+  if (idempotencyScope) {
     try {
       const existing = await supabaseJson('GET', 'idempotency_keys', {
-        query: { select: '*', key: 'eq.' + idempotencyKey, limit: '1' },
+        query: { select: '*', key: 'eq.' + idempotencyScope, limit: '1' },
       }).catch(() => null);
       if (Array.isArray(existing) && existing.length > 0) {
-        log.info('idempotency.hit', { action, key: idempotencyKey.slice(0, 8) });
+        log.info('idempotency.hit', { action, key: idempotencyKey!.slice(0, 8) });
         return existing[0].result;
       }
     } catch { /* If idempotency table doesn't exist yet, proceed normally */ }
@@ -132,11 +139,11 @@ async function dispatchAction(action: string, payload: unknown[], sessionToken: 
     return toErrorResponse(err);
   }
 
-  if (idempotencyKey && isMutatingAction(action) && result && (result as HandlerResult).success !== false) {
+  if (idempotencyScope && result && (result as HandlerResult).success !== false) {
     try {
       await supabaseJson('POST', 'idempotency_keys', {
         query: { on_conflict: 'key' },
-        body: { key: idempotencyKey, result, created_at: new Date().toISOString() },
+        body: { key: idempotencyScope, result, created_at: new Date().toISOString() },
         headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       }).catch(() => {});
     } catch { /* Storage failure must not affect the response */ }

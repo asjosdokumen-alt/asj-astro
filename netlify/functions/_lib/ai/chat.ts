@@ -167,12 +167,10 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
     const guard = requireRole(sessionToken as string, 'admin');
     const isAdmin = !guard.error;
     if (!isAdmin) {
-      const currentData = p.currentData && typeof p.currentData === 'object' ? p.currentData : {};
-      const identitas =
-        currentData.identitas && typeof currentData.identitas === 'object'
-          ? currentData.identitas
-          : {};
-      const wa = normalizeWa(String(identitas.hp || ''));
+      // H5 fix: source WA from the verified session claim (t.wa), never from
+      // client-supplied currentData — a non-VIP could otherwise impersonate a
+      // VIP number to open flow=master and burn Gemini quota.
+      const wa = normalizeWa(String(t.wa || ''));
       if (wa) {
         let lookupError = false;
         let catatan = '';
@@ -626,7 +624,8 @@ async function handleSimpanHasilWawancara(payload: unknown[], sessionToken?: str
   const guard = requireRole(sessionToken as string, 'kandidat');
   if (guard.error) return guard.error;
   const d = ((payload && payload[0]) || {}) as Record<string, any>;
-  const wa = normalizeWa(String(d.wa || ''));
+  // IDOR fix: hasil wawancara selalu di-scope ke WA dari sesi, bukan payload klien.
+  const wa = normalizeWa(String((guard.token && (guard.token as any).wa) || ''));
   if (!wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
   const hasil = d.hasil || {};
   if (!hasil || typeof hasil !== 'object' || Array.isArray(hasil)) {
@@ -634,7 +633,7 @@ async function handleSimpanHasilWawancara(payload: unknown[], sessionToken?: str
   }
   try {
     const rows = await supabaseJson('GET', 'ai_form_submissions', {
-      query: { select: '*', limit: 100 },
+      query: { select: '*', wa: 'eq.' + wa, submitted_via: 'eq.interview', limit: 100 },
     });
     // Discriminator: submitted_via='interview' (mode/status tabel ini punya
     // CHECK constraint — pakai nilai yang diizinkan: AI_MASTER/MENUNGGU).
@@ -700,7 +699,7 @@ async function handleGetHasilWawancara(payload: unknown[], sessionToken?: string
   }
   try {
     const rows = await supabaseJson('GET', 'ai_form_submissions', {
-      query: { select: '*', limit: 100 },
+      query: { select: '*', wa: 'eq.' + wa, submitted_via: 'eq.interview', limit: 100 },
     });
     const row = (Array.isArray(rows) ? rows : []).find(
       (r) =>

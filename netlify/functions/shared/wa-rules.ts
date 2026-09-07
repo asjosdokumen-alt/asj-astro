@@ -25,11 +25,12 @@ export function normalizeWa(raw: unknown): string {
   let s = String(raw || '').replace(/[^0-9]/g, '');
   if (!s) return '';
 
-  // 0 prefix: 08xx -> 628xx (Indo), 090/070 -> 81 90/70 (JP)
+  // 0 prefix: 08xx -> 628xx (Indo), 090/070/080 -> 81 (JP mobile)
   if (s.startsWith('0')) {
     const second = s.charAt(1);
     if (second === '8') {
-      s = '62' + s.slice(1);
+      // 080… = mobile Jepang (81 80…); 08[1-9]… = Indonesia
+      s = s.charAt(2) === '0' ? '81' + s.slice(1) : '62' + s.slice(1);
     } else if (second === '9' || second === '7') {
       s = '81' + s.slice(1);
     } else if (s.length >= 12) {
@@ -47,17 +48,13 @@ export function normalizeWa(raw: unknown): string {
   // Already canonical: 628... -> Indonesia
   if (s.startsWith('628')) return s;
 
-  // Already canonical: 81 + valid JP digit -> Japan
-  if (s.startsWith('81') && /[890]/.test(s.charAt(2))) return s;
+  // Already canonical: 81 + prefix mobile Jepang (070/080/090/060) -> Japan.
+  // 8180…/8170… 12 digit TETAP Jepang (sebelumnya salah arah ke 62).
+  if (s.startsWith('81') && /[67890]/.test(s.charAt(2))) return s;
 
-  // Bare 81 prefix: ambiguous
+  // Bare 81 + digit non-mobile (811…-816…): Indonesia
   if (s.startsWith('81')) {
-    const third = s.charAt(2);
-    if (third === '0' || third === '7' || third === '8' || third === '9') {
-      if (s.length >= 12) return '62' + s; // Indonesia
-      return s; // Japan
-    }
-    return '62' + s; // Indonesia
+    return '62' + s;
   }
 
   // Bare 8 prefix (no country code) -> Indonesia: 8xx -> 628xx

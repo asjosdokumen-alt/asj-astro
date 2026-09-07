@@ -8,7 +8,14 @@ export type Lang = "id" | "jp";
 
 export const langStore = persistentAtom<Lang>("asj_lang", "id", {
   encode: JSON.stringify,
-  decode: JSON.parse,
+  decode: (v: string): Lang => {
+    try {
+      const p = JSON.parse(v);
+      return p === "id" || p === "jp" ? p : "id";
+    } catch {
+      return "id";
+    }
+  },
 });
 
 // P9 fix: jp translations lazy-loaded from separate chunk (~670 lines, ~20KB).
@@ -83,6 +90,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "public.close": "Tutup",
     "public.no_data": "Tidak ada lowongan ditemukan.",
     "public.loading": "Memuat data lowongan...",
+    "public.load_error": "Gagal memuat data lowongan. Coba lagi.",
     "public.empty": "Tidak ada lowongan ditemukan.",
     "public.lowongan_count": "lowongan",
     "public.badge_new": "Dibuka Kelas Baru",
@@ -1056,6 +1064,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ai.no_results": "Tidak ada hasil ditemukan.",
     "ai.parse_success": "File CV berhasil diparsing!",
     "ai.pick_file_first": "Pilih file CV terlebih dahulu.",
+    "ai.read_file_failed": "Gagal membaca file. Coba lagi.",
     "ai.placeholder_admin": "Ketik pesan untuk Jeklin...",
     "ai.sug_analyze": "Analisis CV",
     "ai.sug_check_stage": "Cek Tahapan Kandidat",

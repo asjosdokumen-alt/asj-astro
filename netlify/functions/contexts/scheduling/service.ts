@@ -5,6 +5,8 @@
  */
 import { requireRole } from '../identity';
 import * as fcm from '../../_lib/fcm-server';
+import { log } from '../../_lib/kernel/log';
+import { normalizeWa } from '../../shared/wa-rules';
 import {
   insertSchedule,
   findScheduleById,
@@ -162,17 +164,14 @@ function parseTime(waktu: string): number {
 }
 
 function parseWaList(raw: string): string[] {
+  // P38 fix: pakai normalizeWa dari shared/wa-rules (080/090/070/81 dan
+  // format Indonesia) — parser lokal lama membuang nomor Jepang diam-diam
+  // sehingga daftar kosong membuat jadwal di-skip tanpa sinyal.
   return String(raw || '')
     .split(/[\n,;]+/)
-    .map((x) => {
-      const d = x.replace(/\D/g, '');
-      if (d.startsWith('628') && d.length >= 13) return d;
-      if (d.startsWith('08') && d.length >= 10) return '62' + d.slice(1);
-      return '';
-    })
+    .map((x) => normalizeWa(x.replace(/\D/g, '')))
     .filter(Boolean);
 }
-
 export async function handleCheckAndSendAgendaReminders(sessionToken?: string) {
   // C3 fix (2026-09-04): this reads schedule WA lists and sends FCM pushes —
   // admin only. (If a server-side cron sweep ever needs it, call this context
@@ -248,11 +247,17 @@ export async function handleCheckAndSendAgendaReminders(sessionToken?: string) {
           body = agenda + ' dijadwalkan 7 hari lagi' + (lokasi ? ' di ' + lokasi : '');
         }
 
-        await sendToWaList(waList, title, body);
+        // P29 fix: tandai flag SEBELUM kirim — kalau PATCH flag gagal terus,
+        // reminder yang sama terkirim ulang tiap 2 menit selama window aktif
+        // (spam push). Gagal flag = lewati kirim, log error-nya.
         try {
           const schedId = s.id || s.id_jadwal;
           if (schedId) await markReminderSent(schedId, w.field);
-        } catch {}
+        } catch (err) {
+          log.error('schedule.reminder-flag-failed', { err: String(err) });
+          continue;
+        }
+        await sendToWaList(waList, title, body);
       }
     }
     return { success: true, sent, errors, checked: schedules.length };

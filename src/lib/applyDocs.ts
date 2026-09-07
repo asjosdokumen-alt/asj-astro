@@ -34,7 +34,7 @@ const PHOTO_ALIASES = new Set([
 export const DEFAULT_REQUIRED: readonly string[] = ["CV", "JFT", "SSW"];
 
 function normalizeToken(raw: string): string {
-  return String(raw || '').trim().toUpperCase().replace(/s+/g, ' ');
+  return String(raw || '').trim().toUpperCase().replace(/\s+/g, ' ');
 }
 
 /**

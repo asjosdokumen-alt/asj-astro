@@ -76,7 +76,12 @@ export default function TabPelamar() {
       (k.tahapan || '').toLowerCase().includes(search.toLowerCase());
     const matchGender = filterGender === 'all' || (k.gender || '').toLowerCase() === filterGender;
     const matchJft = filterJft === 'all' || (k.jft || '').toLowerCase().includes(filterJft);
-    return matchSearch && matchGender && matchJft;
+    const usia = parseInt(String(k.usia || ''), 10);
+    const matchAge = filterAge === 'all' ||
+      (filterAge === 'under20' && !isNaN(usia) && usia < 20) ||
+      (filterAge === '20to25' && !isNaN(usia) && usia >= 20 && usia <= 25) ||
+      (filterAge === 'over25' && !isNaN(usia) && usia > 25);
+    return matchSearch && matchGender && matchJft && matchAge;
   });
 
   const shown = filtered.slice(0, (page + 1) * PAGE_SIZE);
@@ -156,8 +161,7 @@ export default function TabPelamar() {
         </div>
       ) : (
         /* Full View — table */
-        <div class="overflow-x-auto rounded-xl border border-sla
-te-800">
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
           <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
             <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
               <tr>

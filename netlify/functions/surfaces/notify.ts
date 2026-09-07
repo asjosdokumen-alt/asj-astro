@@ -6,6 +6,7 @@
  */
 import { enqueue, handleGetJobStatus } from '../_lib/kernel/job-queue';
 import { log } from '../_lib/kernel/log';
+import { requireAdmin } from '../contexts/identity';
 
 export const NOTIFY_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   simpanWaTemplate: async (p: unknown[], s?: string) => {
@@ -21,9 +22,15 @@ export const NOTIFY_ACTIONS: Record<string, (payload: unknown[], sessionToken?: 
     return notifications.handleKirimSatuPesanFonnte(p, s);
   },
   kirimTawaranMassal: async (p: unknown[], s?: string) => {
-    // Bulk WA sending is slow — enqueue as background job
-    const jobId = await enqueue('wa.broadcast', { payload: p, sessionToken: s });
-    log.info('notify.background-enqueued', { jobId });
+    // Security fix (review SEDANG/K3): guard admin dieksekusi DI SINI sebelum
+    // enqueue — sebelumnya anonim bisa membanjiri job_queue. Token sesi TIDAK
+    // ikut disimpan ke payload job (payload job dapat dibaca via getJobStatus
+    // dan RPC claim_next_job yang semula di-GRANT ke anon) — cukup identitas
+    // pembuat untuk jejak audit; otorisasi eksekusi ditangani worker internal.
+    const guard = requireAdmin(s || '');
+    if (guard.error) return guard.error;
+    const jobId = await enqueue('wa.broadcast', { payload: p, createdBy: guard.token?.wa || 'admin' });
+    log.info('notify.background-enqueued', { jobId, createdBy: guard.token?.wa || 'admin' });
     return { success: true, status: 'accepted', jobId, message: 'Pengiriman massal sedang diproses. Gunakan getJobStatus untuk mengecek.' };
   },
   getJobStatus: async (p: unknown[], s?: string) => handleGetJobStatus(p, s),

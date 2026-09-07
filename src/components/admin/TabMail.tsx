@@ -3,7 +3,7 @@
  * Source: legacy/index.html page-admin → admin-mail
  * Filters: MENUNGGU, REVIEW, LULUS, GAGAL, SEMUA
  */
-import { useEffect } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import {
   mailFilterStatus, mailSearchText, mailList,
@@ -12,6 +12,7 @@ import {
 import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
+import api from '../../lib/apiClient';
 
 const STATUSES = ['MENUNGGU', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'] as const;
 
@@ -26,8 +27,39 @@ export default function TabMail() {
   const filterStatus = useStore(mailFilterStatus);
   const searchText = useStore(mailSearchText);
   const mail = useStore(mailList);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   useEffect(() => { fetchMailFromAPI(); }, []);
+
+  const toggleAll = () => {
+    setSelected((prev) =>
+      prev.size === filtered.length && filtered.length > 0
+        ? new Set()
+        : new Set(filtered.map((m) => String(m.id ?? m.wa ?? m.nama ?? '')))
+    );
+  };
+
+  const toggleOne = (key: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const act = async (action: string, id: unknown, okMsg: string) => {
+    try {
+      const d: any = await api.secure(action, [id]);
+      if (d && d.success) {
+        showToast(okMsg, 'success');
+        fetchMailFromAPI();
+      } else {
+        showToast(String(d?.error || d?.message || 'Gagal'), 'error');
+      }
+    } catch (e) {
+      showToast('Error: ' + (e instanceof Error ? e.message : String(e)), 'error');
+    }
+  };
 
   const filtered = mail.filter((m) => {
     const matchStatus = filterStatus === 'SEMUA' || (m.status || '').toUpperCase() === filterStatus;
@@ -91,7 +123,9 @@ export default function TabMail() {
           <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
             <tr>
               <th scope="col" class="p-4 text-center">
-                <input type="checkbox" class="w-5 h-5 accent-rose-500 cursor-pointer" />
+                <input type="checkbox" class="w-5 h-5 accent-rose-500 cursor-pointer"
+                  checked={selected.size === filtered.length && filtered.length > 0}
+                  onChange={toggleAll} />
               </th>
               <th scope="col" class="p-4">Timestamp</th>
               <th scope="col" class="p-4">Job Code</th>
@@ -111,7 +145,9 @@ export default function TabMail() {
             ) : filtered.map((m, i) => (
               <tr key={m.id || i} class="hover:bg-white/5 transition-all">
                 <td class="p-4 text-center">
-                  <input type="checkbox" class="w-4 h-4 accent-rose-500 cursor-pointer" />
+                  <input type="checkbox" class="w-4 h-4 accent-rose-500 cursor-pointer"
+                    checked={selected.has(String(m.id ?? m.wa ?? m.nama ?? ''))}
+                    onChange={() => toggleOne(String(m.id ?? m.wa ?? m.nama ?? ''))} />
                 </td>
                 <td class="p-4 text-xs text-slate-400">{m.timestamp || '-'}</td>
                 <td class="p-4"><span class="font-mono text-purple-300 text-xs">{m.idLoker || '-'}</span></td>
@@ -124,19 +160,19 @@ export default function TabMail() {
                   </span>
                 </td>
                 <td class="p-4 text-center">
-                  <button class="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-bold shadow transition">
+                  <button disabled class="px-2 py-1 bg-slate-700/40 text-slate-500 rounded text-[10px] font-bold shadow cursor-not-allowed" title="Segera hadir">
                     <Icon name="folder-open" class="mr-1" /> Lihat
                   </button>
                 </td>
                 <td class="p-4 text-center">
                   <div class="flex flex-wrap justify-center gap-1">
-                    <button class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition">
+                    <button onClick={() => act('approveForm', m.id ?? m.wa, 'Lamaran LULUS')} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition">
                       <Icon name="check" class="mr-1" /> Lulus
                     </button>
-                    <button class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition">
+                    <button onClick={() => act('reviewForm', m.id ?? m.wa, 'Status REVIEW')} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition">
                       <Icon name="eye" class="mr-1" /> Review
                     </button>
-                    <button class="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold shadow transition">
+                    <button onClick={() => { if (window.confirm('Tolak lamaran ini?')) act('rejectForm', m.id ?? m.wa, 'Lamaran GAGAL'); }} class="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold shadow transition">
                       <Icon name="times" class="mr-1" /> Gagal
                     </button>
                   </div>

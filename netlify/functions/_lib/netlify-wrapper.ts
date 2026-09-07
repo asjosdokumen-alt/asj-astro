@@ -10,6 +10,16 @@ import { clientIp, sessionTokenFrom, corsHeaders } from './kernel/request-helper
 
 function makeHandler() {
   return async (event: any) => {
+    // P36 fix: batas ukuran body (sama seperti surface wrapper) — wrapper
+    // legacy ini menerima semua 80+ aksi termasuk CRUD admin.
+    const MAX_BODY_SIZE = 10 * 1024 * 1024;
+    if (event.body && event.body.length > MAX_BODY_SIZE) {
+      return {
+        statusCode: 413,
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({ success: false, message: 'Request body too large (max 10MB)' }),
+      };
+    }
     let body: Record<string, any> = {};
     try {
       body = JSON.parse(event.body || '{}');
@@ -43,8 +53,11 @@ function makeHandler() {
           ip: clientIp(event) ?? undefined,
         }),
       );
-    } catch (e: any) {
-      out = { success: false, message: 'Error internal: ' + e.message };
+    } catch (e: unknown) {
+      // P37 fix: jangan bocorkan detail error internal (body PostgREST /
+      // upstream) ke klien — log di server saja.
+      console.error('[wrapper] error:', e);
+      out = { success: false, message: 'Terjadi kesalahan saat memproses permintaan.' };
     }
     const requestOrigin = (event && event.headers)
       ? (event.headers.origin || event.headers.Origin || '')
@@ -64,8 +77,10 @@ function makeHandler() {
         body: String(out.body),
       };
     }
+    const rec = (out || {}) as Record<string, unknown>;
+    const statusCode = rec.rateLimited ? 429 : rec.success === false ? 400 : 200;
     return {
-      statusCode: 200,
+      statusCode,
       headers: baseHeaders,
       body: JSON.stringify(out),
     };

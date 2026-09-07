@@ -62,16 +62,16 @@ export function mapMasterNestedToForm(n: any): MasterFormPrefill {
     bhsJepang: s(st.bahasa || st.bahasa_jepang), nilai: s(st.jft || st.nilai),
     lisensi: s(st.bidang || st.lisensi), lisensi2: s(st.ssw),
   };
-  const eduList: PrefillEdu[] = (Array.isArray(n.pendidikan) ? n.pendidikan : []).slice(0, 5).map((p: any) => ({
+  const eduList: PrefillEdu[] = (Array.isArray(n?.pendidikan) ? n.pendidikan : []).slice(0, 5).map((p: any) => ({
     jenjang: s(p.tingkat), nama: s(p.sekolah || p.nama_sekolah), thnAwal: s(p.tahun_masuk || p.masuk),
     thnAkhir: s(p.tahun_lulus || p.lulus), jurusan: s(p.jurusan || p.jurusan_id), alamat: '',
   }));
-  const jobList: PrefillJob[] = (Array.isArray(n.pekerjaan) ? n.pekerjaan : []).slice(0, 3).map((j: any) => ({
+  const jobList: PrefillJob[] = (Array.isArray(n?.pekerjaan) ? n.pekerjaan : []).slice(0, 3).map((j: any) => ({
     perusahaan: s(j.perusahaan || j.nama_perusahaan), jabatan: s(j.jabatan),
     thnAwal: s(j.tahun_masuk || j.masuk), thnAkhir: s(j.tahun_keluar || j.keluar),
     gaji: s(j.gaji), alasan: '',
   }));
-  const famList: PrefillFam[] = (Array.isArray(n.keluarga) ? n.keluarga : []).slice(0, 5).map((k: any) => ({
+  const famList: PrefillFam[] = (Array.isArray(n?.keluarga) ? n.keluarga : []).slice(0, 5).map((k: any) => ({
     nama: s(k.nama), hubungan: s(k.hubungan), usia: s(k.usia || k.umur), pekerjaan: s(k.pekerjaan),
   }));
   return {

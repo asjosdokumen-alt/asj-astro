@@ -66,6 +66,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
   const [mode, setMode] = useState<"chat" | "parse" | "results">("chat");
   const [parseFile, setParseFile] = useState<File | null>(null);
   const [parseStatus, setParseStatus] = useState("");
+  const [parsing, setParsing] = useState(false);
   const [parseWa, setParseWa] = useState(candidateWa || "");
   const [parseBidang, setParseBidang] = useState("");
   const [lastHasil, setLastHasil] = useState<Record<string, unknown> | null>(null);
@@ -143,15 +144,18 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
 
   /** Two-step legacy parse: parseDokumenBiodata - then submitMasterForm. */
   const handleParse = async () => {
+    if (parsing) return;
     if (!parseFile) {
       showToast(t("ai.pick_file_first"), "error");
       return;
     }
     setParseStatus(t("ai.status_parsing").replace("{name}", parseFile.name));
+    setParsing(true);
     try {
       const reader = new FileReader();
-      const b64 = await new Promise<string>((resolve) => {
+      const b64 = await new Promise<string>((resolve, reject) => {
         reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
+        reader.onerror = () => reject(new Error(t("ai.read_file_failed")));
         reader.readAsDataURL(parseFile);
       });
       const res = await apiCall("parseDokumenBiodata", [
@@ -206,6 +210,8 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
     } catch (e) {
       reportError(e);
       setParseStatus("");
+    } finally {
+      setParsing(false);
     }
   };
 
@@ -519,7 +525,8 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
             <div class="flex gap-2">
               <button
                 onClick={handleParse}
-                class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg"
+                disabled={parsing}
+                class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
               >
                 <Icon name="bolt" class="mr-1" />
                 {t("admin.ai_btn_parse")}

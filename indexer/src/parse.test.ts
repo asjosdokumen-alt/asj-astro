@@ -25,7 +25,7 @@ describe('real-file outlines', () => {
     const p = parseReal('netlify/functions/contexts/master-data/index.ts', 'ts');
     expect(p.symbols).toHaveLength(0); // barrel: no declarations
     expect(p.imports).toHaveLength(0);
-    expect(p.exports).toHaveLength(11);
+    expect(p.exports).toHaveLength(14); // 11 at design time; barrel grew with the contexts split
     const alias = p.exports.find((e) => e.exportName === 'handleSimpanUpdateMaster');
     expect(alias).toMatchObject({ localName: 'handleSubmitMasterForm', from: './service', kind: 'named' });
     const plain = p.exports.find((e) => e.exportName === 'findMasterByWa');
@@ -58,8 +58,8 @@ describe('real-file outlines', () => {
 
   it('index.astro — frontmatter imports only', () => {
     const p = parseReal('src/pages/index.astro', 'astro');
-    expect(p.imports).toHaveLength(6);
-    expect(p.symbols).toHaveLength(6); // one ImportBinding per import
+    expect(p.imports).toHaveLength(5); // 6 at design time; one frontmatter import removed since
+    expect(p.symbols).toHaveLength(5); // one ImportBinding per import
     expect(p.symbols.every((s) => s.kind === SymbolKind.ImportBinding)).toBe(true);
     expect(p.imports.every((i) => i.kind === ImportKind.Static)).toBe(true);
   });

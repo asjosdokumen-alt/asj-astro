@@ -376,8 +376,13 @@ async function autoTranslateToJp(idFields: Record<string, string>, existingJp?: 
 
 export async function handleGetMasterDataByWa(payload: any[], sessionToken?: string) {
   const wa = String((payload && payload[0]) || '');
-  const guard = requireRole(sessionToken || '', 'kandidat');
-  if (guard.error) return guard.error;
+  // P27 fix: jalur baca Master boleh dipakai admin juga (sebelumnya
+  // requireRole('kandidat') menolak admin padahal jalur tulis & read saudara
+  // mengizinkan admin — prefill bridge master gagal untuk admin).
+  const t = session.verifyToken(sessionToken);
+  if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
   if (!wa) return { error: 'Nomor WA wajib diisi.' };
   if (!isOwnerOrAdmin(sessionToken, wa)) return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
   try {

@@ -121,7 +121,9 @@ export function makeSurfaceHandler(allowedActions: string[]) {
         }),
       );
     } catch (e: unknown) {
-      out = { success: false, message: 'Error internal: ' + (e instanceof Error ? e.message : String(e)) };
+      // P37 fix: jangan bocorkan detail error internal ke klien — log saja.
+      log.error('surface-wrapper.error', { err: e instanceof Error ? e.message : String(e) });
+      out = { success: false, message: 'Terjadi kesalahan saat memproses permintaan.' };
     }
 
     const requestOrigin = event?.headers?.origin || event?.headers?.Origin || '';

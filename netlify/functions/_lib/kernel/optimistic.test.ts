@@ -16,7 +16,7 @@ beforeEach(() => {
 
 describe('optimisticUpdate', () => {
   it('succeeds without If-Match when updated_at not provided', async () => {
-    mockSupabaseJson.mockResolvedValue(undefined);
+    mockSupabaseJson.mockResolvedValue([{ id: 'row-1' }]);
 
     const result = await optimisticUpdate('database_candidate', 'row-1', {
       catatan_internal: 'new note',
@@ -37,7 +37,7 @@ describe('optimisticUpdate', () => {
   });
 
   it('adds If-Match header when updated_at is provided', async () => {
-    mockSupabaseJson.mockResolvedValue(undefined);
+    mockSupabaseJson.mockResolvedValue([{ id: 'row-1' }]);
 
     const result = await optimisticUpdate('database_candidate', 'row-1', {
       catatan_internal: 'new note',
@@ -53,6 +53,24 @@ describe('optimisticUpdate', () => {
         headers: expect.objectContaining({
           'If-Match': '"2026-09-01T00:00:00Z"',
         }),
+      }),
+    );
+  });
+
+  it('returns conflict when no row matched (P32: return=representation)', async () => {
+    mockSupabaseJson.mockResolvedValue([]);
+
+    const result = await optimisticUpdate('database_candidate', 'row-ghost', {
+      catatan_internal: 'new note',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.conflict).toBe(true);
+    expect(mockSupabaseJson).toHaveBeenCalledWith(
+      'PATCH',
+      'database_candidate',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Prefer: 'return=representation' }),
       }),
     );
   });

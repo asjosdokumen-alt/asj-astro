@@ -25,6 +25,9 @@ import * as session from '../../_lib/session';
 import * as repo from './repository';
 import { env } from '../../_lib/env';
 
+// S9 fix: satu pesan gagal login (anti-enumerasi nomor WA terdaftar).
+const LOGIN_FAIL_MSG = 'Nomor WA atau password salah.';
+
 // ── Admin auth ───────────────────────────────────────────────────────────────
 
 /**
@@ -79,12 +82,13 @@ export async function refreshAdminSession(refreshToken: string) {
 
 export async function loginKandidat(wa: string, password: string) {
   const cand = await repo.findCandidateForAuth(wa);
-  if (!cand) return { success: false, message: 'Kandidat tidak ditemukan.' };
+  if (!cand) return { success: false, message: LOGIN_FAIL_MSG };
   const storedPass = String(cand.password_kandidat || '');
-  if (!storedPass) return { success: false, message: 'Password belum diatur.' };
-  // S6 fix: Only use bcrypt comparison — never plaintext.
-  const ok = await bcrypt.compare(password, storedPass);
-  if (!ok) return { success: false, message: 'Password salah.' };
+  // S9 fix: pesan gagal disamakan untuk semua kasus (akun tak ada / password
+  // belum diatur / password salah) — tanpa ini nomor WA terdaftar bisa
+  // di-enumerate. Rate limit per-IP sudah ditangani handlers.ts (LOGIN_ACTIONS).
+  const ok = storedPass ? await bcrypt.compare(password, storedPass) : false;
+  if (!ok) return { success: false, message: LOGIN_FAIL_MSG };
   const token = session.signToken({ role: 'kandidat', wa: cand.no_wa, kind: 'session' });
   return { success: true, token, user: 'kandidat', wa: cand.no_wa, name: cand.nama_lengkap };
 }
@@ -198,23 +202,26 @@ export async function registerFcmToken(payload: any[], sessionToken?: string): P
   const waRaw = String(waStr || '').trim();
   let wa = normalizeWa(waRaw);
 
-  let ident: any = null;
-  if (sessionToken) {
-    ident = session.verifyToken(sessionToken);
+  // S10 fix: pendaftaran FCM WAJIB punya sesi valid — tanpa sesi, perangkat
+  // anonim bisa menerima push admin/kandidat & spam tabel fcm_tokens. Tidak
+  // ada lagi jalur anonim 'ADMIN'.
+  const ident = session.verifyToken(sessionToken);
+  if (!ident || ident.kind === 'refresh') {
+    return { success: false, message: 'Sesi tidak valid' };
   }
 
-  // Bypass normalisasi untuk admin (agar nama admin spt 'khoci' tidak terhapus jd string kosong)
-  if (ident && ident.role === 'admin') {
+  if (ident.role === 'admin') {
+    // Nama admin (mis. 'khoci') dipakai apa adanya, bukan dinormalisasi.
     wa = waRaw || 'ADMIN';
-  } else if (waRaw === 'ADMIN') {
-    wa = 'ADMIN';
+  } else if (ident.role === 'kandidat') {
+    if (!wa || normalizeWa(ident.wa || '') !== wa) {
+      return { success: false, message: 'Unauthorized FCM registration' };
+    }
+  } else {
+    return { success: false, message: 'Sesi tidak valid' };
   }
 
   if (!wa || !token) return { success: false, message: 'Invalid data' };
-
-  if (ident && ident.role === 'kandidat' && ident.wa !== wa) {
-    return { success: false, message: 'Unauthorized FCM registration' };
-  }
 
   try {
     // Insert/upsert ke tabel fcm_tokens (jika token sama, update last_used_at)

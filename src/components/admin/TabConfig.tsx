@@ -42,7 +42,7 @@ export default function TabConfig() {
   async function handleMigrate() {
     setMigrating(true); setMigStatus('Running...'); setMigResults([]);
     try {
-      const r = await fetch('/.netlify/functions/run-migration', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const r = await fetch('/.netlify/functions/run-migration', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken: authStore.get().sessionToken || "" }) });
       const d = await r.json();
       if (d.success) { setMigStatus('Done!'); setMigResults(d.results || []); if (d.pendingSQL) setMigPending(d.pendingSQL); }
       else setMigStatus('Failed: ' + (d.error || 'Unknown'));
@@ -53,7 +53,7 @@ export default function TabConfig() {
   async function handleSaveConfig(id: string) {
     const options = editValue.split('\n').map(s => s.trim()).filter(Boolean);
     try {
-      const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, options }) });
+      const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, options, sessionToken: authStore.get().sessionToken || "" }) });
       const d = await r.json();
       if (d.success) { setEditingConfig(null); location.reload(); } else alert('Failed: ' + d.error);
     } catch (e) { alert('Error: ' + e); }
@@ -61,7 +61,7 @@ export default function TabConfig() {
 
   async function handleSavePengumuman() {
     try {
-      const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: pengumuman }) });
+      const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: pengumuman, sessionToken: authStore.get().sessionToken || "" }) });
       const d = await r.json();
       if (d.success) alert('Pengumuman saved!'); else alert('Failed: ' + d.error);
     } catch (e) { alert('Error: ' + e); }

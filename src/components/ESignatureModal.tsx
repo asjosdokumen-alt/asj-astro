@@ -63,9 +63,6 @@ export default function ESignatureModal({ title = 'Tanda Tangan Digital', onSave
     lastPos.current = getPos(e);
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx) {
-      ctx.fillStyle = '#0f172a';
-      const rect = canvasRef.current!.getBoundingClientRect();
-      ctx.fillRect(0, 0, rect.width, rect.height);
       ctx.strokeStyle = STROKE_COLOR;
       ctx.lineWidth = STROKE_WIDTH;
     }

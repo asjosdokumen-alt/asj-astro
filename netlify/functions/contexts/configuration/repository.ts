@@ -32,22 +32,26 @@ export async function replaceConfigItems(type: string, items: string[]): Promise
   const rows = Array.isArray(settings.rows) ? settings.rows : [];
   const toDelete = rows.filter((r: Record<string, unknown>) => String(r.config_type || '') === type).map((r: Record<string, unknown>) => r.id);
 
-  for (const id of toDelete) {
+  // P28 fix: batch delete + insert (satu HTTP call masing-masing) — loop lama
+  // N+1 dan non-atomik (gagal di tengah meninggalkan konfigurasi parsial).
+  if (toDelete.length > 0) {
     await supabaseJson('DELETE', 'sys_config', {
-      query: { id: 'eq.' + id },
+      query: { id: 'in.(' + toDelete.join(',') + ')' },
       headers: { Prefer: 'return=minimal' },
     });
   }
 
-  for (const item of items) {
-    if (!item) continue;
+  const insertItems = items
+    .filter((item) => item)
+    .map((item) => ({
+      config_type: type,
+      config_value: item,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    }));
+  if (insertItems.length > 0) {
     await supabaseJson('POST', 'sys_config', {
-      body: {
-        config_type: type,
-        config_value: item,
-        is_active: true,
-        created_at: new Date().toISOString(),
-      },
+      body: insertItems,
       headers: { Prefer: 'return=minimal' },
     });
   }

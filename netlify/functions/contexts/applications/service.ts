@@ -4,6 +4,7 @@
  * Other contexts and surfaces import ONLY from index.ts.
  */
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 import { attachBerkasBio } from '../../_lib/db/berkas';
 import { requireAdmin } from '../identity';
@@ -41,10 +42,11 @@ function appendFeedback(prev: string, entry: string): string {
   return items.slice(0, 3).join(' · ');
 }
 
-async function syncCandidateDariForm(f: Record<string, unknown>, status: string): Promise<void> {
+async function syncCandidateDariForm(f: Record<string, unknown>, status: string): Promise<string | null> {
   const wa = normWa(String(f.no_wa || f.wa || ''));
   const codeJob = String(f.code_job || '');
-  if (!wa) return;
+  let lastGenerated: string | null = null;
+  if (!wa) return null;
   const row = await findCandidateByWa(wa);
   if (status === 'LULUS') {
     const now = new Date().toISOString();
@@ -72,8 +74,12 @@ async function syncCandidateDariForm(f: Record<string, unknown>, status: string)
     } else if (codeJob) {
       base.id_kandidat = await nextCandidateId();
       base.no_wa = wa;
-      base.password_kandidat = bcrypt.hashSync(wa.slice(-4), 10);
+      // H6 fix: password default acak (bukan 4 digit terakhir WA yang mudah
+      // ditebak) — dikembalikan ke admin untuk diteruskan ke kandidat.
+      const generatedPassword = String(crypto.randomInt(100000, 1000000));
+      base.password_kandidat = bcrypt.hashSync(generatedPassword, 10);
       base.password_diubah = false;
+      lastGenerated = generatedPassword;
       base.tahapan_seleksi = 'LIST';
       base.tanggal_daftar = now;
       base.created_at = now;
@@ -94,6 +100,7 @@ async function syncCandidateDariForm(f: Record<string, unknown>, status: string)
       headers: { Prefer: 'return=minimal' },
     });
   }
+  return lastGenerated;
 }
 
 async function handleFormStatus(rowIndex: number, status: string, reason?: string, sessionToken?: string) {
@@ -107,7 +114,8 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
     const body: Record<string, unknown> = { status };
     if (reason !== null && reason !== undefined) body.keterangan = reason;
     await patchForm(f.id as number, body, sessionToken);
-    try { await syncCandidateDariForm(f, status); } catch (e) { /* best-effort */ }
+    let generatedPassword: string | null = null;
+    try { generatedPassword = await syncCandidateDariForm(f, status); } catch (e) { /* best-effort */ }
 
     // Emit domain event for cross-context communication
     const waEvent = normWa(String(f.no_wa || f.wa || ''));
@@ -155,7 +163,9 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
         }
       } catch { /* best-effort */ }
     }
-    return { success: true, form: mapForm(f, rowIndex), candidate };
+    const result: Record<string, unknown> = { success: true, form: mapForm(f, rowIndex), candidate };
+    if (generatedPassword) result.generatedPassword = generatedPassword;
+    return result;
   } catch (e: unknown) {
     return { success: false, error: 'Gagal proses form: ' + (e instanceof Error ? e.message : String(e)) };
   }

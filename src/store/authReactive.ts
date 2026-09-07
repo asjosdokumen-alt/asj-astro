@@ -56,8 +56,10 @@ export function loginAsAdmin(name: string, sessionToken: string, refreshToken?: 
     isLoggedIn: true,
     lastChecked: now,
   });
-  // Activate FCM push notifications (non-blocking)
-  requestNotificationPermission(sessionToken).catch(() => {});
+  // Activate FCM push notifications (non-blocking).
+  // Admin register FCM under their name (backend: waRaw || 'ADMIN') —
+  // sending the JWT leaked the session token into fcm_tokens.wa.
+  requestNotificationPermission(name || 'ADMIN').catch(() => {});
 }
 
 /** Login as kandidat */

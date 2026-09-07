@@ -25,6 +25,7 @@
  */
 
 import { supabaseJson } from '../db/client';
+import { verifyToken } from '../session';
 import { log } from './log';
 import { Errors } from './errors';
 
@@ -236,10 +237,13 @@ export async function sweepQueue(processFn: (job: Job) => Promise<void>): Promis
 /** getJobStatus action — poll a background job (client-facing shape).
  * Moved from the retired _lib/actions-job-status dispatcher module
  * (2026-09-04): the read belongs with the queue it polls. The 202-returning
- * surfaces (ai / ingest / notify) tell clients to poll via getJobStatus;
- * note the action is not yet routed in any surface registry.
+ * surfaces (ai / ingest / notify) tell clients to poll via getJobStatus.
  *   const result = await handleGetJobStatus([jobId], sessionToken);
- *   // { success: true, status, jobId, type, attempts, ... , result? } */
+ *   // { success: true, status, jobId, type, attempts, ... , result? }
+ * Security fix (review K3): wajib sesi valid, dan hanya pembuat job (payload
+ * createdBy) atau admin yang boleh melihat. `result` hanya mengekspos
+ * payload.result (ringkasan per-penerima dari recordJobResult) — payload
+ * mentah tidak pernah dikirim (baris legacy masih menyimpan sessionToken). */
 export async function handleGetJobStatus(
   payload: unknown[],
   sessionToken?: string,
@@ -250,7 +254,12 @@ export async function handleGetJobStatus(
     throw Errors.validation('jobId harus diisi');
   }
 
-  log.info('job-status.start', { jobId });
+  const t = verifyToken(sessionToken);
+  if (!t || t.kind === 'refresh') {
+    throw Errors.unauthorized('Sesi tidak valid');
+  }
+
+  log.info('job-status.start', { jobId, role: t.role });
 
   const job = await getJob(jobId);
 
@@ -262,6 +271,14 @@ export async function handleGetJobStatus(
     };
   }
 
+  const createdBy = typeof (job.payload as Record<string, unknown>)?.createdBy === 'string'
+    ? String((job.payload as Record<string, unknown>).createdBy)
+    : null;
+  const isCreator = createdBy !== null && createdBy === (t.wa || '');
+  if (t.role !== 'admin' && !isCreator) {
+    throw Errors.forbidden('Job ini bukan milik sesi Anda');
+  }
+
   return {
     success: true,
     status: job.status,
@@ -271,7 +288,10 @@ export async function handleGetJobStatus(
     maxAttempts: job.max_attempts,
     lastError: job.last_error,
     createdAt: job.created_at,
-    // Result is in the payload if status is 'done'
-    result: job.status === 'done' ? job.payload : undefined,
+    // Result is in the payload if status is 'done' — expose only the recorded
+    // result, never the raw payload (which may contain tokens/secrets).
+    result: job.status === 'done'
+      ? (job.payload as Record<string, unknown> | null)?.result
+      : undefined,
   };
 }

@@ -100,9 +100,19 @@ export async function handleKirimSatuPesanFonnte(payload: any[], sessionToken?: 
   }
 }
 
-export async function handleKirimTawaranMassal(payload: any[], sessionToken?: string) {
-  const guard = requireRole(sessionToken || '', 'admin');
-  if (guard.error) return guard.error;
+export async function handleKirimTawaranMassal(
+  payload: any[],
+  sessionToken?: string,
+  opts?: { internal?: boolean },
+) {
+  // internal=true dipakai sweep-queue worker (kode server terpercaya yang
+  // sudah meng-claim job dari antrean); sesi admin sudah divalidasi di
+  // surfaces/notify.ts saat enqueue, jadi token tidak perlu disimpan di
+  // payload job. Jalur HTTP langsung tetap wajib sesi admin.
+  if (!opts?.internal) {
+    const guard = requireRole(sessionToken || '', 'admin');
+    if (guard.error) return guard.error;
+  }
   const d = (payload && payload[0]) || {};
   const cands = Array.isArray(d.candidates) ? d.candidates : [];
   if (cands.length === 0) return { success: false, error: 'Tidak ada kandidat.' };

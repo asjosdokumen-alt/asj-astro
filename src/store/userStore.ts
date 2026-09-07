@@ -27,6 +27,7 @@ import {
   type AuthState,
 } from './authReactive';
 import { showToast } from '../components/Toast';
+import { normalizeWaInput } from '../lib/schemas';
 
 // ─── Computed Atoms (derived from authStore) ──────────
 
@@ -251,24 +252,11 @@ export function initializeAuthListener(): () => void {
  * Output: "6281234567890"
  */
 function normalizePhone(phone: string): string {
-  let cleaned = phone.replace(/[\s\-()]/g, '');
-
-  // Already has country code
-  if (cleaned.startsWith('62') || cleaned.startsWith('81')) {
-    return cleaned;
-  }
-
-  // Starts with 0 → replace with 62
-  if (cleaned.startsWith('0')) {
-    return '62' + cleaned.slice(1);
-  }
-
-  // Starts with + → strip the +
-  if (cleaned.startsWith('+')) {
-    return cleaned.slice(1);
-  }
-
-  return cleaned;
+  const cleaned = phone.replace(/[\s\-()]/g, '');
+  // Delegasikan ke normalizeWaInput (schemas) — sudah benar untuk prefix
+  // Jepang 090/070 → 81 dan Indonesia 08x → 62; kembalikan bersih jika
+  // nomor tidak dikenali agar perilaku lama (lenient) tidak berubah.
+  return normalizeWaInput(cleaned) || cleaned;
 }
 
 // ─── Re-exports from authReactive (convenience) ──────

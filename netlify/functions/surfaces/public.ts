@@ -37,8 +37,16 @@ export function withCacheHeaders(data: unknown, extraHeaders?: Record<string, st
 export const PUBLIC_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   getAppData: async (payload, sessionToken) => {
     const mode = (payload?.[0] as string) || 'default';
-    const key = genKey('public-appdata', mode);
-    return cache.getOrSet(key, () => catalog.handleGetAppData(payload, sessionToken), { ttlMs: 60_000 });
+    // Security fix (review K2): respons dengan sessionToken bersifat privat
+    // per-sesi (mode admin/kandidat memuat seluruh data kandidat) dan TIDAK
+    // boleh masuk cache bersama — kunci lama ('public-appdata', mode) membuat
+    // respons admin disajikan ke peminta anonim berikutnya. Hanya panggilan
+    // anonim yang di-cache; semua panggilan ber-token selalu segar.
+    if (!sessionToken) {
+      const key = genKey('public-appdata', mode);
+      return cache.getOrSet(key, () => catalog.handleGetAppData(payload, undefined), { ttlMs: 60_000 });
+    }
+    return catalog.handleGetAppData(payload, sessionToken);
   },
   getMonthlyReport: (payload, sessionToken) => catalog.handleGetMonthlyReport(payload, sessionToken),
 };

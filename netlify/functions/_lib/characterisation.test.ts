@@ -43,12 +43,9 @@ describe('normalizeWa — characterisation', () => {
       expect(normalizeWa('09012345678')).toBe('819012345678');
     });
 
-    it('converts 070 prefix — actual behaviour (may route to Indo if long)', () => {
-      // 07x with length >= 12 routes to 628 (Indonesian path)
-      // 07x with shorter length routes to 81 (Japanese path)
-      const result = normalizeWa('07012345678');
-      // 11 digits starting with 07 → second digit is 7 → Japanese path: 81+070...
-      expect(result).toBe('62817012345678');
+    it('converts 070 prefix to 8170 (JP mobile, never routed to Indo)', () => {
+      // P39 fix: 8170… 12 digit TETAP Jepang (sebelumnya salah arah ke 62+).
+      expect(normalizeWa('07012345678')).toBe('817012345678');
     });
 
     it('preserves already-canonical 81 format', () => {

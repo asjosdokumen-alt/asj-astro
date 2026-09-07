@@ -55,15 +55,20 @@ export default function LokerTable() {
   const [pamfletUrl, setPamfletUrl] = useState("");
   const [showPamflet, setShowPamflet] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => { fetchJobs(); }, []);
 
   async function fetchJobs() {
+    setError("");
+    setLoading(true);
     try {
       const data = await getPublicData();
       if (data.success && data.jobs) setJobs(data.jobs as unknown as Job[]);
+      else setError(t("public.load_error"));
     } catch (err) {
       console.error("[LokerTable] fetch error:", err);
+      setError(t("public.load_error"));
     } finally {
       setLoading(false);
     }
@@ -166,6 +171,8 @@ export default function LokerTable() {
           <tbody class="divide-y divide-white/5">
             {loading ? (
               <tr><td colSpan={5} class="p-8 text-center text-slate-500"><Icon spin name="spinner" class="mr-2" /> {t("public.loading")}</td></tr>
+            ) : error ? (
+              <tr><td colSpan={5} class="p-10 text-center text-rose-400 font-bold"><Icon name="exclamation-triangle" class="mr-2" /> {t("public.load_error")} <button onClick={() => fetchJobs()} class="ml-3 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-lg transition"><Icon name="sync-alt" class="mr-1" /> {t("button.retry")}</button></td></tr>
             ) : displayed.length === 0 ? (
               <tr><td colSpan={5} class="p-10 text-center text-slate-500 font-bold">{t("public.empty")}</td></tr>
             ) : displayed.map((job, i) => (

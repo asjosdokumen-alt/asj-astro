@@ -132,6 +132,121 @@ function hasUrl(v: string | undefined): boolean {
   return !!v && v !== "-" && v !== "undefined" && v !== "null";
 }
 
+// Hoisted ke module scope (TINGGI fix): definisi komponen di dalam body
+// komponen membuat identitas tipe berubah tiap render parent, sehingga
+// subtree di-unmount/mount ulang setiap setBio — fokus input hilang tiap
+// ketikan dan file yang dipilih di input berkas-* ter-reset.
+// Semua ketergantungan closure diteruskan via props.
+function FileInput({ def, statusNode, disabled }: { def: BerkasDef; statusNode: any; disabled: boolean }) {
+  return (
+    <div>
+      <div class="flex justify-between items-center mb-1">
+        <label class={`text-xs font-bold ${def.amber ? "text-amber-400" : "text-emerald-300"}`}>
+          {t(def.label)}
+        </label>
+        {statusNode}
+      </div>
+      <input
+        type="file"
+        id={`berkas-${def.key}`}
+        accept={def.accept}
+        disabled={disabled}
+        class={`w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold ${def.amber
+          ? "file:bg-amber-900/40 file:text-amber-300"
+          : "file:bg-slate-700 file:text-white"
+        } disabled:opacity-40`}
+      />
+    </div>
+  );
+}
+
+function Panel({
+  title,
+  icon,
+  tone,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  icon: string;
+  tone: keyof typeof PANEL_TONE;
+  open: boolean;
+  onToggle: () => void;
+  children?: any;
+}) {
+  const c = PANEL_TONE[tone];
+  return (
+    <div class={`bg-black/40 border ${c.border} rounded-[2rem] overflow-hidden text-left shadow-lg`}>
+      <button
+        type="button"
+        onClick={onToggle}
+        class={`w-full p-5 flex justify-between items-center ${c.btn} transition-colors`}
+      >
+        <span class="text-sm md:text-base">
+          <i class={`fas ${icon} mr-2 ${c.titleIcon}`} />
+          {title}
+        </span>
+        <Icon
+          name="chevron-down"
+          class={`transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div class="p-6 border-t border-slate-700/50 space-y-4">{children}</div>
+      )}
+    </div>
+  );
+}
+
+function BioInput({
+  field,
+  label,
+  type = "text",
+  textarea,
+  span2,
+  value,
+  onChange,
+}: {
+  field: string;
+  label: string;
+  type?: string;
+  textarea?: boolean;
+  span2?: boolean;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div class={span2 ? "md:col-span-2" : ""}>
+      <label class="block text-xs text-slate-400 mb-1 font-bold">{t(label)}</label>
+      {textarea ? (
+        <textarea
+          rows={2}
+          value={value}
+          onInput={(e: Event) => onChange((e.target as HTMLTextAreaElement).value)}
+          class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500"
+        />
+      ) : (
+        <input
+          type={type}
+          value={value}
+          onInput={(e: Event) => onChange((e.target as HTMLInputElement).value)}
+          class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500"
+        />
+      )}
+    </div>
+  );
+}
+
+function Section({ label }: { label: string }) {
+  return (
+    <div class="md:col-span-2 border-b border-slate-700/50 pb-1 mt-2">
+      <h4 class="text-sm font-bold text-amber-400">{t(label)}</h4>
+    </div>
+  );
+}
+
+
 export default function PemberkasanModal({
   isOpen,
   onClose,
@@ -352,106 +467,6 @@ export default function PemberkasanModal({
     );
   };
 
-  const FileInput = ({ def }: { def: BerkasDef }) => (
-    <div>
-      <div class="flex justify-between items-center mb-1">
-        <label class={`text-xs font-bold ${def.amber ? "text-amber-400" : "text-emerald-300"}`}>
-          {t(def.label)}
-        </label>
-        {statusMark(def.key, t(def.label))}
-      </div>
-      <input
-        type="file"
-        id={`berkas-${def.key}`}
-        accept={def.accept}
-        disabled={uploading !== null}
-        class={`w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold ${
-          def.amber
-            ? "file:bg-amber-900/40 file:text-amber-300"
-            : "file:bg-slate-700 file:text-white"
-        } disabled:opacity-40`}
-      />
-    </div>
-  );
-
-  const Panel = ({
-    title,
-    icon,
-    tone,
-    open,
-    onToggle,
-    children,
-  }: {
-    title: string;
-    icon: string;
-    tone: keyof typeof PANEL_TONE;
-    open: boolean;
-    onToggle: () => void;
-    children?: any;
-  }) => {
-    const c = PANEL_TONE[tone];
-    return (
-      <div class={`bg-black/40 border ${c.border} rounded-[2rem] overflow-hidden text-left shadow-lg`}>
-        <button
-          type="button"
-          onClick={onToggle}
-          class={`w-full p-5 flex justify-between items-center ${c.btn} transition-colors`}
-        >
-          <span class="text-sm md:text-base">
-            <i class={`fas ${icon} mr-2 ${c.titleIcon}`} />
-            {title}
-          </span>
-          <Icon
-            name="chevron-down"
-            class={`transition-transform duration-300 ${open ? "rotate-180" : ""}`}
-          />
-        </button>
-        {open && (
-          <div class="p-6 border-t border-slate-700/50 space-y-4">{children}</div>
-        )}
-      </div>
-    );
-  };
-
-  const BioInput = ({
-    field,
-    label,
-    type = "text",
-    textarea,
-    span2,
-  }: {
-    field: string;
-    label: string;
-    type?: string;
-    textarea?: boolean;
-    span2?: boolean;
-  }) => (
-    <div class={span2 ? "md:col-span-2" : ""}>
-      <label class="block text-xs text-slate-400 mb-1 font-bold">{t(label)}</label>
-      {textarea ? (
-        <textarea
-          rows={2}
-          value={bio[field] || ""}
-          onInput={(e: Event) => setBio({ ...bio, [field]: (e.target as HTMLTextAreaElement).value })}
-          class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500"
-        />
-      ) : (
-        <input
-          type={type}
-          value={bio[field] || ""}
-          onInput={(e: Event) => setBio({ ...bio, [field]: (e.target as HTMLInputElement).value })}
-          class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500"
-        />
-      )}
-    </div>
-  );
-
-  const Section = ({ label }: { label: string }) => (
-    <div class="md:col-span-2 border-b border-slate-700/50 pb-1 mt-2">
-      <h4 class="text-sm font-bold text-amber-400">{t(label)}</h4>
-    </div>
-  );
-
   return (
     <div
       class="fixed inset-0 bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4"
@@ -501,7 +516,7 @@ export default function PemberkasanModal({
               >
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {BERKAS_TAHAP1.map((def) => (
-                    <FileInput key={def.key} def={def} />
+                    <FileInput key={def.key} def={def} statusNode={statusMark(def.key, t(def.label))} disabled={uploading !== null} />
                   ))}
                 </div>
                 <button
@@ -526,7 +541,7 @@ export default function PemberkasanModal({
               >
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {BERKAS_TAHAP2.map((def) => (
-                    <FileInput key={def.key} def={def} />
+                    <FileInput key={def.key} def={def} statusNode={statusMark(def.key, t(def.label))} disabled={uploading !== null} />
                   ))}
                 </div>
                 <button
@@ -552,19 +567,19 @@ export default function PemberkasanModal({
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Section label="candidate.bio_personal" />
                   {BIO_FIELDS.slice(0, 4).map((f) => (
-                    <BioInput key={f.field} {...f} />
+                    <BioInput key={f.field} {...f} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
                   ))}
                   <Section label="ui.family_data" />
                   {BIO_FIELDS.slice(4, 8).map((f) => (
-                    <BioInput key={f.field} {...f} />
+                    <BioInput key={f.field} {...f} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
                   ))}
                   <Section label="candidate.bio_passport" />
                   {BIO_FIELDS.slice(8, 13).map((f) => (
-                    <BioInput key={f.field} {...f} />
+                    <BioInput key={f.field} {...f} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
                   ))}
                   <Section label="ui.company_data" />
                   {BIO_FIELDS.slice(13).map((f) => (
-                    <BioInput key={f.field} {...f} />
+                    <BioInput key={f.field} {...f} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
                   ))}
                 </div>
                 <button

@@ -1,20 +1,13 @@
 /// <reference types="astro/client" />
 
+// Hanya variabel PUBLIC_* yang boleh dideklarasikan di sini —
+// ImportMetaEnv ini ikut ter-bundle di sisi klien (island).
+// Secret server (SUPABASE_SERVICE_ROLE_KEY, SESSION_SECRET, GEMINI_API_KEY,
+// ADMIN_PASSWORD, dsb.) hanya dibaca lewat process.env di netlify/functions
+// sehingga tidak pernah lolos type-check dari kode klien.
 interface ImportMetaEnv {
   readonly PUBLIC_SUPABASE_URL: string;
   readonly PUBLIC_SUPABASE_ANON_KEY: string;
-  readonly SUPABASE_URL: string;
-  readonly SUPABASE_ANON_KEY: string;
-  readonly SUPABASE_SERVICE_ROLE_KEY: string;
-  readonly GEMINI_API_KEY: string;
-  readonly FONNTE_TOKEN: string;
-  readonly ADMIN_PASSWORD: string;
-  readonly ADMIN_MASTER_PIN: string;
-  readonly PIN_KHOCI: string;
-  readonly SESSION_SECRET: string;
-  readonly NETLIFY_SITE_URL: string;
-  readonly SUPABASE_STORAGE_BUCKET: string;
-  readonly FIREBASE_SERVICE_ACCOUNT: string;
 }
 
 interface ImportMeta {

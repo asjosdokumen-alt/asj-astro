@@ -76,13 +76,11 @@ function verifyToken(token: unknown): SessionPayload | null {
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
-    // S2 fix: Check token expiry
-    if (payload.exp && typeof payload.exp === 'number') {
-      const now = Math.floor(Date.now() / 1000);
-      if (now > payload.exp) {
-        // Token expired
-        return null;
-      }
+    // S2 fix: token WAJIB punya exp numerik — tanpa claim exp, token lama
+    // (atau jalur tanda tangan lain) tidak pernah kedaluwarsa.
+    const now = Math.floor(Date.now() / 1000);
+    if (typeof payload.exp !== 'number' || now > payload.exp) {
+      return null;
     }
     return payload;
   } catch {

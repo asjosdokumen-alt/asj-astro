@@ -49,6 +49,13 @@ export async function handleDownloadJobDocs(payload: unknown[], sessionToken?: s
       }
     }
     if (!downloads.length) return { success: false, error: 'Tidak ada dokumen yang bisa di-download.' };
+    // P30 fix: batasi ukuran batch — ZIP dibangun di memori lalu dikirim
+    // sebagai base64 (+33%) — job besar bisa timeout/OOM.
+    const MAX_FILES = 200;
+    const MAX_TOTAL_BYTES = 100 * 1024 * 1024;
+    if (downloads.length > MAX_FILES) {
+      return { success: false, error: 'Terlalu banyak dokumen (' + downloads.length + '). Batasi job ke ' + MAX_FILES + ' file.' };
+    }
     const archiverMod = await import('archiver');
     const ZipClass = (archiverMod as any).ZipArchive;
     const ArchiveClass = ZipClass || (archiverMod as any).Archiver || (archiverMod as any).default;
@@ -59,12 +66,21 @@ export async function handleDownloadJobDocs(payload: unknown[], sessionToken?: s
       archive.on('end', () => { const zipBuf = Buffer.concat(chunks); resolve({ success: true, zipBase64: zipBuf.toString('base64'), fileName: 'Dokumen_' + code + '.zip', totalFiles: downloads.length, totalSize: zipBuf.length, candidateCount: candidates.length }); });
       archive.on('error', (err: Error) => resolve({ success: false, error: 'Gagal membuat ZIP: ' + err.message }));
       let processed = 0;
+      let totalBytes = 0;
       async function processNext() {
         try {
           if (processed >= total) { archive.finalize(); return; }
           const d = downloads[processed]; processed++;
           const buf = await fetchBuffer(d.url);
-          if (buf) archive.append(buf, { name: d.folder + '/' + filenameFromUrl(d.url, d.label) });
+          if (buf) {
+            totalBytes += buf.length;
+            if (totalBytes > MAX_TOTAL_BYTES) {
+              resolve({ success: false, error: 'Ukuran total dokumen melebihi batas (100 MB).' });
+              archive.abort();
+              return;
+            }
+            archive.append(buf, { name: d.folder + '/' + filenameFromUrl(d.url, d.label) });
+          }
           await processNext();
         } catch (err: unknown) { archive.abort(); }
       }

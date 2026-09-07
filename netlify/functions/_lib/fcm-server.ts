@@ -56,6 +56,7 @@ function getGoogleAuthToken(serviceAccount: { client_email: string; private_key:
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body,
+      signal: AbortSignal.timeout(10000),
     })
       .then((res) => res.json())
       .then((data) => {
@@ -107,6 +108,7 @@ async function sendPushNotification(token: string, title: string, body: string, 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
     });
 
     const data = await res.json();
@@ -126,14 +128,21 @@ async function sendPushNotification(token: string, title: string, body: string, 
  * agar bisa dihapus dari database.
  */
 async function sendMulticast(tokens: string[], title: string, body: string, url = '/') {
-  const invalidTokens = [];
-  for (let token of tokens) {
-    if (!token) continue;
-    const ok = await sendPushNotification(token, title, body, url);
-    // Di API HTTP v1, token tidak valid akan menghasilkan error.
-    if (!ok) invalidTokens.push(token);
+  const invalidTokens: string[] = [];
+  const unique = Array.from(new Set((tokens || []).filter(Boolean)));
+  // P33 fix: kirim paralel per batch 20 (sebelumnya sequential per token —
+  // loop >200 token meledakkan budget 10s Netlify dan error ditelan diam-diam).
+  for (let i = 0; i < unique.length; i += 20) {
+    const chunk = unique.slice(i, i + 20);
+    const results = await Promise.allSettled(
+      chunk.map((token) => sendPushNotification(token, title, body, url)),
+    );
+    results.forEach((r, idx) => {
+      // Di API HTTP v1, token tidak valid akan menghasilkan error.
+      if (r.status !== 'fulfilled' || !r.value) invalidTokens.push(chunk[idx]);
+    });
   }
-  return { successCount: tokens.length - invalidTokens.length, invalidTokens };
+  return { successCount: unique.length - invalidTokens.length, invalidTokens };
 }
 
 export function buildPushPayload(token: string, title: string, body: string, url = '/') {

@@ -122,7 +122,7 @@ export function useOverlay<T extends HTMLElement>({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         // Stop propagation so only the topmost overlay closes.
-        e.stopPropagation();
+        e.stopImmediatePropagation();
         onClose();
       }
     };
@@ -132,6 +132,10 @@ export function useOverlay<T extends HTMLElement>({
 
   return {
     containerRef,
-    onBackdropClick: closeOnBackdrop ? onClose : undefined,
+    onBackdropClick: closeOnBackdrop
+      ? (e: MouseEvent) => {
+          if (e.target === containerRef.current) onClose();
+        }
+      : undefined,
   };
 }

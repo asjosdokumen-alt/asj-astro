@@ -67,7 +67,7 @@ export async function optimisticUpdate(
   opts: OptimisticOpts = {},
 ): Promise<UpdateResult> {
   const headers: Record<string, string> = {
-    Prefer: 'return=minimal',
+    Prefer: 'return=representation',
     ...opts.headers,
   };
 
@@ -82,12 +82,15 @@ export async function optimisticUpdate(
   };
 
   try {
-    await supabaseJson('PATCH', table, {
+    const rows = await supabaseJson('PATCH', table, {
       query,
       body,
       headers,
     });
-    return { success: true };
+    // P32 fix: return=representation — sukses HANYA jika >=1 baris benar-benar
+    // ter-update (return=minimal lama selalu "sukses" walau id tidak match).
+    if (Array.isArray(rows) && rows.length > 0) return { success: true };
+    return { success: false, conflict: true, error: 'Data tidak ditemukan atau telah diubah. Silakan segarkan halaman.' };
   } catch (e: unknown) {
     const msg = String(e);
 

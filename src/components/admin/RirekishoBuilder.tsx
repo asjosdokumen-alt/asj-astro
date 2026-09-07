@@ -54,9 +54,9 @@ function buildEduRows(eduList: Record<string, any>[], v: (...keys: string[]) => 
     let jj=isGood(p.jurusan_jp)?String(p.jurusan_jp):v("PENDIDIKAN"+i+"JURUSANJP");
     [m,l,s,j,sj,jj].forEach((x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
     if(i>3&&!(s||m||l)) continue;
-    const fs=sj?s+"<br><span style=\"font-size:8px;font-weight:normal;\">"+sj+"</span>":s;
-    const fj=jj?j+"<br><span style=\"font-size:8px;font-weight:normal;\">"+jj+"</span>":j;
-    html+="<tr><td class=\"val-center border-r-none\">"+fmtMonthYearJp(m)+"</td><td class=\"val-center border-lr-none\">"+(m||l?"-":"")+"</td><td class=\"val-center border-l-none\">"+fmtMonthYearJp(l)+"</td><td colspan=\"2\" class=\"val-center\">"+fs+"</td><td colspan=\"2\" class=\"val-center\">"+fj+"</td></tr>";
+    const fs=sj?esc(s)+"<br><span style=\"font-size:8px;font-weight:normal;\">"+esc(sj)+"</span>":esc(s);
+    const fj=jj?esc(j)+"<br><span style=\"font-size:8px;font-weight:normal;\">"+esc(jj)+"</span>":esc(j);
+    html+="<tr><td class=\"val-center border-r-none\">"+esc(fmtMonthYearJp(m))+"</td><td class=\"val-center border-lr-none\">"+(m||l?"-":"")+"</td><td class=\"val-center border-l-none\">"+esc(fmtMonthYearJp(l))+"</td><td colspan=\"2\" class=\"val-center\">"+fs+"</td><td colspan=\"2\" class=\"val-center\">"+fj+"</td></tr>";
   }
   return html;
 }
@@ -77,8 +77,8 @@ function buildJobRows(jobList: Record<string, any>[], v: (...keys: string[]) => 
     [m,k,pt,ker,gaji,ptj,kerj].forEach((x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
     if(i>2&&!(pt||m||k)) continue;
     const kf=k.toUpperCase().includes("SEKARANG")||k.toUpperCase().includes("IMA")?"現在に至る":fmtMonthYearJp(k);
-    const fpt=ptj?pt+"<br><span style=\"font-size:8px;font-weight:normal;\">"+ptj+"</span>":pt;
-    const fker=kerj?ker+"<br><span style=\"font-size:8px;font-weight:normal;\">"+kerj+"</span>":ker;
+    const fpt=ptj?esc(pt)+"<br><span style=\"font-size:8px;font-weight:normal;\">"+esc(ptj)+"</span>":esc(pt);
+    const fker=kerj?esc(ker)+"<br><span style=\"font-size:8px;font-weight:normal;\">"+esc(kerj)+"</span>":esc(ker);
     html+="<tr><td class=\"val-center border-r-none\">"+fmtMonthYearJp(m)+"</td><td class=\"val-center border-lr-none\">"+(m||k?"-":"")+"</td><td class=\"val-center border-l-none\">"+kf+"</td><td colspan=\"2\" class=\"val-center\">"+fpt+"</td><td class=\"val-center\">"+fker+"</td><td class=\"val-right pr-1\">"+(gaji?"¥   "+gaji:"¥        -")+"</td></tr>";
   }
   return html;
@@ -97,8 +97,8 @@ function buildFamRows(famList: Record<string, any>[], v: (...keys: string[]) => 
     let pkj=isGood(p.pekerjaan_jp)?String(p.pekerjaan_jp):v("KELUARGA"+i+"PEKERJAANJP");
     let g=isGood(p.gaji)?String(p.gaji):v("KELUARGA"+i+"GAJI");
     [hub,nm,u,pk,g,hubj,pkj].forEach((x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
-    const fh=hubj?hub.toUpperCase()+"  "+hubj:hub.toUpperCase();
-    const fp=pkj?pk+"<br><span style=\"font-size:8px;font-weight:normal;\">"+pkj+"</span>":pk;
+    const fh=hubj?esc(hub.toUpperCase())+"  "+esc(hubj):esc(hub.toUpperCase());
+    const fp=pkj?esc(pk)+"<br><span style=\"font-size:8px;font-weight:normal;\">"+esc(pkj)+"</span>":esc(pk);
     html+="<tr><td colspan=\"2\" class=\"val-center\">"+fh+"</td><td colspan=\"2\" class=\"val-center\">"+nm.toUpperCase()+"</td><td class=\"val-center\">"+(u?u+"歳":"")+"</td><td class=\"val-center\">"+fp+"</td><td class=\"val-right pr-1\">"+(g?"¥   "+g:"¥        -")+"</td></tr>";
   }
   return html;
@@ -147,7 +147,7 @@ function buildKertasA4(p: Record<string, any>) {
   // Row 6: Tgl Lahir + Status Nikah
   h+=tr([amber("生年月日&nbsp;&nbsp;&nbsp;TANGGAL LAHIR",2),amber("配偶者&nbsp;&nbsp;&nbsp;STATUS PERNIKAHAN"),center(nS)]);
   // Row 7: Tgl + Agama
-  h+=tr([center("<i>"+tgl+"</i>",2),amber("宗教&nbsp;&nbsp;&nbsp;AGAMA"),center(E(v("AGAMA","AGAMAID","AGAMAJP","identitas.agama")))]);
+  h+=tr([center("<i>"+E(tgl)+"</i>",2),amber("宗教&nbsp;&nbsp;&nbsp;AGAMA"),center(E(v("AGAMA","AGAMAID","AGAMAJP","identitas.agama")))]);
   // Row 8: Tempat Lahir + Pernah ke JP
   h+=tr([amber("出身地&nbsp;&nbsp;&nbsp;TEMPAT LAHIR",2),amber("来日経験&nbsp;&nbsp;&nbsp;PERNAH KE JEPANG"),center(jS)]);
   // Row 9: Tempat Lahir JP + Paspor

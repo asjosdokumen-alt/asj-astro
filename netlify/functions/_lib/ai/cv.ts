@@ -4,6 +4,7 @@ import { buildMasterNested } from '../../contexts/master-data';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../../contexts/applications';
 import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
 import { findFormsByWa } from '../db/forms.ts';
+import { isAllowedDocumentUrl } from '../storage';
 // ai/cv.js — domain AI master/CV: auto-fill data kandidat (buildMasterNested /
 // buildRingkasData), konteks admin AI copilot, & penyimpanan data AI form
 // (ai_form_submissions + master_database_candidate). MODUL BARU (Fase 1.4
@@ -13,6 +14,20 @@ import {
   findCandidateByWaFiltered,
   findCandidates,
 } from '../db/candidates.ts';
+
+// C6 fix (2026-09-04): URL dokumen dari request harus https + host
+// penyimpanan yang diizinkan (lihat _lib/storage isAllowedDocumentUrl).
+// Placeholder ('-') di-skip. Mengembalikan entri yang melanggar.
+const DOC_URL_SENTINELS = new Set(['-', 'null', 'undefined']);
+function badDocumentUrls(entries: Array<{ key: string; url: unknown }>): string[] {
+  const bad: string[] = [];
+  for (const e of entries) {
+    const u = String(e.url ?? '').trim();
+    if (!u || DOC_URL_SENTINELS.has(u.toLowerCase())) continue;
+    if (!isAllowedDocumentUrl(u)) bad.push(e.key + ' (' + u.slice(0, 90) + ')');
+  }
+  return bad;
+}
 // Satu sumber buildMasterNested (dari actions-master.js) supaya konteks AI
 // admin tidak pakai salinan lama yang belum merge ai_data_json (kenalan JP/
 // alamat & array riwayat tampil kosong di copilot admin).
@@ -221,6 +236,24 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
   }
   const submittedBy = isAdmin ? 'admin:' + (adminGuard.token?.name || 'unknown') : 'kandidat';
   try {
+    // C6 fix: validasi SEMUA URL dokumen dari klien sebelum ditulis ke
+    // ai_form_submissions / master_database_candidate — host sembarangan tidak
+    // boleh masuk dan dirender UI admin.
+    const docCheck: Array<{ key: string; url: unknown }> = [
+      { key: 'PAS_PHOTO', url: d.fotoFile },
+      { key: 'KK', url: d.kkFile },
+      { key: 'KTP', url: d.ktpFile },
+      { key: 'IJAZAH_SD', url: d.ijazahSdFile },
+      { key: 'IJAZAH_SMP', url: d.ijazahSmpFile },
+      { key: 'IJAZAH_SMA', url: d.ijazahSmaFile },
+      { key: 'UNIVERSITAS', url: d.univFile },
+      { key: 'JFT', url: d.jftFile },
+      { key: 'SSW', url: d.sswFile },
+    ];
+    const bad = badDocumentUrls(docCheck);
+    if (bad.length) {
+      return { success: false, error: 'URL dokumen tidak valid (https + host penyimpanan resmi saja): ' + bad.join(', ') };
+    }
     const aiData = {
       identitas: d.identitas || {},
       fisik: d.fisik || {},
