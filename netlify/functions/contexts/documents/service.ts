@@ -75,6 +75,7 @@ export const FILE_LABEL_COLUMNS: Record<
   PAS_PHOTO: { cand: "pas_photo", master: "pas_photo", pemberkasan: null },
   CV: { cand: "file_cv", master: "file_cv", pemberkasan: null },
   CV_REVISI: { cand: "file_cv", master: "file_cv", pemberkasan: null },
+  REVISI: { cand: "file_cv", master: "file_cv", pemberkasan: null },
   JFT: { cand: "jft", master: "jft_url", pemberkasan: null },
   SSW: { cand: "ssw", master: "ssw_url", pemberkasan: null },
   KTP: { cand: null, master: "ktp_url", pemberkasan: "ktp_url" },

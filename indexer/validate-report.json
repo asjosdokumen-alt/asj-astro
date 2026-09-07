@@ -28,12 +28,12 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 313,
+    "rootNames": 315,
     "options": {}
   },
-  "universe": 3732,
+  "universe": 3735,
   "counts": {
-    "agreeBound": 3732,
+    "agreeBound": 3735,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
@@ -42,7 +42,7 @@
     "libRefAgree": 1210,
     "libRefDisagree": 0,
     "libRefFramework": 3,
-    "skippedNonBindable": 1917,
+    "skippedNonBindable": 1921,
     "skippedJsxIntrinsic": 54,
     "skippedAstroTemplate": 5,
     "offsetMismatch": 0,
@@ -51,7 +51,7 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3654,
+    "match": 3657,
     "alias-vs-chase": 54,
     "merged-declaration": 22,
     "shadowing-disagreement": 2,
@@ -204,8 +204,8 @@
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
-      "universe": 1069,
-      "agreeBound": 1069,
+      "universe": 1072,
+      "agreeBound": 1072,
       "agreeUnresolved": 0,
       "lib": 219,
       "skipped": 632,
@@ -244,7 +244,7 @@
       "agreeBound": 816,
       "agreeUnresolved": 0,
       "lib": 261,
-      "skipped": 586,
+      "skipped": 590,
       "disagree": 0
     },
     {
@@ -666,7 +666,7 @@
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
-      "line": 611,
+      "line": 625,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -738,7 +738,7 @@
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
-      "line": 169,
+      "line": 170,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -747,7 +747,7 @@
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
-      "line": 245,
+      "line": 246,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",

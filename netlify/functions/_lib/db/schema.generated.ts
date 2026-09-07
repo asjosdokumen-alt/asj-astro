@@ -68,8 +68,13 @@ export const CAND_MAP_COLS =
   'created_at,updated_at,password_diubah';
 
 /** Master data list — for admin attachBerkasBio (document URLs) */
+// 2026-09-08: + kolom biodata asli hasil restruktur skema (no_paspor,
+// kota_terbit_pasport, tgl_terbit_pasport, keluarga_1_nama,
+// pekerjaan_1_nama_perusahaan) — dipakai prefill BIO_COLUMNS modal
+// pemberkasan. Tanpa ini proyeksi ringan sukses TANPA kolom itu dan fallback
+// select * tidak pernah jalan → prefill ayah/paspor kosong.
 export const MASTER_LIGHT_COLS =
-  'id,id_kandidat,nama_lengkap,no_wa,kk_url,ijazah_sd_url,ijazah_smp_url,ijazah_sma_url,univ_url,ktp_url,email,tempat_lahir,tgl_lahir,alamat_lengkap,no_coe,exp_pasport' as const;
+  'id,id_kandidat,nama_lengkap,no_wa,kk_url,ijazah_sd_url,ijazah_smp_url,ijazah_sma_url,univ_url,ktp_url,email,tempat_lahir,tgl_lahir,alamat_lengkap,no_coe,exp_pasport,no_paspor,kota_terbit_pasport,tgl_terbit_pasport,keluarga_1_nama,pekerjaan_1_nama_perusahaan' as const;
 
 /** Form/application list — for admin mail tab */
 export const FORM_LIGHT_COLS =

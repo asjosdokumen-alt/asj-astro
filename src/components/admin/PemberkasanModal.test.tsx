@@ -17,8 +17,8 @@ vi.mock('../Toast', () => ({
 // i18n identity: assertions pakai key (ui.uploaded_view / ui.not_yet / dst).
 vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
 
-vi.mock('../../lib/cloudinary', () => ({
-  uploadToCloudinary: vi.fn(),
+vi.mock('../../lib/uploadBerkas', () => ({
+  uploadBerkasToStorage: vi.fn(),
 }));
 
 const base = {

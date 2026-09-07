@@ -14,7 +14,7 @@
 // ==========================================
 import { describe, it, expect } from 'vitest';
 import { signToken } from '../_lib/session';
-import { handleSimpanBiodataLengkap, buildBioPatch } from './master-data/service';
+import { handleSimpanBiodataLengkap, buildBioPatch, buildCandSyncPatch } from './master-data/service';
 import { FILE_LABEL_COLUMNS } from './documents/service';
 
 const kandidatA = signToken({ role: 'kandidat', wa: '6281111111111' });
@@ -68,23 +68,53 @@ describe('master-data — simpanBiodataLengkap guard (A05)', () => {
 });
 
 describe('buildBioPatch — legacy flat payload → master columns (A05)', () => {
-  it('maps all legacy biodata keys, trimming values', () => {
+  it('maps legacy keys to REAL master_database_candidate columns, trimming values', () => {
     const { master } = buildBioPatch([BIO_PAYLOAD]);
     expect(master.email).toBe('budi@mail.com');
-    expect(master.nama_ayah).toBe('Ayah Budi');
     expect(master.no_coe).toBe('COE-2026-01');
-    expect(master.alamat_perusahaan).toBe('Jl. Jepang 1, Jakarta');
-    expect(Object.keys(master)).toHaveLength(18);
+    // Kolom asli tabel (format JP) — nama legacy tidak ada di skema.
+    expect(master.no_paspor).toBe('C1234567');
+    expect(master.kota_terbit_pasport).toBe('Surabaya');
+    expect(master.tgl_terbit_pasport).toBe('2026-01-01');
+    expect(master.keluarga_1_nama).toBe('Ayah Budi');
+    expect(master.pekerjaan_1_nama_perusahaan).toBe('PT Sakura Japan');
+    // Field legacy tanpa kolom di tabel di-drop (bukan 400 PostgREST).
+    // Skema keluarga hanya punya keluarga_1_nama — anggota 2+ hanya *_hubungan_jp.
+    expect(master.nama_ayah).toBeUndefined();
+    expect(master.nama_ibu).toBeUndefined();
+    expect(master.keluarga_2_nama).toBeUndefined();
+    expect(master.ttl_ayah).toBeUndefined();
+    expect(master.nama_shacou).toBeUndefined();
+    expect(master.alamat_perusahaan).toBeUndefined();
+    // 11 pasangan [from,to] yang valid — semuanya terisi payload ini.
+    expect(Object.keys(master)).toHaveLength(11);
   });
 
   it('skips placeholder (-) and empty values and unknown keys', () => {
     const { master } = buildBioPatch([
       { wa: '6281111111111', email: '-', nama_ayah: '', nama_ibu: 'IBU', extra: 'junk' },
     ]);
-    expect(master.nama_ibu).toBe('IBU');
     expect(master.email).toBeUndefined();
-    expect(master.nama_ayah).toBeUndefined();
+    expect(master.keluarga_1_nama).toBeUndefined();
     expect(master.extra).toBeUndefined();
+  });
+});
+
+describe('buildCandSyncPatch — master columns → candidate columns sync (A05)', () => {
+  it('correctly maps master no_paspor to candidate no_pasport', () => {
+    const { master } = buildBioPatch([BIO_PAYLOAD]);
+    const candPatch = buildCandSyncPatch(master);
+    expect(candPatch.no_pasport).toBe('C1234567');
+    expect(candPatch.email).toBe('budi@mail.com');
+    expect(candPatch.tempat_lahir).toBe('Ponorogo');
+    expect(candPatch.tgl_lahir).toBe('2000-01-01');
+    expect(candPatch.alamat_lengkap).toBe('Jl. Merdeka 1');
+  });
+
+  it('handles empty or missing passport without error', () => {
+    const candPatch = buildCandSyncPatch({});
+    expect(candPatch.no_pasport).toBeUndefined();
+    expect(Object.keys(candPatch)).toHaveLength(0);
   });
 });
 
@@ -114,6 +144,15 @@ describe('FILE_LABEL_COLUMNS — canonical tokens + legacy aliases (A05)', () =>
     for (const [label, col] of canonical) {
       expect(FILE_LABEL_COLUMNS[label]).toBeDefined();
       expect(FILE_LABEL_COLUMNS[label].pemberkasan).toBe(col);
+    }
+  });
+
+  it('CV, CV_REVISI, and REVISI all map to file_cv on candidate and master', () => {
+    for (const token of ['CV', 'CV_REVISI', 'REVISI']) {
+      expect(FILE_LABEL_COLUMNS[token]).toBeDefined();
+      expect(FILE_LABEL_COLUMNS[token].cand).toBe('file_cv');
+      expect(FILE_LABEL_COLUMNS[token].master).toBe('file_cv');
+      expect(FILE_LABEL_COLUMNS[token].pemberkasan).toBeNull();
     }
   });
 

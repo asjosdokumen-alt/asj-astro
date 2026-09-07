@@ -1,0 +1,40 @@
+Laporan Code Review — Backend Core Lib netlify/functions/_lib/
+Semua temuan di bawah sudah saya verifikasi langsung ke kode (file + baris dibaca sendiri, bukan spekulasi). 13 temuan terbukti; beberapa klaim reviewer saya koreksi (mis. kernel/db.ts ternyata sudah dipakai 3 repository di contexts/, dan komentar "not yet routed" di job-queue.ts sudah usang — getJobStatus terbukti ter-rute di surfaces/ai.ts:77).
+
+Temuan
+[TINGGI]
+
+[TINGGI] netlify/functions/_lib/db/client.ts:21-23 — supabaseKey() default ke SERVICE_ROLE dan seluruh helper db/* (candidates, forms, berkas, master, misc, shareTokens) memanggil supabaseJson tanpa overrideAuthKey, sehingga semua query — termasuk yang dipicu request kandidat/anonim — bypass RLS — satu celah authz di handler mana pun langsung menjadi akses full-DB (header kernel/db.ts sendiri: "Every bug becomes a full-DB bug"); catatan: kernel/db.ts clientFor() sudah dipakai contexts/{jobs,applications,registry}/repository.ts, tapi tidak pernah oleh helper db/* legacy — rutekan operasi tulis & read ber-scope kandidat melalui clientFor(op, sessionToken).
+
+[TINGGI] netlify/functions/_lib/ai/chat.ts:625-668 — IDOR write: handleSimpanHasilWawancara hanya cek requireRole('kandidat') lalu memakai wa dari payload klien untuk PATCH/POST ai_form_submissions, tanpa cek kepemilikan — kandidat login dapat menimpa ai_data_json hasil wawancara milik WA lain — tambahkan isOwnerOrAdmin(sessionToken, wa) seperti pola di ai/cv.ts:219,545,585.
+
+[TINGGI] netlify/functions/_lib/ai/chat.ts:166-176 — Gate VIP/KELAS processAIChat (flow=master) mengambil WA dari currentData.identitas.hp yang dikirim klien, bukan dari klaim wa di token sesi (t.wa sudah tersedia dari verifyToken di baris 157) — kandidat non-VIP cukup mengirim nomor WA kandidat VIP lain untuk membuka fitur eksklusif dan membakar kuota Gemini — gunakan t.wa dari token sebagai sumber kebenaran; tolak jika hp payload berbeda.
+
+[SEDANG]
+
+[SEDANG] netlify/functions/_lib/kernel/job-queue.ts:243-276 — handleGetJobStatus menerima sessionToken tapi tidak pernah memanggil verifyToken, dan action-nya ter-rute live di surfaces/ai.ts:77 (komentar "not yet routed" di baris 240 sudah usang) serta tidak masuk grup rate-limit mana pun di handlers.ts — siapa pun tanpa sesi bisa mem-poll job mana pun; saat status==='done' seluruh job.payload dikembalikan, termasuk hasil broadcast massal per-penerima (nomor WA + status kirim dari recordJobResult) dan lastError — verifikasi token minimal via verifyToken dan/atau cocokkan identitas pembuat job.
+
+[SEDANG] netlify/functions/_lib/netlify-wrapper.ts:46-48 (pola sama di netlify-wrapper-surface.ts:123-125) — catch terakhir mengirim 'Error internal: ' + e.message mentah ke klien, padahal message error di codebase ini sengaja membawa detail internal (db/client.ts:69 = pathname + status + body PostgREST 200 char; ai/providers.ts:56,105 = potongan body error upstream 120 char) — bocornya nama tabel/kolom/constraint dan body Google API ke klien — kirim pesan generik, log detail di server via toErrorResponse (kernel/errors.ts) yang sudah tersedia.
+
+[SEDANG] netlify/functions/_lib/handlers.ts:109-117,137-141 — Kunci idempotensi diambil mentah dari header Idempotency-Key dan lookup hanya key=eq.<key> tanpa binding ke identitas sesi atau nama action — klien B yang tahu/menebak key klien A menerima existing[0].result milik A, dan retry dengan action berbeda yang memakai key sama mengembalikan hasil action lain tanpa eksekusi — scope kunci jadi <identitas>|<action>|<key> (identitas via sessionIdentity) di GET dan POST.
+
+[SEDANG] netlify/functions/_lib/ai/chat.ts:636-644 (juga 702-708) — Lookup ai_form_submissions memakai select:'*', limit:100 tanpa filter wa/submitted_via, lalu dipasangkan di JS — begitu tabel >100 baris, baris target bisa tak ter-ambil sehingga cabang PATCH tidak pernah kena: setiap simpan membuat baris baru (duplikasi tak terbatas) dan getHasilWawancara melaporkan hasil:null — filter di server seperti pola benar di cv.ts:268-270 (wa:'eq.'+wa, limit:'10').
+
+[SEDANG] netlify/functions/_lib/fcm-server.ts:128-137 (juga fetch di 55 dan 103) — sendMulticast mengirim hingga 200 token sekuensial (await per token, sumber fcm-helpers.ts:17) dan kedua fetch tanpa timeout serta tidak lewat kernel/http.request() — loop melebihi budget 10s Netlify sehingga notif tersisa terpotong diam-diam (error ditelan) — kirim paralel ter-batch (Promise.allSettled per ~20), bungkus dengan request(..., budgetKey), hapus token invalid dari DB.
+
+[RENDAH]
+
+[RENDAH] netlify/functions/_lib/kernel/optimistic.ts:84-90 — PATCH dengan Prefer: return=minimal langsung return { success: true }; PostgREST mengembalikan 200 dengan array kosong saat filter id=eq.<rowId> match 0 baris — pemanggil tak bisa membedakan "sukses" dari "row sudah terhapus/id salah", melemahkan jaminan optimistic concurrency — pakai Prefer: return=representation dan anggap sukses hanya jika hasil berisi ≥1 baris.
+
+[RENDAH] netlify/functions/_lib/session.ts:80-86 — Cek expiry hanya if (payload.exp && ...); token tanpa claim exp lolos verifikasi selamanya — signToken kini selalu set exp, tapi token lama/jalur tanda-tangan lain tak pernah kedaluwarsa — wajibkan exp numerik: if (typeof payload.exp !== 'number' || now > payload.exp) return null.
+
+[RENDAH] netlify/functions/_lib/db/misc.ts:10-15 — needle hanya di-escape ' lalu disisipkan mentah ke grammar filter PostgREST or=(nama_lengkap.ilike.*X*,no_wa.ilike.*X*); karakter ) , * . dari user mengubah struktur filter — bukan SQL injection (tetap pada tabel sama), tapi memungkinkan manipulasi filter di luar niat pencarian — whitelist karakter needle sebelum interpolasi.
+
+[RENDAH] netlify/functions/_lib/rate-limit.ts:1-20 dan _lib/cache.ts:1-34 — Duplikasi: dispatcher resmi (handlers.ts:2) memakai kernel/rate-limit (Postgres-backed) dan kernel/cache.ts, tetapi lib lama in-memory (check/fail, TTL 20s + cacheClear() global) masih diekspor berdampingan — satu impor salah dari handler lama dan rate-limit kembali per-instance tanpa ada yang sadar — hapus atau jadikan re-export tipis dari kernel/*.
+
+[RENDAH] netlify/functions/_lib/ai/classify.ts:141-146 — Catch mengirim 'Gagal parse dokumen: ' + e.message, dan message dari providers.ts:56,105 memuat potongan body error Google API + status upstream — bocor detail internal ke klien (terbatas: endpoint admin-only) — kirim pesan generik, log detail ke server.
+
+Yang bersih (diperiksa, tidak ditemukan masalah): claim job-queue sudah atomic via RPC claim_next_job (SKIP LOCKED), HMAC sesi memakai timing-safe compare dengan secret yang wajib di produksi, MIME/ukuran upload classify.ts tervalidasi, FCM kredensial tidak dicetak, CORS allowlist terpusat di kernel/request-helpers.ts.
+
+Verdict
+Fondasi kernel (kernel/) tergolong solid — claim job atomic, rate-limit utama Postgres-backed, token sesi HMAC dengan timing-safe compare, serta timeout/breaker outbound terpusat. Namun layer legacy di atasnya belum mengikuti disiplin yang sama: seluruh helper db/* masih memakai service-role key yang bypass RLS, dan dua handler AI memiliki lubang authz nyata (IDOR write pada simpanHasilWawancara serta gate VIP yang bisa dibypass via payload). Dua wrapper juga masih meneruskan e.message mentah yang di codebase ini sengaja membawa detail internal (body PostgREST/upstream). Prioritas perbaikan: cek isOwnerOrAdmin dan penggunaan t.wa dari token (perubahan kecil, dampak besar), lalu migrasi bertahap helper db/* ke clientFor() yang sudah tersedia dan tidak terpakai.

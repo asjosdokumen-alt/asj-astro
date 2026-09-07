@@ -96,13 +96,43 @@ function parseLine(line: string): { key: string; value: string } | null {
   return null;
 }
 
+// Lokasi .env.local dicari dari cwd ke ATAS (maks 8 level) karena worker
+// netlify dev (functions:serve / netlify dev) berjalan dengan cwd = direktori
+// stage (.netlify/functions-serve/<fn>/), bukan akar repo — tanpa ini
+// SESSION_SECRET jatuh ke fallback secret acak dan semua token lokal ditolak.
+// Guard: file hanya dipakai bila berada di direktori ber-package.json
+// (penanda akar repo), supaya .env.local milik direktori induk di luar repo
+// tidak pernah terbaca.
+function findEnvFile(): string | null {
+  let dir = process.cwd();
+  for (let i = 0; i < 8; i++) {
+    const candidate = path.join(dir, '.env.local');
+    if (fs.existsSync(candidate)) {
+      if (dir === process.cwd() || fs.existsSync(path.join(dir, 'package.json'))) {
+        return candidate;
+      }
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
 let fileEnv: Record<string, string> | null = null;
 function loadFileEnv(): Record<string, string> {
   if (fileEnv) return fileEnv;
   fileEnv = {};
   try {
-    const p = path.join(process.cwd(), '.env.local');
-    if (!fs.existsSync(p)) return fileEnv;
+    const p = findEnvFile();
+    if (!p) return fileEnv;
+    // Diagnostik sekali per proses. Aman: hanya mencetak bila file .env.local
+    // benar-benar ada di disk — di produksi file tidak pernah ikut deploy, jadi
+    // baris ini tidak akan pernah muncul di sana. Tidak ada nilai rahasia.
+    if (!process.env.VITEST) {
+      console.error('[env] cwd=' + process.cwd() + ' envFile=' + p +
+        ' procEnvSessionSecret=' + (process.env.SESSION_SECRET ? 'set' : 'missing'));
+    }
     const lines = fs.readFileSync(p, 'utf8').split(/\r?\n/);
     // Format yang didukung:
     //   KEY=value
@@ -181,7 +211,8 @@ function debugFileStructure() {
     otherShapes: [] as string[], // klasifikasi bentuk baris lain (tanpa isi)
   };
   try {
-    const p = path.join(process.cwd(), '.env.local');
+    const p = findEnvFile();
+    if (!p) return info;
     const st = fs.statSync(p);
     info.exists = true;
     info.size = st.size;

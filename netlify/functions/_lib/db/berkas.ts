@@ -36,25 +36,22 @@ const BERKAS_COLUMNS: [string, string[]][] = [
   ['psikotes', ['psikotes_url', 'psikotes']],
 ];
 
+// Kolom sumber = KOLOM ASLI master_database_candidate (format JP) — kolom
+// legacy (nama_ayah, no_pasport, nama_perusahaan, ...) TIDAK ada di tabel
+// (diperiksa 2026-09-08); field legacy tanpa padanan (ttl_ayah/ttl_ibu/shacou/
+// telppt/webpt/alamatpt) tidak punya kolom sama sekali → tidak di-prefill.
 const BIO_COLUMNS: [string, string[]][] = [
   ['email', ['email']],
   ['tmplahir', ['tempat_lahir', 'tmplahir']],
   ['tgllahir', ['tgl_lahir', 'tgllahir']],
   ['alamat', ['alamat_lengkap', 'alamat']],
-  ['ayah', ['nama_ayah', 'ayah']],
-  ['ttlayah', ['ttl_ayah', 'ttlayah']],
-  ['ibu', ['nama_ibu', 'ibu']],
-  ['ttlibu', ['ttl_ibu', 'ttlibu']],
-  ['pasport', ['no_pasport', 'pasport']],
+  ['ayah', ['keluarga_1_nama', 'nama_ayah', 'ayah']],
+  ['pasport', ['no_paspor', 'no_pasport', 'pasport']],
   ['coe', ['no_coe', 'coe']],
-  ['kotapasport', ['kota_pasport', 'kotapasport']],
-  ['tglpasport', ['tgl_pasport', 'tglpasport']],
+  ['kotapasport', ['kota_terbit_pasport', 'kota_pasport', 'kotapasport']],
+  ['tglpasport', ['tgl_terbit_pasport', 'tgl_pasport', 'tglpasport']],
   ['exppasport', ['exp_pasport', 'exppasport']],
-  ['pt', ['nama_perusahaan', 'pt']],
-  ['shacou', ['nama_shacou', 'shacou']],
-  ['telppt', ['telp_perusahaan', 'telppt']],
-  ['webpt', ['web_perusahaan', 'webpt']],
-  ['alamatpt', ['alamat_perusahaan', 'alamatpt']],
+  ['pt', ['pekerjaan_1_nama_perusahaan', 'nama_perusahaan', 'pt']],
 ];
 
 // Tarik pemberkasan_checklist hanya untuk WA di daftar (fallback: null → scan).

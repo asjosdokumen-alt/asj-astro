@@ -22,7 +22,7 @@
 import { useState, useEffect } from "preact/hooks";
 import { authStore } from "../../store/authReactive";
 import { t } from "../../store/i18n";
-import { uploadToCloudinary } from "../../lib/cloudinary";
+import { uploadBerkasToStorage } from "../../lib/uploadBerkas";
 import { getEndpoint } from "../../lib/apiEndpoint";
 import {
   BERKAS_TAHAP1,
@@ -52,7 +52,6 @@ interface Props {
 }
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
-const MAX_RETRIES = 3;
 
 // Tahapan kandidat → panel yang boleh dibuka — regex sama persis dengan
 // legacy bukaModalPemberkasan.
@@ -303,24 +302,6 @@ export default function PemberkasanModal({
     window.dispatchEvent(new CustomEvent("candidates-changed", { detail: { wa: waTarget } }));
   };
 
-  const cloudinaryWithRetry = async (file: File): Promise<string | null> => {
-    let lastErr: unknown = null;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        const url = await uploadToCloudinary(file);
-        if (url) return url;
-        lastErr = new Error("URL kosong dari Cloudinary.");
-      } catch (e) {
-        lastErr = e;
-        if (attempt < MAX_RETRIES) {
-          await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
-        }
-      }
-    }
-    console.warn("[pemberkasan] Gagal upload Cloudinary:", lastErr);
-    return null;
-  };
-
   const postAction = async (action: string, args: unknown[]) => {
     const res = await fetch(getEndpoint(action), {
       method: "POST",
@@ -371,11 +352,19 @@ export default function PemberkasanModal({
       let lastErr = "";
       for (const { def, file } of picked) {
         try {
-          const url = await cloudinaryWithRetry(file);
-          if (!url) {
-            lastErr = `${def.jenis}: gagal upload Cloudinary`;
-            continue;
-          }
+          // Upload ke storage Supabase: untuk role kandidat folder SELALU
+          // kandidat/<wa> (dipaksa server); admin memakai master/<NAMA> (parity
+          // legacy). Menggantikan uploadToCloudinary (2026-09-08).
+          const url = await uploadBerkasToStorage(file, {
+            key: def.key,
+            folder:
+              isAdminRole
+                ? "master/" +
+                  String(namaTarget || "KANDIDAT")
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9_-]/g, "_")
+                : "kandidat",
+          });
           const data = await postAction("simpanBerkasTahapan", [
             {
               wa: waTarget,

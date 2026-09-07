@@ -19,7 +19,7 @@ function built(): BuildResult {
 describe('full build', () => {
   it('indexes the measured inventory', () => {
     const r = built();
-    expect(r.stats.fileCount).toBe(313); // 180 ts (+3 security tests 2026-09-07; env.d.ts server-split reverted — functions pakai process.env) + 76 tsx + 12 astro + 12 mjs + 4 cjs + 29 js (re-measured 2026-09-05)
+    expect(r.stats.fileCount).toBe(315); // 182 ts (+2 uploadBerkas.ts/.test.ts 2026-09-08) + 76 tsx + 12 astro + 12 mjs + 4 cjs + 29 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

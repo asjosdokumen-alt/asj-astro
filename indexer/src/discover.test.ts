@@ -97,13 +97,13 @@ describe('discover', () => {
   it('counts match the measured profile (design §1, +test-supabase-auth.mjs + CJS entries)', () => {
     const files = run();
     const count = (lang: Lang) => files.filter((f) => f.lang === lang).length;
-    expect(count('ts')).toBe(180); // 144 +_lib/archiver.d.ts +3 security tests 2026-09-07 (env.d.ts server-split reverted — functions pakai process.env); re-measured 2026-09-05 (parity test wave)
+    expect(count('ts')).toBe(182); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
     expect(count('tsx')).toBe(76); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
     expect(count('mjs')).toBe(12); // 11 at design time; e2e/test-supabase-auth.mjs added since
     expect(count('cjs')).toBe(4);
     expect(count('js')).toBe(29); // netlify/functions/*.js CJS entry points (public/sw.js excluded)
-    expect(files.length).toBe(313); // 248 at design time (+3 security tests 2026-09-07)
+    expect(files.length).toBe(315); // 248 at design time (+2 uploadBerkas.ts/.test.ts 2026-09-08)
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

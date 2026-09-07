@@ -572,34 +572,48 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
 // ---------------------------------------------------------------------------
 // A05 parity (2026-09-04): simpanBiodataLengkap — form biodata pemberkasan
 // (KTKLN & Visa) dari modal "Pusat Pemberkasan". Legacy
-// js/03_candidate.ts prosesSimpanBiodataLengkap mengirim satu payload datar;
-// kolomnya tinggal di master_database_candidate (sumber auto-fill c.bio di
-// attachBerkasBio) + kolom yang tumpang-tindih di database_candidate.
+// js/03_candidate.ts prosesSimpanBiodataLengkap mengirim satu payload datar
+// dengan NAMA KUNCI LEGACY (nama_ayah, no_pasport, ...). master_database_candidate
+// sudah restruktur ke format JP — pasangan [from, to] memetakan kunci payload
+// ke KOLOM ASLI tabel. Field legacy tanpa kolom di-drop (diabaikan) —
+// memasukkannya membuat PostgREST menolak SELURUH PATCH (400). Yang di-drop:
+// ttl_ayah, ttl_ibu, nama_ibu (skema keluarga hanya punya keluarga_1_nama;
+// anggota 2+ hanya *_hubungan_jp), nama_shacou, telp_perusahaan,
+// web_perusahaan, alamat_perusahaan.
 // ---------------------------------------------------------------------------
 const BIO_LENGKAP_MASTER_COLS: ReadonlyArray<readonly [string, string]> = [
   ['email', 'email'], ['tempat_lahir', 'tempat_lahir'], ['tgl_lahir', 'tgl_lahir'],
-  ['alamat_lengkap', 'alamat_lengkap'], ['nama_ayah', 'nama_ayah'], ['ttl_ayah', 'ttl_ayah'],
-  ['nama_ibu', 'nama_ibu'], ['ttl_ibu', 'ttl_ibu'], ['no_pasport', 'no_pasport'],
-  ['no_coe', 'no_coe'], ['kota_pasport', 'kota_pasport'], ['tgl_pasport', 'tgl_pasport'],
-  ['exp_pasport', 'exp_pasport'], ['nama_perusahaan', 'nama_perusahaan'],
-  ['nama_shacou', 'nama_shacou'], ['telp_perusahaan', 'telp_perusahaan'],
-  ['web_perusahaan', 'web_perusahaan'], ['alamat_perusahaan', 'alamat_perusahaan'],
+  ['alamat_lengkap', 'alamat_lengkap'], ['no_coe', 'no_coe'], ['exp_pasport', 'exp_pasport'],
+  ['no_pasport', 'no_paspor'], ['kota_pasport', 'kota_terbit_pasport'],
+  ['tgl_pasport', 'tgl_terbit_pasport'],
+  ['nama_ayah', 'keluarga_1_nama'],
+  ['nama_perusahaan', 'pekerjaan_1_nama_perusahaan'],
 ] as const;
 
 // Kolom biodata yang juga dibaca mapCandidate dari database_candidate.
-const BIO_LENGKAP_CAND_SYNC: ReadonlyArray<readonly [string, string]> = [
+// Kolom sumber (from) adalah kolom asli master_database_candidate (no_paspor);
+// kolom tujuan (to) adalah kolom database_candidate (no_pasport).
+export const BIO_LENGKAP_CAND_SYNC: ReadonlyArray<readonly [string, string]> = [
   ['email', 'email'], ['tempat_lahir', 'tempat_lahir'], ['tgl_lahir', 'tgl_lahir'],
-  ['alamat_lengkap', 'alamat_lengkap'], ['no_pasport', 'no_pasport'],
+  ['alamat_lengkap', 'alamat_lengkap'], ['no_paspor', 'no_pasport'],
 ] as const;
+
+export function buildCandSyncPatch(master: Record<string, string>): Record<string, string> {
+  const candPatch: Record<string, string> = {};
+  for (const [from, to] of BIO_LENGKAP_CAND_SYNC) {
+    if (master[from]) candPatch[to] = master[from];
+  }
+  return candPatch;
+}
 
 /** Pure builder (DB-free testable) — payload datar → patch body master. */
 export function buildBioPatch(payload: any): { master: Record<string, string> } {
   const d = (payload && payload[0]) || {};
   const master: Record<string, string> = {};
-  for (const [from] of BIO_LENGKAP_MASTER_COLS) {
+  for (const [from, to] of BIO_LENGKAP_MASTER_COLS) {
     const v = d[from];
     if (v !== undefined && v !== null && String(v).trim() !== '' && String(v).trim() !== '-') {
-      master[from] = String(v).trim();
+      master[to] = String(v).trim();
     }
   }
   return { master };
@@ -636,10 +650,7 @@ export async function handleSimpanBiodataLengkap(payload: any[], sessionToken?: 
     // Sinkron kolom tumpang-tindih ke database_candidate (non-fatal).
     try {
       const c = await findCandidateRow(wa);
-      const candPatch: Record<string, string> = {};
-      for (const [from, to] of BIO_LENGKAP_CAND_SYNC) {
-        if (master[from]) candPatch[to] = master[from];
-      }
+      const candPatch = buildCandSyncPatch(master);
       if (c && c.id !== undefined && Object.keys(candPatch).length) {
         await supabaseJson('PATCH', 'database_candidate', {
           query: { id: 'eq.' + c.id },

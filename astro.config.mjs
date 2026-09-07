@@ -16,7 +16,7 @@ export default defineConfig({
     server: {
       proxy: {
         "/.netlify/functions": {
-          target: "https://asjportal.netlify.app",
+          target: process.env.FUNCTIONS_PROXY_TARGET || "https://asjportal.netlify.app",
           changeOrigin: true,
           secure: false,
         },
