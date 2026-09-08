@@ -48,9 +48,16 @@ export const translations: Record<Lang, Record<string, string>> = {
     "header.admin": "Panel Admin",
     "header.admin_login": "Admin Login",
     "header.public": "Publik",
+    "header.tagline": "Tantangan ke Jepang",
+    "header.company_name": "PT AMANAH SAKURA JAPAN",
+    "header.ai_hr": "AI HR",
+    "header.admin_greeting": "Admin: ",
     "ui.install_app": "Install App",
     "ui.menu": "Menu",
     "ui.close": "Tutup",
+    "ui.language": "Bahasa",
+    "ui.doc_count_suffix": " dokumen",
+    "ui.ai_cv_assistant": "AI CV Master Assistant",
     "ui.age_years_suffix": " Tahun",
     "ui.cand_eval": "Evaluasi Kandidat (Admin)",
     "ui.cv_alamat": "Alamat Asal",
@@ -830,6 +837,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     "toast.validation_error": "Mohon lengkapi field yang benar.",
     "toast.upload_success": "File berhasil diupload!",
     "toast.upload_failed": "Gagal upload file. Coba lagi.",
+    "toast.uploading": "Mengunggah...",
+    "toast.upload_revise_success": "File revisi berhasil diupload!",
+    "toast.upload_revise_failed": "Gagal upload revisi",
+    "toast.db_unconfigured": "Supabase belum dikonfigurasi",
+    "toast.feature_locked": "Fitur terkunci untuk akun ini.",
     "toast.copy_success": "Berhasil disalin!",
     "toast.fetch_failed": "Gagal memuat data. Tekan Muat Ulang.",
     "error.wa_invalid": "Nomor WA tidak valid",
@@ -859,6 +871,81 @@ export const translations: Record<Lang, Record<string, string>> = {
     "table.admin_action": "Aksi Admin",
     "table.delete": "Hapus",
     "table.job_code": "Kode Job",
+    "table.candidate_id": "ID Kandidat",
+    "table.upload_date": "Tanggal",
+    "admin.view_full": "Tampilan Lengkap",
+    "admin.view_simple": "Tampilan Sederhana",
+    "admin.refresh_mail": "Refresh MAIL",
+    "admin.input_manual": "Input Manual",
+    "admin.export_csv": "Export CSV",
+    "admin.filter": "Filter:",
+    "admin.catatan_admin": "Catatan Admin",
+    "admin.upload_format_cv": "UPLOAD FORMAT CV/EXCEL (Opsional)",
+    "admin.upload_pamflet": "UPLOAD PAMFLET (Opsional)",
+    "admin.syarat_dokumen": "SYARAT UPLOAD DOKUMEN",
+    "admin.keterangan_publik": "KETERANGAN PUBLIK (Opsional)",
+    "ui.jobs_suffix": "loker",
+    "login.title_kandidat": "Login Pelamar",
+    "ai_cv.verify_account": "Verifikasi Akun Kandidat",
+    "ai_cv.login_required_desc": "Login diperlukan untuk chat & menyimpan CV — data CV yang sudah diisi tidak akan hilang.",
+    "ai_cv.hrd_tagline": "HRD ASJ (Boss's Daughter)",
+    "siswa.session_admin_only": "Sesi tidak valid (khusus admin)",
+    "siswa.login_admin_hint": "Login sebagai admin untuk melihat daftar siswa terdaftar.",
+    "siswa.load_failed": "Gagal memuat data",
+    "siswa.gender_unfilled": "Gender belum diisi",
+    "siswa.title_registered": "Daftar Siswa Terdaftar",
+    "table.full_name": "Nama Lengkap",
+    "table.job_applied": "Job Dilamar",
+    "table.stage_and_status": "Tahapan & Status",
+    "table.admin_notes": "Catatan Admin",
+    "table.doc_folder": "Folder Berkas",
+    "table.action_review": "Aksi (Review)",
+    "table.gender": "JK",
+    "table.address": "Alamat",
+    "admin.candidate_database": "Database Pelamar",
+    "admin.loading_candidates": "Memuat data pelamar...",
+    "admin.no_candidates": "Belum ada pelamar.",
+    "admin.of": "dari",
+    "admin.candidates": "kandidat",
+    "admin.title_input_loker": "Form Input Loker Baru",
+    "admin.internal_db_info": "Info DB Internal",
+    "admin.tsk_pengurus": "TSK PENGURUS",
+    "admin.tahapan_internal": "TAHAPAN INTERNAL",
+    "admin.kuota_dibutuhkan": "KUOTA DIBUTUHKAN (Cth: 3 Org)",
+    "admin.kategori_bidang": "KATEGORI BIDANG",
+    "admin.nama_pekerjaan": "NAMA PEKERJAAN (Judul Loker)",
+    "admin.gender_label": "GENDER",
+    "admin.penempatan_lokasi": "PENEMPATAN LOKASI (Pilih Checkbox)",
+    "admin.syarat_kandidat": "SYARAT KANDIDAT (Pilih Checkbox)",
+    "admin.cth_25_jt": "(Cth: 25 JT)",
+    "admin.mail_inbox": "Form Mail Inbox",
+    "admin.no_mail_found": "Tidak ada mail ditemukan.",
+    "admin.confirm_reject_application": "Tolak lamaran ini?",
+    "admin.tab_config_title": "Pengaturan Sistem (Dropdown)",
+    "admin.sys_config_desc": "Kelola pilihan dropdown yang akan muncul di formulir (menggantikan Sheet SYS CONFIG).",
+    "admin.db_migration_auto": "Migrasi Database (Otomatis)",
+    "admin.run_migration": "Jalankan Migrasi",
+    "admin.marquee_announcement": "Pengumuman Berjalan (Live)",
+    "admin.save_and_publish": "Simpan & Tayangkan",
+    "admin.options_suffix": "pilihan",
+    "admin.more_suffix": "lainnya",
+    "status.waiting": "Menunggu",
+    "status.review": "Review",
+    "status.pass": "Lulus",
+    "status.fail": "Gagal",
+    "status.all": "SEMUA",
+    "button.view": "Lihat",
+    "button.pass": "Lulus",
+    "button.review": "Review",
+    "button.reject": "Gagal",
+    "button.back_to_portal": "Kembali ke Portal",
+    "master.step_personal": "Data Diri",
+    "master.step_medical": "Medis & Wawancara",
+    "master.step_history": "Riwayat",
+    "master.step_family": "Keluarga",
+    "master.step_documents": "Dokumen",
+    "form.connected_wa": "Form terhubung ke WA",
+    "form.enter_password_desc": "Masukkan password akun kandidat Anda untuk mengisi / memperbarui data.",
     "ui.tab_loker": "Lowongan Loker",
     "ui.tab_layanan": "Program & Layanan ASJ",
     "landing.class_badge": "Dibuka Kelas Baru",
@@ -985,6 +1072,40 @@ export const translations: Record<Lang, Record<string, string>> = {
     "cv.upload_foto": "Pas Foto",
     "cv.upload_jft": "Sertifikat JFT",
     "cv.upload_ssw": "Sertifikat SSW",
+    "cv.field_laka": "Kecelakaan",
+    "cv.field_riwayat_jp": "Pernah ke Jepang?",
+    "cv.field_kelebihan": "Kelebihan / 長所",
+    "cv.field_kekurangan": "Kekurangan / 短所",
+    "cv.field_lama_jp": "Lama di Jepang",
+    "cv.field_target_gaji": "Gaji (Yen)",
+    "cv.field_target_nabung": "Tabungan",
+    "cv.field_nilai_jp": "Nilai",
+    "cv.field_lisensi_ssw": "Lisensi/SSW",
+    "cv.field_kenalan_nama_id": "Nama (ID)",
+    "cv.field_kenalan_nama_jp": "Nama (JP)",
+    "cv.field_kenalan_hub_id": "Hubungan (ID)",
+    "cv.field_kenalan_hub_jp": "Hubungan (JP)",
+    "cv.field_kenalan_kerja_id": "Pekerjaan (ID)",
+    "cv.field_kenalan_kerja_jp": "Pekerjaan (JP)",
+    "cv.field_kenalan_usia": "Usia",
+    "cv.field_kenalan_alamat_id": "Alamat (ID)",
+    "cv.field_kenalan_alamat_jp": "Alamat (JP)",
+    "cv.upload_ktp": "KTP",
+    "cv.upload_kk": "Kartu Keluarga (KK)",
+    "cv.upload_ijazah_sd": "Ijazah SD",
+    "cv.upload_ijazah_smp": "Ijazah SMP",
+    "cv.upload_ijazah_sma": "Ijazah SMA",
+    "cv.upload_ijazah_univ": "Ijazah Universitas",
+    "ai_cv.sec_identitas": "1. Identitas & Kontak",
+    "ai_cv.sec_fisik": "2. Fisik & Ukuran",
+    "ai_cv.sec_medis": "3. Medis & Kebiasaan",
+    "ai_cv.sec_jiko": "4. Jiko PR & Wawancara",
+    "ai_cv.sec_pendidikan": "Pendidikan",
+    "ai_cv.sec_pekerjaan": "Pekerjaan",
+    "ai_cv.sec_keluarga": "Keluarga (KK)",
+    "ai_cv.sec_kenalan": "Kenalan di Jepang",
+    "ai_cv.dynamic_ai_data": "Data dinamis dari AI",
+    "ai_cv.bot_greeting": "Halo! Saya Qween Jeklin, HRD ASJ. Saya akan membantu mengisi CV Jepangmu. Silakan ceritakan tentang dirimu!",
     "candidate.badge_gold_title": "Master Profil Lengkap (Gold Crown)",
     "candidate.badge_bronze_title": "Pendaftar Terverifikasi (Bronze)",
     "candidate.btn_preview_cv": "Preview Desain CV",
@@ -1159,31 +1280,113 @@ function onJpReady() {
   jpReady.set(true);
   translateDataLang();
 }
-if (typeof window !== 'undefined') {
-  langStore.subscribe((lang) => {
-    if (lang === 'jp' && Object.keys(translations.jp).length === 0) {
-      loadJp().then(onJpReady).catch(() => {});
-    }
-  });
-  // Preload if already jp
-  if (langStore.get() === 'jp') {
+
+/** Preload JP dictionary so language toggle is 0ms instant without network waiting */
+export function preloadJpDict(): void {
+  if (typeof window !== 'undefined') {
     loadJp().then(onJpReady).catch(() => {});
   }
 }
 
-/** Translate all [data-lang] elements in the DOM */
-export function translateDataLang() {
-  if (typeof document === "undefined") return;
-  const lang = langStore.get();
-  document.querySelectorAll("[data-lang]").forEach((el) => {
-    const key = el.getAttribute("data-lang");
-    if (key) {
-      const text = translations[lang]?.[key] || translations.id[key] || key;
-      if (text !== key) el.textContent = text;
+if (typeof window !== 'undefined') {
+  // Preload JP dictionary immediately on client boot
+  loadJp().then(onJpReady).catch(() => {});
+
+  langStore.subscribe((lang) => {
+    if (lang === 'jp' && Object.keys(translations.jp).length === 0) {
+      loadJp().then(onJpReady).catch(() => {});
+    } else {
+      translateDataLang();
+    }
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = lang === 'jp' ? 'ja' : 'id';
+      window.dispatchEvent(new CustomEvent('asj-lang-change', { detail: { lang } }));
     }
   });
 }
+
+/** Translate all [data-lang], [data-lang-placeholder], [data-lang-title], and [data-lang-aria] elements in the DOM */
+export function translateDataLang() {
+  if (typeof document === "undefined") return;
+  const lang = langStore.get();
+  const dict = translations[lang] || translations.id;
+  const fallback = translations.id;
+
+  document.querySelectorAll("[data-lang]").forEach((el) => {
+    const key = el.getAttribute("data-lang");
+    if (key) {
+      const text = dict[key] || fallback[key] || RAW_STRING_TRANSLATIONS[lang]?.[key] || key;
+      if (text !== key) el.textContent = text;
+    }
+  });
+
+  document.querySelectorAll("[data-lang-placeholder]").forEach((el) => {
+    const key = el.getAttribute("data-lang-placeholder");
+    if (key) {
+      const text = dict[key] || fallback[key] || RAW_STRING_TRANSLATIONS[lang]?.[key] || key;
+      if (text !== key) el.setAttribute("placeholder", text);
+    }
+  });
+
+  document.querySelectorAll("[data-lang-title]").forEach((el) => {
+    const key = el.getAttribute("data-lang-title");
+    if (key) {
+      const text = dict[key] || fallback[key] || RAW_STRING_TRANSLATIONS[lang]?.[key] || key;
+      if (text !== key) el.setAttribute("title", text);
+    }
+  });
+
+  document.querySelectorAll("[data-lang-aria]").forEach((el) => {
+    const key = el.getAttribute("data-lang-aria");
+    if (key) {
+      const text = dict[key] || fallback[key] || RAW_STRING_TRANSLATIONS[lang]?.[key] || key;
+      if (text !== key) el.setAttribute("aria-label", text);
+    }
+  });
+}
+
+const RAW_STRING_TRANSLATIONS: Record<Lang, Record<string, string>> = {
+  id: {},
+  jp: {
+    "File revisi berhasil diupload!": "修正ファイルが正常にアップロードされました！",
+    "Gagal upload": "アップロードに失敗しました",
+    "Sesi tidak valid. Silakan login kembali.": "セッションが無効です。再度ログインしてください。",
+    "Sesi expired. Silakan login kembali.": "セッションの有効期限が切れました。再度ログインしてください。",
+    "Berhasil! Silakan login.": "登録が完了しました！ログインしてください。",
+    "Login gagal": "ログインに失敗しました",
+    "Registrasi gagal": "登録に失敗しました",
+    "Data berhasil disimpan!": "データが保存されました！",
+    "Data berhasil dikirim!": "送信が完了しました！",
+    "Data berhasil dihapus.": "データが削除されました。",
+    "Link berhasil disalin!": "リンクをコピーしました！",
+    "Pesan WA berhasil disalin!": "メッセージをコピーしました！",
+    "Supabase belum dikonfigurasi": "データベースが設定されていません",
+    "Network error": "ネットワークエラー",
+    "Dokumen berhasil disimpan!": "書類が保存されました！",
+    "Gagal menyimpan data.": "データの保存に失敗しました。",
+    "Gagal memuat data. Tekan Muat Ulang.": "データの読み込みに失敗しました。再読み込みしてください。",
+    "Mohon lengkapi field yang benar.": "必須項目を正しく入力してください。",
+    "Fitur terkunci untuk akun ini.": "この機能はロックされています。",
+    "Tutup notifikasi": "通知を閉じる",
+    "Kembali ke Portal": "ポータルに戻る",
+    "Lowongan Loker": "求人一覧",
+    "Program & Layanan ASJ": "ASJプログラム・サービス",
+    "AI CV Master Assistant": "AI履歴書作成アシスタント",
+  },
+};
+
 export function t(key: string): string {
   const lang = langStore.get();
-  return translations[lang]?.[key] || translations.id[key] || key;
+  return translations[lang]?.[key] || translations.id[key] || RAW_STRING_TRANSLATIONS[lang]?.[key] || key;
+}
+
+/** Centralized instant language toggle helper */
+export async function toggleLang(): Promise<Lang> {
+  const current = langStore.get();
+  const next: Lang = current === "id" ? "jp" : "id";
+  if (next === "jp") {
+    await ensureJpLoaded();
+  }
+  langStore.set(next);
+  return next;
 }

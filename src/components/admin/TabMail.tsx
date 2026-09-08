@@ -9,7 +9,7 @@ import {
   mailFilterStatus, mailSearchText, mailList,
   setMailFilterStatus, setMailSearchText, fetchMailFromAPI,
 } from '../../store/adminStore';
-import { t } from '../../store/i18n';
+import { t, langStore } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
 import api from '../../lib/apiClient';
@@ -24,6 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function TabMail() {
+  const _lang = useStore(langStore);
   const filterStatus = useStore(mailFilterStatus);
   const searchText = useStore(mailSearchText);
   const mail = useStore(mailList);
@@ -81,7 +82,7 @@ export default function TabMail() {
     <div class="bg-slate-900 rounded-xl border border-sky-900/50 p-4 shadow-xl overflow-x-auto">
       {/* Header */}
       <div class="flex flex-wrap justify-between items-center gap-3 border-b border-sky-900/50 pb-4 mb-4">
-        <h2 class="text-sky-400 font-bold text-lg"><Icon name="envelope" class="mr-2" /> Form Mail Inbox</h2>
+        <h2 class="text-sky-400 font-bold text-lg"><Icon name="envelope" class="mr-2" /> {t('admin.mail_inbox')}</h2>
         <div class="flex flex-wrap items-center gap-2">
           <input type="text" value={searchText}
             onInput={(e) => setMailSearchText((e.target as HTMLInputElement).value)}
@@ -97,23 +98,23 @@ export default function TabMail() {
                     ? 'bg-sky-600 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}>
-                {s}
+                {s === 'SEMUA' ? t('status.all') : s === 'MENUNGGU' ? t('status.waiting') : s === 'REVIEW' ? t('status.review') : s === 'LULUS' ? t('status.pass') : s === 'GAGAL' ? t('status.fail') : s}
               </button>
             ))}
           </div>
 
           <button onClick={() => fetchMailFromAPI()}
             class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition">
-            <Icon name="sync-alt" class="mr-1" /> Refresh MAIL
+            <Icon name="sync-alt" class="mr-1" /> {t('admin.refresh_mail')}
           </button>
         </div>
       </div>
 
       {/* Status counts */}
       <div class="flex items-center gap-2 mb-3">
-        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Status:</span>
+        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">{t('table.status')}:</span>
         <span class="text-xs font-bold text-slate-300">
-          Menunggu: {counts.MENUNGGU} | Review: {counts.REVIEW} | Lulus: {counts.LULUS} | Gagal: {counts.GAGAL} | Total: {mail.length}
+          {t('status.waiting')}: {counts.MENUNGGU} | {t('status.review')}: {counts.REVIEW} | {t('status.pass')}: {counts.LULUS} | {t('status.fail')}: {counts.GAGAL} | Total: {mail.length}
         </span>
       </div>
 
@@ -127,20 +128,20 @@ export default function TabMail() {
                   checked={selected.size === filtered.length && filtered.length > 0}
                   onChange={toggleAll} />
               </th>
-              <th scope="col" class="p-4">Timestamp</th>
-              <th scope="col" class="p-4">Job Code</th>
-              <th scope="col" class="p-4">Kategori</th>
-              <th scope="col" class="p-4">Nama Pelamar</th>
-              <th scope="col" class="p-4">No. WA</th>
-              <th scope="col" class="p-4 text-center">Status</th>
-              <th scope="col" class="p-4 text-center">Folder Berkas</th>
-              <th scope="col" class="p-4 text-center">Aksi (Review)</th>
+              <th scope="col" class="p-4">{t('table.upload_date')}</th>
+              <th scope="col" class="p-4">{t('table.job_code')}</th>
+              <th scope="col" class="p-4">{t('admin.kategori_bidang')}</th>
+              <th scope="col" class="p-4">{t('table.full_name')}</th>
+              <th scope="col" class="p-4">{t('ui.wa')}</th>
+              <th scope="col" class="p-4 text-center">{t('table.status')}</th>
+              <th scope="col" class="p-4 text-center">{t('table.doc_folder')}</th>
+              <th scope="col" class="p-4 text-center">{t('table.action_review')}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-800">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} class="p-6 text-center text-slate-500">Tidak ada mail ditemukan.</td>
+                <td colSpan={9} class="p-6 text-center text-slate-500">{t('admin.no_mail_found')}</td>
               </tr>
             ) : filtered.map((m, i) => (
               <tr key={m.id || i} class="hover:bg-white/5 transition-all">
@@ -161,19 +162,19 @@ export default function TabMail() {
                 </td>
                 <td class="p-4 text-center">
                   <button disabled class="px-2 py-1 bg-slate-700/40 text-slate-500 rounded text-[10px] font-bold shadow cursor-not-allowed" title="Segera hadir">
-                    <Icon name="folder-open" class="mr-1" /> Lihat
+                    <Icon name="folder-open" class="mr-1" /> {t('button.view')}
                   </button>
                 </td>
                 <td class="p-4 text-center">
                   <div class="flex flex-wrap justify-center gap-1">
                     <button onClick={() => act('approveForm', m.id ?? m.wa, 'Lamaran LULUS')} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition">
-                      <Icon name="check" class="mr-1" /> Lulus
+                      <Icon name="check" class="mr-1" /> {t('button.pass')}
                     </button>
                     <button onClick={() => act('reviewForm', m.id ?? m.wa, 'Status REVIEW')} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition">
-                      <Icon name="eye" class="mr-1" /> Review
+                      <Icon name="eye" class="mr-1" /> {t('button.review')}
                     </button>
-                    <button onClick={() => { if (window.confirm('Tolak lamaran ini?')) act('rejectForm', m.id ?? m.wa, 'Lamaran GAGAL'); }} class="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold shadow transition">
-                      <Icon name="times" class="mr-1" /> Gagal
+                    <button onClick={() => { if (window.confirm(t('admin.confirm_reject_application'))) act('rejectForm', m.id ?? m.wa, 'Lamaran GAGAL'); }} class="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold shadow transition">
+                      <Icon name="times" class="mr-1" /> {t('button.reject')}
                     </button>
                   </div>
                 </td>

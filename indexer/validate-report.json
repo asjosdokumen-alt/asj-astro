@@ -31,18 +31,18 @@
     "rootNames": 315,
     "options": {}
   },
-  "universe": 3735,
+  "universe": 3830,
   "counts": {
-    "agreeBound": 3735,
+    "agreeBound": 3830,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
     "libCompilerNone": 0,
-    "libRefs": 1213,
-    "libRefAgree": 1210,
+    "libRefs": 1239,
+    "libRefAgree": 1236,
     "libRefDisagree": 0,
     "libRefFramework": 3,
-    "skippedNonBindable": 1921,
+    "skippedNonBindable": 1926,
     "skippedJsxIntrinsic": 54,
     "skippedAstroTemplate": 5,
     "offsetMismatch": 0,
@@ -51,8 +51,8 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3657,
-    "alias-vs-chase": 54,
+    "match": 3751,
+    "alias-vs-chase": 55,
     "merged-declaration": 22,
     "shadowing-disagreement": 2,
     "unmappable": 0
@@ -69,11 +69,11 @@
     },
     {
       "path": "src/components/admin/TabMail.tsx",
-      "universe": 118,
-      "agreeBound": 118,
+      "universe": 151,
+      "agreeBound": 151,
       "agreeUnresolved": 0,
       "lib": 36,
-      "skipped": 109,
+      "skipped": 110,
       "disagree": 0
     },
     {
@@ -87,11 +87,11 @@
     },
     {
       "path": "src/store/i18n.ts",
-      "universe": 47,
-      "agreeBound": 47,
+      "universe": 109,
+      "agreeBound": 109,
       "agreeUnresolved": 0,
-      "lib": 27,
-      "skipped": 11,
+      "lib": 53,
+      "skipped": 15,
       "disagree": 0
     },
     {
@@ -316,6 +316,15 @@
     {
       "path": "src/components/admin/TabMail.tsx",
       "line": 30,
+      "name": "useStore",
+      "role": "Callee",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "useStore → indexer src/components/admin/TabMail.tsx decls 216 · compiler <unmappable>:759"
+    },
+    {
+      "path": "src/components/admin/TabMail.tsx",
+      "line": 31,
       "name": "useState",
       "role": "Callee",
       "reason": "alias-vs-chase",
@@ -324,7 +333,7 @@
     },
     {
       "path": "src/components/admin/TabMail.tsx",
-      "line": 32,
+      "line": 33,
       "name": "useEffect",
       "role": "Callee",
       "reason": "alias-vs-chase",
@@ -739,15 +748,6 @@
     {
       "path": "netlify/functions/contexts/documents/service.ts",
       "line": 170,
-      "name": "session",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "session → indexer netlify/functions/contexts/documents/service.ts decls 846 · compiler netlify/functions/_lib/session.ts:0"
-    },
-    {
-      "path": "netlify/functions/contexts/documents/service.ts",
-      "line": 246,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",

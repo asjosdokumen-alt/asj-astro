@@ -8,7 +8,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore, logout } from '../store/authReactive';
 import { initializeAuthListener, logoutSupabase } from '../store/userStore';
-import { langStore, t, translateDataLang, ensureJpLoaded, jpReady } from '../store/i18n';
+import { langStore, toggleLang, t, translateDataLang, jpReady } from '../store/i18n';
 
 // ─── Named Constants ───
 const Z_INDEX = { OVERLAY: 35, NAV: 40, HAMBURGER: 30 } as const;
@@ -81,15 +81,6 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
   function closeModal() { setModalMode("closed"); }
   async function handleLogout() { await logoutSupabase(); window.location.reload(); }
   function toggleMenu() { setMenuOpen(!menuOpen); }
-  async function toggleLang() {
-    const next = lang === "id" ? "jp" : "id";
-    if (next === "jp") {
-      try { await ensureJpLoaded(); } catch (e) { console.error("[i18n] gagal memuat kamus JP:", e); }
-    }
-    langStore.set(next);
-    window.dispatchEvent(new Event("asj-lang-change"));
-    translateDataLang();
-  }
   // Theme lives in store/theme.ts. Its subscriber writes `data-theme` +
   // the legacy `.light` class, moves the banner artwork, and fires
   // `asj-theme-change` (which the headerBg effect above listens for).
@@ -109,8 +100,8 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
           <div class="flex items-center gap-5">
             <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-12 h-12 md:w-16 md:h-16 object-contain drop-shadow-2xl" onError={(e: any) => { e.target.style.display = "none" }} />
             <div>
-              <div id="header-tagline" class="text-pink-300 text-xs md:text-sm font-bold tracking-[4px] mb-1">日本への挑戦</div>
-              <h1 class="text-lg md:text-3xl font-black italic tracking-wide drop-shadow-lg"><span>PT AMANAH SAKURA JAPAN</span></h1>
+              <div id="header-tagline" class="text-pink-300 text-xs md:text-sm font-bold tracking-[4px] mb-1">{t("header.tagline")}</div>
+              <h1 class="text-lg md:text-3xl font-black italic tracking-wide drop-shadow-lg"><span>{t("header.company_name")}</span></h1>
             </div>
           </div>
           <div class="flex flex-col items-end gap-3">
@@ -133,9 +124,9 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
               </>)}
               {u.isLoggedIn && u.role === "admin" && (<>
                 <a href="/admin#mail" class="relative w-10 h-10 flex items-center justify-center bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full transition-colors shadow-lg"><Icon name="bell" /></a>
-                <span class="px-5 py-2.5 bg-black text-amber-300 border border-amber-500/60 rounded-full text-sm font-bold">Admin: {u.name}</span>
+                <span class="px-5 py-2.5 bg-black text-amber-300 border border-amber-500/60 rounded-full text-sm font-bold">{t("header.admin_greeting")}{u.name}</span>
                 <a href="/public" class="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-sm font-bold transition-colors"><Icon name="globe" class="mr-1" /> {t("header.public")}</a>
-                <button onClick={() => { setShowAiCopilot(true); setMenuOpen(false); }} class="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white border border-violet-300/40 rounded-full text-sm font-bold transition-colors shadow-lg"><Icon name="robot" class="mr-1" /> AI HR</button>
+                <button onClick={() => { setShowAiCopilot(true); setMenuOpen(false); }} class="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white border border-violet-300/40 rounded-full text-sm font-bold transition-colors shadow-lg"><Icon name="robot" class="mr-1" /> {t("header.ai_hr")}</button>
                 <a href="/admin" class="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg"><Icon name="cogs" class="mr-1" /> {t("header.admin")}</a>
                 <button onClick={handleLogout} class="px-5 py-2.5 bg-black text-white border border-white/20 hover:bg-white/10 rounded-full text-sm font-bold transition-colors"><Icon name="sign-out-alt" class="mr-1" /> {t("header.logout")}</button>
               </>)}
@@ -161,7 +152,7 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
         <div class="flex-1 overflow-y-auto p-4 space-y-3">
           <div class="space-y-3 pb-3 mb-3 border-b border-slate-700">
             <button onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>
-            <button onClick={toggleLang} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> Bahasa <span>{lang === "id" ? "ID" : "JP"}</span></button>
+            <button onClick={toggleLang} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
           </div>
           {hydrated && !u.isLoggedIn && (<div class="space-y-3">
             <button onClick={openLogin} class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">{t("header.login")}</button>

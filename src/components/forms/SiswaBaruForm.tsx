@@ -26,9 +26,10 @@
  * All copy is keyed in both id/jp dictionaries (legacy-locale values).
  */
 import { useState, useRef, useEffect } from 'preact/hooks';
+import { useStore } from '@nanostores/preact';
 import { showToast } from '../../components/Toast';
 import { validate, waSchema, emailSchema } from '../../lib/schemas';
-import { t } from '../../store/i18n';
+import { t, langStore } from '../../store/i18n';
 import { getEndpoint } from '../../lib/apiEndpoint';
 import { uploadMany } from '../../lib/cloudinary';
 import { SISWA_FILE_COLUMNS } from '../../lib/documentColumns';
@@ -107,6 +108,7 @@ async function postAction(action: string, payload: unknown): Promise<any> {
 type SubmitPhase = 'idle' | 'uploading' | 'saving' | 'done';
 
 export default function SiswaBaruForm() {
+  const _lang = useStore(langStore);
   const [tab, setTab] = useState<'chat' | 'form'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');

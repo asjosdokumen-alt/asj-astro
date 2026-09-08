@@ -19,7 +19,18 @@ import TabWA from './TabWA';
 import { showToast } from '../Toast';
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
-vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
+vi.mock('../../store/i18n', async () => {
+  const { atom } = await import('nanostores');
+  return {
+    t: (k: string) => {
+      if (k === 'admin.wa_template_ph_nama') return 'Contoh: Jadwal Interview';
+      if (k === 'admin.wa_template_ph_isi') return 'Konnichiwa <<NAMA>>, interview <<JOB>> dijadwalkan pada...';
+      return k;
+    },
+    langStore: atom<'id' | 'jp'>('id'),
+    toggleLang: vi.fn(),
+  };
+});
 vi.mock('../../lib/apiClient', () => ({
   default: { secure: vi.fn(), get: vi.fn(), call: vi.fn() },
 }));

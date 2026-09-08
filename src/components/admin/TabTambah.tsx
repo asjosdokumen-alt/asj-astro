@@ -17,7 +17,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { showToast } from '../Toast';
-import { t } from '../../store/i18n';
+import { t, langStore } from '../../store/i18n';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { api } from '../../lib/apiClient';
 import { authStore } from '../../store/authReactive';
@@ -35,6 +35,7 @@ interface DD {
 const RF: string[] = ['CV', 'JFT', 'SSW', 'SIM A', 'KTP', 'KK', 'AKTE', 'IJAZAH', 'IJAZAH SD', 'IJAZAH SMP', 'IJAZAH SMA', 'UNIVERSITAS', 'ALL'];
 
 export default function TabTambah() {
+  const _lang = useStore(langStore);
   const user = useStore(authStore);
   const [dd, setDd] = useState<DD>({ tsk: [], tahapan: [], kategori: [], gender: [], lokasi: [], syarat: [] });
   const [loading, setLoading] = useState(true);
@@ -159,48 +160,48 @@ export default function TabTambah() {
   return (
     <div>
       <h2 class="text-red-400 font-bold mb-6 border-b border-red-900/50 pb-3 text-lg">
-        <Icon name="plus-circle" class="mr-2" /> Form Input Loker Baru
+        <Icon name="plus-circle" class="mr-2" /> {t('admin.title_input_loker')}
       </h2>
       <form onSubmit={handleSubmit} class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div class="space-y-5">
           <div class="p-4 bg-red-900/10 border border-red-900/30 rounded-xl grid grid-cols-2 gap-4">
             <div class="col-span-2">
               <label class="block text-xs font-bold text-red-400 mb-1 uppercase tracking-widest">
-                <Icon name="lock" class="mr-1" /> Info DB Internal
+                <Icon name="lock" class="mr-1" /> {t('admin.internal_db_info')}
               </label>
             </div>
             <div>
-              <label class={rl}>TSK PENGURUS</label>
+              <label class={rl}>{t('admin.tsk_pengurus')}</label>
               <select value={tsk} onInput={(e) => setTsk((e.target as HTMLSelectElement).value)} required class={ic}>
                 <option value="">-</option>
                 {dd.tsk.map((x) => <option key={x} value={x}>{x}</option>)}
               </select>
             </div>
             <div>
-              <label class={rl}>TAHAPAN INTERNAL</label>
+              <label class={rl}>{t('admin.tahapan_internal')}</label>
               <select value={tahapan} onInput={(e) => setTahapan((e.target as HTMLSelectElement).value)} required class={ic}>
                 <option value="">-</option>
                 {dd.tahapan.map((x) => <option key={x} value={x}>{x}</option>)}
               </select>
             </div>
             <div class="col-span-2">
-              <label class={rl}>KUOTA DIBUTUHKAN (Cth: 3 Org)</label>
+              <label class={rl}>{t('admin.kuota_dibutuhkan')}</label>
               <input type="text" value={kuota} onInput={(e) => setKuota((e.target as HTMLInputElement).value)} required class="w-full p-3 rounded-lg bg-black border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition" />
             </div>
           </div>
           <div>
-            <label class={lc}>KATEGORI BIDANG</label>
+            <label class={lc}>{t('admin.kategori_bidang')}</label>
             <select value={kategori} onInput={(e) => setKategori((e.target as HTMLSelectElement).value)} required class={ic}>
               <option value="">-</option>
               {dd.kategori.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
           </div>
           <div>
-            <label class={lc}>NAMA PEKERJAAN (Judul Loker)</label>
+            <label class={lc}>{t('admin.nama_pekerjaan')}</label>
             <input type="text" value={pekerjaan} onInput={(e) => setPekerjaan((e.target as HTMLInputElement).value)} required class={ic} />
           </div>
           <div>
-            <label class={lc}>GENDER</label>
+            <label class={lc}>{t('admin.gender_label')}</label>
             <select value={gender} onInput={(e) => setGender((e.target as HTMLSelectElement).value)} required class={ic}>
               <option value="">-</option>
               {dd.gender.map((x) => <option key={x} value={x}>{x}</option>)}
@@ -208,20 +209,20 @@ export default function TabTambah() {
           </div>
           <div>
             <label class="block text-xs font-bold text-sky-400 mb-1.5 uppercase">
-              <Icon name="file-excel" class="mr-1" /> UPLOAD FORMAT CV/EXCEL (Opsional)
+              <Icon name="file-excel" class="mr-1" /> {t('admin.upload_format_cv')}
             </label>
             <input type="file" accept=".pdf,.xls,.xlsx,.doc,.docx" onChange={(e) => setTemplateFile((e.target as HTMLInputElement).files?.[0] || null)} class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-sky-900/50 file:text-sky-400 hover:file:bg-sky-900/80 cursor-pointer" />
           </div>
           <div>
             <label class="block text-xs font-bold text-pink-400 mb-1.5 uppercase">
-              <Icon name="image" class="mr-1" /> UPLOAD PAMFLET (Opsional)
+              <Icon name="image" class="mr-1" /> {t('admin.upload_pamflet')}
             </label>
             <input type="file" accept="image/*" onChange={(e) => setPamfletFile((e.target as HTMLInputElement).files?.[0] || null)} class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-pink-900/50 file:text-pink-400 hover:file:bg-pink-900/80 cursor-pointer" />
           </div>
         </div>
         <div class="space-y-5">
           <div>
-            <label class={lc}>PENEMPATAN LOKASI (Pilih Checkbox)</label>
+            <label class={lc}>{t('admin.penempatan_lokasi')}</label>
             <div class="grid grid-cols-2 gap-2 h-28 overflow-y-auto p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {dd.lokasi.map((l) => (
                 <label key={l} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
@@ -232,7 +233,7 @@ export default function TabTambah() {
             <input type="text" value={customLokasi} onInput={(e) => setCustomLokasi((e.target as HTMLInputElement).value)} placeholder={t('admin.custom_lokasi')} class={ic} />
           </div>
           <div>
-            <label class={lc}>SYARAT KANDIDAT (Pilih Checkbox)</label>
+            <label class={lc}>{t('admin.syarat_kandidat')}</label>
             <div class="grid grid-cols-2 gap-2 h-24 overflow-y-auto p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {dd.syarat.map((s) => (
                 <label key={s} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
@@ -243,7 +244,7 @@ export default function TabTambah() {
             <input type="text" value={customSyarat} onInput={(e) => setCustomSyarat((e.target as HTMLInputElement).value)} placeholder={t('admin.custom_syarat')} class={ic} />
           </div>
           <div>
-            <label class={lc}><Icon name="file-upload" class="mr-1" /> SYARAT UPLOAD DOKUMEN</label>
+            <label class={lc}><Icon name="file-upload" class="mr-1" /> {t('admin.syarat_dokumen')}</label>
             <div class="grid grid-cols-2 gap-2 h-24 overflow-y-auto p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {RF.map((f) => (
                 <label key={f} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
@@ -254,14 +255,14 @@ export default function TabTambah() {
             <input type="text" value={customReqFile} onInput={(e) => setCustomReqFile((e.target as HTMLInputElement).value)} placeholder={t('admin.custom_dokumen')} class={ic} />
           </div>
           <div>
-            <label class={lc}>KETERANGAN PUBLIK (Opsional)</label>
+            <label class={lc}>{t('admin.keterangan_publik')}</label>
             <textarea value={keterangan} onInput={(e) => setKeterangan((e.target as HTMLTextAreaElement).value)} rows={2} class={ic} />
           </div>
         </div>
         <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label class="block text-sm font-bold text-emerald-400 mb-1.5 uppercase">
-              <Icon name="wallet" class="mr-1" /> {t('ui.total_cost')} (Cth: 25 JT)
+              <Icon name="wallet" class="mr-1" /> {t('ui.total_cost')} {t('admin.cth_25_jt')}
             </label>
             <input type="text" value={totalBiaya} onInput={(e) => setTotalBiaya((e.target as HTMLInputElement).value)} placeholder={t('ui.total_cost_ph')} class={ic} />
           </div>

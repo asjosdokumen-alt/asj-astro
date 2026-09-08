@@ -21,9 +21,14 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 vi.mock('./Toast', () => ({ showToast: vi.fn() }));
-vi.mock('../store/i18n', () => ({
-  t: (k: string) => k,
-}));
+vi.mock('../store/i18n', async () => {
+  const { atom } = await import('nanostores');
+  return {
+    t: (k: string) => k,
+    langStore: atom<'id' | 'jp'>('id'),
+    toggleLang: vi.fn(),
+  };
+});
 vi.mock('../store/authReactive', async () => {
   // Real nanostores atom — useStore() calls store.listen/subscribe, so a
   // plain object mock breaks at render (TypeError: store.listen is not a function).

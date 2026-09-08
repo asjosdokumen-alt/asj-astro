@@ -4,7 +4,8 @@
  * Integrated: AdminJobEditModal, AdminShareModal
  */
 import { useState, useEffect } from 'preact/hooks';
-import { t } from '../../store/i18n';
+import { useStore } from '@nanostores/preact';
+import { langStore, t } from '../../store/i18n';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import Icon from '../ui/Icon';
@@ -30,6 +31,7 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export default function TabKelola() {
+  const _lang = useStore(langStore);
   const [loker, setLoker] = useState<Loker[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -92,22 +94,22 @@ export default function TabKelola() {
       </div>
 
       {loading ? (
-        <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-red-400" /><p class="text-slate-500 mt-2 text-sm">Memuat...</p></div>
+        <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-red-400" /><p class="text-slate-500 mt-2 text-sm">{t('ui.loading')}</p></div>
       ) : (
         <div class="overflow-x-auto rounded-xl border border-slate-800">
           <table class="w-full min-w-[800px] text-sm text-left whitespace-nowrap">
             <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
               <tr>
-                <th class="p-4">ID Code</th>
-                <th class="p-4">Pekerjaan</th>
-                <th class="p-4 text-center">Status</th>
-                <th class="p-4 text-center">Aksi</th>
-                <th class="p-4 text-center">Hapus</th>
+                <th class="p-4">{t('table.code')}</th>
+                <th class="p-4">{t('table.job')}</th>
+                <th class="p-4 text-center">{t('table.status')}</th>
+                <th class="p-4 text-center">{t('table.action')}</th>
+                <th class="p-4 text-center">{t('table.delete')}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800">
               {filtered.length === 0 ? (
-                <tr><td colSpan={5} class="p-6 text-center text-slate-500">Tidak ada loker.</td></tr>
+                <tr><td colSpan={5} class="p-6 text-center text-slate-500">{t('ui.not_applied_general')}</td></tr>
               ) : filtered.map(j => (
                 <tr key={j.code} class="hover:bg-white/5 transition-all">
                   <td class="p-4 font-mono text-red-300 font-bold">{j.code}</td>
@@ -132,7 +134,7 @@ export default function TabKelola() {
           </table>
         </div>
       )}
-      <p class="text-xs text-slate-500 mt-3">{filtered.length} loker</p>
+      <p class="text-xs text-slate-500 mt-3">{filtered.length} {t('ui.jobs_suffix')}</p>
 
       {editJob && <AdminJobEditModal job={editJob as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
       {shareJob && <AdminShareModal job={shareJob} onClose={() => setShareJob(null)} />}

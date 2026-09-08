@@ -8,7 +8,8 @@
  * dikoreksi ke akar kontraknya.
  */
 import { useState, useEffect } from 'preact/hooks';
-import { t } from '../store/i18n';
+import { useStore } from '@nanostores/preact';
+import { t, langStore } from '../store/i18n';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
 import { authStore } from '../store/authReactive';
@@ -33,6 +34,7 @@ type State =
   | { kind: 'ready'; rows: SiswaRow[] };
 
 export default function CekSiswaModal({ onClose }: Props) {
+  const _lang = useStore(langStore);
   const [state, setState] = useState<State>({ kind: 'loading' });
 
   useEffect(() => {
@@ -79,7 +81,7 @@ export default function CekSiswaModal({ onClose }: Props) {
       return <span class="inline-flex w-6 h-6 rounded-full bg-pink-900/50 text-pink-400 items-center justify-center font-bold text-[10px] border border-pink-500/30">P</span>;
     }
     return (
-      <span class="inline-flex w-6 h-6 rounded-full bg-slate-800 text-slate-500 items-center justify-center font-bold text-[10px] border border-slate-600/50" title="Gender belum diisi">&mdash;</span>
+      <span class="inline-flex w-6 h-6 rounded-full bg-slate-800 text-slate-500 items-center justify-center font-bold text-[10px] border border-slate-600/50" title={t('siswa.gender_unfilled')}>&mdash;</span>
     );
   };
 
@@ -89,7 +91,7 @@ export default function CekSiswaModal({ onClose }: Props) {
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700">
           <h3 class="text-lg font-bold text-white">
             <Icon name="users" class="text-emerald-400 mr-2" />
-            {t('siswa.title') || 'Daftar Siswa Terdaftar'}
+            {t('siswa.title_registered')}
           </h3>
           <button onClick={onClose} class="text-slate-400 hover:text-white transition">
             <Icon name="times" class="text-xl" />
@@ -99,36 +101,36 @@ export default function CekSiswaModal({ onClose }: Props) {
           {state.kind === 'loading' && (
             <div class="text-center py-10">
               <Icon spin name="spinner" class="text-2xl text-sky-400" />
-              <p class="text-slate-400 mt-2 text-sm">{t('ui.loading') || 'Memuat data...'}</p>
+              <p class="text-slate-400 mt-2 text-sm">{t('ui.loading')}</p>
             </div>
           )}
           {state.kind === 'session' && (
             <div class="text-center py-10 px-6">
               <Icon name="lock" class="text-3xl text-amber-400 mb-3" />
-              <p class="text-slate-300 text-sm font-bold">Sesi tidak valid (khusus admin)</p>
-              <p class="text-slate-500 text-xs mt-1">Login sebagai admin untuk melihat daftar siswa terdaftar.</p>
+              <p class="text-slate-300 text-sm font-bold">{t('siswa.session_admin_only')}</p>
+              <p class="text-slate-500 text-xs mt-1">{t('siswa.login_admin_hint')}</p>
             </div>
           )}
           {state.kind === 'error' && (
             <div class="text-center py-10 px-6">
               <Icon name="circle-exclamation" class="text-3xl text-rose-400 mb-3" />
-              <p class="text-rose-300 text-sm font-bold">Gagal memuat data</p>
+              <p class="text-rose-300 text-sm font-bold">{t('siswa.load_failed')}</p>
               <p class="text-slate-500 text-xs mt-1">{state.message}</p>
             </div>
           )}
           {state.kind === 'ready' && (state.rows.length === 0 ? (
             <div class="text-center py-10">
               <Icon name="inbox" class="text-3xl text-slate-600 mb-3" />
-              <p class="text-slate-400 text-sm">{t('ui.no_students') || 'Belum ada siswa yang mendaftar.'}</p>
+              <p class="text-slate-400 text-sm">{t('ui.no_students')}</p>
             </div>
           ) : (
             <table class="w-full text-left">
               <thead class="sticky top-0 bg-slate-900">
                 <tr class="text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
                   <th class="px-4 py-3 text-center w-10">No</th>
-                  <th class="px-4 py-3">Nama</th>
-                  <th class="px-4 py-3 text-center w-16">JK</th>
-                  <th class="px-4 py-3">Alamat</th>
+                  <th class="px-4 py-3">{t('table.full_name')}</th>
+                  <th class="px-4 py-3 text-center w-16">{t('table.gender')}</th>
+                  <th class="px-4 py-3">{t('table.address')}</th>
                 </tr>
               </thead>
               <tbody>

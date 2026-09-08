@@ -23,7 +23,10 @@ import { showToast } from '../Toast';
 import { uploadToCloudinary, uploadMany } from '../../lib/cloudinary';
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
-vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
+vi.mock('../../store/i18n', async () => {
+  const { atom } = await import('nanostores');
+  return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id'), toggleLang: vi.fn() };
+});
 vi.mock('../../lib/cloudinary', () => ({
   uploadToCloudinary: vi.fn(async (f: File) => 'https://cloud.test/' + (f && f.name || 'doc')),
   uploadMany: vi.fn(async (files: Record<string, File | null>, map: Record<string, string>) => {

@@ -4,9 +4,10 @@
  * Split panel: Chat AI Jeklin (left 35%) + CV Preview Form (right 65%)
  */
 import { useState, useRef, useEffect } from 'preact/hooks';
+import { useStore } from '@nanostores/preact';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
-import { t } from '../../store/i18n';
+import { t, langStore, toggleLang } from '../../store/i18n';
 import { apiClient } from '../../lib/apiClient';
 import { validate, waSchema, kandidatLoginSchema } from '../../lib/schemas';
 
@@ -80,12 +81,12 @@ function sanitizeAiHtml(text: string): string {
 const JEKLIN_IMG = 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png';
 
 export default function AiCvForm() {
+  const lang = useStore(langStore);
   const [tab, setTab] = useState<'chat' | 'form'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [cv, setCv] = useState<CvData>(EMPTY_CV);
-  const [formLang, setFormLang] = useState<'id' | 'jp'>('id');
   const [docs, setDocs] = useState<Record<string, File | null>>({});
   const [docStatus, setDocStatus] = useState<Record<string, string>>({});
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
@@ -108,7 +109,7 @@ export default function AiCvForm() {
 
   useEffect(() => {
     setMessages([{ role: 'assistant',
-      text: 'Halo! Saya Qween Jeklin, HRD ASJ. Saya akan membantu mengisi CV Jepangmu. Silakan ceritakan tentang dirimu!',
+      text: t('ai_cv.bot_greeting'),
       time: now() }]);
     setShowSuggestions(true);
   }, []);
@@ -284,17 +285,17 @@ export default function AiCvForm() {
         <div class="bg-[#0b1220] border border-amber-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
           <div class="text-center mb-4">
             <div class="text-2xl mb-1 text-amber-400"><Icon name="lock" /></div>
-            <div class="font-bold text-white text-sm">Verifikasi Akun Kandidat</div>
-            <div class="text-slate-400 text-xs mt-1">Login diperlukan untuk chat & menyimpan CV — data CV yang sudah diisi tidak akan hilang.</div>
+            <div class="font-bold text-white text-sm">{t("ai_cv.verify_account")}</div>
+            <div class="text-slate-400 text-xs mt-1">{t("ai_cv.login_required_desc")}</div>
           </div>
-          <label class="label">Nomor WhatsApp</label>
+          <label class="label">{t("login.wa_label")}</label>
           <input type="tel" class="input" value={gateWa} placeholder="08xxxxxxxxxx"
             onInput={(e) => setGateWa((e.target as HTMLInputElement).value)} />
           <label class="label mt-3">{t("form.mf_password")}</label>
           <input type="password" class="input" value={gatePass} placeholder="••••••••"
             onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
-          <button onClick={gateLogin} class="w-full mt-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl py-2.5 text-sm font-bold">Masuk</button>
+          <button onClick={gateLogin} class="w-full mt-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl py-2.5 text-sm font-bold">{t("login.btn_masuk")}</button>
           {gateMsg && <div class="text-rose-400 text-xs text-center mt-2">{gateMsg}</div>}
         </div>
       </div>
@@ -322,7 +323,7 @@ export default function AiCvForm() {
           </div>
           <div>
             <h2 class="text-sm font-bold text-amber-400">Qween Jeklin</h2>
-            <p class="text-[10px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>HRD ASJ (Boss's Daughter)</p>
+            <p class="text-[10px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>{t("ai_cv.hrd_tagline")}</p>
           </div>
         </div>
 
@@ -382,7 +383,7 @@ export default function AiCvForm() {
             <div class="flex items-center gap-3">
               <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_asj.png" alt="ASJ" class="h-8 md:h-10 object-contain" />
               <div>
-                <h1 class="text-sm md:text-base font-black text-white">PREVIEW CV JEPANG</h1>
+                <h1 class="text-sm md:text-base font-black text-white">{t("form.preview_cv")}</h1>
                 <p class="text-[10px] md:text-[11px] text-slate-400">{t('form.cv_edit_hint')}</p>
               </div>
             </div>
@@ -390,8 +391,8 @@ export default function AiCvForm() {
               <button onClick={saveToDatabase} class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] md:text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg flex items-center gap-2">
                 <Icon name="cloud-upload-alt" />{t('button.save_db')}
               </button>
-              <button onClick={() => setFormLang(l => l === 'id' ? 'jp' : 'id')} class="bg-sky-600 hover:bg-sky-500 text-white text-[10px] md:text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg">
-                <Icon name="language" class="mr-1" />{formLang === 'id' ? 'JP' : 'ID'}
+              <button onClick={() => toggleLang()} class="bg-sky-600 hover:bg-sky-500 text-white text-[10px] md:text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg">
+                <Icon name="language" class="mr-1" />{lang === 'id' ? 'ID' : 'JP'}
               </button>
             </div>
           </div>
@@ -402,7 +403,7 @@ export default function AiCvForm() {
             </div>
           )}
 
-          <Section title="1. Identitas & Kontak" icon="fa-address-card" color="sky">
+          <Section title={t("ai_cv.sec_identitas")} icon="fa-address-card" color="sky">
             <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
               <Field label={t("cv.field_nama")} id="nama" value={cv.nama} span={2} readonly />
               <Field label={t("form.mf_furigana")} id="katakana" value={cv.katakana} span={2} jp />
@@ -427,7 +428,7 @@ export default function AiCvForm() {
           </Section>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-            <Section title="2. Fisik & Ukuran" icon="fa-child" color="amber">
+            <Section title={t("ai_cv.sec_fisik")} icon="fa-child" color="amber">
               <div class="grid grid-cols-3 gap-2">
                 <Field label={t("form.mf_tb")} id="tb" value={cv.tb} center readonly />
                 <Field label={t("form.mf_bb")} id="bb" value={cv.bb} center readonly />
@@ -438,7 +439,7 @@ export default function AiCvForm() {
                 <div class="col-span-3"><Field label={t("cv.field_tahan_ac")} id="tahan_ac" value={cv.tahan_ac} readonly /></div>
               </div>
             </Section>
-            <Section title="3. Medis & Kebiasaan" icon="fa-notes-medical" color="red">
+            <Section title={t("ai_cv.sec_medis")} icon="fa-notes-medical" color="red">
               <div class="grid grid-cols-4 gap-2">
                 <Field label={t("cv.field_mata_kanan")} id="matakanan" value={cv.matakanan} center readonly />
                 <Field label={t("cv.field_mata_kiri")} id="matakiri" value={cv.matakiri} center readonly />
@@ -456,19 +457,19 @@ export default function AiCvForm() {
                 <TextAreaPair idId="alergi_id" idJp="alergi_jp" valueId={cv.alergi_id} valueJp={cv.alergi_jp} onChange={updateCv} />
                 <div class="grid grid-cols-2 gap-2"><label class="block text-[11px] text-[#e2e8f0]">{t("form.mf_penyakit")}</label><div></div></div>
                 <TextAreaPair idId="medis_id" idJp="medis_jp" valueId={cv.medis_id} valueJp={cv.medis_jp} onChange={updateCv} />
-                <div class="grid grid-cols-2 gap-2"><label class="block text-[11px] text-[#e2e8f0]">Kecelakaan</label><div></div></div>
+                <div class="grid grid-cols-2 gap-2"><label class="block text-[11px] text-[#e2e8f0]">{t("cv.field_laka")}</label><div></div></div>
                 <TextAreaPair idId="laka_id" idJp="laka_jp" valueId={cv.laka_id} valueJp={cv.laka_jp} onChange={updateCv} />
               </div>
             </Section>
           </div>
 
-          <Section title="4. Jiko PR & Wawancara" icon="fa-comments" color="purple" borderLeft>
-            <div class="mb-2"><Field label="Pernah ke Jepang?" id="riwayatjepang" value={cv.riwayatjepang} readonly span={1} /></div>
+          <Section title={t("ai_cv.sec_jiko")} icon="fa-comments" color="purple" borderLeft>
+            <div class="mb-2"><Field label={t("cv.field_riwayat_jp")} id="riwayatjepang" value={cv.riwayatjepang} readonly span={1} /></div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div class="space-y-2">
                 <TextAreaPair label={t("cv.field_promo_diri")} idId="promo_id" idJp="promo_jp" valueId={cv.promo_id} valueJp={cv.promo_jp} onChange={updateCv} />
-                <TextAreaPair label="Kelebihan / 長所" idId="lebih_id" idJp="lebih_jp" valueId={cv.lebih_id} valueJp={cv.lebih_jp} onChange={updateCv} />
-                <TextAreaPair label="Kekurangan / 短所" idId="kurang_id" idJp="kurang_jp" valueId={cv.kurang_id} valueJp={cv.kurang_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_kelebihan")} idId="lebih_id" idJp="lebih_jp" valueId={cv.lebih_id} valueJp={cv.lebih_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_kekurangan")} idId="kurang_id" idJp="kurang_jp" valueId={cv.kurang_id} valueJp={cv.kurang_jp} onChange={updateCv} />
                 <TextAreaPair label={t("cv.hobi")} idId="hobi_id" idJp="hobi_jp" valueId={cv.hobi_id} valueJp={cv.hobi_jp} onChange={updateCv} />
                 <TextAreaPair label={t("cv.field_keahlian")} idId="keahlian_id" idJp="keahlian_jp" valueId={cv.keahlian_id} valueJp={cv.keahlian_jp} onChange={updateCv} />
               </div>
@@ -479,43 +480,43 @@ export default function AiCvForm() {
                 <TextAreaPair label={t("cv.field_target_pribadi")} idId="keinginan_id" idJp="keinginan_jp" valueId={cv.keinginan_id} valueJp={cv.keinginan_jp} onChange={updateCv} />
                 <TextAreaPair label={t("cv.field_tujuan_jepang")} idId="tujuan_id" idJp="tujuan_jp" valueId={cv.tujuan_id} valueJp={cv.tujuan_jp} onChange={updateCv} />
                 <div class="grid grid-cols-3 gap-2">
-                  <Field label="Lama di Jepang" id="lama" value={cv.lama} center readonly />
-                  <Field label="Gaji (Yen)" id="gaji_yen" value={cv.gaji_yen} center readonly jp />
-                  <Field label="Tabungan" id="tabungan" value={cv.tabungan} center readonly jp />
+                  <Field label={t("cv.field_lama_jp")} id="lama" value={cv.lama} center readonly />
+                  <Field label={t("cv.field_target_gaji")} id="gaji_yen" value={cv.gaji_yen} center readonly jp />
+                  <Field label={t("cv.field_target_nabung")} id="tabungan" value={cv.tabungan} center readonly jp />
                 </div>
               </div>
             </div>
           </Section>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-            <Section title="Pendidikan" icon="fa-graduation-cap" color="emerald">
+            <Section title={t("ai_cv.sec_pendidikan")} icon="fa-graduation-cap" color="emerald">
               <div class="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700 mb-2">
                 <Field label={t("cv.field_bhs_jepang")} id="bhs_jepang" value={cv.bhs_jepang} readonly />
-                <Field label="Nilai" id="nilai" value={cv.nilai} readonly />
-                <Field label="Lisensi/SSW" id="lisensi" value={cv.lisensi} readonly />
+                <Field label={t("cv.field_nilai_jp")} id="nilai" value={cv.nilai} readonly />
+                <Field label={t("cv.field_lisensi_ssw")} id="lisensi" value={cv.lisensi} readonly />
               </div>
-              <div class="text-[9px] text-slate-500 italic py-1">Data dinamis dari AI</div>
+              <div class="text-[9px] text-slate-500 italic py-1">{t("ai_cv.dynamic_ai_data")}</div>
             </Section>
-            <Section title="Pekerjaan" icon="fa-briefcase" color="blue">
-              <div class="text-[9px] text-slate-500 italic py-1">Data dinamis dari AI</div>
+            <Section title={t("ai_cv.sec_pekerjaan")} icon="fa-briefcase" color="blue">
+              <div class="text-[9px] text-slate-500 italic py-1">{t("ai_cv.dynamic_ai_data")}</div>
             </Section>
-            <Section title="Keluarga (KK)" icon="fa-users" color="orange">
-              <div class="text-[9px] text-slate-500 italic py-1">Data dinamis dari AI</div>
+            <Section title={t("ai_cv.sec_keluarga")} icon="fa-users" color="orange">
+              <div class="text-[9px] text-slate-500 italic py-1">{t("ai_cv.dynamic_ai_data")}</div>
             </Section>
           </div>
 
-          <Section title="Kenalan di Jepang" icon="fa-user-friends" color="pink">
+          <Section title={t("ai_cv.sec_kenalan")} icon="fa-user-friends" color="pink">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-              <Field label="Nama (ID)" id="kenalan_nama_id" value={cv.kenalan_nama_id} readonly />
-              <Field label="Nama (JP)" id="kenalan_nama_jp" value={cv.kenalan_nama_jp} jp readonly />
-              <Field label="Hubungan (ID)" id="kenalan_hub_id" value={cv.kenalan_hub_id} readonly />
-              <Field label="Hubungan (JP)" id="kenalan_hub_jp" value={cv.kenalan_hub_jp} jp readonly />
-              <Field label="Pekerjaan (ID)" id="kenalan_kerja_id" value={cv.kenalan_kerja_id} readonly />
-              <Field label="Pekerjaan (JP)" id="kenalan_kerja_jp" value={cv.kenalan_kerja_jp} jp readonly />
-              <Field label="Usia" id="kenalan_usia" value={cv.kenalan_usia} readonly />
+              <Field label={t("cv.field_kenalan_nama_id")} id="kenalan_nama_id" value={cv.kenalan_nama_id} readonly />
+              <Field label={t("cv.field_kenalan_nama_jp")} id="kenalan_nama_jp" value={cv.kenalan_nama_jp} jp readonly />
+              <Field label={t("cv.field_kenalan_hub_id")} id="kenalan_hub_id" value={cv.kenalan_hub_id} readonly />
+              <Field label={t("cv.field_kenalan_hub_jp")} id="kenalan_hub_jp" value={cv.kenalan_hub_jp} jp readonly />
+              <Field label={t("cv.field_kenalan_kerja_id")} id="kenalan_kerja_id" value={cv.kenalan_kerja_id} readonly />
+              <Field label={t("cv.field_kenalan_kerja_jp")} id="kenalan_kerja_jp" value={cv.kenalan_kerja_jp} jp readonly />
+              <Field label={t("cv.field_kenalan_usia")} id="kenalan_usia" value={cv.kenalan_usia} readonly />
               <div class="col-span-2 md:col-span-4 mt-1 grid grid-cols-2 gap-2">
-                <Field label="Alamat (ID)" id="kenalan_alamat_id" value={cv.kenalan_alamat_id} readonly />
-                <Field label="Alamat (JP)" id="kenalan_alamat_jp" value={cv.kenalan_alamat_jp} jp readonly />
+                <Field label={t("cv.field_kenalan_alamat_id")} id="kenalan_alamat_id" value={cv.kenalan_alamat_id} readonly />
+                <Field label={t("cv.field_kenalan_alamat_jp")} id="kenalan_alamat_jp" value={cv.kenalan_alamat_jp} jp readonly />
               </div>
             </div>
           </Section>
@@ -526,12 +527,12 @@ export default function AiCvForm() {
             <UploadRow type="ssw" label={t("cv.upload_ssw")} icon="fa-file-signature" bg="bg-emerald-600" accept=".pdf" status={docStatus['ssw']} onUpload={handleDocUpload} />
           </div>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <UploadRow type="ktp" label="KTP" icon="fa-id-card" bg="bg-rose-600" accept=".pdf,image/*" status={docStatus['ktp']} onUpload={handleDocUpload} />
-            <UploadRow type="kk" label="KK" icon="fa-users" bg="bg-orange-600" accept=".pdf,image/*" status={docStatus['kk']} onUpload={handleDocUpload} />
-            <UploadRow type="ijazahSd" label="IJAZAH SD" icon="fa-graduation-cap" bg="bg-violet-600" accept=".pdf" status={docStatus['ijazahSd']} onUpload={handleDocUpload} />
-            <UploadRow type="ijazahSmp" label="IJAZAH SMP" icon="fa-graduation-cap" bg="bg-sky-600" accept=".pdf" status={docStatus['ijazahSmp']} onUpload={handleDocUpload} />
-            <UploadRow type="ijazahSma" label="IJAZAH SMA" icon="fa-graduation-cap" bg="bg-teal-600" accept=".pdf" status={docStatus['ijazahSma']} onUpload={handleDocUpload} />
-            <UploadRow type="univ" label="IJAZAH UNIV" icon="fa-university" bg="bg-indigo-600" accept=".pdf" status={docStatus['univ']} onUpload={handleDocUpload} />
+            <UploadRow type="ktp" label={t("cv.upload_ktp")} icon="fa-id-card" bg="bg-rose-600" accept=".pdf,image/*" status={docStatus['ktp']} onUpload={handleDocUpload} />
+            <UploadRow type="kk" label={t("cv.upload_kk")} icon="fa-users" bg="bg-orange-600" accept=".pdf,image/*" status={docStatus['kk']} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSd" label={t("cv.upload_ijazah_sd")} icon="fa-graduation-cap" bg="bg-violet-600" accept=".pdf" status={docStatus['ijazahSd']} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSmp" label={t("cv.upload_ijazah_smp")} icon="fa-graduation-cap" bg="bg-sky-600" accept=".pdf" status={docStatus['ijazahSmp']} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSma" label={t("cv.upload_ijazah_sma")} icon="fa-graduation-cap" bg="bg-teal-600" accept=".pdf" status={docStatus['ijazahSma']} onUpload={handleDocUpload} />
+            <UploadRow type="univ" label={t("cv.upload_ijazah_univ")} icon="fa-university" bg="bg-indigo-600" accept=".pdf" status={docStatus['univ']} onUpload={handleDocUpload} />
           </div>
         </div>
       </main>

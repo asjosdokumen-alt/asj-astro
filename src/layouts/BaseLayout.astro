@@ -108,14 +108,17 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     }
   </script>
 <script>
-  // i18n: listen for language changes and translate [data-lang] elements
+  import { translateDataLang, preloadJpDict } from '../store/i18n';
+  // Preload JP dictionary on client boot and run initial DOM translation
+  preloadJpDict();
+  translateDataLang();
+  // i18n: listen for language changes and translate [data-lang] elements instantly
   window.addEventListener("asj-lang-change", function() {
-    // translateDataLang() is called by App.tsx after Nanostores update
+    translateDataLang();
   });
   window.addEventListener("storage", function(e) {
     if (e.key === "asj_lang") {
-      // Cross-tab: trigger translation on next tick after localStorage updates
-      setTimeout(function() { window.dispatchEvent(new Event("asj-lang-change")); }, 100);
+      translateDataLang();
     }
   });
 </script>

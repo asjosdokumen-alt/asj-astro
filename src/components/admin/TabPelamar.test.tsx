@@ -41,7 +41,10 @@ vi.mock('../../store/adminStore', () => {
 vi.mock('./InputManualModal', () => ({ default: () => null }));
 vi.mock('./LaporanBulananModal', () => ({ default: () => null }));
 vi.mock('./RirekishoBuilder', () => ({ default: () => null }));
-vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
+vi.mock('../../store/i18n', async () => {
+  const { atom } = await import('nanostores');
+  return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id'), toggleLang: vi.fn() };
+});
 
 describe('TabPelamar clock button', () => {
   it('dispatches showCandidateHistory event when clock button clicked', () => {

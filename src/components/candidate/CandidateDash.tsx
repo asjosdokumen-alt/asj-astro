@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore } from '../../store/authReactive';
-import { t } from '../../store/i18n';
+import { langStore, t } from '../../store/i18n';
 import ChangePasswordModal from '../ChangePasswordModal';
 import CvMiniModal from '../CvMiniModal';
 import InterviewSimulatorModal, { canAccessInterview } from './InterviewSimulatorModal';
@@ -101,6 +101,7 @@ function CrownBadge({ progress }: { progress: number }) {
 
 export default function CandidateDash() {
   const user = useStore(authStore);
+  const _lang = useStore(langStore);
   const [data, setData] = useState<CandidateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -390,7 +391,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               <button onClick={() => setShowCvMiniModal(true)} class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.5)] hover:-translate-y-1 transition"><Icon name="user-edit" class="mr-1.5" /> {t('ui.update_cv_mini')}</button>
               <button onClick={openInterview} class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition"><Icon name="microphone-alt" class="mr-1.5" /> {t('ui.interview_practice')}</button>
               <button onClick={openEsign} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><Icon name="signature" class="mr-1.5" /> {t('ui.esign_naitei')}</button>
-              <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="robot" class="mr-1.5" /> AI CV Master Assistant</a>
+              <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="robot" class="mr-1.5" /> {t('ui.ai_cv_assistant')}</a>
               <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="clipboard-list" class="mr-1.5 text-sky-400" /> {t('ui.master_full_form')}</a>
               
                             <button onClick={() => setShowRirekisho(true)} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-red-600" /> {t('candidate.btn_preview_cv')}</button>
@@ -410,7 +411,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                 input.onchange = async (e) => {
                   const file = (e.target as HTMLInputElement).files?.[0];
                   if (!file) return;
-                  showToast('Mengupload ' + file.name + '...', 'info');
+                  showToast(t('toast.uploading') + ' ' + file.name, 'info');
                   try {
                     const fileUrl = await uploadBerkasToStorage(file, { key: 'revisi_' + Date.now() });
                     const res = await fetch(getEndpoint('simpanRevisiKandidat'), {
@@ -424,10 +425,10 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                     });
                     const resData = await res.json();
                     if (resData.success) {
-                      showToast('File revisi berhasil diupload!', 'success');
+                      showToast(t('toast.upload_revise_success'), 'success');
                       loadDashboard();
                     } else {
-                      showToast(resData.error || 'Gagal upload', 'error');
+                      showToast(resData.error || t('toast.upload_revise_failed'), 'error');
                     }
                   } catch (err) {
                     showToast('Error upload: ' + ((err as Error).message || 'Unknown'), 'error');
@@ -454,7 +455,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                 <div class="h-full bg-gradient-to-r from-emerald-600 to-sky-500 rounded-full transition-[width] duration-500" style={`width:${data.berkasProgress}%`}></div>
               </div>
               <div class="flex flex-wrap items-center gap-2 mb-4">
-                <span class="text-xs font-bold text-white">{data.berkasList.filter(b => b.done).length}/{data.berkasTotal} dokumen</span>
+                <span class="text-xs font-bold text-white">{data.berkasList.filter(b => b.done).length}/{data.berkasTotal}{t('ui.doc_count_suffix')}</span>
               </div>
               <div class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-1">
                 {data.berkasList.map((b, i) => (

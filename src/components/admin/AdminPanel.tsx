@@ -9,7 +9,8 @@
  *   - Content area: pl-64 on desktop to offset sidebar
  */
 import { useState, useEffect } from 'preact/hooks';
-import { t } from '../../store/i18n';
+import { useStore } from '@nanostores/preact';
+import { langStore, t } from '../../store/i18n';
 import { showToast } from '../Toast';
 import TabKelola from './TabKelola.tsx';
 import TabPelamar from './TabPelamar.tsx';
@@ -41,18 +42,18 @@ function useModal<T = void>() {
 
 type Tab = 'kelola' | 'dbjob' | 'tambah' | 'pelamar' | 'jadwal' | 'mail' | 'wa' | 'config';
 
-const TABS: { id: Tab; icon: string; label: string }[] = [
-
-  { id: 'kelola',  icon: 'fa-globe',        label: t('admin.tab_public_job') },
-  { id: 'dbjob',   icon: 'fa-server',        label: t('admin.tab_internal_db') },
-  { id: 'tambah',  icon: 'fa-plus',          label: t('admin.tab_add_job') },
-  { id: 'pelamar', icon: 'fa-users',         label: t('admin.tab_candidate') },
-  { id: 'jadwal',  icon: 'fa-calendar-alt',  label: t('admin.tab_schedule') },
-  { id: 'mail',    icon: 'fa-envelope',      label: t('admin.tab_mail') },
-  { id: 'wa',      icon: 'fa-whatsapp',      label: t('ui.wa_pintar') },
+const TABS: { id: Tab; icon: string; labelKey: string }[] = [
+  { id: 'kelola',  icon: 'fa-globe',        labelKey: 'admin.tab_public_job' },
+  { id: 'dbjob',   icon: 'fa-server',       labelKey: 'admin.tab_internal_db' },
+  { id: 'tambah',  icon: 'fa-plus',         labelKey: 'admin.tab_add_job' },
+  { id: 'pelamar', icon: 'fa-users',        labelKey: 'admin.tab_candidate' },
+  { id: 'jadwal',  icon: 'fa-calendar-alt', labelKey: 'admin.tab_schedule' },
+  { id: 'mail',    icon: 'fa-envelope',     labelKey: 'admin.tab_mail' },
+  { id: 'wa',      icon: 'fa-whatsapp',     labelKey: 'ui.wa_pintar' },
 ];
 
 export default function AdminPanel() {
+  const _lang = useStore(langStore);
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (typeof window === 'undefined') return 'kelola' as Tab;
     var h = window.location.hash.replace('#', '');
@@ -138,7 +139,7 @@ export default function AdminPanel() {
 
       
       <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: 30 }} class="sticky top-2 ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
-        <Icon name="bars" /> Menu
+        <Icon name="bars" /> {t("ui.menu")}
       </button>
 
 
@@ -162,8 +163,8 @@ export default function AdminPanel() {
         onClick={(e: Event) => e.stopPropagation()}
       >
         <div class="flex items-center justify-between px-2 py-2 mb-2 border-b border-slate-700">
-          <span class="text-xs font-bold text-slate-500 uppercase tracking-widest"><Icon name="th-large" class="mr-1" /> Menu</span>
-          <button onClick={() => setSidebarOpen(false)} class="text-slate-400 hover:text-white p-1 transition lg:hidden" aria-label="Tutup menu"><Icon name="times" class="text-lg" /></button>
+          <span class="text-xs font-bold text-slate-500 uppercase tracking-widest"><Icon name="th-large" class="mr-1" /> {t("ui.menu")}</span>
+          <button onClick={() => setSidebarOpen(false)} class="text-slate-400 hover:text-white p-1 transition lg:hidden" aria-label={t("ui.close")}><Icon name="times" class="text-lg" /></button>
         </div>
         {TABS.map((tab) => (
           <button
@@ -174,9 +175,9 @@ export default function AdminPanel() {
                 ? 'bg-red-600 text-white shadow-md'
                 : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
             }`}
-            aria-label={tab.label}
+            aria-label={t(tab.labelKey)}
           >
-            <Icon name={tab.icon} class="w-5 text-center" /> <span>{tab.label}</span>
+            <Icon name={tab.icon} class="w-5 text-center" /> <span>{t(tab.labelKey)}</span>
           </button>
         ))}
         <div class="flex-1"></div>

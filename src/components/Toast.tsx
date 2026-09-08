@@ -24,6 +24,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import Icon from './ui/Icon';
 import { getOverlayRoot } from './ui/overlay-root';
+import { langStore, t } from '../store/i18n';
 
 export interface ToastMessage {
   id: number;
@@ -60,6 +61,7 @@ const TONES = {
 } as const;
 
 function ToastItem({ toast, paused }: { toast: ToastMessage; paused: boolean }) {
+  const _lang = useStore(langStore);
   const tone = TONES[toast.type];
   const [remaining, setRemaining] = useState(AUTO_DISMISS_MS);
   const lastTick = useRef(Date.now());
@@ -80,12 +82,12 @@ function ToastItem({ toast, paused }: { toast: ToastMessage; paused: boolean }) 
       class={`${tone.box} border-l-4 px-4 py-3 rounded-lg shadow-lg animate-slide-in flex items-center gap-3 text-white text-sm font-bold`}
     >
       <Icon name={tone.icon} />
-      <span class="flex-1">{toast.text}</span>
+      <span class="flex-1">{t(toast.text)}</span>
       <button
         type="button"
         onClick={() => dismissToast(toast.id)}
         class="-mr-1 p-1 rounded hover:bg-white/20 transition"
-        aria-label="Tutup notifikasi"
+        aria-label={t("ui.close")}
       >
         <Icon name="times" />
       </button>

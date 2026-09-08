@@ -4,10 +4,11 @@
  * Steps: Identitas → Medis & Wawancara → Riwayat → Keluarga → Dokumen
  */
 import { useState, useEffect } from 'preact/hooks';
+import { useStore } from '@nanostores/preact';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { validate, kandidatLoginSchema, waSchema, emailSchema } from '../../lib/schemas';
-import { t } from '../../store/i18n';
+import { t, langStore, toggleLang } from '../../store/i18n';
 import { getEndpoint } from "../../lib/apiEndpoint";
 import Icon from '../ui/Icon';
 import { uploadMany, UploadCollectionError } from '../../lib/cloudinary';
@@ -53,16 +54,16 @@ const EMPTY: MasterData = {
 };
 
 const STEPS = [
-  { icon: 'fa-user', label: 'Data Diri' },
-  { icon: 'fa-heartbeat', label: 'Medis & Wawancara' },
-  { icon: 'fa-briefcase', label: 'Riwayat' },
-  { icon: 'fa-users', label: 'Keluarga' },
-  { icon: 'fa-file-alt', label: 'Dokumen' },
+  { icon: 'fa-user', key: 'master.step_personal' },
+  { icon: 'fa-heartbeat', key: 'master.step_medical' },
+  { icon: 'fa-briefcase', key: 'master.step_history' },
+  { icon: 'fa-users', key: 'master.step_family' },
+  { icon: 'fa-file-alt', key: 'master.step_documents' },
 ];
 
 export default function MasterFullForm() {
+  const lang = useStore(langStore);
   const [step, setStep] = useState(1);
-  const [formLang, setFormLang] = useState<'id'|'jp'>('id');
   const [data, setData] = useState<MasterData>({ ...EMPTY });
   const [eduList, setEduList] = useState<EduRecord[]>([{ jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', alamat:'' }]);
   const [jobList, setJobList] = useState<JobRecord[]>([{ perusahaan:'', jabatan:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'' }]);
@@ -256,15 +257,15 @@ export default function MasterFullForm() {
         <div class="bg-[#0b1220] border border-sky-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
           <div class="text-center mb-4">
             <div class="text-2xl mb-1"><Icon name="lock" class="text-sky-400" /></div>
-            <div class="font-bold text-white text-sm">Verifikasi Akun Kandidat</div>
-            <div class="text-slate-400 text-xs mt-1">Form terhubung ke WA <span class="text-sky-400 font-bold">{gateWa}</span></div>
-            <div class="text-slate-500 text-[11px] mt-1">Masukkan password akun kandidat Anda untuk mengisi / memperbarui data.</div>
+            <div class="font-bold text-white text-sm">{t("ai_cv.verify_account")}</div>
+            <div class="text-slate-400 text-xs mt-1">{t("form.connected_wa")} <span class="text-sky-400 font-bold">{gateWa}</span></div>
+            <div class="text-slate-500 text-[11px] mt-1">{t("form.enter_password_desc")}</div>
           </div>
           <label class="label">{t("form.mf_password")}</label>
           <input type="password" class="input" value={gatePass} placeholder="••••••••"
             onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
-          <button onClick={gateLogin} class="w-full mt-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl py-2.5 text-sm font-bold">Masuk</button>
+          <button onClick={gateLogin} class="w-full mt-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl py-2.5 text-sm font-bold">{t("login.btn_masuk")}</button>
           {gateMsg && <div class="text-rose-400 text-xs text-center mt-2">{gateMsg}</div>}
         </div>
       </div>
@@ -282,9 +283,9 @@ export default function MasterFullForm() {
           <div class="text-2xl font-black mt-2 uppercase" style={{ color: '#38bdf8' }}>ASJ DOSSIER</div>
           <div class="text-[11px] mt-1" style={{ color: '#cbd5e1', letterSpacing: 2 }}>MASTER DATABASE SYSTEM</div>
         </div>
-        <button onClick={() => setFormLang(l => l === 'id' ? 'jp' : 'id')}
+        <button onClick={() => toggleLang()}
           class="absolute top-3 right-3 z-10 px-3 py-1.5 bg-sky-600/80 hover:bg-sky-500 text-white rounded-full text-[11px] font-bold shadow-lg border border-sky-400/40 transition">
-          <Icon name="language" class="mr-1" /><span>{formLang === 'id' ? 'JP' : 'ID'}</span>
+          <Icon name="language" class="mr-1" /><span>{lang === 'id' ? 'ID' : 'JP'}</span>
         </button>
       </div>
 
@@ -303,7 +304,7 @@ export default function MasterFullForm() {
                     style={{ border: done ? '2px solid #0284c7' : isActive ? '2px solid #38bdf8' : '' }}>
                     <Icon name={s.icon} />
                   </div>
-                  <div class={`text-[9px] font-extrabold text-center transition ${isActive ? 'text-[#38bdf8]' : done ? 'text-[#0284c7]' : 'text-[#64748b]'}`}>{s.label}</div>
+                  <div class={`text-[9px] font-extrabold text-center transition ${isActive ? 'text-[#38bdf8]' : done ? 'text-[#0284c7]' : 'text-[#64748b]'}`}>{t(s.key)}</div>
                 </div>
               );
             })}
@@ -313,7 +314,7 @@ export default function MasterFullForm() {
           {step === 1 && (
             <div class="animate-[fadeIn_.4s_ease]">
               <div class="bg-sky-900/20 border border-sky-500/30 p-3 rounded-xl mb-4 text-xs text-sky-400 font-bold">
-                <Icon name="info-circle" class="mr-1" /> Form terhubung ke WA: <span>{data.wa || gateWa}</span>
+                <Icon name="info-circle" class="mr-1" /> {t("form.connected_wa")}: <span>{data.wa || gateWa}</span>
               </div>
               <div class="section-title">Identitas Dasar</div>
               <F label={t("form.mf_nama")} k="nama" />

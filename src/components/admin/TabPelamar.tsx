@@ -23,12 +23,12 @@ import { normalizeWaInput } from '../../lib/schemas';
 
 import type { Kandidat } from "../../store/adminStore";
 import type { WaTemplate } from '../../types/api';
-import { t } from '../../store/i18n';
+import { t, langStore } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
 
 export default function TabPelamar() {
-                        
+  const _lang = useStore(langStore);
   useEffect(() => { fetchKandidatFromAPI(); }, []);
 
   // Refresh daftar setelah evaluasi kandidat (catatan/VIP) disimpan dari
@@ -104,7 +104,7 @@ export default function TabPelamar() {
     <div>
       {/* Header with buttons */}
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-sky-900/50 pb-4 mb-4 gap-4">
-        <h2 class="text-sky-400 font-bold text-lg"><Icon name="users" class="mr-2" /> Database Pelamar</h2>
+        <h2 class="text-sky-400 font-bold text-lg"><Icon name="users" class="mr-2" /> {t('admin.candidate_database')}</h2>
         <div class="flex flex-wrap gap-3 w-full md:w-auto">
           <div class="relative flex-1 md:w-64">
             <Icon name="search" class="absolute left-3 top-2.5 text-slate-300 text-sm" />
@@ -112,39 +112,39 @@ export default function TabPelamar() {
               placeholder={t("pelamar.placeholder_search")}
               class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition" />
           </div>
-          <button onClick={() => openInputModal()} class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><Icon name="user-plus" class="mr-1" /> Input Manual</button>
+          <button onClick={() => openInputModal()} class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><Icon name="user-plus" class="mr-1" /> {t('admin.input_manual')}</button>
           <button onClick={() => toggleSimpleView()} class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap">
-            <Icon name={simpleView ? 'table-list' : 'table-cells-large'} class="mr-1" /> {simpleView ? 'Tampilan Lengkap' : 'Tampilan Sederhana'}
+            <Icon name={simpleView ? 'table-list' : 'table-cells-large'} class="mr-1" /> {simpleView ? t('admin.view_full') : t('admin.view_simple')}
           </button>
-          <button onClick={exportCsv} class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="file-csv" class="mr-1" /> Export CSV</button>
+          <button onClick={exportCsv} class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="file-csv" class="mr-1" /> {t('admin.export_csv')}</button>
           <button onClick={() => openReportModal()} class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="chart-bar" class="mr-1" /> {t('admin.monthly_report')}</button>
         </div>
       </div>
 
       {/* Filters */}
       <div class="flex flex-wrap gap-3 mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-        <div class="flex items-center gap-2 text-sky-400 font-bold text-sm mr-2"><Icon name="filter" /> Filter:</div>
+        <div class="flex items-center gap-2 text-sky-400 font-bold text-sm mr-2"><Icon name="filter" /> {t('admin.filter')}</div>
         <select value={filterGender} onChange={(e) => { setAdminFilterGender((e.target as HTMLSelectElement).value); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
-          <option value="all">Semua Gender</option><option value="l">Laki-laki (L)</option><option value="p">Perempuan (P)</option>
+          <option value="all">{t('share.gen_all')}</option><option value="l">{t('share.gen_l')}</option><option value="p">{t('share.gen_p')}</option>
         </select>
         <select value={filterAge} onChange={(e) => { setAdminFilterAge((e.target as HTMLSelectElement).value); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
-          <option value="all">Semua Usia</option><option value="under20">&lt; 20</option><option value="20to25">20 - 25</option><option value="over25">&gt; 25</option>
+          <option value="all">{t('share.age_all')}</option><option value="under20">&lt; 20</option><option value="20to25">20 - 25</option><option value="over25">&gt; 25</option>
         </select>
         <select value={filterJft} onChange={(e) => { setAdminFilterJft((e.target as HTMLSelectElement).value); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
-          <option value="all">Semua Level JFT</option><option value="a2">A2 / N4</option><option value="b1">B1 / N3</option>
+          <option value="all">{t('share.jft_all')}</option><option value="a2">A2 / N4</option><option value="b1">B1 / N3</option>
         </select>
       </div>
 
       {loading ? (
-        <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-sky-400" /><p class="text-slate-500 mt-2 text-sm">Memuat data pelamar...</p></div>
+        <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-sky-400" /><p class="text-slate-500 mt-2 text-sm">{t('admin.loading_candidates')}</p></div>
       ) : simpleView ? (
         /* Simple View — compact list */
         <div class="space-y-2">
           {shown.length === 0 ? (
-            <p class="text-slate-500 text-sm text-center py-8">Belum ada pelamar.</p>
+            <p class="text-slate-500 text-sm text-center py-8">{t('admin.no_candidates')}</p>
           ) : shown.map((k) => (
             <div key={k.id || k.wa} class="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50 hover:bg-white/5 transition">
               <div class="flex items-center gap-3">
@@ -165,17 +165,17 @@ export default function TabPelamar() {
           <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
             <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
               <tr>
-                <th scope="col" class="p-4">ID Kandidat</th>
-                <th scope="col" class="p-4">Nama Lengkap</th>
-                <th scope="col" class="p-4">Job Dilamar</th>
-                <th scope="col" class="p-4">Tahapan & Status</th>
-                <th scope="col" class="p-4">Catatan Admin</th>
-                <th scope="col" class="p-4 text-center">Aksi</th>
+                <th scope="col" class="p-4">{t('table.candidate_id')}</th>
+                <th scope="col" class="p-4">{t('table.full_name')}</th>
+                <th scope="col" class="p-4">{t('table.job_applied')}</th>
+                <th scope="col" class="p-4">{t('table.stage_and_status')}</th>
+                <th scope="col" class="p-4">{t('table.admin_notes')}</th>
+                <th scope="col" class="p-4 text-center">{t('table.action')}</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-800">
               {shown.length === 0 ? (
-                <tr><td colSpan={6} class="p-6 text-center text-slate-500">Belum ada pelamar.</td></tr>
+                <tr><td colSpan={6} class="p-6 text-center text-slate-500">{t('admin.no_candidates')}</td></tr>
               ) : shown.map((k) => (
                 <tr key={k.id || k.wa} class="hover:bg-white/5 transition-all">
                   <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.id || k.wa || '-'}</td>
@@ -190,7 +190,7 @@ export default function TabPelamar() {
                     <div class="flex flex-wrap justify-center gap-1">
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
                       <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> Edit</button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> AI CV</button>
                       <button title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
                     </div>
@@ -202,9 +202,9 @@ export default function TabPelamar() {
         </div>
       )}
       <div class="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-sky-900/50 text-sm">
-        <span class="text-slate-300 font-bold text-xs">{filtered.length} dari {totalAll} kandidat</span>
+        <span class="text-slate-300 font-bold text-xs">{filtered.length} {t('admin.of')} {totalAll} {t('admin.candidates')}</span>
         {shown.length < filtered.length && (
-          <button onClick={() => nextPage()} class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition shadow-lg"><Icon name="chevron-down" class="mr-1" /> Muat Lebih Banyak</button>
+          <button onClick={() => nextPage()} class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition shadow-lg"><Icon name="chevron-down" class="mr-1" /> {t('button.more')}</button>
         )}
       </div>
 

@@ -16,7 +16,18 @@ import { uploadMany } from '../../lib/cloudinary';
 import { authStore, type AuthState } from '../../store/authReactive';
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
-vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
+vi.mock('../../store/i18n', async () => {
+  const { atom } = await import('nanostores');
+  return {
+    t: (k: string) => {
+      if (k === 'ai_cv.verify_account') return 'Verifikasi Akun Kandidat';
+      if (k === 'login.btn_masuk') return 'Masuk';
+      return k;
+    },
+    langStore: atom<'id' | 'jp'>('id'),
+    toggleLang: vi.fn(),
+  };
+});
 vi.mock('../../lib/cloudinary', () => ({
   uploadToCloudinary: vi.fn(async (f: File) => 'https://cloud.test/' + (f && f.name || 'doc')),
   uploadMany: vi.fn(async (files: Record<string, File | null>, map: Record<string, string>) => {

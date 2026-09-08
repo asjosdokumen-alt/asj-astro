@@ -9,7 +9,7 @@ import { useStore } from '@nanostores/preact';
 import { authStore, loginAsAdmin, loginAsKandidat } from '../store/authReactive';
 import { showToast } from './Toast';
 import { validate, normalizeWaInput, registerSchema, kandidatLoginSchema, adminMasterPinSchema, adminPersonalPinSchema } from '../lib/schemas';
-import { t } from '../store/i18n';
+import { t, langStore } from '../store/i18n';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
 import { getEndpoint } from '../lib/apiEndpoint';
@@ -24,6 +24,7 @@ interface Props {
 }
 
 export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
+  const _lang = useStore(langStore);
   const $user = useStore(authStore);
   const [adminStep, setAdminStep] = useState<AdminStep>(0);
   const [selectedAdmin, setSelectedAdmin] = useState("");
@@ -199,7 +200,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {mode === "login" && adminStep === 0 && (
           <div>
             <h3 class="text-xl font-bold text-sky-400 mb-6 border-b border-sky-900/50 pb-4 text-center">
-              <Icon name="sign-in-alt" class="mr-2" /> Login Pelamar
+              <Icon name="sign-in-alt" class="mr-2" /> {t("login.title_kandidat")}
             </h3>
             <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.wa_label')}</label>
             <input type="tel" value={logWa} onInput={(e) => setLogWa((e.target as HTMLInputElement).value)}

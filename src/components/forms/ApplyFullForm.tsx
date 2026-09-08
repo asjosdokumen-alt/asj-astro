@@ -3,6 +3,7 @@
  * Source: legacy/apply-full.html (1:1 match)
  */
 import { useState, useRef, useEffect } from 'preact/hooks';
+import { useStore } from '@nanostores/preact';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
@@ -10,7 +11,7 @@ import { validate, registerSchema, emailSchema } from '../../lib/schemas';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { validateFile } from '../../lib/uploadGuard';
 import { getEndpoint } from "../../lib/apiEndpoint";
-import { t } from '../../store/i18n';
+import { t, langStore } from '../../store/i18n';
 import Icon from '../ui/Icon';
 import { requiredDocsFromJob } from '../../lib/applyDocs';
 
@@ -30,6 +31,7 @@ const INIT_FORM: FormData = {
 
 
 export default function ApplyFullForm() {
+  const _lang = useStore(langStore);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormData>(INIT_FORM);
   const [uploads, setUploads] = useState<Record<string, UploadFile>>({});

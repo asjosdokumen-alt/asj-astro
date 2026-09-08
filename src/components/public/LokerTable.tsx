@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import PamfletModal from "./PamfletModal";
-import { t } from '../../store/i18n';
+import { langStore, t } from '../../store/i18n';
 import { themeStore, toggleTheme } from '../../store/theme';
 import { jobTutupUntukLamar } from '../../lib/jobPhase';
 import { getPublicData } from '../../lib/publicData';
@@ -45,6 +45,7 @@ const COL_MIN_WIDTH = { JOB: "180px", REQ: "140px" } as const;
 
 
 export default function LokerTable() {
+  const _lang = useStore(langStore);
   // Single source of truth — see store/theme.ts. Local state here used to
   // drift out of sync with FormToolbar's copy of the same toggle.
   const isDark = useStore(themeStore) !== "light";
