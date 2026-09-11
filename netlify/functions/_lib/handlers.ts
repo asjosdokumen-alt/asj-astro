@@ -157,7 +157,15 @@ async function handleAction(action: string, payload: unknown[], sessionToken: st
     release(admission.tier);
     // Moved into `finally`: this previously ran only on the dispatch path, so
     // rate-limit and admission counters were collected but never emitted.
-    metrics.flushMetrics();
+    //
+    // Phase C item 11: the returned payload is parked on the request context so
+    // the wrapper can hand it to the external sink after the response is built.
+    // It cannot be read back later — flushMetrics() clears its collections here.
+    const flushed = metrics.flushMetrics();
+    if (flushed) {
+      const store = asyncLocalStorage.getStore();
+      if (store) store.flushedMetrics = flushed;
+    }
   }
 }
 

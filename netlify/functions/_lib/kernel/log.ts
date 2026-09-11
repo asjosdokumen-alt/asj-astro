@@ -22,9 +22,12 @@
 
 import { createHash } from 'node:crypto';
 import { AsyncLocalStorage } from 'node:async_hooks';
+// Type-only, so this is erased at compile time and introduces no runtime edge
+// from log (which nearly everything imports) to metrics.
+import type { MetricsPayload } from './metrics';
 
 // ── Request context (AsyncLocalStorage) ──────────────────────────────────────
-interface LogContext {
+export interface LogContext {
   requestId: string;
   action?: string;
   surface?: string;
@@ -37,6 +40,24 @@ interface LogContext {
    * See kernel/deadline.ts for why occupancy, not concurrency, is the bound.
    */
   deadlineAt?: number;
+  /**
+   * The metrics payload the dispatcher flushed for this invocation, set by
+   * handlers.ts in its `finally` and read by the wrapper afterwards.
+   *
+   * WHY IT RIDES ON THE CONTEXT RATHER THAN BEING RETURNED
+   * -----------------------------------------------------
+   * handleAction has six return paths (ping, shed, rate-limited, dispatch
+   * success, dispatch failure, thrown) and the flush happens in `finally`, after
+   * the return value is already fixed. Returning the payload would mean
+   * restructuring all six into a single exit — a large, risky change to the
+   * hottest function in the codebase, to move one value.
+   *
+   * The context is the right place for the same reason deadlineAt is: the
+   * wrapper already owns it, both sides are in the same async scope, and it
+   * cannot drift between call sites. flushMetrics() CLEARS its collections, so
+   * this is also the only way the flushed payload can survive past the flush.
+   */
+  flushedMetrics?: MetricsPayload;
 }
 
 const asyncLocalStorage = new AsyncLocalStorage<LogContext>();

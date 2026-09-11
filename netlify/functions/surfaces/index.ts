@@ -118,6 +118,18 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   // ── Diagnostics ───────────────────────────────────────────────────────────
   getAppConfig:      () => import('./diagnostics').then(m => m.DIAGNOSTICS_ACTIONS),
   reportWebVital:    () => import('./diagnostics').then(m => m.DIAGNOSTICS_ACTIONS),
+  // getHealth is DELIBERATELY NOT registered here.
+  //
+  // Anything in this map is answerable by every entry point that reaches the
+  // router. getHealth is reachable from exactly one place — the /health entry
+  // point, behind a shared secret that fails closed — and adding it here would
+  // re-open it on bridge-links as well, where the only guard left would be the
+  // admin check inside contexts/diagnostics. The handler exists
+  // (handleGetHealth, re-exported by contexts/diagnostics) so the wiring is
+  // explicit and greppable; the omission here is the access control.
+  //
+  // If you are here to "fix" a missing-action error from a client: that client
+  // is not supposed to call it. See netlify/functions/health.js.
 
   // ── Docs ──────────────────────────────────────────────────────────────────
   shareData:                    () => import('./docs').then(m => m.DOCS_ACTIONS),

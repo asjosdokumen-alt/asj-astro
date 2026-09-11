@@ -37,6 +37,19 @@ const WHITELIST = new Set([
   'ASJ_ADMINS',
   'SENTRY_DSN',
   'FIREBASE_SERVICE_ACCOUNT',
+  // Phase C item 12. health.js reads this via process.env directly (it is
+  // deliberately not part of the request-handling graph), but it is whitelisted
+  // so local `netlify dev` can serve the gated /health report from .env.local —
+  // the endpoint is only testable if the token resolves in every context.
+  'HEALTH_TOKEN',
+  // Phase C item 11. The metrics sink is read via process.env in
+  // _lib/metrics-sink.ts and is intentionally NOT resolved through this loader:
+  // an unconfigured sink must be a no-op in every context, including ones where
+  // .env.local is present, and routing it through a file-backed fallback would
+  // make "unconfigured" depend on which machine it runs on. Whitelisted only so
+  // the names are documented in one place.
+  'METRICS_SINK_URL',
+  'METRICS_SINK_TOKEN',
 ]);
 
 // Nama scope pada tabel env Netlify yang ditempel. Nilai pada baris scope ini

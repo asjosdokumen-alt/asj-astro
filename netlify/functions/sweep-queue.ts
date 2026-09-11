@@ -28,6 +28,11 @@ import {
   claimJob, completeJob, failJob, recordJobResult, cleanupIdempotencyKeys,
 } from './_lib/kernel/job-queue';
 import { log } from './_lib/kernel/log';
+// Phase C item 11: this function never goes through a request wrapper, so it
+// exports its own metrics. Without this, the one component whose liveness you
+// most want to confirm — if the sweep stops, the queue silently fills — would
+// export nothing at all. See _lib/metrics-sink.ts sweepMetrics().
+import { exportMetrics, sweepMetrics } from './_lib/metrics-sink';
 import type { Job } from './_lib/kernel/job-queue';
 
 // ── Job type handlers ─────────────────────────────────────────────────────────
@@ -109,6 +114,12 @@ export const handler = async () => {
 
   const durationMs = Date.now() - startTime;
   log.info('sweep.complete', { processed, failed, cleaned, durationMs });
+
+  // Awaited here, unlike in the request wrappers: a scheduled function returns
+  // no body to a user, so the export adding latency costs nothing. It is also
+  // the only chance to send it — the instance is frozen the moment this returns.
+  // exportMetrics never rejects, so this cannot fail the sweep.
+  await exportMetrics(sweepMetrics({ processed, failed, cleaned, durationMs }));
 
   return {
     statusCode: 200,

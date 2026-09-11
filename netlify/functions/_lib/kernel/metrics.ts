@@ -77,6 +77,21 @@ export function gauge(name: string, value: number, labels?: Record<string, strin
 // ── Flush ────────────────────────────────────────────────────────────────────
 
 /**
+ * The shape of one flush payload.
+ *
+ * Named and exported because three places need to agree on it: the flusher that
+ * produces it, the request context that carries it to the sink, and the sink
+ * itself. It lives HERE rather than in metrics-sink.ts so that kernel/log.ts can
+ * type the context field without importing the sink — the sink imports log, and
+ * a reverse import would be a cycle.
+ */
+export interface MetricsPayload {
+  counters: Record<string, number>;
+  histograms: Record<string, { count: number; avg: number; p50: number; p95: number; max: number }>;
+  gauges: Record<string, number>;
+}
+
+/**
  * Build the flush payload WITHOUT clearing state.
  *
  * Extracted so the health endpoint (Phase C item 12) can read the same shape
@@ -84,11 +99,7 @@ export function gauge(name: string, value: number, labels?: Record<string, strin
  * Two independent formatters would drift, and the health view would then stop
  * describing what is actually shipped.
  */
-export function metricsSnapshot(): {
-  counters: Record<string, number>;
-  histograms: Record<string, { count: number; avg: number; p50: number; p95: number; max: number }>;
-  gauges: Record<string, number>;
-} {
+export function metricsSnapshot(): MetricsPayload {
   const counterObj: Record<string, number> = {};
   for (const [k, v] of counters) counterObj[k] = v;
 
@@ -127,17 +138,35 @@ export function metricsEmpty(): boolean {
  * caller can forward it to the external sink without re-serializing. Returning
  * it rather than re-reading module state matters: this function CLEARS the
  * collections, so a caller that tried to read afterwards would see nothing.
+ *
+ * THE SINK IS NOT CALLED FROM HERE
+ * --------------------------------
+ * §7.4 item 1 says to ship this payload to an external sink, and the obvious
+ * place would be right here. It is deliberately NOT done here, for two reasons:
+ *
+ *   1. ORDER. This runs in the dispatcher's `finally`, after the response is
+ *      determined. An `await` here would delay the response for a metric —
+ *      exactly backwards. The sink export is fired from the request wrapper
+ *      AFTER the response object exists, so a slow sink cannot add latency to
+ *      a user-visible request.
+ *   2. COUPLING. Every entry point imports metrics.ts; only the wrappers need
+ *      to know a sink exists. Keeping the network call out of the kernel's
+ *      hottest module also keeps this file dependency-free, which is what makes
+ *      it safe to import from anywhere.
+ *
+ * See _lib/metrics-sink.ts for the exporter.
  */
-export function flushMetrics(): {
-  counters: Record<string, number>;
-  histograms: Record<string, { count: number; avg: number; p50: number; p95: number; max: number }>;
-  gauges: Record<string, number>;
-} | null {
+export function flushMetrics(): MetricsPayload | null {
   if (metricsEmpty()) return null;
 
   const payload = metricsSnapshot();
 
-  log.info('metrics.flush', payload);
+  // Spread into a fresh literal rather than passing `payload` directly: the
+  // logger's field parameter is an index-signature record, and a named interface
+  // has no implicit index signature. Spreading is also the clearer intent here —
+  // the payload's three keys are being emitted as top-level log fields, not
+  // nested under a `payload` key.
+  log.info('metrics.flush', { ...payload });
 
   // Clear for next invocation
   counters.clear();

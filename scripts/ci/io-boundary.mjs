@@ -96,6 +96,20 @@ const ALLOWED = {
       'the shared breaker: an admin blast failing must not open the breaker that ' +
       'public job-board reads depend on. See the P0-P3 priority classes.',
   },
+  'netlify/functions/_lib/metrics-sink.ts': {
+    max: 1,
+    reason:
+      'The Phase C item 11 metrics exporter, and the one call that must NOT go ' +
+      'through kernel/http.ts. All four things the wrapper provides are actively ' +
+      'wrong here: (1) the receiver is NOT a product dependency, so counting its ' +
+      'failures toward the shared breaker would let a broken monitoring endpoint ' +
+      'open the breaker that public reads depend on; (2) it must never be ' +
+      'deadline-clamped DOWN — the request is already finished, and the export ' +
+      'has to complete or be dropped entirely, not truncated into a partial ' +
+      'payload; (3) bulkhead slots are scarce per-instance capacity for user ' +
+      'work; (4) a retry would duplicate samples. Bounded instead by its own ' +
+      'SINK_TIMEOUT_MS plus a skip when the request deadline is nearly spent.',
+  },
 };
 
 /** Recursively collect .ts files under a directory, excluding tests. */

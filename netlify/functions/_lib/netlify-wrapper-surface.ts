@@ -15,7 +15,9 @@
 
 import { randomUUID } from 'node:crypto';
 import { log, runWithContext } from './kernel/log';
+import type { LogContext } from './kernel/log';
 import { metrics } from './kernel/metrics';
+import { exportMetrics } from './metrics-sink';
 import { clientIp, sessionTokenFrom, corsHeaders, backpressureHeaders } from './kernel/request-helpers';
 import { codeToStatus } from './kernel/errors';
 import { DEFAULT_DEADLINE_MS, deadlineFrom } from './kernel/deadline';
@@ -174,9 +176,21 @@ export function makeSurfaceHandler(
     // the injected resolver. Only bridge-links (the catch-all) owns the router.
     const { handleAction } = await import('./handlers');
 
+    // Phase C item 11: read the payload the dispatcher parks on the context.
+    // Captured here rather than at export time because handleAction clears the
+    // metrics collections in its `finally`, so there is exactly one moment at
+    // which this value exists.
+    const reqContext: LogContext = {
+      requestId,
+      action: body.action,
+      idempotencyKey,
+      traceparent,
+      deadlineAt,
+    };
+
     let out: unknown;
     try {
-      out = await runWithContext({ requestId, action: body.action, idempotencyKey, traceparent, deadlineAt }, () =>
+      out = await runWithContext(reqContext, () =>
         handleAction(body.action ?? 'ping', body.payload || body.args, sessionTokenFrom(event, body) ?? '', {
           ip: clientIp(event) ?? undefined,
           resolve,
@@ -200,11 +214,23 @@ export function makeSurfaceHandler(
     // message-only failures keep the legacy 400; rate-limited stays 429; a shed
     // request carries code OVERLOADED and maps to 503.
     const statusCode = outcomeStatusCode(out);
-    return {
+    const response = {
       statusCode,
       headers: backpressureHeaders(baseHeaders, out),
       body: JSON.stringify(out),
     };
+
+    // Phase C item 11: ship this invocation's metrics to the external sink.
+    //
+    // HERE, and not inside metrics.flushMetrics(): the flush already happened in
+    // the dispatcher's `finally`, and it cleared the collections, so the payload
+    // had to be carried forward rather than re-read. It is also deliberately not
+    // awaited — the response is complete and the export must not add latency to
+    // it. exportMetrics() never rejects, so a floating promise cannot surface as
+    // an unhandled rejection.
+    void exportMetrics(reqContext.flushedMetrics ?? null);
+
+    return response;
   };
 }
 

@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { handleAction } from './handlers';
 import { runWithContext } from './kernel/log';
+import type { LogContext } from './kernel/log';
+import { exportMetrics } from './metrics-sink';
 import { clientIp, sessionTokenFrom, corsHeaders, backpressureHeaders } from './kernel/request-helpers';
 import { DEFAULT_DEADLINE_MS, deadlineFrom } from './kernel/deadline';
 // netlify-wrapper.js — factory handler Netlify standar.
@@ -62,9 +64,20 @@ function makeHandler() {
     // Phase B: same occupancy bound as the surface wrapper — see there for why.
     const deadlineAt = deadlineFrom(Date.now(), DEFAULT_DEADLINE_MS);
 
+    // Phase C item 11: the dispatcher parks the flushed metrics payload here so
+    // it can reach the external sink after the response is built. See
+    // kernel/log.ts LogContext.flushedMetrics for why it rides on the context.
+    const reqContext: LogContext = {
+      requestId,
+      action: body.action,
+      idempotencyKey,
+      traceparent,
+      deadlineAt,
+    };
+
     let out;
     try {
-      out = await runWithContext({ requestId, action: body.action, idempotencyKey, traceparent, deadlineAt }, () =>
+      out = await runWithContext(reqContext, () =>
         handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body) as string, {
           ip: clientIp(event) ?? undefined,
           // The catch-all is the one place the full router is reachable.
@@ -110,12 +123,17 @@ function makeHandler() {
           : rec.success === false
             ? 400
             : 200;
-    return {
+    const response = {
       statusCode,
       headers: backpressureHeaders(baseHeaders, out),
       body: JSON.stringify(out),
     };
+    // Phase C item 11: ship this invocation's metrics, after the response is
+    // fixed and without awaiting it. See netlify-wrapper-surface.ts for the
+    // full reasoning; the two wrappers must behave identically or the metrics
+    // would depend on which URL a client happened to hit.
+    void exportMetrics(reqContext.flushedMetrics ?? null);
+    return response;
   };
 }
-
 export { makeHandler };
