@@ -15,11 +15,23 @@
 // generation build). The file is CommonJS while the repo is type:module, so
 // it is loaded through the VM shim below — pure handler-level test, no
 // DB/network.
+//
+// LOKASI (dipindah 2026-09-11): file ini dulu tinggal di netlify/functions/
+// sebagai `share-data.test.ts`. Netlify men-scan SELURUH direktori functions
+// secara flat dan menganggap setiap file di dalamnya (termasuk *.test.ts)
+// sebagai satu function yang bisa di-deploy. Karena file ini meng-import
+// `vitest` — devDependency, dan `NODE_ENV=production` membuat Netlify
+// menjalankan `npm ci --omit=dev` — bundling gagal dengan
+// `Could not resolve "vitest"` dan SELURUH deploy berhenti.
+// Pelajarannya: TIDAK BOLEH ada *.test.ts langsung di netlify/functions/.
+// Test di subdirektori (contexts/, _lib/) aman karena Netlify hanya men-scan
+// direktori functions secara flat dan file itu ikut ke-bundle sebagai
+// included_files, bukan sebagai entry point.
 // ==========================================
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { GENERIC_ERROR_MESSAGE } from './_lib/kernel/errors';
+import { GENERIC_ERROR_MESSAGE } from '../netlify/functions/_lib/kernel/errors';
 
 const { mockHandle } = vi.hoisted(() => ({ mockHandle: vi.fn() }));
 
@@ -31,7 +43,10 @@ beforeEach(() => {
 
   // Evaluate netlify/functions/share-data.js in a CJS-style sandbox where
   // require('./_lib/handlers') resolves to our mock.
-  const src = readFileSync(new URL('./share-data.js', import.meta.url), 'utf-8');
+  const src = readFileSync(
+    new URL('../netlify/functions/share-data.js', import.meta.url),
+    'utf-8',
+  );
   const moduleObj = { exports: {} as Record<string, unknown> };
   const sandbox: Record<string, unknown> = {
     module: moduleObj,

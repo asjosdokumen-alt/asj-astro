@@ -22,8 +22,10 @@ describe('full build', () => {
     // Phase B (2026-09-11): +4 files — kernel/deadline.ts, kernel/admission.ts
     // and their test files. ts 198 -> 202, total 336 -> 340.
     // 2026-09-11 (later): +2 more — scripts/ci/io-boundary.mjs and
-    // scripts/lib/load-env.mjs. total 340 -> 342.
-    expect(r.stats.fileCount).toBe(342); // 202 ts + 78 tsx + 12 astro + 17 mjs + 5 cjs + 28 js
+    // scripts/lib/load-env.mjs. total 340 -> 342, then 342 -> 341 on
+    // 2026-09-11 when e2e/share-data.test.ts moved out of netlify/functions/
+    // (Netlify bundled it as a deployable function → `vitest` unresolvable).
+    expect(r.stats.fileCount).toBe(341); // 201 ts + 78 tsx + 12 astro + 17 mjs + 5 cjs + 28 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 
@@ -48,7 +50,11 @@ describe('full build', () => {
     // dangling refs got fixed, §13).
     // Two known indexer gaps, both TEST-FILE-ONLY as of 2026-09-05:
     //   (a) shorthand property assignments that reference lib globals —
-    //       `{ console, process }` in netlify/functions/share-data.test.ts:44-45
+    //       `{ console, process }` in the share-data handler test (moved
+    //       2026-09-11 from netlify/functions/share-data.test.ts to
+    //       e2e/share-data.test.ts — same file, same lines 44-45; it left the
+    //       functions dir because Netlify bundled it as a deployable function
+    //       and died on `Could not resolve "vitest"`)
     //   (b) ambient lib types used in test doubles — RequestInit (x3) and
     //       CanvasRenderingContext2D in *.test.tsx mocks
     // The production guarantee therefore stays strict (zero): no unresolved

@@ -34,7 +34,11 @@ export default defineConfig({
           environment: 'jsdom',
           pool: 'threads',
           include: ['src/**/*.test.{ts,tsx}', 'e2e/**/*.test.{ts,tsx}'],
-          exclude: ['node_modules/**', 'dist/**'],
+          // e2e/share-data.test.ts is a Node-only handler test (node:vm +
+          // node:fs readFileSync). It lives in e2e/ because Netlify would
+          // otherwise bundle it from netlify/functions/, but it must run in
+          // the 'backend' project — jsdom throws `URL must be of scheme file`.
+          exclude: ['node_modules/**', 'dist/**', 'e2e/share-data.test.ts'],
         },
       },
       {
@@ -42,7 +46,17 @@ export default defineConfig({
           name: 'backend',
           environment: 'node',
           pool: 'threads',
-          include: ['netlify/functions/**/*.test.ts', 'shared/**/*.test.ts'],
+          // e2e/*.test.ts ditambahkan 2026-09-11: share-data.test.ts DIPINDAH
+          // keluar dari netlify/functions/ (Netlify menganggap *.test.ts di
+          // sana sebagai deployable function → bundling gagal karena `vitest`
+          // tidak ada di produksi). Isinya handler-level, bukan browser, jadi
+          // harus di project 'node' ini — BUKAN di project frontend (jsdom):
+          // ia memakai node:vm + node:fs dan readFileSync ke source CJS.
+          include: [
+            'netlify/functions/**/*.test.ts',
+            'shared/**/*.test.ts',
+            'e2e/**/*.test.ts',
+          ],
           exclude: ['node_modules/**', 'dist/**', 'netlify/functions/.netlify-built/**'],
         },
       },
