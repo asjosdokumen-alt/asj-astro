@@ -281,7 +281,7 @@ export default function AiCvForm() {
 
   if (loginGate) {
     return (
-      <div class="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+      <div class="fixed inset-0 u-modal-shell z-50 bg-black/85 flex items-center justify-center p-4">
         <div class="bg-[#0b1220] border border-amber-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
           <div class="text-center mb-4">
             <div class="text-2xl mb-1 text-amber-400"><Icon name="lock" /></div>
@@ -327,7 +327,7 @@ export default function AiCvForm() {
           </div>
         </div>
 
-        <div ref={chatRef} class="flex-1 overflow-y-auto p-3 space-y-4 pb-16 md:pb-4">
+        <div ref={chatRef} class="flex-1 u-scroll-area p-3 space-y-4 pb-16 md:pb-4">
           {messages.map((msg, i) => (
             <div key={i} class={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} fade-in`}>
               {msg.role === 'assistant' && (
@@ -353,7 +353,7 @@ export default function AiCvForm() {
 
         {/* Suggestion Pills */}
         {showSuggestions && !sending && (
-          <div class="px-3 pb-2 flex gap-2 overflow-x-auto flex-nowrap scrollbar-hide">
+          <div class="px-3 pb-2 flex gap-2 u-scroll-x flex-nowrap scrollbar-hide">
             {SUGGESTIONS.map((s, i) => (
               <button key={i} onClick={() => handleSend(s)}
                 class="whitespace-nowrap px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs rounded-full transition-colors font-medium border border-slate-700 flex-shrink-0 shadow-sm">
@@ -377,7 +377,7 @@ export default function AiCvForm() {
       </div>
 
       {/* Form Panel */}
-      <main class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[65%] h-[calc(100vh-42px)] md:h-full overflow-y-auto bg-slate-950 p-3 md:p-6`}>
+      <main class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[65%] h-[calc(100vh-42px)] md:h-full u-scroll-area bg-slate-950 p-3 md:p-6`}>
         <div class="max-w-5xl mx-auto pb-20 w-full">
           <div class="flex justify-between items-center mb-4 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
             <div class="flex items-center gap-3">
@@ -427,7 +427,7 @@ export default function AiCvForm() {
             </div>
           </Section>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          <div class="u-grid-auto u-grid-auto--form gap-3 mb-3">
             <Section title={t("ai_cv.sec_fisik")} icon="fa-child" color="amber">
               <div class="grid grid-cols-3 gap-2">
                 <Field label={t("form.mf_tb")} id="tb" value={cv.tb} center readonly />
@@ -465,7 +465,7 @@ export default function AiCvForm() {
 
           <Section title={t("ai_cv.sec_jiko")} icon="fa-comments" color="purple" borderLeft>
             <div class="mb-2"><Field label={t("cv.field_riwayat_jp")} id="riwayatjepang" value={cv.riwayatjepang} readonly span={1} /></div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="u-grid-auto u-grid-auto--form gap-3">
               <div class="space-y-2">
                 <TextAreaPair label={t("cv.field_promo_diri")} idId="promo_id" idJp="promo_jp" valueId={cv.promo_id} valueJp={cv.promo_jp} onChange={updateCv} />
                 <TextAreaPair label={t("cv.field_kelebihan")} idId="lebih_id" idJp="lebih_jp" valueId={cv.lebih_id} valueJp={cv.lebih_jp} onChange={updateCv} />
@@ -488,7 +488,7 @@ export default function AiCvForm() {
             </div>
           </Section>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+          <div class="u-grid-auto u-grid-auto--cards gap-3 mb-3">
             <Section title={t("ai_cv.sec_pendidikan")} icon="fa-graduation-cap" color="emerald">
               <div class="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700 mb-2">
                 <Field label={t("cv.field_bhs_jepang")} id="bhs_jepang" value={cv.bhs_jepang} readonly />
@@ -506,7 +506,7 @@ export default function AiCvForm() {
           </div>
 
           <Section title={t("ai_cv.sec_kenalan")} icon="fa-user-friends" color="pink">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div class="u-grid-auto u-grid-auto--dense gap-2">
               <Field label={t("cv.field_kenalan_nama_id")} id="kenalan_nama_id" value={cv.kenalan_nama_id} readonly />
               <Field label={t("cv.field_kenalan_nama_jp")} id="kenalan_nama_jp" value={cv.kenalan_nama_jp} jp readonly />
               <Field label={t("cv.field_kenalan_hub_id")} id="kenalan_hub_id" value={cv.kenalan_hub_id} readonly />
@@ -521,12 +521,12 @@ export default function AiCvForm() {
             </div>
           </Section>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+          <div class="u-grid-auto u-grid-auto--cards gap-3 mb-3">
             <UploadRow type="foto" label={t("cv.upload_foto")} icon="fa-camera" bg="bg-sky-600" accept="image/*" status={docStatus['foto']} onUpload={handleDocUpload} />
             <UploadRow type="jft" label={t("cv.upload_jft")} icon="fa-file-pdf" bg="bg-amber-600" accept=".pdf" status={docStatus['jft']} onUpload={handleDocUpload} />
             <UploadRow type="ssw" label={t("cv.upload_ssw")} icon="fa-file-signature" bg="bg-emerald-600" accept=".pdf" status={docStatus['ssw']} onUpload={handleDocUpload} />
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="u-grid-auto u-grid-auto--cards gap-3">
             <UploadRow type="ktp" label={t("cv.upload_ktp")} icon="fa-id-card" bg="bg-rose-600" accept=".pdf,image/*" status={docStatus['ktp']} onUpload={handleDocUpload} />
             <UploadRow type="kk" label={t("cv.upload_kk")} icon="fa-users" bg="bg-orange-600" accept=".pdf,image/*" status={docStatus['kk']} onUpload={handleDocUpload} />
             <UploadRow type="ijazahSd" label={t("cv.upload_ijazah_sd")} icon="fa-graduation-cap" bg="bg-violet-600" accept=".pdf" status={docStatus['ijazahSd']} onUpload={handleDocUpload} />

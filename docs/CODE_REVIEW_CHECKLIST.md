@@ -43,7 +43,7 @@ request a synchronous walkthrough instead of an async line-by-line read.
 - [ ] Timestamps compared as epoch millis, not as strings
 
 **Timeouts and budgets**
-- [ ] Worst-case latency fits the platform budget (Netlify sync = 10 s)
+- [ ] Worst-case latency fits the request deadline (12 s — `kernel/deadline.ts`). The Netlify sync ceiling is 60 s, but it is not a budget to spend
 - [ ] Every outbound call has a timeout
 - [ ] Retry counts and backoff are bounded; mutations opt **in** to retry
 - [ ] No unbounded recursion, including via logging or error handling

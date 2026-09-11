@@ -184,7 +184,7 @@ export default function TabDbJob() {
       </div>
 
       <div class="flex flex-col gap-3 mb-5 bg-black/30 p-4 rounded-lg border border-purple-900/30 text-sm">
-        <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1">
+        <div class="flex items-center gap-2 u-scroll-x whitespace-nowrap pb-1">
           <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest"><Icon name="sort-amount-down" class="mr-1" /> {t('admin.sort')}</span>
           {[
             {id: 'TERBARU', l: t('admin.sort_newest')},
@@ -199,7 +199,7 @@ export default function TabDbJob() {
         </div>
         {/* Chip filter bidang (kategori) — parity filter-bidang-container */}
         {catOptions.length > 0 && (
-          <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 custom-scrollbar">
+          <div class="flex items-center gap-2 u-scroll-x whitespace-nowrap pb-1 custom-scrollbar">
             <button onClick={() => setFBidang('ALL')}
               class={'px-3 py-1 rounded-full font-bold transition text-xs ' + (fBidang === 'ALL' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
               {t('public.all')}
@@ -214,7 +214,7 @@ export default function TabDbJob() {
         )}
         {/* Chip filter tahapan — parity filter-tahapan-container */}
         {tahapOptions.length > 0 && (
-          <div class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 custom-scrollbar">
+          <div class="flex items-center gap-2 u-scroll-x whitespace-nowrap pb-1 custom-scrollbar">
             <button onClick={() => setFTahapan('ALL')}
               class={'px-3 py-1 rounded-full font-bold transition text-xs ' + (fTahapan === 'ALL' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
               {t('public.all')}
@@ -232,7 +232,7 @@ export default function TabDbJob() {
       {loading ? (
         <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-purple-400" /><p class="text-slate-500 mt-2 text-sm">{t('ui.loading')}</p></div>
       ) : (
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <div class="u-scroll-x rounded-xl border border-slate-800">
           <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
             <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
               <tr>
@@ -260,7 +260,7 @@ export default function TabDbJob() {
                     </div>
                   </td>
                   <td class="p-4 text-center cursor-pointer group" onClick={() => setListJobCode(db.code)}>
-                    <div class="inline-block px-4 py-1.5 bg-sky-900/30 group-hover:bg-sky-600 rounded-lg transition-all">
+                    <div class="inline-block px-4 py-1.5 bg-sky-900/30 group-hover:bg-sky-600 rounded-lg transition-colors">
                       <span class="text-sky-400 group-hover:text-white font-bold text-lg">{countMap[db.code] || 0}</span>
                     </div>
                   </td>

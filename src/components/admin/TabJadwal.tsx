@@ -50,7 +50,7 @@ export default function TabJadwal() {
     </div>
 
     {showForm && <div class='bg-black/40 border border-slate-700 rounded-xl p-5 mb-5 shadow-inner'>
-      <form onSubmit={handleSubmit} class='grid grid-cols-1 md:grid-cols-2 gap-4'>
+      <form onSubmit={handleSubmit} class='u-grid-auto u-grid-auto--form gap-4'>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>NAMA AGENDA</label><input type='text' value={nama} onInput={(e)=>setNama((e.target as HTMLInputElement).value)} required class={ic} /></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>ID LOKER</label><input type='text' value={loker} onInput={(e)=>setLoker((e.target as HTMLInputElement).value)} placeholder='UMUM / ASJ...' class={ic} /></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>WAKTU (TGL & JAM)</label><input type='datetime-local' value={waktu} onInput={(e)=>setWaktu((e.target as HTMLInputElement).value)} required class={ic} /></div>

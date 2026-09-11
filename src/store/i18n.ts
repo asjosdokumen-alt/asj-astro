@@ -1266,6 +1266,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "share.select": "Pilih",
     "share.wa_closing": "Mohon tindak lanjutnya. Terima kasih.",
     "share.wa_greet": "Halo Admin ASJ, kami tertarik dengan kandidat berikut untuk Job",
+    "ui.select_cv_template": "PILIH TEMPLATE CV",
+    "ui.generating_cv": "Sedang generate CV...",
+    "button.pilih_template_cv": "Pilih Template CV",
   },
   jp: {} as Record<string, string>, // P9: lazy-loaded from i18n-jp.ts
 

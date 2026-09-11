@@ -50,7 +50,7 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
-    <div class="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+    <div class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
       <div class="bg-slate-900 border border-emerald-500/50 p-6 rounded-[2rem] w-full max-w-md shadow-2xl">
         <div class="flex items-center justify-between mb-5">
           <h3 class="text-xl font-bold text-emerald-400">

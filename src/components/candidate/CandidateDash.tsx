@@ -11,6 +11,7 @@ import ChangePasswordModal from '../ChangePasswordModal';
 import CvMiniModal from '../CvMiniModal';
 import InterviewSimulatorModal, { canAccessInterview } from './InterviewSimulatorModal';
 import RirekishoBuilder from '../admin/RirekishoBuilder';
+import CvTemplateSelector from '../CvTemplateSelector';
 import EsignNaiteiModal, { allowedTahapanEsign } from '../EsignNaiteiModal';
 import PemberkasanModal from '../admin/PemberkasanModal';
 import { uploadBerkasToStorage } from "../../lib/uploadBerkas";
@@ -109,6 +110,7 @@ export default function CandidateDash() {
   const [showESign, setShowESign] = useState(false);
   const [showPemberkasan, setShowPemberkasan] = useState(false);
   const [showRirekisho, setShowRirekisho] = useState(false);
+const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
   const [showInterview, setShowInterview] = useState(false);
   const [selectedLoker, setSelectedLoker] = useState<string | null>(null);
 
@@ -346,14 +348,14 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                     ))}
                   </div>
                 )}
-                <div class="space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                <div class="space-y-3 max-h-[300px] u-scroll-area custom-scrollbar pr-2">
                   {sortedRiwayat.length === 0 ? (
                     <p class="text-slate-500 text-sm text-center py-4">{t('ui.not_applied_general')}</p>
                   ) : sortedRiwayat.map((r, i) => {
                     const stepIdx = tahapanStepIndex(r.tahapan || r.status);
                     const progressPct = Math.round(((stepIdx + 1) / TAHAPAN_STEPS.length) * 100);
                     return (
-                      <div key={i} class="flex flex-col p-4 rounded-2xl border border-slate-700/50 bg-black/60 hover:bg-black/80 transition-all shadow-lg mb-3 overflow-hidden">
+                      <div key={i} class="u-cv-auto u-cv-auto--card flex flex-col p-4 rounded-2xl border border-slate-700/50 bg-black/60 hover:bg-black/80 transition-colors shadow-lg mb-3 overflow-hidden">
                         <div class="flex flex-col sm:flex-row justify-between sm:items-start gap-3 mb-1">
                           <div class="min-w-0">
                             <div class="text-sm font-black text-white tracking-wide"><Icon name="building" class="text-slate-500 mr-2" />{r.jobCode || '-'} <span class="text-[9px] px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded ml-2 font-normal">{(r.tanggal || '').substring(0, 10)}</span></div>
@@ -370,7 +372,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                             <span class="text-[10px] font-black text-emerald-400"><Icon name="map-pin" /> {TAHAPAN_STEPS[stepIdx] || r.tahapan}</span>
                           </div>
                           <div class="w-full bg-slate-800 rounded-full h-1.5 border border-slate-700/50">
-                            <div class="bg-gradient-to-r from-emerald-600 to-sky-500 h-1.5 rounded-full transition-all duration-1000" style={`width:${progressPct}%`}></div>
+                            <div class="bg-gradient-to-r from-emerald-600 to-sky-500 h-1.5 rounded-full transition-[width] duration-1000" style={`width:${progressPct}%`}></div>
                           </div>
                           <div class="flex flex-wrap justify-between gap-x-2 gap-y-1 mt-1.5">
                             {TAHAPAN_STEPS.map((nm, si) => {
@@ -387,14 +389,15 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               </div>
             </div>
             {/* Action buttons grid */}
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-5">
+            <div class="u-grid-auto u-grid-auto--cards gap-3 mt-5">
               <button onClick={() => setShowCvMiniModal(true)} class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.5)] hover:-translate-y-1 transition"><Icon name="user-edit" class="mr-1.5" /> {t('ui.update_cv_mini')}</button>
               <button onClick={openInterview} class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition"><Icon name="microphone-alt" class="mr-1.5" /> {t('ui.interview_practice')}</button>
               <button onClick={openEsign} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><Icon name="signature" class="mr-1.5" /> {t('ui.esign_naitei')}</button>
               <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="robot" class="mr-1.5" /> {t('ui.ai_cv_assistant')}</a>
               <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="clipboard-list" class="mr-1.5 text-sky-400" /> {t('ui.master_full_form')}</a>
               
-                            <button onClick={() => setShowRirekisho(true)} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-red-600" /> {t('candidate.btn_preview_cv')}</button>
+                            <button onClick={() => setShowCvTemplateSelector(true)} class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-sky-400" /> {t('button.pilih_template_cv')}</button>
+<button onClick={() => setShowRirekisho(true)} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-red-600" /> {t('candidate.btn_preview_cv')}</button>
               <button onClick={() => setShowPasswordModal(true)} class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="key" class="mr-1.5" /> {t('ui.change_password')}</button>
             </div>
           </div>
@@ -457,7 +460,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               <div class="flex flex-wrap items-center gap-2 mb-4">
                 <span class="text-xs font-bold text-white">{data.berkasList.filter(b => b.done).length}/{data.berkasTotal}{t('ui.doc_count_suffix')}</span>
               </div>
-              <div class="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-1">
+              <div class="grid grid-cols-2 gap-1.5 max-h-44 u-scroll-area custom-scrollbar pr-1">
                 {data.berkasList.map((b, i) => (
                   <div key={i} class={`flex items-center gap-2 text-xs px-2 py-1 rounded ${b.done ? 'text-emerald-400' : 'text-slate-500'}`}>
                     <Icon name={b.done ? 'check-circle' : 'circle'} /> {t(b.label)}
@@ -478,7 +481,8 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
       {/* ── Modals ── */}
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
       {showCvMiniModal && <CvMiniModal onClose={() => setShowCvMiniModal(false)} prefill={data.cvmini || undefined} />}
-      {showRirekisho && <RirekishoBuilder waTarget={user?.wa || data.wa} isOpen={showRirekisho} onClose={() => setShowRirekisho(false)} fotoFallback={data.pasPhoto || undefined} />}
+      {showCvTemplateSelector && <CvTemplateSelector waTarget={user?.wa || data.wa} isAdmin={false} onClose={() => setShowCvTemplateSelector(false)} onOpenRirekisho={() => { setShowCvTemplateSelector(false); setShowRirekisho(true); }} />}
+{showRirekisho && <RirekishoBuilder waTarget={user?.wa || data.wa} isOpen={showRirekisho} onClose={() => setShowRirekisho(false)} fotoFallback={data.pasPhoto || undefined} />}
       {showESign && <EsignNaiteiModal isOpen={showESign} wa={user?.wa || ""} onClose={() => setShowESign(false)} />}
       {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={user?.wa || ""} namaTarget={user?.name || ""} candidate={data ? { tahapan: data.tahapan, berkas: data.berkas || {}, bio: data.bio || {} } : null} />}
       {showInterview && data && (
@@ -488,3 +492,5 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
     </ErrorBoundary>
   );
 }
+
+

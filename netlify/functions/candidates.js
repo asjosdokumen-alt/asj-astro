@@ -5,6 +5,7 @@
  * Handles: getCandidatesPage, updateCatatanKandidat, updateKandidatSuper
  */
 const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-exports.handler = makeSurfaceHandler([
+const { CANDIDATE_ACTIONS } = require('./surfaces/candidates');
+exports.handler = makeSurfaceHandler(CANDIDATE_ACTIONS, [
   'getCandidatesPage', 'updateCatatanKandidat', 'updateKandidatSuper',
 ]);

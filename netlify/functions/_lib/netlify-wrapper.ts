@@ -1,12 +1,26 @@
 import { randomUUID } from 'node:crypto';
 import { handleAction } from './handlers';
 import { runWithContext } from './kernel/log';
-import { clientIp, sessionTokenFrom, corsHeaders } from './kernel/request-helpers';
+import { clientIp, sessionTokenFrom, corsHeaders, backpressureHeaders } from './kernel/request-helpers';
+import { DEFAULT_DEADLINE_MS, deadlineFrom } from './kernel/deadline';
 // netlify-wrapper.js — factory handler Netlify standar.
 //
 // Setiap file di netlify/functions/<nama>.js hanyalah:
 //   exports.handler = makeHandler();
 // dan seluruh logika dipusatkan di _lib/handlers.js (dispatch per action).
+//
+// ── BUNDLE-SIZE CONTRACT ────────────────────────────────────────────────────
+// This wrapper statically imports the FULL action router (surfaces/index), so
+// every entry point built on it pays for all 15 surfaces + 14 contexts
+// (~690 KB). That is deliberate but must stay confined here: this file is for
+// the catch-all/fallback path only (bridge-links and the legacy alias names).
+//
+// Narrow, high-traffic surfaces MUST use makeSurfaceHandler(<ACTIONS>, [...])
+// from './netlify-wrapper-surface' instead, which injects a single-surface
+// resolver and never reaches surfaces/index.
+//
+// Adding makeHandler() to a new file re-creates the 690 KB problem. Don't.
+import { getSurfaceHandler } from '../surfaces/index';
 
 function makeHandler() {
   return async (event: any) => {
@@ -45,12 +59,16 @@ function makeHandler() {
       ? (event.headers['traceparent'] || event.headers['Traceparent'] || undefined)
       : undefined;
     const requestId = randomUUID();
+    // Phase B: same occupancy bound as the surface wrapper — see there for why.
+    const deadlineAt = deadlineFrom(Date.now(), DEFAULT_DEADLINE_MS);
 
     let out;
     try {
-      out = await runWithContext({ requestId, action: body.action, idempotencyKey, traceparent }, () =>
+      out = await runWithContext({ requestId, action: body.action, idempotencyKey, traceparent, deadlineAt }, () =>
         handleAction(body.action, body.payload || body.args, sessionTokenFrom(event, body) as string, {
           ip: clientIp(event) ?? undefined,
+          // The catch-all is the one place the full router is reachable.
+          resolve: getSurfaceHandler,
         }),
       );
     } catch (e: unknown) {
@@ -78,10 +96,23 @@ function makeHandler() {
       };
     }
     const rec = (out || {}) as Record<string, unknown>;
-    const statusCode = rec.rateLimited ? 429 : rec.success === false ? 400 : 200;
+    // Legacy status mapping, preserved as-is for the retiring alias path so old
+    // deployed clients keep behaving. The new backpressure codes are the only
+    // addition: reporting a shed request (503) or an expired deadline (504) as
+    // a 400 would tell clients their input was bad, so they would fix nothing
+    // and retry immediately — the behaviour that sustains an overload.
+    const statusCode = rec.rateLimited
+      ? 429
+      : rec.code === 'OVERLOADED'
+        ? 503
+        : rec.code === 'DEADLINE_EXCEEDED'
+          ? 504
+          : rec.success === false
+            ? 400
+            : 200;
     return {
       statusCode,
-      headers: baseHeaders,
+      headers: backpressureHeaders(baseHeaders, out),
       body: JSON.stringify(out),
     };
   };

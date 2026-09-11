@@ -1,20 +1,48 @@
 import * as session from './session';
 import * as rateLimit from './kernel/rate-limit';
 import { handleShareData, docTypeOf } from '../contexts/catalog';
-import { toErrorResponse } from './kernel/errors';
+import { toErrorResponse, GENERIC_ERROR_MESSAGE } from './kernel/errors';
 import { log, asyncLocalStorage } from './kernel/log';
 import { metrics } from './kernel/metrics';
-import { getSurfaceHandler } from '../surfaces/index';
 import { supabaseJson } from './db/client';
 import { handleGetJobStatus } from './kernel/job-queue';
+import { admit, release, shedResponse, logShed, snapshot } from './kernel/admission';
 
 // Register domain event handlers (side-effect import)
 import { initEventHandlers } from './event-handlers';
 initEventHandlers();
 
 // ── Types ──────────────────────────────────────────────────────────────────
+
+/**
+ * Resolves an action name to its handler.
+ *
+ * WHY THIS IS INJECTED, NOT IMPORTED
+ * ----------------------------------
+ * This module used to statically `import { getSurfaceHandler } from
+ * '../surfaces/index'`. Because Netlify bundles each function as a single
+ * CommonJS file with no code splitting, every dynamic import inside
+ * surfaces/index.ts was inlined — so *every* entry point shipped all 15
+ * surfaces plus all 14 contexts. Measured cost: ~690 KB per entry point,
+ * 19.4 MB deployed, for 29 entry points that mostly need 40-100 KB.
+ *
+ * The resolver is therefore supplied by the entry point:
+ *   - narrow surfaces pass their own single-surface action map (static
+ *     `require('./surfaces/<name>')`), so their graph stays small;
+ *   - only the bridge-links catch-all passes the full router, and it is the
+ *     only function that pays for it.
+ *
+ * Absent resolver => no router reachable => NOT_IMPLEMENTED, which fails
+ * loudly rather than silently loading everything.
+ */
+export type SurfaceResolver = (
+  action: string,
+) => Promise<((payload: unknown[], sessionToken?: string) => Promise<unknown>) | null>;
+
 interface RequestMeta {
   ip?: string;
+  /** Injected surface resolver. Omitted by entry points that own no router. */
+  resolve?: SurfaceResolver;
   [key: string]: unknown;
 }
 
@@ -83,27 +111,62 @@ async function handleAction(action: string, payload: unknown[], sessionToken: st
 
   if (action === 'ping') return { statusCode: 200, body: 'pong' };
 
-  const checks = rateLimitChecks(action, meta, sessionToken);
-  for (const c of checks) {
-    const r = await rateLimit.check(c.key, c.opts);
-    if (!r.ok) {
-      return { success: false, error: 'Terlalu banyak permintaan. Coba lagi dalam ' + r.retryAfter + ' detik.', rateLimited: true, retryAfter: r.retryAfter };
-    }
+  // ── Admission control (Phase B: bound the load) ───────────────────────────
+  // Deliberately BEFORE the rate limiter. The rate limiter is Postgres-backed
+  // and costs 1-2 PostgREST round-trips per call, so charging that cost to a
+  // request we are about to shed would amplify the overload it exists to
+  // relieve. Admission reads only in-process state and is effectively free.
+  // See kernel/admission.ts for what this does and does not bound.
+  const admission = admit(action);
+  if (!admission.admitted) {
+    metrics.increment('admission.shed', {
+      action,
+      priority: String(admission.priority),
+      tier: admission.tier,
+    });
+    // Record how deep the saturation got. A shed count alone is not
+    // actionable — it tells you that you shed, not how close to the edge you
+    // were or whether PostgREST latency was the cause.
+    const snap = snapshot();
+    metrics.gauge('admission.inflight', snap.inflightTotal);
+    metrics.gauge('admission.postgrest_ewma_ms', snap.postgrestEwmaMs);
+    logShed(action, admission);
+    return shedResponse(admission.retryAfter ?? 5);
   }
-  log.info('handler.start', { action, ip: meta?.ip });
-  const out = await dispatchAction(action, payload, sessionToken);
-  log.info('handler.end', { action, success: out?.success });
-  if (out && out.success === false && !out.rateLimited && LOGIN_ACTIONS.has(action)) {
+
+  try {
+    const checks = rateLimitChecks(action, meta, sessionToken);
     for (const c of checks) {
-      // @ts-expect-error JS→TS migration
-      if (c.opts.lockoutAfter) await rateLimit.fail(c.key, c.opts);
+      const r = await rateLimit.check(c.key, c.opts);
+      if (!r.ok) {
+        return { success: false, error: 'Terlalu banyak permintaan. Coba lagi dalam ' + r.retryAfter + ' detik.', rateLimited: true, retryAfter: r.retryAfter };
+      }
     }
+    log.info('handler.start', { action, ip: meta?.ip });
+    const out = await dispatchAction(action, payload, sessionToken, meta?.resolve);
+    log.info('handler.end', { action, success: out?.success });
+    if (out && out.success === false && !out.rateLimited && LOGIN_ACTIONS.has(action)) {
+      for (const c of checks) {
+        // @ts-expect-error JS→TS migration
+        if (c.opts.lockoutAfter) await rateLimit.fail(c.key, c.opts);
+      }
+    }
+    return out;
+  } finally {
+    // Always release the slot, or the instance sheds itself permanently.
+    release(admission.tier);
+    // Moved into `finally`: this previously ran only on the dispatch path, so
+    // rate-limit and admission counters were collected but never emitted.
+    metrics.flushMetrics();
   }
-  metrics.flushMetrics();
-  return out;
 }
 
-async function dispatchAction(action: string, payload: unknown[], sessionToken: string) {
+async function dispatchAction(
+  action: string,
+  payload: unknown[],
+  sessionToken: string,
+  resolve?: SurfaceResolver,
+) {
   // B4 fix: Read idempotencyKey from AsyncLocalStorage context, not globalThis.
   const idempotencyKey = (asyncLocalStorage.getStore() as any)?.idempotencyKey as string | undefined;
   // P35 fix: kunci idempotensi di-scope ke <identitas>|<action>|<key> — klien
@@ -127,7 +190,7 @@ async function dispatchAction(action: string, payload: unknown[], sessionToken: 
 
   let result: unknown;
   const stop = metrics.histogram('handler.dispatch', { action });
-  const surfaceHandler = await getSurfaceHandler(action);
+  const surfaceHandler = resolve ? await resolve(action) : null;
   if (!surfaceHandler) {
     stop();
     return { success: false, message: NOT_IMPLEMENTED + ' (action: ' + action + ')' };
@@ -186,4 +249,6 @@ function isMutatingAction(action: string): boolean {
 }
 
 export { handleAction, NOT_IMPLEMENTED };
-export { handleShareData, docTypeOf };
+// GENERIC_ERROR_MESSAGE re-exported so the raw CJS endpoints (share-data.js,
+// ingest.js) consume the one owned generic string without a deep import.
+export { handleShareData, docTypeOf, GENERIC_ERROR_MESSAGE };

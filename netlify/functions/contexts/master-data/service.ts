@@ -10,6 +10,7 @@ import { requireRole, isOwnerOrAdmin } from '../identity';
 import { syncBiodataKeMail } from '../applications';
 import { nextCandidateId } from '../../_lib/candidate-helpers';
 import { cacheClear } from '../../_lib/cache';
+import { safeError } from '../../_lib/kernel/errors';
 import { resolveFileUrl } from '../../_lib/storage';
 import {
   findMasterByWa, patchMaster, upsertMaster, findCandidateRow,
@@ -455,7 +456,7 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
       out['KELUARGA_' + i + '_PENDAPATAN'] = '';
     }
     return out;
-  } catch (e: any) { return { error: 'Gagal memuat data Master: ' + e.message }; }
+  } catch (e: any) { return { error: safeError('Gagal memuat data Master.', e) }; }
 }
 
 export async function handleGetDrafCvMaster(payload: any[], sessionToken?: string) {
@@ -485,7 +486,7 @@ export async function handleGetDrafCvMaster(payload: any[], sessionToken?: strin
     const nested = buildMasterNested(row);
     // Owner or admin already passed the pre-fetch gate — full draft only.
     return Object.assign(nested, { AIDATAJSON: row.ai_data_json || '', id_kandidat: row.id_kandidat || row.id || '' });
-  } catch (e: any) { return { error: e.message }; }
+  } catch (e: any) { return { error: safeError('Gagal memuat data Master.', e) }; }
 }
 
 export async function handleSubmitMasterForm(payload: any[], sessionToken?: string) {
@@ -566,7 +567,7 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
 
     try { if (changedLabels.length) await syncBiodataKeMail(wa, nama, changedLabels); } catch { /* non-fatal */ }
     return { success: true };
-  } catch (e: any) { return { success: false, error: 'Gagal simpan Master: ' + e.message }; }
+  } catch (e: any) { return { success: false, error: safeError('Gagal simpan Master.', e) }; }
 }
 
 // ---------------------------------------------------------------------------
@@ -661,7 +662,7 @@ export async function handleSimpanBiodataLengkap(payload: any[], sessionToken?: 
     } catch { /* non-fatal */ }
     return { success: true };
   } catch (e: any) {
-    return { success: false, error: 'Gagal menyimpan biodata: ' + e.message };
+    return { success: false, error: safeError('Gagal menyimpan biodata.', e) };
   }
 }
 

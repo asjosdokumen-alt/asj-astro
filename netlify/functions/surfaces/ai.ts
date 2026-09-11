@@ -1,8 +1,11 @@
 /**
  * surfaces/ai.ts — AI surface (chat, interview, CV)
  *
- * Phase 5: Actions that exceed 10s budget are enqueued as background jobs.
- * Returns 202 + jobId. Client polls via getJobStatus.
+ * Phase 5: Actions that would hold a function slot too long are enqueued as
+ * background jobs. Returns 202 + jobId. Client polls via getJobStatus.
+ *
+ * (Note: "too long" is an occupancy judgement, not the platform ceiling. The
+ * Netlify synchronous limit is 60 s; see kernel/deadline.ts.)
  */
 import { handleGetJobStatus } from '../_lib/kernel/job-queue';
 

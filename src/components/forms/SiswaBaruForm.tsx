@@ -347,7 +347,7 @@ export default function SiswaBaruForm() {
             <p class="text-[10px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>{t('siswa.assistant')}</p>
           </div>
         </div>
-        <div ref={chatRef} class="flex-1 overflow-y-auto p-4 space-y-4 pb-16 md:pb-4">
+        <div ref={chatRef} class="flex-1 u-scroll-area p-4 space-y-4 pb-16 md:pb-4">
           {messages.map((msg, i) => (
             <div key={i} class={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div class={`${msg.role === 'user' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-200'} rounded-xl px-4 py-2.5 max-w-[80%] shadow-lg`}>
@@ -378,7 +378,7 @@ export default function SiswaBaruForm() {
       </div>
 
       {/* Form Panel */}
-      <main class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[60%] h-[calc(100vh-42px)] md:h-full overflow-y-auto bg-slate-950 p-4 md:p-8`}>
+      <main class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[60%] h-[calc(100vh-42px)] md:h-full u-scroll-area bg-slate-950 p-4 md:p-8`}>
         <div class="max-w-3xl mx-auto pb-20 w-full">
           <div class="flex justify-between items-center mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
             <div class="flex items-center gap-3">
@@ -402,7 +402,7 @@ export default function SiswaBaruForm() {
             <h2 class="text-xs font-bold text-sky-400 mb-4 uppercase tracking-wider border-b border-slate-800 pb-2">
               <Icon name="address-card" class="mr-1" />{t('siswa.data_pribadi')}
             </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="u-grid-auto u-grid-auto--form gap-4">
               {BIODATA_FIELDS.map(f => (
                 <div key={f.id} class={f.span ? 'col-span-1 md:col-span-2' : ''}>
                   <label class="block text-[10px] font-bold text-slate-400 mb-1">{f.label}</label>
@@ -412,7 +412,7 @@ export default function SiswaBaruForm() {
               ))}
             </div>
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="u-grid-auto u-grid-auto--cards gap-4">
             {DOC_FIELDS.map(d => (
               <div key={d.type} class="bg-slate-900 border border-slate-700 p-4 rounded-xl flex items-center gap-3">
                 <div class={`w-12 h-12 rounded-lg ${d.bg} flex items-center justify-center text-white text-xl flex-shrink-0`}>

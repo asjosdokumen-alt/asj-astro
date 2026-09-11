@@ -162,7 +162,7 @@ export default function TabTambah() {
       <h2 class="text-red-400 font-bold mb-6 border-b border-red-900/50 pb-3 text-lg">
         <Icon name="plus-circle" class="mr-2" /> {t('admin.title_input_loker')}
       </h2>
-      <form onSubmit={handleSubmit} class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <form onSubmit={handleSubmit} class="u-grid-auto u-grid-auto--form gap-6">
         <div class="space-y-5">
           <div class="p-4 bg-red-900/10 border border-red-900/30 rounded-xl grid grid-cols-2 gap-4">
             <div class="col-span-2">
@@ -223,7 +223,7 @@ export default function TabTambah() {
         <div class="space-y-5">
           <div>
             <label class={lc}>{t('admin.penempatan_lokasi')}</label>
-            <div class="grid grid-cols-2 gap-2 h-28 overflow-y-auto p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
+            <div class="grid grid-cols-2 gap-2 h-28 u-scroll-area p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {dd.lokasi.map((l) => (
                 <label key={l} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
                   <input type="checkbox" checked={lokasi.includes(l)} onChange={() => tog(lokasi, setLokasi, l)} class="accent-red-500 w-5 h-5" /> {l}
@@ -234,7 +234,7 @@ export default function TabTambah() {
           </div>
           <div>
             <label class={lc}>{t('admin.syarat_kandidat')}</label>
-            <div class="grid grid-cols-2 gap-2 h-24 overflow-y-auto p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
+            <div class="grid grid-cols-2 gap-2 h-24 u-scroll-area p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {dd.syarat.map((s) => (
                 <label key={s} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
                   <input type="checkbox" checked={syarat.includes(s)} onChange={() => tog(syarat, setSyarat, s)} class="accent-red-500 w-5 h-5" /> {s}
@@ -245,7 +245,7 @@ export default function TabTambah() {
           </div>
           <div>
             <label class={lc}><Icon name="file-upload" class="mr-1" /> {t('admin.syarat_dokumen')}</label>
-            <div class="grid grid-cols-2 gap-2 h-24 overflow-y-auto p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
+            <div class="grid grid-cols-2 gap-2 h-24 u-scroll-area p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {RF.map((f) => (
                 <label key={f} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
                   <input type="checkbox" checked={reqFiles.includes(f)} onChange={() => tog(reqFiles, setReqFiles, f)} class={'accent-' + (f === 'ALL' ? 'pink' : 'red') + '-500 w-5 h-5'} /> {f}
@@ -259,7 +259,7 @@ export default function TabTambah() {
             <textarea value={keterangan} onInput={(e) => setKeterangan((e.target as HTMLTextAreaElement).value)} rows={2} class={ic} />
           </div>
         </div>
-        <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="md:col-span-2 u-grid-auto u-grid-auto--form gap-6">
           <div>
             <label class="block text-sm font-bold text-emerald-400 mb-1.5 uppercase">
               <Icon name="wallet" class="mr-1" /> {t('ui.total_cost')} {t('admin.cth_25_jt')}

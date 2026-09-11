@@ -8,6 +8,10 @@
 // Function lain TIDAK perlu membundel library berat ini.
 // Dipanggil dari api-client.js: processUploadDoc → 'ingest'
 
+// PR4 (playbook §3.3 "never leak"): pesan generik punya SATU pemilik —
+// GENERIC_ERROR_MESSAGE di kernel/errors.ts (via _lib/handlers).
+const { GENERIC_ERROR_MESSAGE } = require('./_lib/handlers');
+
 function clientIp(event) {
   const h = (event && event.headers) || {};
   const fwd = h['x-forwarded-for'];
@@ -44,7 +48,10 @@ exports.handler = async (event) => {
     // Stub removed — return NOT_IMPLEMENTED.
     out = { success: false, message: 'Fungsi ini belum diimplementasi di backend rebuild.' };
   } catch (e) {
-    out = { success: false, message: 'Error internal: ' + e.message };
+    // PR4 (playbook §3.3 "never leak"): jangan kirim e.message ke klien —
+    // detail internal cukup di log server.
+    console.error('[ingest] error:', e);
+    out = { success: false, message: GENERIC_ERROR_MESSAGE };
   }
 
   return {

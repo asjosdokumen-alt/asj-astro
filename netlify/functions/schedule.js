@@ -6,7 +6,8 @@
  *          setTugasStatus, hapusTugas, checkAndSendAgendaReminders
  */
 const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-exports.handler = makeSurfaceHandler([
+const { SCHEDULE_ACTIONS } = require('./surfaces/schedule');
+exports.handler = makeSurfaceHandler(SCHEDULE_ACTIONS, [
   'simpanJadwalBaru', 'hapusJadwal', 'tambahTugasBaru',
   'setTugasStatus', 'hapusTugas', 'checkAndSendAgendaReminders',
 ]);

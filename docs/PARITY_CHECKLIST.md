@@ -366,6 +366,28 @@ crosscheck** (cek disabled/event/action).
   Test +4: PamfletModal +2 (onError -> opacity 1 + tanpa spinner; gambar cached complete -> tampil tanpa tunggu onLoad), src/store/i18n.test.ts baru +2
   (ensureJpLoaded install dict; load halaman dengan lang=jp -> preload + jpReady true). Verifikasi: typecheck exit 0, frontend 41 file/301 test hijau (+4), backend 35 file/300 test hijau;
   live: toggle JP 17ms dan ID 18ms (dulu tak pernah flip), pamflet cache-hangat muncul (800x1000) tanpa spinner nyangkut.
+- 2026-09-09 (kualitas — playbook Day 1–30 tuntas; docs/ENGINEERING-QUALITY-PLAYBOOK.md §8):
+  (1) XSS RirekishoBuilder (satu-satunya temuan KRITIS frontend): 7 interpolasi mentah terakhir ke
+  dangerouslySetInnerHTML di-esc() (buildJobRows m/kf/gaji, buildFamRows nm/usia/gaji, bonus nr di
+  buildKertasA4) + test invarian escaping `rirekishoEscape.test.ts` (+5, guard permanen);
+  (2) job-queue: sessionToken tidak pernah disimpan di payload (enqueue), handleGetJobStatus wajib sesi
+  + kepemilikan (creator/admin) + kirim `hasError` bukan lastError, last_error di-cap 300 char saat write;
+  klien UndanganKelasModal pakai copy tetap + test path gagal poll (failed/dead/not_found/hasError); data
+  lama dibersihkan migration 010 (hapus token di payload->sessionToken & payload->payload->sessionToken,
+  idempoten + DO-block guard) — TERBUKTI jalan di PGlite (Postgres 16 WASM, disposable): scrub kedua
+  path, createdBy/result utuh, re-run no-op, guard melempar saat token tertinggal — tapi BELUM diterapkan
+  ke DB produksi (`npm run migrate:up` pending, keputusan user);
+  (3) cache apiClient dikunci identitas sesi (tokenTag() = hash token, bukan token mentah) + invalidasi
+  penuh saat login/logout flip (`apiClient.test.ts` +5);
+  (4) e.message tak pernah sampai ke klien: primitive `safeError()` (AppError lolos, sisanya generik +
+  log server) + sweep 46 situs di 12 file contexts/surfaces/_lib + ingest.js & share-data.js; test
+  share-data di-flip (dulu mem-pin kebocoran) + leak-guard scan permanen (contexts + surfaces + _lib/ai);
+  pesan generik SATU owner GENERIC_ERROR_MESSAGE (kernel/errors) — endpoint mentah konsumsi via
+  _lib/handlers, tanpa literal kedua;
+  (5) PR template: blok threat model (trust/identity/failure/new primitive) + invarian dgn guard test-nya.
+  Item 3-core (job payload token) & 5 (folder storage dari sesi) ternyata SUDAH beres sebelum kampanye
+  (diverifikasi). Verifikasi: typecheck exit 0, backend 40 file/322 test hijau, frontend 44 file/320
+  test hijau.
 
 - 2026-09-05 (QA referensi responsiveness legacy, live diukur): legacy disajikan lokal dari E:Asjpow4v7-mainkhoci921 (static + proxy fungsi ke backend live asjportal.netlify.app) dan di-klik langsung.
   Ukuran: pamflet zoom 28ms tanpa spinner (astro dulu spinner abadi di gambar cache, sudah difix); detail loker 19ms dari data klien; login/daftar ~13-19ms (modal pre-rendered, toggle display);

@@ -4,8 +4,9 @@
  * WHY THIS EXISTS
  * ---------------
  * Long-running work (AI parsing, bulk WA, document ingestion) currently
- * executes synchronously within the 10 s Netlify function budget. This
- * module provides at-least-once job execution via Postgres SKIP LOCKED:
+ * executes synchronously inside the request, holding a function slot for the
+ * whole time. This module provides at-least-once job execution via Postgres
+ * SKIP LOCKED, so that work can be deferred out of the request path:
  *
  *   1. Enqueue: INSERT INTO job_queue (type, payload, idempotency_key)
  *   2. Claim:   UPDATE ... FOR UPDATE SKIP LOCKED LIMIT 1
@@ -156,9 +157,12 @@ export async function recordJobResult(
 
 /**
  * Mark a job as failed. If max_attempts exceeded, auto-promotes to 'dead'.
+ * last_error is capped at 300 chars (same pattern as diagnostics/repository):
+ * error strings can carry upstream fragments (URLs, headers, token material) —
+ * keep the detail in the server log above, store only a short tail in the DB.
  */
 export async function failJob(jobId: string, error: unknown): Promise<void> {
-  const errMsg = String(error).slice(0, 500);
+  const errMsg = String(error).slice(0, 300);
   log.error('job.failed', { jobId, err: errMsg });
 
   // The claim function handles dead-letter logic on next claim attempt.
@@ -239,7 +243,7 @@ export async function sweepQueue(processFn: (job: Job) => Promise<void>): Promis
  * (2026-09-04): the read belongs with the queue it polls. The 202-returning
  * surfaces (ai / ingest / notify) tell clients to poll via getJobStatus.
  *   const result = await handleGetJobStatus([jobId], sessionToken);
- *   // { success: true, status, jobId, type, attempts, ... , result? }
+ *   // { success: true, status, jobId, type, attempts, hasError, ..., result? }
  * Security fix (review K3): wajib sesi valid, dan hanya pembuat job (payload
  * createdBy) atau admin yang boleh melihat. `result` hanya mengekspos
  * payload.result (ringkasan per-penerima dari recordJobResult) — payload
@@ -279,6 +283,9 @@ export async function handleGetJobStatus(
     throw Errors.forbidden('Job ini bukan milik sesi Anda');
   }
 
+  // Redaction (review K3, playbook PR2): last_error is server-side detail —
+  // upstream fragments and legacy payload material must not reach the client.
+  // Clients get a boolean flag; the message lives in the DB and server logs.
   return {
     success: true,
     status: job.status,
@@ -286,7 +293,7 @@ export async function handleGetJobStatus(
     type: job.type,
     attempts: job.attempts,
     maxAttempts: job.max_attempts,
-    lastError: job.last_error,
+    hasError: !!job.last_error,
     createdAt: job.created_at,
     // Result is in the payload if status is 'done' — expose only the recorded
     // result, never the raw payload (which may contain tokens/secrets).

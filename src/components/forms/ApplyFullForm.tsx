@@ -265,10 +265,10 @@ export default function ApplyFullForm() {
           {/* Stepper */}
           <div class="flex justify-between items-center mb-[30px] relative">
             <div class="absolute top-[18px] left-[15%] right-[15%] h-[3px] bg-slate-700 z-1"></div>
-            <div class="absolute top-[18px] left-[15%] h-[3px] bg-pink-500 z-2 transition-all duration-400" style={{ width: progressPct }}></div>
+            <div class="absolute top-[18px] left-[15%] h-[3px] bg-pink-500 z-2 transition-[width] duration-400" style={{ width: progressPct }}></div>
             {[t('apply.step_data'), t('apply.step_docs'), t('apply.step_kirim')].map((label, i) => (
               <div key={i} class={`relative z-[3] flex flex-col items-center gap-2 w-1/3 ${i + 1 === step ? 'active' : i + 1 < step ? 'completed' : ''}`}>
-                <div class={`w-[38px] h-[38px] rounded-full flex items-center justify-center font-extrabold transition-all
+                <div class={`w-[38px] h-[38px] rounded-full flex items-center justify-center font-extrabold transition-colors
                   ${i + 1 === step ? 'bg-pink-500 border-2 border-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,.4)]'
                     : i + 1 < step ? 'bg-pink-700 border-2 border-pink-700 text-white'
                     : 'bg-slate-800 border-2 border-slate-700 text-slate-400'}`}>
@@ -293,7 +293,7 @@ export default function ApplyFullForm() {
                   onInput={(e) => updateForm('wa', (e.target as HTMLInputElement).value)}
                   onBlur={cekRiwayat}
                   placeholder={t("apply.wa_ph")}
-                  class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 focus:shadow-[0_0_0_4px_rgba(236,72,153,.15)] transition-all placeholder:text-slate-500" />
+                  class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 focus:shadow-[0_0_0_4px_rgba(236,72,153,.15)] t-elevate placeholder:text-slate-500" />
                 {waLoading && <span class="absolute right-4 top-1/2 -translate-y-1/2"><Icon spin name="spinner" class="text-emerald-500 text-lg" /></span>}
               </div>
               {waMsg && <div class="text-xs text-emerald-400 font-bold mt-3 bg-emerald-900/30 p-2.5 rounded-lg border border-emerald-500/30"><Icon name="check-circle" class="mr-1" />{waMsg}</div>}
@@ -376,21 +376,21 @@ export default function ApplyFullForm() {
       {/* Sticky Nav */}
       <div class="fixed bottom-0 left-0 w-full bg-[rgba(2,6,23,.95)] backdrop-blur-xl border-t border-slate-800 p-[15px_20px] z-50 flex justify-between gap-4">
         {step > 1 && (
-          <button onClick={() => changeStep(-1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all flex items-center justify-center gap-2 border-none cursor-pointer">
+          <button onClick={() => changeStep(-1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 border-none cursor-pointer">
             <Icon name="chevron-left" /> Kembali
           </button>
         )}
         <button onClick={saveDraft} disabled={loading}
-          class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-700 text-white hover:bg-slate-600 transition-all flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50">
+          class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-700 text-white hover:bg-slate-600 transition-colors flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50">
           <Icon name="save" /> Draft
         </button>
         {step < 3 && (
-          <button onClick={() => changeStep(1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-500 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 border-none cursor-pointer">
+          <button onClick={() => changeStep(1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-500 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer">
             Lanjut <Icon name="chevron-right" />
           </button>
         )}
         {step === 3 && (
-          <button onClick={submitApply} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-500 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <button onClick={submitApply} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-500 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             <Icon name="paper-plane" /> KIRIM LAMARAN
           </button>
         )}
@@ -398,7 +398,7 @@ export default function ApplyFullForm() {
 
       {/* Loading Modal */}
       {loading && (
-        <div class="fixed inset-0 flex items-center justify-center bg-[rgba(2,6,23,.92)] backdrop-blur-sm z-[9999]">
+        <div class="fixed inset-0 u-modal-shell flex items-center justify-center bg-[rgba(2,6,23,.92)] backdrop-blur-sm z-[9999]">
           <div class="text-center">
             <div class="w-[70px] h-[70px] rounded-full border-4 border-slate-700 border-t-pink-500 mx-auto animate-spin"></div>
             <h2 class="mt-5 text-white text-xl font-extrabold">{t('apply.loading')}</h2>
@@ -409,7 +409,7 @@ export default function ApplyFullForm() {
 
       {/* Success Modal */}
       {success && (
-        <div class="fixed inset-0 flex items-center justify-center bg-[rgba(2,6,23,.92)] backdrop-blur-sm z-[9999]">
+        <div class="fixed inset-0 u-modal-shell flex items-center justify-center bg-[rgba(2,6,23,.92)] backdrop-blur-sm z-[9999]">
           <div class="w-[90%] max-w-[340px] bg-slate-900 border border-emerald-500 rounded-[24px] p-[30px] text-center">
             <div class="text-[60px] mb-2">✅</div>
             <h2 class="mt-4 text-2xl font-black">{t('apply.success_title')}</h2>
@@ -434,7 +434,7 @@ function InputField({ icon, label, value, readonly, type = 'text', placeholder, 
         <Icon name={icon} class="absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg" />
         <input type={type} value={value} readonly={readonly} placeholder={placeholder}
           onInput={onInput ? (e) => onInput((e.target as HTMLInputElement).value) : undefined}
-          class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 focus:shadow-[0_0_0_4px_rgba(236,72,153,.15)] transition-all placeholder:text-slate-500" />
+          class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 focus:shadow-[0_0_0_4px_rgba(236,72,153,.15)] t-elevate placeholder:text-slate-500" />
       </div>
       {tip && <div class="mt-1.5 text-[11px] text-slate-500">{tip}</div>}
     </div>
@@ -450,7 +450,7 @@ function SelectField({ icon, label, value, options, onChange }: {
       <div class="relative">
         <Icon name={icon} class="absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg" />
         <select value={value} onChange={(e) => onChange((e.target as HTMLSelectElement).value)}
-          class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 transition-all appearance-none cursor-pointer">
+          class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 transition-colors appearance-none cursor-pointer">
           {options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
         </select>
       </div>
@@ -476,7 +476,7 @@ function UploadCard({ type, label, sub, icon, bgClass, btnClass, accept, onChang
           </div>
         </div>
         <button type="button" onClick={() => inputRef.current?.click()}
-          class={`px-[18px] py-2.5 ${btnClass} text-white text-xs font-extrabold rounded-xl cursor-pointer hover:brightness-110 transition-all border-none`}>{t('apply.btn_pilih')}</button>
+          class={`px-[18px] py-2.5 ${btnClass} text-white text-xs font-extrabold rounded-xl cursor-pointer hover:brightness-110 transition-[filter] border-none`}>{t('apply.btn_pilih')}</button>
       </div>
       <input ref={inputRef} type="file" accept={accept} class="hidden"
         onChange={(e) => onChange((e.target as HTMLInputElement).files?.[0] || null)} />

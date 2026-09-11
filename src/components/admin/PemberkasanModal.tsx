@@ -458,11 +458,11 @@ export default function PemberkasanModal({
 
   return (
     <div
-      class="fixed inset-0 bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4"
+      class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4"
       ref={containerRef}
       onClick={onBackdropClick}
     >
-      <div class="glass-panel p-6 md:p-8 rounded-[2.5rem] w-full max-w-4xl shadow-[0_0_40px_rgba(0,0,0,0.8)] relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div class="glass-panel p-6 md:p-8 rounded-[2.5rem] w-full max-w-4xl shadow-[0_0_40px_rgba(0,0,0,0.8)] relative max-h-[90vh] u-scroll-area custom-scrollbar">
         <button
           type="button"
           onClick={onClose}
@@ -503,7 +503,7 @@ export default function PemberkasanModal({
                 open={t1Open}
                 onToggle={() => setT1Open(!t1Open)}
               >
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="u-grid-auto u-grid-auto--form gap-5">
                   {BERKAS_TAHAP1.map((def) => (
                     <FileInput key={def.key} def={def} statusNode={statusMark(def.key, t(def.label))} disabled={uploading !== null} />
                   ))}
@@ -528,7 +528,7 @@ export default function PemberkasanModal({
                 open={t2Open}
                 onToggle={() => setT2Open(!t2Open)}
               >
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div class="u-grid-auto u-grid-auto--form gap-5">
                   {BERKAS_TAHAP2.map((def) => (
                     <FileInput key={def.key} def={def} statusNode={statusMark(def.key, t(def.label))} disabled={uploading !== null} />
                   ))}
@@ -553,7 +553,7 @@ export default function PemberkasanModal({
                 open={bioOpen}
                 onToggle={() => setBioOpen(!bioOpen)}
               >
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="u-grid-auto u-grid-auto--form gap-4">
                   <Section label="candidate.bio_personal" />
                   {BIO_FIELDS.slice(0, 4).map((f) => (
                     <BioInput key={f.field} {...f} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />

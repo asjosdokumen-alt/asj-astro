@@ -244,7 +244,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose }: P
   if (!isOpen) return null;
 
   return (
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4" onClick={onBackdropClick}>
+    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4" onClick={onBackdropClick}>
       <div ref={containerRef} onClick={(e) => e.stopPropagation()} class="glass-panel p-6 rounded-[2rem] w-full max-w-3xl shadow-2xl relative border border-violet-500/50 max-h-[90vh] flex flex-col">
         <button onClick={onClose} aria-label={t('ui.close')} class="absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
@@ -263,7 +263,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose }: P
             <Icon name="filter" class="mr-1" /> {t('ui.search_criteria')}
           </h4>
 
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div class="u-grid-auto u-grid-auto--dense gap-3 mb-3">
             <div>
               <label class="text-[10px] text-slate-400 uppercase font-bold">{t('candidate.form_gender')}</label>
               <select value={filters.gender} onChange={(e) => setFilter('gender', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500">
@@ -285,7 +285,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose }: P
               <input type="number" value={filters.tbMin} onInput={(e) => setFilter('tbMin', (e.target as HTMLInputElement).value)} placeholder="150" class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
             </div>
           </div>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div class="u-grid-auto u-grid-auto--dense gap-3 mb-3">
             <div>
               <label class="text-[10px] text-slate-400 uppercase font-bold">{t('ui.max_weight')}</label>
               <input type="number" value={filters.bbMax} onInput={(e) => setFilter('bbMax', (e.target as HTMLInputElement).value)} placeholder="80" class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
@@ -317,7 +317,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose }: P
         </div>
 
         {/* Results */}
-        <div class="flex-1 overflow-y-auto custom-scrollbar">
+        <div class="flex-1 u-scroll-area custom-scrollbar">
           {results.length === 0 && !searched && (
             <div class="text-center p-6 text-slate-400 text-xs italic bg-black/30 rounded-xl border border-slate-700/50 mb-4">
               <Icon name="robot" class="text-3xl mb-3 mx-auto text-slate-600" />

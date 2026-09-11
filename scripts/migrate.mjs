@@ -51,6 +51,7 @@ import { dirname, join, resolve } from 'node:path';
 import { hostname, userInfo } from 'node:os';
 
 import pg from 'pg';
+import { initDbEnv, describeDbTarget, failNoDbUrl } from './lib/load-env.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DIR = resolve(HERE, '..', 'migrations');
@@ -179,12 +180,22 @@ async function main() {
     return process.exit(2);
   }
 
-  const url = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || '';
+  // Load .env.local / .env.lokal and map Direct_Connection_DB onto the
+  // canonical name, so local runs work without exporting anything by hand.
+  // process.env still wins, so CI secrets are never clobbered.
+  const dbEnv = initDbEnv();
+  const url = dbEnv.url;
   if (!url) {
-    console.error('  CONFIG ERROR  SUPABASE_DB_URL (or DATABASE_URL) is not set.');
-    console.error('  Add it as a GitHub Environment secret. The value is never printed.');
-    return process.exit(2);
+    failNoDbUrl('migrate');
   }
+
+  // Safe, password-free description of the target. Computed once and reused:
+  // it is printed to the console AND written into the --json report, so the
+  // report is self-describing (which host ran this) without ever carrying the
+  // credential. Passing `host` to writeReport() below would otherwise be a
+  // ReferenceError — the three call sites referenced a name that was never
+  // declared, and no test exercised the --json path to catch it.
+  const host = describeDbTarget(url);
 
   let migrations;
   try {
@@ -199,12 +210,13 @@ async function main() {
   console.log(`Migration runner — ${args.command}`);
   console.log('-'.repeat(64));
   // Never print the URL: it contains the password.
-  const host = (() => {
-    try { return new URL(url).host; } catch { return '(unparseable)'; }
-  })();
+  // Show the target without the password, and say whether it is the direct
+  // host or the transaction pooler — the two behave differently and it is the
+  // first thing worth knowing when a migration misbehaves.
   console.log(`  target     : ${host}`);
   console.log(`  directory  : ${args.dir}`);
   console.log(`  as         : ${who}`);
+  if (dbEnv.added.length) console.log(`  env files  : ${dbEnv.added.length} key(s) loaded`);
   if (args.dryRun) console.log(`  DRY RUN    : no changes will be committed`);
   console.log('-'.repeat(64));
 
@@ -213,7 +225,9 @@ async function main() {
     client = await connect(url);
   } catch (err) {
     console.error(`  CONFIG ERROR  cannot connect: ${err.message.split('\n')[0]}`);
-    console.error('  Check SUPABASE_DB_URL — for Supabase use the pooler host on port 6543.');
+    console.error('  If the host is db.<ref>.supabase.co:5432 and the network is');
+    console.error('  IPv4-only, the direct host may be unreachable — use the Supavisor');
+    console.error('  pooler instead (aws-0-<region>.pooler.supabase.com:6543).');
     return process.exit(2);
   }
 

@@ -164,8 +164,8 @@ export default function AdminShareModal({ job, onClose }: Props) {
   };
 
   return (
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
-      <div onClick={(e) => e.stopPropagation()} class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
+    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+      <div onClick={(e) => e.stopPropagation()} class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] u-scroll-area custom-scrollbar">
         <div class="p-4 border-b border-slate-700 flex items-center justify-between">
           <h3 class="text-lg font-bold text-emerald-400"><Icon name="share-alt" class="mr-2" />{t('ui.share_modal_title')}</h3>
           <button onClick={onClose} aria-label={t('public.close')} class="text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>

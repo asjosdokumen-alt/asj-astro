@@ -11,7 +11,8 @@
  * AI requests are slow (5-30s) — separate function prevents blocking other surfaces.
  */
 const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-exports.handler = makeSurfaceHandler([
+const { AI_ACTIONS } = require('./surfaces/ai');
+exports.handler = makeSurfaceHandler(AI_ACTIONS, [
   'processAIChat', 'processSiswaAIChat', 'processAdminAIChat',
   'processAiInterview', 'processAiFormSubmit', 'processUploadDoc',
   'generateWawancaraModel', 'simpanHasilWawancara', 'selesaikanWawancara',

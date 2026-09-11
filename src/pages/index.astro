@@ -15,12 +15,20 @@ import Icon from '../components/ui/Icon';
     <div class="absolute left-0 top-0 bottom-0 bg-red-800 w-12 flex items-center justify-center z-10 rounded-l-2xl border-r border-red-600/60 shadow-md">
       <Icon name="bullhorn" class="text-white animate-bounce text-lg" />
     </div>
-    <div class="marquee-track ml-12 mr-2"><div id="marquee-text" class="marquee-content text-white text-sm font-bold tracking-wide"></div></div>
+    <!-- Two copies: the track animates to translate3d(-50%), i.e. exactly
+         one copy, which makes the loop seamless at any text length. The
+         duplicate is aria-hidden so screen readers read it once. -->
+    <div class="marquee-track ml-12 mr-2">
+      <div class="marquee-content text-white text-sm font-bold tracking-wide">
+        <span class="marquee-item" data-marquee></span>
+        <span class="marquee-item" data-marquee aria-hidden="true"></span>
+      </div>
+    </div>
   </div>
 </div>
 <script>
   import { getPublicData } from "../lib/publicData";
-  getPublicData().then(function(d){ if(d.success && d.pengumuman){ var el=document.getElementById("global-announcement"); var txt=document.getElementById("marquee-text"); if(el && txt && d.pengumuman.trim()){ txt.textContent=d.pengumuman; el.classList.remove("hidden"); } } }).catch(function(){});
+  getPublicData().then(function(d){ if(d.success && d.pengumuman){ var el=document.getElementById("global-announcement"); var txt=document.querySelectorAll("[data-marquee]"); if(el && txt.length && d.pengumuman.trim()){ txt.forEach(function(n){ n.textContent=d.pengumuman; }); el.classList.remove("hidden"); } } }).catch(function(){});
 </script>
 
   <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 pb-16 min-h-[50vh] flex flex-col gap-6">

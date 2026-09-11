@@ -176,8 +176,8 @@ export default function InputManualModal() {
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
-    <div class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
-      <div class="bg-slate-900 border border-sky-900/50 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div class="fixed inset-0 u-modal-shell bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+      <div class="bg-slate-900 border border-sky-900/50 rounded-2xl w-full max-w-lg max-h-[90vh] u-scroll-area shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div class="p-6">
           <div class="flex justify-between items-center mb-4 border-b border-sky-900/50 pb-3">
             <h3 class="text-xl font-bold text-sky-400"><Icon name="user-plus" class="mr-2" /> Input Kandidat Manual</h3>

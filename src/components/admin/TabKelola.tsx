@@ -96,7 +96,7 @@ export default function TabKelola() {
       {loading ? (
         <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-red-400" /><p class="text-slate-500 mt-2 text-sm">{t('ui.loading')}</p></div>
       ) : (
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <div class="u-scroll-x rounded-xl border border-slate-800">
           <table class="w-full min-w-[800px] text-sm text-left whitespace-nowrap">
             <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
               <tr>
@@ -111,7 +111,7 @@ export default function TabKelola() {
               {filtered.length === 0 ? (
                 <tr><td colSpan={5} class="p-6 text-center text-slate-500">{t('ui.not_applied_general')}</td></tr>
               ) : filtered.map(j => (
-                <tr key={j.code} class="hover:bg-white/5 transition-all">
+                <tr key={j.code} class="hover:bg-white/5 transition-colors">
                   <td class="p-4 font-mono text-red-300 font-bold">{j.code}</td>
                   <td class="p-4 font-bold text-white">{j.pekerjaan}</td>
                   <td class="p-4 text-center">
@@ -126,7 +126,7 @@ export default function TabKelola() {
                     </div>
                   </td>
                   <td class="p-4 text-center">
-                    <button onClick={() => deleteJob(j.code)} class="w-10 h-10 flex items-center justify-center bg-red-600 text-white rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-all mx-auto"><Icon name="trash" /></button>
+                    <button onClick={() => deleteJob(j.code)} class="w-10 h-10 flex items-center justify-center bg-red-600 text-white rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-transform mx-auto"><Icon name="trash" /></button>
                   </td>
                 </tr>
               ))}

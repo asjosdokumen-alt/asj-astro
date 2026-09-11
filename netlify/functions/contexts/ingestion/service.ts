@@ -8,6 +8,7 @@ import {
   findMasterByWa, patchMaster, upsertMaster, nextCandidateId,
 } from './repository';
 import { isAllowedDocumentUrl } from '../../_lib/storage';
+import { safeError } from '../../_lib/kernel/errors';
 
 interface IngestPayload {
   fileUrl: string;
@@ -252,8 +253,7 @@ export async function handleProcessUploadDoc(payload: unknown[], sessionToken?: 
       upsertedId: upsertedRow?.id, extractedTextLength: extractedText.length, parsedByAi: true,
     };
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error('[ingest] processUploadDoc error:', msg);
-    return { success: false, error: 'Gagal memproses file: ' + msg };
+    // safeError sudah console.error detail internal di server.
+    return { success: false, error: safeError('Gagal memproses file.', e) };
   }
 }

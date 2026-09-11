@@ -32,6 +32,7 @@
 
 import { AppError } from './errors';
 import { log } from './log';
+import { remainingMs } from './deadline';
 
 // ── Retry ───────────────────────────────────────────────────────────────────
 
@@ -88,9 +89,15 @@ export async function withRetry<T>(
       return await fn();
     } catch (e) {
       lastError = e;
+      // Don't burn a retry when the request has run out of time. The next
+      // attempt would be refused locally by the deadline clamp in http.ts, and
+      // the backoff sleep would only hold the slot open longer — the exact
+      // opposite of bounding load. `remainingMs()` is Infinity when no deadline
+      // is set, so this is a no-op outside a request context.
       const canRetry =
         idempotent &&
         attempt < attempts &&
+        remainingMs() > 0 &&
         isRetryable(e);
 
       if (!canRetry) throw e;

@@ -112,14 +112,14 @@ export default function AdminPanel() {
   return (
     <div class="space-y-6">
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="u-grid-auto u-grid-auto--wide gap-4">
         {/* KIRI: AGENDA HARIAN */}
         <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-lg flex flex-col h-full min-h-[300px]">
           <div class="flex justify-between items-center mb-3">
             <h3 class="text-sm font-bold text-white"><Icon name="calendar-check" class="text-amber-400 mr-2" /> <span data-lang="ui.agenda_recent">{t('ui.agenda_recent')}</span></h3>
             <span class="text-xs bg-amber-900/40 text-amber-400 px-2 py-1 rounded-md font-bold" id="dash-admin-name">Admin</span>
           </div>
-          <div id="dash-agenda-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '200px' }}>
+          <div id="dash-agenda-list" class="flex-1 u-scroll-area custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '200px' }}>
             <p class="text-xs text-slate-500">{t('ui.schedule_empty')}</p>
           </div>
           <button onClick={() => setActiveTab('jadwal')} class="mt-3 text-xs text-amber-400 font-bold hover:text-amber-300 hover:bg-black/50 w-full text-center py-2 bg-black/30 rounded-lg transition border border-slate-800">
@@ -133,18 +133,18 @@ export default function AdminPanel() {
             <input type="text" id="todo-input" class="flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" placeholder={t('admin.task_placeholder')} aria-label={t('admin.task_placeholder')} />
             <button class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition shadow-lg" aria-label={t('button.add')}><Icon name="plus" /></button>
           </div>
-          <div id="todo-list" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '190px' }}></div>
+          <div id="todo-list" class="flex-1 u-scroll-area custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '190px' }}></div>
         </div>
       </div>
 
       
-      <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: 30 }} class="sticky top-2 ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
+      <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: 30 }} class="sticky top-2 ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-colors duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
         <Icon name="bars" /> {t("ui.menu")}
       </button>
 
 
       {sidebarOpen && (
-        <div style={{ zIndex: 95 }} class="fixed inset-0 bg-black/60 transition-opacity duration-300 lg:hidden"
+        <div style={{ zIndex: 95 }} class="fixed inset-0 u-modal-shell bg-black/60 transition-opacity duration-300 lg:hidden"
           onClick={() => setSidebarOpen(false)}
           role="button"
           tabIndex={0}
@@ -156,7 +156,7 @@ export default function AdminPanel() {
       <aside
         role="navigation"
         id="admin-sidebar" aria-label="Admin sidebar"
-        class={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl overflow-y-auto transition-transform duration-300 ease-in-out
+        class={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl u-scroll-area transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0`}
         style={{ zIndex: 96 }}
@@ -191,7 +191,7 @@ export default function AdminPanel() {
 
 
       <div class="pl-0 lg:pl-64 min-w-0">
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 shadow-xl overflow-x-auto">
+        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 shadow-xl u-scroll-x">
           <TabContent tab={activeTab} />
         </div>
       </div>

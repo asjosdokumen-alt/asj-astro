@@ -125,8 +125,8 @@ export default function CvMiniModal({ onClose, prefill }: Props) {
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
-    <div class="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
-      <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full max-w-md max-h-[85vh] overflow-y-auto shadow-2xl custom-scrollbar">
+    <div class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+      <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full max-w-md max-h-[85vh] u-scroll-area shadow-2xl custom-scrollbar">
         <div class="flex items-center justify-between mb-2">
           <h3 class="text-lg font-bold text-sky-400"><Icon name="user-edit" class="mr-2" />{t('ui.update_cv_mini')}</h3>
           <button onClick={onClose} class="text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>

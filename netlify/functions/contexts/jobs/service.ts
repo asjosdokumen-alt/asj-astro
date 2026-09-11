@@ -2,6 +2,7 @@
  * contexts/jobs/service.ts — Business logic for job_database CRUD
  */
 import { requireAdmin } from '../identity';
+import { safeError } from '../../_lib/kernel/errors';
 import {
   hasBackend, mapJobPayloadToRow, nextJobCode, getJobMapped,
   patchJob, deleteJob, postJob, normalizeWa, pick, toText, mapCandidate, stripRaw,
@@ -20,7 +21,7 @@ export async function handleSimpanJobBaru(payload: unknown[], sessionToken?: str
     await postJob({ code_job: code, ...mapJobPayloadToRow(data) });
     return { success: true, code };
   } catch (e: unknown) {
-    return { success: false, error: 'Gagal simpan loker: ' + (e instanceof Error ? e.message : String(e)) };
+    return { success: false, error: safeError('Gagal simpan loker.', e) };
   }
 }
 
@@ -42,7 +43,7 @@ export async function handleEditLokerFull(payload: unknown[], sessionToken?: str
     if (msg.includes('412') || msg.includes('Precondition')) {
       return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
     }
-    return { success: false, error: 'Gagal edit loker: ' + (e instanceof Error ? e.message : String(e)) };
+    return { success: false, error: safeError('Gagal edit loker.', e) };
   }
 }
 
@@ -59,7 +60,7 @@ export async function handleUbahStatusJob(payload: unknown[], sessionToken?: str
     if (msg.includes('412') || msg.includes('Precondition')) {
       return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
     }
-    return { success: false, error: 'Gagal ubah status: ' + (e instanceof Error ? e.message : String(e)) };
+    return { success: false, error: safeError('Gagal ubah status.', e) };
   }
 }
 
@@ -81,7 +82,7 @@ export async function handleHapusJobData(payload: unknown[], sessionToken?: stri
     await deleteJob(code);
     return { success: true, code };
   } catch (e: unknown) {
-    return { success: false, error: 'Gagal hapus loker: ' + (e instanceof Error ? e.message : String(e)) };
+    return { success: false, error: safeError('Gagal hapus loker.', e) };
   }
 }
 
@@ -97,7 +98,7 @@ export async function handleUpdateTahapanDbJob(payload: unknown[], sessionToken?
     await patchJob(code, body, undefined, sessionToken);
     return { success: true, job: await getJobMapped(code) };
   } catch (e: unknown) {
-    return { success: false, error: 'Gagal update tahapan: ' + (e instanceof Error ? e.message : String(e)) };
+    return { success: false, error: safeError('Gagal update tahapan.', e) };
   }
 }
 
@@ -117,7 +118,7 @@ export async function handleUpdateDokumenShare(payload: unknown[], sessionToken?
     if (!shareToken) return { success: false, error: 'Gagal membuat token share loker.' };
     return { success: true, shareToken };
   } catch (e: unknown) {
-    return { success: false, error: 'Gagal update dokumen: ' + (e instanceof Error ? e.message : String(e)) };
+    return { success: false, error: safeError('Gagal update dokumen share.', e) };
   }
 }
 
@@ -178,6 +179,6 @@ export async function handleTandaiGagalJob(payload: unknown[], sessionToken?: st
     } catch { /* best-effort */ }
     return { success: true, candidate, form: formUpdated };
   } catch (e: unknown) {
-    return { success: false, error: 'Gagal tandai gagal: ' + (e instanceof Error ? e.message : String(e)) };
+    return { success: false, error: safeError('Gagal tandai gagal.', e) };
   }
 }

@@ -253,7 +253,7 @@ export default function MasterFullForm() {
   /* ── Login Gate ── */
   if (loginGate) {
     return (
-      <div class="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+      <div class="fixed inset-0 u-modal-shell z-50 bg-black/85 flex items-center justify-center p-4">
         <div class="bg-[#0b1220] border border-sky-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
           <div class="text-center mb-4">
             <div class="text-2xl mb-1"><Icon name="lock" class="text-sky-400" /></div>

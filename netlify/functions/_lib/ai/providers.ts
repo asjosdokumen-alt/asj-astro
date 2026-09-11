@@ -6,11 +6,19 @@ import { breaker } from '../kernel/resilience';
 // Gemini
 // ---------------------------------------------------------------------------
 // Timeout per-model (ms): model yang menggantung tidak boleh menghabiskan
-// budget fungsi Netlify (limit sinkron ±10 dtk) — kalau model pertama lambat/
-// hang, langsung fallback ke model berikutnya.
+// jatah waktu permintaan (limit sinkron Netlify sebenarnya 60 dtk, tapi
+// permintaan kita dibatasi 12 dtk oleh kernel/deadline.ts) — kalau model
+// pertama lambat/hang, langsung fallback ke model berikutnya.
 const MODEL_TIMEOUT_MS = 4000;
-// P1 fix: Total AI budget must fit within Netlify's 10s synchronous limit.
-// Gemini race (4s) + Grok fallback (5s) = 9s worst case, leaving 1s for overhead.
+// P1 fix: rantai AI harus muat di dalam deadline permintaan, bukan di dalam
+// plafon platform. Gemini race (4s) + Grok fallback (5s) = 9s worst case,
+// menyisakan ~3s dari deadline 12s (kernel/deadline.ts) untuk rate limiting,
+// persistensi, dan penyusunan respons.
+//
+// Angka ini adalah batas OKUPANSI, bukan batas platform. Plafon sinkron
+// Netlify 60 dtk, dan sengaja menghabiskannya berarti menahan slot fungsi 6x
+// lebih lama saat beban tinggi — kebalikan dari "bound the load". Jangan
+// dinaikkan hanya karena plafonnya masih longgar.
 const TOTAL_AI_BUDGET_MS = 9000;
 
 // Model saat ini (Agt 2026): gemini-1.5-flash & 2.0-flash sudah dihapus Google (404),

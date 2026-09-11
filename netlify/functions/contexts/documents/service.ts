@@ -30,6 +30,7 @@ import { requireRole, isOwnerOrAdmin } from "../identity";
 import { emit } from "../../_lib/kernel/events";
 import { syncFormMailDariUpload } from "../applications";
 import { cacheClear } from "../../_lib/cache";
+import { safeError } from "../../_lib/kernel/errors";
 import { findJobByCodeFiltered, findJobs } from "../../_lib/db/jobs";
 import * as session from "../../_lib/session";
 import { isAllowedDocumentUrl } from "../../_lib/storage";
@@ -560,7 +561,7 @@ export async function handleSubmitApply(payload: any[], sessionToken?: string) {
       message: "Lamaran berhasil dikirim. Terima kasih.",
     };
   } catch (e: any) {
-    return { success: false, message: "Gagal simpan lamaran: " + e.message };
+    return { success: false, message: safeError("Gagal simpan lamaran.", e) };
   }
 }
 
@@ -576,7 +577,7 @@ export async function handleGetExistingCandidateJsonByWa(
     if (isOwnerOrAdmin(sessionToken, wa)) return { success: true, data };
     return { success: true, data: pickPrefill(data), limited: true };
   } catch (e: any) {
-    return { success: false, error: e.message };
+    return { success: false, error: safeError("Gagal memuat data kandidat.", e) };
   }
 }
 
@@ -769,7 +770,7 @@ export async function handleSimpanKandidatDanUpload(
     }
     return { success: true, uploaded, generatedPassword };
   } catch (e: any) {
-    return { success: false, error: "Gagal simpan kandidat: " + e.message };
+    return { success: false, error: safeError("Gagal simpan kandidat.", e) };
   }
 }
 
@@ -1026,6 +1027,6 @@ export async function handleSimpanRevisiKandidat(
       );
     return { success: true };
   } catch (e: any) {
-    return { success: false, error: "Gagal upload revisi: " + e.message };
+    return { success: false, error: safeError("Gagal upload revisi.", e) };
   }
 }

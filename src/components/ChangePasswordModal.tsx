@@ -60,7 +60,7 @@ export default function ChangePasswordModal({ onClose }: Props) {
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
-    <div class="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+    <div class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
       <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl">
         <div class="flex items-center justify-between mb-5">
           <h3 class="text-lg font-bold text-amber-400"><Icon name="lock" class="mr-2" />{t('changepass.title')}</h3>

@@ -3,6 +3,7 @@ import { findCandidateByIdFiltered, findCandidates } from '../db/candidates.ts';
 import { requireRole } from '../../contexts/identity';
 import { findMasterByWa } from './cv';
 import { geminiParseFile, parseJsonLoose } from './providers';
+import { safeError } from '../kernel/errors';
 // ai/classify.js — domain AI klasifikasi & parse dokumen biodata/CV admin
 // (PDF/Excel/Word/CSV/TXT/gambar → Gemini → JSON). MODUL BARU (Fase 1.4
 
@@ -139,10 +140,11 @@ async function handleParseDokumenBiodata(payload: unknown, sessionToken: string 
       },
     };
   } catch (e: any) {
-    console.error('[AI] parseDokumenBiodata error:', e && e.message ? e.message : e);
+    // PR4 (playbook §3.3): jangan bocorkan detail internal — safeError sudah
+    // console.error pesan aslinya di server.
     return {
       success: false,
-      error: 'Gagal parse dokumen: ' + (e && e.message ? e.message : 'AI sibuk'),
+      error: safeError('Gagal parse dokumen.', e),
     };
   }
 }

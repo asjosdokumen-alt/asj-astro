@@ -5,6 +5,7 @@
  * Never import from this file or repository.ts directly.
  */
 import { requireRole } from '../identity';
+import { safeError } from '../../_lib/kernel/errors';
 import {
   resolveConfigType,
   replaceConfigItems,
@@ -28,7 +29,7 @@ export async function handleUpdateSysConfig(payload: any[], sessionToken?: strin
     await replaceConfigItems(type, items);
     return { success: true };
   } catch (e: any) {
-    return { success: false, error: 'Gagal simpan konfigurasi: ' + e.message };
+    return { success: false, error: safeError('Gagal simpan konfigurasi.', e) };
   }
 }
 
@@ -51,7 +52,7 @@ export async function handleGetRincianPresets(sessionToken?: string) {
     }
     return { success: true, presets };
   } catch (e: any) {
-    return { success: false, error: e.message };
+    return { success: false, error: safeError('Gagal memuat presets.', e) };
   }
 }
 
@@ -68,7 +69,7 @@ export async function handleSaveRincianPreset(payload: any[], sessionToken?: str
     const lastId = await insertRincianPresets(cat, items);
     return { success: true, id: lastId };
   } catch (e: any) {
-    return { success: false, error: e.message };
+    return { success: false, error: safeError('Gagal simpan preset.', e) };
   }
 }
 
@@ -83,7 +84,7 @@ export async function handleDeleteRincianPreset(payload: any[], sessionToken?: s
     await deleteRincianPresetRepo(id);
     return { success: true };
   } catch (e: any) {
-    return { success: false, error: e.message };
+    return { success: false, error: safeError('Gagal hapus preset.', e) };
   }
 }
 
@@ -95,6 +96,6 @@ export async function handleRunMigration(payload: any[], sessionToken?: string) 
     // Migration endpoint — kept for backward compatibility but discouraged
     return { success: true, results: [{ id: 'migration', status: 'OK' }], pendingSql: [] };
   } catch (e: any) {
-    return { success: false, error: e.message, results: [], pendingSql: [] };
+    return { success: false, error: safeError('Gagal menjalankan migration.', e), results: [], pendingSql: [] };
   }
 }

@@ -1,0 +1,325 @@
+/* ============================================================
+   ASJ Portal — Motion Layer
+   ============================================================
+
+   THE ONE RULE
+   ------------
+   Only `transform` and `opacity` are animated or transitioned.
+
+   Why: these two are handled by the compositor. Everything else —
+   width, height, top/left, margin, box-shadow, filter, background —
+   forces the browser back through Style → Layout → Paint on every
+   single frame. A `transition: all` on a 200-row table therefore
+   costs 200 layout passes per hover, while `transition: background-color`
+   costs zero.
+
+   WILL-CHANGE DISCIPLINE
+   ----------------------
+   `will-change` is a promise, not a hint: each declaration allocates a
+   compositor layer (GPU memory) whether or not the animation runs. It
+   is used below ONLY on elements that animate forever (marquee, petals)
+   or that are about to animate. It is never used as a blanket
+   performance spell — that is the classic way to make a page slower.
+
+   EASING
+   ------
+   All curves come from theme.css (`--ease-out-expo` etc.) so motion
+   stays consistent without anyone re-deriving a cubic-bezier.
+   ============================================================ */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   1. MARQUEE — Pengumuman Berjalan
+   ══════════════════════════════════════════════════════════════════
+
+   WHAT CHANGED AND WHY
+   --------------------
+   Old version:
+     .marquee-content { padding-left: 100%; animation: … translateX(-100%) }
+
+   Two problems:
+   (a) `padding-left: 100%` is a LAYOUT property doing an animation's
+       job. The element's width (and therefore the -100% translation
+       distance) depends on the container width, so every resize
+       reflows the track and the animation distance changes under it.
+   (b) With one copy of the text, translating -100% leaves a dead gap:
+       the tail exits before the head re-enters.
+
+   New version: TWO copies of the text inside a `width: max-content`
+   flex row, animating to translate3d(-50%, 0, 0). -50% is exactly one
+   copy, so the loop is mathematically seamless at any text length, and
+   the distance is derived from content instead of from the container.
+   The gap between copies is `padding-inline-end`, not `gap` — with
+   `gap`, -50% would land half a gap off and the seam would show.
+
+   ON LAYER PROMOTION — `will-change: transform` below is what actually
+   guarantees the compositor layer, not the `translate3d` syntax. Modern
+   engines promote any element with a running transform animation, but
+   they do it a frame or two late, which is exactly where low-end
+   Android drops frames. Declaring `will-change` up front (justified
+   here because the animation genuinely never stops) removes that hitch.
+
+   `translate3d` is kept in the source as a readable signal of intent
+   and as a hint for dev builds; it is NOT a performance trick —
+   `translate3d(x, y, 0)` and `translate(x, y)` are equivalent, and
+   Lightning CSS rewrites one to the other in the production bundle.
+   ------------------------------------------------------------------ */
+
+.marquee-track {
+  width: 100%;
+  overflow: hidden;
+  /* Isolates the scrolling text from the rest of the page: the browser
+     can repaint the strip without invalidating its ancestors. */
+  contain: layout paint;
+}
+
+.marquee-content {
+  display: flex;
+  width: max-content;                 /* size to BOTH copies, not to 100% */
+  /* Readable-speed default; overridable per instance. */
+  animation: marquee-scroll var(--marquee-duration, 24s) linear infinite;
+  will-change: transform;             /* justified: animates forever */
+}
+
+.marquee-item {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  /* The seam gap. Must be padding, not `gap` — see header note. */
+  padding-inline-end: 3rem;
+}
+
+@keyframes marquee-scroll {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+/* Pause on hover, and on keyboard focus, so the text is actually
+   readable — a marquee that cannot be stopped fails WCAG 2.2.2
+   (Pause, Stop, Hide). Only on real pointers; on touch there is no
+   hover state to latch onto. */
+@media (hover: hover) and (pointer: fine) {
+  .marquee-track:hover .marquee-content,
+  .marquee-track:focus-within .marquee-content {
+    animation-play-state: paused;
+  }
+}
+
+/* Reduced motion: the generic `*` rule in global.css would clamp the
+   duration to 0.01ms and leave the strip frozen half-scrolled, which
+   is worse than not moving. Instead: drop the animation, drop the
+   duplicate copy, and let the track scroll normally if the text is
+   longer than the strip. */
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { overflow-x: auto; }
+  .marquee-content {
+    width: auto !important;
+    animation: none !important;
+    transform: none !important;
+  }
+  .marquee-item + .marquee-item { display: none !important; }
+  .marquee-item { padding-inline-end: 0 !important; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   2. SAKURA PETALS
+   ══════════════════════════════════════════════════════════════════
+
+   Dormant feature (the container ships with `hidden`), but the rules
+   are corrected anyway so re-enabling it is safe.
+
+   The keyframes already animated `transform` — that part was right.
+   The remaining costs were:
+   - Promotion left to chance: `will-change: transform` now makes each
+     petal a real compositor layer from frame one instead of being
+     promoted mid-fall (which drops the first frames on low-end
+     Android).
+   - No containment, so every petal invalidated the whole fixed
+     overlay on each frame.
+   - Unbounded petal count on small screens.
+   ------------------------------------------------------------------ */
+
+#sakura-particles {
+  z-index: 1;
+  pointer-events: none;
+  /* Paint containment: petals are clipped and cannot dirty anything
+     outside this box. `size` is deliberately excluded — it would
+     collapse the inset-0 box. */
+  contain: layout paint style;
+}
+
+.sakura-petal {
+  position: absolute;
+  top: -24px;
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle at 32% 30%, #fecdd3, #fb7185);
+  border-radius: 62% 38% 58% 42% / 60% 55% 45% 40%;
+  box-shadow: inset -1px -1px 2px #be123c40;
+  animation: sakuraFall linear infinite;
+  /* Gradients and inset shadows are painted once into the layer, then
+     only transformed — so they stop being a per-frame cost. */
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* `linear` is correct for falling physics; the easing lives in the
+   keyframe distribution (the 25/50/75 stops already vary speed). */
+@keyframes sakuraFall {
+  0%   { transform: translate3d(0, -30px, 0)      rotate(0deg); }
+  25%  { transform: translate3d(24px, 26vh, 0)    rotate(95deg); }
+  50%  { transform: translate3d(-18px, 52vh, 0)   rotate(185deg); }
+  75%  { transform: translate3d(22px, 78vh, 0)    rotate(275deg); }
+  100% { transform: translate3d(0, 106vh, 0)      rotate(360deg); }
+}
+
+/* Responsive budget: petals are pure decoration. On phones — where
+   GPU memory and fill rate are the tightest — cap the count rather
+   than dropping the effect entirely. */
+@media (max-width: 640px) {
+  .sakura-petal:nth-child(n + 13) { display: none; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   3. TRANSITION PRESETS — the replacement for `transition-all`
+   ══════════════════════════════════════════════════════════════════
+
+   `transition-all` appears 26 times. Two costs:
+
+   1. COST PER FRAME — the engine must diff *every* animatable property
+      on every frame, not just the one that changed.
+   2. LATENT BUG — it is a promise to animate anything added later. A
+      row with `transition-all hover:bg-white/5` that later gains
+      `hover:scale-105` silently starts animating width, height,
+      padding and margin too, i.e. a full table layout on hover.
+
+   PREFER THE STOCK TAILWIND UTILITY where one exists — it is already
+   scoped, already familiar, and emitted on demand:
+
+       colour changes      → transition-colors   (covers fill + stroke
+                                                  for inline SVG icons)
+       transform / scale   → transition-transform
+       opacity             → transition-opacity
+       shadow              → transition-shadow
+       none                → transition-none
+       overshoot feel      → transition-transform ease-spring
+
+   Only the one combination Tailwind cannot express as a single named
+   utility is defined here.
+   ------------------------------------------------------------------ */
+
+.t-elevate {
+  /* Depth feedback: focus rings and card lift — box-shadow + border-color.
+     Both are PAINT-only properties — unlike `transition-all`, this can
+     never accidentally animate `border-width` (a layout property),
+     which is what makes inputs visibly jump on focus in some themes. */
+  transition-property: box-shadow, border-color;
+  transition-duration: var(--default-transition-duration);
+  transition-timing-function: var(--ease-out-expo);
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   4. HOVER EFFECTS, GUARDED
+   ══════════════════════════════════════════════════════════════════
+
+   `@media (hover: hover) and (pointer: fine)` is the cross-browser
+   way to ask "does this device have a real pointer?". Without it,
+   touch browsers emulate `:hover` on tap and leave the element stuck
+   in its hover state until the user taps elsewhere — a long-standing
+   complaint on the mobile job list.
+
+   Note on `will-change`: setting it inside `:hover` is too late (the
+   transition has already begun). It is set on the *wrapper's* hover
+   below, which is the standard workaround — the layer is created a
+   frame before the child moves. Use `.lift-wrap` on the parent of
+   anything using `.hover-lift` when the effect is on a dense list.
+   ------------------------------------------------------------------ */
+
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift {
+    transition: transform 180ms var(--ease-out-expo);
+  }
+  .hover-lift:hover { transform: translateY(-2px); }
+
+  .hover-grow {
+    transition: transform 180ms var(--ease-spring);
+  }
+  .hover-grow:hover { transform: scale(1.05); }
+
+  .lift-wrap:hover .hover-lift,
+  .lift-wrap:hover .hover-grow { will-change: transform; }
+}
+
+/* Keyboard parity: hover-only affordances are invisible to keyboard
+   users. `:focus-visible` gets the same treatment. */
+.hover-lift:focus-visible,
+.hover-grow:focus-visible { transform: translateY(-2px); }
+
+
+/* ══════════════════════════════════════════════════════════════════
+   5. BACKDROP BLUR
+   ══════════════════════════════════════════════════════════════════
+
+   Ten full-screen modals use `backdrop-blur-md`. `backdrop-filter` is
+   the most expensive paint operation in the app: the browser must
+   snapshot everything behind the element and run a blur pass over it.
+
+   While a modal is open the page behind is static, so it blurs once and
+   the cost is acceptable. Two rules keep it that way:
+
+   - NEVER put `will-change: backdrop-filter` on these. It pins a
+     full-viewport buffer in GPU memory for the whole session.
+   - Respect `prefers-reduced-transparency`, the OS-level "reduce
+     translucency" switch (macOS / Windows / iOS). Users who enable it
+     usually do so because blur makes them motion-sick or hurts
+     legibility — the opaque fallback is both kinder and much cheaper.
+   ------------------------------------------------------------------ */
+
+@media (prefers-reduced-transparency: reduce) {
+  .u-modal-shell,
+  .u-backdrop-blur {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: rgb(2 6 23 / 0.96) !important;
+  }
+}
+
+/* Firefox shipped backdrop-filter in 144; until then the element just
+   shows its translucent background, which is still legible because
+   every modal pairs `backdrop-blur-md` with `bg-black/80`. No @supports
+   polyfill needed — this is a progressive enhancement, not a
+   requirement. */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   6. REDUCED MOTION — final safety net
+   ══════════════════════════════════════════════════════════════════
+
+   global.css carries the broad `*` clamp. This block handles the two
+   things that clamp gets wrong:
+
+   - the boot spinner: `animation-duration: 0.01ms` on an infinite
+     animation still burns a frame every 0.01ms in some engines.
+     Replace it with a static, non-spinning state instead.
+   - the petals: hidden outright, since they are pure decoration and
+     `content-visibility` will not stop them.
+   ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  #sakura-particles { display: none !important; }
+
+  .animate-spin {
+    animation: none !important;
+    /* Keep it visible as a static "working" mark rather than a
+       frozen ring at a random angle. */
+    opacity: 0.6 !important;
+  }
+
+  .animate-bounce,
+  .animate-ping,
+  .animate-pulse {
+    animation: none !important;
+  }
+}

@@ -6,7 +6,8 @@
  *          generateFormBridge, generateLegacyMasterBridge, generateAiFormBridge
  */
 const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-exports.handler = makeSurfaceHandler([
+const { REGISTER_ACTIONS } = require('./surfaces/register');
+exports.handler = makeSurfaceHandler(REGISTER_ACTIONS, [
   'getDaftarSiswaBaru', 'submitDaftarSiswa', 'getLinkSiswaBaru',
   'generateFormBridge', 'generateLegacyMasterBridge', 'generateAiFormBridge',
 ]);

@@ -79,7 +79,7 @@ export default function TabMail() {
   });
 
   return (
-    <div class="bg-slate-900 rounded-xl border border-sky-900/50 p-4 shadow-xl overflow-x-auto">
+    <div class="bg-slate-900 rounded-xl border border-sky-900/50 p-4 shadow-xl u-scroll-x">
       {/* Header */}
       <div class="flex flex-wrap justify-between items-center gap-3 border-b border-sky-900/50 pb-4 mb-4">
         <h2 class="text-sky-400 font-bold text-lg"><Icon name="envelope" class="mr-2" /> {t('admin.mail_inbox')}</h2>
@@ -119,7 +119,7 @@ export default function TabMail() {
       </div>
 
       {/* Table */}
-      <div class="overflow-x-auto rounded-xl border border-slate-800">
+      <div class="u-scroll-x rounded-xl border border-slate-800">
         <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
           <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
             <tr>
@@ -144,7 +144,7 @@ export default function TabMail() {
                 <td colSpan={9} class="p-6 text-center text-slate-500">{t('admin.no_mail_found')}</td>
               </tr>
             ) : filtered.map((m, i) => (
-              <tr key={m.id || i} class="hover:bg-white/5 transition-all">
+              <tr key={m.id || i} class="hover:bg-white/5 transition-colors">
                 <td class="p-4 text-center">
                   <input type="checkbox" class="w-4 h-4 accent-rose-500 cursor-pointer"
                     checked={selected.has(String(m.id ?? m.wa ?? m.nama ?? ''))}

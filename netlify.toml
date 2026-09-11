@@ -37,3 +37,98 @@
   to = "/index.html"
   status = 200
 
+# ─── Phase A: legacy function aliases ────────────────────────────────────────
+# These paths were generic `makeHandler()` catch-all entry points: byte-for-byte
+# the same handler as bridge-links, but each one cost a full ~690 KB bundle
+# because it statically reached the whole action router.
+#
+# They are unreferenced by src/ (verified) — they exist only for deployed QR
+# codes, bookmarks and keep-alive workflows. Aliasing them to bridge-links is
+# behaviour-preserving: bridge-links is the same universal dispatcher.
+#
+# `force = true` IS REQUIRED. Netlify does not shadow existing content by
+# default (docs: "you can't shadow a URL that actually exists within the
+# site"), and a deployed function counts as existing content. Without it these
+# rules silently do nothing while the function files are still present.
+#
+# RETIREMENT SEQUENCE (do not skip step 2):
+#   1. Deploy this config. The rules now shadow the functions below.
+#   2. Verify each alias in a deploy preview (scripts/ci/verify-aliases.mjs).
+#   3. Only then delete the corresponding netlify/functions/*.js files.
+#   4. Keep these rules — they are the compatibility layer for old clients.
+[[redirects]]
+  from = "/.netlify/functions/admin-ai-context"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/ai-form-submit"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/apply"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/drive-links"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/rincian-presets"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/save-ai-cv"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/save-master"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/schedule-reminders"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/submit-apply"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/submit-siswa-baru"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/whatsapp"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+
+# run-migration: the ACTION was already removed from the registry (schema
+# changes must never be POST-reachable). The entry point was deleted in Phase A
+# and the admin UI button that called it is gone. This alias keeps any stray
+# legacy caller on a graceful NOT_IMPLEMENTED instead of a 404.
+[[redirects]]
+  from = "/.netlify/functions/run-migration"
+  to = "/.netlify/functions/bridge-links"
+  status = 200
+  force = true
+

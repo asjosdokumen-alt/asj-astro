@@ -29,7 +29,41 @@ export function corsHeaders(requestOrigin: string): Record<string, string> {
     'Access-Control-Allow-Origin': getCorsOrigin(requestOrigin),
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, Idempotency-Key',
+    // Without this, browser JS cannot read Retry-After off a 429/503 response
+    // (CORS hides non-safelisted response headers). The client would then have
+    // to guess a backoff, which is how retry storms start.
+    'Access-Control-Expose-Headers': 'Retry-After',
   };
+}
+
+/**
+ * Derive backpressure headers from a dispatcher outcome.
+ *
+ * - `Retry-After` is emitted whenever the outcome carries a numeric
+ *   `retryAfter` — currently rate limiting (429) and load shedding (503).
+ *   Without it a 503 is just a slower way of telling the client to retry
+ *   immediately, which is precisely the behaviour that sustains an overload.
+ * - `Cache-Control: no-store` on shed responses, so a transient overload is
+ *   never written into a cache and replayed after the pressure has passed.
+ *
+ * Pure and defensive: any outcome shape yields at least the base headers.
+ */
+export function backpressureHeaders(
+  base: Record<string, string>,
+  out: unknown,
+): Record<string, string> {
+  const headers = { ...base };
+  if (!out || typeof out !== 'object') return headers;
+  const rec = out as Record<string, unknown>;
+
+  const retryAfter = typeof rec.retryAfter === 'number' ? rec.retryAfter : undefined;
+  if (retryAfter !== undefined && retryAfter > 0) {
+    headers['Retry-After'] = String(Math.ceil(retryAfter));
+  }
+  if (rec.overloaded) {
+    headers['Cache-Control'] = 'no-store';
+  }
+  return headers;
 }
 
 // ── Client IP ───────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@
 import { requireRole } from '../identity';
 import * as fcm from '../../_lib/fcm-server';
 import { log } from '../../_lib/kernel/log';
+import { safeError } from '../../_lib/kernel/errors';
 import { normalizeWa } from '../../shared/wa-rules';
 import {
   insertSchedule,
@@ -53,7 +54,7 @@ export async function handleSimpanJadwalBaru(payload: any[], sessionToken?: stri
       },
     };
   } catch (e: any) {
-    return { success: false, error: 'Gagal simpan jadwal: ' + e.message };
+    return { success: false, error: safeError('Gagal simpan jadwal.', e) };
   }
 }
 
@@ -70,7 +71,7 @@ export async function handleHapusJadwal(payload: any[], sessionToken?: string) {
     await deleteScheduleById(row.id);
     return { success: true, id };
   } catch (e: any) {
-    return { success: false, error: 'Gagal hapus jadwal: ' + e.message };
+    return { success: false, error: safeError('Gagal hapus jadwal.', e) };
   }
 }
 
@@ -97,7 +98,7 @@ export async function handleTambahTugasBaru(payload: any[], sessionToken?: strin
       tugas: { id: idTugas, task: nama, status: 'BARU', dibuatOleh: admin, waktuDibuat },
     };
   } catch (e: any) {
-    return { success: false, error: 'Gagal tambah tugas: ' + e.message };
+    return { success: false, error: safeError('Gagal tambah tugas.', e) };
   }
 }
 
@@ -126,7 +127,7 @@ export async function handleSetTugasStatus(payload: any[], sessionToken?: string
       },
     };
   } catch (e: any) {
-    return { success: false, error: 'Gagal update status tugas: ' + e.message };
+    return { success: false, error: safeError('Gagal update status tugas.', e) };
   }
 }
 
@@ -143,7 +144,7 @@ export async function handleHapusTugas(payload: any[], sessionToken?: string) {
     await deleteTaskById(row.id);
     return { success: true, id };
   } catch (e: any) {
-    return { success: false, error: 'Gagal hapus tugas: ' + e.message };
+    return { success: false, error: safeError('Gagal hapus tugas.', e) };
   }
 }
 
@@ -262,6 +263,6 @@ export async function handleCheckAndSendAgendaReminders(sessionToken?: string) {
     }
     return { success: true, sent, errors, checked: schedules.length };
   } catch (e: any) {
-    return { success: false, error: e.message || 'Gagal check reminders' };
+    return { success: false, error: safeError('Gagal check reminders.', e) };
   }
 }

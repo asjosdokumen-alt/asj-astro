@@ -87,8 +87,8 @@ export default function LaporanBulananModal() {
   if (!open) return null;
 
   return (
-    <div class="fixed inset-0 bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
-      <div class="bg-slate-900 border border-blue-900/50 rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div class="fixed inset-0 u-modal-shell bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+      <div class="bg-slate-900 border border-blue-900/50 rounded-2xl w-full max-w-lg max-h-[80vh] u-scroll-area shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div class="p-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-bold text-white">

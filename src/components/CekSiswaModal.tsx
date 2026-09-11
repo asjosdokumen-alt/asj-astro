@@ -86,7 +86,7 @@ export default function CekSiswaModal({ onClose }: Props) {
   };
 
   return (
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
       <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[80vh] overflow-hidden shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700">
           <h3 class="text-lg font-bold text-white">
@@ -97,7 +97,7 @@ export default function CekSiswaModal({ onClose }: Props) {
             <Icon name="times" class="text-xl" />
           </button>
         </div>
-        <div class="overflow-y-auto max-h-[70vh]">
+        <div class="u-scroll-area max-h-[70vh]">
           {state.kind === 'loading' && (
             <div class="text-center py-10">
               <Icon spin name="spinner" class="text-2xl text-sky-400" />

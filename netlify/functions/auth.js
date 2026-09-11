@@ -10,7 +10,8 @@
  * auth requests don't block AI or document processing.
  */
 const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-exports.handler = makeSurfaceHandler([
+const { AUTH_ACTIONS } = require('./surfaces/auth');
+exports.handler = makeSurfaceHandler(AUTH_ACTIONS, [
   'checkAdminMaster', 'checkAdminPersonal', 'refreshAdminSession',
   'loginKandidat', 'refreshKandidatSession', 'daftarKandidat',
   'gantiPasswordKandidat', 'registerFcmToken', 'logout',

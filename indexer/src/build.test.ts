@@ -19,7 +19,11 @@ function built(): BuildResult {
 describe('full build', () => {
   it('indexes the measured inventory', () => {
     const r = built();
-    expect(r.stats.fileCount).toBe(315); // 182 ts (+2 uploadBerkas.ts/.test.ts 2026-09-08) + 76 tsx + 12 astro + 12 mjs + 4 cjs + 29 js
+    // Phase B (2026-09-11): +4 files — kernel/deadline.ts, kernel/admission.ts
+    // and their test files. ts 198 -> 202, total 336 -> 340.
+    // 2026-09-11 (later): +2 more — scripts/ci/io-boundary.mjs and
+    // scripts/lib/load-env.mjs. total 340 -> 342.
+    expect(r.stats.fileCount).toBe(342); // 202 ts + 78 tsx + 12 astro + 17 mjs + 5 cjs + 28 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 
@@ -28,7 +32,9 @@ describe('full build', () => {
     // declarations, import bindings) pushed the population to ~9.3k.
     const r = built();
     expect(r.stats.symbolCount).toBeGreaterThanOrEqual(8500);
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(13000); // was 10500; 11906 measured 2026-09-05 — envelope widened with the tree
+    // was 10500; 11906 measured 2026-09-05; 13025 measured 2026-09-11 after the
+    // Phase A CI gates landed in scripts/ci/ — envelope widened with the tree.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(13500);
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

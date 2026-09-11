@@ -21,8 +21,28 @@ const CACHEABLE_READS = new Set([
   'getAgendaAdmin', 'getApplicantDetail',
 ]);
 
+// PR3 (playbook Day 1–30): cache keys must carry session identity, not just
+// (action, args) — sessionStorage survives in-tab account switches, so a
+// cached kandidat/admin read used to be served to the next user of the same
+// tab. The tag is a short hash OF the token (never the token itself); the
+// whole cache is also dropped on every login/logout flip (subscribe below).
+function tokenTag(): string {
+  try {
+    const t = authStore.get().sessionToken;
+    if (!t) return 'anon';
+    let h = 0x811c9dc5; // FNV-1a 32-bit
+    for (let i = 0; i < t.length; i++) {
+      h ^= t.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return 's' + h.toString(36) + (t.length % 97);
+  } catch {
+    return 'anon';
+  }
+}
+
 function getCacheKey(action: string, args: unknown[]): string {
-  return 'asj_cache_' + action + ':' + JSON.stringify(args || []);
+  return 'asj_cache_' + tokenTag() + '_' + action + ':' + JSON.stringify(args || []);
 }
 function getCached(action: string, args: unknown[]): unknown | null {
   try {
@@ -42,12 +62,28 @@ function setCache(action: string, args: unknown[], value: unknown): void {
 }
 function invalidateCache(action?: string): void {
   try {
-    const prefix = action ? 'asj_cache_' + action + ':' : 'asj_cache_';
+    const prefix = action ? 'asj_cache_' + tokenTag() + '_' + action + ':' : 'asj_cache_';
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
       const key = sessionStorage.key(i);
       if (key && key.startsWith(prefix)) sessionStorage.removeItem(key);
     }
   } catch {}
+}
+
+// PR3: drop the whole read cache when the session identity flips (logout OR
+// login). Checked lazily on each apiClient call instead of subscribing to
+// authStore — the only reader of this cache is apiClient itself, so
+// invalidating at call time is observably identical and avoids depending on
+// store subscription shape (several test double stores only expose get/set).
+let lastSeenIdentity: boolean | null = null;
+function invalidateOnIdentityFlip(): void {
+  try {
+    const identity = authStore.get().isLoggedIn;
+    if (lastSeenIdentity !== null && identity !== lastSeenIdentity) {
+      invalidateCache();
+    }
+    lastSeenIdentity = identity;
+  } catch { /* store unavailable — nothing to invalidate */ }
 }
 
 const FALLBACK_ENDPOINT = '/.netlify/functions/bridge-links';
@@ -102,6 +138,9 @@ export async function apiClient<T = ApiResponse>(
   options: { requireAuth?: boolean } = {}
 ): Promise<T> {
   const { requireAuth = true } = options;
+
+  // PR3: identity flip since the last call (logout/login) → clear stale reads.
+  invalidateOnIdentityFlip();
 
   // SWR-lite: return cached result for read-only actions
   if (CACHEABLE_READS.has(action)) {

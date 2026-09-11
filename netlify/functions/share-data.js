@@ -18,7 +18,9 @@
  * token (?tk=) minted by updateDokumenShare/getShareTokenForJob — bare
  * ?job= links are rejected server-side (docs/PARITY_CHECKLIST.md B06).
  */
-const { handleShareData } = require('./_lib/handlers');
+// PR4 (playbook §3.3 "never leak") + satu pemilik pesan generik:
+// GENERIC_ERROR_MESSAGE di kernel/errors.ts, diekspor via _lib/handlers.
+const { handleShareData, GENERIC_ERROR_MESSAGE } = require('./_lib/handlers');
 
 exports.handler = async (event) => {
   const p = (event.queryStringParameters) || {};
@@ -28,7 +30,10 @@ exports.handler = async (event) => {
   try {
     out = await handleShareData(job, tk);
   } catch (e) {
-    out = { error: 'Error internal: ' + e.message };
+    // PR4 (playbook §3.3 "never leak"): jangan kirim e.message ke klien —
+    // detail internal cukup di log server.
+    console.error('[share-data] error:', e);
+    out = { error: GENERIC_ERROR_MESSAGE };
   }
   return {
     statusCode: out.error ? 400 : 200,

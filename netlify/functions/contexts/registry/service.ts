@@ -6,6 +6,7 @@
 import { cacheClear } from '../../_lib/cache';
 import { requireAdmin } from '../identity';
 import { emit } from '../../_lib/kernel/events';
+import { safeError } from '../../_lib/kernel/errors';
 import { findCandidateByWa } from '../../_lib/candidate-helpers';
 import { syncBiodataKeMail } from '../applications';
 import { getCandidatesPage as getCandidatesPageRepo, patchCandidate } from './repository';
@@ -68,7 +69,7 @@ export async function handleUpdateCatatanKandidat(payload: unknown[], sessionTok
     if (msg.includes('412') || msg.includes('Precondition')) {
       return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
     }
-    return { success: false, error: 'Gagal simpan catatan: ' + msg };
+    return { success: false, error: safeError('Gagal simpan catatan.', e) };
   }
 }
 
@@ -144,7 +145,7 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
     if (msg.includes('412') || msg.includes('Precondition')) {
       return { success: false, error: 'Data telah diubah oleh pengguna lain. Silakan segarkan halaman.', conflict: true };
     }
-    return { success: false, error: 'Gagal update kandidat: ' + msg };
+    return { success: false, error: safeError('Gagal update kandidat.', e) };
   }
 }
 
@@ -160,6 +161,6 @@ export async function handleGetCandidatesPage(payload: unknown[], sessionToken?:
     });
     return { success: true, candidates, total };
   } catch (e: unknown) {
-    return { success: false, error: 'Gagal memuat kandidat: ' + (e instanceof Error ? e.message : String(e)) };
+    return { success: false, error: safeError('Gagal memuat kandidat.', e) };
   }
 }

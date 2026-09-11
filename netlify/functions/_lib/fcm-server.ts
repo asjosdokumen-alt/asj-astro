@@ -131,7 +131,8 @@ async function sendMulticast(tokens: string[], title: string, body: string, url 
   const invalidTokens: string[] = [];
   const unique = Array.from(new Set((tokens || []).filter(Boolean)));
   // P33 fix: kirim paralel per batch 20 (sebelumnya sequential per token —
-  // loop >200 token meledakkan budget 10s Netlify dan error ditelan diam-diam).
+  // loop >200 token menahan slot fungsi terlalu lama, dan error ditelan
+  // diam-diam karena permintaan kehabisan waktu sebelum loop selesai).
   for (let i = 0; i < unique.length; i += 20) {
     const chunk = unique.slice(i, i + 20);
     const results = await Promise.allSettled(

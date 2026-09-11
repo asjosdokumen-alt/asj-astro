@@ -260,11 +260,11 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa }: Props) {
   if (!drawField) {
     return (
       <div
-        class="fixed inset-0 bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4"
+        class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4"
         ref={containerRef}
         onClick={onBackdropClick}
       >
-        <div class="glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-lg shadow-2xl relative border border-rose-500/50 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div class="glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-lg shadow-2xl relative border border-rose-500/50 max-h-[90vh] u-scroll-area custom-scrollbar">
           <button
             type="button"
             onClick={onClose}
@@ -301,7 +301,7 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa }: Props) {
 
   // ── Layar gambar penuh (full-screen canvas) ──────────────────────────────
   return (
-    <div class="fixed inset-0 bg-slate-950 z-[999] flex flex-col">
+    <div class="fixed inset-0 u-modal-shell bg-slate-950 z-[999] flex flex-col">
       <div class="px-4 py-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center shadow-md">
         <div>
           <h3 class="text-sm font-bold text-white uppercase tracking-wider">{drawField.drawTitle}</h3>

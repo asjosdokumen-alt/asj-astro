@@ -1189,4 +1189,7 @@ export const jpTranslations: Record<string, string> = {
     "master.step_documents": "書類",
     "form.connected_wa": "連携中のWhatsApp番号:",
     "form.enter_password_desc": "データを入力・更新するには候補者アカウントのパスワードを入力してください。",
+    "button.pilih_template_cv": "CVテンプレートを選択",
+    "ui.select_cv_template": "CVテンプレートを選択",
+    "ui.generating_cv": "CVを生成中...",
 };

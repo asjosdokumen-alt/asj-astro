@@ -4,6 +4,7 @@
  * Other contexts and surfaces import ONLY from index.ts.
  */
 import { requireAdmin } from '../identity';
+import { safeError } from '../../_lib/kernel/errors';
 import {
   hasBackend, demo, normalizeWa, pick, toText, mapCandidate, stripRaw,
   loadCandidatesUnik, loadSchedules, loadTugas, loadWaTemplates, loadPublicBase,
@@ -99,7 +100,7 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
     }
     return result;
   } catch (e: any) {
-    return { success: false, message: 'Gagal memuat data dari Supabase: ' + e.message };
+    return { success: false, message: safeError('Gagal memuat data dari Supabase.', e) };
   }
 }
 
@@ -122,7 +123,7 @@ export async function handleGetMonthlyReport(payload: any[], sessionToken?: stri
     const report = Object.entries(byLoker).sort((a, b) => b[1].total - a[1].total).map(([loker, data]) => ({ loker, ...data }));
     return { success: true, report, totalCandidates: cands.length, generatedAt: new Date().toISOString() };
   } catch (e: any) {
-    return { success: false, error: 'Gagal generate laporan: ' + e.message };
+    return { success: false, error: safeError('Gagal generate laporan.', e) };
   }
 }
 
@@ -265,6 +266,6 @@ export async function handleShareData(jobCode: string, shareToken?: string) {
     }
     return { job: { code, name, tsk: toText(pick(jobRow, ['tsk', 'pengurus'])) }, candidates };
   } catch (e: any) {
-    return { error: 'Gagal memuat data share: ' + e.message };
+    return { error: safeError('Gagal memuat data share.', e) };
   }
 }

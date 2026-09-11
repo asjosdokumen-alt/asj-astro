@@ -61,14 +61,18 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     })();
   </script>
 </head>
-<body id="asj-body" class="bg-canvas text-fg min-h-screen transition-colors duration-500 flow-root">
+<!-- PERF: the theme swap used to transition for 500ms. `background-color`
+     on <body> is a full-viewport paint, so that was ~30 full-screen
+     repaints per toggle. 200ms is still smooth (the curve is out-expo,
+     which lands early) and cuts the repaint work by 60%. -->
+<body id="asj-body" class="bg-canvas text-fg min-h-screen transition-colors duration-200 flow-root">
   <div id="global-loader" style="display: none !important;">
     <svg class="asj-icon animate-spin text-5xl text-pink-500 mb-4" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="#fas-spinner" /></svg>
     <h2 class="text-xl font-bold tracking-widest text-slate-200">MEMUAT ASJ OS V7...</h2>
     <p id="loader-msg" class="text-sm text-slate-500 mt-2 mb-6">Mempersiapkan UI Modern</p>
     <button onclick="document.getElementById(&quot;global-loader&quot;).style.display=&quot;none&quot;" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 border border-red-500 rounded-full text-sm font-bold text-white transition-colors shadow-lg"><svg class="asj-icon mr-1" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="#fas-times" /></svg> Tutup Paksa Loading</button>
   </div>
-  <div id="sakura-particles" class="fixed inset-0 overflow-hidden hidden" aria-hidden="true"></div>
+  <div id="sakura-particles" class="fixed inset-0 u-modal-shell overflow-hidden hidden" aria-hidden="true"></div>
   <a href="#main-content" class="skip-link">Lewati ke konten utama</a>
   
     <slot />

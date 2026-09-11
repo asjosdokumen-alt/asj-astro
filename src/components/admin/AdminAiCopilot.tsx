@@ -364,7 +364,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
 
   return (
     <div
-      class="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-2 md:p-4"
+      class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-2 md:p-4"
       onClick={onClose}
     >
       <div
@@ -400,7 +400,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
 
         {mode === "chat" && (
           <>
-            <div ref={chatRef} class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div ref={chatRef} class="flex-1 u-scroll-area p-4 space-y-3">
               {messages.map((m, i) => (
                 <div
                   key={i}
@@ -447,7 +447,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
               )}
             </div>
             {suggestions.length > 0 && !sending && (
-              <div class="px-3 pb-2 flex gap-2 overflow-x-auto">
+              <div class="px-3 pb-2 flex gap-2 u-scroll-x">
                 {suggestions.map((s, i) => (
                   <button
                     key={i}
@@ -481,7 +481,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
         )}
 
         {mode === "parse" && (
-          <div class="flex-1 overflow-y-auto p-4 space-y-3">
+          <div class="flex-1 u-scroll-area p-4 space-y-3">
             <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-3">
               <label
                 htmlFor="ai-admin-file"
@@ -564,7 +564,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
         )}
 
         {mode === "results" && (
-          <div class="flex-1 overflow-y-auto p-4">
+          <div class="flex-1 u-scroll-area p-4">
             {lastHasil ? (
               <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
                 <h4 class="text-sm font-bold text-amber-400">{t("admin.ai_results_title")}</h4>

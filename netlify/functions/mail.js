@@ -5,6 +5,7 @@
  * Handles: reviewForm, approveForm, rejectForm, deleteForm, tandaiDibacaForm
  */
 const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-exports.handler = makeSurfaceHandler([
+const { MAIL_ACTIONS } = require('./surfaces/mail');
+exports.handler = makeSurfaceHandler(MAIL_ACTIONS, [
   'reviewForm', 'approveForm', 'rejectForm', 'deleteForm', 'tandaiDibacaForm',
 ]);

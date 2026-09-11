@@ -39,6 +39,8 @@ export function makeV(d: Record<string, unknown>, ai: Record<string, unknown>) {
         if (dRec[k] !== undefined && isGood(dRec[k])) return String(dRec[k]).trim();
         const cleanKey = String(k).toUpperCase().replace(/[^A-Z0-9]/g, "");
         if (dRec[cleanKey] !== undefined && isGood(dRec[cleanKey])) return String(dRec[cleanKey]).trim();
+        const matchingKey = Object.keys(dRec).find((candidate) => candidate !== k && candidate !== cleanKey && String(candidate).toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanKey && isGood(dRec[candidate]));
+        if (matchingKey !== undefined) return String(dRec[matchingKey]).trim();
         const aiVal = getAi(k);
         if (aiVal) return aiVal;
       }

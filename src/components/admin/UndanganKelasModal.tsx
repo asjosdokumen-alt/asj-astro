@@ -71,10 +71,14 @@ export default function UndanganKelasModal({ isOpen, onClose }: Props) {
       if (!aliveRef.current) return "cancelled";
       let st: Record<string, any> | null = null;
       try { st = (await apiClient.call("getJobStatus", [jobId])) as Record<string, any>; } catch { continue; }
-      if (!st || st.status === "not_found" || st.status === "dead") {
-        return { error: (st && (st.message || st.lastError)) || "Job tidak ditemukan." };
+      // Redaction (playbook PR2): getJobStatus tidak lagi mengirim lastError
+      // (detail error internal tidak boleh sampai ke klien) — hanya flag
+      // hasError + status. Pesan ke user memakai copy tetap di sini.
+      if (!st || st.status === "not_found") {
+        return { error: (st && st.message) || "Job tidak ditemukan." };
       }
-      if (st.status === "failed") return { error: String(st.lastError || "Pengiriman gagal.") };
+      if (st.status === "dead") return { error: "Pengiriman dihentikan setelah berulang kali gagal." };
+      if (st.status === "failed") return { error: "Pengiriman gagal. Silakan coba lagi atau cek monitoring job." };
       if (st.status === "done") {
         // getJobStatus → result = payload job = { ...payload, result: handlerResult }
         const payloadObj: Record<string, any> = (st.result && typeof st.result === "object") ? st.result : {};
@@ -143,12 +147,12 @@ export default function UndanganKelasModal({ isOpen, onClose }: Props) {
 
   if (!isOpen) return null;
 
-  return h("div", { class: "fixed inset-0 bg-black/80 backdrop-blur-md z-[999] flex items-center justify-center p-4", ref: containerRef, onClick: onBackdropClick },
+  return h("div", { class: "fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[999] flex items-center justify-center p-4", ref: containerRef, onClick: onBackdropClick },
     h("div", { class: "glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col border border-emerald-500/50" },
       h("button", { onClick: onClose, class: "absolute top-5 right-6 text-slate-400 hover:text-white transition z-[100]" }, h(Icon, { name: "times", class: "text-2xl" })),
       h("h3", { class: "text-xl font-black text-white mb-2 border-b border-emerald-900/50 pb-3" }, h(Icon, { name: "whatsapp", class: "text-emerald-400 mr-2" }), t("ui.invite_class_title")),
       h("p", { class: "text-xs text-slate-400 mb-4 leading-relaxed" }, t("ui.invite_class_desc")),
-      h("div", { class: "space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1" },
+      h("div", { class: "space-y-3 flex-1 u-scroll-area custom-scrollbar pr-1" },
         h("div", null,
           h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h(Icon, { name: "users", class: "mr-1" }), t("ui.paste_list_label")),
           h("textarea", { rows: 6, value: daftar, onInput: (e: Event) => setDaftar((e.target as HTMLTextAreaElement).value), placeholder: t("ui.paste_list_placeholder"), class: "w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500 placeholder:text-slate-500" }),
@@ -156,7 +160,7 @@ export default function UndanganKelasModal({ isOpen, onClose }: Props) {
         h("div", null,
           h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h(Icon, { name: "link", class: "mr-1" }), t("ui.group_link_label")),
           h("input", { type: "text", value: linkGrup, onInput: (e: Event) => setLinkGrup((e.target as HTMLInputElement).value), placeholder: t("ui.group_link_placeholder"), class: "w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500 placeholder:text-slate-500" })),
-        h("div", { class: "grid grid-cols-1 md:grid-cols-2 gap-3" },
+        h("div", { class: "u-grid-auto u-grid-auto--form gap-3" },
           h("div", null,
             h("label", { class: "block text-[10px] font-bold text-emerald-400 uppercase mb-1" }, h(Icon, { name: "stopwatch", class: "mr-1" }), t("ui.interval_label")),
             h("input", { type: "number", value: String(interval), onInput: (e: Event) => setInterval_(parseInt((e.target as HTMLInputElement).value) || 10), min: "1", class: "w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500" })),

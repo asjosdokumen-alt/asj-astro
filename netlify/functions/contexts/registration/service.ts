@@ -4,6 +4,7 @@
  * Other contexts and surfaces import ONLY from index.ts.
  */
 import { cacheClear } from '../../_lib/cache';
+import { safeError } from '../../_lib/kernel/errors';
 import { env } from '../../_lib/env';
 import * as session from '../../_lib/session';
 import { requireRole } from '../identity';
@@ -34,7 +35,7 @@ export async function handleGetDaftarSiswaBaru(payload: any[], sessionToken?: st
     });
     return { success: true, data };
   } catch (e: any) {
-    return { success: false, error: e.message };
+    return { success: false, error: safeError('Gagal memuat data siswa baru.', e) };
   }
 }
 
@@ -63,7 +64,7 @@ export async function handleSubmitDaftarSiswa(payload: unknown) {
     });
     return { success: true };
   } catch (e: any) {
-    return { success: false, message: 'Gagal mendaftar: ' + e.message };
+    return { success: false, message: safeError('Gagal mendaftar.', e) };
   }
 }
 

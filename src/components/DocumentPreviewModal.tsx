@@ -283,7 +283,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[300] flex flex-col p-2 md:p-6" ref={containerRef} onClick={onBackdropClick}>
+    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex flex-col p-2 md:p-6" ref={containerRef} onClick={onBackdropClick}>
       <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full h-full flex flex-col overflow-hidden shadow-2xl">
         {/* Header */}
         <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">

@@ -19,6 +19,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { GENERIC_ERROR_MESSAGE } from './_lib/kernel/errors';
 
 const { mockHandle } = vi.hoisted(() => ({ mockHandle: vi.fn() }));
 
@@ -37,7 +38,14 @@ beforeEach(() => {
     exports: moduleObj.exports,
     require: (id: string) => {
       if (id === './_lib/handlers') {
-        return { handleShareData: mockHandle, handleAction: vi.fn(), NOT_IMPLEMENTED: vi.fn() };
+        return {
+          handleShareData: mockHandle,
+          handleAction: vi.fn(),
+          NOT_IMPLEMENTED: vi.fn(),
+          // Pesan generik datang dari PEMILIKnya (kernel/errors), bukan
+          // literal kedua di test — satu wording, satu owner.
+          GENERIC_ERROR_MESSAGE,
+        };
       }
       throw new Error('unexpected require: ' + id);
     },
@@ -77,10 +85,14 @@ describe('A15/B06 — share-data GET endpoint delegates to real handler', () => 
     expect(res.body).not.toContain('belum diimplementasi');
   });
 
-  it('handler throw → 400 with Error internal', async () => {
+  // PR4 (playbook §3.3 "never leak"): handler throw → generic message.
+  // Internal detail ('boom' etc.) stays in server logs, never in the body.
+  it('handler throw → 400 with generic message, no internal detail', async () => {
     mockHandle.mockRejectedValue(new Error('boom'));
     const res = await handler({ queryStringParameters: { job: 'X' }, headers: {} });
     expect(res.statusCode).toBe(400);
-    expect(JSON.parse(res.body).error).toContain('boom');
+    const body = JSON.parse(res.body);
+    expect(body.error).toBe(GENERIC_ERROR_MESSAGE);
+    expect(JSON.stringify(body)).not.toContain('boom');
   });
 });

@@ -5,6 +5,7 @@
  * Handles: updateSysConfig, getRincianPresets, saveRincianPreset, deleteRincianPreset
  */
 const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-exports.handler = makeSurfaceHandler([
+const { CONFIG_ACTIONS } = require('./surfaces/config');
+exports.handler = makeSurfaceHandler(CONFIG_ACTIONS, [
   'updateSysConfig', 'getRincianPresets', 'saveRincianPreset', 'deleteRincianPreset',
 ]);

@@ -87,13 +87,14 @@ Berikut adalah *roadmap* teknis untuk 20% fitur krusial yang masih menggantung b
 - **Tab Config**:
   - **Aksi**: Buat UI di `TabConfig.tsx` dan hubungkan dengan `updateSysConfig` di `surfaces/config.ts`.
 
-### 🟢 Prioritas 3: Template CV Baru (Mengatasi Bottleneck)
-- **Konteks**: Di codebase lama hanya ada 1 template CV. Astro sangat mudah untuk direkayasa.
-- **Target File Frontend**: `src/components/admin/RirekishoBuilder.tsx`.
-- **Aksi**:
-  - Ekstrak komponen builder menjadi desain yang dinamis (misalnya `TemplateCV1.tsx`, `TemplateCV2.tsx`).
-  - Simpan preferensi template di *state* Nanostore atau database Supabase kandidat.
-  - Backend untuk generate dokumen ada di `surfaces/docs.ts`. Tambahkan flag atau parameter `templateType` di payload API.
+### 🟢 Prioritas 3: Template CV Baru (Implementasi — Factory Pattern)
+- **Konteks**: Di codebase lama hanya ada 1 template CV (Rirekisho A4).
+- **Solusi**: Sistem pabrik generator CV (factory pattern) yang mendukung banyak template sekaligus.
+- **File utama**: `src/lib/cv-template-factory/` — factory, types, data normalization, renderers, loaders
+- **Template tersedia** (di `templates.ts`): `rirekisho-a4` (preserved as-is), `excel-basic`, `docx-basic`, `pdf-basic`
+- **Loader**: `loadExcelTemplate()`, `loadDocxTemplate()`, `loadPdfTemplate()` — baca file template dengan `{{placeholder}}` dan isi data kandidat
+- **UI**: `CvTemplateSelector.tsx` — tombol `Pilih Template CV` di CandidateDash dan TabPelamar
+- **Data flow**: getDrafCvMaster → normalizeMasterData → cvFactory.render → download blob
 
 ---
 

@@ -18,6 +18,7 @@
  *   requireAdmin(token) → { token } | { error }
  *   isOwnerOrAdmin(token, wa) → boolean
  */
+import { safeError } from '../../_lib/kernel/errors';
 
 import bcrypt from 'bcryptjs';
 import { normalizeWa } from '../../shared/wa-rules';
@@ -128,7 +129,7 @@ export async function registerKandidat(nama: string, wa: string, password?: stri
     });
     return { success: true, message: 'Pendaftaran berhasil.' };
   } catch (e: unknown) {
-    return { success: false, message: 'Gagal mendaftar: ' + ((e as Error).message || 'unknown') };
+    return { success: false, message: safeError('Gagal mendaftar.', e) };
   }
 }
 

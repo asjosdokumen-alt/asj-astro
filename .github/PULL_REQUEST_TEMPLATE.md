@@ -2,6 +2,15 @@
 
 <!-- One or two sentences. What is different after this PR? -->
 
+## Threat model
+
+<!-- Required on every PR — [`docs/ENGINEERING-QUALITY-PLAYBOOK.md`](../docs/ENGINEERING-QUALITY-PLAYBOOK.md) §5.2. -->
+
+- Trust: whose data does this touch? (public / own / other users' / admin)
+- Identity: is it read from the verified token, or from the request body?
+- Failure: what does the user see when this fails?
+- New primitive: does this add an alternative to something that already exists?
+
 ## Why
 
 <!-- The reason, not the implementation. Link the issue if there is one. -->
@@ -11,6 +20,7 @@
 <!-- Be specific. "Tested locally" is not verification. -->
 
 - [ ] Unit/integration tests added or updated
+- [ ] Behaviour change shipped with its test (playbook §4.1 — failing test first for CRITICAL/HIGH fixes)
 - [ ] Reproduced the bug before the fix (for bug fixes)
 - [ ] Checked the failure mode — what does the user see if a dependency is down?
 
@@ -47,11 +57,14 @@ See [`docs/CODE_REVIEW_CHECKLIST.md`](../docs/CODE_REVIEW_CHECKLIST.md).
 - [ ] No `any`; no `as` or `!` at trust boundaries
 - [ ] Worst-case latency fits the 10 s function budget
 
-**Tier 2 — Security**
+**Tier 2 — Security** (playbook §3 invariants — each is test-enforced, don't fight the guard)
 
-- [ ] Authorization checked explicitly; role derived server-side
+- [ ] Authorization checked explicitly; role derived server-side, identity from the verified token — never the request body (§P3)
 - [ ] Input validated by Zod at the handler edge
-- [ ] Untrusted output escaped before any HTML transform
+- [ ] Untrusted values pass `esc()` (`src/lib/helpers_cv.ts`) before any HTML string that reaches `dangerouslySetInnerHTML` — guard: `rirekishoEscape.test.ts`
+- [ ] Client-facing error strings built with `safeError()` (`kernel/errors.ts`); no `e.message` concatenated into any response — guard: `errors.test.ts` leak scan
+- [ ] No `sessionToken`/PII in job payloads or client-visible responses — enqueue in `surfaces/notify.ts`, poll via `handleGetJobStatus` (`hasError`, never `lastError`) — guard: `job-queue.test.ts`
+- [ ] Client cache keyed by session identity (`tokenTag()` in `src/lib/apiClient.ts`), cleared on login/logout — guard: `apiClient.test.ts`
 - [ ] No secrets or PII in logs, storage, or query strings
 
 **Tier 3 — Architecture**

@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 import { attachBerkasBio } from '../../_lib/db/berkas';
+import { safeError } from '../../_lib/kernel/errors';
 import { requireAdmin } from '../identity';
 import { emit } from '../../_lib/kernel/events';
 import { mapCandidate } from '../../_lib/db/candidates';
@@ -167,7 +168,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
     if (generatedPassword) result.generatedPassword = generatedPassword;
     return result;
   } catch (e: unknown) {
-    return { success: false, error: 'Gagal proses form: ' + (e instanceof Error ? e.message : String(e)) };
+    return { success: false, error: safeError('Gagal proses form.', e) };
   }
 }
 
@@ -227,7 +228,7 @@ export async function handleTandaiDibacaForm(payload: unknown[], sessionToken?: 
     f.feedback_berkas = newFb;
     return { success: true, form: mapForm(f, idx) };
   } catch (e: unknown) {
-    return { success: false, error: 'Gagal tandai dibaca: ' + (e instanceof Error ? e.message : String(e)) };
+    return { success: false, error: safeError('Gagal tandai dibaca.', e) };
   }
 }
 

@@ -162,7 +162,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
       <div class="glass-panel p-8 rounded-[2rem] w-full max-w-sm shadow-2xl relative">
         <button onClick={onClose} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />

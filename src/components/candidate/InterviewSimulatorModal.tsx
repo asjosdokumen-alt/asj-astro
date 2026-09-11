@@ -252,7 +252,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose }: Props) {
 
   return (
     <div
-      class="fixed inset-0 bg-black/90 backdrop-blur-md z-[300] flex flex-col justify-end md:justify-center items-center md:p-4"
+      class="fixed inset-0 u-modal-shell bg-black/90 backdrop-blur-md z-[300] flex flex-col justify-end md:justify-center items-center md:p-4"
       ref={containerRef}
       onClick={onBackdropClick}
     >
@@ -285,7 +285,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose }: Props) {
         {/* Chat area */}
         <div
           ref={chatBoxRef}
-          class="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-900/50 custom-scrollbar"
+          class="flex-1 u-scroll-area p-5 space-y-4 bg-slate-900/50 custom-scrollbar"
         >
           {msgs.map((m, i) => {
             const segs = boldSegments(m.content);

@@ -42,7 +42,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="text-fg-muted mb-4 max-w-md">
             Maaf, komponen ini gagal dimuat karena suatu kesalahan internal. Silakan muat ulang halaman.
           </p>
-          <div className="text-sm bg-surface p-4 rounded-lg w-full max-w-lg text-left overflow-x-auto text-accent-red font-mono border border-line">
+          <div className="text-sm bg-surface p-4 rounded-lg w-full max-w-lg text-left u-scroll-x text-accent-red font-mono border border-line">
             {this.state.error?.message || 'Unknown error'}
           </div>
           <button

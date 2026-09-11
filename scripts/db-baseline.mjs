@@ -22,11 +22,15 @@ try {
   pg = (await import('file:///' + p.replace(/\\/g, '/') + '/lib/index.js')).default;
 }
 
-const URL = process.env.DATABASE_URL;
+// Load .env.local / .env.lokal and map Direct_Connection_DB onto DATABASE_URL,
+// so this works locally without exporting anything by hand. process.env wins.
+const { initDbEnv, describeDbTarget, failNoDbUrl } = await import('./lib/load-env.mjs');
+const dbEnv = initDbEnv();
+const URL = dbEnv.url;
 if (!URL) {
-  console.error('DATABASE_URL belum diset.');
-  process.exit(1);
+  failNoDbUrl('db-baseline');
 }
+console.log(`  target : ${describeDbTarget(URL)}`);
 
 const client = new pg.Client({
   connectionString: URL,

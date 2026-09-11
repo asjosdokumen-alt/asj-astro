@@ -16,6 +16,7 @@ import {
 } from '../../store/adminStore';
 import InputManualModal from './InputManualModal.tsx';
 import RirekishoBuilder from './RirekishoBuilder';
+import CvTemplateSelector from '../CvTemplateSelector';
 import LaporanBulananModal from './LaporanBulananModal.tsx';
 import WAPintarModal from '../WAPintarModal';
 import api from '../../lib/apiClient';
@@ -45,6 +46,7 @@ export default function TabPelamar() {
     return k && k.pasPhoto ? String(k.pasPhoto) : undefined;
   };
   const [showRirek, setShowRirek] = useState(false);
+const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
   // B02: WA Pintar — legacy per-row button bukaModalWaPintar(idKandidat) opens
   // the smart-sender modal with template picker (js/08_wa_pintar.js); Astro's
   // old button was a bare wa.me link with no template/message support.
@@ -161,7 +163,7 @@ export default function TabPelamar() {
         </div>
       ) : (
         /* Full View — table */
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <div class="u-scroll-x rounded-xl border border-slate-800">
           <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
             <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
               <tr>
@@ -177,7 +179,7 @@ export default function TabPelamar() {
               {shown.length === 0 ? (
                 <tr><td colSpan={6} class="p-6 text-center text-slate-500">{t('admin.no_candidates')}</td></tr>
               ) : shown.map((k) => (
-                <tr key={k.id || k.wa} class="hover:bg-white/5 transition-all">
+                <tr key={k.id || k.wa} class="hover:bg-white/5 transition-colors">
                   <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.id || k.wa || '-'}</td>
                   <td class="p-4 font-bold text-white">{k.nama || '-'}{k.isSiswaASJ ? <span class="ml-1 text-emerald-400 text-xs">🎓</span> : k.isVIP && <span class="ml-1 text-amber-400 text-xs">🏆</span>}</td>
                   <td class="p-4"><span class="font-mono text-purple-300 text-xs">{k.idLoker || '-'}</span></td>
@@ -189,7 +191,8 @@ export default function TabPelamar() {
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-1">
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
-                      <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
+                      <button onClick={()=>{setShowCvTemplateSelector(true);}} class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
+<button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> AI CV</button>
                       <button title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
@@ -215,7 +218,10 @@ export default function TabPelamar() {
         <WAPintarModal candidateName={waTarget.nama} candidateJob={waTarget.job} phone={waTarget.phone}
           templates={waTemplates} onClose={() => setWaTarget(null)} />
       )}
-          <RirekishoBuilder waTarget={rirekWa} isOpen={showRirek} onClose={()=>setShowRirek(false)} fotoFallback={fotoFallbackFor(rirekWa)} />
+          {showCvTemplateSelector && <CvTemplateSelector waTarget={rirekWa} isAdmin={true} onClose={() => setShowCvTemplateSelector(false)} onOpenRirekisho={() => { setShowCvTemplateSelector(false); setShowRirek(true); }} />}
+            <RirekishoBuilder waTarget={rirekWa} isOpen={showRirek} onClose={()=>setShowRirek(false)} fotoFallback={fotoFallbackFor(rirekWa)} />
 </div>
   );
 }
+
+

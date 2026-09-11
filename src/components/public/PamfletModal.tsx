@@ -39,7 +39,7 @@ const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
   if (!isOpen || !url || url === "-") return null;
 
   return h("div", {
-    class: "fixed inset-0 bg-black/90 z-[9999] flex items-center justify-center p-4",
+    class: "fixed inset-0 u-modal-shell bg-black/90 z-[9999] flex items-center justify-center p-4",
     style: "backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);",
     ref: containerRef, onClick: onBackdropClick,
   },

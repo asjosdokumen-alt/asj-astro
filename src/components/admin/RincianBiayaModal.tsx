@@ -449,11 +449,11 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
 
   return (
     <div
-      class="fixed inset-0 bg-black/80 backdrop-blur-md z-[350] flex items-center justify-center p-3 md:p-5"
+      class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[350] flex items-center justify-center p-3 md:p-5"
       ref={containerRef}
       onClick={onBackdropClick}
     >
-      <div class="bg-slate-900 border border-emerald-700/40 rounded-[2rem] w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl p-6 md:p-8">
+      <div class="bg-slate-900 border border-emerald-700/40 rounded-[2rem] w-full max-w-3xl max-h-[92vh] u-scroll-area shadow-2xl p-6 md:p-8">
         <div class="flex justify-between items-start mb-1">
           <h3 class="text-xl font-black text-emerald-400">
             <Icon name="list-check" class="mr-2" /> {t('ui.rincian_biaya')}
@@ -557,7 +557,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
           <p class="text-[9px] text-slate-500 mt-1">{t('ui.stage_example')}</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+        <div class="u-grid-auto u-grid-auto--form gap-5 mb-5">
           {RB_SECS.map((sec) => (
             <div key={sec}>
               <label class="block text-xs font-bold mb-2 uppercase tracking-widest">
@@ -648,7 +648,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
           <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
             <Icon name="eye" class="mr-1" /> {t('ui.preview_detail')}
           </label>
-          <pre class="bg-black/60 border border-slate-700 rounded-xl p-3 text-xs text-emerald-300 whitespace-pre-wrap max-h-40 overflow-y-auto">
+          <pre class="bg-black/60 border border-slate-700 rounded-xl p-3 text-xs text-emerald-300 whitespace-pre-wrap max-h-40 u-scroll-area">
             {preview || t('ui.empty_rincian')}
           </pre>
         </div>

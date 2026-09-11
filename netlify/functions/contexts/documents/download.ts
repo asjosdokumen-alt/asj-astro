@@ -5,6 +5,7 @@ import { normalizeWa, pick, toText } from './repository';
 import { findCandidatesByJob, fetchAllMasters } from './repository';
 import { requireRole } from '../identity';
 import { isAllowedDocumentUrl } from '../../_lib/storage';
+import { safeError } from '../../_lib/kernel/errors';
 
 const DOC_COLUMNS: [string, string[]][] = [
   ['CV', ['file_cv']], ['JFT', ['jft_url', 'jft']], ['SSW', ['ssw_url', 'ssw']],
@@ -64,7 +65,7 @@ export async function handleDownloadJobDocs(payload: unknown[], sessionToken?: s
       const archive = ZipClass ? new ZipClass('zip', { zlib: { level: 6 } }) : typeof ArchiveClass === 'function' ? new ArchiveClass('zip', { zlib: { level: 6 } }) : (archiverMod as any)('zip', { zlib: { level: 6 } });
       archive.on('data', (chunk: Buffer) => chunks.push(chunk));
       archive.on('end', () => { const zipBuf = Buffer.concat(chunks); resolve({ success: true, zipBase64: zipBuf.toString('base64'), fileName: 'Dokumen_' + code + '.zip', totalFiles: downloads.length, totalSize: zipBuf.length, candidateCount: candidates.length }); });
-      archive.on('error', (err: Error) => resolve({ success: false, error: 'Gagal membuat ZIP: ' + err.message }));
+      archive.on('error', (err: Error) => resolve({ success: false, error: safeError('Gagal membuat ZIP.', err) }));
       let processed = 0;
       let totalBytes = 0;
       async function processNext() {
@@ -87,5 +88,5 @@ export async function handleDownloadJobDocs(payload: unknown[], sessionToken?: s
       const total = downloads.length;
       processNext().catch(() => archive.abort());
     });
-  } catch (e: unknown) { const msg = e instanceof Error ? e.message : String(e); return { success: false, error: 'Gagal download dokumen: ' + msg }; }
+  } catch (e: unknown) { return { success: false, error: safeError('Gagal download dokumen.', e) }; }
 }

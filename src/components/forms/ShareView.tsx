@@ -179,7 +179,7 @@ export default function ShareView() {
   return (
     <div class="min-h-screen bg-slate-950 pt-[42px] overflow-x-hidden text-slate-100 relative selection:bg-pink-500/30">
       {/* Ambient BG */}
-      <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      <div class="fixed inset-0 u-modal-shell pointer-events-none z-0 overflow-hidden">
         <div class="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-pink-600/20 rounded-full blur-[120px]"></div>
         <div class="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-rose-600/10 rounded-full blur-[130px]"></div>
       </div>
@@ -223,7 +223,7 @@ export default function ShareView() {
       <main class="max-w-7xl mx-auto px-4 md:px-8 py-10 relative z-10">
         {/* Loading */}
         {loading && (
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 animate-[fadeIn_0.8s_ease-out]">
+          <div class="u-grid-auto u-grid-auto--panels gap-4 md:gap-6 animate-[fadeIn_0.8s_ease-out]">
             {[1, 2, 3].map((i) => (
               <div key={i} class="bg-slate-900/[.97] border border-slate-700/50 rounded-2xl p-4 md:p-5">
                 <div class="flex gap-3 md:gap-4">
@@ -278,7 +278,7 @@ export default function ShareView() {
 
         {/* Candidates Grid */}
         {!loading && !error && candidates.length > 0 && (
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 animate-[fadeIn_0.8s_ease-out] pb-16">
+          <div class="u-grid-auto u-grid-auto--panels gap-4 md:gap-6 animate-[fadeIn_0.8s_ease-out] pb-16">
             {filtered.map((c) => {
               const isSel = selected.has(c.id_kandidat);
               const nama = c.nama_lengkap || 'Candidate';
@@ -289,7 +289,7 @@ export default function ShareView() {
               const usia = parseInt(String(c.usia), 10) || 0;
               return (
                 <div key={c.id_kandidat}
-                  class={`bg-slate-900/[.97] border rounded-2xl p-4 md:p-5 transition-all hover:shadow-pink-500/10 relative group cursor-pointer flex flex-col ${isSel ? 'border-pink-400 shadow-[0_0_15px_rgba(244,114,182,0.3)]' : 'border-slate-700/50 hover:border-pink-500/50'}`}>
+                  class={`bg-slate-900/[.97] border rounded-2xl p-4 md:p-5 t-elevate hover:shadow-pink-500/10 relative group cursor-pointer flex flex-col ${isSel ? 'border-pink-400 shadow-[0_0_15px_rgba(244,114,182,0.3)]' : 'border-slate-700/50 hover:border-pink-500/50'}`}>
                   <button
                     type="button"
                     aria-pressed={isSel}
@@ -394,7 +394,7 @@ export default function ShareView() {
                 <span class="text-[10px] md:text-xs font-bold text-pink-300 uppercase tracking-wider mb-0.5">{t('share.sel_count')}</span>
               </div>
             </div>
-            <button onClick={submitSelection} class="px-5 py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-xs md:text-sm rounded-xl shadow-lg hover:shadow-pink-500/25 transition-all flex items-center gap-2">
+            <button onClick={submitSelection} class="px-5 py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-xs md:text-sm rounded-xl shadow-lg hover:shadow-pink-500/25 transition-shadow flex items-center gap-2">
               <Icon name="whatsapp" class="text-lg" /> {t('share.sel_btn')}
             </button>
           </div>

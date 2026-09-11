@@ -314,7 +314,7 @@ The rest:
 | All outbound I/O goes through `kernel/http.ts`. No raw `fetch` in new code. **GATE** | P2 — `storage.ts` and `supabasePaged` bypass the entire resilience layer |
 | No per-request state in module or global scope — use `AsyncLocalStorage` **GATE** | B4 |
 | Mutations must opt **in** to retry (`idempotent: false` by default) | P26 |
-| Worst-case latency must fit the platform budget (Netlify sync = 10 s). Sum the fallback chain. **GATE** | P1 — 3 models × 7 s + Grok 10 s = 31 s |
+| Worst-case latency must fit the **request deadline** (12 s — `kernel/deadline.ts`), not the platform ceiling. Sum the fallback chain. **GATE** | P1 — 3 models × 7 s + Grok 10 s = 31 s. The Netlify sync ceiling is 60 s, but it is not a budget you may spend: a longer request holds a function slot longer, which is how an overload starts |
 | Never derive a credential from unverified input; always `verifyToken()` first **GATE** | B8 |
 | Required env vars fail loudly at startup, never silently degrade | B9 |
 | Correct HTTP status on errors — never `200` with `{success: false}` | P18 — breaks client fallback and monitoring |

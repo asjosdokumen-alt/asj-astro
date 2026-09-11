@@ -1,0 +1,176 @@
+/* ============================================================
+   ASJ Portal — Layout Primitives
+   ============================================================
+
+   WHY THIS FILE EXISTS
+   --------------------
+   Layout was being assembled ad-hoc from utilities, which produced
+   three recurring bugs across the 130 components:
+
+   1. FLEX/GRID OVERFLOW — `flex-1` and grid children default to
+      `min-width: auto`, so a long unbroken string (a candidate's WA
+      number, a job code) pushes the layout wider than the viewport
+      instead of truncating.
+   2. BREAKPOINT SPRAWL — `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
+      repeated 32 times. `.u-grid-auto` replaces all of them with one
+      intrinsic rule that needs *zero* breakpoints.
+   3. SCROLL CONTAINERS — 50 `overflow-*-auto` elements, each
+      rediscovering that scroll chaining leaks to the page behind modals.
+
+   PREFIX CONVENTION
+   -----------------
+   `u-` = unlayered utility. These sit above Tailwind in the cascade so
+   a primitive always wins over a stray utility (e.g. `.u-scroll-area`
+   beats a leftover `overflow-hidden`). They use names Tailwind does not
+   generate, so there is no collision.
+
+   ⚠ CURATION RULE — READ BEFORE ADDING ANYTHING HERE
+   ---------------------------------------------------
+   Plain CSS in this file is NOT tree-shaken: every rule ships to every
+   page whether or not it is used. Tailwind utilities, by contrast, are
+   emitted on demand.
+
+   So this file holds ONLY primitives that are (a) actually used and
+   (b) not expressible as a stock Tailwind utility. An earlier draft
+   carried 32 classes; 20 were unused AND duplicated something Tailwind
+   already ships — `.u-truncate` vs `truncate`, `.u-clamp-2` vs
+   `line-clamp-2`, `.u-flex-center` vs `flex items-center justify-center`,
+   `.t-ui` vs `transition-colors` (which already includes fill/stroke),
+   `.t-move` vs `transition-transform`, `.t-fade` vs `transition-opacity`,
+   `.t-none` vs `transition-none`, `.u-no-shrink` vs `shrink-0`,
+   `.u-sticky-top` vs `sticky top-0`. Those were removed rather than
+   left as a speculative toolkit — duplicated API surface is a
+   maintenance cost, and dead rules are a per-page byte cost.
+
+   Safe-area spacing lives in ONE place: `.pb-safe` in global.css.
+   ============================================================ */
+
+
+/* ── 1. Intrinsic responsive grid ───────────────────────────────────
+   PERF + MAINTAINABILITY:
+   One rule replaces `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`.
+   `auto-fit` recomputes column count from available width, so it is
+   correct at *every* width — including the tablet-landscape,
+   wide-phone and split-screen widths no media query was written for.
+   It also responds to the CONTAINER, not the viewport, so a grid
+   inside a modal or sidebar lays out correctly instead of inheriting
+   a column count chosen for the full page.
+
+   The `min(..., 100%)` is the important bit: a bare
+   `minmax(18rem, 1fr)` overflows the viewport whenever the container
+   is narrower than 18rem (320px phones, and any grid nested inside a
+   sidebar). Clamping the minimum to 100% makes it impossible to
+   overflow, which deletes a whole class of horizontal-scroll bugs
+   caused by layout rather than by content.
+
+   NO `gap` HERE ON PURPOSE. This rule is unlayered, so setting `gap`
+   would silently beat every `gap-3` / `gap-5` utility on the element.
+   Pair the class with a `gap-*` utility instead — that keeps spacing
+   in the hands of whoever is authoring the markup.                  */
+.u-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(var(--u-grid-min, 18rem), 100%), 1fr)
+  );
+  /* Children default to `min-width: auto`, which lets a long word push
+     a column wider than its track. Zeroing it keeps tracks honest. */
+  min-width: 0;
+}
+.u-grid-auto > * { min-width: 0; }
+
+/* Variants are named for the JOB, not for a size, so a reader can tell
+   which one to reach for. All are breakpoint-free; `--u-grid-min` can
+   also be set inline for a one-off.                                 */
+.u-grid-auto--dense  { --u-grid-min: 12rem; }  /* chips, icon rows    */
+.u-grid-auto--cards  { --u-grid-min: 15rem; }  /* 3-up card grid      */
+.u-grid-auto--panels { --u-grid-min: 20rem; }  /* 2→3 up dashboards   */
+.u-grid-auto--form   { --u-grid-min: 24rem; }  /* 2-up form fields    */
+.u-grid-auto--wide   { --u-grid-min: 32rem; }  /* 2-up, roomy         */
+
+
+/* ── 2. Scroll area ─────────────────────────────────────────────────
+   Replaces the bare `overflow-y-auto` used in 37 places.
+
+   - `overscroll-behavior: contain` stops scroll CHAINING: reaching the
+     end of a modal's list no longer scrolls the page behind it. This
+     was previously applied by a global
+     `[class*="fixed inset-0"]` substring selector (see global.css);
+     putting it here means it costs one class match instead of an
+     attribute scan over every element in the document.
+   - `scrollbar-gutter: stable` reserves the scrollbar track up front,
+     so a list that grows from 3 to 50 rows does not reflow its own
+     content by ~15px. Kills a visible layout shift on Windows/Linux
+     (classic scrollbars). On macOS/iOS overlay scrollbars it is 0px.
+   - `min-height: 0` makes this behave as a flex child.
+   - `-webkit-overflow-scrolling: touch` keeps momentum scrolling on
+     older iOS; it is a no-op elsewhere.                             */
+.u-scroll-area {
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Horizontal variant: tables on phones. `scrollbar-gutter` is omitted
+   here on purpose — reserving a vertical gutter under a horizontally
+   scrolling table adds dead space without preventing any shift.      */
+.u-scroll-x {
+  overflow-x: auto;
+  min-width: 0;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+
+/* ── 3. Modal / overlay shell ───────────────────────────────────────
+   Applied to the 33 `fixed inset-0` backdrops. Carries only
+   `overscroll-behavior` — see motion.css §5 for the backdrop-filter
+   cost note.                                                         */
+.u-modal-shell {
+  overscroll-behavior: contain;
+}
+
+
+/* ── 4. Long-list rendering budget ──────────────────────────────────
+   `content-visibility: auto` lets the browser skip LAYOUT AND PAINT
+   for off-screen items entirely. It also stops any animations inside
+   the skipped subtree, which makes it the cheapest way to park
+   decorative motion that has scrolled out of view.
+
+   `contain-intrinsic-size` supplies a placeholder height so the
+   scrollbar does not jump as items are realised. The `auto` keyword
+   makes the browser remember the real height after first paint, so the
+   placeholder only matters before that.
+
+   TUNE IT: `--u-cv-h` should approximate the real item height. Too
+   small and the scrollbar under-reports and jumps as content is
+   realised; too large and the list ends in dead space.
+
+   SAFETY — do NOT put this on <tr> or on display:table children:
+   skipping layout on a table row breaks column alignment, because each
+   column's width is derived from the widest cell across ALL rows and
+   unrendered rows report no width. This is why the 159-row job table
+   (LokerTable) and the admin tables do not use it. Apply it only to
+   repeating *card* / block containers.                               */
+.u-cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--u-cv-h, 88px);
+}
+.u-cv-auto--card { --u-cv-h: 160px; }  /* application-history cards   */
+
+
+/* ── 5. Print ──────────────────────────────────────────────────────
+   Rirekisho/CV printing goes through window.print(). Scroll
+   containment is meaningless on paper and `content-visibility` can
+   make off-screen content print blank — so both are disabled.       */
+@media print {
+  .u-scroll-area,
+  .u-scroll-x {
+    overflow: visible !important;
+  }
+  .u-cv-auto {
+    content-visibility: visible !important;
+  }
+}

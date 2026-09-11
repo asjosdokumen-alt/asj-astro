@@ -4,8 +4,8 @@
  * WHY THIS EXISTS
  * ---------------
  * Every outbound fetch in the codebase currently uses bare `fetch()` with no
- * timeout. A single hung PostgREST call consumes the entire 10 s Netlify
- * function budget. This module provides:
+ * timeout. A single hung PostgREST call consumes the entire request budget.
+ * This module provides:
  *
  *   1. Per-request timeout via AbortSignal.timeout()
  *   2. Typed errors (UPSTREAM_TIMEOUT, HTTP_ERROR) for retry/breaker decisions
@@ -18,11 +18,26 @@
  * Phase 1: wire into db/client.ts supabaseJson() only.
  * Phase 2: wire into all outbound fetch() calls.
  * Phase 5: added retry/breaker/bulkhead via resilience module.
+ * Phase B: budgets are clamped to a per-request deadline (kernel/deadline.ts),
+ *          and observed latency feeds the admission controller's pressure
+ *          estimate (kernel/admission.ts).
  */
 
-/** Timeouts per dependency (ms). Strictly < 10 s Netlify function limit. */
+/**
+ * Timeouts per dependency (ms).
+ *
+ * These are OCCUPANCY BUDGETS, not platform limits. The Netlify synchronous
+ * ceiling is 60 s (not 10 s — comments elsewhere claiming 10 s are stale), but
+ * exploiting that headroom would be wrong: a longer budget means a slot is
+ * held longer, which is the opposite of bounding load under pressure.
+ *
+ * So each value is chosen as "long enough that a healthy call never trips it,
+ * short enough that a sick call releases the slot quickly". Every value is
+ * additionally clamped at call time to whatever remains of the request
+ * deadline, so these figures are ceilings rather than sums.
+ */
 export const BUDGETS = {
-  /** PostgREST reads — must leave room for write + response assembly */
+  /** PostgREST reads — the dominant call; tripping this means real trouble */
   postgrest_read:  2_000,
   /** PostgREST writes — no retry on non-idempotent, but still need timeout */
   postgrest_write: 3_000,
@@ -30,7 +45,7 @@ export const BUDGETS = {
   storage:         5_000,
   /** External APIs (Gemini, Fonnte, FCM) */
   external:        5_000,
-  /** AI chat — generous, but must not exceed 10 s */
+  /** AI chat — the longest legitimate call; bounded further by the ai tier cap */
   ai_chat:         8_000,
 } as const;
 
@@ -69,7 +84,21 @@ export async function request(
   init: RequestInit & { budgetMs?: number; budgetKey?: BudgetKey; action?: string } = {},
 ): Promise<Response> {
   const { budgetMs: explicitBudget, budgetKey, action: actionName, ...fetchInit } = init;
-  const budgetMs = explicitBudget ?? (budgetKey ? BUDGETS[budgetKey] : BUDGETS.postgrest_read);
+  const requestedBudget = explicitBudget ?? (budgetKey ? BUDGETS[budgetKey] : BUDGETS.postgrest_read);
+
+  // Bound the call by whatever is left of the request deadline. Without this,
+  // the per-dependency budgets simply sum (2s read + 3s write + 5s storage +
+  // retries) and a single request can walk toward the platform ceiling while
+  // holding a slot. This is the line that makes the deadline binding.
+  const budgetMs = clampBudget(requestedBudget);
+  if (budgetMs <= MIN_SLICE_MS) {
+    // Not enough time left to be worth opening a socket. Refuse locally rather
+    // than issue a call that cannot complete and will only occupy a slot.
+    throw new AppError('DEADLINE_EXCEEDED', {
+      message: `Permintaan kehabisan waktu sebelum memanggil ${url}`,
+      retryAfter: 2,
+    });
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), budgetMs);
@@ -84,8 +113,8 @@ export async function request(
 
   // P13 fix: Always apply circuit breaker + bulkhead for any dependency,
   // not just reads. This prevents writes from overwhelming a failing service.
-  // Retry is still gated on isRead — non-idempotent writes should NOT retry here.
-  const isRead = !fetchInit.method || fetchInit.method.toUpperCase() === 'GET';
+  // (Retry is NOT applied here — that decision belongs to the caller via
+  // resilience.withRetry, which defaults to idempotent:false for safety.)
   const shouldProtect = !!dep;
 
   // Phase 7: propagate traceparent for distributed tracing (§10.3)
@@ -96,14 +125,25 @@ export async function request(
     headers.set('traceparent', traceparent);
   }
 
-  // §9.2: Set statement_timeout on PostgREST reads to prevent runaway queries
-  // from pinning connections. Writes get a separate, slightly longer timeout.
-  if (dep === 'postgrest') {
-    const stmtTimeout = isRead ? '2000' : '3000';
-    if (!headers.has('statement_timeout')) {
-      headers.set('statement_timeout', stmtTimeout);
-    }
-  }
+  // ── REMOVED: statement_timeout request header ──────────────────────────────
+  // This block used to do:
+  //   if (dep === 'postgrest') headers.set('statement_timeout', isRead ? '2000' : '3000');
+  //
+  // It was dead code that created false confidence. PostgREST does not read a
+  // `statement_timeout` request header — it is not in its recognised header set
+  // (Prefer, Accept, Range, Authorization, Content-Type, *-Profile). PostgREST
+  // applies statement_timeout as a *hoisted transaction setting*, configured
+  // server-side via `db-hoisted-tx-settings` and sourced from database ROLE
+  // settings. Unknown headers are simply ignored, so this line silently did
+  // nothing while looking like query protection.
+  //
+  // Verified before removal: no `db-pre-request` hook is installed in this
+  // project (nothing in migrations/ or config reads request.headers), so no
+  // server-side function was consuming it either.
+  //
+  // The real control now lives in migrations/011_statement_timeout.sql, which
+  // sets it via ALTER ROLE for anon/authenticated/service_role/authenticator.
+  // Client-side, the equivalent bound is the per-request deadline above.
 
   // P16 fix: Move bulkhead acquire inside try block so clearTimeout(timer)
   // runs even if acquireBulkhead or checkBreaker throws.
@@ -118,6 +158,10 @@ export async function request(
     const durationMs = Date.now() - startTime;
     clearTimeout(timer);
     if (shouldProtect) breaker.success(dep);
+    // Feed the admission controller's pressure estimate. Only successful calls
+    // are observed, so the EWMA measures "how slow is a working query" rather
+    // than "how often do we fail" — failure pressure is the breaker's job.
+    observeDependency(dep, durationMs);
     metrics.increment('dependency.call', { dep, outcome: 'success' });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
@@ -181,6 +225,9 @@ function detectDependency(url: string): string {
 import { metrics } from './metrics';
 import { log, asyncLocalStorage } from './log';
 import { breaker, bulkhead } from './resilience';
+import { AppError } from './errors';
+import { clampBudget, MIN_SLICE_MS } from './deadline';
+import { observeDependency } from './admission';
 
 // ── Dependency call logging ───────────────────────────────────────────────────
 // Writes to dependency_calls table. Fire-and-forget: never blocks the caller.

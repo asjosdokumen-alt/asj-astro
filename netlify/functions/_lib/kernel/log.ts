@@ -30,6 +30,13 @@ interface LogContext {
   surface?: string;
   idempotencyKey?: string;
   traceparent?: string;
+  /**
+   * Absolute wall-clock deadline (epoch ms) for this invocation, set by the
+   * request wrapper. Read by kernel/deadline.ts to clamp dependency timeouts
+   * so per-dependency budgets cannot sum past the request deadline.
+   * See kernel/deadline.ts for why occupancy, not concurrency, is the bound.
+   */
+  deadlineAt?: number;
 }
 
 const asyncLocalStorage = new AsyncLocalStorage<LogContext>();

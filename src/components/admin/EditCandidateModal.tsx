@@ -205,8 +205,8 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
   if (!isOpen) return null;
 
   return (
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
-      <div ref={containerRef} onClick={e => e.stopPropagation()} class="glass-panel p-6 rounded-[2rem] w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl relative">
+    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
+      <div ref={containerRef} onClick={e => e.stopPropagation()} class="glass-panel p-6 rounded-[2rem] w-full max-w-lg max-h-[90vh] u-scroll-area shadow-2xl relative">
         <button onClick={onClose} class="absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>

@@ -70,20 +70,60 @@
 
   /* z-index scale.
      NOTE: the theme namespace is `--z-index`, NOT `--z`
-     (verified: themeKeys:["--z-index"] → generates utility `z-modal`). */
+     (verified: themeKeys:["--z-index"] → generates utility `z-modal`).
+
+     `header` (90) and `loader` (9999) were added because components
+     hard-coded z-[90] / z-[9999]; use `z-header` / `z-loader` instead
+     so the stacking order is legible from one place.                   */
+  --z-index-sticky:  50;   /* sticky table headers, section bars        */
+  --z-index-header:  90;   /* was z-[90]                                */
   --z-index-drawer:  100;
   --z-index-modal:   200;
   --z-index-popover: 300;
   --z-index-toast:   400;
+  --z-index-loader:  9999; /* was z-[9999] — full-screen boot overlay    */
 
   /* One self-hosted family. Overrides Tailwind's default --font-sans,
      which also feeds preflight's html font-family. */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 
+  /* ── Motion tokens ───────────────────────────────────────────────
+     PERF / PERFECT-CURVE RATIONALE
+     ------------------------------
+     Three curves cover every state change in the app. Picking one per
+     *intent* removes the 40+ ad-hoc `ease-in` / `duration-700` /
+     `duration-1000` values that had drifted in, which is what made the
+     UI feel inconsistent rather than slow.
+
+     - out-expo  : decelerates hard, lands early. Reads as "instant"
+                   at 180ms, so most transitions got *faster* while
+                   feeling smoother. Default for entering UI.
+     - in-out-soft: symmetric, for reversible moves (drawer, accordion).
+     - spring    : slight overshoot. Reserved for direct-manipulation
+                   feedback (button press, card select) — never for
+                   layout, because the overshoot implies physicality
+                   that layout changes do not have.                    */
+  --ease-out-expo:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring:      cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Defaults for the BARE `transition` utility (226 call sites).
+     Tailwind ships 150ms + ease-in-out; these two lines retune every
+     one of them at once with zero component edits.                    */
+  --default-transition-duration:        180ms;
+  --default-transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+
   /* Fixes `animate-slide-in`, used by Toast.tsx but previously defined
-     nowhere. Also takes over the hand-written .animate-fade-in.        */
+     nowhere. Also takes over the hand-written .animate-fade-in.
+
+     PERF: only `opacity` + `transform` are animated. Both are
+     compositor-only — the element is promoted for the duration of the
+     animation and dropped afterwards, so there is no layout and no
+     paint per frame. Deliberately NOT translate3d(): for a one-shot
+     200ms tween the browser already promotes automatically, and
+     forcing a permanent 3D layer would cost memory for no gain.     */
   --animate-slide-in: slide-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-fade-in:  fadeIn 200ms ease-out;
+  --animate-fade-in:  fadeIn 200ms cubic-bezier(0.16, 1, 0.3, 1);
 
   @keyframes slide-in {
     from { opacity: 0; transform: translateX(12px); }

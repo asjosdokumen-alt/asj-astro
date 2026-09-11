@@ -8,6 +8,7 @@
  * Separate function allows independent scaling for public traffic spikes.
  */
 const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-exports.handler = makeSurfaceHandler([
+const { PUBLIC_ACTIONS } = require('./surfaces/public');
+exports.handler = makeSurfaceHandler(PUBLIC_ACTIONS, [
   'getAppData', 'getMonthlyReport',
 ]);

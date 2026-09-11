@@ -4,6 +4,7 @@
  * Other contexts and surfaces import ONLY from index.ts.
  */
 import { env } from '../../_lib/env';
+import { safeError } from '../../_lib/kernel/errors';
 import { requireRole } from '../identity';
 import { normalizeWa, upsertWaTemplate, deleteWaTemplate, getWaTemplates } from './repository';
 
@@ -69,7 +70,7 @@ export async function handleSimpanWaTemplate(payload: any[], sessionToken?: stri
     );
     return { success: true };
   } catch (e: any) {
-    return { success: false, error: 'Gagal simpan template: ' + e.message };
+    return { success: false, error: safeError('Gagal simpan template.', e) };
   }
 }
 
@@ -82,7 +83,7 @@ export async function handleHapusWaTemplate(payload: any[], sessionToken?: strin
     await deleteWaTemplate(id);
     return { success: true };
   } catch (e: any) {
-    return { success: false, error: 'Gagal hapus template: ' + e.message };
+    return { success: false, error: safeError('Gagal hapus template.', e) };
   }
 }
 
@@ -96,7 +97,7 @@ export async function handleKirimSatuPesanFonnte(payload: any[], sessionToken?: 
     const result = await fonnteSend(normalizeWa(wa), message);
     return { success: true, result };
   } catch (e: any) {
-    return { success: false, error: e.message };
+    return { success: false, error: safeError('Gagal kirim pesan.', e) };
   }
 }
 
@@ -145,12 +146,12 @@ export async function handleKirimTawaranMassal(
         await fonnteSend(wa, message);
         results.push({ wa: c.wa, nama, success: true });
       } catch (e: any) {
-        results.push({ wa: c.wa, nama, success: false, error: e.message });
+        results.push({ wa: c.wa, nama, success: false, error: safeError('Gagal kirim.', e) });
       }
       if (interval > 0) await new Promise((r) => setTimeout(r, interval * 1000));
     }
     return { success: true, results };
   } catch (e: any) {
-    return { success: false, error: e.message, results };
+    return { success: false, error: safeError('Gagal kirim massal.', e), results };
   }
 }

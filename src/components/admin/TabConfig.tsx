@@ -24,10 +24,6 @@ export default function TabConfig() {
     { id: 'jenjang_pendidikan', label: 'Jenjang Pendidikan', options: ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2'] },
   ]);
   const [loading, setLoading] = useState(true);
-  const [migrating, setMigrating] = useState(false);
-  const [migStatus, setMigStatus] = useState('');
-  const [migResults, setMigResults] = useState<string[]>([]);
-  const [migPending, setMigPending] = useState('');
   const [pengumuman, setPengumuman] = useState('');
   const [editingConfig, setEditingConfig] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -40,17 +36,6 @@ export default function TabConfig() {
         if (d.success) { setConfigs(d.sysConfig?.length ? d.sysConfig : configs); if (d.pengumuman) setPengumuman(d.pengumuman); }
       } catch (e) { console.warn('[TabConfig] API unavailable, using defaults', e); } finally { setLoading(false); }
     } load(); }, []);
-
-  async function handleMigrate() {
-    setMigrating(true); setMigStatus('Running...'); setMigResults([]);
-    try {
-      const r = await fetch('/.netlify/functions/run-migration', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionToken: authStore.get().sessionToken || "" }) });
-      const d = await r.json();
-      if (d.success) { setMigStatus('Done!'); setMigResults(d.results || []); if (d.pendingSQL) setMigPending(d.pendingSQL); }
-      else setMigStatus('Failed: ' + (d.error || 'Unknown'));
-    } catch (e) { setMigStatus('Error: ' + e); }
-    setMigrating(false);
-  }
 
   async function handleSaveConfig(id: string) {
     const options = editValue.split('\n').map(s => s.trim()).filter(Boolean);
@@ -75,18 +60,17 @@ export default function TabConfig() {
     <h2 class="text-white font-bold mb-6 border-b border-slate-700 pb-3 text-lg"><Icon name="cogs" class="mr-2 text-slate-300" /> {t('admin.tab_config_title')}</h2>
     <p class="text-sm text-slate-300 mb-6">{t('admin.sys_config_desc')}</p>
 
-    <div class="bg-black/40 border border-indigo-500/40 p-5 rounded-xl mb-6 shadow-inner">
-      <h3 class="text-sm font-bold text-indigo-400 mb-2 uppercase tracking-wider"><Icon name="database" class="mr-1" /> {t('admin.db_migration_auto')}</h3>
-      <p class="text-xs text-slate-300 mb-3">Jalankan pembaruan struktur &amp; pembersihan data: seed preset rincian biaya, cek kolom loker/master, normalisasi gender, rapikan nama, dan bersihkan NIK.</p>
-      <div class="flex flex-wrap gap-2 items-center">
-        <button onClick={handleMigrate} disabled={migrating} class="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition shadow-lg disabled:opacity-50"><Icon name="play" class="mr-1" /> {migrating ? 'Running...' : t('admin.run_migration')}</button>
-        <span class="text-xs text-slate-300">{migStatus}</span>
+    <div class="bg-black/40 border border-slate-600/40 p-5 rounded-xl mb-6 shadow-inner">
+      <h3 class="text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider"><Icon name="database" class="mr-1" /> {t('admin.db_migration_auto')}</h3>
+      <p class="text-xs text-slate-300 mb-3">Pembaruan struktur database dijalankan dari CLI, bukan dari UI. Endpoint migrasi lewat HTTP sudah dihapus permanen: perubahan skema tidak boleh dapat dipicu dari body POST.</p>
+      <div class="bg-black/60 border border-slate-600/40 rounded-lg p-3">
+        <p class="text-xs font-bold text-slate-400 mb-1">Jalankan dari terminal:</p>
+        <pre class="text-xs text-emerald-300 whitespace-pre-wrap font-mono">npm run migrate:status
+npm run migrate:up</pre>
       </div>
-      {migResults.length > 0 && <div class="mt-3 space-y-1.5">{migResults.map((r, i) => <div key={i} class="text-xs text-slate-300">{r}</div>)}</div>}
-      {migPending && <div class="mt-3"><p class="text-xs font-bold text-amber-400 mb-1">SQL yang perlu dijalankan manual:</p><pre class="bg-black/60 border border-amber-500/30 rounded-lg p-3 text-xs text-amber-200 whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">{migPending}</pre></div>}
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+    <div class="u-grid-auto u-grid-auto--panels gap-6 mb-6">
       {configs.map(c => (
         <div key={c.id} class="bg-black/40 border border-slate-700 p-4 rounded-xl shadow-inner">
           <h4 class="text-sm font-bold text-slate-300 mb-2">{c.label}</h4>

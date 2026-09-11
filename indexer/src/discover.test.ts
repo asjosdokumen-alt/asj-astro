@@ -97,13 +97,22 @@ describe('discover', () => {
   it('counts match the measured profile (design §1, +test-supabase-auth.mjs + CJS entries)', () => {
     const files = run();
     const count = (lang: Lang) => files.filter((f) => f.lang === lang).length;
-    expect(count('ts')).toBe(182); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
-    expect(count('tsx')).toBe(76); // 46 at design time; modal/component test suites added since
+    // Phase B (2026-09-11): kernel/deadline.ts + kernel/admission.ts and their
+    // test files. 198 -> 202.
+    expect(count('ts')).toBe(202); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
+    expect(count('tsx')).toBe(78); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
-    expect(count('mjs')).toBe(12); // 11 at design time; e2e/test-supabase-auth.mjs added since
-    expect(count('cjs')).toBe(4);
-    expect(count('js')).toBe(29); // netlify/functions/*.js CJS entry points (public/sw.js excluded)
-    expect(files.length).toBe(315); // 248 at design time (+2 uploadBerkas.ts/.test.ts 2026-09-08)
+    // 2026-09-11: the Phase A/B CI gates landed — bundle-size.mjs,
+    // surface-binding.mjs, verify-aliases.mjs, scripts/lib/load-env.mjs, and
+    // io-boundary.mjs — none of which were reflected here at the time.
+    // 15 -> 17.
+    expect(count('mjs')).toBe(17); // 11 at design time; e2e + scripts/ci gates added since
+    expect(count('cjs')).toBe(5);
+    // Phase A (2026-09-11): netlify/functions/run-migration.js deleted — the
+    // action was already removed from the registry, so the entry point was a
+    // dead 690 KB catch-all. 29 -> 28.
+    expect(count('js')).toBe(28);
+    expect(files.length).toBe(342); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

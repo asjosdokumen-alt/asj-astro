@@ -153,7 +153,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
   }
 
   return (
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4">
+    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4">
       <div class="glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-md shadow-2xl relative max-h-[90vh] flex flex-col border border-sky-500/50">
         <button onClick={onClose} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
@@ -194,7 +194,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
         )}
 
         {/* Candidate list */}
-        <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 mb-4 space-y-2">
+        <div class="flex-1 u-scroll-area custom-scrollbar pr-2 mb-4 space-y-2">
           {cands.length === 0 ? (
             <div class="text-center text-slate-500 py-4">Tidak ada kandidat di job ini.</div>
           ) : (

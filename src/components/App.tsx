@@ -141,7 +141,7 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
           </div>
       </header>}
 
-      {menuOpen && <div class="fixed inset-0 bg-black/70" style={{ zIndex: Z_INDEX.OVERLAY }} onClick={() => setMenuOpen(false)}></div>}
+      {menuOpen && <div class="fixed inset-0 u-modal-shell bg-black/70" style={{ zIndex: Z_INDEX.OVERLAY }} onClick={() => setMenuOpen(false)}></div>}
       
       {/* ─── Mobile Nav ─── */}
       <nav class={"fixed top-0 right-0 h-full w-72 bg-slate-900 border-l border-slate-700 shadow-2xl flex flex-col transition-transform duration-300 transform " + (menuOpen ? "translate-x-0" : "translate-x-full")} style={{ zIndex: Z_INDEX.NAV }}>
@@ -149,7 +149,7 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
           <span class="text-xs font-bold text-slate-500 uppercase tracking-widest"><Icon name="bars" class="mr-2 text-sky-400" /> {t("ui.menu")}</span>
           <button onClick={toggleMenu} class="text-slate-400 hover:text-white p-1 transition" aria-label="Close"><Icon name="times" class="text-xl" /></button>
         </div>
-        <div class="flex-1 overflow-y-auto p-4 space-y-3">
+        <div class="flex-1 u-scroll-area p-4 space-y-3">
           <div class="space-y-3 pb-3 mb-3 border-b border-slate-700">
             <button onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>
             <button onClick={toggleLang} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
