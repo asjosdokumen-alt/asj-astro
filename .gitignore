@@ -29,3 +29,12 @@ superbase.txt
 asj-astro.txt
 *-credentials.txt
 *-token*.txt
+
+# The `netlify` CLI writes its token as a literal assignment string when told to
+# (e.g. `netlify env:set NETLIFY_AUTH_TOKEN=...` accidentally redirected to a
+# file), producing names like `netlify_auth_token=nfp_....txt`. These are NOT
+# source. Covers the exact shape seen on 2026-09-11 as well as any regression to
+# the same pattern.
+netlify_auth_token*
+*_auth_token*
+*nfp_*

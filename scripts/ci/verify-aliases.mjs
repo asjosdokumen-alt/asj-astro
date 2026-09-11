@@ -192,8 +192,22 @@ async function main() {
   }
   console.log('  These paths are still LIVE and are still depended on by deployed QR');
   console.log('  codes and bookmarks. Do NOT delete the corresponding .js files.');
-  console.log('  The client does not use them (src/lib/apiClient.ts routes to /surfaces/*),');
-  console.log('  so deleting is a product decision about old QR codes, not a code one.');
+  console.log('');
+  console.log('  CORRECTION (2026-09-11, verified against production): the client routes');
+  console.log('  to ROOT-LEVEL entry points — /.netlify/functions/auth, /get-app-data,');
+  console.log('  /candidates, /jobs, /files, ... (the full map is src/lib/apiEndpoint.ts');
+  console.log('  SURFACE_ENDPOINTS). It does NOT call /surfaces/*. An earlier revision of');
+  console.log('  this message said the opposite and was wrong.');
+  console.log('');
+  console.log('  /surfaces/*.ts files ARE deployed by Netlify (it scans the functions dir');
+  console.log('  recursively for the deployed names) and every one of them returns 502');
+  console.log('  Runtime.HandlerNotFound, because they are internal modules that export');
+  console.log('  action maps (e.g. PUBLIC_ACTIONS), not a `handler`. Nothing calls those');
+  console.log('  URLs, so the 502s are inert — but they are a real packaging wart:');
+  console.log('  netlify/functions/surfaces/ should not be inside the functions directory.');
+  console.log('');
+  console.log('  So deleting the legacy .js files stays a product decision about old QR');
+  console.log('  codes and bookmarks, not a code one.');
   console.log('');
 }
 
