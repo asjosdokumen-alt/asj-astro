@@ -28,12 +28,12 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 333,
+    "rootNames": 341,
     "options": {}
   },
-  "universe": 3839,
+  "universe": 3845,
   "counts": {
-    "agreeBound": 3839,
+    "agreeBound": 3845,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
@@ -42,7 +42,7 @@
     "libRefAgree": 1225,
     "libRefDisagree": 0,
     "libRefFramework": 3,
-    "skippedNonBindable": 1927,
+    "skippedNonBindable": 1929,
     "skippedJsxIntrinsic": 54,
     "skippedAstroTemplate": 5,
     "offsetMismatch": 0,
@@ -51,7 +51,7 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3759,
+    "match": 3765,
     "alias-vs-chase": 56,
     "merged-declaration": 22,
     "shadowing-disagreement": 2,
@@ -186,11 +186,11 @@
     },
     {
       "path": "netlify/functions/sweep-queue.ts",
-      "universe": 63,
-      "agreeBound": 63,
+      "universe": 69,
+      "agreeBound": 69,
       "agreeUnresolved": 0,
       "lib": 10,
-      "skipped": 23,
+      "skipped": 25,
       "disagree": 0
     },
     {
@@ -635,7 +635,7 @@
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "makeSurfaceHandler → indexer netlify/functions/auth.js decls 395 · compiler netlify/functions/_lib/netlify-wrapper-surface.ts:3874"
+      "compiler": "makeSurfaceHandler → indexer netlify/functions/auth.js decls 395 · compiler netlify/functions/_lib/netlify-wrapper-surface.ts:3972"
     },
     {
       "path": "netlify/functions/auth.js",
@@ -648,12 +648,12 @@
     },
     {
       "path": "netlify/functions/sweep-queue.ts",
-      "line": 58,
+      "line": 63,
       "name": "payload",
       "role": "Read",
       "reason": "shadowing-disagreement",
       "indexer": "bound",
-      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 2594 · compiler netlify/functions/sweep-queue.ts:2464"
+      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 2969 · compiler netlify/functions/sweep-queue.ts:2839"
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",

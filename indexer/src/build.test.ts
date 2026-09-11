@@ -26,7 +26,13 @@ describe('full build', () => {
     // 2026-09-11 when e2e/share-data.test.ts moved out of netlify/functions/
     // (Netlify bundled it as a deployable function → `vitest` unresolvable),
     // then 341 -> 344 when the local env-audit trio landed under scripts/ci/.
-    expect(r.stats.fileCount).toBe(333); // 201 ts + 78 tsx + 12 astro + 20 mjs + 5 cjs + 17 js
+    // 344 -> 333 when the 11 catch-all stubs were deleted (measured: 334 —
+    // the "333" above was one low, see the same note in discover.test.ts).
+    // 334 -> 341 (2026-09-11/12, Phase C items 11 + 12): +6 ts (the health and
+    // metrics-sink modules plus their four test files) and +1 js
+    // (netlify/functions/health.js). Verified by diffing the indexed list
+    // against `git ls-files` at HEAD — exactly 7 new paths, 0 removed.
+    expect(r.stats.fileCount).toBe(341); // 208 ts + 78 tsx + 12 astro + 20 mjs + 5 cjs + 18 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 
@@ -36,8 +42,11 @@ describe('full build', () => {
     const r = built();
     expect(r.stats.symbolCount).toBeGreaterThanOrEqual(8500);
     // was 10500; 11906 measured 2026-09-05; 13025 measured 2026-09-11 after the
-    // Phase A CI gates landed in scripts/ci/ — envelope widened with the tree.
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(13500);
+    // Phase A CI gates landed in scripts/ci/; 13688 measured the same day after
+    // the 11 catch-all stubs were removed and Phase C's health module and its
+    // tests landed. The envelope tracks the tree; it is a canary against a
+    // silent parse collapse, not a budget.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(14200);
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

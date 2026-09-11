@@ -3,4 +3,4 @@
  *
  * Health check and web vitals reporting.
  */
-export { handleGetAppConfig, handleReportWebVital } from './service';
+export { handleGetAppConfig, handleReportWebVital, handleGetHealth } from './service';

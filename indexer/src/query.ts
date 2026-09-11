@@ -997,6 +997,36 @@ export function depsOf(index: QueryIndex, file: string, direction: 'out' | 'in' 
 // ─────────────────────────────────────────────────────────────────────────────
 // module cycles (/deps/cycles — the row-8 SCC machinery as a read view)
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The import edges that carry RUNTIME dependency — the only ones that can form
+ * a real module cycle.
+ *
+ * `import type { X } from './y'` is erased by the TypeScript compiler and emits
+ * no require/import in the bundled output, so it cannot participate in a
+ * runtime cycle. dependency-cruiser — whose circularity semantics cycles.ts
+ * exists to mirror — excludes these edges, and the two disagreed until this
+ * filter was added: `_lib/kernel/log.ts` takes `MetricsPayload` from
+ * `_lib/kernel/metrics.ts` as a type-only import (deliberately, and annotated
+ * as such at the import site) while metrics.ts imports `log` for real, which
+ * the unfiltered SCC pass read as a two-node cycle that depcruise does not see.
+ *
+ * This is shared by BOTH cycle consumers — the /deps/cycles read view and
+ * violationsOf()'s `to.circular` rules — so a phantom cycle cannot reappear in
+ * one of them while the other is filtered. It is also the reason the filter
+ * lives here rather than in cycles.ts: that module is deliberately pure over
+ * integer edge lists and knows nothing about dump edge kinds.
+ */
+function runtimeImportEdges(doc: { importEdges?: DumpImportEdge[] }): Array<{ from: number; to: number }> {
+  const out: Array<{ from: number; to: number }> = [];
+  for (const e of doc.importEdges ?? []) {
+    if (typeof e.to !== 'number') continue; // ext:/asset:/unresolved: ids are never files
+    if (e.type === EdgeType.ImportsType) continue; // compile-time only; erased in output
+    out.push({ from: e.from, to: e.to });
+  }
+  return out;
+}
+
 export interface CycleMemberView {
   fileIdx: number;
   path: string;
@@ -1023,7 +1053,7 @@ export interface CyclesView {
  * (fileFound:false for unknown needles, total 0 when the file is acyclic).
  */
 export function cyclesOf(index: QueryIndex, file?: string): CyclesView {
-  const cycles = (index.cycles ??= computeCycles((index.doc.importEdges ?? []).filter((e) => typeof e.to === 'number').map((e) => ({ from: e.from, to: e.to as number })), index.doc.files.length));
+  const cycles = (index.cycles ??= computeCycles(runtimeImportEdges(index.doc), index.doc.files.length));
   const pathOfIdx = (x: number): string => pathOf(index, x);
   const comps = cycles
     .cycles()
@@ -1412,7 +1442,7 @@ export function violationsOf(index: QueryIndex, rules: ForbidRule[]): Violations
   const seen = new Set<string>();
   const filePath = (idx: number): string | null => index.fileByIdx.get(idx)?.path ?? null;
   const hasCycleRules = rules.some((r) => r.to.circular !== undefined);
-  const cycles = hasCycleRules ? (index.cycles ??= computeCycles((index.doc.importEdges ?? []).filter((e) => typeof e.to === 'number').map((e) => ({ from: e.from, to: e.to as number })), index.doc.files.length)) : undefined;
+  const cycles = hasCycleRules ? (index.cycles ??= computeCycles(runtimeImportEdges(index.doc), index.doc.files.length)) : undefined;
   for (const rule of rules) {
     const fromOk = ruleSideMatcher(rule.from);
     const toOk = ruleSideMatcher(rule.to);

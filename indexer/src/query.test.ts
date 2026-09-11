@@ -302,6 +302,35 @@ describe('module cycles (/deps/cycles)', () => {
     }
   });
 
+  it('ignores a type-only import: import type cannot close a runtime cycle', () => {
+    // EdgeType 3 = Imports, 4 = ImportsType. A cycle needs a RUNTIME edge in
+    // both directions; `import type` is erased by the compiler, so a→b type-only
+    // plus b→a real is NOT a cycle. This is the exact shape that Phase C
+    // introduced between kernel/log.ts and kernel/metrics.ts and that
+    // dependency-cruiser does not report; it must not reappear as an SCC here.
+    const files = [f(0, 'pkg/log.ts'), f(1, 'pkg/metrics.ts')];
+    const index = mkDoc([], [], {
+      files,
+      importEdges: [
+        { from: 0, to: 1, type: 4, specifier: './metrics' }, // import type — erased
+        { from: 1, to: 0, type: 3, specifier: './log' }, // real runtime edge
+      ],
+    });
+    expect(cyclesOf(index).total).toBe(0);
+
+    // Sanity: the same pair with a REAL import in the other direction is a
+    // cycle, so the assertion above is testing the type filter and not a
+    // broken fixture.
+    const realBoth = mkDoc([], [], {
+      files,
+      importEdges: [
+        { from: 0, to: 1, type: 3, specifier: './metrics' },
+        { from: 1, to: 0, type: 3, specifier: './log' },
+      ],
+    });
+    expect(cyclesOf(realBoth).total).toBe(1);
+  });
+
   it('?file narrows to the containing cycle (needle probing, acyclic and unknown files)', () => {
     const files = [f(0, 'pkg/a.ts'), f(1, 'pkg/b.ts'), f(2, 'pkg/c.ts'), f(3, 'pkg/leaf.ts')];
     const index = mkDoc([], [], {
@@ -332,6 +361,18 @@ describe('module cycles (/deps/cycles)', () => {
     const view = cyclesOf(index);
     // exactly the two SCCs below on this tree — the master-data cycle (cv.ts
     // <-> service.ts) was broken by moving APPLY_WA_COLS into _lib/db/client.ts.
+    //
+    // 2026-09-12: a THIRD SCC (kernel/log.ts <-> kernel/metrics.ts) appeared
+    // once Phase C gave log.ts an `import type { MetricsPayload }` from
+    // metrics.ts. That was not a real cycle: a type-only import is erased by the
+    // compiler and emits nothing at runtime, and dependency-cruiser — whose
+    // semantics cycles.ts exists to mirror — reports 0 circular violations here.
+    // The fix belongs in runtimeImportEdges() (query.ts), which now drops
+    // EdgeType.ImportsType before the SCC pass; both this view and
+    // violationsOf()'s `to.circular` rules read cycles through it, so a phantom
+    // cycle cannot reappear in one consumer while the other is filtered.
+    // The count below therefore stays 2 and now means the same thing to the
+    // indexer that it means to depcruise.
     expect(view.total).toBe(2);
     expect(view.components.some((c) => c.members.some((m) => m.path.includes('/contexts/master-data/')))).toBe(false);
     const paths = (c: { members: Array<{ path: string }> }): string[] => c.members.map((m) => m.path).sort();
@@ -645,7 +686,11 @@ describe('HTTP surface (Phase 5 endpoints)', () => {
       const all = await getJson(port, '/deps/cycles');
       expect(all.status).toBe(200);
       const allBody = all.body as { total: number; components: Array<{ size: number; members: Array<{ fileIdx: number; path: string; cycle: string[] }> }> };
-      expect(allBody.total).toBe(2); // db/client<->kernel/http + src apiClient/fcm/authReactive
+      // db/client<->kernel/http + src apiClient/fcm/authReactive. A third
+      // candidate (kernel/log <-> kernel/metrics, via a type-only import) is
+      // filtered by runtimeImportEdges() — see the note on the sibling
+      // assertions above.
+      expect(allBody.total).toBe(2);
       expect(allBody.components.some((c) => c.members.some((m) => m.path.includes('/contexts/master-data/')))).toBe(false);
       const dbHttp = allBody.components.find((c) => c.members.some((m) => m.path.endsWith('/_lib/kernel/http.ts')));
       expect(dbHttp?.members.map((m) => m.path).sort()).toEqual(['netlify/functions/_lib/db/client.ts', 'netlify/functions/_lib/kernel/http.ts'].sort());

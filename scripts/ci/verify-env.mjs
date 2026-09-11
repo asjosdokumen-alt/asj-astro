@@ -47,6 +47,15 @@ const PROFILES = {
       'SUPABASE_STORAGE_BUCKET',
       'NETLIFY_SITE_URL',
       'ADMIN_MASTER_PIN',
+      // Phase C item 12: gates the full /health report. Optional because the
+      // endpoint FAILS CLOSED without it — a deploy with no HEALTH_TOKEN is
+      // safe (health detail returns 503), just less observable.
+      'HEALTH_TOKEN',
+      // Phase C item 11: the metrics sink. Optional by design — with no URL the
+      // export is a no-op rather than an error, so monitoring can be turned off
+      // without making the deploy fail.
+      'METRICS_SINK_URL',
+      'METRICS_SINK_TOKEN',
     ],
   },
   staging: {

@@ -105,7 +105,17 @@ describe('discover', () => {
     // once), but it is no longer a netlify/* file. 202 -> 201 for this gate
     // because the netlify tree shrank by one while the e2e tree grew by one —
     // the totals below are what moved.
-    expect(count('ts')).toBe(201); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
+    // Phase C item 12 (2026-09-11): +3 ts — _lib/health.ts, health.test.ts and
+    // health-entrypoint.test.ts. (An earlier draft of this note said +4 and
+    // named a health-snapshot.test.ts, which was never added; the snapshot
+    // assertions live in health.test.ts.)
+    // 201 -> 204.
+    // Phase C item 11 (2026-09-11): +3 ts — _lib/metrics-sink.ts and its two
+    // test files (metrics-sink.test.ts, metrics-pipeline.test.ts). 204 -> 207.
+    // 2026-09-12: 207 -> 208 as part of the same uncommitted Phase C body of
+    // work; verified by extension count over the indexed tree (ts 208, tsx 78,
+    // astro 12, mjs 20, cjs 5, js 18 = 341).
+    expect(count('ts')).toBe(208); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
     expect(count('tsx')).toBe(78); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
     // 2026-09-11: the Phase A/B CI gates landed — bundle-size.mjs,
@@ -126,12 +136,26 @@ describe('discover', () => {
     // submit-siswa-baru, whatsapp) deleted: zero code references, no working
     // alias, and each was an unrestricted full-router entry point at ~1.5 MB.
     // bridge-links.js stays as the single documented fallback. 28 -> 17.
-    expect(count('js')).toBe(17);
+    // Phase C item 12 (2026-09-11): +1 — health.js. The first NEW entry point
+    // since the retirement, and deliberately a bespoke one (no
+    // makeSurfaceHandler): it must not appear in the narrow list, because its
+    // action is not registered in the router. 17 -> 18.
+    expect(count('js')).toBe(18);
     // 342 -> 341 (2026-09-11): share-data.test.ts left netlify/functions/ for
     // e2e/ — the file still exists, but see the count('ts') note above.
     // 341 -> 344: the three env-audit scripts under scripts/ci.
     // 344 -> 333: the 11 deleted catch-all stubs above.
-    expect(files.length).toBe(333); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // NOTE: the "333" figure above was itself one low — measured against the
+    // tree it was 334 (the 11-stub deletion took 344 -> 334). Left in place
+    // because it is the number the following deltas were written against; the
+    // arithmetic below is stated from the measured value instead.
+    // 334 -> 341 (2026-09-11/12, Phase C items 11 + 12): +6 ts
+    // (_lib/health.ts, _lib/metrics-sink.ts, and the four new test files
+    // health.test.ts, health-entrypoint.test.ts, metrics-sink.test.ts,
+    // metrics-pipeline.test.ts) and +1 js (netlify/functions/health.js).
+    // Verified by diffing the indexed file list against `git ls-files` at HEAD:
+    // exactly 7 paths are new, and no path was removed or renamed.
+    expect(files.length).toBe(341); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

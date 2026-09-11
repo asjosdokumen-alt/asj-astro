@@ -3,6 +3,7 @@
  */
 import { requireAdmin, masterPins } from '../identity';
 import { debugFileEnvKeys, debugFileStructure } from '../../_lib/env';
+import { buildHealthReport, logHealthReport } from '../../_lib/health';
 import {
   getTableInfo, getJobInfo, getCandidateInfo,
   getAdminInfo, getSettingsInfo, hasBackend,
@@ -58,8 +59,32 @@ export async function handleGetAppConfig(_payload: any[], sessionToken?: string)
   return diag;
 }
 
-export function handleReportWebVital(payload: any) {
-  if (!payload || !payload.name) return { success: false, error: 'invalid payload' };
+/**
+ * getHealth — Phase C item 12.
+ *
+ * Reachable ONLY from the /health entry point, which is gated behind a shared
+ * secret; it is deliberately absent from surfaces/index.ts and therefore from
+ * bridge-links, so no client action can reach it. The admin guard here is
+ * defence in depth for the case where that routing is ever changed by mistake:
+ * without it a single wiring edit would turn this into an unauthenticated
+ * infrastructure-disclosure endpoint (dependency names, queue depth, error
+ * strings, timings).
+ *
+ * `includeShared: false` is honoured so the caller can ask for the cheap
+ * in-process view only.
+ */
+export async function handleGetHealth(payload: any[], sessionToken?: string) {
+  const guard = requireAdmin(sessionToken || '');
+  if (guard.error) return guard.error;
+  const opts = (payload && typeof payload[0] === 'object' && payload[0]) || {};
+  const report = await buildHealthReport({
+    includeShared: opts.includeShared !== false,
+  });
+  logHealthReport(report);
+  return { success: true, ...report };
+}
+
+export function handleReportWebVital(payload: any) {  if (!payload || !payload.name) return { success: false, error: 'invalid payload' };
   const { name, value, rating, delta, id, navigationType } = payload;
   console.log(
     `[web-vitals] ${rating === 'good' ? '✅' : rating === 'needs-improvement' ? '⚠️' : '❌'} ` +
