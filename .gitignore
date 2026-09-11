@@ -21,3 +21,11 @@ netlify/functions/.netlify-built/
 # Local environment variables (secrets)
 .env.local
 superbase.txt
+
+# Scratch credential/handoff notes. These exist so secrets can be moved between
+# a developer machine and a password manager WITHOUT passing through a commit.
+# Nothing in here is ever source, and a token that reaches git history is
+# permanent.
+asj-astro.txt
+*-credentials.txt
+*-token*.txt
