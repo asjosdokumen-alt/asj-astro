@@ -1,17 +1,13 @@
 {
-  "updatedAt": "2026-09-11T13:07:34.962Z",
-  "totalKb": 9994,
-  "count": 28,
+  "updatedAt": "2026-09-11T16:21:44.808Z",
+  "totalKb": 2364.3,
+  "count": 17,
   "entries": {
-    "admin-ai-context.js": 693.6,
     "ai-chat.js": 114.7,
-    "ai-form-submit.js": 693.6,
-    "apply.js": 693.6,
     "auth.js": 143.1,
     "bridge-links.js": 693.6,
     "candidates.js": 70.7,
     "config.js": 61.2,
-    "drive-links.js": 693.6,
     "files.js": 543.6,
     "get-app-data.js": 62.9,
     "ingest.js": 55.3,
@@ -22,14 +18,7 @@
     "ping.js": 0.3,
     "public.js": 62.9,
     "register.js": 61.6,
-    "rincian-presets.js": 693.6,
-    "save-ai-cv.js": 693.6,
-    "save-master.js": 693.6,
-    "schedule-reminders.js": 693.6,
     "schedule.js": 67.5,
-    "share-data.js": 55,
-    "submit-apply.js": 693.6,
-    "submit-siswa-baru.js": 693.6,
-    "whatsapp.js": 693.6
+    "share-data.js": 55
   }
 }

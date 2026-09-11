@@ -1,218 +1,133 @@
 #!/usr/bin/env node
 /**
- * verify-aliases.mjs — Prove the legacy function aliases actually resolve.
+ * verify-aliases.mjs — Local gate: exactly ONE entry point may use the full router.
  *
- * WHY THIS EXISTS
- *   Phase A aliases the legacy catch-all entry points to bridge-links with
- *   `force = true`. That flag is load-bearing: Netlify does NOT shadow existing
- *   content by default, and a deployed function counts as existing content. So
- *   a redirect WITHOUT force silently does nothing — and because the function
- *   still answers, the alias *looks* like it works right up until you delete the
- *   function file, at which point the truth comes out in production.
+ * WHY THIS EXISTS (and why it replaced a network probe)
+ * -----------------------------------------------------
+ * This script used to POST to the 11 legacy catch-all paths on a live site and
+ * assert they answered 200, treating a 200 as proof the path was still needed.
+ * That reasoning was backwards, and a real probe proved it:
  *
- *   This script tests the alias itself, before anything is deleted, so the
- *   "deploy → verify → delete" sequence can be followed safely.
+ *   POST /.netlify/functions/apply     {"action":"getAppData"} -> 200, real rows
+ *   POST /.netlify/functions/whatsapp  {"action":"getAppData"} -> 200, real rows
  *
- * HOW IT PROBES
- *   Sends a deliberately unknown action. The dispatcher answers NOT_IMPLEMENTED
- *   (HTTP 400) for anything it cannot route, while an unresolved path returns
- *   404. So:
- *     400 + NOT_IMPLEMENTED  => alias resolved, dispatcher reached
- *     404                    => alias did NOT resolve (missing force=true?)
- *   The probe is side-effect free: an unknown action cannot mutate anything.
+ * A 200 there did not mean "this path has a legitimate dependent". It meant the
+ * file was `exports.handler = makeHandler()` — the FULL router with no
+ * allow-list — so it answered EVERY action, including actions owned by surfaces
+ * it had no business serving. Each of those "109-byte stubs" bundled to
+ * ~1,508 KB, because makeHandler statically imports surfaces/index, which pulls
+ * in all 15 surfaces and 14 contexts. 11 stubs x ~1.5 MB = ~16.6 MB of the
+ * ~21 MB deployed, all of it an unaudited public entry point that bypassed the
+ * per-surface boundary.
+ *
+ * So the gate was checking the wrong thing: "does it answer?" is always yes for
+ * a catch-all. The invariant worth enforcing is structural, and it is testable
+ * offline with no network and no Netlify API calls:
+ *
+ *     ONLY bridge-links.js MAY CALL makeHandler().
+ *
+ * Every other file under netlify/functions/ must use makeSurfaceHandler with an
+ * explicit allow-list. That keeps each deployed function narrow (it can only
+ * reach the modules its own surface needs) and keeps the boundary honest.
+ *
+ * The legacy paths are now gone. Nothing in src/, scripts/, e2e/ or public/
+ * ever referenced them — the aliases that were supposed to serve old QR codes
+ * were rejected by Netlify at parse time ("path" field must not start with
+ * "/.netlify"), so those URLs never worked through the alias layer anyway.
  *
  * USAGE
- *   BASE_URL=https://your-site.netlify.app node scripts/ci/verify-aliases.mjs
- *   BASE_URL=http://localhost:8888 node scripts/ci/verify-aliases.mjs
+ *   node scripts/ci/verify-aliases.mjs
  *
  * EXIT CODES
- *   0  every alias resolves
- *   1  at least one alias failed
- *   2  configuration / connectivity problem
+ *   0  invariant holds
+ *   1  a violation was found
+ *   2  configuration problem (cannot scan the functions directory)
  */
 
-import { existsSync } from 'node:fs';
-import { join, dirname, resolve } from 'node:path';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { join, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
+const FUNCTIONS_DIR = join(ROOT, 'netlify', 'functions');
 
-const BASE_URL = (process.env.BASE_URL || '').replace(/\/$/, '');
-if (!BASE_URL) {
-  console.error('verify-aliases: BASE_URL is required (e.g. BASE_URL=https://site.netlify.app)');
-  process.exit(2);
+/** The one entry point allowed to reach surfaces/index via makeHandler(). */
+const FULL_ROUTER_ALLOWED = new Set(['bridge-links.js']);
+
+/** Root-level files that Netlify bundles as deployable functions. */
+function entryPoints() {
+  return readdirSync(FUNCTIONS_DIR, { withFileTypes: true })
+    .filter((e) => e.isFile() && /\.(js|ts|mjs|cjs)$/.test(e.name))
+    .map((e) => e.name);
 }
 
-const PROBE_ACTION = '__alias_probe__';
-const TIMEOUT_MS = 15_000;
-
-/**
- * The legacy entry point paths to verify.
- *
- * HISTORY — why this no longer reads netlify.toml:
- * Phase A wrote 12 redirect rules aliasing these paths onto bridge-links, and
- * this script used to parse them out of the config. A real deploy proved that
- * approach was never valid: Netlify rejects every rule matching a /.netlify/
- * path ("path" field must not start with "/.netlify"), so the aliases were
- * discarded at parse time and never shadowed anything. The rules have been
- * deleted from netlify.toml.
- *
- * That makes the verification simpler AND stricter than before: there is no
- * alias layer to trust. Each path below is served by its own deployed function
- * file (a 109-byte stub dispatching the full router). The question that gates
- * deletion is therefore not "did the alias resolve" but "does this path answer
- * 200 on its own". If it does, the file is working and must NOT be deleted
- * until the client-side dependency is understood.
- *
- * bridge-links is deliberately absent: it is the permanent 404 fallback and is
- * never a deletion candidate.
- */
-const LEGACY_ENTRY_POINTS = [
-  'admin-ai-context',
-  'ai-form-submit',
-  'apply',
-  'drive-links',
-  'rincian-presets',
-  'save-ai-cv',
-  'save-master',
-  'schedule-reminders',
-  'submit-apply',
-  'submit-siswa-baru',
-  'whatsapp',
-];
-
-async function probe(path) {
-  const url = BASE_URL + path;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: PROBE_ACTION, payload: [], sessionToken: '' }),
-      signal: ctrl.signal,
-    });
-    const text = await res.text();
-    let json = null;
-    try {
-      json = JSON.parse(text);
-    } catch {
-      /* non-JSON body */
-    }
-    return { status: res.status, json, body: text.slice(0, 200) };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function main() {
-  const paths = LEGACY_ENTRY_POINTS.map((n) => ({
-    from: `/.netlify/functions/${n}`,
-    file: `netlify/functions/${n}.js`,
-  }));
-
-  // Guard against verifying a set that no longer exists on disk — a vacuous
-  // pass is worse than a failure, which is exactly the trap the deleted
-  // redirect rules fell into.
-  const missingOnDisk = paths.filter((p) => !existsSync(join(ROOT, p.file)));
-  if (missingOnDisk.length === paths.length) {
-    console.error('verify-aliases: none of the legacy entry points exist on disk.');
-    console.error('  If they were intentionally retired, delete this script and its');
-    console.error('  package.json entry rather than leaving a gate that cannot fail.');
+function main() {
+  if (!existsSync(FUNCTIONS_DIR)) {
+    console.error(`verify-aliases: ${relative(ROOT, FUNCTIONS_DIR)} not found.`);
     process.exit(2);
   }
 
-  console.log('');
-  console.log(`  base: ${BASE_URL}`);
-  console.log(`  probing ${paths.length} legacy entry point(s) with action '${PROBE_ACTION}'`);
-  console.log('');
-
-  // Establish the expected shape from the canonical catch-all.
-  const canonicalPath = '/.netlify/functions/bridge-links';
-  let baseline;
-  try {
-    baseline = await probe(canonicalPath);
-  } catch (e) {
-    console.error(`  cannot reach ${canonicalPath}: ${e instanceof Error ? e.message : String(e)}`);
-    console.error('  Is the site deployed and BASE_URL correct?');
+  const entries = entryPoints();
+  if (entries.length === 0) {
+    console.error('verify-aliases: no entry points found — refusing to pass vacuously.');
     process.exit(2);
   }
-  console.log(`  baseline ${canonicalPath} -> HTTP ${baseline.status}`);
-  if (baseline.status === 404) {
-    console.error('  baseline is 404 — bridge-links itself is not deployed. Cannot verify.');
-    process.exit(2);
+
+  const violations = [];
+  let surfaceWrapped = 0;
+  let fullRouter = 0;
+
+  for (const name of entries) {
+    const full = join(FUNCTIONS_DIR, name);
+    const src = readFileSync(full, 'utf8');
+
+    const usesFullRouter = /\bmakeHandler\s*\(/.test(src) && !/\bmakeSurfaceHandler\b/.test(src);
+    const usesSurface = /\bmakeSurfaceHandler\b/.test(src);
+
+    if (usesFullRouter && !FULL_ROUTER_ALLOWED.has(name)) {
+      violations.push(
+        `${name}: calls makeHandler() (full router). Only bridge-links.js may. ` +
+          `Use makeSurfaceHandler(<ACTIONS>, [...]) from _lib/netlify-wrapper-surface.`,
+      );
+    }
+    if (usesFullRouter) fullRouter++;
+    if (usesSurface) surfaceWrapped++;
   }
-  console.log('');
 
-  const failures = [];
-  const absent = [];
-
-  for (const p of paths) {
-    const onDisk = existsSync(join(ROOT, p.file));
-    let r;
-    try {
-      r = await probe(p.from);
-    } catch (e) {
-      failures.push(`${p.from}: request failed (${e instanceof Error ? e.message : String(e)})`);
-      console.log(`  FAIL  ${p.from.padEnd(46)} network error`);
-      continue;
-    }
-
-    if (r.status === 404) {
-      if (onDisk) {
-        // A deployed file that 404s means the deploy did not publish it —
-        // worth knowing, but not a deletion blocker.
-        failures.push(`${p.from}: HTTP 404 but ${p.file} exists in the repo — deploy may be stale.`);
-        console.log(`  FAIL  ${p.from.padEnd(46)} 404 (file exists, deploy stale?)`);
-      } else {
-        absent.push(p.from);
-        console.log(`  note  ${p.from.padEnd(46)} 404 (no file — already retired)`);
-      }
-      continue;
-    }
-
-    console.log(`  ok    ${p.from.padEnd(46)} ${r.status}`);
+  // The fallback must still exist — apiEndpoint.ts routes unknown actions to it.
+  if (!existsSync(join(FUNCTIONS_DIR, 'bridge-links.js'))) {
+    violations.push(
+      'bridge-links.js is missing. It is the documented 404 fallback target ' +
+        '(src/lib/apiEndpoint.ts FALLBACK) and must stay.',
+    );
   }
 
   console.log('');
-  if (failures.length) {
-    console.error('  VERIFICATION FAILED.');
-    for (const f of failures) console.error(`    - ${f}`);
+  console.log(`  scanned ${entries.length} entry point(s) in netlify/functions/`);
+  console.log(`    ${surfaceWrapped} via makeSurfaceHandler (narrow, allow-listed)`);
+  console.log(`    ${fullRouter} via makeHandler (full router)`);
+  console.log('');
+
+  if (violations.length) {
+    console.error('  INVARIANT VIOLATED.');
+    for (const v of violations) console.error(`    - ${v}`);
+    console.error('');
+    console.error('  A makeHandler() entry point is a catch-all: it answers every action');
+    console.error('  with no allow-list and inlines all 15 surfaces + 14 contexts (~1.5 MB).');
     console.error('');
     process.exit(1);
   }
 
-  console.log('  every legacy entry point that exists on disk answers successfully.');
+  console.log('  OK — bridge-links.js is the only full-router entry point.');
   console.log('');
-  if (absent.length) {
-    console.log(`  ${absent.length} path(s) already 404 — those files are retired:`);
-    for (const a of absent) console.log(`    - ${a}`);
-    console.log('');
-  }
-  console.log('  These paths are still LIVE and are still depended on by deployed QR');
-  console.log('  codes and bookmarks. Do NOT delete the corresponding .js files.');
-  console.log('');
-  console.log('  CORRECTION (2026-09-11, verified against production): the client routes');
-  console.log('  to ROOT-LEVEL entry points — /.netlify/functions/auth, /get-app-data,');
-  console.log('  /candidates, /jobs, /files, ... (the full map is src/lib/apiEndpoint.ts');
-  console.log('  SURFACE_ENDPOINTS). It does NOT call /surfaces/*. An earlier revision of');
-  console.log('  this message said the opposite and was wrong.');
-  console.log('');
-  console.log('  /surfaces/*.ts files ARE deployed by Netlify (it scans the functions dir');
-  console.log('  recursively for the deployed names) and every one of them returns 502');
-  console.log('  Runtime.HandlerNotFound, because they are internal modules that export');
-  console.log('  action maps (e.g. PUBLIC_ACTIONS), not a `handler`. Nothing calls those');
-  console.log('  URLs, so the 502s are inert — but they are a real packaging wart:');
-  console.log('  netlify/functions/surfaces/ should not be inside the functions directory.');
-  console.log('');
-  console.log('  So deleting the legacy .js files stays a product decision about old QR');
-  console.log('  codes and bookmarks, not a code one.');
+  console.log('  Context: the 11 legacy catch-all stubs (apply, whatsapp, drive-links,');
+  console.log('  admin-ai-context, ai-form-submit, rincian-presets, save-ai-cv,');
+  console.log('  save-master, schedule-reminders, submit-apply, submit-siswa-baru) were');
+  console.log('  deleted 2026-09-11. They had zero references in src/, scripts/, e2e/ and');
+  console.log('  public/, served no working alias, and each was an unrestricted public');
+  console.log('  monolith. Reclaiming them cut ~16.6 MB of deployed bundles.');
   console.log('');
 }
 
-main().catch((e) => {
-  console.error('verify-aliases: unexpected error');
-  console.error(e);
-  process.exit(2);
-});
+main();

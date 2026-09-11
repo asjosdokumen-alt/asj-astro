@@ -227,3 +227,78 @@ would remove the 404-fallback safety net that makes narrowing safe in the first 
 Two of the three indexer failures observed during this work were **pre-existing** drift
 from uncommitted work in the tree (isolated by restoring `run-migration.js` and re-running).
 The third was the unstaged deletion and resolved on `git add`.
+
+---
+
+## 8. Carry-forward EXECUTED — §6 completed 2026-09-11
+
+The 11 remaining catch-alls are **deleted**. `bridge-links.js` is kept as the single
+permanent fallback.
+
+### The §6 reasoning had one inverted premise
+
+§6 called them "109-byte stubs" and framed the question as *"does this path answer 200?"*,
+treating a 200 as evidence of a live dependent (a deployed QR code or bookmark). A probe
+against production showed why that test cannot work:
+
+```
+POST /.netlify/functions/apply     {"action":"getAppData"} -> 200 + real job rows
+POST /.netlify/functions/whatsapp  {"action":"getAppData"} -> 200 + real job rows
+```
+
+Both files call `makeHandler()` — the **full router with no allow-list** — so they answer
+*every* action, including actions owned by surfaces they should never serve. A 200 was not
+proof of a dependent; it was the signature of an unbounded entry point. The stubs were not
+inert dead weight. They were **11 unrestricted public monoliths**.
+
+The size figures agree. A stub is 109 bytes on disk but bundles to **~1,508 KB**, because
+`makeHandler` statically imports `surfaces/index` → all 15 surfaces + 14 contexts. The old
+baseline listed each at exactly **693.6 KB, identical to `bridge-links`** — the fingerprint
+of "same handler as bridge-links". That was visible in the baseline all along.
+
+### Why no alias replacement was needed
+
+There is nothing to replace. `netlify.toml`'s 12 alias rules were rejected by Netlify at
+parse time (`"path" field must not start with "/.netlify"`), so the legacy URLs never worked
+via the alias layer — and the deployed stub files served them directly only because each was
+a catch-all. Deleting the files therefore removes a surface that never had a legitimate
+consumer, rather than breaking a compatibility path.
+
+References were re-verified immediately before deletion: **zero** in `src/`, `scripts/`,
+`e2e/`, `public/`. Every hit on names like `apply` / `ai-form-submit` was a historical doc,
+a code comment, or the Astro page route `/apply` — not a function call.
+
+### Result
+
+| Metric | Before | After |
+|---|---|---|
+| Deployed bundle total | 9,994 KB | **2,364.3 KB** |
+| Entry points | 28 | **17** |
+| `makeHandler()` entry points | 12 | **1** (`bridge-links`) |
+
+Reduction: **7,629.7 KB**, matching this document's projected "exact saving 7,629.6 KB" —
+now realised rather than projected.
+
+### What replaced the verification gate
+
+`scripts/ci/verify-aliases.mjs` is no longer an HTTP probe (the paths it probed are gone, and
+its pass/fail semantics were the inverted premise above). It is now an **offline structural
+gate**: *only `bridge-links.js` may call `makeHandler()`*. No network, no Netlify API calls —
+so it costs nothing against the API quota, and it fails at the moment someone reintroduces a
+catch-all rather than after a deploy.
+
+### Verification performed after this change
+
+| Check | Result |
+|---|---|
+| `npm run ci:quality` | **pass** — 104 files, 893 tests, exit 0 |
+| `npm run verify:aliases` | pass — 13 narrow, 1 full router, 3 bespoke |
+| `npm run verify:binding` | pass — 82 actions / 14 surfaces, allow-list intact |
+| `npm run verify:io` | pass — 4 bypasses, 4 allow-listed (was 5) |
+| `npm run bundle:size` | pass — 2,364.3 KB / 17 entries |
+| indexer census | refreshed (js 28→17, total 344→333, `rootNames` 333) |
+| live probe, all 16 remaining entry points | 200 (share-data 400 = its correct no-token response) |
+
+The sibling defect found in the same pass — `contexts/documents/download.ts` using a raw
+`fetch` inside a sequential loop of up to 200 files — is fixed in the same change; see
+`PHASE_B_LOAD_BOUNDING.md` §7.

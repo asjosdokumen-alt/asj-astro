@@ -282,25 +282,41 @@ Two consecutive runs of `npm run bundle:size` reported **9994 KB** both times, w
 
 ## 7. Remaining work
 
-### 7.1 Carried forward from Phase A (highest value)
+### 7.1 Carried forward from Phase A — DONE 2026-09-11
 
-Deploy-verify the aliases, then delete the 11 remaining catch-all entry points:
+The 11 catch-all entry points are deleted. Final total: **2,364.3 KB across 17 entry
+points**, against this section's prediction of ≈2,364 KB — a ~7.6 MB win.
 
-```
-BASE_URL=… npm run verify:aliases     # probes each alias with an unknown action
-                                      # 400 + NOT_IMPLEMENTED = resolved
-                                      # 404 = alias did not resolve (check force = true)
-```
+The procedure changed on contact with reality. The `BASE_URL=… npm run verify:aliases` probe
+above was based on the assumption that an HTTP 200 at a legacy path proved a live dependent
+existed. It does not: each of those files called `makeHandler()` (the full router, no
+allow-list), so it answered **every** action and always returned 200. The probe could not
+distinguish "still needed" from "unbounded". Full write-up in
+`PHASE_A_LEGACY_ENDPOINT_RETIREMENT.md` §8. `verify:aliases` is now an offline structural
+gate (only `bridge-links.js` may call `makeHandler()`), so it needs no `BASE_URL` and spends
+no Netlify API quota.
 
-Expected total ≈ **2,364 KB**. This is a ~7.6 MB win — 75× larger than Phase B's cost.
+Also fixed in the same pass, and worth recording here because it was a real §3 occupancy
+hole rather than a tidiness issue:
+
+**`contexts/documents/download.ts`** used a raw `fetch(url, { signal:
+AbortSignal.timeout(10000) })` inside a **sequential** loop over up to `MAX_FILES = 200`
+documents. 200 × 10 s = a theoretical **2,000 s** of intended waiting against the platform's
+hard 60 s ceiling, and the raw call bypassed the deadline entirely — so the loop would keep
+*starting* requests that were guaranteed to be cut off, and the client received a silently
+truncated ZIP. It now routes through `kernel/http.request(..., { budgetKey: 'storage' })`
+(deadline-clamped, budgeted, breaker- and bulkhead-limited) and stops when
+`remainingMs() <= 1_000`, reporting `{ skipped, partial: true }` so a partial archive is
+announced rather than hidden. The `io-boundary` allow-list entry was removed so the rule is
+enforced by construction: violations went 5 → 4, and the allow-list now only shrinks.
 
 ### 7.2 New from Phase B
 
 | Item | Why it matters |
 |---|---|
 | **Calibrate the in-flight caps under real load** | The 24/4/3 values are guesses. They are env-overridable for this reason. |
-| **Apply migration 011** | The DB-side backstop is written but not applied. `npm run migrate:status` to check. |
-| **Give the bundle ratchet an absolute-bytes floor** | 5% is too tight for small entries (see §6.2). |
+| **Apply migration 011** | ✅ **Applied and verified live 2026-09-11** — `statement_timeout=3s` confirmed on all four roles. |
+| **Give the bundle ratchet an absolute-bytes floor** | ✅ **Done 2026-09-11** — `--tolerance-floor` (default 8 KB); the ratchet now fails only when an entry is over *both* the percentage and the floor. |
 | **Defer P3 to `job_queue` instead of shedding** | Phase C candidate; integration point is `surfaces/notify.ts` (see §5.1). |
 | **Add an external metrics sink** | Still S3 in the architecture doc: metrics flush to `console.log` only, so breakers open and sheds happen silently. Phase B now emits `admission.shed` counters and saturation gauges — but nothing consumes them. |
 

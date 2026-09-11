@@ -77,12 +77,18 @@ export function gauge(name: string, value: number, labels?: Record<string, strin
 // ── Flush ────────────────────────────────────────────────────────────────────
 
 /**
- * Flush all collected metrics as a structured log line.
- * Called once at the end of each invocation (by the dispatcher).
+ * Build the flush payload WITHOUT clearing state.
+ *
+ * Extracted so the health endpoint (Phase C item 12) can read the same shape
+ * the sink receives, and so flushMetrics() has exactly one serialization path.
+ * Two independent formatters would drift, and the health view would then stop
+ * describing what is actually shipped.
  */
-export function flushMetrics(): void {
-  if (counters.size === 0 && histograms.length === 0 && gauges.size === 0) return;
-
+export function metricsSnapshot(): {
+  counters: Record<string, number>;
+  histograms: Record<string, { count: number; avg: number; p50: number; p95: number; max: number }>;
+  gauges: Record<string, number>;
+} {
   const counterObj: Record<string, number> = {};
   for (const [k, v] of counters) counterObj[k] = v;
 
@@ -105,16 +111,40 @@ export function flushMetrics(): void {
   const gaugeObj: Record<string, number> = {};
   for (const [k, v] of gauges) gaugeObj[k] = v;
 
-  log.info('metrics.flush', {
-    counters: counterObj,
-    histograms: histogramObj,
-    gauges: gaugeObj,
-  });
+  return { counters: counterObj, histograms: histogramObj, gauges: gaugeObj };
+}
+
+/** True when nothing has been recorded in this invocation (flush would no-op). */
+export function metricsEmpty(): boolean {
+  return counters.size === 0 && histograms.length === 0 && gauges.size === 0;
+}
+
+/**
+ * Flush all collected metrics as a structured log line.
+ * Called once at the end of each invocation (by the dispatcher).
+ *
+ * Returns the flushed payload (or null when there was nothing to report) so the
+ * caller can forward it to the external sink without re-serializing. Returning
+ * it rather than re-reading module state matters: this function CLEARS the
+ * collections, so a caller that tried to read afterwards would see nothing.
+ */
+export function flushMetrics(): {
+  counters: Record<string, number>;
+  histograms: Record<string, { count: number; avg: number; p50: number; p95: number; max: number }>;
+  gauges: Record<string, number>;
+} | null {
+  if (metricsEmpty()) return null;
+
+  const payload = metricsSnapshot();
+
+  log.info('metrics.flush', payload);
 
   // Clear for next invocation
   counters.clear();
   histograms.length = 0;
   gauges.clear();
+
+  return payload;
 }
 
 // ── Convenience helpers ──────────────────────────────────────────────────────
@@ -174,6 +204,8 @@ export const metrics = {
   histogram,
   gauge,
   flushMetrics,
+  metricsSnapshot,
+  metricsEmpty,
   recordDependencyCall,
   recordHandlerStart,
   recordError,

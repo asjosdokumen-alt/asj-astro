@@ -62,6 +62,23 @@ const MAX_ENTRY_KB = numArg('--max-entry', 600);
 // ~2 MB — see docs/PHASE_A_LEGACY_ENDPOINT_RETIREMENT.md.
 const MAX_TOTAL_KB = numArg('--max-total', 10240);
 const TOLERANCE = numArg('--tolerance', 0.05);
+/**
+ * Absolute-bytes floor for the ratchet, in KB.
+ *
+ * WHY (Phase B §6.2 raised this; fixed 2026-09-11): a pure 5% relative tolerance
+ * is too tight on small entries. Phase B's own admission/deadline tables added
+ * ~3 KB, which is ~5-6% of a 52 KB entry — so the gate tripped on a change that
+ * was both intended and harmless, and had to be hand-waved through a baseline
+ * update. A gate that cries wolf on every small addition trains people to
+ * re-baseline without reading the diff, which defeats the ratchet.
+ *
+ * An entry therefore fails only if it grows more than `TOLERANCE` AND by more
+ * than `TOLERANCE_FLOOR_KB`. 8 KB is large enough to absorb a new small module
+ * (and to stop noise), while still being ~1/8 of the smallest real entry, so a
+ * genuine regression — which reaches the router and lands near 690 KB — is
+ * always caught by either the ceiling or the percentage.
+ */
+const TOLERANCE_FLOOR_KB = numArg('--tolerance-floor', 8);
 
 function numArg(flag, fallback) {
   const i = args.indexOf(flag);
@@ -167,6 +184,9 @@ async function main() {
   console.log('');
 
   const failures = [];
+  // Non-fatal observations (e.g. a growth that is real but under the ratchet's
+  // absolute floor). Printed so the ratchet stays transparent.
+  const notes = [];
 
   // ── Catch-all exemption ──────────────────────────────────────────────────
   // bridge-links (and any entry still using makeHandler()) legitimately owns the
@@ -236,13 +256,32 @@ async function main() {
     for (const r of results) {
       const was = baseline.entries?.[r.entry];
       if (typeof was !== 'number') continue;
-      if (r.kb > was * (1 + TOLERANCE)) {
-        regressed.push(`${r.entry}: ${was} KB -> ${r.kb} KB (+${(((r.kb - was) / was) * 100).toFixed(0)}%)`);
+      const grew = r.kb - was;
+      // BOTH conditions must hold: the relative tolerance alone cries wolf on
+      // small entries (see TOLERANCE_FLOOR_KB), the absolute floor alone would
+      // let a huge relative regression through on a big entry.
+      const overPct = r.kb > was * (1 + TOLERANCE);
+      const overFloor = grew > TOLERANCE_FLOOR_KB;
+      if (overPct && overFloor) {
+        regressed.push(
+          `${r.entry}: ${was} KB -> ${r.kb} KB (+${(((r.kb - was) / was) * 100).toFixed(0)}%, +${grew.toFixed(1)} KB)`,
+        );
+      } else if (overPct) {
+        // Visible, but not a failure: the change is real yet under the noise
+        // floor. Printing it keeps the ratchet honest rather than silent.
+        notes.push(
+          `${r.entry}: ${was} KB -> ${r.kb} KB (+${(((r.kb - was) / was) * 100).toFixed(1)}%) ` +
+            `— within the ${TOLERANCE_FLOOR_KB} KB absolute floor, not a failure`,
+        );
       }
     }
     if (regressed.length) {
-      failures.push(`bundle size regressed beyond ${(TOLERANCE * 100).toFixed(0)}%:\n      ` + regressed.join('\n      '));
+      failures.push(
+        `bundle size regressed beyond ${(TOLERANCE * 100).toFixed(0)}% and ${TOLERANCE_FLOOR_KB} KB:\n      ` +
+          regressed.join('\n      '),
+      );
     }
+    for (const n of notes) console.log(`  note: ${n}`);
   }
 
   if (failures.length) {

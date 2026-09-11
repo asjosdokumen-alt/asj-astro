@@ -59,14 +59,14 @@ const WRAPPER = 'netlify/functions/_lib/kernel/http.ts';
  * kernel/http.ts with an explicit budget.
  */
 const ALLOWED = {
-  'netlify/functions/contexts/documents/download.ts': {
-    max: 1,
-    reason:
-      'Binary document fetch (Cloudinary/Drive) that must buffer to a Buffer, ' +
-      'not parse as JSON. Has its own AbortSignal.timeout. NOTE: that timeout is ' +
-      '10s — longer than any kernel budget, so it is NOT deadline-clamped. ' +
-      'Candidate for routing through kernel/http.ts with BUDGETS.storage.',
-  },
+  // REMOVED 2026-09-11 (Phase B follow-up): contexts/documents/download.ts.
+  // It used a raw fetch with a hardcoded AbortSignal.timeout(10000) — longer
+  // than kernel budgets and NOT deadline-clamped — inside a SEQUENTIAL loop of
+  // up to 200 files. 200 x 10 s of intended wait against a 60 s platform
+  // ceiling was the worst occupancy hole in the codebase. It now routes
+  // through kernel/http.ts with BUDGETS.storage, and the loop stops once the
+  // request deadline is nearly spent. The allow-list entry is gone so the rule
+  // is enforced by construction, not by trust.
   'netlify/functions/contexts/ingestion/service.ts': {
     max: 2,
     reason:

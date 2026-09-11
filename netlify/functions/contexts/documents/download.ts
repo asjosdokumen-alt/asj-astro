@@ -6,6 +6,8 @@ import { findCandidatesByJob, fetchAllMasters } from './repository';
 import { requireRole } from '../identity';
 import { isAllowedDocumentUrl } from '../../_lib/storage';
 import { safeError } from '../../_lib/kernel/errors';
+import { request } from '../../_lib/kernel/http';
+import { remainingMs } from '../../_lib/kernel/deadline';
 
 const DOC_COLUMNS: [string, string[]][] = [
   ['CV', ['file_cv']], ['JFT', ['jft_url', 'jft']], ['SSW', ['ssw_url', 'ssw']],
@@ -15,8 +17,22 @@ const DOC_COLUMNS: [string, string[]][] = [
   ['Sertifikat', ['cert_url']], ['SIM', ['driver_license_url', 'sim_url']],
 ];
 
+/**
+ * Fetch one document through the kernel.
+ *
+ * MUST go through kernel/http.ts (enforced by scripts/ci/io-boundary.mjs): a raw
+ * fetch() is invisible to the deadline, so this loop — up to MAX_FILES = 200
+ * sequential downloads — could hold a function slot for 200 x 10 s = 2,000 s
+ * against a hard 60 s platform ceiling. Routing through the kernel clamps each
+ * call to whatever remains of the request deadline and applies the 'storage'
+ * budget, circuit breaker and bulkhead.
+ */
 async function fetchBuffer(url: string): Promise<Buffer | null> {
-  try { const res = await fetch(url, { signal: AbortSignal.timeout(10000) }); if (!res.ok) return null; return Buffer.from(await res.arrayBuffer()); } catch { return null; }
+  try {
+    const res = await request(url, { budgetKey: 'storage', action: 'downloadJobDocs' });
+    if (!res.ok) return null;
+    return Buffer.from(await res.arrayBuffer());
+  } catch { return null; }
 }
 function extFromUrl(url: string): string { const m = url.match(/\.([a-z0-9]{2,5})(?:\?|$)/i); return m ? m[1].toLowerCase() : 'bin'; }
 function filenameFromUrl(url: string, label: string): string { return label.replace(/[^a-zA-Z0-9_-]/g, '_') + '.' + extFromUrl(url); }
@@ -64,12 +80,20 @@ export async function handleDownloadJobDocs(payload: unknown[], sessionToken?: s
       const chunks: Buffer[] = [];
       const archive = ZipClass ? new ZipClass('zip', { zlib: { level: 6 } }) : typeof ArchiveClass === 'function' ? new ArchiveClass('zip', { zlib: { level: 6 } }) : (archiverMod as any)('zip', { zlib: { level: 6 } });
       archive.on('data', (chunk: Buffer) => chunks.push(chunk));
-      archive.on('end', () => { const zipBuf = Buffer.concat(chunks); resolve({ success: true, zipBase64: zipBuf.toString('base64'), fileName: 'Dokumen_' + code + '.zip', totalFiles: downloads.length, totalSize: zipBuf.length, candidateCount: candidates.length }); });
+      archive.on('end', () => { const zipBuf = Buffer.concat(chunks); resolve({ success: true, zipBase64: zipBuf.toString('base64'), fileName: 'Dokumen_' + code + '.zip', totalFiles: downloads.length, includedFiles: processed - skipped, totalSize: zipBuf.length, candidateCount: candidates.length, ...(skipped > 0 ? { skipped, partial: true } : {}) }); });
       archive.on('error', (err: Error) => resolve({ success: false, error: safeError('Gagal membuat ZIP.', err) }));
       let processed = 0;
+      let skipped = 0;
       let totalBytes = 0;
       async function processNext() {
         try {
+          // Phase B: stop before the request deadline instead of letting the
+          // platform kill the function mid-ZIP. Each fetch is already
+          // deadline-clamped (kernel/http), so without this check the loop
+          // would keep *starting* fetches that are guaranteed to be cut off,
+          // and the client would get a truncated archive with no explanation.
+          // 1 s of headroom lets archiver flush the central directory.
+          if (remainingMs() <= 1_000) { skipped = total - processed; archive.finalize(); return; }
           if (processed >= total) { archive.finalize(); return; }
           const d = downloads[processed]; processed++;
           const buf = await fetchBuffer(d.url);

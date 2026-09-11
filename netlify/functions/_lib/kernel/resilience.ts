@@ -252,6 +252,44 @@ class CircuitBreaker {
     return this.records.get(dep)?.state ?? 'closed';
   }
 
+  /**
+   * Snapshot every KNOWN dependency's state (Phase C item 12).
+   *
+   * Enumeration comes from DEPENDENCY_CONFIGS, not from `this.records`: a
+   * dependency that has never failed has no record at all (`check()` returns
+   * early on a miss), so iterating records would silently omit exactly the
+   * healthy dependencies the caller wants reassurance about. Callers must see
+   * "postgrest: closed", not "postgrest: missing".
+   *
+   * `failures` is only meaningful while a record exists; it is reported as 0
+   * for a never-failed dependency, which is also its true value.
+   */
+  snapshot(): Record<string, { state: BreakerState; failures: number; openForMs: number }> {
+    const out: Record<string, { state: BreakerState; failures: number; openForMs: number }> = {};
+    const deps = new Set([...Object.keys(this.depConfigs), ...this.records.keys()]);
+    const now = Date.now();
+    for (const dep of deps) {
+      const rec = this.records.get(dep);
+      out[dep] = {
+        state: rec?.state ?? 'closed',
+        failures: rec?.failures ?? 0,
+        // How long the breaker has been open, so a health reader can apply the
+        // "breaker open > 2 min" alert threshold (§7.2) without extra state.
+        openForMs: rec && rec.state !== 'closed' ? Math.max(0, now - rec.openedAt) : 0,
+      };
+    }
+    return out;
+  }
+
+  /** Count of dependencies currently NOT closed — the saturation signal. */
+  openCount(): number {
+    let n = 0;
+    for (const dep of Object.keys(this.depConfigs)) {
+      if (this.getState(dep) !== 'closed') n++;
+    }
+    return n;
+  }
+
   /** Reset a specific dependency (for testing/manual recovery). */
   reset(dep: string): void {
     this.records.delete(dep);
@@ -312,6 +350,27 @@ class Bulkhead {
   /** Get current inflight count for observability. */
   getInflight(dep: string): number {
     return this.inflight.get(dep) ?? 0;
+  }
+
+  /**
+   * Snapshot in-flight counts for every KNOWN dependency (Phase C item 12).
+   *
+   * Same enumeration reasoning as CircuitBreaker.snapshot(): a dependency that
+   * is not currently in flight has no map entry, and `getInflight()` already
+   * reports 0 for it — so we seed from DEPENDENCY_CONFIGS and only merge in
+   * live counts. That makes the output stable in shape, which matters because
+   * alerting diffs it over time.
+   */
+  snapshot(): { maxConcurrent: number; inflight: Record<string, number>; saturated: boolean } {
+    const inflight: Record<string, number> = {};
+    const deps = new Set([...Object.keys(DEPENDENCY_CONFIGS), ...this.inflight.keys()]);
+    let saturated = false;
+    for (const dep of deps) {
+      const n = this.inflight.get(dep) ?? 0;
+      inflight[dep] = n;
+      if (n >= this.maxConcurrent) saturated = true;
+    }
+    return { maxConcurrent: this.maxConcurrent, inflight, saturated };
   }
 }
 

@@ -112,15 +112,26 @@ describe('discover', () => {
     // surface-binding.mjs, verify-aliases.mjs, scripts/lib/load-env.mjs, and
     // io-boundary.mjs — none of which were reflected here at the time.
     // 15 -> 17.
-    expect(count('mjs')).toBe(17); // 11 at design time; e2e + scripts/ci gates added since
+    // 2026-09-11 (later): the local env-audit trio —
+    // scripts/ci/env-audit.local.mjs, env-resolve.local.mjs, env-validate.local.mjs.
+    // 17 -> 20.
+    expect(count('mjs')).toBe(20); // 11 at design time; e2e + scripts/ci gates added since
     expect(count('cjs')).toBe(5);
     // Phase A (2026-09-11): netlify/functions/run-migration.js deleted — the
     // action was already removed from the registry, so the entry point was a
     // dead 690 KB catch-all. 29 -> 28.
-    expect(count('js')).toBe(28);
+    // Phase A carry-forward (2026-09-11): the 11 remaining catch-all stubs
+    // (admin-ai-context, ai-form-submit, apply, drive-links, rincian-presets,
+    // save-ai-cv, save-master, schedule-reminders, submit-apply,
+    // submit-siswa-baru, whatsapp) deleted: zero code references, no working
+    // alias, and each was an unrestricted full-router entry point at ~1.5 MB.
+    // bridge-links.js stays as the single documented fallback. 28 -> 17.
+    expect(count('js')).toBe(17);
     // 342 -> 341 (2026-09-11): share-data.test.ts left netlify/functions/ for
     // e2e/ — the file still exists, but see the count('ts') note above.
-    expect(files.length).toBe(341); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 341 -> 344: the three env-audit scripts under scripts/ci.
+    // 344 -> 333: the 11 deleted catch-all stubs above.
+    expect(files.length).toBe(333); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

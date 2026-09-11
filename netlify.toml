@@ -59,18 +59,30 @@
 #
 # WHY REMOVING THEM IS SAFE
 # The aliases were an optimisation, not a correctness requirement. Each legacy
-# entry point is a 109-byte stub that dispatches the full router:
+# entry point was a 109-byte stub that dispatched the full router:
 #
 #   'use strict';
 #   const { makeHandler } = require('./_lib/netlify-wrapper');
 #   exports.handler = makeHandler();
 #
-# Those files are still deployed, so /.../whatsapp, /.../apply etc. keep working
-# natively. The client never used them anyway — src/lib/apiClient.ts routes
-# every action to its narrow /surfaces/* endpoint, with bridge-links as the 404
-# fallback. The legacy paths matter only for old QR codes and bookmarks.
+# Those files have now been DELETED (2026-09-11, Phase A carry-forward). The
+# client never used them — src/lib/apiEndpoint.ts routes every action to its own
+# narrow entry point and falls back to bridge-links, which is kept as the single
+# permanent catch-all. The legacy paths mattered only for old QR codes and
+# bookmarks, and those never worked anyway: the alias rules that were supposed
+# to serve them were rejected at deploy-parse time.
 #
-# The only real cost of keeping the files is bundle size (~693 KB each), which
-# is Phase A's carry-forward. Deleting them requires no alias to replace them,
-# because the aliases never existed in the first place — but the deploy-verify
-# step still applies: confirm each legacy path responds 200 before removing it.
+# WHY DELETING THE STUBS WAS MORE THAN A SIZE FIX
+# A "109-byte" stub is 109 bytes on disk but ~1,508 KB bundled: makeHandler()
+# statically imports surfaces/index, which pulls in all 15 surfaces and 14
+# contexts. Each stub was therefore an unrestricted monolith that answered
+# EVERY action regardless of surface, with no allow-list — verified live:
+#
+#   POST /apply     {"action":"getAppData"} -> 200 with real job rows
+#   POST /whatsapp  {"action":"getAppData"} -> 200 with real job rows
+#
+# So the 11 stubs were not inert dead weight; they were 11 unaudited public
+# entry points that bypassed the per-surface allow-list boundary entirely, at
+# 1.5 MB each (16.6 MB of the ~21 MB deployed). Removing them reclaims the
+# size AND closes the boundary hole. bridge-links remains the only
+# makeHandler() entry point, by design, as the documented 404 fallback.

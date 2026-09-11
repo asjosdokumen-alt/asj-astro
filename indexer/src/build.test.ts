@@ -24,8 +24,9 @@ describe('full build', () => {
     // 2026-09-11 (later): +2 more — scripts/ci/io-boundary.mjs and
     // scripts/lib/load-env.mjs. total 340 -> 342, then 342 -> 341 on
     // 2026-09-11 when e2e/share-data.test.ts moved out of netlify/functions/
-    // (Netlify bundled it as a deployable function → `vitest` unresolvable).
-    expect(r.stats.fileCount).toBe(341); // 201 ts + 78 tsx + 12 astro + 17 mjs + 5 cjs + 28 js
+    // (Netlify bundled it as a deployable function → `vitest` unresolvable),
+    // then 341 -> 344 when the local env-audit trio landed under scripts/ci/.
+    expect(r.stats.fileCount).toBe(333); // 201 ts + 78 tsx + 12 astro + 20 mjs + 5 cjs + 17 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 
