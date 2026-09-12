@@ -33,7 +33,7 @@ Legenda blokir: 🔴 butuh keputusan/izin owner · 🟠 butuh infrastruktur baru
 
 | # | Item | Bukti | Blokir |
 |---|---|---|---|
-| **2** | 🔴 **Push `main` (ahead 10).** `e52b38b` · `d28b5e0` · `75dd3cd` · commit share-token 2026-09-13 + 5 commit sebelumnya belum naik; remote tetap `47c4440` | `git rev-list --count newrepo/main..main` → 10 | Aturan owner: **jangan push tanpa izin**. Push ke `main` = auto-build + deploy produksi |
+| **2** | 🔴 **Push `main`.** Commit lokal yang belum naik: `e52b38b` · `d28b5e0` · `75dd3cd` · `a4b5f13` · `5909398` (share-token) + 5 commit sebelum sesi ini; remote tetap `47c4440` | `git rev-list --count newrepo/main..main` (angkanya naik tiap commit lokal — jalankan, jangan hafal) | Aturan owner: **jangan push tanpa izin**. Push ke `main` = auto-build + deploy produksi |
 
 > **#1 — B06 share token: ✅ SELESAI 2026-09-13, dengan dihapus bukan dimigrasi.** `sys_config` memang
 > tidak punya kolom `config_key`, tapi gate token ternyata **bukan parity legacy** (legacy hanya membaca
