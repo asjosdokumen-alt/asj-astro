@@ -38,6 +38,7 @@
     "smoke": "node scripts/ci/smoke-test.mjs",
     "ci:quality": "npm run typecheck:ratchet && npm run typecheck:indexer && npm run boundary && npm run verify:binding && npm run verify:entries && npm run verify:io && npm run bundle:size && npm run test && npm run idx:gate",
     "ci:predeploy": "npm run verify:env && npm run verify:env:budget && npm run verify:db && npm run verify:binding && npm run verify:io && npm run bundle:size && npm run verify:pwa",
+    "ci:predeploy:local": "npm run verify:env -- --profile build && npm run verify:db && npm run verify:binding && npm run verify:io && npm run bundle:size && npm run verify:pwa",
     "migrate": "node scripts/migrate.mjs status",
     "migrate:status": "node scripts/migrate.mjs status",
     "migrate:up": "node scripts/migrate.mjs up",
