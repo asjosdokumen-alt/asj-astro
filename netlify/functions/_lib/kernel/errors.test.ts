@@ -100,10 +100,9 @@ describe('leak-guard — tidak ada e.message di respons klien (playbook §4.2)',
     expect(offenders).toEqual([]);
   });
 
-  it('share-data.js + ingest.js tidak lagi mengirim Error internal', () => {
+  it('share-data.js tidak lagi mengirim Error internal', () => {
     const share = readFileSync(join(import.meta.dirname, '..', '..', 'share-data.js'), 'utf-8');
-    const ingest = readFileSync(join(import.meta.dirname, '..', '..', 'ingest.js'), 'utf-8');
-    for (const [name, src] of [['share-data.js', share], ['ingest.js', ingest]] as const) {
+    for (const [name, src] of [['share-data.js', share]] as const) {
       expect(src, name).not.toMatch(/\+\s*e\.message/);
       expect(src, name).not.toContain('Error internal:');
       // Satu pemilik pesan generik: endpoint mentah harus MENGKONSUMSI
@@ -111,5 +110,18 @@ describe('leak-guard — tidak ada e.message di respons klien (playbook §4.2)',
       expect(src, name).toContain('GENERIC_ERROR_MESSAGE');
       expect(src, name).not.toContain('Terjadi kesalahan saat memproses permintaan.');
     }
+  });
+
+  // Sejak 2026-09-12 ingest.js BUKAN lagi endpoint mentah: ia mendelegasikan ke
+  // makeSurfaceHandler, sehingga pemetaan error ada di kernel (satu pemilik
+  // pesan generik). Karena itu syarat "harus memuat GENERIC_ERROR_MESSAGE" tidak
+  // lagi berlaku untuk file ini — yang berlaku sekarang: ia tidak boleh kembali
+  // memformat error sendiri, dan harus benar-benar mendelegasikan.
+  it('ingest.js mendelegasikan ke wrapper bersama, bukan memformat error sendiri', () => {
+    const ingest = readFileSync(join(import.meta.dirname, '..', '..', 'ingest.js'), 'utf-8');
+    expect(ingest).toMatch(/makeSurfaceHandler\(/);
+    expect(ingest).not.toMatch(/\+\s*e\.message/);
+    expect(ingest).not.toContain('Error internal:');
+    expect(ingest).not.toContain('Terjadi kesalahan saat memproses permintaan.');
   });
 });

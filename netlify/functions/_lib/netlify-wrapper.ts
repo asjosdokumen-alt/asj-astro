@@ -8,21 +8,27 @@ import { DEFAULT_DEADLINE_MS, deadlineFrom } from './kernel/deadline';
 // netlify-wrapper.js — factory handler Netlify standar.
 //
 // Setiap file di netlify/functions/<nama>.js hanyalah:
-//   exports.handler = makeHandler();
+//   export default adapt(makeHandler());
 // dan seluruh logika dipusatkan di _lib/handlers.js (dispatch per action).
 //
 // ── BUNDLE-SIZE CONTRACT ────────────────────────────────────────────────────
-// This wrapper statically imports the FULL action router (surfaces/index), so
+// This wrapper statically imports the FULL action router (surfaces/registry), so
 // every entry point built on it pays for all 15 surfaces + 14 contexts
 // (~690 KB). That is deliberate but must stay confined here: this file is for
-// the catch-all/fallback path only (bridge-links and the legacy alias names).
+// the catch-all/fallback path only (bridge-links).
 //
 // Narrow, high-traffic surfaces MUST use makeSurfaceHandler(<ACTIONS>, [...])
 // from './netlify-wrapper-surface' instead, which injects a single-surface
-// resolver and never reaches surfaces/index.
+// resolver and never reaches surfaces/registry.
 //
 // Adding makeHandler() to a new file re-creates the 690 KB problem. Don't.
-import { getSurfaceHandler } from '../surfaces/index';
+//
+// NOTE: the router file is `surfaces/registry.ts`, NOT `surfaces/index.ts`. It
+// must never be renamed to `index.*` — Netlify deploys `<subdir>/index.*` as a
+// function, and a handler-less function forces Lambda compatibility mode, where
+// the 4 KB env ceiling still applies. See check 3b in
+// scripts/ci/verify-function-entries.mjs.
+import { getSurfaceHandler } from '../surfaces/registry';
 
 function makeHandler() {
   return async (event: any) => {

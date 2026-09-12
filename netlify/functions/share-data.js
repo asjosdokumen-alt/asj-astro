@@ -1,4 +1,3 @@
-'use strict';
 /**
  * share-data.js — GET endpoint for the public TSK candidate viewer.
  *
@@ -20,9 +19,10 @@
  */
 // PR4 (playbook §3.3 "never leak") + satu pemilik pesan generik:
 // GENERIC_ERROR_MESSAGE di kernel/errors.ts, diekspor via _lib/handlers.
-const { handleShareData, GENERIC_ERROR_MESSAGE } = require('./_lib/handlers');
+import { adapt } from './_lib/netlify-adapter.js';
+import { handleShareData, GENERIC_ERROR_MESSAGE } from './_lib/handlers.js';
 
-exports.handler = async (event) => {
+async function handler(event) {
   const p = (event.queryStringParameters) || {};
   const job = p.job || '';
   const tk = p.tk || '';
@@ -43,4 +43,6 @@ exports.handler = async (event) => {
     },
     body: JSON.stringify(out),
   };
-};
+}
+
+export default adapt(handler);

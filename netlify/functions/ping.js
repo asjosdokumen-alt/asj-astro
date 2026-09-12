@@ -2,11 +2,12 @@
 //
 // GET /.netlify/functions/ping → { status: "ok", version, uptime }
 // Tidak memuat handler stack / DB — cepat dan murah untuk uptime monitoring.
-'use strict';
+
+import { adapt } from './_lib/netlify-adapter.js';
 
 const startedAt = Date.now();
 
-exports.handler = async (event) => {
+async function handler() {
   const body = JSON.stringify({
     status: 'ok',
     version: process.env.npm_package_version || '1.0.0',
@@ -21,4 +22,6 @@ exports.handler = async (event) => {
     },
     body,
   };
-};
+}
+
+export default adapt(handler);

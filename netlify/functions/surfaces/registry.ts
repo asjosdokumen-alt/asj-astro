@@ -1,5 +1,15 @@
 /**
- * surfaces/index.ts — Central surface registry with lazy loading
+ * surfaces/registry.ts — Central surface registry with lazy loading
+ *
+ * ⚠️ DO NOT RENAME THIS FILE TO `index.ts`. Netlify deploys a direct
+ * subdirectory of the functions root as a function when it contains an entry
+ * file named `index.*` or `<dirname>.*`. This module has no handler, so as
+ * `surfaces/index.ts` it shipped as a Lambda-COMPATIBILITY-MODE function with no
+ * handler — and in that mode the 4 KB per-function environment ceiling still
+ * applies, which is what killed every deploy on 2026-09-12 even after all 21 real
+ * entry points had migrated to `runtimeAPIVersion: 2`. `registry` is neither
+ * `index` nor `surfaces`, so it is not deployed at all.
+ * Enforced by check 3b in `scripts/ci/verify-function-entries.mjs`.
  *
  * Maps action names to surface registries. Uses dynamic imports so only
  * the surface matching the requested action is loaded, reducing cold-start
@@ -90,7 +100,6 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   // Job-status polling: ai-chat.js and notify.js both allow it; dispatch runs
   // the same kernel read (handleGetJobStatus) whichever entry was polled.
   getJobStatus:               () => import('./ai').then(m => m.AI_ACTIONS),
-  processAiFormSubmit:        () => import('./ai').then(m => m.AI_ACTIONS),
   processUploadDoc:           () => import('./ai').then(m => m.AI_ACTIONS),
   generateWawancaraModel:     () => import('./ai').then(m => m.AI_ACTIONS),
   simpanHasilWawancara:       () => import('./ai').then(m => m.AI_ACTIONS),

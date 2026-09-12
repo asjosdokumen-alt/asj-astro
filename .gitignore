@@ -38,3 +38,17 @@ asj-astro.txt
 netlify_auth_token*
 *_auth_token*
 *nfp_*
+
+# ── Bundled credentials ──────────────────────────────────────────────────────
+# The Firebase service account is shipped as a FILE bundled with the functions
+# (netlify.toml `included_files`) instead of an env var, because AWS Lambda
+# compatibility mode caps the total per-function environment at 4 KB and this
+# single value was ~2.4 KB — 59 % of the budget, which failed the deploy at
+# function creation. See docs/HANDOFF_4KB_ENV_LIMIT.md.
+#
+# The real file must NEVER be committed: it is a live private key, and git
+# history is permanent. `.example` is committed by negation so the required
+# shape is documented and a missing file is obvious rather than mysterious.
+netlify/functions/secrets/*
+!netlify/functions/secrets/*.example.json
+!netlify/functions/secrets/README.md

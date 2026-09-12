@@ -38,7 +38,16 @@ describe('full build', () => {
     // 344 -> 347 (2026-09-12, Phase C receiver + gates): +2 ts
     // (metrics-receiver.ts, _lib/metrics-receiver.test.ts) and +1 mjs
     // (scripts/ci/verify-function-entries.mjs).
-    expect(r.stats.fileCount).toBe(347); // 210 ts + 78 tsx + 12 astro + 24 mjs + 5 cjs + 18 js
+    // 347 -> 349 (2026-09-12, Lambda compatibility mode migration): +2 ts —
+    // _lib/netlify-adapter.ts (the single Request->event / outcome->Response
+    // conversion point) and _lib/verify-env-budget.test.ts (the 4 KB env budget
+    // arithmetic). ts 210 -> 212; tsx/astro/mjs/cjs/js unchanged.
+    // 349 -> 351 (2026-09-12, backend reachability fixes): +1 ts
+    // (contexts/diagnostics/service.test.ts — locks the reportWebVital payload
+    // contract) and +1 js (netlify/functions/diagnostics.js — the narrow entry
+    // point that ends getAppConfig/reportWebVital's dependence on the
+    // bridge-links catch-all). ts 212 -> 213, js 18 -> 19.
+    expect(r.stats.fileCount).toBe(351); // 213 ts + 78 tsx + 12 astro + 24 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 
@@ -51,8 +60,10 @@ describe('full build', () => {
     // Phase A CI gates landed in scripts/ci/; 13688 measured the same day after
     // the 11 catch-all stubs were removed and Phase C's health module and its
     // tests landed. The envelope tracks the tree; it is a canary against a
-    // silent parse collapse, not a budget.
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(14200);
+    // silent parse collapse, not a budget. 14250 measured 2026-09-12 after the
+    // functions migration; the envelope keeps the same ~500-symbol headroom the
+    // previous one used.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(14750);
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

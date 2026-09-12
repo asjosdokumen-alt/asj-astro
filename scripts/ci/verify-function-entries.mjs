@@ -114,21 +114,35 @@ if (devImportsInEntries.length) {
 // Tests belong in e2e/ or a subdirectory that is not deployed. Root-level
 // .test.* is the fatal case (check 1); this is the wider net.
 //
-// NOTE on what is and is NOT deployed (verified against production 2026-09-12):
-// Netlify deploys **direct children of the `directory` only**. `_lib/` (28 flat
-// files), `contexts/` (13) and `shared/` (1) are NOT deployed — probing their
-// basenames on production returns 404 for every one. An earlier version of this
-// gate assumed the scan was recursive and flagged all three; that premise was
-// wrong and the gate was corrected rather than the directories.
+// NOTE on what is and is NOT deployed (corrected TWICE on 2026-09-12).
+// The rule is neither "direct children only" nor "recursive". It is: a DIRECT
+// subdirectory of the functions root is deployed as a function when it contains
+// an entry file named `index.*` or `<dirname>.*`. Therefore:
+//   surfaces/index.ts              -> DEPLOYED  (confirmed in the zisi manifest)
+//   surfaces/registry.ts           -> not deployed (not `index`, not `surfaces`)
+//   _lib/health.ts                 -> not deployed (not `index`, not `_lib`)
+//   contexts/<name>/index.ts       -> not deployed (two levels deep)
+//   contexts/*/service.ts          -> not deployed (not `index`)
+// The original claim here — "direct children only" — produced correct production
+// probes (_lib/health, _lib/metrics-sink, /service all 404) but the WRONG reason,
+// and it wrongly concluded that `surfaces/` is not deployed at all.
 //
-// The one directory that IS a real problem is `surfaces/`: it is not referenced
-// as an entry point by anything, and bundling it as a catch-all costs ~1.5 MB
-// (see the "never reach surfaces/index" rule). It is tracked as known debt.
-const KNOWN_DEBT_DIRS = {
-  surfaces:
-    'not deployed as functions, but bundled by bridge-links.js via surfaces/index ' +
-    '(~1.5 MB). Retiring it is a Phase A follow-up, tracked — not a deploy risk.',
-};
+// SECOND CORRECTION, same day. This block used to claim surfaces/ deploys
+// "~15 functions" and that it is "not a deploy risk". Both were wrong:
+//   * `zipFunctions` + the manifest it emits shows exactly ONE surfaces function
+//     (the other 14 flat files are not entries), and
+//   * that one function was `"bundler":"esbuild","runtimeAPIVersion":1` —
+//     Lambda COMPATIBILITY MODE, where the 4 KB environment ceiling still
+//     applies. So a single dead function was keeping the deploy-killer alive for
+//     the whole site even after all 21 real entries had migrated to
+//     `runtimeAPIVersion: 2`.
+// Fix: `surfaces/index.ts` -> `surfaces/registry.ts`, which drops it from the
+// deploy entirely. Check 3b below now asserts the rule instead of documenting it,
+// so this cannot come back silently.
+//
+// Lesson: a gate that infers deployment from a naming convention must verify that
+// convention against the bundler's own output — not against a comment.
+const KNOWN_DEBT_DIRS = {};
 
 const testsInTree = [];
 function walkTests(dir, rel = '') {
@@ -155,7 +169,37 @@ if (dangerousTests.length) {
   notes.push(`${testsInTree.length} test file(s) under the functions tree, all in non-deployed subdirs`);
 }
 
-notes.push(`known debt dirs (not deploy risks): ${Object.keys(KNOWN_DEBT_DIRS).join(', ')}`);
+const debtNames = Object.keys(KNOWN_DEBT_DIRS);
+if (debtNames.length) notes.push(`known debt dirs (not deploy risks): ${debtNames.join(', ')}`);
+
+// ─── Check 3b: no direct subdirectory deploys as a function ──────────────────
+// The deploy rule, verified against the zisi manifest rather than a comment: a
+// DIRECT subdirectory of the functions root becomes a function when it contains
+// an entry file named `index.*` or `<dirname>.*`. Such a function carries no
+// handler of ours — `surfaces/index.ts` proved it — so Netlify falls back to
+// Lambda compatibility mode, where the 4 KB env ceiling still applies. One such
+// directory is enough to kill the whole deploy, so assert the absence instead of
+// trusting the naming convention to stay correct.
+const SUBDIR_ENTRY_RE = /\.(js|ts|mjs|cjs)$/;
+const subdirEntries = [];
+for (const dirent of readdirSync(FN, { withFileTypes: true })) {
+  if (!dirent.isDirectory() || dirent.name === 'node_modules') continue;
+  const dir = dirent.name;
+  for (const f of readdirSync(join(FN, dir))) {
+    if (!SUBDIR_ENTRY_RE.test(f) || /\.test\.(ts|js|tsx)$/.test(f)) continue;
+    const stem = f.replace(SUBDIR_ENTRY_RE, '');
+    if (stem === 'index' || stem === dir) subdirEntries.push(`${dir}/${f}`);
+  }
+}
+if (subdirEntries.length) {
+  violations.push(
+    `subdirectory file(s) would deploy as functions with no handler -> Lambda ` +
+      `compatibility mode -> the 4 KB env ceiling applies to the whole deploy: ` +
+      `${subdirEntries.join(', ')}. Rename so the file is neither 'index.*' nor '<dirname>.*'.`,
+  );
+} else {
+  notes.push('no direct subdirectory deploys as a function (no Lambda-compat entries)');
+}
 
 // ─── Check 4: each root entry exports a handler ──────────────────────────────
 // A root file with no `handler` export is still deployed and still 404/502s.
@@ -163,8 +207,20 @@ const noHandler = [];
 for (const name of entries) {
   const full = join(FN, name);
   const src = readFileSync(full, 'utf8');
+  // Two shapes are accepted, because the platform accepts two:
+  //   legacy — `exports.handler = ...`   (Lambda compatibility mode)
+  //   modern — `export default ...`      (the current Netlify Functions runtime)
+  //
+  // This site migrated to the modern runtime on 2026-09-12. The reason was not
+  // style: Lambda compatibility mode caps the total environment at 4 KB per
+  // function, and this repo's env set was 4275 B — the deploy died at function
+  // creation AFTER a successful build. See docs/RENCANA_KELUAR_DARI_LAMBDA_MODE.md.
+  //
+  // The legacy pattern is still accepted on purpose, so the migration can be
+  // reversed one file at a time if something goes wrong in production.
   const hasHandler =
     /exports\.handler\s*=/.test(src) ||
+    /export\s+default\b/.test(src) ||
     /export\s+(?:const|async function|function)\s+handler\b/.test(src) ||
     /export\s*\{[^}]*\bhandler\b[^}]*\}/.test(src);
   if (!hasHandler) noHandler.push(name);

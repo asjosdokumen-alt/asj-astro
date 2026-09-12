@@ -14,12 +14,33 @@
   node_bundler = "esbuild"
   included_files = [
     "netlify/functions/_lib/**",
-    "netlify/functions/shared/**"
+    "netlify/functions/shared/**",
+    # The Firebase service account is deliberately NOT listed here.
+    #
+    # It cannot be: netlify/functions/secrets/* is gitignored (it is a live
+    # private key), and Netlify builds from the git clone — so at build time the
+    # file never exists and this glob could only ever match nothing.
+    #
+    # It does not need to be, either. The credential stays in the
+    # FIREBASE_SERVICE_ACCOUNT env var, which is fine now that this site no
+    # longer runs in Lambda compatibility mode — the 4 KB per-function ceiling
+    # that motivated the file is gone. _lib/fcm-server.ts still tries the file
+    # first and falls back to the env var, so local "netlify dev" and any manual
+    # CLI deploy keep working unchanged.
+    #
+    # See docs/RENCANA_KELUAR_DARI_LAMBDA_MODE.md.
   ]
 
 # Phase 5: Job queue sweep every 2 minutes
-[functions."sweep-queue"]
-  schedule = "*/2 * * * *"
+#
+# The schedule is NOT here any more. Modern Netlify Functions declare it in the
+# function's own config (netlify/functions/sweep-queue.ts):
+#
+#   export const config = { schedule: '*/2 * * * *' };
+#
+# Same expression as the line this block used to hold. If the sweep ever stops
+# running, check that export first — a schedule that moves without being
+# verified is the quietest way to break the queue.
 
 # Cache headers
 [[headers]]
@@ -74,7 +95,7 @@
 #
 # WHY DELETING THE STUBS WAS MORE THAN A SIZE FIX
 # A "109-byte" stub is 109 bytes on disk but ~1,508 KB bundled: makeHandler()
-# statically imports surfaces/index, which pulls in all 15 surfaces and 14
+# statically imports surfaces/registry, which pulls in all 15 surfaces and 14
 # contexts. Each stub was therefore an unrestricted monolith that answered
 # EVERY action regardless of surface, with no allow-list — verified live:
 #

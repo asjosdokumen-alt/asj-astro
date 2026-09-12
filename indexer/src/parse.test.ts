@@ -94,11 +94,30 @@ describe('real-file outlines', () => {
     expect(p.symbols.find((s) => s.name === 'Lang')?.kind).toBe(SymbolKind.TypeAlias);
   });
 
-  it('auth.js — CommonJS require + exports.handler', () => {
+  it('auth.js — ESM entry point: extension-qualified import + default export', () => {
+    // Migrated 2026-09-12 off Lambda compatibility mode, whose 4 KB per-function
+    // env ceiling was killing the deploy after a fully successful build.
+    //
+    // A root entry point is still a thin wrapper — one surface's action map,
+    // adapted into a handler — but the MODULE SHAPE changed, and both halves
+    // matter: Netlify's modern runtime needs a default export, and a local
+    // import must carry its extension. A file left half-migrated answers 502.
     const p = parseReal('netlify/functions/auth.js', 'js');
-    expect(p.imports.some((i) => i.specifier === './_lib/netlify-wrapper-surface')).toBe(true);
-    expect(p.exports.some((e) => e.exportName === 'handler' && e.kind === 'cjs')).toBe(true);
-    expect(p.symbols.find((s) => s.name === 'makeSurfaceHandler' && s.kind === SymbolKind.Constant)).toBeDefined();
+    expect(p.imports.some((i) => i.specifier === './_lib/netlify-wrapper-surface.js')).toBe(true);
+    expect(p.imports.some((i) => i.specifier === './_lib/netlify-adapter.js')).toBe(true);
+    // `export default <expression>` is recorded as an ExportAssignment with
+    // exportName "default" and kind "named" — the binder only promotes kind to
+    // "default" for a default-exported DECLARATION. Asserting kind here would
+    // be asserting the wrong field, which is exactly how this test first
+    // failed after the migration.
+    expect(p.exports.some((e) => e.exportName === 'default')).toBe(true);
+    expect(p.exports.some((e) => e.kind === 'cjs')).toBe(false);
+    // It is an IMPORT BINDING now, not a destructured `const`:
+    //   before  const { makeSurfaceHandler } = require('./_lib/...')
+    //   after   import { makeSurfaceHandler } from './_lib/....js'
+    // Asserting the kind keeps the entry point pinned to "thin ESM wrapper" —
+    // a local re-declaration would mean logic drifted back into the entry.
+    expect(p.symbols.find((s) => s.name === 'makeSurfaceHandler' && s.kind === SymbolKind.ImportBinding)).toBeDefined();
   });
 });
 

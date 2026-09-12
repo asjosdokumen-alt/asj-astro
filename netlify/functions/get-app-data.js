@@ -1,4 +1,4 @@
-'use strict';
+
 /**
  * get-app-data.js — Public read surface entry point (legacy endpoint name).
  *
@@ -14,8 +14,9 @@
  * Kept under the legacy name because the path is referenced by deployed
  * clients; src/lib/apiEndpoint.ts maps getAppData/getMonthlyReport here.
  */
-const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-const { PUBLIC_ACTIONS } = require('./surfaces/public');
-exports.handler = makeSurfaceHandler(PUBLIC_ACTIONS, [
+import { adapt } from './_lib/netlify-adapter.js';
+import { makeSurfaceHandler } from './_lib/netlify-wrapper-surface.js';
+import { PUBLIC_ACTIONS } from './surfaces/public.js';
+export default adapt(makeSurfaceHandler(PUBLIC_ACTIONS, [
   'getAppData', 'getMonthlyReport',
-]);
+]));

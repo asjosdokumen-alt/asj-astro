@@ -14,7 +14,7 @@
  *      pay for — or depend on — the entire application being healthy enough to
  *      load. This function needs `_lib/health` and nothing else.
  *
- *   2. Reachability. An action registered in surfaces/index is answerable by
+ *   2. Reachability. An action registered in surfaces/registry is answerable by
  *      every entry point that reaches the router. Gating it would then depend on
  *      the gate holding everywhere, forever. Here the action is reachable from
  *      exactly one URL, and the wiring is a few lines the reader can audit.
@@ -38,10 +38,17 @@
  *
  * A wrong `Authorization` header is always 401, never silently downgraded to
  * the liveness response — otherwise a mis-set token would look like success.
+ *
+ * ── SHAPE ────────────────────────────────────────────────────────────────────
+ * The body below is a plain Lambda-shaped handler wrapped in `adapt()` from
+ * `_lib/netlify-adapter.ts`, which is what Netlify Functions modern requires
+ * (`export default`, Request → Response). The handler still receives `event`,
+ * because the auth logic and its tests are written against it and there is
+ * nothing to gain from rewriting them. See that file for the full reasoning.
  */
-'use strict';
 
-const { randomUUID } = require('node:crypto');
+import { randomUUID } from 'node:crypto';
+import { adapt } from './_lib/netlify-adapter.js';
 
 /** Constant-time comparison, so token validation does not leak length/prefix. */
 function safeEqual(a, b) {
@@ -76,7 +83,7 @@ function json(statusCode, body) {
   };
 }
 
-exports.handler = async (event) => {
+async function handler(event) {
   const method = ((event && event.httpMethod) || 'GET').toUpperCase();
   const q = (event && event.queryStringParameters) || {};
   const wantsDetail = method === 'POST' || q.detail === '1' || q.detail === 'true';
@@ -143,7 +150,7 @@ exports.handler = async (event) => {
   // dependency graph (breakers, db client, deadline). Netlify inlines the graph
   // regardless, but keeping the import at the use site makes the split visible
   // to a reader and to any future bundler.
-  const { buildHealthReport, logHealthReport } = await import('./_lib/health');
+  const { buildHealthReport, logHealthReport } = await import('./_lib/health.js');
   try {
     const report = await buildHealthReport({ includeShared: true });
     logHealthReport(report);
@@ -161,4 +168,6 @@ exports.handler = async (event) => {
       requestId,
     });
   }
-};
+}
+
+export default adapt(handler);

@@ -1,11 +1,12 @@
-'use strict';
+
 /**
  * candidates.js — Candidate management surface entry point
  *
  * Handles: getCandidatesPage, updateCatatanKandidat, updateKandidatSuper
  */
-const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-const { CANDIDATE_ACTIONS } = require('./surfaces/candidates');
-exports.handler = makeSurfaceHandler(CANDIDATE_ACTIONS, [
+import { adapt } from './_lib/netlify-adapter.js';
+import { makeSurfaceHandler } from './_lib/netlify-wrapper-surface.js';
+import { CANDIDATE_ACTIONS } from './surfaces/candidates.js';
+export default adapt(makeSurfaceHandler(CANDIDATE_ACTIONS, [
   'getCandidatesPage', 'updateCatatanKandidat', 'updateKandidatSuper',
-]);
+]));

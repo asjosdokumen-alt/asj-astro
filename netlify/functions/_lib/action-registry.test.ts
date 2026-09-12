@@ -21,7 +21,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { SURFACE_HANDLERS } from '../surfaces/index';
+import { SURFACE_HANDLERS } from '../surfaces/registry';
 
 // Rate limit groups — must match handlers.ts
 const LOGIN_ACTIONS = new Set([
@@ -131,5 +131,81 @@ describe('regresi — action yang pernah tidak terdaftar', () => {
     expect(typeof SURFACE_HANDLERS.getJobStatus).toBe('function');
     // Deterministic without a DB: missing jobId throws the kernel validation error.
     await expect(SURFACE_HANDLERS.getJobStatus([])).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+  });
+});
+
+// ─── KONTRAK RUTE KLIEN → ENTRY POINT (2026-09-12) ──────────────────────────
+//
+// Kenapa lapisan ini perlu, padahal registry sudah dijaga di atas
+// ------------------------------------------------------------------
+// Test di atas hanya membuktikan action ADA di registry. Itu TIDAK cukup:
+// registry adalah gabungan semua surface, sedangkan klien memanggil SATU
+// entry point tertentu lewat src/lib/apiEndpoint.ts. Kalau action-nya ada di
+// registry tetapi entry point yang ditunjuk tidak meng-allow-list-nya, wrapper
+// membalas 404 lebih dulu — dan apiClient.ts diam-diam mengulang ke catch-all
+// bridge-links. Fitur tetap jalan, jadi tidak ada yang sadar, tapi:
+//   - setiap panggilan membayar satu round-trip sia-sia, dan
+//   - fitur itu bergantung pada fungsi terberat di repo tanpa deklarasi apa pun.
+//
+// Dua bug hidup ditemukan lewat celah ini (keduanya diperbaiki 2026-09-12):
+//   getShareTokenForJob — dirutekan ke /jobs, tidak ada di allow-list jobs.js
+//   parseDokumenBiodata — tidak ada rutenya sama sekali, selalu jatuh ke FALLBACK
+//
+// Gate statis yang setara ada di scripts/ci/surface-binding.mjs (aturan
+// "reachability"). Test ini menjaga sisi kliennya: rute → entry → allow-list.
+function clientRoutes(): Record<string, string> {
+  const src = readFileSync(join(ROOT, 'src/lib/apiEndpoint.ts'), 'utf8');
+  const block = src.match(/const SURFACE_ENDPOINTS[^{]*\{([\s\S]*?)\n\};/);
+  if (!block) return {};
+  const out: Record<string, string> = {};
+  const re = /^\s*([A-Za-z][A-Za-z0-9_]*)\s*:\s*'([^']+)'/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(block[1])) !== null) {
+    out[m[1]] = m[2].replace('/.netlify/functions/', '');
+  }
+  return out;
+}
+
+/** Allow-list sebuah entry point sempit, atau null kalau bukan entry sempit. */
+function entryAllowList(fnName: string): string[] | null {
+  let src: string;
+  try {
+    src = readFileSync(join(ROOT, 'netlify/functions', fnName + '.js'), 'utf8');
+  } catch {
+    return null;
+  }
+  const call = src.match(
+    /makeSurfaceHandler\(\s*(?:\[[^\]]*\]|[A-Z0-9_]+_ACTIONS)\s*,\s*\[([\s\S]*?)\]\s*\)/,
+  );
+  if (!call) return null;
+  return call[1]
+    .split(',')
+    .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
+    .filter(Boolean);
+}
+
+describe('kontrak rute klien → entry point', () => {
+  const routes = clientRoutes();
+
+  it('menemukan rute klien (sanity)', () => {
+    expect(Object.keys(routes).length).toBeGreaterThan(50);
+  });
+
+  it('setiap action yang dirutekan klien diterima oleh entry point tujuannya', () => {
+    const broken: string[] = [];
+    for (const [action, fn] of Object.entries(routes)) {
+      const allowed = entryAllowList(fn);
+      if (allowed === null) {
+        broken.push(`${action} -> /${fn} (entry tidak ada / bukan entry sempit)`);
+        continue;
+      }
+      if (!allowed.includes(action)) {
+        broken.push(`${action} -> /${fn} (entry menolak action ini → 404 → retry diam-diam ke catch-all)`);
+      }
+    }
+    expect(
+      broken,
+      'rute klien menunjuk entry point yang tidak menerima action-nya:\n  ' + broken.join('\n  '),
+    ).toEqual([]);
   });
 });

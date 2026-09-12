@@ -53,7 +53,8 @@
  * (§3.3). A4/A5/A7 need the health probe and are covered by the §6 gate.
  */
 
-import type { Handler } from '@netlify/functions';
+import { adapt } from './_lib/netlify-adapter.js';
+import type { LegacyEvent } from './_lib/netlify-adapter.js';
 import type { MetricsPayload } from './_lib/metrics-sink';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -284,7 +285,7 @@ async function evaluate(payload: MetricsPayload): Promise<string[]> {
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
-export const handler: Handler = async (event) => {
+async function handler(event: LegacyEvent) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ ok: false, error: 'POST only' }) };
   }
@@ -325,4 +326,10 @@ export const handler: Handler = async (event) => {
     console.error('[receiver] evaluate failed:', String((e as Error)?.message ?? e));
     return { statusCode: 200, body: JSON.stringify({ ok: true, firedCount: 0, noted: 'eval-error' }) };
   }
-};
+}
+
+// Netlify Functions modern entry point: Request in, Response out. The handler
+// above keeps its Lambda shape on purpose — `adapt()` is the single point of
+// conversion, so the alert-evaluation logic and its tests are untouched.
+export default adapt(handler);
+

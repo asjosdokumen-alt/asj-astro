@@ -198,7 +198,17 @@ async function main() {
   // DECLARED catch-all. Everything else must stay narrow.
   const isCatchAll = (entry) => {
     try {
-      return /exports\.handler\s*=\s*makeHandler\(/.test(readFileSync(join(FN_DIR, entry), 'utf8'));
+      const src = readFileSync(join(FN_DIR, entry), 'utf8');
+      // Both module shapes are recognised, because the repo has two: the legacy
+      // `exports.handler = makeHandler()` assignment and the modern
+      // `export default adapt(makeHandler())` wrapper introduced by the
+      // 2026-09-12 migration to the current Netlify Functions runtime. Missing
+      // the modern form would exempt nothing and fail bridge-links — which is
+      // exactly what happened the first time this gate ran after the migration.
+      return (
+        /exports\.handler\s*=\s*makeHandler\(/.test(src) ||
+        /export\s+default\s+adapt\(\s*makeHandler\(/.test(src)
+      );
     } catch {
       return false;
     }

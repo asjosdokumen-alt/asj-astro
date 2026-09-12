@@ -31,6 +31,10 @@ export default defineConfig({
         plugins: [preact()],
         test: {
           name: 'frontend',
+          // Not inherited from the root config (same as `pool` above), so it has
+          // to be repeated here or the project silently runs on vitest's 5 s
+          // default while the root appears to promise 15 s.
+          testTimeout: 15000,
           environment: 'jsdom',
           pool: 'threads',
           include: ['src/**/*.test.{ts,tsx}', 'e2e/**/*.test.{ts,tsx}'],
@@ -44,6 +48,11 @@ export default defineConfig({
       {
         test: {
           name: 'backend',
+          // Not inherited from the root config — see the note on the frontend
+          // project above. A file-writing test (fcm-server) was observed timing
+          // out at 5000 ms under full-suite load on 2026-09-12 while passing in
+          // 378 ms on its own, which is what surfaced this.
+          testTimeout: 15000,
           environment: 'node',
           pool: 'threads',
           // e2e/*.test.ts ditambahkan 2026-09-11: share-data.test.ts DIPINDAH

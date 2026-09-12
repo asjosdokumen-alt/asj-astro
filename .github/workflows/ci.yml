@@ -59,6 +59,41 @@ jobs:
       - name: Check layering rules (dependency-cruiser)
         run: npm run boundary
 
+  # ══ Gate 1b · the gates CI used to skip ═════════════════════════════════════
+  # These live in `ci:quality` (the local script) but were referenced NOWHERE under
+  # .github, so a regression in the functions tree could reach production without
+  # CI ever running the gate that exists to catch it. That is not theoretical:
+  # `surfaces/index.ts` shipped as a Lambda-COMPATIBILITY-MODE function with no
+  # handler, which kept the 4 KB per-function env ceiling alive for the whole site
+  # and killed every deploy on 2026-09-12 — after all 21 real entry points had
+  # already migrated. `verify:entries` now asserts that rule (check 3b) instead of
+  # documenting it, but an assertion nobody runs protects nothing.
+
+  functions-tree:
+    name: Functions tree + bundle ratchet
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      # Deploy shape: no root .test.*, no devDependency imports, every root entry
+      # exports a handler, and no direct subdirectory deploys as a function.
+      - name: Verify the functions tree matches what Netlify will deploy
+        run: npm run verify:entries
+      # Only bridge-links.js may call makeHandler() (the catch-all).
+      - name: Verify surface binding
+        run: npm run verify:binding
+      # No raw fetch() outside kernel/http.ts — it would bypass deadline, breaker,
+      # bulkhead, metrics and traceparent.
+      - name: Verify the I/O boundary
+        run: npm run verify:io
+      # Total deployed size may ratchet down, never up silently.
+      - name: Enforce the bundle-size ratchet
+        run: npm run bundle:size
+      # Indexer impact gate — depends on the whole graph, so it runs last.
+      - name: Indexer impact gate
+        run: npm run idx:gate
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
@@ -173,7 +208,7 @@ jobs:
 
   notify-failure:
     name: Notify · build failure
-    needs: [typecheck, boundary, test-frontend, test-backend, build, smoke]
+    needs: [typecheck, boundary, functions-tree, test-frontend, test-backend, build, smoke]
     if: failure() && github.event_name == 'push'
     uses: ./.github/workflows/_notify.yml
     with:

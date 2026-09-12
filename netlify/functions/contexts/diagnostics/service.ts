@@ -63,7 +63,7 @@ export async function handleGetAppConfig(_payload: any[], sessionToken?: string)
  * getHealth — Phase C item 12.
  *
  * Reachable ONLY from the /health entry point, which is gated behind a shared
- * secret; it is deliberately absent from surfaces/index.ts and therefore from
+ * secret; it is deliberately absent from surfaces/registry.ts and therefore from
  * bridge-links, so no client action can reach it. The admin guard here is
  * defence in depth for the case where that routing is ever changed by mistake:
  * without it a single wiring edit would turn this into an unauthenticated
@@ -84,8 +84,30 @@ export async function handleGetHealth(payload: any[], sessionToken?: string) {
   return { success: true, ...report };
 }
 
-export function handleReportWebVital(payload: any) {  if (!payload || !payload.name) return { success: false, error: 'invalid payload' };
-  const { name, value, rating, delta, id, navigationType } = payload;
+/**
+ * reportWebVital — telemetri Core Web Vitals dari klien (CLS/FCP/LCP/INP/TTFB).
+ *
+ * PUBLIK BY DESIGN (tanpa sesi): metrik performa bukan data pengguna, dan
+ * menuntut auth justru membuang sampel dari halaman yang paling lambat —
+ * tepat saat data itu paling dibutuhkan.
+ *
+ * KONTRAK PAYLOAD — dua bentuk diterima, dan keduanya memang perlu:
+ *   1. `[{ name, value, rating, delta, id, navigationType }]` — bentuk yang
+ *      BENAR-BENAR dikirim klien. `callAPI("reportWebVital", [metric])`
+ *      membungkus argumen dalam array; ini juga konvensi seluruh handler lain
+ *      di repo ini (payload selalu array).
+ *   2. `{ name, value, ... }` — bentuk telanjang, untuk pemanggil manual/curl.
+ *
+ * Sebelum 2026-09-12 handler ini hanya membaca `payload.name`, sehingga bentuk
+ * array yang dikirim klien SELALU ditolak `{ success:false, error:'invalid
+ * payload' }` — telemetri mati diam-diam, tanpa error yang terlihat di mana
+ * pun. Diperbaiki di sini dan bukan di klien, karena klien legacy sudah
+ * ter-deploy dan tetap mengirim array.
+ */
+export function handleReportWebVital(payload: any) {
+  const metric = Array.isArray(payload) ? payload[0] : payload;
+  if (!metric || !metric.name) return { success: false, error: 'invalid payload' };
+  const { name, value, rating, delta, id, navigationType } = metric;
   console.log(
     `[web-vitals] ${rating === 'good' ? '✅' : rating === 'needs-improvement' ? '⚠️' : '❌'} ` +
     `${name}: ${typeof value === 'number' ? value.toFixed(name === 'CLS' ? 4 : 0) : value}ms ` +

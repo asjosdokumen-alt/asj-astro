@@ -125,7 +125,15 @@ describe('discover', () => {
     // sink. 344 -> 346 (ts 208 -> 210). The test lives in _lib/ on purpose: a
     // .test.ts at the functions ROOT is deployed as a function and killed three
     // deploys via an unresolvable devDependency import (see verify:entries).
-    expect(count('ts')).toBe(210); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
+    // 2026-09-12 (Lambda compatibility mode migration): +2 ts —
+    // netlify/functions/_lib/netlify-adapter.ts and _lib/verify-env-budget.test.ts.
+    // 346 -> 348 (ts 210 -> 212); tsx/astro/mjs/cjs/js unchanged, total 349.
+    // 2026-09-12 (backend reachability fixes): +1 ts —
+    // netlify/functions/contexts/diagnostics/service.test.ts, which locks the
+    // reportWebVital payload contract (the handler used to read payload.name
+    // while clients send [metric], so every report was silently rejected).
+    // ts 212 -> 213. See also the js note below for the matching entry point.
+    expect(count('ts')).toBe(213); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
     expect(count('tsx')).toBe(78); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
     // 2026-09-11: the Phase A/B CI gates landed — bundle-size.mjs,
@@ -153,7 +161,12 @@ describe('discover', () => {
     // since the retirement, and deliberately a bespoke one (no
     // makeSurfaceHandler): it must not appear in the narrow list, because its
     // action is not registered in the router. 17 -> 18.
-    expect(count('js')).toBe(18);
+    // 2026-09-12 (backend reachability fixes): +1 — diagnostics.js, the narrow
+    // entry point for getAppConfig/reportWebVital. Until it existed, both
+    // actions were reachable only through the bridge-links catch-all; the
+    // surface-binding gate's reachability rule now fails the build if any
+    // router action has no narrow home. 18 -> 19.
+    expect(count('js')).toBe(19);
     // 342 -> 341 (2026-09-11): share-data.test.ts left netlify/functions/ for
     // e2e/ — the file still exists, but see the count('ts') note above.
     // 341 -> 344: the three env-audit scripts under scripts/ci.
@@ -173,7 +186,12 @@ describe('discover', () => {
     // 344 -> 347 (2026-09-12, Phase C receiver + gates): +2 ts
     // (metrics-receiver.ts, _lib/metrics-receiver.test.ts) and +1 mjs
     // (scripts/ci/verify-function-entries.mjs).
-    expect(files.length).toBe(347); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 347 -> 349 (2026-09-12, Lambda compatibility mode migration): +2 ts,
+    // netlify/functions/_lib/netlify-adapter.ts and _lib/verify-env-budget.test.ts.
+    // 349 -> 351 (2026-09-12, backend reachability fixes): +1 ts
+    // (contexts/diagnostics/service.test.ts) and +1 js
+    // (netlify/functions/diagnostics.js).
+    expect(files.length).toBe(351); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

@@ -28,21 +28,21 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 347,
+    "rootNames": 351,
     "options": {}
   },
-  "universe": 3845,
+  "universe": 3850,
   "counts": {
-    "agreeBound": 3845,
+    "agreeBound": 3850,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
     "libCompilerNone": 0,
-    "libRefs": 1228,
+    "libRefs": 1226,
     "libRefAgree": 1225,
     "libRefDisagree": 0,
-    "libRefFramework": 3,
-    "skippedNonBindable": 1929,
+    "libRefFramework": 1,
+    "skippedNonBindable": 1933,
     "skippedJsxIntrinsic": 54,
     "skippedAstroTemplate": 5,
     "offsetMismatch": 0,
@@ -51,8 +51,8 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3765,
-    "alias-vs-chase": 56,
+    "match": 3772,
+    "alias-vs-chase": 54,
     "merged-declaration": 22,
     "shadowing-disagreement": 2,
     "unmappable": 0
@@ -168,29 +168,29 @@
     },
     {
       "path": "netlify/functions/auth.js",
-      "universe": 2,
-      "agreeBound": 2,
+      "universe": 3,
+      "agreeBound": 3,
       "agreeUnresolved": 0,
-      "lib": 1,
-      "skipped": 1,
+      "lib": 0,
+      "skipped": 3,
       "disagree": 0
     },
     {
       "path": "netlify/functions/ping.js",
-      "universe": 2,
-      "agreeBound": 2,
+      "universe": 4,
+      "agreeBound": 4,
       "agreeUnresolved": 0,
-      "lib": 13,
+      "lib": 12,
       "skipped": 8,
       "disagree": 0
     },
     {
       "path": "netlify/functions/sweep-queue.ts",
-      "universe": 69,
-      "agreeBound": 69,
+      "universe": 71,
+      "agreeBound": 71,
       "agreeUnresolved": 0,
       "lib": 10,
-      "skipped": 25,
+      "skipped": 27,
       "disagree": 0
     },
     {
@@ -629,31 +629,13 @@
       "compiler": "createClient → indexer src/lib/supabase.ts decls 489 · compiler <unmappable>:35876"
     },
     {
-      "path": "netlify/functions/auth.js",
-      "line": 14,
-      "name": "makeSurfaceHandler",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "makeSurfaceHandler → indexer netlify/functions/auth.js decls 395 · compiler netlify/functions/_lib/netlify-wrapper-surface.ts:3972"
-    },
-    {
-      "path": "netlify/functions/auth.js",
-      "line": 14,
-      "name": "AUTH_ACTIONS",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "AUTH_ACTIONS → indexer netlify/functions/auth.js decls 470 · compiler netlify/functions/surfaces/auth.ts:1095"
-    },
-    {
       "path": "netlify/functions/sweep-queue.ts",
-      "line": 63,
+      "line": 64,
       "name": "payload",
       "role": "Read",
       "reason": "shadowing-disagreement",
       "indexer": "bound",
-      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 2969 · compiler netlify/functions/sweep-queue.ts:2839"
+      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 2958 · compiler netlify/functions/sweep-queue.ts:2830"
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
@@ -753,6 +735,24 @@
       "reason": "alias-vs-chase",
       "indexer": "bound",
       "compiler": "fcm → indexer netlify/functions/contexts/applications/service.ts decls 675 · compiler netlify/functions/_lib/fcm-server.ts:0"
+    },
+    {
+      "path": "netlify/functions/contexts/documents/service.ts",
+      "line": 171,
+      "name": "session",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "session → indexer netlify/functions/contexts/documents/service.ts decls 934 · compiler netlify/functions/_lib/session.ts:0"
+    },
+    {
+      "path": "netlify/functions/contexts/documents/service.ts",
+      "line": 247,
+      "name": "session",
+      "role": "Read",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "session → indexer netlify/functions/contexts/documents/service.ts decls 934 · compiler netlify/functions/_lib/session.ts:0"
     }
   ]
 }

@@ -15,15 +15,21 @@
  */
 
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { handler } from '../metrics-receiver';
+// The entry point now exports a Netlify-modern default (Request -> Response)
+// wrapped around the legacy Lambda-shaped handler by _lib/netlify-adapter.ts.
+// The adapter is deliberately DUAL-MODE, so calling it with the plain event
+// objects below still returns { statusCode, body } — which is what these
+// assertions are written against, and why only this import line changed.
+import handler from '../metrics-receiver';
 
 const TOKEN = 'test-receiver-token';
 
 /**
- * `Handler` is typed `Promise<HandlerResponse | void>`, so every assertion on
- * `.statusCode` / `.body` needs a narrowing step. This throws instead of
- * silently passing when the handler unexpectedly returns void — a test that
- * accepts "no response" as "no problem" is worse than no test.
+ * The adapted handler returns `Response | LegacyOutcome`, and a `Response`
+ * carries no `statusCode`, so every assertion on `.statusCode` / `.body`
+ * needs a narrowing step. This throws instead of silently passing when the
+ * handler returns something unexpected — a test that accepts "no response"
+ * as "no problem" is worse than no test.
  */
 async function invoke(event: unknown): Promise<{ statusCode: number; body: string }> {
   const res = await handler(event as any, {} as any);

@@ -10,11 +10,20 @@
 // _lib/handlers) — so every share-view link from the admin Share modal
 // returned HTTP 400 and the TSK viewer never loaded candidates.
 //
-// This test pins the fix: the function file now requires _lib/handlers and
-// delegates with the ?job query param (same contract as the previous
-// generation build). The file is CommonJS while the repo is type:module, so
-// it is loaded through the VM shim below — pure handler-level test, no
-// DB/network.
+// This test pins the fix: the function file imports _lib/handlers and delegates
+// with the ?job query param (same contract as the previous generation build).
+// Pure handler-level test, no DB/network.
+//
+// CARA MEMUAT HANDLER (diubah 2026-09-12): dulu file ini mengevaluasi sumber
+// share-data.js di dalam vm dengan shim CommonJS, karena entry-nya CommonJS
+// (`exports.handler =`) sementara repo ini `type: module`. Setelah migrasi ke
+// runtime Netlify modern (batas 4 KB env Lambda compatibility mode yang mematikan
+// deploy), entry-nya sudah ESM murni — jadi cukup di-import, dan `_lib/handlers`
+// diganti dengan vi.mock alih-alih `require` yang ditulis ulang.
+//
+// Bentuk kembaliannya tetap { statusCode, body } karena `_lib/netlify-adapter.ts`
+// bersifat DUAL-MODE: diberi event biasa, ia mengembalikan bentuk lama apa adanya.
+// Itu sebabnya seluruh assertion di bawah tidak perlu berubah.
 //
 // LOKASI (dipindah 2026-09-11): file ini dulu tinggal di netlify/functions/
 // sebagai `share-data.test.ts`. Netlify men-scan SELURUH direktori functions
@@ -29,46 +38,32 @@
 // included_files, bukan sebagai entry point.
 // ==========================================
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { readFileSync } from 'node:fs';
-import vm from 'node:vm';
 import { GENERIC_ERROR_MESSAGE } from '../netlify/functions/_lib/kernel/errors';
 
 const { mockHandle } = vi.hoisted(() => ({ mockHandle: vi.fn() }));
 
-let handler: (event: any) => Promise<any>;
+// vi.mock is hoisted above the imports, so the entry below resolves against the
+// mock. The factory re-reads GENERIC_ERROR_MESSAGE from its OWNER
+// (kernel/errors) instead of hard-coding a second copy of the wording — one
+// message, one owner, as before.
+vi.mock('../netlify/functions/_lib/handlers.js', async () => {
+  const errors = await import('../netlify/functions/_lib/kernel/errors');
+  return {
+    handleShareData: mockHandle,
+    handleAction: vi.fn(),
+    NOT_IMPLEMENTED: vi.fn(),
+    GENERIC_ERROR_MESSAGE: errors.GENERIC_ERROR_MESSAGE,
+  };
+});
+
+import shareDataHandler from '../netlify/functions/share-data.js';
+
+type Res = { statusCode: number; body: string };
+const handler = shareDataHandler as unknown as (e: unknown) => Promise<Res>;
 
 beforeEach(() => {
   mockHandle.mockReset();
   mockHandle.mockResolvedValue({ success: true, job: { code: 'TG658' }, candidates: [] });
-
-  // Evaluate netlify/functions/share-data.js in a CJS-style sandbox where
-  // require('./_lib/handlers') resolves to our mock.
-  const src = readFileSync(
-    new URL('../netlify/functions/share-data.js', import.meta.url),
-    'utf-8',
-  );
-  const moduleObj = { exports: {} as Record<string, unknown> };
-  const sandbox: Record<string, unknown> = {
-    module: moduleObj,
-    exports: moduleObj.exports,
-    require: (id: string) => {
-      if (id === './_lib/handlers') {
-        return {
-          handleShareData: mockHandle,
-          handleAction: vi.fn(),
-          NOT_IMPLEMENTED: vi.fn(),
-          // Pesan generik datang dari PEMILIKnya (kernel/errors), bukan
-          // literal kedua di test — satu wording, satu owner.
-          GENERIC_ERROR_MESSAGE,
-        };
-      }
-      throw new Error('unexpected require: ' + id);
-    },
-    console,
-    process,
-  };
-  vm.runInNewContext(src, sandbox);
-  handler = moduleObj.exports.handler as (e: any) => Promise<any>;
 });
 
 describe('A15/B06 — share-data GET endpoint delegates to real handler', () => {

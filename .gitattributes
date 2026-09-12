@@ -1,0 +1,18 @@
+# ── Line endings for Node script modules ─────────────────────────────────────
+#
+# The repo uses core.autocrlf=true, so a fresh clone on Windows gets CRLF in the
+# working tree. That is harmless for the site and for the functions, but NOT for
+# the Node ESM scripts under scripts/: vitest's transform fails on a CRLF .mjs
+# with a bare "SyntaxError: Invalid or unexpected token" and no location — while
+# Node itself imports the exact same file without complaint.
+#
+# Reproduced 2026-09-12 on scripts/ci/verify-env.mjs imported by
+# netlify/functions/_lib/verify-env-budget.test.ts: identical content failed with
+# CRLF and passed with LF. (Not caused by non-ASCII characters — stripping them
+# made no difference — and not by import.meta; both were tested.)
+#
+# Pinning these to LF makes it deterministic instead of depending on how the
+# working tree happened to be checked out. Git already stores them as LF, so
+# this changes nothing about the committed content.
+*.mjs text eol=lf
+*.cjs text eol=lf

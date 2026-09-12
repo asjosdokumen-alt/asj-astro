@@ -15,7 +15,7 @@
  * file was `exports.handler = makeHandler()` — the FULL router with no
  * allow-list — so it answered EVERY action, including actions owned by surfaces
  * it had no business serving. Each of those "109-byte stubs" bundled to
- * ~1,508 KB, because makeHandler statically imports surfaces/index, which pulls
+ * ~1,508 KB, because makeHandler statically imports surfaces/registry, which pulls
  * in all 15 surfaces and 14 contexts. 11 stubs x ~1.5 MB = ~16.6 MB of the
  * ~21 MB deployed, all of it an unaudited public entry point that bypassed the
  * per-surface boundary.
@@ -52,7 +52,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
 const FUNCTIONS_DIR = join(ROOT, 'netlify', 'functions');
 
-/** The one entry point allowed to reach surfaces/index via makeHandler(). */
+/** The one entry point allowed to reach surfaces/registry via makeHandler(). */
 const FULL_ROUTER_ALLOWED = new Set(['bridge-links.js']);
 
 /** Root-level files that Netlify bundles as deployable functions. */

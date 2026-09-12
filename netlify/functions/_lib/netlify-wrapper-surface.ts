@@ -1,7 +1,7 @@
 /**
  * netlify-wrapper-surface.ts — Factory for surface-specific Netlify functions
  *
- * Instead of one monolithic bridge-links.js handling all 82+ actions,
+ * Instead of one monolithic bridge-links.js handling every action in the router,
  * each surface gets its own entry point. This enables:
  *   - Concurrent scaling: Netlify routes auth requests to auth.js,
  *     public requests to get-app-data.js, etc.
@@ -52,7 +52,7 @@ export function outcomeStatusCode(out: unknown): number {
  * Netlify bundles each function as a single CommonJS file with NO code
  * splitting, so any module reachable from the entry point's static graph is
  * inlined — including dynamic `import()`s. Reaching for the shared router
- * (`surfaces/index`) therefore pulled all 15 surfaces and 14 contexts into
+ * (`surfaces/registry`) therefore pulled all 15 surfaces and 14 contexts into
  * every entry point: ~690 KB each, 19.4 MB deployed.
  *
  * So the action map is passed IN, and the entry point statically requires
@@ -99,7 +99,7 @@ export function makeSurfaceHandler(
     );
   }
 
-  /** Narrow resolver: only the maps this entry point declared. Never reaches surfaces/index. */
+  /** Narrow resolver: only the maps this entry point declared. Never reaches surfaces/registry. */
   const resolve = async (action: string) => {
     for (const m of maps) {
       const h = m[action];
@@ -172,7 +172,7 @@ export function makeSurfaceHandler(
     // ceiling while its per-dependency budgets quietly sum.
     const deadlineAt = deadlineFrom(Date.now(), DEFAULT_DEADLINE_MS);
 
-    // NOTE: no `import('../surfaces/index')` here — that is the whole point of
+    // NOTE: no `import('../surfaces/registry')` here — that is the whole point of
     // the injected resolver. Only bridge-links (the catch-all) owns the router.
     const { handleAction } = await import('./handlers');
 

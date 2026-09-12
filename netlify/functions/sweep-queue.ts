@@ -27,6 +27,7 @@
 import {
   claimJob, completeJob, failJob, recordJobResult, cleanupIdempotencyKeys,
 } from './_lib/kernel/job-queue';
+import { adapt } from './_lib/netlify-adapter.js';
 import { log } from './_lib/kernel/log';
 // Phase C item 11: this function never goes through a request wrapper, so it
 // exports its own metrics. Without this, the one component whose liveness you
@@ -87,7 +88,7 @@ async function processJob(job: Job): Promise<void> {
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 
-export const handler = async () => {
+async function handler() {
   const startTime = Date.now();
   let processed = 0;
   let failed = 0;
@@ -130,4 +131,13 @@ export const handler = async () => {
       durationMs,
     }),
   };
-};
+}
+
+// The schedule used to live in netlify.toml as [functions."sweep-queue"].
+// Modern Netlify Functions declare it in code instead. SAME cron expression
+// as before — a change here is the single easiest way to stop the sweep
+// silently, so verify from the logs after deploying.
+export const config = { schedule: '*/2 * * * *' };
+
+export default adapt(handler);
+

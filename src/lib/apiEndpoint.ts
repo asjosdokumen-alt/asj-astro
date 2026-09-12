@@ -76,7 +76,6 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   processSiswaAIChat: '/.netlify/functions/ai-chat',
   processAdminAIChat: '/.netlify/functions/ai-chat',
   processAiInterview: '/.netlify/functions/ai-chat',
-  processAiFormSubmit: '/.netlify/functions/ai-chat',
   processUploadDoc: '/.netlify/functions/ai-chat',
   generateWawancaraModel: '/.netlify/functions/ai-chat',
   simpanHasilWawancara: '/.netlify/functions/ai-chat',
@@ -87,6 +86,21 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   submitDataAsj: '/.netlify/functions/ai-chat',
   simpanDataTtdNaitei: '/.netlify/functions/ai-chat',
   saveSignature: '/.netlify/functions/ai-chat',
+
+  // Ingestion — admin AI Copilot (parse CV/Excel/PDF lalu submitMasterForm).
+  // Sebelum 2026-09-12 action ini TIDAK terdaftar di sini, sehingga jatuh ke
+  // FALLBACK (catch-all bridge-links) — fitur yang benar-benar dipakai
+  // menggantung pada catch-all. Sekarang dirutekan langsung ke fungsi ingest,
+  // yang memang satu-satunya tempat library berat (pdf/xlsx/mammoth) dibundel.
+  parseDokumenBiodata: '/.netlify/functions/ingest',
+
+  // Diagnostics — getAppConfig (admin, diagnostik koneksi backend) dan
+  // reportWebVital (telemetri Core Web Vitals, publik by design).
+  // Keduanya dulu hanya terjangkau lewat catch-all bridge-links. reportWebVital
+  // khususnya dipanggil klien pada SETIAP page view, jadi menaruhnya di fungsi
+  // terberat repo itu keliru. Lihat netlify/functions/diagnostics.js.
+  getAppConfig: '/.netlify/functions/diagnostics',
+  reportWebVital: '/.netlify/functions/diagnostics',
 
   // Jobs
   simpanJobBaru: '/.netlify/functions/jobs',

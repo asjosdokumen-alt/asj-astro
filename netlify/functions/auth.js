@@ -1,4 +1,4 @@
-'use strict';
+
 /**
  * auth.js — Auth surface entry point
  *
@@ -9,10 +9,11 @@
  * Surface-specific routing enables concurrent scaling:
  * auth requests don't block AI or document processing.
  */
-const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-const { AUTH_ACTIONS } = require('./surfaces/auth');
-exports.handler = makeSurfaceHandler(AUTH_ACTIONS, [
+import { adapt } from './_lib/netlify-adapter.js';
+import { makeSurfaceHandler } from './_lib/netlify-wrapper-surface.js';
+import { AUTH_ACTIONS } from './surfaces/auth.js';
+export default adapt(makeSurfaceHandler(AUTH_ACTIONS, [
   'checkAdminMaster', 'checkAdminPersonal', 'refreshAdminSession',
   'loginKandidat', 'refreshKandidatSession', 'daftarKandidat',
   'gantiPasswordKandidat', 'registerFcmToken', 'logout',
-]);
+]));

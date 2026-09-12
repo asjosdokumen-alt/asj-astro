@@ -121,7 +121,7 @@ const P3_ACTIONS = setOf(
  */
 const P2_ACTIONS = setOf(
   'processAIChat processSiswaAIChat processAdminAIChat processAiInterview ' +
-  'processAiFormSubmit getAdminAiContext getUploadUrls simpanKandidatDanUpload ' +
+  'getAdminAiContext getUploadUrls simpanKandidatDanUpload ' +
   'simpanBerkasTahapan simpanRevisiKandidat simpanBiodataLengkap ' +
   'getCandidatesPage getMasterDataByWa getDrafCvMaster ' +
   'getExistingCandidateJsonByWa',
@@ -153,7 +153,7 @@ const BULK_TIER_ACTIONS = setOf(
 /** Actions that hold an external AI socket for seconds at a time. */
 const AI_TIER_ACTIONS = setOf(
   'processAIChat processSiswaAIChat processAdminAIChat processAiInterview ' +
-  'processAiFormSubmit parseDokumenBiodata processUploadDoc ' +
+  'parseDokumenBiodata processUploadDoc ' +
   'generateWawancaraModel buildAdminAiCandidateSummary getAdminAiContext',
 );
 

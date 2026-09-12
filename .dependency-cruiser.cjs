@@ -45,7 +45,12 @@ module.exports = {
       severity: 'error',
       from: {
         path: '^netlify/functions/surfaces/',
-        pathNot: '^netlify/functions/surfaces/index\\.ts$',
+        // The router is the one file whose job IS to import every surface.
+        // It is `registry.ts`, deliberately NOT `index.ts`: Netlify deploys
+        // `<subdir>/index.*` as a function, and a handler-less function forces
+        // Lambda compatibility mode, where the 4 KB env ceiling still applies to
+        // the whole deploy. See check 3b in scripts/ci/verify-function-entries.mjs.
+        pathNot: '^netlify/functions/surfaces/registry\\.ts$',
       },
       to: { path: '^netlify/functions/surfaces/' },
     },

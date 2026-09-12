@@ -20,9 +20,9 @@ initEventHandlers();
  * WHY THIS IS INJECTED, NOT IMPORTED
  * ----------------------------------
  * This module used to statically `import { getSurfaceHandler } from
- * '../surfaces/index'`. Because Netlify bundles each function as a single
+ * '../surfaces/registry'`. Because Netlify bundles each function as a single
  * CommonJS file with no code splitting, every dynamic import inside
- * surfaces/index.ts was inlined — so *every* entry point shipped all 15
+ * surfaces/registry.ts was inlined — so *every* entry point shipped all 15
  * surfaces plus all 14 contexts. Measured cost: ~690 KB per entry point,
  * 19.4 MB deployed, for 29 entry points that mostly need 40-100 KB.
  *
@@ -246,7 +246,7 @@ function isMutatingAction(action: string): boolean {
     // Config
     'updateSysConfig',
     // AI
-    'processUploadDoc', 'processAiFormSubmit',
+    'processUploadDoc',
     // Docs
     'submitFormPelamar', 'simpanBiodataLengkap',
     'simpanKandidatDanUpload', 'simpanBerkasTahapan', 'simpanRevisiKandidat',

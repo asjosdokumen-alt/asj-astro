@@ -1,11 +1,12 @@
-'use strict';
+
 /**
  * mail.js — Application review surface entry point
  *
  * Handles: reviewForm, approveForm, rejectForm, deleteForm, tandaiDibacaForm
  */
-const { makeSurfaceHandler } = require('./_lib/netlify-wrapper-surface');
-const { MAIL_ACTIONS } = require('./surfaces/mail');
-exports.handler = makeSurfaceHandler(MAIL_ACTIONS, [
+import { adapt } from './_lib/netlify-adapter.js';
+import { makeSurfaceHandler } from './_lib/netlify-wrapper-surface.js';
+import { MAIL_ACTIONS } from './surfaces/mail.js';
+export default adapt(makeSurfaceHandler(MAIL_ACTIONS, [
   'reviewForm', 'approveForm', 'rejectForm', 'deleteForm', 'tandaiDibacaForm',
-]);
+]));
