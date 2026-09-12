@@ -109,29 +109,83 @@ describe('§6.5 · DB down — public catalog', () => {
 // ── §6.5 row 2 — DB down, writes ─────────────────────────────────────────────
 
 describe('§6.5 · DB down — writes', () => {
-  it('the documented 503 + Retry-After is NOT what a database failure produces', async () => {
+  // This block used to RECORD the gap: a database failure came out as an
+  // INTERNAL_ERROR AppError → 500, with no Retry-After and a non-retryable
+  // classification, so a client following §6.5's "503 + Retry-After" contract
+  // would not retry at all. Closed 2026-09-13 (owner-approved item 3).
+
+  it('an unreachable database raises SERVICE_UNAVAILABLE and marks the request', async () => {
     routes = [dbDown];
-    const { handleAction } = await import('./handlers');
-    const { outcomeStatusCode } = await import('./netlify-wrapper-surface');
-    const { backpressureHeaders } = await import('./kernel/request-helpers');
+    const { supabaseJson } = await import('./db/client');
+    const { runWithContext } = await import('./kernel/log');
 
-    // A surface whose database call fails: exactly what a write does when
-    // PostgREST is unreachable.
-    const failing = async () => {
-      throw new Error('master_database_candidate → HTTP 503');
-    };
-    const out = await handleAction('simpanJadwalBaru', [], '', { resolve: async () => failing });
+    const ctx: Record<string, unknown> = { requestId: 'chaos-db-down' };
+    let thrown: any = null;
+    await runWithContext(ctx as never, async () => {
+      try {
+        await supabaseJson('POST', 'database_schedule', { body: { status_jadwal: 'AKTIF' } });
+      } catch (e) {
+        thrown = e;
+      }
+    });
 
-    // Recorded, not endorsed. §6.5 says "503 + idempotency key retained so the
-    // client can safely replay". Reality: an INTERNAL_ERROR AppError, which
-    // maps to 500, carries no Retry-After, and is marked non-retryable — so a
-    // client following the documented contract would not retry at all.
-    expect(outcomeStatusCode(out)).toBe(500);
-    expect(backpressureHeaders({}, out)['Retry-After']).toBeUndefined();
-    expect((out as Record<string, unknown>).code).toBe('INTERNAL_ERROR');
+    expect(thrown?.code).toBe('SERVICE_UNAVAILABLE');
+    expect(thrown?.httpStatus).toBe(503);
+    // Retryable, because an unreachable dependency is transient by definition.
+    expect(thrown?.retryable).toBe(true);
+    // The fact outlives the service's catch block — that is the whole point of
+    // carrying it on the request context.
+    expect(ctx.dbOutage).toBe(true);
+    // Proof the stub fired: the real db client really did try the network.
+    expect(fetchLog.some((u) => u.includes('supabase'))).toBe(true);
   });
 
-  it('a shed request DOES get 503 + Retry-After + no-store, through the wrapper', async () => {
+  it('a 4xx from PostgREST is NOT an outage — it is a real answer from a working DB', async () => {
+    routes = [
+      { match: /supabase/, reply: () => new Response('{"message":"bad column"}', { status: 400 }) },
+    ];
+    const { supabaseJson } = await import('./db/client');
+    const { runWithContext } = await import('./kernel/log');
+
+    const ctx: Record<string, unknown> = { requestId: 'chaos-db-400' };
+    let thrown: any = null;
+    await runWithContext(ctx as never, async () => {
+      try {
+        await supabaseJson('GET', 'database_schedule');
+      } catch (e) {
+        thrown = e;
+      }
+    });
+
+    expect(thrown).toBeTruthy();
+    expect(thrown?.code).not.toBe('SERVICE_UNAVAILABLE');
+    // Retrying a bad column would fail identically, so it must not be reported
+    // as an outage — nor should the request be marked.
+    expect(ctx.dbOutage).toBeUndefined();
+  });
+
+  it('the wrapper turns that failure into 503 + Retry-After + no-store', async () => {
+    const { applyDbOutage } = await import('./netlify-wrapper-surface');
+
+    // Exactly what a service returns: a friendly string with no code, because
+    // 38 catch blocks do `{ success: false, error: safeError(...) }`.
+    const failure = { success: false, error: 'Gagal simpan jadwal. Terjadi kesalahan…' };
+    const adjusted = applyDbOutage(failure, 400, {}, true);
+
+    expect(adjusted.statusCode).toBe(503);
+    expect(adjusted.headers['Retry-After']).toBe('5');
+    expect(adjusted.headers['Cache-Control']).toBe('no-store');
+  });
+
+  it('a request that SUCCEEDED keeps its 200 even if the database blipped', async () => {
+    const { applyDbOutage } = await import('./netlify-wrapper-surface');
+    const ok = applyDbOutage({ success: true, data: [] }, 200, {}, true);
+    expect(ok.statusCode).toBe(200);
+    expect(ok.headers['Retry-After']).toBeUndefined();
+    expect(ok.headers['Cache-Control']).toBeUndefined();
+  });
+
+  it('a shed request still gets 503 + Retry-After + no-store, through the wrapper', async () => {
     const { outcomeStatusCode } = await import('./netlify-wrapper-surface');
     const { backpressureHeaders } = await import('./kernel/request-helpers');
     const { shedResponse } = await import('./kernel/admission');

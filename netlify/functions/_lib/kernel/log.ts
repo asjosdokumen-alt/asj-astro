@@ -58,6 +58,23 @@ export interface LogContext {
    * this is also the only way the flushed payload can survive past the flush.
    */
   flushedMetrics?: MetricsPayload;
+  /**
+   * Set when a PostgREST call failed because the database was not reachable —
+   * a timeout, a network error, an HTTP 5xx, or an open breaker. Written by
+   * db/client.ts and read by the surface wrapper to answer **503 + Retry-After
+   * + no-store** instead of the 400 a message-only failure would otherwise get.
+   *
+   * WHY IT RIDES ON THE CONTEXT
+   * ---------------------------
+   * The same reason flushedMetrics does. A service catches the database failure
+   * and returns a friendly string (`{ success: false, error: safeError(...) }`),
+   * which loses the error code; there are 38 such call sites. Recovering the
+   * code at the wrapper would mean rewriting all of them. Parking one boolean
+   * here keeps the outage fact alive across that boundary without touching a
+   * single catch block — and a boolean cannot leak payload detail the way an
+   * error object could.
+   */
+  dbOutage?: boolean;
 }
 
 const asyncLocalStorage = new AsyncLocalStorage<LogContext>();

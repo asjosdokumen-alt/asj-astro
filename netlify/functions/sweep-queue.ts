@@ -64,6 +64,18 @@ const HANDLERS: Record<string, (payload: Record<string, unknown>) => Promise<unk
     const inner = payload as { payload?: unknown[]; sessionToken?: string };
     return handleKirimTawaranMassal(inner.payload || [], undefined, { internal: true });
   },
+
+  // Single-message Fonnte send (Phase E row 4). The surface enqueues this only
+  // when Fonnte itself is unreachable, so this worker IS the retry. It
+  // deliberately does not catch: a throw becomes failJob(), `attempts`
+  // increments, and claim_next_job re-claims the job until max_attempts (5,
+  // default) before dead-lettering it. Returning a failure object instead would
+  // be read as success and mark the message delivered.
+  'wa.send': async (payload) => {
+    const { handleKirimSatuPesanFonnte } = await import('./contexts/notifications');
+    const inner = payload as { wa?: unknown; message?: unknown };
+    return handleKirimSatuPesanFonnte([inner.wa, inner.message], undefined, { internal: true });
+  },
 };
 
 // ── Sweep logic ───────────────────────────────────────────────────────────────

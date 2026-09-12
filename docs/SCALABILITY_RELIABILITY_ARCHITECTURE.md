@@ -551,22 +551,29 @@ At most 8 concurrent in-flight calls per dependency per instance. This is what p
 | Storage down | DB row written, upload retried; document shows "pending" | Upload delayed |
 | Pooler saturated | Shed P2/P3 to queue, serve stale for P1 | Interactive paths stay up |
 
-> **Verified 2026-09-13 — only 4 of these 7 rows describe what the system does.**
-> The matrix was tested against the code by `_lib/chaos.test.ts`; the row-by-row
-> verdict and evidence are in **`docs/PHASE_E_DEGRADATION_MATRIX.md`**. The three
-> that diverge:
+> **Verified 2026-09-13 — only 3 of these 7 rows describe exactly what the system
+> does.** The matrix was tested against the code by `_lib/chaos.test.ts`; the
+> row-by-row verdict and evidence are in **`docs/PHASE_E_DEGRADATION_MATRIX.md`**.
+> Two of the original divergences were closed on 2026-09-13 (DB-down writes, and
+> single-message Fonnte). What still diverges:
 >
 > - **Gemini down** — `ai_unavailable` does not exist. No such error code, no
 >   branch that returns it, no banner. Only the second half of the row holds: an
 >   unrelated feature is unaffected.
-> - **DB down — writes** — a PostgREST failure answers **500**, with no
->   `Retry-After` and a non-retryable classification. The documented
->   `503 + Retry-After + no-store` shape exists, but only for a **shed**
->   (`OVERLOADED`) request. The idempotency half of the row does hold.
-> - **Fonnte down** — `enqueue()` is reached only by `wa.broadcast`, and up front
->   rather than on failure. A single-message send (`kirimSatuPesanFonnte`) calls
->   Fonnte directly and throws: no enqueue, no deferral, and the wrapper never
->   emits **202**.
+> - **DB down — writes** — **fixed 2026-09-13.** `db/client.ts` classifies a
+>   PostgREST transport failure (timeout, network error, HTTP 5xx) as
+>   `SERVICE_UNAVAILABLE`, which is now retryable and carries `Retry-After: 5`.
+>   The fact is parked on `LogContext.dbOutage` so it survives the 38 service
+>   catch blocks that turn the error into a string, and the surface wrapper
+>   answers **503 + Retry-After + no-store**. A 4xx is NOT treated as an outage:
+>   it is a real answer from a working database. The idempotency half of the row
+>   already held.
+> - **Fonnte down** — `wa.broadcast` is enqueued up front rather than on failure.
+>   Since 2026-09-13 a single-message send (`kirimSatuPesanFonnte`) also enqueues
+>   (`wa.send`) — but only on a *transient* failure (no status / 429 / 5xx), and
+>   the retry is the 2-minute sweep, up to `max_attempts`. A 4xx still fails
+>   immediately. The wrapper never emits **202**: both paths answer 200 with
+>   `{ status: 'accepted', jobId }`.
 >
 > Two further nuances: "serve last-known-good" for the public catalog is the
 > CDN's doing — the origin serves its built-in demo dataset, not the previous

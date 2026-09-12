@@ -28,21 +28,21 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 360,
+    "rootNames": 362,
     "options": {}
   },
-  "universe": 3845,
+  "universe": 3851,
   "counts": {
-    "agreeBound": 3845,
+    "agreeBound": 3851,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
     "libCompilerNone": 0,
-    "libRefs": 1223,
-    "libRefAgree": 1222,
+    "libRefs": 1224,
+    "libRefAgree": 1223,
     "libRefDisagree": 0,
     "libRefFramework": 1,
-    "skippedNonBindable": 1936,
+    "skippedNonBindable": 1937,
     "skippedJsxIntrinsic": 54,
     "skippedAstroTemplate": 5,
     "offsetMismatch": 0,
@@ -51,7 +51,7 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3767,
+    "match": 3773,
     "alias-vs-chase": 54,
     "merged-declaration": 22,
     "shadowing-disagreement": 2,
@@ -186,11 +186,11 @@
     },
     {
       "path": "netlify/functions/sweep-queue.ts",
-      "universe": 71,
-      "agreeBound": 71,
+      "universe": 77,
+      "agreeBound": 77,
       "agreeUnresolved": 0,
-      "lib": 10,
-      "skipped": 27,
+      "lib": 11,
+      "skipped": 28,
       "disagree": 0
     },
     {

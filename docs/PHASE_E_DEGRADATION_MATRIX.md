@@ -38,9 +38,9 @@ suite would pass or fail by ordering.
 | §6.5 Failure | Claimed behaviour | Verdict | Evidence |
 |---|---|---|---|
 | DB down — public catalog | Serve last-known-good from CDN (`stale-if-error=86400`) | ✅ **holds** | `chaos.test.ts` · `PUBLIC_CACHE_HEADERS` |
-| DB down — writes | 503 + idempotency key retained so the client can safely replay | ⚠️ **status is wrong** | `chaos.test.ts` |
+| DB down — writes | 503 + idempotency key retained so the client can safely replay | ✅ **holds** (closed 2026-09-13) | `chaos.test.ts` |
 | Gemini down | `ai_unavailable`; AI tabs show a banner | ❌ **does not exist** | `chaos.test.ts` |
-| Fonnte down | Enqueue to `job_queue`, return 202 | ⚠️ **only for broadcasts, and not 202** | code |
+| Fonnte down | Enqueue to `job_queue`, return 202 | ⚠️ **both paths enqueue; the status is not 202** | code |
 | FCM down | Log and drop | ✅ **holds** | `chaos.test.ts` |
 | Storage down | DB row written, upload retried; document shows "pending" | ⚠️ **retry is client-side only** | code |
 | Pooler saturated | Shed P2/P3 to queue, serve stale for P1 | ⚠️ **sheds, but nothing is queued** | `chaos.test.ts` + code |
@@ -61,10 +61,11 @@ proved nothing would be worse than no test.
 "Last-known-good" is entirely the CDN's doing. If the CDN entry expires during a
 long outage, visitors see the demo dataset.
 
-### Row 2 — DB down, writes ⚠️
+### Row 2 — DB down, writes ✅ **(closed 2026-09-13)**
 
-The claim is `503 + Retry-After`, so a client knows to retry. What actually
-happens:
+The claim is `503 + Retry-After`, so a client knows to retry.
+
+**What used to happen** — recorded because the shape of the mistake is reusable:
 
 ```
 surface throws (PostgREST unreachable)
@@ -74,18 +75,36 @@ surface throws (PostgREST unreachable)
   → backpressureHeaders adds Cache-Control: no-store only when out.overloaded
 ```
 
-So a database outage produces **500, no `Retry-After`, no `no-store`, and a
+So a database outage produced **500, no `Retry-After`, no `no-store`, and a
 non-retryable classification** — the opposite of the documented retry contract.
-The `503 + Retry-After + no-store` shape does exist, but only for a **shed**
-request (`OVERLOADED`), which is asserted separately in the same suite.
 
-Half of the row does hold: the idempotency key is retained, because it is stored
-only on success. A client that replays with the same key re-runs the action
-exactly once — see §3.
+**What happens now.** `db/client.ts` classifies every PostgREST transport failure
+and translates the ones that mean "the database is not there" into
+`AppError('SERVICE_UNAVAILABLE')`:
 
-This is a design decision, not a typo: making a DB-down write `SERVICE_UNAVAILABLE`
-(retryable, with `Retry-After`) would change what every client does during an
-outage. Recorded here so the choice is explicit.
+| Failure | Outage? | Why |
+|---|---|---|
+| `TimeoutError` (socket opened, nothing came back) | yes | the host is unresponsive |
+| bare `TypeError` from `fetch` (DNS/TLS/refused) | yes | the request never completed |
+| HTTP 5xx (pooler or PostgREST unhealthy) | yes | the dependency is broken, not the request |
+| HTTP 4xx (bad column, missing table, constraint) | **no** | a working database gave a real answer; a retry would fail identically |
+
+`SERVICE_UNAVAILABLE` is now **retryable** and carries `Retry-After: 5`. The
+breaker's own `SERVICE_UNAVAILABLE` keeps its explicit `retryable: false` — an
+open breaker means "stop calling me", which is a different statement.
+
+The hard part was not the classification but the **38 catch blocks** that do
+`{ success: false, error: safeError(...) }`: they turn the error into a string,
+and a string has no code, so `outcomeStatusCode` would still answer 400. Rather
+than rewrite 38 call sites, the outage fact rides on the request context
+(`LogContext.dbOutage`, written by `db/client.ts`, read by the surface wrapper) —
+the same mechanism `flushedMetrics` already uses — and the wrapper upgrades a
+failure to **503 + Retry-After + no-store**. A request that *succeeded* while the
+database blipped keeps its 200.
+
+The other half of the row already held: the idempotency key is retained, because
+it is stored only on success. A client that replays with the same key re-runs the
+action exactly once — see §3.
 
 ### Row 3 — Gemini down ❌
 
@@ -118,17 +137,26 @@ outage, so it belongs with the owner rather than in a documentation pass.
 
 ### Row 4 — Fonnte down ⚠️
 
-`enqueue()` is called from exactly one place in the codebase:
-`surfaces/notify.ts`, for `wa.broadcast`. So:
+`enqueue()` is called from two places: `surfaces/notify.ts` for `wa.broadcast`,
+and — since 2026-09-13 — `contexts/notifications/service.ts` for `wa.send`.
 
 - **`kirimTawaranMassal` (broadcast)** — enqueued, but **up front, not on failure**.
   The job is queued whether or not Fonnte is reachable, which is arguably better
   than the documented behaviour; it just is not what the row says.
-- **`kirimSatuPesanFonnte` (single message)** — calls `fonnteSend` directly and
-  throws on a non-2xx response. **No enqueue, no deferral.** A Fonnte outage loses
-  the message.
+- **`kirimSatuPesanFonnte` (single message)** — **fixed 2026-09-13.** A *transient*
+  failure (no HTTP status, 429, any 5xx) is parked in `job_queue` as a `wa.send`
+  job and the caller gets the job id; the 2-minute sweep retries it up to
+  `max_attempts` (5). A *permanent* failure (4xx — a bad number, a rejected
+  token) still returns the error, because a retry would fail identically.
+  `sweep-queue.ts` runs the job with `{ internal: true }`, which deliberately
+  throws instead of returning a failure object: a returned failure would be read
+  as success and mark the message delivered. Delivery is **at-least-once** — the
+  same guarantee the broadcast path already gives. Pinned by
+  `contexts/notifications/wa-single-durability.test.ts`.
 - **202** — the wrapper never emits 202. `outcomeStatusCode()` maps to 429 / a
-  code-derived status / 400 / 200, and nothing else.
+  code-derived status / 400 / 200, and nothing else. Both enqueue paths therefore
+  answer **200 with `{ status: 'accepted', jobId }`**; the row's "return 202" is
+  the part that remains untrue.
 
 ### Row 5 — FCM down ✅
 
@@ -233,18 +261,17 @@ system degrades rather than breaks. Same staging prerequisite.
 
 ## 5. What to do about the three false rows
 
-Ordered by what actually hurts a user.
+Ordered by what actually hurts a user. All three were **approved by the owner on
+2026-09-13** and are being closed in order.
 
-| # | Fix | Cost | Risk |
-|---|---|---|---|
-| 1 | **Row 4, single-message Fonnte.** A Fonnte outage silently loses a WhatsApp message. Enqueue on failure and return a job id, which is what the row already promises | small — `enqueue('wa.send', …)` in the `catch` of `handleKirimSatuPesanFonnte`, mirroring `wa.broadcast` | low: adds a retry path where today there is none |
-| 2 | **Row 2, DB-down write status.** Map a PostgREST failure to `SERVICE_UNAVAILABLE` (503, retryable, with `Retry-After`) so clients retry instead of giving up | small — one branch in the db client or an error code mapping | **behavioural**: every client that retries on 503 starts retrying during DB outages. Needs a decision, not a patch |
-| 3 | **Row 3, `ai_unavailable`.** Either implement the code and the banner, or correct the three documents that promise it | **Documents corrected 2026-09-13** (free, no behaviour change) — the runbook no longer points at a signal that cannot exist. The **implementation** half is still open: small to build, but it changes what every AI-touching client does during an outage, so it needs a decision |
+| # | Fix | Status |
+|---|---|---|
+| 1 | **Row 4, single-message Fonnte.** A Fonnte outage silently loses a WhatsApp message | ✅ **Done 2026-09-13.** `enqueue('wa.send', …)` in the `catch` of `handleKirimSatuPesanFonnte`, mirroring `wa.broadcast`; transient failures only, and the worker throws so the queue owns the retry. See §3 Row 4 |
+| 2 | **Row 2, DB-down write status.** Map a PostgREST failure to `SERVICE_UNAVAILABLE` (503, retryable, with `Retry-After`) so clients retry instead of giving up | ✅ **Done 2026-09-13.** `db/client.ts` classifies the failure, `LogContext.dbOutage` carries it past the 38 catch blocks, the wrapper answers 503 + Retry-After + no-store. Behavioural: clients that retry on 503 now retry during a DB outage — accepted by the owner |
+| 3 | **Row 3, `ai_unavailable`.** Either implement the code and the banner, or correct the three documents that promise it | Documents corrected 2026-09-13; the **implementation** half is approved 2026-09-13 |
 
-All three change behaviour of live features, so none was done here — the same
-reasoning as the open items in `docs/PHASE_D_DATA_LAYER.md` §5. Row 3 is the
-cheapest to resolve and the most misleading today: an on-call engineer following
-`PHASE_C_OBSERVABILITY.md` will look for a signal that cannot exist.
+Row 3 was the most misleading of the three: an on-call engineer following
+`PHASE_C_OBSERVABILITY.md` would look for a signal that could not exist.
 
 ---
 
@@ -257,6 +284,7 @@ cheapest to resolve and the most misleading today: an on-call engineer following
 | `netlify/functions/_lib/kernel/resilience.test.ts` | Retry, breaker, bulkhead primitives |
 | `netlify/functions/_lib/kernel/deadline.test.ts` | The occupancy bound |
 | `netlify/functions/_lib/kernel/job-queue.test.ts` | Ownership + redaction on the queue |
+| `netlify/functions/contexts/notifications/wa-single-durability.test.ts` | Row 4 — the transient/permanent split and the enqueue-on-failure path |
 
 Run it:
 

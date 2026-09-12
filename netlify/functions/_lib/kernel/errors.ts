@@ -96,7 +96,14 @@ function isRetryableCode(code: string): boolean {
     // A shed request and an expired deadline are both worth retrying later —
     // that is the whole point of shedding rather than failing hard.
     code === 'OVERLOADED' ||
-    code === 'DEADLINE_EXCEEDED'
+    code === 'DEADLINE_EXCEEDED' ||
+    // A dependency being down is transient by definition: the database is not
+    // gone, it is unreachable. Retrying is the correct client behaviour, which
+    // is exactly what `Retry-After` is for. NOTE: kernel/resilience.ts passes
+    // `retryable: false` EXPLICITLY when it throws this code for an open
+    // breaker — "do not retry immediately" — and an explicit flag still wins,
+    // because AppError only falls back to this map when none was given.
+    code === 'SERVICE_UNAVAILABLE'
   );
 }
 
@@ -155,6 +162,17 @@ export const Errors = {
       httpStatus: 502,
       retryable: status >= 500,
     }),
+
+  /**
+   * A dependency this request cannot proceed without is down — in practice the
+   * database (db/client.ts). 503 + retryable + Retry-After, so a client backs
+   * off and tries again instead of treating an outage as a bad request.
+   *
+   * Deliberately NOT used by kernel/resilience.ts: an open breaker is a
+   * deliberate "stop calling me" and passes `retryable: false` itself.
+   */
+  serviceUnavailable: (msg = 'Layanan sedang tidak tersedia. Coba lagi sebentar lagi.', retryAfter = 5) =>
+    new AppError('SERVICE_UNAVAILABLE', { message: msg, retryAfter }),
 
   internal: (msg = 'Terjadi kesalahan internal') =>
     new AppError('INTERNAL_ERROR', { message: msg }),

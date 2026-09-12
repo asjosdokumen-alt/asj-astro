@@ -141,7 +141,10 @@ describe('discover', () => {
     // Phase D follow-up + Phase E (2026-09-13): +2 ts — _lib/chaos.test.ts (the
     // degradation suite) and contexts/scheduling/repository.test.ts (the
     // `{ rows }` destructuring guard). ts 217 -> 219.
-    expect(count('ts')).toBe(219); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
+    // Owner-approved items 1 & 5 (2026-09-13): +2 ts —
+    // contexts/identity/admin-personal.test.ts and
+    // contexts/notifications/wa-single-durability.test.ts. ts 219 -> 221.
+    expect(count('ts')).toBe(221); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
     expect(count('tsx')).toBe(78); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
     // 2026-09-11: the Phase A/B CI gates landed — bundle-size.mjs,
@@ -207,7 +210,9 @@ describe('discover', () => {
     // 356 -> 358 (2026-09-12, Phase D item 17): +2 ts (keyset pagination).
     // 358 -> 360 (2026-09-13, Phase D follow-up + Phase E): +2 ts — see the
     // per-extension notes above.
-    expect(files.length).toBe(360); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 360 -> 362 (2026-09-13, owner-approved items 1 & 5): +2 ts — see the
+    // per-extension notes above.
+    expect(files.length).toBe(362); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

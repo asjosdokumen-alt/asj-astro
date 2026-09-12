@@ -1,6 +1,8 @@
 import { env } from '../env.ts';
 import { normalizeWa } from '../../shared/wa-rules';
-import { request, requestJson, BUDGETS } from '../kernel/http.ts';
+import { request, requestJson, BUDGETS, HttpError, TimeoutError } from '../kernel/http.ts';
+import { AppError } from '../kernel/errors';
+import { asyncLocalStorage } from '../kernel/log';
 import { allColumns, columnsOf } from './schema.generated';
 // db/client.js — klien REST Supabase (PostgREST) + normalisasi data.
 // perilaku TIDAK berubah.
@@ -52,6 +54,41 @@ function resolveSelect(table: string, requested?: string | number | null): strin
   return String(requested);
 }
 
+/** Seconds a client should wait before retrying a database outage. */
+const DB_RETRY_AFTER_S = 5;
+
+/**
+ * Is this failure "the database is not there", as opposed to "the database
+ * answered, and the answer was no"?
+ *
+ * YES  — TimeoutError (the socket opened, nothing came back), a bare TypeError
+ *        from fetch() (DNS, TLS, connection refused), and any HTTP 5xx (the
+ *        pooler or PostgREST itself is unhealthy).
+ * NO   — 4xx. A bad column, a missing table or a constraint violation is a
+ *        truthful answer from a working database; retrying would fail the same
+ *        way. AppError is excluded too: DEADLINE_EXCEEDED and OVERLOADED are
+ *        already classified, and the breaker's own SERVICE_UNAVAILABLE is
+ *        handled by the caller below rather than re-wrapped.
+ */
+function isDatabaseUnreachable(err: unknown): boolean {
+  if (err instanceof TimeoutError) return true;
+  if (err instanceof HttpError) return err.status >= 500;
+  if (err instanceof AppError) return false;
+  return err instanceof TypeError;
+}
+
+/**
+ * Record on the request context that the database was unreachable, so the
+ * surface wrapper can answer 503 + Retry-After + no-store even after a service
+ * has swallowed this error into a friendly string. See LogContext.dbOutage.
+ * Best-effort: outside a request scope (scripts, tests, the sweep) there is no
+ * store to mark, and the throw alone is still correct.
+ */
+function markDbOutage(): void {
+  const store = asyncLocalStorage.getStore();
+  if (store) store.dbOutage = true;
+}
+
 /** @param {string} method @param {string} pathname @param {JsonOpts} [opts] @returns {Promise<unknown>} */
 async function supabaseJson(
   method: string,
@@ -85,17 +122,40 @@ async function supabaseJson(
     ? '?' +
       new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)])).toString()
     : '';
-  const res = await request(url.replace(/\$/, '') + '/rest/v1/' + pathname + qs, {
-    method,
-    headers: {
-      apikey: key,
-      Authorization: 'Bearer ' + (overrideAuthKey || key),
-      'Content-Type': 'application/json',
-      ...(opts.headers || {}),
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-    budgetKey: opts.body ? 'postgrest_write' : 'postgrest_read',
-  });
+  let res: Response;
+  try {
+    res = await request(url.replace(/\$/, '') + '/rest/v1/' + pathname + qs, {
+      method,
+      headers: {
+        apikey: key,
+        Authorization: 'Bearer ' + (overrideAuthKey || key),
+        'Content-Type': 'application/json',
+        ...(opts.headers || {}),
+      },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      budgetKey: opts.body ? 'postgrest_write' : 'postgrest_read',
+    });
+  } catch (e: unknown) {
+    // Phase E row 2. An unreachable database used to surface as whatever the
+    // caller's catch block produced — usually a code-less message, which
+    // `outcomeStatusCode` maps to 400. A client that retries on 503 then gave
+    // up exactly when retrying was the right move. Translate it here, at the
+    // one place every PostgREST call goes through.
+    if (e instanceof AppError && e.code === 'SERVICE_UNAVAILABLE') {
+      // The breaker/bulkhead already decided this call must not go out.
+      markDbOutage();
+      throw e;
+    }
+    if (isDatabaseUnreachable(e)) {
+      markDbOutage();
+      throw new AppError('SERVICE_UNAVAILABLE', {
+        message: 'Database sedang tidak dapat dihubungi. Coba lagi sebentar lagi.',
+        retryAfter: DB_RETRY_AFTER_S,
+        cause: e,
+      });
+    }
+    throw e;
+  }
   if (!res.ok) {
     const text = await res.text();
     throw new Error(pathname + ' → HTTP ' + res.status + ' ' + text.slice(0, 200));

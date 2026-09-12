@@ -57,7 +57,11 @@ describe('full build', () => {
     // _lib/chaos.test.ts (the §6.5/§6.7 degradation suite) and
     // contexts/scheduling/repository.test.ts (the `{ rows }` destructuring
     // guard). ts 217 -> 219.
-    expect(r.stats.fileCount).toBe(360); // 219 ts + 78 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
+    // 360 -> 362 (2026-09-13, owner-approved items 1 & 5): +2 ts —
+    // contexts/identity/admin-personal.test.ts (the three-tier admin login) and
+    // contexts/notifications/wa-single-durability.test.ts (row 4 of the matrix).
+    // ts 219 -> 221.
+    expect(r.stats.fileCount).toBe(362); // 221 ts + 78 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 
@@ -72,8 +76,11 @@ describe('full build', () => {
     // tests landed. The envelope tracks the tree; it is a canary against a
     // silent parse collapse, not a budget. 14250 measured 2026-09-12 after the
     // functions migration; the envelope keeps the same ~500-symbol headroom the
-    // previous one used.
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(14750);
+    // previous one used. 14763 measured 2026-09-13 after the owner-approved
+    // items 1 & 5 added two test suites (contexts/identity/admin-personal,
+    // contexts/notifications/wa-single-durability): 14750 -> 15250 keeps the
+    // same ~500-symbol headroom.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(15250);
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

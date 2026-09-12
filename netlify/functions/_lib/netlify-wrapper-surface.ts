@@ -42,6 +42,40 @@ export function outcomeStatusCode(out: unknown): number {
   return 200;
 }
 
+/**
+ * Phase E row 2 — the DB-down write override.
+ *
+ * A database outage is not the caller's fault, so it must not be reported as a
+ * 400. Services catch the failure and turn it into a friendly string, which
+ * loses the error code; the fact therefore rides on the request context
+ * (`LogContext.dbOutage`, set by db/client.ts) and is applied here, where the
+ * response is finally built — the same mechanism `flushedMetrics` uses.
+ *
+ * Only failures are upgraded: a request that succeeded while the database was
+ * briefly unreachable keeps its 200.
+ *
+ * Pure, so the policy can be asserted directly rather than only through a
+ * handler invocation.
+ */
+export function applyDbOutage(
+  out: unknown,
+  statusCode: number,
+  headers: Record<string, string>,
+  dbOutage: boolean,
+): { statusCode: number; headers: Record<string, string> } {
+  if (!dbOutage || !out || typeof out !== 'object') return { statusCode, headers };
+  if ((out as Record<string, unknown>).success !== false) return { statusCode, headers };
+  return {
+    statusCode: 503,
+    headers: {
+      ...headers,
+      // A 503 without Retry-After is just a slower way of saying "retry now".
+      'Retry-After': headers['Retry-After'] ?? '5',
+      'Cache-Control': 'no-store',
+    },
+  };
+}
+
 // ── Surface handler factory ─────────────────────────────────────────────────
 
 /**
@@ -214,9 +248,18 @@ export function makeSurfaceHandler(
     // message-only failures keep the legacy 400; rate-limited stays 429; a shed
     // request carries code OVERLOADED and maps to 503.
     const statusCode = outcomeStatusCode(out);
-    const response = {
+    // Phase E row 2: if the database was unreachable during this request, a
+    // failure is an outage, not a bad request — answer 503 + Retry-After +
+    // no-store even though the service returned only a message.
+    const adjusted = applyDbOutage(
+      out,
       statusCode,
-      headers: backpressureHeaders(baseHeaders, out),
+      backpressureHeaders(baseHeaders, out),
+      reqContext.dbOutage === true,
+    );
+    const response = {
+      statusCode: adjusted.statusCode,
+      headers: adjusted.headers,
       body: JSON.stringify(out),
     };
 

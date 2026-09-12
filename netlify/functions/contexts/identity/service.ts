@@ -20,6 +20,7 @@
  */
 import { safeError } from '../../_lib/kernel/errors';
 
+import { timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { normalizeWa } from '../../shared/wa-rules';
 import * as session from '../../_lib/session';
@@ -59,15 +60,109 @@ export function checkAdminMaster(pin: string) {
   return { success: true, token };
 }
 
+/**
+ * Personal admin login: name + PIN.
+ *
+ * WHY THIS IS NOT A DB LOOKUP
+ *   The rebuild kept only the *third* tier of the legacy implementation
+ *   (`F:\Asjpow4v7-main\khoci921\netlify\functions\_lib\actions-auth.ts`,
+ *   `handleCheckAdminPersonal`) — the Supabase admin table — and that table does
+ *   not exist in this project at all (probed 2026-09-13 against the catalog:
+ *   `admin_credentials` is absent, not merely unexposed). Every named login
+ *   therefore answered "Admin tidak ditemukan." while the login modal kept
+ *   offering the form. Only master-PIN login worked.
+ *
+ *   Legacy resolved the name from env *first*, and treated the table as an
+ *   optional extra. `ASJ_ADMINS` has been sitting in this module's env whitelist
+ *   (`_lib/env.ts`) the whole time, read by nothing.
+ *
+ * THREE TIERS, in the legacy order:
+ *   1. `PIN_<NAME>` — the legacy KHOCI special case, generalised to every
+ *      per-admin PIN the env whitelist carries (`PIN_KHOCI`, `PIN_SACHOU`, …).
+ *   2. `ASJ_ADMINS="Nama1:pin1,Nama2:pin2"` — the legacy "quick way for the
+ *      rebuild", i.e. named admins without a schema change.
+ *   3. The Supabase admin table, best-effort and last, bcrypt-compared.
+ *
+ *   Tiers 1 and 2 are env-only, so an admin can still get in during a total
+ *   database outage — which is exactly when they most need to.
+ *
+ *   Tier 3 stays last on purpose: it is the tier whose table is missing, and it
+ *   must never be able to mask a tier-1/2 match.
+ */
+const ADMIN_FAIL_MSG = 'Nama atau PIN salah.';
+
+/** Constant-time string compare. Length is not secret here (it is an env PIN). */
+function pinsEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(String(a), 'utf8');
+  const bb = Buffer.from(String(b), 'utf8');
+  if (ba.length !== bb.length) return false;
+  return timingSafeEqual(ba, bb);
+}
+
+/** Tier 1: `PIN_<NAME>` — `khoci` → `PIN_KHOCI`, `bu sari` → `PIN_BU_SARI`. */
+function personalEnvPins(name: string): string[] {
+  const key = 'PIN_' + name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+  const value = env(key);
+  return value ? [value] : [];
+}
+
+/** Tier 2: `ASJ_ADMINS="Nama1:pin1,Nama2:pin2"`. */
+function asjAdminsPins(name: string): string[] {
+  const list = env('ASJ_ADMINS');
+  if (!list) return [];
+  const want = name.trim().toLowerCase();
+  const out: string[] = [];
+  for (const item of list.split(',')) {
+    const idx = item.indexOf(':');
+    if (idx < 0) continue;
+    const n = item.slice(0, idx).trim().toLowerCase();
+    const p = item.slice(idx + 1).trim();
+    if (n === want && p) out.push(p);
+  }
+  return out;
+}
+
 export async function checkAdminPersonal(name: string, pin: string) {
-  const admin = await repo.findAdminByName(name);
-  if (!admin) return { success: false, message: 'Admin tidak ditemukan.' };
-  // S6 fix: Only use bcrypt comparison — never plaintext.
-  // Plaintext comparison is a timing side-channel and means plaintext credentials exist in DB.
-  const pinMatch = await bcrypt.compare(pin, admin.pin);
-  if (!pinMatch) return { success: false, message: 'PIN salah.' };
-  const token = session.signToken({ role: 'admin', name: admin.name, kind: 'session' });
-  return { success: true, token, user: admin.name };
+  const wanted = String(name || '').trim();
+  const given = String(pin || '');
+  if (!wanted || !given) {
+    return { success: false, error: 'Nama dan PIN wajib diisi.', message: 'Nama dan PIN wajib diisi.' };
+  }
+
+  // Tiers 1 + 2 — env only, no network.
+  for (const candidate of [...personalEnvPins(wanted), ...asjAdminsPins(wanted)]) {
+    if (pinsEqual(candidate, given)) {
+      const token = session.signToken({ role: 'admin', name: wanted, kind: 'session' });
+      return { success: true, token, user: wanted };
+    }
+  }
+
+  // Tier 3 — the DB table, if it ever exists. Best-effort: a missing table
+  // throws and is swallowed, and the env tiers above remain the live path.
+  try {
+    const admin = await repo.findAdminByName(wanted);
+    if (admin?.pin) {
+      // S6 fix: bcrypt only, never plaintext — plaintext credentials in the DB
+      // are a timing side-channel and mean the DB stores recoverable PINs.
+      const pinMatch = await bcrypt.compare(given, String(admin.pin));
+      if (pinMatch) {
+        const who = String(admin.name || wanted);
+        const token = session.signToken({ role: 'admin', name: who, kind: 'session' });
+        return { success: true, token, user: who };
+      }
+    }
+  } catch {
+    /* admin table absent — see the note above */
+  }
+
+  // One message for every miss. The old code distinguished "not found" from
+  // "wrong PIN", which is an enumeration oracle for admin names.
+  //
+  // `error` is set as well as `message`: LoginModal reads `r.error` for every
+  // admin/kandidat flow (`LoginModal.tsx` — `showToast(r.error || t(...))`), so
+  // a `message`-only rejection silently degrades to the generic "PIN salah"
+  // toast and the operator never learns which field was wrong.
+  return { success: false, error: ADMIN_FAIL_MSG, message: ADMIN_FAIL_MSG };
 }
 
 export async function refreshAdminSession(refreshToken: string) {
