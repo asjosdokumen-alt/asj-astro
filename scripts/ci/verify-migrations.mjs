@@ -52,6 +52,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { applyEnvFiles } from '../lib/load-env.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CONTRACT_PATH = join(HERE, '..', '..', '.ci', 'db-contract.json');
@@ -191,6 +192,18 @@ Checks the target Supabase database against .ci/db-contract.json before deploy.
 Requires SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY for full verification.`);
     return process.exit(0);
   }
+
+  // Populate SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY from
+  // .env.local / .env.lokal / .env when the caller has not already set them.
+  // process.env always wins (applyEnvFiles never overwrites), so CI — which
+  // supplies these from the GitHub Environment — is unaffected.
+  //
+  // This gate previously read process.env only, so it failed closed with
+  // "SUPABASE_URL is not set" on a machine where the value was sitting in
+  // .env.local the whole time. migrate.mjs and db-baseline.mjs already load the
+  // files; this was the odd one out, and it made the pre-deploy contract check
+  // unrunnable outside CI.
+  applyEnvFiles();
 
   const base = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';

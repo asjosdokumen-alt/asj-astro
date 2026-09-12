@@ -25,6 +25,7 @@
 
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { applyEnvFiles } from '../lib/load-env.mjs';
 
 const PROFILES = {
   // Needed to produce a byte-reproducible static build. PUBLIC_* values are
@@ -212,11 +213,22 @@ function main() {
     process.exit(2);
   }
 
+  // Populate missing values from .env.local / .env.lokal / .env. process.env
+  // always wins (applyEnvFiles never overwrites), so CI — which supplies these
+  // from the GitHub Environment and has no such files in the checkout — behaves
+  // exactly as before. Without this the gate could only ever run in CI: locally
+  // it reported 0/8 present while the values sat in .env.local, which is how
+  // `ci:predeploy` came to be unrunnable on a dev machine.
+  //
+  // Note the CI-only deploy credentials (NETLIFY_AUTH_TOKEN, NETLIFY_SITE_ID)
+  // are deliberately absent from the env files, so `--profile production
+  // --strict` still fails locally — correctly.
+  applyEnvFiles();
+
   const extra = (process.env.REQUIRED_EXTRA || '')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-
   const required = [...new Set([...profile.required, ...extra])];
   const optional = profile.optional || [];
   const allowPlaceholder = process.env.ALLOW_PLACEHOLDER === '1';
