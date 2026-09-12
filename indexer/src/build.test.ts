@@ -53,7 +53,11 @@ describe('full build', () => {
     // ts 213 -> 215, mjs 24 -> 27, everything else unchanged.
     // 356 -> 358 (2026-09-12, Phase D item 17): +2 ts
     // (_lib/db/pagination.ts, _lib/db/pagination.test.ts). ts 215 -> 217.
-    expect(r.stats.fileCount).toBe(358); // 217 ts + 78 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
+    // 358 -> 360 (2026-09-13, Phase D follow-up + Phase E): +2 ts —
+    // _lib/chaos.test.ts (the §6.5/§6.7 degradation suite) and
+    // contexts/scheduling/repository.test.ts (the `{ rows }` destructuring
+    // guard). ts 217 -> 219.
+    expect(r.stats.fileCount).toBe(360); // 219 ts + 78 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 
