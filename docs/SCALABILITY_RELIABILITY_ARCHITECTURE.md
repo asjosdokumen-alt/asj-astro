@@ -551,6 +551,28 @@ At most 8 concurrent in-flight calls per dependency per instance. This is what p
 | Storage down | DB row written, upload retried; document shows "pending" | Upload delayed |
 | Pooler saturated | Shed P2/P3 to queue, serve stale for P1 | Interactive paths stay up |
 
+> **Verified 2026-09-13 — only 4 of these 7 rows describe what the system does.**
+> The matrix was tested against the code by `_lib/chaos.test.ts`; the row-by-row
+> verdict and evidence are in **`docs/PHASE_E_DEGRADATION_MATRIX.md`**. The three
+> that diverge:
+>
+> - **Gemini down** — `ai_unavailable` does not exist. No such error code, no
+>   branch that returns it, no banner. Only the second half of the row holds: an
+>   unrelated feature is unaffected.
+> - **DB down — writes** — a PostgREST failure answers **500**, with no
+>   `Retry-After` and a non-retryable classification. The documented
+>   `503 + Retry-After + no-store` shape exists, but only for a **shed**
+>   (`OVERLOADED`) request. The idempotency half of the row does hold.
+> - **Fonnte down** — `enqueue()` is reached only by `wa.broadcast`, and up front
+>   rather than on failure. A single-message send (`kirimSatuPesanFonnte`) calls
+>   Fonnte directly and throws: no enqueue, no deferral, and the wrapper never
+>   emits **202**.
+>
+> Two further nuances: "serve last-known-good" for the public catalog is the
+> CDN's doing — the origin serves its built-in demo dataset, not the previous
+> response; and "shed P2/P3 **to queue**" sheds without queuing (correct for a
+> read, a client-side retry for a write).
+
 ### 6.6 Durable async work
 
 `job_queue` (migration 005) with atomic claim via `FOR UPDATE SKIP LOCKED` (migration 009):
@@ -578,6 +600,20 @@ Reliability claims that are not tested are not claims. Required tests:
 | Saturate the pool | P2/P3 shed to queue; P0/P1 latency stays within SLO |
 | Kill the queue worker mid-job | Job re-claimed after `locked_until`; no duplicate side effect |
 | Replay a write with the same idempotency key | Exactly one row created |
+
+> **Run status 2026-09-13.** The PostgREST, Gemini-timeout and idempotency-replay
+> rows are implemented in `netlify/functions/_lib/chaos.test.ts` (10 tests, green)
+> — the suite injects failures at `globalThis.fetch`, so the real kernel, client,
+> context, surface and wrapper all run.
+>
+> Two are **not** in CI, for reasons rather than oversight. **"Saturate the pool"
+> is not runnable as written**: the platform does not let us cap concurrency
+> (recorded in Phase B), so the achievable substitutes are asserted instead —
+> priority classes, the breaker-driven saturation signals, per-tier accounting
+> and the shed-response contract. **"Kill the queue worker mid-job"** needs a real
+> row in `job_queue`, which is the *production* queue the `sweep-queue` cron
+> reads: a test row is a job a real worker may claim, so it is a scripted drill
+> against a disposable environment, not a CI test.
 
 ---
 

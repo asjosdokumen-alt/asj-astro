@@ -1,4 +1,4 @@
-> **Last updated:** 2026-09-12 — Phase E (test the claims). Status: item 19 (chaos suite) done for the rows that are testable in-process; item 21 (idempotency replay) done; items 20 and 22 are **not runnable as written** — reasons below.
+> **Last updated:** 2026-09-13 — Phase E (test the claims). Status: item 19 (chaos suite) done for the rows that are testable in-process; item 21 (idempotency replay) done; items 20 and 22 are **not runnable as written** — reasons below. The **documentation half of row 3 is now resolved**: the three documents that promised `ai_unavailable` state what actually happens instead (§2, Row 3).
 
 # Phase E — the degradation matrix, verified or not
 
@@ -106,6 +106,15 @@ protect.
 
 The test asserts `codeToStatus('AI_UNAVAILABLE') === 500` deliberately: if someone
 adds the code, the test fails and this file has to be updated.
+
+**Resolved on the documentation side (2026-09-13).** All three documents now state
+what actually happens rather than promising the code — the two architecture
+documents carry a verification note on their degradation tables, and
+`PHASE_C_OBSERVABILITY.md` A5 (the on-call runbook) says explicitly *"Do not look
+for `ai_unavailable` — that code does not exist"*. No behaviour changed. The
+**implementation** half is still open and is a product decision: adding the code
+and a banner is small, but it changes what every AI-touching client does during an
+outage, so it belongs with the owner rather than in a documentation pass.
 
 ### Row 4 — Fonnte down ⚠️
 
@@ -230,7 +239,7 @@ Ordered by what actually hurts a user.
 |---|---|---|---|
 | 1 | **Row 4, single-message Fonnte.** A Fonnte outage silently loses a WhatsApp message. Enqueue on failure and return a job id, which is what the row already promises | small — `enqueue('wa.send', …)` in the `catch` of `handleKirimSatuPesanFonnte`, mirroring `wa.broadcast` | low: adds a retry path where today there is none |
 | 2 | **Row 2, DB-down write status.** Map a PostgREST failure to `SERVICE_UNAVAILABLE` (503, retryable, with `Retry-After`) so clients retry instead of giving up | small — one branch in the db client or an error code mapping | **behavioural**: every client that retries on 503 starts retrying during DB outages. Needs a decision, not a patch |
-| 3 | **Row 3, `ai_unavailable`.** Either implement the code and the banner, or correct the three documents that promise it | small to implement; free to correct | low |
+| 3 | **Row 3, `ai_unavailable`.** Either implement the code and the banner, or correct the three documents that promise it | **Documents corrected 2026-09-13** (free, no behaviour change) — the runbook no longer points at a signal that cannot exist. The **implementation** half is still open: small to build, but it changes what every AI-touching client does during an outage, so it needs a decision |
 
 All three change behaviour of live features, so none was done here — the same
 reasoning as the open items in `docs/PHASE_D_DATA_LAYER.md` §5. Row 3 is the

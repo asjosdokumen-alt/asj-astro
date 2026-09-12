@@ -150,7 +150,7 @@ curl -s -H "Authorization: Bearer $HEALTH_TOKEN" \
 ```
 Read `openForMs`: a just-opened breaker and a ten-minute-old one are the same `state` and very different incidents. Then read `shared.postgrest` — if the open breaker is `postgrest` and `shared.postgrest.reachable` is `false`, the cause is the database, not the app.
 - `postgrest` → go to A7.
-- `gemini` / `fonnte` / `fcm` → an upstream is down. Confirm with the `shared`/log evidence, then check `degradation matrix §6.5` for the intended behaviour. AI features degrade to `ai_unavailable`; Fonnte work defers to `job_queue`; FCM is logged and dropped. **No user-facing action is required** if the matrix is holding — the alert is informational, and the escalation trigger is `openForMs` growing past ~15 min.
+- `gemini` / `fonnte` / `fcm` → an upstream is down. Confirm with the `shared`/log evidence. **Do not look for `ai_unavailable` — that code does not exist** (`docs/PHASE_E_DEGRADATION_MATRIX.md`: only 4 of the 7 §6.5 rows are real). What actually happens: the Gemini path has a `gemini` breaker and returns user-facing Indonesian text when the key is missing; Fonnte **broadcasts** are enqueued up front, while a **single message** is sent directly and throws on failure; FCM is logged and dropped. **No user-facing action is required** while the matrix holds — the alert is informational, and the escalation trigger is `openForMs` growing past ~15 min.
 - Nothing looks wrong → the breaker is in `half-open` and probing. Wait one cooldown (15–60 s by dependency) and re-read; do not reset it by hand. `git grep 'breaker.reset'` shows it is test-only.
 
 **A7 — PostgREST unreachable**
