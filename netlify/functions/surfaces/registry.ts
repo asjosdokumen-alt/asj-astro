@@ -121,7 +121,6 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   hapusJobData:       () => import('./jobs').then(m => m.JOB_ACTIONS),
   updateTahapanDbJob: () => import('./jobs').then(m => m.JOB_ACTIONS),
   updateDokumenShare: () => import('./jobs').then(m => m.JOB_ACTIONS),
-  getShareTokenForJob: () => import('./jobs').then(m => m.JOB_ACTIONS),
   tandaiGagalJob:     () => import('./jobs').then(m => m.JOB_ACTIONS),
 
   // ── Diagnostics ───────────────────────────────────────────────────────────

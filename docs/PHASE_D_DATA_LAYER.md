@@ -100,11 +100,12 @@ Found while building the contract, confirmed against production:
 
 | What the code does | Reality |
 |---|---|
-| `_lib/db/shareTokens.ts` filters `config_type=share_token` then reads and writes `config_key` | `sys_config` has **no `config_key` column** (`42703`). The lazy-mint path POSTs `config_key`, gets 400, catches, and returns `null` — so `ensureShareTokenForJob()` can never mint a token |
+| `_lib/db/shareTokens.ts` filtered `config_type=share_token` then read and wrote `config_key` | `sys_config` has **no `config_key` column** (`42703`). The lazy-mint path POSTed `config_key`, got 400, caught, and returned `null` — so `ensureShareTokenForJob()` could never mint a token. **Resolved 2026-09-13 by removal, not repair**: the owner restored legacy behaviour (the share link is public by job code), so `shareTokens.ts`, the `getShareTokenForJob` action and `migrations/013_sys_config_config_key.sql` were all deleted. See §5 |
 | `contexts/identity/repository.ts` reads `admin_credentials` | The table is **not exposed** (`PGRST205`). Both helpers answer 404 and are swallowed, so they always return `null` / `[]` |
 
-Neither is a Phase D item, and both change behaviour if "fixed", so they are
-recorded here rather than patched. See §5.
+Both were recorded here rather than patched, because "fixing" either changes
+behaviour. Both have since been settled: item 2 by the three-tier login fix and
+item 1 by deleting the feature that needed the column (§5).
 
 ### 1.5 One dead query builder
 
@@ -422,7 +423,7 @@ before they could be acted on — the original notes understated both.
 
 | # | Item | Status |
 |---|---|---|
-| 1 | `sys_config` has no `config_key` column, so `ensureShareTokenForJob()` can never mint a share token (feature B06) | **Open — needs a product decision.** Probed: 0 rows of `config_type='share_token'`, so no token was ever minted. The endpoint is live (`netlify/functions/share-data.js`, wired by the A15 parity fix) and **fails closed** — `handleShareData` answers "Link share belum diaktifkan" when no token exists, so candidate dossiers are **not** exposed today. Making minting work would activate a public, CORS-`*`, unauthenticated endpoint that serves a job's candidate dossiers |
+| 1 | `sys_config` has no `config_key` column, so `ensureShareTokenForJob()` can never mint a share token (feature B06) | ✅ **Resolved 2026-09-13 by removal.** Probed first: 0 rows of `config_type='share_token'`, so no token was ever minted and the viewer answered "Link share belum diaktifkan" to every request — the feature was dead, not merely fail-closed. The owner's decision: the viewer is **public by job code**, exactly as legacy (`khoci921/netlify/functions/share-data.js` read only `?job=`; `js/pages/share.ts` fetched `/api/share-data?job=<CODE>`). The gate was never legacy parity — it entered through `docs/LEGACY_PARITY_REFERENCE.md` §5 P1, where "implement the share viewer" and "gate it with a token" were bundled into one row. Deleted: `shareTokens.ts`, the `getShareTokenForJob` action, `migrations/013_sys_config_config_key.sql`, and every `&tk=` in the link/WA template/preview. Exposure is bounded by the per-job candidate filter and `dokumen_share`; the document files were never protected by this gate anyway (public `asj-files` bucket) |
 | 2 | `admin_credentials` — `findAdminByName` / `findAdmins` always return empty | ✅ **Fixed 2026-09-13 (item 5).** The table still does not exist in the catalog, so `findAdminByName` remains empty — but personal admin login no longer depends on it. `checkAdminPersonal` (`contexts/identity/service.ts`) now uses the legacy **three-tier** order: env `PIN_<NAME>` → env `ASJ_ADMINS="Name:pin,…"` → the DB table as an optional third tier. Tiers 1–2 are constant-time (`timingSafeEqual`) and need no network, so login survives a database outage. All four names the UI offers (`SACHOU`, `AYOK`, `KHOLIS`, `KHOCI`) have `PIN_*` vars |
 | 3 | `getActiveSchedules()` destructures `{ rows }` from `supabaseJson()`, which returns the array directly | ✅ **Fixed 2026-09-13** — and it was not one site but **four**. See §5.1 |
 | 4 | Keyset pagination on the remaining list endpoints (schedule / task / WA-template / form / master) | Open, deliberately — no table is within an order of magnitude of the 500-row cap (§4). The transport is built and tested; extending it is mechanical when a table crosses the page size |

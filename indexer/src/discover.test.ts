@@ -144,7 +144,9 @@ describe('discover', () => {
     // Owner-approved items 1 & 5 (2026-09-13): +2 ts —
     // contexts/identity/admin-personal.test.ts and
     // contexts/notifications/wa-single-durability.test.ts. ts 219 -> 221.
-    expect(count('ts')).toBe(221); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
+    // 221 -> 220 (2026-09-13, B06 share-token removal): -1 ts —
+    // _lib/db/shareTokens.ts, deleted with the gate it served.
+    expect(count('ts')).toBe(220); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
     // 78 -> 79 (2026-09-13, owner-approved item 2):
     // src/components/ui/AiUnavailableBanner.tsx.
     expect(count('tsx')).toBe(79); // 46 at design time; modal/component test suites added since
@@ -215,7 +217,8 @@ describe('discover', () => {
     // 360 -> 362 (2026-09-13, owner-approved items 1 & 5): +2 ts — see the
     // per-extension notes above.
     // 362 -> 363 (2026-09-13, owner-approved item 2): +1 tsx — see above.
-    expect(files.length).toBe(363); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 363 -> 362 (2026-09-13, B06 share-token removal): -1 ts — see above.
+    expect(files.length).toBe(362); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

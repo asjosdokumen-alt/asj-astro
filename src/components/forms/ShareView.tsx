@@ -9,9 +9,9 @@
  *     job {code,name,tsk} — every card rendered with undefined name/gender,
  *     no document buttons, and a wa.me/<undefined> link. Now adapted exactly
  *     like legacy renderGrid + the backend response shape.
- *  2. Token gate: legacy opened by ?job alone; the viewer now requires
- *     ?job=CODE&tk=<per-job token> (docs/PARITY_CHECKLIST.md B06) and the
- *     token is forwarded to the GET endpoint.
+ *  2. Access model: public by job code, exactly as legacy — `share?job=CODE`,
+ *     no account, no token. A stale `?tk=` in an old link is ignored, not
+ *     rejected (the per-job token gate was retired 2026-09-13).
  *  3. Card parity with legacy renderGrid: photo (click → zoom preview, fallback
  *     avatar), gender/age/tb/bb chips, JFT (nilai_jft_text) & SSW
  *     (bidang_ssw_text) chips, CV/JFT/SSW buttons + one button per extra
@@ -103,7 +103,6 @@ export default function ShareView() {
   const lang = useStore(langStore);
   const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const code = (params?.get('job') || '').trim();
-  const tk = (params?.get('tk') || '').trim();
 
   const [candidates, setCandidates] = useState<ShareCandidate[]>([]);
   const [job, setJob] = useState<JobInfo | null>(null);
@@ -120,7 +119,7 @@ export default function ShareView() {
     if (!code) { setError(t('share.err_msg')); setLoading(false); return; }
     setLoading(true);
     setError('');
-    fetch('/.netlify/functions/share-data?job=' + encodeURIComponent(code) + (tk ? '&tk=' + encodeURIComponent(tk) : ''))
+    fetch('/.netlify/functions/share-data?job=' + encodeURIComponent(code))
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Access Denied');
@@ -132,7 +131,7 @@ export default function ShareView() {
       .catch((e: Error) => { if (alive) setError(e.message || t('share.err_msg')); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [code, tk]);
+  }, [code]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {

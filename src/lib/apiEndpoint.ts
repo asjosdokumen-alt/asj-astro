@@ -109,7 +109,6 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   hapusJobData: '/.netlify/functions/jobs',
   updateTahapanDbJob: '/.netlify/functions/jobs',
   updateDokumenShare: '/.netlify/functions/jobs',
-  getShareTokenForJob: '/.netlify/functions/jobs',
   tandaiGagalJob: '/.netlify/functions/jobs',
 
   // Docs

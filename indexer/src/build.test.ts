@@ -64,7 +64,10 @@ describe('full build', () => {
     // 362 -> 363 (2026-09-13, owner-approved item 2): +1 tsx —
     // src/components/ui/AiUnavailableBanner.tsx (the banner the three AI
     // surfaces render on AI_UNAVAILABLE). tsx 78 -> 79; ts unchanged.
-    expect(r.stats.fileCount).toBe(363); // 221 ts + 79 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
+    // 363 -> 362 (2026-09-13, B06 share-token removal): -1 ts —
+    // _lib/db/shareTokens.ts, deleted along with the gate it served (the share
+    // link is public by job code again, as legacy). ts 221 -> 220; tsx stays 79.
+    expect(r.stats.fileCount).toBe(362); // 220 ts + 79 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

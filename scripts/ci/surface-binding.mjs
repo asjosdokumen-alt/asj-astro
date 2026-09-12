@@ -176,6 +176,8 @@ for (const entry of entries) {
 //                                fell to FALLBACK on every call
 //     getShareTokenForJob        routed to /jobs but missing from jobs.js's
 //                                allow-list → 404 → silent retry each open
+//                                (the action itself was retired 2026-09-13:
+//                                the share link is public by job code again)
 //     getAppConfig               surfaces/diagnostics.ts had no entry point
 //     reportWebVital             same — and called on every page view by the
 //                                deployed legacy client

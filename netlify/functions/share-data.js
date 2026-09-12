@@ -13,9 +13,11 @@
  * handleShareData and is re-exported by _lib/handlers. This endpoint now
  * delegates to it (same contract as the previous generation build).
  *
- * B06 token gate (2026-09-05): the viewer now requires the per-job share
- * token (?tk=) minted by updateDokumenShare/getShareTokenForJob — bare
- * ?job= links are rejected server-side (docs/PARITY_CHECKLIST.md B06).
+ * Public by job code, exactly as legacy: `share.html?job=KODE`, no account and
+ * no token. A per-job token gate was added during the rebuild (2026-09-05) and
+ * removed on 2026-09-13 — the TSK are outside parties with no accounts, and a
+ * link they can simply pass on is the whole point of the feature. See the
+ * trade-off note on `handleShareData` in contexts/catalog/service.ts.
  */
 // PR4 (playbook §3.3 "never leak") + satu pemilik pesan generik:
 // GENERIC_ERROR_MESSAGE di kernel/errors.ts, diekspor via _lib/handlers.
@@ -25,10 +27,9 @@ import { handleShareData, GENERIC_ERROR_MESSAGE } from './_lib/handlers.js';
 async function handler(event) {
   const p = (event.queryStringParameters) || {};
   const job = p.job || '';
-  const tk = p.tk || '';
   let out;
   try {
-    out = await handleShareData(job, tk);
+    out = await handleShareData(job);
   } catch (e) {
     // PR4 (playbook §3.3 "never leak"): jangan kirim e.message ke klien —
     // detail internal cukup di log server.

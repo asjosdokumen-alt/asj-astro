@@ -20,10 +20,11 @@
  *     the admin check inside the handler. Routing it here narrows the exposure
  *     to exactly one function instead of "wherever the catch-all is mounted".
  *
- * This is the same hole `parseDokumenBiodata` fell through and the same one
- * `getShareTokenForJob` was falling through via a 404 retry. It is now a gate
- * failure, not a discovery: scripts/ci/surface-binding.mjs fails the build if
- * any router action has no narrow entry point.
+ * This is the same hole `parseDokumenBiodata` fell through, and the same one
+ * `getShareTokenForJob` fell through via a 404 retry before that action was
+ * retired on 2026-09-13. It is now a gate failure, not a discovery:
+ * scripts/ci/surface-binding.mjs fails the build if any router action has no
+ * narrow entry point.
  *
  * Both actions are cheap and unrelated to each other, but they share the
  * diagnostics context, so one small function is the right granularity — no

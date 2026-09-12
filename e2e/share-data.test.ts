@@ -67,25 +67,27 @@ beforeEach(() => {
 });
 
 describe('A15/B06 — share-data GET endpoint delegates to real handler', () => {
-  it('reads ?job + ?tk and returns the real handler result (200)', async () => {
-    const res = await handler({ queryStringParameters: { job: 'TG658', tk: 'tok1' }, headers: {} });
-    expect(mockHandle).toHaveBeenCalledWith('TG658', 'tok1');
+  it('reads ?job and returns the real handler result (200)', async () => {
+    const res = await handler({ queryStringParameters: { job: 'TG658' }, headers: {} });
+    expect(mockHandle).toHaveBeenCalledWith('TG658');
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body);
     expect(body.success).toBe(true);
     expect(body.job.code).toBe('TG658');
   });
 
-  it('forwards an empty token when ?tk is missing (handler rejects bare ?job)', async () => {
-    const res = await handler({ queryStringParameters: { job: 'TG658' }, headers: {} });
-    expect(mockHandle).toHaveBeenCalledWith('TG658', '');
+  it('ignores a stale ?tk — the viewer is public by job code (B06 removed)', async () => {
+    // Links handed out while the token gate existed carry &tk=<hex>. The
+    // endpoint must keep serving them; only the job code is forwarded.
+    const res = await handler({ queryStringParameters: { job: 'TG658', tk: 'stale' }, headers: {} });
+    expect(mockHandle).toHaveBeenCalledWith('TG658');
     expect(res.statusCode).toBe(200);
   });
 
   it('empty job → delegates anyway (handler answers "Kode job tidak ditemukan.")', async () => {
     mockHandle.mockResolvedValue({ error: 'Kode job tidak ditemukan.' });
     const res = await handler({ queryStringParameters: {}, headers: {} });
-    expect(mockHandle).toHaveBeenCalledWith('', '');
+    expect(mockHandle).toHaveBeenCalledWith('');
     expect(res.statusCode).toBe(400);
     expect(JSON.parse(res.body).error).toContain('Kode job');
   });

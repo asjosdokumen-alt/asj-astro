@@ -102,10 +102,12 @@ export async function handleUpdateTahapanDbJob(payload: unknown[], sessionToken?
   }
 }
 
-// B06 (2026-09-05): saving the share config also guarantees the job has a
-// share token (lazy-mint, stable) and returns it so the admin modal can
-// build/copy the token-gated link right away. Legacy links were open by job
-// code alone — now the viewer requires ?tk= (see docs/PARITY_CHECKLIST.md B06).
+// Saves which document TYPES the public share view may show for a job
+// (`dokumen_share`). This is the only real lever on what a TSK viewer sees, and
+// it is per job by design — legacy had the same column for the same reason.
+//
+// It used to also lazy-mint a per-job share token. That gate was removed on
+// 2026-09-13: the viewer is public by job code, as legacy was.
 export async function handleUpdateDokumenShare(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
@@ -113,26 +115,10 @@ export async function handleUpdateDokumenShare(payload: unknown[], sessionToken?
   if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
   try {
     await patchJob(code, { dokumen_share: joined || '' }, undefined, sessionToken);
-    const { ensureShareTokenForJob } = await import('../../_lib/db/shareTokens');
-    const shareToken = await ensureShareTokenForJob(code);
-    if (!shareToken) return { success: false, error: 'Gagal membuat token share loker.' };
-    return { success: true, shareToken };
+    return { success: true };
   } catch (e: unknown) {
     return { success: false, error: safeError('Gagal update dokumen share.', e) };
   }
-}
-
-// B06: mint-if-absent + return the job's share token (admin-only) so the
-// Share modal can render the ?tk= link without forcing a doc-config save.
-export async function handleGetShareTokenForJob(payload: unknown[], sessionToken?: string) {
-  const guard = requireAdmin(sessionToken || '');
-  if (guard.error) return guard.error;
-  const code = String(((payload || [])[0]) || '').trim();
-  if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
-  const { ensureShareTokenForJob } = await import('../../_lib/db/shareTokens');
-  const shareToken = await ensureShareTokenForJob(code);
-  if (!shareToken) return { success: false, error: 'Gagal membuat token share loker.' };
-  return { success: true, shareToken };
 }
 
 export async function handleTandaiGagalJob(payload: unknown[], sessionToken?: string) {

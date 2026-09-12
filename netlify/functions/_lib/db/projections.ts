@@ -97,9 +97,10 @@ export const PROJECTIONS = {
     columns: 'id,nama,isi,created_at,updated_at',
   },
   /**
-   * sys_config KV rows. Note: there is no `config_key` column in this table —
-   * `_lib/db/shareTokens.ts` filters on `config_type` and then reads a
-   * `config_key` field that does not exist (see docs/PHASE_D_DATA_LAYER.md).
+   * sys_config KV rows. There is no `config_key` column in this table, and no
+   * code reads one any more — the share-token gate that did was removed on
+   * 2026-09-13 (the public viewer is keyed by job code, as legacy was). See
+   * docs/PHASE_D_DATA_LAYER.md.
    */
   SYS_CONFIG_COLS: {
     table: 'sys_config',

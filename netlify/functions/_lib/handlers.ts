@@ -232,7 +232,7 @@ function isMutatingAction(action: string): boolean {
     // Jobs
     'simpanJobBaru', 'editLokerFull', 'ubahStatusJob',
     'hapusJobData', 'updateTahapanDbJob', 'updateDokumenShare',
-    'getShareTokenForJob', 'tandaiGagalJob',
+    'tandaiGagalJob',
     // Mail
     'reviewForm', 'approveForm', 'rejectForm', 'deleteForm',
     // Candidates

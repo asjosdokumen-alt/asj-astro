@@ -147,7 +147,8 @@ describe('regresi — action yang pernah tidak terdaftar', () => {
 //   - setiap panggilan membayar satu round-trip sia-sia, dan
 //   - fitur itu bergantung pada fungsi terberat di repo tanpa deklarasi apa pun.
 //
-// Dua bug hidup ditemukan lewat celah ini (keduanya diperbaiki 2026-09-12):
+// Dua bug hidup ditemukan lewat celah ini (keduanya diperbaiki 2026-09-12;
+// getShareTokenForJob dihentikan 2026-09-13 — share publik per kode job lagi):
 //   getShareTokenForJob — dirutekan ke /jobs, tidak ada di allow-list jobs.js
 //   parseDokumenBiodata — tidak ada rutenya sama sekali, selalu jatuh ke FALLBACK
 //

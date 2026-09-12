@@ -1,5 +1,5 @@
 // ==========================================
-// TESTS: AdminShareModal (A15 parity, 2026-09-05)
+// TESTS: AdminShareModal (A15 parity, 2026-09-05; B06 revised 2026-09-13)
 //
 // Legacy ground truth: partials/modals-shared.html #modal-share-loker +
 // js/render/share.ts (renderShareCheckboxes / simpanDokumenShare /
@@ -9,6 +9,10 @@
 //   - share link pointed at /share?job= while ShareView read ?code
 //   - WA copy used a throwaway message instead of the legacy template
 //   - hard-coded copy / non-existent toast.* keys
+//
+// 2026-09-13: the per-job share token gate was removed. The viewer is public by
+// job code, exactly as legacy, so the link is `share?job=CODE` with no `&tk=`
+// and the modal no longer calls getShareTokenForJob on open.
 // ==========================================
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -62,15 +66,16 @@ describe('AdminShareModal pure helpers (A15)', () => {
 describe('AdminShareModal (A15/B06)', () => {
   beforeEach(() => {
     mockSecure.mockReset();
-    // B06: minting the stable per-job token is automatic — getShareTokenForJob
-    // on open, updateDokumenShare on save; both return shareToken.
-    mockSecure.mockImplementation(async () => ({ success: true, shareToken: 'tk1' }));
+    mockSecure.mockImplementation(async () => ({ success: true }));
     vi.mocked(showToast).mockReset();
   });
 
-  it('mints/loads the share token on open (api.secure getShareTokenForJob)', async () => {
+  it('does NOT ask for a share token on open — the viewer is public by code', async () => {
     render(<AdminShareModal job={JOB as never} onClose={vi.fn()} />);
-    await waitFor(() => expect(mockSecure).toHaveBeenCalledWith('getShareTokenForJob', ['TG658']));
+    // The link is ready immediately; nothing has to be minted first.
+    const link = document.querySelector('input[readonly]') as HTMLInputElement;
+    expect(link.value).toContain('/share?job=TG658');
+    expect(mockSecure).not.toHaveBeenCalledWith('getShareTokenForJob', expect.anything());
   });
   afterEach(() => cleanup());
 
@@ -94,12 +99,11 @@ describe('AdminShareModal (A15/B06)', () => {
     expect(screen.getByText('ui.share_copas_wa')).toBeTruthy();
     expect(screen.getByText('ui.share_open_view')).toBeTruthy();
     expect(screen.getByText('ui.share_card_hint')).toBeTruthy();
-    // B06: WA preview carries the token-gated link once the token arrives
-    await waitFor(() => {
-      const ta = document.querySelector('textarea') as HTMLTextAreaElement;
-      expect(ta.value).toContain('TG658 - PERAWAT');
-      expect(ta.value).toContain('/share?job=TG658&tk=tk1');
-    });
+    // WA preview carries the plain ?job= link — no token to wait for.
+    const ta = document.querySelector('textarea') as HTMLTextAreaElement;
+    expect(ta.value).toContain('TG658 - PERAWAT');
+    expect(ta.value).toContain('/share?job=TG658');
+    expect(ta.value).not.toContain('tk=');
   });
 
   it('toggle unchecks a chip', () => {
@@ -114,7 +118,6 @@ describe('AdminShareModal (A15/B06)', () => {
   it('save → api.secure(updateDokumenShare) with joined saved docs + close + toast', async () => {
     const onClose = vi.fn();
     render(<AdminShareModal job={{ code: 'X2', pekerjaan: 'P', dokumenShare: 'CV,JFT,ALL' } as never} onClose={onClose} />);
-    await waitFor(() => expect(mockSecure).toHaveBeenCalledWith('getShareTokenForJob', ['X2']));
     fireEvent.click(screen.getByText('ui.save_share'));
     await waitFor(() =>
       expect(mockSecure).toHaveBeenCalledWith('updateDokumenShare', ['X2', 'CV,JFT,ALL']),
@@ -124,9 +127,7 @@ describe('AdminShareModal (A15/B06)', () => {
   });
 
   it('save failure → alert.failed toast with real error, no close', async () => {
-    mockSecure.mockImplementation(async (action: string) =>
-      action === 'updateDokumenShare' ? { success: false, error: 'X gagal' } : { success: true, shareToken: 'tk1' },
-    );
+    mockSecure.mockImplementation(async () => ({ success: false, error: 'X gagal' }));
     const onClose = vi.fn();
     render(<AdminShareModal job={JOB as never} onClose={onClose} />);
     fireEvent.click(screen.getByText('ui.save_share'));
@@ -136,16 +137,15 @@ describe('AdminShareModal (A15/B06)', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('share link input contains ?job + ?tk (token-gated link, B06)', async () => {
+  it('share link input is share?job=CODE with no token (B06 removed)', () => {
     render(<AdminShareModal job={JOB as never} onClose={vi.fn()} />);
-    await waitFor(() => {
-      const link = document.querySelector('input[readonly]') as HTMLInputElement;
-      expect(link.value).toContain('/share?job=TG658');
-      expect(link.value).toContain('&tk=tk1');
-    });
-    // open-view anchor also carries the token
+    const link = document.querySelector('input[readonly]') as HTMLInputElement;
+    expect(link.value).toContain('/share?job=TG658');
+    expect(link.value).not.toContain('tk=');
+    // open-view anchor carries the same plain link
     const open = document.querySelector('a[href*="share?job=TG658"]') as HTMLAnchorElement | null;
-    expect(open?.href).toContain('&tk=tk1');
+    expect(open?.href).toContain('share?job=TG658');
+    expect(open?.href).not.toContain('tk=');
   });
 
   it('custom docs not in the fixed list still render (saved legacy values)', () => {

@@ -150,10 +150,13 @@ export interface TugasRawRow {
 
 // ── sys_config ──────────────────────────────────────────────────────────────
 
+// NOTE: there is deliberately no `config_key` here. The live table does not have
+// that column (PostgREST answers 42703), and declaring it is what let the
+// share-token gate look plausible while being unable to ever mint a token.
+// See docs/PHASE_D_DATA_LAYER.md and the SYS_CONFIG_COLS note in projections.ts.
 export interface SysConfigRawRow {
   id?: number;
   config_type?: string;
-  config_key?: string;
   config_value?: string;
   value?: string;
   updated_at?: string;

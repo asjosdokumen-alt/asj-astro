@@ -9,7 +9,9 @@
 //     card rendered empty. Now adapted to the real contract (legacy shape).
 //  2. "Kirim Pilihan" opened wa.me with NO number + a throwaway message;
 //     legacy sends the admin number a greet + numbered (ID: …) list.
-//  3. The viewer is token-gated (B06): ?tk= must be forwarded to the GET.
+//  3. The viewer is public by job code, as legacy was. The per-job token gate
+//     added 2026-09-05 was retired by the owner on 2026-09-13: ?job=CODE alone
+//     opens the list, and a stale ?tk= from an old link is ignored.
 // ==========================================
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -49,7 +51,7 @@ function setUrl(qs: string) {
 beforeEach(() => {
   mockFetch = vi.fn();
   vi.stubGlobal('fetch', mockFetch);
-  setUrl('?job=TG658&tk=TOK123');
+  setUrl('?job=TG658');
   mockFetch.mockResolvedValue({
     ok: true,
     json: async () => ({ job: API_JOB, candidates: API_CANDIDATES }),
@@ -58,16 +60,30 @@ beforeEach(() => {
 });
 
 describe('ShareView (B06)', () => {
-  it('fetches the token-gated endpoint (?job + ?tk) and renders the REAL API contract', async () => {
+  it('fetches by job code alone (no token) and renders the REAL API contract', async () => {
     render(<ShareView />);
     await waitFor(() => expect(screen.getByText('Budi Santoso')).toBeTruthy());
     expect(screen.getByText('Siti Aminah')).toBeTruthy();
     expect(screen.getByText('TG658')).toBeTruthy();
     const url = mockFetch.mock.calls[0][0] as string;
     expect(url).toContain('/.netlify/functions/share-data?job=TG658');
-    expect(url).toContain('tk=TOK123');
+    expect(url).not.toContain('tk=');
     // header job name comes from job.name (the API key), not job.title
     expect(screen.getByText('Perawat Jepang')).toBeTruthy();
+  });
+
+  it('ignores a stale ?tk= left over from an old link', async () => {
+    setUrl('?job=TG658&tk=TOK123');
+    render(<ShareView />);
+    await waitFor(() => expect(screen.getByText('Budi Santoso')).toBeTruthy());
+    expect(mockFetch.mock.calls[0][0] as string).not.toContain('tk=');
+  });
+
+  it('never fetches when ?job is missing', async () => {
+    setUrl('');
+    render(<ShareView />);
+    await waitFor(() => expect(screen.getByText('share.err_title')).toBeTruthy());
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('renders per-doc buttons from the contract (file_cv/jft/ssw + extraDocs)', async () => {
@@ -106,14 +122,14 @@ describe('ShareView (B06)', () => {
     expect(text).toContain('share.wa_closing');
   });
 
-  it('shows the localized error view when the token is rejected', async () => {
+  it('shows the localized error view when the job code is unknown', async () => {
     mockFetch.mockResolvedValue({
       ok: false,
-      json: async () => ({ error: 'Akses Ditolak: link share tidak valid.' }),
+      json: async () => ({ error: 'Kode job tidak ditemukan: TG999' }),
     });
     render(<ShareView />);
     await waitFor(() => expect(screen.getByText('share.err_title')).toBeTruthy());
-    expect(screen.getByText('Akses Ditolak: link share tidak valid.')).toBeTruthy();
+    expect(screen.getByText('Kode job tidak ditemukan: TG999')).toBeTruthy();
   });
 
   it('shows the empty state when a valid job has no candidates yet', async () => {

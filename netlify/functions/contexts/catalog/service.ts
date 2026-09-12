@@ -128,11 +128,22 @@ export async function handleGetMonthlyReport(payload: any[], sessionToken?: stri
   }
 }
 
-// B06 (2026-09-05): the TSK viewer is gated behind a per-job share token
-// (LAZY MINT + STABLE, stored in sys_config by _lib/db/shareTokens). A bare
-// ?job= link or a wrong token is rejected — legacy opened by code alone, which
-// let anyone enumerate candidate dossiers. See docs/PARITY_CHECKLIST.md B06.
-export async function handleShareData(jobCode: string, shareToken?: string) {
+// The TSK viewer is public by job code — exactly as legacy. Legacy
+// `share-data.js` read only `?job=` and called `handleShareData(job)`; there was
+// no account, no login and no token anywhere in that flow. The Astro rebuild
+// briefly added a per-job token gate; the owner removed it on 2026-09-13.
+//
+// This is a deliberate trade-off, not an oversight, so it is worth stating what
+// it costs. A job code is short and human-readable (`TG658`, `SSW-KAIGO`) and is
+// printed in the admin panel and sent over WhatsApp, so it CAN be enumerated:
+// someone who guesses a code sees that job's candidate list. Three things bound
+// the exposure:
+//   · only candidates already attached to the requested job are ever returned;
+//   · `dokumen_share` below decides which document TYPES a viewer may see, and
+//     is set per job by an admin (default CV/JFT/SSW);
+//   · the list is what is protected here — the files themselves live on a public
+//     bucket, so a leaked document URL was never protected by this gate anyway.
+export async function handleShareData(jobCode: string) {
   const code = String(jobCode || '').trim();
   if (!code) return { error: 'Kode job tidak ditemukan.' };
   try {
@@ -143,14 +154,6 @@ export async function handleShareData(jobCode: string, shareToken?: string) {
       jobRow = found.rows.find((r) => String(pick(r, ['code_job', 'code']) || '') === code) || null;
     }
     if (!jobRow) return { error: 'Kode job tidak ditemukan: ' + code };
-    const { getShareTokenForJob } = await import('../../_lib/db/shareTokens');
-    const expected = await getShareTokenForJob(code);
-    if (!expected) {
-      return { error: 'Link share belum diaktifkan untuk loker ini.' };
-    }
-    if (!shareToken || shareToken !== expected) {
-      return { error: 'Akses Ditolak: link share tidak valid.' };
-    }
     const name = toText(pick(jobRow, ['pekerjaan', 'nama_pekerjaan', 'judul', 'title']));
     let candRows: any[] | undefined = await findCandidatesByJobFiltered(code);
     if (candRows === undefined) {

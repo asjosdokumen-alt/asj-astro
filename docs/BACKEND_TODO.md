@@ -14,8 +14,8 @@ kedaluwarsa; lihat §6.
 
 - **Phase A–D selesai dengan sisa yang disebut namanya.** A: tuntas (11 catch-all dihapus, 2.364 KB /
   17 entri). B: tuntas, dua item "not a platform feature" diganti mekanisme lain. C: **kodenya sudah
-  di-deploy, tapi gate-nya belum pernah dijalankan** — lihat #3. D: tuntas, satu item (B06) tertahan
-  di migrasi — lihat #1.
+  di-deploy, tapi gate-nya belum pernah dijalankan** — lihat #3. D: tuntas. Item B06 yang sempat
+  tertahan di migrasi **selesai 2026-09-13 dengan menghapus gate-nya**, bukan memigrasinya — lihat #1.
 - **Phase E bukan "detail".** 19 & 21 selesai; **20 dan 22 tidak bisa dijalankan sama sekali** karena
   butuh staging deployment + Supabase project terpisah, dan keduanya **belum ada**. Itu pekerjaan
   infrastruktur, bukan detail.
@@ -33,8 +33,16 @@ Legenda blokir: 🔴 butuh keputusan/izin owner · 🟠 butuh infrastruktur baru
 
 | # | Item | Bukti | Blokir |
 |---|---|---|---|
-| **1** | 🔴 **B06 share token — migrasi 013 belum diterapkan.** `sys_config` tidak punya kolom `config_key` (kolomnya `id,config_type,config_value,deskripsi,is_active,created_at`), jadi `ensureShareTokenForJob` POST body berisi `config_key` → PostgREST 400 → ditelan `catch` → **token tak pernah dibuat**; `getShareTokenForJob` membaca `r.config_key` yang selalu `undefined`. Hasilnya fail-closed (`handleShareData` → "Link share belum diaktifkan"), dossier **tidak** terekspos. Migrasi sudah ditulis: `migrations/013_sys_config_config_key.sql` (aditif + indeks unik parsial + assertion) | `netlify/functions/_lib/db/shareTokens.ts`, `_lib/db/projections.ts:99-107`, `migrations/013_sys_config_config_key.sql` | `migrate:up` **menulis ke DB produksi** (tidak ada DB lokal). Kodenya juga tidak bisa mendarat sendirian: `projections.test.ts` membandingkan kolom kode dengan `schema.generated.ts` yang di-generate dari DB live ⇒ urutan wajib `migrate:up` → regen schema → kode. **Butuh izin owner.** |
-| **2** | 🔴 **Push `main` (ahead 8).** `e52b38b` · `d28b5e0` · `75dd3cd` + 5 commit sebelumnya belum naik; remote tetap `47c4440` | `git rev-list --count newrepo/main..main` → 8 | Aturan owner: **jangan push tanpa izin**. Push ke `main` = auto-build + deploy produksi |
+| **2** | 🔴 **Push `main` (ahead 10).** `e52b38b` · `d28b5e0` · `75dd3cd` · commit share-token 2026-09-13 + 5 commit sebelumnya belum naik; remote tetap `47c4440` | `git rev-list --count newrepo/main..main` → 10 | Aturan owner: **jangan push tanpa izin**. Push ke `main` = auto-build + deploy produksi |
+
+> **#1 — B06 share token: ✅ SELESAI 2026-09-13, dengan dihapus bukan dimigrasi.** `sys_config` memang
+> tidak punya kolom `config_key`, tapi gate token ternyata **bukan parity legacy** (legacy hanya membaca
+> `?job=`; lihat `docs/LEGACY_PARITY_REFERENCE.md` §5 P1 yang sudah dikoreksi). Keputusan owner: share
+> kembali **publik per kode job**, tanpa akun — TSK adalah pihak luar. `migrations/013_sys_config_config_key.sql`
+> **dihapus** (tidak akan pernah diterapkan), bersama `_lib/db/shareTokens.ts`, action
+> `getShareTokenForJob`, field `config_key` di `row-types.ts`, dan setiap `&tk=` di link/WA
+> template/preview. Karena itu **tidak ada lagi blocker migrasi** di sini — dan tidak ada perubahan DB
+> yang dibutuhkan untuk B06.
 
 ---
 

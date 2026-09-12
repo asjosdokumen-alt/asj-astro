@@ -23,7 +23,7 @@
 | `master-full.html` (master data + AI auto-translate JP) | `src/pages/master.astro` | `MasterFullForm` | 🟡 | `submitMasterForm` ✅. Alur gate login + auto-translate: ❓ QA manual |
 | `ai_form.html` (AI CV chat, wawancara, submit ASJ, TTD) | `src/pages/ai-cv.astro` | `AiCvForm`, `ESignatureModal` | 🟡 | Backend actions AI semua ✅ (lihat §4). fieldPaths 70+ mapping: ❓ parity mapping di form baru |
 | `siswa-baru.html` (daftar siswa + AI chat) | `src/pages/siswa-baru.astro` | `SiswaBaruForm`, `CekSiswaModal` | 🟡 | `submitDaftarSiswa` ✅; roster admin-only ✅. Chat flow siswa: ❓ |
-| `share.html` (**viewer TSK publik — dipakai klien/user**) | `src/pages/share.astro` | `ShareView` | 🔲 **TIDAK LIVE** | Backend `shareData` TIDAK ter-wire: `surfaces/docs.ts` tak memetakan action, GET `share-data` = NOT_IMPLEMENTED. **GAP P1** (lihat §5) |
+| `share.html` (**viewer TSK publik — dipakai klien/user**) | `src/pages/share.astro` | `ShareView` | ✅ 2026-09-05 | `share-data.js` → `contexts/catalog` `handleShareData`. **Publik per kode job, tanpa token** (parity legacy — lihat §5 P1) |
 | `admin.html` + tab admin (SPA-like) | `src/pages/admin.astro` | `AdminPanel` + 8 Tab | 🟡 | Lihat §2 |
 
 ## 2. Admin — Tabs & Modal Parity
@@ -72,7 +72,7 @@
 | WA Pintar (auto-reply/assistant link) | `WAPintarModal.tsx` | ✅ (mirror `08_wa_pintar.ts`) |
 | Dokumen preview | `DocumentPreviewModal.tsx` | ✅ |
 | Upload dokumen dashboard kandidat | `handleGetUploadUrls` + `simpanBerkasTahapan`/`simpanRevisiKandidat` | ✅ (C6 + WA-scope hardening) |
-| Share view (grid + preview + pilih + kirim WA) | `ShareView.tsx` | 🔲 backend belum live (P1) |
+| Share view (grid + preview + pilih + kirim WA) | `ShareView.tsx` | ✅ (`?job=CODE` publik, tanpa token — parity legacy) |
 | Loker detail + pamflet | `LokerDetailModal`, `PamfletModal` | ✅ |
 | PWA | `manifest` + sw | ❓ audit offline mode (TODO LOW) |
 
@@ -93,7 +93,7 @@ parity ALUR DATA di sisi backend ✅ untuk action berikut (diverifikasi dari
 | Upload/berkas (storage) | `getUploadUrls`, `simpanBerkasTahapan`, `simpanRevisiKandidat`, `downloadJobDocs` | ✅ (C6 allow-list) |
 | Jadwal/tugas + reminder | `simpanJadwalBaru`, tugas, `checkAndSendAgendaReminders` | ✅ backend (admin) — UI belum (GAP §5) |
 | Konfigurasi/preset | `updateSysConfig`, rincian presets | ✅ backend (admin) — UI belum |
-| Share TSK viewer | `shareData` | 🔲 **belum diimplementasi di surface modern** (P1) |
+| Share TSK viewer | `shareData` | ✅ (`share-data.js` → `handleShareData`; publik per kode job) |
 
 Catatan keamanan alur: seluruh gap auth C3–C6 sudah ditutup di backend Astro (pass
 2026-09-04); klaim "live & dipakai user" legacy berarti **migrasi hanya selesai saat UI
@@ -102,11 +102,15 @@ Astro menutup delta di §5**, lalu cut-over domain + matikan legacy.
 ## 5. Delta Menuju 100% Produksi (dari parity di atas + TODO.md + referensi)
 
 ### P1 — Blocker parity (fitur live legacy yang belum live di Astro)
-1. **Share viewer TSK** (`share.html` → `share.astro`): implement `shareData` di
-   `surfaces/docs.ts` → `contexts/catalog` (kode `handleShareData` SUDAH ada di
-   `contexts/catalog/service.ts`) + gate **per-job share token** (generate/rotate via
-   `updateDokumenShare`; verifikasi server-side; link tanpa token ditolak), lalu wire
-   `ShareView.tsx`. *(Backend data-shape siap — tinggal surface mapping + token + UI.)*
+1. ~~**Share viewer TSK** (`share.html` → `share.astro`)~~ ✅ **SELESAI 2026-09-05; gate token DIBATALKAN 2026-09-13.**
+   `share-data.js` → `contexts/catalog` `handleShareData`, `ShareView.tsx` ter-wire.
+   **Koreksi penting:** item ini semula menuntut "gate **per-job share token** (generate/rotate via
+   `updateDokumenShare`; verifikasi server-side; link tanpa token ditolak)". Itu **bukan** parity legacy —
+   legacy tidak punya token sama sekali (`khoci921/netlify/functions/share-data.js` hanya membaca `?job=`;
+   `js/pages/share.ts` fetch `/api/share-data?job=<CODE>`). Gagasan hardening itu terbundel ke dalam baris
+   "parity" ini, lalu dari sini menyebar ke kode. Gate-nya pun tidak pernah hidup: `sys_config` tidak
+   punya kolom `config_key`, jadi mint selalu gagal dan viewer membalas "Link share belum diaktifkan"
+   untuk setiap request. Keputusan owner 2026-09-13: **kembalikan ke legacy — publik per kode job, tanpa token.**
 2. **TabMail**: wire data load + `reviewForm`/`approveForm`/`rejectForm`/`deleteForm`/
    `tandaiDibacaForm`; root-cause "data tidak muncul".
 3. **TabJadwal + TabConfig**: wire `simpanJadwalBaru`/tugas UI + tombol "kirim reminder"

@@ -19,8 +19,12 @@
  *     built from job code/pekerjaan + the share link.
  *  4. The share link pointed at `/share?job=` while ShareView read `?code`;
  *     both now use `?job` (legacy share.html?job=CODE).
+ *  5. A per-job share TOKEN was added (2026-09-05) and removed (2026-09-13):
+ *     the viewer is public by job code, exactly as legacy. The TSK have no
+ *     accounts, so a link they can pass on is the point; the `dokumen_share`
+ *     chips below are the only lever on what a viewer may see.
  */
-import { useState, useEffect } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
@@ -84,30 +88,16 @@ export function shareWaTemplate(code: string, pekerjaan: string, shareUrl: strin
 export default function AdminShareModal({ job, onClose }: Props) {
   const [checked, setChecked] = useState<Set<string>>(() => parseDocsShare(job.dokumenShare));
   const [saving, setSaving] = useState(false);
-  const [token, setToken] = useState('');
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
-  // B06 (2026-09-05): the share view is token-gated. Mint (or reuse) the
-  // job's stable token on open so copy/link/preview carry ?tk= right away.
-  useEffect(() => {
-    let alive = true;
-    api.secure('getShareTokenForJob', [job.code])
-      .then((data) => {
-        if (alive && (data as { success?: boolean; shareToken?: string }).success) {
-          setToken(String((data as { shareToken?: string }).shareToken || ''));
-        }
-      })
-      .catch(() => { /* keep modal usable; link appears once a save mints it */ });
-    return () => { alive = false; };
-  }, [job.code]);
-
-  // Legacy share view lives at share.astro?job=CODE (share.html?job= in legacy).
-  // B06: now ?job=CODE&tk=<token> — the token is the access gate.
+  // Public by job code, exactly as legacy (`share.html?job=CODE`). The TSK are
+  // outside parties with no accounts, so the link itself IS the access — there
+  // is no token. The `dokumen_share` checkboxes below are therefore the only
+  // lever on what a viewer sees, which is why they are worth being deliberate
+  // about. A per-job token gate was tried (2026-09-05) and removed 2026-09-13.
   const base = typeof window !== 'undefined' ? window.location.origin + window.location.pathname.replace(/[^/]*$/, '') : '';
-  const shareUrl = token
-    ? `${base}share?job=${encodeURIComponent(job.code)}&tk=${encodeURIComponent(token)}`
-    : '';
-  const waPreview = shareWaTemplate(job.code, job.pekerjaan, shareUrl || '(link tersedia setelah simpan)');
+  const shareUrl = base ? `${base}share?job=${encodeURIComponent(job.code)}` : '';
+  const waPreview = shareWaTemplate(job.code, job.pekerjaan, shareUrl || '(link belum siap)');
 
   const toggleDoc = (key: string) => {
     setChecked((prev) => {
@@ -149,8 +139,6 @@ export default function AdminShareModal({ job, onClose }: Props) {
         success?: boolean; error?: string;
       };
       if (data.success) {
-        const ret = data as { shareToken?: string };
-        if (ret.shareToken) setToken(ret.shareToken);
         showToast(t('ui.toast_share_saved'), 'success');
         onClose();
       } else {
