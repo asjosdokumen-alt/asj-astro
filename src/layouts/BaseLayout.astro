@@ -31,8 +31,12 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   <meta name="referrer" content="no-referrer" />
   <base target="_top" />
   
-  <link rel="icon" type="image/png" href="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" />
-  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <!-- Icons are served locally (public/icons/). They used to point at a
+       Supabase Storage URL, which meant a 404/slow load whenever the storage
+       bucket was unreachable and made the PWA un-installable offline. -->
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
   
   <!-- Icons: inline SVG sprite (155 glyphs subsetted from Font Awesome).

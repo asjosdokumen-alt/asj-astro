@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "astro dev --host 0.0.0.0",
-    "build": "astro build",
+    "build": "astro build && node scripts/build-sw-manifest.mjs",
     "preview": "astro preview --host 0.0.0.0",
     "serve": "node server.cjs",
     "astro": "astro",
@@ -37,13 +37,15 @@
     "bundle:baseline": "node scripts/ci/bundle-size.mjs --update-baseline",
     "smoke": "node scripts/ci/smoke-test.mjs",
     "ci:quality": "npm run typecheck:ratchet && npm run typecheck:indexer && npm run boundary && npm run verify:binding && npm run verify:io && npm run bundle:size && npm run test && npm run idx:gate",
-    "ci:predeploy": "npm run verify:env && npm run verify:db && npm run verify:binding && npm run verify:io && npm run bundle:size",
+    "ci:predeploy": "npm run verify:env && npm run verify:db && npm run verify:binding && npm run verify:io && npm run bundle:size && npm run verify:pwa",
     "migrate": "node scripts/migrate.mjs status",
     "migrate:status": "node scripts/migrate.mjs status",
     "migrate:up": "node scripts/migrate.mjs up",
     "migrate:baseline": "node scripts/migrate.mjs baseline",
     "idx:impact": "node indexer/dist/indexer/src/cli.js impact",
-    "idx:gate": "npm run idx:build && node indexer/scripts/impact-gate.mjs"
+    "idx:gate": "npm run idx:build && node indexer/scripts/impact-gate.mjs",
+    "icons:pwa": "node scripts/build-pwa-icons.mjs",
+    "verify:pwa": "node scripts/ci/verify-pwa.mjs"
   },
   "dependencies": {
     "@astrojs/netlify": "^6.6.5",

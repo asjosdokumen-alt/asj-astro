@@ -32,7 +32,10 @@ describe('full build', () => {
     // metrics-sink modules plus their four test files) and +1 js
     // (netlify/functions/health.js). Verified by diffing the indexed list
     // against `git ls-files` at HEAD — exactly 7 new paths, 0 removed.
-    expect(r.stats.fileCount).toBe(341); // 208 ts + 78 tsx + 12 astro + 20 mjs + 5 cjs + 18 js
+    // 341 -> 344 (2026-09-12, PWA work): +3 mjs — build-sw-manifest.mjs,
+    // build-pwa-icons.mjs, scripts/ci/verify-pwa.mjs. Verified with the real
+    // discoverFiles() call path (ts 208, tsx 78, astro 12, mjs 23, cjs 5, js 18).
+    expect(r.stats.fileCount).toBe(344); // 208 ts + 78 tsx + 12 astro + 23 mjs + 5 cjs + 18 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

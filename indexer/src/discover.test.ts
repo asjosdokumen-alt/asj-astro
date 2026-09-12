@@ -115,6 +115,11 @@ describe('discover', () => {
     // 2026-09-12: 207 -> 208 as part of the same uncommitted Phase C body of
     // work; verified by extension count over the indexed tree (ts 208, tsx 78,
     // astro 12, mjs 20, cjs 5, js 18 = 341).
+    // 2026-09-12 (PWA work): +3 mjs — scripts/build-sw-manifest.mjs,
+    // scripts/build-pwa-icons.mjs and scripts/ci/verify-pwa.mjs. ts/tsx/astro/
+    // cjs/js are unchanged. 341 -> 344 (mjs 20 -> 23). Measured with the real
+    // `discoverFiles({rootDir, matcher: parseGitignore(...)})` call path, not
+    // by hand — the two disagree whenever a source root is added.
     expect(count('ts')).toBe(208); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
     expect(count('tsx')).toBe(78); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
@@ -125,7 +130,9 @@ describe('discover', () => {
     // 2026-09-11 (later): the local env-audit trio —
     // scripts/ci/env-audit.local.mjs, env-resolve.local.mjs, env-validate.local.mjs.
     // 17 -> 20.
-    expect(count('mjs')).toBe(20); // 11 at design time; e2e + scripts/ci gates added since
+    // 2026-09-12 (PWA work): the SW-manifest generator, the icon rasteriser and
+    // the PWA integrity gate. 20 -> 23.
+    expect(count('mjs')).toBe(23); // 11 at design time; e2e + scripts/ci gates added since
     expect(count('cjs')).toBe(5);
     // Phase A (2026-09-11): netlify/functions/run-migration.js deleted — the
     // action was already removed from the registry, so the entry point was a
@@ -155,7 +162,9 @@ describe('discover', () => {
     // metrics-pipeline.test.ts) and +1 js (netlify/functions/health.js).
     // Verified by diffing the indexed file list against `git ls-files` at HEAD:
     // exactly 7 paths are new, and no path was removed or renamed.
-    expect(files.length).toBe(341); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 341 -> 344 (2026-09-12, PWA work): +3 mjs (build-sw-manifest.mjs,
+    // build-pwa-icons.mjs, verify-pwa.mjs). No other extension moved.
+    expect(files.length).toBe(344); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {
