@@ -3,7 +3,7 @@ import { findCandidateByIdFiltered, findCandidates } from '../db/candidates.ts';
 import { requireRole } from '../../contexts/identity';
 import { findMasterByWa } from './cv';
 import { geminiParseFile, parseJsonLoose } from './providers';
-import { safeError } from '../kernel/errors';
+import { AppError, safeError } from '../kernel/errors';
 // ai/classify.js — domain AI klasifikasi & parse dokumen biodata/CV admin
 // (PDF/Excel/Word/CSV/TXT/gambar → Gemini → JSON). MODUL BARU (Fase 1.4
 
@@ -142,9 +142,14 @@ async function handleParseDokumenBiodata(payload: unknown, sessionToken: string 
   } catch (e: any) {
     // PR4 (playbook §3.3): jangan bocorkan detail internal — safeError sudah
     // console.error pesan aslinya di server.
+    // The code travels too: `geminiParseFile` raises AI_UNAVAILABLE when the
+    // provider cannot answer, and the client needs that to tell "AI is down"
+    // (show the banner, retry later) from "this file was rejected".
+    const code = e instanceof AppError ? e.code : undefined;
     return {
       success: false,
       error: safeError('Gagal parse dokumen.', e),
+      ...(code ? { code, retryAfter: e.retryAfter } : {}),
     };
   }
 }

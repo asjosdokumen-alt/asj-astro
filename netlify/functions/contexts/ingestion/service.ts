@@ -8,7 +8,7 @@ import {
   findMasterByWa, patchMaster, upsertMaster, nextCandidateId,
 } from './repository';
 import { isAllowedDocumentUrl } from '../../_lib/storage';
-import { safeError } from '../../_lib/kernel/errors';
+import { AppError, Errors, safeError } from '../../_lib/kernel/errors';
 
 interface IngestPayload {
   fileUrl: string;
@@ -56,7 +56,9 @@ const SYSTEM_PROMPT = [
 async function geminiStructuredExtract(text: string): Promise<GeminiExtractedData> {
   const { env } = await import('../../_lib/env');
   const key = env('GEMINI_API_KEY');
-  if (!key) throw new Error('GEMINI_API_KEY belum dikonfigurasi');
+  // Typed AI failure (not a plain Error): the client shows the AI banner and
+  // retries later instead of treating the upload as a bad file.
+  if (!key) throw Errors.aiUnavailable('Fitur AI belum dikonfigurasi di server.');
   const contents = [{
     role: 'user' as const,
     parts: [
@@ -91,7 +93,7 @@ async function geminiStructuredExtract(text: string): Promise<GeminiExtractedDat
       lastErr = e instanceof Error ? e : new Error(String(e));
     }
   }
-  throw lastErr || new Error('Gemini tidak tersedia');
+  throw Errors.aiUnavailable(undefined, 5, lastErr);
 }
 
 async function downloadFile(url: string): Promise<{ buffer: Buffer; contentType: string }> {
@@ -254,6 +256,13 @@ export async function handleProcessUploadDoc(payload: unknown[], sessionToken?: 
     };
   } catch (e: unknown) {
     // safeError sudah console.error detail internal di server.
-    return { success: false, error: safeError('Gagal memproses file.', e) };
+    // The code travels too, so the client can tell an AI outage (banner, retry
+    // later) from a genuinely bad file.
+    const err = e instanceof AppError ? e : null;
+    return {
+      success: false,
+      error: safeError('Gagal memproses file.', e),
+      ...(err ? { code: err.code, retryAfter: err.retryAfter } : {}),
+    };
   }
 }

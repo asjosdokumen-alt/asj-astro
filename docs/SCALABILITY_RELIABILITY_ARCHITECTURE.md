@@ -551,15 +551,19 @@ At most 8 concurrent in-flight calls per dependency per instance. This is what p
 | Storage down | DB row written, upload retried; document shows "pending" | Upload delayed |
 | Pooler saturated | Shed P2/P3 to queue, serve stale for P1 | Interactive paths stay up |
 
-> **Verified 2026-09-13 — only 3 of these 7 rows describe exactly what the system
+> **Verified 2026-09-13 — 4 of these 7 rows now describe exactly what the system
 > does.** The matrix was tested against the code by `_lib/chaos.test.ts`; the
 > row-by-row verdict and evidence are in **`docs/PHASE_E_DEGRADATION_MATRIX.md`**.
-> Two of the original divergences were closed on 2026-09-13 (DB-down writes, and
-> single-message Fonnte). What still diverges:
+> Two of the original divergences were closed on 2026-09-13 (DB-down writes and
+> Gemini), taking the count from 2 to 4. What still diverges:
 >
-> - **Gemini down** — `ai_unavailable` does not exist. No such error code, no
->   branch that returns it, no banner. Only the second half of the row holds: an
->   unrelated feature is unaffected.
+> - **Gemini down** — **fixed 2026-09-13.** `AI_UNAVAILABLE` is a real code now:
+>   `codeToStatus` maps it to **503**, `Errors.aiUnavailable()` carries
+>   `retryAfter: 5`, `_lib/ai/providers.ts` raises it when the key is missing or
+>   every model is exhausted, and the chat-shaped handlers set `success: false`
+>   so the 503 is actually emitted (`outcomeStatusCode` reads `code` only then).
+>   All three AI surfaces render `AiUnavailableBanner`. The second half of the
+>   row always held: an unrelated feature is unaffected.
 > - **DB down — writes** — **fixed 2026-09-13.** `db/client.ts` classifies a
 >   PostgREST transport failure (timeout, network error, HTTP 5xx) as
 >   `SERVICE_UNAVAILABLE`, which is now retryable and carries `Retry-After: 5`.
@@ -609,7 +613,7 @@ Reliability claims that are not tested are not claims. Required tests:
 | Replay a write with the same idempotency key | Exactly one row created |
 
 > **Run status 2026-09-13.** The PostgREST, Gemini-timeout and idempotency-replay
-> rows are implemented in `netlify/functions/_lib/chaos.test.ts` (10 tests, green)
+> rows are implemented in `netlify/functions/_lib/chaos.test.ts` (14 tests, green)
 > — the suite injects failures at `globalThis.fetch`, so the real kernel, client,
 > context, surface and wrapper all run.
 >

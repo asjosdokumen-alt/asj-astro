@@ -34,6 +34,7 @@ import { getEndpoint } from '../../lib/apiEndpoint';
 import { uploadMany } from '../../lib/cloudinary';
 import { SISWA_FILE_COLUMNS } from '../../lib/documentColumns';
 import Icon from '../ui/Icon';
+import AiUnavailableBanner from '../ui/AiUnavailableBanner';
 
 interface ChatMessage {
   role: 'assistant' | 'user';
@@ -96,11 +97,16 @@ async function postAction(action: string, payload: unknown): Promise<any> {
   });
   if (!res.ok) {
     let msg = 'HTTP ' + res.status;
+    let code: string | undefined;
     try {
       const j = await res.json();
       if (j && (j.message || j.error)) msg = String(j.message || j.error);
+      // Carry the code: an AI outage must be tellable from a rejected request.
+      if (j && j.code) code = String(j.code);
     } catch { /* non-JSON error body */ }
-    throw new Error(msg);
+    const err = new Error(msg) as Error & { code?: string };
+    if (code) err.code = code;
+    throw err;
   }
   return res.json();
 }
@@ -117,6 +123,8 @@ export default function SiswaBaruForm() {
   const [docs, setDocs] = useState<Record<string, File | null>>({});
   const [docStatus, setDocStatus] = useState<Record<string, string>>({});
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('idle');
+  // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`.
+  const [aiDown, setAiDown] = useState<string | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -195,6 +203,7 @@ export default function SiswaBaruForm() {
       });
       const reply = res && typeof res.reply === 'string' && res.reply ? res.reply : '...';
       setMessages(prev => [...prev, { role: 'assistant', text: reply, time: now() }]);
+      setAiDown(null);
       // Legacy: s.data → u = Object.assign({}, u, s.data) then re-render inputs.
       if (res && res.data && typeof res.data === 'object') {
         const patch: Partial<Biodata> = {};
@@ -206,7 +215,9 @@ export default function SiswaBaruForm() {
           setBiodata(prev => ({ ...prev, ...patch }));
         }
       }
-    } catch {
+    } catch (e) {
+      const code = e instanceof Error ? (e as Error & { code?: string }).code : undefined;
+      setAiDown(code === 'AI_UNAVAILABLE' && e instanceof Error ? e.message : null);
       setMessages(prev => [...prev, { role: 'assistant', text: t('siswa.chat_error'), time: now() }]);
     } finally {
       setSending(false);
@@ -347,6 +358,11 @@ export default function SiswaBaruForm() {
             <p class="text-[10px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>{t('siswa.assistant')}</p>
           </div>
         </div>
+        {aiDown && (
+          <div class="p-3 shrink-0">
+            <AiUnavailableBanner message={aiDown} />
+          </div>
+        )}
         <div ref={chatRef} class="flex-1 u-scroll-area p-4 space-y-4 pb-16 md:pb-4">
           {messages.map((msg, i) => (
             <div key={i} class={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>

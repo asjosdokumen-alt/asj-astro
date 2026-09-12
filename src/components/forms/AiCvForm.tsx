@@ -13,6 +13,7 @@ import { validate, waSchema, kandidatLoginSchema } from '../../lib/schemas';
 
 import type { ChatMessage } from '../../types/api';
 import Icon from '../ui/Icon';
+import AiUnavailableBanner from '../ui/AiUnavailableBanner';
 import { getEndpoint } from '../../lib/apiEndpoint';
 import { uploadMany, UploadCollectionError } from '../../lib/cloudinary';
 import { AI_FILE_COLUMNS } from '../../lib/documentColumns';
@@ -91,6 +92,8 @@ export default function AiCvForm() {
   const [docStatus, setDocStatus] = useState<Record<string, string>>({});
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`.
+  const [aiDown, setAiDown] = useState<string | null>(null);
   // C03 (2026-09-05): login gate pola MasterFullForm — backend minta sesi untuk
   // chat (processAIChat H4) DAN simpan (submitDataAsj); apiClient tanpa sesi
   // redirect ke '/' → seluruh state CV hilang. Gate saat mount + guard di
@@ -138,9 +141,14 @@ export default function AiCvForm() {
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
         body: JSON.stringify({ action: 'processAIChat', payload: [{ message: msg, history: trimmedHistory, cvData: cv }], ...(token ? { sessionToken: token } : {}) })
       });
-      if (res.ok) {
-        const data = await res.json();
-        addBot(data.reply || 'Jeklin bingung nih kak, coba tanya lagi ya!');
+      // Read the body even on a non-2xx: an AI outage answers 503 with the
+      // friendly copy in `reply` plus `code: 'AI_UNAVAILABLE'` (§6.5 row 3).
+      let data: any = null;
+      try { data = await res.json(); } catch { /* non-JSON error body */ }
+      const aiUnavailable = !!(data && data.code === 'AI_UNAVAILABLE');
+      setAiDown(aiUnavailable ? String(data.error || data.reply || '') || null : null);
+      addBot(data?.reply || 'Waduh sistem Jeklin lagi sibuk kak, coba beberapa saat lagi ya!');
+      if (res.ok && !aiUnavailable) {
         if (data.cvData) {
           setCv(prev => ({ ...prev, ...data.cvData }));
           showToast(t('toast.saved'), 'success');
@@ -148,8 +156,6 @@ export default function AiCvForm() {
         if (data.suggestions && data.suggestions.length > 0) {
           setTimeout(() => setShowSuggestions(true), 500) /* SUGGESTION_DELAY_MS */;
         }
-      } else {
-        addBot('Waduh sistem Jeklin lagi sibuk kak, coba beberapa saat lagi ya!');
       }
     } catch {
       addBot('Waduh Jeklin lagi sibuk nih, coba beberapa saat lagi ya!');
@@ -326,6 +332,12 @@ export default function AiCvForm() {
             <p class="text-[10px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>{t("ai_cv.hrd_tagline")}</p>
           </div>
         </div>
+
+        {aiDown && (
+          <div class="p-3 shrink-0">
+            <AiUnavailableBanner message={aiDown} />
+          </div>
+        )}
 
         <div ref={chatRef} class="flex-1 u-scroll-area p-3 space-y-4 pb-16 md:pb-4">
           {messages.map((msg, i) => (

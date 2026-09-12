@@ -1,4 +1,4 @@
-> **Last updated:** 2026-09-13 — Phase E (test the claims). Status: item 19 (chaos suite) done for the rows that are testable in-process; item 21 (idempotency replay) done; items 20 and 22 are **not runnable as written** — reasons below. The **documentation half of row 3 is now resolved**: the three documents that promised `ai_unavailable` state what actually happens instead (§2, Row 3).
+> **Last updated:** 2026-09-13 — Phase E (test the claims). Status: item 19 (chaos suite) done for the rows that are testable in-process; item 21 (idempotency replay) done; items 20 and 22 are **not runnable as written** — reasons below. **Row 3 (`ai_unavailable`) is now closed on both halves** — the code, the 503 status and the banner exist, and the three documents that promised them now describe them accurately (§2, Row 3).
 
 # Phase E — the degradation matrix, verified or not
 
@@ -7,8 +7,9 @@ Source of the phase: `docs/SCALABILITY_RELIABILITY_ARCHITECTURE.md` §11.
 **Gate as written:** *the degradation matrix in §6.5 is verified behaviour, not a document.*
 
 This file is the result. Every row of §6.5 is checked against the code, and the
-rows that hold are asserted by `netlify/functions/_lib/chaos.test.ts`. Three of the
-seven rows do not describe what the system does.
+rows that hold are asserted by `netlify/functions/_lib/chaos.test.ts`. Four of the
+seven rows hold as written; three still do not, and one of those three is only
+half wrong (the enqueue happens, the status is not 202).
 
 ---
 
@@ -39,7 +40,7 @@ suite would pass or fail by ordering.
 |---|---|---|---|
 | DB down — public catalog | Serve last-known-good from CDN (`stale-if-error=86400`) | ✅ **holds** | `chaos.test.ts` · `PUBLIC_CACHE_HEADERS` |
 | DB down — writes | 503 + idempotency key retained so the client can safely replay | ✅ **holds** (closed 2026-09-13) | `chaos.test.ts` |
-| Gemini down | `ai_unavailable`; AI tabs show a banner | ❌ **does not exist** | `chaos.test.ts` |
+| Gemini down | `ai_unavailable`; AI tabs show a banner | ✅ **holds** (closed 2026-09-13) | `chaos.test.ts` |
 | Fonnte down | Enqueue to `job_queue`, return 202 | ⚠️ **both paths enqueue; the status is not 202** | code |
 | FCM down | Log and drop | ✅ **holds** | `chaos.test.ts` |
 | Storage down | DB row written, upload retried; document shows "pending" | ⚠️ **retry is client-side only** | code |
@@ -106,34 +107,43 @@ The other half of the row already held: the idempotency key is retained, because
 it is stored only on success. A client that replays with the same key re-runs the
 action exactly once — see §3.
 
-### Row 3 — Gemini down ❌
+### Row 3 — Gemini down ✅ **(closed 2026-09-13)**
 
-**`ai_unavailable` does not exist anywhere in the repository.** The string appears
-only in three documents (`SCALABILITY_RELIABILITY_ARCHITECTURE.md`,
-`BACKEND_ARCHITECTURE_2026-09-01.md`, `PHASE_C_OBSERVABILITY.md`), including the
-runbook that tells an on-call engineer to expect it.
+**What used to be true.** `ai_unavailable` did not exist anywhere in the
+repository — the string appeared only in three documents, including the runbook
+that told an on-call engineer to expect it. There was no `AI_UNAVAILABLE` error
+code, no branch that returned it, and nothing in the frontend that rendered a
+banner. `codeToStatus('AI_UNAVAILABLE')` fell through to the unknown-code
+default, **500**. The test asserted that deliberately, so that adding the code
+would fail the test and force this file to be updated.
 
-There is no `AI_UNAVAILABLE` error code, no branch that returns it, and nothing in
-the frontend that renders a banner for it. `codeToStatus('AI_UNAVAILABLE')` falls
-through to the unknown-code default, **500**. The AI path has a circuit breaker
-named `gemini` and returns user-facing Indonesian text when the key is missing —
-neither is the documented contract.
+**What is true now.** The code, the status, the branch and the banner all exist:
 
-The second half of the row does hold, and is asserted: **an unrelated feature is
-unaffected while the AI provider is down**. That is the invariant §6.5 exists to
-protect.
+| Piece | Where |
+|---|---|
+| `AI_UNAVAILABLE` → **503** | `kernel/errors.ts` `codeToStatus` (retryable, `Retry-After: 5`) |
+| `Errors.aiUnavailable(msg, retryAfter, cause)` | `kernel/errors.ts` |
+| The provider raises it | `_lib/ai/providers.ts` — missing key, all models failed, Grok fallback failed; `contexts/ingestion/service.ts` for the extracted-text path |
+| The code reaches the client | `_lib/ai/chat.ts` (`aiFailure` / `aiReplyFailure`), `_lib/ai/classify.ts`, `contexts/ingestion/service.ts` |
+| The banner | `src/components/ui/AiUnavailableBanner.tsx`, rendered by `AdminAiCopilot`, `AiCvForm`, `SiswaBaruForm` |
 
-The test asserts `codeToStatus('AI_UNAVAILABLE') === 500` deliberately: if someone
-adds the code, the test fails and this file has to be updated.
+Two details worth keeping:
 
-**Resolved on the documentation side (2026-09-13).** All three documents now state
-what actually happens rather than promising the code — the two architecture
-documents carry a verification note on their degradation tables, and
-`PHASE_C_OBSERVABILITY.md` A5 (the on-call runbook) says explicitly *"Do not look
-for `ai_unavailable` — that code does not exist"*. No behaviour changed. The
-**implementation** half is still open and is a product decision: adding the code
-and a banner is small, but it changes what every AI-touching client does during an
-outage, so it belongs with the owner rather than in a documentation pass.
+- **503, not 500.** The AI features are off; the rest of the app is fine; the
+  client should retry later rather than treat its own prompt as malformed.
+- **The chat-shaped responses set `success: false`.** They used to answer 200
+  with a `reply`, which meant an outage and a normal answer were the same
+  response. `outcomeStatusCode` only reads `code` when `success === false`, so
+  without it the 503 would never have been emitted. `reply` is kept because the
+  chat UI renders it directly.
+
+The second half of the row always held, and is still asserted: **an unrelated
+feature is unaffected while the AI provider is down**. That is the invariant
+§6.5 exists to protect.
+
+The documentation side was corrected first (2026-09-13), then the implementation
+landed the same day — owner-approved, since it changes what every AI-touching
+client does during an outage.
 
 ### Row 4 — Fonnte down ⚠️
 
@@ -207,7 +217,7 @@ holds the idempotency key, but it is not "shed P2/P3 to queue".
 | §6.7 Test | Status |
 |---|---|
 | Inject PostgREST failure | ✅ `chaos.test.ts` — public board survives; the write path's real status recorded |
-| Inject Gemini timeout | ✅ `chaos.test.ts` — unrelated feature unaffected; the `ai_unavailable` gap asserted |
+| Inject Gemini timeout | ✅ `chaos.test.ts` — `AI_UNAVAILABLE` → 503 + `Retry-After`, unrelated feature unaffected |
 | Replay a write with the same idempotency key | ✅ `chaos.test.ts` — handler runs once, result replayed; plus a guard that a *different* key does run it again |
 | Kill the queue worker mid-job | ❌ **not in CI** — see below |
 | Saturate the pool | ❌ **not runnable as written** — see below |
@@ -268,7 +278,7 @@ Ordered by what actually hurts a user. All three were **approved by the owner on
 |---|---|---|
 | 1 | **Row 4, single-message Fonnte.** A Fonnte outage silently loses a WhatsApp message | ✅ **Done 2026-09-13.** `enqueue('wa.send', …)` in the `catch` of `handleKirimSatuPesanFonnte`, mirroring `wa.broadcast`; transient failures only, and the worker throws so the queue owns the retry. See §3 Row 4 |
 | 2 | **Row 2, DB-down write status.** Map a PostgREST failure to `SERVICE_UNAVAILABLE` (503, retryable, with `Retry-After`) so clients retry instead of giving up | ✅ **Done 2026-09-13.** `db/client.ts` classifies the failure, `LogContext.dbOutage` carries it past the 38 catch blocks, the wrapper answers 503 + Retry-After + no-store. Behavioural: clients that retry on 503 now retry during a DB outage — accepted by the owner |
-| 3 | **Row 3, `ai_unavailable`.** Either implement the code and the banner, or correct the three documents that promise it | Documents corrected 2026-09-13; the **implementation** half is approved 2026-09-13 |
+| 3 | **Row 3, `ai_unavailable`.** Either implement the code and the banner, or correct the three documents that promise it | ✅ **Done 2026-09-13.** Documents corrected first, then the code, the 503 status and the banner (`AiUnavailableBanner`, rendered by all three AI surfaces) |
 
 Row 3 was the most misleading of the three: an on-call engineer following
 `PHASE_C_OBSERVABILITY.md` would look for a signal that could not exist.
@@ -279,12 +289,14 @@ Row 3 was the most misleading of the three: an on-call engineer following
 
 | File | Role |
 |---|---|
-| `netlify/functions/_lib/chaos.test.ts` | The executable part of §6.5 and §6.7 |
+| `netlify/functions/_lib/chaos.test.ts` | The executable part of §6.5 and §6.7 — incl. row 3 (`AI_UNAVAILABLE` → 503, provider raises it) |
 | `netlify/functions/_lib/kernel/admission.test.ts` | Priority classes, shedding, degradation signals |
 | `netlify/functions/_lib/kernel/resilience.test.ts` | Retry, breaker, bulkhead primitives |
 | `netlify/functions/_lib/kernel/deadline.test.ts` | The occupancy bound |
 | `netlify/functions/_lib/kernel/job-queue.test.ts` | Ownership + redaction on the queue |
 | `netlify/functions/contexts/notifications/wa-single-durability.test.ts` | Row 4 — the transient/permanent split and the enqueue-on-failure path |
+| `src/components/admin/AdminAiCopilot.test.tsx` | Row 3 — the banner appears on `AI_UNAVAILABLE` and clears on the next success |
+| `src/components/ui/AiUnavailableBanner.tsx` | Row 3 — the banner all three AI surfaces render on `AI_UNAVAILABLE` |
 
 Run it:
 

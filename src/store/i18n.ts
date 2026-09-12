@@ -1191,6 +1191,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ai.sug_check_stage": "Cek Tahapan Kandidat",
     "ai.sug_translate": "Terjemahkan Data",
     "ai.welcome_admin": "Halo Admin! Saya Jeklin, asisten AI. Saya bisa menganalisis CV kandidat, mengecek tahapan, dan menerjemahkan data.",
+    "ai.unavailable_title": "Asisten AI sedang tidak tersedia",
+    "ai.unavailable_body": "Fitur AI mati sementara — sisa aplikasi tetap berjalan normal. Coba lagi beberapa saat lagi ya!",
     "footer.copyright": "© 2026 PT AMANAH SAKURA JAPAN. ALL RIGHTS RESERVED.",
     "footer.tagline": "夢を日本へ",
     "footer.title": "PT Amanah Sakura Japan",

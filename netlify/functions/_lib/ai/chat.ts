@@ -5,6 +5,46 @@ import { requireRole } from '../../contexts/identity';
 import { buildRingkasData, findMasterByWa, APPLY_WA_COLS } from './cv';
 import { geminiGenerate, parseJsonLoose } from './providers';
 import { isVipCatatan, unwrapInterviewPayload, lastHistory } from './interview-shared';
+import { AppError, safeError } from '../kernel/errors';
+
+/**
+ * Turn an AI-layer failure into the outcome the client sees.
+ *
+ * The friendly Indonesian copy stays; what was missing is the CODE. Without it
+ * a client cannot tell "the AI provider is down" from "your request was
+ * rejected", so no banner is possible and monitoring has no signal at all.
+ * `providers.ts` attaches deliberate, user-safe copy to AI_UNAVAILABLE, so that
+ * message is preferred over the generic fallback when the code is known.
+ */
+function aiFailure(e: unknown, fallback: string): { error: string; code?: string; retryAfter?: number } {
+  if (e instanceof AppError && e.code === 'AI_UNAVAILABLE') {
+    // `safeError` is the sanctioned accessor for AppError copy — it returns
+    // `detail || message`, both of which this codebase authors. Reading
+    // `e.message` directly would trip the leak-guard in kernel/errors.test.ts,
+    // and rightly so: that guard cannot tell deliberate copy from a library's
+    // runtime text. Going through the helper keeps the guard meaningful
+    // instead of teaching it an exception.
+    return { error: safeError('', e), code: 'AI_UNAVAILABLE', retryAfter: e.retryAfter ?? 5 };
+  }
+  return { error: fallback };
+}
+
+/**
+ * The chat-shaped failure. These surfaces render `reply` directly, so the
+ * friendly copy stays there — but `success: false` is set as well, so an
+ * outage answers **503** rather than 200. A code the transport contradicts is
+ * a code no client can act on, and `outcomeStatusCode` only reads `code` when
+ * `success === false`.
+ */
+function aiReplyFailure(e: unknown, fallback: string) {
+  const f = aiFailure(e, fallback);
+  return {
+    success: false,
+    reply: f.error,
+    error: f.error,
+    ...(f.code ? { code: f.code, retryAfter: f.retryAfter } : {}),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Auto-translate: isi field _jp yang kosong dari field _id (terjemahan ID→JP).
@@ -257,7 +297,7 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
   } catch (e) {
     // Jangan bocorkan detail error mentah ke user — log detailnya di server saja.
     console.error('[AI] processAIChat error:', (e as { message?: string })?.message || e);
-    return { reply: 'Maaf, asisten AI sedang sibuk. Coba lagi beberapa saat ya!' };
+    return aiReplyFailure(e, 'Maaf, asisten AI sedang sibuk. Coba lagi beberapa saat ya!');
   }
 }
 
@@ -280,7 +320,7 @@ async function handleProcessAdminAIChat(payload: unknown[], sessionToken?: strin
   } catch (e) {
     // Jangan bocorkan detail error mentah ke admin — log detailnya di server saja.
     console.error('[AI] processAdminAIChat error:', (e as { message?: string })?.message || e);
-    return { success: false, error: 'Asisten AI sedang sibuk. Coba lagi beberapa saat ya!' };
+    return { success: false, ...aiFailure(e, 'Asisten AI sedang sibuk. Coba lagi beberapa saat ya!') };
   }
 }
 
@@ -312,7 +352,7 @@ async function handleProcessSiswaAIChat(payload: unknown) {
     }
     return r;
   } catch (e) {
-    return { reply: 'Maaf, jaringan AI sedang sibuk. Coba lagi ya!' };
+    return aiReplyFailure(e, 'Maaf, jaringan AI sedang sibuk. Coba lagi ya!');
   }
 }
 
@@ -498,7 +538,7 @@ async function handleProcessAiInterview(payload: unknown[], sessionToken?: strin
   try {
     return await geminiGenerate(system, lastHistory(p.history));
   } catch (e) {
-    return { reply: 'Maaf, jaringan AI sedang sibuk. Coba lagi ya!' };
+    return aiReplyFailure(e, 'Maaf, jaringan AI sedang sibuk. Coba lagi ya!');
   }
 }
 
@@ -564,10 +604,7 @@ async function handleGenerateWawancaraModel(payload: unknown[], sessionToken?: s
     };
   } catch (e) {
     console.error('[AI] generateWawancaraModel error:', (e as { message?: string })?.message || e);
-    return {
-      success: false,
-      error: 'Gagal membuat model wawancara. Coba lagi beberapa saat ya!',
-    };
+    return { success: false, ...aiFailure(e, 'Gagal membuat model wawancara. Coba lagi beberapa saat ya!') };
   }
 }
 
@@ -608,10 +645,7 @@ async function handleSelesaikanWawancara(payload: unknown[], sessionToken?: stri
     return { success: true, hasil };
   } catch (e) {
     console.error('[AI] selesaikanWawancara error:', (e as { message?: string })?.message || e);
-    return {
-      success: false,
-      error: 'Gagal merangkum hasil wawancara. Coba lagi beberapa saat ya!',
-    };
+    return { success: false, ...aiFailure(e, 'Gagal merangkum hasil wawancara. Coba lagi beberapa saat ya!') };
   }
 }
 

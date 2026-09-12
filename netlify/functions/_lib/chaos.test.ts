@@ -201,15 +201,35 @@ describe('§6.5 · DB down — writes', () => {
 // ── §6.5 row 3 — Gemini down ─────────────────────────────────────────────────
 
 describe('§6.5 · Gemini down', () => {
-  it('`ai_unavailable` is not part of the error taxonomy', async () => {
-    const { codeToStatus } = await import('./kernel/errors');
+  // Closed 2026-09-13 (owner-approved item 2). This block used to RECORD the
+  // gap: `codeToStatus('AI_UNAVAILABLE')` fell through to the unknown-code
+  // default of 500 because no such code existed, so §6.5's "`ai_unavailable`
+  // returned; AI tabs show a banner" described nothing.
 
-    // §6.5 promises "ai_unavailable returned; AI tabs show a banner". No such
-    // code exists in the codebase, so it falls through to the unknown-code
-    // default — 500. Asserted here so the gap cannot be forgotten: if someone
-    // adds the code, this test fails and the matrix gets updated.
-    expect(codeToStatus('AI_UNAVAILABLE')).toBe(500);
-    expect(codeToStatus('ai_unavailable')).toBe(500);
+  it('`ai_unavailable` is a real code, and it is a 503', async () => {
+    const { codeToStatus, Errors } = await import('./kernel/errors');
+
+    // 503, not 500: the AI features are off, the rest of the app is fine, and
+    // the client should retry later rather than treat its own prompt as bad.
+    expect(codeToStatus('AI_UNAVAILABLE')).toBe(503);
+    const err = Errors.aiUnavailable();
+    expect(err.retryable).toBe(true);
+    expect(err.toJSON().retryAfter).toBe(5);
+  });
+
+  it('the provider layer raises it when every model and the fallback fail', async () => {
+    routes = [
+      {
+        match: /generativelanguage|x\.ai/,
+        reply: () => {
+          throw new TypeError('fetch failed');
+        },
+      },
+    ];
+    const { geminiGenerate } = await import('./ai/providers');
+
+    await expect(geminiGenerate('halo', [])).rejects.toMatchObject({ code: 'AI_UNAVAILABLE' });
+    expect(fetchLog.some((u) => u.includes('generativelanguage'))).toBe(true);
   });
 
   it('an unrelated feature is unaffected while the AI provider is down', async () => {

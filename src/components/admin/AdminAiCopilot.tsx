@@ -26,6 +26,7 @@ import { authStore } from "../../store/authReactive";
 import { showToast } from "../Toast";
 import { t } from "../../store/i18n";
 import Icon from "../ui/Icon";
+import AiUnavailableBanner from "../ui/AiUnavailableBanner";
 import { api } from "../../lib/apiClient";
 
 const JEKLIN_IMG =
@@ -70,6 +71,9 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
   const [parseWa, setParseWa] = useState(candidateWa || "");
   const [parseBidang, setParseBidang] = useState("");
   const [lastHasil, setLastHasil] = useState<Record<string, unknown> | null>(null);
+  // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`. Non-null
+  // shows the banner; a later successful AI call clears it.
+  const [aiDown, setAiDown] = useState<string | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -93,7 +97,11 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
   const apiCall = async (action: string, payload: Record<string, unknown>[]) => {
     const data = await api.secure(action, payload);
     if (data && data.success === false) {
-      throw new Error(String(data.error || data.message || "Gagal"));
+      const err = new Error(String(data.error || data.message || "Gagal")) as Error & { code?: string };
+      // Carry the code: the AI surfaces need to tell "the AI provider is down"
+      // (show the banner) from "your request was rejected" (show a toast).
+      if (data.code) err.code = String(data.code);
+      throw err;
     }
     return data;
   };
@@ -101,6 +109,8 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
   /** Show an in-chat warning bubble for an operation failure (legacy behavior). */
   const reportError = (e: unknown) => {
     const msg = e instanceof Error ? e.message : String(e);
+    const code = e instanceof Error ? (e as Error & { code?: string }).code : undefined;
+    if (code === "AI_UNAVAILABLE") setAiDown(msg);
     addMsg("⚠️ " + msg, "assistant");
   };
 
@@ -125,6 +135,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
         },
       ]);
       addMsg(String(data?.reply || t("admin.ai_confused")), "assistant");
+      setAiDown(null);
       const acts = data?.suggestedActions;
       if (Array.isArray(acts) && acts.length) setSuggestions(acts.map(String));
     } catch (e) {
@@ -397,6 +408,12 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
             <Icon name="times" class="text-lg" />
           </button>
         </div>
+
+        {aiDown && (
+          <div class="px-4 pt-3 shrink-0">
+            <AiUnavailableBanner message={aiDown} />
+          </div>
+        )}
 
         {mode === "chat" && (
           <>

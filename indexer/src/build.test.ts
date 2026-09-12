@@ -61,7 +61,10 @@ describe('full build', () => {
     // contexts/identity/admin-personal.test.ts (the three-tier admin login) and
     // contexts/notifications/wa-single-durability.test.ts (row 4 of the matrix).
     // ts 219 -> 221.
-    expect(r.stats.fileCount).toBe(362); // 221 ts + 78 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
+    // 362 -> 363 (2026-09-13, owner-approved item 2): +1 tsx —
+    // src/components/ui/AiUnavailableBanner.tsx (the banner the three AI
+    // surfaces render on AI_UNAVAILABLE). tsx 78 -> 79; ts unchanged.
+    expect(r.stats.fileCount).toBe(363); // 221 ts + 79 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

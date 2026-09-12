@@ -28,7 +28,7 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 362,
+    "rootNames": 363,
     "options": {}
   },
   "universe": 3851,
@@ -365,7 +365,7 @@
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "persistentAtom → indexer src/store/i18n.ts decls 66 · compiler <unmappable>:3027"
+      "compiler": "persistentAtom → indexer src/store/i18n.ts decls 63 · compiler <unmappable>:3027"
     },
     {
       "path": "src/store/i18n.ts",
@@ -374,7 +374,7 @@
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "atom → indexer src/store/i18n.ts decls 124 · compiler <unmappable>:3466"
+      "compiler": "atom → indexer src/store/i18n.ts decls 120 · compiler <unmappable>:3466"
     },
     {
       "path": "src/store/userStore.ts",

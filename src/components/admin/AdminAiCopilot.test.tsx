@@ -247,6 +247,34 @@ describe('AdminAiCopilot (A11)', () => {
     );
   });
 
+  it('AI_UNAVAILABLE → banner shown; a later success clears it (§6.5 row 3)', async () => {
+    mockSecure.mockResolvedValueOnce({
+      success: false,
+      error: 'Asisten AI sedang tidak tersedia. Coba lagi beberapa saat ya!',
+      code: 'AI_UNAVAILABLE',
+      retryAfter: 5,
+    });
+    render(<AdminAiCopilot onClose={() => {}} />);
+    sendMessage('Analisis CV');
+
+    // The banner names the state...
+    await waitFor(() => expect(screen.getByText('Asisten AI sedang tidak tersedia')).toBeTruthy());
+    // ...and carries the provider's own copy underneath.
+    expect(
+      screen.getByText('Asisten AI sedang tidak tersedia. Coba lagi beberapa saat ya!'),
+    ).toBeTruthy();
+
+    // Recovery clears it — the banner is a state, not a sticky scar.
+    mockSecure.mockResolvedValueOnce({
+      success: true,
+      reply: 'Oke, sudah jalan lagi.',
+      suggestedActions: [],
+    });
+    sendMessage('Coba lagi');
+    await waitFor(() => expect(bubbleWith('Oke, sudah jalan lagi.').length).toBeGreaterThan(0));
+    expect(screen.queryByText('Asisten AI sedang tidak tersedia')).toBeNull();
+  });
+
   it('results → card + Update Biodata submits parsed biodata to master', async () => {
     mockSecure
       .mockResolvedValueOnce({

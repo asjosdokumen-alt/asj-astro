@@ -867,6 +867,8 @@ export const jpTranslations: Record<string, string> = {
     "ai.sug_check_stage": "ステージを確認",
     "ai.sug_translate": "データを翻訳",
     "ai.welcome_admin": "管理者様、こんにちは！ジェクリン（AIアシスタント）です。CV分析、ステージ確認、データ翻訳ができます。",
+    "ai.unavailable_title": "AIアシスタントは現在ご利用いただけません",
+    "ai.unavailable_body": "AI機能が一時的に停止しています。その他の機能は通常どおりご利用いただけます。しばらくしてからもう一度お試しください。",
 "ui.ai_copilot": "AI\u4eba\u4e8b\u30b3\u30d1\u30a4\u30ed\u30c3\u30c8",
 "admin.ai_tab_chat": "\u30c1\u30e3\u30c3\u30c8",
 "admin.ai_tab_parse": "\u30d1\u30fc\u30b9",

@@ -84,6 +84,11 @@ export function codeToStatus(code: string): number {
     // need separate codes or monitoring cannot tell load from breakage.
     OVERLOADED: 503,
     SERVICE_UNAVAILABLE: 503,
+    // The AI provider (Gemini/Grok) is unreachable, rate-limited or otherwise
+    // not producing answers. 503, not 500: the AI features are off, everything
+    // else in the app still works, and the client should retry later rather
+    // than treat its own request as malformed.
+    AI_UNAVAILABLE: 503,
   };
   return map[code] ?? 500;
 }
@@ -103,7 +108,10 @@ function isRetryableCode(code: string): boolean {
     // `retryable: false` EXPLICITLY when it throws this code for an open
     // breaker — "do not retry immediately" — and an explicit flag still wins,
     // because AppError only falls back to this map when none was given.
-    code === 'SERVICE_UNAVAILABLE'
+    code === 'SERVICE_UNAVAILABLE' ||
+    // The provider is down or throttling; the same prompt will very likely
+    // succeed in a minute. This is what the AI banner's "try again" means.
+    code === 'AI_UNAVAILABLE'
   );
 }
 
@@ -173,6 +181,20 @@ export const Errors = {
    */
   serviceUnavailable: (msg = 'Layanan sedang tidak tersedia. Coba lagi sebentar lagi.', retryAfter = 5) =>
     new AppError('SERVICE_UNAVAILABLE', { message: msg, retryAfter }),
+
+  /**
+   * The AI provider layer could not produce an answer — the key is missing, the
+   * breaker is open, or every model (and the Grok fallback) failed. 503 +
+   * retryable: "AI is off right now", which is a different statement from "your
+   * request was wrong", and the difference is what the AI banner renders.
+   *
+   * `msg` is deliberate, user-safe copy — it becomes the text the client shows.
+   */
+  aiUnavailable: (
+    msg = 'Asisten AI sedang tidak tersedia. Coba lagi beberapa saat ya!',
+    retryAfter = 5,
+    cause?: unknown,
+  ) => new AppError('AI_UNAVAILABLE', { message: msg, retryAfter, cause }),
 
   internal: (msg = 'Terjadi kesalahan internal') =>
     new AppError('INTERNAL_ERROR', { message: msg }),

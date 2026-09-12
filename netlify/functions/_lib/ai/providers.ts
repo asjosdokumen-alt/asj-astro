@@ -1,5 +1,6 @@
 import { env } from '../env.ts';
 import { breaker } from '../kernel/resilience';
+import { Errors } from '../kernel/errors';
 // ai/providers.js — lapisan PROVIDER AI (Gemini) + helper parsing output AI.
 
 // ---------------------------------------------------------------------------
@@ -135,10 +136,11 @@ async function grokGenerate(systemPrompt: string, history: Array<{ role?: string
 async function geminiGenerate(systemPrompt: string, history: Array<{ role?: string; content?: unknown }>) {
   const key = env('GEMINI_API_KEY');
   if (!key) {
-    return {
-      reply:
-        'Maaf, asisten AI belum dikonfigurasi (GEMINI_API_KEY belum diisi). Data kamu tetap aman tersimpan ya!',
-    };
+    // Used to RETURN a friendly reply, which made "the AI is not configured"
+    // indistinguishable from "the AI answered" — no code, no banner, no signal.
+    // Now it is a typed failure; the chat handlers render the same kind of copy
+    // but with `code: 'AI_UNAVAILABLE'`.
+    throw Errors.aiUnavailable('Asisten AI belum dikonfigurasi di server. Hubungi admin ya!');
   }
   const contents = [{ role: 'user', parts: [{ text: systemPrompt }] }];
   for (const h of Array.isArray(history) ? history : []) {
@@ -166,15 +168,15 @@ async function geminiGenerate(systemPrompt: string, history: Array<{ role?: stri
     const lastErr = aggregateErr instanceof AggregateError
       ? aggregateErr.errors[aggregateErr.errors.length - 1]
       : aggregateErr;
-    throw lastErr || new Error('Gemini dan Grok tidak tersedia');
+    throw Errors.aiUnavailable(undefined, 5, lastErr);
   }
-  throw new Error('Gemini returned empty response');
+  throw Errors.aiUnavailable(undefined, 5, new Error('Gemini returned empty response'));
   }
 
 async function geminiParseFile(systemPrompt: string, file: { mimeType?: string; data?: unknown }) {
   const key = env('GEMINI_API_KEY');
   if (!key) {
-    throw new Error('GEMINI_API_KEY belum dikonfigurasi');
+    throw Errors.aiUnavailable('Fitur AI belum dikonfigurasi di server.');
   }
   const contents = [
     {
@@ -192,9 +194,9 @@ async function geminiParseFile(systemPrompt: string, file: { mimeType?: string; 
     const lastErr = aggregateErr instanceof AggregateError
       ? aggregateErr.errors[aggregateErr.errors.length - 1]
       : aggregateErr;
-    throw lastErr || new Error('Gemini tidak tersedia');
+    throw Errors.aiUnavailable(undefined, 5, lastErr);
   }
-  throw new Error('Gemini returned empty response');
+  throw Errors.aiUnavailable(undefined, 5, new Error('Gemini returned empty response'));
 }
 
 function parseJsonLoose(text: unknown) {

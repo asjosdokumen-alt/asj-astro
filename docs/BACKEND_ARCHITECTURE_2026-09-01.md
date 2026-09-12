@@ -328,10 +328,11 @@ All external I/O goes through kernel ports. No `fetch()` outside `kernel/http.ts
 | FCM | 5 s | 2 | 10 fail / 60 s | drop; push is best-effort |
 
 > **Degradation column verified 2026-09-13** (`docs/PHASE_E_DEGRADATION_MATRIX.md`).
-> Three entries do not describe the code: **Gemini** never returns
-> `ai_unavailable` — that code does not exist; a **PostgREST write** failure
-> answers 500, not 503; **Fonnte** defers broadcasts only and never emits 202.
-> Storage and FCM match the code.
+> Two entries have since been brought in line with their row: a **PostgREST
+> write** failure now answers **503 + `Retry-After: 5`**, not 500, and **Gemini**
+> now raises the real **`AI_UNAVAILABLE`** code (503) that this table always
+> promised. One entry still does not describe the code: **Fonnte** enqueues on
+> both paths but never emits 202. Storage and FCM match the code.
 
 Note the asymmetry: **reads retry, non-idempotent writes do not.** Retrying a
 create without an idempotency key is how you get duplicate candidates.
@@ -536,9 +537,9 @@ network error — so the handler can degrade deliberately.
 | Storage down | DB row written, upload retried; document list shows "pending" |
 
 > **Verified 2026-09-13** (`docs/PHASE_E_DEGRADATION_MATRIX.md`): of these six
-> rows, three match the code (DB-down public catalog, FCM, Storage — with the
-> caveat that the Storage retry is **client-side**, so a closed tab has none) and
-> three do not (Gemini, DB-down writes, Fonnte). See §6.5 above.
+> rows, four match the code (DB-down public catalog, DB-down writes, Gemini, FCM)
+> and two do not (Fonnte, Storage — with the caveat that the Storage retry is
+> **client-side**, so a closed tab has none). See §6.5 above.
 
 **No dependency failure may take down an unrelated feature.** Today a Gemini
 timeout can fail an admin CRUD action because they share a bundle and a try/catch.
