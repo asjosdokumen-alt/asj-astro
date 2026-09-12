@@ -84,9 +84,22 @@ export async function deleteTaskById(id: number): Promise<void> {
   });
 }
 
-/** Get active schedules for reminder checking */
+/**
+ * Get active schedules for reminder checking.
+ *
+ * Phase D follow-up (2026-09-13): this used to destructure `{ rows }` from
+ * `supabaseJson()`. That helper resolves the parsed JSON body directly — for a
+ * GET list endpoint that is the array itself — so `rows` was always
+ * `undefined` and the guard below returned `[]` unconditionally. The function
+ * could therefore never report a schedule, which silently disabled
+ * `checkAndSendAgendaReminders` (a live admin surface action).
+ *
+ * Probed against production before changing it: `database_schedule` holds 0
+ * rows, so the correction is behaviour-neutral today — the fixed function also
+ * returns `[]` until a schedule is created.
+ */
 export async function getActiveSchedules(): Promise<any[]> {
-  const { rows } = await supabaseJson('GET', 'database_schedule', {
+  const rows = await supabaseJson('GET', 'database_schedule', {
     query: { select: SCHEDULE_REMINDER_COLS, status_jadwal: 'eq.AKTIF', limit: 100 },
   });
   return Array.isArray(rows) ? rows : [];
@@ -101,15 +114,23 @@ export async function markReminderSent(schedId: string, field: string): Promise<
   });
 }
 
-/** Get FCM tokens for a list of WA numbers (batch) */
+/**
+ * Get FCM tokens for a list of WA numbers (batch).
+ *
+ * Phase D follow-up (2026-09-13): same defect as `getActiveSchedules` above —
+ * `{ rows: tokens }` destructured a value that is already the array, so this
+ * always returned `[]` and the reminder path could not resolve a single device
+ * token. Its only caller is `checkAndSendAgendaReminders`, so the blast radius
+ * is confined to a path that has no rows to act on today.
+ */
 export async function getFcmTokensForWaList(waList: string[]): Promise<string[]> {
   if (waList.length === 0) return [];
   const inList = waList.join(',');
-  const { rows: tokens } = await supabaseJson('GET', 'fcm_tokens', {
+  const rows = await supabaseJson('GET', 'fcm_tokens', {
     query: { select: 'token,wa', wa: 'in.(' + inList + ')', limit: String(waList.length * 5) },
   });
-  if (Array.isArray(tokens)) {
-    return tokens.map((t: any) => t.token).filter(Boolean);
+  if (Array.isArray(rows)) {
+    return rows.map((t: any) => t.token).filter(Boolean);
   }
   return [];
 }

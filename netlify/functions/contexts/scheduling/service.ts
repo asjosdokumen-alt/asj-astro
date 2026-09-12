@@ -202,7 +202,10 @@ export async function handleCheckAndSendAgendaReminders(sessionToken?: string) {
         for (const wa of waList) {
           try {
             const { supabaseJson } = await import('./repository');
-            const { rows: tokens } = await supabaseJson('GET', 'fcm_tokens', {
+            // Phase D follow-up (2026-09-13): was `{ rows: tokens }` — the
+            // helper returns the array itself, so the fallback never resolved
+            // a token either. Third instance of the same defect.
+            const tokens = await supabaseJson('GET', 'fcm_tokens', {
               query: { select: 'token', wa: 'eq.' + wa, limit: 5 },
             });
             if (Array.isArray(tokens) && tokens.length > 0) {

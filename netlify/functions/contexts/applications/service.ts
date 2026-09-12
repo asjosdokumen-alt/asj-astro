@@ -139,7 +139,14 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
         else if (status === 'REVIEW ADMIN') { title = 'Dokumen ' + jobCode + ' sedang direview'; pushBody = 'Admin sedang meninjau dokumen Anda.'; }
         else if (status === 'LULUS') { title = 'Lamaran ' + jobCode + ' disetujui! 🎉'; pushBody = 'Selamat! Lamaran Anda telah disetujui.'; }
         if (title) {
-          const { rows: tokens } = await supabaseJson('GET', 'fcm_tokens', {
+          // Phase D follow-up (2026-09-13): was `const { rows: tokens } = …`.
+          // `supabaseJson()` returns the parsed body directly, so `tokens` was
+          // always undefined and this push was never sent — candidates were
+          // never told their application was approved, rejected or under review.
+          // BEHAVIOUR CHANGE: fixing it starts delivering those pushes to the
+          // devices registered in `fcm_tokens`. Guarded by
+          // contexts/scheduling/repository.test.ts.
+          const tokens = await supabaseJson('GET', 'fcm_tokens', {
             query: { select: 'token', wa: 'eq.' + waNotify, limit: 10 },
           });
           if (Array.isArray(tokens) && tokens.length > 0) {

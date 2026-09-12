@@ -417,15 +417,47 @@ edit. It is recorded here as an open item.
 
 ## 5. Open items handed over
 
-| # | Item | Why it was not done here |
+Status as of 2026-09-13. Two of the three original defects needed correcting
+before they could be acted on — the original notes understated both.
+
+| # | Item | Status |
 |---|---|---|
-| 1 | `sys_config` has no `config_key` column, so `ensureShareTokenForJob()` can never mint a share token | Fixing it means either adding the column (a schema change with a data-model decision) or re-keying the token store. Either changes behaviour of a live feature (B06) and deserves its own review |
-| 2 | `admin_credentials` is not exposed, so `findAdminByName` / `findAdmins` always return empty | Dead path. Deleting it changes auth behaviour; leaving it is harmless. Recorded, not patched |
-| 3 | `getActiveSchedules()` destructures `{ rows }` from `supabaseJson()`, which returns the array directly — so it always returns `[]` | Currently broken means currently silent. Fixing it would start sending reminders that have never been sent; that needs a deliberate decision, not a drive-by fix |
-| 4 | Keyset pagination on the remaining list endpoints (schedule / task / WA-template / form / master) | No table is within an order of magnitude of the 500-row cap — see §4. The transport is built and tested; extending it is mechanical when a table crosses the page size |
-| 5 | Several capped reads have no `order`, so at the cap they return an arbitrary subset | Adding an order changes the row order those endpoints return, and the admin mail tab acts on `rowIndex` positions. Needs the frontend in view |
-| 6 | `_lib/db/berkas.ts` `BERKAS_COLUMNS` / `BIO_COLUMNS` list ~55 legacy column aliases, most of which do not exist on any table | They are evaluated in JS against already-fetched rows, not sent to PostgREST, so they cost nothing but are confusing. Narrowing them needs a per-document audit |
-| 7 | `contexts/*/repository.ts` still carries `WA_COLS` alias arrays in a few places | The alias probing that mattered (the guaranteed-400 `or=` filters) is gone; the rest is dead but harmless |
+| 1 | `sys_config` has no `config_key` column, so `ensureShareTokenForJob()` can never mint a share token (feature B06) | **Open — needs a product decision.** Probed: 0 rows of `config_type='share_token'`, so no token was ever minted. The endpoint is live (`netlify/functions/share-data.js`, wired by the A15 parity fix) and **fails closed** — `handleShareData` answers "Link share belum diaktifkan" when no token exists, so candidate dossiers are **not** exposed today. Making minting work would activate a public, CORS-`*`, unauthenticated endpoint that serves a job's candidate dossiers |
+| 2 | `admin_credentials` — `findAdminByName` / `findAdmins` always return empty | **Corrected, still open.** The table is not merely unexposed: it **does not exist in the catalog at all**. And it is not a dead path — `findAdminByName` is called from `contexts/identity/service.ts:63` (`checkAdminPersonal`), a live surface action wired to `LoginModal.tsx`. Personal admin login (name + PIN) therefore always answers "Admin tidak ditemukan."; only master-PIN login works |
+| 3 | `getActiveSchedules()` destructures `{ rows }` from `supabaseJson()`, which returns the array directly | ✅ **Fixed 2026-09-13** — and it was not one site but **four**. See §5.1 |
+| 4 | Keyset pagination on the remaining list endpoints (schedule / task / WA-template / form / master) | Open, deliberately — no table is within an order of magnitude of the 500-row cap (§4). The transport is built and tested; extending it is mechanical when a table crosses the page size |
+| 5 | Several capped reads have no `order`, so at the cap they return an arbitrary subset | Open — adding an order changes the row order those endpoints return, and the admin mail tab acts on `rowIndex` positions. Needs the frontend in view |
+| 6 | `_lib/db/berkas.ts` `BERKAS_COLUMNS` / `BIO_COLUMNS` list ~55 legacy column aliases, most of which do not exist on any table | Open — evaluated in JS against already-fetched rows, not sent to PostgREST, so they cost nothing but are confusing. Narrowing them needs a per-document audit |
+| 7 | `contexts/*/repository.ts` still carries `WA_COLS` alias arrays in a few places | Open — the alias probing that mattered (the guaranteed-400 `or=` filters) is gone; the rest is dead but harmless |
+
+### 5.1 The `{ rows }` defect class — four sites, one root cause
+
+`supabaseJson()` returns the parsed JSON body directly (`_lib/db/client.ts:104`,
+`return text ? JSON.parse(text) : null`). For a GET list endpoint that body *is*
+the array, so `const { rows } = await supabaseJson(…)` binds `rows` to
+`undefined` and every downstream guard fails closed — **silently**, which is why
+none of these ever surfaced as an error. The house style everywhere else is
+`const rows = await supabaseJson(…)`; these four were the anomalies.
+
+| Site | What it silently disabled |
+|---|---|
+| `contexts/scheduling/repository.ts` `getActiveSchedules()` | agenda reminders never fired |
+| `contexts/scheduling/repository.ts` `getFcmTokensForWaList()` | the reminder path resolved 0 device tokens |
+| `contexts/scheduling/service.ts` per-WA fallback | the same, on the fallback path |
+| `contexts/applications/service.ts` approval push | candidates were never told their application was approved / rejected / under review |
+
+**Blast radius, measured before the fix.** `database_schedule` holds **0 rows**,
+so the three reminder-path sites are behaviour-neutral today — the corrected
+functions also return `[]` until a schedule is created. The fourth is a real
+behaviour change: `fcm_tokens` holds 36 rows, so approval/rejection pushes start
+delivering. That is what the feature was written to do, and it is one line to
+revert.
+
+Locked by `contexts/scheduling/repository.test.ts`: behavioural tests for both
+readers, plus a structural guard that fails if any file under `netlify/functions`
+destructures `rows` out of a `supabaseJson()` call again. The behavioural tests
+can only cover the sites that exist today; the guard covers the ones that do not
+exist yet.
 
 ---
 
