@@ -120,7 +120,12 @@ describe('discover', () => {
     // cjs/js are unchanged. 341 -> 344 (mjs 20 -> 23). Measured with the real
     // `discoverFiles({rootDir, matcher: parseGitignore(...)})` call path, not
     // by hand — the two disagree whenever a source root is added.
-    expect(count('ts')).toBe(208); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
+    // 2026-09-12 (Phase C receiver): +2 ts — netlify/functions/metrics-receiver.ts
+    // and _lib/metrics-receiver.test.ts, the reference receiver for the item-11
+    // sink. 344 -> 346 (ts 208 -> 210). The test lives in _lib/ on purpose: a
+    // .test.ts at the functions ROOT is deployed as a function and killed three
+    // deploys via an unresolvable devDependency import (see verify:entries).
+    expect(count('ts')).toBe(210); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
     expect(count('tsx')).toBe(78); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
     // 2026-09-11: the Phase A/B CI gates landed — bundle-size.mjs,
@@ -132,7 +137,8 @@ describe('discover', () => {
     // 17 -> 20.
     // 2026-09-12 (PWA work): the SW-manifest generator, the icon rasteriser and
     // the PWA integrity gate. 20 -> 23.
-    expect(count('mjs')).toBe(23); // 11 at design time; e2e + scripts/ci gates added since
+    // 2026-09-12 (later): the functions-entry gate. 23 -> 24.
+    expect(count('mjs')).toBe(24); // 11 at design time; e2e + scripts/ci gates added since
     expect(count('cjs')).toBe(5);
     // Phase A (2026-09-11): netlify/functions/run-migration.js deleted — the
     // action was already removed from the registry, so the entry point was a
@@ -164,7 +170,10 @@ describe('discover', () => {
     // exactly 7 paths are new, and no path was removed or renamed.
     // 341 -> 344 (2026-09-12, PWA work): +3 mjs (build-sw-manifest.mjs,
     // build-pwa-icons.mjs, verify-pwa.mjs). No other extension moved.
-    expect(files.length).toBe(344); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 344 -> 347 (2026-09-12, Phase C receiver + gates): +2 ts
+    // (metrics-receiver.ts, _lib/metrics-receiver.test.ts) and +1 mjs
+    // (scripts/ci/verify-function-entries.mjs).
+    expect(files.length).toBe(347); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

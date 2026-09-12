@@ -28,7 +28,7 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 344,
+    "rootNames": 347,
     "options": {}
   },
   "universe": 3845,

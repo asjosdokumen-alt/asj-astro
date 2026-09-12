@@ -110,6 +110,21 @@ const ALLOWED = {
       'work; (4) a retry would duplicate samples. Bounded instead by its own ' +
       'SINK_TIMEOUT_MS plus a skip when the request deadline is nearly spent.',
   },
+  'netlify/functions/metrics-receiver.ts': {
+    max: 1,
+    reason:
+      'The receiving end of the same pipeline (Phase C item 11 reference ' +
+      'receiver). The single fetch is the OUTBOUND notification to the operator ' +
+      '(Discord/Slack webhook) after an alert rule fires — not an inbound ' +
+      'dependency call. Identical reasoning to metrics-sink.ts one hop later, and ' +
+      'for the same four reasons: (1) a dead chat webhook is not a product ' +
+      'dependency and must not be able to open the shared breaker; (2) clamping ' +
+      'it to the inbound request deadline would truncate the notification, and ' +
+      'the whole point is that the alert is delivered when the app is in ' +
+      'trouble; (3) it would consume user-work bulkhead capacity; (4) a retry ' +
+      'would double-notify. Bounded by its own 3 s AbortController, and failure ' +
+      'is caught and logged rather than thrown — the same contract as the sink.',
+  },
 };
 
 /** Recursively collect .ts files under a directory, excluding tests. */

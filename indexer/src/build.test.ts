@@ -35,7 +35,10 @@ describe('full build', () => {
     // 341 -> 344 (2026-09-12, PWA work): +3 mjs — build-sw-manifest.mjs,
     // build-pwa-icons.mjs, scripts/ci/verify-pwa.mjs. Verified with the real
     // discoverFiles() call path (ts 208, tsx 78, astro 12, mjs 23, cjs 5, js 18).
-    expect(r.stats.fileCount).toBe(344); // 208 ts + 78 tsx + 12 astro + 23 mjs + 5 cjs + 18 js
+    // 344 -> 347 (2026-09-12, Phase C receiver + gates): +2 ts
+    // (metrics-receiver.ts, _lib/metrics-receiver.test.ts) and +1 mjs
+    // (scripts/ci/verify-function-entries.mjs).
+    expect(r.stats.fileCount).toBe(347); // 210 ts + 78 tsx + 12 astro + 24 mjs + 5 cjs + 18 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

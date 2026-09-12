@@ -50,6 +50,15 @@ const WHITELIST = new Set([
   // the names are documented in one place.
   'METRICS_SINK_URL',
   'METRICS_SINK_TOKEN',
+  // Phase C item 11, receiving end. `netlify/functions/metrics-receiver.ts` is
+  // the reference receiver: METRICS_RECEIVER_TOKEN gates it (fail-closed, same
+  // model as HEALTH_TOKEN) and METRICS_NOTIFY_URL is where a fired alert is
+  // sent. Like the sink itself these are read via process.env and are NOT
+  // resolved through this loader — an unconfigured receiver must refuse in
+  // every context rather than inherit a value from a developer's .env.local.
+  // Whitelisted so the names are documented in one place.
+  'METRICS_RECEIVER_TOKEN',
+  'METRICS_NOTIFY_URL',
 ]);
 
 // Nama scope pada tabel env Netlify yang ditempel. Nilai pada baris scope ini
