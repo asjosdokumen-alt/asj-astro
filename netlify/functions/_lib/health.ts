@@ -180,8 +180,9 @@ interface QueueCounts {
 async function countQueue(status: string): Promise<number | null> {
   try {
     const url = '/rest/v1/job_queue';
-    // supabaseJson cannot express "read Content-Range", so go through the
-    // shared client's raw path the same way supabasePaged does.
+    // supabaseJson cannot express "read Content-Range", so this goes through the
+    // shared client's raw path (the same way the deleted supabasePaged helper
+    // did) and reads the header itself.
     const { supabaseUrl, supabaseKey } = await import('./db/client');
     const u = supabaseUrl();
     const k = supabaseKey();

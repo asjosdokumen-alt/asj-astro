@@ -47,7 +47,13 @@ describe('full build', () => {
     // contract) and +1 js (netlify/functions/diagnostics.js — the narrow entry
     // point that ends getAppConfig/reportWebVital's dependence on the
     // bridge-links catch-all). ts 212 -> 213, js 18 -> 19.
-    expect(r.stats.fileCount).toBe(351); // 213 ts + 78 tsx + 12 astro + 24 mjs + 5 cjs + 19 js
+    // 351 -> 356 (2026-09-12, Phase D data layer): +2 ts
+    // (_lib/db/projections.ts, _lib/db/projections.test.ts) and +3 mjs
+    // (scripts/ci/gen-schema.mjs, verify-projections.mjs, verify-rls.mjs).
+    // ts 213 -> 215, mjs 24 -> 27, everything else unchanged.
+    // 356 -> 358 (2026-09-12, Phase D item 17): +2 ts
+    // (_lib/db/pagination.ts, _lib/db/pagination.test.ts). ts 215 -> 217.
+    expect(r.stats.fileCount).toBe(358); // 217 ts + 78 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

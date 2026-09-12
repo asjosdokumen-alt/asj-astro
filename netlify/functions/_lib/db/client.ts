@@ -1,6 +1,7 @@
 import { env } from '../env.ts';
 import { normalizeWa } from '../../shared/wa-rules';
 import { request, requestJson, BUDGETS } from '../kernel/http.ts';
+import { allColumns, columnsOf } from './schema.generated';
 // db/client.js — klien REST Supabase (PostgREST) + normalisasi data.
 // perilaku TIDAK berubah.
 
@@ -8,9 +9,8 @@ import { request, requestJson, BUDGETS } from '../kernel/http.ts';
 // (dipakai frontend js/04_auth.js juga). Jangan definisikan ulang di sini.
 
 /** @typedef {{ query?: Record<string, string | number>, headers?: Record<string, string>, body?: unknown }} JsonOpts */
-/** @typedef {{ rows: Record<string, unknown>[], total: number }} PagedResult */
 /** @typedef {{ table: string | null, rows: Record<string, unknown>[] }} FindTableResult */
-/** @typedef {{ paths?: Record<string, unknown>, components?: { schemas?: Record<string, { properties?: Record<string, unknown> }> } }} OpenApiSpec */
+/** @typedef {{ paths?: Record<string, unknown>, definitions?: Record<string, { properties?: Record<string, unknown> }>, components?: { schemas?: Record<string, { properties?: Record<string, unknown> }> } }} OpenApiSpec */
 
 /** @returns {string} */
 function supabaseUrl() {
@@ -25,6 +25,31 @@ function supabaseKey() {
 /** @returns {boolean} */
 function hasBackend() {
   return !!(supabaseUrl() && supabaseKey());
+}
+
+/**
+ * Resolve a caller's `select` against the generated contract.
+ *
+ * PostgREST treats a missing `select` as `*`, so "I forgot to project" and
+ * "I asked for every column" are the same request. Both are now answered with
+ * an explicit column list taken from `schema.generated.ts`, which means:
+ *   - a wildcard can never reach the wire, even from a call site that asks for one;
+ *   - a read of a table that is NOT in the generated contract is left untouched,
+ *     because there is nothing truthful to project it with.
+ *
+ * Cost note: `master_database_candidate` is 169 columns / ~1.14 KB per row. An
+ * explicit list is the same bytes as `*`; what it buys is that the set is
+ * checked in CI instead of discovered in production.
+ *
+ * @param {string} table @param {string | number | undefined} requested @returns {string | undefined}
+ */
+function resolveSelect(table: string, requested?: string | number | null): string | undefined {
+  const known = columnsOf(table);
+  if (!known || known.length === 0) return requested === undefined ? undefined : String(requested);
+  if (requested === undefined || requested === null || requested === '' || String(requested) === '*') {
+    return allColumns(table);
+  }
+  return String(requested);
 }
 
 /** @param {string} method @param {string} pathname @param {JsonOpts} [opts] @returns {Promise<unknown>} */
@@ -49,9 +74,16 @@ async function supabaseJson(
   // applies them for all PostgREST calls (reads AND writes). Acquiring
   // them here AND in request() double-counted against the limits.
 
-  const qs = opts.query
+  // Every GET goes out with an explicit projection. See resolveSelect().
+  const query = method === 'GET' ? { ...(opts.query || {}) } : opts.query;
+  if (method === 'GET' && query) {
+    const resolved = resolveSelect(pathname, query.select);
+    if (resolved !== undefined) query.select = resolved;
+  }
+
+  const qs = query
     ? '?' +
-      new URLSearchParams(Object.entries(opts.query).map(([k, v]) => [k, String(v)])).toString()
+      new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)])).toString()
     : '';
   const res = await request(url.replace(/\$/, '') + '/rest/v1/' + pathname + qs, {
     method,
@@ -116,49 +148,31 @@ async function supabaseUpsert(
   }
 }
 
-// Query paginated via header Range + total dari Content-Range. Tempat TUNGGAL
-// untuk fetch REST dengan Range — pemakai: fetchPagedAll (candidates.js) &
-// queryPaged (misc.js). supabaseJson biasa tidak bisa dipakai di sini (butuh
-// header Range/Prefer + baca Content-Range, bukan auto-JSON + throw).
-/** @param {string} table @param {string} [qs] @param {{ start?: number, end?: number }} [range] @returns {Promise<PagedResult>} */
-// @ts-expect-error JS→TS migration
-async function supabasePaged(table, qs, { start, end } = {}) {
-  const url = supabaseUrl();
-  const key = supabaseKey();
-  if (!url || !key) throw new Error('SUPABASE_URL / key belum dikonfigurasi');
-  // P2 fix: Route through request() for timeout + circuit breaker.
-  const res = await request(url.replace(/\/$/, '') + '/rest/v1/' + table + (qs ? '?' + qs : ''), {
-    method: 'GET',
-    headers: {
-      apikey: key,
-      Authorization: 'Bearer ' + key,
-      Range: start + '-' + end,
-      Prefer: 'count=exact',
-    },
-    budgetKey: 'postgrest_read',
-  });
-  if (!res.ok) {
-    throw new Error(table + ' → HTTP ' + res.status + ' ' + (await res.text()).slice(0, 150));
-  }
-  const rows = await res.json();
-  const cr = res.headers.get('content-range') || '';
-  const total = parseInt(String(cr).split('/')[1] || '0', 10) || rows.length;
-  return { rows, total };
-}
+// `supabasePaged()` used to live here: a Range-header (OFFSET/LIMIT) reader used
+// only by fetchPagedAll(). It was deleted on 2026-09-12 along with its last
+// caller — see ./pagination.ts for why OFFSET paging was the wrong primitive
+// (unstable under concurrent inserts, and one wasted round-trip per full page to
+// discover the end) and what replaced it.
 
-// Coba daftar nama tabel sampai satu yang benar-benar ada & mengembalikan baris.
+// Resolve a legacy table name against the generated contract instead of probing
+// the network for it.
+//
+// The old version issued one HTTP request per candidate name until one answered
+// with rows — up to nine requests to discover something the schema document
+// already states. A name that is not in `schema.generated.ts` is not exposed by
+// PostgREST, so there is nothing to probe: skip it. Callers that need the whole
+// row still get it, via an explicit projection rather than `*`.
 /** @param {string[]} candidates @param {number} [limit] @returns {Promise<FindTableResult>} */
 async function findTable(candidates: string[], limit = 1) {
-  // P3 fix: Use limit=1 (was 300) — callers only need to know which table exists.
-  // Stop on first hit instead of trying all candidates.
   for (const t of candidates) {
+    if (!columnsOf(t)) continue;
     try {
       const rows = await supabaseJson('GET', t, {
-        query: { select: '*', limit },
+        query: { select: allColumns(t), limit },
       });
       if (Array.isArray(rows) && rows.length > 0) return { table: t, rows };
     } catch {
-      /* coba tabel berikutnya */
+      /* tabel ada di kontrak tapi tidak bisa dibaca — coba kandidat berikutnya */
     }
   }
   return { table: null, rows: [] };
@@ -237,7 +251,10 @@ function tablesFromSchema(spec: { paths?: Record<string, unknown> }) {
   if (!spec || !spec.paths) return [];
   return Object.keys(spec.paths)
     .map((p) => p.replace(/^\//, ''))
-    .filter(Boolean);
+    // PostgREST lists RPCs under the same `paths` map. They are not tables and
+    // have no columns, so callers that walk the schema for a table should never
+    // see them.
+    .filter((p) => Boolean(p) && !p.startsWith('rpc/'));
 }
 
 /** @param {OpenApiSpec} spec @param {string} table @returns {string[]} */
@@ -245,9 +262,15 @@ function tablesFromSchema(spec: { paths?: Record<string, unknown> }) {
 // pick(r, APPLY_WA_COLS) lalu dinormalisasi. Satu sumber: dipakai cv.js & service master-data.
 const APPLY_WA_COLS = ['no_wa', 'wa', 'whatsapp'];
 
-function columnsFromSchema(spec: { components?: { schemas?: Record<string, { properties?: Record<string, unknown> }> } }, table: string) {
-  if (!spec || !spec.components || !spec.components.schemas) return [];
-  const s = spec.components.schemas[table];
+function columnsFromSchema(spec: { definitions?: Record<string, { properties?: Record<string, unknown> }>; components?: { schemas?: Record<string, { properties?: Record<string, unknown> }> } }, table: string) {
+  // PostgREST answers Swagger 2.0, which puts the row shapes under `definitions`.
+  // This used to read `components.schemas` — always empty — so every caller got
+  // an empty column list and the adaptive table discovery in
+  // contexts/catalog/repository.ts could never match anything. `components` is
+  // kept as a fallback for OpenAPI 3.
+  const shapes = spec?.definitions || spec?.components?.schemas;
+  if (!shapes) return [];
+  const s = shapes[table];
   return s && s.properties ? Object.keys(s.properties) : [];
 }
 
@@ -257,7 +280,6 @@ export {
   hasBackend,
   supabaseJson,
   supabaseUpsert,
-  supabasePaged,
   findTable,
   pick,
   APPLY_WA_COLS,

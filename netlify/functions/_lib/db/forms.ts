@@ -1,5 +1,6 @@
 import { supabaseJson, toText, normalizeWa } from './client';
-import { FORM_LIGHT_COLS } from './schema.generated';
+import { allColumns } from './schema.generated';
+import { FORM_LIGHT_COLS } from './projections';
 // db/forms.js — repo mail inbox (database_asj_form): mapForm, findForms, query per WA.
 
 // ===== Mail inbox (database_asj_form) =====
@@ -56,9 +57,14 @@ function parseDocs(keterangan: string) {
 
 // Urutan form konsisten (dipakai getAppData DAN handler review/approve/reject/
 // delete yang menerima rowIndex = posisi di array ini).
+// This is the fallback path, so it asks for every column the table has — but
+// names them, rather than relying on PostgREST's implicit `*`. Consumers
+// (documents, jobs, registry, catalog) read columns outside FORM_LIGHT_COLS
+// such as ai_data_json and folder_id, so the narrow projection is not an option
+// here.
 async function findForms() {
   const rows = await supabaseJson('GET', 'database_asj_form', {
-    query: { select: '*', order: 'timestamp.desc', limit: 500 },
+    query: { select: allColumns('database_asj_form'), order: 'timestamp.desc', limit: 500 },
   });
   return Array.isArray(rows) ? rows : [];
 }
@@ -84,33 +90,37 @@ async function findFormsLight() {
 // sama dengan findForms() supaya "baris pertama" konsisten.
 // OPTIMIZED: pakai FORM_LIGHT_COLS alih-alih SELECT * — mapForm &
 // attachApplications hanya membaca kolom di proyeksi ini.
+//
+// P0-1 (docs/DB_PERFORMANCE_AUDIT.md): the `or=(no_wa.eq.X,wa.eq.X)` attempt that
+// used to run first could never succeed — `database_asj_form` has no `wa` column,
+// so PostgREST answered 400 and the caller paid two failed round-trips (~78 ms at
+// the measured 39 ms RTT) before the working query ran. It is gone; `no_wa` is the
+// only WA column this schema has.
 async function findFormsByWa(wa: string) {
   const want = normalizeWa(wa);
   if (!want) return [];
-  const tryQuery = async (query: Record<string, string>) => {
-    try {
-      const light = await supabaseJson('GET', 'database_asj_form', {
-        query: { ...query, select: FORM_LIGHT_COLS },
-      });
-      if (Array.isArray(light)) return light;
-    } catch {
-      /* proyeksi tidak cocok — coba select * */
-    }
-    try {
-      const full = await supabaseJson('GET', 'database_asj_form', { query });
-      if (Array.isArray(full)) return full;
-    } catch {
-      /* coba jalur berikutnya */
-    }
-    return undefined;
-  };
-  const r1 = await tryQuery({
-    limit: '100',
-    order: 'timestamp.desc',
-    or: `(no_wa.eq.${want},wa.eq.${want})`,
-  });
-  if (r1 !== undefined) return r1;
-  return tryQuery({ limit: '100', order: 'timestamp.desc', no_wa: 'eq.' + want });
+  try {
+    const light = await supabaseJson('GET', 'database_asj_form', {
+      query: { select: FORM_LIGHT_COLS, limit: '100', order: 'timestamp.desc', no_wa: 'eq.' + want },
+    });
+    if (Array.isArray(light)) return light;
+  } catch {
+    /* proyeksi gagal — coba kolom penuh */
+  }
+  try {
+    const full = await supabaseJson('GET', 'database_asj_form', {
+      query: {
+        select: allColumns('database_asj_form'),
+        limit: '100',
+        order: 'timestamp.desc',
+        no_wa: 'eq.' + want,
+      },
+    });
+    if (Array.isArray(full)) return full;
+  } catch {
+    /* jalur berikutnya */
+  }
+  return undefined;
 }
 
 // Insert baris mail dengan anti-duplikat (no_wa, code_job): upsert
@@ -145,7 +155,7 @@ async function findFormByIndexFiltered(idx: number) {
   if (!Number.isInteger(i) || i < 0) return undefined;
   try {
     const rows = await supabaseJson('GET', 'database_asj_form', {
-      query: { select: '*', order: 'timestamp.desc', limit: '1', offset: String(i) },
+      query: { select: allColumns('database_asj_form'), order: 'timestamp.desc', limit: '1', offset: String(i) },
     });
     return Array.isArray(rows) ? rows[0] || null : undefined;
   } catch {
@@ -155,34 +165,33 @@ async function findFormByIndexFiltered(idx: number) {
 
 // Baris mail untuk daftar WA (in-filter) — share-data extra docs &
 // attachApplications halaman kandidat. Hanya membaca kolom ringan
-// (keterangan/no_wa/dll.), jadi proyeksi FORM_LIGHT_COLS dicoba dulu;
-// fallback select * bila kolom tidak cocok; undefined → scan penuh.
+// (keterangan/no_wa/dll.), jadi proyeksi FORM_LIGHT_COLS dipakai dulu; kalau
+// gagal, jalur kedua memakai kolom penuh eksplisit. undefined → scan penuh.
+// P0-1: the `wa.in.(…)` arm of the old `or=` was removed for the same reason as
+// findFormsByWa — the column does not exist, so it always cost a failed request.
 async function findFormsByWaList(waList: string[]) {
   const list = [
     ...new Set((Array.isArray(waList) ? waList : []).map((w) => normalizeWa(w)).filter(Boolean)),
   ];
   if (!list.length) return [];
   const inList = list.join(',');
-  const tryQuery = async (query: Record<string, string>) => {
-    try {
-      const light = await supabaseJson('GET', 'database_asj_form', {
-        query: { ...query, select: FORM_LIGHT_COLS },
-      });
-      if (Array.isArray(light)) return light;
-    } catch {
-      /* proyeksi tidak cocok — coba select * */
-    }
-    try {
-      const full = await supabaseJson('GET', 'database_asj_form', { query });
-      if (Array.isArray(full)) return full;
-    } catch {
-      /* coba jalur berikutnya */
-    }
-    return undefined;
-  };
-  const r1 = await tryQuery({ limit: '500', or: `(no_wa.in.(${inList}),wa.in.(${inList}))` });
-  if (r1 !== undefined) return r1;
-  return tryQuery({ limit: '500', no_wa: 'in.(' + inList + ')' });
+  try {
+    const light = await supabaseJson('GET', 'database_asj_form', {
+      query: { select: FORM_LIGHT_COLS, limit: '500', no_wa: 'in.(' + inList + ')' },
+    });
+    if (Array.isArray(light)) return light;
+  } catch {
+    /* proyeksi gagal — coba kolom penuh */
+  }
+  try {
+    const full = await supabaseJson('GET', 'database_asj_form', {
+      query: { select: allColumns('database_asj_form'), limit: '500', no_wa: 'in.(' + inList + ')' },
+    });
+    if (Array.isArray(full)) return full;
+  } catch {
+    /* jalur berikutnya */
+  }
+  return undefined;
 }
 
 export {

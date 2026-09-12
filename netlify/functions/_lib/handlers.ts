@@ -5,6 +5,7 @@ import { toErrorResponse, GENERIC_ERROR_MESSAGE } from './kernel/errors';
 import { log, asyncLocalStorage } from './kernel/log';
 import { metrics } from './kernel/metrics';
 import { supabaseJson } from './db/client';
+import { IDEMPOTENCY_KEY_COLS } from './db/projections';
 import { handleGetJobStatus } from './kernel/job-queue';
 import { admit, release, shedResponse, logShed, snapshot } from './kernel/admission';
 
@@ -187,7 +188,7 @@ async function dispatchAction(
   if (idempotencyScope) {
     try {
       const existing = await supabaseJson('GET', 'idempotency_keys', {
-        query: { select: '*', key: 'eq.' + idempotencyScope, limit: '1' },
+        query: { select: IDEMPOTENCY_KEY_COLS, key: 'eq.' + idempotencyScope, limit: '1' },
       }).catch(() => null);
       if (Array.isArray(existing) && existing.length > 0) {
         log.info('idempotency.hit', { action, key: idempotencyKey!.slice(0, 8) });

@@ -6,12 +6,13 @@
 import {
   normalizeWa, normalizeGender, pick, supabaseJson, supabaseUpsert, toText,
 } from '../../_lib/db/client';
+import { allColumns } from '../../_lib/db/schema.generated';
 import { cacheClear } from '../../_lib/cache';
 
 export async function findMasterByWa(wa: string): Promise<import("../../_lib/db/row-types").MasterRawRow | null> {
   const want = normalizeWa(wa);
   const rows = await supabaseJson('GET', 'master_database_candidate', {
-    query: { select: '*', no_wa: 'eq.' + want, limit: 1 },
+    query: { select: allColumns('master_database_candidate'), no_wa: 'eq.' + want, limit: 1 },
   });
   const arr = Array.isArray(rows) ? rows : [];
   return arr.find((r: Record<string, unknown>) => normalizeWa(String(r.no_wa || '')) === want) || null;

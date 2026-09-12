@@ -5,6 +5,7 @@
  * All DB access goes through kernel/http → supabaseJson
  */
 import { normalizeWa, supabaseJson } from '../../_lib/db/client';
+import { WA_TEMPLATE_COLS } from '../../_lib/db/projections';
 
 /** Upsert a WA template */
 export async function upsertWaTemplate(row: Record<string, any>, id?: string): Promise<void> {
@@ -33,7 +34,7 @@ export async function deleteWaTemplate(id: string): Promise<void> {
 /** Get all WA templates */
 export async function getWaTemplates(): Promise<any[]> {
   const rows = await supabaseJson('GET', 'wa_templates', {
-    query: { select: '*', limit: 100 },
+    query: { select: WA_TEMPLATE_COLS, limit: 100 },
   });
   return Array.isArray(rows) ? rows : [];
 }

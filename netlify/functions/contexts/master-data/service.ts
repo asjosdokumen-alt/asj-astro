@@ -5,6 +5,7 @@
  */
 import { findCandidateByWaFiltered, findCandidates } from '../../_lib/db/candidates';
 import { fetchMasterByWa } from '../../_lib/db/master';
+import { MASTER_LIGHT_COLS } from '../../_lib/db/projections';
 import * as session from '../../_lib/session';
 import { requireRole, isOwnerOrAdmin } from '../identity';
 import { syncBiodataKeMail } from '../applications';
@@ -544,7 +545,7 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
         const aiPatch = { ai_data_json: JSON.stringify(aiNew), ai_updated_at: new Date().toISOString() };
         if (row && row.id !== undefined) { await patchMaster(row.id, aiPatch); }
         else {
-          const rows2 = await supabaseJson('GET', 'master_database_candidate', { query: { select: '*', no_wa: 'eq.' + wa, limit: 5 } });
+          const rows2 = await supabaseJson('GET', 'master_database_candidate', { query: { select: MASTER_LIGHT_COLS, no_wa: 'eq.' + wa, limit: 5 } });
           const r2 = (Array.isArray(rows2) ? rows2 : []).find((r: any) => nw(String(r.no_wa || '')) === wa);
           if (r2 && r2.id !== undefined) await patchMaster(r2.id, aiPatch);
         }

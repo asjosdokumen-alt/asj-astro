@@ -28,21 +28,21 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 351,
+    "rootNames": 358,
     "options": {}
   },
-  "universe": 3850,
+  "universe": 3845,
   "counts": {
-    "agreeBound": 3850,
+    "agreeBound": 3845,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
     "libCompilerNone": 0,
-    "libRefs": 1226,
-    "libRefAgree": 1225,
+    "libRefs": 1223,
+    "libRefAgree": 1222,
     "libRefDisagree": 0,
     "libRefFramework": 1,
-    "skippedNonBindable": 1933,
+    "skippedNonBindable": 1936,
     "skippedJsxIntrinsic": 54,
     "skippedAstroTemplate": 5,
     "offsetMismatch": 0,
@@ -51,7 +51,7 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3772,
+    "match": 3767,
     "alias-vs-chase": 54,
     "merged-declaration": 22,
     "shadowing-disagreement": 2,
@@ -204,29 +204,29 @@
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
-      "universe": 1076,
-      "agreeBound": 1076,
+      "universe": 1077,
+      "agreeBound": 1077,
       "agreeUnresolved": 0,
       "lib": 219,
-      "skipped": 629,
+      "skipped": 630,
       "disagree": 0
     },
     {
       "path": "netlify/functions/contexts/master-data/repository.ts",
-      "universe": 38,
-      "agreeBound": 38,
+      "universe": 39,
+      "agreeBound": 39,
       "agreeUnresolved": 0,
       "lib": 7,
-      "skipped": 21,
+      "skipped": 22,
       "disagree": 0
     },
     {
       "path": "netlify/functions/contexts/catalog/repository.ts",
-      "universe": 267,
-      "agreeBound": 267,
+      "universe": 270,
+      "agreeBound": 270,
       "agreeUnresolved": 0,
       "lib": 82,
-      "skipped": 130,
+      "skipped": 133,
       "disagree": 0
     },
     {
@@ -267,11 +267,11 @@
     },
     {
       "path": "netlify/functions/_lib/db/candidates.ts",
-      "universe": 287,
-      "agreeBound": 287,
+      "universe": 277,
+      "agreeBound": 277,
       "agreeUnresolved": 0,
-      "lib": 87,
-      "skipped": 102,
+      "lib": 84,
+      "skipped": 100,
       "disagree": 0
     },
     {
@@ -639,52 +639,52 @@
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
-      "line": 383,
+      "line": 384,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 312 · compiler netlify/functions/_lib/session.ts:0"
+      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 376 · compiler netlify/functions/_lib/session.ts:0"
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
-      "line": 468,
+      "line": 469,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 312 · compiler netlify/functions/_lib/session.ts:0"
+      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 376 · compiler netlify/functions/_lib/session.ts:0"
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
-      "line": 496,
+      "line": 497,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 312 · compiler netlify/functions/_lib/session.ts:0"
+      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 376 · compiler netlify/functions/_lib/session.ts:0"
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
-      "line": 626,
+      "line": 627,
       "name": "session",
       "role": "Read",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 312 · compiler netlify/functions/_lib/session.ts:0"
+      "compiler": "session → indexer netlify/functions/contexts/master-data/service.ts decls 376 · compiler netlify/functions/_lib/session.ts:0"
     },
     {
       "path": "netlify/functions/contexts/catalog/repository.ts",
-      "line": 159,
+      "line": 160,
       "name": "rows",
       "role": "Read",
       "reason": "shadowing-disagreement",
       "indexer": "bound",
-      "compiler": "rows → indexer netlify/functions/contexts/catalog/repository.ts decls 4919 · compiler netlify/functions/contexts/catalog/repository.ts:6008"
+      "compiler": "rows → indexer netlify/functions/contexts/catalog/repository.ts decls 5053 · compiler netlify/functions/contexts/catalog/repository.ts:6142"
     },
     {
       "path": "netlify/functions/contexts/catalog/repository.ts",
-      "line": 170,
+      "line": 171,
       "name": "demo",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -693,7 +693,7 @@
     },
     {
       "path": "netlify/functions/contexts/catalog/repository.ts",
-      "line": 245,
+      "line": 246,
       "name": "demo",
       "role": "ExportSpecifier",
       "reason": "alias-vs-chase",
@@ -702,7 +702,7 @@
     },
     {
       "path": "netlify/functions/contexts/catalog/repository.ts",
-      "line": 245,
+      "line": 246,
       "name": "session",
       "role": "ExportSpecifier",
       "reason": "alias-vs-chase",

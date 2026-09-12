@@ -13,6 +13,7 @@ import {
   findJobByCodeFiltered, findCandidatesByJobFiltered, listStorageFolder,
   BERKAS_COLUMNS, supabaseJson, docTypeOf, docAge, mapForm,
 } from './repository';
+import { MASTER_LIGHT_COLS, PEMBERKASAN_COLS } from '../../_lib/db/projections';
 
 export async function handleGetAppData(payload: any[], sessionToken?: string) {
   const mode = (payload && payload[0]) || 'public';
@@ -183,10 +184,10 @@ export async function handleShareData(jobCode: string, shareToken?: string) {
     try {
       const [pRes, mRes] = await Promise.all([
         waList.length > 0 && waList.length <= 150
-          ? supabaseJson('GET', 'pemberkasan_checklist', { query: { select: '*', wa: 'in.(' + waList.join(',') + ')' } }).catch(() => null)
+          ? supabaseJson('GET', 'pemberkasan_checklist', { query: { select: PEMBERKASAN_COLS, wa: 'in.(' + waList.join(',') + ')' } }).catch(() => null)
           : Promise.resolve(null),
         waList.length > 0 && waList.length <= 150
-          ? supabaseJson('GET', 'master_database_candidate', { query: { select: '*', no_wa: 'in.(' + waList.join(',') + ')' } }).catch(() => null)
+          ? supabaseJson('GET', 'master_database_candidate', { query: { select: MASTER_LIGHT_COLS, no_wa: 'in.(' + waList.join(',') + ')' } }).catch(() => null)
           : Promise.resolve(null),
       ]);
       pemberkasanRows = Array.isArray(pRes) ? pRes : [];

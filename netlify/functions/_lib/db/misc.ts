@@ -1,28 +1,12 @@
-import { supabaseJson, supabasePaged, pick, toText, findTable } from './client';
-// db/misc.js — repo misc: admins, settings/assets, pengumuman, query paginated.
+import { pick, toText, findTable } from './client';
+// db/misc.js — repo misc: admins, settings/assets, pengumuman.
 
-// Query paginated dengan Range header + total dari Content-Range. Pakai
-// helper terpusat supabasePaged (client.js).
-async function queryPaged(table: string, { page = 1, pageSize = 50, q = '' } = {}) {
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize - 1;
-  const params = { select: '*' };
-  if (q && q.trim()) {
-    // P31 fix: buang karakter metagrammar PostgREST ( ) , * sebelum interpolasi
-    // ke or= — needle user tidak boleh mengubah struktur filter.
-    const needle = q
-      .trim()
-      .replace(/'/g, "''")
-      .replace(/[()*,]/g, ' ')
-      .replace(/s+/g, ' ')
-      .trim();
-    // PostgREST or= wajib dibungkus kurung, kalau tidak gagal (HTTP 400).
-    // @ts-expect-error JS→TS migration
-    params.or = `(nama_lengkap.ilike.*${needle}*,no_wa.ilike.*${needle}*)`;
-  }
-  const qs = new URLSearchParams(params).toString();
-  return supabasePaged(table, qs, { start, end });
-}
+// `queryPaged()` lived here and was never called by anything — a generic
+// paged query builder whose only projection was `select: '*'`. It was deleted
+// rather than projected, because dead code that asks for every column is a
+// liability, not a fallback. The Range-based helper it called
+// (`supabasePaged`) went the same way on 2026-09-12, replaced by keyset paging
+// in ./pagination.ts.
 
 async function findAdmins() {
   return findTable([
@@ -109,4 +93,4 @@ async function findPengumuman() {
   return '';
 }
 
-export { queryPaged, findAdmins, findSettings, findAnnouncements, findAssets, findPengumuman };
+export { findAdmins, findSettings, findAnnouncements, findAssets, findPengumuman };

@@ -8,9 +8,19 @@
  */
 
 import { supabaseJson, normalizeWa, pick } from '../../_lib/db/client';
+import { CAND_AUTH_COLS } from '../../_lib/db/projections';
 import { env } from '../../_lib/env';
 
 // ── Admin credentials ────────────────────────────────────────────────────────
+//
+// NOTE (Phase D, 2026-09-12): `admin_credentials` is NOT exposed by PostgREST —
+// it is absent from the live schema (25 tables, and this is not one of them).
+// Every read below therefore answers 404 and is swallowed by the catch, so both
+// helpers return null/[] unconditionally. The projection is spelled out rather
+// than wildcarded because a wildcard against a table that does not exist is
+// still a wildcard; the dead path is recorded in docs/PHASE_D_DATA_LAYER.md
+// rather than silently deleted, since removing it changes auth behaviour.
+const ADMIN_CREDENTIAL_COLS = 'name,pin,role';
 
 export interface AdminCredential {
   name: string;
@@ -24,7 +34,7 @@ export interface AdminCredential {
 export async function findAdminByName(name: string): Promise<AdminCredential | null> {
   try {
     const rows = await supabaseJson('GET', 'admin_credentials', {
-      query: { select: '*', name: 'eq.' + name, limit: '1' },
+      query: { select: ADMIN_CREDENTIAL_COLS, name: 'eq.' + name, limit: '1' },
     });
     if (Array.isArray(rows) && rows.length > 0) return rows[0] as AdminCredential;
     return null;
@@ -39,7 +49,7 @@ export async function findAdminByName(name: string): Promise<AdminCredential | n
 export async function findAdmins(): Promise<AdminCredential[]> {
   try {
     const rows = await supabaseJson('GET', 'admin_credentials', {
-      query: { select: '*', limit: '50' },
+      query: { select: ADMIN_CREDENTIAL_COLS, limit: '50' },
     });
     return Array.isArray(rows) ? (rows as AdminCredential[]) : [];
   } catch {
@@ -57,7 +67,7 @@ export interface CandidateAuth {
   [key: string]: unknown;
 }
 
-const CAND_WA_COLS = ['no_wa', 'wa', 'whatsapp'] as const;
+const CAND_WA_COLS = ['no_wa'] as const;
 
 /**
  * Find candidate by WA for login (needs password check).
@@ -67,7 +77,7 @@ export async function findCandidateForAuth(wa: string): Promise<CandidateAuth | 
   for (const col of cols) {
     try {
       const rows = await supabaseJson('GET', 'database_candidate', {
-        query: { select: '*', limit: '1', [col]: 'eq.' + wa },
+        query: { select: CAND_AUTH_COLS, limit: '1', [col]: 'eq.' + wa },
       });
       if (Array.isArray(rows) && rows.length > 0) return rows[0] as CandidateAuth;
     } catch {

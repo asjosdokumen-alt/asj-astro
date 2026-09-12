@@ -861,12 +861,25 @@ ratchet holds. Items (a)–(c) are covered by `kernel/admission.test.ts` and
 **Gate:** an injected PostgREST failure produces an alert within 2 minutes, and the health endpoint explains it.
 
 ### Phase D — Harden the data layer
-15. Generated `schema.generated.ts` + CI drift check.
-16. Least-privilege client factories + RLS on candidate tables.
-17. Keyset pagination on all list endpoints.
-18. Checksummed migrations; delete the loose `.sql` files.
 
-**Gate:** zero `select=*` in the codebase; RLS blocks a cross-candidate read.
+15. ✅ Generated `schema.generated.ts` + CI drift check (`npm run verify:schema`).
+16. ✅ Least-privilege client factories + RLS on candidate tables
+    (`migrations/012_rls_lockdown.sql`, `npm run verify:rls`).
+17. ✅ Keyset pagination — `_lib/db/pagination.ts` replaces the Range/OFFSET reader
+    (`supabasePaged` deleted); used by `fetchPagedAll`, tested in
+    `pagination.test.ts`, verified against production. The remaining capped list
+    reads are left capped on measured evidence (largest table is 228 rows against
+    a 500-row cap) — see `docs/PHASE_D_DATA_LAYER.md` §4 for the trigger.
+18. ✅ Checksummed migrations; delete the loose `.sql` files (`scripts/migrate.mjs`,
+    one canonical `migrations/` directory, 12 files, 0 drifted).
+
+**Gate:** zero `select=*` in the codebase (`npm run verify:projections`); RLS blocks
+a cross-candidate read (`npm run verify:rls`). Both met and enforced.
+
+**Full record: `docs/PHASE_D_DATA_LAYER.md`** — measurements before/after, the five
+tables whose RLS was switched off, the `USING (true)` policy that was granted to
+`PUBLIC`, the columns the code names that do not exist, and the one trade-off
+(~8.7 KB per bundle for the schema contract).
 
 ### Phase E — Test the claims
 19. Chaos suite from §6.7 in CI.

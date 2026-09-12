@@ -4,6 +4,7 @@
  * Owns: master_database_candidate
  */
 import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText, APPLY_WA_COLS } from '../../_lib/db/client';
+import { allColumns } from '../../_lib/db/schema.generated';
 import { findCandidateByWaFiltered, findCandidates } from '../../_lib/db/candidates';
 import { fetchMasterByWa } from '../../_lib/db/master';
 import { nextCandidateId } from '../../_lib/candidate-helpers';
@@ -13,7 +14,7 @@ export async function findMasterByWa(wa: string): Promise<any | null> {
   let rows = await fetchMasterByWa([want]);
   if (rows === null) {
     rows = await supabaseJson('GET', 'master_database_candidate', {
-      query: { select: '*', limit: 500 },
+      query: { select: allColumns('master_database_candidate'), limit: 500 },
     });
   }
   const arr = Array.isArray(rows) ? rows : [];

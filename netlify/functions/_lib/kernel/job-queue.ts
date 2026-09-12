@@ -26,6 +26,7 @@
  */
 
 import { supabaseJson } from '../db/client';
+import { JOB_QUEUE_COLS } from '../db/projections';
 import { verifyToken } from '../session';
 import { log } from './log';
 import { Errors } from './errors';
@@ -188,7 +189,7 @@ export async function failJob(jobId: string, error: unknown): Promise<void> {
 export async function getJob(jobId: string): Promise<Job | null> {
   try {
     const rows = await supabaseJson('GET', TABLE, {
-      query: { select: '*', id: 'eq.' + jobId, limit: '1' },
+      query: { select: JOB_QUEUE_COLS, id: 'eq.' + jobId, limit: '1' },
     });
     if (Array.isArray(rows) && rows.length > 0) return rows[0] as Job;
     return null;

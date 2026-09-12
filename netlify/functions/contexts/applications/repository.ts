@@ -5,6 +5,7 @@
  * All DB access goes through kernel/http → supabaseJson
  */
 import { normalizeWa, pick, supabaseJson, supabaseUpsert } from '../../_lib/db/client';
+import { allColumns } from '../../_lib/db/schema.generated';
 import { clientFor } from '../../_lib/kernel/db';
 import {
   findFormByIndexFiltered,
@@ -27,7 +28,7 @@ export async function getFormsByWa(wa: string): Promise<import("../../_lib/db/ro
   let rows = await findFormsByWa(wa);
   if (rows === undefined) {
     rows = await supabaseJson('GET', 'database_asj_form', {
-      query: { select: '*', limit: 500 },
+      query: { select: allColumns('database_asj_form'), limit: 500 },
     });
   }
   return Array.isArray(rows) ? rows : [];

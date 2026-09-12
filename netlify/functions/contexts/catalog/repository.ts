@@ -33,6 +33,7 @@ const mapForm = _mapForm;
 export { _mapForm as mapForm };
 import { attachBerkasBio } from '../../_lib/db/berkas';
 import { findAssets, findSettings } from '../../_lib/db/misc';
+import { SCHEDULE_MAP_COLS, TASK_MAP_COLS, WA_TEMPLATE_COLS } from '../../_lib/db/projections';
 import { findJobByCodeFiltered } from '../../_lib/db/jobs';
 import { findCandidatesByJobFiltered } from '../../_lib/db/candidates';
 import { listStorageFolder, BERKAS_COLUMNS } from '../../_lib/db/berkas';
@@ -70,7 +71,7 @@ function stripRaw(list: Record<string, unknown>[]): Record<string, unknown>[] {
 async function loadSchedules(): Promise<Record<string, unknown>[]> {
   try {
     const rows = await supabaseJson('GET', 'database_schedule', {
-      query: { select: '*', limit: 500, order: 'created_at.desc' },
+      query: { select: SCHEDULE_MAP_COLS, limit: 500, order: 'created_at.desc' },
     });
     return (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => ({
       idJadwal: toText(r.id_jadwal || r.id || ''),
@@ -88,7 +89,7 @@ async function loadSchedules(): Promise<Record<string, unknown>[]> {
 async function loadTugas(): Promise<Record<string, unknown>[]> {
   try {
     const rows = await supabaseJson('GET', 'database_tugas', {
-      query: { select: '*', limit: 500, order: 'created_at.desc' },
+      query: { select: TASK_MAP_COLS, limit: 500, order: 'created_at.desc' },
     });
     return (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => ({
       id: toText(r.id_tugas || r.id || ''),
@@ -103,7 +104,7 @@ async function loadTugas(): Promise<Record<string, unknown>[]> {
 async function loadWaTemplates(): Promise<Record<string, unknown>[]> {
   try {
     const rows = await supabaseJson('GET', 'wa_templates', {
-      query: { select: '*', limit: 500 },
+      query: { select: WA_TEMPLATE_COLS, limit: 500 },
     });
     return (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => ({
       id: toText(r.id || ''),

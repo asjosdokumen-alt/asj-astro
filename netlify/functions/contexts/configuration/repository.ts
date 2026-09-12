@@ -6,6 +6,7 @@
  */
 import { supabaseJson } from '../../_lib/db/client';
 import { findSettings } from '../../_lib/db/misc';
+import { RINCIAN_PRESET_COLS } from '../../_lib/db/projections';
 
 const CONFIG_TYPE_MAP: Record<string, string> = {
   kategori: 'list_kategori',
@@ -60,7 +61,7 @@ export async function replaceConfigItems(type: string, items: string[]): Promise
 /** Get all rincian_presets */
 export async function getRincianPresets(): Promise<import("../../_lib/db/row-types").SysConfigRawRow[]> {
   const rows = await supabaseJson('GET', 'rincian_presets', {
-    query: { select: '*', limit: 500 },
+    query: { select: RINCIAN_PRESET_COLS, limit: 500 },
   });
   return Array.isArray(rows) ? rows : [];
 }

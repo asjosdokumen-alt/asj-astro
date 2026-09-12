@@ -1,6 +1,7 @@
 import { supabaseJson, toText, pick, normalizeWa } from './client';
 import { storageRequest, bucket } from '../storage.ts';
 import { fetchMasterLightByWa } from './master';
+import { MASTER_LIGHT_COLS, PEMBERKASAN_COLS } from './projections';
 // db/berkas.js — repo pemberkasan_checklist + attach berkas/bio kandidat + list folder Storage.
 
 // ---------------------------------------------------------------------------
@@ -58,7 +59,7 @@ const BIO_COLUMNS: [string, string[]][] = [
 async function fetchBerkasByWa(waList: string[]) {
   try {
     const rows = await supabaseJson('GET', 'pemberkasan_checklist', {
-      query: { select: '*', limit: '500', wa: 'in.(' + waList.join(',') + ')' },
+      query: { select: PEMBERKASAN_COLS, limit: '500', wa: 'in.(' + waList.join(',') + ')' },
     });
     return Array.isArray(rows) ? rows : null;
   } catch {
@@ -87,11 +88,12 @@ async function attachBerkasBio(candidates: any[]) {
       pRows = p;
       mRows = m;
     }
-    // Fallback per-tabel: scan penuh (perilaku lama) kalau filter gagal.
+    // Fallback per-tabel: scan penuh (perilaku lama) kalau filter gagal — tetap
+    // berproyeksi, supaya "fallback" tidak berarti "baca semua kolom".
     if (!Array.isArray(pRows)) {
       try {
         pRows = await supabaseJson('GET', 'pemberkasan_checklist', {
-          query: { select: '*', limit: 500 },
+          query: { select: PEMBERKASAN_COLS, limit: 500 },
         });
       } catch {
         pRows = [];
@@ -100,7 +102,7 @@ async function attachBerkasBio(candidates: any[]) {
     if (!Array.isArray(mRows)) {
       try {
         mRows = await supabaseJson('GET', 'master_database_candidate', {
-          query: { select: '*', limit: 500 },
+          query: { select: MASTER_LIGHT_COLS, limit: 500 },
         });
       } catch {
         mRows = [];

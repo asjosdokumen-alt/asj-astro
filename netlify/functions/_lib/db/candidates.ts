@@ -1,5 +1,7 @@
-import { supabaseJson, supabasePaged, pick, toText, normalizeWa } from './client';
-import { TABLE_CANDIDATE, CANDIDATE_WA_COL, CAND_LIGHT_COLS } from './schema.generated';
+import { supabaseJson, pick, toText, normalizeWa } from './client';
+import { fetchAllKeyset } from './pagination';
+import { TABLE_CANDIDATE, CANDIDATE_WA_COL, allColumns } from './schema.generated';
+import { CAND_LIGHT_COLS, CAND_MAP_COLS } from './projections';
 // db/candidates.js — repo kandidat (database_candidate): mapCandidate, query WA/ID,
 
 // Kolom asli tabel database_candidate:
@@ -89,40 +91,27 @@ async function findCandidates(): Promise<{ table: string; rows: any[] }> {
   return { table: TABLE_CANDIDATE, rows: [] };
 }
 
-// Fetch SEMUA baris satu tabel via header Range (loop 1000/halaman) — tanpa
-// batas `limit` query (PostgREST default maks 1000). Pakai helper terpusat
-// supabasePaged (client.js).
-async function fetchPagedAll(table: string, select: string) {
-  const qs = new URLSearchParams({ select }).toString();
-  const all = [];
-  const pageSize = 1000;
-  for (let start = 0; ; start += pageSize) {
-    const { rows, total } = await supabasePaged(table, qs, {
-      start,
-      end: start + pageSize - 1,
-    });
-    all.push(...rows);
-    // Short page = no more rows. Stop early to save a round-trip (~39ms).
-    if (rows.length < pageSize || rows.length === 0 || start + rows.length >= total) break;
-  }
-  return all;
+// Fetch SEMUA baris satu tabel — keyset (cursor), bukan Range/OFFSET.
+//
+// The old version paged with `Range: start-end`, i.e. OFFSET/LIMIT, which is
+// unstable under concurrent writes: an insert between two pages shifts every
+// later row, so the next page repeats one row and drops another, silently. It
+// also always paid one extra round-trip to discover the end. Keyset paging asks
+// for `id > <last seen>` and uses a `+1` look-ahead, so it is stable and needs
+// no extra request. See ./pagination.ts.
+//
+// `key` is `id` because it is the only column on database_candidate that is
+// unique, NOT NULL and totally ordered (bigint) — verified against production:
+// 226 rows, 226 distinct ids, 0 nulls.
+async function fetchPagedAll(table: string, select: string, key = 'id') {
+  return fetchAllKeyset(table, select, { key });
 }
-
 // Kolom RINGAN untuk daftar admin — cukup untuk dedupe by WA + filter kata
 // kunci + urut updated_at (TIDAK membawa kolom berat seperti catatan/nik/email).
-// CAND_LIGHT_COLS imported from schema.generated.ts
-
-// Kolom LENGKAP yang dibaca mapCandidate — pengganti SELECT * di
-// findCandidatesByIds. Kolom berat yang TIDAK dibaca (password_kandidat,
-// catatan_internal, catatan_external, nilai_jft_text saat tidak dipakai)
-// tidak ikut, menghemat bandwidth per baris.
-const CAND_MAP_COLS =
-  'id,id_kandidat,nama_lengkap,nik,gender,usia,tb,bb,pendidikan,no_wa,' +
-  'id_loker_pilihan,tahapan_seleksi,status_kandidat,tanggal_daftar,' +
-  'catatan_admin,pas_photo,folder_url,jft,ssw,file_cv,password_kandidat,' +
-  'no_pasport,email,tempat_lahir,tgl_lahir,alamat_lengkap,' +
-  'catatan_internal,catatan_external,nilai_jft_text,bidang_ssw_text,' +
-  'created_at,updated_at,password_diubah';
+// CAND_LIGHT_COLS / CAND_MAP_COLS live in ./projections.ts and are checked
+// against the generated schema by projections.test.ts. The local copy that used
+// to sit here had already drifted from its own comment (it claimed to omit
+// password_kandidat and catatan_internal while listing both).
 
 // Semua baris kandidat bentuk RINGAN (proyeksi) — paginasi penuh TANPA batas
 // 300 baris (admin list sebelumnya diam-diam terpotong saat >300 kandidat).
@@ -154,7 +143,7 @@ async function findCandidatesByIds(ids: (string | number)[]) {
     // Fallback: SELECT * bila proyeksi kolom tidak cocok (skema berbeda)
     try {
       const rows = await supabaseJson('GET', 'database_candidate', {
-        query: { select: '*', id: 'in.(' + list.join(',') + ')' },
+        query: { select: allColumns('database_candidate'), id: 'in.(' + list.join(',') + ')' },
       });
       return Array.isArray(rows) ? rows : undefined;
     } catch {
@@ -192,7 +181,7 @@ async function findCandidateByWaFiltered(wa: string) {
       // Proyeksi kolom mungkin tidak cocok — coba SELECT * untuk kolom ini
       try {
         const rows = await supabaseJson('GET', 'database_candidate', {
-          query: { select: '*', limit: '5', [cols[i]]: 'eq.' + want },
+          query: { select: allColumns('database_candidate'), limit: '5', [cols[i]]: 'eq.' + want },
         });
         if (Array.isArray(rows) && rows.length) {
           const hit = rows.find((x) => normalizeWa(x[CANDIDATE_WA_COL] || '') === want);
@@ -260,7 +249,7 @@ async function findCandidateByIdFiltered(id: string) {
       // Proyeksi mungkin gagal — coba SELECT *
       try {
         const rows = await supabaseJson('GET', 'database_candidate', {
-          query: { select: '*', limit: '1', [col]: 'eq.' + want },
+          query: { select: allColumns('database_candidate'), limit: '1', [col]: 'eq.' + want },
         });
         anyOk = true;
         if (Array.isArray(rows) && rows.length) return rows[0];
@@ -288,7 +277,7 @@ async function findCandidatesByJobFiltered(code: string) {
     // Fallback SELECT * bila proyeksi tidak cocok
     try {
       const rows = await supabaseJson('GET', 'database_candidate', {
-        query: { select: '*', limit: '500', id_loker_pilihan: 'ilike.*' + want + '*' },
+        query: { select: allColumns('database_candidate'), limit: '500', id_loker_pilihan: 'ilike.*' + want + '*' },
       });
       return Array.isArray(rows) ? rows : undefined;
     } catch {

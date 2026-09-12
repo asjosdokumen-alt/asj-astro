@@ -1,4 +1,5 @@
 import { normalizeWa, pick, supabaseJson } from '../db/client.ts';
+import { AI_SUBMISSION_COLS } from '../db/projections.ts';
 import * as session from '../session';
 import { requireRole } from '../../contexts/identity';
 import { buildRingkasData, findMasterByWa, APPLY_WA_COLS } from './cv';
@@ -633,7 +634,7 @@ async function handleSimpanHasilWawancara(payload: unknown[], sessionToken?: str
   }
   try {
     const rows = await supabaseJson('GET', 'ai_form_submissions', {
-      query: { select: '*', wa: 'eq.' + wa, submitted_via: 'eq.interview', limit: 100 },
+      query: { select: AI_SUBMISSION_COLS, wa: 'eq.' + wa, submitted_via: 'eq.interview', limit: 100 },
     });
     // Discriminator: submitted_via='interview' (mode/status tabel ini punya
     // CHECK constraint — pakai nilai yang diizinkan: AI_MASTER/MENUNGGU).
@@ -699,7 +700,7 @@ async function handleGetHasilWawancara(payload: unknown[], sessionToken?: string
   }
   try {
     const rows = await supabaseJson('GET', 'ai_form_submissions', {
-      query: { select: '*', wa: 'eq.' + wa, submitted_via: 'eq.interview', limit: 100 },
+      query: { select: AI_SUBMISSION_COLS, wa: 'eq.' + wa, submitted_via: 'eq.interview', limit: 100 },
     });
     const row = (Array.isArray(rows) ? rows : []).find(
       (r) =>

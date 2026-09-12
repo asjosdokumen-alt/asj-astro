@@ -133,7 +133,12 @@ describe('discover', () => {
     // reportWebVital payload contract (the handler used to read payload.name
     // while clients send [metric], so every report was silently rejected).
     // ts 212 -> 213. See also the js note below for the matching entry point.
-    expect(count('ts')).toBe(213); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
+    // 2026-09-12 (Phase D, data layer): +2 ts — _lib/db/projections.ts (every
+    // column projection, stored once) and _lib/db/projections.test.ts (checks
+    // each one against the generated schema contract). ts 213 -> 215.
+    // Phase D item 17 (keyset pagination): +2 ts — _lib/db/pagination.ts and
+    // pagination.test.ts, replacing the Range/OFFSET reader. ts 215 -> 217.
+    expect(count('ts')).toBe(217); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
     expect(count('tsx')).toBe(78); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
     // 2026-09-11: the Phase A/B CI gates landed — bundle-size.mjs,
@@ -146,7 +151,10 @@ describe('discover', () => {
     // 2026-09-12 (PWA work): the SW-manifest generator, the icon rasteriser and
     // the PWA integrity gate. 20 -> 23.
     // 2026-09-12 (later): the functions-entry gate. 23 -> 24.
-    expect(count('mjs')).toBe(24); // 11 at design time; e2e + scripts/ci gates added since
+    // 2026-09-12 (Phase D, data layer): +3 mjs — scripts/ci/gen-schema.mjs
+    // (generates the schema contract from the live database), plus the two new
+    // gates verify-projections.mjs and verify-rls.mjs. 24 -> 27.
+    expect(count('mjs')).toBe(27); // 11 at design time; e2e + scripts/ci gates added since
     expect(count('cjs')).toBe(5);
     // Phase A (2026-09-11): netlify/functions/run-migration.js deleted — the
     // action was already removed from the registry, so the entry point was a
@@ -191,7 +199,10 @@ describe('discover', () => {
     // 349 -> 351 (2026-09-12, backend reachability fixes): +1 ts
     // (contexts/diagnostics/service.test.ts) and +1 js
     // (netlify/functions/diagnostics.js).
-    expect(files.length).toBe(351); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 351 -> 356 (2026-09-12, Phase D data layer): +2 ts and +3 mjs — see the
+    // per-extension notes above, which are what actually moved.
+    // 356 -> 358 (2026-09-12, Phase D item 17): +2 ts (keyset pagination).
+    expect(files.length).toBe(358); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

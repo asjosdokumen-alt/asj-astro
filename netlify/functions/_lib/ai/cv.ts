@@ -1,4 +1,5 @@
 import { normalizeWa, pick, supabaseJson, APPLY_WA_COLS } from '../db/client.ts';
+import { AI_SUBMISSION_COLS, ESIGNATURE_COLS } from '../db/projections.ts';
 import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
 import { buildMasterNested } from '../../contexts/master-data';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../../contexts/applications';
@@ -299,7 +300,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       updated_at: new Date().toISOString(),
     };
     const existingRows = await supabaseJson('GET', 'ai_form_submissions', {
-      query: { select: '*', wa: 'eq.' + wa, limit: '10' },
+      query: { select: AI_SUBMISSION_COLS, wa: 'eq.' + wa, limit: '10' },
     });
     const existing = (Array.isArray(existingRows) ? existingRows : []).find(
       (r) => normalizeWa(String(r.wa || '')) === wa && String(r.submitted_via || '') === 'ai_form',
@@ -522,7 +523,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
 async function simpanEsignature(wa: string, data: Record<string, unknown>) {
     try {
       const rows = await supabaseJson('GET', 'esignatures', {
-        query: { select: '*', wa: 'eq.' + wa, limit: '10' },
+        query: { select: ESIGNATURE_COLS, wa: 'eq.' + wa, limit: '10' },
       });
       const existing = (Array.isArray(rows) ? rows : []).find(
         (r) => normalizeWa(String(r.wa || '')) === wa,

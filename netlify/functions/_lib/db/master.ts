@@ -1,10 +1,12 @@
 import { supabaseJson } from './client';
-import { MASTER_LIGHT_COLS } from './schema.generated';
+import { allColumns } from './schema.generated';
+import { MASTER_LIGHT_COLS } from './projections';
 // db/master.js — repo master biodata/CV (master_database_candidate).
 
 // Kolom RINGAN master_database_candidate — hanya kolom yang benar-benar
 // dibaca attachBerkasBio (BERKAS_COLUMNS *_url + BIO_COLUMNS + pencocok WA).
-// MASTER_LIGHT_COLS imported from schema.generated.ts
+// MASTER_LIGHT_COLS lives in ./projections.ts and is checked against the
+// generated schema by projections.test.ts.
 
 // Tarik master_database_candidate hanya untuk WA di daftar.
 // Only no_wa column exists in this table — wa/whatsapp don't exist.
@@ -12,7 +14,7 @@ async function fetchMasterByWa(waList: string[]) {
   const inList = waList.join(',');
   try {
     const rows = await supabaseJson('GET', 'master_database_candidate', {
-      query: { select: '*', limit: '500', no_wa: 'in.(' + inList + ')' },
+      query: { select: allColumns('master_database_candidate'), limit: '500', no_wa: 'in.(' + inList + ')' },
     });
     if (Array.isArray(rows)) return rows;
   } catch {
@@ -21,7 +23,11 @@ async function fetchMasterByWa(waList: string[]) {
   return null;
 }
 
-// Master RINGAN (proyeksi MASTER_LIGHT_COLS) untuk attachBerkasBio
+// Master RINGAN (proyeksi MASTER_LIGHT_COLS) untuk attachBerkasBio.
+// The retry that used to follow this call asked for no projection at all, which
+// PostgREST reads as `*` — i.e. the fallback silently restored the 169-column
+// row the light projection exists to avoid. It now retries with the same
+// explicit projection, so a failure here is a real failure.
 async function fetchMasterLightByWa(waList: string[]) {
   const inList = waList.join(',');
   try {
@@ -30,15 +36,7 @@ async function fetchMasterLightByWa(waList: string[]) {
     });
     if (Array.isArray(light)) return light;
   } catch {
-    /* proyeksi tidak cocok — coba select * */
-  }
-  try {
-    const full = await supabaseJson('GET', 'master_database_candidate', {
-      query: { limit: '500', no_wa: 'in.(' + inList + ')' },
-    });
-    if (Array.isArray(full)) return full;
-  } catch {
-    /* fallback scan penuh */
+    /* query gagal — caller memakai scan penuh berproyeksi */
   }
   return null;
 }

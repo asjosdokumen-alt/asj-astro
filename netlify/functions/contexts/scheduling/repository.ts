@@ -5,6 +5,7 @@
  * All DB access goes through kernel/http → supabaseJson
  */
 import { supabaseJson, toText } from '../../_lib/db/client';
+import { SCHEDULE_REMINDER_COLS } from '../../_lib/db/projections';
 
 /** Insert a new schedule */
 export async function insertSchedule(row: Record<string, any>): Promise<void> {
@@ -86,7 +87,7 @@ export async function deleteTaskById(id: number): Promise<void> {
 /** Get active schedules for reminder checking */
 export async function getActiveSchedules(): Promise<any[]> {
   const { rows } = await supabaseJson('GET', 'database_schedule', {
-    query: { select: '*', status_jadwal: 'eq.AKTIF', limit: 100 },
+    query: { select: SCHEDULE_REMINDER_COLS, status_jadwal: 'eq.AKTIF', limit: 100 },
   });
   return Array.isArray(rows) ? rows : [];
 }

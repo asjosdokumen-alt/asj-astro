@@ -17,6 +17,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import { supabaseJson } from './client';
+import { SYS_CONFIG_COLS } from './projections';
 
 const CONFIG_TYPE = 'share_token';
 
@@ -27,7 +28,7 @@ export async function getShareTokenForJob(code: string): Promise<string | null> 
   if (!key) return null;
   try {
     const rows = await supabaseJson('GET', 'sys_config', {
-      query: { select: '*', config_type: 'eq.' + CONFIG_TYPE, limit: 500 },
+      query: { select: SYS_CONFIG_COLS, config_type: 'eq.' + CONFIG_TYPE, limit: 500 },
     });
     if (!Array.isArray(rows)) return null;
     const hit = rows.find(

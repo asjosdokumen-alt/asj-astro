@@ -1,4 +1,6 @@
 import { supabaseJson, pick, toText, findTable } from './client';
+import { allColumns } from './schema.generated';
+import { JOB_MAP_COLS } from './projections';
 // db/jobs.js — repo lowongan (job_database/loker): mapJob, findJobs, lookup by kode.
 
 // Kolom asli tabel job_database (hasil introspeksi):
@@ -92,10 +94,7 @@ async function countCandidatesForJob(code: string) {
 //  - kolom/tabel tidak dikenal → undefined (caller fallback ke scan penuh)
 
 // Kolom job yang dibaca mapJob — pengganti SELECT * di findJobByCodeFiltered.
-const JOB_MAP_COLS =
-  'code_job,tsk,kategori,pekerjaan,lokasi,gender,kuota,jumlah_kandidat,' +
-  'status,syarat,keterangan,tahapan,format_cv,link_pamflet,' +
-  'total_biaya,rincian_biaya,dokumen_share';
+// JOB_MAP_COLS lives in ./projections.ts (checked against the generated schema).
 
 // Cari baris job per kode (code_job / code) — 1 baris, bukan scan semua loker.
 // OPTIMIZED: pakai JOB_MAP_COLS alih-alih SELECT *; fallback SELECT *.
@@ -111,10 +110,10 @@ async function findJobByCodeFiltered(code: string) {
       anyOk = true;
       if (Array.isArray(rows) && rows.length) return rows[0];
     } catch {
-      // Proyeksi mungkin gagal — coba SELECT *
+      // Proyeksi gagal — ulangi dengan daftar kolom penuh yang eksplisit.
       try {
         const rows = await supabaseJson('GET', 'job_database', {
-          query: { select: '*', limit: '1', [col]: 'eq.' + want },
+          query: { select: allColumns('job_database'), limit: '1', [col]: 'eq.' + want },
         });
         anyOk = true;
         if (Array.isArray(rows) && rows.length) return rows[0];
