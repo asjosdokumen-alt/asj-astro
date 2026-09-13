@@ -190,7 +190,7 @@ export default function LokerTable() {
                 <td data-label={t("table.job")} class="rt-full p-2 align-top whitespace-normal max-w-[220px]">
                   <div class="flex items-start gap-4">
                     {job.pamflet && job.pamflet !== "-" && job.pamflet.length > 5 && (
-                      <img src={job.pamflet} width={48} height={64} loading="lazy" decoding="async" class="hidden sm:block w-12 h-16 md:w-12 md:h-16 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-transform flex-shrink-0" title={t("ui.click_zoom")} alt="Pamflet" onClick={() => { setPamfletUrl(job.pamflet || ""); setShowPamflet(true); }} />
+                      <img src={job.pamflet} width={48} height={64} loading="lazy" decoding="async" class="hidden sm:block w-12 h-16 md:w-12 md:h-16 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-transform flex-shrink-0" title={t("ui.click_zoom")} alt={t("ui.alt_pamflet")} onClick={() => { setPamfletUrl(job.pamflet || ""); setShowPamflet(true); }} />
                     )}
                     <div class="flex flex-col pt-1">
                       <span class="font-bold text-base text-white leading-tight">{jobTitleLabel(job.pekerjaan) || "-"}</span>

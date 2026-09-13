@@ -95,7 +95,7 @@ function tahapanStepIndex(tahapan: string) {
 
 function CrownBadge({ progress }: { progress: number }) {
   if (progress >= 100) return <span class="text-lg" title={t("candidate.badge_gold_title")}>👑</span>;
-  if (progress >= 50) return <span class="text-lg" title="CV Mini Lengkap (Silver)">🥈</span>;
+  if (progress >= 50) return <span class="text-lg" title={t("candidate.badge_silver_title")}>🥈</span>;
   if (progress > 0) return <span class="text-lg" title={t("candidate.badge_bronze_title")}>🥉</span>;
   return null;
 }

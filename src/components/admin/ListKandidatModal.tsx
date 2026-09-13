@@ -215,7 +215,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
                       )
                     }
                     class="w-7 h-7 flex items-center justify-center bg-sky-900/50 hover:bg-sky-600 text-sky-400 hover:text-white rounded-full transition shadow"
-                    title="Lihat profil/CV kandidat">
+                    title={t('admin.tt_lihat_profil')}>
                     <Icon name="eye" class="text-xs" />
                   </button>
                   <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noopener"
@@ -225,7 +225,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
                   </a>
                   <button onClick={() => removeFromJob(c.wa || '')} disabled={removing === c.wa}
                     class="px-2 py-1 bg-red-900/40 hover:bg-red-600 disabled:opacity-50 text-red-400 hover:text-white rounded text-[10px] font-bold transition"
-                    title="Tandai gagal & lepas dari job">
+                    title={t('admin.tt_tandai_gagal')}>
                     {removing === c.wa ? <Icon spin name="spinner" class="text-xs" /> : <Icon name="times" class="text-xs" />} Hapus
                   </button>
                 </div>

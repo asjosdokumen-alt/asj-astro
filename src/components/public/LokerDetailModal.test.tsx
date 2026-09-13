@@ -13,12 +13,17 @@
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import LokerDetailModal from './LokerDetailModal';
+import { t } from '../../store/i18n';
 
 afterEach(cleanup);
 
-vi.mock('../../store/i18n', () => ({
-  t: (k: string) => k,
-}));
+// Real dictionary, not an identity stub. This test queries img[alt="Pamflet"],
+// which only resolves while the id dictionary is actually consulted — with
+// `t: k => k` the alt becomes the raw key and the query silently matches nothing.
+vi.mock('../../store/i18n', async () => {
+  const actual = await vi.importActual<typeof import('../../store/i18n')>('../../store/i18n');
+  return { ...actual, t: actual.t };
+});
 
 function baseJob(over: Record<string, string> = {}) {
   return {
@@ -45,10 +50,17 @@ describe('LokerDetailModal (B04)', () => {
     render(<LokerDetailModal job={baseJob()} onClose={onClose} />);
     expect(screen.getAllByText('J1').length).toBeGreaterThan(0);
     expect(screen.getByText('Teknisi Mesin')).toBeTruthy();
-    expect(screen.getByText('ui.payment_stage')).toBeTruthy();
+    expect(screen.getByText(t('ui.payment_stage'))).toBeTruthy();
     expect(screen.getByText('Rp 50.000.000')).toBeTruthy();
-    // keyed copy, not hard-coded Indonesian
-    expect(screen.queryByText('Lamar Sekarang')).toBeNull();
+    // The CTA copy must come from the dictionary, not a JSX literal.
+    //
+    // This used to be `queryByText('Lamar Sekarang') === null`, which only
+    // held while t() echoed raw keys: "Lamar Sekarang" IS the id value of
+    // button.apply_now, so with the real dictionary loaded the assertion fails
+    // against perfectly correct code. Asserting the dictionary value instead
+    // keeps the check meaningful. "Is it keyed at all?" is what
+    // src/store/i18n.keys.test.ts answers, so it is not re-tested here.
+    expect(screen.getByText(t('button.apply_now'))).toBeTruthy();
   });
 
   it('links a still-recruiting job (tahapan PENCARIAN) to the native apply page', () => {
@@ -68,21 +80,21 @@ describe('LokerDetailModal (B04)', () => {
     expect(document.querySelector('a[href="/apply?job=J1"]')).toBeNull();
     const disabled = document.querySelector('button[disabled]');
     expect(disabled).toBeTruthy();
-    expect((disabled as HTMLElement).textContent).toContain('button.closed');
+    expect((disabled as HTMLElement).textContent).toContain(t('button.closed'));
   });
 
   it('opens the pamflet zoom modal on click (bukaPamflet parity, ui.click_zoom)', async () => {
     const pamflet = 'https://cdn.example/pamflet.jpg';
     render(<LokerDetailModal job={baseJob({ pamflet })} onClose={vi.fn()} />);
     const thumb = screen.getByAltText('Pamflet');
-    expect((thumb as HTMLElement).getAttribute('title')).toBe('ui.click_zoom');
+    expect((thumb as HTMLElement).getAttribute('title')).toBe(t('ui.click_zoom'));
     expect(document.querySelectorAll('img[alt="Pamflet"]').length).toBe(1);
     fireEvent.click(thumb);
     await waitFor(() => {
       expect(document.querySelectorAll('img[alt="Pamflet"]').length).toBe(2);
     });
     // close the zoom overlay again (aria now keyed — B05)
-    fireEvent.click(screen.getByLabelText('public.close'));
+    fireEvent.click(screen.getByLabelText(t('public.close')));
     await waitFor(() => {
       expect(document.querySelectorAll('img[alt="Pamflet"]').length).toBe(1);
     });

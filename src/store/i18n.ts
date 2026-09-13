@@ -1144,6 +1144,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ai_cv.dynamic_ai_data": "Data dinamis dari AI",
     "ai_cv.bot_greeting": "Halo! Saya Qween Jeklin, HRD ASJ. Saya akan membantu mengisi CV Jepangmu. Silakan ceritakan tentang dirimu!",
     "candidate.badge_gold_title": "Master Profil Lengkap (Gold Crown)",
+    // Silver ada di sini karena DULU tidak ada: gold dan bronze sudah pakai
+    // t() di CandidateDash.tsx, tapi badge perak-nya hardcode. Jadi hanya
+    // silver yang selalu berbahasa Indonesia untuk user JP.
+    "candidate.badge_silver_title": "CV Mini Lengkap (Silver)",
     "candidate.badge_bronze_title": "Pendaftar Terverifikasi (Bronze)",
     "candidate.btn_preview_cv": "Preview Desain CV",
     "candidate.btn_upload_revise": "Upload Revise",
@@ -1413,6 +1417,19 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.upload_custom_template": "Upload Template Kustom",
     "ui.crash_title": "Terjadi Kesalahan (Crash)",
     "form.nomor_wa": "Nomor WhatsApp",
+
+    // ─── Tooltip (title=) — dulu hardcode di atribut ─────────────────────────
+    // Atribut mentah TIDAK terlihat oleh guard cakupan kamus (ia hanya memindai
+    // t(), data-lang, dan literal berbentuk kunci), jadi teks ini selalu
+    // berbahasa Indonesia tanpa pernah memerahkannya. Semuanya terlihat user.
+    "admin.tt_lihat_profil": "Lihat profil/CV kandidat",
+    "admin.tt_chat_wa": "Chat WA",
+    "admin.tt_tandai_gagal": "Tandai gagal & lepas dari job",
+    "admin.tt_segera_hadir": "Segera hadir",
+    "landing.tt_grup_wa": "Join Grup WhatsApp",
+    "landing.tt_cek_kandidat": "Cek List Kandidat Terdaftar",
+    "ui.alt_pratinjau": "Pratinjau",
+    "ui.alt_pamflet": "Pamflet",
   },
   jp: {} as Record<string, string>, // P9: lazy-loaded from i18n-jp.ts
 

@@ -821,6 +821,7 @@ export const jpTranslations: Record<string, string> = {
     "ai_cv.dynamic_ai_data": "AIからの自動生成データ",
     "ai_cv.bot_greeting": "こんにちは！ASJ人事のクイーン・ジェクリンです。日本の履歴書作成をお手伝いします。自己紹介をお願いします！",
     "candidate.badge_gold_title": "マスタープロフィール完成（ゴールド）",
+    "candidate.badge_silver_title": "CVミニ完成（シルバー）",
     "candidate.badge_bronze_title": "登録済み（ブロンズ）",
     "candidate.btn_preview_cv": "CVデザインプレビュー",
     "candidate.btn_upload_revise": "修正をアップロード",
@@ -1340,4 +1341,14 @@ export const jpTranslations: Record<string, string> = {
     "ui.upload_custom_template": "カスタムテンプレートをアップロード",
     "ui.crash_title": "エラーが発生しました（クラッシュ）",
     "form.nomor_wa": "WhatsApp番号",
+
+    // ─── Tooltip (title=) ────────────────────────────────────────────────────
+    "admin.tt_lihat_profil": "候補者のプロフィール・履歴書を見る",
+    "admin.tt_chat_wa": "WhatsAppでチャット",
+    "admin.tt_tandai_gagal": "不合格にして求人から外す",
+    "admin.tt_segera_hadir": "近日公開",
+    "landing.tt_grup_wa": "WhatsAppグループに参加",
+    "landing.tt_cek_kandidat": "登録済み候補者のチェックリスト",
+    "ui.alt_pratinjau": "プレビュー",
+    "ui.alt_pamflet": "チラシ",
 };

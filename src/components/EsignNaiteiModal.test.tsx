@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/pr
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import EsignNaiteiModal, { allowedTahapanEsign } from './EsignNaiteiModal';
 import { showToast } from './Toast';
+import { t } from '../store/i18n';
 
 vi.mock('../store/authReactive', () => ({
   authStore: { get: () => ({ sessionToken: 'test-token' }) },
@@ -15,8 +16,14 @@ vi.mock('./Toast', () => ({
   showToast: vi.fn(),
 }));
 
-// i18n identity: assertions pakai key (ui.sign1 / esign.save / dst).
-vi.mock('../store/i18n', () => ({ t: (k: string) => k }));
+// Resolve the real dictionary. An identity stub (`t: k => k`) makes every
+// assertion depend on the ABSENCE of a translation, so moving a string from a
+// literal to t() breaks the query even when the rendered text is unchanged —
+// that is what happened to alt="Pratinjau" → alt={t("ui.alt_pratinjau")}.
+vi.mock('../store/i18n', async () => {
+  const actual = await vi.importActual<typeof import('../store/i18n')>('../store/i18n');
+  return { ...actual, t: actual.t };
+});
 
 /** Stub minimal 2d ctx + capture API (jsdom tak punya canvas nyata). */
 function stubCanvas() {
@@ -90,21 +97,21 @@ describe('EsignNaiteiModal — A07 parity (modal-ttd legacy)', () => {
 
   it('renders the 4 signature areas (2 pihak × TTD + Nama) + submit', () => {
     render(<EsignNaiteiModal {...base} />);
-    expect(screen.getByText('ui.esign_docs')).toBeTruthy();
-    expect(screen.getByText('ui.party1')).toBeTruthy();
-    expect(screen.getByText('ui.party2')).toBeTruthy();
-    for (const key of ['ui.sign1', 'ui.name1', 'ui.sign2', 'ui.name2']) {
-      expect(screen.getByText(key)).toBeTruthy();
+    expect(screen.getByText(t('ui.esign_docs'))).toBeTruthy();
+    expect(screen.getByText(t('ui.party1'))).toBeTruthy();
+    expect(screen.getByText(t('ui.party2'))).toBeTruthy();
+    for (const key of [t('ui.sign1'), t('ui.name1'), t('ui.sign2'), t('ui.name2')]) {
+      expect(screen.getByText(t(key))).toBeTruthy();
     }
     // 4 tombol "gambar" + 1 simpan semua.
-    expect(screen.getAllByText('ui.start_draw')).toHaveLength(4);
-    expect(screen.getByText('ui.save_all_docs')).toBeTruthy();
+    expect(screen.getAllByText(t('ui.start_draw'))).toHaveLength(4);
+    expect(screen.getByText(t('ui.save_all_docs'))).toBeTruthy();
   });
 
   it('blocks submit when no area was drawn (toast, no fetch)', () => {
     render(<EsignNaiteiModal {...base} />);
-    fireEvent.click(screen.getByText('ui.save_all_docs'));
-    expect(showToast).toHaveBeenCalledWith('ui.toast_sign_area_required', 'error');
+    fireEvent.click(screen.getByText(t('ui.save_all_docs')));
+    expect(showToast).toHaveBeenCalledWith(t('ui.toast_sign_area_required'), 'error');
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 
@@ -114,24 +121,24 @@ describe('EsignNaiteiModal — A07 parity (modal-ttd legacy)', () => {
     render(<EsignNaiteiModal {...base} onClose={onClose} />);
 
     // Buka area TTD Pihak 1 → layar gambar penuh (canvas + eraser + save).
-    fireEvent.click(screen.getAllByText('ui.start_draw')[0]);
+    fireEvent.click(screen.getAllByText(t('ui.start_draw'))[0]);
     const canvas = document.querySelector('canvas');
     expect(canvas).not.toBeNull();
-    expect(screen.getByText('ui.draw_hint')).toBeTruthy();
+    expect(screen.getByText(t('ui.draw_hint'))).toBeTruthy();
 
     // Save tanpa coretan → error area kosong.
-    fireEvent.click(screen.getByText('esign.save'));
-    expect(showToast).toHaveBeenCalledWith('ui.toast_area_empty', 'error');
+    fireEvent.click(screen.getByText(t('esign.save')));
+    expect(showToast).toHaveBeenCalledWith(t('ui.toast_area_empty'), 'error');
 
     // Simulasikan coretan (pointerdown/move/up) lalu save → kembali ke list dgn pratinjau.
     fireEvent.pointerDown(canvas!, { clientX: 30, clientY: 30, pointerId: 1 });
     fireEvent.pointerMove(canvas!, { clientX: 80, clientY: 60, pointerId: 1 });
     fireEvent.pointerUp(canvas!, { pointerId: 1 });
-    fireEvent.click(screen.getByText('esign.save'));
-    await waitFor(() => expect(document.querySelector('img[alt="Pratinjau"]')).not.toBeNull());
+    fireEvent.click(screen.getByText(t('esign.save')));
+    await waitFor(() => expect(document.querySelector(`img[alt="${t('ui.alt_pratinjau')}"]`)).not.toBeNull());
 
     // Submit → payload kontrak legacy.
-    fireEvent.click(screen.getByText('ui.save_all_docs'));
+    fireEvent.click(screen.getByText(t('ui.save_all_docs')));
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
     const [url, init] = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(url).toBe('/.netlify/functions/simpanDataTtdNaitei');
@@ -141,14 +148,14 @@ describe('EsignNaiteiModal — A07 parity (modal-ttd legacy)', () => {
     expect(body.args[0].wa).toBe('6281111111111');
     expect(body.args[0].ttd1).toContain('data:image/png;base64');
     expect(body.args[0].nama1).toBe('');
-    expect(showToast).toHaveBeenCalledWith('ui.toast_saved_server', 'success');
+    expect(showToast).toHaveBeenCalledWith(t('ui.toast_saved_server'), 'success');
     expect(onClose).toHaveBeenCalled();
   });
 
   it('submit without wa target is blocked (toast, no fetch)', () => {
     render(<EsignNaiteiModal {...base} wa="" />);
-    fireEvent.click(screen.getByText('ui.save_all_docs'));
-    expect(showToast).toHaveBeenCalledWith('ui.toast_target_invalid', 'error');
+    fireEvent.click(screen.getByText(t('ui.save_all_docs')));
+    expect(showToast).toHaveBeenCalledWith(t('ui.toast_target_invalid'), 'error');
     expect(globalThis.fetch).not.toHaveBeenCalled();
   });
 });

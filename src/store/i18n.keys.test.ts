@@ -34,21 +34,22 @@ const NS = [
   'pelamar', 'wa', 'footer',
 ].join('|');
 
+/** Every file under src/ — shared by the coverage scan and the attribute scan. */
+function walk(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir)) {
+    const p = join(dir, entry);
+    if (statSync(p).isDirectory()) out.push(...walk(p));
+    else out.push(p);
+  }
+  return out;
+}
+
 function collectUsed(): Set<string> {
   const used = new Set<string>();
   const tKeyRe = /\bt\(\s*(["'])([^"']+?)\1/g;
   const dataLangRe = /data-lang=["']([^"']+)["']/g;
   const litRe = new RegExp(`["']((?:${NS})\\.[A-Za-z0-9_]+(?:\\.[A-Za-z0-9_]+)*)["']`, 'g');
-
-  const walk = (dir: string): string[] => {
-    const out: string[] = [];
-    for (const entry of readdirSync(dir)) {
-      const p = join(dir, entry);
-      if (statSync(p).isDirectory()) out.push(...walk(p));
-      else out.push(p);
-    }
-    return out;
-  };
 
   for (const file of walk(join(ROOT, 'src'))) {
     // Only source code carries t()/data-lang/label usage — scanning assets
@@ -117,6 +118,71 @@ describe('i18n dictionary coverage', () => {
       'Japanese users would silently see the Indonesian fallback. Add them to src/store/i18n-jp.ts.',
       '',
       ...missing.map((k) => `  - ${k}`),
+    ].join('\n')).toEqual([]);
+  });
+
+  it('leaves no Indonesian copy in raw title/alt/aria-label attributes', () => {
+    // The three checks above only see t(), data-lang and key-shaped literals.
+    // A tooltip written as `title="Cek List Kandidat Terdaftar"` is none of
+    // those, so it stays Indonesian forever and nothing turns red — which is
+    // exactly how the SILVER badge in CandidateDash.tsx survived while the gold
+    // and bronze badges either side of it used t(). Same for the admin row
+    // actions ("Lihat profil/CV kandidat", "Chat WA", "Tandai gagal …").
+    //
+    // Fixing one of these is either t('some.key') (tsx) or adding
+    // data-lang-title / data-lang-aria (astro) — translateDataLang() already
+    // supports both.
+    // `(?<!-)` matters: without it, `data-lang-title="x"` matches as if it were
+    // a raw `title="x"`, and every already-fixed tooltip shows up as a hit.
+    const checks = [
+      { re: /(?<!-)\btitle="([^"{}]+)"/g, optOut: /data-lang-title=/, fix: 'data-lang-title' },
+      { re: /(?<!-)\baria-label="([^"{}]+)"/g, optOut: /data-lang-aria=/, fix: 'data-lang-aria' },
+      { re: /(?<!-)\balt="([^"{}]+)"/g, optOut: /data-lang-alt=/, fix: 't("…")' },
+    ];
+
+    // Curated Indonesian UI tokens. Deliberately NOT a generic word list: brand
+    // and proper names ("Logo ASJ", "WhatsApp", "Instagram", "QR Code",
+    // "Google Maps", "Admin") must never trip this. A noisy gate is a skipped
+    // gate.
+    const ID_TOKENS = [
+      'Cek', 'Kandidat', 'Tandai', 'Segera', 'Lihat', 'Terdaftar', 'Lengkap',
+      'Pratinjau', 'Pamflet', 'Hapus', 'Simpan', 'Batal', 'Kirim', 'Daftar',
+      'Masuk', 'Keluar', 'Gagal', 'Berhasil', 'Lanjut', 'Kembali', 'Unduh',
+      'Tutup', 'Profil', 'kandidat', 'hadir',
+    ];
+
+    const hits: string[] = [];
+    for (const file of walk(join(ROOT, 'src'))) {
+      if (!/\.(tsx?|astro)$/.test(file)) continue;
+      const name = relative(ROOT, file);
+      if (name.includes('test')) continue;
+      if (file === I18N_TS || file === I18N_JP_TS) continue;
+      const lines = readFileSync(file, 'utf-8').split('\n');
+      lines.forEach((line, idx) => {
+        // <BaseLayout title="…"> is the document <title>: server-rendered SEO
+        // metadata. translateDataLang() only runs in the browser, so it cannot
+        // fix these — deliberately out of scope, not a false negative.
+        if (/<BaseLayout/.test(line)) return;
+        for (const { re, optOut, fix } of checks) {
+          // A literal sitting next to its data-lang-* twin is the deliberate
+          // pre-hydration default (same reason Footer.astro inlines
+          // FOOTER_BG_DEFAULT): JS overwrites it on load.
+          if (optOut.test(line)) continue;
+          for (const m of line.matchAll(re)) {
+            if (ID_TOKENS.some((tok) => m[1].includes(tok))) {
+              hits.push(`  - ${name}:${idx + 1}  ${m[0]}   → use ${fix}`);
+            }
+          }
+        }
+      });
+    }
+
+    expect(hits, [
+      'Untranslated Indonesian found inside a raw title/alt/aria-label attribute.',
+      'The dictionary-coverage checks cannot see these. Use t("key") in .tsx, or',
+      'data-lang-title / data-lang-aria in .astro (translateDataLang handles both).',
+      '',
+      ...hits,
     ].join('\n')).toEqual([]);
   });
 });

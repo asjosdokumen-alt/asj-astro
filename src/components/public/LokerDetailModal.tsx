@@ -91,7 +91,7 @@ export default function LokerDetailModal({ job, onClose }: Props) {
         </div>
         <div class="p-5">
           <div class="flex items-start gap-4 mb-6">
-            {pamfletUrl && <img src={pamfletUrl} loading="lazy" decoding="async" title={t('ui.click_zoom')} onClick={() => setZoomOpen(true)} class="w-20 h-28 object-cover rounded-xl border border-slate-600 shadow-lg cursor-pointer hover:scale-105 transition flex-shrink-0" alt="Pamflet" />}
+            {pamfletUrl && <img src={pamfletUrl} loading="lazy" decoding="async" title={t('ui.click_zoom')} onClick={() => setZoomOpen(true)} class="w-20 h-28 object-cover rounded-xl border border-slate-600 shadow-lg cursor-pointer hover:scale-105 transition flex-shrink-0" alt={t('ui.alt_pamflet')} />}
             <div class="flex-1 min-w-0">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>

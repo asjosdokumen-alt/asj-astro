@@ -221,7 +221,7 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa }: Props) {
         {done && sigs[field.key] ? (
           <img
             src={sigs[field.key] as string}
-            alt="Pratinjau"
+            alt={t("ui.alt_pratinjau")}
             decoding="async"
             class="h-12 object-contain mb-2 bg-white rounded p-1"
           />

@@ -242,7 +242,7 @@ export default function TabMail() {
                   </span>
                 </td>
                 <td class="p-4 text-center">
-                  <button disabled class="px-2 py-1 bg-slate-700/40 text-slate-500 rounded text-[10px] font-bold shadow cursor-not-allowed" title="Segera hadir">
+                  <button disabled class="px-2 py-1 bg-slate-700/40 text-slate-500 rounded text-[10px] font-bold shadow cursor-not-allowed" title={t('admin.tt_segera_hadir')}>
                     <Icon name="folder-open" class="mr-1" /> {t('button.view')}
                   </button>
                 </td>
