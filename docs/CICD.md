@@ -339,6 +339,7 @@ Apply the same checks to `develop`, minus the reviewer requirement.
 
 ```bash
 npm run ci:quality                    # ratchet + boundary + full test suite
+npm run verify:md                     # markdown table structure (docs/**)
 npm run test:frontend                 # jsdom suite
 npm run test:backend -- --shard=1/3   # one shard, as CI runs it
 npm run verify:env -- --profile build # env gate
@@ -347,6 +348,15 @@ npm run verify:db:warn                # same, reports without failing
 npm run smoke -- --url http://localhost:4321 --expect "ASJ Portal"
 npm run typecheck:baseline            # re-record type-debt baseline
 ```
+
+`verify:md` (part of `ci:quality`) checks that every markdown table row has the same
+number of cells as its header, and that no code span in a table cell contains a raw
+`|` (it must be `\|`). Both rules exist because of real defects found by hand: a stray
+closing backtick silently collapsed a 4-column row to 2 in `docs/BACKEND_TODO.md`, and
+an unescaped `||` added two phantom cells to a row in `docs/PARITY_CHECKLIST.md`. A
+stray pipe never errors — the row just renders misaligned. The checker's own mutation
+battery lives at `scripts/ci/check-md-tables.mutations.sh` (5 mutations, all must be
+killed; run it from the repo root after changing the checker).
 
 To check the database contract locally:
 

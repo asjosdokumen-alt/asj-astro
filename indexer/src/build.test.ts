@@ -81,7 +81,12 @@ describe('full build', () => {
     // 376 -> 377 (2026-09-13, later): +1 ts — _lib/smoke-test-health.test.ts,
     // which pins the rollback gate's PASS/WARN/FAIL classification (BACKEND_TODO
     // #31). ts 233 -> 234. No tsx/astro/mjs change.
-    expect(r.stats.fileCount).toBe(377); // 234 ts + 80 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
+    // 377 -> 378 (2026-09-13, latest): +1 mjs — scripts/ci/check-md-tables.mjs,
+    // the markdown table structure gate wired into ci:quality. mjs 27 -> 28.
+    // Measured against the tree with the real discoverFiles() path. (The Python
+    // prototype named in the first draft was deleted; it never entered the
+    // indexer inventory because .py is not indexed.)
+    expect(r.stats.fileCount).toBe(378); // 234 ts + 80 tsx + 12 astro + 28 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

@@ -194,7 +194,9 @@ describe('discover', () => {
     // 2026-09-12 (Phase D, data layer): +3 mjs — scripts/ci/gen-schema.mjs
     // (generates the schema contract from the live database), plus the two new
     // gates verify-projections.mjs and verify-rls.mjs. 24 -> 27.
-    expect(count('mjs')).toBe(27); // 11 at design time; e2e + scripts/ci gates added since
+    // 2026-09-13 (latest): +1 mjs — scripts/ci/check-md-tables.mjs, the markdown
+    // table structure gate (wired into ci:quality). 27 -> 28.
+    expect(count('mjs')).toBe(28); // 11 at design time; e2e + scripts/ci gates added since
     expect(count('cjs')).toBe(5);
     // Phase A (2026-09-11): netlify/functions/run-migration.js deleted — the
     // action was already removed from the registry, so the entry point was a
@@ -256,7 +258,8 @@ describe('discover', () => {
     // 376 -> 377 (2026-09-13, later): +1 ts — _lib/smoke-test-health.test.ts. The
     // same +1 as build.test.ts; the indexer inventory counts files on DISK, so
     // adding any test file moves this number.
-    expect(files.length).toBe(377); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 377 -> 378 (2026-09-13, latest): +1 mjs — scripts/ci/check-md-tables.mjs.
+    expect(files.length).toBe(378); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

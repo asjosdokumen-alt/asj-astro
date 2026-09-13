@@ -1,6 +1,11 @@
-# HANDOFF — batas 4 KB env (deploy `6aa4a0bf0044aa0008729bcf`)
+# HANDOFF — batas 4 KB env (deploy `6aa4a0bf0044aa0008729bcf`) — **✅ SELESAI, historis**
 
 Dibuat 2026-09-12 pagi, sebelum berangkat kerja. Lanjut nanti di kantor.
+
+> **Status per 2026-09-13:** masalah 4 KB di dokumen ini **sudah selesai** (site keluar dari Lambda
+> compatibility mode; `verify:entries` melaporkan **0 fungsi mode kompat**, 22 entri root). Bagian
+> penyebab & analisis di bawah tetap berguna sebagai referensi, tapi **jangan dibaca sebagai daftar
+> kerja**. Untuk pekerjaan yang benar-benar tersisa, lihat `docs/BACKEND_TODO.md`.
 
 **Baca ini dulu, lalu `docs/HANDOFF_4KB_ENV_LIMIT.md`.** Tidak ada perubahan kode di commit
 ini — murni catatan supaya analisis tidak diulang.
@@ -144,19 +149,41 @@ Urutan yang sudah disiapkan (dari `docs/PHASE_C_OBSERVABILITY.md` §6):
 5. `curl` token benar + `?detail=1` → harap `200` + report lengkap
 6. Inject kegagalan DB → harap `status:"down"` + HTTP `503`
 
-Yang belum ada dan masih perlu dibuat **Anda** (saya tidak boleh membuat nilainya — akan
-melintasi chat): `HEALTH_TOKEN`, dan keputusan `METRICS_SINK_URL`.
+Yang belum ada dan masih perlu dibuat **Anda**: ~~`HEALTH_TOKEN`~~ — **✅ sudah dipasang sejak lama**
+(terverifikasi 2026-09-13: liveness membalas `detail:"gated"`, artinya env-nya truthy; tanpa token
+`?detail=1` → `401`). Sisa **hanya keputusan `METRICS_SINK_URL`**.
 
 ---
 
 ## Housekeeping yang masih terbuka
 
-- **Revoke token `ghp_qzq70Qy…`** yang Anda tempel di chat pagi ini. Masih aktif sampai
-  Anda revoke. Ini kebocoran ke-3 lewat chat di proyek ini.
-- `origin` masih menunjuk `khoci280-arch/asj-astro` (repo lama). `dev` tertinggal 14 commit.
-- `dev` berhenti di `f250e4b4`; `main` = `198624e`, working tree bersih.
-- 973 test / 110 file, 8 gate hijau — semua hijau, tidak ada yang menangkap masalah ini.
-  Ini persis kelas bug yang tidak terlihat oleh gate: limit platform, bukan limit kode.
+> **Ditinjau ulang 2026-09-13 malam.** Tiga dari empat butir di bawah ternyata **sudah selesai** —
+> dibiarkan tercoret supaya tidak ada yang mengerjakannya lagi.
+
+- **Revoke token `ghp_qzq70Qy…`** yang Anda tempel di chat. **Ini satu-satunya yang masih terbuka** —
+  dan hanya Anda yang bisa (nilainya tidak tersimpan utuh di repo, cuma prefiks terpotong, jadi saya
+  tidak bisa mengujinya). GitHub → Settings → Developer settings → Tokens. Kebocoran ke-3 lewat chat
+  di proyek ini.
+- ~~`origin` masih menunjuk `khoci280-arch/asj-astro`~~ — **SUDAH TIDAK ADA.** `git remote -v` kini
+  hanya menampilkan **`newrepo`** → `asjosdokumen-alt/asj-astro`. Tidak ada `origin` lagi.
+- ~~`dev` tertinggal 14 commit / berhenti di `f250e4b4`~~ — **SUDAH TIDAK ADA.** `git branch -a` hanya
+  menampilkan `main`.
+- ~~`main` = `198624e`~~ — **USANG.** Terukur 2026-09-13 malam: `main` sudah lewat `cd0c2c1`, remote
+  (`newrepo/main`) = **`1adb960`**. Angka di prosa mana pun di repo ini bisa basi; **ukur sendiri**.
+  Catatan alat ukurnya: `git rev-list --count newrepo/main..main` **gagal** (`unknown revision`) karena
+  `newrepo/main` tidak punya tracking ref di repo ini (`git show-ref` hanya memuat `refs/heads/main`).
+  Urutan yang benar:
+  `SHA=$(git ls-remote newrepo refs/heads/main | cut -f1)` lalu `git rev-list --count HEAD --not $SHA`.
+- ~~973 test / 110 file~~ — **USANG.** Terukur 2026-09-13 malam: **1295 tes lulus / 128 file hijau**
+  (`npm test`; 1 file merah = `fcm-server.test.ts` yang diblokir shim safe-delete di sandbox lokal,
+  lulus 9/9 saat dijalankan langsung — bukan regresi). Naik terus; jangan hafal.
+
+**Pelajaran dari baris-baris yang tercoret di atas** (dan ini yang layak diingat): dokumen ini sempat
+menyuruh membereskan `origin`/`dev` yang sudah lama tidak ada, dan menyebut `HEALTH_TOKEN` sebagai
+"belum dibuat" padahal sudah terpasang. **Dokumen status tidak punya cara menandai dirinya basi** —
+jadi setiap angka di sini harus diverifikasi dengan perintahnya sebelum dipakai.
+Ini kelas yang sama dengan `ai_unavailable` dan 4-dari-7 baris matriks degradasi: dokumen menjanjikan
+keadaan yang tidak ada, dan operator yang mempercayainya salah membaca sistem yang sehat.
 
 ---
 
@@ -164,7 +191,8 @@ melintasi chat): `HEALTH_TOKEN`, dan keputusan `METRICS_SINK_URL`.
 
 ```bash
 cd F:/astro
-git log --oneline -3                 # HEAD harus 198624e
+git log --oneline -3                 # cek HEAD apa adanya — JANGAN hafal hash
+git ls-remote newrepo refs/heads/main  # kebenaran remote; bandingkan dengan HEAD
 git status --short                   # harus bersih
 netlify status                       # catatan: cetak "Current site: undefined" (bug CLI)
 ```

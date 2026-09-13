@@ -42,13 +42,30 @@ dibereskan kecuali #26*).
 **Pembaruan 2026-09-13 (malam):** dari ketiga tempat itu, **dua sudah dikosongkan.** #8 punya pemicu;
 #10, #11, #12, #15, #18 selesai — dan **tiga di antaranya ternyata bug nyata, bukan sekadar gap dokumen**
 (guard ekstensi yang tak pernah diport, navigasi offline yang mendarat di halaman salah, bulk delete
-warisan legacy yang menghapus baris bergeser). Yang **benar-benar masih 🟡** tinggal **#16 (realtime)**
-dan **#17 (email)** — keduanya **menunggu keputusan produk**, bukan menunggu tenaga. Sisa lain butuh
-owner/infra (#2–#7, #26–#31).
+warisan legacy yang menghapus baris bergeser). **#31 juga selesai** (gate rollback kini memeriksa
+health). Yang **benar-benar masih 🟡** tinggal **#16 (realtime)** dan **#17 (email)** — keduanya
+**menunggu keputusan produk**, bukan menunggu tenaga. Sisa lain butuh owner/infra (#2–#7, #26–#31):
+**#31 sudah tertutup**, dan **#26 sudah menyusut jadi satu tindakan owner** (revoke token — `origin` dan
+`dev` sudah tidak ada). **Jadi tidak ada lagi pekerjaan backend yang bisa saya kerjakan tanpa keputusan
+Anda.**
+
+> **Catatan kepercayaan angka.** Dua baris di dokumen ini sebelumnya tertinggal jauh dari kenyataan
+> (`#2` bilang remote masih `47c4440`/ahead 23 padahal seluruh sesi sebelumnya sudah tayang; `#26`
+> menyuruh membereskan `origin`/`dev` yang sudah tidak ada). **Setiap angka commit di sini harus
+> diverifikasi dengan perintahnya, bukan dibaca dari prosa** — verifikasi yang benar itu **dua langkah**,
+> karena `newrepo/main` **tidak punya tracking ref** di repo ini (`git show-ref` hanya memuat
+> `refs/heads/main`; objek store rusak, `git fetch` gagal):
+>
+> 1. `git ls-remote newrepo refs/heads/main` → SHA remote yang sebenarnya (ini satu-satunya kebenaran
+>    soal remote, jangan pakai ref lokal);
+> 2. `git rev-list --count HEAD --not <SHA-dari-langkah-1>` → jumlah commit yang belum naik.
+>
+> **`git rev-list --count newrepo/main..main` akan gagal** dengan `unknown revision or path not in the
+> working tree` — ref itu tidak ada. Jangan hafal angkanya juga.
 
 Legenda blokir: 🔴 butuh keputusan/izin owner · 🟠 butuh infrastruktur baru · 🟡 belum dibangun ·
 🔵 dibangun tapi tidak ter-trigger · ⚪ klaim belum diukur · 🟢 prasyarat sudah terpenuhi (sebagian
-jalan; sisanya disebut namanya)
+jalan; sisanya disebut namanya) · ✅ selesai
 
 ---
 
@@ -56,7 +73,7 @@ jalan; sisanya disebut namanya)
 
 | # | Item | Bukti | Blokir |
 |---|---|---|---|
-| **2** | 🔴 **Push `main`.** Remote tetap `47c4440`; lokal **ahead 23** per 2026-09-13 malam (`70a648e`) — angkanya naik tiap commit lokal, **jalankan perintahnya, jangan hafal**. Commit yang belum naik antara lain: `70a648e` (#9 defer P3), `25fe9c5` (#18 PWA offline), `e37647c` (#10 guard ekstensi), `d927cce` (#12 reject composer), `3fdaac4` (#15 bulk delete), `0b46c22` (#11 Excel export), `9f5b675` (audit doc), plus `cb7c3ad` (bug job board 1-baris), `da4b72d` (i18n job values + proxy), `c36d6aa` (preview + Tema/Filter). **Akibatnya: semua perbaikan ini BELUM tayang di `asjastro.netlify.app`** — live masih menyajikan bundle lama | `git rev-list --count newrepo/main..main` | Aturan owner: **jangan push tanpa izin**. Push ke `main` = auto-build + deploy produksi |
+| **2** | 🔴 **Push `main`.** (**Diukur ulang 2026-09-13 malam:** remote sudah **`1adb960`** — seluruh 26 commit dari sesi-sesi sebelumnya **sudah tayang**; yang tertinggal **hanya commit sesi ini** (#31 gate rollback + koreksi dokumen). Baris ini sebelumnya menulis "remote `47c4440`, ahead 23" dan mendaftar 10 commit sebagai belum naik — **semuanya sudah di-push sejak itu**; jangan percaya angka lama, jalankan perintahnya) | `git ls-remote newrepo refs/heads/main` (SHA remote) lalu `git rev-list --count HEAD --not <SHA>` (yang belum naik) — **bukan** `newrepo/main..main`, ref itu tidak ada | Aturan owner: **jangan push tanpa izin**. Push ke `main` = auto-build + deploy produksi |
 
 > **#1 — B06 share token: ✅ SELESAI 2026-09-13, dengan dihapus bukan dimigrasi.** `sys_config` memang
 > tidak punya kolom `config_key`, tapi gate token ternyata **bukan parity legacy** (legacy hanya membaca
@@ -79,7 +96,7 @@ Bagian ini yang paling sering disalahartikan sebagai "selesai". Kodenya ada; **p
 | **4** | 🟠 **Phase E item 20 — load test 10× peak.** Tidak dijalankan, dan sengaja: terhadap produksi itu persis insiden yang Phase B dibangun untuk dibatasi; terhadap localhost angkanya tidak berarti (tanpa CDN, tanpa isolasi function, tanpa pooler, tanpa RTT ke `ap-southeast-1` — padahal RTT = 99,7 % latency sistem ini) | `docs/PHASE_E_DEGRADATION_MATRIX.md` §4 | **Staging deployment + Supabase project terpisah.** `deploy-staging.yml` sudah ada; project-nya belum |
 | **5** | 🟠 **Phase E item 22 — pooler failover drill.** Supavisor shared pooler tidak punya failover yang bisa dipicu operator; drill terdekat = arahkan staging ke koneksi langsung `:5432` dan buktikan sistem **degradasi**, bukan rusak | `docs/PHASE_E_DEGRADATION_MATRIX.md` §4 | Staging yang sama dengan #4 |
 | **6** | 🟠 **Phase B §7.2 — kalibrasi in-flight cap (24/4/3) di bawah beban nyata.** Nilainya masih tebakan; sengaja env-overridable untuk alasan ini | `docs/PHASE_B_LOAD_BOUNDING.md` §7.2 | Staging yang sama dengan #4 |
-| **7** | 🔴 **Alert §7.2 + mulai melacak error budget §7.3.** Empat sinyal (latency/traffic/errors/saturation) dan tiga SLO sudah **ditulis**, belum **dikonfigurasi** di tool apa pun. `docs/PHASE_C_SINK_SETUP.md` adalah panduan dari nol. **Kemajuan 2026-09-13: jalur transportnya sudah ada** — exporter OTLP ke Grafana Cloud (`_lib/otlp.ts`, `GRAFANA_CLOUD_OTLP_ENDPOINT` + `GRAFANA_CLOUD_BASIC_AUTH_HEADER`, lihat `PHASE_C_SINK_SETUP.md` §2b) sudah diimplementasi & ter-test, jadi yang tersisa **bukan kode**: set dua env var itu, lalu tulis A1–A7 sebagai alert rule di Grafana. Sebelum ini tidak ada backend yang bisa menyimpan window, jadi A1–A7 mustahil menyala | `docs/SCALABILITY_RELIABILITY_ARCHITECTURE.md` §7.2–7.3`, `docs/PHASE_C_SINK_SETUP.md` §2b | **Owner-side**: set 2 env var + buat rule di Grafana. Tidak ada pekerjaan kode yang tersisa di sini |
+| **7** | 🔴 **Alert §7.2 + mulai melacak error budget §7.3.** Empat sinyal (latency/traffic/errors/saturation) dan tiga SLO sudah **ditulis**, belum **dikonfigurasi** di tool apa pun. `docs/PHASE_C_SINK_SETUP.md` adalah panduan dari nol. **Kemajuan 2026-09-13: jalur transportnya sudah ada** — exporter OTLP ke Grafana Cloud (`_lib/otlp.ts`, `GRAFANA_CLOUD_OTLP_ENDPOINT` + `GRAFANA_CLOUD_BASIC_AUTH_HEADER`, lihat `PHASE_C_SINK_SETUP.md` §2b) sudah diimplementasi & ter-test, jadi yang tersisa **bukan kode**: set dua env var itu, lalu tulis A1–A7 sebagai alert rule di Grafana. Sebelum ini tidak ada backend yang bisa menyimpan window, jadi A1–A7 mustahil menyala | `docs/SCALABILITY_RELIABILITY_ARCHITECTURE.md` §7.2–7.3, `docs/PHASE_C_SINK_SETUP.md` §2b | **Owner-side**: set 2 env var + buat rule di Grafana. Tidak ada pekerjaan kode yang tersisa di sini |
 
 ---
 
@@ -105,8 +122,8 @@ Kelas ini yang paling licin: handler-nya benar, ter-guard, ter-test — dan tida
 | **13** | ✅ **BUKAN GAP — sengaja tidak dibangun** (diputuskan 2026-09-13). Legacy `js/admin_ops/migration.ts` ternyata **database migration runner**, bukan "Drive": ia memanggil `callAPI('runMigration', {})` dari POST body. Action itu **dihapus dengan sengaja** di repo baru (`surfaces/config.ts:10` — *"schema changes must never be reachable from a POST body"*). Penggantinya **`scripts/migrate.mjs`** (ledger berversi + checksum, dijalankan dari CLI). Menambahkan kembali modal ini = **mengembalikan lubang keamanan**. Sisa 2 key i18n (`admin.db_migration_auto`, `admin.run_migration`) hanya teks tanpa UI | `docs/LEGACY_PARITY_REFERENCE.md:65` | **Tidak ada** — jangan dibangun |
 | **14** | ✅ **SELESAI — TabConfig bukan read-only lagi.** Ia sudah memanggil `api.secure('updateSysConfig', …)` **dua kali** (`TabConfig.tsx:44` untuk options per-config-id, `:51` untuk pengumuman) dengan tombol simpan (`:80`, `:100`) + toast `toast_config_saved`/`toast_announcement_saved`. Ia juga **sudah** memakai `api.secure`, bukan `fetch` mentah. Klaim lama ("105 baris, hanya `getAppData`, tidak ada aksi simpan") **tidak lagi benar** | `src/components/admin/TabConfig.tsx:34,44,51,80,100` | **Tidak ada.** Yang mungkin masih kurang hanyalah kelengkapan *field* settings (Fonnte token, AI model) — tapi mekanisme simpannya sudah ada; jangan bangun ulang |
 | **15** | ✅ **SELESAI 2026-09-13.** UI-nya **sudah ada tapi mati**: `TabMail` merender checkbox + `selected` Set, tapi **tidak ada yang memakai** `selected` ⇒ tak ada tombol (kelas "lubang tak terlihat"). Backend baru **`hapusFormTerpilih`** di `contexts/applications/service.ts:220`, ter-wire lewat `surfaces/mail.ts:11` → `registry.ts:59` → `_lib/handlers.ts:269` → `apiEndpoint.ts:37` → `TabMail.tsx:98`. Legacy memanggil `deleteForm` per baris dari klien dengan **rowIndex** ⇒ (a) N round-trip, (b) **index bergeser**: hapus [2,3] menghapus baris 2 & 4, satu pilihan lolos, **tanpa error**; handler menyelesaikan **semua index→id dulu**. Bug yang ditemukan tes sendiri: `Number(null)===0` & `Number('')===0` ⇒ `null` di daftar pilihan diam-diam = "hapus baris 0"; filter diperketat. Batas `MAX_BULK_DELETE = 100` | `3fdaac4`, `netlify/functions/contexts/applications/service.ts:220`, `src/components/admin/TabMail.tsx:98` | **Tidak ada** |
-| **16** | 🟡 **Realtime.** Tidak ada subscription Supabase realtime di `src/` sama sekali | `grep -rn "realtime\|channel(" src/` → kosong | Belum dibangun. **Keputusan produk** — lihat §8 |
-| **17** | 🟡 **Email notification.** Tidak ada modul email apa pun (tidak ada nodemailer/sendgrid/resend/smtp) | `grep -rln "nodemailer\|sendgrid\|resend\|smtp" netlify src` → kosong | Belum dibangun. **Keputusan produk dulu** — WA sudah kanal utama; jangan dikerjakan sebelum owner memutuskan email masih dibutuhkan |
+| **16** | 🟡 **Realtime.** Tidak ada subscription Supabase realtime di `src/` sama sekali | `grep -rn "realtime·channel(" src/` → kosong | Belum dibangun. **Keputusan produk** — lihat §8 |
+| **17** | 🟡 **Email notification.** Tidak ada modul email apa pun (tidak ada nodemailer/sendgrid/resend/smtp) | `grep -rln "nodemailer·sendgrid·resend·smtp" netlify src` → kosong | Belum dibangun. **Keputusan produk dulu** — WA sudah kanal utama; jangan dikerjakan sebelum owner memutuskan email masih dibutuhkan |
 | **18** | ✅ **SELESAI 2026-09-13 — audit PWA offline, dan menemukan bug nyata.** Fallback navigasi offline SW = `cache.match(url.pathname)`, tapi manifest hanya menyimpan `/apply/index.html` sementara app menaut ke **`/apply`** (tanpa slash) dan Netlify menyajikan `/apply/` ⇒ **keduanya MISS** ⇒ dilayani `/index.html` = **landing page**. Offline, klik "AI CV"/"Master Form" mendarat di homepage tanpa penjelasan padahal HTML-nya ada di cache. `dirRoutes` di `scripts/build-sw-manifest.mjs:96-103` ikut mem-precache **bentuk `/x/` dan `/x`** + ikut content hash; precache **63 → 76** URL. `src/lib/swOffline.test.ts` menguji **`dist/sw.js`** (artefak yang benar-benar dilayani), bukan source, dan skip sendiri kalau `dist/` tidak ada | `25fe9c5`, `scripts/build-sw-manifest.mjs:96-103`, `src/lib/swOffline.test.ts` | **Tidak ada** |
 | **19** | ✅ **SELESAI — TabJadwal & TabMail sudah memakai `api.secure`.** Klaim lama ("`getEndpoint(...)` + `sessionToken` manual, melewati penanganan sesi-invalid") **tidak lagi benar**: `grep -c getEndpoint` = **0** di kedua file. `TabJadwal` → `api.secure('getAppData'/'simpanJadwalBaru'/'hapusJadwal')`; `TabMail` → `api.secure(action, [id])` lewat helper `act()`. Pola B02 sudah tersebar | `src/components/admin/TabJadwal.tsx:6,27,37`, `src/components/admin/TabMail.tsx:15,53` | **Tidak ada** |
 
@@ -118,6 +135,13 @@ Bukan kosmetik: repo ini sudah dua kali kena kelas bug "dokumen menjanjikan peri
 (`ai_unavailable`, dan sebelum itu 4 dari 7 baris matriks degradasi). Menjaga daftar ini bersih adalah
 bagian dari pekerjaan, bukan hiasan.
 
+**Konvensi sel (penting kalau Anda menyunting tabel di file ini):** sel tabel **tidak boleh** memuat
+tanda pipe mentah — satu `|` ekstra menambah kolom secara diam-diam dan barisnya pecah tanpa error.
+Untuk perintah `grep` berlatar `\|` (alternasi BRE), tulis pemisah alternasi sebagai `·`, **jangan**
+`\|`: di dalam *inline code span* Markdown, backslash **tidak** di-escape, jadi `\|` tampil apa adanya
+sebagai garis miring terbalik di layar. Aturan ini muncul karena baris #26 di bawah dulu ditulis
+dengan sel bukti terpisah padahal tabelnya cuma 2 kolom.
+
 | # | Status & masalah |
 |---|---|
 | **20** | ✅ **SELESAI 2026-09-13.** `docs/PARITY_CHECKLIST.md` B06 + C06 — B06 mencatat "gate token DIBATALKAN"; C06 kini bertanda `♻️ 2026-09-13 (gate token dibatalkan)`, tidak lagi mengklaim token per-job aktif |
@@ -126,7 +150,7 @@ bagian dari pekerjaan, bukan hiasan.
 | **23** | ✅ **SELESAI.** `TODO.md` **sudah dirapikan 2026-09-13** — dibuka dengan "Pekerjaan BACKEND ada di satu tempat: `docs/BACKEND_TODO.md`"; klaim "~80 % fitur / ~15 fitur hilang" sudah dihapus |
 | **24** | ✅ **SELESAI 2026-09-13.** `docs/SCALABILITY_RELIABILITY_ARCHITECTURE.md` §11 butir 5 **dan** tabel S5 (`:38`) dikoreksi. Baris S5 bertahan berhari-hari sebagai "Remaining — gated on deploy verification" **setelah** pekerjaannya selesai — langkah *verifikasi deploy* dikira sama dengan *pekerjaannya*. Bukti: `node scripts/ci/verify-function-entries.mjs --list` → 22 entri, semua mengekspor handler, **"no Lambda-compat entries"** |
 | **25** | ✅ **SELESAI 2026-09-13.** Header `docs/HANDOFF_4KB_ENV_LIMIT.md` diubah dari "terdiagnosis, belum diperbaiki" → **"SELESAI — keluar dari Lambda compatibility mode"** (deploy `6aa57207` ready, 0 fungsi mode kompat) |
-| **26** | ⚠️ **MASIH TERBUKA — sisanya cuma di `HANDOFF.md`.** (a) **revoke token `ghp_qzq70Qy…`** — masih aktif, kebocoran token ke-3 di proyek ini; (b) `origin` masih menunjuk repo lama `khoci280-arch/asj-astro` (yang aktif = remote **`newrepo`** = `asjosdokumen-alt/asj-astro`); (c) branch `dev` tertinggal 14 commit. **(a) di GitHub & (b) `git remote set-url` — keduanya tanpa build Netlify** |
+| **26** | 🟡 **SEBAGIAN BESAR SUDAH SELESAI — sisanya cuma revoke token (keputusan owner).** *(Diverifikasi ulang 2026-09-13 malam.)* (a) **revoke `ghp_qzq70Qy…`** — **masih terbuka**: kebocoran token ke-3 di proyek ini, dan **saya tidak bisa mengerjakannya** (hanya Anda yang punya akses GitHub; nilainya pun tidak tersimpan utuh di repo, hanya prefiks terpotong, jadi saya juga tidak bisa mengujinya). Kerjakan di GitHub → Settings → Developer settings → Tokens. (b) ~~`origin` menunjuk repo lama~~ — **SUDAH TIDAK TERJADI**: `git remote -v` kini **hanya menampilkan `newrepo`** (`asjosdokumen-alt/asj-astro`); `origin` sudah dihapus. (c) ~~branch `dev` tertinggal 14 commit~~ — **SUDAH TIDAK ADA**: `git branch -a` hanya `main`. **Jadi sisa #26 = satu tindakan owner, nol pekerjaan kode.** *Bukti (dipindah dari kolom lama agar tabel ini tetap 2 kolom — versi sebelumnya menuliskan `git remote -v`, `git branch -a`, dan `grep -o "ghp_…"` di baris yang sama sehingga terbaca sebagai baris 5 kolom, bukan 2):* `git remote -v` → hanya `newrepo` · `git branch -a` → hanya `main` · `grep -o "ghp_[A-Za-z0-9]\{6\}" HANDOFF.md` → prefiks saja. **Owner**: revoke token di GitHub. Tidak butuh build Netlify |
 
 ---
 
@@ -137,7 +161,7 @@ bagian dari pekerjaan, bukan hiasan.
 | **27** | ✅ **SELESAI 2026-09-13.** `HEALTH_TOKEN` terpasang; **kedua env var Grafana sudah di-set** di site astro (terverifikasi lewat API: 24 env var, scope `builds,functions,post_processing,runtime`), dan **kredensialnya diuji langsung ke gateway → HTTP 200** (nol build-minute). Exporter-nya juga sudah tayang | **Sisa dua hal kecil, keduanya owner-side:** (a) ⚠️ `GRAFANA_CLOUD_BASIC_AUTH_HEADER` tersimpan **TIDAK sebagai secret** (API mengembalikan nilainya utuh) — sebaiknya di-set ulang `--secret`; (b) tulis A1–A7 sebagai alert rule (itu #7) |
 | **28** | Rotasi `SESSION_SECRET` bila sudah dipakai di produksi | Dari `TODO.md`; **belum pernah dikonfirmasi**. Kode tidak punya fallback ke password admin (S3 fix), jadi nilainya kritis |
 | **29** | Ukur cold start function vs target < 3 s | Belum pernah diukur; tidak ada gate-nya |
-| **30** | Revoke `ghp_qzq70Qy…`, bereskan `origin`/`dev` | Kebocoran token ke-3 lewat chat di proyek ini (`HANDOFF.md`) |
+| **30** | Revoke `ghp_qzq70Qy…` (**satu-satunya sisa**; `origin` & `dev` sudah dibereskan — lihat #26) | Kebocoran token ke-3 lewat chat di proyek ini (`HANDOFF.md`). Hanya owner yang bisa — nilainya tidak ada utuh di repo |
 
 ---
 
@@ -204,12 +228,15 @@ Diringkas supaya daftar di atas tidak diragukan lagi.
 
 1. ~~**#1** — putuskan migrasi 013.~~ **✅ ditutup** — tidak ada blocker migrasi.
 2. ~~**#20–#23** — koreksi empat dokumen yang berbohong.~~ **✅ selesai 2026-09-13**, bersama #24 dan #25.
-   Sisa doc-hygiene hanya **#26** (revoke token + rapikan `origin`/`dev`) — bisa tanpa build Netlify.
+   Sisa doc-hygiene **hanya #26**, dan **sudah menyusut jadi satu tindakan owner**: revoke token.
+   `origin` **sudah tidak ada** (`git remote -v` → hanya `newrepo`) dan branch `dev` **sudah tidak ada**
+   (`git branch -a` → hanya `main`) — dua klaim di baris lama itu sudah usang.
 3. **#8 — ✅ selesai 2026-09-13.** Cron `agenda-reminders` (10 menit) + bypass `internal: true` pada
    konteks. Pemicunya sudah ada; yang tersisa hanya data (`database_schedule` masih 0 baris, jadi
    cron-nya benar-benar mengirim nol sampai ada jadwal dibuat — itu perilaku yang diharapkan).
-4. **#2 — push `main`.** Sebelum ini, **semua perbaikan (i18n job values, bug 1-baris job board, proxy
-   preview) tidak tayang di produksi**. Push = auto-build + deploy. **Butuh izin owner.**
+4. **#2 — push `main`.** **Diukur ulang:** yang tertinggal **hanya commit sesi ini** (#31 gate rollback +
+   koreksi dokumen) — seluruh perbaikan sesi sebelumnya **sudah tayang** (`1adb960`). Push = auto-build + deploy.
+   **Butuh izin owner.**
 5. ~~**#11 Export Excel → #15 Bulk operations → #12/#13/#18**~~ **✅ SEMUA SELESAI 2026-09-13 malam**
    (#10, #11, #12, #15, #18, #9). Dikerjakan & diverifikasi 100% lokal, **nol token Netlify**.
 6. **#3 + #27 + #7** — jalankan gate Phase C. `HEALTH_TOKEN` **sudah ada** dan langkah 3–4 §6 sudah

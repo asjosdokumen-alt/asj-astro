@@ -352,7 +352,7 @@ reported from the same data structure as everything else, with one extra rule th
 | `no-client→server` | `src/**` must not import `netlify/functions/**` (server-only code, service-role keys) |
 | `no-server→client` | `netlify/functions/**` must not import `src/**` (Preact/Astro runtime) |
 | `shared-is-pure` | `shared/**` imports nothing from either root — verified true today for `shared/wa-rules.ts` |
-| `no-deep-context` | a context may import its own `./service|./repository|./download` and `_lib/**`, but not another context's internals — go through that context's `index.ts` |
+| `no-deep-context` | a context may import its own `./service`/`./repository`/`./download` and `_lib/**`, but not another context's internals — go through that context's `index.ts` |
 | `no-circular` | block new SCCs among `netlify/functions/contexts/**` |
 
 As shipped (2026-09-03, row 8): violations are exposed as `GET /violations` and
