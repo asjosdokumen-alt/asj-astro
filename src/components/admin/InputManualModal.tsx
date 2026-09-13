@@ -186,40 +186,40 @@ export default function InputManualModal() {
           <form onSubmit={handleSubmit} class="space-y-4">
             {/* Search existing candidate */}
             <div class="bg-sky-900/20 p-3 rounded-xl border border-sky-500/30">
-              <label class="block text-xs font-bold text-sky-400 mb-1">CARI KANDIDAT TERDAFTAR (Opsional)</label>
+              <label class="block text-xs font-bold text-sky-400 mb-1">{t("admin.manual_cari_title")}</label>
               <input type="text" placeholder={t("input.placeholder_auto")}
                 class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" />
               <p class="text-[9px] text-slate-400 mt-1">Jika dipilih, dokumen lama kandidat akan dipertahankan.</p>
             </div>
 
             {/* Basic info */}
-            <div><label class="block text-xs font-bold text-slate-400 mb-1">NAMA LENGKAP</label>
+            <div><label class="block text-xs font-bold text-slate-400 mb-1">{t("admin.manual_nama")}</label>
               <input type="text" value={nama} onInput={(e) => setNama((e.target as HTMLInputElement).value)}
                 required class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
-            <div><label class="block text-xs font-bold text-slate-400 mb-1">NO WHATSAPP</label>
+            <div><label class="block text-xs font-bold text-slate-400 mb-1">{t("admin.manual_wa")}</label>
               <input type="tel" value={wa} onInput={(e) => setWa((e.target as HTMLInputElement).value)}
                 required placeholder="08..." class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
-            <div><label class="block text-xs font-bold text-slate-400 mb-1">JOB DILAMAR (KODE)</label>
+            <div><label class="block text-xs font-bold text-slate-400 mb-1">{t("admin.manual_job")}</label>
               <input type="text" value={loker} onInput={(e) => setLoker((e.target as HTMLInputElement).value)}
-                placeholder="UMUM atau Ketik Kode" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
+                placeholder={t("admin.ph_umum_kode")} class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
 
             {/* Physical data */}
             <div class="grid grid-cols-2 gap-3">
-              <div><label class="block text-xs font-bold text-slate-400 mb-1">Gender</label>
+              <div><label class="block text-xs font-bold text-slate-400 mb-1">{t("admin.edit_gender")}</label>
                 <select value={gender} onChange={(e) => setGender((e.target as HTMLSelectElement).value)}
                   class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition">
-                  <option value="">-</option><option value="LAKI-LAKI">LAKI-LAKI</option><option value="PEREMPUAN">PEREMPUAN</option>
+                  <option value="">-</option><option value="LAKI-LAKI">LAKI-LAKI</option><option value="PEREMPUAN">{t("admin.manual_perempuan")}</option>
                 </select></div>
               <div><label class="block text-xs font-bold text-slate-400 mb-1">Usia</label>
                 <input type="number" value={usia} onInput={(e) => setUsia((e.target as HTMLInputElement).value)}
                   min="15" max="60" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
-              <div><label class="block text-xs font-bold text-slate-400 mb-1">Tinggi (CM)</label>
+              <div><label class="block text-xs font-bold text-slate-400 mb-1">{t("admin.manual_tinggi")}</label>
                 <input type="number" value={tinggi} onInput={(e) => setTinggi((e.target as HTMLInputElement).value)}
                   min="100" max="250" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
-              <div><label class="block text-xs font-bold text-slate-400 mb-1">Berat (KG)</label>
+              <div><label class="block text-xs font-bold text-slate-400 mb-1">{t("admin.manual_berat")}</label>
                 <input type="number" value={berat} onInput={(e) => setBerat((e.target as HTMLInputElement).value)}
                   min="30" max="200" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
-              <div class="col-span-2"><label class="block text-xs font-bold text-slate-400 mb-1">PENDIDIKAN</label>
+              <div class="col-span-2"><label class="block text-xs font-bold text-slate-400 mb-1">{t("admin.manual_pendidikan")}</label>
                 <select value={pendidikan} onChange={(e) => setPendidikan((e.target as HTMLSelectElement).value)}
                   class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition">
                   <option value="">-</option><option value="SMA">SMA</option><option value="SMK">SMK</option><option value="MA">MA</option><option value="D3">D3</option><option value="S1">S1</option>
@@ -228,19 +228,19 @@ export default function InputManualModal() {
 
             {/* File uploads */}
             <div class="p-4 bg-sky-900/20 border border-sky-500/30 rounded-xl space-y-3">
-              <div><label class="block text-xs font-bold text-sky-400 mb-1">PAS PHOTO (JPG/PNG)</label>
+              <div><label class="block text-xs font-bold text-sky-400 mb-1">{t("admin.manual_pas")}</label>
                 <input type="file" accept="image/*" onChange={(e) => setPhoto((e.target as HTMLInputElement).files?.[0] || null)}
                   class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
                 {photo && <span class="block mt-1 text-xs font-bold text-emerald-400">{photo.name}</span>}</div>
-              <div><label class="block text-xs font-bold text-sky-400 mb-1">CV / RIREKISHO (PDF/Excel/Word)</label>
+              <div><label class="block text-xs font-bold text-sky-400 mb-1">{t("admin.manual_cv")}</label>
                 <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png" onChange={(e) => setCv((e.target as HTMLInputElement).files?.[0] || null)}
                   class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
                 {cv && <span class="block mt-1 text-xs font-bold text-emerald-400">{cv.name}</span>}</div>
-              <div><label class="block text-xs font-bold text-sky-400 mb-1">JFT (PDF)</label>
+              <div><label class="block text-xs font-bold text-sky-400 mb-1">{t("admin.manual_jft_pdf")}</label>
                 <input type="file" accept=".pdf" onChange={(e) => setJft((e.target as HTMLInputElement).files?.[0] || null)}
                   class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
                 {jft && <span class="block mt-1 text-xs font-bold text-emerald-400">{jft.name}</span>}</div>
-              <div><label class="block text-xs font-bold text-sky-400 mb-1">SSW (PDF)</label>
+              <div><label class="block text-xs font-bold text-sky-400 mb-1">{t("admin.manual_ssw_pdf")}</label>
                 <input type="file" accept=".pdf" onChange={(e) => setSsw((e.target as HTMLInputElement).files?.[0] || null)}
                   class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
                 {ssw && <span class="block mt-1 text-xs font-bold text-emerald-400">{ssw.name}</span>}</div>
@@ -250,8 +250,8 @@ export default function InputManualModal() {
             <div class="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-xl space-y-2">
               <label class="block text-xs font-bold text-emerald-400 mb-2"><Icon name="folder-plus" class="mr-1" /> UPLOAD DOKUMEN LAINNYA (Opsional)</label>
               <div class="flex gap-2 items-center text-[10px] font-bold text-slate-400 px-1">
-                <span class="w-40">JENIS DOKUMEN</span>
-                <span class="flex-1">FILE (PDF/Gambar)</span>
+                <span class="w-40">{t("admin.manual_jenis_doc")}</span>
+                <span class="flex-1">{t("admin.manual_file")}</span>
                 <span class="w-8 text-center"></span>
               </div>
               {extraDocs.map((d, i) => (

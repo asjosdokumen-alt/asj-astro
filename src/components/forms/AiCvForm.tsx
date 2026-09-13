@@ -593,10 +593,10 @@ function TextAreaPair({ label, idId, idJp, valueId, valueJp, onChange }: {
       <div class="grid grid-cols-2 gap-2">
         <textarea value={valueId} rows={2}
           onInput={(e) => onChange(idId, (e.target as HTMLTextAreaElement).value)}
-          class="w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white outline-none resize-none" placeholder="ID..." />
+          class="w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white outline-none resize-none" placeholder={t("ui.ph_id")} />
         <textarea value={valueJp} rows={2}
           onInput={(e) => onChange(idJp, (e.target as HTMLTextAreaElement).value)}
-          class="w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-purple-300 font-bold outline-none resize-none" placeholder="JP..." />
+          class="w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-purple-300 font-bold outline-none resize-none" placeholder={t("ui.ph_jp")} />
       </div>
     </div>
   );

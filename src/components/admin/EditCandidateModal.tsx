@@ -5,6 +5,7 @@ import { getEndpoint } from '../../lib/apiEndpoint';
 import { authStore } from '../../store/authReactive';
 import { showToast } from '../Toast';
 import { uploadToCloudinary } from '../../lib/cloudinary';
+import { t } from '../../store/i18n';
 
 interface Props {
   candidate: {
@@ -229,7 +230,7 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
         <div class="space-y-3">
           {/* Gender */}
           <div>
-            <label class="text-[10px] text-slate-500 uppercase font-bold">Gender</label>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_gender")}</label>
             <select value={form.gender} onChange={e => setField('gender', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
               {GENDER_OPTIONS.map(g => <option key={g} value={g}>{g || '- Pilih -'}</option>)}
             </select>
@@ -242,11 +243,11 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
               <input type="number" value={form.usia} onInput={e => setField('usia', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">TB (cm)</label>
+              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_tb")}</label>
               <input type="number" value={form.tb} onInput={e => setField('tb', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">BB (kg)</label>
+              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_bb")}</label>
               <input type="number" value={form.bb} onInput={e => setField('bb', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
           </div>
@@ -254,18 +255,18 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
           {/* Tempat Lahir + Tgl Lahir */}
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">Tempat Lahir</label>
+              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_tempat_lahir")}</label>
               <input type="text" value={form.tempatLahir} onInput={e => setField('tempatLahir', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">Tanggal Lahir</label>
+              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_tgl_lahir")}</label>
               <input type="date" value={form.tglLahir} onInput={e => setField('tglLahir', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
           </div>
 
           {/* Pendidikan */}
           <div>
-            <label class="text-[10px] text-slate-500 uppercase font-bold">Pendidikan</label>
+            <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_pendidikan")}</label>
             <select value={form.pendidikan} onChange={e => setField('pendidikan', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
               {PENDIDIKAN_OPTIONS.map(p => <option key={p} value={p}>{p || '- Pilih -'}</option>)}
             </select>
@@ -274,11 +275,11 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
           {/* JFT + SSW */}
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">JFT / JFJ</label>
+              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_jft")}</label>
               <input type="text" value={form.jftText} onInput={e => setField('jftText', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">SSW / Bidang</label>
+              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_ssw")}</label>
               <input type="text" value={form.sswText} onInput={e => setField('sswText', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
           </div>
@@ -286,13 +287,13 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
           {/* Tahapan + Status */}
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">Tahapan</label>
+              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_tahapan")}</label>
               <select value={form.tahapan} onChange={e => setField('tahapan', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
                 {TAHAPAN_OPTIONS.map(t => <option key={t} value={t}>{t || '- Pilih -'}</option>)}
               </select>
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">Status</label>
+              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_status")}</label>
               <select value={form.status} onChange={e => setField('status', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s || '- Pilih -'}</option>)}
               </select>
@@ -300,8 +301,8 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
           </div>
           {/* Catatan External (legacy: textarea super-edit = catatanExt) */}
           <div>
-            <label class="text-[10px] text-slate-500 uppercase font-bold">Catatan External (untuk kandidat)</label>
-            <textarea value={form.catatanExt} onInput={e => setField('catatanExt', (e.target as HTMLTextAreaElement).value)} rows={3} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500 resize-none" placeholder="Feedback/catatan untuk kandidat..." />
+            <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_catatan_ext")}</label>
+            <textarea value={form.catatanExt} onInput={e => setField('catatanExt', (e.target as HTMLTextAreaElement).value)} rows={3} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500 resize-none" placeholder={t("admin.ph_feedback")} />
           </div>
 
           {/* Document Upload */}

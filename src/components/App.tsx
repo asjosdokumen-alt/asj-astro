@@ -9,6 +9,7 @@ import { useStore } from '@nanostores/preact';
 import { authStore, logout } from '../store/authReactive';
 import { initializeAuthListener, logoutSupabase } from '../store/userStore';
 import { langStore, toggleLang, t, translateDataLang, jpReady } from '../store/i18n';
+import { bannerStore } from '../store/theme';
 
 // ─── Named Constants ───
 const Z_INDEX = { OVERLAY: 35, NAV: 40, HAMBURGER: 30 } as const;
@@ -49,22 +50,34 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
   const [showCekSiswa, setShowCekSiswa] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => { setHydrated(true); }, []);
-  // Theme backgrounds
+  // Theme backgrounds.
+  //
+  // SAKURA points at `sakra_banner.webp` — spelled without the "u" — because that
+  // is the object's REAL name in the bucket. Verified 2026-09-13 by fetching it:
+  // `sakra_banner.webp` returns 200 / image/webp / 112,858 B, while the
+  // correctly-spelled `sakura_banner.webp` returns 404 NoSuchKey. The typo is in
+  // the stored filename, not in this string; "fixing" it here breaks the banner.
+  // The footer's `sakura_footer.webp` IS spelled correctly, so the two differ.
   const HEADER_BGS: Record<string, string> = {
     SAKURA: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/sakra_banner.webp',
     TOKYO: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_banner.jpg',
-    INTER_VIP: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_banner.jpg'
+    INTER_VIP: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/dark_tokyo_banner.webp'
   };
-  const FOOTER_BGS: Record<string, string> = {
-    SAKURA: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/sakura_footer.webp',
-    TOKYO: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_footer.jpg',
-    INTER_VIP: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_footer.jpg'
-  };
-  const getTheme = () => { try { return localStorage.getItem('asj_theme') || 'TOKYO'; } catch { return 'TOKYO'; } };
-  const [headerBg, setHeaderBg] = useState(() => HEADER_BGS[getTheme()] || HEADER_BGS.TOKYO);
+  // The footer's copy of this map lives in Footer.astro, which is where the
+  // footer actually renders. A FOOTER_BGS map used to sit right here and was
+  // read by nothing, while Footer.astro hardcoded tokyo_footer.jpg — so light
+  // mode moved the header to SAKURA and left the footer on TOKYO.
+  const [headerBg, setHeaderBg] = useState(
+    () => HEADER_BGS[bannerStore.get()] || HEADER_BGS.TOKYO
+  );
 
   useEffect(() => {
-    const onThemeChange = () => { const t = getTheme(); setHeaderBg(HEADER_BGS[t] || HEADER_BGS.TOKYO); };
+    // Read the store, not localStorage: `bannerStore` is the single source of
+    // truth and defaults to TOKYO in the same way this component does. Reading
+    // the raw key meant a banner a user had never set looked like an explicit
+    // "TOKYO" pick, and the two could disagree mid-toggle.
+    const onThemeChange = () => setHeaderBg(HEADER_BGS[bannerStore.get()] || HEADER_BGS.TOKYO);
+    onThemeChange();
     window.addEventListener('asj-theme-change', onThemeChange);
     return () => window.removeEventListener('asj-theme-change', onThemeChange);
   }, []);

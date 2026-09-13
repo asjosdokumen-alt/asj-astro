@@ -90,7 +90,11 @@ describe('full build', () => {
     // and +1 ts (netlify/functions/_lib/cold-start-gate.test.ts) — the cold-start
     // latency gate and its test (BACKEND_TODO #29). Its companion
     // cold-start-gate.mutations.sh is NOT counted: .sh is not an indexed extension.
-    expect(r.stats.fileCount).toBe(380); // 235 ts + 80 tsx + 12 astro + 29 mjs + 5 cjs + 19 js
+    // 380 -> 381 (2026-09-13, latest): +1 ts — src/store/theme.test.ts, which
+    // pins the banner/theme coupling fixed this session (the unconditional
+    // bannerStore.set() in the theme subscriber made setBanner() a no-op).
+    // ts 235 -> 236. No tsx/astro/mjs change.
+    expect(r.stats.fileCount).toBe(381); // 236 ts + 80 tsx + 12 astro + 29 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

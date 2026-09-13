@@ -176,7 +176,7 @@ export function buildKertasA4(p: Record<string, any>) {
   const rs11 = (txt: string) => "<td colspan=\"3\" rowspan=\"11\" style=\"padding:0;vertical-align:top;\">"+txt+"</td>";
   let h = raw("<style>"+CSS+"</style>");
   h+=raw("<div style=\"text-align:center;font-weight:bold;font-size:22px;letter-spacing:2px;\">実習生経歴書</div>");
-  h+=raw("<div style=\"text-align:center;font-weight:bold;font-size:18px;margin-bottom:2px;\">DAFTAR RIWAYAT HIDUP</div>");
+  h+=raw("<div style=\"text-align:center;font-weight:bold;font-size:18px;margin-bottom:2px;\">履歴書 / DAFTAR RIWAYAT HIDUP</div>");
   h+=raw("<div style=\"text-align:right;font-size:10px;font-style:italic;margin-bottom:2px;\">Ver.2025</div>");
   h+=raw("<table class=\"cv-excel\"><colgroup><col class=\"col-1\"><col class=\"col-2\"><col class=\"col-3\"><col class=\"col-4\"><col class=\"col-5\"><col class=\"col-6\"><col class=\"col-7\"></colgroup>");
   // Row 1: Photo + Nomor + Gender

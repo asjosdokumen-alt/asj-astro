@@ -293,7 +293,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
                 value={form.syarat}
                 onInput={(e) => upd('syarat', (e.target as HTMLTextAreaElement).value)}
                 class={ic + ' resize-none h-16'}
-                placeholder="Usia 18-30, Minimal SMA..."
+                placeholder={t("master.ph_usia_sma")}
               />
             </div>
             <div class="md:col-span-2">
@@ -302,7 +302,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
                 value={form.keterangan}
                 onInput={(e) => upd('keterangan', (e.target as HTMLTextAreaElement).value)}
                 class={ic + ' resize-none h-16'}
-                placeholder="Keterangan publik..."
+                placeholder={t("admin.contoh_keterangan")}
               />
             </div>
           </div>

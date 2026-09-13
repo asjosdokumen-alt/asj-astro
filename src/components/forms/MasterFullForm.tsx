@@ -280,8 +280,8 @@ export default function MasterFullForm() {
         <div class="absolute inset-0 bg-gradient-to-b from-black/25 to-[#020617]"></div>
         <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-full z-10">
           <img src="/assets/logo.png" class="w-20 h-20 rounded-full mx-auto shadow-[0_10px_25px_rgba(0,0,0,.5)]" alt="Logo ASJ" />
-          <div class="text-2xl font-black mt-2 uppercase" style={{ color: '#38bdf8' }}>ASJ DOSSIER</div>
-          <div class="text-[11px] mt-1" style={{ color: '#cbd5e1', letterSpacing: 2 }}>MASTER DATABASE SYSTEM</div>
+          <div class="text-2xl font-black mt-2 uppercase" style={{ color: '#38bdf8' }}>{t("master.form_brand")}</div>
+          <div class="text-[11px] mt-1" style={{ color: '#cbd5e1', letterSpacing: 2 }}>{t("master.form_sub")}</div>
         </div>
         <button onClick={() => toggleLang()}
           class="absolute top-3 right-3 z-10 px-3 py-1.5 bg-sky-600/80 hover:bg-sky-500 text-white rounded-full text-[11px] font-bold shadow-lg border border-sky-400/40 transition">
@@ -316,7 +316,7 @@ export default function MasterFullForm() {
               <div class="bg-sky-900/20 border border-sky-500/30 p-3 rounded-xl mb-4 text-xs text-sky-400 font-bold">
                 <Icon name="info-circle" class="mr-1" /> {t("form.connected_wa")}: <span>{data.wa || gateWa}</span>
               </div>
-              <div class="section-title">Identitas Dasar</div>
+              <div class="section-title">{t("master.section_identitas")}</div>
               <F label={t("form.mf_nama")} k="nama" />
               <div class="grid grid-cols-2 gap-3">
                 <F label={t("form.mf_furigana")} k="furigana" ph={t("form.mf_ph_teks_jepang")} twoCol />
@@ -366,7 +366,7 @@ export default function MasterFullForm() {
           {/* ═══ STEP 2: MEDIS & WAWANCARA ═══ */}
           {step === 2 && (
             <div class="animate-[fadeIn_.4s_ease]">
-              <div class="section-title">Catatan Medis</div>
+              <div class="section-title">{t("master.section_medis")}</div>
               <div class="grid grid-cols-2 gap-3">
                 <F label={t("form.mf_mata_kiri")} k="mataKiri" ph={t("form.mf_ph_visus")} twoCol />
                 <F label={t("form.mf_mata_kanan")} k="mataKanan" ph={t("form.mf_ph_visus")} twoCol />
@@ -417,25 +417,25 @@ export default function MasterFullForm() {
                     {eduList.length > 1 && <button onClick={() => setEduList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><Icon name="trash" class="mr-1" />Hapus</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
-                    <div class="mb-3"><label class="label">Jenjang</label>
+                    <div class="mb-3"><label class="label">{t("master.edu_jenjang")}</label>
                       <select class="input" value={edu.jenjang} onChange={(e) => { const v = [...eduList]; v[i].jenjang = (e.target as HTMLSelectElement).value; setEduList(v); }}>
-                        <option value="">{t("form.mf_pilih")}</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA/SMK">SMA/SMK</option><option value="D3">D3</option><option value="S1">S1</option><option value="S2">S2</option>
+                        <option value="">{t("form.mf_pilih")}</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA/SMK">{t("master.edu_sma")}</option><option value="D3">D3</option><option value="S1">S1</option><option value="S2">S2</option>
                       </select>
                     </div>
-                    <div class="mb-3"><label class="label">Nama Sekolah</label>
+                    <div class="mb-3"><label class="label">{t("master.edu_sekolah")}</label>
                       <input class="input" value={edu.nama} onInput={(e) => { const v = [...eduList]; v[i].nama = (e.target as HTMLInputElement).value; setEduList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Tahun Awal</label>
+                    <div class="mb-3"><label class="label">{t("master.edu_tahun_awal")}</label>
                       <input class="input" type="number" value={edu.thnAwal} onInput={(e) => { const v = [...eduList]; v[i].thnAwal = (e.target as HTMLInputElement).value; setEduList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Tahun Akhir</label>
+                    <div class="mb-3"><label class="label">{t("master.edu_tahun_akhir")}</label>
                       <input class="input" type="number" value={edu.thnAkhir} onInput={(e) => { const v = [...eduList]; v[i].thnAkhir = (e.target as HTMLInputElement).value; setEduList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Jurusan</label>
+                    <div class="mb-3"><label class="label">{t("master.edu_jurusan")}</label>
                       <input class="input" value={edu.jurusan} onInput={(e) => { const v = [...eduList]; v[i].jurusan = (e.target as HTMLInputElement).value; setEduList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Alamat Sekolah</label>
+                    <div class="mb-3"><label class="label">{t("master.edu_alamat")}</label>
                       <input class="input" value={edu.alamat} onInput={(e) => { const v = [...eduList]; v[i].alamat = (e.target as HTMLInputElement).value; setEduList(v); }} /></div>
                   </div>
                 </div>
               ))}
-              {eduList.length < 5 && <button onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', alamat:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />Tambah Pendidikan</button>}
+              {eduList.length < 5 && <button onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', alamat:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.edu_tambah")}</button>}
 
               <div class="section-title mt-6">Riwayat Pekerjaan (Maks 3)</div>
               {jobList.map((job, i) => (
@@ -445,22 +445,22 @@ export default function MasterFullForm() {
                     {jobList.length > 1 && <button onClick={() => setJobList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><Icon name="trash" class="mr-1" />Hapus</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
-                    <div class="mb-3"><label class="label">Perusahaan</label>
+                    <div class="mb-3"><label class="label">{t("master.kerja_perusahaan")}</label>
                       <input class="input" value={job.perusahaan} onInput={(e) => { const v = [...jobList]; v[i].perusahaan = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Jabatan</label>
+                    <div class="mb-3"><label class="label">{t("master.kerja_jabatan")}</label>
                       <input class="input" value={job.jabatan} onInput={(e) => { const v = [...jobList]; v[i].jabatan = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Tahun Awal</label>
+                    <div class="mb-3"><label class="label">{t("master.edu_tahun_awal")}</label>
                       <input class="input" type="number" value={job.thnAwal} onInput={(e) => { const v = [...jobList]; v[i].thnAwal = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Tahun Akhir</label>
+                    <div class="mb-3"><label class="label">{t("master.edu_tahun_akhir")}</label>
                       <input class="input" type="number" value={job.thnAkhir} onInput={(e) => { const v = [...jobList]; v[i].thnAkhir = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
                     <div class="mb-3"><label class="label">Gaji</label>
                       <input class="input" value={job.gaji} onInput={(e) => { const v = [...jobList]; v[i].gaji = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Alasan Berhenti</label>
+                    <div class="mb-3"><label class="label">{t("master.kerja_alasan")}</label>
                       <input class="input" value={job.alasan} onInput={(e) => { const v = [...jobList]; v[i].alasan = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
                   </div>
                 </div>
               ))}
-              {jobList.length < 3 && <button onClick={() => setJobList(l => [...l, { perusahaan:'', jabatan:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'' }])} class="text-sky-400 text-xs font-bold"><Icon name="plus" class="mr-1" />Tambah Pekerjaan</button>}
+              {jobList.length < 3 && <button onClick={() => setJobList(l => [...l, { perusahaan:'', jabatan:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'' }])} class="text-sky-400 text-xs font-bold"><Icon name="plus" class="mr-1" />{t("master.kerja_tambah")}</button>}
             </div>
           )}
 
@@ -477,46 +477,46 @@ export default function MasterFullForm() {
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label">Nama</label>
                       <input class="input" value={fam.nama} onInput={(e) => { const v = [...famList]; v[i].nama = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Hubungan</label>
+                    <div class="mb-3"><label class="label">{t("master.fam_hubungan")}</label>
                       <select class="input" value={fam.hubungan} onChange={(e) => { const v = [...famList]; v[i].hubungan = (e.target as HTMLSelectElement).value; setFamList(v); }}>
-                        <option value="">{t("form.mf_pilih")}</option><option value="Ayah">Ayah</option><option value="Ibu">Ibu</option><option value="Suami">Suami</option><option value="Istri">Istri</option><option value="Anak">Anak</option><option value="Saudara">Saudara</option><option value="Lainnya">Lainnya</option>
+                        <option value="">{t("form.mf_pilih")}</option><option value="Ayah">Ayah</option><option value="Ibu">Ibu</option><option value="Suami">Suami</option><option value="Istri">Istri</option><option value="Anak">Anak</option><option value="Saudara">{t("master.fam_saudara")}</option><option value="Lainnya">{t("master.fam_lainnya")}</option>
                       </select>
                     </div>
                     <div class="mb-3"><label class="label">Usia</label>
                       <input class="input" type="number" value={fam.usia} onInput={(e) => { const v = [...famList]; v[i].usia = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
-                    <div class="mb-3"><label class="label">Pekerjaan</label>
+                    <div class="mb-3"><label class="label">{t("master.fam_pekerjaan")}</label>
                       <input class="input" value={fam.pekerjaan} onInput={(e) => { const v = [...famList]; v[i].pekerjaan = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
                   </div>
                 </div>
               ))}
-              {famList.length < 5 && <button onClick={() => setFamList(l => [...l, { nama:'', hubungan:'', usia:'', pekerjaan:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />Tambah Keluarga</button>}
+              {famList.length < 5 && <button onClick={() => setFamList(l => [...l, { nama:'', hubungan:'', usia:'', pekerjaan:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.fam_tambah")}</button>}
 
-              <div class="section-title mt-6">Kontak Darurat (Wajib)</div>
+              <div class="section-title mt-6">{t("master.darurat_title")}</div>
               <div class="p-4 rounded-xl" style={{ background: '#0f172a', border: '1px solid rgba(14,165,233,.3)' }}>
-                <div class="mb-3"><label class="label">Nama Kontak Darurat</label>
+                <div class="mb-3"><label class="label">{t("master.darurat_nama")}</label>
                   <input class="input" value={daruratNama} onInput={(e) => setDaruratNama((e.target as HTMLInputElement).value)} /></div>
                 <div class="grid grid-cols-2 gap-3">
-                  <div class="mb-3"><label class="label">Hubungan</label>
-                    <input class="input" value={daruratHubungan} placeholder="Istri / Orang Tua" onInput={(e) => setDaruratHubungan((e.target as HTMLInputElement).value)} /></div>
-                  <div class="mb-3"><label class="label">No. WA Darurat</label>
+                  <div class="mb-3"><label class="label">{t("master.fam_hubungan")}</label>
+                    <input class="input" value={daruratHubungan} placeholder={t("master.ph_istri_ortu")} onInput={(e) => setDaruratHubungan((e.target as HTMLInputElement).value)} /></div>
+                  <div class="mb-3"><label class="label">{t("master.darurat_wa")}</label>
                     <input class="input" type="number" value={daruratWa} onInput={(e) => setDaruratWa((e.target as HTMLInputElement).value)} /></div>
                 </div>
               </div>
 
-              <div class="section-title mt-6">Kenalan di Jepang</div>
+              <div class="section-title mt-6">{t("master.kenalan_title")}</div>
               <div class="p-4 rounded-xl" style={{ background: '#0f172a', border: '1px dashed #334155' }}>
                 <div class="grid grid-cols-2 gap-3">
-                  <div class="mb-3"><label class="label">Nama Kenalan</label>
-                    <input class="input" value={kenalan.nama} placeholder="Kosongkan jika tidak ada" onInput={(e) => setKenalan(k => ({ ...k, nama: (e.target as HTMLInputElement).value }))} /></div>
+                  <div class="mb-3"><label class="label">{t("master.kenalan_nama")}</label>
+                    <input class="input" value={kenalan.nama} placeholder={t("master.ph_kosongkan")} onInput={(e) => setKenalan(k => ({ ...k, nama: (e.target as HTMLInputElement).value }))} /></div>
                   <div class="mb-3"><label class="label">Usia</label>
-                    <input class="input" type="number" value={kenalan.usia} placeholder="Misal: 30" onInput={(e) => setKenalan(k => ({ ...k, usia: (e.target as HTMLInputElement).value }))} /></div>
-                  <div class="mb-3"><label class="label">Hubungan</label>
-                    <input class="input" value={kenalan.hubungan} placeholder="Teman / Saudara" onInput={(e) => setKenalan(k => ({ ...k, hubungan: (e.target as HTMLInputElement).value }))} /></div>
-                  <div class="mb-3"><label class="label">Pekerjaan</label>
-                    <input class="input" value={kenalan.pekerjaan} placeholder="Karyawan / Mahasiswa" onInput={(e) => setKenalan(k => ({ ...k, pekerjaan: (e.target as HTMLInputElement).value }))} /></div>
+                    <input class="input" type="number" value={kenalan.usia} placeholder={t("ui.ph_misal_30")} onInput={(e) => setKenalan(k => ({ ...k, usia: (e.target as HTMLInputElement).value }))} /></div>
+                  <div class="mb-3"><label class="label">{t("master.fam_hubungan")}</label>
+                    <input class="input" value={kenalan.hubungan} placeholder={t("master.ph_teman_saudara")} onInput={(e) => setKenalan(k => ({ ...k, hubungan: (e.target as HTMLInputElement).value }))} /></div>
+                  <div class="mb-3"><label class="label">{t("master.fam_pekerjaan")}</label>
+                    <input class="input" value={kenalan.pekerjaan} placeholder={t("master.ph_karyawan_mahasiswa")} onInput={(e) => setKenalan(k => ({ ...k, pekerjaan: (e.target as HTMLInputElement).value }))} /></div>
                 </div>
-                <div class="mb-3"><label class="label">Alamat di Jepang</label>
-                  <input class="input" value={kenalan.alamat} placeholder="Kota / Prefektur (Otomatis diterjemahkan)" onInput={(e) => setKenalan(k => ({ ...k, alamat: (e.target as HTMLInputElement).value }))} /></div>
+                <div class="mb-3"><label class="label">{t("master.kenalan_alamat")}</label>
+                  <input class="input" value={kenalan.alamat} placeholder={t("master.ph_kota_prefektur")} onInput={(e) => setKenalan(k => ({ ...k, alamat: (e.target as HTMLInputElement).value }))} /></div>
               </div>
             </div>
           )}
@@ -526,9 +526,9 @@ export default function MasterFullForm() {
             <div class="animate-[fadeIn_.4s_ease]">
               <div class="section-title">Status & Paspor</div>
               <F label={t("form.mf_eks_jepang")} k="eksJepang" opts={['BELUM PERNAH','EKS MAGANG','EKS TOKUTEI GINO']} />
-              <F label={t("form.mf_no_coe")} k="noCoe" ph="Kosongkan jika tidak ada" />
+              <F label={t("form.mf_no_coe")} k="noCoe" ph={t("master.ph_kosongkan")} />
               <div class="mt-4"></div>
-              <F label={t("form.mf_no_paspor")} k="noPaspor" ph="Kosongkan jika belum punya" />
+              <F label={t("form.mf_no_paspor")} k="noPaspor" ph={t("master.ph_kosongkan_belum")} />
               <div class="grid grid-cols-2 gap-3">
                 <F label={t("form.mf_tgl_terbit")} k="tglTerbitPaspor" type="date" twoCol />
                 <F label={t("form.mf_exp")} k="expPaspor" type="date" twoCol />
@@ -577,7 +577,7 @@ export default function MasterFullForm() {
       <div class="fixed bottom-0 left-0 w-full py-4 px-5 z-50 flex justify-between gap-4" style={{ background: 'rgba(2,6,23,.95)', borderTop: '1px solid #1e293b' }}>
         {step > 1 && <button onClick={() => changeStep(-1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold" style={{ background: '#1e293b', color: '#cbd5e1' }}><Icon name="arrow-left" class="mr-1" /> Kembali</button>}
         <button onClick={() => submitMaster(true)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold text-white" style={{ background: '#d97706' }}><Icon name="save" class="mr-1" /> Draft</button>
-        {step < 5 && <button onClick={() => changeStep(1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold" style={{ background: '#38bdf8', color: '#020617', boxShadow: '0 5px 15px rgba(56,189,248,.3)' }}>Lanjut <Icon name="arrow-right" class="ml-1" /></button>}
+        {step < 5 && <button onClick={() => changeStep(1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold" style={{ background: '#38bdf8', color: '#020617', boxShadow: '0 5px 15px rgba(56,189,248,.3)' }}>{t("master.next")} <Icon name="arrow-right" class="ml-1" /></button>}
         {step === 5 && <button onClick={() => submitMaster(false)} disabled={saving} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold text-white disabled:opacity-50" style={{ background: '#10b981', color: '#020617', boxShadow: '0 5px 15px rgba(16,185,129,.3)' }}>{saving ? 'Menyimpan...' : 'Simpan Final'}</button>}
       </div>
     </div>

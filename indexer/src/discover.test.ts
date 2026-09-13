@@ -173,7 +173,10 @@ describe('discover', () => {
     // which pins the cold-start latency gate (BACKEND_TODO #29). The gate's
     // companion .mjs is counted below; its .mutations.sh is deliberately NOT
     // counted (not a tracked code extension).
-    expect(count('ts')).toBe(235);
+    // 235 -> 236 (2026-09-13, latest): +1 ts — src/store/theme.test.ts, pinning
+    // the banner/theme coupling fix (setBanner() was a no-op because the theme
+    // subscriber called bannerStore.set() unconditionally).
+    expect(count('ts')).toBe(236);
     // 78 -> 79 (2026-09-13, owner-approved item 2):
     // src/components/ui/AiUnavailableBanner.tsx.
     // 79 -> 78 (2026-09-13): -1 tsx, src/components/ESignatureModal.tsx deleted.
@@ -269,7 +272,9 @@ describe('discover', () => {
     // _lib/cold-start-gate.test.ts (BACKEND_TODO #29). The companion
     // cold-start-gate.mutations.sh is NOT in the inventory: the indexer tracks
     // code extensions only, and .sh is not one.
-    expect(files.length).toBe(380); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 380 -> 381 (2026-09-13, latest): +1 ts — src/store/theme.test.ts. Same +1
+    // as build.test.ts; the inventory counts files on DISK, not git-tracked ones.
+    expect(files.length).toBe(381); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

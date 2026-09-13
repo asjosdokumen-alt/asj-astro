@@ -73,7 +73,7 @@ export default function ChangePasswordModal({ onClose }: Props) {
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 mb-1">{t('changepass.new')}</label>
-            <input type="password" value={baru} autocomplete="new-password" onInput={e => setBaru((e.target as HTMLInputElement).value)} placeholder="6-20 karakter" class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-amber-500" />
+            <input type="password" value={baru} autocomplete="new-password" onInput={e => setBaru((e.target as HTMLInputElement).value)} placeholder={t("ui.ph_6_20_karakter")} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-amber-500" />
           </div>
           <div>
             <label class="block text-xs font-bold text-slate-400 mb-1">{t('changepass.confirm')}</label>

@@ -286,7 +286,7 @@ export default function ApplyFullForm() {
 
             {/* WA with radar */}
             <div class="mb-5">
-              <label class="block text-[13px] font-bold mb-2 text-slate-300">Nomor WhatsApp</label>
+              <label class="block text-[13px] font-bold mb-2 text-slate-300">{t("form.nomor_wa")}</label>
               <div class="relative">
                 <Icon name="whatsapp" class="absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg" />
                 <input type="tel" value={form.wa}

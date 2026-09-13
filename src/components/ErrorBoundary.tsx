@@ -1,4 +1,5 @@
 import { Component, type ComponentChildren, type VNode } from 'preact';
+import { t } from '../store/i18n';
 
 interface Props {
   // ComponentChildren (bukan VNode | VNode[] | string | null) karena boundary
@@ -38,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-fg mb-2">Terjadi Kesalahan (Crash)</h2>
+          <h2 className="text-xl font-bold text-fg mb-2">{t("ui.crash_title")}</h2>
           <p className="text-fg-muted mb-4 max-w-md">
             Maaf, komponen ini gagal dimuat karena suatu kesalahan internal. Silakan muat ulang halaman.
           </p>

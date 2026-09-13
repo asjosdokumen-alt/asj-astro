@@ -1,14 +1,39 @@
 ---
 // Footer.astro — Migrated from legacy/partials/footer.html + social.html
 import Icon from './ui/Icon';
+
+// ─── Why the background is a data attribute and not a style value ───────────
+//
+// This footer used to hardcode `tokyo_footer.jpg` in an inline style, which made
+// it the one themed surface that never changed: switching to light mode moved the
+// header to SAKURA while the footer stayed TOKYO. `App.tsx` had a `FOOTER_BGS`
+// map for exactly this, but nothing read it — it was dead code, so the map and
+// the markup disagreed and the markup won.
+//
+// The image is now resolved at runtime from the same source of truth as the
+// header (`theme.ts` → `asj_theme`), so the two cannot drift. It stays a
+// data attribute rather than an Astro-side expression because the value lives in
+// localStorage, which is only readable in the browser.
+//
+// The TOKYO value is the pre-hydration default and matches the `dark` default in
+// theme.ts and BaseLayout's restore script — all three must agree or the first
+// paint shows the wrong artwork.
+const FOOTER_BG_DEFAULT =
+  'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_footer.jpg';
 ---
+
 <footer class="max-w-7xl mx-auto px-4 mt-12 mb-8">
-  <div id="asj-footer" id="asj-footer" class="relative overflow-hidden border border-white/10 shadow-2xl bg-cover bg-center transition-colors duration-700" style="background-image: url(https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_footer.jpg)">
+  <div
+    id="asj-footer"
+    data-footer-bg
+    class="relative overflow-hidden border border-white/10 shadow-2xl bg-cover bg-center transition-colors duration-700"
+    style={`background-image: url(${FOOTER_BG_DEFAULT})`}
+  >
     <div id="asj-footer-overlay" class="absolute inset-0 bg-black/85"></div>
     <div class="relative z-10 p-10 text-center flex flex-col items-center">
       <h2 class="text-2xl font-black text-white tracking-widest drop-shadow-lg" data-lang="footer.title">PT Amanah Sakura Japan</h2>
       <div class="text-sm font-bold tracking-[6px] text-pink-300 mt-2 mb-8 drop-shadow-md" data-lang="footer.tagline">夢を日本へ</div>
-      
+
       <!-- Social Links -->
       <div class="flex flex-wrap justify-center gap-4 mb-8">
         <a id="footer-wa" href="https://wa.me/6287889502004" target="_blank" aria-label="WhatsApp" class="w-14 h-14 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-full shadow-lg hover:scale-110 transition"><Icon name="whatsapp" class="text-2xl" /></a>
@@ -21,3 +46,34 @@ import Icon from './ui/Icon';
     </div>
   </div>
 </footer>
+
+<script>
+  // ─── Footer artwork follows the banner theme ─────────────────────────────
+  //
+  // Listens to `asj-theme-change`, which theme.ts fires after moving the banner,
+  // so the footer cannot lag behind the header. The map is duplicated from
+  // App.tsx deliberately rather than imported: this is an Astro island-free
+  // script, and pulling the Preact module in here would ship the component graph
+  // to a page that renders no components.
+  const FOOTER_BGS = {
+    SAKURA: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/sakura_footer.webp',
+    TOKYO: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_footer.jpg',
+    INTER_VIP: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_footer.jpg',
+  } as const;
+
+  function applyFooterBg() {
+    const el = document.querySelector('[data-footer-bg]') as HTMLElement | null;
+    if (!el) return;
+    let theme = 'TOKYO';
+    try {
+      theme = localStorage.getItem('asj_theme') || 'TOKYO';
+    } catch {
+      /* storage blocked — keep the default */
+    }
+    const url = (FOOTER_BGS as Record<string, string>)[theme] || FOOTER_BGS.TOKYO;
+    el.style.backgroundImage = `url(${url})`;
+  }
+
+  applyFooterBg();
+  window.addEventListener('asj-theme-change', applyFooterBg);
+</script>

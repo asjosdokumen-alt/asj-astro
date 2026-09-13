@@ -128,7 +128,7 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
         <hr class="border-slate-700 my-5" />
 
         <div class="space-y-3">
-          <h4 class="text-sm font-semibold text-slate-300 flex items-center gap-2"><Icon name="upload" />Upload Template Kustom</h4>
+          <h4 class="text-sm font-semibold text-slate-300 flex items-center gap-2"><Icon name="upload" />{t("ui.upload_custom_template")}</h4>
           <label class="flex items-center justify-center w-full gap-2 p-4 text-sm text-slate-300 bg-slate-800 border-2 border-dashed border-slate-600 rounded-xl cursor-pointer hover:border-sky-500 hover:bg-slate-750 transition">
             <Icon name="file-upload" />
             <span>{customFile ? customFile.name : 'Seret & lepas atau klik untuk memilih (.docx/.xlsx/.pdf)'}</span>

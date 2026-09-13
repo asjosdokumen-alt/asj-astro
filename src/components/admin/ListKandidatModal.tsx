@@ -181,10 +181,10 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
         {showUndangPanel && (
           <div class="bg-black/40 border border-emerald-500/30 p-3 rounded-xl mb-3 space-y-2">
             <input type="text" value={linkGrup} onInput={(e) => setLinkGrup((e.target as HTMLInputElement).value)}
-              placeholder="Link Grup WA (https://chat…)"
+              placeholder={t("admin.ph_grup_wa")}
               class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500" />
             <input type="number" value={interval} onInput={(e) => setInterval_(parseInt((e.target as HTMLInputElement).value) || 5)}
-              placeholder="Jeda antar pesan (detik)"
+              placeholder={t("admin.ph_jeda_pesan")}
               class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500" />
             <button onClick={sendUndangan} disabled={sending}
               class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition disabled:opacity-50">
@@ -196,7 +196,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
         {/* Candidate list */}
         <div class="flex-1 u-scroll-area custom-scrollbar pr-2 mb-4 space-y-2">
           {cands.length === 0 ? (
-            <div class="text-center text-slate-500 py-4">Tidak ada kandidat di job ini.</div>
+            <div class="text-center text-slate-500 py-4">{t("admin.manual_empty")}</div>
           ) : (
             cands.map((c: Kandidat, i: number) => (
               <div key={c.wa || c.id}

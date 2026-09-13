@@ -17,7 +17,16 @@ vi.mock('../Toast', () => ({
   showToast: vi.fn(),
 }));
 
-vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
+// Resolve the real dictionary instead of echoing the key. Returning the raw key
+// made the assertions below depend on the *absence* of a translation: the moment
+// "Link Grup WA (…)" moved from a JSX literal to a `t("admin.ph_grup_wa")` call,
+// `getByPlaceholderText('Link Grup WA (…)')` stopped matching even though the
+// rendered copy was byte-identical. Going through the real `t` keeps the test
+// honest about what the user sees.
+vi.mock('../../store/i18n', async () => {
+  const actual = await vi.importActual<typeof import('../../store/i18n')>('../../store/i18n');
+  return { ...actual, t: actual.t };
+});
 
 // ── adminStore mock (hoisted supaya aman dipakai factory vi.mock) ──────────
 const h = vi.hoisted(() => {

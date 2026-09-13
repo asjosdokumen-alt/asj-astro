@@ -9,6 +9,7 @@ import { authStore } from '../store/authReactive';
 import type { ComponentChildren } from 'preact';
 import Icon from './ui/Icon';
 import { ErrorBoundary } from './ErrorBoundary';
+import { t } from '../store/i18n';
 
 interface Props {
   children: ComponentChildren;
@@ -28,7 +29,7 @@ export default function AuthGuard({ children, requiredRole, redirectTo = '/' }: 
       <div class="flex items-center justify-center min-h-screen">
         <div class="text-center">
           <Icon name="lock" class="text-4xl text-slate-500 mb-4" />
-          <p class="text-slate-400">Mengalihkan ke halaman login...</p>
+          <p class="text-slate-400">{t("ui.redirecting_login")}</p>
         </div>
       </div>
     );
@@ -43,7 +44,7 @@ export default function AuthGuard({ children, requiredRole, redirectTo = '/' }: 
       <div class="flex items-center justify-center min-h-screen">
         <div class="text-center">
           <Icon name="ban" class="text-4xl text-red-500 mb-4" />
-          <p class="text-slate-400">Akses ditolak. Mengalihkan...</p>
+          <p class="text-slate-400">{t("ui.access_denied_redirect")}</p>
         </div>
       </div>
     );

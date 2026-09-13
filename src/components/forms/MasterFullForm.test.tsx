@@ -10,16 +10,20 @@ import MasterFullForm from "./MasterFullForm";
 import { showToast } from "../Toast";
 import { authStore, type AuthState } from "../../store/authReactive";
 import { uploadMany } from "../../lib/cloudinary";
+import { t } from "../../store/i18n";
 
 vi.mock("../Toast", () => ({ showToast: vi.fn() }));
+// Use the real dictionary rather than a hand-maintained key→copy map.
+// The old stub returned the raw key for anything it had not been told about,
+// so every label this component moved from a JSX literal to `t("master.…")`
+// started rendering as "master.next" and the queries below silently broke.
+// Delegating to the real `t` keeps the test reading what a user actually sees.
 vi.mock("../../store/i18n", async () => {
   const { atom } = await import("nanostores");
+  const actual = await vi.importActual<typeof import("../../store/i18n")>("../../store/i18n");
   return {
-    t: (k: string) => {
-      if (k === "ai_cv.verify_account") return "Verifikasi Akun Kandidat";
-      if (k === "login.btn_masuk") return "Masuk";
-      return k;
-    },
+    ...actual,
+    t: actual.t,
     langStore: atom<"id" | "jp">("id"),
     toggleLang: vi.fn(),
   };
@@ -95,7 +99,11 @@ describe("MasterFullForm (C02) — error-return uploadMany + draft lokal-only", 
     const raw = localStorage.getItem("asj_master_081234567890");
     expect(raw).toBeTruthy();
     expect(JSON.parse(raw!).wa).toBe("081234567890");
-    expect(showToast).toHaveBeenCalledWith("toast.draft_saved", "success");
+    // Assert the copy the user actually sees. The component localises via
+    // t(), so asserting the raw key only passed while t() was stubbed to
+    // echo its input. `t` resolves the real "id" dictionary here.
+    expect(showToast).toHaveBeenCalledWith(t("toast.draft_saved"), "success");
+    expect(t("toast.draft_saved")).toBe("Draft berhasil disimpan!");
     const masterCalls = fetchMock.mock.calls.filter((c: any) => String(c[0]).includes("master-data"));
     expect(masterCalls.length).toBe(1); // hanya getDrafCvMaster mount — tidak ada submitMasterForm
   });

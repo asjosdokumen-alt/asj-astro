@@ -166,11 +166,11 @@ export default function CvMiniModal({ onClose, prefill }: Props) {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">{t('cvmini.jft')}</label>
-              <input type="text" value={jftText} onInput={e => setJftText((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder="A2 / 120" />
+              <input type="text" value={jftText} onInput={e => setJftText((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder={t("ui.ph_jft_level")} />
             </div>
             <div>
               <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">{t('cvmini.ssw')}</label>
-              <input type="text" value={sswText} onInput={e => setSswText((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder="Kaigo, Pertanian" />
+              <input type="text" value={sswText} onInput={e => setSswText((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder={t("ui.ph_ssw_bidang")} />
             </div>
           </div>
           <div class="p-4 bg-sky-900/20 border border-dashed border-sky-500/50 rounded-xl">
