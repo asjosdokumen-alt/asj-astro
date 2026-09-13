@@ -38,6 +38,16 @@ asj-astro.txt
 netlify_auth_token*
 *_auth_token*
 *nfp_*
+# GitHub PATs pasted into scratch files (2026-09-13: a full 40-char `ghp_…` token
+# was found unlabelled on line 3 of netlify_auth_token=nfp_….txt — gitignored, so
+# it never reached the remote, but the pattern deserves its own guard). Covers
+# `ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_` and fine-grained `github_pat_`.
+*ghp_*
+*gho_*
+*ghu_*
+*ghs_*
+*ghr_*
+*github_pat_*
 
 # ── Bundled credentials ──────────────────────────────────────────────────────
 # The Firebase service account is shipped as a FILE bundled with the functions
