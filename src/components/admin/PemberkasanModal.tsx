@@ -27,6 +27,7 @@ import { getEndpoint } from "../../lib/apiEndpoint";
 import {
   BERKAS_TAHAP1,
   BERKAS_TAHAP2,
+  rejectExtension,
   type BerkasDef,
 } from "../../lib/berkasCatalog";
 import Icon from "../ui/Icon";
@@ -326,8 +327,21 @@ export default function PemberkasanModal({
       const el = document.getElementById(`berkas-${def.key}`) as HTMLInputElement | null;
       const f = el?.files?.[0];
       if (!f) continue;
+      // Guard ekstensi (#10, parity legacy cekEkstensiFile). Sebelum ini hanya
+      // ukuran yang diperiksa, jadi file dengan tipe salah tetap ter-upload dan
+      // tersimpan sebagai dokumen rusak — admin melihat toast sukses.
+      const badExt = rejectExtension(def, f.name);
+      if (badExt) {
+        showToast(t("ui.toast_file_ext_bad").replace("{nama}", badExt), "error");
+        continue;
+      }
       if (f.size > MAX_FILE_BYTES) {
-        showToast(`${t(def.label)} > 5MB — file dilewati.`, "error");
+        showToast(
+          t("ui.toast_file_too_big")
+            .replace("{nama}", f.name)
+            .replace("{mb}", String(MAX_FILE_BYTES / 1024 / 1024)),
+          "error",
+        );
         continue;
       }
       picked.push({ def, file: f });

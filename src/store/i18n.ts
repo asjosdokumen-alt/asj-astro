@@ -784,6 +784,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.download_qr": "DOWNLOAD GAMBAR QR",
     "ui.toast_pick_file_first": "Pilih file dulu sebelum upload.",
     "ui.toast_pick_min_one": "Silakan pilih minimal 1 file.",
+    // Guard ekstensi pemberkasan (#10 parity legacy cekEkstensiFile) — teks
+    // persis legacy (`i18n/locales/id/ui.js`).
+    "ui.toast_file_ext_bad": "{nama} format tidak diizinkan. Gunakan PDF, gambar (JPG/PNG/WebP), Excel, Word, atau PPT.",
+    "ui.toast_file_too_big": "{nama} terlalu besar (maks {mb} MB) — base64 +30% melewati limit server.",
     "ui.toast_uploaded_n": "Berhasil mengunggah {n} dokumen!",
     "ui.toast_docs_exclaim": " dokumen!",
     "ui.toast_upload_failed": "Gagal mengunggah file: ",

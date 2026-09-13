@@ -1073,6 +1073,9 @@ export const jpTranslations: Record<string, string> = {
     "ui.toast_network_error_prefix": "接続エラー: ",
     "ui.toast_no_valid_wa": "有効なWA番号がありません。",
     "ui.toast_pick_min_one": "ファイルを 1 つ以上選択してください。",
+    // 書類アップロードの拡張子ガード (#10)
+    "ui.toast_file_ext_bad": "{nama} の形式は許可されていません。PDF・画像（JPG/PNG/WebP）・Excel・Word・PPT をご利用ください。",
+    "ui.toast_file_too_big": "{nama} が大きすぎます（最大 {mb} MB）— Base64 +30% でサーバー上限を超えます。",
     "ui.toast_saved_server": "データを保存しました！",
     "ui.toast_server_conn_failed": "サーバーに接続できませんでした。",
     "ui.toast_sign_area_required": "保存する前に署名/氏名を 1 つ以上入力してください。",

@@ -60,3 +60,43 @@ export const BERKAS_BY_KEY: Record<string, BerkasDef> = Object.fromEntries(
 export function hasBerkasUrl(v: string | undefined | null): boolean {
   return !!v && v !== "-" && v !== "undefined" && v !== "null";
 }
+
+/**
+ * Ekstensi file (tanpa titik, lowercase) dari atribut `accept`.
+ * Parity legacy `ekstensiDariAccept()`: `".pdf,.jpg"` → `["pdf","jpg"]`.
+ * Entri MIME (`image/*`) dibuang — katalog ini hanya memakai ekstensi.
+ */
+export function extensionsFromAccept(accept: string): string[] {
+  return String(accept || "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.startsWith("."))
+    .map((s) => s.slice(1));
+}
+
+/** Ekstensi nama file, lowercase, tanpa titik. `"a.PDF"` → `"pdf"`. */
+export function extensionOf(filename: string): string {
+  const name = String(filename || "");
+  const idx = name.lastIndexOf(".");
+  if (idx < 0 || idx === name.length - 1) return "";
+  return name.slice(idx + 1).toLowerCase();
+}
+
+/**
+ * Cek ekstensi file terhadap `accept` dokumen.
+ *
+ * PARITY: legacy `prosesUploadPemberkasan` memanggil `cekUkuranFile` DAN
+ * `cekEkstensiFile` untuk SETIAP input sebelum upload. Modal Astro hanya
+ * memeriksa ukuran, sehingga file dengan tipe salah (mis. `.docx` di slot yang
+ * minta `.pdf`) tetap ter-upload dan tersimpan sebagai dokumen rusak.
+ *
+ * Mengembalikan nama file yang ditolak, atau null bila lolos. File tanpa
+ * ekstensi ditolak bila dokumen tidak mengizinkan ekstensi kosong.
+ */
+export function rejectExtension(def: BerkasDef, filename: string): string | null {
+  const allowed = extensionsFromAccept(def.accept);
+  if (!allowed.length) return null;
+  const ext = extensionOf(filename);
+  return allowed.includes(ext) ? null : filename;
+}
+
