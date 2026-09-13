@@ -6,7 +6,7 @@
 > (4) response diproses benar (success/error/session); (5) tabel/efek samping benar; (6) i18n
 > ID/JP ada; (7) improve bila jelas (codebase modern).
 > Status: ⬜ belum dicek · 🔄 sedang · ✅ selesai (tanggal) · ⚠️ ditemukan delta (link catatan)
-> Acuan matriks fitur: `docs/LEGACY_PARITY_REFERENCE.md`; delta form: `docs/PARITY_QA_2026-09-04.md`.
+> Acuan matriks fitur: `docs/LEGACY_PARITY_REFERENCE.md`; delta form: `docs/archive/PARITY_QA_2026-09-04.md` (historis — jangan dipakai sebagai daftar kerja).
 
 ## A. Modal Admin (panel `admin.html` ↔ `admin.astro`)
 

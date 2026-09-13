@@ -173,12 +173,24 @@ function parseWaList(raw: string): string[] {
     .map((x) => normalizeWa(x.replace(/\D/g, '')))
     .filter(Boolean);
 }
-export async function handleCheckAndSendAgendaReminders(sessionToken?: string) {
+export async function handleCheckAndSendAgendaReminders(
+  sessionToken?: string,
+  opts?: { internal?: boolean },
+) {
   // C3 fix (2026-09-04): this reads schedule WA lists and sends FCM pushes —
-  // admin only. (If a server-side cron sweep ever needs it, call this context
-  // code directly from the scheduled function, not through the HTTP surface.)
-  const guard = requireRole(sessionToken || '', 'admin');
-  if (guard.error) return guard.error;
+  // admin only over HTTP.
+  //
+  // internal=true is the cron path, and it is what the parenthetical here always
+  // anticipated ("call this context code directly from the scheduled function,
+  // not through the HTTP surface"): `agenda-reminders.ts` has no session to
+  // present, so it calls this function directly and declares itself trusted.
+  // Same shape as handleKirimSatuPesanFonnte / handleKirimTawaranMassal in
+  // contexts/notifications/service.ts. The HTTP surface (surfaces/schedule.ts)
+  // passes no opts, so a caller cannot opt itself out of the guard from outside.
+  if (!opts?.internal) {
+    const guard = requireRole(sessionToken || '', 'admin');
+    if (guard.error) return guard.error;
+  }
   let sent = 0;
   let errors = 0;
   try {

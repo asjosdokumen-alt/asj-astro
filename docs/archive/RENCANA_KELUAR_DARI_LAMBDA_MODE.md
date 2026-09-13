@@ -2,8 +2,9 @@
 
 **Tanggal:** 2026-09-12
 **Untuk:** pemilik proyek (penjelasan non-teknis + langkah teknis)
-**Status:** ✅ **SUDAH DIKERJAKAN** (Opsi A + C) — 2026-09-12, sesi kantor. Kode ada di
-working tree, **belum di-commit dan belum di-deploy**. Rincian di §11.
+**Status:** ✅ **SUDAH DIKERJAKAN** (Opsi A + C) — 2026-09-12. Sudah di-commit dan di-deploy
+(deploy `6aa57207` = ready, **0 fungsi mode kompat Lambda**). **Diarsipkan 2026-09-13** — dokumen ini
+historis; status terkini ada di `docs/PHASE_D_DATA_LAYER.md` dan `docs/BACKEND_TODO.md`.
 **Terkait:** `HANDOFF.md`, `docs/HANDOFF_4KB_ENV_LIMIT.md`
 
 ---

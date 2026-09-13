@@ -146,10 +146,16 @@ describe('discover', () => {
     // contexts/notifications/wa-single-durability.test.ts. ts 219 -> 221.
     // 221 -> 220 (2026-09-13, B06 share-token removal): -1 ts —
     // _lib/db/shareTokens.ts, deleted with the gate it served.
-    expect(count('ts')).toBe(220); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
+    // 220 -> 221 (2026-09-13, BACKEND_TODO #8): +1 ts — agenda-reminders.ts (the
+    // cron trigger for the agenda reminders). The guard test is not part of the
+    // indexer inventory.
+    expect(count('ts')).toBe(222); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
     // 78 -> 79 (2026-09-13, owner-approved item 2):
     // src/components/ui/AiUnavailableBanner.tsx.
-    expect(count('tsx')).toBe(79); // 46 at design time; modal/component test suites added since
+    // 79 -> 78 (2026-09-13): -1 tsx, src/components/ESignatureModal.tsx deleted.
+    // NOT part of the #8 cron work — this deletion came from the parallel
+    // frontend session editing src/components/admin/*.tsx in the same tree.
+    expect(count('tsx')).toBe(78); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
     // 2026-09-11: the Phase A/B CI gates landed — bundle-size.mjs,
     // surface-binding.mjs, verify-aliases.mjs, scripts/lib/load-env.mjs, and
@@ -218,7 +224,8 @@ describe('discover', () => {
     // per-extension notes above.
     // 362 -> 363 (2026-09-13, owner-approved item 2): +1 tsx — see above.
     // 363 -> 362 (2026-09-13, B06 share-token removal): -1 ts — see above.
-    expect(files.length).toBe(362); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 362 -> 364 (2026-09-13, BACKEND_TODO #8): +2 ts — see above.
+    expect(files.length).toBe(363); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

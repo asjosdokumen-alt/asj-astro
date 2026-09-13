@@ -337,7 +337,7 @@ function main() {
         `\nENV BUDGET EXCEEDED — ${total} B > ${LAMBDA_ENV_LIMIT} B.\n` +
           '  Only a problem in Lambda compatibility mode; the limit is gone on the\n' +
           '  current runtime, so this will NOT fail the deploy.\n' +
-          '  See docs/RENCANA_KELUAR_DARI_LAMBDA_MODE.md.' +
+          '  See docs/archive/RENCANA_KELUAR_DARI_LAMBDA_MODE.md.' +
           (args.budgetStrict ? '' : '\n  (informational — pass --budget-strict to enforce)')
       );
       if (args.budgetStrict) process.exit(1);

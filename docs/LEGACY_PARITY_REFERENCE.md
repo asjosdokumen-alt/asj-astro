@@ -34,8 +34,8 @@
 |---|---|---|---|
 | Loker / DB Job | `TabDbJob.tsx` | ✅ | `AdminJobEditModal` untuk tambah/edit |
 | Kandidat / Pelamar | `TabPelamar.tsx` + `ListKandidatModal` | ✅ | Daftar/filter/CSV ada |
-| Mail (inbox lamaran: review/approve/reject) | `TabMail.tsx` | 🟡 **GAP** | Komponen ada tapi **data tidak muncul / belum ter-wire** ke `reviewForm`/`approveForm`/`rejectForm`/`deleteForm`/`tandaiDibacaForm` (backend ✅ admin-guarded) |
-| Jadwal (+ tugas admin) | `TabJadwal.tsx` | 🟡 **GAP** | Wiring `simpanJadwalBaru`/`hapusJadwal`/tugas belum; reminder (`checkAndSendAgendaReminders`) kini admin-guarded ✅ tapi belum ada pemanggil UI/cron |
+| Mail (inbox lamaran: review/approve/reject) | `TabMail.tsx` | ✅ | Wiring **sudah ada** (koreksi 2026-09-13 — lihat #22 di `BACKEND_TODO.md`): `TabMail` memanggil `approveForm`/`reviewForm`/`rejectForm`/`deleteForm`/`tandaiDibacaForm` (backend ✅ admin-guarded). Sisa yang benar-benar kurang hanya pola sesi mentah (`fetch` langsung, bukan `api.secure`) — #19 |
+| Jadwal (+ tugas admin) | `TabJadwal.tsx` | ✅ | Wiring `simpanJadwalBaru`/`hapusJadwal`/tugas **sudah ada** (koreksi 2026-09-13 — lihat #22 di `BACKEND_TODO.md`). Reminder `checkAndSendAgendaReminders` kini punya **pemicu cron** (`agenda-reminders.ts`, 10 menit) — sebelumnya admin-guarded tapi tidak pernah dipanggil apa pun |
 | WA (template + blast) | `TabWA.tsx` | 🟡 | Template ✅ admin-guarded; batch blast progress: ❓ |
 | Kelola | `TabKelola.tsx` | ✅ | Manajemen kandidat/super |
 | Tambah | `TabTambah.tsx` | ✅ | Tambah kandidat manual |

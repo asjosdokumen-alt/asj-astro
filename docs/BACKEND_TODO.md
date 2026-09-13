@@ -1,8 +1,8 @@
 # BACKEND_TODO — satu daftar, semua pekerjaan backend yang belum selesai
 
-**Dibuat:** 2026-09-13 · **Sumber:** kode di `main` (`75dd3cd`) + `docs/` + `HANDOFF.md`
-**Pengganti:** `TODO.md` (terakhir 2026-09-03) dan `docs/PARITY_QA_2026-09-04.md` — keduanya sudah
-kedaluwarsa; lihat §6.
+**Dibuat:** 2026-09-13 · **Sumber:** kode di `main` (`8593e10`) + `docs/` + `HANDOFF.md`
+**Pengganti:** `TODO.md` (terakhir 2026-09-03) dan `docs/archive/PARITY_QA_2026-09-04.md` — keduanya sudah
+kedaluwarsa; lihat §5.
 
 ---
 
@@ -66,7 +66,7 @@ Kelas ini yang paling licin: handler-nya benar, ter-guard, ter-test — dan tida
 
 | # | Item | Bukti | Blokir |
 |---|---|---|---|
-| **8** | 🔵 **Reminder agenda tidak pernah menyala.** `checkAndSendAgendaReminders` adalah aksi surface yang hidup dan admin-guarded (`surfaces/schedule.ts`, `registry.ts:73`), **tapi tidak ada pemanggil UI dan tidak ada cron**. Satu-satunya fungsi terjadwal adalah `sweep-queue` (`export const config = { schedule: '*/2 * * * *' }`) | `netlify/functions/surfaces/schedule.ts`, `netlify/functions/sweep-queue.ts:152`, `grep -rn "checkAndSendAgendaReminders" src/` → hanya `apiEndpoint.ts` | Perlu `export const config = { schedule }` pada fungsi terjadwal, **atau** tombol UI. Bug `getActiveSchedules()` sudah diperbaiki 2026-09-13 — tinggal pemicunya |
+| **8** | ✅ **SELESAI 2026-09-13 — reminder agenda sekarang menyala.** Pemicunya adalah cron baru `netlify/functions/agenda-reminders.ts` (`export const config = { schedule: '*/10 * * * *' }`), yang memanggil konteks `handleCheckAndSendAgendaReminders(undefined, { internal: true })` — langsung, bukan lewat surface, karena fungsi terjadwal tidak punya sesi dan surface-nya admin-guarded (`requireRole` akan membalas `{ sessionInvalid:true }`: cron terlihat hijau sambil mengirim nol). Pola `internal: true` sama dengan `wa.send`/`wa.broadcast` di `sweep-queue`. Interval 10 menit dipilih karena harus **lebih sempit dari window terlebar** (h0 = 60 menit) atau sebuah jadwal bisa masuk dan keluar window di antara dua run. Surface HTTP tidak berubah ⇒ bypass tetap tidak terjangkau dari luar. Diverifikasi: zisi melaporkan `schedule: */10 * * * *`, `runtimeAPIVersion: 2`, 0 fungsi mode kompat | `netlify/functions/agenda-reminders.ts`, `contexts/scheduling/service.ts:176`, test `contexts/scheduling/service-reminder-cron.test.ts` (8 tes) | **Tidak ada.** Catatan asal-usul: entri legacy yang dihapus 2026-09-11 bernama `schedule-reminders` — jadi fiturnya memang tidak pernah punya rumah |
 | **9** | 🟡 **Defer P3 ke `job_queue` alih-alih shed.** Saat ini P3 di-shed (503 + `Retry-After`); yang benar untuk sebuah *write* adalah menaruhnya di antrean. Titik integrasi sudah ditunjuk: `surfaces/notify.ts` | `docs/PHASE_B_LOAD_BOUNDING.md` §7.2, §5.1 | Belum dikerjakan; kandidat Phase C |
 
 ---
@@ -130,6 +130,9 @@ Diringkas supaya daftar di atas tidak diragukan lagi.
 - **Phase D** — `schema.generated.ts` + `verify:schema`, RLS lockdown `012` (live, anon 401/42501),
   keyset pagination (item 17), migrasi ber-checksum (12 berkas, 0 drift), gate `select=*` tiga lapis.
 - **Phase E** — item 19 (chaos suite, 14 tes) & 21 (idempotency replay) selesai.
+- **#8 (2026-09-13)** — reminder agenda punya pemicu: cron `agenda-reminders.ts` tiap 10 menit,
+  memanggil konteks dengan `{ internal: true }`. Sebelumnya fitur ini mati dua kali: `getActiveSchedules()`
+  selalu `[]` (bug `{ rows }`, diperbaiki 2026-09-13) **dan** tidak ada yang memanggilnya.
 - **Item owner 1–5 (2026-09-13)** — 1 Fonnte `wa.send` · 2 `AI_UNAVAILABLE` → 503 + banner ·
   3 DB-down → 503 + `Retry-After` · 5 login admin personal tiga tingkat. **Item 4 = #1 di atas.**
 - **Paritas A01–A19, B01–B07, C01–C04, C06** — lihat `docs/PARITY_CHECKLIST.md`.
@@ -143,7 +146,9 @@ Diringkas supaya daftar di atas tidak diragukan lagi.
 1. **#1** — putuskan migrasi 013. Ini satu-satunya yang memblokir pekerjaan kode berikutnya.
 2. **#20–#23** — koreksi empat dokumen yang berbohong. Murah, dan mencegah orang berikutnya
    mengerjakan hal yang sudah selesai atau mempercayai gate yang tidak pernah hidup.
-3. **#8** — reminder agenda. Backendnya sudah benar; yang hilang cuma satu baris `config.schedule`.
+3. **#8 — ✅ selesai 2026-09-13.** Cron `agenda-reminders` (10 menit) + bypass `internal: true` pada
+   konteks. Pemicunya sudah ada; yang tersisa hanya data (`database_schedule` masih 0 baris, jadi
+   cron-nya benar-benar mengirim nol sampai ada jadwal dibuat — itu perilaku yang diharapkan).
 4. **#3 + #27** — jalankan gate Phase C. Butuh satu env var dari owner.
 5. **#4–#6** — staging. Ini yang membuka tiga item sekaligus (20, 22, kalibrasi cap).
 6. Sisanya (#9–#19) sesuai prioritas produk.

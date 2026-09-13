@@ -28,7 +28,7 @@
     # first and falls back to the env var, so local "netlify dev" and any manual
     # CLI deploy keep working unchanged.
     #
-    # See docs/RENCANA_KELUAR_DARI_LAMBDA_MODE.md.
+    # See docs/archive/RENCANA_KELUAR_DARI_LAMBDA_MODE.md.
   ]
 
 # Phase 5: Job queue sweep every 2 minutes
@@ -41,6 +41,12 @@
 # Same expression as the line this block used to hold. If the sweep ever stops
 # running, check that export first — a schedule that moves without being
 # verified is the quietest way to break the queue.
+#
+# There are TWO scheduled functions now. The second is
+# netlify/functions/agenda-reminders.ts at '*/10 * * * *' (agenda reminders,
+# added 2026-09-13). It is looser than the sweep on purpose: its narrowest window
+# is one hour wide, so minute-level latency does not matter. Reminders not
+# arriving is the symptom; that export is the first thing to check.
 
 # Cache headers
 [[headers]]

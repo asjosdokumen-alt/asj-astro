@@ -67,7 +67,11 @@ describe('full build', () => {
     // 363 -> 362 (2026-09-13, B06 share-token removal): -1 ts —
     // _lib/db/shareTokens.ts, deleted along with the gate it served (the share
     // link is public by job code again, as legacy). ts 221 -> 220; tsx stays 79.
-    expect(r.stats.fileCount).toBe(362); // 220 ts + 79 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
+    // 362 -> 363 (2026-09-13, BACKEND_TODO #8): +1 ts — the agenda-reminder cron
+    // agenda-reminders.ts (the `config.schedule` trigger that
+    // never existed). ts
+    // 220 -> 221. No tsx/astro/mjs change. (The test file is not in the indexer inventory.)
+    expect(r.stats.fileCount).toBe(363); // 222 ts + 79 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

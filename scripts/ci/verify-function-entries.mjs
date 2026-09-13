@@ -214,7 +214,7 @@ for (const name of entries) {
   // This site migrated to the modern runtime on 2026-09-12. The reason was not
   // style: Lambda compatibility mode caps the total environment at 4 KB per
   // function, and this repo's env set was 4275 B — the deploy died at function
-  // creation AFTER a successful build. See docs/RENCANA_KELUAR_DARI_LAMBDA_MODE.md.
+  // creation AFTER a successful build. See docs/archive/RENCANA_KELUAR_DARI_LAMBDA_MODE.md.
   //
   // The legacy pattern is still accepted on purpose, so the migration can be
   // reversed one file at a time if something goes wrong in production.
