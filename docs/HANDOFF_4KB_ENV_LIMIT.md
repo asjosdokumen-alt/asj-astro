@@ -171,6 +171,13 @@ sama dengan "bukan blocker".
 
 ### 4.2 Kegagalan deploy menjelaskan 404 `/health`
 
+> **Catatan jalur (2026-09-13).** Baik `/_lib/health` maupun `/health` **tidak pernah bisa
+> di-rutekan** — `netlify.toml` tidak punya redirect untuk keduanya, dan `_lib/*` bukan entri fungsi
+> (lihat tabel di §4.1). Jadi 404 di situ **bukan bukti apa-apa tentang deploy**; itu alamat yang
+> memang tidak ada. Alamat kanoniknya **`/.netlify/functions/health`** — diverifikasi live
+> 2026-09-13 (`200`, `detail:"gated"`). Yang membuktikan deploy benar-benar mati adalah
+> **daftar fungsi pada output zisi**, bukan probe HTTP ke jalur tebakan.
+
 Kesimpulan "Phase C belum di-deploy" tetap benar, tapi **alasannya berbeda**: `health.js`
 sudah ikut di-build sejak `38f09ba`. Deploy-nya yang selalu mati di tahap function creation.
 

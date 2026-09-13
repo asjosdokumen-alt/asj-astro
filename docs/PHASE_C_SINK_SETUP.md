@@ -42,7 +42,7 @@ first `.segment=value` boundary.
 
 **Not in the payload:** breaker state. It lives only in `kernel/resilience.ts`
 (`snapshot()`, `openCount()`) and is read by `_lib/health.ts`. So alert **A5**
-("breaker open > 2 min") is evaluated from `/health`, not from a counter.
+("breaker open > 2 min") is evaluated from `/.netlify/functions/health`, not from a counter.
 
 ---
 
@@ -74,7 +74,7 @@ evaluates the saturation-side rules (§4.1 A3, A6, and upstream failure bursts)
 and notifies on **transitions**, not on every sample:
 
 ```bash
-# 1. A secret so the endpoint is not world-writable (fail-closed, like /health)
+# 1. A secret so the endpoint is not world-writable (fail-closed, like /.netlify/functions/health)
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # 2. Point the sink at your own site's receiver
@@ -103,9 +103,13 @@ another quota to exhaust."* Choose it only if you already pay for one.
 ### Option D — leave it unset
 
 **This is a valid choice.** `_lib/metrics-sink.ts` rule 1 is *absent ⇒ no-op*,
-and it logs `metrics.sink.disabled` exactly once. `/health` keeps working fully.
-You lose fleet-wide visibility, which §3.3 notes is the one thing `/health`
+and it logs `metrics.sink.disabled` exactly once. `/.netlify/functions/health` keeps working fully.
+You lose fleet-wide visibility, which §3.3 notes is the one thing `/.netlify/functions/health`
 cannot give you (it answers from a single instance).
+
+**This is the state of the production site as of 2026-09-13** — `METRICS_SINK_URL` is absent from
+all 22 site env vars. Consequence: the §6 gate's step 2 ("watch the sink") cannot pass, and no
+alert can ever fire. Steps 1, 3 and 4 are unaffected.
 
 ---
 
@@ -176,7 +180,7 @@ curl -s -H "Authorization: Bearer $HEALTH_TOKEN" \
 
 Then follow §6 steps 1–4: **inject a failure** (point the DB at an unreachable
 host, or block egress to `<project>.supabase.co`), watch the sink fire within
-2 minutes, and ask `/health` why. Expect `status: "down"`, a `reasons` entry
+2 minutes, and ask `/.netlify/functions/health` why. Expect `status: "down"`, a `reasons` entry
 naming PostgREST, and HTTP **503**.
 
 Step 3 of that procedure is the whole point of Phase C.

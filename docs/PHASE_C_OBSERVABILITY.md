@@ -7,7 +7,7 @@
 
 **Phase C gate, restated:** *an injected PostgREST failure produces an alert within 2 minutes, and the health endpoint explains it.*
 - "an alert within 2 minutes" → §4 (alerts + runbooks), fired off the §3 sink.
-- "the health endpoint explains it" → §3 (`GET /health`). The runbook for the PostgREST alert walks through exactly this endpoint, so the gate is a scripted procedure rather than a claim. See §6 for the drill.
+- "the health endpoint explains it" → §3 (`GET /.netlify/functions/health`). The runbook for the PostgREST alert walks through exactly this endpoint, so the gate is a scripted procedure rather than a claim. See §6 for the drill.
 
 ---
 
@@ -56,10 +56,19 @@ This is why `getHealth` is deliberately **absent** from `surfaces/index.ts` even
 
 ### 3.2 The auth model — fail closed
 
+**The URL is `/.netlify/functions/health`.** Earlier revisions of this section wrote it as
+`GET /health`. That shorthand was wrong and is worth recording, because the bare path does not
+exist: there is no redirect for it in `netlify.toml`, so `/health` answers **404** — which is the
+same response a *missing function* gives. An operator following this section literally would have
+read the symptom of a broken deploy. Verified 2026-09-13 against production: `/health` → `404`,
+`/.netlify/functions/health` → `200`. Everything that actually probes the endpoint
+(`scripts/ci/smoke-test.mjs`, `PHASE_C_SINK_SETUP.md` §5, `HANDOFF_4KB_ENV_LIMIT.md` §6) already
+used the full path; only the prose here was loose.
+
 | Request | Response |
 |---|---|
-| `GET /health` (no header) | `200` liveness — `{status, timestamp, detail}` and nothing else |
-| `GET /health?detail=1` or `POST /health`, no `HEALTH_TOKEN` configured | **`503`** — `reason: "HEALTH_TOKEN not configured"` |
+| `GET /.netlify/functions/health` (no header) | `200` liveness — `{status, timestamp, detail}` and nothing else |
+| `GET /.netlify/functions/health?detail=1` or `POST` to it, no `HEALTH_TOKEN` configured | **`503`** — `reason: "HEALTH_TOKEN not configured"` |
 | detail request, token set, no/invalid token | `401` — `reason: "missing or invalid token"` |
 | detail request, malformed `Authorization` (no `Bearer` scheme) | `401` — distinct reason string |
 | detail request, valid token, report `ok`/`degraded` | `200` + full report |
@@ -221,7 +230,12 @@ The affected *path*, not the whole system: burning the application-submit budget
 Phase C's gate is not a document, it is a thing you run. To verify:
 
 1. **Inject the failure.** Confirm `HEALTH_TOKEN` and `METRICS_SINK_URL` are set on the site, then point the DB at an unreachable host, or block egress to `<project>.supabase.co`. (The chaos suite in §6.7/Phase E automates this; until then, do it by hand.)
-2. **Watch the sink.** Within 2 minutes (`sweep-queue` runs every 2 min, so this is the tightest realistic loop) A5 and/or A7 should transition to firing. If they do not, the sink is the problem — check it is configured, since its absence is a deliberate no-op.
+   **Status 2026-09-13:** `HEALTH_TOKEN` **is** set — verified two independent ways: the liveness
+   body reports `detail: "gated"` (it reports `"unconfigured"` when the secret is missing), and the
+   site's env list contains the key. `METRICS_SINK_URL` is **not** set — it is absent from all 22
+   site env vars. So steps 3 and 4 below are runnable today; **step 2 is not**, and cannot be until
+   the sink URL exists.
+2. **Watch the sink.** Within 2 minutes (`sweep-queue` runs every 2 min, so this is the tightest realistic loop) A5 and/or A7 should transition to firing. If they do not, the sink is the problem — check it is configured, since its absence is a deliberate no-op. **Blocked on `METRICS_SINK_URL` (see step 1).**
 3. **Ask the health endpoint why.**
    ```
    curl -s -H "Authorization: Bearer $HEALTH_TOKEN" \
@@ -257,7 +271,16 @@ Step 3 is the whole point. Before Phase C, step 2 was impossible and step 3 had 
 
 ## 8. What Phase C does not claim
 
-- **It does not give fleet-wide visibility.** One instance answers `/health`. Only the sink aggregates.
+- **It does not give fleet-wide visibility.** One instance answers `/.netlify/functions/health`. Only the sink aggregates.
 - **The sink does not aggregate, alert, or retain.** That is the receiver's job, and the receiver is intentionally not built here.
 - **A2's 7-day baseline needs history.** Until the sink has been running for a week, that alert cannot fire correctly. Expect it to be noisy or silent at first — that is not a bug in the rule.
-- **The gate has not been executed against production yet.** §6 is the procedure, and it needs `HEALTH_TOKEN` and `METRICS_SINK_URL` deployed first. Until it is run, Phase C is implemented but unverified — and Phase E (§6.7) is where it becomes a standing claim rather than a one-time check.
+- **The gate has been executed only in part.** *(Corrected 2026-09-13.)* An earlier revision said it
+  "needs `HEALTH_TOKEN` and `METRICS_SINK_URL` deployed first". `HEALTH_TOKEN` **was already deployed**
+  — that claim was wrong. What was verified against production on 2026-09-13: the endpoint is live at
+  `/.netlify/functions/health`; an unauthenticated detail request returns **401** `missing or invalid
+  token` (not `HEALTH_TOKEN not configured`), so the gate fails closed; and a request with the real
+  token returns **200** with the full report (`status: "degraded"`, reason `PostgREST reachable but
+  slow: 867ms`, `shared.jobQueue.depth: 0`, breakers closed). What is **still unrun** is the failure
+  injection (step 1) plus the sink notification (step 2) — blocked on `METRICS_SINK_URL`, which is
+  absent from the site. So Phase C's *auth model and reporting* are verified live; its *alerting leg*
+  is not, and Phase E (§6.7) is where it becomes a standing claim rather than a one-time check.
