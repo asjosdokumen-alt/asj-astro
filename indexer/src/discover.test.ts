@@ -149,13 +149,35 @@ describe('discover', () => {
     // 220 -> 221 (2026-09-13, BACKEND_TODO #8): +1 ts — agenda-reminders.ts (the
     // cron trigger for the agenda reminders). The guard test is not part of the
     // indexer inventory.
-    expect(count('ts')).toBe(222); // +2 uploadBerkas.ts/.test.ts 2026-09-08 (storage kandidat/<wa> UI)
+    // 221 -> 233 (2026-09-13, evening). Measured, not derived: the tree holds 233
+    // and this ratchet had gone STALE BY 9, so `npm test` — and with it
+    // `ci:quality` — was RED on main for several commits before this. It was
+    // found by running the whole suite, which includes the `indexer` project;
+    // running only `--project frontend` / `--project backend` does NOT cover this
+    // file, which is exactly how it slipped past earlier sessions.
+    //   Only 2 of the 11 new files are this session's (_lib/otlp.ts and
+    //   _lib/kernel/otlp.test.ts — the Grafana OTLP export). The other 9 were
+    //   already on disk and unrecorded:
+    //     _lib/db/jobs-limit.test.ts                        (job-board 1-row bug, cb7c3ad)
+    //     src/lib/jobDisplay.ts + jobDisplay.test.ts        (i18n job values, da4b72d)
+    //     src/lib/candidateExport.ts + .test.ts + .xlsx.test.ts   (#11 Excel export)
+    //     src/lib/berkasCatalog.test.ts                     (#10 extension guard)
+    //     src/lib/swOffline.test.ts                         (#18 PWA offline)
+    //     contexts/applications/service-bulk-delete.test.ts (#15 bulk delete)
+    // Note the previous literal (222) was itself 1 above the 221 the comments
+    // above sum to, so the true drift was 9 from the literal / 10 from the
+    // arithmetic. The measured value is what matters: 233.
+    expect(count('ts')).toBe(233);
     // 78 -> 79 (2026-09-13, owner-approved item 2):
     // src/components/ui/AiUnavailableBanner.tsx.
     // 79 -> 78 (2026-09-13): -1 tsx, src/components/ESignatureModal.tsx deleted.
     // NOT part of the #8 cron work — this deletion came from the parallel
     // frontend session editing src/components/admin/*.tsx in the same tree.
-    expect(count('tsx')).toBe(78); // 46 at design time; modal/component test suites added since
+    // 78 -> 80 (2026-09-13, BACKEND_TODO #12): +2 tsx — RejectMailModal.tsx (the
+    // reject-reason composer that replaced a `window.confirm` carrying a
+    // hardcoded reason) and its test. Part of the same stale-ratchet batch the
+    // count('ts') note above describes.
+    expect(count('tsx')).toBe(80); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
     // 2026-09-11: the Phase A/B CI gates landed — bundle-size.mjs,
     // surface-binding.mjs, verify-aliases.mjs, scripts/lib/load-env.mjs, and
@@ -225,7 +247,11 @@ describe('discover', () => {
     // 362 -> 363 (2026-09-13, owner-approved item 2): +1 tsx — see above.
     // 363 -> 362 (2026-09-13, B06 share-token removal): -1 ts — see above.
     // 362 -> 364 (2026-09-13, BACKEND_TODO #8): +2 ts — see above.
-    expect(files.length).toBe(363); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 364 -> 376 (2026-09-13, evening): +13 files — 11 ts + 2 tsx, the same batch
+    // the per-extension notes above list. Measured against the tree, because this
+    // assertion had gone stale and was red on main. (The previous literal, 363,
+    // was itself 1 below the 364 its own comments above reach.)
+    expect(files.length).toBe(376); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

@@ -1,7 +1,14 @@
-# Phase C — sink setup (METRICS_SINK_URL)
+# Phase C — sink setup (METRICS_SINK_URL · Grafana Cloud OTLP)
 
 How to give the metrics sink a destination, from zero to a working gate.
 Written for `docs/PHASE_C_OBSERVABILITY.md` §4.3 + §6.
+
+**Two destinations, both optional, independent of each other:**
+
+| Variable | Speaks | Use |
+|---|---|---|
+| `METRICS_SINK_URL` (+`_TOKEN`) | this repo's own payload shape | your own receiver, or a Discord webhook to satisfy the gate today |
+| `GRAFANA_CLOUD_OTLP_ENDPOINT` + `GRAFANA_CLOUD_BASIC_AUTH_HEADER` | OTLP | Grafana Cloud — the only hosted backend with a purpose-built exporter (§2b) |
 
 ---
 
@@ -96,9 +103,18 @@ you need durable windows.
 
 ### Option C — hosted APM (Datadog, Better Stack, Grafana Cloud)
 
-Works, but §2 of the Phase C doc explicitly rejected this class of option:
+**Grafana Cloud is now first-class — see §2b below.** It is the one hosted
+backend this repo speaks to directly, because the owner supplied credentials on
+2026-09-13 and an OTLP exporter was added for it.
+
+Datadog and Better Stack still work only *behind* a receiver (Option B): point
+`METRICS_SINK_URL` at your own endpoint and have that endpoint forward. The
+reason §2 of the Phase C doc rejected a direct APM SDK still applies to them —
 *"another account, another secret, another vendor in the critical path, and
-another quota to exhaust."* Choose it only if you already pay for one.
+another quota to exhaust"* — and it is worth noting the Grafana path does NOT
+escape that criticism: it accepts it deliberately, because A1–A7 cannot fire at
+all without a backend that remembers a window. That is the failure the cost
+prevents.
 
 ### Option D — leave it unset
 
@@ -107,9 +123,117 @@ and it logs `metrics.sink.disabled` exactly once. `/.netlify/functions/health` k
 You lose fleet-wide visibility, which §3.3 notes is the one thing `/.netlify/functions/health`
 cannot give you (it answers from a single instance).
 
-**This is the state of the production site as of 2026-09-13** — `METRICS_SINK_URL` is absent from
-all 22 site env vars. Consequence: the §6 gate's step 2 ("watch the sink") cannot pass, and no
-alert can ever fire. Steps 1, 3 and 4 are unaffected.
+**This is the state of the production site as of 2026-09-13** — neither
+`METRICS_SINK_URL` nor the Grafana pair is present among the 22 site env vars.
+Consequence: the §6 gate's step 2 ("watch the sink") cannot pass, and no alert
+can ever fire. Steps 1, 3 and 4 are unaffected.
+
+---
+
+## 2b. Grafana Cloud over OTLP — a second, independent destination
+
+Added 2026-09-13. This is **not** an alternative value for `METRICS_SINK_URL`:
+Grafana Cloud speaks OTLP and nothing else, so it gets its own exporter
+(`netlify/functions/_lib/otlp.ts`) and its own two variables. Either destination
+may be set alone, both together, or neither.
+
+### Why metrics and not logs
+
+The payload can be sent as OTLP logs (one record per flush) or OTLP metrics.
+It is sent as **metrics**, because §6 requires "an injected PostgREST failure
+produces an alert within 2 minutes" and A1–A7 are threshold rules over windows.
+A metrics backend evaluates those natively. Volume also favours it: one data
+point per flush aggregates server-side, where one log line per flush is retained
+as-is.
+
+### What the translation does
+
+| Payload | OTLP | Why |
+|---|---|---|
+| `counters` | `sum`, **DELTA** temporality, monotonic | The kernel clears its maps on every flush, so each payload is one invocation's delta. Marking it CUMULATIVE would make every counter look like it reset to zero every invocation, and `rate()` would read those as resets and under-count. |
+| `gauges` | `gauge` | Point-in-time values. |
+| `histograms[*].count` | `sum`, DELTA | It is a count of observations in the interval, so it deserves `rate()`. |
+| `histograms[*].avg/p50/p95/max` | `gauge`, name suffixed `_avg`/`_p50`/`_p95`/`_max` | The payload carries pre-computed percentiles, not bucket counts, so an OTLP `histogram` (which needs `bucketCounts` + `explicitBounds`) cannot represent it without inventing a distribution. The suffixed gauge matches what a Grafana user already expects: `handler_latency_p95 > 500`. |
+
+Names are sanitised here (dots → underscores), so `handler.latency` becomes the
+series `handler_latency_p95` — predictable from the repo, not dependent on the
+receiver's sanitiser.
+
+### The cardinality guard — read before adding a label
+
+The kernel appends labels into the metric KEY as `.key=value`. Shipping every one
+as a Prometheus label is how a metrics bill explodes, and one of them is
+unbounded by construction:
+
+```
+recordRateLimit(action, key)  →  rate_limit.hit.action=…​.key=<client id>
+```
+
+`key` is caller-supplied. As a label it is one time series per caller, forever.
+So `SHIPPED_LABELS` in `_lib/otlp.ts` is an **allow-list** (`action`, `dep`,
+`outcome`, `code`) — anything else is dropped, and the drop is reported once via
+`metrics.otlp.labels_dropped` so it cannot be silent. The metric itself is kept:
+"we are being rate limited, per action" is still the alertable fact.
+
+A deny-list was rejected on purpose. Its failure mode is that someone forgets to
+update it, and the cost of forgetting is silent and recurring.
+
+### Setting it up
+
+1. **Build the header.** Grafana Cloud gives an instance ID and an API key:
+
+   ```bash
+   printf '%s' '1828153:<grafana.com API key>' | base64
+   ```
+
+   The variable's value is the **whole header**, including the scheme:
+
+   ```
+   GRAFANA_CLOUD_BASIC_AUTH_HEADER=Basic MTgyODE1MzphYmNkZWY=
+   ```
+
+   Do **not** paste the documentation placeholder verbatim
+   (`Basic base64(1828153:<grafana.com API Key>)`). The exporter detects that
+   string and refuses to send, logging `metrics.otlp.misconfigured` — a literal
+   placeholder would otherwise produce a 401 indistinguishable from a revoked
+   key.
+
+2. **Set the endpoint** to the gateway base, without the signal path (the
+   exporter appends `/v1/metrics`):
+
+   ```
+   GRAFANA_CLOUD_OTLP_ENDPOINT=https://otlp-gateway-prod-ap-southeast-2.grafana.net/otlp
+   ```
+
+3. **Set both in the Netlify UI**, scoped to the environments that should ship
+   metrics. Neither is required — a missing one is a no-op, never an error — so
+   neither can fail a deploy.
+
+4. **Redeploy.** Netlify does not retroactively apply env changes to a running
+   deploy (same as §4).
+
+### Verifying it
+
+You cannot verify this from CI — it needs the real credential. Check the function
+logs for one of:
+
+| Log event | Meaning |
+|---|---|
+| `metrics.otlp.sent` (debug) | Accepted by the gateway. |
+| `metrics.otlp.rejected` with `status: 401` | The credential is wrong, or the placeholder guard would have caught a malformed header first. |
+| `metrics.otlp.misconfigured` | The header is empty, lacks `Basic `, or is still the placeholder. Nothing was sent. |
+| `metrics.otlp.failed` with `reason: timeout` | The gateway did not answer inside 2 s. Samples are dropped, not retried — by design. |
+| `metrics.otlp.labels_dropped` | A label outside the allow-list appeared. The metric still shipped. |
+
+Then confirm the series exist in Grafana (**Explore** → the Prometheus/Mimir
+datasource → query `handler_latency_p95` or `sweep_processed`).
+
+**If nothing arrives and the log says `sent`:** the one thing to check first is
+temporality. Delta is correct for this payload, but if the gateway or datasource
+is configured to expect cumulative, data can be accepted and then dropped. That
+is a one-constant change (`aggregationTemporality` in `_lib/otlp.ts`) with a test
+pinning it, so it is cheap to flip — but do not flip it without evidence, because
+the delta claim is what makes `rate()` correct.
 
 ---
 
@@ -124,6 +248,17 @@ netlify env:set METRICS_SINK_URL "https://discord.com/api/webhooks/..." \
 
 # Only if your receiver needs auth (Option B does)
 netlify env:set METRICS_SINK_TOKEN "<secret>" --secret --context production
+
+# Grafana Cloud (Option C / §2b) — a SECOND, independent destination.
+# The endpoint is not a secret; the header is. --secret on the credential only.
+netlify env:set GRAFANA_CLOUD_OTLP_ENDPOINT \
+  "https://otlp-gateway-prod-ap-southeast-2.grafana.net/otlp" \
+  --context production
+
+# Build the value first — see §2b step 1:
+#   printf '%s' '1828153:<api key>' | base64
+netlify env:set GRAFANA_CLOUD_BASIC_AUTH_HEADER "Basic <base64>" \
+  --secret --context production
 ```
 
 `--secret` makes the value **write-only** — it cannot be read back, not even by

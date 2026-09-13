@@ -60,6 +60,11 @@ const PROFILES = {
       // without making the deploy fail.
       'METRICS_SINK_URL',
       'METRICS_SINK_TOKEN',
+      // Phase C item 11, the OTLP destination (added 2026-09-13). Optional for
+      // the same reason, and independently of the sink above: setting one, the
+      // other, both, or neither are all valid configurations.
+      'GRAFANA_CLOUD_OTLP_ENDPOINT',
+      'GRAFANA_CLOUD_BASIC_AUTH_HEADER',
     ],
   },
   staging: {
@@ -112,6 +117,11 @@ const PROFILES = {
       'METRICS_SINK_TOKEN',
       'METRICS_RECEIVER_TOKEN',
       'METRICS_NOTIFY_URL',
+      // Phase C item 11, OTLP destination (2026-09-13). Listed here so the
+      // budget arithmetic can SEE them — see the note above about the profile
+      // being the only place a variable becomes visible to the check.
+      'GRAFANA_CLOUD_OTLP_ENDPOINT',
+      'GRAFANA_CLOUD_BASIC_AUTH_HEADER',
     ],
   },
 };

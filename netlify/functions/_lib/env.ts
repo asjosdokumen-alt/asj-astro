@@ -50,6 +50,15 @@ const WHITELIST = new Set([
   // the names are documented in one place.
   'METRICS_SINK_URL',
   'METRICS_SINK_TOKEN',
+  // Phase C item 11, the OTLP destination (added 2026-09-13). Same treatment as
+  // the sink above and for the same reason: read via process.env in
+  // _lib/metrics-sink.ts, deliberately NOT resolved through this loader, so that
+  // "unconfigured" cannot depend on whether a developer happens to have a
+  // .env.local. Whitelisted so both names are documented in one place.
+  // GRAFANA_CLOUD_BASIC_AUTH_HEADER is a credential and must never be committed;
+  // it is set in the Netlify UI only.
+  'GRAFANA_CLOUD_OTLP_ENDPOINT',
+  'GRAFANA_CLOUD_BASIC_AUTH_HEADER',
   // Phase C item 11, receiving end. `netlify/functions/metrics-receiver.ts` is
   // the reference receiver: METRICS_RECEIVER_TOKEN gates it (fail-closed, same
   // model as HEALTH_TOKEN) and METRICS_NOTIFY_URL is where a fired alert is

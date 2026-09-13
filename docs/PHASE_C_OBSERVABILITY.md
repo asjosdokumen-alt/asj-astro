@@ -196,6 +196,8 @@ Almost always a *good* explanation, and the job is to rule those out before pagi
 
 The sink URL is yours to choose. If you want the smallest thing that satisfies the Phase C gate, a second Netlify function in the same site works and needs no third-party account: `POST` the payload into it, evaluate the rules above, and notify on the transitions. Keep it a *separate* function from `health.js` so that a broken receiver cannot take down the health probe.
 
+**A hosted backend is also supported, and now has a purpose-built exporter.** *(Added 2026-09-13.)* §2 rejected an APM SDK because *"the cost must be justified by a failure it prevents"* — and A1–A7 are that failure, since none of them can fire without a backend that remembers a window. So `_lib/otlp.ts` translates the payload into OTLP metrics and ships it to Grafana Cloud, gated on its own two variables and independent of `METRICS_SINK_URL`. Full setup, the temporality and cardinality decisions, and how to verify it: `docs/PHASE_C_SINK_SETUP.md` §2b.
+
 **State has to live somewhere.** Alert evaluation is stateful (a 5-minute window, a 7-day baseline), and functions are stateless. This is the one piece of Phase C that is genuinely not trivial, and it is the reason the sink is fire-and-forget rather than fire-and-await-success: the receiving end is allowed to be lossy and simple.
 
 ---
@@ -254,7 +256,9 @@ Step 3 is the whole point. Before Phase C, step 2 was impossible and step 3 had 
 |---|---|
 | `netlify/functions/_lib/health.ts` | **new** — report assembly, thresholds, DB probes |
 | `netlify/functions/health.js` | **new** — bespoke entry point, fail-closed gate |
-| `netlify/functions/_lib/metrics-sink.ts` | **new** — the item-11 exporter, gated on `METRICS_SINK_URL` |
+| `netlify/functions/_lib/metrics-sink.ts` | **new** — the item-11 exporter, gated on `METRICS_SINK_URL`; since 2026-09-13 also fans out to the OTLP destination |
+| `netlify/functions/_lib/otlp.ts` | **new** (2026-09-13) — pure `MetricsPayload` → OTLP/HTTP metrics JSON; no I/O, so it is tested by calling it |
+| `netlify/functions/_lib/kernel/otlp.test.ts` | **new** (2026-09-13) — 25 tests; mutation-verified |
 | `netlify/functions/_lib/kernel/resilience.ts` | `snapshot()`/`openCount()` on breaker, `snapshot()` on bulkhead |
 | `netlify/functions/_lib/kernel/metrics.ts` | extracted `metricsSnapshot()`, `metricsEmpty()`; `MetricsPayload` type; `flushMetrics()` returns its payload |
 | `netlify/functions/_lib/kernel/log.ts` | `LogContext` exported; `flushedMetrics` carries the payload to the sink |

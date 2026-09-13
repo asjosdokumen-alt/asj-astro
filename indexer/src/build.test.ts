@@ -71,7 +71,14 @@ describe('full build', () => {
     // agenda-reminders.ts (the `config.schedule` trigger that
     // never existed). ts
     // 220 -> 221. No tsx/astro/mjs change. (The test file is not in the indexer inventory.)
-    expect(r.stats.fileCount).toBe(363); // 222 ts + 79 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
+    // 363 -> 376 (2026-09-13, evening). Measured against the tree, because the
+    // previous literal had gone STALE BY 11 and `npm test` was red on main for
+    // the commits that added the files (see the count('ts') note in
+    // discover.test.ts for the list and the reason it slipped past). Only 2 of
+    // the 13 new files are from this session (_lib/otlp.ts + its test).
+    // The old breakdown comment was also internally inconsistent — it summed to
+    // 364, not 363 — so the breakdown below is re-measured, not re-derived.
+    expect(r.stats.fileCount).toBe(376); // 233 ts + 80 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 
@@ -89,8 +96,9 @@ describe('full build', () => {
     // previous one used. 14763 measured 2026-09-13 after the owner-approved
     // items 1 & 5 added two test suites (contexts/identity/admin-personal,
     // contexts/notifications/wa-single-durability): 14750 -> 15250 keeps the
-    // same ~500-symbol headroom.
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(15250);
+    // same ~500-symbol headroom. 15459 measured 2026-09-13 (evening), after the
+    // stale-ratchet batch of 13 files landed: 15250 -> 16000 keeps that headroom.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(16000);
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

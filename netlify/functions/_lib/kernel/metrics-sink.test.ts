@@ -27,6 +27,8 @@ const PAYLOAD: MetricsPayload = {
 const ORIG = {
   url: process.env.METRICS_SINK_URL,
   token: process.env.METRICS_SINK_TOKEN,
+  otlp: process.env.GRAFANA_CLOUD_OTLP_ENDPOINT,
+  otlpAuth: process.env.GRAFANA_CLOUD_BASIC_AUTH_HEADER,
 };
 
 function restore() {
@@ -34,16 +36,32 @@ function restore() {
   else process.env.METRICS_SINK_URL = ORIG.url;
   if (ORIG.token === undefined) delete process.env.METRICS_SINK_TOKEN;
   else process.env.METRICS_SINK_TOKEN = ORIG.token;
+  if (ORIG.otlp === undefined) delete process.env.GRAFANA_CLOUD_OTLP_ENDPOINT;
+  else process.env.GRAFANA_CLOUD_OTLP_ENDPOINT = ORIG.otlp;
+  if (ORIG.otlpAuth === undefined) delete process.env.GRAFANA_CLOUD_BASIC_AUTH_HEADER;
+  else process.env.GRAFANA_CLOUD_BASIC_AUTH_HEADER = ORIG.otlpAuth;
+}
+
+/**
+ * Clear BOTH destinations.
+ *
+ * "Unconfigured" now means "neither destination is set", so a test that only
+ * deletes METRICS_SINK_URL would pass on a machine that happens to have the
+ * Grafana variables exported — a green suite that proves nothing. Every rule-1
+ * test clears both.
+ */
+function clearBoth() {
+  delete process.env.METRICS_SINK_URL;
+  delete process.env.METRICS_SINK_TOKEN;
+  delete process.env.GRAFANA_CLOUD_OTLP_ENDPOINT;
+  delete process.env.GRAFANA_CLOUD_BASIC_AUTH_HEADER;
 }
 
 describe('exportMetrics — rule 1: absent configuration is a no-op', () => {
-  beforeEach(() => {
-    delete process.env.METRICS_SINK_URL;
-    delete process.env.METRICS_SINK_TOKEN;
-  });
+  beforeEach(clearBoth);
   afterEach(restore);
 
-  it('does not call fetch at all when METRICS_SINK_URL is unset', async () => {
+  it('does not call fetch at all when neither destination is set', async () => {
     const spy = vi.spyOn(globalThis, 'fetch');
     await exportMetrics(PAYLOAD);
     expect(spy).not.toHaveBeenCalled();
@@ -75,8 +93,8 @@ describe('exportMetrics — rule 1: absent configuration is a no-op', () => {
 
 describe('exportMetrics — rule 2: never throws into the caller', () => {
   beforeEach(() => {
+    clearBoth();
     process.env.METRICS_SINK_URL = 'https://example.invalid/sink';
-    delete process.env.METRICS_SINK_TOKEN;
   });
   afterEach(restore);
 
@@ -114,8 +132,8 @@ describe('exportMetrics — rule 2: never throws into the caller', () => {
 
 describe('exportMetrics — the request it builds', () => {
   beforeEach(() => {
+    clearBoth();
     process.env.METRICS_SINK_URL = 'https://sink.example.test/metrics';
-    delete process.env.METRICS_SINK_TOKEN;
   });
   afterEach(restore);
 
@@ -161,6 +179,7 @@ describe('exportMetrics — the request it builds', () => {
 
 describe('exportMetrics — rule 3: bounded, never delaying', () => {
   beforeEach(() => {
+    clearBoth();
     process.env.METRICS_SINK_URL = 'https://example.invalid/sink';
   });
   afterEach(restore);
@@ -200,6 +219,104 @@ describe('exportMetrics — rule 3: bounded, never delaying', () => {
     const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
     await exportMetrics(PAYLOAD);
     expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+});
+
+describe('exportMetrics — the OTLP destination (Grafana Cloud)', () => {
+  beforeEach(() => {
+    clearBoth();
+    process.env.GRAFANA_CLOUD_OTLP_ENDPOINT =
+      'https://otlp-gateway-prod-ap-southeast-2.grafana.net/otlp';
+    process.env.GRAFANA_CLOUD_BASIC_AUTH_HEADER = 'Basic MTgyODE1MzphYmNkZWY=';
+  });
+  afterEach(restore);
+
+  it('exports over OTLP even when no METRICS_SINK_URL is set', async () => {
+    // The two destinations are independent: OTLP alone is a valid config.
+    const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+    await exportMetrics(PAYLOAD);
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [url, init] = spy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://otlp-gateway-prod-ap-southeast-2.grafana.net/otlp/v1/metrics');
+    expect(init.method).toBe('POST');
+    expect((init.headers as Record<string, string>).Authorization).toBe('Basic MTgyODE1MzphYmNkZWY=');
+    spy.mockRestore();
+  });
+
+  it('sends an OTLP body, not the repo payload shape', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+    await exportMetrics(PAYLOAD);
+    const body = JSON.parse(String((spy.mock.calls[0][1] as RequestInit).body));
+    // The receiver wants OTLP, so the payload is translated — this is the one
+    // place a second serializer is correct, and it is a pure function in otlp.ts.
+    expect(body.resourceMetrics).toBeDefined();
+    expect(body.counters).toBeUndefined();
+    spy.mockRestore();
+  });
+
+  it('fires both destinations when both are configured', async () => {
+    process.env.METRICS_SINK_URL = 'https://sink.example.test/metrics';
+    const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+    await exportMetrics(PAYLOAD);
+    const urls = spy.mock.calls.map((c) => c[0]);
+    expect(urls).toEqual([
+      'https://sink.example.test/metrics',
+      'https://otlp-gateway-prod-ap-southeast-2.grafana.net/otlp/v1/metrics',
+    ]);
+    spy.mockRestore();
+  });
+
+  it('REFUSES to send when the credential is still the placeholder', async () => {
+    // Sending it would produce a 401 indistinguishable from a revoked key. The
+    // guard turns a silent misconfiguration into one clear log line instead.
+    process.env.GRAFANA_CLOUD_BASIC_AUTH_HEADER = 'Basic base64(1828153:<grafana.com API Key>)';
+    const spy = vi.spyOn(globalThis, 'fetch');
+    await expect(exportMetrics(PAYLOAD)).resolves.toBeUndefined();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('still delivers to the sink when only the OTLP credential is broken', async () => {
+    // One misconfigured destination must not take the other one down with it.
+    process.env.METRICS_SINK_URL = 'https://sink.example.test/metrics';
+    process.env.GRAFANA_CLOUD_BASIC_AUTH_HEADER = 'Basic base64(1824999:<key>)';
+    const spy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+    await exportMetrics(PAYLOAD);
+    expect(spy.mock.calls.map((c) => c[0])).toEqual(['https://sink.example.test/metrics']);
+    spy.mockRestore();
+  });
+
+  it('swallows an OTLP failure without throwing', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ENOTFOUND'));
+    await expect(exportMetrics(PAYLOAD)).resolves.toBeUndefined();
+    spy.mockRestore();
+  });
+
+  it('swallows an OTLP 401 without throwing', async () => {
+    const spy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('unauthorized', { status: 401 }));
+    await expect(exportMetrics(PAYLOAD)).resolves.toBeUndefined();
+    spy.mockRestore();
+  });
+
+  it('applies the deadline guard to the OTLP export too', async () => {
+    const { runWithContext } = await import('../kernel/log');
+    const spy = vi.spyOn(globalThis, 'fetch');
+    await runWithContext(
+      { requestId: 'test', deadlineAt: Date.now() + 100 },
+      () => exportMetrics(PAYLOAD),
+    );
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('does not send when the endpoint is whitespace only', async () => {
+    process.env.GRAFANA_CLOUD_OTLP_ENDPOINT = '   ';
+    const spy = vi.spyOn(globalThis, 'fetch');
+    await exportMetrics(PAYLOAD);
+    expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
 });

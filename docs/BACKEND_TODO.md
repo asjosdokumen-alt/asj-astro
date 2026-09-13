@@ -8,6 +8,9 @@ lihat catatan ✅ di tabel masing-masing.
 dikerjakan (#11 `0b46c22`, #15 `3fdaac4`, #12 `d927cce`, #10 `e37647c`, #18 `25fe9c5`, #9 `70a648e`).
 Sisanya diverifikasi **terhadap produksi, bukan dokumen** — probe `/.netlify/functions/health`
 mengoreksi #3 & #27 dan menemukan **#31** (gate rollback tidak memeriksa health sama sekali).
+**Ditambah 2026-09-13 (malam, lanjutan):** exporter OTLP ke Grafana Cloud dibangun
+(`_lib/otlp.ts`), sehingga #3/#7/#27 berubah dari "butuh keputusan receiver" menjadi
+**"butuh 2 env var"**. Lihat `docs/PHASE_C_SINK_SETUP.md` §2b.
 **Pengganti:** `TODO.md` (terakhir 2026-09-03) dan `docs/archive/PARITY_QA_2026-09-04.md` — keduanya sudah
 kedaluwarsa; lihat §5.
 
@@ -68,11 +71,11 @@ Bagian ini yang paling sering disalahartikan sebagai "selesai". Kodenya ada; **p
 
 | # | Item | Bukti | Blokir |
 |---|---|---|---|
-| **3** | 🟢 **PRASYARAT SUDAH TERPENUHI — `HEALTH_TOKEN` sudah ada & live.** Diverifikasi ulang 2026-09-13 lewat probe produksi, **memakai jalur yang benar**. Liveness: `GET /.netlify/functions/health` → `{"status":"ok","timestamp":…,"detail":"gated"}` ⇒ `HEALTH_TOKEN` **terpasang** (kalau kosong nilainya `"unconfigured"`). Tanpa token: `?detail=1` → **401** `missing or invalid token` (bukan `HEALTH_TOKEN not configured`) ⇒ fail-closed bekerja. Dengan token asli: **200** + laporan penuh — `status:"degraded"`, `reasons:["PostgREST reachable but slow: 867ms"]`, `shared.postgrest{state:"closed",failures:0,reachable:true,latencyMs:867}`, `shared.jobQueue{depth:0,dead:0}`. Bukti kedua & independen: daftar env var site memuat `HEALTH_TOKEN`. **Dua koreksi:** (a) klaim lama "`HEALTH_TOKEN` harus ada di site" **SALAH** — sudah ada sejak lama; (b) **`/health` tanpa prefix itu 404** — `netlify.toml` tidak punya redirect untuknya, jadi §3.2 yang menulis `GET /health` menunjuk path yang tidak ada, dan 404 di situ adalah **gejala deploy rusak**, bukan alamat normal. Jalur kanoniknya `/.netlify/functions/health`; sudah dikoreksi di `PHASE_C_OBSERVABILITY.md` §3.2/§6/§8 dan `PHASE_C_SINK_SETUP.md`. | `docs/PHASE_C_OBSERVABILITY.md` §3.2, §6 | **Sisa SATU-satunya: `METRICS_SINK_URL` belum diset** — terverifikasi **absen dari seluruh 22 env var site**, jadi sink = no-op by design dan langkah "sink menyala ≤2 menit" tak bisa lulus. Artinya **#3 bukan "tak bisa lokal"**: langkah 3–4 §6 sudah terbukti hidup terhadap produksi; yang tak bisa diverifikasi hanyalah notifikasi sink (langkah 2). **Owner-side: set `METRICS_SINK_URL`** |
+| **3** | 🟢 **PRASYARAT SUDAH TERPENUHI — `HEALTH_TOKEN` sudah ada & live.** Diverifikasi ulang 2026-09-13 lewat probe produksi, **memakai jalur yang benar**. Liveness: `GET /.netlify/functions/health` → `{"status":"ok","timestamp":…,"detail":"gated"}` ⇒ `HEALTH_TOKEN` **terpasang** (kalau kosong nilainya `"unconfigured"`). Tanpa token: `?detail=1` → **401** `missing or invalid token` (bukan `HEALTH_TOKEN not configured`) ⇒ fail-closed bekerja. Dengan token asli: **200** + laporan penuh — `status:"degraded"`, `reasons:["PostgREST reachable but slow: 867ms"]`, `shared.postgrest{state:"closed",failures:0,reachable:true,latencyMs:867}`, `shared.jobQueue{depth:0,dead:0}`. Bukti kedua & independen: daftar env var site memuat `HEALTH_TOKEN`. **Dua koreksi:** (a) klaim lama "`HEALTH_TOKEN` harus ada di site" **SALAH** — sudah ada sejak lama; (b) **`/health` tanpa prefix itu 404** — `netlify.toml` tidak punya redirect untuknya, jadi §3.2 yang menulis `GET /health` menunjuk path yang tidak ada, dan 404 di situ adalah **gejala deploy rusak**, bukan alamat normal. Jalur kanoniknya `/.netlify/functions/health`; sudah dikoreksi di `PHASE_C_OBSERVABILITY.md` §3.2/§6/§8 dan `PHASE_C_SINK_SETUP.md`. | `docs/PHASE_C_OBSERVABILITY.md` §3.2, §6 | **Sisa SATU-satunya: tidak ada tujuan metrik yang dikonfigurasi.** Terverifikasi 2026-09-13: `METRICS_SINK_URL` **dan** pasangan Grafana **absen dari seluruh 22 env var site**, jadi sink = no-op by design dan langkah "sink menyala ≤2 menit" tak bisa lulus. **Kode-nya sudah siap untuk keduanya** — sink kustom (sudah lama) dan exporter OTLP Grafana (baru, `_lib/otlp.ts`, ter-test + termutasi). Artinya **#3 bukan "tak bisa lokal"** dan bukan lagi "belum ada jalan": langkah 3–4 §6 sudah terbukti hidup terhadap produksi; langkah 2 tinggal menunggu owner men-set **salah satu** tujuan (`METRICS_SINK_URL`, atau `GRAFANA_CLOUD_OTLP_ENDPOINT` + `GRAFANA_CLOUD_BASIC_AUTH_HEADER`) lalu redeploy |
 | **4** | 🟠 **Phase E item 20 — load test 10× peak.** Tidak dijalankan, dan sengaja: terhadap produksi itu persis insiden yang Phase B dibangun untuk dibatasi; terhadap localhost angkanya tidak berarti (tanpa CDN, tanpa isolasi function, tanpa pooler, tanpa RTT ke `ap-southeast-1` — padahal RTT = 99,7 % latency sistem ini) | `docs/PHASE_E_DEGRADATION_MATRIX.md` §4 | **Staging deployment + Supabase project terpisah.** `deploy-staging.yml` sudah ada; project-nya belum |
 | **5** | 🟠 **Phase E item 22 — pooler failover drill.** Supavisor shared pooler tidak punya failover yang bisa dipicu operator; drill terdekat = arahkan staging ke koneksi langsung `:5432` dan buktikan sistem **degradasi**, bukan rusak | `docs/PHASE_E_DEGRADATION_MATRIX.md` §4 | Staging yang sama dengan #4 |
 | **6** | 🟠 **Phase B §7.2 — kalibrasi in-flight cap (24/4/3) di bawah beban nyata.** Nilainya masih tebakan; sengaja env-overridable untuk alasan ini | `docs/PHASE_B_LOAD_BOUNDING.md` §7.2 | Staging yang sama dengan #4 |
-| **7** | 🔴 **Alert §7.2 + mulai melacak error budget §7.3.** Empat sinyal (latency/traffic/errors/saturation) dan tiga SLO sudah **ditulis**, belum **dikonfigurasi** di tool apa pun. `docs/PHASE_C_SINK_SETUP.md` adalah panduan dari nol | `docs/SCALABILITY_RELIABILITY_ARCHITECTURE.md` §7.2–7.3 | Butuh pilihan receiver + akun; owner-side |
+| **7** | 🔴 **Alert §7.2 + mulai melacak error budget §7.3.** Empat sinyal (latency/traffic/errors/saturation) dan tiga SLO sudah **ditulis**, belum **dikonfigurasi** di tool apa pun. `docs/PHASE_C_SINK_SETUP.md` adalah panduan dari nol. **Kemajuan 2026-09-13: jalur transportnya sudah ada** — exporter OTLP ke Grafana Cloud (`_lib/otlp.ts`, `GRAFANA_CLOUD_OTLP_ENDPOINT` + `GRAFANA_CLOUD_BASIC_AUTH_HEADER`, lihat `PHASE_C_SINK_SETUP.md` §2b) sudah diimplementasi & ter-test, jadi yang tersisa **bukan kode**: set dua env var itu, lalu tulis A1–A7 sebagai alert rule di Grafana. Sebelum ini tidak ada backend yang bisa menyimpan window, jadi A1–A7 mustahil menyala | `docs/SCALABILITY_RELIABILITY_ARCHITECTURE.md` §7.2–7.3`, `docs/PHASE_C_SINK_SETUP.md` §2b | **Owner-side**: set 2 env var + buat rule di Grafana. Tidak ada pekerjaan kode yang tersisa di sini |
 
 ---
 
@@ -127,7 +130,7 @@ bagian dari pekerjaan, bukan hiasan.
 
 | # | Item | Kenapa |
 |---|---|---|
-| **27** | ✅ **Separuh selesai — `HEALTH_TOKEN` sudah terpasang.** Terverifikasi 2026-09-13 lewat dua jalur independen: body liveness membalas `detail:"gated"`, dan daftar env var site memuat key-nya. **Sisa: putuskan `METRICS_SINK_URL`** (+ token receiver) | Prasyarat #3 (langkah 2) dan #7. Tanpa itu sink = no-op dan gate Phase C tidak bisa lulus |
+| **27** | ✅ **Sebagian besar selesai.** `HEALTH_TOKEN` **sudah terpasang** (terverifikasi 2026-09-13 dua jalur: body liveness `detail:"gated"` + daftar env site). **Eksportir OTLP-nya sekarang sudah ada** (`_lib/otlp.ts`, ditambah 2026-09-13 malam), jadi keputusan "receiver mana" **sudah terjawab: Grafana Cloud**, dan transportnya ter-test | Prasyarat #3 (langkah 2) dan #7 — **owner-side, nol pekerjaan kode**. **Sisa: set `GRAFANA_CLOUD_OTLP_ENDPOINT` + `GRAFANA_CLOUD_BASIC_AUTH_HEADER`**, lalu redeploy. Nilai placeholder yang diberikan masih berbentuk `Basic base64(...)`, jadi harus di-base64 dulu — `PHASE_C_SINK_SETUP.md` §2b langkah 1 |
 | **28** | Rotasi `SESSION_SECRET` bila sudah dipakai di produksi | Dari `TODO.md`; **belum pernah dikonfirmasi**. Kode tidak punya fallback ke password admin (S3 fix), jadi nilainya kritis |
 | **29** | Ukur cold start function vs target < 3 s | Belum pernah diukur; tidak ada gate-nya |
 | **30** | Revoke `ghp_qzq70Qy…`, bereskan `origin`/`dev` | Kebocoran token ke-3 lewat chat di proyek ini (`HANDOFF.md`) |
@@ -164,6 +167,11 @@ Diringkas supaya daftar di atas tidak diragukan lagi.
   body, sengaja dihapus; penggantinya `scripts/migrate.mjs`. Jangan dibangun ulang.
 - **#3 & #27 (probe produksi 2026-09-13)** — `HEALTH_TOKEN` terbukti sudah terpasang; `/health`
   tanpa prefix terbukti **404** (jalur kanonik `/.netlify/functions/health`).
+- **Exporter OTLP ke Grafana Cloud (2026-09-13 malam)** — `netlify/functions/_lib/otlp.ts` (murni,
+  tanpa I/O) + fan-out di `_lib/metrics-sink.ts`. Dua tujuan independen, keduanya opsional. 25 test
+  baru; **diverifikasi mutasi** (5 mutasi, semuanya memerahkan suite). Cardinality guard berupa
+  **allow-list** label, bukan deny-list. Satu `fetch` call site tetap dipertahankan ⇒ `verify:io`
+  allow-list tidak bertambah. **Yang tersisa cuma 2 env var (owner-side).**
 - **Matriks degradasi §6.5** — 4/7 baris bertahan (dari 2/7); sisa divergensi: Fonnte (enqueue jalan,
   status bukan 202), Storage (retry client-side), Pooler (shed tanpa antre).
 
@@ -184,7 +192,11 @@ Diringkas supaya daftar di atas tidak diragukan lagi.
    preview) tidak tayang di produksi**. Push = auto-build + deploy. **Butuh izin owner.**
 5. ~~**#11 Export Excel → #15 Bulk operations → #12/#13/#18**~~ **✅ SEMUA SELESAI 2026-09-13 malam**
    (#10, #11, #12, #15, #18, #9). Dikerjakan & diverifikasi 100% lokal, **nol token Netlify**.
-6. **#3 + #27** — jalankan gate Phase C. `HEALTH_TOKEN` **sudah ada**; langkah 3–4 §6 sudah terbukti hidup terhadap produksi. Yang benar-benar kurang cuma `METRICS_SINK_URL` (owner-side) ⇒ langkah 2 belum bisa dijalankan. **Ditambah #31** (gate rollback tidak memeriksa health) — butuh keputusan owner karena mengubah pemicu rollback otomatis.
+6. **#3 + #27 + #7** — jalankan gate Phase C. `HEALTH_TOKEN` **sudah ada** dan langkah 3–4 §6 sudah
+   terbukti hidup terhadap produksi. **Transport metriknya juga sudah ada** (exporter OTLP Grafana,
+   2026-09-13). Yang tersisa **hanya 2 env var + buat rule A1–A7 di Grafana** — nol pekerjaan kode.
+   **Ditambah #31** (gate rollback tidak memeriksa health) — butuh keputusan owner karena mengubah
+   pemicu rollback otomatis.
 7. **#4–#6** — staging. Ini yang membuka tiga item sekaligus (20, 22, kalibrasi cap). Infrastruktur.
 8. ~~**#9** — defer P3 ke `job_queue`.~~ **✅ selesai 2026-09-13 (`70a648e`)** — hanya aksi yang punya
    worker yang boleh di-defer; 9 aksi P3 tanpa worker tetap 503 (jawaban jujur).
