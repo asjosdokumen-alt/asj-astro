@@ -35,7 +35,7 @@ Three conclusions follow directly:
 | S2 | **No function concurrency cap — and no way to configure one** | Netlify exposes no such setting, so a burst cannot be bounded at the platform. **Addressed in Phase B** by per-instance admission control, priority classes and load shedding (`kernel/admission.ts`). The fleet-wide weight is carried by the shared rate limiter and DB-side `statement_timeout` |
 | S3 | **Metrics flush to `console.log` only — no external sink, no alerts** | Incidents are still archaeology; breakers open silently |
 | S4 | **No load-shedding / priority classes** | Admin bulk operations and public traffic compete for the same capacity. **Fixed in Phase B** — P0–P3 in `kernel/admission.ts` |
-| S5 | **12 catch-all entry points remain** at 693.6 KB each (8,323 KB = 83% of current total); 11 are deletable (`bridge-links.js` must stay) | Aliases prepared; deletion gated on deploy verification |
+| S5 | ~~**12 catch-all entry points remain** at 693.6 KB each (8,323 KB = 83% of current total); 11 are deletable (`bridge-links.js` must stay)~~ | **Closed in Phase A.** The 11 deletable catch-alls are gone; `bridge-links.js` remains as the one necessary catch-all (it is a **live fallback**, not dead weight — `apiEndpoint.ts` sets `FALLBACK` and `apiClient.ts` retries 404s into it). Result: **2,364.3 KB / 17 entries**, and `verify:entries` proves **0 Lambda-compatibility-mode functions** |
 
 ### Design principles
 
@@ -855,9 +855,20 @@ Ordered by value-per-unit-effort. Each phase is independently shippable and inde
    Netlify will not shadow a deployed function, and the alias silently does nothing.
 4. Gates added: `bundle:size` (with ratchet baseline) and `verify:binding`.
 
-**Remaining — gated on deploy verification:**
-5. `BASE_URL=… npm run verify:aliases` → then delete the 11 alias entry points.
-   Expected ≈ **2,364 KB**.
+**Done — 2026-09-13 correction.** Item 5 is no longer pending. `verify:aliases` was run against
+the deployed site and the 11 alias entry points were deleted. Two independent proofs now exist:
+`node scripts/ci/verify-function-entries.mjs --list` reports **22 root entries, every one exporting
+a handler, and no direct subdirectory deploying as a function ("no Lambda-compat entries")**; and
+the deployed build reports **0 functions in Lambda-compatibility mode**. The figure landed at
+**2,364.3 KB / 17 entries**, matching the ≈2,364 KB prediction. The paragraph below is kept for
+provenance but should be read as closed.
+
+> ~~5. `BASE_URL=… npm run verify:aliases` → then delete the 11 alias entry points.
+>    Expected ≈ **2,364 KB**.~~
+
+The lesson worth keeping: this row sat marked "Remaining" for weeks after the work was finished,
+because the *deploy verification* step was conflated with the *work* — and nothing re-read the row
+once the deploy went green.
 
 **Gate (revised):** no non-catch-all entry over 600 KB; total ratchets down. The original
 "< 1 MB" figure assumed 24 redundant bundles that did not exist — the achievable floor with

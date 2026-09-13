@@ -3,7 +3,12 @@
 **Tanggal:** 2026-09-12
 **Deploy gagal:** `6aa4a0bf0044aa0008729bcf` (build `6aa4a0bf0044aa0008729bcd`)
 **Dampak:** produksi tidak menerima build baru. Situs lama masih melayani trafik.
-**Status:** terdiagnosis, belum diperbaiki. Menunggu keputusan pemilik.
+**Status:** ✅ **SELESAI — keluar dari Lambda compatibility mode.** Deploy `6aa57207` = ready, dan
+**0 fungsi mode kompat** pada build yang tayang. Dijaga gate `verify:entries` (`npm run verify:entries`),
+yang memeriksa **bentuk** direktori `netlify/functions/` — satu-satunya hal yang sebenarnya dibaca Netlify.
+Per 2026-09-13 gate melaporkan: **22 root entry, semuanya mengekspor handler, "no direct subdirectory
+deploys as a function (no Lambda-compat entries)"**. Dokumen di bawah adalah catatan diagnosis aslinya,
+dipertahankan sebagai provenance.
 
 ---
 

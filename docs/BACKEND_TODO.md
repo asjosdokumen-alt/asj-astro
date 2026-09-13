@@ -1,6 +1,9 @@
 # BACKEND_TODO — satu daftar, semua pekerjaan backend yang belum selesai
 
 **Dibuat:** 2026-09-13 · **Sumber:** kode di `main` (`8593e10`) + `docs/` + `HANDOFF.md`
+**Diaudit ulang:** 2026-09-13 (sore) terhadap `main` `cb7c3ad` — **setiap klaim diverifikasi ke kode, bukan
+dipercaya dari dokumen.** Beberapa item ternyata sudah selesai dan dikoreksi (#14, #19, #20–#25);
+lihat catatan ✅ di tabel masing-masing.
 **Pengganti:** `TODO.md` (terakhir 2026-09-03) dan `docs/archive/PARITY_QA_2026-09-04.md` — keduanya sudah
 kedaluwarsa; lihat §5.
 
@@ -22,7 +25,8 @@ kedaluwarsa; lihat §5.
 
 Dan yang paling mudah terlewat: **sisa backend terbesar bukan di dalam fase A–E sama sekali.** Ia ada di
 tiga tempat lain — fitur yang backendnya hidup tapi **tidak punya pemanggil** (#8), paritas legacy yang
-belum dibangun (#11–#18), dan **dokumen yang sekarang bertentangan dengan kode** (#20–#26).
+belum dibangun (#10–#18), dan **dokumen yang sekarang bertentangan dengan kode** (#20–#26, *sudah
+dibereskan kecuali #26*).
 
 Legenda blokir: 🔴 butuh keputusan/izin owner · 🟠 butuh infrastruktur baru · 🟡 belum dibangun ·
 🔵 dibangun tapi tidak ter-trigger · ⚪ klaim belum diukur
@@ -33,7 +37,7 @@ Legenda blokir: 🔴 butuh keputusan/izin owner · 🟠 butuh infrastruktur baru
 
 | # | Item | Bukti | Blokir |
 |---|---|---|---|
-| **2** | 🔴 **Push `main`.** Commit lokal yang belum naik: `e52b38b` · `d28b5e0` · `75dd3cd` · `a4b5f13` · `5909398` (share-token) + 5 commit sebelum sesi ini; remote tetap `47c4440` | `git rev-list --count newrepo/main..main` (angkanya naik tiap commit lokal — jalankan, jangan hafal) | Aturan owner: **jangan push tanpa izin**. Push ke `main` = auto-build + deploy produksi |
+| **2** | 🔴 **Push `main`.** Remote tetap `47c4440`; lokal **ahead 16** per 2026-09-13 (`cb7c3ad`). Commit lokal yang belum naik antara lain: `cb7c3ad` (bug job board 1-baris), `da4b72d` (i18n job values + proxy), `c36d6aa` (preview + Tema/Filter), `e52b38b` · `d28b5e0` (item owner), `75dd3cd` · `a4b5f13` · `5909398`. **Akibatnya: semua perbaikan ini BELUM tayang di `asjastro.netlify.app`** — live masih menyajikan bundle lama | `git rev-list --count newrepo/main..main` (angkanya naik tiap commit lokal — jalankan, jangan hafal) | Aturan owner: **jangan push tanpa izin**. Push ke `main` = auto-build + deploy produksi |
 
 > **#1 — B06 share token: ✅ SELESAI 2026-09-13, dengan dihapus bukan dimigrasi.** `sys_config` memang
 > tidak punya kolom `config_key`, tapi gate token ternyata **bukan parity legacy** (legacy hanya membaca
@@ -76,15 +80,15 @@ Kelas ini yang paling licin: handler-nya benar, ter-guard, ter-test — dan tida
 | # | Item | Bukti | Blokir |
 |---|---|---|---|
 | **10** | 🟡 **C05 — dokumen/berkas kandidat (upload/simpan/revisi).** Surface-nya sudah di-wire; **UI modal belum dicek 1:1**. Satu-satunya baris checklist paritas yang belum ✅ | `docs/PARITY_CHECKLIST.md:55` | QA form vs modal legacy |
-| **11** | 🟡 **Export Excel.** Yang ada hanya CSV (`exportKandidatCsv`). `xlsx` sudah dibundel, tapi untuk *parser* ingestion, bukan export | `docs/LEGACY_PARITY_REFERENCE.md:61`, `src/lib/apiEndpoint.ts:90-94` | Belum dibangun |
-| **12** | 🟡 **Reject mail composer.** Legacy punya; di repo baru tidak ada jejaknya | `docs/LEGACY_PARITY_REFERENCE.md:64` | Belum dibangun |
-| **13** | 🟡 **Modal Migrasi Drive.** Legacy punya; tidak ada jejaknya | `docs/LEGACY_PARITY_REFERENCE.md:65` | Belum dibangun |
-| **14** | 🟡 **TabConfig masih read-only.** 105 baris, hanya memanggil `getAppData`; **tidak ada satu pun aksi simpan**. "Lengkapi settings (Fonnte token, AI model, dll)" belum tersentuh. Bonus: ia memakai `fetch` mentah, bukan `getEndpoint(...)` | `src/components/admin/TabConfig.tsx:34` | Belum dibangun |
-| **15** | 🟡 **Bulk operations.** Tidak ada multi-select delete/ubah-status di admin mana pun | `grep -rn "selectedIds\|bulkDelete" src/components/admin/` → kosong | Belum dibangun |
+| **11** | 🟡 **Export Excel.** Yang ada hanya CSV (`exportKandidatCsv`). `xlsx` **sudah terpasang** di `node_modules` (dipakai *parser* ingestion di `contexts/documents/service.ts:537,740`), bukan untuk export. **Bisa 100% lokal** | `docs/LEGACY_PARITY_REFERENCE.md:61`, `src/lib/apiEndpoint.ts:90-94` | Belum dibangun. Bahan sudah lengkap — tinggal sisi export + tombol |
+| **12** | 🟡 **Reject mail composer.** Legacy punya; di repo baru tidak ada jejaknya (`grep -rln "rejectMail\|MailComposer\|composer" src netlify` → kosong). Catatan: **tombol reject-nya sudah ada** (`TabMail` → `rejectForm`) — yang belum adalah *composer* suratnya, jadi jangan dikira reject-nya tidak jalan | `docs/LEGACY_PARITY_REFERENCE.md:64` | Belum dibangun |
+| **13** | 🟡 **Modal Migrasi Drive.** Tidak ada komponennya di `src/components/admin/` (31 komponen, tidak ada yang cocok). Sisa jejaknya hanya **2 key i18n** — `admin.db_migration_auto`, `admin.run_migration` (`src/store/i18n.ts:944-945`) — **tanpa UI**. **Bisa 100% lokal** | `docs/LEGACY_PARITY_REFERENCE.md:65` | Belum dibangun |
+| **14** | ✅ **SELESAI — TabConfig bukan read-only lagi.** Ia sudah memanggil `api.secure('updateSysConfig', …)` **dua kali** (`TabConfig.tsx:44` untuk options per-config-id, `:51` untuk pengumuman) dengan tombol simpan (`:80`, `:100`) + toast `toast_config_saved`/`toast_announcement_saved`. Ia juga **sudah** memakai `api.secure`, bukan `fetch` mentah. Klaim lama ("105 baris, hanya `getAppData`, tidak ada aksi simpan") **tidak lagi benar** | `src/components/admin/TabConfig.tsx:34,44,51,80,100` | **Tidak ada.** Yang mungkin masih kurang hanyalah kelengkapan *field* settings (Fonnte token, AI model) — tapi mekanisme simpannya sudah ada; jangan bangun ulang |
+| **15** | 🟡 **Bulk operations.** Tidak ada multi-select delete/ubah-status di admin mana pun — **dan tidak ada action backend-nya juga**: `grep -rn "bulkDelete\|bulkUpdate\|deleteSelected\|simpanTugas" netlify/functions/` → kosong | `grep -rn "selectedIds\|bulkDelete" src/components/admin/` → kosong | Belum dibangun. Perlu **action backend baru + UI**, bukan sekadar UI. **Bisa 100% lokal** (verifikasi: vitest + `tsc` + zisi) |
 | **16** | 🟡 **Realtime.** Tidak ada subscription Supabase realtime di `src/` sama sekali | `grep -rn "realtime\|channel(" src/` → kosong | Belum dibangun |
 | **17** | 🟡 **Email notification.** Tidak ada modul email apa pun (tidak ada nodemailer/sendgrid/resend/smtp) | `grep -rln "nodemailer\|sendgrid\|resend\|smtp" netlify src` → kosong | Belum dibangun. Catatan: WA sudah jadi kanal utama; apakah email masih dibutuhkan itu keputusan produk |
 | **18** | 🟡 **PWA offline audit.** Manifest ada; perilaku offline belum diaudit | `docs/LEGACY_PARITY_REFERENCE.md:77`, `public/*.webmanifest` | Belum diaudit |
-| **19** | 🟡 **TabJadwal & TabMail memakai `fetch` mentah** (`getEndpoint(...)` + `sessionToken` manual), bukan `api.secure`/`apiClient`. Fungsional, tapi melewati penanganan sesi-invalid + redirect bersama. B02 sudah memperbaiki pola ini untuk TabWA; dua tab ini tertinggal | `src/components/admin/TabJadwal.tsx:37,76`, `src/components/admin/TabMail.tsx:170-176` | Belum dirapikan |
+| **19** | ✅ **SELESAI — TabJadwal & TabMail sudah memakai `api.secure`.** Klaim lama ("`getEndpoint(...)` + `sessionToken` manual, melewati penanganan sesi-invalid") **tidak lagi benar**: `grep -c getEndpoint` = **0** di kedua file. `TabJadwal` → `api.secure('getAppData'/'simpanJadwalBaru'/'hapusJadwal')`; `TabMail` → `api.secure(action, [id])` lewat helper `act()`. Pola B02 sudah tersebar | `src/components/admin/TabJadwal.tsx:6,27,37`, `src/components/admin/TabMail.tsx:15,53` | **Tidak ada** |
 
 ---
 
@@ -94,15 +98,15 @@ Bukan kosmetik: repo ini sudah dua kali kena kelas bug "dokumen menjanjikan peri
 (`ai_unavailable`, dan sebelum itu 4 dari 7 baris matriks degradasi). Menjaga daftar ini bersih adalah
 bagian dari pekerjaan, bukan hiasan.
 
-| # | Dokumen | Masalah |
-|---|---|---|
-| **20** | `docs/PARITY_CHECKLIST.md` B06 + C06 | Ditandai **✅ 2026-09-05** padahal token per-job **belum pernah bisa di-mint** (#1). Viewer-nya memang ter-wire; gate token-nya tidak pernah hidup. Harus dikoreksi jadi "🔄 ter-wire, token belum aktif" |
-| **21** | `docs/PARITY_QA_2026-09-04.md` | Snapshot 2026-09-04. Delta A3/A4/A5/AI3/S1/S4 yang masih tertulis 🔲 **sudah ditutup** oleh C01–C04. Dokumen ini superseded, bukan daftar kerja |
-| **22** | `docs/LEGACY_PARITY_REFERENCE.md` | Baris Mail (`:37`) dan Jadwal (`:38`) masih 🟡 GAP "belum ter-wire". **Sudah ter-wire**: `TabMail` memanggil `approveForm`/`reviewForm`/`rejectForm`; `TabJadwal` memanggil `simpanJadwalBaru`/`hapusJadwal`. Sisa yang benar-benar belum hanya pemicu reminder (#8) |
-| **23** | `TODO.md` | Terakhir **2026-09-03**; "~80 % fitur / ~15 fitur hilang" tidak lagi benar. RLS, error boundary, document preview, AI interview simulator, WA blast massal — semua sudah selesai. Rate limiting juga sudah dijawab desain (Postgres-backed `rpc/rate_limit_check`, jadi aman multi-instance), dan CORS ternyata hanya dipasang di `share-data.js` (memang publik) — sisanya same-origin |
-| **24** | `docs/SCALABILITY_RELIABILITY_ARCHITECTURE.md` §11 Phase A | Butir 5 masih "**Remaining** — gated on deploy verification", padahal `PHASE_B §7.1` mencatat 11 catch-all **sudah dihapus** (2.364 KB / 17 entri). §11 tertinggal dari kenyataan |
-| **25** | `docs/HANDOFF_4KB_ENV_LIMIT.md` | Header: "**Status:** terdiagnosis, belum diperbaiki. Menunggu keputusan pemilik." Sudah selesai — keluar dari Lambda compatibility mode, deploy `6aa57207` = ready, 0 fungsi mode kompat |
-| **26** | `HANDOFF.md` | Berisi housekeeping yang masih terbuka: **revoke token `ghp_qzq70Qy…`** (masih aktif), `origin` masih menunjuk repo lama `khoci280-arch/asj-astro`, `dev` tertinggal 14 commit |
+| # | Status & masalah |
+|---|---|
+| **20** | ✅ **SELESAI 2026-09-13.** `docs/PARITY_CHECKLIST.md` B06 + C06 — B06 mencatat "gate token DIBATALKAN"; C06 kini bertanda `♻️ 2026-09-13 (gate token dibatalkan)`, tidak lagi mengklaim token per-job aktif |
+| **21** | ✅ **SELESAI.** `PARITY_QA_2026-09-04.md` sudah dipindah ke **`docs/archive/`** (terverifikasi ada di `ls docs/archive/`); checklist menandainya historis, bukan daftar kerja |
+| **22** | ✅ **SELESAI.** `docs/LEGACY_PARITY_REFERENCE.md` baris Mail (`:37`) & Jadwal (`:38`) **sudah ✅** dengan catatan koreksi bertanggal 2026-09-13 ("Wiring sudah ada — lihat #22 di `BACKEND_TODO.md`") |
+| **23** | ✅ **SELESAI.** `TODO.md` **sudah dirapikan 2026-09-13** — dibuka dengan "Pekerjaan BACKEND ada di satu tempat: `docs/BACKEND_TODO.md`"; klaim "~80 % fitur / ~15 fitur hilang" sudah dihapus |
+| **24** | ✅ **SELESAI 2026-09-13.** `docs/SCALABILITY_RELIABILITY_ARCHITECTURE.md` §11 butir 5 **dan** tabel S5 (`:38`) dikoreksi. Baris S5 bertahan berhari-hari sebagai "Remaining — gated on deploy verification" **setelah** pekerjaannya selesai — langkah *verifikasi deploy* dikira sama dengan *pekerjaannya*. Bukti: `node scripts/ci/verify-function-entries.mjs --list` → 22 entri, semua mengekspor handler, **"no Lambda-compat entries"** |
+| **25** | ✅ **SELESAI 2026-09-13.** Header `docs/HANDOFF_4KB_ENV_LIMIT.md` diubah dari "terdiagnosis, belum diperbaiki" → **"SELESAI — keluar dari Lambda compatibility mode"** (deploy `6aa57207` ready, 0 fungsi mode kompat) |
+| **26** | ⚠️ **MASIH TERBUKA — sisanya cuma di `HANDOFF.md`.** (a) **revoke token `ghp_qzq70Qy…`** — masih aktif, kebocoran token ke-3 di proyek ini; (b) `origin` masih menunjuk repo lama `khoci280-arch/asj-astro` (yang aktif = remote **`newrepo`** = `asjosdokumen-alt/asj-astro`); (c) branch `dev` tertinggal 14 commit. **(a) di GitHub & (b) `git remote set-url` — keduanya tanpa build Netlify** |
 
 ---
 
@@ -136,6 +140,10 @@ Diringkas supaya daftar di atas tidak diragukan lagi.
 - **Item owner 1–5 (2026-09-13)** — 1 Fonnte `wa.send` · 2 `AI_UNAVAILABLE` → 503 + banner ·
   3 DB-down → 503 + `Retry-After` · 5 login admin personal tiga tingkat. **Item 4 = #1 di atas.**
 - **Paritas A01–A19, B01–B07, C01–C04, C06** — lihat `docs/PARITY_CHECKLIST.md`.
+- **#14 & #19 (audit 2026-09-13)** — ternyata **sudah selesai**: `TabConfig` punya `updateSysConfig`
+  + tombol simpan; `TabJadwal`/`TabMail` sudah `api.secure` (`getEndpoint` = 0 kemunculan).
+  Jangan bangun ulang.
+- **Doc hygiene #20–#25 (2026-09-13)** — enam dokumen yang bertentangan dengan kode sudah dikoreksi.
 - **Matriks degradasi §6.5** — 4/7 baris bertahan (dari 2/7); sisa divergensi: Fonnte (enqueue jalan,
   status bukan 202), Storage (retry client-side), Pooler (shed tanpa antre).
 
@@ -143,12 +151,21 @@ Diringkas supaya daftar di atas tidak diragukan lagi.
 
 ## 8. Urutan yang saya sarankan
 
-1. **#1** — putuskan migrasi 013. Ini satu-satunya yang memblokir pekerjaan kode berikutnya.
-2. **#20–#23** — koreksi empat dokumen yang berbohong. Murah, dan mencegah orang berikutnya
-   mengerjakan hal yang sudah selesai atau mempercayai gate yang tidak pernah hidup.
+> **Ditinjau 2026-09-13 (setelah audit ulang).** Urutan lama membuka dengan "putuskan migrasi 013" —
+> **basi**, #1 sudah ditutup (gate-nya dihapus, bukan dimigrasi). Dan #20–#23 sudah dikerjakan.
+
+1. ~~**#1** — putuskan migrasi 013.~~ **✅ ditutup** — tidak ada blocker migrasi.
+2. ~~**#20–#23** — koreksi empat dokumen yang berbohong.~~ **✅ selesai 2026-09-13**, bersama #24 dan #25.
+   Sisa doc-hygiene hanya **#26** (revoke token + rapikan `origin`/`dev`) — bisa tanpa build Netlify.
 3. **#8 — ✅ selesai 2026-09-13.** Cron `agenda-reminders` (10 menit) + bypass `internal: true` pada
    konteks. Pemicunya sudah ada; yang tersisa hanya data (`database_schedule` masih 0 baris, jadi
    cron-nya benar-benar mengirim nol sampai ada jadwal dibuat — itu perilaku yang diharapkan).
-4. **#3 + #27** — jalankan gate Phase C. Butuh satu env var dari owner.
-5. **#4–#6** — staging. Ini yang membuka tiga item sekaligus (20, 22, kalibrasi cap).
-6. Sisanya (#9–#19) sesuai prioritas produk.
+4. **#2 — push `main`.** Sebelum ini, **semua perbaikan (i18n job values, bug 1-baris job board, proxy
+   preview) tidak tayang di produksi**. Push = auto-build + deploy. **Butuh izin owner.**
+5. **#11 Export Excel → #15 Bulk operations → #12/#13/#18** — paritas yang belum dibangun.
+   **Semuanya bisa 100% dikerjakan & diverifikasi lokal** (vitest + `tsc` + zisi), nol token Netlify.
+6. **#3 + #27** — jalankan gate Phase C. Butuh `HEALTH_TOKEN` dari owner (tidak bisa lokal).
+7. **#4–#6** — staging. Ini yang membuka tiga item sekaligus (20, 22, kalibrasi cap). Infrastruktur.
+8. **#9** — defer P3 ke `job_queue`. Perbaikan arsitektur; bisa lokal.
+9. **#16/#17** — realtime & email. **#17 email = keputusan produk dulu** (WA sudah kanal utama).
+10. **#28–#30** — owner-side: rotasi `SESSION_SECRET`, ukur cold start, revoke token.
