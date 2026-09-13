@@ -96,6 +96,22 @@ netlify env:set METRICS_NOTIFY_URL "https://discord.com/api/webhooks/..." --cont
 Keep it a **separate function from `health.js`** (§4.3) so a broken receiver
 cannot take down the probe that diagnoses the incident.
 
+> **Measured status, 2026-09-13 — Option B is deployed but NOT wired.**
+> The function ships in production (a `POST` to
+> `/.netlify/functions/metrics-receiver` answers **503**, not 404 — so it exists
+> and is failing closed), but **all three of its variables are absent** from the
+> site's 24 env vars: `METRICS_SINK_URL`, `METRICS_RECEIVER_TOKEN`,
+> `METRICS_NOTIFY_URL`. The exact body returned today is
+> `{"ok":false,"error":"METRICS_RECEIVER_TOKEN not configured"}`.
+> So the receiver is **dead code in production** until those are set, and this
+> option is one `env:set` command away rather than "not built yet" — which is
+> what `BACKEND_TODO.md` #7 used to imply.
+>
+> Also note what it can and cannot cover: breaker state, queue depth, and
+> dead-letter counts are **not in the metrics payload** (`metrics-receiver.ts`
+> documents this at its header). A4/A5/A7 need `/health` or a direct DB query;
+> only A6 and the error-burst approximation are evaluable from counters alone.
+
 **Its state is in-memory and lossy across cold starts.** That is the honest
 limitation §4.3 flags. It is correct for a warm instance and good enough to
 catch a sustained incident; swap `AlertStore` for a Postgres-backed store when
