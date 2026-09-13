@@ -3,12 +3,12 @@
  * Source: legacy admin.html admin-jadwal (lines 668-697)
  */
 import { useState, useEffect } from 'preact/hooks';
-import { authStore } from '../../store/authReactive';
+import api from '../../lib/apiClient';
 import { showToast } from '../Toast';
+import { t } from '../../store/i18n';
 
 import type { Jadwal } from '../../types/api';
 import Icon from '../ui/Icon';
-import { getEndpoint } from '../../lib/apiEndpoint';
 
 export default function TabJadwal() {
   const [jadwal, setJadwal] = useState<Jadwal[]>([]);
@@ -22,21 +22,21 @@ export default function TabJadwal() {
   const [tsk, setTsk] = useState('');
   const [link, setLink] = useState('');
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const r = await fetch(getEndpoint('getAppData'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }) });
-        const d = await r.json();
-        if (d.success) { setJadwal(d.schedules || []); if (d.dropdowns?.tsk) setTskList(d.dropdowns.tsk); }
-      } catch (e) { console.error(e); } finally { setLoading(false); }
-    } load(); }, []);
+  async function load() {
+    try {
+      const d: any = await api.secure('getAppData', ['admin']);
+      if (d && d.success) { setJadwal(d.schedules || []); if (d.dropdowns?.tsk) setTskList(d.dropdowns.tsk); }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
 
   async function handleSubmit(e: Event) {
     e.preventDefault();
     try {
-      const r = await fetch(getEndpoint('simpanJadwalBaru'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'simpanJadwalBaru', args: [{ nama, loker, waktu, lokasi, tsk, link }], sessionToken: authStore.get().sessionToken || "" }) });
-      const d = await r.json(); if (d.success) { alert('Jadwal tersimpan!'); location.reload(); } else alert('Gagal: ' + (d.error || 'Unknown'));
-    } catch (e) { alert('Error: ' + e); }
+      const d: any = await api.secure('simpanJadwalBaru', [{ nama, loker, waktu, lokasi, tsk, link }]);
+      if (d && d.success) { showToast(t('ui.toast_schedule_saved'), 'success'); await load(); } else showToast(t('ui.toast_error_prefix') + ((d && d.error) || ''), 'error');
+    } catch (e: unknown) { showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error'); }
   }
 
   const ic = 'w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition';
@@ -73,7 +73,7 @@ export default function TabJadwal() {
             <td class='p-4 font-bold text-white'>{j.nama}</td>
             <td class='p-4'><div class='text-white font-bold'>{j.loker || '-'}</div><div class='text-[10px] text-slate-400 mt-1'>{j.waktu || '-'}</div></td>
             <td class='p-4'><div class='text-white'>{j.lokasi || '-'}</div>{j.link && <a href={j.link} target='_blank' class='text-xs text-sky-400 hover:underline'>Link Zoom</a>}</td>
-            <td class='p-4 text-center'><button onClick={() => { setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="edit" /> Edit</button><button onClick={async () => { if(!confirm("Hapus jadwal ini?")) return;            try { const r = await fetch(getEndpoint('hapusJadwal'), { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({action:"hapusJadwal", args:[j.id], sessionToken: authStore.get().sessionToken || ""}) }); const d = await r.json(); if(d.success){showToast("Jadwal dihapus","success"); location.reload();} else showToast(d.error||"Gagal","error"); } catch(e){showToast("Error","error");} }} class="ml-2 px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="trash" /></button></td>
+            <td class='p-4 text-center'><button onClick={() => { setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="edit" /> Edit</button><button onClick={async () => { if(!confirm(t('ui.confirm_delete_schedule'))) return; try { const d: any = await api.secure('hapusJadwal', [j.id]); if(d && d.success){showToast(t('ui.toast_schedule_deleted'),'success'); await load();} else showToast(t('ui.toast_error_prefix')+(d?.error||''),'error'); } catch(e){showToast(t('alert.network'),'error');} }} class="ml-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="trash" /></button></td>
           </tr>))}
       </tbody>
     </table>

@@ -4,7 +4,8 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
-import { authStore } from '../../store/authReactive';
+import api from '../../lib/apiClient';
+import { showToast } from '../Toast';
 import { t, langStore } from '../../store/i18n';
 
 import type { ConfigGroup } from '../../types/api';
@@ -28,30 +29,28 @@ export default function TabConfig() {
   const [editingConfig, setEditingConfig] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const r = await fetch('/.netlify/functions/get-app-data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }) });
-        const d = await r.json();
-        if (d.success) { setConfigs(d.sysConfig?.length ? d.sysConfig : configs); if (d.pengumuman) setPengumuman(d.pengumuman); }
-      } catch (e) { console.warn('[TabConfig] API unavailable, using defaults', e); } finally { setLoading(false); }
-    } load(); }, []);
+  async function load() {
+    try {
+      const d: any = await api.secure('getAppData', ['admin']);
+      if (d && d.success) { setConfigs(d.sysConfig?.length ? d.sysConfig : configs); if (d.pengumuman) setPengumuman(d.pengumuman); }
+    } catch (e) { console.warn('[TabConfig] API unavailable, using defaults', e); } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, []);
 
   async function handleSaveConfig(id: string) {
     const options = editValue.split('\n').map(s => s.trim()).filter(Boolean);
     try {
-      const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, options, sessionToken: authStore.get().sessionToken || "" }) });
-      const d = await r.json();
-      if (d.success) { setEditingConfig(null); location.reload(); } else alert('Failed: ' + d.error);
-    } catch (e) { alert('Error: ' + e); }
+      const d: any = await api.secure('updateSysConfig', [{ id, options }]);
+      if (d && d.success) { setEditingConfig(null); showToast(t('ui.toast_config_saved'), 'success'); await load(); } else showToast(t('ui.toast_error_prefix') + ((d && d.error) || ''), 'error');
+    } catch (e: unknown) { showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error'); }
   }
 
   async function handleSavePengumuman() {
     try {
-      const r = await fetch('/.netlify/functions/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: pengumuman, sessionToken: authStore.get().sessionToken || "" }) });
-      const d = await r.json();
-      if (d.success) alert('Pengumuman saved!'); else alert('Failed: ' + d.error);
-    } catch (e) { alert('Error: ' + e); }
+      const d: any = await api.secure('updateSysConfig', [{ text: pengumuman }]);
+      if (d && d.success) showToast(t('ui.toast_announcement_saved'), 'success'); else showToast(t('ui.toast_error_prefix') + ((d && d.error) || ''), 'error');
+    } catch (e: unknown) { showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error'); }
   }
 
   if (loading) return <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-slate-400" /><p class="text-slate-500 mt-2 text-sm">{t('ui.loading')}</p></div>;
