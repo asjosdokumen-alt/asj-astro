@@ -27,7 +27,7 @@ import {
   findCandidatesByIds,
   mapCandidate,
 } from '../../_lib/db/candidates';
-import { findJobs, mapJob } from '../../_lib/db/jobs';
+import { findJobs, mapJob, JOB_BOARD_LIMIT } from '../../_lib/db/jobs';
 import { findForms, findFormsByWa, findFormsByWaList, findFormsLight, mapForm as _mapForm, parseDocs } from '../../_lib/db/forms';
 const mapForm = _mapForm;
 export { _mapForm as mapForm };
@@ -181,7 +181,11 @@ async function loadPublicBase(mode: string): Promise<Record<string, unknown>> {
         cols.some((c) => /pekerjaan|judul|nama_loker|lowongan|title/.test(c)) &&
         cols.some((c) => /status|kode|code/.test(c))
       ) {
-        const hit = await findTable([name]);
+        // Same trap as findJobs(): findTable() defaults to limit=1 because it
+        // was built to answer "does this table exist?". Here we need the rows,
+        // so the limit must be explicit — otherwise this fallback silently
+        // truncates the public board to a single job.
+        const hit = await findTable([name], JOB_BOARD_LIMIT);
         if (hit.table) { foundTable = hit; break; }
       }
     }

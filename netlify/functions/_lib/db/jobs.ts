@@ -61,18 +61,33 @@ function mapJob(row: any) {
 //   job_database (lowongan), database_candidate + master_database_candidate
 //   (kandidat), sys_config (konfigurasi/assets/pengumuman), database_tugas,
 //   database_schedule, wa_templates, ai_form_submissions, user_sessions, dll.
+//
+// BUG FIX (2026-09-13): this used to call `findTable([...])` with no limit, so
+// it inherited findTable's default `limit = 1`. That default is right for its
+// intended purpose (probing whether a table exists), but findJobs() needs the
+// ROWS, not a probe — so the public board served exactly ONE job out of 158 in
+// the database. Legacy returned 159. The owner saw "data cuma masuk 1 doank".
+//
+// The limit is now explicit and matches the legacy board size (legacy fetched
+// the whole table). Keep it as a named constant so the intent is not lost again.
+const JOB_BOARD_LIMIT = 300;
+export { JOB_BOARD_LIMIT };
+
 async function findJobs() {
-  return findTable([
-    'job_database',
-    'jobs',
-    'lokers',
-    'loker',
-    'lowongan',
-    'job_listings',
-    'joblistings',
-    'tbl_jobs',
-    'data_loker',
-  ]);
+  return findTable(
+    [
+      'job_database',
+      'jobs',
+      'lokers',
+      'loker',
+      'lowongan',
+      'job_listings',
+      'joblistings',
+      'tbl_jobs',
+      'data_loker',
+    ],
+    JOB_BOARD_LIMIT,
+  );
 }
 
 // Ada kandidat yang masih terikat ke job code? (cek hapus loker) — server-side.
