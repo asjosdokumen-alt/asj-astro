@@ -4,7 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const mimeTypes = {'.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.woff2':'font/woff2','.webp':'image/webp','.webmanifest':'application/manifest+json'};
 const dist = path.join(__dirname, 'dist');
-const PROXY_TARGET = 'https://asjportal.netlify.app';
+// See server.cjs for why this is the Astro site and not asjportal (legacy).
+const PROXY_TARGET = process.env.BACKEND_TARGET || 'https://asjastro.netlify.app';
 
 function serveFile(res, fp) {
   const ext = path.extname(fp);
@@ -14,11 +15,14 @@ function serveFile(res, fp) {
 
 const server = http.createServer((req, res) => {
   if (req.url.startsWith('/.netlify/functions/')) {
-    const targetUrl = PROXY_TARGET + req.url;
+    const target = new URL(PROXY_TARGET + req.url);
+    const transport = target.protocol === 'http:' ? http : https;
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
-      const proxyReq = https.request(targetUrl, { method: req.method, headers: { ...req.headers, host: 'asjportal.netlify.app' } }, proxyRes => {
+      // `host` is derived from the target instead of being pinned to the legacy
+      // hostname: a pinned host makes the backend answer for the wrong site.
+      const proxyReq = transport.request(target, { method: req.method, headers: { ...req.headers, host: target.host } }, proxyRes => {
         res.writeHead(proxyRes.statusCode, proxyRes.headers);
         proxyRes.pipe(res);
       });

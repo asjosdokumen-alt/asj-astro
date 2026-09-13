@@ -6,7 +6,16 @@ const net = require('net');
 
 const PREFERRED_PORT = 4321;
 const DIST = path.join(__dirname, 'dist');
-const TARGET = 'https://asjportal.netlify.app';
+// Backend target for the / .netlify/functions/ proxy.
+//
+// This is the ASTRO site (asjastro), not asjportal. `asjportal.netlify.app`
+// runs the LEGACY app (/assets/app-*.js, /vendor/xlsx) and 404s on /public/,
+// /candidate/, /apply/, /ai-cv/ and /master/ — so proxying there silently
+// compared this build against a different application.
+//
+// Override with BACKEND_TARGET when pointing at a preview deploy or a local
+// `netlify dev` (e.g. BACKEND_TARGET=http://127.0.0.1:8888 node server.cjs).
+const TARGET = process.env.BACKEND_TARGET || 'https://asjastro.netlify.app';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -47,12 +56,17 @@ async function findPort(start) {
 }
 
 const server = http.createServer((req, res) => {
-  // ── Proxy Netlify functions to production ──
+  // ── Proxy Netlify functions to the backend target ──
   if (req.url.startsWith('/.netlify/functions/')) {
     let body = '';
     req.on('data', c => body += c);
     req.on('end', () => {
-      const proxyReq = https.request(TARGET + req.url, {
+      // Pick the transport from the target's protocol so BACKEND_TARGET can be a
+      // local http:// `netlify dev` as well as an https deploy. Previously this
+      // was hardcoded to https.request, which made an http override impossible.
+      const targetUrl = new URL(TARGET + req.url);
+      const transport = targetUrl.protocol === 'http:' ? http : https;
+      const proxyReq = transport.request(targetUrl, {
         method: req.method,
         headers: {
           'Content-Type': 'application/json',

@@ -88,6 +88,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.ssw_field": "SSW / Bidang",
     "ui.dark": "Dark",
     "ui.light": "Light",
+    "ui.theme": "Tema",
     "public.tab_loker": "Lowongan Loker",
     "public.tab_layanan": "Program & Layanan ASJ",
     "public.filter": "Filter",

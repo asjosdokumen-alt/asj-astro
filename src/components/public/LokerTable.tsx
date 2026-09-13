@@ -139,13 +139,13 @@ export default function LokerTable() {
     <div class="animate-fade-in">
       <div class="flex flex-wrap justify-between items-center p-4 rounded-xl border border-slate-700 shadow-lg mb-6 gap-4 bg-slate-900">
         <div class="flex gap-2 items-center flex-wrap">
-          <span class="text-xs font-bold text-slate-300 mr-1 uppercase tracking-widest"><Icon name="paint-brush" /> Tema</span>
+          <span class="text-xs font-bold text-slate-300 mr-1 uppercase tracking-widest"><Icon name="paint-brush" /> {t("ui.theme")}</span>
           <button onClick={toggleTheme} class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/25 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
             <Icon name={isDark ? "moon" : "sun"} /> {isDark ? "Dark" : "Light"}
           </button>
         </div>
         <div class="flex gap-2 items-center flex-wrap">
-          <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest"><Icon name="filter" /> Filter</span>
+          <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest"><Icon name="filter" /> {t("public.filter")}</span>
            {fDefs.map(fd => {
             const btnCls = "px-4 py-2 rounded-lg text-sm font-bold shadow-md transition " + (filter === fd.key ? fd.cls : "bg-slate-700 hover:bg-slate-600 text-slate-200");
             const cntCls = "px-1.5 py-0.5 rounded-full text-[9px] ml-0.5 font-black " + (filter === fd.key ? "bg-white/30 text-white" : "bg-slate-900 text-slate-200");

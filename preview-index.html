@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASJ — Checklist Preview Lokal</title>
+<style>
+  :root{
+    --bg:#020617; --panel:#0f172a; --panel2:#1e293b; --line:#334155;
+    --tx:#e2e8f0; --tx2:#94a3b8; --tx3:#64748b;
+    --ok:#22c55e; --warn:#f59e0b; --info:#38bdf8; --accent:#6366f1;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);
+    font:15px/1.6 ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;padding:28px 20px 80px}
+  .wrap{max-width:1100px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--tx2);font-size:13px;margin:0 0 22px}
+  .sub code{background:var(--panel2);padding:1px 6px;border-radius:4px;color:var(--info);font-size:12px}
+  .banner{background:linear-gradient(90deg,#1e1b4b,#0f172a);border:1px solid #3730a3;
+    border-radius:10px;padding:13px 16px;margin-bottom:22px;font-size:13px;color:#c7d2fe}
+  .banner b{color:#fff}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--tx3);
+    margin:28px 0 10px;font-weight:600}
+  .grid{display:grid;gap:9px}
+  .row{display:flex;align-items:center;gap:12px;background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;
+    text-decoration:none;color:inherit;transition:.13s}
+  .row:hover{border-color:var(--accent);background:var(--panel2);transform:translateX(2px)}
+  .n{flex:0 0 26px;height:26px;border-radius:7px;background:var(--panel2);color:var(--tx2);
+    display:grid;place-items:center;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+  .row:hover .n{background:var(--accent);color:#fff}
+  .body{flex:1;min-width:0}
+  .t{font-weight:600;font-size:14px}
+  .d{color:var(--tx2);font-size:12.5px;margin-top:1px}
+  .path{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--tx3)}
+  .tag{flex:0 0 auto;font-size:10.5px;padding:2.5px 8px;border-radius:99px;
+    font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+  .t-ok{background:rgba(34,197,94,.14);color:var(--ok);border:1px solid rgba(34,197,94,.3)}
+  .t-new{background:rgba(56,189,248,.14);color:var(--info);border:1px solid rgba(56,189,248,.3)}
+  .t-warn{background:rgba(245,158,11,.14);color:var(--warn);border:1px solid rgba(245,158,11,.3)}
+  ol{padding-left:20px;color:var(--tx2);font-size:13.5px}
+  ol li{margin:5px 0}
+  ol code{background:var(--panel2);padding:1px 6px;border-radius:4px;color:var(--info);font-size:12px}
+  .chk{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-top:10px}
+  .chk h3{font-size:13.5px;margin:14px 0 6px;color:var(--tx)}
+  .chk h3:first-child{margin-top:0}
+  .foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--line);
+    color:var(--tx3);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ASJ Portal — Checklist Preview Lokal</h1>
+  <p class="sub">
+    Server: <code>node server.cjs</code> &nbsp;·&nbsp; <code>http://127.0.0.1:4321</code> &nbsp;·&nbsp;
+    build <code>ad695c381556</code>
+  </p>
+
+  <div class="banner">
+    <b>Catatan penting.</b> Preview ini menyajikan halaman <b>statis</b> dari <code>dist/</code>, tetapi
+    setiap panggilan <code>/.netlify/functions/*</code> <b>diproksi ke produksi</b>
+    (<code>asjportal.netlify.app</code>). Jadi <b>data yang Anda lihat adalah data asli</b>, sementara
+    <b>kode backend lokal tidak ikut diuji</b> — untuk itu perlu <code>netlify dev</code> + env. Hati-hati:
+    aksi yang menulis (simpan/hapus/kirim WA) akan <b>mengubah data produksi</b>.
+  </div>
+
+  <h2>Halaman publik — tanpa login</h2>
+  <div class="grid" id="g1"></div>
+
+  <h2>Butuh login (admin / kandidat)</h2>
+  <div class="grid" id="g2"></div>
+
+  <h2>Cara mengecek</h2>
+  <div class="chk">
+    <h3>1. Yang bisa langsung dicoba tanpa akun</h3>
+    <ol>
+      <li><b>Halaman utama</b> — cek daftar loker tampil, filter kategori/lokasi, dan pencarian.</li>
+      <li><b>Share publik</b> — buka <code>/share/?job=&lt;kode&gt;</code>; ini yang barusan diubah
+          (gate token dihapus, jadi <b>harus tampil tanpa akun dan tanpa token</b>).</li>
+      <li><b>Apply</b> — form lamaran; cek validasi WA/email berjalan sebelum kirim.</li>
+    </ol>
+    <h3>2. Yang butuh login admin</h3>
+    <ol>
+      <li>Masuk lewat <code>/admin/</code> (login 3 tingkat: PIN master → admin → personal).</li>
+      <li><b>Tab Config</b> — ini yang <b>baru selesai</b> (#14): sebelumnya read-only, sekarang
+          tombol simpan aktif dan memakai <code>api.secure</code> + toast.</li>
+      <li><b>Tab Mail</b> — review/approve/reject lamaran.</li>
+      <li><b>Tab Jadwal</b> — simpan/hapus jadwal + tugas. Reminder otomatis (cron 10 menit)
+          baru aktif; perlu ada jadwal dulu agar benar-benar berbunyi.</li>
+      <li><b>Tab DB Job / Pelamar</b> — cek daftar &amp; modal edit.</li>
+    </ol>
+    <h3>3. Yang <b>tidak</b> akan terlihat di preview ini</h3>
+    <ol>
+      <li><b>Cron reminder agenda.</b> Fungsi terjadwal tidak berjalan di server statis ini; ia hanya
+          hidup di Netlify dengan <code>config.schedule</code>. Sudah diverifikasi lewat zisi, bukan lewat
+          halaman.</li>
+      <li><b>Perubahan backend lokal.</b> Karena diproksi ke produksi, kode backend di tree ini belum
+          ter-deploy — jadi behaviour-nya masih versi lama sampai Anda mengizinkan push.</li>
+    </ol>
+  </div>
+
+  <p class="foot">
+    Ingatkan saya untuk menghentikan server setelah selesai (<code>Ctrl+C</code> di terminal,
+    atau minta saya hentikan).
+  </p>
+</div>
+
+<script>
+  const pages1 = [
+    ['Halaman utama — daftar loker','Publik. Daftar lowongan, filter, pencarian.','/','ok'],
+    ['Public portal','Halaman publik alternatif (landing siswa baru dsb).','/public/','ok'],
+    ['Share dokumen (per kode job)','BARU: gate token dihapus, harus tampil tanpa akun.','/share/?job=TG591ASJ','new'],
+    ['Apply / lamaran','Form lamaran kandidat + validasi.','/apply/','ok'],
+    ['Candidate view','Tampilan sisi kandidat.','/candidate/','ok'],
+    ['Siswa baru','Pendaftaran siswa baru.','/siswa-baru/','ok'],
+    ['AI CV','AI interview / CV simulator.','/ai-cv/','ok'],
+  ];
+  const pages2 = [
+    ['Admin panel','Login 3 tingkat, lalu semua tab admin.','/admin/','ok'],
+    ['Master data','Kelola master loker/kandidat.','/master/','warn'],
+    ['Health / status','Endpoint diagnostik (butuh token di site).','/.netlify/functions/ping','info'],
+  ];
+  function render(el, list, start){
+    document.getElementById(el).innerHTML = list.map((p,i)=>{
+      const [t,d,path,tag] = p;
+      const label = tag==='new'?'Baru':tag==='warn'?'Perlu akun':'Siap';
+      const cls = tag==='new'?'t-new':tag==='warn'?'t-warn':'t-ok';
+      const href = path.startsWith('/.netlify') ? path : path;
+      return `<a class="row" href="${href}" target="_blank" rel="noopener">
+        <span class="n">${start+i}</span>
+        <span class="body"><span class="t">${t}</span>
+          <span class="d">${d}</span>
+          <span class="path">${path}</span></span>
+        <span class="tag ${cls}">${label}</span></a>`;
+    }).join('');
+  }
+  render('g1', pages1, 1);
+  render('g2', pages2, pages1.length+1);
+</script>
+</body>
+</html>

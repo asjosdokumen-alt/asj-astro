@@ -74,6 +74,7 @@ export const jpTranslations: Record<string, string> = {
     "candidate.form_gender": "性別",
     "ui.dark": "ダーク",
     "ui.light": "ライト",
+    "ui.theme": "テーマ",
     "public.tab_loker": "求人情報",
     "public.tab_layanan": "プログラム＆サービス",
     "public.filter": "フィルター",
