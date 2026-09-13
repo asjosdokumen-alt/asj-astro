@@ -82,16 +82,39 @@ function walkHtml(dir) {
 walkHtml(DIST);
 pages.sort();
 
+// ─── 2b. Directory routes must ALSO be precached in navigable form ───────────
+//
+// The SW's offline navigation fallback is `cache.match(url.pathname)`. A build
+// output of `/apply/index.html` is cached under exactly that key, so a request
+// for `/apply/` or `/apply` MISSES and the handler serves `/index.html` — the
+// public landing page. Offline, tapping "AI CV" or "Master Form" then dumps the
+// user on the homepage with no explanation, even though the asset is on disk.
+//
+// Netlify serves `/x/index.html` at `/x/` (and 301s `/x` → `/x/`), and the app
+// links to the bare `/x` form (e.g. CandidateDash → href="/ai-cv"). Cache all
+// three keys so the navigation resolves to the right page in every case.
+const dirRoutes = [];
+for (const p of pages) {
+  if (!p.endsWith('/index.html')) continue;
+  const dir = p.slice(0, -'index.html'.length); // '/apply/index.html' → '/apply/'
+  if (dir === '/') continue; // '/' is already in SHELL
+  dirRoutes.push(dir, dir.replace(/\/$/, ''));
+}
+dirRoutes.sort();
+
 // ─── 3. Always-on shell routes (directory URLs Netlify serves) ───────────────
 const SHELL = ['/', '/candidate/', '/admin/', '/public/'];
 
 // ─── 4. Dedupe + build final list ────────────────────────────────────────────
-const precache = [...new Set([...SHELL, ...pages, ...assets.map((a) => a.url)])].sort();
+const precache = [...new Set([...SHELL, ...pages, ...dirRoutes, ...assets.map((a) => a.url)])].sort();
 
 // ─── 5. Version from content hash of the manifest + asset sizes ──────────────
 const h = createHash('sha256');
 for (const a of assets) h.update(`${a.url}:${a.size}\n`);
 for (const p of pages) h.update(`${p}\n`);
+// dirRoutes are derived from `pages`, but include them so a future change to
+// the derivation cannot ship a different precache under the same version.
+for (const d of dirRoutes) h.update(`${d}\n`);
 const VERSION = `asj-astro-${h.digest('hex').slice(0, 12)}`;
 
 const totalBytes = assets.reduce((n, a) => n + a.size, 0);
@@ -143,6 +166,7 @@ writeFileSync(SW, src, 'utf8');
 console.log(`[sw-manifest] version   : ${VERSION}`);
 console.log(`[sw-manifest] precache  : ${precache.length} URLs`);
 console.log(`[sw-manifest]   pages   : ${pages.length}`);
+console.log(`[sw-manifest]   routes  : ${dirRoutes.length} (directory + bare forms)`);
 console.log(`[sw-manifest]   assets  : ${assets.length} (${(totalBytes / 1024).toFixed(1)} KB)`);
 if (assets.length === 0) {
   console.warn('[sw-manifest] WARNING: 0 hashed assets found — precache may be incomplete.');
