@@ -22,9 +22,12 @@ import {
   snapshot,
   resetForTests,
   shedResponse,
+  deferralJobTypeFor,
 } from './admission';
 import { breaker } from './resilience';
 import { codeToStatus } from './errors';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 afterEach(() => {
   resetForTests();
@@ -188,5 +191,104 @@ describe('admission — response contract', () => {
     expect(r.success).toBe(false);
     // 503 not 400: a shed request is not a client input error.
     expect(codeToStatus(r.code)).toBe(503);
+  });
+});
+
+// ==========================================
+// #9 — deferrable P3 work (shed → enqueue)
+//
+// Why this matters more than it looks
+//   "Defer P3 instead of shedding" reads like a small improvement, but it has a
+//   silent failure mode: an enqueued job with NO registered worker sits
+//   `pending` forever. The caller is told "accepted", the work never runs, and
+//   nothing logs an error — strictly worse than the 503 it replaced, which at
+//   least told the truth.
+//
+//   So the load-bearing assertion here is that every action in the deferral
+//   table has a real handler in sweep-queue.ts. That one is checked against the
+//   worker source rather than a copy of the list.
+// ==========================================
+describe('admission — deferral routing (#9)', () => {
+  /** Job types actually registered in the sweep worker. */
+  function workerJobTypes(): string[] {
+    const src = readFileSync(
+      join(process.cwd(), 'netlify', 'functions', 'sweep-queue.ts'),
+      'utf8',
+    );
+    const start = src.indexOf('const HANDLERS');
+    if (start < 0) return [];
+    // The map body holds nested braces (each handler is an async arrow with its
+    // own block), so `indexOf('};')` stops at the FIRST inner brace and would
+    // silently see only the first handler — which is how this test initially
+    // "passed" by finding just ai.interview. Walk brace depth instead.
+    const open = src.indexOf('{', start);
+    let depth = 0;
+    let end = src.length;
+    for (let i = open; i < src.length; i++) {
+      if (src[i] === '{') depth++;
+      else if (src[i] === '}') {
+        depth--;
+        if (depth === 0) { end = i; break; }
+      }
+    }
+    const body = src.slice(open, end);
+    // Handler keys sit at two-space indent; match the key syntax only.
+    return [...body.matchAll(/^\s{2}'([a-z][a-z.]*)':/gm)].map((m) => m[1]);
+  }
+
+  it('the worker really does register handlers (guard against a bad parse)', () => {
+    // If this ever returns [], the assertions below would pass vacuously.
+    const types = workerJobTypes();
+    expect(types.length).toBeGreaterThan(0);
+    expect(types).toContain('wa.send');
+  });
+
+  it('every deferrable action maps to a job type the worker can run', () => {
+    // The whole point: no job may be enqueued without a consumer.
+    const types = workerJobTypes();
+    const deferrable = ['kirimSatuPesanFonnte'];
+    for (const action of deferrable) {
+      const jobType = deferralJobTypeFor(action);
+      expect(jobType, `no deferral for ${action}`).toBeTruthy();
+      expect(types, `${action} → ${jobType} has no worker`).toContain(jobType);
+    }
+  });
+
+  it('single WA send is deferrable as wa.send', () => {
+    expect(deferralJobTypeFor('kirimSatuPesanFonnte')).toBe('wa.send');
+  });
+
+  it('interactive and worker-less P3 actions are NOT deferred', () => {
+    // These have no worker (they would black-hole) or are interactive (the
+    // caller is waiting on a returned document). A clean 503 is the honest
+    // answer for both — the client can retry, a silent queue cannot.
+    for (const action of [
+      'generateWawancaraModel', 'parseDokumenBiodata', 'processUploadDoc',
+      'buildAdminAiCandidateSummary', 'generateFormBridge',
+      'generateLegacyMasterBridge', 'generateAiFormBridge',
+      'getMonthlyReport', 'downloadJobDocs', 'checkAndSendAgendaReminders',
+    ]) {
+      expect(deferralJobTypeFor(action), action).toBeNull();
+    }
+  });
+
+  it('bulk broadcast is not listed because it already enqueues upstream', () => {
+    // surfaces/notify.ts enqueues wa.broadcast unconditionally, so
+    // kirimTawaranMassal never reaches the shed path. Listing it here too would
+    // double-enqueue the same broadcast.
+    expect(deferralJobTypeFor('kirimTawaranMassal')).toBeNull();
+  });
+
+  it('non-P3 actions are never deferred, however saturated the instance', () => {
+    // P1/P2 are shed at higher thresholds precisely because their callers are
+    // waiting. Queueing them would hide the pressure from the client while
+    // making it worse for the worker.
+    for (const action of ['getAppData', 'processAIChat', 'getCandidatesPage', 'loginKandidat']) {
+      expect(deferralJobTypeFor(action), action).toBeNull();
+    }
+  });
+
+  it('an unknown action is never deferred (defaults to P1)', () => {
+    expect(deferralJobTypeFor('someBrandNewAction')).toBeNull();
   });
 });

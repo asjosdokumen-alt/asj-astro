@@ -219,11 +219,26 @@ It is a **backstop**, not the primary control — it catches the query that esca
 
 ## 5. Deliberately not implemented
 
-### 5.1 Queue-based deferral for shed P3 work
+### 5.1 Queue-based deferral for shed P3 work — **DONE 2026-09-13 (narrower than proposed)**
 
 Shedding P3 with a 503 is honest but blunt: `kirimTawaranMassal` could be *enqueued* instead of refused, since `job_queue` already exists with `FOR UPDATE SKIP LOCKED` and a DLQ.
 
-**Not done, on purpose.** It changes response semantics (202 + jobId instead of a synchronous result) on a **live mass-mail path**, and requires touching both the notify surface and the queue consumer. Half-wiring a semantic change into a path that sends hundreds of WhatsApp messages is worse than shedding it cleanly. The integration point is `surfaces/notify.ts` → `kernel/job-queue.enqueue()`; it is a Phase C candidate.
+**Implemented, but only where a worker exists.** The shed path now consults `deferralJobTypeFor(action)` (`kernel/admission.ts`) and, when it returns a job type, enqueues instead of returning 503 — replying `202 + jobId`, matching the shape `kirimTawaranMassal` and the Fonnte-failure path already used.
+
+**The trap that makes "defer all P3" wrong.** An enqueued job with no registered worker sits `pending` **forever**: the caller is told "accepted", the work never runs, and nothing logs an error — strictly worse than the 503 it replaced, which at least told the truth. `sweep-queue.ts` registers only **three** job types (`wa.broadcast`, `wa.send`, `ai.interview`), so only actions with one of those may be deferred:
+
+| Action | Job type | Status |
+|---|---|---|
+| `kirimSatuPesanFonnte` | `wa.send` | ✅ deferred (new) |
+| `kirimTawaranMassal` | `wa.broadcast` | already enqueued in `surfaces/notify.ts` — never reaches the shed path |
+| `generateWawancaraModel` | `ai.interview` | ❌ **not** deferred — interactive; the admin is waiting on a returned document, so a job ID would break the UI contract |
+| the other 9 P3 actions | — | ❌ no worker exists; a clean 503 is the honest answer |
+
+Enqueue failure falls through to the plain shed response (the enqueue is itself a PostgREST write, so it competes for the saturated resource) — never report "accepted" for a request that did not reach the queue.
+
+`admission.test.ts` asserts every deferral entry maps to a job type found in the worker source, and includes a guard against the parse silently returning `[]` (which would make the assertion vacuous). Verified by mutation: replacing the single entry with a worker-less one fails 3 tests.
+
+Related: `kirimSatuPesanFonnte` also defers on a **retryable Fonnte failure** (`contexts/notifications/service.ts:169-185`) — that path predates this change and is unchanged.
 
 ### 5.2 Tuning the caps
 
@@ -317,7 +332,7 @@ enforced by construction: violations went 5 → 4, and the allow-list now only s
 | **Calibrate the in-flight caps under real load** | The 24/4/3 values are guesses. They are env-overridable for this reason. |
 | **Apply migration 011** | ✅ **Applied and verified live 2026-09-11** — `statement_timeout=3s` confirmed on all four roles. |
 | **Give the bundle ratchet an absolute-bytes floor** | ✅ **Done 2026-09-11** — `--tolerance-floor` (default 8 KB); the ratchet now fails only when an entry is over *both* the percentage and the floor. |
-| **Defer P3 to `job_queue` instead of shedding** | Phase C candidate; integration point is `surfaces/notify.ts` (see §5.1). |
+| ~~**Defer P3 to `job_queue` instead of shedding**~~ | ✅ **Done 2026-09-13, narrower than proposed** — only actions with a registered worker are deferred (see §5.1). Enqueuing the other 9 would leave jobs pending forever. |
 | **Add an external metrics sink** | Still S3 in the architecture doc: metrics flush to `console.log` only, so breakers open and sheds happen silently. Phase B now emits `admission.shed` counters and saturation gauges — but nothing consumes them. |
 
 ---

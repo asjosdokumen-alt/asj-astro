@@ -135,6 +135,47 @@ export function priorityOf(action: string): Priority {
   return 1;
 }
 
+/**
+ * Deferral table: action → job type the shed path may enqueue instead of
+ * refusing the request (#9).
+ *
+ * THE TRAP THIS AVOIDS
+ *   "Defer P3 instead of shedding" sounds like a one-line change, but an
+ *   enqueued job with no registered worker sits `pending` FOREVER — the caller
+ *   is told "accepted", the work never runs, and nothing logs an error. Only
+ *   job types present in `sweep-queue.ts` HANDLERS may appear here.
+ *
+ *   That set is deliberately small: `wa.broadcast`, `wa.send`, `ai.interview`.
+ *   Most P3 actions (bridge generation, monthly report, document parsing) have
+ *   no worker, so for them a clean 503 with Retry-After remains the honest
+ *   answer — the client can retry, whereas a black-hole queue cannot.
+ *
+ * NOT LISTED, ON PURPOSE
+ *   - `kirimTawaranMassal` → `wa.broadcast`: the surface already enqueues
+ *     unconditionally (surfaces/notify.ts), so it never reaches the shed path.
+ *   - `generateWawancaraModel` → `ai.interview`: the worker exists, but the
+ *     action is interactive and returns a document the admin is waiting on;
+ *     silently turning that into a job ID would break the UI contract.
+ *
+ * Keeping this next to P3_ACTIONS means the two lists are edited in one place,
+ * and `admission.test.ts` asserts every entry has a worker.
+ */
+const DEFERRABLE: Record<string, string> = {
+  kirimSatuPesanFonnte: 'wa.send',
+};
+
+/**
+ * The job type this action may be deferred as, or null if it must be shed.
+ * Callers still have to enqueue; this only says whether that is *safe*.
+ */
+export function deferralJobTypeFor(action: string): string | null {
+  // Only P3 is deferrable. P1/P2 are shed at higher thresholds precisely
+  // because their callers are waiting; queueing those would hide the pressure
+  // from the client while making it worse for the worker.
+  if (priorityOf(action) !== 3) return null;
+  return DEFERRABLE[action] ?? null;
+}
+
 // ── Tiers ────────────────────────────────────────────────────────────────────
 
 /**

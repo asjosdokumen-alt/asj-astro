@@ -6,8 +6,8 @@ import { log, asyncLocalStorage } from './kernel/log';
 import { metrics } from './kernel/metrics';
 import { supabaseJson } from './db/client';
 import { IDEMPOTENCY_KEY_COLS } from './db/projections';
-import { handleGetJobStatus } from './kernel/job-queue';
-import { admit, release, shedResponse, logShed, snapshot } from './kernel/admission';
+import { handleGetJobStatus, enqueue } from './kernel/job-queue';
+import { admit, release, shedResponse, logShed, snapshot, deferralJobTypeFor } from './kernel/admission';
 
 // Register domain event handlers (side-effect import)
 import { initEventHandlers } from './event-handlers';
@@ -132,6 +132,38 @@ async function handleAction(action: string, payload: unknown[], sessionToken: st
     metrics.gauge('admission.inflight', snap.inflightTotal);
     metrics.gauge('admission.postgrest_ewma_ms', snap.postgrestEwmaMs);
     logShed(action, admission);
+
+    // ── Defer instead of shed, for deferrable P3 work (#9) ──────────────────
+    // A 503 is honest but blunt for work that is retryable and not
+    // interactive. `deferralJobTypeFor` returns a job type ONLY when a worker
+    // exists for it (see the DEFERRABLE table) — enqueuing anything else would
+    // leave a job pending forever while telling the caller "accepted".
+    const jobType = deferralJobTypeFor(action);
+    if (jobType) {
+      try {
+        const jobId = await enqueue(jobType, {
+          payload,
+          createdBy: 'shed-deferral',
+          deferredFrom: action,
+        });
+        metrics.increment('admission.deferred', { action, jobType });
+        log.info('admission.deferred', { action, jobType, jobId });
+        return {
+          success: true,
+          status: 'accepted',
+          queued: true,
+          jobId,
+          message: 'Server sedang sibuk. Permintaan masuk antrean dan akan diproses otomatis.',
+        };
+      } catch (err) {
+        // Usually the same overload that triggered the shed (enqueue is itself
+        // a PostgREST write, so it competes for the saturated resource). Fall
+        // through to the plain shed response — never report "accepted" for a
+        // request that did not reach the queue.
+        log.error('admission.defer-failed', { action, jobType, err: String(err) });
+      }
+    }
+
     return shedResponse(admission.retryAfter ?? 5);
   }
 
