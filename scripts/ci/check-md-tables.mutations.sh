@@ -10,6 +10,12 @@
 #      gate never ran.
 #   2. Judge by EXIT CODE, not by scraping output text.
 #
+# A third trap is why this script must be run from the repo ROOT and uses
+# relative paths: an earlier draft passed `/f/astro/...` to Windows Python, which
+# cannot open it, so every mutation silently failed to apply and the battery
+# reported 5/5 SURVIVED against a perfectly good gate. Asserting a byte-identical
+# restore at the end is what makes that failure mode visible if it recurs.
+#
 # Must be run with cwd = repo root.
 set -u
 
