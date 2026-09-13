@@ -6,8 +6,8 @@ dipercaya dari dokumen.** Beberapa item ternyata sudah selesai dan dikoreksi (#1
 lihat catatan ✅ di tabel masing-masing.
 **Audit ketiga:** 2026-09-13 (malam) terhadap `main` `70a648e`. Paritas yang belum dibangun sudah
 dikerjakan (#11 `0b46c22`, #15 `3fdaac4`, #12 `d927cce`, #10 `e37647c`, #18 `25fe9c5`, #9 `70a648e`).
-Sisanya diverifikasi **terhadap produksi, bukan dokumen** — probe `/health` mengoreksi #3 & #27 dan
-menemukan **#31** (gate rollback tidak memeriksa health sama sekali).
+Sisanya diverifikasi **terhadap produksi, bukan dokumen** — probe `/.netlify/functions/health`
+mengoreksi #3 & #27 dan menemukan **#31** (gate rollback tidak memeriksa health sama sekali).
 **Pengganti:** `TODO.md` (terakhir 2026-09-03) dan `docs/archive/PARITY_QA_2026-09-04.md` — keduanya sudah
 kedaluwarsa; lihat §5.
 
