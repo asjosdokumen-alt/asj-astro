@@ -10,6 +10,12 @@ import PamfletModal from "./PamfletModal";
 import { langStore, t } from '../../store/i18n';
 import { themeStore, toggleTheme } from '../../store/theme';
 import { jobTutupUntukLamar } from '../../lib/jobPhase';
+import {
+  jobCategoryLabel,
+  jobGenderLabel,
+  jobLocationLabel,
+  jobTitleLabel,
+} from '../../lib/jobDisplay';
 import { getPublicData } from '../../lib/publicData';
 import { ErrorBoundary } from '../ErrorBoundary';
 import LokerDetailModal from './LokerDetailModal';
@@ -103,13 +109,15 @@ export default function LokerTable() {
 
   function getGenderBadge(gender: string) {
     const g = (gender || "").toUpperCase();
-    // Use raw gender text — already contains emojis and readable text from API
-    const lbl = gender || "-";
+    // The API packs both options into one cell ("👨 Pria👩 Wanita"), so the
+    // label goes through jobDisplay so JP mode reads 男性 / 女性. The raw text
+    // is still the fallback for any value we have not catalogued.
+    const lbl = jobGenderLabel(gender) || "-";
     if (g.includes("PRIA") || g.includes("LAKI"))
       return <span class="px-2 py-0.5 bg-blue-900/50 text-blue-300 border border-blue-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><Icon name="mars" class="mr-1" /> {lbl}</span>;
     if (g.includes("WANITA") || g.includes("PEREMPUAN"))
       return <span class="px-2 py-0.5 bg-pink-900/50 text-pink-300 border border-pink-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><Icon name="venus" class="mr-1" /> {lbl}</span>;
-    return <span class="px-2 py-0.5 bg-purple-900/50 text-purple-300 border border-purple-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><Icon name="venus-mars" class="mr-1" /> {lbl || "-"}</span>;
+    return <span class="px-2 py-0.5 bg-purple-900/50 text-purple-300 border border-purple-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><Icon name="venus-mars" class="mr-1" /> {lbl}</span>;
   }  /** Open the native Astro apply wizard (apply.astro) — same route the
    *  detail modal's "Lamar" uses. B04 (2026-09-05): this used to call the
    *  legacy generateFormBridge, whose backend handler still points at the
@@ -185,9 +193,12 @@ export default function LokerTable() {
                       <img src={job.pamflet} width={48} height={64} loading="lazy" decoding="async" class="hidden sm:block w-12 h-16 md:w-12 md:h-16 object-cover rounded-lg border border-slate-600 shadow-md cursor-pointer hover:scale-105 transition-transform flex-shrink-0" title={t("ui.click_zoom")} alt="Pamflet" onClick={() => { setPamfletUrl(job.pamflet || ""); setShowPamflet(true); }} />
                     )}
                     <div class="flex flex-col pt-1">
-                      <span class="font-bold text-base text-white leading-tight">{job.pekerjaan || "-"}</span>
+                      <span class="font-bold text-base text-white leading-tight">{jobTitleLabel(job.pekerjaan) || "-"}</span>
+                      {job.kategori && jobCategoryLabel(job.kategori) && (
+                        <span class="text-[10px] text-slate-400 mt-0.5">{jobCategoryLabel(job.kategori)}</span>
+                      )}
                       <div class="flex flex-wrap items-center gap-2 mt-2">
-                        <span class="text-[11px] text-slate-300"><Icon name="map-marker-alt" class="mr-1 text-red-400" /> {job.lokasi || "-"}</span>
+                        <span class="text-[11px] text-slate-300"><Icon name="map-marker-alt" class="mr-1 text-red-400" /> {jobLocationLabel(job.lokasi) || "-"}</span>
                         {getGenderBadge(job.gender)}
                       </div>
                     </div>

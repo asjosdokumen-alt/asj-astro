@@ -16,7 +16,11 @@ export default defineConfig({
     server: {
       proxy: {
         "/.netlify/functions": {
-          target: process.env.FUNCTIONS_PROXY_TARGET || "https://asjportal.netlify.app",
+          // Must be the NEW Astro site, not the legacy one. Pointing this at
+          // asjportal.netlify.app (legacy) silently serves the OLD backend and
+          // the OLD frontend assets, which makes `astro dev` look like it is
+          // running stale code. Override with FUNCTIONS_PROXY_TARGET.
+          target: process.env.FUNCTIONS_PROXY_TARGET || "https://asjastro.netlify.app",
           changeOrigin: true,
           secure: false,
         },
