@@ -34,6 +34,7 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   approveForm: '/.netlify/functions/mail',
   rejectForm: '/.netlify/functions/mail',
   deleteForm: '/.netlify/functions/mail',
+  hapusFormTerpilih: '/.netlify/functions/mail',
   tandaiDibacaForm: '/.netlify/functions/mail',
 
   // Master

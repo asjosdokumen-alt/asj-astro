@@ -56,6 +56,7 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   approveForm:   () => import('./mail').then(m => m.MAIL_ACTIONS),
   rejectForm:    () => import('./mail').then(m => m.MAIL_ACTIONS),
   deleteForm:    () => import('./mail').then(m => m.MAIL_ACTIONS),
+  hapusFormTerpilih: () => import('./mail').then(m => m.MAIL_ACTIONS),
   tandaiDibacaForm:() => import('./mail').then(m => m.MAIL_ACTIONS),
 
   // ── Master ────────────────────────────────────────────────────────────────

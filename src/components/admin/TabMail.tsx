@@ -62,6 +62,46 @@ export default function TabMail() {
     }
   };
 
+  /**
+   * Hapus massal lamaran terpilih (#15).
+   *
+   * Baris dikirim sebagai **index pada daftar `filtered`**, karena backend
+   * (`deleteForm`) memang bekerja dengan rowIndex. Backend menyelesaikan semua
+   * index → id lebih dulu, jadi mengirim daftar ini aman — pergeseran index
+   * ditangani di sana, bukan di sini.
+   *
+   * Konfirmasi menyebut jumlah + menegaskan data kandidat TIDAK ikut terhapus,
+   * persis teks legacy (`hapusFormMailTerpilih`).
+   */
+  const deleteSelected = async () => {
+    if (selected.size === 0) {
+      showToast(t('ui.select_mail_first'), 'error');
+      return;
+    }
+    const idxs: number[] = [];
+    filtered.forEach((m, i) => {
+      if (selected.has(String(m.id ?? m.wa ?? m.nama ?? ''))) idxs.push(i);
+    });
+    if (idxs.length === 0) {
+      showToast(t('ui.select_mail_first'), 'error');
+      return;
+    }
+    if (!window.confirm(t('ui.confirm_delete_mail_selected').replace('{n}', String(idxs.length)))) return;
+    try {
+      const d: any = await api.secure('hapusFormTerpilih', [idxs]);
+      if (d && d.success) {
+        showToast(t('ui.toast_mail_deleted_n').replace('{n}', String(d.deleted ?? idxs.length)), 'success');
+        setSelected(new Set());
+        await fetchMailFromAPI();
+      } else {
+        showToast(String(d?.error || t('ui.toast_error_prefix')), 'error');
+        await fetchMailFromAPI();
+      }
+    } catch (e) {
+      showToast(t('ui.toast_error_prefix') + (e instanceof Error ? e.message : String(e)), 'error');
+    }
+  };
+
   const filtered = mail.filter((m) => {
     const matchStatus = filterStatus === 'SEMUA' || (m.status || '').toUpperCase() === filterStatus;
     const matchSearch = !searchText ||
@@ -107,6 +147,15 @@ export default function TabMail() {
             class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition">
             <Icon name="sync-alt" class="mr-1" /> {t('admin.refresh_mail')}
           </button>
+
+          {/* Hapus terpilih — hanya muncul saat ada baris dipilih, supaya tidak
+              jadi tombol mati yang membingungkan. */}
+          {selected.size > 0 && (
+            <button onClick={deleteSelected}
+              class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-500 shadow-lg transition">
+              <Icon name="trash" class="mr-1" /> {t('ui.delete_selected_mail')} ({selected.size})
+            </button>
+          )}
         </div>
       </div>
 

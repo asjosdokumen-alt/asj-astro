@@ -9,6 +9,8 @@ export {
   handleApproveForm,
   handleRejectForm,
   handleDeleteForm,
+  handleHapusFormTerpilih,
+  MAX_BULK_DELETE,
   handleTandaiDibacaForm,
   syncBiodataKeMail,
   syncFormMailDariUpload,

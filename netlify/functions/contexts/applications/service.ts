@@ -216,6 +216,96 @@ export async function handleDeleteForm(payload: unknown[], sessionToken?: string
   }
 }
 
+/**
+ * hapusFormTerpilih — hapus massal lamaran dari Mail Inbox (#15).
+ *
+ * Legacy (`js/api/forms.ts:hapusFormMailTerpilih`) memanggil `deleteForm` SATU PER SATU
+ * dari klien, mengirim **rowIndex**. Dua masalah kalau pola itu disalin:
+ *
+ *   1. N round-trip untuk N baris (10 baris = 10 round-trip ke PostgREST).
+ *   2. **Index bergeser saat baris dihapus.** Menghapus index 2 membuat baris yang
+ *      tadinya index 3 menjadi 2 — jadi menghapus [2,3] berurutan akan melewati
+ *      satu baris dan menghapus baris yang salah.
+ *
+ * Karena itu endpoint ini menyelesaikan **semua index → id lebih dulu**, baru
+ * menghapus. Mengirim id (bukan index) juga membuat operasinya idempoten: index
+ * yang sama dikirim dua kali tidak akan menghapus baris tambahan.
+ *
+ * Batas jumlah ada di `MAX_BULK_DELETE` karena ini satu-satunya jalur di mana
+ * satu permintaan bisa menghapus banyak baris sekaligus.
+ */
+export const MAX_BULK_DELETE = 100;
+
+export async function handleHapusFormTerpilih(payload: unknown[], sessionToken?: string) {
+  const guard = requireAdmin(sessionToken || '');
+  if (guard.error) return guard.error;
+
+  const raw = Array.isArray((payload || [])[0]) ? ((payload || [])[0] as unknown[]) : [];
+  // Dedupe + validasi: index harus bilangan bulat >= 0.
+  //
+  // PERANGKAP: `Number(null)` === 0 dan `Number('')` === 0, jadi `null`/`''` di
+  // dalam daftar pilihan akan diam-diam menjadi "hapus baris 0". Itu menghapus
+  // baris yang SALAH tanpa error. Karena itu selain Number.isInteger, tipe
+  // aslinya juga harus number|string yang benar-benar berisi angka.
+  const idxs = Array.from(
+    new Set(
+      raw
+        .filter((v) => typeof v === 'number' || (typeof v === 'string' && v.trim() !== ''))
+        .map((v) => Number(v))
+        .filter((n) => Number.isInteger(n) && n >= 0),
+    ),
+  );
+  if (idxs.length === 0) {
+    return { success: false, error: 'Tidak ada baris yang dipilih.' };
+  }
+  if (idxs.length > MAX_BULK_DELETE) {
+    return {
+      success: false,
+      error: `Maksimal ${MAX_BULK_DELETE} baris sekali hapus.`,
+      max: MAX_BULK_DELETE,
+    };
+  }
+
+  cacheClear();
+
+  // TAHAP 1 — resolve SEMUA index → id SEBELUM menghapus apa pun.
+  // Kalau ini digabung dengan penghapusan, index akan bergeser di tengah loop.
+  const resolved: Array<{ idx: number; id: string | number }> = [];
+  const notFound: number[] = [];
+  for (const idx of idxs) {
+    try {
+      const f = await getFormByIndex(idx);
+      if (f && f.id !== undefined && f.id !== null) {
+        resolved.push({ idx, id: f.id });
+      } else {
+        notFound.push(idx);
+      }
+    } catch {
+      notFound.push(idx);
+    }
+  }
+
+  // TAHAP 2 — hapus by id.
+  const deleted: number[] = [];
+  const failed: Array<{ idx: number; error: string }> = [];
+  for (const { idx, id } of resolved) {
+    try {
+      await deleteForm(id, sessionToken);
+      deleted.push(idx);
+    } catch (e: unknown) {
+      failed.push({ idx, error: safeError('Gagal menghapus.', e) });
+    }
+  }
+
+  return {
+    success: failed.length === 0,
+    deleted: deleted.length,
+    deletedIndexes: deleted,
+    notFound,
+    failed,
+  };
+}
+
 export async function handleTandaiDibacaForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;

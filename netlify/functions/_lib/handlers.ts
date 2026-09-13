@@ -234,7 +234,7 @@ function isMutatingAction(action: string): boolean {
     'hapusJobData', 'updateTahapanDbJob', 'updateDokumenShare',
     'tandaiGagalJob',
     // Mail
-    'reviewForm', 'approveForm', 'rejectForm', 'deleteForm',
+    'reviewForm', 'approveForm', 'rejectForm', 'deleteForm', 'hapusFormTerpilih',
     // Candidates
     'updateCatatanKandidat', 'updateKandidatSuper',
     // Notify

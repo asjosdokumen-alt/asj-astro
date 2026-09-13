@@ -752,6 +752,13 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.toast_tsk_copied": "Teks TSK disalin ke clipboard!",
     "ui.toast_csv_downloaded": "{n} kandidat diunduh ke CSV.",
     "ui.toast_excel_downloaded": "{n} kandidat diunduh ke Excel.",
+    // Hapus massal Mail Inbox (#15) — teks persis legacy (`cloudinary.js`).
+    "ui.delete_mail": "Hapus lamaran",
+    "ui.delete_selected_mail": "Hapus Terpilih",
+    "ui.select_mail_first": "Pilih dulu baris yang mau dihapus.",
+    "ui.confirm_delete_mail": "Hapus data lamaran ini secara permanen?",
+    "ui.confirm_delete_mail_selected": "Hapus {n} lamaran terpilih? Data kandidat & master TIDAK ikut terhapus.",
+    "ui.toast_mail_deleted_n": "{n} lamaran terpilih berhasil dihapus.",
     "ui.toast_monthly_report": "Laporan Bulanan",
     "ui.toast_sync3_success": "Profil kandidat berhasil disimpan!",
     "ui.berkas_center": "Pusat Pemberkasan",

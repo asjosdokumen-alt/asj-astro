@@ -592,6 +592,13 @@ export const jpTranslations: Record<string, string> = {
     "ui.toast_tsk_copied": "TSKテキストをクリップボードにコピーしました！",
     "ui.toast_csv_downloaded": "{n}件の候補者をCSVでダウンロードしました。",
     "ui.toast_excel_downloaded": "{n}件の候補者をExcelでダウンロードしました。",
+    // メール受信箱の一括削除 (#15)
+    "ui.delete_mail": "応募を削除",
+    "ui.delete_selected_mail": "選択項目を削除",
+    "ui.select_mail_first": "削除する行を先に選択してください。",
+    "ui.confirm_delete_mail": "この応募データを完全に削除しますか？",
+    "ui.confirm_delete_mail_selected": "選択した{n}件の応募を削除しますか？候補者・マスターデータは削除されません。",
+    "ui.toast_mail_deleted_n": "選択した{n}件の応募を削除しました。",
     "ui.share_link_view": "共有ビューリンク（TSK用）",
     "ui.share_template_label": "WAにコピーするメッセージ（テンプレート）",
     "ui.share_copas_wa": "WAにコピー",
