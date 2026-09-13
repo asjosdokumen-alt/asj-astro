@@ -169,7 +169,11 @@ describe('discover', () => {
     // arithmetic. The measured value is what matters: 233.
     // 233 -> 234 (2026-09-13, later): +1 ts — _lib/smoke-test-health.test.ts,
     // which pins the rollback gate's classification (BACKEND_TODO #31).
-    expect(count('ts')).toBe(234);
+    // 234 -> 235 (2026-09-13, latest): +1 ts — _lib/cold-start-gate.test.ts,
+    // which pins the cold-start latency gate (BACKEND_TODO #29). The gate's
+    // companion .mjs is counted below; its .mutations.sh is deliberately NOT
+    // counted (not a tracked code extension).
+    expect(count('ts')).toBe(235);
     // 78 -> 79 (2026-09-13, owner-approved item 2):
     // src/components/ui/AiUnavailableBanner.tsx.
     // 79 -> 78 (2026-09-13): -1 tsx, src/components/ESignatureModal.tsx deleted.
@@ -196,7 +200,9 @@ describe('discover', () => {
     // gates verify-projections.mjs and verify-rls.mjs. 24 -> 27.
     // 2026-09-13 (latest): +1 mjs — scripts/ci/check-md-tables.mjs, the markdown
     // table structure gate (wired into ci:quality). 27 -> 28.
-    expect(count('mjs')).toBe(28); // 11 at design time; e2e + scripts/ci gates added since
+    // 2026-09-13 (later still): +1 mjs — scripts/ci/cold-start-gate.mjs, the
+    // cold-start latency gate (BACKEND_TODO #29). 28 -> 29.
+    expect(count('mjs')).toBe(29); // 11 at design time; e2e + scripts/ci gates added since
     expect(count('cjs')).toBe(5);
     // Phase A (2026-09-11): netlify/functions/run-migration.js deleted — the
     // action was already removed from the registry, so the entry point was a
@@ -259,7 +265,11 @@ describe('discover', () => {
     // same +1 as build.test.ts; the indexer inventory counts files on DISK, so
     // adding any test file moves this number.
     // 377 -> 378 (2026-09-13, latest): +1 mjs — scripts/ci/check-md-tables.mjs.
-    expect(files.length).toBe(378); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 378 -> 380 (2026-09-13, latest): +2 — scripts/ci/cold-start-gate.mjs and
+    // _lib/cold-start-gate.test.ts (BACKEND_TODO #29). The companion
+    // cold-start-gate.mutations.sh is NOT in the inventory: the indexer tracks
+    // code extensions only, and .sh is not one.
+    expect(files.length).toBe(380); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

@@ -340,6 +340,7 @@ Apply the same checks to `develop`, minus the reviewer requirement.
 ```bash
 npm run ci:quality                    # ratchet + boundary + full test suite
 npm run verify:md                     # markdown table structure (docs/**)
+npm run cold:start -- --url https://asjastro.netlify.app   # cold-start latency, report-only
 npm run test:frontend                 # jsdom suite
 npm run test:backend -- --shard=1/3   # one shard, as CI runs it
 npm run verify:env -- --profile build # env gate
@@ -357,6 +358,26 @@ an unescaped `||` added two phantom cells to a row in `docs/PARITY_CHECKLIST.md`
 stray pipe never errors — the row just renders misaligned. The checker's own mutation
 battery lives at `scripts/ci/check-md-tables.mutations.sh` (5 mutations, all must be
 killed; run it from the repo root after changing the checker).
+
+`cold:start` (part of `ci:quality`) measures time-to-first-byte on the deployed site
+and compares the **best of N samples** against a **3000 ms** budget. It closes
+`BACKEND_TODO.md` #29, which had sat open labelled owner-side on the premise that it
+needed someone watching a dashboard — it only ever needed `curl`. Two design choices
+are load-bearing and should not be "simplified":
+
+- **Best of N, not worst or mean.** Cold start is a one-time cost; the site serves warm
+  requests afterwards. Using the worst sample would let ordinary runner noise fail the
+  build, and a gate people learn to ignore is worse than no gate.
+- **Report-only by default.** `--enforce` is opt-in, and `deploy-production.yml` runs it
+  without it, because that job also drives the automatic rollback. Latency is a trend to
+  watch, not a binary that justifies rolling back a healthy release. An unreachable path
+  is reported as `error` and is deliberately **not** counted as over budget — detecting
+  an outage is the smoke test's job.
+
+Its mutation battery is `scripts/ci/cold-start-gate.mutations.sh` (7 mutations — inverted
+comparison, ignored budget, worst-of, unreachable-as-pass, widened budget, `--enforce`
+by default, constant probe — all must be killed; run from the repo root). A latency gate
+fails *silently*, so an unseen red is the only evidence that it works at all.
 
 To check the database contract locally:
 

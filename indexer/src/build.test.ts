@@ -86,7 +86,11 @@ describe('full build', () => {
     // Measured against the tree with the real discoverFiles() path. (The Python
     // prototype named in the first draft was deleted; it never entered the
     // indexer inventory because .py is not indexed.)
-    expect(r.stats.fileCount).toBe(378); // 234 ts + 80 tsx + 12 astro + 28 mjs + 5 cjs + 19 js
+    // 378 -> 380 (2026-09-13, latest): +1 mjs (scripts/ci/cold-start-gate.mjs)
+    // and +1 ts (netlify/functions/_lib/cold-start-gate.test.ts) — the cold-start
+    // latency gate and its test (BACKEND_TODO #29). Its companion
+    // cold-start-gate.mutations.sh is NOT counted: .sh is not an indexed extension.
+    expect(r.stats.fileCount).toBe(380); // 235 ts + 80 tsx + 12 astro + 29 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

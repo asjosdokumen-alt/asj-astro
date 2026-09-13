@@ -196,6 +196,22 @@ jobs:
             --health "/.netlify/functions/health?detail=1" \
             --retries 6 --backoff 3000
 
+      # Cold-start latency, measured on every release (BACKEND_TODO #29).
+      #
+      # REPORT-ONLY ON PURPOSE. This step does not fail the job, even when a
+      # path breaches the 3s budget, and it must stay that way: the step below
+      # is wired to the automatic rollback, and a noisy CI runner producing one
+      # unlucky sample would then roll back a perfectly healthy release. Latency
+      # is a trend to watch, not a binary that justifies a rollback.
+      #
+      # `if: always()` so a degraded release still gets its numbers recorded —
+      # that is precisely the case where the reading is worth having.
+      - name: Measure cold start
+        if: always()
+        run: |
+          npm run cold:start -- --url "${{ steps.deploy.outputs.deploy-url }}" \
+            --samples 3 || true
+
       # Only meaningful if the deploy itself succeeded — otherwise there is
       # nothing new to roll back from.
       - name: Automatic rollback
