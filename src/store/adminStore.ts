@@ -28,6 +28,15 @@ export interface Kandidat {
   isSiswaASJ?: boolean;
   // pas_photo ter-dekorasi (mapCandidate) — fallback foto preview CV (A10).
   pasPhoto?: string;
+  // Backend SUDAH mengirim ketiga field ini (mapCandidate di
+  // `_lib/db/candidates.ts:57,82,83`), tapi interface ini tidak
+  // mendeklarasikannya sehingga nilainya dibuang di sisi klien. Akibatnya
+  // ekspor kandidat hanya bisa memuat 7 kolom, sementara legacy memuat 11
+  // (Email + Tanggal Daftar hilang). Deklarasi di sini memulihkannya tanpa
+  // perubahan backend sama sekali.
+  email?: string;
+  tanggalDaftar?: string;
+  createdAt?: string;
 }
 
 // ── Modal State ──────────────────────────────────────────

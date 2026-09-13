@@ -21,6 +21,11 @@ import LaporanBulananModal from './LaporanBulananModal.tsx';
 import WAPintarModal from '../WAPintarModal';
 import api from '../../lib/apiClient';
 import { normalizeWaInput } from '../../lib/schemas';
+import {
+  buildExcelBuffer,
+  exportFilename,
+  toCsvText,
+} from '../../lib/candidateExport';
 
 import type { Kandidat } from "../../store/adminStore";
 import type { WaTemplate } from '../../types/api';
@@ -88,16 +93,42 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
 
   const shown = filtered.slice(0, (page + 1) * PAGE_SIZE);
 
+  // Ekspor memakai satu sumber kebenaran: `src/lib/candidateExport.ts`.
+  // Definisi kolom TIDAK ditulis di sini — itulah yang membuat CSV lama hanya
+  // 7 kolom sementara legacy 11, dan membuat Excel mustahil konsisten.
+  // `filtered` = baris setelah filter aktif, jadi ekspor selalu mengikuti
+  // apa yang sedang dilihat admin (perilaku legacy).
   function exportCsv() {
-    const headers = ['ID Kandidat', 'Nama Lengkap', 'WA', 'Job Dilamar', 'Tahapan', 'Status', 'Catatan'];
-    // Kolom catatan mengikuti legacy (catatanExt || catatan_admin).
-    const rows = filtered.map(k => [k.id, k.nama, k.wa, k.idLoker, k.tahapan, k.status, k.catatanExt || k.catatan]);
-    const csv = [headers, ...rows].map(r => r.map(c => `"${(c || '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([toCsvText(filtered)], { type: 'text/csv;charset=utf-8;' });
+    triggerDownload(blob, exportFilename('csv'));
+    showToast(t('ui.toast_csv_downloaded').replace('{n}', String(filtered.length)), 'success');
+  }
+
+  async function exportExcel() {
+    try {
+      // xlsx diimpor dinamis di dalam buildExcelBuffer — tidak membebani bundle awal.
+      const buf = await buildExcelBuffer(filtered);
+      const blob = new Blob([buf], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      triggerDownload(blob, exportFilename('xlsx'));
+      showToast(t('ui.toast_excel_downloaded').replace('{n}', String(filtered.length)), 'success');
+    } catch (e) {
+      showToast(t('ui.toast_error_prefix') + (e instanceof Error ? e.message : String(e)), 'error');
+    }
+  }
+
+  function triggerDownload(blob: Blob, filename: string) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'kandidat.csv'; a.click();
-    URL.revokeObjectURL(url);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    // Revoke tertunda: melepas URL sinkron bisa membatalkan unduhan di beberapa
+    // browser (legacy memakai 5 detik — paritas perilaku).
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
   }
 
 
@@ -119,6 +150,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
             <Icon name={simpleView ? 'table-list' : 'table-cells-large'} class="mr-1" /> {simpleView ? t('admin.view_full') : t('admin.view_simple')}
           </button>
           <button onClick={exportCsv} class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="file-csv" class="mr-1" /> {t('admin.export_csv')}</button>
+          <button onClick={exportExcel} class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="file-excel" class="mr-1" /> {t('admin.export_excel')}</button>
           <button onClick={() => openReportModal()} class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="chart-bar" class="mr-1" /> {t('admin.monthly_report')}</button>
         </div>
       </div>
