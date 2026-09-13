@@ -61,8 +61,8 @@
 | `exportKandidatCsv` | `TabPelamar` CSV | ✅ CSV; **Export Excel = TODO gap** |
 | `bukaSimulatorInterview` (AI Wawancara admin) | ❓ | Komponen admin wawancara perlu cek (ada referensi di `EditCandidateModal`/`AdminAiCopilot`); TODO.md: "AI Interview simulator (legacy punya, Astro belum)" |
 | `bukaMasterLengkapPortal` / `bukaMasterEksternal` / `bukaFormSiswa` | route ke master.astro / apply / siswa-baru | ✅ via link |
-| Reject mail composer (legacy) | 🔲 | TODO.md MEDIUM |
-| Migration Drive modal (legacy) | 🔲 | TODO.md MEDIUM |
+| Reject mail composer (legacy) | 🔲 | TODO.md MEDIUM — lihat #12 di `BACKEND_TODO.md` |
+| ~~Migration Drive modal (legacy)~~ **→ BUKAN gap; sengaja TIDAK dibangun** | ❌ sengaja | **Legacy `js/admin_ops/migration.ts` adalah *database* migration runner, bukan "Drive".** Ia memanggil `callAPI('runMigration', {})` dari POST body. Di repo baru action itu **dihapus dengan sengaja** (`surfaces/config.ts:10` — *"schema changes must never be reachable from a POST body"*, `SCALABILITY…§11`, `PHASE_A…:24,121`). Penggantinya: **`scripts/migrate.mjs`** — ledger berversi + checksum, dijalankan dari CLI. Menambahkan kembali modal ini = mengembalikan lubang keamanan. Sisa 2 key i18n (`admin.db_migration_auto`, `admin.run_migration`) hanya sisa teks tanpa UI |
 
 ## 3. Kandidat / Publik — Modal & Fitur
 

@@ -13,6 +13,7 @@ import { t, langStore } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
 import api from '../../lib/apiClient';
+import RejectMailModal from './RejectMailModal';
 
 const STATUSES = ['MENUNGGU', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'] as const;
 
@@ -29,6 +30,12 @@ export default function TabMail() {
   const searchText = useStore(mailSearchText);
   const mail = useStore(mailList);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  /**
+   * Baris yang sedang ditolak (#12). `null` = modal tertutup.
+   * Menyimpan seluruh baris, bukan cuma id, supaya judul modal bisa menyebut
+   * nama kandidat — admin perlu yakin barisnya benar sebelum menolak.
+   */
+  const [rejectTarget, setRejectTarget] = useState<null | { id: unknown; nama?: string }>(null);
 
   useEffect(() => { fetchMailFromAPI(); }, []);
 
@@ -99,6 +106,31 @@ export default function TabMail() {
       }
     } catch (e) {
       showToast(t('ui.toast_error_prefix') + (e instanceof Error ? e.message : String(e)), 'error');
+    }
+  };
+
+  /**
+   * Kirim penolakan beserta alasan yang ditulis admin (#12).
+   *
+   * Sebelum ini alasan **hardcoded** `'Lamaran GAGAL'`, padahal backend sudah
+   * menerimanya sebagai argumen ke-3 (`handleRejectForm`) dan UI legacy
+   * menjanjikan teks itu muncul di Dashboard Kandidat. Alasan kosong sengaja
+   * dibiarkan lewat apa adanya — backend memakai fallback 'Lamaran ditolak'.
+   */
+  const confirmReject = async (reason: string) => {
+    if (!rejectTarget) return;
+    const { id, nama } = rejectTarget;
+    try {
+      const d: any = await api.secure('rejectForm', [id, '', reason]);
+      if (d && d.success) {
+        showToast(t('ui.toast_rejected_n').replace('{n}', String(nama || '')), 'success');
+        setRejectTarget(null);
+        await fetchMailFromAPI();
+      } else {
+        showToast(String(d?.error || d?.message || 'Gagal'), 'error');
+      }
+    } catch (e) {
+      showToast('Error: ' + (e instanceof Error ? e.message : String(e)), 'error');
     }
   };
 
@@ -222,7 +254,7 @@ export default function TabMail() {
                     <button onClick={() => act('reviewForm', m.id ?? m.wa, 'Status REVIEW')} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition">
                       <Icon name="eye" class="mr-1" /> {t('button.review')}
                     </button>
-                    <button onClick={() => { if (window.confirm(t('admin.confirm_reject_application'))) act('rejectForm', m.id ?? m.wa, 'Lamaran GAGAL'); }} class="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold shadow transition">
+                    <button onClick={() => setRejectTarget({ id: m.id ?? m.wa, nama: m.nama })} class="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold shadow transition">
                       <Icon name="times" class="mr-1" /> {t('button.reject')}
                     </button>
                   </div>
@@ -232,6 +264,14 @@ export default function TabMail() {
           </tbody>
         </table>
       </div>
+
+      {rejectTarget && (
+        <RejectMailModal
+          candidateName={rejectTarget.nama}
+          onCancel={() => setRejectTarget(null)}
+          onConfirm={confirmReject}
+        />
+      )}
     </div>
   );
 }

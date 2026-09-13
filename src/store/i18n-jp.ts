@@ -599,6 +599,12 @@ export const jpTranslations: Record<string, string> = {
     "ui.confirm_delete_mail": "この応募データを完全に削除しますか？",
     "ui.confirm_delete_mail_selected": "選択した{n}件の応募を削除しますか？候補者・マスターデータは削除されません。",
     "ui.toast_mail_deleted_n": "選択した{n}件の応募を削除しました。",
+    // 却下理由コンポーザー (#12)
+    "ui.reject_app": "応募を却下",
+    "ui.reject_reason_hint": "却下理由を入力してください。このメッセージは候補者ダッシュボードに表示されます。",
+    "ui.reject_reason_ph": "例：身分証明書の画像が読み取れません。再アップロードしてください。",
+    "ui.set_fail": "不合格に設定",
+    "ui.toast_rejected_n": "{n}さんの応募を却下しました。理由は候補者に送信されました。",
     "ui.share_link_view": "共有ビューリンク（TSK用）",
     "ui.share_template_label": "WAにコピーするメッセージ（テンプレート）",
     "ui.share_copas_wa": "WAにコピー",

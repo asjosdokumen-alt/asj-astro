@@ -759,6 +759,12 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.confirm_delete_mail": "Hapus data lamaran ini secara permanen?",
     "ui.confirm_delete_mail_selected": "Hapus {n} lamaran terpilih? Data kandidat & master TIDAK ikut terhapus.",
     "ui.toast_mail_deleted_n": "{n} lamaran terpilih berhasil dihapus.",
+    // Composer alasan penolakan (#12) — teks persis legacy (`i18n/locales/id/ui.js`).
+    "ui.reject_app": "Reject Lamaran",
+    "ui.reject_reason_hint": "Tulis alasan penolakan. Pesan ini akan muncul di Dashboard Kandidat.",
+    "ui.reject_reason_ph": "Contoh: Dokumen KTP tidak terbaca. Mohon unggah ulang.",
+    "ui.set_fail": "Set status GAGAL",
+    "ui.toast_rejected_n": "Lamaran {n} ditolak. Alasan sudah dikirim ke kandidat.",
     "ui.toast_monthly_report": "Laporan Bulanan",
     "ui.toast_sync3_success": "Profil kandidat berhasil disimpan!",
     "ui.berkas_center": "Pusat Pemberkasan",
