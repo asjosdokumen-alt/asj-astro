@@ -133,3 +133,68 @@ describe.skipIf(!hasBuild)('built service worker — offline navigation (#18)', 
     expect(src).toContain('if (url.origin !== self.location.origin) return;');
   });
 });
+
+// ==========================================
+// TESTS: a redirected response must never be returned to a navigation
+//
+// The live outage this pins (2026-09-13)
+//   Netlify 301-redirects every bare directory route to its trailing-slash form
+//   (`/admin` -> `/admin/`), and the app links to the BARE form. The navigation
+//   handler fetched the bare path, the fetch FOLLOWED the 301, and the worker
+//   handed that redirected response straight back to the navigation request.
+//   Chromium refuses it — the navigation dies with `net::ERR_FAILED` before any
+//   HTML is parsed, so `/admin`, `/candidate`, `/public` and `/apply` were all
+//   unreachable while their trailing-slash twins worked. With the worker in
+//   control, the site looked like "redirects are broken".
+//
+//   Reproduced against production by serving the pre-fix handler for /sw.js and
+//   navigating: bare routes failed, slashed routes worked. Same server, one
+//   variable.
+//
+// Why a structural assertion is the right shape here
+//   The behaviour lives inside a service worker's fetch handler; there is no way
+//   to exercise it from vitest without a browser and a real 301. So this pins the
+//   INVARIANT that makes it impossible instead: the handler must inspect
+//   `res.redirected` and return the rebuilt response. Removing that, or
+//   returning the fetched response again, fails here.
+// ==========================================
+describe.skipIf(!hasBuild)('built service worker — redirected responses (#31)', () => {
+  const src = () => readFileSync(SW_PATH, 'utf8');
+
+  it('rebuilds a redirected response before returning it to a navigation', () => {
+    const s = src();
+    expect(s).toContain('res.redirected');
+    // Rebuilding from the body is what clears the flag.
+    expect(s).toContain('new Response(res.body, {');
+  });
+
+  it('returns the REBUILT response, not the fetched one', () => {
+    const s = src();
+    // `return res;` inside the navigation branch would put the bug straight
+    // back. The navigation branch must return `out`.
+    expect(s).toContain('return out;');
+  });
+
+  it('keeps the navigation branch network-first', () => {
+    // Guard against "fixing" this by going cache-first, which would trade an
+    // outage for permanently stale pages.
+    expect(src()).toContain("fetch(req.url, { cache: 'no-cache' })");
+  });
+
+  it('never resolves an asset request to undefined', () => {
+    const s = src();
+    // `respondWith(undefined)` is a failed request; the catch used to return
+    // `hit`, which is undefined on a cache miss. A readable 504 is the floor.
+    expect(s).not.toMatch(/\.catch\(\(\) => hit\);/);
+    expect(s).toContain('status: 504');
+  });
+
+  it('does not leave cache.put rejections unhandled', () => {
+    // cache.put rejects for responses it will not store (a redirected one, for
+    // instance). Inside a fetch handler that rejection is invisible.
+    const s = src();
+    const puts = [...s.matchAll(/caches\.open\(VERSION\)\.then\(\(c\) => c\.put\([^)]*\)\)/g)];
+    expect(puts.length).toBeGreaterThan(0);
+    for (const p of puts) expect(s.slice(p.index, p.index + p[0].length + 20)).toContain('.catch(');
+  });
+});

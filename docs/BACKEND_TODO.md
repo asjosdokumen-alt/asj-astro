@@ -178,6 +178,16 @@ Diringkas supaya daftar di atas tidak diragukan lagi.
   (3,1,5,2,4 → 9, bukan 15), semua count dikirim sebagai **gauge** dan di-query dengan
   `sum_over_time()`, **bukan `rate()`**. Bug ini sempat lolos karena smoke test awal cuma memakai gauge
   — pelajarannya: uji **body yang benar-benar dihasilkan**, bukan yang nyaman.
+- **Outage navigasi SW (2026-09-13 malam) — DIPERBAIKI.** Site live **tidak bisa dinavigasi** oleh
+  siapa pun yang punya service worker: `/admin`, `/candidate`, `/public`, `/apply` semua mati dengan
+  `net::ERR_FAILED`, sementara kembaran ber-trailing-slash-nya (`/admin/`) normal. Penyebabnya: Netlify
+  **301** setiap rute direktori telanjang ke bentuk ber-slash, dan handler navigasi SW mengembalikan
+  respons **hasil-ikut-redirect** ke request navigasi — Chromium menolaknya sebelum satu byte HTML pun
+  di-parse. Dikonfirmasi dengan menyajikan handler lama untuk `/sw.js` di situs produksi: rute telanjang
+  gagal, rute ber-slash jalan. Fix: bangun ulang respons agar flag `redirected` hilang. Ditambah 5 tes
+  (4 di antaranya **memerahkan suite** saat handler lama dipasang kembali). Catatan: `public/sw.js`
+  **tidak** diubah oleh 26 commit sebelumnya — bug ini sudah ada di handler, dan baru terasa ketika
+  versi SW berganti sehingga worker mengambil alih tiap tab.
 - **Matriks degradasi §6.5** — 4/7 baris bertahan (dari 2/7); sisa divergensi: Fonnte (enqueue jalan,
   status bukan 202), Storage (retry client-side), Pooler (shed tanpa antre).
 

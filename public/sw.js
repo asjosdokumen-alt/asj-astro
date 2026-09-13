@@ -78,11 +78,35 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(req.url, { cache: 'no-cache' })
         .then((res) => {
-          if (res?.status === 200) {
-            const copy = res.clone();
-            caches.open(VERSION).then((c) => c.put(url.pathname, copy));
+          // A response that FOLLOWED a redirect must never be handed back to a
+          // navigation request: Chrome rejects it and fails the whole navigation
+          // with `net::ERR_FAILED`, before any of our HTML is parsed.
+          //
+          // This was a live outage, not a hypothetical. Netlify 301s every bare
+          // directory route to its trailing-slash form (`/admin` -> `/admin/`,
+          // verified against production 2026-09-13), and the app links to the
+          // BARE form. So with this worker in control, `/admin`, `/candidate`,
+          // `/public` and `/apply` all died while their trailing-slash twins
+          // worked — which is what made it look like "redirects are broken".
+          //
+          // Rebuilding the response from its body clears the `redirected` flag
+          // while preserving status and headers, so the navigation succeeds and
+          // still gets the real page.
+          const out = res.redirected
+            ? new Response(res.body, {
+                status: res.status,
+                statusText: res.statusText,
+                headers: res.headers,
+              })
+            : res;
+          if (out.status === 200) {
+            const copy = out.clone();
+            // `.catch` is not decoration: `cache.put` rejects for responses it
+            // will not store (e.g. a redirected one), and an unhandled rejection
+            // inside a fetch handler is invisible in production.
+            caches.open(VERSION).then((c) => c.put(url.pathname, copy)).catch(() => {});
           }
-          return res;
+          return out;
         })
         .catch(async () => {
           const cache = await caches.open(VERSION);
@@ -110,11 +134,15 @@ self.addEventListener('fetch', (e) => {
         .then((res) => {
           if (res?.status === 200) {
             const copy = res.clone();
-            caches.open(VERSION).then((c) => c.put(req, copy));
+            caches.open(VERSION).then((c) => c.put(req, copy)).catch(() => {});
           }
           return res;
         })
-        .catch(() => hit);
+        // Never resolve to `undefined`: `respondWith(undefined)` is a failed
+        // request, and that is exactly the case where a readable error matters
+        // most. A 504 keeps the failure legible in devtools instead of a bare
+        // net::ERR_FAILED.
+        .catch(() => hit || new Response('', { status: 504, statusText: 'Gateway Timeout' }));
       return hit || network;
     }),
   );
