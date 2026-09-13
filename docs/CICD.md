@@ -159,6 +159,48 @@ Two layers:
 Rollback re-publishes an existing deploy rather than rebuilding from an old
 commit: it is faster, and a rebuild of an old commit can itself be broken.
 
+#### What the smoke test actually checks
+
+Two checks, and they answer different questions:
+
+| Check | Question it answers | Can it fail? |
+|---|---|---|
+| `--expect "Lowongan Loker"` | Did the built HTML survive the pipeline? | Only if the build is corrupt — the page is **prerendered**, so the CDN keeps serving the marker even with the database down |
+| `--health /.netlify/functions/health?detail=1` | Is the data layer behind the deploy working? | Yes — this is the check that reflects real availability |
+
+The health probe was added on 2026-09-13. Before it, the gate was **marker-only**,
+which meant a deploy that broke PostgREST sailed through and never triggered a
+rollback: the static HTML was still served from the edge. See
+`docs/BACKEND_TODO.md` #31.
+
+**The probe never rolls production back for its own configuration**, which is the
+whole reason it is safe to enable:
+
+| Response | Verdict | Why |
+|---|---|---|
+| `200` / `204` | **PASS** | Real verdict obtained |
+| `503 HEALTH_TOKEN not configured` | **WARN** | The site is fail-closed by design and the monitor cannot authenticate — not a property of this release |
+| `401` (with or without a token) | **WARN** | Credential drift: the site is serving, the monitor's secret is stale. Rolling back does not rotate a secret |
+| Any other non-2xx (`500`, `502`, `503`, `504`, …) | **FAIL** | The endpoint reported a dependency down — this triggers the rollback flow |
+
+Exit codes: `0` on pass and on warnings-only, `1` on failure. The classification
+lives in `classifyHealth()` in `scripts/ci/smoke-test.mjs` — pure, so the
+rollback decision is unit-tested (`netlify/functions/_lib/smoke-test-health.test.ts`)
+and mutation-verified.
+
+CI's own smoke job (`ci.yml`) deliberately does **not** pass `--health`: it serves
+the artifact with `astro preview`, which has no function runtime, so the probe
+would 404 against a perfectly good build.
+
+#### Wiring the health probe
+
+`deploy-production.yml`, `deploy-staging.yml` and `rollback.yml` pass
+`HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}` through the step environment — never
+on the command line, where `ps` and the workflow log would expose it. With the
+secret unset the probe reports a warning and the pipeline still goes green, so a
+site without the secret cannot be rolled back for a reason unrelated to the
+release.
+
 ### 3.7 Environment variable management
 
 Secrets live in **GitHub Environments**, not in the repo and not in `netlify.toml`.
@@ -168,6 +210,7 @@ Secrets live in **GitHub Environments**, not in the repo and not in `netlify.tom
 | `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` | Repository **variables** | Public by design — already visible in the shipped bundle |
 | `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET` | Environment **secrets** | Server-side only |
 | `NETLIFY_AUTH_TOKEN`, `NETLIFY_SITE_ID` | Environment **secrets** | Deploy credentials |
+| `HEALTH_TOKEN` | Environment **secret** | Lets the post-deploy smoke test authenticate against `/.netlify/functions/health`. Must be the **same value as the Netlify site's** `HEALTH_TOKEN`, or the probe reports credential drift (a warning, not a rollback) |
 | `SLACK_WEBHOOK_URL` | Repository secret (optional) | Notifications |
 
 `verify-env.mjs` checks presence before every deploy and **rejects placeholder

@@ -167,7 +167,9 @@ describe('discover', () => {
     // Note the previous literal (222) was itself 1 above the 221 the comments
     // above sum to, so the true drift was 9 from the literal / 10 from the
     // arithmetic. The measured value is what matters: 233.
-    expect(count('ts')).toBe(233);
+    // 233 -> 234 (2026-09-13, later): +1 ts — _lib/smoke-test-health.test.ts,
+    // which pins the rollback gate's classification (BACKEND_TODO #31).
+    expect(count('ts')).toBe(234);
     // 78 -> 79 (2026-09-13, owner-approved item 2):
     // src/components/ui/AiUnavailableBanner.tsx.
     // 79 -> 78 (2026-09-13): -1 tsx, src/components/ESignatureModal.tsx deleted.
@@ -251,7 +253,10 @@ describe('discover', () => {
     // the per-extension notes above list. Measured against the tree, because this
     // assertion had gone stale and was red on main. (The previous literal, 363,
     // was itself 1 below the 364 its own comments above reach.)
-    expect(files.length).toBe(376); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 376 -> 377 (2026-09-13, later): +1 ts — _lib/smoke-test-health.test.ts. The
+    // same +1 as build.test.ts; the indexer inventory counts files on DISK, so
+    // adding any test file moves this number.
+    expect(files.length).toBe(377); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

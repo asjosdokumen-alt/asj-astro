@@ -126,8 +126,19 @@ jobs:
 
       # Longer backoff than CI: a freshly published Netlify deploy can take a few
       # seconds to propagate across edges.
+      #
+      # The health probe is included for the same reason it is in production —
+      # the document marker is prerendered and cannot see a dead data layer.
+      # Staging has no HEALTH_TOKEN, so this normally reports a warning; that is
+      # the intended outcome, not a failure.
       - name: Smoke test staging
-        run: npm run smoke -- --url "${{ steps.deploy.outputs.deploy-url }}" --expect "Lowongan Loker" --retries 6 --backoff 3000
+        env:
+          HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
+        run: |
+          npm run smoke -- --url "${{ steps.deploy.outputs.deploy-url }}" \
+            --expect "Lowongan Loker" \
+            --health "/.netlify/functions/health?detail=1" \
+            --retries 6 --backoff 3000
 
   notify:
     name: Notify

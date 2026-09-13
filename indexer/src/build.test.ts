@@ -78,7 +78,10 @@ describe('full build', () => {
     // the 13 new files are from this session (_lib/otlp.ts + its test).
     // The old breakdown comment was also internally inconsistent — it summed to
     // 364, not 363 — so the breakdown below is re-measured, not re-derived.
-    expect(r.stats.fileCount).toBe(376); // 233 ts + 80 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
+    // 376 -> 377 (2026-09-13, later): +1 ts — _lib/smoke-test-health.test.ts,
+    // which pins the rollback gate's PASS/WARN/FAIL classification (BACKEND_TODO
+    // #31). ts 233 -> 234. No tsx/astro/mjs change.
+    expect(r.stats.fileCount).toBe(377); // 234 ts + 80 tsx + 12 astro + 27 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

@@ -70,17 +70,24 @@ jobs:
           fi
           node scripts/ci/netlify-rollback.mjs $ARGS
 
+      # Probes the health endpoint too, so the check that runs after a rollback
+      # answers the same question as the one that triggered it: is the data
+      # layer actually working, not just the CDN.
       - name: Smoke test after rollback
         if: ${{ !inputs.dry-run && inputs.environment == 'production' }}
         env:
           PROD_URL: ${{ vars.PRODUCTION_URL }}
+          HEALTH_TOKEN: ${{ secrets.HEALTH_TOKEN }}
         run: |
           if [ -z "$PROD_URL" ]; then
             echo "::warning::PRODUCTION_URL variable not set — skipping post-rollback smoke test."
             echo "Set it in Settings > Secrets and variables > Actions > Variables."
             exit 0
           fi
-          npm run smoke -- --url "$PROD_URL" --expect "Lowongan Loker" --retries 6 --backoff 3000
+          npm run smoke -- --url "$PROD_URL" \
+            --expect "Lowongan Loker" \
+            --health "/.netlify/functions/health?detail=1" \
+            --retries 6 --backoff 3000
 
   notify:
     name: Notify
