@@ -10,9 +10,14 @@
  * The two mapping decisions most likely to be "corrected" into a bug later, and
  * therefore the ones pinned hardest here:
  *
- *   1. TEMPORALITY. The kernel clears its collections on every flush, so each
- *      payload is a DELTA. Marking it CUMULATIVE would make every counter appear
- *      to reset to zero on every invocation, and a rate() over that under-counts.
+ *   1. TEMPORALITY / TYPE. Every data point is a GAUGE. The obvious shape for a
+ *      per-invocation count is a delta `sum`, and that is what this module
+ *      originally shipped — but the receiving gateway rejects it with HTTP 400
+ *      ("invalid temporality and type combination"), measured 2026-09-13.
+ *      Cumulative `sum` is accepted but under-counts when instances interleave,
+ *      because a counter reset contributes only the new value. So counts are
+ *      gauges and must be queried with `sum_over_time()`, not `rate()`.
+ *      There is a structural test asserting NO metric in the request is a sum.
  *   2. CARDINALITY. Labels are an ALLOW-LIST. `rate_limit.hit` carries a
  *      caller-supplied `key`, which is unbounded; forwarding it would create one
  *      time series per distinct caller.
@@ -42,7 +47,6 @@ const NOW = 1_760_000_000_000; // 2025-10-09T08:53:20Z
 const NOW_NS = '1760000000000000000';
 
 interface DataPoint {
-  asInt?: string;
   asDouble?: number;
   timeUnixNano: string;
   attributes: { key: string; value: { stringValue: string } }[];
@@ -100,27 +104,35 @@ describe('parseMetricKey', () => {
 });
 
 describe('toOtlpMetrics — temporality and shape', () => {
-  it('ships counters as a DELTA, monotonic sum', () => {
+  it('ships counters as GAUGES, because the gateway rejects delta sums', () => {
     const { body } = toOtlpMetrics(PAYLOAD, { nowMs: NOW });
     const m = metricsOf(body).find((x) => x.name === 'handler_invoke')!;
-    expect(m.sum).toBeDefined();
-    // 1 = AGGREGATION_TEMPORALITY_DELTA. The kernel clears its maps on every
-    // flush, so claiming CUMULATIVE would report a reset on every invocation.
-    expect(m.sum!.aggregationTemporality).toBe(1);
-    expect(m.sum!.isMonotonic).toBe(true);
-    expect(m.sum!.dataPoints[0].asInt).toBe('3');
+    expect(m.gauge).toBeDefined();
+    expect(m.gauge!.dataPoints[0].asDouble).toBe(3);
+    // Measured 2026-09-13 against the live gateway: a delta `sum` is rejected
+    // with 400 "invalid temporality and type combination", and cumulative would
+    // under-count (a reset contributes only the new value). See _lib/otlp.ts.
+    expect(m.sum).toBeUndefined();
   });
 
-  it('encodes int64 fields as strings, as proto3 JSON requires', () => {
+  it('emits NO sum metric at all — nothing here can be rejected for temporality', () => {
+    // A structural guard, not a spot check: the whole request must contain only
+    // gauges, so no future field can reintroduce the shape that 400s.
     const { body } = toOtlpMetrics(PAYLOAD, { nowMs: NOW });
-    const dp = metricsOf(body).find((x) => x.name === 'handler_invoke')!.sum!.dataPoints[0];
-    expect(typeof dp.asInt).toBe('string');
+    const offenders = metricsOf(body).filter((m) => m.sum !== undefined);
+    expect(offenders.map((m) => m.name)).toEqual([]);
+    expect(metricsOf(body).every((m) => m.gauge !== undefined)).toBe(true);
+  });
+
+  it('encodes the timestamp as an int64 string, as proto3 JSON requires', () => {
+    const { body } = toOtlpMetrics(PAYLOAD, { nowMs: NOW });
+    const dp = metricsOf(body).find((x) => x.name === 'handler_invoke')!.gauge!.dataPoints[0];
     expect(typeof dp.timeUnixNano).toBe('string');
   });
 
   it('converts the timestamp to nanoseconds as an exact integer string', () => {
     const { body } = toOtlpMetrics(PAYLOAD, { nowMs: NOW });
-    const dp = metricsOf(body).find((x) => x.name === 'handler_invoke')!.sum!.dataPoints[0];
+    const dp = metricsOf(body).find((x) => x.name === 'handler_invoke')!.gauge!.dataPoints[0];
     // proto3 JSON requires int64 as a string, and the value must be nanoseconds.
     expect(dp.timeUnixNano).toBe(NOW_NS);
   });
@@ -142,7 +154,7 @@ describe('toOtlpMetrics — temporality and shape', () => {
     expect(String(far * 1e6)).not.toBe('2305843009213693000000');
 
     const { body } = toOtlpMetrics(PAYLOAD, { nowMs: far });
-    const dp = metricsOf(body).find((x) => x.name === 'handler_invoke')!.sum!.dataPoints[0];
+    const dp = metricsOf(body).find((x) => x.name === 'handler_invoke')!.gauge!.dataPoints[0];
     expect(dp.timeUnixNano).toBe('2305843009213693000000');
   });
 
@@ -165,8 +177,8 @@ describe('toOtlpMetrics — temporality and shape', () => {
     expect(names).toContain('handler_latency_max');
 
     const count = all.find((m) => m.name === 'handler_latency_count')!;
-    expect(count.sum!.aggregationTemporality).toBe(1);
-    expect(count.sum!.dataPoints[0].asInt).toBe('3');
+    expect(count.gauge!.dataPoints[0].asDouble).toBe(3);
+    expect(count.sum).toBeUndefined();
 
     const p95 = all.find((m) => m.name === 'handler_latency_p95')!;
     expect(p95.gauge!.dataPoints[0].asDouble).toBe(240);
@@ -185,7 +197,7 @@ describe('toOtlpMetrics — temporality and shape', () => {
 
   it('labels each data point with its parsed labels', () => {
     const { body } = toOtlpMetrics(PAYLOAD, { nowMs: NOW });
-    const dp = metricsOf(body).find((x) => x.name === 'dependency_call')!.sum!.dataPoints[0];
+    const dp = metricsOf(body).find((x) => x.name === 'dependency_call')!.gauge!.dataPoints[0];
     expect(attrsOf(dp)).toEqual({ dep: 'postgrest', outcome: 'error' });
   });
 
@@ -223,7 +235,7 @@ describe('toOtlpMetrics — the cardinality guard', () => {
     // is one time series per caller, forever.
     expect(droppedLabels).toEqual(['key']);
 
-    const dp = metricsOf(body).find((x) => x.name === 'rate_limit_hit')!.sum!.dataPoints[0];
+    const dp = metricsOf(body).find((x) => x.name === 'rate_limit_hit')!.gauge!.dataPoints[0];
     expect(attrsOf(dp)).toEqual({ action: 'chat' });
   });
 

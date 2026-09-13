@@ -148,16 +148,71 @@ as-is.
 
 ### What the translation does
 
+**Every data point is a gauge.** That is not the obvious design, and it is worth
+reading why before changing it — the first version of this exporter was wrong and
+would have shipped dead.
+
 | Payload | OTLP | Why |
 |---|---|---|
-| `counters` | `sum`, **DELTA** temporality, monotonic | The kernel clears its maps on every flush, so each payload is one invocation's delta. Marking it CUMULATIVE would make every counter look like it reset to zero every invocation, and `rate()` would read those as resets and under-count. |
-| `gauges` | `gauge` | Point-in-time values. |
-| `histograms[*].count` | `sum`, DELTA | It is a count of observations in the interval, so it deserves `rate()`. |
+| `counters` | `gauge` | The kernel clears its maps on every flush, so the honest value is "N events in this invocation". A delta `sum` is the textbook shape for that — and the gateway **rejects it with HTTP 400** (see below). A cumulative `sum` is accepted but under-counts. A gauge is exact under `sum_over_time()`. |
+| `gauges` | `gauge` | Point-in-time values. Unchanged. |
+| `histograms[*].count` | `gauge` | Observations in this invocation — same reasoning as `counters`. |
 | `histograms[*].avg/p50/p95/max` | `gauge`, name suffixed `_avg`/`_p50`/`_p95`/`_max` | The payload carries pre-computed percentiles, not bucket counts, so an OTLP `histogram` (which needs `bucketCounts` + `explicitBounds`) cannot represent it without inventing a distribution. The suffixed gauge matches what a Grafana user already expects: `handler_latency_p95 > 500`. |
 
 Names are sanitised here (dots → underscores), so `handler.latency` becomes the
 series `handler_latency_p95` — predictable from the repo, not dependent on the
 receiver's sanitiser.
+
+#### Measured 2026-09-13: the gateway rejects DELTA
+
+Probed against the live gateway with all four temporality × monotonicity
+combinations:
+
+```
+sum, delta,      monotonic=true   -> HTTP 400  "invalid temporality and type combination"
+sum, delta,      monotonic=false  -> HTTP 400
+sum, cumulative, monotonic=true   -> HTTP 200
+sum, cumulative, monotonic=false  -> HTTP 200
+gauge                             -> HTTP 200
+```
+
+Two things made this easy to miss, and both are worth remembering:
+
+- A **gauge-only** smoke test passes, so an early hand-written probe said "the
+  credential works" while the real payload was being rejected. Test the ACTUAL
+  generated body, not a convenient one.
+- The exporter is fire-and-forget, so the failure is a `metrics.otlp.rejected`
+  log line with `status: 400` — visible, but only if you look.
+
+#### Cumulative is accepted, and still the wrong choice
+
+Cumulative is tempting because the gateway takes it. But our counters cannot be
+made cumulative — the producer is an ephemeral function instance with no memory
+between invocations. Sending per-invocation values as a cumulative sum makes the
+backend see a counter that resets on every sample, and a reset contributes only
+the NEW value, so interleaved instances under-count. Five consecutive samples
+`3, 1, 5, 2, 4` from one series:
+
+```
+observed increase = 3→1(reset,+1) +1→5(+4) +5→2(reset,+2) +2→4(+2) = 9
+actual events                                                      = 15
+```
+
+A gauge gives the exact answer, because summing sample values over a window is
+the total for that window.
+
+#### So query counts with `sum_over_time`, not `rate`
+
+```promql
+# errors in the last 5 minutes  — correct
+sum(sum_over_time(handler_error[5m]))
+
+# WRONG: a gauge is not a counter; rate() over one is meaningless
+rate(handler_error[5m])
+```
+
+Latency percentiles are ordinary gauges and read normally
+(`handler_latency_p95 > 500`).
 
 ### The cardinality guard — read before adding a label
 
@@ -221,6 +276,7 @@ logs for one of:
 |---|---|
 | `metrics.otlp.sent` (debug) | Accepted by the gateway. |
 | `metrics.otlp.rejected` with `status: 401` | The credential is wrong, or the placeholder guard would have caught a malformed header first. |
+| `metrics.otlp.rejected` with `status: 400` | The body was refused. Historically this meant a delta `sum` — the one shape this gateway rejects. See §2b. |
 | `metrics.otlp.misconfigured` | The header is empty, lacks `Basic `, or is still the placeholder. Nothing was sent. |
 | `metrics.otlp.failed` with `reason: timeout` | The gateway did not answer inside 2 s. Samples are dropped, not retried — by design. |
 | `metrics.otlp.labels_dropped` | A label outside the allow-list appeared. The metric still shipped. |
@@ -228,12 +284,22 @@ logs for one of:
 Then confirm the series exist in Grafana (**Explore** → the Prometheus/Mimir
 datasource → query `handler_latency_p95` or `sweep_processed`).
 
-**If nothing arrives and the log says `sent`:** the one thing to check first is
-temporality. Delta is correct for this payload, but if the gateway or datasource
-is configured to expect cumulative, data can be accepted and then dropped. That
-is a one-constant change (`aggregationTemporality` in `_lib/otlp.ts`) with a test
-pinning it, so it is cheap to flip — but do not flip it without evidence, because
-the delta claim is what makes `rate()` correct.
+**If nothing arrives:** check the log event first — `sent` means the gateway
+accepted it and the problem is downstream (datasource, time range, or a query
+that expects a counter). `rejected` with **400** means the body was refused; the
+one shape known to be refused is a delta `sum`, and the structural test in
+`_lib/kernel/otlp.test.ts` exists so it cannot come back unnoticed. Do not
+"fix" a 400 by switching to a cumulative sum: it is accepted, but it
+under-counts (see the worked example above).
+
+Before trusting a green log line, note that the pre-flight that caught the
+original bug was simply **posting the real generated body** to the gateway and
+reading the status. That takes seconds and spends no build minutes:
+
+```bash
+npx esbuild netlify/functions/_lib/otlp.ts --bundle --format=cjs --platform=node \
+  --outfile=/tmp/otlp-bundle.cjs     # then POST toOtlpMetrics(...) output
+```
 
 ---
 

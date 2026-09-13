@@ -23,6 +23,48 @@
  * favours metrics — one data point per flush aggregates server-side, where one
  * log line per flush is retained as-is.
  *
+ * ── MEASURED 2026-09-13: THE GATEWAY REJECTS DELTA ──────────────────────────
+ * The first version of this module shipped every counter as a `sum` with DELTA
+ * temporality, on the reasoning that `flushMetrics()` clears its maps each
+ * invocation so each payload IS one interval. That reasoning is sound OTLP and
+ * was still WRONG here, because the receiving gateway does not accept it:
+ *
+ *   POST …/otlp/v1/metrics  (delta sum)  -> 400
+ *     "otlp parse error: invalid temporality and type combination"
+ *   POST …/otlp/v1/metrics  (cumulative) -> 200
+ *   POST …/otlp/v1/metrics  (gauge)      -> 200
+ *
+ * All four delta/cumulative x monotonic combinations were probed; only the two
+ * cumulative ones and gauges are accepted. A gauge-only smoke test passed and
+ * hid this for a while — which is the lesson: test the ACTUAL payload, not a
+ * convenient one.
+ *
+ * ── WHY COUNTS SHIP AS GAUGES, NOT CUMULATIVE SUMS ──────────────────────────
+ * Cumulative is accepted, so it is tempting. It is still the wrong shape for
+ * this data, and the reason is worth writing down because "use a counter" is
+ * the reflex answer:
+ *
+ * Our counters are per-invocation and cannot be made cumulative — the producer
+ * is an ephemeral function instance with no memory between invocations, so the
+ * only honest value it can report is "N events happened in this invocation".
+ * Sending that as a CUMULATIVE sum makes the backend see a counter that resets
+ * on every sample. Prometheus tolerates resets, but a reset contributes only
+ * the NEW value, so interleaved instances under-count. Worked example, five
+ * consecutive samples 3, 1, 5, 2, 4 from a shared series:
+ *
+ *   observed increase = 3->1(reset,+1) +1->5(+4) +5->2(reset,+2) +2->4(+2) = 9
+ *   actual events                                                          = 15
+ *
+ * A gauge carrying the same numbers gives the exact answer under
+ * `sum_over_time()`, because summing the sample values over a window IS the
+ * total for that window. So:
+ *
+ *   counters  -> gauge;  query with `sum_over_time(handler_error[5m])`
+ *   NOT `rate()` — a gauge is not a counter and rate() over one is meaningless.
+ *
+ * That is the one place this adapter asks the reader to write a different query
+ * than habit suggests, so it is stated in the setup doc as well.
+ *
  * ── THE CARDINALITY GUARD (read this before adding a label) ─────────────────
  * The kernel appends labels into the metric KEY as `.key=value`
  * (`kernel/metrics.ts` `increment()`). Shipping every one of those as a
@@ -140,14 +182,19 @@ function attributes(labels: Record<string, string>): Attribute[] {
 /**
  * Convert one flushed payload into an OTLP/HTTP metrics request body.
  *
- * Mapping, and why each choice:
+ * Mapping, and why each choice. Read the header section first: DELTA is rejected
+ * by the gateway, and cumulative would under-count, so counts are gauges.
  *
  * | Payload            | OTLP                                     | Reason |
  * |---|---|---|
- * | `counters`         | `sum`, DELTA temporality, monotonic       | The kernel RESETS its collections every flush (`flushMetrics()` clears them), so each payload is the delta for one invocation. Claiming CUMULATIVE would tell the backend the counter restarted from zero on every invocation, and `rate()` would read those as resets and under-count. |
- * | `gauges`           | `gauge`                                   | Point-in-time values (`sweep.duration_ms`). |
- * | `histograms[*].count` | `sum`, DELTA, monotonic                | It IS a count of observations in this interval, so it deserves `rate()`. |
+ * | `counters`         | `gauge`                                   | The kernel resets its collections every flush, so the only honest value is "N events in this invocation". A delta `sum` is the textbook shape for that and is REJECTED by the gateway (400); a cumulative `sum` is accepted but under-counts, because the backend then sees a counter resetting on every sample and a reset contributes only the new value. A gauge is exact under `sum_over_time()`. |
+ * | `gauges`           | `gauge`                                   | Point-in-time values (`sweep.duration_ms`) — unchanged. |
+ * | `histograms[*].count` | `gauge`                                | A count of observations in this invocation: same reasoning as `counters`. |
  * | `histograms[*].avg/p50/p95/max` | `gauge`, name suffixed `_avg`/`_p50`/`_p95`/`_max` | The payload carries pre-computed percentiles, not explicit bucket counts, so an OTLP `histogram` (which requires `bucketCounts` + `explicitBounds`) cannot represent it without inventing a distribution. A suffixed gauge is the honest shape, and it matches the Prometheus convention a Grafana user already expects (`handler_latency_p95 > 500`). |
+ *
+ * So every data point this adapter emits is a gauge, and the whole request is
+ * accepted by the gateway. That uniformity is deliberate: it removes the one
+ * thing that was silently wrong.
  */
 export function toOtlpMetrics(payload: MetricsPayload, opts: OtlpOptions = {}): OtlpConversion {
   const nowMs = opts.nowMs ?? Date.now();
@@ -161,12 +208,9 @@ export function toOtlpMetrics(payload: MetricsPayload, opts: OtlpOptions = {}): 
     metrics.push({
       name: metricName(name),
       unit: '1',
-      sum: {
-        // 1 = AGGREGATION_TEMPORALITY_DELTA
-        aggregationTemporality: 1,
-        isMonotonic: true,
+      gauge: {
         dataPoints: [
-          { asInt: String(Math.round(value)), timeUnixNano, attributes: attributes(pick(labels)) },
+          { asDouble: value, timeUnixNano, attributes: attributes(pick(labels)) },
         ],
       },
     });
@@ -190,14 +234,13 @@ export function toOtlpMetrics(payload: MetricsPayload, opts: OtlpOptions = {}): 
     const attrs = attributes(pick(labels));
     const base = metricName(name);
 
-    // count → delta sum, so it is rate()-able.
+    // count → gauge, same reasoning as `counters`: observations in THIS
+    // invocation. Query it with sum_over_time(), not rate().
     metrics.push({
       name: base + '_count',
       unit: '1',
-      sum: {
-        aggregationTemporality: 1,
-        isMonotonic: true,
-        dataPoints: [{ asInt: String(stats.count), timeUnixNano, attributes: attrs }],
+      gauge: {
+        dataPoints: [{ asDouble: stats.count, timeUnixNano, attributes: attrs }],
       },
     });
 

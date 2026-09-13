@@ -130,7 +130,7 @@ bagian dari pekerjaan, bukan hiasan.
 
 | # | Item | Kenapa |
 |---|---|---|
-| **27** | ✅ **Sebagian besar selesai.** `HEALTH_TOKEN` **sudah terpasang** (terverifikasi 2026-09-13 dua jalur: body liveness `detail:"gated"` + daftar env site). **Eksportir OTLP-nya sekarang sudah ada** (`_lib/otlp.ts`, ditambah 2026-09-13 malam), jadi keputusan "receiver mana" **sudah terjawab: Grafana Cloud**, dan transportnya ter-test | Prasyarat #3 (langkah 2) dan #7 — **owner-side, nol pekerjaan kode**. **Sisa: set `GRAFANA_CLOUD_OTLP_ENDPOINT` + `GRAFANA_CLOUD_BASIC_AUTH_HEADER`**, lalu redeploy. Nilai placeholder yang diberikan masih berbentuk `Basic base64(...)`, jadi harus di-base64 dulu — `PHASE_C_SINK_SETUP.md` §2b langkah 1 |
+| **27** | ✅ **SELESAI 2026-09-13.** `HEALTH_TOKEN` terpasang; **kedua env var Grafana sudah di-set** di site astro (terverifikasi lewat API: 24 env var, scope `builds,functions,post_processing,runtime`), dan **kredensialnya diuji langsung ke gateway → HTTP 200** (nol build-minute). Exporter-nya juga sudah tayang | **Sisa dua hal kecil, keduanya owner-side:** (a) ⚠️ `GRAFANA_CLOUD_BASIC_AUTH_HEADER` tersimpan **TIDAK sebagai secret** (API mengembalikan nilainya utuh) — sebaiknya di-set ulang `--secret`; (b) tulis A1–A7 sebagai alert rule (itu #7) |
 | **28** | Rotasi `SESSION_SECRET` bila sudah dipakai di produksi | Dari `TODO.md`; **belum pernah dikonfirmasi**. Kode tidak punya fallback ke password admin (S3 fix), jadi nilainya kritis |
 | **29** | Ukur cold start function vs target < 3 s | Belum pernah diukur; tidak ada gate-nya |
 | **30** | Revoke `ghp_qzq70Qy…`, bereskan `origin`/`dev` | Kebocoran token ke-3 lewat chat di proyek ini (`HANDOFF.md`) |
@@ -168,10 +168,16 @@ Diringkas supaya daftar di atas tidak diragukan lagi.
 - **#3 & #27 (probe produksi 2026-09-13)** — `HEALTH_TOKEN` terbukti sudah terpasang; `/health`
   tanpa prefix terbukti **404** (jalur kanonik `/.netlify/functions/health`).
 - **Exporter OTLP ke Grafana Cloud (2026-09-13 malam)** — `netlify/functions/_lib/otlp.ts` (murni,
-  tanpa I/O) + fan-out di `_lib/metrics-sink.ts`. Dua tujuan independen, keduanya opsional. 25 test
-  baru; **diverifikasi mutasi** (5 mutasi, semuanya memerahkan suite). Cardinality guard berupa
-  **allow-list** label, bukan deny-list. Satu `fetch` call site tetap dipertahankan ⇒ `verify:io`
-  allow-list tidak bertambah. **Yang tersisa cuma 2 env var (owner-side).**
+  tanpa I/O) + fan-out di `_lib/metrics-sink.ts`. Dua tujuan independen, keduanya opsional. 26 test;
+  **diverifikasi mutasi** (5 mutasi → 1/9/1/1/1 tes gagal). Cardinality guard berupa **allow-list**
+  label, bukan deny-list. Satu `fetch` call site tetap dipertahankan ⇒ `verify:io` allow-list tidak
+  bertambah. **Temuan penting saat pre-flight: gateway Grafana MENOLAK `sum` DELTA dengan HTTP 400**
+  ("invalid temporality and type combination") — probed keempat kombinasi temporality×monotonic, hanya
+  CUMULATIVE dan gauge diterima. Karena counter kita per-invoke dan tak bisa kumulatif (instance
+  efemeral), dan kumulatif-dengan-reset **under-count** saat instance berselang-seling
+  (3,1,5,2,4 → 9, bukan 15), semua count dikirim sebagai **gauge** dan di-query dengan
+  `sum_over_time()`, **bukan `rate()`**. Bug ini sempat lolos karena smoke test awal cuma memakai gauge
+  — pelajarannya: uji **body yang benar-benar dihasilkan**, bukan yang nyaman.
 - **Matriks degradasi §6.5** — 4/7 baris bertahan (dari 2/7); sisa divergensi: Fonnte (enqueue jalan,
   status bukan 202), Storage (retry client-side), Pooler (shed tanpa antre).
 
