@@ -33,9 +33,13 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
   
   <!-- Icons are served locally (public/icons/). They used to point at a
        Supabase Storage URL, which meant a 404/slow load whenever the storage
-       bucket was unreachable and made the PWA un-installable offline. -->
-  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+       bucket was unreachable and made the PWA un-installable offline.
+       They are now the PT Amanah Sakura Japan emblem, rasterised by
+       `npm run icons:pwa`. There is deliberately no icon.svg any more: the
+       emblem is a raster, and an SVG wrapper could only carry the same PNG
+       base64-encoded inside a larger file. -->
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
   
