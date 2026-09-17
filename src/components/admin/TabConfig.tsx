@@ -61,9 +61,9 @@ export default function TabConfig() {
 
     <div class="bg-black/40 border border-slate-600/40 p-5 rounded-xl mb-6 shadow-inner">
       <h3 class="text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider"><Icon name="database" class="mr-1" /> {t('admin.db_migration_auto')}</h3>
-      <p class="text-xs text-slate-300 mb-3">Pembaruan struktur database dijalankan dari CLI, bukan dari UI. Endpoint migrasi lewat HTTP sudah dihapus permanen: perubahan skema tidak boleh dapat dipicu dari body POST.</p>
+      <p class="text-xs text-slate-300 mb-3">{t("admin.db_migrate_cli_only")}</p>
       <div class="bg-black/60 border border-slate-600/40 rounded-lg p-3">
-        <p class="text-xs font-bold text-slate-400 mb-1">Jalankan dari terminal:</p>
+        <p class="text-xs font-bold text-slate-400 mb-1">{t("admin.run_from_terminal")}</p>
         <pre class="text-xs text-emerald-300 whitespace-pre-wrap font-mono">npm run migrate:status
 npm run migrate:up</pre>
       </div>
@@ -94,7 +94,7 @@ npm run migrate:up</pre>
 
     <div class="bg-black/40 border border-rose-500/50 p-5 rounded-xl flex flex-col shadow-inner">
       <h3 class="text-sm font-bold text-rose-400 mb-2 uppercase tracking-wider"><Icon name="bullhorn" class="mr-1" /> {t('admin.marquee_announcement')}</h3>
-      <p class="text-xs text-slate-300 mb-3">Teks ini akan muncul berjalan (Marquee) di semua halaman.</p>
+      <p class="text-xs text-slate-300 mb-3">{t("admin.marquee_hint")}</p>
       <div class="flex gap-2">
         <input type="text" value={pengumuman} onInput={(e) => setPengumuman((e.target as HTMLInputElement).value)} placeholder={t("admin.announce_ph")} class="flex-1 bg-slate-800 border border-slate-600 rounded-lg text-sm px-4 py-2.5 text-white outline-none focus:border-rose-500" />
         <button onClick={handleSavePengumuman} class="bg-rose-600 hover:bg-rose-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition shadow-lg"><Icon name="save" class="mr-1" /> {t('admin.save_and_publish')}</button>

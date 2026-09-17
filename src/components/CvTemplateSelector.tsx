@@ -112,7 +112,7 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
               key={tmpl.id}
               onClick={() => handleGenerate(tmpl.id)}
               disabled={loading}
-              class="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-700 bg-slate-800 hover:border-sky-500 hover:bg-slate-750 transition text-left disabled:opacity-50"
+              class="w-full flex items-center gap-3 p-4 rounded-xl border border-slate-700 bg-slate-800 hover:border-sky-500 hover:bg-slate-700 transition text-left disabled:opacity-50"
             >
               <div class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-sky-400">
                 <Icon name={tmpl.icon || 'file'} />
@@ -129,7 +129,7 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
 
         <div class="space-y-3">
           <h4 class="text-sm font-semibold text-slate-300 flex items-center gap-2"><Icon name="upload" />{t("ui.upload_custom_template")}</h4>
-          <label class="flex items-center justify-center w-full gap-2 p-4 text-sm text-slate-300 bg-slate-800 border-2 border-dashed border-slate-600 rounded-xl cursor-pointer hover:border-sky-500 hover:bg-slate-750 transition">
+          <label class="flex items-center justify-center w-full gap-2 p-4 text-sm text-slate-300 bg-slate-800 border-2 border-dashed border-slate-600 rounded-xl cursor-pointer hover:border-sky-500 hover:bg-slate-700 transition">
             <Icon name="file-upload" />
             <span>{customFile ? customFile.name : 'Seret & lepas atau klik untuk memilih (.docx/.xlsx/.pdf)'}</span>
             <input

@@ -10,8 +10,6 @@ import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import Icon from '../ui/Icon';
 import api from '../../lib/apiClient';
-import { authStore } from '../../store/authReactive';
-import { getEndpoint } from '../../lib/apiEndpoint';
 
 // A15: share config needs dokumenShare/tsk; getAppData('admin') is admin-guarded
 // so the session token must be attached (public fallback has no dokumenShare).
@@ -42,16 +40,21 @@ export default function TabKelola() {
 
   async function fetchLoker() {
     try {
-      const res = await fetch(getEndpoint('getAppData'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'getAppData', args: ['admin'],
-          sessionToken: authStore.get().sessionToken || '',
-        }),
-      });
-      const data = await res.json();
-      if (data.success && data.jobs) setLoker(data.jobs);
-      else if (data.sessionInvalid) setLoker([]);
+      // §26: lewat jalur apiClient, BUKAN fetch mentah, supaya ikut cache baca
+      // 30 s (getAppData ada di CACHEABLE_READS dan TabDbJob sudah memakai
+      // jalur ini ⇒ satu entri cache berkunci token dipakai bersama dua tab).
+      // Sebelumnya tab ini menarik ulang payload 107 KB yang sama setiap mount
+      // (terukur 3x dalam satu pemuatan halaman).
+      //
+      // `onSessionInvalid: 'throw'` mempertahankan perilaku lama tab ini: sesi
+      // yang tidak bisa diverifikasi membuat daftar kosong, BUKAN logout +
+      // redirect global. Cabang sessionInvalid versi lama memang kode mati
+      // (cabang sukses menang duluan) — tapi niatnya lokal, dan itu yang
+      // dipertahankan. Perf bukan alasan untuk mengubah semantik sesi.
+      const d = (await api.secure('getAppData', ['admin'], { onSessionInvalid: 'throw' })) as {
+        success?: boolean; jobs?: Loker[];
+      };
+      if (d && d.success) setLoker(d.jobs || []);
     } catch (err) { console.error('[TabKelola]', err); }
     finally { setLoading(false); }
   }
@@ -98,7 +101,7 @@ export default function TabKelola() {
       ) : (
         <div class="u-scroll-x rounded-xl border border-slate-800">
           <table class="w-full min-w-[800px] text-sm text-left whitespace-nowrap">
-            <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
+            <thead class="bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700">
               <tr>
                 <th class="p-4">{t('table.code')}</th>
                 <th class="p-4">{t('table.job')}</th>
@@ -119,8 +122,8 @@ export default function TabKelola() {
                   </td>
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-2">
-                      <button onClick={() => toggleStatus(j.code, 'OPEN')} class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-full text-[10px] text-white font-bold shadow transition">OPEN</button>
-                      <button onClick={() => toggleStatus(j.code, 'CLOSE')} class="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-full text-[10px] text-white font-bold shadow transition">CLOSE</button>
+                      <button onClick={() => toggleStatus(j.code, 'OPEN')} class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-full text-[10px] text-white font-bold shadow transition">{t("status.open")}</button>
+                      <button onClick={() => toggleStatus(j.code, 'CLOSE')} class="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-full text-[10px] text-white font-bold shadow transition">{t("status.close")}</button>
                       <button onClick={() => setEditJob(j)} class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-full text-[10px] font-bold shadow transition"><Icon name="edit" /> Edit</button>
                       <button onClick={() => setShareJob(j)} class="px-3 py-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-full text-[10px] font-bold shadow transition"><Icon name="share-alt" /> Share</button>
                     </div>

@@ -22,6 +22,7 @@
 import { useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
+import { useOverlay } from '../ui/useOverlay';
 
 interface Props {
   /** Nama kandidat, untuk ditampilkan di judul supaya admin yakin barisnya benar. */
@@ -34,6 +35,15 @@ interface Props {
 export default function RejectMailModal({ candidateName, onCancel, onConfirm }: Props) {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // §25: this component used to hardcode role/aria-modal in the markup with no
+  // hook behind them — i.e. it told assistive tech the page was inert while
+  // focus stayed free to wander out. The hook now installs the trap AND writes
+  // the semantics, so the claim and the behaviour cannot drift apart.
+  //
+  // No `label`: the hook names the dialog after its first heading (the <h3>
+  // below), which is the same text a sighted user reads as the title.
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose: onCancel });
 
   const submit = async () => {
     if (busy) return;
@@ -54,8 +64,8 @@ export default function RejectMailModal({ candidateName, onCancel, onConfirm }: 
   };
 
   return (
-    <div role="dialog" aria-modal="true"
-      class="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+    <div ref={containerRef} onClick={onBackdropClick}
+      class="fixed inset-0 u-modal-shell bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-4">
       <div class="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-700 bg-slate-900 flex flex-col">
         <div class="p-5 border-b border-slate-700 bg-slate-900 flex justify-between items-center">
           <h3 class="text-white font-bold text-lg">
@@ -63,7 +73,7 @@ export default function RejectMailModal({ candidateName, onCancel, onConfirm }: 
             {t('ui.reject_app')}
             {candidateName ? <span class="text-slate-400 font-normal text-sm ml-2">— {candidateName}</span> : null}
           </h3>
-          <button onClick={onCancel} class="text-slate-400 hover:text-white transition" aria-label={t('public.close')}>
+          <button type="button" onClick={onCancel} class="text-slate-400 hover:text-white transition" aria-label={t('public.close')}>
             <Icon name="times" class="text-xl" />
           </button>
         </div>
@@ -75,6 +85,7 @@ export default function RejectMailModal({ candidateName, onCancel, onConfirm }: 
           <textarea value={reason}
             onInput={(e) => setReason((e.target as HTMLTextAreaElement).value)}
             placeholder={t('ui.reject_reason_ph')}
+            aria-label={t('ui.reject_reason_ph')}
             class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-white text-sm focus:border-sky-500 outline-none h-32 resize-none" />
         </div>
 

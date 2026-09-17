@@ -466,10 +466,11 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
         <p class="text-[9px] text-slate-500 mb-5 leading-relaxed">{t('ui.star_hint')}</p>
 
         <div class="mb-5">
-          <label class="block text-xs font-bold text-emerald-400 mb-1 uppercase">
+          <label for="rb-total" class="block text-xs font-bold text-emerald-400 mb-1 uppercase">
             <Icon name="wallet" class="mr-1" /> {t('ui.total_cost')}
           </label>
           <input
+            id="rb-total"
             type="text"
             value={total}
             onInput={(e) => setTotal((e.target as HTMLInputElement).value)}
@@ -480,9 +481,9 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
 
         <div class="mb-5">
           <div class="flex items-center justify-between mb-2">
-            <label class="text-xs font-bold text-amber-400 uppercase tracking-widest">
+            <div class="text-xs font-bold text-amber-400 uppercase tracking-widest">
               <Icon name="stairs" class="mr-1" /> {t('ui.payment_stage')}
-            </label>
+            </div>
             <button
               type="button"
               onClick={() => setRows((prev) => [...prev, { nama: '', nominal: '' }])}
@@ -496,6 +497,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
               <div key={i} class="flex gap-1.5 items-center">
                 <input
                   type="text"
+                  aria-label={`${t('ui.stage_name_label')} ${i + 1}`}
                   value={r.nama}
                   onInput={(e) =>
                     setRows((prev) => prev.map((x, xi) => (xi === i ? { ...x, nama: (e.target as HTMLInputElement).value } : x)))
@@ -506,6 +508,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
                 <input
                   type="text"
                   inputmode="numeric"
+                  aria-label={`${t('ui.stage_amount_label')} ${i + 1}`}
                   value={r.nominal}
                   onInput={(e) => {
                     const v = fmtNominal((e.target as HTMLInputElement).value);
@@ -560,10 +563,10 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
         <div class="u-grid-auto u-grid-auto--form gap-5 mb-5">
           {RB_SECS.map((sec) => (
             <div key={sec}>
-              <label class="block text-xs font-bold mb-2 uppercase tracking-widest">
+              <div class="block text-xs font-bold mb-2 uppercase tracking-widest">
                 <Icon name={SECTION_ICON[sec]} class={'mr-1 ' + SECTION_ICON_CLS[sec]} />
                 {SECTION_LABEL[sec]()}
-              </label>
+              </div>
               <div class="flex flex-wrap gap-1.5 mb-2">
                 {loading
                   ? null
@@ -603,6 +606,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
               <div class="flex gap-2">
                 <input
                   type="text"
+                  aria-label={`${SECTION_LABEL[sec]()}: ${t('ui.custom_item_label')}`}
                   value={customInput[sec] || ''}
                   onInput={(e) =>
                     setCustomInput((prev) => ({
@@ -632,10 +636,11 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
         </div>
 
         <div class="mb-5">
-          <label class="block text-xs font-bold text-sky-400 uppercase tracking-widest mb-2">
+          <label for="rb-note" class="block text-xs font-bold text-sky-400 uppercase tracking-widest mb-2">
             <Icon name="info-circle" class="mr-1" /> {t('ui.note')}
           </label>
           <textarea
+            id="rb-note"
             rows={4}
             value={catatan}
             onInput={(e) => setCatatan((e.target as HTMLTextAreaElement).value)}
@@ -645,9 +650,9 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
         </div>
 
         <div class="mb-6">
-          <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+          <div class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
             <Icon name="eye" class="mr-1" /> {t('ui.preview_detail')}
-          </label>
+          </div>
           <pre class="bg-black/60 border border-slate-700 rounded-xl p-3 text-xs text-emerald-300 whitespace-pre-wrap max-h-40 u-scroll-area">
             {preview || t('ui.empty_rincian')}
           </pre>

@@ -63,6 +63,51 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
         document.documentElement.setAttribute("data-theme", "dark");
       }
     })();
+
+    // ─── Scrollbar gutter width (see styles/global.css + layout.css §3b) ───
+    // `html { scrollbar-gutter: stable }` prevents a page shift when a modal
+    // toggles `overflow: hidden`, but it also narrows the initial containing
+    // block, which made `position: fixed` overlays stop ~15px short of the
+    // physical viewport edge on Windows/Linux.
+    //
+    // The reserved width CANNOT be expressed in CSS — it depends on the
+    // platform's scrollbar style (overlay vs classic), which no media query
+    // exposes. So it is measured once here and published as a custom
+    // property that the overlay rules consume.
+    //
+    // MEASURED CAREFULLY: `clientWidth` does NOT report this gutter
+    // (it read 1280 on a 15px-gutter page, giving a wrong "0px" answer
+    // that silently disabled the fix). The reliable signal is the
+    // difference between the viewport width and the WIDTH OF THE <html>
+    // BOX ITSELF, which is what the gutter actually shrinks. Verified
+    // against a bare `position: fixed; right: 0` probe: at innerWidth
+    // 1280 that probe landed on 1265, and `offsetWidth`/`getBoundingClientRect`
+    // on <html> both read 1265 — so this is the measurement that matches
+    // the browser's own positioning maths.
+    //
+    // 0px on overlay-scrollbar platforms (macOS/iOS/Android), where the
+    // correction is a no-op.
+    (function(){
+      var root = document.documentElement;
+      var read = function(){
+        try {
+          var w = window.innerWidth;
+          // getBoundingClientRect().width is unaffected by fractional
+          // padding/borders on <html>, unlike clientWidth.
+          var box = root.getBoundingClientRect().width;
+          var gutter = Math.round(w - box);
+          root.style.setProperty("--u-scrollbar-gutter", gutter > 0 ? gutter + "px" : "0px");
+        } catch (e) {
+          root.style.setProperty("--u-scrollbar-gutter", "0px");
+        }
+      };
+      read();
+      // A window can move between overlay and classic scrollbars (docked
+      // vs undocked display), and the first read can precede layout on a
+      // slow boot, so re-read on both signals.
+      window.addEventListener("resize", read, { passive: true });
+      window.addEventListener("load", read, { passive: true });
+    })();
   </script>
 </head>
 <!-- PERF: the theme swap used to transition for 500ms. `background-color`
@@ -72,12 +117,12 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
 <body id="asj-body" class="bg-canvas text-fg min-h-screen transition-colors duration-200 flow-root">
   <div id="global-loader" style="display: none !important;">
     <svg class="asj-icon animate-spin text-5xl text-pink-500 mb-4" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="#fas-spinner" /></svg>
-    <h2 class="text-xl font-bold tracking-widest text-slate-200">MEMUAT ASJ OS V7...</h2>
-    <p id="loader-msg" class="text-sm text-slate-500 mt-2 mb-6">Mempersiapkan UI Modern</p>
-    <button onclick="document.getElementById(&quot;global-loader&quot;).style.display=&quot;none&quot;" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 border border-red-500 rounded-full text-sm font-bold text-white transition-colors shadow-lg"><svg class="asj-icon mr-1" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="#fas-times" /></svg> Tutup Paksa Loading</button>
+    <h2 class="text-xl font-bold tracking-widest text-slate-200" data-lang="ui.loader_title">MEMUAT ASJ OS V7...</h2>
+    <p id="loader-msg" class="text-sm text-slate-500 mt-2 mb-6" data-lang="ui.loader_msg">Mempersiapkan UI Modern</p>
+    <button onclick="document.getElementById(&quot;global-loader&quot;).style.display=&quot;none&quot;" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 border border-red-500 rounded-full text-sm font-bold text-white transition-colors shadow-lg"><svg class="asj-icon mr-1" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="#fas-times" /></svg> <span data-lang="ui.force_close_loading">Tutup Paksa Loading</span></button>
   </div>
   <div id="sakura-particles" class="fixed inset-0 u-modal-shell overflow-hidden hidden" aria-hidden="true"></div>
-  <a href="#main-content" class="skip-link">Lewati ke konten utama</a>
+  <a href="#main-content" class="skip-link"><span data-lang="ui.skip_to_content">Lewati ke konten utama</span></a>
   
     <slot />
   

@@ -188,3 +188,90 @@ describe('MatchmakingModal (A14)', () => {
     expect(screen.queryByRole('button', { name: /ui\.send_offer_all/ })).toBeNull();
   });
 });
+
+// ==========================================
+// Label/control wiring (a11y, 2026-09-16)
+//
+// The 7 `a11y/noLabelWithoutControl` diagnostics here were all ONE class —
+// ordinary control labels — so all 7 took the same fix: `for=` + `id=` (prefix
+// `mm-`). Two of them carry the SAME label text (`ui.age_range`), distinguished
+// only by a "(Min)"/"(Max)" suffix — which is why the ids are minted per FIELD
+// rather than per label text.
+//
+// The tests above assert rendered copy and behaviour. A label whose `for=` points
+// nowhere still renders its text, so none of them would notice. These assertions
+// pin the association itself.
+// ==========================================
+describe('MatchmakingModal — label/control wiring', () => {
+  afterEach(() => cleanup());
+
+  it('every <label for=...> resolves to an element that exists', () => {
+    renderOpen();
+
+    const dangling: string[] = [];
+    for (const label of document.querySelectorAll('label')) {
+      const target = label.getAttribute('for');
+      if (!target) continue;
+      if (!document.getElementById(target)) dangling.push(target);
+    }
+
+    expect(dangling).toEqual([]);
+  });
+
+  it('no label is left with neither for= nor a wrapped control', () => {
+    renderOpen();
+
+    const orphans = [...document.querySelectorAll('label')]
+      .filter((l) => !l.getAttribute('for') && !l.querySelector('input, select, textarea'))
+      .map((l) => (l.textContent || '').trim().slice(0, 40));
+
+    expect(orphans).toEqual([]);
+  });
+
+  it('the two same-text age-range labels point at the RIGHT field', () => {
+    renderOpen();
+
+    // Two labels share the text `ui.age_range`. The risk is therefore NOT "no
+    // association" but "associated with the WRONG one" — and that cannot be seen
+    // by comparing the two INPUTS, because their ids are distinct no matter what
+    // the labels say. So read the mapping off the LABEL's own for=.
+    const forOfLabelContaining = (suffix: string) => {
+      const label = [...document.querySelectorAll('label')].find((l) =>
+        (l.textContent || '').includes(suffix),
+      );
+      expect(label, `no label containing ${suffix}`).toBeTruthy();
+      return label?.getAttribute('for');
+    };
+
+    const minFor = forOfLabelContaining('(Min)');
+    const maxFor = forOfLabelContaining('(Max)');
+
+    expect(minFor).toBeTruthy();
+    expect(maxFor).toBeTruthy();
+    // Both labels aimed at one field => Min and Max would focus the same input.
+    expect(minFor).not.toBe(maxFor);
+
+    // ...and the right way ROUND, not merely different. 18/35 are the legacy
+    // placeholders, so they identify which field each label actually reached.
+    expect((document.getElementById(minFor as string) as HTMLInputElement).placeholder).toBe('18');
+    expect((document.getElementById(maxFor as string) as HTMLInputElement).placeholder).toBe('35');
+  });
+
+  it('the controls the labels name are the ones the modal actually binds', () => {
+    renderOpen();
+
+    for (const [id, tag] of [
+      ['mm-gender', 'SELECT'],
+      ['mm-usia-min', 'INPUT'],
+      ['mm-usia-max', 'INPUT'],
+      ['mm-tb-min', 'INPUT'],
+      ['mm-bb-max', 'INPUT'],
+      ['mm-pendidikan', 'SELECT'],
+      ['mm-keyword', 'INPUT'],
+    ] as const) {
+      const el = document.getElementById(id);
+      expect(el, `#${id} does not exist`).toBeTruthy();
+      expect(el?.tagName).toBe(tag);
+    }
+  });
+});

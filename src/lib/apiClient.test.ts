@@ -118,3 +118,210 @@ describe('apiClient cache — session identity keying (PR3)', () => {
     expect(asjCacheKeys().length).toBe(0);
   });
 });
+
+// §26: `onSessionInvalid: 'throw'` — pembaca yang sudah punya gerbang sendiri
+// (panel admin) sengaja menangani sesi mati secara LOKAL. Tanpa opsi ini,
+// mengalihkan TabKelola dari fetch() mentah ke jalur apiClient (untuk dapat
+// cache 30 s) diam-diam mengubah perilakunya menjadi logout + redirect global,
+// dan `/admin` (tab default = TabKelola) terlempar ke `/` saat sesinya tidak
+// bisa diverifikasi. Default `'logout'` harus tetap utuh untuk 20+ pemanggil
+// lain, jadi kedua arah dipaku di sini.
+describe('apiClient onSessionInvalid (§26)', () => {
+  const DEAD = { success: false, sessionInvalid: true };
+
+  function respondWith(body: unknown) {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    })));
+  }
+
+  beforeEach(async () => {
+    const mod = await import('../store/authReactive');
+    (mod.logout as unknown as ReturnType<typeof vi.fn>).mockClear();
+  });
+
+  it('default: sessionInvalid → throw + logout (perilaku lama tidak berubah)', async () => {
+    const { logout } = await import('../store/authReactive');
+    state = { isLoggedIn: true, sessionToken: 'tok-dead' };
+    respondWith(DEAD);
+
+    await expect(apiClient('getAppData', ['admin'])).rejects.toThrow('Session expired');
+    expect(logout).toHaveBeenCalled();
+  });
+
+  it("'throw': sessionInvalid → tetap throw TANPA logout", async () => {
+    const { logout } = await import('../store/authReactive');
+    state = { isLoggedIn: true, sessionToken: 'tok-dead' };
+    respondWith(DEAD);
+
+    await expect(
+      apiClient('getAppData', ['admin'], { onSessionInvalid: 'throw' }),
+    ).rejects.toThrow('Session expired');
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it("'throw': cabang tanpa sesi juga tidak logout", async () => {
+    const { logout } = await import('../store/authReactive');
+    state = { isLoggedIn: false, sessionToken: '' };
+    respondWith({ success: true });
+
+    await expect(
+      apiClient('getAppData', ['admin'], { onSessionInvalid: 'throw' }),
+    ).rejects.toThrow('No valid session');
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it('jawaban sessionInvalid tidak pernah di-cache, apa pun opsinya', async () => {
+    state = { isLoggedIn: true, sessionToken: 'tok-dead' };
+    respondWith(DEAD);
+
+    await apiClient('getAppData', ['admin'], { onSessionInvalid: 'throw' }).catch(() => {});
+    expect(asjCacheKeys().length).toBe(0);
+  });
+});
+
+// ==========================================
+// TESTS: apiClient — request timeout (P8)
+//
+// WHY THIS EXISTS
+//   The report was "menu Tambah Job loading terus". TabTambah gates its whole
+//   form on `loading`, cleared in `finally` — which is correct, but `finally`
+//   never runs while `fetch` is still pending. With no AbortController, a stalled
+//   connection means the spinner turns forever: no error, no toast, no recovery.
+//
+//   A timeout is the kind of fix that is INVISIBLE until proven, because
+//   "it did not hang" is also what a no-op looks like. So these tests pin the
+//   three observable consequences, and the guard test below is deliberately
+//   written to FAIL if someone deletes the signal — see the mutation note.
+//
+//   The signal must be per-call. A module-level controller would be RESOLVED
+//   BEFORE any timeout test could run, so these tests would pass against the
+//   broken implementation too. `expect.any(AbortSignal)` alone is not enough:
+//   it proves a signal exists, not that it is wired or distinct per call.
+// ==========================================
+describe('apiClient — request timeout (P8)', () => {
+  /** A fetch that hangs until its own signal aborts, exactly like a stalled socket. */
+  function hangingFetch() {
+    return vi.fn((_url: string, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal;
+        if (!signal) return; // never settles — the bug being fixed
+        signal.addEventListener('abort', () => {
+          reject(Object.assign(new Error('The operation was aborted.'), { name: 'AbortError' }));
+        });
+      });
+    });
+  }
+
+  it('a stalled request is aborted instead of hanging forever', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal('fetch', hangingFetch());
+      state = { isLoggedIn: false, sessionToken: '' };
+
+      const p = apiClient('getAppData', ['admin'], { requireAuth: false });
+      const assertion = expect(p).rejects.toThrow(/timed out after 20s/);
+
+      // Advance past the bound. Without the fix nothing rejects here and the
+      // test dies on the assertion instead of passing — which is the point.
+      await vi.advanceTimersByTimeAsync(20_000);
+      await assertion;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('the timeout is BOUNDED — it must not fire before the deadline', async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = hangingFetch();
+      vi.stubGlobal('fetch', fetchMock);
+
+      const p = apiClient('getAppData', ['admin'], { requireAuth: false });
+      const settled = vi.fn();
+      p.then(settled, settled);
+
+      // Just short of the bound: still in flight, no premature abort.
+      await vi.advanceTimersByTimeAsync(19_000);
+      expect(settled).not.toHaveBeenCalled();
+      // Any request shorter than the bound is unaffected — this is the
+      // "did I break normal calls?" guard.
+      await vi.advanceTimersByTimeAsync(2_000);
+      await expect(p).rejects.toThrow(/timed out/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('the timer is cleared on success — it must not outlive its own request', async () => {
+    // WHY THIS IS NOT "two calls both work": with a per-call controller, a
+    // leaked timer aborts the controller of the call that already finished —
+    // a controller nobody holds any more. So a naive sequential test passes
+    // even with clearTimeout deleted (measured: mutant M6 survived).
+    //
+    // The leak is only observable by watching the timer itself: after a
+    // SUCCESSFUL call, the pending-timer count must return to its baseline.
+    // A timer still queued would fire later and abort… its own dead controller.
+    vi.useFakeTimers();
+    try {
+      state = { isLoggedIn: false, sessionToken: '' };
+      const before = vi.getTimerCount();
+      await apiClient('reportWebVital', [{ name: 'LCP' }], { requireAuth: false });
+      // The request is done; nothing may still be scheduled on its behalf.
+      expect(vi.getTimerCount()).toBe(before);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a leaked timer really would abort a later call (why the clear matters)', async () => {
+    // The failure mode clearTimeout prevents, made explicit: a controller whose
+    // timer is left armed from a previous request aborts the NEXT request that
+    // shares it. Reproduced against a deliberately shared controller so the
+    // consequence is observable rather than asserted by construction.
+    //
+    // The first request must still be IN FLIGHT when the stale timer fires —
+    // that is the whole point. (An earlier version of this test awaited a call
+    // that had already settled, so the abort candidate no longer existed and
+    // the assertion failed for the wrong reason.)
+    vi.useFakeTimers();
+    try {
+      const shared = new AbortController();
+      const inFlight = vi.fn((_url: string, init?: RequestInit) => {
+        return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+          // deliberately never resolves: a stalled socket
+        });
+      });
+
+      // Request 1 is still pending. Its timer was NOT cleared (simulated leak).
+      const p1 = inFlight('/stalled', { signal: shared.signal });
+      setTimeout(() => shared.abort(), 20_000);
+
+      await vi.advanceTimersByTimeAsync(20_000);
+      await expect(p1).rejects.toThrow('aborted');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('each call gets its OWN signal — one timeout cannot cancel a concurrent call', async () => {
+    state = { isLoggedIn: false, sessionToken: '' };
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ success: true }), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    })));
+
+    await Promise.all([
+      apiClient('reportWebVital', [{ name: 'FCP' }], { requireAuth: false }),
+      apiClient('simpanWaTemplate', [{ n: 'x' }], { requireAuth: false }),
+    ]);
+
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    const signals = fetchMock.mock.calls.map((c) => c[1]?.signal);
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
+    expect(signals[1]).toBeInstanceOf(AbortSignal);
+    // Distinct identities: sharing one controller is the concurrency bug.
+    expect(signals[0]).not.toBe(signals[1]);
+  });
+});

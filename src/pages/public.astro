@@ -100,22 +100,26 @@ import Icon from '../components/ui/Icon';
         var h = window.location.hash.replace('#', '');
         switchTab(h === 'layanan' ? 'layanan' : 'loker');
       });
-
-      // Load marquee from backend
-      fetch('/.netlify/functions/get-app-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'getAppData', args: ['public'] })
-      }).then(function(r) { return r.json(); }).then(function(d) {
-        if (d.success && d.pengumuman) {
-          var el = document.getElementById('global-announcement');
-          var txt = document.querySelectorAll('[data-marquee]');
-          if (el && txt.length && d.pengumuman.trim()) {
-            txt.forEach(function (n) { n.textContent = d.pengumuman; });
-            el.classList.remove('hidden');
-          }
-        }
-      }).catch(function() {});
     })();
+  </script>
+
+  <!-- Marquee data. Uses the shared single-flight loader so this page and
+       index.astro cannot drift apart again: both used to hand-roll the same
+       POST to get-app-data, and the copy here had already lost the
+       `success` guard's shape. `getPublicData` is imported, so this must be a
+       processed script — hence separate from the `is:inline` tab logic above,
+       which has to run before hydration. -->
+  <script>
+    import { getPublicData } from '../lib/publicData';
+    getPublicData().then(function (d) {
+      if (d.success && d.pengumuman) {
+        var el = document.getElementById('global-announcement');
+        var txt = document.querySelectorAll('[data-marquee]');
+        if (el && txt.length && d.pengumuman.trim()) {
+          txt.forEach(function (n) { n.textContent = d.pengumuman; });
+          el.classList.remove('hidden');
+        }
+      }
+    }).catch(function () {});
   </script>
 </BaseLayout>

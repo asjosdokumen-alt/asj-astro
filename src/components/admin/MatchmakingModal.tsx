@@ -265,42 +265,42 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose }: P
 
           <div class="u-grid-auto u-grid-auto--dense gap-3 mb-3">
             <div>
-              <label class="text-[10px] text-slate-400 uppercase font-bold">{t('candidate.form_gender')}</label>
-              <select value={filters.gender} onChange={(e) => setFilter('gender', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500">
+              <label class="text-[10px] text-slate-400 uppercase font-bold" for="mm-gender">{t('candidate.form_gender')}</label>
+              <select id="mm-gender" value={filters.gender} onChange={(e) => setFilter('gender', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500">
                 {GENDER_OPTIONS.map((g) => (
                   <option key={g.value} value={g.value}>{g.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label class="text-[10px] text-slate-400 uppercase font-bold">{t('ui.age_range')} (Min)</label>
-              <input type="number" value={filters.usiaMin} onInput={(e) => setFilter('usiaMin', (e.target as HTMLInputElement).value)} placeholder="18" class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
+              <label class="text-[10px] text-slate-400 uppercase font-bold" for="mm-usia-min">{t('ui.age_range')} (Min)</label>
+              <input id="mm-usia-min" type="number" value={filters.usiaMin} onInput={(e) => setFilter('usiaMin', (e.target as HTMLInputElement).value)} placeholder="18" class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-400 uppercase font-bold">{t('ui.age_range')} (Max)</label>
-              <input type="number" value={filters.usiaMax} onInput={(e) => setFilter('usiaMax', (e.target as HTMLInputElement).value)} placeholder="35" class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
+              <label class="text-[10px] text-slate-400 uppercase font-bold" for="mm-usia-max">{t('ui.age_range')} (Max)</label>
+              <input id="mm-usia-max" type="number" value={filters.usiaMax} onInput={(e) => setFilter('usiaMax', (e.target as HTMLInputElement).value)} placeholder="35" class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-400 uppercase font-bold">{t('ui.min_height')}</label>
-              <input type="number" value={filters.tbMin} onInput={(e) => setFilter('tbMin', (e.target as HTMLInputElement).value)} placeholder="150" class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
+              <label class="text-[10px] text-slate-400 uppercase font-bold" for="mm-tb-min">{t('ui.min_height')}</label>
+              <input id="mm-tb-min" type="number" value={filters.tbMin} onInput={(e) => setFilter('tbMin', (e.target as HTMLInputElement).value)} placeholder="150" class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
             </div>
           </div>
           <div class="u-grid-auto u-grid-auto--dense gap-3 mb-3">
             <div>
-              <label class="text-[10px] text-slate-400 uppercase font-bold">{t('ui.max_weight')}</label>
-              <input type="number" value={filters.bbMax} onInput={(e) => setFilter('bbMax', (e.target as HTMLInputElement).value)} placeholder="80" class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
+              <label class="text-[10px] text-slate-400 uppercase font-bold" for="mm-bb-max">{t('ui.max_weight')}</label>
+              <input id="mm-bb-max" type="number" value={filters.bbMax} onInput={(e) => setFilter('bbMax', (e.target as HTMLInputElement).value)} placeholder="80" class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-400 uppercase font-bold">{t('ui.min_education')}</label>
-              <select value={filters.pendidikan} onChange={(e) => setFilter('pendidikan', Number((e.target as HTMLSelectElement).value))} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500">
+              <label class="text-[10px] text-slate-400 uppercase font-bold" for="mm-pendidikan">{t('ui.min_education')}</label>
+              <select id="mm-pendidikan" value={filters.pendidikan} onChange={(e) => setFilter('pendidikan', Number((e.target as HTMLSelectElement).value))} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500">
                 {PENDIDIKAN_OPTIONS.map((p) => (
                   <option key={p.value} value={p.value}>{p.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label class="text-[10px] text-slate-400 uppercase font-bold">{t('ui.experience_skills')}</label>
-              <input type="text" value={filters.keyword} onInput={(e) => setFilter('keyword', (e.target as HTMLInputElement).value)} placeholder={t('ui.kw_ph')} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
+              <label class="text-[10px] text-slate-400 uppercase font-bold" for="mm-keyword">{t('ui.experience_skills')}</label>
+              <input id="mm-keyword" type="text" value={filters.keyword} onInput={(e) => setFilter('keyword', (e.target as HTMLInputElement).value)} placeholder={t('ui.kw_ph')} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-violet-500" />
             </div>
             <div class="flex items-end gap-4">
               <label class="flex items-center gap-2 text-[10px] text-slate-400 uppercase font-bold cursor-pointer">

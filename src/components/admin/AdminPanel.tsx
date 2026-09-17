@@ -9,6 +9,7 @@
  *   - Content area: pl-64 on desktop to offset sidebar
  */
 import { useState, useEffect } from 'preact/hooks';
+import type { FunctionComponent } from 'preact';
 import { useStore } from '@nanostores/preact';
 import { langStore, t } from '../../store/i18n';
 import { showToast } from '../Toast';
@@ -40,9 +41,23 @@ function useModal<T = void>() {
   };
 }
 
-type Tab = 'kelola' | 'dbjob' | 'tambah' | 'pelamar' | 'jadwal' | 'mail' | 'wa' | 'config';
-
-const TABS: { id: Tab; icon: string; labelKey: string }[] = [
+/**
+ * The tab routes, in sidebar order.
+ *
+ * ONE SOURCE OF TRUTH. This list used to be written THREE times — here, in the
+ * initial `useState` guard, and in the `hashchange` guard — while `TabContent`
+ * carried a fourth, independent set of `if` branches. The copies had already
+ * diverged: `config` was missing from `TABS` (it has its own hard-coded sidebar
+ * button, because it is pinned to the bottom rather than listed with the rest),
+ * yet present in both guards, and nothing tied any of them to `TabContent`.
+ *
+ * So a new tab could be rendered by `TabContent`, un-reachable from a hash,
+ * and invisible in the sidebar — or the reverse — and every copy would still
+ * look self-consistent. Deriving the guards from this list, and typing the
+ * renderer against it, is what makes those divergences impossible rather than
+ * merely unlikely.
+ */
+const TABS = [
   { id: 'kelola',  icon: 'fa-globe',        labelKey: 'admin.tab_public_job' },
   { id: 'dbjob',   icon: 'fa-server',       labelKey: 'admin.tab_internal_db' },
   { id: 'tambah',  icon: 'fa-plus',         labelKey: 'admin.tab_add_job' },
@@ -50,24 +65,38 @@ const TABS: { id: Tab; icon: string; labelKey: string }[] = [
   { id: 'jadwal',  icon: 'fa-calendar-alt', labelKey: 'admin.tab_schedule' },
   { id: 'mail',    icon: 'fa-envelope',     labelKey: 'admin.tab_mail' },
   { id: 'wa',      icon: 'fa-whatsapp',     labelKey: 'ui.wa_pintar' },
-];
+] as const;
+
+/**
+ * `config` is a real tab but is NOT in `TABS`: it renders as a separate button
+ * pinned to the bottom of the sidebar, not as one of the listed entries.
+ */
+const PINNED_TABS = ['config'] as const;
+
+type Tab = (typeof TABS)[number]['id'] | (typeof PINNED_TABS)[number];
+
+/** Every routable tab id, derived — never a second hand-written list. */
+const TAB_IDS: readonly string[] = [...TABS.map((t) => t.id), ...PINNED_TABS];
+
+const isTab = (v: string): v is Tab => TAB_IDS.includes(v);
+
+/**
+ * Read the tab from `location.hash`, falling back to the first tab. Used by both
+ * the initialiser and the `hashchange` listener so the two cannot disagree.
+ */
+function tabFromHash(): Tab {
+  if (typeof window === 'undefined') return 'kelola';
+  const h = window.location.hash.replace('#', '');
+  return isTab(h) ? h : 'kelola';
+}
 
 export default function AdminPanel() {
   const _lang = useStore(langStore);
-  const [activeTab, setActiveTab] = useState<Tab>(() => {
-    if (typeof window === 'undefined') return 'kelola' as Tab;
-    var h = window.location.hash.replace('#', '');
-    return (['kelola','dbjob','tambah','pelamar','jadwal','mail','wa','config'].includes(h) ? h : 'kelola') as Tab;
-  });
+  const [activeTab, setActiveTab] = useState<Tab>(tabFromHash);
 
   // Listen for hash changes from BottomNav
   useEffect(() => {
-    const onHashChange = () => {
-      var h = window.location.hash.replace('#', '');
-      if (['kelola','dbjob','tambah','pelamar','jadwal','mail','wa','config'].includes(h)) {
-        setActiveTab(h as Tab);
-      }
-    };
+    const onHashChange = () => setActiveTab(tabFromHash());
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
@@ -116,7 +145,9 @@ export default function AdminPanel() {
         {/* KIRI: AGENDA HARIAN */}
         <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-lg flex flex-col h-full min-h-[300px]">
           <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-white"><Icon name="calendar-check" class="text-amber-400 mr-2" /> <span data-lang="ui.agenda_recent">{t('ui.agenda_recent')}</span></h3>
+            {/* h2, not h3: this card is a sibling of the tab content, whose headings are all
+               h2 — as h3 the page outline skipped 1 -> 3 and the h2 came last (measured §24). */}
+            <h2 class="text-sm font-bold text-white"><Icon name="calendar-check" class="text-amber-400 mr-2" /> <span data-lang="ui.agenda_recent">{t('ui.agenda_recent')}</span></h2>
             <span class="text-xs bg-amber-900/40 text-amber-400 px-2 py-1 rounded-md font-bold" id="dash-admin-name">Admin</span>
           </div>
           <div id="dash-agenda-list" class="flex-1 u-scroll-area custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '200px' }}>
@@ -128,7 +159,8 @@ export default function AdminPanel() {
         </div>
         {/* KANAN: PAPAN TUGAS TIM */}
         <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-lg flex flex-col h-full min-h-[300px]">
-          <h3 class="text-sm font-bold text-white mb-3"><Icon name="tasks" class="text-pink-400 mr-2" /> <span data-lang="admin.task_board">{t('admin.task_board')}</span></h3>
+          {/* h2, not h3: sibling of the tab content — see the note on the agenda card above. */}
+          <h2 class="text-sm font-bold text-white mb-3"><Icon name="tasks" class="text-pink-400 mr-2" /> <span data-lang="admin.task_board">{t('admin.task_board')}</span></h2>
           <div class="flex gap-2 mb-3">
             <input type="text" id="todo-input" class="flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" placeholder={t('admin.task_placeholder')} aria-label={t('admin.task_placeholder')} />
             <button class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition shadow-lg" aria-label={t('button.add')}><Icon name="plus" /></button>
@@ -206,24 +238,27 @@ export default function AdminPanel() {
   );
 }
 
-function TabContent({ tab }: { tab: Tab }) {
-  if (tab === "kelola")  return <TabKelola />;
-  if (tab === "pelamar") return <TabPelamar />;
-  
-  if (tab === "jadwal")  return <TabJadwal />;
-  if (tab === "mail")    return <TabMail />;
-  if (tab === "tambah")  return <TabTambah />;
-  if (tab === "dbjob")   return <TabDbJob />;
-  if (tab === "wa")      return <TabWA />;
-  if (tab === "config")  return <TabConfig />;
-  return <TabPlaceholder tab={tab} />;
-}
+/**
+ * Every routable tab, mapped to its renderer.
+ *
+ * Keyed by `Tab`, so TypeScript fails the build if a tab is added to `TABS` or
+ * `PINNED_TABS` without a component here — which is the divergence that a chain
+ * of `if` branches could not catch. The old shape returned
+ * `<TabPlaceholder tab={tab} />` as a fallback, so a missing branch rendered a
+ * plausible-looking "sedang dalam migrasi" panel instead of failing.
+ */
+const TAB_VIEWS: Record<Tab, FunctionComponent> = {
+  kelola:  () => <TabKelola />,
+  pelamar: () => <TabPelamar />,
+  jadwal:  () => <TabJadwal />,
+  mail:    () => <TabMail />,
+  tambah:  () => <TabTambah />,
+  dbjob:   () => <TabDbJob />,
+  wa:      () => <TabWA />,
+  config:  () => <TabConfig />,
+};
 
-function TabPlaceholder({ tab }: { tab: string }) {
-  return (
-    <div class="text-center py-8">
-      <Icon name="tools" class="text-3xl text-slate-600 mb-3" />
-      <p class="text-slate-500">Tab "{tab}" sedang dalam migrasi.</p>
-    </div>
-  );
+function TabContent({ tab }: { tab: Tab }) {
+  const View = TAB_VIEWS[tab];
+  return <View />;
 }

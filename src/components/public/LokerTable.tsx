@@ -43,11 +43,17 @@ interface Job {
 }
 
 const LIMIT_INITIAL = 10;
-// ─── Named Constants ───
-const TABLE_MIN_WIDTH = "700px";
-const COL_WIDTH = { CODE: "w-24", ACTION: "w-28" } as const;
-const COL_MIN_WIDTH = { JOB: "180px", REQ: "140px" } as const;
-
+// The table's widths deliberately live in the `class` strings below
+// (`min-w-[700px]`, `w-24`, `w-20`, `max-w-[220px]`) rather than in constants.
+// Tailwind generates utilities by scanning the source for literal candidate
+// strings, so a width fed through a JS constant produces a class it can never
+// see and the element renders unstyled — `scripts/ci/verify-classes.mjs` reports
+// that shape as an unverifiable expression, not a pass.
+//
+// Three such constants used to sit here (TABLE_MIN_WIDTH, COL_WIDTH,
+// COL_MIN_WIDTH) and had drifted from the markup: COL_WIDTH.ACTION said `w-28`
+// while the action column is `w-20`, and COL_MIN_WIDTH was referenced nowhere.
+// Removed rather than wired up, for the reason above.
 
 
 export default function LokerTable() {
@@ -101,10 +107,13 @@ export default function LokerTable() {
     if (s.includes("OPEN"))
       return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-emerald-600 text-white border-emerald-400/60"><Icon name="door-open" /> {t("status.open")}</span>;
     if (s.includes("URGENT"))
-      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-red-600 text-white border-red-400/60 animate-pulse"><Icon name="exclamation-triangle" /> {t("status.urgent")}</span>;
+      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-amber-500 text-white border-amber-400/60 animate-pulse"><Icon name="exclamation-triangle" /> {t("status.urgent")}</span>;
     if (s.includes("CLOSE"))
-      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-red-600 text-white border-red-400/60"><Icon name="door-closed" /> {t("status.close")}</span>;
-    return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-slate-800 text-slate-300 border-slate-600"><Icon name="tag" /> {status || "-"}</span>;
+      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-rose-600 text-white border-rose-400/60"><Icon name="door-closed" /> {t("status.close")}</span>;
+    // Unknown status — fall back to a neutral pill that flips with theme so
+    // a stray "DRAFT" or admin-only state doesn't render as bright dark on
+    // a sakura page.
+    return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-slate-800 text-slate-200 border-slate-600 dark-badge"><Icon name="tag" /> {status || "-"}</span>;
   }
 
   function getGenderBadge(gender: string) {
@@ -114,10 +123,10 @@ export default function LokerTable() {
     // is still the fallback for any value we have not catalogued.
     const lbl = jobGenderLabel(gender) || "-";
     if (g.includes("PRIA") || g.includes("LAKI"))
-      return <span class="px-2 py-0.5 bg-blue-900/50 text-blue-300 border border-blue-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><Icon name="mars" class="mr-1" /> {lbl}</span>;
+      return <span class="gender-badge gender-badge--male px-2 py-0.5 text-[10px] font-bold whitespace-nowrap"><Icon name="mars" class="mr-1" /> {lbl}</span>;
     if (g.includes("WANITA") || g.includes("PEREMPUAN"))
-      return <span class="px-2 py-0.5 bg-pink-900/50 text-pink-300 border border-pink-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><Icon name="venus" class="mr-1" /> {lbl}</span>;
-    return <span class="px-2 py-0.5 bg-purple-900/50 text-purple-300 border border-purple-500/50 rounded text-[10px] font-bold shadow-sm whitespace-nowrap"><Icon name="venus-mars" class="mr-1" /> {lbl}</span>;
+      return <span class="gender-badge gender-badge--female px-2 py-0.5 text-[10px] font-bold whitespace-nowrap"><Icon name="venus" class="mr-1" /> {lbl}</span>;
+    return <span class="gender-badge gender-badge--mixed px-2 py-0.5 text-[10px] font-bold whitespace-nowrap"><Icon name="venus-mars" class="mr-1" /> {lbl}</span>;
   }  /** Open the native Astro apply wizard (apply.astro) — same route the
    *  detail modal's "Lamar" uses. B04 (2026-09-05): this used to call the
    *  legacy generateFormBridge, whose backend handler still points at the
@@ -148,8 +157,8 @@ export default function LokerTable() {
       <div class="flex flex-wrap justify-between items-center p-4 rounded-xl border border-slate-700 shadow-lg mb-6 gap-4 bg-slate-900">
         <div class="flex gap-2 items-center flex-wrap">
           <span class="text-xs font-bold text-slate-300 mr-1 uppercase tracking-widest"><Icon name="paint-brush" /> {t("ui.theme")}</span>
-          <button onClick={toggleTheme} class="px-3 py-2 bg-white/10 hover:bg-white/20 text-slate-200 border border-white/25 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
-            <Icon name={isDark ? "moon" : "sun"} /> {isDark ? "Dark" : "Light"}
+          <button onClick={toggleTheme} class="theme-toggle-btn px-3 py-2 text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
+            <Icon name={isDark ? "moon" : "sun"} /> {isDark ? t("ui.dark") : t("ui.light")}
           </button>
         </div>
         <div class="flex gap-2 items-center flex-wrap">
@@ -168,7 +177,7 @@ export default function LokerTable() {
       </div>
       <div class="u-scroll-x rounded-xl border border-slate-800 shadow-xl bg-slate-900">
         <table class="w-full min-w-[700px] text-left text-sm whitespace-nowrap">
-          <thead class="bg-slate-800 text-slate-200 text-sm uppercase tracking-wider font-bold border-b border-slate-700">
+          <thead class="bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700">
             <tr>
               <th scope="col" class="p-2 text-center w-24">{t("table.code")}</th>
               <th scope="col" class="p-2 max-w-[220px]">{t("table.job")}</th>

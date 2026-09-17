@@ -45,25 +45,25 @@ export default function TabJadwal() {
 
   return (<div>
     <div class='flex justify-between items-center border-b border-amber-900/50 pb-4 mb-4'>
-      <h2 class='text-amber-400 font-bold text-lg'><Icon name="calendar-alt" class="mr-2" /> Jadwal Agenda</h2>
-      <button onClick={()=>setShowForm(!showForm)} class='px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 shadow-lg transition'><Icon name="plus" class="mr-1" /> {showForm ? 'Tutup' : 'Buat Jadwal'}</button>
+      <h2 class='text-amber-400 font-bold text-lg'><Icon name="calendar-alt" class="mr-2" /> {t("admin.tab_schedule")}</h2>
+      <button onClick={()=>setShowForm(!showForm)} class='px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 shadow-lg transition'><Icon name="plus" class="mr-1" /> {showForm ? t("ui.close") : t("admin.new_schedule")}</button>
     </div>
 
     {showForm && <div class='bg-black/40 border border-slate-700 rounded-xl p-5 mb-5 shadow-inner'>
       <form onSubmit={handleSubmit} class='u-grid-auto u-grid-auto--form gap-4'>
-        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>{t("admin.jadwal_nama")}</label><input type='text' value={nama} onInput={(e)=>setNama((e.target as HTMLInputElement).value)} required class={ic} /></div>
-        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>{t("admin.jadwal_id_loker")}</label><input type='text' value={loker} onInput={(e)=>setLoker((e.target as HTMLInputElement).value)} placeholder='UMUM / ASJ...' class={ic} /></div>
-        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>WAKTU (TGL & JAM)</label><input type='datetime-local' value={waktu} onInput={(e)=>setWaktu((e.target as HTMLInputElement).value)} required class={ic} /></div>
-        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>{t("admin.jadwal_lokasi")}</label><input type='text' value={lokasi} onInput={(e)=>setLokasi((e.target as HTMLInputElement).value)} placeholder='Zoom / Kantor...' class={ic} /></div>
-        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>{t("admin.jadwal_pengurus")}</label><select value={tsk} onInput={(e)=>setTsk((e.target as HTMLSelectElement).value)} required class={ic}><option value=''>-</option>{tskList.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
-        <div><label class='block text-xs font-bold text-slate-300 mb-1.5'>{t("admin.jadwal_link")}</label><input type='url' value={link} onInput={(e)=>setLink((e.target as HTMLInputElement).value)} placeholder='https://...' class={ic} /></div>
-        <div class='md:col-span-2 mt-2'><button type='submit' class='w-full py-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-white text-sm shadow-lg transition'><Icon name="save" class="mr-2" /> Simpan Jadwal</button></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-nama">{t("admin.jadwal_nama")}</label><input type='text' id="tj-nama" value={nama} onInput={(e)=>setNama((e.target as HTMLInputElement).value)} required class={ic} /></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-id-loker">{t("admin.jadwal_id_loker")}</label><input type='text' id="tj-id-loker" value={loker} onInput={(e)=>setLoker((e.target as HTMLInputElement).value)} placeholder='UMUM / ASJ...' class={ic} /></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-waktu">{t("admin.schedule_waktu")}</label><input type='datetime-local' id="tj-waktu" value={waktu} onInput={(e)=>setWaktu((e.target as HTMLInputElement).value)} required class={ic} /></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-lokasi">{t("admin.jadwal_lokasi")}</label><input type='text' id="tj-lokasi" value={lokasi} onInput={(e)=>setLokasi((e.target as HTMLInputElement).value)} placeholder='Zoom / Kantor...' class={ic} /></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-pengurus">{t("admin.jadwal_pengurus")}</label><select id="tj-pengurus" value={tsk} onInput={(e)=>setTsk((e.target as HTMLSelectElement).value)} required class={ic}><option value=''>-</option>{tskList.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
+        <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-link">{t("admin.jadwal_link")}</label><input type='url' id="tj-link" value={link} onInput={(e)=>setLink((e.target as HTMLInputElement).value)} placeholder='https://...' class={ic} /></div>
+        <div class='md:col-span-2 mt-2'><button type='submit' class='w-full py-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-white text-sm shadow-lg transition'><Icon name="save" class="mr-2" /> {t("admin.save_schedule")}</button></div>
       </form>
     </div>}
 
     <table class='w-full min-w-[800px] text-sm text-left whitespace-nowrap'>
-      <thead class='bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider'><tr>
-        <th class='p-4'>{t("admin.jadwal_col_id")}</th><th class='p-4'>{t("admin.jadwal_col_agenda")}</th><th class='p-4'>{t("admin.jadwal_col_job")}</th><th class='p-4'>{t("admin.jadwal_col_lokasi")}</th><th class='p-4 text-center'>Aksi</th>
+      <thead class='bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700'><tr>
+        <th class='p-4'>{t("admin.jadwal_col_id")}</th><th class='p-4'>{t("admin.jadwal_col_agenda")}</th><th class='p-4'>{t("admin.jadwal_col_job")}</th><th class='p-4'>{t("admin.jadwal_col_lokasi")}</th><th class='p-4 text-center'>{t("admin.aksi")}</th>
       </tr></thead>
       <tbody class='divide-y divide-slate-800'>
         {jadwal.length===0 ? <tr><td colSpan={5} class='p-6 text-center text-slate-500'>{t("admin.jadwal_empty")}</td></tr> :

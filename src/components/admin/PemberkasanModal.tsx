@@ -141,7 +141,7 @@ function FileInput({ def, statusNode, disabled }: { def: BerkasDef; statusNode: 
   return (
     <div>
       <div class="flex justify-between items-center mb-1">
-        <label class={`text-xs font-bold ${def.amber ? "text-amber-400" : "text-emerald-300"}`}>
+        <label for={`berkas-${def.key}`} class={`text-xs font-bold ${def.amber ? "text-amber-400" : "text-emerald-300"}`}>
           {t(def.label)}
         </label>
         {statusNode}
@@ -184,7 +184,7 @@ function Panel({
         class={`w-full p-5 flex justify-between items-center ${c.btn} transition-colors`}
       >
         <span class="text-sm md:text-base">
-          <i class={`fas ${icon} mr-2 ${c.titleIcon}`} />
+          <Icon name={icon} class={`mr-2 ${c.titleIcon}`} />
           {title}
         </span>
         <Icon
@@ -218,9 +218,10 @@ function BioInput({
 }) {
   return (
     <div class={span2 ? "md:col-span-2" : ""}>
-      <label class="block text-xs text-slate-400 mb-1 font-bold">{t(label)}</label>
+      <label for={`bio-${field}`} class="block text-xs text-slate-400 mb-1 font-bold">{t(label)}</label>
       {textarea ? (
         <textarea
+          id={`bio-${field}`}
           rows={2}
           value={value}
           onInput={(e: Event) => onChange((e.target as HTMLTextAreaElement).value)}
@@ -228,6 +229,7 @@ function BioInput({
         />
       ) : (
         <input
+          id={`bio-${field}`}
           type={type}
           value={value}
           onInput={(e: Event) => onChange((e.target as HTMLInputElement).value)}
@@ -457,14 +459,14 @@ export default function PemberkasanModal({
           onClick={() => setPreview({ url: String(url), title })}
           class="text-emerald-400 hover:text-emerald-300 underline text-[9px] font-bold cursor-pointer"
         >
-          <i class="fas fa-check-circle mr-1" />
+          <Icon name="check-circle" class="mr-1" />
           {t("ui.uploaded_view")}
         </button>
       );
     }
     return (
       <span class="text-rose-400 text-[9px] font-bold">
-        <i class="fas fa-times-circle mr-1" />
+        <Icon name="times-circle" class="mr-1" />
         {t("ui.not_yet")}
       </span>
     );
@@ -512,7 +514,7 @@ export default function PemberkasanModal({
             {canT1 && (
               <Panel
                 title={t("ui.stage1_short")}
-                icon="fa-file-alt"
+                icon="file-alt"
                 tone="emerald"
                 open={t1Open}
                 onToggle={() => setT1Open(!t1Open)}
@@ -537,7 +539,7 @@ export default function PemberkasanModal({
             {canT2 && (
               <Panel
                 title={t("ui.stage2_short")}
-                icon="fa-plane-departure"
+                icon="plane-departure"
                 tone="sky"
                 open={t2Open}
                 onToggle={() => setT2Open(!t2Open)}
@@ -562,7 +564,7 @@ export default function PemberkasanModal({
             {canBio && (
               <Panel
                 title={t("candidate.biodata_title")}
-                icon="fa-user-edit"
+                icon="user-edit"
                 tone="amber"
                 open={bioOpen}
                 onToggle={() => setBioOpen(!bioOpen)}

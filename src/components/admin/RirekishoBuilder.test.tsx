@@ -120,6 +120,79 @@ describe('RirekishoBuilder (A10)', () => {
     expect(container.querySelector('img')?.getAttribute('src')).toBe('https://cdn.example/master/foto.jpg');
   });
 
+  it('AI: entri pendidikan berbentuk sekolah_id tetap tampil NAMA SEKOLAHnya', async () => {
+    // Bentuk kunci dari form AI (arrayFields) memakai sekolah_id, sedangkan
+    // builder membaca bentuk kanonikal `sekolah`. Tanpa normalizer di titik
+    // gabung, baris ini dirender dengan nama sekolah KOSONG sementara tanggalnya
+    // tetap tampil — gejala yang tampak kosmetik padahal data hilang.
+    mockDraft.mockResolvedValue({
+      ...draft,
+      pendidikan: [],
+      AIDATAJSON: JSON.stringify({
+        pendidikan: [{ tingkat: 'SMP', sekolah_id: 'SMPN 3 CERDAS', tahun_masuk: '2007-07' }],
+      }),
+    });
+    const { container } = render(
+      <RirekishoBuilder waTarget="6281234567890" isOpen={true} onClose={() => {}} />,
+    );
+    await waitFor(() => expect(container.innerHTML).toContain('実習生経歴書'));
+    expect(container.innerHTML).toContain('SMPN 3 CERDAS');
+    expect(container.innerHTML).toContain('2007年7月');
+  });
+
+  it('pendidikan di kertas A4 terurut baku SD → SMP → SMA walau data terbalik', async () => {
+    mockDraft.mockResolvedValue({
+      ...draft,
+      pendidikan: [
+        { tingkat: 'SMA', sekolah: 'SMAN SATU', masuk: '2010-04' },
+        { tingkat: 'SD', sekolah: 'SDN LIMA', masuk: '2001-07' },
+        { tingkat: 'SMP', sekolah: 'SMPN TIGA', masuk: '2007-07' },
+      ],
+    });
+    const { container } = render(
+      <RirekishoBuilder waTarget="6281234567890" isOpen={true} onClose={() => {}} />,
+    );
+    await waitFor(() => expect(container.innerHTML).toContain('実習生経歴書'));
+    const html = container.innerHTML;
+    // Urutan posisi menandai urutan render: SD sebelum SMP sebelum SMA.
+    expect(html.indexOf('SDN LIMA')).toBeGreaterThan(-1);
+    expect(html.indexOf('SDN LIMA')).toBeLessThan(html.indexOf('SMPN TIGA'));
+    expect(html.indexOf('SMPN TIGA')).toBeLessThan(html.indexOf('SMAN SATU'));
+  });
+
+  it('AI: pekerjaan berbentuk perusahaan_id/jabatan_id tampil namanya di kertas A4', async () => {
+    mockDraft.mockResolvedValue({
+      ...draft,
+      pekerjaan: [],
+      AIDATAJSON: JSON.stringify({
+        pekerjaan: [{ perusahaan_id: 'PT SEJAHTERA', jabatan_id: 'OPERATOR', tahun_masuk: '2015-03' }],
+      }),
+    });
+    const { container } = render(
+      <RirekishoBuilder waTarget="6281234567890" isOpen={true} onClose={() => {}} />,
+    );
+    await waitFor(() => expect(container.innerHTML).toContain('実習生経歴書'));
+    expect(container.innerHTML).toContain('PT SEJAHTERA');
+    expect(container.innerHTML).toContain('OPERATOR');
+  });
+
+  it('AI: keluarga berbentuk hubungan_id/pekerjaan_id tampil namanya di kertas A4', async () => {
+    mockDraft.mockResolvedValue({
+      ...draft,
+      keluarga: [],
+      AIDATAJSON: JSON.stringify({
+        keluarga: [{ nama: 'BUDI SANTOSO', hubungan_id: 'AYAH', pekerjaan_id: 'PETANI', usia: '55' }],
+      }),
+    });
+    const { container } = render(
+      <RirekishoBuilder waTarget="6281234567890" isOpen={true} onClose={() => {}} />,
+    );
+    await waitFor(() => expect(container.innerHTML).toContain('実習生経歴書'));
+    expect(container.innerHTML).toContain('AYAH');
+    expect(container.innerHTML).toContain('BUDI SANTOSO');
+    expect(container.innerHTML).toContain('PETANI');
+  });
+
   it('isOpen=false → tidak render apa pun', () => {
     const { container } = render(
       <RirekishoBuilder waTarget="6281234567890" isOpen={false} onClose={() => {}} />,

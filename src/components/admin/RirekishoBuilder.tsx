@@ -4,7 +4,8 @@ import { useStore } from "@nanostores/preact";
 import { authStore } from "../../store/authReactive";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
-import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc } from "../../lib/helpers_cv";
+import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, sortEdu } from "../../lib/helpers_cv";
+import { useOverlay } from "../ui/useOverlay";
 
 interface Props {
   waTarget: string;
@@ -85,18 +86,23 @@ const keyOf = {
 };
 export function buildEduRows(eduList: Record<string, any>[], v: (...keys: string[]) => string) {
   let html = "";
+  // Baku order SD → SMP → SMA … (legacy 10b_cv_builders.buildEduRows parity).
+  // Sorting by LEVEL is not the same as reverse-chronological: a candidate may
+  // have entered a later school earlier (SMA then SMP), and level is what the
+  // rirekisho's school column is read in.
+  const sorted = sortEdu(eduList || []);
   for (let i = 1; i <= 5; i++) {
-    const p = {...(eduList[i-1]||{})};
+    const p = {...(sorted[i-1]||{})};
     if(!isGood(p.masuk)&&isGood(p.tahun_masuk)) p.masuk=p.tahun_masuk;
     if(!isGood(p.lulus)&&isGood(p.tahun_lulus)) p.lulus=p.tahun_lulus;
     if(!isGood(p.sekolah)&&isGood(p.nama_sekolah)) p.sekolah=p.nama_sekolah;
     if(!isGood(p.jurusan_id)&&isGood(p.jurusan)) p.jurusan_id=p.jurusan;
-    let m=isGood(p.masuk)?String(p.masuk):v("PENDIDIKAN"+i+"TAHUNMASUK");
-    let l=isGood(p.lulus)?String(p.lulus):v("PENDIDIKAN"+i+"TAHUNLULUS");
-    let s=isGood(p.sekolah)?String(p.sekolah):v("PENDIDIKAN"+i+"NAMASEKOLAH","PENDIDIKAN"+i+"SEKOLAHID");
-    let sj=isGood(p.sekolah_jp)?String(p.sekolah_jp):v("PENDIDIKAN"+i+"SEKOLAHJP");
-    let j=isGood(p.jurusan_id)?String(p.jurusan_id):v("PENDIDIKAN"+i+"JURUSAN","PENDIDIKAN"+i+"JURUSANID");
-    let jj=isGood(p.jurusan_jp)?String(p.jurusan_jp):v("PENDIDIKAN"+i+"JURUSANJP");
+    const m=isGood(p.masuk)?String(p.masuk):v("PENDIDIKAN"+i+"TAHUNMASUK");
+    const l=isGood(p.lulus)?String(p.lulus):v("PENDIDIKAN"+i+"TAHUNLULUS");
+    const s=isGood(p.sekolah)?String(p.sekolah):v("PENDIDIKAN"+i+"NAMASEKOLAH","PENDIDIKAN"+i+"SEKOLAHID");
+    const sj=isGood(p.sekolah_jp)?String(p.sekolah_jp):v("PENDIDIKAN"+i+"SEKOLAHJP");
+    const j=isGood(p.jurusan_id)?String(p.jurusan_id):v("PENDIDIKAN"+i+"JURUSAN","PENDIDIKAN"+i+"JURUSANID");
+    const jj=isGood(p.jurusan_jp)?String(p.jurusan_jp):v("PENDIDIKAN"+i+"JURUSANJP");
     [m,l,s,j,sj,jj].forEach((x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
     if(i>3&&!(s||m||l)) continue;
     const fs=sj?escHtml`${s}<br><span style="font-size:8px;font-weight:normal;">${sj}</span>`:escVal(s);
@@ -112,13 +118,13 @@ export function buildJobRows(jobList: Record<string, any>[], v: (...keys: string
     if(!isGood(p.masuk)&&isGood(p.tahun_masuk)) p.masuk=p.tahun_masuk;
     if(!isGood(p.keluar)&&isGood(p.tahun_keluar)) p.keluar=p.tahun_keluar;
     if(!isGood(p.perusahaan)&&isGood(p.nama_perusahaan)) p.perusahaan=p.nama_perusahaan;
-    let m=isGood(p.masuk)?String(p.masuk):v("PEKERJAAN"+i+"TAHUNMASUK");
-    let k=isGood(p.keluar)?String(p.keluar):v("PEKERJAAN"+i+"TAHUNKELUAR");
-    let pt=isGood(p.perusahaan)?String(p.perusahaan):v("PEKERJAAN"+i+"NAMAPERUSAHAAN","PEKERJAAN"+i+"PERUSAHAANID");
-    let ptj=isGood(p.perusahaan_jp)?String(p.perusahaan_jp):v("PEKERJAAN"+i+"PERUSAHAANJP");
-    let ker=isGood(p.jabatan)?String(p.jabatan):v("PEKERJAAN"+i+"JENISKERJA","PEKERJAAN"+i+"POSISI","PEKERJAAN"+i+"JABATANID");
-    let kerj=isGood(p.jabatan_jp)?String(p.jabatan_jp):v("PEKERJAAN"+i+"JABATANJP");
-    let gaji=isGood(p.gaji)?String(p.gaji):v("PEKERJAAN"+i+"GAJI");
+    const m=isGood(p.masuk)?String(p.masuk):v("PEKERJAAN"+i+"TAHUNMASUK");
+    const k=isGood(p.keluar)?String(p.keluar):v("PEKERJAAN"+i+"TAHUNKELUAR");
+    const pt=isGood(p.perusahaan)?String(p.perusahaan):v("PEKERJAAN"+i+"NAMAPERUSAHAAN","PEKERJAAN"+i+"PERUSAHAANID");
+    const ptj=isGood(p.perusahaan_jp)?String(p.perusahaan_jp):v("PEKERJAAN"+i+"PERUSAHAANJP");
+    const ker=isGood(p.jabatan)?String(p.jabatan):v("PEKERJAAN"+i+"JENISKERJA","PEKERJAAN"+i+"POSISI","PEKERJAAN"+i+"JABATANID");
+    const kerj=isGood(p.jabatan_jp)?String(p.jabatan_jp):v("PEKERJAAN"+i+"JABATANJP");
+    const gaji=isGood(p.gaji)?String(p.gaji):v("PEKERJAAN"+i+"GAJI");
     [m,k,pt,ker,gaji,ptj,kerj].forEach((x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
     if(i>2&&!(pt||m||k)) continue;
     const kf=(k.toUpperCase().includes("SEKARANG")||k.toUpperCase().includes("IMA"))?"現在に至る":fmtMonthYearJp(k);
@@ -134,13 +140,13 @@ export function buildFamRows(famList: Record<string, any>[], v: (...keys: string
   for (let i = 1; i <= 6; i++) {
     const p = {...(famList[i-1]||{})};
     if(!isGood(p.umur)&&isGood(p.usia)) p.umur=p.usia;
-    let hub=isGood(p.hubungan)?String(p.hubungan):v("KELUARGA"+i+"HUBUNGANID","KELUARGA"+i+"HUBUNGAN");
-    let hubj=isGood(p.hubungan_jp)?String(p.hubungan_jp):v("KELUARGA"+i+"HUBUNGANJP");
-    let nm=isGood(p.nama)?String(p.nama):v("KELUARGA"+i+"NAMA");
-    let u=isGood(p.umur)?String(p.umur):v("KELUARGA"+i+"USIA","KELUARGA"+i+"UMUR");
-    let pk=isGood(p.pekerjaan)?String(p.pekerjaan):v("KELUARGA"+i+"PEKERJAANID","KELUARGA"+i+"PEKERJAAN");
-    let pkj=isGood(p.pekerjaan_jp)?String(p.pekerjaan_jp):v("KELUARGA"+i+"PEKERJAANJP");
-    let g=isGood(p.gaji)?String(p.gaji):v("KELUARGA"+i+"GAJI");
+    const hub=isGood(p.hubungan)?String(p.hubungan):v("KELUARGA"+i+"HUBUNGANID","KELUARGA"+i+"HUBUNGAN");
+    const hubj=isGood(p.hubungan_jp)?String(p.hubungan_jp):v("KELUARGA"+i+"HUBUNGANJP");
+    const nm=isGood(p.nama)?String(p.nama):v("KELUARGA"+i+"NAMA");
+    const u=isGood(p.umur)?String(p.umur):v("KELUARGA"+i+"USIA","KELUARGA"+i+"UMUR");
+    const pk=isGood(p.pekerjaan)?String(p.pekerjaan):v("KELUARGA"+i+"PEKERJAANID","KELUARGA"+i+"PEKERJAAN");
+    const pkj=isGood(p.pekerjaan_jp)?String(p.pekerjaan_jp):v("KELUARGA"+i+"PEKERJAANJP");
+    const g=isGood(p.gaji)?String(p.gaji):v("KELUARGA"+i+"GAJI");
     [hub,nm,u,pk,g,hubj,pkj].forEach((x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
     const fh=hubj?escHtml`${hub.toUpperCase()}  ${hubj}`:escVal(hub.toUpperCase());
     const fp=pkj?escHtml`${pk}<br><span style="font-size:8px;font-weight:normal;">${pkj}</span>`:escVal(pk);
@@ -176,7 +182,7 @@ export function buildKertasA4(p: Record<string, any>) {
   const rs11 = (txt: string) => "<td colspan=\"3\" rowspan=\"11\" style=\"padding:0;vertical-align:top;\">"+txt+"</td>";
   let h = raw("<style>"+CSS+"</style>");
   h+=raw("<div style=\"text-align:center;font-weight:bold;font-size:22px;letter-spacing:2px;\">実習生経歴書</div>");
-  h+=raw("<div style=\"text-align:center;font-weight:bold;font-size:18px;margin-bottom:2px;\">履歴書 / DAFTAR RIWAYAT HIDUP</div>");
+  h+=raw("<div style=\"text-align:center;font-weight:bold;font-size:18px;margin-bottom:2px;\">" + t("admin.rirekisho_title") + "</div>");
   h+=raw("<div style=\"text-align:right;font-size:10px;font-style:italic;margin-bottom:2px;\">Ver.2025</div>");
   h+=raw("<table class=\"cv-excel\"><colgroup><col class=\"col-1\"><col class=\"col-2\"><col class=\"col-3\"><col class=\"col-4\"><col class=\"col-5\"><col class=\"col-6\"><col class=\"col-7\"></colgroup>");
   // Row 1: Photo + Nomor + Gender
@@ -241,6 +247,13 @@ export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback}:
   const [html,setHtml] = useState("");
   const isAdmin = u.role==="admin";
 
+  // §3.2#6 — `#rirek-modal` carried `.u-modal-shell` with no hook behind it, so
+  // the A4 preview was a dialog with no role, no name, no Tab trap and no
+  // Escape; the backdrop close was hand-rolled below. The sheet has no
+  // <h1>-<h6> (its title is a styled <div> inside the generated HTML), so the
+  // name has to come from `label` — the hook cannot derive it from a heading.
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose, label: t("admin.rirekisho_title") });
+
   useEffect(() => {
     if(!isOpen||!waTarget) return;
     let cancelled = false;
@@ -252,17 +265,21 @@ export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback}:
         if(!d||d.error) { setError(d?.error||t("ui.toast_master_incomplete")); return; }
         let ai={}; try{if(d.AIDATAJSON&&d.AIDATAJSON!=="-")ai=JSON.parse(d.AIDATAJSON);}catch{}
         const v = makeV(d,ai);
-        const getArr = (key: string) => mergeArrRiwayat(getPath(d,key),getPath(ai,key),(keyOf as any)[key]);
+        // Normalisasi kunci SEKALI di titik gabung (parity legacy
+        // 10_cv_rirekisho getArr): isi CV AI memakai sekolah_id/perusahaan_id/
+        // jabatan_id sementara builder membaca bentuk kanonikal — tanpa wrapper
+        // bertipe ini, entri AI tampil tanpa nama sekolah/perusahaan/jabatan.
+        const getArr = (key: string) => mergeArrRiwayat(getPath(d,key),getPath(ai,key),(keyOf as any)[key],normalizeRiwayatFor(key));
         const edu=getArr("pendidikan"),job=getArr("pekerjaan"),fam=getArr("keluarga");
-        let tglAsli=v("TGLLAHIR","TANGGALLAHIR","identitas.tgl_lahir");let tglFmt="-";
+        const tglAsli=v("TGLLAHIR","TANGGALLAHIR","identitas.tgl_lahir");let tglFmt="-";
         if(tglAsli!=="-"){const dt=new Date(tglAsli);if(!isNaN(dt.getTime()))tglFmt=dt.getFullYear()+"年"+String(dt.getMonth()+1).padStart(2,"0")+"月"+String(dt.getDate()).padStart(2,"0")+"日";else tglFmt=tglAsli;}
         const photo = (d.uploads && d.uploads.photo) || fotoFallback || "";
         // S4 fix: URL foto di-escape + divalidasi skema (https only) SEBELUM
         // dibangun jadi <img>. Fragment foto ini trusted-by-construction —
         // satu-satunya bagian dari kandidat (URL) sudah lewat esc() + whitelist.
         const safePhoto = photo && /^https:\/\/[^\s"'<>]+$/.test(photo) ? esc(photo) : '';
-        const foto = safePhoto ? "<img src=\""+safePhoto+"\" style=\"width:100%;height:100%;min-height:195px;object-fit:cover;object-position:top center;display:block;\">" : "<div style=\"width:100%;min-height:195px;display:flex;align-items:center;justify-content:center;font-size:10px;color:gray;\">FOTO</div>";
-        const btn = isAdmin ? "<div class=\"flex flex-wrap items-center gap-2 mb-3 print:hidden z-50 relative\"><button onclick=\"window.print()\" class=\"px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-lg flex items-center font-sans text-sm transition-transform hover:scale-105 border border-emerald-500\"><svg class=\"asj-icon mr-2\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-print\"/></svg> Cetak Rirekisho</button><button onclick=\"window.print()\" class=\"px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg shadow-lg flex items-center font-sans text-sm transition-transform hover:scale-105 border border-sky-500\"><svg class=\"asj-icon mr-2\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-file-pdf\"/></svg> Simpan PDF</button></div>" : "<div class=\"text-center mb-3 print:hidden z-50 relative\"><span class=\"inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/80 text-slate-300 text-[10px] font-bold rounded-full border border-slate-500/50\"><svg class=\"asj-icon mr-1\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-eye\"/></svg> MODE PREVIEW — Hanya bisa dicetak oleh Admin</span></div>";
+        const foto = safePhoto ? "<img src=\""+safePhoto+"\" style=\"width:100%;height:100%;min-height:195px;object-fit:cover;object-position:top center;display:block;\">" : "<div style=\"width:100%;min-height:195px;display:flex;align-items:center;justify-content:center;font-size:10px;color:gray;\">" + t("admin.foto") + "</div>";
+        const btn = isAdmin ? "<div class=\"flex flex-wrap items-center gap-2 mb-3 print:hidden z-50 relative\"><button onclick=\"window.print()\" class=\"px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-lg flex items-center font-sans text-sm transition-transform hover:scale-105 border border-emerald-500\"><svg class=\"asj-icon mr-2\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-print\"/></svg> "+t("admin.print_rirekisho")+"</button><button onclick=\"window.print()\" class=\"px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg shadow-lg flex items-center font-sans text-sm transition-transform hover:scale-105 border border-sky-500\"><svg class=\"asj-icon mr-2\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-file-pdf\"/></svg> "+t("admin.save_pdf")+"</button></div>" : "<div class=\"text-center mb-3 print:hidden z-50 relative\"><span class=\"inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/80 text-slate-300 text-[10px] font-bold rounded-full border border-slate-500/50\"><svg class=\"asj-icon mr-1\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-eye\"/></svg> "+t("admin.preview_mode_admin_only")+"</span></div>";
         const id = buildCvIdentitas(v);
         const rendered = buildKertasA4({v,foto,btn,tgl:tglFmt,wa:waTarget,...id,edu:buildEduRows(edu,v),job:buildJobRows(job,v),fam:buildFamRows(fam,v)});
         if(!cancelled) setHtml(rendered);
@@ -274,9 +291,9 @@ export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback}:
   },[isOpen,waTarget]);
 
   if(!isOpen) return null;
-  return h("div",{id:"rirek-modal",class:"fixed inset-0 u-modal-shell z-[200] bg-black/80 flex items-center justify-center p-4 u-scroll-area",onClick:(e)=>{if(e.target===e.currentTarget)onClose();}},
+  return h("div",{ref:containerRef,id:"rirek-modal",class:"fixed inset-0 u-modal-shell z-[200] bg-black/80 flex items-center justify-center p-4 u-scroll-area",onClick:onBackdropClick},
     h("div",{class:"bg-white rounded-xl shadow-2xl max-w-[210mm] w-full max-h-[95vh] u-scroll-area p-6 relative"},
-      h("button",{onClick:onClose,class:"absolute top-3 right-3 z-50 text-slate-500 hover:text-red-500 text-2xl print:hidden"},"×"),
+      h("button",{"type":"button","aria-label":t("public.close"),onClick:onClose,class:"absolute top-3 right-3 z-50 text-slate-500 hover:text-red-500 text-2xl print:hidden"},"×"),
       loading&&h("div",{class:"text-center py-20 text-slate-500"},t("ui.loading")),
       error&&h("div",{class:"text-center py-20 text-red-500"},error),
       !loading&&!error&&h("div",{class:"rirek-a4",dangerouslySetInnerHTML:{__html:html}}),

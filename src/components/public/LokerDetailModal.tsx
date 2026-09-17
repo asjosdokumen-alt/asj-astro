@@ -14,6 +14,7 @@
 import { useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import { jobTutupUntukLamar } from '../../lib/jobPhase';
+import { jobCategoryLabel, jobGenderLabel, jobLocationLabel } from '../../lib/jobDisplay';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
 import PamfletModal from './PamfletModal';
@@ -59,11 +60,16 @@ function StepTimeline({ sections }: { sections: RSection[] }) {
   </>);
 }
 
+/**
+ * Gender chip. Uses the semantic `gender-badge--*` classes (see global.css §5b)
+ * instead of the old literal `bg-blue-900/50` etc., which stayed dark-on-dark
+ * when the theme flipped to light sakura.
+ */
 function GenderBadge({ gender }: { gender: string }) {
   const v = (gender || '').toUpperCase();
-  if (v.includes('LAKI') || v.includes('PRIA') || v === 'L') return <span class="px-2.5 py-1 bg-blue-900/50 text-blue-300 border border-blue-500/50 rounded font-bold"><Icon name="mars" class="mr-1" />{t('candidate.gender_l')}</span>;
-  if (v.includes('WANITA') || v.includes('PEREMPUAN') || v === 'P') return <span class="px-2.5 py-1 bg-pink-900/50 text-pink-300 border border-pink-500/50 rounded font-bold"><Icon name="venus" class="mr-1" />{t('candidate.gender_p')}</span>;
-  return <span class="px-2.5 py-1 bg-purple-900/50 text-purple-300 border border-purple-500/50 rounded font-bold"><Icon name="venus-mars" class="mr-1" />{gender || '-'}</span>;
+  if (v.includes('LAKI') || v.includes('PRIA') || v === 'L') return <span class="gender-badge gender-badge--male px-2.5 py-1 rounded font-bold"><Icon name="mars" class="mr-1" />{t('candidate.gender_l')}</span>;
+  if (v.includes('WANITA') || v.includes('PEREMPUAN') || v === 'P') return <span class="gender-badge gender-badge--female px-2.5 py-1 rounded font-bold"><Icon name="venus" class="mr-1" />{t('candidate.gender_p')}</span>;
+  return <span class="gender-badge gender-badge--mixed px-2.5 py-1 rounded font-bold"><Icon name="venus-mars" class="mr-1" />{jobGenderLabel(gender) || '-'}</span>;
 }
 export default function LokerDetailModal({ job, onClose }: Props) {
   const st = (job.status || '').toUpperCase();
@@ -103,9 +109,9 @@ export default function LokerDetailModal({ job, onClose }: Props) {
               <h3 class="text-xl md:text-2xl font-black text-white mt-1.5 leading-tight">{job.pekerjaan}</h3>
               <div class="flex flex-wrap items-center gap-2 mt-3 text-[11px]">
                 <GenderBadge gender={job.gender} />
-                {job.lokasi && <span class="px-2.5 py-1 bg-slate-800 text-slate-300 border border-slate-600 rounded font-bold"><Icon name="map-marker-alt" class="mr-1 text-red-400" />{job.lokasi}</span>}
+                {job.lokasi && <span class="px-2.5 py-1 bg-slate-800 text-slate-300 border border-slate-600 rounded font-bold"><Icon name="map-marker-alt" class="mr-1 text-red-400" />{jobLocationLabel(job.lokasi)}</span>}
               </div>
-              {job.kategori && <div class="text-[10px] text-slate-500 mt-2"><Icon name="tag" class="mr-1 text-sky-500/70" />{job.kategori}</div>}
+              {job.kategori && <div class="text-[10px] text-slate-500 mt-2"><Icon name="tag" class="mr-1 text-sky-500/70" />{jobCategoryLabel(job.kategori)}</div>}
             </div>
           </div>
           {total && <div class="bg-gradient-to-r from-emerald-900/40 to-sky-900/30 border border-emerald-500/40 rounded-2xl p-5 mb-6 text-center"><p class="text-[10px] font-bold uppercase tracking-[4px] text-emerald-400 mb-1"><Icon name="wallet" class="mr-1" />{t('ui.detail_total_title')}</p><p class="text-4xl font-black text-white tracking-wide">{total}</p><p class="text-[10px] text-slate-400 mt-1">{t('ui.detail_total_sub')}</p></div>}

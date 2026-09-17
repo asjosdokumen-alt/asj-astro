@@ -159,10 +159,29 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   }
 
   // ─── Render ───
+  //
+  // `ref={containerRef}` on the root div below is LOAD-BEARING, not decoration.
+  // MEASURED 2026-09-16 on the built artifact: this file called `useOverlay`
+  // and never attached the ref, so `containerRef.current` stayed null and
+  // every effect that reads it returned early. The visible login modal
+  // measured `[role="dialog"] count = 0` — no role, no `aria-modal`, no
+  // accessible name, no initial focus, and NO Tab trap. Escape and focus
+  // restore still worked, because those two effects do not read the ref,
+  // which is exactly why the loss was invisible.
+  //
+  // `e2e/test-dialog.mjs` cannot see this class of defect: its sweep only
+  // covers overlays it can open, and it never opens the login modal. Of the
+  // 27 `useOverlay` call sites in `src/components`, this was the only one
+  // missing the ref.
+  //
+  // The `data-autofocus` markers on the four mode inputs are what the hook
+  // looks for first; without them focus would land on the close button.
+  // The mode branches are mutually exclusive, so only one marker is ever in
+  // the DOM at a time.
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   return (
-    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+    <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
       <div class="glass-panel p-8 rounded-[2rem] w-full max-w-sm shadow-2xl relative">
         <button onClick={onClose} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
@@ -174,12 +193,12 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
             <h3 class="text-xl font-bold text-emerald-400 mb-6 border-b border-emerald-900/50 pb-4 text-center">
               <Icon name="user-plus" class="mr-2" /> {t('header.register')}
             </h3>
-            <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.nama_label')}</label>
-            <input type="text" value={regNama} onInput={(e) => setRegNama((e.target as HTMLInputElement).value)}
+            <label for="lm-reg-nama" class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.nama_label')}</label>
+            <input id="lm-reg-nama" type="text" value={regNama} data-autofocus onInput={(e) => setRegNama((e.target as HTMLInputElement).value)}
               placeholder={t("login.nama_ph")}
               class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-emerald-500" />
-            <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.wa_label')}</label>
-            <input type="tel" value={regWa} onInput={(e) => setRegWa((e.target as HTMLInputElement).value)}
+            <label for="lm-reg-wa" class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.wa_label')}</label>
+            <input id="lm-reg-wa" type="tel" value={regWa} onInput={(e) => setRegWa((e.target as HTMLInputElement).value)}
               placeholder={t("login.wa_ph")}
               class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-emerald-500" />
             <div class="px-4 py-3 rounded-2xl bg-emerald-900/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold mb-6 text-center">
@@ -202,12 +221,12 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
             <h3 class="text-xl font-bold text-sky-400 mb-6 border-b border-sky-900/50 pb-4 text-center">
               <Icon name="sign-in-alt" class="mr-2" /> {t("login.title_kandidat")}
             </h3>
-            <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.wa_label')}</label>
-            <input type="tel" value={logWa} onInput={(e) => setLogWa((e.target as HTMLInputElement).value)}
+            <label for="lm-log-wa" class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.wa_label')}</label>
+            <input id="lm-log-wa" type="tel" value={logWa} data-autofocus onInput={(e) => setLogWa((e.target as HTMLInputElement).value)}
               placeholder={t("login.wa_ph")}
               class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-4 outline-none focus:border-sky-500" />
-            <label class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.pass_label')}</label>
-            <input type="password" value={logPass} onInput={(e) => setLogPass((e.target as HTMLInputElement).value)}
+            <label for="lm-log-pass" class="block text-sm font-bold text-slate-400 mb-1.5">{t('login.pass_label')}</label>
+            <input id="lm-log-pass" type="password" value={logPass} onInput={(e) => setLogPass((e.target as HTMLInputElement).value)}
               placeholder={t("login.pass_ph")}
               class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-6 outline-none focus:border-sky-500" />
             <button onClick={handleLogin} disabled={loading}
@@ -226,8 +245,8 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
           <div class="text-center">
             <Icon name="shield-alt" class="text-5xl text-red-500 mb-5 drop-shadow-lg" />
             <h3 class="text-xl font-bold text-white mb-6 tracking-wide">{t("admin.auth_title")}</h3>
-            <label class="block text-sm font-bold text-slate-400 mb-1.5 text-left">{t("admin.pin_master")}</label>
-            <input type="password" value={masterPin} onInput={(e) => setMasterPin((e.target as HTMLInputElement).value)}
+            <label for="lm-master-pin" class="block text-sm font-bold text-slate-400 mb-1.5 text-left">{t("admin.pin_master")}</label>
+            <input id="lm-master-pin" type="password" value={masterPin} data-autofocus onInput={(e) => setMasterPin((e.target as HTMLInputElement).value)}
               placeholder={t("admin.pin_master")}
               class="w-full p-4 rounded-2xl bg-black/60 border border-slate-600 text-center text-2xl tracking-widest text-white mb-6 outline-none focus:border-red-500 transition"
               onKeyPress={(e: KeyboardEvent) => { if (e.key === "Enter") handleMaster(); }} />
@@ -269,8 +288,8 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
             <Icon name="lock" class="text-5xl text-amber-500 mb-4 drop-shadow-lg" />
             <h3 class="text-lg font-bold text-white mb-1">{t("admin.auth_title")} {selectedAdmin}</h3>
             <p class="text-sm text-slate-400 mb-6">{t("admin.enter_pin")}</p>
-            <label class="block text-sm font-bold text-slate-400 mb-1.5 text-left">{t("admin.pin_personal")}</label>
-            <input type="password" value={personalPin} onInput={(e) => setPersonalPin((e.target as HTMLInputElement).value)}
+            <label for="lm-personal-pin" class="block text-sm font-bold text-slate-400 mb-1.5 text-left">{t("admin.pin_personal")}</label>
+            <input id="lm-personal-pin" type="password" value={personalPin} data-autofocus onInput={(e) => setPersonalPin((e.target as HTMLInputElement).value)}
               placeholder={t("admin.pin_personal")}
               class="w-full p-4 rounded-2xl bg-black/60 border border-slate-600 text-center text-2xl tracking-widest text-white mb-6 outline-none focus:border-amber-500 transition"
               onKeyPress={(e: KeyboardEvent) => { if (e.key === "Enter") handlePersonal(); }} />

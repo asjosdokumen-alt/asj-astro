@@ -169,45 +169,82 @@ export async function fetchKandidatFromAPI() {
   }
 }
 
+// §26: penjaga in-flight + jendela kesegaran untuk fetchAllKandidat.
+// Sebelumnya setiap mount TabDbJob dan setiap buka ListKandidatModal menembak
+// ulang loop 200/halaman BERURUTAN (0,68–1,06 s per round trip) tanpa penjaga
+// in-flight maupun cache. Sekarang: (a) panggilan bersamaan berbagi satu
+// promise, (b) hasil dipakai ulang selama ALL_KANDIDAT_TTL_MS, (c) cache
+// dikunci token supaya ganti akun di tab yang sama tidak membocorkan baris
+// kandidat, (d) `{ force: true }` untuk refresh sengaja setelah operasi tulis.
+const ALL_KANDIDAT_TTL_MS = 30 * 1000;
+let allKandidatInflight: Promise<Kandidat[]> | null = null;
+let allKandidatAt = 0;
+let allKandidatToken: string | null = null;
+
 // Tarik SEMUA kandidat (loop halaman getCandidatesPage, pageSize 200) ke
 // allKandidatList — padanan legacy ALL_CANDIDATES memory (ensureAllCandidates)
 // untuk TabDbJob count + ListKandidatModal + MatchmakingModal. Baris sudah
 // ter-dekorasi (berkas/bio/applications) oleh backend.
-export async function fetchAllKandidat(): Promise<Kandidat[]> {
+export async function fetchAllKandidat(opts: { force?: boolean } = {}): Promise<Kandidat[]> {
   const token = authStore.get().sessionToken || '';
-  const pageSize = 200;
-  const out: any[] = [];
-  try {
-    for (let page = 1; page <= 60; page++) {
-      const res = await fetch('/.netlify/functions/candidates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'getCandidatesPage',
-          payload: [{ page, pageSize, q: '' }],
-          sessionToken: token,
-        }),
-      });
-      const data = await res.json();
-      if (!data || !data.success) break;
-      const rows = data.candidates || [];
-      out.push(...rows);
-      const total = Number(data.total) || 0;
-      if (rows.length < pageSize || out.length >= total || rows.length === 0) break;
+  const cachedRows = allKandidatList.get();
+  const fresh =
+    cachedRows.length > 0 &&
+    allKandidatToken === token &&
+    allKandidatAt > 0 &&
+    Date.now() - allKandidatAt < ALL_KANDIDAT_TTL_MS;
+  if (!opts.force && fresh) return cachedRows;
+  // Satu loop sekaligus: pemanggil kedua menumpang promise yang sedang jalan
+  // alih-alih memulai paginasi kedua.
+  if (allKandidatInflight) return allKandidatInflight;
+
+  allKandidatInflight = (async () => {
+    const pageSize = 200;
+    const out: any[] = [];
+    try {
+      for (let page = 1; page <= 60; page++) {
+        const res = await fetch('/.netlify/functions/candidates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'getCandidatesPage',
+            payload: [{ page, pageSize, q: '' }],
+            sessionToken: token,
+          }),
+        });
+        const data = await res.json();
+        if (!data || !data.success) break;
+        const rows = data.candidates || [];
+        out.push(...rows);
+        const total = Number(data.total) || 0;
+        if (rows.length < pageSize || out.length >= total || rows.length === 0) break;
+      }
+    } catch (err) {
+      console.error('[adminStore] fetchAllKandidat failed:', err);
     }
-  } catch (err) {
-    console.error('[adminStore] fetchAllKandidat failed:', err);
+    // Dedupe by WA (baris terakhir menang) supaya count akurat.
+    const byWa = new Map<string, any>();
+    for (const r of out) {
+      const w = String(r && (r.wa || '')).trim();
+      byWa.set(w || String(out.indexOf(r)), r);
+    }
+    const rows = [...byWa.values()];
+    setAllKandidatList(rows);
+    kandidatTotal.set(rows.length);
+    // Hanya cap kesegaran saat loop benar-benar berhasil — kegagalan jaringan
+    // tidak boleh membuat daftar kosong dianggap "segar" selama 30 s.
+    if (out.length > 0) {
+      allKandidatAt = Date.now();
+      allKandidatToken = token;
+    }
+    return rows;
+  })();
+
+  try {
+    return await allKandidatInflight;
+  } finally {
+    allKandidatInflight = null;
   }
-  // Dedupe by WA (baris terakhir menang) supaya count akurat.
-  const byWa = new Map<string, any>();
-  for (const r of out) {
-    const w = String(r && (r.wa || '')).trim();
-    byWa.set(w || String(out.indexOf(r)), r);
-  }
-  const rows = [...byWa.values()];
-  setAllKandidatList(rows);
-  kandidatTotal.set(rows.length);
-  return rows;
 }
 
 // ── Mail State ──────────────────────────────────────────

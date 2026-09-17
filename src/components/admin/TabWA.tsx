@@ -96,8 +96,8 @@ export default function TabWA() {
       <div class="lg:col-span-1 bg-black/40 p-5 rounded-2xl border border-slate-700 flex flex-col h-fit">
         <h3 class="text-sm font-bold text-slate-300 uppercase tracking-widest mb-4">{editingId ? t('ui.template_edit_title') : t('ui.new_template')}</h3>
         <form onSubmit={handleSubmit} class="space-y-4">
-          <div><label class="block text-xs font-bold text-slate-300 mb-1">{t('ui.template_name')}</label><input type="text" value={nama} onInput={(e) => setNama((e.target as HTMLInputElement).value)} required placeholder={t('admin.wa_template_ph_nama')} class={ic} /></div>
-          <div><label class="block text-xs font-bold text-slate-300 mb-1">{t('ui.template_message')}</label><textarea value={isi} onInput={(e) => setIsi((e.target as HTMLTextAreaElement).value)} required rows={8} placeholder={t('admin.wa_template_ph_isi')} class={ic + ' leading-relaxed'}></textarea>
+          <div><label class="block text-xs font-bold text-slate-300 mb-1" for="tw-nama">{t('ui.template_name')}</label><input type="text" id="tw-nama" value={nama} onInput={(e) => setNama((e.target as HTMLInputElement).value)} required placeholder={t('admin.wa_template_ph_nama')} class={ic} /></div>
+          <div><label class="block text-xs font-bold text-slate-300 mb-1" for="tw-isi">{t('ui.template_message')}</label><textarea id="tw-isi" value={isi} onInput={(e) => setIsi((e.target as HTMLTextAreaElement).value)} required rows={8} placeholder={t('admin.wa_template_ph_isi')} class={ic + ' leading-relaxed'}></textarea>
             <p class="text-[9px] text-emerald-400/80 mt-1.5 leading-relaxed font-mono bg-emerald-900/20 p-2 rounded" dangerouslySetInnerHTML={{ __html: t('ui.template_code_hint') }} />
           </div>
           <div class="flex gap-2 pt-2">

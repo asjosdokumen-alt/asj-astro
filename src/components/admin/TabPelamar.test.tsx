@@ -1,6 +1,11 @@
-import { render, screen, fireEvent } from '@testing-library/preact';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/preact';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import TabPelamar from './TabPelamar';
+
+// Harness lama memakai daftar tetap saat modul dimuat, sehingga tidak bisa
+// menguji baris VIP vs baris biasa. `vi.hoisted` membuat pegangan store ini
+// terlihat oleh factory vi.mock (factory diangkat ke atas blok import).
+const h = vi.hoisted(() => ({ kandidatStore: null as unknown as { set: (v: unknown) => void } }));
 
 vi.mock('../../store/adminStore', () => {
   function mockStore(value: unknown) {
@@ -13,8 +18,12 @@ vi.mock('../../store/adminStore', () => {
       setKey: vi.fn(),
     };
   }
+  const kandidatList = mockStore([
+    { id: 'KD001', nama: 'Budi', wa: '628123', idLoker: 'TG658', tahapan: 'LIST', status: 'OPEN', catatan: '', gender: 'L', usia: '25', jft: 'A2' },
+  ]);
+  h.kandidatStore = kandidatList as unknown as { set: (v: unknown) => void };
   return {
-    kandidatList: mockStore([{ id: 'KD001', nama: 'Budi', wa: '628123', idLoker: 'TG658', tahapan: 'LIST', status: 'OPEN', catatan: '', gender: 'L', usia: '25', jft: 'A2' }]),
+    kandidatList,
     allKandidatList: mockStore([]),
     kandidatTotal: mockStore(1),
     kandidatLoading: mockStore(false),
@@ -46,7 +55,15 @@ vi.mock('../../store/i18n', async () => {
   return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id'), toggleLang: vi.fn() };
 });
 
+const BASE = {
+  id: 'KD001', nama: 'Budi', wa: '628123', idLoker: 'TG658', tahapan: 'LIST', status: 'OPEN',
+  catatan: '', gender: 'L', usia: '25', jft: 'A2',
+};
+
 describe('TabPelamar clock button', () => {
+  beforeEach(() => { h.kandidatStore.set([BASE]); });
+  afterEach(() => cleanup());
+
   it('dispatches showCandidateHistory event when clock button clicked', () => {
     const handler = vi.fn();
     window.addEventListener('showCandidateHistory', handler);
@@ -77,5 +94,37 @@ describe('TabPelamar clock button', () => {
     );
 
     window.removeEventListener('showCandidateHistory', handler);
+  });
+});
+
+// ==========================================
+// TESTS: indikator siswa di tabel admin (§6 gap 6, 2026-09-14)
+//
+// Legacy render/candidate.ts:634 menempelkan <img> logo ASJ (title
+// ui.badge_official) di sebelah nama kandidat VIP. Astro memakai emoji 🏆/🎓 —
+// tidak bisa diterjemahkan, tidak ikut tema, dan bukan aset merek.
+// ==========================================
+describe('TabPelamar — lencana siswa ASJ (bukan emoji)', () => {
+  beforeEach(() => { h.kandidatStore.set([BASE]); });
+  afterEach(() => cleanup());
+
+  it('baris VIP → logo ASJ dengan title ui.badge_official, TANPA emoji', () => {
+    h.kandidatStore.set([{ ...BASE, isVIP: true }]);
+    render(<TabPelamar />);
+    expect(screen.getByTitle('ui.badge_official')).toBeTruthy();
+    expect(document.body.textContent).not.toContain('🏆');
+    expect(document.body.textContent).not.toContain('🎓');
+  });
+
+  it('baris siswa ASJ (KELAS) → logo ASJ juga (keduanya = siswa ASJ)', () => {
+    h.kandidatStore.set([{ ...BASE, isSiswaASJ: true }]);
+    render(<TabPelamar />);
+    expect(screen.getByTitle('ui.badge_official')).toBeTruthy();
+    expect(document.body.textContent).not.toContain('🎓');
+  });
+
+  it('baris biasa → TIDAK ada lencana (tidak semua kandidat ditandai siswa)', () => {
+    render(<TabPelamar />);
+    expect(screen.queryByTitle('ui.badge_official')).toBeNull();
   });
 });

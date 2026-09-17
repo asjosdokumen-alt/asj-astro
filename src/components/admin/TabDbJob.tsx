@@ -228,7 +228,7 @@ export default function TabDbJob() {
       ) : (
         <div class="u-scroll-x rounded-xl border border-slate-800">
           <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
-            <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
+            <thead class="bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700">
               <tr>
                 <th scope="col" class="p-4">{t('table.code')}</th>
                 <th scope="col" class="p-4">{t('table.tsk')}</th>

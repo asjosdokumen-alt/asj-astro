@@ -153,3 +153,75 @@ describe('AdminShareModal (A15/B06)', () => {
     expect(screen.getByText('admin.doc_ijazah_smp')).toBeTruthy();
   });
 });
+
+// ==========================================
+// Label/control wiring (2026-09-16)
+//
+// The card-title <label> was a group heading over a chip list, not a control
+// label — the checkboxes are named by their own wrapping <label>, so it named
+// nothing. The other two really did sit above a control and simply never said
+// which. These assertions resolve for= to the real element and check it is the
+// control that carries the value.
+// ==========================================
+describe('AdminShareModal — label/control wiring', () => {
+  beforeEach(() => {
+    mockSecure.mockReset();
+    mockSecure.mockImplementation(async () => ({ success: true }));
+    vi.mocked(showToast).mockReset();
+  });
+  afterEach(() => cleanup());
+
+  const labelFor = (key: string) => {
+    const el = [...document.querySelectorAll('label')].find(
+      (l) => (l.textContent || '').trim() === key,
+    );
+    expect(el, `no <label> whose text is ${key}`).toBeTruthy();
+    return el?.getAttribute('for');
+  };
+
+  it('the share-link label names the readonly input holding the link', () => {
+    render(<AdminShareModal job={JOB as never} onClose={vi.fn()} />);
+    const forId = labelFor('ui.share_link_view');
+    expect(forId).toBe('as-share-link');
+    const el = document.getElementById(forId as string) as HTMLInputElement | null;
+    expect(el?.tagName).toBe('INPUT');
+    expect(el?.readOnly).toBe(true);
+    expect(el?.value).toContain('/share?job=TG658');
+  });
+
+  it('the WA-template label names the textarea holding the WA text', () => {
+    render(<AdminShareModal job={JOB as never} onClose={vi.fn()} />);
+    const forId = labelFor('ui.share_template_label');
+    expect(forId).toBe('as-wa');
+    const el = document.getElementById(forId as string) as HTMLTextAreaElement | null;
+    expect(el?.tagName).toBe('TEXTAREA');
+    expect(el?.value).toContain('TG658 - PERAWAT');
+  });
+
+  it('the card title is a heading, not a <label>', () => {
+    render(<AdminShareModal job={JOB as never} onClose={vi.fn()} />);
+    // Anti-vacuity: the text must still be on screen, just not as a <label>.
+    expect(screen.getByText('ui.share_card_title')).toBeTruthy();
+    const labelTexts = [...document.querySelectorAll('label')].map((l) =>
+      (l.textContent || '').trim(),
+    );
+    expect(labelTexts).not.toContain('ui.share_card_title');
+    // ...and no <label> left behind is a bare heading: each either points at a
+    // control by id or wraps one.
+    const bare = [...document.querySelectorAll('label')].filter(
+      (l) => !l.getAttribute('for') && !l.querySelector('input,select,textarea'),
+    );
+    expect(bare.map((l) => (l.textContent || '').trim())).toEqual([]);
+  });
+
+  it('every doc checkbox is named by the <label> that wraps it', () => {
+    render(<AdminShareModal job={JOB as never} onClose={vi.fn()} />);
+    const boxes = Array.from(document.querySelectorAll<HTMLInputElement>('input[type=checkbox]'));
+    expect(boxes.length).toBe(SHARE_DOC_CHIPS.length);
+    const names = boxes.map((b) => (b.closest('label')?.textContent || '').trim());
+    // No chip is nameless...
+    expect(names.filter((n) => n === '').length).toBe(0);
+    // ...and no two chips share a name.
+    expect(new Set(names).size).toBe(boxes.length);
+  });
+});

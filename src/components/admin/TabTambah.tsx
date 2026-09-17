@@ -166,63 +166,63 @@ export default function TabTambah() {
         <div class="space-y-5">
           <div class="p-4 bg-red-900/10 border border-red-900/30 rounded-xl grid grid-cols-2 gap-4">
             <div class="col-span-2">
-              <label class="block text-xs font-bold text-red-400 mb-1 uppercase tracking-widest">
+              <div class="block text-xs font-bold text-red-400 mb-1 uppercase tracking-widest">
                 <Icon name="lock" class="mr-1" /> {t('admin.internal_db_info')}
-              </label>
+              </div>
             </div>
             <div>
-              <label class={rl}>{t('admin.tsk_pengurus')}</label>
-              <select value={tsk} onInput={(e) => setTsk((e.target as HTMLSelectElement).value)} required class={ic}>
+              <label for="tt-tsk" class={rl}>{t('admin.tsk_pengurus')}</label>
+              <select id="tt-tsk" value={tsk} onInput={(e) => setTsk((e.target as HTMLSelectElement).value)} required class={ic}>
                 <option value="">-</option>
                 {dd.tsk.map((x) => <option key={x} value={x}>{x}</option>)}
               </select>
             </div>
             <div>
-              <label class={rl}>{t('admin.tahapan_internal')}</label>
-              <select value={tahapan} onInput={(e) => setTahapan((e.target as HTMLSelectElement).value)} required class={ic}>
+              <label for="tt-tahapan" class={rl}>{t('admin.tahapan_internal')}</label>
+              <select id="tt-tahapan" value={tahapan} onInput={(e) => setTahapan((e.target as HTMLSelectElement).value)} required class={ic}>
                 <option value="">-</option>
                 {dd.tahapan.map((x) => <option key={x} value={x}>{x}</option>)}
               </select>
             </div>
             <div class="col-span-2">
-              <label class={rl}>{t('admin.kuota_dibutuhkan')}</label>
-              <input type="text" value={kuota} onInput={(e) => setKuota((e.target as HTMLInputElement).value)} required class="w-full p-3 rounded-lg bg-black border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition" />
+              <label for="tt-kuota" class={rl}>{t('admin.kuota_dibutuhkan')}</label>
+              <input id="tt-kuota" type="text" value={kuota} onInput={(e) => setKuota((e.target as HTMLInputElement).value)} required class="w-full p-3 rounded-lg bg-black border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition" />
             </div>
           </div>
           <div>
-            <label class={lc}>{t('admin.kategori_bidang')}</label>
-            <select value={kategori} onInput={(e) => setKategori((e.target as HTMLSelectElement).value)} required class={ic}>
+            <label for="tt-kategori" class={lc}>{t('admin.kategori_bidang')}</label>
+            <select id="tt-kategori" value={kategori} onInput={(e) => setKategori((e.target as HTMLSelectElement).value)} required class={ic}>
               <option value="">-</option>
               {dd.kategori.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
           </div>
           <div>
-            <label class={lc}>{t('admin.nama_pekerjaan')}</label>
-            <input type="text" value={pekerjaan} onInput={(e) => setPekerjaan((e.target as HTMLInputElement).value)} required class={ic} />
+            <label for="tt-pekerjaan" class={lc}>{t('admin.nama_pekerjaan')}</label>
+            <input id="tt-pekerjaan" type="text" value={pekerjaan} onInput={(e) => setPekerjaan((e.target as HTMLInputElement).value)} required class={ic} />
           </div>
           <div>
-            <label class={lc}>{t('admin.gender_label')}</label>
-            <select value={gender} onInput={(e) => setGender((e.target as HTMLSelectElement).value)} required class={ic}>
+            <label for="tt-gender" class={lc}>{t('admin.gender_label')}</label>
+            <select id="tt-gender" value={gender} onInput={(e) => setGender((e.target as HTMLSelectElement).value)} required class={ic}>
               <option value="">-</option>
               {dd.gender.map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
           </div>
           <div>
-            <label class="block text-xs font-bold text-sky-400 mb-1.5 uppercase">
+            <label for="tt-template-file" class="block text-xs font-bold text-sky-400 mb-1.5 uppercase">
               <Icon name="file-excel" class="mr-1" /> {t('admin.upload_format_cv')}
             </label>
-            <input type="file" accept=".pdf,.xls,.xlsx,.doc,.docx" onChange={(e) => setTemplateFile((e.target as HTMLInputElement).files?.[0] || null)} class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-sky-900/50 file:text-sky-400 hover:file:bg-sky-900/80 cursor-pointer" />
+            <input id="tt-template-file" type="file" accept=".pdf,.xls,.xlsx,.doc,.docx" onChange={(e) => setTemplateFile((e.target as HTMLInputElement).files?.[0] || null)} class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-sky-900/50 file:text-sky-400 hover:file:bg-sky-900/80 cursor-pointer" />
           </div>
           <div>
-            <label class="block text-xs font-bold text-pink-400 mb-1.5 uppercase">
+            <label for="tt-pamflet-file" class="block text-xs font-bold text-pink-400 mb-1.5 uppercase">
               <Icon name="image" class="mr-1" /> {t('admin.upload_pamflet')}
             </label>
-            <input type="file" accept="image/*" onChange={(e) => setPamfletFile((e.target as HTMLInputElement).files?.[0] || null)} class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-pink-900/50 file:text-pink-400 hover:file:bg-pink-900/80 cursor-pointer" />
+            <input id="tt-pamflet-file" type="file" accept="image/*" onChange={(e) => setPamfletFile((e.target as HTMLInputElement).files?.[0] || null)} class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-pink-900/50 file:text-pink-400 hover:file:bg-pink-900/80 cursor-pointer" />
           </div>
         </div>
         <div class="space-y-5">
-          <div>
-            <label class={lc}>{t('admin.penempatan_lokasi')}</label>
+          <fieldset class="border-0 p-0 m-0 min-w-0">
+            <legend class={`${lc} p-0`}>{t('admin.penempatan_lokasi')}</legend>
             <div class="grid grid-cols-2 gap-2 h-28 u-scroll-area p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {dd.lokasi.map((l) => (
                 <label key={l} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
@@ -231,9 +231,9 @@ export default function TabTambah() {
               ))}
             </div>
             <input type="text" value={customLokasi} onInput={(e) => setCustomLokasi((e.target as HTMLInputElement).value)} placeholder={t('admin.custom_lokasi')} class={ic} />
-          </div>
-          <div>
-            <label class={lc}>{t('admin.syarat_kandidat')}</label>
+          </fieldset>
+          <fieldset class="border-0 p-0 m-0 min-w-0">
+            <legend class={`${lc} p-0`}>{t('admin.syarat_kandidat')}</legend>
             <div class="grid grid-cols-2 gap-2 h-24 u-scroll-area p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {dd.syarat.map((s) => (
                 <label key={s} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
@@ -242,9 +242,9 @@ export default function TabTambah() {
               ))}
             </div>
             <input type="text" value={customSyarat} onInput={(e) => setCustomSyarat((e.target as HTMLInputElement).value)} placeholder={t('admin.custom_syarat')} class={ic} />
-          </div>
-          <div>
-            <label class={lc}><Icon name="file-upload" class="mr-1" /> {t('admin.syarat_dokumen')}</label>
+          </fieldset>
+          <fieldset class="border-0 p-0 m-0 min-w-0">
+            <legend class={`${lc} p-0`}><Icon name="file-upload" class="mr-1" /> {t('admin.syarat_dokumen')}</legend>
             <div class="grid grid-cols-2 gap-2 h-24 u-scroll-area p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {RF.map((f) => (
                 <label key={f} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
@@ -253,23 +253,23 @@ export default function TabTambah() {
               ))}
             </div>
             <input type="text" value={customReqFile} onInput={(e) => setCustomReqFile((e.target as HTMLInputElement).value)} placeholder={t('admin.custom_dokumen')} class={ic} />
-          </div>
+          </fieldset>
           <div>
-            <label class={lc}>{t('admin.keterangan_publik')}</label>
-            <textarea value={keterangan} onInput={(e) => setKeterangan((e.target as HTMLTextAreaElement).value)} rows={2} class={ic} />
+            <label for="tt-keterangan" class={lc}>{t('admin.keterangan_publik')}</label>
+            <textarea id="tt-keterangan" value={keterangan} onInput={(e) => setKeterangan((e.target as HTMLTextAreaElement).value)} rows={2} class={ic} />
           </div>
         </div>
         <div class="md:col-span-2 u-grid-auto u-grid-auto--form gap-6">
           <div>
-            <label class="block text-sm font-bold text-emerald-400 mb-1.5 uppercase">
+            <label for="tt-total-biaya" class="block text-sm font-bold text-emerald-400 mb-1.5 uppercase">
               <Icon name="wallet" class="mr-1" /> {t('ui.total_cost')} {t('admin.cth_25_jt')}
             </label>
-            <input type="text" value={totalBiaya} onInput={(e) => setTotalBiaya((e.target as HTMLInputElement).value)} placeholder={t('ui.total_cost_ph')} class={ic} />
+            <input id="tt-total-biaya" type="text" value={totalBiaya} onInput={(e) => setTotalBiaya((e.target as HTMLInputElement).value)} placeholder={t('ui.total_cost_ph')} class={ic} />
           </div>
           <div>
-            <label class="block text-sm font-bold text-emerald-400 mb-1.5 uppercase">
+            <div class="block text-sm font-bold text-emerald-400 mb-1.5 uppercase">
               <Icon name="list-check" class="mr-1" /> {t('ui.rincian_biaya')}
-            </label>
+            </div>
             <button type="button" onClick={() => setRbOpen(true)} class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-black uppercase shadow-lg transition">
               <Icon name="edit" class="mr-1" /> {t('ui.open_rincian_editor')}
             </button>

@@ -34,6 +34,38 @@ const NS = [
   'pelamar', 'wa', 'footer',
 ].join('|');
 
+/**
+ * Curated Indonesian UI tokens. Deliberately NOT a generic word list: brand
+ * and proper names ("Logo ASJ", "WhatsApp", "Instagram", "QR Code",
+ * "Google Maps", "Admin") must never trip this. A noisy gate is a skipped
+ * gate.
+ */
+const ID_TOKENS = [
+  'Cek', 'Kandidat', 'Tandai', 'Segera', 'Lihat', 'Terdaftar', 'Lengkap',
+  'Pratinjau', 'Pamflet', 'Hapus', 'Simpan', 'Batal', 'Kirim', 'Daftar',
+  'Masuk', 'Keluar', 'Gagal', 'Berhasil', 'Lanjut', 'Kembali', 'Unduh',
+  'Tutup', 'Profil', 'kandidat', 'hadir',
+];
+
+/**
+ * Wider list for the text-node scan. An attribute value is short and often
+ * carries a brand name, so the list above stays tight; a text node is
+ * user-visible copy, so this one adds the words that actually shipped as bare
+ * text nodes (Usia next to a field that used t(), admin modal titles, …).
+ */
+const ID_TOKENS_TEXT = [
+  ...ID_TOKENS,
+  'Usia', 'Aksi', 'Waktu', 'Jadwal', 'Kategori', 'Alamat', 'Dokumen',
+  'Lokasi', 'Jenis', 'Cetak', 'Tambah', 'Cari', 'Pilih', 'Memuat',
+  'Menyimpan', 'Kaigo', 'Perawatan', 'Selengkapnya', 'Pengumuman',
+  'Pemberkasan', 'Wawancara', 'Pelatihan', 'Keberangkatan', 'Berkas',
+  'Lamaran', 'Lowongan', 'Keterangan', 'Catatan', 'Pengaturan',
+  'Berikut', 'Sebelumnya', 'Halaman', 'Struktur', 'Skema', 'Terminal',
+  'Muncul', 'Berjalan', 'Pertahankan', 'Dicetak', 'Dihapus', 'Permanen',
+  'Perubahan', 'Dijalankan', 'Semua', 'Teks', 'Hanya', 'Bisa', 'Oleh',
+  'Buat', 'Tetap', 'Laki-laki', 'Perempuan', 'Belum',
+];
+
 /** Every file under src/ — shared by the coverage scan and the attribute scan. */
 function walk(dir: string): string[] {
   const out: string[] = [];
@@ -140,17 +172,6 @@ describe('i18n dictionary coverage', () => {
       { re: /(?<!-)\balt="([^"{}]+)"/g, optOut: /data-lang-alt=/, fix: 't("…")' },
     ];
 
-    // Curated Indonesian UI tokens. Deliberately NOT a generic word list: brand
-    // and proper names ("Logo ASJ", "WhatsApp", "Instagram", "QR Code",
-    // "Google Maps", "Admin") must never trip this. A noisy gate is a skipped
-    // gate.
-    const ID_TOKENS = [
-      'Cek', 'Kandidat', 'Tandai', 'Segera', 'Lihat', 'Terdaftar', 'Lengkap',
-      'Pratinjau', 'Pamflet', 'Hapus', 'Simpan', 'Batal', 'Kirim', 'Daftar',
-      'Masuk', 'Keluar', 'Gagal', 'Berhasil', 'Lanjut', 'Kembali', 'Unduh',
-      'Tutup', 'Profil', 'kandidat', 'hadir',
-    ];
-
     const hits: string[] = [];
     for (const file of walk(join(ROOT, 'src'))) {
       if (!/\.(tsx?|astro)$/.test(file)) continue;
@@ -181,6 +202,62 @@ describe('i18n dictionary coverage', () => {
       'Untranslated Indonesian found inside a raw title/alt/aria-label attribute.',
       'The dictionary-coverage checks cannot see these. Use t("key") in .tsx, or',
       'data-lang-title / data-lang-aria in .astro (translateDataLang handles both).',
+      '',
+      ...hits,
+    ].join('\n')).toEqual([]);
+  });
+
+  it('leaves no Indonesian copy in bare JSX/HTML text nodes', () => {
+    // The four checks above see t(), data-lang, key-shaped literals and raw
+    // title/alt/aria attributes. A bare text node is none of those, so it
+    // stays Indonesian forever and nothing turns red — which is exactly how
+    // "Usia" survived in MasterFullForm right next to a field that used
+    // t("master.fam_pekerjaan"), how "Kembali" survived as the ApplyFullForm
+    // back button, and how "Edit Data Kandidat" and "List Kandidat" survived
+    // as admin modal titles.
+    //
+    // Extract the text between '>' and '<' — the actual text node — and flag
+    // it when it reads as Indonesian. Braces are excluded from the capture so
+    // a JSX expression ({t(...)}) can never match; quotes, parens, '+' and
+    // '=' are excluded as well so string-built HTML never matches (that is
+    // why this is scoped to markup files rather than all of src: pdf.ts and
+    // RirekishoBuilder assemble HTML in string concatenation, and their
+    // labels are not addressable by t()).
+    const TEXT_NODE = />([^<>{}]*)</g;
+    const TEXT_EOL = />([^<>{}]*)$/g;   // text node running to end of line
+    const BAD_CHARS = /["'()=;+&|`]/;
+    const tokenRe = new RegExp(`\\b(${ID_TOKENS_TEXT.join('|')})\\b`);
+
+    const hits: string[] = [];
+    for (const file of walk(join(ROOT, 'src'))) {
+      // Markup only. A .ts file has no text nodes, only strings.
+      if (!/\.(tsx|astro)$/.test(file)) continue;
+      const name = relative(ROOT, file);
+      if (name.includes('test')) continue;
+      const lines = readFileSync(file, 'utf-8').split('\n');
+      lines.forEach((line, idx) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return;
+        // Same opt-out as the attribute check: a literal on a line that also
+        // carries data-lang is the deliberate pre-hydration default, because
+        // translateDataLang() only assigns textContent once JS runs.
+        if (/data-lang=/.test(line)) return;
+        for (const re of [TEXT_NODE, TEXT_EOL]) {
+          re.lastIndex = 0;
+          for (const m of line.matchAll(re)) {
+            const txt = m[1].trim();
+            if (!txt || BAD_CHARS.test(txt)) continue;
+            if (!tokenRe.test(txt)) continue;
+            hits.push(`  - ${name}:${idx + 1}  ${JSON.stringify(txt)}   → wrap in t("…") or add data-lang`);
+          }
+        }
+      });
+    }
+
+    expect(hits, [
+      'Untranslated Indonesian found in a bare JSX/HTML text node.',
+      'The dictionary-coverage and attribute checks cannot see these. Use',
+      't("key") in .tsx, or data-lang on the element in .astro.',
       '',
       ...hits,
     ].join('\n')).toEqual([]);

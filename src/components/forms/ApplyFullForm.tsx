@@ -14,6 +14,7 @@ import { getEndpoint } from "../../lib/apiEndpoint";
 import { t, langStore } from '../../store/i18n';
 import Icon from '../ui/Icon';
 import { requiredDocsFromJob } from '../../lib/applyDocs';
+import { useOverlay } from '../ui/useOverlay';
 
 interface FormData {
   job: string; bidang: string; wa: string; nama: string; email: string;
@@ -43,6 +44,18 @@ export default function ApplyFullForm() {
   const [waWarn, setWaWarn] = useState('');
   const [extraDocs, setExtraDocs] = useState<string[]>([]);
   const [oldDocs, setOldDocs] = useState<{ photo?: string; jft?: string; ssw?: string }>({});
+
+  // §4.1(a) — the success screen is a TERMINAL dialog: its only exit is the
+  // "ke Portal" CTA. There is no close affordance, and returning the user to
+  // a form that was already submitted is not a state this flow has — so it
+  // takes the dialog role, the name from its <h2>, and the Tab trap (which is
+  // what makes the CTA reachable), but not Escape/backdrop dismissal.
+  const successOverlay = useOverlay({
+    open: success,
+    onClose: () => {},
+    closeOnEscape: false,
+    closeOnBackdrop: false,
+  });
 
   // Read job code from URL params
   useEffect(() => {
@@ -267,7 +280,7 @@ export default function ApplyFullForm() {
             <div class="absolute top-[18px] left-[15%] right-[15%] h-[3px] bg-slate-700 z-1"></div>
             <div class="absolute top-[18px] left-[15%] h-[3px] bg-pink-500 z-2 transition-[width] duration-400" style={{ width: progressPct }}></div>
             {[t('apply.step_data'), t('apply.step_docs'), t('apply.step_kirim')].map((label, i) => (
-              <div key={i} class={`relative z-[3] flex flex-col items-center gap-2 w-1/3 ${i + 1 === step ? 'active' : i + 1 < step ? 'completed' : ''}`}>
+              <div key={i} class="relative z-[3] flex flex-col items-center gap-2 w-1/3">
                 <div class={`w-[38px] h-[38px] rounded-full flex items-center justify-center font-extrabold transition-colors
                   ${i + 1 === step ? 'bg-pink-500 border-2 border-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,.4)]'
                     : i + 1 < step ? 'bg-pink-700 border-2 border-pink-700 text-white'
@@ -281,15 +294,15 @@ export default function ApplyFullForm() {
 
           {/* STEP 1: DATA DIRI */}
           <div class={`${step === 1 ? 'block' : 'hidden'} animate-[fadeIn_0.4s_ease-in-out]`}>
-            <InputField icon="fa-briefcase" label={t("apply.job_label")} value={form.job} readonly />
-            <InputField icon="fa-layer-group" label={t("apply.bidang_label")} value={form.bidang} readonly />
+            <InputField id="ap-job" icon="fa-briefcase" label={t("apply.job_label")} value={form.job} readonly />
+            <InputField id="ap-bidang" icon="fa-layer-group" label={t("apply.bidang_label")} value={form.bidang} readonly />
 
             {/* WA with radar */}
             <div class="mb-5">
-              <label class="block text-[13px] font-bold mb-2 text-slate-300">{t("form.nomor_wa")}</label>
+              <label class="block text-[13px] font-bold mb-2 text-slate-300" for="ap-wa">{t("form.nomor_wa")}</label>
               <div class="relative">
                 <Icon name="whatsapp" class="absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg" />
-                <input type="tel" value={form.wa}
+                <input id="ap-wa" type="tel" value={form.wa}
                   onInput={(e) => updateForm('wa', (e.target as HTMLInputElement).value)}
                   onBlur={cekRiwayat}
                   placeholder={t("apply.wa_ph")}
@@ -300,22 +313,22 @@ export default function ApplyFullForm() {
               {waWarn && <div class="text-xs text-amber-300 font-bold mt-3 bg-amber-900/40 p-2.5 rounded-lg border border-amber-500/40">{waWarn}</div>}
             </div>
 
-            <InputField icon="fa-user" label={t("apply.nama_label")} value={form.nama} placeholder={t("apply.nama_ph")}
+            <InputField id="ap-nama" icon="fa-user" label={t("apply.nama_label")} value={form.nama} placeholder={t("apply.nama_ph")}
               onInput={(v) => updateForm('nama', v.toUpperCase())} tip={t("apply.nama_tip")} />
-            <InputField icon="fa-envelope" label={t("apply.email_label")} value={form.email} type="email" placeholder={t("apply.email_ph")}
+            <InputField id="ap-email" icon="fa-envelope" label={t("apply.email_label")} value={form.email} type="email" placeholder={t("apply.email_ph")}
               onInput={(v) => updateForm('email', v)} />
 
             <div class="grid grid-cols-2 gap-4">
-              <SelectField icon="fa-venus-mars" label={t("apply.gender_label")} value={form.gender}
+              <SelectField id="ap-gender" icon="fa-venus-mars" label={t("apply.gender_label")} value={form.gender}
                 options={[{ v: '', l: 'Pilih' }, { v: 'LAKI-LAKI', l: 'LAKI-LAKI' }, { v: 'PEREMPUAN', l: 'PEREMPUAN' }]}
                 onChange={(v) => updateForm('gender', v)} />
-              <InputField icon="fa-cake-candles" label={t("apply.usia_label")} value={form.usia} type="number" placeholder={t("apply.usia_ph")}
+              <InputField id="ap-usia" icon="fa-cake-candles" label={t("apply.usia_label")} value={form.usia} type="number" placeholder={t("apply.usia_ph")}
                 onInput={(v) => updateForm('usia', v)} />
             </div>
             <div class="grid grid-cols-2 gap-4">
-              <InputField icon="fa-ruler-vertical" label={t("apply.tb_label")} value={form.tb} type="number" placeholder="cm"
+              <InputField id="ap-tb" icon="fa-ruler-vertical" label={t("apply.tb_label")} value={form.tb} type="number" placeholder="cm"
                 onInput={(v) => updateForm('tb', v)} />
-              <InputField icon="fa-weight-scale" label={t("apply.bb_label")} value={form.bb} type="number" placeholder="kg"
+              <InputField id="ap-bb" icon="fa-weight-scale" label={t("apply.bb_label")} value={form.bb} type="number" placeholder="kg"
                 onInput={(v) => updateForm('bb', v)} />
             </div>
           </div>
@@ -377,7 +390,7 @@ export default function ApplyFullForm() {
       <div class="fixed bottom-0 left-0 w-full bg-[rgba(2,6,23,.95)] backdrop-blur-xl border-t border-slate-800 p-[15px_20px] z-50 flex justify-between gap-4">
         {step > 1 && (
           <button onClick={() => changeStep(-1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 border-none cursor-pointer">
-            <Icon name="chevron-left" /> Kembali
+            <Icon name="chevron-left" /> {t("button.back")}
           </button>
         )}
         <button onClick={saveDraft} disabled={loading}
@@ -398,7 +411,11 @@ export default function ApplyFullForm() {
 
       {/* Loading Modal */}
       {loading && (
-        <div class="fixed inset-0 u-modal-shell flex items-center justify-center bg-[rgba(2,6,23,.92)] backdrop-blur-sm z-[9999]">
+        // §4.1(a) — a wait screen, not a dialog: the correct semantics is a
+        // live region, and trapping focus in a screen with nothing to act on
+        // would be worse than leaving it free. Same treatment MasterFullForm
+        // already uses for its "Menyinkronkan Data…" overlay.
+        <div class="fixed inset-0 u-modal-shell flex items-center justify-center bg-[rgba(2,6,23,.92)] backdrop-blur-sm z-[9999]" role="status" aria-live="polite">
           <div class="text-center">
             <div class="w-[70px] h-[70px] rounded-full border-4 border-slate-700 border-t-pink-500 mx-auto animate-spin"></div>
             <h2 class="mt-5 text-white text-xl font-extrabold">{t('apply.loading')}</h2>
@@ -409,7 +426,7 @@ export default function ApplyFullForm() {
 
       {/* Success Modal */}
       {success && (
-        <div class="fixed inset-0 u-modal-shell flex items-center justify-center bg-[rgba(2,6,23,.92)] backdrop-blur-sm z-[9999]">
+        <div ref={successOverlay.containerRef} class="fixed inset-0 u-modal-shell flex items-center justify-center bg-[rgba(2,6,23,.92)] backdrop-blur-sm z-[9999]">
           <div class="w-[90%] max-w-[340px] bg-slate-900 border border-emerald-500 rounded-[24px] p-[30px] text-center">
             <div class="text-[60px] mb-2">✅</div>
             <h2 class="mt-4 text-2xl font-black">{t('apply.success_title')}</h2>
@@ -423,16 +440,16 @@ export default function ApplyFullForm() {
 }
 
 /* Sub-components */
-function InputField({ icon, label, value, readonly, type = 'text', placeholder, onInput, tip }: {
-  icon: string; label: string; value: string; readonly?: boolean; type?: string;
+function InputField({ id, icon, label, value, readonly, type = 'text', placeholder, onInput, tip }: {
+  id: string; icon: string; label: string; value: string; readonly?: boolean; type?: string;
   placeholder?: string; onInput?: (v: string) => void; tip?: string;
 }) {
   return (
     <div class="mb-5">
-      <label class="block text-[13px] font-bold mb-2 text-slate-300">{label}</label>
+      <label class="block text-[13px] font-bold mb-2 text-slate-300" for={id}>{label}</label>
       <div class="relative">
         <Icon name={icon} class="absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg" />
-        <input type={type} value={value} readonly={readonly} placeholder={placeholder}
+        <input id={id} type={type} value={value} readonly={readonly} placeholder={placeholder}
           onInput={onInput ? (e) => onInput((e.target as HTMLInputElement).value) : undefined}
           class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 focus:shadow-[0_0_0_4px_rgba(236,72,153,.15)] t-elevate placeholder:text-slate-500" />
       </div>
@@ -441,15 +458,15 @@ function InputField({ icon, label, value, readonly, type = 'text', placeholder, 
   );
 }
 
-function SelectField({ icon, label, value, options, onChange }: {
-  icon: string; label: string; value: string; options: { v: string; l: string }[]; onChange: (v: string) => void;
+function SelectField({ id, icon, label, value, options, onChange }: {
+  id: string; icon: string; label: string; value: string; options: { v: string; l: string }[]; onChange: (v: string) => void;
 }) {
   return (
     <div class="mb-5">
-      <label class="block text-[13px] font-bold mb-2 text-slate-300">{label}</label>
+      <label class="block text-[13px] font-bold mb-2 text-slate-300" for={id}>{label}</label>
       <div class="relative">
         <Icon name={icon} class="absolute left-[18px] top-1/2 -translate-y-1/2 text-pink-500 text-lg" />
-        <select value={value} onChange={(e) => onChange((e.target as HTMLSelectElement).value)}
+        <select id={id} value={value} onChange={(e) => onChange((e.target as HTMLSelectElement).value)}
           class="w-full h-[55px] px-[18px] pl-[54px] bg-slate-900 border border-slate-700 rounded-2xl text-white text-sm focus:outline-none focus:border-pink-500 transition-colors appearance-none cursor-pointer">
           {options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
         </select>
@@ -482,7 +499,7 @@ function UploadCard({ type, label, sub, icon, bgClass, btnClass, accept, onChang
         onChange={(e) => onChange((e.target as HTMLInputElement).files?.[0] || null)} />
       {state?.preview && <img src={state.preview} class="w-full h-[160px] object-contain bg-[#020617] rounded-xl mt-[15px] border border-slate-700" alt="" />}
       <div class="mt-[15px] p-3 bg-[#020617] rounded-xl text-xs text-slate-400 break-all">{state?.name || t('apply.file_none')}</div>
-      {state?.warn && <div class="text-rose-500 text-[11px] mt-2 font-bold"><Icon name="circle-exclamation" class="mr-1" />Gagal! Ukuran file melebihi 2 MB.</div>}
+      {state?.warn && <div class="text-rose-500 text-[11px] mt-2 font-bold"><Icon name="circle-exclamation" class="mr-1" />{t('apply.file_too_big')}</div>}
     </div>
   );
 }

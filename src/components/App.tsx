@@ -4,7 +4,7 @@
  * Initializes Supabase auth listener at boot (useEffect).
  * All 11 consumers continue to import authStore from authReactive.ts — no breakage.
  */
-import { useState, useEffect } from 'preact/hooks';
+import { useState, useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore, logout } from '../store/authReactive';
 import { initializeAuthListener, logoutSupabase } from '../store/userStore';
@@ -105,63 +105,148 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
 
   function installApp() { showToast("Install: Chrome > Menu > Home Screen", "info"); setMenuOpen(false); }
 
+  /* ─── Drawer keyboard contract ────────────────────────────────────────
+     MEASURED 2026-09-16 on the built artifact at 390x844, BEFORE this block
+     existed:
+
+       CLOSED (fresh load)      nav rect.x = 390 = viewport width, i.e. fully
+                                off-screen; aria-hidden null; inert false.
+                                Tab-walk from the hamburger: 7 of 22 stops
+                                landed INSIDE the closed drawer (Close,
+                                Install App, Bahasa, Login, Daftar, Admin
+                                Login). The ring is painted off-screen, so
+                                the user sees nothing happen and has to Tab
+                                through six invisible controls.
+       Escape while open        no effect (nav still at rect.x = 102)
+       Tab while open           19 of 30 stops escaped to the page BEHIND,
+                                where the ring lands under the 288 px drawer
+       body[inert]              false; [aria-modal] count 0
+
+     Three fixes, all of them the drawer's OWN contract. The page behind is
+     deliberately NOT made inert: App renders a fragment and does not own
+     the page content, and the scrim already makes the background
+     pointer-inert — so keyboard-inerting it is a product decision, reported
+     rather than taken silently (see docs/UI_DESIGN_REVIEW.md). */
+  const drawerRef = useRef<HTMLElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+
+  /* `inert` in a LAYOUT effect, not a deferred one: under useEffect the
+     attribute lands a frame after paint, which leaves a window where the
+     drawer is visually closed but still holds six Tab stops — the exact
+     defect this closes. `inert` covers the accessibility tree too, so no
+     separate `aria-hidden` is written. */
+  useLayoutEffect(() => {
+    const el = drawerRef.current;
+    if (el) el.inert = !menuOpen;
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const el = drawerRef.current;
+
+    // Focus moves INTO the drawer on open. Without this the ring stays on
+    // the hamburger, which the open drawer (288 of 390 px) then covers.
+    el?.querySelector<HTMLElement>('button, a[href]')?.focus();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Capture phase + stopImmediatePropagation, so the drawer wins over a
+      // widget inside it. It can never race useOverlay's identical handler:
+      // every path that opens a modal from the drawer also closes it.
+      e.stopImmediatePropagation();
+      setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+      // Return focus to the trigger — but ONLY when it is about to be lost,
+      // i.e. still inside the drawer, or already fallen to <body> (writing
+      // `inert` blurs whatever was inside it).
+      //
+      // That guard is what stops this fighting the modals. The drawer's
+      // "Login"/"Daftar"/"Admin Login" buttons close the drawer AND open a
+      // modal, whose own initial-focus effect lands in the same commit. If
+      // the modal focused first, activeElement is inside the modal and this
+      // does nothing; if it focused second, it wins. Either order ends on
+      // the modal, which is the only acceptable outcome.
+      const active = document.activeElement as HTMLElement | null;
+      const lost = !active || active === document.body || !!el?.contains(active);
+      const trigger = hamburgerRef.current;
+      if (lost && trigger && document.contains(trigger)) trigger.focus();
+    };
+  }, [menuOpen]);
+
   return (
     <ErrorBoundary>
       {showHeader && <header id="asj-header" class="max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl h-auto min-h-[14rem] md:h-56 flex items-end p-6 md:p-8 bg-cover bg-center transition-colors duration-700" style={`background-image: url(${headerBg})`}>
-        <div id="asj-header-overlay" class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent"></div>
+        <div id="asj-header-overlay" class="absolute inset-0 header-overlay"></div>
         <div class="relative z-10 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
-          <div class="flex items-center gap-5">
-            <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-12 h-12 md:w-16 md:h-16 object-contain drop-shadow-2xl" onError={(e: any) => { e.target.style.display = "none" }} />
-            <div>
-              <div id="header-tagline" class="text-pink-300 text-xs md:text-sm font-bold tracking-[4px] mb-1">{t("header.tagline")}</div>
-              <h1 class="text-lg md:text-3xl font-black italic tracking-wide drop-shadow-lg"><span>{t("header.company_name")}</span></h1>
+          <div class="flex items-center gap-3 md:gap-5 min-w-0">
+            <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-12 h-12 md:w-16 md:h-16 shrink-0 object-contain drop-shadow-2xl" onError={(e: any) => { e.target.style.display = "none" }} />
+            {/* max-w keeps the title clear of the absolutely-positioned
+                menu button (App.tsx, `absolute top-4 right-4`, 40px at
+                x=302 on a 390px viewport). The button is `absolute`, so
+                flexbox never reserves space for it — without this cap the
+                22-char company name ends at x=353 and 51px of it renders
+                *under* the button. min-w-0 on both wrappers is required or
+                `truncate` never engages (flex children refuse to shrink
+                below their content width without it). */}
+            <div class="min-w-0 flex-1 max-w-[210px] md:max-w-none">
+              <div id="header-tagline" class="text-pink-300 text-xs md:text-sm font-bold tracking-[4px] mb-1 truncate">{t("header.tagline")}</div>
+              <h1 class="text-lg md:text-3xl font-black italic tracking-wide drop-shadow-lg truncate"><span>{t("header.company_name")}</span></h1>
             </div>
           </div>
-          <div class="flex flex-col items-end gap-3">
-          <div class="md:hidden absolute top-4 right-4 z-30">
-            <button onClick={toggleMenu} class="w-10 h-10 flex items-center justify-center bg-black hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg" aria-label="Toggle Menu">
+          {/* Hamburger — shown on BOTH mobile and desktop. One menu surface
+              for both viewports (the user picks the drawer icon, the same
+              drawer slides in). Desktop keeps just the language toggle
+              inline so flipping id⇄jp stays one tap. */}
+          <div class="absolute top-4 right-4 z-30 flex items-center gap-2">
+            <button onClick={toggleLang} class="hidden md:flex w-9 h-9 items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full border border-white/40 transition shadow-md" aria-label="Toggle language" title={lang === "id" ? "ID" : "JP"}>
+              <span class="text-[11px] font-bold">{lang === "id" ? "ID" : "JP"}</span>
+            </button>
+            <button ref={hamburgerRef} onClick={toggleMenu} class="w-10 h-10 flex items-center justify-center bg-black/70 hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
               <Icon name={menuOpen ? "times" : "bars"} class="text-lg" />
             </button>
           </div>
-          {/* ─── Desktop Nav (hidden on mobile) ─── */}
-          <div class="hidden md:flex items-end gap-3">
-            <div class="flex items-center gap-3">
-              <button onClick={installApp} class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white border border-emerald-400/30 rounded-full text-xs font-bold transition-colors shadow-[0_0_15px_rgba(118,185,0,0.4)] animate-pulse flex items-center"><Icon name="mobile-alt" class="mr-1.5" /> {t("ui.install_app")}</button>
-              <button onClick={toggleLang} class="px-3 py-2 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5"><Icon name="language" /> {lang === "id" ? "ID" : "JP"}</button>
-            </div>
-            <div class="flex flex-wrap items-center justify-end gap-1.5">
-              {!u.isLoggedIn && (<>
-                <button onClick={openLogin} class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg">{t("header.login")}</button>
-                <button onClick={openRegister} class="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-sm font-bold transition-colors">{t("header.register")}</button>
-                <button onClick={openAdminLogin} class="w-10 h-10 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg" aria-label="Admin"><Icon name="shield-alt" /></button>
-              </>)}
-              {u.isLoggedIn && u.role === "admin" && (<>
-                <a href="/admin#mail" class="relative w-10 h-10 flex items-center justify-center bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full transition-colors shadow-lg"><Icon name="bell" /></a>
-                <span class="px-5 py-2.5 bg-black text-amber-300 border border-amber-500/60 rounded-full text-sm font-bold">{t("header.admin_greeting")}{u.name}</span>
-                <a href="/public" class="px-5 py-2.5 bg-black hover:bg-zinc-800 text-white border border-white/60 rounded-full text-sm font-bold transition-colors"><Icon name="globe" class="mr-1" /> {t("header.public")}</a>
-                <button onClick={() => { setShowAiCopilot(true); setMenuOpen(false); }} class="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white border border-violet-300/40 rounded-full text-sm font-bold transition-colors shadow-lg"><Icon name="robot" class="mr-1" /> {t("header.ai_hr")}</button>
-                <a href="/admin" class="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg"><Icon name="cogs" class="mr-1" /> {t("header.admin")}</a>
-                <button onClick={handleLogout} class="px-5 py-2.5 bg-black text-white border border-white/20 hover:bg-white/10 rounded-full text-sm font-bold transition-colors"><Icon name="sign-out-alt" class="mr-1" /> {t("header.logout")}</button>
-              </>)}
-              {u.isLoggedIn && u.role === "kandidat" && (<>
-                <span class="px-5 py-2.5 bg-black text-emerald-300 border border-emerald-500/60 rounded-full text-sm font-bold">{u.name}</span>
-                <a href="/candidate" class="px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg"><Icon name="id-card" class="mr-1" /> {t("header.dashboard")}</a>
-                <button onClick={handleLogout} class="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold transition-colors shadow-lg"><Icon name="sign-out-alt" class="mr-1" /> {t("header.logout")}</button>
-              </>)}
-            </div>
-          </div>
-        </div>
           </div>
       </header>}
 
-      {menuOpen && <div class="fixed inset-0 u-modal-shell bg-black/70" style={{ zIndex: Z_INDEX.OVERLAY }} onClick={() => setMenuOpen(false)}></div>}
+      {/* Scrim only, and deliberately presentational. It is a pointer-only
+          convenience: the drawer carries its own labelled close button and the
+          hamburger above toggles, so nothing is lost by keeping it out of the
+          a11y tree. Left as a bare clickable div it measured as a nameless
+          `u-modal-shell` overlay — indistinguishable, to a screen reader, from
+          the real modals beside it (§25). */}
+      {menuOpen && <div aria-hidden="true" class="u-viewport-fixed u-modal-shell bg-black/70" style={{ zIndex: Z_INDEX.OVERLAY }} onClick={() => setMenuOpen(false)}></div>}
       
-      {/* ─── Mobile Nav ─── */}
-      <nav class={"fixed top-0 right-0 h-full w-72 bg-slate-900 border-l border-slate-700 shadow-2xl flex flex-col transition-transform duration-300 transform " + (menuOpen ? "translate-x-0" : "translate-x-full")} style={{ zIndex: Z_INDEX.NAV }}>
+      {/* ─── Drawer (mobile + desktop) ───
+          Same drawer on both breakpoints so the user gets one predictable
+          menu. Width is 18rem on phones (full coverage) and 24rem on
+          desktop (roomier labels, scrollable).
+
+          `u-viewport-fixed--right` rather than `fixed top-0 right-0 h-full`:
+          with `scrollbar-gutter: stable` on <html>, a plain `right: 0` on a
+          fixed element is resolved against the initial containing block,
+          which EXCLUDES the reserved gutter — so on desktop the drawer
+          stopped 15px short of the screen edge (measured: innerWidth 1280,
+          nav.right 1265). The utility pins it to the physical viewport.
+          See layout.css §3b for the measurement and why the gutter itself
+          is not removed. */}
+      <nav ref={drawerRef} class={"u-viewport-fixed--right w-72 md:w-96 bg-slate-900 border-l border-slate-700 shadow-2xl flex flex-col transition-transform duration-300 transform " + (menuOpen ? "translate-x-0" : "translate-x-full")} style={{ zIndex: Z_INDEX.NAV }} aria-label="Primary navigation">
         <div class="flex items-center justify-between p-4 border-b border-slate-700">
           <span class="text-xs font-bold text-slate-500 uppercase tracking-widest"><Icon name="bars" class="mr-2 text-sky-400" /> {t("ui.menu")}</span>
-          <button onClick={toggleMenu} class="text-slate-400 hover:text-white p-1 transition" aria-label="Close"><Icon name="times" class="text-xl" /></button>
+          <button onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white transition" aria-label="Close"><Icon name="times" class="text-xl" /></button>
         </div>
+        {/* User identity strip — sits above the action list so the drawer
+            answers "who am I?" before the buttons do. Hidden when logged
+            out so the Login/Register block stays the first thing. */}
+        {u.isLoggedIn && (
+          <div class="px-4 py-3 border-b border-slate-700 bg-slate-800/40">
+            <div class="text-[10px] uppercase tracking-widest text-slate-500 mb-1">{u.role === "admin" ? t("header.admin") : t("header.dashboard")}</div>
+            <div class={"text-base font-bold " + (u.role === "admin" ? "text-amber-300" : "text-emerald-300")}>{u.name}</div>
+          </div>
+        )}
         <div class="flex-1 u-scroll-area p-4 space-y-3">
           <div class="space-y-3 pb-3 mb-3 border-b border-slate-700">
             <button onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>

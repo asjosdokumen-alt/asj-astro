@@ -466,8 +466,9 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
             {/* 7. Catatan Internal & External */}
             <div class="mb-4 space-y-3">
               <div>
-                <label class="text-xs font-bold text-red-400 uppercase mb-1 block">{t('ui.note_internal')}</label>
+                <label class="text-xs font-bold text-red-400 uppercase mb-1 block" for="cpm-note-int">{t('ui.note_internal')}</label>
                 <textarea
+                  id="cpm-note-int"
                   value={catatanInternal}
                   onInput={(e) => setCatatanInternal((e.target as HTMLTextAreaElement).value)}
                   placeholder={t('ui.cv_note_int_ph')}
@@ -476,8 +477,9 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                 />
               </div>
               <div>
-                <label class="text-xs font-bold text-sky-400 uppercase mb-1 block">{t('ui.note_external')}</label>
+                <label class="text-xs font-bold text-sky-400 uppercase mb-1 block" for="cpm-note-ext">{t('ui.note_external')}</label>
                 <textarea
+                  id="cpm-note-ext"
                   value={catatanExternal}
                   onInput={(e) => setCatatanExternal((e.target as HTMLTextAreaElement).value)}
                   placeholder={t('ui.cv_note_ext_ph')}

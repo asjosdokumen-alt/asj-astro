@@ -8,9 +8,16 @@
  * menang di komponen kalau ada — mapper ini dipakai untuk data server.
  */
 
-export interface PrefillEdu { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; alamat: string; }
-export interface PrefillJob { perusahaan: string; jabatan: string; thnAwal: string; thnAkhir: string; gaji: string; alasan: string; }
-export interface PrefillFam { nama: string; hubungan: string; usia: string; pekerjaan: string; }
+/* C09 dropdown (2026-09-14): `*Manual` ditambahkan supaya bentuk record yang
+   keluar dari prefill sama persis dengan state MasterFullForm. Nilainya selalu
+   kosong di sini: prefill memasukkan nilai yang tersimpan ke field utama, dan
+   `selectState()` di komponen yang memutuskan apakah nilai itu cocok daftar
+   (→ select) atau tidak (→ select parkir di `__LAINNYA__` + teks di kotak
+   manual). Tanpa field ini, TypeScript menolak karena state mengharapkannya
+   dan nilai lama yang tidak ada di daftar akan tampak hilang. */
+export interface PrefillEdu { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; jurusanManual: string; alamat: string; }
+export interface PrefillJob { perusahaan: string; jabatan: string; jabatanManual: string; thnAwal: string; thnAkhir: string; gaji: string; alasan: string; }
+export interface PrefillFam { nama: string; hubungan: string; usia: string; pekerjaan: string; pekerjaanManual: string; }
 export interface PrefillKenalan { nama: string; usia: string; hubungan: string; pekerjaan: string; alamat: string; }
 
 export interface MasterFormPrefill {
@@ -26,9 +33,9 @@ export interface MasterFormPrefill {
 
 const s = (v: unknown): string => (v === undefined || v === null ? '' : String(v));
 
-const emptyEdu: PrefillEdu = { jenjang: '', nama: '', thnAwal: '', thnAkhir: '', jurusan: '', alamat: '' };
-const emptyJob: PrefillJob = { perusahaan: '', jabatan: '', thnAwal: '', thnAkhir: '', gaji: '', alasan: '' };
-const emptyFam: PrefillFam = { nama: '', hubungan: '', usia: '', pekerjaan: '' };
+const emptyEdu: PrefillEdu = { jenjang: '', nama: '', thnAwal: '', thnAkhir: '', jurusan: '', jurusanManual: '', alamat: '' };
+const emptyJob: PrefillJob = { perusahaan: '', jabatan: '', jabatanManual: '', thnAwal: '', thnAkhir: '', gaji: '', alasan: '' };
+const emptyFam: PrefillFam = { nama: '', hubungan: '', usia: '', pekerjaan: '', pekerjaanManual: '' };
 
 export function mapMasterNestedToForm(n: any): MasterFormPrefill {
   const id = (n && n.identitas) || {};
@@ -64,15 +71,15 @@ export function mapMasterNestedToForm(n: any): MasterFormPrefill {
   };
   const eduList: PrefillEdu[] = (Array.isArray(n?.pendidikan) ? n.pendidikan : []).slice(0, 5).map((p: any) => ({
     jenjang: s(p.tingkat), nama: s(p.sekolah || p.nama_sekolah), thnAwal: s(p.tahun_masuk || p.masuk),
-    thnAkhir: s(p.tahun_lulus || p.lulus), jurusan: s(p.jurusan || p.jurusan_id), alamat: '',
+    thnAkhir: s(p.tahun_lulus || p.lulus), jurusan: s(p.jurusan || p.jurusan_id), jurusanManual: '', alamat: '',
   }));
   const jobList: PrefillJob[] = (Array.isArray(n?.pekerjaan) ? n.pekerjaan : []).slice(0, 3).map((j: any) => ({
-    perusahaan: s(j.perusahaan || j.nama_perusahaan), jabatan: s(j.jabatan),
+    perusahaan: s(j.perusahaan || j.nama_perusahaan), jabatan: s(j.jabatan), jabatanManual: '',
     thnAwal: s(j.tahun_masuk || j.masuk), thnAkhir: s(j.tahun_keluar || j.keluar),
     gaji: s(j.gaji), alasan: '',
   }));
   const famList: PrefillFam[] = (Array.isArray(n?.keluarga) ? n.keluarga : []).slice(0, 5).map((k: any) => ({
-    nama: s(k.nama), hubungan: s(k.hubungan), usia: s(k.usia || k.umur), pekerjaan: s(k.pekerjaan),
+    nama: s(k.nama), hubungan: s(k.hubungan), usia: s(k.usia || k.umur), pekerjaan: s(k.pekerjaan), pekerjaanManual: '',
   }));
   return {
     data,

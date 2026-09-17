@@ -178,7 +178,7 @@ export default function ShareView() {
   return (
     <div class="min-h-screen bg-slate-950 pt-[42px] overflow-x-hidden text-slate-100 relative selection:bg-pink-500/30">
       {/* Ambient BG */}
-      <div class="fixed inset-0 u-modal-shell pointer-events-none z-0 overflow-hidden">
+      <div aria-hidden="true" class="fixed inset-0 u-modal-shell pointer-events-none z-0 overflow-hidden">
         <div class="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-pink-600/20 rounded-full blur-[120px]"></div>
         <div class="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-rose-600/10 rounded-full blur-[130px]"></div>
       </div>
@@ -189,7 +189,11 @@ export default function ShareView() {
           <div class="flex items-center gap-3 md:gap-4 min-w-0">
             <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_asj.png" alt="ASJ Logo" class="w-10 h-10 md:w-14 md:h-14 object-contain" />
             <div class="min-w-0">
-              <h1 class="text-sm sm:text-lg md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-200 to-white leading-tight truncate">PT AMANAH SAKURA JAPAN</h1>
+              {/* h2, not h1: the page h1 is the FormToolbar title ("Share Loker").
+                  This brand heading was the page's own h1, so promoting the
+                  toolbar title to h1 (see FormToolbar) would have given /share
+                  TWO h1s — measured 2026-09-14. */}
+              <h2 class="text-sm sm:text-lg md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-200 to-white leading-tight truncate">PT AMANAH SAKURA JAPAN</h2>
               <p class="text-[9px] md:text-xs font-bold text-pink-300 tracking-[0.2em] uppercase mt-0.5">
                 <Icon name="lock" class="mr-1 text-[8px] opacity-70" /> {t('share.secure_title')}
               </p>

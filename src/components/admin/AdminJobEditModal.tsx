@@ -220,16 +220,18 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
 
           <div class="u-grid-auto u-grid-auto--form gap-3">
             <div class="md:col-span-2">
-              <label class={lc}>{t('admin.form_job_name')}</label>
+              <label class={lc} for="ef-pekerjaan">{t('admin.form_job_name')}</label>
               <input
+                id="ef-pekerjaan"
                 value={form.pekerjaan}
                 onInput={(e) => upd('pekerjaan', (e.target as HTMLInputElement).value)}
                 class={ic}
               />
             </div>
             <div>
-              <label class={lc}>{t('admin.form_category')}</label>
+              <label class={lc} for="ef-kategori">{t('admin.form_category')}</label>
               <select
+                id="ef-kategori"
                 value={form.kategori}
                 onChange={(e) => upd('kategori', (e.target as HTMLSelectElement).value)}
                 class={ic}
@@ -241,8 +243,9 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
               </select>
             </div>
             <div>
-              <label class={lc}>{t('admin.form_gender')}</label>
+              <label class={lc} for="ef-gender">{t('admin.form_gender')}</label>
               <select
+                id="ef-gender"
                 value={form.gender}
                 onChange={(e) => upd('gender', (e.target as HTMLSelectElement).value)}
                 class={ic}
@@ -254,8 +257,9 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
               </select>
             </div>
             <div class="md:col-span-2">
-              <label class={lc}>{t('admin.form_location_short')}</label>
+              <label class={lc} for="ef-lokasi">{t('admin.form_location_short')}</label>
               <input
+                id="ef-lokasi"
                 value={form.lokasi}
                 onInput={(e) => upd('lokasi', (e.target as HTMLInputElement).value)}
                 list="ef-lokasi-list"
@@ -266,8 +270,9 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
               </datalist>
             </div>
             <div>
-              <label class={lc}>{t('admin.form_tsk')}</label>
+              <label class={lc} for="ef-tsk">{t('admin.form_tsk')}</label>
               <select
+                id="ef-tsk"
                 value={form.tsk}
                 onChange={(e) => upd('tsk', (e.target as HTMLSelectElement).value)}
                 class={ic}
@@ -279,8 +284,9 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
               </select>
             </div>
             <div>
-              <label class={lc}>{t('admin.form_quota_short')}</label>
+              <label class={lc} for="ef-kuota">{t('admin.form_quota_short')}</label>
               <input
+                id="ef-kuota"
                 value={form.kuota}
                 onInput={(e) => upd('kuota', (e.target as HTMLInputElement).value)}
                 class={ic}
@@ -288,8 +294,9 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
               />
             </div>
             <div class="md:col-span-2">
-              <label class={lc}>{t('admin.form_req_short')}</label>
+              <label class={lc} for="ef-syarat">{t('admin.form_req_short')}</label>
               <textarea
+                id="ef-syarat"
                 value={form.syarat}
                 onInput={(e) => upd('syarat', (e.target as HTMLTextAreaElement).value)}
                 class={ic + ' resize-none h-16'}
@@ -297,8 +304,9 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
               />
             </div>
             <div class="md:col-span-2">
-              <label class={lc}>{t('admin.form_note_short')}</label>
+              <label class={lc} for="ef-keterangan">{t('admin.form_note_short')}</label>
               <textarea
+                id="ef-keterangan"
                 value={form.keterangan}
                 onInput={(e) => upd('keterangan', (e.target as HTMLTextAreaElement).value)}
                 class={ic + ' resize-none h-16'}
@@ -309,22 +317,24 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
 
           {/* Upload template CV / pamflet — parity ef-template/ef-pamflet. */}
           <div>
-            <label class="block text-xs font-bold text-sky-400 mb-1 uppercase">
+            <label class="block text-xs font-bold text-sky-400 mb-1 uppercase" for="ef-template">
               <Icon name="file-excel" class="mr-1" /> {t('ui.update_cv_template')}
             </label>
             <input
               type="file"
+              id="ef-template"
               accept=".pdf,.xls,.xlsx,.doc,.docx"
               onChange={(e) => setTemplateFile((e.target as HTMLInputElement).files?.[0] || null)}
               class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-sky-900/50 file:text-sky-400 hover:file:bg-sky-900/80 cursor-pointer"
             />
           </div>
           <div>
-            <label class="block text-xs font-bold text-pink-400 mb-1 uppercase">
+            <label class="block text-xs font-bold text-pink-400 mb-1 uppercase" for="ef-pamflet">
               <Icon name="image" class="mr-1" /> {t('ui.update_pamflet')}
             </label>
             <input
               type="file"
+              id="ef-pamflet"
               accept="image/*"
               onChange={(e) => setPamfletFile((e.target as HTMLInputElement).files?.[0] || null)}
               class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-pink-900/50 file:text-pink-400 hover:file:bg-pink-900/80 cursor-pointer"
@@ -334,10 +344,11 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
           {/* Total / Rincian (A12) */}
           <div class="u-grid-auto u-grid-auto--form gap-3">
             <div>
-              <label class="block text-xs font-bold text-emerald-400 mb-1 uppercase">
+              <label class="block text-xs font-bold text-emerald-400 mb-1 uppercase" for="ef-total-biaya">
                 <Icon name="wallet" class="mr-1" /> {t('ui.total_cost')}
               </label>
               <input
+                id="ef-total-biaya"
                 value={form.totalBiaya}
                 onInput={(e) => upd('totalBiaya', (e.target as HTMLInputElement).value)}
                 class={ic}
@@ -345,9 +356,9 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
               />
             </div>
             <div>
-              <label class="block text-xs font-bold text-emerald-400 mb-1 uppercase">
+              <div class="block text-xs font-bold text-emerald-400 mb-1 uppercase">
                 <Icon name="list-check" class="mr-1" /> {t('ui.rincian_biaya')}
-              </label>
+              </div>
               <button
                 type="button"
                 onClick={() => setRbOpen(true)}

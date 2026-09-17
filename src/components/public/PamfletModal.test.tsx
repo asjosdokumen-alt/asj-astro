@@ -33,7 +33,7 @@ describe('PamfletModal (B05)', () => {
 
   it('shows the full image with legacy geometry and keyed close aria', () => {
     render(<PamfletModal isOpen={true} url={URL} onClose={vi.fn()} />);
-    const img = screen.getByAltText('Pamflet') as HTMLImageElement;
+    const img = screen.getByAltText('ui.alt_pamflet') as HTMLImageElement;
     expect(img.src).toBe(URL);
     expect(img.style.maxWidth).toBe('700px');
     expect(img.style.maxHeight).toBe('90vh');
@@ -41,6 +41,20 @@ describe('PamfletModal (B05)', () => {
     // hard-coded English is gone — the label comes from the dict (key in tests)
     expect(screen.queryByLabelText('Close')).toBeNull();
     expect(screen.getByLabelText('public.close')).toBeTruthy();
+  });
+
+  it('names the dialog with the pamflet key (this overlay has no heading)', () => {
+    // useOverlay normally names a dialog after its first heading. This overlay
+    // is an image zoom with NO heading, so it is the one call site that must
+    // pass `label` — otherwise the dialog renders with role + aria-modal and
+    // no name at all. Pinned here because the e2e guard reaches it only when
+    // the first job happens to carry a pamflet (§25).
+    const { container } = render(<PamfletModal isOpen={true} url={URL} onClose={vi.fn()} />);
+    const shell = container.firstChild as HTMLElement;
+    expect(shell.getAttribute('role')).toBe('dialog');
+    expect(shell.getAttribute('aria-modal')).toBe('true');
+    expect(shell.getAttribute('aria-label')).toBe('ui.alt_pamflet');
+    expect(shell.getAttribute('aria-labelledby')).toBeNull();
   });
 
   it('closes via the × button (tutupPamflet parity)', () => {
@@ -59,11 +73,11 @@ describe('PamfletModal (B05)', () => {
 
   it('fades the image in once loaded (no broken-opacity hang)', async () => {
     render(<PamfletModal isOpen={true} url={URL} onClose={vi.fn()} />);
-    const img = screen.getByAltText('Pamflet') as HTMLImageElement;
+    const img = screen.getByAltText('ui.alt_pamflet') as HTMLImageElement;
     expect(img.style.opacity).toBe('0');
     fireEvent.load(img);
     await waitFor(() => {
-      expect((screen.getByAltText('Pamflet') as HTMLImageElement).style.opacity).toBe('1');
+      expect((screen.getByAltText('ui.alt_pamflet') as HTMLImageElement).style.opacity).toBe('1');
     });
   });
 });
@@ -71,22 +85,22 @@ describe('PamfletModal (B05)', () => {
 describe('PamfletModal loading (no infinite spinner)', () => {
   it('stops spinning when the image errors (no dead onError path)', async () => {
     const { container } = render(<PamfletModal isOpen={true} url={URL} onClose={vi.fn()} />);
-    const img = screen.getByAltText('Pamflet') as HTMLImageElement;
+    const img = screen.getByAltText('ui.alt_pamflet') as HTMLImageElement;
     fireEvent.error(img);
     await waitFor(() => {
-      expect((screen.getByAltText('Pamflet') as HTMLImageElement).style.opacity).toBe('1');
+      expect((screen.getByAltText('ui.alt_pamflet') as HTMLImageElement).style.opacity).toBe('1');
     });
     expect(container.querySelector('[class*="animate-spin"]')).toBeNull();
   });
 
   it('shows a cached image without waiting for onLoad (complete reconcile)', async () => {
     const { rerender, container } = render(<PamfletModal isOpen={true} url={URL} onClose={vi.fn()} />);
-    const img = screen.getByAltText('Pamflet') as HTMLImageElement;
+    const img = screen.getByAltText('ui.alt_pamflet') as HTMLImageElement;
     // Simulate a fully-cached image that completed before Preact attached onLoad.
     Object.defineProperty(img, 'complete', { value: true, configurable: true });
     rerender(<PamfletModal isOpen={true} url={URL + '#cached'} onClose={vi.fn()} />);
     await waitFor(() => {
-      expect((screen.getByAltText('Pamflet') as HTMLImageElement).style.opacity).toBe('1');
+      expect((screen.getByAltText('ui.alt_pamflet') as HTMLImageElement).style.opacity).toBe('1');
     });
     expect(container.querySelector('[class*="animate-spin"]')).toBeNull();
   });

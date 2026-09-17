@@ -202,3 +202,92 @@ describe('AdminJobEditModal (A17)', () => {
     expect(screen.getByText('TG123ASJ')).toBeTruthy();
   });
 });
+
+// ==========================================
+// Label/control wiring (a11y, 2026-09-16)
+//
+// The 12 `a11y/noLabelWithoutControl` diagnostics in this modal were paid down in
+// one pass, in two classes:
+//
+//   * 11 ordinary control labels -> `for=` + `id=` (prefix `ef-`)
+//   *  1 `<label>` sitting above a `<button>` ("Rincian Biaya" + "Buka editor")
+//      -> the ELEMENT was wrong. `for=` can never name a `<button>`, so it became
+//      a `<div>`.
+//
+// The tests above assert that label TEXT is rendered, which is not the same thing:
+// a label whose `for=` points nowhere still renders its text, still saves, still
+// toasts. These assertions pin the association itself.
+// ==========================================
+describe('AdminJobEditModal — label/control wiring', () => {
+  beforeEach(() => {
+    mockGet.mockReset();
+    mockGet.mockResolvedValue(DROPDOWNS);
+  });
+  afterEach(() => cleanup());
+
+  it('every <label for=...> resolves to an element that exists', async () => {
+    renderModal();
+    await screen.findByDisplayValue('Perawat Lansia');
+
+    const dangling: string[] = [];
+    for (const label of document.querySelectorAll('label')) {
+      const target = label.getAttribute('for');
+      if (!target) continue;
+      if (!document.getElementById(target)) dangling.push(target);
+    }
+
+    expect(dangling).toEqual([]);
+  });
+
+  it('no label is left with neither for= nor a wrapped control', async () => {
+    renderModal();
+    await screen.findByDisplayValue('Perawat Lansia');
+
+    // This is ALSO what catches the `<label>` above a `<button>`: it has no `for=`
+    // and wraps no control, so it can never name anything.
+    const orphans = [...document.querySelectorAll('label')]
+      .filter((l) => !l.getAttribute('for') && !l.querySelector('input, select, textarea'))
+      .map((l) => (l.textContent || '').trim().slice(0, 40));
+
+    expect(orphans).toEqual([]);
+  });
+
+  it('the controls the labels name are the ones the modal actually binds', async () => {
+    renderModal();
+    await screen.findByDisplayValue('Perawat Lansia');
+
+    for (const [id, tag] of [
+      ['ef-pekerjaan', 'INPUT'],
+      ['ef-kategori', 'SELECT'],
+      ['ef-gender', 'SELECT'],
+      ['ef-lokasi', 'INPUT'],
+      ['ef-tsk', 'SELECT'],
+      ['ef-kuota', 'INPUT'],
+      ['ef-syarat', 'TEXTAREA'],
+      ['ef-keterangan', 'TEXTAREA'],
+      ['ef-template', 'INPUT'],
+      ['ef-pamflet', 'INPUT'],
+      ['ef-total-biaya', 'INPUT'],
+    ] as const) {
+      const el = document.getElementById(id);
+      expect(el, `#${id} does not exist`).toBeTruthy();
+      expect(el?.tagName).toBe(tag);
+    }
+
+    // The two uploads must stay file inputs.
+    expect((document.getElementById('ef-template') as HTMLInputElement).type).toBe('file');
+    expect((document.getElementById('ef-pamflet') as HTMLInputElement).type).toBe('file');
+  });
+
+  it('the location input keeps a datalist that exists', async () => {
+    renderModal();
+    await screen.findByDisplayValue('Perawat Lansia');
+
+    // `list=` points at a datalist BY ID. A dangling `list=` renders fine and
+    // silently drops every suggestion — the same drift class as `for=`.
+    const input = document.getElementById('ef-lokasi') as HTMLInputElement;
+    const listId = input.getAttribute('list');
+    expect(listId).toBeTruthy();
+    expect(document.getElementById(listId as string)).toBeTruthy();
+  });
+});

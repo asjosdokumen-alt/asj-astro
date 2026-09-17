@@ -1,5 +1,5 @@
 ﻿import type { CandidateData } from './types';
-import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat } from '../helpers_cv';
+import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, normalizeRiwayatFor, sortEdu } from '../helpers_cv';
 
 const KEYOF: Record<string, (e: Record<string, unknown>) => string> = {
   pendidikan: (e) => (String(e.tingkat || '') + String(e.sekolah || e.sekolah_id || e.nama_sekolah || '')).toLowerCase().replace(/[^a-z0-9]/g, ''),
@@ -15,9 +15,12 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
   } catch { /* ignore */ }
 
   const v = makeV(row, ai);
-  const getArr = (key: string) => mergeArrRiwayat(getPath(row, key), getPath(ai, key), KEYOF[key]);
+  const getArr = (key: string) => mergeArrRiwayat(getPath(row, key), getPath(ai, key), KEYOF[key], normalizeRiwayatFor(key));
 
-  const pendidikan = getArr('pendidikan');
+  // Education is sorted here, at the single place both the array is merged, so
+  // every renderer (excel/pdf/docx) inherits the baku SD → SMP → SMA order
+  // instead of each one re-deriving it. pekerjaan/keluarga keep source order.
+  const pendidikan = sortEdu(getArr('pendidikan'));
   const pekerjaan = getArr('pekerjaan');
   const keluarga = getArr('keluarga');
 

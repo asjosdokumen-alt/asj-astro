@@ -34,7 +34,16 @@ export default function PamfletModal({ isOpen, url, onClose }: Props) {
     const el = imgRef.current;
     if (el && el.complete) setLoaded(true);
   }, [isOpen, url]);
-const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
+/* `label` is required here and nowhere else among the 20 useOverlay call sites:
+   this is the only overlay with NO heading, so the hook's usual "name the dialog
+   after its first heading" has nothing to point `aria-labelledby` at and the
+   zoom dialog would ship unnamed. Measured §25 — a stacked-dialog check reported
+   2 dialogs carrying 1 title id, which is how the gap was found. */
+const { containerRef, onBackdropClick } = useOverlay({
+  open: isOpen,
+  onClose,
+  label: t("ui.alt_pamflet"),
+});
 
   if (!isOpen || !url || url === "-") return null;
 
@@ -55,7 +64,7 @@ const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
       h("img", {
         src: url,
         ref: imgRef,
-        alt: "Pamflet",
+        alt: t("ui.alt_pamflet"),
         onLoad: () => setLoaded(true),
         onError: () => setLoaded(true),
         class: "bg-slate-900 border border-slate-700 rounded-2xl",

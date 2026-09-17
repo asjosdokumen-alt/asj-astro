@@ -133,6 +133,24 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
     expect(payload.job).toBe("TG123ASJ");
     // Draft dibersihkan setelah submit sukses
     expect(localStorage.getItem("asj_apply_TG123ASJ")).toBeNull();
+
+    // §4.1(a): the success screen is a TERMINAL dialog — role + trap so the
+    // "ke Portal" CTA is reachable, and a name RESOLVED from its own <h2>
+    // (asserted through the id, because a dangling aria-labelledby yields no
+    // name and would read as green on a presence-only check).
+    //
+    // The role is written by the hook's passive effect, so it lands one flush
+    // after the node appears — hence waitFor rather than a bare read.
+    await waitFor(() => {
+      const shell = document.querySelector(".u-modal-shell") as HTMLElement | null;
+      if (!shell) throw new Error("the success screen is not a .u-modal-shell");
+      expect(shell.getAttribute("role")).toBe("dialog");
+      expect(shell.getAttribute("aria-modal")).toBe("true");
+      const lb = shell.getAttribute("aria-labelledby");
+      expect(lb).toMatch(/^asj-overlay-title-\d+$/);
+      const heading = lb ? document.getElementById(lb) : null;
+      expect((heading?.textContent || "").trim()).toBe("apply.success_title");
+    });
   });
 });
 

@@ -99,6 +99,10 @@ const TOKEN_CACHE_TTL_MS = 60_000; // 60s — shorter than session lifetime
 // refuse to cache its now-stale result.
 let writeGeneration = 0;
 
+// P8 fix: upper bound on every request. See the comment at the fetch below —
+// without this, a stalled connection held the caller's spinner forever.
+const REQUEST_TIMEOUT_MS = 20_000;
+
 interface ApiResponse<T = any> {
   success: boolean;
   sessionInvalid?: boolean;
@@ -135,9 +139,9 @@ async function getFreshToken(): Promise<string> {
 export async function apiClient<T = ApiResponse>(
   action: string,
   args: unknown[] = [],
-  options: { requireAuth?: boolean } = {}
+  options: { requireAuth?: boolean; onSessionInvalid?: 'logout' | 'throw' } = {}
 ): Promise<T> {
-  const { requireAuth = true } = options;
+  const { requireAuth = true, onSessionInvalid = 'logout' } = options;
 
   // PR3: identity flip since the last call (logout/login) → clear stale reads.
   invalidateOnIdentityFlip();
@@ -162,9 +166,11 @@ export async function apiClient<T = ApiResponse>(
   const sessionToken = await getFreshToken();
 
   if (requireAuth && (!isLoggedIn || !sessionToken)) {
-    showToast('Sesi tidak valid. Silakan login kembali.', 'error');
-    logout();
-    window.location.href = '/';
+    if (onSessionInvalid === 'logout') {
+      showToast('Sesi tidak valid. Silakan login kembali.', 'error');
+      logout();
+      window.location.href = '/';
+    }
     throw new Error('No valid session');
   }
 
@@ -175,12 +181,33 @@ export async function apiClient<T = ApiResponse>(
 
   const body = JSON.stringify({ action, payload: args, sessionToken });
 
+  // A fresh controller per call: a module-level one would be shared across
+  // concurrent requests, so one timeout would abort every other in-flight call.
+  const controller = new AbortController();
+
+  // P8 fix — the request had NO upper bound, so a stalled connection left the
+  // caller's spinner turning forever with no error and no way out. That is the
+  // "menu Tambah Job loading terus" report: TabTambah gates its whole form on
+  // `loading`, which only clears in `finally` — correct, but `finally` never
+  // runs while `fetch` is still pending.
+  //
+  // The legacy api-client.ts this was ported from had the same hole (three raw
+  // `fetch` calls, zero AbortController), so this is inherited, not introduced.
+  // Absence of a timer is invisible in code review precisely because it is an
+  // absence — which is why it survived the port.
+  //
+  // 20s is chosen against real behaviour, not taste: the measured p100 for
+  // getAppData is ~1s, and Netlify Functions default to a 10s synchronous
+  // limit, so a request still open at 20s is dead, not slow.
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const opts = (signal: AbortSignal) => ({ method: 'POST', headers, body, signal });
+
   try {
-    let res = await fetch(endpoint, { method: 'POST', headers, body });
+    let res = await fetch(endpoint, opts(controller.signal));
 
     // If surface endpoint returns 404, retry with bridge-links fallback
     if (res.status === 404 && endpoint !== FALLBACK_ENDPOINT) {
-      res = await fetch(FALLBACK_ENDPOINT, { method: 'POST', headers, body });
+      res = await fetch(FALLBACK_ENDPOINT, opts(controller.signal));
     }
 
     if (!res.ok) {
@@ -190,9 +217,15 @@ export async function apiClient<T = ApiResponse>(
     const data: ApiResponse<T> = await res.json();
 
     if (data.sessionInvalid) {
-      showToast('Sesi expired. Silakan login kembali.', 'error');
-      logout();
-      window.location.href = '/';
+      // `onSessionInvalid: 'throw'` — pembaca yang sudah punya gerbang sendiri
+      // (mis. panel admin) menangani sesi mati secara lokal; hanya `throw` yang
+      // terjadi, tanpa toast/logout/redirect global. Jawaban sessionInvalid juga
+      // TIDAK di-cache (throw terjadi sebelum setCache) — memang benar begitu.
+      if (onSessionInvalid === 'logout') {
+        showToast('Sesi expired. Silakan login kembali.', 'error');
+        logout();
+        window.location.href = '/';
+      }
       throw new Error('Session expired');
     }
 
@@ -204,10 +237,23 @@ export async function apiClient<T = ApiResponse>(
     }
     return data as T;
   } catch (err: unknown) {
+    // An abort surfaces as a DOMException named 'AbortError' with a message the
+    // user cannot act on ("The operation was aborted"). Name the real cause so
+    // the toast says what happened rather than leaking a browser string.
+    if (err instanceof Error && err.name === 'AbortError') {
+      const msg = `Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s (${action})`;
+      showToast('Network error: ' + msg, 'error');
+      throw new Error(msg);
+    }
     const message = err instanceof Error ? err.message : String(err);
     if (message === 'No valid session' || message === 'Session expired') throw err;
     showToast('Network error: ' + (message || 'Unknown'), 'error');
     throw err;
+  } finally {
+    // Always clear, on every path — success, HTTP error, abort and rethrow.
+    // Without this the timer outlives the request and can abort a LATER call
+    // that reused the module-level controller identity by accident.
+    clearTimeout(timeoutId);
   }
 }
 
@@ -219,8 +265,8 @@ export const api = {
   get(action: string, args: unknown[] = []) {
     return apiClient(action, args, { requireAuth: false });
   },
-  secure(action: string, args: unknown[] = []) {
-    return apiClient(action, args, { requireAuth: true });
+  secure(action: string, args: unknown[] = [], options: { onSessionInvalid?: 'logout' | 'throw' } = {}) {
+    return apiClient(action, args, { requireAuth: true, ...options });
   },
 };
 

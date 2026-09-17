@@ -55,9 +55,9 @@ describe('mapMasterNestedToForm — prefill MasterFullForm dari getDrafCvMaster'
 
   it('memetakan array riwayat (pendidikan/pekerjaan/keluarga)', () => {
     const p = mapMasterNestedToForm(NESTED);
-    expect(p.eduList).toEqual([{ jenjang: 'SMA', nama: 'SMAN 1', thnAwal: '2005', thnAkhir: '2008', jurusan: 'IPA', alamat: '' }]);
-    expect(p.jobList[0]).toEqual({ perusahaan: 'PT X', jabatan: 'STAFF', thnAwal: '2010', thnAkhir: '2015', gaji: '3jt', alasan: '' });
-    expect(p.famList[0]).toEqual({ nama: 'SITI', hubungan: 'ISTRI', usia: '30', pekerjaan: 'IRT' });
+    expect(p.eduList).toEqual([{ jenjang: 'SMA', nama: 'SMAN 1', thnAwal: '2005', thnAkhir: '2008', jurusan: 'IPA', jurusanManual: '', alamat: '' }]);
+    expect(p.jobList[0]).toEqual({ perusahaan: 'PT X', jabatan: 'STAFF', jabatanManual: '', thnAwal: '2010', thnAkhir: '2015', gaji: '3jt', alasan: '' });
+    expect(p.famList[0]).toEqual({ nama: 'SITI', hubungan: 'ISTRI', usia: '30', pekerjaan: 'IRT', pekerjaanManual: '' });
   });
 
   it('nested kosong → data kosong + satu baris default per list', () => {
@@ -79,7 +79,7 @@ describe('mapMasterNestedToForm — prefill MasterFullForm dari getDrafCvMaster'
 
   it('keluarga tanpa usia → usia kosong (prefill tidak mengarang angka)', () => {
     const p = mapMasterNestedToForm({ keluarga: [{ nama: 'A', hubungan: 'AYAH' }] });
-    expect(p.famList).toEqual([{ nama: 'A', hubungan: 'AYAH', usia: '', pekerjaan: '' }]);
+    expect(p.famList).toEqual([{ nama: 'A', hubungan: 'AYAH', usia: '', pekerjaan: '', pekerjaanManual: '' }]);
   });
 
   it('list melebihi kapasitas form dipotong (pendidikan max 5, pekerjaan max 3, keluarga max 5)', () => {

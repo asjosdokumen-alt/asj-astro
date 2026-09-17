@@ -156,3 +156,76 @@ describe('CvMiniModal (A09)', () => {
     await waitFor(() => expect(vi.mocked(showToast)).toHaveBeenCalledWith('Gagal simpan Master: X', 'error'));
   });
 });
+
+// ==========================================
+// Label/control wiring (a11y, 2026-09-16)
+//
+// The 8 `a11y/noLabelWithoutControl` diagnostics here were all ONE class —
+// ordinary control labels — so all 8 took the same fix: `for=` + `id=` (prefix
+// `cm-`). No group label and no element misuse in this file.
+//
+// The tests above drive the modal through its BEHAVIOUR (prefill, save payload,
+// photo key, error copy). None of them would notice a label whose `for=` points
+// nowhere: the modal still prefills, still saves, still toasts. These assertions
+// pin the association itself.
+// ==========================================
+describe('CvMiniModal — label/control wiring', () => {
+  afterEach(() => cleanup());
+
+  it('every <label for=...> resolves to an element that exists', () => {
+    render(<CvMiniModal onClose={() => {}} />);
+
+    const dangling: string[] = [];
+    for (const label of document.querySelectorAll('label')) {
+      const target = label.getAttribute('for');
+      if (!target) continue;
+      if (!document.getElementById(target)) dangling.push(target);
+    }
+
+    expect(dangling).toEqual([]);
+  });
+
+  it('no label is left with neither for= nor a wrapped control', () => {
+    render(<CvMiniModal onClose={() => {}} />);
+
+    const orphans = [...document.querySelectorAll('label')]
+      .filter((l) => !l.getAttribute('for') && !l.querySelector('input, select, textarea'))
+      .map((l) => (l.textContent || '').trim().slice(0, 40));
+
+    expect(orphans).toEqual([]);
+  });
+
+  it('the controls the labels name are the ones the modal actually binds', () => {
+    render(<CvMiniModal onClose={() => {}} />);
+
+    for (const [id, tag] of [
+      ['cm-gender', 'SELECT'],
+      ['cm-usia', 'INPUT'],
+      ['cm-tb', 'INPUT'],
+      ['cm-bb', 'INPUT'],
+      ['cm-pendidikan', 'SELECT'],
+      ['cm-jft', 'INPUT'],
+      ['cm-ssw', 'INPUT'],
+      ['cm-photo', 'INPUT'],
+    ] as const) {
+      const el = document.getElementById(id);
+      expect(el, `#${id} does not exist`).toBeTruthy();
+      expect(el?.tagName).toBe(tag);
+    }
+
+    // The photo field must stay a file input — a label pointing at a text input
+    // would still "resolve".
+    expect((document.getElementById('cm-photo') as HTMLInputElement).type).toBe('file');
+  });
+
+  it('the two selects the behaviour tests index BY POSITION are the labelled ones', () => {
+    render(<CvMiniModal onClose={() => {}} />);
+
+    // The tests above locate selects positionally (`selects()[0]` / `selects()[1]`).
+    // If a select is inserted before them those helpers silently target the wrong
+    // control and the assertions keep passing. This gives that coupling a name.
+    expect(document.getElementById('cm-gender')?.tagName).toBe('SELECT');
+    expect(document.getElementById('cm-pendidikan')?.tagName).toBe('SELECT');
+    expect(selects().length).toBe(2);
+  });
+});

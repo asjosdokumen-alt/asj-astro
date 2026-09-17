@@ -165,9 +165,9 @@ export default function AdminShareModal({ job, onClose }: Props) {
 
           {/* Share link */}
           <div>
-            <label class="text-[10px] font-bold text-sky-400 uppercase mb-1 block">{t('ui.share_link_view')}</label>
+            <label for="as-share-link" class="text-[10px] font-bold text-sky-400 uppercase mb-1 block">{t('ui.share_link_view')}</label>
             <div class="flex gap-2">
-              <input value={shareUrl} readonly placeholder={shareUrl ? '' : t('share.link_pending')} onClick={(e) => (e.target as HTMLInputElement).select()} class="flex-1 p-2 rounded-lg bg-black/60 border border-slate-700 text-[11px] text-sky-300 font-mono outline-none" />
+              <input id="as-share-link" value={shareUrl} readonly placeholder={shareUrl ? '' : t('share.link_pending')} onClick={(e) => (e.target as HTMLInputElement).select()} class="flex-1 p-2 rounded-lg bg-black/60 border border-slate-700 text-[11px] text-sky-300 font-mono outline-none" />
               <button onClick={copyLink} disabled={!shareUrl} class="px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"><Icon name="copy" class="mr-1" />{t('ui.share_copy_link')}</button>
               {shareUrl
                 ? <a href={shareUrl} target="_blank" rel="noopener" class="px-3 py-2 bg-sky-900/60 hover:bg-sky-800 border border-sky-700 text-sky-300 rounded-lg text-xs font-bold shrink-0 whitespace-nowrap transition flex items-center"><Icon name="external-link-alt" class="mr-1" />{t('ui.share_open_view')}</a>
@@ -177,7 +177,7 @@ export default function AdminShareModal({ job, onClose }: Props) {
 
           {/* Doc selection */}
           <div>
-            <label class="text-[10px] font-bold text-emerald-400 uppercase mb-1 block">{t('ui.share_card_title')}</label>
+            <div class="text-[10px] font-bold text-emerald-400 uppercase mb-1 block">{t('ui.share_card_title')}</div>
             <div class="flex flex-wrap gap-2 mb-1">
               {chips.map((key) => {
                 const isAll = key === 'ALL';
@@ -203,8 +203,8 @@ export default function AdminShareModal({ job, onClose }: Props) {
 
           {/* WA template */}
           <div>
-            <label class="text-[10px] font-bold text-amber-400 uppercase mb-1 block">{t('ui.share_template_label')}</label>
-            <textarea value={waPreview} readOnly rows={9} class="w-full p-3 rounded-lg bg-black/60 border border-slate-700 text-[11px] text-slate-200 font-mono outline-none resize-none" />
+            <label for="as-wa" class="text-[10px] font-bold text-amber-400 uppercase mb-1 block">{t('ui.share_template_label')}</label>
+            <textarea id="as-wa" value={waPreview} readOnly rows={9} class="w-full p-3 rounded-lg bg-black/60 border border-slate-700 text-[11px] text-slate-200 font-mono outline-none resize-none" />
             <button onClick={copyWA} class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold shadow text-xs transition"><Icon name="whatsapp" class="mr-1" />{t('ui.share_copas_wa')}</button>
           </div>
         </div>

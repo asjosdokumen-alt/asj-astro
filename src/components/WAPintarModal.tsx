@@ -64,16 +64,16 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
         <div class="space-y-4">
           {/* Candidate info */}
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1">{t('ui.kandidat_tujuan')}</label>
-            <input type="text" readonly
+            <label class="block text-[10px] font-bold text-slate-400 mb-1" for="wp-tujuan">{t('ui.kandidat_tujuan')}</label>
+            <input type="text" id="wp-tujuan" readonly
                    value={candidateName + ' (' + (candidateJob || 'Umum') + ')'}
                    class="w-full p-2.5 rounded-lg bg-black/40 border border-slate-700 text-emerald-300 text-sm font-bold outline-none cursor-not-allowed" />
           </div>
 
           {/* Template picker */}
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1">{t('ui.pilih_template_pesan')}</label>
-            <select value={selectedTemplate}
+            <label class="block text-[10px] font-bold text-slate-400 mb-1" for="wp-template">{t('ui.pilih_template_pesan')}</label>
+            <select id="wp-template" value={selectedTemplate}
                     onChange={e => handleTemplateSelect((e.target as HTMLSelectElement).value)}
                     class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-emerald-500 transition">
               <option value="">{t('ui.manual_or_template')}</option>
@@ -85,8 +85,8 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
 
           {/* Message textarea */}
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1">{t('ui.isi_pesan_custom')}</label>
-            <textarea rows={6} value={message}
+            <label class="block text-[10px] font-bold text-slate-400 mb-1" for="wp-pesan">{t('ui.isi_pesan_custom')}</label>
+            <textarea rows={6} id="wp-pesan" value={message}
                       onInput={e => setMessage((e.target as HTMLTextAreaElement).value)}
                       class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-emerald-500 transition leading-relaxed resize-none"
                       placeholder={t('ui.ketik_pesan_ph')}></textarea>

@@ -5,5 +5,7 @@ import FormToolbar from "../components/forms/FormToolbar";
 ---
 <BaseLayout title="ASJ MASTER PROFIL">
   <FormToolbar client:only="preact" titleKey="toolbar.master" />
-  <MasterFullForm client:only="preact" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[42px]">
+    <MasterFullForm client:only="preact" />
+  </main>
 </BaseLayout>

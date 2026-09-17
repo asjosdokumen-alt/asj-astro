@@ -56,6 +56,10 @@ const CATEGORY_KEYS: Array<[string, string]> = [
   ['PERAWATAN', 'jobcat.PERAWATAN'],
   ['MAKANAN', 'jobcat.MAKANAN'],
   ['TEKNIK', 'jobcat.TEKNIK'],
+  // "KAIGO" is a common Indonesian short-form for 介護; admin sometimes
+  // writes it instead of "PERAWATAN". Kept AFTER longer tokens so a
+  // hypothetical "KAIGO-EXTENDED" still wins for the longer match.
+  ['KAIGO', 'jobcat.PERAWATAN'],
 ];
 
 /** Translate a `kategori` value such as "🌾 PERTANIAN" → "農業" in JP mode. */

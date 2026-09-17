@@ -400,7 +400,11 @@ export default function SiswaBaruForm() {
             <div class="flex items-center gap-3">
               <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_asj.png" alt="ASJ Logo" class="h-10 object-contain" />
               <div>
-                <h1 class="text-sm md:text-lg font-black text-white">{t('siswa.form_title')}</h1>
+                {/* h2, not h1: the page h1 is the FormToolbar title. This panel
+                    heading was the page's ONLY h1, and because it lives inside a
+                    tab panel it is `display:none` on mobile — so at 390px the
+                    document had no h1 at all (measured §23). */}
+                <h2 class="text-sm md:text-lg font-black text-white">{t('siswa.form_title')}</h2>
                 <p class="text-[10px] text-slate-400">{t('siswa.form_hint')}</p>
               </div>
             </div>
@@ -415,14 +419,23 @@ export default function SiswaBaruForm() {
             </div>
           )}
           <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-5 mb-5">
-            <h2 class="text-xs font-bold text-sky-400 mb-4 uppercase tracking-wider border-b border-slate-800 pb-2">
+            {/* Was an ad-hoc <h2> that re-implemented `.section-title` by hand
+                (text-xs font-bold text-sky-400 mb-4 uppercase tracking-wider
+                border-b border-slate-800 pb-2) with two raw palette values
+                instead of the tokens. MasterFullForm and AiCvForm already use
+                `.section-title` (12 and 4 times), so this was the last
+                hand-rolled member of that family. The dead utilities were
+                removed rather than left behind: `.section-title` is unlayered,
+                so it beats every layered Tailwind utility on the same element
+                and any one left here would be a rule that never applies. */}
+            <h2 class="section-title section-title--flush">
               <Icon name="address-card" class="mr-1" />{t('siswa.data_pribadi')}
             </h2>
             <div class="u-grid-auto u-grid-auto--form gap-4">
               {BIODATA_FIELDS.map(f => (
                 <div key={f.id} class={f.span ? 'col-span-1 md:col-span-2' : ''}>
-                  <label class="block text-[10px] font-bold text-slate-400 mb-1">{f.label}</label>
-                  <input type="text" value={biodata[f.id]} onInput={(e) => setBiodata(prev => ({ ...prev, [f.id]: (e.target as HTMLInputElement).value }))}
+                  <label class="block text-[10px] font-bold text-slate-400 mb-1" for={`sw-${f.id}`}>{f.label}</label>
+                  <input id={`sw-${f.id}`} type="text" value={biodata[f.id]} onInput={(e) => setBiodata(prev => ({ ...prev, [f.id]: (e.target as HTMLInputElement).value }))}
                     class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none" />
                 </div>
               ))}
@@ -435,8 +448,8 @@ export default function SiswaBaruForm() {
                   <Icon name={d.icon} />
                 </div>
                 <div class="flex-1 overflow-hidden">
-                  <label class="block text-[10px] font-bold text-sky-400 mb-1">{d.label}</label>
-                  <input type="file" accept=".pdf,image/*" onChange={(e) => handleDocUpload(e, d.type)}
+                  <label class="block text-[10px] font-bold text-sky-400 mb-1" for={`sw-doc-${d.type}`}>{d.label}</label>
+                  <input id={`sw-doc-${d.type}`} type="file" accept=".pdf,image/*" onChange={(e) => handleDocUpload(e, d.type)}
                     class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
                   {docStatus[d.type] && <div class="text-[9px] text-emerald-400 mt-1 font-bold truncate"><Icon name="check" class="mr-0.5" />{docStatus[d.type]}</div>}
                 </div>

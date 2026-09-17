@@ -26,6 +26,7 @@ import { allKandidatList, fetchAllKandidat } from '../../store/adminStore';
 import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
+import { useOverlay } from '../ui/useOverlay';
 import { getEndpoint } from '../../lib/apiEndpoint';
 
 interface Props {
@@ -50,6 +51,12 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
   const [interval, setInterval_] = useState(5);
   const [sending, setSending] = useState(false);
   const [removing, setRemoving] = useState<string | null>(null);
+
+  // §25: the overlay owns focus, Escape and the dialog semantics. The hook is
+  // called BEFORE the `if (!isOpen) return null` below — hooks may not be
+  // skipped, and `open: isOpen` already tells it the overlay is closed, which
+  // is the path that strips role/aria-modal off a hidden container.
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
 
   // Legacy behaviour: pastikan memori kandidat penuh + segar setiap buka.
   useEffect(() => {
@@ -94,7 +101,9 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
       const data = await res.json();
       if (data && data.success) {
         showToast('Kandidat ditandai GAGAL & dilepas dari job', 'success');
-        fetchAllKandidat();
+        // §26: operasi tulis ⇒ lewati jendela kesegaran fetchAllKandidat,
+        // kalau tidak baris yang baru dilepas masih tampil sampai 30 s.
+        fetchAllKandidat({ force: true });
       } else {
         showToast((data && data.error) || 'Gagal menghapus kandidat.', 'error');
       }
@@ -153,13 +162,17 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
   }
 
   return (
-    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4">
+    <div
+      ref={containerRef}
+      onClick={onBackdropClick}
+      class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4"
+    >
       <div class="glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-md shadow-2xl relative max-h-[90vh] flex flex-col border border-sky-500/50">
-        <button onClick={onClose} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
+        <button type="button" onClick={onClose} aria-label={t('public.close')} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
         <h3 class="text-xl font-bold text-sky-400 mb-2 border-b border-sky-900/50 pb-3">
-          <Icon name="list-ol" class="mr-2" /> List Kandidat
+          <Icon name="list-ol" class="mr-2" /> {t("admin.list_kandidat")}
         </h3>
         <p class="text-xs text-slate-400 mb-4">
           Loker Code: <span class="font-bold text-white text-sm">{jobCode}</span>

@@ -135,47 +135,47 @@ export default function CvMiniModal({ onClose, prefill }: Props) {
         <div class="space-y-3">
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">{t('form.gender')}</label>
-              <select value={gender} onChange={e => setGender((e.target as HTMLSelectElement).value as 'LAKI-LAKI' | 'PEREMPUAN')} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500">
+              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase" for="cm-gender">{t('form.gender')}</label>
+              <select id="cm-gender" value={gender} onChange={e => setGender((e.target as HTMLSelectElement).value as 'LAKI-LAKI' | 'PEREMPUAN')} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500">
                 <option value="LAKI-LAKI">{t('form.gender_m')}</option>
                 <option value="PEREMPUAN">{t('form.gender_f')}</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">{t('cvmini.usia')}</label>
-              <input type="number" inputmode="numeric" value={usia} onInput={e => setUsia((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder="22" />
+              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase" for="cm-usia">{t('cvmini.usia')}</label>
+              <input id="cm-usia" type="number" inputmode="numeric" value={usia} onInput={e => setUsia((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder="22" />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">{t('cvmini.tb')}</label>
-              <input type="number" inputmode="numeric" value={tb} onInput={e => setTb((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder="165" />
+              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase" for="cm-tb">{t('cvmini.tb')}</label>
+              <input id="cm-tb" type="number" inputmode="numeric" value={tb} onInput={e => setTb((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder="165" />
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">{t('cvmini.bb')}</label>
-              <input type="number" inputmode="numeric" value={bb} onInput={e => setBb((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder="55" />
+              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase" for="cm-bb">{t('cvmini.bb')}</label>
+              <input id="cm-bb" type="number" inputmode="numeric" value={bb} onInput={e => setBb((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder="55" />
             </div>
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">{t('cvmini.pendidikan')}</label>
-            <select value={pendidikan} onChange={e => setPendidikan((e.target as HTMLSelectElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500">
+            <label class="block text-xs font-bold text-slate-400 mb-1 uppercase" for="cm-pendidikan">{t('cvmini.pendidikan')}</label>
+            <select id="cm-pendidikan" value={pendidikan} onChange={e => setPendidikan((e.target as HTMLSelectElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500">
               <option value="-">{t('cvmini.pilih_pendidikan')}</option>
               {PENDIDIKAN_OPTIONS.map(lv => <option key={lv} value={lv}>{lv}</option>)}
             </select>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">{t('cvmini.jft')}</label>
-              <input type="text" value={jftText} onInput={e => setJftText((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder={t("ui.ph_jft_level")} />
+              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase" for="cm-jft">{t('cvmini.jft')}</label>
+              <input id="cm-jft" type="text" value={jftText} onInput={e => setJftText((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder={t("ui.ph_jft_level")} />
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase">{t('cvmini.ssw')}</label>
-              <input type="text" value={sswText} onInput={e => setSswText((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder={t("ui.ph_ssw_bidang")} />
+              <label class="block text-xs font-bold text-slate-400 mb-1 uppercase" for="cm-ssw">{t('cvmini.ssw')}</label>
+              <input id="cm-ssw" type="text" value={sswText} onInput={e => setSswText((e.target as HTMLInputElement).value)} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-sky-500" placeholder={t("ui.ph_ssw_bidang")} />
             </div>
           </div>
           <div class="p-4 bg-sky-900/20 border border-dashed border-sky-500/50 rounded-xl">
-            <label class="block text-[11px] font-bold text-sky-400 mb-1.5">{t('ui.latest_photo')}</label>
-            <input type="file" accept="image/*" onChange={handlePhoto} class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-700 file:text-white" />
+            <label class="block text-[11px] font-bold text-sky-400 mb-1.5" for="cm-photo">{t('ui.latest_photo')}</label>
+            <input id="cm-photo" type="file" accept="image/*" onChange={handlePhoto} class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-700 file:text-white" />
             {photoName && <p class="text-[10px] text-slate-500 mt-1">{photoName}</p>}
           </div>
         </div>

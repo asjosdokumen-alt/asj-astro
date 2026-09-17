@@ -28,6 +28,7 @@ import { t } from "../../store/i18n";
 import Icon from "../ui/Icon";
 import AiUnavailableBanner from "../ui/AiUnavailableBanner";
 import { api } from "../../lib/apiClient";
+import { useOverlay } from "../ui/useOverlay";
 
 const JEKLIN_IMG =
   "https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png";
@@ -76,6 +77,14 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
   const [aiDown, setAiDown] = useState<string | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // §3.2#6 — this overlay carried `.u-modal-shell` with NO hook behind it:
+  // no role, no accessible name, no Tab trap, no Escape. It is mounted only
+  // while open (`{showAiCopilot && <AdminAiCopilot …/>}` in App.tsx), so
+  // `open: true` is the honest value here rather than a hardcoded role.
+  // The <h3> below names the dialog — the same text a sighted user reads as
+  // the title, which is what the hook resolves `aria-labelledby` from.
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   const now = () =>
     new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
@@ -375,8 +384,9 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
 
   return (
     <div
+      ref={containerRef}
       class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-2 md:p-4"
-      onClick={onClose}
+      onClick={onBackdropClick}
     >
       <div
         class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg h-[90vh] flex flex-col overflow-hidden shadow-2xl"
@@ -404,7 +414,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
               </button>
             ))}
           </div>
-          <button onClick={onClose} class="text-slate-400 hover:text-white">
+          <button type="button" onClick={onClose} class="text-slate-400 hover:text-white" aria-label={t("public.close")}>
             <Icon name="times" class="text-lg" />
           </button>
         </div>

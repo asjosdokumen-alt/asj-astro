@@ -213,12 +213,12 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
         </button>
 
         <h2 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
-          <Icon name="edit" class="text-sky-400" /> Edit Data Kandidat
+          <Icon name="edit" class="text-sky-400" /> {t("admin.edit_data_kandidat")}
         </h2>
         <p class="text-xs text-slate-400 mb-4">{candidate.nama} — {candidate.wa}</p>
 
         <div class="flex items-center gap-3 mb-4 p-2 bg-slate-800/30 rounded-xl border border-slate-700/50">
-          <span class="text-xs text-slate-400 font-bold">Privilege Tag:</span>
+          <span class="text-xs text-slate-400 font-bold">{t("admin.privilege_tag")}</span>
           <button onClick={toggleVIP} class={`relative w-11 h-6 rounded-full transition-colors ${isVIP ? 'bg-amber-500' : 'bg-slate-600'}`}>
             <span class={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isVIP ? 'translate-x-5' : ''}`} />
           </button>
@@ -230,8 +230,8 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
         <div class="space-y-3">
           {/* Gender */}
           <div>
-            <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_gender")}</label>
-            <select value={form.gender} onChange={e => setField('gender', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
+            <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-gender">{t("admin.edit_gender")}</label>
+            <select id="ec-gender" value={form.gender} onChange={e => setField('gender', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
               {GENDER_OPTIONS.map(g => <option key={g} value={g}>{g || '- Pilih -'}</option>)}
             </select>
           </div>
@@ -239,35 +239,35 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
           {/* Usia + TB + BB */}
           <div class="grid grid-cols-3 gap-3">
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">Usia</label>
-              <input type="number" value={form.usia} onInput={e => setField('usia', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-usia">{t("ui.cv_usia")}</label>
+              <input id="ec-usia" type="number" value={form.usia} onInput={e => setField('usia', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_tb")}</label>
-              <input type="number" value={form.tb} onInput={e => setField('tb', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-tb">{t("admin.edit_tb")}</label>
+              <input id="ec-tb" type="number" value={form.tb} onInput={e => setField('tb', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_bb")}</label>
-              <input type="number" value={form.bb} onInput={e => setField('bb', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-bb">{t("admin.edit_bb")}</label>
+              <input id="ec-bb" type="number" value={form.bb} onInput={e => setField('bb', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
           </div>
 
           {/* Tempat Lahir + Tgl Lahir */}
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_tempat_lahir")}</label>
-              <input type="text" value={form.tempatLahir} onInput={e => setField('tempatLahir', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-tempat-lahir">{t("admin.edit_tempat_lahir")}</label>
+              <input id="ec-tempat-lahir" type="text" value={form.tempatLahir} onInput={e => setField('tempatLahir', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_tgl_lahir")}</label>
-              <input type="date" value={form.tglLahir} onInput={e => setField('tglLahir', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-tgl-lahir">{t("admin.edit_tgl_lahir")}</label>
+              <input id="ec-tgl-lahir" type="date" value={form.tglLahir} onInput={e => setField('tglLahir', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
           </div>
 
           {/* Pendidikan */}
           <div>
-            <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_pendidikan")}</label>
-            <select value={form.pendidikan} onChange={e => setField('pendidikan', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
+            <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-pendidikan">{t("admin.edit_pendidikan")}</label>
+            <select id="ec-pendidikan" value={form.pendidikan} onChange={e => setField('pendidikan', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
               {PENDIDIKAN_OPTIONS.map(p => <option key={p} value={p}>{p || '- Pilih -'}</option>)}
             </select>
           </div>
@@ -275,41 +275,41 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
           {/* JFT + SSW */}
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_jft")}</label>
-              <input type="text" value={form.jftText} onInput={e => setField('jftText', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-jft">{t("admin.edit_jft")}</label>
+              <input id="ec-jft" type="text" value={form.jftText} onInput={e => setField('jftText', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_ssw")}</label>
-              <input type="text" value={form.sswText} onInput={e => setField('sswText', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-ssw">{t("admin.edit_ssw")}</label>
+              <input id="ec-ssw" type="text" value={form.sswText} onInput={e => setField('sswText', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
           </div>
 
           {/* Tahapan + Status */}
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_tahapan")}</label>
-              <select value={form.tahapan} onChange={e => setField('tahapan', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
+              <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-tahapan">{t("admin.edit_tahapan")}</label>
+              <select id="ec-tahapan" value={form.tahapan} onChange={e => setField('tahapan', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
                 {TAHAPAN_OPTIONS.map(t => <option key={t} value={t}>{t || '- Pilih -'}</option>)}
               </select>
             </div>
             <div>
-              <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_status")}</label>
-              <select value={form.status} onChange={e => setField('status', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
+              <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-status">{t("admin.edit_status")}</label>
+              <select id="ec-status" value={form.status} onChange={e => setField('status', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s || '- Pilih -'}</option>)}
               </select>
             </div>
           </div>
           {/* Catatan External (legacy: textarea super-edit = catatanExt) */}
           <div>
-            <label class="text-[10px] text-slate-500 uppercase font-bold">{t("admin.edit_catatan_ext")}</label>
-            <textarea value={form.catatanExt} onInput={e => setField('catatanExt', (e.target as HTMLTextAreaElement).value)} rows={3} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500 resize-none" placeholder={t("admin.ph_feedback")} />
+            <label class="text-[10px] text-slate-500 uppercase font-bold" for="ec-catatan-ext">{t("admin.edit_catatan_ext")}</label>
+            <textarea id="ec-catatan-ext" value={form.catatanExt} onInput={e => setField('catatanExt', (e.target as HTMLTextAreaElement).value)} rows={3} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500 resize-none" placeholder={t("admin.ph_feedback")} />
           </div>
 
           {/* Document Upload */}
           <div class="border-t border-slate-700/50 pt-3 mt-3">
-            <label class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1 mb-2">
-              <Icon name="file-arrow-up" class="text-sky-400" /> Upload Dokumen
-            </label>
+            <div class="text-[10px] text-slate-500 uppercase font-bold flex items-center gap-1 mb-2">
+              <Icon name="file-arrow-up" class="text-sky-400" /> {t("admin.upload_dokumen")}
+            </div>
             <div class="grid grid-cols-2 gap-2">
               {DOC_UPLOADS.map(doc => (
                 <label key={doc.jenis} class="flex items-center gap-2 p-2 bg-slate-800/30 rounded-lg border border-slate-700/50 hover:border-sky-500/50 cursor-pointer transition">
@@ -330,10 +330,10 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
             disabled={saving}
             class="flex-1 px-4 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
           >
-            {saving ? <><Icon spin name="spinner" /> Menyimpan...</> : <><Icon name="save" /> Simpan</>}
+            {saving ? <><Icon spin name="spinner" /> {t("admin.saving")}</> : <><Icon name="save" /> {t("button.save")}</>}
           </button>
           <button onClick={onClose} class="px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition">
-            Tutup
+            {t("button.close")}
           </button>
         </div>
       </div>

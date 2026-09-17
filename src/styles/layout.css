@@ -133,6 +133,93 @@
 }
 
 
+/* ─── 3b. Full-viewport edges for `fixed` overlays ───────────────────
+   THE PROBLEM (measured 2026-09-14)
+   ---------------------------------
+   `html { scrollbar-gutter: stable }` (global.css) reserves the
+   scrollbar track up front so opening a modal does not shift the page
+   ~15px on Windows/Linux. That reservation is correct and must stay.
+
+   But a `position: fixed` element resolves `right: 0` against the
+   INITIAL CONTAINING BLOCK, and the ICB EXCLUDES the reserved gutter.
+   So the drawer — and the backdrop meant to cover the whole screen —
+   stop 15px short of the physical viewport edge:
+
+     measured, 1280x800, gutter stable:
+       innerWidth 1280 | html width 1265 | nav.right 1265 | gap 15
+     with the gutter forced to `auto` (diagnostic only, NOT the fix):
+       innerWidth 1280 | html width 1280 | nav.right 1280 | gap 0
+
+   On phones this does not appear (390px viewport, gap 0 — overlay
+   scrollbars), which is exactly why the round-2 note only saw the
+   desktop case and blamed the symptom on the gutter "displacing" the
+   drawer.
+
+   NOT fixed by removing the gutter: `scrollbar-gutter` is what stops
+   the page jumping when a modal toggles `overflow: hidden`. Trading a
+   15px gap for a 15px layout shift is not a fix. The overlay is what
+   is wrong — it should meet the physical edge regardless of how the
+   page reserves scroll space.
+
+   The unit is required: `100vw` includes the scrollbar and would
+   overshoot to 1295px. `100dvw`/`100svw` track the dynamic viewport
+   and, unlike `vw`, are not inflated by the scrollbar. `svw` is used
+   as the fallback for older engines that do not know `dvw`.          */
+.u-viewport-fixed {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  width: 100svw;
+  height: 100dvh;
+}
+/* Edge-anchored variant for panels that keep their OWN width (the drawer
+   is `w-72 md:w-96`).
+
+   MEASURED BUGS I ALMOST SHIPPED — three, all caught by measuring:
+     1. Inheriting `width: 100svw` competed with `w-72`; both are
+        specificity 0,1,0, so source order decided the winner.
+     2. `width: auto` did NOT shrink-wrap. With `right: 0` and
+        `left: auto` the box is over-constrained and stretched to the
+        full containing block — measured `navWidth: 1265px` at 1280 and
+        `390px` at 390, i.e. a full-screen panel.
+     3. `inset-inline-end: 0` alone STILL lands 15px short on desktop.
+        Measured: `left: 881px` + `width: 384px` = right edge 1265,
+        while `innerWidth` is 1280. `position: fixed` resolves `right`
+        against the initial containing block, and the ICB is narrowed by
+        the classic scrollbar that `scrollbar-gutter: stable` reserves.
+
+   WHY THE FIX LOOKS LIKE THIS: three earlier attempts all tried to move
+   the drawer and failed, and a bare-probe experiment settled it. With
+   no app CSS at all, these were measured at innerWidth 1280:
+
+     position: fixed; right: 0                -> right 1265  gap 15
+     position: fixed; right: -15px            -> right 1280  gap 0
+     position: fixed; right: calc(0px - 15px) -> right 1280  gap 0
+     position: fixed; right: 0; transform: translateX(15px)
+                                              -> right 1280  gap 0
+
+   So the END edge is measured from an ICB that stops 15px short, and
+   the only thing that crosses it is a NEGATIVE `right` — no amount of
+   `margin`, `width`, or `left` arithmetic does it, because those are
+   all resolved inside the same shortened box.
+
+   `--u-scrollbar-gutter` is measured by the boot script in
+   BaseLayout.astro, because CSS cannot query the platform's scrollbar
+   style. When it is 0px — the value on macOS/iOS/Android overlay
+   scrollbars — the offset is `-0px`, i.e. plain `right: 0`, so the
+   behaviour there is byte-identical to before.                       */
+.u-viewport-fixed--right {
+  position: fixed;
+  top: 0;
+  bottom: auto;
+  left: auto;
+  right: calc(-1 * var(--u-scrollbar-gutter, 0px));
+  height: 100dvh;
+}
+
+
 /* ── 4. Long-list rendering budget ──────────────────────────────────
    `content-visibility: auto` lets the browser skip LAYOUT AND PAINT
    for off-screen items entirely. It also stops any animations inside
@@ -174,3 +261,199 @@
     content-visibility: visible !important;
   }
 }
+
+
+/* ── 6. Responsive table: cards below `md`, real table above ────────
+   WHY THIS EXISTS
+   ---------------
+   `LokerTable.tsx` has *always* carried `rt-row` / `rt-full` on its
+   rows and cells, and sets `data-label` on every `<td>` — but neither
+   class was ever defined anywhere. Measured 2026-09-14 (Playwright,
+   390x844): `rt-full` matched ZERO CSSOM rules, the cell computed to
+   `display: table-cell`, and `data-label` was read by nothing. So a
+   mobile card layout was intended and never written down.
+
+   That mattered, because the alternative — the raw 5-column table at
+   a phone width — measured badly (same run, 10 real rows):
+
+     table min-width      700px, inside a 358px wrapper  (49% visible)
+     rows above the fold  2 of 10
+     Detail               28 x 28 px
+     Format               28 x 24 px
+     Lamar Sekarang       29 x 30 px
+     all three            offScreenRight: true  <- need a horizontal
+                          scroll before they can be tapped at all
+
+   So on a phone the only high-value action ("Lamar Sekarang") needed a
+   horizontal scroll AND hit a 29px target. This section gives the
+   markup that already exists its actual behaviour.
+
+   HOW IT WORKS
+   ------------
+   Under `md` each row becomes a card and each `rt-full` cell becomes a
+   labelled block: the `data-label` the component already writes is
+   surfaced via `::before`, so no JS and no markup change is needed.
+   Cells that are NOT `rt-full` stay in a two-column mini-grid at the
+   card head (code + status), which reads as a header rather than a
+   form field.
+
+   Above `md` nothing here applies — the media query is the boundary,
+   so the desktop table is byte-for-byte the table it was before.     */
+@media (max-width: 767px) {
+  /* The wrapper stops being a scroll container: there is nothing to
+     scroll once the layout is a card. Leaving `overflow-x: auto` here
+     would keep a scrollbar gutter around a column that no longer
+     overflows. */
+  .u-scroll-x:has(.rt-row) {
+    overflow-x: visible;
+  }
+
+  table:has(.rt-row) {
+    min-width: 0;
+    display: block;
+  }
+  table:has(.rt-row) thead {
+    /* Column headers are meaningless once each cell carries its own
+       label via ::before — and keeping them would double every label. */
+    display: none;
+  }
+  table:has(.rt-row) tbody,
+  table:has(.rt-row) td {
+    display: block;
+    width: auto !important;
+  }
+  /* The row is a flex container, NOT `display: block`. `inline-block` only
+     puts two boxes on one line when they are adjacent inline-level siblings,
+     and the job-name cell — a `display: block` `.rt-full` — sits BETWEEN the
+     code cell and the status cell in the DOM. Under `display: block` those
+     two therefore land on separate lines (measured 120px apart), even though
+     the comment below claims they share the identity line. As flex items they
+     pair up, which is what was always intended. */
+  table:has(.rt-row) tr {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+  }
+
+  /* Identity line: KODE JOB + STATUS share the first line, so the card is
+     identifiable before the long fields. `order: 1` lifts both above the
+     `.rt-full` cells without touching the DOM. The only cells whose visual
+     order changes are these two static text cells, so no focusable content
+     moves relative to DOM order — WCAG 2.4.3 concerns focus order, and the
+     buttons stay last in both. */
+  table:has(.rt-row) td:not(.rt-full) {
+    order: 1;
+    flex: 0 0 auto;
+    width: auto !important;
+    padding: 0.125rem 0.75rem 0.25rem 0 !important;
+    text-align: left !important;
+  }
+  /* NOTE: `td:not(.rt-full) + td:not(.rt-full)` used to carry the gap between
+     the two identity cells. It could never match — the job-name cell separates
+     them in the DOM, so no two non-.rt-full cells are ever adjacent siblings.
+     The gap is the right padding on the cell above. */
+
+  /* Full-width fields: a line of their own, label then value. */
+  table:has(.rt-row) td.rt-full {
+    order: 2;
+    flex: 1 0 100%;
+    padding: 0.5rem 0 0.25rem 0 !important;
+    max-width: none !important;
+  }
+  table:has(.rt-row) td.rt-full::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-fg-subtle);
+  }
+
+  /* Action row: full-width targets, comfortably above the 44px
+     guideline, instead of three 28px stamps at the far right of a
+     700px canvas. */
+  table:has(.rt-row) td.rt-full:last-child > div {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: stretch !important;
+    gap: 0.5rem !important;
+  }
+  table:has(.rt-row) td.rt-full:last-child > div > * {
+    flex: 1 1 auto;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem !important;
+  }
+  /* The component hides the button text below `sm` and shows only the
+     icon; with a full-width target there is room for the word, and a
+     labelled button is more readable than a bare glyph. */
+  table:has(.rt-row) td.rt-full:last-child > div > * > span {
+    display: inline !important;
+  }
+}
+
+
+/* ── 7. Sticky first column for the wide table (md and up) ──────────
+   Companion to §6. Above `md` the table is still 700px wide and still
+   scrolls horizontally inside `.u-scroll-x`, so scrolling to the
+   action column slides the job name out of view — the measured
+   complaint in §11.2. Pinning the name column keeps the row
+   identifiable while the user reaches for its actions.
+
+   `left: 0` on the code column, and the name column offset by the code
+   column's own width (`w-24` = 6rem) so the two stay aligned as the
+   table scrolls. `nth-child` is used rather than `nth-of-type`: every
+   child here is a `<td>` so the two agree, and `nth-child` states the
+   positional intent directly.
+   The background must be opaque or the scrolling columns show through. */
+@media (min-width: 768px) {
+  table:has(.rt-row) thead th:nth-child(1),
+  table:has(.rt-row) tbody td:nth-child(1) {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+  }
+  table:has(.rt-row) thead th:nth-child(2),
+  table:has(.rt-row) tbody td:nth-child(2) {
+    position: sticky;
+    left: 6rem;               /* width of the KODE JOB column: w-24 */
+    z-index: 2;
+  }
+  /* Opaque backgrounds — required for sticky to be legible, otherwise
+     the scrolling columns read through the pinned ones. */
+  table:has(.rt-row) thead th:nth-child(1),
+  table:has(.rt-row) thead th:nth-child(2) {
+    background-color: var(--color-surface-raised);
+  }
+  table:has(.rt-row) tbody td:nth-child(1),
+  table:has(.rt-row) tbody td:nth-child(2) {
+    background-color: var(--color-surface);
+  }
+  /* The row's own hover tint (hover:bg-white/5) would be hidden behind
+     the opaque pinned cells, so the pinned cells reproduce it. Without
+     this the pinned column looks frozen while the rest of the row
+     responds to the pointer. */
+  table:has(.rt-row) tbody tr:hover td:nth-child(1),
+  table:has(.rt-row) tbody tr:hover td:nth-child(2) {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05));
+  }
+  /* Light mode: the same white tint is invisible on a white surface, so
+     the row highlight is a dark wash there instead. Keyed off the theme
+     attribute rather than a media query because the app's theme is a
+     user setting, not an OS preference. */
+  [data-theme="light"] table:has(.rt-row) tbody tr:hover td:nth-child(1),
+  [data-theme="light"] table:has(.rt-row) tbody tr:hover td:nth-child(2) {
+    background-image: linear-gradient(rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.04));
+  }
+}
+

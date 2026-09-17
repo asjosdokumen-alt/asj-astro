@@ -141,3 +141,80 @@ describe('EditCandidateModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+// ==========================================
+// Label/control wiring (a11y, 2026-09-16)
+//
+// The 13 `a11y/noLabelWithoutControl` diagnostics in this modal were paid down in
+// one pass, and they were NOT all one defect:
+//
+//   * 12 ordinary control labels -> `for=` + `id=` (prefix `ec-`)
+//   *  1 `<label>` used as a SECTION HEADING ("Upload Dokumen", above the document
+//      grid) -> the ELEMENT was wrong. It names no control, so `for=` can never be
+//      right for it; it became a `<div>`.
+//
+// The behaviour tests above say nothing about association: a modal whose labels
+// point at ids that do not exist still renders, still saves, still toasts. These
+// assertions pin the two things that rot silently.
+//
+// Note what is deliberately NOT asserted: a label COUNT. The lint rule counts
+// source LOCATIONS while the user meets rendered labels, so a count here would be
+// a second, weaker copy of the ratchet.
+// ==========================================
+describe('EditCandidateModal — label/control wiring', () => {
+  const renderModal = () =>
+    render(
+      <EditCandidateModal candidate={mockCandidate} isOpen={true} onClose={() => {}} />
+    ).container;
+
+  it('every <label for=...> resolves to an element that exists', () => {
+    const root = renderModal();
+
+    const dangling: string[] = [];
+    for (const label of root.querySelectorAll('label')) {
+      const target = label.getAttribute('for');
+      if (!target) continue;
+      if (!document.getElementById(target)) dangling.push(target);
+    }
+
+    expect(dangling).toEqual([]);
+  });
+
+  it('no label is left with neither for= nor a wrapped control', () => {
+    const root = renderModal();
+
+    // This is ALSO what catches the heading misuse: a <label> used as a section
+    // title has no `for=` and wraps no control, so it can never name anything.
+    const orphans = [...root.querySelectorAll('label')]
+      .filter((l) => !l.getAttribute('for') && !l.querySelector('input, select, textarea'))
+      .map((l) => (l.textContent || '').trim().slice(0, 40));
+
+    expect(orphans).toEqual([]);
+  });
+
+  it('the controls the labels name are the ones the modal actually binds', () => {
+    renderModal();
+
+    // Spot-check both ends of the wiring, so a `for=` that resolves to the WRONG
+    // element (two fields sharing an id) is caught — "resolves to something" is
+    // not the same as "resolves to the right thing".
+    for (const [id, tag] of [
+      ['ec-gender', 'SELECT'],
+      ['ec-usia', 'INPUT'],
+      ['ec-tempat-lahir', 'INPUT'],
+      ['ec-tgl-lahir', 'INPUT'],
+      ['ec-pendidikan', 'SELECT'],
+      ['ec-tahapan', 'SELECT'],
+      ['ec-status', 'SELECT'],
+      ['ec-catatan-ext', 'TEXTAREA'],
+    ] as const) {
+      const el = document.getElementById(id);
+      expect(el, `#${id} does not exist`).toBeTruthy();
+      expect(el?.tagName).toBe(tag);
+    }
+
+    // The one input whose TYPE matters — a date picker that silently became a text
+    // field would still be associated, and still be wrong.
+    expect((document.getElementById('ec-tgl-lahir') as HTMLInputElement).type).toBe('date');
+  });
+});

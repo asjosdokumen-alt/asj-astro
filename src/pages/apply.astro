@@ -8,8 +8,8 @@ import FormToolbar from "../components/forms/FormToolbar";
 <BaseLayout title="ASJ - Form Lamaran Kerja" description="Form pendaftaran lamaran kerja ke Jepang melalui LPK ASJ">
   <App showHeader={false} client:only="preact" />
 
-  
-
   <FormToolbar client:only="preact" titleKey="toolbar.apply" />
-  <ApplyFullForm client:only="preact" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[42px]">
+    <ApplyFullForm client:only="preact" />
+  </main>
 </BaseLayout>

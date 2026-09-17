@@ -142,11 +142,11 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
   const [excelHtml, setExcelHtml] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, []);
+  // Escape is handled by `useOverlay` below, on the capture phase and with
+  // `stopImmediatePropagation` so only the topmost overlay closes. A second,
+  // hand-rolled `window` listener used to live here as well and was strictly
+  // worse: its empty dep array pinned the FIRST `onClose` for the lifetime of
+  // the component, and it fired even when this modal was not the topmost one.
 
   // 8-second timeout fallback (from legacy preview.ts)
   useEffect(() => {

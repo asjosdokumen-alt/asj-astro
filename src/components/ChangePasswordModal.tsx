@@ -68,16 +68,16 @@ export default function ChangePasswordModal({ onClose }: Props) {
         </div>
         <div class="space-y-3">
           <div>
-            <label class="block text-xs font-bold text-slate-400 mb-1">{t('changepass.old')}</label>
-            <input type="password" value={lama} autocomplete="current-password" onInput={e => setLama((e.target as HTMLInputElement).value)} placeholder="••••••" class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-amber-500" />
+            <label class="block text-xs font-bold text-slate-400 mb-1" for="cp-lama">{t('changepass.old')}</label>
+            <input type="password" id="cp-lama" value={lama} autocomplete="current-password" onInput={e => setLama((e.target as HTMLInputElement).value)} placeholder="••••••" class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-amber-500" />
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-400 mb-1">{t('changepass.new')}</label>
-            <input type="password" value={baru} autocomplete="new-password" onInput={e => setBaru((e.target as HTMLInputElement).value)} placeholder={t("ui.ph_6_20_karakter")} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-amber-500" />
+            <label class="block text-xs font-bold text-slate-400 mb-1" for="cp-baru">{t('changepass.new')}</label>
+            <input type="password" id="cp-baru" value={baru} autocomplete="new-password" onInput={e => setBaru((e.target as HTMLInputElement).value)} placeholder={t("ui.ph_6_20_karakter")} class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-amber-500" />
           </div>
           <div>
-            <label class="block text-xs font-bold text-slate-400 mb-1">{t('changepass.confirm')}</label>
-            <input type="password" value={konfirmasi} autocomplete="new-password" onInput={e => setKonfirmasi((e.target as HTMLInputElement).value)} placeholder="••••••" class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-amber-500" />
+            <label class="block text-xs font-bold text-slate-400 mb-1" for="cp-konfirmasi">{t('changepass.confirm')}</label>
+            <input type="password" id="cp-konfirmasi" value={konfirmasi} autocomplete="new-password" onInput={e => setKonfirmasi((e.target as HTMLInputElement).value)} placeholder="••••••" class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-amber-500" />
           </div>
           <p class="text-[10px] text-slate-500">{t('changepass.hint')}</p>
         </div>

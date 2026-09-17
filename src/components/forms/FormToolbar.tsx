@@ -23,7 +23,17 @@ export default function FormToolbar({ title, titleKey }: Props) {
       <a href="/" aria-label={t('button.portal')} class="flex items-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/80 text-white text-xs font-bold rounded-full border border-white/20 transition-[background-color,transform] hover:scale-105">
         <Icon name="arrow-left" /> <span class="hidden sm:inline">{t('button.portal')}</span>
       </a>
-      {(titleKey ? t(titleKey) : title) && <span class="text-xs font-bold text-slate-300 hidden sm:inline">{titleKey ? t(titleKey) : title}</span>}
+      {/* The page title IS the page's h1 — not a decorative <span>. Four form
+          routes (/apply, /master, /ai-cv, /siswa-baru) rendered NO h1 at all,
+          and /siswa-baru's only h1 sat inside a tab panel that is `display:none`
+          on mobile. Measured 2026-09-14 at 390px: those pages exposed zero
+          visible headings, so assistive tech got no page identity.
+          It was also `hidden sm:inline`, so below 640px the bar was unlabelled.
+          `min-w-0 truncate` is deliberate (see §11.1): the fix for a long title
+          is to bound the text element, not to pad its container. */}
+      {(titleKey ? t(titleKey) : title) && (
+        <h1 class="min-w-0 flex-1 px-2 text-center text-xs font-bold text-slate-300 truncate">{titleKey ? t(titleKey) : title}</h1>
+      )}
       <div class="flex items-center gap-2">
         <button onClick={toggleTheme} aria-label="Toggle theme" class="px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
           <Icon name={isDark ? "moon" : "sun"} /> {isDark ? "Dark" : "Light"}
