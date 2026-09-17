@@ -3,6 +3,7 @@ import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
 import { getEndpoint } from '../../lib/apiEndpoint';
 import { authStore } from '../../store/authReactive';
+import api from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
 import DocumentPreviewModal from '../DocumentPreviewModal';
@@ -157,6 +158,12 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     setLoading(true);
     setData(null);
     const sessionToken = authStore.get().sessionToken || '';
+    // SENGAJA tetap fetch mentah (2026-09-17), dan bukan karena lupa: permintaan
+    // ini di-cancel saat efeknya dibersihkan (`signal: controller.signal` di
+    // bawah), dan `apiClient` belum punya opsi `signal` — ia memasang
+    // AbortController-nya sendiri untuk batas waktu. Mengonversinya sekarang
+    // berarti KEHILANGAN pembatalan saat unmount, yaitu regresi. Sisa 20 situs
+    // lain sudah pindah; satu ini menunggu opsi `signal` di klien.
     fetch(getEndpoint('getExistingCandidateJsonByWa'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -193,7 +200,6 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     if (!data || !data.wa) return;
     setSaving(true);
     try {
-      const sessionToken = authStore.get().sessionToken || '';
       let intNote = catatanInternal.trim();
       if (isVIP) {
         if (!/\[VIP\]/i.test(intNote)) intNote = intNote ? '[VIP] ' + intNote : '[VIP]';
@@ -204,16 +210,14 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
       // menampilkan catatan mentah (termasuk tag), jadi apa yang admin lihat
       // adalah apa yang tersimpan — tanpa duplikasi tag diam-diam.
       const extNote = catatanExternal.trim();
-      const res = await fetch(getEndpoint('updateCatatanKandidat'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'updateCatatanKandidat',
-          args: [{ wa: data.wa, catatanInternal: intNote, catatanExternal: extNote }],
-          sessionToken,
-        }),
-      });
-      const out = await res.json();
+      // `silent: true` — catch di bawah sudah menampilkan toast, dan ia membaca
+      // `e.message` yang kini berisi pesan server (lihat apiClient). Tanpa
+      // silent, satu kegagalan muncul dua kali.
+      const out = (await api.secure(
+        'updateCatatanKandidat',
+        [{ wa: data.wa, catatanInternal: intNote, catatanExternal: extNote }],
+        { onSessionInvalid: 'throw', silent: true },
+      )) as { success?: boolean; error?: string };
       if (out && out.success) {
         const patched = { ...data, catatanInternal: intNote, catatanExternal: extNote, isVIP };
         setData(patched);

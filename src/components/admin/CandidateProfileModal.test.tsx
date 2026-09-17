@@ -6,7 +6,13 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 vi.mock('../../store/authReactive', () => ({
-  authStore: { get: () => ({ sessionToken: 'test-token' }) },
+  // `isLoggedIn` is required now that handleSaveCatatan goes through
+  // api.secure(): the client refuses — and with onSessionInvalid:'throw' it
+  // throws — BEFORE it fetches when the store reports no live session. The old
+  // mock returned only sessionToken, which was enough while the component built
+  // its own fetch.
+  authStore: { get: () => ({ isLoggedIn: true, sessionToken: 'test-token' }) },
+  logout: vi.fn(),
 }));
 
 vi.mock('../../lib/apiEndpoint', () => ({
@@ -246,7 +252,11 @@ describe('CandidateProfileModal', () => {
   });
 
   it('saves catatan internal/external + VIP tag via updateCatatanKandidat', async () => {
-    mockFetch.mockResolvedValue({ json: () => Promise.resolve({ success: true }) });
+    // `ok: true` is REQUIRED now that this call goes through apiClient: the
+    // client checks `res.ok`, which the raw code never did (it only called
+    // .json()). A mock without it reads as a failed response and the client
+    // throws — the assertion below then sees no request body at all.
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ success: true }) });
 
     const changed: string[] = [];
     const onChanged = (e: Event) => changed.push((e as CustomEvent).detail?.wa || '');
@@ -273,7 +283,11 @@ describe('CandidateProfileModal', () => {
           method: 'POST',
           body: JSON.stringify({
             action: 'updateCatatanKandidat',
-            args: [
+            // `payload`, not `args` — the client standardises on payload and the
+            // backend accepts either (`body.payload || body.args` in
+            // _lib/netlify-wrapper.ts). The argument SHAPE below is what matters
+            // and is unchanged.
+            payload: [
               {
                 wa: mockCandidate.wa,
                 // VIP prefix added; raw textarea content kept as-is.

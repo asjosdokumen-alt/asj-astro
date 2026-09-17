@@ -10,8 +10,7 @@ import { inputModalOpen, closeInputModal } from '../../store/adminStore';
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
-import { getEndpoint } from '../../lib/apiEndpoint';
-import { authStore } from '../../store/authReactive';
+import api from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 
@@ -99,7 +98,6 @@ export default function InputManualModal() {
     e.preventDefault();
     if (!nama.trim() || !wa.trim()) return;
     setSaving(true);
-    const sessionToken = authStore.get().sessionToken || '';
     try {
       const files: { label: string; name: string; url: string }[] = [];
       const mainDocs: { label: string; file: File | null }[] = [
@@ -126,12 +124,14 @@ export default function InputManualModal() {
         pendidikan,
         files,
       };
-      const res = await fetch(getEndpoint('simpanKandidatDanUpload'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'simpanKandidatDanUpload', args: [payload], sessionToken }),
-      });
-      const data = await res.json();
+      // `silent: true` — catch TERLUAR fungsi ini sudah menampilkan toast, dan
+      // ia juga menangani kegagalan Cloudinary. Tanpa silent, satu kegagalan
+      // akan dilaporkan dua kali. Pesan server tidak hilang: klien melemparnya
+      // dan catch terluar mencetak `err.message`.
+      const data = (await api.secure('simpanKandidatDanUpload', [payload], {
+        onSessionInvalid: 'throw',
+        silent: true,
+      })) as { success?: boolean; error?: string };
       if (!data || !data.success) {
         showToast((data && data.error) || 'Gagal menyimpan kandidat.', 'error');
         return;
@@ -142,16 +142,15 @@ export default function InputManualModal() {
         try {
           const url = await uploadToCloudinary(d.file);
           if (!url) continue;
-          const lr = await fetch(getEndpoint('simpanBerkasTahapan'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'simpanBerkasTahapan',
-              args: [{ wa: wa.trim(), nama: namaUpper, jenisBerkas: d.type, fileUrl: url }],
-              sessionToken,
-            }),
-          });
-          const lj = await lr.json();
+          // `silent: true` — catch di bawah menyebut JENIS dokumen yang gagal
+          // ("Gagal upload <jenis>."), konteks yang tidak mungkin diketahui
+          // klien. Satu toast yang menyebut dokumen mana lebih berguna daripada
+          // dua, yang salah satunya generik.
+          const lj = (await api.secure(
+            'simpanBerkasTahapan',
+            [{ wa: wa.trim(), nama: namaUpper, jenisBerkas: d.type, fileUrl: url }],
+            { onSessionInvalid: 'throw', silent: true },
+          )) as { success?: boolean; error?: string };
           if (!(lj && lj.success)) {
             showToast('Gagal simpan ' + d.type + ': ' + ((lj && lj.error) || 'respon tak dikenal'), 'error');
           }
