@@ -22,6 +22,28 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- The document title. This was MISSING until 2026-09-17: the `title` prop
+       was destructured above and then never rendered, so every page shipped
+       with no <title> at all — verified 0 occurrences across all 10 built
+       pages. The browser tab showed the URL, search results had no title, and
+       screen readers announced the document without one (WCAG 2.4.2 "Page
+       Titled" is Level A). Nothing looked wrong, which is why it survived.
+
+       It also made a gate's exemption a false premise: i18n.keys.test.ts
+       deliberately skips the title prop passed to this layout, on the grounds
+       that it is "the document title: server-rendered SEO metadata that
+       translateDataLang() cannot touch". That reasoning was sound and the
+       premise was not — those strings were reaching nothing.
+
+       Note for anyone editing this comment: the indexer parses .astro template
+       tags including the ones inside HTML comments, so a literal capitalised
+       tag written here becomes a phantom unresolved reference and
+       indexer/src/build.test.ts fails with "expected [...] to have a length of
+       +0 but got 1". That is exactly how this paragraph was caught.
+
+       Server-rendered on purpose: translateDataLang() runs in the browser and
+       cannot rewrite a <title> for a crawler or a shared link preview. -->
+  <title>{title}</title>
   <meta name="description" content={description} />
   <meta name="theme-color" content="#020617" />
   <meta name="mobile-web-app-capable" content="yes" />
