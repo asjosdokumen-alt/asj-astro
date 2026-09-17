@@ -2,6 +2,36 @@
 
 **Owner:** Engineering team · **Status:** Proposed · **Last reviewed:** 2026-09-05
 
+---
+
+## Status update — 2026-09-15
+
+Several claims in this playbook were true when written and are not any more.
+They are left in place as a record rather than quietly edited, with the current
+state recorded here so the document is not read as current. The measurements
+behind each line are in [`CODE_REVIEW_AUDIT.md`](./CODE_REVIEW_AUDIT.md).
+
+| Claim below | State on 2026-09-15 |
+|---|---|
+| **W3** — zero automated style enforcement | **Closed.** Biome 2.5.13 adopted (`biome.json`). `lint-ratchet` freezes the 2,716 pre-existing diagnostics and fails on new ones; `review:gate` blocks hard-rule violations on added lines. Both are proven able to fail by `lint-ratchet.mutations.sh` (5 killed, 0 survived). |
+| **W4** — gates built but silently not running | **Partly closed.** `idx:gate` now runs in `ci.yml` (`functions-tree`). Still open: coverage has no gate at all (audit G-03). Worse than described: **9 blocking gates are invoked by no workflow** (audit A-05). |
+| **W5** — no review scaffolding | **Closed on paper, not in practice.** `CODEOWNERS` and a PR template exist. But every CODEOWNERS path points at a single handle and all 347 commits come from one author, so "no self-merge" and "rotate reviewers" cannot execute (audit A-01). The mechanism now lives in `npm run review:gate` plus the standard and process documents below. |
+| **W9** — typecheck ratchet has no burn-down | **Moot.** `.ci/tsc-baseline.json` records `total: 0`, so there is no type debt left to burn down. |
+| **Part 3, Tier 0** — lists `lint` among the gates | **Correct as of now.** For the record: `lint` was listed here and in the checklist for months while **no linter existed in the repository**. That is the defect `verify:review-manifest` was written to make impossible. |
+| **Part 4, Phase 0** — items 1–6 | Items 1 (`idx:gate` in CI), 3 (linter) and 4 (CODEOWNERS + PR template) are done. Item 2 (coverage) is still open — see G-03. Item 5 (branch protection) is a GitHub setting and is not verifiable from the repository. Item 6 (the `npm audit` flip) is still unowned; the job is still `continue-on-error: true`. |
+
+**Where the review standard now lives.** This playbook's Part 3 was the original
+review standard. It is superseded by, and should be read alongside:
+
+- [`CODE_REVIEW_STANDARD.md`](./CODE_REVIEW_STANDARD.md) — what "reviewed" means, how findings are graded
+- [`CODE_REVIEW_PROCESS.md`](./CODE_REVIEW_PROCESS.md) — the lifecycle and where the gate bites
+- [`CODE_REVIEW_CHECKLIST.md`](./CODE_REVIEW_CHECKLIST.md) — the working checklist
+- [`CODE_REVIEW_AUDIT.md`](./CODE_REVIEW_AUDIT.md) — the measured evidence
+- [`../scripts/ci/review-manifest.json`](../scripts/ci/review-manifest.json) — the machine-readable gate inventory
+
+Parts 1, 2, 4 and 5 remain current and are not superseded.
+
+
 This playbook is grounded in the actual state of this repository, not in generic
 best practice. Every weakness listed below cites evidence from the codebase or
 from the team's own audit documents (`docs/archive/CODE_REVIEW_2026-09-01.md`,
@@ -318,7 +348,7 @@ The rest:
 | Never derive a credential from unverified input; always `verifyToken()` first **GATE** | B8 |
 | Required env vars fail loudly at startup, never silently degrade | B9 |
 | Correct HTTP status on errors — never `200` with `{success: false}` | P18 — breaks client fallback and monitoring |
-| Zod-validate every payload at the handler edge | Already the pattern; keep it |
+| Zod-validate every payload at the handler edge | **NOT** "already the pattern" — measured 2026-09-16: 9 of 33 mutating actions. `npm run verify:validation` reports the coverage and freezes the rest in `.ci/validation-baseline.json`; add a schema when you add a write |
 | Parse `timestamptz` to epoch millis before comparison | P17 |
 | Timers acquired before a `try` must be cleared in `finally` | P16 |
 

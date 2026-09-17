@@ -128,6 +128,30 @@ crosscheck** (cek disabled/event/action).
   (`helpers_cv.test.ts`, `RirekishoBuilder.test.tsx`); frontend 15 file/106 test, backend
   28 file/251 test, typecheck exit 0. Catatan residual: korupsi regex serupa masih ada di
   `public/LokerTable.tsx` fallback-sort (`replace(/D/g)` — di luar unit A10, butuh cek legacy).
+- 2026-09-16: A10 **regresi port ditutup** — legacy punya DUA hal yang hilang di Astro,
+  keduanya di titik yang sama (`getArr` merge):
+  (1) **urutan baku jenjang sekolah SD → SMP → SMA** (`10b_cv_builders.buildEduRows`:
+  `tingkatOrder` + `getTingkatVal` + `sortedEdu`). Tanpa ini rirekisho merender pendidikan
+  dalam urutan input, jadi CV kandidat bisa tampil SMA di atas SD;
+  (2) **`normalisasiRiwayat`** (dipakai `10_cv_rirekisho.getArr` lewat wrapper bertipe).
+  Isi CV AI memakai kunci `sekolah_id` / `perusahaan_id` / `jabatan_id` sedangkan builder
+  membaca bentuk kanonikal — nama sekolah/perusahaan/jabatan dirender KOSONG sementara
+  tanggalnya tetap tampil, jadi gejalanya tampak kosmetik padahal data hilang.
+
+  Keduanya dipulihkan di `src/lib/helpers_cv.ts` (`normalisasiRiwayat`, `normalizeRiwayatFor`,
+  `getTingkatVal`, `sortByTingkat`, `sortByYear`, `sortEdu`) dan dipasang di titik gabung
+  `RirekishoBuilder.load()` serta `cv-template-factory/data.ts`, sehingga renderer
+  Excel/PDF/DOCX ikut mewarisi keduanya.
+
+  Satu penyimpangan **disengaja** dari legacy: `getTingkatVal` mencocokkan token
+  ber-batas-huruf lebih dulu, substring hanya sebagai cadangan. Legacy memakai
+  `includes("ma")`, sehingga "SMAN 1" terbaca sebagai MA (rank 3) karena kebetulan dua
+  huruf itu ada di dalam kata "SMAN" — kelas bug yang sama bisa salah-peringkat label apa pun.
+
+  Verifikasi: +34 test (helpers_cv 31, rirekishoEscape 8, RirekishoBuilder 8, data 15);
+  baterai mutasi 12 mutan → **12/12 terbunuh**, 0 lolos; `tsc --noEmit` 0 error; suite penuh
+  1581 lolos / 3 gagal — kegagalannya `fcm-server.test.ts` (artefak shim safe-delete,
+  lulus saat dijalankan sendiri), bukan repo.
 - 2026-09-05 (lanj.): A11 selesai (Admin AI Copilot root-fixed — chat bubble TIDAK PERNAH
   dirender (state ada, JSX hanya typing indicator); SEMUA aksi raw fetch tanpa session token →
   selalu sessionInvalid; `parseDokumenBiodata` di-route ke job background `ingest.parse` yang

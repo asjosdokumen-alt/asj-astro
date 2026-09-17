@@ -221,6 +221,34 @@ Diringkas supaya daftar di atas tidak diragukan lagi.
 
 ---
 
+- **Validasi tepi handler (2026-09-16) — klaim tiga dokumen dikoreksi, celah `jobs` ditutup.**
+  `ARCHITECTURE.md` menulis "✅ Zod validation at API edge", `ENGINEERING_PLAYBOOK.md`
+  "Already the pattern; keep it", dan `CODE_REVIEW_CHECKLIST.md` menuntut "All input validated
+  by a Zod schema at the handler edge". **Diukur: ketiganya tidak benar** — `validatePayload()`
+  punya **7 call site, semuanya di `surfaces/auth.ts`**, terhadap 81 aksi ter-route. Yang paling
+  berbahaya ada di `contexts/jobs/service.ts`: `tahapan`, `status`, dan `dokumen_share` dibaca
+  sebagai `unknown` lalu ditulis **langsung ke kolom TEXT**. Ditutup untuk 6 aksi (`ubahStatusJob`,
+  `hapusJobData`, `updateTahapanDbJob`, `updateDokumenShare`, `tandaiGagalJob`, `rejectForm`) ⇒
+  **9/33 aksi mutasi** (dari 3/33), dan **satu bug nyata ikut ketemu**: `updateTahapanDbJob` tanpa
+  `tahapan`/`status` mengirim **PATCH kosong** lalu tetap menjawab `{success:true}` — sekarang 400.
+  **Mekanismenya bukan zod, dan itu temuan terukur — bukan pilihan gaya.** Percobaan pertama
+  memakai `validatePayload()` (zod). Hasilnya: **+67 KB di DELAPAN entry point** dan `files.js`
+  menembus plafon keras **600 KB** (555,3 → 622,6 KB), karena `contexts/applications` diimpor oleh
+  `master-data`, `registry`, dan `_lib/ai/cv` — satu impor zod di konteks bersama menyeret seluruh
+  library ke sebagian besar deployment. Gate `bundle:size` menangkapnya. Karena itu ditulis
+  **`_lib/kernel/guard.ts`** — validasi **tanpa dependensi** (hanya impor `errors.ts`), biaya
+  **+4,8 KB di `jobs.js` dan +6,0 KB di `mail.js`**, keduanya di bawah ambang 8 KB. Zod tetap
+  dipakai di tempat yang sudah membayarnya (surface auth). Dua perangkap dipaku sebagai tes,
+  masing-masing **dengan kontrafaktual** sehingga terbukti menanggung beban: arity (`.optional()`
+  zod 3 **tidak** melonggarkan arity — kelas bug B01) dan `JSON.stringify` yang mengubah slot
+  `undefined` menjadi `null`. **Tes acceptance menemukan dua bug yang hampir saya kirim**: `""`
+  itu SAH untuk mengosongkan `dokumen_share` dan untuk alasan tolak kosong, sedangkan guard
+  "optional" yang menolak blank akan mematikan keduanya. **Gate baru `npm run verify:validation`**
+  (ratchet `.ci/validation-baseline.json` yang hanya boleh menyusut; **baterai 6 killed /
+  0 survived / 1 ok-green**, exit code di-assert **persis** — exit 1 = pelanggaran, exit 2 = gate
+  tidak bisa menilai). 25 tes baru. Sisa 24 aksi mutasi **dibekalkan sebagai utang tercatat**,
+  bukan diklaim selesai.
+
 ## 8. Urutan yang saya sarankan
 
 > **Ditinjau 2026-09-13 (setelah audit ulang).** Urutan lama membuka dengan "putuskan migrasi 013" —

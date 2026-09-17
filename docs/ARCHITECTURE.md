@@ -7,7 +7,10 @@
 > - ✅ 12 admin modals (all functionality)
 > - ✅ Preact islands with client:load
 > - ✅ Nanostores for state management
-> - ✅ Zod validation at API edge
+> - ⚠️ Zod validation at the API edge is **PARTIAL** — measured 2026-09-16: 9 of 33 mutating
+>   actions (`npm run verify:validation`). This line used to read "✅ Zod validation at API
+>   edge"; that was true of the auth surface only (7 of 81 routed actions). The rest is frozen
+>   in `.ci/validation-baseline.json` and may only shrink.
 > - ✅ 235 unit tests passing
 > 
 > **Remaining gaps:**
