@@ -197,6 +197,15 @@ jobs:
         with:
           name: ${{ needs.build.outputs.artifact-name }}
 
+      # The PWA manifest and icon wiring: a remote or missing icon href is
+      # invisible in dev and shows up only as a broken install prompt in prod.
+      #
+      # It lives HERE, not in quality-gates, because it reads `dist/sw.js` and
+      # only this job has the built artifact. In quality-gates it failed on every
+      # run for that reason alone — the note left there has the measurement.
+      - name: Verify the PWA manifest and icons
+        run: npm run verify:pwa
+
       # Prove the bytes we are about to test are the bytes that were built.
       - name: Verify artifact integrity
         run: |
@@ -321,10 +330,16 @@ jobs:
       # A pipeline that cannot report its own absence needs a gate that can.
       - name: Verify the workflows are ones GitHub will parse
         run: npm run verify:workflows
-      # The PWA manifest and icon wiring: a remote or missing icon href is
-      # invisible in dev and shows up only as a broken install prompt in prod.
-      - name: Verify the PWA manifest and icons
-        run: npm run verify:pwa
+      # `verify:pwa` USED TO LIVE HERE, and it could never pass: it reads
+      # `dist/sw.js`, and this job neither builds nor downloads an artifact, so
+      # that file is absent and the gate fails on a precondition it cannot
+      # satisfy. Measured 2026-09-18, on the FIRST CI run this repo ever actually
+      # executed (step 11, "Verify the PWA manifest and icons"). It moved to the
+      # `smoke` job, which downloads the built artifact — see the note there.
+      #
+      # The lesson is the repo's own: a gate is only as good as the job it is
+      # placed in. This one was green locally (where `dist/` exists from a dev
+      # build) and red in CI, and neither verdict was about the PWA.
       # Whether the surface bindings all resolve, and whether anything bypassed
       # the HTTP kernel. Both are static checks with no live environment, so they
       # belong here where every PR pays them — not only on the deploy path.
