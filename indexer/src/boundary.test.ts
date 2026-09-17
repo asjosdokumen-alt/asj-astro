@@ -7,6 +7,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { get as httpGet } from 'node:http';
+import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
 import type { DumpDoc } from './dump.js';
 import { buildIndex } from './build.js';
 import { dumpDoc } from './dump.js';
@@ -284,7 +286,38 @@ describe('violations over the real repo (oracle-pinned)', () => {
     expect(view.errors).toBe(0);
     expect(view.warnings).toBe(0);
     expect(view.violations).toEqual([]);
-  });});
+
+    // ── AND NOW ACTUALLY RUN THE ORACLE ──────────────────────────────────────
+    // This test has been NAMED "matches the depcruise oracle" since it was
+    // written, and until 2026-09-17 it never executed the binary. It re-derived
+    // the same verdict from `boundary.ts`, a hand-written reimplementation of
+    // dependency-cruiser's semantics. So the name was a claim rather than a
+    // measurement, and it made audit A-07 read as "two competing layering
+    // checkers, one wired" when the measured truth is "one wired checker
+    // (`boundary`) plus one reference implementation nobody ran".
+    //
+    // The distinction has teeth. `boundary.ts` MIRRORS depcruise by hand against
+    // the same `.dependency-cruiser.cjs`, so the only thing that can catch a
+    // drift in that mirroring is running the real binary — and a mirror that
+    // drifts is worse than no oracle, because the suite keeps saying "matches
+    // the oracle" while both sides move. Cost on this tree: ~6 s.
+    const cruise = spawnSync(
+      process.execPath,
+      [
+        join(ROOT, 'node_modules/dependency-cruiser/bin/dependency-cruise.mjs'),
+        'netlify/functions',
+        '--config',
+        '.dependency-cruiser.cjs',
+        '--output-type',
+        'err',
+      ],
+      { cwd: ROOT, encoding: 'utf8' },
+    );
+    expect(
+      cruise.status,
+      `depcruise oracle disagrees with boundary.ts (exit ${cruise.status}):\n${cruise.stdout ?? ''}${cruise.stderr ?? ''}`,
+    ).toBe(0);
+  }, 120000);});
 
 describe('HTTP surface: /violations', () => {
   function getJson(port: number, path: string): Promise<{ status: number; body: Record<string, unknown> }> {
