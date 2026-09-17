@@ -19,7 +19,7 @@
     "test:watch": "vitest",
     "test:frontend": "vitest run --project frontend",
     "test:backend": "vitest run --project backend",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run --coverage --project=frontend --project=backend",
     "test:e2e": "npm run e2e:public && npm run e2e:loker-layout && npm run e2e:headings && npm run e2e:dialog && npm run e2e:drawer && npm run e2e:labels",
     "e2e:public": "node e2e/test-public.mjs",
     "e2e:loker-layout": "node e2e/test-loker-layout.mjs",
@@ -44,6 +44,7 @@
     "verify:env:validate": "node --experimental-strip-types scripts/ci/env-validate.local.mjs",
     "verify:db": "node scripts/ci/verify-migrations.mjs",
     "verify:db:warn": "node scripts/ci/verify-migrations.mjs --warn-only",
+    "biodata:guard": "bash scripts/ci/biodata-guard.mutations.sh",
     "verify:schema": "node scripts/ci/gen-schema.mjs --check",
     "db:schema": "node scripts/ci/gen-schema.mjs",
     "verify:projections": "node scripts/ci/verify-projections.mjs",
@@ -72,7 +73,8 @@
     "verify:pwa": "node scripts/ci/verify-pwa.mjs",
     "verify:entries": "node scripts/ci/verify-function-entries.mjs",
     "verify:env:budget": "node scripts/ci/verify-env.mjs --profile production --budget",
-    "verify:settings-limit": "vitest run netlify/functions/_lib/db/settings-limit.test.ts"
+    "verify:settings-limit": "vitest run netlify/functions/_lib/db/settings-limit.test.ts",
+    "verify:workflows": "node scripts/ci/verify-workflows.mjs"
   },
   "dependencies": {
     "@astrojs/netlify": "^6.6.5",
@@ -102,6 +104,7 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@preact/preset-vite": "^2.10.6",
     "@testing-library/preact": "^3.2.4",
+    "@vitest/coverage-v8": "^4.1.11",
     "dependency-cruiser": "^18.2.0",
     "embedded-postgres": "^18.4.0-beta.17",
     "jsdom": "^30.0.1",

@@ -125,6 +125,28 @@ jobs:
 
   # ══ Gate 2 · unit tests (sharded, parallel) ═════════════════════════════════
 
+  # The migration-013 admin-only guard is a TRIGGER, so its verdict only exists
+  # inside a real UPDATE — there is nothing to assert statically. This job starts
+  # a throwaway PostgreSQL (from the `embedded-postgres` devDependency) and drives
+  # the genuine SQL through a PostgREST-shaped session.
+  #
+  # It needs NO credentials and NO network: no Supabase URL, no service-role key,
+  # no live database. A public repo also has no CI minute cap, so the cost of
+  # proving a security guard on every PR is just a few seconds of runner time.
+  #
+  # Why it is not in `verify:batteries`: that runner is hermetic-only by design
+  # and this needs a database engine. It is a separate job for the same reason
+  # `boundary` is — it needs its own timeout and its own failure message.
+  biodata-guard:
+    name: Migration-013 admin-only guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      - name: Prove the guard blocks self-approval
+        run: npm run biodata:guard
+
   test-frontend:
     name: Unit tests · frontend
     runs-on: ubuntu-latest
@@ -291,6 +313,14 @@ jobs:
       # them from growing back silently.
       - name: Verify function aliases
         run: npm run verify:aliases
+      # The workflow files, read the way GitHub reads them. Added 2026-09-17:
+      # `_notify.yml` used `secrets` in a step-level `if:`, which GitHub answers
+      # by refusing the WHOLE FILE, and a called workflow that will not parse
+      # takes its callers with it — ci.yml, both deploy workflows and rollback.yml
+      # were all dead, with zero jobs per run, and every local gate stayed green.
+      # A pipeline that cannot report its own absence needs a gate that can.
+      - name: Verify the workflows are ones GitHub will parse
+        run: npm run verify:workflows
       # The PWA manifest and icon wiring: a remote or missing icon href is
       # invisible in dev and shows up only as a broken install prompt in prod.
       - name: Verify the PWA manifest and icons

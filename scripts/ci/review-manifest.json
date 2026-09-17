@@ -101,9 +101,9 @@
       "blocking": false,
       "provenBy": null,
       "runs": [],
-      "note": "Second, independent layering checker (dependency-cruiser). Never wired anywhere. Advisory until someone decides which of the two is authoritative — see audit A-07.",
+      "note": "A-07 RESOLVED 2026-09-17. This is NOT a competing gate. `boundary` is authoritative: it is wired into ci.yml#boundary, it is blocking, it has a mutation battery, and it owns the 6 rules. This entry is the REFERENCE IMPLEMENTATION that `boundary.ts` mirrors by hand against the same .dependency-cruiser.cjs — which is exactly why it must be RUN, not merely present. The binary is now genuinely executed as an oracle by indexer/src/boundary.test.ts, a test that had been named 'matches the depcruise oracle' since it was written while never invoking it (it re-derived the verdict from boundary.ts and asserted the same 0). Measured on this tree 2026-09-17: exit 0 in ~6 s, 210 modules / 648 dependencies cruised. It stays non-blocking deliberately — a second blocking gate over the same config would be redundant, and the drift it can actually catch is a drift in boundary.ts's hand-mirroring, which is caught where the mirroring lives.",
       "battery": "none",
-      "batteryNote": "No mutation battery exists for this gate. It has never been observed failing."
+      "batteryNote": "No mutation battery, and none is wanted. This is not a gate; it is the oracle that boundary.test.ts pins itself against. That it can fail is not in question — it exits non-zero on a violation by construction — and a battery here would be testing dependency-cruiser rather than this repository. The gate that needs proving is `boundary`, and boundary.mutations.sh proves it (5 killed / 0 survived / 6 ok-green)."
     },
     {
       "script": "verify:entries",
@@ -257,6 +257,18 @@
       "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
     },
     {
+      "script": "verify:workflows",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-workflows.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates"
+      ],
+      "note": "The workflow files as GitHub reads them. Added 2026-09-17 after the repository was measured at 32 failed runs and ZERO successful ones, every run with no jobs: _notify.yml used `secrets` in a step-level `if:`, which GitHub rejects by refusing the WHOLE FILE (\"Unrecognized named-value: secrets\"), and a called workflow that will not parse takes its callers down with it — so ci.yml, deploy-staging.yml, deploy-production.yml and rollback.yml were all dead at once, and the automatic post-deploy rollback had never been armed. Nothing local could see it: every existing gate tests the code, and none of them reads the workflows as GitHub does. Rules: W1 shape · W2 no secrets in if: · W3 callable targets · W4 non-empty name (GitHub reports the FILE PATH as the name when a workflow will not parse — that is the tell that found this).",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Mutates NOTHING — every case is a fixture written to a mktemp -d outside the repository, so there is no restore step and no backup to launder. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
       "script": "test",
       "tier": 0,
       "blocking": true,
@@ -334,6 +346,17 @@
       "note": "The database is migrated by hand, so it can be behind the code. When it is, PostgREST answers 200 with an empty result and the app degrades silently. Both deploy workflows gate on it before publishing; the staging run carries an emergency `skip-db-gate` input for manual dispatches only, which the normal path never takes. PROVEN 2026-09-15: 7 killed / 0 survived / 4 ok-green against a local PostgREST stand-in. Offline-provable because its TRANSPORT is a base URL: `--contract` redirects the check, and `SUPABASE_URL` + a dummy key redirect the transport, so the verdict logic is exercised without touching the real database. The battery drives the whole verdict path, including D3 vs D3b — the SAME absent table exits 1 as `required` and 0 as `optional`, so severity is proven to decide rather than being assumed. SEE ALSO the operational note below. OPERATIONAL, MEASURED 2026-09-15: `npm run verify:db` from a developer machine CONNECTS TO THE LIVE PRODUCTION SUPABASE DATABASE. The gate calls applyEnvFiles() internally, which loads SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY from .env.local, so an `env SUPABASE_URL=... node gate` assignment cannot withhold them (an empty string counts as unset and is refilled; measured: 23 variables loaded, 8 SUPABASE ones). Running it unconfigured reports `DATABASE CONTRACT OK` against production and exits 0. This is intended for CI, where the credential comes from the GitHub Environment; locally it is a production-touching read. The battery is therefore hermetic by MOVING the env files aside for the whole run, and says so in its header.",
       "battery": "infra",
       "batteryNote": "Needs a live database, the Supabase transport, or a real HTTP server to be meaningful — so it does NOT run on every PR. Re-measure before moving it into the hermetic set."
+    },
+    {
+      "script": "biodata:guard",
+      "tier": 2,
+      "blocking": true,
+      "provenBy": "scripts/ci/biodata-guard.mutations.sh",
+      "runs": [
+        "ci.yml#biodata-guard"
+      ],
+      "battery": "infra",
+      "batteryNote": "Needs a real PostgreSQL because the guard IS a trigger: its verdict only exists inside an actual UPDATE. embedded-postgres (a devDependency) provides one, so this needs no Supabase credentials and no network — only a database engine. Deliberately NOT in run-batteries.mjs, which runs hermetic batteries only."
     },
     {
       "script": "verify:schema",
