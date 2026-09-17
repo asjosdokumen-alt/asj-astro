@@ -30,6 +30,8 @@ vi.mock('./supabase', () => ({
 vi.mock('../components/Toast', () => ({ showToast: vi.fn() }));
 
 import { apiClient } from './apiClient';
+// Mocked above (vi.mock is hoisted), so this is the spy, not the real toast.
+import { showToast } from '../components/Toast';
 
 const RESP = { success: true, jobs: [{ code: 'TG1', nama: 'KANDIDAT PII' }] };
 
@@ -323,5 +325,291 @@ describe('apiClient — request timeout (P8)', () => {
     expect(signals[1]).toBeInstanceOf(AbortSignal);
     // Distinct identities: sharing one controller is the concurrency bug.
     expect(signals[0]).not.toBe(signals[1]);
+  });
+});
+
+// ==========================================
+// TESTS: the server's error message survives (2026-09-17)
+//
+// `if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + res.statusText)`
+// threw away the only place the reason exists. The functions return
+// `{ success:false, error:"Nomor ini belum terdaftar" }` WITH a real http status
+// (non-negotiable #6: never 200 + success:false), so the status line is a
+// category and the body is the explanation. Losing it is why 23 call sites kept
+// their own `fetch` — the client was not a drop-in replacement for them, so
+// converting them would have traded a specific message for a generic one.
+//
+// Both halves of the contract are pinned:
+//   - a JSON error body is surfaced verbatim (`error`, then `message`)
+//   - anything else falls back to the status line, because a CDN 502 is HTML and
+//     a parse failure must not replace one error with a more confusing one
+// ==========================================
+describe('apiClient — server error message is surfaced, not paraphrased', () => {
+  const opts = { requireAuth: false } as const;
+
+  function nonOk(body: string, status = 400, type = 'application/json') {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(body, { status, headers: { 'Content-Type': type } })),
+    );
+  }
+
+  it("uses the body's `error` field as the thrown message", async () => {
+    state = { isLoggedIn: false, sessionToken: '' };
+    nonOk(JSON.stringify({ success: false, error: 'Nomor ini belum terdaftar di sistem ASJ.' }));
+    await expect(apiClient('cekDataPelamar', [{}], opts)).rejects.toThrow(
+      'Nomor ini belum terdaftar di sistem ASJ.',
+    );
+  });
+
+  it('falls back to `message` when there is no `error` field', async () => {
+    state = { isLoggedIn: false, sessionToken: '' };
+    nonOk(JSON.stringify({ message: 'Rate limit terlampaui' }), 429);
+    await expect(apiClient('cekDataPelamar', [{}], opts)).rejects.toThrow('Rate limit terlampaui');
+  });
+
+  it('falls back to the status line when the body is not JSON (a CDN 502 is HTML)', async () => {
+    state = { isLoggedIn: false, sessionToken: '' };
+    nonOk('<html><body>Bad Gateway</body></html>', 502, 'text/html');
+    await expect(apiClient('cekDataPelamar', [{}], opts)).rejects.toThrow('HTTP 502');
+  });
+
+  it('falls back to the status line when the error field is blank', async () => {
+    state = { isLoggedIn: false, sessionToken: '' };
+    nonOk(JSON.stringify({ success: false, error: '   ' }), 500);
+    await expect(apiClient('cekDataPelamar', [{}], opts)).rejects.toThrow('HTTP 500');
+  });
+});
+
+// ==========================================
+// TESTS: `silent` — suppress the toast, never the throw (2026-09-17)
+//
+// Added so the remaining raw-fetch call sites can be converted without
+// double-reporting. Several of them own their error presentation — a contextual
+// "Gagal upload <jenis>." that says WHICH document failed, which the client
+// cannot know. Converting those without this option would show two toasts for
+// one failure, which is a regression dressed up as consistency.
+//
+// The contract is deliberately one-sided: `silent` removes the TOAST and
+// nothing else. The call still throws, and the thrown message still carries the
+// server's own text, so a caller that owns its UI loses no information.
+// ==========================================
+describe('apiClient — silent suppresses the toast, never the throw', () => {
+  const fail = () =>
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ success: false, error: 'Gagal simpan berkas' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+      ),
+    );
+
+  it('does not toast, and still throws the server message', async () => {
+    state = { isLoggedIn: false, sessionToken: '' };
+    fail();
+    (showToast as unknown as ReturnType<typeof vi.fn>).mockClear();
+    await expect(
+      apiClient('simpanBerkasTahapan', [{}], { requireAuth: false, silent: true }),
+    ).rejects.toThrow('Gagal simpan berkas');
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it('still toasts by default — silent is opt-in, not a new default', async () => {
+    state = { isLoggedIn: false, sessionToken: '' };
+    fail();
+    (showToast as unknown as ReturnType<typeof vi.fn>).mockClear();
+    await expect(apiClient('simpanBerkasTahapan', [{}], { requireAuth: false })).rejects.toThrow(
+      'Gagal simpan berkas',
+    );
+    expect(showToast).toHaveBeenCalled();
+  });
+});
+
+// ==========================================
+// TESTS: `force` — bypass the read cache, and REFRESH it (2026-09-17)
+//
+// `getAppData` is in CACHEABLE_READS, so converting a caller that must see fresh
+// data after a WRITE would serve it a payload up to 30 s old and make the user's
+// own action look like it did nothing. The concrete case: `fetchMailFromAPI` is
+// called after marking a message read or deleted.
+//
+// The contract has two halves and both are asserted, because a "bypass" that
+// forgot to write back would leave every other caller refetching:
+//   1. a forced call does NOT return the cached value;
+//   2. the fresh value REPLACES the cache entry, so the next ordinary call gets
+//      the new data without a second request.
+// ==========================================
+describe('apiClient — force bypasses the read cache but refreshes it', () => {
+  const json = (body: unknown) =>
+    new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+  it('returns the FRESH value, and the cache holds it afterwards', async () => {
+    state = { isLoggedIn: true, sessionToken: 'tok-force' };
+
+    // Prime the cache with 'first'.
+    vi.stubGlobal('fetch', vi.fn(async () => json({ success: true, tag: 'first' })));
+    const first = (await apiClient('getAppData', ['admin'], { onSessionInvalid: 'throw' })) as {
+      tag: string;
+    };
+    expect(first.tag).toBe('first');
+
+    // Same action+args, but forced: must hit the network and return 'second'.
+    const fetchMock = vi.fn(async () => json({ success: true, tag: 'second' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const forced = (await apiClient('getAppData', ['admin'], {
+      onSessionInvalid: 'throw',
+      force: true,
+    })) as { tag: string };
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(forced.tag).toBe('second');
+
+    // Half two: the cache was REFRESHED, not merely skipped — an ordinary call
+    // now returns the new value without fetching again.
+    const after = (await apiClient('getAppData', ['admin'], { onSessionInvalid: 'throw' })) as {
+      tag: string;
+    };
+    expect(after.tag).toBe('second');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ==========================================
+// TESTS: `sessionInvalid` arrives as HTTP 400, not 200 (2026-09-17)
+//
+// The dead-session verdict used to be read ONLY on the 2xx path. The backend
+// reports an expired session as `{ success:false, sessionInvalid:true }`, and the
+// function wrapper maps `success === false` to HTTP 400 — measured against
+// production with a bogus token:
+//
+//   getDrafCvMaster      -> 400  success=false sessionInvalid=true
+//   updateKandidatSuper  -> 400  success=false sessionInvalid=true
+//
+// so the 2xx branch was unreachable for a real expiry and `onSessionInvalid` —
+// including its `'logout'` default — did nothing. These three cases pin the fix,
+// and the third is the CONTROL that keeps it honest: a 400 that is an ordinary
+// error must still surface the SERVER'S message and must not log anyone out.
+// ==========================================
+describe('apiClient — a dead session arrives as HTTP 400', () => {
+  function respondWithStatus(body: unknown, status: number) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify(body), {
+            status,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+      ),
+    );
+  }
+
+  beforeEach(async () => {
+    const mod = await import('../store/authReactive');
+    (mod.logout as unknown as ReturnType<typeof vi.fn>).mockClear();
+    (showToast as unknown as ReturnType<typeof vi.fn>).mockClear();
+  });
+
+  it('400 + sessionInvalid, default → pesan kanonik + logout', async () => {
+    const { logout } = await import('../store/authReactive');
+    state = { isLoggedIn: true, sessionToken: 'tok-dead' };
+    respondWithStatus({ success: false, sessionInvalid: true, message: 'Sesi tidak valid' }, 400);
+
+    await expect(apiClient('getAppData', ['admin'])).rejects.toThrow('Session expired');
+    expect(logout).toHaveBeenCalled();
+  });
+
+  it("400 + sessionInvalid, 'throw' → pesan kanonik TANPA logout", async () => {
+    const { logout } = await import('../store/authReactive');
+    state = { isLoggedIn: true, sessionToken: 'tok-dead' };
+    respondWithStatus({ success: false, sessionInvalid: true, message: 'Sesi tidak valid' }, 400);
+
+    await expect(
+      apiClient('getAppData', ['admin'], { onSessionInvalid: 'throw' }),
+    ).rejects.toThrow('Session expired');
+    expect(logout).not.toHaveBeenCalled();
+  });
+
+  it('KONTROL: 400 TANPA sessionInvalid tetap memunculkan pesan SERVER, tanpa logout', async () => {
+    const { logout } = await import('../store/authReactive');
+    state = { isLoggedIn: true, sessionToken: 'tok-live' };
+    respondWithStatus({ success: false, error: 'Nomor ini belum terdaftar' }, 400);
+
+    // Kalau ini ikut menjadi 'Session expired', cabang baru itu menelan error
+    // biasa — dan itu lebih buruk daripada bug yang diperbaikinya.
+    await expect(apiClient('getAppData', ['admin'])).rejects.toThrow('Nomor ini belum terdaftar');
+    expect(logout).not.toHaveBeenCalled();
+  });
+});
+
+// ==========================================
+// TESTS: opsi `signal` — batal dari pemanggil vs timeout kita (2026-09-17)
+//
+// Komponen yang membatalkan permintaan saat unmount butuh ini, dan sebelum ada
+// opsi `signal` ia harus mempertahankan `fetch`-nya sendiri.
+//
+// Yang dipaku: abort DARI PEMANGGIL adalah pembatalan, bukan kegagalan — ia
+// melempar `AbortError` apa adanya dan TIDAK memunculkan toast. Timeout 20 detik
+// milik klien tetap kegagalan dan tetap bicara. Menyamakan keduanya akan membuat
+// setiap unmount memunculkan toast "timed out" palsu.
+//
+// Tes kedua adalah KONTROL-nya: `AbortError` tanpa `signal` dari pemanggil harus
+// TETAP menjadi timeout + toast. Tanpa itu, tes pertama tidak membuktikan apa pun
+// selain "klien menelan semua AbortError".
+// ==========================================
+describe('apiClient — opsi `signal`', () => {
+  /** fetch yang benar-benar menghormati signal, seperti fetch asli. */
+  function fetchThatHonoursSignal() {
+    return vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          const s = init.signal as AbortSignal;
+          const bail = () =>
+            reject(Object.assign(new Error('The operation was aborted'), { name: 'AbortError' }));
+          if (s.aborted) return bail();
+          s.addEventListener('abort', bail);
+        }),
+    );
+  }
+
+  beforeEach(() => {
+    (showToast as unknown as ReturnType<typeof vi.fn>).mockClear();
+  });
+
+  it('abort dari pemanggil → AbortError dilempar apa adanya, TANPA toast', async () => {
+    state = { isLoggedIn: true, sessionToken: 'tok-abort' };
+    vi.stubGlobal('fetch', fetchThatHonoursSignal());
+
+    const ac = new AbortController();
+    const p = apiClient('getAppData', ['admin'], {
+      onSessionInvalid: 'throw',
+      signal: ac.signal,
+    });
+    ac.abort();
+
+    await expect(p).rejects.toMatchObject({ name: 'AbortError' });
+    expect(showToast).not.toHaveBeenCalled();
+  });
+
+  it('KONTROL: AbortError TANPA signal pemanggil tetap timeout + toast', async () => {
+    state = { isLoggedIn: true, sessionToken: 'tok-timeout' };
+    // Menolak dengan AbortError walau tidak ada yang membatalkan: inilah bentuk
+    // yang dihasilkan timer internal.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          Promise.reject(
+            Object.assign(new Error('The operation was aborted'), { name: 'AbortError' }),
+          ),
+      ),
+    );
+
+    await expect(apiClient('getAppData', ['admin'], { onSessionInvalid: 'throw' })).rejects.toThrow(
+      /timed out after/,
+    );
+    expect(showToast).toHaveBeenCalled();
   });
 });
