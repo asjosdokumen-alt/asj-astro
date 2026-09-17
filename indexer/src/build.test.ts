@@ -180,8 +180,62 @@ describe('full build', () => {
     // covers: findSettings()/findAnnouncements() inherited the default, so the
     // whole config table read back as ONE row and every dropdown key but one was
     // absent. Nothing else moves.
-    // Measured, not derived: 247 + 86 + 12 + 46 + 5 + 19 = 415.
-    expect(r.stats.fileCount).toBe(415); // 247 ts + 86 tsx + 12 astro + 46 mjs + 5 cjs + 19 js
+    // 415 -> 414 (2026-09-17): net -1, and BOTH halves are deliberate.
+    //   +1 astro — `src/pages/404.astro`. The site had no 404 page at all, so an
+    //     unknown URL fell through to Netlify's default page.
+    //   -2 mjs  — `e2e/test-admin.mjs` + `e2e/test-supabase-auth.mjs`, deleted.
+    //     Both were orphaned (no workflow, no npm script) and neither was safe to
+    //     wire: the first cannot pass without an admin session it never creates,
+    //     the second calls auth/v1/signup with a random phone on every run and so
+    //     creates real users in the production Supabase project.
+    // Measured with a real discover run, not derived: 247 + 86 + 13 + 44 + 5 + 19
+    // = 414. The identical two deltas are recorded in discover.test.ts, which is
+    // the cross-check that these are the same files and not a third change.
+    // 414 -> 415 (2026-09-17, later): +1 ts —
+    // src/store/adminStore.fetchMail.test.ts, the transport + post-write-freshness
+    // guard for taking adminStore.fetchMailFromAPI off its hand-rolled fetch.
+    // +1 only; nothing was removed to make room. Measured with a real discover
+    // run, not derived: 248 + 86 + 13 + 44 + 5 + 19 = 415, and the same run
+    // cross-checked against `git ls-files --cached --others --exclude-standard`
+    // filtered by includePath() — also 415. The identical +1 is recorded in
+    // discover.test.ts (count('ts')), which is the cross-check that these are the
+    // same file and not a second change.
+    // 415 -> 416 (2026-09-17, later): +1 mjs —
+    // scripts/ci/verify-workflows.mjs, the gate for the workflow files as GitHub
+    // reads them. Measured with a real discover run, not derived:
+    // 248 + 86 + 13 + 45 + 5 + 19 = 416, and the same run cross-checked against
+    // `git ls-files --cached --others --exclude-standard` filtered by includePath()
+    // — also 416. The identical +1 is recorded in discover.test.ts (count('mjs')),
+    // which is the cross-check that these are the same file.
+    // 416 -> 417 (2026-09-17, later): +1 tsx —
+    // src/components/CekSiswaModal.test.tsx, the transport + session-status guard
+    // for the CekSiswaModal conversion. That file had NO test at all before, so the
+    // conversion would otherwise have been unverified at the wire. Measured with a
+    // real discover run: 248 + 87 + 13 + 45 + 5 + 19 = 417, cross-checked against
+    // `git ls-files --cached --others --exclude-standard` filtered by includePath()
+    // — also 417. The identical +1 is recorded in discover.test.ts (count('tsx')).
+    // 417 -> 425 (2026-09-17, dashboard Stage 1): +8. MEASURED with a real
+    // discover run: 250 + 87 + 13 + 51 + 5 + 19 = 425. The +2 ts is
+    // src/lib/profileProgress.ts and its test; the +6 mjs are the e2e
+    // measurement probes. My first attempt at these numbers was 429 with
+    // mjs=54/js=20 — WRONG, because I derived them from a shell `git ls-files`
+    // count instead of from includePath(). `indexer/src/count-indexed.test.ts`
+    // exists so this can be read off rather than guessed. This assertion must
+    // stay in lockstep with `files.length` in discover.test.ts — they are two
+    // views of one number, and the checksum test there is what proves the six
+    // per-language counts really sum to it.
+    // 425 -> 426 (2026-09-18): +1 ts. The "+8 to 425" entry above was DERIVED
+    // from a base that was already stale, and this is the phantom it hid:
+    // netlify/functions/_lib/db/candidates.test.ts was added after e354e35 and
+    // its +1 was never recorded, so HEAD has been asserting 415 while its own
+    // tree measures 416. Verified by extracting HEAD and running a real discover
+    // over it (ts=248, tsx=86, astro=12, mjs=46, cjs=5, js=19 = 416) and by
+    // `git diff --diff-filter=AD --name-status e354e35 HEAD -- '*.ts'`, which
+    // names that one path. Side note, same class: the chain above narrates
+    // mjs=45 at the 417 step while HEAD asserts 46 — the endpoint (51) is
+    // measured and correct, the intermediate is not. MEASURED 2026-09-18:
+    // 251 + 87 + 13 + 51 + 5 + 19 = 426.
+    expect(r.stats.fileCount).toBe(426); // 251 ts + 87 tsx + 13 astro + 51 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 
@@ -231,7 +285,14 @@ describe('full build', () => {
     // single new test file was enough to trip it. The convention is
     // measured + ~500, so 18400. The file-count bump above is the matching
     // evidence that this is new code and not a parse change.
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(18400);
+    // 18400 -> 18900 (2026-09-17, later): measured 18415 after
+    // `scripts/ci/verify-workflows.mjs` landed — the gate for the workflow files
+    // as GitHub reads them. The fileCount bump above is the matching evidence
+    // that this is new code and not a parse change: +1 mjs, and the +15 symbols
+    // are that file's exported helpers and their comments. Per the standing
+    // instruction in this block, a future bump with NO matching fileCount bump
+    // means a parse change (or a stray scratch file), not new code.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(18900);
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

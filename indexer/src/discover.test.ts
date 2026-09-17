@@ -25,11 +25,42 @@ function gitLsFiles(): string[] {
   // Tracked + untracked-non-ignored: the inventory covers the whole working
   // tree, so a new-but-uncommitted source file (e.g. archiver.d.ts) stays in
   // sync with discovery until it is committed.
+  //
+  // The deleted-file filter is REQUIRED, and its absence was a real bug (found
+  // 2026-09-17). `--cached` lists files that are still in the INDEX but no
+  // longer on disk — deleted with the filesystem but not yet `git add`ed.
+  // discoverFiles() walks the working tree and correctly omits them, so the two
+  // sides disagreed by exactly those paths (e2e/test-admin.mjs and
+  // e2e/test-supabase-auth.mjs, both ` D` in `git status`). Discovery was RIGHT
+  // and this helper was WRONG.
+  //
+  // `git ls-files --deleted` is NOT an additive flag you can append to the line
+  // below: it is a SEPARATE query, and appending it UNIONS the deleted set into
+  // the output — measured 625 -> 627, the wrong direction. The deleted paths are
+  // obtained on their own and SUBTRACTED. Verified empirically: bare
+  // `git ls-files --deleted` returns exactly the two paths, while
+  // `git ls-files -t -c` tags them `H` (cached), not `D` — so the tag column is
+  // NOT the signal, and two of my earlier attempts to read it were wrong.
+  //
+  // The failure mode is worth naming: it looked like inventory drift — the kind
+  // this ratchet exists to catch — and the tempting "fix" was to add 2 to the
+  // counts. That would have baked a phantom into the baseline. What separated
+  // them was printing the SET DIFFERENCE rather than the sizes: `onlyGit` had
+  // the two names and `onlyDisc` was empty, proving the walker saw everything
+  // git did and skipped only paths git wrongly kept.
+  const deleted = new Set(
+    execSync('git ls-files --deleted', { encoding: 'utf8', cwd: ROOT })
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .map(toPosix),
+  );
+
   return execSync('git ls-files --cached --others --exclude-standard', { encoding: 'utf8', cwd: ROOT })
     .split(/\r?\n/)
     .filter(Boolean)
     .map(toPosix)
     .filter(includePath)
+    .filter((rel) => !deleted.has(rel))
     .sort();
 }
 
@@ -94,7 +125,7 @@ describe('discover', () => {
     expect(paths).not.toMatch(/^\.git\//);
   });
 
-  it('counts match the measured profile (design §1, +test-supabase-auth.mjs + CJS entries)', () => {
+  it('counts match the measured profile (design §1, + CJS entries)', () => {
     const files = run();
     const count = (lang: Lang) => files.filter((f) => f.lang === lang).length;
     // Phase B (2026-09-11): kernel/deadline.ts + kernel/admission.ts and their
@@ -267,7 +298,35 @@ describe('discover', () => {
     // 246 -> 247 (2026-09-16, same day): +1 ts —
     // netlify/functions/_lib/db/settings-limit.test.ts, the regression guard for
     // findSettings()/findAnnouncements() inheriting findTable()'s limit=1 default.
-    expect(count('ts')).toBe(247);
+    // 247 -> 248 (2026-09-17, later): +1 ts —
+    // src/store/adminStore.fetchMail.test.ts, the transport + post-write-freshness
+    // guard for taking adminStore.fetchMailFromAPI off its hand-rolled fetch.
+    // Measured: tsx/astro/mjs/cjs/js are all unchanged, so the six counts still
+    // sum to files.length (415) in build.test.ts. Cross-checked against
+    // `git ls-files --cached --others --exclude-standard` filtered by
+    // includePath() — also 415, i.e. discovery and git still agree.
+    // 248 -> 250 (2026-09-17, dashboard Stage 1): +2 ts —
+    // src/lib/profileProgress.ts (the derived CV Mini/Master progress that
+    // replaced the never-sent `kandidatData.cv*Progress` contract) and its
+    // 17-test suite src/lib/profileProgress.test.ts. Both are src/ sources, so
+    // fileCount in build.test.ts and files.length / count('ts') here move
+    // together by the SAME +2.
+    // THE PHANTOM — found 2026-09-18, and the reason this ratchet was RED at
+    // HEAD without anyone noticing. The "247" the chain above derives from was
+    // itself stale: netlify/functions/_lib/db/candidates.test.ts was added after
+    // e354e35 (the commit that set 247) and the count was never bumped.
+    // Measured, by extracting HEAD (`git archive HEAD | tar -x`) and running
+    // discoverFiles() over it: ts=248, tsx=86, astro=12, mjs=46, cjs=5, js=19
+    // = 416, while HEAD asserted 415. Identity of the one file:
+    //   git diff --diff-filter=AD --name-status e354e35 HEAD -- '*.ts'
+    // returns exactly that one path once indexer/, docs/, e2e/ and
+    // vitest.config.ts are filtered out — none of which includePath() counts
+    // (it counts src/, netlify/functions/, shared/, scripts/, e2e/ and the repo
+    // root only). So the entries above were DERIVED from a stale base, not
+    // measured: 247 + 3 new = 250, but the tree was at 248 + 3 = 251.
+    // MEASURED 2026-09-18 with `indexer/src/count-indexed.test.ts` (which calls
+    // discoverFiles itself): ts=251, tsx=87, astro=13, mjs=51, cjs=5, js=19.
+    expect(count('ts')).toBe(251);
     // 78 -> 79 (2026-09-13, owner-approved item 2):
     // src/components/ui/AiUnavailableBanner.tsx.
     // 79 -> 78 (2026-09-13): -1 tsx, src/components/ESignatureModal.tsx deleted.
@@ -305,8 +364,19 @@ describe('discover', () => {
     // form's label/control rework. Measured; ts/mjs/cjs/js are all unchanged.
     // 85 -> 86 (2026-09-16): `InputManualModal.test.tsx`. Measured; ts/mjs/cjs/js
     // are all unchanged, so the six counts still sum to files.length below.
-    expect(count('tsx')).toBe(86); // 46 at design time; modal/component test suites added since
-    expect(count('astro')).toBe(12);
+    // 86 -> 87 (2026-09-17, later): +1 tsx — src/components/CekSiswaModal.test.tsx,
+    // the guard for the CekSiswaModal conversion (that file had no test before, so
+    // the conversion would have been unverified at the wire). Measured: the other
+    // five counts are unchanged, so the six still sum to files.length in
+    // build.test.ts.
+    expect(count('tsx')).toBe(87); // 46 at design time; modal/component test suites added since
+    // 12 -> 13 (2026-09-17): +1 astro — `src/pages/404.astro`. The site had NO
+    // 404 page: `src/pages/404.astro` was absent and `netlify.toml` carried no
+    // rule for unknown paths, so a mistyped link fell through to Netlify's own
+    // default page. It is a real page and it is counted; nothing was removed to
+    // make room for it. Cross-check: this is the same +1 as files.length in
+    // build.test.ts, and the six counts still sum to files.length below.
+    expect(count('astro')).toBe(13);
     // 2026-09-11: the Phase A/B CI gates landed — bundle-size.mjs,
     // surface-binding.mjs, verify-aliases.mjs, scripts/lib/load-env.mjs, and
     // io-boundary.mjs — none of which were reflected here at the time.
@@ -368,7 +438,39 @@ describe('discover', () => {
     // rounds. Measured with a real discover run rather than inferred: every other
     // language count is unchanged, and the six counts still sum to files.length,
     // which is the cross-check that this is the same +2 as files.length below.
-    expect(count('mjs')).toBe(46); // 11 at design time; e2e + scripts/ci gates added since
+    // 46 -> 44 (2026-09-17): -2 mjs — `e2e/test-admin.mjs` and
+    // `e2e/test-supabase-auth.mjs` DELETED, not wired up. Both were orphans (no
+    // workflow and no npm script invoked either), and neither could be wired
+    // safely. test-admin cannot pass at all: it drives the admin panel without
+    // ever establishing the admin session `/admin` is gated behind, and its
+    // assertions are pinned to data that has since changed ("dropdown has 24
+    // options"). test-supabase-auth is worse than useless in CI — it calls
+    // `auth/v1/signup` with a RANDOM phone on every run, so it creates real auth
+    // users in the production Supabase project and accumulates them, while its
+    // assertions accept 200 OR 400 and therefore assert almost nothing; its
+    // default port is also 4322 while every other gate uses 4321. Their useful
+    // surface is covered by the hermetic gates and the unit suites. Measured
+    // with a real discover run: the other five counts are unchanged and the six
+    // still sum to files.length.
+    // 44 -> 45 (2026-09-17, later): +1 mjs — scripts/ci/verify-workflows.mjs, the
+    // gate that reads the workflow files the way GitHub does. Its companion
+    // verify-workflows.mutations.sh does NOT move this count: `.sh` is not an
+    // indexed language, which is why the CI-gate additions have always moved
+    // `mjs` by fewer than the number of files they added.
+    // 45 -> 51 (2026-09-17, dashboard Stage 1 + the earlier same-day session):
+    // +6 mjs — the e2e measurement/verification probes. Each exists to make a
+    // claim FALSIFIABLE (before/after numbers) rather than to be a gate:
+    //   e2e/measure-riwayat-card.mjs        (content-visibility collapse)
+    //   e2e/measure-bottomnav-clearance.mjs (nav overlap in px)
+    //   e2e/measure-bottomnav-tap.mjs       (hit-test ownership)
+    //   e2e/shot-bottomnav-occlusion.mjs    (visual evidence)
+    //   e2e/verify-progress-live.mjs        (0% / 100% / PERFECT badge)
+    //   e2e/verify-stage1.mjs               (heading outline)
+    // MEASURED — and my first guess was 54. It was wrong, because I derived it
+    // from `git ls-files | grep '\.mjs$'`, which counts files includePath()
+    // REJECTS. Never infer these from a shell count; read them off
+    // `indexer/src/count-indexed.test.ts`, which calls discoverFiles() itself.
+    expect(count('mjs')).toBe(51); // 11 at design time; e2e + scripts/ci gates added since
     expect(count('cjs')).toBe(5);
     // Phase A (2026-09-11): netlify/functions/run-migration.js deleted — the
     // action was already removed from the registry, so the entry point was a
@@ -389,6 +491,11 @@ describe('discover', () => {
     // surface-binding gate's reachability rule now fails the build if any
     // router action has no narrow home. 18 -> 19. Reconciled 2026-09-14:
     // measured 19, unchanged — the drift lived only in `mjs`.
+    // 19 stays 19 after the Stage 1 work: MEASURED, not assumed. I had first
+    // written 20 here by pattern-matching on the +2 ts, and that was wrong —
+    // `.js` did not move at all. The checksum test below is what caught it:
+    // 250+87+13+51+5+19 = 425, which is files.length. If this number were 20
+    // the six would sum to 426 and the integrity test would fail loudly.
     expect(count('js')).toBe(19);
     // 342 -> 341 (2026-09-11): share-data.test.ts left netlify/functions/ for
     // e2e/ — the file still exists, but see the count('ts') note above.
@@ -501,7 +608,50 @@ describe('discover', () => {
     // 414 -> 415 (2026-09-16, same day): settings-limit.test.ts. Third assertion
     // moved by the same +1 — fileCount in build.test.ts, count(ts) here, and this
     // one.
-    expect(files.length).toBe(415); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader, +1 battery runner, +4 edge-validation gate, +2 e2e guards, +1 TabTambah test, +1 InputManualModal test, +1 settings-limit test
+    // 415 -> 414 (2026-09-17): net -1, and this is the THIRD assertion moved by
+    // it — fileCount in build.test.ts, and count(astro)/count(mjs) here. The
+    // halves: +1 astro (`src/pages/404.astro`, the page the site never had) and
+    // -2 mjs (`e2e/test-admin.mjs` + `e2e/test-supabase-auth.mjs`, deleted as
+    // orphans that could not be wired safely). Listed together rather than
+    // discovered one failing run at a time, which is the point of this comment
+    // block. Measured with a real discover run: 247 + 86 + 13 + 44 + 5 + 19.
+    // 414 -> 415 (2026-09-17, later): +1 ts —
+    // src/store/adminStore.fetchMail.test.ts, the transport + post-write-freshness
+    // guard for taking adminStore.fetchMailFromAPI off its hand-rolled fetch. This
+    // is the THIRD assertion moved by the same +1 — fileCount in build.test.ts,
+    // count(ts) here, and this one. Measured with a real discover run, not derived:
+    // 248 + 86 + 13 + 44 + 5 + 19 = 415, cross-checked against
+    // `git ls-files --cached --others --exclude-standard` filtered by includePath()
+    // — also 415, so discovery and git still agree.
+    // 415 -> 416 (2026-09-17, later): +1 mjs —
+    // scripts/ci/verify-workflows.mjs, the gate for the workflow files as GitHub
+    // reads them. This is the THIRD assertion moved by the same +1 — fileCount in
+    // build.test.ts, count('mjs') above, and this one. Measured with a real
+    // discover run: 248 + 86 + 13 + 45 + 5 + 19 = 416, cross-checked against
+    // `git ls-files --cached --others --exclude-standard` filtered by includePath()
+    // — also 416.
+    // 416 -> 417 (2026-09-17, later): +1 tsx — src/components/CekSiswaModal.test.tsx.
+    // This is the THIRD assertion moved by the same +1 — fileCount in build.test.ts,
+    // count('tsx') above, and this one. Measured with a real discover run:
+    // 248 + 87 + 13 + 45 + 5 + 19 = 417, cross-checked against
+    // `git ls-files --cached --others --exclude-standard` filtered by includePath()
+    // — also 417.
+    // 417 -> 425 (2026-09-17, dashboard Stage 1): +8 — +2 ts
+    // (src/lib/profileProgress.ts + its test) and +6 e2e .mjs probes.
+    // MEASURED with a real discover run: 250 + 87 + 13 + 51 + 5 + 19 = 425.
+    // The checksum test below is the authority — if the six per-language
+    // counts do not sum to THIS value, one of them above is wrong.
+    // 425 -> 426 (2026-09-18): +1 ts — and this is the FOURTH assertion moved by
+    // the same +1 (fileCount in build.test.ts, count('ts') above, this one, and
+    // the checksum below). The "+8 to 425" above was DERIVED from a base that was
+    // already stale, which is what hid the phantom: `candidates.test.ts` landed
+    // after e354e35 and its +1 was never recorded, so HEAD has been asserting 415
+    // while its own tree measures 416. Verified by extracting HEAD and running a
+    // real discover over it (ts=248, tsx=86, astro=12, mjs=46, cjs=5, js=19 = 416)
+    // and by `git diff --diff-filter=AD --name-status e354e35 HEAD -- '*.ts'`,
+    // which names exactly that one path. MEASURED 2026-09-18:
+    // 251 + 87 + 13 + 51 + 5 + 19 = 426.
+    expect(files.length).toBe(426); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader, +1 battery runner, +4 edge-validation gate, +2 e2e guards, +1 TabTambah test, +1 InputManualModal test, +1 settings-limit test, +1 404 page, -2 orphan e2e, +1 fetchMail test, +1 workflow gate, +1 CekSiswaModal test, +2 progress, +6 e2e probes, +1 candidates.test.ts (the phantom HEAD had been missing)
   });
 
   it('no scratch files are being counted, and the per-language counts sum to the total', () => {
