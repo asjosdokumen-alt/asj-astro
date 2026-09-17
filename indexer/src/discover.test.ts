@@ -176,7 +176,98 @@ describe('discover', () => {
     // 235 -> 236 (2026-09-13, latest): +1 ts — src/store/theme.test.ts, pinning
     // the banner/theme coupling fix (setBanner() was a no-op because the theme
     // subscriber called bannerStore.set() unconditionally).
-    expect(count('ts')).toBe(236);
+    // 237 -> 239 (2026-09-14): +2 ts — src/lib/aiCvDraft.ts (the nested→flat CV
+    // draft bridge with multi-path tolerant reads) and its test, added with the
+    // P2 admin CV-AI panel (docs/UI_DESIGN_REVIEW.md §5). Same +2 as build.test.ts.
+    // 239 -> 241 (2026-09-14): +2 ts — src/lib/vip.ts (VIP/KELAS gate predicate +
+    // AI CV redirect helper) and its test, added with the §6 VIP work.
+    // 241 -> 243 (2026-09-14): +2 ts — src/lib/opsi-form.ts (the single owner of
+    // the ID/JP dropdown lists: occupations, school majors, cities, family
+    // relations) and its test, wired into MasterFullForm. The test locks the
+    // parts that are invisible in the UI: legacy value parity (uppercase family
+    // relations), no duplicate option values, and the sentinel round-trip
+    // (choosing "Lainnya" must persist the typed text, never `__LAINNYA__`).
+    // 243 -> 254 was my first reading of the drift and it was WRONG: `ts` was
+    // already correct. Measured the real counts by instrumenting this very
+    // assertion rather than counting files by hand — the hand count disagreed
+    // because it included `dist/`, which the matcher excludes. Ground truth:
+    // ts 243, tsx 82, astro 12, mjs 43, cjs 5, js 19. So the drift was
+    // entirely in `mjs` (30 -> 43), not spread across three languages.
+    // Re-baselined to the measured tree. See the note on count('mjs').
+    // ── RE-BASELINED 2026-09-15 (review round) ───────────────────────────
+    // Measured through discoverFiles() itself, NOT by hand (a hand count
+    // disagrees because it includes `dist/`, which the matcher excludes):
+    //
+    //   TOTAL 402  |  ts 244  tsx 84  astro 12  mjs 38  cjs 5  js 19
+    //
+    //   ── RE-BASELINED AGAIN 2026-09-15 (mutation-battery round) ──────────
+    //   TOTAL 402 -> 405  |  mjs 38 -> 41  (+3), everything else unchanged.
+    //
+    //   mjs  +3  the three ship-with-the-battery helper scripts added while
+    //            proving the gates can fail:
+    //              scripts/ci/alias-gate-patcher.mjs
+    //              scripts/ci/projections-gate-patcher.mjs
+    //              scripts/ci/pwa-mutate.mjs
+    //            (their .mutations.sh companions are .sh and do not count.)
+    //
+    //   This is the exact drift this comment block warns about two paragraphs
+    //   up — "every gate-adding session extends scripts/ci/ and forgets this
+    //   file, so the gate goes red" — and it happened again, to the session
+    //   that was reading the warning. Caught by running the FULL suite, not
+    //   `--project frontend`: the indexer project is the only one that covers
+    //   this file, which is how the previous two drifts slipped through.
+    //
+    //   Measured, not derived. Cross-check:
+    //     git ls-files --cached --others --exclude-standard | grep -c '\.mjs$'
+    //   -> 42, of which astro.config.mjs is excluded by includePath(), leaving
+    //   41. Scoping the diff to this session's own commits showed exactly three
+    //   added .mjs files, so the +3 is accounted for in full and nothing scratch
+    //   is being counted.
+    //
+    // and `sum === total` — asserted at the bottom of this file — still holds,
+    // so nothing scratch is being counted. What moved, and why:
+    //
+    //   ts  243 -> 244   +1  src/lib/opsi-form.TEST.ts. The source file itself was
+    //                        already counted in the 243. The file landed
+    //                        (the 241 -> 243 note above describes it) but this
+    //                        number was never updated to match.
+    //   tsx  82 -> 83    +1  App.header.test.tsx. The note below records it as
+    //                        "81 -> 82" while the value here still said 82, so
+    //                        the note and the number had already disagreed.
+    //   mjs  30 -> 38    +8  the CI-gate rounds (docs UI review §20-§26):
+    //                        scripts/ci/review-gate.mjs, lint-ratchet.mjs,
+    //                        verify-review-manifest.mjs, scripts/ci/lib/
+    //                        biome-run.mjs. (The .mutations.sh companions are
+    //                        .sh and do not count.)
+    //
+    // WHY THIS KEEPS HAPPENING, AND THE RULE THAT FOLLOWS
+    //   Every gate-adding session extends scripts/ci/ and forgets this file, so
+    //   the gate goes red; a gate everyone knows is red stops being read, which
+    //   is how the same counts drifted twice before without anyone noticing for
+    //   a whole session. The sum check at the bottom is the part that actually
+    //   catches the dangerous failure mode (a scratch file inflating a count).
+    //   Treat a mismatch here as "measure, then decide" — never "bump until
+    //   green". Re-measure with:
+    //     discoverFiles({ rootDir, matcher: parseGitignore(.gitignore) })
+    //   then confirm the per-language counts still sum to list.length.
+    //
+    // Cross-checked against the index at re-baseline time:
+    //   git ls-files --cached --others --exclude-standard | grep -c '\.mjs$'
+    //   -> 39, of which astro.config.mjs is excluded by includePath(), leaving
+    //      38. That accounts for the +8.
+    // 406 -> 410 (2026-09-16): +4 — netlify/functions/contexts/
+    // service-input-validation.test.ts and _lib/kernel/guard.ts (2 ts) plus
+    // scripts/ci/{verify-validation-coverage,validation-coverage-patcher}.mjs
+    // (2 mjs): the edge-validation gate, its battery patcher, the dependency-free
+    // guards and their test. The .mutations.sh companion is .sh and does not
+    // count, and .ci/validation-baseline.json is .json. (The guards are zod-free
+    // because a zod import here added ~67 KB to eight entry points and pushed
+    // files.js over the 600 KB ceiling — see _lib/kernel/guard.ts.)
+    // Measured, not derived: 247 + 84 + 12 + 44 + 5 + 19 = 411.
+    // 246 -> 247 (2026-09-16, same day): +1 ts —
+    // netlify/functions/_lib/db/settings-limit.test.ts, the regression guard for
+    // findSettings()/findAnnouncements() inheriting findTable()'s limit=1 default.
+    expect(count('ts')).toBe(247);
     // 78 -> 79 (2026-09-13, owner-approved item 2):
     // src/components/ui/AiUnavailableBanner.tsx.
     // 79 -> 78 (2026-09-13): -1 tsx, src/components/ESignatureModal.tsx deleted.
@@ -186,7 +277,35 @@ describe('discover', () => {
     // reject-reason composer that replaced a `window.confirm` carrying a
     // hardcoded reason) and its test. Part of the same stale-ratchet batch the
     // count('ts') note above describes.
-    expect(count('tsx')).toBe(80); // 46 at design time; modal/component test suites added since
+    // 80 -> 81 (2026-09-14): +1 tsx — src/components/candidate/CandidateDash.test.tsx,
+    // the §6 gate/badge suite (AI CV button gate, ASJ logo badge, PERFECT ASJ STUDENT).
+    // 81 -> 82 (2026-09-14, UI review round 2): +1 tsx — src/components/App.header.test.tsx,
+    // which pins the header-title/menu-button collision class (docs/UI_DESIGN_REVIEW.md §11.1)
+    // and the drawer close-button hitbox (§11.3). jsdom has no layout engine, so the test
+    // asserts the structural contract (min-w-0 + truncate + a mobile max-w cap) that makes
+    // the overlap impossible; the measured Playwright check stays the source of truth.
+    // 2026-09-15 (review round): +1 tsx — src/components/ui/
+    // overlay-contract.test.tsx, the guard for the §25 leftovers. The number
+    // must include it because the ratchet counts the TREE, and a test that
+    // guards a defect has to exist before it can guard anything. Measured 83
+    // with this file absent, 84 with it present; 84 is the shipped value.
+    // 2026-09-15 (review round): 83 -> 84. +1 tsx — src/components/ui/
+    // overlay-contract.test.tsx, the guard for the §25 leftovers (the two
+    // modals the earlier round left without dialog semantics). Measured 83
+    // with that file absent and 84 with it present; 84 is the shipped value,
+    // because the ratchet counts the TREE and a guard has to exist before it
+    // can guard anything.
+    // 2026-09-15 (review round): 83 -> 84. +1 tsx — src/components/ui/
+    // overlay-contract.test.tsx, the guard for the §25 leftovers (the two
+    // modals the earlier round left without dialog semantics). Measured 83
+    // with that file absent and 84 with it present; 84 is the shipped value,
+    // because the ratchet counts the TREE and a guard has to exist before it
+    // can guard anything.
+    // 84 -> 85 (2026-09-16): `TabTambah.test.tsx`, the new test for the admin
+    // form's label/control rework. Measured; ts/mjs/cjs/js are all unchanged.
+    // 85 -> 86 (2026-09-16): `InputManualModal.test.tsx`. Measured; ts/mjs/cjs/js
+    // are all unchanged, so the six counts still sum to files.length below.
+    expect(count('tsx')).toBe(86); // 46 at design time; modal/component test suites added since
     expect(count('astro')).toBe(12);
     // 2026-09-11: the Phase A/B CI gates landed — bundle-size.mjs,
     // surface-binding.mjs, verify-aliases.mjs, scripts/lib/load-env.mjs, and
@@ -205,7 +324,51 @@ describe('discover', () => {
     // table structure gate (wired into ci:quality). 27 -> 28.
     // 2026-09-13 (later still): +1 mjs — scripts/ci/cold-start-gate.mjs, the
     // cold-start latency gate (BACKEND_TODO #29). 28 -> 29.
-    expect(count('mjs')).toBe(29); // 11 at design time; e2e + scripts/ci gates added since
+    // 2026-09-14: +1 mjs — scripts/ui-audit.mjs, the browser-measurement audit
+    // that proved the six missing component classes (.input/.label/...) were
+    // undefined rather than merely theme-blind. 29 -> 30. The companion
+    // docs/UI_DESIGN_REVIEW.md does NOT move this count: .md is not indexed.
+    // expected 30, measured 43 (2026-09-14, UI review round 2) — a +13 drift
+    // that predates the session which found it. Proven independent of that
+    // session's work: with every source change and its new test file removed
+    // from the tree, the count still read 43, and `git ls-tree -r HEAD` already
+    // held the extra files — so the drift sat inside the committed tree, not in
+    // an uncommitted edit. Several prior sessions added scripts/ci gates and
+    // e2e helpers without extending this ratchet, which left the gate red and
+    // therefore ignored. Re-baselined to the measured tree so the next genuine
+    // change to this count is visible again.
+    //
+    // CORRECTION (2026-09-14, round 3) — THE +13 WAS NEVER REAL.
+    // It was my own scratch files. `discover.ts` does NOT skip dotfiles, so
+    // every `.tmp-*.mjs` written into the repo root during measurement was
+    // counted. The round-2 "re-baseline to 43" therefore froze a number that
+    // included ~13 temporary scripts, and the proof I used ("`git ls-tree -r
+    // HEAD` already held them") was misread: `ls-tree` lists WHAT is committed,
+    // not WHETHER the matcher counts it, so it could not have detected this.
+    //
+    // Measured on a genuinely clean tree (no scratch files anywhere):
+    //   TOTAL 391  |  ts 243  tsx 82  astro 12  mjs 30  cjs 5  js 19
+    // and the six counts sum to 391 exactly — the check that made the earlier
+    // hand-arithmetic fail visible. 30 is also the value the previous session
+    // reasoned its way to from the changelog, which corroborates it.
+    // Back to 30, and `sum === total` is asserted below so this class of error
+    // cannot hide again.
+    // 38 -> 41 (2026-09-15, mutation-battery round): +3 mjs — the three
+    // ship-with-the-battery patcher/mutator helper scripts. See the
+    // RE-BASELINED AGAIN block above.
+    // 41 -> 42 (2026-09-16): +1 mjs — `scripts/ci/run-batteries.mjs`, the
+    // runner that executes the mutation batteries. Measured rather than assumed:
+    // the 41 was set in 257c104, and of the 14 files added since, this is the
+    // ONLY one the indexer counts (includePath takes mjs/cjs/js under scripts/**
+    // and e2e/**; the other 13 are .sh/.md). The same file is the +1 in
+    // build.test.ts fileCount, which is the cross-check that it is one file and
+    // not two. Every other language count is unchanged.
+    // 44 -> 46 (2026-09-16): +2 mjs — `e2e/test-drawer.mjs` and
+    // `e2e/test-labels.mjs`, the two e2e guards added by the drawer and label
+    // rounds. Measured with a real discover run rather than inferred: every other
+    // language count is unchanged, and the six counts still sum to files.length,
+    // which is the cross-check that this is the same +2 as files.length below.
+    expect(count('mjs')).toBe(46); // 11 at design time; e2e + scripts/ci gates added since
     expect(count('cjs')).toBe(5);
     // Phase A (2026-09-11): netlify/functions/run-migration.js deleted — the
     // action was already removed from the registry, so the entry point was a
@@ -224,7 +387,8 @@ describe('discover', () => {
     // entry point for getAppConfig/reportWebVital. Until it existed, both
     // actions were reachable only through the bridge-links catch-all; the
     // surface-binding gate's reachability rule now fails the build if any
-    // router action has no narrow home. 18 -> 19.
+    // router action has no narrow home. 18 -> 19. Reconciled 2026-09-14:
+    // measured 19, unchanged — the drift lived only in `mjs`.
     expect(count('js')).toBe(19);
     // 342 -> 341 (2026-09-11): share-data.test.ts left netlify/functions/ for
     // e2e/ — the file still exists, but see the count('ts') note above.
@@ -274,7 +438,96 @@ describe('discover', () => {
     // code extensions only, and .sh is not one.
     // 380 -> 381 (2026-09-13, latest): +1 ts — src/store/theme.test.ts. Same +1
     // as build.test.ts; the inventory counts files on DISK, not git-tracked ones.
-    expect(files.length).toBe(381); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader
+    // 381 -> 382 (2026-09-13, later): +1 ts — _lib/otlp.test.ts. Same +1 as
+    // build.test.ts. (Reminder: temp .mjs probe files dropped in the repo root
+    // are picked up too — two of them once made this read 384.)
+    // 382 -> 383 (2026-09-14): +1 mjs — scripts/ui-audit.mjs. Same +1 as
+    // build.test.ts; see the count('mjs') note above.
+    // 383 -> 385 (2026-09-14): +2 ts — src/lib/aiCvDraft.ts + .test.ts, the same
+    // +2 as build.test.ts (P2 admin CV-AI panel). The inventory counts files on
+    // DISK, not git-tracked ones.
+    // 385 -> 388 (2026-09-14): +3 — src/lib/vip.ts + vip.test.ts (ts) and
+    // src/components/candidate/CandidateDash.test.tsx (tsx), the §6 VIP work.
+    // 388 -> 390 (2026-09-14): +2 ts — src/lib/opsi-form.ts + opsi-form.test.ts
+    // (dropdown lists and their suite). The inventory counts files on DISK, not
+    // git-tracked ones, so an untracked new file still moves this number.
+    // 390 -> 404 (2026-09-14, UI review round 2): reconciled to the measured
+    // tree. The +14 is NOT one session's work: it is +13 of `mjs` drift that
+    // predates this session, plus +1 tsx from the new App.header.test.tsx.
+    // Proven by removing every change of this session from the tree and
+    // re-measuring — the count still read 403 — and by `git ls-tree -r HEAD`,
+    // which already contained the extra files. The per-language counts above
+    // sum to exactly this number (243+82+12+43+5+19), which is the check that
+    // caught the first, wrong reading of the drift.
+    //
+    // CORRECTION (2026-09-14, round 3): 404 was wrong by exactly the number of
+    // scratch files in the root. The line 333 reminder above ALREADY documented
+    // this trap ("temp .mjs probe files dropped in the repo root are picked up
+    // too — two of them once made this read 384") and it happened again anyway,
+    // at ten times the size. Measured on a clean tree: 391. The +1 over 390 is
+    // this session's App.header.test.tsx, and nothing else.
+    //
+    // The generalisable rule, now asserted rather than trusted: ALWAYS delete
+    // `.tmp-*` scratch files BEFORE reading or writing any ratchet number, and
+    // check that the six per-language counts sum to `files.length`. Both the
+    // 404 and the 43 survived review because nothing enforced that invariant.
+    // RE-BASELINED 2026-09-15 (review round). 391 -> 402, and it is not a
+    // guess: the six per-language counts asserted directly above sum to it
+    // exactly —
+    //   247 ts + 84 tsx + 12 astro + 44 mjs + 5 cjs + 19 js = 411
+    // which is the invariant this very comment demands. The +11 over 391 is
+    // the CI-gate rounds (8 mjs incl. scripts/ci/lib/biome-run.mjs),
+    // src/lib/opsi-form.ts + its test (2), and App.header.test.tsx (1).
+    // The +3 over 402 is the 2026-09-15 mutation-battery round — the three
+    // ship-with-the-battery .mjs helpers; see the RE-BASELINED AGAIN block
+    // above count('ts').
+    //
+    // Also folded in: `overlay-contract.test.tsx` (+1 tsx) from this round.
+    // Measured with the file absent = 83 tsx / 401 total; present = 84 / 402.
+    // 406 is the shipped value because the ratchet counts the TREE.
+    // 405 -> 406 (2026-09-16): +1 — `scripts/ci/run-batteries.mjs`, the
+    // mutation-battery runner. Measured: the 41-mjs / 405 baseline was set in
+    // 257c104, and of the 14 files added since, this is the ONLY one the indexer
+    // counts. Three assertions move by the same +1 (fileCount in build.test.ts,
+    // count(mjs) and files.length here) -- one file, not three.
+    // 410 -> 412 (2026-09-16): the two e2e guards above. This is the THIRD
+    // assertion moved by one +2 — fileCount in build.test.ts, count(mjs) here,
+    // and this one. One change to the tree, three places, which is why they are
+    // listed together rather than discovered one failing run at a time.
+    // 412 -> 413 (2026-09-16): `TabTambah.test.tsx`. Third assertion moved by
+    // the same +1 — fileCount in build.test.ts, count(tsx) here, and this one.
+    // 413 -> 414 (2026-09-16): `InputManualModal.test.tsx`. Third assertion moved
+    // by the same +1 — fileCount in build.test.ts, count(tsx) here, and this one.
+    // 414 -> 415 (2026-09-16, same day): settings-limit.test.ts. Third assertion
+    // moved by the same +1 — fileCount in build.test.ts, count(ts) here, and this
+    // one.
+    expect(files.length).toBe(415); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader, +1 battery runner, +4 edge-validation gate, +2 e2e guards, +1 TabTambah test, +1 InputManualModal test, +1 settings-limit test
+  });
+
+  it('no scratch files are being counted, and the per-language counts sum to the total', () => {
+    // THE CHECK THAT WOULD HAVE CAUGHT TWO WRONG BASELINES.
+    //
+    // `discover.ts` does not skip dotfiles, so any `.tmp-*.mjs` written into the
+    // repo root while measuring is counted as if it were project code. That is
+    // how `mjs` was frozen at 43 (real value: 30) and the total at 404 (real
+    // value: 391) — twice, in two different sessions, despite the reminder at
+    // the `files.length` note. Verifying the sum is what makes the error
+    // self-evident: a baseline read while scratch files are lying around will
+    // still sum correctly, but a baseline that does NOT sum reveals that
+    // something is being counted that the author did not account for.
+    //
+    // If this fails, the fix is to delete the offending files and re-measure —
+    // NOT to update the numbers to match.
+    const list = run();
+    const scratch = list.map((f) => f.path).filter((p) => /(^|\/)\.tmp-/.test(p));
+    expect(scratch).toEqual([]);
+
+    const perLang = ['ts', 'tsx', 'astro', 'mjs', 'cjs', 'js'] as const;
+    const sum = perLang.reduce(
+      (acc, ext) => acc + list.filter((f) => f.path.endsWith(`.${ext}`)).length,
+      0,
+    );
+    expect(sum).toBe(list.length);
   });
 
   it('emits NTFS-safe lookup keys (lowercased) with original casing preserved', () => {

@@ -53,7 +53,7 @@
 import { log } from './kernel/log';
 import { remainingMs } from './kernel/deadline';
 import type { MetricsPayload } from './kernel/metrics';
-import { otlpMetricsUrl, otlpPlaceholderWarning, toOtlpMetrics } from './otlp';
+import { otlpEndpointProblem, otlpMetricsUrl, otlpPlaceholderWarning, toOtlpMetrics } from './otlp';
 
 export type { MetricsPayload };
 
@@ -252,7 +252,12 @@ export async function exportMetrics(payload: MetricsPayload | null): Promise<voi
     // Checked before sending, because a placeholder pasted verbatim produces a
     // 401 that is indistinguishable from a revoked key. Naming it here turns a
     // silent misconfiguration into a sentence.
-    const problem = otlpPlaceholderWarning(header);
+    //
+    // The endpoint gets the same treatment for the mirror-image reason: a
+    // malformed URL throws inside fetch() and logs nothing at all, so a bad
+    // endpoint is quieter than a bad credential — and therefore more likely to
+    // be discovered as "the dashboard is empty" weeks later.
+    const problem = otlpPlaceholderWarning(header) ?? otlpEndpointProblem(otlp);
     if (problem) {
       warnOnce('metrics.otlp.misconfigured', { reason: problem });
     } else {

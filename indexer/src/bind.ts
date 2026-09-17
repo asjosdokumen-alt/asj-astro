@@ -138,6 +138,11 @@ const LIB_GLOBALS = new Set<string>([
   'ClipboardEvent', 'InputEvent', 'DragEvent', 'CompositionEvent', 'MediaQueryList', 'Image',
   'DOMParser', 'XMLHttpRequest', 'Storage', 'NodeList', 'HTMLCollection', 'Document', 'crypto',
   'matchMedia', 'getComputedStyle', 'getSelection', 'scrollTo', 'postMessage', 'queueMicrotask',
+  // `declare namespace` DOM global (lib.dom.d.ts:37528) — same shape as Intl/Atomics/Reflect
+  // above, and the home of CSS.escape. Omitted until 2026-09-17, which made every CSS.* call
+  // read as a genuine `global-unknown` (caught by build.test.ts §prodGenuine on the first
+  // caller, e2e/test-headings.mjs).
+  'CSS',
   // Node / CommonJS
   'process', 'Buffer', 'require', 'module', 'exports', '__dirname', '__filename', 'global',
   'setImmediate', 'clearImmediate', 'NodeJS', 'BufferEncoding',

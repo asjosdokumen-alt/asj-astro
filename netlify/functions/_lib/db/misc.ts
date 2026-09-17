@@ -20,21 +20,47 @@ async function findAdmins() {
   ]);
 }
 
+// findTable() defaults to limit=1 because it was written to answer "does this
+// table exist?". Callers that need the ROWS must pass a limit explicitly, and
+// findSettings() never did — so every reader of the config table saw exactly
+// ONE row of it.
+//
+// MEASURED 2026-09-16 against the live database: sys_config holds 158 rows
+// across 11 config_type values (list_lokasi 57, tsk 36, list_syarat 15,
+// list_kategori 15, list_tahapan 10, lokasi__link_zoom 7, status_form 6,
+// list_status_loker 4, list_status_lamaran 4, list_gender 3, broadcast 1).
+// With limit=1 the single row that came back was
+//     id=bd43a55a-...  config_type="tsk"  config_value="TSK VIBE"
+// so loadPublicBase() built dropdowns = { tsk: ["TSK VIBE"] } and every other
+// key — tahapan, kategori, gender, lokasi, syarat — was simply ABSENT. The
+// add-job form renders its selects from those keys, so it showed a job-type
+// list holding one item and no work-stage / category / gender lists at all.
+//
+// The same defect had a second, worse edge: replaceConfigItems() in
+// contexts/configuration finds the rows to delete through findSettings(), so
+// editing any list deleted AT MOST ONE row and then inserted the whole list
+// back. Measured signature in production data: tsk has 36 rows but only 35
+// distinct values, with "TSK MAHER" present twice.
+const SETTINGS_ROW_LIMIT = 500;
+
 async function findSettings() {
-  return findTable([
-    'sys_config',
-    'assets',
-    'settings',
-    'app_config',
-    'config',
-    'system_config',
-    'pengaturan',
-    'site_config',
-  ]);
+  return findTable(
+    [
+      'sys_config',
+      'assets',
+      'settings',
+      'app_config',
+      'config',
+      'system_config',
+      'pengaturan',
+      'site_config',
+    ],
+    SETTINGS_ROW_LIMIT,
+  );
 }
 
 async function findAnnouncements() {
-  return findTable(['pengumuman', 'announcements', 'announcement', 'marquee']);
+  return findTable(['pengumuman', 'announcements', 'announcement', 'marquee'], SETTINGS_ROW_LIMIT);
 }
 
 // Bangun objek assets ({LOGO, BANNER, FOOTER, SOCIAL}) dari tabel settings jika ada.

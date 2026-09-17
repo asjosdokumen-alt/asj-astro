@@ -320,3 +320,41 @@ export function otlpPlaceholderWarning(header: string): string | null {
   }
   return null;
 }
+
+/**
+ * Detect an endpoint that cannot possibly receive an export.
+ *
+ * Companion to otlpPlaceholderWarning(): that one validates the credential,
+ * this one validates the URL. Without it a malformed endpoint fails at
+ * `fetch()` time with a TypeError and nothing is logged — the sink looks
+ * healthy and the dashboard stays empty.
+ *
+ * The case that motivated this (2026-09-13): the endpoint was set to
+ *   [https://otlp-gateway-prod-ap-southeast-2.grafana.net/otlp](https://otlp-gateway-prod-ap-southeast-2.grafana.net/otlp)
+ * — a URL pasted from Markdown, brackets and all. `otlpMetricsUrl()` appended
+ * `/v1/metrics` and `new URL()` threw, so every export died silently and the
+ * Grafana graph never appeared. Returns a human reason, or null when the
+ * endpoint looks usable.
+ */
+export function otlpEndpointProblem(endpoint: string): string | null {
+  const e = endpoint.trim();
+  if (!e) return 'GRAFANA_CLOUD_OTLP_ENDPOINT is empty';
+
+  // Markdown link syntax — the single most likely paste error, since the setup
+  // doc hands the URL over inside a table.
+  if (e.includes('[') || e.includes('](')) {
+    return 'GRAFANA_CLOUD_OTLP_ENDPOINT contains Markdown link syntax — paste the bare URL, not [text](url)';
+  }
+  if (/\s/.test(e)) {
+    return 'GRAFANA_CLOUD_OTLP_ENDPOINT contains whitespace — it must be a single bare URL';
+  }
+  if (!/^https?:\/\//i.test(e)) {
+    return 'GRAFANA_CLOUD_OTLP_ENDPOINT must start with http:// or https://';
+  }
+  try {
+    new URL(e);
+  } catch {
+    return 'GRAFANA_CLOUD_OTLP_ENDPOINT is not a parseable URL';
+  }
+  return null;
+}

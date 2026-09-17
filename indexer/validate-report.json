@@ -28,12 +28,12 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 381,
+    "rootNames": 415,
     "options": {}
   },
-  "universe": 3972,
+  "universe": 3976,
   "counts": {
-    "agreeBound": 3972,
+    "agreeBound": 3976,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
@@ -42,7 +42,7 @@
     "libRefAgree": 1270,
     "libRefDisagree": 0,
     "libRefFramework": 1,
-    "skippedNonBindable": 1964,
+    "skippedNonBindable": 1968,
     "skippedJsxIntrinsic": 55,
     "skippedAstroTemplate": 5,
     "offsetMismatch": 0,
@@ -51,7 +51,7 @@
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3893,
+    "match": 3897,
     "alias-vs-chase": 55,
     "merged-declaration": 22,
     "shadowing-disagreement": 2,
@@ -231,11 +231,11 @@
     },
     {
       "path": "netlify/functions/contexts/applications/service.ts",
-      "universe": 450,
-      "agreeBound": 450,
+      "universe": 454,
+      "agreeBound": 454,
       "agreeUnresolved": 0,
       "lib": 154,
-      "skipped": 175,
+      "skipped": 179,
       "disagree": 0
     },
     {
@@ -356,7 +356,7 @@
       "role": "TypeRef",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "ComponentChildren → indexer src/components/AuthGuard.tsx decls 300 · compiler <unmappable>:1179"
+      "compiler": "ComponentChildren → indexer src/components/AuthGuard.tsx decls 308 · compiler <unmappable>:1179"
     },
     {
       "path": "src/components/AuthGuard.tsx",
@@ -365,7 +365,7 @@
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "useStore → indexer src/components/AuthGuard.tsx decls 197 · compiler <unmappable>:759"
+      "compiler": "useStore → indexer src/components/AuthGuard.tsx decls 203 · compiler <unmappable>:759"
     },
     {
       "path": "src/store/i18n.ts",
@@ -374,7 +374,7 @@
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "persistentAtom → indexer src/store/i18n.ts decls 63 · compiler <unmappable>:3027"
+      "compiler": "persistentAtom → indexer src/store/i18n.ts decls 66 · compiler <unmappable>:3027"
     },
     {
       "path": "src/store/i18n.ts",
@@ -383,7 +383,7 @@
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "atom → indexer src/store/i18n.ts decls 120 · compiler <unmappable>:3466"
+      "compiler": "atom → indexer src/store/i18n.ts decls 124 · compiler <unmappable>:3466"
     },
     {
       "path": "src/store/userStore.ts",
@@ -720,7 +720,7 @@
     },
     {
       "path": "netlify/functions/contexts/applications/service.ts",
-      "line": 80,
+      "line": 81,
       "name": "crypto",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -729,7 +729,7 @@
     },
     {
       "path": "netlify/functions/contexts/applications/service.ts",
-      "line": 81,
+      "line": 82,
       "name": "bcrypt",
       "role": "Read",
       "reason": "alias-vs-chase",
@@ -738,12 +738,12 @@
     },
     {
       "path": "netlify/functions/contexts/applications/service.ts",
-      "line": 154,
+      "line": 155,
       "name": "fcm",
       "role": "Read",
       "reason": "alias-vs-chase",
       "indexer": "bound",
-      "compiler": "fcm → indexer netlify/functions/contexts/applications/service.ts decls 675 · compiler netlify/functions/_lib/fcm-server.ts:0"
+      "compiler": "fcm → indexer netlify/functions/contexts/applications/service.ts decls 773 · compiler netlify/functions/_lib/fcm-server.ts:0"
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
