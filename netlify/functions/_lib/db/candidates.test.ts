@@ -99,7 +99,11 @@ describe('attachApplications', () => {
       !String(a.code || '').trim() && /\[BIODATA\]|\[UPLOAD /.test(a.feedback);
 
     const bio = apps.filter(isBiodataRow);
-    const real = apps.filter((a) => !isBiodataRow(a));
+    // The parameter is annotated for the same reason the two lines above are:
+    // `attachApplications` returns `Record<string, any>[]`, so `apps` is `any`
+    // and an unannotated arrow parameter gets NO contextual type — which is a
+    // hard TS7006 under this repo's `noImplicitAny`, not a style preference.
+    const real = apps.filter((a: { code: string; feedback: string }) => !isBiodataRow(a));
 
     expect(bio).toHaveLength(1);
     expect(real).toHaveLength(1);
