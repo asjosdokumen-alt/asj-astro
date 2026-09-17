@@ -8,6 +8,7 @@ import crypto from 'crypto';
 
 import { attachBerkasBio } from '../../_lib/db/berkas';
 import { safeError } from '../../_lib/kernel/errors';
+import { guardPayload, indexLike, ignored, optionalTextOrEmpty } from '../../_lib/kernel/guard';
 import { requireAdmin } from '../identity';
 import { emit } from '../../_lib/kernel/events';
 import { mapCandidate } from '../../_lib/db/candidates';
@@ -194,8 +195,22 @@ export async function handleApproveForm(payload: unknown[], sessionToken?: strin
 export async function handleRejectForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [, , reason] = payload || [];
-  return handleFormStatus((payload || [])[0] as number, 'GAGAL', (reason || 'Lamaran ditolak') as string, sessionToken);
+  // `reason` is written to the TEXT column `keterangan` and reused verbatim as
+  // a push-notification body, so it must be a string before it gets there.
+  // Previously an unchecked value travelled straight into PostgREST and came
+  // back to the admin as a generic failure that pointed at no argument.
+  // An empty reason stays legal — the fallback below is the legacy wording.
+  //
+  // Guards rather than zod: this module is imported by master-data, registry
+  // and _lib/ai/cv, so a zod import here would pull ~67 KB into most of the
+  // deployment — see the header of _lib/kernel/guard.ts.
+  const [idx, , reason] = guardPayload(payload, [
+    indexLike('Index form'),
+    ignored,
+    // Blank is LEGAL: an empty reason falls back to 'Lamaran ditolak' below.
+    optionalTextOrEmpty('Alasan', 1000),
+  ]) as [number | string, unknown, string | null | undefined];
+  return handleFormStatus(idx as number, 'GAGAL', (reason || 'Lamaran ditolak') as string, sessionToken);
 }
 
 export async function handleDeleteForm(payload: unknown[], sessionToken?: string) {

@@ -29,6 +29,7 @@ import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
 import { showToast } from '../Toast';
 import api from '../../lib/apiClient';
+import { isVipCatatan } from '../../lib/vip';
 
 export interface ChatMsg {
   role: 'user' | 'assistant';
@@ -43,11 +44,10 @@ interface Props {
   onClose: () => void;
 }
 
-/** VIP / KELAS gate — parity legacy js/03_candidate.ts isVipCatatan(). */
-export function canAccessInterview(catatanInt: string | undefined | null): boolean {
-  const c = String(catatanInt || '');
-  return c.includes('[VIP]') || /\[KELAS\s*[A-Z0-9]+\]/i.test(c);
-}
+/** VIP / KELAS gate — parity legacy js/03_candidate.ts isVipCatatan().
+ *  Definisi tinggal di src/lib/vip.ts (satu sumber kebenaran); nama lama
+ *  dipertahankan sebagai re-export supaya pemanggil lama tetap jalan. */
+export const canAccessInterview = isVipCatatan;
 
 /** JSON loose parser — parity legacy cobaParseJsonLoose (interview.ts). */
 export function parseJsonLooseChat(text: string): Record<string, unknown> | null {

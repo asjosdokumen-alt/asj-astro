@@ -3,6 +3,7 @@
  */
 import { requireAdmin } from '../identity';
 import { safeError } from '../../_lib/kernel/errors';
+import { guardPayload, text, optionalText, optionalTextOrEmpty, requireAtLeastOne } from '../../_lib/kernel/guard';
 import {
   hasBackend, mapJobPayloadToRow, nextJobCode, getJobMapped,
   patchJob, deleteJob, postJob, normalizeWa, pick, toText, mapCandidate, stripRaw,
@@ -50,10 +51,25 @@ export async function handleEditLokerFull(payload: unknown[], sessionToken?: str
 export async function handleUbahStatusJob(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [code, status, updatedAt] = (payload || []) as [string, string, string | undefined];
-  if (!code || !status) return { success: false, error: 'Data tidak lengkap.' };
+  // Validate AFTER the guard and BEFORE the try, deliberately:
+  //   - after the guard, so an unauthenticated caller still gets the auth
+  //     verdict rather than a schema verdict (identity before input);
+  //   - before the try, because the guards throw AppError and the dispatcher
+  //     maps that to HTTP 400 + code VALIDATION_FAILED. Inside the catch below
+  //     it would be flattened into a 200 + {success:false}.
+  //
+  // Guards rather than zod here: zod costs ~67 KB in the bundle and this entry
+  // point cannot afford it — see the header of _lib/kernel/guard.ts.
+  const [code, status, updatedAt] = guardPayload(payload, [
+    text('Kode loker', 64),
+    text('Status', 40),
+    optionalText('Timestamp', 64),
+  ]) as [string, string, string | null | undefined];
   try {
-    await patchJob(code, { status }, updatedAt, sessionToken);
+    // `updatedAt ?? undefined`: the wire delivers an absent optional as `null`,
+    // and `patchJob` distinguishes only "has a value" from "does not" — a null
+    // If-Match must mean "no precondition", exactly as undefined did.
+    await patchJob(code, { status }, updatedAt ?? undefined, sessionToken);
     return { success: true, job: await getJobMapped(code) };
   } catch (e: unknown) {
     const msg = String((e instanceof Error ? e.message : String(e)) || e);
@@ -67,8 +83,11 @@ export async function handleUbahStatusJob(payload: unknown[], sessionToken?: str
 export async function handleHapusJobData(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [code] = (payload || []) as [string];
-  if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
+  // `!code` used to be checked here and returned a 400 body. The guard now owns
+  // that rule (non-blank, bounded) and adds the part the old check could not
+  // express: a non-string code. Without it, `code_job=eq.<object>` deleted zero
+  // rows and still answered `{success:true}`.
+  const [code] = guardPayload(payload, [text('Kode loker', 64)]) as [string];
   try {
     const adaTerkait = await countCandidatesForJob(code);
     if (adaTerkait === true) {
@@ -89,11 +108,19 @@ export async function handleHapusJobData(payload: unknown[], sessionToken?: stri
 export async function handleUpdateTahapanDbJob(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [code, tahapan, status] = (payload || []) as [string, unknown, unknown];
-  if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
+  // `requireAtLeastOne` closes a real hole: with neither field, `body` stayed
+  // `{}`, the handler PATCHed an EMPTY body and answered `{success:true}` — an
+  // empty write is not a successful write. `optionalText` accepts BOTH `null`
+  // and `undefined` because an omitted wire argument arrives as `null`.
+  const [code, tahapan, status] = guardPayload(payload, [
+    text('Kode loker', 64),
+    optionalText('Tahapan', 40),
+    optionalText('Status', 40),
+  ]) as [string, string | null | undefined, string | null | undefined];
+  requireAtLeastOne([tahapan, status], 'Tahapan atau status harus diisi');
   const body: Record<string, unknown> = {};
-  if (tahapan !== undefined && tahapan !== null) body.tahapan = tahapan;
-  if (status !== undefined && status !== null) body.status = status;
+  if (tahapan != null) body.tahapan = tahapan;
+  if (status != null) body.status = status;
   try {
     await patchJob(code, body, undefined, sessionToken);
     return { success: true, job: await getJobMapped(code) };
@@ -111,8 +138,11 @@ export async function handleUpdateTahapanDbJob(payload: unknown[], sessionToken?
 export async function handleUpdateDokumenShare(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [code, joined] = (payload || []) as [string, unknown];
-  if (!code) return { success: false, error: 'Kode loker tidak ditemukan.' };
+  const [code, joined] = guardPayload(payload, [
+    text('Kode loker', 64),
+    // Blank is LEGAL here: the UI clears the shared-document list by sending ''.
+    optionalTextOrEmpty('Daftar dokumen', 400),
+  ]) as [string, string | null | undefined];
   try {
     await patchJob(code, { dokumen_share: joined || '' }, undefined, sessionToken);
     return { success: true };
@@ -124,8 +154,10 @@ export async function handleUpdateDokumenShare(payload: unknown[], sessionToken?
 export async function handleTandaiGagalJob(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  const [wa, jobCode] = (payload || []) as [string, string];
-  if (!wa || !jobCode) return { success: false, error: 'Data tidak lengkap.' };
+  const [wa, jobCode] = guardPayload(payload, [
+    text('Nomor WA', 32),
+    text('Kode loker', 64),
+  ]) as [string, string];
   cacheClear();
   try {
     const row = await findCandidateByWa(wa);

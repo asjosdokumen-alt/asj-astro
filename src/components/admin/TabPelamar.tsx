@@ -16,6 +16,8 @@ import {
 } from '../../store/adminStore';
 import InputManualModal from './InputManualModal.tsx';
 import RirekishoBuilder from './RirekishoBuilder';
+import AiCvForm from '../forms/AiCvForm';
+import { ASJ_LOGO_URL } from '../../lib/vip';
 import CvTemplateSelector from '../CvTemplateSelector';
 import LaporanBulananModal from './LaporanBulananModal.tsx';
 import WAPintarModal from '../WAPintarModal';
@@ -51,6 +53,11 @@ export default function TabPelamar() {
     return k && k.pasPhoto ? String(k.pasPhoto) : undefined;
   };
   const [showRirek, setShowRirek] = useState(false);
+  // P2 (2026-09-14): panel CV AI admin. Sama komponennya dengan dashboard CV AI
+  // kandidat (/ai-cv) — bedanya admin melewati gate login (backend sudah
+  // mengizinkan: isOwnerOrAdmin() benar untuk role:'admin' di WA mana pun).
+  // Dipakai untuk membetulkan CV kandidat yang salah isi.
+  const [aiCvWa, setAiCvWa] = useState('');
 const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
   // B02: WA Pintar — legacy per-row button bukaModalWaPintar(idKandidat) opens
   // the smart-sender modal with template picker (js/08_wa_pintar.js); Astro's
@@ -183,7 +190,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
             <div key={k.id || k.wa} class="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50 hover:bg-white/5 transition">
               <div class="flex items-center gap-3">
                 <span class="font-mono text-sky-300 font-bold text-xs">{k.id || k.wa}</span>
-                <span class="font-bold text-white text-sm">{k.nama}{k.isSiswaASJ ? ' 🎓' : k.isVIP && ' 🏆'}</span>
+                <span class="font-bold text-white text-sm">{k.nama}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50 drop-shadow-md" />}</span>
                 <span class="font-mono text-purple-300 text-xs">{k.idLoker}</span>
               </div>
               <div class="flex items-center gap-2">
@@ -197,7 +204,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
         /* Full View — table */
         <div class="u-scroll-x rounded-xl border border-slate-800">
           <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
-            <thead class="bg-slate-800 text-slate-300 text-sm uppercase border-b border-slate-700 tracking-wider">
+            <thead class="bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700">
               <tr>
                 <th scope="col" class="p-4">{t('table.candidate_id')}</th>
                 <th scope="col" class="p-4">{t('table.full_name')}</th>
@@ -213,7 +220,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
               ) : shown.map((k) => (
                 <tr key={k.id || k.wa} class="hover:bg-white/5 transition-colors">
                   <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.id || k.wa || '-'}</td>
-                  <td class="p-4 font-bold text-white">{k.nama || '-'}{k.isSiswaASJ ? <span class="ml-1 text-emerald-400 text-xs">🎓</span> : k.isVIP && <span class="ml-1 text-amber-400 text-xs">🏆</span>}</td>
+                  <td class="p-4 font-bold text-white">{k.nama || '-'}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50 drop-shadow-md" />}</td>
                   <td class="p-4"><span class="font-mono text-purple-300 text-xs">{k.idLoker || '-'}</span></td>
                   <td class="p-4">
                     <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan || '-'}</span>
@@ -226,7 +233,8 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
                       <button onClick={()=>{setShowCvTemplateSelector(true);}} class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
 <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> AI CV</button>
+                      <button onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="px-2 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
                       <button title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
                     </div>
                   </td>
@@ -252,6 +260,19 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
       )}
           {showCvTemplateSelector && <CvTemplateSelector waTarget={rirekWa} isAdmin={true} onClose={() => setShowCvTemplateSelector(false)} onOpenRirekisho={() => { setShowCvTemplateSelector(false); setShowRirek(true); }} />}
             <RirekishoBuilder waTarget={rirekWa} isOpen={showRirek} onClose={()=>setShowRirek(false)} fotoFallback={fotoFallbackFor(rirekWa)} />
+
+      {/* Panel CV AI admin — komponen yang SAMA dengan dashboard kandidat
+          (/ai-cv). `adminMode` melewati gate login; backend sudah mengizinkan
+          admin membaca & menulis CV kandidat mana pun (isOwnerOrAdmin). */}
+      {aiCvWa && (
+        <div class="fixed inset-0 z-[150] bg-slate-950">
+          <AiCvForm waTarget={aiCvWa} adminMode />
+          <button onClick={() => setAiCvWa('')} title={t('button.close')} aria-label={t('button.close')}
+            class="fixed top-2 right-3 z-[200] w-9 h-9 flex items-center justify-center rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-lg transition cursor-pointer">
+            <Icon name="times" />
+          </button>
+        </div>
+      )}
 </div>
   );
 }

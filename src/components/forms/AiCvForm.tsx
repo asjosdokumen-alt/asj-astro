@@ -9,6 +9,7 @@ import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { t, langStore, toggleLang } from '../../store/i18n';
 import { apiClient } from '../../lib/apiClient';
+import { aiCvAccessRedirect } from '../../lib/vip';
 import { validate, waSchema, kandidatLoginSchema } from '../../lib/schemas';
 
 import type { ChatMessage } from '../../types/api';
@@ -17,12 +18,15 @@ import AiUnavailableBanner from '../ui/AiUnavailableBanner';
 import { getEndpoint } from '../../lib/apiEndpoint';
 import { uploadMany, UploadCollectionError } from '../../lib/cloudinary';
 import { AI_FILE_COLUMNS } from '../../lib/documentColumns';
+import { AI_CV_FLAT_KEYS, parseAiCvDraft } from '../../lib/aiCvDraft';
+import { useOverlay } from '../ui/useOverlay';
 
 interface CvData {
   nama: string; katakana: string; panggilan: string; panggilan_katakana: string;
   tmplahir: string; tgllahir: string; umur: string; gender: string; agama: string;
   goldar: string; status: string; anak: string; email: string; alamat: string;
   hp: string; hpdarurat: string; ktp: string; paspor: string; sim: string;
+  paspor_status: string; sim_status: string;
   tb: string; bb: string; tangan: string; sepatu: string; baju: string; topi: string; tahan_ac: string;
   matakanan: string; matakiri: string; kacamata: string; butawarna: string; tato: string;
   rokok: string; alkohol: string;
@@ -41,20 +45,7 @@ interface CvData {
   [key: string]: string;
 }
 
-const CV_FIELDS = [
-  'nama','katakana','panggilan','panggilan_katakana','tmplahir','tgllahir','umur','gender','agama',
-  'goldar','status','anak','email','alamat','hp','hpdarurat','ktp','paspor','sim',
-  'tb','bb','tangan','sepatu','baju','topi','tahan_ac',
-  'matakanan','matakiri','kacamata','butawarna','tato','rokok','alkohol',
-  'alergi_id','alergi_jp','medis_id','medis_jp','laka_id','laka_jp',
-  'riwayatjepang','promo_id','promo_jp','lebih_id','lebih_jp','kurang_id','kurang_jp',
-  'hobi_id','hobi_jp','keahlian_id','keahlian_jp','moti_id','moti_jp',
-  'alasan_id','alasan_jp','pulang_id','pulang_jp','keinginan_id','keinginan_jp',
-  'tujuan_id','tujuan_jp','lama','gaji_yen','tabungan',
-  'bhs_jepang','nilai','lisensi',
-  'kenalan_nama_id','kenalan_nama_jp','kenalan_hub_id','kenalan_hub_jp',
-  'kenalan_kerja_id','kenalan_kerja_jp','kenalan_usia','kenalan_alamat_id','kenalan_alamat_jp'
-] as const;
+const CV_FIELDS = AI_CV_FLAT_KEYS;
 
 const EMPTY_CV: CvData = Object.fromEntries(CV_FIELDS.map(k => [k, ''])) as CvData;
 
@@ -67,6 +58,79 @@ const SUGGESTIONS = [
   'Lengkapi data wawancara',
 ];
 
+/* ── Satuan di dalam field ──────────────────────────────────────────────
+   PARITY ai_form.html:135,159,160,215,216,282 — legacy menempelkan satuan
+   DI DALAM field (span absolut di kanan), bukan di label: `170 cm` tetap
+   terbaca sebagai angka bersatuan, dan lebar kolom tidak ikut melar.
+   Tidak diterjemahkan: legacy pun menampilkannya sama di kedua bahasa. */
+type Unit = 'thn' | 'cm' | 'kg' | 'yen';
+
+/* ── Warna aksen per seksi ──────────────────────────────────────────────
+   Peta kelas EKSPLISIT. Sebelumnya `text-${color}-400` (template literal):
+   Tailwind v4 hanya meng-emit utility yang literalnya terlihat di sumber,
+   jadi kelas itu hanya ikut ter-build karena kebetulan ada file lain yang
+   memuat string yang sama. Tambah warna di sini, bukan di pemanggil. */
+const SECTION_COLORS: Record<string, string> = {
+  sky: 'text-sky-400',
+  amber: 'text-amber-400',
+  red: 'text-red-400',
+  purple: 'text-purple-400',
+  emerald: 'text-emerald-400',
+  blue: 'text-blue-400',
+  orange: 'text-orange-400',
+  pink: 'text-pink-400',
+};
+
+/* ── Warna aksen baris unggahan ─────────────────────────────────────────
+   PARITY ai_form.html:294-370 — tiap baris punya warnanya sendiri, dan
+   label memakai nada -400 dari warna tile -600-nya (foto sky, JFT amber,
+   SSW emerald, KTP rose, KK orange, dst). Pasangan tile+label ditulis
+   sebagai literal supaya Tailwind benar-benar meng-emit keduanya, dan
+   supaya tidak ada jalan bagi keduanya untuk diam-diam berbeda. */
+type UploadColor = 'sky' | 'amber' | 'emerald' | 'rose' | 'orange' | 'violet' | 'teal' | 'indigo';
+const UPLOAD_COLORS: Record<UploadColor, { tile: string; label: string }> = {
+  sky: { tile: 'bg-sky-600', label: 'text-sky-400' },
+  amber: { tile: 'bg-amber-600', label: 'text-amber-400' },
+  emerald: { tile: 'bg-emerald-600', label: 'text-emerald-400' },
+  rose: { tile: 'bg-rose-600', label: 'text-rose-400' },
+  orange: { tile: 'bg-orange-600', label: 'text-orange-400' },
+  violet: { tile: 'bg-violet-600', label: 'text-violet-400' },
+  teal: { tile: 'bg-teal-600', label: 'text-teal-400' },
+  indigo: { tile: 'bg-indigo-600', label: 'text-indigo-400' },
+};
+
+/* ── Datalist (autocomplete) ────────────────────────────────────────────
+   PARITY ai_form.html:227-245 — field bahasa Jepang & lisensi tetap
+   `readonly` (isinya datang dari AI), tapi `list=` memberi kandidat daftar
+   nilai resmi yang sah. Tanpa ini ejaan bebas kandidat masuk apa adanya. */
+const JFT_OPTIONS = ['N1', 'N2', 'N3', 'N4', 'N5', 'JFT BASIC A2', 'BELUM LULUS', 'BELUM TES'];
+const SSW_OPTIONS = [
+  'KAIGO', 'BUILDING CLEANING', 'FOUNDRY & PLASTIC', 'INDUSTRIAL MACHINERY',
+  'ELECTRIC & ELECTRONIC', 'CONSTRUCTION', 'SHIPBUILDING', 'AUTOMOBILE REPAIR',
+  'AVIATION', 'ACCOMMODATION', 'AGRICULTURE', 'FISHERY', 'FOOD & BEVERAGE',
+  'RESTAURANT', 'FORESTRY', 'WOOD INDUSTRY',
+];
+
+/* Field lain yang jawabannya pasti (enum), jadi diberi datalist juga.
+   Datalist dipakai (bukan <select>) karena field-field ini `readonly` —
+   isinya datang dari AI, jadi yang dibutuhkan adalah saran ejaan yang sah,
+   bukan pemaksa pilihan.
+   CATATAN (2026-09-14): dulu di sini ada `ai_pekerjaan_options` /
+   `ai_jurusan_options` / `ai_hubungan_options` yang mengimpor PEKERJAAN,
+   JURUSAN, dan HUBUNGAN_KELUARGA dari lib/opsi-form.ts. Ketiganya DIHAPUS:
+   bagian pendidikan/pekerjaan/keluarga di form ini masih placeholder
+   (`ai_cv.dynamic_ai_data`) sehingga tidak ada satu pun field yang menunjuk
+   ke sana — datalist tanpa `list=` adalah markup mati yang tampak benar di
+   diff. `AiCvForm.test.tsx` sekarang menolak datalist yatim, jadi kalau
+   baris dinamis itu kelak punya field sungguhan, tambahkan datalist-nya
+   bersama field-nya, bukan lebih dulu. */
+const GENDER_OPTIONS = ['LAKI-LAKI', 'PEREMPUAN'];
+const AGAMA_OPTIONS = ['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU', 'LAINNYA'];
+const GOLDAR_OPTIONS = ['A', 'B', 'AB', 'O', '-'];
+const STATUS_NIKAH_OPTIONS = ['BELUM MENIKAH', 'MENIKAH', 'CERAI'];
+const TANGAN_OPTIONS = ['KANAN', 'KIRI'];
+const YA_TIDAK = ['YA', 'TIDAK'];
+const EKS_JEPANG_OPTIONS = ['BELUM PERNAH', 'EKS MAGANG', 'EKS TOKUTEI GINO'];
 
 /** Strip dangerous HTML tags — prevents XSS from AI output. */
 const waFromUrl = () => { try { return new URLSearchParams(window.location.search).get('wa') || ''; } catch { return ''; } };
@@ -81,7 +145,20 @@ function sanitizeAiHtml(text: string): string {
 
 const JEKLIN_IMG = 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png';
 
-export default function AiCvForm() {
+/**
+ * P2 (2026-09-14): dipakai dua cara.
+ *  - Kandidat  : `<AiCvForm />` di /ai-cv — perilaku lama, tanpa props.
+ *  - Admin     : `<AiCvForm waTarget={k.wa} adminMode />` dari tab Pelamar —
+ *                gate login dilewati dan draf CV kandidat dimuat dulu.
+ */
+interface AiCvFormProps {
+  /** WA kandidat yang CV-nya dibuka (mode admin). */
+  waTarget?: string;
+  /** Lewati gate login; backend sudah memberi admin akses ke WA mana pun. */
+  adminMode?: boolean;
+}
+
+export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
   const lang = useStore(langStore);
   const [tab, setTab] = useState<'chat' | 'form'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -92,13 +169,20 @@ export default function AiCvForm() {
   const [docStatus, setDocStatus] = useState<Record<string, string>>({});
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [loadingDraft, setLoadingDraft] = useState(!!waTarget);
   // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`.
   const [aiDown, setAiDown] = useState<string | null>(null);
   // C03 (2026-09-05): login gate pola MasterFullForm — backend minta sesi untuk
   // chat (processAIChat H4) DAN simpan (submitDataAsj); apiClient tanpa sesi
   // redirect ke '/' → seluruh state CV hilang. Gate saat mount + guard di
   // saveToDatabase supaya sesi yang hilang tidak pernah drop CV diam-diam.
+  //
+  // P2 (2026-09-14): saat dipasang sebagai panel admin (tab Pelamar), gate-nya
+  // DILEWATI. Backend sudah mengizinkan admin: `isOwnerOrAdmin()` benar untuk
+  // `role:'admin'` di WA mana pun, dan `submitDataAsj` menerima sesi admin.
+  // Yang kurang cuma UI-nya — kandidat sering salah isi, admin yang membetulkan.
   const [loginGate, setLoginGate] = useState(() => {
+    if (adminMode) return false;
     const a = authStore.get();
     return !a.sessionToken || !a.isLoggedIn;
   });
@@ -108,6 +192,21 @@ export default function AiCvForm() {
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // §4.1(a) — this is a modal WALL, not a dismissible dialog: the state is
+  // cleared only by a successful `gateLogin()`, and the form behind it is not
+  // rendered at all (early return below). So it takes the dialog semantics and
+  // the Tab trap, but NOT the two dismissal routes the hook offers by default
+  // — there is no "close" for this overlay to mean, and inventing one would be
+  // a silent behaviour change. It carries no <h1>-<h6> (its title is a styled
+  // <div>), so the accessible name has to come from `label`.
+  const gateOverlay = useOverlay({
+    open: loginGate,
+    onClose: () => {},
+    closeOnEscape: false,
+    closeOnBackdrop: false,
+    label: t('ai_cv.verify_account'),
+  });
+
   const now = () => new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
   useEffect(() => {
@@ -116,6 +215,71 @@ export default function AiCvForm() {
       time: now() }]);
     setShowSuggestions(true);
   }, []);
+
+  // P2 (2026-09-14): mode admin memuat draf CV kandidat lebih dulu.
+  // `getDrafCvMaster` mengembalikan bentuk bersarang + `AIDATAJSON` mentah;
+  // `parseAiCvDraft` mem-parse, deep-merge (AI menang), lalu memetakan ke kunci
+  // flat. Tanpa langkah ini admin melihat form KOSONG dan menekan Simpan —
+  // yang akan menghapus CV kandidat, persis kebalikan dari yang diminta.
+  useEffect(() => {
+    if (!waTarget) return;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await apiClient<Record<string, unknown>>('getDrafCvMaster', [waTarget]);
+        if (!alive) return;
+        const loaded = parseAiCvDraft(res);
+        if (Object.keys(loaded).length === 0 && typeof res?.error === 'string') {
+          showToast(String(res.error), 'error');
+        }
+        // hp = WA kandidat; kalau master belum punya no_wa, pakai target supaya
+        // payload simpan tetap membawa nomor yang benar.
+        setCv(prev => ({ ...prev, ...loaded, hp: loaded.hp || prev.hp || waTarget }));
+      } catch (e) {
+        if (alive) showToast('Gagal memuat draf CV: ' + (e as Error).message, 'error');
+      } finally {
+        if (alive) setLoadingDraft(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [waTarget]);
+
+  // §6 parity verifikasiAksesAiCv() (legacy js/pages/ai_form.ts:771): halaman AI
+  // CV (flow=master) khusus Siswa ASJ. Kandidat non-siswa yang membuka URL-nya
+  // langsung diarahkan ke Form Master Lengkap — bukan sekadar ditolak server.
+  //
+  // Tiga aturan legacy dipertahankan (semuanya soal menghindari loop reload /
+  // logout admin): admin (adminMode) lewat; tanpa sesi kandidat valid → JANGAN
+  // panggil getAppData (apiClient melakukan logout+redirect ke '/' saat
+  // sessionInvalid → loop tanpa akhir); gagal jaringan → jangan blokir.
+  useEffect(() => {
+    if (adminMode) return;
+    const a = authStore.get();
+    if (!a.isLoggedIn || a.role !== 'kandidat' || !a.sessionToken) return;
+    const wa = a.wa || waFromUrl();
+    if (!wa) return;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await apiClient<Record<string, unknown>>('getAppData', ['kandidat', wa]);
+        if (!alive || !res) return;
+        if (res.sessionInvalid) return; // tak bisa diverifikasi → jangan redirect
+        const cand = Array.isArray((res as { candidates?: unknown }).candidates)
+          ? ((res as { candidates: Record<string, unknown>[] }).candidates[0] ?? null)
+          : null;
+        const my = (res as { myData?: Record<string, unknown> }).myData;
+        // Bentuk respons tak dikenal (tak ada candidates[] maupun myData) →
+        // jangan redirect: kita tidak bisa memverifikasi, dan legacy pun
+        // fail-open pada keadaan yang tak bisa diverifikasi.
+        if (!cand && !my) return;
+        let catatan = cand ? String(cand.catatanInt || cand.catatan || '') : '';
+        if (!catatan && my) catatan = String(my.catatanInt || '');
+        const redirect = aiCvAccessRedirect(catatan, wa, a.name);
+        if (redirect) window.location.href = redirect;
+      } catch { /* gagal jaringan → jangan blokir (fallback aman legacy) */ }
+    })();
+    return () => { alive = false; };
+  }, [adminMode]);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -147,7 +311,11 @@ export default function AiCvForm() {
       try { data = await res.json(); } catch { /* non-JSON error body */ }
       const aiUnavailable = !!(data && data.code === 'AI_UNAVAILABLE');
       setAiDown(aiUnavailable ? String(data.error || data.reply || '') || null : null);
-      addBot(data?.reply || 'Waduh sistem Jeklin lagi sibuk kak, coba beberapa saat lagi ya!');
+      // §6 parity: server menolak VIP dengan { success:false, error } TANPA
+      // `reply` (chat.ts flow=master). Dulu itu jatuh ke copy generik "Jeklin
+      // sibuk" → user tidak tahu kenapa ditolak. `reply` tetap prioritas
+      // (AI_UNAVAILABLE mengirim copy ramah di sana); `error` jadi cadangan.
+      addBot(String(data?.reply || data?.error || '') || 'Waduh sistem Jeklin lagi sibuk kak, coba beberapa saat lagi ya!');
       if (res.ok && !aiUnavailable) {
         if (data.cvData) {
           setCv(prev => ({ ...prev, ...data.cvData }));
@@ -210,7 +378,7 @@ export default function AiCvForm() {
     // '/' dan menghapus seluruh CV). Sesi expired di tengah jalan ditangani
     // guard yang sama pada klik berikutnya.
     const auth = authStore.get();
-    if (!auth.sessionToken || !auth.isLoggedIn) {
+    if (!adminMode && (!auth.sessionToken || !auth.isLoggedIn)) {
       setGateWa(cv.hp || waFromUrl() || auth.wa);
       setLoginGate(true);
       return;
@@ -236,6 +404,11 @@ export default function AiCvForm() {
           golongan_darah: cv.goldar, status_nikah: cv.status, anak: cv.anak,
           email: cv.email, alamat: cv.alamat, hp: cv.hp, hp_darurat: cv.hpdarurat,
           ktp: cv.ktp, paspor: cv.paspor, sim: cv.sim,
+          // Legacy menyimpan status paspor/SIM di identitas.* (ai_form.ts
+          // enableSimPasporConditional). Tanpa ini jawaban "TIDAK ADA" hilang:
+          // kolom nomor cuma kosong, tanpa penanda kandidat memang tidak punya.
+          paspor_status: cv.paspor_status || (cv.paspor ? 'ADA' : ''),
+          sim_status: cv.sim_status || (cv.sim ? 'ADA' : ''),
           status_eks_jepang: cv.riwayatjepang,
         },
         fisik: { tb: cv.tb, bb: cv.bb, tangan_dominan: cv.tangan, sepatu: cv.sepatu, baju: cv.baju, topi: cv.topi, tahan_ac: cv.tahan_ac },
@@ -287,22 +460,39 @@ export default function AiCvForm() {
 
   if (loginGate) {
     return (
-      <div class="fixed inset-0 u-modal-shell z-50 bg-black/85 flex items-center justify-center p-4">
+      <div ref={gateOverlay.containerRef} class="fixed inset-0 u-modal-shell z-50 bg-black/85 flex items-center justify-center p-4">
         <div class="bg-[#0b1220] border border-amber-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
           <div class="text-center mb-4">
             <div class="text-2xl mb-1 text-amber-400"><Icon name="lock" /></div>
             <div class="font-bold text-white text-sm">{t("ai_cv.verify_account")}</div>
             <div class="text-slate-400 text-xs mt-1">{t("ai_cv.login_required_desc")}</div>
           </div>
-          <label class="label">{t("login.wa_label")}</label>
-          <input type="tel" class="input" value={gateWa} placeholder="08xxxxxxxxxx"
+          <label for="ai-gate-wa" class="label">{t("login.wa_label")}</label>
+          <input id="ai-gate-wa" type="tel" class="input" value={gateWa} placeholder="08xxxxxxxxxx"
             onInput={(e) => setGateWa((e.target as HTMLInputElement).value)} />
-          <label class="label mt-3">{t("form.mf_password")}</label>
-          <input type="password" class="input" value={gatePass} placeholder="••••••••"
+          <label for="ai-gate-pass" class="label mt-3">{t("form.mf_password")}</label>
+          <input id="ai-gate-pass" type="password" class="input" value={gatePass} placeholder="••••••••"
             onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
           <button onClick={gateLogin} class="w-full mt-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl py-2.5 text-sm font-bold">{t("login.btn_masuk")}</button>
           {gateMsg && <div class="text-rose-400 text-xs text-center mt-2">{gateMsg}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // P2: menahan form sampai draf kandidat selesai dimuat. Tanpa ini admin bisa
+  // menekan Simpan di atas form yang masih kosong — dan menghapus CV kandidat.
+  if (loadingDraft) {
+    return (
+      // §4.1(a) — a wait screen, not a dialog: the correct semantics is a
+      // live region, and trapping focus in a screen with nothing to act on
+      // would be worse than leaving it free. Same treatment MasterFullForm
+      // already uses for its "Menyinkronkan Data…" overlay.
+      <div class="fixed inset-0 u-modal-shell z-50 bg-black/85 flex items-center justify-center p-4" role="status" aria-live="polite">
+        <div class="text-center">
+          <div class="text-2xl mb-2 text-amber-400"><Icon spin name="spinner" /></div>
+          <div class="text-slate-300 text-xs font-bold">{t("ai_cv.loading_draft")}</div>
         </div>
       </div>
     );
@@ -395,7 +585,10 @@ export default function AiCvForm() {
             <div class="flex items-center gap-3">
               <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_asj.png" alt="ASJ" class="h-8 md:h-10 object-contain" />
               <div>
-                <h1 class="text-sm md:text-base font-black text-white">{t("form.preview_cv")}</h1>
+                {/* h2, not h1: the page h1 is the FormToolbar title. /ai-cv had
+                    NO h1 at all before this (§23) — this panel heading was it,
+                    and it only appears once the CV preview panel is open. */}
+                <h2 class="text-sm md:text-base font-black text-white">{t("form.preview_cv")}</h2>
                 <p class="text-[10px] md:text-[11px] text-slate-400">{t('form.cv_edit_hint')}</p>
               </div>
             </div>
@@ -422,78 +615,85 @@ export default function AiCvForm() {
               <Field label={t("form.mf_panggilan")} id="panggilan" value={cv.panggilan} readonly />
               <Field label={t("form.mf_panggilan_ktk")} id="panggilan_katakana" value={cv.panggilan_katakana} jp />
               <Field label={t("cv.field_tmp_lahir")} id="tmplahir" value={cv.tmplahir} readonly />
-              <Field label={t("cv.field_tgl_lahir")} id="tgllahir" value={cv.tgllahir} readonly />
-              <Field label={t("form.mf_usia")} id="umur" value={cv.umur} center readonly />
-              <Field label={t("form.mf_gender")} id="gender" value={cv.gender} center readonly />
-              <Field label={t("form.mf_agama")} id="agama" value={cv.agama} center readonly />
-              <Field label={t("form.mf_goldar")} id="goldar" value={cv.goldar} center readonly />
-              <Field label={t("cv.field_status_nikah")} id="status" value={cv.status} center readonly />
+              {/* PARITY ai_form.html:134 — legacy `type="date"` (date picker),
+                  bukan teks bebas. */}
+              <Field label={t("cv.field_tgl_lahir")} id="tgllahir" value={cv.tgllahir} readonly type="date" />
+              <Field label={t("form.mf_usia")} id="umur" value={cv.umur} center readonly unit="thn" />
+              <Field label={t("form.mf_gender")} id="gender" value={cv.gender} center readonly list="ai_gender_options" />
+              <Field label={t("form.mf_agama")} id="agama" value={cv.agama} center readonly list="ai_agama_options" />
+              <Field label={t("form.mf_goldar")} id="goldar" value={cv.goldar} center readonly list="ai_goldar_options" />
+              <Field label={t("cv.field_status_nikah")} id="status" value={cv.status} center readonly list="ai_status_nikah_options" />
               <Field label={t("form.mf_anak")} id="anak" value={cv.anak} center readonly />
               <Field label={t("form.mf_email")} id="email" value={cv.email} span={2} readonly />
               <Field label={t("cv.field_alamat")} id="alamat" value={cv.alamat} span={3} spanMd={3} readonly />
               <Field label={t("form.mf_kontak")} id="hp" value={cv.hp} readonly />
               <Field label={t("form.mf_darurat_wa")} id="hpdarurat" value={cv.hpdarurat} readonly />
               <Field label={t("form.mf_ktp")} id="ktp" value={cv.ktp} span={2} readonly />
-              <Field label={t("form.mf_no_paspor")} id="paspor" value={cv.paspor} span={2} readonly />
-              <Field label={t("form.mf_sim")} id="sim" value={cv.sim} readonly />
+              <StatusNumber label={t("form.mf_no_paspor")} statusLabel={t("form.mf_paspor_status")}
+                status={cv.paspor_status} value={cv.paspor} statusKey="paspor_status" valueKey="paspor"
+                ph={t("form.mf_ph_no_paspor")} basis="38%" span={2} onChange={updateCv} />
+              <StatusNumber label={t("form.mf_sim")} statusLabel={t("form.mf_sim_status")}
+                status={cv.sim_status} value={cv.sim} statusKey="sim_status" valueKey="sim"
+                ph={t("form.mf_ph_no_sim")} basis="42%" onChange={updateCv} />
             </div>
+            <datalist id="ai_gender_options">{GENDER_OPTIONS.map(o => <option key={o} value={o} />)}</datalist>
+            <datalist id="ai_agama_options">{AGAMA_OPTIONS.map(o => <option key={o} value={o} />)}</datalist>
+            <datalist id="ai_goldar_options">{GOLDAR_OPTIONS.map(o => <option key={o} value={o} />)}</datalist>
+            <datalist id="ai_status_nikah_options">{STATUS_NIKAH_OPTIONS.map(o => <option key={o} value={o} />)}</datalist>
+            <datalist id="ai_tangan_options">{TANGAN_OPTIONS.map(o => <option key={o} value={o} />)}</datalist>
+            <datalist id="ai_ya_tidak_options">{YA_TIDAK.map(o => <option key={o} value={o} />)}</datalist>
+            <datalist id="ai_eks_jepang_options">{EKS_JEPANG_OPTIONS.map(o => <option key={o} value={o} />)}</datalist>
           </Section>
 
           <div class="u-grid-auto u-grid-auto--form gap-3 mb-3">
             <Section title={t("ai_cv.sec_fisik")} icon="fa-child" color="amber">
               <div class="grid grid-cols-3 gap-2">
-                <Field label={t("form.mf_tb")} id="tb" value={cv.tb} center readonly />
-                <Field label={t("form.mf_bb")} id="bb" value={cv.bb} center readonly />
-                <Field label={t("cv.field_tgn_dominan")} id="tangan" value={cv.tangan} center readonly />
+                <Field label={t("form.mf_tb")} id="tb" value={cv.tb} center readonly unit="cm" />
+                <Field label={t("form.mf_bb")} id="bb" value={cv.bb} center readonly unit="kg" />
+                <Field label={t("cv.field_tgn_dominan")} id="tangan" value={cv.tangan} center readonly list="ai_tangan_options" />
                 <Field label={t("form.mf_sepatu")} id="sepatu" value={cv.sepatu} center readonly />
                 <Field label={t("form.mf_baju")} id="baju" value={cv.baju} center readonly />
                 <Field label={t("form.mf_topi")} id="topi" value={cv.topi} center readonly />
-                <div class="col-span-3"><Field label={t("cv.field_tahan_ac")} id="tahan_ac" value={cv.tahan_ac} readonly /></div>
+                <div class="col-span-3"><Field label={t("cv.field_tahan_ac")} id="tahan_ac" value={cv.tahan_ac} readonly list="ai_ya_tidak_options" /></div>
               </div>
             </Section>
             <Section title={t("ai_cv.sec_medis")} icon="fa-notes-medical" color="red">
               <div class="grid grid-cols-4 gap-2">
                 <Field label={t("cv.field_mata_kanan")} id="matakanan" value={cv.matakanan} center readonly />
                 <Field label={t("cv.field_mata_kiri")} id="matakiri" value={cv.matakiri} center readonly />
-                <div class="col-span-2"><Field label={t("form.mf_kacamata")} id="kacamata" value={cv.kacamata} center readonly /></div>
-                <div class="col-span-2"><Field label={t("cv.field_butawarna")} id="butawarna" value={cv.butawarna} readonly /></div>
-                <div class="col-span-2"><Field label={t("form.mf_tato")} id="tato" value={cv.tato} readonly /></div>
-                <Field label={t("form.mf_merokok")} id="rokok" value={cv.rokok} center readonly />
-                <Field label={t("form.mf_alkohol")} id="alkohol" value={cv.alkohol} center readonly />
+                <div class="col-span-2"><Field label={t("form.mf_kacamata")} id="kacamata" value={cv.kacamata} center readonly list="ai_ya_tidak_options" /></div>
+                <div class="col-span-2"><Field label={t("cv.field_butawarna")} id="butawarna" value={cv.butawarna} readonly list="ai_ya_tidak_options" /></div>
+                <div class="col-span-2"><Field label={t("form.mf_tato")} id="tato" value={cv.tato} readonly list="ai_ya_tidak_options" /></div>
+                <Field label={t("form.mf_merokok")} id="rokok" value={cv.rokok} center readonly list="ai_ya_tidak_options" />
+                <Field label={t("form.mf_alkohol")} id="alkohol" value={cv.alkohol} center readonly list="ai_ya_tidak_options" />
               </div>
               <div class="col-span-4 space-y-1 mt-2 p-2 bg-slate-800/40 rounded border border-slate-700/50">
-                <div class="grid grid-cols-2 gap-2">
-                  <label class="block text-[11px] text-[#e2e8f0]">{t("form.mf_alergi")}</label>
-                  <div></div>
-                </div>
-                <TextAreaPair idId="alergi_id" idJp="alergi_jp" valueId={cv.alergi_id} valueJp={cv.alergi_jp} onChange={updateCv} />
-                <div class="grid grid-cols-2 gap-2"><label class="block text-[11px] text-[#e2e8f0]">{t("form.mf_penyakit")}</label><div></div></div>
-                <TextAreaPair idId="medis_id" idJp="medis_jp" valueId={cv.medis_id} valueJp={cv.medis_jp} onChange={updateCv} />
-                <div class="grid grid-cols-2 gap-2"><label class="block text-[11px] text-[#e2e8f0]">{t("cv.field_laka")}</label><div></div></div>
-                <TextAreaPair idId="laka_id" idJp="laka_jp" valueId={cv.laka_id} valueJp={cv.laka_jp} onChange={updateCv} />
+                <TextAreaPair groupLabel={t("form.mf_alergi")} idId="alergi_id" idJp="alergi_jp" valueId={cv.alergi_id} valueJp={cv.alergi_jp} onChange={updateCv} />
+                <TextAreaPair groupLabel={t("form.mf_penyakit")} idId="medis_id" idJp="medis_jp" valueId={cv.medis_id} valueJp={cv.medis_jp} onChange={updateCv} />
+                <TextAreaPair groupLabel={t("cv.field_laka")} idId="laka_id" idJp="laka_jp" valueId={cv.laka_id} valueJp={cv.laka_jp} onChange={updateCv} />
               </div>
             </Section>
           </div>
 
           <Section title={t("ai_cv.sec_jiko")} icon="fa-comments" color="purple" borderLeft>
-            <div class="mb-2"><Field label={t("cv.field_riwayat_jp")} id="riwayatjepang" value={cv.riwayatjepang} readonly span={1} /></div>
+            <div class="mb-2"><Field label={t("cv.field_riwayat_jp")} id="riwayatjepang" value={cv.riwayatjepang} readonly span={1} list="ai_eks_jepang_options" /></div>
             <div class="u-grid-auto u-grid-auto--form gap-3">
               <div class="space-y-2">
-                <TextAreaPair label={t("cv.field_promo_diri")} idId="promo_id" idJp="promo_jp" valueId={cv.promo_id} valueJp={cv.promo_jp} onChange={updateCv} />
-                <TextAreaPair label={t("cv.field_kelebihan")} idId="lebih_id" idJp="lebih_jp" valueId={cv.lebih_id} valueJp={cv.lebih_jp} onChange={updateCv} />
-                <TextAreaPair label={t("cv.field_kekurangan")} idId="kurang_id" idJp="kurang_jp" valueId={cv.kurang_id} valueJp={cv.kurang_jp} onChange={updateCv} />
-                <TextAreaPair label={t("cv.hobi")} idId="hobi_id" idJp="hobi_jp" valueId={cv.hobi_id} valueJp={cv.hobi_jp} onChange={updateCv} />
-                <TextAreaPair label={t("cv.field_keahlian")} idId="keahlian_id" idJp="keahlian_jp" valueId={cv.keahlian_id} valueJp={cv.keahlian_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_promo_diri")} helper={t("form.ai_promosi_helper")} idId="promo_id" idJp="promo_jp" valueId={cv.promo_id} valueJp={cv.promo_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_kelebihan")} helper={t("form.ai_kelebihan_helper")} idId="lebih_id" idJp="lebih_jp" valueId={cv.lebih_id} valueJp={cv.lebih_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_kekurangan")} helper={t("form.ai_kekurangan_helper")} idId="kurang_id" idJp="kurang_jp" valueId={cv.kurang_id} valueJp={cv.kurang_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.hobi")} helper={t("form.ai_hobi_helper")} idId="hobi_id" idJp="hobi_jp" valueId={cv.hobi_id} valueJp={cv.hobi_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_keahlian")} helper={t("form.ai_keahlian_helper")} idId="keahlian_id" idJp="keahlian_jp" valueId={cv.keahlian_id} valueJp={cv.keahlian_jp} onChange={updateCv} />
               </div>
               <div class="space-y-2">
-                <TextAreaPair label={t("cv.motivasi")} idId="moti_id" idJp="moti_jp" valueId={cv.moti_id} valueJp={cv.moti_jp} onChange={updateCv} />
-                <TextAreaPair label={t("cv.field_alasan_bidang")} idId="alasan_id" idJp="alasan_jp" valueId={cv.alasan_id} valueJp={cv.alasan_jp} onChange={updateCv} />
-                <TextAreaPair label={t("cv.field_rencana_pulang")} idId="pulang_id" idJp="pulang_jp" valueId={cv.pulang_id} valueJp={cv.pulang_jp} onChange={updateCv} />
-                <TextAreaPair label={t("cv.field_target_pribadi")} idId="keinginan_id" idJp="keinginan_jp" valueId={cv.keinginan_id} valueJp={cv.keinginan_jp} onChange={updateCv} />
-                <TextAreaPair label={t("cv.field_tujuan_jepang")} idId="tujuan_id" idJp="tujuan_jp" valueId={cv.tujuan_id} valueJp={cv.tujuan_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.motivasi")} helper={t("form.ai_motivasi_helper")} idId="moti_id" idJp="moti_jp" valueId={cv.moti_id} valueJp={cv.moti_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_alasan_bidang")} helper={t("form.ai_alasan_helper")} idId="alasan_id" idJp="alasan_jp" valueId={cv.alasan_id} valueJp={cv.alasan_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_rencana_pulang")} helper={t("form.ai_rencana_helper")} idId="pulang_id" idJp="pulang_jp" valueId={cv.pulang_id} valueJp={cv.pulang_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_target_pribadi")} helper={t("form.ai_keinginan_helper")} idId="keinginan_id" idJp="keinginan_jp" valueId={cv.keinginan_id} valueJp={cv.keinginan_jp} onChange={updateCv} />
+                <TextAreaPair label={t("cv.field_tujuan_jepang")} helper={t("form.ai_tujuan_helper")} idId="tujuan_id" idJp="tujuan_jp" valueId={cv.tujuan_id} valueJp={cv.tujuan_jp} onChange={updateCv} />
                 <div class="grid grid-cols-3 gap-2">
-                  <Field label={t("cv.field_lama_jp")} id="lama" value={cv.lama} center readonly />
-                  <Field label={t("cv.field_target_gaji")} id="gaji_yen" value={cv.gaji_yen} center readonly jp />
+                  <Field label={t("cv.field_lama_jp")} id="lama" value={cv.lama} center readonly unit="thn" />
+                  <Field label={t("cv.field_target_gaji")} id="gaji_yen" value={cv.gaji_yen} center readonly jp unit="yen" />
                   <Field label={t("cv.field_target_nabung")} id="tabungan" value={cv.tabungan} center readonly jp />
                 </div>
               </div>
@@ -503,10 +703,16 @@ export default function AiCvForm() {
           <div class="u-grid-auto u-grid-auto--cards gap-3 mb-3">
             <Section title={t("ai_cv.sec_pendidikan")} icon="fa-graduation-cap" color="emerald">
               <div class="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700 mb-2">
-                <Field label={t("cv.field_bhs_jepang")} id="bhs_jepang" value={cv.bhs_jepang} readonly />
+                <Field label={t("cv.field_bhs_jepang")} id="bhs_jepang" value={cv.bhs_jepang} readonly list="ai_jft_options" />
                 <Field label={t("cv.field_nilai_jp")} id="nilai" value={cv.nilai} readonly />
-                <Field label={t("cv.field_lisensi_ssw")} id="lisensi" value={cv.lisensi} readonly />
+                <Field label={t("cv.field_lisensi_ssw")} id="lisensi" value={cv.lisensi} readonly list="ai_ssw_options" />
               </div>
+              <datalist id="ai_jft_options">
+                {JFT_OPTIONS.map(o => <option key={o} value={o} />)}
+              </datalist>
+              <datalist id="ai_ssw_options">
+                {SSW_OPTIONS.map(o => <option key={o} value={o} />)}
+              </datalist>
               <div class="text-[9px] text-slate-500 italic py-1">{t("ai_cv.dynamic_ai_data")}</div>
             </Section>
             <Section title={t("ai_cv.sec_pekerjaan")} icon="fa-briefcase" color="blue">
@@ -525,7 +731,7 @@ export default function AiCvForm() {
               <Field label={t("cv.field_kenalan_hub_jp")} id="kenalan_hub_jp" value={cv.kenalan_hub_jp} jp readonly />
               <Field label={t("cv.field_kenalan_kerja_id")} id="kenalan_kerja_id" value={cv.kenalan_kerja_id} readonly />
               <Field label={t("cv.field_kenalan_kerja_jp")} id="kenalan_kerja_jp" value={cv.kenalan_kerja_jp} jp readonly />
-              <Field label={t("cv.field_kenalan_usia")} id="kenalan_usia" value={cv.kenalan_usia} readonly />
+              <Field label={t("cv.field_kenalan_usia")} id="kenalan_usia" value={cv.kenalan_usia} readonly unit="thn" />
               <div class="col-span-2 md:col-span-4 mt-1 grid grid-cols-2 gap-2">
                 <Field label={t("cv.field_kenalan_alamat_id")} id="kenalan_alamat_id" value={cv.kenalan_alamat_id} readonly />
                 <Field label={t("cv.field_kenalan_alamat_jp")} id="kenalan_alamat_jp" value={cv.kenalan_alamat_jp} jp readonly />
@@ -534,17 +740,22 @@ export default function AiCvForm() {
           </Section>
 
           <div class="u-grid-auto u-grid-auto--cards gap-3 mb-3">
-            <UploadRow type="foto" label={t("cv.upload_foto")} icon="fa-camera" bg="bg-sky-600" accept="image/*" status={docStatus['foto']} onUpload={handleDocUpload} />
-            <UploadRow type="jft" label={t("cv.upload_jft")} icon="fa-file-pdf" bg="bg-amber-600" accept=".pdf" status={docStatus['jft']} onUpload={handleDocUpload} />
-            <UploadRow type="ssw" label={t("cv.upload_ssw")} icon="fa-file-signature" bg="bg-emerald-600" accept=".pdf" status={docStatus['ssw']} onUpload={handleDocUpload} />
+            <UploadRow type="foto" label={t("cv.upload_foto")} icon="fa-camera" color="sky" accept="image/*" status={docStatus['foto']} preview={fotoPreview} onUpload={handleDocUpload} />
+            <UploadRow type="jft" label={t("cv.upload_jft")} icon="fa-file-pdf" color="amber" accept=".pdf" status={docStatus['jft']} onUpload={handleDocUpload} />
+            <UploadRow type="ssw" label={t("cv.upload_ssw")} icon="fa-file-signature" color="emerald" accept=".pdf" status={docStatus['ssw']} onUpload={handleDocUpload} />
           </div>
           <div class="u-grid-auto u-grid-auto--cards gap-3">
-            <UploadRow type="ktp" label={t("cv.upload_ktp")} icon="fa-id-card" bg="bg-rose-600" accept=".pdf,image/*" status={docStatus['ktp']} onUpload={handleDocUpload} />
-            <UploadRow type="kk" label={t("cv.upload_kk")} icon="fa-users" bg="bg-orange-600" accept=".pdf,image/*" status={docStatus['kk']} onUpload={handleDocUpload} />
-            <UploadRow type="ijazahSd" label={t("cv.upload_ijazah_sd")} icon="fa-graduation-cap" bg="bg-violet-600" accept=".pdf" status={docStatus['ijazahSd']} onUpload={handleDocUpload} />
-            <UploadRow type="ijazahSmp" label={t("cv.upload_ijazah_smp")} icon="fa-graduation-cap" bg="bg-sky-600" accept=".pdf" status={docStatus['ijazahSmp']} onUpload={handleDocUpload} />
-            <UploadRow type="ijazahSma" label={t("cv.upload_ijazah_sma")} icon="fa-graduation-cap" bg="bg-teal-600" accept=".pdf" status={docStatus['ijazahSma']} onUpload={handleDocUpload} />
-            <UploadRow type="univ" label={t("cv.upload_ijazah_univ")} icon="fa-university" bg="bg-indigo-600" accept=".pdf" status={docStatus['univ']} onUpload={handleDocUpload} />
+            {/* PARITY ai_form.html:325-370 — enam dokumen ini (KTP, KK, dan
+                keempat ijazah) menerima `.pdf,image/*`; keempat baris ijazah
+                sempat di-port sebagai `.pdf` saja, jadi scan/foto ijazah tidak
+                bisa diunggah sama sekali. Bug yang sama sudah diperbaiki di CV
+                Master (§4.1 #3) — ini sisa yang terlewat di form AI. */}
+            <UploadRow type="ktp" label={t("cv.upload_ktp")} icon="fa-id-card" color="rose" accept=".pdf,image/*" status={docStatus['ktp']} onUpload={handleDocUpload} />
+            <UploadRow type="kk" label={t("cv.upload_kk")} icon="fa-users" color="orange" accept=".pdf,image/*" status={docStatus['kk']} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSd" label={t("cv.upload_ijazah_sd")} icon="fa-graduation-cap" color="violet" accept=".pdf,image/*" status={docStatus['ijazahSd']} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSmp" label={t("cv.upload_ijazah_smp")} icon="fa-graduation-cap" color="sky" accept=".pdf,image/*" status={docStatus['ijazahSmp']} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSma" label={t("cv.upload_ijazah_sma")} icon="fa-graduation-cap" color="teal" accept=".pdf,image/*" status={docStatus['ijazahSma']} onUpload={handleDocUpload} />
+            <UploadRow type="univ" label={t("cv.upload_ijazah_univ")} icon="fa-university" color="indigo" accept=".pdf,image/*" status={docStatus['univ']} onUpload={handleDocUpload} />
           </div>
         </div>
       </main>
@@ -559,7 +770,12 @@ function Section({ title, icon, color, borderLeft, children }: {
 }) {
   return (
     <div class={`bg-slate-900/40 border border-slate-800 rounded-lg p-3 mb-3 shadow ${borderLeft ? 'border-l-2 border-l-purple-500' : ''}`}>
-      <h2 class={`text-[13px] font-bold uppercase tracking-wide mb-2 border-b border-slate-800/50 pb-1 text-${color}-400`}>
+      {/* Judul seksi memakai metrik `.section-title` yang sama dengan CV Master
+          supaya kedua form terasa satu keluarga (legacy pun begitu:
+          `class="section-title text-purple-400"`). Kelasnya dipisah karena
+          `.section-title` mengunci warna ke accent-sky — ia unlayered, jadi
+          warna itu akan mengalahkan utility warna per-seksi di bawah. */}
+      <h2 class={`section-title-accent ${SECTION_COLORS[color] || 'text-slate-400'}`}>
         <Icon name={icon} class="mr-1" /> {title}
       </h2>
       {children}
@@ -567,59 +783,144 @@ function Section({ title, icon, color, borderLeft, children }: {
   );
 }
 
-function Field({ label, id, value, readonly, center, jp, span, spanMd }: {
+function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, type, list }: {
   label: string; id: string; value: string; readonly?: boolean; center?: boolean;
-  jp?: boolean; span?: number; spanMd?: number;
+  jp?: boolean; span?: number; spanMd?: number; unit?: Unit; type?: string; list?: string;
 }) {
   const spanClass = span === 3 ? 'col-span-3' : span === 2 ? 'col-span-2' : '';
   const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : '';
   return (
     <div class={`${spanClass} ${mdSpanClass}`}>
-      <label class="block text-[11px] text-[#e2e8f0] mb-0.5">{label}</label>
-      <input type="text" value={value} readonly={readonly}
-        class={`w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] outline-none ${center ? 'text-center' : ''} ${jp ? 'text-pink-300 font-bold' : 'text-white'}`} />
+      <label class="block text-[11px] text-[#e2e8f0] mb-0.5" for={`ai_${id}`}>{label}</label>
+      <div class="relative">
+        <input id={`ai_${id}`} type={type || 'text'} value={value} readonly={readonly} list={list}
+          class={`input-micro w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] ${center ? 'text-center' : ''} ${unit ? 'pr-7' : ''} ${jp ? 'text-pink-300 font-bold' : 'text-white'}`} />
+        {unit && (
+          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-fg-subtle pointer-events-none">{unit}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Status + nomor dalam satu baris (legacy ai_form.html:150-151).
+ *
+ * Paritas: legacy `enableSimPasporConditional()` menyembunyikan kolom nomor saat
+ * status `TIDAK ADA`, dan menurunkan status dari ada/tidaknya nomor tersimpan.
+ *
+ * Satu perbedaan yang DISENGAJA: legacy men-default status ke `TIDAK ADA` saat
+ * data masih kosong, lalu `syncSimPasporVisibility()` MENGOSONGKAN nomor yang
+ * baru dimuat — nomor paspor/SIM kandidat yang sudah tersimpan hilang tanpa
+ * peringatan, dan ikut tersimpan kosong. Di sini status kosong dibiarkan kosong
+ * ("—"), nomor tidak pernah dihapus diam-diam, dan `TIDAK ADA` hanya
+ * mengosongkan nomor bila kandidat/admin memang memilihnya.
+ */
+function StatusNumber({ label, statusLabel, status, value, statusKey, valueKey, ph, basis, span, onChange }: {
+  label: string; statusLabel: string; status: string; value: string;
+  statusKey: string; valueKey: string; ph: string; basis: string; span?: number;
+  onChange: (field: string, value: string) => void;
+}) {
+  // Status tersimpan menang; kalau belum ada, turunkan dari ada/tidaknya nomor.
+  const shown = status || (value ? 'ADA' : '');
+  const numberHidden = shown === 'TIDAK ADA';
+  // Dibangun per-render, bukan di module scope: t() membaca langStore saat
+  // dipanggil, jadi array module-level akan membeku di bahasa saat import.
+  const options = [
+    { value: '', label: '\u2014' },
+    { value: 'ADA', label: t('form.mf_status_ada') },
+    { value: 'TIDAK ADA', label: t('form.mf_status_tidak_ada') },
+  ];
+  return (
+    <div class={span === 2 ? 'col-span-2' : ''}>
+      <label class="block text-[11px] text-[#e2e8f0] mb-0.5" for={`ai_${statusKey}`}>{label}</label>
+      <div class="flex gap-1">
+        <select id={`ai_${statusKey}`} value={shown} aria-label={statusLabel}
+          onChange={(e) => {
+            const next = (e.target as HTMLSelectElement).value;
+            onChange(statusKey, next);
+            if (next === 'TIDAK ADA') onChange(valueKey, '');
+          }}
+          class="input-micro bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white"
+          style={{ flex: numberHidden ? '1 1 100%' : `0 0 ${basis}` }}>
+          {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        {!numberHidden && (
+          <input id={`ai_${valueKey}`} type="text" value={value} placeholder={ph}
+            onInput={(e) => onChange(valueKey, (e.target as HTMLInputElement).value)}
+            class="input-micro bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white"
+            style={{ flex: '1 1 auto', minWidth: 0 }} />
+        )}
+      </div>
     </div>
   );
 }
 
 /** FIXED: TextAreaPair now reads from cv state + writes via onChange */
-function TextAreaPair({ label, idId, idJp, valueId, valueJp, onChange }: {
-  label?: string; idId: string; idJp: string; valueId: string; valueJp: string;
+function TextAreaPair({ label, groupLabel, helper, idId, idJp, valueId, valueJp, onChange }: {
+  label?: string; groupLabel?: string; helper?: string; idId: string; idJp: string; valueId: string; valueJp: string;
   onChange: (field: string, value: string) => void;
 }) {
-  return (
-    <div>
-      {label && <label class="block text-[11px] text-[#e2e8f0] mb-0.5">{label}</label>}
+  /* groupLabel names BOTH textareas: a for= can only ever name one of them, which
+     is why the medical blocks use this instead of a bare <label>.
+     <fieldset>+<legend> rather than role="group"+aria-labelledby, because the name
+     then comes from the DOM structure itself — there is no id that can drift out
+     from under it, and `for=` can never name two controls. The resets are load-
+     bearing: a raw fieldset draws a border, pads, and sizes to min-content, which
+     breaks the 2-column grid inside it. */
+  const fields = (
+    <>
+      {label && <label class="block text-[11px] text-[#e2e8f0] mb-0.5" for={`ai_${idId}`}>{label}</label>}
+      {/* PARITY ai_form.html:202-213 — paragraf petunjuk di antara label dan
+          field. Legacy memakai `text-[9px] italic`; di sini `text-fg-subtle`
+          supaya benar di kedua tema tanpa perlu shim, dan tanpa italic supaya
+          teks Jepangnya tetap tegak dan terbaca. */}
+      {helper && <p class="text-[10px] text-fg-subtle leading-tight mb-1">{helper}</p>}
       <div class="grid grid-cols-2 gap-2">
-        <textarea value={valueId} rows={2}
+        <textarea id={`ai_${idId}`} value={valueId} rows={2}
           onInput={(e) => onChange(idId, (e.target as HTMLTextAreaElement).value)}
-          class="w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white outline-none resize-none" placeholder={t("ui.ph_id")} />
-        <textarea value={valueJp} rows={2}
+          class="input-micro w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white resize-none" placeholder={t("ui.ph_id")} />
+        <textarea id={`ai_${idJp}`} value={valueJp} rows={2}
           onInput={(e) => onChange(idJp, (e.target as HTMLTextAreaElement).value)}
-          class="w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-purple-300 font-bold outline-none resize-none" placeholder={t("ui.ph_jp")} />
+          class="input-micro w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-purple-300 font-bold resize-none" placeholder={t("ui.ph_jp")} />
       </div>
-    </div>
+    </>
+  );
+  if (!groupLabel) return <div>{fields}</div>;
+  return (
+    <fieldset class="border-0 p-0 m-0 min-w-0">
+      <legend class="block text-[11px] text-[#e2e8f0] mb-0.5 p-0">{groupLabel}</legend>
+      {fields}
+    </fieldset>
   );
 }
 
-function UploadRow({ type, label, icon, bg, accept, status, onUpload }: {
-  type: string; label: string; icon: string; bg: string; accept: string; status?: string;
-  onUpload?: (type: string, file: File | null) => void;
+function UploadRow({ type, label, icon, color, accept, status, preview, onUpload }: {
+  type: string; label: string; icon: string; color: UploadColor; accept: string; status?: string;
+  preview?: string | null; onUpload?: (type: string, file: File | null) => void;
 }) {
+  const c = UPLOAD_COLORS[color];
   return (
     <div class="bg-slate-900/60 border border-slate-700 p-3 rounded-lg shadow flex items-center gap-3">
-      <div class={`w-10 h-10 rounded ${bg} flex items-center justify-center text-white text-lg flex-shrink-0`}>
+      <div class={`w-10 h-10 rounded ${c.tile} flex items-center justify-center text-white text-lg flex-shrink-0`}>
         <Icon name={icon} />
       </div>
       <div class="flex-1 overflow-hidden">
         <div class="flex items-center gap-2">
-          <label class="block text-xs font-bold text-white mb-0.5">{label}</label>
+          <label class={`block text-xs font-bold ${c.label} mb-0.5`} for={`ai_doc_${type}`}>{label}</label>
           {status && <span class="text-[9px] text-emerald-400 font-medium"><Icon name="check" class="mr-0.5" />{status}</span>}
         </div>
-        <input type="file" accept={accept}
+        <input id={`ai_doc_${type}`} type="file" accept={accept}
           onChange={(e) => { const f = (e.target as HTMLInputElement).files?.[0] || null; onUpload?.(type, f); }}
           class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
       </div>
+      {/* PARITY ai_form.html:299 — legacy benar-benar menampilkan pratinjau foto
+          (`#previewFoto`, h-14 w-12) di kanan baris. Sebelumnya state
+          `fotoPreview` di-set tapi tidak pernah dirender: state mati, dan
+          kandidat tidak pernah tahu fotonya sudah masuk atau belum. */}
+      {preview && (
+        <img src={preview} alt="" class="h-14 w-12 object-cover rounded border border-slate-600 shadow flex-shrink-0" />
+      )}
     </div>
   );
 }

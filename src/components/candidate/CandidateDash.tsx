@@ -9,7 +9,8 @@ import { authStore } from '../../store/authReactive';
 import { langStore, t } from '../../store/i18n';
 import ChangePasswordModal from '../ChangePasswordModal';
 import CvMiniModal from '../CvMiniModal';
-import InterviewSimulatorModal, { canAccessInterview } from './InterviewSimulatorModal';
+import InterviewSimulatorModal from './InterviewSimulatorModal';
+import { isVipCatatan, ASJ_LOGO_URL } from '../../lib/vip';
 import RirekishoBuilder from '../admin/RirekishoBuilder';
 import CvTemplateSelector from '../CvTemplateSelector';
 import EsignNaiteiModal, { allowedTahapanEsign } from '../EsignNaiteiModal';
@@ -214,11 +215,30 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
         showToast(t('ui.toast_session_invalid_relogin'), 'error');
         return;
       }
-      if (!canAccessInterview(data?.catatanInt)) {
+      if (!isVipCatatan(data?.catatanInt)) {
         showToast(t('ui.toast_feature_locked'), 'info');
         return;
       }
       setShowInterview(true);
+    }
+
+    /**
+     * §6 parity legacy bukaMasterEksternal() (js/03_candidate.ts:124): AI CV
+     * Master eksklusif Siswa ASJ — tag [VIP] ATAU [KELAS xx] di catatan internal.
+     * Non-siswa: toast info, halaman TIDAK dibuka (dulu tombol ini <a href="/ai-cv">
+     * tanpa gate, jadi kandidat luar masuk lalu ditolak server dengan pesan generik).
+     * Server tetap memutuskan sendiri (processAIChat flow=master) — ini cuma UX.
+     */
+    function openAiCvMaster() {
+      if (!(user?.wa || data?.wa)) {
+        showToast(t('ui.toast_session_invalid_relogin'), 'error');
+        return;
+      }
+      if (!isVipCatatan(data?.catatanInt)) {
+        showToast(t('ui.toast_ai_cv_locked'), 'info');
+        return;
+      }
+      window.location.href = '/ai-cv';
     }
 
 if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
@@ -238,7 +258,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
     <div class="pb-16">
       <div class="glass-panel p-5 sm:p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
         <Icon name="id-card" class="text-5xl md:text-6xl text-emerald-400 mb-4 md:mb-6 drop-shadow-xl" />
-        <h2 class="text-2xl md:text-3xl font-black text-white mb-3">{t('candidate.welcome')}, {data.nama}! <CrownBadge progress={overallProgress} /></h2>
+        <h2 class="text-2xl md:text-3xl font-black text-white mb-3">{t('candidate.welcome')}, {data.nama}! <CrownBadge progress={overallProgress} />{data.isVIP && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-8 h-8 md:w-10 md:h-10 ml-3 align-middle object-contain rounded-full border border-emerald-500/50 drop-shadow-[0_0_15px_rgba(52,211,153,0.8)]" />}</h2>
         <div class="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-3 md:px-8 md:py-4 bg-black/40 border border-emerald-500/30 rounded-full text-sm text-slate-300 mb-5 md:mb-6 shadow-inner w-full md:w-auto">
           <span>{t('candidate.job_applied')}</span> <span class="font-black text-emerald-400">{data.job}</span>
           <span class="text-slate-500">|</span>
@@ -247,7 +267,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
 
         {/* ── DIGITAL STUDENT CARD (VIP only) ── */}
         {(data.isVIP || data.isSiswaASJ) && data.idKandidat && (
-          <div class="max-w-sm mx-auto mb-8 perspective-1000 relative group">
+          <div class="max-w-sm mx-auto mb-8 relative group">
             <div class="absolute -inset-1 bg-gradient-to-r from-amber-400 to-yellow-600 rounded-[2rem] blur opacity-25 group-hover:opacity-60 transition duration-1000"></div>
             <div class="relative w-full h-56 md:h-64 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-[2rem] p-6 shadow-2xl flex flex-col justify-between overflow-hidden text-left transform transition-transform duration-500 hover:scale-105">
               <div class="absolute -right-10 -top-10 text-slate-800/50 text-[10rem] opacity-20 transform rotate-12 pointer-events-none"><Icon name="sun" /></div>
@@ -294,7 +314,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           <div class="w-full bg-slate-800 rounded-full h-2.5 shadow-inner">
             <div class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-2.5 rounded-full transition-[width] duration-1000" style={`width:${data.cvMasterProgress}%`}></div>
           </div>
-          <p class="text-xs text-slate-300 mt-4 italic text-center font-bold">{crown === 'gold' ? t('ui.profile_100') : crown === 'silver' ? t('ui.profile_silver_next') : t('ui.profile_incomplete')} <Icon name="medal" /></p>
+          <p class="text-xs text-slate-300 mt-4 italic text-center font-bold">{data.isVIP && data.cvMiniProgress === 100 && data.cvMasterProgress === 100 ? <span class="text-amber-400 font-black tracking-widest not-italic"><Icon name="star" class="mr-1" /> {t('ui.perfect_student')} <Icon name="star" class="ml-1" /></span> : <>{crown === 'gold' ? t('ui.profile_100') : crown === 'silver' ? t('ui.profile_silver_next') : t('ui.profile_incomplete')} <Icon name="medal" /></>}</p>
         </div>
 
         {/* ── Jadwal Panel ── */}
@@ -335,7 +355,10 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             <p class="text-sm text-slate-300 mb-5">{t('ui.cv_type_hint')}</p>
             <div class="mt-6 p-1 rounded-[1.5rem] bg-gradient-to-r from-sky-500/30 to-emerald-500/30 border border-slate-700/50 shadow-xl">
               <div class="bg-[#0f172a] rounded-[1.3rem] p-5 md:p-7">
-                <h3 class="text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400 animate-pulse" /> {t('ui.app_status_latest')}</h3>
+                {/* h4, not h3: this panel sits INSIDE the card whose h3 above repeats the same
+                   label, so at h3 the outline read "Status Lamaran Terkini" twice in a row
+                   (measured §24). As h4 it is the child it actually is. */}
+                <h4 class="text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400 animate-pulse" /> {t('ui.app_status_latest')}</h4>
                 {/* Loker pills */}
                 {uniqueLokers.length > 1 && (
                   <div class="flex flex-wrap gap-1.5 mb-3">
@@ -393,7 +416,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               <button onClick={() => setShowCvMiniModal(true)} class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.5)] hover:-translate-y-1 transition"><Icon name="user-edit" class="mr-1.5" /> {t('ui.update_cv_mini')}</button>
               <button onClick={openInterview} class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition"><Icon name="microphone-alt" class="mr-1.5" /> {t('ui.interview_practice')}</button>
               <button onClick={openEsign} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><Icon name="signature" class="mr-1.5" /> {t('ui.esign_naitei')}</button>
-              <a href="/ai-cv" class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="robot" class="mr-1.5" /> {t('ui.ai_cv_assistant')}</a>
+              <button onClick={openAiCvMaster} class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition cursor-pointer"><Icon name="robot" class="mr-1.5" /> {t('ui.ai_cv_assistant')}</button>
               <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="clipboard-list" class="mr-1.5 text-sky-400" /> {t('ui.master_full_form')}</a>
               
                             <button onClick={() => setShowCvTemplateSelector(true)} class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-sky-400" /> {t('button.pilih_template_cv')}</button>
