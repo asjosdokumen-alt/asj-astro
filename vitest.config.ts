@@ -26,6 +26,66 @@ export default defineConfig({
     // Batas atas agar test yang macet tidak bisa menggantung job CI lagi.
     testTimeout: 15000,
     teardownTimeout: 20000,
+    // ── Coverage (G-03) ──────────────────────────────────────────────────────
+    // Until 2026-09-17 `npm run test:coverage` could not run AT ALL:
+    // `@vitest/coverage-v8` was never declared in package.json, so the script
+    // died immediately with `MISSING DEPENDENCY`. There was also no `coverage`
+    // block here — no provider, no reporter, no threshold — so even once it ran
+    // there was nothing holding a line. The open item was recorded as "coverage
+    // exists but has no threshold"; the measured truth is that it did not exist.
+    //
+    // SCOPE: `test:coverage` passes `--project=frontend --project=backend` on
+    // purpose. Coverage instrumentation roughly triples the indexer suites'
+    // runtime (measured on this tree: the indexer project alone goes 139 s ->
+    // 440 s) and pushes `indexer/src/validate.test.ts` past its own 60 s timeout,
+    // which turns a coverage run into a timeout report instead of a number. The
+    // indexer is a development tool rather than shipped code, and it already has
+    // its own ratchets (discover/build/deep-tier). Leaving it out of COVERAGE
+    // does not leave it out of CI — `ci:quality` still runs `idx:gate`.
+    //
+    // THE THRESHOLDS ARE A RATCHET, like `.ci/biome-baseline.json`: set just
+    // below what the tree measures today, so coverage may only rise. They are
+    // deliberately NOT a quality target. A number picked to look good is a
+    // number that gets lowered the first time it fails.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'json-summary'],
+      // A test file is not "uncovered product code", and generated output is not
+      // code at all. Leaving them in inflates the denominator with files nobody
+      // is expected to cover.
+      exclude: [
+        '**/*.test.{ts,tsx}',
+        '**/*.config.{ts,mjs,js}',
+        'dist/**',
+        'indexer/**',
+        'scripts/**',
+        'netlify/functions/.netlify-built/**',
+      ],
+      thresholds: {
+        // ── NOT YET SET, ON PURPOSE — and this is the one item here that could
+        //    not be measured. Do not read 0 as "no coverage required".
+        //
+        // These are a ratchet, so they have to be set FROM A MEASURED RUN. They
+        // could not be measured on 2026-09-17 because this working environment
+        // cannot run coverage at all: the v8 provider removes its own report
+        // directory through `fs.rm`, and the sandbox's bulk-delete guard refuses
+        // it (measured: 614 deletions requested against a 50-per-turn quota),
+        // which crashes `V8CoverageProvider.clean` before the run and
+        // `cleanAfterRun` after it. Every attempt therefore ended with no
+        // `coverage/coverage-summary.json`.
+        //
+        // Setting a number here without that run would be exactly the guess this
+        // repo keeps paying for — a threshold picked to look good is one that
+        // gets lowered the first time it fails. To finish this item, run
+        // `npm run test:coverage` in a normal terminal (or let CI do it, where
+        // the delete guard does not exist) and paste the four `%` figures from
+        // the summary, rounded DOWN to the nearest whole percent.
+        statements: 0,
+        branches: 0,
+        functions: 0,
+        lines: 0,
+      },
+    },
     projects: [
       {
         plugins: [preact()],
