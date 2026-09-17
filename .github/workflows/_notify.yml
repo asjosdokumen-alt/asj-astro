@@ -77,11 +77,32 @@ jobs:
             [ -n "${{ inputs.details }}" ]    && echo "| Details | ${{ inputs.details }} |"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      # ── Why there is no `if:` on this step ──────────────────────────────────
+      # `secrets` is NOT an available context in an `if:` inside a workflow that
+      # is CALLED (this file is `on: workflow_call`). GitHub does not warn — it
+      # rejects the whole file:
+      #
+      #   Unrecognized named-value: 'secrets'.
+      #   Located at position 1 within expression: secrets.SLACK_WEBHOOK_URL != ''
+      #
+      # and a called workflow that fails to parse makes its CALLER fail to parse
+      # too. One expression here therefore took out ci.yml, deploy-staging.yml,
+      # deploy-production.yml and rollback.yml simultaneously — measured
+      # 2026-09-17: 32 of 32 runs had failed, every one with zero jobs, so CI had
+      # never once executed and the automatic rollback path was dead as well.
+      #
+      # The question "is Slack configured?" is answered in the shell below, where
+      # the secret is legitimately in scope (`env:` and `run:` are allowed;
+      # `if:` is not). Do NOT move this test back into an `if:`.
       - name: Post to Slack
-        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL not set — summary written, skipping Slack."
+            exit 0
+          fi
+
           # Build the payload with jq so titles/details containing quotes or
           # newlines cannot break the JSON.
           DEPLOY_LINE=""
@@ -100,7 +121,3 @@ jobs:
             '{attachments:[{color:$color, text:$text, mrkdwn_in:["text"]}]}' > payload.json
           curl -fsS -X POST -H 'Content-Type: application/json' \
             --data @payload.json "$SLACK_WEBHOOK_URL"
-
-      - name: No Slack webhook configured
-        if: ${{ secrets.SLACK_WEBHOOK_URL == '' }}
-        run: echo "SLACK_WEBHOOK_URL not set — summary written, skipping Slack."
