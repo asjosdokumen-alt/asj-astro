@@ -28,6 +28,17 @@ netlify/functions/.netlify-built/
 # Bukan dependensi runtime aplikasi — jangan ikut ter-commit.
 .workbuddy-ai/
 
+# Agent tooling state, same class as .workbuddy-ai/ above. `.claude/skills/` is
+# 638 KB of THIRD-PARTY skills downloaded from github.com/JavaScript-Mastery-Pro/
+# skills, with `skills-lock.json` as their lockfile — it is a local install of
+# another agent's toolkit, not product source, and vendoring it into a PUBLIC
+# product repo is a licensing and diff-noise decision rather than a technical
+# one. The lockfile is ignored alongside it: pinning hashes for files that are
+# not in the repo pins nothing. If the owner wants these versioned deliberately,
+# delete these two lines — do not delete `.workbuddy-ai/` with them.
+.claude/
+skills-lock.json
+
 # Local environment variables (secrets)
 .env.local
 superbase.txt
