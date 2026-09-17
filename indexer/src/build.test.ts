@@ -235,7 +235,14 @@ describe('full build', () => {
     // mjs=45 at the 417 step while HEAD asserts 46 — the endpoint (51) is
     // measured and correct, the intermediate is not. MEASURED 2026-09-18:
     // 251 + 87 + 13 + 51 + 5 + 19 = 426.
-    expect(r.stats.fileCount).toBe(426); // 251 ts + 87 tsx + 13 astro + 51 mjs + 5 cjs + 19 js
+    // 426 -> 427 (2026-09-18): +1 mjs — scripts/ci/with-timeout.mjs, the
+    // wall-clock watchdog that gives a run a maximum duration and kills the
+    // process tree past it. `includePath()` counts scripts/** as mjs/cjs/js, so
+    // a new gate script is a counted file; that is why the ratchet moves for
+    // tooling rather than for product code. Measured 2026-09-18:
+    // 251 + 87 + 13 + 52 + 5 + 19 = 427. Same three assertions move together —
+    // this fileCount, count('mjs') and files.length in discover.test.ts.
+    expect(r.stats.fileCount).toBe(427); // 251 ts + 87 tsx + 13 astro + 52 mjs + 5 cjs + 19 js
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

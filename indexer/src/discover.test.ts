@@ -470,7 +470,9 @@ describe('discover', () => {
     // from `git ls-files | grep '\.mjs$'`, which counts files includePath()
     // REJECTS. Never infer these from a shell count; read them off
     // `indexer/src/count-indexed.test.ts`, which calls discoverFiles() itself.
-    expect(count('mjs')).toBe(51); // 11 at design time; e2e + scripts/ci gates added since
+    // 51 -> 52 (2026-09-18): +1 mjs — scripts/ci/with-timeout.mjs. Measured, not
+    // derived; see the note in build.test.ts.
+    expect(count('mjs')).toBe(52); // 11 at design time; e2e + scripts/ci gates added since
     expect(count('cjs')).toBe(5);
     // Phase A (2026-09-11): netlify/functions/run-migration.js deleted — the
     // action was already removed from the registry, so the entry point was a
@@ -651,7 +653,12 @@ describe('discover', () => {
     // and by `git diff --diff-filter=AD --name-status e354e35 HEAD -- '*.ts'`,
     // which names exactly that one path. MEASURED 2026-09-18:
     // 251 + 87 + 13 + 51 + 5 + 19 = 426.
-    expect(files.length).toBe(426); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader, +1 battery runner, +4 edge-validation gate, +2 e2e guards, +1 TabTambah test, +1 InputManualModal test, +1 settings-limit test, +1 404 page, -2 orphan e2e, +1 fetchMail test, +1 workflow gate, +1 CekSiswaModal test, +2 progress, +6 e2e probes, +1 candidates.test.ts (the phantom HEAD had been missing)
+    // 426 -> 427 (2026-09-18): +1 mjs — scripts/ci/with-timeout.mjs, the
+    // wall-clock watchdog for runs that can hang. This is the THIRD assertion
+    // moved by that one file (fileCount in build.test.ts, count('mjs') above,
+    // and this one) — listed together rather than found one red run at a time.
+    // MEASURED 2026-09-18: 251 + 87 + 13 + 52 + 5 + 19 = 427.
+    expect(files.length).toBe(427); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader, +1 battery runner, +4 edge-validation gate, +2 e2e guards, +1 TabTambah test, +1 InputManualModal test, +1 settings-limit test, +1 404 page, -2 orphan e2e, +1 fetchMail test, +1 workflow gate, +1 CekSiswaModal test, +2 progress, +6 e2e probes, +1 candidates.test.ts (the phantom HEAD had been missing), +1 with-timeout watchdog
   });
 
   it('no scratch files are being counted, and the per-language counts sum to the total', () => {
