@@ -45,9 +45,22 @@
  *                                               itself stalls — not for a run
  *                                               that is merely slow.
  *
- *   NOT capped yet, on purpose: the e2e gates (test:e2e and friends). They need
- *   a server and a browser, and no clean baseline for them has been measured on
- *   this tree, so any budget now would be a guess. Measure first, then cap.
+ *   EACH e2e gate is capped SEPARATELY, not through one test:e2e budget. Two
+ *   reasons: `test:e2e` chains its gates with `&&` at the SHELL level, so a
+ *   wrapper around it would only cover the first gate; and the repo's own rule
+ *   is one gate, one verdict — a red must name which gate broke. Measured
+ *   2026-09-18 against a fresh `npm run build` served by `astro preview` on
+ *   127.0.0.1:4321, with all six green:
+ *
+ *     e2e:public        6 s  ->  3 min
+ *     e2e:loker-layout  6 s  ->  3 min
+ *     e2e:headings     38 s  ->  5 min   (the long one: 103 checks, 7 routes)
+ *     e2e:dialog        9 s  ->  3 min
+ *     e2e:drawer       11 s  ->  3 min
+ *     e2e:labels       14 s  ->  3 min
+ *
+ *   They need a running server. Without one they fail fast rather than hang, so
+ *   the budget only fires on a genuinely stuck browser.
  */
 import { spawn, spawnSync } from 'node:child_process';
 
