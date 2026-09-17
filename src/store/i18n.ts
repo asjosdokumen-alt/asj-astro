@@ -581,9 +581,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.master_full_form": "Form Master Lengkap",
     "ui.edit_quick_cv": "Edit Cepat CV",
     "ui.update_cv_mini": "Update CV Mini",
-    "ui.cv_mini_basic": "CV Mini (Data Dasar)",
-    "ui.cv_master_detail": "CV Master (Detail)",
-    "ui.cv_type_hint": "Pilih CV Mini untuk profil singkat, CV Master untuk detail lengkap.",
+    "ui.cv_mini_basic": "Profil (Data Dasar)",
+    "ui.cv_master_detail": "Profil (Data Lengkap)",
+    "ui.cv_type_hint": "Pilih data dasar untuk profil singkat, data lengkap untuk rincian menyeluruh.",
     "ui.detail_total_title": "Total Biaya Ke Jepang",
     "ui.detail_total_sub": "Bisa dicicil sesuai tahapan",
     "ui.detail_syarat": "Persyaratan",
@@ -591,6 +591,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.berkas_stage_hint": "Tahap Submit Berkas",
     "ui.complete_berkas_biodata": "Lengkapi Pemberkasan & Biodata",
     "ui.app_status_latest": "Status Lamaran Terkini",
+    "ui.app_list_title": "Daftar Lamaran",
+    "ui.status_approved_by_admin": "Telah disetujui admin",
+    "ui.biodata_approved_by_admin": "Berkas telah disetujui admin",
+    "ui.biodata_revisi": "Berkas perlu revisi",
+    "ui.biodata_menunggu": "Berkas menunggu review admin",
+    "ui.biodata_belum": "Berkas belum dikirim",
+    "ui.biodata_label": "Berkas",
+    "ui.no_app_yet_general": "Anda belum pernah melamar lowongan. Lamaran muncul di sini setelah Anda mengirim form.",
+    "ui.no_app_for_loker": "Tidak ada lamaran untuk loker ini.",
     "ui.asj_dossier": "Dokumen ASJ",
     "ui.vip_member": "VIP MEMBER",
     "ui.toast_ai_cv_locked": "Fitur AI CV Master eksklusif untuk Siswa ASJ (VIP / Kelas LPK). Hubungi Admin untuk akses.",
@@ -1490,6 +1499,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     "landing.tt_cek_kandidat": "Cek List Kandidat Terdaftar",
     "ui.alt_pratinjau": "Pratinjau",
     "ui.alt_pamflet": "Pamflet",
+
+    // ─── 404 (src/pages/404.astro) ───────────────────────────────────────────
+    // Added with the page itself. Every data-lang key must exist in BOTH
+    // dictionaries or i18n.keys.test.ts fails, which is the point: a key that
+    // only exists in `id` renders the key string itself in Japanese.
+    "notfound.title": "Halaman tidak ditemukan",
+    "notfound.body": "Alamat yang Anda buka tidak ada atau sudah dipindahkan. Periksa kembali tautannya, atau mulai dari halaman lowongan.",
+    "notfound.home": "Ke Beranda",
+    "notfound.jobs": "Lihat Lowongan",
   },
   jp: {} as Record<string, string>, // P9: lazy-loaded from i18n-jp.ts
 

@@ -20,9 +20,14 @@ import { showToast } from "../Toast";
 import Icon from '../ui/Icon';
 import { getEndpoint } from '../../lib/apiEndpoint';
 import { ALL_BERKAS, hasBerkasUrl } from '../../lib/berkasCatalog';
+import { computeCvMiniProgress, computeCvMasterProgress, computeOverallProgress } from '../../lib/profileProgress';
 import { ErrorBoundary } from '../ErrorBoundary';
 
-type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; };
+// `feedback` = `feedback_berkas` dari database_asj_form. Dipakai untuk
+// memisahkan baris LAMARAN dari baris BIODATA/DOKUMEN (lihat isBiodataRow):
+// baris biodata membawa penanda '[BIODATA] …' / '[UPLOAD <LABEL>]' dan
+// code_job kosong, jadi ia tidak boleh memakai kosakata verifikasi lamaran.
+type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; feedback?: string; };
 type CandidateData = {
   nama: string; wa: string; job: string; tahapan: string; status: string;
   isVIP: boolean; isSiswaASJ?: boolean; kelas?: string; idKandidat?: string;
@@ -75,12 +80,57 @@ function statusIcon(status: string) {
   return 'fa-info-circle';
 }
 
-function statusText(status: string) {
+/**
+ * Apakah baris riwayat ini benar-benar LAMARAN LOKER, atau hanya baris
+ * biodata/dokumen?
+ *
+ * `database_asj_form` menyimpan dua jenis baris dalam satu tabel:
+ *
+ *   (a) lamaran loker sungguhan   -> code_job terisi ('KODE-JOB')
+ *   (b) biodata / update dokumen  -> code_job KOSONG; penandanya ada di
+ *       feedback_berkas sebagai '[BIODATA] …' atau '[UPLOAD <LABEL>]'
+ *
+ * Konsekuensinya fatal kalau tidak dibedakan: keduanya melewati jalur approve
+ * yang sama, jadi menyetujui scan paspor menulis status mail 'LULUS' — dan
+ * baris biodata itu ikut menampilkan "Telah disetujui admin" seolah ada
+ * LAMARAN yang diterima. Itu juga yang membuat tahapan seleksi terlihat maju.
+ *
+ * Baris (b) TIDAK BOLEH memakai kosakata verifikasi lamaran. Dipisah di sini,
+ * bukan di `statusText`, supaya kedua pemanggil bisa memilih kosakata yang
+ * benar alih-alih berbagi satu teks yang salah untuk salah satunya.
+ */
+function isBiodataRow(r: Riwayat) {
+  if (String(r.jobCode || '').trim() && r.jobCode !== '-') return false;
+  const marker = String((r as { feedback?: string }).feedback || '').toUpperCase();
+  return marker.includes('[BIODATA]') || marker.includes('[UPLOAD ');
+}
+
+/**
+ * Status → teks untuk kandidat.
+ *
+ * `LULUS` sengaja TIDAK memakai `form.txt_lamaran_lulus` ("Lamaran Lulus").
+ * Server sudah menyebut peristiwanya sebagai persetujuan — push notification
+ * di contexts/applications/service.ts:141 berbunyi "Lamaran ... disetujui!" /
+ * "telah disetujui", dan event domainnya bernama `application.approved`. UI
+ * yang menulis "Lulus" membuat kandidat membaca ini sebagai kelulusan tahapan
+ * seleksi, padahal yang disetujui admin adalah BERKAS/dokumennya.
+ *
+ * Karena itu teksnya menyebut objek yang disetujui: "Berkas telah disetujui
+ * admin" untuk baris dokumen, "Telah disetujui admin" untuk lamaran loker.
+ * Satu kolom `status_biodata` di database (migrasi 013) adalah sumber yang
+ * benar; sampai kolom itu diproyeksikan ke sini, penanda baris dipakai agar
+ * dashboard berhenti mengklaim hal yang belum terjadi.
+ */
+function statusText(status: string, biodata = false) {
   const s = (status || '').toUpperCase();
-  if (s.includes('MENUNGGU') || s.includes('BARU') || s.includes('PENDING')) return t('form.txt_menunggu_review');
-  if (s.includes('REVIEW') || s.includes('DIBACA') || s.includes('PROSES')) return t('form.txt_review_admin');
-  if (s.includes('LULUS') || s.includes('APPROVE') || s.includes('LOLOS')) return t('form.txt_lamaran_lulus');
-  if (s.includes('GAGAL') || s.includes('REJECT') || s.includes('TOLAK')) return t('form.txt_lamaran_gagal');
+  if (s.includes('MENUNGGU') || s.includes('BARU') || s.includes('PENDING'))
+    return biodata ? t('ui.biodata_menunggu') : t('form.txt_menunggu_review');
+  if (s.includes('REVIEW') || s.includes('DIBACA') || s.includes('PROSES'))
+    return t('form.txt_review_admin');
+  if (s.includes('LULUS') || s.includes('APPROVE') || s.includes('LOLOS'))
+    return biodata ? t('ui.biodata_approved_by_admin') : t('ui.status_approved_by_admin');
+  if (s.includes('GAGAL') || s.includes('REJECT') || s.includes('TOLAK'))
+    return t('form.txt_lamaran_gagal');
   return t('form.txt_diproses');
 }
 
@@ -156,11 +206,20 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
           catatanInt,
           kelas: (kelasMatch && kelasMatch[1]) || legacyD.kelas || '',
           idKandidat: row?.idKandidat || legacyD.idKandidat || '',
-          cvMiniProgress: legacyD.cvMiniProgress || 0, cvMasterProgress: legacyD.cvMasterProgress || 0,
+          // Progres profil DIHITUNG dari data nyata baris kandidat + objek bio,
+          // bukan dibaca dari `result.kandidatData` yang tidak pernah dikirim
+          // backend (lihat src/lib/profileProgress.ts untuk bukti lengkap).
+          // `legacyD.cv*Progress` dipertahankan sebagai fallback HANYA untuk
+          // kompatibilitas bila suatu saat backend mengirimnya lagi.
+          cvMiniProgress: legacyD.cvMiniProgress ?? computeCvMiniProgress(row),
+          cvMasterProgress: legacyD.cvMasterProgress ?? computeCvMasterProgress(row?.bio),
           riwayat: (result.kandidatRiwayat || legacyD.riwayat || []).map((a: any) => ({
             jobCode: a.code || a.jobCode || '-', tahapan: a.tahapan || '-',
             status: a.status || '-', tanggal: a.timestamp || a.tanggal || '',
             kategori: a.kategori || '', cv: a.cv || '',
+            // Pembeda lamaran vs biodata. Tanpa ini baris biodata tampil
+            // sebagai "Telah disetujui admin" padahal tidak ada lamaran.
+            feedback: a.feedback || a.feedback_berkas || '',
           })),
           jadwal: (result.mySchedules || legacyD.jadwal || []).map((s: any) => ({
             id: s.id || '', nama: s.agenda || s.nama || '', waktu: s.waktu || '',
@@ -243,7 +302,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
 
 if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
 
-  const overallProgress = Math.round((data.cvMiniProgress + data.cvMasterProgress) / 2);
+  const overallProgress = computeOverallProgress(data.cvMiniProgress, data.cvMasterProgress);
   const crown = overallProgress >= 100 ? 'gold' : overallProgress >= 50 ? 'silver' : overallProgress > 0 ? 'bronze' : 'none';
 
   // Filter riwayat by selected loker
@@ -253,17 +312,36 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
   const sortedRiwayat = [...filteredRiwayat].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
   const uniqueLokers = [...new Set(data.riwayat.map(r => r.jobCode).filter(Boolean))];
 
+  // Nilai kosong dari backend datang sebagai '-' (lihat mapCandidate / adapter
+  // loadDashboard), jadi '-' harus diperlakukan sama dengan kosong.
+  const realValue = (v: unknown) => {
+    const s = String(v ?? '').trim();
+    return !!s && s !== '-' && s !== 'null' && s !== 'undefined';
+  };
+  const hasRealJob = realValue(data.job);
+  const hasRealTahapan = realValue(data.tahapan);
+
   return (
     <ErrorBoundary>
     <div class="pb-16">
       <div class="glass-panel p-5 sm:p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
         <Icon name="id-card" class="text-5xl md:text-6xl text-emerald-400 mb-4 md:mb-6 drop-shadow-xl" />
-        <h2 class="text-2xl md:text-3xl font-black text-white mb-3">{t('candidate.welcome')}, {data.nama}! <CrownBadge progress={overallProgress} />{data.isVIP && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-8 h-8 md:w-10 md:h-10 ml-3 align-middle object-contain rounded-full border border-emerald-500/50 drop-shadow-[0_0_15px_rgba(52,211,153,0.8)]" />}</h2>
-        <div class="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-3 md:px-8 md:py-4 bg-black/40 border border-emerald-500/30 rounded-full text-sm text-slate-300 mb-5 md:mb-6 shadow-inner w-full md:w-auto">
-          <span>{t('candidate.job_applied')}</span> <span class="font-black text-emerald-400">{data.job}</span>
-          <span class="text-slate-500">|</span>
-          <span>{t('candidate.stage')}</span> <span class="font-black text-sky-400">{data.tahapan}</span> ({data.status})
-        </div>
+        <h2 class="text-2xl md:text-3xl font-black text-white mb-3">{t('candidate.welcome')}, {data.nama} <CrownBadge progress={overallProgress} />{data.isVIP && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-8 h-8 md:w-10 md:h-10 ml-3 align-middle object-contain rounded-full border border-emerald-500/50 drop-shadow-[0_0_15px_rgba(52,211,153,0.8)]" />}</h2>
+        {/* Job & tahapan HANYA dirender bila kandidat benar-benar punya lamaran.
+            Sebelumnya baris ini selalu tampil dan mencetak '-' untuk job — kandidat
+            yang belum pernah melamar melihat "Job Dilamar: -", yang terbaca seperti
+            ada pekerjaan umum padahal memang tidak ada lamaran sama sekali. */}
+        {(hasRealJob || hasRealTahapan) && (
+          <div class="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-3 md:px-8 md:py-4 bg-black/40 border border-emerald-500/30 rounded-full text-sm text-slate-300 mb-5 md:mb-6 shadow-inner w-full md:w-auto">
+            {hasRealJob && (<>
+              <span>{t('candidate.job_applied')}</span> <span class="font-black text-emerald-400">{data.job}</span>
+            </>)}
+            {hasRealJob && hasRealTahapan && <span class="text-slate-500">|</span>}
+            {hasRealTahapan && (<>
+              <span>{t('candidate.stage')}</span> <span class="font-black text-sky-400">{data.tahapan}</span> ({statusText(data.status)})
+            </>)}
+          </div>
+        )}
 
         {/* ── DIGITAL STUDENT CARD (VIP only) ── */}
         {(data.isVIP || data.isSiswaASJ) && data.idKandidat && (
@@ -355,10 +433,11 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             <p class="text-sm text-slate-300 mb-5">{t('ui.cv_type_hint')}</p>
             <div class="mt-6 p-1 rounded-[1.5rem] bg-gradient-to-r from-sky-500/30 to-emerald-500/30 border border-slate-700/50 shadow-xl">
               <div class="bg-[#0f172a] rounded-[1.3rem] p-5 md:p-7">
-                {/* h4, not h3: this panel sits INSIDE the card whose h3 above repeats the same
-                   label, so at h3 the outline read "Status Lamaran Terkini" twice in a row
-                   (measured §24). As h4 it is the child it actually is. */}
-                <h4 class="text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400 animate-pulse" /> {t('ui.app_status_latest')}</h4>
+                {/* Judul panel ini dulu memakai kunci i18n YANG SAMA dengan h3 di
+                    atasnya (ui.app_status_latest), jadi outline terbaca
+                    "Status Lamaran Terkini" dua kali berurutan. Sekarang ia punya
+                    label sendiri yang menyebut isinya: daftar loker yang dilamar. */}
+                <h4 class="text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400 animate-pulse" /> {t('ui.app_list_title')}</h4>
                 {/* Loker pills */}
                 {uniqueLokers.length > 1 && (
                   <div class="flex flex-wrap gap-1.5 mb-3">
@@ -373,7 +452,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                 )}
                 <div class="space-y-3 max-h-[300px] u-scroll-area custom-scrollbar pr-2">
                   {sortedRiwayat.length === 0 ? (
-                    <p class="text-slate-500 text-sm text-center py-4">{t('ui.not_applied_general')}</p>
+                    <p class="text-slate-500 text-sm text-center py-4">{selectedLoker ? t('ui.no_app_for_loker') : t('ui.no_app_yet_general')}</p>
                   ) : sortedRiwayat.map((r, i) => {
                     const stepIdx = tahapanStepIndex(r.tahapan || r.status);
                     const progressPct = Math.round(((stepIdx + 1) / TAHAPAN_STEPS.length) * 100);
@@ -385,7 +464,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                             {r.kategori && <div class="text-[11px] text-slate-400 mt-1"><Icon name="tag" class="mr-1 text-sky-500/70" /> {r.kategori}</div>}
                           </div>
                           <span class={`inline-flex items-start gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] md:text-xs font-bold max-w-full break-words text-left shadow-sm ${statusBadgeClass(r.status)}`}>
-                            <Icon name={statusIcon(r.status)} class="mt-0.5 flex-shrink-0" /> {statusText(r.status)}
+                            <Icon name={statusIcon(r.status)} class="mt-0.5 flex-shrink-0" /> {statusText(r.status, isBiodataRow(r))}
                           </span>
                         </div>
                         {/* Tahapan pipeline */}
