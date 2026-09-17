@@ -737,3 +737,109 @@ grep -c 'mutations\.sh' .github/workflows/*.yml
 
 **Sisa aturan owner:** **JANGAN push tanpa izin.** `newrepo/main` = `a5f9549`; lokal **46 commit
 di depan**.
+
+---
+
+## ⚠️ Koreksi 2026-09-18 — tiga klaim di dokumen ini SALAH, dan satu di antaranya berbahaya
+
+Sesi 2026-09-18 masuk untuk membersihkan backlog (41 modified + 21 untracked). Yang ditemukan
+bukan utang kosmetik: **HEAD tidak bisa di-build**, dan **perbaikan CI yang dokumen ini catat
+sebagai "sudah dikerjakan" tidak pernah masuk commit.**
+
+### (a) `42b2a9b` dan `c201003` TIDAK ADA di repo ini
+
+§1.1(a) menulis: *"Perbaikan: `42b2a9b`. Gate: **`verify:workflows`** (`c201003`)."* Kedua objek
+itu tidak dapat dibaca sama sekali:
+
+```bash
+git cat-file -t 42b2a9b    # fatal: git cat-file: could not get object info
+git cat-file -t c201003    # fatal: git cat-file: could not get object info
+```
+
+HEAD **masih memuat bug-nya**. Diukur langsung:
+
+```bash
+git show HEAD:.github/workflows/_notify.yml | grep -n "secrets.SLACK_WEBHOOK_URL"
+#   81:        if: ${{ secrets.SLACK_WEBHOOK_URL != '' }}
+#  105:        if: ${{ secrets.SLACK_WEBHOOK_URL == '' }}
+```
+
+Dua baris itu persis yang anotasi GitHub tunjuk. Jadi seluruh uraian §1.1(a) benar sebagai
+**diagnosis** dan salah sebagai **status**: perbaikannya hidup di pohon kerja saja, dan push HEAD
+akan mengirim bug itu apa adanya.
+
+Gate-nya setengah ter-track dari sisi lain: `package.json` sudah memanggil `verify:workflows`, dan
+`provenBy`-nya (`verify-workflows.mutations.sh`) sudah ter-track — tetapi **berkas implementasinya
+tidak ada di HEAD**:
+
+```bash
+git show HEAD:scripts/ci/verify-workflows.mjs
+# fatal: path 'scripts/ci/verify-workflows.mjs' exists on disk, but not in 'HEAD'
+```
+
+Jadi gate itu pun tidak bisa jalan di checkout bersih. **Keduanya sudah di-commit (`7c2d0b8`).**
+Ini kelas `C2b` yang **kambuh**: `C2b` hanya memeriksa `provenBy`, tidak pernah memeriksa berkas
+implementasi gate itu sendiri.
+
+**Aturan yang lahir dari sini:** klaim "sudah di-commit" wajib diuji dengan
+`git cat-file -t <hash>` atau `git show HEAD:<path>`. Prosa tidak pernah cukup.
+
+### (b) HEAD TIDAK BISA DI-BUILD — dan semua gate lokal hijau
+
+`src/components/candidate/CandidateDash.tsx` **sudah ter-commit** dan mengimpor
+`../../lib/profileProgress`, sementara berkas itu **tidak ada di HEAD**:
+
+```bash
+git show HEAD:src/components/candidate/CandidateDash.tsx | grep profileProgress
+#   23: import { computeCvMiniProgress, ... } from '../../lib/profileProgress';
+git show HEAD:src/lib/profileProgress.ts
+# fatal: path exists on disk, but not in 'HEAD'
+```
+
+Checkout bersih gagal me-resolve impor itu. `npm run typecheck`, `npm test`, dan seluruh gate
+**hijau**, karena di pohon kerja berkasnya ada. Hanya checkout bersih — atau CI — yang bisa
+melihatnya, dan CI belum pernah mengeksekusi satu job pun.
+
+**Konsekuensi metodologis yang penting:** selama pohon kerja kotor, "tes hijau" adalah pernyataan
+tentang **pohon kerja**, bukan tentang commit. Commit lebih dulu, lalu ukur ulang. Diperbaiki:
+`7d2b34a`.
+
+### (c) Ratchet indexer MERAH di HEAD (phantom)
+
+`discover.test.ts` menuntut `ts=247` dan `build.test.ts` `fileCount=415`. Diukur dengan
+menjalankan `discoverFiles()` atas **pohon HEAD** (`git archive HEAD | tar -x` ke direktori temp):
+
+**ts=248, tsx=86, astro=12, mjs=46, cjs=5, js=19 = 416.**
+
+Selisih satu berkas adalah `netlify/functions/_lib/db/candidates.test.ts`, ditambahkan sesudah
+`e354e35` tanpa pernah menaikkan hitungannya:
+
+```bash
+git diff --diff-filter=AD --name-status e354e35 HEAD -- '*.ts'
+# A  netlify/functions/_lib/db/candidates.test.ts      <- satu-satunya
+```
+
+Berkas itu juga penyebab `typecheck:ratchet` merah (TS7006 di baris 102). Nilai benar sesudah
+seluruh pekerjaan menggantung masuk: **251 ts + 87 tsx + 13 astro + 51 mjs + 5 cjs + 19 js = 426**,
+dan keempat asersi bergerak bersama. Diperbaiki: `490b74b`, `2bc113c`.
+
+Dokumen ini juga menunjuk alat `indexer/src/count-indexed.test.ts` yang **tidak pernah ada** —
+komentar menyuruh membaca angka dari berkas yang tidak ditulis, dan itulah sebab angka turunan lolos
+sebagai angka terukur. Berkasnya kini ada (`490b74b`).
+
+### (d) Status sesudah 2026-09-18
+
+| | Sebelum | Sesudah |
+|---|---|---|
+| Modified + untracked | 41 + 21 | **0 + 0** |
+| Gate hermetik hijau | 12 dari 13 | **13 dari 13** |
+| `typecheck:ratchet` | MERAH (1 error) | hijau |
+| Ratchet indexer | MERAH (2 asersi) | hijau |
+| HEAD bisa di-build | **tidak** | ya |
+
+16 commit lokal, **belum di-push** (aturan owner). Yang **belum** punya verdict bersih:
+`vitest run` penuh dan `verify:batteries` — keduanya butuh turn tanpa kuota hapus yang sudah
+terpakai; lihat `.workbuddy-ai/memory/2026-09-18.md`. Suite penuh sempat hijau 1.655 tes sebelum
+kuota habis; sesudahnya 148/149 berkas hijau dengan satu berkas (`fcm-server.test.ts`) gagal
+**hanya** karena `SAFE_DELETE_BULK_CONFIRM_REQUIRED` di `unpark()`-nya.
+
