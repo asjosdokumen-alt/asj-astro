@@ -15,11 +15,67 @@
 
 ---
 
+## ⚠️ Koreksi 2026-09-17 (audit ulang) — enam baris di dokumen ini sudah tidak benar
+
+Setiap butir di bawah **diukur ulang**; yang menang adalah hasil ukur. Polanya persis yang dokumen
+ini sendiri peringatkan: **baris "BELUM" sering sudah selesai**, dan sebaliknya.
+
+**§3.1(a) — "Empat modal tidak memakai `useOverlay` sama sekali" ⇒ SALAH, sudah selesai.**
+Kelima berkas memakai hook itu: `ListKandidatModal.tsx`, `AdminAiCopilot.tsx`,
+`RejectMailModal.tsx`, `RirekishoBuilder.tsx`, `EsignNaiteiModal.tsx` (masing-masing 2 kemunculan
+`useOverlay`). Tidak ada pekerjaan tersisa di butir ini.
+
+**§3.1(b) — pemanggil `fetchKandidatFromAPI` pindah, masalahnya ikut pindah.**
+Sekarang `adminStore.fetchKandidatFromAPI`, dan **di sana masih `fetch` mentah** saat baris ini
+ditulis. Diperbaiki 2026-09-17 lewat `api.secure(..., { onSessionInvalid: 'throw' })`.
+
+**§3.1(b) — lingkupnya jauh lebih besar dari satu situs.** Dokumen mencatat **satu** situs fetch
+mentah. Terukur 2026-09-17: **30 situs** `fetch(getEndpoint(...))` di **18 berkas**, dibanding **80**
+pemakaian `apiClient`. Yang dikonversi baru `adminStore` (3 situs); **27 sisanya masih terbuka**, dan
+itu pekerjaan yang jauh lebih besar daripada yang baris ini suguhkan.
+
+**§3.1(b5) — "`src/pages/404.astro` tidak ada" ⇒ benar, dan sekarang sudah dibuat.**
+Ditambah kunci `notfound.*` di `i18n.ts` **dan** `i18n-jp.ts` (kunci yang hanya ada di satu kamus
+akan merender nama kuncinya sendiri, dan `i18n.keys.test.ts` menangkapnya).
+
+**§1.1(c) — "dua skrip e2e yatim" ⇒ dihapus, bukan dipasang.**
+`test-admin.mjs` tidak bisa lulus: ia butuh sesi admin yang tidak pernah ia buat (`/admin` di balik
+`AuthGuard`), dan asersinya terikat data lama ("dropdown 24 options"). `test-supabase-auth.mjs`
+lebih buruk: ia memanggil `auth/v1/signup` dengan **telepon acak pada setiap kali dijalankan** ⇒
+**membuat user auth nyata di proyek produksi** dan menumpuk, sementara asersinya menerima status
+200 **atau** 400 sehingga hampir tidak menegaskan apa pun; port bawaannya juga 4322 sementara kelima
+gerbang lain memakai 4321. Skrip yatim yang tidak bisa dipasang dengan aman bukan cakupan — ia
+liabilitas.
+
+**§1.2(8) & §8.1(c) — "baseline lint 2712" ⇒ 2571.**
+Sumbernya `.ci/biome-baseline.json` (`generatedAt` 2026-09-16T15:32:44Z, `total: 2571`); terukur
+sekarang **2550**. Angka 2712 sudah basi sejak sebelum dokumen ini ditulis.
+
+### Dua cacat yang TIDAK tercatat di dokumen ini, ditemukan 2026-09-17
+
+**1. `BaseLayout` menerima prop `title` dan tidak pernah merender `<title>`.**
+⇒ **nol halaman punya judul dokumen** — diperiksa di **10 halaman** hasil build, 0 kemunculan
+`<title>`. Tab browser menampilkan URL, hasil pencarian tanpa judul, dan pembaca layar mengumumkan
+dokumen tanpa nama: WCAG 2.4.2 "Page Titled" adalah **Level A**. Tidak ada gate yang mengukurnya,
+jadi tidak ada yang memerah — persis kelas cacat yang §4.2 butir 1 minta diukur, bukan ditebak.
+Diperbaiki 2026-09-17. **Efek samping yang perlu dicatat:** eksempasi `i18n.keys.test.ts` untuk
+`<BaseLayout title="…">` bersandar pada premis yang salah — komentarnya menyebut string itu
+"dokumen `<title>`: metadata SEO yang di-render server", dan memang alasan itu benar; premisnya yang
+tidak, karena string itu tidak mencapai apa pun.
+
+**2. `npm run test:coverage` tidak pernah bisa jalan.**
+`@vitest/coverage-v8` **tidak pernah dideklarasikan** di `package.json` — bukan sekadar "tanpa
+threshold, tanpa job" seperti §8.1(d) tulis. Skripnya ada, providernya tidak, jadi ia mati seketika
+dengan `MISSING DEPENDENCY`. Butir itu karena itu lebih tepat dibaca sebagai "skrip mati", bukan
+"cakupan tak terukur".
+
+---
+
 ## 0. Peta cepat — apa yang benar-benar terbuka
 
 | Disiplin | Terbuka | Sifat |
 |---|---|---|
-| **CI / Gate** | 1 gate yatim (`depcruise`); job `batteries` **ada tapi belum pernah dieksekusi** — **sebab dikoreksi 2026-09-17: BUKAN izin push, melainkan 36/58 berkas `scripts/ci/` tak pernah di-track** (lihat di bawah); 2 skrip e2e yatim | Infrastruktur + keputusan |
+| **CI / Gate** | 1 gate yatim (`depcruise`); job `batteries` **ada tapi belum pernah dieksekusi** — **sebab akhir (2026-09-17): `_notify.yml` memakai `secrets` di `if:` ⇒ GitHub menolak SELURUH berkas ⇒ 32 run, 32 gagal, 0 job**, dan deploy/rollback ikut mati karena memanggil berkas yang sama. **Dua sebab sebelumnya (izin push, berkas tak ter-track) terukur salah** — lihat §1.1(a); 2 skrip e2e yatim | Infrastruktur + keputusan |
 | **Backend** | #2 push; #4/#5/#6 butuh staging; #7 alert rules; #26/#28/#30 aksi owner | Owner + infra, **bukan kode** |
 | **Frontend** | 4 modal tanpa `useOverlay`; `fetch` mentah di `TabPelamar`; `getAppData` kirim payload penuh | Kode, berukuran kecil–sedang |
 | **UI / Desain** | 5 overlay tanpa semantik; drawer tanpa Escape; jebakan fokus 18 kontainer belum diukur | Kode + keputusan desain |
@@ -65,6 +121,29 @@ keduanya menebak, dan yang benar adalah **terblokir pada #2 (izin push)**.
 > `verify:review-manifest` sendiri menyebutnya apa adanya (C2b, "invisible to a fresh
 > checkout"), dan gate itu pun tak bisa jalan di CI karena berkasnya ikut hilang.
 > Diperbaiki di `071743e`.
+>
+> **Koreksi ketiga (2026-09-17, audit ulang) — dua koreksi di atas masih belum menyentuh
+> sebabnya.** Sebab sebenarnya **satu baris di `_notify.yml`**: `if: ${{ secrets.… }}`.
+> `secrets` tidak tersedia di `if:` — dan di dalam workflow yang **dipanggil** GitHub tidak
+> memberi peringatan, ia **menolak seluruh berkas** dengan
+> `Unrecognized named-value: 'secrets'`; workflow yang dipanggil lalu menyeret **pemanggilnya**
+> ikut tak terparse. Karena `_notify.yml` dipanggil `ci.yml`, `deploy-staging.yml`,
+> `deploy-production.yml`, dan `rollback.yml`, **keempatnya mati sekaligus**.
+>
+> Terukur dari anotasi GitHub: **32 run, 32 gagal, 0 job di setiap run**. Jadi tidak pernah ada
+> job yang bisa gagal karena berkas `scripts/ci/` hilang — perbaikan `071743e` tetap perlu,
+> tapi ia **bukan** sebabnya, dan tidak satu pun job pernah sampai ke sana.
+>
+> Perbaikan: `42b2a9b`. Gate: **`verify:workflows`** (`c201003`), dengan baterai mutasi 10 kasus.
+> Dijalankan pada berkas sebelum perbaikan, gate itu melaporkan **baris 81 dan 105** — sama
+> dengan anotasi GitHub, diturunkan sendiri.
+>
+> **Pelajaran yang berlaku tepat di sini:** ketiga penjelasan — "izin push", "berkas tak
+> ter-track", dan "berkas workflow tidak sah" — semuanya *terlihat masuk akal*, dan dua yang
+> pertama bahkan diperkuat oleh bukti nyata. Hanya tingkat ketiga ("pernah dijalankan") yang
+> membedakannya, dan untuk kelas cacat ini tingkat itu **hanya terbaca dari anotasi GitHub**,
+> bukan dari pohon. Pohon bisa membuktikan sebuah berkas ada; ia tidak bisa membuktikan GitHub
+> mau mem-parse-nya.
 
 Yang **masih** benar dari butir ini: `depcruise` tetap gate yatim (`battery: none`, `runs: []`),
 dan **9 baterai `infra` memang tidak dijalankan CI** (butuh DB/server/kredensial — klasifikasi itu
@@ -203,6 +282,111 @@ Plus `EsignNaiteiModal:304` (permukaan gambar layar penuh).
 **(b) `fetchKandidatFromAPI` (`TabPelamar`) masih `fetch()` mentah dan tidak lewat cache.**
 Belum diubah karena tidak ada keluhan latensi di sana. Kalau dibiarkan, ia **tidak** melanggar
 `verify:io` (masuk allow-list), tapi melanggar semangat non-negotiable #3.
+
+**(b2) AKAR MASALAHNYA SUDAH DIPERBAIKI, 21 SITUS SISANYA BELUM (2026-09-17).**
+
+Alasan situs-situs ini memakai `fetch` sendiri **bukan** kelalaian, dan itu baru ketahuan setelah
+membaca `apiClient`: pada respons non-2xx ia melempar `HTTP <status>: <statusText>` **dan membuang
+badan responsnya**. Padahal fungsi mengembalikan error sebagai
+`{ success:false, error:"Nomor ini belum terdaftar" }` **dengan status HTTP yang benar**
+(non-negotiable #6) — jadi satu-satunya tempat alasannya berada adalah **badan respons**. Klien
+memberi kategori ("HTTP 400: Bad Request"), bukan penjelasan. Karena itu tiap alur yang butuh pesan
+yang bisa ditindaklanjuti mempertahankan `fetch`-nya sendiri.
+
+**Diperbaiki di `83b3541`:** klien kini mem-parse badan error dan memunculkannya, dengan fallback ke
+baris status. Ini memperbaiki pesan untuk **80 call site yang sudah ada** juga — sebelumnya semuanya
+menampilkan "Network error: HTTP 500: Internal Server Error" padahal server sudah mengatakan sesuatu
+yang berguna. Buktinya **mutasi, bukan asumsi**: 2 dari 4 kasus baru MATI saat `throw` lama
+dikembalikan, 2 sisanya sengaja OK-GREEN karena mengunci fallback yang juga dipenuhi kode lama.
+
+**Sisa terukur (2026-09-17, sesudah dua batch): 18 situs di 12 berkas — 14 di antaranya bisa
+dikonversi, 4 sudah terdokumentasi sebagai pengecualian.** Yang sudah selesai:
+`adminStore.fetchMailFromAPI` + `uploadBerkas` (`131593a`), lalu `EsignNaiteiModal` +
+`EditCandidateModal` (`simpanDataTtdNaitei`, `updateKandidatSuper`, `simpanBerkasTahapan`).
+
+Sisa yang **bisa** dikonversi — 14 situs di 8 berkas: `ApplyFullForm` 3, `MasterFullForm` 3,
+`AiCvForm` 2, `CandidateDash` 2, `CekSiswaModal` 1, `PemberkasanModal` 1, `SiswaBaruForm` 1,
+`LoginModal` 1.
+
+Empat yang **tidak** dihitung sebagai sisa:
+- `lib/apiEndpoint.ts` — sebuah **komentar** di kepala berkas, bukan situs. Penghitung manual yang
+  naif melaporkannya sebagai satu situs; ia bukan, dan itu sebabnya angkanya pernah "21" bukan "20".
+- `lib/publicData.ts` — cache single-flight yang memang dirancang **menembak ulang setelah settle**;
+  cache 30 s milik klien akan mengubah perilaku itu.
+- `forms/ShareView.tsx` — `share-data` adalah **GET** dengan query string, bukan envelope POST action
+  (kepala handler-nya menyatakan itu). Klien hanya bisa POST action.
+- `admin/CandidateProfileModal.tsx` — satu situs, mengoper `signal: controller.signal`; lihat di bawah.
+
+**Resep yang SUDAH DIJALANKAN** — `ListKandidatModal` (`83b3541`), `InputManualModal`, dan
+`CandidateProfileModal` (satu situs; satunya sengaja ditinggal, lihat di bawah):
+1. `api.secure(action, args, { onSessionInvalid: 'throw' })` menggantikan envelope buatan tangan.
+   Periksa kesetaraan endpoint — jangan diasumsikan (`getEndpoint(action)` harus resolve ke URL yang sama).
+2. **Catch-nya jangan menambah toast**: klien sudah menampilkan pesan server. Dua toast untuk satu
+   kegagalan itu regresi, bukan ketelitian.
+   **⚠️ Menggantinya dengan `console.error` BERBIAYA satu diagnostik `lint/suspicious/noConsole`**
+   (severity `warn`, dan ratchet menghitung **semua** tingkat). Ratchet hanya mengizinkan TOTAL
+   turun, jadi resep "ganti dengan `console.error`" **tidak bisa dipakai untuk 14 situs yang tersisa**
+   — ia akan menambah 14 diagnostik yang tidak ada tempat menebusnya. Terukur: `83b3541` menambahkan
+   2 `console.error` di `ListKandidatModal` dan total langsung naik **2499 → 2501**, tanpa ada yang
+   menyadarinya karena tidak ada gate yang membacanya sebagai "resep vs ratchet".
+   ⇒ **Jalur yang benar untuk sisa situs adalah langkah 3** (`silent: true`, toast pemanggil
+   dipertahankan): biayanya **nol diagnostik**, karena tidak ada `console.error` yang ditambahkan.
+   Terukur pada batch 2026-09-17: `EsignNaiteiModal` + `EditCandidateModal` (3 situs) ⇒ total tetap
+   **2499** dan `typecheck:ratchet` tetap 0.
+   Kalau jejak konsol memang dibutuhkan, tempatnya **satu kali di dalam klien** — klien yang memiliki
+   transport — bukan satu per pemanggil. Itu menukar N diagnostik dengan 1.
+3. **Kalau pemanggil MEMANG punya toast kontekstual sendiri** (`"Gagal upload <jenis>."` — konteks
+   yang tidak mungkin diketahui klien), pakai **`silent: true`** dan biarkan catch itu yang bicara.
+   Pesan server tidak hilang: klien tetap melempar dan `err.message` kini berisi pesan server.
+   Opsi `silent` ditambahkan 2026-09-17 dengan tes yang **MATI saat dimutasi**.
+4. Buang impor `getEndpoint`/`authStore` **kalau keduanya hanya dipakai situs itu** — kalau tidak,
+   jadi impor mati dan ratchet lint menyalak.
+5. **Tes — tiga hal, ketiganya ditemukan dengan menjalankannya, bukan diperkirakan:**
+   a. mock `authReactive` **wajib** menambahkan `isLoggedIn: true` + `logout`. Klien menolak —
+      dan dengan `onSessionInvalid:'throw'` ia melempar — **sebelum fetch** kalau store tidak
+      melaporkan sesi hidup. Mock lama hanya mengembalikan `sessionToken`, dan itu cukup selama
+      komponen membangun fetch-nya sendiri.
+   b. asersi badan memakai kunci **`payload`**, bukan `args` (backend menerima keduanya:
+      `body.payload || body.args` di `_lib/netlify-wrapper.ts`) ⇒ ganti nama di kabel, bukan
+      perubahan perilaku.
+   c. mock fetch **wajib** menambahkan **`ok: true`**. Klien memeriksa `res.ok`; kode mentah tidak
+      pernah (ia hanya memanggil `.json()`). Mock tanpa `ok` terbaca sebagai respons gagal ⇒ klien
+      melempar ⇒ asersi melihat tidak ada badan permintaan sama sekali. Gejalanya menyesatkan:
+      tesnya gagal pada asersi *berikutnya* (`expected [] to include …`), bukan pada fetch-nya.
+6. **Situs yang MEMERIKSA `sessionInvalid` sendiri butuh perlakuan khusus.** Sinyal itu datang
+   sebagai **HTTP 400**, bukan 200: wrapper memetakan `success === false` → **400**
+   (`_lib/netlify-wrapper.ts`), dan jawaban `sessionInvalid` selalu `success: false`. Terukur pada
+   **produksi** dengan token palsu: `getDrafCvMaster` → `400 success=false sessionInvalid=true`, dan
+   `updateKandidatSuper` → sama. Klien menerjemahkannya menjadi pesan kanonik `'Session expired'`
+   lewat **throw**, jadi cabang `data.sessionInvalid` di komponen **praktis tidak lagi kena** —
+   **catch-nya** yang harus mengenali pesan itu dan memetakannya kembali ke keadaan sesi komponen
+   (lihat `CekSiswaModal`, yang punya `kind: 'session'`). Perbandingan string itu memang kontrak
+   klien; `AiCvForm.tsx` sudah bergantung padanya.
+
+   **Cacat yang ditemukan sambil mengerjakan ini, dan sudah diperbaiki 2026-09-17:** klien dulu
+   memeriksa `sessionInvalid` **hanya di jalur 2xx**. Karena sesi mati selalu 400, `onSessionInvalid`
+   — termasuk default **`'logout'`** — **tidak pernah menyala** untuk kedaluwarsa yang sebenarnya:
+   pengguna tetap "login" memegang token mati dan hanya melihat error. Kini diperiksa di **kedua**
+   jalur, lewat satu fungsi `sessionInvalidVerdict()` supaya keduanya tidak bisa menyimpang.
+   **Bukti: mutasi.** Hapus pemeriksaan di jalur non-2xx ⇒ **2 tes MATI** dengan pesan yang justru
+   menjelaskan bug-nya (`expected 'Session expired' but got 'Sesi tidak valid'`), sementara tes
+   **KONTROL** (400 biasa harus tetap memunculkan pesan server) tetap hijau — itu yang membuktikan
+   pemetaannya selektif, bukan menelan semua error 400.
+
+**SATU SITUS SENGAJA TETAP MENTAH, dan bukan karena lupa:**
+`CandidateProfileModal` → `getExistingCandidateJsonByWa` mengoper **`signal: controller.signal`**
+untuk membatalkan permintaan saat efeknya dibersihkan. `apiClient` **belum punya opsi `signal`** —
+ia memasang AbortController-nya sendiri untuk batas waktu. Mengonversinya sekarang berarti
+**kehilangan pembatalan saat unmount**: regresi, bukan konsistensi. Menunggu opsi `signal` di klien
+(kombinasikan dengan sinyal batas waktu lewat listener `abort`, bukan `AbortSignal.any()`, yang
+terlalu baru untuk audiens Android lama di sini).
+
+**KEPUTUSAN YANG MASIH DIBUTUHKAN sebelum sisanya dikerjakan:** beberapa catch punya toast
+kontekstual sendiri (mis. `'Gagal upload ' + d.type`), jadi konversi akan **melaporkan dua kali**.
+Pilihannya: tambahkan opsi `silent` pada `apiClient` supaya pemanggil yang punya UI error sendiri
+tidak ikut mendapat toast klien — lalu catch-nya menampilkan `err.message` (yang kini berisi pesan
+server). Itu perubahan API kecil tapi **keputusan desain**, bukan tambalan; jangan dikerjakan borongan
+tanpa bisa menjalankan gerbang e2e browser.
 
 **(c) `getAppData` masih mengirim seluruh payload aplikasi untuk satu field.** Memangkasnya butuh
 parameter `fields`/endpoint khusus di **backend** — di luar lingkup "frontend saja".
