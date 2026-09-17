@@ -70,7 +70,7 @@ async function openWithRows(width, height) {
 }
 
 async function run() {
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, args: ['--no-proxy-server'] });
 
   // ── phone: the table becomes a card ───────────────────────────────────────
   const phone = await openWithRows(390, 844);

@@ -233,7 +233,7 @@ async function visibleOverlayCount(page) {
   );
 }
 
-browser = await chromium.launch();
+browser = await chromium.launch({ args: ['--no-proxy-server'] });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 const page = await ctx.newPage();
 

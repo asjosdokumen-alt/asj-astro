@@ -318,7 +318,7 @@ function assertReachedBody(d) {
 }
 
 async function run() {
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, args: ['--no-proxy-server'] });
 
   for (const { path, session } of ROUTES) {
     for (const width of [390, 1280]) {

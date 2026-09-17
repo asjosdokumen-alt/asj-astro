@@ -8,7 +8,7 @@ const BASE = process.env.BASE_URL || 'http://localhost:4321';
 let browser, page;
 
 async function setup() {
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, args: ['--no-proxy-server'] });
   page = await browser.newPage();
 }
 
