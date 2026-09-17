@@ -79,7 +79,19 @@ const CANDIDATE_FACING = new Set([
 async function definitive(args) {
   const pg = (await import('pg')).default;
   const url = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
-  const client = new pg.Client({ connectionString: url, ssl: { rejectUnauthorized: false } });
+  // SSL is on by default because both real targets (the Supavisor pooler and a
+  // direct Supabase host) speak it, and `rejectUnauthorized: false` is required
+  // against their certificate chain. A local throwaway Postgres has no SSL at
+  // all and answers "The server does not support SSL connections", which would
+  // make the transport impossible to redirect and the gate impossible to prove.
+  // PGSSLMODE is libpq's own knob and `pg` already understands it, so honouring
+  // it redirects the TRANSPORT without touching the CHECK — the same rule that
+  // lets verify:db point at a local PostgREST.
+  const sslDisabled = (process.env.PGSSLMODE || '').toLowerCase() === 'disable';
+  const client = new pg.Client({
+    connectionString: url,
+    ...(sslDisabled ? {} : { ssl: { rejectUnauthorized: false } }),
+  });
   await client.connect();
   const problems = [];
   try {
@@ -114,19 +126,34 @@ async function definitive(args) {
     }
 
     const broad = (
+      // A policy that is both granted to PUBLIC and unrestricted. `polqual is
+      // null` alone did NOT catch the incident this check exists for: Postgres
+      // stores a written `USING (true)` as the expression 'true', never as NULL,
+      // so the old predicate only matched a policy with no USING clause at all.
+      // Measured on PostgreSQL 18.4: a `FOR ALL ... TO PUBLIC USING (true)`
+      // policy has polqual='true' and polroles={0} — the old query returned zero
+      // rows for exactly the shape migrations/012_rls_lockdown.sql describes, so
+      // the check could never fire. A NULL qual is still a violation (nothing
+      // constrains the rows), so both shapes are matched.
       await client.query(
-        `select p.polname as policy, c.relname as tbl, p.polcmd as cmd
+        `select p.polname as policy, c.relname as tbl, p.polcmd as cmd,
+                pg_get_expr(p.polqual, p.polrelid)      as qual,
+                pg_get_expr(p.polwithcheck, p.polrelid) as withcheck
            from pg_policy p
            join pg_class c on c.oid = p.polrelid
            join pg_namespace n on n.oid = c.relnamespace
           where n.nspname = 'public'
-            and p.polqual is null
             and p.polroles = array[0::oid]
+            and (
+              p.polqual is null
+              or pg_get_expr(p.polqual, p.polrelid) = 'true'
+            )
           order by c.relname, p.polname`,
       )
     ).rows;
     for (const p of broad) {
-      problems.push(`policy "${p.policy}" on public.${p.tbl} is granted to PUBLIC with USING (true)`);
+      const shape = p.qual === null ? 'no USING clause' : `USING (${p.qual})`;
+      problems.push(`policy "${p.policy}" on public.${p.tbl} is granted to PUBLIC with ${shape}`);
     }
 
     const reachable = (
@@ -248,7 +275,9 @@ Definitive when SUPABASE_DB_URL/DATABASE_URL is set, otherwise a row-level probe
     console.log(`  mode   : definitive (database catalog, ${result.tables} tables)`);
     console.log(`  anon   : reachable tables — ${result.anonReachable.join(', ') || '(none)'}`);
     if (result.ok) {
-      console.log('  OK     every public table has RLS on; no TRUNCATE grant; no USING (true) to PUBLIC');
+      console.log(
+        '  OK     every public table has RLS on; no TRUNCATE grant; no unrestricted policy to PUBLIC',
+      );
       console.log(args.warnOnly ? 'RLS GATE OK (warn-only mode)' : 'RLS GATE OK');
       return process.exit(0);
     }

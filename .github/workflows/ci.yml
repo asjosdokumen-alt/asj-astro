@@ -59,6 +59,23 @@ jobs:
       - name: Check layering rules (dependency-cruiser)
         run: npm run boundary
 
+  # ══ Gate 1a · CSS classes that style nothing ════════════════════════════════
+  # Tailwind generates utilities by scanning the source, so a class written in
+  # markup either produces a rule or silently renders unstyled — no error, no
+  # warning, no failing test. That defect has recurred four times here (§2,
+  # §11.4, §14.2, §20), so `verify:classes` checks the whole tree at once using
+  # Tailwind's own compiler, which needs no build step (~0.5 s).
+  # It is proven able to fail by scripts/ci/verify-classes.mutations.sh.
+  classes:
+    name: Classes · every class has a rule
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      - name: Verify every class token has a rule
+        run: npm run verify:classes
+
   # ══ Gate 1b · the gates CI used to skip ═════════════════════════════════════
   # These live in `ci:quality` (the local script) but were referenced NOWHERE under
   # .github, so a regression in the functions tree could reach production without
@@ -200,7 +217,147 @@ jobs:
             curl -fsS -o /dev/null "http://127.0.0.1:4321/" 2>/dev/null && break
             sleep 2
           done
-          npm run test:e2e
+          # One gate, one verdict: name each guard so a red run says WHICH one
+          # broke. They were a single `npm run test:e2e` line until 2026-09-16,
+          # and they were in NO manifest entry either -- so the whole job was
+          # invisible to the inventory that claims to be the source of truth.
+          # Kept in THIS step on purpose: the preview server above is a
+          # background process, and a separate step may not inherit it.
+          npm run e2e:public
+          npm run e2e:loker-layout
+          npm run e2e:headings
+          npm run e2e:dialog
+          npm run e2e:drawer
+          npm run e2e:labels
+
+  # ══ Gate 1c · the gates CI *still* skipped ══════════════════════════════════
+  # Gate 1b above closed the gap for the functions tree. This job closes the
+  # REST of it, and it exists because of one measurement (2026-09-15):
+  #
+  #   for g in lint-ratchet typecheck:indexer verify:md verify:projections \
+  #            verify:review-manifest cold:start; do
+  #     echo "$g -> $(grep -c "npm run $g" .github/workflows/ci.yml)"
+  #   done
+  #
+  # Every one of those printed 0. They all live in the local `ci:quality`
+  # script, which no workflow called either — so six gates with real teeth were
+  # advisory only, and a change that broke any of them would sail through CI and
+  # into a production deploy.
+  #
+  # `verify:projections` is the one with the sharpest edge: it enforces "no
+  # SELECT *" / every column projected explicitly. A regression there is not a
+  # style issue, it is how a column you did not mean to expose reaches a client.
+  #
+  # WHY A SEPARATE JOB RATHER THAN ONE `npm run ci:quality` LINE
+  # `ci:quality` also runs the full unit suite and `idx:gate`, both of which
+  # already run in their own jobs above. Calling it here would run them twice
+  # (roughly doubling the slowest job) AND collapse six independent verdicts into
+  # one status, so a red run would not say which gate broke. The gates are
+  # listed explicitly for that second reason: each one reports under its own
+  # step name.
+  #
+  # `cold:start` is safe to run here without a URL: the gate skips itself and
+  # exits 0 when `--url` is absent, which is the correct behaviour against a
+  # local artifact (no CDN, no function isolation, no pooler RTT — a measurement
+  # there would be meaningless). It is asserted so the wiring cannot silently
+  # point at nothing; the real measurement runs in deploy-production.yml.
+  quality-gates:
+    name: Gates · ratchets, docs, data contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      # Lint debt may only shrink. The baseline is frozen in .ci/biome-baseline.json.
+      - name: Enforce the lint ratchet
+        run: npm run lint-ratchet
+      # The indexer is a second TypeScript program with its own tsconfig; a type
+      # error there used to be invisible to the main typecheck.
+      - name: Typecheck the indexer
+        run: npm run typecheck:indexer
+      # Documents are load-bearing here: BACKEND_TODO and the phase docs are the
+      # only record of what is verified. A broken table silently truncates them.
+      - name: Verify markdown tables
+        run: npm run verify:md
+      # THE DATA CONTRACT. Every read must name its columns — no `SELECT *`.
+      - name: Verify database column projections
+        run: npm run verify:projections
+      # The review manifest is what makes the other gates auditable: it records
+      # which gates exist and whether each has been proven able to fail.
+      - name: Verify the review manifest
+        run: npm run verify:review-manifest
+      # Exactly one entry point may use the full router. Extra ones were deleted
+      # on 2026-09-11 (each was an unrestricted public monolith); this gate keeps
+      # them from growing back silently.
+      - name: Verify function aliases
+        run: npm run verify:aliases
+      # The PWA manifest and icon wiring: a remote or missing icon href is
+      # invisible in dev and shows up only as a broken install prompt in prod.
+      - name: Verify the PWA manifest and icons
+        run: npm run verify:pwa
+      # Whether the surface bindings all resolve, and whether anything bypassed
+      # the HTTP kernel. Both are static checks with no live environment, so they
+      # belong here where every PR pays them — not only on the deploy path.
+      - name: Verify surface bindings and the IO boundary
+        run: npm run verify:binding && npm run verify:io
+      # Is input validated at the handler edge? Three documents claimed this was
+      # universal while the measured reality was 7 of 81 actions, all in one
+      # surface. The unvalidated set is frozen in .ci/validation-baseline.json
+      # and may only shrink; this step is what keeps that claim measurable.
+      - name: Verify validation coverage at the handler edge
+        run: npm run verify:validation
+      # Cold start has a real budget (3 s). Without --url it self-skips; the
+      # deploy workflow supplies the URL. Run it so the wiring is exercised.
+      - name: Cold-start gate (self-skips without a URL)
+        run: npm run cold:start
+
+  # ══ Gate 1d · re-prove the gates' own batteries ════════════════════════════
+  # THE GATE THAT MAKES "proven able to fail" MEAN SOMETHING TODAY.
+  #
+  # `verify:review-manifest` prints `proven able to fail 23/23 (100%)`, and that
+  # number was true and useless at the same time: it recorded that a battery
+  # EXISTS, never that the battery still discriminates. Measured 2026-09-15 —
+  # before this job existed — `grep -c 'mutations\.sh' .github/workflows/*.yml`
+  # returned ONE hit, and that hit is a comment on line 68 of this file, not a
+  # `run:`. No npm script invoked a battery either. So 23 proofs sat in the
+  # repository and none of them had been executed since the day they were
+  # written.
+  #
+  # The decay is not theoretical, and it was found within minutes of wiring this
+  # job up. `check-md-tables.mutations.sh` reported a SURVIVED mutation: its
+  # mutation A was anchored on prose in a BACKEND_TODO.md row that a later edit
+  # had rewritten, so its `str.replace()` matched nothing, wrote the file back
+  # unchanged, and the gate correctly stayed green. `verify-review-manifest`'s
+  # battery did not even get that far — it ABORTED at case S3, because six of its
+  # eleven mutations were written against a one-line `runs` array that the
+  # manifest has never contained. A dead mutation and a hole in a gate look
+  # identical from the outside; only re-running tells them apart.
+  #
+  # WHY A SEPARATE JOB
+  #   One gate, one verdict. If this shared `quality-gates`, a red run would not
+  #   say whether the gates or the batteries broke — and those have completely
+  #   different fixes. It also has a genuinely different cost profile: the
+  #   batteries re-run the gates many times each, so this is the slowest job in
+  #   the pipeline by design, not by accident.
+  #
+  # WHAT IT DOES NOT COVER — and the runner prints this itself, so a green run is
+  # never read as "everything is proven": six batteries need live infrastructure
+  # (verify:env, verify:env:budget, verify:db, verify:schema, verify:rls, smoke)
+  # and `depcruise` has no battery at all. Those remain unproven here.
+  #
+  # `verify:batteries` READS the manifest's `battery` field rather than repeating
+  # a hand-typed list, so the set it runs cannot drift from the classification.
+  # C7 in `verify:review-manifest` keeps that classification honest by checking
+  # that a gate marked "ci" does not reach for credentials, a server or a DB.
+  batteries:
+    name: Batteries · every hermetic gate re-proven able to fail
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      - name: Re-run every hermetic mutation battery
+        run: npm run verify:batteries
 
   # ══ Notification ════════════════════════════════════════════════════════════
   # Only for the shared branches. Firing on every PR would train everyone to
@@ -208,7 +365,16 @@ jobs:
 
   notify-failure:
     name: Notify · build failure
-    needs: [typecheck, boundary, functions-tree, test-frontend, test-backend, build, smoke]
+    needs:
+      - typecheck
+      - boundary
+      - functions-tree
+      - quality-gates
+      - batteries
+      - test-frontend
+      - test-backend
+      - build
+      - smoke
     if: failure() && github.event_name == 'push'
     uses: ./.github/workflows/_notify.yml
     with:

@@ -84,6 +84,11 @@ jobs:
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Enables the DEFINITIVE mode of verify:rls (catalog read). Without it that
+      # gate still runs, but only as a row probe — which can prove a leak and can
+      # never prove the absence of one. Deploying access policy on a check that
+      # cannot see the policy is how the 2026-09-12 hole stayed open.
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
     steps:
       - uses: actions/checkout@v4
@@ -95,6 +100,13 @@ jobs:
 
       - name: Gate environment
         run: npm run verify:env -- --profile production --strict
+
+      # The 4 KB env ceiling. It exists because a Netlify function in Lambda
+      # compatibility mode has an environment-variable budget, and exceeding it is
+      # not a build error — it is a runtime failure on cold start. This is the
+      # production profile, so it only makes sense here, not on staging.
+      - name: Gate environment budget
+        run: npm run verify:env:budget
 
       # ── Database contract ────────────────────────────────────────────────────
       # Last line of defence before production ships. The database is migrated by
@@ -115,6 +127,44 @@ jobs:
         with:
           name: db-contract-production-${{ github.sha }}
           path: db-contract.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+      # ── Generated schema ─────────────────────────────────────────────────────
+      # schema.generated.ts is the typed view of the live database, built from it.
+      # If it is stale, every query in the functions compiles against a schema
+      # that no longer exists — and POSTGREST answers 200 with an empty result,
+      # so the failure is silent. It reads the live database, so it belongs here
+      # rather than in CI.
+      - name: Gate generated schema
+        run: npm run verify:schema
+
+      # ── Row Level Security / least privilege ─────────────────────────────────
+      # THIS GATE WAS ON NO SHIPPING PATH until 2026-09-15. It was invoked only
+      # from `ci:predeploy`, an npm script no workflow referenced.
+      #
+      # Why that mattered more than a missing check: `PUBLIC_SUPABASE_ANON_KEY`
+      # ships to the browser. The only thing between it and the data is RLS plus
+      # the table GRANTs. The 2026-09-12 audit found 5 of 25 tables with RLS
+      # switched OFF (including job_queue, which held session tokens) and anon
+      # holding the full DML set including TRUNCATE. migrations/012_rls_lockdown.sql
+      # closed that — and nothing on the deploy path protected the closure.
+      #
+      # This is the asymmetric one. A bad bundle gets rolled back; an access
+      # policy that drifts open does NOT come back with a rollback, because
+      # rolling back the application does not restore table privileges. It has to
+      # be caught before the policy is live, which is here.
+      #
+      # Fails closed: with no usable credential it exits 2, never 0.
+      - name: Gate row level security
+        run: npm run verify:rls -- --json rls-report.json
+
+      - name: Upload RLS report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rls-production-${{ github.sha }}
+          path: rls-report.json
           if-no-files-found: ignore
           retention-days: 90
 

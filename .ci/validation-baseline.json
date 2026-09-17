@@ -1,0 +1,38 @@
+{
+  "$comment": [
+    "Actions that write but are NOT validated at the handler edge.",
+    "This list may only SHRINK. scripts/ci/verify-validation-coverage.mjs fails",
+    "when a new unvalidated write appears, and also when an entry here has since",
+    "been validated (so the record cannot drift out of date in either direction).",
+    "Regenerate with: npm run verify:validation -- --update-baseline"
+  ],
+  "measuredAt": "2026-09-16",
+  "totalMutating": 33,
+  "validated": 9,
+  "unvalidated": [
+    "approveForm",
+    "deleteForm",
+    "editLokerFull",
+    "hapusFormTerpilih",
+    "hapusJadwal",
+    "hapusWaTemplate",
+    "kirimSatuPesanFonnte",
+    "kirimTawaranMassal",
+    "processUploadDoc",
+    "reviewForm",
+    "setTugasStatus",
+    "simpanBerkasTahapan",
+    "simpanBiodataLengkap",
+    "simpanJadwalBaru",
+    "simpanJobBaru",
+    "simpanKandidatDanUpload",
+    "simpanRevisiKandidat",
+    "simpanWaTemplate",
+    "submitDaftarSiswa",
+    "submitFormPelamar",
+    "submitMasterForm",
+    "updateCatatanKandidat",
+    "updateKandidatSuper",
+    "updateSysConfig"
+  ]
+}

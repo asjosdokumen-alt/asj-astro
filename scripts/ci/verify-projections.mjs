@@ -30,6 +30,8 @@
  * EXIT CODES
  *   0  no wildcard projections
  *   1  at least one wildcard projection
+ *   2  configuration problem — the scan found no source files, so a pass would
+ *      be vacuous (see the guard in main()).
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -70,6 +72,26 @@ function main() {
 
   const files = walk(ROOT);
   const hits = [];
+
+  // Refuse to pass vacuously. Scanning zero files is not "no wildcards found",
+  // it is "the check did not run" — and it used to print a green line saying
+  // exactly the wrong thing: "NO WILDCARD PROJECTIONS  0 files scanned".
+  //
+  // This is not hypothetical. Reproduced 2026-09-15 by emptying the directory:
+  // the gate exited 0 with no evidence at all. A build where netlify/functions/
+  // is missing or empty is precisely the build where nobody is looking, so a
+  // green verdict there is worse than useless. verify-aliases.mjs already had
+  // this guard; its absence here was an inconsistency, not a decision.
+  //
+  // Exit 2, matching verify-aliases.mjs — a configuration problem, distinct
+  // from exit 1 (a real wildcard was found).
+  if (files.length === 0) {
+    console.error(
+      `verify-projections: no source files found under ${relative(REPO, ROOT)}/ — ` +
+        'refusing to pass vacuously.',
+    );
+    return process.exit(2);
+  }
 
   for (const file of files) {
     const raw = readFileSync(file, 'utf8');

@@ -1,0 +1,480 @@
+{
+  "$comment": [
+    "review-manifest.json — the single source of truth for every quality gate in this repo.",
+    "",
+    "WHY THIS FILE EXISTS",
+    "  The repo already had excellent gates. The failure mode was never 'no gate' — it was",
+    "  'a gate nobody runs'. Measured on 2026-09-15: seven gates were referenced by ZERO",
+    "  workflows, `ci:quality` and `ci:predeploy` (the composite local scripts) were referenced",
+    "  by zero workflows too, and the review checklist named a `lint` gate that did not exist at",
+    "  all. Every one of those looked like protection and provided none.",
+    "",
+    "  REMOVED 2026-09-16: the `ci:predeploy` composite is gone, and so is every `runs[]`",
+    "  entry that cited it. Nothing invoked it (`grep -rn \"npm run ci:predeploy\"` found no",
+    "  caller outside its own definition), so a gate listing it was claiming a run location",
+    "  that did not exist -- and `runs[]` is what C3 reads to answer \"is every blocking gate",
+    "  run somewhere\". Its gates are inlined in both deploy workflows, one step per gate,",
+    "  which is also what rule 7 requires. `ci:predeploy:local` stays: it is a documented",
+    "  local convenience and it never claimed to run in CI.",
+    "",
+    "  A gate that exists but does not run is worse than no gate: it produces false confidence,",
+    "  and it teaches reviewers that the checklist is aspirational. So the inventory is now data,",
+    "  and scripts/ci/verify-review-manifest.mjs asserts it against reality.",
+    "",
+    "FIELDS",
+    "  script    the package.json script name. Must exist, or the manifest gate fails.",
+    "  tier      0 = machine-checkable, must be green before review",
+    "            1 = deploy/operability gate, required on the shipping path",
+    "            2 = measured, report-only, never blocks",
+    "  blocking  true = a failure must stop the change. A blocking gate with an empty `runs`",
+    "            array is a manifest error and fails the manifest gate.",
+    "  provenBy  the mutation battery that demonstrates this gate CAN fail, or null.",
+    "            null is honest, not shameful: it records 'hypothesis, not proof'. The manifest",
+    "            gate reports the count so the gap is visible instead of assumed away.",
+    "  battery   what kind of mutation battery exists, if any. This field is what makes",
+    "            `verify:batteries` possible: the runner READS it instead of repeating a",
+    "            hand-typed list, so the set cannot drift from this classification.",
+    "              \"ci\"    hermetic — no credentials, no server, no database. Runs in CI",
+    "                      on every PR via `npm run verify:batteries`.",
+    "              \"infra\" needs a live Postgres, the Supabase transport, or a real HTTP",
+    "                      server to be meaningful, so it does NOT run on every PR.",
+    "              \"none\"  no battery exists.",
+    "            Added 2026-09-15, together with the runner. Before it, `provenBy` said a",
+    "            battery EXISTED but nothing said whether it could RUN anywhere — which is",
+    "            how 22 batteries came to be cited in a manifest that no workflow executed.",
+    "  runs      every place this gate is actually invoked. 'ci.yml#job' = a GitHub job.",
+    "            'review:gate' = the local pre-push gate. A gate listed ONLY under review:gate",
+    "            is local-only: CI does not back it, which is a fact a reviewer needs.",
+    "  ADDED 2026-09-16: the four e2e guards. They were in NO manifest entry while the",
+    "  `e2e` job ran them, and three of their batteries had no caller at all -- so the",
+    "  one job whose gates the inventory did not know about was also the one where",
+    "  \"proven able to fail\" was quietly decaying. e2e:public has no battery and is",
+    "  recorded as a hypothesis (provenBy: null) rather than left unlisted.",
+    ""
+  ],
+  "measuredAt": "2026-09-16",
+  "gates": [
+    {
+      "script": "typecheck:ratchet",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/typecheck-ratchet.mutations.sh",
+      "runs": [
+        "ci.yml#typecheck",
+        "ci:quality",
+        "review:gate:full"
+      ],
+      "note": "The original ratchet, and the idiom lint-ratchet.mjs copies: fail only on NEW debt, so the pipeline is never permanently red. Baseline was already 0 errors on 2026-09-03, so the ratchet currently enforces a clean tree — which also means no real edit can exercise its 'count increased' path, so the battery plants one deliberate type error in a temp file it removes afterwards. Proven 2026-09-15: 5 killed / 0 survived, covering both failure conditions plus the exit-2 tooling path, with the real baseline never written to.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "typecheck:indexer",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/typecheck-indexer.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates",
+        "ci:quality"
+      ],
+      "note": "Wired into ci.yml#quality-gates on 2026-09-15. Before that it ran only via ci:quality, an npm script no workflow references, so CI never typechecked the indexer at all. Proven 2026-09-15 by typecheck-indexer.mutations.sh: 1 killed / 0 survived / 4 ok-green. This is the thinnest gate in the manifest — tsc does the checking and package.json adds no logic — so the battery proves the part that CAN regress: the include list deciding scope. Measured: removing indexer/src/**/*.ts from include drops the checked set from 37 files to 1 and the gate still exits 0. tsc is behaving correctly (one clean file really has no type errors) and there is nothing to fix; what is asserted is that the scope matches its pinned count, so a future narrowing trips a test instead of passing quietly. T5 demonstrates that assertion can fail by narrowing include in a fixture config. T3 pins the documented separation: tsconfig.indexer.json must not extend the app tsconfig nor reach src/** or netlify/** — indexer code must never leak into npm run typecheck. T1/T2 are the error/control pair.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "boundary",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/boundary.mutations.sh",
+      "runs": [
+        "ci.yml#boundary",
+        "ci:quality",
+        "review:gate:full"
+      ],
+      "note": "Proven 2026-09-15 by boundary.mutations.sh: 5 killed / 0 survived / 6 ok-green. The load-bearing result is SEVERITY handling in both directions: an error-severity violation exits 1, and the IDENTICAL violation demoted to warn exits 0 (B1/B1b), plus a warn-severity violation exiting 0 and the same one raised to error exiting 1 (B2/B2b). Without both pairs the gate could either fail on every violation — making the warn rule unshippable — or ignore severity and silently demote the kernel rule. Also pins the contexts-no-cross-context pathNot exemption: reaching another context internal.ts is a violation, reaching its service.ts is the documented owner-interface pattern and must stay green. The rule SET itself is owned by indexer/src/boundary.test.ts (6 rules + depcruise oracle); this battery owns the CLI exit code that ci:quality consumes.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "depcruise",
+      "tier": 0,
+      "blocking": false,
+      "provenBy": null,
+      "runs": [],
+      "note": "Second, independent layering checker (dependency-cruiser). Never wired anywhere. Advisory until someone decides which of the two is authoritative — see audit A-07.",
+      "battery": "none",
+      "batteryNote": "No mutation battery exists for this gate. It has never been observed failing."
+    },
+    {
+      "script": "verify:entries",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-function-entries.mutations.sh",
+      "runs": [
+        "ci.yml#functions-tree",
+        "ci:quality",
+        "review:gate"
+      ],
+      "note": "Guards the deploy shape. A miss here keeps Lambda compatibility mode alive and resurrects the 4 KB env ceiling for the whole site. Proven 2026-09-15: 6 killed / 0 survived, covering all four checks including the Lambda-compat subdirectory shape.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:binding",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/surface-binding.mutations.sh",
+      "runs": [
+        "ci.yml#functions-tree",
+        "ci.yml#quality-gates",
+        "ci:quality",
+        "review:gate"
+      ],
+      "note": "Makes three otherwise-invisible wiring bugs loud: an allow-listed action no entry can resolve, a declared map nobody uses, and a routed action reachable only via the bridge-links catch-all (which still works, via apiClient's 404 retry, which is why nobody notices). Proven 2026-09-15: 7 killed / 0 survived, covering all four violation paths. The battery also found that the header's documented exit 2 (parse error) was unreachable — every parse failure fell through to exit 1, making a stale gate look like a binding regression. Now implemented and asserted by exact code.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:io",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/io-boundary.mutations.sh",
+      "runs": [
+        "ci.yml#functions-tree",
+        "ci.yml#quality-gates",
+        "ci:quality",
+        "review:gate"
+      ],
+      "note": "Enforces 'no raw fetch() outside kernel/http.ts' — a bypass costs deadline clamping, the circuit breaker, the bulkhead and trace visibility at once. Proven 2026-09-15: 5 killed / 0 survived, covering all three failure paths (not-in-allow-list, past the max bound, wrapper moved). The battery found a real hole: the wrapper guard was `.includes('fetch(')`, satisfied by the file's own comments, so a moved implementation stayed green. Fixed in the same commit. Added to ci.yml#quality-gates 2026-09-15 — it is a static check with no live environment, so every PR should pay it, not only the deploy path.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:validation",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-validation-coverage.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates",
+        "ci:quality"
+      ],
+      "note": "Three documents claimed universal edge validation (ARCHITECTURE.md \"Zod validation at API edge\", ENGINEERING_PLAYBOOK.md \"Already the pattern; keep it\", CODE_REVIEW_CHECKLIST.md \"All input validated by a Zod schema at the handler edge\"). Measured 2026-09-16: validatePayload() had 7 call sites, ALL of them in surfaces/auth.ts, against 81 routed actions — and the jobs surface handed four unknown-typed arguments straight to Postgres TEXT columns. This gate makes the claim measurable. TWO MECHANISMS COUNT, and the second exists for a measured reason: importing zod (validate.ts) into contexts/jobs and contexts/applications added ~67 KB to EIGHT entry points and pushed files.js over the 600 KB hard ceiling (555.3 -> 622.6 KB), because contexts/applications is imported by master-data, registry and _lib/ai/cv — one zod import in a shared context leaks the library into most of the deployment. So the narrow entries use _lib/kernel/guard.ts instead: dependency-free, ~5 KB (jobs.js +4.8 KB, mail.js +6.0 KB, both inside the 8 KB floor). A gate that recognised only zod would push the next contributor back into that regression. It is a ratchet, not a hard rule: the unvalidated set is frozen in .ci/validation-baseline.json and may only shrink, so a new unvalidated write fails AND a baseline entry that has since been validated also fails (a baseline that cannot shrink stops describing reality). Coverage at introduction: 9/33 mutating actions. Battery proven 2026-09-16: 6 killed / 0 survived / 1 ok-green, each asserted on its EXACT exit code rather than merely non-zero — D1 a write losing its validation, D2 an action newly declared mutating with no schema, D3 stale baseline, D4 vanished baseline entry, V1 an empty MUTATING set (exit 2), V2 an unresolvable action (exit 2) — plus R1, which proves the remedy printed in the failure message actually resolves D3. The exit-code distinction is load-bearing: exit 1 means the gate judged a violation, exit 2 means it could not judge at all, and the first draft of D2 passed by tripping the tooling guard while claiming to cover the new-debt rule.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: reads source files and .ci/validation-baseline.json only — no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:md",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/check-md-tables.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates",
+        "ci:quality",
+        "review:gate"
+      ],
+      "note": "Wired into ci.yml#quality-gates on 2026-09-15. A stray pipe in a table cell is silent in every viewer, which is why this is a gate.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:classes",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-classes.mutations.sh",
+      "runs": [
+        "ci.yml#classes",
+        "ci:quality",
+        "review:gate"
+      ],
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "lint-ratchet",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/lint-ratchet.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates",
+        "ci:quality",
+        "review:gate"
+      ],
+      "note": "Added 2026-09-15 to replace the phantom `lint` gate the checklist had been naming. Wired into ci.yml#quality-gates on 2026-09-15; it had been local-only.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:projections",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-projections.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates",
+        "ci:quality"
+      ],
+      "note": "A wildcard projection on the 169-column master table is ~570 KB of JSON per cold read. Moved OFF the deploy-only path onto ci.yml#quality-gates on 2026-09-15: it is a static scan, so every PR can pay it. Battery proven 2026-09-15: 4 killed / 0 survived / 4 ok-green. Writing it found a real hole — the gate passed VACUOUSLY on an empty netlify/functions/, printing a green line over zero files scanned and exiting 0; it now refuses with exit 2 like its siblings (fixed in 263b73a, pinned by case V1).",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "bundle:size",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/bundle-size.mutations.sh",
+      "runs": [
+        "ci.yml#functions-tree",
+        "ci:quality"
+      ],
+      "note": "The ratchet that stops the refactor silently regressing: it reproduces Netlify's bundling locally and fails when an entry grows past the tolerance AND the 8 KB floor, exceeds 600 KB (non-catch-all only), or the total exceeds 10 MB. Battery proven 2026-09-15: 5 killed / 0 survived / 4 ok-green — the only battery covering a gate with three independent failure paths, each with its own case. Writing it found that the gate passed while the ratchet silently did not run whenever bundle-size-baseline.json was missing; it now exits 2 there (fixed in e14e2b2, pinned by case P6). P2/P5 are green BY DESIGN (a declared catch-all may be large; the 8 KB floor exists so a ~3 KB intended addition does not cry wolf) and P5b proves the floor is what decides.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "idx:gate",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/idx-gate.mutations.sh",
+      "runs": [
+        "ci.yml#functions-tree",
+        "ci:quality",
+        "review:gate:full"
+      ],
+      "note": "Proven 2026-09-15 by idx-gate.mutations.sh: 7 killed / 0 survived / 5 ok-green. Verdict logic is exhaustive on synthetic fixture roots driven through the real --root/--config flags (over-gate, unresolved-as-got-0, ambiguity refused rather than guessed, three malformed-entry shapes, and multi-failure aggregation). The live thresholds in indexer/impact-gate.json are deliberately NOT pinned — signToken sat at 18 files against a gate of 20 when this was written, and a battery asserting a number would turn every honest refactor into a battery failure, which is how a real gate gets disabled. Mechanism proven; numbers re-measured by the gate itself.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:aliases",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-aliases.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates",
+        "review:gate"
+      ],
+      "note": "Exactly one entry point may use the full router. Was local-only with nothing invoking it; wired into review:gate, then into ci.yml#quality-gates on 2026-09-15 so CI backs it too. Battery proven 2026-09-15: 4 killed / 0 survived / 5 ok-green. This battery is unusual in mutating the INPUT SET rather than a file — it creates and deletes entry points under netlify/functions/ — so it also proves the directory listing is byte-identical after the run, and that a borrowed file comes back unmodified to git. Both checks earn their place: a backup copied from the LIVE file laundered a previously-mutated gate back into place, and a backup taken from `git show` silently rewrote netlify/functions/bridge-links.js to LF (core.autocrlf) leaving a phantom modification after every run.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "test",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/test.mutations.sh",
+      "runs": [
+        "ci.yml#test-frontend",
+        "ci.yml#test-backend",
+        "ci:quality"
+      ],
+      "note": "The vitest `indexer` project (14 files) runs only via ci:quality, which no workflow calls — so CI never runs it. See audit A-06. Proven 2026-09-15 by test.mutations.sh: 3 killed / 0 survived / 3 ok-green. This gate has no script of its own — `vitest run` IS the gate — so the battery proves the RUNNER CONTRACT rather than mutation-testing a checker: a failing test exits non-zero (X1, and X3 in the backend project so neither project can be silently dropped), a passing test goes green (X2, ruling out an always-failing runner), both projects are discoverable by the names the CI workflow uses (X6), and the include globs are intact (X5). The decisive case is X4: narrowing the frontend include to a non-existent path makes vitest refuse with \"No test files found, exiting with code 1\" rather than reporting success over an empty suite. That is the vacuous-pass defect class found three times elsewhere today, and here the runner gets it RIGHT — no fix follows, and the file says so. Scope is stated honestly: this proves the runner and the structure, NOT that the assertions inside the 140 test files are meaningful.\nSECOND BATTERY ADDED 2026-09-16: settings-limit.mutations.sh (7 killed / 0 survived / 1 ok-green), covering netlify/functions/_lib/db/settings-limit.test.ts — the OTHER call site of the limit=1 bug this entry already guards via jobs-limit.test.ts. findSettings()/findAnnouncements() inherited findTable()'s default of limit=1; measured against the live database, sys_config holds 158 rows and the single row read was config_type=\"tsk\", so loadPublicBase() built dropdowns={tsk:['TSK VIBE']} and every other key was ABSENT — reported by the owner as \"ga ada drop downnya\". replaceConfigItems() resolves its DELETE set through the same function, so editing a list removed one row and reinserted the whole list: measured production signature, tsk 36 rows / 35 distinct values ('TSK MAHER' twice). TWO DEFECTS IN THE PROOF ITSELF were found by executing it, both of the kind that make a battery lie: M1 SURVIVED the first run because the guard regex used [\\s\\S]*? unscoped to the function body, so when findSettings() lost its limit the pattern matched the limit belonging to findAnnouncements() — an aggregate match reporting a pass over a body that no longer passed anything; and the battery's own restore check reported all three borrowed files as changed twice over (it compared after deleting its own snapshots, and read node argv[2] under  where arguments start at argv[1]). Baseline is snapshotted from the LIVE tree, not git HEAD, because HEAD holds pre-fix bytes.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:review-manifest",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-review-manifest.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates",
+        "ci:quality",
+        "review:gate"
+      ],
+      "note": "This file's own gate. Asserts every named gate exists, is run somewhere, and that the review docs name no gate that does not exist. Wired into ci.yml#quality-gates on 2026-09-15, so CI now enforces the inventory it is part of. Battery extended to 11 mutations on 2026-09-15 to cover C6 (the new check that a `runs` workflow claim is true): S8 — claiming a gate runs in a real job that does not invoke it — SURVIVED the first C6 implementation, because it searched the whole workflow file rather than the job block, so it verified 'runs somewhere in this file' instead of the actual per-job claim. C6 was scoped to the job's own block and S8 now dies. 11 killed / 0 survived.\nSECOND FINDING, 2026-09-15, FOUND BY RUNNING IT: this battery ABORTED at S3 — six of its eleven mutations could never fire. S3, S6, S7, S8 and S9 were anchored on `\"runs\": [\"ci.yml#classes\", \"ci:quality\", \"review:gate\"]` as a ONE-LINE string; review-manifest.json has always stored `runs` as a multi-line array, so `mut` matched nothing and the battery refused to continue (its guard working correctly — it aborted rather than reporting a phantom verdict). S6-S9 were additionally anchored on verify:md's `note` PROSE, which is rewritten whenever that gate's story changes. All six were rewritten to mutate the PARSED JSON STRUCTURE (`json_mut`, addressing a gate by name) instead of raw text, so reformatting the manifest or rewording a note can no longer kill them. Result: 11 killed / 0 survived / 1 ok-green, where before the run died at case 3. NOTE THE SHAPE OF THIS DEFECT: the battery was committed, cited here, and green on paper for as long as nobody executed it. Nothing about the GATE was broken. The proof had rotted, and a rotted proof is indistinguishable from a hole until someone re-runs it — which is the entire argument for `verify:batteries`.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:batteries",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/run-batteries.mutations.sh",
+      "runs": [
+        "ci.yml#batteries",
+        "review:gate:full"
+      ],
+      "note": "THE GATE THAT CLOSES THE LARGEST GAP IN THIS FILE. Until 2026-09-15 the manifest printed 'proven able to fail 22/22 (100%)' while nothing ran a single battery: `grep -c 'mutations\\.sh' .github/workflows/*.yml` returned one hit, and that hit is a COMMENT in ci.yml line 68, not a `run:`. No npm script invoked them either. So the number meant \"was once observed to fail\", never \"still does\" — and the decay is not hypothetical. On its first run this runner found that `check-md-tables.mutations.sh` had a DEAD mutation: its anchored prose had been rewritten upstream, so its `str.replace()` matched nothing, wrote the file back unchanged, and the gate stayed correctly green while the battery reported SURVIVED. A dead mutation and a hole in a gate look identical from the outside; only re-running tells them apart. This gate runs the 17 hermetic batteries and fails when any one stops discriminating. It does NOT prove the 6 infra batteries or the 1 battery-less gate — the runner prints that remainder explicitly so a green run is never read as total proof.",
+      "battery": "ci",
+      "batteryNote": "Hermetic. This battery breaks the runner/battery recursion by invoking the runner with `--only=verify:md`, which restricts it to one cheap battery that is not this one."
+    },
+    {
+      "script": "verify:env",
+      "tier": 1,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-env.mutations.sh",
+      "runs": [
+        "deploy-staging.yml#deploy",
+        "deploy-production.yml#deploy"
+      ],
+      "note": "Wired onto the shipping path 2026-09-15. Staging runs it without --strict; production runs `--profile production --strict`. Proven 2026-09-15 by verify-env.mutations.sh: 8 killed / 0 survived / 7 ok-green. The battery is offline-only because the gate reads process.env rather than a file: it hides .env.local/.env.lokal for the duration so the measured environment is exactly the one each case exports. That matters — applyEnvFiles() treats an EMPTY string as unset, so the obvious probe (`PUBLIC_SUPABASE_URL= node …`) is refilled from .env.local and reports a green run that looks identical to a gate which cannot fail. Tier stays 1 because the runner still needs credentials to be meaningful, but the VERDICT logic is fully proven offline.",
+      "battery": "infra",
+      "batteryNote": "Needs a live database, the Supabase transport, or a real HTTP server to be meaningful — so it does NOT run on every PR. Re-measure before moving it into the hermetic set."
+    },
+    {
+      "script": "verify:env:budget",
+      "tier": 1,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-env.mutations.sh",
+      "runs": [
+        "deploy-production.yml#deploy"
+      ],
+      "note": "Added to the manifest 2026-09-15 — it was in ci:predeploy but listed in NO manifest gate, so nothing tracked whether anything ran it. It enforces the 4 KB environment-variable budget: over it, a function fails on cold start rather than at build time. Production-only because the script hardcodes `--profile production`, which is why it is not in the staging workflow. Proven 2026-09-15 by the SAME battery as verify:env — both are one script with different flags, so the coverage is shared, not doubled (B1/B1b and B2/B2b pin the 2026-09-15 decision that the ceiling is informational by default and enforced only under --budget-strict).",
+      "battery": "infra",
+      "batteryNote": "Needs a live database, the Supabase transport, or a real HTTP server to be meaningful — so it does NOT run on every PR. Re-measure before moving it into the hermetic set."
+    },
+    {
+      "script": "verify:db",
+      "tier": 1,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-db.mutations.sh",
+      "runs": [
+        "deploy-staging.yml#deploy",
+        "deploy-production.yml#deploy"
+      ],
+      "note": "The database is migrated by hand, so it can be behind the code. When it is, PostgREST answers 200 with an empty result and the app degrades silently. Both deploy workflows gate on it before publishing; the staging run carries an emergency `skip-db-gate` input for manual dispatches only, which the normal path never takes. PROVEN 2026-09-15: 7 killed / 0 survived / 4 ok-green against a local PostgREST stand-in. Offline-provable because its TRANSPORT is a base URL: `--contract` redirects the check, and `SUPABASE_URL` + a dummy key redirect the transport, so the verdict logic is exercised without touching the real database. The battery drives the whole verdict path, including D3 vs D3b — the SAME absent table exits 1 as `required` and 0 as `optional`, so severity is proven to decide rather than being assumed. SEE ALSO the operational note below. OPERATIONAL, MEASURED 2026-09-15: `npm run verify:db` from a developer machine CONNECTS TO THE LIVE PRODUCTION SUPABASE DATABASE. The gate calls applyEnvFiles() internally, which loads SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY from .env.local, so an `env SUPABASE_URL=... node gate` assignment cannot withhold them (an empty string counts as unset and is refilled; measured: 23 variables loaded, 8 SUPABASE ones). Running it unconfigured reports `DATABASE CONTRACT OK` against production and exits 0. This is intended for CI, where the credential comes from the GitHub Environment; locally it is a production-touching read. The battery is therefore hermetic by MOVING the env files aside for the whole run, and says so in its header.",
+      "battery": "infra",
+      "batteryNote": "Needs a live database, the Supabase transport, or a real HTTP server to be meaningful — so it does NOT run on every PR. Re-measure before moving it into the hermetic set."
+    },
+    {
+      "script": "verify:schema",
+      "tier": 1,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-schema.mutations.sh",
+      "runs": [
+        "deploy-staging.yml#deploy",
+        "deploy-production.yml#deploy"
+      ],
+      "note": "MOVED 2026-09-15: was briefly declared under ci.yml#quality-gates; C6 caught that the claim was false the moment it was written — verify:schema reads the live database, and CI has no database credential. The right home is the deploy path, where the credential exists: it now runs in both deploy workflows immediately before the RLS gate. schema.generated.ts is the typed view of the live DB, and a stale one makes every query compile against a schema that no longer exists — silently, because PostgREST answers 200 with an empty result. PROVEN 2026-09-15: 6 killed / 0 survived / 4 ok-green against a local PostgREST stand-in. Offline-provable for the same reason as verify:db — the TRANSPORT is a base URL, not the check. The decisive pair is S2 (a column added upstream is DRIFT, exit 1) against S1 (a committed file matching the live render passes, exit 0): the same gate, the same stand-in, one difference, so the drift verdict is proven to decide rather than assumed. S7 pins the case that a rename-free REORDER is still drift, which a name-set comparison alone would miss; S5 proves an empty stand-in is refused (exit 2) instead of being written out as a zero-table schema, and S5b proves that refusal says why. Fail-closed on missing/wrong credentials is S3/S4/S6. S8 checks the refusal reports both digests and the fix command. NO FALSE ALARM: this battery also documents, and then measures, a defect in the batteries themselves — see the pre-existing-dirty snapshot note in the three batteries dated 2026-09-15.",
+      "battery": "infra",
+      "batteryNote": "Needs a live database, the Supabase transport, or a real HTTP server to be meaningful — so it does NOT run on every PR. Re-measure before moving it into the hermetic set."
+    },
+    {
+      "script": "verify:rls",
+      "tier": 1,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-rls.mutations.sh",
+      "runs": [
+        "deploy-staging.yml#deploy",
+        "deploy-production.yml#deploy"
+      ],
+      "note": "NOT PROVEN, and deliberately left that way on 2026-09-15. It needs live credentials: with none it exits 2 on every path, and the only local substitute is stubbing `pg`/PostgREST, which would prove the verdict logic while leaving the SQL — the actual check — untested. A battery that certifies the wrong half is worse than none, so this stays an open gap until it can run against a disposable Postgres in CI. MEASURED GAP, NOW CLOSED (2026-09-15): this gate used to be on NO shipping path — invoked only from ci:predeploy, which no workflow referenced, with no workflow supplying SUPABASE_DB_URL, so neither its decisive mode nor the gate itself ran before production shipped and migrations/012_rls_lockdown.sql was unprotected on the path that deploys. It is now a blocking step in both deploy workflows, immediately after the database contract gate, and both supply SUPABASE_DB_URL to select the DEFINITIVE catalog mode. This is the asymmetric gate: an application rollback does NOT restore table privileges, so a policy that drifts open cannot be undone by rolling back the deploy.\nPROVEN 2026-09-15: 7 killed / 0 survived / 2 ok-green against a REAL PostgreSQL 18.4\n(the devDependency embedded-postgres ships genuine initdb/postgres binaries), so the\ncatalog SQL itself is exercised, not a stub. THE PREVIOUS NOTE IN THIS ENTRY WAS WRONG,\nand the correction is the point: it said this gate \"needs live credentials\" and could only\nbe proven by stubbing pg, which \"would prove the verdict logic while leaving the SQL — the\nactual check — untested\". Measured: the gate runs locally with no extra credentials because\ninitDbEnv() composes SUPABASE_DB_URL from Direct_Connection_DB in .env.local, and a local\nthrowaway cluster replaces the transport while the CHECK runs unchanged. One supporting\nchange to the gate was required — honouring libpq PGSSLMODE, because a local cluster has no\nTLS and the gate hard-coded `ssl: { rejectUnauthorized: false }`.\n\nA REAL DEFECT WAS FOUND WHILE PROVING. The third check — \"a policy granted to PUBLIC with\nUSING (true)\" — could never fire for the incident that motivated the gate. It queried\n`polqual is null`, but Postgres stores a written `USING (true)` as the EXPRESSION 'true',\nnever NULL, so the query returned zero rows for exactly the shape\nmigrations/012_rls_lockdown.sql:76-79 describes (\"`USING (true)` on a FOR ALL policy, granted\nto PUBLIC\"). Only a policy with no USING clause at all matched. Fixed in the same commit;\ncase R5 is that incident reintroduced, and it SURVIVED against the old predicate and is\nKILLED against the new one — the falsification, not merely a green run. R5b is the paired\ncontrol: the RESTRICTIVE PUBLIC policy shape all three of the live database's real policies\nuse must stay GREEN, or the check would have to be disabled and every other guard would go\nwith it.",
+      "battery": "infra",
+      "batteryNote": "Needs a live database, the Supabase transport, or a real HTTP server to be meaningful — so it does NOT run on every PR. Re-measure before moving it into the hermetic set."
+    },
+    {
+      "script": "verify:pwa",
+      "tier": 1,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-pwa.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates"
+      ],
+      "note": "Wired into ci.yml#quality-gates on 2026-09-15; it had been local-only (ci:predeploy, referenced by no workflow). Battery proven 2026-09-15: 6 killed / 0 survived / 2 ok-green — one case per guard (dead service worker, empty PRECACHE, backslash path, unrewritten dev VERSION, remote icon URL, icon missing on disk), each reproducing a regression that had already happened once. The two green controls matter as much: the untouched build must pass, and a remote canonical link must NOT be mistaken for an icon — the checks are scoped to rel=icon/apple-touch-icon and manifest icons[].src, and a gate that flagged any http:// would be switched off, taking every other guard with it.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "smoke",
+      "tier": 1,
+      "blocking": true,
+      "provenBy": "scripts/ci/smoke.mutations.sh",
+      "runs": [
+        "ci.yml#smoke",
+        "deploy-production.yml#deploy"
+      ],
+      "note": "The gate whose verdict can trigger netlify-rollback.mjs, so both error directions are expensive: too strict rolls production back over an unwired HEALTH_TOKEN, too lenient ships the outage. PROVEN 2026-09-15: 8 killed / 0 survived / 4 ok-green. Scope is the CLI exit-code contract — `checkUrl`/`classifyHealth` are already pinned by 20 tests in netlify/functions/_lib/smoke-test-health.test.ts, which imports the module specifically so main() never runs; that file therefore never reaches the exit code the workflows actually consume, and this battery does. The false-alarm surface is pinned by a three-case chain that varies ONE thing at a time: S7 (503 + `HEALTH_TOKEN is not configured` body, no token) must stay GREEN and warn; S7b (same 503, same absent token, body WITHOUT the marker) must exit 1 — this is what stops S7 from being satisfiable by a gate that special-cases every 503; S8 (same marker body as S7, token now supplied) must exit 1 — this is what stops the deliberate asymmetry from hiding a real outage from the rollback trigger. An earlier S7 sent a body without the marker and reported UNEXPECTED exit=1; the gate was right and the fixture was wrong, and S8 was worthless until the chain was fixed.",
+      "battery": "infra",
+      "batteryNote": "Needs a live database, the Supabase transport, or a real HTTP server to be meaningful — so it does NOT run on every PR. Re-measure before moving it into the hermetic set."
+    },
+    {
+      "script": "cold:start",
+      "tier": 2,
+      "blocking": false,
+      "provenBy": "scripts/ci/cold-start-gate.mutations.sh",
+      "runs": [
+        "deploy-production.yml#deploy"
+      ],
+      "note": "Report-only on purpose: it is wired next to the automatic rollback, and one unlucky CI sample must not roll back a healthy release. Latency is a trend, not a binary. NOTE: the `runs` entry used to read `deploy-production.yml#cold-start`, naming a job that does not exist — the step lives inside the `deploy` job. Caught by C6 the first time that check ran (2026-09-15), which is precisely the false-coverage class C6 exists to catch.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "e2e:public",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": null,
+      "runs": [
+        "ci.yml#e2e",
+        "test:e2e"
+      ],
+      "note": "The public flow against a served, built artifact: the pages a visitor can reach without credentials. NO BATTERY EXISTS, and that is recorded rather than assumed away — so this guard is a hypothesis, not evidence, and the manifest reports it as one. Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced. That is recorded here because a reviewer reading `runs` deserves to know CI does not back it before the merge.",
+      "battery": "none",
+      "batteryNote": "No battery. The other three e2e guards each have one; this one never did. It is the cheapest of the four to write, and until it exists nothing here is proven able to fail."
+    },
+    {
+      "script": "e2e:loker-layout",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "e2e/test-loker-layout.mutations.sh",
+      "runs": [
+        "ci.yml#e2e",
+        "test:e2e"
+      ],
+      "note": "Asserts the loker list layout in the RENDERED DOM, which no source-level check can do. Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced. That is recorded here because a reviewer reading `runs` deserves to know CI does not back it before the merge.",
+      "battery": "infra",
+      "batteryNote": "NOT hermetic, and the classification is deliberate: the battery runs `astro build`, starts its own server on a port it owns, and drives the guard through it. It needs a build and a browser, so `verify:batteries` must not take it. Registered 2026-09-16 — before that it had NO caller anywhere, so \"proven able to fail\" was decaying silently, which is the exact defect §1.1(a) is about."
+    },
+    {
+      "script": "e2e:headings",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "e2e/test-headings.mutations.sh",
+      "runs": [
+        "ci.yml#e2e",
+        "test:e2e"
+      ],
+      "note": "Heading structure across every route, asserted in the rendered DOM. Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced. That is recorded here because a reviewer reading `runs` deserves to know CI does not back it before the merge.",
+      "battery": "infra",
+      "batteryNote": "NOT hermetic: the battery builds, starts `server.cjs` on a port it owns (deliberately not 4321, so it cannot measure a server it does not control), and drives the guard. Registered 2026-09-16; previously invoked by nothing."
+    },
+    {
+      "script": "e2e:dialog",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "e2e/test-dialog.mutations.sh",
+      "runs": [
+        "ci.yml#e2e",
+        "test:e2e"
+      ],
+      "note": "Every visible overlay must declare itself presentational or carry a resolvable accessible name — invisible in the source, so only the rendered DOM can answer it. Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced. That is recorded here because a reviewer reading `runs` deserves to know CI does not back it before the merge.",
+      "battery": "infra",
+      "batteryNote": "NOT hermetic: the battery builds, starts `server.cjs` (the guard needs LIVE job data from the proxied backend, which `astro preview` cannot answer) and drives Chromium. Registered 2026-09-16; previously invoked by nothing. Its header already records that `astro build` exits 1 on this machine when the safe-delete shim refuses its cleanup — the shim that turned out to be the cause of the whole battery cascade, observed here first and never connected to it."
+    },
+    {
+      "script": "e2e:drawer",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "e2e/test-drawer.mutations.sh",
+      "runs": [
+        "ci.yml#e2e",
+        "test:e2e"
+      ],
+      "note": "The drawer's keyboard contract and the login modal it opens, both asserted in the RENDERED DOM — neither is visible in the source. Measured on 2026-09-16: a closed drawer held 7 of 22 Tab stops off-screen, Escape did nothing, and `LoginModal` called `useOverlay` without ever attaching `containerRef`, so the visible login modal had no role, no accessible name, no initial focus and no Tab trap. `e2e:dialog` could not see the second defect: its sweep only covers overlays it opens itself, and it never opens the login modal. Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced. That is recorded here because a reviewer reading `runs` deserves to know CI does not back it before the merge.",
+      "battery": "infra",
+      "batteryNote": "Needs a real HTTP server, so it is classified `infra` alongside its three e2e siblings and is deliberately NOT executed by `verify:batteries`. Unlike `e2e:loker-layout`/`headings`/`dialog` it needs NO backend: it builds, starts its own `astro preview` on a port it owns, and drives Chromium against routes that are reachable with no session — which is exactly why it could measure the login modal at all. Executed on this machine 2026-09-16: 7 mutations installed, 7 killed, 0 survived, baseline green, byte-identical restore, green again. M7 is the guard's own positive control: it makes the drawer permanently inert so the control ('the Tab-walk CAN see inside an OPEN drawer') must fail — without it, the control would only ever have been observed passing."
+    },
+    {
+      "script": "e2e:labels",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "e2e/test-labels.mutations.sh",
+      "runs": [
+        "ci.yml#e2e",
+        "test:e2e"
+      ],
+      "note": "Every rendered <label> must be tied to its control (a `for=` that resolves, or wrapping the control) — invisible in the source, because these forms build their labels inside helper components and `.map()` loops, where ONE source line renders 55 labels. MEASURED 2026-09-16 on the built artifact, before the fix: 4 of 23 associated on /master, 0 of 9 on /apply, 0 of 12 on /siswa-baru. After: 219 of 219 rendered labels across FOUR routes (/master 5 screens 130, /apply 9, /siswa-baru 12, /ai-cv 68), plus 3 group labels that `for=` cannot express at all and that are now `<fieldset>`+`<legend>`. `noLabelWithoutControl` moved only 138 -> 95, and that gap is the point — the rule counts SOURCE LOCATIONS, the user meets rendered labels. The guard catches the three ways this wiring rots silently: a `for=` pointing at a non-existent id, the SAME id emitted twice (so `for=` resolves to the wrong control), and a group that has lost its accessible name. Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced. That is recorded here because a reviewer reading `runs` deserves to know CI does not back it before the merge.",
+      "battery": "infra",
+      "batteryNote": "Needs a real HTTP server, so it is classified `infra` alongside its four e2e siblings and is deliberately NOT executed by `verify:batteries`. It needs NO backend: it builds, starts its own `astro preview` on a port it owns, and drives Chromium against four routes reachable with no session. Executed on this machine 2026-09-16: 18 mutations installed, 18 killed, 0 survived, baseline green, byte-identical restore, green again. THREE OF THESE MUTATIONS SURVIVED EARLIER RUNS, and each survivor found a different boundary — which is the most useful thing this battery has produced. (1) M3 (`<SswField />`) and M4 (`<ManualSelect />`) survived because the guard read the page ONCE, after load, and /master is a FIVE-STEP wizard whose labels it was measuring 23 of 90. The guard was not blind, it was SCOPE-LIMITED, and it reported a confident 100% for the 26% it happened to look at. The sweep now advances the wizard and ASSERTS the step count (M13 makes Next a no-op to prove that assertion can fail), and M3/M4 are the regression test for it. (2) M15 (the education `Tambah` becomes a no-op) survived the NEXT run, because the growth check was AGGREGATE: step 3 has two loops, so clicking every `+` and comparing the screen total is satisfied by whichever loop still works (measured: education delta 0, job delta 6, screen total 12 -> 18, guard green). The check is now PER BUTTON, and M15/M16 kill the two buttons on that screen individually — M15 alone cannot distinguish a walk over all buttons from a walk that only ever looks at #0. (3) M18 pins the group assertion: the `<legend>` is emptied, so the block renders, nothing is logged, and the group silently has no accessible name — invisible both to a source-level check and to the unassociated-label check, because no `<label>` is involved. M10 is the anti-vacuity control: it turns every label on /siswa-baru into a <span>, so the zero-label guard must fire. CAVEAT recorded rather than hidden: the row expansion adds exactly ONE extra row per loop, so a defect that only appears at three rows or more (or only on the first row) is still not covered by any mutation here. The 95 remaining `noLabelWithoutControl` locations are all in admin modals and are NOT measured by this guard; of those, 80 are followed by a control and 15 are not (group labels, a label above a <button>, a <label> used as a heading) — see docs/UI_DESIGN_REVIEW.md §27.9."
+    }
+  ]
+}

@@ -55,6 +55,9 @@ jobs:
       SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      # Enables the DEFINITIVE mode of verify:rls (catalog read). Staging shares
+      # the production project, so the same access policy is being checked.
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
     steps:
       - uses: actions/checkout@v4
@@ -90,6 +93,31 @@ jobs:
         with:
           name: db-contract-staging-${{ github.sha }}
           path: db-contract.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+      # ── Generated schema ─────────────────────────────────────────────────────
+      # Reads the live database (staging shares the production project), so it
+      # cannot run in CI — CI has no database credential. See deploy-production.yml
+      # for why a stale schema is a silent failure rather than an error.
+      - name: Gate generated schema
+        run: npm run verify:schema
+
+      # ── Row Level Security / least privilege ─────────────────────────────────
+      # Staging shares the production Supabase project, so this is not a rehearsal
+      # — it reads and guards the same access policy that production serves from.
+      # Running it here as well as in production means a policy regression is
+      # caught on `develop`, where breaking things is cheap, instead of at the
+      # production approval gate. See deploy-production.yml for the full note.
+      - name: Gate row level security
+        run: npm run verify:rls -- --json rls-report.json
+
+      - name: Upload RLS report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rls-staging-${{ github.sha }}
+          path: rls-report.json
           if-no-files-found: ignore
           retention-days: 30
 

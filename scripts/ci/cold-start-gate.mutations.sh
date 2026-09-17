@@ -69,16 +69,31 @@ run() {
 }
 
 # Patch the gate (relative path — the rule-5 trap).
+#
+# WHY `node -e` AND NOT `python`
+#   This used to shell out to `python`. That name does not exist on
+#   `ubuntu-latest` (which ships `python3`) nor on a bare Windows box, so the
+#   battery could not run in CI — and, consistently, never did. Node is
+#   guaranteed by the checkout that runs this file, and the sibling battery
+#   `verify-classes.mutations.sh` already uses this idiom.
+#
+# The assertion is strengthened from `old in s` to "exactly one occurrence":
+# replacing the FIRST of several matches silently mutates a different site than
+# the battery intends, and the run then reports on a code path it did not mean
+# to touch.
 mutate_gate() {
-  python - "$@" <<'PY'
-import sys
-p, old, new = "scripts/ci/cold-start-gate.mjs", sys.argv[1], sys.argv[2]
-s = open(p, encoding="utf-8").read()
-if old not in s:
-    sys.stderr.write(f"MUTATION ANCHOR NOT FOUND: {old!r}\n")
-    sys.exit(2)
-open(p, "w", encoding="utf-8", newline="").write(s.replace(old, new, 1))
-PY
+  MUT_OLD="$1" MUT_NEW="$2" node -e '
+const fs = require("fs");
+const p = "scripts/ci/cold-start-gate.mjs";
+const s = fs.readFileSync(p, "utf8");
+const o = process.env.MUT_OLD;
+const hits = s.split(o).length - 1;
+if (hits !== 1) {
+  console.error("MUTATION ANCHOR NOT UNIQUE (hits=" + hits + "): " + JSON.stringify(o));
+  process.exit(2);
+}
+fs.writeFileSync(p, s.replace(o, process.env.MUT_NEW));
+'
   if [ $? -ne 0 ]; then echo "  !! mutation failed to apply — aborting"; exit 1; fi
 }
 

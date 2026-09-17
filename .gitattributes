@@ -16,3 +16,31 @@
 # this changes nothing about the committed content.
 *.mjs text eol=lf
 *.cjs text eol=lf
+
+# ── Shell scripts, for a different and sharper reason ────────────────────────
+#
+# A CRLF shell script is already wrong on principle, but the concrete damage here
+# is worse than a stray `\r` in a message. The mutation batteries drive `node -e`
+# helpers whose OLD/NEW anchors are multi-line strings passed through the
+# ENVIRONMENT, and the helper asserts "exactly one match" before writing. A CRLF
+# working tree makes every such anchor miss:
+#
+#     $ MUT_OLD='  if [ "$rc" -ne 0 ]; then\n    echo "KILLED ..."\n  else' \
+#       node -e '... s.split(o).length - 1 ...'
+#     hits: 0
+#
+# Measured 2026-09-15 on scripts/ci/check-md-tables.mutations.sh, which
+# `git ls-files --eol` reported as `i/lf w/crlf` — the index holds LF and the
+# working tree held CRLF, precisely because this file is NOT matched by the two
+# patterns above and `core.autocrlf=true` rewrote it on checkout.
+#
+# The good case is a hard ABORT (`hits=0 -> exit 3`), which is loud. The bad case
+# is any helper that does NOT assert: `str.replace()` matches nothing, the file is
+# written back unchanged, the gate correctly stays green, and the battery reports
+# SURVIVED — indistinguishable from a real hole in the gate. That is the exact
+# failure this repository already documents as its most expensive trap, and EOL
+# is one of the ways to fall into it.
+#
+# Pinned for the same reason as the .mjs files: the committed bytes are LF either
+# way, so this only removes a source of local-only, checkout-dependent failure.
+*.sh text eol=lf

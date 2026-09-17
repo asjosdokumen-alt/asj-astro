@@ -79,6 +79,7 @@ for (const f of readdirSync(join(FN, 'surfaces'))) {
 // ── 3. Entry points that use the narrow wrapper ─────────────────────────────
 const entries = readdirSync(FN).filter((f) => f.endsWith('.js'));
 const violations = [];
+const parseErrors = [];
 const notes = [];
 // action -> [entry, ...] for every NARROW entry that allow-lists it.
 // Built here so section 4 can answer "is this action reachable without the
@@ -92,7 +93,7 @@ for (const entry of entries) {
   const callRe = /makeSurfaceHandler\(\s*(\[[^\]]*\]|[A-Z0-9_]+_ACTIONS)\s*,\s*\[([\s\S]*?)\]\s*\)/;
   const call = src.match(callRe);
   if (!call) {
-    violations.push(`${entry}: could not parse makeSurfaceHandler(...) — shape changed?`);
+    parseErrors.push(`${entry}: could not parse makeSurfaceHandler(...) — shape changed?`);
     continue;
   }
 
@@ -252,6 +253,25 @@ console.log('');
 if (notes.length) {
   for (const n of notes) console.log(`  note: ${n}`);
   console.log('');
+}
+
+// A parse failure is a failure of THIS SCRIPT, not of the code under review, so
+// it is reported first and under its own exit code: exit 2 means "update the
+// gate", exit 1 means "fix your binding". The two demand opposite actions.
+// Collapsing them sends the author hunting for a wiring bug that does not exist,
+// and makes a stale gate look like a real regression.
+//
+// (Exit 2 was documented in the header from the start but never actually
+// reached — every parse failure fell through to exit 1. Found by the mutation
+// battery, scripts/ci/surface-binding.mutations.sh, S4.)
+if (parseErrors.length) {
+  console.error('  SURFACE BINDING GATE — PARSE ERROR (this script is out of date, not your code)');
+  for (const p of parseErrors) console.error(`    - ${p}`);
+  console.error('');
+  console.error('  An entry point no longer matches the shape this gate parses.');
+  console.error('  Update scripts/ci/surface-binding.mjs, then re-run. Bindings were NOT checked.');
+  console.error('');
+  process.exit(2);
 }
 
 if (violations.length) {

@@ -30,7 +30,8 @@
  * EXIT CODES
  *   0  within budget
  *   1  budget exceeded or ratchet regressed
- *   2  bundling error
+ *   2  bundling error, or the ratchet baseline is missing (a pass without it
+ *      would report a gate that only half ran)
  */
 
 import { build } from 'esbuild';
@@ -292,6 +293,30 @@ async function main() {
       );
     }
     for (const n of notes) console.log(`  note: ${n}`);
+  } else {
+    // No baseline means the RATCHET DID NOT RUN, and the gate used to print a
+    // bare "bundle size gate: pass" in that case — a green verdict that had
+    // quietly shed half its job.
+    //
+    // This is not hypothetical. Measured 2026-09-15 by hiding the file: the
+    // run still passed with no mention that nothing was compared. The ceilings
+    // (per-entry, total) had run, so the output was not entirely empty — which
+    // is exactly what made it hard to notice. The ratchet's own comment says
+    // "the ratchet baseline below is what actually holds the line", so losing
+    // it silently leaves the weakest check reported as the strongest.
+    //
+    // Fail loudly rather than degrade: a baseline that is missing in CI means
+    // an untracked or renamed file, and both need fixing, not tolerating.
+    // Exit 2 — a configuration problem, distinct from exit 1 (a real
+    // regression). `--update-baseline` is the documented way to create one.
+    console.error('  BUNDLE SIZE GATE FAILED');
+    const shownBaseline = BASELINE_PATH.replace(`${ROOT}\\`, '').replace(`${ROOT}/`, '');
+    console.error(`    - ratchet baseline not found: ${shownBaseline}`);
+    console.error('      Without it the ratchet silently does not run, so a pass here');
+    console.error('      would report a gate that only half ran. Create it with:');
+    console.error('        node scripts/ci/bundle-size.mjs --update-baseline');
+    console.error('');
+    process.exit(2);
   }
 
   if (failures.length) {

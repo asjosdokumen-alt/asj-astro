@@ -6,6 +6,7 @@ indexer/dist/
 .env.*
 *.log
 *.log.err
+test-results/
 .DS_Store
 .env.server
 .netlify/
@@ -65,3 +66,33 @@ netlify/functions/secrets/*
 
 # graft's local graph cache — regenerable, not committed (run `graft build`).
 /graft/
+
+# Output of scripts/ui-audit.mjs (screenshots + measurement report).
+# Evidence, not source — regenerate with `node scripts/ui-audit.mjs`.
+.tmp-audit/
+
+# Ad-hoc measurement scripts written during a review session. These MUST be
+# ignored, and not merely for tidiness: `indexer/src/discover.ts` does NOT skip
+# dotfiles, so a `.tmp-*.mjs` in the repo root is counted as project code and
+# silently shifts the file/mjs ratchets in discover.test.ts and build.test.ts.
+# That is exactly how `mjs` once got frozen at 43 instead of 30 and the total at
+# 404 instead of 391 — twice, despite a comment warning about it. Ignoring the
+# pattern makes the matcher skip them, so the class of error cannot recur.
+# See docs/UI_DESIGN_REVIEW.md §12.7.
+.tmp-*
+
+# Do NOT add a `!.tmp-audit/` negation here. In gitignore the LAST matching
+# pattern wins, so a negation does not "keep the earlier rule" — it undoes it.
+# While that line was present, `.tmp-audit/` (line 71) was cancelled and 13 MB of
+# audit screenshots + admin-audit.json came back as untracked files that
+# `git add -A` would have committed. Measured at the time:
+#   git check-ignore -v .tmp-audit/admin-audit.json  ->  exit 1 (NOT ignored)
+# and after removing it:
+#   git check-ignore -v .tmp-audit/admin-audit.json  ->  .gitignore:81:.tmp-*
+# That line number is the point worth remembering: check-ignore reports only the
+# LAST matching rule, so `.tmp-audit/` on line 71 still matches but never appears
+# in the output. A negation therefore looks like a harmless restatement of the
+# rule above while actually being the only rule that decides.
+# The two rules are not redundant, they are sequential: `.tmp-audit/` names the
+# one directory that is evidence, `.tmp-*` is the catch-all that keeps scratch
+# probes out of the indexer ratchets.

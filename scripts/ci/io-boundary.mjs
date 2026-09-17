@@ -195,7 +195,17 @@ for (const [rel, hits] of found) {
 
 // The wrapper must still be the one calling fetch — if the implementation moved,
 // this gate is guarding the wrong file.
-if (!readFileSync(join(ROOT, WRAPPER), 'utf8').includes('fetch(')) {
+//
+// FIXED 2026-09-15. This used to read `.includes('fetch(')`, which was satisfied
+// by the file's own COMMENTS — the header prose mentions `fetch()` on three lines
+// (6, 19, 77). The check could therefore never fail: renaming the real call to a
+// helper left the gate green, so "the wrapper moved" was undetectable and the
+// sanctioned-wrapper exemption below could silently guard nothing.
+//
+// Found by the mutation battery (scripts/ci/io-boundary.mutations.sh, S3), which
+// reported SURVIVED. It now counts real call sites with the same comment-skipping
+// rule the rest of the gate uses, so a moved implementation is a hard failure.
+if (countFetchSites(readFileSync(join(ROOT, WRAPPER), 'utf8')).length === 0) {
   violations.push(`${WRAPPER} no longer calls fetch() — gate is guarding the wrong file. Update WRAPPER.`);
 }
 
