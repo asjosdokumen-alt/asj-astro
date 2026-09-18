@@ -398,7 +398,21 @@ jobs:
     name: Batteries · every hermetic gate re-proven able to fail
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # THE JOB MUST OUTLAST ITS OWN WATCHDOG, or the wrong thing fires first.
+    # `npm run verify:batteries` runs under scripts/ci/with-timeout.mjs with a
+    # 120-minute budget, and each battery is separately capped at 15 minutes by
+    # the runner. A 30-minute JOB timeout would therefore kill the run before
+    # either of those could report, and a job timeout says only "30 minutes
+    # elapsed" — while the watchdog prints the budget, the command and the three
+    # things to check. Keep this ABOVE the watchdog's budget.
+    #
+    # 130 is 120 + a margin for checkout/setup, and it is a ceiling rather than a
+    # target: measured locally, the first 5 of the 20 hermetic batteries averaged
+    # ~190 s each (~63 min extrapolated). CI runners are generally faster. This
+    # number has not been measured on a full run yet, because the batteries job
+    # has never completed — it is currently skipped behind the Build job, which
+    # needs two repository variables.
+    timeout-minutes: 130
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-node-env
