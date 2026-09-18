@@ -390,11 +390,11 @@
       "blocking": true,
       "provenBy": "scripts/ci/verify-pwa.mutations.sh",
       "runs": [
-        "ci.yml#quality-gates"
+        "ci.yml#smoke"
       ],
-      "note": "Wired into ci.yml#quality-gates on 2026-09-15; it had been local-only (ci:predeploy, referenced by no workflow). Battery proven 2026-09-15: 6 killed / 0 survived / 2 ok-green — one case per guard (dead service worker, empty PRECACHE, backslash path, unrewritten dev VERSION, remote icon URL, icon missing on disk), each reproducing a regression that had already happened once. The two green controls matter as much: the untouched build must pass, and a remote canonical link must NOT be mistaken for an icon — the checks are scoped to rel=icon/apple-touch-icon and manifest icons[].src, and a gate that flagged any http:// would be switched off, taking every other guard with it.",
+      "note": "MOVED 2026-09-18 from ci.yml#quality-gates to ci.yml#smoke. It reads dist/sw.js, and quality-gates neither builds nor downloads an artifact, so the gate failed there on a precondition it could not satisfy — measured on the FIRST CI run this repository ever actually executed (step 11, 'Verify the PWA manifest and icons'). The smoke job downloads the built artifact and has the checkout's public/manifest.webmanifest, which is both inputs. C6 caught this move the moment the step changed but this manifest did not: 'verify:pwa -> ci.yml#quality-gates (job \"quality-gates\" does not invoke it)'. Originally wired into ci.yml#quality-gates on 2026-09-15; before that it had been local-only (ci:predeploy, referenced by no workflow). Battery proven 2026-09-15: 6 killed / 0 survived / 2 ok-green — one case per guard (dead service worker, empty PRECACHE, backslash path, unrewritten dev VERSION, remote icon URL, icon missing on disk), each reproducing a regression that had already happened once. The two green controls matter as much: the untouched build must pass, and a remote canonical link must NOT be mistaken for an icon — the checks are scoped to rel=icon/apple-touch-icon and manifest icons[].src, and a gate that flagged any http:// would be switched off, taking every other guard with it.",
       "battery": "ci",
-      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+      "batteryNote": "Hermetic with respect to credentials, a server and a database — but NOT self-contained: its input is BUILD OUTPUT. The battery reads dist/sw.js and REFUSES TO RUN when dist/ is absent (its own header says so, and it prints 'Run: npm run build'), because skipping cases would let it report green while proving nothing. So any job that runs this battery must have a build. Measured 2026-09-18: the CI 'batteries' job has no build step, which is one reason it fails there. Runs in CI on every PR via `npm run verify:batteries`."
     },
     {
       "script": "smoke",

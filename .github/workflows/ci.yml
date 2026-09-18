@@ -396,11 +396,28 @@ jobs:
   # that a gate marked "ci" does not reach for credentials, a server or a DB.
   batteries:
     name: Batteries · every hermetic gate re-proven able to fail
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-node-env
+
+      # WHY THIS JOB NEEDS THE ARTIFACT.
+      # `verify:pwa`'s battery reads dist/sw.js and REFUSES TO RUN when dist/ is
+      # absent — deliberately, because skipping cases would let it report green
+      # while proving nothing. This job used to run with no build at all, so that
+      # battery failed here on a precondition it could not satisfy and took the
+      # whole job down in 3.8 minutes (measured 2026-09-18, on the first CI run
+      # this repository ever actually executed).
+      #
+      # It DOWNLOADS the artifact rather than rebuilding, which matches the rule
+      # stated at the top of this file: the artifact under test is the artifact
+      # that ships, and nothing downstream rebuilds it.
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}
+
       - name: Re-run every hermetic mutation battery
         run: npm run verify:batteries
 
