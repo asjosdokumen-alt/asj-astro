@@ -178,13 +178,31 @@ describe('service-account resolution', () => {
     // Reproduces the exact state that destroyed the key: a fixture in FILE and
     // no BAK. recoverFromKilledRun() must throw, not return false — returning
     // false is what let the mutations proceed and overwrite the real key.
-    const saved = fs.readFileSync(FILE, 'utf8');
+    //
+    // THE CREDENTIAL MAY NOT EXIST, and in CI it never does: the file is
+    // gitignored, so a fresh checkout has no secrets/firebase-service-account.json
+    // at all. Reading it unconditionally made this test fail in CI with
+    // `ENOENT ... firebase-service-account.json` — measured 2026-09-18 on the
+    // first CI run this repository ever executed, and ONLY there: locally the
+    // real key is on disk, so the read succeeded and the test passed for a reason
+    // that had nothing to do with what it asserts.
+    //
+    // The state under test is constructed below either way; `saved` only records
+    // whether there was something to restore.
+    const saved = fs.existsSync(FILE) ? fs.readFileSync(FILE, 'utf8') : null;
     try {
       fs.writeFileSync(FILE, JSON.stringify({ client_email: 'x', private_key: 'FIXTUREVALUE' }));
       if (fs.existsSync(BAK)) fs.rmSync(BAK, { force: true });
       expect(() => recoverFromKilledRun()).toThrow(/TEST FIXTURE/);
     } finally {
-      fs.writeFileSync(FILE, saved); // put the real credential back, byte for byte
+      if (saved !== null) {
+        fs.writeFileSync(FILE, saved); // put the real credential back, byte for byte
+      } else if (fs.existsSync(FILE)) {
+        // There was no credential to restore, so leave the filesystem as we found
+        // it rather than stranding a fixture that a later run could mistake for a
+        // real one.
+        fs.rmSync(FILE, { force: true });
+      }
       if (fs.existsSync(BAK)) fs.rmSync(BAK, { force: true });
     }
   });
