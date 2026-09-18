@@ -141,12 +141,27 @@ echo "scope: $SCOPE_NOW file(s) checked by $TSCONFIG"
 # intended friction, because a silent change here is exactly what is being
 # guarded against.
 #
-# Measured as 37 (indexer/src/**/*.ts, minus excluded, plus the one docs/ file
-# tsconfig.indexer.json pulls in). An earlier hand-count of 38 included the
+# Measured as 38 (indexer/src/**/*.ts, minus excluded, plus the one docs/ file
+# tsconfig.indexer.json pulls in).
+#
+# 37 -> 38 (2026-09-18): +1 — indexer/src/count-indexed.test.ts, the measurement
+# tool that the inventory ratchets' comments had been telling readers to use
+# while it did not exist. T4 caught the addition in CI, which is precisely what
+# it is for: a file added to the indexer without a matching bump is the silent
+# change this number guards.
+#
+# WORTH RECORDING, because it cost real time. The SAME UNEXPECTED was visible in
+# a LOCAL run first, and was dismissed there as sandbox litter — that run also
+# had LEFTOVER failures in it, from a delete quota being exhausted, and the whole
+# batch was written off together. A real signal does not become environmental
+# because a noisy one sits beside it. Read each case on its own before
+# attributing a run to the environment.
+#
+# An earlier hand-count of 38 was wrong for a different reason: it included the
 # temporary probe file the count was taken alongside — the same off-by-one an
 # instrument-inside-the-measured-tree produces, which this repo's memory already
 # records for the indexer inventory ratchet.
-SCOPE_EXPECTED=37
+SCOPE_EXPECTED=38
 if [ "$SCOPE_NOW" -eq "$SCOPE_EXPECTED" ]; then
   echo "OK-GREEN   -      T4  scope is $SCOPE_EXPECTED file(s), as expected"
   results+=("OK-GREEN T4 scope count $SCOPE_EXPECTED")
