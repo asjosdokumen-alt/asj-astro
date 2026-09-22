@@ -55,12 +55,30 @@ const TEL_HREF = (raw: string) => `tel:+62${raw.replace(/\D/g, '').replace(/^0/,
         <!-- Col 2: Quick Links -->
         <div class="flex flex-col gap-3">
           <h3 class="text-caption uppercase font-bold text-fg-subtle tracking-wider" data-lang="footer.nav_heading">Navigasi</h3>
-          <nav class="flex flex-col gap-2" aria-label="Footer navigation">
-            <a href="#program" class="text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_program">Program</a>
-            <a href="#alur" class="text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_alur">Alur Pendaftaran</a>
-            <a href="#fasilitas" class="text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_fasilitas">Fasilitas</a>
-            <a href="#tentang" class="text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_tentang">Tentang Kami</a>
-            <a href="/loker" class="text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_loker">Lowongan Kerja</a>
+          <nav class="flex flex-col" aria-label="Footer navigation">
+            {/*
+              Each link carries `min-h-11` (44px) -- the project's documented
+              touch floor (DESIGN.md:582, :691 "Target sentuh | >=44 px").
+
+              MEASURED 2026-09-22 at a 390px viewport, before this change: every
+              link rendered 343x23 and the list used `gap-2` (8px), so the
+              effective vertical rhythm was 31px -- well under the floor, and
+              these are the five primary navigation targets a thumb has to hit.
+
+              WHY PADDING ON THE ANCHOR AND NOT A BIGGER GAP. WCAG 2.5.5 measures
+              the TARGET, and a gap is not part of the target: `gap-4` would have
+              spaced them visually while leaving each link a 23px-tall hit box
+              with dead space around it. Padding puts the 44px on the element
+              that actually receives the tap. `gap-2` is therefore removed and
+              `items-start` keeps each link as wide as its text instead of
+              stretching to the column width, so the hover underline and the
+              pointer cursor do not extend across empty space.
+            */}
+            <a href="#program" class="min-h-11 inline-flex items-center text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_program">Program</a>
+            <a href="#alur" class="min-h-11 inline-flex items-center text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_alur">Alur Pendaftaran</a>
+            <a href="#fasilitas" class="min-h-11 inline-flex items-center text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_fasilitas">Fasilitas</a>
+            <a href="#tentang" class="min-h-11 inline-flex items-center text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_tentang">Tentang Kami</a>
+            <a href="/loker" class="min-h-11 inline-flex items-center text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_loker">Lowongan Kerja</a>
           </nav>
         </div>
 
@@ -86,15 +104,24 @@ const TEL_HREF = (raw: string) => `tel:+62${raw.replace(/\D/g, '').replace(/^0/,
         <!-- Col 4: Contact -->
         <div class="flex flex-col gap-3">
           <h3 class="text-caption uppercase font-bold text-fg-subtle tracking-wider" data-lang="footer.contact_heading">Kontak</h3>
-          <div class="flex flex-col gap-2 text-body-sm text-fg-muted">
-            <span>{CONTACT_ADDRESS}</span>
-            <a id="footer-tel" href={TEL_HREF(CONTACT_PHONES[0])} class="hover:text-fg transition-colors">
+          {/*
+            Same 44px floor as the nav column above (DESIGN.md:582, :691).
+            MEASURED 2026-09-22 at 390px: the three tap links (two phones, one
+            mailto) rendered 343x23 each. The address stays a plain <span> --
+            it is not interactive, so it must NOT grow, which is why the floor is
+            applied per-anchor rather than to the column. `gap-1` then keeps the
+            visual rhythm close to the previous `gap-2` now that the links carry
+            their own padding.
+          */}
+          <div class="flex flex-col gap-1 text-body-sm text-fg-muted">
+            <span class="py-1">{CONTACT_ADDRESS}</span>
+            <a id="footer-tel" href={TEL_HREF(CONTACT_PHONES[0])} class="min-h-11 inline-flex items-center hover:text-fg transition-colors">
               <Icon name="phone" class="mr-1.5 text-accent-sky" />{CONTACT_PHONES[0]}
             </a>
-            <a href={TEL_HREF(CONTACT_PHONES[1])} class="hover:text-fg transition-colors">
+            <a href={TEL_HREF(CONTACT_PHONES[1])} class="min-h-11 inline-flex items-center hover:text-fg transition-colors">
               <Icon name="phone" class="mr-1.5 text-accent-sky" />{CONTACT_PHONES[1]}
             </a>
-            <a href={`mailto:${CONTACT_EMAIL}`} class="hover:text-fg transition-colors">
+            <a href={`mailto:${CONTACT_EMAIL}`} class="min-h-11 inline-flex items-center hover:text-fg transition-colors">
               <Icon name="envelope" class="mr-1.5 text-accent-sky" />{CONTACT_EMAIL}
             </a>
           </div>

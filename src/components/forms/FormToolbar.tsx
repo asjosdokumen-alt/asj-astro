@@ -34,11 +34,27 @@ export default function FormToolbar({ title, titleKey }: Props) {
       {(titleKey ? t(titleKey) : title) && (
         <h1 class="min-w-0 flex-1 px-2 text-center text-xs font-bold text-slate-300 truncate">{titleKey ? t(titleKey) : title}</h1>
       )}
+      {/*
+        `min-h-11` (44px) on both controls -- the project's documented touch
+        floor (DESIGN.md:582, :691 "Target sentuh | >=44 px").
+
+        MEASURED 2026-09-22 at a 390px viewport, before this change: both
+        rendered 31px tall (`px-2.5 py-1.5` on `text-[11px]`). These are the same
+        two controls already brought to the floor in `App.tsx` (the landing
+        header); leaving this copy at 31px would have made the theme toggle a
+        different size depending on which page you were on.
+
+        `min-h-` rather than `h-`: the label text sits beside an icon and the
+        padding is asymmetric, so a fixed height would centre the content by
+        clipping rather than by layout. The bar itself is `py-2`, so it grows by
+        13px per control -- measured, not assumed: the toolbar is 8px taller at
+        390px after this change, which keeps it well inside the thumb zone.
+      */}
       <div class="flex items-center gap-2">
-        <button onClick={toggleTheme} aria-label="Toggle theme" class="px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
+        <button onClick={toggleTheme} aria-label="Toggle theme" class="min-h-11 px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
           <Icon name={isDark ? "moon" : "sun"} /> {isDark ? "Dark" : "Light"}
         </button>
-        <button onClick={toggleLang} aria-label="Toggle language" class="px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
+        <button onClick={toggleLang} aria-label="Toggle language" class="min-h-11 px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
           <Icon name="language" /> {lang === "id" ? "ID" : "JP"}
         </button>
       </div>

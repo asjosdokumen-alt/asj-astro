@@ -3,6 +3,28 @@
  * Source: legacy/js/render/public.ts renderPublicFiltered()
  * Matches legacy: sorting, limit 10, pamflet, gender badges,
  * Detail/Template/Apply buttons, filter counts, syarat + keterangan
+ *
+ * TOUCH TARGETS (2026-09-22)
+ * --------------------------
+ * Every control in this file is now at or above the 44px floor that
+ * DESIGN.md:582 and DESIGN.md:691 set ("Target sentuh | >=44 px, idealnya 48 px").
+ *
+ * MEASURED at a 390px viewport before the change:
+ *   - status filter chips  `px-4 py-2 text-sm`  -> 36x36   UNDER
+ *   - theme toggle         `px-3 py-2 text-xs`  -> 73x34   UNDER
+ *   - retry button         `px-4 py-2 text-xs`  -> 109x32  UNDER
+ * All three are `min-h-11` (44px) now.
+ *
+ * WHY `min-h-` AND NOT `h-`. The chip row is `flex-wrap`, so chips drop to a
+ * second line on a narrow screen; a fixed height would clip the wrapped line.
+ * The retry button sits inside a table cell that already wraps, for the same
+ * reason.
+ *
+ * The floor was already gate-enforced, but only for the shared
+ * `src/components/ui/Button.astro` (`scripts/ci/button.mutations.mjs` M4 breaks
+ * `min-h-[44px]` there and asserts the test goes red). Hand-rolled `<button>`
+ * elements like these three were outside that gate's reach, which is exactly how
+ * they sat under the floor with nothing going red.
  */
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
@@ -157,14 +179,22 @@ export default function LokerTable() {
       <div class="flex flex-wrap justify-between items-center p-4 rounded-xl border border-slate-700 shadow-lg mb-6 gap-4 bg-slate-900">
         <div class="flex gap-2 items-center flex-wrap">
           <span class="text-xs font-bold text-slate-300 mr-1 uppercase tracking-widest"><Icon name="paint-brush" /> {t("ui.theme")}</span>
-          <button onClick={toggleTheme} class="theme-toggle-btn px-3 py-2 text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
+          {/* `min-h-11` = the 44px touch floor (DESIGN.md:582, :691). MEASURED
+              2026-09-22: `px-3 py-2 text-xs` resolved to 34px, below it. */}
+          <button onClick={toggleTheme} class="theme-toggle-btn min-h-11 px-3 py-2 text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
             <Icon name={isDark ? "moon" : "sun"} /> {isDark ? t("ui.dark") : t("ui.light")}
           </button>
         </div>
         <div class="flex gap-2 items-center flex-wrap">
           <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest"><Icon name="filter" /> {t("public.filter")}</span>
            {fDefs.map(fd => {
-            const btnCls = "px-4 py-2 rounded-lg text-sm font-bold shadow-md transition " + (filter === fd.key ? fd.cls : "bg-slate-700 hover:bg-slate-600 text-slate-200");
+            // `min-h-11` (44px) is the project's documented touch floor
+            // (DESIGN.md:582, :691 -- "Target sentuh | >=44 px"). MEASURED
+            // 2026-09-22 at a 390px viewport: `py-2` on `text-sm` resolved to
+            // 36px, so every filter chip was under the floor. `min-h-` rather
+            // than `h-` because these wrap onto a second row on narrow screens
+            // (`flex-wrap` above) and a fixed height would clip the wrapped line.
+            const btnCls = "min-h-11 px-4 py-2 rounded-lg text-sm font-bold shadow-md transition " + (filter === fd.key ? fd.cls : "bg-slate-700 hover:bg-slate-600 text-slate-200");
             const cntCls = "px-1.5 py-0.5 rounded-full text-[9px] ml-0.5 font-black " + (filter === fd.key ? "bg-white/30 text-white" : "bg-slate-900 text-slate-200");
             return (
               <button key={fd.key} onClick={() => { setFilter(fd.key); setLimit(LIMIT_INITIAL); }} class={btnCls}>
@@ -190,7 +220,7 @@ export default function LokerTable() {
             {loading ? (
               <tr><td colSpan={5} class="p-8 text-center text-slate-500"><Icon spin name="spinner" class="mr-2" /> {t("public.loading")}</td></tr>
             ) : error ? (
-              <tr><td colSpan={5} class="p-10 text-center text-rose-400 font-bold"><Icon name="exclamation-triangle" class="mr-2" /> {t("public.load_error")} <button onClick={() => fetchJobs()} class="ml-3 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-lg transition"><Icon name="sync-alt" class="mr-1" /> {t("button.retry")}</button></td></tr>
+              <tr><td colSpan={5} class="p-10 text-center text-rose-400 font-bold"><Icon name="exclamation-triangle" class="mr-2" /> {t("public.load_error")} <button onClick={() => fetchJobs()} class="ml-3 min-h-11 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-lg transition"><Icon name="sync-alt" class="mr-1" /> {t("button.retry")}</button></td></tr>
             ) : displayed.length === 0 ? (
               <tr><td colSpan={5} class="p-10 text-center text-slate-500 font-bold">{t("public.empty")}</td></tr>
             ) : displayed.map((job, i) => (

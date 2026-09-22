@@ -278,11 +278,27 @@ export default function App(
             for both viewports (the user picks the drawer icon, the same
             drawer slides in). Desktop keeps just the language toggle
             inline so flipping id⇄jp stays one tap. */}
+        {/* ─── The two header controls are sized to the project's own touch floor.
+             MEASURED 2026-09-22, at a 390px viewport, before this change:
+             the hamburger rendered 40x40 and the language toggle 36x36, while
+             DESIGN.md:582 ("Tinggi minimum | 44 px") and DESIGN.md:691
+             ("Target sentuh | >=44 px, idealnya 48 px") both require 44. The rule
+             was already gate-enforced, but only for the shared Button.astro --
+             `scripts/ci/button.mutations.mjs` M4 breaks
+             `min-h-[44px]` there and asserts the failure. Hand-rolled buttons
+             like these two were outside that gate's reach, which is exactly how
+             they drifted under the floor without anything going red.
+
+             Sizes are now literal 11 (44px) rather than a min-h, because these
+             are fixed icon buttons inside a rounded-full pill: a min-height
+             would let the circle stay 40px tall while only the tap box grew,
+             which reads as a misaligned control. `gap-2` is unchanged, so the
+             two still sit on the same baseline. */}
         <div class="absolute top-4 right-4 z-30 flex items-center gap-2">
-          <button onClick={toggleLang} class="hidden md:flex w-9 h-9 items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full border border-white/40 transition shadow-md" aria-label="Toggle language" title={lang === "id" ? "ID" : "JP"}>
+          <button onClick={toggleLang} class="hidden md:flex w-11 h-11 items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full border border-white/40 transition shadow-md" aria-label="Toggle language" title={lang === "id" ? "ID" : "JP"}>
             <span class="text-[11px] font-bold">{lang === "id" ? "ID" : "JP"}</span>
           </button>
-          <button ref={hamburgerRef} onClick={toggleMenu} class="w-10 h-10 flex items-center justify-center bg-black/70 hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
+          <button ref={hamburgerRef} onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center bg-black/70 hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
             <Icon name={menuOpen ? "times" : "bars"} class="text-lg" />
           </button>
         </div>

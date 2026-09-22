@@ -90,6 +90,28 @@ const EMPTY: Fields = { nama: '', noWa: '', subjek: '', pesan: '', perusahaan: '
  */
 const MAX = { nama: 120, noWa: 40, subjek: 160, pesan: 4000 } as const;
 
+/**
+ * The shared class for the four text fields.
+ *
+ * WHY IT IS A CONSTANT AND NOT REPEATED FOUR TIMES. It was repeated four times,
+ * byte-identically, which is how the field height drifted out of compliance
+ * without anyone noticing: there was no single place that represented "the field
+ * height", so there was nothing to check.
+ *
+ * MEASURED 2026-09-22 at a 390px viewport, before this change: each field
+ * rendered 295x40. DESIGN.md:582 sets the minimum at 44px and, for buttons
+ * inside a mobile form, at 48px. Submitting this form is the single conversion
+ * the contact section exists for, so it gets the 48px tier rather than the 44px
+ * floor. The submit button beside these fields already carried
+ * `min-h-[44px]` (see the comment on it below), so the fields were the only
+ * controls in this form under the standard.
+ *
+ * `min-h-12` (48px) and not `h-12`: the `pesan` field is a `resize-y` textarea
+ * and a fixed height would fight the resize handle.
+ */
+const FIELD_CLASS =
+  'min-h-12 rounded-control border border-line bg-surface px-3 py-2 text-body-sm text-fg';
+
 export default function ContactForm() {
   const _lang = useStore(langStore);
   const [f, setF] = useState<Fields>(EMPTY);
@@ -183,7 +205,7 @@ export default function ContactForm() {
             autocomplete="name"
             value={f.nama}
             onInput={set('nama')}
-            class="rounded-control border border-line bg-surface px-3 py-2 text-body-sm text-fg"
+            class={FIELD_CLASS}
           />
         </label>
 
@@ -202,7 +224,7 @@ export default function ContactForm() {
             placeholder="08xx-xxxx-xxxx"
             value={f.noWa}
             onInput={set('noWa')}
-            class="rounded-control border border-line bg-surface px-3 py-2 text-body-sm text-fg"
+            class={FIELD_CLASS}
           />
         </label>
       </div>
@@ -219,7 +241,7 @@ export default function ContactForm() {
           maxLength={MAX.subjek}
           value={f.subjek}
           onInput={set('subjek')}
-          class="rounded-control border border-line bg-surface px-3 py-2 text-body-sm text-fg"
+          class={FIELD_CLASS}
         />
       </label>
 
@@ -235,7 +257,7 @@ export default function ContactForm() {
           maxLength={MAX.pesan}
           value={f.pesan}
           onInput={set('pesan')}
-          class="rounded-control border border-line bg-surface px-3 py-2 text-body-sm text-fg resize-y"
+          class={`${FIELD_CLASS} resize-y`}
         />
       </label>
 
