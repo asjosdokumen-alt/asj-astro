@@ -49,7 +49,10 @@ liabilitas.
 
 **§1.2(8) & §8.1(c) — "baseline lint 2712" ⇒ 2571.**
 Sumbernya `.ci/biome-baseline.json` (`generatedAt` 2026-09-16T15:32:44Z, `total: 2571`); terukur
-sekarang **2550**. Angka 2712 sudah basi sejak sebelum dokumen ini ditulis.
+saat itu **2550**. Angka 2712 sudah basi sejak sebelum dokumen ini ditulis.
+**Diukur ulang 2026-09-23: beku di `2475` (`generatedAt` 2026-09-20T16:03:59.520Z).** Rantai
+turunnya 2712 → 2571 → 2550 → 2499 → 2475; **selalu** baca dari
+`.ci/biome-baseline.json`, jangan dari prosa dokumen ini — setiap angka di sini sudah pernah basi.
 
 ### Dua cacat yang TIDAK tercatat di dokumen ini, ditemukan 2026-09-17
 
@@ -77,12 +80,19 @@ dengan `MISSING DEPENDENCY`. Butir itu karena itu lebih tepat dibaca sebagai "sk
 |---|---|---|
 | **CI / Gate** | 1 gate yatim (`depcruise`); job `batteries` **ada tapi belum pernah dieksekusi** — **sebab akhir (2026-09-17): `_notify.yml` memakai `secrets` di `if:` ⇒ GitHub menolak SELURUH berkas ⇒ 32 run, 32 gagal, 0 job**, dan deploy/rollback ikut mati karena memanggil berkas yang sama. **Dua sebab sebelumnya (izin push, berkas tak ter-track) terukur salah** — lihat §1.1(a); 2 skrip e2e yatim | Infrastruktur + keputusan |
 | **Backend** | #2 push; #4/#5/#6 butuh staging; #7 alert rules; #26/#28/#30 aksi owner | Owner + infra, **bukan kode** |
-| **Frontend** | 4 modal tanpa `useOverlay`; `fetch` mentah di `TabPelamar`; `getAppData` kirim payload penuh | Kode, berukuran kecil–sedang |
-| **UI / Desain** | 5 overlay tanpa semantik; drawer tanpa Escape; jebakan fokus 18 kontainer belum diukur | Kode + keputusan desain |
-| **Database** | 270 diagnostik a11y (bukan DB) — DB sendiri bersih: 0 wildcard, RLS 25/25 | Terkendali |
+| **Frontend** | ~~4 modal tanpa `useOverlay`~~ (**0 — selesai**); ~~`fetch` mentah di `TabPelamar`~~ (**0 situs `fetch(getEndpoint())` — selesai**); `getAppData` kirim payload penuh | **Hanya (c) tersisa** — butuh perubahan backend |
+| **UI / Desain** | 5 overlay tanpa semantik (**selesai**); drawer tanpa Escape (**selesai**); jebakan fokus 18 kontainer belum diukur | Kode + keputusan desain |
+| **Database** | ~~270 diagnostik a11y~~ (bukan DB) — DB sendiri bersih: 0 wildcard, RLS 25/25 | Terkendali |
 | **OP / Observabilitas** | #3 buktikan sink **menerima** di Grafana; A1–A7 jadi alert rule; staging | Infra + verifikasi |
 | **Keamanan** | 3 kredensial hidup perlu revoke/rotasi; `npm audit` report-only | **Aksi owner** |
 | **Arsitektur** | G-08: tak ada gate "exported symbol benar-benar dipakai"; `depcruise` vs `boundary` belum diputuskan | Keputusan + tool |
+
+> **Koreksi 2026-09-23 pada tabel ini.** Dua baris **Frontend** dinyatakan terbuka padahal terukur
+> **nol pekerjaan tersisa**: adopsi `useOverlay` sudah 5/5 (§3.1(a)) dan situs
+> `fetch(getEndpoint(...))` sudah **0** dari 27 yang dicatat (§3.1(b2)). Baris **Database** mencantumkan
+> "270 diagnostik a11y" sebagai terbuka — itu **bukan** disiplin Database dan angkanya sudah basi
+> (baseline lint kini beku di **2475**, lihat §8.1(c)); utang a11y yang benar ada di §4.1(d).
+> Koreksi ini penting justru karena tabel inilah yang dibaca orang pertama.
 
 ---
 
@@ -93,6 +103,8 @@ dengan `MISSING DEPENDENCY`. Butir itu karena itu lebih tepat dibaca sebagai "sk
 **(a) Baterai mutasi: wiring SUDAH ADA, tapi BELUM PERNAH DIEKSEKUSI — TERUKUR 2026-09-16.**
 *(Dikoreksi 2026-09-16: baris ini dulu berbunyi "tidak dijalankan CI mana pun" dan menyebutnya
 temuan terbesar. Itu sudah basi — lihat di bawah.)*
+***Dikoreksi lagi 2026-09-23: sebabnya sudah DIPERBAIKI di HEAD — lihat "Status 2026-09-23" di
+bawah sebelum membaca sisa butir ini.***
 
 Wiring-nya lengkap dan terukur: `package.json` punya **`verify:batteries`** (runner yang membaca
 field `battery` dari manifest, bukan daftar tangan — jadi himpunannya tidak bisa menyimpang dari
@@ -154,6 +166,33 @@ disengaja, bukan kelalaian).
 **19 baterai hermetik**, tapi angka itu baru bermakna **setelah job-nya benar-benar dieksekusi**.
 Sebab empat run pertama salah membaca ada di `docs/CI_BATTERY_RUNNER_STATUS.md` (2026-09-16).
 
+#### Status 2026-09-23 — sebab utamanya SUDAH DIPERBAIKI di HEAD
+
+Diukur ulang 2026-09-23 pada `origin/main` = HEAD (`adaaa12`), pohon bersih:
+
+```bash
+git show HEAD:.github/workflows/_notify.yml | grep -n "if:.*secrets\."
+#   (tidak ada hasil)  <- bug `secrets` di `if:` SUDAH HILANG
+```
+
+Perbaikannya **benar-benar mendarat di commit**, bukan hanya di pohon kerja — inilah yang
+§(a) 2026-09-18 keluhkan (`42b2a9b` dan `c201003` tidak ada). Yang terukur sekarang:
+
+| klaim lama | status terukur 2026-09-23 |
+|---|---|
+| `_notify.yml` memakai `secrets` di `if:` | **diperbaiki di HEAD** — 0 kemunculan |
+| `verify-workflows.mjs` tidak ada di HEAD | **ada** (`git show HEAD:scripts/ci/verify-workflows.mjs` → sukses) |
+| `42b2a9b` / `c201003` tidak dapat dibaca | **masih tidak ada** (histori ditulis ulang; perbaikannya hidup di hash lain, yaitu `7c2d0b8`) |
+| `7c2d0b8`, `7d2b34a`, `490b74b`, `2bc113c` | **ada** — `git cat-file -t` → `commit` |
+| `src/lib/profileProgress.ts` tidak ada di HEAD | **ada** |
+| Branch/posisi | `origin/main` = HEAD, **0 di depan / 0 di belakang** — tidak ada backlog commit |
+
+**Jadi blokir "32 run, 32 gagal, 0 job" sudah tidak berlaku sebagai sebab.** Yang **belum**
+berubah hanyalah tingkat bukti tertinggi: apakah job `batteries` benar-benar **dieksekusi**
+sejak perbaikan itu. Itu **tidak dapat dibaca dari pohon** — §(a) di atas sendiri menyatakan
+tingkat itu hanya terbaca dari anotasi GitHub. Jangan menulis butir ini "selesai" tanpa
+memeriksa anotasi run terakhir; dan jangan menulisnya "masih terblokir" tanpa memeriksanya juga.
+
 **(b) `depcruise` — gate yatim.** `runs: []`, `provenBy: null`, `blocking: false`. Tidak pernah
 dipanggil workflow mana pun. Sengaja dibiarkan advisory sampai diputuskan mana yang otoritatif
 antara `depcruise` dan `npm run boundary` (audit A-07).
@@ -196,7 +235,7 @@ tapi tidak ada gate otomatis yang menjaganya.
 7. **Satu gate, satu verdict.** Jangan menggabungkan beberapa gate jadi satu langkah CI — status
    merah harus menyebut gate mana yang rusak (`ci.yml` `quality-gates` sudah benar begini).
 8. **Jangan longgarkan ratchet untuk melewatkan PR.** Lint ratchet **hanya boleh turun**;
-   baseline beku di `.ci/biome-baseline.json` (sekarang **2712**).
+   baseline beku di `.ci/biome-baseline.json` (sekarang **2475**).
 
 ---
 
@@ -267,17 +306,27 @@ memeriksa health.
 tidak punya Escape, tidak punya pemulihan fokus**. Cacatnya **lebih besar dari nama**:
 manajemen keyboard-nya memang belum ada.
 
-| berkas | catatan |
-|---|---|
-| `src/components/admin/ListKandidatModal.tsx` | modal admin, interaktif |
-| `src/components/ui/RirekishoBuilder.tsx` | builder CV |
-| `src/components/admin/AdminAiCopilot.tsx` | copilot AI |
-| `src/components/admin/RejectMailModal.tsx` | modal kirim email |
+> **⚠️ SELESAI — dikoreksi 2026-09-23.** Butir ini sudah ditandai selesai di §⚠️ 2026-09-17 di atas,
+> tetapi tabel di bawah masih menampilkannya sebagai terbuka — pembaca yang masuk lewat §0 atau
+> lewat tabel ini akan mengejar pekerjaan yang sudah tidak ada. Diukur ulang 2026-09-23:
+> `grep -c useOverlay` pada **kelima** berkas di bawah = **2 masing-masing**, tanpa kecuali.
+> **Dua path di tabel lama juga SALAH** — berkasnya sudah pindah direktori, jadi perintah apa pun
+> yang memakai path lama akan gagal (`test -f` → tidak ada) dan itu mudah disalahartikan sebagai
+> "berkasnya tidak punya hook". Path terukur ada di kolom `berkas`.
 
-Plus `EsignNaiteiModal:304` (permukaan gambar layar penuh).
+| berkas (path terukur 2026-09-23) | catatan | `useOverlay` |
+|---|---|---|
+| `src/components/admin/ListKandidatModal.tsx` | modal admin, interaktif | **2** |
+| `src/components/admin/RirekishoBuilder.tsx` | builder CV *(dulu `src/components/ui/`)* | **2** |
+| `src/components/admin/AdminAiCopilot.tsx` | copilot AI | **2** |
+| `src/components/admin/RejectMailModal.tsx` | modal kirim email | **2** |
+| `src/components/EsignNaiteiModal.tsx` | permukaan gambar layar penuh *(dulu `src/components/admin/`)* | **2** |
 
-**Memperbaikinya = mengadopsi `useOverlay` di lima tempat**, dengan perubahan perilaku yang
-**butuh pengujian sendiri** — bukan penambahan atribut seragam.
+Jadi **"4 modal tanpa hook = 5 total adopsi"** di butir (f) juga sudah tidak berlaku — 0 sisa.
+Yang **masih** berlaku dari butir ini hanyalah peringatan metodologisnya: adopsi hook adalah
+perubahan perilaku yang **butuh pengujian sendiri**, bukan penambahan atribut seragam — dan
+cakupan gate-nya memang terbatas (§4.1(c), 18 kontainer lain hanya terjaga lewat kontrak hook
+yang sama, bukan diukur satu per satu).
 
 **(b) `fetchKandidatFromAPI` (`TabPelamar`) masih `fetch()` mentah dan tidak lewat cache.**
 Belum diubah karena tidak ada keluhan latensi di sana. Kalau dibiarkan, ia **tidak** melanggar
@@ -299,23 +348,51 @@ menampilkan "Network error: HTTP 500: Internal Server Error" padahal server suda
 yang berguna. Buktinya **mutasi, bukan asumsi**: 2 dari 4 kasus baru MATI saat `throw` lama
 dikembalikan, 2 sisanya sengaja OK-GREEN karena mengunci fallback yang juga dipenuhi kode lama.
 
-**Sisa terukur (2026-09-17, sesudah dua batch): 18 situs di 12 berkas — 14 di antaranya bisa
-dikonversi, 4 sudah terdokumentasi sebagai pengecualian.** Yang sudah selesai:
-`adminStore.fetchMailFromAPI` + `uploadBerkas` (`131593a`), lalu `EsignNaiteiModal` +
-`EditCandidateModal` (`simpanDataTtdNaitei`, `updateKandidatSuper`, `simpanBerkasTahapan`).
+**⚠️ KOREKSI 2026-09-23 — SELURUH hitungan sisa di atas sudah BASI. Terukur ulang: 0 (nol) situs
+`fetch(getEndpoint(...))` di `src/`.**
 
-Sisa yang **bisa** dikonversi — 14 situs di 8 berkas: `ApplyFullForm` 3, `MasterFullForm` 3,
-`AiCvForm` 2, `CandidateDash` 2, `CekSiswaModal` 1, `PemberkasanModal` 1, `SiswaBaruForm` 1,
-`LoginModal` 1.
+Baris "27 sisanya masih terbuka" (dan varian "18 situs di 12 berkas — 14 bisa dikonversi" di bawahnya)
+sudah tidak benar. Diukur 2026-09-23 dengan dua perintah independen:
 
-Empat yang **tidak** dihitung sebagai sisa:
-- `lib/apiEndpoint.ts` — sebuah **komentar** di kepala berkas, bukan situs. Penghitung manual yang
-  naif melaporkannya sebagai satu situs; ia bukan, dan itu sebabnya angkanya pernah "21" bukan "20".
-- `lib/publicData.ts` — cache single-flight yang memang dirancang **menembak ulang setelah settle**;
-  cache 30 s milik klien akan mengubah perilaku itu.
-- `forms/ShareView.tsx` — `share-data` adalah **GET** dengan query string, bukan envelope POST action
-  (kepala handler-nya menyatakan itu). Klien hanya bisa POST action.
-- `admin/CandidateProfileModal.tsx` — satu situs, mengoper `signal: controller.signal`; lihat di bawah.
+```bash
+grep -rn "getEndpoint" src/ --include=*.ts --include=*.tsx | grep -v "\.test\."
+#   4 kemunculan, TIDAK SATU PUN situs fetch:
+#     src/lib/apiClient.ts:292      const endpoint = getEndpoint(action);   <- implementasi klien
+#     src/lib/apiEndpoint.ts:138    export function getEndpoint(...)        <- definisi
+#     src/components/forms/SiswaBaruForm.tsx:10   <- di dalam KOMENTAR
+#     src/store/adminStore.ts:152   <- di dalam KOMENTAR
+# Dan `fetch(getEndpoint(...))` sebagai satu ekspresi: 0.
+
+grep -rn "fetch(" src/ --include=*.ts --include=*.tsx | grep -v "\.test\." \
+  | grep -v "apiClient\|kernel/http\|apiEndpoint"
+#   5 situs fetch mentah — SEMUANYA di luar envelope action, lihat tabel di bawah.
+```
+
+Jadi pekerjaan "konversi 14 situs" itu **sudah selesai**, dikerjakan antara 2026-09-17 dan
+2026-09-23. `apiClient` sekarang dipakai **58 kali** di `src/` (naik dari 80 pemakaian lawas yang
+doc ini catat dengan 30 situs mentah di 18 berkas).
+
+**Lima situs `fetch` mentah yang tersisa, dan mengapa masing-masing BUKAN utang:**
+
+| berkas:baris | kenapa bukan sisa |
+|---|---|
+| `lib/publicData.ts:21` | cache **single-flight** yang memang dirancang menembak ulang setelah settle; cache 30 s milik klien akan mengubah perilaku itu |
+| `forms/ShareView.tsx:122` | `share-data` adalah **GET** dengan query string, bukan envelope POST action (kepala handler-nya menyatakan itu). Klien hanya bisa POST action |
+| `lib/cloudinary.ts:38` | upload ke **URL signed pihak ketiga** (Cloudinary) — bukan endpoint aplikasi, tak punya action |
+| `lib/uploadBerkas.ts:59` | `PUT` ke **`entry.signedUrl`** — pre-signed storage URL, bukan endpoint aplikasi |
+| `components/DocumentPreviewModal.tsx:99` | `fetch(url)` untuk **objek blob** pratinjau dokumen — bukan permintaan API sama sekali |
+
+Keempat situs di luar `publicData`/`ShareView` semuanya **I/O ke luar batas aplikasi** (storage
+pihak ketiga atau blob), sehingga tidak ada action yang bisa dipetakan ke sana. Yang benar-benar
+tinggal adalah **`CandidateProfileModal`** — bukan karena `fetch` mentah, melainkan karena ia
+mengoper **`signal: controller.signal`** untuk pembatalan saat unmount; `apiClient` belum punya
+opsi `signal`, jadi mengonversinya = kehilangan pembatalan (regresi). Lihat catatan di bawah.
+
+**Pelajaran yang berlaku di sini, dan persis yang §9 butir 2 dokumen ini sendiri tulis:** baris
+"BELUM" bertahan lama setelah pekerjaannya selesai. Angka sisa §3.1(b2) melewati **tiga** audit
+ulang (2026-09-17 ×2, 2026-09-18) tanpa ada yang mengukur ulang himpunannya. Pola yang sama
+terulang di §3.1(a) — yang di §⚠️ 2026-09-17 sudah ditandai "sudah selesai" tetapi tabel §3.1(a)
+di bawah **masih** menampilkan keempat modal itu sebagai terbuka.
 
 **Resep yang SUDAH DIJALANKAN** — `ListKandidatModal` (`83b3541`), `InputManualModal`, dan
 `CandidateProfileModal` (satu situs; satunya sengaja ditinggal, lihat di bawah):
@@ -494,8 +571,10 @@ ber-sesi**: modal detail lowongan, modal pamflet (bertumpuk), scrim drawer, laye
 **Delapan belas kontainer `useOverlay` lain** hanya tercakup **lewat kontrak hook yang sama** —
 bukan diukur satu per satu. Yang membuktikan kontraknya adalah pemeriksaan langsung + baterai.
 
-**(d) Utang a11y terukur — 270 diagnostik di 5 aturan** (bagian dari **2571** baseline lint;
-  angka 2026-09-16, sesudah `noLabelWithoutControl` = 0). Dua angka ini beda **cakupan**:
+**(d) Utang a11y terukur — 270 diagnostik di 5 aturan** (bagian dari baseline lint; angka
+  2026-09-16, sesudah `noLabelWithoutControl` = 0). **Baseline total saat itu 2571, kini beku di
+  2475** (§8.1(c)) — utang a11y ini sendiri belum diukur ulang sejak 2026-09-16, jadi **270 adalah
+  angka lama**; yang mengikat tetap diagnostik lint berbasis AST. Dua angka ini beda **cakupan**:
   **270** dihitung atas `src/` saja, sedangkan baseline lint dihitung atas **seluruh repo**.
   Diukur, keduanya kebetulan **sama** (270) karena aturan a11y hanya menyala di `.tsx`, dan
   seluruh `.tsx` berada di `src/`.
@@ -643,7 +722,7 @@ alatnya. Alat dead-code (mis. `knip`) akan menutupnya. Terukur: tak ada `knip`/`
 **(b) A-07 — dua pemeriksa layering bersaing, satu tersambung.** `depcruise` vs `boundary`.
 Butuh keputusan mana yang otoritatif.
 
-**(c) 2712 diagnostik lint dibekukan.** Ratchet memastikan **hanya boleh turun**. Sebaran terbesar:
+**(c) 2475 diagnostik lint dibekukan (terukur 2026-09-23).** Ratchet memastikan **hanya boleh turun**. Sebaran terbesar:
 `useTemplate` 768 · `noExplicitAny` 445 · `noNonNullAssertion` 290 · `useOptionalChain` 253.
 
 **(d) G-03 — cakupan diwajibkan checklist, tak diukur apa pun.** `test:coverage` ada, **tanpa
@@ -727,7 +806,7 @@ git rev-list --count a5f9549..HEAD
 npm run verify:review-manifest     # 24 gate; 22/22 blocking proven; 0 yatim
 npm run verify:io                  # 6 bypass diketahui, semuanya allow-listed
 npm run verify:projections         # 0 wildcard / 189 berkas
-npm run lint-ratchet               # 2712 dibekukan, hanya boleh turun
+npm run lint-ratchet               # 2475 dibekukan, hanya boleh turun
 npm run verify:md                  # 58 berkas (57 sebelum dokumen ini ditambahkan)
 npm run cold:start                 # butuh --url untuk pengukuran nyata
 
