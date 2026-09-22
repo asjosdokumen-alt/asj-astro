@@ -3,8 +3,14 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// `api.secure` refuses BEFORE it fetches when the store does not report a live
+// session, so this double must expose `isLoggedIn: true` — and `logout`, which
+// apiClient imports. Without them all four cases below fail at the request
+// assertions, and the failure points far away from the actual cause: the code
+// under test never reached `fetch` at all.
 vi.mock('../store/authReactive', () => ({
-  authStore: { get: () => ({ sessionToken: 'tok-kandidat' }) },
+  authStore: { get: () => ({ isLoggedIn: true, sessionToken: 'tok-kandidat' }) },
+  logout: vi.fn(),
 }));
 
 import { uploadBerkasToStorage } from './uploadBerkas';
@@ -81,7 +87,17 @@ describe('uploadBerkasToStorage', () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it('throw dengan data.message bila backend mengembalikan sessionInvalid dengan message', async () => {
+  it('sessionInvalid → error sesi yang KANONIK (pesan server tidak diteruskan di jalur ini)', async () => {
+    // Ini SATU-SATUNYA jalur di mana klien tidak meneruskan pesan server.
+    // Sinyal protokol `sessionInvalid` diterjemahkan menjadi satu pesan kanonik
+    // supaya pemanggil dapat mengenalinya tanpa bergantung pada teks server —
+    // `AiCvForm.tsx` membandingkan persis 'Session expired' / 'No valid session'
+    // untuk memutuskan apakah toast perlu ditampilkan.
+    //
+    // Jalur gagal biasa TETAP meneruskan pesan server; tes sebelumnya menegaskan
+    // itu ('Sesi tidak valid'). Kalau kelak diputuskan bahwa pesan server juga
+    // harus selamat di jalur ini, yang berubah adalah apiClient + AiCvForm + tiga
+    // asersi di apiClient.test.ts — bukan tes ini sendirian.
     fetchMock.mockImplementation(() =>
       Promise.resolve(
         new Response(
@@ -91,7 +107,7 @@ describe('uploadBerkasToStorage', () => {
       ),
     );
     await expect(uploadBerkasToStorage(pngFile(), { key: 'ktp' })).rejects.toThrow(
-      /Sesi kedaluwarsa/,
+      /Session expired/,
     );
   });
 });

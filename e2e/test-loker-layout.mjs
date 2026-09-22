@@ -52,7 +52,25 @@ async function test(name, fn) {
   }
 }
 
-/** Open the landing page with 10 real rows at a given viewport. */
+/**
+ * The table's route. It is `/loker`, NOT `/`.
+ *
+ * REPAIRED 2026-09-21. This gate pointed at `${BASE}/` and had been failing ever
+ * since commit e9317cf moved LokerTable to its own dedicated page. The failure
+ * was not a regression in the table — measured at the repair, `/` renders ZERO
+ * tables and ZERO `.u-scroll-x` (`index.astro` keeps only a 5-item JobMiniList
+ * preview), while `/loker` renders the table with the same 10 fixture rows this
+ * gate supplies. So the gate was waiting 20 s for a selector that could never
+ * appear, and reporting the timeout as if the layout had broken.
+ *
+ * A gate that measures the wrong route is worse than a missing gate: it fails
+ * for a reason unrelated to what it asserts, so its red carries no information
+ * and its green is unreachable. The route is named here rather than inlined so
+ * the next move of the table is one edit, not a hunt.
+ */
+const TABLE_PATH = '/loker';
+
+/** Open the job-listings page with 10 real rows at a given viewport. */
 async function openWithRows(width, height) {
   const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
@@ -63,14 +81,14 @@ async function openWithRows(width, height) {
       body: JSON.stringify({ success: true, activeTheme: 'sakura', jobs: JOBS }),
     }),
   );
-  await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}${TABLE_PATH}`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.u-scroll-x tbody tr', { timeout: 20000 });
   await page.waitForTimeout(300);
   return { ctx, page };
 }
 
 async function run() {
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, args: ['--no-proxy-server'] });
 
   // ── phone: the table becomes a card ───────────────────────────────────────
   const phone = await openWithRows(390, 844);

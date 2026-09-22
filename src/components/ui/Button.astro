@@ -1,0 +1,228 @@
+---
+/**
+ * Button.astro — the page's one action recipe.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * MEASURED 2026-09-19, before this file existed: buttons were assembled per call
+ * site out of raw utility strings, and the results had already drifted apart in
+ * ways nobody chose. ClosingBand's CTA was pink-600 with shadow-lg; a
+ * LayananSection button was slate-800 with shadow-md; another was sky-600 whose
+ * hover went to sky-500 — it LIGHTENED, where every other button darkens, which
+ * reads as "this one is disabled". Three different radii, three elevation
+ * stories, and nothing enforcing the 44px touch minimum from DESIGN.md §6.4: the
+ * next padding trim would have broken it and no gate would notice.
+ *
+ * So a caller now chooses a ROLE and a SIZE, and the recipe lives once.
+ *
+ * WHY ONE COMPONENT AND NOT TWO
+ * -----------------------------
+ * A CTA and a link that looks like a CTA must not be able to drift. Two files
+ * means the day someone restyles one is the day the hero and the closing band
+ * stop matching. The href prop selects the ELEMENT; the recipe is shared.
+ *
+ * WHY SOLID TIERS ARE -600/-700 AND NOT THE ACCENT TOKEN
+ * -----------------------------------------------------
+ * DESIGN.md §3.2 names this trap: the accent token is a LIGHT value, correct as
+ * text and icon colour on a dark surface and far below AA as a solid fill. The
+ * solid tiers are the -600/-700 steps, and global.css:916-1010 already remaps
+ * the families that failed there. §3.2b measured pink-600 at 4.60:1 against
+ * white, so the primary variant clears AA with no new exception.
+ *
+ * THE INDEXER TRAP THIS FILE WALKED INTO — read before editing.
+ * ------------------------------------------------------------
+ * MEASURED 2026-09-20. The deep-tier and build suites reported unresolved refs
+ * inside this file whose names were prose words: target, rel, opacity,
+ * transform, template, component. Two separate causes, and the second is the
+ * dangerous one:
+ *
+ *   1. Evaluating an absent-value keyword or calling a lib global inside a
+ *      TEMPLATE expression is not resolvable by the indexer's template
+ *      environment. No other component under src/ does it, which is why nothing
+ *      else fails. Resolve attribute values in frontmatter; interpolate finished
+ *      strings only.
+ *   2. A comment that is terminated early styles the remaining prose as CODE.
+ *      Every flagged word above came from paragraphs that were no longer inside
+ *      a comment. After any edit here, re-check that the braces and the comment
+ *      fences still line up.
+ *
+ * Do not write a capitalised tag name in a comment either: template tags are
+ * parsed out of comments, so a quoted example becomes a phantom unresolved
+ * reference. Section.astro:33 records how that was learned.
+ *
+ * The element is a conditional chain, never a dynamic tag: a binding the indexer
+ * cannot classify lands in its template-component bucket, and build.test.ts
+ * asserts that bucket is empty. Card.astro and Section.astro are written the
+ * same way for the same reason.
+ *
+ * MOTION (DESIGN.md §3.7)
+ * -----------------------
+ * Opacity and transform only; the pressed state is a 1px translate, which costs
+ * no layout. The BARE transition utility is deliberate: theme.css:189-190
+ * retunes its duration to 180ms and its curve to the expo easing for every call
+ * site, and Tailwind has no ease-out-expo utility — that name is only a CSS
+ * variable, so spelling it as a class would fail the class verifier.
+ */
+import Icon from './Icon';
+
+export interface Props {
+  /**
+   * Action role. `primary` — one per screen, the section's main action.
+   * `secondary` — companion action. `ghost` — third action, inline links.
+   * `on-artwork` — a CTA on banner artwork; glass so the focus ring stays
+   * visible on a photo (§6.2). `danger` — destructive.
+   */
+  variant?: 'primary' | 'secondary' | 'ghost' | 'on-artwork' | 'danger';
+  /** `md` is the 44px touch minimum (§6.4). `lg` is the 48px mobile-form target. */
+  size?: 'md' | 'lg';
+  /** Renders an anchor instead of a button. Omit for a real element. */
+  href?: string;
+  /** Target for the anchor form. Ignored on the button form. */
+  target?: string;
+  /** Icon name from the sprite, rendered before the label. */
+  icon?: string;
+  /**
+   * Icon for the busy state. The LABEL STAYS (§5.1): a bare spinner tells a
+   * screen reader nothing changed.
+   */
+  loadingIcon?: string;
+  /** Busy state. Sets the aria busy flag and blocks activation. */
+  loading?: boolean;
+  /** Disabled state. Native attribute on the button form, aria on the anchor. */
+  disabled?: boolean;
+  /** Stretch to the container's width. */
+  block?: boolean;
+  /** Marks the control as controlling a popup (drawer, modal, menu). */
+  ariaHasPopup?: boolean;
+  /** Current expanded state, paired with the popup flag. */
+  ariaExpanded?: boolean;
+  /** id of the element this control opens, when it is a disclosure trigger. */
+  ariaControls?: string;
+  /** Accessible name, for the icon-only case. */
+  label?: string;
+  /** Native button type. Always explicit — the button-type lint rule is live. */
+  type?: 'button' | 'submit' | 'reset';
+  /**
+   * Inline click handler, for the event-dispatch pattern this repo uses to reach
+   * the App island from static markup. Astro cannot pass a function across that
+   * boundary, so this is the handler SOURCE. Prefer a real href when there is a
+   * destination to navigate to.
+   */
+  onClick?: string;
+  /** Extra classes, appended after the variant's own. */
+  class?: string;
+}
+
+const {
+  variant = 'primary',
+  size = 'md',
+  href,
+  target,
+  icon,
+  loadingIcon = 'spinner',
+  loading = false,
+  disabled = false,
+  block = false,
+  ariaHasPopup,
+  ariaExpanded,
+  ariaControls,
+  label,
+  type = 'button',
+  onClick,
+  class: className,
+} = Astro.props;
+
+/* The shape, the type scale and the motion budget, shared by every variant. */
+const BASE =
+  'inline-flex items-center justify-center gap-2 font-bold rounded-control ' +
+  'transition select-none motion-reduce:transition-none';
+
+const SIZE_CLASS = {
+  md: 'min-h-[44px] px-5 py-2.5 text-body-sm',
+  lg: 'min-h-[48px] px-6 py-3 text-body-sm',
+} as const;
+
+/* Every solid family darkens on hover: -600 base, -700 hover. */
+const VARIANT_CLASS = {
+  primary: 'bg-pink-600 hover:bg-pink-700 text-white',
+  secondary: 'bg-surface-raised hover:bg-surface border border-line-strong text-fg',
+  ghost: 'bg-transparent hover:bg-surface-raised text-fg-muted hover:text-fg',
+  'on-artwork': 'bg-black/45 hover:bg-black/60 backdrop-blur-md border border-white/25 text-white',
+  danger: 'bg-red-600 hover:bg-red-700 text-white',
+} as const;
+
+/*
+ * Disabled is opacity, not a colour swap, so it reads the same in both themes.
+ * The pointer-events utility keeps an anchor inert.
+ */
+const STATE_CLASS = disabled || loading ? 'opacity-50 pointer-events-none' : 'active:translate-y-px';
+
+const classes = [
+  BASE,
+  SIZE_CLASS[size],
+  VARIANT_CLASS[variant],
+  STATE_CLASS,
+  block ? 'w-full' : '',
+  className ?? '',
+]
+  .filter(Boolean)
+  .join(' ');
+
+/* Icon-only: the glyph IS the name, so it stops being decorative. */
+const iconLabel = label && !Astro.slots.has('default') ? label : '';
+
+/* One icon per render, resolved here so the template has a single shape. */
+const iconName = loading ? loadingIcon : (icon ?? '');
+
+/*
+ * Attribute strings, all resolved in frontmatter and interpolated as finished
+ * values. The empty string is the absent case: an empty attribute is dropped, so
+ * no caller sees a difference. See the indexer note in the header.
+ */
+const aTarget = target === undefined ? '' : target;
+const aRel = target === '_blank' ? 'noopener noreferrer' : '';
+const aDisabled = disabled || loading ? 'true' : '';
+const aBusy = loading ? 'true' : '';
+const aPopup = ariaHasPopup ? 'true' : '';
+const aExpanded = ariaExpanded === undefined ? '' : ariaExpanded ? 'true' : 'false';
+const aControls = ariaControls === undefined ? '' : ariaControls;
+const aOnClick = onClick === undefined ? '' : onClick;
+---
+
+{
+  href ? (
+    <a
+      href={href}
+      target={aTarget}
+      rel={aRel}
+      class={classes}
+      aria-label={iconLabel}
+      aria-disabled={aDisabled}
+      aria-busy={aBusy}
+      aria-haspopup={aPopup}
+      aria-expanded={aExpanded}
+      aria-controls={aControls}
+      data-variant={variant}
+      onclick={aOnClick}
+    >
+      {iconName ? <Icon name={iconName} spin={loading} label={iconLabel} /> : null}
+      <slot />
+    </a>
+  ) : (
+    <button
+      type={type}
+      class={classes}
+      disabled={disabled || loading}
+      aria-label={iconLabel}
+      aria-busy={aBusy}
+      aria-haspopup={aPopup}
+      aria-expanded={aExpanded}
+      aria-controls={aControls}
+      data-variant={variant}
+      onclick={aOnClick}
+    >
+      {iconName ? <Icon name={iconName} spin={loading} label={iconLabel} /> : null}
+      <slot />
+    </button>
+  )
+}

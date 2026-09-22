@@ -1,25 +1,60 @@
 import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/preact';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 import PemberkasanModal from './PemberkasanModal';
+import { showToast } from '../Toast';
+import { uploadBerkasToStorage } from '../../lib/uploadBerkas';
+import { apiClient } from '../../lib/apiClient';
 
 vi.mock('../../store/authReactive', () => ({
   authStore: { get: () => ({ sessionToken: 'test-token', role: 'kandidat' }) },
 }));
 
-vi.mock('../../lib/apiEndpoint', () => ({
-  getEndpoint: (key: string) => `/.netlify/functions/${key}`,
-}));
+// Aksi kini dijawab KLIEN; `fetch` tinggal jebakan (lihat beforeEach).
+vi.mock('../../lib/apiClient', () => ({ apiClient: vi.fn() }));
 
 vi.mock('../Toast', () => ({
   showToast: vi.fn(),
 }));
 
-// i18n identity: assertions pakai key (ui.uploaded_view / ui.not_yet / dst).
-vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
+// i18n identity untuk sebagian besar key (assertions pakai key), tetapi salinan
+// PRODUKSI untuk key yang isinya diperiksa — supaya substitusi {n}/{nama} ikut
+// terbukti, bukan hanya namanya.
+const DICT: Record<string, string> = {
+  'ui.toast_failed_prefix': 'Gagal: ',
+  'ui.toast_network_error_prefix': 'Error jaringan: ',
+  'ui.toast_uploaded_n': '{n} dokumen terunggah',
+  'ui.toast_docs_exclaim': '!',
+};
+vi.mock('../../store/i18n', () => ({ t: (k: string) => DICT[k] ?? k }));
 
 vi.mock('../../lib/uploadBerkas', () => ({
   uploadBerkasToStorage: vi.fn(),
 }));
+
+const fetchMock = vi.fn();
+
+/** Router `apiClient` per action. Nilai `Error` DILEMPAR (jalur kegagalan). */
+function routeApi(map: Record<string, unknown>) {
+  vi.mocked(apiClient).mockImplementation(async (action: string) => {
+    const v = action in map ? map[action] : { success: true };
+    if (v instanceof Error) throw v;
+    return v as never;
+  });
+}
+
+function callFor(action: string) {
+  const call = vi.mocked(apiClient).mock.calls.find((c) => c[0] === action);
+  if (!call) throw new Error(`${action} tidak dipanggil`);
+  return { args: call[1] as unknown[], options: call[2] as Record<string, unknown> };
+}
+
+/** `ApiError` seperti yang dilempar klien: pesan server + status HTTP. */
+function apiErr(message: string, status: number) {
+  const e = new Error(message) as Error & { status?: number };
+  e.status = status;
+  return e;
+}
 
 const base = {
   isOpen: true,
@@ -28,8 +63,21 @@ const base = {
   namaTarget: 'BUDI',
 };
 
+beforeEach(() => {
+  fetchMock.mockReset();
+  // Menolak, bukan sukses: fetch mentah yang tak sengaja kembali akan gagal
+  // keras alih-alih menyamar sebagai jawaban server.
+  fetchMock.mockRejectedValue(new Error('fetch mentah tidak boleh dipakai di sini'));
+  vi.stubGlobal('fetch', fetchMock);
+  vi.mocked(apiClient).mockReset();
+  routeApi({});
+  vi.mocked(showToast).mockReset();
+  vi.mocked(uploadBerkasToStorage).mockReset();
+});
+
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -105,6 +153,135 @@ describe('PemberkasanModal — A05 parity', () => {
     expect((screen.getByDisplayValue('2000-05-01') as HTMLInputElement).value).toBe('2000-05-01');
     expect((screen.getByDisplayValue('PAK BUDI') as HTMLInputElement).value).toBe('PAK BUDI');
     expect((screen.getByDisplayValue('PT SAKURA') as HTMLInputElement).value).toBe('PT SAKURA');
+  });
+});
+
+// ==========================================
+// Jalur simpan (konversi ke apiClient, sesi ini)
+//
+// `postAction` dulu memanggil `fetch` sendiri tanpa memeriksa `res.ok` dan
+// tanpa batas waktu. Tes di bawah memaku apa yang sekarang dijanjikan:
+// payload & opsi yang dikirim ke klien, dan pembedaan "server menolak"
+// (ada status) dari "jaringan gagal" (tidak ada status) pada label toast.
+// ==========================================
+describe('PemberkasanModal — jalur simpan lewat apiClient', () => {
+  const adminProps = {
+    ...base,
+    isAdmin: true,
+    candidate: { tahapan: 'LIST', berkas: {}, bio: {} },
+  };
+
+  const renderAdmin = () => render(<PemberkasanModal {...adminProps} />);
+
+  const pickFile = async (key: string, name: string) => {
+    const input = document.getElementById(`berkas-${key}`) as HTMLInputElement;
+    expect(input, `input #berkas-${key} harus ada`).toBeTruthy();
+    const file = new File(['x'], name, { type: 'application/pdf' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    await fireEvent.change(input);
+  };
+
+  // Panel biodata admin sudah TERBUKA sejak efek mount (bioOpen = canBio &&
+  // !locked) — klik judul justru menutupnya. Jadi klik hanya bila perlu.
+  const openBio = async () => {
+    await waitFor(() => expect(screen.getByText('candidate.biodata_title')).toBeTruthy());
+    if (!screen.queryByText('ui.save_biodata')) {
+      await fireEvent.click(screen.getByText('candidate.biodata_title'));
+    }
+    await waitFor(() => expect(screen.getByText('ui.save_biodata')).toBeTruthy());
+  };
+
+  it('upload tahap 1 → apiClient simpanBerkasTahapan dengan payload snake + opsi klien', async () => {
+    vi.mocked(uploadBerkasToStorage).mockResolvedValue('https://cdn.test/kk.pdf');
+    routeApi({});
+    renderAdmin();
+    await waitFor(() => expect(screen.getByText('ui.stage1_short')).toBeTruthy());
+
+    await pickFile('kk', 'kk.pdf');
+    await fireEvent.click(screen.getByText('ui.upload_berkas_tahap_1'));
+
+    await waitFor(() => expect(callFor('simpanBerkasTahapan')).toBeTruthy());
+    const { args, options } = callFor('simpanBerkasTahapan');
+    expect(args).toEqual([
+      {
+        wa: '6281111111111',
+        nama: 'BUDI',
+        jenisBerkas: 'KK',
+        fileUrl: 'https://cdn.test/kk.pdf',
+      },
+    ]);
+    // `onSessionInvalid: 'throw'` — panel ini menangani sesi mati sendiri;
+    // default 'logout' akan me-redirect admin keluar di tengah unggahan.
+    // `silent: true` — pemanggil sudah punya toast sendiri.
+    expect(options).toEqual({ onSessionInvalid: 'throw', silent: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('1 dokumen terunggah!', 'success'),
+    );
+  });
+
+  it('upload gagal dari server (non-2xx) → toast error berisi pesan server, tanpa menyentuh fetch', async () => {
+    vi.mocked(uploadBerkasToStorage).mockResolvedValue('https://cdn.test/kk.pdf');
+    routeApi({ simpanBerkasTahapan: apiErr('Berkas ditolak storage.', 400) });
+    renderAdmin();
+    await waitFor(() => expect(screen.getByText('ui.stage1_short')).toBeTruthy());
+
+    await pickFile('kk', 'kk.pdf');
+    await fireEvent.click(screen.getByText('ui.upload_berkas_tahap_1'));
+
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(
+        expect.stringContaining('KK: Berkas ditolak storage.'),
+        'error',
+      ),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('simpan biodata → apiClient simpanBiodataLengkap (payload {wa,nama}) + opsi klien', async () => {
+    routeApi({});
+    renderAdmin();
+    await openBio();
+
+    await fireEvent.click(screen.getByText('ui.save_biodata'));
+
+    await waitFor(() => expect(callFor('simpanBiodataLengkap')).toBeTruthy());
+    const { args, options } = callFor('simpanBiodataLengkap');
+    expect(args).toEqual([{ wa: '6281111111111', nama: 'BUDI' }]);
+    expect(options).toEqual({ onSessionInvalid: 'throw', silent: true });
+  });
+
+  it('simpan biodata DITOLAK server (ada status) → label "failed", BUKAN network_error', async () => {
+    routeApi({ simpanBiodataLengkap: apiErr('Nama wajib diisi.', 400) });
+    renderAdmin();
+    await openBio();
+
+    await fireEvent.click(screen.getByText('ui.save_biodata'));
+
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('Gagal: Nama wajib diisi.', 'error'),
+    );
+  });
+
+  it('simpan biodata gagal TRANSPORT (tanpa status) → label network_error', async () => {
+    routeApi({ simpanBiodataLengkap: new Error('net down') });
+    renderAdmin();
+    await openBio();
+
+    await fireEvent.click(screen.getByText('ui.save_biodata'));
+
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith('Error jaringan: net down', 'error'),
+    );
+  });
+
+  it('sumbernya tidak memanggil fetch() mentah sama sekali', () => {
+    const src = readFileSync('src/components/admin/PemberkasanModal.tsx', 'utf8');
+    const offenders = src
+      .split('\n')
+      .map((line, i) => ({ line: line.trim(), n: i + 1 }))
+      .filter(({ line }) => /\bfetch\s*\(/.test(line) && !/^(\/\/|\*|\/\*)/.test(line));
+    expect(offenders).toEqual([]);
   });
 });
 

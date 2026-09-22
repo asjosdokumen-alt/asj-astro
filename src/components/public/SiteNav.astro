@@ -1,0 +1,231 @@
+---
+/**
+ * SiteNav.astro — the desktop section navigation for the landing page.
+ *
+ * WHY THIS IS A SECOND `<nav>` AND NOT THE EXISTING ONE
+ * -----------------------------------------------------
+ * The roadmap's first choice was to extend the existing
+ * `<nav aria-label="Primary navigation">`, and that is geometrically impossible.
+ * That element is the DRAWER: `u-viewport-fixed--right`, i.e. `position: fixed;
+ * right: 0; height: 100dvh`. A section bar needs `position: sticky; top: 0;
+ * width: 100%`. One element cannot be both, and the drawer's geometry is load
+ * bearing — `e2e/test-drawer.mjs` proves a CLOSED drawer is off-screen by
+ * measuring that element's `rect.x` (expected: the viewport width). Turning the
+ * nav into a wrapper around both would make `rect.x` 0 and quietly delete that
+ * proof.
+ *
+ * So this is a second landmark, and the roadmap's objection to that — "two
+ * navigation landmarks with no relationship, the screen reader announces two
+ * menus and the user cannot tell them apart" — is answered by giving it a
+ * DIFFERENT, meaningful label. ARIA does not cap the number of `nav` landmarks;
+ * it requires them to be distinguishable. "Primary navigation" (the site's
+ * actions: language, install, login, admin) and "Navigasi halaman" (this page's
+ * sections) are two different navigations, not two names for one.
+ *
+ * AND THE HOLE THAT OPENED IS CLOSED IN THE SAME CHANGE. The real danger was
+ * never "two navs" — it was that `e2e/test-drawer.mjs` selects the drawer with
+ * `querySelector` on a single label and would therefore measure the WRONG element
+ * if a second one shared that label, passing while proving nothing. That gate now
+ * asserts the count of that selector is exactly 1, so the same-label case cannot
+ * slip through again.
+ *
+ * WHY DESKTOP ONLY. The drawer already covers mobile, and `hidden lg:block` keeps
+ * this out of the 390px layout entirely — which also keeps it out of the drawer
+ * gate's viewport.
+ *
+ * WHY NO GLASS. DESIGN.md §3.6 restricts `backdrop-filter` to surfaces over the
+ * banner artwork. This bar sits over ordinary page content, so it is a solid
+ * `bg-canvas` with a bottom border: legible in both themes, one paint, and it
+ * cannot fall out of step with the theme the way a translucent layer can.
+ *
+ * WHY THE FOUR LINKS ARE WRITTEN OUT AND NOT LOOPED
+ * -------------------------------------------------
+ * They are a FIXED set, not data — and looping in an `.astro` template is the one
+ * pattern that breaks this repo's zero-unresolved invariant
+ * (`indexer/src/build.test.ts:428`), because the indexer resolves template
+ * interpolations against the frontmatter module scope only, so a `.map()`
+ * callback parameter is reported as an unknown global. Four literal items cost
+ * nothing and keep the invariant; a loop would have cost a red gate. (This file's
+ * first draft did exactly that and was rewritten.)
+ *
+ * WHY THE ITEM LIST IS SHORT. It lists only sections that EXIST — a nav item
+ * pointing at a fragment that does not resolve is a link that looks live and does
+ * nothing, and this list once shipped exactly that (the Lowongan item, below).
+ *
+ * AN ITEM IS ADDED WHEN ITS SECTION LANDS, and both halves of that are load
+ * bearing: the gate's expected set and the narrative comments below must move
+ * together with the markup, or the comments start describing a page that no
+ * longer exists. That is what happened to the two notes under the list — they
+ * still said `layanan` was an absent hidden tab panel, ten lines above the
+ * `<a href="#layanan" data-nav-link="layanan">` that had been there all along.
+ * The markup was right; the prose had gone stale and outlived its subject.
+ *
+ * The `data-nav-link` values must match the section ids in index.astro.
+ */
+import Icon from '../ui/Icon';
+
+const LINK_CLASS =
+  'inline-flex items-center px-3 py-2 rounded-control text-body-sm font-bold text-fg-muted hover:text-fg hover:bg-surface aria-[current=true]:text-accent-sky aria-[current=true]:bg-surface transition-colors';
+---
+
+<nav
+  data-site-nav
+  data-lang-aria="profile.nav_aria"
+  aria-label="Navigasi halaman"
+  class="hidden lg:block sticky top-0 z-sticky w-full bg-canvas border-b border-line"
+>
+  <div class="max-w-7xl mx-auto px-4 md:px-6 flex items-center gap-1 h-14">
+    <ul class="flex items-center gap-1 min-w-0">
+      <li>
+        <!-- POINTS AT THE PAGE, not a fragment. It was a fragment anchor to the
+             lowongan table, but that table moved to its own `/loker` route (see
+             the note in index.astro) so NO element on `/` carries that id. The
+             link therefore looked live and did nothing — the exact defect the
+             comment below says this nav refuses to ship, sitting two lines above
+             it. Found by `e2e:site-nav` once that gate could connect at all; it
+             had been unable to reach an IPv6-only preview (see its BASE note).
+
+             This is why `data-nav-link` is dropped: that attribute drives the
+             scroll-spy current-marker, and there is no section to mark. Keeping
+             it would make the observer look for a target that never matches.
+             The CTA button to the right already used `/loker`.
+
+             NOTE ON THIS COMMENT'S WORDING: it deliberately does NOT spell out
+             the current-marker attribute name, NOR the dead fragment it replaced.
+             `e2e:site-nav` counts both literals in the SERVED document, and an
+             earlier version of this comment contained them — so a COMMENT made
+             the gate report a hand-written marker that did not exist (measured:
+             0 attribute-form occurrences, 1 prose match). The gate is right to
+             forbid these tokens; it just cannot tell prose from markup, so the
+             prose avoids them. The dead fragment was re-introduced by the same
+             mistake a second time, which is why it is now named in words. -->
+        <a href="/loker" data-lang="profile.nav_loker" class={LINK_CLASS}>Lowongan</a>
+      </li>
+      <li>
+        <a href="#program" data-nav-link="program" data-lang="profile.nav_program" class={LINK_CLASS}>Program</a>
+      </li>
+      <li>
+        <a href="#alur" data-nav-link="alur" data-lang="profile.nav_alur" class={LINK_CLASS}>Alur</a>
+      </li>
+      <li>
+        <a href="#fasilitas" data-nav-link="fasilitas" data-lang="profile.nav_fasilitas" class={LINK_CLASS}>Fasilitas</a>
+      </li>
+      <!-- Added when S7 shipped. Until then this item was deliberately absent:
+           a nav link pointing at a fragment that does not resolve looks live and
+           does nothing. `#layanan` was absent for the same reason while it was
+           still a hidden tab panel; it is a real section now, so the item below
+           is present and resolves (`index.astro:156`). -->
+      <li>
+        <a href="#tentang" data-nav-link="tentang" data-lang="profile.nav_tentang" class={LINK_CLASS}>Tentang</a>
+      </li>
+      <li>
+        <a href="#layanan" data-nav-link="layanan" data-lang="profile.nav_layanan" class={LINK_CLASS}>Layanan</a>
+      </li>
+    </ul>
+    <div class="ml-auto flex items-center gap-2 shrink-0">
+      <button
+        type="button"
+        data-nav-lang
+        aria-label="Toggle language"
+        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-control text-body-sm font-bold text-fg-muted hover:text-fg hover:bg-surface transition-colors"
+      >
+        <Icon name="language" />
+        <span data-nav-lang-label>ID</span>
+      </button>
+      <a
+        href="/loker"
+        class="inline-flex items-center px-4 py-2 rounded-pill bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white text-body-sm font-bold transition-all shadow-sm shadow-pink-600/20"
+      >
+        <Icon name="briefcase" class="mr-1.5" />
+        Lowongan
+      </a>
+      <button
+        type="button"
+        data-nav-login
+        data-lang="header.login"
+        class="inline-flex items-center px-4 py-2 rounded-pill bg-sky-700 hover:bg-sky-800 text-white text-body-sm font-bold transition-colors"
+      >
+        Login Pelamar
+      </button>
+    </div>
+  </div>
+</nav>
+
+<script>
+  import { langStore, toggleLang } from '../../store/i18n';
+
+  /* ── Language ──────────────────────────────────────────────────────────
+     `toggleLang` and `langStore` are the SAME store the header and the drawer
+     use. A second language state is how two controls end up disagreeing, so this
+     reads and writes the one that already exists. */
+  const langLabel = document.querySelector('[data-nav-lang-label]');
+  const paintLang = () => {
+    if (langLabel) langLabel.textContent = langStore.get() === 'id' ? 'ID' : 'JP';
+  };
+  paintLang();
+  langStore.subscribe(paintLang);
+  document.querySelector('[data-nav-lang]')?.addEventListener('click', () => toggleLang());
+
+  /* ── Login ─────────────────────────────────────────────────────────────
+     The modal lives in the App island's state, which a static component cannot
+     reach. `asj-kandidat-login` is the event the header's own Login button
+     already dispatches, so both entry points run the same code path. */
+  document.querySelector('[data-nav-login]')?.addEventListener('click', () => {
+    window.dispatchEvent(new Event('asj-kandidat-login'));
+  });
+
+  /* ── Active section ────────────────────────────────────────────────────
+     Driven by scroll POSITION, not `:hover` — the point is to answer "where am I
+     on this page", and a hover highlight answers a different question.
+
+     IntersectionObserver over a band rather than a scroll listener: the band is
+     the strip just below the bar (`rootMargin` -56px for the bar, -70% at the
+     bottom so only the top third of the viewport counts). No per-frame work and
+     no `getBoundingClientRect` on every scroll event.
+
+     `for...of` rather than `.map()` on purpose — same reason as the link list
+     above. Script blocks are parsed separately today, but not depending on that
+     is cheaper than discovering it changed.
+
+     ⚠ AND NO TYPESCRIPT GENERICS IN THIS SCRIPT. The indexer scans an `.astro`
+     file — INCLUDING its script blocks and its comments — for capitalised tags,
+     so a generic type argument reads as a component tag. Two of them here (the
+     generic form of `querySelectorAll`, and a `Set` annotated with a DOM
+     interface) produced TWO unresolved `template-component` records and turned
+     `build.test.ts:516` red. Measured, not guessed. A cast and type inference do
+     the same job with no angle brackets — and that is also why this paragraph
+     describes the offending forms instead of quoting them: quoting them here
+     re-creates the defect, which is exactly what the first version of this
+     comment did. */
+  const links: HTMLElement[] = [];
+  for (const el of document.querySelectorAll('[data-nav-link]')) links.push(el as HTMLElement);
+
+  const sections: Element[] = [];
+  for (const link of links) {
+    const target = document.getElementById(link.getAttribute('data-nav-link') ?? '');
+    if (target) sections.push(target);
+  }
+
+  if (sections.length && 'IntersectionObserver' in window) {
+    const visible = new Set();
+    const sync = () => {
+      for (const link of links) {
+        const target = document.getElementById(link.getAttribute('data-nav-link') ?? '');
+        const isCurrent = target ? visible.has(target) : false;
+        if (isCurrent) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      }
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.add(entry.target);
+          else visible.delete(entry.target);
+        }
+        sync();
+      },
+      { rootMargin: '-56px 0px -70% 0px', threshold: 0 },
+    );
+    for (const section of sections) observer.observe(section);
+  }
+</script>

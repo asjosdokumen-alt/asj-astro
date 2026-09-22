@@ -63,6 +63,22 @@
 #     against scripts/ci/bundle-size-baseline.json. If it is absent the ratchet
 #     block is skipped entirely, and `check` would read exit 0 as "green" for a
 #     case that never ran. Asserted present up front.
+#
+#     Staleness is the harder half of the same trap, and it HAS A SIGNATURE:
+#     **P5 reports UNEXPECTED.** P5 subtracts a fixed 2 KB from each entry, which
+#     is "over 5% but under the 8 KB floor" only for SMALL entries — exactly what
+#     the case means to demonstrate. Real growth accumulates under the floor over
+#     time, and once an entry's real growth approaches 8 KB, the fixture's extra
+#     2 KB tips it over. Measured 2026-09-18: the committed baseline was 79
+#     commits old and every entry had grown ~6.1 KB, so ingest.js, mail.js and
+#     master-data.js all reported "+8.1 KB" and the gate exited 1. The gate was
+#     right and the case was right; the BASELINE was stale. Remedy:
+#     `npm run bundle:baseline`, the documented routine step
+#     (docs/PHASE_A_LEGACY_ENDPOINT_RETIREMENT.md shows the pattern).
+#
+#     Do NOT "fix" this by weakening the fixture's 2 KB, and do not read the
+#     UNEXPECTED as a hole in the gate. The 2 KB is what makes P5b able to prove
+#     the floor — not the percentage — is what lets P5 through.
 #  2. **Restoring a borrowed file by `cp` rewrites its EOL.** netlify/functions
 #     is not pinned by .gitattributes (only *.mjs/*.cjs are), so with
 #     core.autocrlf=true a working-tree CRLF file restored from a git-sourced

@@ -13,6 +13,8 @@ import { SENTINEL_LAINNYA } from "../../lib/opsi-form";
 import { authStore, type AuthState } from "../../store/authReactive";
 import { uploadMany } from "../../lib/cloudinary";
 import { t } from "../../store/i18n";
+import { apiClient } from "../../lib/apiClient";
+import { getEndpoint } from "../../lib/apiEndpoint";
 
 vi.mock("../Toast", () => ({ showToast: vi.fn() }));
 // Use the real dictionary rather than a hand-maintained key→copy map.
@@ -45,6 +47,46 @@ const fetchMock = vi.fn();
 function jsonRes(body: unknown) {
   return { ok: true, status: 200, json: async () => body };
 }
+
+// ==========================================
+// apiClient tiruan yang MENIRU format kabelnya
+//
+// Kenapa meniru, bukan sekadar mengembalikan nilai: berkas ini punya ~25 tes
+// yang membaca `fetchMock.mock.calls` untuk memeriksa bentuk payload
+// (`JSON.parse(c[1].body).action`, `.payload[0]`, dst). Setelah komponen lewat
+// apiClient, panggilan fetch tetap terjadi — dari KLIEN, bukan dari komponen —
+// jadi seluruh asersi payload itu tetap menguji hal yang sama tanpa ditulis
+// ulang. Yang berubah hanya SIAPA yang mengirim.
+//
+// Penanda `x-asj-via-api-client` di header adalah invariannya: setiap panggilan
+// fetch yang TIDAK membawanya berarti komponen memanggil fetch sendiri — persis
+// regresi yang gate ini paku. Tanpa penanda ini, "lewat apiClient" hanya bisa
+// diasumsikan dari sumber, dan asumsi itulah yang membuat konversi setengah
+// jalan terlihat selesai.
+// ==========================================
+vi.mock("../../lib/apiClient", () => ({ apiClient: vi.fn(), api: {}, default: {} }));
+const apiClientMock = vi.mocked(apiClient);
+const VIA_CLIENT = "x-asj-via-api-client";
+
+// Dipasang SEKALI di level modul, bukan di beforeEach: setiap describe di bawah
+// me-reset `fetchMock` (untuk mengganti router-nya), dan reset itu tidak boleh
+// ikut mencabut emulasi klien.
+apiClientMock.mockImplementation(async (action: string, args: unknown[] = []) => {
+  // Tanpa anotasi `any`: `lint-ratchet` menghitung anotasi eksplisit, dan berkas
+  // ini sudah punya diagnostik — menambah satu saja memerahkan gate itu
+  // (kondisi 3). Tipe hasilnya ditulis di sisi PEMAKAIAN, bukan di sini.
+  const res = await fetchMock(getEndpoint(action), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", [VIA_CLIENT]: "1" },
+    body: JSON.stringify({ action, payload: args }),
+  });
+  if (res && res.ok === false) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+});
+
+/** Bentuk satu panggilan `fetch` yang dicatat mock: [url, init]. */
+type FetchCall = [string, { headers?: Record<string, string> } | undefined];
+const fetchCalls = () => fetchMock.mock.calls as unknown as FetchCall[];
 
 const GUEST: AuthState = { role: "guest", name: "", wa: "", sessionToken: "", refreshToken: "", isLoggedIn: false, lastChecked: 0 };
 const KANDIDAT: AuthState = { role: "kandidat", name: "Budi", wa: "081234567890", sessionToken: "tok123", refreshToken: "", isLoggedIn: true, lastChecked: Date.now() };
@@ -114,6 +156,38 @@ describe("MasterFullForm (C02) — error-return uploadMany + draft lokal-only", 
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     expect(document.querySelector(".u-modal-shell")).not.toBeNull();
     expect(screen.getByText("Verifikasi Akun Kandidat")).toBeTruthy();
+  });
+
+  // KONTRAK WIRE: `loginKandidat` divalidasi dengan z.tuple([waField,
+  // passwordField]) di kernel/validate.ts — payload-nya DUA PRIMITIF.
+  //
+  // Gate ini (dan gate kembarnya di AiCvForm) dulu mengirim SATU OBJEK
+  // `[{wa,password}]`, yang ditolak zod dengan "Array must contain at least 2
+  // element(s)". Akibatnya gate TIDAK PERNAH bisa lolos: user selalu melihat
+  // "Password salah atau akun tidak ditemukan." walau passwordnya benar, dan
+  // tidak ada tes yang memaku bentuk payload ini — gate-nya hanya diuji soal
+  // overlay/Escape. LoginModal, jalur login utama, memakai [wa, password] dan
+  // memang jalan; jadi schema-nya benar dan kedua gate inilah yang menyimpang.
+  it("gate login → loginKandidat dikirim sebagai [wa, password], bukan satu objek", async () => {
+    // gateWa diisi dari query string `?wa=` (efek mount), bukan dari input.
+    window.history.replaceState({}, "", "/?wa=081234567890");
+    apiClientMock.mockClear();
+    apiClientMock.mockResolvedValueOnce({ sessionToken: "tok123", user: "Budi" } as never);
+    render(<MasterFullForm />);
+    await fireEvent.input(document.getElementById("mf-gate-pass") as HTMLInputElement, {
+      target: { value: "rahasia123" },
+    });
+    await fireEvent.click(screen.getByRole("button", { name: "Masuk" }));
+
+    await waitFor(() =>
+      expect(apiClientMock.mock.calls.some((c) => c[0] === "loginKandidat")).toBe(true),
+    );
+    const call = apiClientMock.mock.calls.find((c) => c[0] === "loginKandidat");
+    if (!call) throw new Error("loginKandidat tidak dipanggil");
+    expect(call[1]).toEqual(["081234567890", "rahasia123"]);
+    // Gate benar-benar lewat — bukan sekadar "panggilan terjadi".
+    await waitFor(() => expect(screen.queryByText("Verifikasi Akun Kandidat")).toBeNull());
+    window.history.replaceState({}, "", "/");
   });
 
   it('upload gagal → toast "Gagal upload <key>: <msg>" EKSAK + setSaving(false) (tombol aktif lagi) + TANPA submitMasterForm', async () => {
@@ -618,6 +692,59 @@ describe("MasterFullForm — invarian sentinel ↔ kotak manual", () => {
     // berisi `resolveRow(`.)
     const resolveRowCalls = [...SRC.matchAll(/resolveRow\(/g)].length;
     expect(resolveRowCalls).toBe(sites.length);
+  });
+});
+
+// ==========================================
+// TESTS: semua panggilan server lewat apiClient (§26)
+//
+// `getDrafCvMaster` ada di CACHEABLE_READS, jadi fetch mentah melewati cache
+// baca 30 s — cacat yang sama dengan TabKelola, CandidateDash, dan
+// ApplyFullForm. Dua invarian, dan keduanya harus bisa GAGAL:
+//   1. pembacaan draf lewat apiClient, dengan opsi yang mempertahankan perilaku;
+//   2. tidak ada fetch() mentah — setiap panggilan fetch harus datang dari
+//      emulasi klien di atas.
+// ==========================================
+describe("MasterFullForm — semua panggilan server lewat apiClient (§26)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(jsonRes({ success: true }));
+    vi.mocked(showToast).mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("membaca draf lewat apiClient, dan tidak ada fetch mentah", async () => {
+    render(<MasterFullForm />);
+    await waitFor(() => expect(apiClientMock).toHaveBeenCalled());
+    // Opsi ketiga ditegaskan, bukan sekadar "apiClient dipanggil": default
+    // 'logout' akan me-redirect user yang sedang mengisi form pada satu sesi
+    // mati, dan itu perubahan SESI yang tidak diminta oleh perbaikan cache ini.
+    expect(apiClientMock).toHaveBeenCalledWith("getDrafCvMaster", ["081234567890"], {
+      onSessionInvalid: "throw",
+      silent: true,
+    });
+    const raw = fetchCalls().filter((c) => !c[1]?.headers?.[VIA_CLIENT]);
+    expect(raw.map((c) => String(c[0]))).toEqual([]);
+  });
+
+  it("sumbernya tidak memanggil fetch() mentah sama sekali (invarian statis)", () => {
+    // Asersi runtime di atas hanya membuktikan jalur yang benar-benar
+    // dijalankan tes ini. Invariannya berlaku untuk SELURUH berkas — termasuk
+    // jalur yang tidak pernah dieksekusi suite ini — jadi ia diperiksa pada
+    // SUMBER, memakai idiom yang sudah dipakai describe terakhir berkas ini.
+    // Yang dilaporkan saat gagal adalah BARISNYA, bukan sekadar jumlahnya.
+    const src = readFileSync("src/components/forms/MasterFullForm.tsx", "utf8");
+    const offenders = src
+      .split("\n")
+      .map((line, i) => ({ line: line.trim(), n: i + 1 }))
+      .filter(({ line }) => /\bfetch\s*\(/.test(line) && !/^(\/\/|\*|\/\*)/.test(line));
+    expect(offenders).toEqual([]);
   });
 });
 

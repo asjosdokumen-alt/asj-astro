@@ -1,0 +1,10 @@
+[
+  [
+    "        const d = await inspect(path, width, session);\n        // Same guard as every other loop here. Without it a redirect is read as\n        // data about the page that was requested — which is exactly how this\n        // check reported \"reached the GATE\" for a page it never loaded.\n        if (d.path !== path) throw new Error(`redirected to ${d.path}`);\n        assertReachedBody(d);",
+    "        assertReachedBody(await inspect(path, width, true));"
+  ],
+  [
+    "const GATE_MARKERS = [\n  'Verifikasi Akun Kandidat',\n  'Mengalihkan ke halaman login...',\n  'Akses ditolak. Mengalihkan...',\n];",
+    "const GATE_MARKERS = ['Verifikasi Akun Kandidat', 'Login Pelamar'];"
+  ]
+]

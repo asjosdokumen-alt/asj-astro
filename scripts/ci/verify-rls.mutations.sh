@@ -94,7 +94,30 @@ GATE=scripts/ci/verify-rls.mjs
 SCRATCH=.tmp-rls-pg
 PGPORT=54377
 PGURL="postgresql://postgres:postgres@127.0.0.1:$PGPORT/postgres"
-BAK="$SCRATCH/gate.bak"
+# This script's own path as a NATIVE Windows path, for handing to `node`.
+#
+# Three shapes are in play and only ONE of them works:
+#   - passed as `bash scripts/ci/x.sh`  -> `$0` = `scripts/ci/x.sh` (relative;
+#     fine for bash, but the extraction node process is run from `$PWD`, and a
+#     bare relative path is fragile)
+#   - entered as `bash /f/astro/scripts/ci/x.sh` -> `$0` = `/f/astro/...`;
+#     `readlink -f` keeps the POSIX form, and the WINDOWS node binary then reads
+#     the leading `/f` as a drive-less root and opens `F:\f\astro\scripts\...`.
+#     Measured 2026-09-18: `node -e readFileSync("/f/astro/scripts/ci/
+#     verify-rls.mutations.sh")` -> `ENOENT ... F:\\f\\astro\\scripts\\...`.
+#   - `cygpath -m` -> `F:/astro/scripts/ci/x.sh` (native, forward slashes): this
+#     is the only form that survives being passed to node.
+SELF="$(cygpath -m "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+if [ ! -f "$SELF" ]; then
+  # Do not fall back silently. A wrong here degrades the self-test into a
+  # permanent "T1/T2 FAILED", which reads as a CODE regression and would send
+  # the next reader hunting for a bug in the restore guard that is not there.
+  echo "ABORT: cannot locate this script (SELF=$SELF)."
+  echo "       The self-test extracts the shipped restore block and check() by"
+  echo "       path, so without a usable path it cannot run — and an unrunnable"
+  echo "       check must not masquerade as a failing one."
+  exit 2
+fi
 fail=0
 results=()
 
@@ -140,11 +163,54 @@ if ! node -e "import('embedded-postgres').then(()=>process.exit(0),()=>process.e
   exit 1
 fi
 
+# The OS temp directory, resolved the way `node` will resolve it.
+#
+# `mktemp -d` / `$TMPDIR` return POSIX shapes (`/tmp/...`) that Git Bash's own
+# tools understand but the WINDOWS `node` binary does not: node opens the
+# literal path and lands in `F:\tmp\...`, so the write fails with ENOENT while
+# bash would have been perfectly happy. Proof that this is real, not
+# theoretical (measured 2026-09-18): `TMPDIR=/tmp/tmp.X`, node writeFileSync to
+# `/tmp/tmp.X/t2.sh` -> `ENOENT ... open 'F:\tmp\tmp.OzhCmMkMYr\t2.sh'`.
+#
+# Resolve with `cygpath` (Git Bash) so the value handed to node is a native
+# absolute path, and prove it round-trips before relying on it — a temp
+# directory that cannot be written from node would surface later as a self-test
+# failure, i.e. the harness would blame the code for its own path handling.
+TMPDIR_ABS="$(cygpath -m "$(mktemp -d 2>/dev/null || echo "${TMPDIR:-/tmp}")" 2>/dev/null || true)"
+[ -n "$TMPDIR_ABS" ] || TMPDIR_ABS="${TEMP:-${TMPDIR:-/tmp}}"
+TMPDIR_ABS="${TMPDIR_ABS%/}"
+if ! node -e "
+  const fs=require('fs'), p=require('path').join(process.argv[1],'.probe');
+  fs.writeFileSync(p,'ok'); fs.unlinkSync(p);
+" "$TMPDIR_ABS" 2>/dev/null; then
+  echo "ABORT: the resolved temp directory is not writable by node."
+  echo "       TMPDIR_ABS=$TMPDIR_ABS"
+  echo "       The harness cannot prove a restore, so its verdicts would be noise."
+  exit 1
+fi
+
 # The gate itself is never mutated by this battery — the fixtures are databases,
 # not source edits — so the pre-run copy is the live file. (The `git show HEAD`
 # rule in the sibling batteries exists because those DO rewrite their gate; here
 # it would be wrong, since an uncommitted improvement to the gate is not poison.)
-cp "$GATE" "$BAK"
+#
+# Back up to the OS TEMP dir, NOT $SCRATCH (measured 2026-09-18). Two reasons,
+# and the first is a hard abort under `set -e`:
+#   1. `cp` failing would terminate the battery before ANY case ran, so the run
+#      would report nothing at all instead of "the harness could not prove
+#      restoration" — the silent-stop failure mode this battery exists to
+#      prevent (see the `mkdir` note above).
+#   2. The self-test below deliberately removes the backup from `$SCRATCH`, so a
+#      single file cannot be both "safely outside the scratch area" and "inside
+#      the scratch area". Parking it outside makes the delete a no-op.
+GATE_BAK="$TMPDIR_ABS/gate-$$.bak"
+if ! cp "$GATE" "$GATE_BAK" 2>/dev/null; then
+  echo "ABORT: could not back up the gate to $GATE_BAK"
+  echo "       Without a pre-run copy, the restore proof (the property that says"
+  echo "       'this battery did not damage its own gate') cannot be made, so no"
+  echo "       verdict from this run would be trustworthy."
+  exit 1
+fi
 
 # ── Fixture control ─────────────────────────────────────────────────────────
 # One throwaway cluster per case: `initdb` costs a few seconds, which is an
@@ -152,6 +218,18 @@ cp "$GATE" "$BAK"
 cat > "$SCRATCH/run-case.mjs" <<'EOF'
 // Boot a throwaway PostgreSQL, apply the SQL given on argv[2], then run the
 // REAL gate against it and print its exit code.
+//
+// EXIT CODE 70 MEANS "THE HARNESS COULD NOT RUN" — it is NOT a verdict.
+// Measured 2026-09-18: `embedded-postgres` died mid-case with
+//   `Error: read ECONNRESET  at TCP.onStreamRead`
+// and, because nothing caught it, this script exited 1 from an uncaught
+// exception. The shell's `check()` read that 1 as the GATE's exit code and
+// reported SURVIVED/UNEXPECTED — a harness that never ran, wearing the costume
+// of a gate that failed to fail. That is the exact defect this battery's own
+// header warns about (lines 112-117), so every setup step below is wrapped and
+// any failure exits 70, which `check()` turns into an ABORT rather than a
+// verdict. "The battery could not run" and "the gate did not fail" must never
+// look alike.
 import EmbeddedPostgres from 'embedded-postgres';
 import pg from 'pg';
 import { spawn } from 'node:child_process';
@@ -159,12 +237,26 @@ import { spawn } from 'node:child_process';
 const [sqlFile, port, repoRoot] = process.argv.slice(2);
 const url = `postgresql://postgres:postgres@127.0.0.1:${port}/postgres`;
 
+// Report a harness failure with its REAL message, then exit 70 so the shell can
+// tell it apart from a gate verdict. `ECONNRESET` in particular must never be
+// allowed to become an exit 1, which is a meaningful gate answer.
+function harnessFail(where, err) {
+  console.error(`HARNESS ERROR (${where}): ${err && err.message ? err.message : String(err)}`);
+  if (err && err.code) console.error(`HARNESS ERROR code: ${err.code}`);
+  console.error('HARNESS ERROR: this is NOT a gate verdict — the case never ran.');
+  process.exit(70);
+}
+
 // One data directory per case, kept inside the scratch dir so the shell's
 // `rm -rf $SCRATCH` reclaims it. Named from the fixture so a failure message
 // points at the right case.
 const { readFileSync, rmSync, existsSync } = await import('node:fs');
 const dataDir = `${process.env.RLS_BATTERY_SCRATCH}/pgdata-${sqlFile.replace(/[^\w.-]/g, '_')}`;
-rmSync(dataDir, { recursive: true, force: true });
+try {
+  rmSync(dataDir, { recursive: true, force: true });
+} catch (err) {
+  harnessFail('clearing the previous data dir', err);
+}
 
 const srv = new EmbeddedPostgres({
   databaseDir: dataDir,
@@ -174,17 +266,28 @@ const srv = new EmbeddedPostgres({
   persistent: false,
 });
 
-await srv.initialise();
-await srv.start();
+// Every step that can fail for an ENVIRONMENT reason is wrapped. An unwrapped
+// throw here is what produced the exit-1 masquerade described at the top.
+try {
+  await srv.initialise();
+  await srv.start();
+} catch (err) {
+  harnessFail('initialise/start of embedded-postgres', err);
+}
 
 const sql = readFileSync(sqlFile, 'utf8');
 
 const c = new pg.Client({ connectionString: url, ssl: false });
-await c.connect();
-// Supabase roles are not Postgres built-ins; every fixture needs them.
-await c.query(`create role anon nologin; create role authenticated nologin;`);
-if (sql.trim()) await c.query(sql);
-await c.end();
+try {
+  await c.connect();
+  // Supabase roles are not Postgres built-ins; every fixture needs them.
+  await c.query(`create role anon nologin; create role authenticated nologin;`);
+  if (sql.trim()) await c.query(sql);
+  await c.end();
+} catch (err) {
+  // `ECONNRESET` lands here. It is a transport failure, not a schema verdict.
+  harnessFail('applying the fixture SQL', err);
+}
 
 const rc = await new Promise((resolve) => {
   // `repoRoot` arrives from the shell as $PWD, which under Git Bash is a POSIX
@@ -226,11 +329,26 @@ EOF
 
 # Pass a fixture file and the expected exit code; print KILLED / SURVIVED / OKG.
 # `expect` is the exit code, `label` is free text used in the report.
+#
+# RESERVED EXIT CODE 70 = THE HARNESS COULD NOT RUN. It is an ABORT, never a
+# verdict. Without this branch, a transport failure inside `run-case.mjs` (a
+# bare `ECONNRESET`, measured 2026-09-18) surfaced as exit 1, which this function
+# then reported as SURVIVED or UNEXPECTED — i.e. the battery claimed a gate
+# finding when the gate had not executed at all. A harness abort must be loud
+# and must stop the battery, because every verdict after it is unearned.
+HARNESS_EXIT=70
 check() {
   local label="$1" expect="$2" mode="$3" sqlfile="$4"
   local out rc
   out=$(node "$SCRATCH/run-case.mjs" "$SCRATCH/$sqlfile" "$PGPORT" "$PWD" 2>&1)
   rc=$?
+  if [ "$rc" = "$HARNESS_EXIT" ]; then
+    printf 'ABORT      exit=%-3s %s  (harness could not run — NOT a verdict)\n' "$rc" "$label"
+    echo "$out" | sed 's/^/               | /' | tail -4
+    results+=("ABORT $label")
+    fail=1
+    return
+  fi
   if [ "$mode" = "kill" ]; then
     if [ "$rc" = "$expect" ]; then
       printf 'KILLED     exit=%-3s %s\n' "$rc" "$label"
@@ -368,13 +486,196 @@ fi
 # against a pre-run copy, NOT against HEAD: a battery must not mutate the gate,
 # but the gate may legitimately carry uncommitted work, and demanding a match
 # with HEAD would fail a correct run for a reason it did not cause.
-if ! cmp -s "$BAK" "$GATE"; then
+#
+# WHY THE EXISTENCE GUARD IS LOAD-BEARING (measured 2026-09-18):
+# `cmp -s` on a MISSING file exits 2, not 1. Any path where the backup is gone
+# under the compare (a lifecycle bug, a sandbox delete that fails but is stepped
+# over, a killed prior run) makes the compare fail for a reason that has NOTHING
+# to do with the gate — and it printed an empty `git diff`, so the message read
+# "RESTORE FAILED" with no evidence above it. That is how this battery reported
+# RESTORE FAILED on a tree where `git diff -- scripts/ci/verify-rls.mjs` was
+# empty: the reader is trained to ignore the one line that guards "a battery
+# must not damage its gate". Distinguish "the backup is gone" (a HARNESS
+# problem) from "the gate changed" (a REAL problem) instead of collapsing both
+# into the same verdict.
+#
+# The backup now lives in the OS temp dir (see the copy site), so ordinary
+# scratch churn can no longer trigger this branch. The guard is kept anyway:
+# `$TMPDIR_ABS` is proven writable but not proven durable, and T1 exercises this
+# branch directly so it cannot rot unnoticed.
+if [ ! -f "$GATE_BAK" ]; then
+  echo "HARNESS ERROR — $GATE_BAK is missing, so the restore proof cannot be made."
+  echo "                This is NOT evidence that the gate changed:"
+  echo "                a missing backup and a modified gate are different failures."
+  git diff --stat -- "$GATE" | sed 's/^/    /'
+  fail=1
+elif ! cmp -s "$GATE_BAK" "$GATE"; then
   echo "RESTORE FAILED — $GATE does not match its pre-run content:"
+  echo "    backup: $(wc -c < "$GATE_BAK") bytes · gate: $(wc -c < "$GATE") bytes"
   git diff --stat -- "$GATE" | sed 's/^/    /'
   fail=1
 fi
 
+rm -f "$GATE_BAK"
 rm_retry "$SCRATCH"
+
+# ── Harness self-test (T1/T2) ───────────────────────────────────────────────
+# The restore proof and the ABORT classification are themselves load-bearing,
+# and both were broken in a way that MASQUERADED AS A GATE FINDING
+# (measured 2026-09-18, see the comments at each site). A fix that is not held
+# by a check will be undone by the next edit, so these two properties are
+# asserted here rather than trusted. They need no PostgreSQL and no network —
+# they exercise this file's own logic — so they run on every invocation.
+#
+#   T1  a MISSING backup reports HARNESS ERROR, never "RESTORE FAILED"
+#       (before the fix: `cmp -s` on a missing file exits 2, so the battery
+#        printed RESTORE FAILED with an EMPTY git diff — an alarm with no
+#        evidence, which trains its reader to ignore the line)
+#   T2  a harness failure (exit 70) is recorded as ABORT, never SURVIVED
+#       (before the fix: an uncaught ECONNRESET exited 1 and was scored as a
+#        gate verdict — "a harness that never ran, in the costume of a gate
+#        that failed to fail")
+
+echo
+echo "── harness self-test (no database needed) ──"
+
+# T1: missing backup -> HARNESS ERROR, not RESTORE FAILED.
+# The block is extracted FROM THIS FILE and run in a subshell, so T1 fails if the
+# shipped code regresses — testing a re-typed copy would pass either way.
+SELFTEST_DIR="$SCRATCH/selftest"
+mkdir -p "$SELFTEST_DIR"
+T1_SCRIPT="$SELFTEST_DIR/t1.sh"
+node -e "
+const fs=require('fs');
+const src=process.argv[1], out=process.argv[2];
+const t=fs.readFileSync(src,'utf8');
+const i=t.indexOf('if [ ! -f \"\$GATE_BAK\" ]; then');
+const j=t.indexOf('rm -f \"\$GATE_BAK\"', i);
+if(i<0||j<0){ console.error('T1: restore block not found in ' + src); process.exit(3); }
+fs.writeFileSync(out, t.slice(i, j), 'utf8');
+" "$SELF" "$T1_SCRIPT" || { echo "T1 FAILED — could not extract the restore block"; fail=1; }
+if [ -f "$T1_SCRIPT" ]; then
+  t1_out=$(GATE_BAK="$SELFTEST_DIR/absent.bak" GATE="$GATE" bash -c ". '$T1_SCRIPT'; echo \"fail=\$fail\"" 2>&1)
+  if printf '%s' "$t1_out" | grep -q 'HARNESS ERROR' && \
+     ! printf '%s' "$t1_out" | grep -q 'RESTORE FAILED' && \
+     printf '%s' "$t1_out" | grep -q 'fail=1'; then
+    printf 'T1 OK-GREEN  a missing backup reports HARNESS ERROR, not RESTORE FAILED\n'
+    results+=("OK-GREEN T1 missing-backup reports HARNESS ERROR")
+  else
+    printf 'T1 FAILED    a missing backup did not report HARNESS ERROR:\n'
+    printf '%s\n' "$t1_out" | sed 's/^/               | /'
+    results+=("SURVIVED T1 missing-backup guard")
+    fail=1
+  fi
+fi
+
+# T2: exit 70 is an ABORT, and a REAL exit 1 is still a verdict.
+# Like T1, this extracts the SHIPPED `check()` from this file. An earlier
+# version of T2 re-typed the one-line comparison and would therefore have
+# passed even if the ABORT branch were deleted from `check()` — a self-test
+# that cannot fail (rule: every gate must be provable to fail).
+#
+# The two arms assert the property that actually distinguishes a harness
+# failure from a gate verdict:
+#   arm 1  runner exits 70            -> ABORT, and fail=1
+#   arm 2  runner exits 1 (real)      -> NOT ABORT (it is a verdict about the
+#                                        gate, whichever verdict that is)
+#
+# Arm 2 deliberately does NOT assert `SURVIVED`. With no run-case.mjs present,
+# node exits 1 and `kill` expects 1, so the correct outcome is KILLED — an
+# earlier revision asserted SURVIVED and reported a false T2 FAILED, i.e. the
+# test was wrong and blamed the code. What arm 2 must pin is that the ABORT
+# branch did not swallow an ordinary failure.
+T2_SCRIPT="$SELFTEST_DIR/t2.sh"
+node -e "
+const fs=require('fs');
+const src=process.argv[1], out=process.argv[2];
+const t=fs.readFileSync(src,'utf8');
+const i=t.indexOf('HARNESS_EXIT=');
+const j=t.indexOf('echo \"─────────────────────────────────────────────\"', i);
+if(i<0||j<0){ console.error('T2: check() not found in ' + src); process.exit(3); }
+fs.writeFileSync(out, t.slice(i, j), 'utf8');
+" "$SELF" "$T2_SCRIPT" || { echo "T2 FAILED — could not extract check()"; fail=1; }
+if [ -f "$T2_SCRIPT" ]; then
+  # Arm 1: a harness failure must ABORT and set fail=1.
+  a1=$(bash -c "
+    results=(); fail=0; SCRATCH=/nonexistent-scratch; HARNESS_EXIT=70
+    . '$T2_SCRIPT'
+    # after sourcing, redefine the runner to exit 70 — the single point that
+    # distinguishes a harness failure from a gate verdict
+    node() { return 70; }
+    export -f node 2>/dev/null || true
+    check 'probe harness-failure' 1 kill x.sql
+    echo \"verdict=\${results[0]}\"
+    echo \"fail=\$fail\"
+  " 2>&1)
+  # Arm 2: an ordinary exit 1 must stay a verdict, not become ABORT.
+  a2=$(bash -c "
+    results=(); fail=0; SCRATCH=/nonexistent-scratch; HARNESS_EXIT=70
+    . '$T2_SCRIPT'
+    check 'probe real-failure' 1 kill x.sql
+    echo \"verdict=\${results[0]}\"
+  " 2>&1)
+  t2ok=1
+  printf '%s\n' "$a1" | grep -q 'verdict=ABORT probe harness-failure' || t2ok=0
+  printf '%s\n' "$a1" | grep -q 'fail=1' || t2ok=0
+  printf '%s\n' "$a2" | grep -q 'verdict=ABORT' && t2ok=0
+  if [ "$t2ok" = "1" ]; then
+    printf 'T2 OK-GREEN  exit %s ABORTs on a harness failure; a real failure is still a verdict\n' "$HARNESS_EXIT"
+    results+=("OK-GREEN T2 exit-70 ABORTs, a real failure stays a verdict")
+  else
+    printf 'T2 FAILED    the ABORT classification regressed:\n'
+    printf '%s\n' "--- arm 1 (exit 70) ---" "$a1" "--- arm 2 (exit 1) ---" "$a2" | sed 's/^/               | /'
+    results+=("SURVIVED T2 abort classification")
+    fail=1
+  fi
+fi
+
+# T3: the ABORT branch must ACTUALLY BE PRESENT IN `check()`.
+#
+# T2 drives the classifier with a stubbed runner, so it proves the branch WORKS
+# but not that the branch is still IN THE SHIPPED FUNCTION — the stub is defined
+# after `check` is sourced, and an edit that deleted the branch could leave T2
+# satisfied. T3 closes that hole by letting the REAL runner fail: with `$SCRATCH`
+# pointing at a directory that does not exist, `node "$SCRATCH/run-case.mjs"`
+# exits non-zero and `check` takes whichever branch the shipped code has.
+#
+# The assertion is a PAIR, because either half alone is satisfiable by the wrong
+# implementation:
+#   - arm A  no `$SCRATCH`, stub absent -> the case must NOT be reported ABORT
+#   - arm B  no `$SCRATCH`, stub exits 70 -> the case MUST be reported ABORT
+# Without arm A, a `check()` that always printed ABORT would look correct on B
+# while destroying every real verdict.
+if [ -f "$T2_SCRIPT" ]; then
+  b1=$(bash -c "
+    results=(); fail=0; SCRATCH='/nonexistent-scratch-3'
+    . '$T2_SCRIPT'
+    check 'probe real-error' 1 kill x.sql
+    echo \"verdict=\${results[0]}\"
+  " 2>&1)
+  mkdir -p "$SELFTEST_DIR/stub"
+  cat > "$SELFTEST_DIR/stub/run-case.mjs" <<'STUBEOF'
+process.exit(70);
+STUBEOF
+  b2=$(bash -c "
+    results=(); fail=0; SCRATCH='$SELFTEST_DIR/stub'
+    . '$T2_SCRIPT'
+    check 'probe harness-error' 1 kill x.sql
+    echo \"verdict=\${results[0]}\"
+  " 2>&1)
+  t3ok=1
+  printf '%s\n' "$b1" | grep -q 'verdict=ABORT' && t3ok=0
+  printf '%s\n' "$b2" | grep -q 'verdict=ABORT probe harness-error' || t3ok=0
+  if [ "$t3ok" = "1" ]; then
+    printf 'T3 OK-GREEN  the shipped check() ABORTs on exit %s and only then\n' "$HARNESS_EXIT"
+    results+=("OK-GREEN T3 abort branch is present in the shipped check()")
+  else
+    printf 'T3 FAILED    the shipped check() does not ABORT as its comment claims:\n'
+    printf '%s\n' "--- arm A (no harness error) ---" "$b1" "--- arm B (exit 70) ---" "$b2" | sed 's/^/               | /'
+    results+=("SURVIVED T3 abort branch present in shipped check()")
+    fail=1
+  fi
+fi
 
 echo
 echo "─────────────────────────────────────────────"
@@ -382,8 +683,14 @@ for r in "${results[@]}"; do echo "  $r"; done
 KILLED=$(printf '%s\n' "${results[@]}" | grep -c '^KILLED' || true)
 SURVIVED=$(printf '%s\n' "${results[@]}" | grep -c '^SURVIVED' || true)
 OKG=$(printf '%s\n' "${results[@]}" | grep -c '^OK-GREEN' || true)
+ABORTED=$(printf '%s\n' "${results[@]}" | grep -c '^ABORT' || true)
 echo "─────────────────────────────────────────────"
-echo "  killed $KILLED · survived $SURVIVED · ok-green $OKG"
+echo "  killed $KILLED · survived $SURVIVED · ok-green $OKG · abort $ABORTED"
+if [ "$ABORTED" -gt 0 ]; then
+  echo "  NOTE: $ABORTED case(s) ABORTED — the harness never ran them, so they"
+  echo "        are neither a pass nor a finding. Fix the environment and re-run;"
+  echo "        do NOT read this run as evidence about the gate."
+fi
 echo "  scope: the full catalog verdict against a REAL PostgreSQL (embedded-postgres)"
 if [ "$fail" -eq 0 ]; then
   echo "  VERDICT: gate can fail, and its false-alarm surface is intact"

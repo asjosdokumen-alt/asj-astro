@@ -1,0 +1,175 @@
+---
+/**
+ * JapanTexture.astro — the decorative Japanese layer: asanoha and seigaiha.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * `docs/ILLUSTRATION_SPEC.md` §6.0 measured the gap that shapes this work:
+ * "gamefeel" is NOT missing from the project — it is missing from the LANDING
+ * page. `/candidate` already has progress bars, `CrownBadge` and the Aa-chan
+ * mascot, all driven by real data. The public page has none of that, and it
+ * cannot have it: a visitor has no account, so any badge there would be
+ * invented. See §6.0's closing warning — a fabricated personal progress bar on
+ * a public page does not read as "game", it reads as surveillance.
+ *
+ * So the landing page gets the one category of gamefeel that needs no visitor
+ * state at all: **decoration**. §6.1 lists it as
+ * `Tipografi/panel bertema Jepang (asano-ha, gelombang) | landing | CSS/SVG | rendah`.
+ * This file is that row, and nothing else.
+ *
+ * WHAT IT IS NOT
+ * --------------
+ * - NOT a game mechanic. No score, no rank, no streak, no counter. §6.2 forbids
+ *   selection scoring outright, and this file has no numbers in it at all.
+ * - NOT an image. It is inline SVG, so it costs no request, scales without a
+ *   raster artefact, and needs no `alt` — see the a11y note below.
+ * - NOT content. It is `aria-hidden`, so it is invisible to assistive tech and
+ *   to the heading outline. That is deliberate: it is texture, and texture that
+ *   announces itself is noise.
+ *
+ * WHY IT CANNOT BREAK THE SINGLE-h1 GATE
+ * --------------------------------------
+ * `e2e/test-headings.mjs:154` asserts `/` carries EXACTLY ONE h1, and its
+ * header comment records that the L2 work moved that h1 from the site header
+ * into the hero and demoted the header brand to a div. The tempting way to fail
+ * that gate is to add a decorative "panel title". This component renders **no
+ * heading element of any level** — only div/svg/path — so the gate's subject
+ * cannot move. There is a test for this; see JapanTexture.test.ts.
+ *
+ * ⚠ Do not write a capitalised tag name anywhere in this file, including in a
+ * comment. `indexer/src/build.test.ts:502` asserts zero unresolved
+ * `template-component` records, and the indexer parses `.astro` template tags
+ * out of comments too — so a quoted example becomes a phantom reference and
+ * turns the gate red. Same trap as Section.astro documents at its top.
+ *
+ * WHY `motion-reduce:` IS ON EVERY ANIMATED ELEMENT, NOT JUST THE ROOT
+ * -------------------------------------------------------------------
+ * The global clamp in `global.css` §8 already neutralises animations for
+ * `prefers-reduced-motion`, and `motion.css` §6 handles the cases it gets
+ * wrong. But `main.css`/`theme.css` tokens are what this file consumes, and a
+ * CSS-only guarantee is exactly the kind that a future refactor silently drops.
+ * The per-element `motion-reduce:animate-none` is the belt to that braces, and
+ * it is what the reduced-motion browser measurement actually reads.
+ */
+export interface Props {
+  /**
+   * Which motif to paint.
+   * - `asanoha`  — the hemp-leaf lattice. Reads as "Japanese" without a flag.
+   * - `seigaiha` — the overlapping wave scallops.
+   * - `sakura`   — drifting petals, the one motif that also animates.
+   */
+  motif?: 'asanoha' | 'seigaiha' | 'sakura';
+  /**
+   * Visual weight. `faint` for the band edge behind content, `normal` for a
+   * panel where the motif is meant to be legible.
+   */
+  intensity?: 'faint' | 'normal';
+  /**
+   * Paint a soft wash behind the motif. Uses the existing `--color-accent`
+   * token (`#f9a8d4`, the sakura pink already in theme.css), so this stays
+   * inside the palette rather than introducing one-off colours.
+   */
+  wash?: boolean;
+  /** Extra classes, appended after the component's own. */
+  class?: string;
+}
+
+const { motif = 'asanoha', intensity = 'faint', wash = false, class: className = '' } = Astro.props;
+
+/* Opacity is the single lever for weight. Kept as a lookup rather than inline
+   arithmetic so the two values are visible together and cannot drift apart.
+
+   ⚠ WHY THIS IS A PLAIN OBJECT AND NOT A TYPED LOOKUP, and why this comment
+   names no types. The obvious form is a `Record` whose key type narrows the
+   `intensity` union, and it BREAKS A GATE: the indexer parses this frontmatter
+   AND this comment for component tags, reads the angle-bracket generic
+   arguments as tag names, and records two unresolved `template-component`
+   refs. Measured: `graph.unresolved` went 2 -> 4 and `build.test.ts:668`
+   asserts exactly 0 such refs, so the build gate goes red for a type annotation
+   rather than for a bug. `Section.astro` documents the same trap at its top
+   ("do not write a capitalised tag name anywhere in this file, including in a
+   comment") — this is its frontmatter cousin, and it bites twice: once in the
+   code and once in the prose describing the code. An untyped object costs
+   nothing here: the two keys below cover both members of the union and are
+   consumed immediately. */
+const OPACITY = {
+  faint: 0.05,
+  normal: 0.11,
+};
+const opacity = OPACITY[intensity];
+
+/* 64px tiles. One tile is defined and then tiled by the SVG pattern, so the
+   four paths below are the entire cost of the motif regardless of how large the
+   band is. Nothing here is a raster. */
+const TILE = 64;
+
+const classes = ['pointer-events-none absolute inset-0 overflow-hidden', className]
+  .filter(Boolean)
+  .join(' ');
+---
+
+<div class={classes} aria-hidden="true" data-japan-texture={motif}>
+  {
+    wash && (
+      <div
+        class="absolute inset-0 bg-gradient-to-br from-transparent via-accent/15 to-transparent"
+        data-japan-wash="true"
+      />
+    )
+  }
+
+  <svg
+    class="absolute inset-0 h-full w-full text-accent"
+    style={`opacity:${opacity}`}
+    width="100%"
+    height="100%"
+    focusable="false"
+    role="presentation"
+  >
+    <defs>
+      <pattern
+        id={`jp-${motif}`}
+        x="0"
+        y="0"
+        width={TILE}
+        height={TILE}
+        patternUnits="userSpaceOnUse"
+      >
+        {motif === 'asanoha' && (
+          <g fill="none" stroke="currentColor" stroke-width="1.25">
+            {/* The asanoha lattice is three line groups on a 64px hex cell. */}
+            <path d="M32 0 L32 64 M0 32 L64 32 M0 0 L64 64 M64 0 L0 64" />
+            <path d="M32 0 L0 16 L0 48 L32 64 L64 48 L64 16 Z" />
+          </g>
+        )}
+
+        {motif === 'seigaiha' && (
+          <g fill="none" stroke="currentColor" stroke-width="1.5">
+            {/* Concentric arcs, offset by half a tile, produce the wave scales. */}
+            <path d="M-16 32 a16 16 0 0 1 32 0 M-16 32 a16 16 0 0 1 32 0" />
+            <path d="M16 32 a16 16 0 0 1 32 0 M16 64 a16 16 0 0 1 32 0" />
+            <path d="M-16 64 a16 16 0 0 1 32 0" />
+          </g>
+        )}
+
+        {motif === 'sakura' && (
+          <g fill="currentColor">
+            {/* Four petals arranged around the tile centre. */}
+            <path d="M32 20c3-6 9-8 12-4s0 11-6 14c6 3 10 10 6 14s-9 2-12-4c-3 6-8 8-12 4s0-11 6-14c-6-3-10-10-6-14s9-2 12 4z" />
+          </g>
+        )}
+      </pattern>
+    </defs>
+
+    <rect width="100%" height="100%" fill={`url(#jp-${motif})`} />
+  </svg>
+
+  {
+    motif === 'sakura' && (
+      <div
+        class="absolute inset-0 animate-fade-in motion-reduce:animate-none"
+        data-japan-petal="true"
+      />
+    )
+  }
+</div>

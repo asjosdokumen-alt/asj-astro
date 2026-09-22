@@ -12,8 +12,7 @@ import { useStore } from '@nanostores/preact';
 import { t, langStore } from '../store/i18n';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
-import { authStore } from '../store/authReactive';
-import { getEndpoint } from '../lib/apiEndpoint';
+import api from '../lib/apiClient';
 
 interface Props {
   onClose: () => void;
@@ -42,16 +41,29 @@ export default function CekSiswaModal({ onClose }: Props) {
     async function fetchSiswa() {
       setState({ kind: 'loading' });
       try {
-        const token = authStore.get().sessionToken;
-        const res = await fetch(getEndpoint('getDaftarSiswaBaru'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: 'Bearer ' + token } : {}),
-          },
-          body: JSON.stringify({ action: 'getDaftarSiswaBaru', payload: [] }),
-        });
-        const data = await res.json().catch(() => ({}));
+        // Lewat klien bersama: batas waktu + AbortController, dan token yang
+        // DIREFRESH lewat getFreshToken() alih-alih snapshot authStore.
+        //
+        // `onSessionInvalid: 'throw'` — komponen ini menangani sesi mati SENDIRI
+        // (`kind: 'session'`, bukan error generik), jadi logout + redirect global
+        // akan mengubah perilakunya.
+        //
+        // `silent: true` — komponen ini tidak pernah memunculkan toast; ia
+        // merender pesan di dalam modal. Toast klien akan menjadi kegagalan
+        // kedua yang baru muncul di layar.
+        const data = (await api.secure('getDaftarSiswaBaru', [], {
+          onSessionInvalid: 'throw',
+          silent: true,
+        })) as {
+          success?: boolean;
+          sessionInvalid?: boolean;
+          message?: string;
+          error?: string;
+          // `SiswaRow[]`, bukan `unknown[]`: `rows` di State bertipe itu, dan
+          // `unknown[]` membuat `setState` gagal typecheck (TS2345) — ratchet
+          // menangkapnya pada berkas yang tadinya bersih.
+          data?: SiswaRow[];
+        };
         if (cancelled) return;
         if (data.sessionInvalid || (!data.success && data.message)) {
           // Roster siswa = admin-only (hardening C4/C5) — jangan bocor.
@@ -63,7 +75,15 @@ export default function CekSiswaModal({ onClose }: Props) {
         }
       } catch (err) {
         if (cancelled) return;
-        setState({ kind: 'error', message: (err as Error).message || 'Network error.' });
+        const msg = err instanceof Error ? err.message : String(err);
+        // PENTING: sinyal protokol `sessionInvalid` kini tiba sebagai THROW, bukan
+        // sebagai badan respons — klien menerjemahkannya menjadi satu pesan
+        // kanonik dan melempar sebelum `data` ada. Jadi cabang `data.sessionInvalid`
+        // di atas praktis tidak lagi kena, dan catch inilah yang harus memetakan
+        // pesan kanonik itu kembali ke `kind: 'session'`. Perbandingan string ini
+        // memang kontrak klien — `AiCvForm.tsx` sudah bergantung padanya.
+        if (msg === 'Session expired' || msg === 'No valid session') setState({ kind: 'session' });
+        else setState({ kind: 'error', message: msg || 'Network error.' });
       }
     }
     fetchSiswa();

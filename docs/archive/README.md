@@ -1,5 +1,7 @@
 # docs/archive — Dokumen Historis
 
+Bagian dari peta dokumentasi: lihat [[README|docs/README]] untuk daftar lengkap.
+
 Dipindahkan **2026-09-05**. Isi folder ini **tidak lagi menjadi referensi aktif**.
 Ada karena nilainya historis: keputusan, alur pengerjaan, dan audit yang sudah
 selesai atau sudah tertutup.

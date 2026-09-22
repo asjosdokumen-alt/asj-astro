@@ -23,7 +23,7 @@ import { useState, useEffect } from "preact/hooks";
 import { authStore } from "../../store/authReactive";
 import { t } from "../../store/i18n";
 import { uploadBerkasToStorage } from "../../lib/uploadBerkas";
-import { getEndpoint } from "../../lib/apiEndpoint";
+import { apiClient, type ApiError } from "../../lib/apiClient";
 import {
   BERKAS_TAHAP1,
   BERKAS_TAHAP2,
@@ -305,17 +305,25 @@ export default function PemberkasanModal({
     window.dispatchEvent(new CustomEvent("candidates-changed", { detail: { wa: waTarget } }));
   };
 
+  /**
+   * Panggilan surface admin lewat klien.
+   *
+   * Dulu `fetch` sendiri + `res.json()` tanpa memeriksa `res.ok`, tanpa batas
+   * waktu: koneksi macet menggantung selamanya dengan tombol "uploading"
+   * menyala. Body-nya juga memakai kunci `args` (server menerimanya lewat
+   * `body.payload || body.args`, jadi ini bukan bug — tapi `payload` adalah
+   * kunci yang dipakai setiap pemanggil lain).
+   *
+   * `onSessionInvalid: 'throw'` — panel ini menangani sesi mati SENDIRI (catch
+   * di bawah menampilkan pesannya). Default 'logout' akan me-redirect admin
+   * keluar dari modal di tengah unggahan multi-berkas.
+   * `silent: true` — setiap pemanggil sudah punya toast sendiri
+   * ("ui.toast_failed_prefix" + pesan server); tanpa ini satu kegagalan
+   * memunculkan dua toast.
+   * `requireAuth` dibiarkan default (true): ini aksi admin, sesi wajib.
+   */
   const postAction = async (action: string, args: unknown[]) => {
-    const res = await fetch(getEndpoint(action), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action,
-        args,
-        sessionToken: authStore.get().sessionToken || "",
-      }),
-    });
-    return res.json();
+    return apiClient(action, args, { onSessionInvalid: "throw", silent: true });
   };
 
   const handleUpload = async (tahap: 1 | 2) => {
@@ -435,8 +443,15 @@ export default function PemberkasanModal({
         );
       }
     } catch (e) {
+      // Klien MELEMPAR untuk non-2xx (dulu `res.json()` mengembalikan body dan
+      // handler membaca `data.success`). Server yang MENOLAK — ada `.status` —
+      // bukan kegagalan jaringan, jadi label "failed" yang lama dipertahankan;
+      // hanya transport/abort yang berlabel network_error. Tanpa cabang ini,
+      // setiap 400 "VALIDATION_FAILED" akan dilaporkan sebagai network error.
+      const err = e as ApiError;
+      const msg = err.message || String(e);
       showToast(
-        t("ui.toast_network_error_prefix") + (e instanceof Error ? e.message : String(e)),
+        (err.status ? t("ui.toast_failed_prefix") : t("ui.toast_network_error_prefix")) + msg,
         "error",
       );
     } finally {

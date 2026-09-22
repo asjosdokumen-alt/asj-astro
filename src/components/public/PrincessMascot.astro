@@ -1,0 +1,288 @@
+---
+/**
+ * PrincessMascot.astro — the 3D-sourced mascot, rendered as a static picture.
+ *
+ * WHERE THE ART COMES FROM
+ * ------------------------
+ * `baby-princess-mascot-rig` — a rigged glTF the owner authored at Meshy
+ * (`https://www.meshy.ai/s/i4FDUp`, account `khoci89`). The source is 16.9 MB
+ * with a 16 MB embedded texture; `public/mascot/` as a whole was 176 KB before
+ * this. The five poses here are FLATTENED RENDERS of that model, produced by
+ * `.downloads/render/render-mascot.mjs`, which drives Chromium plus three.js.
+ *
+ * WHY THE MODEL IS NOT SHIPPED. Two reasons, and the second is the decisive one:
+ *
+ *   1. Payload. 17 MB against a 176 KB directory, for a decoration, on a page
+ *      with a stated LCP budget (DESIGN.md §1.3).
+ *   2. **The model cannot do what a mascot here needs.** Its file carries
+ *      exactly ONE animation clip — a walk cycle. There is no wave, no bow, no
+ *      clap. Shipping an interactive 3D viewer would therefore deliver a
+ *      character who can only walk in place, which is a worse mascot than a
+ *      still that reads well. A still is honest about what the source contains;
+ *      a viewer would imply motion it lacks.
+ *
+ * WHY THIS IS `.astro` AND NOT A `.tsx` ISLAND
+ * -------------------------------------------
+ * `Mascot.tsx` is a Preact component, and every pose in it is reachable from
+ * `.tsx` call sites. Adding the princess poses there too keeps ONE pose
+ * registry rather than two. But the landing page is `.astro`, and mounting a
+ * Preact island for a decorative picture would ship a hydration boundary and a
+ * JS payload to render two source tags. This component emits the same markup at
+ * build time with zero JavaScript.
+ *
+ * ⚠ NO GENERIC SYNTAX IN THIS FILE, INCLUDING IN COMMENTS.
+ * `indexer/src/build.test.ts` asserts zero unresolved `template-component` refs.
+ * The indexer parses angle-bracket syntax in `.astro` as COMPONENT TAGS, so a
+ * generic annotation here — or a quoted example of one in prose, since comments
+ * are parsed too — becomes a phantom reference and turns that gate red while
+ * naming this file rather than the annotation. Same trap `Section.astro` and
+ * `JapanTexture.astro` both document at their tops. Nothing below uses it.
+ */
+
+/* ⚠ THE UNION IS ON ONE LINE, AND THAT IS NOT COSMETIC.
+ * Written the usual way — broken across lines with a leading `|` on each —
+ * `astro build` fails with `Unexpected "|"`, pointing at a line number INSIDE
+ * the frontmatter that corresponds to nothing in the source. Astro's frontmatter
+ * extractor re-emits the block through esbuild after stripping the delimiters,
+ * and a leading-`|` continuation does not survive that pass. One line, no
+ * leading pipe, builds. Kept short for that reason. */
+export type PrincessPose = 'princess-wave' | 'princess-peace' | 'princess-side' | 'princess-still' | 'princess-head';
+
+export interface PoseMeta {
+  file: string;
+  w: number;
+  h: number;
+  alt: string;
+}
+
+/**
+ * The five files, with dimensions MEASURED from the files themselves
+ * (`.downloads/render/convert-mascot.mjs` prints them).
+ *
+ * ⚠ NOT SQUARE. The model is authored at real-world scale
+ * (0.91 × 1.69 × 0.80 m), so full-body renders are portrait. Copying the
+ * 512×512 of the Aa-chan poses would squash her, so `w`/`h` are per-pose.
+ *
+ * The heights differ BETWEEN poses (844 vs 904 vs 1051) because each render is
+ * a different silhouette and the converter trims to the visible pixels. That is
+ * why this table exists rather than one shared constant.
+ */
+export const PRINCESS_POSE = {
+  'princess-wave': {
+    file: 'princess-wave',
+    w: 512,
+    h: 844,
+    alt: 'Maskot putri ASJ, tersenyum dengan tangan terangkat.',
+  },
+  'princess-peace': {
+    file: 'princess-peace',
+    w: 512,
+    h: 904,
+    alt: 'Maskot putri ASJ dari sudut tiga perempat, melangkah riang.',
+  },
+  'princess-side': {
+    file: 'princess-side',
+    w: 512,
+    h: 1051,
+    alt: 'Maskot putri ASJ tampak samping.',
+  },
+  'princess-still': {
+    file: 'princess-still',
+    w: 512,
+    h: 796,
+    alt: 'Maskot putri ASJ berdiri tenang.',
+  },
+  'princess-head': {
+    file: 'princess-head',
+    w: 224,
+    h: 358,
+    alt: 'Wajah maskot putri ASJ dengan bunga sakura di rambut.',
+  },
+};
+
+interface Props {
+  /**
+   * Which render to show. Must be a key of the table above.
+   *
+   * ── WHEN THIS IS OVERRIDDEN AT RUNTIME ────────────────────────────────────
+   * A mascot that is being tracked by the scroll script (see BaseLayout's
+   * `[data-mascot-track]` block) gets its `data-pose` attribute REWRITTEN by
+   * that script as the active section changes, so the value passed here is the
+   * INITIAL one — the pose she shows before the first section is measured, and
+   * the one a visitor with JavaScript off keeps.
+   *
+   * So it should be the pose of the section that is FIRST on the page, not a
+   * default. Passing `princess-wave` while `hero` also declares
+   * `princess-wave` is what makes the initial render and the first `apply()`
+   * agree, so there is no visible swap on load.
+   *
+   * THE SWAP IS POSSIBLE AT ALL BECAUSE ALL FIVE RENDERS ARE THE SAME SIZE
+   * BUDGET. The `w`/`h` differ per pose (they trim to visible pixels), so a
+   * swap changes the intrinsic box — which is why the rail reserves height and
+   * the picture is inside it rather than sizing its parent. Without that,
+   * changing pose would relayout the page under the reader.
+   */
+  pose?: string;
+  /** Rendered width in CSS pixels. The @2x source is chosen automatically. */
+  size?: number;
+  /*
+   * Decorative: shown beside text that already carries the meaning.
+   *
+   * DEFAULTS TO TRUE HERE, UNLIKE Mascot.tsx, and the difference is
+   * deliberate. That component's default is false because it is used as THE
+   * content in a few places (the login card). This component is only ever used
+   * as decoration beside a heading that already states the point, so the honest
+   * default is the decorative one — a caller needing a described image opts in.
+   */
+  decorative?: boolean;
+  /** Extra classes for the picture element. */
+  class?: string;
+  /**
+   * The idle to start in, matching `MASCOT_MOTIONS` in src/lib/sectionMotion.ts.
+   *
+   * Omitted means "no `data-motion`": the element then carries only `.mascot`,
+   * which is the resting `sway` inherited through the entrance declaration. The
+   * scroll script sets this attribute on every swap, so the value here matters
+   * only for the first paint.
+   */
+  motion?: string;
+  /**
+   * Make this the element the scroll script drives, by emitting
+   * `data-mascot-track`. Exactly ONE mascot on a page may carry it — the script
+   * takes the first match, so a second flag is silently ignored rather than
+   * causing two mascots to fight over the same pose.
+   */
+  track?: boolean;
+}
+
+const {
+  pose = 'princess-wave',
+  size,
+  decorative = true,
+  class: className,
+  motion,
+  track = false,
+} = Astro.props;
+
+const meta = PRINCESS_POSE[pose];
+
+/* A pose with no entry must render NOTHING rather than an image pointing at a
+ * 404 — the landing page has already shipped one broken-image defect, and this
+ * is the guard that stops a second. Unreachable when `pose` is a literal; it is
+ * here for the case where the name arrives from data.
+ *
+ * ⚠ THE WARNING LIVES IN THE FRONTMATTER, NOT IN THE TEMPLATE, AND THAT IS NOT
+ * STYLE. `indexer/src/build.test.ts` asserts zero unresolved refs originating
+ * outside a test file, and the indexer resolves template expressions against
+ * the FRONTMATTER MODULE SCOPE ONLY. A `console.*` call inside a template
+ * expression is therefore reported as an unresolved GLOBAL — measured here, it
+ * produced two entries (`console`, and `undefined` from the comma expression)
+ * and turned that gate red. In the frontmatter the same call resolves against
+ * the platform scope and is fine. This is the same constraint the file header
+ * of `index.astro` documents for `.map()` callback parameters. */
+const w = meta ? (size ?? meta.w) : 0;
+const h = meta ? Math.round((w / meta.w) * meta.h) : 0;
+
+if (!meta) {
+  /* The project's existing suppression form, with a reason — the same shape
+   * `Mascot.tsx` and `ListKandidatModal.tsx` use for their own `console` calls.
+   * `biome-ignore` without a reason is what the ratchet would rather see gone. */
+  // biome-ignore lint/suspicious/noConsole: the only trace of a typo'd pose name; without it a missing mascot renders as nothing at all, silently.
+  console.warn(`[PrincessMascot] unknown pose "${pose}" — nothing rendered.`);
+}
+
+/* ⚠ `aria-hidden` IS COMPUTED HERE, NOT IN THE TEMPLATE, for the same reason as
+ * the warning above but with a different trigger.
+ *
+ * The template attribute was written as a ternary whose false branch was the
+ * bare `undefined` literal. The indexer resolves template expressions against
+ * the frontmatter module scope, and `undefined` is not a binding it can see —
+ * it reported the ref by NAME (`undefined`), at the line of the attribute, and
+ * `build.test.ts` asserts zero such refs. The fix is not to hide it behind a
+ * cast; it is to resolve the value in the frontmatter, where the platform scope
+ * applies, and pass a plain binding.
+ *
+ * `undefined` (not `'false'`) is still the correct value when the image is
+ * described: omitting the attribute is what lets assistive tech announce it. */
+const ariaHidden = decorative ? 'true' : undefined;
+
+/* ── THE SWAP TARGETS, RESOLVED IN THE FRONTMATTER ─────────────────────────
+ *
+ * WHY NOT WRITE THE ATTRIBUTES IN THE TEMPLATE. `data-pose={pose}` is fine, but
+ * `data-motion={motion}` breaks when `motion` is absent: the attribute would
+ * render as an empty string, and `[data-motion=""]` matches no rule while
+ * `[data-motion]` DOES. The CSS selects on the value, so an empty attribute is
+ * a rule that resolves to nothing rather than the resting state — a mascot that
+ * is present, visible and completely still, for no stated reason.
+ *
+ * Omitting the attribute is the correct encoding of "no motion override", and
+ * it is expressed by resolving to `undefined` here, where the platform scope
+ * applies, rather than in the template, where `undefined` is an unresolved ref
+ * (see the note on `ariaHidden` above). */
+const motionAttr = motion || undefined;
+/**
+ * `data-mascot-track` is the scroll script's handle on this element. It is a
+ * BOOLEAN attribute in intent — the script only asks whether it is present — so
+ * it stays in the template as a boolean spread rather than a string. Writing
+ * `data-mascot-track="false"` would make `[data-mascot-track]` match anyway, and
+ * the script would then drive a mascot that asked not to be driven.
+ *
+ * `track ? '' : undefined` is deliberately NOT used: an attribute whose value is
+ * the empty string still renders as `data-mascot-track=""`, and the distinction
+ * between "present and empty" and "absent" is the whole point here.
+ */
+const poseAttr = meta ? pose : undefined;
+---
+
+{/*
+  ── `mascot-sway` IS DELIBERATELY NOT IN THE CLASS LIST ─────────────────────
+
+  The `img` below used to carry `class="mascot mascot-sway select-none"`. That
+  class is now wrong, for two independent reasons:
+
+    1. `.mascot-sway` declares `animation: mascot-enter-soft ... both,
+       mascot-sway ... infinite 420ms` — a two-name list. `.mascot`, which sits
+       LATER in motion.css, already declares exactly the same thing. So the
+       class contributed nothing at rest, and it is the reason the four new
+       idles could not play: they were being silently beaten on source order.
+    2. The scroll script expresses the idle as `data-motion`. Keeping a second
+       class-based route to the same idle means the reduced-motion reset has to
+       account for both, and a swap has two competing declarations where one is
+       enough.
+
+  The resting idle is `.mascot`'s own declaration and that declaration IS
+  `sway` — so dropping the class changes nothing at rest and removes an
+  ambiguity at every swap.
+
+  ⚠ AND THE COMMENT IS OUTSIDE THE `img`, NOT BETWEEN ITS ATTRIBUTES. A block
+  comment inside an element's attribute list is NOT valid in an Astro template —
+  the compiler parses that region as attributes and a stray comment produces a
+  parse error pointing at the attribute after it, which reads as a syntax
+  problem in `data-pose` rather than as the comment three lines above. Comments
+  about an element belong above it, in a JSX expression container. */}
+{meta && (
+  <picture class={className}>
+    <source
+      type="image/avif"
+      srcset={`/mascot/${meta.file}.avif 1x, /mascot/${meta.file}@2x.avif 2x`}
+    />
+      <source
+        type="image/webp"
+        srcset={`/mascot/${meta.file}.webp 1x, /mascot/${meta.file}@2x.webp 2x`}
+      />
+      <img
+        src={`/mascot/${meta.file}.webp`}
+        alt={decorative ? '' : meta.alt}
+        aria-hidden={ariaHidden}
+        width={w}
+        height={h}
+        loading="lazy"
+        decoding="async"
+        draggable={false}
+        class="mascot select-none"
+        data-pose={poseAttr}
+        data-motion={motionAttr}
+        data-mascot-track={track ? true : undefined}
+      />
+    </picture>
+  )}

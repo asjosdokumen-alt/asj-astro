@@ -104,7 +104,14 @@ async function downloadFile(url: string): Promise<{ buffer: Buffer; contentType:
   return { buffer: Buffer.from(arrayBuf), contentType };
 }
 
-async function extractText(buffer: Buffer, ext: string): Promise<string> {
+/**
+ * Exported for `service.test.ts`. The xlsx branch is the only place this repo
+ * READS a spreadsheet, and `Utils.sheet_to_csv` is the one call the rest of the
+ * suite does not reach, so it is tested directly instead of through
+ * `handleProcessUploadDoc` — which would need a download and a session first.
+ * Other contexts still import ONLY from `index.ts`.
+ */
+export async function extractText(buffer: Buffer, ext: string): Promise<string> {
   const e = ext.toLowerCase().replace(/^\./, '');
   switch (e) {
     case 'pdf': {

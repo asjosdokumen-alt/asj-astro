@@ -1,0 +1,53 @@
+---
+/**
+ * ClosingBand.astro — the closing call to action, above the footer.
+ *
+ * REDESIGNED 2026-09-20: premium gradient CTA band with accent glow.
+ * The old version used a flat Card with the `band` radius. This version
+ * uses a gradient background from the hero palette for visual continuity,
+ * making the CTA feel like a bookend to the hero rather than a sidebar.
+ *
+ * WHY THE SECONDARY CTA IS A DISPATCHED EVENT
+ * ------------------------------------------
+ * "Daftar Pelamar" opens the register modal, which lives in the App island's
+ * state. This component is static Astro and cannot reach that state, so it fires
+ * the same kind of event the drawer already uses for its own buttons
+ * (`asj-kandidat-login`, `openCekSiswaModal`). App listens for
+ * `asj-kandidat-register`.
+ *
+ * i18n: every string is a key plus a visible fallback, the repo's standard
+ * pattern, so a crawler and a no-JS visitor see real text.
+ */
+import Section from './Section.astro';
+import Icon from '../ui/Icon';
+---
+
+<Section id="daftar" enter="focus" pose="princess-peace" motionName="bounce">
+  <div class="hero-gradient rounded-band border border-white/10 overflow-hidden shadow-2xl">
+    <div class="relative z-10 text-center flex flex-col items-center gap-6 p-8 md:p-14">
+      <h2 data-lang="profile.cta_title" class="text-section font-black text-white">
+        Siap memulai perjalanan ke Jepang?
+      </h2>
+      <p data-lang="profile.cta_sub" class="max-w-[52ch] text-body-sm text-slate-200">
+        Lihat lowongan yang tersedia atau daftar sebagai pelamar hari ini.
+      </p>
+      <div class="flex flex-wrap justify-center gap-3 mt-2">
+        <a
+          href="/loker"
+          class="inline-flex items-center gap-2 px-7 py-3.5 rounded-pill bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-bold text-sm shadow-lg shadow-pink-600/25 transition-all duration-200"
+        >
+          <Icon name="briefcase" />
+          <span data-lang="profile.cta_primary">Lihat Lowongan</span>
+        </a>
+        <button
+          type="button"
+          onclick="window.dispatchEvent(new CustomEvent('asj-kandidat-register'))"
+          class="inline-flex items-center gap-2 px-7 py-3.5 rounded-pill bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm backdrop-blur-sm transition-all duration-200"
+        >
+          <Icon name="user-plus" />
+          <span data-lang="profile.cta_secondary">Daftar Pelamar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</Section>

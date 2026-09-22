@@ -502,6 +502,67 @@ export const OPSI_KOSONG: Opsi = ['', 'Pilih / 選択'];
 export const OPSI_LAINNYA: Opsi = [SENTINEL_LAINNYA, '✍️ Lainnya / その他 (ketik manual)'];
 
 /**
+ * The Japanese half of a label, for lists whose second element is bilingual.
+ *
+ * `PEKERJAAN` and friends put the kanji INSIDE the label —
+ * `['OPERATOR PRODUKSI', 'OPERATOR PRODUKSI (工場作業員)']` — because the `value`
+ * is deliberately the stable ASCII string that gets saved, and the candidate
+ * needs to see both languages side by side. That is right for a dropdown.
+ *
+ * It is wrong for a CV column. Reading element 2 straight into `jabatan_jp`
+ * writes `"OPERATOR PRODUKSI (工場作業員)"` into the kanji field, so the
+ * employer's copy of the CV shows the Indonesian term where the Japanese should
+ * be — the two halves of the CV disagreeing, which is the exact failure
+ * `aiCvPairs.ts` exists to prevent. `GENDER_PAIRS` is unaffected by this
+ * because its labels are already pure kanji (`'男性'`), so the two conventions
+ * coexist in the codebase and any consumer that stores element 2 must handle
+ * both.
+ *
+ * This returns the parenthesised kanji when there is one, and otherwise the
+ * label unchanged — so it is a no-op for the already-pure lists rather than a
+ * special case the caller has to know about.
+ *
+ *   'OPERATOR PRODUKSI (工場作業員)' → '工場作業員'
+ *   '男性'                            → '男性'
+ *   'KASIR (レジ係)'                  → 'レジ係'
+ *   ''                                → ''
+ */
+export function labelJp(label: string): string {
+  const s = String(label ?? '').trim();
+  if (!s) return '';
+  // Both bracket widths, because the list mixes them: most entries use full-width
+  // （）, the ASCII ones exist where an entry was glossed by hand.
+  const m = s.match(/[（(]([^）)]+)[）)]\s*$/);
+  // `m?.[1]` rather than `m && m[1]` — the optional chain says the same thing
+  // and is what the linter asks for, so this file stays free of new diagnostics.
+  const inner = m?.[1]?.trim();
+  if (inner) return inner;
+  return s;
+}
+
+/**
+ * The text a dropdown should show for one row — `ID（kanji）`, with no repetition.
+ *
+ * Two conventions meet here and this is the one function that reconciles them:
+ *
+ *   GENDER_PAIRS    `['LAKI-LAKI', '男性']`                  → `LAKI-LAKI（男性）`
+ *   PEKERJAAN       `['KASIR', 'KASIR (レジ係)']`            → `KASIR（レジ係）`
+ *   a non-matching  `['KASIR', 'レジ係']`                    → `KASIR（レジ係）`
+ *
+ * The naive `{value}（{label}）` is right only for the first shape. Against
+ * PEKERJAAN it prints `KASIR（KASIR (レジ係)）` — the Indonesian term twice, with
+ * the outer full-width brackets and the inner ASCII ones sitting next to each
+ * other. That is what the AI CV family-occupation dropdown showed before this.
+ */
+export function pairDisplay(value: string, label: string): string {
+  const v = String(value ?? '').trim();
+  const jp = labelJp(label);
+  if (!v) return jp;
+  if (!jp) return v;
+  return `${v}（${jp}）`;
+}
+
+/**
  * Build the full `<select>` option list for one dropdown:
  * empty → data → sentinel.
  *

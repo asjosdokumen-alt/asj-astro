@@ -7,6 +7,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/pr
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import ApplyFullForm from "./ApplyFullForm";
 import { showToast } from "../Toast";
+import { apiClient } from "../../lib/apiClient";
 
 vi.mock("../Toast", () => ({ showToast: vi.fn() }));
 vi.mock("../../store/i18n", async () => {
@@ -17,24 +18,24 @@ vi.mock("../../lib/cloudinary", () => ({
   uploadToCloudinary: vi.fn(async (f: File) => "https://cloud.test/" + (f && f.name || "doc")),
 }));
 
+vi.mock("../../lib/apiClient", () => ({ apiClient: vi.fn(), api: {}, default: {} }));
+
+// `fetch` mentah tidak boleh dipakai lagi oleh form ini: `getAppData` dan
+// `cekDataPelamar` keduanya ada di CACHEABLE_READS, jadi fetch mentah melewati
+// cache baca 30 s di apiClient. Mock fetch TETAP dipasang — justru supaya bisa
+// DITEGASKAN bahwa ia tidak pernah dipanggil.
 const fetchMock = vi.fn();
-function jsonRes(body: unknown) {
-  return { ok: true, status: 200, json: async () => body };
-}
+const apiClientMock = vi.mocked(apiClient);
 
 let getAppDataJobs: any[] = [];
 let submitApplyRes: any = { success: true, message: "ok" };
 
-async function routeFetch(url: string, init?: any): Promise<any> {
-  const u = String(url);
-  let body: any = {};
-  try { body = JSON.parse(String(init && init.body || "{}")); } catch {}
-  if (u.includes("get-app-data")) return jsonRes({ success: true, jobs: getAppDataJobs });
-  if (u.includes("files")) {
-    if (body.action === "submitApply") return jsonRes(submitApplyRes);
-    if (body.action === "cekDataPelamar") return jsonRes({ found: false, applications: [] });
-  }
-  return jsonRes({});
+/** Router berdasarkan ACTION, bukan URL — itu inti perubahannya. */
+function routeApi(action: string): any {
+  if (action === "getAppData") return { success: true, jobs: getAppDataJobs };
+  if (action === "submitApply") return submitApplyRes;
+  if (action === "cekDataPelamar") return { found: false, applications: [] };
+  return {};
 }
 
 describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localStorage", () => {
@@ -44,8 +45,9 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
     getAppDataJobs = [{ code: "TG123ASJ", kategori: "Tukang Gypsum", dokumenShare: "CV,JFT,SSW,KTP" }];
     submitApplyRes = { success: true, message: "ok" };
     fetchMock.mockReset();
+    apiClientMock.mockReset();
+    apiClientMock.mockImplementation((async (action: string) => routeApi(action)) as any);
     vi.mocked(showToast).mockReset();
-    fetchMock.mockImplementation(routeFetch as any);
     vi.stubGlobal("fetch", fetchMock);
   });
   afterEach(() => {
@@ -55,11 +57,18 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
 
   it("A4: kartu wajib berasal dari job.dokumenShare server (getAppData public) + bidang dari kategori", async () => {
     render(<ApplyFullForm />);
-    // getAppData dipanggil dengan mode public
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    const [url0, init0] = fetchMock.mock.calls[0];
-    expect(String(url0)).toBe("/.netlify/functions/get-app-data");
-    expect(JSON.parse(String(init0.body))).toEqual({ action: "getAppData", payload: ["public"] });
+    // getAppData dipanggil lewat apiClient dengan mode public, dan dengan opsi
+    // yang menjaga halaman PUBLIK ini tetap publik: `requireAuth: true` akan
+    // menuntut sesi, dan default 'logout' akan me-redirect pengunjung tanpa sesi.
+    await waitFor(() => expect(apiClientMock).toHaveBeenCalled());
+    expect(apiClientMock).toHaveBeenCalledWith("getAppData", ["public"], {
+      requireAuth: false,
+      onSessionInvalid: "throw",
+      silent: true,
+    });
+    // Regresi: pembacaan ini TIDAK boleh kembali ke fetch mentah, karena fetch
+    // mentah melewati cache baca 30 s untuk action yang ada di CACHEABLE_READS.
+    expect(fetchMock).not.toHaveBeenCalled();
     // Bidang terisi dari server (URL tidak membawa ?bidang=)
     await screen.findByDisplayValue("Tukang Gypsum");
     // Kartu: foto (selalu) + CV/JFT/SSW + KTP (dokumenShare server)
@@ -91,9 +100,12 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
     expect(d.form.job).toBe("TG123ASJ");
     expect(d.docKeys).toContain("cv");
     expect(showToast).toHaveBeenCalledWith("toast.draft_saved", "success");
-    // Hanya getAppData yang dipanggil — draft tidak pernah di-POST
-    const filesCalls = fetchMock.mock.calls.filter((c: any) => String(c[0]).includes("files"));
-    expect(filesCalls.length).toBe(0);
+    // Hanya getAppData yang dipanggil — draft tidak pernah di-POST ke server.
+    // Ditegaskan lewat ACTION, bukan URL: satu-satunya panggilan tulis di form
+    // ini adalah submitApply, dan ia tidak boleh muncul sama sekali.
+    const writeCalls = apiClientMock.mock.calls.filter((c: any) => c[0] === "submitApply");
+    expect(writeCalls.length).toBe(0);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("A5: draft dipulihkan saat remount (restoreDraft)", async () => {
@@ -123,11 +135,14 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
     await fireEvent.click(screen.getByRole("checkbox"));
     await fireEvent.click(screen.getByRole("button", { name: "KIRIM LAMARAN" }));
     await waitFor(() => {
-      const submit = fetchMock.mock.calls.find((c: any) => String(c[0]).includes("files"));
+      const submit = apiClientMock.mock.calls.find((c: any) => c[0] === "submitApply");
       expect(submit).toBeTruthy();
     });
-    const submitCall = fetchMock.mock.calls.find((c: any) => String(c[0]).includes("files"));
-    const payload = JSON.parse(String(submitCall![1].body)).payload[0];
+    const submitCall = apiClientMock.mock.calls.find((c: any) => c[0] === "submitApply");
+    // `apiClient(action, args, options)` — payload adalah argumen KEDUA dan tetap
+    // dibungkus satu array, persis seperti yang dulu ditulis ke badan HTTP.
+    const payload = (submitCall![1] as any[])[0];
+    expect(fetchMock).not.toHaveBeenCalled();
     expect(payload.extraFiles).toEqual([{ name: "KTP", url: "https://cloud.test/ktp.pdf" }]);
     expect(payload.cvFile).toBeNull();
     expect(payload.job).toBe("TG123ASJ");

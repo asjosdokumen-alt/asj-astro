@@ -33,7 +33,29 @@ interface UserState {
 
 type ModalMode = 'closed' | 'login' | 'daftar';
 
-export default function App({ showHeader = true }: { showHeader?: boolean } = {}) {
+/**
+ * Hero statistics — the three the company profile actually proves.
+ *
+ * WHY THESE THREE AND NOT FOUR. A design mockup showed 500+ candidates, 200+
+ * departures and 50+ partners. NONE of those numbers appears anywhere in the
+ * official company profile, and a fabricated statistic on a company page is a
+ * legal claim, not decoration (docs/COMPANY_PROFILE_DATA.md §12, §13). These
+ * three ARE documented: the deed is dated 15 August 2023 (page 6), and the
+ * profile lists five placement sectors (page 3) and four destination prefectures
+ * — Miyazaki, Okayama, Nagano, Kagoshima (pages 13-14).
+ *
+ * When the owner supplies the real counts, a fourth tile is added here and the
+ * grid already accommodates it (`lg:grid-cols-1` stacks any number).
+ */
+const HERO_STATS: ReadonlyArray<{ value: string; labelKey: string }> = [
+  { value: '2023', labelKey: 'profile.stat_since' },
+  { value: '5', labelKey: 'profile.stat_sectors' },
+  { value: '4', labelKey: 'profile.stat_prefectures' },
+];
+
+export default function App(
+  { showHeader = true, hero = false }: { showHeader?: boolean; hero?: boolean } = {},
+) {
   const u: UserState = useStore(authStore) as UserState;
   const lang = useStore(langStore);
   const [, bumpJpReady] = useState(0);
@@ -50,37 +72,13 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
   const [showCekSiswa, setShowCekSiswa] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => { setHydrated(true); }, []);
-  // Theme backgrounds.
-  //
-  // SAKURA points at `sakra_banner.webp` — spelled without the "u" — because that
-  // is the object's REAL name in the bucket. Verified 2026-09-13 by fetching it:
-  // `sakra_banner.webp` returns 200 / image/webp / 112,858 B, while the
-  // correctly-spelled `sakura_banner.webp` returns 404 NoSuchKey. The typo is in
-  // the stored filename, not in this string; "fixing" it here breaks the banner.
-  // The footer's `sakura_footer.webp` IS spelled correctly, so the two differ.
-  const HEADER_BGS: Record<string, string> = {
-    SAKURA: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/sakra_banner.webp',
-    TOKYO: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/tokyo_banner.jpg',
-    INTER_VIP: 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/dark_tokyo_banner.webp'
-  };
-  // The footer's copy of this map lives in Footer.astro, which is where the
-  // footer actually renders. A FOOTER_BGS map used to sit right here and was
-  // read by nothing, while Footer.astro hardcoded tokyo_footer.jpg — so light
-  // mode moved the header to SAKURA and left the footer on TOKYO.
-  const [headerBg, setHeaderBg] = useState(
-    () => HEADER_BGS[bannerStore.get()] || HEADER_BGS.TOKYO
-  );
-
-  useEffect(() => {
-    // Read the store, not localStorage: `bannerStore` is the single source of
-    // truth and defaults to TOKYO in the same way this component does. Reading
-    // the raw key meant a banner a user had never set looked like an explicit
-    // "TOKYO" pick, and the two could disagree mid-toggle.
-    const onThemeChange = () => setHeaderBg(HEADER_BGS[bannerStore.get()] || HEADER_BGS.TOKYO);
-    onThemeChange();
-    window.addEventListener('asj-theme-change', onThemeChange);
-    return () => window.removeEventListener('asj-theme-change', onThemeChange);
-  }, []);
+  // Hero background is now a CSS gradient (`.hero-gradient` class in global.css)
+  // instead of external Supabase images. The old `HEADER_BGS` map, its
+  // `bannerStore` listener, and the `asj-theme-change` plumbing are removed —
+  // the gradient switches automatically via the `--hero-gradient` custom
+  // property in theme.css, keyed off `data-theme` on `<html>`.  This eliminates
+  // three external image fetches (113–150 KB each), a CDN dependency, and the
+  // footer/header artwork-lag bug that Footer.astro's comment records.
 
   // Initialize Supabase auth listener once at boot
   useEffect(() => { translateDataLang();
@@ -101,6 +99,15 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
     const handler = () => setShowCekSiswa(true);
     window.addEventListener("openCekSiswaModal", handler);
     return () => window.removeEventListener("openCekSiswaModal", handler);
+  }, []);
+  /* The closing CTA band is static Astro and cannot reach this island's state, so
+     it fires an event instead — the same pattern the drawer buttons already use
+     (`asj-kandidat-login`). Without a listener the band's "Daftar Pelamar" button
+     would look live and do nothing, which is the worst of both worlds. */
+  useEffect(() => {
+    const handler = () => { setModalMode("daftar"); setMenuOpen(false); };
+    window.addEventListener("asj-kandidat-register", handler);
+    return () => window.removeEventListener("asj-kandidat-register", handler);
   }, []);
 
   function installApp() { showToast("Install: Chrome > Menu > Home Screen", "info"); setMenuOpen(false); }
@@ -177,39 +184,222 @@ export default function App({ showHeader = true }: { showHeader?: boolean } = {}
     };
   }, [menuOpen]);
 
+  /* One logo element for both header variants.
+     It used to be written twice — once per branch — which meant two copies of the
+     inline error handler, and the second copy cost a `noExplicitAny` diagnostic on
+     a file that is already at its ratchet ceiling (measured: lint-ratchet reported
+     "src/components/App.tsx: 17 -> 20" with noExplicitAny +1). Lifting it into one
+     const keeps the count where it was and removes the chance of the two copies
+     drifting. The size is the EXISTING one, so every route that already renders
+     this header is unchanged; only the new hero variant adopts it. */
+  const brandLogo = (
+    <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-12 h-12 md:w-16 md:h-16 shrink-0 object-contain drop-shadow-2xl" onError={(e: any) => { e.target.style.display = "none" }} />
+  );
+
   return (
     <ErrorBoundary>
-      {showHeader && <header id="asj-header" class="max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl h-auto min-h-[14rem] md:h-56 flex items-end p-6 md:p-8 bg-cover bg-center transition-colors duration-700" style={`background-image: url(${headerBg})`}>
-        <div id="asj-header-overlay" class="absolute inset-0 header-overlay"></div>
-        <div class="relative z-10 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
-          <div class="flex items-center gap-3 md:gap-5 min-w-0">
-            <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-12 h-12 md:w-16 md:h-16 shrink-0 object-contain drop-shadow-2xl" onError={(e: any) => { e.target.style.display = "none" }} />
-            {/* max-w keeps the title clear of the absolutely-positioned
-                menu button (App.tsx, `absolute top-4 right-4`, 40px at
-                x=302 on a 390px viewport). The button is `absolute`, so
-                flexbox never reserves space for it — without this cap the
-                22-char company name ends at x=353 and 51px of it renders
-                *under* the button. min-w-0 on both wrappers is required or
-                `truncate` never engages (flex children refuse to shrink
-                below their content width without it). */}
-            <div class="min-w-0 flex-1 max-w-[210px] md:max-w-none">
-              <div id="header-tagline" class="text-pink-300 text-xs md:text-sm font-bold tracking-[4px] mb-1 truncate">{t("header.tagline")}</div>
-              <h1 class="text-lg md:text-3xl font-black italic tracking-wide drop-shadow-lg truncate"><span>{t("header.company_name")}</span></h1>
+      {/* HERO ANCHORS (S1 `#atas`). The hero had no id and no accessible name,
+          which made "kembali ke atas" impossible to express as a link and left
+          the landing page's topmost band as its only unnamed landmark — L3 gave
+          every other section a name.
+
+          `id="atas"` is on the <header> itself, so the anchor IS the band you
+          see; no extra element and no extra nesting. It only materialises when
+          `hero` is set, which is true on this landing route and false on the
+          other four that mount App without it — there the header is chrome, not
+          a page section, and an `#atas` anchor would be meaningless.
+
+          `scroll-mt-24` is load-bearing, not cosmetic: the site nav is fixed, so
+          without it an in-page jump parks the hero's eyebrow under the nav bar.
+
+          The page's single h1 lives inside this hero, and
+          `e2e/test-headings.mjs` enforces exactly one h1 per route, so a second
+          heading here would break it.
+
+          REMOVED (2026-09-19): this element used to carry
+          `aria-label="Atas halaman"` when it was the hero. Biome reports
+          `aria-label` as unsupported on a plain `<header>` (src/components/App.tsx:242,
+          a lint ERROR, and it was one of two diagnostics this change added), and
+          the label was never load-bearing: `e2e/test-landing.mjs:530` decides a
+          section has an accessible name by looking for a HEADING inside it
+          (`hasHeading`, any of h1..h6), which the hero already has. Naming the
+          landmark is the job of that heading, not of an aria-label here. */}
+      {showHeader && <header id={hero ? "atas" : "asj-header"} class={`${hero ? "scroll-mt-24 hero-gradient " : "hero-gradient "}max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl flex items-end rounded-band overflow-hidden transition-colors duration-200 ${hero ? "min-h-[26rem] md:min-h-[32rem] p-6 md:p-10" : "h-auto min-h-[14rem] md:h-56 p-6 md:p-8"}`}>
+        {/* The old overlay div that darkened the background image is no longer
+             needed — the CSS gradient in `.hero-gradient` already has the right
+             contrast. The `::after` pseudo-element on `.hero-gradient` adds a
+             subtle glow instead. The id is kept for any external selectors. */}
+        {/* Hero illustration (only on the `hero` variant — /share and every
+            other route that mounts the header without a hero keeps the bare
+            gradient). It sits UNDER the content because the band's existing
+            children are not positioned, so a plain absolutely-positioned
+            sibling paints first and the flex row of text lands on top.
+
+            `aria-hidden` + `alt=""` is deliberate and is NOT the same choice as
+            the program tiles: the hero already states its meaning in the h1
+            ("Karier ke Jepang, dimulai dari sini."), so the scene restates it.
+            Announcing it again would make a screen reader read the same idea
+            twice.
+
+            The gradient is kept as the fallback and the image fades over it via
+            opacity, rather than replacing it: the band's gradient and the
+            artwork share the same dusk palette, so the two blend into one
+            surface instead of meeting at a hard edge. It is `object-cover` so
+            the 16:9 art fills a band whose height varies from 26rem (mobile) to
+            32rem (desktop) without distorting.
+
+            `loading="eager"` because this is the LCP element's backdrop; lazy
+            here would delay the largest paint on the page the visitor sees
+            first. */}
+        {hero && (
+          <picture class="absolute inset-0 -z-0 pointer-events-none">
+            <source
+              type="image/avif"
+              srcset="/assets/ilustrasi/hero-sakura.avif 1x, /assets/ilustrasi/hero-sakura@2x.avif 2x"
+            />
+            <source
+              type="image/webp"
+              srcset="/assets/ilustrasi/hero-sakura.webp 1x, /assets/ilustrasi/hero-sakura@2x.webp 2x"
+            />
+            <img
+              src="/assets/ilustrasi/hero-sakura.webp"
+              alt=""
+              aria-hidden="true"
+              width={1600}
+              height={900}
+              loading="eager"
+              decoding="async"
+              class="w-full h-full object-cover opacity-60"
+            />
+          </picture>
+        )}
+
+        {/* Hamburger — shown on BOTH mobile and desktop. One menu surface
+            for both viewports (the user picks the drawer icon, the same
+            drawer slides in). Desktop keeps just the language toggle
+            inline so flipping id⇄jp stays one tap. */}
+        <div class="absolute top-4 right-4 z-30 flex items-center gap-2">
+          <button onClick={toggleLang} class="hidden md:flex w-9 h-9 items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full border border-white/40 transition shadow-md" aria-label="Toggle language" title={lang === "id" ? "ID" : "JP"}>
+            <span class="text-[11px] font-bold">{lang === "id" ? "ID" : "JP"}</span>
+          </button>
+          <button ref={hamburgerRef} onClick={toggleMenu} class="w-10 h-10 flex items-center justify-center bg-black/70 hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
+            <Icon name={menuOpen ? "times" : "bars"} class="text-lg" />
+          </button>
+        </div>
+
+        {hero ? (
+          /* ─── Hero variant (landing page `/`) ────────────────────────────
+             WHY THE HERO LIVES IN App.tsx AND NOT IN ITS OWN .astro FILE.
+             The band's background is the theme artwork, and that value lives in
+             `bannerStore` — browser-only state that App already resolves and
+             already listens to (`asj-theme-change`). A separate Astro hero would
+             need its own copy of the theme→artwork map, which would be the THIRD
+             copy (App.tsx and Footer.astro already each carry one). Duplicating
+             it a third time to satisfy a file layout is the wrong trade: the
+             footer's copy is already justified in its own comment only because
+             it is an island-free script.
+
+             WHY THE COMPANY NAME IS A `div` HERE. `e2e/test-headings.mjs`
+             enforces exactly one h1 per route, and it is right to: an h1 that
+             reads "PT AMANAH SAKURA JAPAN" does not say what the page is
+             (WCAG 2.4.2). On this route the headline below is the h1, so the
+             company name steps down. On every other route the header keeps the
+             h1, because for those it IS the only one. */
+          <div class="relative z-10 w-full grid gap-6 lg:grid-cols-12 lg:items-end">
+            <div class="lg:col-span-7 min-w-0">
+              <div class="flex items-center gap-3 min-w-0">
+                {brandLogo}
+                <span class="text-pink-300 text-eyebrow font-bold uppercase truncate">{t("profile.hero_eyebrow")}</span>
+              </div>
+              <p class="text-pink-300 text-eyebrow font-bold uppercase mt-5">{t("profile.hero_tagline")}</p>
+              {/* `text-white` IS EXPLICIT HERE, and that is load-bearing — do not
+                  delete it because "the hero is dark anyway".
+
+                  This h1 carried no colour class until 2026-09-20 and inherited
+                  `--color-fg` from the theme. That worked only while light mode's
+                  `--color-fg` happened to be `#f1f5f9` (near-white), which is the
+                  right colour for the hero POLARITY but came from the wrong place:
+                  it is the PAGE text token, and the light palette has since been
+                  retuned to `#16121c` so body copy reads on the white canvas.
+
+                  Measured consequence of the retune, in a browser against a real
+                  server — the hero h1 resolved to `rgb(31, 29, 28)` on a
+                  `linear-gradient(135deg, rgb(42,18,53) …)` band: contrast
+                  **1.01:1**, i.e. effectively invisible. The h1 of the landing page.
+
+                  The band is deliberately dark in BOTH themes (see the note on
+                  --hero-gradient in theme.css), so the heading's colour must not be
+                  derived from the theme at all. Its siblings already name theirs —
+                  `text-pink-300` on the eyebrow, `text-slate-200` on the sub — which
+                  is exactly why only the one colourless element broke. */}
+              <h1 class="text-display font-black text-white drop-shadow-lg mt-2 leading-tight">{t("profile.hero_title")}</h1>
+              <p class="text-body text-slate-200 mt-4 max-w-[52ch] leading-relaxed">{t("profile.hero_sub")}</p>
+              <div class="flex flex-wrap gap-3 mt-8">
+                <a href="/loker" class="inline-flex items-center px-7 py-3.5 rounded-pill bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-bold text-sm shadow-lg shadow-pink-600/25 transition-all duration-200"><Icon name="briefcase" class="mr-2" />{t("profile.hero_cta_primary")}</a>
+                <button type="button" onClick={openRegister} class="inline-flex items-center px-7 py-3.5 rounded-pill bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm backdrop-blur-sm transition-all duration-200"><Icon name="user-plus" class="mr-2" />{t("profile.hero_cta_secondary")}</button>
+              </div>
+              <div class="flex flex-wrap gap-2 mt-6">
+                {[t("profile.hero_chip_ssw"), t("profile.hero_chip_magang"), t("profile.hero_chip_penempatan")].map((label) => (
+                  <span key={label} class="px-3.5 py-1.5 rounded-pill bg-white/10 border border-white/15 text-caption font-bold text-slate-200 backdrop-blur-sm">{label}</span>
+                ))}
+              </div>
+            </div>
+            {/* Glass tiles: the ONLY place besides the closing band that uses a
+                translucent surface, and the only one over artwork. Kept to one
+                area per screen — `backdrop-filter` costs per frame.
+
+                COLUMN COUNT — measured, not guessed. This used to read
+                `grid gap-3 sm:grid-cols-3 lg:grid-cols-1`, so the lg tier
+                overrode the row and the three tiles STACKED on desktop, which is
+                the opposite of the intent: one strip became a 479px-wide column
+                three deep. Measured with e2e/measure-hero-stats.mjs before the
+                fix — 700px ONE ROW (209px x3), 1280px STACKED (479px x1,
+                y=235/325/416). The hero grid on the right is `lg:col-span-5`
+                (5 of 12 columns), so three tiles across it are ~152px each:
+                enough for a 4-digit number over a two-word caption at the
+                `text-caption` size, and it is what makes the strip read as a
+                summary rather than a list.
+
+                WHY `sm:grid-cols-3` AND NOT `grid-cols-3`. Forcing three columns
+                at every width fixed the desktop stack and BROKE mobile: at 390px
+                the tiles became 106px wide and 106px tall (from 73px), and
+                "Bidang penempatan" wrapped mid-word to "penempata/n" — measured
+                after the first attempt, visible in test-results/landing/390-s01.png.
+                Below `sm` the tiles now sit one per row at full width, which is
+                the reading order a phone actually wants; the strip shape starts
+                at 640px, where there is room for it. */}
+            <div class="lg:col-span-5 grid gap-3 sm:grid-cols-3">
+              {HERO_STATS.map((stat) => (
+                <div key={stat.labelKey} class="rounded-card bg-white/10 border border-white/15 backdrop-blur-sm px-5 py-4 flex sm:block items-center justify-between gap-3 hover:bg-white/15 transition-colors">
+                  <div class="text-section font-black text-pink-300 leading-none">{stat.value}</div>
+                  <div class="text-caption text-slate-200 mt-0 sm:mt-2">{t(stat.labelKey)}</div>
+                </div>
+              ))}
             </div>
           </div>
-          {/* Hamburger — shown on BOTH mobile and desktop. One menu surface
-              for both viewports (the user picks the drawer icon, the same
-              drawer slides in). Desktop keeps just the language toggle
-              inline so flipping id⇄jp stays one tap. */}
-          <div class="absolute top-4 right-4 z-30 flex items-center gap-2">
-            <button onClick={toggleLang} class="hidden md:flex w-9 h-9 items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full border border-white/40 transition shadow-md" aria-label="Toggle language" title={lang === "id" ? "ID" : "JP"}>
-              <span class="text-[11px] font-bold">{lang === "id" ? "ID" : "JP"}</span>
-            </button>
-            <button ref={hamburgerRef} onClick={toggleMenu} class="w-10 h-10 flex items-center justify-center bg-black/70 hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
-              <Icon name={menuOpen ? "times" : "bars"} class="text-lg" />
-            </button>
+        ) : (
+          <div class="relative z-10 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
+            <div class="flex items-center gap-3 md:gap-5 min-w-0">
+              {brandLogo}
+              {/* max-w keeps the title clear of the absolutely-positioned
+                  menu button (App.tsx, `absolute top-4 right-4`, 40px at
+                  x=302 on a 390px viewport). The button is `absolute`, so
+                  flexbox never reserves space for it — without this cap the
+                  22-char company name ends at x=353 and 51px of it renders
+                  *under* the button. min-w-0 on both wrappers is required or
+                  `truncate` never engages (flex children refuse to shrink
+                  below their content width without it). */}
+              <div class="min-w-0 flex-1 max-w-[210px] md:max-w-none">
+                <div id="header-tagline" class="text-pink-300 text-xs md:text-sm font-bold tracking-[4px] mb-1 truncate">{t("header.tagline")}</div>
+                {/* This is the page's ONLY h1 on /public, /admin, /candidate,
+                    /share — every route that mounts the header without a hero.
+                    Demoting it globally would leave those routes with no h1 at
+                    all, which is why the hero variant above is opt-in. */}
+                <h1 class="text-lg md:text-3xl font-black italic tracking-wide drop-shadow-lg truncate"><span>{t("header.company_name")}</span></h1>
+              </div>
+            </div>
           </div>
-          </div>
+        )}
       </header>}
 
       {/* Scrim only, and deliberately presentational. It is a pointer-only

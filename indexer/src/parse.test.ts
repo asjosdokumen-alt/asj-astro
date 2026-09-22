@@ -58,8 +58,74 @@ describe('real-file outlines', () => {
 
   it('index.astro — frontmatter imports only', () => {
     const p = parseReal('src/pages/index.astro', 'astro');
-    expect(p.imports).toHaveLength(5); // 6 at design time; one frontmatter import removed since
-    expect(p.symbols).toHaveLength(5); // one ImportBinding per import
+    // 5 -> 6 (2026-09-19, landing page L2): +1 — `ClosingBand`, the closing call
+    // to action. This frozen outline is easy to miss because it lives here rather
+    // than beside the inventory ratchets in discover/build: adding an IMPORT to a
+    // file that already has one of these is what moves it, not adding a file.
+    // Measured, not derived — the failure read "expected [ …(6) ] to have a
+    // length of 5 but got 6" before the number was touched.
+    // 6 -> 13 (2026-09-19, landing page L3): +7 — Section, SectionTitle, Card,
+    // IconTileGrid, FactList, StepList and the companyProfile data import, all of
+    // which the six new profile sections need. MEASURED with
+    // `grep -c "^import " src/pages/index.astro` = 13.
+    // 14 -> 15, 26 -> 27 (2026-09-19, landing page L4): +1 — `SiteNav`, the desktop
+    // section navigation. It is a `.astro` component (no iteration, so no reason to
+    // leave `.astro`), imported by index.astro, so `imports` gains 1 and `symbols`
+    // gains 1 default binding. MEASURED with the parseFile probe printed in
+    // asj-add-source-files §3.
+    // 15 -> 16, 27 -> 35 (2026-09-19, landing page L3): +1 statement — `PersonGrid`,
+    // the team grid (a `.tsx` component because it iterates, so it cannot live in an
+    // `.astro` template). The companyProfile named block also gained 8 bindings
+    // (ABOUT_WELCOME, ABOUT_PARAGRAPHS, TEAM, CONTACT_ADDRESS, CONTACT_EMAIL,
+    // CONTACT_LOCATION, CONTACT_PHONES, plus the existing ones), so `symbols` moves by
+    // 1 default + 8 named = 9. MEASURED with the frontmatter probe: 16 statements,
+    // 15 default bindings + 20 named = 35 symbols.
+    // 16 -> 17, 35 -> 37 (2026-09-19, landing page R2): +1 statement — `JobMiniList`,
+    // the mini vacancy list (a `.tsx` component, because it iterates). MEASURED with
+    // a temporary probe calling parseFile directly on this exact relPath, then
+    // deleted: imports 17, symbols 37. Both counters move, exactly as the note below
+    // warns — adding an import to this file is not a single-number change.
+    // 19 -> 20 (2026-09-20, the JapanTexture decorative band): +1 statement, the
+    // `JapanTexture` default import. MEASURED by probe, and it moved BOTH
+    // counters — imports 20, symbols 40 — because symbols counts one binding per
+    // BOUND NAME and this is a default import (1 binding), not a named block.
+    //
+    // 20 -> 19, 40 -> 39 (2026-09-20, the R1a audit): BOTH counters went DOWN by
+    // one, which is the direction that is worth explaining rather than accepting.
+    // MEASURED with a temporary probe calling parseFile directly on this exact
+    // path — imports 19, symbols 39 — not inferred from the failure message.
+    // The cause is e9317cf, the landing-page redesign: it removed one import from
+    // this file's frontmatter. The two counters move together because every import
+    // in this file is a DEFAULT import (1 bound name each), and the earlier note
+    // on `symbols` is the one case where that rule does NOT hold — the
+    // companyProfile block is NAMED and contributes 13 bindings on its own.
+    // A count that falls is not automatically a regression: nothing was deleted
+    // from the frontmatter to make room, and the file still builds and renders.
+    // 21 -> 22, 42 -> 43 (2026-09-21, the ContactForm island): +1 import
+    // statement — `ContactForm`, a DEFAULT import, so BOTH counters move by one.
+    // Unlike the `HistoryTimeline` step above (which moved `symbols` by two,
+    // because the same edit also added `Milestone` to the existing NAMED
+    // companyProfile block), this one is a plain +1/+1: one statement, one bound
+    // name. The two steps look identical from the diff and are not identical in
+    // the counters, which is why each is measured rather than extrapolated from
+    // the previous one.
+    // MEASURED with a temporary probe calling parseFile directly on this exact
+    // relPath (then deleted, before any inventory count was taken): imports 22,
+    // symbols 43.
+    expect(p.imports).toHaveLength(22); // 6 at design time; +the L2/L3/L4/R2 landing-page imports, +JapanTexture, -1 by the e9317cf redesign, +1 PrincessMascot.astro (2026-09-20), +1 HistoryTimeline.tsx and +1 ContactForm.tsx (2026-09-21). Adding an IMPORT to this file is what moves this number, not adding a file.
+    // CORRECTION (2026-09-19). This line used to read "one ImportBinding per
+    // import", and that was true only while every import in this file was a DEFAULT
+    // import. The companyProfile import is named and pulls in 13 bindings, so the
+    // count is 14 default bindings + 13 named = 27, measured, not 15. The rule is
+    // one ImportBinding per BOUND NAME — the old comment would have sent the next
+    // reader looking for a parser bug that is not there.
+    // The 15/24 split is MEASURED, not eyeballed: the probe's histogram of
+    // `s.kind` is entirely ImportBinding (enum value 15 in
+    // docs/code-index-schema.ts), and the frontmatter holds 17 default-import
+    // STATEMENTS of which the companyProfile named block supplies 20 names —
+    // 17 - 2 + 20 + 4 = 39. Counting the statements by hand gives 40 and is
+    // wrong; the indexer's number is the one this assertion is about.
+    expect(p.symbols).toHaveLength(43); // 17 default bindings + 26 named bindings. +1 (2026-09-20) = the PrincessMascot import, a DEFAULT binding, so this moved by 1 and not by the named-binding count. +1 (2026-09-21) = HistoryTimeline (a DEFAULT binding) and +0 more for ContactForm's statement, PLUS `Milestone` added to the existing NAMED companyProfile block (+1) — which is why the two steps together move this by 3 while the statement count moves by 2.
     expect(p.symbols.every((s) => s.kind === SymbolKind.ImportBinding)).toBe(true);
     expect(p.imports.every((i) => i.kind === ImportKind.Static)).toBe(true);
   });

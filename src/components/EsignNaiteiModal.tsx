@@ -18,9 +18,8 @@
  *     Lolos/Pemberkasan (regex legacy); admin selalu boleh (guard backend tetap).
  */
 import { useEffect, useRef, useState } from "preact/hooks";
-import { authStore } from "../store/authReactive";
 import { t } from "../store/i18n";
-import { getEndpoint } from "../lib/apiEndpoint";
+import api from "../lib/apiClient";
 import Icon from "./ui/Icon";
 import { useOverlay } from "./ui/useOverlay";
 import { showToast } from "./Toast";
@@ -186,16 +185,18 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa }: Props) {
     setSubmitting(true);
     try {
       const payload = { wa, ttd1: sigs.ttd1 || "", nama1: sigs.nama1 || "", ttd2: sigs.ttd2 || "", nama2: sigs.nama2 || "" };
-      const res = await fetch(getEndpoint("simpanDataTtdNaitei"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "simpanDataTtdNaitei",
-          args: [payload],
-          sessionToken: authStore.get().sessionToken || "",
-        }),
-      });
-      const data = await res.json();
+      // Lewat klien bersama (non-negotiable #3): dapat batas waktu + AbortController
+      // dan token yang DIREFRESH lewat getFreshToken(), bukan snapshot authStore
+      // yang bisa sudah kedaluwarsa.
+      //
+      // `silent: true` — catch di bawah SUDAH menampilkan toast ber-i18n, dan
+      // klien menampilkan toast-nya sendiri kalau tidak dibungkam, sehingga satu
+      // kegagalan akan dilaporkan dua kali. `silent` mematikan TOAST-nya, bukan
+      // throw-nya: `err.message` tetap membawa pesan server (lihat 83b3541).
+      const data = (await api.secure("simpanDataTtdNaitei", [payload], {
+        onSessionInvalid: "throw",
+        silent: true,
+      })) as { success?: boolean; error?: string; message?: string };
       if (data && data.success) {
         showToast(t("ui.toast_saved_server"), "success");
         window.dispatchEvent(new CustomEvent("candidates-changed", { detail: { wa } }));

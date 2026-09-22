@@ -18,15 +18,20 @@ export function isVipCatatan(catatan: unknown): boolean {
 }
 
 /**
- * Normalize the payload shape of processAiInterview.
+ * Normalize the payload shape of the AI chat handlers.
  *
  * Legacy GAS sent a single OBJECT `{wa, candidateName, history}`; the Astro
  * apiClient and the job queue always send an ARRAY of args `[{wa, ...}]`.
  * Every sibling handler unwraps `payload[0]` — processAiInterview did not,
  * so `wa`/`candidateName`/`history` were silently dropped (the chat ran with
  * no candidate context and empty history on every turn).
+ *
+ * The SAME hole existed in processAIChat and processSiswaAIChat, which read
+ * `p.history` / `p.currentData` straight off the array: Jeklin lost the whole
+ * conversation history and the "DATA KANDIDAT SAAT INI" block on every turn.
+ * Hence the generic name — three handlers share this rule, not one.
  */
-export function unwrapInterviewPayload(payload: unknown): Record<string, unknown> {
+export function unwrapPayloadArgs(payload: unknown): Record<string, unknown> {
   if (Array.isArray(payload)) {
     if (payload.length > 0) {
       const first = payload[0];

@@ -171,7 +171,7 @@ if (process.argv.includes('--list')) {
     const allow = ALLOWED[rel];
     console.log(`  ${rel}`);
     console.log(`    lines: ${hits.join(', ')}`);
-    console.log(`    ${allow ? 'ALLOWED — ' + allow.reason : '>>> NOT ALLOWED (gate will fail)'}`);
+    console.log(`    ${allow ? `ALLOWED — ${allow.reason}` : '>>> NOT ALLOWED (gate will fail)'}`);
     console.log('');
   }
   const total = [...found.values()].reduce((n, h) => n + h.length, 0);

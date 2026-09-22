@@ -1,0 +1,153 @@
+---
+/**
+ * Card.astro — the page's one surface recipe.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * MEASURED 2026-09-19, before this file existed: 39 arbitrary radius values
+ * across 8 distinct sizes in `src/`, and 226 bare `transition` utilities. Cards
+ * were assembled per call site, so "a card" meant something slightly different
+ * on every screen — a different corner, a different padding, a different border
+ * weight.
+ *
+ * WHAT IT PINS
+ * ------------
+ * Surface + border + radius + padding, from the named scales in theme.css. A
+ * caller chooses a ROLE (how prominent is this?) instead of a pixel value, so
+ * there is no ninth radius to invent.
+ *
+ * The wrapper element is a conditional chain rather than a dynamic tag: see the
+ * note in Section.astro — `indexer/src/build.test.ts:502` asserts this tree has
+ * zero unresolved `template-component` records.
+ *
+ * BORDER, NOT SHADOW
+ * ------------------
+ * Depth here is carried by `border-line`, deliberately. On a dark canvas a
+ * drop shadow is nearly invisible, so the old `shadow-2xl` cards read as
+ * floating boxes with no edge — and 39 of them competing made the page look
+ * busier than it was. A border is legible in both themes and costs one paint
+ * instead of a blurred composite. See DESIGN.md §3.6.
+ *
+ * NO NESTED CARDS
+ * ---------------
+ * One level of surface only. A card inside a card reads as depth that is not
+ * there, and it is how a page ends up with three competing hierarchies.
+ */
+export interface Props {
+  /** Extra classes, appended after the card's own. */
+  class?: string;
+  /** Wrapper element. `li` when the card is a grid or list item. */
+  as?: 'div' | 'li' | 'article' | 'aside';
+  /**
+   * Elevation role.
+   * `flat`   — level 0: the ordinary card.
+   * `raised` — level 1: modal-like, selected, or otherwise "in front".
+   */
+  elevation?: 'flat' | 'raised';
+  /** Corner role, from the radius scale. */
+  radius?: 'control' | 'card' | 'panel' | 'band';
+  /** Interior padding role. `none` when the card holds a full-bleed image. */
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+  /** id, for anchoring and for aria-labelledby targets. */
+  id?: string;
+  /**
+   * Entrance animation. On by default: a card is the unit this page is built
+   * from, so "every card animates in" is the rule and opting OUT is the
+   * exception.
+   *
+   * WHY A CALLER EVER OPTS OUT. See styles/motion.css §9. Two real cases:
+   *  - A card that is ALREADY on screen at first paint and whose position the
+   *    visitor is relying on (a sticky summary, the hero panel). The script
+   *    reveals on-screen elements immediately, so the only cost is the 480ms
+   *    fade — harmless, but not always wanted.
+   *  - A card inside a container that repeats it, where staggering every copy
+   *    would push late copies past the animation's useful window.
+   *
+   * It is a boolean rather than a class string so a caller cannot invent a
+   * ninth radius-style variation of the effect.
+   */
+  reveal?: boolean;
+  /**
+   * Position in its grid, for the stagger. Leave unset and the CSS falls back
+   * to `nth-child`; set it when the parent is not a plain child list (e.g. the
+   * card is wrapped) and the automatic index would be wrong.
+   */
+  revealIndex?: number;
+}
+
+const {
+  class: className,
+  as = 'div',
+  elevation = 'flat',
+  radius = 'card',
+  padding = 'md',
+  id,
+  reveal = true,
+  revealIndex,
+} = Astro.props;
+
+const ELEVATION_CLASS = {
+  flat: 'bg-surface border border-line',
+  raised: 'bg-surface-raised border border-line-strong',
+} as const;
+
+const RADIUS_CLASS = {
+  control: 'rounded-control',
+  card: 'rounded-card',
+  panel: 'rounded-panel',
+  band: 'rounded-band',
+} as const;
+
+// `p-5 md:p-6` is the measured default from DESIGN.md §3.5: every card in one
+// grid must share a padding rhythm, or the grid looks hand-placed.
+const PADDING_CLASS = {
+  none: '',
+  sm: 'p-4',
+  md: 'p-5 md:p-6',
+  lg: 'p-6 md:p-8',
+} as const;
+
+const classes = [
+  ELEVATION_CLASS[elevation],
+  RADIUS_CLASS[radius],
+  PADDING_CLASS[padding],
+  'min-w-0',
+  className ?? '',
+]
+  .filter(Boolean)
+  .join(' ');
+
+// Spread rather than repeated attributes: the conditional chain below has four
+// branches and a wrongly-placed `data-reveal` in one of them is invisible until
+// someone notices a single card type does not animate.
+//
+// `data-reveal` with NO value (empty string) is the correct encoding for a
+// boolean data attribute — `data-reveal="false"` would still MATCH the
+// `[data-reveal]` selector and animate the card. Omitting the attribute is the
+// only way to turn it off.
+const revealAttrs = reveal
+  ? revealIndex === undefined
+    ? { 'data-reveal': '' }
+    : { 'data-reveal': '', style: `--reveal-i:${revealIndex}` }
+  : {};
+---
+
+{
+  as === 'li' ? (
+    <li id={id} class={classes} {...revealAttrs}>
+      <slot />
+    </li>
+  ) : as === 'article' ? (
+    <article id={id} class={classes} {...revealAttrs}>
+      <slot />
+    </article>
+  ) : as === 'aside' ? (
+    <aside id={id} class={classes} {...revealAttrs}>
+      <slot />
+    </aside>
+  ) : (
+    <div id={id} class={classes} {...revealAttrs}>
+      <slot />
+    </div>
+  )
+}

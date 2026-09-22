@@ -64,8 +64,55 @@ function authFor(role) {
   });
 }
 
-/** Text that means we are looking at a gate, not the page body. */
-const GATE_MARKERS = ['Verifikasi Akun Kandidat', 'Login Pelamar'];
+/**
+ * Text that means we are looking at a gate, not the page body.
+ *
+ * ⚠ 'Login Pelamar' WAS REMOVED ON 2026-09-19, and it was a false positive by
+ * construction. It is `header.login`, i.e. the label of a normal LOGIN BUTTON —
+ * it is rendered by the site header, the drawer, the new desktop section nav,
+ * and the login modal's own heading. So "the page contains Login Pelamar" is
+ * true of any public page that offers a way to log in, which is every public
+ * page. Left in, it makes the check below report "reached the GATE" for pages
+ * that are not gates at all (measured: `/`, `/public` and — through a redirect
+ * bug — `/admin`, all flagged while rendering their real bodies).
+ *
+ * The replacements are strings that ONLY a gate state can produce, because each
+ * is the copy of the gate itself rather than a control on it:
+ *   'Verifikasi Akun Kandidat'      → ai_cv.verify_account, /ai-cv's inline gate
+ *   'Mengalihkan ke halaman login...' → ui.redirecting_login, AuthGuard's
+ *                                       "no session, redirecting" state
+ *   'Akses ditolak. Mengalihkan...'   → ui.access_denied_redirect, AuthGuard's
+ *                                       "wrong role, redirecting" state
+ * A gate that offers an escape hatch still shows one of these first, so nothing
+ * is lost by dropping the button label.
+ */
+/**
+ * Text that means we are looking at a gate, not the page body.
+ *
+ * ⚠ 'Login Pelamar' WAS REMOVED ON 2026-09-19, and it was a false positive by
+ * construction. It is `header.login`, i.e. the label of a normal LOGIN BUTTON —
+ * it is rendered by the site header, the drawer, the new desktop section nav,
+ * and the login modal's own heading. So "the page contains Login Pelamar" is
+ * true of any public page that offers a way to log in, which is every public
+ * page. Left in, it makes the check below report "reached the GATE" for pages
+ * that are not gates at all (measured: `/`, `/public` and — through a redirect
+ * bug — `/admin`, all flagged while rendering their real bodies).
+ *
+ * The replacements are strings that ONLY a gate state can produce, because each
+ * is the copy of the gate itself rather than a control on it:
+ *   'Verifikasi Akun Kandidat'        → ai_cv.verify_account, /ai-cv's inline gate
+ *   'Mengalihkan ke halaman login...' → ui.redirecting_login, AuthGuard's
+ *                                       "no session, redirecting" state
+ *   'Akses ditolak. Mengalihkan...'   → ui.access_denied_redirect, AuthGuard's
+ *                                       "wrong role, redirecting" state
+ * A gate that offers an escape hatch still shows one of these first, so nothing
+ * is lost by dropping the button label.
+ */
+const GATE_MARKERS = [
+  'Verifikasi Akun Kandidat',
+  'Mengalihkan ke halaman login...',
+  'Akses ditolak. Mengalihkan...',
+];
 
 /**
  * `session` is the ROLE to fabricate, or null to inject nothing.
@@ -85,12 +132,58 @@ const ROUTES = [
 ];
 
 /**
+ * Public routes. They get the h1 and skip-link assertions but NOT the toolbar
+ * one, and the split is explicit for a reason: this gate refuses to silently
+ * skip a check (see `if (!d.bar) throw` below), so pointing the toolbar loop at
+ * a page that has no toolbar would report a failure that is not a defect, and
+ * loosening that loop would quietly disarm it for the seven routes it exists for.
+ *
+ * WHY THEY WERE MISSING UNTIL 2026-09-19. The landing-page work (L2) moves the
+ * page's single h1 out of the site header and into the hero, and demotes the
+ * header's company name to a div — but ONLY on `/`. The gate that is supposed to
+ * enforce "exactly one h1" covered none of the routes being changed, so the one
+ * criterion the change had to satisfy was unenforceable. `/public` is included
+ * too because it is the other route that mounts the header, and there the header
+ * h1 is the ONLY h1 — the exact thing a careless global demotion would break.
+ */
+const PUBLIC_ROUTES = [
+  { path: '/', session: null },
+  { path: '/public', session: null },
+];
+
+/** Routes asserted for h1 and skip-link correctness. */
+const ALL_HEADING_ROUTES = [...ROUTES, ...PUBLIC_ROUTES];
+
+/**
  * Routes where we additionally require that the body was actually reached.
  * /ai-cv is excluded: it cannot be reached without a real AUDIT_AI_CV_TOKEN, so
  * for it we assert only the toolbar h1 — which renders outside the gate, and is
  * therefore honest to assert.
+ *
+ * ⚠ THE SESSION ROLE MUST BE CARRIED, NOT THE BOOLEAN `true`. Until 2026-09-19
+ * this list was a flat array of paths and the loop below called
+ * `inspect(route, width, true)` — passing the literal `true` where `authFor()`
+ * expects a ROLE. The fabricated blob therefore read `{ role: true }`, and
+ * `/admin` is the only body route whose guard checks the role at all
+ * (`AuthGuard requiredRole="admin"`, admin.astro:19). So it redirected to `/`,
+ * the gate read the LANDING PAGE's DOM, and — because `/` contains a
+ * "Login Pelamar" button — reported "reached the GATE" for a page it never
+ * loaded. The other four routes have no `requiredRole`, so `{ role: true }`
+ * slipped through and they passed, which is why exactly one route failed.
+ *
+ * The mis-read was harmless only while the landing page happened not to contain
+ * the marker; the L2 hero/nav work added a visible "Login Pelamar" button to `/`
+ * and turned a silent wrong-page read into a red gate. The redirect is now
+ * caught by the `d.path !== path` guard that every other loop in this file
+ * already had and this one did not.
  */
-const BODY_ROUTES = ['/apply', '/master', '/siswa-baru', '/admin', '/candidate'];
+const BODY_ROUTES = [
+  { path: '/apply', session: 'kandidat' },
+  { path: '/master', session: 'kandidat' },
+  { path: '/siswa-baru', session: 'kandidat' },
+  { path: '/admin', session: 'admin' },
+  { path: '/candidate', session: 'kandidat' },
+];
 
 /**
  * /master is a 5-step wizard and each step renders CONDITIONALLY, so one page
@@ -318,9 +411,9 @@ function assertReachedBody(d) {
 }
 
 async function run() {
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, args: ['--no-proxy-server'] });
 
-  for (const { path, session } of ROUTES) {
+  for (const { path, session } of ALL_HEADING_ROUTES) {
     for (const width of [390, 1280]) {
       const label = `${width}px ${path}`;
 
@@ -333,10 +426,20 @@ async function run() {
           );
         }
         if (d.h1Count !== 1) {
-          throw new Error(
-            `expected exactly 1 h1, found ${d.h1Count} — a second h1 means some component carries ` +
-              `its own alongside the FormToolbar title (this is exactly how /share broke)`,
-          );
+          // The message is direction-aware because the two failures have opposite
+          // causes, and the gate now covers routes that have no FormToolbar at all
+          // (`/`, `/public`). An earlier wording blamed "a second h1 alongside the
+          // FormToolbar title" for both — which is not even the shape of the
+          // failure on `/`, where demoting the hero h1 yields ZERO, and there is no
+          // toolbar to blame. A message that misnames the cause sends the reader to
+          // the wrong file.
+          const cause =
+            d.h1Count === 0
+              ? 'none was found — on this route the header company name is a div and something ' +
+                'else was supposed to carry the h1 (on / that is the hero headline in App.tsx)'
+              : 'more than one was found — a component carries its own alongside the page title ' +
+                '(this is exactly how /share broke, with a brand h1 in ShareView)';
+          throw new Error(`expected exactly 1 h1, found ${d.h1Count} — ${cause}`);
         }
       });
 
@@ -423,7 +526,7 @@ async function run() {
    * layout was replaced — so the count is asserted too, with the routes that are
    * expected to carry one named explicitly.
    */
-  for (const { path, session } of ROUTES) {
+  for (const { path, session } of ALL_HEADING_ROUTES) {
     for (const width of [390, 1280]) {
       const label = `${width}px ${path}`;
 
@@ -483,10 +586,15 @@ async function run() {
 
   // Without this, every assertion above can pass while the page under test is a
   // login gate — see assertReachedBody.
-  for (const route of BODY_ROUTES) {
+  for (const { path, session } of BODY_ROUTES) {
     for (const width of [390, 1280]) {
-      await test(`${width}px ${route}: the page body was reached, not a login gate`, async () => {
-        assertReachedBody(await inspect(route, width, true));
+      await test(`${width}px ${path}: the page body was reached, not a login gate`, async () => {
+        const d = await inspect(path, width, session);
+        // Same guard as every other loop here. Without it a redirect is read as
+        // data about the page that was requested — which is exactly how this
+        // check reported "reached the GATE" for a page it never loaded.
+        if (d.path !== path) throw new Error(`redirected to ${d.path}`);
+        assertReachedBody(d);
       });
     }
   }

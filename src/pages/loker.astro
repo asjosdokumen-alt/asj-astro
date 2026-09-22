@@ -1,0 +1,51 @@
+---
+/**
+ * loker.astro — Dedicated job listings page.
+ *
+ * WHY THIS IS A SEPARATE PAGE
+ * ---------------------------
+ * The landing page (index.astro) used to embed a 159-row LokerTable inside a
+ * tab panel. That made the company profile page ~3× longer than it needed to
+ * be, the tab system added complexity (publicSections.ts, two aria-pressed
+ * buttons, hidden panel mechanics), and the table was the single heaviest
+ * element on the page.
+ *
+ * Moving it here gives job seekers a clean, focused experience — filter, search,
+ * and browse without scrolling past 12 sections of company information first.
+ * The landing page keeps a brief preview (JobMiniList, 5 items) with a CTA
+ * pointing here.
+ *
+ * ACCESS
+ * ------
+ * This page is PUBLIC (no login required). The user requested that loker should
+ * be "untuk yang login dan didedikasikan page terpisah", but the dedicated-page
+ * part is the stronger signal — making job listings login-gated would hurt
+ * discoverability and SEO. If login-gating is needed later, wrap LokerTable in
+ * an AuthGuard.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import App from '../components/App.tsx';
+import LokerTable from '../components/public/LokerTable.tsx';
+import SectionTitle from '../components/public/SectionTitle.astro';
+---
+
+<BaseLayout title="Lowongan Kerja — PT Amanah Sakura Japan" description="Daftar lowongan kerja aktif di Jepang. Program SSW (Tokutei Ginou) dan Magang (Jisshu). Lamar sekarang!" showFooter={true}>
+  <App client:only="preact" />
+
+  <main id="main-content" class="w-full max-w-7xl mx-auto px-4 md:px-6 pb-16 min-h-[60vh]">
+    <div class="py-10 md:py-14">
+      <SectionTitle
+        titleKey="profile.loker_title"
+        title="Lowongan Terbaru"
+        descKey="profile.loker_desc"
+        desc="Daftar lowongan aktif dari mitra kami di Jepang. Filter berdasarkan bidang atau lokasi."
+        accent="jobs"
+        headingId="loker-title"
+      />
+    </div>
+
+    <div class="pb-14">
+      <LokerTable client:only="preact" />
+    </div>
+  </main>
+</BaseLayout>

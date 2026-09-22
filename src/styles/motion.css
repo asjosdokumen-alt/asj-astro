@@ -294,7 +294,633 @@
 
 
 /* ══════════════════════════════════════════════════════════════════
-   6. REDUCED MOTION — final safety net
+   7. Aa-chan — the mascot
+   ══════════════════════════════════════════════════════════════════
+
+   WHY CSS AND NOT A VIDEO OR A LOTTIE FILE
+   ----------------------------------------
+   The obvious way to animate a mascot is to ship an animated asset —
+   a GIF, an APNG, a video, a Lottie JSON. All four are refused here,
+   and not only because this environment cannot produce video:
+
+   - A looping GIF/APNG of the waving bear is a 200 KB+ file that
+     cannot be recoloured, cannot follow the theme, and runs on every
+     device regardless of whether the visitor wants motion.
+   - Lottie adds a ~50 KB runtime plus a JSON of equal size, for four
+     motions that are each one `transform`.
+   - Both can only be turned off by the assets' own author.
+
+   The entire set of renders in `public/mascot/` is 176 KB — every
+   pose, every expression, both densities — and the four motions below
+   are keyframes on `transform` and `opacity`, which the compositor
+   runs off the main thread. Nothing here costs a network request
+   beyond an image the UI needed anyway, and `prefers-reduced-motion`
+   reaches all of it in one block.
+
+   WHY `transform` AND `opacity` ONLY
+   ----------------------------------
+   Both are compositor properties, so these animations cannot trigger
+   layout or paint. Animating `top` or `margin` on a mascot that sits
+   inside a flex row would relayout that row every frame.
+
+   The float is deliberately 6px and 4s: this is a character standing
+   in a card, not a bouncing advertisement. `--u-mascot-float` is a
+   variable so a caller can flatten it to 0 without editing keyframes.
+   ------------------------------------------------------------------ */
+
+:root {
+  --u-mascot-float: 6px;
+  --u-mascot-dur: 4s;
+}
+
+/* Gentle vertical float — the "standing here, alive" idle. */
+@keyframes mascot-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, calc(var(--u-mascot-float) * -1), 0); }
+}
+
+/* The wave: a small rotate around the shoulder, not the canvas centre.
+   `transform-origin: 70% 25%` is where the raised arm meets the body in
+   every full-body render, so the rotation reads as a hand moving rather
+   than the whole character see-sawing. */
+@keyframes mascot-wave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(2.5deg); }
+  75% { transform: rotate(-2.5deg); }
+}
+
+/* Entrance: rises and fades in once, then stops. */
+@keyframes mascot-enter {
+  from { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.96); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* Blink. The mascot's eyes are PART OF THE IMAGE, so this does not close
+   them — it squashes the whole head by 4% for one frame, which reads as a
+   blink at 224px and below, where the character is decoration rather than
+   a portrait. Above that size it is deliberately NOT applied: a 4% squash
+   on a 512px render looks like a glitch, not a blink. */
+@keyframes mascot-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.96); }
+}
+
+.mascot {
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+  /* The list form, and the leading animation IS the entrance — this is the
+     cascade trick the whole section rests on: a `[data-motion]` rule added
+     later by JS declares only the idle, so the entrance survives the swap
+     while the idle is replaced. See the `[data-motion]` block in §7b.
+
+     WHICH NAMES ARE USED HERE, AND WHY THEY ARE NOT ALL THE SAME SHAPE.
+     `bounce` and `lean` build their class name by appending to `mascot-`
+     (`mascot-bounce`), so their keyframe names match; `wave` and `look` use
+     their vocabulary name as-is (the keyframes are `mascot-wave` and
+     `mascot-look`). The claim that every vocabulary entry maps to
+     `mascot-<name>` is FALSE and would have been a silent no-op for `wave`,
+     which is the commonest pose on the page. Each entry is therefore
+     written out. */
+  animation: mascot-enter-soft 420ms var(--enter-ease) both,
+             mascot-sway 6.5s ease-in-out infinite 420ms;
+}
+
+.mascot-float { animation: mascot-enter-soft 420ms var(--enter-ease) both, mascot-float var(--u-mascot-dur) ease-in-out infinite 420ms; }
+.mascot-wave  { transform-origin: 70% 25%; animation: mascot-enter-soft 420ms var(--enter-ease) both, mascot-wave 2.6s ease-in-out infinite 420ms; }
+.mascot-blink { animation: mascot-enter-soft 420ms var(--enter-ease) both, mascot-blink 5s ease-in-out infinite 420ms; }
+
+/* Hovering an interactive mascot (the login card) makes it wave once more.
+   Guarded by `hover: hover` so a touch device does not fire it on tap. */
+@media (hover: hover) and (pointer: fine) {
+  .mascot-hover-wave:hover .mascot { animation: mascot-wave 2.6s ease-in-out infinite; }
+}
+
+/* ── The princess mascot's idle ──────────────────────────────────────
+ *
+ * WHY SHE NEEDS HER OWN KEYFRAME, when `mascot-float` already exists.
+ *
+ * `mascot-float` translates on Y. That reads as "hovering" — correct for
+ * Aa-chan, whose renders are square bust/portrait crops that sit in a
+ * layout like a sticker. The princess renders are FULL-BODY and PORTRAIT
+ * (measured 512×844 up to 512×1051), and lifting a standing figure off the
+ * ground reads as floating or as a layout bug rather than as life.
+ *
+ * So hers is a sway-and-breathe: a sub-degree rotation about the FEET plus
+ * a 1% vertical squash. Both are anchored at `transform-origin: 50% 100%`
+ * — the bottom centre, which is where she touches the ground — so the
+ * motion pivots on her feet instead of around her middle.
+ *
+ * THE SQUASH IS SMALL AND ONE-DIRECTIONAL ON PURPOSE. `scaleY` below 1
+ * alone would sink her through the floor; the translate compensates so the
+ * soles stay put. At 1.5% this reads as breathing at 512px and is
+ * invisible at the 224px head crop, which is the intended limit — a
+ * bigger value on a full-body figure looks like a wobble, not a breath.
+ *
+ * Cycle is deliberately slower than Aa-chan's 4s: a larger figure moving
+ * at the same cadence reads as agitated. */
+@keyframes mascot-sway {
+  0%, 100% { transform: rotate(-0.6deg) translate3d(0, 0, 0) scaleY(1); }
+  50%      { transform: rotate(0.6deg)  translate3d(0, -1px, 0) scaleY(1.015); }
+}
+
+.mascot-sway {
+  transform-origin: 50% 100%;
+  animation: mascot-enter-soft 420ms var(--enter-ease) both,
+             mascot-sway 6.5s ease-in-out infinite 420ms;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   9. ENTRANCE — ubin & kartu masuk sekali
+   ══════════════════════════════════════════════════════════════════
+
+   The last unbuilt item in docs/ILLUSTRATION_SPEC.md §6.1 ("Animasi
+   masuk untuk ubin & kartu", scope: CSS only, risk: low).
+
+   THE FAILURE THIS IS BUILT AROUND — AND IT IS NOT THE ANIMATION
+   --------------------------------------------------------------
+   Every naive entrance animation has the same defect, and it is the one
+   the marquee and the mascot in this file already carry long comments
+   about: **CSS runs the animation whether or not the element is on
+   screen.** A card 4000px down the page "enters" while nobody is
+   looking, so the visitor scrolls to it and finds it already settled —
+   the effect costs a paint and delivers nothing. Worse, `both` fill
+   mode leaves it at the START frame until the animation actually runs,
+   so a page whose animation never fires shows nothing at all.
+
+   So there are TWO parts, and the CSS is the smaller one:
+
+     1. THE CSS HERE — the keyframe and the hidden start state.
+     2. A TINY SCRIPT (`Reveal.astro`) that adds `is-revealed` when the
+        element actually crosses into the viewport, via
+        IntersectionObserver — the same primitive `SiteNav.astro` uses
+        for its active-section band.
+
+   THE NO-JAVAXS-NO-ANIMATION RULE
+   ------------------------------
+   The hidden state is applied ONLY under `html.js-reveal`, a class the
+   script sets before first paint. Without JavaScript the selector never
+   matches, every card is simply visible and still. This inverts the
+   usual arrangement (animate by default, opt out) because the default
+   has to be the one that cannot break: **content that is readable
+   always beats content that animates.**
+
+   ANTI-FLASH: THE OBSERVER IS SET UP IN THE SAME INLINE SCRIPT
+   -----------------------------------------------------------
+   `html.js-reveal` is added in an inline `<head>`-time script, so no
+   frame can render the pre-hidden state with JS already known to be on.
+   The alternative — a deferred module that adds the class on
+   DOMContentLoaded — flashes every card visible and then snaps it
+   hidden, which is a worse artefact than no animation at all.
+
+   STAGGER
+   -------
+   A grid where every tile moves at once reads as a twitch; the same
+   grid offset by 60ms per tile reads as a cascade. The index comes from
+   `--reveal-i` on each element (set by the caller, or by `nth-child`
+   below for the plain cases) clamped to a cap — 8 steps × 60ms = 480ms
+   maximum, so a 200-row table cannot turn into a 12-second performance.
+
+   WHY THE CAP IS NOT OPTIONAL
+   ---------------------------
+   Without it, stagger is a function of list LENGTH, and this app has a
+   159-row job table. `--reveal-i` is clamped by `min()` below, so row
+   150 and row 8 start together. The stagger communicates "these arrived
+   as a group"; past the first screenful it communicates nothing and
+   costs 12s of waiting for the last row.
+
+   WHY NO `will-change` HERE
+   -------------------------
+   This is the one animation in the file that runs EXACTLY ONCE and then
+   never again. `will-change` on a few hundred tiles would pin a few
+   hundred compositor layers for the life of the page — the exact
+   anti-pattern the header of this file warns about. The animation is
+   short and off the critical path; a single mid-animation promotion is
+   cheaper than the layers.
+   ------------------------------------------------------------------ */
+
+:root {
+  /* Per-item offset. 60ms is below the ~80ms perceptual threshold for
+     "these are separate events", so the group still reads as one motion. */
+  --reveal-step: 60ms;
+  /* How many items may stagger before the rest join in. See the cap note. */
+  --reveal-max-steps: 8;
+  /* Distance travelled. 12px is enough to read as "up" at arm's length
+     without a card appearing to fly in from off-screen. */
+  --reveal-shift: 12px;
+  --reveal-dur: 480ms;
+}
+
+@keyframes reveal-rise {
+  from { opacity: 0; transform: translate3d(0, var(--reveal-shift), 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* ── The hidden start state. ONLY when JS has confirmed it is running. ──
+   `both` is deliberate: the element must hold the `from` frame during its
+   stagger delay, or every item would flash visible and then re-hide. */
+html.js-reveal [data-reveal]:not(.is-revealed) {
+  opacity: 0;
+  transform: translate3d(0, var(--reveal-shift), 0);
+}
+
+html.js-reveal [data-reveal].is-revealed {
+  animation: reveal-rise var(--reveal-dur) var(--ease-out-expo) both;
+  /* Clamped: see "WHY THE CAP IS NOT OPTIONAL". `min()` needs a length or a
+     time on both sides, so the cap is expressed as a step COUNT times the
+     step duration — invalid values would drop the whole declaration. */
+  animation-delay: calc(
+    min(var(--reveal-i, 0), var(--reveal-max-steps)) * var(--reveal-step)
+  );
+}
+
+/* ── Default stagger for plain grids, so a caller need not annotate each
+      child. `-1` on the first child would be an invalid negative delay
+      only in appearance; `nth-child` starts at 1 so `--reveal-i` is 0-based
+      from the FIRST child, which is what we want.
+
+      Scoped to `[data-reveal-stagger]` so this never leaks onto a list
+      whose children are not cards. */
+html.js-reveal [data-reveal-stagger] > [data-reveal]:nth-child(1) { --reveal-i: 0; }
+html.js-reveal [data-reveal-stagger] > [data-reveal]:nth-child(2) { --reveal-i: 1; }
+html.js-reveal [data-reveal-stagger] > [data-reveal]:nth-child(3) { --reveal-i: 2; }
+html.js-reveal [data-reveal-stagger] > [data-reveal]:nth-child(4) { --reveal-i: 3; }
+html.js-reveal [data-reveal-stagger] > [data-reveal]:nth-child(5) { --reveal-i: 4; }
+html.js-reveal [data-reveal-stagger] > [data-reveal]:nth-child(6) { --reveal-i: 5; }
+html.js-reveal [data-reveal-stagger] > [data-reveal]:nth-child(n + 7) { --reveal-i: 6; }
+
+/* ── Reduced motion. Same trap as the mascot above, same fix: the `*` clamp
+      in global.css would set this animation's duration to 0.01ms and, with
+      `both` fill, leave some items pinned at the `from` frame — opacity 0.
+      A visitor who asked for less motion would get MISSING CARDS.
+
+      So the hidden state is removed outright rather than shortened, and the
+      reset is written WITHOUT `!important` even though it would be the easy
+      way out. Two reasons, and the second is the one that matters:
+
+        1. `!important` here would reverse the cascade for every later rule
+           that tries to style these elements — the exact debt
+           `lint/complexity/noImportantStyles` exists to catch.
+
+        2. It is not needed, and adding it would HIDE the reason it is not
+           needed. The reset wins on SPECIFICITY instead: the hidden rule
+           above is `html.js-reveal [data-reveal]:not(.is-revealed)` (0,2,1
+           plus the :not argument), and this block repeats that element
+           shape while adding the reduced-motion media query — which is
+           itself part of the cascade. No `!important`, no source-order
+           gamble, and if someone later adds an equally specific rule the
+           conflict shows up as a real specificity question instead of being
+           silently beaten by an `!important` that was only ever defensive.
+
+      `:not(.is-revealed)` appears in BOTH branches so the reset cannot be
+      outranked by the hidden rule in the branch where the element has not
+      been revealed yet — which is precisely the case that would render an
+      invisible card. */
+@media (prefers-reduced-motion: reduce) {
+  html.js-reveal [data-reveal]:not(.is-revealed),
+  html.js-reveal [data-reveal].is-revealed {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   9b. SECTION ENTRANCES — every band arrives its own way
+   ══════════════════════════════════════════════════════════════════
+
+   OWNER'S REQUEST, verbatim, because it is the spec:
+     "tiap bagian kek layanan, hero, galery, contacu us tolong setiap
+      scrollnya bikin transisi beda beda"
+
+   WHY THESE ARE SEPARATE FROM §9 (`reveal-rise`)
+   ----------------------------------------------
+   §9 animates the ITEMS inside a section — every card, tile and row.
+   This block animates the SECTION ITSELF, once, as a band. They are
+   different scales and they compose: a section can slide in while its
+   cards cascade inside it. Collapsing the two would have meant one
+   animation doing both jobs, which is how a page ends up with every band
+   moving identically.
+
+   WHY `data-enter` AND NOT SEVEN CLASSES
+   --------------------------------------
+   The kind is chosen in `src/lib/sectionMotion.ts` (one table, shared
+   with the test), and each section writes it as an attribute. That keeps
+   the HTML honest — you can read a section's entrance without opening the
+   stylesheet — and it means the vocabulary lives in one file that can be
+   asserted, rather than seven classes a linter cannot count.
+
+   THE HIDDEN START STATE, AND THE ONE THING THAT MUST NOT HAPPEN
+   --------------------------------------------------------------
+   Same rule as §9, and it is the whole reason this is written the hard
+   way: the start state is HIDDEN (opacity 0, displaced) and is applied
+   ONLY under `html.js-reveal`. With scripting off the attribute matches no
+   rule and every band is simply present. Content that is readable always
+   beats content that animates.
+
+   ⚠ AND THE SAME TRAP AS §9's REDUCED-MOTION BLOCK: every rule here uses
+   `both` fill, so the start frame IS `opacity: 0`. A visitor who asked for
+   less motion must therefore get the animation REMOVED, not shortened — a
+   clamped duration would leave the band pinned at the invisible frame.
+   See the reduced-motion block at the end of this section.
+
+   WHY `transform`/`opacity`/`clip-path` ONLY
+   ------------------------------------------
+   All three are compositor or cheap-paint properties. None triggers a
+   layout pass, which matters more here than in §9: a section is a large
+   subtree, so animating `margin` or `height` on one would relayout the
+   page on every frame.
+   ------------------------------------------------------------------ */
+
+:root {
+  /* Section entrances travel further than §9's 12px: a band moving 24px
+     reads as the band arriving, where 12px at this size reads as a twitch.
+     Kept modest because a section is big — a large displacement on a
+     full-width element looks like the page is sliding apart. */
+  --enter-shift: 24px;
+  --enter-dur: 620ms;
+  /* Slightly longer and softer than §9's curve. A section is a big object;
+     the same easing that flatters a card makes a band feel abrupt. */
+  --enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes enter-rise {
+  from { opacity: 0; transform: translate3d(0, var(--enter-shift), 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes enter-slide-left {
+  from { opacity: 0; transform: translate3d(calc(var(--enter-shift) * -2), 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes enter-slide-right {
+  from { opacity: 0; transform: translate3d(calc(var(--enter-shift) * 2), 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* Grows from 94% — the "opening" read. Paired with a grid it looks like
+   the tiles are pushing the band open. */
+@keyframes enter-grow {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* The curtain: the content is CLIPPED to nothing at the top and the clip
+   retracts upward, so the band appears to be revealed from beneath its own
+   top edge rather than sliding in from outside. `inset()` rather than a
+   translate because the point is the wipe, not the movement.
+
+   `clip-path` is animated here and NOT in the reduced-motion path (below),
+   where it is reset to `none` — a leftover `inset(0 0 100% 0)` on a still
+   band would hide it, which is the §9 opacity trap in a different costume. */
+@keyframes enter-curtain {
+  from { opacity: 0; clip-path: inset(0 0 100% 0); }
+  to   { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+
+@keyframes enter-drop {
+  from { opacity: 0; transform: translate3d(0, calc(var(--enter-shift) * -1.5), 0) scale(0.98); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+/* Focus: starts soft and slightly oversized, sharpens as it lands. The blur
+   is small (3px) and short-lived on purpose — a large blur on a full-width
+   band is a genuinely expensive paint on a weak GPU, and it reads as a
+   rendering fault rather than as an entrance. */
+@keyframes enter-focus {
+  from { opacity: 0; filter: blur(3px); transform: scale(1.015); }
+  to   { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+
+/* ── The hidden start state, gated on the JS flag, exactly like §9. ──
+      One selector per kind so the `from` frame of that kind's own keyframe
+      applies; a single shared `transform` here would produce a jump for the
+      kinds whose first frame is a scale or a clip. */
+html.js-reveal [data-enter]:not(.is-entered) { opacity: 0; }
+
+html.js-reveal [data-enter="rise"]:not(.is-entered)         { transform: translate3d(0, var(--enter-shift), 0); }
+html.js-reveal [data-enter="slide-left"]:not(.is-entered)  { transform: translate3d(calc(var(--enter-shift) * -2), 0, 0); }
+html.js-reveal [data-enter="slide-right"]:not(.is-entered) { transform: translate3d(calc(var(--enter-shift) * 2), 0, 0); }
+html.js-reveal [data-enter="grow"]:not(.is-entered)        { transform: scale(0.94); }
+html.js-reveal [data-enter="curtain"]:not(.is-entered)     { clip-path: inset(0 0 100% 0); }
+html.js-reveal [data-enter="drop"]:not(.is-entered)        { transform: translate3d(0, calc(var(--enter-shift) * -1.5), 0) scale(0.98); }
+html.js-reveal [data-enter="focus"]:not(.is-entered)       { filter: blur(3px); transform: scale(1.015); }
+
+/* ── The running state. `both` holds the `from` frame through the delay,
+      so a band cannot flash in before its turn. */
+html.js-reveal [data-enter].is-entered { animation-duration: var(--enter-dur); animation-timing-function: var(--enter-ease); animation-fill-mode: both; }
+
+html.js-reveal [data-enter="rise"].is-entered         { animation-name: enter-rise; }
+html.js-reveal [data-enter="slide-left"].is-entered   { animation-name: enter-slide-left; }
+html.js-reveal [data-enter="slide-right"].is-entered  { animation-name: enter-slide-right; }
+html.js-reveal [data-enter="grow"].is-entered         { animation-name: enter-grow; }
+html.js-reveal [data-enter="curtain"].is-entered      { animation-name: enter-curtain; }
+html.js-reveal [data-enter="drop"].is-entered         { animation-name: enter-drop; }
+html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-focus; }
+
+/* ── Reduced motion: REMOVE the entrance, do not shorten it. ──
+      Same specificity reasoning as §9 (`:not(...)` in both branches, no
+      `!important`), and `clip-path`/`filter` are reset explicitly because a
+      shortened `enter-curtain` would leave the band clipped to nothing and a
+      shortened `enter-focus` would leave it blurred — two ways to hide
+      content from the visitor who asked for LESS motion. */
+@media (prefers-reduced-motion: reduce) {
+  html.js-reveal [data-enter]:not(.is-entered),
+  html.js-reveal [data-enter].is-entered {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    clip-path: none;
+    filter: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   7b. The princess's SECTION IDLES
+   ══════════════════════════════════════════════════════════════════
+
+   §7 above gives her `mascot-sway`, the resting idle, and `mascot-wave`.
+   These are the three others, so that "posenya beda beda ... maupun
+   motionnya" is true of the MOTION and not only of the picture: she does
+   not play the same sway in every section with a different still frame
+   pasted on top.
+
+   FIVE MOTIONS, AND WHICH NAME MEANS WHAT
+   ---------------------------------------
+   The per-section vocabulary is `sway | wave | bounce | lean | look`
+   (`MASCOT_MOTIONS` in `src/lib/sectionMotion.ts`). Three of the five are
+   pre-declared by §7 — `mascot-sway`, `mascot-wave`, `mascot-float` — and
+   the other three are declared below. `sway` and `bounce` build their class
+   name by APPENDING to `mascot-`, so their keyframes are `mascot-sway` and
+   `mascot-bounce`; `wave`, `lean` and `look` use their name as-is. That
+   asymmetry is real and is not a typo: `mascot-wave` already existed and
+   renaming it would have churned §7 for nothing. `<PrincessMascot pose="..."
+   size={200} class="w-full" />` therefore needs BOTH a `.mascot-<motion>`
+   class and a `.princess-<pose>` class — for `wave` that is `mascot-wave`,
+   which happens to already exist.
+
+   EVERY ONE IS ANCHORED AT HER FEET (`transform-origin: 50% 100%`), for the
+   reason §7 already gives: the renders are full-body and portrait, so a
+   transform about her middle reads as the figure being warped rather than
+   as her moving. A rotation about the feet reads as weight shifting; about
+   the centre it reads as the image being dragged.
+
+   All four are small. She is a standing figure in a margin, not a mascot
+   animation reel — the brief asks her to respond to WHERE YOU ARE, and an
+   emphatic animation competes with the section it is announcing.
+   ------------------------------------------------------------------ */
+
+/* `wave` reuses §7's `mascot-wave` keyframe and adds the entrance, so the
+   name exists in the per-section vocabulary without a second keyframe. */
+
+/* Bounce: feet leave the floor and land. The translate is compensated by the
+   scale so the soles start and end on the same line — otherwise she appears
+   to sink into the page on every cycle. */
+@keyframes mascot-bounce {
+  0%, 100% { transform: translate3d(0, 0, 0) scaleY(1); }
+  30%      { transform: translate3d(0, -6px, 0) scaleY(1.01); }
+  55%      { transform: translate3d(0, 0, 0) scaleY(0.99); }
+}
+
+/* Lean: a slow tilt toward the content column. Pivots on the feet so she
+   tips rather than slides, and never passes 2deg — past that the figure
+   looks like it is falling over. */
+@keyframes mascot-lean {
+  0%, 100% { transform: rotate(0deg); }
+  40%      { transform: rotate(-2deg); }
+  70%      { transform: rotate(-1.2deg); }
+}
+
+/* Look: a horizontal shimmy with no rotation, which reads as her turning
+   her head/attention across the section. Kept to 2px — more looks like the
+   element is being nudged by a layout bug. */
+@keyframes mascot-look {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  25%      { transform: translate3d(-2px, 0, 0); }
+  60%      { transform: translate3d(2px, 0, 0); }
+}
+
+@keyframes mascot-enter-soft {
+  from { opacity: 0; transform: translate3d(0, 8px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* The composed class names. Written out per motion rather than composed in
+   a stylesheet loop because plain CSS has no loop, and a `[class*=]`
+   attribute selector would match `mascot-lean` inside `mascot-leaner` in
+   some future file.
+
+   `@keyframes mascot-enter` is now UNUSED — kept deliberately, see §7's
+   note, and the reason it is not simply deleted is that docs/ILLUSTRATION_
+   SPEC.md §6.2 still names the add-then-remove-through-JS-gamefeel plan as
+   the NEXT step, which is what it was written for. */
+
+.mascot-bounce {
+  transform-origin: 50% 100%;
+  animation: mascot-enter-soft 420ms var(--enter-ease) both,
+             mascot-bounce 3.4s ease-in-out infinite 420ms;
+}
+.mascot-lean {
+  transform-origin: 50% 100%;
+  animation: mascot-enter-soft 420ms var(--enter-ease) both,
+             mascot-lean 7.5s ease-in-out infinite 420ms;
+}
+.mascot-look {
+  transform-origin: 50% 100%;
+  animation: mascot-enter-soft 420ms var(--enter-ease) both,
+             mascot-look 8s ease-in-out infinite 420ms;
+}
+
+/* ── THE POSE-SWAP PATH ───────────────────────────────────────────────
+ *
+ * Everything above is the STATIC case: one section, one motion, chosen in
+ * the markup. This block is the case the owner actually asked for — "mau ke
+ * sesi terus jadi pindah ikutin bagian dan posenya beda beda tergantung
+ * tempat" — where she stays in place and SWAPS to a new pose and a new
+ * motion as the active section changes.
+ *
+ * WHY THE ATTRIBUTE, AND WHY IT CANNOT SIMPLY ADD A CLASS.
+ *
+ * The first design added/removed `.mascot-<motion>` classes in JS. It does
+ * not work, and the reason is worth writing down because it looks like it
+ * should: `animation-name` on the element is a LIST (`mascot-enter-soft,
+ * mascot-lean`), so removing the class drops back to `.mascot`'s single-name
+ * list, and adding the next one raises it again. Only `mascot-lean` actually
+ * differs between the two states. Whether the browser re-runs the NEW name
+ * from 0s is engine-dependent, and in the failing case she keeps running the
+ * previous section's idle while showing the new section's picture — a
+ * half-swap that reads as a bug, not as a transition.
+ *
+ * So the retarget re-declares the WHOLE shorthand under `[data-motion]`, and
+ * JS then forces a restart of ONLY the idle by toggling it off for a frame.
+ * The two names are therefore equal by construction, and the restart is
+ * something the code asks for explicitly instead of something it hopes the
+ * style engine infers.
+ *
+ * `[data-motion="..."]` is 0,2,0 and so outranks `.mascot-lean` (0,1,0) —
+ * no `!important`, same discipline as the reduced-motion blocks. The
+ * attribute lives on the element that already carries `.mascot`, which is
+ * why the selector is `[data-motion]` and not `[data-motion] .mascot`.
+ *
+ * NOTE THE ENTRANCE IS DELIBERATELY NOT REPEATED HERE. `.mascot` already
+ * supplies `mascot-enter-soft ... both`, and re-declaring it would restart
+ * the fade at every section boundary — see the note on
+ * `mascot-section-enter` above. */
+[data-motion="sway"] {
+  transform-origin: 50% 100%;
+  animation: mascot-sway 6.5s ease-in-out infinite;
+}
+[data-motion="wave"] {
+  transform-origin: 70% 25%;
+  animation: mascot-wave 2.6s ease-in-out infinite;
+}
+[data-motion="bounce"] {
+  transform-origin: 50% 100%;
+  animation: mascot-bounce 3.4s ease-in-out infinite;
+}
+[data-motion="lean"] {
+  transform-origin: 50% 100%;
+  animation: mascot-lean 7.5s ease-in-out infinite;
+}
+[data-motion="look"] {
+  transform-origin: 50% 100%;
+  animation: mascot-look 8s ease-in-out infinite;
+}
+
+/* The restart. JS removes this attribute for one frame and puts it back;
+   with `animation-name` absent the idle resolves to `none`, so the re-add
+   starts the new idle at 0s. Without it a swap between two motions that the
+   engine considers "still running" would be ignored on some engines.
+   Nothing is FADED here — she is already visible and must stay visible. */
+[data-motion-running="off"] {
+  animation: none;
+}
+
+/* The re-entry. Applied for the same single frame as the restart, so the
+   new pose's first 320ms is a small rise rather than a hard cut. `both` is
+   not used: the element must be at its resting position when the attribute
+   is removed again, and `both` would hold the `from` frame. */
+[data-motion-restart] {
+  animation: mascot-section-enter 320ms ease-out;
+}
+
+/* Same easing curve, but no fade of its own. Used by the pose-swap path:
+   when the index changes and JS retargets her `animation-name`, ONLY this
+   animation needs re-running, and a `from { opacity: 0 }` on it would blink
+   her out and back on every section boundary — which at a section boundary
+   is indistinguishable from a flicker bug.
+   See the `[data-motion]` retarget block below. */
+@keyframes mascot-section-enter {
+  from { transform: translate3d(0, 8px, 0); }
+  to   { transform: translate3d(0, 0, 0); }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   8. REDUCED MOTION — final safety net
    ══════════════════════════════════════════════════════════════════
 
    global.css carries the broad `*` clamp. This block handles the two
@@ -305,6 +931,11 @@
      Replace it with a static, non-spinning state instead.
    - the petals: hidden outright, since they are pure decoration and
      `content-visibility` will not stop them.
+   - the mascot: kept, but made still. The clamp would leave it at the
+     FIRST keyframe of `mascot-enter` — `opacity: 0` — so a visitor who
+     asked for less motion would see the mascot disappear entirely.
+     That is the same trap as the frozen marquee at the top of this
+     file, and it is why the animation is removed rather than clamped.
    ------------------------------------------------------------------ */
 
 @media (prefers-reduced-motion: reduce) {
@@ -316,6 +947,64 @@
        frozen ring at a random angle. */
     opacity: 0.6 !important;
   }
+
+  /* The mascot. Two separate problems are fixed here, and only one of them is
+     about the animation:
+     
+     1. WHY THE ANIMATION IS REMOVED, NOT CLAMPED. Every mascot rule above uses
+        `animation-fill-mode: both`, so simply shortening the duration leaves the
+        fill frame applied. `mascot-enter` starts at `opacity: 0`, so a visitor
+        who asked for less motion would get an INVISIBLE mascot — the clamp would
+        cause the very harm the query exists to prevent. Hence the explicit
+        `opacity: 1` and `transform: none`: the outcome must not depend on which
+        keyframe the engine resolves against.
+     
+     2. WHY NO `!important` IS NEEDED ON `.mascot`. A raised mascot carries both
+        `.mascot` and `.mascot-wave`; both selectors have specificity 0,1,0, so
+        the LATER rule wins and this block (further down the file) already beats
+        them on source order. The one exception is the hover rule, which is
+        0,2,0 and therefore does need to be matched at equal specificity rather
+        than overridden — it is repeated below with the same selector shape. */
+  .mascot {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  /* `.mascot-sway` does NOT need a line here, and the reason is worth stating
+     so nobody adds one "for safety" and then wonders why it was there: it has
+     specificity 0,1,0, exactly like `.mascot-wave`, so the `.mascot` rule just
+     above already beats it on source order. Measured with
+     `e2e/test-mascot-motion.mjs`, which asserts the COMPUTED animation-name is
+     `none` under `prefers-reduced-motion: reduce` — if that gate ever fails,
+     this is the assumption that broke.
+
+     THE SAME ARGUMENT NOW HAS TO COVER FOUR MORE SELECTORS, and it does — but
+     only after one repair, because the argument as originally written was
+     WRONG for three of them.
+
+     `.mascot-lean`, `.mascot-look` and `.mascot-bounce` are each (0,1,0), so
+     this `.mascot` rule beats them on source order: fine, no line needed.
+     `[data-motion="lean"]` / `"look"` / `"bounce"` are (0,2,0) and would beat
+     it — those get the explicit reset below. And `[data-motion="sway"]` is the
+     one that would have been missed by a rule-of-thumb, because it is NOT
+     beaten by `.mascot-sway` at all: the element carries `.mascot`, which
+     ALREADY declares `mascot-sway`, so `.mascot` and `[data-motion="sway"]`
+     are simply two blocks declaring the same idle and the newer one wins.
+
+     That is why the three attribute cases are listed by hand rather than as
+     `[data-motion]`: a blanket reset would be defeated by
+     `[data-motion="sway"]`'s own (0,2,0) rule appearing later in the file. */
+  .mascot-hover-wave:hover .mascot { animation: none; }
+
+  [data-motion="sway"],
+  [data-motion="wave"],
+  [data-motion="bounce"],
+  [data-motion="lean"],
+  [data-motion="look"] {
+    animation: none;
+  }
+  [data-motion-running="off"],
+  [data-motion-restart] { animation: none; }
 
   .animate-bounce,
   .animate-ping,

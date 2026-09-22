@@ -203,7 +203,7 @@ Blocking gates: 21
   no battery (hypothesis, not proof): 13
 ```
 
-Two of the four batteries found real defects. That is the point of writing them —
+Three of the five batteries found real defects. That is the point of writing them —
 a battery that only ever confirms the gate was already working has not earned its
 runtime.
 
@@ -213,8 +213,12 @@ runtime.
 | `verify:io` | 5 killed / 0 survived | **the wrapper guard could never fail**: `includes('fetch(')` was satisfied by the file's own comments, so a moved implementation stayed green |
 | `verify:binding` | 7 killed / 0 survived | **exit 2 was documented but unreachable**: every parse failure fell through to exit 1, so a stale gate looked like a binding regression |
 | `typecheck:ratchet` | 5 killed / 0 survived | nothing — both failure conditions and the exit-2 tooling path fire |
+| `verify:fetch-boundary` | 7 killed / 0 survived / 1 ok-green | **the client guard was slack on its first run**: it asked whether ANY `fetch` remained in `apiClient.ts`, but the client has two sites, so renaming one left the allow-list entry's `max: 2` with nothing holding it and half the implementation could move undetected. The guard now compares against the bound. Same battery also confirmed the comment-skip is load-bearing — `src/lib/apiEndpoint.ts:9` is a doc comment containing `fetch(getEndpoint('loginKandidat'), { ... })`, and counting it would flag documentation as a bypass |
 
-Both defects were fixed rather than filed.
+All three defects were fixed rather than filed, each in the same commit as the
+battery that found it. `verify:fetch-boundary` is the third battery to find a real
+defect on its first run, which is the expected rate for a check that has never been
+attacked.
 
 ---
 

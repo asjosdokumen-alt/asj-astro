@@ -16,7 +16,7 @@ import Icon from '../components/ui/Icon';
     </a>
 
     <!-- Global Announcement Marquee -->
-    <div id="global-announcement" class="hidden">
+    <div id="global-announcement" hidden>
        <div class="bg-rose-700 rounded-2xl p-2.5 flex items-center shadow-[0_0_20px_rgba(225,29,72,0.3)] border border-rose-500/60 relative overflow-hidden">
            <div class="absolute left-0 top-0 bottom-0 bg-red-800 w-12 flex items-center justify-center z-10 rounded-l-2xl border-r border-rose-600/60 shadow-md">
                <Icon name="bullhorn" class="text-white animate-bounce text-lg" />
@@ -33,82 +33,45 @@ import Icon from '../components/ui/Icon';
        </div>
     </div>
 
-    <!-- Tab Navigation: Loker vs Layanan (with URL hash persistence) -->
+    <!-- Tab Navigation: Loker vs Layanan.
+         Same module and same data attributes as index.astro. These two pages
+         used to carry two copies of the tab script that had already drifted
+         (panel ids `section-*` here vs `public-*` there, and a different class
+         list) — now there is one implementation and no class list at all. -->
     <div class="flex justify-center relative z-10">
       <div class="inline-flex bg-slate-900 border border-slate-700 rounded-full p-1 shadow-2xl transition-colors" id="tab-pub-wrap">
-        <button id="tab-pub-loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-sky-600 text-white shadow-md">
+        <button id="tab-pub-loker" data-public-tab="loker" aria-pressed="true" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white aria-pressed:bg-sky-700 aria-pressed:text-white aria-pressed:shadow-md">
           <Icon name="briefcase" class="mr-2" /> <span data-lang="ui.tab_loker">Lowongan Loker</span>
         </button>
-        <button id="tab-pub-layanan" class="px-6 py-3 rounded-full text-sm font-bold transition-colors text-slate-400 hover:text-white">
+        <button id="tab-pub-layanan" data-public-tab="layanan" aria-pressed="false" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white aria-pressed:bg-sky-700 aria-pressed:text-white aria-pressed:shadow-md">
           <Icon name="handshake" class="mr-2" /> <span data-lang="ui.tab_layanan">Program &amp; Layanan ASJ</span>
         </button>
       </div>
     </div>
 
     <!-- Section: Loker (Preact island) -->
-    <div id="section-loker">
+    <div id="section-loker" data-public-panel="loker">
       <LokerTable client:only="preact" />
     </div>
 
     <!-- Section: Layanan (static Astro) -->
-    <div id="section-layanan" class="hidden">
+    <div id="section-layanan" data-public-panel="layanan" hidden>
       <LayananSection />
     </div>
   </main>
 
-  <script is:inline>
-    // Tab switching with URL hash persistence
-    (function() {
-      var secLoker = document.getElementById('section-loker');
-      var secLayanan = document.getElementById('section-layanan');
-      var btnLoker = document.getElementById('tab-pub-loker');
-      var btnLayanan = document.getElementById('tab-pub-layanan');
-
-      function switchTab(tab) {
-        if (tab === 'layanan') {
-          secLoker.classList.add('hidden');
-          secLayanan.classList.remove('hidden');
-          btnLoker.classList.remove('bg-sky-600', 'text-white', 'shadow-md');
-          btnLoker.classList.add('text-slate-400');
-          btnLayanan.classList.add('bg-sky-600', 'text-white', 'shadow-md');
-          btnLayanan.classList.remove('text-slate-400');
-        } else {
-          secLayanan.classList.add('hidden');
-          secLoker.classList.remove('hidden');
-          btnLayanan.classList.remove('bg-sky-600', 'text-white', 'shadow-md');
-          btnLayanan.classList.add('text-slate-400');
-          btnLoker.classList.add('bg-sky-600', 'text-white', 'shadow-md');
-          btnLoker.classList.remove('text-slate-400');
-        }
-        // Update URL hash without scrolling
-        if (history.replaceState) {
-          history.replaceState(null, '', '#' + tab);
-        }
-      }
-
-      btnLoker.addEventListener('click', function() { switchTab('loker'); });
-      btnLayanan.addEventListener('click', function() { switchTab('layanan'); });
-
-      // Read initial tab from URL hash
-      var hash = window.location.hash.replace('#', '');
-      if (hash === 'layanan') {
-        switchTab('layanan');
-      }
-
-      // Listen for hash changes (back/forward navigation)
-      window.addEventListener('hashchange', function() {
-        var h = window.location.hash.replace('#', '');
-        switchTab(h === 'layanan' ? 'layanan' : 'loker');
-      });
-    })();
+  <script>
+    import { bindPublicSections } from '../lib/publicSections';
+    bindPublicSections();
   </script>
 
   <!-- Marquee data. Uses the shared single-flight loader so this page and
        index.astro cannot drift apart again: both used to hand-roll the same
        POST to get-app-data, and the copy here had already lost the
-       `success` guard's shape. `getPublicData` is imported, so this must be a
-       processed script — hence separate from the `is:inline` tab logic above,
-       which has to run before hydration. -->
+       `success` guard's shape.
+       Kept as its own script rather than merged with the tab binder above:
+       `getPublicData` is imported (so this must be a processed script), while
+       the tab binder is a one-line call that has nothing to do with the marquee. -->
   <script>
     import { getPublicData } from '../lib/publicData';
     getPublicData().then(function (d) {
@@ -117,7 +80,10 @@ import Icon from '../components/ui/Icon';
         var txt = document.querySelectorAll('[data-marquee]');
         if (el && txt.length && d.pengumuman.trim()) {
           txt.forEach(function (n) { n.textContent = d.pengumuman; });
-          el.classList.remove('hidden');
+          // The `hidden` ATTRIBUTE, not a class swap — same reason as index.astro:
+          // Tailwind 4.3.3 preflight ships `[hidden] { display: none !important }`,
+          // so the attribute is strictly stronger than any display utility.
+          el.hidden = false;
         }
       }
     }).catch(function () {});

@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
-import { getEndpoint } from '../../lib/apiEndpoint';
-import { authStore } from '../../store/authReactive';
+import api from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { t } from '../../store/i18n';
@@ -128,35 +127,33 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
 
   const handleSave = async () => {
     setSaving(true);
-    const sessionToken = authStore.get().sessionToken || '';
     try {
-      const res = await fetch(getEndpoint('updateKandidatSuper'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'updateKandidatSuper',
-          args: [{
-            wa: candidate.wa,
-            gender: form.gender,
-            usia: form.usia,
-            tempatLahir: form.tempatLahir,
-            tglLahir: form.tglLahir,
-            tb: form.tb,
-            bb: form.bb,
-            pendidikan: form.pendidikan,
-            jftText: form.jftText,
-            sswText: form.sswText,
-            tahapan: form.tahapan,
-            status: form.status,
-            // Parity legacy simpanSuperEditKandidat: catatan external +
-            // toggle VIP internal dikirim SEKALI di updateKandidatSuper.
-            catatanExt: form.catatanExt,
-            isVip: isVIP,
-          }],
-          sessionToken,
-        }),
-      });
-      const data = await res.json();
+      // Lewat klien bersama (non-negotiable #3): batas waktu + AbortController,
+      // dan token yang DIREFRESH lewat getFreshToken() alih-alih snapshot
+      // `authStore.get().sessionToken` yang bisa sudah kedaluwarsa.
+      //
+      // `silent: true` di kedua situs di bawah: catch-nya SUDAH menampilkan toast
+      // sendiri, jadi tanpa itu satu kegagalan dilaporkan dua kali. `silent`
+      // mematikan TOAST klien, bukan throw-nya — `err.message` tetap membawa pesan
+      // server (83b3541), sehingga pesan di toast tetap yang paling spesifik.
+      const data = (await api.secure('updateKandidatSuper', [{
+        wa: candidate.wa,
+        gender: form.gender,
+        usia: form.usia,
+        tempatLahir: form.tempatLahir,
+        tglLahir: form.tglLahir,
+        tb: form.tb,
+        bb: form.bb,
+        pendidikan: form.pendidikan,
+        jftText: form.jftText,
+        sswText: form.sswText,
+        tahapan: form.tahapan,
+        status: form.status,
+        // Parity legacy simpanSuperEditKandidat: catatan external +
+        // toggle VIP internal dikirim SEKALI di updateKandidatSuper.
+        catatanExt: form.catatanExt,
+        isVip: isVIP,
+      }], { onSessionInvalid: 'throw', silent: true })) as { success?: boolean; error?: string };
       if (data && data.success) {
         showToast('Data kandidat berhasil disimpan!', 'success');
         window.dispatchEvent(new CustomEvent('candidates-changed', { detail: { wa: candidate.wa } }));
@@ -178,22 +175,12 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
     try {
       const url = await uploadToCloudinary(file);
       if (!url) throw new Error('Cloudinary tidak mengembalikan URL.');
-      const sessionToken = authStore.get().sessionToken || '';
-      const res = await fetch(getEndpoint('simpanBerkasTahapan'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'simpanBerkasTahapan',
-          args: [{
-            wa: candidate.wa,
-            nama: String(candidate.nama || 'KANDIDAT').toUpperCase(),
-            jenisBerkas: jenis,
-            fileUrl: url,
-          }],
-          sessionToken,
-        }),
-      });
-      const data = await res.json();
+      const data = (await api.secure('simpanBerkasTahapan', [{
+        wa: candidate.wa,
+        nama: String(candidate.nama || 'KANDIDAT').toUpperCase(),
+        jenisBerkas: jenis,
+        fileUrl: url,
+      }], { onSessionInvalid: 'throw', silent: true })) as { success?: boolean; error?: string };
       if (data && data.success) showToast(jenis + ' tersimpan.', 'success');
       else showToast((data && data.error) || 'Gagal menyimpan ' + jenis + '.', 'error');
     } catch (e) {

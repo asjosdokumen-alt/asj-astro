@@ -44,3 +44,14 @@
 # Pinned for the same reason as the .mjs files: the committed bytes are LF either
 # way, so this only removes a source of local-only, checkout-dependent failure.
 *.sh text eol=lf
+
+# ── Mutation-battery pair lists ──────────────────────────────────────────────
+#
+# scripts/ci/headings-pairs-*.json hold multi-line OLD/NEW anchors consumed by the
+# same "exactly one match" helper described above. They are data files rather than
+# scripts, so neither the .mjs nor the .sh rule catches them, yet they are subject
+# to the identical CRLF failure: a CRLF working tree makes every multi-line anchor
+# miss. The helper here does assert (hits !== 1 -> exit 3, a loud ABORT), so this
+# would surface as "mutation did not apply" rather than as a silent SURVIVED — but
+# it would still break the battery on any fresh Windows clone.
+scripts/ci/headings-pairs-*.json text eol=lf

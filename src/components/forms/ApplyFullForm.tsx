@@ -5,12 +5,10 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { showToast } from '../Toast';
-import { authStore } from '../../store/authReactive';
 import { apiClient } from '../../lib/apiClient';
 import { validate, registerSchema, emailSchema } from '../../lib/schemas';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { validateFile } from '../../lib/uploadGuard';
-import { getEndpoint } from "../../lib/apiEndpoint";
 import { t, langStore } from '../../store/i18n';
 import Icon from '../ui/Icon';
 import { requiredDocsFromJob } from '../../lib/applyDocs';
@@ -23,6 +21,25 @@ interface FormData {
 
 interface UploadFile {
   file: File | null; preview: string | null; name: string; warn: boolean;
+}
+
+/**
+ * Bentuk jawaban dua action yang dipanggil lewat apiClient di berkas ini.
+ *
+ * Ditulis eksplisit, bukan `apiClient<any>`: `lint-ratchet` menolak berkas yang
+ * sudah punya diagnostik lalu bertambah (kondisi 3), dan satu `any` di sini
+ * cukup untuk memerahkan gate itu. Tipe ini juga lebih jujur — ia menyebut
+ * field yang benar-benar dibaca di bawah.
+ */
+interface CekDataPelamarRes {
+  found?: boolean;
+  nama?: string; email?: string; gender?: string; usia?: string;
+  tb?: string; bb?: string;
+  photoUrl?: string; pasPhoto?: string; jftUrl?: string; sswUrl?: string;
+  requiredDocs?: string[];
+}
+interface SubmitApplyRes {
+  success?: boolean; message?: string;
 }
 
 const INIT_FORM: FormData = {
@@ -83,12 +100,25 @@ export default function ApplyFullForm() {
     // (getAppData public payload -> dokumenShare), not a hardcoded table.
     // PARITY_QA A4: backend submitApply already gates on dokumen_share, so the
     // card set must mirror it. Bidang falls back to the job's kategori.
-    fetch(getEndpoint('getAppData'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'getAppData', payload: ['public'] }),
+    // ── Lewat apiClient, BUKAN fetch mentah ─────────────────────────────────
+    // `getAppData` ADA di CACHEABLE_READS, dan fetch mentah melewati cache baca
+    // 30 s — jadi halaman ini menarik ulang payload publik yang sama di setiap
+    // mount (§26, cacat yang sama dengan TabKelola dan CandidateDash).
+    //
+    // Ketiga opsi dipilih untuk MEMPERTAHANKAN perilaku, bukan memperbaikinya:
+    //   requireAuth: false  halaman lamaran ini PUBLIK. Menuntut sesi akan
+    //                       mengubah siapa yang boleh melamar.
+    //   onSessionInvalid:   default 'logout' akan me-logout lalu me-redirect
+    //     'throw'           pengunjung publik — aksi sesi yang tidak diminta
+    //                       siapa pun di sini.
+    //   silent: true        catch di bawah memang menelan kegagalan ini
+    //                       ("non-fatal: fallback default cards"); menambah
+    //                       toast akan mengubah perilaku, bukan cache-nya.
+    apiClient('getAppData', ['public'], {
+      requireAuth: false,
+      onSessionInvalid: 'throw',
+      silent: true,
     })
-      .then(r => r.json().catch(() => ({})))
       .then((data) => {
         const jobs: any[] = Array.isArray(data.jobs) ? data.jobs : [];
         const job = jobs.find((j: any) => String(j.code || j.rowIndex || '') === jobCode) || null;
@@ -120,26 +150,37 @@ export default function ApplyFullForm() {
     setWaMsg('');
     setWaWarn('');
     try {
-      const res = await fetch(getEndpoint('cekDataPelamar'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'cekDataPelamar', payload: [{ wa }] }) });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.found) {
-          setForm(prev => ({ ...prev, nama: data.nama || prev.nama, email: data.email || prev.email, gender: data.gender || prev.gender, usia: data.usia || prev.usia, tb: data.tb || prev.tb, bb: data.bb || prev.bb }));
-          // A3 parity: carry previous docs so re-applicants keep them on submit
-          setOldDocs({ photo: data.photoUrl || data.pasPhoto || '', jft: data.jftUrl || '', ssw: data.sswUrl || '' });
-          setWaMsg(t('apply.wa_found'));
-          // Show dynamic docs based on requirements
-          if (data.requiredDocs) {
-            data.requiredDocs.forEach((doc: string) => {
-              setUploads(prev => ({
-                ...prev,
-                [doc]: prev[doc] || { file: null, preview: null, name: t('apply.file_none'), warn: false }
-              }));
-            });
-          }
-        } else {
-          setWaWarn(t('apply.wa_not_found'));
+      // ── Lewat apiClient, BUKAN fetch mentah ───────────────────────────────
+      // `cekDataPelamar` juga ada di CACHEABLE_READS, jadi fetch mentah melewati
+      // cache baca yang sama.
+      //
+      // SATU PERUBAHAN PERILAKU, DAN ITU DISENGAJA: dulu `if (res.ok)` membuat
+      // HTTP gagal berarti TIDAK ADA yang terjadi — pelamar menekan tombol,
+      // spinner berhenti, dan tidak ada pesan apa pun. apiClient MELEMPAR pada
+      // HTTP gagal, jadi catch di bawah menampilkan apply.wa_error. Diam bukan
+      // perilaku yang layak dipertahankan; justru itu yang menyembunyikan
+      // kegagalan.
+      const data = await apiClient<CekDataPelamarRes>('cekDataPelamar', [{ wa }], {
+        requireAuth: false,
+        onSessionInvalid: 'throw',
+        silent: true,
+      });
+      if (data.found) {
+        setForm(prev => ({ ...prev, nama: data.nama || prev.nama, email: data.email || prev.email, gender: data.gender || prev.gender, usia: data.usia || prev.usia, tb: data.tb || prev.tb, bb: data.bb || prev.bb }));
+        // A3 parity: carry previous docs so re-applicants keep them on submit
+        setOldDocs({ photo: data.photoUrl || data.pasPhoto || '', jft: data.jftUrl || '', ssw: data.sswUrl || '' });
+        setWaMsg(t('apply.wa_found'));
+        // Show dynamic docs based on requirements
+        if (data.requiredDocs) {
+          data.requiredDocs.forEach((doc: string) => {
+            setUploads(prev => ({
+              ...prev,
+              [doc]: prev[doc] || { file: null, preview: null, name: t('apply.file_none'), warn: false }
+            }));
+          });
         }
+      } else {
+        setWaWarn(t('apply.wa_not_found'));
       }
     } catch {
       setWaWarn(t('apply.wa_error'));
@@ -214,7 +255,8 @@ export default function ApplyFullForm() {
       // 2) Parity fix (2026-09-04): backend submitApply expects a FLAT payload
       // with photoFile/cvFile/jftFile/sswFile URL keys (not a nested fileUrls
       // map) and used to be posted to the wrong action/submitFormPelamar stub.
-      const token = authStore.get().sessionToken;
+      // Token tidak lagi diambil di sini: apiClient menyuntikkan
+      // `Authorization` + `sessionToken` sendiri.
       const payload = {
         job: form.job,
         bidang: form.bidang,
@@ -235,12 +277,21 @@ export default function ApplyFullForm() {
         oldSsw: oldDocs.ssw || null,
         extraFiles,
       };
-      const res = await fetch(getEndpoint('submitApply'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ action: 'submitApply', payload: [payload] }),
+      // ── Lewat apiClient, BUKAN fetch mentah ───────────────────────────────
+      // Dua hal yang didapat: batas waktu 20 s (fetch mentah tidak punya satu
+      // pun, jadi koneksi yang macet meninggalkan spinner selamanya) dan pesan
+      // error dari SERVER alih-alih kode status.
+      //
+      // `requireAuth: false` WAJIB: halaman lamaran ini publik, dan perilaku
+      // lama memang mengirim permintaan tanpa sesi — token bisa undefined.
+      // Menuntut sesi akan memblokir pelamar yang belum login.
+      // `onSessionInvalid: 'throw'` juga wajib: default 'logout' akan me-logout
+      // dan me-redirect pengunjung publik pada satu error HTTP.
+      const data = await apiClient<SubmitApplyRes>('submitApply', [payload], {
+        requireAuth: false,
+        onSessionInvalid: 'throw',
+        silent: true,
       });
-      const data = await res.json().catch(() => ({}));
       if (data.success) {
         setSuccess(true);
         try { localStorage.removeItem('asj_apply_' + form.job); } catch { /* non-fatal */ }

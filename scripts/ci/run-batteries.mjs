@@ -40,15 +40,21 @@
  * someone reclassifies a battery, and the drift would be invisible.
  *
  * Cost was MEASURED before choosing the shape of this runner, not guessed:
- * the 17 hermetic batteries take roughly 5-7 minutes in total on a warm tree,
- * with `boundary` (~53 s), `test` and `idx:gate` (~38 s) dominating. That is why
+ * the hermetic set takes minutes rather than seconds on a warm tree, with
+ * `boundary` (~53 s), `test` and `idx:gate` (~38 s) dominating. That is why
  * this is its own CI job with its own timeout rather than extra steps bolted
  * onto `quality-gates`.
+ *
+ * The SIZE of that set is deliberately not restated here. This line used to read
+ * "the 17 hermetic batteries", and by 2026-09-18 it was 20 — a count in prose is
+ * a claim with nothing checking it, which is the defect this whole runner exists
+ * to fight. The live number is printed in this runner's own header on every run,
+ * read from the manifest, so it cannot drift from what is actually executed.
  *
  * ── WHAT IT DOES NOT CLAIM ──────────────────────────────────────────────────
  * Running a battery proves the battery still discriminates and the gate can
  * still fail. It does NOT prove the gate is complete, and it does not make the
- * 6 `infra` batteries any less unproven. The summary says so explicitly instead
+ * `infra` batteries any less unproven. The summary says so explicitly instead
  * of printing a single flattering percentage.
  *
  * USAGE
@@ -79,7 +85,30 @@ const MANIFEST = path.join(ROOT, 'scripts/ci/review-manifest.json');
  * sweep the live lock or leave a stale one behind, and both fail silently.
  */
 const LOCK_NAME = '.tmp-battery-run.lock';
-const LOCK = path.join(ROOT, LOCK_NAME);
+/**
+ * ── WHY THE LOCK PATH IS OVERRIDABLE ────────────────────────────────────────
+ * `verify:batteries` (run-batteries.mutations.sh) has to prove the RUN-START
+ * fixture sweep, and only a TOP-LEVEL child can exercise it: a nested run skips
+ * that sweep on purpose, because the parent's fixtures are the parent's. But a
+ * top-level child takes the lock, and when the battery is itself run by this
+ * runner — which is exactly what CI does — the parent already holds it, so the
+ * child refuses with exit 2 and never sweeps. Measured 2026-09-18: case R7b
+ * reported SURVIVED in CI while the sweep it asserts was working.
+ *
+ * Letting that child point at its OWN lock file removes the collision outright.
+ * That is deliberately better than betting on whether the parent's lock reads as
+ * live: it makes the case independent of the liveness check rather than
+ * dependent on it. (On Windows that check cannot even see a live pid, so the
+ * lock is inert there — measured 2026-09-18 — which is a second reason not to
+ * build an assertion on top of it.)
+ *
+ * `path.resolve` rather than `path.join`: join would APPEND an absolute
+ * override to ROOT instead of honouring it.
+ *
+ * This cannot weaken a normal run: it takes a deliberate env var to change, and
+ * every process that does not set it shares the one lock exactly as before.
+ */
+const LOCK = path.resolve(ROOT, process.env.BATTERY_RUN_LOCK || LOCK_NAME);
 
 /**
  * Where the batteries' shared delete helper records a transient unlink failure.
@@ -254,12 +283,28 @@ function sweepScratch() {
   }
   for (const name of names) {
     if (!name.startsWith('.tmp-')) continue;
-    // The runner's own lock lives at `.tmp-battery-run.lock` and matches the
-    // prefix above. Sweeping it would delete the lock of the run that is holding
-    // it — the sweep would disarm the very guard that stops two runs from
-    // sharing the tree. Exempted by exact name, not by pattern, so a future
-    // battery cannot be excluded by accident.
-    if (name === LOCK_NAME) continue;
+    // ── LOCKS ARE EXEMPT AS A CLASS ─────────────────────────────────────────
+    // A lock is never scratch. Sweeping one deletes the lock of the run that is
+    // holding it, which disarms the very guard that stops two runs from sharing
+    // the tree.
+    //
+    // This has to be a CLASS, not the active lock's own name, and that is
+    // measured rather than reasoned: R7b deliberately starts a TOP-LEVEL child,
+    // and that child sweeps the repo root — so it reaches the lock of the run
+    // that STARTED it. Exempting only the child's own lock left the ancestor's
+    // lock deleted. Measured 2026-09-18, on committed bytes:
+    //
+    //     .tmp-battery-run.lock  (decoy, ancestor's lock)
+    //     BATTERY_RUN_LOCK=.tmp-probe-child.lock \
+    //       node scripts/ci/run-batteries.mjs --only=verify:md   ->  exit 0
+    //     .tmp-battery-run.lock                                  ->  gone
+    //
+    // The first version exempted by exact name, "so a future battery cannot be
+    // excluded by accident". That reasoning was sound and the conclusion was
+    // wrong: an exemption list of one cannot cover a lock it has never heard of.
+    // The class is narrow enough to stay safe — `.tmp-*.lock` is a name only a
+    // lock takes, and no battery writes a fixture that is one.
+    if (name.endsWith('.lock')) continue;
     const abs = path.join(ROOT, name);
     if (removeWithRetry(abs, name)) removed.push(name);
   }

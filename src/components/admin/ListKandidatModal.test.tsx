@@ -6,7 +6,14 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 vi.mock('../../store/authReactive', () => ({
-  authStore: { get: () => ({ sessionToken: 'test-token' }) },
+  // `isLoggedIn` is REQUIRED now that the modal calls api.secure(): the client
+  // refuses (and, with onSessionInvalid:'throw', throws) before it fetches when
+  // the store does not report a live session. The old mock returned only
+  // sessionToken, which was enough while the component built its own fetch — so
+  // the conversion failed here for a reason that had nothing to do with the
+  // request being wrong.
+  authStore: { get: () => ({ isLoggedIn: true, sessionToken: 'test-token' }) },
+  logout: vi.fn(),
 }));
 
 vi.mock('../../lib/apiEndpoint', () => ({
@@ -98,12 +105,16 @@ describe('ListKandidatModal (A04)', () => {
     fireEvent.click(screen.getByText('Hapus'));
 
     await waitFor(() => {
+      // The key is `payload`, not `args`: the client standardises on payload,
+      // and the backend accepts either (`body.payload || body.args` in
+      // _lib/netlify-wrapper.ts). The assertion that matters is the action and
+      // its arguments, which are unchanged.
       expect(mockFetch).toHaveBeenCalledWith(
         '/.netlify/functions/tandaiGagalJob',
         expect.objectContaining({
           body: JSON.stringify({
             action: 'tandaiGagalJob',
-            args: ['628111', 'TG658'],
+            payload: ['628111', 'TG658'],
             sessionToken: 'test-token',
           }),
         })
@@ -131,7 +142,11 @@ describe('ListKandidatModal (A04)', () => {
     const lastCall = mockFetch.mock.calls[mockFetch.mock.calls.length - 1];
     expect(lastCall[0]).toBe('/.netlify/functions/kirimTawaranMassal');
     const sent = JSON.parse(String((lastCall[1] as RequestInit).body));
-    expect(sent.args[0]).toEqual({
+    // `payload`, not `args` — see the note in the tandaiGagalJob test above. What
+    // this pins is the LEGACY OBJECT SHAPE the surface expects, and that is
+    // byte-for-byte the same.
+    expect(sent.action).toBe('kirimTawaranMassal');
+    expect(sent.payload[0]).toEqual({
       candidates: [{ wa: '628111', nama: 'BUDI' }],
       jobCode: 'TG658',
       linkGrup: 'https://chat.whatsapp.com/ABC',

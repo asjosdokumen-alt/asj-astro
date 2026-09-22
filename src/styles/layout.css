@@ -235,6 +235,26 @@
    small and the scrollbar under-reports and jumps as content is
    realised; too large and the list ends in dead space.
 
+   MEASURED DEFECT (2026-09-17) — cards inside a scroll container were
+   BLANK. The application-history card declared `--u-cv-h: 160px` but
+   really renders at 283px, and `content-visibility: auto` never
+   realised it: `e2e/measure-riwayat-card.mjs` reported
+   `innerTextLen: 0` — the card painted nothing at all, not even
+   clipped text. Two compounding causes:
+
+     1. the placeholder height was 123px short, so the card was judged
+        off-screen inside the `max-h-[300px]` scroll area; and
+     2. `content-visibility: auto` skips paint for anything the browser
+        believes is outside the viewport — inside an inner scroller the
+        intersection is evaluated against the wrong box, so the content
+        could stay unrealised while the user was looking straight at it.
+
+   RULE: only put `.u-cv-auto` on items in the PAGE-level scroll flow,
+   where the browser's intersection test is meaningful. Items inside a
+   nested scroll container (`.u-scroll-area`) must NOT use it — they are
+   already bounded by that container, so skipping them saves nothing and
+   costs correctness. The `--card` variant is therefore disabled below.
+
    SAFETY — do NOT put this on <tr> or on display:table children:
    skipping layout on a table row breaks column alignment, because each
    column's width is derived from the widest cell across ALL rows and
@@ -245,7 +265,51 @@
   content-visibility: auto;
   contain-intrinsic-size: auto var(--u-cv-h, 88px);
 }
-.u-cv-auto--card { --u-cv-h: 160px; }  /* application-history cards   */
+/* Application-history cards live INSIDE `.u-scroll-area` (max-h-[300px]).
+   `content-visibility: auto` there made them paint nothing at all — measured
+   `innerTextLen: 0`, card blank. The container already bounds how much is
+   rendered, so skipping is worthless here; correctness wins.
+   Kept as a named class so the call site in CandidateDash.tsx stays readable,
+   and so re-enabling it is a one-line change if the layout ever moves these
+   cards into the page-level scroll flow. */
+.u-cv-auto--card { content-visibility: visible; }
+
+
+/* ── 4b. Bottom-nav clearance ───────────────────────────────────────
+   BottomNav renders `md:hidden fixed bottom-0` at 45px tall with
+   z-index 90, so on mobile it floats OVER the page. Any page content
+   that lands in the final 45px is unreachable: the user can scroll to
+   the end and still not tap the last control.
+
+   MEASURED DEFECT (2026-09-17) on /candidate at 390x844 —
+   `e2e/measure-bottomnav-clearance.mjs` reported:
+     navHeight        45px   (position: fixed, z-index 90)
+     mainPaddingBottom 0px
+     lastClickable    "Keluar"
+     overlapPx        16     → blocked: true
+   The logged-out candidate scrolled to the bottom saw the last
+   interactive element 16px underneath the bar.
+
+   `--u-nav-h` is the SINGLE source of truth for the bar's height. It
+   must track the `h-11` (44px) + 1px border in BottomNav.tsx — the
+   measured box is 45px, so use 45px, not 44px. If the bar's height
+   changes, change it here once and every page follows.
+
+   Apply to the scrolling page's last block (`<main>`), not to the
+   BottomNav. Use `pb-safe` too when the page should also clear the
+   iOS home indicator; these compose (padding is additive).          */
+:root { --u-nav-h: 45px; }
+
+@media (max-width: 767.98px) {
+  .u-has-bottomnav {
+    padding-bottom: calc(var(--u-nav-h) + env(safe-area-inset-bottom, 0px));
+  }
+}
+/* Above md: the bar is `md:hidden`, so no clearance is needed and any
+   reserved space would be a visible gap. */
+@media (min-width: 768px) {
+  .u-has-bottomnav { padding-bottom: 0; }
+}
 
 
 /* ── 5. Print ──────────────────────────────────────────────────────

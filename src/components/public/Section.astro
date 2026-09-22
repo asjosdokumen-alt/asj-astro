@@ -1,0 +1,140 @@
+---
+/**
+ * Section.astro — one container and one vertical rhythm for the whole page.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * `max-w-7xl mx-auto px-4` was repeated in the markup of every block on the
+ * public page, and every block chose its own vertical padding. The measured
+ * result was that no two sections shared a rhythm, which is the single biggest
+ * reason the page read as "assembled" rather than designed — and it is also why
+ * adding a section meant re-deciding both values from scratch.
+ *
+ * WHAT IT PINS
+ * ------------
+ * 1. ONE vertical rhythm for every section: `py-14 md:py-20`. The pair is a
+ *    literal in this file, so changing the rhythm is one edit, not fourteen.
+ * 2. ONE container: `max-w-7xl mx-auto px-4 md:px-6`. A full-bleed band (hero,
+ *    CTA) opts out with `bleed` instead of re-deriving the container.
+ * 3. The wrapper element is choosable, because a section that is a landmark
+ *    needs to be a real region element and not a div pretending to be one.
+ *
+ * WHY THE WRAPPER IS A CONDITIONAL CHAIN AND NOT A DYNAMIC TAG
+ * ------------------------------------------------------------
+ * The obvious form is a dynamic component — bind the prop to a capitalised const
+ * and use that const as the tag name. That form is BANNED here, and the ban is
+ * enforced, not stylistic: `indexer/src/build.test.ts:502` asserts this tree has
+ * ZERO unresolved `template-component` records, and a tag whose binding the
+ * indexer cannot classify as a component lands in exactly that bucket. A literal
+ * element per branch keeps the invariant. The cost is three repeated lines; the
+ * alternative is a red gate and a component that only looks like a component —
+ * the same defect class as a class that only looks like a class.
+ *
+ * ⚠ Do not write a capitalised tag name anywhere in this file, including in a
+ * comment. The indexer parses `.astro` template tags out of comments too, so a
+ * quoted example here becomes a phantom unresolved reference and turns the gate
+ * red. That is how this paragraph was first written, and how it was caught.
+ *
+ * The heading is NOT rendered here. A section wrapper that also emitted a title
+ * would force every caller into the same heading shape, and the legal list, the
+ * contact card and the step list all need different ones. Use SectionTitle when
+ * the shape fits, and your own heading when it does not.
+ */
+export interface Props {
+  /** Anchor target. Keep it in sync with docs/LANDING_PAGE_SPEC.md §5.2. */
+  id?: string;
+  /** Extra classes, appended after the section's own. */
+  class?: string;
+  /**
+   * Full-bleed: skip the max-width container. For bands that paint edge to edge
+   * (hero, closing CTA) while keeping the same vertical rhythm.
+   */
+  bleed?: boolean;
+  /** Wrapper element. `aside` is for the desktop rail. */
+  as?: 'section' | 'div' | 'aside';
+  /**
+   * id of the element that names this region. A section with an accessible name
+   * is navigable by landmark; one without is just a box.
+   */
+  labelledBy?: string;
+  /**
+   * ── HOW THIS BAND ARRIVES, AND HOW THE MASCOT BEHAVES IN IT ───────────────
+   *
+   * `enter` is the entrance KIND (`ENTER_KINDS` in src/lib/sectionMotion.ts);
+   * `pose` and `motionName` are what the mascot switches to while this section
+   * is the current one. All three are emitted as data attributes rather than
+   * classes, for two reasons:
+   *
+   *   1. The values come from a table that a TEST asserts (no two adjacent
+   *      bands may repeat a pose or a motion), and a table that asserts against
+   *      attributes is a table that cannot silently drift from the markup.
+   *   2. The CSS selects on the VALUE (`[data-enter="curtain"]`), so a typo
+   *      produces a band that never animates instead of a class that matches
+   *      nothing — and `verify:keyframes` now catches the animation-name half
+   *      of that, while this attribute is the other half.
+   *
+   * `motionName` and not `motion`, because `motion` is a GLOBAL on `window` and
+   * shadowing it inside a component that also emits a script is a trap waiting
+   * for the next person. The attribute is still `data-motion-name` on the way
+   * out, because that is what BaseLayout's scroll script reads.
+   */
+  enter?: string;
+  /** Mascot pose while this section is current. */
+  pose?: string;
+  /** Mascot idle while this section is current. */
+  motionName?: string;
+}
+
+const {
+  id,
+  class: className,
+  bleed = false,
+  as = 'section',
+  labelledBy,
+  enter,
+  pose,
+  motionName,
+} = Astro.props;
+
+// Branches are written out rather than assembled with a variable, so Tailwind
+// can see every candidate string it needs to emit.
+const shell = bleed ? 'w-full' : 'w-full max-w-7xl mx-auto px-4 md:px-6';
+const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(' ');
+---
+
+{
+  as === 'aside' ? (
+    <aside
+      id={id}
+      aria-labelledby={labelledBy}
+      class={classes}
+      data-enter={enter}
+      data-pose={pose}
+      data-motion-name={motionName}
+    >
+      <slot />
+    </aside>
+  ) : as === 'div' ? (
+    <div
+      id={id}
+      aria-labelledby={labelledBy}
+      class={classes}
+      data-enter={enter}
+      data-pose={pose}
+      data-motion-name={motionName}
+    >
+      <slot />
+    </div>
+  ) : (
+    <section
+      id={id}
+      aria-labelledby={labelledBy}
+      class={classes}
+      data-enter={enter}
+      data-pose={pose}
+      data-motion-name={motionName}
+    >
+      <slot />
+    </section>
+  )
+}

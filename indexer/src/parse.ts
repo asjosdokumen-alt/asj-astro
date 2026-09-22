@@ -1479,14 +1479,26 @@ export interface AstroTemplateRead {
  * like module-level code (the deep tier cannot graduate template positions —
  * the compiler program only receives frontmatter text — so validation excludes
  * them, see validate.ts). ASCII identifiers only.
+ *
+ * ⚠ EXCEPT the declaration-less intrinsic globals `undefined` and
+ * `globalThis`. They are emitted by the same rule as `null`/`true` above, and
+ * they CANNOT be graduated: the graduation path (`DECLLESS_LIBS`) needs a
+ * checker position in the program, but the program only receives the
+ * frontmatter — so every template `undefined` (e.g. `attr={x ? 1 : undefined}`,
+ * a ubiquitous Astro idiom for omitting an attribute) lands in the
+ * lib-not-loaded bucket as a PERMANENT residual, failing
+ * `build.test.ts` / `deep-tier.test.ts` ("prod residual must be empty") with a
+ * row like `Foo.astro:285 undefined`. They are literals of the language, not
+ * module-scope bindings, so they belong in this skip set alongside
+ * `null`/`true`/`false`/`this` — which is exactly why those four are here.
  */
 const ASTRO_TEMPLATE_SKIP = new Set([
   'async', 'await', 'break', 'case', 'catch', 'class', 'const', 'continue',
   'debugger', 'default', 'delete', 'do', 'else', 'enum', 'export', 'extends',
-  'false', 'finally', 'for', 'function', 'get', 'if', 'import', 'in',
-  'instanceof', 'let', 'new', 'null', 'of', 'return', 'set', 'static',
-  'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void',
-  'while', 'with', 'yield',
+  'false', 'finally', 'for', 'function', 'get', 'globalThis', 'if', 'import',
+  'in', 'instanceof', 'let', 'new', 'null', 'of', 'return', 'set', 'static',
+  'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'undefined',
+  'var', 'void', 'while', 'with', 'yield',
 ]);
 
 function isAstroIdentStart(c: string): boolean {

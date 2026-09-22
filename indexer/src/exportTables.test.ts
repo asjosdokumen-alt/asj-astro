@@ -1,6 +1,6 @@
 /**
  * exportTables.test.ts — Phase 3 exit criteria:
- *  - every export of all 14 `contexts/<ctx>/index.ts` barrels resolves to the
+ *  - every export of all 15 `contexts/<ctx>/index.ts` barrels resolves to the
  *    symbol in the file that declares it (not the barrel),
  *  - `handleSubmitMasterForm as handleSimpanUpdateMaster` and
  *    `_mapForm as mapForm` unwrap correctly,
@@ -301,11 +301,17 @@ describe('fixtures', () => {
   });
 });
 
-describe('real repo — 14 context barrels', () => {
+describe('real repo — 15 context barrels', () => {
   it('resolves every barrel export to a symbol in the declaring file (Phase 3 exit criterion)', () => {
     const r = built();
     const barrels = r.files.filter((f) => /^netlify\/functions\/contexts\/[^/]+\/index\.ts$/.test(f.path));
-    expect(barrels).toHaveLength(14);
+    // 14 -> 15 (2026-09-21): +1 — netlify/functions/contexts/contact/index.ts,
+    // the barrel for the public contact form's context. It is a NEW context,
+    // not a new file in an existing one, so this counter and the same
+    // assertion in resolve.test.ts both move by one; they are two independent
+    // measurements of the same fact, which is why both are updated rather than
+    // one being derived from the other.
+    expect(barrels).toHaveLength(15);
 
     const failures: string[] = [];
     let checked = 0;

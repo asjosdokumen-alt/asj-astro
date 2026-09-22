@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
-import { getEndpoint } from '../../lib/apiEndpoint';
-import { authStore } from '../../store/authReactive';
+import api, { apiClient } from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
 import DocumentPreviewModal from '../DocumentPreviewModal';
@@ -156,18 +155,33 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     // — di-guard isOwnerOrAdmin di backend, jadi aman untuk sesi admin.
     setLoading(true);
     setData(null);
-    const sessionToken = authStore.get().sessionToken || '';
-    fetch(getEndpoint('getExistingCandidateJsonByWa'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'getExistingCandidateJsonByWa',
-        args: [wa],
-        sessionToken,
-      }),
-      signal: controller.signal,
-    })
-      .then(r => r.json())
+    // Sudah TIDAK `fetch` mentah (dikonversi 2026-09-18).
+    //
+    // Komentar yang dulu ada di sini menyatakan konversinya ditunda karena
+    // "`apiClient` belum punya opsi `signal`". Itu tidak benar sejak awal:
+    // opsi `signal` ADA di klien, dan doc comment-nya justru menyebut berkas
+    // INI sebagai alasan opsi itu dibuat. Penundaan itu tidak pernah dicabut.
+    //
+    // Pembatalan saat unmount TETAP ADA: `signal` diteruskan ke klien, yang
+    // menggabungkannya dengan batas waktu 20 s miliknya sendiri. Abort dari
+    // sini bukan kegagalan — ia dilempar ulang sebagai AbortError dan tidak
+    // pernah memunculkan toast "timed out" (lihat opsi `signal` di apiClient).
+    //
+    // `requireAuth: false` — sama dengan perilaku lama: token tetap dikirim,
+    // tetapi pemeriksaan sesi diserahkan ke penjaga isOwnerOrAdmin di server.
+    // Setiap kegagalan (non-2xx, sessionInvalid, abort) berakhir seperti dulu:
+    // data kosong, tanpa logout/redirect global.
+    // `silent: true` — fallback ini senyap; tidak ada toast yang diharapkan.
+    apiClient<{ success?: boolean; data?: Record<string, unknown> }>(
+      'getExistingCandidateJsonByWa',
+      [wa],
+      {
+        requireAuth: false,
+        onSessionInvalid: 'throw',
+        silent: true,
+        signal: controller.signal,
+      },
+    )
       .then(d => {
         if (controller.signal.aborted) return;
         if (!d || d.success === false || !d.data) {
@@ -193,7 +207,6 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     if (!data || !data.wa) return;
     setSaving(true);
     try {
-      const sessionToken = authStore.get().sessionToken || '';
       let intNote = catatanInternal.trim();
       if (isVIP) {
         if (!/\[VIP\]/i.test(intNote)) intNote = intNote ? '[VIP] ' + intNote : '[VIP]';
@@ -204,16 +217,14 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
       // menampilkan catatan mentah (termasuk tag), jadi apa yang admin lihat
       // adalah apa yang tersimpan — tanpa duplikasi tag diam-diam.
       const extNote = catatanExternal.trim();
-      const res = await fetch(getEndpoint('updateCatatanKandidat'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'updateCatatanKandidat',
-          args: [{ wa: data.wa, catatanInternal: intNote, catatanExternal: extNote }],
-          sessionToken,
-        }),
-      });
-      const out = await res.json();
+      // `silent: true` — catch di bawah sudah menampilkan toast, dan ia membaca
+      // `e.message` yang kini berisi pesan server (lihat apiClient). Tanpa
+      // silent, satu kegagalan muncul dua kali.
+      const out = (await api.secure(
+        'updateCatatanKandidat',
+        [{ wa: data.wa, catatanInternal: intNote, catatanExternal: extNote }],
+        { onSessionInvalid: 'throw', silent: true },
+      )) as { success?: boolean; error?: string };
       if (out && out.success) {
         const patched = { ...data, catatanInternal: intNote, catatanExternal: extNote, isVIP };
         setData(patched);

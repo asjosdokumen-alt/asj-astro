@@ -6,6 +6,22 @@ import sprite from '../icons/sprite.svg?raw';
 import '@fontsource/inter/latin-400.css';
 import '@fontsource/inter/latin-600.css';
 import '@fontsource/inter/latin-700.css';
+// Weight 900 was MISSING while `font-black` was used 64 times across src/ —
+// measured 2026-09-19: the only declared faces were 400/600/700
+// (`font-weight:` in @fontsource/inter/latin-{400,600,700}.css), so every
+// "black" heading resolved to the nearest declared weight (700) and the intended
+// 700-vs-900 hierarchy did not exist anywhere in the app. Cost of the fix is
+// measured, not guessed: `inter-latin-900-normal.woff2` is 23.3 KB, taking the
+// four declared weights from 70.8 KB to 94.1 KB.
+//
+// Weight 800 (`font-extrabold`, 21 usages) is deliberately NOT added yet: it
+// would cost a further 23.8 KB for a tier that reads almost identically to 900.
+// The two ways out — add the face, or migrate those 21 usages to `font-black` —
+// are recorded in DESIGN.md §3.3 and belong with the typography work in L2/L3,
+// not in the foundation phase, because 21 call sites are spread across admin and
+// candidate screens and changing them all is a broader visual change than this
+// phase should carry.
+import '@fontsource/inter/latin-900.css';
 
 export interface Props {
   title: string;
@@ -22,6 +38,28 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- The document title. This was MISSING until 2026-09-17: the `title` prop
+       was destructured above and then never rendered, so every page shipped
+       with no <title> at all — verified 0 occurrences across all 10 built
+       pages. The browser tab showed the URL, search results had no title, and
+       screen readers announced the document without one (WCAG 2.4.2 "Page
+       Titled" is Level A). Nothing looked wrong, which is why it survived.
+
+       It also made a gate's exemption a false premise: i18n.keys.test.ts
+       deliberately skips the title prop passed to this layout, on the grounds
+       that it is "the document title: server-rendered SEO metadata that
+       translateDataLang() cannot touch". That reasoning was sound and the
+       premise was not — those strings were reaching nothing.
+
+       Note for anyone editing this comment: the indexer parses .astro template
+       tags including the ones inside HTML comments, so a literal capitalised
+       tag written here becomes a phantom unresolved reference and
+       indexer/src/build.test.ts fails with "expected [...] to have a length of
+       +0 but got 1". That is exactly how this paragraph was caught.
+
+       Server-rendered on purpose: translateDataLang() runs in the browser and
+       cannot rewrite a <title> for a crawler or a shared link preview. -->
+  <title>{title}</title>
   <meta name="description" content={description} />
   <meta name="theme-color" content="#020617" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -57,14 +95,55 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     @import '../styles/global.css';
   </style>
 <script is:inline>
+    // ─── `onReady` — run a callback once the DOM exists ────────────────────
+    //
+    // This whole script is in `<head>`, so it executes WHILE THE PARSER IS STILL
+    // BUILDING THE BODY. Anything that queries for page elements must therefore
+    // wait, and `onReady` is that wait, written once so each caller does not
+    // invent its own — and, more importantly, so that forgetting to wait is a
+    // visible mistake rather than a silent no-op.
+    //
+    // ⚠ THE FAILURE THIS EXISTS TO PREVENT, MEASURED. The mascot-tracking block
+    // below began with `document.querySelector("[data-mascot-track]")` and
+    // `if (!mascot) return;`. Run at parse time that query returns `null`, the
+    // guard takes the early exit, and the entire feature is dead — with no
+    // error, no warning, and nothing left behind but a decoration that never
+    // moves. Sampled at the moment it ran: `readyState: "loading"`,
+    // `bodyExists: false`, `mascot: false`, `sections: 0`.
+    //
+    // A retry loop would NOT have fixed it: `[data-motion-name]` and
+    // `[data-mascot-track]` both live in the body, so there is no moment during
+    // parsing when they are all present. Only after parsing ends.
+    //
+    // `DOMContentLoaded`, not `load`: `load` also waits for every image and
+    // font, and the mascot must already be in the right pose on the first paint
+    // a visitor sees. Waiting for `load` would show the resting pose and then
+    // swap it, which reads as a twitch.
+    function onReady(fn){
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", fn, { once: true });
+      } else {
+        // Already parsed — this is the path for a deferred/async load, where
+        // `DOMContentLoaded` has fired before this script ran.
+        fn();
+      }
+    }
+
     // ─── Theme restore (before paint, avoids a flash of the wrong theme) ───
     // Writes `data-theme` (new token system, see styles/theme.css).
+    //
+    // DEFAULT IS LIGHT as of 2026-09-20 (owner decision — the landing page ships
+    // the pink sakura palette). This script MUST stay inline and MUST NOT import
+    // `DEFAULT_THEME`: it runs before any module loads, which is the whole point.
+    // It is therefore the one place the default is a literal, and it duplicates
+    // src/store/theme.ts by necessity. Change both together or the page flashes
+    // the wrong theme on every load.
     (function(){
       try {
         var t = localStorage.getItem("asjTheme");
-        document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
+        document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
       } catch (e) {
-        document.documentElement.setAttribute("data-theme", "dark");
+        document.documentElement.setAttribute("data-theme", "light");
       }
     })();
 
@@ -111,6 +190,306 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
       // slow boot, so re-read on both signals.
       window.addEventListener("resize", read, { passive: true });
       window.addEventListener("load", read, { passive: true });
+    })();
+
+    // ─── Entrance animations: opt-in flag, set BEFORE FIRST PAINT ──────────
+    // See styles/motion.css §9. This does two things and nothing else:
+    //
+    //   1. Marks the document as JS-capable. The hidden start state in
+    //      motion.css is gated behind this class, so with scripting off every
+    //      card is plainly visible instead of waiting for an observer that
+    //      will never be created.
+    //   2. Hands the IntersectionObserver off to a deferred function, so the
+    //      observer setup itself does not block the first paint.
+    //
+    // WHY THE CLASS GOES ON IN THIS SCRIPT AND NOT IN A MODULE
+    // There is exactly one frame budget between this line and first paint.
+    // Adding the class later — on DOMContentLoaded, from a bundled module —
+    // means the browser paints every card VISIBLE first, then this class
+    // arrives and hides them, then the observer reveals them again. That
+    // flash-then-vanish is a worse artefact than having no animation.
+    //
+    // The reveal pass runs after `load` because the page's own data (job
+    // count, announcement) rewrites parts of the DOM before then, and
+    // observing nodes that are about to be replaced would reveal nothing.
+    (function(){
+      var root = document.documentElement;
+      if (!("IntersectionObserver" in window)) return;   // no flag: cards just show
+      root.classList.add("js-reveal");
+
+      // A Set, not an array of unique keys: elements are compared by identity.
+      var seen = [];
+      var MARK = "is-revealed";
+
+      function reveal(el){ el.classList.add(MARK); }
+
+      function pass(){
+        // ── TWO ATTRIBUTES, TWO SCALES, ONE OBSERVER ─────────────────────
+        // `[data-reveal]` marks an ITEM inside a section (a card, a tile, a
+        // row) and is staggered — see motion.css §9. `[data-enter]` marks a
+        // whole SECTION BAND and runs once, un-staggered — see §9b. They are
+        // separate attributes rather than one because the vocabulary differs
+        // (a band has an entrance KIND, an item does not) and because an
+        // element carrying both would run two animations on itself.
+        var targets = document.querySelectorAll("[data-reveal], [data-enter]");
+        if (!targets.length) return;
+        var pending = [];
+        for (var i = 0; i < targets.length; i++) {
+          var el = targets[i];
+          // `data-reveal` uses `is-revealed`; `data-enter` uses `is-entered`.
+          // Two markers because the CSS state selectors are different shapes
+          // (`html.js-reveal [data-enter="rise"].is-entered`), and collapsing
+          // them into one class would make a band that carried both attributes
+          // mark itself revealed while its entrance had not run.
+          var mark = el.hasAttribute("data-enter") ? "is-entered" : MARK;
+          if (el.classList.contains(mark)) continue;
+          // Anything already on screen at first paint is revealed IMMEDIATELY
+          // rather than observed. Observing it would make above-the-fold
+          // content wait for the observer's first callback — one frame of
+          // blank, on exactly the content the visitor is looking at.
+          var box = el.getBoundingClientRect();
+          if (box.top < (window.innerHeight || 0) && box.bottom > 0) el.classList.add(mark);
+          else pending.push(el);
+        }
+        if (!pending.length) return;
+        var observer = new IntersectionObserver(function(entries){
+          for (var j = 0; j < entries.length; j++) {
+            if (!entries[j].isIntersecting) continue;
+            var t = entries[j].target;
+            t.classList.add(t.hasAttribute("data-enter") ? "is-entered" : MARK);
+            // Unobserve: these animations run once. Leaving it attached would
+            // re-fire them every time the element scrolled back into view,
+            // which reads as a flicker rather than an entrance.
+            observer.unobserve(t);
+          }
+        }, {
+          // Start the animation slightly BEFORE the element is fully visible,
+          // so it has settled by the time it is properly in frame. A card
+          // that begins moving as it arrives is still moving when you look
+          // at it; a 12% head start fixes that.
+          rootMargin: "0px 0px -12% 0px",
+          threshold: 0,
+        });
+        for (var k = 0; k < pending.length; k++) observer.observe(pending[k]);
+        seen.push(observer);
+      }
+
+      window.__asjReveal = pass;
+      if (document.readyState === "complete") pass();
+      else window.addEventListener("load", pass, { passive: true });
+
+      // ─── The mascot follows the section ───────────────────────────────────
+      // THE OWNER'S REQUEST, and the reason this is its own block rather than
+      // part of `pass()` above: "mascot itu bukan model gitu maunya ikut
+      // sesuai scroll mau ke sesi terus jadi pindah ikutin bagian dan posenya
+      // beda beda tergantung tempat baik mimik wajah maupun motionnya."
+      //
+      // HOW SHE TRAVELS WITH NO SCROLL LISTENER. She is `position: sticky`
+      // inside a tall rail in index.astro, so the browser moves her for free on
+      // the compositor. This block only ever changes WHICH POSE and WHICH IDLE
+      // she is in — it never sets `top`, `left` or a per-frame transform. A
+      // scroll handler that moved her would duplicate work the compositor
+      // already does and would be the most expensive thing on the page.
+      //
+      // WHY THE TABLE IS READ FROM THE DOM RATHER THAN IMPORTED. The pose and
+      // the motion arrive as `data-` attributes on each section, emitted at
+      // build time from src/lib/sectionMotion.ts. That keeps ONE source of
+      // truth (the .ts file, which a test asserts) while shipping no JS module
+      // for it — this script stays inline and dependency-free, which is what
+      // keeps it inside the first-paint budget.
+      //
+      // ⚠⚠ THIS BLOCK MUST NOT RUN AT PARSE TIME, AND IT USED TO. ⚠⚠
+      //
+      // This whole `<script is:inline>` lives in `<head>`. The reveal block
+      // above is careful about that — it defers its work to `load` — but this
+      // block did not, so its FIRST TWO LINES executed before the parser had
+      // created a `<body>` at all:
+      //
+      //     var mascot = document.querySelector("[data-mascot-track]");
+      //     if (!mascot) return;          // <- always taken
+      //
+      // MEASURED, at the moment this block ran, by sampling the document from
+      // an init script:
+      //
+      //     readyState : "loading"
+      //     bodyExists : false
+      //     mascot     : false      <- so `return` fired
+      //     sections   : 0
+      //
+      // The consequence was total and completely silent: the mascot NEVER
+      // CHANGED POSE OR MOTION, on any scroll, at any width, ever. Measured by
+      // walking all 15 sections — every one of them reported her as
+      // `data-pose="princess-wave" data-motion="wave"`, her initial values,
+      // while the sections beside her carried all seven distinct poses between
+      // them. There is no error in the console, no warning, and the reveal pass
+      // reports success; the only symptom is a decoration that quietly does
+      // nothing, which is exactly what "not implemented yet" looks like.
+      //
+      // THE FIX IS A DEFERRAL, NOT A GUARD. The obvious repair — check for
+      // `document.body` and re-try — reads as defensive but does not work:
+      // `[data-motion-name]` and `[data-mascot-track]` are both in the body, so
+      // there is no moment DURING PARSING when they are all present. Only after
+      // the document is interactive. So the whole block is wrapped in
+      // `onReady()`, which runs now if the document has already parsed and on
+      // `DOMContentLoaded` if it has not.
+      //
+      // WHY NOT `load` LIKE THE REVEAL BLOCK. `load` waits for every image and
+      // font too, and the mascot must be in the right pose on the FIRST paint a
+      // visitor sees — a deferred swap reads as her twitching after the page
+      // settles. `DOMContentLoaded` is the earliest moment the elements exist.
+      (function(){
+        onReady(function(){
+          var mascot = document.querySelector("[data-mascot-track]");
+          if (!mascot) return;
+          // ── `[data-motion-name]`, NOT `[data-pose]` ─────────────────────
+          // The mascot image itself carries `data-pose` (it is the thing being
+          // swapped), so selecting on `[data-pose]` would return her as well as
+          // the sections. That is not a cosmetic overlap: she is INSIDE the
+          // rail, she would be measured by `nearest()` like any other candidate,
+          // and in any scroll position where the rail happens to be the element
+          // closest to the viewport's midpoint she would be selected as the
+          // current section and asked for her own pose — which is a no-op that
+          // freezes the swap for the whole duration of that section.
+          //
+          // `data-motion-name` is emitted ONLY by `Section.astro`, so it is a
+          // clean handle on "the sections, and nothing else".
+          var sections = document.querySelectorAll("[data-motion-name]");
+          if (!sections.length) return;
+
+          var current = null;
+
+        /**
+         * Retarget her pose and her idle.
+         *
+         * THE RESTART IS EXPLICIT BECAUSE THE ENGINE WILL NOT DO IT. Changing
+         * `animation-name` from one infinite animation to another does not
+         * reliably restart it: engines differ on whether the new name counts as
+         * "already running", and the failure looks like a half-swap — she keeps
+         * playing the previous section's idle while showing the new section's
+         * picture. So `data-motion-running="off"` is set for one frame, which
+         * resolves the idle to `none`, and the re-add starts the new one at 0s.
+         * That is also why the idle is declared under `[data-motion]` in the
+         * CSS rather than toggled by class name: the two states then differ by
+         * declaration, not by cascade guesswork.
+         */
+        function apply(section){
+          if (section === current) return;
+          current = section;
+
+          var pose = section.getAttribute("data-pose");
+          var motion = section.getAttribute("data-motion-name");
+          if (pose) setPose(pose);
+          if (motion) {
+            mascot.removeAttribute("data-motion");
+            mascot.setAttribute("data-motion-running", "off");
+            // TWO frames, not one. A single callback can run in the same frame
+            // as the removal above, in which case the engine coalesces both
+            // style changes and sees no interruption at all — the restart then
+            // silently does not happen, which is the half-swap again.
+            requestAnimationFrame(function(){
+              requestAnimationFrame(function(){
+                mascot.removeAttribute("data-motion-running");
+                mascot.setAttribute("data-motion", motion);
+              });
+            });
+          }
+        }
+
+        /**
+         * Swap the PICTURE, not just an attribute.
+         *
+         * ⚠ THE ATTRIBUTE ALONE CHANGES NOTHING, AND THAT WAS THE BUG.
+         *
+         * This used to be one line — `mascot.setAttribute("data-pose", pose)` —
+         * and NOTHING ANYWHERE READS `data-pose`. No stylesheet selects on it
+         * and no other script touches it (`grep -rn 'data-pose' src/` finds only
+         * the writers: this script and the two components that emit it). So the
+         * swap was entirely inert: measured across all six first sections, the
+         * attribute updated to `princess-peace` / `princess-side` /
+         * `princess-still` / `princess-head` while every one of them kept
+         * rendering
+         *
+         *     src        /mascot/princess-wave.webp      (never changed)
+         *     srcset     /mascot/princess-wave.avif 1x   (never changed)
+         *     currentSrc /mascot/princess-wave.avif      (never changed)
+         *     naturalW   512                              (always the wave's)
+         *
+         * — i.e. she showed the SAME picture in every section, which is exactly
+         * the "half-swap that reads as a bug" this whole mechanism exists to
+         * avoid. The attribute was a claim about the page rather than a change
+         * to it.
+         *
+         * WHY THE `<source>` ELEMENTS MATTER. `PrincessMascot.astro` renders a
+         * `<picture>` with an AVIF `<source>` first and a WebP one second, so
+         * the browser picks the SOURCE's `srcset` — the `img[src]` is only the
+         * fallback for a browser that matches neither `type`. Rewriting `src`
+         * alone would therefore change nothing in every modern browser: the
+         * AVIF source would still win and still point at the old pose. All three
+         * must move together, and `data-pose` is kept in step as the
+         * authoritative marker so a test can assert intent independently of the
+         * browser's format choice.
+         *
+         * `mascot.parentElement` is the `<picture>`; the contract is stated in
+         * `PrincessMascot.astro` and asserted by this gate, so the shape is
+         * checked rather than assumed.
+         */
+        function setPose(pose){
+          mascot.setAttribute("data-pose", pose);
+          var picture = mascot.parentElement;
+          if (!picture || picture.tagName !== "PICTURE") return;
+          var sources = picture.querySelectorAll("source");
+          for (var i = 0; i < sources.length; i++) {
+            var srcset = sources[i].getAttribute("srcset");
+            if (!srcset) continue;
+            // Rewrite only the PATH, keeping the density descriptors ("1x",
+            // "2x") and the "@2x" suffix exactly as they were.
+            var type = sources[i].getAttribute("type") === "image/avif" ? "avif" : "webp";
+            sources[i].setAttribute("srcset",
+              "/mascot/" + pose + "." + type + " 1x, /mascot/" + pose + "@2x." + type + " 2x");
+          }
+          mascot.setAttribute("src", "/mascot/" + pose + ".webp");
+        }
+
+        // Which section is "current"? The one whose MIDPOINT is nearest the
+        // viewport's midpoint — not the topmost visible one. This flips exactly
+        // once per boundary and never oscillates at a section edge, which is
+        // what matters when two sections are both partly on screen for a long
+        // stretch of scroll.
+        function nearest(){
+          var vh = window.innerHeight || 0;
+          var mid = vh / 2;
+          var best = null;
+          var bestDist = Infinity;
+          for (var i = 0; i < sections.length; i++) {
+            var box = sections[i].getBoundingClientRect();
+            if (box.bottom < 0 || box.top > vh) continue;
+            var d = Math.abs((box.top + box.bottom) / 2 - mid);
+            if (d < bestDist) { bestDist = d; best = sections[i]; }
+          }
+          return best;
+        }
+
+        var ticking = false;
+        function onScroll(){
+          if (ticking) return;
+          ticking = true;
+          requestAnimationFrame(function(){
+            ticking = false;
+            var best = nearest();
+            if (best) apply(best);
+          });
+        }
+
+        // The first application is IMMEDIATE, not deferred to the first scroll:
+        // a visitor who lands mid-page — a deep link, or a reload that restores
+        // scroll position — must not see the resting pose until they move.
+        var first = nearest();
+        if (first) apply(first);
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+        window.addEventListener("resize", onScroll, { passive: true });
+        });     // end onReady — see the ⚠⚠ note above; the body does not exist yet
+      })();
     })();
   </script>
 </head>

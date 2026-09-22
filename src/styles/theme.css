@@ -51,7 +51,21 @@
   /* Foreground */
   --color-fg:              #f1f5f9;  /* was text-white / text-slate-100   */
   --color-fg-muted:        #94a3b8;  /* was text-slate-400                */
-  --color-fg-subtle:       #64748b;  /* was text-slate-500                */
+  /* MEASURED 2026-09-19 (WCAG 2.1 relative luminance). The previous value
+     #64748b failed on both surfaces this token is actually used on:
+
+       #64748b on --color-surface        (#0f172a) = 3.75:1  fails AA text
+       #64748b on --color-surface-raised (#1e293b) = 3.07:1  fails even the
+                                                            3:1 UI floor
+
+     It is not decoration — it carries table column labels, job-card meta and
+     small print, i.e. text a visitor has to read.
+
+     #8595aa clears AA on BOTH: 5.85:1 on surface, 4.79:1 on raised. The
+     intermediate candidate #7c8ba1 (5.16 / 4.22) was rejected because it still
+     fails on raised, and a token that is only safe on some of its surfaces is
+     the same trap in a new colour. */
+  --color-fg-subtle:       #8595aa;
 
   /* Borders */
   --color-line:            #334155;  /* was border-slate-700/800          */
@@ -86,6 +100,68 @@
   /* One self-hosted family. Overrides Tailwind's default --font-sans,
      which also feeds preflight's html font-family. */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* ── Radius scale ────────────────────────────────────────────────
+     MEASURED 2026-09-19, before this block existed: 39 arbitrary radius values
+     across 8 distinct sizes — `rounded-[2rem]` x25, `rounded-[14px]` x5,
+     `rounded-[20px]` x2, `rounded-[2.5rem]` x2, `rounded-[1.5rem]` x2,
+     `rounded-[28px]`, `rounded-[24px]`, `rounded-[1.3rem]`.
+
+     Arbitrary values cannot be ratcheted. There is no token to raise or lower,
+     and nothing in the markup says which corner is the official one — so every
+     new card picks a ninth value. Five named tokens replace all eight.
+
+     `--radius-*` is the Tailwind v4 namespace for border-radius, so these
+     generate `rounded-control` / `rounded-card` / `rounded-panel` /
+     `rounded-band` / `rounded-pill` alongside the stock sm/md/lg/xl scale.
+     The stock scale is left intact: removing it would break `rounded-full`,
+     `rounded-lg` and friends across 130 components for no measurable gain. */
+  --radius-control: 0.75rem;  /* buttons, inputs, chips            */
+  --radius-card:    1rem;     /* cards, bento tiles                */
+  --radius-panel:   1.5rem;   /* panels, large cards, the rail     */
+  --radius-band:    2rem;     /* hero, CTA band, footer            */
+  --radius-pill:    9999px;   /* status chips, tabs, round buttons */
+
+  /* ── Type scale ──────────────────────────────────────────────────
+     `--text-*` is the Tailwind v4 font-size namespace, and the
+     `--text-*--line-height` / `--letter-spacing` sub-keys ride along with it —
+     so `text-section` arrives with its own leading and tracking and a call site
+     cannot forget them. That is the point: the drift this replaces was not
+     "wrong sizes", it was six sections each pairing a size with a different
+     leading.
+
+     Sizes are `clamp()` where the element spans both breakpoints, so one value
+     is correct at 390 px and at 1536 px without a media query.
+
+     Weight is NOT set here. `--text-*--font-weight` would make every
+     `text-body` element bold-by-default and fight the `font-bold` utilities
+     already in the markup; weight stays a call-site decision. */
+  --text-display:    clamp(2rem, 5vw, 3.5rem);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.02em;
+
+  --text-section:    clamp(1.5rem, 3vw, 1.875rem);
+  --text-section--line-height: 1.15;
+  --text-section--letter-spacing: -0.01em;
+
+  --text-card-title: 1.25rem;
+  --text-card-title--line-height: 1.3;
+
+  --text-body:       1rem;
+  --text-body--line-height: 1.7;
+
+  --text-body-sm:    0.875rem;
+  --text-body-sm--line-height: 1.65;
+
+  /* Uppercase label. The wide tracking is what makes a 11 px eyebrow legible,
+     so it is part of the token rather than a class each caller adds. */
+  --text-eyebrow:    0.6875rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.18em;
+
+  --text-caption:    0.75rem;
+  --text-caption--line-height: 1.4;
+  --text-caption--letter-spacing: 0.02em;
 
   /* ── Motion tokens ───────────────────────────────────────────────
      PERF / PERFECT-CURVE RATIONALE
@@ -135,32 +211,96 @@
   }
 }
 
-/* ── 3. Light palette — same token names, different values ───────────
+/* ── 2b. Hero & visual enhancement tokens ────────────────────────────
+   These power the redesigned hero, footer, and section visuals.
+   They are CSS custom properties (not @theme tokens) because they are
+   consumed by hand-written CSS rules, not by Tailwind utilities.
+
+   WHY GRADIENTS INSTEAD OF BACKGROUND IMAGES
+   -------------------------------------------
+   The old hero and footer relied on external images from Supabase Storage
+   (tokyo_banner.jpg, sakura_footer.webp). That caused three problems:
+   1. SLOW — the images were 113–150 KB, loaded over an external CDN.
+   2. FRAGILE — a Supabase outage rendered the hero as a blank dark rectangle.
+   3. INCONSISTENT — the footer image sometimes lagged behind the theme toggle.
+
+   CSS gradients are zero-fetch, theme-responsive, and render in one paint. */
+
+:root {
+  /* Hero gradient — the three-stop sweep that replaces banner artwork. */
+  --hero-gradient: linear-gradient(
+    135deg,
+    #020617 0%,
+    #1e1b4b 40%,
+    #4c1d95 70%,
+    #831843 100%
+  );
+  --hero-glow: radial-gradient(
+    ellipse 60% 50% at 70% 60%,
+    rgba(219, 39, 119, 0.15) 0%,
+    transparent 70%
+  );
+
+  /* Footer gradient — darker, sits below the content. */
+  --footer-gradient: linear-gradient(
+    180deg,
+    #0f172a 0%,
+    #020617 100%
+  );
+
+  /* Subtle dot pattern for page background depth. size and gap tuned
+     to be barely visible — texture, not wallpaper. */
+  --bg-dot-color: rgba(148, 163, 184, 0.06);
+  --bg-dot-size: 1px;
+  --bg-dot-gap: 24px;
+
+  /* Section alternating tint — a barely-there shift that makes long
+     pages read as structured rather than monotone. */
+  --section-alt-bg: rgba(15, 23, 42, 0.4);
+
+  /* Accent glow for interactive elements. */
+  --glow-pink: 0 0 40px rgba(219, 39, 119, 0.2);
+  --glow-sky:  0 0 40px rgba(56, 189, 248, 0.15);
+
+  /* Gradient accent line — used above footer and as section dividers. */
+  --accent-line: linear-gradient(90deg, #ec4899, #8b5cf6, #38bdf8);
+}
+
+/* ── 3. Light palette — the default theme ("Sakura Editorial", light) ─
    `html[…]` (specificity 0,1,1) outranks the `:root, :host` (0,1,0)
    that Tailwind emits from @theme, so source order does not matter and
    no !important is needed.
 
-   Values are lifted from the winning "SAKURA" block in global.css so
-   light mode stays pixel-identical through the migration.
+   OWNER DECISION 2026-09-20: this is now the DEFAULT theme, not the
+   alternate one. It was retuned to match the approved design mockup —
+   a clean white body, near-black ink, and pink as the single accent,
+   with the deep navy reserved for the nav and the hero band.
 
    ⚠ DO NOT wrap this in @layer — a layer would lose to @layer theme and
      silently break light mode. Leave it unlayered.                     */
 html[data-theme="light"] {
-  /* `#f6f1f2` (the original) washed the table into the page background and
-     made pink/slate rows unreadable. A neutral off-white keeps the
-     sakura banner as the only obviously pink surface on the page. */
-  --color-canvas:          #fbfafc;
-  --color-surface:         #ffffffeb;
-  --color-surface-raised:  #f3eff3f2;
-  --color-surface-sunken:  #ffffff;
+  /* The body is genuinely white in the mockup. The old #fbfafc was a
+     deliberate near-white to stop the sakura banner from being "the only
+     pink surface" — but the banner is no longer an image, so that
+     constraint expired with it. Pure white now, with surfaces tinted
+     instead, which is what gives the mockup's cards their lift. */
+  --color-canvas:          #ffffff;
+  --color-surface:         #ffffff;
+  --color-surface-raised:  #fff7fa;
+  --color-surface-sunken:  #fdf2f6;
 
-  --color-fg:              #1f1d1c;
-  --color-fg-muted:        #4a4642;
-  --color-fg-subtle:       #6b6661;
+  /* Near-black ink rather than the old warm grey. The mockup's text is
+     high-contrast against white; 1f1d1c at 88% reads as a brown wash. */
+  --color-fg:              #16121c;
+  --color-fg-muted:        #514a5c;
+  --color-fg-subtle:       #726a80;
 
-  --color-line:            #d6d1d3;
-  --color-line-strong:     #b9b1b4;
+  --color-line:            #f0dfe7;
+  --color-line-strong:     #dfc4d1;
 
+  /* Pink is THE accent. `#be185d` is kept for small text and icons
+     because it clears 4.5:1 on white; the brighter pair below is for
+     fills, where contrast is against the white label instead. */
   --color-accent:          #be185d;
   --color-accent-emerald:  #047857;
   --color-accent-sky:      #0369a1;
@@ -169,6 +309,42 @@ html[data-theme="light"] {
   --color-accent-violet:   #6d28d9;
 
   color-scheme: light;
+
+  /* ── Band surfaces ─────────────────────────────────────────────────
+     THE HERO AND CTA BAND DELIBERATELY STAY DARK IN LIGHT MODE.
+
+     This is the single most important decision in this block. The hero
+     markup puts `text-white` on its headline, its CTAs and its chips,
+     and the ClosingBand does the same. A light gradient behind white
+     text is unreadable — and it would be unreadable in the picture the
+     mockup is proudest of, which is exactly where nobody looks for it.
+
+     The mockup agrees: it is a WHITE page with a DARK hero band. So the
+     band tokens are near-duplicates of the dark theme's, not lightened
+     versions of them. Do not "fix" these to pastels. */
+  --hero-gradient: linear-gradient(
+    135deg,
+    #2a1235 0%,
+    #4a1b4e 34%,
+    #7a2350 66%,
+    #b0305f 100%
+  );
+  --hero-glow: radial-gradient(
+    ellipse 70% 60% at 72% 42%,
+    rgba(255, 186, 214, 0.26) 0%,
+    transparent 72%
+  );
+  --footer-gradient: linear-gradient(180deg, #fff7fa 0%, #fdeef4 100%);
+
+  /* The dot texture is a LIGHT-mode detail: on white it reads as paper
+     grain, which is what gives the page its editorial feel. */
+  --bg-dot-color: rgba(190, 24, 93, 0.055);
+  --bg-dot-size: 1px;
+  --bg-dot-gap: 22px;
+
+  --section-alt-bg: rgba(253, 242, 246, 0.72);
+  --glow-pink: 0 0 40px rgba(219, 39, 119, 0.10);
+  --glow-sky:  0 0 40px rgba(14, 165, 233, 0.10);
 }
 
 html[data-theme="dark"] {

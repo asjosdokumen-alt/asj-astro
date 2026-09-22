@@ -1,0 +1,82 @@
+---
+/**
+ * 404.astro — the page an unknown URL lands on.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * It did not. `src/pages/404.astro` was absent and `netlify.toml` carried no
+ * rule for unknown paths, so a mistyped job link fell through to Netlify's own
+ * default page: unbranded, in English, and with no way back into the portal.
+ * This audience mostly arrives from a link shared on WhatsApp, so a broken link
+ * was the first impression of the whole site.
+ *
+ * Astro emits this as `dist/404.html`, and Netlify serves `404.html` for
+ * unmatched routes automatically. No redirect rule is added on purpose — a rule
+ * would be a second, redundant source of truth for the same behaviour.
+ *
+ * THE CONTRACT IT HAS TO KEEP
+ * ---------------------------
+ * BaseLayout ALWAYS renders `<a href="#main-content" class="skip-link">`
+ * (BaseLayout.astro:129). A page that does not provide that id ships a link
+ * that looks correct and does nothing at all — which is exactly how five routes
+ * were found broken on 2026-09-17. `e2e:headings` now resolves the fragment,
+ * requires the target to be a <main>, and asserts the count is non-zero, so the
+ * `<main id="main-content">` below is load-bearing, not decoration.
+ *
+ * COPY IS `data-lang`-KEYED, like every other page, with the Indonesian string
+ * inlined as the pre-hydration default: translateDataLang() only assigns
+ * textContent once JS runs. Both keys live in i18n.ts AND i18n-jp.ts — a key
+ * present in only one dictionary renders the key itself to the user, and
+ * i18n.keys.test.ts fails on it.
+ *
+ * The emblem is the local file added with the PWA icons (5b7eb69) rather than
+ * the Supabase URL the in-app logos still use: this page has to render for a
+ * broken link on a bad connection, which is the same reason the manifest icons
+ * were made local.
+ *
+ * Aa-chan is here because the character sheet names this page as one of her four
+ * slots ("IN USE - LOADING & 404"). She is rendered as a Preact island with
+ * `client:visible` so her entrance animation runs when she scrolls into view, and
+ * the image itself is a static file — if the island's JS never arrives, the <img>
+ * is already in the HTML and the page is unchanged. The `notfound-think` pose is
+ * the sheet's "berpikir" expression, which is the right one for "this page is
+ * missing". She is decorative here: the h1 directly below already says in words
+ * what happened, so `alt=""` keeps a screen reader from announcing a cartoon
+ * between the logo and the heading.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Mascot from '../components/ui/Mascot.tsx';
+---
+
+<BaseLayout title="Halaman tidak ditemukan — ASJ Portal" description="Halaman yang Anda cari tidak ada di ASJ Portal.">
+  <main id="main-content" class="w-full max-w-3xl mx-auto px-6 py-16 flex flex-col items-center text-center text-white">
+    <img
+      src="/icons/logo-asj.webp"
+      alt="Logo PT Amanah Sakura Japan"
+      width="128"
+      height="128"
+      class="w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-2xl"
+    />
+
+    <div class="mt-6">
+      <Mascot client:visible pose="notfound" size={160} decorative motion="blink" />
+    </div>
+
+    <p class="mt-8 text-5xl md:text-6xl font-black text-rose-500">404</p>
+    <h1 class="mt-3 text-2xl md:text-3xl font-black">
+      <span data-lang="notfound.title">Halaman tidak ditemukan</span>
+    </h1>
+    <p class="mt-4 text-sm md:text-base text-slate-400 max-w-md leading-relaxed">
+      <span data-lang="notfound.body">Alamat yang Anda buka tidak ada atau sudah dipindahkan. Periksa kembali tautannya, atau mulai dari halaman lowongan.</span>
+    </p>
+
+    <div class="mt-8 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+      <a href="/" class="px-6 py-3 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">
+        <span data-lang="notfound.home">Ke Beranda</span>
+      </a>
+      <a href="/public/" class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/15 text-white rounded-xl font-bold text-sm transition">
+        <span data-lang="notfound.jobs">Lihat Lowongan</span>
+      </a>
+    </div>
+  </main>
+</BaseLayout>

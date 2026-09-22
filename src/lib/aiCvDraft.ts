@@ -42,6 +42,11 @@ import { getPath, isGood } from './helpers_cv';
  */
 export const AI_CV_FLAT_KEYS = [
   'nama', 'katakana', 'panggilan', 'panggilan_katakana', 'tmplahir', 'tgllahir', 'umur', 'gender', 'agama',
+  /* JP halves of the paired identity columns. Legacy stored these as separate
+     columns (`identitas.gender_jp`, `agama_jp`, `status_nikah_jp`) because the
+     employer reads the kanji. They must be in the flat key list or the pair
+     registry has nowhere to write and the CV ships with an empty JP side. */
+  'gender_jp', 'agama_jp', 'status_jp',
   'goldar', 'status', 'anak', 'email', 'alamat', 'hp', 'hpdarurat', 'ktp', 'paspor', 'sim',
   'paspor_status', 'sim_status',
   'tb', 'bb', 'tangan', 'sepatu', 'baju', 'topi', 'tahan_ac',
@@ -67,9 +72,12 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   tgllahir: ['identitas.tgl_lahir'],
   umur: ['identitas.umur', 'identitas.usia'],
   gender: ['identitas.gender'],
+  gender_jp: ['identitas.gender_jp'],
   agama: ['identitas.agama'],
+  agama_jp: ['identitas.agama_jp'],
   goldar: ['identitas.golongan_darah'],
   status: ['identitas.status_nikah'],
+  status_jp: ['identitas.status_nikah_jp'],
   anak: ['identitas.anak'],
   email: ['identitas.email'],
   alamat: ['identitas.alamat'],

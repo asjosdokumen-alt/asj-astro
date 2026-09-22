@@ -142,7 +142,11 @@ async function fetchOpenApiPaths(base, key, args) {
       const spec = JSON.parse(r.text);
       if (spec && typeof spec.paths === 'object' && spec.paths !== null) {
         const paths = new Set(Object.keys(spec.paths).map((p) => (p.startsWith('/') ? p : `/${p}`)));
-        return { paths, degraded: false, info: { detail: `${paths.size} paths in ${r.ms}ms` } };
+        // Carry the structured half too: `definitions.<table>.properties` is
+        // where the column names live (see readColumns). Kept as the raw
+        // document rather than a pre-digested map so the table loop stays the
+        // one place that decides what a missing definition means.
+        return { paths, doc: spec, degraded: false, info: { detail: `${paths.size} paths in ${r.ms}ms` } };
       }
     } catch {
       return { paths: null, degraded: true, info: { detail: 'OpenAPI response was not valid JSON' } };
@@ -156,6 +160,36 @@ async function fetchOpenApiPaths(base, key, args) {
     };
   }
   return { paths: null, degraded: true, info: { detail: `HTTP ${r.status} ${r.text.slice(0, 120)}` } };
+}
+
+/**
+ * Read the LIVE column set of one table, out of the definitive document.
+ *
+ * WHY THIS IS READ FROM THE DEFINITIVE DOCUMENT ONLY
+ *   `paths` is a SET, so it answers "does this object exist" and nothing more.
+ *   PostgREST's OpenAPI document carries a second, structured half —
+ *   `definitions.<table>.properties` — which is the authoritative list of
+ *   columns. That is what makes a COLUMN check possible at all.
+ *
+ *   The degraded probing path cannot answer this. `probeTable` does a
+ *   `select=*&limit=0` read, and the ONLY thing its status code proves is that
+ *   the table is exposed: PostgREST does not validate the `select=` list, so
+ *   `select=*,no_such_column` and `select=*` are byte-indistinguishable in the
+ *   response. Column names would have to be probed one at a time by naming them
+ *   (a 400 does come back for an unknown column), which turns a check into a
+ *   guess about which names to try. So: present -> the real set; absent ->
+ *   `null`, meaning "not verifiable here", never "fine".
+ *
+ * @returns {Set<string>|null} lowercased column names, or null when the document
+ *   does not describe this table.
+ */
+function readColumns(openapiDoc, table) {
+  const defs = openapiDoc?.definitions;
+  if (!defs || typeof defs !== 'object') return null;
+  const def = defs[table] ?? defs[table.toLowerCase()];
+  if (!def || typeof def.properties !== 'object' || def.properties === null) return null;
+  const cols = Object.keys(def.properties).map((c) => c.toLowerCase());
+  return cols.length ? new Set(cols) : null;
 }
 
 /**
@@ -261,6 +295,48 @@ Requires SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY for full verification.`);
       detail = p.detail;
     }
     results.push({ kind: 'table', name, severity: meta.severity || 'required', state, detail, note: meta.note });
+
+    // ── Column contract ─────────────────────────────────────────────────────
+    // A table can be present and still be the WRONG table for this commit:
+    // shipping code that writes `status_biodata` against a database whose
+    // `database_candidate` has no such column does not throw — PostgREST
+    // answers PGRST204 and the write is dropped, which is the same silent-blank
+    // failure this whole gate exists to catch, one level down.
+    //
+    // THREE outcomes, deliberately distinguished:
+    //   verified   the document listed this table and every required column is
+    //              in it
+    //   missing    the document listed this table and >=1 column is absent
+    //   UNVERIFIED the document did not describe the table (degraded probe, or
+    //              a PostgREST that publishes no definitions). Reported, never
+    //              silently passed — a check that cannot see must not look green.
+    //
+    // A table that is itself 'missing' skips this: the absence is already
+    // reported, and two violations for one cause is noise, not rigor.
+    const columns = Array.isArray(meta.columns) ? meta.columns : [];
+    if (columns.length && state === 'present') {
+      const live = readColumns(openapi.doc, name);
+      if (!live) {
+        results.push({
+          kind: 'column',
+          name: `${name}(${columns.join(',')})`,
+          severity: meta.severity || 'required',
+          state: 'unknown',
+          detail: 'unverified — the OpenAPI document published no column definition for this table',
+        });
+      } else {
+        const absent = columns.filter((c) => !live.has(String(c).toLowerCase()));
+        results.push({
+          kind: 'column',
+          name: `${name}(${columns.join(',')})`,
+          severity: meta.severity || 'required',
+          state: absent.length ? 'missing' : 'present',
+          detail: absent.length
+            ? `column(s) absent from ${name}: ${absent.join(', ')} (${live.size} columns seen)`
+            : `${columns.length} required column(s) present among ${live.size}`,
+        });
+      }
+    }
   }
 
   for (const [name, meta] of Object.entries(rpcs)) {
@@ -284,7 +360,8 @@ Requires SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY for full verification.`);
   }
 
   for (const r of results) {
-    const label = `${r.kind === 'rpc' ? 'fn  ' : 'tbl '} ${r.name}`.padEnd(28);
+    const tag = r.kind === 'rpc' ? 'fn  ' : r.kind === 'column' ? 'col ' : 'tbl ';
+    const label = `${tag} ${r.name}`.padEnd(28);
     if (r.state === 'present') console.log(`  OK    ${label} ${r.severity}`);
     else if (r.state === 'missing') console.log(`  MISS  ${label} ${r.severity}  ${r.detail}`);
     else console.log(`  ???   ${label} ${r.severity}  ${r.detail}`);
@@ -296,9 +373,11 @@ Requires SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY for full verification.`);
   const unknownOptional = results.filter((r) => r.state === 'unknown' && r.severity === 'optional');
   const verified = results.filter((r) => r.state === 'present');
 
+  const nCol = results.filter((r) => r.kind === 'column').length;
   console.log('-'.repeat(56));
   console.log(
     `  tables ${Object.keys(tables).length} · rpc ${Object.keys(rpcs).length} · ` +
+      `column contracts ${nCol} · ` +
       `missing ${missingRequired.length} required / ${missingOptional.length} optional · ` +
       `unverified ${unknownRequired.length} required / ${unknownOptional.length} optional`
   );
@@ -318,6 +397,7 @@ Requires SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY for full verification.`);
     console.log('  The database is NOT migrated to match this commit. Apply before deploying:');
     for (const r of missingRequired) {
       console.log(`    ${r.name}`);
+      if (r.kind === 'column') console.log(`        detail   : ${r.detail}`);
       if (r.migration) console.log(`        migration: ${r.migration}`);
       if (r.note) console.log(`        impact   : ${r.note}`);
     }

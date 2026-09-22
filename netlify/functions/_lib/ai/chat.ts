@@ -4,7 +4,7 @@ import * as session from '../session';
 import { requireRole } from '../../contexts/identity';
 import { buildRingkasData, findMasterByWa, APPLY_WA_COLS } from './cv';
 import { geminiGenerate, parseJsonLoose } from './providers';
-import { isVipCatatan, unwrapInterviewPayload, lastHistory } from './interview-shared';
+import { isVipCatatan, unwrapPayloadArgs, lastHistory } from './interview-shared';
 import { AppError, safeError } from '../kernel/errors';
 
 /**
@@ -199,7 +199,11 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
   if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
     return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
   }
-  const p = (payload || {}) as Record<string, any>;
+  // apiClient mengirim `payload: [args]`; legacy GAS mengirim objeknya langsung.
+  // Membaca `p.history` dari sebuah ARRAY menghasilkan `undefined`, jadi Jeklin
+  // kehilangan seluruh riwayat percakapan DAN blok "DATA KANDIDAT SAAT INI" pada
+  // setiap giliran — persis lubang yang A16 tutup untuk processAiInterview.
+  const p = unwrapPayloadArgs(payload);
   const flow = String(p.flow || 'master');
   // LOCK VIP (AGENTS.md §6): AI CV Master (flow=master) hanya untuk admin ATAU
   // kandidat ber-tag VIP/KELAS. Keputusan FINAL di server — jangan mengandalkan
@@ -242,7 +246,13 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
   }
   const history = Array.isArray(p.history) ? p.history : [];
   const lang = String(p.lang || 'id');
-  const ringkas = buildRingkasData(p.currentData);
+  // `currentData` keluar sebagai `unknown` dari normalizer, sedangkan bentuk yang
+  // diharapkan buildRingkasData/autoTranslateMissingJp adalah objek bersarang.
+  // Disempitkan SEKALI di sini supaya tiga pemakaian di bawah tidak perlu cast.
+  const currentData = (p.currentData && typeof p.currentData === 'object'
+    ? p.currentData
+    : {}) as Record<string, unknown>;
+  const ringkas = buildRingkasData(currentData);
   const system =
     'Kamu adalah Qween Jeklin, HRD Virtual LPK ASJ (PT Amanah Sakura Japan), perusahaan penyalur kerja ke Jepang. ' +
     'Tugasmu membantu kandidat melengkapi data Master (identitas, fisik, medis, pendidikan, pekerjaan, keluarga, ' +
@@ -272,12 +282,12 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
           // because AI often returns only _id without _jp for some fields.
           // autoTranslateMissingJp only calls Gemini for fields where _id exists
           // but _jp is empty, so no duplicate translations.
-          await autoTranslateMissingJp(p.currentData);
+          await autoTranslateMissingJp(currentData);
           // Merge translated JP fields from p.currentData back into aiData
           // so the frontend receives the translated values.
           if (aiData) {
             for (const pair of AI_ID_JP_PAIRS) {
-              const jpVal = getNested(p.currentData, pair.jpPath);
+              const jpVal = getNested(currentData, pair.jpPath);
               if (jpVal && !getNested(aiData, pair.jpPath)) {
                 setNested(aiData, pair.jpPath, jpVal);
               }
@@ -325,7 +335,9 @@ async function handleProcessAdminAIChat(payload: unknown[], sessionToken?: strin
 }
 
 async function handleProcessSiswaAIChat(payload: unknown) {
-  const p = (payload || {}) as Record<string, any>;
+  // Sama seperti processAIChat: apiClient membungkus argumen jadi array, jadi
+  // `p.history` harus di-unwrap dulu atau Dede Jeklin kehilangan riwayatnya.
+  const p = unwrapPayloadArgs(payload);
   const system =
     'Kamu adalah Dede Jeklin, asisten pendaftaran siswa baru LPK ASJ. Bantu siswa/orang tua melengkapi form ' +
     '(nama, TTL, gender, agama, alamat, email, pendidikan, WA siswa, WA ortu). Balas ramah dan singkat dalam Bahasa Indonesia.\n' +
@@ -526,7 +538,7 @@ async function handleProcessAiInterview(payload: unknown[], sessionToken?: strin
   // Legacy GAS sent an OBJECT {wa,...}; apiClient/job queue send an ARRAY of
   // args — unwrap both (A16: every sibling handler unwraps payload[0]; this
   // one did not, so wa/candidateName/history were dropped on every turn).
-  const p = unwrapInterviewPayload(payload);
+  const p = unwrapPayloadArgs(payload);
   const profil = await resolveProfilKandidat(String(p.wa || p.waTarget || ''));
   const system = buildInterviewSystem(
     profil || {

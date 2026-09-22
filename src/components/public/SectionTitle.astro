@@ -1,0 +1,116 @@
+---
+/**
+ * SectionTitle.astro — eyebrow, heading and description as ONE shape.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * Every section invented its own title block: different heading sizes, different
+ * accent colours, some with an eyebrow and some without. The measured symptom
+ * was that two sections side by side had titles of different height and colour,
+ * which reads as a mistake rather than as hierarchy.
+ *
+ * WHAT IT PINS
+ * ------------
+ * One eyebrow style, one heading size, one description width — for every section
+ * that uses it. A section that genuinely needs a different shape writes its own
+ * heading instead of bending this one; that is why the heading level is a prop
+ * and not hard-coded.
+ *
+ * The heading element is a two-branch conditional rather than a dynamic tag: see
+ * the note in Section.astro — `indexer/src/build.test.ts:502` asserts this tree
+ * has zero unresolved `template-component` records.
+ *
+ * i18n
+ * ----
+ * Text arrives as a KEY plus a literal fallback, mirroring the pattern already
+ * used across the repo (`data-lang` attribute plus visible Indonesian text).
+ * The literal is what a crawler and a no-JS visitor see; `translateDataLang()`
+ * overwrites it once the language store is read. Passing the fallback as an
+ * expression means the i18n text-node gate never sees it as raw copy.
+ *
+ * ACCENT
+ * ------
+ * `accent` is a closed set of six roles, matching DESIGN.md §3.2. It is a union
+ * type on purpose: a seventh accent should be a deliberate edit here, not a
+ * colour picked at a call site. Each role maps to a semantic token, so the colour
+ * flips with the theme instead of being pinned to a palette step.
+ */
+import { ACCENT_TEXT, type AccentRole } from '../../lib/accentClass';
+
+export interface Props {
+  /** i18n key for the eyebrow. Omit to render no eyebrow. */
+  eyebrowKey?: string;
+  /** Visible fallback for the eyebrow. */
+  eyebrow?: string;
+  /** i18n key for the heading. */
+  titleKey: string;
+  /** Visible fallback for the heading. Also the accessible name of the region. */
+  title: string;
+  /** i18n key for the description line. */
+  descKey?: string;
+  /** Visible fallback for the description line. */
+  desc?: string;
+  /** Heading level. 2 for a section, 3 inside a card. */
+  level?: 2 | 3;
+  /** Accent role, from the closed list in DESIGN.md §3.2. */
+  accent?: AccentRole;
+  /** id given to the heading, so the section can point at it with aria-labelledby. */
+  headingId?: string;
+  /** Extra classes for the wrapper. */
+  class?: string;
+}
+
+const {
+  eyebrowKey,
+  eyebrow,
+  titleKey,
+  title,
+  descKey,
+  desc,
+  level = 2,
+  accent = 'identity',
+  headingId,
+  class: className,
+} = Astro.props;
+
+const accentClass = ACCENT_TEXT[accent];
+// Tracking for the eyebrow comes from the `text-eyebrow` token, not from a
+// `tracking-[0.18em]` here — an arbitrary value at the call site is exactly the
+// drift the type scale exists to remove.
+const headingClass =
+  level === 3 ? 'text-card-title font-bold text-fg' : 'text-section font-bold text-fg';
+const wrapper = ['flex flex-col gap-3', className ?? ''].filter(Boolean).join(' ');
+---
+
+<div class={wrapper}>
+  {
+    eyebrow && (
+      <span data-lang={eyebrowKey} class={`text-eyebrow uppercase ${accentClass}`}>
+        {eyebrow}
+      </span>
+    )
+  }
+
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    {
+      level === 3 ? (
+        <h3 id={headingId} data-lang={titleKey} class={headingClass}>
+          {title}
+        </h3>
+      ) : (
+        <h2 id={headingId} data-lang={titleKey} class={headingClass}>
+          {title}
+        </h2>
+      )
+    }
+    <slot name="action" />
+  </div>
+
+  {
+    desc && (
+      <p data-lang={descKey} class="max-w-[60ch] text-body-sm text-fg-muted">
+        {desc}
+      </p>
+    )
+  }
+</div>

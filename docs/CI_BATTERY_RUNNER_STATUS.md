@@ -50,14 +50,22 @@ That gap is real and is closed.
 | Piece | Where |
 |---|---|
 | Runner that executes the hermetic set, reading the set from the manifest | `scripts/ci/run-batteries.mjs` |
-| `battery` classification on all 25 gates (measured: **18 ci / 6 infra / 1 none**) | `scripts/ci/review-manifest.json` |
+| `battery` classification on every gate | `scripts/ci/review-manifest.json` |
 | `verify:batteries` + `verify:batteries:list` npm scripts | `package.json` |
-| Its own battery, R1–R8 | `scripts/ci/run-batteries.mutations.sh` |
+| Its own battery, R1–R8 (plus R7c) | `scripts/ci/run-batteries.mutations.sh` |
 | `batteries` CI job | `.github/workflows/ci.yml` |
 | C7 — enforces the classification the runner reads | `scripts/ci/verify-review-manifest.mjs` |
+| C8 — every battery on disk is accounted for by a gate or by `testBatteries` | `scripts/ci/verify-review-manifest.mjs` |
 | `*.sh text eol=lf` — a CRLF checkout silently kills every multi-line anchor | `.gitattributes` |
 | Sweeps retry, and a sweep that gives up is a FINDING with its error | `scripts/ci/run-batteries.mjs` |
 | `rm_retry` — a failed delete prints `rm`'s own reason instead of a bare rc=1 | `scripts/ci/lib/rm-retry.sh` |
+
+The gate count and the ci/infra/none split are deliberately **not** written into
+this table. It used to say "all 25 gates (measured: 18 ci / 6 infra / 1 none)",
+and by 2026-09-18 that was 34 gates and 20 / 13 / 1 — a prose count has nothing
+checking it, so it drifts and then misleads. `npm run verify:review-manifest`
+prints the live numbers under **Battery classification**, and
+`npm run verify:batteries:list` prints exactly which batteries will run.
 
 Three rotted batteries were also repaired (`check-md-tables`, `cold-start-gate`,
 `verify-review-manifest`) and `verify:env`'s missing scratch cleanup added.

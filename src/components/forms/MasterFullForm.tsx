@@ -9,7 +9,7 @@ import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { validate, kandidatLoginSchema, waSchema, emailSchema } from '../../lib/schemas';
 import { t, langStore, toggleLang } from '../../store/i18n';
-import { getEndpoint } from "../../lib/apiEndpoint";
+import { apiClient } from "../../lib/apiClient";
 import Icon from '../ui/Icon';
 import { uploadMany, UploadCollectionError } from '../../lib/cloudinary';
 import { MASTER_FILE_COLUMNS } from '../../lib/documentColumns';
@@ -107,6 +107,22 @@ const STEPS = [
   { icon: 'fa-file-alt', key: 'master.step_documents' },
 ];
 
+/**
+ * Bentuk jawaban dua action yang sekarang dipanggil lewat apiClient.
+ *
+ * Ditulis eksplisit, bukan `apiClient<any>`: `lint-ratchet` menolak berkas yang
+ * sudah punya diagnostik lalu bertambah (kondisi 3), dan satu `any` baru di sini
+ * cukup untuk memerahkan gate itu. `getDrafCvMaster` tidak butuh tipe sendiri —
+ * `ApiResponse` bawaan klien sudah cukup, karena `identitas`/`uploads`
+ * diteruskan ke helper yang parameternya `any`.
+ */
+interface LoginKandidatRes {
+  sessionToken?: string; token?: string; user?: string;
+}
+interface SubmitMasterRes {
+  success?: boolean; message?: string; error?: string;
+}
+
 export default function MasterFullForm() {
   const lang = useStore(langStore);
   const [step, setStep] = useState(1);
@@ -183,12 +199,21 @@ export default function MasterFullForm() {
     if (!token || !wa) { setLoaded(true); return; }
     setSyncing(true);
     try {
-      const res = await fetch(getEndpoint('getDrafCvMaster'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ action: 'getDrafCvMaster', payload: [wa], sessionToken: token }),
+      // ── Lewat apiClient, BUKAN fetch mentah ─────────────────────────────
+      // `getDrafCvMaster` ADA di CACHEABLE_READS, dan fetch mentah melewati
+      // cache baca 30 s (§26 — cacat yang sama dengan TabKelola, CandidateDash
+      // dan ApplyFullForm).
+      //
+      // `requireAuth` dibiarkan default (true) dengan sengaja: fungsi ini sudah
+      // punya gerbangnya sendiri di atas — `if (!token || !wa) return` — jadi
+      // menuntut sesi di sini TIDAK mengubah siapa yang sampai ke baris ini.
+      // `onSessionInvalid: 'throw'` + `silent: true` mempertahankan perilaku
+      // lama: catch di bawah memang menelan kegagalan prefill, dan default
+      // 'logout' akan me-redirect user yang sedang mengisi form.
+      const d = await apiClient('getDrafCvMaster', [wa], {
+        onSessionInvalid: 'throw',
+        silent: true,
       });
-      const d = await res.json();
       if (!d || !d.identitas) return;
       applyUploads(d.uploads || {});
       if (localStorage.getItem('asj_master_' + wa)) return; // draft lokal menang
@@ -256,17 +281,34 @@ export default function MasterFullForm() {
   const gateLogin = async () => {
     const vg = validate(kandidatLoginSchema, { wa: gateWa, password: gatePass }); if (!vg.success) { setGateMsg(vg.errors[0]); return; }
     try {
-      const res = await fetch(getEndpoint('loginKandidat'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'loginKandidat', payload: [{ wa: gateWa, password: gatePass }] }) });
-      if (res.ok) {
-        const d = await res.json();
-        authStore.set({...authStore.get(), sessionToken: d.sessionToken || d.token || '', wa: gateWa, name: d.user || 'kandidat', isLoggedIn: true, role: 'kandidat', lastChecked: Date.now() });
-        setData(prev => ({ ...prev, wa: gateWa }));
-        setLoginGate(false);
-        loadServerDraft(gateWa);
-      } else {
-        setGateMsg('Password salah atau akun tidak ditemukan.');
-      }
-    } catch { setGateMsg('Error koneksi.'); }
+      // `requireAuth: false` WAJIB — ini justru gerbang login itu sendiri, jadi
+      // menuntut sesi sebelum login akan mengunci form untuk selamanya.
+      // `onSessionInvalid: 'throw'`: default 'logout' tidak masuk akal pada
+      // sebuah PERCOBAAN login.
+      // KONTRAK WIRE: kernel/validate.ts memvalidasi loginKandidat dengan
+      // z.tuple([waField, passwordField]), jadi payload-nya DUA PRIMITIF.
+      // Bentuk lama `[{ wa, password }]` ditolak zod ("Array must contain at
+      // least 2 element(s)") — gate ini tidak pernah bisa lolos dan user selalu
+      // melihat "Password salah atau akun tidak ditemukan." LoginModal memakai
+      // [wa, password] dan memang jalan; hanya kedua gate yang menyimpang.
+      const d = await apiClient<LoginKandidatRes>('loginKandidat', [gateWa, gatePass], {
+        requireAuth: false,
+        onSessionInvalid: 'throw',
+        silent: true,
+      });
+      authStore.set({...authStore.get(), sessionToken: d.sessionToken || d.token || '', wa: gateWa, name: d.user || 'kandidat', isLoggedIn: true, role: 'kandidat', lastChecked: Date.now() });
+      setData(prev => ({ ...prev, wa: gateWa }));
+      setLoginGate(false);
+      loadServerDraft(gateWa);
+    } catch (e) {
+      // PERBEDAAN YANG DISENGAJA. Dulu `res.ok` memisahkan HTTP gagal
+      // ("Password salah…") dari kegagalan jaringan ("Error koneksi.").
+      // apiClient melempar untuk KEDUANYA, jadi pemisahan itu harus dibawa ulang
+      // di sini — tanpa ini, password yang salah akan terbaca sebagai masalah
+      // koneksi, dan pesan itulah yang dilihat user.
+      const msg = (e as Error).message || '';
+      setGateMsg(/^HTTP /.test(msg) ? 'Password salah atau akun tidak ditemukan.' : 'Error koneksi.');
+    }
   };
 
   /** Update single field in master data */
@@ -360,14 +402,16 @@ export default function MasterFullForm() {
         kenalanPekerjaan: kenalan.pekerjaan, kenalanUsia: kenalan.usia, kenalanAlamat: kenalan.alamat,
         ...fileUrls,
       };
-      const token = authStore.get().sessionToken;
-      const res = await fetch(getEndpoint('submitMasterForm'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ action: 'submitMasterForm', payload: [payload], sessionToken: token })
+      // Lewat apiClient: batas waktu 20 s (fetch mentah tidak punya satu pun),
+      // dan `Authorization` + `sessionToken` disuntik klien.
+      // `onSessionInvalid: 'throw'` + `silent: true`: catch di bawah sudah
+      // menampilkan toast sendiri, jadi default 'logout' maupun toast klien akan
+      // menggandakan pesan pada satu kegagalan.
+      const data2 = await apiClient<SubmitMasterRes>('submitMasterForm', [payload], {
+        onSessionInvalid: 'throw',
+        silent: true,
       });
-      const data2 = await res.json();
-      if (res.ok && data2.success) {
+      if (data2.success) {
         localStorage.setItem('asj_master_' + data.wa, JSON.stringify(data));
         setBaseline(signature());
         showToast(isDraft ? t('toast.draft_saved') : t('toast.saved'), 'success');

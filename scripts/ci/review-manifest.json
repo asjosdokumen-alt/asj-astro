@@ -48,11 +48,16 @@
     "  ADDED 2026-09-16: the four e2e guards. They were in NO manifest entry while the",
     "  `e2e` job ran them, and three of their batteries had no caller at all -- so the",
     "  one job whose gates the inventory did not know about was also the one where",
-    "  \"proven able to fail\" was quietly decaying. e2e:public has no battery and is",
-    "  recorded as a hypothesis (provenBy: null) rather than left unlisted.",
+    "  \"proven able to fail\" was quietly decaying. e2e:public was listed as a",
+    "  hypothesis (provenBy: null) -- and CORRECTED 2026-09-18, because that was false:",
+    "  `e2e/test-public.mutations.sh` existed, was tracked, and was cited by nothing, so",
+    "  the guard it proves HAD a battery while the manifest said it did not. C2 only ever",
+    "  checks the batteries that ARE cited, so an uncited one was invisible. C8 now",
+    "  requires every `*.mutations.sh` on disk to be accounted for, and `testBatteries`",
+    "  below is where a battery that proves a vitest file rather than a gate is declared.",
     ""
   ],
-  "measuredAt": "2026-09-16",
+  "measuredAt": "2026-09-19T00:13:22.213Z",
   "gates": [
     {
       "script": "typecheck:ratchet",
@@ -101,9 +106,9 @@
       "blocking": false,
       "provenBy": null,
       "runs": [],
-      "note": "Second, independent layering checker (dependency-cruiser). Never wired anywhere. Advisory until someone decides which of the two is authoritative — see audit A-07.",
+      "note": "A-07 RESOLVED 2026-09-17. This is NOT a competing gate. `boundary` is authoritative: it is wired into ci.yml#boundary, it is blocking, it has a mutation battery, and it owns the 6 rules. This entry is the REFERENCE IMPLEMENTATION that `boundary.ts` mirrors by hand against the same .dependency-cruiser.cjs — which is exactly why it must be RUN, not merely present. The binary is now genuinely executed as an oracle by indexer/src/boundary.test.ts, a test that had been named 'matches the depcruise oracle' since it was written while never invoking it (it re-derived the verdict from boundary.ts and asserted the same 0). Measured on this tree 2026-09-17: exit 0 in ~6 s, 210 modules / 648 dependencies cruised. It stays non-blocking deliberately — a second blocking gate over the same config would be redundant, and the drift it can actually catch is a drift in boundary.ts's hand-mirroring, which is caught where the mirroring lives.",
       "battery": "none",
-      "batteryNote": "No mutation battery exists for this gate. It has never been observed failing."
+      "batteryNote": "No mutation battery, and none is wanted. This is not a gate; it is the oracle that boundary.test.ts pins itself against. That it can fail is not in question — it exits non-zero on a violation by construction — and a battery here would be testing dependency-cruiser rather than this repository. The gate that needs proving is `boundary`, and boundary.mutations.sh proves it (5 killed / 0 survived / 6 ok-green)."
     },
     {
       "script": "verify:entries",
@@ -150,6 +155,21 @@
       "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
     },
     {
+      "script": "verify:fetch-boundary",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/fetch-boundary.mutations.sh",
+      "runs": [
+        "ci.yml#functions-tree",
+        "ci.yml#quality-gates",
+        "ci:quality",
+        "review:gate"
+      ],
+      "note": "The frontend half of the same invariant verify:io guards on the backend: no raw fetch() bypassing the sanctioned client in src/. Measured 2026-09-17 the frontend had 30 such sites across 18 files, and six carried a comment explaining why THAT one was exempt - one of them false (CandidateProfileModal deferred on the grounds that apiClient had no `signal` option, an option that had always existed and whose doc comment named that very file). All 30 were converted by 2026-09-18; this gate is what keeps them converted repo-wide, since the six per-component tests that landed with the work only pin their own file. Proven 2026-09-18: the first battery run reported S3 SURVIVED - the client guard asked whether ANY fetch remained, so renaming one of the client’s two call sites left the entry’s max:2 slack and half the implementation could move undetected. The guard now compares against the bound. Final: 7 killed / 0 survived / 1 ok-green.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
       "script": "verify:validation",
       "tier": 0,
       "blocking": true,
@@ -188,6 +208,20 @@
       ],
       "battery": "ci",
       "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:keyframes",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/check-keyframes.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates",
+        "ci:quality",
+        "review:gate"
+      ],
+      "note": "Every animation-name written in src/styles/*.css must resolve to an @keyframes defined in the same directory. Added 2026-09-21 while building the per-section scroll transitions, because the failure mode is silent by construction: CSS says nothing about a class that matches no rule and nothing about an animation-name it does not know, so a typo in the motion table (src/lib/sectionMotion.ts -> class name -> animation) produces a section that simply never animates. No error, no console warning, and every existing assertion still passes as long as ONE name in the declaration list resolves -- and all the mascot rules declare two names. Measured the same day on the real defect this guards: [data-motion=\"sway\"] is defeated in prefixed-reduced-motion by [data-motion=\"sway\"] itself, which is a (0,2,0) rule the blanket [data-motion] reset cannot outrank. Deliberately does NOT fail on a defined-but-unreferenced keyframe: mascot-enter is kept on purpose as the entrance the documented JS-gamefeel step will add back.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Mutates src/styles/motion.css and restores it byte-identically. The gate reads only files, so the battery needs no build -- which matters, because the sibling mascot gate has to rebuild per case and takes minutes."
     },
     {
       "script": "lint-ratchet",
@@ -257,6 +291,30 @@
       "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
     },
     {
+      "script": "verify:ports",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-e2e-ports.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates"
+      ],
+      "note": "A probe whose stated address and actual address disagree. Added 2026-09-18 after deleting the two orphan e2e/verify-*.mjs probes, which removed the last scripts defaulting to port 4322 — but the defect was never those two files, it was that NOTHING COULD SEE the disagreement. Measured the same day: e2e/measure-riwayat-card.mjs told the reader `BASE_URL=http://localhost:4322` while the code two lines below defaulted to 4321, so copying the comment starts a browser against a port nothing listens on and the failure reads as a broken page. Rules: P1 a parseable default exists; P2 every comment's BASE_URL port equals the effective default; P3 the default is a port the repo BINDS (derived from server.cjs/serve.cjs/astro.config.mjs/package.json, never typed in the gate). Measured 2026-09-18: 10 probes, 7 bound to 4321, 3 defaulting to 4323 — which the repo binds NOWHERE, so those three are reported as UNBOUND (BASE_URL is mandatory for them in practice) rather than silently passed. `--strict` makes that a failure.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Mutates two e2e/*.mjs files and restores them byte-identically (cmp-checked). Proven 2026-09-18: 3 killed / 0 survived / 2 ok-green. The two OK-GREEN controls are load-bearing — they prove the gate does not simply reject any edit to the port line (D moves the default to the same port on a different host; E makes a comment agree with the default on a different host), so case B means what it claims. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
+      "script": "verify:workflows",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/verify-workflows.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates"
+      ],
+      "note": "The workflow files as GitHub reads them. Added 2026-09-17 after the repository was measured at 32 failed runs and ZERO successful ones, every run with no jobs: _notify.yml used `secrets` in a step-level `if:`, which GitHub rejects by refusing the WHOLE FILE (\"Unrecognized named-value: secrets\"), and a called workflow that will not parse takes its callers down with it — so ci.yml, deploy-staging.yml, deploy-production.yml and rollback.yml were all dead at once, and the automatic post-deploy rollback had never been armed. Nothing local could see it: every existing gate tests the code, and none of them reads the workflows as GitHub does. Rules: W1 shape · W2 no secrets in if: · W3 callable targets · W4 non-empty name (GitHub reports the FILE PATH as the name when a workflow will not parse — that is the tell that found this).",
+      "battery": "ci",
+      "batteryNote": "Hermetic: no credentials, no server, no database. Mutates NOTHING — every case is a fixture written to a mktemp -d outside the repository, so there is no restore step and no backup to launder. Runs in CI on every PR via `npm run verify:batteries`."
+    },
+    {
       "script": "test",
       "tier": 0,
       "blocking": true,
@@ -293,7 +351,7 @@
         "ci.yml#batteries",
         "review:gate:full"
       ],
-      "note": "THE GATE THAT CLOSES THE LARGEST GAP IN THIS FILE. Until 2026-09-15 the manifest printed 'proven able to fail 22/22 (100%)' while nothing ran a single battery: `grep -c 'mutations\\.sh' .github/workflows/*.yml` returned one hit, and that hit is a COMMENT in ci.yml line 68, not a `run:`. No npm script invoked them either. So the number meant \"was once observed to fail\", never \"still does\" — and the decay is not hypothetical. On its first run this runner found that `check-md-tables.mutations.sh` had a DEAD mutation: its anchored prose had been rewritten upstream, so its `str.replace()` matched nothing, wrote the file back unchanged, and the gate stayed correctly green while the battery reported SURVIVED. A dead mutation and a hole in a gate look identical from the outside; only re-running tells them apart. This gate runs the 17 hermetic batteries and fails when any one stops discriminating. It does NOT prove the 6 infra batteries or the 1 battery-less gate — the runner prints that remainder explicitly so a green run is never read as total proof.",
+      "note": "THE GATE THAT CLOSES THE LARGEST GAP IN THIS FILE. Until 2026-09-15 the manifest printed 'proven able to fail 22/22 (100%)' while nothing ran a single battery: `grep -c 'mutations\\.sh' .github/workflows/*.yml` returned one hit, and that hit is a COMMENT in ci.yml line 68, not a `run:`. No npm script invoked them either. So the number meant \"was once observed to fail\", never \"still does\" — and the decay is not hypothetical. On its first run this runner found that `check-md-tables.mutations.sh` had a DEAD mutation: its anchored prose had been rewritten upstream, so its `str.replace()` matched nothing, wrote the file back unchanged, and the gate stayed correctly green while the battery reported SURVIVED. A dead mutation and a hole in a gate look identical from the outside; only re-running tells them apart. This gate runs the hermetic batteries and fails when any one stops discriminating. It does NOT prove the `infra` batteries or the battery-less gates — the runner prints that remainder explicitly so a green run is never read as total proof. THE COUNTS ARE DELIBERATELY ABSENT HERE. This note used to read \"the 17 hermetic batteries ... the 6 infra batteries ... the 1 battery-less gate\", and all three numbers were wrong by the time anyone read them: 17 had become 20. A count written into prose is a claim with no check behind it, which is the defect this entire file is about, so the runner and this gate print the live numbers instead — `verify:review-manifest` under Battery classification, and the runner in its own header.",
       "battery": "ci",
       "batteryNote": "Hermetic. This battery breaks the runner/battery recursion by invoking the runner with `--only=verify:md`, which restricts it to one cheap battery that is not this one."
     },
@@ -336,6 +394,17 @@
       "batteryNote": "Needs a live database, the Supabase transport, or a real HTTP server to be meaningful — so it does NOT run on every PR. Re-measure before moving it into the hermetic set."
     },
     {
+      "script": "biodata:guard",
+      "tier": 2,
+      "blocking": true,
+      "provenBy": "scripts/ci/biodata-guard.mutations.sh",
+      "runs": [
+        "ci.yml#biodata-guard"
+      ],
+      "battery": "infra",
+      "batteryNote": "Needs a real PostgreSQL because the guard IS a trigger: its verdict only exists inside an actual UPDATE. embedded-postgres (a devDependency) provides one, so this needs no Supabase credentials and no network — only a database engine. Deliberately NOT in run-batteries.mjs, which runs hermetic batteries only. Re-measured 2026-09-18 in a clean HEAD worktree: 36 s, and verdicts change intact->mutated for A2/A4/A6, so the battery genuinely discriminates. It STAYS `infra` on purpose: C7 in verify-review-manifest defines `ci` as 'no database engine', and `embedded-postgres` is a real initdb/postgres binary. Promoting it would have to loosen C7's marker — see docs/DEVELOPMENT_ROADMAP.md §2.5."
+    },
+    {
       "script": "verify:schema",
       "tier": 1,
       "blocking": true,
@@ -359,7 +428,7 @@
       ],
       "note": "NOT PROVEN, and deliberately left that way on 2026-09-15. It needs live credentials: with none it exits 2 on every path, and the only local substitute is stubbing `pg`/PostgREST, which would prove the verdict logic while leaving the SQL — the actual check — untested. A battery that certifies the wrong half is worse than none, so this stays an open gap until it can run against a disposable Postgres in CI. MEASURED GAP, NOW CLOSED (2026-09-15): this gate used to be on NO shipping path — invoked only from ci:predeploy, which no workflow referenced, with no workflow supplying SUPABASE_DB_URL, so neither its decisive mode nor the gate itself ran before production shipped and migrations/012_rls_lockdown.sql was unprotected on the path that deploys. It is now a blocking step in both deploy workflows, immediately after the database contract gate, and both supply SUPABASE_DB_URL to select the DEFINITIVE catalog mode. This is the asymmetric gate: an application rollback does NOT restore table privileges, so a policy that drifts open cannot be undone by rolling back the deploy.\nPROVEN 2026-09-15: 7 killed / 0 survived / 2 ok-green against a REAL PostgreSQL 18.4\n(the devDependency embedded-postgres ships genuine initdb/postgres binaries), so the\ncatalog SQL itself is exercised, not a stub. THE PREVIOUS NOTE IN THIS ENTRY WAS WRONG,\nand the correction is the point: it said this gate \"needs live credentials\" and could only\nbe proven by stubbing pg, which \"would prove the verdict logic while leaving the SQL — the\nactual check — untested\". Measured: the gate runs locally with no extra credentials because\ninitDbEnv() composes SUPABASE_DB_URL from Direct_Connection_DB in .env.local, and a local\nthrowaway cluster replaces the transport while the CHECK runs unchanged. One supporting\nchange to the gate was required — honouring libpq PGSSLMODE, because a local cluster has no\nTLS and the gate hard-coded `ssl: { rejectUnauthorized: false }`.\n\nA REAL DEFECT WAS FOUND WHILE PROVING. The third check — \"a policy granted to PUBLIC with\nUSING (true)\" — could never fire for the incident that motivated the gate. It queried\n`polqual is null`, but Postgres stores a written `USING (true)` as the EXPRESSION 'true',\nnever NULL, so the query returned zero rows for exactly the shape\nmigrations/012_rls_lockdown.sql:76-79 describes (\"`USING (true)` on a FOR ALL policy, granted\nto PUBLIC\"). Only a policy with no USING clause at all matched. Fixed in the same commit;\ncase R5 is that incident reintroduced, and it SURVIVED against the old predicate and is\nKILLED against the new one — the falsification, not merely a green run. R5b is the paired\ncontrol: the RESTRICTIVE PUBLIC policy shape all three of the live database's real policies\nuse must stay GREEN, or the check would have to be disabled and every other guard would go\nwith it.",
       "battery": "infra",
-      "batteryNote": "Needs a live database, the Supabase transport, or a real HTTP server to be meaningful — so it does NOT run on every PR. Re-measure before moving it into the hermetic set."
+      "batteryNote": "STAYS `infra`, but not for the reason the classification suggests. MEASURED 2026-09-18: this battery runs to completion here with no Supabase credentials and no network, against a real PostgreSQL supplied by embedded-postgres — so it is hermetic in the sense that matters (transport replaced, check unchanged). It is labelled `infra` only because C7 defines `ci` as 'no database engine at all' and matches the `embedded-postgres|initdb` marker. The earlier wording here, 'Re-measure before moving it into the hermetic set', was a guess that measurement then contradicted: the proof had already been made on 2026-09-15 and recorded in the `note` above, so the two fields disagreed with each other. The run is also not cheap (measured 8m34s and 3m49s), so promoting it would move the slowest job for one gate. See docs/DEVELOPMENT_ROADMAP.md §2.5."
     },
     {
       "script": "verify:pwa",
@@ -367,11 +436,11 @@
       "blocking": true,
       "provenBy": "scripts/ci/verify-pwa.mutations.sh",
       "runs": [
-        "ci.yml#quality-gates"
+        "ci.yml#smoke"
       ],
-      "note": "Wired into ci.yml#quality-gates on 2026-09-15; it had been local-only (ci:predeploy, referenced by no workflow). Battery proven 2026-09-15: 6 killed / 0 survived / 2 ok-green — one case per guard (dead service worker, empty PRECACHE, backslash path, unrewritten dev VERSION, remote icon URL, icon missing on disk), each reproducing a regression that had already happened once. The two green controls matter as much: the untouched build must pass, and a remote canonical link must NOT be mistaken for an icon — the checks are scoped to rel=icon/apple-touch-icon and manifest icons[].src, and a gate that flagged any http:// would be switched off, taking every other guard with it.",
+      "note": "MOVED 2026-09-18 from ci.yml#quality-gates to ci.yml#smoke. It reads dist/sw.js, and quality-gates neither builds nor downloads an artifact, so the gate failed there on a precondition it could not satisfy — measured on the FIRST CI run this repository ever actually executed (step 11, 'Verify the PWA manifest and icons'). The smoke job downloads the built artifact and has the checkout's public/manifest.webmanifest, which is both inputs. C6 caught this move the moment the step changed but this manifest did not: 'verify:pwa -> ci.yml#quality-gates (job \"quality-gates\" does not invoke it)'. Originally wired into ci.yml#quality-gates on 2026-09-15; before that it had been local-only (ci:predeploy, referenced by no workflow). Battery proven 2026-09-15: 6 killed / 0 survived / 2 ok-green — one case per guard (dead service worker, empty PRECACHE, backslash path, unrewritten dev VERSION, remote icon URL, icon missing on disk), each reproducing a regression that had already happened once. The two green controls matter as much: the untouched build must pass, and a remote canonical link must NOT be mistaken for an icon — the checks are scoped to rel=icon/apple-touch-icon and manifest icons[].src, and a gate that flagged any http:// would be switched off, taking every other guard with it.",
       "battery": "ci",
-      "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
+      "batteryNote": "Hermetic with respect to credentials, a server and a database — but NOT self-contained: its input is BUILD OUTPUT. The battery reads dist/sw.js and REFUSES TO RUN when dist/ is absent (its own header says so, and it prints 'Run: npm run build'), because skipping cases would let it report green while proving nothing. So any job that runs this battery must have a build. Measured 2026-09-18: the CI 'batteries' job has no build step, which is one reason it fails there. Runs in CI on every PR via `npm run verify:batteries`."
     },
     {
       "script": "smoke",
@@ -402,14 +471,14 @@
       "script": "e2e:public",
       "tier": 0,
       "blocking": true,
-      "provenBy": null,
+      "provenBy": "e2e/test-public.mutations.sh",
       "runs": [
         "ci.yml#e2e",
         "test:e2e"
       ],
-      "note": "The public flow against a served, built artifact: the pages a visitor can reach without credentials. NO BATTERY EXISTS, and that is recorded rather than assumed away — so this guard is a hypothesis, not evidence, and the manifest reports it as one. Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced. That is recorded here because a reviewer reading `runs` deserves to know CI does not back it before the merge.",
-      "battery": "none",
-      "batteryNote": "No battery. The other three e2e guards each have one; this one never did. It is the cheapest of the four to write, and until it exists nothing here is proven able to fail."
+      "note": "The public flow against a served, built artifact: the pages a visitor can reach without credentials. Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced. That is recorded here because a reviewer reading `runs` deserves to know CI does not back it before the merge. THIS ENTRY WAS FALSE FOR A DAY, and nothing caught it: it read \"NO BATTERY EXISTS, and that is recorded rather than assumed away — so this guard is a hypothesis, not evidence\" while `e2e/test-public.mutations.sh` sat in the tree, complete and tracked, wired to nothing. C2 only checks the batteries that ARE cited, so an existing battery nobody cites was invisible to every check in this file. C8 closes that.",
+      "battery": "infra",
+      "batteryNote": "Needs a built artifact, a served port and a browser, so it is classified `infra`: `verify:batteries` does NOT run it, exactly like the other five e2e guards. MEASURED 2026-09-21: baseline green, 7/7 KILLED, 0 SURVIVED, and `git diff` clean on all six mutated files afterwards. That run came after the guard itself was repaired: every content assertion used `.count()`, which counts hidden elements, so a mutation that added `class=\"hidden\"` to the Loker panel left the guard GREEN while the section was invisible (measured: `thCount: 1` / `thVisible: 0`). The checks now use `.filter({ visible: true })`, and M2/M3 are the mutations that prove the difference — both SURVIVED before the repair and both KILLED after. The same battery had four dead anchors (M2/M4/M6/M7) and three no-op mutations (M1/M3/M7) that mutated MARKUP a hydration pass recomputes (translateDataLang, i18n.ts:1908); those now target the i18n dictionary, which is the source of truth, with NON-EMPTY replacements because the resolver is a falsy-chain and `\"\"` falls through to the key. RULE 0 ADDED 2026-09-21 (same commit line): the battery now proves its own sources clean, rebuilds, then walks the module graph reachable from `dist/public/index.html` (bounded, depth<=6) asserting no mutation payload is reachable. NOT copied from the landing battery: that one resolves assets from `dist/index.html`, but THIS guard measures `/public`, and the two pages load different chunk sets, so a copy would have inspected the wrong HTML and missed the poisoned chunk entirely. The payload regex is checked against BOTH the mutated and the clean strings, because `Amanah Sakura` alone is a SUBSTRING of the clean `PT Amanah Sakura Japan` and would have aborted a healthy tree. AND THE BATTERY HAD BEEN LEAKING MUTATIONS: measured 2026-09-21, `src/store/i18n.ts` was found carrying the M6 payload ~15 minutes after a run I had reported as 7/7 KILLED with a byte-identical restore. The cause was two silent no-ops: `restore_one` was `[ -f $b ] && cp` — returning the TEST status, so a missing backup restored nothing while reporting success — and the traps covered only INT/TERM, so an interrupted run never restored at all. Both fixed (missing backup is now fatal; INT/TERM/EXIT all restore; the EXIT heal is gated on an arming flag so it cannot mask the final compare loop). Verified: a `timeout`-killed run now leaves all six sources byte-identical to HEAD and reaps its own server (0 orphans). LESSON WORTH KEEPING: I verified the sources BEFORE that run and never AFTER it, so a green battery was reported on the strength of a measurement taken at the wrong end. `git diff` after the run, not only before. NOTE, recorded rather than hidden: the battery does NOT guarantee its own cleanup — `trap cleanup EXIT` left `.tmp-public-bak/` behind when the safe-delete shim refused the bulk delete, and the server trap only covers INT/TERM, so each run leaves one `node server.cjs` holding a port. Verify the restore and reap the process yourself. Seven mutations, aimed at VISIBILITY and BEHAVIOUR rather than markup, because those are the two failure modes a text-based guard cannot see. M3 is the load-bearing one: it reproduces the defect this guard was already fixed for once, where the marker text survived only inside a `<meta>` tag and the page was blank."
     },
     {
       "script": "e2e:loker-layout",
@@ -423,6 +492,20 @@
       "note": "Asserts the loker list layout in the RENDERED DOM, which no source-level check can do. Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced. That is recorded here because a reviewer reading `runs` deserves to know CI does not back it before the merge.",
       "battery": "infra",
       "batteryNote": "NOT hermetic, and the classification is deliberate: the battery runs `astro build`, starts its own server on a port it owns, and drives the guard through it. It needs a build and a browser, so `verify:batteries` must not take it. Registered 2026-09-16 — before that it had NO caller anywhere, so \"proven able to fail\" was decaying silently, which is the exact defect §1.1(a) is about."
+    },
+    {
+      "script": "e2e:landing",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "e2e/test-landing.mutations.sh",
+      "runs": [
+        "ci.yml#e2e",
+        "test:e2e"
+      ],
+      "note": "The landing page's section inventory at 390px and 1280px: every section from docs/LANDING_PAGE_SPEC.md §3/§4 that is still on `/` exists, is VISIBLE, appears in the spec's order, carries a heading, contains no placeholder text, and every in-page anchor resolves. REPAIRED 2026-09-21: this gate spent a day reporting 10 red checks against a CORRECT page because its expectation table still described `/` before commit e9317cf, which moved LokerTable to its own `/loker` route. Measured at the repair: `#layanan` is a plain <SECTION> 1623px tall (not the hidden tab panel this note used to claim), `[data-public-tab]` matches ZERO elements, and 15 of the 16 spec sections remain on `/`. `#loker` was NOT simply deleted from the table — that would have gone green while guaranteeing nothing about vacancies — so the rule became region-scoped: the hero and the section nav must each still link to /loker. The first version of that rule asserted a link COUNT (`>= 2`) against a page carrying 13 links from 7 sources, which no plausible defect could cross; region scoping is what makes it able to fail, and M7/M8 in the battery prove both a deleted hero CTA and a broken nav item turn it red. Added with L8, which is the phase the roadmap calls the one most often skipped. TWO BLIND SPOTS ARE RECORDED RATHER THAN HIDDEN: (1) '/' mounts <App client:only=\"preact\" />, so the SERVER HTML contains no hero, no h1 and none of the island's sections — this gate measures the POST-HYDRATION DOM, so a green here says nothing about what a crawler receives, and that consequence is written up in docs/LANDING_PAGE_SPEC.md §S1; (2) it therefore also fetches the response body and scans the SERVED HTML, because a mutation proved the hydrated-DOM check cannot see a placeholder sitting in a data-lang FALLBACK (SectionTitle.astro:27 documents that translateDataLang() overwrites those). Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced.",
+      "battery": "infra",
+      "batteryNote": "NOT hermetic: builds, starts `server.cjs` on a port it owns (deliberately not 4321, so it cannot measure a server it does not control), and drives the guard. Nine mutations: one per rule, plus a control pair (M7/M8) covering the region-scoped /loker rule added in the 2026-09-21 repair. THE BATTERY FOUND FOUR DEFECTS ON ITS FIRST TWO RUNS, three of them in the battery itself and one in the guard: mutating <Section> with `hidden` is a no-op (no rest-spread, the attribute is discarded); `max-h-0` does NOT collapse a Section (max-height constrains the content box while py-14/md:py-20 keeps 160px of padding — measured maxHeight \"0px\" with height 160); removing `hidden` from the tab panel is undone at runtime by bindPublicSections(), so that mutation must target DEFAULT_PUBLIC_SECTION instead; and the placeholder check genuinely could not see a lorem injected into a data-lang fallback, which is why the served-HTML check exists. All four traps are documented in the battery header. THREE MORE DEFECTS WERE FOUND AND FIXED ON THE 2026-09-21 RUN, and the third is worth more than the first two: (a) the battery rebuilt with `npx astro build`, which DID NOT RESOLVE on this machine AT THE TIME (node_modules/.bin held 7 shims and no `astro`), so seven mutations in one run each measured the same stale artifact and were reported as HOLES that did not exist. MEASURED LATER THE SAME DAY: that .bin state was TRANSIENT — all 219 shims were rewritten at 10:43 and `npx astro --version` then succeeded, so `npm run build` works again. The fix is kept anyway because it is strictly more robust (it cannot break when the shims are unhealthy), and because the REAL hazard is unchanged: a build that fails silently while `npx astro` still exits 0 — the same defect was present at 17 more call sites across 7 OTHER batteries, all now switched to `node node_modules/astro/astro.js build`; (b) M8 mutated only one of the nav's TWO /loker anchors, so the survivor it reported was correct behaviour, not a hole; (c) a run killed between a mutation and its restore left dist/ holding MUTATED code while src/ was clean, so the NEXT run reported BASELINE RED against a correct source tree. Fix (c) is now RULE 0: before the baseline, prove the four gate sources are clean with `git diff --quiet`, rebuild, and assert the mutation payloads are not REACHABLE from index.html. The reachability scoping is itself measured — the first version grepped all of dist/ and aborted on orphaned hash-named chunks that Astro leaves behind and that nothing references. L8.4 CLOSED 2026-09-21: the ninth mutation (M9) hardcodes one hero statistic to its fabricated mockup value ('5' -> '500'), and the gate now pairs each tile's VALUE with the page of docs/COMPANY_PROFILE_DATA.md that documents it. No other rule in this repo could see that defect: an invented statistic is valid markup in a visible tile, which is exactly why COMPANY_PROFILE_DATA.md §12 forbids candidate/departure/partner counts outright (\"a fabricated statistic on a company page is a legal claim, not decoration\"). The expected values are read from the DOCUMENT, not from App.tsx, so the check cannot agree with whatever the code happens to say. Verified: baseline green, 9/9 KILLED, 0 SURVIVED, all four sources byte-identical afterwards.",
+      "batteryNote2": "Registered 2026-09-19; the file did not exist before L8 — the page shipped 13 sections with NO gate covering any of them, which is exactly the failure mode this manifest records."
     },
     {
       "script": "e2e:headings",
@@ -475,6 +558,45 @@
       "note": "Every rendered <label> must be tied to its control (a `for=` that resolves, or wrapping the control) — invisible in the source, because these forms build their labels inside helper components and `.map()` loops, where ONE source line renders 55 labels. MEASURED 2026-09-16 on the built artifact, before the fix: 4 of 23 associated on /master, 0 of 9 on /apply, 0 of 12 on /siswa-baru. After: 219 of 219 rendered labels across FOUR routes (/master 5 screens 130, /apply 9, /siswa-baru 12, /ai-cv 68), plus 3 group labels that `for=` cannot express at all and that are now `<fieldset>`+`<legend>`. `noLabelWithoutControl` moved only 138 -> 95, and that gap is the point — the rule counts SOURCE LOCATIONS, the user meets rendered labels. The guard catches the three ways this wiring rots silently: a `for=` pointing at a non-existent id, the SAME id emitted twice (so `for=` resolves to the wrong control), and a group that has lost its accessible name. Runs in the `e2e` job, which is gated on `push` (or an explicit `run-e2e` input) rather than every PR — so on a pull request this gate is NOT enforced. That is recorded here because a reviewer reading `runs` deserves to know CI does not back it before the merge.",
       "battery": "infra",
       "batteryNote": "Needs a real HTTP server, so it is classified `infra` alongside its four e2e siblings and is deliberately NOT executed by `verify:batteries`. It needs NO backend: it builds, starts its own `astro preview` on a port it owns, and drives Chromium against four routes reachable with no session. Executed on this machine 2026-09-16: 18 mutations installed, 18 killed, 0 survived, baseline green, byte-identical restore, green again. THREE OF THESE MUTATIONS SURVIVED EARLIER RUNS, and each survivor found a different boundary — which is the most useful thing this battery has produced. (1) M3 (`<SswField />`) and M4 (`<ManualSelect />`) survived because the guard read the page ONCE, after load, and /master is a FIVE-STEP wizard whose labels it was measuring 23 of 90. The guard was not blind, it was SCOPE-LIMITED, and it reported a confident 100% for the 26% it happened to look at. The sweep now advances the wizard and ASSERTS the step count (M13 makes Next a no-op to prove that assertion can fail), and M3/M4 are the regression test for it. (2) M15 (the education `Tambah` becomes a no-op) survived the NEXT run, because the growth check was AGGREGATE: step 3 has two loops, so clicking every `+` and comparing the screen total is satisfied by whichever loop still works (measured: education delta 0, job delta 6, screen total 12 -> 18, guard green). The check is now PER BUTTON, and M15/M16 kill the two buttons on that screen individually — M15 alone cannot distinguish a walk over all buttons from a walk that only ever looks at #0. (3) M18 pins the group assertion: the `<legend>` is emptied, so the block renders, nothing is logged, and the group silently has no accessible name — invisible both to a source-level check and to the unassociated-label check, because no `<label>` is involved. M10 is the anti-vacuity control: it turns every label on /siswa-baru into a <span>, so the zero-label guard must fire. CAVEAT recorded rather than hidden: the row expansion adds exactly ONE extra row per loop, so a defect that only appears at three rows or more (or only on the first row) is still not covered by any mutation here. The 95 remaining `noLabelWithoutControl` locations are all in admin modals and are NOT measured by this guard; of those, 80 are followed by a control and 15 are not (group labels, a label above a <button>, a <label> used as a heading) — see docs/UI_DESIGN_REVIEW.md §27.9."
+    },
+    {
+      "script": "memory:check",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/memory-archive.mutations.sh",
+      "runs": [
+        "review:gate"
+      ],
+      "note": "Keeps the memory folder from growing without bound, and keeps `MEMORY.md` inside the 4,096-byte budget it is injected under every session. The folder lives in `.workbuddy-ai/`, which is GITIGNORED — so no other test in this repo can see it, and nothing else would notice if it silently grew back. MEASURED 2026-09-19 before this gate existed: 12 daily logs totalling 661,262 B (645.8 KB), the largest 108,075 B, while the only file actually read each session (`MEMORY.md`) sat at 4,075 B. That ratio is the defect: ~640 KB of archive nobody reads, kept in the working tree. The gate summarises daily logs older than 7 days into `arsip/YYYY-MM.md` and removes the originals — the first run folded 165,188 B across 5 files into one 58,484 B archive. SUMMARY IS NOT A COPY: it keeps the first paragraph of every `##`/`###` section and drops the rest, because in this repo the decision sentence is the opening line of its section (e.g. \"Item 1 was WRONG — verified and withdrawn\"). It deliberately does NOT trim `MEMORY.md`: that file is the only thing injected into every session, so auto-truncating it could remove a fact from context with nobody having read it. Instead it reports the overage plus the three longest lines, so the fix is a judged MOVE to `MEMORY_DETAIL.md` rather than a blind cut — which is how the 5,392 B -> 4,075 B trim on 2026-09-19 was actually done. THIS GATE IS LOCAL-ONLY BY CONSTRUCTION, and the first version of this entry got that wrong: it declared `runs: [\"ci:quality\"]`, a claim that was false in two independent ways. `ci:quality` never invoked it — the string is not in that script — and had it been added, CI would have gone red on every run, because `.workbuddy-ai/` is gitignored and a fresh checkout has no memory folder, so the script exits 2 by design. The claim was therefore not merely unverified, it was unverifiable: no CI job can judge a folder that does not ship. Its real enforcement point is `npm run review:gate`, the local pre-push gate, where it is now wired into the fast set; `review-gate.mjs` skips it with a printed note when the folder is absent, so a fresh clone reports SKIP rather than a failure that has nothing to do with the change under review. Found by this manifest gate itself on 2026-09-19 (C2b/C2c/C8 fired first because the two files had not been committed yet; the false `runs` claim was the finding underneath them).",
+      "battery": "ci",
+      "batteryNote": "Hermetic: reads and writes only `.workbuddy-ai/memory/`, needs no server, no credentials and no database. Executed 2026-09-19: 6 killed / 0 survived / 2 OK-GREEN controls, baseline green and byte-identical restore asserted after the over-budget mutation. The two green controls are load-bearing rather than decorative: a battery that only ever plants defects cannot tell a working gate from one that rejects every tree. Case 3 asserts BOTH halves of rotation — the original is gone AND the decision text survived into `arsip/` — because deleting the source without preserving its summary would pass a weaker check while losing the content. Case 6 pins exit 2 for an unreadable memory dir, since exit 0 there would report a gate that never ran as a pass. Cleanup uses targeted `unlinkSync`/`rmdirSync` rather than `rm -rf`: the sandbox delete quota is ~50 files per turn and tripping it forges red gates (recorded in `MEMORY.md`). It lives in `scripts/ci/` rather than `e2e/` because it needs no browser, no server and no fixtures — it mutates files inside `.workbuddy-ai/memory/` and reads an exit code. Accounted for ONCE, as this gate's `provenBy`: it was briefly also listed in `testBatteries`, which C8 rejects, because two accounts of one battery drift apart and the stale one keeps looking authoritative."
+    }
+  ],
+  "testBatteries": [
+    {
+      "script": "e2e/test-headings-public.mutations.sh",
+      "proves": "e2e/test-headings.mjs",
+      "note": "A SECOND battery for the same guard as e2e/test-headings.mutations.sh, covering the three checks that guard gained on 2026-09-19 (the public routes / and /public, the single-h1 rule on them, and the role-vs-boolean session fix). It cannot live in the e2e:headings entry's provenBy, because that field holds ONE path and the other battery is already cited there — so it is declared here with the gate it proves named explicitly. Listed retroactively: it was written and committed in 7a11954 but cited by NOTHING, so C8 flagged it as an orphan on 2026-09-19 while auditing the L8 work. That is exactly the failure C8 exists for — a proof nobody reads is indistinguishable from no proof, and the manifest would have gone on reporting e2e:headings as fully covered by a battery that proves only part of it."
+    },
+    {
+      "script": "e2e/test-profile-progress.mutations.sh",
+      "proves": "src/lib/profileProgress.test.ts",
+      "note": "A TEST battery, not a gate battery: it proves that a vitest file can fail, and there is no npm script to attach it to, so `provenBy` has nothing to point at. It lives under `e2e/` only because that is where its author was working when they wrote it — the path is not a claim about what it proves. 7 mutations, each breaking a different arithmetic or emptiness rule in `profileProgress.ts` (a literal `-` counted as filled, a percentage pinned to 0, a null row read as 100%, an average turned into a sum), and every one of them must turn the test red. Listed here so it is ACCOUNTED FOR: before C8 existed, a battery that no gate cited was invisible to every check in this file, which is exactly how `e2e/test-public.mutations.sh` sat unused while the manifest claimed no battery existed for its gate."
+    },
+    {
+      "script": "scripts/ci/settings-limit.mutations.sh",
+      "proves": "netlify/functions/_lib/db/settings-limit.test.ts",
+      "note": "A TEST battery, not a gate battery. Same shape as the one above: the thing it proves is a vitest file, so no gate's `provenBy` can name it. It snapshots its baseline from the LIVE file rather than from `git show HEAD`, because the fix it was written against was uncommitted — restoring from HEAD would have reverted the fix being proven, and an earlier revision of the battery did exactly that and reported BASELINE RED on a correct tree. Recorded here so the accounting is complete rather than assumed."
+    },
+    {
+      "script": "scripts/ci/review-gate.mutations.sh",
+      "proves": "scripts/ci/review-gate.mjs",
+      "note": "A TEST battery, not a gate battery: it proves `review:gate` itself can fail, and `review:gate` is a review RUNNER rather than one of the gates this manifest enumerates — it aggregates them, so listing it as a gate would make it a gate over itself. It pins its own diff with `--base=HEAD` and excludes whatever the working tree had already modified before it started, so its verdicts do not depend on whose edits happen to be in progress. Recorded here so the accounting is complete rather than assumed."
+    },
+    {
+      "script": "e2e/test-mascot-motion.mutations.sh",
+      "proves": "e2e/test-mascot-motion.mjs",
+      "note": "Proves the mascot-motion gate can fail. Listed 2026-09-21: the battery was written and committed on 2026-09-20 alongside e2e:mascot-motion, and package.json wires the gate into test:e2e — but the manifest was never updated, so C8 flagged the file as an orphan that nothing cites. The pattern is the same one C8 caught on 2026-09-19 for e2e/test-headings-public.mutations.sh: a battery that exists on disk but is cited by no entry is a proof nobody reads, and the manifest would have gone on reporting the gate as covered. It mutates the BUILT CSS rather than the source for six of its seven cases (resolving the content-hashed minified filename at run time), because a source mutation needs a full build per case; case S1 mutates the source and rebuilds so at least one case is end-to-end."
     }
   ]
 }

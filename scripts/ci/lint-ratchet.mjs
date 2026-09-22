@@ -21,9 +21,23 @@
  * FAILURE CONDITIONS (everything else is reported but non-blocking)
  *   1. Total diagnostic count increased vs. the baseline.
  *   2. A file with NO diagnostics in the baseline now has some (new debt surface).
+ *   3. A file that already had diagnostics gained more, even if the total is flat
+ *      or falling.
+ *
+ *   (3) is not redundant with (1), and the difference is not academic. The tree
+ *   normally sits AT or BELOW the baseline, because fixing debt is the point and
+ *   re-baselining is a separate, deliberate act. Whatever gap that opens is
+ *   slack: with the total one below the baseline, a change can add one diagnostic
+ *   and land exactly ON the baseline, which is not "greater than" it, so (1) says
+ *   nothing. Debt then moves between files instead of falling, and a file can rot
+ *   while an equal number of diagnostics is fixed elsewhere. That is the precise
+ *   regression this gate advertises against ("no new lint diagnostics may be
+ *   introduced"), so it is measured per file. (2) and (3) together imply (1);
+ *   (1) is kept because its message reads best for the common case.
  *
  *   Line numbers are deliberately NOT part of the fingerprint — they shift on
- *   every unrelated edit and would make the gate flaky.
+ *   every unrelated edit and would make the gate flaky. Per-file COUNTS do not
+ *   shift on unrelated edits, which is what makes (3) safe to enforce.
  *
  *   New *rule categories* are reported but do not fail. A category can appear
  *   because a rule was enabled in biome.json, which is a configuration decision,
@@ -133,7 +147,9 @@ function main() {
     failures.push(`Lint diagnostics appeared in previously clean file(s): ${detail}`);
   }
 
-  // Informational only.
+  // Per-file movement. `regressed` is a FAILURE, not a note: see condition 3 in
+  // the header. A file absent from the baseline is condition 2's business, which
+  // is why the `before` guard excludes it here rather than double reporting it.
   const improved = [];
   const regressed = [];
   for (const [file, count] of Object.entries(current.byFile)) {
@@ -142,16 +158,16 @@ function main() {
     else if (before && count < before) improved.push(`${file}: ${before} -> ${count}`);
   }
 
+  if (regressed.length) {
+    const shown = regressed.slice(0, 10).join(', ');
+    const rest = regressed.length > 10 ? ` (and ${regressed.length - 10} more)` : '';
+    failures.push(`File(s) that already had diagnostics gained more: ${shown}${rest}`);
+  }
+
   if (improved.length) {
     console.log(`Improvements (${improved.length} file(s)):`);
     for (const line of improved.slice(0, 10)) console.log(`  - ${line}`);
     if (improved.length > 10) console.log(`  ...and ${improved.length - 10} more`);
-    console.log('');
-  }
-  if (regressed.length) {
-    console.log(`Files with more diagnostics than baseline (${regressed.length}):`);
-    for (const line of regressed.slice(0, 10)) console.log(`  ! ${line}`);
-    if (regressed.length > 10) console.log(`  ...and ${regressed.length - 10} more`);
     console.log('');
   }
 

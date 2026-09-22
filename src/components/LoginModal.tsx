@@ -10,9 +10,10 @@ import { authStore, loginAsAdmin, loginAsKandidat } from '../store/authReactive'
 import { showToast } from './Toast';
 import { validate, normalizeWaInput, registerSchema, kandidatLoginSchema, adminMasterPinSchema, adminPersonalPinSchema } from '../lib/schemas';
 import { t, langStore } from '../store/i18n';
+import { apiClient, type ApiError } from '../lib/apiClient';
 import Icon from './ui/Icon';
+import Mascot from './ui/Mascot';
 import { useOverlay } from './ui/useOverlay';
-import { getEndpoint } from '../lib/apiEndpoint';
 
 type ModalMode = "closed" | "login" | "daftar";
 type AdminStep = 0 | 1 | 2 | 3;
@@ -21,6 +22,29 @@ interface Props {
   mode: ModalMode;
   onClose: () => void;
   onSwitchMode: (m: ModalMode) => void;
+}
+
+/**
+ * Jawaban permukaan auth — tepat field yang dibaca keempat handler di bawah.
+ *
+ * Dulu `api()` mengembalikan `any`, jadi `r.wa || waNorm` tidak pernah
+ * diperiksa. `apiClient` mengembalikan `ApiResponse` (indeks `unknown`), yang
+ * membuat `name` bertipe `{}` dan `loginAsKandidat` menolaknya — jadi bentuk
+ * ini dijadikan eksplisit alih-alih dikembalikan ke `any`.
+ */
+interface AuthRes {
+  success?: boolean;
+  /** sukses — login */
+  nama?: string;
+  name?: string;
+  wa?: string;
+  token?: string;
+  sessionToken?: string;
+  refreshToken?: string;
+  /** sukses — daftar */
+  message?: string;
+  /** gagal */
+  error?: string;
 }
 
 export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
@@ -54,15 +78,37 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
 
   if (loggedIn || mode === "closed") return null;
 
-  // ─── Admin API (routes to surface-specific endpoints) ───
-  async function api(action: string, args: unknown[] = []) {
-    const r = await fetch(getEndpoint(action), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, payload: args }),
-    });
-    if (!r.ok) throw new Error(t('login.api_error').replace('{s}', String(r.status)));
-    return r.json();
+  // ─── Auth API (routing tetap lewat surface-specific endpoints) ───
+  //
+  // Dulu memanggil `fetch` sendiri, dan itu menelan dua hal: tidak ada batas
+  // waktu (koneksi macet → tombol loading selamanya), dan SETIAP non-2xx
+  // diubah menjadi "Kesalahan server (HTTP 400)" — pesan server yang justru
+  // menjelaskan sebabnya ("Nomor ini belum terdaftar") dibuang tanpa dibaca.
+  // `apiClient` mengangkat pesan itu dan `ApiError` membawa `status`.
+  //
+  // `requireAuth: false` — keempat aksi di modal ini adalah PINTU MASUK; tidak
+  // ada sesi untuk diperiksa (dan memeriksanya justru menolak login).
+  // `onSessionInvalid: 'throw'` — default 'logout' akan logout + redirect ke
+  // '/' di tengah user mengetik PIN; di sini sesi mati bukan urusan modal.
+  // `silent: true` — setiap pemanggil di bawah sudah menampilkan `e.message`,
+  // jadi tanpa ini satu kegagalan memunculkan DUA toast.
+  async function api(action: string, args: unknown[] = []): Promise<AuthRes> {
+    try {
+      return await apiClient<AuthRes>(action, args, {
+        requireAuth: false,
+        onSessionInvalid: 'throw',
+        silent: true,
+      });
+    } catch (e) {
+      const err = e as ApiError;
+      // Server bicara → pakai kalimatnya. Hanya bila ia tidak mengirim
+      // `error`/`message` sama sekali, klien menyintesis "HTTP 400: Bad
+      // Request"; untuk kasus itu salinan terlokalisasi yang lama dipertahankan.
+      if (/^HTTP \d+: /.test(err.message)) {
+        throw new Error(t('login.api_error').replace('{s}', String(err.status || '')));
+      }
+      throw err;
+    }
   }
 
   // Terjemahkan pesan error schema (zod, hard-coded id) ke i18n — parity toast
@@ -218,6 +264,17 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {/* ── Kandidat Login ── */}
         {mode === "login" && adminStep === 0 && (
           <div>
+            {/* Aa-chan greets the applicant. This is the "IN USE - LOGIN"
+                mockup on the character sheet: her sparkle-eyed head above the
+                panel title. `decorative` because the `h3` directly below says
+                the same thing in words — an `alt` here would be read out
+                between the card's opening and its heading. 96px because the
+                sheet draws her head at roughly half the card's content width;
+                she must not push the WA field below the fold on a 390px
+                phone. */}
+            <div class="flex justify-center -mt-2 mb-1">
+              <Mascot pose="login" size={96} decorative motion="wave" />
+            </div>
             <h3 class="text-xl font-bold text-sky-400 mb-6 border-b border-sky-900/50 pb-4 text-center">
               <Icon name="sign-in-alt" class="mr-2" /> {t("login.title_kandidat")}
             </h3>

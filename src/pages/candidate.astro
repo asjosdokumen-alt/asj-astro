@@ -9,7 +9,12 @@ import FormToolbar from '../components/forms/FormToolbar';
   <App showHeader={false} client:only="preact" />
   <FormToolbar titleKey="toolbar.candidate" client:only="preact" />
 
-  <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6 pt-[42px]">
+  <!-- `u-has-bottomnav` reserves the BottomNav's 45px at the bottom of
+       the mobile viewport. Without it the last control on this page sits
+       BEHIND the fixed bar — measured 16px of overlap on a 390px-wide
+       viewport (e2e/measure-bottomnav-clearance.mjs). It is a no-op
+       above md:, where the bar is `md:hidden`. -->
+  <main id="main-content" class="u-has-bottomnav w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6 pt-[42px]">
     
     <CandidateDash client:only="preact" />
   </main>

@@ -256,13 +256,36 @@ const FAST_GATES = [
   'verify:binding',
   'verify:io',
   'verify:classes',
+  'verify:keyframes',
   'verify:md',
   'verify:aliases',
   'lint-ratchet',
   'verify:review-manifest',
+  'memory:check',
 ];
 
 const FULL_GATES = ['typecheck:ratchet', 'boundary', 'idx:gate', 'test'];
+
+// Gates whose SUBJECT is not in the repository at all, so a checkout that did not
+// come from this machine has nothing for them to judge.
+//
+// WHY THIS IS A SKIP AND NOT A FAILURE
+//   `memory:check` reads and rotates `.workbuddy-ai/memory/**`, which is
+//   GITIGNORED — it is agent tooling state, not repo content. On this machine the
+//   folder holds 7 daily logs and the gate is meaningful; in a fresh clone the
+//   folder does not exist, and the script exits 2 ("directory not found") by
+//   design, because reporting a gate that never measured anything as a PASS is
+//   the failure mode that battery case 6 exists to pin.
+//
+//   So the two honest outcomes are "judged" and "not applicable here". Failing
+//   the run on a missing folder would make every review on a fresh clone red for
+//   a reason that has nothing to do with the change being reviewed — and a gate
+//   that cries wolf on its first legitimate use is the one that gets deleted.
+//   Exit 1 (a real budget violation) still fails, because only the SUBJECT's
+//   absence is skipped, never a verdict.
+const LOCAL_ONLY_SUBJECTS = {
+  'memory:check': '.workbuddy-ai/memory',
+};
 
 // ─── args ────────────────────────────────────────────────────────────────────
 
@@ -657,12 +680,23 @@ function loadLintBaseline() {
  *            the baseline, or in a brand-new file. That is a new debt surface.
  *   REPORTS  a hard-rule violation on an added line in a file that already
  *            carried diagnostics. Making a dirty file dirtier is caught by the
- *            tree-level `lint-ratchet` instead, which fails if the total rises.
+ *            tree-level `lint-ratchet` instead.
  *
- * The two gates compose: the ratchet catches "the total went up", this catches
- * "a clean file went dirty" and "a new file shipped with debt". Neither is
- * bypassed by the other, and together they cover the net-zero case (add one
- * violation, fix another) that a pure total would miss.
+ * The two gates compose: this catches "a clean file went dirty" and "a new file
+ * shipped with debt", the ratchet catches any file gaining diagnostics (its
+ * condition 3, measured per file) as well as a rising total. Neither is bypassed
+ * by the other, and together they cover the net-zero case (add one violation,
+ * fix another) that a pure total would miss.
+ *
+ * That last sentence used to be false, and how it was false is worth keeping.
+ * The ratchet compared only TOTALS, so in the net-zero case it stayed silent,
+ * and this check only REPORTS dirty-file findings instead of blocking them, so
+ * nothing caught the regression at all. The gap was invisible because the tree
+ * normally sits BELOW its baseline, and that slack absorbed the added
+ * diagnostic. Measured 2026-09-18: baseline 2499, tree 2498, a planted `any`
+ * took the total to exactly 2499 and the ratchet exited 0. Condition 3 now
+ * measures the per-file rise, which makes the composition above real rather
+ * than merely intended.
  */
 function checkLintOnNewLines(changes) {
   const targets = [...changes.keys()].filter(
@@ -713,7 +747,7 @@ function checkLintOnNewLines(changes) {
   if (reported.length) {
     notes.push(
       `${reported.length} of those are in files that were ALREADY dirty — reported, not blocking ` +
-        '(lint-ratchet fails if the tree total rises)'
+        '(lint-ratchet fails when a file gains diagnostics, even if the total is flat)'
     );
     for (const r of reported.slice(0, 5)) notes.push(`  ${r}`);
     if (reported.length > 5) notes.push(`  ...and ${reported.length - 5} more`);
@@ -734,6 +768,11 @@ function runGates(a) {
   const notes = [];
 
   for (const g of list) {
+    const subject = LOCAL_ONLY_SUBJECTS[g];
+    if (subject && !fs.existsSync(subject)) {
+      notes.push(`SKIP  (no ${subject} in this checkout — local-only gate)  ${g}`);
+      continue;
+    }
     const started = Date.now();
     let ok = true;
     let tail = '';

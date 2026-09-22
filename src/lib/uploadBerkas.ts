@@ -9,8 +9,7 @@
  * Alur: getUploadUrls → signed URL → PUT file → publicUrl disimpan ke DB oleh
  * pemanggil (simpanBerkasTahapan / simpanKandidatDanUpload).
  */
-import { authStore } from '../store/authReactive';
-import { getEndpoint } from './apiEndpoint';
+import api from './apiClient';
 
 export interface UploadBerkasOptions {
   /** Kunci unik dokumen — dipakai sebagai prefix nama file di storage. */
@@ -33,21 +32,26 @@ export async function uploadBerkasToStorage(
     (file.name.split('.').pop() || 'bin')
       .replace(/[^a-z0-9]/gi, '')
       .toLowerCase() || 'bin';
-  const sessionToken = authStore.get().sessionToken || '';
   let lastErr: unknown = null;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const res = await fetch(getEndpoint('getUploadUrls'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'getUploadUrls',
-          payload: [{ folder, files: [{ key, prefix: key, ext }] }],
-          sessionToken,
-        }),
-      });
-      const data = await res.json();
+      // `silent: true` — fungsi ini mencoba ULANG sampai 3 kali, jadi toast dari
+      // klien akan berbunyi sekali per percobaan untuk satu kegagalan yang sama.
+      // Pemanggilnya yang menampilkan pesan akhir; di sini kita hanya melempar.
+      const data = (await api.secure(
+        'getUploadUrls',
+        [{ folder, files: [{ key, prefix: key, ext }] }],
+        { onSessionInvalid: 'throw', silent: true },
+      )) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+        // `publicUrl` is what this function RETURNS (line below), so leaving it
+        // out of the shape is not cosmetic: the ratchet caught it as
+        // `TS2339: Property 'publicUrl' does not exist` on a file that was clean.
+        urls?: Record<string, { signedUrl?: string; publicUrl?: string }>;
+      };
       const entry = data && data.urls && data.urls[key];
       if (!data || data.success !== true || !entry || !entry.signedUrl) {
         throw new Error((data && (data.error || data.message)) || 'Gagal membuat link upload.');

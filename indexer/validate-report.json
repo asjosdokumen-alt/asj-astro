@@ -1,5 +1,5 @@
 {
-  "rootDir": "F:/astro",
+  "rootDir": "C:/Users/AMANAH Sakura 3/dev/astro",
   "sample": [
     "src/components/ui/Icon.tsx",
     "src/components/admin/TabMail.tsx",
@@ -28,12 +28,12 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 415,
+    "rootNames": 503,
     "options": {}
   },
-  "universe": 3976,
+  "universe": 3978,
   "counts": {
-    "agreeBound": 3976,
+    "agreeBound": 3978,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
@@ -42,16 +42,16 @@
     "libRefAgree": 1270,
     "libRefDisagree": 0,
     "libRefFramework": 1,
-    "skippedNonBindable": 1968,
+    "skippedNonBindable": 2008,
     "skippedJsxIntrinsic": 55,
-    "skippedAstroTemplate": 5,
+    "skippedAstroTemplate": 31,
     "offsetMismatch": 0,
     "disagreeBoundNoCompiler": 0,
     "disagreeNameMismatch": 0,
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3897,
+    "match": 3899,
     "alias-vs-chase": 55,
     "merged-declaration": 22,
     "shadowing-disagreement": 2,
@@ -154,7 +154,7 @@
       "agreeBound": 0,
       "agreeUnresolved": 0,
       "lib": 1,
-      "skipped": 10,
+      "skipped": 11,
       "disagree": 0
     },
     {
@@ -163,7 +163,7 @@
       "agreeBound": 0,
       "agreeUnresolved": 0,
       "lib": 0,
-      "skipped": 5,
+      "skipped": 68,
       "disagree": 0
     },
     {
@@ -267,11 +267,11 @@
     },
     {
       "path": "netlify/functions/_lib/db/candidates.ts",
-      "universe": 277,
-      "agreeBound": 277,
+      "universe": 279,
+      "agreeBound": 279,
       "agreeUnresolved": 0,
       "lib": 84,
-      "skipped": 100,
+      "skipped": 102,
       "disagree": 0
     },
     {

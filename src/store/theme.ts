@@ -23,21 +23,50 @@ import { persistentAtom } from '@nanostores/persistent';
 export type ThemeMode = 'dark' | 'light';
 export type BannerTheme = 'SAKURA' | 'TOKYO' | 'INTER_VIP';
 
+/**
+ * Default theme.
+ *
+ * OWNER DECISION 2026-09-20: the landing page ships LIGHT, with the pink sakura
+ * palette, to match the approved design mockup. Dark mode is KEPT — it is a
+ * supported mode reached through the toggle, not a removed feature — it is only
+ * the first-paint default that changed.
+ *
+ * This constant exists because the default was previously the literal 'dark' in
+ * FOUR independent places (this store, `decode` below, BaseLayout's inline
+ * restore script, and the tests). Changing one and not the others produces a
+ * page that flashes dark and then settles light, which is exactly the class of
+ * bug this file was created to kill. Keep them in sync:
+ *   1. `theme.ts`          DEFAULT_THEME (below) + `decode`
+ *   2. `BaseLayout.astro`  the inline restore script — MUST stay inline
+ *   3. the banner default, which follows the theme on first load
+ */
+export const DEFAULT_THEME: ThemeMode = 'light';
+
 /** Legacy key used by BaseLayout.astro's restore script — keep in sync. */
 const STORAGE_KEY = 'asjTheme';
 const BANNER_KEY = 'asj_theme';
 
-export const themeStore = persistentAtom<ThemeMode>(STORAGE_KEY, 'dark', {
+export const themeStore = persistentAtom<ThemeMode>(STORAGE_KEY, DEFAULT_THEME, {
   encode: (v) => v,
-  decode: (v) => (v === 'light' ? 'light' : 'dark'),
+  decode: (v) => (v === 'light' ? 'light' : v === 'dark' ? 'dark' : DEFAULT_THEME),
 });
 
-/** Banner artwork follows the mode: light → SAKURA, dark → TOKYO. */
-export const bannerStore = persistentAtom<BannerTheme>(BANNER_KEY, 'TOKYO', {
-  encode: (v) => v,
-  decode: (v): BannerTheme =>
-    v === 'SAKURA' || v === 'INTER_VIP' ? v : 'TOKYO',
-});
+/**
+ * Banner artwork follows the mode: light → SAKURA, dark → TOKYO.
+ *
+ * The default is derived from DEFAULT_THEME rather than written as a literal, so
+ * flipping the default theme cannot leave the banner pointing at the artwork for
+ * the other mode — which would flash the wrong picture on first paint.
+ */
+export const bannerStore = persistentAtom<BannerTheme>(
+  BANNER_KEY,
+  DEFAULT_THEME === 'light' ? 'SAKURA' : 'TOKYO',
+  {
+    encode: (v) => v,
+    decode: (v): BannerTheme =>
+      v === 'SAKURA' || v === 'INTER_VIP' ? v : 'TOKYO',
+  },
+);
 
 /**
  * Whether the user has explicitly chosen banner artwork.

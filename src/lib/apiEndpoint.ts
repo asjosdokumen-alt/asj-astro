@@ -24,6 +24,11 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   getAppData: '/.netlify/functions/get-app-data',
   getMonthlyReport: '/.netlify/functions/get-app-data',
 
+  // Contact — the public contact form. Routed to its own entry so a burst of
+  // submissions cannot take concurrency from the job-board reads, and so the
+  // write never inherits the public surface's shared 60s CDN cache.
+  kirimPesanKontak: '/.netlify/functions/kontak',
+
   // Candidates
   getCandidatesPage: '/.netlify/functions/candidates',
   updateCatatanKandidat: '/.netlify/functions/candidates',

@@ -122,11 +122,27 @@
  * unassociated check, so the fix is pinned in both directions.
  *
  * Run against a built artifact:
- *   BASE_URL=http://127.0.0.1:4321 node e2e/test-labels.mjs
+ *   node e2e/test-labels.mjs               (defaults to localhost:4321)
+ *   BASE_URL=http://localhost:4321 node e2e/test-labels.mjs
  */
 import { chromium } from 'playwright';
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:4321';
+/*
+ * DEFAULT HOST IS `localhost`, NOT `127.0.0.1` — a measured fix, 2026-09-20,
+ * matching the same change in `test-site-nav.mjs` and `test-drawer.mjs`.
+ *
+ * This file defaulted to `http://127.0.0.1:4321`, which can NEVER reach an
+ * `astro preview` server: preview v5.12.0 binds IPv6-only (`netstat` shows
+ * `[::1]:4321 LISTENING`), so 127.0.0.1 is refused. Measured with the server
+ * definitely up: 127.0.0.1 -> curl exit 7, localhost -> 200.
+ *
+ * This gate reported 0/4 on every run because of it, and it is worth naming why
+ * that was easy to miss: the failure arrives as ERR_CONNECTION_REFUSED, the
+ * same error a machine with no server produces, so the obvious next step is to
+ * restart a healthy server rather than to suspect the URL. With `localhost` it
+ * is 4/4, measuring 190 labels across four candidate-facing routes.
+ */
+const BASE = process.env.BASE_URL || 'http://localhost:4321';
 
 /** Fabricated session: these routes gate on the STORE, not the backend. */
 function authFor(role) {
@@ -157,8 +173,21 @@ const ADVANCE = 'button:has(use[href="#fas-arrow-right"])';
 /** Every "Tambah" button on the screen — one per repeatable row loop. */
 const ADD_ROW = 'button:has(use[href="#fas-plus"])';
 
-/** Text that means we are looking at a gate, not the form body. */
-const GATE_MARKERS = ['Verifikasi Akun Kandidat', 'Login Pelamar'];
+/**
+ * Text that means we are looking at a gate, not the form body.
+ *
+ * ⚠ 'Login Pelamar' was removed 2026-09-19 for the same reason as in
+ * `test-headings.mjs`: it is the label of a LOGIN BUTTON (`header.login`), so it
+ * is present on any page that offers a way to log in rather than only on a gate.
+ * These three strings are each the copy of a GATE state, so a page that shows one
+ * really has not rendered its body:
+ *   ai_cv.verify_account · ui.redirecting_login · ui.access_denied_redirect
+ */
+const GATE_MARKERS = [
+  'Verifikasi Akun Kandidat',
+  'Mengalihkan ke halaman login...',
+  'Akses ditolak. Mengalihkan...',
+];
 
 const results = [];
 
@@ -239,7 +268,7 @@ const readLabels = (page) =>
       dupIds,
       unnamedGroups,
       groups: document.querySelectorAll('[role="group"], fieldset').length,
-      gate: /Verifikasi Akun Kandidat|Login Pelamar/.test(document.body.innerText || ''),
+      gate: /Verifikasi Akun Kandidat|Mengalihkan ke halaman login\.\.\.|Akses ditolak\. Mengalihkan\.\.\./.test(document.body.innerText || ''),
     };
   });
 

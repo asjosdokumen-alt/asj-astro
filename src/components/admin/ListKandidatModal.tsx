@@ -21,13 +21,12 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
-import { authStore } from '../../store/authReactive';
 import { allKandidatList, fetchAllKandidat } from '../../store/adminStore';
 import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
-import { getEndpoint } from '../../lib/apiEndpoint';
+import api from '../../lib/apiClient';
 
 interface Props {
   jobCode: string;
@@ -89,16 +88,15 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
     if (!confirm(`Hapus kandidat dari job ${jobCode}?`)) return;
     setRemoving(wa);
     try {
-      const res = await fetch(getEndpoint('tandaiGagalJob'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'tandaiGagalJob',
-          args: [wa, jobCode],
-          sessionToken: authStore.get().sessionToken || '',
-        }),
-      });
-      const data = await res.json();
+      // Lewat apiClient (non-negotiable #3): dapat batas waktu + AbortController
+      // dan token yang DIREFRESH lewat getFreshToken(), bukan snapshot
+      // authStore yang bisa sudah kedaluwarsa. `onSessionInvalid: 'throw'`
+      // mempertahankan perilaku lokal modal ini — sesi mati tidak memicu logout
+      // + redirect global (pola yang sama dengan TabKelola §26).
+      const data = (await api.secure('tandaiGagalJob', [wa, jobCode], { onSessionInvalid: 'throw' })) as {
+        success?: boolean;
+        error?: string;
+      };
       if (data && data.success) {
         showToast('Kandidat ditandai GAGAL & dilepas dari job', 'success');
         // §26: operasi tulis ⇒ lewati jendela kesegaran fetchAllKandidat,
@@ -107,8 +105,12 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
       } else {
         showToast((data && data.error) || 'Gagal menghapus kandidat.', 'error');
       }
-    } catch {
-      showToast('Network error', 'error');
+    } catch (err) {
+      // apiClient SUDAH menampilkan toast-nya sendiri — pesan server kalau ada,
+      // kalau tidak baris status HTTP. Menambah toast di sini akan melaporkan
+      // kegagalan yang sama dua kali.
+      // biome-ignore lint/suspicious/noConsole: apiClient already showed the toast; this is the only dev-side trace of the raw error.
+      console.error('[ListKandidatModal] tandaiGagalJob failed:', err);
     } finally {
       setRemoving(null);
     }
@@ -130,23 +132,18 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
     }
     setSending(true);
     try {
-      const res = await fetch(getEndpoint('kirimTawaranMassal'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'kirimTawaranMassal',
-          args: [
-            {
-              candidates: cands.map((c: Kandidat) => ({ wa: c.wa, nama: c.nama })),
-              jobCode,
-              linkGrup,
-              interval,
-            },
-          ],
-          sessionToken: authStore.get().sessionToken || '',
-        }),
-      });
-      const data = await res.json();
+      const data = (await api.secure(
+        'kirimTawaranMassal',
+        [
+          {
+            candidates: cands.map((c: Kandidat) => ({ wa: c.wa, nama: c.nama })),
+            jobCode,
+            linkGrup,
+            interval,
+          },
+        ],
+        { onSessionInvalid: 'throw' },
+      )) as { success?: boolean; error?: string };
       if (data && data.success) {
         showToast(`Undangan ${cands.length} kandidat masuk antrian pengiriman.`, 'success');
         setShowUndangPanel(false);
@@ -154,8 +151,10 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
       } else {
         showToast((data && data.error) || 'Gagal mengirim', 'error');
       }
-    } catch {
-      showToast('Network error', 'error');
+    } catch (err) {
+      // apiClient sudah menampilkan toast-nya — lihat catatan di tandaiGagalJob.
+      // biome-ignore lint/suspicious/noConsole: apiClient already showed the toast; this is the only dev-side trace of the raw error.
+      console.error('[ListKandidatModal] kirimTawaranMassal failed:', err);
     } finally {
       setSending(false);
     }

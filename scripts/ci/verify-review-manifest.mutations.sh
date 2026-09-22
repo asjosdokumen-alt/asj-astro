@@ -20,6 +20,8 @@
 #   S8  a `runs` entry naming a REAL job that does not invoke
 #       the gate ("it is in the file somewhere" is not enough)  -> C6
 #   S9  a `runs` entry naming a real job in ANOTHER workflow   -> C6
+#   S10 a gate's battery exists on disk but nothing cites it   -> C8
+#   S11 a `testBatteries` entry dropped, orphaning its file    -> C8
 #
 # S4 is the one that matters most: it is a literal replay of the real defect this
 # gate was written for. The checklist opened with `` `lint` ``, no `lint` script
@@ -127,12 +129,21 @@ fs.writeFileSync(p, s.replace(o, process.env.MUT_NEW));
 # REFORMATS OR REPHRASES, AND A DEAD MUTATION REPORTS "SURVIVED" — so the battery
 # quietly certifies a gate it never actually tested.
 #
-# This mutates the PARSED STRUCTURE instead, so it is immune to both. Three
-# operations, addressed by gate name:
+# This mutates the PARSED STRUCTURE instead, so it is immune to both. Operations,
+# addressed by gate name:
 #     runs      <script> <json>      -> replace the whole `runs` array
 #     suffix    <script> <text>      -> append text to `script` (make it nonexistent)
 #     provenby  <script> <path>      -> replace `provenBy`
 #     script    <script> <newname>   -> replace `script` outright
+#     unwired   <script> <ignored>   -> drop `provenBy` AND set `battery: "none"`
+#     droptest  <script> <ignored>   -> remove that entry from `testBatteries`
+#
+# `unwired` and `droptest` both target C8, and each is shaped to trip C8 ALONE.
+# `unwired` deliberately sets `battery: "none"` as well: clearing `provenBy` on
+# its own would also trip C7 ("classified as having a battery but citing none"),
+# and a case that fires two checks cannot show which one caught it. `droptest`
+# touches only `testBatteries`, which no other check reads.
+#
 # The manifest is re-serialised with 2-space indent, matching how it is stored,
 # and every operation asserts the gate exists AND that exactly one was changed.
 #
@@ -147,6 +158,20 @@ const op = process.env.MUT_OP;
 const key = process.env.MUT_KEY;
 const val = process.env.MUT_VAL;
 const gates = doc.gates || [];
+if (op === "droptest") {
+  const before = (doc.testBatteries || []).length;
+  const kept = (doc.testBatteries || []).filter((t) => t.script !== key);
+  if (kept.length !== before - 1) {
+    console.error(
+      "MUTATION TARGET NOT FOUND in testBatteries: " + JSON.stringify(key) +
+        " (had " + before + " entries, kept " + kept.length + ")"
+    );
+    process.exit(3);
+  }
+  doc.testBatteries = kept;
+  fs.writeFileSync(p, JSON.stringify(doc, null, 2) + "\n");
+  process.exit(0);
+}
 const targets = gates.filter((g) => g.script === key);
 if (targets.length !== 1) {
   console.error(
@@ -159,6 +184,7 @@ if (op === "runs") g.runs = JSON.parse(val);
 else if (op === "provenby") g.provenBy = val;
 else if (op === "script") g.script = val;
 else if (op === "suffix") g.script = g.script + val;
+else if (op === "unwired") { g.provenBy = null; g.battery = "none"; }
 else {
   console.error("UNKNOWN MUTATION OP: " + op);
   process.exit(3);
@@ -258,13 +284,46 @@ step_json "S7  runs names a workflow that does not exist"     kill runs verify:m
 step_json "S8  runs names a REAL job that does not invoke it" kill runs verify:md '["ci.yml#classes"]'
 step_json "S9  runs names a real job in ANOTHER workflow"     kill runs verify:md '["deploy-production.yml#guard"]'
 
+# ── S10–S11 · C8: every battery on disk must be accounted for ───────────────
+# ADDED 2026-09-18 with the check. Both cases are the defect that actually
+# happened, not a hypothetical: `e2e/test-public.mutations.sh` was written,
+# tracked, and cited by nothing, while the manifest said of its gate "NO BATTERY
+# EXISTS ... this guard is a hypothesis, not evidence". Nothing failed, because
+# C2/C2b/C2c only ever look at the batteries that ARE cited.
+#
+# Each case is shaped to trip C8 ALONE. `unwired` also sets `battery: "none"`, so
+# C7 stays quiet — clearing `provenBy` alone would trip C7 as well, and a case
+# that fires two checks cannot show which one caught it. `droptest` touches only
+# `testBatteries`, which nothing else reads.
+#
+# S10 is deliberately aimed at `e2e:public`, the gate this happened to. A case
+# using a gate nobody cares about would still prove the check works, but it would
+# lose the part that matters: this is a replay of the real drift.
+step_json "S10 a gate's battery is on disk but nothing cites it"      kill unwired  e2e:public ''
+step_json "S11 a testBatteries entry is dropped, orphaning its file"  kill droptest e2e/test-profile-progress.mutations.sh ''
+
 # ── E2 · growing the manifest must be allowed ──────────────────────────────
+# FIXED 2026-09-18. This case had been reporting UNEXPECTED, and it was NOT the
+# gate that was wrong — the fixture was stale. C7 (added after this case was
+# written) requires every manifest entry to carry a `battery` classification,
+# and the appended entry had none, so the gate correctly refused it and E2 read
+# that as "a valid new entry was rejected".
+#
+# Attribution was measured, not assumed: the identical failure reproduces against
+# the gate as committed at HEAD, with the same C7 message, so no later change to
+# the gate caused it. The lesson is the one this file's own header states — a
+# fixture that stops matching what it claims to model is indistinguishable from a
+# gate that cannot see the defect, and only re-running tells them apart.
+#
+# `battery: "none"` is the honest classification for a synthetic entry: it is not
+# a real gate, so it promises no battery, and C7's second rule (ci/infra REQUIRE a
+# provenBy) is therefore not engaged.
 restore_one "$MANIFEST"
 if MANIFEST="$MANIFEST" node -e '
 const fs = require("fs");
 const p = process.env.MANIFEST;
 const m = JSON.parse(fs.readFileSync(p, "utf8"));
-m.gates.push({ script: "test", tier: 0, blocking: true, provenBy: null, runs: ["review:gate"], note: "added by the mutation battery" });
+m.gates.push({ script: "test", tier: 0, blocking: true, provenBy: null, battery: "none", runs: ["review:gate"], note: "added by the mutation battery" });
 fs.writeFileSync(p, JSON.stringify(m, null, 2) + "\n");
 '; then
   check "E2  a valid new manifest entry is accepted" equivalent
@@ -277,6 +336,26 @@ restore_one "$MANIFEST"
 # ── G: the gate's own machinery ─────────────────────────────────────────────
 step "G1  C1 filter inverted (proves direction matters)"       kill "$GATE" 'const missingScripts = gates.filter((g) => !(g.script in scripts)).map((g) => g.script);' 'const missingScripts = gates.filter((g) => (g.script in scripts)).map((g) => g.script);'
 step "G2  package.json replaced by a stub (proves it is read)" kill "$GATE" 'const scripts = pkg.scripts || {};' 'const scripts = {};'
+# G3 — C2c, added 2026-09-18 with the check itself.
+#
+# This is a "force the branch" case, like G1 and G2: it proves the C2c failure
+# path is REACHABLE and that it fails the run, not that git-tracking detection
+# works. The detection was proven separately, by hand, against the real defect
+# this check exists for — untracking a gate's implementation with
+# `git update-index --force-remove` (which leaves the file on disk) and watching
+# the gate exit 1 with:
+#
+#   C2c — a gate's own implementation exists here but is NOT tracked by git
+#     (a fresh checkout cannot run the gate at all):
+#     verify:workflows -> scripts/ci/verify-workflows.mjs
+#
+# C2b stayed SILENT in that run, which is the whole point: the battery was
+# tracked, so the old check was satisfied while the gate could not start.
+# A battery cannot safely reproduce that mutation, because it would have to
+# touch the real git INDEX — the thing that decides what ships — and a battery
+# killed mid-case would leave a gate untracked. So the index mutation stays a
+# documented manual procedure and this case covers reachability.
+step "G3  C2c forced (proves the tracking requirement is enforced)" kill "$GATE" 'if (!isTracked(file)) untrackedImplementations.push(`${g.script} -> ${file}`);' 'if (true || !isTracked(file)) untrackedImplementations.push(`${g.script} -> ${file}`);'
 
 # ── RULE 3: byte-identical restore, and green again ─────────────────────────
 echo

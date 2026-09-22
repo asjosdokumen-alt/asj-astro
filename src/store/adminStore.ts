@@ -9,6 +9,7 @@
  */
 import { atom } from 'nanostores';
 import { authStore } from './authReactive';
+import api from '../lib/apiClient';
 
 export interface Kandidat {
   id: string;
@@ -142,27 +143,43 @@ export async function fetchKandidatFromAPI() {
   try {
     const search = adminSearch.get();
     const page = adminPage.get();
-    const token = authStore.get().sessionToken || '';
-    const res = await fetch('/.netlify/functions/candidates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'getCandidatesPage',
-        payload: [{ page: page + 1, pageSize: PAGE_SIZE, q: search || '' }],
-        sessionToken: token,
-      }),
-    });
-    const data = await res.json();
+    // Lewat jalur apiClient (non-negotiable #3), bukan fetch mentah. Yang
+    // didapat: batas waktu + AbortController, token yang DIREFRESH lewat
+    // getFreshToken() alih-alih snapshot `authStore.get().sessionToken` yang
+    // bisa sudah kedaluwarsa, dan satu tempat yang tahu cara memperlakukan sesi
+    // mati. `getCandidatesPage` sengaja TIDAK ada di CACHEABLE_READS, jadi jalur
+    // ini tidak menambah cache: kesegaran daftar kandidat tidak berubah, dan
+    // `getEndpoint('getCandidatesPage')` memetakan ke endpoint yang PERSIS sama
+    // (/.netlify/functions/candidates) seperti yang dipakai kode lama.
+    const data = (await api.secure(
+      'getCandidatesPage',
+      [{ page: page + 1, pageSize: PAGE_SIZE, q: search || '' }],
+      { onSessionInvalid: 'throw' },
+    )) as { success?: boolean; total?: number | string; candidates?: Kandidat[] };
+
     if (data.success) {
       const k = data.candidates || [];
       setKandidatList(page === 0 ? k : [...kandidatList.get(), ...k]);
       kandidatTotal.set(Number(data.total) || kandidatTotal.get() + k.length);
-    } else if (data.sessionInvalid) {
+    }
+  } catch (err) {
+    // `onSessionInvalid: 'throw'` adalah gerbang lokal tab ini: sesi yang tidak
+    // bisa diverifikasi TIDAK memicu logout + redirect global, sama seperti
+    // TabKelola (§26). Konsekuensinya cabang `else if (data.sessionInvalid)`
+    // yang lama tidak punya padanan di sini — apiClient melempar SEBELUM
+    // mengembalikan.
+    //
+    // Penggantinya sengaja lebih sempit: daftar dikosongkan HANYA kalau auth
+    // store menyatakan sesinya benar-benar hilang. Sengaja BUKAN "kosongkan pada
+    // setiap kegagalan": admin yang sedang menggulir di koneksi buruk tidak
+    // boleh diberi tahu "tidak ada kandidat" hanya karena satu permintaan habis
+    // waktu, dan barisnya sudah tampil di layar sebelum kegagalan itu — jadi
+    // mempertahankannya tidak membocorkan apa pun yang baru.
+    if (!authStore.get().isLoggedIn) {
       setKandidatList([]);
       setAllKandidatList([]);
       kandidatTotal.set(0);
     }
-  } catch (err) {
     console.error('[adminStore] fetchKandidat failed:', err);
   } finally {
     setKandidatLoading(false);
@@ -203,17 +220,17 @@ export async function fetchAllKandidat(opts: { force?: boolean } = {}): Promise<
     const out: any[] = [];
     try {
       for (let page = 1; page <= 60; page++) {
-        const res = await fetch('/.netlify/functions/candidates', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'getCandidatesPage',
-            payload: [{ page, pageSize, q: '' }],
-            sessionToken: token,
-          }),
-        });
-        const data = await res.json();
-        if (!data || !data.success) break;
+        // Jalur apiClient, sama alasannya dengan fetchKandidatFromAPI di atas:
+        // batas waktu + token yang di-refresh. Loop ini bisa menembak sampai 60
+        // permintaan berurutan, jadi tanpa batas waktu satu permintaan yang
+        // menggantung menahan seluruh paginasi — dan itulah yang terjadi pada
+        // versi fetch mentah.
+        const data = (await api.secure(
+          'getCandidatesPage',
+          [{ page, pageSize, q: '' }],
+          { onSessionInvalid: 'throw' },
+        )) as { success?: boolean; total?: number | string; candidates?: any[] };
+        if (!data?.success) break;
         const rows = data.candidates || [];
         out.push(...rows);
         const total = Number(data.total) || 0;
@@ -264,13 +281,22 @@ export function setMailSearchText(val: string) {
 
 export async function fetchMailFromAPI() {
   try {
-    const res = await fetch('/.netlify/functions/get-app-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: "getAppData", args: ["admin"], sessionToken: authStore.get().sessionToken || "" }),
-    });
-    const data = await res.json();
-    if (data.success) {
+    // `force` — the callers are not all plain reads: TabMail re-fetches right
+    // after marking a message read or deleting it, and `getAppData` is a
+    // CACHEABLE_READ. Without `force` the refresh that follows the write would be
+    // served the PRE-write payload for up to 30 s, so the admin's own action
+    // would look like it did nothing. `force` skips the read and rewrites the
+    // cache, so every other caller gets the new payload too.
+    //
+    // `silent` — this function has never surfaced a toast (it only logged), and
+    // the client's toast is per-call. Leaving it on would invent a new user-visible
+    // failure for a path that deliberately stayed quiet.
+    const data = (await api.secure('getAppData', ['admin'], {
+      force: true,
+      silent: true,
+      onSessionInvalid: 'throw',
+    })) as { success?: boolean; formInbox?: unknown[] };
+    if (data?.success) {
       mailList.set(data.formInbox || []);
     }
   } catch (err) {

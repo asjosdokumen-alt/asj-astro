@@ -185,7 +185,7 @@ check() {
 # judge: rebuild, prove the mutation reached dist/, run the guard, restore.
 judge() {
   local label="$1" comp="$2" route="$3" base="$4"
-  npx astro build >/dev/null 2>&1
+  node node_modules/astro/astro.js build >/dev/null 2>&1
   local now
   now=$(sig "$comp" "$route")
   if [ "$now" = "$base" ]; then
@@ -232,7 +232,7 @@ cp "$SISWA" "$BAK/$(key "$SISWA")"
 cp "$AICV" "$BAK/$(key "$AICV")"
 
 # ── server ──────────────────────────────────────────────────────────────────
-npx astro preview --host 127.0.0.1 --port "$PORT" >/dev/null 2>&1 &
+node node_modules/astro/astro.js preview --host 127.0.0.1 --port "$PORT" >/dev/null 2>&1 &
 PREVIEW_PID=$!
 trap 'kill "$PREVIEW_PID" 2>/dev/null; restore_all' EXIT
 for _ in $(seq 1 30); do
@@ -241,7 +241,7 @@ for _ in $(seq 1 30); do
 done
 
 # ── baseline must be green before any mutation is interpreted ───────────────
-npx astro build >/dev/null 2>&1
+node node_modules/astro/astro.js build >/dev/null 2>&1
 BASE_M=$(sig MasterFullForm master)
 BASE_A=$(sig ApplyFullForm apply)
 BASE_S=$(sig SiswaBaruForm siswa-baru)
@@ -400,7 +400,7 @@ for f in "$MASTER" "$APPLY" "$SISWA" "$AICV"; do
     fail=1
   fi
 done
-npx astro build >/dev/null 2>&1
+node node_modules/astro/astro.js build >/dev/null 2>&1
 # The battery builds with `astro build` alone, which skips `build-sw-manifest.mjs`
 # — the step `npm run build` chains on. Leaving that out leaves dist/'s service
 # worker on its dev placeholder and reddens unrelated tests, so it is repaired

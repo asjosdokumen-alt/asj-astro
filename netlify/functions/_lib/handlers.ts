@@ -69,6 +69,26 @@ const AI_ACTIONS = new Set([
 ]);
 const FONNTE_ACTIONS = new Set(['kirimSatuPesanFonnte', 'kirimTawaranMassal']);
 
+/**
+ * The unauthenticated write (contexts/contact/service.ts) gets its own
+ * entry-point limit, and it needs one for a reason the service's own limiter
+ * cannot cover.
+ *
+ * The service counts stored rows to enforce 5 messages per number per hour.
+ * That counter can only be read by ONE postgrest round-trip per request, and
+ * it runs BEFORE the insert. So a flood of distinct numbers — or one number
+ * hammering from many IPs — is charged to the database on every attempt, and
+ * the limit that was supposed to bound the traffic is itself the traffic. The
+ * IP limit here is in-process and free (kernel/rate-limit), so it sheds the
+ * flood before the expensive path; the per-number limit stays where it is,
+ * because it is the one that actually describes the abuse.
+ *
+ * IP-only, not identity-scoped: there is no session to scope it to, by design.
+ * The limit is looser than the service's (10/min vs 5/hour) so it never fires
+ * for a person who simply had a typo, and tight enough that no script keeps up.
+ */
+const CONTACT_ACTIONS = new Set(['kirimPesanKontak']);
+
 const NOT_IMPLEMENTED =
   'Fungsi ini belum diimplementasi di backend rebuild (repo GitHub hanya berisi frontend).';
 
@@ -97,6 +117,12 @@ function rateLimitChecks(action: string, meta: RequestMeta, sessionToken: string
   }
   if (FONNTE_ACTIONS.has(action)) {
     return [{ key: 'fonnte:' + (adminKey || ip), opts: { limit: 2, windowMs: 60000 } }];
+  }
+  if (CONTACT_ACTIONS.has(action)) {
+    return [
+      { key: `contactIp:${ip}`, opts: { limit: 10, windowMs: 60000 } },
+      { key: `contactGlobal:${ip}`, opts: { limit: 30, windowMs: 60000 } },
+    ];
   }
   if (adminKey) {
     return [{ key: 'adminCrud:' + adminKey, opts: { limit: 120, windowMs: 60000 } }];
@@ -285,6 +311,11 @@ function isMutatingAction(action: string): boolean {
     'simpanKandidatDanUpload', 'simpanBerkasTahapan', 'simpanRevisiKandidat',
     // Register
     'submitDaftarSiswa',
+    // Contact — the only unauthenticated write. Listed here so the write path
+    // (retry semantics, no-store, metrics) treats it as a mutation rather than a
+    // cacheable read; the absence of a session check is a decision recorded in
+    // contexts/contact/service.ts, not an omission.
+    'kirimPesanKontak',
   ]);
   return MUTATING.has(action);
 }

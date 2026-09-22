@@ -63,11 +63,31 @@
  *    "intercepts pointer events". The drawer's own Close button is used.
  *
  * Run against a built artifact:
- *   BASE_URL=http://127.0.0.1:4321 node e2e/test-drawer.mjs
+ *   node e2e/test-drawer.mjs               (defaults to localhost:4321)
+ *   BASE_URL=http://localhost:4321 node e2e/test-drawer.mjs
  */
 import { chromium } from 'playwright';
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:4321';
+/*
+ * DEFAULT HOST IS `localhost`, NOT `127.0.0.1` — a measured fix, 2026-09-20,
+ * matching the same change in `test-site-nav.mjs`.
+ *
+ * This gate defaulted to `http://127.0.0.1:4321` and could NOT reach an
+ * `astro preview` server, because preview v5.12.0 binds IPv6-only (`netstat`
+ * shows `[::1]:4321 LISTENING`). Measured: with the server definitely up,
+ * 127.0.0.1 -> curl exit 7 (refused), localhost -> 200.
+ *
+ * The cost was total: this file reported `ERR_CONNECTION_REFUSED` on every run
+ * and scored 0 checks, which reads as "the environment has no server" rather
+ * than "the default is wrong". With `localhost` it is 7/7. `test-labels.mjs`
+ * had the identical defect (0/4 -> 4/4) and was fixed in the same change.
+ *
+ * Because BOTH the broken and the working form look plausible, and because a
+ * connection-refused failure names the URL rather than the cause, this class of
+ * breakage can sit in a suite indefinitely without anyone suspecting the
+ * default. Prefer `localhost`, which resolves to whichever family bound.
+ */
+const BASE = process.env.BASE_URL || 'http://localhost:4321';
 const NAV = 'nav[aria-label="Primary navigation"]';
 
 const results = [];
@@ -158,6 +178,41 @@ async function tabWalkInsideDrawer(presses) {
    With the drawer OPEN the walk must find stops inside it. If it finds none,
    the "0 stops while closed" result below is meaningless and this guard must
    not be allowed to report a pass. */
+/* ── The selector itself is part of the contract ─────────────────────────────
+   Added 2026-09-19 with the desktop section nav (landing page L4).
+
+   WHY THIS TEST EXISTS AT ALL. Every measurement below uses
+   `document.querySelector(NAV)` — the FIRST match, with no count check. So if a
+   second element ever carried the same `aria-label`, this file would measure the
+   wrong one and several assertions would PASS while proving nothing about the
+   drawer. That is the worst failure mode a gate has: green, and no longer about
+   what it claims.
+
+   The danger was concrete rather than theoretical: the landing page needed a
+   horizontal desktop nav, and the cheapest place to put it was "inside the nav
+   that already exists". That element is a fixed right-anchored drawer, so the
+   desktop bar had to become a second landmark with a DIFFERENT label
+   (`SiteNav.astro`, `aria-label="Navigasi halaman"`). This test is what makes
+   that safe: a future change that reuses the label fails here, loudly, instead of
+   silently disarming every check below.
+
+   It asserts the count, not the absence of a second nav — two labelled nav
+   landmarks are legitimate; two with the SAME label are not. */
+await test('the drawer selector matches exactly one element', async () => {
+  const count = await page.evaluate(
+    (sel) => document.querySelectorAll(sel).length,
+    NAV,
+  );
+  if (count !== 1) {
+    throw new Error(
+      `"${NAV}" matched ${count} element(s), expected exactly 1. Every assertion in this ` +
+        'file reads the FIRST match, so a duplicate label makes them measure an element the ' +
+        'drawer contract does not describe — and they would still pass. Give the new ' +
+        'navigation a distinct aria-label instead of reusing this one.',
+    );
+  }
+});
+
 await test('control: the Tab-walk CAN see inside an open drawer', async () => {
   await page.locator('.hamburger-btn').click();
   await page.waitForTimeout(500);

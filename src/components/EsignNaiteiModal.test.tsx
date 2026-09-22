@@ -4,8 +4,12 @@ import EsignNaiteiModal, { allowedTahapanEsign } from './EsignNaiteiModal';
 import { showToast } from './Toast';
 import { t } from '../store/i18n';
 
+// `api.secure` menolak SEBELUM fetch kalau store tidak melaporkan sesi hidup, jadi
+// mock ini wajib punya `isLoggedIn` — plus `logout`, yang diimpor apiClient.
+// Tanpa keduanya tesnya gagal di asersi request ("fetch 0 kali"), jauh dari sebabnya.
 vi.mock('../store/authReactive', () => ({
-  authStore: { get: () => ({ sessionToken: 'test-token' }) },
+  authStore: { get: () => ({ isLoggedIn: true, sessionToken: 'test-token' }) },
+  logout: vi.fn(),
 }));
 
 vi.mock('../lib/apiEndpoint', () => ({
@@ -63,9 +67,18 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  // `Response` NYATA, bukan `{ json }` telanjang: kode mentah dulu hanya memanggil
+  // `.json()`, sedangkan klien bersama memeriksa `res.ok` lebih dulu. Objek tanpa
+  // `ok` terbaca sebagai kegagalan ⇒ klien melempar ⇒ tes gagal di asersi SESUDAH
+  // fetch, menunjuk jauh dari sebabnya.
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue({ json: async () => ({ success: true }) }),
+    vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    ),
   );
 });
 
@@ -145,9 +158,12 @@ describe('EsignNaiteiModal — A07 parity (modal-ttd legacy)', () => {
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body.action).toBe('simpanDataTtdNaitei');
     expect(body.sessionToken).toBe('test-token');
-    expect(body.args[0].wa).toBe('6281111111111');
-    expect(body.args[0].ttd1).toContain('data:image/png;base64');
-    expect(body.args[0].nama1).toBe('');
+    // Kunci di kabel adalah `payload`, bukan `args` — backend menerima keduanya
+    // (`body.payload || body.args` di _lib/netlify-wrapper.ts), jadi ini ganti
+    // nama, bukan perubahan perilaku.
+    expect(body.payload[0].wa).toBe('6281111111111');
+    expect(body.payload[0].ttd1).toContain('data:image/png;base64');
+    expect(body.payload[0].nama1).toBe('');
     expect(showToast).toHaveBeenCalledWith(t('ui.toast_saved_server'), 'success');
     expect(onClose).toHaveBeenCalled();
   });

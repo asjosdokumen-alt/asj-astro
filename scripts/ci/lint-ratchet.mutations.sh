@@ -12,7 +12,7 @@
 # each path can rot independently:
 #
 #   S1  a violation added to a file that was CLEAN      -> condition 2 (new debt surface)
-#   S2  a violation added to a file that was ALREADY DIRTY -> condition 1 (total rose)
+#   S2  a violation added to a file that was ALREADY DIRTY -> condition 3 (per-file rise)
 #   S3  a violation in a BRAND-NEW file                 -> the realistic PR case
 #
 # S1 and S2 are deliberately separate. A gate that only compares totals would
@@ -20,6 +20,17 @@
 # go from clean to dirty whenever an equal number of diagnostics is fixed
 # elsewhere in the same change. Splitting them is what proves both conditions are
 # live rather than one masking the other.
+#
+# S2 IS THE REASON CONDITION 3 EXISTS. S2 was originally expected to trip
+# condition 1 ("total rose"), and it did for as long as the tree sat exactly ON
+# the baseline. As soon as debt was fixed without re-baselining, the tree fell
+# below the baseline and that gap became slack: S2's single new diagnostic then
+# landed exactly ON the baseline, which is not "greater than" it, so condition 1
+# said nothing and S2 reported SURVIVED against a gate that really was letting
+# the `any` through. Measured 2026-09-18: baseline 2499, tree 2498, mutation
+# applied cleanly (program.ts 1 -> 2, noExplicitAny 446 -> 447, total 2498 ->
+# 2499), gate exit 0. Condition 3 closes it. Do NOT "fix" a future S2 SURVIVED by
+# re-baselining the battery: that hides the slack instead of measuring it.
 #
 # TWO TRAPS, BOTH REAL, BOTH GUARDED BELOW
 # ----------------------------------------
@@ -167,8 +178,9 @@ backup_all
 step "S1  clean file gains an 'any' (new debt surface)"          kill netlify/functions/contexts/ingestion/index.ts "export { handleProcessUploadDoc } from './service';" "export { handleProcessUploadDoc } from './service';
 export const __lintmut: any = 0;"
 
-# S2 — an already-dirty file gets one MORE diagnostic. Total rises, no file goes
-#      from clean to dirty, so this isolates condition 1.
+# S2 — an already-dirty file gets one MORE diagnostic. No file goes from clean to
+#      dirty and no new file appears, so only the per-file comparison can catch
+#      it: this isolates condition 3.
 #
 #      FIRST DRAFT OF THIS MUTATION WAS WRONG, and the battery caught it. It
 #      injected `const __lintmut = 'a' + 'b';` expecting a `useTemplate` hit.
@@ -177,10 +189,11 @@ export const __lintmut: any = 0;"
 #      still held exactly 1 diagnostic. The mutation therefore changed nothing
 #      and the gate was right to stay green; the SURVIVED line was a non-mutation
 #      masquerading as a hole. It is replaced with `: any`, which is
-#      `noExplicitAny` at error level and verified to raise the count to 2717.
+#      `noExplicitAny` at error level and verified to raise the total by exactly
+#      one — which is also why the slack described at the top can swallow it.
 #      Lesson kept here because "the mutation did not actually mutate" is the
 #      most expensive way to misread a battery.
-step "S2  dirty file gains an 'any' (total rises)"               kill indexer/src/program.ts "const tsconfigPath = join(rootDir, 'tsconfig.json');" "const tsconfigPath = join(rootDir, 'tsconfig.json');
+step "S2  dirty file gains an 'any' (per-file rise)"             kill indexer/src/program.ts "const tsconfigPath = join(rootDir, 'tsconfig.json');" "const tsconfigPath = join(rootDir, 'tsconfig.json');
   const __lintmut: any = 0;"
 
 # S3 — the realistic PR case: a brand-new file that ships with debt.

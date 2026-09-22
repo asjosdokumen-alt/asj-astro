@@ -101,7 +101,7 @@ step() {
     echo "ABORT: the mutation for '$label' did not apply."
     exit 1
   fi
-  npx astro build >/dev/null 2>&1
+  node node_modules/astro/astro.js build >/dev/null 2>&1
   BASE_URL="$BASE" node "$GUARD" >/dev/null 2>&1
   check "$label" $?
   restore_one "$file"
@@ -193,7 +193,7 @@ step "M10 the detail dialog never opens (vacuity control)" \
 
 # ── restore + rebuild so dist/ is not left mutated ─────────────────────────
 for f in "$HOOK" "$APP" "$PAMFLET" "$TABLE"; do restore_one "$f"; done
-npx astro build >/dev/null 2>&1
+node node_modules/astro/astro.js build >/dev/null 2>&1
 node scripts/build-sw-manifest.mjs >/dev/null 2>&1
 
 kill "$SERVER_PID" 2>/dev/null

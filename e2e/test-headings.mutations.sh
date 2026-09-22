@@ -105,7 +105,7 @@ step() {
     echo "ABORT: the mutation for '$label' did not apply."
     exit 1
   fi
-  npx astro build >/dev/null 2>&1
+  node node_modules/astro/astro.js build >/dev/null 2>&1
   BASE_URL="$BASE" node "$GUARD" >/dev/null 2>&1
   check "$label" $?
   restore_one "$file"
@@ -229,7 +229,7 @@ for f in "$TOOLBAR" "$SHARE" "$SISWA" "$MASTER" "$ADMIN" "$CANDIDATE" "$PAGE_MAS
   fi
 done
 
-npx astro build >/dev/null 2>&1
+node node_modules/astro/astro.js build >/dev/null 2>&1
 node scripts/build-sw-manifest.mjs >/dev/null 2>&1
 
 if ! BASE_URL="$BASE" node "$GUARD" >/dev/null 2>&1; then

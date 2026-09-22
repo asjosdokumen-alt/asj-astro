@@ -94,7 +94,7 @@ step() {
     echo "ABORT: the mutation for '$label' did not apply."
     exit 1
   fi
-  npx astro build >/dev/null 2>&1
+  node node_modules/astro/astro.js build >/dev/null 2>&1
   local now
   now=$(served_js)
   if [ "$now" = "$BASE_JS" ]; then
@@ -113,7 +113,7 @@ cp "$APP" "$BAK/$(key "$APP")"
 cp "$LOGIN" "$BAK/$(key "$LOGIN")"
 
 # ── server ──────────────────────────────────────────────────────────────────
-npx astro preview --host 127.0.0.1 --port "$PORT" >/dev/null 2>&1 &
+node node_modules/astro/astro.js preview --host 127.0.0.1 --port "$PORT" >/dev/null 2>&1 &
 PREVIEW_PID=$!
 trap 'kill "$PREVIEW_PID" 2>/dev/null; restore_all' EXIT
 for _ in $(seq 1 30); do
@@ -122,7 +122,7 @@ for _ in $(seq 1 30); do
 done
 
 # ── baseline must be green before any mutation is interpreted ───────────────
-npx astro build >/dev/null 2>&1
+node node_modules/astro/astro.js build >/dev/null 2>&1
 BASE_JS=$(served_js)
 if [ -z "$BASE_JS" ]; then
   echo "ABORT: could not read the App chunk filename from dist/index.html."
@@ -179,7 +179,7 @@ for f in "$APP" "$LOGIN"; do
     fail=1
   fi
 done
-npx astro build >/dev/null 2>&1
+node node_modules/astro/astro.js build >/dev/null 2>&1
 # The battery builds with `astro build` alone, which skips `build-sw-manifest.mjs`
 # — the step `npm run build` chains on. Leaving that out leaves dist/'s service
 # worker on its dev placeholder and reddens unrelated tests, so it is repaired

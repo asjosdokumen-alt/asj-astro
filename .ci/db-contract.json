@@ -22,7 +22,8 @@
   "tables": {
     "database_candidate": {
       "severity": "required",
-      "note": "Core candidate records. Without it the admin board is empty."
+      "note": "Core candidate records. Without it the admin board is empty.",
+      "columns": ["status_kandidat", "status_biodata"]
     },
     "master_database_candidate": {
       "severity": "required",

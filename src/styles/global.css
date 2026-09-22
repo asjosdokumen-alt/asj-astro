@@ -74,6 +74,50 @@ body {
      of letting them widen the page. Pair with `min-width: 0` from
      layout.css §1, or set `min-width: 0` on the flex child. */
   overflow-wrap: break-word;
+
+  /* Subtle dot-grid pattern for visual depth. The dots are nearly invisible
+     (6% opacity in dark, 5% in light) — they add texture without competing
+     with content. Radial-gradient dots at `--bg-dot-gap` intervals. */
+  background-image:
+    radial-gradient(circle, var(--bg-dot-color) var(--bg-dot-size), transparent var(--bg-dot-size));
+  background-size: var(--bg-dot-gap) var(--bg-dot-gap);
+}
+
+/* ─── Visual enhancement classes ───────────────────────────────────
+   Used by the redesigned hero, footer, section dividers, and CTA band.
+   All CSS-only, zero external images. */
+
+/* Hero gradient background — replaces the Supabase banner artwork.
+   Two layers: the main gradient sweep + a glow accent. */
+.hero-gradient {
+  background: var(--hero-gradient);
+  position: relative;
+}
+.hero-gradient::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--hero-glow);
+  pointer-events: none;
+}
+
+/* Footer gradient — darker surface at the page bottom. */
+.footer-gradient {
+  background: var(--footer-gradient);
+}
+
+/* Gradient accent line — 3px-tall pink→violet→sky sweep.
+   Used as a divider above the footer and between major page zones. */
+.accent-line {
+  height: 3px;
+  background: var(--accent-line);
+  border: none;
+}
+
+/* Section alternating tint. Applied to even sections (via nth-child or
+   a class) so the page reads as structured rather than one long stripe. */
+.section-alt {
+  background-color: var(--section-alt-bg);
 }
 
 
@@ -439,6 +483,119 @@ body {
   background-image: linear-gradient(to top, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.25) 50%, transparent 100%);
 }
 
+/* ─── 5d. The DARK BANDS keep white text in light mode ────────────────
+   THE BUG THIS FIXES, measured in a browser against a real server:
+   the landing page's h1 resolved to `rgb(31, 29, 28)` sitting on a
+   `linear-gradient(135deg, rgb(42,18,53) …)` band — contrast **1.01:1**,
+   i.e. the most important heading on the site was invisible in the
+   default theme.
+
+   WHY §5b CAUSED IT AND COULD NOT SEE IT. §5b flips `.text-white` to
+   `#1f1d1c` because light mode turns `bg-slate-900` surfaces light — the
+   shim flips the BACKGROUND and the TEXT together, so a shimmed card
+   stays readable. The hero band never used `bg-slate-900`: it paints via
+   the `--hero-gradient` token, and theme.css deliberately keeps that
+   token DARK in both themes (white text sits on it). So the shim flipped
+   this text and nothing flipped this background. Two rules disagreeing,
+   with no gate between them — the same shape as the `bg-slate-700`
+   contradiction documented above §5c.
+
+   THIS IS THE SAME FIX SHAPE AS §5c, for the same reason: name the
+   surfaces that are deliberately dark and keep white on them, AFTER
+   §5b's text rules (equal specificity, so source order decides).
+
+   WHY `:where` AND NOT `:is` FOR THE BAND. `:is(...)` passes its argument's
+   specificity through, which made this rule (0,2,0) and put it BELOW an
+   earlier (0,2,1) rule — `lint/style/noDescendingSpecificity` caught that,
+   and it is a real signal: a lower-specificity rule later in the file can
+   silently lose. `:where(...)` contributes ZERO specificity, so the whole
+   rule stays (0,1,0): it still beats Tailwind's plain `.text-white` (0,1,0)
+   on source order (this block is emitted after the utilities), and it no
+   longer sits below anything. Using `:is` here would have worked by
+   accident today and broken the first time someone reordered the file.
+
+   A future dark band needs no new entry as long as it carries
+   `.hero-gradient`. That one class covers both current bands: App.tsx's
+   hero `<header>`, and ClosingBand.astro's CTA card (measured —
+   `ClosingBand` reuses `hero-gradient` rather than defining its own).
+   Prefer naming the BAND over naming each heading: naming `.text-white`
+   here would also re-light text on surfaces §5b correctly turned light.
+
+   THE ONE LINT SIGNAL THIS LEAVES, AND WHY IT IS ACCEPTED.
+   `:where(...)` contributes zero specificity, so these rules are (0,1,0) and
+   `noDescendingSpecificity` flags them against §5b's
+   `nav.bg-slate-900 .text-slate-300` (0,2,1). The first attempt to silence it
+   copied that rule's `nav`/`[class*=]` variants into these selectors, which
+   took global.css from **6 diagnostics to 139** — one flagged signal traded for
+   133 real ones, all for a collision that cannot currently happen: the nav rule
+   is scoped to `nav.bg-slate-900` and no band is a nav.
+   The signal is kept. If a `.hero-gradient` element ever becomes a `nav`, this
+   is the note that says why its text went dark — and the honest fix then is to
+   give the BAND a nav-scoped rule, not to pre-emptively quadruple every line.
+   Using `:where` rather than `:is` for the band still matters: `:is` would make
+   the rule (0,2,0) and put it below §5b's (0,2,1) rule outright. */
+:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient) .text-white,
+:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient) .text-slate-100,
+:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient) .text-slate-200 {
+  color: #ffffff;
+}
+/* The sub-headline rung: `text-slate-300` is the muted-on-dark rung, and
+   §5b maps it to `#4a4642` — dark grey on a dark band. Same defect, one
+   rung down, and it is the hero's own paragraph colour. */
+:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient) .text-slate-300 {
+  color: #e2e8f0;
+}
+/* THE PINK EYEBROW RUNG — found by comparing the rendered page against the
+   design mockup, and it was MY regression from the illustration.
+
+   §5b maps `text-pink-300`/`text-pink-400` to `#be185d` (a deep magenta). That
+   is correct ON THE WHITE CANVAS, which is what it was written for. But the
+   hero eyebrow (`PT AMANAH SAKURA JAPAN`, `LET'S BUILD OUR FUTURE`) sits on the
+   DARK band, where `#be185d` measures **2.81:1** against `rgb(42,18,53)` —
+   below the 4.5:1 floor. The first §5d pass missed it because it enumerated the
+   white/slate rungs and never considered pink.
+
+   Adding the sakura illustration made it worse, not better: the artwork's
+   bright petals now sit directly behind this text, so the low-contrast pink has
+   a busy backdrop instead of a flat gradient. The measurement is what caught
+   it; it is not visible as a number any other way.
+
+   The fix keeps the eyebrow PINK (it is the brand accent, and grey would lose
+   the mockup's intent) but lifts it to a light sakura tone readable on dusk:
+   `#fbcfe8` is Tailwind's pink-200, the same family, ~9.5:1 on the band. */
+/* SPECIFICITY IS LOAD-BEARING HERE — `:where()` DOES NOT WORK FOR PINK.
+   This is the second attempt; the first failed silently and the measurement
+   caught it (still 2.81:1 after the "fix").
+
+   The white/slate rules above use `:where(...)` for the band, which is (0,1,0).
+   That is enough for them because the competing shim in §5b is
+   `nav.bg-slate-900 .text-slate-300` (0,2,1) — but they do not actually compete;
+   nothing maps `.text-white` on the band with equal weight.
+   Pink is different: §5b maps it with
+   `:where([data-theme="light"]) :is(.text-pink-300,…) { color: #be185d }`
+   which is ALSO (0,1,0), and it sits LATER in the file (line 681 vs 566 here).
+   With equal specificity, source order decides, so the shim won and my rule
+   did nothing.
+
+   So the band selector uses `:is(...)` at the START of the compound instead of
+   `:where()`, which makes it (0,2,0) — one notch above the shim, still below
+   §5b's (0,2,1) nav rule, so `noDescendingSpecificity` stays satisfied and the
+   order guard is kept. Verified by measurement at 1440 and 390.
+
+   (An intermediate attempt wrote `.hero-gradient[data-theme="light"]`, which is
+   a COMPOUND selector and can never match: `data-theme` is set on
+   `document.documentElement` by the inline restore script, not on the band. The
+   theme must stay a separate ANCESTOR component — hence
+   `[data-theme="light"] .hero-gradient`.) */
+[data-theme="light"] :is(.hero-gradient, .footer-gradient) .text-pink-300,
+[data-theme="light"] :is(.hero-gradient, .footer-gradient) .text-pink-300\/80 {
+  color: #fbcfe8;
+}
+[data-theme="light"] :is(.hero-gradient, .footer-gradient) .text-pink-400,
+[data-theme="light"] :is(.hero-gradient, .footer-gradient) .text-pink-400\/70 {
+  color: #f9a8d4;
+}
+
 /* Mobile-drawer & hamburger live over the page; in light mode they
    should also adopt the light theme so the dark drawer doesn't fight
    a sakura page. */
@@ -502,6 +659,7 @@ body {
   .bg-indigo-600, .bg-blue-600, .bg-blue-700, .bg-sky-600, .bg-emerald-600, .bg-emerald-700,
   .bg-green-600
 ) { color: #fff; }
+
 
 /* `.bg-slate-700` USED to be in the list above, and that was a contradiction:
    §5b remaps `bg-slate-700` to #e7e0e1 — a LIGHT surface — while this rule
@@ -623,6 +781,34 @@ body {
 :where([data-theme="light"]) :is(.from-slate-900\/30,.from-slate-900\/40,.from-slate-900\/80) { --tw-gradient-from: rgba(255,255,255,0.55); }
 :where([data-theme="light"]) :is(.via-slate-900\/30,.via-slate-900\/40,.via-slate-900\/80) { --tw-gradient-via: rgba(255,255,255,0.45); }
 :where([data-theme="light"]) :is(.to-slate-900\/30,.to-slate-900\/40,.to-slate-900\/80) { --tw-gradient-to: rgba(255,255,255,0.55); }
+
+/* ── Variant-prefixed gradient stops: the rungs the shim was missing ──────
+   MEASURED DEFECT (2026-09-20). Every rule above matches a BARE class name,
+   so none of them can reach a stop written with a breakpoint prefix. Tailwind
+   emits `lg:to-slate-900/95` as `.lg\:to-slate-900\/95` — a DIFFERENT selector
+   — so the prefixed stop kept its dark value in light mode.
+
+   Observed on the LayananSection cover photo at 1440px, light theme. The
+   computed overlay gradient was:
+
+     linear-gradient(to right,
+       rgba(243,239,243,0.95)  0%,     <- shimmed, near-opaque light
+       rgba(255,255,255,0.45) 50%,     <- shimmed, white
+       oklab(0.208 …  / 0.95) 100%)    <- NOT shimmed: #0f172b at 95%
+
+   A photo washed light on one side and jammed dark on the other is what the
+   `lg:from-transparent lg:via-slate-900/40 lg:to-slate-900/95` trio renders
+   once only the middle stop is translated, and it reads as a broken image
+   rather than a themed one. The `lg:` variant is used precisely where the
+   card flips from a stacked (mobile) to a side-by-side (desktop) layout, so
+   this only ever showed on desktop — mobile was fine, which is why it survived
+   a mobile-first review. */
+:where([data-theme="light"]) :is(.lg\:from-slate-900,.lg\:from-slate-900\/95,.lg\:from-slate-800,.lg\:from-slate-700) { --tw-gradient-from: #f3eff3f2; }
+:where([data-theme="light"]) :is(.lg\:via-slate-900,.lg\:via-slate-900\/40,.lg\:via-slate-800,.lg\:via-slate-700) { --tw-gradient-via: rgba(255,255,255,0.45); }
+:where([data-theme="light"]) :is(.lg\:to-slate-900,.lg\:to-slate-900\/95,.lg\:to-slate-800,.lg\:to-slate-700) { --tw-gradient-to: rgba(255,255,255,0.55); }
+:where([data-theme="light"]) :is(.lg\:from-slate-900\/30,.lg\:from-slate-900\/40,.lg\:from-slate-900\/80) { --tw-gradient-from: rgba(255,255,255,0.55); }
+:where([data-theme="light"]) :is(.lg\:via-slate-900\/30,.lg\:via-slate-900\/40,.lg\:via-slate-900\/80) { --tw-gradient-via: rgba(255,255,255,0.45); }
+:where([data-theme="light"]) :is(.lg\:to-slate-900\/30,.lg\:to-slate-900\/40,.lg\:to-slate-900\/80) { --tw-gradient-to: rgba(255,255,255,0.55); }
 /* Gradients — accent 900 shades (modal headers, the total-cost card) */
 :where([data-theme="light"]) :is(.from-violet-900,.from-violet-900\/40,.from-violet-900\/80,.from-purple-900,.from-indigo-900,.from-blue-900,.from-sky-900,.from-emerald-900,.from-emerald-900\/40,.from-teal-900,.from-rose-900,.from-pink-900,.from-red-900,.from-amber-900) { --tw-gradient-from: #ffffff; }
 :where([data-theme="light"]) :is(.to-violet-900,.to-purple-900,.to-indigo-900,.to-indigo-950,.to-blue-900,.to-sky-900,.to-sky-900\/30,.to-emerald-900,.to-emerald-500\/30,.to-teal-900,.to-rose-900,.to-rose-950,.to-pink-900,.to-red-900,.to-amber-900) { --tw-gradient-to: #ffffff; }

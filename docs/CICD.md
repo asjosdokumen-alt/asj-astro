@@ -118,6 +118,20 @@ fails in ~5 seconds instead of shipping a bundle that calls `undefined`.
 
 Sharding uses `fail-fast: false` so one red shard cannot hide failures in others.
 
+> **One dependency is deliberately not from npm: `xlsx`.** It is pinned to the
+> vendor's own distribution (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`)
+> because the npm package stopped at `0.18.5`, which carries two high-severity
+> advisories — prototype pollution (`<0.19.3`) and ReDoS (`<0.20.2`) — and
+> `npm audit` reports `fixAvailable: false` for it, because SheetJS moved its
+> releases off npm. `0.20.3` is the newest build published on their CDN and it
+> fixes both advisories with **no code change**, since every call site uses stable
+> public API (`read`, `SheetNames`, `Utils.sheet_to_csv`, `aoa_to_sheet`,
+> `book_new`, `book_append_sheet`, `write`, `encode_cell`, `decode_range`).
+> Two consequences: **`npm install xlsx` silently undoes this** (a bare install
+> resolves to the vulnerable registry version — use `npm ci`, or re-pin the tarball
+> URL), and a fresh install must be able to reach `cdn.sheetjs.com`. The lockfile
+> pins the tarball with its integrity hash, so installs stay reproducible.
+
 ### 3.4 Artifact management
 
 Each build uploads `dist-<git-sha>` containing `dist/` plus a `build-manifest.json`:

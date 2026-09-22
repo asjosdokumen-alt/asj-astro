@@ -10,7 +10,12 @@ import FormToolbar from '../components/forms/FormToolbar';
   <App showHeader={false} client:only="preact" />
 
   <FormToolbar titleKey="toolbar.admin" client:only="preact" />
-  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[42px]">
+  <!-- `u-has-bottomnav` replaces the old hardcoded `pb-16`. That 64px
+       happened to clear the 45px BottomNav, but by coincidence — if the
+       bar ever grew, this page would break silently with no signal.
+       The utility derives the clearance from `--u-nav-h` instead, so it
+       tracks the bar automatically. No-op above md:. -->
+  <main id="main-content" class="u-has-bottomnav w-full min-h-[50vh] pt-[42px]">
     <AuthGuard requiredRole="admin" redirectTo="/" client:only="preact">
       <AdminPanel client:only="preact" />
     </AuthGuard>

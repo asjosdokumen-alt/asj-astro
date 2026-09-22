@@ -104,6 +104,10 @@ jobs:
       # bulkhead, metrics and traceparent.
       - name: Verify the I/O boundary
         run: npm run verify:io
+      # No raw fetch() bypassing apiClient in src/ — 30 such sites accumulated one
+      # at a time and each carried a comment explaining why it was exempt.
+      - name: Verify the fetch boundary
+        run: npm run verify:fetch-boundary
       # Total deployed size may ratchet down, never up silently.
       - name: Enforce the bundle-size ratchet
         run: npm run bundle:size
@@ -124,6 +128,28 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   # ══ Gate 2 · unit tests (sharded, parallel) ═════════════════════════════════
+
+  # The migration-013 admin-only guard is a TRIGGER, so its verdict only exists
+  # inside a real UPDATE — there is nothing to assert statically. This job starts
+  # a throwaway PostgreSQL (from the `embedded-postgres` devDependency) and drives
+  # the genuine SQL through a PostgREST-shaped session.
+  #
+  # It needs NO credentials and NO network: no Supabase URL, no service-role key,
+  # no live database. A public repo also has no CI minute cap, so the cost of
+  # proving a security guard on every PR is just a few seconds of runner time.
+  #
+  # Why it is not in `verify:batteries`: that runner is hermetic-only by design
+  # and this needs a database engine. It is a separate job for the same reason
+  # `boundary` is — it needs its own timeout and its own failure message.
+  biodata-guard:
+    name: Migration-013 admin-only guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-env
+      - name: Prove the guard blocks self-approval
+        run: npm run biodata:guard
 
   test-frontend:
     name: Unit tests · frontend
@@ -174,6 +200,15 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: ${{ needs.build.outputs.artifact-name }}
+
+      # The PWA manifest and icon wiring: a remote or missing icon href is
+      # invisible in dev and shows up only as a broken install prompt in prod.
+      #
+      # It lives HERE, not in quality-gates, because it reads `dist/sw.js` and
+      # only this job has the built artifact. In quality-gates it failed on every
+      # run for that reason alone — the note left there has the measurement.
+      - name: Verify the PWA manifest and icons
+        run: npm run verify:pwa
 
       # Prove the bytes we are about to test are the bytes that were built.
       - name: Verify artifact integrity
@@ -226,6 +261,7 @@ jobs:
           npm run e2e:public
           npm run e2e:loker-layout
           npm run e2e:headings
+          npm run e2e:landing
           npm run e2e:dialog
           npm run e2e:drawer
           npm run e2e:labels
@@ -279,6 +315,15 @@ jobs:
       # only record of what is verified. A broken table silently truncates them.
       - name: Verify markdown tables
         run: npm run verify:md
+      # Every `animation-name` written in src/styles/*.css must resolve to an
+      # `@keyframes`. CSS is silent about an unknown name, so the element simply
+      # never animates and no build step notices — the same invisible-
+      # incompleteness shape as the icon sprite. The per-section motion work joins
+      # three files by string (src/lib/sectionMotion.ts -> a data-motion attribute
+      # -> an `animation:` declaration), so a typo anywhere in that chain is a
+      # section that does not move and a gate that would otherwise stay green.
+      - name: Verify every animation name resolves
+        run: npm run verify:keyframes
       # THE DATA CONTRACT. Every read must name its columns — no `SELECT *`.
       - name: Verify database column projections
         run: npm run verify:projections
@@ -291,15 +336,37 @@ jobs:
       # them from growing back silently.
       - name: Verify function aliases
         run: npm run verify:aliases
-      # The PWA manifest and icon wiring: a remote or missing icon href is
-      # invisible in dev and shows up only as a broken install prompt in prod.
-      - name: Verify the PWA manifest and icons
-        run: npm run verify:pwa
+      # The workflow files, read the way GitHub reads them. Added 2026-09-17:
+      # `_notify.yml` used `secrets` in a step-level `if:`, which GitHub answers
+      # by refusing the WHOLE FILE, and a called workflow that will not parse
+      # takes its callers with it — ci.yml, both deploy workflows and rollback.yml
+      # were all dead, with zero jobs per run, and every local gate stayed green.
+      # A pipeline that cannot report its own absence needs a gate that can.
+      - name: Verify the workflows are ones GitHub will parse
+        run: npm run verify:workflows
+      # `verify:pwa` USED TO LIVE HERE, and it could never pass: it reads
+      # `dist/sw.js`, and this job neither builds nor downloads an artifact, so
+      # that file is absent and the gate fails on a precondition it cannot
+      # satisfy. Measured 2026-09-18, on the FIRST CI run this repo ever actually
+      # executed (step 11, "Verify the PWA manifest and icons"). It moved to the
+      # `smoke` job, which downloads the built artifact — see the note there.
+      #
+      # The lesson is the repo's own: a gate is only as good as the job it is
+      # placed in. This one was green locally (where `dist/` exists from a dev
+      # build) and red in CI, and neither verdict was about the PWA.
       # Whether the surface bindings all resolve, and whether anything bypassed
       # the HTTP kernel. Both are static checks with no live environment, so they
       # belong here where every PR pays them — not only on the deploy path.
       - name: Verify surface bindings and the IO boundary
-        run: npm run verify:binding && npm run verify:io
+        run: npm run verify:binding && npm run verify:io && npm run verify:fetch-boundary
+      # Where do the e2e probes think the app is? Added 2026-09-18 after
+      # `e2e/measure-riwayat-card.mjs` was found instructing
+      # `BASE_URL=http://localhost:4322` in its header while defaulting to 4321,
+      # so copying the comment ran a browser against a port nothing listens on.
+      # It is a static read of the probe files — no server, no browser — so it
+      # costs this job almost nothing. See scripts/ci/verify-e2e-ports.mjs.
+      - name: Verify every e2e probe's declared port is one the repo binds
+        run: npm run verify:ports
       # Is input validated at the handler edge? Three documents claimed this was
       # universal while the measured reality was 7 of 81 actions, all in one
       # surface. The unvalidated set is frozen in .ci/validation-baseline.json
@@ -351,11 +418,42 @@ jobs:
   # that a gate marked "ci" does not reach for credentials, a server or a DB.
   batteries:
     name: Batteries · every hermetic gate re-proven able to fail
+    needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # THE JOB MUST OUTLAST ITS OWN WATCHDOG, or the wrong thing fires first.
+    # `npm run verify:batteries` runs under scripts/ci/with-timeout.mjs with a
+    # 120-minute budget, and each battery is separately capped at 15 minutes by
+    # the runner. A 30-minute JOB timeout would therefore kill the run before
+    # either of those could report, and a job timeout says only "30 minutes
+    # elapsed" — while the watchdog prints the budget, the command and the three
+    # things to check. Keep this ABOVE the watchdog's budget.
+    #
+    # 130 is 120 + a margin for checkout/setup, and it is a ceiling rather than a
+    # target: measured locally, the first 5 of the 20 hermetic batteries averaged
+    # ~190 s each (~63 min extrapolated). CI runners are generally faster. This
+    # number has not been measured on a full run yet, because the batteries job
+    # has never completed — it is currently skipped behind the Build job, which
+    # needs two repository variables.
+    timeout-minutes: 130
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-node-env
+
+      # WHY THIS JOB NEEDS THE ARTIFACT.
+      # `verify:pwa`'s battery reads dist/sw.js and REFUSES TO RUN when dist/ is
+      # absent — deliberately, because skipping cases would let it report green
+      # while proving nothing. This job used to run with no build at all, so that
+      # battery failed here on a precondition it could not satisfy and took the
+      # whole job down in 3.8 minutes (measured 2026-09-18, on the first CI run
+      # this repository ever actually executed).
+      #
+      # It DOWNLOADS the artifact rather than rebuilding, which matches the rule
+      # stated at the top of this file: the artifact under test is the artifact
+      # that ships, and nothing downstream rebuilds it.
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}
+
       - name: Re-run every hermetic mutation battery
         run: npm run verify:batteries
 

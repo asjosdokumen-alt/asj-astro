@@ -27,9 +27,9 @@ between the diff and the deploy.
 
 **Runs in CI** (`ci.yml`): `typecheck:ratchet`, `typecheck:indexer`, `boundary`,
 `verify:classes`, `verify:entries`, `verify:binding`, `verify:io`,
-`verify:projections`, `verify:md`, `lint-ratchet`, `verify:review-manifest`,
-`bundle:size`, `idx:gate`, `verify:batteries`, `test:frontend`, `test:backend`,
-`smoke`.
+`verify:fetch-boundary`, `verify:projections`, `verify:md`, `lint-ratchet`,
+`verify:review-manifest`, `bundle:size`, `idx:gate`, `verify:batteries`,
+`test:frontend`, `test:backend`, `smoke`.
 
 **Runs in CI, but only on a PUSH** — `ci.yml#e2e` is gated on `push` (or an
 explicit `run-e2e` input), so on a pull request these four are **not** enforced:
@@ -59,6 +59,7 @@ verify:classes
 verify:entries
 verify:binding
 verify:io
+verify:fetch-boundary
 verify:projections
 verify:md
 bundle:size

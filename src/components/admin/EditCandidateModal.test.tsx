@@ -6,8 +6,11 @@ import { showToast } from '../Toast';
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+// `api.secure` menolak SEBELUM fetch kalau store tidak melaporkan sesi hidup, jadi
+// mock ini wajib punya `isLoggedIn` — plus `logout`, yang diimpor apiClient.
 vi.mock('../../store/authReactive', () => ({
-  authStore: { get: () => ({ sessionToken: 'test-token' }) },
+  authStore: { get: () => ({ isLoggedIn: true, sessionToken: 'test-token' }) },
+  logout: vi.fn(),
 }));
 
 vi.mock('../../lib/apiEndpoint', () => ({
@@ -75,7 +78,14 @@ describe('EditCandidateModal', () => {
   });
 
   it('saves via updateKandidatSuper with pendidikan/catatanExt/isVip in one call', async () => {
-    mockFetch.mockResolvedValue({ json: () => Promise.resolve({ success: true }) });
+    // `Response` nyata: klien memeriksa `res.ok`, dan objek `{ json }` telanjang
+    // terbaca sebagai kegagalan.
+    mockFetch.mockResolvedValue(
+      new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
     const onClose = vi.fn();
     const { container } = render(
       <EditCandidateModal candidate={mockCandidate} isOpen={true} onClose={onClose} />
@@ -93,7 +103,9 @@ describe('EditCandidateModal', () => {
         })
       );
       const bodyArg = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string);
-      const arg = bodyArg.args[0];
+      // Kunci di kabel adalah `payload`, bukan `args` (backend: `body.payload ||
+      // body.args`) — ganti nama, bukan perubahan perilaku.
+      const arg = bodyArg.payload[0];
       expect(arg.pendidikan).toBe('SMA');
       expect(arg.catatanExt).toBe('Feedback untuk kandidat');
       expect(arg.isVip).toBe(false);
@@ -117,7 +129,12 @@ describe('EditCandidateModal', () => {
   });
 
   it('shows error toast on API failure', async () => {
-    mockFetch.mockResolvedValue({ json: () => Promise.resolve({ success: false, error: 'Kandidat tidak ditemukan.' }) });
+    mockFetch.mockResolvedValue(
+      new Response(JSON.stringify({ success: false, error: 'Kandidat tidak ditemukan.' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
     const { container } = render(
       <EditCandidateModal candidate={mockCandidate} isOpen={true} onClose={() => {}} />
     );

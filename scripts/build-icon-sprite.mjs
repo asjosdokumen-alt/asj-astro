@@ -38,6 +38,8 @@
  *   5. `href="#fas-foo"`     — raw <use> written by hand inside HTML strings
  *      (RirekishoBuilder builds markup with innerHTML, where no component
  *      can be used, so its icons are literal <svg><use href="#…"/>),
+ *   6. `icon="foo"`          — a wrapper component that forwards the name to
+ *      <Icon>; the literal sits on the call site, not next to the <Icon>.
  *
  * USAGE:  npm run icons
  */
@@ -160,6 +162,14 @@ for (const file of walk(SRC)) {
   for (const m of text.matchAll(/href=(?:\\{1,2})?["'`]#fa[bsrl]-([a-z0-9][a-z0-9-]*)/g)) {
     add(m[1]);
   }
+
+  // 6. `icon="foo"` — a wrapper component that forwards the name to <Icon>,
+  //    e.g. PemberkasanModal's `Panel({ icon })` → `<Icon name={icon} />`.
+  //    The literal lives on the CALLER, so rules 1-5 never see it and the
+  //    glyph was silently dropped: `plane-departure` vanished from the sprite
+  //    and rendered as a blank space. Guarded to attributes whose name is
+  //    `icon`, which is the convention these wrappers use.
+  for (const m of text.matchAll(/\bicon=["']([a-z0-9][a-z0-9-]*)["']/g)) add(m[1]);
 }
 
 for (const name of EXTRA_NAMES) add(name);

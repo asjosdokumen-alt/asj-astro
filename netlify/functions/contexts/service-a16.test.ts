@@ -29,7 +29,7 @@ import { signToken } from '../_lib/session';
 import { AI_ACTIONS } from '../surfaces/ai';
 import {
   isVipCatatan,
-  unwrapInterviewPayload,
+  unwrapPayloadArgs,
   lastHistory,
 } from '../_lib/ai/interview-shared';
 
@@ -69,18 +69,18 @@ describe('A16 — interview-shared pure helpers (VIP gate + args unwrap)', () =>
     expect(isVipCatatan(undefined)).toBe(false);
     expect(isVipCatatan(null)).toBe(false);
   });
-  it('unwrapInterviewPayload: args ARRAY [obj] → obj (legacy GAS object still accepted)', () => {
-    expect(unwrapInterviewPayload([{ wa: '1', history: [] }])).toEqual({
+  it('unwrapPayloadArgs: args ARRAY [obj] → obj (legacy GAS object still accepted)', () => {
+    expect(unwrapPayloadArgs([{ wa: '1', history: [] }])).toEqual({
       wa: '1',
       history: [],
     });
-    expect(unwrapInterviewPayload({ wa: '1' })).toEqual({ wa: '1' });
+    expect(unwrapPayloadArgs({ wa: '1' })).toEqual({ wa: '1' });
   });
-  it('unwrapInterviewPayload: empty / non-object shapes → {}', () => {
-    expect(unwrapInterviewPayload([])).toEqual({});
-    expect(unwrapInterviewPayload([null])).toEqual({});
-    expect(unwrapInterviewPayload(undefined)).toEqual({});
-    expect(unwrapInterviewPayload('x')).toEqual({});
+  it('unwrapPayloadArgs: empty / non-object shapes → {}', () => {
+    expect(unwrapPayloadArgs([])).toEqual({});
+    expect(unwrapPayloadArgs([null])).toEqual({});
+    expect(unwrapPayloadArgs(undefined)).toEqual({});
+    expect(unwrapPayloadArgs('x')).toEqual({});
   });
   it('lastHistory caps at 20 (parity legacy sendInterviewMessage slice(-20))', () => {
     const many = Array.from({ length: 25 }, (_, i) => ({ role: 'user', content: 'm' + i }));

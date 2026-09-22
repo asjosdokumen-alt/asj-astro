@@ -50,7 +50,14 @@ describe('specifier resolution (full repo)', () => {
   it('every contexts/*/index.ts barrel resolves its relative imports to files', () => {
     const r = built();
     const barrels = r.files.filter((f) => /^netlify\/functions\/contexts\/[^/]+\/index\.ts$/.test(f.path));
-    expect(barrels).toHaveLength(14);
+    // 14 -> 15 (2026-09-21): +1 — netlify/functions/contexts/contact/index.ts.
+    // The contact context is the 15th, so every counter keyed on "how many
+    // context barrels exist" moves: here, exportTables.test.ts's identical
+    // assertion, and the const-catalog counts in build.test.ts. A new context
+    // is therefore never a one-line change, and the number below is the
+    // independently MEASURED one (the probe listed the 15 paths and this was
+    // the count of that list), not 14 + 1.
+    expect(barrels).toHaveLength(15);
     for (const b of barrels) {
       const edges = r.graph.outgoing.get(b.idx) ?? [];
       expect(edges.length).toBeGreaterThan(0);

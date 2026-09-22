@@ -55,25 +55,53 @@ RM_RETRY_LIB="$(dirname "${BASH_SOURCE[0]}")/lib/rm-retry.sh"
 GATE=scripts/ci/run-batteries.mjs
 PROBE=scripts/ci/check-md-tables.mutations.sh
 MANIFEST=scripts/ci/review-manifest.json
-BAK=.tmp-runbat
+# ── Scratch lives OUTSIDE the repo, and that is load-bearing ────────────────
+# `sweepScratch()` deletes `.tmp-*` from the repo ROOT. R7b deliberately runs a
+# child that is NOT nested — only a top-level child runs the sweep R7b asserts —
+# so that child sweeps the root, and it once swept THIS battery's own backup
+# directory with it:
+#
+#     cp: cannot stat '.tmp-runbat/probe.sh': No such file or directory
+#
+# followed by RESTORE FAILED and an unreadable sweep message. The runner already
+# solves this for its own scratch by putting RM_RETRY_LOG outside the repository;
+# this does the same, so a top-level child cannot reach it, because
+# `sweepScratch()` only ever scans ROOT. Bash-only paths, so the documented
+# "/tmp in bash is not /tmp in node" trap does not apply here.
+BAK="$(mktemp -d "${TMPDIR:-/tmp}/asj-runbat.XXXXXX")" || {
+  echo "FATAL — could not create a scratch directory outside the repo"; exit 2;
+}
 fail=0
 results=()
 
 # ── Tell every runner this battery starts that it is a NESTED child ─────────
 # This battery drives the runner it tests, so each `node "$GATE"` below is a
-# child of a mutation run. Without this token a child does not know it is
-# nested and will sweep `.tmp-runbat/` — THIS battery's own backup — on its way
-# in, deleting the fixtures this battery needs to restore itself:
+# child of a mutation run, and a nested child correctly treats the tree it was
+# handed as its parent's: it neither sweeps scratch nor sweeps fixtures. Both
+# sweeps are the OUTERMOST run's business.
+#
+# The incident that made this load-bearing: without the token a child did not
+# know it was nested and swept THIS battery's own backup on its way in, deleting
+# the fixtures the battery needs to restore itself —
 #
 #     + cp check-md-tables.mutations.sh .tmp-runbat/probe.sh
 #     + node scripts/ci/run-batteries.mjs --only=verify:md     <- swept it
 #     cp: cannot stat '.tmp-runbat/probe.sh': No such file or directory
 #
-# The damage was five SURVIVED lines, i.e. "the runner cannot detect a bad
+# — and the damage was five SURVIVED lines, i.e. "the runner cannot detect a bad
 # battery", produced by a runner whose only problem was deleting its tester's
-# fixtures. Exported here rather than at each call site so a new call cannot
-# forget it. When the runner spawns this battery it sets the same token itself;
-# both paths must agree, which is why the name is spelled identically.
+# fixtures.
+#
+# The scratch now lives outside the repository (see BAK above), so THAT
+# particular file is out of reach. The token is kept because the semantics it
+# encodes are still the right ones, and because R7b depends on them being the
+# DEFAULT: the case is only meaningful because it has to opt OUT (`env -u`) to
+# get a top-level child. A run that stopped exporting this would leave R7b
+# asserting something it never arranged.
+#
+# Exported here rather than at each call site so a new call cannot forget it.
+# When the runner spawns this battery it sets the same token itself; both paths
+# must agree, which is why the name is spelled identically.
 export BATTERY_RUN_NESTED=1
 
 # ── RULE 1: refuse to interpret mutations against a red baseline ────────────
@@ -331,8 +359,32 @@ rm_retry "$LEAKPATH"
 # IS debris from an earlier run by the time the child looks. Asserting the second
 # message here would fail forever.
 printf "x" > "$LEAKPATH"
-LEAKOUT=.tmp-runbat/leakout.txt
-env -u BATTERY_RUN_NESTED node "$GATE" --only=verify:md >"$LEAKOUT" 2>&1
+LEAKOUT="$BAK/leakout.txt"
+# BATTERY_RUN_LOCK: this child MUST be top-level (a nested run skips the sweep
+# this case asserts), and a top-level child takes the run lock. When the battery
+# is run BY the runner — which is what CI does — the parent already holds that
+# lock, so the child would refuse with exit 2, never sweep, and R7b would report
+# SURVIVED against a sweep that works. Its own lock file removes that collision.
+#
+# Repo-RELATIVE on purpose: the path crosses into node, and node reads an MSYS
+# `/tmp/...` as `C:\tmp\...`. Repo-relative is the same string for both.
+#
+# ── R7c · THE DECOY IS THE POINT OF THIS BLOCK ─────────────────────────────
+# Redirecting the child's lock removes the collision, and it also means the
+# child is free to sweep the repo root — including the lock of the run that
+# STARTED it. Exempting only the child's own lock left that ancestor lock
+# deleted, which disarms the guard that stops two runs sharing the tree.
+#
+# So a decoy stands in for that ancestor lock, planted before the child starts.
+# It is swept by nothing but the bug this case exists for: the child's LOCK is
+# `.tmp-r7b-child.lock`, so `heldByOther()` never reads the decoy, and its name
+# is `.tmp-*`, so `sweepLeaks()` cannot see it either. Measured 2026-09-18
+# against the one-name exemption: the decoy came back GONE.
+DECOY=.tmp-ancestor-run.lock
+printf '{"pid":0,"started":"decoy"}' > "$DECOY"
+env -u BATTERY_RUN_NESTED BATTERY_RUN_LOCK=".tmp-r7b-child.lock" \
+  node "$GATE" --only=verify:md >"$LEAKOUT" 2>&1
+R7B_RC=$?
 if [ -f "$LEAKPATH" ]; then
   echo "SURVIVED   an inherited fixture was NOT swept before the battery   <-- the next battery inherits a dirty tree"
   results+=("SURVIVED R7b")
@@ -346,6 +398,25 @@ else
   results+=("SURVIVED R7b")
   fail=1
 fi
+
+# ── R7c · the child must not sweep the lock of the run that started it ──────
+# Guarded on the child's exit code: a child that refused to run (exit 2, the
+# collision this fix removed) would leave the decoy in place and score a KILLED
+# it has not earned. An unevidenced case is reported as UNEXPECTED, never as a
+# pass — that distinction is the whole reason this suite reports four verdicts.
+if [ "$R7B_RC" -ne 0 ]; then
+  echo "UNEXPECTED the R7b child did not run (exit=$R7B_RC) — R7c has no evidence  R7c"
+  results+=("UNEXPECTED R7c")
+  fail=1
+elif [ -f "$DECOY" ]; then
+  echo "KILLED     the ancestor's lock survived the child's sweep  R7c"
+  results+=("KILLED R7c")
+else
+  echo "SURVIVED   the child swept the lock of the run that started it  <-- the guard against two runs sharing a tree is disarmed"
+  results+=("SURVIVED R7c")
+  fail=1
+fi
+rm_retry "$DECOY"
 
 # ── R7a · a leak produced DURING a battery is attributed to it ──────────────
 # ── WHY THE FIRST TWO ATTEMPTS AT THIS CASE COULD NEVER WORK ────────────────
@@ -426,15 +497,28 @@ rm_retry "$LEAKPATH"
 # hiccup as a defect in a gate.
 R8LOG=.tmp-r8-retry.log
 R8VICTIM=.tmp-r8-victim.txt
-rm_retry "$R8LOG" "$R8VICTIM"
+R8COUNT=.tmp-r8-count
+rm_retry "$R8LOG" "$R8VICTIM" "$R8COUNT"
 
 r8_retry_with_failures() {
-  local fails="$1" target="$2" calls=0 rc=0
-  # Global on purpose: `rm_retry` resolves `rm` through this shell, so the shim
-  # is what it calls, and `command rm` is what escapes the shim.
+  local fails="$1" target="$2" rc=0
+  # ── THE COUNTER MUST LIVE IN A FILE, NOT IN A VARIABLE ────────────────────
+  # `rm_retry` captures stderr with `errmsg="$(rm -rf -- "$@" 2>&1)"`, and that
+  # runs the command in a SUBSHELL. A shell variable incremented inside the
+  # shadow is therefore incremented in a COPY, discarded when the subshell
+  # exits, and every attempt sees attempt 1 all over again. The shadow then
+  # fails forever, no matter how small `fails` is.
+  #
+  # Measured 2026-09-18, reproduced in isolation and matching CI exactly:
+  # with a variable counter, R8a reported `rc=1` (never retried) and R8b found
+  # the victim already gone. Both SURVIVED against a helper that was working.
+  # A FILE survives the subshell, which is what makes the injection real.
+  : > "$R8COUNT"
   rm() {
-    calls=$((calls + 1))
-    if [ "$calls" -le "$fails" ]; then
+    local n
+    n=$(wc -l < "$R8COUNT" 2>/dev/null || echo 0)
+    printf 'attempt\n' >> "$R8COUNT"
+    if [ "$((n + 1))" -le "$fails" ]; then
       return 1
     fi
     command rm "$@"
@@ -460,10 +544,22 @@ fi
 rm_retry "$R8VICTIM"
 
 # R8b · a delete that never succeeds must still FAIL, loudly, with the reason.
+#
+# ── THE VICTIM'S PRESENCE CANNOT BE ASSERTED, AND ASSERTING IT WAS THE BUG ───
+# `rm_retry`'s errno probe is a SECOND delete route: it calls `fs.rmSync` from
+# node, and the helper documents that outcome as "deleted-by-probe", i.e. a
+# retry by a different route. So the path is legitimately gone after a give-up
+# even though the shell `rm` never succeeded once. Asserting `[ -e ]` here
+# therefore fails against a correctly working helper.
+#
+# Measured 2026-09-18: with `[ -e "$R8VICTIM" ]` in the condition, R8b reported
+# SURVIVED in CI while the helper was behaving exactly as designed. The claim
+# that actually matters is the one the header names: rm_retry must GIVE UP,
+# return NON-ZERO, and say so, so no caller can mistake it for success.
 touch "$R8VICTIM"
 RM_RETRY_MAX=3 RM_RETRY_SLEEP=0 RM_RETRY_LOG="$R8LOG" r8_retry_with_failures 99 "$R8VICTIM"
 rc=$?
-if [ "$rc" -ne 0 ] && [ -e "$R8VICTIM" ] && grep -q 'GIVING UP' "$R8LOG"; then
+if [ "$rc" -ne 0 ] && grep -q 'GIVING UP' "$R8LOG"; then
   echo "KILLED     a delete that never succeeds still fails  R8b"
   results+=("KILLED R8b")
 else
@@ -471,7 +567,7 @@ else
   results+=("SURVIVED R8b")
   fail=1
 fi
-rm_retry "$R8VICTIM" "$R8LOG"
+rm_retry "$R8VICTIM" "$R8LOG" "$R8COUNT"
 
 # ── RULE 3: byte-identical restore, and green again ────────────────────────
 echo

@@ -26,12 +26,18 @@ const I18N_TS = join(ROOT, 'src', 'store', 'i18n.ts');
 const I18N_JP_TS = join(ROOT, 'src', 'store', 'i18n-jp.ts');
 
 // Known top-level namespaces — used only for the data-driven literal scan.
+// `profile` was added 2026-09-19 with the company-profile landing page. Adding a
+// namespace is what makes the scan validate its keys: before it was listed here,
+// a literal like `profile.hero_title` was invisible to `litRe` and could have
+// shipped missing from one dictionary with this gate still green. A namespace
+// must not be listed before its keys exist — that would arm the gate for the
+// empty set and prove nothing.
 const NS = [
   'header', 'ui', 'public', 'button', 'form', 'siswa', 'apply', 'master',
   'ai_cv', 'share', 'admin', 'dash', 'candidate', 'option', 'status',
   'login', 'toast', 'error', 'table', 'landing', 'cvmini', 'esign',
   'changepass', 'doc', 'toolbar', 'bottomnav', 'cv', 'ai', 'input', 'db',
-  'pelamar', 'wa', 'footer',
+  'pelamar', 'wa', 'footer', 'profile',
 ].join('|');
 
 /**

@@ -43,8 +43,29 @@ vi.mock('../../lib/cloudinary', () => ({
 vi.mock('../../lib/apiClient', () => ({ apiClient: vi.fn() }));
 
 const fetchMock = vi.fn();
-function jsonRes(body: unknown) {
-  return { ok: true, status: 200, json: async () => body };
+
+/**
+ * Router `apiClient` per action.
+ *
+ * Komponen ini tidak lagi memanggil `fetch` sendiri, jadi tes harus memberi tahu
+ * KLIEN apa yang harus dijawab. Nilai berupa `Error` akan DILEMPAR — itu cara
+ * menyatakan kegagalan non-2xx (mis. `AI_UNAVAILABLE` 503), yang kini sampai ke
+ * pemanggil sebagai `ApiError` dengan `.code` dan `.status`.
+ */
+function routeApi(map: Record<string, unknown>) {
+  vi.mocked(apiClient).mockImplementation(async (action: string) => {
+    const v = action in map ? map[action] : { success: true };
+    if (v instanceof Error) throw v;
+    return v as never;
+  });
+}
+
+/** ApiError tiruan: yang penting `.code` dan `.status`, seperti klien sungguhan. */
+function apiErr(message: string, code: string, status: number) {
+  const e = new Error(message) as Error & { code?: string; status?: number };
+  e.code = code;
+  e.status = status;
+  return e;
 }
 
 const GUEST: AuthState = { role: 'guest', name: '', wa: '', sessionToken: '', refreshToken: '', isLoggedIn: false, lastChecked: 0 };
@@ -101,25 +122,37 @@ describe('AiCvForm (C03) — login gate & simpan tanpa sesi', () => {
   });
 
   it('login lewat gate → gate tertutup, CV hp terisi, SIMPAN DB jalan dengan sesi baru', async () => {
-    fetchMock.mockResolvedValue(jsonRes({ sessionToken: 'tok123', user: 'Budi' }));
+    // Per-action: `mockResolvedValue` untuk SEMUA action akan membuat
+    // `submitDataAsj` ikut menjawab {sessionToken,user} alih-alih {success:true}.
+    routeApi({ loginKandidat: { sessionToken: 'tok123', user: 'Budi' } });
     render(<AiCvForm />);
     await fireEvent.input(screen.getByPlaceholderText('08xxxxxxxxxx'), { target: { value: '081234567890' } });
     await fireEvent.input(screen.getByPlaceholderText('••••••••'), { target: { value: 'rahasia123' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Masuk' }));
 
     await waitFor(() => expect(screen.queryByText('Verifikasi Akun Kandidat')).toBeNull());
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toBe('/.netlify/functions/auth');
-    const body = JSON.parse(String(init.body));
-    expect(body.action).toBe('loginKandidat');
-    expect(body.payload[0]).toEqual({ wa: '081234567890', password: 'rahasia123' });
+    // KONTRAK WIRE: `loginKandidat` divalidasi dengan z.tuple([waField,
+    // passwordField]) di kernel/validate.ts — payload-nya DUA PRIMITIF, bukan
+    // satu objek. Bentuk lama `[{wa,password}]` ditolak zod dengan "Array must
+    // contain at least 2 element(s)", jadi gate ini selalu gagal dan user selalu
+    // melihat "Password salah atau akun tidak ditemukan." LoginModal — yang
+    // memakai [wa, password] — memang jalan; hanya kedua gate ini yang menyimpang.
+    const login = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'loginKandidat');
+    if (!login) throw new Error('loginKandidat tidak dipanggil');
+    expect(login[1]).toEqual(['081234567890', 'rahasia123']);
+    // Gerbang login TIDAK boleh menuntut sesi (itu justru yang sedang dibuat) dan
+    // tidak boleh logout+redirect global saat gagal.
+    expect(login[2]).toEqual({ requireAuth: false, onSessionInvalid: 'throw', silent: true });
+    // Tidak ada lagi fetch mentah dari komponen ini.
+    expect(fetchMock).not.toHaveBeenCalled();
 
     await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
-    await waitFor(() => expect(apiClient).toHaveBeenCalledTimes(1));
-    const call0 = vi.mocked(apiClient).mock.calls[0]!;
-    expect(call0[0]).toBe('submitDataAsj');
-    expect((call0[1] as any)[0].context.wa).toBe('081234567890');
+    await waitFor(() =>
+      expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(true),
+    );
+    const save = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'submitDataAsj')!;
+    const savedArg = (save[1] as Array<{ context: { wa: string } }>)[0];
+    expect(savedArg.context.wa).toBe('081234567890');
     expect(showToast).toHaveBeenCalledWith('toast.saved', 'success');
   });
 
@@ -146,38 +179,58 @@ describe('AiCvForm (C03) — login gate & simpan tanpa sesi', () => {
     expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(false);
   });
 
-  it('chat membawa token sesi (Authorization + body.sessionToken) — backend processAIChat butuh sesi', async () => {
+  it('chat lewat apiClient: payload currentData + giliran user ada DI DALAM history', async () => {
     authStore.set({ ...KANDIDAT });
-    fetchMock.mockResolvedValue(jsonRes({ reply: 'Halo Budi!', cvData: {} }));
+    vi.mocked(apiClient).mockResolvedValue({ reply: 'Halo Budi!', data: {} } as never);
     render(<AiCvForm />);
     const input = screen.getByPlaceholderText('form.placeholder_chat');
     await fireEvent.input(input, { target: { value: 'Perkenalkan diriku' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toBe('/.netlify/functions/ai-chat');
-    expect(String(init.headers['Authorization'])).toBe('Bearer tok123');
-    const body = JSON.parse(String(init.body));
-    expect(body.action).toBe('processAIChat');
-    expect(body.sessionToken).toBe('tok123');
+    await waitFor(() =>
+      expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'processAIChat')).toBe(true),
+    );
+    const call = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'processAIChat')!;
+    // `requireAuth` dibiarkan default (true): backend processAIChat butuh sesi,
+    // dan gate login di komponen yang menjamin sesinya ada.
+    expect(call[2]).toEqual({ onSessionInvalid: 'throw', silent: true });
+    const arg = (
+      call[1] as Array<{
+        history: Array<{ role: string; content: string }>;
+        currentData: unknown;
+      }>
+    )[0];
+    // KONTRAK PAYLOAD: handler membaca `history` dan `currentData`. Kunci `cvData`
+    // tidak pernah dibaca siapa pun, jadi blok "DATA KANDIDAT SAAT INI" selalu
+    // kosong dan Jeklin menanyakan ulang data yang sudah ada di database.
+    expect(arg.currentData).toBeDefined();
+    expect(arg).not.toHaveProperty('cvData');
+    // Handler juga TIDAK membaca field `message` (hanya flow/history/lang/
+    // currentData), jadi giliran user harus ada DI DALAM history — kalau tidak,
+    // model tidak pernah melihat apa yang baru saja diketik user.
+    const history = arg.history;
+    expect(history[history.length - 1]).toEqual({ role: 'user', content: 'Perkenalkan diriku' });
+    // Token kini disuntik klien, bukan komponen — tidak ada fetch mentah lagi.
+    expect(fetchMock).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.getByText('Halo Budi!')).toBeTruthy());
   });
 
   it('upload gagal → toast "Gagal upload <key>: <msg>" EKSAK + TANPA submitDataAsj (error-return contract dedup)', async () => {
-    fetchMock.mockResolvedValue(jsonRes({ sessionToken: 'tok123', user: 'Budi' }));
+    routeApi({ loginKandidat: { sessionToken: 'tok123', user: 'Budi' } });
     render(<AiCvForm />);
     await fireEvent.input(screen.getByPlaceholderText('08xxxxxxxxxx'), { target: { value: '081234567890' } });
     await fireEvent.input(screen.getByPlaceholderText('••••••••'), { target: { value: 'rahasia123' } });
     await fireEvent.click(screen.getByRole('button', { name: 'Masuk' }));
     await waitFor(() => expect(screen.queryByText('Verifikasi Akun Kandidat')).toBeNull());
     // Bentuk nyata error uploadMany: Error + key file (UploadCollectionError).
-    const uploadErr = new Error('Upload Cloudinary gagal (HTTP 500): boom') as any;
+    const uploadErr = new Error('Upload Cloudinary gagal (HTTP 500): boom') as Error & { key?: string };
     uploadErr.key = 'foto';
     vi.mocked(uploadMany).mockRejectedValueOnce(uploadErr);
     await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
     await waitFor(() => expect(showToast).toHaveBeenCalledWith('Gagal upload foto: Upload Cloudinary gagal (HTTP 500): boom', 'error'));
-    expect(apiClient).not.toHaveBeenCalled(); // return path: submitDataAsj tidak pernah dipanggil
+    // return path: submitDataAsj tidak pernah dipanggil. Login SENDIRI memang
+    // lewat apiClient, jadi yang diperiksa adalah action-nya, bukan jumlah panggilan.
+    expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(false);
   });
 });
 
@@ -213,7 +266,9 @@ describe('AiCvForm — status paspor/SIM (paritas ai_form.html:150-151)', () => 
   /** Buka gate login supaya cv.hp terisi (tanpa hp, saveToDatabase berhenti). */
   async function loginViaGate() {
     authStore.set({ ...GUEST }); // gate hanya muncul tanpa sesi
-    fetchMock.mockResolvedValue(jsonRes({ sessionToken: 'tok123', user: 'Budi' }));
+    // Login kini lewat apiClient. Token WAJIB non-kosong: saveToDatabase menolak
+    // jalan tanpa `sessionToken`, jadi gate tidak akan benar-benar "lewat".
+    routeApi({ loginKandidat: { sessionToken: 'tok123', user: 'Budi' } });
     render(<AiCvForm />);
     await fireEvent.input(screen.getByPlaceholderText('08xxxxxxxxxx'), { target: { value: '081234567890' } });
     await fireEvent.input(screen.getByPlaceholderText('••••••••'), { target: { value: 'rahasia123' } });
@@ -222,7 +277,13 @@ describe('AiCvForm — status paspor/SIM (paritas ai_form.html:150-151)', () => 
   }
 
   const statusValues = (sel: HTMLSelectElement) => [...sel.options].map((o) => o.value);
-  const savedPayload = () => (vi.mocked(apiClient).mock.calls[0]![1] as any)[0];
+  /** Payload `submitDataAsj`. Dicari per-action: sejak login juga lewat
+   *  apiClient, `calls[0]` bukan lagi panggilan simpan. */
+  const savedPayload = (): { identitas: Record<string, string> } => {
+    const call = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'submitDataAsj');
+    if (!call) throw new Error('submitDataAsj tidak dipanggil');
+    return (call[1] as Array<{ identitas: Record<string, string> }>)[0];
+  };
 
   it('merender select status paspor & SIM dengan 3 opsi (— / ADA / TIDAK ADA), label lewat t()', () => {
     render(<AiCvForm />);
@@ -264,7 +325,9 @@ describe('AiCvForm — status paspor/SIM (paritas ai_form.html:150-151)', () => 
     await fireEvent.input(screen.getByPlaceholderText('form.mf_ph_no_sim'), { target: { value: 'SIM-99' } });
 
     await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
-    await waitFor(() => expect(apiClient).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(true),
+    );
     const identitas = savedPayload().identitas;
     expect(identitas.paspor_status).toBe('TIDAK ADA');
     expect(identitas.paspor).toBe('');
@@ -277,7 +340,9 @@ describe('AiCvForm — status paspor/SIM (paritas ai_form.html:150-151)', () => 
     await fireEvent.input(screen.getByPlaceholderText('form.mf_ph_no_paspor'), { target: { value: 'P777' } });
 
     await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
-    await waitFor(() => expect(apiClient).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(true),
+    );
     const identitas = savedPayload().identitas;
     expect(identitas.paspor_status).toBe('ADA');
     // Deviasi yang disengaja: legacy akan menulis 'TIDAK ADA' di sini dan
@@ -287,7 +352,19 @@ describe('AiCvForm — status paspor/SIM (paritas ai_form.html:150-151)', () => 
   });
 
   it('nomor dari AI TIDAK dihapus diam-diam (regresi syncSimPasporVisibility legacy)', async () => {
-    fetchMock.mockResolvedValue(jsonRes({ reply: 'ok', cvData: { paspor: 'X1234567', sim: 'SIM-A' } }));
+    // KONTRAK RESPONS: `handleProcessAIChat` mengembalikan data terekstraksi di
+    // kunci `data` (lihat `return { reply, data: aiData }` di _lib/ai/chat.ts),
+    // dan itu juga kunci yang dibaca SiswaBaruForm (`res.data`). Mock lama memakai
+    // `cvData`, jadi tes ini hijau terhadap bentuk yang TIDAK PERNAH dikirim
+    // server — sementara di produksi field-nya tetap kosong.
+    //
+    // Bentuk NESTED — itu yang benar-benar dikirim server. Prompt di
+    // _lib/ai/chat.ts meminta AI menjawab {"identitas": {…}, "fisik": {…}, …},
+    // dan handler mengembalikan objek itu apa adanya di `data`. Mock lama juga
+    // memakai kunci FLAT, yang tidak pernah dihasilkan siapa pun; tanpa
+    // mapAiCvDraft, objek bersarang yang ditebar ke state flat tidak mengisi satu
+    // kolom pun.
+    routeApi({ processAIChat: { reply: 'ok', data: { identitas: { paspor: 'X1234567', sim: 'SIM-A' } } } });
     render(<AiCvForm />);
     const chat = screen.getByPlaceholderText('form.placeholder_chat');
     await fireEvent.input(chat, { target: { value: 'isi paspor' } });
@@ -443,7 +520,11 @@ describe('AiCvForm — pesan penolakan server (VIP locked)', () => {
   }
 
   it('{ success:false, error } → teks server tampil, BUKAN "Jeklin sibuk"', async () => {
-    fetchMock.mockResolvedValue(jsonRes({ success: false, error: LOCKED }));
+    // Server menjawab **200** dengan {success:false, error}: `outcomeStatusCode`
+    // hanya memetakan `code` (tidak ada) dan `message` (tidak ada — fieldnya
+    // `error`), jadi statusnya tetap 200 dan apiClient TIDAK melempar. Jalur ini
+    // karenanya masih lewat `data.error`.
+    routeApi({ processAIChat: { success: false, error: LOCKED } });
     render(<AiCvForm />);
     await send('halo');
 
@@ -451,16 +532,20 @@ describe('AiCvForm — pesan penolakan server (VIP locked)', () => {
     expect(screen.queryByText(/Jeklin lagi sibuk/i)).toBeNull();
   });
 
-  it('AI_UNAVAILABLE (punya `reply` ramah + `error`) → tetap pakai `reply`', async () => {
-    fetchMock.mockResolvedValue(
-      jsonRes({ success: false, code: 'AI_UNAVAILABLE', reply: 'Jeklin sedang istirahat.', error: 'quota' }),
-    );
+  it('AI_UNAVAILABLE (503 + code) → copy ramah server tampil, BUKAN "Jeklin sibuk"', async () => {
+    // Bentuk nyata: `aiReplyFailure` mengisi `reply` DAN `error` dengan string
+    // yang SAMA (keduanya `f.error`), plus `code` — dan statusnya 503, jadi
+    // apiClient MELEMPAR. Copy ramah itu sampai ke pemanggil lewat
+    // ApiError.message, dan `code` lewat ApiError.code: itulah yang menyalakan
+    // AiUnavailableBanner. Mock lama memakai `reply`/`error` yang BERBEDA, yaitu
+    // kombinasi yang tidak pernah dihasilkan server.
+    const FRIENDLY = 'Asisten AI sedang tidak tersedia. Coba lagi beberapa saat ya!';
+    routeApi({ processAIChat: apiErr(FRIENDLY, 'AI_UNAVAILABLE', 503) });
     render(<AiCvForm />);
     await send('halo');
 
-    await waitFor(() => expect(screen.getByText('Jeklin sedang istirahat.')).toBeTruthy());
-    // Banner outage tetap menampilkan alasan teknis (`error`) — perilaku §6.5
-    // yang sudah ada; yang diuji di sini hanya prioritas copy di CHAT.
+    // Muncul di chat DAN di banner — karena itu `getAllByText`, bukan `getByText`.
+    await waitFor(() => expect(screen.getAllByText(FRIENDLY).length).toBeGreaterThan(0));
     expect(screen.queryByText(/Jeklin lagi sibuk/i)).toBeNull();
   });
 });
@@ -554,7 +639,7 @@ describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
 });
 
 // ==========================================
-// TESTS: datalist wiring (2026-09-14)
+// TESTS: datalist wiring (2026-09-14, revised 2026-09-19)
 //
 // A `<datalist id="x">` with no `<Field list="x">` is dead markup: it renders,
 // it looks correct in a diff, and it gives the user nothing. That is exactly
@@ -567,6 +652,21 @@ describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
 // A DOM test cannot catch this: an orphan datalist is invisible to queries —
 // there is no element to assert against. So this check reads the source and
 // asserts the referenced and defined sets match exactly.
+//
+// REVISION 2026-09-19: the count floor dropped from >5 to >2 on purpose. Four
+// datalists (gender/agama/goldar/status-nikah) were the WRONG control for their
+// job: the fields were `readonly`, so a datalist could only suggest a spelling
+// to a box the user cannot type in — it offered nothing. They are now
+// `<PairSelect>` dropdowns over `aiCvPairs.ts`, which is strictly better: the
+// value is constrained, and choosing it fills the matching JP column. The three
+// remaining datalists (JFT / SSW / pekerjaan) are on genuinely free-text fields
+// that want autocomplete rather than an enum, which is what a datalist is for.
+//
+// The floor is 3, not 0, because the assertion below must not pass vacuously if
+// the regexes stop matching. `ai_pekerjaan_options` is now referenced for real
+// (the job repeater's jabatan field), which is the outcome the original comment
+// asked for: "when the dynamic sections gain real fields, point them at these
+// ids rather than deleting this test."
 // ==========================================
 describe('AiCvForm — datalist wiring (no orphan datalists)', () => {
   // Vitest runs with cwd = repo root (asserted in fcm-server.test.ts), and
@@ -579,8 +679,14 @@ describe('AiCvForm — datalist wiring (no orphan datalists)', () => {
     // Guards the guard: if the regexes stop matching (e.g. the source switches
     // to single quotes or a template literal), both lists go empty and the two
     // assertions below would pass vacuously.
-    expect(defined.length).toBeGreaterThan(5);
-    expect(referenced.length).toBeGreaterThan(5);
+    //
+    // The bound is 1, not 2, and it is deliberately loose. What it has to prove
+    // is that the scan is not silently blind; pinning it to the current count
+    // (JFT + SSW) would make this test fail whenever a field is legitimately
+    // migrated off a datalist — as the occupation fields were, to ComboSelect —
+    // and that failure says nothing about datalist wiring.
+    expect(defined.length).toBeGreaterThan(1);
+    expect(referenced.length).toBeGreaterThan(1);
   });
 
   it('every referenced datalist is defined', () => {
@@ -593,5 +699,430 @@ describe('AiCvForm — datalist wiring (no orphan datalists)', () => {
     // rather than deleting this test.
     const orphan = defined.filter((id) => !referenced.includes(id));
     expect(orphan, 'orphan <datalist> (never referenced)').toEqual([]);
+  });
+});
+
+// ==========================================
+// TESTS: invarian sumber — tidak ada `fetch` mentah yang tersisa
+//
+// Sebuah tes DOM tidak bisa membuktikan konversi ke apiClient: kalau komponen
+// memanggil `fetch` sendiri, mock apiClient tetap hijau dan yang hilang hanya
+// batas waktu 20 s + read cache — persis kerusakan yang tidak terlihat di diff.
+// Karena itu diperiksa dari SUMBER, dan ditegakkan juga saat runtime oleh
+// `expect(fetchMock).not.toHaveBeenCalled()` di tes chat dan tes gate di atas.
+// ==========================================
+describe('AiCvForm — invarian sumber', () => {
+  it('sumbernya tidak memanggil fetch() mentah sama sekali', () => {
+    const src = readFileSync('src/components/forms/AiCvForm.tsx', 'utf8');
+    const offenders = src
+      .split('\n')
+      .map((line, i) => ({ line: line.trim(), n: i + 1 }))
+      .filter(({ line }) => /\bfetch\s*\(/.test(line) && !/^(\/\/|\*|\/\*)/.test(line));
+    expect(offenders).toEqual([]);
+  });
+});
+
+// ==========================================
+// TESTS: edit manual + seksi dinamis + state tombol SIMPAN (2026-09-19)
+//
+// Why these exist
+// ---------------
+// A side-by-side read of legacy `ai_form.html` against this component found
+// four regressions that no existing test could catch, because each one was
+// about something MISSING rather than something wrong:
+//
+//   1. every field was `readonly` — legacy `enableManualPreview()` removed
+//      `readonly` at init, so a candidate could always correct the AI;
+//   2. gender/agama/goldar/status were `readonly` + `datalist`, i.e. a
+//      suggestion attached to a box that cannot be typed in — useless twice
+//      over, where legacy rendered a real paired `<select>`;
+//   3. the pendidikan/pekerjaan/keluarga sections rendered only
+//      "Belum ada data…" with no controls, so education and work history could
+//      not be entered at all — a CV with a height but no school;
+//   4. SIMPAN DB had no `disabled` state, so a slow document upload left the
+//      button live and a second click resent the whole payload.
+//
+// These tests assert the capability directly, because "the field is missing"
+// is invisible to a suite that only checks what the component does render.
+// ==========================================
+describe('AiCvForm — edit manual & seksi dinamis', () => {
+  const WA = '081234567890';
+
+  /**
+   * The payload of the last `submitDataAsj` call.
+   *
+   * Typed to the fields these tests assert rather than `any`, so a rename on the
+   * component side (say `nama_sekolah` → `sekolah`) fails to compile here
+   * instead of silently reading `undefined` and looking like a broken submit.
+   * Deliberately narrow: only the paths under test are declared.
+   */
+  interface SavedPayload {
+    identitas: { gender: string; gender_jp: string };
+    // The period halves are part of the wire contract, not incidental: the
+    // backend stores them in single text columns (`tahun_masuk` etc.) and
+    // `fmtMonthYearJp` renders whichever shape arrives, so a regression that
+    // dropped the month — or invented one — would show up here first.
+    pendidikan: Array<{ nama_sekolah: string; tingkat: string; tahun_masuk?: string; tahun_lulus?: string }>;
+    pekerjaan: Array<{
+      nama_perusahaan: string;
+      jabatan?: string;
+      jabatan_jp?: string;
+      tahun_masuk?: string;
+      tahun_keluar?: string;
+    }>;
+    keluarga: unknown[];
+  }
+
+  function savedPayload(): SavedPayload {
+    const call = vi.mocked(apiClient).mock.calls.find(c => c[0] === 'submitDataAsj');
+    if (!call) throw new Error('submitDataAsj was never called — the save did not run');
+    const args = call[1] as unknown[];
+    return args[0] as SavedPayload;
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    fetchMock.mockReset();
+    vi.mocked(showToast).mockReset();
+    vi.mocked(apiClient).mockReset();
+    vi.mocked(apiClient).mockResolvedValue({ success: true } as never);
+    vi.mocked(uploadMany).mockClear();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it('field identitas BISA diketik — bukan readonly lagi', () => {
+    render(<AiCvForm />);
+    // The regression was `readonly` on every input. Asserting the attribute is
+    // absent is the whole point: a DOM query for a value would pass either way,
+    // because a readonly input still holds and displays its value.
+    const nama = document.getElementById('ai_nama') as HTMLInputElement;
+    expect(nama).toBeTruthy();
+    expect(nama.readOnly).toBe(false);
+
+    fireEvent.input(nama, { target: { value: 'BUDI SANTOSO' } });
+    expect(nama.value).toBe('BUDI SANTOSO');
+  });
+
+  it('mengedit field menandainya dengan border-sky-400 (koreksi manusia terlihat)', () => {
+    render(<AiCvForm />);
+    const nama = document.getElementById('ai_nama') as HTMLInputElement;
+    // Before any edit there is no marker — otherwise every field would look
+    // hand-corrected and the marker would carry no information.
+    expect(nama.className).not.toContain('border-sky-400');
+
+    fireEvent.input(nama, { target: { value: 'BUDI' } });
+    expect(nama.className).toContain('border-sky-400');
+  });
+
+  it('gender memakai <select> berpasangan, dan memilihnya mengisi kolom JP', () => {
+    render(<AiCvForm />);
+    const sel = screen.getByTestId('ai-pair-gender') as HTMLSelectElement;
+    expect(sel.tagName).toBe('SELECT');
+
+    fireEvent.change(sel, { target: { value: 'PEREMPUAN' } });
+    // The JP half is a separate column the employer reads. Choosing the
+    // Indonesian term must fill it, or the two halves disagree on the printout.
+    const jp = document.getElementById('ai_gender_jp') as HTMLInputElement;
+    expect(jp.value).toBe('女性');
+  });
+
+  it('agama & status nikah juga berpasangan (bukan kotak readonly)', () => {
+    render(<AiCvForm />);
+    const agama = screen.getByTestId('ai-pair-agama') as HTMLSelectElement;
+    fireEvent.change(agama, { target: { value: 'ISLAM' } });
+    expect((document.getElementById('ai_agama_jp') as HTMLInputElement).value).toBe('イスラム教');
+
+    const status = screen.getByTestId('ai-pair-status') as HTMLSelectElement;
+    fireEvent.change(status, { target: { value: 'MENIKAH' } });
+    expect((document.getElementById('ai_status_jp') as HTMLInputElement).value).toBe('既婚');
+  });
+
+  it('ukuran sepatu/baju/topi memakai dropdown ukuran JP, bukan teks bebas', () => {
+    render(<AiCvForm />);
+    // "XL" alone is ambiguous on a Japanese form; the dropdown carries the JP
+    // equivalent as the label so the candidate picks the right one.
+    const sepatu = document.getElementById('ai_sepatu') as HTMLSelectElement;
+    expect(sepatu.tagName).toBe('SELECT');
+    const labels = [...sepatu.options].map(o => o.textContent);
+    expect(labels.some(l => l?.includes('JP 26.0cm'))).toBe(true);
+
+    const baju = document.getElementById('ai_baju') as HTMLSelectElement;
+    expect([...baju.options].map(o => o.textContent).some(l => l?.includes('JP LL'))).toBe(true);
+  });
+
+  it('tanggal lahir mengisi umur otomatis (turunan, bukan dua pertanyaan)', () => {
+    render(<AiCvForm />);
+    const tgl = document.getElementById('ai_tgllahir') as HTMLInputElement;
+    const umur = document.getElementById('ai_umur') as HTMLInputElement;
+    expect(umur.value).toBe('');
+
+    fireEvent.input(tgl, { target: { value: '2000-01-15' } });
+    // Computed, not hardcoded: the test must not break every January.
+    const expected = String(new Date().getFullYear() - 2000 - (new Date() < new Date(new Date().getFullYear(), 0, 15) ? 1 : 0));
+    expect(umur.value).toBe(expected);
+  });
+
+  it('tanggal lahir tidak masuk akal TIDAK menulis umur palsu', () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_tgllahir') as HTMLInputElement, { target: { value: '2000-02-31' } });
+    // 31 February rolls over to 2 March in JS Date. Accepting it would show a
+    // plausible age derived from a date the candidate never entered.
+    expect((document.getElementById('ai_umur') as HTMLInputElement).value).toBe('');
+  });
+
+  it('seksi pendidikan punya kontrol nyata, bukan hanya teks "Belum ada data"', () => {
+    render(<AiCvForm />);
+    expect(document.getElementById('ai-edu-tingkat-0')).toBeTruthy();
+    expect(document.getElementById('ai_edu-sekolah-id-0')).toBeTruthy();
+    // Periods are a month+year pair now, so each one is two controls. Asserting
+    // both halves is the point: a single leftover <select> would mean the
+    // MonthYearField swap only half-landed, and the month (or the year) would
+    // be unreachable for that row.
+    expect(document.getElementById('ai-edu-masuk-0-month')).toBeTruthy();
+    expect(document.getElementById('ai-edu-masuk-0-year')).toBeTruthy();
+    expect(document.getElementById('ai-edu-lulus-0-month')).toBeTruthy();
+    expect(document.getElementById('ai-edu-lulus-0-year')).toBeTruthy();
+    expect(document.getElementById('ai-job-masuk-0-month')).toBeTruthy();
+    expect(document.getElementById('ai-job-masuk-0-year')).toBeTruthy();
+    expect(document.getElementById('ai-job-keluar-0-month')).toBeTruthy();
+    expect(document.getElementById('ai-job-keluar-0-year')).toBeTruthy();
+    // And the old single-select ids are gone, so nothing renders both controls.
+    expect(document.getElementById('ai-edu-masuk-0')).toBeNull();
+  });
+
+  it('baris pendidikan bisa ditambah sampai batas legacy (5) lalu berhenti', () => {
+    render(<AiCvForm />);
+    const addBtn = () => screen.getAllByText('ai_cv.row_tambah')[0];
+    for (let i = 1; i < 5; i++) fireEvent.click(addBtn());
+    expect(document.getElementById('ai_edu-sekolah-id-4')).toBeTruthy();
+    // EDU_MAX is a property of the printed template — a sixth row would be
+    // dropped at render time, so the form must not accept one.
+    expect(document.getElementById('ai_edu-sekolah-id-5')).toBeNull();
+  });
+
+  it('pekerjaan dibatasi 3 baris dan keluarga 5, seperti legacy', () => {
+    render(<AiCvForm />);
+    expect(document.getElementById('ai_job-perusahaan-id-0')).toBeTruthy();
+    expect(document.getElementById('ai_fam-nama-0')).toBeTruthy();
+    // The caps differ per section, so asserting one does not prove the others.
+    const src = readFileSync('src/components/forms/AiCvForm.tsx', 'utf8');
+    expect(src).toContain('const JOB_MAX = 3;');
+    expect(src).toContain('const FAM_MAX = 5;');
+    expect(src).toContain('const EDU_MAX = 5;');
+  });
+
+  it('baris dinamis ikut terkirim di payload saat terisi', async () => {
+    render(<AiCvForm />);
+    // `saveToDatabase` refuses to run without a WA (it is the payload's
+    // `context.wa`), so the field has to be filled before the button does
+    // anything — otherwise this test would pass by asserting nothing.
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMA NEGERI 1' } });
+    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA/SMK' } });
+    fireEvent.input(document.getElementById('ai_job-perusahaan-id-0') as HTMLInputElement, { target: { value: 'PT TEST' } });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+    const payload = savedPayload();
+
+    expect(payload.pendidikan).toHaveLength(1);
+    expect(payload.pendidikan[0].nama_sekolah).toBe('SMA NEGERI 1');
+    expect(payload.pendidikan[0].tingkat).toBe('SMA/SMK');
+    expect(payload.pekerjaan).toHaveLength(1);
+    expect(payload.pekerjaan[0].nama_perusahaan).toBe('PT TEST');
+    // Untouched family row is filtered out rather than sent as an empty object,
+    // which would print as a blank line on the CV.
+    expect(payload.keluarga).toHaveLength(0);
+  });
+
+  it('urutan baris pendidikan dipaksa SD → SMP → SMA/SMK, bukan urutan ketik', () => {
+    render(<AiCvForm />);
+    // Fill the first row with SMA, then add a second and fill it with SD. The
+    // candidate typed the most recent school first — the reported complaint —
+    // and the form has to put SD back on top regardless.
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMA NEGERI 1' } });
+    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA/SMK' } });
+
+    fireEvent.click(screen.getAllByText('ai_cv.row_tambah')[0]);
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement, { target: { value: 'SD NEGERI 2' } });
+    fireEvent.change(document.getElementById('ai-edu-tingkat-1') as HTMLSelectElement, { target: { value: 'SD' } });
+
+    // Values, not just select states: the school name has to travel with its
+    // level, or the reorder would silently swap the two schools' attributes.
+    expect((document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement).value).toBe('SD NEGERI 2');
+    expect((document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement).value).toBe('SD');
+    expect((document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement).value).toBe('SMA NEGERI 1');
+    expect((document.getElementById('ai-edu-tingkat-1') as HTMLSelectElement).value).toBe('SMA/SMK');
+  });
+
+  it('tingkat di luar daftar (mis. "SMK" bawaan data lama) tetap ikut terurut benar', () => {
+    render(<AiCvForm />);
+
+    // The form's own list spells this "SMA/SMK"; legacy rows carry bare "SMK".
+    // Two things have to hold for such a row to survive a round-trip:
+    //   - the value stays reachable as an <option> (or the control snaps to the
+    //     blank option), and
+    //   - the value still ranks correctly (or the row sorts to the bottom).
+    // `levelOptions` is asserted directly in cvRows.test.ts; what can only be
+    // tested here is that the form actually routes the level through the
+    // ranker, so a legacy "SMK" row lands below SMP and above nothing.
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMK NEGERI 3' } });
+    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA/SMK' } });
+
+    fireEvent.click(screen.getAllByText('ai_cv.row_tambah')[0]);
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement, { target: { value: 'SMP NEGERI 1' } });
+    fireEvent.change(document.getElementById('ai-edu-tingkat-1') as HTMLSelectElement, { target: { value: 'SMP' } });
+
+    // SMP was entered second and must end up first — the same guarantee as the
+    // SD/SMA case, asserted with the spellings the dropdown does not offer.
+    expect((document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement).value).toBe('SMP NEGERI 1');
+    expect((document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement).value).toBe('SMK NEGERI 3');
+  });
+
+  it('periode sekolah terkirim sebagai "YYYY-MM" saat bulan dipilih', async () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMA NEGERI 1' } });
+    fireEvent.change(document.getElementById('ai-edu-masuk-0-month') as HTMLSelectElement, { target: { value: '02' } });
+    fireEvent.change(document.getElementById('ai-edu-masuk-0-year') as HTMLSelectElement, { target: { value: '2018' } });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+    const payload = savedPayload();
+
+    // The backend stores one text column per period, so this is the whole wire
+    // contract — and fmtMonthYearJp already renders '2018-02' as 2018年2月.
+    expect(payload.pendidikan[0].tahun_masuk).toBe('2018-02');
+  });
+
+  it('periode tahun-saja terkirim tanpa bulan karangan', async () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMP NEGERI 1' } });
+    // Year only — the shape most legacy rows have, and the one a bare
+    // <input type="month"> would have silently erased.
+    fireEvent.change(document.getElementById('ai-edu-lulus-0-year') as HTMLSelectElement, { target: { value: '2021' } });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+    const payload = savedPayload();
+
+    // NOT '2021-01'. A defaulted month would print 2021年1月 — a graduation
+    // date the candidate never gave.
+    expect(payload.pendidikan[0].tahun_lulus).toBe('2021');
+  });
+
+  it('jabatan pakai ComboSelect: mengetik nama resmi mengisi kolom kanji otomatis', async () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    fireEvent.input(document.getElementById('ai_job-perusahaan-id-0') as HTMLInputElement, { target: { value: 'PT TEST' } });
+
+    const combo = document.getElementById('ai_job-jabatan-id-0') as HTMLInputElement;
+    // Type the list's own spelling. The KI is what matters: the kanji column
+    // must receive 工場作業員, NOT the whole bilingual label.
+    fireEvent.input(combo, { target: { value: 'OPERATOR PRODUKSI' } });
+
+    expect((document.getElementById('ai_job-jabatan-jp-0') as HTMLInputElement).value).toBe('工場作業員');
+  });
+
+  it('jabatan di luar daftar tetap terkirim apa adanya, bukan ditolak', async () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    fireEvent.input(document.getElementById('ai_job-perusahaan-id-0') as HTMLInputElement, { target: { value: 'PT TEST' } });
+    // Owner's requirement: typing must not be blocked. A candidate whose job is
+    // not on the list of 100 keeps their own words.
+    fireEvent.input(document.getElementById('ai_job-jabatan-id-0') as HTMLInputElement, { target: { value: 'PENJAGA KEBUN' } });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+    const payload = savedPayload();
+
+    expect(payload.pekerjaan[0].jabatan ?? (payload.pekerjaan[0] as Record<string, unknown>).jabatan_id).toBe('PENJAGA KEBUN');
+  });
+
+  it('gender_jp ikut terkirim supaya kolom kanji tidak hilang saat submit', async () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    fireEvent.change(screen.getByTestId('ai-pair-gender') as HTMLSelectElement, { target: { value: 'LAKI-LAKI' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+    const payload = savedPayload();
+    expect(payload.identitas.gender).toBe('LAKI-LAKI');
+    expect(payload.identitas.gender_jp).toBe('男性');
+  });
+});
+
+describe('AiCvForm — state tombol SIMPAN & guard ekstensi', () => {
+  const WA = '081234567890';
+
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    fetchMock.mockReset();
+    vi.mocked(showToast).mockReset();
+    vi.mocked(apiClient).mockReset();
+    vi.mocked(uploadMany).mockClear();
+    vi.stubGlobal('fetch', fetchMock);
+    // Every action succeeds; `submitDataAsj` is the one that matters here.
+    // `as never` (not `as any`) is the convention `routeApi` above uses: the
+    // mock's return type is the apiClient promise, and `never` satisfies it
+    // without widening the value to `any` and losing the checks around it.
+    vi.mocked(apiClient).mockImplementation(async () => ({ success: true }) as never);
+  });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it('tombol SIMPAN menjadi disabled selama submit (cegah kirim dua kali)', async () => {
+    let release: (v: unknown) => void = () => {};
+    const gate = new Promise((r) => { release = r; });
+    // `submitDataAsj` never settles until `release()` runs, which is what makes
+    // the button's in-flight state observable. Everything else resolves at once
+    // so the form reaches the save path. `as never` matches `routeApi` above.
+    vi.mocked(apiClient).mockImplementation((async (action: string) => {
+      if (action === 'submitDataAsj') return gate;
+      return { success: true };
+    }) as never);
+
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    const btn = screen.getByRole('button', { name: 'button.save_db' }) as HTMLButtonElement;
+
+    await fireEvent.click(btn);
+    // The load-bearing assertion: while the submit is in flight the same
+    // control cannot be pressed again.
+    await waitFor(() => expect(btn.disabled).toBe(true));
+
+    release({ success: true });
+    await waitFor(() => expect(btn.disabled).toBe(false));
+  });
+
+  it('ekstensi salah DITOLAK sebelum ada byte yang diunggah', async () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    const file = new File(['x'], 'sertifikat.docx', { type: 'application/vnd.openxmlformats' });
+    const input = document.getElementById('ai_doc_jft') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [file] });
+    fireEvent.change(input);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+
+    // JFT is a certificate: PDF only. `accept=` is a picker hint that a dialog
+    // or a rename gets past, so the rule is enforced in code.
+    expect(vi.mocked(uploadMany)).not.toHaveBeenCalled();
+    expect(vi.mocked(showToast).mock.calls.some(c => String(c[0]).includes('sertifikat.docx'))).toBe(true);
+    expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(false);
+  });
+
+  it('KTP boleh foto HP (jpg) — aturan per-kelas dokumen, bukan satu aturan', async () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    const file = new File(['x'], 'ktp.jpg', { type: 'image/jpeg' });
+    const input = document.getElementById('ai_doc_ktp') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [file] });
+    fireEvent.change(input);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(uploadMany)).toHaveBeenCalled());
   });
 });

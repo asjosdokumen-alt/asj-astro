@@ -176,9 +176,14 @@ echo "baseline green"
 backup_all
 
 # ── S: the source tree under test ───────────────────────────────────────────
+# S3's anchor is a class LITERAL inside Footer.astro, so it tracks that file:
+# the literal was `mt-12 mb-8` until the landing rewrite removed `mb-8`, and the
+# battery then aborted with `MUTATION DID NOT APPLY (hits=0)` — a correct abort
+# that reads like a gate defect. If the gate ever goes red on this step, check
+# the anchor still resolves before suspecting the code (see `mut` below).
 step "S1  plain literal: shade that does not exist"            kill src/components/Toast.tsx 'class="flex-1"' 'class="flex-1 text-slate-750"'
 step "S2  plain literal: hand-written class nobody defines"    kill src/components/Toast.tsx 'class="flex-1"' 'class="flex-1 rt-rows"'
-step "S3  .astro file is scanned at all"                       kill src/components/Footer.astro 'mt-12 mb-8' 'mt-12 mb-8 text-slate-750'
+step "S3  .astro file is scanned at all"                       kill src/components/Footer.astro 'mt-12 pt-6' 'mt-12 pt-6 text-slate-750'
 step "S4  typo in a colour name (bg-whit/20)"                  kill src/components/Toast.tsx 'hover:bg-white/20' 'hover:bg-whit/20'
 step "S5  ternary branch inside \${...} is expanded"           kill src/components/admin/AdminShareModal.tsx "'accent-pink-500'" "'accent-pink-999'"
 step "S6  a '+' assembled name is expanded"                    kill src/components/admin/TabTambah.tsx "'-500 w-5 h-5'" "'-999 w-5 h-5'"

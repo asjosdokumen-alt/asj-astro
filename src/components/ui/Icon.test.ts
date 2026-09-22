@@ -120,6 +120,24 @@ describe('icon sprite', () => {
     expect([...unknown], `run: npm run icons\n${[...unknown].join('\n')}`).toEqual([]);
   });
 
+  it('resolves icon names passed as an `icon="…"` attribute to a wrapper', () => {
+    // A wrapper component forwards the name — PemberkasanModal's
+    // `Panel({ icon })` renders `<Icon name={icon} />` — so the literal sits on
+    // the CALL SITE and none of the other scans see it. The generator used to
+    // miss it and dropped `plane-departure` from the sprite, which renders as a
+    // blank space with no error. Asserted here so the scan rule cannot be
+    // removed without this failing.
+    const unknown = new Set<string>();
+    for (const file of files) {
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(/\bicon=["']((?:fa[bsrl]-)?[a-z0-9][a-z0-9-]*)["']/g)) {
+        const bare = m[1].replace(/^fa[bsrl]?-/, '');
+        if (bare && !SPRITE_IDS[bare]) unknown.add(`${bare}  (${relative(SRC, file)})`);
+      }
+    }
+    expect([...unknown], `run: npm run icons\n${[...unknown].join('\n')}`).toEqual([]);
+  });
+
   it('maps brand glyphs to the fab- prefix', () => {
     // A brand written without a `brand` prop used to resolve to
     // `#fas-whatsapp`, which is not in the sheet. The manifest prevents that.

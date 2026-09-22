@@ -1,13 +1,31 @@
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 import CandidateProfileModal from './CandidateProfileModal';
+import { authStore, logout } from '../../store/authReactive';
+import { showToast } from '../Toast';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+// `apiClient` memakai `showToast` pada jalur non-silent. Mock ini membuat
+// "fallback senyap" bisa dibuktikan, bukan diasumsikan.
+vi.mock('../Toast', () => ({ showToast: vi.fn() }));
+
 vi.mock('../../store/authReactive', () => ({
-  authStore: { get: () => ({ sessionToken: 'test-token' }) },
+  // `isLoggedIn` is required now that handleSaveCatatan goes through
+  // api.secure(): the client refuses — and with onSessionInvalid:'throw' it
+  // throws — BEFORE it fetches when the store reports no live session. The old
+  // mock returned only sessionToken, which was enough while the component built
+  // its own fetch.
+  //
+  // `get` is a `vi.fn` so a test can report a DEAD session and prove that the
+  // silent fallback read still goes out (it is `requireAuth: false`).
+  authStore: { get: vi.fn(() => ({ isLoggedIn: true, sessionToken: 'test-token' })) },
+  logout: vi.fn(),
 }));
+
+const liveSession = () => ({ isLoggedIn: true, sessionToken: 'test-token' });
 
 vi.mock('../../lib/apiEndpoint', () => ({
   getEndpoint: (key: string) => `/.netlify/functions/${key}`,
@@ -44,6 +62,9 @@ function expectExists(text: string | RegExp) {
 describe('CandidateProfileModal', () => {
   beforeEach(() => {
     mockFetch.mockReset();
+    vi.mocked(authStore.get).mockImplementation(liveSession as never);
+    vi.mocked(logout).mockReset();
+    vi.mocked(showToast).mockReset();
   });
 
   afterEach(() => {
@@ -177,7 +198,12 @@ describe('CandidateProfileModal', () => {
   });
 
   it('falls back to getExistingCandidateJsonByWa when no row is passed', async () => {
+    // `ok: true` WAJIB: pembacaan ini juga lewat apiClient sekarang, dan klien
+    // memeriksa `res.ok` — mock tanpa itu terbaca sebagai kegagalan, klien
+    // melempar, dan modal jatuh ke data fallback (props) alih-alih baris server.
     mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
       json: () => Promise.resolve({ success: true, data: mockCandidate }),
     });
 
@@ -192,9 +218,14 @@ describe('CandidateProfileModal', () => {
           method: 'POST',
           body: JSON.stringify({
             action: 'getExistingCandidateJsonByWa',
-            args: ['6285854256720'],
+            // `payload`, bukan `args` — klien menyeragamkan ke payload dan
+            // backend menerima keduanya (`body.payload || body.args`).
+            payload: ['6285854256720'],
             sessionToken: 'test-token',
           }),
+          // Pembatalan saat unmount DIPERTAHANKAN lewat opsi `signal` klien —
+          // inilah yang dulu dijadikan alasan menunda konversi ini.
+          signal: expect.any(AbortSignal),
         })
       );
     });
@@ -237,6 +268,26 @@ describe('CandidateProfileModal', () => {
       expectExists('REVIN');
       expectExists(/6285854256720/);
     });
+    // `silent: true` — pembacaan latar ini tidak pernah memunculkan toast.
+    // Tanpa itu klien menambah "Network error: Network error" di layar admin.
+    expect(vi.mocked(showToast)).not.toHaveBeenCalled();
+  });
+
+  it('jawaban sessionInvalid → data fallback, TANPA logout/redirect global', async () => {
+    // `onSessionInvalid: 'throw'` (bukan default 'logout'): sesi basi pada satu
+    // pembacaan latar tidak boleh melempar admin keluar dari aplikasi. Yang
+    // lama (fetch mentah) juga hanya menghasilkan `success:false` → fallback.
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ success: false, sessionInvalid: true }),
+    });
+
+    render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
+
+    await waitFor(() => expectExists('REVIN'));
+    expect(screen.queryByText('REVIN ANTHONIO NOVRI ANDHI')).toBeNull();
+    expect(vi.mocked(logout)).not.toHaveBeenCalled();
   });
 
   it('does not fetch when wa is empty and no row is passed', () => {
@@ -246,7 +297,11 @@ describe('CandidateProfileModal', () => {
   });
 
   it('saves catatan internal/external + VIP tag via updateCatatanKandidat', async () => {
-    mockFetch.mockResolvedValue({ json: () => Promise.resolve({ success: true }) });
+    // `ok: true` is REQUIRED now that this call goes through apiClient: the
+    // client checks `res.ok`, which the raw code never did (it only called
+    // .json()). A mock without it reads as a failed response and the client
+    // throws — the assertion below then sees no request body at all.
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ success: true }) });
 
     const changed: string[] = [];
     const onChanged = (e: Event) => changed.push((e as CustomEvent).detail?.wa || '');
@@ -273,7 +328,11 @@ describe('CandidateProfileModal', () => {
           method: 'POST',
           body: JSON.stringify({
             action: 'updateCatatanKandidat',
-            args: [
+            // `payload`, not `args` — the client standardises on payload and the
+            // backend accepts either (`body.payload || body.args` in
+            // _lib/netlify-wrapper.ts). The argument SHAPE below is what matters
+            // and is unchanged.
+            payload: [
               {
                 wa: mockCandidate.wa,
                 // VIP prefix added; raw textarea content kept as-is.
@@ -292,5 +351,35 @@ describe('CandidateProfileModal', () => {
       expect(changed).toContain(mockCandidate.wa);
     });
     window.removeEventListener('candidates-changed', onChanged);
+  });
+
+  // Komentar lama di komponen ini menyatakan konversinya ditunda karena
+  // "`apiClient` belum punya opsi `signal`". Itu keliru (opsi itu ADA, dan doc
+  // comment-nya menyebut berkas ini), dan penundaan itu tidak pernah dicabut.
+  // Invarian ini menjaga supaya tidak ada `fetch` mentah yang tersisa.
+  it('sumbernya tidak memanggil fetch() mentah sama sekali', () => {
+    const src = readFileSync('src/components/admin/CandidateProfileModal.tsx', 'utf8');
+    const offenders = src
+      .split('\n')
+      .map((line, i) => ({ line: line.trim(), n: i + 1 }))
+      .filter(({ line }) => /\bfetch\s*\(/.test(line) && !/^(\/\/|\*|\/\*)/.test(line));
+    expect(offenders).toEqual([]);
+  });
+
+  it('pembacaan fallback tetap DIKIRIM walau sesi mati (requireAuth: false — server yang memutuskan)', async () => {
+    // Perilaku lama: token (walau kosong) selalu dikirim, dan penjaga
+    // isOwnerOrAdmin di server yang menjawab. `requireAuth: true` akan menolak
+    // di klien lebih dulu, mengganti pesan server dengan "No valid session".
+    vi.mocked(authStore.get).mockReturnValue({ isLoggedIn: false, sessionToken: '' } as never);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ success: true, data: mockCandidate }),
+    });
+
+    render(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />);
+
+    await waitFor(() => expectExists('REVIN ANTHONIO NOVRI ANDHI'));
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });

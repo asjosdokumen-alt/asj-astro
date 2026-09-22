@@ -92,15 +92,49 @@ describe('theme changes fire asj-theme-change', () => {
     // The footer (Footer.astro) and the header (App.tsx) both repaint by
     // listening for this event. If it stopped firing, the two surfaces would
     // silently disagree — which is the bug this whole change is about.
+    //
+    // WHY THIS STARTS BY LEAVING THE DEFAULT THEME.
+    // The default became `light` on 2026-09-20, and this test used to read
+    // `setTheme('light')` as "one change" purely because the default happened to
+    // be dark. That made the test a statement about the DEFAULT rather than about
+    // notification — it passed for the wrong reason before, and it failed the
+    // moment the default moved while nothing about notification had broken.
+    // Setting a theme that is definitely NOT the current one is what the test
+    // actually means, and it survives the next default change too.
+    const starting = theme.themeStore.get();
+    const other = starting === 'light' ? 'dark' : 'light';
+
     const seen: string[] = [];
     const on = () => seen.push(theme.bannerStore.get());
     window.addEventListener('asj-theme-change', on);
     try {
-      theme.setTheme('light');
+      theme.setTheme(other);
       theme.setBanner('INTER_VIP');
     } finally {
       window.removeEventListener('asj-theme-change', on);
     }
     expect(seen.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('the default theme', () => {
+  it('is light, so the landing page ships the sakura palette', () => {
+    // Pinned because it is a product decision, not an implementation detail: it
+    // changes what every first-time visitor sees. Authored default ⇒ light
+    // (owner, 2026-09-20). It ALSO has to agree with the inline restore script in
+    // BaseLayout.astro, which duplicates the default because it must run before
+    // any module loads — a disagreement shows up as a flash of the wrong theme.
+    expect(theme.DEFAULT_THEME).toBe('light');
+    expect(theme.themeStore.get()).toBe('light');
+  });
+
+  it('follows the default when storage holds garbage', async () => {
+    // `decode` must not fall back to a hardcoded 'dark' after this change — it
+    // must fall back to DEFAULT_THEME. A stored value that is neither 'light' nor
+    // 'dark' is treated as "no choice", which is exactly the reload path.
+    localStorage.setItem('asjTheme', 'chartreuse');
+    vi.resetModules();
+    const fresh: ThemeModule = await import('./theme');
+    expect(fresh.themeStore.get()).toBe(fresh.DEFAULT_THEME);
   });
 });

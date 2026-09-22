@@ -30,7 +30,7 @@ import { useStore } from '@nanostores/preact';
 import { showToast } from '../../components/Toast';
 import { validate, waSchema, emailSchema } from '../../lib/schemas';
 import { t, langStore } from '../../store/i18n';
-import { getEndpoint } from '../../lib/apiEndpoint';
+import { apiClient, type ApiError } from '../../lib/apiClient';
 import { uploadMany } from '../../lib/cloudinary';
 import { SISWA_FILE_COLUMNS } from '../../lib/documentColumns';
 import Icon from '../ui/Icon';
@@ -85,30 +85,27 @@ function renderChatText(text: string) {
   });
 }
 
-/** Small surface-call helper: JSON body with the payload as an OBJECT (legacy
- *  callAPI contract — see surfaces/register.ts "Legacy clients send the payload
- *  OBJECT (not wrapped in an array)"). Returns parsed JSON, throws Error with
- *  the server message on non-ok. */
+/** Small surface-call helper.
+ *
+ *  Dulu mengirim payload sebagai OBJEK telanjang dan menarik `code` dari body
+ *  error sendiri. Keduanya kini ditangani `apiClient`: handler
+ *  (`unwrapPayloadArgs`) menerima ARRAY maupun objek — bentuk array itu yang
+ *  dikirim setiap pemanggil apiClient lain, termasuk AiCvForm — dan `ApiError`
+ *  membawa `code`/`status`/`retryAfter` server apa adanya.
+ *
+ *  Yang didapat dari konversi ini: batas waktu 20 s. Sebelumnya tidak ada sama
+ *  sekali, dan karena `finally` tidak pernah jalan selama fetch masih pending,
+ *  satu koneksi macet mengunci tombol kirim untuk selamanya.
+ *
+ *  `requireAuth: false` — permukaan ini publik (pendaftaran siswa baru, tanpa
+ *  sesi). `silent: true` — pemanggil punya toast-nya sendiri ("siswa.failed" +
+ *  pesan server), jadi tanpa ini user melihat DUA toast untuk satu kegagalan. */
 async function postAction(action: string, payload: unknown): Promise<any> {
-  const res = await fetch(getEndpoint(action), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, payload }),
+  return apiClient(action, [payload], {
+    requireAuth: false,
+    onSessionInvalid: 'throw',
+    silent: true,
   });
-  if (!res.ok) {
-    let msg = 'HTTP ' + res.status;
-    let code: string | undefined;
-    try {
-      const j = await res.json();
-      if (j && (j.message || j.error)) msg = String(j.message || j.error);
-      // Carry the code: an AI outage must be tellable from a rejected request.
-      if (j && j.code) code = String(j.code);
-    } catch { /* non-JSON error body */ }
-    const err = new Error(msg) as Error & { code?: string };
-    if (code) err.code = code;
-    throw err;
-  }
-  return res.json();
 }
 
 type SubmitPhase = 'idle' | 'uploading' | 'saving' | 'done';
@@ -216,8 +213,10 @@ export default function SiswaBaruForm() {
         }
       }
     } catch (e) {
-      const code = e instanceof Error ? (e as Error & { code?: string }).code : undefined;
-      setAiDown(code === 'AI_UNAVAILABLE' && e instanceof Error ? e.message : null);
+      // `code` kini datang dari apiClient (ApiError) alih-alih diambil sendiri
+      // dari body error. §6.5 baris 3: hanya AI_UNAVAILABLE yang menyalakan banner.
+      const err = e as ApiError;
+      setAiDown(err.code === 'AI_UNAVAILABLE' ? err.message || null : null);
       setMessages(prev => [...prev, { role: 'assistant', text: t('siswa.chat_error'), time: now() }]);
     } finally {
       setSending(false);

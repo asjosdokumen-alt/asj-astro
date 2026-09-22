@@ -356,7 +356,13 @@ const show = true;
     const tplScope = r.scopes.find((s) => s.fileIdx === fi && s.kind === ScopeKind.AstroTemplate)!;
     expect(tplScope).toBeDefined();
     const occs = r.occurrences.filter((o) => o.fileIdx === fi && o.scopeKey === tplScope.key);
-    expect(occs.map((o) => o.name).sort()).toEqual(['description', 'lang', 'showBottomNav', 'showFooter', 'sprite']);
+    // 5 -> 6 (2026-09-17): `title` joined the list. BaseLayout always DESTRUCTURED
+    // the `title` prop and then never rendered it, so every page shipped without
+    // a <title> (0 occurrences across all 10 built pages) and this scope had no
+    // occurrence to report. `<title>{title}</title>` was added to the head, which
+    // is why the name appears here at all — this assertion is the measurement
+    // that the fix is real rather than a comment claiming it.
+    expect(occs.map((o) => o.name).sort()).toEqual(['description', 'lang', 'showBottomNav', 'showFooter', 'sprite', 'title']);
     for (const o of occs) {
       const ref = r.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
       expect(ref).toBeDefined();

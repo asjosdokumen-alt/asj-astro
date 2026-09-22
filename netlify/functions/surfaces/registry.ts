@@ -46,6 +46,15 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   getAppData:      () => import('./public').then(m => m.PUBLIC_ACTIONS),
   getMonthlyReport:() => import('./public').then(m => m.PUBLIC_ACTIONS),
 
+  // ── Contact ───────────────────────────────────────────────────────────────
+  // Registered through the router like every other action, so this write is
+  // answerable by any entry point that reaches it — not only `kontak.js`. That
+  // breadth is intended: the client routes to `kontak.js` via SURFACE_ENDPOINTS,
+  // but the bridge-links fallback must also resolve it rather than 404 into a
+  // catch-all. The handler's own guards are what make it safe, and they do not
+  // depend on which entry point delivered the call.
+  kirimPesanKontak: () => import('./contact').then(m => m.CONTACT_ACTIONS),
+
   // ── Candidates ────────────────────────────────────────────────────────────
   getCandidatesPage:     () => import('./candidates').then(m => m.CANDIDATE_ACTIONS),
   updateCatatanKandidat: () => import('./candidates').then(m => m.CANDIDATE_ACTIONS),

@@ -2,8 +2,22 @@
 /**
  * LayananSection.astro
  * Source: legacy/index.html page-public
+ *
+ * The two WhatsApp CTAs read their number from `companyProfile.ts` rather than
+ * repeating the literal. Measured before this change: `wa.me/6287889502004`
+ * appeared twice here by hand, and the same number lives in `CONTACT_WHATSAPP`
+ * — three copies of one fact, any of which could be updated alone.
  */
 import Icon from '../ui/Icon';
+import Button from '../ui/Button.astro';
+import { CONTACT_WHATSAPP } from '../../lib/companyProfile';
+
+const waVisa =
+  `https://wa.me/${CONTACT_WHATSAPP}?text=` +
+  encodeURIComponent('Halo Admin ASJ, saya ingin konsultasi jasa pembuatan Visa Jepang.');
+const waExam =
+  `https://wa.me/${CONTACT_WHATSAPP}?text=` +
+  encodeURIComponent('Halo Admin ASJ, saya butuh bantuan pendaftaran jadwal ujian JFT/SSW.');
 ---
 
 <!-- SECTION 2: PROGRAM & LAYANAN ASJ           -->
@@ -11,7 +25,7 @@ import Icon from '../ui/Icon';
 <div class="space-y-8">
    
    <!-- KARTU 1: PENERIMAAN SISWA BARU -->
-   <div class="bg-slate-900 border border-emerald-500/40 rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col lg:flex-row">
+   <div class="bg-slate-900 border border-emerald-500/40 rounded-band overflow-hidden shadow-2xl relative flex flex-col lg:flex-row">
        <!-- Sisi Kiri: Gambar Cover (Responsive: Tinggi proporsional di HP, Full tinggi di Desktop) -->
        <div class="lg:w-2/5 w-full h-56 md:h-72 lg:h-auto relative overflow-hidden">
             <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/sakra_banner.webp" alt="Siswa Jepang" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-105">
@@ -76,11 +90,15 @@ import Icon from '../ui/Icon';
            
            <!-- Aksi Pendaftaran -->
            <div class="flex flex-col sm:flex-row gap-3 mt-auto">
-               <a href="https://chat.whatsapp.com/F0iP9xcdi4G8QDzn1U4bAH" target="_blank" class="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-sm font-bold text-center rounded-xl shadow-md transition hover:-translate-y-0.5" title="Join Grup WhatsApp" data-lang-title="landing.tt_grup_wa"><Icon name="whatsapp" class="text-emerald-400 text-lg" /> <span data-lang="landing.class_btn_wa">Grup WA</span></a>
-               <button onclick="window.dispatchEvent(new CustomEvent('openCekSiswaModal'))" class="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-sm font-bold text-center rounded-xl shadow-md transition hover:-translate-y-0.5" title="Cek List Kandidat Terdaftar" data-lang-title="landing.tt_cek_kandidat"><Icon name="list-alt" class="text-sky-400 text-lg" /> <span data-lang="landing.class_btn_cek">Cek Data</span></button>
-               <a href="/siswa-baru" class="w-full inline-flex items-center justify-center px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition shadow-[0_0_15px_rgba(118,185,0,0.4)]">
-                   <Icon name="edit" class="mr-2" /> <span data-lang="landing.class_btn_form">Form Daftar Siswa</span>
-                </a>
+               <Button href="https://chat.whatsapp.com/F0iP9xcdi4G8QDzn1U4bAH" target="_blank" variant="secondary" icon="whatsapp" block class="flex-1">
+                   <span data-lang="landing.class_btn_wa">Grup WA</span>
+               </Button>
+               <Button variant="secondary" icon="list-alt" block class="flex-1" onClick="window.dispatchEvent(new CustomEvent('openCekSiswaModal'))">
+                   <span data-lang="landing.class_btn_cek">Cek Data</span>
+               </Button>
+               <Button href="/siswa-baru" variant="primary" icon="edit" block class="flex-1">
+                   <span data-lang="landing.class_btn_form">Form Daftar Siswa</span>
+               </Button>
            </div>
        </div>
    </div>
@@ -89,7 +107,7 @@ import Icon from '../ui/Icon';
    <div class="u-grid-auto u-grid-auto--form gap-8">
        
        <!-- Card 2: Pengurusan Visa -->
-       <div class="bg-slate-900 border border-sky-500/30 rounded-[2rem] hover:-translate-y-1 transition-transform duration-300 shadow-xl group flex flex-col overflow-hidden relative">
+       <div class="bg-slate-900 border border-sky-500/30 rounded-band hover:-translate-y-1 transition-transform duration-300 shadow-xl group flex flex-col overflow-hidden relative">
            <!-- Gambar Top -->
            <div class="h-48 md:h-56 relative w-full overflow-hidden">
                 <!-- URL Gambar Bisa Anda Ganti Nanti -->
@@ -118,12 +136,14 @@ import Icon from '../ui/Icon';
                    <li class="flex items-start"><Icon name="check-circle" class="text-sky-400 mr-2.5 mt-0.5 text-sm" /> <span data-lang="landing.visa_list_2">Legal & Resmi sesuai Prosedur</span></li>
                    <li class="flex items-start"><Icon name="check-circle" class="text-sky-400 mr-2.5 mt-0.5 text-sm" /> <span data-lang="landing.visa_list_3">Pendampingan Penuh sampai Berangkat</span></li>
                </ul>
-               <a href="https://wa.me/6287889502004?text=Halo%20Admin%20ASJ,%20saya%20ingin%20konsultasi%20jasa%20pembuatan%20Visa%20Jepang." target="_blank" class="block w-full py-3.5 bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold text-center rounded-xl shadow-[0_0_15px_rgba(118,185,0,0.4)] transition mt-auto"><Icon name="whatsapp" class="mr-1 text-lg" /> <span data-lang="landing.visa_btn">Konsultasi Visa</span></a>
+               <Button href={waVisa} target="_blank" variant="primary" icon="whatsapp" block class="mt-auto">
+                   <span data-lang="landing.visa_btn">Konsultasi Visa</span>
+               </Button>
            </div>
        </div>
 
        <!-- Card 3: Ujian JFT & SSW -->
-       <div class="bg-slate-900 border border-amber-500/30 rounded-[2rem] hover:-translate-y-1 transition-transform duration-300 shadow-xl group flex flex-col overflow-hidden relative">
+       <div class="bg-slate-900 border border-amber-500/30 rounded-band hover:-translate-y-1 transition-transform duration-300 shadow-xl group flex flex-col overflow-hidden relative">
            <!-- Gambar Top -->
            <div class="h-48 md:h-56 relative w-full overflow-hidden">
                 <!-- URL Gambar Bisa Anda Ganti Nanti -->
@@ -152,23 +172,11 @@ import Icon from '../ui/Icon';
                    <li class="flex items-start"><Icon name="check-circle" class="text-amber-400 mr-2.5 mt-0.5 text-sm" /> <span data-lang="landing.exam_list_2">Melayani Pendaftaran Individu / Group</span></li>
                    <li class="flex items-start"><Icon name="check-circle" class="text-amber-400 mr-2.5 mt-0.5 text-sm" /> <span data-lang="landing.exam_list_3"><strong class="text-amber-300 font-bold">Guarantee 100%</strong> Request Location</span></li>
                </ul>
-               <a href="https://wa.me/6287889502004?text=Halo%20Admin%20ASJ,%20saya%20butuh%20bantuan%20pendaftaran%20jadwal%20ujian%20JFT/SSW." target="_blank" class="block w-full py-3.5 bg-amber-600 hover:bg-amber-500 text-white text-sm font-bold text-center rounded-xl shadow-[0_0_15px_rgba(217,119,6,0.4)] transition mt-auto"><Icon name="whatsapp" class="mr-1 text-lg" /> <span data-lang="landing.exam_btn">Booking Jadwal Ujian</span></a>
+               <Button href={waExam} target="_blank" variant="primary" icon="whatsapp" block class="mt-auto">
+                   <span data-lang="landing.exam_btn">Booking Jadwal Ujian</span>
+               </Button>
            </div>
        </div>
 
-   </div>
-
-   <!-- BANNER MAPS LPK -->
-   <div class="mt-8 bg-slate-800 border border-slate-700 rounded-2xl p-5 flex flex-col sm:flex-row justify-between items-center gap-5 text-center sm:text-left shadow-lg">
-       <div class="flex items-center gap-4">
-           <div class="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center shrink-0">
-               <Icon name="map-marker-alt" class="text-red-500 text-xl" />
-           </div>
-           <div>
-               <h4 class="text-white font-bold text-sm mb-1" data-lang="landing.maps_title">Kunjungi LPK Amanah Sakura Japan</h4>
-               <p class="text-sm text-slate-300 max-w-xl" data-lang="landing.maps_desc">Jl. Kyai Ageng Musakaf, Desa Gandukepuh, Kec. Sukorejo, Kab. Ponorogo, Jawa Timur.</p>
-           </div>
-       </div>
-       <a id="maps-lpk-link" href="https://maps.app.goo.gl/rXZ1YZAtT9JUNn6q6?g_st=ic" target="_blank" class="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold rounded-xl border border-slate-500 transition shadow hover:-translate-y-0.5 whitespace-nowrap"><Icon name="location-arrow" class="mr-1.5" /> <span data-lang="landing.maps_btn">Buka Google Maps</span></a>
    </div>
 </div>

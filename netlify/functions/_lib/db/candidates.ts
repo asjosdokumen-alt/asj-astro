@@ -304,6 +304,13 @@ function attachApplications(candidates: Record<string, any>[], forms: Record<str
       nama: toText(f.nama_lengkap || f.nama || ''),
       // CV milik lamaran loker ini (CV per loker: JOB<code>_CV di folder master).
       cv: toText(f.file_cv || ''),
+      // `database_asj_form` menyimpan DUA jenis baris: lamaran loker (code_job
+      // terisi) dan biodata/dokumen (code_job kosong, penanda '[BIODATA] …' /
+      // '[UPLOAD <LABEL>]' di feedback_berkas). Keduanya melewati jalur approve
+      // yang sama, jadi tanpa pembeda ini UI menampilkan "Telah disetujui admin"
+      // untuk baris biodata — mengklaim ada LAMARAN yang diterima padahal admin
+      // hanya menyetujui BERKAS. Dikirim apa adanya; frontend yang memutuskan.
+      feedback: toText(f.feedback_berkas || ''),
     });
   }
   for (const c of candidates) {

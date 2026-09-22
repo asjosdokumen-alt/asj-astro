@@ -113,6 +113,37 @@ interface ApiResponse<T = any> {
 }
 
 /**
+ * The Error this client throws for a non-2xx answer — the server's own verdict,
+ * carried alongside its message.
+ *
+ * `message` is the part every existing caller already used, and it is unchanged.
+ * The extra fields exist because a message cannot express "the AI provider is
+ * down": that arrives as `code: 'AI_UNAVAILABLE'` on a 503, and three surfaces
+ * (AiCvForm, SiswaBaruForm, AdminAiCopilot) render AiUnavailableBanner from it.
+ * While the code was dropped here, those callers had no way to see it except by
+ * keeping their own `fetch` — which is exactly why they never moved.
+ */
+export interface ApiError extends Error {
+  /** HTTP status the server answered with. */
+  status?: number;
+  /** Server error code, e.g. `AI_UNAVAILABLE`, `VALIDATION_FAILED`. */
+  code?: string;
+  /** Seconds the server asked the caller to wait, when it said so. */
+  retryAfter?: number;
+}
+
+function apiError(
+  message: string,
+  extra: { status: number; code?: string; retryAfter?: number },
+): ApiError {
+  const err = new Error(message) as ApiError;
+  err.status = extra.status;
+  if (extra.code) err.code = extra.code;
+  if (extra.retryAfter !== undefined) err.retryAfter = extra.retryAfter;
+  return err;
+}
+
+/**
  * Get the freshest session token — checks Supabase first if configured.
  */
 async function getFreshToken(): Promise<string> {
@@ -134,22 +165,105 @@ async function getFreshToken(): Promise<string> {
 }
 
 /**
+ * One place for the dead-session verdict, so the two call sites cannot drift.
+ *
+ * A session that has expired is reported by the backend as
+ * `{ success:false, sessionInvalid:true, message:'Sesi … tidak valid' }`, and the
+ * function wrapper maps `success === false` to **HTTP 400**
+ * (netlify-wrapper.ts). Measured against production on 2026-09-17: both
+ * `getDrafCvMaster` and `updateKandidatSuper` answer **400 + sessionInvalid** with
+ * a bogus token. The `success:true` variant exists too (catalog/service.ts) and
+ * arrives as 200.
+ *
+ * So the signal has to be honoured on BOTH paths. Until this was added, the
+ * check lived only on the 2xx path, which meant `onSessionInvalid` — including
+ * its `'logout'` default — never fired for a real expiry: the user stayed
+ * "logged in" holding a dead token and simply saw an error.
+ */
+function sessionInvalidVerdict(onSessionInvalid: 'logout' | 'throw'): never {
+  if (onSessionInvalid === 'logout') {
+    showToast('Sesi expired. Silakan login kembali.', 'error');
+    logout();
+    window.location.href = '/';
+  }
+  throw new Error('Session expired');
+}
+
+/**
  * Core fetch wrapper — routes actions to surface-specific endpoints
  */
 export async function apiClient<T = ApiResponse>(
   action: string,
   args: unknown[] = [],
-  options: { requireAuth?: boolean; onSessionInvalid?: 'logout' | 'throw' } = {}
+  options: {
+    requireAuth?: boolean;
+    onSessionInvalid?: 'logout' | 'throw';
+    /**
+     * Suppress the client's own error toast.
+     *
+     * For callers that OWN their error presentation — a contextual message
+     * ("Gagal upload <jenis>."), a field-level error, a retry affordance. The
+     * client still THROWS, so the caller catches and can read `err.message`,
+     * which now carries the server's own message. Without this, converting such
+     * a caller means the user sees TWO toasts for ONE failure: the client's and
+     * the caller's.
+     *
+     * Deliberately narrow: it affects only the network/HTTP error toast below.
+     * A logout on `onSessionInvalid` is a global action, not this caller's
+     * message to own, so it still reports.
+     */
+    silent?: boolean;
+    /**
+     * Skip the read cache for THIS call, and refresh it with the result.
+     *
+     * Needed by callers that must see fresh data even though their action is in
+     * CACHEABLE_READS — the case that forced this option: `fetchMailFromAPI` is
+     * called AFTER marking a message read or deleted, and a 30 s stale payload
+     * there makes the admin's own write look like it did nothing.
+     *
+     * It is a bypass, not an invalidation: the fresh value is still written to
+     * the cache, so the next ordinary caller benefits instead of refetching.
+     */
+    force?: boolean;
+    /**
+     * The caller's own cancellation, combined with this call's timeout.
+     *
+     * A component that aborts on unmount has to be able to cancel an in-flight
+     * request. Until this option existed it had to keep its own `fetch` to do so,
+     * and `CandidateProfileModal` was the last site held open on purpose rather
+     * than forgotten.
+     *
+     * The distinction that matters: an abort from HERE is not a failure. It is a
+     * cancellation the caller asked for, so it rethrows an `AbortError` and never
+     * toasts. Our own timeout IS a failure and still says so. Conflating the two
+     * would make every unmount pop a spurious "timed out" toast.
+     *
+     * Combined with an `abort` listener rather than `AbortSignal.any()`, which is
+     * too new for the older Android browsers this app still serves.
+     */
+    signal?: AbortSignal;
+  } = {}
 ): Promise<T> {
-  const { requireAuth = true, onSessionInvalid = 'logout' } = options;
+  const {
+    requireAuth = true,
+    onSessionInvalid = 'logout',
+    silent = false,
+    force = false,
+    signal,
+  } = options;
 
   // PR3: identity flip since the last call (logout/login) → clear stale reads.
   invalidateOnIdentityFlip();
 
   // SWR-lite: return cached result for read-only actions
   if (CACHEABLE_READS.has(action)) {
-    const cached = getCached(action, args);
-    if (cached) return cached as T;
+    // `force` skips the READ only. The fresh value is still written below, so a
+    // forced call REFRESHES the cache for everyone instead of bypassing it —
+    // which is what a post-write refresh actually wants.
+    if (!force) {
+      const cached = getCached(action, args);
+      if (cached) return cached as T;
+    }
   } else {
     // P5 fix: write actions never match cache keys (only CACHEABLE_READS are
     // cached), so clear the whole asj_cache_ prefix — targeted invalidation
@@ -185,6 +299,19 @@ export async function apiClient<T = ApiResponse>(
   // concurrent requests, so one timeout would abort every other in-flight call.
   const controller = new AbortController();
 
+  // The caller's signal cancels the request too. Remember WHY we aborted, so the
+  // catch below can tell a cancellation apart from our own timeout — see the
+  // note on the `signal` option.
+  let callerAborted = false;
+  const onCallerAbort = () => {
+    callerAborted = true;
+    controller.abort();
+  };
+  if (signal) {
+    if (signal.aborted) onCallerAbort();
+    else signal.addEventListener('abort', onCallerAbort, { once: true });
+  }
+
   // P8 fix — the request had NO upper bound, so a stalled connection left the
   // caller's spinner turning forever with no error and no way out. That is the
   // "menu Tambah Job loading terus" report: TabTambah gates its whole form on
@@ -211,7 +338,51 @@ export async function apiClient<T = ApiResponse>(
     }
 
     if (!res.ok) {
-      throw new Error('HTTP ' + res.status + ': ' + res.statusText);
+      // SURFACE THE SERVER'S OWN MESSAGE, don't paraphrase the status line.
+      //
+      // This used to throw `HTTP 400: Bad Request` and nothing else, which threw
+      // away the reason the caller actually needs. The functions return errors
+      // as `{ success:false, error:"Nomor ini belum terdaftar" }` with a REAL
+      // http status (non-negotiable #6: never 200 + success:false), so the body
+      // is the only place that message exists — the status line is a category,
+      // not an explanation. Every caller that wanted the real message had to
+      // keep its own `fetch` to get it, which is how 23 call sites ended up
+      // outside this client in the first place.
+      //
+      // Best-effort parse on purpose: a non-JSON body is normal here (a CDN 502
+      // is HTML), and a parse failure must not replace one error with a
+      // different, more confusing one.
+      let detail = '';
+      let sessionInvalid = false;
+      let code = '';
+      let retryAfter: number | undefined;
+      try {
+        const body = (await res.json()) as {
+          error?: unknown;
+          message?: unknown;
+          sessionInvalid?: unknown;
+          code?: unknown;
+          retryAfter?: unknown;
+        } | null;
+        const raw = body && (body.error ?? body.message);
+        if (typeof raw === 'string' && raw.trim()) detail = raw.trim();
+        sessionInvalid = body?.sessionInvalid === true;
+        // The code rides alongside the message, not instead of it. A caller that
+        // only wants text keeps reading `.message` and sees no change.
+        if (typeof body?.code === 'string' && body.code.trim()) code = body.code.trim();
+        if (typeof body?.retryAfter === 'number') retryAfter = body.retryAfter;
+      } catch {
+        /* not JSON — fall through to the status line */
+      }
+      // THE DEAD SESSION ARRIVES HERE, not on the 2xx path — see
+      // sessionInvalidVerdict() above for the measured proof. Checking only the
+      // 2xx path made `onSessionInvalid` a no-op in practice.
+      if (sessionInvalid) sessionInvalidVerdict(onSessionInvalid);
+      throw apiError(detail || `HTTP ${res.status}: ${res.statusText}`, {
+        status: res.status,
+        code,
+        retryAfter,
+      });
     }
 
     const data: ApiResponse<T> = await res.json();
@@ -221,12 +392,10 @@ export async function apiClient<T = ApiResponse>(
       // (mis. panel admin) menangani sesi mati secara lokal; hanya `throw` yang
       // terjadi, tanpa toast/logout/redirect global. Jawaban sessionInvalid juga
       // TIDAK di-cache (throw terjadi sebelum setCache) — memang benar begitu.
-      if (onSessionInvalid === 'logout') {
-        showToast('Sesi expired. Silakan login kembali.', 'error');
-        logout();
-        window.location.href = '/';
-      }
-      throw new Error('Session expired');
+      //
+      // Jalur ini untuk varian `success:true, sessionInvalid:true`
+      // (catalog/service.ts), yang memang datang sebagai 200.
+      sessionInvalidVerdict(onSessionInvalid);
     }
 
     if (CACHEABLE_READS.has(action)) {
@@ -241,19 +410,29 @@ export async function apiClient<T = ApiResponse>(
     // user cannot act on ("The operation was aborted"). Name the real cause so
     // the toast says what happened rather than leaking a browser string.
     if (err instanceof Error && err.name === 'AbortError') {
+      // Two very different causes, and conflating them is a real bug: a component
+      // that aborts on unmount would pop "timed out". A caller-initiated abort is
+      // a cancellation, so it is rethrown as-is for the caller to ignore.
+      if (callerAborted) throw err;
       const msg = `Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s (${action})`;
-      showToast('Network error: ' + msg, 'error');
+      if (!silent) showToast('Network error: ' + msg, 'error');
       throw new Error(msg);
     }
     const message = err instanceof Error ? err.message : String(err);
     if (message === 'No valid session' || message === 'Session expired') throw err;
-    showToast('Network error: ' + (message || 'Unknown'), 'error');
+    // `silent` callers own their error UI; the throw below still carries the
+    // server's message (see the !res.ok branch above), so nothing is lost.
+    if (!silent) showToast('Network error: ' + (message || 'Unknown'), 'error');
     throw err;
   } finally {
     // Always clear, on every path — success, HTTP error, abort and rethrow.
     // Without this the timer outlives the request and can abort a LATER call
     // that reused the module-level controller identity by accident.
     clearTimeout(timeoutId);
+    // The caller's signal outlives this call (it belongs to a component), so the
+    // listener must not — otherwise every request leaves one behind on a signal
+    // that a long-lived effect keeps reusing.
+    if (signal) signal.removeEventListener('abort', onCallerAbort);
   }
 }
 
@@ -262,10 +441,23 @@ export async function apiClient<T = ApiResponse>(
  */
 export const api = {
   call: apiClient,
-  get(action: string, args: unknown[] = []) {
-    return apiClient(action, args, { requireAuth: false });
+  get(
+    action: string,
+    args: unknown[] = [],
+    options: { silent?: boolean; force?: boolean; signal?: AbortSignal } = {},
+  ) {
+    return apiClient(action, args, { requireAuth: false, ...options });
   },
-  secure(action: string, args: unknown[] = [], options: { onSessionInvalid?: 'logout' | 'throw' } = {}) {
+  secure(
+    action: string,
+    args: unknown[] = [],
+    options: {
+      onSessionInvalid?: 'logout' | 'throw';
+      silent?: boolean;
+      force?: boolean;
+      signal?: AbortSignal;
+    } = {},
+  ) {
     return apiClient(action, args, { requireAuth: true, ...options });
   },
 };
