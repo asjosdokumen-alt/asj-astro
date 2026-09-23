@@ -52,6 +52,17 @@ describe('service-account resolution', () => {
   // Ignored by the same `secrets/*` rule, so it can never be committed.
   const BAK = FILE + '.bak';
 
+  // The recovery recipe, in one place so both refusal messages carry a command
+  // that actually works. `--filter <site>` is NOT a site selector — it is a
+  // monorepo option, and `env:get` answers `No site id found` **on stdout with
+  // exit code 0**, which reads like success. The site must be linked, and
+  // `--context production` is mandatory because the default context is `dev`.
+  // Measured 2026-09-23 while restoring this very credential.
+  const RESTORE_HINT =
+    'Restore it with:\n' +
+    '  netlify link --name asjastro\n' +
+    '  netlify env:get FIREBASE_SERVICE_ACCOUNT --context production';
+
   // `finally` does not run on a hard kill (Ctrl-C, a timeout SIGKILL, a closed
   // terminal, OOM). Two tests below overwrite or delete FILE, so such a kill
   // leaves a fixture — or nothing — where the live private key was. That is not
@@ -121,11 +132,56 @@ describe('service-account resolution', () => {
   // Repair a killed run, and REFUSE TO CONTINUE if the credential cannot be
   // shown to be real. Failing loudly here is the entire point: silently running
   // the mutation tests against a fixture is what destroyed the key.
-  const recoverFromKilledRun = () => {
+  //
+  // ── 2026-09-23: `BAK` WINS was itself a data-loss path ──────────────────────
+  //
+  // BAK normally holds the pre-test state, because park() copies FILE to BAK
+  // before any test mutates FILE — so BAK winning is right. But BAK can itself
+  // be a FIXTURE, and that is exactly what was on disk on 2026-09-23: both FILE
+  // and BAK held `'x'.repeat(3000)`. Restoring that BAK would overwrite the real
+  // key with filler — the 2026-09-17 destruction with the copies swapped, and
+  // this time reachable by a plain `npx vitest run`.
+  //
+  // So BAK is now validated before it is trusted:
+  //   · BAK is real                    -> restore it (unchanged behaviour)
+  //   · BAK is a fixture, FILE is real -> BAK is stale litter; discard it, keep FILE
+  //   · both are fixtures              -> refuse: there is nothing to restore from
+  // What a recovery DID, so the caller can report it from ONE place. Returning a
+  // verdict instead of warning here keeps the file at a single `console.warn`:
+  // the lint ratchet counts `lint/suspicious/noConsole` and a second one is a new
+  // diagnostic it refuses (+1, measured 2026-09-23). The ratchet is right — the
+  // message belongs next to the call site, not buried in the recovery logic.
+  const RECOVERY_NOTE = {
+    restored:
+      '[fcm-server.test] a .bak was left behind by a previous run (killed mid-test, or ' +
+      'its cleanup delete was blocked); restored the credential from it',
+    'discarded-fixture-bak':
+      '[fcm-server.test] the .bak held a TEST FIXTURE, not the pre-test state; discarded ' +
+      'it and kept the credential already on disk',
+  } as const;
+
+  const recoverFromKilledRun = (): keyof typeof RECOVERY_NOTE | null => {
     if (fs.existsSync(BAK)) {
+      if (looksLikeFixture(BAK)) {
+        if (looksLikeFixture(FILE)) {
+          throw new Error(
+            'netlify/functions/secrets/firebase-service-account.json AND its .bak both ' +
+              'hold TEST FIXTURES, so there is nothing real to restore from. Refusing to ' +
+              'run: the mutation tests below would report a green suite while the live ' +
+              'private key is a placeholder.\n' +
+              RESTORE_HINT,
+          );
+        }
+        // FILE is real, so the fixture BAK is litter from a run that was killed (or
+        // had its delete blocked) while FILE held a fixture. Deleting it is the whole
+        // fix — and it must be deleted rather than left, because the next run would
+        // otherwise let it win.
+        fs.rmSync(BAK, { force: true });
+        return 'discarded-fixture-bak';
+      }
       fs.copyFileSync(BAK, FILE); // copyFileSync overwrites; rename does not on Windows
       fs.rmSync(BAK, { force: true });
-      return true;
+      return 'restored';
     }
     if (looksLikeFixture(FILE)) {
       throw new Error(
@@ -133,10 +189,10 @@ describe('service-account resolution', () => {
           'and there is no .bak to restore it from. A previous run was killed between ' +
           'unpark() copying BAK back and rmSync deleting it. Refusing to run: these ' +
           'tests would report a green suite while destroying the real private key.\n' +
-          'Restore it with: netlify env:get FIREBASE_SERVICE_ACCOUNT --filter asjastro',
+          RESTORE_HINT,
       );
     }
-    return false;
+    return null;
   };
 
   // Park the real file, then put it back. Used by every test that touches FILE.
@@ -153,14 +209,16 @@ describe('service-account resolution', () => {
   };
 
   beforeAll(() => {
-    if (recoverFromKilledRun()) {
-      // Loud on purpose: silently recovering would hide the fact that a run was
-      // killed and that the previous fixture was live on disk for a while.
-      console.warn(
-        '[fcm-server.test] a previous run was killed mid-test; restored the real ' +
-          'credential from firebase-service-account.json.bak',
-      );
-    }
+    // Loud on purpose: silently recovering would hide the fact that the credential
+    // was replaced on disk for a while.
+    //
+    // The wording says "left behind", not "killed": a .bak is also left by a run
+    // that COMPLETED — the sandbox delete shim refuses `unpark`'s rmSync once ~50
+    // files have been deleted in a turn (`SAFE_DELETE_BULK_CONFIRM_REQUIRED`),
+    // measured 2026-09-23. Blaming a kill for that would send the next reader
+    // looking for a crash that never happened.
+    const recovery = recoverFromKilledRun();
+    if (recovery) console.warn(RECOVERY_NOTE[recovery]);
   });
 
   it('the credential on disk is a real one, not a fixture left by a killed run', () => {
@@ -207,6 +265,62 @@ describe('service-account resolution', () => {
       expect(looksLikeFixture(FILE)).toBe(false);
     } finally {
       unpark();
+    }
+  });
+
+  it('discards a fixture .bak instead of letting it overwrite a real credential', () => {
+    // The state found on disk on 2026-09-23: BAK was a fixture. Restoring it
+    // would have replaced the real key with filler. When FILE is real, the
+    // fixture BAK is stale litter and the fix is to drop it — and to drop it
+    // HERE, because leaving it means the next run lets it win.
+    const savedFile = fs.existsSync(FILE) ? fs.readFileSync(FILE, 'utf8') : null;
+    const savedBak = fs.existsSync(BAK) ? fs.readFileSync(BAK, 'utf8') : null;
+    try {
+      // A real FILE is generated rather than read, so this test asserts the same
+      // thing on a machine with no credential installed (CI) as on one with.
+      const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+      const real = JSON.stringify({
+        private_key_id: '81aae4277486586dbb3c894d0cbe8988db4ca22d',
+        private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }),
+      });
+      fs.writeFileSync(FILE, real);
+      fs.writeFileSync(
+        BAK,
+        JSON.stringify({
+          private_key_id: '81aae4277486586dbb3c894d0cbe8988db4ca22d',
+          private_key: 'x'.repeat(3000),
+        }),
+      );
+
+      expect(recoverFromKilledRun()).toBe('discarded-fixture-bak');
+      expect(fs.existsSync(BAK)).toBe(false); // the fixture is gone
+      expect(fs.readFileSync(FILE, 'utf8')).toBe(real); // and FILE was NOT overwritten
+    } finally {
+      if (savedFile !== null) fs.writeFileSync(FILE, savedFile);
+      else if (fs.existsSync(FILE)) fs.rmSync(FILE, { force: true });
+      if (savedBak !== null) fs.writeFileSync(BAK, savedBak);
+      else if (fs.existsSync(BAK)) fs.rmSync(BAK, { force: true });
+    }
+  });
+
+  it('refuses when the credential AND its .bak are both fixtures', () => {
+    // Nothing real to restore from. Returning false here would let the mutation
+    // tests run against filler and report green.
+    const savedFile = fs.existsSync(FILE) ? fs.readFileSync(FILE, 'utf8') : null;
+    const savedBak = fs.existsSync(BAK) ? fs.readFileSync(BAK, 'utf8') : null;
+    try {
+      const fixture = JSON.stringify({
+        private_key_id: '81aae4277486586dbb3c894d0cbe8988db4ca22d',
+        private_key: 'x'.repeat(3000),
+      });
+      fs.writeFileSync(FILE, fixture);
+      fs.writeFileSync(BAK, fixture);
+      expect(() => recoverFromKilledRun()).toThrow(/TEST FIXTURE/);
+    } finally {
+      if (savedFile !== null) fs.writeFileSync(FILE, savedFile);
+      else if (fs.existsSync(FILE)) fs.rmSync(FILE, { force: true });
+      if (savedBak !== null) fs.writeFileSync(BAK, savedBak);
+      else if (fs.existsSync(BAK)) fs.rmSync(BAK, { force: true });
     }
   });
 
