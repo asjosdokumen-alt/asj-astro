@@ -51,6 +51,14 @@
  * 5. A DEAD LANGUAGE CHECK. If the button were inert, `before === after` would
  *    be reported as a change only if the fixture itself was broken, so the label
  *    is asserted to actually flip ID -> JP and then back.
+ * 6. A DEAD LOGIN BUTTON. The nav's second control (`[data-nav-login]`) used to
+ *    be covered by NOTHING, and it was in fact inert: SiteNav dispatches
+ *    `asj-kandidat-login`, but only App.tsx owns the modal's `mode` state, and
+ *    App registered no listener for that event — so the dispatch was a no-op.
+ *    The mobile drawer's identically labelled button worked because it calls
+ *    `openLogin()` directly. "A dialog exists" is also true of a modal the page
+ *    opened on its own, so the check reads the DOM BEFORE the click and requires
+ *    the dialog to APPEAR only as a result of it.
  *
  * Run against a built artifact:
  *   node e2e/test-site-nav.mjs            (defaults to localhost:4321)
@@ -345,6 +353,41 @@ await test('1280px /: the nav language button flips the shared store and back', 
   if (restored !== before) {
     throw new Error(`the toggle did not restore: expected "${before}", got "${restored}"`);
   }
+});
+
+/* ── The login button actually opens the modal ────────────────────────── */
+await test('1280px /: the nav login button opens the login modal', async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#atas h1', { timeout: 20_000 });
+  await page.waitForTimeout(900);
+
+  /* Read the DOM BEFORE the click. Without this the check would also pass on a
+     page that opened a dialog for its own reasons — the assertion is that the
+     CLICK is what makes it appear, not merely that a dialog is present. */
+  const before = await page.$('[role="dialog"]');
+  if (before) throw new Error('a [role="dialog"] was already open before the click — cannot attribute the open to this button');
+
+  const btn = await page.$('[data-nav-login]');
+  if (!btn) throw new Error('the nav login button [data-nav-login] is not in the document');
+
+  await page.click('[data-nav-login]');
+  await page.waitForTimeout(500);
+
+  const dialog = await page.$('[role="dialog"]');
+  if (!dialog) {
+    await page.close();
+    throw new Error(
+      `clicking [data-nav-login] did not open a modal (no [role="dialog"] appeared). ` +
+        `The button looks live and does nothing — the same defect the mobile drawer's ` +
+        `identically labelled button does NOT have. SiteNav only DISPATCHES 'asj-kandidat-login'; ` +
+        `App.tsx owns the modal's mode state and must LISTEN for that event (the drawer works ` +
+        `because it calls openLogin() directly, which both sets the state and dispatches).`,
+    );
+  }
+  const visible = await dialog.isVisible();
+  await page.close();
+  if (!visible) throw new Error('a [role="dialog"] exists after the nav login click but is not visible');
 });
 
 await browser.close();

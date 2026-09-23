@@ -109,6 +109,21 @@ export default function App(
     window.addEventListener("asj-kandidat-register", handler);
     return () => window.removeEventListener("asj-kandidat-register", handler);
   }, []);
+  /* The desktop section nav (`SiteNav.astro`) is static Astro too, and it fires
+     this same `asj-kandidat-login` event. Until this listener existed the nav's
+     "Login Pelamar" button dispatched into the void: only App owns `modalMode`,
+     and `LoginModal`'s own listener for this event merely resets its internal
+     admin step — it cannot open the modal. The drawer's identically labelled
+     button worked because it calls `openLogin()` directly, which BOTH sets the
+     state and dispatches this event; so the dispatch is a notification, not a
+     trigger, and every dispatcher needs a listener here.
+     DO NOT call `openLogin()` inside this handler — it dispatches
+     `asj-kandidat-login` itself, so that would recurse without end. */
+  useEffect(() => {
+    const handler = () => { setModalMode("login"); setMenuOpen(false); };
+    window.addEventListener("asj-kandidat-login", handler);
+    return () => window.removeEventListener("asj-kandidat-login", handler);
+  }, []);
 
   function installApp() { showToast("Install: Chrome > Menu > Home Screen", "info"); setMenuOpen(false); }
 
