@@ -36,7 +36,7 @@
 // LOCATIONS while the user meets rendered labels, so pinning a number here would
 // be a second, weaker copy of the ratchet. What matters is the wiring.
 // ==========================================
-import { render, cleanup, waitFor, fireEvent } from '@testing-library/preact';
+import { render, cleanup, waitFor, fireEvent, act } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import InputManualModal from './InputManualModal';
 import { inputModalOpen } from '../../store/adminStore';
@@ -162,5 +162,49 @@ describe('InputManualModal — label/control wiring', () => {
     // announce identically. "Has a name" passes; a user still cannot tell the
     // rows apart.
     expect(new Set(two).size, `row names are not distinct: ${JSON.stringify(two)}`).toBe(two.length);
+  });
+});
+
+// ==========================================
+// TESTS: the dialog semantics survive a REOPEN (2026-09-24)
+//
+// WHY THIS EXISTS. `InputManualModal` is mounted UNCONDITIONALLY —
+// `TabPelamar.tsx:255` renders `<InputManualModal />` with no props — and it
+// reads `open` from the `inputModalOpen` atom. Its render guard used to sit
+// ABOVE the `useOverlay` call (`if (!open) return null;` before the hook), so
+// while the modal was closed the hook never ran. Measured in a real browser
+// against the served build, opening/close/opening:
+//   OPEN #1  role="dialog" aria-modal="true"  focus INSIDE
+//   OPEN #2  role=null     aria-modal=null    focus NOT inside
+// The FIRST open is correct, which is why every existing check above (and the
+// one-open sweep in e2e/test-dialog.mjs) is green on this defect.
+//
+// The atom is the right lever here BECAUSE the defect is a hooks-order bug:
+// the component stays mounted across close/reopen, so `open` toggling between
+// renders is exactly the sequence that broke it. A fresh `render()` per open
+// would never reproduce it.
+// ==========================================
+describe('InputManualModal — dialog semantics survive a reopen', () => {
+  const overlay = () => document.querySelector('.u-modal-shell');
+
+  it('keeps role="dialog" and aria-modal on a SECOND open', async () => {
+    inputModalOpen.set(false);
+    render(<InputManualModal />);
+    await waitFor(() => expect(overlay()).toBeNull());
+
+    await act(async () => { inputModalOpen.set(true); }); // OPEN #1
+    await waitFor(() => {
+      expect(overlay()?.getAttribute('role')).toBe('dialog');
+      expect(overlay()?.getAttribute('aria-modal')).toBe('true');
+    });
+
+    await act(async () => { inputModalOpen.set(false); }); // close — the hook must run here too
+    await waitFor(() => expect(overlay()).toBeNull());
+
+    await act(async () => { inputModalOpen.set(true); }); // OPEN #2 — the one the defect breaks
+    await waitFor(() => {
+      expect(overlay()?.getAttribute('role'), 'role lost on reopen').toBe('dialog');
+      expect(overlay()?.getAttribute('aria-modal'), 'aria-modal lost on reopen').toBe('true');
+    });
   });
 });

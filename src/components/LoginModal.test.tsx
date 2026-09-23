@@ -272,3 +272,40 @@ describe('LoginModal (B01)', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// ==========================================
+// TESTS: the dialog semantics survive a REOPEN (2026-09-24)
+//
+// WHY THIS EXISTS. `LoginModal` is mounted UNCONDITIONALLY — App.tsx renders it
+// with `mode="closed"` — and its render guard used to sit ABOVE the `useOverlay`
+// call (`if (loggedIn || mode === "closed") return null;` before the hook), so
+// while the modal was closed the hook never ran. Measured in a real browser
+// against the served build, opening via [data-nav-login] and closing with Escape:
+//   OPEN #1  role="dialog" aria-modal="true" labelledby="…"  focus INSIDE
+//   OPEN #2  role=null     aria-modal=null    labelledby=null focus NOT inside
+// The FIRST open is correct — which is exactly why a one-open check (and every
+// assertion above, which renders with mode="login" from the start) is GREEN on
+// this defect. Only a CLOSE-then-REOPEN on the SAME instance can see it, so the
+// `mode` prop is toggled through `rerender` rather than a fresh `render`.
+// ==========================================
+describe('LoginModal — dialog semantics survive a reopen', () => {
+  const overlay = () => document.querySelector('.u-modal-shell') as HTMLElement | null;
+
+  afterEach(() => cleanup());
+
+  it('keeps role="dialog" and aria-modal on a SECOND open', async () => {
+    const { rerender } = render(<LoginModal mode="closed" {...modeProps} />);
+    await waitFor(() => expect(overlay()).toBeNull());
+
+    rerender(<LoginModal mode="login" {...modeProps} />); // OPEN #1
+    await waitFor(() => expect(overlay()?.getAttribute('role')).toBe('dialog'));
+    expect(overlay()?.getAttribute('aria-modal')).toBe('true');
+
+    rerender(<LoginModal mode="closed" {...modeProps} />); // close — the hook must run here too
+    await waitFor(() => expect(overlay()).toBeNull());
+
+    rerender(<LoginModal mode="login" {...modeProps} />); // OPEN #2 — the one the defect breaks
+    await waitFor(() => expect(overlay()?.getAttribute('role'), 'role lost on reopen').toBe('dialog'));
+    expect(overlay()?.getAttribute('aria-modal'), 'aria-modal lost on reopen').toBe('true');
+  });
+});

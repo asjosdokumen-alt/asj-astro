@@ -66,8 +66,6 @@ export default function InputManualModal() {
     { type: 'PAS PHOTO', file: null }
   ]);
 
-  if (!open) return null;
-
   function addExtraDoc() {
     setExtraDocs([...extraDocs, { type: 'PAS PHOTO', file: null }]);
   }
@@ -172,7 +170,20 @@ export default function InputManualModal() {
     }
   }
 
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open, onClose });
+
+  /* THE RENDER GUARD MUST SIT AFTER THE HOOK, NOT BEFORE IT.
+     It used to be `if (!open) return null;` above the `useOverlay` call, so the
+     hook was SKIPPED entirely while the modal was closed — and this component is
+     mounted unconditionally (`TabPelamar.tsx:255` renders `<InputManualModal />`
+     with no props), so that happened on every visit to the Pelamar tab. The
+     result was a hooks-order violation: the dialog semantics were correct on the
+     FIRST open and LOST on every open after it (measured in a real browser:
+     open #2 had role=null, aria-modal=null and focus NOT moved inside). Passing
+     the REAL `open` state (instead of the old hardcoded `true`) plus moving the
+     guard below the hook makes every hook run unconditionally and re-run its
+     effects on each open/close. The rendered markup and classes are unchanged. */
+  if (!open) return null;
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>

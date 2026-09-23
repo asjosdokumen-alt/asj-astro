@@ -522,6 +522,74 @@ await test('a dialog opened over another gets its own name (if a pamflet exists)
   console.log(`     ↳ sweep: ${s.seen.join(' · ')}`);
 });
 
+/* ── 7. The login modal keeps its dialog semantics on a SECOND open ────────
+   WHY THIS CHECK EXISTS, AND WHY IT MUST OPEN TWICE.
+   `LoginModal` is mounted UNCONDITIONALLY — App.tsx renders it with
+   `mode="closed"` — and its render guard used to sit ABOVE the `useOverlay`
+   call. So while the modal was closed the hook never ran, and on the SECOND
+   open its effects did not re-run: the modal lost `role`/`aria-modal`/
+   `aria-labelledby` and stopped moving focus inside. Measured shape against
+   the served build (open via [data-nav-login], close with Escape):
+     OPEN #1  role="dialog" aria-modal="true" labelledby="…"  focus INSIDE
+     OPEN #2  role=null     aria-modal=null    labelledby=null focus NOT inside
+   A single-open check is GREEN on this defect — the first open is correct —
+   which is exactly how it shipped. The second open is the whole point, and
+   the close in between is asserted so the reopen is ATTRIBUTABLE to it. */
+await test('the login modal keeps role/aria-modal/focus on a SECOND open', async () => {
+  // `[data-nav-login]` lives on the landing page's desktop section nav
+  // (SiteNav.astro, hidden below lg), so navigate there. The page-level
+  // get-app-data route above survives navigation.
+  const r = await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+  const status = r ? r.status() : 0;
+  if (status !== 200) throw new Error(`GET / -> HTTP ${status}; refusing to read an error page`);
+  await page.waitForSelector('#atas h1', { timeout: 20000 });
+  await page.waitForTimeout(900);
+
+  const readLoginDialog = () =>
+    page.evaluate(() => {
+      const el = [...document.querySelectorAll('.u-modal-shell')].find(
+        (e) => e.offsetWidth > 0 || e.offsetHeight > 0,
+      );
+      if (!el) return null;
+      const lb = el.getAttribute('aria-labelledby');
+      const labelEl = lb ? document.getElementById(lb.split(/\s+/)[0]) : null;
+      return {
+        role: el.getAttribute('role'),
+        ariaModal: el.getAttribute('aria-modal'),
+        ariaLabelledby: lb,
+        labelResolves: !!labelEl && !!(labelEl.textContent || '').trim(),
+        focusInside: el.contains(document.activeElement),
+        activeTag: document.activeElement ? document.activeElement.tagName : null,
+      };
+    });
+
+  const openAndRead = async (label) => {
+    await page.click('[data-nav-login]');
+    await page.waitForTimeout(500);
+    const o = await readLoginDialog();
+    if (!o) throw new Error(`${label}: no visible overlay after clicking [data-nav-login]`);
+    if (o.role !== 'dialog') throw new Error(`${label}: role=${JSON.stringify(o.role)} (expected "dialog")`);
+    if (o.ariaModal !== 'true') throw new Error(`${label}: aria-modal=${JSON.stringify(o.ariaModal)} (expected "true")`);
+    if (!o.ariaLabelledby || !o.labelResolves) {
+      throw new Error(`${label}: aria-labelledby=${JSON.stringify(o.ariaLabelledby)} does not resolve to a non-empty name`);
+    }
+    if (!o.focusInside) throw new Error(`${label}: focus is NOT inside the dialog (activeElement=${o.activeTag})`);
+    return o;
+  };
+
+  const first = await openAndRead('open #1');
+
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(450);
+  const stillOpen = await readLoginDialog();
+  if (stillOpen) throw new Error('the login modal did not close on Escape — the reopen would not be attributable');
+
+  const second = await openAndRead('open #2 (after a real close)');
+
+  console.log(`     ↳ open#1 role=${first.role} focusInside=${first.focusInside}`);
+  console.log(`     ↳ open#2 role=${second.role} aria-modal=${second.ariaModal} focusInside=${second.focusInside}`);
+});
+
 await browser.close();
 
 console.log('');

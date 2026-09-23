@@ -76,8 +76,6 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
     if (loggedIn) onClose();
   }, [loggedIn, onClose]);
 
-  if (loggedIn || mode === "closed") return null;
-
   // ─── Auth API (routing tetap lewat surface-specific endpoints) ───
   //
   // Dulu memanggil `fetch` sendiri, dan itu menelan dua hal: tidak ada batas
@@ -224,7 +222,23 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   // looks for first; without them focus would land on the close button.
   // The mode branches are mutually exclusive, so only one marker is ever in
   // the DOM at a time.
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const isOpen = mode !== "closed" && !loggedIn;
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
+
+  /* THE RENDER GUARD MUST SIT AFTER EVERY HOOK, NOT BEFORE THEM.
+     It used to be `if (loggedIn || mode === "closed") return null;` at the top
+     of the body, which SKIPPED `useOverlay` entirely whenever the modal was
+     closed — and this modal is mounted unconditionally (App.tsx renders it with
+     `mode="closed"`), so that happened on every page load. The result was a
+     hooks-order violation whose measured symptom was: the dialog semantics were
+     correct on the FIRST open and LOST on every open after it (role=null,
+     aria-modal=null, aria-labelledby=null, focus not moved inside) — the hook's
+     effects did not re-run on reopen. Moving the guard below the hook makes
+     every hook in this component run unconditionally, and `open` is now the
+     REAL state instead of the old hardcoded `true`, so the hook's effects re-run
+     on each open/close and re-write the role, the name and the initial focus.
+     The rendered markup and every class are unchanged. */
+  if (!isOpen) return null;
 
   return (
     <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
