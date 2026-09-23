@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { generateKeyPairSync } from 'node:crypto';
 import fs from 'fs';
 import path from 'path';
 import { buildPushPayload, __loadServiceAccountForTest } from './fcm-server';
@@ -83,17 +84,35 @@ describe('service-account resolution', () => {
   // fixture signal, and it is checked BEFORE anything is mutated.
 
   // True when the file holds something that is NOT a real credential — i.e. a
-  // fixture left behind by a killed run. Deliberately narrow: only a positive
-  // identification counts, so a real key is never misread as a fixture.
+  // fixture left behind by a killed run. Only a positive identification counts,
+  // so a real key is never misread as a fixture.
+  //
+  // ── 2026-09-23: checking the ID ALONE was not enough, and this is why ─────
+  //
+  // This function used to return "real" as soon as `private_key_id` matched
+  // /^[0-9a-f]{40}$/, and nothing else. The fixture written by the test below
+  // copies the REAL private_key_id (81aae427…) and substitutes
+  // `'x'.repeat(3000)` for the key — so it satisfied that test while being
+  // useless as a credential. Measured on disk: `firebase-service-account.json`
+  // held exactly that fixture — two keys, no `client_email`, a 3000-char
+  // single-line "key" that `crypto.createPrivateKey` rejects with
+  // `DECODER routines::unsupported` — while the test at the top of this file,
+  // 'the credential on disk is a real one, not a fixture left by a killed run',
+  // was PASSING on it. A guard that cannot fail on the thing it names is the
+  // same class of defect as the 2026-09-17 silent data loss.
+  //
+  // The signal that actually separates the two is the KEY, not the id: a real
+  // Google service account carries a PEM block. Absence of one is a fixture,
+  // whatever the id looks like.
   const looksLikeFixture = (p: string) => {
     try {
       if (!fs.existsSync(p)) return false;
       const o = JSON.parse(fs.readFileSync(p, 'utf8'));
-      if (o && typeof o.private_key_id === 'string' && /^[0-9a-f]{40}$/.test(o.private_key_id)) {
-        return false; // a real service account — never treat this as a fixture
-      }
-      // A real key is ~2.3 KB. Anything this small without a key id is a fixture.
-      return fs.statSync(p).size < 1024;
+      const pk = typeof o?.private_key === 'string' ? o.private_key : '';
+      // `_lib/fcm-server.ts` repairs double-escaped newlines; mirror that here so
+      // a correctly-stored key is not misread as a fixture.
+      const pem = pk.includes('\\n') ? pk.replace(/\\n/g, '\n') : pk;
+      return !/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(pem);
     } catch {
       return false;
     }
@@ -160,12 +179,29 @@ describe('service-account resolution', () => {
       // A fixture: valid JSON shape, but no `private_key_id`.
       fs.writeFileSync(FILE, JSON.stringify({ client_email: 'x', private_key: 'FIXTUREVALUE' }));
       expect(looksLikeFixture(FILE)).toBe(true);
-      // A real-shaped credential: a 40-hex private_key_id.
+
+      // The fixture that actually sat on disk on 2026-09-23: the REAL
+      // private_key_id with the key replaced by filler. It is a fixture, and
+      // until 2026-09-23 this line asserted the opposite — which is what let it
+      // hide from the check at the top of this file.
       fs.writeFileSync(
         FILE,
         JSON.stringify({
           private_key_id: '81aae4277486586dbb3c894d0cbe8988db4ca22d',
           private_key: 'x'.repeat(3000),
+        }),
+      );
+      expect(looksLikeFixture(FILE)).toBe(true);
+
+      // A REAL key, generated here rather than faked with filler: a real PEM
+      // must never be misread as a fixture, or the suite refuses to run on a
+      // machine that is configured correctly.
+      const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+      fs.writeFileSync(
+        FILE,
+        JSON.stringify({
+          private_key_id: '81aae4277486586dbb3c894d0cbe8988db4ca22d',
+          private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }),
         }),
       );
       expect(looksLikeFixture(FILE)).toBe(false);

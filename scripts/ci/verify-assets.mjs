@@ -261,7 +261,7 @@ const OWNER_APPROVED = new Set([
   'fasilitas-kelas-bahasa-2.webp', // 8 men, numbered interview tags — seen
   'fasilitas-ruang-tamu-1.webp', // 4 people showing documents — seen
   'fasilitas-ruang-tamu-3.webp', // 3 young men showing documents — seen
-  // FACES PRESENT. The consent basis is recorded here so the claim is visible
+  // FACES PRESENT. The publication basis is recorded here so the claim is visible
   // rather than implied. These four were moved out of CONSENT_OPEN on 2026-09-23
   // when the owner answered — see the note on that set below.
   'fasilitas-grup-staf.webp', // ~20 people in uniform — owner's ruling 2026-09-23
@@ -288,8 +288,8 @@ const OWNER_APPROVED = new Set([
  * tidy the file is what this check catches.
  *
  * When the owner answers: either remove the photo from GALLERY (and record it in
- * GALLERY_EXCLUDED), or move it out of this set and add the consent basis for it
- * next to its entry in OWNER_APPROVED. Do not simply delete the annotation.
+ * GALLERY_EXCLUDED), or move it out of this set and add the publication basis for
+ * it next to its entry in OWNER_APPROVED. Do not simply delete the annotation.
  */
 const CONSENT_OPEN = new Set([
   // EMPTY BY THE OWNER'S RULING, 2026-09-23. The four entries that used to live
@@ -356,7 +356,7 @@ for (const line of ignoreLines) {
  * ILLUSTRATIONS — drawings, not photographs. §11.2 does not apply to them.
  *
  * WHY THIS SET EXISTS. Check (a) below enforces §11.2: a rendered, committable
- * photograph needs a recorded consent basis, because the repo is public and a
+ * photograph needs a recorded publication basis, because the repo is public and a
  * face cannot be unpublished. That rule is about PEOPLE. An illustration has no
  * subject who could consent or refuse, so requiring a consent entry for one is
  * not a stricter check — it is a category error that trains the reader to add
@@ -415,10 +415,12 @@ for (const f of published) {
   if (ILLUSTRATIONS.has(f)) continue;
   if (!OWNER_APPROVED.has(f) && !ignored.has(f)) {
     violations.push(
-      `RENDERED AND COMMITTABLE, NO CONSENT ON RECORD — ${f}\n` +
+      `RENDERED AND COMMITTABLE, NO PUBLICATION BASIS ON RECORD — ${f}\n` +
         `        the site displays it, .gitignore does not block it, and it is not in\n` +
         `        OWNER_APPROVED. Either it should not be published (§11.2), or its\n` +
-        `        consent basis needs recording — do not fix this by widening the gate.`,
+        `        publication basis needs recording — consent from the people shown, or\n` +
+        `        the owner's recorded ruling, which are NOT the same thing. Do not fix\n` +
+        `        this by widening the gate.`,
     );
   }
 }
@@ -589,7 +591,7 @@ console.log('─'.repeat(68));
 console.log('   COMPANY ASSET BOUNDARY — §11.2 photographs vs .gitignore');
 console.log(`   ${onDisk.length} photograph(s) on disk · ${published.length} published · ${blocked} blocked from git`);
 console.log(`   ${blockedHere} of those blocked rules are live on THIS machine (the rest guard copies not present here)`);
-console.log(`   ${approved} published photograph(s) carry a recorded consent basis`);
+console.log(`   ${approved} published photograph(s) carry a recorded publication basis (consent and/or owner ruling)`);
 console.log('─'.repeat(68));
 
 if (notes.length) {

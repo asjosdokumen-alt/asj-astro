@@ -101,11 +101,11 @@ const MUTATIONS = [
     expect: 'BLOCKED PHOTOGRAPH IS PUBLISHED',
   },
   {
-    name: 'M2 — a RENDERED photo is dropped from OWNER_APPROVED (consent basis erased)',
+    name: 'M2 — a RENDERED photo is dropped from OWNER_APPROVED (publication basis erased)',
     file: GATE_SELF,
     from: "  'tim-hadi-prasojo.webp', // named individual, a manager — owner's ruling 2026-09-23\n",
     to: '',
-    expect: 'RENDERED AND COMMITTABLE, NO CONSENT ON RECORD',
+    expect: 'RENDERED AND COMMITTABLE, NO PUBLICATION BASIS ON RECORD',
   },
   {
     name: 'M3 — an excluded photo is quietly added to OWNER_APPROVED (consent fabricated)',
