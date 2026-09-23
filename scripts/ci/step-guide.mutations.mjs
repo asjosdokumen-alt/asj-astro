@@ -29,17 +29,35 @@ const originalI18n = readFileSync(I18N_ID, 'utf8');
 
 /**
  * Ganti tepat SATU kemunculan. Jumlah kecocokan diperiksa supaya mutasi yang
- * targetnya bergeser (CRLF, kalimat berubah) gagal keras sebagai NOT-APPLIED,
+ * targetnya bergeser (kalimat berubah) gagal keras sebagai NOT-APPLIED,
  * bukan diam-diam tidak melakukan apa-apa lalu dinilai sebagai survivor.
+ *
+ * AKHIR BARIS DINORMALISASI (2026-09-23). Berkas ini CRLF murni — diukur: 159
+ * CRLF, 0 LF — sedangkan anchor di bawah ditulis dengan `\n`. `split` yang persis
+ * karena itu menemukan NOL kecocokan, dan hanya anchor MULTI-BARIS yang terkena:
+ * M3 adalah satu-satunya, jadi delapan mutasi satu-baris di sekitarnya tetap
+ * KILLED sementara M3 tidak pernah benar-benar diuji. Verdict NOT-APPLIED-nya
+ * benar, tapi penyebabnya format berkas, bukan kalimat yang bergeser — dan
+ * "tidak diuji" yang menyamar sebagai "diuji" adalah persis yang baterai ini ada
+ * untuk mencegah.
+ *
+ * Normalisasi mempertahankan jaminan aslinya: kalimat yang benar-benar berubah
+ * TETAP gagal keras sebagai NOT-APPLIED. Yang berhenti dihukum hanya perbedaan
+ * CRLF/LF, yang bukan pergeseran. Berkas ditulis kembali dengan akhir baris
+ * aslinya supaya restore tetap byte-for-byte.
  */
 function apply(from, to, file = TARGET, originalText = original) {
-  const parts = originalText.split(from);
+  const crlf = originalText.includes('\r\n');
+  const lf = (s) => s.replace(/\r\n/g, '\n');
+  const parts = lf(originalText).split(lf(from));
   if (parts.length !== 2) {
     throw new Error(
       `NOT-APPLIED (${parts.length - 1} matches): ${JSON.stringify(from.slice(0, 60))}`,
     );
   }
-  writeFileSync(file, parts.join(to));
+  let out = parts.join(lf(to));
+  if (crlf) out = out.replace(/\n/g, '\r\n');
+  writeFileSync(file, out);
 }
 
 function runSuite() {
