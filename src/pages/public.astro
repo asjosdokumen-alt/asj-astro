@@ -7,7 +7,10 @@ import Icon from '../components/ui/Icon';
 ---
 
 <BaseLayout title="Lowongan & Layanan — ASJ Portal" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true}>
-  <App client:only="preact" />
+  <!-- `client:load`, not `client:only`: measured 2026-09-23, with JavaScript
+       unavailable this route rendered 473 chars and **0 h1**. See the long note
+       in `index.astro` for the measurement and the hydration reasoning. -->
+  <App client:load />
 
   <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6 pb-16">
     <!-- Back button -->

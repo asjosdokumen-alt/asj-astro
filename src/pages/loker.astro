@@ -30,7 +30,13 @@ import SectionTitle from '../components/public/SectionTitle.astro';
 ---
 
 <BaseLayout title="Lowongan Kerja — PT Amanah Sakura Japan" description="Daftar lowongan kerja aktif di Jepang. Program SSW (Tokutei Ginou) dan Magang (Jisshu). Lamar sekarang!" showFooter={true}>
-  <App client:only="preact" />
+  <!-- `client:load`, not `client:only`: measured 2026-09-23, with JavaScript
+       unavailable this route rendered 523 chars and **0 h1** — the header, the
+       nav and the page's only heading all lived in a client-only island. The
+       job portal is the main public destination, so it must not be empty to a
+       crawler or a no-JS reader. Same change, and the same reasoning, as
+       `index.astro` (see the long note there). -->
+  <App client:load />
 
   <main id="main-content" class="w-full max-w-7xl mx-auto px-4 md:px-6 pb-16 min-h-[60vh]">
     <div class="py-10 md:py-14">

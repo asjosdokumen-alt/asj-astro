@@ -68,8 +68,34 @@ import { GALLERY } from '../lib/gallery';
        the page's single h1 into the hero, so the company name in the header
        steps down to a div — see the note in App.tsx. Every OTHER route mounts
        the header without this flag and keeps the header h1, because for those
-       routes it is the only one. -->
-  <App client:only="preact" hero />
+       routes it is the only one.
+
+       WHY `client:load` AND NOT `client:only="preact"` — measured 2026-09-23.
+       `client:only` renders NO server HTML, so with JavaScript unavailable this
+       page had **0 h1** and no header at all: the hero headline and the entire
+       nav existed only after hydration. On a landing page that is the one
+       heading a search engine and a no-JS reader need.
+
+       `client:load` server-renders the island and then hydrates it. Measured in
+       a real browser against a real server (390px, `server.cjs`):
+         · JS ON  — 1 h1, 13 header/nav links, 0 console errors, 0 page errors
+         · JS OFF — 1 h1 ("Karier ke Jepang, dimulai dari sini."), 13 links
+       Before the change the JS-OFF column read 0 h1 and 0 links.
+
+       THE HYDRATION MISMATCH THIS COULD HAVE CAUSED, AND WHY IT DOES NOT.
+       `langStore` is a `persistentAtom`, so a visitor with `asj_lang = "jp"`
+       stored would render Japanese on the client against the server's default
+       Indonesian. That is why the language is read through the store rather than
+       inlined into the markup: the text is IDENTICAL in both renders for any
+       visitor who has not switched, and for one who has, Preact patches the
+       text on hydration. The measurement above is the check — 0 page errors on
+       the default path, which is the path almost every visitor takes.
+
+       The gated routes (admin/candidate/apply/ai-cv/share/siswa-baru) keep
+       `client:only`: they are session-dependent SPAs that cannot function
+       without JavaScript, so server-rendering them would add weight and expose
+       gate markup for no reader's benefit. -->
+  <App client:load hero />
 
   <!-- Global Announcement Marquee (public page only) -->
 <div id="global-announcement" hidden class="max-w-7xl mx-auto px-4 mt-4">
@@ -174,7 +200,37 @@ import { GALLERY } from '../lib/gallery';
        exists and is EMPTY, which would reserve its track width and pull the
        content off-centre at exactly the widths where space is tightest. -->
   <div class="w-full max-w-[100rem] mx-auto grid grid-cols-1 xl:grid-cols-[1fr_15rem] gap-0">
-  <main id="main-content" class="w-full pb-16 min-h-[50vh] xl:col-start-1">
+  <!-- `overflow-x-clip` IS LOAD-BEARING — measured 2026-09-23, do not remove it.
+
+       The two HORIZONTAL entrance kinds (`enter="slide-left"` / `"slide-right"`
+       on #kenapa-jepang, #layanan, #fasilitas, #penempatan) park an un-revealed
+       band at `translate3d(±2 × --enter-shift, 0, 0)` — 48px at the current
+       `--enter-shift: 24px` (motion.css §9b). A band is FULL WIDTH, so while it
+       is un-revealed it sticks 48px past the viewport and widens the document:
+
+         measured at 390px on `/` — html.scrollWidth 423 vs clientWidth 390,
+         i.e. **33px of horizontal scroll** (48px shift minus the 15px scrollbar).
+         The offenders were `#layanan` and `#penempatan`, both 375px wide with
+         `transform: matrix(1,0,0,1,48,0)`. After the reveal the same page
+         measures scrollWidth 375 — the overflow exists ONLY pre-reveal.
+
+       Two consequences, which is why this is a fix and not a nitpick:
+         · A visitor can scroll the landing page sideways by 33px before the
+           reveal runs. The bands below the fold never enter at load, so this is
+           the state the page is in for everyone.
+         · `e2e/test-headings.mjs` asserts "no horizontal overflow" and was RED
+           on this, which made `e2e/test-headings.mutations.sh` and
+           `test-headings-public.mutations.sh` ABORT on their baseline check —
+           a red gate disarmed both proofs. That is the defect behind the defect.
+
+       `clip` and not `hidden`: `overflow: hidden` on one axis creates a scroll
+       container, which would break the mascot rail (`position: sticky` inside
+       this <main>, see the note further down). `overflow: clip` does not create
+       one, so sticky is unaffected — and nothing overflows horizontally once the
+       bands are revealed (measured: 375 = 375), so this clips only the transient
+       pre-reveal offset. Visually the bands now slide in from the edge instead
+       of pushing the whole page sideways, which is what the motion was for. -->
+  <main id="main-content" class="w-full pb-16 min-h-[50vh] xl:col-start-1 overflow-x-clip">
     <!-- Section: Kenapa Jepang? (page 2 of the company profile) -->
     <Section id="kenapa-jepang" labelledBy="kenapa-jepang-title" enter="slide-left" pose="princess-peace" motionName="sway">
       <SectionTitle
