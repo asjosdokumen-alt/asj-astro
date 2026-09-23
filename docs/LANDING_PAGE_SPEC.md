@@ -115,7 +115,7 @@ disengaja:
 | S9 ✅ | `FactList` (6 baris) | 2 dokumen, 6 nomor | `index.astro` | L3 |
 | S10 ⏸ | `IconTileGrid` / grid potret | 6 jabatan + JLPT N1 — **butuh izin tayang** | — | L3 |
 | S11 ✅ | `IconTileGrid` (6 ubin) | 6 ubin, gabungan data resmi + asrama | `index.astro` | L3 |
-| R1 ⏸ | `FactList` | alamat, 2 telepon, WA, surel — **jam operasional belum ada** | — | L3 |
+| R1 ✅ | `Card` ×2 + `ContactForm` (bukan `FactList`) | alamat, 2 telepon, surel, formulir kontak — **baris jam operasional dihilangkan (P-4)**; WA ada di `Footer.astro`, bukan di section ini | `index.astro` | L3 |
 | R2 | `JobMiniList.tsx` | `jobs` (5 teratas) | `src/components/public/JobMiniList.tsx` | L6 |
 | R3 ⏸ | `GalleryGrid` | 6 foto terpilih (§8) — **butuh izin tayang** | — | L3 |
 | R4 ⏸ | `FactList` + 3 foto | 4 prefektur + foto mensetsu — **butuh izin tayang** | — | L3 |
@@ -680,7 +680,7 @@ Dipetakan ke `docs/LANDING_PAGE_ROADMAP.md` §3. Satu fase hijau sebelum lanjut.
 | **L0** ✅ | Pindahkan `switchTab` ke modul bertest | `src/lib/publicSections.ts`, `index.astro`, `public.astro` | `vitest`, `e2e:public` |
 | **L1** ✅ | Fondasi: `Section`, `SectionTitle`, `Card`; token `DESIGN.md` §3; T-01/T-03/T-04 | `src/styles/theme.css`, `src/components/public/`, `src/layouts/BaseLayout.astro` | `bundle:size`, `verify:classes`, `lint-ratchet` |
 | **L2** ✅ | S1 Hero + S12 Pita CTA; `h1` pindah; strip lowongan hidup | `App.tsx`, `ClosingBand.astro`, `index.astro`, `e2e/test-headings.mjs` | `e2e:headings`, `e2e:drawer`, `i18n.keys` |
-| **L3** 🟡 | S2, S4, S6, S8, S9, S11 ✅ · S7, S10, R1, R3, R4, R5 ⏸ (butuh pemilik) | `src/components/public/*`, `src/lib/companyProfile.ts`, `index.astro` | `e2e:public`, `verify:classes`, `i18n.keys` |
+| **L3** 🟡 | S2, S4, S6, S8, S9, S11, R1 ✅ · S7, S10, R3, R4, R5 ⏸ (butuh pemilik) | `src/components/public/*`, `src/lib/companyProfile.ts`, `index.astro` | `e2e:public`, `verify:classes`, `i18n.keys` |
 | **L4** | Nav baris atas: item, penanda aktif, bahasa, login; **koreksi K-2 & K-10** | `App.tsx`, `Footer.astro` | `e2e:drawer`, `e2e:labels` |
 | **L5** | S3 kartu loker + filter + pencarian; tabel dipertahankan | `JobGrid.tsx`, `JobCard.tsx` | `e2e:loker-layout`, `vitest` |
 | **L6** | Rail lengket + R2 | `index.astro`, `JobMiniList.tsx` | `e2e:public` |
@@ -706,19 +706,21 @@ Dipetakan ke `docs/LANDING_PAGE_ROADMAP.md` §3. Satu fase hijau sebelum lanjut.
 
 ### L3 — apa yang sudah jalan, apa yang menunggu pemilik
 
-Enam section berisi **data yang sudah terverifikasi**, semuanya di `index.astro` sebagai
+Tujuh section berisi **data yang sudah terverifikasi**, semuanya di `index.astro` sebagai
 bagian dari alur halaman: **S2 Kenapa Jepang**, **S4 Program ASJ**, **S6 Alur &
-Persyaratan**, **S8 Visi & Misi**, **S9 Legalitas**, **S11 Fasilitas**. Semuanya
-**dirender server** — `dist/index.html` memuat 10 `h2`, 23 `h3`, nomor AHU asli, harga,
-dan keenam langkah alur, jadi berbeda dari hero yang bergantung hidrasi.
+Persyaratan**, **S8 Visi & Misi**, **S9 Legalitas**, **S11 Fasilitas**, dan **R1 Informasi
+Kontak**. Semuanya **dirender server** — `dist/index.html` memuat 18 `h2`, 27 `h3` (diukur
+2026-09-23), nomor AHU asli, harga, dan keenam langkah alur, jadi berbeda dari hero yang
+bergantung hidrasi.
 
-**Enam blok ditahan**, dan alasannya bukan pekerjaan yang belum sempat:
+**Keenam blok ini sudah dirender** — keenam `id`-nya ada di `dist/index.html` — **tetapi
+masing-masing masih menunggu satu bagian**, dan alasannya bukan pekerjaan yang belum sempat:
 
 | Blok | Yang ditunggu |
 |---|---|
 | S7 Tentang Kami | prosa dari pemilik (P-3 data). Section tanpa prosa bukan section |
 | S10 Tim & Kredensial | izin tayang nama & foto (P-7) |
-| R1 Informasi Kontak | jam operasional (P-4) |
+| R1 Informasi Kontak | jam operasional (P-4) — blok tetap dirender, **baris jamnya** yang dihilangkan |
 | R3 Galeri | izin tayang foto kandidat (P-7) |
 | R4 Penempatan | izin tayang foto mensetsu (P-7) |
 | R5 Lokasi | koordinat peta (P-8) |

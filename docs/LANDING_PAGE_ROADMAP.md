@@ -263,7 +263,7 @@ memakai prosa/angka statis.
 | L5.1 | Statistik: 500+ kandidat, 200+ penempatan, 50+ mitra, 5+ tahun, “sejak 2015” | **pemilik** | Angka berasal dari satu sumber yang bisa ditunjuk |
 | L5.2 | Legalitas: 5 nomor izin | **pemilik** | Nomor nyata; section disembunyikan bila kosong |
 | L5.3 | Galeri & testimoni | **pemilik** | Berkas + izin tayang |
-| L5.4 | Kontak: alamat, surel, jam operasional | **pemilik** | Cocok dengan Google Maps yang sudah ditautkan footer |
+| L5.4 | Kontak: **jam operasional** (alamat & surel sudah terpasang) | **pemilik** | Cocok dengan Google Maps yang sudah ditautkan footer |
 | L5.5 | Loker sebagai **kartu** + filter Bidang/Lokasi/Program/Gender | sendiri | Filter memakai `jobCategoryLabel`/`jobLocationLabel`/`jobGenderLabel` yang sudah ada; **tabel lama dipertahankan** sampai kartu terbukti setara |
 | L5.6 | “Lihat semua” → daftar penuh | sendiri | Ada rute/halaman tujuan; kalau belum, tombolnya **jangan dipasang** |
 
@@ -416,7 +416,7 @@ Desain menampilkan banyak angka. **Tidak satu pun boleh diketik di markah.**
 | Program (SSW / Magang / Bahasa) | 🟡 3 kartu ada, isinya beda (Visa/Ujian/Asrama) | Putuskan: ganti isi atau tambah kartu — **satu keputusan, tidak dua** |
 | 500+ Kandidat · 200+ Penempatan · 50+ Mitra · 5+ Tahun | ❌ | **Butuh pemilik** (L5.1) |
 | “Berdiri sejak 2015” | ❌ | **Butuh pemilik** |
-| Alamat, telp, surel, jam operasional | ❌ | **Butuh pemilik** — desain mencantumkan `Jl. Raya Kalimalang No. 12, Jakarta Timur, DKI Jakarta`; **verifikasi, jangan salin dari gambar** |
+| Jam operasional | ❌ | **Butuh pemilik** (P-4) — alamat, telp, surel **sudah terpasang dan terverifikasi**; alamat mockup (`Jl. Raya Kalimalang No. 12, Jakarta Timur`) **tidak dipakai** — yang dipakai alamat Ponorogo dari dokumen resmi |
 | 5 nomor izin (SIUP/SIP3M/Akta/TDP/NIB) | ❌ | **Butuh pemilik**; section tampil hanya bila terisi |
 
 **Aturan:** lebih baik **section disembunyikan** daripada menampilkan angka karangan. Angka karangan
