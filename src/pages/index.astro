@@ -643,13 +643,27 @@ import { GALLERY } from '../lib/gallery';
       </div>
     </Section>
 
-    <!-- Section: Kontak (R1, pages 5, 8 and 9) -->
+    <!-- Section: Kontak (R1, pages 5, 8 and 9).
+
+         WHY THE SUBTITLE DOES NOT REFERENCE OFFICE HOURS. The hours are P-4 —
+         never supplied by the owner, with the fallback recorded as "baris jam
+         dihilangkan" in `LANDING_PAGE_SPEC.md:659`. The subtitle used to tell
+         visitors to get in touch during working hours, which is a schedule this
+         page never states, so it pointed them at something they had no way to
+         look up. It now names the three channels that do exist. When the owner
+         supplies the hours, add the ROW and a subtitle that can reference it —
+         do not restore the old sentence on its own.
+
+         This comment is deliberately written WITHOUT quoting the retired
+         sentence, because Astro ships HTML comments to the browser: a literal
+         copy of it here would keep a text search of the built page non-empty
+         and read as "the old copy is still on the page". -->
     <Section id="kontak" labelledBy="kontak-title" enter="drop" pose="princess-wave" motionName="wave">
       <SectionTitle
         titleKey="profile.contact_title"
         title="Informasi Kontak"
         descKey="profile.contact_desc"
-        desc="Hubungi kami pada jam kerja."
+        desc="Silakan hubungi kami melalui telepon, surel, atau formulir."
         accent="identity"
         headingId="kontak-title"
       />

@@ -1310,7 +1310,7 @@ export const translations: Record<Lang, Record<string, string>> = {
 
   // ── Kontak & Lokasi (R1/R5, halaman 5, 8, 9) ─────────────────────────
   "profile.contact_title": "Informasi Kontak",
-  "profile.contact_desc": "Hubungi kami pada jam kerja.",
+  "profile.contact_desc": "Silakan hubungi kami melalui telepon, surel, atau formulir.",
   "profile.contact_address": "Alamat",
   "profile.contact_phone": "Telepon",
   "profile.contact_email": "Surel",

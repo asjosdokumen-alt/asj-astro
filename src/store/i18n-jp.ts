@@ -965,7 +965,7 @@ export const jpTranslations: Record<string, string> = {
 
   // ── 連絡先と所在地（R1/R5、5・8・9ページ） ──────────────────────────
   "profile.contact_title": "お問い合わせ",
-  "profile.contact_desc": "営業時間内にご連絡ください。",
+  "profile.contact_desc": "お電話・メール・フォームよりお気軽にお問い合わせください。",
   "profile.contact_address": "住所",
   "profile.contact_phone": "電話",
   "profile.contact_email": "メール",
