@@ -80,6 +80,13 @@ const TAB_IDS: readonly string[] = [...TABS.map((t) => t.id), ...PINNED_TABS];
 
 const isTab = (v: string): v is Tab => TAB_IDS.includes(v);
 
+/** A row on the "Papan Tugas Tim" board — local, in-session state only. */
+interface TeamTask {
+  id: number;
+  text: string;
+  done: boolean;
+}
+
 /**
  * Read the tab from `location.hash`, falling back to the first tab. Used by both
  * the initialiser and the `hashchange` listener so the two cannot disagree.
@@ -138,6 +145,30 @@ export default function AdminPanel() {
   const editModal = useModal<any>();
   const matchmaking = useModal<{job: any; candidates: any[]}>();
 
+  /* ─── Papan Tugas Tim (team task board) ────────────────────────────────
+     This card used to be inert: the input had no state binding, the + button
+     had no onClick, and #todo-list was never written to — a repo-wide grep for
+     todo-input / todo-list found no other writer in the tree, so the card
+     looked live and did nothing. Local component state is the intended scope:
+     the board is a scratchpad for the current admin session, and it is honest
+     about that rather than pretending to persist. NO network call, no DB table
+     and no Supabase write — a task does not survive a reload, by design. */
+  const [tasks, setTasks] = useState<TeamTask[]>([]);
+  const [taskDraft, setTaskDraft] = useState("");
+
+  function addTask() {
+    const text = taskDraft.trim();
+    if (!text) return; // an empty / whitespace-only draft is not a task
+    setTasks((prev) => [...prev, { id: Date.now() + prev.length, text, done: false }]);
+    setTaskDraft("");
+  }
+  function toggleTask(id: number) {
+    setTasks((prev) => prev.map((tk) => (tk.id === id ? { ...tk, done: !tk.done } : tk)));
+  }
+  function removeTask(id: number) {
+    setTasks((prev) => prev.filter((tk) => tk.id !== id));
+  }
+
   return (
     <div class="space-y-6">
 
@@ -162,10 +193,21 @@ export default function AdminPanel() {
           {/* h2, not h3: sibling of the tab content — see the note on the agenda card above. */}
           <h2 class="text-sm font-bold text-white mb-3"><Icon name="tasks" class="text-pink-400 mr-2" /> <span data-lang="admin.task_board">{t('admin.task_board')}</span></h2>
           <div class="flex gap-2 mb-3">
-            <input type="text" id="todo-input" class="flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" placeholder={t('admin.task_placeholder')} aria-label={t('admin.task_placeholder')} />
-            <button class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition shadow-lg" aria-label={t('button.add')}><Icon name="plus" /></button>
+            <input type="text" id="todo-input" value={taskDraft} onInput={(e) => setTaskDraft((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') addTask(); }} class="flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" placeholder={t('admin.task_placeholder')} aria-label={t('admin.task_placeholder')} />
+            <button type="button" onClick={addTask} class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition shadow-lg" aria-label={t('button.add')}><Icon name="plus" /></button>
           </div>
-          <div id="todo-list" class="flex-1 u-scroll-area custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '190px' }}></div>
+          <div id="todo-list" class="flex-1 u-scroll-area custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '190px' }}>
+            {tasks.length === 0 && (
+              <p class="text-xs text-slate-500">{t('admin.task_empty')}</p>
+            )}
+            {tasks.map((task) => (
+              <div key={task.id} class="flex items-center gap-2 bg-black/40 border border-slate-700 rounded-lg px-3 py-2">
+                <input type="checkbox" checked={task.done} onChange={() => toggleTask(task.id)} aria-label={t('admin.task_done')} class="accent-pink-500 shrink-0" />
+                <span class={"flex-1 min-w-0 break-words text-sm " + (task.done ? "line-through text-slate-500" : "text-white")}>{task.text}</span>
+                <button type="button" onClick={() => removeTask(task.id)} aria-label={t('button.delete')} class="text-slate-400 hover:text-red-400 transition shrink-0"><Icon name="times" /></button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

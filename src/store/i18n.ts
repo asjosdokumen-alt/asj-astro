@@ -459,6 +459,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.tab_candidate": "Data Pelamar",
     "admin.task_board": "Papan Tugas Tim",
     "admin.task_placeholder": "Ketik tugas baru lalu tekan Tambah...",
+    "admin.task_empty": "Belum ada tugas.",
+    "admin.task_done": "Tandai selesai",
     "ui.agenda_recent": "Agenda & Jadwal Terdekat",
     "ui.schedule_empty": "Jadwal akan dimuat dari backend.",
     "ui.open_schedule": "Buka Kelola Jadwal ",

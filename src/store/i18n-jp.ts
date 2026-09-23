@@ -456,6 +456,8 @@ export const jpTranslations: Record<string, string> = {
     "admin.history_internal": "内部求人履歴",
     "admin.task_board": "チームタスクボード",
     "admin.task_placeholder": "タスクを入力して追加...",
+    "admin.task_empty": "タスクはまだありません。",
+    "admin.task_done": "完了にする",
     "ui.agenda_recent": "最近のスケジュール",
     "ui.schedule_empty": "バックエンドからスケジュールを読み込みます",
     "ui.open_schedule": "スケジュール管理を開く ",
