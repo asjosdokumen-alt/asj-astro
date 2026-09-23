@@ -78,28 +78,6 @@ function authFor(role) {
  *
  * The replacements are strings that ONLY a gate state can produce, because each
  * is the copy of the gate itself rather than a control on it:
- *   'Verifikasi Akun Kandidat'      → ai_cv.verify_account, /ai-cv's inline gate
- *   'Mengalihkan ke halaman login...' → ui.redirecting_login, AuthGuard's
- *                                       "no session, redirecting" state
- *   'Akses ditolak. Mengalihkan...'   → ui.access_denied_redirect, AuthGuard's
- *                                       "wrong role, redirecting" state
- * A gate that offers an escape hatch still shows one of these first, so nothing
- * is lost by dropping the button label.
- */
-/**
- * Text that means we are looking at a gate, not the page body.
- *
- * ⚠ 'Login Pelamar' WAS REMOVED ON 2026-09-19, and it was a false positive by
- * construction. It is `header.login`, i.e. the label of a normal LOGIN BUTTON —
- * it is rendered by the site header, the drawer, the new desktop section nav,
- * and the login modal's own heading. So "the page contains Login Pelamar" is
- * true of any public page that offers a way to log in, which is every public
- * page. Left in, it makes the check below report "reached the GATE" for pages
- * that are not gates at all (measured: `/`, `/public` and — through a redirect
- * bug — `/admin`, all flagged while rendering their real bodies).
- *
- * The replacements are strings that ONLY a gate state can produce, because each
- * is the copy of the gate itself rather than a control on it:
  *   'Verifikasi Akun Kandidat'        → ai_cv.verify_account, /ai-cv's inline gate
  *   'Mengalihkan ke halaman login...' → ui.redirecting_login, AuthGuard's
  *                                       "no session, redirecting" state
@@ -150,6 +128,28 @@ const PUBLIC_ROUTES = [
   { path: '/', session: null },
   { path: '/public', session: null },
 ];
+
+/**
+ * Routes whose h1 must survive with JavaScript DISABLED.
+ *
+ * WHY THIS EXISTS. Every assertion above runs with JavaScript enabled, so all of
+ * them pass on a page whose h1 exists only after hydration. That was the actual
+ * state until 2026-09-23: these three routes mounted `<App client:only="preact" />`,
+ * which renders NO server HTML, so with JS off the landing page had **0 h1** and
+ * the two others had **0 h1** and rendered 473 / 523 characters respectively —
+ * measured in a browser against `server.cjs`. A gate that waits for hydration and
+ * then asserts "exactly one h1" cannot see any of that.
+ *
+ * `/loker` is the job portal and the main public destination, which is why it is
+ * here and not merely `/`.
+ *
+ * The three are now `client:load`, which server-renders and then hydrates.
+ * Measured after the change: 1 h1 on all three with JS off, and 0 console / 0 page
+ * errors with JS on. The gated routes are deliberately NOT listed — they are
+ * session-dependent SPAs that cannot work without JavaScript, so server-rendering
+ * them would buy no reader anything.
+ */
+const NO_JS_ROUTES = ['/', '/public', '/loker'];
 
 /** Routes asserted for h1 and skip-link correctness. */
 const ALL_HEADING_ROUTES = [...ROUTES, ...PUBLIC_ROUTES];
@@ -283,8 +283,11 @@ async function inspectUncached(route, width, useSession) {
     await ctx.close();
     throw new Error(`GET ${route} -> HTTP ${status}; refusing to read the DOM of an error page`);
   }
-  // These islands are `client:only="preact"`, so the heading appears after
-  // hydration — not in the server HTML.
+  // The GATED islands are still `client:only="preact"`, so their heading appears
+  // after hydration — not in the server HTML. The three PUBLIC routes are not:
+  // measured 2026-09-23 they are `client:load`, so their h1 IS in the server HTML
+  // and this wait is not what makes the assertion below pass. The no-JS check at
+  // the end of this file is what pins that difference down.
   await page.waitForLoadState('networkidle').catch(() => {});
   await page.waitForTimeout(400);
 
@@ -407,6 +410,57 @@ function assertReachedBody(d) {
     throw new Error(
       `reached the GATE (${JSON.stringify(d.gate)}), not the page body — any number below would be meaningless`,
     );
+  }
+}
+
+/**
+ * Read the heading outline with JavaScript DISABLED, i.e. from the SERVER HTML.
+ *
+ * `waitUntil` is 'domcontentloaded' rather than 'networkidle': with scripting off
+ * there is nothing to wait for, and asking for networkidle only risks a timeout on
+ * a page that is already complete. The short settle is for layout, not for
+ * hydration — nothing hydrates here.
+ *
+ * The status is checked for the same reason every other reader in this file checks
+ * it: a 404 page has no h1 either, and reporting that as "the h1 is missing" would
+ * send the reader to the wrong file.
+ */
+/**
+ * Memoised, for the same reason `inspect` is: the two checks below read the same
+ * (route, no-JS) pair, and each read is a fresh context and page load.
+ */
+const noJsCache = new Map();
+function inspectNoJs(route) {
+  if (!noJsCache.has(route)) noJsCache.set(route, inspectNoJsUncached(route));
+  return noJsCache.get(route);
+}
+
+async function inspectNoJsUncached(route) {
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 900 },
+    deviceScaleFactor: 1,
+    javaScriptEnabled: false,
+  });
+  const page = await ctx.newPage();
+  try {
+    const resp = await page.goto(BASE + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    const status = resp ? resp.status() : 0;
+    if (status !== 200) {
+      throw new Error(`GET ${route} -> HTTP ${status}; refusing to read the DOM of an error page`);
+    }
+    await page.waitForTimeout(300);
+    return await page.evaluate(() => {
+      const h1s = [...document.querySelectorAll('h1')];
+      return {
+        path: location.pathname,
+        h1Count: h1s.length,
+        h1Text: h1s.length ? (h1s[0].textContent || '').replace(/\s+/g, ' ').trim() : '',
+        headerLinks: document.querySelectorAll('header a, nav a').length,
+        bodyText: (document.body.innerText || '').replace(/\s+/g, ' ').trim().length,
+      };
+    });
+  } finally {
+    await ctx.close();
   }
 }
 
@@ -599,6 +653,58 @@ async function run() {
     }
   }
 
+  /**
+   * CONTROLS FOR `GATE_MARKERS` (added 2026-09-23).
+   *
+   * `assertReachedBody` can only FAIL on a page that contains a marker, and
+   * nothing above proves it can fail at all. Both mutations that target the
+   * marker list SURVIVED this battery until these two checks existed — measured:
+   * M-B ('Login Pelamar' re-added as a marker) and M-C (markers emptied) both
+   * came back SURVIVED. The reason is structural, not a bug in the mutations: on
+   * a healthy tree every inspected route renders its real body, so the marker
+   * list is never consulted in the direction those mutations weaken. A guard
+   * whose failure mode is unreachable is a hypothesis, so both directions are
+   * pinned explicitly here.
+   *
+   * 1. POSITIVE — a route with NO session IS a gate, and must be read as one.
+   *    `/master` is the only body route that renders its gate IN PLACE without a
+   *    session. Measured 2026-09-23 at 1280px: HTTP 200 on `/master`, 189
+   *    characters of body text, marker 'Verifikasi Akun Kandidat'. `/admin` and
+   *    `/candidate` REDIRECT to `/` instead (9271 characters — the landing page),
+   *    so neither can be used for this. Kills M-C: with the markers emptied,
+   *    `d.gate` is null here and this throws.
+   *
+   * 2. FALSE POSITIVE — a public page that offers a login must NOT be read as a
+   *    gate. `/` contains the literal 'Login Pelamar' (`header.login`, the label
+   *    of an ordinary login button), which is exactly why that string was removed
+   *    from the list. Kills M-B: re-adding it makes `d.gate` truthy on `/` here
+   *    and this throws.
+   */
+  for (const width of [390, 1280]) {
+    await test(`${width}px /master without a session: the gate IS detected (positive control)`, async () => {
+      const d = await inspect('/master', width, null);
+      if (d.path !== '/master') throw new Error(`redirected to ${d.path}`);
+      if (!d.gate) {
+        throw new Error(
+          'the gate was NOT detected — GATE_MARKERS no longer matches the gate copy, so ' +
+            'assertReachedBody cannot fail and every "the page body was reached" check above ' +
+            'is vacuous',
+        );
+      }
+    });
+
+    await test(`${width}px /: a public page is NOT mistaken for a gate (false-positive control)`, async () => {
+      const d = await inspect('/', width, null);
+      if (d.path !== '/') throw new Error(`redirected to ${d.path}`);
+      if (d.gate) {
+        throw new Error(
+          `a public page was read as a gate (${JSON.stringify(d.gate)}) — that marker matches a ` +
+            'CONTROL on the page (a login button), not the copy of the gate itself',
+        );
+      }
+    });
+  }
+
   // /master's section titles are the reason this file exists: they were
   // <div class="section-title"> — visually headings, semantically nothing. The
   // wizard renders one step at a time, so this must walk all five steps: a
@@ -621,6 +727,43 @@ async function run() {
         throw new Error(
           `${notHeadings.length} of ${tags.length} .section-title elements are not headings ` +
             `(found ${[...new Set(notHeadings)].join(', ')}) — they only look like headings`,
+        );
+      }
+    });
+  }
+
+  /**
+   * THE SERVER HTML. Every assertion above runs with JavaScript enabled, so all
+   * of them pass on a page whose h1 exists only after hydration — which was the
+   * real state of these three routes until 2026-09-23 (0 h1 with JS off). This is
+   * the only check in the file that can see the difference, and it is asserted
+   * separately from the count above on purpose: a green "exactly one h1" says
+   * nothing about WHERE that h1 came from.
+   */
+  for (const route of NO_JS_ROUTES) {
+    await test(`no-JS ${route}: the h1 is in the SERVER HTML, not only after hydration`, async () => {
+      const d = await inspectNoJs(route);
+      if (d.path !== route) throw new Error(`redirected to ${d.path}`);
+      if (d.h1Count !== 1) {
+        throw new Error(
+          `expected exactly 1 h1 with JavaScript disabled, found ${d.h1Count}. This route mounts ` +
+            `its header inside a Preact island, and \`client:only="preact"\` emits NO server HTML — ` +
+            `so the h1 does not exist for a crawler or a no-JS reader. Use \`client:load\`. ` +
+            `(for reference this render produced ${d.bodyText} characters of body text)`,
+        );
+      }
+      if (!d.h1Text) {
+        throw new Error('the h1 is present but empty — an empty heading is not a heading');
+      }
+    });
+
+    await test(`no-JS ${route}: the header is in the SERVER HTML too`, async () => {
+      const d = await inspectNoJs(route);
+      if (d.path !== route) throw new Error(`redirected to ${d.path}`);
+      if (d.headerLinks === 0) {
+        throw new Error(
+          'no header/nav link in the server HTML — the entire header lives in the island, so a ' +
+            'visitor without JavaScript gets a page with no way to navigate it',
         );
       }
     });
