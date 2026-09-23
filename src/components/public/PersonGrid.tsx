@@ -5,12 +5,15 @@
  * WHY THE NAME IS OPTIONAL
  * ------------------------
  * Six roles come from the official organisation structure (company profile page 8),
- * but only two carry a printed name. The spec is explicit that a person is named
- * only with their consent, and a name field that always renders would force the
- * other four to say something — which is how a placeholder like "Staff" or, worse,
- * an invented name, ends up on a public company page. `name: null` is a real state
- * here, not an oversight, and it renders an honest "Belum dipublikasikan" instead of
- * an empty gap that reads as a layout bug.
+ * and TODAY all six carry a printed name — the document publishes every one. The
+ * field stays nullable because the rule it encodes is the point: a person is named
+ * only when the company profile publishes them, and a `name` field that always
+ * rendered would force an unnamed role to say something — which is how a placeholder
+ * like "Staff" or, worse, an invented name, ends up on a public company page. So
+ * `name: null` remains a real, supported state: it renders an honest "Belum
+ * dipublikasikan" instead of an empty gap that reads as a layout bug. No row uses it
+ * right now; `e2e/test-landing.mjs` ties this branch's output to the data so the two
+ * cannot drift apart.
  *
  * The credential note is rendered under the role rather than in its own column
  * because JLPT N1 belongs to ONE of these people, and a detached badge would read as

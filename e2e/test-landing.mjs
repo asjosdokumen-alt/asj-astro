@@ -397,13 +397,21 @@ function stripComments(source) {
 }
 
 /**
- * "Belum dipublikasikan" is RENDERED ON PURPOSE — `PersonGrid` prints it for team
- * members whose names the company profile does not carry (see the `name: null`
- * rows in `companyProfile.ts`). It is honest ("not published yet") rather than a
- * placeholder standing in for content that was supposed to be written.
+ * "Belum dipublikasikan" is the grid's HONEST-ABSENCE copy: `PersonGrid` renders
+ * it in place of a name the company profile does not publish. It is honest
+ * ("not published yet") rather than a placeholder standing in for content that
+ * was supposed to be written, so it is NOT in PLACEHOLDER_MARKERS — and this
+ * comment exists so a future reader does not "fix" that omission.
  *
- * It is therefore NOT in PLACEHOLDER_MARKERS, and this comment exists so that a
- * future reader does not "fix" that omission.
+ * THE CAPABILITY IS CURRENTLY UNEXERCISED. All six `TEAM` rows in
+ * `companyProfile.ts` now carry a `name` (the source-of-truth document publishes
+ * every one), so the branch that prints this copy is dead and the string is
+ * legitimately absent from the page. The check below used to assert its
+ * PRESENCE and went red for exactly that reason. It now asserts a TWO-WAY
+ * invariant instead — the data withholds a name IF AND ONLY IF the page prints
+ * this copy. That is what keeps the exclusion honest now that nothing renders
+ * it: adding a `name: null` back to the data without the copy appearing (or
+ * renaming the copy) fails by name instead of passing silently.
  */
 const HONEST_ABSENCE_COPY = 'Belum dipublikasikan';
 
@@ -793,17 +801,70 @@ async function run() {
           `${hits.length} placeholder marker(s) found in the rendered page: ${excerpts.join('; ')}`,
         );
       }
-      // "Belum dipublikasikan" is EXPECTED on this page and must not be treated as
-      // a placeholder — see HONEST_ABSENCE_COPY. Asserting its presence turns that
-      // decision into something measured rather than a comment: if the copy is
-      // renamed without updating the reasoning, this fails and the reader is sent
-      // to the explanation instead of a stale constant.
-      if (!d.lowered.includes(HONEST_ABSENCE_COPY.toLowerCase())) {
+      // ── The honest-absence copy obeys a TWO-WAY invariant ────────────────
+      // "Belum dipublikasikan" must be on the page IF AND ONLY IF the profile
+      // data actually withholds a team member's name. The old check asserted
+      // PRESENCE only. That was correct while `companyProfile.ts` carried a
+      // `name: null` row, but it went red the moment the last one was filled in
+      // (all six TEAM rows are now named), demanding a string the page had
+      // legitimately stopped printing. Presence alone is also the weaker rule:
+      // it stays green if the data withholds a name and the grid silently prints
+      // a blank gap instead. Reading BOTH sides makes either drift fail.
+      //
+      // The DATA side is read from the source, not the DOM: the gate may run
+      // against a build older than the working tree, and "does the profile
+      // withhold a name" is a property of the data, not of a countable signal
+      // in the rendered page.
+      const { readFileSync, existsSync } = await import('node:fs');
+      const { fileURLToPath } = await import('node:url');
+      const { dirname, join } = await import('node:path');
+      const here = dirname(fileURLToPath(import.meta.url));
+      const profilePath = join(here, '..', 'src/lib/companyProfile.ts');
+      if (!existsSync(profilePath)) {
+        throw new Error(`expected ${profilePath} — it holds the TEAM data this invariant reads`);
+      }
+      // Strip comments BEFORE searching for `name: null`. Not cosmetic: the
+      // phrase appears in the TEAM block's own prose comment ("`name: null`
+      // would understate a structure…"), so a naive scan matches the explanation
+      // and reports a withheld name the data does not have.
+      const profileSrc = stripComments(readFileSync(profilePath, 'utf8'));
+      const teamStart = profileSrc.indexOf('export const TEAM');
+      if (teamStart < 0) {
         throw new Error(
-          `the honest-absence copy ${JSON.stringify(HONEST_ABSENCE_COPY)} is not on the page. ` +
-            `Either the team grid stopped rendering unpublished names (in which case the ` +
-            `placeholder-marker exclusion is stale and must be revisited), or the string changed. ` +
-            `See the HONEST_ABSENCE_COPY comment.`,
+          'could not find `export const TEAM` in companyProfile.ts — the honest-absence invariant cannot be judged',
+        );
+      }
+      const teamClose = profileSrc.indexOf('];', teamStart);
+      if (teamClose < 0) {
+        throw new Error(
+          'could not find the end of the TEAM array (`];`) in companyProfile.ts — the honest-absence invariant cannot be judged',
+        );
+      }
+      const teamBlock = profileSrc.slice(teamStart, teamClose + 2);
+      // A row opens with `{` on its own line; split there so a multi-line row
+      // (Hadi Prasojo's spans four lines) stays ONE chunk. A "lines containing
+      // `role:`" search would miss a `name: null` on a row whose `name:` sits on
+      // its own line — measured: that naive search does NOT catch a mutation on
+      // the multi-line row, this split does.
+      const rows = teamBlock.split(/\n\s*\{/).slice(1);
+      if (rows.length === 0) {
+        throw new Error(
+          'parsed 0 rows out of the TEAM array — the parse is broken, so "no withheld name" would be ' +
+            'a guess, not a measurement. Fix the parse; do not weaken this guard.',
+        );
+      }
+      const withholdsAName = rows.some((r) => /name:\s*null/.test(r));
+      const rendered = d.lowered.includes(HONEST_ABSENCE_COPY.toLowerCase());
+      if (withholdsAName !== rendered) {
+        throw new Error(
+          `the team-grid honest-absence invariant is broken — the data and the page disagree. ` +
+            `DATA: ${rows.length} TEAM row(s), ${withholdsAName ? 'at least one has `name: null`' : 'all carry a name'}. ` +
+            `PAGE: ${rendered ? 'prints' : 'does not print'} ${JSON.stringify(HONEST_ABSENCE_COPY)}. ` +
+            `These must agree (data withholds a name <=> the page prints the copy). ` +
+            (withholdsAName
+              ? 'The data withholds a name, so PersonGrid.tsx must render the copy — it did not. '
+              : 'The data names every member, so the copy must NOT be on the page — the page still prints it. ') +
+            'If the copy itself was renamed, update HONEST_ABSENCE_COPY in this file.',
         );
       }
       // If this ever fires, the marker list has stopped describing reality and
