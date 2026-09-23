@@ -103,15 +103,17 @@ const MUTATIONS = [
   {
     name: 'M2 — a RENDERED photo is dropped from OWNER_APPROVED (consent basis erased)',
     file: GATE_SELF,
-    from: "  'tim-hadi-prasojo.webp', // named individual, a manager\n",
+    from: "  'tim-hadi-prasojo.webp', // named individual, a manager — owner's ruling 2026-09-23\n",
     to: '',
     expect: 'RENDERED AND COMMITTABLE, NO CONSENT ON RECORD',
   },
   {
     name: 'M3 — an excluded photo is quietly added to OWNER_APPROVED (consent fabricated)',
     file: GATE_SELF,
-    from: "  'fasilitas-ruang-tamu-3.webp',\n",
-    to: "  'fasilitas-ruang-tamu-3.webp',\n  'fasilitas-ruang-kantor-2.webp',\n",
+    from: "  'fasilitas-ruang-tamu-3.webp', // 3 young men showing documents — seen\n",
+    to:
+      "  'fasilitas-ruang-tamu-3.webp', // 3 young men showing documents — seen\n" +
+      "  'fasilitas-ruang-kantor-2.webp',\n",
     // Approving a CCTV frame does NOT violate the gate (it is rendered-or-not, not
     // safe-or-unsafe) — the gate is explicit that safety is a human call. So the
     // correct expectation is that this mutation SURVIVES, and the battery ASSERTS
@@ -157,16 +159,26 @@ const MUTATIONS = [
     name: 'M7 — the CONSENT annotation is deleted from an open-question photo (check f)',
     file: GALLERY,
     from:
-      "    // CONSENT — named individual. §11.2 requires consent for an identifiable\n" +
-      "    // person; a public role and a certification do not imply consent to appear in\n" +
-      "    // a public repo. Not cleared.\n",
+      "    // CONSENT — ANSWERED BY THE OWNER, 2026-09-23. Publishable by the owner's\n" +
+      "    // ruling; see the note on `fasilitas-grup-staf.webp` above. This is the\n" +
+      "    // sharpest case of the distinction that note draws: the subject is a NAMED\n" +
+      "    // individual, and §11.2 is explicit that a public role and a certification do\n" +
+      "    // not imply consent to appear in a public repo. An owner's ruling to publish\n" +
+      "    // is a decision about this site; it is not the person agreeing.\n",
     to: '',
     // THE MUTATION THAT FOUND CHECK (f) WAS WRONG. Its first implementation looked
     // back a flat 600 characters from the src line, which reaches into the PREVIOUS
     // entry — so deleting this annotation left the gate GREEN, satisfied by
     // galeri-keberangkatan-1's comment. This mutation is the one that caught it, and
     // it stays in the battery so the scoping cannot regress to a window again.
-    expect: 'OPEN CONSENT QUESTION IS NOT ANNOTATED',
+    //
+    // IT ALSO EARNED A SECOND JOB ON 2026-09-23. When the owner answered and
+    // CONSENT_OPEN was emptied, this mutation stopped being killable at all — the
+    // check it tests had nothing left to walk, so the annotations became
+    // unenforced and deletable. That is what forced CONSENT_RECORDED into the
+    // gate. If this mutation ever goes green again, the history has lost its
+    // guard, not its question.
+    expect: 'CONSENT ANNOTATION IS MISSING',
   },
 ];
 

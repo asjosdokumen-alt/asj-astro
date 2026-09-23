@@ -105,11 +105,14 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     height: 1066,
   },
   {
-    // CONSENT — OPEN, owner's call (2026-09-20). ~20 identifiable faces in uniform.
-    // §11.2 justifies the safe set as "building/office/classroom photos that show no
-    // identifiable faces"; this photo contradicts that premise. Consent is a
-    // PREREQUISITE under §11.2, and §11.2 is the owner's rule to apply.
-    // This note records a decision that is PENDING — it is not a clearance.
+    // CONSENT — ANSWERED BY THE OWNER, 2026-09-23. The owner holds full authority
+    // over this application and ruled this photograph publishable. Recorded as
+    // what it is: a decision about what this site publishes, NOT a record that the
+    // ~20 people in uniform were asked. §11.2 makes consent a prerequisite; only
+    // the owner can say whether it is met, and the ruling is theirs to give.
+    // Keep the two claims apart if this is ever reviewed — "the owner approved it"
+    // and "they agreed to it" are not the same sentence, and this note is the
+    // first one. The photograph still shows ~20 identifiable faces in uniform.
     src: '/assets/fasilitas-grup-staf.webp',
     alt: 'Staf pengajar dan pengurus LPK Amanah Sakura Japan berfoto bersama.',
     captionKey: 'profile.gal_staf',
@@ -134,9 +137,10 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     height: 1050,
   },
   {
-    // CONSENT — OPEN, owner's call (2026-09-20). ~50 identifiable faces in uniform,
-    // the largest such group on the page. Same §11.2 premise contradiction as
-    // fasilitas-grup-staf.webp above. Not cleared.
+    // CONSENT — ANSWERED BY THE OWNER, 2026-09-23. Publishable by the owner's
+    // ruling; see the note on `fasilitas-grup-staf.webp` above for what that does
+    // and does not claim. This is the largest such group on the page: ~50
+    // identifiable faces in uniform.
     src: '/assets/fasilitas-grup-siswa-1.webp',
     alt: 'Peserta pelatihan berfoto bersama mengenakan seragam lembaga.',
     captionKey: 'profile.gal_siswa',
@@ -145,16 +149,9 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     height: 766,
   },
   {
-    src: '/assets/fasilitas-ruang-kantor-1.webp',
-    alt: 'Ruang kantor operasional LPK Amanah Sakura Japan.',
-    captionKey: 'profile.gal_kantor',
-    caption: 'Ruang kantor',
-    width: 1242,
-    height: 752,
-  },
-  {
-    // CONSENT — OPEN, owner's call (2026-09-20). Identifiable group at a departure
-    // event. Same §11.2 premise contradiction. Not cleared.
+    // CONSENT — ANSWERED BY THE OWNER, 2026-09-23. Publishable by the owner's
+    // ruling; see the note on `fasilitas-grup-staf.webp` above for what that does
+    // and does not claim. It shows an identifiable group at a departure event.
     //
     // THE FILE WAS WRONG UNTIL 2026-09-20, AND THE DIMENSIONS ARE THE PROOF.
     // This entry used to declare 828x1021 while the asset on disk measured
@@ -173,9 +170,12 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     height: 233,
   },
   {
-    // CONSENT — named individual. §11.2 requires consent for an identifiable
-    // person; a public role and a certification do not imply consent to appear in
-    // a public repo. Not cleared.
+    // CONSENT — ANSWERED BY THE OWNER, 2026-09-23. Publishable by the owner's
+    // ruling; see the note on `fasilitas-grup-staf.webp` above. This is the
+    // sharpest case of the distinction that note draws: the subject is a NAMED
+    // individual, and §11.2 is explicit that a public role and a certification do
+    // not imply consent to appear in a public repo. An owner's ruling to publish
+    // is a decision about this site; it is not the person agreeing.
     //
     // THE FILE WAS WRONG UNTIL 2026-09-20. It held a red-maple footpath — bleed
     // artwork from page 2 — under a caption naming a person. The real portrait is
@@ -191,10 +191,21 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     height: 172,
   },
   {
+    // THE ALT AND THE CAPTION WERE BOTH FALSE UNTIL 2026-09-23. They described a
+    // guest room — "Ruang tamu untuk menerima wali dan calon peserta beserta
+    // keluarganya" / "Ruang penerimaan wali". Opened and looked at, the file shows
+    // three young men standing in front of the LPK sign, each holding up a
+    // document. A caption is a claim about the picture, and this was a claim about
+    // a DIFFERENT picture — the same defect as the two entries above that once
+    // carried a red-maple bleed under a caption naming a person.
+    //
+    // A WRONG ALT IS NOT A CONSENT QUESTION, which is why it was fixed regardless
+    // of the owner's ruling below: a screen reader and a crawler are misled by it
+    // no matter who agreed to be photographed.
     src: '/assets/fasilitas-ruang-tamu-3.webp',
-    alt: 'Ruang tamu untuk menerima wali dan calon peserta beserta keluarganya.',
+    alt: 'Tiga peserta berdiri memegang dokumen masing-masing di depan dinding bertuliskan LPK Amanah Sakura Japan.',
     captionKey: 'profile.gal_layanan',
-    caption: 'Ruang penerimaan wali',
+    caption: 'Peserta dengan dokumen',
     width: 1400,
     height: 1050,
   },
@@ -219,4 +230,12 @@ export const GALLERY_EXCLUDED: readonly { src: string; why: string }[] = Object.
     why: 'CCTV frame — burned-in timestamp, camera-brand watermark, surveillance angle.',
   },
   { src: '/assets/poster-rekrutmen.webp', why: 'Price and marketing claims baked into pixels; they ship as live text.' },
+  {
+    // REMOVED FROM THE GALLERY ON 2026-09-23, after being opened and looked at.
+    // This is the same defect as `fasilitas-kelas-bahasa-1.webp` above, and the
+    // same reasoning applies — which is why it is recorded here rather than
+    // merely deleted: a frame from a recording is not a photograph of a room.
+    src: '/assets/fasilitas-ruang-kantor-1.webp',
+    why: 'Frame from a screen/video recording, not a photograph: a playback timestamp (9:07:54), an audio icon and player controls (10 / 1X / skip) are burned into the pixels, with four people at their desks. Its alt and caption claimed "Ruang kantor operasional", i.e. a room. A candidate reading that caption is shown a video still instead — and a site that publishes its own monitoring footage tells a candidate the office is watched.',
+  },
 ]);

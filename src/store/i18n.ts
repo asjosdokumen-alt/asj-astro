@@ -1277,10 +1277,9 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.gal_kelas": "Persiapan wawancara kerja",
   "profile.gal_tamu": "Penyerahan dokumen peserta",
   "profile.gal_siswa": "Angkatan peserta pelatihan",
-  "profile.gal_kantor": "Ruang kantor",
   "profile.gal_berangkat": "Pelepasan keberangkatan",
   "profile.gal_n1": "Pengajar bersertifikat JLPT N1",
-  "profile.gal_layanan": "Ruang penerimaan wali",
+  "profile.gal_layanan": "Peserta dengan dokumen",
 
   // ── Tim & Kredensial (S10, halaman 8 dan 10) ─────────────────────────
   "profile.team_title": "Tim & Kredensial",

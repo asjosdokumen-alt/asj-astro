@@ -936,10 +936,9 @@ export const jpTranslations: Record<string, string> = {
   "profile.gal_kelas": "面接対策の準備",
   "profile.gal_tamu": "参加者の書類提出",
   "profile.gal_siswa": "訓練参加者の同期",
-  "profile.gal_kantor": "事務所",
   "profile.gal_berangkat": "出発の見送り",
   "profile.gal_n1": "JLPT N1取得の講師",
-  "profile.gal_layanan": "保護者応接室",
+  "profile.gal_layanan": "書類を持つ参加者",
 
   // ── チームと資格（S10、8ページおよび10ページ） ──────────────────────
   "profile.team_title": "チームと資格",

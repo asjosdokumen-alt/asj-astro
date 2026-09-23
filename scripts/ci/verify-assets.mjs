@@ -239,18 +239,35 @@ const published = [...new Set([...galleryFiles, ...directFiles, ...tileImageFile
  * everything not on this list must be blocked from git.
  */
 const OWNER_APPROVED = new Set([
-  // Building and room interiors — no identifiable face (§11.2's own safe set).
-  'fasilitas-gedung.webp',
-  'fasilitas-kelas-bahasa-2.webp',
-  'fasilitas-ruang-kantor-1.webp',
-  'fasilitas-ruang-tamu-1.webp',
-  'fasilitas-ruang-tamu-3.webp',
-  // Group and portrait photographs — FACES PRESENT. Consent basis recorded here
-  // so the claim is visible rather than implied:
-  'fasilitas-grup-staf.webp', // ~20 people in uniform
-  'fasilitas-grup-siswa-1.webp', // ~50 people in uniform
-  'galeri-keberangkatan-1.webp', // departure group
-  'tim-hadi-prasojo.webp', // named individual, a manager
+  // THE HEADING THAT USED TO SIT HERE READ: "Building and room interiors — no
+  // identifiable face (§11.2's own safe set)". It was FALSE, and that was
+  // measured on 2026-09-23 by opening all five files and looking at them:
+  //
+  //   fasilitas-gedung.webp         ~20 people in uniform batik, posed, facing camera
+  //   fasilitas-kelas-bahasa-2.webp 8 men in a row, numbered chest tags 1·2·3·4·8
+  //   fasilitas-ruang-tamu-1.webp   4 people holding documents up to the camera
+  //   fasilitas-ruang-tamu-3.webp   3 young men holding documents
+  //   fasilitas-ruang-kantor-1.webp was the fifth — a video-recording frame with a
+  //                                 burned-in timestamp, now out of GALLERY and
+  //                                 recorded in GALLERY_EXCLUDED instead
+  //
+  // Not one of them is a room with no identifiable face. The label is corrected
+  // rather than deleted, because the mistake is the finding: four of these five
+  // sat inside the "safe set" on the strength of an `alt` string that nothing had
+  // ever checked against the picture. A list entry can carry a comment no gate
+  // reads. Every face claim below was verified by eye on 2026-09-23, not read
+  // from an alt.
+  'fasilitas-gedung.webp', // ~20 people in uniform, posed group — seen, not assumed
+  'fasilitas-kelas-bahasa-2.webp', // 8 men, numbered interview tags — seen
+  'fasilitas-ruang-tamu-1.webp', // 4 people showing documents — seen
+  'fasilitas-ruang-tamu-3.webp', // 3 young men showing documents — seen
+  // FACES PRESENT. The consent basis is recorded here so the claim is visible
+  // rather than implied. These four were moved out of CONSENT_OPEN on 2026-09-23
+  // when the owner answered — see the note on that set below.
+  'fasilitas-grup-staf.webp', // ~20 people in uniform — owner's ruling 2026-09-23
+  'fasilitas-grup-siswa-1.webp', // ~50 people in uniform — owner's ruling 2026-09-23
+  'galeri-keberangkatan-1.webp', // departure group — owner's ruling 2026-09-23
+  'tim-hadi-prasojo.webp', // named individual, a manager — owner's ruling 2026-09-23
 ]);
 
 /**
@@ -275,6 +292,41 @@ const OWNER_APPROVED = new Set([
  * next to its entry in OWNER_APPROVED. Do not simply delete the annotation.
  */
 const CONSENT_OPEN = new Set([
+  // EMPTY BY THE OWNER'S RULING, 2026-09-23. The four entries that used to live
+  // here — fasilitas-grup-staf, fasilitas-grup-siswa-1, galeri-keberangkatan-1 and
+  // tim-hadi-prasojo — moved into OWNER_APPROVED with their basis recorded beside
+  // them, which is exactly the resolution the note above prescribes.
+  //
+  // WHAT WAS DECIDED, AND WHAT WAS NOT. The owner holds full authority over this
+  // application and ruled these photographs publishable. That settles what this
+  // site may publish. It is NOT a record that the ~70 people in uniform, or the
+  // named manager, were asked. §11.2 makes consent a prerequisite; this gate
+  // cannot verify consent and never could — all it can do is refuse to let the
+  // question go unnoticed, which is what this set did from 2026-09-20.
+  //
+  // So: keep this set empty only while the ruling stands. Refilling it to silence
+  // a failure is forbidden above. And an empty set is not evidence that consent
+  // exists — it means the owner answered, not that anyone else did.
+]);
+
+/**
+ * Photographs whose consent HISTORY must stay annotated in `gallery.ts`.
+ *
+ * WHY THIS SET EXISTS, AND WHY EMPTYING CONSENT_OPEN WAS NOT ENOUGH.
+ * The four entries above were moved out of CONSENT_OPEN on 2026-09-23 when the
+ * owner answered. Check (f) iterated CONSENT_OPEN, so the moment that set became
+ * empty the check had nothing to walk — and the battery proved it: mutation M7,
+ * which deletes an annotation, could no longer be killed. The annotations in
+ * `gallery.ts` are the only place the history lives ("this was an open question
+ * from 2026-09-20; the owner ruled on 2026-09-23"). Nothing enforced them.
+ *
+ * A record that nothing protects is a record that gets tidied away, and the
+ * distinction those annotations draw — the owner approved publication, which is
+ * not the same as the people depicted being asked — is the whole point of keeping
+ * them. So check (f) walks this set as well. Removing an entry here to silence the
+ * check would erase the only trace of the question.
+ */
+const CONSENT_RECORDED = new Set([
   'fasilitas-grup-staf.webp',
   'fasilitas-grup-siswa-1.webp',
   'galeri-keberangkatan-1.webp',
@@ -479,10 +531,15 @@ for (const f of published) {
   }
 }
 
-// (f) An open consent question must stay visible AT THE PHOTOGRAPH.
+// (f) A consent question must stay visible AT THE PHOTOGRAPH — both while it is
+//     open, and after it has been answered.
 //
 //     `gallery.ts` parses textually above; here the SAME file is read for the
-//     `// CONSENT —` annotation attached to each CONSENT_OPEN entry.
+//     `// CONSENT —` annotation attached to each entry. The walk covers
+//     CONSENT_OPEN (questions still open) AND CONSENT_RECORDED (questions the
+//     owner answered, whose history must not be tidied away). Without the second
+//     set this check went vacuous the moment CONSENT_OPEN was emptied — measured,
+//     not predicted: mutation M7 stopped being killable.
 //
 //     The annotation is searched for INSIDE the entry that owns the src, not in a
 //     fixed-size window before it. That distinction is not cosmetic: the first
@@ -492,7 +549,7 @@ for (const f of published) {
 //     the gate green — it was reading galeri-keberangkatan-1's comment and calling
 //     it tim-hadi-prasojo's. Scoping to `{` … `},` makes the check measure the
 //     photograph it names.
-for (const f of CONSENT_OPEN) {
+for (const f of new Set([...CONSENT_OPEN, ...CONSENT_RECORDED])) {
   if (!published.includes(f)) continue; // not on the page ⇒ nothing to annotate
   const marker = `'/assets/${f}'`;
   const at = galleryBlock.indexOf(marker);
@@ -503,12 +560,14 @@ for (const f of CONSENT_OPEN) {
   const entry = galleryBlock.slice(openBrace, closeBrace);
   if (!entry.includes('// CONSENT —')) {
     violations.push(
-      `OPEN CONSENT QUESTION IS NOT ANNOTATED — ${f}\n` +
-        `        it is in CONSENT_OPEN (the §11.2 premise does not cover it: identifiable\n` +
-        `        faces) but its own entry in src/lib/gallery.ts carries no '// CONSENT —'\n` +
-        `        comment. Restore the annotation — it is how a reader of the gallery\n` +
-        `        meets the open question. Do not clear this by removing it from\n` +
-        `        CONSENT_OPEN; that is the owner's decision, not a fix.`,
+      `CONSENT ANNOTATION IS MISSING — ${f}\n` +
+        `        its entry in src/lib/gallery.ts carries no '// CONSENT —' comment.\n` +
+        `        That annotation is where the history lives: whether the question is\n` +
+        `        still open (CONSENT_OPEN) or was answered by the owner\n` +
+        `        (CONSENT_RECORDED), a reader of the gallery must meet it AT THE PHOTO.\n` +
+        `        Restore the annotation. Do not clear this by deleting the entry from\n` +
+        `        either set — for an open question that is the owner's decision, not a\n` +
+        `        fix, and for a recorded one it erases the only trace of the ruling.`,
     );
   }
 }
