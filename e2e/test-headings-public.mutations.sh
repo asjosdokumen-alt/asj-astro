@@ -355,16 +355,26 @@ step_src "M-D the hero headline stops being the h1 (public route loses its only 
 
 # ── M-E: the no-JS checks added 2026-09-23. Put `/loker` back on
 #    `client:only="preact"`, which emits NO server HTML — so with JavaScript
-#    disabled the route loses its h1 and its whole header again. This is the
-#    mutation that proves the new checks are not decorative: every OTHER
-#    assertion in the guard runs with JS on and passes on this tree, because
-#    after hydration the page is identical.
+#    disabled the route loses its h1 AND its <header> again. This is the mutation
+#    that proves the new checks are not decorative: every OTHER assertion in the
+#    guard runs with JS on and passes on this tree, because after hydration the
+#    page is identical.
 #
-#    The measured before/after, 390px, `server.cjs`:
-#      client:only — JS off: 0 h1, 0 header links, 523 chars of body text
-#      client:load — JS off: 1 h1, 5 header links, 593 chars
+#    The measured before/after, 390px, `server.cjs`, JS OFF.
+#
+#      directive      h1  <header>  'header a, nav a'  footer nav a  body chars
+#      client:only     0      0            5               5           523
+#      client:load     1      1            5               5           593
+#
+#    ⚠ READ THE THIRD COLUMN. `header a, nav a` is 5 in BOTH states, because the
+#    footer nav (`aria-label="Footer navigation"`) is rendered by the Astro layout
+#    rather than by the island. The guard's header check used to count exactly
+#    that, so it PASSED on the `client:only` tree — while the header was absent
+#    from the server HTML entirely. It was rewritten to select `<header>` itself
+#    (0 vs 1). An earlier version of this comment cited "0 header links" vs
+#    "5 header links", which were those same non-discriminating counts.
 #    ─────────────────────────────────────────────────────────────────────────
-step_src "M-E /loker returns to client:only (the route loses its h1 without JS)" \
+step_src "M-E /loker returns to client:only (the route loses its h1 AND its header without JS)" \
   "$LOKER" \
   '[["  <App client:load />","  <App client:only=\"preact\" />"]]'
 
