@@ -455,7 +455,30 @@ async function inspectNoJsUncached(route) {
         path: location.pathname,
         h1Count: h1s.length,
         h1Text: h1s.length ? (h1s[0].textContent || '').replace(/\s+/g, ' ').trim() : '',
-        headerLinks: document.querySelectorAll('header a, nav a').length,
+        /**
+         * THE HEADER ELEMENT — not "any link inside a header or a nav".
+         *
+         * This was `document.querySelectorAll('header a, nav a').length`, and it
+         * could not fail. The FOOTER nav (`aria-label="Footer navigation"`) is
+         * rendered by the Astro layout rather than by the island, so it puts 5
+         * links into the server HTML of EVERY page. Measured 2026-09-23, JS off,
+         * 390px, against a tree where `/loker` mounted its App with
+         * `client:only="preact"` — i.e. with no server HTML for the header:
+         *
+         *   route   directive      h1  <header>  'header a, nav a'  footer nav a
+         *   /loker  client:only     0      0            5               5
+         *   /loker  client:load     1      1            5               5
+         *
+         * The count is 5 either way, so the check passed while the header was
+         * absent from the server HTML entirely — the exact defect it is named
+         * for, and the only thing the M-E mutation revealed. `<header>` is 0 vs
+         * 1 and does discriminate.
+         *
+         * `header a` is 0 even on the HEALTHY tree, so the links inside the
+         * header are not server-rendered either; only the element can be
+         * asserted. Do not "strengthen" this to a link count.
+         */
+        headerEls: document.querySelectorAll('header').length,
         bodyText: (document.body.innerText || '').replace(/\s+/g, ' ').trim().length,
       };
     });
@@ -757,13 +780,14 @@ async function run() {
       }
     });
 
-    await test(`no-JS ${route}: the header is in the SERVER HTML too`, async () => {
+    await test(`no-JS ${route}: the <header> is in the SERVER HTML too`, async () => {
       const d = await inspectNoJs(route);
       if (d.path !== route) throw new Error(`redirected to ${d.path}`);
-      if (d.headerLinks === 0) {
+      if (d.headerEls === 0) {
         throw new Error(
-          'no header/nav link in the server HTML — the entire header lives in the island, so a ' +
-            'visitor without JavaScript gets a page with no way to navigate it',
+          'no <header> in the server HTML — the header lives in the island, so a visitor ' +
+            'without JavaScript gets the page without its header (brand, company name, nav). ' +
+            'Use `client:load`.',
         );
       }
     });
