@@ -375,6 +375,29 @@ for (const line of ignoreLines) {
  * These files were verified to be illustrations, not photographs, by opening
  * them: flat-vector scenes (Mt Fuji, a pagoda, a skyline, a factory, an open
  * book) with no human faces and no photographic content.
+ *
+ * ⚠ THAT DESCRIPTION IS NOW FALSE FOR ONE MEMBER, AND THE CLAIM IS CORRECTED
+ * RATHER THAN LEFT STANDING. `ilustrasi/hero-sakura.webp` was REPLACED on
+ * 2026-09-24: the owner supplied a generated 2.75:1 banner (sakura, Fuji, a
+ * pagoda, and a figure in an ASJ PORTAL jacket) and asked for it as the profile
+ * hero. It is not a flat-vector scene and it does depict a person. The other four
+ * are unchanged.
+ *
+ * WHY IT STAYS IN THIS SET RATHER THAN MOVING TO `OWNER_APPROVED`. The rule this
+ * set encodes is not "is it a drawing" — it is "is there a subject who could
+ * consent or refuse". `OWNER_APPROVED` is a record of a publication BASIS, and
+ * for a real person that basis is consent or the owner's ruling standing in for
+ * it. The figure in this banner is GENERATED: there is no person whose likeness
+ * it is, so §11.2's consent requirement has no subject and there is no basis to
+ * record. Filing it under `OWNER_APPROVED` would put a non-photograph into a list
+ * whose every other entry is a consent decision — the same category error this
+ * block already warns about in the opposite direction.
+ *
+ * WHAT THIS DOES NOT CLAIM. It is not a judgement that the image is safe to
+ * publish, and it does not verify that the figure is generated — the gate cannot
+ * check that, exactly as it cannot check consent. It records the owner's stated
+ * basis. If a REAL photograph is ever dropped at this path, this entry must be
+ * re-examined rather than inherited.
  */
 const ILLUSTRATIONS = new Set([
   'ilustrasi/hero-sakura.webp',

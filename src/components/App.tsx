@@ -261,8 +261,25 @@ export default function App(
             opacity, rather than replacing it: the band's gradient and the
             artwork share the same dusk palette, so the two blend into one
             surface instead of meeting at a hard edge. It is `object-cover` so
-            the 16:9 art fills a band whose height varies from 26rem (mobile) to
+            the art fills a band whose height varies from 26rem (mobile) to
             32rem (desktop) without distorting.
+
+            THE ART WAS REPLACED BY THE OWNER, 2026-09-24. The old asset was a
+            flat-vector scene; the new one is a generated 2.75:1 banner (sakura,
+            Fuji, a pagoda, a figure in an ASJ PORTAL jacket) supplied by the
+            owner from `F:\asset`. Two consequences recorded here because they
+            are not visible from the markup:
+
+              · `width`/`height` moved 1600x900 -> 1600x582, the real size of the
+                1x file. They no longer describe a 16:9 art. (They reserve no
+                layout box either way — this <picture> is `absolute inset-0
+                w-full h-full` — but a wrong intrinsic size is still a false
+                statement about the asset.)
+              · `@2x` is the source's NATIVE ceiling (2079x756), not a true 2x.
+                The band is 1248 CSS px wide and `object-cover` scales by height,
+                so 2x DPR wants ~2818px and the source cannot supply it. It is
+                left un-upscaled on purpose: inventing pixels and calling them
+                resolution is worse than shipping fewer real ones.
 
             `loading="eager"` because this is the LCP element's backdrop; lazy
             here would delay the largest paint on the page the visitor sees
@@ -282,7 +299,7 @@ export default function App(
               alt=""
               aria-hidden="true"
               width={1600}
-              height={900}
+              height={582}
               loading="eager"
               decoding="async"
               class="w-full h-full object-cover opacity-60"
