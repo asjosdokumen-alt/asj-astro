@@ -10,8 +10,7 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 import type { FunctionComponent } from 'preact';
-import { useStore } from '@nanostores/preact';
-import { langStore, t } from '../../store/i18n';
+import { t, useLang } from '../../store/i18n';
 import { showToast } from '../Toast';
 import TabKelola from './TabKelola.tsx';
 import TabPelamar from './TabPelamar.tsx';
@@ -98,7 +97,7 @@ function tabFromHash(): Tab {
 }
 
 export default function AdminPanel() {
-  const _lang = useStore(langStore);
+  const _lang = useLang();
   const [activeTab, setActiveTab] = useState<Tab>(tabFromHash);
 
   // Listen for hash changes from BottomNav

@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore } from '../../store/authReactive';
-import { langStore, t } from '../../store/i18n';
+import { t, useLang } from '../../store/i18n';
 import ChangePasswordModal from '../ChangePasswordModal';
 import CvMiniModal from '../CvMiniModal';
 import InterviewSimulatorModal from './InterviewSimulatorModal';
@@ -155,7 +155,7 @@ function CrownBadge({ progress }: { progress: number }) {
 
 export default function CandidateDash() {
   const user = useStore(authStore);
-  const _lang = useStore(langStore);
+  const _lang = useLang();
   const [data, setData] = useState<CandidateData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPasswordModal, setShowPasswordModal] = useState(false);

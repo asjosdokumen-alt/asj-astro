@@ -4,11 +4,10 @@
  * Steps: Identitas → Medis & Wawancara → Riwayat → Keluarga → Dokumen
  */
 import { useState, useEffect } from 'preact/hooks';
-import { useStore } from '@nanostores/preact';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { validate, kandidatLoginSchema, waSchema, emailSchema } from '../../lib/schemas';
-import { t, langStore, toggleLang } from '../../store/i18n';
+import { t, toggleLang, useLang } from '../../store/i18n';
 import { apiClient } from "../../lib/apiClient";
 import Icon from '../ui/Icon';
 import { uploadMany, UploadCollectionError } from '../../lib/cloudinary';
@@ -124,7 +123,7 @@ interface SubmitMasterRes {
 }
 
 export default function MasterFullForm() {
-  const lang = useStore(langStore);
+  const lang = useLang();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<MasterData>({ ...EMPTY });
   const [eduList, setEduList] = useState<EduRecord[]>([{ jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'' }]);

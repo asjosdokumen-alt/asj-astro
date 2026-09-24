@@ -4,10 +4,9 @@
  * Split panel: Chat AI Jeklin (left 35%) + CV Preview Form (right 65%)
  */
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { useStore } from '@nanostores/preact';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
-import { t, langStore, toggleLang } from '../../store/i18n';
+import { t, toggleLang, useLang } from '../../store/i18n';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import { aiCvAccessRedirect } from '../../lib/vip';
 import { validate, waSchema, kandidatLoginSchema } from '../../lib/schemas';
@@ -266,7 +265,7 @@ const SAVE_ICON_BUSY = 'cloud-upload-alt';
 const SAVE_ICON_DONE = 'check';
 
 export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
-  const lang = useStore(langStore);
+  const lang = useLang();
   const [tab, setTab] = useState<'chat' | 'form'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');

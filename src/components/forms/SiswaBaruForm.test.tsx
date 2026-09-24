@@ -28,7 +28,7 @@ vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../lib/apiClient', () => ({ apiClient: vi.fn() }));
 vi.mock('../../store/i18n', async () => {
   const { atom } = await import('nanostores');
-  return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id'), toggleLang: vi.fn() };
+  return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id'), toggleLang: vi.fn(), useLang: () => 'id' };
 });
 vi.mock('../../lib/cloudinary', () => ({
   uploadToCloudinary: vi.fn(async (f: File) => 'https://cloud.test/' + (f && f.name || 'doc')),

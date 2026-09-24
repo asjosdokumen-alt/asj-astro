@@ -21,7 +21,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 vi.mock('../../store/i18n', async () => {
   const { atom } = await import('nanostores');
-  return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id') };
+  return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id'), useLang: () => 'id' };
 });
 
 const API_JOB = { code: 'TG658', name: 'Perawat Jepang', tsk: 'TSK-A' };

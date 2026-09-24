@@ -8,7 +8,7 @@ import { useState, useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { authStore, logout } from '../store/authReactive';
 import { initializeAuthListener, logoutSupabase } from '../store/userStore';
-import { langStore, toggleLang, t, translateDataLang, jpReady } from '../store/i18n';
+import { toggleLang, t, translateDataLang, useLang } from '../store/i18n';
 import { bannerStore } from '../store/theme';
 
 // ─── Named Constants ───
@@ -57,15 +57,10 @@ export default function App(
   { showHeader = true, hero = false }: { showHeader?: boolean; hero?: boolean } = {},
 ) {
   const u: UserState = useStore(authStore) as UserState;
-  const lang = useStore(langStore);
-  const [, bumpJpReady] = useState(0);
-  useEffect(() => {
-    // Re-render once the lazy JP dict lands (e.g. page loaded with lang=jp) so
-    // t() consumers stop showing Indonesian fallbacks.
-    const off = jpReady.subscribe(() => bumpJpReady((n) => n + 1));
-    bumpJpReady((n) => n + 1); // dict may already be installed before we subscribed
-    return off;
-  }, []);
+  // useLang() re-renders once the lazy JP dict lands (e.g. a cold load with
+  // lang=jp) so every t() consumer in this subtree stops showing the Indonesian
+  // fallback — the same subscription every island root needs.
+  const lang = useLang();
   const [modalMode, setModalMode] = useState<ModalMode>('closed');
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAiCopilot, setShowAiCopilot] = useState(false);

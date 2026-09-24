@@ -28,9 +28,7 @@
  *     now follows langStore (localStorage asj_lang, same key as legacy).
  */
 import { useEffect, useState } from 'preact/hooks';
-import { useStore } from '@nanostores/preact';
-import { langStore } from '../../store/i18n';
-import { t } from '../../store/i18n';
+import { langStore, t, useLang } from '../../store/i18n';
 import { shareDocTypeOf, shareExtraDocLabel } from '../../lib/shareDocs';
 import DocumentPreviewModal from '../DocumentPreviewModal';
 import Icon from '../ui/Icon';
@@ -100,7 +98,7 @@ function genderLabel(gender: string): string {
 }
 
 export default function ShareView() {
-  const lang = useStore(langStore);
+  const lang = useLang();
   const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const code = (params?.get('job') || '').trim();
 
@@ -172,7 +170,7 @@ export default function ShareView() {
     return true;
   });
 
-  // Re-render text on language change is automatic via useStore(langStore).
+  // Re-render on language change (and on the lazy JP dict landing) via useLang().
   void lang;
 
   return (

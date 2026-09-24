@@ -24,7 +24,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import Icon from './ui/Icon';
 import { getOverlayRoot } from './ui/overlay-root';
-import { langStore, t } from '../store/i18n';
+import { t, useLang } from '../store/i18n';
 
 export interface ToastMessage {
   id: number;
@@ -61,7 +61,7 @@ const TONES = {
 } as const;
 
 function ToastItem({ toast, paused }: { toast: ToastMessage; paused: boolean }) {
-  const _lang = useStore(langStore);
+  const _lang = useLang();
   const tone = TONES[toast.type];
   const [remaining, setRemaining] = useState(AUTO_DISMISS_MS);
   const lastTick = useRef(Date.now());

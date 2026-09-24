@@ -54,10 +54,9 @@
  * it instead of being left on a form that apparently did nothing.
  */
 import { useState } from 'preact/hooks';
-import { useStore } from '@nanostores/preact';
 import { showToast } from '../Toast';
 import { apiClient } from '../../lib/apiClient';
-import { t, langStore } from '../../store/i18n';
+import { t, useLang } from '../../store/i18n';
 import Icon from '../ui/Icon';
 
 /** The server's answer. Both fields are optional because only `message` is guaranteed. */
@@ -113,7 +112,7 @@ const FIELD_CLASS =
   'min-h-12 rounded-control border border-line bg-surface px-3 py-2 text-body-sm text-fg';
 
 export default function ContactForm() {
-  const _lang = useStore(langStore);
+  const _lang = useLang();
   const [f, setF] = useState<Fields>(EMPTY);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);

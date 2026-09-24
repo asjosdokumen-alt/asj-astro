@@ -3,13 +3,12 @@
  * Source: legacy/apply-full.html (1:1 match)
  */
 import { useState, useRef, useEffect } from 'preact/hooks';
-import { useStore } from '@nanostores/preact';
 import { showToast } from '../Toast';
 import { apiClient } from '../../lib/apiClient';
 import { validate, registerSchema, emailSchema } from '../../lib/schemas';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { validateFile } from '../../lib/uploadGuard';
-import { t, langStore } from '../../store/i18n';
+import { t, useLang } from '../../store/i18n';
 import Icon from '../ui/Icon';
 import { requiredDocsFromJob } from '../../lib/applyDocs';
 import { useOverlay } from '../ui/useOverlay';
@@ -49,7 +48,7 @@ const INIT_FORM: FormData = {
 
 
 export default function ApplyFullForm() {
-  const _lang = useStore(langStore);
+  const _lang = useLang();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormData>(INIT_FORM);
   const [uploads, setUploads] = useState<Record<string, UploadFile>>({});

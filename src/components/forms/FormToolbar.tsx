@@ -3,7 +3,7 @@
  * Includes: Back to Portal + Theme toggle + Language toggle
  */
 import { useStore } from '@nanostores/preact';
-import { langStore, toggleLang, t } from '../../store/i18n';
+import { toggleLang, t, useLang } from '../../store/i18n';
 import { themeStore, toggleTheme } from '../../store/theme';
 import Icon from '../ui/Icon';
 
@@ -13,7 +13,7 @@ interface Props {
 }
 
 export default function FormToolbar({ title, titleKey }: Props) {
-  const lang = useStore(langStore);
+  const lang = useLang();
   // Read the mode from the store rather than keeping local state, so a
   // toggle made on another page (or in another tab) shows up here too.
   const isDark = useStore(themeStore) !== "light";

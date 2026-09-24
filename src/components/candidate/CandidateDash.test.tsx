@@ -33,7 +33,7 @@ import { ALL_BERKAS } from '../../lib/berkasCatalog';
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../store/i18n', async () => {
   const { atom } = await import('nanostores');
-  return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id'), toggleLang: vi.fn() };
+  return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id'), toggleLang: vi.fn(), useLang: () => 'id' };
 });
 vi.mock('../../lib/apiClient', () => ({ apiClient: vi.fn(async () => ({ success: true })), api: {}, default: {} }));
 // Unggahan revisi menembus storage nyata tanpa mock ini (dulu tidak tersentuh

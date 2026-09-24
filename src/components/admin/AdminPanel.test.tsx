@@ -38,7 +38,7 @@ vi.mock('./MatchmakingModal', () => ({ default: () => null }));
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 
-// Keep the real store (AdminPanel calls useStore(langStore)) but make t()
+// Keep the real store (AdminPanel calls useLang(), which reads it) but make t()
 // a pass-through so assertions read the key names, like MatchmakingModal.test.
 vi.mock('../../store/i18n', async () => {
   const actual = await vi.importActual<typeof import('../../store/i18n')>('../../store/i18n');

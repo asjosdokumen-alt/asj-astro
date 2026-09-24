@@ -27,6 +27,7 @@ vi.mock('../../store/i18n', async () => {
     },
     langStore: atom<'id' | 'jp'>('id'),
     toggleLang: vi.fn(),
+    useLang: () => 'id',
   };
 });
 vi.mock('../../lib/cloudinary', () => ({

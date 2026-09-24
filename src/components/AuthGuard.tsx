@@ -9,7 +9,7 @@ import { authStore } from '../store/authReactive';
 import type { ComponentChildren } from 'preact';
 import Icon from './ui/Icon';
 import { ErrorBoundary } from './ErrorBoundary';
-import { t } from '../store/i18n';
+import { t, useLang } from '../store/i18n';
 
 interface Props {
   children: ComponentChildren;
@@ -19,6 +19,9 @@ interface Props {
 
 export default function AuthGuard({ children, requiredRole, redirectTo = '/' }: Props) {
   const auth = useStore(authStore);
+  // The gate copy is translated, so subscribe to the language too: without it a
+  // cold load with lang=jp renders the Indonesian fallback and never updates.
+  const _lang = useLang();
 
   // Not logged in → redirect
   if (!auth.isLoggedIn) {

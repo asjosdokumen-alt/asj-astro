@@ -13,11 +13,11 @@
 import { useStore } from '@nanostores/preact';
 import { authStore } from '../store/authReactive';
 import { logoutSupabase } from '../store/userStore';
-import { t, langStore } from '../store/i18n';
+import { t, useLang } from '../store/i18n';
 import Icon from './ui/Icon';
 
 export default function BottomNav({ show = false }: { show?: boolean }) {
-  const _lang = useStore(langStore);
+  const _lang = useLang();
   const auth = useStore(authStore);
   // Mounted on every BaseLayout page; only portal pages (admin/candidate) ask
   // for it. (Gated via prop rather than `{showBottomNav && <BottomNav/>}` in

@@ -3,6 +3,7 @@
  */
 import { persistentAtom } from '@nanostores/persistent';
 import { atom } from 'nanostores';
+import { useStore } from '@nanostores/preact';
 
 export type Lang = "id" | "jp";
 
@@ -1984,6 +1985,34 @@ export function translateDataLang() {
 export function t(key: string): string {
   const lang = langStore.get();
   return translations[lang]?.[key] || translations.id[key] || RAW_STRING_TRANSLATIONS[lang]?.[key] || key;
+}
+
+/**
+ * useLang() — the ONE way an island subscribes to the active language.
+ *
+ * WHY IT SUBSCRIBES TO TWO STORES. `langStore` already reads "jp" the instant
+ * the page boots (it comes from localStorage), but `translations.jp` is a lazy
+ * chunk that lands LATER. An island that subscribes only to `langStore`
+ * therefore renders the Indonesian fallback on a COLD load with lang=jp, and
+ * never re-renders when the chunk arrives — because nothing it listens to
+ * changes. Toggling the language by hand hides this: the toggle mutates
+ * `langStore`, which re-renders every island, so every interactive test passes
+ * on a page that is wrong for a returning Japanese reader. `jpReady` bumps
+ * exactly once, when the dictionary is installed, and is the missing signal.
+ *
+ * WHY A HOOK AND NOT A `jpReady.subscribe` IN EACH ROOT. An island root is the
+ * component handed to `client:only`/`client:load`; its children re-render with
+ * it, so only the root needs the subscription. But a raw subscribe line is
+ * exactly what the next island forgets. This hook is exported from the same
+ * module an island already imports `t` from, so following the existing pattern
+ * (`const lang = useLang()`) gets the fix for free.
+ *
+ * Prefer this over `useStore(langStore)` anywhere a component renders `t()`.
+ */
+export function useLang(): Lang {
+  const lang = useStore(langStore);
+  useStore(jpReady); // re-render when the lazy JP dictionary finishes loading
+  return lang;
 }
 
 /** Centralized instant language toggle helper */
