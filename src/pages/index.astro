@@ -22,8 +22,11 @@ import {
   ABOUT_WELCOME,
   CONTACT_ADDRESS,
   CONTACT_EMAIL,
+  CONTACT_INSTAGRAM,
   CONTACT_LOCATION,
   CONTACT_PHONES,
+  CONTACT_TIKTOK,
+  CONTACT_WHATSAPP,
   FACILITIES,
   FLOW_STEPS,
   HISTORY,
@@ -421,6 +424,44 @@ import { GALLERY } from '../lib/gallery';
         accent="identity"
         headingId="penempatan-title"
       />
+      {/* Placement scenery band — the section had only a FactList and no image.
+          It copies the `#lokasi` banner's shape exactly (picture + avif/webp
+          sources + a 1x/2x srcset), for the same reason: the ratio is reserved
+          before load so the section does not jump, and the rounding lives on the
+          wrapper so the corners clip the image.
+
+          DECORATIVE, so `alt=""` + `aria-hidden`. The section already names the
+          four prefectures in its FactList and states what it is in its h2; the
+          band carries no information those two do not, which is the same test
+          the `#lokasi` note applies to its own skyline.
+
+          WHY `fuji banner.jpg` AND NOT `Japan banner.jpg`. Three measured
+          reasons: (1) the source is exactly 3:2, so `aspect-[3/2]` renders it
+          with NO crop, while the Shibuya shot is 1.62:1 and would be cropped by
+          any clean ratio; (2) it contains no people, so it belongs in the asset
+          gate's ILLUSTRATIONS set ("no subject who could consent or refuse")
+          without a judgement call; (3) it is the larger source (5325px vs
+          4997px). The declared 1200x800 is the real size of the 1x file. */}
+      <picture class="block mt-6 rounded-panel overflow-hidden border border-line/30">
+        <source
+          type="image/avif"
+          srcset="/assets/ilustrasi/penempatan-banner.avif 1x, /assets/ilustrasi/penempatan-banner@2x.avif 2x"
+        />
+        <source
+          type="image/webp"
+          srcset="/assets/ilustrasi/penempatan-banner.webp 1x, /assets/ilustrasi/penempatan-banner@2x.webp 2x"
+        />
+        <img
+          src="/assets/ilustrasi/penempatan-banner.webp"
+          alt=""
+          aria-hidden="true"
+          width="1200"
+          height="800"
+          loading="lazy"
+          decoding="async"
+          class="w-full aspect-[3/2] object-cover"
+        />
+      </picture>
       <div class="mt-8">
         <FactList facts={PLACEMENTS} accent="identity" />
       </div>
@@ -611,6 +652,117 @@ import { GALLERY } from '../lib/gallery';
             </a>
           </div>
         </Card>
+      </div>
+
+      {/* ── Kode QR kanal kontak ───────────────────────────────────────────
+           The owner asked for the three channel QR codes in the contact
+           section. They sit BELOW the address/phone cards and ABOVE the form:
+           a visitor who wants to reach the company on a phone can scan one, and
+           a visitor who wants to type a message still scrolls one step further.
+
+           WHY NO HEADING HERE. `e2e/test-headings.mjs` asserts `/` carries
+           exactly one h1 and one heading per visible section, so a heading of
+           any level for this row would make `#kontak` report two. The tile
+           labels are <span>s for that reason, and the row is announced through
+           each link's own accessible name instead.
+
+           WHY EACH TILE CARRIES `min-h-11` (44px). Same touch floor as the
+           footer nav links (DESIGN.md:582, :691 "Target sentuh | >= 44 px"): a
+           tap target must be 44px, and a gap is not part of the target.
+
+           WHY THE IMAGES ARE CONTENT, NOT DECORATION. A QR code is a
+           machine-readable instruction, so each carries a real `alt` describing
+           what scanning it does rather than `alt=""`. The links open in a new
+           tab and use `rel="noopener noreferrer"`, matching the footer's social
+           links. */}
+      <div class="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+        <a
+          href={`https://wa.me/${CONTACT_WHATSAPP}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-lang-aria="profile.qr_whatsapp_aria"
+          aria-label="Buka WhatsApp PT Amanah Sakura Japan"
+          class="min-h-11 flex flex-col items-center gap-2 rounded-card border border-line/40 bg-surface p-3 transition-colors hover:border-accent/60 hover:bg-surface-raised"
+        >
+          <picture class="block w-full rounded-md overflow-hidden">
+            <source
+              type="image/avif"
+              srcset="/assets/ilustrasi/qr-whatsapp.avif 1x, /assets/ilustrasi/qr-whatsapp@2x.avif 2x"
+            />
+            <source
+              type="image/webp"
+              srcset="/assets/ilustrasi/qr-whatsapp.webp 1x, /assets/ilustrasi/qr-whatsapp@2x.webp 2x"
+            />
+            <img
+              src="/assets/ilustrasi/qr-whatsapp.webp"
+              alt="Kode QR WhatsApp PT Amanah Sakura Japan — pindai untuk menghubungi kami."
+              width="256"
+              height="256"
+              loading="lazy"
+              decoding="async"
+              class="w-full aspect-square object-contain"
+            />
+          </picture>
+          <span data-lang="profile.qr_whatsapp" class="text-body-sm font-bold text-fg">WhatsApp</span>
+        </a>
+        <a
+          href={`https://instagram.com/${CONTACT_INSTAGRAM}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-lang-aria="profile.qr_instagram_aria"
+          aria-label="Buka Instagram PT Amanah Sakura Japan"
+          class="min-h-11 flex flex-col items-center gap-2 rounded-card border border-line/40 bg-surface p-3 transition-colors hover:border-accent/60 hover:bg-surface-raised"
+        >
+          <picture class="block w-full rounded-md overflow-hidden">
+            <source
+              type="image/avif"
+              srcset="/assets/ilustrasi/qr-instagram.avif 1x, /assets/ilustrasi/qr-instagram@2x.avif 2x"
+            />
+            <source
+              type="image/webp"
+              srcset="/assets/ilustrasi/qr-instagram.webp 1x, /assets/ilustrasi/qr-instagram@2x.webp 2x"
+            />
+            <img
+              src="/assets/ilustrasi/qr-instagram.webp"
+              alt="Kode QR Instagram PT Amanah Sakura Japan — pindai untuk melihat kegiatan kami."
+              width="256"
+              height="256"
+              loading="lazy"
+              decoding="async"
+              class="w-full aspect-square object-contain"
+            />
+          </picture>
+          <span data-lang="profile.qr_instagram" class="text-body-sm font-bold text-fg">Instagram</span>
+        </a>
+        <a
+          href={`https://tiktok.com/@${CONTACT_TIKTOK}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-lang-aria="profile.qr_tiktok_aria"
+          aria-label="Buka TikTok PT Amanah Sakura Japan"
+          class="min-h-11 flex flex-col items-center gap-2 rounded-card border border-line/40 bg-surface p-3 transition-colors hover:border-accent/60 hover:bg-surface-raised"
+        >
+          <picture class="block w-full rounded-md overflow-hidden">
+            <source
+              type="image/avif"
+              srcset="/assets/ilustrasi/qr-tiktok.avif 1x, /assets/ilustrasi/qr-tiktok@2x.avif 2x"
+            />
+            <source
+              type="image/webp"
+              srcset="/assets/ilustrasi/qr-tiktok.webp 1x, /assets/ilustrasi/qr-tiktok@2x.webp 2x"
+            />
+            <img
+              src="/assets/ilustrasi/qr-tiktok.webp"
+              alt="Kode QR TikTok PT Amanah Sakura Japan — pindai untuk menonton video kami."
+              width="256"
+              height="256"
+              loading="lazy"
+              decoding="async"
+              class="w-full aspect-square object-contain"
+            />
+          </picture>
+          <span data-lang="profile.qr_tiktok" class="text-body-sm font-bold text-fg">TikTok</span>
+        </a>
       </div>
 
       {/* ── Formulir kontak ────────────────────────────────────────────────

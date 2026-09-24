@@ -528,3 +528,15 @@ export const CONTACT_EMAIL = 'amanahsakurajapan@gmail.com';
  * See docs/COMPANY_PROFILE_DATA.md §12 K-2.
  */
 export const CONTACT_INSTAGRAM = 'amanah_sakura_japan';
+
+/**
+ * The TikTok handle, added 2026-09-24 with the `#kontak` QR tiles.
+ *
+ * ⚠ THIS VALUE COMES FROM `Footer.astro`, NOT FROM THE COMPANY PROFILE. Unlike
+ * `CONTACT_INSTAGRAM` above, the profile prints no TikTok handle, so the only
+ * source is the footer's existing `footer-tk` link
+ * (`https://tiktok.com/@amahsakurajp`). It lives here so the QR tile and the
+ * footer icon cannot drift into two hardcoded copies of one URL; if the owner
+ * confirms a different handle, correct it here AND in Footer.astro together.
+ */
+export const CONTACT_TIKTOK = 'amahsakurajp';

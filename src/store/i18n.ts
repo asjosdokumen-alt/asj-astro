@@ -1309,6 +1309,20 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.loc_desc": "Kantor kami di Kabupaten Ponorogo, Jawa Timur.",
   "profile.loc_open_maps": "Buka di Google Maps",
 
+  // ── Kode QR kanal kontak (#kontak) ───────────────────────────────────
+  // Three tile labels plus the three link names. The labels are brand names —
+  // identical in both languages — but they are keyed anyway so the coverage
+  // gate (i18n.keys.test.ts) validates them and a future rename is one edit.
+  // The `_aria` keys are the anchors' accessible names (data-lang-aria); the
+  // <img> `alt` is a description of the specific code and, like every gallery
+  // alt in this repo, is not a shared key.
+  "profile.qr_whatsapp": "WhatsApp",
+  "profile.qr_instagram": "Instagram",
+  "profile.qr_tiktok": "TikTok",
+  "profile.qr_whatsapp_aria": "Buka WhatsApp PT Amanah Sakura Japan",
+  "profile.qr_instagram_aria": "Buka Instagram PT Amanah Sakura Japan",
+  "profile.qr_tiktok_aria": "Buka TikTok PT Amanah Sakura Japan",
+
   // ── Formulir kontak (public, unauthenticated) ────────────────────────
   // Copy for the ONE unauthenticated write in the deployment. The tone is
   // deliberately formal-Indonesian throughout, matching the rest of the page.

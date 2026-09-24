@@ -966,6 +966,16 @@ export const jpTranslations: Record<string, string> = {
   "profile.loc_desc": "東ジャワ州ポノロゴ県に事務所があります。",
   "profile.loc_open_maps": "Googleマップで開く",
 
+  // ── お問い合わせのQRコード（#kontak） ───────────────────────────────
+  // ラベルはブランド名なので両言語で同一。リンクのアクセシブル名（_aria）は
+  // 日本語化する。QR画像の alt は各コード固有の説明なので共有キーにしない。
+  "profile.qr_whatsapp": "WhatsApp",
+  "profile.qr_instagram": "Instagram",
+  "profile.qr_tiktok": "TikTok",
+  "profile.qr_whatsapp_aria": "PT Amanah Sakura JapanのWhatsAppを開く",
+  "profile.qr_instagram_aria": "PT Amanah Sakura JapanのInstagramを開く",
+  "profile.qr_tiktok_aria": "PT Amanah Sakura JapanのTikTokを開く",
+
   // ── お問い合わせフォーム（公開・認証不要） ──────────────────────────
   "contact.title": "メッセージを送る",
   "contact.desc": "下記のフォームよりお問い合わせください。",

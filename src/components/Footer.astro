@@ -37,12 +37,32 @@ const TEL_HREF = (raw: string) => `tel:+62${raw.replace(/\D/g, '').replace(/^0/,
         <!-- Col 1: Brand -->
         <div class="flex flex-col gap-3">
           <div class="flex items-center gap-3">
+            {/* LOCAL LOGO — the last external image in the footer.
+                This `<img>` used to hotlink
+                `…supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp`,
+                which was the one thing still contradicting this file's header
+                comment ("zero external images"). It now points at the repo's own
+                emblem, the same file `src/pages/404.astro` already renders.
+
+                WHY `/icons/logo-asj.webp` AND NOT A NEW FILE. It is a 500x500
+                WebP WITH an alpha channel, so it drops onto the footer gradient
+                with no white box — `public/assets/logo-asj-mark.webp` and
+                `logo-asj-laurel.webp` are the same emblem but ship a white
+                background (measured corner pixel 255,255,255). Reusing the
+                icon-dir file means no new asset and one logo path for both the
+                footer and the 404 page.
+
+                `onError="this.style.display='none'"` is gone with the remote
+                URL: it existed so a failed CDN fetch would not show a broken
+                icon, and silently hiding the brand mark is the wrong behaviour
+                for a file that ships with the build. `verify-assets.mjs` now
+                scans this file (`DIRECT_REF_SOURCES`) and fails if the logo
+                404s, which is a loud check instead of a hidden one. */}
             <img
-              src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp"
+              src="/icons/logo-asj.webp"
               alt="Logo ASJ"
               class="w-10 h-10 object-contain"
               loading="lazy"
-              onError="this.style.display='none'"
             />
             <h2 class="text-lg font-black text-fg tracking-wide" data-lang="footer.title">PT Amanah Sakura Japan</h2>
           </div>

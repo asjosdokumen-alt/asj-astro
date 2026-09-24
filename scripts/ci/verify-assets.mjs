@@ -63,6 +63,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
 
 const ASSETS_DIR = join(ROOT, 'public/assets');
+const ICONS_DIR = join(ROOT, 'public/icons');
 const GALLERY_TS = join(ROOT, 'src/lib/gallery.ts');
 const GITIGNORE = join(ROOT, '.gitignore');
 const INDEX_ASTRO = join(ROOT, 'src/pages/index.astro');
@@ -70,7 +71,7 @@ const INDEX_ASTRO = join(ROOT, 'src/pages/index.astro');
 // ── Guards: is this gate even looking at the right tree? ────────────────────
 // A gate that silently finds zero files passes vacuously, which is worse than
 // no gate because it looks like coverage.
-const missing = [ASSETS_DIR, GALLERY_TS, GITIGNORE, INDEX_ASTRO].filter((p) => !existsSync(p));
+const missing = [ASSETS_DIR, ICONS_DIR, GALLERY_TS, GITIGNORE, INDEX_ASTRO].filter((p) => !existsSync(p));
 if (missing.length) {
   console.error('\n   ✗ ASSET GATE — wrong tree; expected these to exist:\n');
   for (const m of missing) console.error(`     ${m}`);
@@ -106,7 +107,15 @@ function walkWebp(dir, prefix = '') {
   return out;
 }
 
-const onDisk = walkWebp(ASSETS_DIR).sort();
+const onDisk = [
+  ...walkWebp(ASSETS_DIR),
+  // `public/icons/` is walked too, since 2026-09-24. The footer logo moved off
+  // its Supabase hotlink onto `/icons/logo-asj.webp` (see Footer.astro), and a
+  // reference the gate cannot see is a broken image the gate cannot catch. Keys
+  // from this directory are prefixed `icons/` so they cannot collide with an
+  // asset of the same basename under `public/assets/`.
+  ...walkWebp(ICONS_DIR).map((f) => `icons/${f}`),
+].sort();
 
 /**
  * 2. What the site renders.
@@ -163,19 +172,37 @@ const excludedFiles = srcPathsIn(excludedBlock);
 //
 // A file that does not exist is skipped rather than treated as an error, so this
 // list can name a file before it is created without breaking the gate.
+//
+// Footer.astro JOINED THIS LIST on 2026-09-24, for the same reason App.tsx and
+// companyProfile.ts did before it: it now renders a LOCAL image
+// (`/icons/logo-asj.webp`, replacing a Supabase hotlink), and a file the gate
+// cannot see is a 404 that ships silently. The list is the set of files that
+// render assets, not a fixed historical trio.
 const DIRECT_REF_SOURCES = [
   INDEX_ASTRO,
   join(ROOT, 'src/components/App.tsx'),
   join(ROOT, 'src/lib/companyProfile.ts'),
+  join(ROOT, 'src/components/Footer.astro'),
 ];
 
-const REF_RE = /["'`](\/assets\/[^"'`\s]+\.webp)["'`]/g;
+/**
+ * A `.webp` reference under either served image root.
+ *
+ * WHY `/icons/` IS IN THE PATTERN. The scan used to be `/assets/`-anchored, so
+ * a footer logo at `/icons/…` would have been invisible to it — adding
+ * Footer.astro to `DIRECT_REF_SOURCES` alone would then have policed nothing.
+ * Widening the pattern makes the new reference actually checked; it does not
+ * relax any existing check (every `/assets/` match behaves exactly as before).
+ */
+const REF_RE = /["'`](\/(?:assets|icons)\/[^"'`\s]+\.webp)["'`]/g;
+
+/** Normalise a reference into the same key space as `onDisk` (see above). */
+const refKey = (p) =>
+  p.startsWith('/icons/') ? `icons/${p.slice('/icons/'.length)}` : p.replace('/assets/', '');
 
 const directFiles = DIRECT_REF_SOURCES.flatMap((file) => {
   if (!existsSync(file)) return [];
-  return [...readFileSync(file, 'utf8').matchAll(REF_RE)].map((m) =>
-    m[1].replace('/assets/', ''),
-  );
+  return [...readFileSync(file, 'utf8').matchAll(REF_RE)].map((m) => refKey(m[1]));
 });
 
 /**
@@ -405,6 +432,32 @@ const ILLUSTRATIONS = new Set([
   'ilustrasi/program-bahasa.webp',
   'ilustrasi/program-magang.webp',
   'ilustrasi/program-ssw.webp',
+  // ADDED 2026-09-24 with the #kontak QR tiles and the #penempatan banner.
+  //
+  // The three QR codes are machine-readable graphics — there is no subject who
+  // could consent or refuse, which is this set's actual criterion (see the
+  // block above; it is NOT "is it a drawing").
+  'ilustrasi/qr-whatsapp.webp',
+  'ilustrasi/qr-instagram.webp',
+  'ilustrasi/qr-tiktok.webp',
+  // The placement scenery band. It is a photograph, and the reason it belongs
+  // here rather than in OWNER_APPROVED is the criterion above: `fuji banner.jpg`
+  // (the source, 5325x3550) contains NO people — Mt Fuji, a lake, and swans — so
+  // there is no likeness to consent to. The alternative source, `Japan
+  // banner.jpg`, is a Shibuya-crossing long exposure with a crowd in it; that one
+  // would NOT be admissible here without an owner ruling, and is the reason the
+  // banner choice was made on more than crop ratio.
+  'ilustrasi/penempatan-banner.webp',
+  // The footer emblem, localised off Supabase on 2026-09-24. A logo is a mark,
+  // not a person, so the same criterion applies. It is the only member of this
+  // set that lives outside `public/assets/` (under `public/icons/`); the gate
+  // walks both directories and prefixes this key `icons/`.
+  //
+  // PROVEN KILLABLE, not merely asserted: removing this line makes the gate exit
+  // 1 with "RENDERED AND COMMITTABLE, NO PUBLICATION BASIS ON RECORD —
+  // icons/logo-asj.webp", which is also what proves the REF_RE `/icons/` widening
+  // works — before it, that path was never captured into `published` at all.
+  'icons/logo-asj.webp',
 ]);
 
 // ── Report mode ────────────────────────────────────────────────────────────
