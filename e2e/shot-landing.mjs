@@ -54,7 +54,7 @@ for (const width of WIDTHS) {
   const offsets = await page.evaluate(() => {
     const ids = [
       'atas', 'kenapa-jepang', 'loker', 'layanan', 'program', 'alur',
-      'visi-misi', 'legalitas', 'fasilitas', 'galeri', 'loker-ringkas',
+      'visi-misi', 'legalitas', 'fasilitas', 'galeri',
       'penempatan', 'tentang', 'tim', 'kontak', 'lokasi', 'daftar',
     ];
     const out = [];

@@ -189,7 +189,6 @@ export const SECTION_MOTION: readonly SectionMotion[] = [
   { id: 'legalitas', label: 'Legalitas', enter: 'focus', pose: 'princess-head', motion: 'sway' },
   { id: 'fasilitas', label: 'Fasilitas', enter: 'slide-left', pose: 'princess-peace', motion: 'bounce' },
   { id: 'galeri', label: 'Galeri', enter: 'grow', pose: 'princess-wave', motion: 'look' },
-  { id: 'loker-ringkas', label: 'Loker', enter: 'rise', pose: 'princess-side', motion: 'sway' },
   { id: 'penempatan', label: 'Penempatan', enter: 'slide-right', pose: 'princess-peace', motion: 'bounce' },
   { id: 'tentang', label: 'Tentang', enter: 'curtain', pose: 'princess-still', motion: 'lean' },
   { id: 'tim', label: 'Tim', enter: 'focus', pose: 'princess-head', motion: 'look' },

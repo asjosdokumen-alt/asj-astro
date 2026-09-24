@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import App from '../components/App.tsx';
-import JobMiniList from '../components/public/JobMiniList.tsx';
 import LayananSection from '../components/public/LayananSection.astro';
 import ClosingBand from '../components/public/ClosingBand.astro';
 import JapanTexture from '../components/public/JapanTexture.astro';
@@ -132,14 +131,11 @@ import { GALLERY } from '../lib/gallery';
         <span id="live-job-count" class="font-black text-fg">—</span>
         <span data-lang="profile.hero_jobs_live">lowongan aktif</span>
       </p>
-      <!-- Points at the PAGE, not a fragment. It was a fragment anchor to the
-           lowongan section, but that table moved to its own `/loker` route, so
-           no element on `/` carries that id and the link looked live and did
-           nothing. Same defect the section nav had, found the same way: by
-           scanning the SERVED document for anchors that do not resolve. -->
-      <a href="/loker" class="ml-auto text-body-sm font-bold text-accent-sky hover:underline">
-        <span data-lang="profile.hero_jobs_cta">Lihat semua lowongan</span>
-      </a>
+      <!-- NO "lihat semua lowongan" LINK HERE. Owner ruling 2026-09-24: `/` is a
+           company profile for MoU/business partners, not a job board, so the
+           only path to the vacancy list is the section nav. The live count
+           stays: it is a real number read from the jobs payload, and a trust
+           signal, not a call to apply. -->
     </div>
   </div>
 
@@ -435,41 +431,13 @@ import { GALLERY } from '../lib/gallery';
          adding a fifth placement is a one-line edit to companyProfile.ts and there
          is no second copy of the list to forget. (The hero's count is derived from
          the same module via PLACEMENT_PREFECTURES.) -->
-    <!-- Section: Lowongan Ringkas (R2). The spec puts this card in the desktop
-         RAIL (L6), which is not built yet. It is a full section here first for a
-         reason that is not convenience: the rail is a LAYOUT, and building the
-         layout before the content means designing a rail slot around nothing and
-         then discovering the content does not fit. The card is written as an
-         .tsx primitive with its own props, so moving it into the rail later is a
-         change of parent, not a rewrite.
-         It sits BEFORE #penempatan because that is where §3 lists it (R1..R5 are
-         in rail order) — the order check in e2e/test-landing.mjs reads that
-         table, so a section placed by convenience would fail it.
-
-         WHY FIVE AND NOT TEN. Ten rows here would duplicate LokerTable one
-         scroll further down, and two lists of the same live vacancies on one
-         page is how a page starts disagreeing with itself. This is the teaser;
-         `#loker` is the list. Both read the same cached payload and the same
-         `jobTutupUntukLamar()` rule, so they cannot drift — see JobMiniList.tsx. -->
-    <Section id="loker-ringkas" labelledBy="loker-ringkas-title" enter="rise" pose="princess-side" motionName="sway">
-      <SectionTitle
-        titleKey="profile.mini_title"
-        title="Lowongan Ringkas"
-        descKey="profile.mini_desc"
-        desc="Lima lowongan terbaru yang masih menerima pelamar."
-        accent="jobs"
-        headingId="loker-ringkas-title"
-      />
-      <div class="mt-8 max-w-3xl">
-        <JobMiniList client:only="preact" limit={5} allHref="/loker" />
-      </div>
-      <div class="mt-6">
-        <a href="/loker" class="inline-flex items-center gap-2 px-6 py-3 rounded-pill bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-500 hover:to-blue-500 text-white font-bold text-sm shadow-lg shadow-sky-600/20 transition-all duration-200">
-          <Icon name="briefcase" class="text-sm" />
-          <span data-lang="profile.mini_cta">Lihat Semua Lowongan</span>
-        </a>
-      </div>
-    </Section>
+    <!-- Section: Lowongan Ringkas (R2) WAS HERE and is deliberately gone.
+         Owner ruling 2026-09-24: `/` is a company profile for MoU/business
+         partners, not a job board, so a vacancy teaser does not belong on it.
+         The vacancy list is still reachable from the section nav; the page
+         keeps exactly ONE link to it. Do not restore this section — the
+         supporting data (`profile.mini_*` keys, `JobMiniList.tsx`) was removed
+         with it. -->
 
     <Section id="penempatan" labelledBy="penempatan-title" class="section-alt border border-line/30 rounded-panel" enter="slide-right" pose="princess-peace" motionName="bounce">
       <SectionTitle

@@ -475,7 +475,13 @@ describe('discover', () => {
     //   ts=276, tsx=100, astro=22, mjs=75, cjs=5, js=20 = 498.
     // MEASURED with the sanctioned tool (`indexer/src/count-indexed.test.ts`),
     // not a hand count and not `git ls-files`.
-    expect(count('ts')).toBe(277);
+    // 277 -> 276 (2026-09-24, company-profile reframe): -1 ts —
+    // `src/components/public/JobMiniList.test.ts`, deleted with its component
+    // when the owner removed the `#loker-ringkas` section from `/` (`/` is a
+    // company profile for MoU/business partners, not a job board). MEASURED with
+    // the sanctioned tool after the file was gone: 276 ts + 102 tsx + 22 astro +
+    // 75 mjs + 6 cjs + 20 js = 501.
+    expect(count('ts')).toBe(276);
     // 276 -> 277 (2026-09-22): indexer/src/count-indexed.test.ts, the sanctioned
     // measurement tool itself. It is a `.ts` file, so it lands in this bucket —
     // which is why the tool moves the number it exists to report. The companion
@@ -577,7 +583,11 @@ describe('discover', () => {
     // That rule has now decided a frozen number three times, and it is why this
     // value was read off `count-indexed.test.ts` after the files existed rather
     // than derived from "two components, so +2".
-    expect(count('tsx')).toBe(103); // 46 at design time; modal/component test suites added since; re-anchored to HEAD by the R11 pass, then +9 when the 2026-09-19/20 backlog landed, then +2 for the LevelCard slice, then +1 for the StepGuide slice (2026-09-20), then +3 for HistoryTimeline.tsx + its .test.tsx + ContactForm.tsx (2026-09-21), then +1 for ContactForm.test.tsx (2026-09-21, same day), then +1 for AdminPanel.test.tsx (the Papan Tugas Tim suite). The last step is +1 and NOT +2: a `.test.tsx` file is a tsx file, so it moves this bucket and fileCount together, and it is exactly the kind of file that looks like it belongs in a "tests" bucket that does not exist. MEASURED with `indexer/src/count-indexed.test.ts` after the file existed: 277 + 103 + 22 + 76 + 6 + 20 = 504.
+    // 103 -> 102 (2026-09-24, company-profile reframe): -1 tsx —
+    // `src/components/public/JobMiniList.tsx`, deleted with the `#loker-ringkas`
+    // section it rendered (see the count('ts') note above). MEASURED with the
+    // sanctioned tool: 276 + 102 + 22 + 75 + 6 + 20 = 501.
+    expect(count('tsx')).toBe(102); // 46 at design time; modal/component test suites added since; re-anchored to HEAD by the R11 pass, then +9 when the 2026-09-19/20 backlog landed, then +2 for the LevelCard slice, then +1 for the StepGuide slice (2026-09-20), then +3 for HistoryTimeline.tsx + its .test.tsx + ContactForm.tsx (2026-09-21), then +1 for ContactForm.test.tsx (2026-09-21, same day), then +1 for AdminPanel.test.tsx (the Papan Tugas Tim suite). The last step is +1 and NOT +2: a `.test.tsx` file is a tsx file, so it moves this bucket and fileCount together, and it is exactly the kind of file that looks like it belongs in a "tests" bucket that does not exist. MEASURED with `indexer/src/count-indexed.test.ts` after the file existed: 277 + 103 + 22 + 76 + 6 + 20 = 504.
     // 12 -> 13 (2026-09-17): +1 astro — `src/pages/404.astro`. The site had NO
     // 404 page: `src/pages/404.astro` was absent and `netlify.toml` carried no
     // rule for unknown paths, so a mistyped link fell through to Netlify's own
@@ -862,7 +872,12 @@ describe('discover', () => {
     // indexed `.mjs` (`e2e/test-mascot-motion.mjs`). Its battery
     // (`e2e/test-mascot-motion.mutations.sh`) is a `.sh` file, which no bucket
     // counts, so the net here is +1 and not +2.
-    expect(count('mjs')).toBe(76);
+    // 76 -> 75 (2026-09-24, company-profile reframe): -1 mjs —
+    // `e2e/measure-mini-rows.mjs`, the tap-target evidence tool for the
+    // `#loker-ringkas` rows it measured. With the section gone there are no rows
+    // to measure. MEASURED with the sanctioned tool: 276 + 102 + 22 + 75 + 6 +
+    // 20 = 501.
+    expect(count('mjs')).toBe(75);
     expect(count('cjs')).toBe(6);
     // 75 -> 76 (2026-09-22): scripts/ci/verify-workflows.mjs, the gate that
     // checks the workflow files against their subject. Attribution by name, not
@@ -1207,7 +1222,13 @@ describe('discover', () => {
     // count('tsx') above move together by the same +1. MEASURED with
     // indexer/src/count-indexed.test.ts after the file existed:
     // 277 + 103 + 22 + 76 + 6 + 20 = 504.
-    expect(files.length).toBe(504); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader, +1 battery runner, +4 edge-validation gate, +2 e2e guards, +1 TabTambah test, +1 InputManualModal test, +1 settings-limit test, +1 404 page, -2 orphan e2e, +1 fetchMail test, +1 workflow gate, +1 CekSiswaModal test, +2 progress, +6 e2e probes, +1 candidates.test.ts (the phantom HEAD had been missing), +1 with-timeout watchdog, +1 ingestion xlsx-read test, +2 wire-payload contract tests, +1 fetch-boundary gate, -2 orphan e2e probes, +2 aiCvPairs registry + suite, +2 cvRows rules + suite, +2 cvPeriod rules + suite, +1 memory-archive gate, +2 publicSections module + suite, +3 public section primitives, +1 closing CTA band, +2 companyProfile + accentClass, +4 list primitives as tsx (-3 astro primitives they replaced), +1 desktop section nav, +1 team grid, +1 JobMiniList.tsx, +1 JobMiniList.test.ts, +3 evidence tools (shot-landing, measure-mini-rows, measure-hero), +1 ts measured-not-traced, +4 hero evidence tools, +2 site-nav gate + evidence tool, +2 gallery module + suite, +1 GalleryGrid.tsx, +1 measure-galeri.mjs, +1 Mascot.tsx, +2 mascot evidence tools (measure-mascot, shot-mascot), +1 Button test (2026-09-20), then +54 when the 2026-09-19/20 backlog was committed, then +2 for the LevelCard slice, then +3 for the JapanTexture band (2026-09-20), then +4 for the StepGuide slice + entrance animation (2026-09-20), then +5 for loker.astro, PersonGrid.tsx, LevelCard.tsx and LevelCard.test.tsx plus one unattributed file, then +1 for measure-theme-landing.mjs (2026-09-20) — the chain was re-anchored to HEAD by the R11 pass and is now one number again, then +1 for e2e/test-theme-gradients.mjs (2026-09-20, later the same day), then +2 for the mascot slice (2026-09-20): PrincessMascot.astro (+1 astro) and PrincessMascot.test.ts (+1 ts), then +1 for e2e/test-mascot-motion.mjs (2026-09-20), then +8 for the contact slice (2026-09-21): contexts/contact/{index,service,repository}.ts, netlify/functions/kontak.js, HistoryTimeline.tsx, HistoryTimeline.test.tsx, ContactForm.tsx, plus three earlier-session test files committed in the same commit. ATTRIBUTION corrected twice: the mascot slice was first written as +1 astro alone (it is TWO files — the component and its test), and the motion gate is a THIRD file whose battery is a `.sh` and therefore outside every bucket. Cross-checks: this is `fileCount` in build.test.ts and `count('mjs')` above, all three moved by the same `princess` + gate files. Re-measured at the END with count-indexed.test.ts (276 ts + 102 tsx + 22 astro + 75 mjs + 5 cjs + 20 js = 500), per R15 §3h. Then +1 (2026-09-21) for ContactForm.test.tsx — the missing suite for the contact island, whose absence was found by the render verification rather than by any gate. Then +3 (2026-09-22): count-indexed.test.ts (+1 ts), scripts/ci/verify-workflows.mjs (+1 mjs), scripts/ci/kf-mutate.cjs (+1 cjs). Attribution is by the per-bucket delta being exactly +1 in each of the three named buckets with `tsx`, `astro` and `js` unmoved. Re-measured again at the END with count-indexed.test.ts (277 ts + 102 tsx + 22 astro + 76 mjs + 6 cjs + 20 js = 503).
+    // 504 -> 501 (2026-09-24, company-profile reframe): -3 files — the
+    // `#loker-ringkas` section's own three: `JobMiniList.tsx` (-1 tsx),
+    // `JobMiniList.test.ts` (-1 ts) and `e2e/measure-mini-rows.mjs` (-1 mjs).
+    // Same three deltas as count('ts')/count('tsx')/count('mjs') above, which is
+    // the cross-check that nothing else moved with them. MEASURED with the
+    // sanctioned tool, NOT derived: 276 + 102 + 22 + 75 + 6 + 20 = 501.
+    expect(files.length).toBe(501); // 248 at design time; +4 Phase B kernel files, +5 CI gates/loader, +1 battery runner, +4 edge-validation gate, +2 e2e guards, +1 TabTambah test, +1 InputManualModal test, +1 settings-limit test, +1 404 page, -2 orphan e2e, +1 fetchMail test, +1 workflow gate, +1 CekSiswaModal test, +2 progress, +6 e2e probes, +1 candidates.test.ts (the phantom HEAD had been missing), +1 with-timeout watchdog, +1 ingestion xlsx-read test, +2 wire-payload contract tests, +1 fetch-boundary gate, -2 orphan e2e probes, +2 aiCvPairs registry + suite, +2 cvRows rules + suite, +2 cvPeriod rules + suite, +1 memory-archive gate, +2 publicSections module + suite, +3 public section primitives, +1 closing CTA band, +2 companyProfile + accentClass, +4 list primitives as tsx (-3 astro primitives they replaced), +1 desktop section nav, +1 team grid, +1 JobMiniList.tsx, +1 JobMiniList.test.ts, +3 evidence tools (shot-landing, measure-mini-rows, measure-hero), +1 ts measured-not-traced, +4 hero evidence tools, +2 site-nav gate + evidence tool, +2 gallery module + suite, +1 GalleryGrid.tsx, +1 measure-galeri.mjs, +1 Mascot.tsx, +2 mascot evidence tools (measure-mascot, shot-mascot), +1 Button test (2026-09-20), then +54 when the 2026-09-19/20 backlog was committed, then +2 for the LevelCard slice, then +3 for the JapanTexture band (2026-09-20), then +4 for the StepGuide slice + entrance animation (2026-09-20), then +5 for loker.astro, PersonGrid.tsx, LevelCard.tsx and LevelCard.test.tsx plus one unattributed file, then +1 for measure-theme-landing.mjs (2026-09-20) — the chain was re-anchored to HEAD by the R11 pass and is now one number again, then +1 for e2e/test-theme-gradients.mjs (2026-09-20, later the same day), then +2 for the mascot slice (2026-09-20): PrincessMascot.astro (+1 astro) and PrincessMascot.test.ts (+1 ts), then +1 for e2e/test-mascot-motion.mjs (2026-09-20), then +8 for the contact slice (2026-09-21): contexts/contact/{index,service,repository}.ts, netlify/functions/kontak.js, HistoryTimeline.tsx, HistoryTimeline.test.tsx, ContactForm.tsx, plus three earlier-session test files committed in the same commit. ATTRIBUTION corrected twice: the mascot slice was first written as +1 astro alone (it is TWO files — the component and its test), and the motion gate is a THIRD file whose battery is a `.sh` and therefore outside every bucket. Cross-checks: this is `fileCount` in build.test.ts and `count('mjs')` above, all three moved by the same `princess` + gate files. Re-measured at the END with count-indexed.test.ts (276 ts + 102 tsx + 22 astro + 75 mjs + 5 cjs + 20 js = 500), per R15 §3h. Then +1 (2026-09-21) for ContactForm.test.tsx — the missing suite for the contact island, whose absence was found by the render verification rather than by any gate. Then +3 (2026-09-22): count-indexed.test.ts (+1 ts), scripts/ci/verify-workflows.mjs (+1 mjs), scripts/ci/kf-mutate.cjs (+1 cjs). Attribution is by the per-bucket delta being exactly +1 in each of the three named buckets with `tsx`, `astro` and `js` unmoved. Re-measured again at the END with count-indexed.test.ts (277 ts + 102 tsx + 22 astro + 76 mjs + 6 cjs + 20 js = 503).
   });
 
   it('no scratch files are being counted, and the per-language counts sum to the total', () => {

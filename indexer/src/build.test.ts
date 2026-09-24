@@ -471,7 +471,19 @@ describe('full build', () => {
     // The sum is the measured fact; the per-file list above is the explanation,
     // kept per file so the next reader can re-derive rather than trust it.
     // MEASURED, not derived: `count-indexed.test.ts` prints the buckets.
-    expect(r.stats.fileCount).toBe(503); // 277 ts + 102 tsx + 22 astro + 76 mjs + 6 cjs + 20 js = 503, MEASURED with count-indexed.test.ts. 499 -> 500 (2026-09-21): +1 for ContactForm.test.tsx, the suite the island should have shipped with. It lands in the tsx bucket because the SUFFIX decides the bucket and `.test.tsx` ends in `.tsx`. 500 -> 503 (2026-09-22): +1 ts for indexer/src/count-indexed.test.ts (the measurement tool), +1 mjs for scripts/ci/verify-workflows.mjs, +1 cjs for scripts/ci/kf-mutate.cjs — three files this session's gate work added. The three bucket deltas are each exactly +1, which is what attributes them; `tsx` stayed at 102. Re-measured at the END with count-indexed.test.ts rather than reasoned about.
+    // 503 -> 501 (2026-09-24, company-profile reframe): -3 files — the three
+    // `#loker-ringkas` files deleted from `/` (`JobMiniList.tsx` -1 tsx,
+    // `JobMiniList.test.ts` -1 ts, `e2e/measure-mini-rows.mjs` -1 mjs). Same
+    // three deltas as count('ts')/count('tsx')/count('mjs') and files.length in
+    // discover.test.ts.
+    // NOTE the literal here was 503 while the tree already measured 504 — this
+    // assertion had been ONE BEHIND (its trailing sum counted tsx as 102 when
+    // discover.test.ts and the tool both read 103). It is a stale baseline, not
+    // this session's drift; the reframe re-anchors it to the MEASURED value, so
+    // this and discover.test.ts's files.length now both read 501.
+    // MEASURED with count-indexed.test.ts, NOT derived: 276 + 102 + 22 + 75 + 6
+    // + 20 = 501.
+    expect(r.stats.fileCount).toBe(501); // 276 ts + 102 tsx + 22 astro + 75 mjs + 6 cjs + 20 js = 501, MEASURED with count-indexed.test.ts. 499 -> 500 (2026-09-21): +1 for ContactForm.test.tsx, the suite the island should have shipped with. It lands in the tsx bucket because the SUFFIX decides the bucket and `.test.tsx` ends in `.tsx`. 500 -> 503 (2026-09-22): +1 ts for indexer/src/count-indexed.test.ts (the measurement tool), +1 mjs for scripts/ci/verify-workflows.mjs, +1 cjs for scripts/ci/kf-mutate.cjs — three files this session's gate work added. The three bucket deltas are each exactly +1, which is what attributes them; `tsx` stayed at 102. Re-measured at the END with count-indexed.test.ts rather than reasoned about.
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

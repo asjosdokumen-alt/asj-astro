@@ -61,13 +61,19 @@ membawa gate yang bisa gagal.
 | **S10** | Tim & Kredensial | `#tim` | `h2` | utama (8) |
 | **S11** | Fasilitas & Dukungan | `#fasilitas` | `h2` | utama (8) |
 | **R1** | Informasi Kontak | `#kontak` | `h2` | rail (4) |
-| **R2** | Lowongan Ringkas | `#loker-ringkas` | `h2` | rail (4) |
 | **R3** | Galeri Perusahaan | `#galeri` | `h2` | rail (4) |
 | **R4** | Penempatan Kami | `#penempatan` | `h2` | rail (4) |
 | **R5** | Lokasi Kami | `#lokasi` | `h2` | rail (4) |
 | — | *grid dua kolom selesai di sini* | | | |
 | **S12** | Pita CTA penutup | `#daftar` | `h2` | penuh (12) |
 | — | Footer | — | `h2` | penuh (12) |
+
+> **R2 “Lowongan Ringkas” dihapus** (keputusan pemilik 2026-09-24). `/` adalah
+> **profil perusahaan untuk calon mitra/MoU**, bukan papan lowongan; teaser
+> lowongan tidak lagi punya tempat di halaman ini. Daftar lowongan tetap ada di
+> rute `/loker` dan `/` menyisakan **tepat satu** tautan ke sana (nav section).
+> Baris R2 dihapus dari tabel ini dan dari matriks §2, dan komponennya
+> (`JobMiniList.tsx`) beserta kuncinya (`profile.mini_*`) ikut dihapus.
 
 **Urutan DOM = urutan baca = urutan tampil di mobile.** Rail ada **setelah** `main`
 dalam DOM; di desktop ia dipindahkan ke kolom kedua oleh CSS grid. Karena kolom kedua
@@ -116,7 +122,6 @@ disengaja:
 | S10 ⏸ | `IconTileGrid` / grid potret | 6 jabatan + JLPT N1 — **butuh izin tayang** | — | L3 |
 | S11 ✅ | `IconTileGrid` (6 ubin) | 6 ubin, gabungan data resmi + asrama | `index.astro` | L3 |
 | R1 ✅ | `Card` ×2 + `ContactForm` (bukan `FactList`) | alamat, 2 telepon, surel, formulir kontak — **baris jam operasional dihilangkan (P-4)**; WA ada di `Footer.astro`, bukan di section ini | `index.astro` | L3 |
-| R2 | `JobMiniList.tsx` | `jobs` (5 teratas) | `src/components/public/JobMiniList.tsx` | L6 |
 | R3 ⏸ | `GalleryGrid` | 6 foto terpilih (§8) — **butuh izin tayang** | — | L3 |
 | R4 ⏸ | `FactList` + 3 foto | 4 prefektur + foto mensetsu — **butuh izin tayang** | — | L3 |
 | R5 ⏸ | `MapCard.astro` | koordinat; peta pindahan dari `LayananSection.astro:168` | — | L3 |
@@ -683,7 +688,7 @@ Dipetakan ke `docs/LANDING_PAGE_ROADMAP.md` §3. Satu fase hijau sebelum lanjut.
 | **L3** 🟡 | S2, S4, S6, S8, S9, S11, R1 ✅ · S7, S10, R3, R4, R5 ⏸ (butuh pemilik) | `src/components/public/*`, `src/lib/companyProfile.ts`, `index.astro` | `e2e:public`, `verify:classes`, `i18n.keys` |
 | **L4** | Nav baris atas: item, penanda aktif, bahasa, login; **koreksi K-2 & K-10** | `App.tsx`, `Footer.astro` | `e2e:drawer`, `e2e:labels` |
 | **L5** | S3 kartu loker + filter + pencarian; tabel dipertahankan | `JobGrid.tsx`, `JobCard.tsx` | `e2e:loker-layout`, `vitest` |
-| **L6** | Rail lengket + R2 | `index.astro`, `JobMiniList.tsx` | `e2e:public` |
+| **L6** | ⏸ Rail lengket + R2 — **dibatalkan** (keputusan pemilik 2026-09-24: `/` = profil perusahaan untuk mitra, bukan papan lowongan; teaser lowongan & rail maskot dihapus) | — | — |
 | **L7** | Bottom nav tamu 4 tombol; clearance | `BottomNav.tsx`, `layout.css` | `settings-limit`, `e2e:public` |
 | **L8** | Gate halaman: `e2e/test-landing.mjs` | `e2e/` | gate baru **dibuktikan bisa gagal** |
 

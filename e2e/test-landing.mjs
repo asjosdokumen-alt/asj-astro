@@ -121,7 +121,6 @@ const SECTIONS = [
   { id: 'visi-misi', phase: 'L4', visible: true },
   { id: 'legalitas', phase: 'L4', visible: true },
   { id: 'fasilitas', phase: 'L4', visible: true },
-  { id: 'loker-ringkas', phase: 'L8', visible: true },
   { id: 'penempatan', phase: 'L8', visible: true },
   { id: 'tentang', phase: 'L3', visible: true },
   { id: 'tim', phase: 'L3', visible: true },
