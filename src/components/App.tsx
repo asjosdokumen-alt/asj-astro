@@ -240,10 +240,11 @@ export default function App(
           (`hasHeading`, any of h1..h6), which the hero already has. Naming the
           landmark is the job of that heading, not of an aria-label here. */}
       {showHeader && <header id={hero ? "atas" : "asj-header"} class={`${hero ? "scroll-mt-24 hero-gradient " : "hero-gradient "}max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl flex items-end rounded-band overflow-hidden transition-colors duration-200 ${hero ? "min-h-[26rem] md:min-h-[32rem] p-6 md:p-10" : "h-auto min-h-[14rem] md:h-56 p-6 md:p-8"}`}>
-        {/* The old overlay div that darkened the background image is no longer
-             needed — the CSS gradient in `.hero-gradient` already has the right
-             contrast. The `::after` pseudo-element on `.hero-gradient` adds a
-             subtle glow instead. The id is kept for any external selectors. */}
+        {/* The overlay that darkens the hero artwork for the copy's contrast
+             sits BELOW the illustration, on purpose: it must paint over the
+             artwork, not under it. See the `header-overlay` div after the
+             <picture>. The `::after` pseudo-element on `.hero-gradient` is a
+             separate layer — the subtle glow. */}
         {/* Hero illustration (only on the `hero` variant — /share and every
             other route that mounts the header without a hero keeps the bare
             gradient). It sits UNDER the content because the band's existing
@@ -288,6 +289,23 @@ export default function App(
             />
           </picture>
         )}
+
+        {/* The artwork overlay — DESIGN.md §3.6's level-2 "overlay gradien".
+             It is a DIRECTIONAL gradient, not a scrim: transparent over the far
+             side of the band, dark only where the copy sits (bottom on a phone,
+             left at `lg`). `.header-overlay` in global.css is re-aimed to the
+             text's side and darkens in BOTH themes, because the hero copy stays
+             white in both (global.css §5d).
+
+             RESTORED 2026-09-24. The div that carried this class was removed in
+             84c7ed6 with the note that "the CSS gradient in `.hero-gradient`
+             already has the right contrast" — true of the bare gradient, but the
+             hero has since gained the `hero-sakura` illustration at
+             `opacity-60`, and it is the ARTWORK that sits behind the headline
+             now. With the class orphaned (0 elements), the headline measured a
+             worst glyph-background of 2.36-2.88:1 in light mode, under the 3:1
+             floor. It is decorative, so `aria-hidden` + `pointer-events-none`. */}
+        {hero && <div class="absolute inset-0 header-overlay pointer-events-none" aria-hidden="true" />}
 
         {/* Hamburger — shown on BOTH mobile and desktop. One menu surface
             for both viewports (the user picks the drawer icon, the same

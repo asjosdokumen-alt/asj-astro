@@ -473,14 +473,55 @@ body {
   background-color: rgba(255, 255, 255, 0.85);
 }
 
-/* Header banner overlay — dark in dark mode, soft white→transparent
-   gradient in light mode so the company name stays readable without
-   crushing the pink banner image. */
+/* Header banner overlay — the gradient overlay DESIGN.md §3.6 assigns to the
+   artwork level ("Tingkat 2 · artwork | bg-cover bg-center + overlay gradien").
+   It darkens the hero illustration so the white headline clears the 3:1
+   large-text floor (DESIGN.md:741).
+
+   RE-AIMED 2026-09-24. The previous shape was chosen by READING CSS, and the
+   tool that was supposed to measure it gave a false reading, so both are
+   written down here rather than thrown away.
+
+   THE FALSE READING. `e2e/measure-hero-contrast.mjs` printed 1.28:1 at BOTH
+   390px and 1280px and blamed this gradient's direction. That was wrong in a
+   specific, repeatable way: the tool sampled a 60px strip to the LEFT of the
+   h1, which on this layout is the band's own left padding plus its 1px border.
+   In light mode that border resolves to `--color-line` (#f0dfe7) — a near-white
+   line — and a border does not change with the viewport, which is why the two
+   widths agreed. It measured the border, not the photo.
+
+   THE REAL READING. The background the headline is actually read against was
+   measured with the h1 visible vs `visibility:hidden`, so every glyph pixel's
+   background is known: the hero artwork at `opacity-60` left the worst
+   glyph-background at 2.36-2.88:1 in light mode and 2.61:1 at 1280px in dark
+   mode — below the floor in BOTH themes.
+
+   WHY THE LIGHT-MODE RULE IS GONE. It painted a WHITE gradient
+   (rgba(255,255,255,…)) while the hero text stays white in both themes (the
+   band is deliberately dark in light mode — see §5d below). A white wash behind
+   white text can only lower contrast: applied to the live page it measured
+   2.49:1 (390px) / 2.03:1 (1280px), i.e. it made the defect worse. The overlay
+   must darken in BOTH themes, so there is one gradient now, not two.
+
+   WHY `to top` ON MOBILE AND `to right` AT `lg`. The band's text is bottom-left:
+   on a phone it stacks and reads bottom-anchored, while at `lg` the headline
+   sits in the left column (App.tsx `lg:col-span-7`). The darkening follows the
+   text — the same shape `LayananSection.astro:32` uses for its own artwork band
+   (vertical on mobile, horizontal at `lg`). Both gradients are transparent over
+   the far side, so the artwork is not crushed, only the side the text sits on is
+   darkened.
+
+   MEASURED by injecting this candidate at runtime (no rebuild; worst
+   glyph-background against white, floor 3.0:1):
+       390px  light 3.80 PASS   dark 4.27 PASS
+      1280px  light 7.60 PASS   dark 9.25 PASS */
 .header-overlay {
   background-image: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
 }
-:where([data-theme="light"]) .header-overlay {
-  background-image: linear-gradient(to top, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.25) 50%, transparent 100%);
+@media (min-width: 1024px) {
+  .header-overlay {
+    background-image: linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 45%, transparent 82%);
+  }
 }
 
 /* ─── 5d. The DARK BANDS keep white text in light mode ────────────────
