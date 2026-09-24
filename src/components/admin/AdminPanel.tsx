@@ -238,7 +238,11 @@ export default function AdminPanel() {
       >
         <div class="flex items-center justify-between px-2 py-2 mb-2 border-b border-slate-700">
           <span class="text-xs font-bold text-slate-500 uppercase tracking-widest"><Icon name="th-large" class="mr-1" /> {t("ui.menu")}</span>
-          <button onClick={() => setSidebarOpen(false)} class="text-slate-400 hover:text-white p-1 transition lg:hidden" aria-label={t("ui.close")}><Icon name="times" class="text-lg" /></button>
+          {/* MEASURED (2026-09-25, /admin at 390 + 768, both themes): `p-1`
+              around an 18px glyph rendered 24x32 — under WCAG 2.5.8 AA's 24px on
+              the width, and the only control that closes the mobile sidebar.
+              min-w/min-h put the 44px floor on the button itself. */}
+          <button onClick={() => setSidebarOpen(false)} class="text-slate-400 hover:text-white p-1 min-w-11 min-h-11 inline-flex items-center justify-center transition lg:hidden" aria-label={t("ui.close")}><Icon name="times" class="text-lg" /></button>
         </div>
         {TABS.map((tab) => (
           <button

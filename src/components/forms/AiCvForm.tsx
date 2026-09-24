@@ -1121,7 +1121,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               ))}
               {eduList.length < EDU_MAX && (
                 <button type="button" onClick={() => setEduList(l => [...l, { ...EMPTY_EDU }])}
-                  class="text-sky-400 text-[11px] font-bold mb-1">
+                  class="inline-flex items-center min-h-11 text-sky-400 text-[11px] font-bold mb-1">
                   <Icon name="plus" class="mr-1" />{t('ai_cv.row_tambah')}
                 </button>
               )}
@@ -1163,7 +1163,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               ))}
               {jobList.length < JOB_MAX && (
                 <button type="button" onClick={() => setJobList(l => [...l, { ...EMPTY_JOB }])}
-                  class="text-sky-400 text-[11px] font-bold mb-1">
+                  class="inline-flex items-center min-h-11 text-sky-400 text-[11px] font-bold mb-1">
                   <Icon name="plus" class="mr-1" />{t('ai_cv.row_tambah')}
                 </button>
               )}
@@ -1202,7 +1202,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               ))}
               {famList.length < FAM_MAX && (
                 <button type="button" onClick={() => setFamList(l => [...l, { ...EMPTY_FAM }])}
-                  class="text-sky-400 text-[11px] font-bold mb-1">
+                  class="inline-flex items-center min-h-11 text-sky-400 text-[11px] font-bold mb-1">
                   <Icon name="plus" class="mr-1" />{t('ai_cv.row_tambah')}
                 </button>
               )}
@@ -1728,9 +1728,13 @@ function UploadRow({ type, label, icon, color, accept, status, preview, onUpload
           <label class={`block text-xs font-bold ${c.label} mb-0.5`} for={`ai_doc_${type}`}>{label}</label>
           {status && <span class="text-[9px] text-emerald-400 font-medium"><Icon name="check" class="mr-0.5" />{status}</span>}
         </div>
+        {/* MEASURED (2026-09-25, /ai-cv at 768/1280): the native file control's
+            own box was 21.5px tall — under WCAG 2.5.8 AA's 24px — at all nine
+            document slots. min-h-11 lifts the target to the 44px floor without
+            touching the `file:` button metrics. */}
         <input id={`ai_doc_${type}`} type="file" accept={accept}
           onChange={(e) => { const f = (e.target as HTMLInputElement).files?.[0] || null; onUpload?.(type, f); }}
-          class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
+          class="w-full min-h-11 text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
       </div>
       {/* PARITY ai_form.html:299 — legacy benar-benar menampilkan pratinjau foto
           (`#previewFoto`, h-14 w-12) di kanan baris. Sebelumnya state

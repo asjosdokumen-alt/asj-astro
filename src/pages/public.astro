@@ -13,8 +13,11 @@ import Icon from '../components/ui/Icon';
   <App client:load />
 
   <main id="main-content" class="w-full max-w-7xl mx-auto px-4 mt-8 min-h-[50vh] flex flex-col gap-6 pb-16">
-    <!-- Back button -->
-    <a href="/" class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition">
+    <!-- Back button. MEASURED (2026-09-25, /public at 390/768/1280): this was
+         20px tall, under WCAG 2.5.8 AA's 24px. min-h-11 puts the 44px floor on
+         the anchor itself rather than on the column's gap — a gap is not part
+         of the target. -->
+    <a href="/" class="inline-flex items-center gap-2 min-h-11 text-sm text-slate-400 hover:text-white transition">
       <Icon name="arrow-left" /> <span data-lang="button.back_to_portal">Kembali ke Portal</span>
     </a>
 

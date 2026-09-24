@@ -83,10 +83,15 @@ function ToastItem({ toast, paused }: { toast: ToastMessage; paused: boolean }) 
     >
       <Icon name={tone.icon} />
       <span class="flex-1">{t(toast.text)}</span>
+      {/* MEASURED (2026-09-25, /admin + /ai-cv at all three widths): this close
+          button was 22x28 — `p-1` around a 14px glyph — so the only way to
+          dismiss a toast failed WCAG 2.5.8 AA (24x24). min-w/min-h rather than
+          padding, so the x stays visually the same size while the target
+          becomes 44x44. */}
       <button
         type="button"
         onClick={() => dismissToast(toast.id)}
-        class="-mr-1 p-1 rounded hover:bg-white/20 transition"
+        class="-mr-1 p-1 min-w-11 min-h-11 inline-flex items-center justify-center rounded hover:bg-white/20 transition"
         aria-label={t("ui.close")}
       >
         <Icon name="times" />

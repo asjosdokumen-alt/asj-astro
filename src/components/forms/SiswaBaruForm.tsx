@@ -448,8 +448,11 @@ export default function SiswaBaruForm() {
                 </div>
                 <div class="flex-1 overflow-hidden">
                   <label class="block text-[10px] font-bold text-sky-400 mb-1" for={`sw-doc-${d.type}`}>{d.label}</label>
+                  {/* MEASURED (2026-09-25, /siswa-baru at 768/1280): the native
+                      file control's own box was 21.5px tall — under WCAG 2.5.8
+                      AA's 24px. min-h-11 lifts the target to the 44px floor. */}
                   <input id={`sw-doc-${d.type}`} type="file" accept=".pdf,image/*" onChange={(e) => handleDocUpload(e, d.type)}
-                    class="w-full text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
+                    class="w-full min-h-11 text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
                   {docStatus[d.type] && <div class="text-[9px] text-emerald-400 mt-1 font-bold truncate"><Icon name="check" class="mr-0.5" />{docStatus[d.type]}</div>}
                 </div>
               </div>
