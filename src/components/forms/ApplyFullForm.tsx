@@ -308,9 +308,23 @@ export default function ApplyFullForm() {
   const progressPct = step === 1 ? '0%' : step === 2 ? '50%' : '100%';
 
   return (
+    /* `bg-[#020617]` is the DARK value of `--color-canvas`, i.e. the author meant
+       "the page canvas" — but it is a literal, so §5b's slate shim never saw it
+       and the page stayed dark in light mode. It is kept dark on purpose: this
+       is a standalone portal page whose hero is an artwork band (see
+       `artwork-band` below), so a light page would need the hero's overlay
+       gradient re-aimed too, which is a design change and not a contrast fix.
+       The two `bg-[#020617]` panels INSIDE the form card are a different case —
+       that card is turned light by §5b, so they follow the theme (`bg-canvas`).
+       MEASURED: keeping the page dark changes no rendered glyph; the title's
+       real contrast is fixed by `.artwork-band` (global.css §5e). */
     <div class="min-h-screen bg-[#020617] text-white pb-16 pt-[42px]">
-      {/* Hero */}
-      <div class="relative h-[260px] overflow-hidden">
+      {/* Hero — an ARTWORK band: the <img> below is darkened to 35% brightness
+          and covered by a black→#020617 gradient, so this band is dark in BOTH
+          themes and its text must stay light. `artwork-band` is what tells the
+          light-mode shim so (global.css §5e); without it the title inherited
+          the page div's `text-white`, which §5b flips to near-black. */}
+      <div class="artwork-band relative h-[260px] overflow-hidden">
         <img class="absolute inset-0 w-full h-full object-cover brightness-[.35]"
           src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1600&q=80" alt="" />
         <div class="absolute inset-0 bg-gradient-to-b from-black/25 to-[#020617]"></div>
@@ -548,8 +562,8 @@ function UploadCard({ type, label, sub, icon, bgClass, btnClass, accept, onChang
       </div>
       <input ref={inputRef} type="file" accept={accept} class="hidden"
         onChange={(e) => onChange((e.target as HTMLInputElement).files?.[0] || null)} />
-      {state?.preview && <img src={state.preview} class="w-full h-[160px] object-contain bg-[#020617] rounded-xl mt-[15px] border border-slate-700" alt="" />}
-      <div class="mt-[15px] p-3 bg-[#020617] rounded-xl text-xs text-slate-400 break-all">{state?.name || t('apply.file_none')}</div>
+      {state?.preview && <img src={state.preview} class="w-full h-[160px] object-contain bg-canvas rounded-xl mt-[15px] border border-slate-700" alt="" />}
+      <div class="mt-[15px] p-3 bg-canvas rounded-xl text-xs text-slate-400 break-all">{state?.name || t('apply.file_none')}</div>
       {state?.warn && <div class="text-rose-500 text-[11px] mt-2 font-bold"><Icon name="circle-exclamation" class="mr-1" />{t('apply.file_too_big')}</div>}
     </div>
   );

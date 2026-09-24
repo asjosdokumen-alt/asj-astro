@@ -242,7 +242,66 @@ body {
    surfaces added later should adopt `bg-surface` etc. directly.    */
 :where([data-theme="light"]) .bg-slate-900,
 :where([data-theme="light"]) .bg-slate-900\/95,
-:where([data-theme="light"]) .bg-slate-900\/88 {
+:where([data-theme="light"]) .bg-slate-900\/88,
+:where([data-theme="light"]) .bg-slate-900\/\[\.97\] {
+  background-color: #ffffffeb;          /* matches --color-surface */
+}
+
+/* The alpha variants this list used to miss — the whole of defect (a), and it
+   was WIDER than the two rows the audit happened to reach. The list carried
+   `bg-slate-900`, `/95` and `/88` only, so `/40`, `/50`, `/60`, `/80` and
+   `/[.97]` stayed DARK while §5b flipped their text to near-black.
+   Two sub-families, two light values, one rule each:
+     · alpha < 88%  -> a translucent PANEL over the page -> the raised tint the
+       `bg-slate-800/nn` group already uses (#f3eff3f2), which keeps the panel
+       distinguishable from the white page instead of collapsing into it.
+     · alpha >= 88% -> effectively the surface itself -> the same value the
+       three entries above use.
+   MEASURED before, Chromium against a real server (floors 4.5:1 body / 3.0:1
+   large):
+     /siswa-baru 768+1280 light, `bg-slate-900/40` panel
+       h2 "Data Pribadi"        2.25:1
+       `text-slate-400` labels  2.67:1   (9 of them)
+     /siswa-baru 768+1280 light, `bg-slate-900/50` header card
+       hint <p>                 2.01:1
+     /share 390+768+1280 light, `bg-slate-900/[.97]` header
+       "Secure Candidate Viewer" 2.75:1
+   14 call sites across 6 files (/40 x2, /50 x3, /60 x4, /80 x1, /[.97] x4) —
+   the same class family the three entries above already shim, and far too many
+   to hand-migrate, so this extends the family rather than the call sites. */
+:where([data-theme="light"]) .bg-slate-900\/\[\.97\] {
+  background-color: #ffffffeb;          /* matches --color-surface */
+}
+:where([data-theme="light"]) .bg-slate-900\/40,
+:where([data-theme="light"]) .bg-slate-900\/50,
+:where([data-theme="light"]) .bg-slate-900\/60,
+:where([data-theme="light"]) .bg-slate-900\/80 {
+  background-color: #f3eff3f2;          /* matches --color-surface-raised */
+}
+
+/* ── Arbitrary-hex dark surface — the other half of defect (c) ────────────
+   `bg-[#0b1220]` is a hand-picked dark card (the /master and /ai-cv login
+   gates). It is NEITHER a Tailwind palette class NOR a token, so §5b never saw
+   it: the surface stayed dark while §5b flipped the text inside it to
+   near-black. Its children are already TOKEN-based (`.label` reads
+   `--color-fg-muted`, `.input` reads `--color-surface-sunken`), so this
+   literal is the only piece not following the theme.
+   MEASURED before, /master AND /ai-cv at 390+768+1280 light:
+     title "Verifikasi Akun Kandidat"  1.12:1
+     `text-slate-400`                  2.66:1
+     `text-slate-500`                  3.30:1   (/master only)
+     `.label`                          2.21:1
+   2 call sites (MasterFullForm:561, AiCvForm:765). SHIMMED rather than
+   migrated to `bg-surface` on purpose: `--color-surface` is #0f172a, so
+   migrating also changes the card in DARK mode (#0b1220 -> #0f172a) and drops
+   this state's worst ratio from 6.03:1 to 5.75:1 — a change with no contrast
+   justification, and the required outcome forbids regressing a state that
+   already passes. This rule touches LIGHT mode only, which is where the defect
+   is. (The two `bg-[#020617]` panels inside ApplyFullForm's light form card
+   were the opposite case and WERE migrated, to `bg-canvas` — a token whose
+   dark value is exactly #020617, so that migration changes dark mode by
+   nothing at all.) */
+:where([data-theme="light"]) .bg-\[\#0b1220\] {
   background-color: #ffffffeb;          /* matches --color-surface */
 }
 :where([data-theme="light"]) .bg-slate-800,
@@ -399,6 +458,33 @@ body {
 
 :where([data-theme="light"]) .hover\:bg-black\/50:hover:not(.inset-0) { background-color: rgba(0, 0, 0, 0.06); }
 :where([data-theme="light"]) .hover\:bg-black\/80:hover:not(.inset-0) { background-color: #e9e3e9; }
+
+/* ── Defect (d): inside a DARK BAND the background remap and the text
+   exception disagreed ──────────────────────────────────────────────────────
+   §5d re-lights `.text-white` inside the dark bands, because those bands stay
+   dark in both themes. But the `bg-black/NN` remap above has no such
+   exception, so a child of a band that carries `bg-black/60` became a LIGHT
+   chip whose text was still WHITE.
+   MEASURED: `/` 768 light, the header language button — `<span>ID</span>`
+   rendered rgb(255,255,255) on rgb(243,239,243) = **1.14:1**.
+
+   The shape of the fix is the one the selectors above already use for the
+   same reason (`:not(.inset-0)` keeps real scrims dark, `:not(.hamburger-btn)`
+   keeps the frosted chip): name the case that must NOT be remapped. Repeating
+   the `:not()` clauses keeps these rules at the SAME specificity as the ones
+   they correct (0,3,0), so source order is what makes them win — no
+   `!important`, and nothing else that matches `bg-black/60` changes.
+
+   WHY `.footer-gradient` IS DELIBERATELY ABSENT while it is in §5d's band
+   list. In light mode `--footer-gradient` is `#fff7fa → #fdeef4` — the footer
+   is a LIGHT band, and §5d's entry for it only ever matches `hover:text-white`
+   on the social chips (the footer's own text is token-based). Restoring black
+   chips inside it would be wrong; it is omitted, and there is no
+   `bg-black/NN` inside the footer today, so nothing changes either way. */
+:where([data-theme="light"]) :where(.hero-gradient, .artwork-band) .bg-black\/60:not(.inset-0):not(.hamburger-btn) { background-color: rgba(0, 0, 0, 0.6); }
+:where([data-theme="light"]) :where(.hero-gradient, .artwork-band) .bg-black\/70:not(.inset-0):not(.hamburger-btn) { background-color: rgba(0, 0, 0, 0.7); }
+:where([data-theme="light"]) :where(.hero-gradient, .artwork-band) .bg-black\/80:not(.inset-0):not(.hamburger-btn) { background-color: rgba(0, 0, 0, 0.8); }
+:where([data-theme="light"]) :where(.hero-gradient, .artwork-band) .hover\:bg-black\/80:hover:not(.inset-0) { background-color: rgba(0, 0, 0, 0.8); }
 
 /* Header banner overlay: dark in dark mode (current behaviour), softer
    in light mode so the pink banner stays readable without going opaque
@@ -575,15 +661,15 @@ body {
    give the BAND a nav-scoped rule, not to pre-emptively quadruple every line.
    Using `:where` rather than `:is` for the band still matters: `:is` would make
    the rule (0,2,0) and put it below §5b's (0,2,1) rule outright. */
-:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient) .text-white,
-:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient) .text-slate-100,
-:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient) .text-slate-200 {
+:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient, .artwork-band) .text-white,
+:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient, .artwork-band) .text-slate-100,
+:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient, .artwork-band) .text-slate-200 {
   color: #ffffff;
 }
 /* The sub-headline rung: `text-slate-300` is the muted-on-dark rung, and
    §5b maps it to `#4a4642` — dark grey on a dark band. Same defect, one
    rung down, and it is the hero's own paragraph colour. */
-:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient) .text-slate-300 {
+:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient, .artwork-band) .text-slate-300 {
   color: #e2e8f0;
 }
 /* THE PINK EYEBROW RUNG — found by comparing the rendered page against the
@@ -628,14 +714,49 @@ body {
    `document.documentElement` by the inline restore script, not on the band. The
    theme must stay a separate ANCESTOR component — hence
    `[data-theme="light"] .hero-gradient`.) */
-[data-theme="light"] :is(.hero-gradient, .footer-gradient) .text-pink-300,
-[data-theme="light"] :is(.hero-gradient, .footer-gradient) .text-pink-300\/80 {
+[data-theme="light"] :is(.hero-gradient, .footer-gradient, .artwork-band) .text-pink-300,
+[data-theme="light"] :is(.hero-gradient, .footer-gradient, .artwork-band) .text-pink-300\/80 {
   color: #fbcfe8;
 }
-[data-theme="light"] :is(.hero-gradient, .footer-gradient) .text-pink-400,
-[data-theme="light"] :is(.hero-gradient, .footer-gradient) .text-pink-400\/70 {
+[data-theme="light"] :is(.hero-gradient, .footer-gradient, .artwork-band) .text-pink-400,
+[data-theme="light"] :is(.hero-gradient, .footer-gradient, .artwork-band) .text-pink-400\/70 {
   color: #f9a8d4;
 }
+
+/* ─── 5e. `.artwork-band` — a THIRD dark band (defect (c), /apply) ─────
+   WHY IT EXISTS. The /apply hero puts its title on `<img brightness-[.35]>`
+   under a black→#020617 overlay, so the band is DARK in both themes. But the
+   title carried no colour of its own — it inherited `text-white` from the page
+   div, and §5b flips that to #1f1d1c. Dark text on a dark photo.
+
+   MEASURED FROM RENDERED PIXELS, not from the DOM probe, and the difference
+   matters here. `contrast-gate.mjs` models the background by walking ancestor
+   `background-color`; this band's darkening overlay is a SIBLING of the text,
+   so the walk never meets the image and reports the page's own `bg-[#020617]`
+   instead. That reading happens to be right today — and would have become a
+   FALSE PASS the moment anyone lightened the page background, because the
+   rendered glyphs would not change at all. Sampling glyph pixels against the
+   same pixels with the element hidden (the method
+   `e2e/measure-hero-contrast.mjs` uses) gives:
+       /apply 390 light  worst 1.19:1  (fg rgb(28,26,26) on bg rgb(0,3,16))  FAIL
+       /apply 390 dark   worst 16.40:1                                        PASS
+
+   WHY THE COLOUR GOES ON THE BAND. §5d's rules are keyed on a colour CLASS
+   (`.text-white`), so they cannot reach an element that carries no colour class
+   at all — which is exactly this title. Setting `color` on the band instead
+   lets the title inherit it, and the band's own declaration beats inheriting
+   from the page div regardless of what §5b did there. `.artwork-band` is
+   therefore "a band whose background is artwork rather than a token": it stays
+   dark in both themes and keeps light text. The /apply eyebrow next to the
+   title is a literal `text-[#ff6db2]` and is unaffected either way.
+
+   WHY NOT JUST LIGHTEN `bg-[#020617]`. That is the other branch of (c), and it
+   is right for the two `bg-[#020617]` panels that sit INSIDE the light form
+   card (ApplyFullForm:551/552, migrated to `bg-canvas`). It is wrong for the
+   page background here: the hero is dark, so lightening the page would need the
+   hero's overlay gradient changed too — beyond a contrast fix — and it would
+   not change a single rendered glyph. */
+:where([data-theme="light"]) .artwork-band { color: #ffffff; }
 
 /* Mobile-drawer & hamburger live over the page; in light mode they
    should also adopt the light theme so the dark drawer doesn't fight
@@ -744,6 +865,18 @@ body {
 :where([data-theme="light"]) :is(.bg-pink-900,.bg-pink-900\/10,.bg-pink-900\/15,.bg-pink-900\/20,.bg-pink-900\/25,.bg-pink-900\/30,.bg-pink-900\/40,.bg-pink-900\/50,.bg-pink-900\/60,.bg-pink-900\/70,.bg-pink-900\/80) { background-color: #fdf2f8; }
 :where([data-theme="light"]) :is(.bg-pink-500\/20,.bg-pink-500\/30,.bg-pink-600\/20) { background-color: #fce7f3; }
 :where([data-theme="light"]) :is(.text-pink-300,.text-pink-400,.text-pink-400\/70,.text-pink-300\/80) { color: #be185d; }
+/* `text-pink-500` was the one rung of the pink TEXT ramp this list skipped
+   (300/400 are here, 500 was not), and it is defect (c)'s second row:
+     /apply 390-1280 light, step label "Data Diri" 3.01:1
+       (oklch(0.656 .241 354) = #ec4899 on the shimmed card, rgb(235,235,237))
+   It is NOT caused by the `bg-[#020617]` page background: the label sits on the
+   `bg-slate-900/88` card, which §5b already turned light, and lightening the
+   page background behind it only lifts the row to 3.53:1 — still under the
+   4.5:1 floor. All 6 `text-pink-500` call sites (ApplyFullForm x5,
+   BaseLayout's boot spinner) sit on a surface §5b turns light, so none of them
+   is a white-on-dark case. #be185d measures 6.05:1 on white / 5.12:1 on the
+   /apply card. */
+:where([data-theme="light"]) .text-pink-500 { color: #be185d; }
 :where([data-theme="light"]) :is(.border-pink-500,.border-pink-500\/30,.border-pink-500\/40,.border-pink-500\/50,.border-pink-600) { border-color: #f9a8d4; }
 /* purple */
 :where([data-theme="light"]) :is(.bg-purple-900,.bg-purple-900\/10,.bg-purple-900\/15,.bg-purple-900\/20,.bg-purple-900\/25,.bg-purple-900\/30,.bg-purple-900\/40,.bg-purple-900\/50,.bg-purple-900\/60,.bg-purple-900\/70,.bg-purple-900\/80) { background-color: #faf5ff; }
@@ -1237,11 +1370,29 @@ textarea:focus-visible,
   .bg-amber-600, .bg-amber-500,
   .bg-emerald-600, .bg-emerald-500,
   .bg-sky-600, .bg-sky-500,
+  .bg-sky-700,
   .bg-teal-600, .bg-teal-500,
   .bg-cyan-600, .bg-cyan-500,
   .bg-orange-600, .bg-orange-500,
   .bg-green-600, .bg-green-500
 ):is([class*="text-white"]) { color: #ffffff; }
+
+/* `sky-700` is the one SOLID accent that needs the white-text rule without the
+   darkening above: it is already #0369a1 (5.86:1 with white), so only the text
+   side was wrong. Defect (b), measured:
+     / 1280 light      SiteNav "Login Pelamar"  2.87:1  (#1f1d1c on #0369a1)
+     /public 390-1280  tab "Lowongan Loker"     1.20:1  (#5d5853 on #0369a1)
+   Two different call-site spellings, two selectors:
+   `bg-sky-700` (1 site, SiteNav.astro:148) is caught by the list above;
+   the /public tabs (2 sites, public.astro:46/49) write the Tailwind VARIANT
+   `aria-pressed:bg-sky-700`, so their class TOKEN is `aria-pressed:bg-sky-700`
+   and `.bg-sky-700` cannot match it. `[aria-pressed="true"]` is load-bearing:
+   the token stays in the class list when the tab is NOT pressed (background
+   transparent), and forcing white there would put white text on the light page.
+   MEASURED after: 5.86:1 both. */
+:where([data-theme="light"]) .aria-pressed\:bg-sky-700[aria-pressed="true"]:is([class*="text-white"]) {
+  color: #ffffff;
+}
 
 
 /* ─── 11. Dark-mode `slate-500` is unreadable as body copy

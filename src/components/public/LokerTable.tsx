@@ -209,7 +209,17 @@ export default function LokerTable() {
             // than `h-` because these wrap onto a second row on narrow screens
             // (`flex-wrap` above) and a fixed height would clip the wrapped line.
             const btnCls = "min-h-11 px-4 py-2 rounded-lg text-sm font-bold shadow-md transition " + (filter === fd.key ? fd.cls : "bg-slate-700 hover:bg-slate-600 text-slate-200");
-            const cntCls = "px-1.5 py-0.5 rounded-full text-[9px] ml-0.5 font-black " + (filter === fd.key ? "bg-white/30 text-white" : "bg-slate-900 text-slate-200");
+            // Count badge on the ACTIVE pill. It used to be `bg-white/30`, which
+            // over the active pill's `bg-slate-700` (#334155) composites to
+            // rgb(112,122,136) — white on that is 4.36:1, under the 4.5:1 floor
+            // for 9px text. MEASURED in dark mode at /loker and /public, all
+            // three widths; light mode was never affected (the pill is shimmed
+            // light and the text flips dark). `/20` composites to
+            // rgb(92,103,119) = 5.67:1 and keeps the badge clearly distinct
+            // from the pill it sits on. Deliberately NOT fixed by enlarging the
+            // text: a 9px badge is not large text, and growing it to dodge the
+            // floor would be gaming the measurement instead of the contrast.
+            const cntCls = "px-1.5 py-0.5 rounded-full text-[9px] ml-0.5 font-black " + (filter === fd.key ? "bg-white/20 text-white" : "bg-slate-900 text-slate-200");
             return (
               <button key={fd.key} onClick={() => { setFilter(fd.key); setLimit(LIMIT_INITIAL); }} class={btnCls}>
                 <Icon name={fd.icon} class="mr-1" /> {fd.lbl} <span class={cntCls}>{filterCount(fd.key)}</span>
