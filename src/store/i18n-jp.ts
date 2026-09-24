@@ -782,19 +782,16 @@ export const jpTranslations: Record<string, string> = {
   "profile.hero_tagline": "LET'S BUILD OUR FUTURE",
   "profile.hero_title": "日本でのキャリアは、ここから始まる。",
   "profile.hero_sub": "求人・プログラム・渡航手続きを、ASJポータルひとつで。",
-  "profile.hero_cta_primary": "求人を見る",
   "profile.hero_cta_secondary": "応募者として登録",
   "profile.hero_chip_ssw": "特定技能",
   "profile.hero_chip_magang": "技能実習",
   "profile.hero_chip_penempatan": "就職支援",
   "profile.hero_jobs_live": "件の募集中求人",
-  "profile.hero_jobs_cta": "求人をすべて見る",
   "profile.stat_since": "設立",
   "profile.stat_sectors": "職種",
   "profile.stat_prefectures": "都道府県",
   "profile.cta_title": "日本への一歩を、始めませんか。",
   "profile.cta_sub": "募集中の求人をご覧いただくか、本日応募者登録ができます。",
-  "profile.cta_primary": "求人を見る",
   "profile.cta_secondary": "応募者登録",
 
   // ── 会社概要：各セクション（ランディングページ L3） ──────────────────
@@ -898,17 +895,10 @@ export const jpTranslations: Record<string, string> = {
   "profile.place_desc": "会社資料に記載された職種と配属先の都道府県です。",
   "profile.place_note": "都道府県名は公式資料に合わせてラテン文字で表記しています。",
 
-  // ── 求人概要（R2、右レール） ──────────────────────────────────────────
-  // 翻訳するのは末尾の導線のみ。5行そのものは求人データ（コード・職種・
-  // 勤務地）でそのまま表示する。職種名は固有名詞であり、勝手に訳すのは
-  // 不具合になる。
-  "profile.mini_title": "最新の求人",
-  "profile.mini_desc": "まだ応募を受け付けている直近5件です。",
-  "profile.mini_all": "すべての求人を見る",
-  // The section's own CTA button. Same key set as the id dictionary — a key in
-  // one and not the other is a silent fallback to Indonesian for Japanese
-  // visitors, which is exactly what `i18n.keys.test.ts` exists to catch.
-  "profile.mini_cta": "すべての求人を見る",
+  // ── 求人概要（R2、右レール） — 2026-09-24 削除 ────────────────────────
+  // `profile.mini_*` の4キーは `#loker-ringkas` セクションと `JobMiniList` の
+  // 削除に伴い削除した。オーナー判断: `/` は MoU・取引先向けの会社プロフィール
+  // であり、求人ボードではない。セクションを復活させない限りキーも復活させない。
 
   // ── 会社概要（S7、2ページ） ──────────────────────────────────────────
   // 挨拶文は原文のまま（表記も含めて）。公式の声明を勝手に整えてはならない。
@@ -1315,7 +1305,6 @@ export const jpTranslations: Record<string, string> = {
     "footer.nav_alur": "応募の流れ",
     "footer.nav_fasilitas": "施設",
     "footer.nav_tentang": "会社概要",
-    "footer.nav_loker": "求人情報",
     "footer.social_heading": "SNS",
     "footer.contact_heading": "お問い合わせ",
     "footer.tagline": "夢を日本へ",

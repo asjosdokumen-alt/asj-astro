@@ -32,13 +32,10 @@ import Icon from '../ui/Icon';
         Lihat lowongan yang tersedia atau daftar sebagai pelamar hari ini.
       </p>
       <div class="flex flex-wrap justify-center gap-3 mt-2">
-        <a
-          href="/loker"
-          class="inline-flex items-center gap-2 px-7 py-3.5 rounded-pill bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-bold text-sm shadow-lg shadow-pink-600/25 transition-all duration-200"
-        >
-          <Icon name="briefcase" />
-          <span data-lang="profile.cta_primary">Lihat Lowongan</span>
-        </a>
+        {/* NO "Lihat Lowongan" CTA HERE. Owner ruling 2026-09-24: `/` is a
+            company profile for MoU/business partners, not a job board, so this
+            band no longer links to /loker — the section nav is the page's ONLY
+            path to it. The register button below stays; it is not a /loker link. */}
         <button
           type="button"
           onclick="window.dispatchEvent(new CustomEvent('asj-kandidat-register'))"

@@ -389,63 +389,40 @@ step "M6  a nav item points at a fragment that does not exist" \
   "$NAV" \
   '[["href=\"#fasilitas\"","href=\"#fasilitas-tidak-ada\""]]'
 
-# M7 — the HERO loses its path to the vacancy list.
+# M7 — DELETED 2026-09-24, NOT COMMENTED OUT, AND ITS ABSENCE IS A FINDING.
 #
-# THIS IS THE RULE THAT REPLACED THE OLD PANEL_TAB CHECK, and it is the load-bearing
-# one for this file across the 2026-09-21 repair. `e9317cf` moved `LokerTable` to
-# `/loker`, so `/` no longer CONTAINS the list — it only LINKS to it. The gate's
-# guarantee therefore became "a visitor is offered a way there", a claim about
-# LINKS, and the only honest way to test a claim about links is to take one away.
+# M7 used to retarget the HERO's primary CTA away from /loker, proving the `hero`
+# region of LOKER_ROUTE could fail. On 2026-09-24 the owner ruled that `/` is a
+# company profile for MoU/business partners, not a job board: the hero CTA, the
+# live-count strip CTA, the `#loker-ringkas` section and the footer link were all
+# removed, and the page now keeps EXACTLY ONE link to /loker — the section nav. The
+# `hero` region is gone from LOKER_ROUTE.regions, so M7 has no subject left, and a
+# mutation whose subject was deleted is not evidence.
 #
-# WHY THIS MUTATES THE HERO AND NOT A RANDOM ANCHOR. The first draft of this rule
-# asserted `count >= 2` against a page carrying 13 links from 7 sources, so NO
-# realistic defect could cross the threshold and the rule could not fail. It is now
-# region-scoped (see LOKER_ROUTE.regions), and this mutation retargets the hero's
-# primary CTA — the single most important affordance on the page, and one that is
-# deleted whole rather than edited in practice. Deleting one CTA from a page that
-# has thirteen links is exactly the regression a count-based rule misses.
-#
-# THE OLD M7 IS GONE, NOT COMMENTED OUT, AND ITS ABSENCE IS A FINDING. It mutated
+# THE PREVIOUS M7 IS ALSO GONE, AND FOR THE SAME REASON. It mutated
 # `DEFAULT_PUBLIC_SECTION` in `src/lib/publicSections.ts` to flip which tab panel
 # was active. That module still EXISTS and is still live — but on `/public`, not on
 # `/`. `/` no longer calls `bindPublicSections()` and carries ZERO
-# `[data-public-tab]` elements, so the old mutation had no reachable effect on the
+# `[data-public-tab]` elements, so that mutation had no reachable effect on the
 # page this gate measures. Deleting a mutation whose subject was deleted is the
 # same rule the gate itself just learned: a check with no subject is not evidence.
-step "M7  the hero CTA no longer points at /loker (the hero region loses its path)" \
-  "$APP" \
-  '[["<a href=\"/loker\" class=\"inline-flex items-center px-7 py-3.5","<a href=\"/loker-tidak-ada\" class=\"inline-flex items-center px-7 py-3.5"]]'
 
-# M8 — the CONTROL for M7's rule, and the reason it is region-scoped rather than a
-# count. This removes the SECTION NAV's path to the list while leaving the eleven
-# links in other regions intact. Under the old `count >= 2` rule this defect was
-# invisible; under the region rule it must turn the gate red. A battery that only
-# proved M7 would leave "does the rule see a SMALL loss, or only a total wipe?"
-# unanswered.
+# M8 — the ONE remaining region, and the reason the rule is region-scoped rather
+# than a count. This removes the SECTION NAV's only path to the list, while leaving
+# the links in other regions intact. Under the old `count >= 2` rule this defect was
+# invisible; under the region rule it must turn the gate red.
 #
-# BOTH NAV LINKS ARE MUTATED, AND THE FIRST ATTEMPT AT THIS SURVIVED — CORRECTLY.
-# The nav carries TWO anchors to /loker: the list item ("Lowongan") and the pink CTA
-# button beside the language toggle. Mutating only the list item left the CTA
-# satisfying the region selector, so the region still had a path and the gate stayed
-# green. That is a TRUE NEGATIVE, not a hole: the region rule asks "can a visitor
-# reach the list from here", and the answer was still yes. It is recorded because a
-# reader seeing one SURVIVED in an otherwise clean run would reasonably assume the
-# rule is broken, and the honest fix is to make the mutation match the claim rather
-# than to loosen the claim.
-#
-# THE SECOND PAIR CARRIES A REAL CRLF ON PURPOSE. The CTA's attributes are split
-# across lines in a CRLF file, so an anchor joined with a plain LF instead of CRLF matches ZERO times. `mut`
-# reports that as an abort rather than a survival only because it asserts exactly one
-# hit — without that assertion, an anchor built for LF would silently leave the CTA
-# intact and the step would report SURVIVED.
-#
-# Same class of trap as M1's drifted anchor, in the opposite direction: M1 exposed a
-# mutation that did not apply, M8 exposed one that applied but was weaker than the
-# rule it was testing. Both read as SURVIVED.
-#
-step "M8  the section nav loses BOTH of its paths to /loker (region emptied)" \
+# RE-ANCHORED 2026-09-24. This mutation used to retarget BOTH nav anchors — the
+# "Lowongan" list item and the pink CTA button beside the language toggle — because
+# the nav carried TWO paths and mutating only one left the other satisfying the
+# region selector (a TRUE NEGATIVE, not a hole: the region rule asks "can a visitor
+# reach the list from here", and the answer was still yes). Ruling 3 collapsed the
+# nav to ONE link — the list item is the page's only path and the pill is gone — so
+# the mutation now retargets that single anchor and its second pair is deleted. The
+# rule the mutation proves is unchanged: empty the region and the gate must go red.
+step "M8  the section nav loses its only path to /loker (the region is emptied)" \
   "$NAV" \
-  '[["<a href=\"/loker\" data-lang=\"profile.nav_loker\" class={LINK_CLASS}>Lowongan</a>","<a href=\"/loker-tidak-ada\" data-lang=\"profile.nav_loker\" class={LINK_CLASS}>Lowongan</a>"],["href=\"/loker\"\r\n        class=\"inline-flex items-center px-4 py-2 rounded-pill","href=\"/loker-tidak-ada\"\r\n        class=\"inline-flex items-center px-4 py-2 rounded-pill"]]'
+  '[["<a href=\"/loker\" data-lang=\"profile.nav_loker\" class={LINK_CLASS}>Lowongan</a>","<a href=\"/loker-tidak-ada\" data-lang=\"profile.nav_loker\" class={LINK_CLASS}>Lowongan</a>"]]'
 
 # M9  a hero STATISTIC is replaced with a fabricated one (roadmap L8.4).
 #

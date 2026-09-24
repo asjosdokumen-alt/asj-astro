@@ -63,7 +63,7 @@ const TEL_HREF = (raw: string) => `tel:+62${raw.replace(/\D/g, '').replace(/^0/,
               MEASURED 2026-09-22 at a 390px viewport, before this change: every
               link rendered 343x23 and the list used `gap-2` (8px), so the
               effective vertical rhythm was 31px -- well under the floor, and
-              these are the five primary navigation targets a thumb has to hit.
+              these are the four primary navigation targets a thumb has to hit.
 
               WHY PADDING ON THE ANCHOR AND NOT A BIGGER GAP. WCAG 2.5.5 measures
               the TARGET, and a gap is not part of the target: `gap-4` would have
@@ -78,7 +78,6 @@ const TEL_HREF = (raw: string) => `tel:+62${raw.replace(/\D/g, '').replace(/^0/,
             <a href="#alur" class="min-h-11 inline-flex items-center text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_alur">Alur Pendaftaran</a>
             <a href="#fasilitas" class="min-h-11 inline-flex items-center text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_fasilitas">Fasilitas</a>
             <a href="#tentang" class="min-h-11 inline-flex items-center text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_tentang">Tentang Kami</a>
-            <a href="/loker" class="min-h-11 inline-flex items-center text-body-sm text-fg-muted hover:text-fg transition-colors" data-lang="footer.nav_loker">Lowongan Kerja</a>
           </nav>
         </div>
 

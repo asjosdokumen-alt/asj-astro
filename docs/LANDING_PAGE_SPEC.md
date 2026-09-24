@@ -276,7 +276,7 @@ karena ingin tahu “apa untungnya”, dan dokumen resmi sudah menjawabnya denga
 |---|---|
 | **Lokasi** | rute `/loker` (`src/pages/loker.astro`), **bukan** section di `/` |
 | Gate yang menjaganya | `e2e:loker-layout` (mengukur tabel) — **bukan** `e2e:test-landing` |
-| Yang dijaga `e2e:test-landing` | hanya **keterjangkauan**: hero dan nav `/` wajib menautkan ke `/loker` |
+| Yang dijaga `e2e:test-landing` | hanya **keterjangkauan**: nav section `/` wajib menautkan ke `/loker` — **satu-satunya** tautan sejak keputusan pemilik 2026-09-24 (hero, footer dan pita penutup tidak lagi menaut) |
 | Judul section | “Lowongan Terbaru” + deskripsi satu baris |
 | Filter status | Semua · Urgent · Open · Tutup — `rounded-pill`, dari `j.status` |
 | Filter atribut | Bidang · Lokasi · Program · Gender — memakai `jobCategoryLabel`, `jobLocationLabel`, `jobGenderLabel` |

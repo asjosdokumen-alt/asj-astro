@@ -383,8 +383,12 @@ export default function App(
                   is exactly why only the one colourless element broke. */}
               <h1 class="text-display font-black text-white drop-shadow-lg mt-2 leading-tight">{t("profile.hero_title")}</h1>
               <p class="text-body text-slate-200 mt-4 max-w-[52ch] leading-relaxed">{t("profile.hero_sub")}</p>
+              {/* NO "Lihat Lowongan" CTA HERE. Owner ruling 2026-09-24: `/` is a
+                  company profile for MoU/business partners, not a job board, so
+                  the hero's primary CTA to /loker is removed and the section nav
+                  is the page's ONLY path to the vacancy list. The register
+                  button below stays — it is not a /loker link. */}
               <div class="flex flex-wrap gap-3 mt-8">
-                <a href="/loker" class="inline-flex items-center px-7 py-3.5 rounded-pill bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white font-bold text-sm shadow-lg shadow-pink-600/25 transition-all duration-200"><Icon name="briefcase" class="mr-2" />{t("profile.hero_cta_primary")}</a>
                 <button type="button" onClick={openRegister} class="inline-flex items-center px-7 py-3.5 rounded-pill bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm backdrop-blur-sm transition-all duration-200"><Icon name="user-plus" class="mr-2" />{t("profile.hero_cta_secondary")}</button>
               </div>
               <div class="flex flex-wrap gap-2 mt-6">

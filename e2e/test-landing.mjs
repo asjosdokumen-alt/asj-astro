@@ -146,8 +146,15 @@ const SECTIONS = [
  * vacancy list vanished from the site. The old rule's two halves (the panel exists,
  * its control reveals it) still have to be enforced somewhere; only the ADDRESS
  * changed. So the rule becomes: `/` must still LINK to the route that now carries
- * it. Measured at the time of writing: 13 such links, including the hero strip CTA,
- * `#loker-ringkas`'s "Lihat Semua Lowongan", and the section nav.
+ * it.
+ *
+ * NARROWED 2026-09-24 — ONE REGION, NOT TWO. The owner ruled that `/` is a company
+ * profile for MoU/business partners, not a job board, so the page keeps EXACTLY ONE
+ * link to /loker and it lives in the section nav. The hero region this rule used to
+ * carry is gone, along with the strip CTA, the `#loker-ringkas` section and the
+ * footer link that used to feed the count. The section nav is now the single path,
+ * so it is the single region. (History: this rule once counted 13 links from 7
+ * sources, which is why it was region-scoped in the first place.)
  *
  * The route's own CONTENTS are guarded by `e2e:loker-layout`, which measures the
  * table. This rule is the connective tissue between the two: it is what makes
@@ -161,49 +168,50 @@ const LOKER_ROUTE = {
    *
    * WHY THIS IS A LIST OF REGIONS AND NOT A LINK COUNT. The first version of this
    * rule asserted `count >= 2`, and it was WRONG in a way worth recording: the page
-   * carries 13 links from 7 independent sources (hero CTA, drawer, section nav,
+   * carried 13 links from 7 independent sources (hero CTA, drawer, section nav,
    * the mini-list's own two CTAs, its five job rows, and the closing band), so a
    * realistic regression — deleting one CTA, breaking the nav item, dropping the
-   * whole `#loker-ringkas` section — leaves the count in double digits and the rule
-   * stays green. A threshold no plausible defect can cross is not a gate; it is a
+   * whole `#loker-ringkas` section — left the count in double digits and the rule
+   * stayed green. A threshold no plausible defect can cross is not a gate; it is a
    * green light with a number attached.
    *
    * Region-scoped assertions fail on exactly those defects. Each entry below is a
    * SEPARATE place a visitor can reach the list from, and each names the region so
    * a failure says which one broke.
+   *
+   * THE LIST IS NOW ONE ENTRY, and the check below asserts it is NON-EMPTY for
+   * that reason. A list of regions that empties out would make the region check
+   * pass over nothing at all — the vacuity trap this file's own "a rule that reads
+   * nothing must not pass" note warns about elsewhere.
    */
   regions: [
-    {
-      name: 'hero',
-      selector: 'header a[href="/loker"], header a[href^="/loker#"]',
-      because: 'the hero is the first thing on the page and its primary CTA is the main path to the list',
-    },
     {
       name: 'section nav',
       /**
        * SCOPED TO THE PAGE'S OWN NAV, and the reason is a MEASURED GATE HOLE.
        *
        * The first version of this selector was `nav a[href="/loker"]`, and the
-       * battery's M8 mutation — which correctly retargeted BOTH of the section
-       * nav's links away from /loker — SURVIVED it. Measured 2026-09-21, the page
-       * has THREE `<nav>` elements:
+       * battery's M8 mutation — which correctly retargeted the section nav's links
+       * away from /loker — SURVIVED it. Measured 2026-09-21, the page had THREE
+       * `<nav>` elements:
        *
        *   nav[aria-label="Primary navigation"]  the mobile drawer, 0 loker links
-       *   nav[aria-label="Navigasi halaman"]    the section nav, 2 loker links
+       *   nav[aria-label="Navigasi halaman"]    the section nav, the loker link(s)
        *   nav[aria-label="Footer navigation"]   1 loker link ("Lowongan Kerja")
        *
        * So `nav a[href="/loker"]` was satisfied by the FOOTER even after the
        * section nav was emptied: the assertion was measuring the union of three
-       * regions and reporting it as one. The footer is a separate destination with
-       * its own reason to exist, and a page whose section nav lost its Lowongan
-       * item is broken no matter how many footer links remain.
+       * regions and reporting it as one. The footer link has since been removed
+       * (owner ruling 2026-09-24) and the section nav carries the page's ONLY
+       * path, but the selector stays scoped: the drawer and any future footer nav
+       * must never be able to satisfy a rule about THIS nav.
        *
        * `aria-label="Navigasi halaman"` is the stable handle (SiteNav.astro:74);
        * it is a user-facing label, so it is unlikely to be renamed casually, and
        * the region is a named region rather than a positional index.
        */
       selector: 'nav[aria-label="Navigasi halaman"] a[href="/loker"], nav[aria-label="Navigasi halaman"] a[href^="/loker#"]',
-      because: 'the page nav is how a visitor who scrolled anywhere jumps to Lowongan',
+      because: 'the page nav is now the ONLY path to the list — if it breaks, nothing on / can reach the vacancy list',
     },
   ],
 };
@@ -664,6 +672,15 @@ async function run() {
     // to reach the list.
     await test(`${width}px /: the vacancy list is reachable from every region that offers it`, async () => {
       const d = await inspect(width);
+      // A rule that reads nothing must not pass. Ruling 3 (2026-09-24) left
+      // EXACTLY ONE region, so an empty list here would make the `broken` filter
+      // below empty and report green over a page this test never checked.
+      if (d.lokerLink.regions.length === 0) {
+        throw new Error(
+          'LOKER_ROUTE.regions is empty — the vacancy-reachability rule would pass over nothing. ' +
+            'The page keeps one path (the section nav); restore that region.',
+        );
+      }
       const broken = d.lokerLink.regions.filter((r) => r.count === 0);
       if (broken.length) {
         const spec = broken.map(

@@ -1097,13 +1097,11 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.hero_tagline": "LET'S BUILD OUR FUTURE",
   "profile.hero_title": "Karier ke Jepang, dimulai dari sini.",
   "profile.hero_sub": "Lowongan, program, dan layanan perjalanan kerja ke Jepang dalam satu portal ASJ.",
-  "profile.hero_cta_primary": "Lihat Lowongan",
   "profile.hero_cta_secondary": "Daftar sebagai Pelamar",
   "profile.hero_chip_ssw": "SSW",
   "profile.hero_chip_magang": "Magang",
   "profile.hero_chip_penempatan": "Penempatan",
   "profile.hero_jobs_live": "lowongan aktif",
-  "profile.hero_jobs_cta": "Lihat semua lowongan",
   // The three hero stats are the ones the company profile actually proves:
   // founded 2023 (deed 15 Aug 2023), five placement sectors and four destination
   // prefectures (pages 3, 13 and 14). The counts a mockup showed — 500+
@@ -1114,7 +1112,6 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.stat_prefectures": "Prefektur di Jepang",
   "profile.cta_title": "Siap memulai perjalanan ke Jepang?",
   "profile.cta_sub": "Lihat lowongan yang tersedia atau daftar sebagai pelamar hari ini.",
-  "profile.cta_primary": "Lihat Lowongan",
   "profile.cta_secondary": "Daftar Pelamar",
 
   // ── Profil perusahaan: section (landing page L3) ──────────────────────
@@ -1125,10 +1122,9 @@ export const translations: Record<Lang, Record<string, string>> = {
   //
   // `profile.layanan_title` belongs to the `#layanan` section (index.astro:156),
   // which no longer has a tab panel — it is a plain Section whose heading falls
-  // back to "Program & Layanan ASJ". MISSING SINCE e9317cf for the same reason
-  // as `profile.mini_cta` below: the key was written at the call site and never
-  // added here. The fallback text is the source of the value, so the translated
-  // string and the no-JS literal cannot drift apart.
+  // back to "Program & Layanan ASJ". MISSING SINCE e9317cf: the key was written
+  // at the call site and never added here. The fallback text is the source of the
+  // value, so the translated string and the no-JS literal cannot drift apart.
   "profile.layanan_title": "Program & Layanan ASJ",
   "profile.why_title": "Kenapa Jepang?",
   "profile.why_desc": "Tiga alasan yang paling sering disebut kandidat.",
@@ -1229,20 +1225,12 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.place_desc": "Bidang dan prefektur tujuan yang tercatat pada dokumen perusahaan.",
   "profile.place_note": "Nama prefektur ditulis dalam huruf Latin, sesuai dokumen resmi.",
 
-  // ── Lowongan Ringkas (R2, rail) ────────────────────────────────────────
-  // Only the trailing call-to-action is translatable. The five rows themselves
-  // are job DATA (code, title, location) and are rendered as-is — a job title
-  // is a proper noun, and inventing a translation for one would be a defect.
-  "profile.mini_title": "Lowongan Ringkas",
-  "profile.mini_desc": "Lima lowongan terbaru yang masih menerima pelamar.",
-  "profile.mini_all": "Lihat Semua Lowongan",
-  // The section's own CTA button (index.astro, `#loker-ringkas`). It duplicates
-  // `mini_all` on purpose — one is the JobMiniList primitive's own link, the
-  // other is the page's button — but it needs its own KEY because the i18n gate
-  // matches keys, not strings, and a missing key renders the raw key text.
-  // MISSING SINCE e9317cf: that commit added `data-lang="profile.mini_cta"` to
-  // index.astro and stopped there, so the id and jp dictionaries both went red.
-  "profile.mini_cta": "Lihat Semua Lowongan",
+  // ── Lowongan Ringkas (R2, rail) — REMOVED 2026-09-24 ───────────────────
+  // The `profile.mini_*` keys (`mini_title`, `mini_desc`, `mini_all`,
+  // `mini_cta`) were deleted together with the `#loker-ringkas` section and its
+  // `JobMiniList` primitive. Owner ruling: `/` is a company profile for
+  // MoU/business partners, not a job board. Do not restore the keys without
+  // restoring the section.
 
   // ── Tentang Kami (S7, halaman 2) ──────────────────────────────────────
   // The welcome is reproduced VERBATIM, spelling included. An official
@@ -1658,7 +1646,6 @@ export const translations: Record<Lang, Record<string, string>> = {
   "footer.nav_alur": "Alur Pendaftaran",
   "footer.nav_fasilitas": "Fasilitas",
   "footer.nav_tentang": "Tentang Kami",
-  "footer.nav_loker": "Lowongan Kerja",
   "footer.social_heading": "Sosial Media",
   "footer.contact_heading": "Kontak",
     "footer.tagline": "夢を日本へ",

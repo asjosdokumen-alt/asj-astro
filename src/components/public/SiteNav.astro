@@ -88,7 +88,10 @@ const LINK_CLASS =
              This is why `data-nav-link` is dropped: that attribute drives the
              scroll-spy current-marker, and there is no section to mark. Keeping
              it would make the observer look for a target that never matches.
-             The CTA button to the right already used `/loker`.
+
+             THIS ITEM IS NOW THE PAGE'S ONLY LINK TO `/loker`. The duplicate CTA
+             button that used to sit to the right was removed by the owner ruling
+             of 2026-09-24 — see the note where it stood.
 
              NOTE ON THIS COMMENT'S WORDING: it deliberately does NOT spell out
              the current-marker attribute name, NOR the dead fragment it replaced.
@@ -132,13 +135,12 @@ const LINK_CLASS =
         <Icon name="language" />
         <span data-nav-lang-label>ID</span>
       </button>
-      <a
-        href="/loker"
-        class="inline-flex items-center px-4 py-2 rounded-pill bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white text-body-sm font-bold transition-all shadow-sm shadow-pink-600/20"
-      >
-        <Icon name="briefcase" class="mr-1.5" />
-        Lowongan
-      </a>
+      {/* THE DUPLICATE /loker CTA BUTTON IS GONE, NOT RELOCATED. The nav used to
+          carry TWO paths to the vacancy list — the "Lowongan" list item above and
+          this pink pill. Owner ruling 2026-09-24: `/` is a company profile for
+          MoU/business partners, so it keeps EXACTLY ONE link to /loker and the
+          list item above is it. The pill was the candidate-facing duplicate; a
+          second path is what the region rule exists to notice. */}
       <button
         type="button"
         data-nav-login
