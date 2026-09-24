@@ -488,7 +488,14 @@ describe('full build', () => {
     // (-1 ts). Same two deltas as count('astro')/count('ts') and files.length in
     // discover.test.ts. MEASURED, not derived: 275 + 102 + 21 + 75 + 6 + 20 =
     // 499.
-    expect(r.stats.fileCount).toBe(499); // 276 ts + 102 tsx + 22 astro + 75 mjs + 6 cjs + 20 js = 501, MEASURED with count-indexed.test.ts. 499 -> 500 (2026-09-21): +1 for ContactForm.test.tsx, the suite the island should have shipped with. It lands in the tsx bucket because the SUFFIX decides the bucket and `.test.tsx` ends in `.tsx`. 500 -> 503 (2026-09-22): +1 ts for indexer/src/count-indexed.test.ts (the measurement tool), +1 mjs for scripts/ci/verify-workflows.mjs, +1 cjs for scripts/ci/kf-mutate.cjs — three files this session's gate work added. The three bucket deltas are each exactly +1, which is what attributes them; `tsx` stayed at 102. Re-measured at the END with count-indexed.test.ts rather than reasoned about.
+    // 499 -> 498 (2026-09-24, company-profile reframe): -1 file —
+    // `src/components/ui/Mascot.tsx` (-1 tsx), deleted once its last three
+    // consumers (`404.astro`, `LoginModal.tsx`, `StepGuide.tsx`) were rewired to
+    // sprite icons. Same single delta as count('tsx') and files.length in
+    // discover.test.ts. The 20 `public/mascot/*` renders deleted in the same
+    // commit are images and move no bucket. MEASURED with count-indexed.test.ts,
+    // NOT derived: 275 + 101 + 21 + 75 + 6 + 20 = 498.
+    expect(r.stats.fileCount).toBe(498); // 276 ts + 102 tsx + 22 astro + 75 mjs + 6 cjs + 20 js = 501, MEASURED with count-indexed.test.ts. 499 -> 500 (2026-09-21): +1 for ContactForm.test.tsx, the suite the island should have shipped with. It lands in the tsx bucket because the SUFFIX decides the bucket and `.test.tsx` ends in `.tsx`. 500 -> 503 (2026-09-22): +1 ts for indexer/src/count-indexed.test.ts (the measurement tool), +1 mjs for scripts/ci/verify-workflows.mjs, +1 cjs for scripts/ci/kf-mutate.cjs — three files this session's gate work added. The three bucket deltas are each exactly +1, which is what attributes them; `tsx` stayed at 102. Re-measured at the END with count-indexed.test.ts rather than reasoned about.
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

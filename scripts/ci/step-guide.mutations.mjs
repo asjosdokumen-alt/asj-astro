@@ -122,15 +122,15 @@ const MUTATIONS = [
   },
   {
     id: 'M5',
-    what: 'profil lengkap memakai pose wave, bukan peace',
-    apply: () => apply("if (key === 'done') return 'peace';", "if (key === 'done') return 'wave';"),
-    expect: /peace/i,
+    what: 'profil lengkap memakai ikon file-upload, bukan circle-check (dua langkah jadi ikon yang sama)',
+    apply: () => apply("return 'circle-check';", "return 'file-upload';"),
+    expect: /circle-check|berbeda/i,
   },
   {
     id: 'M6',
-    what: 'pose diganti ke pose yang TIDAK ADA di Mascot.tsx (render kosong tanpa error)',
-    apply: () => apply("if (key === 'done') return 'peace';", "if (key === 'done') return 'angry';"),
-    expect: /pose|ada di Mascot/i,
+    what: 'ikon diganti ke nama yang TIDAK ADA di sprite-map.ts (render kosong tanpa error)',
+    apply: () => apply("return 'circle-check';", "return 'angry';"),
+    expect: /angry|sprite/i,
   },
   {
     id: 'M7',

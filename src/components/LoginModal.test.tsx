@@ -230,33 +230,29 @@ describe('LoginModal (B01)', () => {
     expect(vi.mocked(modeProps.onClose)).not.toHaveBeenCalled();
   });
 
-  /* Aa-chan in the candidate login branch. Pinned because a mascot that quietly
-     disappears is indistinguishable from one that was never added — the render
-     lives in a conditional branch, and a refactor that drops the `<Mascot>` line
-     leaves every other assertion in this file green. */
-  it('kandidat login: Aa-chan tampil di atas judul, sebagai dekorasi', () => {
+  /* The companion glyph in the candidate login branch. Pinned because an icon
+     that quietly disappears is indistinguishable from one that was never added
+     — the render lives in a conditional branch, and a refactor that drops the
+     `<Icon>` line leaves every other assertion in this file green. This slot
+     held Aa-chan until the mascot was removed from the site (2026-09-24). */
+  it('kandidat login: ikon pendamping tampil di atas judul, sebagai dekorasi', () => {
     const { container } = render(<LoginModal mode="login" {...modeProps} />);
-    const img = container.querySelector('img.mascot');
-    expect(img).toBeTruthy();
+    const icons = [...container.querySelectorAll('svg.asj-icon')];
+    const companion = icons.find((el) => el.innerHTML.includes('#fas-user-circle'));
+    expect(companion, 'ikon user-circle tidak dirender di cabang pelamar').toBeTruthy();
     // Dekoratif: `<h3>` di bawahnya sudah menyatakan hal yang sama dengan kata.
-    expect(img?.getAttribute('alt')).toBe('');
-    expect(img?.getAttribute('aria-hidden')).toBe('true');
-    // Kotaknya dipesan sebelum berkasnya tiba (tidak ada pergeseran layout).
-    expect(Number(img?.getAttribute('width'))).toBeGreaterThan(0);
-    expect(Number(img?.getAttribute('height'))).toBeGreaterThan(0);
-    // Berkasnya harus yang benar-benar ada di pohon, bukan nama yang dikarang.
-    expect(readFileSync('public/mascot/login-head.webp').length).toBeGreaterThan(0);
+    expect(companion?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  it('Aa-chan hanya di cabang pelamar — bukan di tiga layar admin', () => {
+  it('ikon pendamping hanya di cabang pelamar — bukan di tiga layar admin', () => {
     // `adminStep` adalah STATE internal, bukan prop, jadi tidak ada yang bisa
-    // di-render dari sini. Diuji pada sumbernya: satu `<Mascot>` di berkas ini,
-    // dan letaknya di dalam cabang `adminStep === 0` (blok kandidat).
+    // di-render dari sini. Diuji pada sumbernya: satu ikon `user-circle` di
+    // berkas ini, dan letaknya di dalam cabang `adminStep === 0` (blok kandidat).
     const src = readFileSync('src/components/LoginModal.tsx', 'utf8');
-    const uses = src.match(/<Mascot\b/g) ?? [];
+    const uses = src.match(/name="user-circle"/g) ?? [];
     expect(uses.length).toBe(1);
     const candidate = src.indexOf('{/* ── Kandidat Login ── */}');
-    const usage = src.indexOf('<Mascot');
+    const usage = src.indexOf('name="user-circle"');
     const adminStep1 = src.indexOf('adminStep === 1');
     expect(candidate).toBeGreaterThan(-1);
     expect(usage).toBeGreaterThan(candidate);

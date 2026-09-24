@@ -429,15 +429,17 @@ describe('CandidateDash — StepGuide benar-benar terpasang', () => {
     cleanup();
   });
 
-  it('merender pemandu langkah dengan maskot Aa-chan', async () => {
+  it('merender pemandu langkah dengan ikon bagian yang ditunjuk', async () => {
     await renderDash({ cvMiniProgress: 0, cvMasterProgress: 0 });
     const guide = document.querySelector('[data-step-guide]');
     expect(guide, 'StepGuide tidak dirender sama sekali').not.toBeNull();
-    // Maskot harus benar-benar ada — pose yang salah dirender sebagai KOSONG
-    // tanpa error, jadi kehadiran <picture> inilah yang membuktikannya.
+    // Ikon harus benar-benar ada — nama yang tidak ada di `sprite-map.ts`
+    // dirender sebagai KOSONG tanpa error, jadi kehadiran `<svg class="asj-icon">`
+    // inilah yang membuktikannya. Dulu di sini ada maskot Aa-chan (<picture>);
+    // owner memutuskan maskot dihapus dari situs (2026-09-24).
     expect(
-      guide?.querySelector('picture'),
-      'maskot tidak terpasang di dalam pemandu',
+      guide?.querySelector('svg.asj-icon'),
+      'ikon tidak terpasang di dalam pemandu',
     ).not.toBeNull();
   });
 
@@ -451,7 +453,7 @@ describe('CandidateDash — StepGuide benar-benar terpasang', () => {
     expect(key).not.toBe('done');
   });
 
-  it('profil lengkap => pemandu berhenti meminta, dan pose-nya peace', async () => {
+  it('profil lengkap => pemandu berhenti meminta, dan ikonnya ikon selesai', async () => {
     await renderDash({ cvMiniProgress: 100, cvMasterProgress: 100 });
     const guide = document.querySelector('[data-step-guide]');
     // Dengan mini & master 100, satu-satunya alasan tersisa untuk belum 'done'
@@ -459,8 +461,8 @@ describe('CandidateDash — StepGuide benar-benar terpasang', () => {
     const key = guide?.getAttribute('data-step-guide');
     expect(['done', 'berkas']).toContain(key);
     if (key === 'done') {
-      // Pose 'peace' hanya dipakai untuk 'done'; 'wave' untuk sisanya.
-      expect(guide?.innerHTML).toContain('peace');
+      // Ikon 'circle-check' hanya dipakai untuk 'done' (lihat `iconFor`).
+      expect(guide?.innerHTML).toContain('circle-check');
     }
   });
 

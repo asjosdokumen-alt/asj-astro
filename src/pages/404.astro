@@ -34,18 +34,16 @@
  * broken link on a bad connection, which is the same reason the manifest icons
  * were made local.
  *
- * Aa-chan is here because the character sheet names this page as one of her four
- * slots ("IN USE - LOADING & 404"). She is rendered as a Preact island with
- * `client:visible` so her entrance animation runs when she scrolls into view, and
- * the image itself is a static file — if the island's JS never arrives, the <img>
- * is already in the HTML and the page is unchanged. The `notfound-think` pose is
- * the sheet's "berpikir" expression, which is the right one for "this page is
- * missing". She is decorative here: the h1 directly below already says in words
- * what happened, so `alt=""` keeps a screen reader from announcing a cartoon
- * between the logo and the heading.
+ * A companion glyph sits below the logo. It used to be Aa-chan — the character
+ * sheet names this page as one of her four slots ("IN USE - LOADING & 404") —
+ * but owner ruling 2026-09-24 removed the mascot from the site, so it is now a
+ * plain icon. `search` is the metaphor: the page was looked for and not found.
+ * It is decorative — the h1 directly below already says in words what happened,
+ * and `Icon` emits `aria-hidden` by default, so a screen reader does not
+ * announce a glyph between the logo and the heading.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Mascot from '../components/ui/Mascot.tsx';
+import Icon from '../components/ui/Icon';
 ---
 
 <BaseLayout title="Halaman tidak ditemukan — ASJ Portal" description="Halaman yang Anda cari tidak ada di ASJ Portal.">
@@ -59,7 +57,7 @@ import Mascot from '../components/ui/Mascot.tsx';
     />
 
     <div class="mt-6">
-      <Mascot client:visible pose="notfound" size={160} decorative motion="blink" />
+      <Icon name="search" class="text-6xl text-slate-500" />
     </div>
 
     <p class="mt-8 text-5xl md:text-6xl font-black text-rose-500">404</p>

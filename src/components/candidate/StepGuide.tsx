@@ -1,5 +1,5 @@
 /**
- * StepGuide.tsx — "langkah berikutnya", ditunjukkan oleh Aa-chan.
+ * StepGuide.tsx — "langkah berikutnya", ditunjukkan oleh sebuah ikon.
  *
  * APA INI
  * -------
@@ -7,8 +7,8 @@
  * saya lakukan?** Kandidat yang membuka dashboard melihat beberapa bar progres
  * (CV Mini, Master Profil, berkas) dan sebuah angka kelengkapan, tetapi tidak
  * ada satu pun yang mengatakan langkah mana yang harus dikerjakan lebih dulu.
- * Kartu ini memilih SATU langkah dari data yang sudah ada, dan menampilkan
- * maskot Aa-chan di sebelahnya sebagai pemandu.
+ * Kartu ini memilih SATU langkah dari data yang sudah ada, dan menampilkan ikon
+ * langkah itu di sebelahnya sebagai penunjuk.
  *
  * Sumber data: argumen yang SUDAH dipakai `CandidateDash`
  * (`cvMiniProgress`, `cvMasterProgress`, `berkasProgress`/`berkasTotal`).
@@ -26,17 +26,17 @@
  *    ada "kamu gagal langkah 2", dan tidak ada kemunduran yang dirayakan —
  *    kalau berkas ditolak dan progres turun, kartu hanya menunjuk bagian itu
  *    lagi tanpa kata yang menyalahkan.
- * 3. **Maskot tidak pernah menghakimi.** Pose dipilih dari yang SUDAH ADA di
- *    `Mascot.tsx`; tidak ada gambar baru yang dihasilkan di sini. `sleepy` saat
- *    belum mulai, `wave` saat ada yang bisa dikerjakan, `peace` saat lengkap.
- *    Tidak ada pose kecewa atau marah, karena tidak ada yang dibuat.
+ * 3. **Ikonnya tidak pernah menghakimi.** Ikon dipilih dari yang SUDAH ADA di
+ *    sprite; tidak ada gambar baru yang dihasilkan di sini. Tidak ada ikon
+ *    peringatan atau tanda silang, karena tidak ada langkah yang gagal — kartu
+ *    ini menunjuk, bukan menilai.
  *
  * KENAPA PEMILIHAN LANGKAH ADA DI BERKAS TERPISAH DAN BUKAN DI DALAM KOMPONEN
  * --------------------------------------------------------------------------
  * `nextStep()` adalah fungsi murni: masuk angka, keluar satu kunci. Itu membuat
  * aturannya bisa diuji tanpa merender apa pun, dan yang lebih penting — membuat
  * "bagian mana yang dipilih" bisa DIBUKTIKAN, bukan hanya terlihat benar di satu
- * tangkapan layar. Komponennya sendiri hanya memetakan kunci ke teks dan pose.
+ * tangkapan layar. Komponennya sendiri hanya memetakan kunci ke teks dan ikon.
  *
  * KENAPA TIDAK ADA `h1`/`h2` DI SINI
  * ----------------------------------
@@ -45,8 +45,7 @@
  * sambutan dalam urutan heading, dan `e2e/test-headings.mjs` tetap melihat satu
  * `h1` per rute.
  */
-import Mascot from '../ui/Mascot';
-import type { MascotPose } from '../ui/Mascot';
+import Icon from '../ui/Icon';
 import { t } from '../../store/i18n';
 
 /** Bagian progres yang dikenal pemandu. */
@@ -98,10 +97,20 @@ export function nextStep(input: StepInput): StepKey {
   return 'done';
 }
 
-/** Pose Aa-chan untuk sebuah langkah. Semua pose ini SUDAH ADA di Mascot.tsx. */
-export function poseFor(key: StepKey): MascotPose {
-  if (key === 'done') return 'peace';
-  return 'wave';
+/**
+ * Ikon pendamping untuk sebuah langkah. Semua nama ini ADA di sprite
+ * (`src/icons/sprite-map.ts`); `Icon.test.ts` fails the build if one is not, and
+ * `StepGuide.test.ts` pins the four here. A name that is missing from the sheet
+ * renders as NOTHING — no error, no broken image, just a blank space — which is
+ * why the set is asserted against the generated map rather than trusted.
+ */
+export type StepIcon = 'file-upload' | 'id-card' | 'user-edit' | 'circle-check';
+
+export function iconFor(key: StepKey): StepIcon {
+  if (key === 'berkas') return 'file-upload';
+  if (key === 'mini') return 'id-card';
+  if (key === 'master') return 'user-edit';
+  return 'circle-check';
 }
 
 /** Kunci terjemahan judul langkah. Dipisah agar bisa diperiksa test. */
@@ -127,7 +136,6 @@ export default function StepGuide({
   class: className = '',
 }: Props) {
   const key = nextStep({ mini, master, berkasProgress, berkasTotal });
-  const pose = poseFor(key);
 
   const classes = [
     'bg-black/60 border border-sky-500/30 rounded-[2rem] p-5 mb-4 text-left',
@@ -139,12 +147,14 @@ export default function StepGuide({
 
   return (
     <div class={classes} data-step-guide={key}>
-      {/* Maskot sebagai PENDAMPING teks, bukan isi: kalimatnya sudah membawa
-          makna, jadi `decorative` supaya pembaca layar tidak mendengar
-          deskripsi karakter di antara judul dan penjelasannya. Ukurannya tetap
-          dan kecil agar tidak menggeser tata letak saat berkasnya dimuat. */}
+      {/* Ikon sebagai PENDAMPING teks, bukan isi: kalimatnya sudah membawa
+          makna, jadi ikonnya dekoratif (`Icon` merender `aria-hidden` secara
+          bawaan) supaya pembaca layar tidak mendengar sesuatu di antara judul
+          dan penjelasannya. Dulu di sini ada maskot; owner memutuskan maskot
+          dihapus dari situs (2026-09-24), jadi yang tersisa adalah ikon yang
+          menunjukkan BAGIAN mana yang ditunjuk. */}
       <div class="shrink-0">
-        <Mascot pose={pose} size={64} decorative motion="float" />
+        <Icon name={iconFor(key)} class="text-5xl text-sky-400" />
       </div>
 
       <div class="min-w-0 flex-1">

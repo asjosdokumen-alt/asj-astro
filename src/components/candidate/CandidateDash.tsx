@@ -585,7 +585,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           </div>
         )}
 
-        {/* ── Pemandu langkah (Aa-chan) ──
+        {/* ── Pemandu langkah ──
             Kartu yang menjawab "apa satu hal berikutnya?". Diletakkan SEBELUM
             LevelCard karena menjawab pertanyaan yang lebih mendesak: LevelCard
             mengatakan seberapa jauh, StepGuide mengatakan ke mana. Semua

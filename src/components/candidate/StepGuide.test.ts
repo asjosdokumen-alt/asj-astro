@@ -14,30 +14,23 @@
  *    dilakukan lebih buruk daripada tidak ada pemandu.
  * 2. **Tidak ada angka skor di kata-katanya.** §6.2 melarang bahasa yang bisa
  *    dibaca sebagai peluang diterima. Diperiksa terhadap KEDUA berkas i18n.
- * 3. **Pose maskot hanya yang sudah ada.** Kalau seseorang menambah pose yang
- *    tidak ada di `Mascot.tsx`, gambarnya menghilang tanpa error — jadi daftar
- *    pose yang sah diperiksa terhadap sumber `Mascot.tsx`, bukan terhadap
- *    salinan yang bisa basi.
+ * 3. **Ikon langkah hanya yang sudah ada di sprite.** Kalau seseorang menambah
+ *    nama ikon yang tidak ada di `sprite-map.ts`, ikonnya menghilang tanpa error
+ *    — jadi daftar nama yang sah diperiksa terhadap peta yang di-generate, bukan
+ *    terhadap salinan yang bisa basi.
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-import { nextStep, poseFor, titleKeyFor, bodyKeyFor } from './StepGuide';
+import { nextStep, iconFor, titleKeyFor, bodyKeyFor } from './StepGuide';
+import { SPRITE_IDS } from '../../icons/sprite-map';
 
 /** LF normalisation — `.gitattributes` tidak memaku `.tsx`, jadi CRLF di Windows. */
 const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8').replace(/\r\n/g, '\n');
 
-const MASCOT_SRC = read('src/components/ui/Mascot.tsx');
 const I18N_ID = read('src/store/i18n.ts');
 const I18N_JP = read('src/store/i18n-jp.ts');
-
-/** Semua pose sah, dibaca dari union type di Mascot.tsx. */
-const VALID_POSES = (() => {
-  const m = MASCOT_SRC.match(/export type MascotPose =([^;]+);/);
-  expect(m, 'MascotPose union not found in Mascot.tsx').not.toBeNull();
-  return [...(m as RegExpMatchArray)[1].matchAll(/'([a-z]+)'/g)].map((x) => x[1]);
-})();
 
 const FULL = { mini: 100, master: 100, berkasProgress: 100, berkasTotal: 12 };
 
@@ -107,31 +100,32 @@ describe('nextStep — batas keputusan', () => {
   });
 });
 
-describe('poseFor — maskot tidak pernah menghakimi', () => {
-  it('setiap pose yang dipakai BENAR-BENAR ADA di Mascot.tsx', () => {
-    // Pose yang tidak ada dirender sebagai NOTHING (Mascot.tsx mem-return null),
-    // jadi kesalahan ini tidak akan terlihat sebagai gambar rusak — hanya sebagai
-    // ruang kosong. Itu sebabnya daftarnya diperiksa terhadap sumbernya.
-    for (const key of ['mini', 'master', 'berkas', 'done'] as const) {
-      expect(VALID_POSES).toContain(poseFor(key));
+describe('iconFor — ikonnya tidak pernah menghakimi', () => {
+  const KEYS = ['mini', 'master', 'berkas', 'done'] as const;
+
+  it('setiap ikon yang dipakai BENAR-BENAR ADA di sprite', () => {
+    // Nama yang tidak ada di `sprite-map.ts` dirender sebagai NOTHING (Icon.tsx
+    // memancarkan <use> kosong), jadi kesalahan ini tidak akan terlihat sebagai
+    // gambar rusak — hanya sebagai ruang kosong. Itu sebabnya daftarnya
+    // diperiksa terhadap peta yang di-generate, bukan terhadap salinan tangan.
+    for (const key of KEYS) {
+      expect(SPRITE_IDS, `${iconFor(key)} tidak ada di sprite`).toHaveProperty(iconFor(key));
     }
   });
 
-  it('profil lengkap → peace', () => {
-    expect(poseFor('done')).toBe('peace');
+  it('setiap langkah punya ikon yang berbeda', () => {
+    expect(new Set(KEYS.map(iconFor)).size).toBe(KEYS.length);
   });
 
-  it('belum lengkap → wave, bukan pose yang kecewa', () => {
-    // Tidak ada pose kecewa/marah di karakter sheet, dan itu memang disengaja:
-    // kandidat ini sedang mencari kerja.
-    expect(poseFor('mini')).toBe('wave');
-    expect(poseFor('master')).toBe('wave');
-    expect(poseFor('berkas')).toBe('wave');
+  it('profil lengkap → ikon selesai', () => {
+    expect(iconFor('done')).toBe('circle-check');
   });
 
-  it('tidak ada pose negatif di seluruh daftar', () => {
-    for (const key of ['mini', 'master', 'berkas', 'done'] as const) {
-      expect(['sleepy', 'notfound', 'wave', 'peace']).toContain(poseFor(key));
+  it('tidak ada ikon negatif di seluruh daftar', () => {
+    // Kartu ini menunjuk, bukan menilai: tidak ada tanda silang atau peringatan.
+    const BANNED = ['times', 'x', 'ban', 'exclamation-triangle', 'circle-exclamation'];
+    for (const key of KEYS) {
+      expect(BANNED).not.toContain(iconFor(key));
     }
   });
 });

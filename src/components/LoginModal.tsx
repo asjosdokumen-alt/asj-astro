@@ -12,7 +12,6 @@ import { validate, normalizeWaInput, registerSchema, kandidatLoginSchema, adminM
 import { t, langStore } from '../store/i18n';
 import { apiClient, type ApiError } from '../lib/apiClient';
 import Icon from './ui/Icon';
-import Mascot from './ui/Mascot';
 import { useOverlay } from './ui/useOverlay';
 
 type ModalMode = "closed" | "login" | "daftar";
@@ -278,16 +277,15 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         {/* ── Kandidat Login ── */}
         {mode === "login" && adminStep === 0 && (
           <div>
-            {/* Aa-chan greets the applicant. This is the "IN USE - LOGIN"
-                mockup on the character sheet: her sparkle-eyed head above the
-                panel title. `decorative` because the `h3` directly below says
-                the same thing in words — an `alt` here would be read out
-                between the card's opening and its heading. 96px because the
-                sheet draws her head at roughly half the card's content width;
-                she must not push the WA field below the fold on a 390px
-                phone. */}
+            {/* A companion glyph greets the applicant, above the panel title.
+                This used to be Aa-chan (the sheet's "IN USE - LOGIN" slot);
+                owner ruling 2026-09-24 removed the mascot from the site, so it
+                is now a plain icon. Decorative — the `h3` directly below says
+                the same thing in words, and `Icon` emits `aria-hidden` by
+                default, so nothing is announced between the card's opening and
+                its heading. Sized with `text-*` like every other Icon call. */}
             <div class="flex justify-center -mt-2 mb-1">
-              <Mascot pose="login" size={96} decorative motion="wave" />
+              <Icon name="user-circle" class="text-5xl text-sky-400" />
             </div>
             <h3 class="text-xl font-bold text-sky-400 mb-6 border-b border-sky-900/50 pb-4 text-center">
               <Icon name="sign-in-alt" class="mr-2" /> {t("login.title_kandidat")}
