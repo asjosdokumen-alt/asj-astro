@@ -87,6 +87,35 @@ async function openWithRows(width, height) {
   return { ctx, page };
 }
 
+/**
+ * Every action control in the row must clear the repo's own touch floor:
+ * `DESIGN.md:582` ("Tinggi minimum | 44 px") and `DESIGN.md:691`
+ * ("Target sentuh | >=44 px, idealnya 48 px").
+ *
+ * WHY THIS IS A HELPER AND NOT AN INLINE BLOCK. It used to be asserted only at
+ * 390px, where the `rt-row`/`rt-full` card layout (layout.css, max-width: 767px)
+ * happens to make the actions compliant — so the 28-36px controls that render at
+ * >=768px, a touch-tablet width, were never measured. The gate was right and its
+ * VIEWPORT COVERAGE was the hole. Both widths now call the same assertion, so a
+ * future third width is one line rather than a copy that can drift.
+ */
+async function assertRowActionsAtLeast44(page) {
+  const actions = await page.evaluate(() => {
+    const tr = document.querySelector('.u-scroll-x tbody tr');
+    const cells = [...tr.querySelectorAll('td')];
+    const cell = cells[cells.length - 1];
+    return [...cell.querySelectorAll('button, a')].map((b) => ({
+      text: (b.textContent || '').trim().slice(0, 18),
+      h: Math.round(b.getBoundingClientRect().height),
+    }));
+  });
+  if (actions.length < 3) throw new Error(`expected 3 row actions, found ${actions.length}`);
+  const short = actions.filter((a) => a.h < 44);
+  if (short.length) {
+    throw new Error(`below 44px: ${short.map((a) => `${a.text}=${a.h}px`).join(', ')}`);
+  }
+}
+
 async function run() {
   browser = await chromium.launch({ headless: true, args: ['--no-proxy-server'] });
 
@@ -142,22 +171,7 @@ async function run() {
     }
   });
 
-  await test('390px: every row action is at least 44px tall', async () => {
-    const actions = await phone.page.evaluate(() => {
-      const tr = document.querySelector('.u-scroll-x tbody tr');
-      const cells = [...tr.querySelectorAll('td')];
-      const cell = cells[cells.length - 1];
-      return [...cell.querySelectorAll('button, a')].map((b) => ({
-        text: (b.textContent || '').trim().slice(0, 18),
-        h: Math.round(b.getBoundingClientRect().height),
-      }));
-    });
-    if (actions.length < 3) throw new Error(`expected 3 row actions, found ${actions.length}`);
-    const short = actions.filter((a) => a.h < 44);
-    if (short.length) {
-      throw new Error(`below 44px: ${short.map((a) => `${a.text}=${a.h}px`).join(', ')}`);
-    }
-  });
+  await test('390px: every row action is at least 44px tall', () => assertRowActionsAtLeast44(phone.page));
 
   await test('390px: the table does not overflow horizontally', async () => {
     const got = await phone.page.evaluate(() => {
@@ -208,6 +222,18 @@ async function run() {
   });
 
   await wide.ctx.close();
+
+  // ── desktop: the SAME 44px floor, where nothing used to cover it ──────────
+  // The 390px assertion above passes only because the mobile-only card layout
+  // (layout.css `rt-row`/`rt-full`, max-width: 767px) inflates the controls.
+  // At >=768px — a tablet, which is a touch device — the hand-rolled
+  // `px-2 py-1.5 text-[10px]` buttons render 28-36px and no rule touched them.
+  // That is exactly how five controls sat under the floor with a green gate.
+  const desktop = await openWithRows(1280, 900);
+
+  await test('1280px: every row action is at least 44px tall', () => assertRowActionsAtLeast44(desktop.page));
+
+  await desktop.ctx.close();
   await browser.close();
 
   if (failures.length) {

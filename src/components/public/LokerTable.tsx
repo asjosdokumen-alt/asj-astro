@@ -4,16 +4,30 @@
  * Matches legacy: sorting, limit 10, pamflet, gender badges,
  * Detail/Template/Apply buttons, filter counts, syarat + keterangan
  *
- * TOUCH TARGETS (2026-09-22)
- * --------------------------
- * Every control in this file is now at or above the 44px floor that
- * DESIGN.md:582 and DESIGN.md:691 set ("Target sentuh | >=44 px, idealnya 48 px").
+ * TOUCH TARGETS (2026-09-22, completed 2026-09-24)
+ * -----------------------------------------------
+ * DESIGN.md:582 and DESIGN.md:691 set the floor ("Target sentuh | >=44 px,
+ * idealnya 48 px"). This file reached it in two passes, and the comment used to
+ * claim the whole file was done after the FIRST one — which was never true.
  *
- * MEASURED at a 390px viewport before the change:
+ * PASS 1 — 2026-09-22, three controls. MEASURED at a 390px viewport before:
  *   - status filter chips  `px-4 py-2 text-sm`  -> 36x36   UNDER
  *   - theme toggle         `px-3 py-2 text-xs`  -> 73x34   UNDER
  *   - retry button         `px-4 py-2 text-xs`  -> 109x32  UNDER
  * All three are `min-h-11` (44px) now.
+ *
+ * PASS 2 — 2026-09-24, the five ROW controls, which pass 1 never covered:
+ *   - Detail                `px-2 py-1.5 text-[10px]` -> 59x28   UNDER
+ *   - Format (an <a>)       `px-2 py-1.5 text-[10px]` -> 63x28   UNDER
+ *   - Tutup (disabled)      `px-2 py-1.5 text-[10px]` -> 28 tall UNDER
+ *   - Lamar Sekarang        `px-2 py-1.5 text-[11px]` -> 117x30  UNDER
+ *   - Muat Lebih Banyak     `px-6 py-2.5 text-xs`     -> 181x36  UNDER
+ * All five are `min-h-11` now. WHY THEY SURVIVED PASS 1: the gate
+ * (`e2e/test-loker-layout.mjs`) did assert a 44px row-action floor, but only at
+ * 390px, where the mobile-only `rt-row`/`rt-full` card layout (layout.css,
+ * `max-width: 767px`) inflates the controls. At >=768px — a tablet, which is a
+ * touch device — nothing covered them. The gate was right; its viewport
+ * coverage was the hole, and the gate now runs the same assertion at 1280px too.
  *
  * WHY `min-h-` AND NOT `h-`. The chip row is `flex-wrap`, so chips drop to a
  * second line on a narrow screen; a fixed height would clip the wrapped line.
@@ -23,7 +37,7 @@
  * The floor was already gate-enforced, but only for the shared
  * `src/components/ui/Button.astro` (`scripts/ci/button.mutations.mjs` M4 breaks
  * `min-h-[44px]` there and asserts the test goes red). Hand-rolled `<button>`
- * elements like these three were outside that gate's reach, which is exactly how
+ * elements like these were outside that gate's reach, which is exactly how
  * they sat under the floor with nothing going red.
  */
 import { useState, useEffect } from 'preact/hooks';
@@ -252,14 +266,14 @@ export default function LokerTable() {
                 </td>
                 <td data-label={t("table.action")} class="rt-full p-1 align-top w-20">
                   <div class="flex flex-row gap-1 items-center justify-center">
-                    <button onClick={() => setSelectedJob(job)} class="px-2 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[10px] font-black border border-amber-500/50" title={t("button.detail")}><Icon name="eye" /> <span class="hidden sm:inline">{t("button.detail")}</span></button>
+                    <button onClick={() => setSelectedJob(job)} class="min-h-11 px-2 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[10px] font-black border border-amber-500/50" title={t("button.detail")}><Icon name="eye" /> <span class="hidden sm:inline">{t("button.detail")}</span></button>
                     {job.templateCv && job.templateCv !== "-" && (
-                      <a href={job.templateCv} target="_blank" class="inline-flex items-center justify-center px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[10px] font-bold border border-sky-500/50"><Icon name="download" /> <span class="hidden sm:inline">{t("button.format")}</span></a>
+                      <a href={job.templateCv} target="_blank" class="inline-flex items-center justify-center min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[10px] font-bold border border-sky-500/50"><Icon name="download" /> <span class="hidden sm:inline">{t("button.format")}</span></a>
                     )}
                     {jobTutupUntukLamar(job) ? (
-                      <button disabled class="px-2 py-1.5 bg-slate-600 rounded-lg text-white text-[10px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
+                      <button disabled class="min-h-11 px-2 py-1.5 bg-slate-600 rounded-lg text-white text-[10px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
                     ) : (
-                      <button onClick={() => openForm(job)} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-[0_4px_15px_rgba(5,150,105,0.4)] transition text-[11px] font-bold border border-emerald-500/50"><Icon name="paper-plane" /> <span class="hidden sm:inline">{t("button.apply")}</span></button>
+                      <button onClick={() => openForm(job)} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-[0_4px_15px_rgba(5,150,105,0.4)] transition text-[11px] font-bold border border-emerald-500/50"><Icon name="paper-plane" /> <span class="hidden sm:inline">{t("button.apply")}</span></button>
                     )}
                   </div>
                 </td>
@@ -271,7 +285,7 @@ export default function LokerTable() {
 
       {filtered.length > limit && (
         <div class="p-5 text-center">
-          <button onClick={() => setLimit(prev => prev + 10)} class="px-6 py-2.5 bg-slate-800 text-white rounded-full text-xs font-bold shadow-lg hover:bg-slate-700 transition">
+          <button onClick={() => setLimit(prev => prev + 10)} class="min-h-11 px-6 py-2.5 bg-slate-800 text-white rounded-full text-xs font-bold shadow-lg hover:bg-slate-700 transition">
             {t("button.more")} <Icon name="chevron-down" class="ml-2" />
           </button>
         </div>
