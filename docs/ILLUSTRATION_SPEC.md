@@ -53,15 +53,16 @@ Diukur dari kode, bukan diasumsikan:
 Yang berubah hanya `src`/`width`/`height` dan berkasnya. Itu leverage terbesar di
 sini, dan alasan kenapa pekerjaan kode bisa dimulai tanpa menunggu satu gambar pun.
 
-Pola berkas yang sudah terbukti di repo ini (maskot Aa-chan, `public/mascot/`):
-**AVIF + WebP, dua kepadatan (`1x` dan `@2x`)**. Ilustrasi baru mengikuti pola itu.
+Pola berkas yang sudah terbukti di repo ini (`public/assets/ilustrasi/`, 5 slot ×
+4 berkas): **AVIF + WebP, dua kepadatan (`1x` dan `@2x`)**. Ilustrasi baru
+mengikuti pola itu.
 
 ---
 
 ## 2. Sistem visual ilustrasi
 
-Diturunkan dari gaya maskot yang **sudah ada** — bukan gaya baru, supaya halaman
-tidak terbelah dua bahasa visual.
+Diturunkan dari gaya ilustrasi yang **sudah dipasang** (hero + 3 kartu program,
+§3) — bukan gaya baru, supaya halaman tidak terbelah dua bahasa visual.
 
 | Aspek | Ketentuan |
 |---|---|
@@ -72,7 +73,7 @@ tidak terbelah dua bahasa visual.
 | Langit-langit | ≤350 KB per berkas `@2x` — galeri 9 ubin harus tetap ringan di ponsel kelas menengah (`DESIGN.md` §1.3, target LCP <1,5 s) |
 | Palet | Token repo: `--pink-600` (aksen, sakura), `--surface-raised`, `--line-strong`. Langit **senja Jepang** (indigo→magenta), bukan siang terang — halaman dark-first |
 | Latar | Setiap ilustrasi harus **terbaca di atas latar gelap**; hindari latar putih penuh |
-| Karakter | Konsisten dengan Aa-chan: kepala besar, mata ekspresif, seragam sederhana. **Usia karakter 18–22** |
+| Karakter | Kepala besar, mata ekspresif, seragam sederhana — konsisten dengan ilustrasi program yang sudah ada. **Usia karakter 18–22** |
 
 ### 2.1 Aturan yang tidak boleh dilanggar
 
@@ -149,7 +150,7 @@ Urutan ini penting; melompat ke “ganti path” tanpa langkah 1 akan memerahkan
 
 1. **Ukur tiap berkas** (`width`/`height` sebenarnya) — jangan percaya angka spesifikasi.
    `GalleryItem` mensyaratkan dimensi intrinsik; salah di sini = layout shift.
-2. Turunkan AVIF + WebP (1x & @2x) mengikuti pola `public/mascot/`.
+2. Turunkan AVIF + WebP (1x & @2x) mengikuti pola `public/assets/ilustrasi/`.
 3. Perbarui `GALLERY` (atau tambahkan `GALLERY_ILLUSTRATED`) di `src/lib/gallery.ts`.
 4. Perbarui `<img>` di `index.astro:484`.
 5. **Perbarui `scripts/ci/verify-assets.mjs`**: ilustrasi **tidak boleh** masuk
@@ -195,7 +196,7 @@ tapi dua, dan risikonya jauh berbeda.
 2. **Landing publik (belum login)** — di sini **tidak ada data apa pun** tentang
    pengunjung, karena mereka belum punya akun. Badge/XP di halaman ini **hanya bisa
    fiktif** kalau dipaksakan. Jadi gamefeel di landing harus berbentuk hal yang
-   tidak butuh state pribadi: ilustrasi, animasi masuk, tipografi, maskot pemandu.
+   tidak butuh state pribadi: ilustrasi, animasi masuk, tipografi.
 
 **Jangan** menaruh progress pribadi di halaman publik tanpa login — itu bukan
 gamefeel, itu kebocoran rasa “halaman ini mengawasi saya”.
@@ -206,7 +207,7 @@ gamefeel, itu kebocoran rasa “halaman ini mengawasi saya”.
 |---|---|---|---|
 | Kartu level + badge pencapaian | `/candidate` | `computeOverallProgress()` yang sudah ada | rendah |
 | Progress per-bagian (CV mini, CV master, berkas) | `/candidate` | sudah ada (`berkasProgress`/`berkasTotal`) | rendah |
-| Pemandu langkah + maskot Aa-chan | `/candidate` | `Mascot.tsx` sudah ada | rendah |
+| Pemandu langkah + ikon bagian | `/candidate` | sprite `Icon` sudah ada | rendah |
 | Animasi masuk untuk ubin & kartu | keduanya | CSS saja | rendah |
 | Ilustrasi anime menggantikan foto | landing | berkas statis | sedang — tunggu gambar |
 | Tipografi/panel bertema Jepang (asano-ha, gelombang) | landing | CSS/SVG | rendah |
@@ -225,59 +226,60 @@ gamefeel, itu kebocoran rasa “halaman ini mengawasi saya”.
 Keduanya ditulis di sini supaya orang berikutnya tidak “meningkatkan” gamifikasi
 dengan menambahkan skor kompetitif atau papan peringkat antar-kandidat.
 
-## 7. Mascot pemandu: mekanisme tracking, dan dua cacat yang pernah membuatnya MATI
+## 7. Mascot pemandu — DIHAPUS (2026-09-24)
 
-Bagian ini adalah **mascot di landing publik** (`index.astro`), bukan `Mascot.tsx`
-di `/candidate`. Permintaan owner:
+Bagian ini dulu menjelaskan **mascot di landing publik** (`index.astro`): gambar
+2D yang bertukar pose dan animasi mengikuti section. **Owner memutuskan mascot
+dihapus dari seluruh situs pada 2026-09-24.** Alasannya: `/` adalah **profil
+perusahaan untuk mitra**, bukan papan lowongan atau halaman rekrutmen, dan
+mascot tidak lagi cocok dengan peran itu. Ia hilang dari landing, dari
+`/candidate` (pemandu langkah), dari halaman 404, dan dari kartu login.
 
-> “mascot itu bukan model gitu maunya ikut sesuai scroll mau ke sesi terus jadi
-> pindah ikutin bagian dan posenya beda beda tergantung tempat baik mimik wajah
-> maupun motionnya”
+Yang menggantikan dan yang tersisa:
 
-Bukan model 3D: **gambar 2D yang bertukar** mengikuti section, dengan pose dan
-animasi berbeda per bagian.
+- **Ikon** dari sprite (`src/components/ui/Icon.tsx`, `src/icons/sprite-map.ts`)
+  mengisi setiap slot yang dulu dipegang mascot. Nama ikon yang tidak ada di
+  `sprite-map.ts` dirender sebagai **KOSONG tanpa error** — jadi himpunannya
+  dipatok terhadap peta yang di-generate (`StepGuide.test.ts`), bukan disalin
+  tangan.
+- `src/lib/sectionMotion.ts` sekarang **hanya** memegang transisi masuk
+  (`ENTER_KINDS` + `SECTION_MOTION` tanpa kolom `pose`/`motion`). Kolom
+  mascot-nya dibuang bersama mascot-nya.
+- Seluruh berkas mascot (`src/components/ui/Mascot.tsx`,
+  `src/components/public/PrincessMascot.astro`, `public/mascot/*`), gate-nya
+  (`e2e/test-mascot-motion.mjs`), dua alat buktinya (`e2e/measure-mascot.mjs`,
+  `e2e/shot-mascot.mjs`), dan baterai mutasinya **sudah dihapus**.
 
-### 7.1 Di mana datanya (satu sumber kebenaran)
-
-`src/lib/sectionMotion.ts` memegang **seluruh** tabel: `ENTER_KINDS` (7 jenis
-transisi masuk), `MASCOT_MOTIONS` (5 idle), dan `SECTION_MOTION` (15 baris —
-satu per section, berisi `pose`, `motion`, `enter`). Section membaca tabel ini
-lewat `Section.astro`; `motion.css` menyediakan keyframe-nya. **Jangan** menyalin
-tabel itu ke komponen, dan jangan menambah pose tanpa menambah barisnya di sini.
-
-### 7.2 Dua cacat yang harus diketahui orang berikutnya
+### 7.1 Dua cacat yang tetap layak dikenang
 
 Keduanya **tidak error, tidak merah di test apa pun, dan tidak terlihat di
-konsol**. Keduanya hanya ketahuan setelah gate-nya sendiri diperbaiki lebih dulu.
+konsol**, dan keduanya pelajaran umum yang tidak bergantung pada mascot.
 
 **Cacat 1 — blok tracking dijalankan saat PARSE, sebelum `<body>` ada.**
-`BaseLayout.astro` menaruh skripnya di `<head is:inline>`. Skrip itu memanggil
-`document.querySelector("[data-mascot-track]")` **saat parse**, dan pada saat itu
-`document.body` belum ada — diukur: `readyState: "loading"`, `bodyExists: false`.
-Hasilnya `null`, lalu `if (!mascot) return;` keluar **tanpa suara**. Mascot tidak
-pernah berpindah pose, di scroll mana pun, di lebar berapa pun. Perbaikannya
-adalah helper `onReady()`: jalankan sekarang kalau dokumen sudah siap, kalau belum
-tunggu `DOMContentLoaded`.
+Skripnya ada di `<head is:inline>` dan memanggil `document.querySelector(...)`
+saat parse, ketika `document.body` belum ada (diukur: `readyState: "loading"`,
+`bodyExists: false`). Hasilnya `null`, lalu guard keluar **tanpa suara**. Ini
+alasan helper `onReady()` dulu ada: jalankan sekarang kalau dokumen sudah siap,
+kalau belum tunggu `DOMContentLoaded`.
 
-**Cacat 2 — pertukaran pose hanya menulis atribut yang TIDAK ADA yang membaca.**
-`apply()` dulu hanya memanggil `mascot.setAttribute("data-pose", pose)`.
-`grep -rn 'data-pose' src/` hanya menemukan **penulis**, bukan pembaca: tidak ada
-stylesheet yang menyeleksinya. Jadi atributnya berubah (`princess-peace`,
-`princess-side`, …) sementara **gambarnya tetap** `/mascot/princess-wave.*` di
-semua section. Perbaikannya adalah `setPose()`, dan ia **wajib** menulis ketiganya
-sekaligus — dua `<source srcset>` (AVIF + WebP) **dan** `<img src>` — karena
-`<picture>` memilih `<source>`, sehingga menulis `src` saja tidak mengubah apa
-pun di browser modern.
+**Cacat 2 — menulis atribut yang TIDAK ADA yang membaca.**
+Pertukaran pose dulu hanya menulis `data-pose`. `grep -rn 'data-pose' src/`
+hanya menemukan **penulis**, bukan pembaca — tidak ada stylesheet yang
+menyeleksinya, jadi atributnya berubah (`princess-peace`, …) sementara
+**gambarnya tetap**. Dan karena wadahnya `<picture>`, menulis `<img src>` saja
+tidak cukup: yang dipilih browser adalah `<source srcset>`, jadi ketiganya harus
+ditulis sekaligus. Pelajaran umumnya: sebuah atribut tanpa pembaca adalah no-op
+yang menyamar sebagai fitur.
 
-### 7.3 Jebakan pengukuran yang sudah memakan korban
+### 7.2 Jebakan pengukuran yang sudah memakan korban
+
+Tabel ini lahir saat mengukur mascot, tapi tiap barisnya umum untuk tiap elemen
+ber-animasi di halaman ini:
 
 | Jebakan | Kenyataan yang diukur |
 |---|---|
-| `display:none` tetap “menyelesaikan” CSS | `animation-name`/`opacity` benar pada elemen tersembunyi. Hanya **box** (`getBoundingClientRect`) yang jujur. Rail mascot `hidden xl:block`, jadi ia **0×0 di bawah 1280px** |
+| `display:none` tetap “menyelesaikan” CSS | `animation-name`/`opacity` benar pada elemen tersembunyi. Hanya **box** (`getBoundingClientRect`) yang jujur — elemen `hidden` di lebar tertentu tetap melaporkan animasi yang “berjalan” |
 | `loading="lazy"` tidak dipicu `scrollTo` | `page.mouse.wheel()` memicu fetch; `window.scrollTo()` dan `scrollIntoView()` **tidak** |
-| Walk menghancurkan keadaan yang ia ukur | langkah pertama walk adalah scroll, jadi `onScroll` sudah mengoreksi pose **sebelum** pengukuran pertama. Keadaan “saat baru tiba” butuh pengukuran **terpisah sebelum scroll** |
+| Walk menghancurkan keadaan yang ia ukur | langkah pertama walk adalah scroll, jadi koreksi sudah terjadi **sebelum** pengukuran pertama. Keadaan “saat baru tiba” butuh pengukuran **terpisah sebelum scroll** |
 | `img.decode()` | crash renderer di halaman 390px (1161 node, 22 gambar). Pakai poll `complete` berbatas waktu |
-
-Bukti lengkap ada di `e2e/test-mascot-motion.mjs` (17 assertion) dan baterai
-mutasinya `e2e/test-mascot-motion.mutations.sh` (`M1..M6`, `T1..T5`, `S1`, `S1b`).
 

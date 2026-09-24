@@ -592,11 +592,6 @@
       "script": "scripts/ci/review-gate.mutations.sh",
       "proves": "scripts/ci/review-gate.mjs",
       "note": "A TEST battery, not a gate battery: it proves `review:gate` itself can fail, and `review:gate` is a review RUNNER rather than one of the gates this manifest enumerates — it aggregates them, so listing it as a gate would make it a gate over itself. It pins its own diff with `--base=HEAD` and excludes whatever the working tree had already modified before it started, so its verdicts do not depend on whose edits happen to be in progress. Recorded here so the accounting is complete rather than assumed."
-    },
-    {
-      "script": "e2e/test-mascot-motion.mutations.sh",
-      "proves": "e2e/test-mascot-motion.mjs",
-      "note": "Proves the mascot-motion gate can fail. Listed 2026-09-21: the battery was written and committed on 2026-09-20 alongside e2e:mascot-motion, and package.json wires the gate into test:e2e — but the manifest was never updated, so C8 flagged the file as an orphan that nothing cites. The pattern is the same one C8 caught on 2026-09-19 for e2e/test-headings-public.mutations.sh: a battery that exists on disk but is cited by no entry is a proof nobody reads, and the manifest would have gone on reporting the gate as covered. It mutates the BUILT CSS rather than the source for six of its seven cases (resolving the content-hashed minified filename at run time), because a source mutation needs a full build per case; case S1 mutates the source and rebuilds so at least one case is end-to-end."
     }
   ]
 }
