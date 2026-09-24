@@ -979,9 +979,16 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               <StatusNumber label={t("form.mf_no_paspor")} statusLabel={t("form.mf_paspor_status")}
                 status={cv.paspor_status} value={cv.paspor} statusKey="paspor_status" valueKey="paspor"
                 ph={t("form.mf_ph_no_paspor")} basis="38%" span={2} onChange={handleManualEdit} />
+              {/* `span={2}` matches the sibling StatusNumber above (`paspor`).
+                  MEASURED (2026-09-25): without it this field occupied ONE of the
+                  `md:grid-cols-5` tracks — 73.7px at 768 and 140.25px at 1280 —
+                  and the status `<select>` refuses to shrink below its widest
+                  option ("TIDAK ADA (無)", min-content 117px), which squeezed the
+                  number input to 10px and 19.3px. Two tracks gives 155.4/288.5px,
+                  i.e. the same box `paspor` already has. */}
               <StatusNumber label={t("form.mf_sim")} statusLabel={t("form.mf_sim_status")}
                 status={cv.sim_status} value={cv.sim} statusKey="sim_status" valueKey="sim"
-                ph={t("form.mf_ph_no_sim")} basis="42%" onChange={handleManualEdit} />
+                ph={t("form.mf_ph_no_sim")} basis="42%" span={2} onChange={handleManualEdit} />
             </div>
           </Section>
 
@@ -1233,7 +1240,16 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                 touched={touchedFields.has('kenalan_kerja_jp')} onInput={(v) => handleManualEdit('kenalan_kerja_jp', v)} />
               <Field label={t("cv.field_kenalan_usia")} id="kenalan_usia" value={cv.kenalan_usia} unit="thn"
                 touched={touchedFields.has('kenalan_usia')} onInput={(v) => handleManualEdit('kenalan_usia', v)} />
-              <div class="col-span-2 md:col-span-4 mt-1 grid grid-cols-2 gap-2">
+              {/* `col-span-full` (= `grid-column: 1 / -1`) rather than
+                  `col-span-2 md:col-span-4`. MEASURED (2026-09-25): the auto-fit
+                  grid resolved to `192px 192px 0px 0px` at 768 and the
+                  `md:col-span-4` child forced a 0px IMPLICIT track — so
+                  #ai_kenalan_hub_id/#ai_kenalan_hub_jp landed in it and rendered
+                  10x27. `-1` means "the last explicit line", so it can never
+                  exceed the track count and never creates an implicit track,
+                  while still spanning the full row at every width (it spans the
+                  3 explicit tracks at 1280 and all 5 at 1920). */}
+              <div class="col-span-full mt-1 grid grid-cols-2 gap-2">
                 <Field label={t("cv.field_kenalan_alamat_id")} id="kenalan_alamat_id" value={cv.kenalan_alamat_id}
                   touched={touchedFields.has('kenalan_alamat_id')} onInput={(v) => handleManualEdit('kenalan_alamat_id', v)} />
                 <Field label={t("cv.field_kenalan_alamat_jp")} id="kenalan_alamat_jp" value={cv.kenalan_alamat_jp} jp

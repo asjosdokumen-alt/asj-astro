@@ -430,9 +430,29 @@ export default function SiswaBaruForm() {
             <h2 class="section-title section-title--flush">
               <Icon name="address-card" class="mr-1" />{t('siswa.data_pribadi')}
             </h2>
-            <div class="u-grid-auto u-grid-auto--form gap-4">
+            {/* EXPLICIT 2-up grid, not `.u-grid-auto--form`.
+                MEASURED DEFECT (2026-09-25, probe at 768/1280): the auto-fit
+                form grid resolved to `grid-template-columns: 330.797px 0px`
+                and the `md:col-span-2` child forced that 0px IMPLICIT second
+                track. `.u-grid-auto > * { min-width: 0 }` lets the implicit
+                track's content shrink to nothing, so the 1-span children that
+                landed in it rendered 18x34 — their labels wrapped one letter
+                per line. The phantom track cannot occur in an explicit grid.
+
+                WHY `lg`, NOT `md`: `--u-grid-min` is 24rem (384px), and at a
+                768px viewport this panel is only ~331px wide, so `auto-fit`
+                could never fit 384px twice — the 2-up layout the spans ask for
+                was structurally unreachable at every width this form is used
+                at. Switching to 2 columns at `md` would therefore re-shape 3
+                fields that were rendering full-width (330.8 -> 157.4px at 768),
+                whereas `lg` keeps the single-column shape users already see and
+                only fixes the collapsed ones. Measured collateral over the
+                non-affected fields: lg = 397px total, md = 917px.
+                The `span` rows become full width at `lg` and up, which is what
+                the `md:col-span-2` these replaced was reaching for. */}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {BIODATA_FIELDS.map(f => (
-                <div key={f.id} class={f.span ? 'col-span-1 md:col-span-2' : ''}>
+                <div key={f.id} class={f.span ? 'lg:col-span-2' : ''}>
                   <label class="block text-[10px] font-bold text-slate-400 mb-1" for={`sw-${f.id}`}>{f.label}</label>
                   <input id={`sw-${f.id}`} type="text" value={biodata[f.id]} onInput={(e) => setBiodata(prev => ({ ...prev, [f.id]: (e.target as HTMLInputElement).value }))}
                     class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none" />
