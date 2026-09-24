@@ -50,7 +50,11 @@ export interface Props {
    * (hero, closing CTA) while keeping the same vertical rhythm.
    */
   bleed?: boolean;
-  /** Wrapper element. `aside` is for the desktop rail. */
+  /**
+   * Wrapper element. `section` is the default; `div`/`aside` are for bands that
+   * are not landmarks. (`aside` used to carry the landing page's mascot rail,
+   * which was removed 2026-09-24 — the option is kept as general-purpose.)
+   */
   as?: 'section' | 'div' | 'aside';
   /**
    * id of the element that names this region. A section with an accessible name
@@ -58,31 +62,24 @@ export interface Props {
    */
   labelledBy?: string;
   /**
-   * ── HOW THIS BAND ARRIVES, AND HOW THE MASCOT BEHAVES IN IT ───────────────
+   * ── HOW THIS BAND ARRIVES ─────────────────────────────────────────────────
    *
-   * `enter` is the entrance KIND (`ENTER_KINDS` in src/lib/sectionMotion.ts);
-   * `pose` and `motionName` are what the mascot switches to while this section
-   * is the current one. All three are emitted as data attributes rather than
-   * classes, for two reasons:
+   * `enter` is the entrance KIND (`ENTER_KINDS` in src/lib/sectionMotion.ts).
+   * It is emitted as a data attribute rather than a class, for two reasons:
    *
-   *   1. The values come from a table that a TEST asserts (no two adjacent
-   *      bands may repeat a pose or a motion), and a table that asserts against
-   *      attributes is a table that cannot silently drift from the markup.
+   *   1. The value comes from a table a TEST asserts, and a table that asserts
+   *      against attributes is a table that cannot silently drift from the
+   *      markup.
    *   2. The CSS selects on the VALUE (`[data-enter="curtain"]`), so a typo
    *      produces a band that never animates instead of a class that matches
    *      nothing — and `verify:keyframes` now catches the animation-name half
    *      of that, while this attribute is the other half.
    *
-   * `motionName` and not `motion`, because `motion` is a GLOBAL on `window` and
-   * shadowing it inside a component that also emits a script is a trap waiting
-   * for the next person. The attribute is still `data-motion-name` on the way
-   * out, because that is what BaseLayout's scroll script reads.
+   * It used to carry `pose`/`motionName` too, driving the princess mascot that
+   * followed the scroll. Owner ruling 2026-09-24 removed her from the site, so
+   * those attributes are gone and the entrance is the only thing left here.
    */
   enter?: string;
-  /** Mascot pose while this section is current. */
-  pose?: string;
-  /** Mascot idle while this section is current. */
-  motionName?: string;
 }
 
 const {
@@ -92,8 +89,6 @@ const {
   as = 'section',
   labelledBy,
   enter,
-  pose,
-  motionName,
 } = Astro.props;
 
 // Branches are written out rather than assembled with a variable, so Tailwind
@@ -109,8 +104,6 @@ const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(
       aria-labelledby={labelledBy}
       class={classes}
       data-enter={enter}
-      data-pose={pose}
-      data-motion-name={motionName}
     >
       <slot />
     </aside>
@@ -120,8 +113,6 @@ const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(
       aria-labelledby={labelledBy}
       class={classes}
       data-enter={enter}
-      data-pose={pose}
-      data-motion-name={motionName}
     >
       <slot />
     </div>
@@ -131,8 +122,6 @@ const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(
       aria-labelledby={labelledBy}
       class={classes}
       data-enter={enter}
-      data-pose={pose}
-      data-motion-name={motionName}
     >
       <slot />
     </section>

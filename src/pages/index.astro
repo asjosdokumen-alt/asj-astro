@@ -16,7 +16,6 @@ import GalleryGrid from '../components/public/GalleryGrid.tsx';
 import FactList from '../components/public/FactList.tsx';
 import StepList from '../components/public/StepList.tsx';
 import CheckList from '../components/public/CheckList.tsx';
-import PrincessMascot from '../components/public/PrincessMascot.astro';
 import Icon from '../components/ui/Icon';
 import {
   ABOUT_PARAGRAPHS,
@@ -161,41 +160,13 @@ import { GALLERY } from '../lib/gallery';
        Desktop only (`hidden lg:block`); the drawer still covers mobile. -->
   <SiteNav />
 
-  <!-- ═══ THE MASCOT RAIL — she travels with the scroll ══════════════════════
-
-       THE OWNER'S REQUEST, verbatim:
-         "mascot itu bukan model gitu maunya ikut sesuai scroll mau ke sesi
-          terus jadi pindah ikutin bagian dan posenya beda beda tergantung
-          tempat baik mimik wajah maupun motionnya."
-
-       HOW SHE TRAVELS WITH NO SCROLL LISTENER. This rail is a GRID COLUMN that
-       spans the full height of <main>, and she is `position: sticky` inside it.
-       The browser then moves her during COMPOSITING — off the main thread,
-       for free. A `scroll` handler that set `transform` per frame would do the
-       same work on the main thread and fight the compositor doing it already.
-
-       WHY A GRID AND NOT `position: fixed`. A fixed mascot is pinned to the
-       viewport, so she would still be on screen while the visitor reads the
-       FOOTER and the closing CTA — neither of which has a pose, so she would
-       sit there in whatever state the last section left her, which reads as
-       stuck rather than as present. Sticky inside a column that ends with
-       <main> means she leaves when the sections do.
-
-       WHY `hidden xl:block`. Below that width there is no column to spare: the
-       page's content already uses the full width, and a rail would either push
-       the content narrow or overlap it. She is decoration, and decoration that
-       costs a reader 200px of line length is not worth having. The in-section
-       mascot in the Tentang band still renders at every width, so she is not
-       missing from the page on mobile — only from the rail.
-
-       ⚠ `w-0` ON THE RAIL ITSELF AT EVERY OTHER BREAKPOINT, and the reason is
-       the grid, not the mascot. A grid column that is `display: none` is not
-       laid out at all, so the grid would have ONE column below xl and TWO at
-       xl — which is fine, because `grid-cols-[1fr]` and `grid-cols-[1fr_auto]`
-       are separate media-query states. What must not happen is a column that
-       exists and is EMPTY, which would reserve its track width and pull the
-       content off-centre at exactly the widths where space is tightest. -->
-  <div class="w-full max-w-[100rem] mx-auto grid grid-cols-1 xl:grid-cols-[1fr_15rem] gap-0">
+  <!-- The mascot rail stood here — a sticky grid column beside <main> that
+       carried the princess down the page. Owner ruling 2026-09-24 removed her
+       from the site entirely, so the rail, its grid column and the sticky
+       `position` it needed are gone. <main> is a plain full-width block again;
+       no empty track is reserved beside it. Do not restore the rail — the
+       component, her renders and the scroll-tracking script were deleted with
+       it. -->
   <!-- `overflow-x-clip` IS LOAD-BEARING — measured 2026-09-23, do not remove it.
 
        The two HORIZONTAL entrance kinds (`enter="slide-left"` / `"slide-right"`
@@ -219,16 +190,18 @@ import { GALLERY } from '../lib/gallery';
            `test-headings-public.mutations.sh` ABORT on their baseline check —
            a red gate disarmed both proofs. That is the defect behind the defect.
 
-       `clip` and not `hidden`: `overflow: hidden` on one axis creates a scroll
-       container, which would break the mascot rail (`position: sticky` inside
-       this <main>, see the note further down). `overflow: clip` does not create
-       one, so sticky is unaffected — and nothing overflows horizontally once the
-       bands are revealed (measured: 375 = 375), so this clips only the transient
-       pre-reveal offset. Visually the bands now slide in from the edge instead
-       of pushing the whole page sideways, which is what the motion was for. -->
-  <main id="main-content" class="w-full pb-16 min-h-[50vh] xl:col-start-1 overflow-x-clip">
+       `clip` and not `hidden`: this distinction used to be load-bearing because
+       `overflow: hidden` on one axis creates a scroll container, which would
+       have broken the mascot rail's `position: sticky`. The rail is gone (owner
+       ruling 2026-09-24), so either would work today — but `clip` is kept
+       because it is still the accurate tool: it clips the transient pre-reveal
+       offset without creating a scroll container, and nothing overflows
+       horizontally once the bands are revealed (measured: 375 = 375). Visually
+       the bands slide in from the edge instead of pushing the whole page
+       sideways, which is what the motion was for. -->
+  <main id="main-content" class="w-full max-w-[100rem] mx-auto pb-16 min-h-[50vh] overflow-x-clip">
     <!-- Section: Kenapa Jepang? (page 2 of the company profile) -->
-    <Section id="kenapa-jepang" labelledBy="kenapa-jepang-title" enter="slide-left" pose="princess-peace" motionName="sway">
+    <Section id="kenapa-jepang" labelledBy="kenapa-jepang-title" enter="slide-left">
       <SectionTitle
         titleKey="profile.why_title"
         title="Kenapa Jepang?"
@@ -249,7 +222,7 @@ import { GALLERY } from '../lib/gallery';
          The tab system (Loker vs Layanan) was removed because the LokerTable
          moved to its own page (/loker). This makes Layanan visible by default,
          which is better for SEO and for visitors who scroll the profile. -->
-    <Section id="layanan" labelledBy="layanan-title" class="section-alt" enter="slide-right" pose="princess-side" motionName="lean">
+    <Section id="layanan" labelledBy="layanan-title" class="section-alt" enter="slide-right">
       <SectionTitle
         titleKey="profile.layanan_title"
         title="Program & Layanan ASJ"
@@ -264,7 +237,7 @@ import { GALLERY } from '../lib/gallery';
     <!-- Section: Program ASJ (pages 3 and 4). The price and its four inclusions
          ship together on purpose: a price without its inclusions is what makes a
          candidate assume there are hidden costs. -->
-    <Section id="program" labelledBy="program-title" enter="grow" pose="princess-still" motionName="sway">
+    <Section id="program" labelledBy="program-title" enter="grow">
       <SectionTitle
         titleKey="profile.prog_title"
         title="Program ASJ"
@@ -296,7 +269,7 @@ import { GALLERY } from '../lib/gallery';
     </Section>
 
     <!-- Section: Alur & Persyaratan (pages 3 and 4) -->
-    <Section id="alur" labelledBy="alur-title" class="section-alt border border-line/30 rounded-panel" enter="curtain" pose="princess-head" motionName="look">
+    <Section id="alur" labelledBy="alur-title" class="section-alt border border-line/30 rounded-panel" enter="curtain">
       <SectionTitle
         titleKey="profile.step_title"
         title="Bagaimana Prosesnya?"
@@ -331,7 +304,7 @@ import { GALLERY } from '../lib/gallery';
     <!-- Section: Visi & Misi (pages 2 and 5). Editorial, not bento: a vision is one
          long sentence and a mission is four short points, so they are not two
          comparable cards and giving them equal heights would inflate one of them. -->
-    <Section id="visi-misi" labelledBy="visi-misi-title" enter="drop" pose="princess-still" motionName="lean">
+    <Section id="visi-misi" labelledBy="visi-misi-title" enter="drop">
       <SectionTitle
         titleKey="profile.vision_title"
         title="Visi & Misi"
@@ -361,7 +334,7 @@ import { GALLERY } from '../lib/gallery';
     <!-- Section: Legalitas (pages 6 and 7). A list, not a grid: a licence register
          has hierarchy and nothing to compare. Every value is a literal — a
          registration number is not translated. -->
-    <Section id="legalitas" labelledBy="legalitas-title" class="section-alt border border-line/30 rounded-panel" enter="focus" pose="princess-head" motionName="sway">
+    <Section id="legalitas" labelledBy="legalitas-title" class="section-alt border border-line/30 rounded-panel" enter="focus">
       <SectionTitle
         titleKey="profile.legal_title"
         title="Legalitas & Izin Resmi"
@@ -376,7 +349,7 @@ import { GALLERY } from '../lib/gallery';
     </Section>
 
     <!-- Section: Fasilitas (pages 11-15 plus the price inclusions on page 3) -->
-    <Section id="fasilitas" labelledBy="fasilitas-title" enter="slide-left" pose="princess-peace" motionName="bounce">
+    <Section id="fasilitas" labelledBy="fasilitas-title" enter="slide-left">
       <SectionTitle
         titleKey="profile.fac_title"
         title="Fasilitas & Dukungan"
@@ -406,7 +379,7 @@ import { GALLERY } from '../lib/gallery';
          is the exact hole the note at #tentang below used to describe.
 
          NO LIGHTBOX — see the note in GalleryGrid.tsx: one dialog contract. -->
-    <Section id="galeri" labelledBy="galeri-title" class="section-alt border border-line/30 rounded-panel" enter="grow" pose="princess-wave" motionName="look">
+    <Section id="galeri" labelledBy="galeri-title" class="section-alt border border-line/30 rounded-panel" enter="grow">
       <SectionTitle
         titleKey="profile.gallery_title"
         title="Galeri Kegiatan"
@@ -439,7 +412,7 @@ import { GALLERY } from '../lib/gallery';
          supporting data (`profile.mini_*` keys, `JobMiniList.tsx`) was removed
          with it. -->
 
-    <Section id="penempatan" labelledBy="penempatan-title" class="section-alt border border-line/30 rounded-panel" enter="slide-right" pose="princess-peace" motionName="bounce">
+    <Section id="penempatan" labelledBy="penempatan-title" class="section-alt border border-line/30 rounded-panel" enter="slide-right">
       <SectionTitle
         titleKey="profile.place_title"
         title="Penempatan Kami"
@@ -477,7 +450,7 @@ import { GALLERY } from '../lib/gallery';
          would push the last paragraph below the fold on a laptop. The text column
          is capped at 68ch, which is the measure the paragraphs were already set
          to; the photo takes the remaining third. -->
-    <Section id="tentang" labelledBy="tentang-title" enter="curtain" pose="princess-still" motionName="lean">
+    <Section id="tentang" labelledBy="tentang-title" enter="curtain">
       <SectionTitle
         titleKey="profile.about_title"
         title="Tentang Kami"
@@ -492,32 +465,13 @@ import { GALLERY } from '../lib/gallery';
           {ABOUT_WELCOME.text}
         </p>
 
-        <!-- The princess mascot, beside the opening paragraph.
-             WHY HERE AND NOT IN THE HERO. `docs/ILLUSTRATION_SPEC.md` §6.0
-             measured the rule that decides this: the landing page has NO data
-             about a visitor, so any progress/XP/badge placed here would be
-             invented — §6.2 forbids exactly that. A mascot is the safe half of
-             "gamefeel": she carries no state, no score and no rank, so she is
-             honest at every scroll position. The mockup places her where the
-             page explains who the company is, which is where a companion
-             figure reads as a guide rather than as an advertisement.
-
-             WHY SHE SITS IN A PINK PANEL RATHER THAN BARE ON THE PAGE.
-             The renders have TRANSPARENT backgrounds (deliberately — that is
-             what makes them reusable over any surface). On the near-white
-             `--color-canvas` a white-dressed character with pale skin has
-             almost no edge contrast, and the first capture showed her reading
-             as a cut-out floating over the copy rather than as part of the
-             page. The `surface-raised` panel gives her a defined ground and
-             matches the mockup, where she sits on a tinted card.
-
-             `decorative` IS LEFT AT ITS DEFAULT (true). The paragraphs beside
-             her already say everything she could: she adds warmth, not
-             information, so a screen reader should skip her rather than
-             announce a cartoon between a heading and its first sentence. -->
-        <div class="mx-auto flex w-full max-w-[240px] items-end justify-center rounded-panel bg-surface-raised px-4 pt-6">
-          <PrincessMascot pose="princess-wave" size={200} class="w-full" />
-        </div>
+        <!-- The princess mascot stood here, beside the opening paragraph.
+             Owner ruling 2026-09-24: the mascot is removed from the site
+             entirely, so she and her `surface-raised` panel are gone. The
+             paragraphs below carry the section on their own — she added warmth,
+             not information, which is exactly why she could leave without a
+             replacement. Do not restore her: the component and her renders were
+             deleted with this block. -->
         <p data-lang="profile.about_p1" class="text-body text-fg-muted">
           {ABOUT_PARAGRAPHS[0].text}
         </p>
@@ -588,7 +542,7 @@ import { GALLERY } from '../lib/gallery';
     <!-- Section: Tim & Kredensial (S10, pages 8 and 10). The credential card is
          the point of this section: an N1 holder is a checkable fact, which is
          stronger evidence than the word "professional" in prose. -->
-    <Section id="tim" labelledBy="tim-title" class="section-alt border border-line/30 rounded-panel" enter="focus" pose="princess-head" motionName="look">
+    <Section id="tim" labelledBy="tim-title" class="section-alt border border-line/30 rounded-panel" enter="focus">
       <SectionTitle
         titleKey="profile.team_title"
         title="Tim & Kredensial"
@@ -626,7 +580,7 @@ import { GALLERY } from '../lib/gallery';
          sentence, because Astro ships HTML comments to the browser: a literal
          copy of it here would keep a text search of the built page non-empty
          and read as "the old copy is still on the page". -->
-    <Section id="kontak" labelledBy="kontak-title" enter="drop" pose="princess-wave" motionName="wave">
+    <Section id="kontak" labelledBy="kontak-title" enter="drop">
       <SectionTitle
         titleKey="profile.contact_title"
         title="Informasi Kontak"
@@ -693,7 +647,7 @@ import { GALLERY } from '../lib/gallery';
          one address to keep in sync. What moved is the banner itself, address and
          link together, so the "Buka Google Maps" button is the same element the
          visitor could already reach inside the services panel. -->
-    <Section id="lokasi" labelledBy="lokasi-title" class="section-alt border border-line/30 rounded-panel" enter="rise" pose="princess-side" motionName="sway">
+    <Section id="lokasi" labelledBy="lokasi-title" class="section-alt border border-line/30 rounded-panel" enter="rise">
       <SectionTitle
         titleKey="profile.loc_title"
         title="Lokasi Kami"
@@ -760,25 +714,6 @@ import { GALLERY } from '../lib/gallery';
       </div>
     </Section>
   </main>
-
-  <!-- The rail. `sticky top-0` + `h-screen` is what makes her track the scroll:
-       the rail is as tall as <main>, so a sticky child with a full-viewport
-       height stays in the viewport for the whole of it. `self-start` stops the
-       grid from stretching her to the rail's full height (grid items stretch by
-       default), which would give the sticky box nothing to stick within.
-       `pointer-events-none` because she must never intercept a click meant for
-       the content beside her — `aria-hidden` is set on the image itself. -->
-  <aside
-    class="hidden xl:block xl:col-start-2 xl:row-start-1 self-start sticky top-0 h-screen pointer-events-none"
-    aria-hidden="true"
-  >
-    <div class="flex h-full items-center justify-center pr-6">
-      <div class="w-full max-w-[15rem] rounded-panel bg-surface-raised px-4 pt-6">
-        <PrincessMascot size={200} class="w-full" motion="wave" track />
-      </div>
-    </div>
-  </aside>
-  </div>
 
   <!-- ─── Pita dekoratif Jepang (asanoha) ──────────────────────────────
        The ONE landingside gamefeel element that needs no visitor state.

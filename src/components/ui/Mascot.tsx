@@ -48,12 +48,7 @@ export type MascotPose =
   | 'loading'
   | 'notfound'
   | 'passport'
-  | 'peace'
-  | 'princess-wave'
-  | 'princess-peace'
-  | 'princess-side'
-  | 'princess-still'
-  | 'princess-head';
+  | 'peace';
 
 export interface Props {
   /**
@@ -87,38 +82,6 @@ const POSE_META: Record<MascotPose, { file: string; w: number; h: number; alt: s
   notfound: { file: 'notfound-think', w: 224, h: 224, alt: 'Wajah Aa-chan sedang berpikir.' },
   passport: { file: 'passport', w: 320, h: 320, alt: 'Aa-chan memegang paspor.' },
   peace: { file: 'peace', w: 320, h: 320, alt: 'Aa-chan memberi tanda damai.' },
-
-  /* ── The princess mascot ────────────────────────────────────────────────────
-   *
-   * A SECOND CHARACTER, and a different kind of asset from every pose above.
-   * The Aa-chan renders were drawn in Python from an approved character sheet
-   * (`F:\desain\render-aachan.py`). These five are RENDERS OF A 3D MODEL —
-   * `baby-princess-mascot-rig`, a rigged glTF authored by the owner at Meshy.
-   *
-   * WHY THEY EXIST AS STILLS AND NOT AS THE 3D MODEL. The source file is
-   * 17 MB with a 16 MB embedded texture. `public/mascot/` totals 176 KB today.
-   * Shipping the model would multiply the mascot payload by ~100 for a
-   * decoration, and would need a WebGL renderer in the bundle. The renders are
-   * the same artwork flattened, which is what a landing page actually needs.
-   *
-   * WHY THE NAMES ARE `princess-*` AND NOT `wave`/`peace`. The obvious names
-   * collide: `wave` and `peace` above are Aa-chan poses, and reusing them would
-   * silently swap the character on `/login` and `404`. The prefix keeps the two
-   * characters addressable at once.
-   *
-   * ⚠ `w`/`h` ARE MEASURED FROM THE FILES, and they are NOT square. The model
-   * is authored to real-world scale (0.91 × 1.69 × 0.80 m), so a full-body
-   * render is portrait — 512×844 for the front pose. Copying the square 512×512
-   * of the Aa-chan entries would squash her. A render that samples the model's
-   * ONLY animation clip (a walk cycle) is what gives `-peace` and `-still`
-   * their different leg positions; there is no waving or bowing footage in the
-   * source, so no pose here claims to be one.
-   */
-  'princess-wave': { file: 'princess-wave', w: 512, h: 844, alt: 'Maskot putri ASJ, tersenyum dengan tangan terangkat.' },
-  'princess-peace': { file: 'princess-peace', w: 512, h: 904, alt: 'Maskot putri ASJ dari sudut tiga perempat, melangkah riang.' },
-  'princess-side': { file: 'princess-side', w: 512, h: 1051, alt: 'Maskot putri ASJ tampak samping.' },
-  'princess-still': { file: 'princess-still', w: 512, h: 796, alt: 'Maskot putri ASJ berdiri tenang.' },
-  'princess-head': { file: 'princess-head', w: 224, h: 358, alt: 'Wajah maskot putri ASJ dengan bunga sakura di rambut.' },
 };
 
 const warned = new Set<string>();
