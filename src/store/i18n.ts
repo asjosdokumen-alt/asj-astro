@@ -4,7 +4,7 @@
 import { persistentAtom } from '@nanostores/persistent';
 import { atom } from 'nanostores';
 
-export type Lang = "id" | "jp" | "En";
+export type Lang = "id" | "jp" | "en";
 
 export const langStore = persistentAtom<Lang>("asj_lang", "id", {
   encode: JSON.stringify,
