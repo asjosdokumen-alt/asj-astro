@@ -32,7 +32,16 @@ async function loadJp(): Promise<Record<string, string>> {
   translations.jp = _jpTranslations;
   return _jpTranslations;
 }
+let enTranslations: Record<string, string> | null = null;
 
+async function loadEN(): Promise<Record<string, string>> {
+  if (enTranslations) return enTranslations;
+
+  const mod = await import("./i18n-en");
+  enTranslations = mod.enTranslations;
+
+  return enTranslations;
+}
 /** Ensure the JP dict is loaded AND installed before a JP render reads it. */
 export async function ensureJpLoaded(): Promise<void> {
   if (Object.keys(translations.jp).length > 0) return;
