@@ -1,13 +1,17 @@
 /**
  * sectionMotion.ts — which section of the landing page carries which ENTRANCE.
  *
- * WHY THIS IS A MODULE AND NOT A COPY OF A TABLE
+ * WHY THIS IS A MODULE, AND WHAT KEEPS IT HONEST
  * ----------------------------------------------
  * The landing page renders `data-enter="<kind>"` on each section, and the CSS
- * (`motion.css` §9b) turns each kind into one `@keyframes` set. Nothing in the
- * type system connects the two, so the vocabulary lives in exactly ONE place —
- * here — and the page reads it rather than re-spelling it. A second hand-written
- * list would be a list that agrees with this one only until somebody edits one.
+ * (`motion.css` §9b) turns each kind into one `@keyframes` set. The page
+ * RE-SPELLS the kind at each call site (`index.astro`, `ClosingBand.astro`), so
+ * this table is NOT what renders — it is the INDEPENDENT ORACLE that
+ * `e2e/test-landing.mjs` compares the rendered `data-enter` values against, in
+ * both directions. It is written from the owner's requirement rather than
+ * derived from the markup, because an oracle derived from the implementation
+ * would agree with whatever the page happens to say. `ENTER_KINDS` below is the
+ * vocabulary, and the gate checks that every table value is a member of it.
  *
  * ⚠ THE OWNER'S OWN WORDS, because they are the specification:
  *

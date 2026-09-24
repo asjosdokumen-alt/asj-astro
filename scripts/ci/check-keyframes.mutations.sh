@@ -3,14 +3,14 @@
 #
 # WHY A BATTERY
 # -------------
-# The gate exists because the per-section motion plan (`src/lib/sectionMotion.ts`
-# -> `data-motion` attribute -> an `animation:` declaration in motion.css) joins
-# three files by STRING. A typo anywhere in that chain produces a name CSS cannot
-# resolve, and CSS is silent about it: an unknown `animation-name` is dropped, the
-# element simply does not animate, no error is logged and no build step notices —
-# and every existing assertion still passes, because all the mascot rules declare
-# TWO names and only one of them has to resolve for "an animation is running" to
-# stay true.
+# The gate exists because the entrance plan (`src/lib/sectionMotion.ts` ->
+# `data-enter="<kind>"` on each section -> a `[data-enter="<kind>"]` rule in
+# motion.css -> an `animation-name: enter-<kind>`) joins three files by STRING.
+# A typo anywhere in that chain produces a name CSS cannot resolve, and CSS is
+# silent about it: an unknown `animation-name` is dropped, the element simply does
+# not animate, no error is logged and no build step notices — and the existing
+# assertions still pass, because a declaration whose list has one resolving name
+# looks healthy even when the other name is broken.
 #
 # That is the same invisible-incompleteness shape the icon sprite has, and the
 # same shape that cost this repository real time twice before. So the gate gets a
@@ -36,24 +36,41 @@
 #
 # THE CASES
 # ---------
-#   M1  rename the @keyframes for `look`            -> exit 1, names motion.css
-#   M2  rename ONE character of the `lean` idle     -> exit 1
-#   M3  delete an entire idle rule mid-file         -> exit 1
-#   M4  rename the @keyframes for `sway` (the
-#       SLOW path, 0,1,0, no attribute)             -> exit 1
-#   G1  OK-GREEN — the file as committed            -> exit 0  (proves the gate is
-#       not "any edit fails"; without this a gate that always failed would score
-#       4/4 above)
-#   G2  OK-GREEN — a rename of a DEFINED-BY-ANOTHER-FILE name must still resolve.
-#   G3  OK-GREEN — adding a redundant, correctly-spelled reference passes.
-#       This is the false-positive guard for the over-inclusive parser: the gate
-#       deliberately reads every `animation:`/`animation-name:` token that starts
-#       with one of our prefixes, so it must not fail on a legitimate one.
+#   M1  rename the @keyframes for `enter-grow`         -> exit 1, names motion.css
+#   M2  rename ONE character of the `reveal-rise`
+#       declaration                                     -> exit 1
+#   M3  rename the REFERENCE in a shorthand             -> exit 1
+#   M4  rename the REFERENCE in an `animation-name:`
+#       longhand (the form every [data-enter] rule uses)-> exit 1
+#   M5  declare a keyframe under a name OUR_PREFIXES
+#       cannot see (the unreachable-name check)         -> exit 1
+#   G1  OK-GREEN — the file as committed                -> exit 0  (proves the gate
+#       is not "any edit fails"; without this a gate that always failed would score
+#       5/5 above)
+#   G2  OK-GREEN — a SECOND, correctly-spelled name in a comma list must resolve.
+#       This is the false-positive guard for the over-inclusive parser AND the
+#       surviving coverage of the multi-name list the M3 hole was originally found
+#       in.
+#   G3  OK-GREEN — an unrelated property must change nothing.
 #   G4  OK-GREEN — a defined-but-UNREFERENCED keyframe must NOT be an error.
-#       `mascot-enter` is kept on purpose (the documented JS-gamefeel step adds it
-#       back); a gate that failed on it would be demanding the deletion of code a
-#       documented next step depends on. Renaming it here proves the gate ignores
-#       the "unused" direction.
+#       Repointing a reference so a definition goes unused proves the gate ignores
+#       the "unused" direction while still reporting it as a note.
+#
+# ── WHAT CHANGED ON 2026-09-24 (the mascot sweep) ──────────────────────────
+# Every case below used to anchor on a `mascot-*` rule. The mascot's CSS was
+# deleted with her, so the anchors moved to the surviving entrance / reveal /
+# marquee rules. Two lessons left with the mascot, and they are RECORDED rather
+# than re-run:
+#
+#   * the PHANTOM-DEFINITION case (a comment containing `@keyframes <name>` must
+#     not resolve a real reference) — its example was the mascot section header
+#     inside motion.css. The behaviour is unchanged and still needed by
+#     `global.css:152`, which carries the same trap verbatim ("@keyframes fadeIn
+#     used to live here"). There is simply no longer a motion.css comment to
+#     anchor the case on.
+#   * the TWO-NAME shorthand case (the original M3 shape) — no comma list
+#     survives in motion.css, so it is now the G2 OK-GREEN control instead of a
+#     mutation: adding a correct second name must pass.
 #
 # Run from anywhere:  bash scripts/ci/check-keyframes.mutations.sh
 # Exit 0 only when every case behaves as declared.
@@ -261,75 +278,76 @@ echo "--------------------------------------------------------"
 echo "  target: $TARGET"
 echo ""
 
-# ── M1: rename the declaration for the `look` idle ──────────────────────────
-# The class rules keep their spelling, so the gate has to notice that the name
-# they now reference has no @keyframes behind it.
-mutate '@keyframes mascot-look {' '@keyframes mascot-lok {'
-expect "M1 @keyframes mascot-look renamed" 1 "mascot-look"
+# ── M1: rename a DEFINITION, leaving its reference spelled correctly ─────────
+# The `[data-enter="grow"]` rule keeps its spelling, so the gate has to notice
+# that the name it now references has no @keyframes behind it.
+mutate '@keyframes enter-grow {' '@keyframes enter-gro {'
+expect "M1 @keyframes enter-grow renamed" 1 "enter-grow"
 reset
 
 # ── M2: one character inside the declaration name ───────────────────────────
 # Proves the gate is not merely matching on a prefix or a fuzzy pattern.
-mutate '@keyframes mascot-lean {' '@keyframes mascot-leam {'
-expect "M2 @keyframes mascot-lean renamed by one char" 1 "mascot-lean"
+mutate '@keyframes reveal-rise {' '@keyframes reveal-ris {'
+expect "M2 @keyframes reveal-rise renamed by one char" 1 "reveal-rise"
 reset
 
-# ── M3: the SECOND name of a two-name declaration ──────────────────────────
-# THIS CASE FOUND A REAL HOLE AND IS THE REASON THE GATE ITERATES ITS PARTS.
-# Anchored on the reference inside `.mascot-bounce`'s `animation:` shorthand.
-# With the gate taking only the FIRST token of a declaration it read
-# `mascot-enter-soft` (which resolves) and never saw `mascot-bouns` — the very
-# name this case breaks — so the case reported SURVIVED on a gate that was green.
-# The first name is the entrance and the second is the idle, and the idle is what
-# the per-section work retargets, so that hole was aimed at the gate's subject.
-mutate 'mascot-bounce 3.4s ease-in-out infinite 420ms;' 'mascot-bouns 3.4s ease-in-out infinite 420ms;'
-expect "M3 second name of a two-name shorthand renamed" 1 "mascot-bouns"
+# ── M3: rename the REFERENCE in a shorthand ────────────────────────────────
+# The other direction: the @keyframes is intact and it is the RULE that now names
+# something undefined. `.marquee-content` is the only surviving `animation:`
+# shorthand that names one of our keyframes.
+#
+# ⚠ SINGLE-LINE ANCHOR, for the CRLF reason M4 documents below: `motion.css` is
+# CRLF, so a multi-line anchor written as a shell string can never match.
+# `animation: marquee-scroll var(--marquee-duration, 24s) linear infinite;`
+# occurs exactly once (measured), on the `.marquee-content` rule.
+mutate 'animation: marquee-scroll var(--marquee-duration, 24s) linear infinite;' 'animation: marquee-scrol var(--marquee-duration, 24s) linear infinite;'
+expect "M3 reference in a shorthand renamed" 1 "marquee-scrol"
 reset
 
-# ── M4: the SLOW path — the attribute rule for `sway` ───────────────────────
-# `[data-motion="sway"]` is the one the reduced-motion block had to be repaired
-# for, so it gets its own case rather than being assumed to be covered by M1.
+# ── M4: the LONGHAND path — the [data-enter] rules ──────────────────────────
+# Every section entrance is applied with `animation-name:` (a longhand) rather
+# than the shorthand, and the §9b reduced-motion block exists to reset exactly
+# those rules. So the longhand gets its own case rather than being assumed to be
+# covered by M3's shorthand.
 #
 # ── CRLF: THE ANCHOR IS ONE LINE, AND THAT IS NOT LAZINESS ─────────────────
-# The first version of this case anchored on the declaration PLUS the closing
-# brace, written as a two-line shell string. It matched NOTHING:
+# The first version of this case (when it pinned `[data-motion="sway"]`) anchored
+# on the declaration PLUS the closing brace, written as a two-line shell string.
+# It matched NOTHING:
 #
 #     node saw OLD="  animation: mascot-sway 6.5s ease-in-out infinite;\n}"
 #     hits=0
 #
-# `motion.css` here is CRLF (measured: 1014 LF and 1014 CR, i.e. every newline is
-# `\r\n`), and a shell single-quoted string contains a bare `\n`. So the anchor
-# could never match this file, on this machine, and `mutate` correctly refused.
-# This is the repository's recorded CRLF trap — the anchor has to be built from
-# the file's real bytes, not from how the source looks in an editor.
+# `motion.css` here is CRLF (measured: every newline is `\r\n`), and a shell
+# single-quoted string contains a bare `\n`. So the anchor could never match this
+# file, on this machine, and `mutate` correctly refused. This is the repository's
+# recorded CRLF trap — the anchor has to be built from the file's real bytes, not
+# from how the source looks in an editor.
 #
 # Keeping the anchor to a SINGLE line sidesteps the question entirely rather than
-# papering over it: `animation: mascot-sway 6.5s ease-in-out infinite;` occurs
-# exactly once in the file (measured), on line 874, inside `[data-motion="sway"]`.
-# Note the leading two spaces — the same declaration appears unindented nowhere,
-# and the whole line including its indent is what makes it unique.
-mutate '  animation: mascot-sway 6.5s ease-in-out infinite;' '  animation: mascot-swa 6.5s ease-in-out infinite;'
-expect "M4 [data-motion=sway] animation-name renamed" 1 "mascot-swa"
+# papering over it: `animation-name: enter-focus;` occurs exactly once in the file
+# (measured), in the `[data-enter="focus"].is-entered` rule.
+mutate 'animation-name: enter-focus;' 'animation-name: enter-focu;'
+expect "M4 [data-enter=focus] animation-name renamed" 1 "enter-focu"
 reset
 
-# ── M5: a phantom definition in a COMMENT must not resolve a real name ─────
-# THE CASE THAT FOUND A SECOND REAL HOLE. `global.css` carries the sentence
-# "`.animate-fade-in` and `@keyframes fadeIn` used to live here." A parser that
-# greps raw lines reads that as a DEFINITION, and the consequence is not
-# cosmetic: the phantom definition makes a genuinely dangling reference to that
-# name resolve, so the gate reports "all resolve" for a name that exists nowhere.
-# It also disarms the unreachable-name check, which is the check that keeps this
-# gate's own prefix list honest.
+# ── M5: a definition OUR_PREFIXES cannot see (the unreachable check) ────────
+# The gate admits a REFERENCE only if its name matches a prefix in OUR_PREFIXES,
+# so a keyframe declared under a name outside that list has references the gate
+# can never see — which is the silent incompleteness the gate exists to prevent,
+# reintroduced by the gate's own hand-maintained list. The check that catches it
+# is the unreachable-name one at the bottom of check-keyframes.mjs, and it is an
+# ERROR rather than a note because the repair is one word.
 #
-# The mutation renames the DECLARATION out of the way while the words
-# `@keyframes mascot-look` remain in the section header above it, so a raw-line
-# parser would keep resolving the reference at line ≈890 and stay green.
-#
-# ⚠ SINGLE-LINE ANCHOR, for the CRLF reason M4 documents: this file is CRLF, so a
-# multi-line anchor written as a shell string can never match. `@keyframes
-# mascot-look {` occurs exactly once.
-mutate '@keyframes mascot-look {' '@keyframes mascot-lokx {'
-expect "M5 declaration gone, name survives in comments" 1 "mascot-look"
+# The mutation plants one such declaration: it prepends an empty `@keyframes
+# zz-marquee-scroll {}` block (terminated with `;` so the statement scanner sees
+# it as its own unit) in front of the real `marquee-scroll` definition. Every
+# REFERENCE still resolves — `marquee-scroll` is untouched — so the only finding
+# is the unreachable name, which is exactly what this case must isolate. The `\n`
+# in the replacement is a literal backslash-n, decoded to this file's own line
+# ending by `kf-mutate.cjs` (the CRLF lesson M4 records).
+mutate '@keyframes marquee-scroll {' '@keyframes zz-marquee-scroll {};\n@keyframes marquee-scroll {'
+expect "M5 keyframe under an unseen name is unreachable" 1 "zz-marquee-scroll"
 reset
 
 # ── G1: OK-GREEN — the file exactly as committed ────────────────────────────
@@ -337,27 +355,17 @@ reset
 # would score 5/5 on the M cases and look like a perfect gate.
 expect "G1 OK-GREEN committed motion.css" 0
 
-# ── G2: OK-GREEN — a third, correctly-spelled name in the list ─────────────
-# The control for the fix M3 forced (statement scanning instead of line scanning),
-# and for the custom-property fix: it adds a third part to the wrapped shorthand
-# in `.mascot-sway`, which is the exact shape that used to be invisible.
+# ── G2: OK-GREEN — a second, correctly-spelled name in a comma list ────────
+# The false-positive guard for the over-inclusive parser: the gate reads EVERY
+# comma-separated part of an `animation` value, so a legitimate extra name must
+# not fail it. It is also the surviving coverage of the multi-name list shape —
+# the original M3 hole — appending a second, defined name to `.marquee-content`.
 #
-# ⚠ THE ANCHOR IS WRITTEN WITH A LITERAL `\n`, AND IT NAMES ITS OWN SELECTOR.
-# Two separate lessons are baked into this one string:
-#
-#   1. The `\n` is not a real newline. This file is CRLF, so a two-line shell
-#      string contains a bare `\n` that can never match — the trap M4 documents.
-#      `kf-mutate.cjs` decodes it to whichever ending the file actually uses, so
-#      the case is correct on CRLF (Windows) AND LF (CI) alike.
-#
-#   2. `  animation: mascot-enter-soft 420ms ...` is NOT unique — it occurs on
-#      lines 385, 429, 823, 828 and 833, because every mascot rule opens with the
-#      same entrance. The first version of this case used it and the helper
-#      refused with `hits=2`, which is the refusal working: a two-hit anchor
-#      would have mutated whichever rule the file happened to list first. So the
-#      anchor starts at `transform-origin` to pin `.mascot-sway` specifically.
-mutate '.mascot-sway {\n  transform-origin: 50% 100%;\n  animation: mascot-enter-soft 420ms var(--enter-ease) both,\n             mascot-sway 6.5s ease-in-out infinite 420ms;' '.mascot-sway {\n  transform-origin: 50% 100%;\n  animation: mascot-enter-soft 420ms var(--enter-ease) both,\n             mascot-sway 6.5s ease-in-out infinite 420ms,\n             reveal-rise 480ms var(--ease-out-expo) both;'
-expect "G2 OK-GREEN third correct name in the list" 0
+# ⚠ THE ANCHOR IS A SINGLE LINE, for the CRLF reason M4 records: a multi-line
+# shell string contains a bare `\n` that can never match this file. The `\n` in
+# the REPLACEMENT is a literal backslash-n, decoded by `kf-mutate.cjs`.
+mutate 'animation: marquee-scroll var(--marquee-duration, 24s) linear infinite;' 'animation: marquee-scroll var(--marquee-duration, 24s) linear infinite,\n             enter-rise 620ms;'
+expect "G2 OK-GREEN second correct name in the list" 0
 reset
 
 # ── G3: OK-GREEN — an unrelated property must change nothing ───────────────
@@ -365,19 +373,21 @@ reset
 # our prefixes anywhere in an `animation` value, so it must not fail on a rule
 # that is merely spelled differently. A gate that flagged this would be rejecting
 # correct CSS, and the natural response would be to widen it until it checks
-# nothing. The anchor pins `.mascot-lean` by its selector so the added property
-# lands in a known rule (`hits=2` earlier proved the bare `transform-origin`
-# line is not unique), and `\n` again means the file's own line ending.
-mutate '.mascot-lean {\n  transform-origin: 50% 100%;' '.mascot-lean {\n  will-change: auto;\n  transform-origin: 50% 100%;'
+# nothing. The anchor pins `.sakura-petal` by its selector so the added property
+# lands in a known rule, and `\n` again means the file's own line ending.
+mutate '.sakura-petal {\n  position: absolute;' '.sakura-petal {\n  will-change: opacity;\n  position: absolute;'
 expect "G3 OK-GREEN unrelated property added" 0
 reset
 
 # ── G4: OK-GREEN — defined but never referenced is NOT an error ────────────
-# `mascot-enter` is intentionally unused. Renaming it proves the gate looks only
-# in the "referenced but undefined" direction; if the gate ever started failing on
-# unused declarations, this case turns SURVIVED and says so out loud.
-mutate '@keyframes mascot-enter {' '@keyframes mascot-entr {'
-expect "G4 OK-GREEN unused keyframe renamed is not an error" 0
+# `slide-in` is defined in `theme.css` but Tailwind builds its reference at build
+# time, so this gate can never see one — and that must not be an error. The case
+# proves the same direction without touching `theme.css`: repointing `.sakura-petal`
+# at an ALREADY-DEFINED name leaves `sakuraFall` unreferenced while every reference
+# still resolves, so the gate must stay green and merely report the unused name.
+mutate 'animation: sakuraFall linear infinite;' 'animation: marquee-scroll linear infinite;'
+expect "G4 OK-GREEN unused keyframe is not an error" 0 "sakuraFall"
+reset
 
 echo "--------------------------------------------------------"
 echo "  killed  : $pass"

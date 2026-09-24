@@ -27,9 +27,9 @@ paling rumit, tapi yang **tidak bisa dibatalkan murah** setelah dikerjakan.
 | **D1** | **Satu halaman panjang dengan anchor**, bukan enam tab dan bukan rute `/profil` terpisah | Tab menyembunyikan isi dari mesin pencari dan butuh JS; enam rute berarti enam `h1`, enam nav, enam gate. Anchor memberi URL langsung ke setiap bagian dengan satu permukaan | Rendah — section adalah komponen, jadi rute `/profil` bisa diturunkan kapan saja |
 | **D2** | **`h1` pindah ke hero**; nama perusahaan di header turun jadi `div` | `e2e/test-headings.mjs` mewajibkan satu `h1`; `h1` yang berbunyi nama perusahaan tidak menjelaskan halaman apa ini (WCAG 2.4.2) | Sedang — menyentuh `App.tsx:197` |
 | **D3** | **Nav desktop masuk ke `<nav>` yang sudah ada**, bukan `<nav>` kedua | `test-drawer.mjs:71` memakai `querySelector` satu selektor bername; nav kedua membuat gate mengukur elemen salah dan sebagian asersi **lolos diam-diam** | Tinggi — gate tetap hijau sementara jaminannya hilang |
-| **D4** | **Arah visual “Sakura Editorial”**: dark-first, bento modular, rail kanan lengket, glass tertahan | Tren 2026 dan sifat repo sepakat; lihat `DESIGN.md` §1 | Rendah |
+| **D4** | **Arah visual “Sakura Editorial”**: dark-first, bento modular, ~~rail kanan lengket~~ (**rail DIHAPUS**, pemilik 2026-09-24 — lihat D6), glass tertahan | Tren 2026 dan sifat repo sepakat; lihat `DESIGN.md` §1 | Rendah |
 | **D5** | **Angka “SINCE 2023” menggantikan “2015” dan “5+ tahun” dari mockup** | Akta pendirian 15 Agustus 2023, SK Kemenkumham 28 Agustus 2023. Umur lembaga per 2026 = **3 tahun** | Tinggi kalau dibiarkan — itu klaim publik, bukan hiasan |
-| **D6** | **Rail kanan desktop** memuat Kontak, Lowongan ringkas, Galeri, **Penempatan**, Lokasi | Sudah jadi keputusan proyek (roadmap L6); satu DOM, dua bentuk | Rendah |
+| **D6** | **Rail kanan desktop** — ~~memuat Kontak, Lowongan ringkas, Galeri, **Penempatan**, Lokasi~~ — **DIBATALKAN** (pemilik 2026-09-24): rail lengket dan rail maskot dihapus, dan R1/R3/R4/R5 menjadi section biasa di dalam `<main>` yang kini selebar halaman. Lihat §4 | Roadmap L6 tidak jadi dikerjakan; alasan pemilik: `/` = profil perusahaan untuk mitra, bukan papan lowongan | — |
 | **D7** | **Tab lama dibuang, diganti anchor** + logika pindah ke `src/lib/publicSections.ts` | `index.astro:58-99` adalah 42 baris `classList` tanpa test; menambah tab ketiga berarti menyunting 6 kelas yang tidak dijaga apa pun | Sedang — menyentuh `index.astro` |
 | **D8** | **Kartu loker ditambahkan, tabel dipertahankan** | `LokerTable` sudah punya modal, pamflet, badge gender, dan pensortiran yang diuji; `e2e:loker-layout` mengukur tabel | Rendah — dua tampilan, satu data |
 | **D9** | **Testimoni karangan diganti “Penempatan Kami”** — 4 prefektur nyata + foto mensetsu | Dokumen resmi punya **Miyazaki, Okayama, Nagano, Kagoshima**. Itu bukti yang bisa diperiksa, dan tidak mengarang apa pun | Rendah |
@@ -60,13 +60,19 @@ membawa gate yang bisa gagal.
 | **S9** | Legalitas & Izin Resmi | `#legalitas` | `h2` | utama (8) |
 | **S10** | Tim & Kredensial | `#tim` | `h2` | utama (8) |
 | **S11** | Fasilitas & Dukungan | `#fasilitas` | `h2` | utama (8) |
-| **R1** | Informasi Kontak | `#kontak` | `h2` | rail (4) |
-| **R3** | Galeri Perusahaan | `#galeri` | `h2` | rail (4) |
-| **R4** | Penempatan Kami | `#penempatan` | `h2` | rail (4) |
-| **R5** | Lokasi Kami | `#lokasi` | `h2` | rail (4) |
+| **R1** | Informasi Kontak | `#kontak` | `h2` | penuh (12) |
+| **R3** | Galeri Perusahaan | `#galeri` | `h2` | penuh (12) |
+| **R4** | Penempatan Kami | `#penempatan` | `h2` | penuh (12) |
+| **R5** | Lokasi Kami | `#lokasi` | `h2` | penuh (12) |
 | — | *grid dua kolom selesai di sini* | | | |
 | **S12** | Pita CTA penutup | `#daftar` | `h2` | penuh (12) |
 | — | Footer | — | `h2` | penuh (12) |
+
+> **Rail kanan DIHAPUS (pemilik, 2026-09-24).** Kolom “rail (4)” di atas dulu adalah
+> `<aside>` lengket di kolom grid kedua; ia dihapus bersama mascot-nya, dan pembungkus
+> grid `xl:grid-cols-[1fr_15rem]` ikut terhapus. `<main>` kini **blok selebar halaman**,
+> jadi kolom “utama (8)”/“rail (4)” sudah tidak ada — R1/R3/R4/R5 dirender sebagai
+> section biasa di dalam `<main>`, sama seperti S1..S11. Lihat §4 dan §7.
 
 > **R2 “Lowongan Ringkas” dihapus** (keputusan pemilik 2026-09-24). `/` adalah
 > **profil perusahaan untuk calon mitra/MoU**, bukan papan lowongan; teaser
@@ -75,10 +81,11 @@ membawa gate yang bisa gagal.
 > Baris R2 dihapus dari tabel ini dan dari matriks §2, dan komponennya
 > (`JobMiniList.tsx`) beserta kuncinya (`profile.mini_*`) ikut dihapus.
 
-**Urutan DOM = urutan baca = urutan tampil di mobile.** Rail ada **setelah** `main`
-dalam DOM; di desktop ia dipindahkan ke kolom kedua oleh CSS grid. Karena kolom kedua
-dibaca setelah kolom pertama, **urutan baca tidak berubah** — inilah cara menghindari
-jebakan WCAG 2.4.3 yang diperingatkan riset bento 2026.
+**Urutan DOM = urutan baca = urutan tampil.** ~~Rail ada **setelah** `main` dalam DOM;
+di desktop ia dipindahkan ke kolom kedua oleh CSS grid.~~ **Rail dan grid-nya DIHAPUS**
+(pemilik 2026-09-24, lihat §4): `<main>` kini selebar halaman, jadi urutan DOM sudah
+sama dengan urutan baca tanpa perlu trik kolom. Jebakan WCAG 2.4.3 yang diperingatkan
+riset bento 2026 tidak lagi punya objek di halaman ini.
 
 ### 1.2 Yang berubah dari Revisi 1
 
@@ -498,7 +505,15 @@ berbeda isinya pada hari pertama ada perubahan.
 
 ---
 
-## 4. Rail kanan — R1..R5
+## 4. Rail kanan — R1..R5 — **DIHAPUS** (pemilik, 2026-09-24)
+
+> **Rail lengket ini tidak ada lagi.** Ia dulu `<aside>` di kolom grid kedua
+> (`xl:grid-cols-[1fr_15rem]`) yang membawa mascot turun mengikuti scroll; pemilik
+> memutuskan mascot dan rail-nya dihapus dari seluruh situs, dan pembungkus grid ikut
+> terhapus. `<main>` kini blok selebar halaman. R1/R3/R4/R5 tetap ada sebagai
+> **section biasa di dalam `<main>`** — tabel di bawah adalah spesifikasi **isinya**,
+> bukan lagi tata letaknya, dan kriteria terima yang menyebut `aside`/kolom lengket
+> sudah tidak berlaku.
 
 | # | Kartu | Isi | Data |
 |---|---|---|---|
@@ -515,10 +530,10 @@ pertukaran yang menguntungkan, dan mematuhi aturan P5.
 
 **Kriteria terima**
 
-- `aside` adalah **satu** elemen; tidak ada markah kedua untuk mobile.
+- ~~`aside` adalah **satu** elemen; tidak ada markah kedua untuk mobile.~~ **DIHAPUS** — tidak ada lagi `aside` di `/`.
 - Di 390 px: `document.documentElement.scrollWidth === clientWidth` (tidak ada gulir horizontal).
-- Di 1280 px: rail lengket, `top: 5.5rem`, tidak menutupi header.
-- Urutan kartu **sama** di kedua bentuk.
+- ~~Di 1280 px: rail lengket, `top: 5.5rem`, tidak menutupi header.~~ **DIHAPUS** bersama rail (2026-09-24).
+- ~~Urutan kartu **sama** di kedua bentuk.~~ **DIHAPUS** — hanya ada satu bentuk sekarang.
 - Nama prefektur ditulis dalam huruf Latin; jangan mengarang nama kota Jepang tambahan.
 
 ---
@@ -574,9 +589,9 @@ label yang sama → merah).
 | `#legalitas` | Legalitas | tautan internal, tombol “Lihat Dokumen” |
 | `#tim` | Tim & Kredensial | tautan internal |
 | `#fasilitas` | Fasilitas | tautan internal |
-| `#kontak` | Informasi Kontak (rail) | nav (opsional), footer |
+| `#kontak` | Informasi Kontak | nav (opsional), footer |
 | `#galeri` | Galeri | tautan internal |
-| `#penempatan` | Penempatan Kami (rail) | tautan internal |
+| `#penempatan` | Penempatan Kami | tautan internal |
 | `#lokasi` | Lokasi Kami | footer |
 | `#daftar` | Pita CTA | CTA penutup |
 
@@ -615,13 +630,14 @@ membuka `/#legalitas` langsung menggulir ke sana — diukur, bukan dikira.
 | S8 Visi & Misi | bertumpuk | berdampingan | berdampingan | berdampingan | berdampingan |
 | S10 Tim | 1 | 2 | 3 | 3 | 3 |
 | S11 Fasilitas | 1 | 2 | 3 | 3 | 3 |
-| Rail R1..R5 | kartu bertumpuk di bawah `main` | idem | mulai jadi kolom | kolom lengket 22 rem | sama |
+| ~~Rail R1..R5~~ | — (rail **DIHAPUS** 2026-09-24; R1..R5 kini section biasa, lihat §4) | — | — | — | — |
 | Nav | drawer | nav baris atas + drawer | nav baris atas | nav baris atas | nav baris atas |
 | Bottom nav | 4 tombol (Beranda/Lowongan/Program/Profil) | — | — | — | — |
 
-**Ambang rail.** Rail mulai jadi kolom di **1280 px**, bukan 1024 px: di 1024 px kolom
-utama hanya menyisakan 1024 − 352 − 48 = 624 px, dan pada lebar itu kartu loker dua
-kolom menjadi terlalu sempit untuk judul 5–8 kata.
+**Ambang rail — tidak berlaku lagi.** Rail dan pembungkus grid-nya **dihapus**
+(pemilik 2026-09-24, lihat §4), jadi tidak ada ambang kolom yang perlu dijaga. Ambang
+1280 px dulu dipilih karena di 1024 px kolom utama hanya menyisakan
+1024 − 352 − 48 = 624 px, terlalu sempit untuk judul kartu loker 5–8 kata.
 
 ---
 
@@ -843,7 +859,7 @@ tidak boleh ada yang setengah jalan.
 | **CRLF** | Baterai mati senyap kalau `*.sh/.mjs/.cjs` ber-CRLF | Biarkan `eol=lf` di `.gitattributes` |
 | **Peta ganda** | Peta sudah ada di `LayananSection.astro:168` | Pindahkan, jangan buat kedua |
 | **Fasilitas ganda** | 6 item asrama sudah ada di `LayananSection.astro:64` | Pindahkan ke S11, jangan duplikasi |
-| **Rail mendorong kolom utama terlalu sempit** | Ambang 1280 px dipilih karena alasan terukur (§7) | Jangan menurunkan ambang tanpa mengukur lebar kartu loker |
+| ~~**Rail mendorong kolom utama terlalu sempit**~~ | Tidak berlaku: rail dan grid-nya dihapus (2026-09-24, §4) | — |
 
 ---
 

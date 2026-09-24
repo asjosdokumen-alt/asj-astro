@@ -18,17 +18,19 @@
  * WHAT IT CHECKS, AND WHAT IT DELIBERATELY DOES NOT
  * ------------------------------------------------
  * It checks the DEFINE/REFERENCE direction only (a name used but never
- * defined). It does NOT fail on a defined-but-unused keyframe: `mascot-enter`
- * is intentionally kept as the entrance the JS gamefeel step will add back,
- * and a gate that fails on it would be a gate demanding the deletion of code
- * that a documented next step depends on.
+ * defined). It does NOT fail on a defined-but-unused keyframe: `slide-in` is
+ * declared in `theme.css` for Tailwind's `animate-slide-in` utility, which
+ * builds its `animation:` shorthand at build time rather than writing it in a
+ * stylesheet, so this gate can never see the reference. A gate that failed on
+ * it would demand the deletion of a keyframe the shipped page uses.
  *
  * SCOPE
  * -----
- * Only `src/styles/*.css`, because that is where the mascot and entrance
- * keyframes live. `global.css` keyframes (Tailwind's) are out of scope and
+ * Only `src/styles/*.css`, because that is where our hand-written keyframes
+ * live (`motion.css` entrance/reveal/marquee/petal, `theme.css` the two
+ * Tailwind ones). `global.css` keyframes (Tailwind's) are out of scope and
  * are excluded by only collecting references to names that LOOK like ours:
- * `mascot-`, `enter-`, `reveal-`, `marquee`, `petal`, `boot`.
+ * `enter-`, `reveal-`, `marquee`, `petal`, `boot`.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -38,7 +40,7 @@ const STYLE_DIR = "src/styles";
 /**
  * ── WHY PREFIXING IS NOT ENOUGH, AND WHY THE FIRST VERSION OF THIS LIST WAS ──
  *
- * The guard started as a list of PREFIXES (`mascot-`, `enter-`, `reveal-`, ...)
+ * The guard started as a list of PREFIXES (`enter-`, `reveal-`, ...)
  * on the theory that our keyframes are named in families. The battery then
  * proved the guard was both over- and under-inclusive at once, in one run:
  *
@@ -54,7 +56,7 @@ const STYLE_DIR = "src/styles";
  *
  * So membership is decided by the name's SHAPE on both sides: a candidate is an
  * animation name only if it does NOT start with `--`. Custom properties are
- * `--enter-ease`, `--reveal-dur`, `--u-mascot-float`; keyframes never are.
+ * `--enter-ease`, `--reveal-dur`, `--enter-shift`; keyframes never are.
  *
  * ── WHY A PREFIX LIST REMAINS, RATHER THAN "EVERYTHING" ─────────────────────
  * Parsing CSS properly is out of scope for a gate this size, and the crude parse
@@ -69,7 +71,11 @@ const STYLE_DIR = "src/styles";
  * sanity check at the bottom of this file rather than silently ignored.
  */
 const OUR_PREFIXES = [
-  "mascot-",
+  // `mascot-` was removed 2026-09-24 with the mascot itself. It is deliberately
+  // NOT left here as a no-op: if a `mascot-*` keyframe is ever reintroduced, the
+  // unreachable-name check at the bottom must flag it so the prefix comes back
+  // WITH the family, rather than the gate silently scanning a list that names a
+  // family it can no longer see.
   "enter-",
   "reveal-",
   "marquee-",
@@ -127,24 +133,27 @@ for (const file of files) {
    * ── DECLARATIONS ARE SCANNED AS WHOLE STATEMENTS, NOT LINE BY LINE ─────────
    *
    * AND THIS IS THE FIX THE BATTERY WAS WRITTEN TO FORCE, because the line-by-line
-   * version had a hole aimed exactly at the thing this gate is for. The mascot
-   * rules are written as a WRAPPED shorthand:
+   * version had a hole aimed exactly at the thing this gate is for. The rule that
+   * exposed it was a WRAPPED two-name shorthand — the mascot's, deleted with her
+   * on 2026-09-24, but kept here as the record of why the scanner has this shape:
    *
-   *     .mascot-bounce {
+   *     .mascot-bounce {                         // (no longer in the tree)
    *       animation: mascot-enter-soft 420ms var(--enter-ease) both,
    *                  mascot-bounce 3.4s ease-in-out infinite 420ms;
    *     }
    *
-   * The second name is on the CONTINUATION line, which contains no `animation:`
-   * token — so a per-line scan never looks at it. Battery case M3 renames exactly
+   * The second name sat on the CONTINUATION line, which contains no `animation:`
+   * token — so a per-line scan never looked at it. Battery case M3 renamed exactly
    * that name and the gate stayed GREEN, on this tree, measured:
    *
    *     line 824:  mascot-bouns 3.4s ease-in-out infinite 420ms;
    *     verify:keyframes -> OK: 22 keyframes defined, 29 references, all resolve.
    *
    * The first name (the entrance) resolved, so the rule looked healthy, and the
-   * SECOND name is the idle — the one the per-section work retargets. The gate was
-   * blind to its own subject.
+   * SECOND name was the idle. The gate was blind to its own subject. No two-name
+   * shorthand survives the mascot's removal, so the scanner is now belt-and-braces
+   * rather than load-bearing — but a wrapped list is one edit away and the shape
+   * that survived a real defect is the shape that stays.
    *
    * ── HOW A STATEMENT BOUNDARY IS FOUND WITHOUT A CSS PARSER ─────────────────
    * A declaration ends at `;`. Braces and comments are already blanked out above,
@@ -185,24 +194,25 @@ for (const file of files) {
     }
 
     // `animation:` shorthand and `animation-name:` longhand. EVERY comma-separated
-    // part may name a keyframe — a shorthand is a LIST, and the mascot rules use
-    // it: `.mascot-lean` declares `mascot-enter-soft ..., mascot-lean ...`.
+    // part may name a keyframe — a shorthand is a LIST. The live declarations here
+    // are single-name today, but the mascot's wrapped two-name rules (deleted
+    // 2026-09-24) are the record of why the list form must be handled.
     //
     // ── WHY THIS ITERATES THE PARTS INSTEAD OF TAKING THE FIRST TOKEN ────────
     // The first version took only the first token of the whole declaration, and
-    // the battery caught it: case M3 renames the SECOND name in `.mascot-bounce`
+    // the battery caught it: case M3 renamed the SECOND name in `.mascot-bounce`
     // (`mascot-enter-soft ..., mascot-bouns ...`) and the gate stayed GREEN,
-    // because it was reading `mascot-enter-soft` — which resolves — and never
+    // because it was reading `mascot-enter-soft` — which resolved — and never
     // looking at the name the case had broken. Measured on committed bytes:
     //
     //     .mascot-bounce { animation: mascot-enter-soft 420ms ... both,
     //                                  mascot-bouns 3.4s ... infinite 420ms; }
     //     verify:keyframes -> exit 0
     //
-    // In this codebase the FIRST name is the entrance and the SECOND is the idle,
-    // and the idle is the one the per-section work actually retargets — so taking
-    // the first token alone meant the gate was blind to precisely the name it was
-    // written for. Iterating the parts finds both.
+    // In that codebase the FIRST name was the entrance and the SECOND was the idle,
+    // so taking the first token alone meant the gate was blind to precisely the
+    // name it was written for. Iterating the parts finds both, and it is the only
+    // shape that stays correct if a list is written again.
     //
     // ── AND WHY AN IDENTIFIER IS MATCHED WITH ITS LEADING DASHES ─────────────
     // The second version matched the name shape `[A-Za-z][A-Za-z0-9_-]*`, which
@@ -266,8 +276,8 @@ if (missing.length > 0) {
  * not a note, because the repair is one word (add the prefix) and the failure it
  * prevents is invisible.
  *
- * This is deliberately about NAMES, not about usage: `mascot-enter` is unused on
- * purpose and must not trip this.
+ * This is deliberately about NAMES, not about usage: `slide-in` is unreferenced
+ * in any stylesheet this gate reads and must not trip this.
  */
 const unreachable = [...defined.keys()].filter(
   (n) => !OUR_PREFIXES.some((p) => n.startsWith(p))

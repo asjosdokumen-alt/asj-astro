@@ -82,6 +82,14 @@
  */
 import { chromium } from 'playwright';
 
+// The entrance oracle. `src/lib/sectionMotion.ts` is the INDEPENDENT table of
+// which section arrives with which entrance; this gate compares the rendered
+// `data-enter` values against it. It is imported rather than copied on purpose:
+// a second hand-written list would agree with the first only until somebody
+// edits one. This import is also what gives the module a real consumer — before
+// Task 6 it was referenced by two comments and imported by nobody.
+import { SECTION_MOTION, ENTER_KINDS, motionFor } from '../src/lib/sectionMotion.ts';
+
 const BASE = process.env.BASE_URL || 'http://localhost:4321';
 
 /**
@@ -547,6 +555,15 @@ async function inspectLanding(width) {
 
         const h2Count = document.querySelectorAll('h2').length;
 
+        // Every element that carries an entrance, read by ATTRIBUTE rather than
+        // by walking the SECTIONS list. A section that gained a `data-enter` the
+        // table does not know about would be skipped by an id-list walk; this
+        // makes it visible to the check instead.
+        const entrances = [...document.querySelectorAll('[data-enter]')].map((el) => ({
+          id: el.id || null,
+          enter: el.getAttribute('data-enter'),
+        }));
+
         // ── HERO_STATS tiles (L8.4) ────────────────────────────────────────
         //
         // Locate each tile by its LABEL, then read the value from the same tile.
@@ -588,6 +605,7 @@ async function inspectLanding(width) {
           linkedFragments,
           unresolvedFragments,
           h2Count,
+          entrances,
           heroStats,
           overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         };
@@ -1023,6 +1041,110 @@ async function run() {
     });
   }
 
+  // ── Entrances — the page must not drift from src/lib/sectionMotion.ts ─────
+  //
+  // THESE CHECKS ARE A RESTORATION, NOT AN ADDITION. `e2e/test-mascot-motion.mjs`
+  // held 17 assertions; 14 measured the mascot and rightly died with her on
+  // 2026-09-24, but the others measured the ENTRANCE half — the owner's "tiap
+  // bagian ... setiap scrollnya bikin transisi beda beda" — which still ships.
+  // They lived in that file only because it happened to import the same table.
+  // Deleting it removed the ONLY guard on `data-enter` while `enter=` stayed on
+  // all fourteen sections, and it left `src/lib/sectionMotion.ts` imported by
+  // nobody. Both are fixed here; the module's own header claimed this file
+  // checked it, and until now that claim was false.
+  //
+  // The property is width-independent: `data-enter` is server-rendered markup and
+  // nothing rewrites it, so these run ONCE instead of once per width. Every other
+  // check in this file is per-width because it measures layout.
+  await test('/: every section entrance matches src/lib/sectionMotion.ts', async () => {
+    const d = await inspect(390);
+    const seen = new Map(d.entrances.map((e) => [e.id, e.enter]));
+    const offenders = [];
+    // Direction 1 — every table row must be rendered, carrying its own entrance.
+    for (const row of SECTION_MOTION) {
+      if (!ENTER_KINDS.includes(row.enter)) {
+        offenders.push(`table row "${row.id}" names entrance "${row.enter}", which is not in ENTER_KINDS`);
+      }
+      if (!seen.has(row.id)) {
+        offenders.push(`${row.id}: listed in the table but no element on / carries id="${row.id}" and data-enter`);
+      } else if (seen.get(row.id) !== row.enter) {
+        offenders.push(`${row.id}: rendered data-enter="${seen.get(row.id)}", table says "${row.enter}"`);
+      }
+    }
+    // Direction 2 — no element may carry an entrance the table does not know.
+    for (const e of d.entrances) {
+      if (!e.id) {
+        offenders.push(`an element carries data-enter="${e.enter}" with no id — it cannot be matched to the table`);
+      } else if (!motionFor(e.id)) {
+        offenders.push(`${e.id}: carries data-enter="${e.enter}" but has no row in SECTION_MOTION`);
+      }
+    }
+    // Anti-vacuity: a page with no entrances at all would satisfy both directions.
+    if (d.entrances.length === 0) {
+      offenders.push('no [data-enter] element was found at all — the check cannot be judging anything');
+    }
+    if (offenders.length) {
+      throw new Error(
+        `section entrances drifted from src/lib/sectionMotion.ts:\n       · ${offenders.join('\n       · ')}\n` +
+          `     That table is the INDEPENDENT oracle (written from the owner's "beda beda" requirement, not ` +
+          `derived from the markup — deriving it would make this check agree with whatever the page says). ` +
+          `Fix the markup or the table; do not delete this assertion.`,
+      );
+    }
+  });
+
+  await test('/: the page uses several DIFFERENT entrance kinds, not one fade repeated', async () => {
+    const d = await inspect(390);
+    const kinds = new Set(d.entrances.map((e) => e.enter).filter(Boolean));
+    const declared = new Set(SECTION_MOTION.map((s) => s.enter));
+    // The oracle must itself be varied, or the page check below is unachievable
+    // and the failure would blame the markup for the table's monotony.
+    if (declared.size < 4) {
+      throw new Error(
+        `the TABLE declares only ${declared.size} distinct entrance kind(s). The owner asked for a different ` +
+          `transition per section; an oracle that names fewer than four cannot express that.`,
+      );
+    }
+    if (kinds.size < 4) {
+      throw new Error(
+        `only ${kinds.size} distinct entrance kind(s) across ${d.entrances.length} sections: ${JSON.stringify([...kinds])}. ` +
+          `The owner asked for a DIFFERENT transition per section ("setiap scrollnya bikin transisi beda beda"); ` +
+          `one kind repeated is one animation played many times.`,
+      );
+    }
+  });
+
+  await test('/: the entrance table is in document order, and no adjacent rows repeat', async () => {
+    const d = await inspect(390);
+    const offenders = [];
+    // Order first: it is what makes the adjacent rule below mean "two bands you
+    // scroll past in a row", not merely "two neighbouring rows in a table".
+    const positions = SECTION_MOTION.map((s) => d.order[s.id]).filter((i) => i !== undefined);
+    if (positions.length !== SECTION_MOTION.length) {
+      offenders.push(
+        `only ${positions.length} of ${SECTION_MOTION.length} table ids were found in the document-order map`,
+      );
+    }
+    for (let i = 1; i < positions.length; i++) {
+      if (positions[i] <= positions[i - 1]) {
+        offenders.push(
+          `${SECTION_MOTION[i].id} (doc index ${positions[i]}) does not follow ` +
+            `${SECTION_MOTION[i - 1].id} (${positions[i - 1]}) in the document`,
+        );
+      }
+    }
+    for (let i = 1; i < SECTION_MOTION.length; i++) {
+      const a = SECTION_MOTION[i - 1];
+      const b = SECTION_MOTION[i];
+      if (a.enter === b.enter) offenders.push(`${a.id} and ${b.id} share entrance "${a.enter}"`);
+    }
+    if (offenders.length) {
+      throw new Error(
+        `the entrance table no longer matches the page's order:\n       · ${offenders.join('\n       · ')}`,
+      );
+    }
+  });
+
   await browser.close();
 
   console.log('');
@@ -1034,7 +1156,7 @@ async function run() {
     const w = [390, 1280];
     console.log(
       `landing: all checks passed (${SECTIONS.length} spec sections × ${w.length} widths, ` +
-        `order + visibility + placeholders + anchors).`,
+        `order + visibility + placeholders + anchors + entrances).`,
     );
   }
 }

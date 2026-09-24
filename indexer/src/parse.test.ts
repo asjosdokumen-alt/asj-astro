@@ -112,7 +112,18 @@ describe('real-file outlines', () => {
     // MEASURED with a temporary probe calling parseFile directly on this exact
     // relPath (then deleted, before any inventory count was taken): imports 22,
     // symbols 43.
-    expect(p.imports).toHaveLength(22); // 6 at design time; +the L2/L3/L4/R2 landing-page imports, +JapanTexture, -1 by the e9317cf redesign, +1 PrincessMascot.astro (2026-09-20), +1 HistoryTimeline.tsx and +1 ContactForm.tsx (2026-09-21). Adding an IMPORT to this file is what moves this number, not adding a file.
+    // 22 -> 20 (2026-09-24, company-profile reframe). TWO default imports left
+    // this file, one per commit, and NEITHER commit's gate ran this project — so
+    // the number went stale silently and this test was RED at HEAD while every
+    // task reported green. Task 1 (`1d0ba1d`) removed
+    // `import JobMiniList from '../components/public/JobMiniList.tsx'` with the
+    // loker-ringkas section; Task 3 (`c1a2371`) removed
+    // `import PrincessMascot from '../components/public/PrincessMascot.astro'`
+    // with the mascot. Each is one import STATEMENT and one bound name, so BOTH
+    // counters move by one — hence 43 -> 41 below. This is the D1 lesson made
+    // concrete: a task whose gate omits a project can hide a regression in that
+    // project. Found and repaired in Task 6, which DID run the indexer project.
+    expect(p.imports).toHaveLength(20); // 6 at design time; +the L2/L3/L4/R2 landing-page imports, +JapanTexture, -1 by the e9317cf redesign, +1 PrincessMascot.astro (2026-09-20), +1 HistoryTimeline.tsx and +1 ContactForm.tsx (2026-09-21), -1 JobMiniList.tsx (2026-09-24, Task 1) and -1 PrincessMascot.astro (2026-09-24, Task 3). Adding or removing an IMPORT in this file is what moves this number, not adding or removing a file.
     // CORRECTION (2026-09-19). This line used to read "one ImportBinding per
     // import", and that was true only while every import in this file was a DEFAULT
     // import. The companyProfile import is named and pulls in 13 bindings, so the
@@ -125,7 +136,7 @@ describe('real-file outlines', () => {
     // STATEMENTS of which the companyProfile named block supplies 20 names —
     // 17 - 2 + 20 + 4 = 39. Counting the statements by hand gives 40 and is
     // wrong; the indexer's number is the one this assertion is about.
-    expect(p.symbols).toHaveLength(43); // 17 default bindings + 26 named bindings. +1 (2026-09-20) = the PrincessMascot import, a DEFAULT binding, so this moved by 1 and not by the named-binding count. +1 (2026-09-21) = HistoryTimeline (a DEFAULT binding) and +0 more for ContactForm's statement, PLUS `Milestone` added to the existing NAMED companyProfile block (+1) — which is why the two steps together move this by 3 while the statement count moves by 2.
+    expect(p.symbols).toHaveLength(41); // 17 default bindings + 26 named bindings, now 15 default + 26 named = 41. +1 (2026-09-20) = the PrincessMascot import, a DEFAULT binding, so this moved by 1 and not by the named-binding count. +1 (2026-09-21) = HistoryTimeline (a DEFAULT binding) and +0 more for ContactForm's statement, PLUS `Milestone` added to the existing NAMED companyProfile block (+1) — which is why the two steps together move this by 3 while the statement count moves by 2. -2 (2026-09-24): JobMiniList and PrincessMascot, both DEFAULT bindings, so this drops by exactly 2 alongside the imports count above.
     expect(p.symbols.every((s) => s.kind === SymbolKind.ImportBinding)).toBe(true);
     expect(p.imports.every((i) => i.kind === ImportKind.Static)).toBe(true);
   });

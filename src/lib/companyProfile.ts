@@ -51,8 +51,9 @@ export interface Text {
  *
  * `alt` is REQUIRED and never empty on purpose: these are content illustrations
  * that carry meaning (a factory for SSW placements, a book for language
- * training), not decoration. The repo has a separate `decorative` escape hatch
- * on `Mascot` for art that carries none.
+ * training), not decoration. There is deliberately no `decorative` opt-out on
+ * `TileImage` — the mascot component that used to carry one was removed on
+ * 2026-09-24, and every tile here is content.
  */
 export interface TileImage {
   name: string;

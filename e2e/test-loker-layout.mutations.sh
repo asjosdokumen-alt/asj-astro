@@ -69,11 +69,13 @@ served_css() { grep -o '_astro/admin\.[A-Za-z0-9_-]*\.css' dist/loker/index.html
 # here: SILENCE that looks like a clean run, on the one script whose whole job is
 # to prove the guard can fail.
 #
-# The fix matches with a `\r?\n` regex instead of a literal newline, following
-# the idiom already proven in `test-mascot-motion.mutations.sh:250-266`, and
-# rebuilds the replacement with whichever EOL the file actually uses at that
-# spot. So an anchor works whether the file is LF or CRLF, a CRLF file stays
-# CRLF, and a `core.autocrlf` change cannot silently kill the battery again.
+# The fix matches with a `\r?\n` regex instead of a literal newline, and rebuilds
+# the replacement with whichever EOL the file actually uses at that spot. (This
+# idiom was first proven in `e2e/test-mascot-motion.mutations.sh`, deleted with
+# the mascot on 2026-09-24; the CRLF trap itself is still recorded in
+# `scripts/ci/check-keyframes.mutations.sh` and `scripts/ci/kf-mutate.cjs`.) So an
+# anchor works whether the file is LF or CRLF, a CRLF file stays CRLF, and a
+# `core.autocrlf` change cannot silently kill the battery again.
 #
 # NOTE ON THE ESCAPING, because it bit this repair once already: the `node -e`
 # body below is inside a SINGLE-QUOTED shell string, so backslashes reach
