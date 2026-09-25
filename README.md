@@ -89,7 +89,8 @@ src/
 │   ├── App.tsx          # Root (Header + LoginModal + Toast)
 │   ├── LoginModal.tsx   # Auth forms (Supabase)
 │   ├── admin/           # Admin panel (8 tabs + 12 modals)
-│   │   ├── AdminPanel.tsx        # Main panel with sidebar + tab routing
+│   │   ├── AdminPanel.tsx        # Main panel with sidebar + tab routing + PT Aamanah Sakura Japan
+ようこそ
 │   │   ├── TabPelamar.tsx        # Data Pelamar (candidates list)
 │   │   ├── TabDbJob.tsx          # DB Job Internal
 │   │   ├── TabWA.tsx             # WA Pintar (templates + invite)
@@ -152,3 +153,5 @@ See `git log` for commit history. Recent sessions have added:
 ## 📄 License
 
 Private — PT Amanah Sakura Japan
+
+
