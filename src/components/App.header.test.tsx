@@ -109,3 +109,37 @@ describe('drawer — tombol tutup harus jadi target sentuh yang layak', () => {
     expect(close!.className).toContain('h-11');
   });
 });
+
+describe('bahasa — toggle HANYA di dalam drawer, bukan di header', () => {
+  /** The header bar is the `absolute top-4 right-4` flex row in App.tsx. */
+  function headerBar(): HTMLElement | null {
+    const hamburger = document.querySelector('button[aria-label="Toggle Menu"]');
+    return (hamburger?.parentElement as HTMLElement | null) ?? null;
+  }
+
+  it('menghapus tombol bahasa dari header sepenuhnya', () => {
+    // Owner ruling: the JP switch must live ONLY in the drawer. We assert the
+    // button is ABSENT (not merely `hidden`) — a `hidden` control is one
+    // utility-class edit from reappearing, whereas absent markup cannot come
+    // back by accident. This is the regression the old `hidden md:flex`
+    // header button represented.
+    render(<App />);
+    const bar = headerBar();
+    expect(bar).not.toBeNull();
+    expect(bar!.querySelector('button[aria-label="Toggle language"]')).toBeNull();
+    // …and the hamburger must survive — removing the sibling must not have
+    // taken the menu control with it.
+    expect(bar!.querySelector('button[aria-label="Toggle Menu"]')).not.toBeNull();
+  });
+
+  it('menyediakan toggle bahasa di dalam drawer (satu-satunya jalan masuk)', () => {
+    // The drawer copy is now the ONLY entry point, so it must exist and must
+    // be wired to the shared toggle. Its visible text carries the language
+    // code, so we key on the drawer nav rather than the header.
+    render(<App />);
+    const drawer = document.querySelector('nav[aria-label="Primary navigation"]');
+    expect(drawer).not.toBeNull();
+    const langBtn = drawer!.querySelector('button[aria-label="Toggle language"]');
+    expect(langBtn).not.toBeNull();
+  });
+});

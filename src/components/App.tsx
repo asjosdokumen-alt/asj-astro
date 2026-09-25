@@ -340,9 +340,6 @@ export default function App(
              which reads as a misaligned control. `gap-2` is unchanged, so the
              two still sit on the same baseline. */}
         <div class="absolute top-4 right-4 z-30 flex items-center gap-2">
-          <button onClick={toggleLang} class="hidden md:flex w-11 h-11 items-center justify-center bg-black/60 hover:bg-black/80 text-white rounded-full border border-white/40 transition shadow-md" aria-label="Toggle language" title={lang === "id" ? "ID" : "JP"}>
-            <span class="text-[11px] font-bold">{lang === "id" ? "ID" : "JP"}</span>
-          </button>
           <button ref={hamburgerRef} onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center bg-black/70 hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
             <Icon name={menuOpen ? "times" : "bars"} class="text-lg" />
           </button>
@@ -505,7 +502,7 @@ export default function App(
         <div class="flex-1 u-scroll-area p-4 space-y-3">
           <div class="space-y-3 pb-3 mb-3 border-b border-slate-700">
             <button onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>
-            <button onClick={toggleLang} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
+            <button onClick={toggleLang} aria-label="Toggle language" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
           </div>
           {hydrated && !u.isLoggedIn && (<div class="space-y-3">
             <button onClick={openLogin} class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">{t("header.login")}</button>
