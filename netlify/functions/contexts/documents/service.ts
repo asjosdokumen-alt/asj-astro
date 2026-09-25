@@ -155,16 +155,6 @@ function badDocumentUrls(
   return bad;
 }
 
-function fireIngest(payload: unknown[], sessionToken?: string): void {
-  // P34 fix: /ingest adalah stub NOT_IMPLEMENTED permanen — self-HTTP call
-  // per upload/apply hanya membuang budget function. Smart Ingestion di-log
-  // saja sampai implementasi nyata tersedia.
-  console.log(
-    "[Smart Ingest] disabled (stub):",
-    JSON.stringify({ payload, hasSession: !!sessionToken }).slice(0, 200),
-  );
-}
-
 export async function handleGetUploadUrls(
   payload: any[],
   sessionToken?: string,
@@ -567,31 +557,9 @@ export async function handleSubmitApply(payload: any[], sessionToken?: string) {
     } catch {
       /* non-fatal */
     }
-    const PARSEABLE_EXTS = new Set([
-      "pdf",
-      "docx",
-      "xlsx",
-      "xls",
-      "csv",
-      "txt",
-    ]);
-    const ingestFiles: any[] = [];
-    const collectIngest = (fileUrl: string) => {
-      if (!fileUrl) return;
-      const ext = (String(fileUrl).split(".").pop() || "")
-        .split("?")[0]
-        .toLowerCase();
-      if (PARSEABLE_EXTS.has(ext)) ingestFiles.push({ fileUrl, fileType: ext });
-    };
-    collectIngest(d.cvFile || d.oldCv);
-    collectIngest(d.jftFile || d.oldJft);
-    collectIngest(d.sswFile || d.oldSsw);
-    (d.extraFiles || []).forEach((x: any) => collectIngest(x && x.url));
-    if (ingestFiles.length && wa)
-      fireIngest(
-        ingestFiles.map((f) => ({ ...f, wa })),
-        undefined,
-      );
+    // Item 7 (2026-09-25): parse dokumen kandidat bersifat admin-only — hanya
+    // dipicu manual dari menu Parse admin. Upload/apply kandidat tidak boleh
+    // memicu parsing otomatis, jadi pemicu ingest di sini sengaja dihapus.
     return {
       success: true,
       message: "Lamaran berhasil dikirim. Terima kasih.",
@@ -770,28 +738,8 @@ export async function handleSimpanKandidatDanUpload(
         Object.assign({ created_at: now, updated_at: now }, formBody),
       );
     }
-    const PARSEABLE_EXTS = new Set([
-      "pdf",
-      "docx",
-      "xlsx",
-      "xls",
-      "csv",
-      "txt",
-    ]);
-    const ingestFiles: any[] = [];
-    for (const f of files) {
-      if (!f) continue;
-      const fUrl = String(f.url || "").trim();
-      if (!fUrl) continue;
-      const ext = (fUrl.split(".").pop() || "").split("?")[0].toLowerCase();
-      if (PARSEABLE_EXTS.has(ext))
-        ingestFiles.push({ fileUrl: fUrl, fileType: ext });
-    }
-    if (ingestFiles.length && wa)
-      fireIngest(
-        ingestFiles.map((f) => ({ ...f, wa })),
-        sessionToken,
-      );
+    // Item 7 (2026-09-25): parse dokumen kandidat bersifat admin-only — hanya
+    // dipicu manual dari menu Parse admin, tidak pernah oleh unggahan kandidat.
     // Emit domain event for each uploaded file
     if (wa) {
       for (const label of uploaded) {
@@ -920,19 +868,8 @@ export async function handleSimpanBerkasTahapan(
         });
       }
     }
-    const PARSEABLE_EXTS = new Set([
-      "pdf",
-      "docx",
-      "xlsx",
-      "xls",
-      "csv",
-      "txt",
-    ]);
-    if (PARSEABLE_EXTS.has(ext.toLowerCase()) && url && wa)
-      fireIngest(
-        [{ fileUrl: url, fileType: ext.toLowerCase(), wa }],
-        sessionToken,
-      );
+    // Item 7 (2026-09-25): parse dokumen kandidat bersifat admin-only — unggah
+    // berkas tahapan tidak boleh memicu parsing otomatis, jadi ingest dihapus.
     // Emit domain event for document upload
     if (wa && url) {
       emit({
@@ -1048,19 +985,8 @@ export async function handleSimpanRevisiKandidat(
         headers: { Prefer: "return=minimal" },
       });
     }
-    const PARSEABLE_EXTS = new Set([
-      "pdf",
-      "docx",
-      "xlsx",
-      "xls",
-      "csv",
-      "txt",
-    ]);
-    if (url && PARSEABLE_EXTS.has(ext.toLowerCase()) && wa)
-      fireIngest(
-        [{ fileUrl: url, fileType: ext.toLowerCase(), wa }],
-        sessionToken,
-      );
+    // Item 7 (2026-09-25): parse dokumen kandidat bersifat admin-only — unggah
+    // revisi CV tidak boleh memicu parsing otomatis, jadi ingest dihapus.
     return { success: true };
   } catch (e: any) {
     return { success: false, error: safeError("Gagal upload revisi.", e) };
