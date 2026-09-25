@@ -508,7 +508,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     "button.save_db": "SIMPAN DB",
     "button.upload_revise": "Upload Revisi",
     "button.view_cv": "Lihat CV",
-    "button.profil": "Profil",
     "button.view_public_jobs": "Lihat Loker",
     "option.LAKI-LAKI": "Laki-laki",
     "option.PEREMPUAN": "Perempuan",
@@ -1355,6 +1354,7 @@ export const translations: Record<Lang, Record<string, string>> = {
   // does not resolve is a link that looks live and does nothing.
   "profile.nav_loker": "Lowongan",
   "dossier.brand": "ASJ DOSSIER",
+  "dossier.status_stage": "Status & Tahapan",
   "dossier.verified": "VERIFIED CANDIDATE",
   "dossier.address_ktp": "Alamat Detail (KTP)",
   // `#layanan` resolves as of e9317cf, which turned the Layanan tab panel into a

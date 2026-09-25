@@ -5,6 +5,7 @@ import api, { apiClient } from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
 import DocumentPreviewModal from '../DocumentPreviewModal';
+import { downloadBiodataText } from '../../lib/biodataExport';
 
 interface Props {
   wa: string;
@@ -257,39 +258,12 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
 
   const handleDownloadBiodata = () => {
     if (!data) return;
-    const lines = [
-      `BIODATA KANDIDAT`,
-      `================`,
-      `Nama: ${data.nama}`,
-      `WA: ${data.wa}`,
-      `ID: ${data.idKandidat || '-'}`,
-      `Gender: ${data.gender || '-'}`,
-      `Usia: ${data.usia || '-'} Tahun`,
-      `Tempat Lahir: ${data.tmplahir || '-'}`,
-      `Tanggal Lahir: ${data.tgllahir || '-'}`,
-      `Email: ${data.email || '-'}`,
-      `Alamat: ${data.alamat || '-'}`,
-      `JFT: ${data.jft || '-'}`,
-      `SSW: ${data.ssw || '-'}`,
-      `Fisik: ${data.fisik || '-'}`,
-      `Pendidikan: ${data.pendidikan || '-'}`,
-      `Tahapan: ${data.tahapan || '-'}`,
-      `Status: ${data.status || '-'}`,
-      `VIP: ${data.isVIP ? 'YA' : 'TIDAK'}`,
-      ``,
-      `BERKAS:`,
-      ...Object.entries(data.berkas || {}).filter(([, v]) => v).map(([k, v]) => `  ${k}: ${v}`),
-      ``,
-      `BIODATA DETAIL:`,
-      ...Object.entries(data.bio || {}).filter(([, v]) => v).map(([k, v]) => `  ${k}: ${v}`),
-    ].join('\n');
-    const blob = new Blob([lines], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `biodata-${data.idKandidat || data.wa}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    /* Shared formatter — `src/lib/biodataExport.ts`. The candidate's dossier card
+       calls the SAME one, which is how legacy worked: one
+       `downloadBiodataLengkap()` served both surfaces. Before the extraction this
+       body was inline here, so the candidate's copy of the button had nothing to
+       call and the two would have drifted on the first format change. */
+    downloadBiodataText(data);
   };
 
   return (

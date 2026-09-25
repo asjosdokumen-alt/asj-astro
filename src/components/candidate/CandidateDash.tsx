@@ -23,6 +23,7 @@ import { computeCvMiniProgress, computeCvMasterProgress, computeOverallProgress 
 import LevelCard from './LevelCard';
 import StepGuide from './StepGuide';
 import AsjDossierCard from './AsjDossierCard';
+import { downloadBiodataText } from '../../lib/biodataExport';
 import { ErrorBoundary } from '../ErrorBoundary';
 
 // `feedback` = `feedback_berkas` dari database_asj_form. Dipakai untuk
@@ -273,7 +274,29 @@ export default function CandidateDash() {
             id: s.id || '', nama: s.agenda || s.nama || '', waktu: s.waktu || '',
             lokasi: s.lokasi || '', link: s.link || '',
           })),
-          catatan: row?.catatan || legacyD.catatan || '',
+          /* ── KOTAK "PESAN / EVALUASI DARI ADMIN" = catatan EXTERNAL SAJA ──
+             DIPERBAIKI 2026-09-25. Sebelumnya baris ini membaca `row.catatan`,
+             dan `mapCandidate` memetakan `catatan` dari kolom **`catatan_admin`**
+             (`_lib/db/candidates.ts:65`) — sebuah memo sisi-admin yang diisi dari
+             `EditCandidateModal` (`contexts/registry/service.ts:24`). Akibatnya
+             kandidat melihat memo internal admin, dan **tidak pernah** melihat
+             `catatan_ext` — catatan yang memang ditulis admin UNTUK dia
+             (`service.ts:39,57,112` menulisnya; legacy membacanya di
+             `js/engine/init.ts:449`: `myData.catatanExt` → `#k-dash-catatan-ext`).
+             Jadi ini bocor DAN kehilangan fitur sekaligus.
+
+             Konvensi repo sendiri sudah menuliskannya dua kali: "Kolom catatan
+             mengikuti legacy: catatanExt || catatan"
+             (`lib/candidateExport.ts:85`, `store/adminStore.ts:25`). Baris itu
+             berlaku untuk kolom EKSPOR milik admin; untuk permukaan KANDIDAT,
+             legacy memakai `catatanExt` TANPA fallback — dan itu yang dipakai di
+             sini, karena `catatan_admin` memang bukan untuk kandidat.
+
+             Ketahuan dari probe browser yang menaruh teks bertanda di
+             `catatan` dan memeriksa DOM: teks itu MUNCUL di dasbor kandidat. */
+          catatan: row?.catatanExt || legacyD.catatanExt || '',
+          /** Nilai mentah `catatan_ext`, disimpan terpisah supaya konsumen yang
+           *  butuh field aslinya tidak perlu menebak dari `catatan`. */
           catatanExt: row?.catatanExt || legacyD.catatanExt || '',
           berkasProgress: berkasList.length
             ? Math.round((berkasList.filter((b) => b.done).length / berkasList.length) * 100)
@@ -413,6 +436,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         nama={data.nama}
         idKandidat={data.idKandidat}
         status={data.status}
+        tahapan={data.tahapan}
         wa={data.wa}
         pasPhoto={data.pasPhoto}
         gender={data.gender}
@@ -425,16 +449,38 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         jftText={data.cvmini?.jftText}
         sswText={data.cvmini?.sswText}
         jobs={dossierJobs}
-        isVIP={data.isVIP}
-        isSiswaASJ={data.isSiswaASJ}
+        kelas={data.kelas}
         badge={
           <>
             <CrownBadge progress={overallProgress} />
             {data.isVIP && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-6 h-6 align-middle object-contain rounded-full border border-accent-emerald" />}
           </>
         }
-        onEdit={() => setShowCvMiniModal(true)}
-        onDownload={() => setShowRirekisho(true)}
+        /* The CTA produces the SAME artefact the admin panel produces, from the
+           same formatter — legacy served both surfaces from one
+           `downloadBiodataLengkap()`. Wiring it to `RirekishoBuilder` instead
+           would have put a second, different document behind a label that says
+           "Download Full Biodata". */
+        onDownload={() => downloadBiodataText({
+          nama: data.nama,
+          wa: data.wa,
+          idKandidat: data.idKandidat,
+          gender: data.gender,
+          usia: data.usia,
+          fisik: data.tbBb,
+          pendidikan: data.pendidikan,
+          tmplahir: data.tempatLahir,
+          tgllahir: data.tglLahir,
+          email: data.email,
+          alamat: data.alamat,
+          jft: data.cvmini?.jftText,
+          ssw: data.cvmini?.sswText,
+          tahapan: data.tahapan,
+          status: data.status,
+          isVIP: data.isVIP,
+          berkas: data.berkas,
+          bio: data.bio,
+        })}
       />
 
       <div class="glass-panel p-5 sm:p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
@@ -515,10 +561,17 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           </div>
         )}
 
-        {/* ── Profil button ── */}
-        <div class="mb-6 md:mb-8 flex justify-center">
-          <button onClick={() => setShowCvMiniModal(true)} class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm"><Icon name="user-circle" class="mr-2 text-sky-400" /> {t('button.profil')}</button>
-        </div>
+        {/* ── "PROFIL" BUTTON REMOVED 2026-09-25 — LEGACY HAS NO SUCH BUTTON ──
+            Legacy's candidate page (`#page-kandidat`) reached the dossier through
+            exactly ONE affordance, "Lihat Profil Digital CV Saya" →
+            `bukaDigitalCV(currentKandidatId)`, and edited the profile through
+            "Update CV Mini" in the action grid below. This extra button opened
+            `CvMiniModal` — the same modal the grid's "Update Profil" opens — so it
+            was a third path to a two-path job, and it appeared in no legacy
+            markup. Removed rather than kept as a convenience: the owner asked for
+            the page to match legacy ("lihat legacy saja kira kira samain").
+            `button.profil` was deleted from BOTH dictionaries with it; it had no
+            other consumer. */}
 
         {/* ── Status Lamaran Terkini (with tahapan pipeline) ── */}
         <div class="mb-6 md:mb-8 bg-gradient-to-r from-sky-950 to-indigo-950 border border-sky-500/30 p-5 md:p-8 rounded-[2rem] shadow-xl relative overflow-hidden text-left">

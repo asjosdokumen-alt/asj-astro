@@ -612,16 +612,75 @@ describe('CandidateDash — kartu dossier sebagai header profil', () => {
     vi.unstubAllGlobals();
   });
 
-  it('merender identitas kandidat, aksi edit, dan CTA unduh di kartu', async () => {
+  it('merender identitas kandidat dan CTA unduh di kartu', async () => {
     await renderDash();
     expect(screen.getByText('dossier.brand')).toBeTruthy();
     expect(screen.getByText('dossier.verified')).toBeTruthy();
     // idKandidat dari row() — kalau pelat ID hilang, ini merah.
     expect(screen.getByText('ASJ-001')).toBeTruthy();
-    // Dua kontrol untuk aksi edit: satu di kartu, satu di grid aksi bawah. Sengaja
-    // `getAllByRole` — kalau salah satunya hilang, panjangnya berubah dan tes merah.
-    expect(screen.getAllByRole('button', { name: 'ui.update_cv_mini' })).toHaveLength(2);
+    /* "Update Profil" muncul TEPAT SEKALI, di grid aksi bawah. Kartu dossier
+       tidak punya tombol edit, dan itu disengaja: legacy juga tidak punya —
+       kandidat mengedit dari grid. Tes ini merah kalau tombol kedua muncul
+       kembali di kartu (versi pertama kartu memang punya satu). */
+    expect(screen.getAllByRole('button', { name: 'ui.update_cv_mini' })).toHaveLength(1);
     expect(screen.getByRole('button', { name: 'ui.cv_download_biodata' })).toBeTruthy();
+  });
+
+  it('TIDAK merender satu pun permukaan admin-only dari dossier legacy', async () => {
+    /* KEPUTUSAN OWNER 2026-09-25: "panel admin ya tetap di admin panel … karena
+       ada yg privasi khusus yg hanya boleh ada di admin".
+       Dossier legacy (#modal-cv) adalah SATU modal yang dibuka admin DAN
+       kandidat; lima blok di dalamnya digerbangi `isAdmin` / `isAdmin && isLolos`
+       (js/admin_modal/cv.ts:145,252,283,312,396). Tes ini menegakkan daftar itu,
+       supaya menyalin salah satunya ke sisi kandidat MERAH alih-alih diam-diam
+       membocorkan data privat.
+
+       Kunci-kunci di bawah adalah penanda yang dipakai permukaan admin itu
+       sendiri (admin/CandidateProfileModal.tsx), jadi tesnya menguji hal yang
+       sama yang benar-benar dirender admin. */
+    await renderDash({ catatanInt: '[VIP]', catatan: 'catatan internal rahasia' });
+    const body = document.body.textContent || '';
+    for (const adminOnly of [
+      'ui.edit_quick_cv',            // EDIT DATA CEPAT
+      'ui.note_internal',            // Catatan Internal (Private)
+      'ui.note_external',            // Catatan External (Kandidat)
+      'ui.cand_docs_supabase',       // Dokumen Pelamar (Supabase) — termasuk BUKA KTP
+      'ui.open_cv',                  // BUKA CV
+      'ui.open_jft',                 // BUKA JFT
+      'ui.open_ssw',                 // BUKA SSW
+      'ui.open_photo',               // BUKA FOTO
+    ]) {
+      expect(body, `permukaan admin-only bocor ke dasbor kandidat: ${adminOnly}`).not.toContain(adminOnly);
+    }
+    /* `ui.complete_berkas_biodata` SENGAJA TIDAK ada di daftar itu, dan
+       alasannya penting supaya tidak ada yang "merapikannya" masuk ke sini.
+       Kunci itu memang muncul di dasbor kandidat (`CandidateDash.tsx:746`),
+       karena pemberkasan adalah fitur KANDIDAT: legacy mengekspor
+       `bukaModalPemberkasan(waTarget)` dari modul KANDIDAT
+       (`js/03_candidate.ts:473`), bukan dari `admin_modal/`. Yang admin-only di
+       dossier legacy adalah BUKA KTP/CV/JFT/SSW/FOTO dan folder Google Drive di
+       dalam `cv-pemberkasan-area` — dan itu dijaga oleh empat kunci `ui.open_*`
+       di atas. Daftar ini diuji dulu, bukan ditebak: percobaan pertama
+       memasukkannya dan tes langsung merah karena kuncinya memang dirender. */
+    // KONTROL POSITIF — tanpa ini, tes di atas juga lulus di halaman kosong.
+    expect(body).toContain('dossier.brand');
+    expect(body).toContain('ui.update_cv_mini');
+  });
+
+  it('kotak "Pesan / Evaluasi dari Admin" memakai catatan EXTERNAL, bukan catatan_admin', async () => {
+    /* KEPUTUSAN OWNER 2026-09-25: "ada yg privasi khusus yg hanya boleh ada di
+       admin". `mapCandidate` memetakan `catatan` dari kolom `catatan_admin` —
+       memo sisi-admin dari `EditCandidateModal` — sementara legacy mengisi kotak
+       kandidat dari `catatan_ext` (`js/engine/init.ts:449`). Adapter lama membaca
+       `catatan`, jadi kandidat melihat memo internal admin DAN tidak pernah
+       melihat catatan yang ditulis untuknya.
+
+       Dua arah diuji: yang EXTERNAL harus muncul, yang ADMIN harus tidak. Satu
+       arah saja tidak cukup — "tidak bocor" juga benar kalau kotaknya kosong. */
+    await renderDash({ catatan: 'MEMO-INTERNAL-ADMIN', catatanExt: 'CATATAN-UNTUK-KANDIDAT' });
+    const body = document.body.textContent || '';
+    expect(body, 'catatan external tidak dirender').toContain('CATATAN-UNTUK-KANDIDAT');
+    expect(body, 'catatan_admin bocor ke dasbor kandidat').not.toContain('MEMO-INTERNAL-ADMIN');
   });
 
   it('TIDAK pernah mencetak nomor KTP (nik) di permukaan kandidat', async () => {

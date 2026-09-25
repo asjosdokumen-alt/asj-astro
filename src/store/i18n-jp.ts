@@ -543,7 +543,6 @@ export const jpTranslations: Record<string, string> = {
     "button.upload_revise": "修正をアップロード",
     "button.save_changes": "変更を保存",
     "button.view_cv": "CVを見る",
-    "button.profil": "プロフィール",
     "button.view_public_jobs": "公開求人を見る",
     "status.open": "募集中",
     "status.urgent": "急募",
@@ -999,6 +998,7 @@ export const jpTranslations: Record<string, string> = {
   // 生きているように見えて何もしないリンクになる。
   "profile.nav_loker": "求人",
   "dossier.brand": "ASJ DOSSIER",
+  "dossier.status_stage": "ステータス・段階",
   "dossier.verified": "VERIFIED CANDIDATE",
   "dossier.address_ktp": "住所詳細（KTP）",
   // `#layanan` は e9317cf で解決するようになった（タブパネルが通常の
