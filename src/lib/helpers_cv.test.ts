@@ -296,3 +296,52 @@ describe('getPath/makeV — pencarian nilai nested + fallback flat legacy', () =
     expect(isGood('A')).toBe(true);
   });
 });
+
+// ==========================================
+// TESTS: isGood — penjaga sentinel literal (item 8, 2026-09-25)
+//
+// Owner melaporkan CV/rirekisho mencetak banyak "undefined". Akar alias-key
+// SUDAH diperbaiki oleh normalizer; sisa lubangnya adalah STRING LITERAL
+// "undefined" yang lolos setiap gerbang lama (bukan null/undefined JS, bukan
+// kosong, bukan "-") lalu tercetak ke kertas. Guard ini menutup lubang itu
+// secara KONSERVATIF: hanya kecocokan PERSIS nilai utuh (case-insensitive).
+// ==========================================
+describe('isGood — sentinel literal "undefined"/"null"/"NaN" tidak pernah dirender', () => {
+  it('string literal "undefined" → kosong (tidak dicetak ke CV)', () => {
+    expect(isGood('undefined')).toBe(false);
+    expect(isGood('  undefined  ')).toBe(false); // spasi tepi pun tetap kosong
+    expect(isGood('UNDEFINED')).toBe(false);     // case-insensitive
+  });
+
+  it('string literal "null" dan "NaN" → kosong', () => {
+    expect(isGood('null')).toBe(false);
+    expect(isGood('NULL')).toBe(false);
+    expect(isGood('NaN')).toBe(false);
+    expect(isGood('nan')).toBe(false);
+  });
+
+  it('KONSERVATIF: nilai asli yang mengandung kata itu UTUH', () => {
+    // Nama keluarga "Null" nyata; hanya kecocokan PERSIS yang dianggap kosong.
+    expect(isGood('Null')).toBe(false);       // (tepat "null" → memang kosong)
+    expect(isGood('Van Der Null')).toBe(true); // frasa → nilai sah
+    expect(isGood('undefined behaviour')).toBe(true);
+    expect(isGood('NaN tolerance training')).toBe(true);
+    expect(isGood('Siti Nabila')).toBe(true);
+  });
+
+  it('kontrak lama "-"/kosong/null JS tetap sama', () => {
+    expect(isGood('-')).toBe(false);
+    expect(isGood('')).toBe(false);
+    expect(isGood(null)).toBe(false);
+    expect(isGood(undefined)).toBe(false);
+  });
+
+  it('makeV jatuh ke "-" saat nilai adalah sentinel (bukan mencetak "undefined")', () => {
+    const v = makeV({ nama: 'undefined', kota: 'null', umur: 'NaN' }, {});
+    expect(v('nama')).toBe('-');
+    expect(v('kota')).toBe('-');
+    expect(v('umur')).toBe('-');
+    // Nilai asli tidak terpengaruh.
+    expect(makeV({ nama: 'Budi' }, {})('nama')).toBe('Budi');
+  });
+});

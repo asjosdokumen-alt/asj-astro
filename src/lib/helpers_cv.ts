@@ -15,9 +15,36 @@ export function getPath(obj: unknown, path: string): unknown {
   ) as unknown;
 }
 
-/** Check if value is meaningful (not null/undefined/empty/dash) */
+/**
+ * Sentinel values that must NEVER reach the rendered CV.
+ *
+ * WHY this exists: `isGood` guards against null/undefined/empty/dash, but the
+ * LITERAL STRING `"undefined"` passes every one of those checks. That string is
+ * exactly what a dirty source produces — a malformed `AIDATAJSON`, or code that
+ * string-concatenated a missing value (`"Nama: " + undefined`) — and it was
+ * being printed straight onto the rirekisho. The owner's "CV outputs many
+ * undefined" report is this class of dirty data; the normalizer fix addressed
+ * the alias-key cause, and this guard closes the renderer's last hole.
+ *
+ * SCOPE — deliberately conservative:
+ *   • matched case-INSENSITIVELY only as the WHOLE trimmed value, so a real name
+ *     such as "Null" (a surname) or a field genuinely containing the word
+ *     ("NaN tolerance training") is NOT destroyed;
+ *   • `"-"` is handled separately below and keeps its existing contract: the row
+ *     builders strip a lone dash by converting it to "" — that behaviour must
+ *     not change here.
+ */
+function isSentinel(val: string): boolean {
+  const s = val.toLowerCase();
+  return s === 'undefined' || s === 'null' || s === 'nan';
+}
+
+/** Check if value is meaningful (not null/undefined/empty/dash/sentinel) */
 export function isGood(val: unknown): boolean {
-  return val !== undefined && val !== null && String(val).trim() !== "" && String(val).trim() !== "-";
+  if (val === undefined || val === null) return false;
+  const s = String(val).trim();
+  if (s === '' || s === '-') return false;
+  return !isSentinel(s);
 }
 
 /** Factory: create v() function that searches d (master) then ai (AIDATAJSON) */
