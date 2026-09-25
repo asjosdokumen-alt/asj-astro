@@ -469,8 +469,17 @@ export default function App(
           hamburger above toggles, so nothing is lost by keeping it out of the
           a11y tree. Left as a bare clickable div it measured as a nameless
           `u-modal-shell` overlay — indistinguishable, to a screen reader, from
-          the real modals beside it (§25). */}
-      {menuOpen && <div aria-hidden="true" class="u-viewport-fixed u-modal-shell bg-black/70" style={{ zIndex: Z_INDEX.OVERLAY }} onClick={() => setMenuOpen(false)}></div>}
+          the real modals beside it (§25).
+
+          `.js-scrim` IS LOAD-BEARING — do not remove it. The light-theme shim
+          in global.css remaps `bg-black/NN` to a pale surface for cards, and it
+          exempts real scrims via `:not(.inset-0)`. This scrim gets its geometry
+          from `.u-viewport-fixed`, NOT `inset-0`, so it slipped the exemption
+          and was repainted OPAQUE. MEASURED light-theme, drawer open: computed
+          background was `rgb(239,233,239)` (opacity 1) hiding the whole page;
+          dark theme was correct at `oklab(0 0 0 / 0.7)`. `.js-scrim` is the
+          explicit, named opt-out for exactly this case. */}
+      {menuOpen && <div aria-hidden="true" class="u-viewport-fixed u-modal-shell bg-black/70 js-scrim" style={{ zIndex: Z_INDEX.OVERLAY }} onClick={() => setMenuOpen(false)}></div>}
       
       {/* ─── Drawer (mobile + desktop) ───
           Same drawer on both breakpoints so the user gets one predictable

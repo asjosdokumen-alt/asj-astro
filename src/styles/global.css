@@ -445,16 +445,36 @@ body {
    the banner; without it this rule (0,3,0) out-specifies the
    `.hamburger-btn` rule further down (0,1,0).
 
+   WHY `:not(.js-scrim)` IS ALSO NEEDED (measured defect, 2026-09-25)
+   ------------------------------------------------------------------
+   The `:not(.inset-0)` escape hatch only recognises scrims that get their
+   geometry from the `inset-0` utility. The hamburger backdrop
+   (`App.tsx`, `.u-viewport-fixed.u-modal-shell.bg-black/70`) instead pins
+   itself with `.u-viewport-fixed` and carries NO `inset-0`, so it matched
+   this rule and was repainted opaque pale-lavender. MEASURED in the light
+   theme with the drawer open: the scrim's computed background was
+   `rgb(239,233,239)` — opacity 1 — covering the entire page below the
+   drawer, while the dark theme correctly measured `oklab(0 0 0 / 0.7)`.
+
+   The fix is the SAME shape as the two existing exemptions — name the case
+   that must not be remapped — rather than widening the `:not()` chain: a
+   full-viewport scrim must never be remapped to a light surface, no matter
+   which utility it uses to cover the viewport. New scrims therefore opt out
+   explicitly with `.js-scrim`. Adding the clause to /60 and /80 as well
+   keeps the three tiers consistent: a scrim that hides content is the same
+   hazard at every alpha, and the next person should not have to discover
+   which tier happened to have been patched.
+
    Hover variants must be shimmed too, or a card that reads light at
    rest turns black under the cursor (CandidateDash does exactly this). */
 :where([data-theme="light"]) :is(
   .bg-black\/30, .bg-black\/40, .bg-black\/50
 ):not(.inset-0) { background-color: rgba(0, 0, 0, 0.04); }
 
-:where([data-theme="light"]) .bg-black\/60:not(.inset-0):not(.hamburger-btn) { background-color: #f3eff3; }
-:where([data-theme="light"]) .bg-black\/70:not(.inset-0):not(.hamburger-btn) { background-color: #efe9ef; }
-:where([data-theme="light"]) .bg-black\/80:not(.inset-0):not(.hamburger-btn) { background-color: #e9e3e9; }
-:where([data-theme="light"]) .bg-black:not(.inset-0):not(.hamburger-btn)     { background-color: #ffffff; }
+:where([data-theme="light"]) .bg-black\/60:not(.inset-0):not(.hamburger-btn):not(.js-scrim) { background-color: #f3eff3; }
+:where([data-theme="light"]) .bg-black\/70:not(.inset-0):not(.hamburger-btn):not(.js-scrim) { background-color: #efe9ef; }
+:where([data-theme="light"]) .bg-black\/80:not(.inset-0):not(.hamburger-btn):not(.js-scrim) { background-color: #e9e3e9; }
+:where([data-theme="light"]) .bg-black:not(.inset-0):not(.hamburger-btn):not(.js-scrim)     { background-color: #ffffff; }
 
 :where([data-theme="light"]) .hover\:bg-black\/50:hover:not(.inset-0) { background-color: rgba(0, 0, 0, 0.06); }
 :where([data-theme="light"]) .hover\:bg-black\/80:hover:not(.inset-0) { background-color: #e9e3e9; }
@@ -558,6 +578,27 @@ body {
 :where([data-theme="light"]) .hamburger-btn:hover {
   background-color: rgba(255, 255, 255, 0.85);
 }
+
+/* Full-viewport SCRIM (drawer backdrop). A scrim's job is to dim the page
+   behind it, so its background is the one surface that must stay dark in
+   BOTH themes — it must NEVER be remapped to a light card surface the way
+   `.bg-black/NN` chips are.
+
+   WHY THIS HAS ITS OWN RULE AND NOT JUST `.js-scrim` IN THE SHIM's `:not()`.
+   `.js-scrim` is ALSO listed in the `bg-black/60,70,80` shims above (the
+   named opt-out), but a `:not()` argument is not a selector SUBJECT, so
+   `scripts/ci/verify-classes.mjs` — correctly — does not count it as a
+   defined class, and an undefined class used in markup is a gate failure.
+   A positive rule here both satisfies that gate and, more importantly, makes
+   the scrim's colour INDEPENDENT of the shim's `:not()` chain: if someone
+   later reorders the shims, this rule still paints the scrim correctly.
+
+   MEASURED before this rule (2026-09-25, light theme, drawer open): the shim
+   won and the scrim measured `rgb(239,233,239)` at opacity 1, hiding the
+   whole page; dark theme was `oklab(0 0 0 / 0.7)`. 0.7 black is the value
+   the `bg-black/70` utility asked for and the value the dark theme shows. */
+.js-scrim { background-color: rgba(0, 0, 0, 0.7); }
+:where([data-theme="light"]) .js-scrim { background-color: rgba(0, 0, 0, 0.7); }
 
 /* Header banner overlay — the gradient overlay DESIGN.md §3.6 assigns to the
    artwork level ("Tingkat 2 · artwork | bg-cover bg-center + overlay gradien").
