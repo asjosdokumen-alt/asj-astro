@@ -1103,7 +1103,6 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.hero_chip_ssw": "SSW",
   "profile.hero_chip_magang": "Magang",
   "profile.hero_chip_penempatan": "Penempatan",
-  "profile.hero_jobs_live": "lowongan aktif",
   // The three hero stats are the ones the company profile actually proves:
   // founded 2023 (deed 15 Aug 2023), five placement sectors and four destination
   // prefectures (pages 3, 13 and 14). The counts a mockup showed — 500+
@@ -1354,17 +1353,11 @@ export const translations: Record<Lang, Record<string, string>> = {
   // section with the tab→anchor conversion in L5) and `#tentang` has no section at
   // all yet (S7 waits on the owner's prose). A nav item pointing at a fragment that
   // does not resolve is a link that looks live and does nothing.
-  "profile.nav_aria": "Navigasi halaman",
   "profile.nav_loker": "Lowongan",
-  "profile.nav_program": "Program",
-  "profile.nav_alur": "Alur",
-  "profile.nav_fasilitas": "Fasilitas",
-  "profile.nav_tentang": "Tentang",
   // `#layanan` resolves as of e9317cf, which turned the Layanan tab panel into a
   // plain Section (index.astro:156) — so the desktop rail may point at it and
   // `data-nav-link="layanan"` has a target whose scroll-spy observer finds it.
   // The key went in at the call site only; the dictionaries never got it.
-  "profile.nav_layanan": "Layanan",
   "public.layanan_magang": "Program Magang",
   "public.layanan_magang_desc": "Magang di perusahaan Jepang",
   "public.layanan_tg_desc": "Tokutei Ginou SSW",

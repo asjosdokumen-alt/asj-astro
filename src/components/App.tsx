@@ -619,6 +619,26 @@ export default function App(
         )}
         <div class="flex-1 u-scroll-area p-4 space-y-3">
           <div class="space-y-3 pb-3 mb-3 border-b border-slate-700">
+            {/* ─── THE SITE'S ONLY PATH TO `/loker` ───
+                Owner ruling 2026-09-25 removed the entire band below the hero
+                (the announcement marquee, the live-vacancy count strip and the
+                `<SiteNav />` section bar). That bar's "Lowongan" item was the
+                ONLY `href="/loker"` anywhere in `src/**` — measured, every other
+                hit is prose and `Footer.astro` links four fragments only. So the
+                link moves here, where the owner said it belongs ("dari menu
+                hamburger").
+
+                WHY IT SITS ABOVE THE AUTH BLOCK AND NOT INSIDE IT. Every other
+                link in this drawer is behind a role check (`u.isLoggedIn &&`), so
+                a logged-out visitor would have had no path to the vacancies at
+                all — the page would look like it has no job list. This is the
+                always-visible block, so it renders for everyone.
+
+                `profile.nav_loker` is deliberately the SAME key the deleted bar
+                used: it is the same link with the same word, and re-keying it
+                would orphan the translations for no gain. It is now the key's
+                only consumer, so it must NOT be cleaned up as a nav orphan. */}
+            <a href="/loker" class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="briefcase" class="mr-2 text-sky-400" /> {t("profile.nav_loker")}</a>
             <button onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>
             <button onClick={toggleLang} aria-label="Toggle language" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
           </div>

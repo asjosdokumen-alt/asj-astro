@@ -116,7 +116,13 @@ set -u
 
 GUARD=e2e/test-landing.mjs
 PAGE=src/pages/index.astro
-NAV=src/components/public/SiteNav.astro
+# ⚠ `NAV` WAS REPLACED BY `FOOTER` ON 2026-09-25. It used to point at
+# `src/components/public/SiteNav.astro`, the desktop section bar. The owner deleted
+# that bar (and the file) on 2026-09-25, so a battery still naming it would mutate a
+# path that no longer exists. The footer nav is the surviving in-page navigation on
+# `/`, so it inherits M6's subject: a nav item pointing at a fragment that does not
+# resolve.
+FOOTER=src/components/Footer.astro
 I18N=src/store/i18n.ts
 APP=src/components/App.tsx
 BAK=.tmp-landing-bak
@@ -263,13 +269,13 @@ echo "server: $BASE (pid $SERVER_PID)"
 # the CURRENT COMMITTED SOURCES produces. Verify the sources, then rebuild, then
 # measure the baseline. Order matters — rebuilding before verifying would overwrite
 # the evidence that the sources were ever wrong.
-if ! git diff --quiet -- "$PAGE" "$NAV" "$I18N" "$APP"; then
+if ! git diff --quiet -- "$PAGE" "$FOOTER" "$I18N" "$APP"; then
   echo "ABORT: the gate's own sources are dirty before the baseline."
   echo "       A battery must start from committed sources, or KILLED/SURVIVED"
   echo "       cannot be attributed to the mutation. Dirty files:"
-  git diff --name-only -- "$PAGE" "$NAV" "$I18N" "$APP" | sed 's/^/       /'
+  git diff --name-only -- "$PAGE" "$FOOTER" "$I18N" "$APP" | sed 's/^/       /'
   echo "       (A previous run was probably killed before its restore. Run:"
-  echo "        git checkout -- $(printf '%s ' "$PAGE" "$NAV" "$I18N" "$APP") )"
+  echo "        git checkout -- $(printf '%s ' "$PAGE" "$FOOTER" "$I18N" "$APP") )"
   kill "$SERVER_PID" 2>/dev/null
   exit 1
 fi
@@ -325,7 +331,7 @@ fi
 echo "baseline: green"
 echo
 
-for f in "$PAGE" "$NAV" "$I18N" "$APP"; do backup "$f"; done
+for f in "$PAGE" "$FOOTER" "$I18N" "$APP"; do backup "$f"; done
 
 # ── one mutation per rule the gate claims to enforce ──────────────────────
 
@@ -385,8 +391,15 @@ step "M5  a placeholder is injected into the i18n dictionary (source layer)" \
 
 # M6 — a nav link points at a fragment that does not resolve. This is the §5.1
 # defect: a link that renders, looks live, and does nothing.
+#
+# RE-ANCHORED 2026-09-25 from the section bar to the FOOTER nav, because the section
+# bar was deleted. Both are real `<nav>` landmarks on `/`, and the property being
+# proven is unchanged: the gate must notice a fragment link whose target does not
+# exist. The footer's four items are the page's remaining in-page navigation, so it
+# is the right subject now — and `href="#fasilitas"` is unique in that file, which
+# `mut()` requires (it asserts exactly one match before writing).
 step "M6  a nav item points at a fragment that does not exist" \
-  "$NAV" \
+  "$FOOTER" \
   '[["href=\"#fasilitas\"","href=\"#fasilitas-tidak-ada\""]]'
 
 # M7 — DELETED 2026-09-24, NOT COMMENTED OUT, AND ITS ABSENCE IS A FINDING.
@@ -408,21 +421,23 @@ step "M6  a nav item points at a fragment that does not exist" \
 # same rule the gate itself just learned: a check with no subject is not evidence.
 
 # M8 — the ONE remaining region, and the reason the rule is region-scoped rather
-# than a count. This removes the SECTION NAV's only path to the list, while leaving
-# the links in other regions intact. Under the old `count >= 2` rule this defect was
-# invisible; under the region rule it must turn the gate red.
+# than a count. This removes the DRAWER's only path to the list, while leaving any
+# other links intact. Under the old `count >= 2` rule this defect was invisible;
+# under the region rule it must turn the gate red.
 #
-# RE-ANCHORED 2026-09-24. This mutation used to retarget BOTH nav anchors — the
-# "Lowongan" list item and the pink CTA button beside the language toggle — because
-# the nav carried TWO paths and mutating only one left the other satisfying the
-# region selector (a TRUE NEGATIVE, not a hole: the region rule asks "can a visitor
-# reach the list from here", and the answer was still yes). Ruling 3 collapsed the
-# nav to ONE link — the list item is the page's only path and the pill is gone — so
-# the mutation now retargets that single anchor and its second pair is deleted. The
-# rule the mutation proves is unchanged: empty the region and the gate must go red.
-step "M8  the section nav loses its only path to /loker (the region is emptied)" \
-  "$NAV" \
-  '[["<a href=\"/loker\" data-lang=\"profile.nav_loker\" class={LINK_CLASS}>Lowongan</a>","<a href=\"/loker-tidak-ada\" data-lang=\"profile.nav_loker\" class={LINK_CLASS}>Lowongan</a>"]]'
+# RE-ANCHORED 2026-09-25, for the second time in two days. The anchor has followed
+# the link: it was the hero CTA (until 2026-09-24), then the section nav's list item
+# (until 2026-09-25), and it is now the drawer entry — because the owner deleted the
+# entire band below the hero, which took `<SiteNav />` with it. The mutation's
+# SUBJECT is always "wherever `/` keeps its single path to /loker"; only its address
+# moves. Note the file changes too ($NAV -> $APP), which is why the file is passed
+# as a parameter to `step` rather than closed over.
+#
+# The mutation targets the whole opening tag, not just the attribute: `mut()` asserts
+# EXACTLY ONE match before writing, and the anchor below is unique in App.tsx.
+step "M8  the drawer loses its only path to /loker (the region is emptied)" \
+  "$APP" \
+  '[["<a href=\"/loker\" class=\"w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600","<a href=\"/loker-tidak-ada\" class=\"w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600"]]'
 
 # M9  a hero STATISTIC is replaced with a fabricated one (roadmap L8.4).
 #
@@ -449,7 +464,7 @@ step "M9  a hero statistic is hardcoded to a fabricated value ('5' -> '500')" \
 
 # ── byte-identical restore, and green again ───────────────────────────────
 echo
-for f in "$PAGE" "$NAV" "$I18N" "$APP"; do
+for f in "$PAGE" "$FOOTER" "$I18N" "$APP"; do
   if ! diff -q "$BAK/$(key "$f")" "$f" >/dev/null; then
     echo "RESTORE FAILED — $f is not byte-identical to its backup"
     fail=1

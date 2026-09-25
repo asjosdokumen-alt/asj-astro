@@ -324,10 +324,17 @@ PAYLOADS='Lowongan Kerja Tersedia|Bursa Kerja|Layanan Program|Judul Lowongan|Ama
 # ⚠ MEASURED 2026-09-21, AND THIS IS WHY THE CHECK BELOW IS NOT A COPY OF THE
 # LANDING BATTERY'S VERSION. That one resolves assets referenced from
 # `dist/index.html`, because its guard measures `/`. THIS guard measures `/public`,
-# and the two pages load DIFFERENT chunk sets:
+# and the two pages load DIFFERENT chunk sets. As measured on 2026-09-21:
 #
 #     dist/index.html          -> App.js, SiteNav.js, JobMiniList.js, ...
 #     dist/public/index.html   -> App.js, LokerTable.js, BottomNav.js, ...
+#
+# ⚠ THAT LIST IS A DATED SNAPSHOT — the point is the DIFFERENCE, not the names, and
+# two of the names have since gone: `JobMiniList.js` with the 2026-09-24
+# company-profile reframe, and `SiteNav.js` with the 2026-09-25 band removal. The
+# conclusion the snapshot supports is unchanged and does not depend on them: the two
+# pages do not load the same chunks, so a copy of the landing check inspects the
+# wrong HTML.
 #
 # and the payload lives in `_astro/i18n.<hash>.js`, which is NOT referenced by
 # either HTML file directly — it is imported by `App.<hash>.js`, which both pages

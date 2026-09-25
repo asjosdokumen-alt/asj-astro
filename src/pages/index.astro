@@ -4,7 +4,6 @@ import App from '../components/App.tsx';
 import LayananSection from '../components/public/LayananSection.astro';
 import ClosingBand from '../components/public/ClosingBand.astro';
 import JapanTexture from '../components/public/JapanTexture.astro';
-import SiteNav from '../components/public/SiteNav.astro';
 import Section from '../components/public/Section.astro';
 import SectionTitle from '../components/public/SectionTitle.astro';
 import Card from '../components/public/Card.astro';
@@ -98,70 +97,46 @@ import { GALLERY } from '../lib/gallery';
        gate markup for no reader's benefit. -->
   <App client:load hero />
 
-  <!-- Global Announcement Marquee (public page only) -->
-<div id="global-announcement" hidden class="max-w-7xl mx-auto px-4 mt-4">
-  <div class="bg-rose-700 rounded-2xl p-2.5 flex items-center shadow-[0_0_20px_rgba(225,29,72,0.3)] border border-rose-500/60 relative overflow-hidden">
-    <div class="absolute left-0 top-0 bottom-0 bg-red-800 w-12 flex items-center justify-center z-10 rounded-l-2xl border-r border-red-600/60 shadow-md">
-      <Icon name="bullhorn" class="text-white animate-bounce text-lg" />
-    </div>
-    <!-- Two copies: the track animates to translate3d(-50%), i.e. exactly
-         one copy, which makes the loop seamless at any text length. The
-         duplicate is aria-hidden so screen readers read it once. -->
-    <div class="marquee-track ml-12 mr-2">
-      <div class="marquee-content text-white text-sm font-bold tracking-wide">
-        <span class="marquee-item" data-marquee></span>
-        <span class="marquee-item" data-marquee aria-hidden="true"></span>
-      </div>
-    </div>
-  </div>
-</div>
+  <!-- THE BAND THAT USED TO SIT HERE IS GONE, AND ITS THREE PARTS WENT TOGETHER.
+       Owner ruling 2026-09-25, verbatim: "ini kok masih ada bukannya saya suruh
+       hapus kemarin", with the count strip AND the section bar circled in the
+       screenshot, and then "Hapus marquee juga" for the announcement strip.
 
-  <!-- Live vacancy count.
-       WHY IT IS HERE AND NOT INSIDE THE HERO. It is a real number read from the
-       jobs payload, and the hero is a Preact island while this is static markup —
-       putting it here lets one script fill it without adding a fetch to the
-       island that every route mounts. Research on 30 recruitment sites in 2026
-       found only 3 of 30 published their live vacancy count anywhere on the home
-       page, which makes this the cheapest trust signal available.
+       What was removed, in document order:
+         1. `#global-announcement` — the rose marquee, ON THIS PAGE ONLY. The
+            same band still exists on `/public` (`public.astro:25`), so the
+            `marquee-*` rules in `motion.css` and `e2e/measure-marquee.mjs`
+            stay valid and must NOT be deleted with it.
+         2. the `#live-job-count` strip — the only consumer of `data-lang=
+            "profile.hero_jobs_live"` and of the `getPublicData()` call on this
+            page.
+         3. the SiteNav component — the desktop section bar (`sticky top-0
+            z-sticky`). The component file is deleted, not merely unmounted;
+            leaving an unused `.astro` behind would keep four frozen indexer
+            counters and one e2e gate describing a bar no page renders.
+       The `<script>` block that fed 1 and 2 is gone with them, so `index.astro`
+       no longer imports `../lib/publicData` at all.
 
-       The placeholder is an em dash, NOT a zero: if the payload never arrives the
-       page must say "unknown", not claim there are no vacancies. -->
-  <div class="max-w-7xl mx-auto px-4 mt-4">
-    <div class="flex flex-wrap items-center gap-3 rounded-card bg-surface border border-line px-5 py-3">
-      <Icon name="briefcase" class="text-accent-sky" />
-      <p class="text-body-sm text-fg-muted">
-        <span id="live-job-count" class="font-black text-fg">—</span>
-        <span data-lang="profile.hero_jobs_live">lowongan aktif</span>
-      </p>
-      <!-- NO "lihat semua lowongan" LINK HERE. Owner ruling 2026-09-24: `/` is a
-           company profile for MoU/business partners, not a job board, so the
-           only path to the vacancy list is the section nav. The live count
-           stays: it is a real number read from the jobs payload, and a trust
-           signal, not a call to apply. -->
-    </div>
-  </div>
+       ⚠ THIS COMMENT MUST NOT SPELL THE DELETED TAG. The indexer parses `.astro`
+       COMMENTS as if they were markup, so writing the removed component's tag
+       here re-creates the exact unresolved `template-component` reference the
+       deletion was supposed to remove — measured 2026-09-25: the first draft of
+       this comment did that and took `graph.unresolved` from 2 to 3 and the
+       row-8 Renders-edge assertion from 0 to 1. Name the file, never the tag.
+       (`Section.astro` carries the same warning for capitalised tag names.)
 
-<script>
-  import { getPublicData } from "../lib/publicData";
-  getPublicData().then(function(d){
-    if(!d.success) return;
-    if(d.pengumuman){
-      var el=document.getElementById("global-announcement");
-      var txt=document.querySelectorAll("[data-marquee]");
-      // The `hidden` ATTRIBUTE, not a class swap: Tailwind 4.3.3 preflight ships
-      // `[hidden] { display: none !important }`, so the attribute is strictly
-      // stronger than any display utility and cannot be defeated by a stray one.
-      if(el && txt.length && d.pengumuman.trim()){ txt.forEach(function(n){ n.textContent=d.pengumuman; }); el.hidden=false; }
-    }
-    var count=document.getElementById("live-job-count");
-    if(count && d.jobs){ count.textContent=String(d.jobs.length); }
-  }).catch(function(){});
-</script>
+       ⚠ THE LINK TO `/loker` MOVED — IT WAS NOT DROPPED. That bar's "Lowongan"
+       item was the ONLY `href="/loker"` in the entire site (measured
+       2026-09-25: every other hit in `src/**` is prose; `Footer.astro` links only
+       four fragments). Deleting the bar would have left `/` with ZERO paths to
+       the vacancy list, and `e2e/test-landing.mjs`'s `LOKER_ROUTE` rule asserts
+       that path exists. The single link now lives in the drawer
+       (`App.tsx`, the always-visible block) because the owner's answer was
+       "lahkan ada dari menu hamburger" — the drawer is the one navigation every
+       visitor has, logged in or not. `LOKER_ROUTE` follows it there.
 
-  <!-- Desktop section nav. Rendered AFTER the hero band so it does not cover the
-       artwork, and `sticky top-0` takes over once the visitor scrolls past it.
-       Desktop only (`hidden lg:block`); the drawer still covers mobile. -->
-  <SiteNav />
+       DO NOT RESTORE THE BAR. The hero is the page's opening statement and the
+       next thing a visitor sees should be `#kenapa-jepang`. -->
 
   <!-- The mascot rail stood here — a sticky grid column beside <main> that
        carried the princess down the page. Owner ruling 2026-09-24 removed her

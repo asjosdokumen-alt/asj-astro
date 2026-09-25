@@ -156,13 +156,26 @@ const SECTIONS = [
  * changed. So the rule becomes: `/` must still LINK to the route that now carries
  * it.
  *
- * NARROWED 2026-09-24 — ONE REGION, NOT TWO. The owner ruled that `/` is a company
- * profile for MoU/business partners, not a job board, so the page keeps EXACTLY ONE
- * link to /loker and it lives in the section nav. The hero region this rule used to
- * carry is gone, along with the strip CTA, the `#loker-ringkas` section and the
- * footer link that used to feed the count. The section nav is now the single path,
- * so it is the single region. (History: this rule once counted 13 links from 7
- * sources, which is why it was region-scoped in the first place.)
+ * MOVED AGAIN 2026-09-25 — THE REGION IS NOW THE DRAWER. Owner ruling: delete the
+ * ENTIRE band below the hero on `/` (the announcement marquee, the live-vacancy
+ * count strip and the `<SiteNav />` section bar). That bar held the page's ONLY
+ * `href="/loker"` in `src/**`, so deleting it without a replacement would have left
+ * `/` with ZERO paths to the vacancy list — and this rule is exactly what would
+ * have caught that. The owner's answer was the hamburger menu ("dari menu
+ * hamburger"), so the single link moved into the drawer's always-visible block.
+ *
+ * The rule is UNCHANGED IN STRENGTH: still exactly one region, still non-empty,
+ * still fails on `count === 0`. Only the address moved. The section-nav region is
+ * NOT relaxed away — `e2e/test-site-nav.mjs`, the gate that owned that bar, was
+ * deleted in the same commit because the bar no longer exists to guard.
+ *
+ * ⚠ WHY THE DRAWER IS A VALID REGION HERE AND WAS REJECTED AS ONE BEFORE. The
+ * earlier note below says the drawer "must never be able to satisfy a rule about
+ * THIS nav" — that was about a rule scoped to the section nav specifically. This
+ * rule is about `/` as a page, so the drawer is precisely the right subject now.
+ * The link sits ABOVE the drawer's auth block on purpose: every other drawer link
+ * is behind `u.isLoggedIn &&`, and a logged-out visitor must still be able to
+ * reach the vacancies.
  *
  * The route's own CONTENTS are guarded by `e2e:loker-layout`, which measures the
  * table. This rule is the connective tissue between the two: it is what makes
@@ -194,32 +207,24 @@ const LOKER_ROUTE = {
    */
   regions: [
     {
-      name: 'section nav',
+      name: 'drawer (hamburger menu)',
       /**
-       * SCOPED TO THE PAGE'S OWN NAV, and the reason is a MEASURED GATE HOLE.
+       * SCOPED BY `aria-label`, WHICH IS THE DRAWER'S STABLE HANDLE.
        *
-       * The first version of this selector was `nav a[href="/loker"]`, and the
-       * battery's M8 mutation — which correctly retargeted the section nav's links
-       * away from /loker — SURVIVED it. Measured 2026-09-21, the page had THREE
-       * `<nav>` elements:
+       * A note this selector replaces, kept because the measurement is still the
+       * reason to scope at all: the first version was `nav a[href="/loker"]`, and
+       * a battery mutation that correctly retargeted the nav's links away from
+       * /loker SURVIVED it. Measured 2026-09-21, the page had THREE `<nav>`
+       * elements and the assertion was measuring their union while reporting it as
+       * one region — the footer's own "Lowongan Kerja" link satisfied it after the
+       * nav had been emptied. The fix is the same today: name the nav you mean.
        *
-       *   nav[aria-label="Primary navigation"]  the mobile drawer, 0 loker links
-       *   nav[aria-label="Navigasi halaman"]    the section nav, the loker link(s)
-       *   nav[aria-label="Footer navigation"]   1 loker link ("Lowongan Kerja")
-       *
-       * So `nav a[href="/loker"]` was satisfied by the FOOTER even after the
-       * section nav was emptied: the assertion was measuring the union of three
-       * regions and reporting it as one. The footer link has since been removed
-       * (owner ruling 2026-09-24) and the section nav carries the page's ONLY
-       * path, but the selector stays scoped: the drawer and any future footer nav
-       * must never be able to satisfy a rule about THIS nav.
-       *
-       * `aria-label="Navigasi halaman"` is the stable handle (SiteNav.astro:74);
-       * it is a user-facing label, so it is unlikely to be renamed casually, and
-       * the region is a named region rather than a positional index.
+       * `aria-label="Primary navigation"` is the drawer's label (`App.tsx`), and
+       * `e2e/test-drawer.mjs` asserts that selector matches EXACTLY ONE element, so
+       * a second nav claiming this label cannot silently satisfy this rule.
        */
-      selector: 'nav[aria-label="Navigasi halaman"] a[href="/loker"], nav[aria-label="Navigasi halaman"] a[href^="/loker#"]',
-      because: 'the page nav is now the ONLY path to the list — if it breaks, nothing on / can reach the vacancy list',
+      selector: 'nav[aria-label="Primary navigation"] a[href="/loker"], nav[aria-label="Primary navigation"] a[href^="/loker#"]',
+      because: 'the drawer is now the ONLY path to the list — if that link breaks, nothing on / can reach the vacancy list',
     },
   ],
 };
@@ -792,9 +797,9 @@ async function run() {
           `${offenders.length} section(s) are clipped to zero area BEFORE their entrance runs: ` +
             `${offenders.join(', ')}. A pre-reveal ` +
             '`clip-path`' +
-            ` hides the band and — measured — also stops the section-nav scroll-spy from ever ` +
+            ` hides the band and — measured — also stops the section scroll-spy from ever ` +
             `marking the section (its IntersectionObserver band never matches a fully-clipped ` +
-            `target; e2e/test-site-nav.mjs went 6/8). Hide a pre-reveal band with ` +
+            `target; the deleted e2e/test-site-nav.mjs went 6/8 on exactly this). Hide a ` +
             '`opacity`' +
             `, never with a clip — motion.css §9b records why.`,
         );
@@ -817,7 +822,7 @@ async function run() {
       if (d.lokerLink.regions.length === 0) {
         throw new Error(
           'LOKER_ROUTE.regions is empty — the vacancy-reachability rule would pass over nothing. ' +
-            'The page keeps one path (the section nav); restore that region.',
+            'The page keeps one path (the drawer); restore that region.',
         );
       }
       const broken = d.lokerLink.regions.filter((r) => r.count === 0);

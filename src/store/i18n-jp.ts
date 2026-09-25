@@ -787,7 +787,6 @@ export const jpTranslations: Record<string, string> = {
   "profile.hero_chip_ssw": "特定技能",
   "profile.hero_chip_magang": "技能実習",
   "profile.hero_chip_penempatan": "就職支援",
-  "profile.hero_jobs_live": "件の募集中求人",
   "profile.stat_since": "設立",
   "profile.stat_sectors": "職種",
   "profile.stat_prefectures": "都道府県",
@@ -998,15 +997,9 @@ export const jpTranslations: Record<string, string> = {
   // （L5 のタブ→アンカー移行で実セクションになる）、`#tentang` はセクション自体が
   // まだ無い（S7 はオーナーの文章待ち）。解決しないフラグメントへのリンクは、
   // 生きているように見えて何もしないリンクになる。
-  "profile.nav_aria": "ページ内ナビゲーション",
   "profile.nav_loker": "求人",
-  "profile.nav_program": "プログラム",
-  "profile.nav_alur": "流れ",
-  "profile.nav_fasilitas": "施設",
-  "profile.nav_tentang": "会社概要",
   // `#layanan` は e9317cf で解決するようになった（タブパネルが通常の
   // セクションになった）。id 辞書と同じキーを必ず持つこと。
-  "profile.nav_layanan": "サービス",
   "public.layanan_magang": "研修プログラム",
   "public.layanan_magang_desc": "日本企業で研修",
   "public.layanan_tg_desc": "特定技能SSW",
