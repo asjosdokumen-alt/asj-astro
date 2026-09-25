@@ -535,3 +535,46 @@ describe('CandidateDash — StepGuide benar-benar terpasang', () => {
     expect(sebagaiString).toBe('berkas');
   });
 });
+
+// ==========================================
+// TESTS: pemilih template CV TIDAK boleh ada di sisi kandidat (2026-09-25)
+//
+// Owner: "template cv itu fitur admin bukan buat kandidat". Tombolnya, state-nya,
+// impornya dan render modalnya dihapus dari CandidateDash; fiturnya SENDIRI tetap
+// hidup untuk admin (admin/TabPelamar.tsx + CvTemplateSelector isAdmin={true}).
+//
+// WHY THIS TEST EXISTS AT ALL: menghapus tombol tidak membuat satu tes pun merah
+// (diperiksa: CandidateDash.test.tsx tidak pernah menyebut tombol ini), jadi tanpa
+// penjaga di bawah ini penghapusan itu TIDAK punya bukti apa pun yang bisa gagal —
+// dan tombolnya bisa kembali besok tanpa satu gate pun menyadarinya.
+//
+// KONTROL POSITIF WAJIB: tes "tombolnya tidak ada" juga lulus di halaman kosong
+// atau di dashboard yang gagal render. Karena itu tes ini lebih dulu menuntut
+// tombol SEBELAHNYA ada (candidate.btn_preview_cv) di grid aksi yang sama.
+// ==========================================
+describe('CandidateDash — pemilih template CV adalah fitur admin, bukan kandidat', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    fetchMock.mockReset();
+    apiClientMock.mockReset();
+    apiClientMock.mockResolvedValue({ success: true } as never);
+    vi.mocked(showToast).mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+    stubLocation();
+  });
+  afterEach(() => {
+    cleanup();
+    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
+    vi.unstubAllGlobals();
+  });
+
+  it('tidak menawarkan template CV, dan grid aksinya memang ter-render', async () => {
+    await renderDash();
+    // Kontrol positif — kalau baris ini merah, dua assertion di bawahnya hampa.
+    expect(screen.getByRole('button', { name: 'candidate.btn_preview_cv' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'button.pilih_template_cv' })).toBeNull();
+    // Bukan sekadar tanpa label: string-nya tidak ada di DOM dasbor sama sekali.
+    expect(document.body.textContent || '').not.toContain('button.pilih_template_cv');
+  });
+});

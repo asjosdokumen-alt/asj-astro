@@ -12,7 +12,6 @@ import CvMiniModal from '../CvMiniModal';
 import InterviewSimulatorModal from './InterviewSimulatorModal';
 import { isVipCatatan, ASJ_LOGO_URL } from '../../lib/vip';
 import RirekishoBuilder from '../admin/RirekishoBuilder';
-import CvTemplateSelector from '../CvTemplateSelector';
 import EsignNaiteiModal, { allowedTahapanEsign } from '../EsignNaiteiModal';
 import PemberkasanModal from '../admin/PemberkasanModal';
 import { uploadBerkasToStorage } from "../../lib/uploadBerkas";
@@ -163,7 +162,6 @@ export default function CandidateDash() {
   const [showESign, setShowESign] = useState(false);
   const [showPemberkasan, setShowPemberkasan] = useState(false);
   const [showRirekisho, setShowRirekisho] = useState(false);
-const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
   const [showInterview, setShowInterview] = useState(false);
   const [selectedLoker, setSelectedLoker] = useState<string | null>(null);
 
@@ -530,8 +528,19 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               <button onClick={openEsign} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><Icon name="signature" class="mr-1.5" /> {t('ui.esign_naitei')}</button>
               <button onClick={openAiCvMaster} class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition cursor-pointer"><Icon name="robot" class="mr-1.5" /> {t('ui.ai_cv_assistant')}</button>
               <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="clipboard-list" class="mr-1.5 text-sky-400" /> {t('ui.master_full_form')}</a>
-              
-                            <button onClick={() => setShowCvTemplateSelector(true)} class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-sky-400" /> {t('button.pilih_template_cv')}</button>
+              {/* ── "Pilih Template CV" WAS HERE AND IS NOT COMING BACK ──
+                  Owner ruling 2026-09-25: "template cv itu fitur admin bukan
+                  buat kandidat". The feature still exists — it is the admin's,
+                  at `admin/TabPelamar.tsx` (the button) and
+                  `CvTemplateSelector.tsx` (`isAdmin={true}`). Only the candidate
+                  entry point is gone, so the component and its
+                  `button.pilih_template_cv` key are still LIVE and must not be
+                  cleaned up as orphans.
+
+                  The candidate keeps `RirekishoBuilder` below ("Preview Desain
+                  CV"), which is the read/preview side of the same feature — so
+                  removing this button takes away a chooser, not the ability to
+                  see a CV. */}
 <button onClick={() => setShowRirekisho(true)} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-red-600" /> {t('candidate.btn_preview_cv')}</button>
               <button onClick={() => setShowPasswordModal(true)} class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="key" class="mr-1.5" /> {t('ui.change_password')}</button>
             </div>
@@ -651,7 +660,6 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
       {/* ── Modals ── */}
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
       {showCvMiniModal && <CvMiniModal onClose={() => setShowCvMiniModal(false)} prefill={data.cvmini || undefined} />}
-      {showCvTemplateSelector && <CvTemplateSelector waTarget={user?.wa || data.wa} isAdmin={false} onClose={() => setShowCvTemplateSelector(false)} onOpenRirekisho={() => { setShowCvTemplateSelector(false); setShowRirekisho(true); }} />}
 {showRirekisho && <RirekishoBuilder waTarget={user?.wa || data.wa} isOpen={showRirekisho} onClose={() => setShowRirekisho(false)} fotoFallback={data.pasPhoto || undefined} />}
       {showESign && <EsignNaiteiModal isOpen={showESign} wa={user?.wa || ""} onClose={() => setShowESign(false)} />}
       {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={user?.wa || ""} namaTarget={user?.name || ""} candidate={data ? { tahapan: data.tahapan, berkas: data.berkas || {}, bio: data.bio || {} } : null} />}

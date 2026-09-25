@@ -93,7 +93,11 @@ Berikut adalah *roadmap* teknis untuk 20% fitur krusial yang masih menggantung b
 - **File utama**: `src/lib/cv-template-factory/` — factory, types, data normalization, renderers, loaders
 - **Template tersedia** (di `templates.ts`): `rirekisho-a4` (preserved as-is), `excel-basic`, `docx-basic`, `pdf-basic`
 - **Loader**: `loadExcelTemplate()`, `loadDocxTemplate()`, `loadPdfTemplate()` — baca file template dengan `{{placeholder}}` dan isi data kandidat
-- **UI**: `CvTemplateSelector.tsx` — tombol `Pilih Template CV` di CandidateDash dan TabPelamar
+- **UI**: `CvTemplateSelector.tsx` — tombol `Pilih Template CV` di **TabPelamar (admin) SAJA**.
+  Sisi kandidat dihapus 2026-09-25 (keputusan owner: *"template cv itu fitur admin bukan buat
+  kandidat"*). Kandidat tetap punya `RirekishoBuilder` lewat tombol `Preview Desain CV`.
+  Dijaga `CandidateDash.test.tsx` — tes itu memastikan dasbor kandidat tidak menawarkan
+  pemilih template, dengan kontrol positif bahwa grid aksinya memang ter-render.
 - **Data flow**: getDrafCvMaster → normalizeMasterData → cvFactory.render → download blob
 
 ---
