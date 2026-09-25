@@ -128,6 +128,22 @@ describe('EditCandidateModal', () => {
     expect(screen.getByText('[VIP] Aktif')).toBeTruthy();
   });
 
+  // REGRESI (item 10): tag `[VIP]` case-SENSITIVE, parity lib/vip.ts. Catatan
+  // `[vip]` huruf kecil BUKAN VIP — dulu /\[VIP\]/i menyalakan toggle di sini
+  // padahal gerbang AI CV/simulator menolak kandidat itu.
+  it('[vip] huruf kecil → toggle VIP TIDAK menyala (case-sensitive)', () => {
+    render(
+      <EditCandidateModal
+        candidate={{ ...mockCandidate, catatanInt: '[vip] catatan pribadi' }}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.getByText('Non-VIP')).toBeTruthy();
+    expect(screen.queryByText('[VIP] Aktif')).toBeNull();
+  });
+
   it('shows error toast on API failure', async () => {
     mockFetch.mockResolvedValue(
       new Response(JSON.stringify({ success: false, error: 'Kandidat tidak ditemukan.' }), {

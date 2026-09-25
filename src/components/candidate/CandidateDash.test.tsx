@@ -162,6 +162,15 @@ describe('CandidateDash — lencana VIP + PERFECT ASJ STUDENT (§6 gap 4/5)', ()
     expect(screen.queryByTitle('ui.badge_official')).toBeNull();
   });
 
+  // REGRESI (item 10): lencana memakai `[VIP]` LITERAL case-SENSITIVE, sama
+  // seperti gate isVipCatatan. Catatan `[vip]` huruf kecil BUKAN VIP — kalau
+  // lencana tetap case-insensitive, kandidat `[vip]` tampil "Siswa Resmi ASJ"
+  // padahal gerbang AI CV/simulator menolaknya. Dua predikat itu wajib sepakat.
+  it('[vip] huruf kecil → TIDAK dapat lencana (case-sensitive, parity gate)', async () => {
+    await renderDash({ catatanInt: '[vip] rencana pribadi' });
+    expect(screen.queryByTitle('ui.badge_official')).toBeNull();
+  });
+
   it('VIP + CV Mini 100% + CV Master 100% → "PERFECT ASJ STUDENT"', async () => {
     await renderDash({ catatanInt: '[VIP]', cvMiniProgress: 100, cvMasterProgress: 100 });
     expect(screen.getByText('ui.perfect_student')).toBeTruthy();

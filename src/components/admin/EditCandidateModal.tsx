@@ -85,7 +85,12 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
   });
   // VIP = tag [VIP] di catatan INTERNAL (legacy bukaSuperEditKandidat membaca
   // c.catatanInt) — bukan catatan_admin seperti rebuild lama.
-  const [isVIP, setIsVIP] = useState(() => /\[VIP\]/i.test(candidate.catatanInt || ''));
+  //
+  // Case-SENSITIVE, disengaja (legacy `includes('[VIP]')`, lib/vip.ts): versi
+  // /\[VIP\]/i yang dulu ada di sini menyalakan toggle untuk catatan `[vip]`,
+  // padahal isVipCatatan (gerbang AI CV/simulator) menolaknya — toggle dan
+  // gerbang tidak sepakat untuk kandidat yang sama.
+  const [isVIP, setIsVIP] = useState(() => (candidate.catatanInt || '').includes('[VIP]'));
   const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
 
   useEffect(() => {
@@ -106,7 +111,7 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
       };
       const age = computeAge(prefill.tglLahir);
       setForm({ ...prefill, usia: age !== null ? String(age) : prefill.usia });
-      setIsVIP(/\[VIP\]/i.test(candidate.catatanInt || ''));
+      setIsVIP((candidate.catatanInt || '').includes('[VIP]'));
     }
   }, [isOpen, candidate]);
 

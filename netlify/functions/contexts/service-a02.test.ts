@@ -79,4 +79,27 @@ describe('registry — buildKandidatSuperPatch parity legacy super-edit (A03)', 
     expect(b.catatan_internal).toBeUndefined();
     expect(b.catatan_external).toBeUndefined();
   });
+
+  // REGRESI item 10: tag `[VIP]` case-SENSITIVE (parity lib/vip.ts +
+  // isVipCatatan). Dulu /\[VIP\]/i membuat `[vip]` dianggap sudah ada sehingga
+  // penulis TIDAK menambahkan `[VIP]` — kandidat tetap terkunci dari gerbang.
+  it('turns VIP on for a [vip] note by ADDING the canonical [VIP] tag (case-sensitive)', () => {
+    const b = buildKandidatSuperPatch(
+      { catatan_internal: '[vip] catatan pribadi' },
+      { isVip: true },
+    );
+    // Tag kanonikal ditambahkan; `[vip]` bukan tag VIP sehingga TIDAK dianggap
+    // sebagai tanda "sudah ada".
+    expect(b.catatan_internal).toContain('[VIP]');
+    expect(b.catatan_internal).toContain('[vip]');
+  });
+
+  it('toggling VIP off strips only the canonical [VIP], not a lowercase [vip]', () => {
+    const b = buildKandidatSuperPatch(
+      { catatan_internal: '[VIP] [vip] catatan' },
+      { isVip: false },
+    );
+    // `[VIP]` kanonikal dihapus, `[vip]` (bukan tag) UTUH.
+    expect(b.catatan_internal).toBe('[vip] catatan');
+  });
 });

@@ -94,7 +94,13 @@ function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbac
     catatanExternal: catatanExt,
     // VIP = tag [VIP] di catatan internal (legacy isVipCatatan); KELAS/tag
     // lain = Siswa ASJ. [VIP] BUKAN tag kelas.
-    isVIP: /\[VIP\]/i.test(catatanInt),
+    //
+    // Case-SENSITIVE, disengaja: legacy membaca tag literal dengan
+    // `catatanInt.includes('[VIP]')` (lihat lib/vip.ts). Versi /\[VIP\]/i yang
+    // dulu ada di sini memberi toggle VIP menyala untuk catatan `[vip]`, padahal
+    // isVipCatatan — yang menggerbangi AI CV/simulator wawancara — mengembalikan
+    // false. Toggle dan gerbang jadi tidak sepakat. `[vip]` huruf kecil bukan VIP.
+    isVIP: catatanInt.includes('[VIP]'),
     isSiswaASJ: !!c.isSiswaASJ || hasClassTag(catatanInt),
     foto: c.berkas?.foto || c.pasPhoto || c.foto || '',
     // B03: surface sertifikat URL — row ter-dekorasi membawa cvUrl/jftUrl/sswUrl
@@ -209,9 +215,16 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     try {
       let intNote = catatanInternal.trim();
       if (isVIP) {
-        if (!/\[VIP\]/i.test(intNote)) intNote = intNote ? '[VIP] ' + intNote : '[VIP]';
+        // Penjaga tulis case-SENSITIVE: hanya tag kanonikal `[VIP]` yang
+        // dianggap sudah ada, sejalan dengan isVipCatatan (lib/vip.ts). Kalau
+        // di sini case-insensitive, menyalakan toggle pada catatan `[vip]` akan
+        // MENGANGGAP tag sudah ada dan tidak menulis `[VIP]` — sehingga kandidat
+        // lolos lencana/toggle tetapi tetap terkunci dari gerbang AI CV.
+        if (!intNote.includes('[VIP]')) intNote = intNote ? '[VIP] ' + intNote : '[VIP]';
       } else {
-        intNote = intNote.replace(/\[VIP\]\s*/gi, '').trim();
+        // Strip hanya bentuk KANONIKAL: `i` sengaja tidak dipasang supaya catatan
+        // `[vip]` (bukan tag) tidak ikut terhapus dari teks yang admin lihat.
+        intNote = intNote.replace(/\[VIP\]\s*/g, '').trim();
       }
       // Tag kelas ([KELAS X] / [X]) TIDAK ditulis ulang otomatis: teksarea
       // menampilkan catatan mentah (termasuk tag), jadi apa yang admin lihat

@@ -98,9 +98,15 @@ export function buildKandidatSuperPatch(row: Record<string, any>, data: Record<s
     let internal = String(rawInt ?? '');
     const vipOn = data.isVip === true || data.isVip === 'true';
     if (vipOn) {
-      if (!/\[VIP\]/i.test(internal)) internal = internal.trim() ? '[VIP] ' + internal.trim() : '[VIP]';
+      // Case-SENSITIVE: tag kanonikal `[VIP]` saja, sejalan dengan
+      // isVipCatatan (_lib/ai/interview-shared.ts) dan lib/vip.ts. Versi
+      // /\[VIP\]/i dulu membuat `[vip]` dianggap "sudah ada" sehingga penulis
+      // tidak menambahkan `[VIP]` — kandidat tetap terkunci dari gerbang.
+      if (!internal.includes('[VIP]')) internal = internal.trim() ? '[VIP] ' + internal.trim() : '[VIP]';
     } else {
-      internal = internal.replace(/\[VIP\]\s*/gi, '').trim();
+      // Strip bentuk kanonikal saja: `i` sengaja dibuang supaya `[vip]` (bukan
+      // tag) tidak ikut terhapus dari catatan.
+      internal = internal.replace(/\[VIP\]\s*/g, '').trim();
     }
     body.catatan_internal = internal;
     if (data.catatanExt !== undefined) body.catatan_external = String(data.catatanExt ?? '');

@@ -225,7 +225,16 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
           nama: row?.nama || legacyD.nama || user.name || 'Kandidat', wa,
           job: row?.idLoker || legacyD.job || '-', tahapan: row?.tahapan || legacyD.tahapan || '-',
           status: row?.status || legacyD.status || '-',
-          isVIP: /\[VIP\]/i.test(catatanInt) || !!legacyD.isVIP,
+          // ── Lencana "Siswa Resmi ASJ": tag `[VIP]` LITERAL saja ────────────
+          // Case-SENSITIVE, sengaja, dan sudah menjadi keputusan legacy: gate
+          // fitur memakai `isVipCatatan` (`[VIP]` ATAU `[KELAS xx]`, lihat
+          // lib/vip.ts), sedangkan LENCANA ini memakai `includes('[VIP]')` —
+          // persis js/engine/dashboard.ts:218. Sebelumnya di sini regex
+          // /\[VIP\]/i (case-INsensitive), sehingga catatan `[vip]` huruf kecil
+          // memberi lencana padahal gerbang AI CV/simulator MENOLAKnya. Dua
+          // predikat itu menjadi TIDAK SEPAKAT untuk kandidat yang sama — persis
+          // divergensi yang dilaporkan. Tag `[vip]` non-kanonikal BUKAN VIP.
+          isVIP: catatanInt.includes('[VIP]') || !!legacyD.isVIP,
           isSiswaASJ: !!row?.isSiswaASJ || !!legacyD.isSiswaASJ,
           catatanInt,
           kelas: (kelasMatch && kelasMatch[1]) || legacyD.kelas || '',

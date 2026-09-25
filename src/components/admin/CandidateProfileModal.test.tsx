@@ -296,6 +296,62 @@ describe('CandidateProfileModal', () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
+  // ── REGRESI item 10: `[vip]` huruf kecil BUKAN VIP (case-sensitive) ─────────
+  // Modal ini memakai tag `[VIP]` literal, sama seperti isVipCatatan (lib/vip.ts,
+  // gate AI CV/simulator). Dulu prefillnya pakai /\[VIP\]/i sehingga catatan
+  // `[vip]` menyalakan toggle VIP — padahal gerbang MENOLAK kandidat itu.
+  it('[vip] huruf kecil → toggle TIDAK menyala (prefill case-sensitive)', () => {
+    render(
+      <CandidateProfileModal
+        wa={mockCandidate.wa}
+        nama="REVIN"
+        candidate={{ ...mockCandidate, catatanInt: '[vip] catatan pribadi' }}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    // Toggle baca-an: off → label "☐ Tandai VIP", bukan "✅ VIP".
+    expectExists('☐ Tandai VIP');
+    expect(screen.queryByText('✅ VIP (Rencana Resmi)')).toBeNull();
+  });
+
+  it('[vip] huruf kecil → simpan dengan toggle off TIDAK menulis [VIP] & tidak menghapus teksnya', async () => {
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ success: true }) });
+    render(
+      <CandidateProfileModal
+        wa={mockCandidate.wa}
+        nama="REVIN"
+        candidate={{ ...mockCandidate, catatanInt: '[vip] catatan pribadi' }}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    // Toggle memang off (prefill case-sensitive), jadi cukup simpan tanpa klik toggle.
+    fireEvent.click(screen.getByText('Simpan Evaluasi Catatan'));
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/.netlify/functions/updateCatatanKandidat',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'updateCatatanKandidat',
+            payload: [
+              {
+                wa: mockCandidate.wa,
+                // Strip bentuk kanonikal `[VIP]` case-sensitive — `[vip]` bukan
+                // tag VIP, jadi teksnya UTUH. Ini yang mencegah penulisan
+                // diam-diam menghapus catatan yang admin lihat.
+                catatanInternal: '[vip] catatan pribadi',
+                catatanExternal: mockCandidate.catatanExt,
+              },
+            ],
+            sessionToken: 'test-token',
+          }),
+        })
+      );
+    });
+  });
+
   it('saves catatan internal/external + VIP tag via updateCatatanKandidat', async () => {
     // `ok: true` is REQUIRED now that this call goes through apiClient: the
     // client checks `res.ok`, which the raw code never did (it only called
