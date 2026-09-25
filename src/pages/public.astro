@@ -46,8 +46,19 @@ import Icon from '../components/ui/Icon';
          list) — now there is one implementation and no class list at all. -->
     <div class="flex justify-center relative z-10">
       <div class="inline-flex bg-slate-900 border border-slate-700 rounded-full p-1 shadow-2xl transition-colors" id="tab-pub-wrap">
-        <button id="tab-pub-loker" data-public-tab="loker" aria-pressed="true" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white aria-pressed:bg-sky-700 aria-pressed:text-white aria-pressed:shadow-md">
-          <Icon name="briefcase" class="mr-2" /> <span data-lang="ui.tab_loker">Lowongan Loker</span>
+        <!-- The visible "Loker" WORD is removed on the owner's instruction, but
+             the CONTROL and its accessible name are kept. Dropping the button
+             would take `data-public-tab="loker"` with it and break the switcher:
+             `publicSections.ts` resolves `#loker` deep links and the default
+             section to `loker`, so a missing tab leaves the binder with nothing
+             to light up and `aria-pressed` with no owner. A nameless `<button>`
+             would instead be an accessibility regression (WCAG 4.1.2, and a
+             screen-reader user could not tell the two tabs apart), so the label
+             moves to `aria-label` and the glyph keeps the icon-only affordance.
+             `data-lang` is dropped with the span: with no text node it would
+             only add a no-op translation target. -->
+        <button id="tab-pub-loker" data-public-tab="loker" aria-pressed="true" aria-label="Lowongan Loker" title="Lowongan Loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white aria-pressed:bg-sky-700 aria-pressed:text-white aria-pressed:shadow-md">
+          <Icon name="briefcase" aria-hidden="true" />
         </button>
         <button id="tab-pub-layanan" data-public-tab="layanan" aria-pressed="false" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white aria-pressed:bg-sky-700 aria-pressed:text-white aria-pressed:shadow-md">
           <Icon name="handshake" class="mr-2" /> <span data-lang="ui.tab_layanan">Program &amp; Layanan ASJ</span>

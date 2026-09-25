@@ -396,6 +396,12 @@ for f in "$PAGE" "$LAYANAN" "$LOKER" "$I18N" "$FOOTER" "$LIB"; do backup "$f"; d
 # ── one mutation per claim the guard makes ────────────────────────────────
 # M1  the very marker the guard waits for. Deleting it must fail the load test.
 #
+# ⚠ RE-AIMED 2026-09-25. The guard's load marker is no longer 'Lowongan Loker'
+# (the first tab's visible label was removed by owner ruling — the tab is now
+# icon-only with an `aria-label`). The load test now waits on the Loker panel's
+# own header cell, `th:has-text("KODE JOB")`, whose text is `table.code`
+# (i18n.ts:964). This mutation therefore renames THAT dictionary value.
+#
 # ⚠ THIS MUTATION USED TO BE A NO-OP, and it survived for exactly that reason.
 # It edited ONLY the literal in the page:
 #     <span data-lang="ui.tab_loker">Lowongan Loker</span>
@@ -408,7 +414,7 @@ for f in "$PAGE" "$LAYANAN" "$LOKER" "$I18N" "$FOOTER" "$LIB"; do backup "$f"; d
 # expensive kind of no-op, because the edit is visibly present in the source you
 # are looking at.
 #
-# The mutation now changes the SOURCE OF TRUTH — the dictionary value — so no
+# The mutation changes the SOURCE OF TRUTH — the dictionary value — so no
 # runtime pass can restore it.
 #
 # ⚠ AND THE REPLACEMENT MUST BE NON-EMPTY. Measured 2026-09-21: emptying the
@@ -419,12 +425,12 @@ for f in "$PAGE" "$LAYANAN" "$LOKER" "$I18N" "$FOOTER" "$LIB"; do backup "$f"; d
 # An empty string is falsy, so `"" || ... || key` falls through and yields the
 # KEY ITSELF. Then `text !== key` is FALSE, the write is SKIPPED, and the element
 # keeps the literal the HTML shipped with — i.e. the guard sees the original
-# text. Verified by replaying the chain: "" -> chosen "ui.tab_loker" -> no write;
-# "Lowongan" -> chosen "Lowongan" -> textContent rewritten. So this mutation
-# replaces the value with a NON-EMPTY string that the guard does not wait for.
-step "M1  'Lowongan Loker' is renamed in its i18n dictionary (the guard's own marker)" \
+# text. So this mutation replaces the value with a NON-EMPTY string that the
+# guard does not wait for. The replacement changes BOTH words so it cannot match
+# the case-insensitive `has-text` substring the guard uses.
+step "M1  'Kode Job' header is renamed in its i18n dictionary (the guard's own marker)" \
   "$I18N" \
-  '[["\"ui.tab_loker\": \"Lowongan Loker\",","\"ui.tab_loker\": \"Lowongan Kerja Tersedia\","]]'
+  '[["\"table.code\": \"Kode Job\",","\"table.code\": \"Nomor Pekerjaan\","]]'
 
 # M2  the text is present but the section is hidden. A guard that reads the DOM
 #     without checking visibility passes here — Playwright's text= selector does
@@ -438,40 +444,35 @@ step "M2  the loker section is hidden (text present, invisible)" \
   "$PAGE" \
   '[["<div id=\"section-loker\" data-public-panel=\"loker\">","<div id=\"section-loker\" data-public-panel=\"loker\" class=\"hidden\">"]]'
 
-# M3  THE HISTORICAL DEFECT. The marker survives only inside a meta tag, exactly
-#     as 'ASJ Portal' once did. A guard that greps for the string anywhere in the
-#     document stays green here; one that requires it VISIBLE must go red.
+# M3  THE HISTORICAL DEFECT: the marker is present but NOT VISIBLE. The string
+#     still exists in the rendered DOM, so a guard that reads the DOM without
+#     checking visibility stays green here — one that requires it VISIBLE must go
+#     red. (Same failure class the visibility note at test-public.mjs:45-64
+#     records for the panel.)
 #
-# ⚠ THIS MUTATION WAS A NO-OP TWICE OVER, and the second form is the interesting
-# one. Measured 2026-09-21:
-#   (i)  Editing the PAGE LITERAL is undone: ui.tab_loker is a data-lang key and
-#        translateDataLang() rewrites the span after hydration (trap T2). It must
-#        mutate the DICTIONARY.
-#   (ii) Replacing the dictionary value with `""` is ALSO a no-op, because
-#        translateDataLang resolves via a falsy-chain
-#            dict[key] || fallback[key] || RAW[key] || key
-#        so an empty string falls through to the KEY, `text !== key` is false, the
-#        textContent write is SKIPPED, and the element keeps the HTML literal.
-#   (iii) And the previous fix — substituting `<meta ...>` AS TEXT — was worse
-#        than a no-op: it made the literal meta source render as VISIBLE text, so
-#        `text=Lowongan Loker` still matched (measured: the tab's innerText became
-#        ' <meta name="x" content="Lowongan Loker">') and the guard was right to
-#        stay green. The marker must leave the VISIBLE text entirely.
-#
-# The replacement below is a plain string with no marker in it, so the tab's
-# visible text genuinely loses 'Lowongan Loker'. That is the defect M3 claims to
-# reproduce, and the guard's `waitForSelector('text=Lowongan Loker')` must fail.
-# The real meta-tag half of the historical story needs no mutation: BaseLayout
-# already ships <meta name="apple-mobile-web-app-title"> on every route, which is
-# precisely why the old guard's `text=ASJ Portal` waited forever.
-step "M3  the tab's visible marker is replaced (the string no longer renders)" \
-  "$I18N" \
-  '[["\"ui.tab_loker\": \"Lowongan Loker\",","\"ui.tab_loker\": \"Bursa Kerja\","]]'
+# ⚠ RE-AIMED 2026-09-25 to the load test's new marker. It now hides the `<th>`
+#     header row of the Loker table at the MARKUP level (`$LOKER`) rather than
+#     renaming a dictionary value: renaming is already M1's job, and the
+#     interesting claim here is "present in the DOM but not perceivable". The
+#     `hidden` ATTRIBUTE is used, not the class, because Tailwind preflight makes
+#     `[hidden] { display: none !important }` strictly stronger than any display
+#     utility — the header cell (and its 'Kode Job' text) can no longer paint.
+#     `waitForSelector('text=KODE JOB')` respects visibility, so it must fail.
+step "M3  the table header is present but not visible (hidden attribute)" \
+  "$LOKER" \
+  '[["<th scope=\"col\" class=\"p-2 text-center w-24\">{t(\"table.code\")}</th>","<th scope=\"col\" hidden class=\"p-2 text-center w-24\">{t(\"table.code\")}</th>"]]'
 
-# M4  a tab label is renamed. Breaks the two tab-existence assertions.
-#     Same two traps as M3: the dictionary is the source of truth (the page
-#     literal at public.astro:44 is overwritten after hydration), and the new
+# M4  a tab label is renamed. Breaks the Layanan tab-existence assertion.
+#     Same two traps as M1: the dictionary is the source of truth (the page
+#     literal in public.astro is overwritten after hydration), and the new
 #     value must be non-empty or the write is skipped.
+#
+# ⚠ SCOPE NARROWED 2026-09-25. This used to break BOTH tab-existence assertions
+#     because both were `button:has-text(...)`. The Loker tab is now icon-only
+#     (owner ruling) and its assertion keys on `[data-public-tab="loker"]` +
+#     `aria-label`, which this dictionary edit does not touch. So M4 now proves
+#     the LAYANAN assertion specifically — which is correct: the Layanan tab
+#     still has visible text and must still be renamed-for and caught.
 step "M4  the Layanan tab label is renamed in its i18n dictionary" \
   "$I18N" \
   '[["\"ui.tab_layanan\": \"Program & Layanan ASJ\",","\"ui.tab_layanan\": \"Layanan Program\","]]'

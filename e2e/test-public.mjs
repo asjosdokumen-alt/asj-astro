@@ -28,13 +28,26 @@ async function run() {
     // Sebelumnya menunggu 'text=ASJ Portal' — string itu HANYA ada di meta
     // <apple-mobile-web-app-title>, tidak pernah sebagai teks yang terlihat,
     // jadi assertion ini pasti timeout 30 detik walau halamannya sehat.
-    // 'Lowongan Loker' adalah konten nyata hasil render (ada di HTML statis).
-    await page.waitForSelector('text=Lowongan Loker', { timeout: 15000 });
+    //
+    // RE-AIMED 2026-09-25. This used to wait on `text=Lowongan Loker` — the
+    // visible text of the first tab. That label was removed on the owner's
+    // instruction (the tab is now icon-only with an `aria-label`), so waiting
+    // on it would time out on a HEALTHY page. The anchor is now the Loker
+    // PANEL's own header row, which is the content the visitor is actually
+    // promised and is rendered by the LokerTable island.
+    await page.waitForSelector('text=KODE JOB', { timeout: 15000 });
   });
 
   await test('Tab Lowongan Loker exists', async () => {
-    const tab = await page.locator('button:has-text("Lowongan Loker")');
-    if (await tab.count() === 0) throw new Error('Tab not found');
+    // The tab's accessible NAME still exists (aria-label), but its visible
+    // text does not — so key on the stable `data-public-tab` hook the switcher
+    // itself uses, not on `:has-text`. Assert the control is present AND
+    // visible (a bare `count()` would pass on a `hidden` button).
+    const tab = page.locator('[data-public-tab="loker"]').filter({ visible: true });
+    if (await tab.count() === 0) throw new Error('Tab [data-public-tab="loker"] not visible');
+    // …and it must still carry an accessible name even though it has no text.
+    const label = await tab.first().getAttribute('aria-label');
+    if (!label || !label.trim()) throw new Error('Loker tab has no accessible name');
   });
 
   await test('Tab Program & Layanan exists', async () => {
