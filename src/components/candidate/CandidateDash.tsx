@@ -22,6 +22,7 @@ import { ALL_BERKAS, hasBerkasUrl } from '../../lib/berkasCatalog';
 import { computeCvMiniProgress, computeCvMasterProgress, computeOverallProgress } from '../../lib/profileProgress';
 import LevelCard from './LevelCard';
 import StepGuide from './StepGuide';
+import AsjDossierCard from './AsjDossierCard';
 import { ErrorBoundary } from '../ErrorBoundary';
 
 // `feedback` = `feedback_berkas` dari database_asj_form. Dipakai untuk
@@ -46,6 +47,22 @@ type CandidateData = {
   bio?: Record<string, string>;
   /** Field CV mini (row mapCandidate ter-dekorasi) utk prefill modal — A09. */
   cvmini?: { gender: string; usia: string; tb: string; bb: string; pendidikan: string; jftText: string; sswText: string; } | null;
+  /**
+   * Identitas untuk `AsjDossierCard` (2026-09-25).
+   *
+   * SEMUA field ini SUDAH ADA di baris `mapCandidate` — adapter lama cuma tidak
+   * membacanya. Jadi ini murni plumbing: tidak ada perubahan backend, SQL, atau
+   * migrasi. Urutan fallback-nya `row.<field>` lalu `row.bio.<singkatan>` karena
+   * `attachBerkasBio` menaruh biodata master di `bio` dengan kunci PENDEK
+   * (`tmplahir`, `tgllahir`, `email`, `alamat` — lihat BIO_SHORT_TO_LONG di
+   * PemberkasanModal), dan baris kandidat sendiri bisa kosong.
+   *
+   * `nik` SENGAJA tidak ada di sini. Nomor KTP tidak boleh muncul di permukaan
+   * yang dipegang kandidat.
+   */
+  tempatLahir?: string; tglLahir?: string; ttl?: string;
+  email?: string; alamat?: string;
+  tbBb?: string; gender?: string; usia?: string; tb?: string; bb?: string; pendidikan?: string;
   /** pas_photo baris (mapCandidate) — fallback foto preview CV/rirekisho (A10). */
   pasPhoto?: string;
   needRevision: boolean; revisionNote: string;
@@ -279,6 +296,27 @@ export default function CandidateDash() {
               }
             : null,
           pasPhoto: String(row?.pasPhoto || ''),
+          // ── Identitas untuk kartu dossier ──
+          // `ttl` di-join dari dua kolom NYATA (tempat + tanggal lahir), bukan
+          // diformat ulang dari satu string: kalau salah satu kosong, yang tampil
+          // hanya yang ada. `mapCandidate` sudah menyediakan `ttl` sendiri di
+          // sebagian jalur, jadi ia dipakai lebih dulu bila ada.
+          tempatLahir: String(row?.tempatLahir || row?.bio?.tmplahir || ''),
+          tglLahir: String(row?.tglLahir || row?.bio?.tgllahir || ''),
+          ttl: String(
+            row?.ttl
+              || [row?.tempatLahir || row?.bio?.tmplahir, row?.tglLahir || row?.bio?.tgllahir]
+                .filter(Boolean)
+                .join(', '),
+          ),
+          email: String(row?.email || row?.bio?.email || ''),
+          alamat: String(row?.alamat || row?.bio?.alamat || ''),
+          tbBb: String(row?.tbBb || ''),
+          gender: String(row?.gender || ''),
+          usia: String(row?.usia || ''),
+          tb: String(row?.tb || ''),
+          bb: String(row?.bb || ''),
+          pendidikan: String(row?.pendidikan || ''),
           needRevision: !!legacyD.needRevision, revisionNote: legacyD.revisionNote || '',
           applications: row?.applications || legacyD.applications || [],
         });
@@ -343,37 +381,63 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
   const sortedRiwayat = [...filteredRiwayat].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
   const uniqueLokers = [...new Set(data.riwayat.map(r => r.jobCode).filter(Boolean))];
 
-  // Nilai kosong dari backend datang sebagai '-' (lihat mapCandidate / adapter
-  // loadDashboard), jadi '-' harus diperlakukan sama dengan kosong.
-  const realValue = (v: unknown) => {
-    const s = String(v ?? '').trim();
-    return !!s && s !== '-' && s !== 'null' && s !== 'undefined';
-  };
-  const hasRealJob = realValue(data.job);
-  const hasRealTahapan = realValue(data.tahapan);
+  /* `realValue`, `hasRealJob` and `hasRealTahapan` stood here. They existed to
+     stop the old header pill from printing "Job Dilamar: -" for a candidate who
+     had never applied, and they are gone with that pill (2026-09-25, the dossier
+     card replaced the header). THE RULE DID NOT GO WITH THEM — `AsjDossierCard`
+     restates it as its own `realValue()` and omits every row without a value, so
+     the same `-` / `'null'` / `'undefined'` guard still governs what is shown.
+     If a value-guarded row is added back to THIS file, bring the helper back with
+     it rather than inlining a truthiness check: `'-'` is truthy. */
+
+  // Job yang dilamar: kode loker utama dulu, lalu kode lain dari riwayat —
+  // di-dedupe, karena kandidat yang melamar satu loker punya keduanya sama.
+  const dossierJobs = [...new Set([data.job, ...uniqueLokers].filter(Boolean))];
 
   return (
     <ErrorBoundary>
     <div class="pb-16">
-      <div class="glass-panel p-5 sm:p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
-        <Icon name="id-card" class="text-5xl md:text-6xl text-emerald-400 mb-4 md:mb-6 drop-shadow-xl" />
-        <h2 class="text-2xl md:text-3xl font-black text-white mb-3">{t('candidate.welcome')}, {data.nama} <CrownBadge progress={overallProgress} />{data.isVIP && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-8 h-8 md:w-10 md:h-10 ml-3 align-middle object-contain rounded-full border border-emerald-500/50 drop-shadow-[0_0_15px_rgba(52,211,153,0.8)]" />}</h2>
-        {/* Job & tahapan HANYA dirender bila kandidat benar-benar punya lamaran.
-            Sebelumnya baris ini selalu tampil dan mencetak '-' untuk job — kandidat
-            yang belum pernah melamar melihat "Job Dilamar: -", yang terbaca seperti
-            ada pekerjaan umum padahal memang tidak ada lamaran sama sekali. */}
-        {(hasRealJob || hasRealTahapan) && (
-          <div class="inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-3 md:px-8 md:py-4 bg-black/40 border border-emerald-500/30 rounded-full text-sm text-slate-300 mb-5 md:mb-6 shadow-inner w-full md:w-auto">
-            {hasRealJob && (<>
-              <span>{t('candidate.job_applied')}</span> <span class="font-black text-emerald-400">{data.job}</span>
-            </>)}
-            {hasRealJob && hasRealTahapan && <span class="text-slate-500">|</span>}
-            {hasRealTahapan && (<>
-              <span>{t('candidate.stage')}</span> <span class="font-black text-sky-400">{data.tahapan}</span> ({statusText(data.status)})
-            </>)}
-          </div>
-        )}
+      {/* ── THE DOSSIER CARD IS THE PROFILE'S HEADER ──
+          Owner ruling 2026-09-25: "profil kok gini, harusnya profil seperti ini
+          kek legacy". This card replaces the generic greeting that used to open
+          the dashboard (an `id-card` icon, a "Selamat datang, {nama}" heading and
+          a job/stage pill) — the same facts, in the legacy identity-card layout
+          the owner asked for. The gamification badges that lived in that heading
+          move here rather than disappearing, so the tested
+          `title="ui.badge_official"` contract on the VIP logo is preserved.
 
+          NOTHING ELSE MOVED. The VIP student card (QR + class), the CV progress
+          bars, the schedule, the admin note, the application pipeline and the
+          action grid are untouched below it. */}
+      <AsjDossierCard
+        nama={data.nama}
+        idKandidat={data.idKandidat}
+        status={data.status}
+        wa={data.wa}
+        pasPhoto={data.pasPhoto}
+        gender={data.gender}
+        usia={data.usia}
+        tbBb={data.tbBb}
+        pendidikan={data.pendidikan}
+        ttl={data.ttl}
+        email={data.email}
+        alamat={data.alamat}
+        jftText={data.cvmini?.jftText}
+        sswText={data.cvmini?.sswText}
+        jobs={dossierJobs}
+        isVIP={data.isVIP}
+        isSiswaASJ={data.isSiswaASJ}
+        badge={
+          <>
+            <CrownBadge progress={overallProgress} />
+            {data.isVIP && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-6 h-6 align-middle object-contain rounded-full border border-accent-emerald" />}
+          </>
+        }
+        onEdit={() => setShowCvMiniModal(true)}
+        onDownload={() => setShowRirekisho(true)}
+      />
+
+      <div class="glass-panel p-5 sm:p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
         {/* ── DIGITAL STUDENT CARD (VIP only) ── */}
         {(data.isVIP || data.isSiswaASJ) && data.idKandidat && (
           <div class="max-w-sm mx-auto mb-8 relative group">

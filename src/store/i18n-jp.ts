@@ -998,6 +998,9 @@ export const jpTranslations: Record<string, string> = {
   // まだ無い（S7 はオーナーの文章待ち）。解決しないフラグメントへのリンクは、
   // 生きているように見えて何もしないリンクになる。
   "profile.nav_loker": "求人",
+  "dossier.brand": "ASJ DOSSIER",
+  "dossier.verified": "VERIFIED CANDIDATE",
+  "dossier.address_ktp": "住所詳細（KTP）",
   // `#layanan` は e9317cf で解決するようになった（タブパネルが通常の
   // セクションになった）。id 辞書と同じキーを必ず持つこと。
   "public.layanan_magang": "研修プログラム",

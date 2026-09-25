@@ -578,3 +578,78 @@ describe('CandidateDash — pemilih template CV adalah fitur admin, bukan kandid
     expect(document.body.textContent || '').not.toContain('button.pilih_template_cv');
   });
 });
+
+// ==========================================
+// TESTS: kartu dossier adalah header profil (2026-09-25)
+//
+// Owner: "profil kok gini, harusnya profil seperti ini kek legacy". Kartu
+// `AsjDossierCard` menggantikan header generik (ikon + "Selamat datang, {nama}" +
+// pil job/tahapan). Tiga hal diuji di sini, dan yang ketiga adalah aturan yang
+// paling mudah dilanggar tanpa sadar:
+//
+//   1. kartunya BENAR-BENAR ter-render (bukan cuma "tidak ada yang merah"),
+//   2. nomor KTP (`nik`) TIDAK PERNAH muncul di permukaan kandidat,
+//   3. baris tanpa nilai DIHILANGKAN, bukan dicetak sebagai "-".
+//
+// Nomor 3 membawa kontrol positif di dalamnya: kalau SEMUA baris hilang, tes itu
+// juga lulus di kartu kosong — jadi ia lebih dulu menuntut baris yang PUNYA nilai
+// benar-benar tampil.
+// ==========================================
+describe('CandidateDash — kartu dossier sebagai header profil', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    fetchMock.mockReset();
+    apiClientMock.mockReset();
+    apiClientMock.mockResolvedValue({ success: true } as never);
+    vi.mocked(showToast).mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+    stubLocation();
+  });
+  afterEach(() => {
+    cleanup();
+    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
+    vi.unstubAllGlobals();
+  });
+
+  it('merender identitas kandidat, aksi edit, dan CTA unduh di kartu', async () => {
+    await renderDash();
+    expect(screen.getByText('dossier.brand')).toBeTruthy();
+    expect(screen.getByText('dossier.verified')).toBeTruthy();
+    // idKandidat dari row() — kalau pelat ID hilang, ini merah.
+    expect(screen.getByText('ASJ-001')).toBeTruthy();
+    // Dua kontrol untuk aksi edit: satu di kartu, satu di grid aksi bawah. Sengaja
+    // `getAllByRole` — kalau salah satunya hilang, panjangnya berubah dan tes merah.
+    expect(screen.getAllByRole('button', { name: 'ui.update_cv_mini' })).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'ui.cv_download_biodata' })).toBeTruthy();
+  });
+
+  it('TIDAK pernah mencetak nomor KTP (nik) di permukaan kandidat', async () => {
+    /* `bio` DIBERI ISI DENGAN SENGAJA, dan itu bagian dari tes ini. Percobaan
+       pertama memakai fixture kosong — dan MUTASI YANG MENAMBAHKAN NIK LOLOS,
+       karena baris TTL/EMAIL/ALAMAT seluruhnya di dalam satu guard `(ttl ||
+       email || alamat)`, jadi tanpa bio blok itu tidak pernah di-render dan NIK
+       yang disuntikkan tidak pernah muncul. Tes yang lulus karena bloknya tidak
+       ada bukan bukti apa pun: dengan bio terisi, blok itu PASTI ter-render, dan
+       baris KTP yang muncul di sana akan terbaca. */
+    await renderDash({
+      nik: '3512345678901234',
+      bio: { email: 'budi@contoh.test', alamat: 'Jl. Mawar 1, Ponorogo' },
+    });
+    // Kontrol positif: blok barisnya memang ter-render (kalau tidak, tes hampa).
+    expect(screen.getByText('ui.cv_email')).toBeTruthy();
+    expect(screen.getByText('dossier.address_ktp')).toBeTruthy();
+    expect(document.body.textContent || '').not.toContain('3512345678901234');
+  });
+
+  it('baris tanpa nilai dihilangkan; baris yang punya nilai tampil', async () => {
+    await renderDash({ gender: 'LAKI-LAKI', usia: '36', bio: {} });
+    // Kontrol positif: ada nilainya, jadi HARUS tampil.
+    expect(screen.getByText('ui.cv_gender')).toBeTruthy();
+    expect(screen.getByText('ui.cv_usia')).toBeTruthy();
+    // Tidak ada nilainya (row() tidak punya bio) -> tidak dicetak sebagai '-'.
+    expect(document.body.textContent || '').not.toContain('ui.cv_email');
+    expect(document.body.textContent || '').not.toContain('dossier.address_ktp');
+    expect(document.body.textContent || '').not.toContain('ui.cv_ttl');
+  });
+});

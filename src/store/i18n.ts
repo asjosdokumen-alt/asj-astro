@@ -1354,9 +1354,15 @@ export const translations: Record<Lang, Record<string, string>> = {
   // all yet (S7 waits on the owner's prose). A nav item pointing at a fragment that
   // does not resolve is a link that looks live and does nothing.
   "profile.nav_loker": "Lowongan",
+  "dossier.brand": "ASJ DOSSIER",
+  "dossier.verified": "VERIFIED CANDIDATE",
+  "dossier.address_ktp": "Alamat Detail (KTP)",
   // `#layanan` resolves as of e9317cf, which turned the Layanan tab panel into a
-  // plain Section (index.astro:156) — so the desktop rail may point at it and
-  // `data-nav-link="layanan"` has a target whose scroll-spy observer finds it.
+  // plain Section (index.astro:156). NOTE 2026-09-25: the section bar that read
+  // `data-nav-link="layanan"` is gone (owner deleted the whole band below the
+  // hero), so nothing scroll-spies this target any more — the anchor still
+  // resolves, there is simply no rail pointing at it. Left as the reason this key
+  // exists; do not read it as a live contract.
   // The key went in at the call site only; the dictionaries never got it.
   "public.layanan_magang": "Program Magang",
   "public.layanan_magang_desc": "Magang di perusahaan Jepang",
