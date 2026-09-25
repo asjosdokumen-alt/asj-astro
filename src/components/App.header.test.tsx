@@ -126,10 +126,10 @@ describe('bahasa — toggle HANYA di dalam drawer, bukan di header', () => {
     render(<App />);
     const bar = headerBar();
     expect(bar).not.toBeNull();
-    expect(bar!.querySelector('button[aria-label="Toggle language"]')).toBeNull();
+    expect(bar?.querySelector('button[aria-label="Toggle language"]')).toBeNull();
     // …and the hamburger must survive — removing the sibling must not have
     // taken the menu control with it.
-    expect(bar!.querySelector('button[aria-label="Toggle Menu"]')).not.toBeNull();
+    expect(bar?.querySelector('button[aria-label="Toggle Menu"]')).not.toBeNull();
   });
 
   it('menyediakan toggle bahasa di dalam drawer (satu-satunya jalan masuk)', () => {
@@ -139,7 +139,7 @@ describe('bahasa — toggle HANYA di dalam drawer, bukan di header', () => {
     render(<App />);
     const drawer = document.querySelector('nav[aria-label="Primary navigation"]');
     expect(drawer).not.toBeNull();
-    const langBtn = drawer!.querySelector('button[aria-label="Toggle language"]');
+    const langBtn = drawer?.querySelector('button[aria-label="Toggle language"]');
     expect(langBtn).not.toBeNull();
   });
 });

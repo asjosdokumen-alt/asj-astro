@@ -232,7 +232,15 @@
    the layer from exactly the users it was written to serve. */
 @media (prefers-reduced-motion: reduce) {
   .sakura-petal {
+    /* biome-ignore lint/complexity/noImportantStyles: must outrank the global
+       reduced-motion clamp in global.css §8 (a universal `*` selector that sets
+       animation-duration: 0.01ms !important). Without `!important` the petals
+       freeze instead of falling slowly — see motion.css §2 and
+       BaseLayout.sakura.test.ts. */
     animation-duration: 12s !important;
+    /* biome-ignore lint/complexity/noImportantStyles: same reason as above —
+       the global clamp sets animation-iteration-count: 1 !important, so the
+       petals must outrank it to keep falling. */
     animation-iteration-count: infinite !important;
   }
 }

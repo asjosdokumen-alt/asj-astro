@@ -47,7 +47,7 @@ async function run() {
     if (await tab.count() === 0) throw new Error('Tab [data-public-tab="loker"] not visible');
     // …and it must still carry an accessible name even though it has no text.
     const label = await tab.first().getAttribute('aria-label');
-    if (!label || !label.trim()) throw new Error('Loker tab has no accessible name');
+    if (!label?.trim()) throw new Error('Loker tab has no accessible name');
   });
 
   await test('Tab Program & Layanan exists', async () => {
