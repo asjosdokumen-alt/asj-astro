@@ -561,7 +561,13 @@ async function inspectLanding(width) {
           // `clip-path: inset(0 0 100% 0)` resolves to `inset(0px 0px 100%)`:
           // a `100%` inset on ANY side collapses the element to zero area.
           const inset = /^inset\(([^)]*)\)/.exec(cs.clipPath || '');
-          if (inset && inset[1].split(/\s+/).some((v) => v === '100%')) return false;
+          // `inset?.[1]` rather than `inset && inset[1]`: same behaviour (optional
+          // chaining short-circuits the WHOLE chain, so a null match still yields
+          // undefined and does not throw on `.split`), and it clears the one
+          // `lint/complexity/useOptionalChain` diagnostic this file had carried
+          // since 5a87756 — a red the frozen baseline never recorded, because the
+          // baseline was last written 2026-09-22 and that line arrived 2026-09-25.
+          if (inset?.[1].split(/\s+/).some((v) => v === '100%')) return false;
           return true;
         };
 

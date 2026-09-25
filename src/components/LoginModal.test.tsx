@@ -276,7 +276,9 @@ describe('LoginModal (B01)', () => {
 // with `mode="closed"` — and its render guard used to sit ABOVE the `useOverlay`
 // call (`if (loggedIn || mode === "closed") return null;` before the hook), so
 // while the modal was closed the hook never ran. Measured in a real browser
-// against the served build, opening via [data-nav-login] and closing with Escape:
+// against the served build, opening via the drawer's login button and closing
+// with Escape (`[data-nav-login]` moved there on 2026-09-25, when the section
+// bar that used to carry it was deleted):
 //   OPEN #1  role="dialog" aria-modal="true" labelledby="…"  focus INSIDE
 //   OPEN #2  role=null     aria-modal=null    labelledby=null focus NOT inside
 // The FIRST open is correct — which is exactly why a one-open check (and every

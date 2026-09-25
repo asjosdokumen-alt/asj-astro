@@ -555,21 +555,42 @@ await test('a dialog opened over another gets its own name (if a pamflet exists)
    call. So while the modal was closed the hook never ran, and on the SECOND
    open its effects did not re-run: the modal lost `role`/`aria-modal`/
    `aria-labelledby` and stopped moving focus inside. Measured shape against
-   the served build (open via [data-nav-login], close with Escape):
+   the served build (open via the drawer, close with Escape):
      OPEN #1  role="dialog" aria-modal="true" labelledby="…"  focus INSIDE
      OPEN #2  role=null     aria-modal=null    labelledby=null focus NOT inside
    A single-open check is GREEN on this defect — the first open is correct —
    which is exactly how it shipped. The second open is the whole point, and
-   the close in between is asserted so the reopen is ATTRIBUTABLE to it. */
+   the close in between is asserted so the reopen is ATTRIBUTABLE to it.
+
+   ⚠ THE OPEN PATH MOVED 2026-09-25, AND THE HOOK DID NOT. `[data-nav-login]`
+   used to live on `SiteNav.astro`'s login button. The owner deleted the whole
+   band below the hero, that button went with it, and this gate died with
+   `waiting for locator('[data-nav-login]')` — a 30 s timeout, not a red
+   assertion, which is why it is worth recording: the selector is a CONTRACT
+   between this file and the app, and deleting the element silently broke it.
+   The hook now sits on the DRAWER's login button (App.tsx), so the login
+   affordance is still reachable and still named. The extra step is that the
+   drawer must be OPENED first: it is `translate-x-full` until the hamburger is
+   clicked, and Playwright will not click what it cannot see. */
 await test('the login modal keeps role/aria-modal/focus on a SECOND open', async () => {
-  // `[data-nav-login]` lives on the landing page's desktop section nav
-  // (SiteNav.astro, hidden below lg), so navigate there. The page-level
-  // get-app-data route above survives navigation.
+  // The drawer is the site's navigation now (the section bar is gone), so
+  // navigate to `/`, open the drawer, and reach the login button inside it.
   const r = await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded', timeout: 45000 });
   const status = r ? r.status() : 0;
   if (status !== 200) throw new Error(`GET / -> HTTP ${status}; refusing to read an error page`);
   await page.waitForSelector('#atas h1', { timeout: 20000 });
   await page.waitForTimeout(900);
+
+  /* Opening the drawer is a PRECONDITION of every open below, so it is one
+     helper rather than two lines copied per call site: `openLogin()` also calls
+     `setMenuOpen(false)`, so the drawer is closed again after each open and must
+     be reopened for the second one. */
+  const clickLoginInDrawer = async () => {
+    await page.click('.hamburger-btn');
+    await page.waitForTimeout(400);
+    await page.click('[data-nav-login]');
+    await page.waitForTimeout(500);
+  };
 
   const readLoginDialog = () =>
     page.evaluate(() => {
@@ -590,10 +611,9 @@ await test('the login modal keeps role/aria-modal/focus on a SECOND open', async
     });
 
   const openAndRead = async (label) => {
-    await page.click('[data-nav-login]');
-    await page.waitForTimeout(500);
+    await clickLoginInDrawer();
     const o = await readLoginDialog();
-    if (!o) throw new Error(`${label}: no visible overlay after clicking [data-nav-login]`);
+    if (!o) throw new Error(`${label}: no visible overlay after opening the login modal from the drawer`);
     if (o.role !== 'dialog') throw new Error(`${label}: role=${JSON.stringify(o.role)} (expected "dialog")`);
     if (o.ariaModal !== 'true') throw new Error(`${label}: aria-modal=${JSON.stringify(o.ariaModal)} (expected "true")`);
     if (!o.ariaLabelledby || !o.labelResolves) {

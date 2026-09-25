@@ -643,7 +643,21 @@ export default function App(
             <button onClick={toggleLang} aria-label="Toggle language" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
           </div>
           {hydrated && !u.isLoggedIn && (<div class="space-y-3">
-            <button onClick={openLogin} class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">{t("header.login")}</button>
+            {/* ─── `data-nav-login` MOVED HERE FROM THE DELETED SECTION BAR ───
+                The attribute is a TEST HOOK, not styling: `e2e/test-dialog.mjs`
+                uses it to open the login modal twice and prove the modal keeps
+                its `role`/`aria-modal`/focus on the SECOND open. It used to sit
+                on `SiteNav.astro`'s login button; when the owner deleted the
+                whole band below the hero (2026-09-25) that button went with it
+                and the gate died on `waiting for locator('[data-nav-login]')`.
+                The hook moves to the navigation's login affordance — which is
+                this one now — rather than the gate being weakened, so the
+                second-open contract keeps its proof.
+
+                THE GATE MUST OPEN THE DRAWER FIRST: this button is inside
+                `translate-x-full` until the hamburger is clicked, and Playwright
+                refuses to click an element it cannot see. */}
+            <button data-nav-login onClick={openLogin} class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">{t("header.login")}</button>
             <button onClick={openRegister} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition">{t("header.register")}</button>
             <button onClick={openAdminLogin} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition"><Icon name="shield-alt" class="mr-2" /> {t("header.admin_login")}</button>
           </div>)}
