@@ -202,11 +202,22 @@ async function sweep(page) {
   });
 }
 
-/** The single visible overlay, or null. */
+/**
+ * The single visible DIALOG overlay, or null.
+ *
+ * `aria-hidden="true"` is excluded because the file's own rule classifies such
+ * an overlay as case A — "declared presentational (scrims, ambient layers)" —
+ * and BaseLayout emits the decorative `#sakura-particles` layer as a live
+ * `u-modal-shell` that is `aria-hidden` and `fixed inset-0`. In the `sakura`
+ * theme this fixture activates, that ambient layer is genuinely visible and sits
+ * BEFORE the page slot in DOM order, so a first-match search returned it instead
+ * of the real dialog — cascading into role=null, no name, focus outside, Tab
+ * escaping, Escape leaving "1 overlay". Excluding `aria-hidden` picks the dialog.
+ */
 async function openOverlay(page) {
   return page.evaluate(() => {
     const el = [...document.querySelectorAll('.u-modal-shell')].find(
-      (e) => e.offsetWidth > 0 || e.offsetHeight > 0,
+      (e) => (e.offsetWidth > 0 || e.offsetHeight > 0) && e.getAttribute('aria-hidden') !== 'true',
     );
     if (!el) return null;
     const lb = el.getAttribute('aria-labelledby');
@@ -224,11 +235,20 @@ async function openOverlay(page) {
   });
 }
 
+/**
+ * How many overlays a user can actually interact with.
+ *
+ * `aria-hidden="true"` overlays are NOT counted: the rule above classifies them
+ * as case A (declared presentational), and the always-present `#sakura-particles`
+ * ambient layer is exactly that. Counting it made an idle page report "1 overlay"
+ * and broke "no overlay is visible before anything is opened" — the layer is a
+ * decoration, not a dialog anyone opened.
+ */
 async function visibleOverlayCount(page) {
   return page.evaluate(
     () =>
       [...document.querySelectorAll('.u-modal-shell')].filter(
-        (e) => e.offsetWidth > 0 || e.offsetHeight > 0,
+        (e) => (e.offsetWidth > 0 || e.offsetHeight > 0) && e.getAttribute('aria-hidden') !== 'true',
       ).length,
   );
 }
@@ -411,8 +431,14 @@ await test('the drawer opens and its scrim is aria-hidden', async () => {
   await page.waitForTimeout(450);
 
   const r = await page.evaluate(() => {
+    // Count the DRAWER's own shells, not the ambient `#sakura-particles` layer.
+    // That layer is a live, `aria-hidden`, `fixed inset-0` `u-modal-shell` in the
+    // `sakura` theme this fixture activates; counting it would let the assertion
+    // below pass on the decoration alone even if the drawer produced no
+    // aria-hidden scrim of its own. (The drawer's shells ARE aria-hidden, so they
+    // must still be counted — hence excluding by id, not by `aria-hidden`.)
     const shells = [...document.querySelectorAll('.u-modal-shell')].filter(
-      (e) => e.offsetWidth > 0 || e.offsetHeight > 0,
+      (e) => (e.offsetWidth > 0 || e.offsetHeight > 0) && e.id !== 'sakura-particles',
     );
     return {
       visible: shells.length,
@@ -464,7 +490,7 @@ await test('a dialog opened over another gets its own name (if a pamflet exists)
 
   const r = await page.evaluate(() => {
     const shells = [...document.querySelectorAll('.u-modal-shell')].filter(
-      (e) => e.offsetWidth > 0 || e.offsetHeight > 0,
+      (e) => (e.offsetWidth > 0 || e.offsetHeight > 0) && e.getAttribute('aria-hidden') !== 'true',
     );
     const nameOf = (el) => {
       const lb = el.getAttribute('aria-labelledby');
@@ -548,7 +574,7 @@ await test('the login modal keeps role/aria-modal/focus on a SECOND open', async
   const readLoginDialog = () =>
     page.evaluate(() => {
       const el = [...document.querySelectorAll('.u-modal-shell')].find(
-        (e) => e.offsetWidth > 0 || e.offsetHeight > 0,
+        (e) => (e.offsetWidth > 0 || e.offsetHeight > 0) && e.getAttribute('aria-hidden') !== 'true',
       );
       if (!el) return null;
       const lb = el.getAttribute('aria-labelledby');
