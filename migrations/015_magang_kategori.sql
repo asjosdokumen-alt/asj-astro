@@ -81,17 +81,33 @@ END $$;
 
 -- ── 2. Insert the "Magang" category row, idempotently ───────────────────────
 -- sys_config shape (from schema.generated.ts): id, config_type, config_value,
--- deskripsi, is_active, created_at. `id` is a text PK; generate a stable value.
+-- deskripsi, is_active, created_at.
+--
+-- DO NOT SUPPLY `id`. `sys_config.id` is a uuid PRIMARY KEY filled by a DATABASE
+-- DEFAULT, not text. Supplying a text literal here fails with
+--   ERROR: 22P02: invalid input syntax for type uuid: "cfg-list_kategori-magang"
+-- which is the exact error that aborted the first production run of this
+-- migration. Omitting `id` and letting the default generate it is what the app
+-- itself does: replaceConfigItems() in
+-- netlify/functions/contexts/configuration/repository.ts inserts sys_config rows
+-- on every admin config edit and never mentions `id`. This is the trap that
+-- produced the original failure — do not reintroduce a literal `id`.
+--
+-- `created_at` IS supplied. The app always sets it explicitly
+-- (`created_at: new Date().toISOString()`), and the column may be NOT NULL with
+-- no default — omitting it would fail with a null-violation even after the uuid
+-- literal is removed.
+--
 -- NOT EXISTS on (config_type = 'list_kategori' AND config_value = 'Magang') is
 -- what makes a second run a no-op — a plain INSERT would duplicate the row and
 -- the admin form would show "Magang" twice.
-INSERT INTO public.sys_config (id, config_type, config_value, deskripsi, is_active)
+INSERT INTO public.sys_config (config_type, config_value, deskripsi, is_active, created_at)
 SELECT
-  'cfg-list_kategori-magang',
   'list_kategori',
   'Magang',
   'Kategori lowongan magang (kode loker GJ<N>ASJ, lamaran khusus siswa VIP)',
-  true
+  true,
+  now()
 WHERE NOT EXISTS (
   SELECT 1 FROM public.sys_config
   WHERE config_type = 'list_kategori'
