@@ -14,6 +14,34 @@ import { bannerStore } from '../store/theme';
 // ─── Named Constants ───
 const Z_INDEX = { OVERLAY: 35, NAV: 40, HAMBURGER: 30 } as const;
 
+/**
+ * The header banner artwork (non-hero variant), restored 2026-09-25.
+ *
+ * WHY THIS IS BACK. The non-hero header (`/public`, `/loker`, `/share`, …) had
+ * lost its banner: `bannerStore` was imported and never read, so every route
+ * except the hero on `/` rendered a bare `hero-gradient` with no artwork. The
+ * owner's item 3 asks for the banner asset back on the `asj-files` Supabase path
+ * the legacy portal used.
+ *
+ * WHY THESE EXACT STRINGS. They are the legacy structure the owner chose, and
+ * both filenames are ALREADY live in this repo — `LayananSection.astro:31,114`
+ * fetch `sakra_banner.webp` and `dark_tokyo_banner.webp` from this same base.
+ * Reusing them (rather than inventing names) keeps one source of truth for the
+ * URLs; `sakra` is the legacy spelling and must NOT be "corrected" to `sakura`,
+ * or the request 404s.
+ *
+ * WHY THE MAP DEFAULT IS TOKYO. `BannerTheme` also has `INTER_VIP`; anything
+ * that is not `SAKURA` resolves to the Tokyo artwork, matching the legacy
+ * default. `bannerStore` is a `persistentAtom`, so flipping the theme swaps the
+ * artwork — which is the whole reason the store exists.
+ */
+const BANNER_BASE =
+  'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/';
+const BANNER_ART = {
+  SAKURA: `${BANNER_BASE}sakra_banner.webp`,
+  TOKYO: `${BANNER_BASE}dark_tokyo_banner.webp`,
+} as const;
+
 import LoginModal from './LoginModal';
 // CekSiswaModal dipakai saat render (flag showCekSiswa) tetapi impornya hilang
 // → ReferenceError begitu modal dibuka. Jangan hapus baris ini.
@@ -61,6 +89,33 @@ export default function App(
   // lang=jp) so every t() consumer in this subtree stops showing the Indonesian
   // fallback — the same subscription every island root needs.
   const lang = useLang();
+  // Banner artwork follows the persisted banner theme (light → SAKURA,
+  // dark → TOKYO). Subscribing here is what makes a theme flip swap the
+  // non-hero header's picture; without it the import was dead and every
+  // non-hero route rendered a bare gradient.
+  //
+  // ⚠ WHY AN IMPERATIVE SYNC IS STILL NEEDED (MEASURED 2026-09-25).
+  // `useStore(bannerStore)` DOES re-render on every *change* after hydration —
+  // toggling the theme in-page swaps the <img> src correctly. It does NOT fix
+  // the FIRST paint: the page is server-rendered with the SAKURA default (the
+  // server has no `localStorage`), and on hydration Preact REUSES that SSR
+  // <img> without patching its `src`, because the client's first render also
+  // produced a vnode whose props Preact considers already-present. With a
+  // persisted dark theme the header therefore stayed on `sakra_banner.webp`
+  // after reload. Adding a `key` did not help (Preact ignores key diffs on the
+  // hydration commit). The measured fix is to write the correct src once the
+  // island is live: the effect below runs on mount (fixing the first paint) and
+  // again on every `banner` change (covering later flips), so it also makes the
+  // subscription's re-render robust against the same no-op diff.
+  const banner = useStore(bannerStore);
+  const bannerSrc = banner === 'SAKURA' ? BANNER_ART.SAKURA : BANNER_ART.TOKYO;
+  const bannerImgRef = useRef<HTMLImageElement | null>(null);
+  useLayoutEffect(() => {
+    const el = bannerImgRef.current;
+    if (el && el.getAttribute('src') !== bannerStore.get()) {
+      el.setAttribute('src', bannerStore.get() === 'SAKURA' ? BANNER_ART.SAKURA : BANNER_ART.TOKYO);
+    }
+  }, [banner]);
   const [modalMode, setModalMode] = useState<ModalMode>('closed');
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAiCopilot, setShowAiCopilot] = useState(false);
@@ -302,6 +357,38 @@ export default function App(
           </picture>
         )}
 
+        {/* Non-hero header artwork — RESTORED 2026-09-25 (owner item 3).
+             Every route except `/` mounts the header without the hero, and this
+             band was left with a bare gradient. It now carries the theme-driven
+             banner from the legacy `asj-files` path; `bannerSrc` flips with
+             `bannerStore` (SAKURA ⇄ TOKYO), which is what a theme change should
+             visibly do.
+
+             Same geometry contract as the hero picture: `absolute inset-0 -z-0`
+             so it paints UNDER the (unpositioned) flex children, `object-cover`
+             so the band's varying height never distorts the art, and
+             `opacity-60` so the band's gradient still reads through it — the
+             two share a palette and must not meet at a hard edge. `aria-hidden`
+             + `alt=""` because it is decorative: the header's own text carries
+             the meaning, exactly as the hero-branch comment explains.
+
+             No `srcset`/`width`/`height`: the legacy asset is a single remote
+             file with no @2x sibling, and asserting an intrinsic box we do not
+             know would be a false statement about it (same reasoning the hero
+             comment records for its own size change). `loading="lazy"` — unlike
+             the hero, this band is not the LCP element on these routes. */}
+        {!hero && (
+          <img
+            ref={bannerImgRef}
+            src={bannerSrc}
+            alt=""
+            aria-hidden="true"
+            loading="lazy"
+            decoding="async"
+            class="absolute inset-0 -z-0 pointer-events-none w-full h-full object-cover opacity-60"
+          />
+        )}
+
         {/* The artwork overlay — DESIGN.md §3.6's level-2 "overlay gradien".
              It is a DIRECTIONAL gradient, not a scrim: transparent over the far
              side of the band, dark only where the copy sits (bottom on a phone,
@@ -316,8 +403,24 @@ export default function App(
              `opacity-60`, and it is the ARTWORK that sits behind the headline
              now. With the class orphaned (0 elements), the headline measured a
              worst glyph-background of 2.36-2.88:1 in light mode, under the 3:1
-             floor. It is decorative, so `aria-hidden` + `pointer-events-none`. */}
-        {hero && <div class="absolute inset-0 header-overlay pointer-events-none" aria-hidden="true" />}
+             floor. It is decorative, so `aria-hidden` + `pointer-events-none`.
+
+             ⚠ NOW APPLIED TO BOTH VARIANTS, 2026-09-25. It used to be
+             `{hero && …}` because only the hero carried artwork. The non-hero
+             header now carries the theme banner too (item 3), so the overlay is
+             no longer conditioned on `hero` — gating it on the hero would leave
+             the non-hero header's white copy sitting directly on the artwork.
+             MEASURED on `/public` 1280, glyph row sampled with the header text
+             hidden so only the backdrop is read: dark 9.64:1; light varies with
+             the banner artwork as it paints — 12.8:1 over the bare gradient down
+             to **3.35:1** once a bright `sakra_banner.webp` petal lands behind
+             the copy. All clear the 3:1 floor, the light one by design margin.
+             NOTE the light figure depends on global.css §5d's band SELF-match
+             rule as well as this overlay: without it the non-hero h1 inherited
+             §5b's `#1f1d1c` and measured **1.21:1** against this same backdrop
+             (it was ALREADY 1.10:1 at HEAD, before the banner — a pre-existing
+             defect this task surfaced and fixes). See the §5d comment. */}
+        <div class="absolute inset-0 header-overlay pointer-events-none" aria-hidden="true" />
 
         {/* Hamburger — shown on BOTH mobile and desktop. One menu surface
             for both viewports (the user picks the drawer icon, the same

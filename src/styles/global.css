@@ -641,7 +641,16 @@ body {
    MEASURED by injecting this candidate at runtime (no rebuild; worst
    glyph-background against white, floor 3.0:1):
        390px  light 3.80 PASS   dark 4.27 PASS
-      1280px  light 7.60 PASS   dark 9.25 PASS */
+      1280px  light 7.60 PASS   dark 9.25 PASS
+   FOLLOW-UP, MEASURED 2026-09-25 (/public 1280, glyph row sampled with the
+   header text hidden so only the backdrop is read):
+   the NON-HERO header, which now carries the theme banner via this same class,
+   measures dark **9.64:1** and light **12.8:1 over the bare gradient, down to
+   3.35:1 when a bright `sakra_banner.webp` petal paints behind the copy** —
+   ONCE §5d's band self-match rule below re-lights its h1. Before that rule the
+   h1 inherited §5b's `#1f1d1c` and measured 1.21:1 (1.10:1 at HEAD, no banner)
+   — the overlay alone cannot fix a heading whose TEXT was shimmed dark. See the
+   §5d note. */
 .header-overlay {
   background-image: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
 }
@@ -705,6 +714,30 @@ body {
 :where([data-theme="light"]) :where(.hero-gradient, .footer-gradient, .artwork-band) .text-white,
 :where([data-theme="light"]) :where(.hero-gradient, .footer-gradient, .artwork-band) .text-slate-100,
 :where([data-theme="light"]) :where(.hero-gradient, .footer-gradient, .artwork-band) .text-slate-200 {
+  color: #ffffff;
+}
+/* THE BAND ELEMENT IS *ITSELF* `.text-white` — the rule above cannot see it.
+   WHY THIS IS A SEPARATE RULE, MEASURED 2026-09-25. The rule above ends in
+   `… .text-white`, a DESCENDANT selector: it re-lights a `.text-white` node
+   that lives INSIDE the band. On `/` that is enough, because the hero's <h1>
+   carries its own `text-white` (`text-display font-black text-white …`) and
+   the visible heading is that child.
+   The NON-HERO header (`/public`, `/loker`, …) has no such child: its <h1> is
+   only `text-lg md:text-3xl font-black italic …` and the white is set on the
+   <header> itself — which is ALSO the `.hero-gradient` band. So the child
+   selector matches nothing, §5b's `.text-white → #1f1d1c` wins, and the
+   heading inherits near-black onto a band that is dark in BOTH themes
+   (`--hero-gradient` is dusk/pink; it does not flip).
+   MEASURED before this rule (light theme, /public 1280, glyph row sampled with
+   the text hidden so only the backdrop is read):
+     header h1 `rgb(31,29,28)` on backdrop `rgb(59,22,66)…rgb(149,86,120)`
+     → worst **1.10:1** (3:1 floor). It was ALREADY broken; restoring the
+   banner (item 3) and adding the overlay left it at **1.21:1** — still broken,
+   so the band's own text has to be re-lit here.
+   Naming the band + `.text-white` on the SAME element: `:where` contributes 0
+   specificity, so this is still (0,1,0), emitted after §5b → it wins on source
+   order, exactly like the rule above. */
+:where([data-theme="light"]) :where(.hero-gradient, .footer-gradient, .artwork-band).text-white {
   color: #ffffff;
 }
 /* The sub-headline rung: `text-slate-300` is the muted-on-dark rung, and
