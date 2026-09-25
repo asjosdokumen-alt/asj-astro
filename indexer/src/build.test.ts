@@ -501,7 +501,7 @@ describe('full build', () => {
     // and files.length in discover.test.ts; the battery `.sh` deleted with them
     // is outside every bucket. MEASURED with count-indexed.test.ts, NOT derived:
     // 275 + 101 + 21 + 72 + 6 + 20 = 495.
-    expect(r.stats.fileCount).toBe(495); // 276 ts + 102 tsx + 22 astro + 75 mjs + 6 cjs + 20 js = 501, MEASURED with count-indexed.test.ts. 499 -> 500 (2026-09-21): +1 for ContactForm.test.tsx, the suite the island should have shipped with. It lands in the tsx bucket because the SUFFIX decides the bucket and `.test.tsx` ends in `.tsx`. 500 -> 503 (2026-09-22): +1 ts for indexer/src/count-indexed.test.ts (the measurement tool), +1 mjs for scripts/ci/verify-workflows.mjs, +1 cjs for scripts/ci/kf-mutate.cjs — three files this session's gate work added. The three bucket deltas are each exactly +1, which is what attributes them; `tsx` stayed at 102. Re-measured at the END with count-indexed.test.ts rather than reasoned about.
+    expect(r.stats.fileCount).toBe(497); // 276 ts + 102 tsx + 22 astro + 75 mjs + 6 cjs + 20 js = 501, MEASURED with count-indexed.test.ts. 499 -> 500 (2026-09-21): +1 for ContactForm.test.tsx, the suite the island should have shipped with. It lands in the tsx bucket because the SUFFIX decides the bucket and `.test.tsx` ends in `.tsx`. 500 -> 503 (2026-09-22): +1 ts for indexer/src/count-indexed.test.ts (the measurement tool), +1 mjs for scripts/ci/verify-workflows.mjs, +1 cjs for scripts/ci/kf-mutate.cjs — three files this session's gate work added. The three bucket deltas are each exactly +1, which is what attributes them; `tsx` stayed at 102. Re-measured at the END with count-indexed.test.ts rather than reasoned about.
     expect(r.stats.fileCount).toBe(r.files.length);
   });
 

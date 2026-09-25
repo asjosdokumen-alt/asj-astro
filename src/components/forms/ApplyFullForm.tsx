@@ -36,6 +36,9 @@ interface CekDataPelamarRes {
   tb?: string; bb?: string;
   photoUrl?: string; pasPhoto?: string; jftUrl?: string; sswUrl?: string;
   requiredDocs?: string[];
+  // VIP = siswa resmi ASJ (server menghitung via isVipCatatan). Dipakai untuk
+  // pre-check job Magang supaya pelamar diberi tahu sebelum round-trip.
+  isVip?: boolean;
 }
 interface SubmitApplyRes {
   success?: boolean; message?: string;
@@ -60,6 +63,12 @@ export default function ApplyFullForm() {
   const [waWarn, setWaWarn] = useState('');
   const [extraDocs, setExtraDocs] = useState<string[]>([]);
   const [oldDocs, setOldDocs] = useState<{ photo?: string; jft?: string; ssw?: string }>({});
+  // Kategori job dari server (getAppData public → job.kategori). Dipakai untuk
+  // pre-check keterjangkauan: job "Magang" hanya untuk siswa VIP (lihat submitApply).
+  const [jobKategori, setJobKategori] = useState('');
+  // VIP dari server (cekDataPelamar.isVip). `null` = belum diketahui (belum cek
+  // WA). Dipakai pre-check Magang; server tetap otoritatif.
+  const [pelamarVip, setPelamarVip] = useState<boolean | null>(null);
 
   // §4.1(a) — the success screen is a TERMINAL dialog: its only exit is the
   // "ke Portal" CTA. There is no close affordance, and returning the user to
@@ -124,6 +133,7 @@ export default function ApplyFullForm() {
         if (!bidang && job && job.kategori) {
           setForm(prev => ({ ...prev, bidang: String(job.kategori) }));
         }
+        if (job?.kategori) setJobKategori(String(job.kategori));
         requiredDocsFromJob(job).forEach(doc => {
           setUploads(prev => prev[doc.key] ? prev : { ...prev, [doc.key]: { file: null, preview: null, name: t('apply.file_none'), warn: false } });
         });
@@ -142,7 +152,7 @@ export default function ApplyFullForm() {
     return clean;
   };
 
-  const cekRiwayat = async () => {
+  const cekRiwayat = async (): Promise<{ found: boolean; isVip: boolean } | undefined> => {
     const wa = formatWA(form.wa);
     if (wa.length < 10) return;
     setWaLoading(true);
@@ -166,6 +176,8 @@ export default function ApplyFullForm() {
       });
       if (data.found) {
         setForm(prev => ({ ...prev, nama: data.nama || prev.nama, email: data.email || prev.email, gender: data.gender || prev.gender, usia: data.usia || prev.usia, tb: data.tb || prev.tb, bb: data.bb || prev.bb }));
+        const vip = !!data.isVip;
+        setPelamarVip(vip);
         // A3 parity: carry previous docs so re-applicants keep them on submit
         setOldDocs({ photo: data.photoUrl || data.pasPhoto || '', jft: data.jftUrl || '', ssw: data.sswUrl || '' });
         setWaMsg(t('apply.wa_found'));
@@ -178,11 +190,14 @@ export default function ApplyFullForm() {
             }));
           });
         }
+        return { found: true, isVip: vip };
       } else {
         setWaWarn(t('apply.wa_not_found'));
+        return { found: false, isVip: false };
       }
     } catch {
       setWaWarn(t('apply.wa_error'));
+      return undefined;
     } finally {
       setWaLoading(false);
     }
@@ -236,6 +251,24 @@ export default function ApplyFullForm() {
     if (!agree) { showToast(t('apply.error_agree'), 'error'); return; }
     var vr = validate(registerSchema, { nama: form.nama, wa: form.wa }); if (!vr.success) { showToast(vr.errors[0], 'error'); return; }
     if (form.email) { var ve = validate(emailSchema, form.email); if (!ve.success) { showToast(ve.errors[0], 'error'); return; } }
+    // ── Pre-check Magang (UX; SERVER yang otoritatif) ────────────────────────
+    // Job kategori "Magang" hanya untuk siswa VIP (gerbang sebenarnya ada di
+    // handleSubmitApply). Di sini kita beri tahu SEBELUM round-trip supaya
+    // pengguna tidak mengunggah berkas lalu ditolak. `pelamarVip` terisi dari
+    // cekDataPelamar; kalau masih null (belum cek WA), kita cek WA dulu sekali
+    // lewat cekRiwayat agar pesannya benar, bukan menebak.
+    if (jobKategori.trim().toLowerCase() === 'magang') {
+      let vip = pelamarVip;
+      if (vip === null && form.wa) {
+        // Ambil status VIP langsung dari hasil cek (state belum tentu ter-update
+        // dalam tick ini), sehingga pesan yang muncul akurat.
+        const r = await cekRiwayat();
+        // Cek gagal (jaringan) → serahkan ke server (otoritatif) alih-alih
+        // memblokir pelamar VIP karena error sementara.
+        vip = r ? r.isVip : true;
+      }
+      if (vip === false) { showToast(t('apply.error_magang_vip'), 'error'); return; }
+    }
     setLoading(true);
     try {
       // 1) Upload files to Cloudinary first (pipeline: validate -> Cloudinary -> send URL)

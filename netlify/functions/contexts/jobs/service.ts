@@ -18,7 +18,9 @@ export async function handleSimpanJobBaru(payload: unknown[], sessionToken?: str
   if (!data.pekerjaan) return { success: false, error: 'Nama pekerjaan wajib diisi.' };
   if (!hasBackend()) return { success: false, error: 'Backend belum dikonfigurasi.' };
   try {
-    const code = await nextJobCode();
+    // Prefix kode mengikuti KATEGORI job (Magang → GJ, selainnya → TG).
+    // `data.kategori` adalah nilai dari <select> list_kategori, bukan enum.
+    const code = await nextJobCode(data.kategori);
     await postJob({ code_job: code, ...mapJobPayloadToRow(data) });
     return { success: true, code };
   } catch (e: unknown) {

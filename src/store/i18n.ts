@@ -230,6 +230,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "apply.ssw_sub": "PDF (1 file)",
     "apply.error_agree": "Anda harus menyetujui pernyataan terlebih dahulu.",
     "apply.error_submit": "Gagal mengirim lamaran.",
+    "apply.error_magang_vip": "Lowongan Magang hanya untuk siswa resmi ASJ (VIP). Hubungi admin untuk pendaftaran kelas.",
     "apply.file_none": "Belum ada file",
     "apply.loading_hint": "Mohon tunggu, jangan tutup halaman ini.",
     "master.title": "Form CV Master",

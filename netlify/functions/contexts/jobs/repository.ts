@@ -31,16 +31,38 @@ export function mapJobPayloadToRow(data: Record<string, unknown>): Record<string
   return row;
 }
 
-export async function nextJobCode(): Promise<string> {
-  const fastMax = await maxJobCodeNumber();
-  if (fastMax !== undefined) return 'TG' + (fastMax + 1) + 'ASJ';
+// Kode job berikutnya untuk satu KATEGORI.
+//
+// Tokutei Ginou → `TG<N>ASJ`, Magang → `GJ<N>ASJ` (keputusan owner). Nomor N =
+// nilai TERBESAR yang sudah ada UNTUK PREFIX ITU + 1, dihitung NUMERIK dan
+// per-prefix (lihat maxJobCodeNumber — `desc` string pernah melewatkan TG100
+// karena 'TG99ASJ' > 'TG100ASJ', dan scan lintas-prefix bisa mencampur TG/GJ).
+//
+// Pelajaran: kolom kategori tabel job_database adalah **`kategori`** (bukan
+// `kategory` — itu milik database_asj_form). Jangan tertukar.
+export const JOB_CODE_PREFIX = { magang: 'GJ', default: 'TG' } as const;
+
+/** Turunkan prefix kode dari kategori job. Magang → GJ, selainnya → TG. */
+export function jobCodePrefix(kategori: unknown): string {
+  const k = String(kategori || '').trim().toLowerCase();
+  return k === 'magang' ? JOB_CODE_PREFIX.magang : JOB_CODE_PREFIX.default;
+}
+
+export async function nextJobCode(kategori?: unknown): Promise<string> {
+  const prefix = jobCodePrefix(kategori);
+  const fast = await maxJobCodeNumber(prefix);
+  if (fast && fast.found) return `${prefix}${fast.max + 1}ASJ`;
+  // Fallback: kolom/tabel tak dikenal pada query bertarget → scan penuh, di
+  // sini pun filter per-prefix + numerik (bukan string-order) supaya hasilnya
+  // sama dengan jalur cepat.
   const found = await findJobs();
+  const codeRe = new RegExp(`^${prefix}(\\d+)ASJ$`);
   let max = 0;
   for (const row of found.rows) {
-    const m = String(row.code_job || row.code || '').match(/TG(\d+)ASJ/);
+    const m = String(row.code_job || row.code || '').match(codeRe);
     if (m) max = Math.max(max, parseInt(m[1], 10));
   }
-  return 'TG' + (max + 1) + 'ASJ';
+  return `${prefix}${max + 1}ASJ`;
 }
 
 export async function getJobMapped(code: string): Promise<import("../../_lib/db/row-types").JobRawRow | null> {

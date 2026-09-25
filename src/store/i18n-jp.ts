@@ -230,6 +230,7 @@ export const jpTranslations: Record<string, string> = {
     "apply.loading_hint": "お待ちください。ページを閉じないでください。",
     "apply.error_agree": "先に宣言にチェックを入れてください。",
     "apply.error_submit": "応募の送信に失敗しました。",
+    "apply.error_magang_vip": "インターン（Magang）求人はASJ公式生（VIP）限定です。クラス登録は管理者にお問い合わせください。",
     "apply.file_none": "ファイル未選択",
     "apply.file_too_big": "エラー: ファイルサイズが2MBを超えています。",
     "form.mf_agama": "宗教",

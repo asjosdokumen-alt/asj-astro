@@ -140,23 +140,56 @@ async function findJobByCodeFiltered(code: string) {
   return anyOk ? null : undefined;
 }
 
-// Max nomor kode job TG###ASJ — server-side (desc, ambil 20 teratas).
-async function maxJobCodeNumber() {
+// Nomor kode job TERBESAR untuk satu PREFIX (TG = Tokutei Ginou, GJ = Magang),
+// server-side. Mengembalikan { max, found } agar pemanggil bisa membedakan
+// "tabel kosong / kolom tak dikenal" (found=false → fallback scan penuh) dari
+// "prefix ini belum punya kode" (found=true, max=0 → mulai dari 1).
+//
+// ── KENAPA per-PREFIX dan NUMERIK ───────────────────────────────────────────
+// Versi lama: `order: 'code_job.desc'` + `limit: 20`, lalu regex /TG(\d+)ASJ/.
+// Dua cacat:
+//   1. Urutan `desc` adalah urutan STRING, jadi 'TG99ASJ' berada SETELAH
+//      'TG100ASJ'. Dengan limit 20, kode bernomor terbesar bisa terlewat dari
+//      jendela dan nilai max yang dihitung salah (bug dilaporkan owner).
+//   2. Begitu ada prefix KEDUA (GJ), satu scan `desc` mencampur TG dan GJ,
+//      sehingga max lintas-prefix bisa dipakai untuk menghitung kode prefix
+//      lain (TG bisa "mewarisi" nomor GJ). Filter per-prefix menutup itu.
+//
+// Filter `code_job=ilike.<PREFIX>%ASJ` dilakukan di SERVER, lalu max dihitung
+// secara NUMERIK di klien — bukan bersandar pada jendela ber-urutan-string.
+//
+// RESIDUAL LIMITATION (jujur): masih ada `limit`. Kalau satu prefix suatu saat
+// punya lebih dari JOB_CODE_SCAN_LIMIT kode, kode bernomor tertinggi di luar
+// jendela tidak terlihat. Ambang ini jauh di atas ukuran tabel nyata (papan
+// publik ~158 baris, lihat FIND_JOBS limit), jadi aman untuk sekarang; kalau
+// skala melewatinya, pindahkan perhitungan ke RPC Postgres.
+const JOB_CODE_SCAN_LIMIT = 1000;
+async function maxJobCodeNumber(prefix: string): Promise<{ max: number; found: boolean } | undefined> {
+  const p = String(prefix || 'TG').toUpperCase();
+  // Hanya kode berbentuk <PREFIX><digit>ASJ. `ilike` menangani pencocokan
+  // awalan; regex di bawah tetap menjadi penjaga akhir (mis. menolak 'TGASJ').
+  const codeRe = new RegExp(`^${p}(\\d+)ASJ$`);
   try {
     const rows = await supabaseJson('GET', 'job_database', {
-      query: { select: 'code_job', order: 'code_job.desc', limit: '20' },
+      query: {
+        select: 'code_job',
+        code_job: `ilike.${p}%ASJ`,
+        limit: String(JOB_CODE_SCAN_LIMIT),
+      },
     });
-    if (!Array.isArray(rows) || rows.length === 0) return undefined;
+    if (!Array.isArray(rows)) return undefined;
     let max = 0;
     let found = false;
     for (const r of rows) {
-      const m = String(r.code_job || r.code || '').match(/TG(\d+)ASJ/);
+      const m = String(r.code_job || r.code || '').match(codeRe);
       if (m) {
         max = Math.max(max, parseInt(m[1], 10));
         found = true;
       }
     }
-    return found ? max : undefined;
+    // rows kosong → found=false: pemanggil fallback ke scan penuh (kolom/tabel
+    // mungkin tidak dikenal), perilaku lama dipertahankan.
+    return { max, found };
   } catch {
     return undefined;
   }

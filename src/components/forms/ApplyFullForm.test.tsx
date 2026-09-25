@@ -29,12 +29,13 @@ const apiClientMock = vi.mocked(apiClient);
 
 let getAppDataJobs: any[] = [];
 let submitApplyRes: any = { success: true, message: "ok" };
+let cekRes: { found: boolean; isVip?: boolean; nama?: string; applications: unknown[] } = { found: false, applications: [] };
 
 /** Router berdasarkan ACTION, bukan URL — itu inti perubahannya. */
 function routeApi(action: string): any {
   if (action === "getAppData") return { success: true, jobs: getAppDataJobs };
   if (action === "submitApply") return submitApplyRes;
-  if (action === "cekDataPelamar") return { found: false, applications: [] };
+  if (action === "cekDataPelamar") return cekRes;
   return {};
 }
 
@@ -44,6 +45,7 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
     history.replaceState({}, "", "/apply?job=TG123ASJ");
     getAppDataJobs = [{ code: "TG123ASJ", kategori: "Tukang Gypsum", dokumenShare: "CV,JFT,SSW,KTP" }];
     submitApplyRes = { success: true, message: "ok" };
+    cekRes = { found: false, applications: [] };
     fetchMock.mockReset();
     apiClientMock.mockReset();
     apiClientMock.mockImplementation((async (action: string) => routeApi(action)) as any);
@@ -166,6 +168,64 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
       const heading = lb ? document.getElementById(lb) : null;
       expect((heading?.textContent || "").trim()).toBe("apply.success_title");
     });
+  });
+});
+
+// ==========================================
+// TESTS: gerbang pre-check Magang (item 11 / B3) — UX sebelum round-trip.
+// Job kategori "Magang" hanya untuk siswa VIP; server tetap otoritatif
+// (handleSubmitApply), form hanya memberi tahu lebih awal.
+// ==========================================
+describe("ApplyFullForm — pre-check Magang (VIP-only)", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    history.replaceState({}, "", "/apply?job=GJ1ASJ");
+    getAppDataJobs = [{ code: "GJ1ASJ", kategori: "Magang", dokumenShare: "" }];
+    submitApplyRes = { success: true, message: "ok" };
+    cekRes = { found: false, applications: [] };
+    fetchMock.mockReset();
+    apiClientMock.mockReset();
+    apiClientMock.mockImplementation((async (action: string) => routeApi(action)) as unknown as typeof apiClient);
+    vi.mocked(showToast).mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("pelamar NON-VIP → lamaran DIBLOKIR lokal (tanpa submitApply) + pesan apply.error_magang_vip", async () => {
+    cekRes = { found: true, nama: "Budi", isVip: false, applications: [] };
+    render(<ApplyFullForm />);
+    await screen.findByText("apply.cv_label");
+    await fireEvent.input(screen.getByPlaceholderText("apply.wa_ph"), { target: { value: "081234567890" } });
+    await fireEvent.input(screen.getByPlaceholderText("apply.nama_ph"), { target: { value: "BUDI SANTOSO" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
+    await fireEvent.click(screen.getByRole("checkbox"));
+    await fireEvent.click(screen.getByRole("button", { name: "KIRIM LAMARAN" }));
+    await waitFor(() => {
+      expect(showToast).toHaveBeenCalledWith("apply.error_magang_vip", "error");
+    });
+    const submit = apiClientMock.mock.calls.find((c) => c[0] === "submitApply");
+    expect(submit, "submitApply tidak boleh dikirim untuk Magang non-VIP").toBeUndefined();
+  });
+
+  it("pelamar VIP → lamaran DITERUSKAN (submitApply dikirim)", async () => {
+    cekRes = { found: true, nama: "Budi", isVip: true, applications: [] };
+    render(<ApplyFullForm />);
+    await screen.findByText("apply.cv_label");
+    await fireEvent.input(screen.getByPlaceholderText("apply.wa_ph"), { target: { value: "081234567890" } });
+    await fireEvent.input(screen.getByPlaceholderText("apply.nama_ph"), { target: { value: "BUDI SANTOSO" } });
+    await fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
+    await fireEvent.click(screen.getByRole("checkbox"));
+    await fireEvent.click(screen.getByRole("button", { name: "KIRIM LAMARAN" }));
+    await waitFor(() => {
+      const submit = apiClientMock.mock.calls.find((c) => c[0] === "submitApply");
+      expect(submit).toBeTruthy();
+    });
+    expect(showToast).not.toHaveBeenCalledWith("apply.error_magang_vip", "error");
   });
 });
 

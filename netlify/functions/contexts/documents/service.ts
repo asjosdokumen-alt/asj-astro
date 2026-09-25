@@ -32,6 +32,7 @@ import { syncFormMailDariUpload } from "../applications";
 import { cacheClear } from "../../_lib/cache";
 import { safeError } from "../../_lib/kernel/errors";
 import { findJobByCodeFiltered, findJobs } from "../../_lib/db/jobs";
+import { isVipCatatan } from "../../_lib/ai/interview-shared";
 import * as session from "../../_lib/session";
 import { isAllowedDocumentUrl } from "../../_lib/storage";
 
@@ -292,6 +293,7 @@ export async function handleCekDataPelamar(
           jftUrl: toText(pick(candRow, ["jft"])) || "-",
           sswUrl: toText(pick(candRow, ["ssw"])) || "-",
           email: toText(pick(candRow, ["email"])),
+          isVip: isVipCatatan(pick(candRow, ["catatan_internal", "catatan_int"])),
           applications: apps,
         };
       }
@@ -322,6 +324,10 @@ export async function handleCekDataPelamar(
     let finalJft = pickFirstNonEmpty(["jft", "jft_url"]);
     let finalSsw = pickFirstNonEmpty(["ssw", "ssw_url"]);
     let finalEmail = "";
+    // VIP dihitung di sini (helper server yang sama dengan gerbang lamaran
+    // Magang) supaya form bisa melakukan pre-check SEBELUM round-trip. Server
+    // tetap otoritatif — ini murni UX.
+    let isVip = false;
     try {
       const cands = await findCandidates();
       const candRow = (Array.isArray(cands?.rows) ? cands.rows : []).find(
@@ -331,6 +337,7 @@ export async function handleCekDataPelamar(
       );
       if (candRow) {
         finalEmail = toText(pick(candRow, ["email"]));
+        isVip = isVipCatatan(pick(candRow, ["catatan_internal", "catatan_int"]));
         if (finalPhoto === "-") {
           const cPhoto = toText(pick(candRow, ["pas_photo"]));
           if (cPhoto && cPhoto !== "-") finalPhoto = cPhoto;
@@ -359,6 +366,7 @@ export async function handleCekDataPelamar(
       jftUrl: finalJft,
       sswUrl: finalSsw,
       email: finalEmail,
+      isVip,
       applications: apps,
     };
   } catch {
@@ -428,6 +436,34 @@ export async function handleSubmitApply(payload: any[], sessionToken?: string) {
     const jobBidang = String(
       pick(job, ["kategori", "category", "bidang", "sektor"]) || "",
     );
+    // ── Gerbang VIP untuk job MAGANG (keputusan owner) ──────────────────────
+    // Job kategori "Magang" hanya boleh DILAMAR oleh kandidatsiswa VIP/KELAS.
+    // Ini titik ENFORCEMENT-nya: handleSubmitApply dipanggil PUBLIK (surfaces/
+    // docs.ts sengaja TIDAK meneruskan sessionToken), jadi TIDAK ada sesi yang
+    // bisa diandalkan — pelamar di-resolve dari nomor WA di payload.
+    //
+    // Predikatnya WAJIB sama dengan gate frontend (src/lib/vip.ts) dan gate AI
+    // CV/simulator: `isVipCatatan` dari _lib/ai/interview-shared.ts — tag `[VIP]`
+    // LITERAL (case-sensitive) ATAU `[KELAS xx]` (case-insensitive). `[vip]`
+    // huruf kecil TIDAK diterima (parity legacy; lihat header vip.ts). Server
+    // tidak boleh mengimpor dari src/, dan helper server yang ekuivalen memang
+    // sudah ada — itu yang dipakai di sini, bukan regex yang disalin ulang.
+    //
+    // Ditaruh SETELAH job resolve dan SEBELUM baris lamaran ditulis, supaya
+    // ditolak tanpa efek samping apa pun.
+    if (String(jobBidang).trim().toLowerCase() === "magang") {
+      const applicant = await findCandidateRow(wa);
+      const applicantNote = applicant
+        ? pick(applicant, ["catatan_internal", "catatan_int"])
+        : "";
+      if (!isVipCatatan(applicantNote)) {
+        return {
+          success: false,
+          message:
+            "Lowongan Magang hanya untuk siswa resmi ASJ (VIP). Hubungi admin untuk pendaftaran kelas.",
+        };
+      }
+    }
     const body: Record<string, any> = {
       timestamp: new Date().toISOString(),
       code_job: code,
