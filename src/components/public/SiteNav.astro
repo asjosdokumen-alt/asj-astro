@@ -19,8 +19,10 @@
  * menus and the user cannot tell them apart" — is answered by giving it a
  * DIFFERENT, meaningful label. ARIA does not cap the number of `nav` landmarks;
  * it requires them to be distinguishable. "Primary navigation" (the site's
- * actions: language, install, login, admin) and "Navigasi halaman" (this page's
- * sections) are two different navigations, not two names for one.
+ * actions: install, login, admin) and "Navigasi halaman" (this page's sections)
+ * are two different navigations, not two names for one. (Language used to be
+ * listed among the primary actions too; it moved to the drawer exclusively on
+ * 2026-09-25 and is no longer reachable from this bar.)
  *
  * AND THE HOLE THAT OPENED IS CLOSED IN THE SAME CHANGE. The real danger was
  * never "two navs" — it was that `e2e/test-drawer.mjs` selects the drawer with
@@ -62,8 +64,6 @@
  *
  * The `data-nav-link` values must match the section ids in index.astro.
  */
-import Icon from '../ui/Icon';
-
 const LINK_CLASS =
   'inline-flex items-center px-3 py-2 rounded-control text-body-sm font-bold text-fg-muted hover:text-fg hover:bg-surface aria-[current=true]:text-accent-sky aria-[current=true]:bg-surface transition-colors';
 ---
@@ -126,15 +126,16 @@ const LINK_CLASS =
       </li>
     </ul>
     <div class="ml-auto flex items-center gap-2 shrink-0">
-      <button
-        type="button"
-        data-nav-lang
-        aria-label="Toggle language"
-        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-control text-body-sm font-bold text-fg-muted hover:text-fg hover:bg-surface transition-colors"
-      >
-        <Icon name="language" />
-        <span data-nav-lang-label>ID</span>
-      </button>
+      {/* THE LANGUAGE TOGGLE IS GONE FROM THE NAV — owner ruling 2026-09-25.
+          The requirement is "the JP toggle only appears inside the hamburger
+          drawer", and one entry point per control beats the convenience of a
+          second switch up here for business partners reading /. The DRAWER's
+          toggle (App.tsx) is now the only one on every route, including this
+          one. The `data-nav-lang` / `data-nav-lang-label` wiring in this file's
+          <script> was removed with it — a listener bound to a selector that no
+          longer matches is the dead-control pattern this repo refuses to ship,
+          in mirror image. The `ml-auto` wrapper keeps its other child (the CTA
+          below), and a single-child flex row lays out identically. */}
       {/* THE DUPLICATE /loker CTA BUTTON IS GONE, NOT RELOCATED. The nav used to
           carry TWO paths to the vacancy list — the "Lowongan" list item above and
           this pink pill. Owner ruling 2026-09-24: `/` is a company profile for
@@ -154,24 +155,15 @@ const LINK_CLASS =
 </nav>
 
 <script>
-  import { langStore, toggleLang } from '../../store/i18n';
-
-  /* ── Language ──────────────────────────────────────────────────────────
-     `toggleLang` and `langStore` are the SAME store the header and the drawer
-     use. A second language state is how two controls end up disagreeing, so this
-     reads and writes the one that already exists. */
-  const langLabel = document.querySelector('[data-nav-lang-label]');
-  const paintLang = () => {
-    if (langLabel) langLabel.textContent = langStore.get() === 'id' ? 'ID' : 'JP';
-  };
-  paintLang();
-  langStore.subscribe(paintLang);
-  document.querySelector('[data-nav-lang]')?.addEventListener('click', () => toggleLang());
-
   /* ── Login ─────────────────────────────────────────────────────────────
      The modal lives in the App island's state, which a static component cannot
      reach. `asj-kandidat-login` is the event the header's own Login button
-     already dispatches, so both entry points run the same code path. */
+     already dispatches, so both entry points run the same code path.
+
+     NOTE: the language wiring (`langStore` / `toggleLang` and the
+     `[data-nav-lang]` click listener) lived here until 2026-09-25 and was
+     removed with the nav's language button — see the comment at the button's
+     old site. The nav no longer touches the language store at all. */
   document.querySelector('[data-nav-login]')?.addEventListener('click', () => {
     window.dispatchEvent(new Event('asj-kandidat-login'));
   });

@@ -50,7 +50,11 @@ const read = async (page) => {
       position: cs.position,
       links,
       currentCount: links.filter((l) => l.current === 'true').length,
-      langLabel: nav.querySelector('[data-nav-lang-label]')?.textContent ?? null,
+      // The nav no longer carries a language control (removed 2026-09-25 — the
+      // JP toggle lives only in the hamburger drawer). Counted so this evidence
+      // tool reports the ABSENCE rather than a null it cannot distinguish from
+      // a broken selector.
+      langControls: nav.querySelectorAll('[data-nav-lang], [data-nav-lang-label]').length,
     };
   });
 };
@@ -112,16 +116,9 @@ for (const width of [390, 1280]) {
   }
   console.log(`scroll marker: ${rows.length - bad}/${rows.length} sections marked correctly`);
 
-  /* ── 4. The language button drives the shared store ─────────────────── */
-  const before = (await read(page)).langLabel;
-  await page.click('[data-nav-lang]');
-  await page.waitForTimeout(500);
-  const after = (await read(page)).langLabel;
-  console.log(`language toggle: label ${before} -> ${after}  ${before !== after ? 'OK' : 'NO CHANGE'}`);
-  await page.click('[data-nav-lang]');
-  await page.waitForTimeout(400);
-  const restored = (await read(page)).langLabel;
-  console.log(`language toggle restores: ${restored}  ${restored === before ? 'OK' : 'STUCK'}`);
+  /* ── 4. The nav carries NO language control (drawer is the only entry) ── */
+  const langControls = (await read(page)).langControls;
+  console.log(`nav language controls: ${langControls}  ${langControls === 0 ? 'OK (drawer-only)' : 'REGRESSION'}`);
 
   await page.close();
 }

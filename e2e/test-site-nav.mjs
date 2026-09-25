@@ -1,6 +1,6 @@
 /**
  * E2E Test: the desktop section nav — anchors, the current-section marker, and
- * the two controls it owns.
+ * the control it owns.
  *
  * WHY THIS EXISTS
  * ---------------
@@ -13,6 +13,12 @@
  *   - "the marker is driven by scroll POSITION, not `:hover`" (the L4.2
  *     acceptance criterion says exactly this: diukur dengan menggulir)
  *   - "the language toggle reuses the SAME store as the header"
+ *
+ *   ⚠ THIRD CLAIM RE-AIMED 2026-09-25. The nav's OWN language toggle was
+ *   removed (owner ruling: the JP toggle must appear only inside the hamburger
+ *   drawer). The claim inverts to "the nav carries ZERO language controls, and
+ *   the drawer's toggle is the only one" — checked below. Deleting the check
+ *   outright would have removed the guard on the single-entry-point rule.
  *
  * A nav item pointing at a fragment that does not resolve is a control that
  * looks live and does nothing — the same defect `docs/LANDING_PAGE_SPEC.md` §5.1
@@ -48,11 +54,13 @@
  * 3. MEASURING AN ERROR PAGE. HTTP status is asserted before anything is read.
  * 4. TRUSTING THE CLASS STRING FOR "HIDDEN". Visibility is read from computed
  *    style AND the measured width, not from `hidden lg:block` being present.
- * 5. A DEAD LANGUAGE CHECK. If the button were inert, `before === after` would
- *    be reported as a change only if the fixture itself was broken, so the label
- *    is asserted to actually flip ID -> JP and then back.
- * 6. A DEAD LOGIN BUTTON. The nav's second control (`[data-nav-login]`) used to
- *    be covered by NOTHING, and it was in fact inert: SiteNav dispatches
+ * 5. A DEAD LANGUAGE CHECK. The old form asserted the nav's label flipped
+ *    ID -> JP -> back; the label is now a COUNT of language controls in the nav
+ *    (must be 0). A count of 0 is also true of a broken selector, so the check
+ *    is paired with a positive control that the language switch is still
+ *    REACHABLE — from the drawer — by flipping `asj_lang` in `localStorage`.
+ * 6. A DEAD LOGIN BUTTON. The nav's remaining control (`[data-nav-login]`) used
+ *    to be covered by NOTHING, and it was in fact inert: SiteNav dispatches
  *    `asj-kandidat-login`, but only App.tsx owns the modal's `mode` state, and
  *    App registered no listener for that event — so the dispatch was a no-op.
  *    The mobile drawer's identically labelled button worked because it calls
@@ -162,7 +170,10 @@ const readNav = (page) =>
       width: Math.round(nav.getBoundingClientRect().width),
       links,
       marked: links.filter((l) => l.current).map((l) => l.id),
-      langLabel: nav.querySelector('[data-nav-lang-label]')?.textContent?.trim() ?? null,
+      // The nav no longer carries a language control (removed 2026-09-25 —
+      // the JP toggle lives only in the hamburger drawer). Count them so the
+      // assertion below can prove the control is ABSENT, not merely unread.
+      langControls: nav.querySelectorAll('[data-nav-lang], [data-nav-lang-label]').length,
     };
   });
 
@@ -269,15 +280,30 @@ await test('1280px /: no nav item is marked current in the authored markup', asy
 
      Its one honest limit: it cannot tell WHICH line of the `.astro` file the
      attribute came from. It does not need to — the file is the only source of
-     this markup, so it names its culprit in the diagnostic. */
+     this markup, so it names its culprit in the diagnostic.
+
+     ⚠ INLINED SCRIPT TEXT MUST BE STRIPPED FIRST — measured 2026-09-25.
+     ---------------------------------------------------------------------
+     The served `dist/index.html` sometimes INLINES the SiteNav module (Vite
+     inlines a script that has no imports of its own). The inlined source text
+     contains the literal `aria-current` inside `setAttribute("aria-current",
+     "true")`, so counting raw occurrences reported "2x" for a page whose MARKUP
+     carries ZERO. That is a false positive — the string was the bundle, not the
+     markup — and it appeared only after the nav's `langStore`/`toggleLang`
+     import was removed (that import was the only reason Vite kept the script as
+     a separate chunk). The check's SUBJECT is the AUTHORED MARKUP, so `<script>`
+     bodies are removed before counting. This is not a hole: a hand-written
+     `aria-current` lives in the `<a>` markup, never inside a script body. */
   const html = await fetch(`${BASE}/`).then((r) => r.text());
-  const occurrences = html.split('aria-current').length - 1;
+  // Strip <script>…</script> bodies: the bundle's own source text is not markup.
+  const markup = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+  const occurrences = markup.split('aria-current').length - 1;
   if (occurrences === 0) return;
 
   // Point at the offending link rather than just its count: the markup is
   // `data-nav-link="X" ... aria-current="Y"`, so the nearest preceding id is it.
-  const at = html.indexOf('aria-current');
-  const before = html.slice(0, at);
+  const at = markup.indexOf('aria-current');
+  const before = markup.slice(0, at);
   const idAt = before.lastIndexOf('data-nav-link="');
   const id =
     idAt === -1
@@ -325,33 +351,46 @@ await test('1280px /: scrolling to each section marks exactly that nav item curr
   }
 });
 
-/* ── The language button drives the shared store ─────────────────────── */
-await test('1280px /: the nav language button flips the shared store and back', async () => {
+/* ── The nav must NOT carry a language control ───────────────────────────
+   RE-AIMED 2026-09-25. This used to click `[data-nav-lang]` and assert the
+   nav's label flipped — proving the nav's OWN toggle drove the shared store.
+   Owner ruling removed that toggle: the JP switch must appear only inside the
+   hamburger drawer. So the claim is now the inverse, and it is still a real
+   claim: the nav must expose ZERO language controls, and the ONE control that
+   remains (the drawer's) must still flip the shared store. Deleting the old
+   test outright would have removed the only guard on that single-entry-point
+   rule, which is exactly the property the ruling is about. */
+await test('1280px /: the nav has NO language control, and the drawer toggle still drives the store', async () => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#atas h1', { timeout: 20_000 });
   await page.waitForTimeout(900);
 
-  const before = (await readNav(page)).langLabel;
-  if (!before) throw new Error('the nav language label is missing, so the toggle cannot be measured');
-
-  await page.click('[data-nav-lang]');
-  await page.waitForTimeout(500);
-  const after = (await readNav(page)).langLabel;
-  if (before === after) {
+  const nav = await readNav(page);
+  if (nav.langControls !== 0) {
+    await page.close();
     throw new Error(
-      `clicking [data-nav-lang] did not change the label ("${before}" -> "${after}"). ` +
-        `The button must drive the same store the header uses — a second language state is how ` +
-        `two controls end up disagreeing.`,
+      `the section nav still renders ${nav.langControls} language control(s). ` +
+        `The JP toggle must appear ONLY inside the hamburger drawer — a second ` +
+        `entry point is the regression this guards.`,
     );
   }
 
-  await page.click('[data-nav-lang]');
+  // Positive control: the language toggle is still REACHABLE — from the drawer.
+  // Read the persistent store (`asj_lang`, JSON-encoded) before and after.
+  const storeBefore = await page.evaluate(() => localStorage.getItem('asj_lang'));
+  await page.click('.hamburger-btn');
+  await page.waitForSelector('nav[aria-label="Primary navigation"] button[aria-label="Toggle language"]', { timeout: 5_000 });
+  await page.click('nav[aria-label="Primary navigation"] button[aria-label="Toggle language"]');
   await page.waitForTimeout(500);
-  const restored = (await readNav(page)).langLabel;
+  const storeAfter = await page.evaluate(() => localStorage.getItem('asj_lang'));
   await page.close();
-  if (restored !== before) {
-    throw new Error(`the toggle did not restore: expected "${before}", got "${restored}"`);
+
+  if (!storeAfter || storeBefore === storeAfter) {
+    throw new Error(
+      `the drawer language toggle did not change asj_lang ("${storeBefore}" -> "${storeAfter}"). ` +
+        `With the nav's toggle removed the drawer is the ONLY entry point, so it must work.`,
+    );
   }
 });
 
