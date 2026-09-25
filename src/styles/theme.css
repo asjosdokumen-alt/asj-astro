@@ -91,11 +91,22 @@
      so the stacking order is legible from one place.                   */
   --z-index-sticky:  50;   /* sticky table headers, section bars        */
   --z-index-header:  90;   /* was z-[90]                                */
-  /* Drawer/menu backdrop. A scrim must cover EVERY page layer — including a
-     `z-sticky` section bar (50) and the header (90) — but stay UNDER the drawer
-     it belongs to (100). Before this token existed the drawer and its scrim
-     carried a SECOND, private scale in App.tsx (scrim 35, drawer 40), so a
-     `z-sticky` bar (50) painted OVER the dimmed page and even over the drawer.
+  /* Drawer/menu backdrop. A scrim must cover every page layer that is actually
+     POSITIONED, but stay UNDER the drawer it belongs to (100). Before this
+     token existed the drawer and its scrim carried a SECOND, private scale in
+     App.tsx (scrim 35, drawer 40), so a `z-sticky` section bar (50) painted
+     OVER the dimmed page — measured 2026-09-25.
+
+     ⚠ "THE HEADER (90)" WOULD BE WRONG, AND THIS COMMENT USED TO SAY IT. The
+     header element carries NO z-index (it computes to `auto`), and
+     `--z-index-header` is defined but applied by NOTHING in `src/` — verified
+     with `grep -rn z-header src/`, which finds only this file. The token exists
+     because components once hard-coded `z-[90]`. So the layers the scrim has to
+     clear are the ones that really exist: `z-sticky` (50) and any
+     `z-modal`/`z-popover` content beneath the drawer. Verified in a real
+     browser at 1280px with the drawer open: the scrim computes 95 and the
+     drawer 100, an `elementsFromPoint` sweep between them returns NOTHING, and
+     the header's topmost element at its centre IS the scrim.
      One scale, no second copy. */
   --z-index-scrim:   95;
   --z-index-drawer:  100;
