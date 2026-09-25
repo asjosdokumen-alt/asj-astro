@@ -463,7 +463,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
           </button>
         </div>
         <p class="text-xs text-slate-400 mb-2 leading-relaxed">{t('ui.rincian_builder_hint')}</p>
-        <p class="text-[9px] text-slate-500 mb-5 leading-relaxed">{t('ui.star_hint')}</p>
+        <p class="text-[11px] text-slate-500 mb-5 leading-relaxed">{t('ui.star_hint')}</p>
 
         <div class="mb-5">
           <label for="rb-total" class="block text-xs font-bold text-emerald-400 mb-1 uppercase">
@@ -557,7 +557,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
               </div>
             ))}
           </div>
-          <p class="text-[9px] text-slate-500 mt-1">{t('ui.stage_example')}</p>
+          <p class="text-[11px] text-slate-500 mt-1">{t('ui.stage_example')}</p>
         </div>
 
         <div class="u-grid-auto u-grid-auto--form gap-5 mb-5">
@@ -579,7 +579,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
                           type="button"
                           key={sec + '-' + i}
                           class={
-                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border transition cursor-pointer ' +
+                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer ' +
                             (on
                               ? 'bg-emerald-600 text-white border-emerald-400/60'
                               : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-emerald-400/50')

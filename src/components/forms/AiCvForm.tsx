@@ -819,7 +819,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           </div>
           <div>
             <h2 class="text-sm font-bold text-amber-400">Qween Jeklin</h2>
-            <p class="text-[10px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>{t("ai_cv.hrd_tagline")}</p>
+            <p class="text-[11px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>{t("ai_cv.hrd_tagline")}</p>
           </div>
         </div>
 
@@ -837,7 +837,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               )}
               <div class={`${msg.role === 'user' ? 'bg-sky-600 text-white rounded-tr-none' : 'bg-slate-800 text-slate-200 border border-amber-500/20 rounded-tl-none'} rounded-2xl px-4 py-2.5 max-w-[80%] shadow-md`}>
                 <p class="text-xs leading-relaxed whitespace-pre-wrap m-0" dangerouslySetInnerHTML={{ __html: sanitizeAiHtml(msg.text).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') }}></p>
-                <p class={`text-[9px] mt-1 ${msg.role === 'user' ? 'text-sky-200' : 'text-slate-500'}`}>{msg.time}</p>
+                <p class={`text-[11px] mt-1 ${msg.role === 'user' ? 'text-sky-200' : 'text-slate-500'}`}>{msg.time}</p>
               </div>
             </div>
           ))}
@@ -889,7 +889,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                     NO h1 at all before this (§23) — this panel heading was it,
                     and it only appears once the CV preview panel is open. */}
                 <h2 class="text-sm md:text-base font-black text-white">{t("form.preview_cv")}</h2>
-                <p class="text-[10px] md:text-[11px] text-slate-400">{t('form.cv_edit_hint')}</p>
+                <p class="text-[11px] md:text-[11px] text-slate-400">{t('form.cv_edit_hint')}</p>
               </div>
             </div>
             <div class="flex gap-2">
@@ -901,7 +901,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                   prevents the duplicate write. */}
               <button onClick={saveToDatabase} disabled={savePhase !== 'idle' && savePhase !== 'done'}
                 aria-live="polite"
-                class={`${savePhase === 'done' ? 'bg-sky-600' : 'bg-emerald-600 hover:bg-emerald-500'} ${savePhase !== 'idle' && savePhase !== 'done' ? 'opacity-60 cursor-not-allowed' : ''} text-white text-[10px] md:text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg flex items-center gap-2`}>
+                class={`${savePhase === 'done' ? 'bg-sky-600' : 'bg-emerald-600 hover:bg-emerald-500'} ${savePhase !== 'idle' && savePhase !== 'done' ? 'opacity-60 cursor-not-allowed' : ''} text-white text-[11px] md:text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg flex items-center gap-2`}>
                 <Icon spin={savePhase === 'uploading' || savePhase === 'saving'}
                   name={saveDone ? SAVE_ICON_DONE : SAVE_ICON_BUSY} />
                 {savePhase === 'extCheck' ? t('ai_cv.btn_saving')
@@ -910,14 +910,14 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                       : savePhase === 'done' ? t('ai_cv.btn_saved')
                         : t('button.save_db')}
               </button>
-              <button onClick={() => toggleLang()} class="bg-sky-600 hover:bg-sky-500 text-white text-[10px] md:text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg">
+              <button onClick={() => toggleLang()} class="bg-sky-600 hover:bg-sky-500 text-white text-[11px] md:text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg">
                 <Icon name="language" class="mr-1" />{lang === 'id' ? 'ID' : 'JP'}
               </button>
             </div>
           </div>
 
           {sending && (
-            <div class="text-[10px] text-amber-400 font-bold mb-3 bg-amber-900/20 p-2 rounded border border-amber-500/20 flex items-center">
+            <div class="text-[11px] text-amber-400 font-bold mb-3 bg-amber-900/20 p-2 rounded border border-amber-500/20 flex items-center">
               <Icon spin name="magic" class="mr-2" />{t('form.ai_analyzing')}
             </div>
           )}
@@ -1326,10 +1326,10 @@ function RepeaterRow({ index, label, onRemove, removable, children }: {
   return (
     <div class="p-2 rounded-lg mb-2 bg-slate-800/40 border border-dashed border-slate-600">
       <div class="flex justify-between items-center mb-2">
-        <span class="text-[10px] font-bold text-fg-muted">{label} #{index + 1}</span>
+        <span class="text-[11px] font-bold text-fg-muted">{label} #{index + 1}</span>
         {removable && (
           <button type="button" onClick={onRemove}
-            class="text-rose-400 text-[10px] font-bold hover:text-rose-300"
+            class="text-rose-400 text-[11px] font-bold hover:text-rose-300"
             aria-label={`${label} ${index + 1}: ${t('button.delete')}`}>
             <Icon name="trash" class="mr-1" />{t('button.delete')}
           </button>
@@ -1449,7 +1449,7 @@ function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, typ
           onInput={onInput ? (e) => onInput((e.target as HTMLInputElement).value) : undefined}
           class={`input-micro w-full bg-slate-800 border ${touched ? 'border-sky-400' : 'border-slate-600'} rounded p-1 text-[12px] ${center ? 'text-center' : ''} ${unit ? 'pr-7' : ''} ${jp ? 'text-pink-300 font-bold' : 'text-white'}`} />
         {unit && (
-          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-fg-subtle pointer-events-none">{unit}</span>
+          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-fg-subtle pointer-events-none">{unit}</span>
         )}
       </div>
     </div>
@@ -1705,10 +1705,10 @@ function TextAreaPair({ label, groupLabel, helper, idId, idJp, valueId, valueJp,
     <>
       {label && <label class="block text-[11px] text-[#e2e8f0] mb-0.5" for={`ai_${idId}`}>{label}</label>}
       {/* PARITY ai_form.html:202-213 — paragraf petunjuk di antara label dan
-          field. Legacy memakai `text-[9px] italic`; di sini `text-fg-subtle`
+          field. Legacy memakai `text-[11px] italic`; di sini `text-fg-subtle`
           supaya benar di kedua tema tanpa perlu shim, dan tanpa italic supaya
           teks Jepangnya tetap tegak dan terbaca. */}
-      {helper && <p class="text-[10px] text-fg-subtle leading-tight mb-1">{helper}</p>}
+      {helper && <p class="text-[11px] text-fg-subtle leading-tight mb-1">{helper}</p>}
       <div class="grid grid-cols-2 gap-2">
         <textarea id={`ai_${idId}`} value={valueId} rows={2}
           onInput={(e) => onChange(idId, (e.target as HTMLTextAreaElement).value)}
@@ -1741,7 +1741,7 @@ function UploadRow({ type, label, icon, color, accept, status, preview, onUpload
       <div class="flex-1 overflow-hidden">
         <div class="flex items-center gap-2">
           <label class={`block text-xs font-bold ${c.label} mb-0.5`} for={`ai_doc_${type}`}>{label}</label>
-          {status && <span class="text-[9px] text-emerald-400 font-medium"><Icon name="check" class="mr-0.5" />{status}</span>}
+          {status && <span class="text-[11px] text-emerald-400 font-medium"><Icon name="check" class="mr-0.5" />{status}</span>}
         </div>
         {/* MEASURED (2026-09-25, /ai-cv at 768/1280): the native file control's
             own box was 21.5px tall — under WCAG 2.5.8 AA's 24px — at all nine
@@ -1749,7 +1749,7 @@ function UploadRow({ type, label, icon, color, accept, status, preview, onUpload
             touching the `file:` button metrics. */}
         <input id={`ai_doc_${type}`} type="file" accept={accept}
           onChange={(e) => { const f = (e.target as HTMLInputElement).files?.[0] || null; onUpload?.(type, f); }}
-          class="w-full min-h-11 text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
+          class="w-full min-h-11 text-[11px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
       </div>
       {/* PARITY ai_form.html:299 — legacy benar-benar menampilkan pratinjau foto
           (`#previewFoto`, h-14 w-12) di kanan baris. Sebelumnya state

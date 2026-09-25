@@ -218,7 +218,7 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa }: Props) {
     const btn = done ? t("ui.redo_sign") : t("ui.start_draw");
     return (
       <div class="bg-black/40 border border-slate-700 rounded-lg p-3 text-center flex flex-col items-center justify-center min-h-[110px]">
-        <p class="text-[9px] font-bold text-slate-400 mb-2">{t(field.labelKey)}</p>
+        <p class="text-[11px] font-bold text-slate-400 mb-2">{t(field.labelKey)}</p>
         {done && sigs[field.key] ? (
           <img
             src={sigs[field.key] as string}
@@ -306,7 +306,7 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa }: Props) {
       <div class="px-4 py-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center shadow-md">
         <div>
           <h3 class="text-sm font-bold text-white uppercase tracking-wider">{drawField.drawTitle}</h3>
-          <p class="text-[9px] text-slate-400">
+          <p class="text-[11px] text-slate-400">
             {drawField.isNama ? (
               <>
                 <span class="text-amber-400">{t("ui.rotate_phone")}</span> {t("ui.rotate_phone_rest")}

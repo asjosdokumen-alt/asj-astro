@@ -64,7 +64,7 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
         <div class="space-y-4">
           {/* Candidate info */}
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1" for="wp-tujuan">{t('ui.kandidat_tujuan')}</label>
+            <label class="block text-[11px] font-bold text-slate-400 mb-1" for="wp-tujuan">{t('ui.kandidat_tujuan')}</label>
             <input type="text" id="wp-tujuan" readonly
                    value={candidateName + ' (' + (candidateJob || 'Umum') + ')'}
                    class="w-full p-2.5 rounded-lg bg-black/40 border border-slate-700 text-emerald-300 text-sm font-bold outline-none cursor-not-allowed" />
@@ -72,7 +72,7 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
 
           {/* Template picker */}
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1" for="wp-template">{t('ui.pilih_template_pesan')}</label>
+            <label class="block text-[11px] font-bold text-slate-400 mb-1" for="wp-template">{t('ui.pilih_template_pesan')}</label>
             <select id="wp-template" value={selectedTemplate}
                     onChange={e => handleTemplateSelect((e.target as HTMLSelectElement).value)}
                     class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-emerald-500 transition">
@@ -85,7 +85,7 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
 
           {/* Message textarea */}
           <div>
-            <label class="block text-[10px] font-bold text-slate-400 mb-1" for="wp-pesan">{t('ui.isi_pesan_custom')}</label>
+            <label class="block text-[11px] font-bold text-slate-400 mb-1" for="wp-pesan">{t('ui.isi_pesan_custom')}</label>
             <textarea rows={6} id="wp-pesan" value={message}
                       onInput={e => setMessage((e.target as HTMLTextAreaElement).value)}
                       class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-emerald-500 transition leading-relaxed resize-none"

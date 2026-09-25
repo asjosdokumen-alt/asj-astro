@@ -185,6 +185,15 @@ body {
   left: 0;
   z-index: 999;
   padding: 0.5rem 1rem;
+  /* MEASURED 2026-09-25: `padding: 0.5rem` around a 1.5 line-height rendered this
+     40px tall — 4px under the project's 44px touch floor (DESIGN.md:691). The
+     skip link is keyboard-only (it is translated off-screen until focused), but
+     it is still a target and it is the FIRST one a keyboard user meets, so it
+     gets the floor like every other control. `inline-flex` + `min-height` puts
+     it on the anchor itself, which is what receives the focus and the tap. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   background: #0369a1;
   color: #fff;
   font-weight: bold;

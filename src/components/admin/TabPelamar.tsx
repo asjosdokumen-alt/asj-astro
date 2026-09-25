@@ -150,7 +150,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
             <Icon name="search" class="absolute left-3 top-2.5 text-slate-300 text-sm" />
             <input type="text" value={search} onInput={(e) => { setAdminSearch((e.target as HTMLInputElement).value); resetPage(); }}
               placeholder={t("pelamar.placeholder_search")}
-              class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition" />
+              class="min-h-11 w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition" />
           </div>
           <button onClick={() => openInputModal()} class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><Icon name="user-plus" class="mr-1" /> {t('admin.input_manual')}</button>
           <button onClick={() => toggleSimpleView()} class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap">
@@ -194,7 +194,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
                 <span class="font-mono text-purple-300 text-xs">{k.idLoker}</span>
               </div>
               <div class="flex items-center gap-2">
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan}</span>
+                <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan}</span>
                 <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} class="w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs cursor-pointer"><Icon name="whatsapp" /></button>
               </div>
             </div>
@@ -223,18 +223,18 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
                   <td class="p-4 font-bold text-white">{k.nama || '-'}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50 drop-shadow-md" />}</td>
                   <td class="p-4"><span class="font-mono text-purple-300 text-xs">{k.idLoker || '-'}</span></td>
                   <td class="p-4">
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan || '-'}</span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan || '-'}</span>
                     <span class="ml-1 text-xs text-slate-400">{k.status || '-'}</span>
                   </td>
                   <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatanExt || k.catatan || ''}>{(k.catatanExt || k.catatan) || '-'}</td>
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-1">
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
-                      <button onClick={()=>{setShowCvTemplateSelector(true);}} class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
-<button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
-                      <button onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="px-2 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[10px] font-bold shadow transition cursor-pointer"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
+                      <button onClick={()=>{setShowCvTemplateSelector(true);}} class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
+<button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
+                      <button onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="px-2 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
                       <button title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
                     </div>
                   </td>

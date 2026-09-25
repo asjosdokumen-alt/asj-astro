@@ -293,23 +293,23 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                 <div class="flex items-center gap-2 flex-wrap">
                   <h2 class="text-lg font-bold text-white truncate">{data.nama}</h2>
                   {data.isSiswaASJ ? (
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">{t('ui.cv_siswa_asj')}</span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">{t('ui.cv_siswa_asj')}</span>
                   ) : (
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/40">{t('ui.cv_eksternal')}</span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/40">{t('ui.cv_eksternal')}</span>
                   )}
                 </div>
                 <p class="text-xs text-emerald-400 font-mono mt-1">📱 {data.wa}</p>
                 {data.idKandidat && (
-                  <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-600/30 text-sky-300 border border-sky-500/40">{data.idKandidat}</span>
+                  <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-600/30 text-sky-300 border border-sky-500/40">{data.idKandidat}</span>
                 )}
                 {(data.tahapan || data.status) && (
                   <div class="mt-2 flex items-center gap-1.5 flex-wrap">
-                    <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_status_label')}</span>
+                    <span class="text-[11px] text-slate-500 uppercase">{t('ui.cv_status_label')}</span>
                     {data.tahapan && (
-                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">{data.tahapan}</span>
+                      <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">{data.tahapan}</span>
                     )}
                     {data.status && (
-                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40">{data.status}</span>
+                      <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40">{data.status}</span>
                     )}
                   </div>
                 )}
@@ -321,41 +321,41 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
               <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">{t('ui.cv_bio_header')}</h3>
               <div class="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_gender')}</span>
+                  <span class="text-[11px] text-slate-500 uppercase">{t('ui.cv_gender')}</span>
                   <p class="text-white font-bold">{data.gender || '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_usia')}</span>
+                  <span class="text-[11px] text-slate-500 uppercase">{t('ui.cv_usia')}</span>
                   <p class="text-white font-bold">{data.usia ? `${data.usia}${t('ui.age_years_suffix')}` : '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_fisik')}</span>
+                  <span class="text-[11px] text-slate-500 uppercase">{t('ui.cv_fisik')}</span>
                   <p class="text-white font-bold">{data.fisik || '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_pendidikan')}</span>
+                  <span class="text-[11px] text-slate-500 uppercase">{t('ui.cv_pendidikan')}</span>
                   <p class="text-white font-bold">{data.pendidikan || '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_ttl')}</span>
+                  <span class="text-[11px] text-slate-500 uppercase">{t('ui.cv_ttl')}</span>
                   <p class="text-white font-bold">{data.tmplahir && data.tgllahir ? `${data.tmplahir}, ${data.tgllahir}` : data.tmplahir || data.tgllahir || '-'}</p>
                 </div>
                 <div>
-                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_email')}</span>
+                  <span class="text-[11px] text-slate-500 uppercase">{t('ui.cv_email')}</span>
                   <p class="text-white font-bold">{data.email || '-'}</p>
                 </div>
                 <div class="col-span-2">
-                  <span class="text-[10px] text-slate-500 uppercase">{t('ui.cv_alamat')}</span>
+                  <span class="text-[11px] text-slate-500 uppercase">{t('ui.cv_alamat')}</span>
                   <p class="text-white font-bold">{data.alamat || '-'}</p>
                 </div>
               </div>
               <div class="flex gap-3 mt-3">
                 <div class="flex-1 p-2 bg-sky-900/30 rounded-lg border border-sky-500/20 text-center">
-                  <span class="text-[10px] text-sky-400 uppercase font-bold">{t('ui.jft_jlpt')}</span>
+                  <span class="text-[11px] text-sky-400 uppercase font-bold">{t('ui.jft_jlpt')}</span>
                   <p class="text-white font-bold text-sm">{data.jft || '-'}</p>
                 </div>
                 <div class="flex-1 p-2 bg-emerald-900/30 rounded-lg border border-emerald-500/20 text-center">
-                  <span class="text-[10px] text-emerald-400 uppercase font-bold">{t('ui.ssw_field')}</span>
+                  <span class="text-[11px] text-emerald-400 uppercase font-bold">{t('ui.ssw_field')}</span>
                   <p class="text-white font-bold text-sm">{data.ssw || '-'}</p>
                 </div>
               </div>
@@ -427,7 +427,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                     <div key={i} class="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700/50">
                       <Icon name="briefcase" class="text-sky-400 text-xs" />
                       <span class="text-white text-sm font-bold">{app.kategori || app.code}</span>
-                      <span class={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      <span class={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                         app.status === 'LULUS' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' :
                         app.status === 'Aktif' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40' :
                         'bg-slate-600/50 text-slate-300 border border-slate-600'

@@ -353,7 +353,7 @@ export default function SiswaBaruForm() {
           </div>
           <div>
             <h2 class="text-sm font-bold text-amber-400">Qween Jeklin</h2>
-            <p class="text-[10px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>{t('siswa.assistant')}</p>
+            <p class="text-[11px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>{t('siswa.assistant')}</p>
           </div>
         </div>
         {aiDown && (
@@ -366,7 +366,7 @@ export default function SiswaBaruForm() {
             <div key={i} class={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div class={`${msg.role === 'user' ? 'bg-amber-600 text-white' : 'bg-slate-800 text-slate-200'} rounded-xl px-4 py-2.5 max-w-[80%] shadow-lg`}>
                 <p class="text-xs leading-relaxed whitespace-pre-wrap">{renderChatText(msg.text)}</p>
-                <p class={`text-[9px] mt-1 ${msg.role === 'user' ? 'text-amber-200' : 'text-slate-500'}`}>{msg.time}</p>
+                <p class={`text-[11px] mt-1 ${msg.role === 'user' ? 'text-amber-200' : 'text-slate-500'}`}>{msg.time}</p>
               </div>
             </div>
           ))}
@@ -403,16 +403,16 @@ export default function SiswaBaruForm() {
                     tab panel it is `display:none` on mobile — so at 390px the
                     document had no h1 at all (measured §23). */}
                 <h2 class="text-sm md:text-lg font-black text-white">{t('siswa.form_title')}</h2>
-                <p class="text-[10px] text-slate-400">{t('siswa.form_hint')}</p>
+                <p class="text-[11px] text-slate-400">{t('siswa.form_hint')}</p>
               </div>
             </div>
             <button onClick={handleSubmit} disabled={submitPhase === 'uploading' || submitPhase === 'saving' || submitPhase === 'done'}
-              class={`${submitPhase === 'done' ? 'bg-sky-600 hover:bg-sky-500' : 'bg-emerald-600 hover:bg-emerald-500'} text-white text-[10px] md:text-xs font-bold px-5 py-2.5 rounded-lg transition shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center gap-2`}>
+              class={`${submitPhase === 'done' ? 'bg-sky-600 hover:bg-sky-500' : 'bg-emerald-600 hover:bg-emerald-500'} min-h-11 text-white text-[11px] md:text-xs font-bold px-5 py-2.5 rounded-lg transition shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center gap-2`}>
               <Icon name="paper-plane" />{submitLabel()}
             </button>
           </div>
           {sending && (
-            <div class="text-[10px] text-amber-400 font-bold mb-4 bg-amber-900/20 p-2 rounded border border-amber-500/20 flex items-center">
+            <div class="text-[11px] text-amber-400 font-bold mb-4 bg-amber-900/20 p-2 rounded border border-amber-500/20 flex items-center">
               <Icon spin name="magic" class="mr-2" />{t('siswa.analyzing')}
             </div>
           )}
@@ -452,9 +452,9 @@ export default function SiswaBaruForm() {
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {BIODATA_FIELDS.map(f => (
                 <div key={f.id} class={f.span ? 'lg:col-span-2' : ''}>
-                  <label class="block text-[10px] font-bold text-slate-400 mb-1" for={`sw-${f.id}`}>{f.label}</label>
+                  <label class="block text-[11px] font-bold text-slate-400 mb-1" for={`sw-${f.id}`}>{f.label}</label>
                   <input id={`sw-${f.id}`} type="text" value={biodata[f.id]} onInput={(e) => setBiodata(prev => ({ ...prev, [f.id]: (e.target as HTMLInputElement).value }))}
-                    class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none" />
+                    class="min-h-11 w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none" />
                 </div>
               ))}
             </div>
@@ -466,13 +466,13 @@ export default function SiswaBaruForm() {
                   <Icon name={d.icon} />
                 </div>
                 <div class="flex-1 overflow-hidden">
-                  <label class="block text-[10px] font-bold text-sky-400 mb-1" for={`sw-doc-${d.type}`}>{d.label}</label>
+                  <label class="block text-[11px] font-bold text-sky-400 mb-1" for={`sw-doc-${d.type}`}>{d.label}</label>
                   {/* MEASURED (2026-09-25, /siswa-baru at 768/1280): the native
                       file control's own box was 21.5px tall — under WCAG 2.5.8
                       AA's 24px. min-h-11 lifts the target to the 44px floor. */}
                   <input id={`sw-doc-${d.type}`} type="file" accept=".pdf,image/*" onChange={(e) => handleDocUpload(e, d.type)}
-                    class="w-full min-h-11 text-[9px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
-                  {docStatus[d.type] && <div class="text-[9px] text-emerald-400 mt-1 font-bold truncate"><Icon name="check" class="mr-0.5" />{docStatus[d.type]}</div>}
+                    class="w-full min-h-11 text-[11px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
+                  {docStatus[d.type] && <div class="text-[11px] text-emerald-400 mt-1 font-bold truncate"><Icon name="check" class="mr-0.5" />{docStatus[d.type]}</div>}
                 </div>
               </div>
             ))}

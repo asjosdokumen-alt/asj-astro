@@ -497,16 +497,16 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                   </div>
                   <div>
                     <h3 class="text-white font-black text-sm tracking-widest">{t('ui.student_id')}</h3>
-                    <p class="text-amber-400 text-[9px] font-bold uppercase tracking-[0.2em]">{data.kelas || t('ui.vip_member')}</p>
+                    <p class="text-amber-400 text-[11px] font-bold uppercase tracking-[0.2em]">{data.kelas || t('ui.vip_member')}</p>
                   </div>
                 </div>
                 <Icon name="check-circle" class="text-emerald-400 text-xl shadow-[0_0_10px_rgba(118,185,0,0.5)] rounded-full" />
               </div>
               <div class="flex justify-between items-center mt-auto z-10">
                 <div>
-                  <p class="text-slate-300 text-[9px] uppercase font-bold mb-0.5">{t('ui.student_name')}</p>
+                  <p class="text-slate-300 text-[11px] uppercase font-bold mb-0.5">{t('ui.student_name')}</p>
                   <p class="text-white font-black text-sm tracking-wide leading-tight break-words line-clamp-2 max-w-[170px]">{data.nama}</p>
-                  <p class="text-slate-300 text-[9px] uppercase font-bold mt-3 mb-0.5">{t('ui.reg_id')}</p>
+                  <p class="text-slate-300 text-[11px] uppercase font-bold mt-3 mb-0.5">{t('ui.reg_id')}</p>
                   <p class="text-sky-300 font-mono text-sm font-bold">{data.idKandidat}</p>
                 </div>
                 <div class="bg-white p-2 rounded-xl shadow-lg border-2 border-slate-200">
@@ -544,9 +544,9 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             <div class="relative z-10 space-y-3">
               {data.jadwal.map((j, i) => (
                 <div key={i} class="bg-black/30 border border-amber-900/50 rounded-xl p-4">
-                  <div class="flex justify-between"><span class="font-bold text-white text-sm">{j.nama}</span><span class="text-[10px] text-amber-400 font-mono">{j.waktu}</span></div>
+                  <div class="flex justify-between"><span class="font-bold text-white text-sm">{j.nama}</span><span class="text-[11px] text-amber-400 font-mono">{j.waktu}</span></div>
                   <p class="text-xs text-slate-400 mt-1"><Icon name="map-marker-alt" class="mr-1" />{j.lokasi}</p>
-                  {j.link && <a href={j.link} target="_blank" class="text-[10px] text-sky-400 underline mt-1 inline-block">{t('ui.open_link')}</a>}
+                  {j.link && <a href={j.link} target="_blank" class="text-[11px] text-sky-400 underline mt-1 inline-block">{t('ui.open_link')}</a>}
                 </div>
               ))}
             </div>
@@ -589,10 +589,10 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                 {/* Loker pills */}
                 {uniqueLokers.length > 1 && (
                   <div class="flex flex-wrap gap-1.5 mb-3">
-                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider self-center">{t('ui.pilih_loker')}</span>
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider self-center">{t('ui.pilih_loker')}</span>
                     {uniqueLokers.map(code => (
                       <button onClick={() => setSelectedLoker(selectedLoker === code ? null : code)}
-                        class={`px-2.5 py-1 rounded-full border text-[10px] font-black transition ${selectedLoker === code ? 'bg-emerald-600 text-white border-emerald-400' : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-emerald-500/60'}`}>
+                        class={`px-2.5 py-1 rounded-full border text-[11px] font-black transition ${selectedLoker === code ? 'bg-emerald-600 text-white border-emerald-400' : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-emerald-500/60'}`}>
                         {code}
                       </button>
                     ))}
@@ -608,18 +608,18 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                       <div key={i} class="u-cv-auto u-cv-auto--card flex flex-col p-4 rounded-2xl border border-slate-700/50 bg-black/60 hover:bg-black/80 transition-colors shadow-lg mb-3 overflow-hidden">
                         <div class="flex flex-col sm:flex-row justify-between sm:items-start gap-3 mb-1">
                           <div class="min-w-0">
-                            <div class="text-sm font-black text-white tracking-wide"><Icon name="building" class="text-slate-500 mr-2" />{r.jobCode || '-'} <span class="text-[9px] px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded ml-2 font-normal">{(r.tanggal || '').substring(0, 10)}</span></div>
+                            <div class="text-sm font-black text-white tracking-wide"><Icon name="building" class="text-slate-500 mr-2" />{r.jobCode || '-'} <span class="text-[11px] px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded ml-2 font-normal">{(r.tanggal || '').substring(0, 10)}</span></div>
                             {r.kategori && <div class="text-[11px] text-slate-400 mt-1"><Icon name="tag" class="mr-1 text-sky-500/70" /> {r.kategori}</div>}
                           </div>
-                          <span class={`inline-flex items-start gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] md:text-xs font-bold max-w-full break-words text-left shadow-sm ${statusBadgeClass(r.status)}`}>
+                          <span class={`inline-flex items-start gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] md:text-xs font-bold max-w-full break-words text-left shadow-sm ${statusBadgeClass(r.status)}`}>
                             <Icon name={statusIcon(r.status)} class="mt-0.5 flex-shrink-0" /> {statusText(r.status, isBiodataRow(r))}
                           </span>
                         </div>
                         {/* Tahapan pipeline */}
                         <div class="mt-3">
                           <div class="flex items-center justify-between mb-1.5">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"><Icon name="route" class="mr-1 text-sky-400" /> {t('form.txt_tahapan_saat_ini')}</span>
-                            <span class="text-[10px] font-black text-emerald-400"><Icon name="map-pin" /> {TAHAPAN_STEPS[stepIdx] || r.tahapan}</span>
+                            <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider"><Icon name="route" class="mr-1 text-sky-400" /> {t('form.txt_tahapan_saat_ini')}</span>
+                            <span class="text-[11px] font-black text-emerald-400"><Icon name="map-pin" /> {TAHAPAN_STEPS[stepIdx] || r.tahapan}</span>
                           </div>
                           <div class="w-full bg-slate-800 rounded-full h-1.5 border border-slate-700/50">
                             <div class="bg-gradient-to-r from-emerald-600 to-sky-500 h-1.5 rounded-full transition-[width] duration-1000" style={`width:${progressPct}%`}></div>
@@ -628,7 +628,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                             {TAHAPAN_STEPS.map((nm, si) => {
                               const done = si < stepIdx;
                               const active = si === stepIdx;
-                              return <span key={si} class={`flex items-center gap-1 text-[9px] font-bold whitespace-nowrap ${done ? 'text-emerald-400' : active ? 'text-amber-400' : 'text-slate-500'}`}><Icon name={done ? 'check-circle' : 'circle'} class="flex-shrink-0" /> {nm}</span>;
+                              return <span key={si} class={`flex items-center gap-1 text-[11px] font-bold whitespace-nowrap ${done ? 'text-emerald-400' : active ? 'text-amber-400' : 'text-slate-500'}`}><Icon name={done ? 'check-circle' : 'circle'} class="flex-shrink-0" /> {nm}</span>;
                             })}
                           </div>
                         </div>

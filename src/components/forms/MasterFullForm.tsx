@@ -7,7 +7,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { validate, kandidatLoginSchema, waSchema, emailSchema } from '../../lib/schemas';
-import { t, toggleLang, useLang } from '../../store/i18n';
+import { t, useLang } from '../../store/i18n';
 import { apiClient } from "../../lib/apiClient";
 import Icon from '../ui/Icon';
 import { uploadMany, UploadCollectionError } from '../../lib/cloudinary';
@@ -123,7 +123,14 @@ interface SubmitMasterRes {
 }
 
 export default function MasterFullForm() {
-  const lang = useLang();
+  /* ⚠ THE CALL STAYS, THE BINDING DOES NOT. `useLang()` is a SUBSCRIPTION, not a
+     read: it re-renders this island when the dictionary changes (including the
+     lazy JP dictionary landing via `jpReady`). The VALUE stopped being used when
+     the hero's own language button was removed on 2026-09-25, but deleting the
+     call would silently stop live language switching on this form — the labels
+     would only update on a reload. So it is called for its effect, with no
+     binding, which is also what keeps `noUnusedVariables` quiet. */
+  useLang();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<MasterData>({ ...EMPTY });
   const [eduList, setEduList] = useState<EduRecord[]>([{ jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'' }]);
@@ -596,14 +603,28 @@ export default function MasterFullForm() {
           <div class="text-2xl font-black mt-2 uppercase text-accent-sky">{t("master.form_brand")}</div>
           <div class="text-[11px] mt-1 text-fg-muted" style={{ letterSpacing: 2 }}>{t("master.form_sub")}</div>
         </div>
-        <button onClick={() => toggleLang()}
-          class="absolute top-3 right-3 z-10 px-3 py-1.5 bg-sky-600/80 hover:bg-sky-500 text-white rounded-full text-[11px] font-bold shadow-lg border border-sky-400/40 transition">
-          <Icon name="language" class="mr-1" /><span>{lang === 'id' ? 'ID' : 'JP'}</span>
-        </button>
+        {/* ⚠ THE HERO'S OWN LANGUAGE BUTTON WAS REMOVED 2026-09-25 — IT WAS A
+            DUPLICATE, AND IT STACKED.
+
+            MEASURED at 390px on `/master` (and `/ai-cv`, which mounts the same
+            form): TWO language toggles were visible at once — this floating pill
+            at `absolute top-3 right-3 z-10` (51x31px, under the 44px touch
+            floor) and the one `FormToolbar` renders 42px above it. The owner's
+            report was "menu yang saling menumpuk"; this was the stacking.
+
+            `FormToolbar` is mounted by EVERY route that mounts this form
+            (`master.astro:7`, `ai-cv.astro:11`), so removing this one leaves the
+            toggle reachable on all of them — verified by grep, not assumed: the
+            only consumers of `MasterFullForm` are those two pages, and both
+            mount the toolbar. Do not re-add a language control here; put it in
+            the toolbar if it needs to move. */}
+
         {/* P3 §4.1 #5 — badge "Belum tersimpan" (legacy #unsaved-badge).
-            Ditaruh di hero, sebelah tombol bahasa, supaya terlihat dari step
-            mana pun tanpa scroll. `aria-live` diberi karena kemunculannya
-            adalah umpan balik status, bukan hiasan. */}
+            Ditaruh di hero supaya terlihat dari step mana pun tanpa scroll.
+            `aria-live` diberi karena kemunculannya adalah umpan balik status,
+            bukan hiasan.
+            (Dulu komentarnya berbunyi "sebelah tombol bahasa" — tombol itu sudah
+            tidak ada di sini, lihat catatan di atas.) */}
         {dirty && (
           <span aria-live="polite"
             class="absolute top-3 left-3 z-10 px-3 py-1.5 rounded-full text-[11px] font-bold bg-amber-500/90 text-[#3b2503] shadow-lg animate-pulse">
@@ -626,7 +647,7 @@ export default function MasterFullForm() {
                   <div class={`w-8 h-8 rounded-full flex justify-center items-center text-xs font-extrabold transition border-2 ${done ? 'bg-[#0284c7] border-[#0284c7] text-white' : isActive ? 'bg-[#38bdf8] border-[#38bdf8] text-[#020617] shadow-[0_0_15px_rgba(56,189,248,.4)]' : 'bg-surface-raised border-line text-fg-subtle'}`}>
                     <Icon name={s.icon} />
                   </div>
-                  <div class={`text-[9px] font-extrabold text-center transition ${isActive || done ? 'text-accent-sky' : 'text-fg-subtle'}`}>{t(s.key)}</div>
+                  <div class={`text-[11px] font-extrabold text-center transition ${isActive || done ? 'text-accent-sky' : 'text-fg-subtle'}`}>{t(s.key)}</div>
                 </div>
               );
             })}
@@ -735,8 +756,8 @@ export default function MasterFullForm() {
               {eduList.map((edu, i) => (
                 <div class="p-3 rounded-xl mb-3 bg-surface-raised border border-dashed border-line">
                   <div class="flex justify-between items-center mb-2">
-                    <span class="text-[10px] font-extrabold text-fg-muted">Pendidikan #{i + 1}</span>
-                    {eduList.length > 1 && <button onClick={() => setEduList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
+                    <span class="text-[11px] font-extrabold text-fg-muted">Pendidikan #{i + 1}</span>
+                    {eduList.length > 1 && <button onClick={() => setEduList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[11px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label" for={`mf-edu-jenjang-${i}`}>{t("master.edu_jenjang")}</label>
@@ -764,8 +785,8 @@ export default function MasterFullForm() {
               {jobList.map((job, i) => (
                 <div class="p-3 rounded-xl mb-3 bg-surface-raised border border-dashed border-line">
                   <div class="flex justify-between items-center mb-2">
-                    <span class="text-[10px] font-extrabold text-fg-muted">Pekerjaan #{i + 1}</span>
-                    {jobList.length > 1 && <button onClick={() => setJobList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
+                    <span class="text-[11px] font-extrabold text-fg-muted">Pekerjaan #{i + 1}</span>
+                    {jobList.length > 1 && <button onClick={() => setJobList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[11px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label" for={`mf-job-perusahaan-${i}`}>{t("master.kerja_perusahaan")}</label>
@@ -795,8 +816,8 @@ export default function MasterFullForm() {
               {famList.map((fam, i) => (
                 <div class="p-3 rounded-xl mb-3 bg-surface-raised border border-dashed border-line">
                   <div class="flex justify-between items-center mb-2">
-                    <span class="text-[10px] font-extrabold text-fg-muted">{t("master.fam_member")} #{i + 1}</span>
-                    {famList.length > 1 && <button onClick={() => setFamList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[10px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
+                    <span class="text-[11px] font-extrabold text-fg-muted">{t("master.fam_member")} #{i + 1}</span>
+                    {famList.length > 1 && <button onClick={() => setFamList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[11px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label" for={`mf-fam-nama-${i}`}>{t("form.mf_nama_keluarga")}</label>
@@ -905,7 +926,7 @@ export default function MasterFullForm() {
                 <div class="flex justify-between items-center p-4 rounded-2xl mb-4 bg-surface-raised border border-line">
                   <div>
                     <div class="text-xs font-extrabold text-fg">{doc.label}</div>
-                    <div class="text-[10px] mt-1 text-fg-muted" style={{ wordBreak: 'break-all' }}>{fileNames[doc.k] || 'Belum ada file'}</div>
+                    <div class="text-[11px] mt-1 text-fg-muted" style={{ wordBreak: 'break-all' }}>{fileNames[doc.k] || 'Belum ada file'}</div>
                   </div>
                   <label class="cursor-pointer px-4 py-2 rounded-lg font-extrabold text-[11px]" style={{ background: '#38bdf8', color: '#020617' }}>
                     PILIH

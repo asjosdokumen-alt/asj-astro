@@ -397,7 +397,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
             <img src={JEKLIN_IMG} alt="Jeklin" class="w-8 h-8 rounded-full border border-amber-400" />
             <div>
               <h3 class="text-sm font-bold text-amber-400">{t("ui.ai_copilot")}</h3>
-              <p class="text-[10px] text-slate-400">Qween Jeklin</p>
+              <p class="text-[11px] text-slate-400">Qween Jeklin</p>
             </div>
           </div>
           <div class="flex gap-1">
@@ -406,7 +406,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
                 key={m.key}
                 onClick={() => setMode(m.key)}
                 class={
-                  "px-2 py-1 text-[10px] font-bold rounded " +
+                  "px-2 py-1 text-[11px] font-bold rounded " +
                   (mode === m.key ? "bg-amber-600 text-white" : "bg-slate-800 text-slate-400")
                 }
               >
@@ -512,7 +512,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
             <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-3">
               <label
                 htmlFor="ai-admin-file"
-                class="block text-[10px] font-bold text-slate-400 mb-1"
+                class="block text-[11px] font-bold text-slate-400 mb-1"
               >
                 {t("admin.ai_upload_label")}
               </label>
@@ -524,10 +524,10 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
                   const f = (e.target as HTMLInputElement).files?.[0];
                   if (f) setParseFile(f);
                 }}
-                class="w-full text-[10px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-amber-600 file:text-white file:text-[10px] file:font-bold"
+                class="w-full text-[11px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-amber-600 file:text-white file:text-[11px] file:font-bold"
               />
               {parseFile && (
-                <p class="text-[10px] text-emerald-400 mt-1">
+                <p class="text-[11px] text-emerald-400 mt-1">
                   <Icon name="check" class="mr-0.5" />
                   {parseFile.name}
                 </p>

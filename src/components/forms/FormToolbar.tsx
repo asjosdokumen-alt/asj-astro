@@ -20,7 +20,15 @@ export default function FormToolbar({ title, titleKey }: Props) {
 
   return (
     <div class="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-3 py-2 bg-black/70 backdrop-blur-sm border-b border-white/10">
-      <a href="/" aria-label={t('button.portal')} class="flex items-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/80 text-white text-xs font-bold rounded-full border border-white/20 transition-[background-color,transform] hover:scale-105">
+      {/* ⚠ MEASURED 2026-09-25 at 390px: this back control rendered **38x26** —
+          26px tall, on EVERY gated route (/admin, /candidate, /apply, /master,
+          /ai-cv, /share, /siswa-baru). It was the only control in this bar that
+          never got the `min-h-11` the two beside it received, so the bar's
+          PRIMARY action was the smallest target in it: under WCAG 2.5.8 AA's
+          24px on the height and well under the project's 44px floor
+          (DESIGN.md:582, :691). `min-h-11 min-w-11` puts the floor on the anchor
+          itself, which is what receives the tap. */}
+      <a href="/" aria-label={t('button.portal')} class="min-h-11 min-w-11 flex items-center justify-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/80 text-white text-xs font-bold rounded-full border border-white/20 transition-[background-color,transform] hover:scale-105">
         <Icon name="arrow-left" /> <span class="hidden sm:inline">{t('button.portal')}</span>
       </a>
       {/* The page title IS the page's h1 — not a decorative <span>. Four form
@@ -44,18 +52,22 @@ export default function FormToolbar({ title, titleKey }: Props) {
         header); leaving this copy at 31px would have made the theme toggle a
         different size depending on which page you were on.
 
-        `min-h-` rather than `h-`: the label text sits beside an icon and the
-        padding is asymmetric, so a fixed height would centre the content by
-        clipping rather than by layout. The bar itself is `py-2`, so it grows by
-        13px per control -- measured, not assumed: the toolbar is 8px taller at
-        390px after this change, which keeps it well inside the thumb zone.
-      */}
+        ⚠ THE TEXT LABEL IS NOW `hidden sm:inline`, AND THAT IS A WIDTH FIX.
+        MEASURED 2026-09-25 at 390px: the two pills rendered 62px + 54px = 116px
+        of a 390px bar, leaving ~200px for the title — and the owner's complaint
+        was exactly this, "menu terlihat terlalu lonjong/melebar sehingga kurang
+        proporsional". A pill whose job is a two-state toggle does not need its
+        label at phone width: the ICON already carries the state (moon/sun), and
+        `aria-label` carries it for assistive tech. Hiding the text keeps the
+        44px target and the tap area, and hands ~80px back to the title, which is
+        the element that was being truncated. The label returns at `sm:` where
+        there is room for it. */}
       <div class="flex items-center gap-2">
-        <button onClick={toggleTheme} aria-label="Toggle theme" class="min-h-11 px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
-          <Icon name={isDark ? "moon" : "sun"} /> {isDark ? "Dark" : "Light"}
+        <button onClick={toggleTheme} aria-label={isDark ? "Aktifkan tema terang" : "Aktifkan tema gelap"} title={isDark ? "Dark" : "Light"} class="min-h-11 px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
+          <Icon name={isDark ? "moon" : "sun"} /> <span class="hidden sm:inline">{isDark ? "Dark" : "Light"}</span>
         </button>
-        <button onClick={toggleLang} aria-label="Toggle language" class="min-h-11 px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
-          <Icon name="language" /> {lang === "id" ? "ID" : "JP"}
+        <button onClick={toggleLang} aria-label={lang === "id" ? "Ganti ke bahasa Jepang" : "Ganti ke bahasa Indonesia"} title={lang === "id" ? "ID" : "JP"} class="min-h-11 px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
+          <Icon name="language" /> <span class="hidden sm:inline">{lang === "id" ? "ID" : "JP"}</span>
         </button>
       </div>
     </div>

@@ -17,9 +17,9 @@
  * All three are `min-h-11` (44px) now.
  *
  * PASS 2 — 2026-09-24, the five ROW controls, which pass 1 never covered:
- *   - Detail                `px-2 py-1.5 text-[10px]` -> 59x28   UNDER
- *   - Format (an <a>)       `px-2 py-1.5 text-[10px]` -> 63x28   UNDER
- *   - Tutup (disabled)      `px-2 py-1.5 text-[10px]` -> 28 tall UNDER
+ *   - Detail                `px-2 py-1.5 text-[11px]` -> 59x28   UNDER
+ *   - Format (an <a>)       `px-2 py-1.5 text-[11px]` -> 63x28   UNDER
+ *   - Tutup (disabled)      `px-2 py-1.5 text-[11px]` -> 28 tall UNDER
  *   - Lamar Sekarang        `px-2 py-1.5 text-[11px]` -> 117x30  UNDER
  *   - Muat Lebih Banyak     `px-6 py-2.5 text-xs`     -> 181x36  UNDER
  * All five are `min-h-11` now. WHY THEY SURVIVED PASS 1: the gate
@@ -141,15 +141,15 @@ export default function LokerTable() {
   function getStatusBadge(status: string) {
     const s = (status || "").toUpperCase();
     if (s.includes("OPEN"))
-      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-emerald-600 text-white border-emerald-400/60"><Icon name="door-open" /> {t("status.open")}</span>;
+      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold bg-emerald-600 text-white border-emerald-400/60"><Icon name="door-open" /> {t("status.open")}</span>;
     if (s.includes("URGENT"))
-      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-amber-500 text-white border-amber-400/60 animate-pulse"><Icon name="exclamation-triangle" /> {t("status.urgent")}</span>;
+      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold bg-amber-500 text-white border-amber-400/60 animate-pulse"><Icon name="exclamation-triangle" /> {t("status.urgent")}</span>;
     if (s.includes("CLOSE"))
-      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-rose-600 text-white border-rose-400/60"><Icon name="door-closed" /> {t("status.close")}</span>;
+      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold bg-rose-600 text-white border-rose-400/60"><Icon name="door-closed" /> {t("status.close")}</span>;
     // Unknown status — fall back to a neutral pill that flips with theme so
     // a stray "DRAFT" or admin-only state doesn't render as bright dark on
     // a sakura page.
-    return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold bg-slate-800 text-slate-200 border-slate-600 dark-badge"><Icon name="tag" /> {status || "-"}</span>;
+    return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold bg-slate-800 text-slate-200 border-slate-600 dark-badge"><Icon name="tag" /> {status || "-"}</span>;
   }
 
   function getGenderBadge(gender: string) {
@@ -159,10 +159,10 @@ export default function LokerTable() {
     // is still the fallback for any value we have not catalogued.
     const lbl = jobGenderLabel(gender) || "-";
     if (g.includes("PRIA") || g.includes("LAKI"))
-      return <span class="gender-badge gender-badge--male px-2 py-0.5 text-[10px] font-bold whitespace-nowrap"><Icon name="mars" class="mr-1" /> {lbl}</span>;
+      return <span class="gender-badge gender-badge--male px-2 py-0.5 text-[11px] font-bold whitespace-nowrap"><Icon name="mars" class="mr-1" /> {lbl}</span>;
     if (g.includes("WANITA") || g.includes("PEREMPUAN"))
-      return <span class="gender-badge gender-badge--female px-2 py-0.5 text-[10px] font-bold whitespace-nowrap"><Icon name="venus" class="mr-1" /> {lbl}</span>;
-    return <span class="gender-badge gender-badge--mixed px-2 py-0.5 text-[10px] font-bold whitespace-nowrap"><Icon name="venus-mars" class="mr-1" /> {lbl}</span>;
+      return <span class="gender-badge gender-badge--female px-2 py-0.5 text-[11px] font-bold whitespace-nowrap"><Icon name="venus" class="mr-1" /> {lbl}</span>;
+    return <span class="gender-badge gender-badge--mixed px-2 py-0.5 text-[11px] font-bold whitespace-nowrap"><Icon name="venus-mars" class="mr-1" /> {lbl}</span>;
   }  /** Open the native Astro apply wizard (apply.astro) — same route the
    *  detail modal's "Lamar" uses. B04 (2026-09-05): this used to call the
    *  legacy generateFormBridge, whose backend handler still points at the
@@ -219,7 +219,7 @@ export default function LokerTable() {
             // from the pill it sits on. Deliberately NOT fixed by enlarging the
             // text: a 9px badge is not large text, and growing it to dodge the
             // floor would be gaming the measurement instead of the contrast.
-            const cntCls = "px-1.5 py-0.5 rounded-full text-[9px] ml-0.5 font-black " + (filter === fd.key ? "bg-white/20 text-white" : "bg-slate-900 text-slate-200");
+            const cntCls = "px-1.5 py-0.5 rounded-full text-[11px] ml-0.5 font-black " + (filter === fd.key ? "bg-white/20 text-white" : "bg-slate-900 text-slate-200");
             return (
               <button key={fd.key} onClick={() => { setFilter(fd.key); setLimit(LIMIT_INITIAL); }} class={btnCls}>
                 <Icon name={fd.icon} class="mr-1" /> {fd.lbl} <span class={cntCls}>{filterCount(fd.key)}</span>
@@ -258,7 +258,7 @@ export default function LokerTable() {
                     <div class="flex flex-col pt-1">
                       <span class="font-bold text-base text-white leading-tight">{jobTitleLabel(job.pekerjaan) || "-"}</span>
                       {job.kategori && jobCategoryLabel(job.kategori) && (
-                        <span class="text-[10px] text-slate-400 mt-0.5">{jobCategoryLabel(job.kategori)}</span>
+                        <span class="text-[11px] text-slate-400 mt-0.5">{jobCategoryLabel(job.kategori)}</span>
                       )}
                       <div class="flex flex-wrap items-center gap-2 mt-2">
                         <span class="text-[11px] text-slate-300"><Icon name="map-marker-alt" class="mr-1 text-red-400" /> {jobLocationLabel(job.lokasi) || "-"}</span>
@@ -271,17 +271,17 @@ export default function LokerTable() {
                 <td data-label={t("table.req")} class="rt-full p-2 text-xs text-slate-300 whitespace-normal leading-relaxed align-top">
                   {(job.syarat || "").split(",").map(s => s.trim()).filter(Boolean).join(", ")}
                   {job.keterangan && job.keterangan !== "-" && (
-                    <div class="mt-2 pt-2 border-t border-slate-700/50 text-[10px] text-amber-300/90 leading-relaxed"><Icon name="info-circle" class="mr-1" /> {job.keterangan}</div>
+                    <div class="mt-2 pt-2 border-t border-slate-700/50 text-[11px] text-amber-300/90 leading-relaxed"><Icon name="info-circle" class="mr-1" /> {job.keterangan}</div>
                   )}
                 </td>
                 <td data-label={t("table.action")} class="rt-full p-1 align-top w-20">
                   <div class="flex flex-row gap-1 items-center justify-center">
-                    <button onClick={() => setSelectedJob(job)} class="min-h-11 px-2 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[10px] font-black border border-amber-500/50" title={t("button.detail")}><Icon name="eye" /> <span class="hidden sm:inline">{t("button.detail")}</span></button>
+                    <button onClick={() => setSelectedJob(job)} class="min-h-11 px-2 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[11px] font-black border border-amber-500/50" title={t("button.detail")}><Icon name="eye" /> <span class="hidden sm:inline">{t("button.detail")}</span></button>
                     {job.templateCv && job.templateCv !== "-" && (
-                      <a href={job.templateCv} target="_blank" class="inline-flex items-center justify-center min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[10px] font-bold border border-sky-500/50"><Icon name="download" /> <span class="hidden sm:inline">{t("button.format")}</span></a>
+                      <a href={job.templateCv} target="_blank" class="inline-flex items-center justify-center min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[11px] font-bold border border-sky-500/50"><Icon name="download" /> <span class="hidden sm:inline">{t("button.format")}</span></a>
                     )}
                     {jobTutupUntukLamar(job) ? (
-                      <button disabled class="min-h-11 px-2 py-1.5 bg-slate-600 rounded-lg text-white text-[10px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
+                      <button disabled class="min-h-11 px-2 py-1.5 bg-slate-600 rounded-lg text-white text-[11px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
                     ) : (
                       <button onClick={() => openForm(job)} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-[0_4px_15px_rgba(5,150,105,0.4)] transition text-[11px] font-bold border border-emerald-500/50"><Icon name="paper-plane" /> <span class="hidden sm:inline">{t("button.apply")}</span></button>
                     )}

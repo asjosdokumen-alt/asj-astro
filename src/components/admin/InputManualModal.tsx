@@ -199,7 +199,7 @@ export default function InputManualModal() {
               <label class="block text-xs font-bold text-sky-400 mb-1" for="im-cari">{t("admin.manual_cari_title")}</label>
               <input type="text" id="im-cari" placeholder={t("input.placeholder_auto")}
                 class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" />
-              <p class="text-[9px] text-slate-400 mt-1">{t("admin.keep_existing_docs")}</p>
+              <p class="text-[11px] text-slate-400 mt-1">{t("admin.keep_existing_docs")}</p>
             </div>
 
             {/* Basic info */}
@@ -262,7 +262,7 @@ export default function InputManualModal() {
             {/* Extra docs — legacy layout with column headers + +/- buttons */}
             <fieldset class="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-xl space-y-2">
               <legend class="block text-xs font-bold text-emerald-400 mb-2 p-0"><Icon name="folder-plus" class="mr-1" /> {t("ui.form_other_docs")}</legend>
-              <div class="flex gap-2 items-center text-[10px] font-bold text-slate-400 px-1">
+              <div class="flex gap-2 items-center text-[11px] font-bold text-slate-400 px-1">
                 <span class="w-40">{t("admin.manual_jenis_doc")}</span>
                 <span class="flex-1">{t("admin.manual_file")}</span>
                 <span class="w-8 text-center"></span>
@@ -275,11 +275,11 @@ export default function InputManualModal() {
                   </select>
                   <div class="flex-1 flex items-center gap-2">
                     <label class="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded cursor-pointer transition">
-                      <Icon name="upload" class="text-[10px]" /> Choose File
+                      <Icon name="upload" class="text-[11px]" /> Choose File
                       <input type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden"
                         onChange={(e) => updateExtraDocFile(i, (e.target as HTMLInputElement).files?.[0] || null)} />
                     </label>
-                    <span class="text-[10px] text-slate-400 truncate">{d.file ? d.file.name : 'No file chosen'}</span>
+                    <span class="text-[11px] text-slate-400 truncate">{d.file ? d.file.name : 'No file chosen'}</span>
                   </div>
                   <button type="button" onClick={() => removeExtraDoc(i)}
                     class="w-8 h-8 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded text-xs transition">

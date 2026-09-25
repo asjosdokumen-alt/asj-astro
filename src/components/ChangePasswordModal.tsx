@@ -79,7 +79,7 @@ export default function ChangePasswordModal({ onClose }: Props) {
             <label class="block text-xs font-bold text-slate-400 mb-1" for="cp-konfirmasi">{t('changepass.confirm')}</label>
             <input type="password" id="cp-konfirmasi" value={konfirmasi} autocomplete="new-password" onInput={e => setKonfirmasi((e.target as HTMLInputElement).value)} placeholder="••••••" class="w-full p-3 rounded-xl bg-black/60 border border-slate-600 text-sm text-white outline-none focus:border-amber-500" />
           </div>
-          <p class="text-[10px] text-slate-500">{t('changepass.hint')}</p>
+          <p class="text-[11px] text-slate-500">{t('changepass.hint')}</p>
         </div>
         <button onClick={handleSubmit} disabled={loading} class="w-full mt-4 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-sm shadow-lg disabled:opacity-50 transition">
           {loading ? t('changepass.loading') : t('changepass.btn')}

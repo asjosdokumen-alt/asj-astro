@@ -300,6 +300,23 @@
    iOS home indicator; these compose (padding is additive).          */
 :root { --u-nav-h: 45px; }
 
+/* ── `--u-toolbar-h` — the fixed FormToolbar's height ────────────────────
+   MEASURED 2026-09-25 with Playwright: `FormToolbar` renders **61px** tall
+   (`px-3 py-2` + a `min-h-11` control) at both 390 and 1280, in both themes.
+
+   WHY IT NEEDS A TOKEN. The toolbar is `fixed top-0 … z-[100]` and the admin
+   sidebar (`AdminPanel.tsx`) was `fixed top-0 h-full … z 96`. Two fixed
+   elements anchored at top-0, the toolbar above: measured overlap **15616 px²**
+   (256 × 61) on `/admin` at 1280 — the sidebar's own header row, which ends at
+   45px, sat ENTIRELY behind the toolbar, so its "MENU" label and its close
+   button were invisible and unclickable on desktop. The same happened at 390
+   whenever the sidebar was opened, for the same reason.
+
+   The fix is to start the sidebar below the bar rather than to reorder the
+   z-scale: the toolbar is meant to be on top. If the toolbar's height changes,
+   change it here once.                                                    */
+:root { --u-toolbar-h: 61px; }
+
 @media (max-width: 767.98px) {
   .u-has-bottomnav {
     padding-bottom: calc(var(--u-nav-h) + env(safe-area-inset-bottom, 0px));

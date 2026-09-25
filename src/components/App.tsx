@@ -565,7 +565,24 @@ export default function App(
                 {/* This is the page's ONLY h1 on /public, /admin, /candidate,
                     /share — every route that mounts the header without a hero.
                     Demoting it globally would leave those routes with no h1 at
-                    all, which is why the hero variant above is opt-in. */}
+                    all, which is why the hero variant above is opt-in.
+
+                    ⚠ `truncate` STAYS, AND `App.header.test.tsx` ENFORCES IT
+                    ("memotong judul dengan elipsis, bukan melipatnya"). This was
+                    TRIED as `line-clamp-2` on 2026-09-25 to stop the company name
+                    rendering as "PT AMANAH SAKUR…" on a phone, and the test caught
+                    it. Measured before reverting, at /loker:
+                      · 390px  line-clamp-2 -> title ends x=281, button starts 314, clears by 27px
+                      · 360px  line-clamp-2 -> title ends x=281, button starts 284, OVERLAPS
+                      · 320px  line-clamp-2 -> title ends x=281, button starts 244, OVERLAPS by 43px
+                      · `truncate` at the same widths -> the BOX is the same 210px, so
+                        it overlaps at 360/320 too. Wrapping bought nothing there.
+                    So the ellipsis is not what protects the button — the
+                    `max-w-[210px]` cap is, and that cap is simply too wide below
+                    ~370px. Making the cap responsive is a real change with its own
+                    risk, so it is REPORTED rather than smuggled in under a UX
+                    sweep. Do not swap this class without re-running the measured
+                    comparison above. */}
                 <h1 class="text-lg md:text-3xl font-black italic tracking-wide drop-shadow-lg truncate"><span>{t("header.company_name")}</span></h1>
               </div>
             </div>
@@ -613,7 +630,7 @@ export default function App(
             out so the Login/Register block stays the first thing. */}
         {u.isLoggedIn && (
           <div class="px-4 py-3 border-b border-slate-700 bg-slate-800/40">
-            <div class="text-[10px] uppercase tracking-widest text-slate-500 mb-1">{u.role === "admin" ? t("header.admin") : t("header.dashboard")}</div>
+            <div class="text-[11px] uppercase tracking-widest text-slate-500 mb-1">{u.role === "admin" ? t("header.admin") : t("header.dashboard")}</div>
             <div class={"text-base font-bold " + (u.role === "admin" ? "text-amber-300" : "text-emerald-300")}>{u.name}</div>
           </div>
         )}

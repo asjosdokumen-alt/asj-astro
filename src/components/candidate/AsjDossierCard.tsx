@@ -191,12 +191,18 @@ export default function AsjDossierCard(props: AsjDossierCardProps) {
                 )}
               </div>
             )}
+            {/* `min-h-11` on the WhatsApp row — MEASURED 2026-09-25 at 390px:
+                this link rendered 129x23. It is a real tappable link (it opens
+                WhatsApp) and it was the smallest target on the card, well under
+                the project's 44px floor (DESIGN.md:691). Legacy rendered it as a
+                plain inline link too, so this is a deliberate departure: the
+                touch floor wins over matching legacy's metrics. */}
             {wa && (
               <a
                 href={`https://wa.me/${wa}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                class="text-accent-emerald text-body-sm font-bold hover:opacity-80 transition-opacity inline-flex items-center gap-1 mt-1"
+                class="min-h-11 text-accent-emerald text-body-sm font-bold hover:opacity-80 transition-opacity inline-flex items-center gap-1 mt-1"
               >
                 <Icon name="whatsapp" class="text-lg" />
                 <span>{wa}</span>

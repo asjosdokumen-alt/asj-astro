@@ -364,7 +364,19 @@ export default function ApplyFullForm() {
           <img class="w-[100px] h-[100px] rounded-full mx-auto shadow-[0_15px_35px_rgba(0,0,0,.5)] object-cover relative z-[15]"
             src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_apply.png" alt="Logo ASJ" />
           <div class="mt-[15px] tracking-[7px] text-[11px] font-bold text-[#ff6db2]">日本への挑戦</div>
-          <div class="text-[28px] font-black mt-[5px]">PT AMANAH SAKURA JAPAN</div>
+          {/* ⚠ `text-[28px]` WAS A ONE-LINE-ONLY SIZE, AND ON A PHONE IT WRAPPED
+              UNDER THE CARD. MEASURED 2026-09-25 at 390px: this hero is
+              `h-[260px]` with `overflow-hidden`, the logo is 100px and the
+              eyebrow sits above the title — so a TWO-line title pushes the block
+              to ~204px inside a 260px band, and the card below carries
+              `mt-[-40px]`, which covered the second line ("JAPAN" was half
+              hidden behind the white panel). "PT AMANAH SAKURA JAPAN" is 23
+              characters; at 28px bold that needs ~354px and the band only offers
+              ~350px, so it wrapped by a hair.
+              At 22px it needs ~278px and stays on ONE line, which is what the
+              design assumes. It returns to 28px from `sm:` up, where the band is
+              wide enough. */}
+          <div class="text-[22px] sm:text-[28px] font-black mt-[5px]">PT AMANAH SAKURA JAPAN</div>
         </div>
       </div>
 
@@ -474,7 +486,7 @@ export default function ApplyFullForm() {
               ].map((c, i) => (
                 <div key={i} class="bg-slate-900 border border-slate-700 rounded-2xl p-[15px_10px] text-center">
                   <Icon name={c.icon} class="text-[20px] text-pink-500 mb-2 block" />
-                  <div class="text-[10px] text-slate-300 font-bold">{c.label}</div>
+                  <div class="text-[11px] text-slate-300 font-bold">{c.label}</div>
                 </div>
               ))}
             </div>

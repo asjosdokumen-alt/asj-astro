@@ -95,13 +95,13 @@ export default function CekSiswaModal({ onClose }: Props) {
   const genderBadge = (g: string) => {
     const val = String(g || '').trim().toUpperCase();
     if (val === 'L') {
-      return <span class="inline-flex w-6 h-6 rounded-full bg-blue-900/50 text-blue-400 items-center justify-center font-bold text-[10px] border border-blue-500/30">L</span>;
+      return <span class="inline-flex w-6 h-6 rounded-full bg-blue-900/50 text-blue-400 items-center justify-center font-bold text-[11px] border border-blue-500/30">L</span>;
     }
     if (val === 'P') {
-      return <span class="inline-flex w-6 h-6 rounded-full bg-pink-900/50 text-pink-400 items-center justify-center font-bold text-[10px] border border-pink-500/30">P</span>;
+      return <span class="inline-flex w-6 h-6 rounded-full bg-pink-900/50 text-pink-400 items-center justify-center font-bold text-[11px] border border-pink-500/30">P</span>;
     }
     return (
-      <span class="inline-flex w-6 h-6 rounded-full bg-slate-800 text-slate-500 items-center justify-center font-bold text-[10px] border border-slate-600/50" title={t('siswa.gender_unfilled')}>&mdash;</span>
+      <span class="inline-flex w-6 h-6 rounded-full bg-slate-800 text-slate-500 items-center justify-center font-bold text-[11px] border border-slate-600/50" title={t('siswa.gender_unfilled')}>&mdash;</span>
     );
   };
 
@@ -146,7 +146,7 @@ export default function CekSiswaModal({ onClose }: Props) {
           ) : (
             <table class="w-full text-left">
               <thead class="sticky top-0 bg-slate-900">
-                <tr class="text-[10px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                <tr class="text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
                   <th class="px-4 py-3 text-center w-10">No</th>
                   <th class="px-4 py-3">{t('table.full_name')}</th>
                   <th class="px-4 py-3 text-center w-16">{t('table.gender')}</th>

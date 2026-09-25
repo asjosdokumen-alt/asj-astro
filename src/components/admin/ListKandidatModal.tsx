@@ -214,9 +214,9 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
               <div key={c.wa || c.id}
                 class="p-3 bg-black/40 border border-slate-700 rounded-lg flex justify-between items-center">
                 <div class="min-w-0">
-                  <span class="text-slate-500 text-[10px] mr-1">{i + 1}.</span>
+                  <span class="text-slate-500 text-[11px] mr-1">{i + 1}.</span>
                   <span class="font-bold text-white text-xs">{c.nama || '-'}</span>
-                  <span class="text-slate-500 text-[10px] ml-2">{c.wa}</span>
+                  <span class="text-slate-500 text-[11px] ml-2">{c.wa}</span>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                   {/* Padanan legacy 👁 bukaDigitalCV — buka dossier kandidat */}
@@ -236,7 +236,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
                     <Icon name="whatsapp" class="text-xs" />
                   </a>
                   <button onClick={() => removeFromJob(c.wa || '')} disabled={removing === c.wa}
-                    class="px-2 py-1 bg-red-900/40 hover:bg-red-600 disabled:opacity-50 text-red-400 hover:text-white rounded text-[10px] font-bold transition"
+                    class="px-2 py-1 bg-red-900/40 hover:bg-red-600 disabled:opacity-50 text-red-400 hover:text-white rounded text-[11px] font-bold transition"
                     title={t('admin.tt_tandai_gagal')}>
                     {removing === c.wa ? <Icon spin name="spinner" class="text-xs" /> : <Icon name="times" class="text-xs" />} Hapus
                   </button>
@@ -246,7 +246,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
           )}
         </div>
 
-        <p class="text-[10px] text-slate-500 text-center">{cands.length} kandidat</p>
+        <p class="text-[11px] text-slate-500 text-center">{cands.length} kandidat</p>
       </div>
     </div>
   );

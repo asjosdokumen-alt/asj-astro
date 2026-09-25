@@ -237,24 +237,24 @@ export default function TabMail() {
                 <td class="p-4 font-bold text-white text-sm">{m.nama || '-'}</td>
                 <td class="p-4 font-mono text-sky-300 text-xs">{m.wa || '-'}</td>
                 <td class="p-4 text-center">
-                  <span class={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${STATUS_COLORS[m.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/40'}`}>
+                  <span class={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLORS[m.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/40'}`}>
                     {m.status || '-'}
                   </span>
                 </td>
                 <td class="p-4 text-center">
-                  <button disabled class="px-2 py-1 bg-slate-700/40 text-slate-500 rounded text-[10px] font-bold shadow cursor-not-allowed" title={t('admin.tt_segera_hadir')}>
+                  <button disabled class="px-2 py-1 bg-slate-700/40 text-slate-500 rounded text-[11px] font-bold shadow cursor-not-allowed" title={t('admin.tt_segera_hadir')}>
                     <Icon name="folder-open" class="mr-1" /> {t('button.view')}
                   </button>
                 </td>
                 <td class="p-4 text-center">
                   <div class="flex flex-wrap justify-center gap-1">
-                    <button onClick={() => act('approveForm', m.id ?? m.wa, 'Lamaran LULUS')} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold shadow transition">
+                    <button onClick={() => act('approveForm', m.id ?? m.wa, 'Lamaran LULUS')} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition">
                       <Icon name="check" class="mr-1" /> {t('button.pass')}
                     </button>
-                    <button onClick={() => act('reviewForm', m.id ?? m.wa, 'Status REVIEW')} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[10px] font-bold shadow transition">
+                    <button onClick={() => act('reviewForm', m.id ?? m.wa, 'Status REVIEW')} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition">
                       <Icon name="eye" class="mr-1" /> {t('button.review')}
                     </button>
-                    <button onClick={() => setRejectTarget({ id: m.id ?? m.wa, nama: m.nama })} class="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[10px] font-bold shadow transition">
+                    <button onClick={() => setRejectTarget({ id: m.id ?? m.wa, nama: m.nama })} class="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[11px] font-bold shadow transition">
                       <Icon name="times" class="mr-1" /> {t('button.reject')}
                     </button>
                   </div>

@@ -85,7 +85,7 @@ export default function TabWA() {
 
     <div class="mb-6 bg-emerald-950/60 p-5 rounded-2xl border-2 border-emerald-500/70 shadow-[0_0_25px_rgba(16,185,129,0.3)] flex flex-col sm:flex-row sm:items-center gap-4">
       <div class="flex-1">
-        <div class="flex items-center gap-2 mb-1.5"><span class="text-[9px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 rounded-full px-2.5 py-1"><Icon name="star" class="text-amber-400 mr-1" /> {t('ui.featured_badge')}</span></div>
+        <div class="flex items-center gap-2 mb-1.5"><span class="text-[11px] font-black uppercase tracking-widest bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 rounded-full px-2.5 py-1"><Icon name="star" class="text-amber-400 mr-1" /> {t('ui.featured_badge')}</span></div>
         <h3 class="text-sm font-bold text-emerald-300 uppercase tracking-widest mb-1"><Icon name="whatsapp" class="text-emerald-400 mr-1" /> {t('ui.invite_class_title')}</h3>
         <p class="text-xs text-slate-300 leading-relaxed">{t('ui.invite_class_wa_desc')}</p>
       </div>
@@ -98,7 +98,7 @@ export default function TabWA() {
         <form onSubmit={handleSubmit} class="space-y-4">
           <div><label class="block text-xs font-bold text-slate-300 mb-1" for="tw-nama">{t('ui.template_name')}</label><input type="text" id="tw-nama" value={nama} onInput={(e) => setNama((e.target as HTMLInputElement).value)} required placeholder={t('admin.wa_template_ph_nama')} class={ic} /></div>
           <div><label class="block text-xs font-bold text-slate-300 mb-1" for="tw-isi">{t('ui.template_message')}</label><textarea id="tw-isi" value={isi} onInput={(e) => setIsi((e.target as HTMLTextAreaElement).value)} required rows={8} placeholder={t('admin.wa_template_ph_isi')} class={ic + ' leading-relaxed'}></textarea>
-            <p class="text-[9px] text-emerald-400/80 mt-1.5 leading-relaxed font-mono bg-emerald-900/20 p-2 rounded" dangerouslySetInnerHTML={{ __html: t('ui.template_code_hint') }} />
+            <p class="text-[11px] text-emerald-400/80 mt-1.5 leading-relaxed font-mono bg-emerald-900/20 p-2 rounded" dangerouslySetInnerHTML={{ __html: t('ui.template_code_hint') }} />
           </div>
           <div class="flex gap-2 pt-2">
             <button type="submit" disabled={saving} class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold shadow-lg transition text-sm"><Icon name="save" class="mr-1" /> {saving ? t('ui.saving') : t('ui.save_template')}</button>

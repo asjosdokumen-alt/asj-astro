@@ -377,7 +377,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
               >
                 <Icon name="edit" class="mr-1" /> {t('ui.open_rincian_editor')}
               </button>
-              <div class="text-[10px] font-bold text-emerald-300 mt-1 min-h-[14px]">{rbSummary}</div>
+              <div class="text-[11px] font-bold text-emerald-300 mt-1 min-h-[14px]">{rbSummary}</div>
             </div>
           </div>
 

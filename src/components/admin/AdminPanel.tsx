@@ -183,7 +183,7 @@ export default function AdminPanel() {
           <div id="dash-agenda-list" class="flex-1 u-scroll-area custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '200px' }}>
             <p class="text-xs text-slate-500">{t('ui.schedule_empty')}</p>
           </div>
-          <button onClick={() => setActiveTab('jadwal')} class="mt-3 text-xs text-amber-400 font-bold hover:text-amber-300 hover:bg-black/50 w-full text-center py-2 bg-black/30 rounded-lg transition border border-slate-800">
+          <button onClick={() => setActiveTab('jadwal')} class="min-h-11 mt-3 text-xs text-amber-400 font-bold hover:text-amber-300 hover:bg-black/50 w-full text-center py-2 bg-black/30 rounded-lg transition border border-slate-800">
             {t('ui.open_schedule')} <Icon name="arrow-right" class="ml-1" />
           </button>
         </div>
@@ -192,7 +192,7 @@ export default function AdminPanel() {
           {/* h2, not h3: sibling of the tab content — see the note on the agenda card above. */}
           <h2 class="text-sm font-bold text-white mb-3"><Icon name="tasks" class="text-pink-400 mr-2" /> <span data-lang="admin.task_board">{t('admin.task_board')}</span></h2>
           <div class="flex gap-2 mb-3">
-            <input type="text" id="todo-input" value={taskDraft} onInput={(e) => setTaskDraft((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') addTask(); }} class="flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" placeholder={t('admin.task_placeholder')} aria-label={t('admin.task_placeholder')} />
+            <input type="text" id="todo-input" value={taskDraft} onInput={(e) => setTaskDraft((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') addTask(); }} class="min-h-11 flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" placeholder={t('admin.task_placeholder')} aria-label={t('admin.task_placeholder')} />
             <button type="button" onClick={addTask} class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition shadow-lg" aria-label={t('button.add')}><Icon name="plus" /></button>
           </div>
           <div id="todo-list" class="flex-1 u-scroll-area custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '190px' }}>
@@ -211,7 +211,7 @@ export default function AdminPanel() {
       </div>
 
       
-      <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: 30 }} class="sticky top-2 ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-colors duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
+      <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: 30 }} class="min-h-11 sticky top-2 ml-1 mb-2 px-3 py-1.5 inline-flex items-center bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-colors duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
         <Icon name="bars" /> {t("ui.menu")}
       </button>
 
@@ -229,7 +229,7 @@ export default function AdminPanel() {
       <aside
         role="navigation"
         id="admin-sidebar" aria-label="Admin sidebar"
-        class={`fixed top-0 left-0 h-full w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl u-scroll-area transition-transform duration-300 ease-in-out
+        class={`fixed top-[var(--u-toolbar-h)] left-0 h-[calc(100%-var(--u-toolbar-h))] w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl u-scroll-area transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0`}
         style={{ zIndex: 96 }}
@@ -247,7 +247,7 @@ export default function AdminPanel() {
           <button
             key={tab.id}
             onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }}
-            class={`w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 ${
+            class={`min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 ${
               activeTab === tab.id
                 ? 'bg-red-600 text-white shadow-md'
                 : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
@@ -258,10 +258,10 @@ export default function AdminPanel() {
           </button>
         ))}
         <div class="flex-1"></div>
-        <button onClick={() => aiCopilot.show({ wa: '', nama: '' })} class="w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 bg-violet-900/50 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/30" title="AI HR Copilot">
+        <button onClick={() => aiCopilot.show({ wa: '', nama: '' })} class="min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 bg-violet-900/50 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/30" title="AI HR Copilot">
           <Icon name="robot" class="w-5 text-center" /> <span>AI HR</span>
         </button>
-        <button onClick={() => setActiveTab('config')} class={`w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 mt-auto ${activeTab === 'config' ? 'bg-red-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'}`} aria-label={t('ui.settings')}>
+        <button onClick={() => setActiveTab('config')} class={`min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 mt-auto ${activeTab === 'config' ? 'bg-red-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'}`} aria-label={t('ui.settings')}>
           <Icon name="cog" class="w-5 text-center" /> <span>{t('ui.settings')}</span>
         </button>
       </aside>

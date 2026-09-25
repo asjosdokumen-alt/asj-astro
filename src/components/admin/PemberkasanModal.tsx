@@ -472,7 +472,7 @@ export default function PemberkasanModal({
         <button
           type="button"
           onClick={() => setPreview({ url: String(url), title })}
-          class="text-emerald-400 hover:text-emerald-300 underline text-[9px] font-bold cursor-pointer"
+          class="text-emerald-400 hover:text-emerald-300 underline text-[11px] font-bold cursor-pointer"
         >
           <Icon name="check-circle" class="mr-1" />
           {t("ui.uploaded_view")}
@@ -480,7 +480,7 @@ export default function PemberkasanModal({
       );
     }
     return (
-      <span class="text-rose-400 text-[9px] font-bold">
+      <span class="text-rose-400 text-[11px] font-bold">
         <Icon name="times-circle" class="mr-1" />
         {t("ui.not_yet")}
       </span>
@@ -513,7 +513,7 @@ export default function PemberkasanModal({
             {String(namaTarget || "").toUpperCase()}
           </span>
           {tahapan && (
-            <span class="ml-2 text-[10px] text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-700">
+            <span class="ml-2 text-[11px] text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-700">
               {tahapan}
             </span>
           )}

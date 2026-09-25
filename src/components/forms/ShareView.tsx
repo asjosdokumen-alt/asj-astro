@@ -192,7 +192,7 @@ export default function ShareView() {
                   toolbar title to h1 (see FormToolbar) would have given /share
                   TWO h1s — measured 2026-09-14. */}
               <h2 class="text-sm sm:text-lg md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-200 to-white leading-tight truncate">PT AMANAH SAKURA JAPAN</h2>
-              <p class="text-[9px] md:text-xs font-bold text-pink-300 tracking-[0.2em] uppercase mt-0.5">
+              <p class="text-[11px] md:text-xs font-bold text-pink-300 tracking-[0.2em] uppercase mt-0.5">
                 <Icon name="lock" class="mr-1 text-[8px] opacity-70" /> {t('share.secure_title')}
               </p>
             </div>
@@ -211,7 +211,7 @@ export default function ShareView() {
               <div class="text-right flex flex-col items-end">
                 <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-slate-800/80 border border-slate-600/50 rounded-full mb-1">
                   <span class="relative flex h-1.5 w-1.5"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span></span>
-                  <span class="text-[8px] md:text-[9px] font-bold text-slate-300 tracking-widest uppercase">{job.code}</span>
+                  <span class="text-[8px] md:text-[11px] font-bold text-slate-300 tracking-widest uppercase">{job.code}</span>
                 </div>
                 <h2 class="text-[11px] sm:text-sm md:text-base font-bold text-white uppercase tracking-wide truncate max-w-full">{job.name}</h2>
               </div>
@@ -299,7 +299,7 @@ export default function ShareView() {
                     class="absolute inset-0 z-10 w-full h-full cursor-pointer bg-transparent border-0 rounded-2xl"
                   />
                   <div class={`absolute top-3 right-3 w-5 h-5 md:w-6 md:h-6 rounded-full border-2 flex items-center justify-center z-10 shadow-lg pointer-events-none transition-colors ${isSel ? 'bg-pink-500 text-white border-pink-500' : 'bg-slate-800/50 border-slate-600 text-transparent'}`}>
-                    <Icon name="check" class="text-[10px] md:text-xs" />
+                    <Icon name="check" class="text-[11px] md:text-xs" />
                   </div>
 
                   <div class="flex gap-3 md:gap-4 mb-3 md:mb-4 relative">
@@ -313,7 +313,7 @@ export default function ShareView() {
                     </div>
                     <div class="flex-1 flex flex-col justify-center min-w-0">
                       <h3 class="text-xs md:text-sm font-bold text-white mb-2 line-clamp-2 leading-tight pr-4">{nama}</h3>
-                      <div class="grid grid-cols-2 gap-y-1.5 gap-x-2 text-[10px] md:text-[11px] text-slate-300 mb-2 w-full mt-1">
+                      <div class="grid grid-cols-2 gap-y-1.5 gap-x-2 text-[11px] md:text-[11px] text-slate-300 mb-2 w-full mt-1">
                         <div class="flex items-center gap-1.5 whitespace-nowrap overflow-hidden text-ellipsis bg-slate-800/50 rounded-md px-1.5 py-0.5 border border-slate-700/50">
                           <span class="w-3 text-center"><GenderIcon gender={gText} /></span>
                           <span class="font-medium">{genderLabel(gText)}</span>
@@ -333,10 +333,10 @@ export default function ShareView() {
                       </div>
                       <div class="flex flex-wrap gap-1.5 mt-auto pt-1">
                         {c.nilai_jft_text && c.nilai_jft_text !== '-' && (
-                          <span class="px-2 py-0.5 bg-purple-900/40 text-purple-300 text-[9px] font-bold rounded-md border border-purple-700/50"><Icon name="language" class="mr-1" />{c.nilai_jft_text}</span>
+                          <span class="px-2 py-0.5 bg-purple-900/40 text-purple-300 text-[11px] font-bold rounded-md border border-purple-700/50"><Icon name="language" class="mr-1" />{c.nilai_jft_text}</span>
                         )}
                         {c.bidang_ssw_text && c.bidang_ssw_text !== '-' && (
-                          <span class="px-2 py-0.5 bg-emerald-900/40 text-emerald-300 text-[9px] font-bold rounded-md border border-emerald-700/50"><Icon name="briefcase" class="mr-1" />{c.bidang_ssw_text}</span>
+                          <span class="px-2 py-0.5 bg-emerald-900/40 text-emerald-300 text-[11px] font-bold rounded-md border border-emerald-700/50"><Icon name="briefcase" class="mr-1" />{c.bidang_ssw_text}</span>
                         )}
                       </div>
                     </div>
@@ -354,14 +354,14 @@ export default function ShareView() {
                             : 'bg-amber-600/20 hover:bg-amber-600 border-amber-500/50 text-amber-400 hover:text-white';
                       return (
                         <button key={i} onClick={() => openPreview(b.url, b.label + ' - ' + nama)}
-                          class={`flex-1 py-2 md:py-2.5 rounded-lg font-bold text-center transition flex flex-col items-center justify-center gap-1 w-full border text-[10px] md:text-xs ${accent}`}>
+                          class={`flex-1 py-2 md:py-2.5 rounded-lg font-bold text-center transition flex flex-col items-center justify-center gap-1 w-full border text-[11px] md:text-xs ${accent}`}>
                           <Icon name={main ? (b.type === 'CV' ? 'file-pdf' : b.type === 'JFT' ? 'file-pdf' : 'file-alt') : 'file-alt'} class="text-xs md:text-sm opacity-80" />
                           {b.label}
                         </button>
                       );
                     })}
                     {buttons.length === 0 && (
-                      <div class="w-full text-center text-[10px] text-slate-600 font-bold py-1">-</div>
+                      <div class="w-full text-center text-[11px] text-slate-600 font-bold py-1">-</div>
                     )}
                   </div>
                 </div>
@@ -392,7 +392,7 @@ export default function ShareView() {
               </div>
               <div class="flex items-end gap-2">
                 <span class="text-xl md:text-2xl font-black text-white leading-none">{selected.size}</span>
-                <span class="text-[10px] md:text-xs font-bold text-pink-300 uppercase tracking-wider mb-0.5">{t('share.sel_count')}</span>
+                <span class="text-[11px] md:text-xs font-bold text-pink-300 uppercase tracking-wider mb-0.5">{t('share.sel_count')}</span>
               </div>
             </div>
             <button onClick={submitSelection} class="px-5 py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-xs md:text-sm rounded-xl shadow-lg hover:shadow-pink-500/25 transition-shadow flex items-center gap-2">

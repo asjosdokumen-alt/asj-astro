@@ -136,10 +136,10 @@ export default function LaporanBulananModal() {
                   </div>
                   {tahapEntries.length > 0 && (
                     <>
-                      <div class="text-[10px] text-slate-400 mb-1">{t('admin.report_by_stage')}:</div>
+                      <div class="text-[11px] text-slate-400 mb-1">{t('admin.report_by_stage')}:</div>
                       <div class="flex flex-wrap gap-1">
                         {tahapEntries.map(([stage, n]) => (
-                          <span key={stage} class="text-[10px] px-1.5 py-0.5 bg-slate-700/60 rounded text-slate-300">
+                          <span key={stage} class="text-[11px] px-1.5 py-0.5 bg-slate-700/60 rounded text-slate-300">
                             {stage}: {n}
                           </span>
                         ))}
@@ -148,10 +148,10 @@ export default function LaporanBulananModal() {
                   )}
                   {statEntries.length > 0 && (
                     <>
-                      <div class="text-[10px] text-slate-400 mt-1 mb-1">{t('admin.report_by_status')}:</div>
+                      <div class="text-[11px] text-slate-400 mt-1 mb-1">{t('admin.report_by_status')}:</div>
                       <div class="flex flex-wrap gap-1">
                         {statEntries.map(([status, n]) => (
-                          <span key={status} class="text-[10px] px-1.5 py-0.5 bg-slate-700/60 rounded text-slate-300">
+                          <span key={status} class="text-[11px] px-1.5 py-0.5 bg-slate-700/60 rounded text-slate-300">
                             {status}: {n}
                           </span>
                         ))}

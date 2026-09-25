@@ -84,7 +84,7 @@ npm run migrate:up</pre>
           ) : (
             <div>
               <div class="text-xs text-slate-500 mb-2">{c.options.length} {t('admin.options_suffix')}</div>
-              <div class="flex flex-wrap gap-1 mb-2">{c.options.slice(0, 5).map(o => <span key={o} class="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-[10px] text-slate-400">{o}</span>)}{c.options.length > 5 && <span class="text-[10px] text-slate-500">+{c.options.length - 5} {t('admin.more_suffix')}</span>}</div>
+              <div class="flex flex-wrap gap-1 mb-2">{c.options.slice(0, 5).map(o => <span key={o} class="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-[11px] text-slate-400">{o}</span>)}{c.options.length > 5 && <span class="text-[11px] text-slate-500">+{c.options.length - 5} {t('admin.more_suffix')}</span>}</div>
               <button onClick={() => { setEditingConfig(c.id); setEditValue(c.options.join('\n')); }} class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition border border-slate-700"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
             </div>
           )}

@@ -172,7 +172,7 @@ export default function TabDbJob() {
             value={search}
             onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
             placeholder={t("db.placeholder_search")}
-            class="w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-purple-500 transition"
+            class="min-h-11 w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-purple-500 transition"
           />
         </div>
       </div>
@@ -247,7 +247,7 @@ export default function TabDbJob() {
                   <td class="p-4">{db.tsk || '-'}</td>
                   <td class="p-4">
                     <div class="font-bold text-white text-[13px]">{db.pekerjaan || '-'}</div>
-                    <div class="text-[10px] text-slate-400 font-bold mt-1.5">
+                    <div class="text-[11px] text-slate-400 font-bold mt-1.5">
                       <span class="text-sky-400"><Icon name="tag" class="mr-1" />{db.kategori || '-'}</span>
                       <span class="mx-1.5">&bull;</span>
                       <span class="text-amber-300"><Icon name="map-marker-alt" class="text-red-400 mr-1" />{db.lokasi || '-'}</span>
@@ -258,12 +258,12 @@ export default function TabDbJob() {
                       <span class="text-sky-400 group-hover:text-white font-bold text-lg">{countMap[db.code] || 0}</span>
                     </div>
                   </td>
-                  <td class="p-4 text-center"><span class={'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[10px] font-bold ' + badgeColor(db.tahapan)}><Icon name="chevron-circle-right" /> {db.tahapan || '-'}</span></td>
+                  <td class="p-4 text-center"><span class={'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold ' + badgeColor(db.tahapan)}><Icon name="chevron-circle-right" /> {db.tahapan || '-'}</span></td>
                   <td class="p-4 text-center">
-                    <button onClick={() => setEditJob(db)} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="edit" /> Edit</button>
-                    <button onClick={() => setShareJob(db)} class="ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="share-alt" /> Share</button>
-                    <button onClick={() => setMatchJob(db)} class="ml-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="search" /> {t('admin.btn_match')}</button>
-                    <button onClick={async () => { try { const d: any = await api.secure('downloadJobDocs', [db.code]); if(d && d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(t('ui.toast_error_prefix')+(d?.error||''),"error");} } catch(e: unknown) {showToast(t('alert.network')+(e instanceof Error ? e.message : String(e)),"error");} }} class="ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[10px] cursor-pointer"><Icon name="download" /> Docs</button>
+                    <button onClick={() => setEditJob(db)} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button>
+                    <button onClick={() => setShareJob(db)} class="min-h-11 inline-flex items-center ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="share-alt" /> Share</button>
+                    <button onClick={() => setMatchJob(db)} class="ml-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="search" /> {t('admin.btn_match')}</button>
+                    <button onClick={async () => { try { const d: any = await api.secure('downloadJobDocs', [db.code]); if(d && d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(t('ui.toast_error_prefix')+(d?.error||''),"error");} } catch(e: unknown) {showToast(t('alert.network')+(e instanceof Error ? e.message : String(e)),"error");} }} class="ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="download" /> Docs</button>
                   </td>
                 </tr>
               ))}

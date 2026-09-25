@@ -131,7 +131,7 @@ export default function LevelCard({ percent, mini, master }: LevelCardProps) {
               <Icon name={iconName} />
             </span>
             <div class="min-w-0">
-              <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                 {t('candidate.level_label')}
               </div>
               <div class="text-base md:text-lg font-black text-white truncate">{label}</div>
