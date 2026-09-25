@@ -586,7 +586,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.share_open_view": "Buka Share View",
     "ui.master_full_form": "Form Master Lengkap",
     "ui.edit_quick_cv": "Edit Cepat CV",
-    "ui.update_cv_mini": "Update CV Mini",
+    "ui.update_cv_mini": "Update Profil",
     "ui.cv_mini_basic": "Profil (Data Dasar)",
     "ui.cv_master_detail": "Profil (Data Lengkap)",
     "ui.cv_type_hint": "Pilih data dasar untuk profil singkat, data lengkap untuk rincian menyeluruh.",

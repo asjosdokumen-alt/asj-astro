@@ -75,7 +75,7 @@ describe('CvMiniModal (A09)', () => {
 
   it('renders legacy copy via t(): header, hint, save button, pendidikan options', () => {
     render(<CvMiniModal onClose={() => {}} />);
-    expect(screen.getByText('Update CV Mini')).toBeTruthy();
+    expect(screen.getByText('Update Profil')).toBeTruthy();
     expect(screen.getByText(/Perbarui data Anda di bawah ini agar perusahaan tertarik/)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Simpan CV Mini' })).toBeTruthy();
     expect(screen.getByText('PAS PHOTO TERBARU (JPG/PNG)')).toBeTruthy();

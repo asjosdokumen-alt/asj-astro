@@ -661,7 +661,7 @@ export const jpTranslations: Record<string, string> = {
     "ui.share_open_view": "共有ビューを開く",
     "ui.master_full_form": "マスターフォーム",
     "ui.edit_quick_cv": "クイックCV編集",
-    "ui.update_cv_mini": "CVミニ更新",
+    "ui.update_cv_mini": "プロフィール更新",
     "ui.latest_photo": "最新の証明写真（JPG/PNG）",
     "ui.master_update_hint": "以下のデータを更新して企業にアピールしましょう。より早く、より簡単に！",
     "ui.save_cv_mini": "CVミニを保存",

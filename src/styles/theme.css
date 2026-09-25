@@ -91,6 +91,13 @@
      so the stacking order is legible from one place.                   */
   --z-index-sticky:  50;   /* sticky table headers, section bars        */
   --z-index-header:  90;   /* was z-[90]                                */
+  /* Drawer/menu backdrop. A scrim must cover EVERY page layer — including a
+     `z-sticky` section bar (50) and the header (90) — but stay UNDER the drawer
+     it belongs to (100). Before this token existed the drawer and its scrim
+     carried a SECOND, private scale in App.tsx (scrim 35, drawer 40), so a
+     `z-sticky` bar (50) painted OVER the dimmed page and even over the drawer.
+     One scale, no second copy. */
+  --z-index-scrim:   95;
   --z-index-drawer:  100;
   --z-index-modal:   200;
   --z-index-popover: 300;

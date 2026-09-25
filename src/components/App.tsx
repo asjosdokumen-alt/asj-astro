@@ -11,8 +11,14 @@ import { initializeAuthListener, logoutSupabase } from '../store/userStore';
 import { toggleLang, t, translateDataLang, useLang } from '../store/i18n';
 import { bannerStore } from '../store/theme';
 
-// ─── Named Constants ───
-const Z_INDEX = { OVERLAY: 35, NAV: 40, HAMBURGER: 30 } as const;
+/* STACKING ORDER COMES FROM THE THEME SCALE (theme.css `@theme`), NOT A SECOND
+   PRIVATE COPY. This file used to carry its own `Z_INDEX` map (scrim 35,
+   drawer 40, hamburger 30), which contradicted the theme's scale and put the
+   drawer's scrim BELOW any `z-sticky` element (50): a sticky section bar stayed
+   bright on top of the dimmed page and could paint over the drawer itself. The
+   scrim now uses `z-scrim` (95) and the drawer `z-drawer` (100) — both above
+   sticky page content, drawer above scrim — so the next sticky element cannot
+   reproduce the defect. */
 
 /**
  * The header banner artwork (non-hero variant), restored 2026-09-25.
@@ -582,7 +588,7 @@ export default function App(
           background was `rgb(239,233,239)` (opacity 1) hiding the whole page;
           dark theme was correct at `oklab(0 0 0 / 0.7)`. `.js-scrim` is the
           explicit, named opt-out for exactly this case. */}
-      {menuOpen && <div aria-hidden="true" class="u-viewport-fixed u-modal-shell bg-black/70 js-scrim" style={{ zIndex: Z_INDEX.OVERLAY }} onClick={() => setMenuOpen(false)}></div>}
+      {menuOpen && <div aria-hidden="true" class="u-viewport-fixed u-modal-shell bg-black/70 js-scrim z-scrim" onClick={() => setMenuOpen(false)}></div>}
       
       {/* ─── Drawer (mobile + desktop) ───
           Same drawer on both breakpoints so the user gets one predictable
@@ -597,7 +603,7 @@ export default function App(
           nav.right 1265). The utility pins it to the physical viewport.
           See layout.css §3b for the measurement and why the gutter itself
           is not removed. */}
-      <nav ref={drawerRef} class={"u-viewport-fixed--right w-72 md:w-96 bg-slate-900 border-l border-slate-700 shadow-2xl flex flex-col transition-transform duration-300 transform " + (menuOpen ? "translate-x-0" : "translate-x-full")} style={{ zIndex: Z_INDEX.NAV }} aria-label="Primary navigation">
+      <nav ref={drawerRef} class={"u-viewport-fixed--right z-drawer w-72 md:w-96 bg-slate-900 border-l border-slate-700 shadow-2xl flex flex-col transition-transform duration-300 transform " + (menuOpen ? "translate-x-0" : "translate-x-full")} aria-label="Primary navigation">
         <div class="flex items-center justify-between p-4 border-b border-slate-700">
           <span class="text-xs font-bold text-slate-500 uppercase tracking-widest"><Icon name="bars" class="mr-2 text-sky-400" /> {t("ui.menu")}</span>
           <button onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white transition" aria-label="Close"><Icon name="times" class="text-xl" /></button>

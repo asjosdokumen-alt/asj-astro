@@ -128,8 +128,10 @@ describe('sakura layer — decoration that can never intercept input', () => {
   });
 
   it('sits at the legacy z-index, below every control in the app', () => {
-    // `z-index: 1` matches `src/main.css:1961`. The app's own scale starts at
-    // 30 (App.tsx Z_INDEX.HAMBURGER), so atmosphere can never cover chrome.
+    // `z-index: 1` matches `src/main.css:1961`. The app's own lowest control
+    // layer is the hamburger's `z-30` (App.tsx), so atmosphere can never cover
+    // chrome. (The scale lives in theme.css `@theme`; App.tsx no longer keeps a
+    // private copy.)
     expect(petalCss).toMatch(/#sakura-particles\s*\{[^}]*z-index:\s*1\s*;/);
   });
 });
