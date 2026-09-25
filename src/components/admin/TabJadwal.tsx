@@ -50,18 +50,35 @@ export default function TabJadwal() {
     </div>
 
     {showForm && <div class='bg-black/40 border border-slate-700 rounded-xl p-5 mb-5 shadow-inner'>
-      <form onSubmit={handleSubmit} class='u-grid-auto u-grid-auto--form gap-4'>
+      {/* EXPLICIT grid, not `.u-grid-auto` — see AdminJobEditModal.tsx for the
+          full measurement. The `md:col-span-2` submit row below forces an
+          IMPLICIT 0px track on `.u-grid-auto` whenever auto-fit yields one
+          track; an explicit grid has a fixed count and cannot. `lg:` because
+          `--u-grid-min` (24rem) keeps the single-track regime past `md`. */}
+      <form onSubmit={handleSubmit} class='grid grid-cols-1 lg:grid-cols-2 gap-4'>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-nama">{t("admin.jadwal_nama")}</label><input type='text' id="tj-nama" value={nama} onInput={(e)=>setNama((e.target as HTMLInputElement).value)} required class={ic} /></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-id-loker">{t("admin.jadwal_id_loker")}</label><input type='text' id="tj-id-loker" value={loker} onInput={(e)=>setLoker((e.target as HTMLInputElement).value)} placeholder='UMUM / ASJ...' class={ic} /></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-waktu">{t("admin.schedule_waktu")}</label><input type='datetime-local' id="tj-waktu" value={waktu} onInput={(e)=>setWaktu((e.target as HTMLInputElement).value)} required class={ic} /></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-lokasi">{t("admin.jadwal_lokasi")}</label><input type='text' id="tj-lokasi" value={lokasi} onInput={(e)=>setLokasi((e.target as HTMLInputElement).value)} placeholder='Zoom / Kantor...' class={ic} /></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-pengurus">{t("admin.jadwal_pengurus")}</label><select id="tj-pengurus" value={tsk} onInput={(e)=>setTsk((e.target as HTMLSelectElement).value)} required class={ic}><option value=''>-</option>{tskList.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-link">{t("admin.jadwal_link")}</label><input type='url' id="tj-link" value={link} onInput={(e)=>setLink((e.target as HTMLInputElement).value)} placeholder='https://...' class={ic} /></div>
-        <div class='md:col-span-2 mt-2'><button type='submit' class='w-full py-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-white text-sm shadow-lg transition'><Icon name="save" class="mr-2" /> {t("admin.save_schedule")}</button></div>
+        <div class='lg:col-span-2 mt-2'><button type='submit' class='w-full py-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-white text-sm shadow-lg transition'><Icon name="save" class="mr-2" /> {t("admin.save_schedule")}</button></div>
       </form>
     </div>}
 
-    <table class='w-full min-w-[800px] text-sm text-left whitespace-nowrap'>
+    {/* MEASURED DEFECT (2026-09-25), item 5: this table carried
+        `min-w-[800px]` and NO scroll wrapper. At 390px the container is 375px
+        while the table's `scrollWidth` was 816px (2.2x) — so the whole page
+        scrolled sideways, not just the table. Two changes, both measured:
+          1. `.u-scroll-x` now wraps the table, so any residual overflow is
+             contained inside the box and scrolls rather than pushing the page.
+          2. the floor drops 800px -> 640px. 800px was an arbitrary number
+             picked for a desktop table; 640px keeps all five columns legible
+             (measured at 390/768/1280) while cutting the phone-side horizontal
+             scroll distance by 20%. `.u-scroll-x` is what makes the smaller
+             floor safe — without it a 640px table would still break the page. */}
+    <div class='u-scroll-x'>
+    <table class='w-full min-w-[640px] text-sm text-left whitespace-nowrap'>
       <thead class='bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700'><tr>
         <th class='p-4'>{t("admin.jadwal_col_id")}</th><th class='p-4'>{t("admin.jadwal_col_agenda")}</th><th class='p-4'>{t("admin.jadwal_col_job")}</th><th class='p-4'>{t("admin.jadwal_col_lokasi")}</th><th class='p-4 text-center'>{t("admin.aksi")}</th>
       </tr></thead>
@@ -77,5 +94,6 @@ export default function TabJadwal() {
           </tr>))}
       </tbody>
     </table>
+    </div>
   </div>);
 }

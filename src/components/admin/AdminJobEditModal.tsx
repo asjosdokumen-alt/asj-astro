@@ -218,8 +218,19 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
             <span class="text-sky-400 font-mono font-bold">{job.code}</span>
           </div>
 
-          <div class="u-grid-auto u-grid-auto--form gap-3">
-            <div class="md:col-span-2">
+          {/* EXPLICIT grid, not `.u-grid-auto`. MEASURED DEFECT (2026-09-25):
+              `.u-grid-auto` (`repeat(auto-fit, minmax(min(24rem,100%),1fr))`)
+              resolves to a SINGLE track below 768px, and the four
+              `md:col-span-2` children below then force an IMPLICIT second
+              track. Implicit tracks are `auto`, and `.u-grid-auto > * {
+              min-width: 0 }` lets them collapse to 0px — so the span-1
+              children landed in a 0px track. An explicit grid has a fixed
+              track count and structurally cannot create an implicit one.
+              `lg:` (not `md:`) because `--u-grid-min` is 24rem = 384px, so the
+              single-track regime extends past `md`. Same remedy as
+              SiswaBaruForm.tsx in commit dc88113. */}
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div class="lg:col-span-2">
               <label class={lc} for="ef-pekerjaan">{t('admin.form_job_name')}</label>
               <input
                 id="ef-pekerjaan"
@@ -256,7 +267,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
                 ))}
               </select>
             </div>
-            <div class="md:col-span-2">
+            <div class="lg:col-span-2">
               <label class={lc} for="ef-lokasi">{t('admin.form_location_short')}</label>
               <input
                 id="ef-lokasi"
@@ -293,7 +304,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
                 placeholder="3"
               />
             </div>
-            <div class="md:col-span-2">
+            <div class="lg:col-span-2">
               <label class={lc} for="ef-syarat">{t('admin.form_req_short')}</label>
               <textarea
                 id="ef-syarat"
@@ -303,7 +314,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
                 placeholder={t("master.ph_usia_sma")}
               />
             </div>
-            <div class="md:col-span-2">
+            <div class="lg:col-span-2">
               <label class={lc} for="ef-keterangan">{t('admin.form_note_short')}</label>
               <textarea
                 id="ef-keterangan"

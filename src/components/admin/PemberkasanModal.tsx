@@ -217,7 +217,7 @@ function BioInput({
   onChange: (v: string) => void;
 }) {
   return (
-    <div class={span2 ? "md:col-span-2" : ""}>
+    <div class={span2 ? "lg:col-span-2" : ""}>
       <label for={`bio-${field}`} class="block text-xs text-slate-400 mb-1 font-bold">{t(label)}</label>
       {textarea ? (
         <textarea
@@ -242,7 +242,7 @@ function BioInput({
 
 function Section({ label }: { label: string }) {
   return (
-    <div class="md:col-span-2 border-b border-slate-700/50 pb-1 mt-2">
+    <div class="lg:col-span-2 border-b border-slate-700/50 pb-1 mt-2">
       <h4 class="text-sm font-bold text-amber-400">{t(label)}</h4>
     </div>
   );
@@ -584,7 +584,20 @@ export default function PemberkasanModal({
                 open={bioOpen}
                 onToggle={() => setBioOpen(!bioOpen)}
               >
-                <div class="u-grid-auto u-grid-auto--form gap-4">
+                {/* EXPLICIT grid, not `.u-grid-auto`. MEASURED DEFECT
+                    (2026-09-25): at 768px this resolved to
+                    `grid-template-columns: 481px 223px` and at 1280px to a
+                    ragged `398.656px 398.672px 398.656px` with the span-2
+                    children only 817px wide — because the `md:col-span-2`
+                    children (the two span2 BioInputs and every Section
+                    header) force an IMPLICIT track on `.u-grid-auto` once
+                    auto-fit yields fewer tracks than the span needs, and
+                    `.u-grid-auto > * { min-width: 0 }` lets it collapse to
+                    0px. An explicit grid has a fixed track count and cannot
+                    create an implicit one. `lg:` because `--u-grid-min` is
+                    24rem = 384px, so the single-track regime extends past
+                    `md`. Same remedy as SiswaBaruForm.tsx (commit dc88113). */}
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <Section label="candidate.bio_personal" />
                   {BIO_FIELDS.slice(0, 4).map((f) => (
                     <BioInput key={f.field} {...f} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />

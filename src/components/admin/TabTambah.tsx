@@ -162,7 +162,13 @@ export default function TabTambah() {
       <h2 class="text-red-400 font-bold mb-6 border-b border-red-900/50 pb-3 text-lg">
         <Icon name="plus-circle" class="mr-2" /> {t('admin.title_input_loker')}
       </h2>
-      <form onSubmit={handleSubmit} class="u-grid-auto u-grid-auto--form gap-6">
+      {/* EXPLICIT grid, not `.u-grid-auto` — see AdminJobEditModal.tsx for the
+          full measurement. Two direct children below carry `md:col-span-2`
+          (the total/rincian block and the submit row); on `.u-grid-auto` those
+          force an IMPLICIT 0px track whenever auto-fit yields one track. An
+          explicit grid has a fixed count and cannot. `lg:` because
+          `--u-grid-min` (24rem) keeps the single-track regime past `md`. */}
+      <form onSubmit={handleSubmit} class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="space-y-5">
           <div class="p-4 bg-red-900/10 border border-red-900/30 rounded-xl grid grid-cols-2 gap-4">
             <div class="col-span-2">
@@ -259,7 +265,7 @@ export default function TabTambah() {
             <textarea id="tt-keterangan" value={keterangan} onInput={(e) => setKeterangan((e.target as HTMLTextAreaElement).value)} rows={2} class={ic} />
           </div>
         </div>
-        <div class="md:col-span-2 u-grid-auto u-grid-auto--form gap-6">
+        <div class="lg:col-span-2 u-grid-auto u-grid-auto--form gap-6">
           <div>
             <label for="tt-total-biaya" class="block text-sm font-bold text-emerald-400 mb-1.5 uppercase">
               <Icon name="wallet" class="mr-1" /> {t('ui.total_cost')} {t('admin.cth_25_jt')}
@@ -276,7 +282,7 @@ export default function TabTambah() {
             <div class="text-xs font-bold text-emerald-300 mt-1.5 min-h-[16px]">{rbSummary}</div>
           </div>
         </div>
-        <div class="md:col-span-2 mt-4">
+        <div class="lg:col-span-2 mt-4">
           <button type="submit" disabled={submitting} class="w-full py-4 rounded-xl bg-red-600 hover:bg-red-500 font-black tracking-widest text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] transition text-base disabled:opacity-50">
             <Icon name="cloud-upload-alt" spin={submitting} class="mr-2" /> {submitting ? t('ui.uploading_job') : t('ui.upload_job')}
           </button>
