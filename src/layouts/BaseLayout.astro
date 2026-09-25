@@ -313,5 +313,109 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     }
   });
 </script>
+<script>
+  /* ─── Sakura petals — the falling-leaves layer ───────────────────────
+     RESTORED 2026-09-25 (owner request, item 6). The behaviour is
+     recovered verbatim from the legacy app:
+       js/init/theme.ts:118-160   the generator + the on/off toggle
+       src/main.css:1960-2009     the petal CSS + both keyframes
+       src/main.css:2118-2131     the reduced-motion override
+     so the port and the original cannot drift.
+
+     WHY THIS LIVES IN BaseLayout AND NOT JapanTexture.astro
+     ------------------------------------------------------
+     `JapanTexture` is an inline-SVG TILE PATTERN — one bounded decorative
+     band (64px `asanoha`/`seigaiha`/sakura motif) that a section opts into
+     and positions inside its own box; it is used on exactly one route
+     (`src/pages/index.astro`). The falling petals are the opposite: a
+     FREE-FLOATING, full-viewport, position-fixed layer that must appear
+     on every public page (`/`, `/loker`, `/public`). Folding them into the
+     tile component would (a) tie a page-wide layer to a component that
+     owns no page-wide state, and (b) mean three copies of the generator,
+     one per route. BaseLayout is the ONE shell every route shares, and it
+     ALREADY renders the container `#sakura-particles` (line ~262) — this
+     script is the missing other half that makes that container live.
+
+     STRUCTURE
+     ---------
+       1. `makePetals()`  — the 30-petal generator (legacy `buatPartikelSakura`).
+       2. `apply(mode)`   — legacy `setSakuraParticles(theme === 'SAKURA')`:
+                            the layer is visible ONLY on the light theme.
+       3. a `themeStore` subscription + a one-shot boot call.
+
+     ⚠ NO ANGLE-BRACKET GENERICS ANYWHERE IN THIS FILE, including in this
+     comment — the indexer parses `.astro` template tags out of comments
+     too, and a quoted generic becomes a phantom unresolved component that
+     fails `indexer/src/build.test.ts`. This file already warns about the
+     same trap near the top.
+
+     THE GUARD IS LOAD-BEARING. Legacy used a module-level
+     `SAKURA_PETALS_CREATED` boolean so the 30 petals are built ONCE. A
+     theme toggle fires the subscription on EVERY change, so without it the
+     layer would grow by 30 nodes per toggle — 60, 90, 120 — and the
+     animation would visibly thicken until the page bogged down. */
+  import { themeStore } from '../store/theme';
+
+  const PETAL_COUNT = 30;
+  let petalsCreated = false;
+
+  function box(): HTMLElement | null {
+    return document.getElementById('sakura-particles');
+  }
+
+  function makePetals(): void {
+    const host = box();
+    /* `petalsCreated` is checked BEFORE the `host` guard so a very early
+       call (before the container is parsed) does not consume the one-shot
+       flag and leave the layer permanently empty. */
+    if (!host || petalsCreated) return;
+    petalsCreated = true;
+    for (let i = 0; i < PETAL_COUNT; i++) {
+      const p = document.createElement('div');
+      p.className = 'sakura-petal';
+      /* Three depth layers (legacy `isHero` / `isFar`):
+           hero  every 9th  — large, opaque, fast  (reads as near the camera)
+           far   every 7th  — small, blurred, slow (reads as depth)
+           rest            — mid */
+      const isHero = i % 9 === 0;
+      const isFar = i % 7 === 0;
+      const size = isFar ? 5 + Math.random() * 4 : isHero ? 16 + Math.random() * 8 : 8 + Math.random() * 9;
+      p.style.width = size + 'px';
+      p.style.height = size * (0.8 + Math.random() * 0.3) + 'px';
+      p.style.left = Math.random() * 100 + '%';
+      p.style.opacity = (isHero ? 0.5 + Math.random() * 0.25 : 0.15 + Math.random() * 0.35).toFixed(2);
+      p.style.animationDuration = (isHero ? 7 + Math.random() * 5 : 6 + Math.random() * 13) + 's';
+      /* NEGATIVE delay: each petal starts mid-flight, so the sky is
+         populated from the first frame instead of filling up over 24s. */
+      p.style.animationDelay = -Math.random() * 24 + 's';
+      /* Two fall tracks; the 45% split keeps them from moving in lockstep. */
+      p.style.animationName = Math.random() < 0.45 ? 'sakuraFall2' : 'sakuraFall';
+      p.style.transform = 'rotate(' + Math.random() * 360 + 'deg)';
+      if (isFar) p.style.filter = 'blur(' + (0.4 + Math.random() * 0.8).toFixed(1) + 'px)';
+      host.appendChild(p);
+    }
+  }
+
+  function apply(mode: string | undefined): void {
+    const host = box();
+    if (!host) return;
+    /* Only the light/"SAKURA" theme shows petals. `themeStore` is the
+       single source of truth for dark/light (see src/store/theme.ts); the
+       banner's SAKURA/TOKYO artwork is a SEPARATE store that the user can
+       override independently, so it is deliberately not consulted here. */
+    if (mode === 'light') {
+      makePetals();
+      host.classList.remove('hidden');
+    } else {
+      host.classList.add('hidden');
+    }
+  }
+
+  /* Subscribe first, then read the current value: `persistentAtom` has
+     already decoded `asjTheme` from localStorage by import time, so the
+     one-shot call paints the right state without waiting for a change. */
+  themeStore.subscribe((mode) => apply(mode));
+  apply(themeStore.get());
+</script>
 </body>
 </html>

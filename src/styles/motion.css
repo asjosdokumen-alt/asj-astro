@@ -125,8 +125,27 @@
    2. SAKURA PETALS
    ══════════════════════════════════════════════════════════════════
 
-   Dormant feature (the container ships with `hidden`), but the rules
-   are corrected anyway so re-enabling it is safe.
+   RESTORED 2026-09-25 (owner request, item 6). The falling-sakura layer
+   existed in the legacy app and was recovered verbatim; these rules are
+   its port. The container ships in `BaseLayout.astro`
+   (`#sakura-particles`, `hidden`) and a deferred module fills it with
+   30 petals exactly once, only while the light/"SAKURA" theme is active.
+
+   WHAT WAS WRONG BEFORE (the dormant state this replaces)
+   -------------------------------------------------------
+   The rules below used to say the feature was "dormant" and that the
+   container "ships with `hidden`" — but nothing ever removed that class,
+   so the layer was dead code: 0 petals rendered on every route, in every
+   theme. Two of the dormant rules also contradicted the legacy spec:
+     · only `sakuraFall` was defined, so the 45% of petals the generator
+       assigns `sakuraFall2` would have animated with NO keyframes (frozen
+       at their start frame); and
+     · `@media (prefers-reduced-motion: reduce)` set `display: none`, which
+       REMOVES the petals. Legacy deliberately did the opposite — it
+       OVERRODE its own global clamp so petals keep falling at a fixed
+       `12s` (`main.css:2127`). Reduced motion means "less", not "none",
+       and the layer is `pointer-events: none` decoration that moves slowly
+       enough to be non-vestibular. That intent is reproduced below.
 
    The keyframes already animated `transform` — that part was right.
    The remaining costs were:
@@ -140,7 +159,13 @@
    ------------------------------------------------------------------ */
 
 #sakura-particles {
+  /* `z-index: 1` matches the legacy value (`main.css:1961`). It sits
+     ABOVE the canvas background but BELOW every piece of chrome — the
+     header is `z-10`+ and the app's Z_INDEX scale starts at 30 — so the
+     petals are pure atmosphere and can never cover a control. */
   z-index: 1;
+  /* Load-bearing: the layer is full-viewport, so without this every
+     click on the page would land on a petal. */
   pointer-events: none;
   /* Paint containment: petals are clipped and cannot dirty anything
      outside this box. `size` is deliberately excluded — it would
@@ -156,6 +181,10 @@
   background: radial-gradient(circle at 32% 30%, #fecdd3, #fb7185);
   border-radius: 62% 38% 58% 42% / 60% 55% 45% 40%;
   box-shadow: inset -1px -1px 2px #be123c40;
+  /* Default track + timing. The generator overrides `animation-name`,
+     `animation-duration` and `animation-delay` per petal; what it does
+     NOT override is `linear` and `infinite`, which is why they live
+     here as the shared baseline. */
   animation: sakuraFall linear infinite;
   /* Gradients and inset shadows are painted once into the layer, then
      only transformed — so they stop being a per-frame cost. */
@@ -173,11 +202,39 @@
   100% { transform: translate3d(0, 106vh, 0)      rotate(360deg); }
 }
 
+/* The second, WIDER track. The generator assigns this to ~45% of petals
+   so the fall does not read as one repeated path (`main.css:1990`). */
+@keyframes sakuraFall2 {
+  0%   { transform: translate3d(0, -30px, 0)      rotate(0deg); }
+  15%  { transform: translate3d(-34px, 16vh, 0)   rotate(120deg); }
+  35%  { transform: translate3d(26px, 38vh, 0)    rotate(-60deg); }
+  55%  { transform: translate3d(-24px, 58vh, 0)   rotate(210deg); }
+  75%  { transform: translate3d(38px, 80vh, 0)    rotate(80deg); }
+  100% { transform: translate3d(0, 106vh, 0)      rotate(360deg); }
+}
+
 /* Responsive budget: petals are pure decoration. On phones — where
    GPU memory and fill rate are the tightest — cap the count rather
    than dropping the effect entirely. */
 @media (max-width: 640px) {
   .sakura-petal:nth-child(n + 13) { display: none; }
+}
+
+/* Reduced motion: petals KEEP falling, they just settle to a fixed slow
+   cadence. This is a DELIBERATE override of the global clamp in
+   global.css §8 (`animation-duration: 0.01ms !important;
+   animation-iteration-count: 1 !important`), which would otherwise stop
+   them dead on frame one — `main.css:2118-2131` did exactly the same,
+   and for the same reason: the clamp is a blunt instrument that is wrong
+   for a slow, non-vestibular ambient layer. `12s`/`infinite` is the
+   legacy value. The `#sakura-particles { display: none }` rule that
+   used to live in §8 is REMOVED — it contradicted this intent and hid
+   the layer from exactly the users it was written to serve. */
+@media (prefers-reduced-motion: reduce) {
+  .sakura-petal {
+    animation-duration: 12s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 
@@ -611,13 +668,15 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
    - the boot spinner: `animation-duration: 0.01ms` on an infinite
      animation still burns a frame every 0.01ms in some engines.
      Replace it with a static, non-spinning state instead.
-   - the petals: hidden outright, since they are pure decoration and
-     `content-visibility` will not stop them.
+   - the petals: `display: none` WOULD be the cheapest way to "respect"
+     reduced motion, and it is what this block used to do. It was wrong —
+     §2's own reduced-motion rule deliberately keeps the petals falling
+     at a fixed `12s`, matching the legacy intent. Hiding them here
+     contradicted that and removed the layer entirely. The rule is gone;
+     the override in §2 is the single source of truth.
    ------------------------------------------------------------------ */
 
 @media (prefers-reduced-motion: reduce) {
-  #sakura-particles { display: none !important; }
-
   .animate-spin {
     animation: none !important;
     /* Keep it visible as a static "working" mark rather than a
