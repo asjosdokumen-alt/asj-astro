@@ -443,6 +443,33 @@ async function test(name, fn) {
 }
 
 /**
+ * Scroll the whole document in viewport steps, then return to the top, so every
+ * `[data-enter]` entrance has fired before the DOM is read.
+ *
+ * WHY THIS IS REQUIRED, NOT OPTIONAL. The entrance system hides each below-fold
+ * band at `opacity: 0` until an IntersectionObserver sees it (BaseLayout.astro +
+ * motion.css §9b) — that is the CORRECT pre-reveal state, and the gate must not
+ * report it as a defect. `e2e/measure-reveal.mjs` learned the same lesson and
+ * its header says so. The scroll is what separates "waiting to be revealed"
+ * (fine) from "the reveal never fires" (a real defect).
+ *
+ * Mirrors measure-reveal's own scroll-through (0.7 × viewport steps, 120ms each)
+ * so the two tools observe the entrance under identical conditions.
+ */
+async function revealEntrances(page) {
+  await page.evaluate(async () => {
+    const step = window.innerHeight * 0.7;
+    for (let y = 0; y < document.body.scrollHeight; y += step) {
+      window.scrollTo(0, y);
+      await new Promise((r) => setTimeout(r, 120));
+    }
+    window.scrollTo(0, 0);
+  });
+  // Let the last observer callbacks and the entrance animation settle.
+  await page.waitForTimeout(600);
+}
+
+/**
  * Read the landing page once per width and return everything every assertion
  * needs. One page load per width rather than one per check: the page is heavy
  * (a 159-row table island) and re-loading it for each of ~20 assertions is both
@@ -471,6 +498,40 @@ async function inspectLanding(width) {
   await page.waitForLoadState('networkidle').catch(() => {});
   await page.waitForTimeout(600);
 
+  // ── Capture the PRE-reveal clip state ────────────────────────────────────
+  // Read the computed `clip-path` of every spec section BEFORE any entrance
+  // fires. THIS IS THE ONLY PLACE A CLIPPED PRE-STATE IS VISIBLE, and it is the
+  // state the `curtain` rule used to corrupt. Measured why it cannot be read
+  // later: the `enter-curtain` keyframe opens the clip the instant `.is-entered`
+  // lands, so a corrupted pre-state and a correct one look IDENTICAL once the
+  // reveal has run. Measured why it matters beyond the band itself: a band
+  // clipped to zero area also stops the section-nav scroll-spy — its
+  // IntersectionObserver band (`-56px 0px -70% 0px`) never matches a fully
+  // clipped target, so `#alur`/`#tentang` were never marked current. `e2e/
+  // test-site-nav.mjs` proves that half; the check below asserts the cause.
+  const preRevealClip = await page.evaluate((ids) => {
+    const byId = new Map();
+    for (const el of document.querySelectorAll('[id]')) if (!byId.has(el.id)) byId.set(el.id, el);
+    const out = {};
+    for (const id of ids) {
+      const el = byId.get(id);
+      out[id] = el ? getComputedStyle(el).clipPath : null;
+    }
+    return out;
+  }, SECTIONS.map((s) => s.id));
+
+  // ── Reveal every entrance BEFORE reading the DOM ─────────────────────────
+  // `visible()` treats `opacity: 0` as NOT visible, and every section below the
+  // fold is INTENTIONALLY `opacity: 0` until its entrance fires (BaseLayout's
+  // observer; `e2e/measure-reveal.mjs` documents the same trap: "an element that
+  // was never scrolled to SHOULD still be waiting"). Read at the top of the page
+  // the predicate would flag that intended pre-reveal state as a defect on every
+  // below-fold section — a dozen false failures. Scrolling the document once
+  // makes each entrance fire, so the assertion measures what a visitor who
+  // scrolled actually sees: a section that is STILL `opacity: 0` after the
+  // scroll is one whose entrance never fired — a real defect.
+  await revealEntrances(page);
+
   let data;
   try {
     data = await page.evaluate(
@@ -479,7 +540,24 @@ async function inspectLanding(width) {
           if (!el) return false;
           const r = el.getBoundingClientRect();
           const cs = getComputedStyle(el);
-          return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
+          if (r.width <= 0 || r.height <= 0 || cs.visibility === 'hidden' || cs.display === 'none') {
+            return false;
+          }
+          // `opacity: 0` and a zero-area `clip-path` hide an element WITHOUT
+          // changing its layout box, so the geometry test above reports both as
+          // "visible" — which is why a section clipped to nothing still read as
+          // present. The page is scrolled before this runs (see revealEntrances),
+          // so an element still at `opacity: 0` here is one whose entrance never
+          // fired — a real defect, NOT the intended pre-reveal state (which only
+          // exists on an unscrolled page). The pre-reveal CLIP is judged
+          // separately, BEFORE the scroll, because the reveal animation opens it
+          // — see the `no section is clipped to nothing` test below.
+          if (Number(cs.opacity) === 0) return false;
+          // `clip-path: inset(0 0 100% 0)` resolves to `inset(0px 0px 100%)`:
+          // a `100%` inset on ANY side collapses the element to zero area.
+          const inset = /^inset\(([^)]*)\)/.exec(cs.clipPath || '');
+          if (inset && inset[1].split(/\s+/).some((v) => v === '100%')) return false;
+          return true;
         };
 
         // The walk must cover the WHOLE document, not `main`: ClosingBand renders
@@ -622,6 +700,9 @@ async function inspectLanding(width) {
     throw new Error(`could not read the DOM (navigation?): ${err.message.slice(0, 80)}`);
   }
   await ctx.close();
+  // Attach the pre-reveal clip captured before the scroll — the assertion that
+  // no section is clipped to nothing runs against THIS, not the post-reveal state.
+  for (const s of data.sections) s.preRevealClip = preRevealClip[s.id] ?? null;
   return data;
 }
 
@@ -676,6 +757,46 @@ async function run() {
         throw new Error(
           `${problems.length} section(s) not visible on a default load:\n    - ` +
             problems.join('\n    - '),
+        );
+      }
+    });
+
+    // ── No section is CLIPPED before its entrance (the curtain defect) ──────
+    //
+    // This is the check the `visible()` extension above cannot make on its own.
+    // The reveal animation OPENS the clip when `.is-entered` lands, so a section
+    // hidden by a pre-reveal `clip-path` is indistinguishable from a correctly
+    // hidden one once the reveal has run — the band ends up visible either way.
+    // The defect lives in the PRE-reveal state, which `preRevealClip` captures.
+    //
+    // Measured, and why this is not merely cosmetic: a band clipped to
+    // `inset(0 0 100% 0)` is invisible to the visitor, and it ALSO breaks the
+    // section-nav scroll-spy — its `IntersectionObserver` band
+    // (`-56px 0px -70% 0px`) never matches a fully-clipped target, so `#alur` and
+    // `#tentang` were never marked current (`e2e/test-site-nav.mjs` went 6/8).
+    // Re-adding the old `[data-enter="curtain"]:not(.is-entered)` clip rule turns
+    // THIS check red at both widths, which is how it was proven able to fail.
+    await test(`${width}px /: no section is clipped to nothing before its entrance`, async () => {
+      const d = await inspect(width);
+      // A `100%` inset on any side collapses the element to zero area. `none`
+      // and a fully-open `inset(0px 0px 0%)` are both fine.
+      const collapses = (clip) => {
+        const inset = /^inset\(([^)]*)\)/.exec(clip || '');
+        return !!inset && inset[1].split(/\s+/).some((v) => v === '100%');
+      };
+      const offenders = d.sections
+        .filter((s) => s.found && collapses(s.preRevealClip))
+        .map((s) => `#${s.id} (pre-reveal clip-path: ${s.preRevealClip})`);
+      if (offenders.length) {
+        throw new Error(
+          `${offenders.length} section(s) are clipped to zero area BEFORE their entrance runs: ` +
+            `${offenders.join(', ')}. A pre-reveal ` +
+            '`clip-path`' +
+            ` hides the band and — measured — also stops the section-nav scroll-spy from ever ` +
+            `marking the section (its IntersectionObserver band never matches a fully-clipped ` +
+            `target; e2e/test-site-nav.mjs went 6/8). Hide a pre-reveal band with ` +
+            '`opacity`' +
+            `, never with a clip — motion.css §9b records why.`,
         );
       }
     });

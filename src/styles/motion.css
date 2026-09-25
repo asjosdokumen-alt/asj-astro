@@ -625,14 +625,38 @@ html.js-reveal [data-reveal-stagger] > [data-reveal]:nth-child(n + 7) { --reveal
 /* ── The hidden start state, gated on the JS flag, exactly like §9. ──
       One selector per kind so the `from` frame of that kind's own keyframe
       applies; a single shared `transform` here would produce a jump for the
-      kinds whose first frame is a scale or a clip. */
+      kinds whose first frame is a scale.
+
+      DELIBERATELY NO PRE-STATE CLIP FOR `curtain`. The shared `opacity: 0`
+      below is the ONLY thing that hides a curtain band before its reveal. A
+      pre-state `clip-path: inset(0 0 100% 0)` here (which this block used to
+      carry) is REDUNDANT for hiding — `opacity: 0` already hides the band, and
+      the band still wipes in correctly with or without the clip — but it is
+      ACTIVELY HARMFUL for one reason, measured: it breaks the section-nav
+      scroll-spy.
+
+      WHY, precisely: `clip-path: inset(0 0 100% 0)` collapses the element's
+      intersection to a ZERO-HEIGHT LINE at its TOP edge, and a band only sees
+      the element while that line falls inside the band. The reveal band
+      (`0px 0px -12% 0px`) is tall, so it catches the line across a wide scroll
+      range and the band reveals normally. The spy band
+      (`-56px 0px -70% 0px`) is a thin strip near the top of the viewport, so
+      once the section is scrolled to the top — exactly the position
+      `e2e/test-site-nav.mjs` puts it in — the line falls outside the strip and
+      the section is never marked current. Measured: with the clip that suite
+      went 7/8 (one check fails, covering both `#alur` and `#tentang`,
+      "marked=[]"); without it, 8/8.
+
+      The wipe is fully preserved either way: the `enter-curtain` keyframe's
+      `from` frame re-applies the clip the instant `.is-entered` lands
+      (fill-mode `both`), so it retracts from fully clipped exactly as before.
+      Do NOT re-add a clip here. */
 html.js-reveal [data-enter]:not(.is-entered) { opacity: 0; }
 
 html.js-reveal [data-enter="rise"]:not(.is-entered)         { transform: translate3d(0, var(--enter-shift), 0); }
 html.js-reveal [data-enter="slide-left"]:not(.is-entered)  { transform: translate3d(calc(var(--enter-shift) * -2), 0, 0); }
 html.js-reveal [data-enter="slide-right"]:not(.is-entered) { transform: translate3d(calc(var(--enter-shift) * 2), 0, 0); }
 html.js-reveal [data-enter="grow"]:not(.is-entered)        { transform: scale(0.94); }
-html.js-reveal [data-enter="curtain"]:not(.is-entered)     { clip-path: inset(0 0 100% 0); }
 html.js-reveal [data-enter="drop"]:not(.is-entered)        { transform: translate3d(0, calc(var(--enter-shift) * -1.5), 0) scale(0.98); }
 html.js-reveal [data-enter="focus"]:not(.is-entered)       { filter: blur(3px); transform: scale(1.015); }
 
