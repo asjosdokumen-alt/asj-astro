@@ -107,9 +107,14 @@ import { GALLERY } from '../lib/gallery';
             same band still exists on `/public` (`public.astro:25`), so the
             `marquee-*` rules in `motion.css` and `e2e/measure-marquee.mjs`
             stay valid and must NOT be deleted with it.
-         2. the `#live-job-count` strip — the only consumer of `data-lang=
-            "profile.hero_jobs_live"` and of the `getPublicData()` call on this
-            page.
+         2. the live-vacancy count strip (`#live-job-count`) — the only consumer
+            of the `profile.hero_jobs_*` "lowongan aktif" key and of the
+            `getPublicData()` call on this page. ⚠ THE KEY IS DELETED FROM BOTH
+            DICTIONARIES, so do not spell it here: `i18n.keys.test.ts` scans
+            source files for key-like strings and counts a key named in a
+            COMMENT as "used", which is why writing it out made that gate red
+            with "missing from the id dictionary" after the key was gone. Name
+            the prefix, never the key.
          3. the SiteNav component — the desktop section bar (`sticky top-0
             z-sticky`). The component file is deleted, not merely unmounted;
             leaving an unused `.astro` behind would keep four frozen indexer

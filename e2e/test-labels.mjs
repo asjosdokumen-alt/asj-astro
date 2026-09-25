@@ -129,7 +129,8 @@ import { chromium } from 'playwright';
 
 /*
  * DEFAULT HOST IS `localhost`, NOT `127.0.0.1` — a measured fix, 2026-09-20,
- * matching the same change in `test-site-nav.mjs` and `test-drawer.mjs`.
+ * applied here and to `test-drawer.mjs` (and to the since-deleted
+ * `test-site-nav.mjs`, which is where it was found).
  *
  * This file defaulted to `http://127.0.0.1:4321`, which can NEVER reach an
  * `astro preview` server: preview v5.12.0 binds IPv6-only (`netstat` shows

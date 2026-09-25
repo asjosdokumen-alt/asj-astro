@@ -187,7 +187,7 @@ tinggal berisi satu baris pemanggilan.
 | CTA | primer `primary` (pink-600 + teks putih, 4,60:1 — lolos apa adanya), sekunder `on-artwork` |
 | Chip | tiga: SSW · Magang · Penempatan |
 | Bento statistik | 2×2 `StatTile`: Sejak 2023 · Kandidat · Berangkat · Mitra Jepang |
-| Strip lowongan | satu baris penuh: `N lowongan aktif` + tautan `#loker`; **N dihitung dari `jobs`** |
+| Strip lowongan | ~~satu baris penuh: `N lowongan aktif` + tautan `#loker`; **N dihitung dari `jobs`**~~ — **DIHAPUS 2026-09-25** (keputusan owner). Lihat catatan di §5.1 |
 
 **Teks — semuanya terverifikasi atau ditandai usulan:**
 
@@ -540,7 +540,36 @@ pertukaran yang menguntungkan, dan mematuhi aturan P5.
 
 ## 5. Nav & kontrak anchor
 
-### 5.1 Nav baris atas (desktop) — ✅ dikerjakan L4, dengan satu koreksi rencana
+> ### ⚠ §5.1 DIHAPUS 2026-09-25 — SELURUH BAND DI BAWAH HERO, DAN INI CATATANNYA
+>
+> Keputusan owner, verbatim: *"ini kok masih ada bukannya saya suruh hapus kemarin"*
+> (dengan strip `N lowongan aktif` **dan** bar nav seksi dilingkari), lalu
+> *"Hapus marquee juga"*. Ketiganya pergi bersama: marquee `#global-announcement`,
+> strip `#live-job-count`, dan bar nav seksi. Berkas `SiteNav.astro`, gate
+> `e2e/test-site-nav.mjs` dan alat bukti `e2e/measure-site-nav.mjs` **dihapus**,
+> bukan sekadar tidak dipakai.
+>
+> **Satu tautan ke `/loker` DIPINDAHKAN, bukan dibuang.** Item "Lowongan" di bar
+> itu adalah **satu-satunya** `href="/loker"` di seluruh `src/**`; menghapusnya
+> tanpa pengganti akan meninggalkan `/` tanpa jalan sama sekali ke daftar
+> lowongan, dan aturan `LOKER_ROUTE` di `e2e/test-landing.mjs` justru ada untuk
+> menangkap hal itu. Owner memilih menu hamburger, jadi tautannya kini ada di
+> blok **selalu terlihat** drawer (`App.tsx`) — di atas gerbang auth, sebab
+> tautan drawer lain semuanya di balik `u.isLoggedIn &&` dan pengunjung yang
+> belum masuk tetap harus bisa mencapai daftar lowongan.
+>
+> **§5.1 di bawah ini DIBIARKAN UTUH sebagai catatan titik-berangkat** — alasan
+> geometrisnya (drawer `position: fixed` vs bar `sticky`) masih benar dan masih
+> berguna kalau bar seperti itu suatu hari dibangun lagi. **Untuk status, ukur**
+> (`e2e/test-landing.mjs`, `App.tsx`), jangan baca tabel ini sebagai keadaan
+> sekarang. `e2e:site-nav` juga sudah tidak ada di `package.json`.
+>
+> Aturan `LOKER_ROUTE` sendiri **tidak dilonggarkan**: tetap **satu** region
+> bernama, tetap diasersikan tidak kosong, tetap merah saat `count === 0` —
+> hanya alamatnya yang pindah dari bar nav ke drawer, dan itu dibuktikan bisa
+> gagal (mutasi M8 di `e2e/test-landing.mutations.sh` di-anchor ulang ke drawer).
+
+### 5.1 Nav baris atas (desktop) — ✅ dikerjakan L4, ⛔ DIHAPUS 2026-09-25 (lihat catatan di atas)
 
 **Rencananya mustahil, dan itu diukur bukan dikira.** Dokumen ini semula (mengikuti
 `LANDING_PAGE_ROADMAP.md` §2.3) meminta nav desktop masuk ke `<nav>` yang sudah ada.

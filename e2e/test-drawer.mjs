@@ -69,8 +69,9 @@
 import { chromium } from 'playwright';
 
 /*
- * DEFAULT HOST IS `localhost`, NOT `127.0.0.1` — a measured fix, 2026-09-20,
- * matching the same change in `test-site-nav.mjs`.
+ * DEFAULT HOST IS `localhost`, NOT `127.0.0.1` — a measured fix, 2026-09-20.
+ * (The same fix went into the since-deleted `test-site-nav.mjs`; this gate and
+ * `test-labels.mjs` carry it now.)
  *
  * This gate defaulted to `http://127.0.0.1:4321` and could NOT reach an
  * `astro preview` server, because preview v5.12.0 binds IPv6-only (`netstat`
@@ -188,12 +189,16 @@ async function tabWalkInsideDrawer(presses) {
    drawer. That is the worst failure mode a gate has: green, and no longer about
    what it claims.
 
-   The danger was concrete rather than theoretical: the landing page needed a
+   The danger was concrete rather than theoretical: the landing page once needed a
    horizontal desktop nav, and the cheapest place to put it was "inside the nav
    that already exists". That element is a fixed right-anchored drawer, so the
-   desktop bar had to become a second landmark with a DIFFERENT label
-   (`SiteNav.astro`, `aria-label="Navigasi halaman"`). This test is what makes
-   that safe: a future change that reuses the label fails here, loudly, instead of
+   desktop bar had to become a second landmark with a DIFFERENT label (the
+   `SiteNav.astro` component, `aria-label="Navigasi halaman"`). THAT BAR IS GONE —
+   the owner deleted the whole band below the hero on 2026-09-25 — but this check
+   stays and is NOT historical: it is what makes "one element answers to
+   `Primary navigation`" true, and the drawer is now the site's only nav, so a
+   second claimant would be worse than it was before. This test is what keeps that
+   safe: a future change that reuses the label fails here, loudly, instead of
    silently disarming every check below.
 
    It asserts the count, not the absence of a second nav — two labelled nav
