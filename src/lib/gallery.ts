@@ -44,7 +44,7 @@
  *
  * WHAT THAT LEAVES
  * ----------------
- * Nine genuine photographs, all pointing the same direction: people, rooms, and
+ * Eight genuine photographs, all pointing the same direction: people, rooms, and
  * arrival in Japan. That is the story this section has to tell.
  *
  * THREE OF THEM WERE NOT GENUINE UNTIL 2026-09-20
@@ -71,7 +71,7 @@
  * WHY `alt` IS NOT OPTIONAL AND IS NOT A KEY
  * ------------------------------------------
  * Alt text describes a specific photograph's content, so it cannot be a translation
- * key the way a heading can — the same key would have to describe nine different
+ * key the way a heading can — the same key would have to describe eight different
  * pictures. It is written per photo, in Indonesian, and the captions are keys so
  * the language toggle still reaches the surrounding UI. `Object.freeze` guards the
  * array because `getPublicData()` hands out a shared object and sorting one
