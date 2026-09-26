@@ -82,6 +82,11 @@ const OUR_PREFIXES = [
   "petals-",
   "sakura",
   "boot-",
+  // Added 2026-09-27 with motion.css §9d — the scroll-linked drift on the
+  // two decorative banners. Same reasoning as every entry above: the name is
+  // ours, so a typo in it has to fail HERE rather than silently freeze the
+  // photograph at one offset while the stylesheet looks correct.
+  "drift-",
   // Tailwind-generated, from the `--animate-*` tokens in theme.css. They are
   // declared by Tailwind at build time rather than by hand, but they resolve the
   // same way and a typo in `animate-slide-in` is just as silent.

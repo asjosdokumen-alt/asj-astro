@@ -826,6 +826,151 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
 
 
 /* ══════════════════════════════════════════════════════════════════
+   9d. SCROLL-LINKED DRIFT — the page’s two decorative banners
+   ══════════════════════════════════════════════════════════════════
+
+   OWNER’S REQUEST, verbatim, because it is the spec:
+     "maunya kek scroll fade in ou motion atas bawah dan lain lain gitu
+      di web web terbaru yg trend"
+
+   §9 and §9b already answer the "fade in" half: they fire ONCE, when a
+   card or a band crosses into the viewport. What they cannot do is move
+   WITH the scroll. A one-shot entrance is over before the visitor is
+   looking at it, so a page built only from one-shot entrances reads as a
+   series of arrivals rather than as one surface moving. This block is the
+   missing half: motion whose VALUE is a function of scroll position, so
+   it is continuous, and reversible — scroll back up and it runs backwards.
+
+   ── SCOPE: TWO PHOTOGRAPHS, NOT TWENTY-FOUR ─────────────────────────
+   MotionKit’s 2026 trend review is blunt about this, and it is why this
+   block is small: "autoplaying entrance animations on everything reads as
+   dated". Restraint, not quantity. The layer therefore touches exactly
+   the images that satisfy ALL THREE of:
+
+     1. large enough for a drift to read as depth at all — a 200px tile
+        moving 30px is a twitch, not parallax;
+     2. PURELY DECORATIVE, i.e. `alt="" aria-hidden="true"`, so the 12%
+        vertical over-size the drift needs cannot cut a person out of the
+        frame;
+     3. NO POINTER AFFORDANCE. This is the hard constraint, and it is
+        measured rather than assumed: `.u-zoom` (§9c) animates `transform`
+        with a TRANSITION, and a CSS *animation* on the same property of
+        the same element OVERRIDES the transition outright — the hover
+        zoom would stop working and nothing would report it. Every gallery
+        tile, facility illustration and service banner carries `.u-zoom`,
+        so none of them may take a scroll-linked `transform` on its image.
+
+   What survives all three tests is the two banner photographs: the
+   `#penempatan` and `#lokasi` bands. The other ~22 images on the page are
+   excluded by rule 3, not by taste. Both halves of that claim were
+   measured in a real browser before this shipped: the drift changes value
+   across scroll offsets, and a gallery tile’s `.u-zoom` hover zoom still
+   reaches `scale(1.05)` afterwards.
+
+   ── WHY THE FRAME IS `overflow: clip` AND NOT `overflow: hidden` ────
+   MEASURED, and it is the one thing here that would have failed SILENTLY.
+   `animation-timeline: view()` resolves against the SUBJECT’s nearest
+   SCROLL CONTAINER. `overflow: hidden` ESTABLISHES one — that is the only
+   difference between it and `clip` — so with `hidden` the photograph’s
+   scrollport would be its own frame, a box it never moves relative to. The
+   timeline’s progress would then be pinned, and the drift would sit frozen
+   at one offset while the stylesheet looked perfectly correct.
+
+   `clip` clips exactly the same pixels and creates no scroll container, so
+   the subject’s scroll container stays the document and the timeline tracks
+   the page. Measured both ways: with `clip` the computed transform changes
+   across scroll offsets; with `hidden` injected the same read is constant.
+   This is the same distinction `index.astro` already records for the
+   `overflow-x-clip` on <main> — `clip` is the tool that clips without
+   making a scroll container, and here that property is load-bearing twice.
+
+   ── THE OVER-SIZE, AND WHY IT IS 6% ────────────────────────────────
+   A photograph drifting inside a fixed frame exposes an edge the moment it
+   travels further than the slack around it. So the image is 114% of the
+   frame’s height — 7% above and 7% below — and the drift is ±3.5% of the
+   IMAGE’s own height, i.e. 3.99% of the frame, which leaves ~3% of margin
+   on each side. It is expressed as a share rather than in px so it scales:
+   ≈32px each way on the desktop banner (≈64px across the whole range,
+   inside the 40–80px band Framer’s guide calls readable) and ≈9px on a
+   phone, where the same absolute travel would look violent.
+
+   ── PROGRESSIVE ENHANCEMENT, NEVER A HALF-APPLIED LAYER ─────────────
+   Everything that makes the banner MOVE lives inside `@supports
+   (animation-timeline: view())`. Without support the frame still has its
+   `aspect-ratio` and its `overflow: clip`, and the image is still the same
+   photograph 7% larger on each side — the band renders as a still image,
+   which is the correct degradation. Only the rules that make it move are
+   inside the `@supports`; the rules that make it LOOK right are outside.
+   ------------------------------------------------------------------ */
+
+.u-drift-frame {
+  /* The frame is the clip, and it is the half that never moves — only the
+     photograph inside it does. `clip`, not `hidden`: see the note above,
+     this is load-bearing for the timeline. */
+  position: relative;
+  overflow: clip;
+}
+
+.u-drift-frame > img {
+  /* Positioned and over-sized so the drift can never expose an edge.
+     `height: 114%` resolves against the frame, whose height is definite
+     because `aspect-ratio` plus a definite width determines it. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -7%;
+  width: 100%;
+  height: 114%;
+  object-fit: cover;
+}
+
+@keyframes drift-lag {
+  /* From above the rest position to below it: as the band rises up the
+     screen the photograph slides DOWN inside it, so it travels less than
+     the frame does. That lag is what reads as "further away". */
+  from { transform: translate3d(0, calc(var(--drift) * -1), 0); }
+  to   { transform: translate3d(0, var(--drift), 0); }
+}
+
+@supports (animation-timeline: view()) {
+  .u-drift {
+    /* Travel, as a share of the photograph’s OWN height. See the note on
+       the 7% over-size: 3.5% here is 3.99% of the frame, leaving 3%. */
+    --drift: 3.5%;
+    animation: drift-lag linear both;
+    /* `auto` is REQUIRED — a time value is meaningless against a scroll
+       timeline — and it must come AFTER the shorthand, which resets it. */
+    animation-duration: auto;
+    /* And so must this: the `animation` shorthand resets
+       `animation-timeline` to `auto`, i.e. the document timeline, which
+       would run the drift once on load over zero scroll distance. The
+       order of these three declarations is the whole point of the block. */
+    animation-timeline: view();
+    /* Starts once a quarter of the band has come into view, finishes when
+       the band’s top reaches the viewport top. Ranges are derived from the
+       UNTRANSFORMED box, so the drift cannot feed back into its own range
+       and oscillate. */
+    animation-range: entry 25% cover 50%;
+  }
+}
+
+/* Reduced motion: REMOVE the layer, do not shorten it. Same trap as §9 and
+   §9b in its own costume — the global clamp in global.css only shortens
+   `animation-duration`, and on a scroll timeline a shortened duration does
+   not mean "less movement", it means the photograph is left parked at
+   whatever fraction of the drift the clamp lands on. So the animation is
+   removed outright and `transform` is reset to `none`, which is the static
+   position and is still fully covered by the 7% over-size. Specificity is
+   equal to the `@supports` rule above and this block comes later, so no
+   `!important` is needed — the same reasoning §9 records at length. */
+@media (prefers-reduced-motion: reduce) {
+  .u-drift {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
    8. REDUCED MOTION — final safety net
    ══════════════════════════════════════════════════════════════════
 

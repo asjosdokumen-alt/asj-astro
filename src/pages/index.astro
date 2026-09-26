@@ -422,7 +422,7 @@ import { GALLERY } from '../lib/gallery';
           gate's ILLUSTRATIONS set ("no subject who could consent or refuse")
           without a judgement call; (3) it is the larger source (5325px vs
           4997px). The declared 1200x800 is the real size of the 1x file. */}
-      <picture class="block mt-6 rounded-panel overflow-hidden border border-line/30">
+      <picture class="u-drift-frame block mt-6 aspect-[3/2] overflow-clip rounded-panel border border-line/30">
         <source
           type="image/avif"
           srcset="/assets/ilustrasi/penempatan-banner.avif 1x, /assets/ilustrasi/penempatan-banner@2x.avif 2x"
@@ -439,7 +439,7 @@ import { GALLERY } from '../lib/gallery';
           height="800"
           loading="lazy"
           decoding="async"
-          class="w-full aspect-[3/2] object-cover"
+          class="u-drift"
         />
       </picture>
       <div class="mt-8">
@@ -799,7 +799,7 @@ import { GALLERY } from '../lib/gallery';
 
           `loading="lazy"` here — unlike the hero, this band is far below the
           fold and is never the LCP element. */}
-      <picture class="block mt-6 rounded-panel overflow-hidden border border-line/30">
+      <picture class="u-drift-frame block mt-6 aspect-[2/1] overflow-clip rounded-panel border border-line/30">
         <source
           type="image/avif"
           srcset="/assets/ilustrasi/lokasi-banner.avif 1x, /assets/ilustrasi/lokasi-banner@2x.avif 2x"
@@ -816,7 +816,7 @@ import { GALLERY } from '../lib/gallery';
           height="600"
           loading="lazy"
           decoding="async"
-          class="w-full aspect-[2/1] object-cover"
+          class="u-drift"
         />
       </picture>
       <div class="mt-8 bg-slate-800 border border-slate-700 rounded-panel p-5 flex flex-col sm:flex-row justify-between items-center gap-5 text-center sm:text-left shadow-lg">
