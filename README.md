@@ -13,7 +13,23 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions, data
 | **GitHub** | https://github.com/asjosdokumen-alt/asj-astro |
 | **Live Site** | https://asjastro.netlify.app |
 | **Netlify project** | https://app.netlify.com/projects/asjastro |
-| **Supabase** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
+| **Supabase (data)** | https://supabase.com/dashboard/project/bimqyugdhiuxcqltjjnt |
+| **Supabase (aset publik)** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
+
+> ⚠️ **Aplikasi ini memakai DUA proyek Supabase**, dan itu tidak kelihatan dari
+> satu tempat:
+>
+> 1. **Data** — `bimqyugdhiuxcqltjjnt`. Inilah yang dibaca dari env
+>    (`PUBLIC_SUPABASE_URL` / `SUPABASE_URL`) oleh `src/lib/supabase.ts`, jadi
+>    inilah proyek auth + database. Dibuktikan: chunk `supabase` di **kedua**
+>    situs live mem-bake ref ini.
+> 2. **Aset publik** — `gdwvffmevwtwnzrapjwy`. Hanya menyimpan bucket
+>    `asj-files` (logo, banner, `jeklin.png`). **Di-hardcode di 17 tempat** di
+>    `src/` dan `netlify/` — bukan dari env.
+>
+> Konsekuensinya: mengganti `PUBLIC_SUPABASE_URL` **tidak** memindahkan aset,
+> dan memindahkan aset berarti menyunting 17 URL hardcoded. Catat ini sebelum
+> migrasi proyek.
 
 > ⚠️ **Status deploy (26 Sep 2026):** Netlify **menolak build** — setiap push ke
 > `main` muncul sebagai `error: Skipped due to account credit usage exceeded`.
