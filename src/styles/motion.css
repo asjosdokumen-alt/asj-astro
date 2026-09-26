@@ -428,14 +428,19 @@
    ------------------------------------------------------------------ */
 
 :root {
-  /* Per-item offset. 60ms is below the ~80ms perceptual threshold for
-     "these are separate events", so the group still reads as one motion. */
-  --reveal-step: 60ms;
+  /* Per-item offset. Was 60ms; raised to 90ms on 2026-09-26 after checking
+     the guidance: Framer's scroll-animation guide puts the readable stagger
+     band at **0.08–0.12s** per card, and 60ms sits BELOW it — the items
+     arrived so close together that the cascade read as one block appearing,
+     which is most of why the page felt stiff despite animating. */
+  --reveal-step: 90ms;
   /* How many items may stagger before the rest join in. See the cap note. */
   --reveal-max-steps: 8;
-  /* Distance travelled. 12px is enough to read as "up" at arm's length
-     without a card appearing to fly in from off-screen. */
-  --reveal-shift: 12px;
+  /* Distance travelled. Was 12px. 12px is enough to read as "up" but only
+     just — at a glance the card looks like it simply appeared. 16px still
+     cannot be mistaken for a card flying in from off-screen, and it is the
+     same order as the section shift below so the two scales agree. */
+  --reveal-shift: 16px;
   --reveal-dur: 480ms;
 }
 
