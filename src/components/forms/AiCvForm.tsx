@@ -3,7 +3,7 @@
  * Source: legacy/ai_form.html (1:1 match)
  * Split panel: Chat AI Jeklin (left 35%) + CV Preview Form (right 65%)
  */
-import { useState, useRef, useEffect } from 'preact/hooks';
+import { useState, useRef, useEffect, useLayoutEffect } from 'preact/hooks';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { t, toggleLang, useLang } from '../../store/i18n';
@@ -275,6 +275,32 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
   const [docStatus, setDocStatus] = useState<Record<string, string>>({});
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  /**
+   * The WA whose draft we are showing.
+   *
+   *   admin path     — the `waTarget` prop (`TabPelamar` passes the row's WA);
+   *   candidate path — their OWN WA. Legacy used
+   *                    `formContext.wa || latestCandidateData.identitas.hp`,
+   *                    i.e. the URL's `?wa=` or the logged-in number.
+   *
+   * ⚠ MEASURED 2026-09-26 on `/ai-cv` as a logged-in VIP candidate: the only
+   * function called was `get-app-data`. `getDrafCvMaster` was NEVER requested,
+   * so a candidate who already had a saved CV saw a completely empty form and
+   * pressing Simpan would have overwritten that CV with near-empty data. The
+   * gate login did not load it either — it only set `cv.hp`. Root cause: the
+   * draft effect was keyed on the `waTarget` PROP alone, and `ai-cv.astro`
+   * renders `<AiCvForm />` with no prop (only the admin tab passes one).
+   *
+   * `loadingDraft` deliberately still keys off `waTarget` ONLY: the blocking
+   * overlay exists to stop an ADMIN saving an empty form over someone else's
+   * CV. For the candidate's own form the data merges in silently instead, so
+   * the form is never unusable if the request is slow.
+   */
+  const [sessionWa, setSessionWa] = useState(() => {
+    const a = authStore.get();
+    return a.isLoggedIn && a.role === 'kandidat' ? a.wa || '' : '';
+  });
+  const draftWa = waTarget || sessionWa || waFromUrl();
   const [loadingDraft, setLoadingDraft] = useState(!!waTarget);
   /**
    * Which fields the candidate edited by hand. Drives the `border-sky-400`
@@ -346,19 +372,22 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
   // flat. Tanpa langkah ini admin melihat form KOSONG dan menekan Simpan —
   // yang akan menghapus CV kandidat, persis kebalikan dari yang diminta.
   useEffect(() => {
-    if (!waTarget) return;
+    if (!draftWa) return;
     let alive = true;
     (async () => {
       try {
-        const res = await apiClient<Record<string, unknown>>('getDrafCvMaster', [waTarget]);
+        const res = await apiClient<Record<string, unknown>>('getDrafCvMaster', [draftWa]);
         if (!alive) return;
         const loaded = parseAiCvDraft(res);
         if (Object.keys(loaded).length === 0 && typeof res?.error === 'string') {
           showToast(String(res.error), 'error');
         }
         // hp = WA kandidat; kalau master belum punya no_wa, pakai target supaya
-        // payload simpan tetap membawa nomor yang benar.
-        setCv(prev => ({ ...prev, ...loaded, hp: loaded.hp || prev.hp || waTarget }));
+        // payload simpan tetap membawa nomor yang benar. NOTE: sengaja tetap
+        // `waTarget`, bukan `draftWa` — pada jalur kandidat `cv.hp` sudah diisi
+        // oleh gate login, dan memaksanya di sini akan menghilangkan validasi
+        // "Nomor WA belum diisi." yang dijaga tes.
+        setCv(prev => ({ ...prev, ...loaded, hp: loaded.hp || prev.hp || waTarget || '' }));
       } catch (e) {
         if (alive) showToast('Gagal memuat draf CV: ' + (e as Error).message, 'error');
       } finally {
@@ -366,7 +395,9 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
       }
     })();
     return () => { alive = false; };
-  }, [waTarget]);
+    // `waTarget` is listed because the hp fallback above still reads it (it is
+    // the ADMIN's target, which must not be substituted by the session WA).
+  }, [draftWa, waTarget]);
 
   // §6 parity verifikasiAksesAiCv() (legacy js/pages/ai_form.ts:771): halaman AI
   // CV (flow=master) khusus Siswa ASJ. Kandidat non-siswa yang membuka URL-nya
@@ -526,6 +557,9 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
       });
       authStore.set({ ...authStore.get(), sessionToken: d.sessionToken || d.token || '', wa, name: d.user || 'kandidat', isLoggedIn: true, role: 'kandidat', lastChecked: Date.now() });
       setCv(prev => ({ ...prev, hp: prev.hp || wa }));
+      // Kandidat yang baru lolos gate harus langsung melihat CV lamanya, bukan
+      // form kosong — lihat catatan `draftWa` di atas.
+      setSessionWa(wa);
       setLoginGate(false);
     } catch (e) {
       // apiClient melempar untuk HTTP gagal MAUPUN kegagalan jaringan, jadi
@@ -1529,6 +1563,20 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  /**
+   * Which edge the list is anchored to.
+   *
+   * The list is now wider than its input (see the note on the <ul>), so on the
+   * RIGHTMOST column it can cross the panel's right edge: measured at a 1280
+   * viewport the list ended at x=1286, i.e. 6px past the edge, and the rounded
+   * border was cut. `right-0` is not a blanket fix — the LEFTMOST column would
+   * then stick out past the LEFT edge by far more (~174px), which is worse.
+   * So: keep `left-0` as the default and only flip when the measured box would
+   * actually overflow. `useLayoutEffect` runs before paint, so the list never
+   * flashes in the wrong place.
+   */
+  const [flip, setFlip] = useState(false);
   const spanClass = span === 3 ? 'col-span-3' : span === 2 ? 'col-span-2' : '';
   const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : '';
   const domId = `ai_${id}`;
@@ -1551,6 +1599,20 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
     };
     document.addEventListener('mousedown', onDocDown);
     return () => document.removeEventListener('mousedown', onDocDown);
+  }, [open]);
+
+  // Flip the list to the input's right edge only when it would cross the
+  // viewport. Runs before paint, so the list never flashes in the wrong place.
+  //
+  // Depends on `open` only, deliberately: while the list stays open it can only
+  // get NARROWER (typing filters it), so a list that already fits cannot start
+  // overflowing. Adding `value` here would be an unused dependency.
+  useLayoutEffect(() => {
+    if (!open) { setFlip(false); return; }
+    const el = listRef.current;
+    if (!el) return;
+    const over = el.getBoundingClientRect().right > document.documentElement.clientWidth - 4;
+    setFlip(f => (f === over ? f : over));
   }, [open]);
 
   const choose = (v: string) => {
@@ -1593,14 +1655,27 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
           onKeyDown={onKeyDown}
           class="input-micro w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white" />
         {open && (
-          <ul id={listId} class="absolute z-20 left-0 right-0 mt-0.5 max-h-48 overflow-auto bg-slate-800 border border-slate-600 rounded shadow-lg">
+          /* MEASURED 2026-09-26: `left-0 right-0` made the list exactly as wide
+             as the INPUT, and the input is one cell of a `grid-cols-2` inside a
+             section that is itself one track of the 3-column
+             `u-grid-auto--cards` — 97px at a 1280 viewport (245px section →
+             201px inner grid → 96.5px cell). With `white-space: normal` every
+             bilingual label wrapped to 2–3 lines: "OPERATOR PRODUKSI（工場作業員）"
+             rendered 58px tall instead of ~20px, so the list read as garbled and
+             looked different from CV Master's native <select>, which shows one
+             line per option. Fix: size the list to its content (`w-max`) but
+             never below the input (`min-w-full`), cap it so it cannot push a
+             horizontal scrollbar into `u-scroll-area` (`max-w-[min(90vw,22rem)]`),
+             and stop the wrapping. The cap is measured, not guessed — 22rem is
+             the longest label plus padding. */
+          <ul id={listId} ref={listRef} class={`absolute z-20 ${flip ? 'right-0' : 'left-0'} min-w-full w-max max-w-[min(90vw,22rem)] mt-0.5 max-h-48 overflow-auto bg-slate-800 border border-slate-600 rounded shadow-lg`}>
             {shown.length === 0 && (
               <li class="px-2 py-1 text-[11px] text-slate-400">{t('ai_cv.combo_manual')}</li>
             )}
             {shown.map(([v, l], idx) => (
               <li key={v} id={`${listId}-${idx}`}
                 onMouseDown={(e) => { e.preventDefault(); choose(v); }}
-                class={`px-2 py-1 text-[11px] cursor-pointer ${idx === active ? 'bg-sky-600 text-white' : 'text-slate-200 hover:bg-slate-700'}`}>
+                class={`px-2 py-1 text-[11px] whitespace-nowrap cursor-pointer ${idx === active ? 'bg-sky-600 text-white' : 'text-slate-200 hover:bg-slate-700'}`}>
                 {pairDisplay(v, l)}
               </li>
             ))}

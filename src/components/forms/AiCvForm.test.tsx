@@ -489,6 +489,76 @@ describe('AiCvForm — mode admin (panel CV AI di tab Pelamar)', () => {
 });
 
 // ==========================================
+// TESTS: draf CV jalur kandidat di /ai-cv (2026-09-26)
+//
+// ⚠ REGRESI YANG DITEMUKAN DENGAN MENGUKUR, BUKAN MEMBACA KODE.
+// `ai-cv.astro` merender `<AiCvForm />` TANPA prop, sementara efek pemuat draf
+// dijaga `if (!waTarget) return;`. Jadi halaman publik /ai-cv TIDAK PERNAH
+// meminta draf. Diukur di browser pada kandidat VIP yang sudah login: satu-
+// satunya fungsi yang dipanggil adalah `get-app-data`; `getDrafCvMaster` tidak
+// pernah dipanggil sama sekali. Akibatnya kandidat yang sudah punya CV melihat
+// form KOSONG — dan menekan Simpan akan menimpa CV itu dengan data hampir
+// kosong, persis kerusakan yang dicegah di jalur admin.
+//
+// Gate login pun tidak memuatnya: ia hanya mengisi `cv.hp`.
+//
+// Legacy memuatnya lewat `jalankanAutoFill(targetWa)` dengan
+// `targetWa = formContext.wa || latestCandidateData.identitas.hp` — yaitu
+// `?wa=` ATAU nomor kandidat yang login. Kedua jalur itu dijaga di bawah.
+//
+// CATATAN: `loadingDraft` SENGAJA tetap hanya mengikuti `waTarget`. Overlay
+// pemblokir itu ada untuk mencegah ADMIN menyimpan form kosong di atas CV orang
+// lain; pada form kandidat sendiri datanya menyatu diam-diam supaya form tidak
+// pernah tak terpakai saat permintaan lambat.
+// ==========================================
+describe('AiCvForm — draf CV jalur kandidat di /ai-cv', () => {
+  const WA = '081234567890';
+
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...GUEST });
+    fetchMock.mockReset();
+    vi.mocked(showToast).mockReset();
+    vi.mocked(apiClient).mockReset();
+    vi.mocked(uploadMany).mockClear();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it('kandidat yang SUDAH login → draf dimuat dengan nomor WA-nya sendiri, tanpa prop', async () => {
+    routeApi({ getDrafCvMaster: { identitas: { nama_lengkap: 'BUDI', hp: WA } } });
+    authStore.set({ ...KANDIDAT });
+    render(<AiCvForm />);
+
+    await waitFor(() => expect(apiClient).toHaveBeenCalledWith('getDrafCvMaster', [WA]));
+    // Dan hasilnya benar-benar terpasang, bukan sekadar dipanggil.
+    await waitFor(() => expect((screen.getByDisplayValue('BUDI') as HTMLInputElement).value).toBe('BUDI'));
+  });
+
+  it('gate login yang lolos → draf kandidat langsung dimuat (bukan form kosong)', async () => {
+    routeApi({
+      loginKandidat: { sessionToken: 'tok123', user: 'Budi' },
+      getDrafCvMaster: { identitas: { nama_lengkap: 'BUDI', hp: WA } },
+    });
+    render(<AiCvForm />);
+    await fireEvent.input(screen.getByPlaceholderText('08xxxxxxxxxx'), { target: { value: WA } });
+    await fireEvent.input(screen.getByPlaceholderText('••••••••'), { target: { value: 'rahasia123' } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Masuk' }));
+
+    await waitFor(() => expect(apiClient).toHaveBeenCalledWith('getDrafCvMaster', [WA]));
+  });
+
+  it('kontrol negatif: tamu tanpa sesi & tanpa ?wa= TIDAK memuat draf', () => {
+    routeApi({ getDrafCvMaster: { identitas: { nama_lengkap: 'BUDI' } } });
+    render(<AiCvForm />);
+    expect(apiClient).not.toHaveBeenCalled();
+  });
+});
+
+// ==========================================
 // TESTS: pesan penolakan server ditampilkan apa adanya (§6 gap 3, 2026-09-14)
 //
 // Server menolak flow=master untuk non-siswa dengan { success:false, error }
