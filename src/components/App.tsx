@@ -507,7 +507,7 @@ export default function App(
                   is the page's ONLY path to the vacancy list. The register
                   button below stays — it is not a /loker link. */}
               <div class="flex flex-wrap gap-3 mt-8">
-                <button type="button" onClick={openRegister} class="inline-flex items-center px-7 py-3.5 rounded-pill bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm backdrop-blur-sm transition-all duration-200"><Icon name="user-plus" class="mr-2" />{t("profile.hero_cta_secondary")}</button>
+                <button type="button" onClick={openRegister} class="inline-flex items-center px-7 py-3.5 rounded-pill bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm backdrop-blur-sm transition"><Icon name="user-plus" class="mr-2" />{t("profile.hero_cta_secondary")}</button>
               </div>
               <div class="flex flex-wrap gap-2 mt-6">
                 {[t("profile.hero_chip_ssw"), t("profile.hero_chip_magang"), t("profile.hero_chip_penempatan")].map((label) => (

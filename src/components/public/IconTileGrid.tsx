@@ -72,7 +72,7 @@ export default function IconTileGrid({ tiles, columns = 3, class: className }: P
         <li
           key={tile.title.key}
           data-reveal
-          class="min-w-0 flex flex-col gap-2 rounded-card bg-surface border border-line p-5 md:p-6 overflow-hidden"
+          class="min-w-0 group flex flex-col gap-2 rounded-card bg-surface border border-line p-5 md:p-6 overflow-hidden"
         >
           {/* The illustration, when the tile carries one, sits ABOVE the icon
               and bleeds to the card's own padding edge via a negative margin —
@@ -104,10 +104,15 @@ export default function IconTileGrid({ tiles, columns = 3, class: className }: P
                 height={tile.image.h}
                 loading="lazy"
                 decoding="async"
-                class="w-full aspect-[4/3] object-cover"
+                class="w-full aspect-[4/3] object-cover u-zoom"
               />
             </picture>
           ) : null}
+          {/* The zoom is on the IMAGE only; the card itself gets no lift. These
+              tiles are informational — no href, nothing to click — and a lift
+              would promise a response that never comes (§9c). The illustration
+              can still come alive under the pointer without that implication,
+              and the `li`'s own `overflow-hidden` is what clips the scale. */}
           <Icon name={tile.icon} class={`text-xl ${ACCENT_TEXT[tile.accent as AccentRole]}`} />
           <h3 data-lang={tile.title.key} class="text-card-title font-bold text-fg">
             {tile.title.text}

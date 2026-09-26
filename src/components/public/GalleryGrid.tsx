@@ -52,7 +52,7 @@ export default function GalleryGrid({ items, class: className }: Props) {
               height={item.height}
               loading={index < 3 ? 'eager' : 'lazy'}
               decoding="async"
-              class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+              class="h-full w-full object-cover u-zoom"
             />
           </div>
           <p data-lang={item.captionKey} class="px-4 py-3 text-body-sm text-fg-muted">

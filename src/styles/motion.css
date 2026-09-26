@@ -691,6 +691,136 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
 
 
 /* ══════════════════════════════════════════════════════════════════
+   9c. INTERACTIVE STATES — hover, press, and the three recipes
+   ══════════════════════════════════════════════════════════════════
+
+   OWNER'S REQUEST, verbatim, because it is the spec:
+     "buatkan halaman company profile yang lebih interaktif dan tidak
+      monoton dengan menerapkan CSS Transition Property ... efek transisi
+      pada elemen seperti hover tombol, navigasi, kartu layanan, dan gambar,
+      serta tentukan durasi, timing function, dan properti yang dianimasikan
+      agar pergerakannya mulus dan konsisten di seluruh halaman"
+
+   §9 and §9b are SCROLL-driven: they fire once, when a band or an item
+   enters the viewport. This section is POINTER-driven: it fires every time
+   the visitor points at something. Different trigger, different budget —
+   a scroll entrance is watched once and can afford 480ms, while a hover
+   that takes 480ms feels broken because the pointer is still moving.
+
+   WHY ONE RECIPE PER THING THAT MOVES, AND NOT ONE PER COMPONENT
+   -------------------------------------------------------------
+   MEASURED 2026-09-26, before this block: the public components carried
+   five different hover speeds — 200ms (ClosingBand), 300ms (the service
+   cards), 500ms (the gallery), 700ms (the service banners) and the 180ms
+   default. So a service card lifted over 300ms while the button inside it
+   answered in 180ms, and the card felt slower than its own contents. The
+   duration scale in theme.css now names the four steps; these three
+   classes are how a call site picks one without inventing a fifth.
+
+     .u-lift   a surface that comes toward the pointer — cards, tiles.
+     .u-zoom   an image inside a clipped frame — galleries, banners.
+     .u-press  a control acknowledging a press.
+
+   ANIMATED PROPERTIES: transform, border-color, opacity. transform and
+   opacity are compositor-only. border-color is not, but at 180ms a single
+   repaint is cheaper than promoting a layer for the life of the element.
+
+   NO `will-change`, NO translate3d() — the same reasoning §5 already
+   records for the reveal animations: a one-shot tween is promoted by the
+   browser automatically, and forcing a layer would cost memory on every
+   card in a 20-card grid for no gain.
+
+   NO BOX-SHADOW, deliberately. Card.astro records the ruling: on a dark
+   canvas a drop shadow is nearly invisible, which is exactly why the old
+   `shadow-2xl` cards read as boxes floating with no edge. Depth on hover
+   is carried by the BORDER brightening, the same way Card carries it at
+   rest. That also means one fewer token to keep in sync between themes.
+
+   THE RECIPE OWNS THE TIMING **AND THE HOVER BORDER COLOUR**, and that second
+   half is not a style preference — it is forced by the cascade.
+
+   MEASURED 2026-09-26: `hover:border-emerald-500/70` on a service card did
+   NOTHING in light theme. The card's border stayed `rgb(110,231,183)` on hover
+   while `:hover` was confirmed matching and the transform fired. Cause: this
+   repo's light-theme shims (`global.css` §"emerald/sky/amber") are UNLAYERED,
+   and Tailwind's utilities live in `@layer utilities`. **An unlayered rule
+   beats a layered one regardless of specificity**, so
+   `:where([data-theme="light"]) :is(.border-emerald-500\/40, …)` (0,1,0,
+   unlayered) defeats `.hover\:border-emerald-500\/70:hover` (0,2,0, layered).
+   The shim list stops at `/60`, so `/70` was never shimmed and could never win.
+
+   So the hover colour is set HERE, unlayered, from a custom property the call
+   site supplies — the same pattern Card.astro already uses for `--reveal-i`.
+   Use the THEME-AWARE accent tokens (`--color-accent-emerald` and friends),
+   which are already remapped per theme, rather than a raw palette step.
+
+   TOUCH DEVICES: `:hover` on a touch screen sticks after a tap, so a card
+   would stay lifted. `@media (hover: hover)` gates the lift to pointers
+   that can actually hover; the press state below is what a finger gets.  */
+
+@media (hover: hover) {
+  .u-lift {
+    /* Overridable per call site; the neutral emphasis a plain Card uses. */
+    --u-lift-border: var(--color-line-strong);
+    transition:
+      transform        var(--dur-move)  var(--ease-out-expo),
+      border-color     var(--dur-hover) var(--ease-out-expo),
+      background-color var(--dur-hover) var(--ease-out-expo);
+  }
+  .u-lift:hover {
+    transform: translateY(-4px);
+    border-color: var(--u-lift-border);
+  }
+
+  .u-zoom {
+    transition: transform var(--dur-image) var(--ease-out-expo);
+  }
+  /* Keyed off the caller's own `group` class rather than a new wrapper, so an
+     image can be zoomed by any ancestor the caller already marks. */
+  .group:hover .u-zoom {
+    transform: scale(1.05);
+  }
+}
+
+/* Press is pointer-independent: a finger needs it as much as a mouse. The
+   spring curve is the one §6 reserves for direct manipulation. */
+.u-press {
+  transition: transform var(--dur-press) var(--ease-spring);
+}
+.u-press:active {
+  transform: translateY(1px);
+}
+
+/* REDUCED MOTION — explicit, because the global clamp in global.css only
+   shortens `transition-duration` to 0.01ms. That makes the transition
+   instant but does NOT stop the transform, so a card would still JUMP 4px
+   the moment the pointer crossed it — a sudden displacement, which is worse
+   for a motion-sensitive visitor than the smooth move it replaced. So the
+   movement is removed here and the COLOUR affordance is kept: the border
+   still brightens, because a colour change is not motion and it is the only
+   cue left that the card is interactive. */
+@media (prefers-reduced-motion: reduce) {
+  .u-lift {
+    transition: border-color var(--dur-hover) var(--ease-out-expo);
+  }
+  .u-lift:hover,
+  .u-lift:active {
+    transform: none;
+  }
+  .u-zoom,
+  .group:hover .u-zoom {
+    transition: none;
+    transform: none;
+  }
+  .u-press,
+  .u-press:active {
+    transition: none;
+    transform: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
    8. REDUCED MOTION — final safety net
    ══════════════════════════════════════════════════════════════════
 

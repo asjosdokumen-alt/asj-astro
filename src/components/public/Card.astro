@@ -73,6 +73,19 @@ export interface Props {
    * card is wrapped) and the automatic index would be wrong.
    */
   revealIndex?: number;
+  /**
+   * Pointer feedback. On, the card lifts 4px and its border brightens when the
+   * pointer is over it — the `.u-lift` recipe in `styles/motion.css` §9c.
+   *
+   * Default OFF, and that is the deliberate half: a card is only interactive
+   * when it DOES something. A lift on a card that is not clickable promises a
+   * response that never comes, which is worse than no motion at all — so a
+   * caller has to opt in and thereby assert that the surface is actionable.
+   *
+   * A boolean rather than a class string, for the same reason `reveal` is:
+   * a caller cannot invent a tenth variation of the same effect.
+   */
+  interactive?: boolean;
 }
 
 const {
@@ -84,6 +97,7 @@ const {
   id,
   reveal = true,
   revealIndex,
+  interactive = false,
 } = Astro.props;
 
 const ELEVATION_CLASS = {
@@ -111,6 +125,13 @@ const classes = [
   ELEVATION_CLASS[elevation],
   RADIUS_CLASS[radius],
   PADDING_CLASS[padding],
+  // The hover recipe lives in CSS, not here, so the duration and the curve come
+  // from the theme tokens instead of a utility the caller could retune. It also
+  // supplies the hover BORDER colour (`--u-lift-border`, defaulting to
+  // `line-strong`) — it cannot be a `hover:border-*` utility here, because the
+  // light-theme shims in global.css are unlayered and beat every layered
+  // utility; motion.css §9c records the measurement.
+  interactive ? 'u-lift' : '',
   'min-w-0',
   className ?? '',
 ]
