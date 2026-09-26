@@ -24,7 +24,10 @@
 | `ai_form.html` (AI CV chat, wawancara, submit ASJ, TTD) | `src/pages/ai-cv.astro` | `AiCvForm`, `ESignatureModal` | 🟡 | Backend actions AI semua ✅ (lihat §4). fieldPaths 70+ mapping: ❓ parity mapping di form baru |
 | `siswa-baru.html` (daftar siswa + AI chat) | `src/pages/siswa-baru.astro` | `SiswaBaruForm`, `CekSiswaModal` | 🟡 | `submitDaftarSiswa` ✅; roster admin-only ✅. Chat flow siswa: ❓ |
 | `share.html` (**viewer TSK publik — dipakai klien/user**) | `src/pages/share.astro` | `ShareView` | ✅ 2026-09-05 | `share-data.js` → `contexts/catalog` `handleShareData`. **Publik per kode job, tanpa token** (parity legacy — lihat §5 P1) |
-| `admin.html` + tab admin (SPA-like) | `src/pages/admin.astro` | `AdminPanel` + 8 Tab | 🟡 | Lihat §2 |
+| `admin.html` + tab admin (SPA-like) | `src/pages/admin.astro` | `AdminPanel` + 9 Tab (+ `Pengaturan` dipin) | 🟡 | Lihat §2 |
+
+> Diperbarui 2026-09-26: jumlah tab admin berubah dari 8 → **9** setelah `Agenda`
+> dan `Papan Tugas` dipindahkan dari kartu header dashboard menjadi tab biasa.
 
 ## 2. Admin — Tabs & Modal Parity
 

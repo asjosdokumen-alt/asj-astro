@@ -1,4 +1,8 @@
-> **Last updated:** 2026-09-03. All 9 pages are live. Admin panel fully functional with real Supabase data.
+> **Last updated:** 2026-09-26 (was 2026-09-03). **All 11 pages are live.** Admin panel fully functional with real Supabase data.
+>
+> ⚠️ Baris ini sebelumnya menulis "9 pages" — `/siswa-baru` dan `/share` sudah ada
+> sejak itu. Jumlah rute yang benar sekarang **11**: `404`, `admin`, `ai-cv`,
+> `apply`, `candidate`, `index`, `loker`, `master`, `public`, `share`, `siswa-baru`.
 
 # Pages — Quick Reference (Astro + Preact)
 

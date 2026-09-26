@@ -1,11 +1,13 @@
 # ASJ Astro — Architecture
 
-> **✅ IMPLEMENTATION STATUS (2026-09-03)**
+> **✅ IMPLEMENTATION STATUS (2026-09-03, corrected 2026-09-26)**
 > 
 > Frontend architecture is **FULLY IMPLEMENTED**:
-> - ✅ 9 pages (all routes)
-> - ✅ 12 admin modals (all functionality)
-> - ✅ Preact islands with client:load
+> - ✅ **11** pages (all routes) — this line said 9 until 2026-09-26; `/siswa-baru`
+>   and `/share` had been added since
+> - ✅ **13** admin modals + the AI HR copilot — said 12
+> - ✅ Preact islands with **`client:only="preact"`** — said `client:load`; the app
+>   ships `client:only` (verified across `src/pages/*.astro`)
 > - ✅ Nanostores for state management
 > - ⚠️ Zod validation at the API edge is **PARTIAL** — measured 2026-09-16: 9 of 33 mutating
 >   actions (`npm run verify:validation`). This line used to read "✅ Zod validation at API
@@ -90,7 +92,7 @@ asj-astro/
 │   │   └── useDraft.ts          # Auto-save hook
 │   ├── layouts/
 │   │   └── BaseLayout.astro     # HTML shell + SW registration
-│   ├── pages/                   # 9 routes
+│   ├── pages/                   # 11 routes
 │   │   ├── index.astro          # Landing page
 │   │   ├── admin.astro          # Admin panel
 │   │   ├── candidate.astro      # Candidate dashboard
@@ -135,11 +137,15 @@ asj-astro/
 - **Mobile**: BottomNav hidden (guest mode)
 
 ### 2. Admin (`/admin`)
-- **Component**: `AdminPanel.tsx` (8 tabs)
-- **Tabs**: Kelola, DB Job, Tambah, Pelamar, Jadwal, Mail, WA, Config
+- **Component**: `AdminPanel.tsx` (**9 sidebar tabs** + `Pengaturan` pinned to the bottom)
+- **Tabs**: Kelola, DB Job, Tambah, Pelamar, Jadwal, Mail, WA, **Agenda**, **Papan Tugas**, Config
+  > `Agenda` and `Papan Tugas` were added 2026-09-26. Both used to be dashboard header
+  > cards mounted above EVERY tab; they are now ordinary tabs, which is why the tab
+  > content starts at the top of the page. `TABS` in `AdminPanel.tsx` is the single
+  > source of truth and `TAB_VIEWS` is typed against it.
 - **Auth**: Admin only (redirects to `/` if not admin)
 - **Mobile**: BottomNav visible (admin mode)
-- **Store**: `adminStore.ts` (reactive kandidat list + modals)
+- **Store**: `adminStore.ts` (reactive kandidat list + modals), `adminTasks.ts` (task board)
 
 ### 3. Candidate (`/candidate`)
 - **Component**: `CandidateDash.tsx`
@@ -232,6 +238,11 @@ npx serve dist
 
 | Resource | URL |
 |----------|-----|
-| **GitHub** | https://github.com/khoci280-arch/asj-astro |
-| **Netlify** | https://incredible-starship-054a78.netlify.app |
-| **Supabase** | https://supabase.com/dashboard/project/bimqyugdhiuxcqltjjnt |
+| **GitHub** | https://github.com/asjosdokumen-alt/asj-astro |
+| **Netlify** | https://asjastro.netlify.app |
+| **Supabase** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
+
+> Diperbarui 2026-09-26: ketiga URL di atas sebelumnya menunjuk repo/situs/proyek
+> yang sudah tidak dipakai (`khoci280-arch`, `incredible-starship-054a78`,
+> `bimqyugdhiuxcqltjjnt`). Sumber kebenaran selalu `git remote -v` dan
+> `netlify status`, bukan dokumen ini.

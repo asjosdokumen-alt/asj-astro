@@ -1,8 +1,24 @@
 > **Last updated:** 2026-09-03 — Technical reference document.
 
+> ## ⚠️ ANGKA DI DOKUMEN INI ADALAH SNAPSHOT 2026-09-03 — SUDAH BERGESER
+>
+> Diperiksa ulang **2026-09-26**. Struktur dan prinsipnya masih berlaku, tapi
+> **hitungannya tidak lagi**. Yang benar hari ini (diukur, bukan diturunkan):
+>
+> | Klaim di bawah | Nilai 2026-09-03 | Nilai 2026-09-26 |
+> |---|---|---|
+> | surfaces | 15 | **16** |
+> | bounded contexts | 14 | **15** |
+> | kernel files | 13 | **16** |
+> | tes | 235 | **1970** (167 berkas) |
+>
+> Jangan kutip angka dari dokumen ini. Ukur sendiri:
+> `ls netlify/functions/surfaces/`, `ls -d netlify/functions/contexts/*/`,
+> dan `npm test`.
+
 # ASJ Portal v2 — Backend Architecture
 
-> **✅ IMPLEMENTATION STATUS (2026-09-03)**
+> **✅ IMPLEMENTATION STATUS (2026-09-03 — lihat peringatan di atas)**
 > 
 > The target architecture described below has been **FULLY IMPLEMENTED**:
 > - ✅ 15 surfaces created (target was 8)
