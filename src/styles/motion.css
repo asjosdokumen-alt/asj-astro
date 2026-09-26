@@ -884,6 +884,26 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
    `overflow-x-clip` on <main> — `clip` is the tool that clips without
    making a scroll container, and here that property is load-bearing twice.
 
+   ── AND YET `hidden` IS DECLARED TOO, AS A FALLBACK ─────────────────
+   Not a contradiction. `overflow: clip` is not recognised by Safari ≤15, and
+   an unsupported VALUE is dropped at parse time — so there the frame would
+   fall back to `visible` and the over-sized photograph (`height: 114%; top:
+   -7%`) would spill ~7% past the rounded corner. So the frame needs a
+   `hidden` fallback for exactly those browsers.
+
+   IT MUST BE WRITTEN AS ITS OWN `@supports not (overflow: clip)` BLOCK, NOT
+   AS A SECOND DECLARATION IN `.u-drift-frame`. This is not style preference:
+   `lightningcss` collapses a duplicate property in one block and keeps only
+   the LAST one, so the two-declaration form ships with the fallback missing.
+   Measured on this toolchain — see the comment at the block itself, which
+   records the exact experiment. The `@supports` form survives the minifier
+   byte-identical.
+
+   The fallback cannot re-freeze the timeline, because in exactly those
+   browsers `animation-timeline: view()` is unsupported too — there is no
+   scroll timeline for a scroll container to pin. The two are only ever in
+   force apart, which is why the fallback is safe as well as necessary.
+
    ── THE OVER-SIZE, AND WHY IT IS 6% ────────────────────────────────
    A photograph drifting inside a fixed frame exposes an edge the moment it
    travels further than the slack around it. So the image is 114% of the
@@ -897,10 +917,12 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
    ── PROGRESSIVE ENHANCEMENT, NEVER A HALF-APPLIED LAYER ─────────────
    Everything that makes the banner MOVE lives inside `@supports
    (animation-timeline: view())`. Without support the frame still has its
-   `aspect-ratio` and its `overflow: clip`, and the image is still the same
-   photograph 7% larger on each side — the band renders as a still image,
-   which is the correct degradation. Only the rules that make it move are
-   inside the `@supports`; the rules that make it LOOK right are outside.
+   `aspect-ratio` and its `overflow: hidden`/`clip` pair, and the image is
+   still the same photograph 7% larger on each side — the band renders as a
+   still image, which is the correct degradation. Only the rules that make it
+   move are inside the `@supports`; the rules that make it LOOK right are
+   outside. That split is also why the fallback above belongs OUTSIDE the
+   `@supports`: clipping is a looks-right concern, not a moves concern.
    ------------------------------------------------------------------ */
 
 .u-drift-frame {
@@ -909,6 +931,33 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
      this is load-bearing for the timeline. */
   position: relative;
   overflow: clip;
+}
+
+/* THE FALLBACK FOR BROWSERS THAT DO NOT KNOW `overflow: clip` (Safari ≤15).
+   DO NOT FOLD THIS INTO THE RULE ABOVE — it would be deleted, silently.
+
+   Written as two declarations in one block —
+     `.u-drift-frame { overflow: hidden; overflow: clip; }`
+   — it looks correct in source and is NOT what ships: `lightningcss`
+   collapses the duplicate property and keeps only `overflow: clip`. Measured
+   on this toolchain with `minify: true` — and it does so even when handed
+   `targets: { safari: 15 }`, i.e. while being explicitly told the target
+   cannot parse `clip`. Two bare rules are merged the same way. The built
+   bytes then contain `clip` alone, so on Safari ≤15 the declaration is
+   dropped, the frame falls back to `visible`, and the over-sized image
+   (`height: 114%; top: -7%`) spills ~7% past the rounded corner: source
+   looks fixed, production is not.
+
+   A separate `@supports` block is the form that survives the minifier —
+   measured, it passes through byte-identical. It cannot re-freeze the
+   timeline: in exactly these browsers `animation-timeline: view()` is
+   unsupported too, so there is no scroll timeline for `hidden`'s scroll
+   container to pin. The two are only ever in force apart, which is why the
+   fallback is safe as well as necessary. */
+@supports not (overflow: clip) {
+  .u-drift-frame {
+    overflow: hidden;
+  }
 }
 
 .u-drift-frame > img {
