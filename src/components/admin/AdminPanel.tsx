@@ -19,6 +19,8 @@ import TabDbJob from './TabDbJob.tsx';
 import TabTambah from './TabTambah.tsx';
 import TabMail from './TabMail.tsx';
 import TabJadwal from './TabJadwal.tsx';
+import TabAgenda from './TabAgenda.tsx';
+import TabTugas from './TabTugas.tsx';
 import TabWA from './TabWA.tsx';
 import PemberkasanModal from "./PemberkasanModal";
 import UndanganKelasModal from "./UndanganKelasModal";
@@ -64,6 +66,14 @@ const TABS = [
   { id: 'jadwal',  icon: 'fa-calendar-alt', labelKey: 'admin.tab_schedule' },
   { id: 'mail',    icon: 'fa-envelope',     labelKey: 'admin.tab_mail' },
   { id: 'wa',      icon: 'fa-whatsapp',     labelKey: 'ui.wa_pintar' },
+  /* Appended 2026-09-26. These two were the dashboard header tiles — mounted
+     above EVERY tab, which is why the panel's top was always occupied and the
+     tab content started halfway down. They are now ordinary tabs. Appended
+     rather than inserted so the seven established entries keep their positions
+     and nobody's muscle memory moves; reorder freely if you'd rather they sit
+     next to `jadwal`. */
+  { id: 'agenda',  icon: 'fa-calendar-check', labelKey: 'admin.tab_agenda' },
+  { id: 'tugas',   icon: 'fa-tasks',          labelKey: 'admin.tab_tugas' },
 ] as const;
 
 /**
@@ -78,13 +88,6 @@ type Tab = (typeof TABS)[number]['id'] | (typeof PINNED_TABS)[number];
 const TAB_IDS: readonly string[] = [...TABS.map((t) => t.id), ...PINNED_TABS];
 
 const isTab = (v: string): v is Tab => TAB_IDS.includes(v);
-
-/** A row on the "Papan Tugas Tim" board — local, in-session state only. */
-interface TeamTask {
-  id: number;
-  text: string;
-  done: boolean;
-}
 
 /**
  * Read the tab from `location.hash`, falling back to the first tab. Used by both
@@ -114,12 +117,19 @@ export default function AdminPanel() {
     const onUndangan = () => undangan.show();
     const onMatchmaking = (e: Event) => matchmaking.show((e as CustomEvent).detail);
     const onPemberkasan = (e: Event) => { const d = (e as CustomEvent).detail; pemberkasan.show(d); };
+    /* Tab-to-tab navigation from inside a tab view. `TAB_VIEWS` maps every tab
+       to a PROP-LESS component (that typing is what stops a tab shipping
+       without a renderer), so a view cannot be handed `setActiveTab`. This is
+       the same custom-event channel the six listeners above already use.
+       Guarded by `isTab` so a bad detail cannot set a tab that has no view. */
+    const onGotoTab = (e: Event) => { const d = String((e as CustomEvent).detail || ''); if (isTab(d)) setActiveTab(d); };
     window.addEventListener('openAdminAiCopilot', onAiCopilot);
     window.addEventListener('openUndanganKelas', onUndangan);
     window.addEventListener('openPemberkasan', onPemberkasan);
       window.addEventListener('openMatchmaking', onMatchmaking);
     window.addEventListener('openCandidateEdit', onEdit);
     window.addEventListener('showCandidateHistory', onHistory);
+    window.addEventListener('adminGotoTab', onGotoTab);
     return () => {
       window.removeEventListener('openAdminAiCopilot', onAiCopilot);
       window.removeEventListener('openUndanganKelas', onUndangan);
@@ -127,6 +137,7 @@ export default function AdminPanel() {
       window.removeEventListener('openMatchmaking', onMatchmaking);
       window.removeEventListener('openCandidateEdit', onEdit);
       window.removeEventListener('showCandidateHistory', onHistory);
+      window.removeEventListener('adminGotoTab', onGotoTab);
     };
   }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -144,73 +155,19 @@ export default function AdminPanel() {
   const editModal = useModal<any>();
   const matchmaking = useModal<{job: any; candidates: any[]}>();
 
-  /* ─── Papan Tugas Tim (team task board) ────────────────────────────────
-     This card used to be inert: the input had no state binding, the + button
-     had no onClick, and #todo-list was never written to — a repo-wide grep for
-     todo-input / todo-list found no other writer in the tree, so the card
-     looked live and did nothing. Local component state is the intended scope:
-     the board is a scratchpad for the current admin session, and it is honest
-     about that rather than pretending to persist. NO network call, no DB table
-     and no Supabase write — a task does not survive a reload, by design. */
-  const [tasks, setTasks] = useState<TeamTask[]>([]);
-  const [taskDraft, setTaskDraft] = useState("");
-
-  function addTask() {
-    const text = taskDraft.trim();
-    if (!text) return; // an empty / whitespace-only draft is not a task
-    setTasks((prev) => [...prev, { id: Date.now() + prev.length, text, done: false }]);
-    setTaskDraft("");
-  }
-  function toggleTask(id: number) {
-    setTasks((prev) => prev.map((tk) => (tk.id === id ? { ...tk, done: !tk.done } : tk)));
-  }
-  function removeTask(id: number) {
-    setTasks((prev) => prev.filter((tk) => tk.id !== id));
-  }
+  /* Papan Tugas Tim moved out of this file on 2026-09-26 — it is now the
+     `tugas` tab (`TabTugas.tsx`) with its state in `store/adminTasks.ts`. It
+     had to become a store rather than stay component state: a tab unmounts when
+     the admin switches away, which would have dropped every task. */
 
   return (
     <div class="space-y-6">
 
-      <div class="u-grid-auto u-grid-auto--wide gap-4">
-        {/* KIRI: AGENDA HARIAN */}
-        <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-lg flex flex-col h-full min-h-[300px]">
-          <div class="flex justify-between items-center mb-3">
-            {/* h2, not h3: this card is a sibling of the tab content, whose headings are all
-               h2 — as h3 the page outline skipped 1 -> 3 and the h2 came last (measured §24). */}
-            <h2 class="text-sm font-bold text-white"><Icon name="calendar-check" class="text-amber-400 mr-2" /> <span data-lang="ui.agenda_recent">{t('ui.agenda_recent')}</span></h2>
-            <span class="text-xs bg-amber-900/40 text-amber-400 px-2 py-1 rounded-md font-bold" id="dash-admin-name">Admin</span>
-          </div>
-          <div id="dash-agenda-list" class="flex-1 u-scroll-area custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '200px' }}>
-            <p class="text-xs text-slate-500">{t('ui.schedule_empty')}</p>
-          </div>
-          <button onClick={() => setActiveTab('jadwal')} class="min-h-11 mt-3 text-xs text-amber-400 font-bold hover:text-amber-300 hover:bg-black/50 w-full text-center py-2 bg-black/30 rounded-lg transition border border-slate-800">
-            {t('ui.open_schedule')} <Icon name="arrow-right" class="ml-1" />
-          </button>
-        </div>
-        {/* KANAN: PAPAN TUGAS TIM */}
-        <div class="bg-slate-900 border border-slate-700 p-4 rounded-xl shadow-lg flex flex-col h-full min-h-[300px]">
-          {/* h2, not h3: sibling of the tab content — see the note on the agenda card above. */}
-          <h2 class="text-sm font-bold text-white mb-3"><Icon name="tasks" class="text-pink-400 mr-2" /> <span data-lang="admin.task_board">{t('admin.task_board')}</span></h2>
-          <div class="flex gap-2 mb-3">
-            <input type="text" id="todo-input" value={taskDraft} onInput={(e) => setTaskDraft((e.target as HTMLInputElement).value)} onKeyDown={(e) => { if (e.key === 'Enter') addTask(); }} class="min-h-11 flex-1 bg-black p-2.5 rounded-lg text-sm text-white border border-slate-600 outline-none focus:border-pink-500 transition" placeholder={t('admin.task_placeholder')} aria-label={t('admin.task_placeholder')} />
-            <button type="button" onClick={addTask} class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition shadow-lg" aria-label={t('button.add')}><Icon name="plus" /></button>
-          </div>
-          <div id="todo-list" class="flex-1 u-scroll-area custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '190px' }}>
-            {tasks.length === 0 && (
-              <p class="text-xs text-slate-500">{t('admin.task_empty')}</p>
-            )}
-            {tasks.map((task) => (
-              <div key={task.id} class="flex items-center gap-2 bg-black/40 border border-slate-700 rounded-lg px-3 py-2">
-                <input type="checkbox" checked={task.done} onChange={() => toggleTask(task.id)} aria-label={t('admin.task_done')} class="accent-pink-500 shrink-0" />
-                <span class={"flex-1 min-w-0 break-words text-sm " + (task.done ? "line-through text-slate-500" : "text-white")}>{task.text}</span>
-                <button type="button" onClick={() => removeTask(task.id)} aria-label={t('button.delete')} class="text-slate-400 hover:text-red-400 transition shrink-0"><Icon name="times" /></button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* The dashboard header (Agenda + Papan Tugas) used to sit here, mounted
+          above EVERY tab. Both tiles are now ordinary sidebar tabs — `agenda`
+          and `tugas` — so the panel's top is free and the tab content starts at
+          the top of the page. Removed 2026-09-26 at the owner's request. */}
 
-      
       <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: 30 }} class="min-h-11 sticky top-2 ml-1 mb-2 px-3 py-1.5 inline-flex items-center bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-colors duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
         <Icon name="bars" /> {t("ui.menu")}
       </button>
@@ -300,6 +257,8 @@ const TAB_VIEWS: Record<Tab, FunctionComponent> = {
   tambah:  () => <TabTambah />,
   dbjob:   () => <TabDbJob />,
   wa:      () => <TabWA />,
+  agenda:  () => <TabAgenda />,
+  tugas:   () => <TabTugas />,
   config:  () => <TabConfig />,
 };
 

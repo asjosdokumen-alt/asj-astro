@@ -441,6 +441,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.tab_internal_db": "DB Job Internal",
     "admin.tab_add_job": "Tambah Job",
     "admin.tab_schedule": "Jadwal Agenda",
+    /* Sidebar labels for the two tabs that replaced the dashboard header tiles
+       (2026-09-26). Short on purpose: the sidebar is w-64 and the longer
+       existing strings ("Agenda & Jadwal Terdekat", "Papan Tugas Tim") wrap. */
+    "admin.tab_agenda": "Agenda",
+    "admin.tab_tugas": "Papan Tugas",
     "admin.new_schedule": "Buat Jadwal",
     "admin.save_schedule": "Simpan Jadwal",
     "admin.schedule_waktu": "WAKTU (TGL & JAM)",

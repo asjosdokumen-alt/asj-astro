@@ -429,6 +429,8 @@ export const jpTranslations: Record<string, string> = {
     "admin.tab_internal_db": "DB求人（内部）",
     "admin.tab_add_job": "求人追加",
     "admin.tab_schedule": "スケジュール",
+    "admin.tab_agenda": "予定",
+    "admin.tab_tugas": "タスクボード",
     "admin.new_schedule": "スケジュール作成",
     "admin.save_schedule": "スケジュールを保存",
     "admin.schedule_waktu": "日時（日付＆時刻）",
