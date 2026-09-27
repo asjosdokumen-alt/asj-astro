@@ -435,9 +435,20 @@ html[data-theme="light"] {
     #7a2350 66%,
     #b0305f 100%
   );
+  /* 0.26 -> 0.22, measured 2026-09-27. The hero headline's contrast against
+     this bloom was UNSTABLE across runs at 0.26: three runs gave a minimum
+     of 2.62 / 3.45 / 2.24 against the 3.0 floor for large text. The minimum
+     is set by a handful of pixels over the brightest point of the artwork,
+     so it moves every render — which is exactly why it has to be measured
+     repeatedly rather than once. At 0.22 all three runs give 3.66 (a stable
+     +22% headroom) while the bloom still visibly changes 23.7% of the band's
+     pixels. 0.18 was tried and is worse on BOTH counts: its worst run is
+     2.92 (touching the floor) and the bloom drops to 16% of pixels.
+     This is margin work, not a fix for a failure: the median was 4.88 and
+     already passed AA-large. */
   --hero-glow: radial-gradient(
     ellipse 70% 60% at 72% 42%,
-    rgba(255, 186, 214, 0.26) 0%,
+    rgba(255, 186, 214, 0.22) 0%,
     transparent 72%
   );
   --footer-gradient: linear-gradient(180deg, #fff7fa 0%, #fdeef4 100%);
