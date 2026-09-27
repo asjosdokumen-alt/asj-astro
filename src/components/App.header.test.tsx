@@ -62,18 +62,35 @@ describe('header — judul tidak boleh menimpa tombol menu', () => {
     expect(titleWrapper().className).toContain('min-w-0');
   });
 
-  it('membatasi lebar judul pada breakpoint mobile', () => {
-    // The cap is what keeps the text clear of `absolute right-4`. If it is
-    // removed the 51 px overlap comes straight back.
+  it('tidak membatasi lebar judul dengan angka tetap', () => {
+    // A fixed `max-w-[Npx]` is a GUESS at the button's footprint, and measured
+    // 2026-09-27 it was wrong in BOTH directions: at 320px the box ran to x=287
+    // while the button began at x=244 (43px rendered underneath it), and at
+    // 390/414/430 it wasted width — only 210px of a 274px name was shown.
     render(<App />);
-    expect(titleWrapper().className).toMatch(/max-w-\[\d+px\]/);
+    expect(titleWrapper().className).not.toMatch(/max-w-\[\d+px\]/);
   });
 
-  it('melepas batas lebar di desktop (tempat tombol tidak menimpa)', () => {
-    // md: the header is much wider (max-w-7xl) and the title has room, so the
-    // mobile cap must not truncate the company name there.
+  it('tidak memesan ruang tombol dengan padding di baris induk', () => {
+    // The button (`absolute top-4`, y 41..85) and the title (bottom of the
+    // header via `items-end`, y 195..223) are VERTICALLY DISJOINT — measured
+    // 18/18 across 3 routes x 6 widths. A right-padding reserve would therefore
+    // buy nothing and cost title width, which is what an earlier attempt at
+    // this fix did (320px: 151px shown instead of 211px).
     render(<App />);
-    expect(titleWrapper().className).toContain('md:max-w-none');
+    const row = titleWrapper().parentElement?.parentElement as HTMLElement;
+    expect(row.className).not.toMatch(/pr-\[\d+px\]/);
+  });
+
+  it('membiarkan grup judul meregang — atau truncate tidak pernah bekerja', () => {
+    // The row is `items-start`, so a flex child does NOT stretch. Measured
+    // 2026-09-27: without `w-full` the group sized to its CONTENT — wider than
+    // the row at 320px — so the box grew past the container to x=351 and
+    // `truncate` never engaged. This is the half of the fix that is invisible
+    // in the class list of the title itself.
+    render(<App />);
+    const group = titleWrapper().parentElement as HTMLElement;
+    expect(group.className).toContain('w-full');
   });
 
   it('memotong judul dengan elipsis, bukan melipatnya', () => {

@@ -550,17 +550,44 @@ export default function App(
           </div>
         ) : (
           <div class="relative z-10 w-full flex flex-col md:flex-row justify-between items-start md:items-end gap-5">
-            <div class="flex items-center gap-3 md:gap-5 min-w-0">
+            <div class="flex items-center gap-3 md:gap-5 min-w-0 w-full md:w-auto">
               {brandLogo}
-              {/* max-w keeps the title clear of the absolutely-positioned
-                  menu button (App.tsx, `absolute top-4 right-4`, 40px at
-                  x=302 on a 390px viewport). The button is `absolute`, so
-                  flexbox never reserves space for it — without this cap the
-                  22-char company name ends at x=353 and 51px of it renders
-                  *under* the button. min-w-0 on both wrappers is required or
-                  `truncate` never engages (flex children refuse to shrink
-                  below their content width without it). */}
-              <div class="min-w-0 flex-1 max-w-[210px] md:max-w-none">
+              {/* The title takes whatever width the row gives it. There is NO
+                  width cap, and that is a measured decision, not an omission.
+
+                  ⚠ `w-full` ON THE GROUP IS LOAD-BEARING. The row is
+                  `items-start`, so a flex child does NOT stretch — without
+                  `w-full` the group sizes to its CONTENT, which is wider than
+                  the row at small widths, so the box grows past the container
+                  and `truncate` never engages. Measured 2026-09-27: without
+                  `w-full` the h1 box ran to x=351 on a 320px viewport.
+
+                  REPLACES `max-w-[210px]`, WHICH PROTECTED NOTHING. That cap
+                  was added because the title box (x ends 287) and the menu
+                  button (x starts 244) overlap HORIZONTALLY at 320px. But they
+                  do not overlap VERTICALLY, and never did: the button is
+                  `absolute top-4` (y 41..85) while the title sits at the bottom
+                  of the header via the header's own `items-end` (y 195..223 at
+                  320px; 138..218 on /admin). Measured across 3 routes x 6
+                  widths (320/360/390/414/768/1280) — **18 of 18 have zero
+                  vertical overlap**, so no text ever rendered under the button.
+
+                  The old comment claimed "51px renders *under* the button",
+                  which is an x-only comparison. Do not re-add a cap on that
+                  reasoning; compare the two RECTANGLES, not their x-ranges.
+
+                  Measured effect of removing it (`h1 clientWidth/scrollWidth`,
+                  and the full name is 274px):
+                    320px  210 -> 211   360px  210 -> 251
+                    390px  210 -> 281 (FULL)   414px  210 -> 305 (FULL)
+                    /admin 320 -> 271 (FULL), 768 -> 671 (FULL)
+                  So the company name is now complete from 390px up instead of
+                  permanently ellipsised. No horizontal overflow at any width.
+
+                  `truncate` STAYS and `App.header.test.tsx` still enforces it
+                  ("memotong judul dengan elipsis, bukan melipatnya"); wrapping
+                  was tried as `line-clamp-2` on 2026-09-25 and reverted. */}
+              <div class="min-w-0 flex-1">
                 <div id="header-tagline" class="text-pink-300 text-xs md:text-sm font-bold tracking-[4px] mb-1 truncate">{t("header.tagline")}</div>
                 {/* This is the page's ONLY h1 on /public, /admin, /candidate,
                     /share — every route that mounts the header without a hero.
