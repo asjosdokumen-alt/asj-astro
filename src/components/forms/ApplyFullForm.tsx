@@ -495,7 +495,18 @@ export default function ApplyFullForm() {
         </div>
       </main>
 
-      {/* Sticky Nav */}
+      {/* Sticky Nav — `from-pink-600`, NOT `from-pink-500` (measured 2026-09-27).
+          The step CTA below is a gradient, so it falls BETWEEN §5c and §5d of
+          global.css: §5c re-lights solid `.bg-*` accent blocks and §5d covers
+          the three named bands, and a `bg-gradient-to-r` button is neither. §5b
+          therefore won and flipped `.text-white` to `#1f1d1c` in light mode.
+          MEASURED on the built artifact, light theme, /apply:
+            from-pink-500 → §5b colour rgb(31,29,28) on the gradient = 3.49:1 FAIL
+          `from-pink-600` plus the new §5c-gradient rule in global.css fixes it
+          from BOTH sides, and neither half is sufficient alone: white on the
+          OLD lightest stop (`pink-500` #ec4899) is only 3.53:1, still a fail.
+          After the change the worst-case bound is the lightest stop itself —
+          `pink-600` → 4.54:1, above the 4.5 floor, measured pixel 5.08:1. */}
       <div class="fixed bottom-0 left-0 w-full bg-[rgba(2,6,23,.95)] backdrop-blur-xl border-t border-slate-800 p-[15px_20px] z-50 flex justify-between gap-4">
         {step > 1 && (
           <button onClick={() => changeStep(-1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 border-none cursor-pointer">
@@ -507,12 +518,12 @@ export default function ApplyFullForm() {
           <Icon name="save" /> Draft
         </button>
         {step < 3 && (
-          <button onClick={() => changeStep(1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-500 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer">
+          <button onClick={() => changeStep(1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-600 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer">
             Lanjut <Icon name="chevron-right" />
           </button>
         )}
         {step === 3 && (
-          <button onClick={submitApply} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-500 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <button onClick={submitApply} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-600 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             <Icon name="paper-plane" /> KIRIM LAMARAN
           </button>
         )}

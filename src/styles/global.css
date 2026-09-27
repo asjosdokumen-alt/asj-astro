@@ -975,6 +975,58 @@ body {
 ) { color: #fff; }
 
 
+/* SATURATED GRADIENT ACCENT BLOCKS ALSO KEEP WHITE TEXT.
+   WHY THIS IS SEPARATE FROM §5c ABOVE, MEASURED 2026-09-27.
+   §5c matches solid `.bg-*` utilities, because that is where a solid accent
+   block puts its colour — on `background-color`. A gradient block puts its
+   colour on `background-image` instead (`bg-gradient-to-r from-pink-500 …`),
+   so NONE of §5c's selectors match it, and §5d only covers the three named
+   BANDS (`.hero-gradient`, `.footer-gradient`, `.artwork-band`). A gradient
+   accent button therefore falls BETWEEN §5c and §5d: §5c's intent applies to
+   it, §5c's selector does not, and §5b's `.text-white → #1f1d1c` wins by
+   default.
+
+   MEASURED (2026-09-27, `/apply` light theme, 1280x900, built `dist/` served
+   by `server.cjs`; text masked with `color:transparent` so the glyph pixel's
+   own backdrop is read):
+     button "Lanjut"  bg-gradient-to-r from-pink-500 to-pink-700 text-white
+       15px/800 → floor 4.5
+       §5b colour rgb(31,29,28) on the gradient → **3.49:1**  FAIL
+     The same button in DARK theme measured 4.51:1 — a 0.2% margin, which is
+     inside measurement error, so white is not a comfortable answer either.
+
+   ⚠ KEEPING WHITE ALONE WOULD NOT HAVE FIXED IT. White on the LIGHTEST stop
+   (`pink-500`, #ec4899) is **3.53:1** — still below the floor. The gradient
+   pair is only as good as its lightest stop, and `pink-500` is the single
+   out-of-family stop in this palette: pink-600 is 4.60:1 and pink-700 is
+   6.04:1. So this rule and the `from-pink-500 → from-pink-600` change in the
+   two buttons are ONE fix, not two: the rule picks the right text colour and
+   the markup change moves the gradient under it. Applying either alone still
+   fails.
+
+   WHY `:is()` NOT `:where()` HERE — same reason §5c records: `:where`
+   contributes zero specificity, so this rule would be (0,1,0) and could lose
+   to a later utility; `:is()` keeps it at (0,1,0) as a class-level match and
+   source order (below §5b) decides. Same specificity as §5b's text rules, so
+   it MUST stay after them. */
+:where([data-theme="light"]) :is(
+  .from-pink-600, .from-pink-700, .from-pink-800,
+  .from-rose-600, .from-rose-700, .from-rose-800,
+  .from-fuchsia-600, .from-fuchsia-700, .from-fuchsia-800,
+  .from-red-600, .from-red-700,
+  .from-emerald-600, .from-emerald-700,
+  .from-sky-600, .from-sky-700,
+  .from-violet-600, .from-violet-700,
+  .from-purple-600, .from-purple-700,
+  .from-indigo-600, .from-indigo-700,
+  .from-blue-600, .from-blue-700,
+  .from-green-600, .from-green-700,
+  .from-amber-600, .from-amber-700
+) {
+  color: #fff;
+}
+
+
 /* `.bg-slate-700` USED to be in the list above, and that was a contradiction:
    §5b remaps `bg-slate-700` to #e7e0e1 — a LIGHT surface — while this rule
    then forced #fff text onto it. MEASURED: the "Terlama" / "Terbanyak" sort
