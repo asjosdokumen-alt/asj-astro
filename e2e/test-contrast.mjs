@@ -335,7 +335,7 @@ for (const theme of THEMES) {
         continue;
       }
       // Let hydration + the async data settle.
-      await page.evaluate(() => document.fonts && document.fonts.ready).catch(() => {});
+      await page.evaluate(() => document.fonts?.ready).catch(() => {});
       await page.waitForTimeout(1200);
       for (const sel of [waitFor, alsoWaitFor]) {
         if (!sel) continue;
