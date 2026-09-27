@@ -382,11 +382,40 @@ body {
 :where([data-theme="light"]) .bg-\[\#0b1220\] {
   background-color: #ffffffeb;          /* matches --color-surface */
 }
+/* `/40` WAS MISSING from this family until 2026-09-27, and it was a real
+   defect — reported from a screenshot of the AI-CV editor in light mode.
+   The `bg-slate-900` family directly above has always listed `/40`; this one
+   listed `/50`, `/60`, `/80`, `/30` and silently skipped `/40`. The asymmetry
+   is the whole bug: nothing about `/40` is special, it was simply the one
+   alpha nobody typed into the list.
+
+   WHAT IT LOOKED LIKE, and why it was hard to name. The surface stayed DARK
+   (the shim did not match) while §5b flipped every text class inside it to its
+   light-mode value — so the labels went near-black on a near-black panel. In
+   `AiCvForm` that is `RepeaterRow` (the PENDIDIKAN / PEKERJAAN / KELUARGA (KK)
+   rows) and the AI-suggestion panel, which is why the education/work/family
+   blocks read as washed-out grey boxes with barely-visible values while the
+   surrounding sections looked fine. It presented as "data not loading", not as
+   a theme bug, because the fields were present and merely unreadable.
+
+   3 call sites, all measured before the fix (light theme, floors 4.5:1 body /
+   3.0:1 large) — each one a text run on a `bg-slate-800/40` panel:
+     AiCvForm.tsx:1361  RepeaterRow        labels + field values  < 2:1
+     AiCvForm.tsx:1075  AI-suggestion box  hint text              < 2:1
+     App.tsx:745        drawer header      title                   < 2:1
+   SHIMMED rather than migrating the three call sites to `bg-surface-raised`:
+   the other five alphas of this same family are already handled here, so
+   adding the sixth is one line and keeps every `bg-slate-800/nn` in one place.
+   A partial migration would leave `/40` as the odd one out again.
+   `/30` was also reordered to sit next to its siblings; the list order has no
+   effect on matching, only on whether the next alpha is easy to spot as
+   missing — which is exactly the failure this comment is about. */
 :where([data-theme="light"]) .bg-slate-800,
+:where([data-theme="light"]) .bg-slate-800\/30,
+:where([data-theme="light"]) .bg-slate-800\/40,
 :where([data-theme="light"]) .bg-slate-800\/50,
 :where([data-theme="light"]) .bg-slate-800\/60,
-:where([data-theme="light"]) .bg-slate-800\/80,
-:where([data-theme="light"]) .bg-slate-800\/30 {
+:where([data-theme="light"]) .bg-slate-800\/80 {
   background-color: #f3eff3f2;          /* matches --color-surface-raised */
 }
 :where([data-theme="light"]) .bg-slate-700 {
@@ -406,6 +435,27 @@ body {
 :where([data-theme="light"]) .text-white { color: #1f1d1c; }
 :where([data-theme="light"]) .text-slate-100 { color: #1f1d1c; }
 :where([data-theme="light"]) .text-slate-200 { color: #1f1d1c; }
+/* `text-[#e2e8f0]` IS `text-slate-200`, and only the utility spelling was
+   shimmed. Found 2026-09-27 from the same screenshot set as the `bg-slate-800/40`
+   defect above: the AI-CV editor's field labels were invisible in light mode.
+
+   The rule one line up already maps slate-200 to `#1f1d1c`. But the arbitrary
+   form `text-[#e2e8f0]` compiles to `.text-\[\#e2e8f0\]` — a DIFFERENT class —
+   so it never matched, and the near-white value survived onto a near-white
+   panel. 75 of the 87 labels on /ai-cv measured **1.09:1** (floor 4.5:1).
+
+   This is the general trap, not an AiCvForm quirk: §5b matches on the CLASS
+   STRING, and `text-slate-200` and `text-[#e2e8f0]` are semantically identical
+   but textually different, so shimming one does nothing for the other. Any
+   hand-written hex that duplicates a Tailwind rung needs its own entry.
+
+   All 8 call sites are in `AiCvForm.tsx` (1383, 1438, 1480, 1519, 1654, 1758,
+   1795, 1814) on the shared field-label wrapper, which is why one class
+   accounted for almost every label on the page. SHIMMED rather than rewriting
+   the eight to `text-slate-200`: the two spellings must stay in lock-step, and
+   a shim keeps them so for every future copy-paste of this label. Same value as
+   the line above — because it is the same colour. */
+:where([data-theme="light"]) .text-\[\#e2e8f0\] { color: #1f1d1c; }
 :where([data-theme="light"]) .text-slate-300 { color: #4a4642; }
 :where([data-theme="light"]) .text-slate-400 { color: #5d5853; }
 :where([data-theme="light"]) .text-slate-500 { color: #6b6661; }
