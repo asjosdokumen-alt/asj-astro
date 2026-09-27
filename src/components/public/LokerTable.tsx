@@ -276,7 +276,24 @@ export default function LokerTable() {
                 </td>
                 <td data-label={t("table.action")} class="rt-full p-1 align-top w-20">
                   <div class="flex flex-row gap-1 items-center justify-center">
-                    <button onClick={() => setSelectedJob(job)} class="min-h-11 px-2 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[11px] font-black border border-amber-500/50" title={t("button.detail")}><Icon name="eye" /> <span class="hidden sm:inline">{t("button.detail")}</span></button>
+                    {/* ⚠ `text-slate-950` HERE WAS A WCAG FAILURE, AND IT WAS THE TEXT
+                        COLOUR'S FAULT, NOT THE AMBER'S.
+                        `bg-amber-500` is remapped to #b45309 in BOTH themes by the
+                        `:where(html) .bg-amber-500` rule in global.css §10, because
+                        Tailwind's own amber-500 (#f59e0b) is only 3.20:1 against WHITE
+                        text — which is what the ~15 other amber call sites use. This
+                        was the ONE amber chip pairing it with dark text, so the
+                        darkened surface left near-black on #b45309.
+                        MEASURED (e2e/test-contrast.mjs, 1280px, /loker AND /public,
+                        BOTH themes): text-slate-950 on #b45309 = 4.01:1 (needs 4.5).
+                        MEASURED after (text-white): #ffffff on #b45309 = 5.02:1.
+                        The chip is ALREADY a dark amber in both states — `bg-amber-500`
+                        and its `hover:bg-amber-400` are both overridden by the
+                        unlayered §10 rule (base #b45309, hover #92400e, 7.2:1 with
+                        white) — so white is the pairing the surface was darkened for,
+                        and it makes this button match its two siblings (Format on
+                        sky-600, Lamar on emerald-600), which are white-on-accent too. */}
+                    <button onClick={() => setSelectedJob(job)} class="min-h-11 px-2 py-1.5 bg-amber-500 hover:bg-amber-400 text-white rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[11px] font-black border border-amber-500/50" title={t("button.detail")}><Icon name="eye" /> <span class="hidden sm:inline">{t("button.detail")}</span></button>
                     {job.templateCv && job.templateCv !== "-" && (
                       <a href={job.templateCv} target="_blank" class="inline-flex items-center justify-center min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[11px] font-bold border border-sky-500/50"><Icon name="download" /> <span class="hidden sm:inline">{t("button.format")}</span></a>
                     )}

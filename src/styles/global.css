@@ -1486,6 +1486,27 @@ textarea:focus-visible,
   color: #ffffff;
 }
 
+/* ── The announcement marquee's copy, on its SOLID rose band ─────────────
+   `public.astro` puts the copy inside a `bg-rose-700` band, and the colour
+   request (`text-white`) is on a CHILD — `.marquee-content` — not on the band
+   element. Rose is not a slate class and `bg-rose-700` is NOT in the §5c list
+   above, so §5b/§5c had no reason to touch the band, but §5c DID flip the
+   child's `text-white` to near-black: near-black on a dark rose surface.
+   MEASURED (e2e/test-contrast.mjs, light theme, /public, 390 AND 1280px):
+     `.marquee-item`  #1f1d1c on rgb(199,0,54)  = 2.78:1   (needs 4.5)  ← FAIL
+   The band is a solid accent, so its copy is the "white-on-solid-accent" case
+   the §5c list above already encodes for OTHER families — but that rule needs
+   `[class*="text-white"]` on the SAME element as the background, which is why
+   it cannot reach a descendant. A descendant selector is the honest shape here.
+   MEASURED after: #ffffff on rgb(199,0,54) = 6.03:1.
+   Holds in BOTH motion states: motion.css's `prefers-reduced-motion` block only
+   hides the DUPLICATE item and zeroes its padding — the surviving item is still
+   a `.marquee-item` inside `.marquee-content` inside `.bg-rose-700`, so it
+   inherits this colour unchanged. */
+:where([data-theme="light"]) .bg-rose-700 :is(.marquee-content, .marquee-item) {
+  color: #ffffff;
+}
+
 
 /* ─── 11. Dark-mode `slate-500` is unreadable as body copy
    MEASURED (Playwright, /admin, dark):
