@@ -117,6 +117,29 @@ const server = http.createServer((req, res) => {
     else filePath = path.join(DIST, 'index.html'); // SPA fallback
   }
 
+  // ── A MISSING FILE MUST NOT KILL THE SERVER ──────────────────────────
+  // MEASURED 2026-09-27: `astro build` CLEARS `dist/` before it writes the new
+  // files, and a request landing in that window used to crash the whole
+  // process with an unhandled `ENOENT` from the stream below. It happened
+  // twice in one morning — the preview died every time anything rebuilt, and
+  // the symptom ("connection refused", `curl` exit 7) looks exactly like the
+  // server was never started.
+  //
+  // The SPA fallback on line 117 makes it worse: it points at
+  // `dist/index.html` WITHOUT checking that file exists, so during a build
+  // even a perfectly valid URL resolves to a path that is gone.
+  //
+  // Answer 404 and stay up. `no-store` because the next request should get
+  // the freshly built file, not this refusal.
+  if (!fs.existsSync(filePath)) {
+    res.writeHead(404, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+    });
+    res.end('404 — belum ada di dist/. Kalau baru saja ada build berjalan, coba lagi sebentar lagi.\n');
+    return;
+  }
+
   const ext = path.extname(filePath);
   const contentType = MIME[ext] || 'application/octet-stream';
   const cacheControl = ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable';
@@ -125,7 +148,19 @@ const server = http.createServer((req, res) => {
     'Content-Type': contentType,
     'Cache-Control': cacheControl,
   });
-  fs.createReadStream(filePath).pipe(res);
+
+  // The existence check above cannot be atomic with the open: the file can
+  // still vanish in between. Without this listener that race is an unhandled
+  // 'error' event on the stream, which terminates the process — the same
+  // crash by a narrower door.
+  const stream = fs.createReadStream(filePath);
+  stream.on('error', () => {
+    // Headers are already sent, so the only honest move is to cut the
+    // response short rather than pretend it completed.
+    if (!res.headersSent) res.writeHead(500);
+    res.destroy();
+  });
+  stream.pipe(res);
 });
 
 (async () => {
