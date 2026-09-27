@@ -50,9 +50,13 @@
       tidak ada tumpang tindih vertikal**. Jadi cap itu tidak melindungi apa pun.
       Jangan tambahkan cap lagi berdasarkan alasan itu — bandingkan dua
       **persegi panjang**, bukan rentang x-nya.
-- [ ] **Dropdown `ComboSelect` di `/ai-cv` dibatasi 50 item** (`matches.slice(0,50)`)
-      sementara CV Master menampilkan semua. Bisa dicari dengan mengetik, tapi
-      daftar kosong terlihat lebih pendek daripada CV Master.
+- [x] ~~**Dropdown `ComboSelect` di `/ai-cv` dibatasi 50 item**~~ → **SELESAI
+      2026-09-27** (commit `40a2fba`). `PEKERJAAN` berisi **100 entri** (25 legacy
+      + 75 tambahan, diverifikasi saat runtime), jadi cap itu menyembunyikan
+      separuh pilihan yang **tidak bisa dijangkau dengan scroll sama sekali**.
+      Cap dibuang; kini 100 opsi dirender dan entri terakhir terjangkau.
+      Sengaja **tidak** ditambah penanda "menampilkan N dari M" — beralasan,
+      lihat pesan commit.
 
 ---
 
