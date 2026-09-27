@@ -41,10 +41,15 @@
       empty-state hardcoded ("Jadwal akan dimuat dari backend."); tidak ada penulis
       untuk id itu di seluruh repo. Tab `Agenda` karenanya tampil kosong sampai
       disambungkan ke data jadwal sungguhan.
-- [ ] **`/loker` judul perusahaan terpotong** jadi "PT AMANAH SAKUR…". Penyebabnya
-      cap `max-w-[210px]` yang selalu lebih sempit dari teksnya (terukur: kotak
-      210px vs teks 274px, jadi 64px terpotong di SEMUA lebar 320–414). Perlu cap
-      responsif; `truncate` sendiri sudah benar untuk melindungi tombol menu.
+- [x] ~~**`/loker` judul perusahaan terpotong**~~ → **SELESAI 2026-09-27**
+      (commit `672d2f1`). Cap `max-w-[210px]` dibuang; nama perusahaan kini
+      **utuh dari 390px** ke atas (sebelumnya selalu terpotong di 210px).
+      ⚠ **Premis catatan lama ini salah.** Ia bilang cap itu "melindungi tombol
+      menu" — padahal perbandingannya hanya rentang **x**. Tombol ada di
+      `y 41..85` dan judul di `y 195..223`: diukur 3 rute × 6 lebar, **18/18
+      tidak ada tumpang tindih vertikal**. Jadi cap itu tidak melindungi apa pun.
+      Jangan tambahkan cap lagi berdasarkan alasan itu — bandingkan dua
+      **persegi panjang**, bukan rentang x-nya.
 - [ ] **Dropdown `ComboSelect` di `/ai-cv` dibatasi 50 item** (`matches.slice(0,50)`)
       sementara CV Master menampilkan semua. Bisa dicari dengan mengetik, tapi
       daftar kosong terlihat lebih pendek daripada CV Master.
