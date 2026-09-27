@@ -67,6 +67,17 @@
  *      confirmation is what keeps that honest.
  *   3. Hover / focus / disabled states are NOT measured. Only the resting state.
  *   4. Only these six routes. The admin modals are not covered.
+ *   5. THE DATA-DRIVEN PARTS RUN ON A FIXTURE, NOT THE REAL BACKEND. The job
+ *      rows (and therefore the amber action button) and the marquee both come
+ *      from ONE POST to `/.netlify/functions/get-app-data`; the gate serves that
+ *      call from a synthetic payload (`PUBLIC_DATA_FIXTURE`), so the data-driven
+ *      parts render deterministically EVERYWHERE — including CI's `astro
+ *      preview`, which has no functions backend at all. What must be real is the
+ *      markup and the CSS, and both are untouched: this gate judges colours, not
+ *      data. If the fixture ever stops matching the page (the URL moves, the
+ *      island stops fetching), the rows and the marquee vanish and the gate
+ *      FAILS with a "COVERAGE GAPS" block naming exactly what it did not
+ *      measure, rather than reporting a clean pass for elements it never saw.
  *
  * ── STRICTNESS: STRICT, NOT A RATCHET ───────────────────────────────────────
  *   This gate fails on ANY measured miss. It is not ratcheted against a recorded
@@ -85,26 +96,35 @@ const BASE = process.env.BASE_URL || 'http://localhost:4321';
 const REPORT_ONLY = process.argv.includes('--report-only');
 
 /**
+ * The job-row selector, named once. It is referenced from three places — the two
+ * route waits below and the stabilisation step in the run loop — so it is
+ * declared BEFORE `ROUTES`: `ROUTES` is evaluated at module load, and a later
+ * `const` would be in its temporal dead zone.
+ */
+const ROWS = 'table tbody tr';
+
+/**
  * The routes the audit measured. `/ai-cv`, `/apply` and `/siswa-baru` gate on the
  * auth STORE, so they need a fabricated session or they render a login gate with
  * none of the form's colours (the same reason `test-labels.mjs` fabricates one).
  */
 const ROUTES = [
   { path: '/', session: null },
-  // The job rows are `client:only` and arrive from the backend, so the amber
-  // action button this gate exists to catch does not exist until a row renders.
-  // Waiting for a row is what stops a slow backend from turning into a silent
-  // "no rows, no buttons, clean pass".
-  { path: '/loker', session: null, waitFor: 'table tbody tr' },
-  // The rose announcement marquee ships `hidden` and is unhidden only after
-  // `getPublicData()` resolves, so without this wait a slow backend would make
-  // the gate measure a page with the marquee absent and report a clean pass for
-  // an element it never saw. `waitFor` is asserted per route below.
+  // The job rows are `client:only` and arrive from the intercepted
+  // `get-app-data` call (PUBLIC_DATA_FIXTURE), so the amber action button this
+  // gate exists to catch does not exist until a row renders. `waitFor` is
+  // ASSERTED below: a row that never appears is a FAILURE, not a note, because
+  // with the fixture the data cannot be the reason it is missing.
+  { path: '/loker', session: null, waitFor: ROWS },
+  // The rose announcement marquee ships `hidden` and is unhidden only after the
+  // same call resolves, so it needs its own wait or the gate would measure a
+  // page with the marquee absent and report a clean pass for an element it never
+  // saw. `alsoWaitFor` covers the rows the amber button lives in.
   {
     path: '/public',
     session: null,
     waitFor: '#global-announcement:not([hidden])',
-    alsoWaitFor: 'table tbody tr',
+    alsoWaitFor: ROWS,
   },
   { path: '/ai-cv', session: 'kandidat' },
   { path: '/apply', session: 'kandidat' },
@@ -132,6 +152,69 @@ function authFor(role) {
     lastChecked: Date.now(),
   });
 }
+
+/**
+ * A SYNTHETIC `getAppData` payload, so this gate is HERMETIC.
+ *
+ * WHY. The marquee (`pengumuman`) and every LokerTable row — including the amber
+ * action button this gate exists to catch — exist only AFTER
+ * `/.netlify/functions/get-app-data` resolves. Against a live backend that is
+ * fine; against `astro preview` in CI there IS no backend, so the fetch 404s,
+ * no rows and no marquee render, and the gate would report a clean pass for
+ * elements it never saw — the exact vacuity it is supposed to prevent.
+ *
+ * Intercepting the one request makes the gate deterministic everywhere: the same
+ * rows and the same announcement render locally and in CI. This is a CONTRAST
+ * gate — it judges colours, not data — so a fixed payload is the right input;
+ * what must be real is the MARKUP and the CSS, and those are untouched.
+ *
+ * The SHAPE is copied from a live response (measured 2026-09-27: 158 jobs, keys
+ * code/pekerjaan/kategori/lokasi/gender/status/tahapan/syarat/keterangan/
+ * pamflet/templateCv/createdAt). The values are synthetic. The three rows cover
+ * all three action buttons: OPEN with a `templateCv` renders Format + Lamar,
+ * URGENT renders Detail + Lamar, CLOSE renders Detail + a disabled "closed"
+ * button. `tahapan: ''` is the pre-selection set, i.e. still open for applying
+ * (`src/lib/jobPhase.ts`).
+ */
+const PUBLIC_DATA_FIXTURE = {
+  success: true,
+  sessionInvalid: false,
+  activeTheme: 'dark',
+  pengumuman: 'PENGUMUMAN UJI KONTRAS: pendaftaran batch baru sudah dibuka, siapkan dokumenmu.',
+  // TEN rows, because the table renders `LIMIT_INITIAL` of them and the live
+  // payload carries 158 — so the page this gate measures has the same number of
+  // rows as production, and a before/after comparison of "elements measured" is
+  // apples to apples. The mix is deliberate: every status badge, the
+  // `keterangan` note row, and all three action-button shapes (Detail+Format+
+  // Lamar / Detail+Lamar / Detail+a disabled "closed") appear.
+  jobs: [
+    ['TEST-001', 'NOUGYOU SAYURAN', '🌾 PERTANIAN', '🌾 Ibaraki', '👨 Pria👩 Wanita', '✅ OPEN', 'JFT A2, SSW, 25-35 TH', 'Kuota terbatas untuk batch ini', 'https://example.invalid/cv-001'],
+    ['TEST-002', 'KAIGO', '🏥 KESEHATAN', '🗼 Tokyo', '👩 Wanita', '✅ OPEN', 'JFT N4, 20-35 TH', '', 'https://example.invalid/cv-002'],
+    ['TEST-003', 'KONSTRUKSI', '🏗️ KONSTRUKSI', '🗾 Osaka', '👨 Pria', '✅ OPEN', 'SSW, 22-40 TH', 'Wajib punya pengalaman 2 tahun', ''],
+    ['TEST-004', 'SHOKUHIN', '🍱 MAKANAN', '🗾 Saitama', '👨 Pria👩 Wanita', '✅ OPEN', 'JFT A2, 18-30 TH', '', ''],
+    ['TEST-005', 'KAIGO', '🏥 KESEHATAN', '🏙️ Kanagawa', '👩 Wanita', '⚡ URGENT', 'JFT N3, 20-35 TH', 'Interview minggu depan', ''],
+    ['TEST-006', 'NOUGYOU', '🌾 PERTANIAN', '🌾 Hokkaido', '👨 Pria', '⚡ URGENT', 'SSW, 22-40 TH', '', ''],
+    ['TEST-007', 'BUILDING CLEANING', '🧹 KEBERSIHAN', '🗼 Tokyo', '👩 Wanita', '⚡ URGENT', 'JFT N4, 20-35 TH', '', ''],
+    ['TEST-008', 'JIDOUSHA', '🚗 OTOMOTIF', '🗾 Aichi', '👨 Pria', '❌ CLOSE', 'JFT A2, 25-35 TH', 'Kuota sudah penuh', ''],
+    ['TEST-009', 'DENKI', '⚡ KELISTRIKAN', '🏙️ Chiba', '👨 Pria', '❌ CLOSE', 'SSW, 22-40 TH', '', ''],
+    ['TEST-010', 'FUKUSHI', '♿ PERAWATAN', '🗾 Kyoto', '👨 Pria👩 Wanita', '❌ CLOSE', 'JFT N4, 20-35 TH', '', ''],
+  ].map(
+    ([code, pekerjaan, kategori, lokasi, gender, status, syarat, keterangan, templateCv]) => ({
+      code,
+      pekerjaan,
+      kategori,
+      lokasi,
+      gender,
+      status,
+      tahapan: '',
+      syarat,
+      keterangan,
+      pamflet: '',
+      templateCv,
+      createdAt: '',
+    }),
+  ),
+};
 
 /**
  * Installed in the page. Resolves colours through the browser (see the trap
@@ -294,6 +377,7 @@ function installScanner() {
 const browser = await chromium.launch({ args: ['--no-proxy-server'] });
 const failures = [];
 const unmeasurable = [];
+const coverageGaps = [];
 const lines = [];
 
 for (const theme of THEMES) {
@@ -312,6 +396,26 @@ for (const theme of THEMES) {
     const page = await ctx.newPage();
     await page.addInitScript(installScanner);
 
+    // The one backend call this gate depends on — see PUBLIC_DATA_FIXTURE.
+    // Only `getAppData` is served from the fixture; any other action to the same
+    // endpoint falls through, so this cannot silently reshape a different route.
+    await page.route('**/.netlify/functions/get-app-data', (route) => {
+      let action = '';
+      try {
+        action = route.request().postDataJSON()?.action || '';
+      } catch {
+        /* not JSON — fall through */
+      }
+      if (action === 'getAppData') {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(PUBLIC_DATA_FIXTURE),
+        });
+      }
+      return route.continue();
+    });
+
     for (const { path, session, waitFor, alsoWaitFor } of ROUTES) {
       if (session) {
         await page.addInitScript((v) => {
@@ -321,6 +425,9 @@ for (const theme of THEMES) {
         }, authFor(session));
       }
       const where = `${path} ${theme} ${width}px`;
+      const T0 = Date.now();
+      const dbg = (m) => process.env.CONTRAST_DEBUG && process.stderr.write(`DBG +${Date.now() - T0}ms ${m} ${where}\n`);
+      dbg('nav');
       let res;
       try {
         res = await page.goto(BASE + path, { waitUntil: 'domcontentloaded', timeout: 30_000 });
@@ -335,21 +442,95 @@ for (const theme of THEMES) {
         continue;
       }
       // Let hydration + the async data settle.
-      await page.evaluate(() => document.fonts?.ready).catch(() => {});
+      // BOUNDED font wait. `document.fonts.ready` resolves only once every
+      // @font-face has settled, and this page pulls fonts from a CDN — measured
+      // 2026-09-27: awaiting it unbounded added 32.6s to the `/` route alone
+      // (the other five routes took ~2.1s each), which blew the 3-minute budget.
+      // Nothing here depends on font METRICS: the gate reads computed colours
+      // and the computed font-size, both of which come from CSS.
+      await page
+        .evaluate(() =>
+          Promise.race([
+            document.fonts ? document.fonts.ready : Promise.resolve(),
+            new Promise((r) => setTimeout(r, 1200)),
+          ]),
+        )
+        .catch(() => {});
+      dbg('fonts done');
       await page.waitForTimeout(1200);
+      dbg('settle1200 done');
       for (const sel of [waitFor, alsoWaitFor]) {
         if (!sel) continue;
         const found = await page
           .waitForSelector(sel, { timeout: 8000, state: 'attached' })
           .then(() => true)
           .catch(() => false);
+        dbg(`waitFor ${sel} -> ${found}`);
         if (!found) {
-          lines.push(`  NOTE  ${where}  "${sel}" never appeared — measuring what is there (coverage may be short)`);
+          // A FAILURE, not a note. The data is synthetic (PUBLIC_DATA_FIXTURE),
+          // so this cannot be a backend hiccup — it means the fixture stopped
+          // matching the page (the fetch URL moved, the island stopped
+          // fetching) and the gate can no longer measure the elements it exists
+          // for. Reporting a clean pass here would be the vacuity this repo's
+          // guards keep re-learning.
+          coverageGaps.push(`${where}  "${sel}" never rendered`);
+          failures.push({
+            route: where,
+            text: '(coverage)',
+            selector: sel,
+            ratio: 0,
+            need: 0,
+            reason: `"${sel}" never rendered — the fixture no longer matches, so this route is not covered`,
+          });
+          lines.push(`  FAIL  ${where}  "${sel}" never rendered — coverage lost, refusing to pass`);
         }
       }
+      // ── Row-count STABILISATION ──────────────────────────────────────────
+      // `state: 'attached'` fires on the FIRST row, and the table renders a
+      // `keterangan` note row and repaints as the island hydrates — so measuring
+      // the moment one row exists can count a different number of elements run to
+      // run. Poll until the count holds still across two reads. Bounded, so a
+      // table that genuinely keeps growing cannot hang the gate.
+      if (waitFor === ROWS || alsoWaitFor === ROWS) {
+        let prev = -1;
+        for (let i = 0; i < 20; i++) {
+          const n = await page.locator(ROWS).count();
+          if (n > 0 && n === prev) break;
+          prev = n;
+          await page.waitForTimeout(100);
+        }
+        dbg(`rows stabilised at ${prev}`);
+      }
       await page.waitForTimeout(600);
+      // Let FINITE animations finish before measuring. The forms run
+      // `animate-[fadeIn_0.4s_…]` and the landing page has reveal entrances; a
+      // scan taken mid-fade sees a fractional ancestor `opacity` (0.94, 0.95 …)
+      // and skips those elements, which would make the gate's COVERAGE — not
+      // just its verdict — depend on timing. INFINITE animations are exempt: the
+      // marquee never stops by design, and it must still be measured.
+      // ⚠ `waitForFunction(fn, arg, options)` — the options object is the THIRD
+      // parameter. Passing `{ timeout }` second makes it the `arg`, the default
+      // 30 s timeout applies, and `/` (whose 36 animations never all settle)
+      // costs 30 s per load: measured, that alone took the whole gate from ~1 min
+      // to 4 m 56 s. `polling: 100` rather than the default `raf`, so a page
+      // doing heavy animation work cannot starve the poll.
+      await page
+        .waitForFunction(
+          () =>
+            document.getAnimations().every((a) => {
+              if (a.playState !== 'running') return true;
+              const t = a.effect?.getTiming?.();
+              return t ? t.iterations === Infinity : false;
+            }),
+          undefined,
+          { timeout: 1500, polling: 100 },
+        )
+        .catch(() => {});
+      await page.waitForTimeout(150);
+      dbg('anim settle done');
 
       const scan = await page.evaluate(() => window.__scan());
+      dbg(`scanned (${scan.elements} els, ${scan.failures.length} miss, ${scan.unmeasurable.length} unmeas)`);
       for (const u of scan.unmeasurable) unmeasurable.push({ route: where, ...u });
 
       // ── pixel confirmation for every computed miss ────────────────────────
@@ -452,13 +633,28 @@ console.log('');
 
 const byReason = {};
 for (const u of unmeasurable) {
-  const key = u.reason.replace(/\(.*/, '').trim();
+  // Bucket the reason: the raw text carries the specific alpha (opacity:0.94,
+  // opacity:0.5 …) and the specific background-image, which would explode this
+  // summary into hundreds of one-count lines and hide the shape of the gap.
+  const key = u.reason
+    .replace(/^text over background-image.*/, 'text over background-image (gradient / image)')
+    .replace(/^ancestor opacity:.*/, 'ancestor opacity < 1 (invisible, fading, or disabled)')
+    .replace(/^ancestor mix-blend-mode.*/, 'ancestor mix-blend-mode')
+    .replace(/^unparseable .*/, 'unparseable colour string')
+    .trim();
   byReason[key] = (byReason[key] || 0) + 1;
 }
 console.log(`measured elements below the floor: ${failures.length}`);
 console.log(`unmeasurable (skipped, NOT a pass): ${unmeasurable.length}`);
 for (const [k, v] of Object.entries(byReason).sort((a, b) => b[1] - a[1])) {
   console.log(`  ${String(v).padStart(4)}  ${k}`);
+}
+if (coverageGaps.length) {
+  console.log('');
+  console.log(`COVERAGE GAPS — content that did not render, so this run did NOT measure it (${coverageGaps.length}):`);
+  for (const g of coverageGaps) console.log(`  ${g}`);
+  console.log('  (this should NOT happen: the data comes from PUBLIC_DATA_FIXTURE. A gap here means');
+  console.log('   the fixture stopped matching the page — fix the fixture or the selector.)');
 }
 
 if (failures.length) {
