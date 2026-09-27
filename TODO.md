@@ -22,9 +22,20 @@
 - [x] ~~Audit mobile responsive — semua halaman di HP~~ → **SELESAI 2026-09-26**
       (commit `5371c0b`): 11 rute × 390/1280, sebelum 0/20 bersih → sesudah
       **20/20 bersih** (0 overflow horizontal, 0 font < 11px, 0 target < 44px).
-- [ ] Audit aksesibilitas (WCAG 2.1) — **sebagian**: lantai font 11px, lantai
-      target 44px, dan focus-trap drawer/dialog sudah dikerjakan; audit WCAG penuh
-      (kontras menyeluruh, urutan heading semua halaman, ARIA) belum.
+- [ ] Audit aksesibilitas (WCAG 2.1) — **hampir selesai**: lantai font 11px, lantai
+      target 44px, dan focus-trap drawer/dialog sudah dikerjakan. **Kontras
+      menyeluruh kini SELESAI untuk kondisi diam** (2026-09-27):
+        · gate `e2e/test-contrast.mjs` ditambahkan (`36712a9`), 0 elemen di bawah
+          lantai di 24 kombinasi rute × tema × lebar;
+        · 182 node yang di-SKIP gate diukur dengan probe pixel (`deliverables/
+          gstack/wcag-unmeasurable-audit-2026-09-27.md`);
+        · **5 kegagalan AA nyata ditemukan dan diperbaiki** — `/apply` sticky CTA
+          (`f02a352`) dan empat CTA gradien (`c000ca4`).
+      ⚠ **Yang BELUM**: (a) **keadaan HOVER/FOCUS tidak diukur** — dua dari lima
+      temuan hanya muncul di hover, dan hover yang membuatnya justru keadaan
+      TERBURUK di halaman (2.54:1, lebih buruk dari kondisi diam 3.77:1) karena
+      konvensi "menyala saat hover" selalu menurunkan kontras teks putih;
+      (b) urutan heading & ARIA di semua halaman belum disapu.
 - [ ] Loading skeleton di semua halaman yang memuat data
 
 ### Polish

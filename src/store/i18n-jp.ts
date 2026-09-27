@@ -1682,6 +1682,7 @@ export const jpTranslations: Record<string, string> = {
     "admin.manual_empty": "この求人に候補者がいません。",
     "admin.rirekisho_title": "履歴書",
     "admin.jadwal_loading": "スケジュールを読み込み中...",
+    "admin.jadwal_none": "直近のスケジュールはありません。",
     "admin.jadwal_nama": "予定名",
     "admin.jadwal_id_loker": "求人ID",
     "admin.jadwal_lokasi": "場所 / Zoom",

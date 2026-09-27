@@ -1832,6 +1832,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.manual_empty": "Tidak ada kandidat di job ini.",
     "admin.rirekisho_title": "DAFTAR RIWAYAT HIDUP",
     "admin.jadwal_loading": "Memuat jadwal...",
+    "admin.jadwal_none": "Belum ada jadwal terdekat.",
     "admin.jadwal_nama": "NAMA AGENDA",
     "admin.jadwal_id_loker": "ID LOKER",
     "admin.jadwal_lokasi": "LOKASI / MEDIA ZOOM",
