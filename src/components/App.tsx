@@ -538,9 +538,9 @@ export default function App(
             <div class="lg:col-span-7 min-w-0">
               <div class="flex items-center gap-3 min-w-0">
                 {brandLogo}
-                <span class="text-pink-300 text-eyebrow font-bold uppercase truncate">{t("profile.hero_eyebrow")}</span>
+                <span class="text-pink-300 text-eyebrow font-bold uppercase truncate" data-lang="profile.hero_eyebrow">{t("profile.hero_eyebrow")}</span>
               </div>
-              <p class="text-pink-300 text-eyebrow font-bold uppercase mt-5">{t("profile.hero_tagline")}</p>
+              <p class="text-pink-300 text-eyebrow font-bold uppercase mt-5" data-lang="profile.hero_tagline">{t("profile.hero_tagline")}</p>
               {/* `text-white` IS EXPLICIT HERE, and that is load-bearing — do not
                   delete it because "the hero is dark anyway".
 
@@ -696,7 +696,7 @@ export default function App(
                     risk, so it is REPORTED rather than smuggled in under a UX
                     sweep. Do not swap this class without re-running the measured
                     comparison above. */}
-                <h1 class="text-lg md:text-3xl font-black italic tracking-wide drop-shadow-lg truncate"><span>{t("header.company_name")}</span></h1>
+                <h1 class="text-lg md:text-3xl font-black italic tracking-wide drop-shadow-lg truncate"><span data-lang="header.company_name">{t("header.company_name")}</span></h1>
               </div>
             </div>
           </div>

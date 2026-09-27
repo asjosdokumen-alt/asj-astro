@@ -363,7 +363,15 @@ export default function ApplyFullForm() {
         <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-full px-5 z-10">
           <img class="w-[100px] h-[100px] rounded-full mx-auto shadow-[0_15px_35px_rgba(0,0,0,.5)] object-cover relative z-[15]"
             src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_apply.png" alt="Logo ASJ" />
-          <div class="mt-[15px] tracking-[7px] text-[11px] font-bold text-[#ff6db2]">日本への挑戦</div>
+          {/* WHY THESE TWO LINES ARE KEYS AND NOT LITERALS. `header.tagline` already
+              exists in BOTH dictionaries as exactly the pair of strings this band
+              needs: id "Tantangan ke Jepang" / jp "日本への挑戦". The band was
+              hardcoded to the JAPANESE string, so it read correctly on the JP page
+              and WRONGLY on the Indonesian one — which is the worse of the two
+              failures, because the ID page is the default. `header.company_name` is
+              bound for the same reason (it is the brand NAME, and the same key is
+              already used by the site header, so the two cannot drift). */}
+          <div class="mt-[15px] tracking-[7px] text-[11px] font-bold text-[#ff6db2]" data-lang="header.tagline">日本への挑戦</div>
           {/* ⚠ `text-[28px]` WAS A ONE-LINE-ONLY SIZE, AND ON A PHONE IT WRAPPED
               UNDER THE CARD. MEASURED 2026-09-25 at 390px: this hero is
               `h-[260px]` with `overflow-hidden`, the logo is 100px and the
@@ -376,7 +384,7 @@ export default function ApplyFullForm() {
               At 22px it needs ~278px and stays on ONE line, which is what the
               design assumes. It returns to 28px from `sm:` up, where the band is
               wide enough. */}
-          <div class="text-[22px] sm:text-[28px] font-black mt-[5px]">PT AMANAH SAKURA JAPAN</div>
+          <div class="text-[22px] sm:text-[28px] font-black mt-[5px]" data-lang="header.company_name">PT AMANAH SAKURA JAPAN</div>
         </div>
       </div>
 
@@ -515,11 +523,11 @@ export default function ApplyFullForm() {
         )}
         <button onClick={saveDraft} disabled={loading}
           class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-700 text-white hover:bg-slate-600 transition-colors flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50">
-          <Icon name="save" /> Draft
+          <Icon name="save" /> {t("apply.btn_draft")}
         </button>
         {step < 3 && (
           <button onClick={() => changeStep(1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-600 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer">
-            Lanjut <Icon name="chevron-right" />
+            {t("apply.btn_next")} <Icon name="chevron-right" />
           </button>
         )}
         {step === 3 && (

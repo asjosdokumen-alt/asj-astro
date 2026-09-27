@@ -63,10 +63,10 @@ export default function FormToolbar({ title, titleKey }: Props) {
         the element that was being truncated. The label returns at `sm:` where
         there is room for it. */}
       <div class="flex items-center gap-2">
-        <button onClick={toggleTheme} aria-label={isDark ? "Aktifkan tema terang" : "Aktifkan tema gelap"} title={isDark ? "Dark" : "Light"} class="min-h-11 px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
-          <Icon name={isDark ? "moon" : "sun"} /> <span class="hidden sm:inline">{isDark ? "Dark" : "Light"}</span>
+        <button onClick={toggleTheme} aria-label={isDark ? t('theme.to_light') : t('theme.to_dark')} title={isDark ? t('theme.dark') : t('theme.light')} class="min-h-11 px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
+          <Icon name={isDark ? "moon" : "sun"} /> <span class="hidden sm:inline">{isDark ? t('theme.dark') : t('theme.light')}</span>
         </button>
-        <button onClick={toggleLang} aria-label={lang === "id" ? "Ganti ke bahasa Jepang" : "Ganti ke bahasa Indonesia"} title={lang === "id" ? "ID" : "JP"} class="min-h-11 px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
+        <button onClick={toggleLang} aria-label={lang === "id" ? t('lang.to_jp') : t('lang.to_id')} title={lang === "id" ? "ID" : "JP"} class="min-h-11 px-2.5 py-1.5 bg-black/50 hover:bg-black/80 text-white border border-white/20 rounded-full text-[11px] font-bold transition-colors flex items-center gap-1">
           <Icon name="language" /> <span class="hidden sm:inline">{lang === "id" ? "ID" : "JP"}</span>
         </button>
       </div>

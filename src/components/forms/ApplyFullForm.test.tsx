@@ -94,7 +94,7 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
     render(<ApplyFullForm />);
     await screen.findByText("apply.cv_label");
     await fireEvent.input(screen.getByPlaceholderText("apply.nama_ph"), { target: { value: "BUDI SANTOSO" } });
-    await fireEvent.click(screen.getByRole("button", { name: "Draft" }));
+    await fireEvent.click(screen.getByRole("button", { name: "apply.btn_draft" }));
     const raw = localStorage.getItem("asj_apply_TG123ASJ");
     expect(raw).toBeTruthy();
     const d = JSON.parse(raw!);
@@ -127,13 +127,13 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
     await screen.findByText("KTP");
     await fireEvent.input(screen.getByPlaceholderText("apply.wa_ph"), { target: { value: "081234567890" } });
     await fireEvent.input(screen.getByPlaceholderText("apply.nama_ph"), { target: { value: "BUDI SANTOSO" } });
-    await fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
+    await fireEvent.click(screen.getByRole("button", { name: "apply.btn_next" }));
     // KTP input = input file ke-5 (photo, cv, jft, ssw, KTP)
     const inputs = document.querySelectorAll("input[type=file]");
     expect(inputs.length).toBeGreaterThanOrEqual(5);
     const ktpFile = new File(["x"], "ktp.pdf", { type: "application/pdf" });
     await fireEvent.change(inputs[4], { target: { files: [ktpFile] } });
-    await fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
+    await fireEvent.click(screen.getByRole("button", { name: "apply.btn_next" }));
     await fireEvent.click(screen.getByRole("checkbox"));
     await fireEvent.click(screen.getByRole("button", { name: "KIRIM LAMARAN" }));
     await waitFor(() => {
@@ -200,8 +200,8 @@ describe("ApplyFullForm — pre-check Magang (VIP-only)", () => {
     await screen.findByText("apply.cv_label");
     await fireEvent.input(screen.getByPlaceholderText("apply.wa_ph"), { target: { value: "081234567890" } });
     await fireEvent.input(screen.getByPlaceholderText("apply.nama_ph"), { target: { value: "BUDI SANTOSO" } });
-    await fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
-    await fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
+    await fireEvent.click(screen.getByRole("button", { name: "apply.btn_next" }));
+    await fireEvent.click(screen.getByRole("button", { name: "apply.btn_next" }));
     await fireEvent.click(screen.getByRole("checkbox"));
     await fireEvent.click(screen.getByRole("button", { name: "KIRIM LAMARAN" }));
     await waitFor(() => {
@@ -217,8 +217,8 @@ describe("ApplyFullForm — pre-check Magang (VIP-only)", () => {
     await screen.findByText("apply.cv_label");
     await fireEvent.input(screen.getByPlaceholderText("apply.wa_ph"), { target: { value: "081234567890" } });
     await fireEvent.input(screen.getByPlaceholderText("apply.nama_ph"), { target: { value: "BUDI SANTOSO" } });
-    await fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
-    await fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
+    await fireEvent.click(screen.getByRole("button", { name: "apply.btn_next" }));
+    await fireEvent.click(screen.getByRole("button", { name: "apply.btn_next" }));
     await fireEvent.click(screen.getByRole("checkbox"));
     await fireEvent.click(screen.getByRole("button", { name: "KIRIM LAMARAN" }));
     await waitFor(() => {

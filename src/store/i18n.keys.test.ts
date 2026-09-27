@@ -187,9 +187,27 @@ describe('i18n dictionary coverage', () => {
       const lines = readFileSync(file, 'utf-8').split('\n');
       lines.forEach((line, idx) => {
         // <BaseLayout title="…"> is the document <title>: server-rendered SEO
-        // metadata. translateDataLang() only runs in the browser, so it cannot
-        // fix these — deliberately out of scope, not a false negative.
-        if (/<BaseLayout/.test(line)) return;
+        // metadata. THIS EXEMPTION WAS NARROWED, and the reason matters.
+        //
+        // It used to skip every <BaseLayout> line outright, on the premise that
+        // translateDataLang() only runs in the browser and therefore cannot fix a
+        // server-rendered <title>. That premise WAS true and is now FALSE: the
+        // layout takes a `titleKey` prop, writes it to `data-title-key` on <html>,
+        // and `applyDocTitle()` rewrites document.title on boot and on every
+        // language change — including the cold-load JP race, which is why
+        // onJpReady() calls it too. e2e/probe-untranslated.mjs measures the
+        // result: "judul halaman tak mengikuti toggle: 0" across 7 routes.
+        //
+        // So the exemption no longer covers "a title at all"; it covers exactly
+        // "a title with no titleKey", and the check right below this block is what
+        // makes that state impossible to leave behind silently.
+        if (/<BaseLayout/.test(line) && !/titleKey=/.test(line)) return;
+        // A <BaseLayout> line that DOES carry titleKey is already handled: the
+        // literal `title="…"` next to it is the pre-hydration/SEO default, which
+        // applyDocTitle() overwrites from the key. Without this second guard the
+        // attribute scan fires on that deliberate literal and reports a fix
+        // (`data-lang-title`) that is the wrong mechanism for an <html> title.
+        if (/<BaseLayout/.test(line) && /titleKey=/.test(line)) return;
         for (const { re, optOut, fix } of checks) {
           // A literal sitting next to its data-lang-* twin is the deliberate
           // pre-hydration default (same reason Footer.astro inlines
@@ -266,6 +284,92 @@ describe('i18n dictionary coverage', () => {
       't("key") in .tsx, or data-lang on the element in .astro.',
       '',
       ...hits,
+    ].join('\n')).toEqual([]);
+  });
+
+  it('every <BaseLayout title> carries a titleKey, and every titleKey resolves', () => {
+    // WHY THIS CHECK EXISTS, AND WHY IT IS A DIFFERENT KIND OF CHECK.
+    //
+    // The attribute scan above finds a hardcoded Indonesian attribute VALUE. The
+    // coverage scan finds a key that is MISSING from a dictionary. Neither can see
+    // the failure this test guards, which is structural: a page that renders a
+    // correct Indonesian <title> and no way for the JP toggle to reach it. That
+    // page passes every other gate in the repo. Before this test existed, all 7
+    // routes were in exactly that state — e2e/probe-untranslated.mjs reported
+    // "judul halaman tak mengikuti toggle : 7", and one of them (/loker) was
+    // found by nothing else at all.
+    //
+    // It asserts two things that must hold TOGETHER, which is the point: binding a
+    // title is useless if the key is missing, and a present key is useless if the
+    // page never binds it. Checking only one half would leave a green gate over a
+    // broken title.
+    //
+    // PRE-HYDRATION BEHAVIOUR IS UNCHANGED. `title` is still the server-rendered
+    // text an SEO crawler and a no-JS reader sees; `titleKey` is additive. So this
+    // gate cannot make the page worse for a crawler — it can only require that the
+    // key exists and is wired.
+    // The SAME marker pair the coverage test above uses, so this check cannot
+    // disagree with it about what the dictionary contains. An earlier draft of
+    // this test passed the wrong markers and the slice came back EMPTY, which made
+    // all 9 pages look like they were missing their key — a gate that fails loudly
+    // for the wrong reason is still a broken gate.
+    const idKeys = new Set(parseKeys(readFileSync(I18N_TS, 'utf-8'), 'id: {', 'jp: {}'));
+    const jpKeys = new Set(parseKeys(readFileSync(I18N_JP_TS, 'utf-8'), '{'));
+    expect(idKeys.size, 'id dictionary parsed as empty — the start marker is wrong').toBeGreaterThan(1000);
+
+    const pages = walk(join(ROOT, 'src', 'pages')).filter((f) => f.endsWith('.astro'));
+    const problems: string[] = [];
+    let bound = 0;
+    let titled = 0;
+
+    for (const file of pages) {
+      const name = relative(ROOT, file);
+      const lines = readFileSync(file, 'utf-8').split('\n');
+      lines.forEach((line, idx) => {
+        // Anchor on `<BaseLayout` followed by a `title="…"`. Matching the bare
+        // word `titleKey=` would also fire on the layout's own prop declaration
+        // and on comment text, which is how an earlier version of this check
+        // skipped 7 of 9 pages while reporting success.
+        if (!/<BaseLayout/.test(line)) return;
+        const titleM = line.match(/\btitle="([^"]*)"/);
+        if (!titleM) return; // a layout with no title at all is a different problem
+        titled++;
+        const keyM = line.match(/\btitleKey="([^"]+)"/);
+        if (!keyM) {
+          problems.push(`  - ${name}:${idx + 1}  <BaseLayout title="…"> has no titleKey  → add titleKey="doc.title_*"`);
+          return;
+        }
+        bound++;
+        const key = keyM[1];
+        if (!idKeys.has(key)) problems.push(`  - ${name}:${idx + 1}  titleKey="${key}" missing from the id dictionary`);
+        if (!jpKeys.has(key)) problems.push(`  - ${name}:${idx + 1}  titleKey="${key}" missing from the jp dictionary`);
+      });
+    }
+
+    // WHY THIS IS `toBe(bound)` AND NOT `toBeGreaterThanOrEqual(9)`.
+    //
+    // The first version of this gate asserted a FLOOR of 9 bindings. It then
+    // MISSED a real defect: src/pages/loker.astro carried no titleKey at all, the
+    // ten other pages satisfied the floor, and the gate stayed green while a
+    // title was still unreachable from the JP toggle. A floor protects against
+    // "the scan read nothing"; it does NOT protect against "one page was skipped",
+    // which is the actual failure mode here. Tying the count to `titled` — the
+    // number of pages that HAVE a title in the first place — means the only way to
+    // satisfy this assertion is for every titled page to be titled-by-key too.
+    //
+    // `titled` is checked separately so that deleting pages cannot make the gate
+    // vacuous: with zero titles there is nothing to bind, and `broken` would be 0.
+    expect(titled, 'no <BaseLayout title="…"> found at all — the scan read nothing').toBeGreaterThanOrEqual(11);
+    const broken = titled - bound;
+    expect(broken, `${broken} of ${titled} titled pages are not keyed`).toBe(0);
+    expect(problems, [
+      'A page <title> that the language toggle cannot reach, or a titleKey that',
+      'does not resolve. translateDataLang() rewrites elements with data-lang;',
+      'document.title is separate and is applied by applyDocTitle() from the',
+      'data-title-key on <html>. Fix by adding titleKey="doc.title_*" to',
+      '<BaseLayout> AND ensuring that key exists in BOTH dictionaries.',
+      '',
+      ...problems,
     ].join('\n')).toEqual([]);
   });
 });

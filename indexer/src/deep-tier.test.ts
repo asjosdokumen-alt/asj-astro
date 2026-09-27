@@ -362,7 +362,16 @@ const show = true;
     // occurrence to report. `<title>{title}</title>` was added to the head, which
     // is why the name appears here at all — this assertion is the measurement
     // that the fix is real rather than a comment claiming it.
-    expect(occs.map((o) => o.name).sort()).toEqual(['description', 'lang', 'showBottomNav', 'showFooter', 'sprite', 'title']);
+    //
+    // 6 -> 7 (2026-09-27): `titleKey` joined the list, for exactly the same kind
+    // of reason and found by this same assertion. The document <title> is
+    // server-rendered, so `translateDataLang()` can never reach it — it only walks
+    // elements carrying a `data-lang*` attribute inside <body>. `titleKey` is the
+    // second half of the fix: the page passes a dictionary key, the layout writes
+    // it to `data-title-key` on <html>, and `applyDocTitle()` reads it back. It
+    // appears in this scope because the layout both destructures it and renders it
+    // (`data-title-key={titleKey}`), which is the same shape that put `title` here.
+    expect(occs.map((o) => o.name).sort()).toEqual(['description', 'lang', 'showBottomNav', 'showFooter', 'sprite', 'title', 'titleKey']);
     for (const o of occs) {
       const ref = r.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
       expect(ref).toBeDefined();

@@ -20,6 +20,12 @@
  * a company-wide claim. The separate credential card above the grid carries the
  * certificate number; this line is the human attribution.
  *
+ * WHY THE NAME CARRIES A `data-lang` KEY. A name is a NAME, not an identifier, so
+ * it follows the language toggle — see the rule comment in companyProfile.ts. Before
+ * this, the six names were plain literals, and e2e/probe-untranslated.mjs caught all
+ * six unchanged on / , /loker and /public inside a section whose every other word had
+ * switched to Japanese. The NAME key is what makes the toggle reach them.
+ *
  * WHY .tsx AND NOT .astro — see the long note in IconTileGrid.tsx. Short version: it
  * iterates, and iterating inside an `.astro` template breaks the indexer's
  * zero-unresolved invariant.
@@ -38,28 +44,33 @@ export default function PersonGrid({ people, class: className }: Props) {
 
   return (
     <ul class={grid}>
-      {people.map((person) => (
-        <li
-          key={person.role.key}
-          class="flex flex-col gap-1 rounded-card border border-line bg-surface p-5"
-        >
-          <span class="text-card-title font-bold text-fg">
-            {person.name ?? (
-              <span class="text-fg-muted font-normal italic" data-lang="profile.team_name_pending">
-                Belum dipublikasikan
-              </span>
-            )}
-          </span>
-          <span data-lang={person.role.key} class="text-body-sm text-accent font-medium">
-            {person.role.text}
-          </span>
-          {person.note ? (
-            <span data-lang={person.note.key} class="mt-1 text-caption text-fg-muted">
-              {person.note.text}
+      {people.map((person) => {
+        const name = person.name;
+        return (
+          <li
+            key={person.role.key}
+            class="flex flex-col gap-1 rounded-card border border-line bg-surface p-5"
+          >
+            <span class="text-card-title font-bold text-fg">
+              {name === null ? (
+                <span class="text-fg-muted font-normal italic" data-lang="profile.team_name_pending">
+                  Belum dipublikasikan
+                </span>
+              ) : (
+                <span data-lang={name.key}>{name.text}</span>
+              )}
             </span>
-          ) : null}
-        </li>
-      ))}
+            <span data-lang={person.role.key} class="text-body-sm text-accent font-medium">
+              {person.role.text}
+            </span>
+            {person.note ? (
+              <span data-lang={person.note.key} class="mt-1 text-caption text-fg-muted">
+                {person.note.text}
+              </span>
+            ) : null}
+          </li>
+        );
+      })}
     </ul>
   );
 }

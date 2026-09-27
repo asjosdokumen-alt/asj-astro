@@ -204,6 +204,12 @@ export const translations: Record<Lang, Record<string, string>> = {
     "apply.success_title": "Lamaran Terkirim!",
     "apply.success_desc": "Lamaran Anda berhasil dikirim.",
     "apply.btn_portal": "Kembali ke Portal",
+    // Tombol di toolbar bawah. Sebelum ini keduanya hardcoded ("Draft" / "Lanjut")
+    // sehingga tetap Indonesia di halaman JP — e2e/probe-untranslated.mjs menangkapnya.
+    // "Draft" diterjemahkan sebagai kata biasa, bukan dibiarkan sebagai istilah
+    // Inggris, karena halaman ini tidak pernah memakai istilah Inggris lain.
+    "apply.btn_draft": "Draf",
+    "apply.btn_next": "Lanjut",
     "apply.btn_pilih": "Pilih",
     "apply.wa_ph": "Contoh: 08123456789",
     "apply.wa_found": "Data Anda ditemukan di sistem ASJ. Nama & email terisi otomatis.",
@@ -1202,6 +1208,19 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.legal_regno": "Nomor pendaftaran",
   "profile.legal_register": "Daftar Perseroan",
   "profile.legal_seat": "Kedudukan",
+  // The LEGAL_FACTS values that are not identifiers — see the note on
+  // LEGAL_FACTS in companyProfile.ts for why exactly these three and not the
+  // other three. A legal description, a date with a month name, and a place.
+  "profile.legal_form_value": "Perseroan Terbatas (PT), Swasta Nasional",
+  "profile.legal_deed_value": "Nomor 09, 15 Agustus 2023 — Notaris Setya Budhi, S.H.",
+  "profile.legal_seat_value": "Kabupaten Ponorogo, Jawa Timur",
+  "profile.contact_located_value": "Kabupaten Ponorogo, Jawa Timur",
+
+  // Alamat jalan. Nilai `id` di sini adalah ALAMAT RESMI (yang ditulis di amplop);
+  // versi JP di kamus jp hanyalah bantuan baca. Lihat komentar CONTACT_ADDRESS
+  // di companyProfile.ts — alamat adalah NAME, bukan identifier, jadi ia ikut
+  // diterjemahkan; sedangkan email dan nomor telepon tidak.
+  "profile.contact_address_value": "Jl. Kyai Ageng Musakaf, Rw 03 Rt 03, Dukuh Ngujung, Desa Gandu Kepuh, Kec. Sukorejo, Kab. Ponorogo, Jawa Timur",
   "profile.fac_title": "Fasilitas & Dukungan",
   "profile.fac_desc": "Yang kandidat dapatkan selama pelatihan.",
   "profile.fac_class_title": "Kelas Bahasa Jepang",
@@ -1219,6 +1238,16 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.place_food": "Pengolahan Makanan",
   "profile.place_farm": "Pertanian",
   "profile.place_livestock": "Peternakan",
+  // The VALUES of the placement rows. These were hardcoded romanised strings
+  // until 2026-09-27 — see the `Fact.value` note in companyProfile.ts. A
+  // prefecture is a name, so it localises; the middle dot separates two
+  // prefectures and is the same glyph in both languages.
+  "profile.place_food_area": "Miyazaki · Okayama",
+  "profile.place_farm_area": "Miyazaki · Nagano",
+  "profile.place_livestock_area": "Kagoshima",
+  // The price. `juta` is a word and the reader may not parse it, so only the
+  // LABEL being translated (as it was) left the number unreadable.
+  "profile.prog_price": "6 JUTA",
 
   // ── Penempatan Kami (R4, halaman 13 & 14) ─────────────────────────────
   // The mockup filled this slot with TESTIMONIALS. The company profile
@@ -1290,6 +1319,26 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.cred_title": "Kredensial pengajar",
   "profile.cred_jlpt_label": "Sertifikasi pengajar",
   "profile.team_name_pending": "Belum dipublikasikan",
+
+  // ── Nama orang (dipakai sebagai KEY, bukan literal) ──────────────────
+  // Aturan yang dipakai di repo ini: "an identifier is invariant; a NAME or a
+  // QUANTITY is not." Nomor registrasi, alamat email dan nomor AHU WAJIB sama
+  // di kedua bahasa karena itu kunci rujukan. NAMA ORANG justru sebaliknya:
+  // perusahaan menerbitkan bentuk kana-nya sendiri, dan pembaca Jepang harus
+  // mengenali nama itu di bagan struktur. Sebelum ini nama ditulis sebagai
+  // literal di TEAM, sehingga halaman JP menampilkan enam ejaan Latin di
+  // tengah seksi yang seluruhnya berbahasa Jepang.
+  "profile.team_name_direktur": "Koirul Mustakim",
+  "profile.team_name_komisaris": "Triya Sumaryati",
+  "profile.team_name_edu_manager": "Hadi Prasojo",
+  "profile.team_name_admin": "Ayok Wahyu Saputro",
+  "profile.team_name_instructor": "Rian Hari Wijaya",
+  "profile.team_name_instructor_2": "Wiwit T Syafitri",
+
+  // Nama asisten AI. Body `siswa.*` dan `ai_cv.*` memakai カタカナ
+  // (ジェクリン), jadi judul yang tetap Latin membuat satu halaman memuat
+  // dua ejaan berbeda untuk orang yang sama.
+  "ai.name_jeklin": "Qween Jeklin",
 
   // ── Judul section Lowongan (S3, `#loker`) ─────────────────────────────
   // ADDED BY THE L8 GATE, not by a human noticing. `#loker` was the one section
@@ -1668,6 +1717,11 @@ export const translations: Record<Lang, Record<string, string>> = {
   "footer.nav_tentang": "Tentang Kami",
   "footer.social_heading": "Sosial Media",
   "footer.contact_heading": "Kontak",
+  // The paragraph directly UNDER the tagline. It rendered on every page with
+  // `showFooter` and carried no key, so it stayed Indonesian in Japanese mode
+  // even though the tagline above it is Japanese-only by design — the two sit
+  // six lines apart in Footer.astro. Found 2026-09-27 by the bilingual probe.
+  "footer.blurb": "Lembaga pelatihan & penempatan kerja resmi ke Jepang.",
     "footer.tagline": "夢を日本へ",
     "footer.title": "PT Amanah Sakura Japan",
     "form.mf_alkohol": "Minum Alkohol?",
@@ -1879,6 +1933,54 @@ export const translations: Record<Lang, Record<string, string>> = {
     "notfound.body": "Alamat yang Anda buka tidak ada atau sudah dipindahkan. Periksa kembali tautannya, atau mulai dari halaman lowongan.",
     "notfound.home": "Ke Beranda",
     "notfound.jobs": "Lihat Lowongan",
+
+    // ─── Document titles / <title> ───────────────────────────────────────────
+    // WHY THESE EXIST SEPARATELY FROM THE `title=` PROP ON BaseLayout.
+    //
+    // The <title> tag is SERVER-RENDERED on purpose (see BaseLayout.astro): a
+    // crawler and a shared link preview need it in the HTML, and
+    // translateDataLang() only runs in the browser. So the server-rendered
+    // value stays Indonesian, and that part is correct and unchanged.
+    //
+    // But nothing ever updated it AFTER hydration, so a reader who chose
+    // Japanese kept an Indonesian title in the tab, the bookmark and the
+    // history entry — verified 2026-09-27 by loading all 7 routes twice and
+    // comparing document.title: 7 of 7 were identical. That is why these keys
+    // exist: BaseLayout reads `data-title-key` off <html> and assigns
+    // document.title from this dictionary on boot and on every toggle.
+    //
+    // THE KEY LIVES ON <html>, NOT ON <title>. i18n.keys.test.ts does not parse
+    // <title>, but another gate matches `/<title>([\s\S]*?)<\/title>/`, and
+    // adding an attribute to that tag would break it. Same reasoning the skill
+    // for this defect class records.
+    "doc.title_home": "PT Amanah Sakura Japan — Job Portal",
+    "doc.title_loker": "Lowongan Kerja — PT Amanah Sakura Japan",
+    "doc.title_public": "Lowongan & Layanan — ASJ Portal",
+    "doc.title_apply": "ASJ - Form Lamaran Kerja",
+    "doc.title_ai_cv": "ASJ AI - Qween Jeklin",
+    "doc.title_siswa_baru": "ASJ - Pendaftaran Siswa (AI Assistant)",
+    "doc.title_admin": "Panel Admin — ASJ Portal",
+    "doc.title_candidate": "Dashboard Kandidat — ASJ Portal",
+    "doc.title_notfound": "Halaman tidak ditemukan — ASJ Portal",
+    // Ditemukan oleh gate `every <BaseLayout title> carries a titleKey` di
+    // i18n.keys.test.ts, bukan oleh mata. Dua halaman ini melewatkan titleKey
+    // sepenuhnya, jadi judulnya tetap Indonesia di halaman JP — dan tidak ada
+    // gate lain di repo yang bisa melihat kondisi itu.
+    "doc.title_master": "ASJ Master Profil",
+    "doc.title_share": "ASJ - Candidate Viewer",
+
+    // ─── Theme + language toggles (src/components/forms/FormToolbar.tsx) ────
+    // These were hardcoded English (`Dark` / `Light`) and hardcoded Indonesian
+    // aria-labels on an island, so they never translated — measured 2026-09-27
+    // on /apply, /ai-cv and /siswa-baru. The visible label is only shown at
+    // `sm:` and up; the aria-label is the string assistive tech actually reads,
+    // so an untranslated aria-label is the more serious of the two.
+    "theme.dark": "Gelap",
+    "theme.light": "Terang",
+    "theme.to_light": "Aktifkan tema terang",
+    "theme.to_dark": "Aktifkan tema gelap",
+    "lang.to_jp": "Ganti ke bahasa Jepang",
+    "lang.to_id": "Ganti ke bahasa Indonesia",
   },
   jp: {} as Record<string, string>, // P9: lazy-loaded from i18n-jp.ts
 
@@ -1922,6 +2024,23 @@ const RAW_STRING_TRANSLATIONS: Record<Lang, Record<string, string>> = {
 function onJpReady() {
   jpReady.set(true);
   translateDataLang();
+  // MUST re-apply the title here too, and the reason is a COLD-LOAD RACE that
+  // makes the first attempt fail silently.
+  //
+  // Order of events on a cold load with lang=jp:
+  //   1. langStore.subscribe fires. `translations.jp` is still EMPTY, so the
+  //      branch calls loadJp() (async) and SKIPS translateDataLang().
+  //   2. It dispatches `asj-lang-change` immediately, so BaseLayout's listener
+  //      runs applyDocTitle() — while the JP dict is still in flight.
+  //   3. t() therefore falls back to the INDONESIAN entry, which is the same
+  //      string already in the DOM, so the assignment is a silent no-op.
+  //   4. The chunk lands and onJpReady() runs. Before this line existed it
+  //      refreshed only [data-lang] ELEMENTS; `document.title` is not an
+  //      element, so nothing ever re-applied it.
+  // Net effect: the title stayed Indonesian for every Japanese reader, while
+  // every other string on the page translated correctly — which is exactly the
+  // asymmetry the probe measured.
+  applyDocTitle();
 }
 
 /** Preload JP dictionary so language toggle is 0ms instant without network waiting */
@@ -1991,6 +2110,45 @@ export function translateDataLang() {
 export function t(key: string): string {
   const lang = langStore.get();
   return translations[lang]?.[key] || translations.id[key] || RAW_STRING_TRANSLATIONS[lang]?.[key] || key;
+}
+
+/**
+ * applyDocTitle() — keep `document.title` in step with the active language.
+ *
+ * THE DEFECT THIS FIXES, measured 2026-09-27. `BaseLayout.astro` renders
+ * `<title>{title}</title>` on the server, deliberately: a crawler and a shared
+ * link preview need the title in the HTML, and this function cannot run for
+ * them. But NOTHING re-applied it after hydration, so the server-rendered
+ * Indonesian string was also the only string a Japanese reader ever saw — in
+ * the tab, the bookmark and the history entry. Loading all 7 public routes in
+ * both languages and diffing `document.title` gave **7 of 7 identical**.
+ *
+ * `i18n.keys.test.ts` had this covered and explicitly exempted it, on the
+ * reasoning that "translateDataLang() only runs in the browser, so it cannot
+ * fix these — deliberately out of scope, not a false negative". The mechanism
+ * was described correctly and the conclusion did not follow: the title is not
+ * unfixable, it just needs its own writer. The exemption is what let this
+ * survive every gate.
+ *
+ * WHY THE KEY IS READ FROM <html> AND NOT <title>. A separate gate matches
+ * `/<title>([\s\S]*?)<\/title>/`; putting an attribute on that tag would break
+ * it. `data-title-key` on the root element is invisible to that regex and is
+ * already the idiom this layout uses for its other i18n attributes.
+ *
+ * THE SERVER-RENDERED VALUE IS NOT OVERWRITTEN UNTIL A TRANSLATION EXISTS. If
+ * the JP dictionary chunk has not arrived yet, `t()` falls back to the
+ * Indonesian entry — which is the same string already in the DOM, so assigning
+ * it is a no-op rather than a flash of a raw key. A missing key is skipped for
+ * the same reason: better an Indonesian title than the literal `doc.title_x`.
+ */
+export function applyDocTitle(): void {
+  if (typeof document === "undefined") return;
+  const el = document.documentElement;
+  const key = el.getAttribute("data-title-key");
+  if (!key) return;
+  const text = t(key);
+  // t() returns the key itself when it is in NO dictionary — never render that.
+  if (text && text !== key) document.title = text;
 }
 
 /**

@@ -96,7 +96,27 @@ export interface Step {
  */
 export interface Fact {
   label: Text;
-  value: string;
+  /**
+   * The value. A plain string in the common case, or `Text` when it must
+   * localise.
+   *
+   * THE RULE, CORRECTED 2026-09-27. This was `string` only, on a rule stated in
+   * `FactList.tsx` as "the value is a literal, never a key… licence numbers,
+   * registration numbers and proper nouns are identical in every language".
+   * That is right for IDENTIFIERS and wrong for NAMES and QUANTITIES, and this
+   * file contradicted it 150 lines further down: the placement rows carried a
+   * translatable LABEL next to a hardcoded romanised `Miyazaki · Okayama`. Four
+   * prefectures were translated nowhere and one of them was translated
+   * elsewhere — the inconsistency is what makes it a defect rather than a
+   * judgement call.
+   *
+   * The rule that replaces it: **an identifier is invariant; a name or a
+   * quantity is not.** A licence number, a registration number, a company's
+   * legal name, a person's name, an address and an email stay literal. A place
+   * name, a price, a date with a month name and anything that reads as prose
+   * carry a key.
+   */
+  value: string | Text;
 }
 
 /* ── Vision & mission (pages 2 and 5, verbatim) ─────────────────────────────
@@ -214,8 +234,20 @@ export const PROGRAMS: Tile[] = [
   },
 ];
 
-/** Page 3, the price table. A literal: a price is not translated. */
-export const PROGRAM_PRICE = '6 JUTA';
+/**
+ * Page 3, the price table.
+ *
+ * THIS COMMENT USED TO SAY "a literal: a price is not translated", AND THAT WAS
+ * WRONG in the same way the `Fact.value` rule was (see the `Fact` interface).
+ * A price is a QUANTITY, not an identifier: `6 JUTA` means nothing to a reader
+ * who does not parse Indonesian, and the unit is a word. It carries a key since
+ * 2026-09-27; the Japanese side reads `600万ルピア`.
+ *
+ * Note the number is localised to the Japanese counting convention (万 = 10^4)
+ * rather than transliterated, and the currency is named in katakana, so the JP
+ * entry is not a word-for-word swap of the Indonesian one.
+ */
+export const PROGRAM_PRICE: Text = { key: 'profile.prog_price', text: '6 JUTA' };
 
 export const PROGRAM_PAYMENT: Text = {
   key: 'profile.prog_payment',
@@ -313,14 +345,36 @@ export const REQUIREMENT_DOCS: Text[] = [
 /* ── Legality (pages 6 and 7) ───────────────────────────────────────────────
    Six rows, all traceable. This section could not exist before the company
    profile arrived: the roadmap deliberately withheld it rather than print
-   placeholder licence numbers (docs/LANDING_PAGE_ROADMAP.md §4). */
+   placeholder licence numbers (docs/LANDING_PAGE_ROADMAP.md §4).
+
+   THREE OF THE SIX CARRY KEYS since 2026-09-27, and the split is the point of
+   the rule above rather than an arbitrary line. `AHU-…`, the company-register
+   number and the registration number are IDENTIFIERS and stay literal — a
+   translated registration number would be a defect. `Badan hukum` is a legal
+   DESCRIPTION (`Perseroan Terbatas (PT), Swasta Nasional`), `Akta Notaris`
+   contains a DATE WITH A MONTH NAME, and `Kedudukan` is a PLACE: all three
+   change with the language. Leaving them literal is how this section shipped
+   with four Indonesian strings on an otherwise-Japanese page. */
 export const LEGAL_FACTS: Fact[] = [
-  { label: { key: 'profile.legal_form', text: 'Badan hukum' }, value: 'Perseroan Terbatas (PT), Swasta Nasional' },
+  {
+    label: { key: 'profile.legal_form', text: 'Badan hukum' },
+    value: { key: 'profile.legal_form_value', text: 'Perseroan Terbatas (PT), Swasta Nasional' },
+  },
+  // An identifier: unchanged in every language, so deliberately literal.
   { label: { key: 'profile.legal_sk', text: 'SK Kemenkumham' }, value: 'AHU-0063921.AH.01.01.TAHUN 2023' },
-  { label: { key: 'profile.legal_deed', text: 'Akta Notaris' }, value: 'Nomor 09, 15 Agustus 2023 — Notaris Setya Budhi, S.H.' },
+  {
+    label: { key: 'profile.legal_deed', text: 'Akta Notaris' },
+    // The notary's NAME is invariant; the date's month name is not.
+    value: { key: 'profile.legal_deed_value', text: 'Nomor 09, 15 Agustus 2023 — Notaris Setya Budhi, S.H.' },
+  },
+  // An identifier.
   { label: { key: 'profile.legal_regno', text: 'Nomor pendaftaran' }, value: '4023082735107914' },
+  // An identifier.
   { label: { key: 'profile.legal_register', text: 'Daftar Perseroan' }, value: 'AHU-0167587.AH.01.11.TAHUN 2023' },
-  { label: { key: 'profile.legal_seat', text: 'Kedudukan' }, value: 'Kabupaten Ponorogo, Jawa Timur' },
+  {
+    label: { key: 'profile.legal_seat', text: 'Kedudukan' },
+    value: { key: 'profile.legal_seat_value', text: 'Kabupaten Ponorogo, Jawa Timur' },
+  },
 ];
 
 /* ── Facilities (pages 11-15 and the price inclusions on page 3) ────────── */
@@ -368,14 +422,35 @@ export const FACILITIES: Tile[] = [
 
 /* ── Placement (pages 13 and 14) ────────────────────────────────────────────
    Four prefectures, read off the dated interview banners. This is the trust slot
-   the mockup filled with testimonials the document does not contain. */
+   the mockup filled with testimonials the document does not contain.
+
+   The values carry keys since 2026-09-27: a prefecture is a NAME, so it is not
+   invariant across languages. The kanji is the form a Japanese reader needs —
+   a romanised "Kagoshima" in an otherwise-Japanese page is the defect this
+   file's own `value` rule used to forbid, while permitting it in practice. */
 export const PLACEMENTS: Fact[] = [
-  { label: { key: 'profile.place_food', text: 'Pengolahan Makanan' }, value: 'Miyazaki · Okayama' },
-  { label: { key: 'profile.place_farm', text: 'Pertanian' }, value: 'Miyazaki · Nagano' },
-  { label: { key: 'profile.place_livestock', text: 'Peternakan' }, value: 'Kagoshima' },
+  {
+    label: { key: 'profile.place_food', text: 'Pengolahan Makanan' },
+    value: { key: 'profile.place_food_area', text: 'Miyazaki · Okayama' },
+  },
+  {
+    label: { key: 'profile.place_farm', text: 'Pertanian' },
+    value: { key: 'profile.place_farm_area', text: 'Miyazaki · Nagano' },
+  },
+  {
+    label: { key: 'profile.place_livestock', text: 'Peternakan' },
+    value: { key: 'profile.place_livestock_area', text: 'Kagoshima' },
+  },
 ];
 
-/** Counted from PLACEMENTS, not typed — the hero stat and this list cannot drift. */
+/**
+ * Counted from PLACEMENTS, not typed — the hero stat and this list cannot drift.
+ *
+ * Kept in the ROMANISED form on purpose: this array is the counting source and
+ * is also read by the hero stat and by tests. The localised display strings live
+ * in the dictionary under `profile.place_area_*`, so the two representations
+ * cannot disagree about how many prefectures there are.
+ */
 export const PLACEMENT_PREFECTURES = ['Miyazaki', 'Okayama', 'Nagano', 'Kagoshima'] as const;
 
 /* ── About (page 2) ─────────────────────────────────────────────────────────
@@ -418,24 +493,31 @@ export const ABOUT_PARAGRAPHS: Text[] = [
    one post with two names in the document, not two people and not two jobs.
    Listing him twice rendered two cards and granted him the Direktur title. The
    N1 credential (page 10) is the strongest trust signal the company has, so it is
-   attached as his note rather than duplicated as its own row. */
+   attached as his note rather than duplicated as its own row.
+
+   WHY `name` IS `Text | null` AND NOT A PLAIN STRING. A person's name is a NAME,
+   not an identifier, so it translates — see the rule comment above `Fact.value`.
+   These six names were literals until e2e/probe-untranslated.mjs reported them as
+   unchanged text on /, /loker and /public, all six inside a section whose every
+   other word was Japanese. The company publishes the kana spelling itself, so
+   there is no guesswork in the translation; the JP spelling is カタカナ. */
 export interface Person {
-  name: string | null;
+  name: Text | null;
   role: Text;
   note?: Text;
 }
 
 export const TEAM: Person[] = [
-  { name: 'Koirul Mustakim', role: { key: 'profile.team_direktur', text: 'Direktur' } },
-  { name: 'Triya Sumaryati', role: { key: 'profile.team_komisaris', text: 'Komisaris' } },
+  { name: { key: 'profile.team_name_direktur', text: 'Koirul Mustakim' }, role: { key: 'profile.team_direktur', text: 'Direktur' } },
+  { name: { key: 'profile.team_name_komisaris', text: 'Triya Sumaryati' }, role: { key: 'profile.team_komisaris', text: 'Komisaris' } },
   {
-    name: 'Hadi Prasojo',
+    name: { key: 'profile.team_name_edu_manager', text: 'Hadi Prasojo' },
     role: { key: 'profile.team_edu_manager', text: 'Manager / Education & Training Manager' },
     note: { key: 'profile.team_n1_note', text: 'Pemegang JLPT N1, sertifikat N1A225127J' },
   },
-  { name: 'Ayok Wahyu Saputro', role: { key: 'profile.team_admin', text: 'Staf Administrasi' } },
-  { name: 'Rian Hari Wijaya', role: { key: 'profile.team_instructor', text: 'Pengajar Bahasa Jepang' } },
-  { name: 'Wiwit T Syafitri', role: { key: 'profile.team_instructor_2', text: 'Pengajar Bahasa Jepang' } },
+  { name: { key: 'profile.team_name_admin', text: 'Ayok Wahyu Saputro' }, role: { key: 'profile.team_admin', text: 'Staf Administrasi' } },
+  { name: { key: 'profile.team_name_instructor', text: 'Rian Hari Wijaya' }, role: { key: 'profile.team_instructor', text: 'Pengajar Bahasa Jepang' } },
+  { name: { key: 'profile.team_name_instructor_2', text: 'Wiwit T Syafitri' }, role: { key: 'profile.team_instructor_2', text: 'Pengajar Bahasa Jepang' } },
 ];
 
 /** Page 10. Rendered as a credential card, not buried in prose. */
@@ -500,7 +582,7 @@ export const CONTACT_EMAIL_ROW: Fact = {
 
 export const CONTACT_LOCATION: Fact = {
   label: { key: 'profile.contact_located', text: 'Lokasi' },
-  value: 'Kabupaten Ponorogo, Jawa Timur',
+  value: { key: 'profile.contact_located_value', text: 'Kabupaten Ponorogo, Jawa Timur' },
 };
 
 /** Ponorogo town centre, for the map embed. The address is street-level; a
@@ -509,12 +591,42 @@ export const CONTACT_LOCATION: Fact = {
 export const MAP_EMBED_QUERY = 'Ponorogo, Jawa Timur';
 
 /* ── Contact (pages 5, 8 and 9) ─────────────────────────────────────────── */
-export const CONTACT_ADDRESS =
-  'Jl. Kyai Ageng Musakaf, Rw 03 Rt 03, Dukuh Ngujung, Desa Gandu Kepuh, Kec. Sukorejo, Kab. Ponorogo, Jawa Timur';
+
+/**
+ * The street address, as a translatable `Text`.
+ *
+ * WHY AN ADDRESS IS KEYED BUT AN EMAIL IS NOT. This is the same rule as the names:
+ * an identifier is invariant, a NAME is not. `amanahsakurajapan@gmail.com` below is
+ * an ADDRESS YOU TYPE — rewriting it breaks the mailto and the reader's ability to
+ * copy it — so it stays a literal in both languages. A postal address is the
+ * opposite: it is a place NAME, and a Japanese reader who cannot read the Latin
+ * transliteration of "Kec. Sukorejo, Kab. Ponorogo" is meant to get the kana form.
+ * The prefecture names inside it (Jawa Timur → 東ジャワ州) already have a key of their
+ * own in `profile.contact_located_value`, so leaving the street line unkeyed meant
+ * one contact block rendered half in Japanese and half in Indonesian.
+ *
+ * THE INDONESIAN TEXT STAYS THE ADDRESS OF RECORD. The JP string is a reading aid,
+ * not a replacement: an envelope or a courier form is filled in with the Indonesian
+ * line, so `text` here is the canonical value and the JP dictionary supplies the
+ * gloss. If the two ever disagree the Indonesian one wins.
+ *
+ * WHY THE KEY IS `_value`. `profile.contact_address` ALREADY EXISTED and means
+ * the LABEL ("Alamat" / "住所" — the heading above the address). Reusing that key
+ * for the street line itself made the id dictionary carry the same key twice, and
+ * the repo's duplicate-key check caught it immediately. The `_value` suffix is the
+ * existing convention for the pair: `<thing>` is the label, `<thing>_value` is
+ * what sits under it (see `profile.contact_located` /
+ * `profile.contact_located_value` right above).
+ */
+export const CONTACT_ADDRESS: Text = {
+  key: 'profile.contact_address_value',
+  text: 'Jl. Kyai Ageng Musakaf, Rw 03 Rt 03, Dukuh Ngujung, Desa Gandu Kepuh, Kec. Sukorejo, Kab. Ponorogo, Jawa Timur',
+};
 
 /** Both numbers are on the letterhead; the repo previously carried only the second. */
 export const CONTACT_PHONES = ['0821-3178-1435', '0878-8950-2004'] as const;
 export const CONTACT_WHATSAPP = '6287889502004';
+/** An identifier: typed, copied, and pasted into a mail client. Never translated. */
 export const CONTACT_EMAIL = 'amanahsakurajapan@gmail.com';
 
 /**

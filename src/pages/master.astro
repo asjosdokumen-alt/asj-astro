@@ -3,7 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import MasterFullForm from '../components/forms/MasterFullForm.tsx';
 import FormToolbar from "../components/forms/FormToolbar";
 ---
-<BaseLayout title="ASJ MASTER PROFIL">
+<BaseLayout title="ASJ MASTER PROFIL" titleKey="doc.title_master">
   <FormToolbar client:only="preact" titleKey="toolbar.master" />
   <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[42px]">
     <MasterFullForm client:only="preact" />

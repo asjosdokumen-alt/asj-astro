@@ -5,7 +5,7 @@ import App from '../components/App.tsx';
 import FormToolbar from '../components/forms/FormToolbar';
 ---
 
-<BaseLayout title="Dashboard Kandidat — ASJ Portal" description="Dashboard kandidat: CV, lamaran, status tahapan" showBottomNav={true}>
+<BaseLayout title="Dashboard Kandidat — ASJ Portal" titleKey="doc.title_candidate" description="Dashboard kandidat: CV, lamaran, status tahapan" showBottomNav={true}>
   <App showHeader={false} client:only="preact" />
   <FormToolbar titleKey="toolbar.candidate" client:only="preact" />
 

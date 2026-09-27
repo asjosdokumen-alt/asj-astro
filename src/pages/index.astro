@@ -63,7 +63,7 @@ import { GALLERY } from '../lib/gallery';
    CheckList exists at all: four of these blocks were inline maps before it did. */
 ---
 
-<BaseLayout title="PT Amanah Sakura Japan — Job Portal" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true}>
+<BaseLayout title="PT Amanah Sakura Japan — Job Portal" titleKey="doc.title_home" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true}>
   <!-- `hero` turns the header band into the landing page's hero. It also moves
        the page's single h1 into the hero, so the company name in the header
        steps down to a div — see the note in App.tsx. Every OTHER route mounts
@@ -237,7 +237,7 @@ import { GALLERY } from '../lib/gallery';
           <span data-lang="profile.prog_price_label" class="text-caption uppercase font-bold text-accent-emerald">
             Biaya program
           </span>
-          <span class="text-section font-black text-fg">{PROGRAM_PRICE}</span>
+          <span data-lang={PROGRAM_PRICE.key} class="text-section font-black text-fg">{PROGRAM_PRICE.text}</span>
           <span data-lang="profile.prog_payment" class="text-body-sm text-fg-muted">
             {PROGRAM_PAYMENT.text}
           </span>
@@ -615,7 +615,7 @@ import { GALLERY } from '../lib/gallery';
           <span data-lang="profile.contact_address" class="text-caption uppercase font-bold text-accent">
             Alamat
           </span>
-          <span class="text-body-sm text-fg-muted">{CONTACT_ADDRESS}</span>
+          <span class="text-body-sm text-fg-muted" data-lang={CONTACT_ADDRESS.key}>{CONTACT_ADDRESS.text}</span>
         </Card>
         <Card class="flex flex-col gap-3">
           <span data-lang="profile.contact_phone" class="text-caption uppercase font-bold text-accent">
@@ -828,8 +828,8 @@ import { GALLERY } from '../lib/gallery';
             <p class="text-white font-bold text-body-sm mb-1" data-lang="landing.maps_title">
               Kunjungi LPK Amanah Sakura Japan
             </p>
-            <p class="text-body-sm text-fg-muted max-w-xl">
-              {CONTACT_ADDRESS}
+            <p class="text-body-sm text-fg-muted max-w-xl" data-lang={CONTACT_ADDRESS.key}>
+              {CONTACT_ADDRESS.text}
             </p>
           </div>
         </div>

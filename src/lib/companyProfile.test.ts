@@ -37,6 +37,7 @@ import {
   TEAM,
   VISION,
   WHY_JAPAN,
+  type Fact,
   type Text,
 } from './companyProfile';
 
@@ -133,17 +134,45 @@ describe('companyProfile — content we are NOT allowed to publish', () => {
 
   it('carries no placeholder-shaped legal value', () => {
     const suspicious = /xxx|0000000|contoh|placeholder|isi di sini/i;
-    const hits = LEGAL_FACTS.map((f) => f.value).filter((v) => suspicious.test(v));
+    // `Fact.value` is `string | Text` since 2026-09-27: an IDENTIFIER is a
+    // literal, a NAME or QUANTITY is `Text` and localises. These assertions are
+    // about the literal text either way, so read `.text` when it is `Text`.
+    const asText = (v: Fact['value']) => (typeof v === 'string' ? v : v.text);
+    const hits = LEGAL_FACTS.map((f) => asText(f.value)).filter((v) => suspicious.test(v));
     expect(hits).toEqual([]);
   });
 
   it('keeps every legal number in the shape the document prints it', () => {
-    const byLabel = Object.fromEntries(LEGAL_FACTS.map((f) => [f.label.key, f.value]));
+    const asText = (v: Fact['value']) => (typeof v === 'string' ? v : v.text);
+    const byLabel = Object.fromEntries(LEGAL_FACTS.map((f) => [f.label.key, asText(f.value)]));
     // Exact strings from docs/COMPANY_PROFILE_DATA.md §2. A single mistyped digit in
     // a registration number is a false legal claim, and nothing else would catch it.
     expect(byLabel['profile.legal_sk']).toBe('AHU-0063921.AH.01.01.TAHUN 2023');
     expect(byLabel['profile.legal_regno']).toBe('4023082735107914');
     expect(byLabel['profile.legal_register']).toBe('AHU-0167587.AH.01.11.TAHUN 2023');
+  });
+
+  it('keeps every legal IDENTIFIER literal, and only the names keyed', () => {
+    // The corrected rule from companyProfile.ts: an identifier is invariant, a
+    // name or quantity is not. This test is what stops the rule from drifting
+    // back — keying a registration number would let a dictionary edit change a
+    // legal fact, and leaving the seat/date literal is the defect this fixed.
+    const keyed = LEGAL_FACTS.filter((f) => typeof f.value !== 'string').map((f) => f.label.key);
+    expect(keyed.sort()).toEqual([
+      'profile.legal_deed',   // a date with a month name
+      'profile.legal_form',   // a legal description
+      'profile.legal_seat',   // a place
+    ]);
+    const literal = LEGAL_FACTS.filter((f) => typeof f.value === 'string').map((f) => f.label.key);
+    // `.sort()` is lexicographic, so `legal_register` sorts BEFORE `legal_regno`
+    // ("regi" < "regn"). Listing them in source order here instead is what made
+    // this assertion fail with an identical-looking pair — the two names differ by
+    // one letter and by position.
+    expect(literal.sort()).toEqual([
+      'profile.legal_register', // identifier
+      'profile.legal_regno',    // identifier
+      'profile.legal_sk',       // identifier
+    ]);
   });
 });
 
@@ -154,9 +183,13 @@ describe('companyProfile — team (docs/COMPANY_PROFILE_DATA.md §4)', () => {
     // module labelled Koirul Mustakim "Komisaris" and never mentioned Triya at all —
     // which is the failure mode this test exists for: a title is a claim about who
     // runs the company, and swapping two titles is invisible to every other gate.
+    // `p.name` is now a `Text`, not a string: a person's name is a NAME, so it
+    // translates (see the rule comment above `Fact.value`). `p.name.text` is the
+    // Indonesian spelling, which is what these assertions are about — who holds
+    // which post, in the language the document is written in.
     const byRole = new Map(TEAM.map((p) => [p.role.key, p.name]));
-    expect(byRole.get('profile.team_direktur')).toBe('Koirul Mustakim');
-    expect(byRole.get('profile.team_komisaris')).toBe('Triya Sumaryati');
+    expect(byRole.get('profile.team_direktur')?.text).toBe('Koirul Mustakim');
+    expect(byRole.get('profile.team_komisaris')?.text).toBe('Triya Sumaryati');
   });
 
   it('gives every person the document publishes a name', () => {
@@ -164,7 +197,7 @@ describe('companyProfile — team (docs/COMPANY_PROFILE_DATA.md §4)', () => {
     // (Instruktur Bahasa). Leaving them anonymous in the module understates the
     // structure the company actually printed — `name: null` is for a role the
     // document does NOT name, not for one it does.
-    const named = TEAM.filter((p) => p.name).map((p) => p.name);
+    const named = TEAM.filter((p) => p.name !== null).map((p) => p.name?.text);
     for (const expected of [
       'Koirul Mustakim',
       'Triya Sumaryati',
@@ -175,6 +208,16 @@ describe('companyProfile — team (docs/COMPANY_PROFILE_DATA.md §4)', () => {
     ]) {
       expect(named).toContain(expected);
     }
+  });
+
+  it('keys every published name, so the JP toggle can reach it', () => {
+    // ADDED 2026-09-27 with the id↔jp sweep. A name is a NAME, not an identifier,
+    // so an unkeyed one is a string the JP page shows in Indonesian — which is what
+    // e2e/probe-untranslated.mjs caught on / , /loker and /public (six names, all
+    // unchanged between the two passes). A literal name passes every other gate in
+    // the repo, so this test is the one that holds the line.
+    const unkeyed = TEAM.filter((p) => p.name !== null && !p.name?.key).map((p) => p.name?.text);
+    expect(unkeyed, 'these names render in Indonesian on the JP page').toEqual([]);
   });
 
   it('does not list one person twice in the same job', () => {
@@ -230,7 +273,11 @@ describe('companyProfile — counts that must match the document', () => {
   it('derives the prefecture list from the placements it belongs to', () => {
     // The hero stat and this list must not be able to disagree.
     expect(PLACEMENT_PREFECTURES).toHaveLength(4);
-    const joined = PLACEMENTS.map((p) => p.value).join(' ');
+    // `p.value` became a `Text` (a prefecture name is a NAME, so it translates),
+    // so join its `.text`. Joining the objects yields "[object Object]" and the
+    // contains-check below would then fail on every prefecture at once, which
+    // looks like a data problem rather than a shape change.
+    const joined = PLACEMENTS.map((p) => (typeof p.value === 'string' ? p.value : p.value.text)).join(' ');
     for (const pref of PLACEMENT_PREFECTURES) expect(joined).toContain(pref);
   });
 });

@@ -67,7 +67,7 @@ const TEL_HREF = (raw: string) => `tel:+62${raw.replace(/\D/g, '').replace(/^0/,
             <h2 class="text-lg font-black text-fg tracking-wide" data-lang="footer.title">PT Amanah Sakura Japan</h2>
           </div>
           <div class="text-sm font-bold tracking-[4px] text-accent mt-1" data-lang="footer.tagline">夢を日本へ</div>
-          <p class="text-caption text-fg-muted mt-2 max-w-[28ch]">
+          <p class="text-caption text-fg-muted mt-2 max-w-[28ch]" data-lang="footer.blurb">
             Lembaga pelatihan & penempatan kerja resmi ke Jepang.
           </p>
         </div>
@@ -133,7 +133,7 @@ const TEL_HREF = (raw: string) => `tel:+62${raw.replace(/\D/g, '').replace(/^0/,
             their own padding.
           */}
           <div class="flex flex-col gap-1 text-body-sm text-fg-muted">
-            <span class="py-1">{CONTACT_ADDRESS}</span>
+            <span class="py-1" data-lang={CONTACT_ADDRESS.key}>{CONTACT_ADDRESS.text}</span>
             <a id="footer-tel" href={TEL_HREF(CONTACT_PHONES[0])} class="min-h-11 inline-flex items-center hover:text-fg transition-colors">
               <Icon name="phone" class="mr-1.5 text-accent-sky" />{CONTACT_PHONES[0]}
             </a>

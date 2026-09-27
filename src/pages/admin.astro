@@ -6,7 +6,7 @@ import App from '../components/App.tsx';
 import FormToolbar from '../components/forms/FormToolbar';
 ---
 
-<BaseLayout title="Panel Admin — ASJ Portal" description="Admin panel: kelola kandidat, loker, mail, jadwal" showBottomNav={true}>
+<BaseLayout title="Panel Admin — ASJ Portal" titleKey="doc.title_admin" description="Admin panel: kelola kandidat, loker, mail, jadwal" showBottomNav={true}>
   <App showHeader={false} client:only="preact" />
 
   <FormToolbar titleKey="toolbar.admin" client:only="preact" />

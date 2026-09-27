@@ -15,10 +15,18 @@
  * zero-unresolved invariant because template interpolations only resolve against the
  * frontmatter module scope, not a nested callback scope.
  *
- * THE VALUE IS A LITERAL, NEVER A KEY. Licence numbers, registration numbers and
- * proper nouns are identical in every language; routing them through the dictionary
- * would be a defect waiting to happen (a translated registration number). Only the
- * label is translatable, which is why only the label carries `data-lang`.
+ * THE VALUE IS USUALLY A LITERAL, BUT NOT ALWAYS — CORRECTED 2026-09-27.
+ * This note used to read "the value is a literal, never a key. Licence numbers,
+ * registration numbers and proper nouns are identical in every language". The
+ * first half is right and the reasoning was over-applied: it holds for
+ * IDENTIFIERS (a licence number, a registration number, a legal name, a person,
+ * an address, an email) and NOT for NAMES or QUANTITIES. The placement table in
+ * `companyProfile.ts` contradicted the rule it was being justified by — four
+ * prefectures stayed romanised while their labels translated, and the price
+ * `6 JUTA` was declared "not translated". So a value may now be `Text`, and the
+ * decision is per row: **an identifier is invariant; a name or a quantity is
+ * not.** A keyed value renders with `data-lang` and its literal is the
+ * pre-hydration default, exactly like every other translated string here.
  *
  * `dl`/`dt`/`dd` rather than a table or a grid of divs: this IS a description list
  * semantically, and screen readers announce the pairing with no extra ARIA. Each row
@@ -45,19 +53,39 @@ export default function FactList({ facts, accent = 'legal', class: className }: 
 
   return (
     <dl class={wrapper}>
-      {facts.map((fact) => (
-        <div
-          key={fact.label.key}
-          class="grid gap-1 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:gap-4 px-5 py-4 min-w-0"
-        >
-          <dt data-lang={fact.label.key} class={labelClass}>
-            {fact.label.text}
-          </dt>
-          {/* A literal, on purpose — see the note at the top of this file. It is also
-              why this line carries no data-lang: there is nothing to translate. */}
-          <dd class="text-body-sm text-fg break-words">{fact.value}</dd>
-        </div>
-      ))}
+      {facts.map((fact) => {
+        // A value is either a literal (an identifier — licence numbers, a legal
+        // name, an address, an email) or `Text`, which means it must localise
+        // (a place name, a quantity, prose). See the note at the top.
+        //
+        // Bind the narrowed value to a local rather than testing
+        // `typeof fact.value` inline: a `const valueIsText = typeof … ` boolean
+        // does NOT narrow `fact.value` at the point of use (TS only narrows the
+        // expression it tested), which is why this first version failed
+        // `tsc --noEmit` with "Property 'key' does not exist on type
+        // 'string | Text'" on both lines below.
+        const value = fact.value;
+        return (
+          <div
+            key={fact.label.key}
+            class="grid gap-1 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)] sm:gap-4 px-5 py-4 min-w-0"
+          >
+            <dt data-lang={fact.label.key} class={labelClass}>
+              {fact.label.text}
+            </dt>
+            {typeof value === 'string' ? (
+              /* An identifier: identical in every language, so deliberately no
+                 data-lang — there is nothing to translate and a dictionary
+                 round-trip could only corrupt it. */
+              <dd class="text-body-sm text-fg break-words">{value}</dd>
+            ) : (
+              <dd data-lang={value.key} class="text-body-sm text-fg break-words">
+                {value.text}
+              </dd>
+            )}
+          </div>
+        );
+      })}
     </dl>
   );
 }

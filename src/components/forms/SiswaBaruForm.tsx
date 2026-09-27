@@ -352,7 +352,8 @@ export default function SiswaBaruForm() {
             <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png" alt="Qween Jeklin" class="w-full h-full rounded-full object-cover" />
           </div>
           <div>
-            <h2 class="text-sm font-bold text-amber-400">Qween Jeklin</h2>
+            {/* Bound to the shared NAME key — see the same heading in AiCvForm.tsx. */}
+            <h2 class="text-sm font-bold text-amber-400" data-lang="ai.name_jeklin">{t("ai.name_jeklin")}</h2>
             <p class="text-[11px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>{t('siswa.assistant')}</p>
           </div>
         </div>

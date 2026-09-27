@@ -852,7 +852,11 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
             <img src={JEKLIN_IMG} alt="Qween Jeklin" class="w-full h-full rounded-full object-cover" />
           </div>
           <div>
-            <h2 class="text-sm font-bold text-amber-400">Qween Jeklin</h2>
+            {/* Bound to the shared NAME key, not a literal. The body text of this panel
+                (`ai_cv.*`) already spells the assistant カタカナ in Japanese, so an
+                unbound Latin heading put two spellings of one person on one screen.
+                `ai.name_jeklin` is shared with SiswaBaruForm so they cannot drift. */}
+            <h2 class="text-sm font-bold text-amber-400" data-lang="ai.name_jeklin">{t("ai.name_jeklin")}</h2>
             <p class="text-[11px] text-slate-400"><span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>{t("ai_cv.hrd_tagline")}</p>
           </div>
         </div>

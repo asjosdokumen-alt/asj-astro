@@ -188,6 +188,8 @@ export const jpTranslations: Record<string, string> = {
     "apply.success_title": "応募完了！",
     "apply.success_desc": "応募が送信されました。",
     "apply.btn_portal": "ポータルに戻る",
+    "apply.btn_draft": "下書き",
+    "apply.btn_next": "次へ",
     "apply.btn_pilih": "選択",
     "master.title": "CVマスターフォーム",
     "master.step_identitas": "個人情報",
@@ -870,6 +872,18 @@ export const jpTranslations: Record<string, string> = {
   "profile.legal_regno": "登録番号",
   "profile.legal_register": "法人登録",
   "profile.legal_seat": "所在地",
+  // 識別子ではない値だけを訳す（法人形態の説明・日付を含む公証人証書・所在地）。
+  // "Ponorogo" は既存の profile.fac_office_body が既に「ポノロゴ」と訳しているので、
+  // ここも同じ表記に合わせる（同じ語が2通りに訳されるのを避ける）。
+  "profile.legal_form_value": "株式会社（PT）・国内民間企業",
+  "profile.legal_deed_value": "第09号、2023年8月15日 — 公証人 スティア・ブディ",
+  "profile.legal_seat_value": "東ジャワ州ポノロゴ県",
+  "profile.contact_located_value": "東ジャワ州ポノロゴ県",
+
+  // 住所（街路レベル）。正式な住所は id 辞書側のインドネシア語表記で、こちらは
+  // 読みの補助。日本語話者がラテン文字の転写を読めない場合に備えてカタカナ・
+  // 漢字で示す。封筒や配送伝票にはインドネシア語の表記を使うこと。
+  "profile.contact_address_value": "東ジャワ州ポノロゴ県スコレジョ郡ガンドゥ・ケプフ村ヌグンジュン集落 03RW/03RT、カイ・アグン・ムサカフ通り",
   "profile.fac_title": "施設とサポート",
   "profile.fac_desc": "研修中に利用できる環境。",
   "profile.fac_class_title": "日本語教室",
@@ -887,6 +901,14 @@ export const jpTranslations: Record<string, string> = {
   "profile.place_food": "食品加工",
   "profile.place_farm": "農業",
   "profile.place_livestock": "畜産",
+  // 配置先の県名。ローマ字表記のままだと日本語話者には読めないため、
+  // 漢字表記に切り替える（中間のドットは両言語で同じ字形）。
+  "profile.place_food_area": "宮崎・岡山",
+  "profile.place_farm_area": "宮崎・長野",
+  "profile.place_livestock_area": "鹿児島",
+  // 金額は「識別子」ではなく「数量」なので訳す。日本語の万進法に合わせ、
+  // 通貨もカタカナで示す（単語ごとの置換ではない）。
+  "profile.prog_price": "600万ルピア",
 
   // ── 配属先（R4、13・14ページ） ────────────────────────────────────────
   // モックアップはこの枠を「体験談」で埋めていたが、会社案内に体験談は
@@ -947,6 +969,30 @@ export const jpTranslations: Record<string, string> = {
   "profile.cred_title": "講師の資格",
   "profile.cred_jlpt_label": "講師の資格",
   "profile.team_name_pending": "未公開",
+
+  // ── 氏名（人名）─────────────────────────────────────────────────────
+  // WHY THESE ARE KEYS EVEN THOUGH THEY ARE PROPER NOUNS, and why they are the
+  // ONLY kind of proper noun in this file that is keyed.
+  // The rule this codebase writes down is: "an identifier is invariant; a NAME
+  // or a QUANTITY is not." A company registration number, an email address or
+  // an AHU decree number must read identically in both languages, because they
+  // are lookup keys — rewriting them breaks the reference. A PERSON'S NAME is
+  // the opposite: it is the text a Japanese reader has to recognise on a
+  // business card and a staffing chart, and the company publishes the kana form
+  // itself. Leaving the Latin spelling unkeyed meant the JP page showed six
+  // Indonesian spellings inside an otherwise fully Japanese section, which is
+  // exactly the "untranslated string" class e2e/probe-untranslated.mjs hunts.
+  "profile.team_name_direktur": "コイルル・ムスタキム",
+  "profile.team_name_komisaris": "トリヤ・スマルヤティ",
+  "profile.team_name_edu_manager": "ハディ・プラソジョ",
+  "profile.team_name_admin": "アヨク・ワヒュ・サプトロ",
+  "profile.team_name_instructor": "リアン・ハリ・ウィジャヤ",
+  "profile.team_name_instructor_2": "ウィウィット・T・シャフィトリ",
+
+  // AI アシスタントの固有名。`siswa.*` と `ai_cv.*` の本文はどちらも
+  // カタカナ表記（ジェクリン）で書かれているので、見出しだけラテン文字で
+  // 残すと 1 ページ内で 2 通りの綴りが同居してしまう。
+  "ai.name_jeklin": "クイーン・ジェクリン",
 
   // ── 求人セクションの見出し（S3、`#loker`） ────────────────────────────
   // L8 ゲートが追加。`#loker` はページ内で唯一見出しを持たないセクションだった
@@ -1316,6 +1362,7 @@ export const jpTranslations: Record<string, string> = {
     "footer.nav_tentang": "会社概要",
     "footer.social_heading": "SNS",
     "footer.contact_heading": "お問い合わせ",
+    "footer.blurb": "日本への正規の研修・就労支援機関です。",
     "footer.tagline": "夢を日本へ",
     "footer.title": "PT Amanah Sakura Japan",
     "form.mf_ssw2": "ライセンス証明書 / SSW2（特定技能）",
@@ -1724,4 +1771,32 @@ export const jpTranslations: Record<string, string> = {
     "notfound.body": "お開きになったアドレスは存在しないか、移動されました。リンクをご確認いただくか、求人ページからお進みください。",
     "notfound.home": "ホームへ",
     "notfound.jobs": "求人を見る",
+
+    // ─── 文書タイトル / <title> ─────────────────────────────────────────────
+    // Server-rendered <title> stays Indonesian on purpose (crawlers and link
+    // previews cannot run JS); BaseLayout assigns document.title from these
+    // keys after hydration and on every toggle. The company's legal name stays
+    // as-is in both languages, which is why every entry keeps it verbatim.
+    "doc.title_home": "PT Amanah Sakura Japan — 求人ポータル",
+    "doc.title_loker": "求人情報 — PT Amanah Sakura Japan",
+    "doc.title_public": "求人・サービス — ASJポータル",
+    "doc.title_apply": "ASJ - 求人応募フォーム",
+    "doc.title_ai_cv": "ASJ AI - クイーン・ジェクリン",
+    "doc.title_siswa_baru": "ASJ - 受講生登録（AIアシスタント）",
+    "doc.title_admin": "管理パネル — ASJポータル",
+    "doc.title_candidate": "候補者ダッシュボード — ASJポータル",
+    "doc.title_notfound": "ページが見つかりません — ASJポータル",
+    "doc.title_master": "ASJ マスタープロフィール",
+    "doc.title_share": "ASJ - 候補者ビューア",
+
+    // ─── テーマ・言語トグル (src/components/forms/FormToolbar.tsx) ───────────
+    // 日本語話者にとって「Dark / Light」は意味を持たない英単語なので、
+    // テーマ名そのものを訳す（ダーク→ダークモード、ではない）。
+    // ID / JP は言語名の自己表記なので、どちらの言語でも動かさない。
+    "theme.dark": "ダーク",
+    "theme.light": "ライト",
+    "theme.to_light": "ライトテーマに切り替え",
+    "theme.to_dark": "ダークテーマに切り替え",
+    "lang.to_jp": "日本語に切り替え",
+    "lang.to_id": "インドネシア語に切り替え",
 };

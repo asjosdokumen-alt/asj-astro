@@ -67,12 +67,23 @@ export interface Props {
   lang?: string;
   showFooter?: boolean;
   showBottomNav?: boolean;
+  /**
+   * The i18n key for this page's document title, e.g. `doc.title_loker`.
+   *
+   * It is passed as an ATTRIBUTE ON <html>, not on <title>, for two reasons:
+   * a gate matches `/<title>([\s\S]*?)<\/title>/` and would break if that tag
+   * grew an attribute; and `data-*` on <html> is exactly what the rest of this
+   * layout's i18n already uses. `applyDocTitle()` reads it and assigns
+   * `document.title` after hydration, so the server-rendered Indonesian value
+   * (correct for crawlers) stops being the only value a JP reader ever sees.
+   */
+  titleKey?: string;
 }
 
-const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false } = Astro.props;
+const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false, titleKey } = Astro.props;
 ---
 <!DOCTYPE html>
-<html lang={lang}>
+<html lang={lang} data-title-key={titleKey}>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -337,17 +348,25 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
     }
   </script>
 <script>
-  import { translateDataLang, preloadJpDict } from '../store/i18n';
+  import { translateDataLang, preloadJpDict, applyDocTitle } from '../store/i18n';
   // Preload JP dictionary on client boot and run initial DOM translation
   preloadJpDict();
   translateDataLang();
+  // The <title> is server-rendered Indonesian (crawlers and link previews need
+  // it in the HTML and cannot run JS), so it has to be re-applied here for a
+  // reader who chose Japanese. Without this the tab, the bookmark and the
+  // history entry stayed Indonesian for ever — measured 2026-09-27: all 7
+  // routes had an identical document.title in both languages.
+  applyDocTitle();
   // i18n: listen for language changes and translate [data-lang] elements instantly
   window.addEventListener("asj-lang-change", function() {
     translateDataLang();
+    applyDocTitle();
   });
   window.addEventListener("storage", function(e) {
     if (e.key === "asj_lang") {
       translateDataLang();
+      applyDocTitle();
     }
   });
 </script>
