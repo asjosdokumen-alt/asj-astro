@@ -798,8 +798,8 @@ body {
    WHY THIS IS A SEPARATE RULE, MEASURED 2026-09-25. The rule above ends in
    `… .text-white`, a DESCENDANT selector: it re-lights a `.text-white` node
    that lives INSIDE the band. On `/` that is enough, because the hero's <h1>
-   carries its own `text-white` (`text-display font-black text-white …`) and
-   the visible heading is that child.
+   carries its own `text-white` (`text-display font-display font-normal
+   text-white …`) and the visible heading is that child.
    The NON-HERO header (`/public`, `/loker`, …) has no such child: its <h1> is
    only `text-lg md:text-3xl font-black italic …` and the white is set on the
    <header> itself — which is ALSO the `.hero-gradient` band. So the child

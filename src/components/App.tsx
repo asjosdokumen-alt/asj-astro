@@ -395,10 +395,15 @@ export default function App(
 
         {/* ─── The NEAR parallax plane (motion.css §9e) ──────────────────
              A second copy of the band's own `--hero-glow` token, re-positioned
-             and enlarged, drifting further and in the opposite direction to
-             the artwork above it. Two planes moving the same way at different
-             speeds reads as a rendering fault; opposite directions is what
-             reads as depth.
+             and enlarged, drifting further than the artwork above it.
+
+             The depth cue is the DIFFERENCE IN RATE (it travels ~2.75x as far,
+             so it reads as closer to the camera). It also travels the opposite
+             way, and that part is an aesthetic choice rather than a principle —
+             two planes moving the same way at different speeds is the textbook
+             parallax. See the full note in motion.css §9e; it is stated there
+             because the earlier version of both comments dressed the direction
+             up as a law of perception, which it is not.
 
              WHY IT IS IN THE UPPER-RIGHT (`background-position: 80% 30%`, set
              in CSS). The hero copy sits at the bottom-left and the

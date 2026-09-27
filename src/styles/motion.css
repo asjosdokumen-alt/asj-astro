@@ -1036,7 +1036,7 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
 
    ── WHAT MOVES, AND WHY THERE ARE ONLY TWO MOVING PLANES ────────────
    A parallax needs planes at different DISTANCES. The honest constraint
-   here is that the hero artwork is ONE raster (`hero-sakura.webp`) — a
+   here is that the hero artwork is ONE raster (`hero-sakura.avif`) — a
    generated 2.75:1 banner with the sky, Fuji, the pagoda and the figure
    already composited into it. It cannot be taken apart without new source
    art, so two planes are built from what exists:
@@ -1048,11 +1048,20 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
         The NEAR plane: it travels most, so it reads as atmosphere close to
         the camera sliding over the scene. `--parallax: -11%`.
 
-   Opposite directions AND different distances is what makes two planes
-   read as depth; two planes moving the same way at different speeds reads
-   as a rendering fault. Both are pure paint — no `backdrop-filter`, no
-   filter, no image decode — so a scroll-linked transform on them stays on
-   the compositor.
+   ── WHY THE HAZE TRAVELS FURTHER, AND THE OTHER WAY ────────────────
+   `.hero-haze` moves roughly 2.75x as far as the artwork and in the
+   opposite direction (measured: +38.05px vs -104.63px over the scroll
+   range). The DEPTH cue is the DIFFERENCE IN RATE — a plane that
+   travels further reads as closer to the camera. Opposite direction is
+   not the principle; two planes moving the same way at different speeds
+   is the textbook parallax and would read as depth too.
+
+   What the opposite direction buys here is narrower than "depth", and
+   it is worth stating honestly rather than dressing it as a rule: it
+   makes the two layers visibly INDEPENDENT rather than a single field
+   sliding at one rate with a smeared second edge. This is an aesthetic
+   choice, not a law of perception, and it is reversible on its own
+   without touching the rate difference above. ──────────────────────
 
    ── WHAT IS DELIBERATELY *NOT* A PLANE ─────────────────────────────
    THE HERO COPY DOES NOT MOVE. The headline block is at the bottom-left
@@ -1135,8 +1144,9 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
 @keyframes hero-drift {
   /* From above the rest position to below it: as the band rises up the
      screen each plane slides DOWN inside it, so it travels less than the
-     band does. The difference between the two planes' travel is the depth
-     cue. */
+     band does. The DIFFERENCE IN TRAVEL between the two planes is the
+     depth cue — see the note above on why the opposite direction is not
+     the principle. */
   from { transform: translate3d(0, calc(var(--parallax) * -1), 0); }
   to   { transform: translate3d(0, var(--parallax), 0); }
 }
