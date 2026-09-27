@@ -1588,7 +1588,21 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
   const matches = q
     ? pairs.filter(([v, l]) => v.toLowerCase().includes(q) || labelJp(l).includes(value.trim()))
     : pairs;
-  const shown = matches.slice(0, 50);
+  // NO CAP. `shown` is every match, deliberately.
+  //
+  // A `slice(0, 50)` used to sit here. `PEKERJAAN` holds 100 entries, so with no
+  // query typed the dropdown rendered 50 and the other 50 could NOT be reached
+  // by scrolling — only by guessing a query. Nothing was gained by it: the <ul>
+  // is already a scroll container (`max-h-48 overflow-auto`), and 100 <li> is
+  // trivial to render. Worse, it was invisible: the CV Master form
+  // (`MasterFullForm.tsx`, ManualSelect) shows the same registry in full, so the
+  // same candidate saw 100 occupations in one form and half of them in the
+  // other, with no hint that the list had been cut.
+  //
+  // If a cap is ever reintroduced it must be justified by a measurement — not
+  // chosen as a round number — because every entry dropped here is an option a
+  // candidate can no longer see.
+  const shown = matches;
 
   // Close on outside click. Not merely cosmetic: without it the list floats over
   // the next row's controls and swallows the click that was meant for them.

@@ -15,6 +15,7 @@ import { showToast } from '../Toast';
 import { apiClient } from '../../lib/apiClient';
 import { uploadMany } from '../../lib/cloudinary';
 import { authStore, type AuthState } from '../../store/authReactive';
+import { PEKERJAAN, pairDisplay } from '../../lib/opsi-form';
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../store/i18n', async () => {
@@ -1096,6 +1097,34 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     fireEvent.input(combo, { target: { value: 'OPERATOR PRODUKSI' } });
 
     expect((document.getElementById('ai_job-jabatan-jp-0') as HTMLInputElement).value).toBe('工場作業員');
+  });
+
+  // REGRESSION GUARD: the dropdown used to compute `matches.slice(0, 50)`, so
+  // with no query typed it rendered 50 of PEKERJAAN's 100 entries and the other
+  // 50 could not be reached by scrolling at all. The cap was silent — the CV
+  // Master form shows the same registry in full, so the same candidate saw all
+  // 100 in one form and half in the other.
+  //
+  // The assertion is EQUALITY against the registry length, not `>= 50`: any
+  // cap (slice(0, 50), slice(0, 80), slice(0, 99)) reintroduces the defect and
+  // must fail this test, so a partial count would leave the door open.
+  it('dropdown jabatan menampilkan SELURUH 100 opsi tanpa query — tidak ada cap tersembunyi', () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+
+    const combo = document.getElementById('ai_job-jabatan-id-0') as HTMLInputElement;
+    // Focus — not typing — opens the list, which is exactly the no-query state
+    // the cap truncated.
+    fireEvent.focus(combo);
+
+    const list = document.getElementById('ai_job-jabatan-id-0-list') as HTMLUListElement | null;
+    if (!list) throw new Error('dropdown ComboSelect tidak terbuka saat focus');
+
+    expect(list.querySelectorAll('li').length).toBe(PEKERJAAN.length);
+    // The concrete symptom: option #100 (the last entry) was absent from the DOM
+    // entirely. Reachable by scrolling means present, so assert presence.
+    const last = PEKERJAAN[PEKERJAAN.length - 1];
+    expect(list.textContent).toContain(pairDisplay(last[0], last[1]));
   });
 
   it('jabatan di luar daftar tetap terkirim apa adanya, bukan ditolak', async () => {
