@@ -318,8 +318,35 @@ dan tidak boleh disalin — rinci di `docs/COMPANY_PROFILE_DATA.md` §12 K-1.
 
 ### 3.3 Tipografi
 
-**Keluarga:** Inter, self-hosted (`@fontsource`). Satu keluarga, alasan lama tetap
-berlaku: `theme.css:88` menaruh `--font-sans` sekali sehingga preflight ikut.
+**Keluarga:** Inter, self-hosted (`@fontsource`), **plus satu muka display** —
+Instrument Serif, juga self-hosted, latin, **satu bobot (400), 20,5 KB**. Alasan lama
+tetap berlaku: `theme.css` menaruh `--font-sans` sekali sehingga preflight ikut, dan
+`--font-display` ditambahkan di sebelahnya sebagai token keluarga kedua.
+
+**Aturan pembagiannya satu kalimat:** muka display hanya untuk **headline display**;
+body, judul section, judul kartu, form, dan tabel tetap Inter. Hari ini muka display
+dipakai di **satu elemen**: `h1` hero landing (`App.tsx`, cabang `hero`).
+
+Alasan Instrument Serif, dan kenapa hanya satu bobot — ketiga kandidat diukur di
+toolchain ini (`@fontsource`, latin, 400 saja):
+
+| Kandidat | Byte | Catatan |
+|---|---|---|
+| **Instrument Serif** | **20,5 KB** | dipilih — serif editorial display, kontras goresan tinggi, digambar khusus untuk ukuran besar |
+| DM Serif Display | 24,2 KB | juga display & satu bobot, tapi lebih berat dan lebih "majalah mode" |
+| Fraunces | variabel (paket 1,8 MB) | ditolak karena biaya, bukan karena bentuk — satu ukuran pemakaian tidak sepadan dengan satu font variabel |
+
+20,5 KB itu **2,8 KB lebih kecil** dari muka Inter 900 (23,3 KB) yang repo ini sudah
+ukur dan terima (`BaseLayout.astro`), dan keluarga ini memang hanya punya bobot 400 —
+tidak ada bobot kedua yang perlu diperdebatkan. Konsekuensinya wajib: `font-black` di
+atas muka ini akan meminta browser **mensintesis** 900, jadi elemen yang memakai
+`font-display` juga harus menanggalkan utilitas bobotnya (hero `h1` memakai
+`font-normal` eksplisit).
+
+Fallback CJK disengaja: kamus JP merender headline yang sama dalam aksara Jepang
+(`i18n-jp.ts`), dan Instrument Serif tidak punya glif CJK. Rantai `--font-display`
+menyebut tiga muka Mincho lebih dulu, supaya versi Jepang jatuh ke **serif Jepang** —
+register yang sama, satu aksara lebih jauh. Semuanya muka sistem: nol byte.
 
 **Bobot yang boleh dipakai:** 400, 600, 700, **900**. Bobot **800 dilarang** sampai
 T-03 ditutup sepenuhnya — mukanya belum dimuat, jadi `font-extrabold` akan jatuh ke 700
@@ -336,7 +363,7 @@ sudah ada. Bobot tetap keputusan call site.
 
 | Peran | Kelas | Ukuran | Berat | Tracking | Line-height |
 |---|---|---|---|---|---|
-| Display (hero `h1`) | `text-display` | `clamp(2rem, 5vw, 3.5rem)` | 900→700 | `-0.02em` | 1.05 |
+| Display (hero `h1`) | `text-display` + `font-display` | `clamp(2.25rem, 5.5vw, 4.5rem)` | 400 (Instrument Serif) | `-0.01em` | 1.02 |
 | Judul section (`h2`) | `text-section` | `clamp(1.5rem, 3vw, 1.875rem)` | 800→700 | `-0.01em` | 1.15 |
 | Judul kartu (`h3`) | `text-card-title` | `1.25rem` | 700 | `0` | 1.3 |
 | Body | `text-body` | `1rem` | 400 | `0` | 1.7 |
@@ -436,6 +463,34 @@ membayar kesalahan itu (30 repaint layar penuh per toggle tema).
 Setiap animasi baru **wajib** terlihat wajar saat `prefers-reduced-motion: reduce`
 (`global.css:891-898` menetralkannya jadi 0,01 ms).
 
+#### 3.7b Gerak terikat-scroll (`motion.css` §9d dan §9e)
+
+Dua tingkat, dan keduanya **fungsi dari posisi scroll**, bukan animasi sekali jalan:
+
+| Blok | Sasaran | Perjalanan |
+|---|---|---|
+| §9d | dua foto banner (`#penempatan`, `#lokasi`) | ±3,5% dari tinggi fotonya sendiri |
+| §9e | dua lapisan hero landing | `.hero-art` +4%, `.hero-haze` −11% |
+
+Aturan yang tidak boleh dilanggar, semuanya hasil pengukuran:
+
+1. **Bingkai `overflow: clip`.** Lihat §4.1 — `hidden` mengunci timeline `view()`.
+2. **`animation-timeline: view()` wajib di dalam `@supports` DAN di dalam
+   `@media (prefers-reduced-motion: no-preference)`.** Di luar itu lapisan harus
+   **inert**: `transform: none`, tanpa offset, tanpa yang tak terlihat, tanpa yang
+   terpotong. `transform: none` adalah posisi statis, dan kelebihan ukuran 116%
+   (8% menjorok di tiap sisi) membuatnya tetap menutup penuh.
+3. **Jangan menaruh transform terikat-scroll di elemen yang punya transisi transform
+   sendiri.** Animasi CSS pada `transform` MENANG atas transisi pada properti yang
+   sama, jadi `.u-zoom` dan sejenisnya akan berhenti bekerja tanpa ada yang
+   melaporkannya. Karena itu hero hanya memakai dua lapisan yang memang murni
+   dekoratif, dan **`.header-overlay` — lapisan yang memikul kontras headline —
+   sengaja TIDAK ikut bergerak**: scrim yang hanyut adalah scrim yang kontrasnya
+   berubah mengikuti scroll.
+4. **`will-change` tidak dipakai** — alasan yang sama seperti §9: promosi otomatis
+   oleh browser untuk tween sekali jalan, dan `will-change` permanen berarti
+   mengunci memori GPU untuk seluruh sesi.
+
 ### 3.8 z-index
 
 Sudah lengkap di `theme.css:78-84`. **Tidak ada token baru yang diperlukan** untuk nav
@@ -492,6 +547,40 @@ Nama ikon yang **dipakai** desain baru (semuanya sudah ada di sprite, terverifik
 
 Kontainer **satu**: `max-w-7xl mx-auto px-4 md:px-6` — dibungkus komponen `Section`
 (roadmap L1.1), bukan diulang di markah.
+
+**Pengecualian yang disengaja: hero landing.** Band `#atas` di `/` **tidak** memakai
+kontainer itu. Ia `hero-band` (`global.css`): lebar penuh sampai tepi, tanpa
+`max-w-7xl`, tanpa `px-4`, tanpa `mt-6`, tanpa `rounded-band`/`border`/`shadow-2xl`,
+dan `min-height: 100svh` — satu layar penuh. Permintaan pemilik 2026-09-27, dari
+sebuah video acuan.
+
+| Aspek | Chrome header (`/loker`, `/public`) | Hero (`/`) |
+|---|---|---|
+| Lebar | `max-w-7xl mx-auto px-4` | lebar penuh (sama dengan `<body>`) |
+| Atas | `mt-6` | `0` |
+| Sudut | `rounded-band` (32 px) | `0` |
+| Tinggi | `h-auto min-h-[14rem] md:h-56` (224 px di `md`) | `min-height: 100vh`, lalu `100svh` |
+| `overflow` | `hidden` | `clip` — **wajib**, lihat di bawah |
+
+Dua varian ini sekarang **dua string kelas yang terpisah** di `App.tsx`, bukan satu
+string dengan ekor yang ditukar. Itu bukan kerapian: sebelumnya geometri hero hanya
+bisa dicapai dengan menyunting teks yang juga dirender lima rute lain.
+
+⚠ **`100svh`, bukan `100vh`.** Di ponsel `vh` diukur terhadap viewport TERBESAR, jadi
+band setinggi `100vh` lebih tinggi dari layar dan CTA-nya tersembunyi di bawah address
+bar. Fallback-nya **wajib** ditulis sebagai blok `@supports (height: 100svh)` yang
+terpisah — `lightningcss` meruntuhkan dua deklarasi sejenis dalam satu blok dan hanya
+menyisakan yang terakhir, jadi `min-height: 100vh; min-height: 100svh;` akan terkirim
+tanpa fallback sementara build tetap keluar 0.
+
+⚠ **`overflow: clip`, bukan `hidden`, dan ini menopang parallax.** `hidden` membentuk
+SCROLL CONTAINER; `animation-timeline: view()` mengukur subjek terhadap scroll
+container terdekatnya, sehingga timeline dua lapisan parallax akan terkunci pada
+bingkainya sendiri dan drift-nya diam di satu offset — sementara stylesheet terlihat
+benar. Terukur di repo ini: `clip` → 6 nilai berbeda pada satu sapuan scroll;
+`hidden` → 1 nilai. Fallback `hidden` untuk Safari ≤15 tetap ada, ditulis sebagai
+`@supports not (overflow: clip)` yang terpisah, dan tidak bisa mengunci timeline karena
+di browser itu `animation-timeline: view()` juga tidak didukung.
 
 ### 4.2 Bento — aturan keras
 

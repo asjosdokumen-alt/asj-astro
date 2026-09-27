@@ -119,6 +119,52 @@
      which also feeds preflight's html font-family. */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 
+  /* ── The DISPLAY family — a second, single-purpose face ─────────────
+     Owner request 2026-09-27, from a reference short: a full-screen
+     illustrated hero with an oversized SERIF display headline. The repo
+     had one family (Inter) and no display tier, so the largest text on
+     the landing page was Inter at 900 — a UI grotesque doing a display
+     face's job.
+
+     WHY THIS FACE, AND WHY ONLY ONE WEIGHT.
+     Candidates measured on this toolchain, all `@fontsource`, all
+     self-hosted, latin subset, ONE weight (400) — the fewest that works:
+
+       · Instrument Serif  — 20.5 KB. Chosen. A display-only editorial
+         serif: very high stroke contrast, tight sidebearings, a large
+         x-height, and it is drawn for exactly one job (large sizes). It
+         reads as an editorial travel brand rather than as a default
+         serif, which is the register of the reference.
+       · DM Serif Display  — 24.2 KB. Also display-only and single-weight,
+         but heavier in the stems and more "fashion magazine" than the
+         delicate editorial line the reference has.
+       · Fraunces          — rejected on cost, not on looks: it ships as a
+         variable font (1.8 MB package) and a usable weight range would
+         cost an order of magnitude more bytes for a face used at one size.
+
+     Instrument Serif is 2.8 KB SMALLER than the Inter 900 face this repo
+     already measured and accepted (23.3 KB — see BaseLayout.astro:9-24),
+     and it is the ONLY weight the family has, so there is no second weight
+     to argue about. `font-black` on a serif with one weight would be
+     SYNTHETIC bold — a smeared fake — so any element that adopts this face
+     must also drop its weight utility; that is why the hero h1 carries
+     `font-normal` explicitly rather than inheriting.
+
+     SCOPE. This is a DISPLAY face, not a second body face: body copy,
+     section titles, cards, forms and tables all stay Inter. It is exposed
+     as a utility (`font-display`) so a future display-tier heading can
+     adopt it deliberately, and it is currently applied to exactly one
+     element — the landing hero `h1` (App.tsx, the `hero` branch). */
+  --font-display: "Instrument Serif", ui-serif, Georgia, "Times New Roman",
+    /* CJK FALLBACK IS DELIBERATE, NOT AN AFTERTHOUGHT. The JP dictionary
+       renders this same headline as `日本でのキャリアは、ここから始まる。`
+       (i18n-jp.ts:785) and Instrument Serif carries NO CJK glyphs. Listing
+       the three shipped Mincho faces first means Japanese falls back to a
+       JAPANESE SERIF — the same register, one script over — instead of
+       dropping to whatever the generic `serif` keyword happens to resolve
+       to. System faces only: this list adds zero bytes. */
+    "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+
   /* ── Radius scale ────────────────────────────────────────────────
      MEASURED 2026-09-19, before this block existed: 39 arbitrary radius values
      across 8 distinct sizes — `rounded-[2rem]` x25, `rounded-[14px]` x5,
@@ -154,9 +200,21 @@
      Weight is NOT set here. `--text-*--font-weight` would make every
      `text-body` element bold-by-default and fight the `font-bold` utilities
      already in the markup; weight stays a call-site decision. */
-  --text-display:    clamp(2rem, 5vw, 3.5rem);
-  --text-display--line-height: 1.05;
-  --text-display--letter-spacing: -0.02em;
+  /* RETUNED 2026-09-27 for the full-screen hero. It was
+     `clamp(2rem, 5vw, 3.5rem)` (56 px ceiling) — a UI scale, sized for a
+     26rem band. The band is now one full screen (`.hero-band`,
+     global.css) and the reference headline is a DISPLAY size, so the
+     ceiling moved to 72 px and the mobile floor to 36 px. Measured reach:
+     36 px at 390 and 640, 42 px at 768, 56 px at 1024, 70 px at 1280,
+     72 px from ~1310 up.
+     `text-display` has exactly ONE consumer in `src/` (the hero h1 —
+     verified: `grep -rn text-display src/`), so this retune cannot move
+     any other heading. Leading tightened 1.05 → 1.02 and tracking
+     0.02em → 0.01em because a high-contrast display serif needs both; the
+     old values were tuned against Inter's much wider stems. */
+  --text-display:    clamp(2.25rem, 5.5vw, 4.5rem);
+  --text-display--line-height: 1.02;
+  --text-display--letter-spacing: -0.01em;
 
   --text-section:    clamp(1.5rem, 3vw, 1.875rem);
   --text-section--line-height: 1.15;

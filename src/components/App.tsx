@@ -295,7 +295,37 @@ export default function App(
           section has an accessible name by looking for a HEADING inside it
           (`hasHeading`, any of h1..h6), which the hero already has. Naming the
           landmark is the job of that heading, not of an aria-label here. */}
-      {showHeader && <header id={hero ? "atas" : "asj-header"} class={`${hero ? "scroll-mt-24 hero-gradient " : "hero-gradient "}max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl flex items-end rounded-band overflow-hidden transition-colors duration-200 ${hero ? "min-h-[26rem] md:min-h-[32rem] p-6 md:p-10" : "h-auto min-h-[14rem] md:h-56 p-6 md:p-8"}`}>
+      {/* ─── THE TWO HEADER VARIANTS ARE NOW TWO SEPARATE CLASS STRINGS ───
+          Owner request 2026-09-27: the landing hero becomes a full-bleed,
+          one-screen band (the reference is a short with a full-screen
+          illustrated scene, an oversized serif headline and a scroll-driven
+          parallax). Splitting the string is a FIX, not a tidy-up: it used to
+          be one common string with a swapped tail, so the hero's geometry
+          could only be reached by editing text that five other routes also
+          render. Those routes (`/loker`, `/public`, `/admin`, `/candidate`,
+          `/share`) mount this header WITHOUT `hero` and must keep the
+          `max-w-7xl … rounded-band min-h-[14rem] md:h-56` chrome box exactly
+          as it is — including the title-clipping fix recorded in the
+          non-hero branch below (the `max-w-[210px]` cap removal, 672d2f1).
+          Two strings means a change to one cannot leak into the other.
+
+          HERO (`/` only) — full-bleed, one screen tall:
+            · no `max-w-7xl` / `mx-auto` / `px-4` / `mt-6` → edge to edge
+            · no `rounded-band` / `border` / `shadow-2xl`  → no card edges
+            · NO `overflow-hidden` — `.hero-band` (global.css) supplies
+              `overflow: clip` instead. This is load-bearing, not cosmetic:
+              `hidden` establishes a SCROLL CONTAINER, and
+              `animation-timeline: view()` resolves against the subject's
+              nearest scroll container, so the parallax planes in motion.css
+              §9e would freeze at a single offset while the stylesheet looked
+              completely correct. `clip` clips the same pixels and creates no
+              scroll container. It is also what stops the oversized planes
+              from painting over the next section.
+            · `.hero-band` supplies `min-height: 100svh` — `svh` and not
+              `vh`, because on a phone `vh` is measured against the LARGEST
+              viewport and the band would be taller than the screen, parking
+              the CTA under the address bar. */}
+      {showHeader && <header id={hero ? "atas" : "asj-header"} class={hero ? "hero-band scroll-mt-24 hero-gradient relative text-white flex items-end p-6 md:p-10" : "hero-gradient max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl flex items-end rounded-band overflow-hidden transition-colors duration-200 h-auto min-h-[14rem] md:h-56 p-6 md:p-8"}>
         {/* The overlay that darkens the hero artwork for the copy's contrast
              sits BELOW the illustration, on purpose: it must paint over the
              artwork, not under it. See the `header-overlay` div after the
@@ -341,7 +371,7 @@ export default function App(
             here would delay the largest paint on the page the visitor sees
             first. */}
         {hero && (
-          <picture class="absolute inset-0 -z-0 pointer-events-none">
+          <picture class="hero-art hero-layer -z-0 pointer-events-none">
             <source
               type="image/avif"
               srcset="/assets/ilustrasi/hero-sakura.avif 1x, /assets/ilustrasi/hero-sakura@2x.avif 2x"
@@ -362,6 +392,33 @@ export default function App(
             />
           </picture>
         )}
+
+        {/* ─── The NEAR parallax plane (motion.css §9e) ──────────────────
+             A second copy of the band's own `--hero-glow` token, re-positioned
+             and enlarged, drifting further and in the opposite direction to
+             the artwork above it. Two planes moving the same way at different
+             speeds reads as a rendering fault; opposite directions is what
+             reads as depth.
+
+             WHY IT IS IN THE UPPER-RIGHT (`background-position: 80% 30%`, set
+             in CSS). The hero copy sits at the bottom-left and the
+             `.header-overlay` scrim exists to hold its contrast. A pink bloom
+             behind a white headline raises the backdrop's luminance and eats
+             exactly that contrast — and because this plane drifts, it would
+             carry that bloom in and out of the copy's row across the scroll
+             range. Keeping it up and right keeps the contrast independent of
+             scroll position.
+
+             It is placed AFTER the <picture> so it paints over the artwork and
+             BEFORE `.header-overlay` so the scrim still wins — all three are
+             positioned with no z-index (or `z-0`), so tree order is the paint
+             order. Pure gradient: no image, no filter, no `backdrop-filter`,
+             so a scroll-linked transform on it stays on the compositor.
+
+             `pointer-events-none` for the same reason the artwork and the
+             overlay carry it: it covers the whole band and must never
+             intercept a click meant for the CTA. */}
+        {hero && <div class="hero-haze hero-layer pointer-events-none" aria-hidden="true" />}
 
         {/* Non-hero header artwork — RESTORED 2026-09-25 (owner item 3).
              Every route except `/` mounts the header without the hero, and this
@@ -499,7 +556,31 @@ export default function App(
                   derived from the theme at all. Its siblings already name theirs —
                   `text-pink-300` on the eyebrow, `text-slate-200` on the sub — which
                   is exactly why only the one colourless element broke. */}
-              <h1 class="text-display font-black text-white drop-shadow-lg mt-2 leading-tight">{t("profile.hero_title")}</h1>
+              {/* ─── The DISPLAY headline — serif, and the ONLY user of the
+                     display face (theme.css `--font-display`) ───
+                  Owner request 2026-09-27, from a reference short: a
+                  full-screen hero with an oversized SERIF display headline.
+                  `font-display` swaps Inter for Instrument Serif (20.5 KB,
+                  latin, one weight — see BaseLayout.astro and theme.css).
+
+                  `font-normal` IS NOT OPTIONAL. The family ships weight 400
+                  ONLY, so leaving the old `font-black` would ask the browser
+                  to SYNTHESISE a 900 — a smeared fake on a high-contrast
+                  serif, which is the worst possible face to fake bold on.
+                  The hierarchy this loses is bought back by SIZE: the
+                  display tier was retuned to a 72 px ceiling (theme.css
+                  `--text-display`).
+
+                  `leading-tight` was REMOVED at the same time. It (1.25) was
+                  overriding the `text-display` token's own leading, so the
+                  token's line-height was dead on this element; a display
+                  serif wants the tighter 1.02 the token now carries, and
+                  having one owner for the leading is the point of the token.
+
+                  The `text-white` note below still applies unchanged — the
+                  band is dark in BOTH themes, so the colour must not come
+                  from the theme. */}
+              <h1 class="text-display font-display font-normal text-white drop-shadow-lg mt-2">{t("profile.hero_title")}</h1>
               <p class="text-body text-slate-200 mt-4 max-w-[52ch] leading-relaxed">{t("profile.hero_sub")}</p>
               {/* NO "Lihat Lowongan" CTA HERE. Owner ruling 2026-09-24: `/` is a
                   company profile for MoU/business partners, not a job board, so

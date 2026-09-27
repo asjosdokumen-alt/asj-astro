@@ -348,10 +348,21 @@ step_guard_pairs "M-C gate markers emptied (a real gate would be accepted as the
 #    deliberate rather than pedantic: swapping only the opening tag leaves
 #    `<h2 …>…</h1>`, which is a JSX syntax error, so the build would fail and the
 #    guard would read a STALE dist/ and report SURVIVED for a mutation that never
-#    shipped. `step_src` now checks the build status for the same reason. ──────
+#    shipped. `step_src` now checks the build status for the same reason.
+#
+#    RE-ANCHORED AGAIN 2026-09-27, for the second time and for the same class of
+#    reason: the hero headline adopted the display serif, so its class list went
+#    `text-display font-black … leading-tight` → `text-display font-display
+#    font-normal …` (weight 400 is the family's only weight, and the token now
+#    owns the leading). The old literal would have come back as
+#    `MUTATION DID NOT APPLY (hits=0)` and aborted the run — which is the anchor
+#    doing its job, not a fault in it. Only the two class attributes changed; the
+#    mutation's MEANING (demote the only h1 to an h2) is untouched.
+#    ⚠ If the hero h1 is ever restyled again, re-anchor this literal — do not
+#    weaken the mutation to a partial match. ──────────────────────────────────
 step_src "M-D the hero headline stops being the h1 (public route loses its only h1)" \
   "$APP" \
-  '[["<h1 class=\"text-display font-black text-white drop-shadow-lg mt-2 leading-tight\">{t(\"profile.hero_title\")}</h1>","<h2 class=\"text-display font-black text-white drop-shadow-lg mt-2 leading-tight\">{t(\"profile.hero_title\")}</h2>"]]'
+  '[["<h1 class=\"text-display font-display font-normal text-white drop-shadow-lg mt-2\">{t(\"profile.hero_title\")}</h1>","<h2 class=\"text-display font-display font-normal text-white drop-shadow-lg mt-2\">{t(\"profile.hero_title\")}</h2>"]]'
 
 # ── M-E: the no-JS checks added 2026-09-23. Put `/loker` back on
 #    `client:only="preact"`, which emits NO server HTML — so with JavaScript

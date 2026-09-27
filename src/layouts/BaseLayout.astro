@@ -23,6 +23,44 @@ import '@fontsource/inter/latin-700.css';
 // phase should carry.
 import '@fontsource/inter/latin-900.css';
 
+// ─── The DISPLAY face — Instrument Serif, latin, weight 400, ONE weight ───
+//
+// Owner request 2026-09-27: the landing hero becomes a full-screen band with
+// an oversized serif display headline, from a reference short. This is the
+// repo's second font family and the first time a face has been added for
+// anything other than Inter's own weight ladder.
+//
+// MEASURED COST, the same standard the Inter 900 note above set:
+//   instrument-serif-latin-400-normal.woff2   20.5 KB   ← what a browser fetches
+//   instrument-serif-latin-400-normal.woff    17.9 KB   ← the @font-face's
+//                                                          legacy fallback;
+//                                                          never fetched by a
+//                                                          browser that supports
+//                                                          woff2 (unusually it is
+//                                                          the SMALLER file here,
+//                                                          so this face costs no
+//                                                          more on old engines
+//                                                          either)
+// That is 2.8 KB LESS than the Inter 900 face (23.3 KB) this file already
+// accepted, and it is the family's ONLY weight — there is no second weight to
+// justify, because `@fontsource/instrument-serif` ships 400 alone.
+//
+// WHY A SEPARATE FAMILY AND NOT A HEAVIER INTER. The reference headline is a
+// high-contrast editorial serif; Inter has no serif and its 900 weight is a
+// grotesque doing a display face's job. Why this face over DM Serif Display
+// (24.2 KB) or Fraunces (variable, 1.8 MB package) is recorded in
+// `theme.css` next to `--font-display`, which is where the choice lives.
+//
+// SCOPE: `--font-display` is a DISPLAY utility, applied to exactly one element
+// today (the hero h1). Body copy, section titles, cards, forms and tables stay
+// Inter — `--font-sans` is unchanged and still feeds preflight.
+//
+// ⚠ It is imported as `latin-400.css`, NOT `400.css`. The bare entry pulls in
+// latin + latin-ext + every other subset, which would add the latin-ext face
+// (11.3 KB) and a set of subsets this page's copy never uses. The Inter imports
+// above are latin-only for the same reason.
+import '@fontsource/instrument-serif/latin-400.css';
+
 export interface Props {
   title: string;
   description?: string;

@@ -1020,6 +1020,165 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   9e. HERO PARALLAX — the landing band's layers drift at different speeds
+   ══════════════════════════════════════════════════════════════════
+
+   OWNER'S REQUEST, verbatim, because it is the spec:
+     a YouTube Short — "SMOOTH SCROLL DOWN ANIMATED WEBSITE DESIGN" —
+     full-screen illustrated hero, huge serif display headline, pill CTA,
+     scroll-driven transitions — and: "can't we make something like this?"
+
+   §9d is the same primitive one band down the page, and this block follows
+   it line for line. READ §9d FIRST: the `overflow: clip`-not-`hidden`
+   finding, the `lightningcss` fallback finding, and the reduced-motion
+   finding all apply here unchanged, and none of them are repeated in full
+   below.
+
+   ── WHAT MOVES, AND WHY THERE ARE ONLY TWO MOVING PLANES ────────────
+   A parallax needs planes at different DISTANCES. The honest constraint
+   here is that the hero artwork is ONE raster (`hero-sakura.webp`) — a
+   generated 2.75:1 banner with the sky, Fuji, the pagoda and the figure
+   already composited into it. It cannot be taken apart without new source
+   art, so two planes are built from what exists:
+
+     1. `.hero-art`  — the raster itself. The FAR plane: it travels
+        least, so it reads as the distant scene. `--parallax: 4%`.
+     2. `.hero-haze` — a second copy of the band's own `--hero-glow` token,
+        repositioned and scaled up, drifting the other way and further.
+        The NEAR plane: it travels most, so it reads as atmosphere close to
+        the camera sliding over the scene. `--parallax: -11%`.
+
+   Opposite directions AND different distances is what makes two planes
+   read as depth; two planes moving the same way at different speeds reads
+   as a rendering fault. Both are pure paint — no `backdrop-filter`, no
+   filter, no image decode — so a scroll-linked transform on them stays on
+   the compositor.
+
+   ── WHAT IS DELIBERATELY *NOT* A PLANE ─────────────────────────────
+   THE HERO COPY DOES NOT MOVE. The headline block is at the bottom-left
+   and carries `backdrop-blur-sm` on its CTA and its three stat tiles;
+   translating a subtree of blurred surfaces forces the browser to re-run
+   every backdrop blur on every frame, which is the single most expensive
+   thing this page could do while scrolling. It would also move the text
+   under the `e2e/test-landing.mjs` visibility probe, which reads
+   `getBoundingClientRect()`.
+
+   THE `.header-overlay` SCRIM DOES NOT MOVE EITHER. It is the layer that
+   carries the headline's contrast against the artwork (global.css §5d,
+   `e2e/measure-hero-contrast.mjs`). A scrim that drifts is a scrim whose
+   contrast varies with scroll position — the one property that must not
+   change. It stays where it is.
+
+   The haze is therefore placed in the UPPER-RIGHT, away from the copy:
+   `background-position: 80% 30%`. A pink bloom behind a white headline
+   would raise the backdrop's luminance and eat exactly the contrast the
+   scrim exists to protect, and the drift would carry it in and out of the
+   copy's row across the scroll range.
+
+   ── THE OVER-SIZE ──────────────────────────────────────────────────
+   Same arithmetic as §9d. A plane drifting inside a fixed frame exposes an
+   edge the moment it travels further than the slack around it, so each
+   plane is 116% of the band's height with 8% overhanging above and below,
+   and the largest travel (11% of the plane's own height = 12.76% of the
+   band) stays inside that slack. Percentages, not px, so the travel scales:
+   ≈105px total on an 820px-tall desktop band, ≈75px on a phone — both
+   inside the 40–80px band Framer's guide calls readable, the desktop one
+   at the top of it because the band is the full screen.
+
+   ── RANGES ─────────────────────────────────────────────────────────
+   `animation-range: cover 0% cover 100%`. On the landing route the band
+   starts at the very top of the document, so the first half of the cover
+   range (the band entering from below) is never reached and the drift
+   begins at its neutral position at scroll 0 and completes as the band
+   leaves the screen. Ranges are derived from the UNTRANSFORMED box, so the
+   drift cannot feed back into its own range and oscillate.
+
+   ── GATING, AND WHY THE FALLBACK IS INERT ──────────────────────────
+   Everything that makes a plane MOVE lives inside `@supports
+   (animation-timeline: view())` AND `@media (prefers-reduced-motion:
+   no-preference)`. Everything that makes it LOOK right — the geometry and
+   the over-size — lives outside. Without support, or under reduce-motion,
+   each plane is a still layer at its natural position, fully covered by
+   its own over-size, clipped by `.hero-band`. Nothing is offset, nothing
+   is invisible, nothing is left clipped: the reduced-motion reset below
+   sets `transform: none`, which is the static position, and the reset is
+   written WITHOUT `!important` because it is not needed — same specificity
+   as the rule above and later in the file (the §9 reasoning).
+   ------------------------------------------------------------------ */
+
+/* Geometry for the two planes. Outside the `@supports`/`@media` gate on
+   purpose: these are the rules that make the band LOOK right in a browser
+   that will never animate it. */
+.hero-art {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8%;
+  height: 116%;
+}
+
+.hero-haze {
+  position: absolute;
+  left: -8%;
+  right: -8%;
+  top: -8%;
+  height: 116%;
+  pointer-events: none;
+  /* The band's OWN glow token, re-positioned and enlarged — not a new
+     colour. It therefore flips with the theme like every other band
+     surface, and it cannot drift out of the palette. */
+  background: var(--hero-glow);
+  background-size: 150% 150%;
+  background-position: 80% 30%;
+}
+
+@keyframes hero-drift {
+  /* From above the rest position to below it: as the band rises up the
+     screen each plane slides DOWN inside it, so it travels less than the
+     band does. The difference between the two planes' travel is the depth
+     cue. */
+  from { transform: translate3d(0, calc(var(--parallax) * -1), 0); }
+  to   { transform: translate3d(0, var(--parallax), 0); }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hero-layer {
+      animation: hero-drift linear both;
+      /* `auto` is REQUIRED against a scroll timeline, and it must come
+         AFTER the shorthand, which resets it — the same three-declaration
+         ordering §9d records. */
+      animation-duration: auto;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+
+    /* FAR plane: the raster. Travels least. */
+    .hero-art {
+      --parallax: 4%;
+    }
+
+    /* NEAR plane: the atmosphere. Travels most, and the other way. */
+    .hero-haze {
+      --parallax: -11%;
+    }
+  }
+}
+
+/* Reduced motion: REMOVE the planes, do not shorten them. The gate above
+   already excludes this case, so this block is the belt to that braces —
+   it is what makes the intent readable at the rule, and it is the state a
+   browser that ignores `prefers-reduced-motion` inside `@supports` (none
+   today, but the nesting is a real construct) would fall back to. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-layer {
+    animation: none;
+    transform: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
    8. REDUCED MOTION — final safety net
    ══════════════════════════════════════════════════════════════════
 

@@ -101,6 +101,75 @@ body {
   pointer-events: none;
 }
 
+/* ─── Full-bleed hero band (landing `/` ONLY) ──────────────────────
+   Owner request 2026-09-27: the landing hero must fill the first screen,
+   edge to edge, like the reference short (full-screen illustrated scene,
+   oversized display headline, scroll-driven depth).
+
+   THIS CLASS IS THE `hero` BRANCH OF THE <header> IN App.tsx AND NOTHING
+   ELSE. The other five routes that mount the same <header> keep the
+   `max-w-7xl … rounded-band min-h-[14rem] md:h-56` box; they are chrome,
+   not a page section. The two variants are now different class STRINGS
+   rather than one string with a swapped tail, precisely so a change here
+   cannot reach them.
+
+   `min-height` and not `height`: the band has to grow with its content on
+   a phone, where the three stat tiles stack and the headline wraps to
+   three or four lines. A fixed `height` would clip the CTA under the
+   fold; a `min-height` still lets the band be exactly one screen when the
+   content fits.
+
+   ── 100svh, NOT 100vh, AND THE FALLBACK ──────────────────────────
+   On mobile, `vh` is measured against the LARGEST viewport (the one with
+   the browser chrome retracted), so `100vh` on a phone produces a band
+   TALLER than the screen and parks the CTA under the address bar. `svh`
+   is the SMALL viewport height and is what "one screen" actually means.
+   Safari shipped `svh` in 15.4, so the two lines below cover both.
+
+   The fallback is a separate `@supports` block and NOT a second
+   declaration in the rule above. `lightningcss` (this toolchain's CSS
+   minifier) collapses a duplicate property in one block and keeps only
+   the LAST one, so `min-height: 100vh; min-height: 100svh;` ships as
+   `100svh` alone — verified on this toolchain, including with
+   `targets: { safari: 15 }`, and the build still exits 0. The `@supports`
+   form survives byte-identical; `motion.css` §9d records the same
+   experiment for `overflow: clip`.
+
+   ── `overflow: clip`, AND WHY IT IS LOAD-BEARING HERE ────────────
+   The parallax layers in `motion.css` §9e are oversized (116% tall, 8%
+   overhanging each edge) so that a drift can never expose an edge. That
+   overhang has to be clipped or it paints over the next section.
+
+   It must be `clip` and NOT `hidden`: `hidden` establishes a SCROLL
+   CONTAINER, and `animation-timeline: view()` resolves the subject against
+   its nearest scroll container — so the layers' timelines would be pinned
+   to their own frame and the drift would sit frozen at one offset while
+   the stylesheet looked perfectly correct. Measured in this repo on the
+   §9d drift: `clip` → 6 distinct transform values across a scroll sweep;
+   `hidden` → 1 value. `clip` clips the same pixels and creates no scroll
+   container.
+
+   The `hidden` fallback below is for Safari ≤15, which does not parse
+   `overflow: clip` and would otherwise fall back to `visible` (the
+   overhang would spill past the band). It cannot re-freeze the timeline,
+   because in exactly those browsers `animation-timeline: view()` is
+   unsupported too — there is no scroll timeline for a scroll container to
+   pin. The two are only ever in force apart. */
+.hero-band {
+  min-height: 100vh;
+  overflow: clip;
+}
+@supports (height: 100svh) {
+  .hero-band {
+    min-height: 100svh;
+  }
+}
+@supports not (overflow: clip) {
+  .hero-band {
+    overflow: hidden;
+  }
+}
+
 /* Footer gradient — darker surface at the page bottom. */
 .footer-gradient {
   background: var(--footer-gradient);
