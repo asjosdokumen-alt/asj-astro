@@ -69,7 +69,13 @@ import Icon from '../components/ui/Icon';
     </p>
 
     <div class="mt-8 flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-      <a href="/" class="px-6 py-3 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">
+      {/* Gradient CTA — `from-emerald-700 to-sky-700`, hover DARKENS. See the
+          matching note in App.tsx: white on this family's 600/500 stops fails
+          the 4.5 floor at text-sm/700 (emerald-600 = 3.77, emerald-500 = 2.54),
+          so the pair moves to the 700 stops (5.48) and the hover darkens to 800
+          (7.56) instead of lightening past the floor. Measured 3.71:1 before
+          this change on the built page; the same pair as the install button. */}
+      <a href="/" class="px-6 py-3 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-xl font-bold text-sm shadow-lg transition">
         <span data-lang="notfound.home">Ke Beranda</span>
       </a>
       <a href="/public/" class="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/15 text-white rounded-xl font-bold text-sm transition">

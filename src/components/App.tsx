@@ -769,7 +769,19 @@ export default function App(
                 would orphan the translations for no gain. It is now the key's
                 only consumer, so it must NOT be cleaned up as a nav orphan. */}
             <a href="/loker" class="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="briefcase" class="mr-2 text-sky-400" /> {t("profile.nav_loker")}</a>
-            <button onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>
+            {/* Gradient CTA — `from-emerald-700 to-sky-700`, hover DARKENS
+                (`hover:from-emerald-800 hover:to-sky-800`), NOT the old
+                lightening step (measured 2026-09-27).
+                White on this pair's stops, floor 4.5:1 at text-sm/700 (normal):
+                  emerald-600 3.77  FAIL   emerald-500 2.54  FAIL (worse)
+                  sky-600     4.10  FAIL   sky-500     2.77  FAIL
+                  emerald-700 5.48  PASS   emerald-800 7.68  PASS
+                  sky-700     5.93  PASS   sky-800     7.56  PASS
+                The old `hover:from-emerald-500 hover:to-sky-500` was the WORST
+                state on the page (2.54:1) — lightening a gradient always cuts
+                white-text contrast, so the hover must darken instead. Measured
+                on the built 404 page, which uses the same pair: 3.71:1 before. */}
+            <button onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>
             <button onClick={toggleLang} aria-label="Toggle language" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
           </div>
           {hydrated && !u.isLoggedIn && (<div class="space-y-3">

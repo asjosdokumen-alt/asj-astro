@@ -764,7 +764,12 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                 ))}
               </div>
             </div>
-            <button onClick={() => setShowPemberkasan(true)} class="w-full py-4 bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white rounded-[1.5rem] font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
+            {/* Gradient CTA — `from-emerald-700 to-sky-700`, hover DARKENS.
+                White on this family's 600/500 stops fails the 4.5 floor at
+                text-sm/700 normal size (emerald-600 = 3.77, emerald-500 = 2.54);
+                the 700 stops are 5.48 and the hover darkens to the 800s (7.56).
+                Same pair as the install button and the 404 link. */}
+            <button onClick={() => setShowPemberkasan(true)} class="w-full py-4 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-[1.5rem] font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
               <Icon name="folder-open" class="mr-2" />{t('ui.complete_berkas_biodata')}
             </button>
             <p class="text-sm text-emerald-400 mt-3 font-bold animate-pulse text-center"><Icon name="info-circle" class="mr-1" /> {t('ui.berkas_stage_hint')}</p>

@@ -1014,8 +1014,8 @@ body {
   .from-rose-600, .from-rose-700, .from-rose-800,
   .from-fuchsia-600, .from-fuchsia-700, .from-fuchsia-800,
   .from-red-600, .from-red-700,
-  .from-emerald-600, .from-emerald-700,
-  .from-sky-600, .from-sky-700,
+  .from-emerald-600, .from-emerald-700, .from-emerald-800,
+  .from-sky-600, .from-sky-700, .from-sky-800,
   .from-violet-600, .from-violet-700,
   .from-purple-600, .from-purple-700,
   .from-indigo-600, .from-indigo-700,
@@ -1037,6 +1037,20 @@ body {
    `bg-slate-600` IS still correct to keep: §5b does not remap it, so it stays
    dark (#45556c) and white on it measures 7.58:1.
    Restoring dark text for the 700 chip matches every other shimmed surface. */
+
+/* WHY `from-emerald-800` / `from-sky-800` JOINED THE LIST, MEASURED 2026-09-27.
+   The emerald→sky gradient CTAs were failing WCAG AA for white text and the fix
+   moved them DOWN the palette, not just across it — see the note in App.tsx.
+   The new hover step is `hover:from-emerald-800 hover:to-sky-800`, and a class
+   used only on hover still needs to be in this list: the rule above is what
+   stops §5b's `.text-white → #1f1d1c` from eating the white text, and it keys
+   off the `from-*` class. Omitting the 800s would leave the hover state with
+   near-black text on a dark green/blue gradient — the ORIGINAL bug, reached by
+   a different route. White on emerald-800 is 7.68:1 and on sky-800 7.56:1, so
+   the classes belong here for the same reason the 600/700s do.
+   General rule this is an instance of: a `from-<hue>-<shade>` that carries
+   white text is in the list, whatever the shade. Adding a new gradient CTA
+   means adding its stops — including hover-only stops — or the shim wins. */
 :where([data-theme="light"]) .bg-slate-700 { color: #334155; }
 :where([data-theme="light"]) .bg-slate-700\/80 { color: #334155; }
 

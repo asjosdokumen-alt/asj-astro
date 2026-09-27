@@ -395,7 +395,14 @@ export default function ShareView() {
                 <span class="text-[11px] md:text-xs font-bold text-pink-300 uppercase tracking-wider mb-0.5">{t('share.sel_count')}</span>
               </div>
             </div>
-            <button onClick={submitSelection} class="px-5 py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-xs md:text-sm rounded-xl shadow-lg hover:shadow-pink-500/25 transition-shadow flex items-center gap-2">
+            {/* Gradient CTA — the REST state passes (white on rose-600 4.70 /
+                pink-600 4.60, floor 4.5 at text-xs/12px → normal size), but the
+                HOVER did not: `hover:from-rose-500 hover:to-pink-500` is 3.53:1
+                (rose-500 3.67, pink-500 3.53) — a hover state is user-visible
+                text, so it owes the same floor. Darkening instead of lightening
+                puts it at 6.04:1 (rose-700 6.29, pink-700 6.04). Measured
+                2026-09-27; same defect class as the emerald→sky CTAs. */}
+            <button onClick={submitSelection} class="px-5 py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-bold text-xs md:text-sm rounded-xl shadow-lg hover:shadow-pink-500/25 transition-shadow flex items-center gap-2">
               <Icon name="whatsapp" class="text-lg" /> {t('share.sel_btn')}
             </button>
           </div>
