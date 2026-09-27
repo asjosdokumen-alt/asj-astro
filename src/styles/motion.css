@@ -1189,6 +1189,269 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
 
 
 /* ══════════════════════════════════════════════════════════════════
+   9f. CONTINUOUS SCROLL MOTION — every band and card moves for as long
+       as it is on screen, and reverses when you scroll back up
+   ══════════════════════════════════════════════════════════════════
+
+   OWNER'S REQUEST, verbatim, because it is the spec:
+     "animasi css apakah bisa di perlambaaat dan di pakai terus menerus?
+      jadi interactifnya gak sekali pakai tapi selama user masih di
+      scroll atas bawah animasi cssnya jalan terus."
+
+   ── WHAT IS ACTUALLY BEING ASKED FOR, AND WHY §9/§9b DO NOT ANSWER IT ──
+   §9 and §9b are ONE-SHOT: they fire when an element crosses into the
+   viewport and then the observer unobserves it (`BaseLayout.astro`, "these
+   animations run once"). §9d/§9e already answer the "runs continuously"
+   half, but for exactly TWO decorative photographs — they are scoped that
+   narrowly on purpose (see §9d's "TWO PHOTOGRAPHS, NOT TWENTY-FOUR").
+
+   This block extends the CONTINUOUS treatment to the sections and cards.
+   The primitive is the same one §9d uses: `animation-timeline: view()`,
+   which makes the animation's progress a FUNCTION of scroll position. Two
+   properties fall out of that and both are what was asked for:
+
+     1. it never ends while the element is on screen (no observer, no
+        one-shot), and
+     2. it is REVERSIBLE — scroll back up and it runs backwards, because
+        progress is derived from position, not accumulated in time.
+
+   ── THE ONE THING THIS MUST NOT BREAK: THE HOVER RECIPES (§9c) ──────
+   §9d rule 3 records the hard constraint, measured rather than assumed:
+   a CSS *animation* on `transform` OVERRIDES a `transition` on the same
+   property of the SAME element. `.u-lift` and `.u-zoom` are §9c hover
+   recipes, and every service card, tile and banner carries one. So putting
+   a scroll-linked `transform` directly on those elements would silently
+   kill their hover, and nothing in the repo would report it.
+
+   THE FIX IS STRUCTURAL, NOT A FLAG: the scroll LINK is applied to a
+   DIFFERENT ELEMENT than the hover. A card is wrapped by its own <li> or
+   its own section band; the card keeps `.u-lift`/`.u-zoom` and its
+   `:hover`, and the WRAPPER takes the scroll-linked transform. Two
+   elements, two properties, no collision. `[data-scroll]` is therefore
+   opt-in and is placed by the CALL SITE on a container, never on the
+   hoverable surface itself — `e2e/test-scroll-motion.mjs` asserts the two
+   attribute sets never meet on one element, which is the check that keeps
+   this from being re-broken by a future edit.
+
+   ── WHY OPACITY IS ANIMATED BUT NEVER TO 0 ──────────────────────────
+   The drift is a DEPTH cue, not an entrance: the element is already fully
+   present when this starts. So the keyframes move between a small rotation
+   of opacity and never reach 0 — an element that faded to invisible as you
+   scrolled past it would be a content bug wearing an animation costume.
+   The `from`/`to` frames are both readable, which also means a browser that
+   clamps `animation-duration` under reduced motion cannot strand anything
+   invisible: the WORST frame in this block is still legible. That is the
+   opposite of §9's design and it is deliberate — see the reduced-motion
+   note below for why the trap does not apply here.
+
+   ── WHY `animation-range` IS THE WHOLE DURATION AND NOT A SLICE ─────
+   §9d uses `entry 25% cover 50%` because a photograph drifting through a
+   band should NOT move before the band is meaningfully on screen. A section
+   is the opposite: the request is motion "selama user masih di scroll" —
+   for as long as it is visible — so the range is `cover 0% cover 100%`,
+   the full travel of the band from first pixel to last. Each band still
+   gets a different SPEED and DIRECTION (below), so the page reads as a set
+   of surfaces at different distances rather than one field sliding.
+
+   ── PER-SECTION DIFFERENTIATION, AND WHY IT IS DATA NOT SEVEN CLASSES ──
+   §9b already established that "setiap scrollnya bikin transisi beda beda"
+   is a REQUIREMENT, not a nicety. The same rule is honoured here through
+   `data-scroll="<kind>"`, using the SAME `ENTER_KINDS` vocabulary
+   `src/lib/sectionMotion.ts` already owns and `e2e/test-landing.mjs`
+   already cross-checks against the rendered markup. Reusing that table
+   means the scroll kinds cannot drift from the entrance kinds, and a
+   section that enters from the left drifts the same way — the two motions
+   agree instead of fighting.
+
+   ── THE TRAVEL IS SMALL, AND THAT IS THE POINT ──────────────────────
+   A band that translates 60px while scrolling reads as the page coming
+   apart; a card that scales 8% on every scroll tick reads as a bug. The
+   travel here is 10px for a band and 4px for a card — enough to feel the
+   surface respond, far too small to be mistaken for a layout shift, and
+   small enough that it cannot push content under the fixed header or past
+   a section boundary. THE CARDS GET LESS THAN THE BANDS because there are
+   many of them: one band moving 10px is one cue; two hundred cards each
+   moving 10px in the same frame is a shimmer. This is the same restraint
+   §9d argues for, applied to a larger set.
+
+   ── GATING: SUPPORT AND MOTION PREFERENCE, BOTH ─────────────────────
+   Everything that makes anything MOVE lives inside `@supports
+   (animation-timeline: view())` AND `@media (prefers-reduced-motion:
+   no-preference)`. Without support, every element is simply at its natural
+   position — unchanged, because nothing outside the gate touches
+   `transform`. That is a complete degradation with no fallback to write,
+   unlike §9d where the over-size is a looks-right concern that must sit
+   outside.
+
+   THE REDUCED-MOTION TRAP DOES NOT APPLY HERE, and the reason is worth
+   recording so a future reader does not "fix" it: the trap is that §9/§9b
+   use `both` fill from `opacity: 0`, so a clamped duration can strand an
+   element invisible. This block animates between two VISIBLE frames, so a
+   clamped live animation would simply park the element at some small
+   offset — ugly, not broken. That is why this block is gated on
+   `no-preference` rather than reset afterwards: under reduce-motion the
+   animation never applies at all. The belt-and-braces reset at the end is
+   kept anyway, for the same reason §9e keeps its own.
+   ------------------------------------------------------------------ */
+
+:root {
+  /* Band travel. Deliberately the SMALLEST value in this file: §9 moves an
+     item 16px, §9b moves a band 24px, and both of those are ENTRANCES the
+     visitor watches once. This one runs the whole time a band is on
+     screen and repeats on every scroll direction change, so it has a much
+     smaller budget before it stops reading as depth and starts reading as
+     instability. */
+  --scroll-drift: 10px;
+  /* Card travel — smaller still. See "THE CARDS GET LESS THAN THE BANDS". */
+  --scroll-drift-item: 4px;
+  /* Rotation for the "grow" kind. Degrees, and tiny: 0.4deg on a full-width
+     band is a perceptible tilt, while 2deg is a visible mistake. */
+  --scroll-tilt: 0.4deg;
+}
+
+/* ── THE KEYFRAMES ──────────────────────────────────────────────────
+   Two motions only, matching the two things that move. The per-section
+   VARIETY comes from `--scroll-drift` being signed and scaled per kind
+   below, not from more keyframe sets — a keyframed direction cannot be
+   reversed by a data attribute, a variable can. */
+@keyframes scroll-drift-y {
+  from { transform: translate3d(0, calc(var(--scroll-drift) * -1), 0); }
+  to   { transform: translate3d(0, var(--scroll-drift), 0); }
+}
+
+/* The item variant. Same shape, its own travel token, so a section can
+   tune its cards without touching the band's motion. */
+@keyframes scroll-drift-item {
+  from { transform: translate3d(0, calc(var(--scroll-drift-item) * -1), 0); }
+  to   { transform: translate3d(0, var(--scroll-drift-item), 0); }
+}
+
+@keyframes scroll-tilt-y {
+  from { transform: translate3d(0, calc(var(--scroll-drift) * -1), 0) rotate(calc(var(--scroll-tilt) * -1)); }
+  to   { transform: translate3d(0, var(--scroll-drift), 0) rotate(var(--scroll-tilt)); }
+}
+
+/* ── THE MOVE. Everything is inside the gate. ─────────────────────── */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    /* ── WHY THESE SELECTORS ARE SO LONG, AND WHY IT IS NOT AN ACCIDENT ────
+       MEASURED 2026-09-27: the first version of this block used the plain
+       `[data-scroll]` (0,1,0) and it LOST to §9b for two of the four bands
+       tested. §9b's running-state rule is
+         html.js-reveal [data-enter="grow"].is-entered   → (0,3,1)
+       so on `#galeri` and `#tim` the computed `animation-name` was
+       `enter-grow`, not `scroll-drift-y` — the band animated ONCE and the
+       continuous drift never applied. Both elements carry `data-enter` AND
+       `data-scroll` (they are emitted from the same prop in Section.astro),
+       so both rules match, and the more specific one wins regardless of
+       source order.
+
+       THE FIX IS TO MATCH §9b'S OWN SHAPE rather than to reach for
+       `!important`, for the reason §9 records at length: an `!important`
+       here would reverse the cascade for every later rule touching these
+       elements and would hide the specificity question instead of answering
+       it. So the band selector below repeats the `html.js-reveal
+       [data-enter].is-entered` shape that §9b uses, and adds the scroll
+       attribute as one MORE attribute — (0,4,1) against §9b's (0,3,1), same
+       element, no `!important`, and the two animations are reconciled by
+       SPECIFICITY rather than by force.
+
+       ⚠ `html.js-reveal` IS PART OF THE SELECTOR ON PURPOSE. Without the
+       class the drift would also apply to a visitor with scripting OFF,
+       where §9b is inert and the band should simply sit still. Gating on the
+       same class keeps both behaviours on the same switch.
+
+       The item rule needs no such treatment: no §9b rule targets
+       `[data-scroll-item] > *`, so there is nothing more specific to lose to.
+
+       ── AND WHY `.is-entered` IS *NOT* REQUIRED HERE ──────────────────────
+       The band must drift whether or not its entrance has fired yet — the
+       drift is a function of scroll position, independent of the entrance
+       state machine. Writing `.is-entered` would leave an above-the-fold
+       band (which is marked immediately) and a below-the-fold one on two
+       different code paths for no reason. The selector below therefore does
+       NOT name `.is-entered`, and still outranks §9b because the extra
+       `[data-scroll]` attribute carries more weight than §9b's `.is-entered`
+       class when both are matched against the same element: (0,3,1) + 1
+       attribute = (0,4,1) beats (0,3,1). Verified by measurement, not by
+       reading the spec: `e2e/measure-scroll-motion.mjs` reads
+       `animation-name` on all four bands and requires `scroll-*`. */
+    html.js-reveal [data-scroll][data-enter] {
+      animation: scroll-drift-y linear both;
+      animation-duration: auto;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+
+    /* A band that somehow carries `data-scroll` and no `data-enter` still
+       drifts; it simply cannot borrow §9b's specificity. Kept as its own
+       rule so removing `data-enter` from a call site degrades to "drifts,
+       no entrance" rather than "does nothing". */
+    html.js-reveal [data-scroll]:not([data-enter]) {
+      animation: scroll-drift-y linear both;
+      animation-duration: auto;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+
+    /* Per-kind direction and amount. `slide-left`/`slide-right` reuse the
+       SIGN of the drift to echo the entrance's direction; `grow` takes the
+       tilt variant; `rise`/`drop`/`curtain`/`focus` keep the plain vertical
+       drift, because their entrance already carries the difference and
+       stacking a second idea on the same band reads as noise.
+
+       These are custom-property SETS, so specificity is irrelevant to them
+       winning — a variable is inherited, not cascaded per-rule, and the
+       value resolved at animation time comes from the element itself. */
+    [data-scroll="slide-left"]  { --scroll-drift: -10px; }
+    [data-scroll="slide-right"] { --scroll-drift: 12px; }
+    [data-scroll="drop"]        { --scroll-drift: -8px; }
+    [data-scroll="curtain"]     { --scroll-drift: 6px; }
+    /* `rise` and `focus` take the :root default (10px). */
+
+    /* `grow` needs `animation-name` changed, and that IS a cascaded property,
+       so it has to carry the same specificity as the rule above it — hence
+       the full `html.js-reveal [data-scroll]…` shape rather than the bare
+       attribute. */
+    html.js-reveal [data-scroll="grow"] {
+      --scroll-drift: 8px;
+      animation-name: scroll-tilt-y;
+    }
+    html.js-reveal [data-scroll="grow"][data-enter] {
+      --scroll-drift: 8px;
+      animation-name: scroll-tilt-y;
+    }
+
+    /* A CARD (`[data-scroll-item]`), applied by the container so the
+       hoverable surface underneath keeps its own transform free for §9c.
+       `> *` is what makes the container the only thing a call site has to
+       annotate — the same shape `[data-reveal-stagger]` uses in §9. */
+    [data-scroll-item] > * {
+      animation: scroll-drift-item linear both;
+      animation-duration: auto;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+  }
+}
+
+/* Belt to the `no-preference` braces. See "THE REDUCED-MOTION TRAP DOES NOT
+   APPLY HERE" — under reduce-motion the gate above already excludes the
+   animation, so this block is what a browser that ignores a media query
+   NESTED inside `@supports` would fall back to. `animation: none` plus
+   `transform: none` is the natural position, which is fully correct for
+   every element here (nothing is over-sized, so nothing can expose an
+   edge). */
+@media (prefers-reduced-motion: reduce) {
+  [data-scroll],
+  [data-scroll-item] > * {
+    animation: none;
+    transform: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
    8. REDUCED MOTION — final safety net
    ══════════════════════════════════════════════════════════════════
 

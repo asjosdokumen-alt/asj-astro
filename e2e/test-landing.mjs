@@ -132,6 +132,13 @@ const SECTIONS = [
   { id: 'penempatan', phase: 'L8', visible: true },
   { id: 'tentang', phase: 'L3', visible: true },
   { id: 'tim', phase: 'L3', visible: true },
+  // ADDED 2026-09-27 with the #mitra section (the MoU partner slots). It is
+  // listed so the presence, order and visibility checks actually cover it —
+  // without a row here the section would render, the entrance oracle would see
+  // it (SECTION_MOTION is consulted separately), and this list would silently
+  // skip the band entirely. A section the gate does not name is a section the
+  // gate does not check.
+  { id: 'mitra', phase: 'L9', visible: true },
   { id: 'kontak', phase: 'L3', visible: true },
   { id: 'lokasi', phase: 'L3', visible: true },
   // The closing CTA band. It is rendered by ClosingBand.astro OUTSIDE <main>, so

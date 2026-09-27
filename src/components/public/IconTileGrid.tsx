@@ -67,7 +67,17 @@ export default function IconTileGrid({ tiles, columns = 3, class: className }: P
     // `data-reveal-stagger` is what lets motion.css index the children with
     // `nth-child` instead of every call site having to count its own tiles.
     // It is inert until the page swaps in `html.js-reveal` (see §9).
-    <ul class={grid} data-reveal-stagger>
+    //
+    // `data-scroll-item` is the CONTINUOUS half (§9f), and it is on this <ul>
+    // rather than on each <li> for the reason §9f records: a scroll-linked
+    // `transform` on the same element as a §9c hover recipe overrides that
+    // recipe outright. The only hover here is `.u-zoom` on the <img>, so a
+    // drift on the <li> would in fact coexist — but it would also move the
+    // card's own border and background, and the tile would read as sliding
+    // out of its own grid cell. The GRID is the thing that moves; the cards
+    // stay registered to it. Same structure as §9's stagger: one attribute on
+    // the container, children handled by `> *`.
+    <ul class={grid} data-reveal-stagger data-scroll-item>
       {tiles.map((tile) => (
         <li
           key={tile.title.key}

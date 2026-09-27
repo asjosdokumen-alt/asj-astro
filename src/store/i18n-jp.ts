@@ -785,7 +785,7 @@ export const jpTranslations: Record<string, string> = {
   "profile.hero_eyebrow": "PT AMANAH SAKURA JAPAN",
   "profile.hero_tagline": "LET'S BUILD OUR FUTURE",
   "profile.hero_title": "日本でのキャリアは、ここから始まる。",
-  "profile.hero_sub": "求人・プログラム・渡航手続きを、ASJポータルひとつで。",
+  "profile.hero_sub": "ポノロゴの日本語・就労文化訓練を行うLPKです。プログラム・求人・出発までのサポートを提供し、渡航は提携LPKおよびPT（SO）と共同で行います。",
   "profile.hero_cta_secondary": "応募者として登録",
   "profile.hero_chip_ssw": "特定技能",
   "profile.hero_chip_magang": "技能実習",
@@ -917,6 +917,11 @@ export const jpTranslations: Record<string, string> = {
   "profile.place_title": "配属先",
   "profile.place_desc": "会社資料に記載された職種と配属先の都道府県です。",
   "profile.place_note": "都道府県名は公式資料に合わせてラテン文字で表記しています。",
+  "profile.mitra_title": "提携パートナー",
+  "profile.mitra_desc": "日本への渡航は、以下の提携LPKおよびPT（SO）と共同で行っています。",
+  "profile.mitra_note": "当社はSOの認定を受けていないため、受講者の日本への渡航は、当社とMoUを締結した提携LPKおよびPT（SO）が実施します。以下の一覧は現在公開準備中です。",
+  "profile.mitra_cta_desc": "当社との提携（MoU）をご希望の方は、下の「お問い合わせ」よりご連絡ください。",
+  "profile.mitra_slot_pending": "スロット未設定",
 
   // ── 求人概要（R2、右レール） — 2026-09-24 削除 ────────────────────────
   // `profile.mini_*` の4キーは `#loker-ringkas` セクションと `JobMiniList` の
@@ -926,13 +931,15 @@ export const jpTranslations: Record<string, string> = {
   // ── 会社概要（S7、2ページ） ──────────────────────────────────────────
   // 挨拶文は原文のまま（表記も含めて）。公式の声明を勝手に整えてはならない。
   "profile.about_title": "会社概要",
-  "profile.about_desc": "ポノロゴの訓練・就労支援機関です。",
+  "profile.about_desc": "ポノロゴの日本語・就労文化訓練機関です。",
+  "profile.about_p1": "PT Amanah Sakura Japanは、東ジャワ州ポノロゴ県に拠点を置くLPK（職業訓練機関）です。日本語、就労スキル、日本文化の研修を通じて、インターンシップおよび特定技能のルートを目指すインドネシア人労働希望者の準備を行っています。",
+  "profile.about_p2": "当社は小規模なLPKであり、SO（送出機関）の認定をまだ受けていないため、単独で日本へ直接送り出す権限はありません。日本への渡航・配属は、業務提携契約（MoU）を締結した提携LPKおよびPT（SO）のネットワークと共同で実施しています。当社の役割は、登録から語学研修、JFT・SSW試験、書類準備まで受講者を送り出せる状態に整え、送出を行う提携SOへ引き継ぐことです。各段階に専任の講師がおり、組織体制はチームのセクションでご確認いただけます。",
   "profile.about_welcome": "私たちは、自らを支え、労働市場に立ち向かうことができる人材の能力を高め、技能を向上させることに努めています。",
-  "profile.about_p1": "PT Amanah Sakura Japanは、東ジャワ州ポノロゴ県に拠点を置く訓練・就労支援機関です。インターンシップおよび特定技能のルートを通じて、インドネシア人労働者が日本の職場に入るための準備を行っています。",
-  "profile.about_p2": "当社のサポートは、登録、語学研修、JFTおよびSSW試験、出国・配属に至るまで続きます。各段階に専任の講師がおり、組織体制はチームのセクションでご確認いただけます。",
   "profile.about_image_alt": "東ジャワ州ポノロゴにあるPT Amanah Sakura Japanの事務所建物",
   "profile.about_caption": "LPK Amanah Sakura Japan 事務所にて、受講生とスタッフ — 東ジャワ州ポノロゴ",
   "profile.about_cta": "プログラムについて",
+  "profile.about_so_note": "当社はまだSO（送出機関）の認定を受けていません。日本への渡航は、MoUを締結した提携LPKおよびPT（SO）と共同で行っています。",
+  "profile.about_so_note_label": "SO（送出機関）の認定状況",
 
   // ── 沿革（S9、`#tentang`） ────────────────────────────────────────────
   "profile.history_1_title": "2023年8月15日 — 設立",
@@ -1362,7 +1369,7 @@ export const jpTranslations: Record<string, string> = {
     "footer.nav_tentang": "会社概要",
     "footer.social_heading": "SNS",
     "footer.contact_heading": "お問い合わせ",
-    "footer.blurb": "日本への正規の研修・就労支援機関です。",
+    "footer.blurb": "ポノロゴの日本語・就労文化訓練を行うLPKです。配属はMoUを締結した提携LPK・PT（SO）と共同で行います。",
     "footer.tagline": "夢を日本へ",
     "footer.title": "PT Amanah Sakura Japan",
     "form.mf_ssw2": "ライセンス証明書 / SSW2（特定技能）",

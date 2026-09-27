@@ -78,6 +78,29 @@ export interface Props {
    * It used to carry `pose`/`motionName` too, driving the princess mascot that
    * followed the scroll. Owner ruling 2026-09-24 removed her from the site, so
    * those attributes are gone and the entrance is the only thing left here.
+   *
+   * ── AND IT IS ALSO `data-scroll` ──────────────────────────────────────────
+   *
+   * The same value is emitted a SECOND time as `data-scroll`, and that is not
+   * duplication — it is the point. `data-enter` drives a ONE-SHOT entrance
+   * (motion.css §9b: the observer unobserves the band after it fires).
+   * `data-scroll` drives a CONTINUOUS, reversible scroll-linked drift (§9f:
+   * `animation-timeline: view()`, progress derived from position). The owner
+   * asked for the second behaviour — "selama user masih di scroll atas bawah
+   * animasi cssnya jalan terus" — and the two must AGREE IN DIRECTION, or a
+   * band that enters from the left would drift to the left: the motions would
+   * read as fighting.
+   *
+   * Emitting both from ONE prop is what makes that agreement structural
+   * instead of a coincidence. There is no second attribute for a call site to
+   * forget, no second table to keep in sync, and `e2e/test-scroll-motion.mjs`
+   * asserts the two values are equal on every band.
+   *
+   * ⚠ THE DRIFT IS ON THIS WRAPPER, NEVER ON A CARD INSIDE IT. A CSS
+   * animation on `transform` overrides a `transition` on the same property of
+   * the same element, so a scroll-linked transform on a hoverable card would
+   * silently kill the card's §9c hover recipe. Keeping the drift on the band
+   * and the hover on the card is what lets both exist. See §9f.
    */
   enter?: string;
 }
@@ -104,6 +127,7 @@ const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(
       aria-labelledby={labelledBy}
       class={classes}
       data-enter={enter}
+      data-scroll={enter}
     >
       <slot />
     </aside>
@@ -113,6 +137,7 @@ const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(
       aria-labelledby={labelledBy}
       class={classes}
       data-enter={enter}
+      data-scroll={enter}
     >
       <slot />
     </div>
@@ -122,6 +147,7 @@ const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(
       aria-labelledby={labelledBy}
       class={classes}
       data-enter={enter}
+      data-scroll={enter}
     >
       <slot />
     </section>

@@ -43,7 +43,7 @@ export default function PersonGrid({ people, class: className }: Props) {
     .join(' ');
 
   return (
-    <ul class={grid}>
+    <ul class={grid} data-scroll-item>
       {people.map((person) => {
         const name = person.name;
         return (

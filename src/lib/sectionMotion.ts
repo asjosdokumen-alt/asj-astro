@@ -113,6 +113,10 @@ export const SECTION_MOTION: readonly SectionMotion[] = [
   { id: 'penempatan', label: 'Penempatan', enter: 'slide-right' },
   { id: 'tentang', label: 'Tentang', enter: 'curtain' },
   { id: 'tim', label: 'Tim', enter: 'focus' },
+  // ADDED 2026-09-27 with the #mitra section (the MoU partner slots). It takes
+  // `slide-left` — the same kind as `fasilitas` two rows up, which is legal: the
+  // no-repeat rule is about ADJACENT rows, and `tentang`/`tim` sit between them.
+  { id: 'mitra', label: 'Mitra', enter: 'slide-left' },
   { id: 'kontak', label: 'Kontak', enter: 'drop' },
   { id: 'lokasi', label: 'Lokasi', enter: 'rise' },
   { id: 'daftar', label: 'Daftar', enter: 'focus' },

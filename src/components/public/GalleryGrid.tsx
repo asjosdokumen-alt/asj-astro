@@ -41,7 +41,10 @@ export default function GalleryGrid({ items, class: className }: Props) {
   const grid = ['grid gap-4 sm:grid-cols-2 lg:grid-cols-3', className ?? ''].filter(Boolean).join(' ');
 
   return (
-    <ul class={grid}>
+    // `data-scroll-item` — see §9f. The grid drifts; each tile keeps its
+    // `.u-zoom` hover on the image underneath, which is why the attribute is
+    // on the <ul> and not on the <li>.
+    <ul class={grid} data-scroll-item>
       {items.map((item, index) => (
         <li key={item.src} class="group rounded-card overflow-hidden border border-line bg-surface">
           <div class="aspect-[4/3] overflow-hidden bg-surface-raised">

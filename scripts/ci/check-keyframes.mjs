@@ -87,6 +87,13 @@ const OUR_PREFIXES = [
   // ours, so a typo in it has to fail HERE rather than silently freeze the
   // photograph at one offset while the stylesheet looks correct.
   "drift-",
+  // Added 2026-09-27 with motion.css §9f — the CONTINUOUS scroll motion on
+  // every band and card grid. `hero-drift` was the one name §9e shipped
+  // WITHOUT a prefix entry, so it was already invisible to this gate before
+  // §9f existed; listing `hero-` closes that gap at the same time rather
+  // than leaving a known hole next to the new family.
+  "hero-",
+  "scroll-",
   // Tailwind-generated, from the `--animate-*` tokens in theme.css. They are
   // declared by Tailwind at build time rather than by hand, but they resolve the
   // same way and a typo in `animate-slide-in` is just as silent.

@@ -1,5 +1,5 @@
 {
-  "rootDir": "C:/Users/AMANAH Sakura 3/dev/astro",
+  "rootDir": "F:/astro",
   "sample": [
     "src/components/ui/Icon.tsx",
     "src/components/admin/TabMail.tsx",
@@ -28,31 +28,31 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 503,
+    "rootNames": 509,
     "options": {}
   },
-  "universe": 3978,
+  "universe": 3946,
   "counts": {
-    "agreeBound": 3978,
+    "agreeBound": 3946,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
     "libCompilerNone": 0,
-    "libRefs": 1271,
-    "libRefAgree": 1270,
+    "libRefs": 1245,
+    "libRefAgree": 1244,
     "libRefDisagree": 0,
     "libRefFramework": 1,
-    "skippedNonBindable": 2008,
+    "skippedNonBindable": 1998,
     "skippedJsxIntrinsic": 55,
-    "skippedAstroTemplate": 31,
+    "skippedAstroTemplate": 36,
     "offsetMismatch": 0,
     "disagreeBoundNoCompiler": 0,
     "disagreeNameMismatch": 0,
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3899,
-    "alias-vs-chase": 55,
+    "match": 3865,
+    "alias-vs-chase": 57,
     "merged-declaration": 22,
     "shadowing-disagreement": 2,
     "unmappable": 0
@@ -78,20 +78,20 @@
     },
     {
       "path": "src/components/AuthGuard.tsx",
-      "universe": 17,
-      "agreeBound": 17,
+      "universe": 18,
+      "agreeBound": 18,
       "agreeUnresolved": 0,
       "lib": 8,
-      "skipped": 12,
+      "skipped": 13,
       "disagree": 0
     },
     {
       "path": "src/store/i18n.ts",
-      "universe": 109,
-      "agreeBound": 109,
+      "universe": 123,
+      "agreeBound": 123,
       "agreeUnresolved": 0,
-      "lib": 53,
-      "skipped": 15,
+      "lib": 59,
+      "skipped": 16,
       "disagree": 0
     },
     {
@@ -154,7 +154,7 @@
       "agreeBound": 0,
       "agreeUnresolved": 0,
       "lib": 1,
-      "skipped": 11,
+      "skipped": 12,
       "disagree": 0
     },
     {
@@ -163,7 +163,7 @@
       "agreeBound": 0,
       "agreeUnresolved": 0,
       "lib": 0,
-      "skipped": 68,
+      "skipped": 74,
       "disagree": 0
     },
     {
@@ -240,11 +240,11 @@
     },
     {
       "path": "netlify/functions/contexts/documents/service.ts",
-      "universe": 820,
-      "agreeBound": 820,
+      "universe": 773,
+      "agreeBound": 773,
       "agreeUnresolved": 0,
-      "lib": 261,
-      "skipped": 587,
+      "lib": 229,
+      "skipped": 573,
       "disagree": 0
     },
     {
@@ -369,7 +369,7 @@
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 9,
+      "line": 10,
       "name": "persistentAtom",
       "role": "Callee",
       "reason": "alias-vs-chase",
@@ -378,12 +378,30 @@
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 26,
+      "line": 27,
       "name": "atom",
       "role": "Callee",
       "reason": "alias-vs-chase",
       "indexer": "bound",
       "compiler": "atom → indexer src/store/i18n.ts decls 124 · compiler <unmappable>:3466"
+    },
+    {
+      "path": "src/store/i18n.ts",
+      "line": 2201,
+      "name": "useStore",
+      "role": "Callee",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "useStore → indexer src/store/i18n.ts decls 160 · compiler <unmappable>:759"
+    },
+    {
+      "path": "src/store/i18n.ts",
+      "line": 2202,
+      "name": "useStore",
+      "role": "Callee",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "useStore → indexer src/store/i18n.ts decls 160 · compiler <unmappable>:759"
     },
     {
       "path": "src/store/userStore.ts",
@@ -644,7 +662,7 @@
       "role": "Read",
       "reason": "shadowing-disagreement",
       "indexer": "bound",
-      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 2958 · compiler netlify/functions/sweep-queue.ts:2830"
+      "compiler": "payload → indexer netlify/functions/sweep-queue.ts decls 3021 · compiler netlify/functions/sweep-queue.ts:2891"
     },
     {
       "path": "netlify/functions/contexts/master-data/service.ts",
@@ -735,24 +753,6 @@
       "reason": "alias-vs-chase",
       "indexer": "bound",
       "compiler": "bcrypt → indexer netlify/functions/contexts/applications/service.ts decls 169 · compiler <unmappable>:244"
-    },
-    {
-      "path": "netlify/functions/contexts/applications/service.ts",
-      "line": 155,
-      "name": "fcm",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "fcm → indexer netlify/functions/contexts/applications/service.ts decls 773 · compiler netlify/functions/_lib/fcm-server.ts:0"
-    },
-    {
-      "path": "netlify/functions/contexts/documents/service.ts",
-      "line": 171,
-      "name": "session",
-      "role": "Read",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "session → indexer netlify/functions/contexts/documents/service.ts decls 934 · compiler netlify/functions/_lib/session.ts:0"
     }
   ]
 }

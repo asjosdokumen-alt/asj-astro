@@ -1108,7 +1108,7 @@ export const translations: Record<Lang, Record<string, string>> = {
   // Verbatim from the company profile (cover and letterhead). Not a proposal.
   "profile.hero_tagline": "LET'S BUILD OUR FUTURE",
   "profile.hero_title": "Karier ke Jepang, dimulai dari sini.",
-  "profile.hero_sub": "Lowongan, program, dan layanan perjalanan kerja ke Jepang dalam satu portal ASJ.",
+  "profile.hero_sub": "LPK pelatihan bahasa & budaya kerja Jepang di Ponorogo. Program, lowongan, dan pendampingan sampai siap berangkat — keberangkatan dijalankan bersama mitra LPK dan PT (SO).",
   "profile.hero_cta_secondary": "Daftar sebagai Pelamar",
   "profile.hero_chip_ssw": "SSW",
   "profile.hero_chip_magang": "Magang",
@@ -1259,6 +1259,22 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.place_desc": "Bidang dan prefektur tujuan yang tercatat pada dokumen perusahaan.",
   "profile.place_note": "Nama prefektur ditulis dalam huruf Latin, sesuai dokumen resmi.",
 
+  // ── Mitra Kami (slot mitra MoU — model sponsor) ───────────────────────
+  // Owner's request 2026-09-27. ASJ is a small LPK without SO status, so the
+  // departure is executed by partner LPKs/PTs (SOs) under an MoU. This section
+  // shows WHERE that authority lives, which is the honest answer to "then who
+  // sends me?" — and the one place the network is visible to a prospective
+  // partner.
+  //
+  // The names and logos are SLOTS, filled later (owner's ruling). The generic
+  // keys below are the only copy that ships until then; a partner's own NAME
+  // would get its own key per the `Text` rule in companyProfile.ts.
+  "profile.mitra_title": "Mitra Kami",
+  "profile.mitra_desc": "Keberangkatan ke Jepang dijalankan bersama mitra LPK dan PT (SO) berikut.",
+  "profile.mitra_note": "Kami belum berstatus SO, sehingga keberangkatan peserta ke Jepang dilaksanakan oleh mitra LPK dan PT (SO) yang telah menandatangani MoU dengan kami. Daftar berikut masih dalam proses publikasi.",
+  "profile.mitra_cta_desc": "Ingin menjadi mitra penempatan (MoU) kami? Silakan hubungi kami melalui bagian Kontak di bawah.",
+  "profile.mitra_slot_pending": "Slot belum diisi",
+
   // ── Lowongan Ringkas (R2, rail) — REMOVED 2026-09-24 ───────────────────
   // The `profile.mini_*` keys (`mini_title`, `mini_desc`, `mini_all`,
   // `mini_cta`) were deleted together with the `#loker-ringkas` section and its
@@ -1271,13 +1287,21 @@ export const translations: Record<Lang, Record<string, string>> = {
   // statement is not ours to tidy; correcting it needs the owner's approval
   // (docs/COMPANY_PROFILE_DATA.md §3).
   "profile.about_title": "Tentang Kami",
-  "profile.about_desc": "Lembaga pelatihan dan penempatan kerja di Ponorogo.",
+  "profile.about_desc": "Lembaga pelatihan bahasa & budaya kerja Jepang di Ponorogo.",
   "profile.about_welcome": "Kami berkomitmen meningkatkan kemampuan sumber daya manusia untuk memperdayakan diri sendiri dan mampu menghadapi dunia kerja dan untuk meningkatkan keahlian.",
-  "profile.about_p1": "PT Amanah Sakura Japan adalah lembaga pelatihan dan penempatan kerja yang berkedudukan di Kabupaten Ponorogo, Jawa Timur. Kami menyiapkan calon pekerja migran Indonesia untuk masuk ke dunia kerja Jepang melalui jalur magang dan Tokutei Ginou.",
-  "profile.about_p2": "Pendampingan kami berjalan sejak pendaftaran, pelatihan bahasa, ujian JFT dan SSW, hingga keberangkatan dan penempatan. Setiap tahap punya pengajarnya sendiri, dan struktur organisasi kami bisa diperiksa di bagian Tim.",
+  "profile.about_p1": "PT Amanah Sakura Japan adalah LPK — Lembaga Pelatihan Kerja — yang berkedudukan di Kabupaten Ponorogo, Jawa Timur. Kami menyiapkan calon pekerja migran Indonesia lewat pelatihan bahasa Jepang, keterampilan kerja, dan pengenalan budaya Jepang, untuk jalur magang maupun Tokutei Ginou.",
+  "profile.about_p2": "Kami adalah LPK kecil dan belum berstatus SO (Sending Organization), sehingga belum berwenang memberangkatkan peserta ke Jepang secara langsung. Keberangkatan dan penempatan di Jepang dijalankan bersama jaringan mitra LPK dan PT (SO) yang telah kami ikat dengan perjanjian kerja sama (MoU). Peran kami adalah menyiapkan pesertanya sampai siap — mulai dari pendaftaran, pelatihan bahasa, ujian JFT dan SSW, hingga seluruh berkas — lalu menyerahkannya ke mitra SO yang memberangkatkan. Setiap tahap punya pengajarnya sendiri, dan struktur organisasi kami bisa diperiksa di bagian Tim.",
   "profile.about_image_alt": "Gedung kantor PT Amanah Sakura Japan di Ponorogo, Jawa Timur",
   "profile.about_caption": "Peserta dan staf di kantor LPK Amanah Sakura Japan — Ponorogo, Jawa Timur",
   "profile.about_cta": "Tentang Program Kami",
+  // A short, unmissable statement of what ASJ is and is not. The owner's ruling
+  // (2026-09-27): the page must not imply ASJ sends workers to Japan directly.
+  // ASJ is a small LPK WITHOUT SO status; the departure is executed by the MoU
+  // partner SOs. Stated as its own line rather than buried in a paragraph,
+  // because it is the single fact a prospective partner or candidate most needs
+  // to read correctly, and a misreading here is the one that misleads.
+  "profile.about_so_note": "Kami belum berstatus SO. Keberangkatan ke Jepang dijalankan bersama mitra LPK dan PT (SO) yang bekerja sama dengan kami melalui MoU.",
+  "profile.about_so_note_label": "Status SO (Sending Organization)",
 
   // ── Sejarah (S9, `#tentang`) ──────────────────────────────────────────
   // ADDED because the brief for "Tentang Kami" asks for visi, misi, sejarah and
@@ -1721,7 +1745,7 @@ export const translations: Record<Lang, Record<string, string>> = {
   // `showFooter` and carried no key, so it stayed Indonesian in Japanese mode
   // even though the tagline above it is Japanese-only by design — the two sit
   // six lines apart in Footer.astro. Found 2026-09-27 by the bilingual probe.
-  "footer.blurb": "Lembaga pelatihan & penempatan kerja resmi ke Jepang.",
+  "footer.blurb": "LPK pelatihan bahasa & budaya kerja Jepang di Ponorogo. Penempatan dijalankan bersama mitra LPK dan PT (SO) melalui MoU.",
     "footer.tagline": "夢を日本へ",
     "footer.title": "PT Amanah Sakura Japan",
     "form.mf_alkohol": "Minum Alkohol?",

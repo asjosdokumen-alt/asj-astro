@@ -9,6 +9,7 @@ import SectionTitle from '../components/public/SectionTitle.astro';
 import Card from '../components/public/Card.astro';
 import IconTileGrid from '../components/public/IconTileGrid.tsx';
 import PersonGrid from '../components/public/PersonGrid.tsx';
+import PartnerGrid from '../components/public/PartnerGrid.tsx';
 import HistoryTimeline from '../components/public/HistoryTimeline.tsx';
 import ContactForm from '../components/public/ContactForm.tsx';
 import GalleryGrid from '../components/public/GalleryGrid.tsx';
@@ -43,6 +44,7 @@ import {
   WHY_JAPAN,
   WHY_JAPAN_TIP,
 } from '../lib/companyProfile';
+import { PARTNERS } from '../lib/partners';
 import { GALLERY } from '../lib/gallery';
 
 /* WHY THE SECTIONS ARE COMPOSED HERE AND NOT EACH IN THEIR OWN FILE.
@@ -499,6 +501,32 @@ import { GALLERY } from '../lib/gallery';
         <p data-lang="profile.about_p2" class="text-body text-fg-muted">
           {ABOUT_PARAGRAPHS[1].text}
         </p>
+
+        <!-- ── Status SO — stated plainly, and high up ────────────────────────
+             Owner ruling 2026-09-27: the page must not read as "ASJ sends
+             workers to Japan". ASJ is a small LPK WITHOUT SO (Sending
+             Organization) status, so it is not authorised to depart a worker
+             directly; the departure is executed by the MoU partner LPKs/PTs
+             (SOs). That fact is now in about_p2, but a paragraph is easy to
+             skim past — and this is the one claim a candidate or a prospective
+             partner most needs to read correctly.
+
+             WHY A <p> AND NOT A HEADING. `e2e/test-headings.mjs` asserts `/`
+             has exactly one h1 and ONE heading per visible section, so any
+             heading level here would make #tentang report two. The accent
+             border and the bold lead-in carry the emphasis instead, the same
+             device `about_welcome` above already uses.
+
+             The lead-in is translated too (`profile.about_so_note_label`), so
+             the Japanese page does not show two language systems in one band. -->
+        <p class="mt-2 rounded-card border border-accent/40 bg-accent/5 p-4 text-body-sm text-fg-muted border-l-4">
+          <strong data-lang="profile.about_so_note_label" class="block text-fg font-bold mb-1">
+            Status SO (Sending Organization)
+          </strong>
+          <span data-lang="profile.about_so_note">
+            Kami belum berstatus SO. Keberangkatan ke Jepang dijalankan bersama mitra LPK dan PT (SO) yang bekerja sama dengan kami melalui MoU.
+          </span>
+        </p>
         <a
           href="#program"
           class="mt-2 inline-flex items-center gap-2 min-h-11 text-body-sm font-bold text-accent hover:underline"
@@ -601,6 +629,66 @@ import { GALLERY } from '../lib/gallery';
          sentence, because Astro ships HTML comments to the browser: a literal
          copy of it here would keep a text search of the built page non-empty
          and read as "the old copy is still on the page". -->
+
+    <!-- Section: Mitra Kami (sponsor-model partner slots).
+         OWNER'S REQUEST, 2026-09-27, verbatim:
+           "di paling bawah di kah di kasih mitra kami. kek model sponsor gitu.
+            ada usulaan baiknya gimna."
+         and the reason it is needed, in the owner's own words:
+           "kita ini perusahaan lpk kecil belum SO jadi gak bisa memberangkatkan
+            ke jepang secara langsung tapi kami mempunyai banyak rekan MoU lpk
+            dan pt so".
+
+         WHY IT SITS LAST, ABOVE CONTACT. The page's argument runs: who we are →
+         what we teach → where that leads → who we are (team) → here is the
+         network that actually departs you → talk to us. Placing the partners
+         immediately before the contact band means the reader who has just
+         learned "ASJ is not an SO" is answered before they leave the page, and
+         the contact section stays the single final action on the page.
+
+         WHY THE SLOTS ARE EMPTY AND THAT IS DELIBERATE — see
+         src/lib/partners.ts. Six slots render an explicit "Belum
+         dipublikasikan" state, and `e2e/test-landing.mjs` ties the filled/empty
+         split to the data so the two cannot drift. Do NOT fill a slot with a
+         plausible name to make the grid look finished: an unfilled slot is an
+         honest blank, and an invented partner is a false claim about a real
+         company on the page built to earn partners' trust.
+
+         WHY THIS SECTION HAS NO `enter` VALUE THAT COLLIDES WITH THE DRIFT.
+         It takes `enter="slide-left"` like its neighbours, so it enters and
+         drifts in one direction (motion.css §9f) — a band that entered from the
+         left and drifted right reads as fighting itself. -->
+    <Section id="mitra" labelledBy="mitra-title" enter="slide-left">
+      <SectionTitle
+        titleKey="profile.mitra_title"
+        title="Mitra Kami"
+        descKey="profile.mitra_desc"
+        desc="Keberangkatan ke Jepang dijalankan bersama mitra LPK dan PT (SO) berikut."
+        accent="legal"
+        headingId="mitra-title"
+      />
+      <!-- The sponsor-model note. It states the relationship in one sentence,
+           above the grid, so a reader who only skims the cards still learns
+           WHAT the cards are — a logo wall with no explanation is the shape
+           this section has to avoid, because it would read as "our clients"
+           rather than "the bodies that send our participants". -->
+      <p
+        data-lang="profile.mitra_note"
+        class="mt-6 max-w-[70ch] text-body-sm text-fg-muted"
+      >
+        Kami belum berstatus SO, sehingga keberangkatan peserta ke Jepang dilaksanakan oleh mitra LPK dan PT (SO) yang telah menandatangani MoU dengan kami. Daftar berikut masih dalam proses publikasi.
+      </p>
+      <div class="mt-8">
+        <PartnerGrid partners={PARTNERS} />
+      </div>
+      <p
+        data-lang="profile.mitra_cta_desc"
+        class="mt-6 max-w-[70ch] text-body-sm text-fg-muted"
+      >
+        Ingin menjadi mitra penempatan (MoU) kami? Silakan hubungi kami melalui bagian Kontak di bawah.
+      </p>
+    </Section>
+
     <Section id="kontak" labelledBy="kontak-title" enter="drop">
       <SectionTitle
         titleKey="profile.contact_title"
