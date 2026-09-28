@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASJ — Optimasi Modal Dashboard Kandidat (2026)</title>
+<!--
+  MOCKUP, bukan aplikasi. Satu berkas, tanpa CDN, tanpa dependensi.
+
+  Token di bawah adalah NILAI ASLI dari src/styles/theme.css (dark = default
+  @theme, light = blok html[data-theme="light"]). Angka yang dipakai di shell
+  modal adalah angka dari DESIGN.md, bukan karangan:
+    - target sentuh 44 px umum / 48 px di form mobile (§6.4)
+    - radius: control 12, card 16, panel 24, band 32 (§3.4)
+    - gerak: 180 ms, --ease-out-expo, hanya opacity + transform (§3.7)
+    - z: modal 200, popover 300, toast 400 (§3.8)
+    - scrim 60 % (riset 2026: 40-70 %)
+    - animasi masuk 150-250 ms (riset 2026)
+
+  Yang BUKAN dari repo: markup & JS di sini. Ini gambar kerja untuk direview.
+-->
+<style>
+/* ── TOKEN ASLI ──────────────────────────────────────────────────── */
+:root, [data-theme="dark"] {
+  --color-canvas:#020617; --color-surface:#0f172a; --color-surface-raised:#1e293b;
+  --color-surface-sunken:#000000;
+  --color-fg:#f1f5f9; --color-fg-muted:#94a3b8; --color-fg-subtle:#8595aa;
+  --color-line:#334155; --color-line-strong:#475569;
+  --color-accent:#f9a8d4; --color-accent-emerald:#34d399; --color-accent-sky:#38bdf8;
+  --color-accent-amber:#fbbf24; --color-accent-violet:#a78bfa; --color-accent-red:#f87171;
+  --color-brand:#10b981; --color-brand-fg:#04211a;
+  --ring:rgba(56,189,248,.55);
+  --glow:0 24px 60px -12px rgba(0,0,0,.85);
+}
+[data-theme="light"] {
+  --color-canvas:#ffffff; --color-surface:#ffffff; --color-surface-raised:#fff7fa;
+  --color-surface-sunken:#fdf2f6;
+  --color-fg:#16121c; --color-fg-muted:#514a5c; --color-fg-subtle:#726a80;
+  --color-line:#f0dfe7; --color-line-strong:#dfc4d1;
+  --color-accent:#be185d; --color-accent-emerald:#047857; --color-accent-sky:#0369a1;
+  --color-accent-amber:#b45309; --color-accent-violet:#6d28d9; --color-accent-red:#b91c1c;
+  --ring:rgba(3,105,161,.5);
+  --glow:0 24px 60px -18px rgba(120,60,90,.30);
+}
+:root {
+  --radius-control:.75rem; --radius-card:1rem; --radius-panel:1.5rem;
+  --radius-band:2rem; --radius-pill:9999px;
+  --ease:cubic-bezier(.16,1,.3,1); --dur:180ms;
+  --z-modal:200; --z-popover:300; --z-toast:400;
+}
+* { box-sizing: border-box; }
+html { font-family:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
+body {
+  margin:0; background:var(--color-canvas); color:var(--color-fg);
+  font-size:15px; line-height:1.55;
+  transition:background-color var(--dur) var(--ease);
+}
+h1,h2,h3,h4 { line-height:1.25; margin:0; }
+button { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--ring); outline-offset:2px; border-radius:6px; }
+
+.wrap { max-width:1180px; margin:0 auto; padding:0 20px 96px; }
+
+/* ── TOOLBAR ─────────────────────────────────────────────────────── */
+.topbar {
+  position:sticky; top:0; z-index:50;
+  background:color-mix(in srgb, var(--color-canvas) 88%, transparent);
+  backdrop-filter:blur(12px); border-bottom:1px solid var(--color-line);
+}
+.topbar-in {
+  max-width:1180px; margin:0 auto; padding:12px 20px;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+}
+.brand { display:flex; align-items:center; gap:10px; margin-right:auto; }
+.brand .dot {
+  width:34px;height:34px;border-radius:var(--radius-control);flex:0 0 auto;
+  background:linear-gradient(140deg,var(--color-brand),var(--color-accent-sky));
+  display:grid;place-items:center;font-weight:900;color:#04211a;font-size:13px;
+}
+.brand b { font-size:14px; letter-spacing:.01em; }
+.brand span { font-size:11px; color:var(--color-fg-subtle); text-transform:uppercase; letter-spacing:.14em; display:block; }
+.tbtn {
+  min-height:44px; padding:8px 14px; cursor:pointer;
+  border-radius:var(--radius-control); border:1px solid var(--color-line-strong);
+  background:var(--color-surface-raised); font-size:12px; font-weight:700;
+  display:inline-flex; align-items:center; gap:7px;
+}
+.tbtn[aria-pressed="true"] { border-color:var(--color-accent-sky); color:var(--color-accent-sky); }
+.tbtn:hover { border-color:var(--color-accent-sky); }
+
+/* ── SEKSI ───────────────────────────────────────────────────────── */
+section { margin-top:44px; }
+.eyebrow {
+  font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.16em;
+  color:var(--color-accent-sky); margin-bottom:6px;
+}
+h2 { font-size:clamp(21px,3vw,28px); font-weight:900; letter-spacing:-.01em; }
+.lede { color:var(--color-fg-muted); max-width:74ch; margin:10px 0 22px; }
+.lede b { color:var(--color-fg); }
+.card {
+  background:var(--color-surface-raised); border:1px solid var(--color-line);
+  border-radius:var(--radius-panel); padding:20px;
+}
+.muted { color:var(--color-fg-muted); }
+.small { font-size:12px; }
+
+/* ── TABEL SEBELUM/SESUDAH ───────────────────────────────────────── */
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--color-line); vertical-align:top; }
+th { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--color-fg-subtle); }
+tbody tr:last-child td { border-bottom:0; }
+code {
+  font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px;
+  background:color-mix(in srgb, var(--color-fg) 8%, transparent);
+  padding:2px 6px; border-radius:6px; white-space:nowrap;
+}
+.bad { color:var(--color-accent-red); }
+.good { color:var(--color-accent-emerald); }
+.scroller { overflow-x:auto; }
+
+/* ── ANATOMI ─────────────────────────────────────────────────────── */
+.anatomy { display:grid; gap:18px; grid-template-columns:1fr; }
+@media (min-width:860px){ .anatomy { grid-template-columns:minmax(0,1fr) 320px; align-items:start; } }
+.anno { display:flex; gap:10px; padding:10px 0; border-bottom:1px dashed var(--color-line); }
+.anno:last-child { border-bottom:0; }
+.anno .n {
+  flex:0 0 auto; width:24px;height:24px;border-radius:var(--radius-pill);
+  background:var(--color-accent-sky); color:#04121f; font-weight:900; font-size:12px;
+  display:grid; place-items:center;
+}
+.anno b { display:block; font-size:13px; }
+.anno p { margin:2px 0 0; font-size:12px; color:var(--color-fg-muted); }
+
+/* ── GALERI ──────────────────────────────────────────────────────── */
+.gal { display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr)); }
+.gcard {
+  background:var(--color-surface-raised); border:1px solid var(--color-line);
+  border-radius:var(--radius-card); padding:18px; text-align:left;
+  cursor:pointer; min-height:150px; display:flex; flex-direction:column; gap:8px;
+  transition:transform var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.gcard:hover { transform:translateY(-3px); border-color:var(--color-line-strong); }
+.gcard .ic {
+  width:40px;height:40px;border-radius:var(--radius-control);display:grid;place-items:center;
+  font-size:18px; background:color-mix(in srgb, var(--color-accent-sky) 18%, transparent);
+  border:1px solid color-mix(in srgb, var(--color-accent-sky) 40%, transparent);
+}
+.gcard b { font-size:15px; }
+.gcard p { margin:0; font-size:12.5px; color:var(--color-fg-muted); flex:1; }
+.gcard .tags { display:flex; flex-wrap:wrap; gap:5px; }
+.tag {
+  font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.06em;
+  padding:3px 8px; border-radius:var(--radius-pill);
+  border:1px solid var(--color-line-strong); color:var(--color-fg-muted);
+}
+.tag.new { border-color:color-mix(in srgb,var(--color-accent-emerald) 55%,transparent); color:var(--color-accent-emerald); }
+.tag.fix { border-color:color-mix(in srgb,var(--color-accent-amber) 55%,transparent); color:var(--color-accent-amber); }
+
+/* ── SIMULASI 390 px ─────────────────────────────────────────────────
+   Percobaan pertama memakai `transform` pada #stage untuk menjadikannya
+   containing block bagi `position:fixed`. Itu TIDAK bisa bekerja: overlay
+   adalah saudara #stage di level <body>, bukan keturunannya — jadi tidak ada
+   transform di atasnya. Yang benar: sempitkan overlay-nya sendiri. */
+#stage { position:relative; }
+body.sim #stage {
+  width:390px; max-width:100%; margin:0 auto; padding:12px;
+  border:1px solid var(--color-line-strong); border-radius:var(--radius-band);
+  background:var(--color-surface-sunken);
+}
+body.sim #stage::before {
+  content:"390 × 844 — simulasi ponsel"; display:block; text-align:center;
+  font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--color-fg-subtle); margin-bottom:10px;
+}
+body.sim .ov {
+  left:50%; right:auto; transform:translateX(-50%);
+  width:390px; max-width:100%; padding:0; align-items:flex-end;
+}
+body.sim .panel {
+  max-width:100% !important; max-height:88dvh;
+  border-radius:var(--radius-panel) var(--radius-panel) 0 0;
+}
+body.sim .drag { display:block; }
+
+/* ── SHELL MODAL ─────────────────────────────────────────────────── */
+.ov {
+  position:fixed; inset:0; z-index:var(--z-modal);
+  display:flex; align-items:center; justify-content:center; padding:16px;
+  overscroll-behavior:contain;
+}
+.ov[hidden] { display:none; }
+.ov-scrim {
+  position:absolute; inset:0; background:rgba(0,0,0,.6);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  animation:fade var(--dur) var(--ease) both;
+}
+.panel {
+  position:relative; width:100%; max-width:28rem;
+  max-height:min(90dvh, 860px);
+  display:flex; flex-direction:column; overflow:hidden;
+  background:var(--color-surface-raised);
+  border:1px solid var(--color-line-strong);
+  border-radius:var(--radius-panel); box-shadow:var(--glow);
+  animation:rise var(--dur) var(--ease) both;
+}
+.panel.lg { max-width:56rem; }
+.panel.sm { max-width:24rem; }
+@keyframes fade { from{opacity:0} to{opacity:1} }
+@keyframes rise { from{opacity:0; transform:translateY(10px) scale(.985)} to{opacity:1; transform:none} }
+
+/* Header LENGKET — judul tidak pernah tergulir keluar (M-07) */
+.p-head {
+  flex:0 0 auto; display:flex; align-items:flex-start; gap:12px;
+  padding:16px 16px 14px; border-bottom:1px solid var(--color-line);
+  background:var(--color-surface-raised); position:sticky; top:0; z-index:2;
+}
+.p-head .hic {
+  width:40px;height:40px;flex:0 0 auto;border-radius:var(--radius-control);
+  display:grid;place-items:center;font-size:18px;
+  background:color-mix(in srgb, var(--tone) 18%, transparent);
+  border:1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+}
+.p-head h3 { font-size:16px; font-weight:900; }
+.p-head .sub { font-size:12px; color:var(--color-fg-muted); margin-top:2px; }
+.p-close {
+  flex:0 0 auto; width:44px; height:44px; margin:-4px -4px 0 0;   /* 44 px, §6.4 */
+  display:grid; place-items:center; cursor:pointer;
+  border:1px solid transparent; border-radius:var(--radius-control);
+  background:transparent; font-size:20px; line-height:1; color:var(--color-fg-muted);
+}
+.p-close:hover { background:color-mix(in srgb,var(--color-fg) 9%,transparent); color:var(--color-fg); }
+
+/* Body — SATU-SATUNYA area yang bergulir */
+.p-body {
+  flex:1 1 auto; min-height:0; overflow-y:auto; padding:16px;
+  overscroll-behavior:contain; scrollbar-gutter:stable;
+}
+/* Footer LENGKET — CTA tidak pernah tergulir keluar (M-07) */
+.p-foot {
+  flex:0 0 auto; position:sticky; bottom:0; z-index:2;
+  padding:12px 16px 16px; border-top:1px solid var(--color-line);
+  background:var(--color-surface-raised);
+  display:flex; gap:10px; flex-direction:column;
+}
+.p-foot .row { display:flex; gap:10px; }
+.p-foot .row > * { flex:1; }
+
+/* Tombol */
+.btn {
+  min-height:44px; padding:10px 16px; cursor:pointer; font-weight:800; font-size:13.5px;
+  border-radius:var(--radius-control); border:1px solid var(--color-line-strong);
+  background:var(--color-surface-sunken); color:var(--color-fg);
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  transition:transform var(--dur) var(--ease), filter var(--dur) var(--ease);
+}
+.btn:hover { transform:translateY(-1px); }
+.btn-primary { background:var(--tone,#0ea5e9); border-color:transparent; color:#04121f; }
+[data-theme="light"] .btn-primary { color:#fff; }
+.btn-primary:hover { filter:brightness(1.08); }
+.btn-ghost { background:transparent; }
+.btn[disabled] { opacity:.5; cursor:not-allowed; transform:none; }
+.btn-sm { min-height:36px; padding:6px 12px; font-size:12px; }
+
+/* Field */
+.field { margin-bottom:12px; }
+.field label { display:block; font-size:11px; font-weight:800; text-transform:uppercase;
+  letter-spacing:.08em; color:var(--color-fg-muted); margin-bottom:6px; }
+.inp {
+  width:100%; min-height:44px; padding:10px 12px; font:inherit; font-size:14px;
+  background:var(--color-surface-sunken); color:var(--color-fg);
+  border:1px solid var(--color-line-strong); border-radius:var(--radius-control);
+  outline:none;
+}
+.inp:focus { border-color:var(--color-accent-sky); box-shadow:0 0 0 3px var(--ring); }
+.inp[aria-invalid="true"] { border-color:var(--color-accent-red); }
+.inp-wrap { position:relative; display:flex; }
+.inp-wrap .inp { padding-right:48px; }
+.eye {
+  position:absolute; right:0; top:0; width:44px; height:44px;   /* 44 px */
+  display:grid; place-items:center; cursor:pointer; background:transparent;
+  border:0; color:var(--color-fg-muted); font-size:16px;
+}
+.err { display:flex; gap:6px; align-items:flex-start; margin-top:6px; font-size:12px; color:var(--color-accent-red); font-weight:600; }
+.hint { font-size:11.5px; color:var(--color-fg-subtle); margin-top:6px; }
+.grid2 { display:grid; gap:12px; grid-template-columns:1fr 1fr; }
+
+/* Checklist syarat hidup (M-11) */
+.rules { display:grid; gap:6px; margin-top:10px; }
+.rule { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--color-fg-muted); }
+.rule .mk {
+  width:18px;height:18px;flex:0 0 auto;border-radius:var(--radius-pill);
+  display:grid;place-items:center;font-size:10px;font-weight:900;
+  border:1px solid var(--color-line-strong); color:transparent;
+}
+.rule[data-ok="true"] { color:var(--color-accent-emerald); font-weight:700; }
+.rule[data-ok="true"] .mk { background:var(--color-accent-emerald); border-color:transparent; color:#04211a; }
+/* Meter kekuatan */
+.meter { display:flex; gap:5px; margin-top:12px; }
+.meter i { height:5px; flex:1; border-radius:var(--radius-pill); background:var(--color-line); transition:background-color var(--dur) var(--ease); }
+.meter[data-lv="1"] i:nth-child(1){background:var(--color-accent-red)}
+.meter[data-lv="2"] i:nth-child(-n+2){background:var(--color-accent-amber)}
+.meter[data-lv="3"] i{background:var(--color-accent-emerald)}
+.meter-lbl { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; margin-top:6px; color:var(--color-fg-muted); }
+
+/* Dropzone foto (M-12) */
+.dz {
+  border:1.5px dashed var(--color-line-strong); border-radius:var(--radius-card);
+  padding:16px; display:flex; align-items:center; gap:14px; cursor:pointer;
+  transition:border-color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+.dz:hover, .dz[data-over="true"] { border-color:var(--color-accent-sky); background:color-mix(in srgb,var(--color-accent-sky) 8%,transparent); }
+.dz .ph {
+  width:64px;height:64px;flex:0 0 auto;border-radius:var(--radius-pill); overflow:hidden;
+  background:var(--color-surface-sunken); border:1px solid var(--color-line-strong);
+  display:grid;place-items:center;font-size:22px;color:var(--color-fg-subtle);
+}
+.dz .ph img { width:100%;height:100%;object-fit:cover;display:block; }
+.dz b { font-size:13px; display:block; }
+.dz p { margin:2px 0 0; font-size:11.5px; color:var(--color-fg-muted); }
+
+/* Cincin progres */
+.ring { width:52px;height:52px;flex:0 0 auto;position:relative; }
+.ring svg { transform:rotate(-90deg); }
+.ring circle { fill:none; stroke-width:5; stroke-linecap:round; }
+.ring .tr { stroke:var(--color-line); }
+.ring .vl { stroke:var(--color-accent-emerald); transition:stroke-dashoffset var(--dur) var(--ease); }
+.ring b { position:absolute; inset:0; display:grid; place-items:center; font-size:12px; font-weight:900; }
+
+/* Blok seksi dalam body */
+.blk { border:1px solid var(--color-line); border-radius:var(--radius-card); padding:14px; margin-bottom:12px; background:color-mix(in srgb,var(--color-fg) 3%,transparent); }
+.blk > h4 { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--color-accent-sky); margin-bottom:10px; display:flex; align-items:center; gap:7px; }
+.bar { height:6px; border-radius:var(--radius-pill); background:var(--color-line); overflow:hidden; }
+.bar i { display:block; height:100%; border-radius:var(--radius-pill); background:linear-gradient(90deg,var(--color-brand),var(--color-accent-sky)); transition:width var(--dur) var(--ease); }
+
+/* Stepper (E-Sign) */
+.steps { display:flex; align-items:center; gap:6px; padding:0 0 12px; }
+.steps .s { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:800; color:var(--color-fg-subtle); }
+.steps .s i { width:22px;height:22px;border-radius:var(--radius-pill);display:grid;place-items:center;
+  border:1px solid var(--color-line-strong); font-style:normal; font-size:10px; }
+.steps .s[data-on="true"] { color:var(--color-accent-emerald); }
+.steps .s[data-on="true"] i { background:var(--color-accent-emerald); border-color:transparent; color:#04211a; }
+.steps .ln { flex:1; height:1px; background:var(--color-line); }
+
+/* Baris berkas (Pemberkasan) */
+.frow { display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--color-line); }
+.frow:last-child { border-bottom:0; }
+.frow .nm { flex:1; min-width:0; font-size:13px; }
+.frow .nm span { display:block; font-size:11px; color:var(--color-fg-subtle); }
+.pill { font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em;
+  padding:4px 9px; border-radius:var(--radius-pill); border:1px solid; white-space:nowrap; }
+.pill.ok { color:var(--color-accent-emerald); border-color:color-mix(in srgb,var(--color-accent-emerald) 50%,transparent); }
+.pill.no { color:var(--color-accent-amber); border-color:color-mix(in srgb,var(--color-accent-amber) 50%,transparent); }
+
+/* Chat (Interview) */
+.chat { display:flex; flex-direction:column; gap:12px; }
+.msg { max-width:86%; padding:11px 14px; border-radius:var(--radius-card); font-size:13.5px; }
+.msg.ai { align-self:flex-start; background:color-mix(in srgb,var(--color-accent-violet) 16%,transparent);
+  border:1px solid color-mix(in srgb,var(--color-accent-violet) 35%,transparent); border-top-left-radius:5px; }
+.msg.me { align-self:flex-end; background:var(--color-accent-violet); color:#12061f; font-weight:600; border-top-right-radius:5px; }
+.msg .who { font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.1em; opacity:.75; margin-bottom:4px; }
+.composer { display:flex; gap:8px; align-items:flex-end; }
+.composer textarea {
+  flex:1; min-height:48px; max-height:120px; padding:12px; font:inherit; font-size:14px; resize:none;
+  background:var(--color-surface-sunken); color:var(--color-fg);
+  border:1px solid var(--color-line-strong); border-radius:var(--radius-control); outline:none;
+}
+.composer textarea:focus { border-color:var(--color-accent-violet); box-shadow:0 0 0 3px color-mix(in srgb,var(--color-accent-violet) 40%,transparent); }
+.send { width:48px;height:48px;flex:0 0 auto;border-radius:var(--radius-control);border:0;cursor:pointer;
+  background:var(--color-accent-violet); color:#12061f; font-size:18px; display:grid; place-items:center; }
+.drag { width:44px;height:5px;border-radius:var(--radius-pill);background:var(--color-line-strong); margin:8px auto 0; }
+body.sim .drag { display:block; }
+.drag { display:none; }
+
+/* Toolbar viewer dokumen */
+.vbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 16px; border-bottom:1px solid var(--color-line); background:var(--color-surface); }
+.vbar .sp { margin-left:auto; }
+.pagebox {
+  flex:1; min-height:280px; margin:12px 16px; border-radius:var(--radius-card);
+  background:var(--color-surface-sunken); border:1px solid var(--color-line);
+  display:grid; place-items:center; color:var(--color-fg-subtle); font-size:12.5px; text-align:center; padding:20px;
+  transform-origin:center; transition:transform var(--dur) var(--ease);
+}
+
+/* Lapisan konfirmasi di DALAM shell yang sama (M-13) — bukan modal baru */
+.confirm {
+  position:absolute; inset:0; z-index:5; display:flex; align-items:center; justify-content:center;
+  padding:16px; background:rgba(2,6,23,.72); backdrop-filter:blur(6px);
+  animation:fade var(--dur) var(--ease) both; border-radius:var(--radius-panel);
+}
+.confirm[hidden] { display:none; }
+.confirm .box {
+  background:var(--color-surface-raised); border:1px solid var(--color-line-strong);
+  border-radius:var(--radius-card); padding:18px; max-width:22rem; width:100%;
+  animation:rise var(--dur) var(--ease) both;
+}
+.confirm h4 { font-size:15px; margin-bottom:6px; }
+.confirm p { font-size:12.5px; color:var(--color-fg-muted); margin:0 0 14px; }
+
+/* Anotasi overlay pada panel */
+.anno-on .p-head { outline:2px dashed var(--color-accent-sky); outline-offset:-4px; }
+.anno-on .p-body { outline:2px dashed var(--color-accent-emerald); outline-offset:-4px; }
+.anno-on .p-foot { outline:2px dashed var(--color-accent-amber); outline-offset:-4px; }
+.anno-on .p-close { outline:2px solid var(--color-accent-red); outline-offset:0; }
+.anno-on .p-head::after {
+  content:"1 · header lengket"; position:absolute; right:56px; top:4px;
+  font-size:9px; font-weight:900; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--color-accent-sky);
+}
+.anno-on .p-body::after {
+  content:"2 · satu-satunya area scroll"; position:sticky; bottom:0; display:block;
+  font-size:9px; font-weight:900; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--color-accent-emerald); text-align:right; padding-top:8px;
+}
+.anno-on .p-foot::after {
+  content:"3 · footer lengket · CTA"; position:absolute; left:16px; top:-14px;
+  font-size:9px; font-weight:900; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--color-accent-amber);
+}
+
+.note {
+  margin-top:22px; padding:14px 16px; border-left:3px solid var(--color-accent-sky);
+  background:color-mix(in srgb,var(--color-accent-sky) 8%,transparent);
+  border-radius:0 var(--radius-card) var(--radius-card) 0; font-size:12.5px; color:var(--color-fg-muted);
+}
+.note b { color:var(--color-fg); }
+.foot { margin-top:56px; padding-top:20px; border-top:1px solid var(--color-line); font-size:12px; color:var(--color-fg-subtle); }
+@media (prefers-reduced-motion: reduce) { * { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
+
+/* ── `hidden` HARUS menang ───────────────────────────────────────────
+   Atribut `hidden` hanya diatur UA stylesheet (`display:none`), dan aturan
+   PENULIS menang atas UA tanpa peduli spesifisitas. Jadi `.err { display:flex }`
+   membuat pesan error ber-`hidden` tetap terlihat: mockup ini sempat menampilkan
+   tiga error validasi di form yang masih kosong. Diletakkan paling akhir supaya
+   ia menang atas aturan penulis lain yang spesifisitasnya sama (0,1,0). */
+[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <div class="dot">ASJ</div>
+      <div>
+        <b>Optimasi Modal — Dashboard Kandidat</b>
+        <span>Mockup 2026 · 6 overlay</span>
+      </div>
+    </div>
+    <button class="tbtn" id="btn-anno" aria-pressed="false">Anotasi</button>
+    <button class="tbtn" id="btn-sim" aria-pressed="false">Simulasi 390 px</button>
+    <button class="tbtn" id="btn-theme">Tema terang</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section>
+    <p class="eyebrow">Review terukur · 2026-09-28</p>
+    <h1 style="font-size:clamp(24px,4vw,36px);font-weight:900;letter-spacing:-.02em">
+      Enam modal, enam shell salinan. Yang hilang bukan gaya — <span style="color:var(--color-accent-sky)">struktur</span>.
+    </h1>
+    <p class="lede">
+      <code>useOverlay</code> sudah benar: focus trap, restore focus, Escape fase-capture,
+      <code>role</code>/<code>aria-modal</code>/<code>aria-labelledby</code>. Yang belum ada adalah
+      lapisan di atasnya. Akibatnya <b>scrim, z-index, radius, target sentuh, dan penanganan form
+      menyimpang satu sama lain</b> — dan penyimpangannya justru pada angka yang
+      <code>DESIGN.md</code> sudah tetapkan. Yang paling terasa: <b>tidak satu pun dari enam modal
+      punya footer lengket</b>, dan empat di antaranya membuat panelnya sendiri jadi area scroll,
+      sehingga tombol simpan ikut tergulir keluar layar.
+    </p>
+    <div class="card scroller">
+      <table>
+        <thead>
+          <tr><th>Yang diukur</th><th>Sekarang</th><th>Usul</th><th>Sumber</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Scrim</td><td class="bad"><code>/70</code> ×2 · <code>/80</code> ×3 · <code>/90</code> ×1</td><td class="good"><code>rgba(0,0,0,.6)</code> — satu nilai</td><td>riset 2026: 40–70 %</td></tr>
+          <tr><td>z-index</td><td class="bad"><code>200</code>×2 · <code>260</code>×1 · <code>300</code>×3 · <code>999</code>×1</td><td class="good"><code>--z-index-modal</code> / <code>-popover</code></td><td>DESIGN §3.8</td></tr>
+          <tr><td>Radius panel</td><td class="bad"><code>[2rem]</code> ×4 · <code>[2.5rem]</code> ×1</td><td class="good"><code>--radius-panel</code> (24 px)</td><td>DESIGN §3.4 · T-04</td></tr>
+          <tr><td>Tombol tutup</td><td class="bad">ikon polos ≈20–24 px · 3/6 tanpa <code>aria-label</code></td><td class="good">44×44 px (48 px di form mobile), label wajib</td><td>DESIGN §6.4</td></tr>
+          <tr><td>Area scroll</td><td class="bad">di <b>panel</b> (4 modal) → judul + CTA tergulir</td><td class="good">hanya <b>body</b>; header &amp; footer lengket</td><td>riset 2026</td></tr>
+          <tr><td>Animasi masuk</td><td class="bad">tidak ada — modal "nongol"</td><td class="good">180 ms · <code>--ease-out-expo</code> · opacity + translate</td><td>DESIGN §3.7 · riset 150–250 ms</td></tr>
+          <tr><td>Validasi</td><td class="bad"><code>showToast</code> — jauh dari field, hilang sendiri</td><td class="good">inline + <code>aria-invalid</code> + checklist hidup</td><td>—</td></tr>
+          <tr><td>Kirim dengan Enter</td><td class="bad">0 elemen <code>&lt;form&gt;</code></td><td class="good"><code>&lt;form onSubmit&gt;</code></td><td>—</td></tr>
+          <tr><td>Perubahan belum tersimpan</td><td class="bad">dibuang senyap oleh Escape / backdrop</td><td class="good">lapisan konfirmasi <b>di dalam shell yang sama</b></td><td>riset 2026</td></tr>
+          <tr><td>Mobile</td><td class="bad">1 dari 6 bottom sheet</td><td class="good"><code>variant="sheet"</code> otomatis ≤640 px</td><td>riset 2026</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Anatomi</p>
+    <h2>Satu shell, delapan slot</h2>
+    <p class="lede">Klik <b>Anotasi</b> di bilah atas, lalu buka modal mana pun — bagian yang diwarnai adalah
+      tiga zona yang sekarang tidak dibedakan.</p>
+    <div class="anatomy">
+      <div class="card">
+        <div class="anno"><div class="n">1</div><div><b>Header lengket</b><p>Ikon + judul + subjudul (jadi <code>aria-describedby</code>). Tidak pernah tergulir — kandidat selalu tahu sedang di mana.</p></div></div>
+        <div class="anno"><div class="n">2</div><div><b>Body — satu-satunya area scroll</b><p><code>overflow-y:auto</code> + <code>overscroll-behavior:contain</code> + <code>scrollbar-gutter:stable</code>. Hanya di sini, bukan di panel.</p></div></div>
+        <div class="anno"><div class="n">3</div><div><b>Footer lengket</b><p>CTA utama selalu terlihat. Maksimum dua tombol, label berbasis hasil ("Simpan CV", bukan "OK").</p></div></div>
+        <div class="anno"><div class="n">4</div><div><b>Tombol tutup 44 × 44 px</b><p>Dengan <code>aria-label</code> wajib. Di dalam form mobile naik ke 48 px. Diletakkan <em>di dalam</em> header lengket, bukan <code>absolute</code> — supaya tidak menabrak judul di 360 px.</p></div></div>
+        <div class="anno"><div class="n">5</div><div><b>Scrim 60 % + blur</b><p>Satu nilai untuk semua. Menghormati <code>prefers-reduced-transparency</code> (sudah ada di <code>motion.css</code>).</p></div></div>
+        <div class="anno"><div class="n">6</div><div><b>Masuk 180 ms</b><p>Opacity + <code>translateY(10px)</code> + <code>scale(.985)</code>. Dinolkan otomatis oleh blok <code>prefers-reduced-motion</code> yang sudah ada.</p></div></div>
+        <div class="anno"><div class="n">7</div><div><b>Sheet di ≤640 px</b><p><code>items-end</code>, <code>rounded-t-panel</code>, drag handle, swipe-to-dismiss. Menghindari keyboard menutupi field.</p></div></div>
+        <div class="anno"><div class="n">8</div><div><b>Lapisan konfirmasi internal</b><p>Penjaga perubahan belum tersimpan dirender <b>di dalam</b> shell yang sama — tidak menumpuk modal, sesuai panduan 2026.</p></div></div>
+      </div>
+      <div class="card small muted">
+        <b style="color:var(--color-fg);display:block;margin-bottom:8px;font-size:13px">Kenapa bukan <code>&lt;dialog&gt;</code> native</b>
+        <p style="margin:0 0 10px">Riset 2026 merekomendasikannya, dan <code>useOverlay</code> <b>sudah memberi</b> semua yang <code>&lt;dialog&gt;</code> berikan. Menggantinya berarti membuang 21 call site yang bekerja, dan <code>showModal()</code> menambah lapisan <em>top-layer</em> yang tidak terlihat oleh skala z-index repo — persis kelas bug yang <code>theme.css:78-84</code> ada untuk mencegahnya.</p>
+        <p style="margin:0"><b style="color:var(--color-fg)">Keputusan:</b> pertahankan <code>useOverlay</code>, tambahkan <code>ModalShell</code> di atasnya.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Galeri · semuanya bisa diklik</p>
+    <h2>Enam modal, sesudah</h2>
+    <p class="lede">Nyalakan <b>Simulasi 390 px</b> untuk melihat peralihan ke bottom sheet, lalu buka modalnya lagi.</p>
+    <div id="stage">
+      <div class="gal">
+        <button class="gcard" data-open="pw">
+          <div class="ic" style="color:var(--color-accent-amber)">&#128274;</div>
+          <b>Ganti Password</b>
+          <p>Checklist syarat hidup, meter kekuatan, show/hide, Enter mengirim, error inline.</p>
+          <div class="tags"><span class="tag new">checklist</span><span class="tag fix">Enter</span><span class="tag fix">44 px</span></div>
+        </button>
+        <button class="gcard" data-open="cv">
+          <div class="ic" style="color:var(--color-accent-sky)">&#128100;</div>
+          <b>Update CV Mini</b>
+          <p>Footer lengket, dropzone foto dengan pratinjau, cincin progres, validasi numerik inline.</p>
+          <div class="tags"><span class="tag fix">footer lengket</span><span class="tag new">drag &amp; drop</span><span class="tag new">progres</span></div>
+        </button>
+        <button class="gcard" data-open="iv">
+          <div class="ic" style="color:var(--color-accent-violet)">&#127908;</div>
+          <b>Simulasi Interview</b>
+          <p>Sudah paling dekat 2026. Polish: drag handle, swipe-to-dismiss, <code>aria-live</code> pada chat.</p>
+          <div class="tags"><span class="tag new">sheet</span><span class="tag new">aria-live</span></div>
+        </button>
+        <button class="gcard" data-open="es">
+          <div class="ic" style="color:var(--color-accent-red)">&#9997;</div>
+          <b>E-Sign Naitei</b>
+          <p>Stepper 4 langkah menggantikan dua blok sejajar, footer lengket, <code>z-999</code> dihapus.</p>
+          <div class="tags"><span class="tag new">stepper</span><span class="tag fix">z-index</span></div>
+        </button>
+        <button class="gcard" data-open="pb">
+          <div class="ic" style="color:var(--color-accent-emerald)">&#128193;</div>
+          <b>Pemberkasan</b>
+          <p>Header lengket membawa identitas + cincin progres berkas, footer lengket berisi CTA.</p>
+          <div class="tags"><span class="tag fix">header lengket</span><span class="tag new">progres 5/9</span></div>
+        </button>
+        <button class="gcard" data-open="dp">
+          <div class="ic" style="color:var(--color-accent-sky)">&#128196;</div>
+          <b>Preview Dokumen</b>
+          <p>Toolbar berlabel teks (ikon telanjang bukan nama aksesibel), zoom, navigasi halaman.</p>
+          <div class="tags"><span class="tag fix">label</span><span class="tag new">zoom</span></div>
+        </button>
+      </div>
+    </div>
+    <div class="note">
+      <b>Coba yang ini:</b> buka <b>Update CV Mini</b>, ketik apa saja, lalu tekan Escape — muncul lapisan
+      konfirmasi <em>di dalam</em> panel yang sama, bukan modal kedua. Lalu nyalakan
+      <b>Simulasi 390 px</b> dan buka lagi: panel turun jadi bottom sheet.
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Dashboard</p>
+    <h2>Bukan hanya modalnya</h2>
+    <p class="lede">Kandidat membuka dashboard, bukan modal. Halaman ini sekarang menumpuk panel
+      <code>max-w-4xl</code> berisi <code>max-w-xl</code> berulang — bukan bento, padahal
+      <code>DESIGN.md §1.2</code> mewajibkannya dan <code>u-grid-auto--panels</code> sudah ada.</p>
+    <div class="card" style="padding:16px">
+      <div style="display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr))">
+        <div style="border:1px solid var(--color-line);border-radius:var(--radius-card);padding:14px">
+          <p class="small muted" style="margin:0 0 4px">D-01 · bento</p>
+          <b style="font-size:13px">2 kolom di ≥768 px</b>
+          <p class="small muted" style="margin:6px 0 0">Tinggi halaman turun ~35–40 %, dan mata tidak menyapu satu kolom sempit di monitor lebar.</p>
+        </div>
+        <div style="border:1px solid var(--color-line);border-radius:var(--radius-card);padding:14px">
+          <p class="small muted" style="margin:0 0 4px">D-02 · lebar</p>
+          <b style="font-size:13px">Satu skala lebar</b>
+          <p class="small muted" style="margin:6px 0 0">Sekarang 896 px (induk) vs 576 px (CV, jadwal, catatan). Tepi yang bergoyang terbaca sebagai "belum selesai".</p>
+        </div>
+        <div style="border:1px solid var(--color-line);border-radius:var(--radius-card);padding:14px">
+          <p class="small muted" style="margin:0 0 4px">D-03 · gradien</p>
+          <b style="font-size:13px">Satu permukaan, satu aksen</b>
+          <p class="small muted" style="margin:6px 0 0">Empat gradien besar bersaing. Ganti ke <code>surface-raised</code> + aksen pada satu elemen per kartu.</p>
+        </div>
+        <div style="border:1px solid var(--color-line);border-radius:var(--radius-card);padding:14px">
+          <p class="small muted" style="margin:0 0 4px">D-04 · grid aksi</p>
+          <b style="font-size:13px">7 tombol → 3+3+1</b>
+          <p class="small muted" style="margin:6px 0 0">Baris terakhir pincang terbaca sebagai kesalahan. Jadikan 6 utama + 1 sekunder terpisah.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Rujukan · diakses 2026-09-28</p>
+    <h2>Yang dipakai, dan yang sengaja tidak</h2>
+    <div class="card scroller">
+      <table>
+        <thead><tr><th>Sumber</th><th>Diambil</th></tr></thead>
+        <tbody>
+          <tr><td>shaheermalik.com — <em>Modal &amp; Dialog Design Best Practices (2026)</em>, 19 Jun 2026</td><td>Anatomi 6 bagian; modal hanya untuk satu tugas; hindari menumpuk modal</td></tr>
+          <tr><td>framerwebsites.com — <em>Modal Design: Best Practices for 2026</em>, 19 Mei 2026</td><td>Angka konkret: scrim 40–70 %, lebar 400–600 px, animasi <b>150–250 ms</b>, bottom sheet di mobile, <code>aria-describedby</code> + latar <code>aria-hidden</code></td></tr>
+          <tr><td>eleken.co — <em>Mastering Modal UX</em>, Sep 2026</td><td>Label tombol berbasis hasil; maksimum 2 tombol aksi; konfirmasi untuk perubahan belum tersimpan</td></tr>
+          <tr><td>midrocket.com — <em>UI Design Trends for 2026</em>, 12 Mar 2026</td><td>Bento grid; glassmorphism 2.0 (translucency <b>tipis</b>, bukan blur tebal); dark-mode maturity; transparansi AI</td></tr>
+          <tr><td><code>DESIGN.md</code> repo ini</td><td>Kebenaran internal: §1.2 tren yang <b>ditolak</b> (kinetic type, 3D, scroll-jacking), §3.7 gerak 180 ms, §3.8 z, §3.4 radius, §6.4 lantai 44/48 px</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <b>Keselarasan.</b> <code>DESIGN.md §1.2</code> sudah menolak kinetic typography dan 3D — usulan ini
+      <b>tidak</b> menambah keduanya. Yang ditambahkan hanya yang <code>DESIGN.md</code> sendiri sudah minta
+      tetapi modal belum lakukan: lantai target sentuh, token radius, token z-index, dan gerak 180 ms.
+      Tidak ada CDN, tidak ada framework, tidak ada animasi yang tidak bisa dinolkan.
+    </div>
+    <div class="foot">
+      Mockup kerja · <code>deliverables/gstack/_mockup-modal-kandidat-2026.html</code> ·
+      review: <code>deliverables/gstack/design-review-modal-kandidat-2026-09-28.md</code><br>
+      Tidak ada berkas di <code>src/</code> yang diubah. Token di halaman ini disalin dari
+      <code>src/styles/theme.css</code>.
+    </div>
+  </section>
+</div>
+
+<!-- ══ MODAL 1 · GANTI PASSWORD ══════════════════════════════════════ -->
+<div class="ov" id="ov-pw" hidden>
+  <div class="ov-scrim" data-close></div>
+  <div class="panel sm" style="--tone:var(--color-accent-amber)" role="dialog" aria-modal="true" aria-labelledby="pw-t" aria-describedby="pw-s">
+    <div class="drag"></div>
+    <div class="p-head">
+      <div class="hic" style="color:var(--color-accent-amber)">&#128274;</div>
+      <div style="flex:1;min-width:0">
+        <h3 id="pw-t">Ganti Password</h3>
+        <p class="sub" id="pw-s">Minimal 6 karakter, maksimal 20, tanpa spasi.</p>
+      </div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <form class="p-body" id="pw-form" novalidate>
+      <div class="field">
+        <label for="pw-a">Password lama</label>
+        <div class="inp-wrap">
+          <input class="inp" id="pw-a" type="password" autocomplete="current-password" data-dirty placeholder="••••••">
+          <button type="button" class="eye" data-eye="pw-a" aria-label="Tampilkan password lama">&#128065;</button>
+        </div>
+        <p class="err" id="pw-a-e" hidden><span>&#9888;</span><span>Password lama wajib diisi.</span></p>
+      </div>
+      <div class="field">
+        <label for="pw-b">Password baru</label>
+        <div class="inp-wrap">
+          <input class="inp" id="pw-b" type="password" autocomplete="new-password" data-dirty placeholder="••••••">
+          <button type="button" class="eye" data-eye="pw-b" aria-label="Tampilkan password baru">&#128065;</button>
+        </div>
+        <!-- M-11: aturan pindah dari teks 11 px yang tidak dibaca ke umpan balik hidup -->
+        <div class="rules" id="pw-rules">
+          <div class="rule" data-rule="len"><span class="mk">&#10003;</span>6–20 karakter</div>
+          <div class="rule" data-rule="sp"><span class="mk">&#10003;</span>Tanpa spasi</div>
+          <div class="rule" data-rule="mix"><span class="mk">&#10003;</span>Huruf besar &amp; kecil</div>
+          <div class="rule" data-rule="num"><span class="mk">&#10003;</span>Mengandung angka</div>
+        </div>
+        <div class="meter" id="pw-meter" data-lv="0"><i></i><i></i><i></i></div>
+        <p class="meter-lbl" id="pw-lbl">Kekuatan: —</p>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label for="pw-c">Ulangi password baru</label>
+        <div class="inp-wrap">
+          <input class="inp" id="pw-c" type="password" autocomplete="new-password" data-dirty placeholder="••••••">
+          <button type="button" class="eye" data-eye="pw-c" aria-label="Tampilkan ulangi password">&#128065;</button>
+        </div>
+        <p class="err" id="pw-c-e" hidden><span>&#9888;</span><span>Belum cocok dengan password baru.</span></p>
+      </div>
+    </form>
+    <div class="p-foot">
+      <button class="btn btn-primary" id="pw-save" form="pw-form" type="submit">Simpan password</button>
+      <p class="hint" style="margin:0;text-align:center">Tekan <b>Enter</b> di field mana pun untuk mengirim — dulu tidak bereaksi (M-10).</p>
+    </div>
+    <div class="confirm" id="pw-confirm" hidden>
+      <div class="box">
+        <h4>Buang perubahan?</h4>
+        <p>Password baru yang kamu ketik akan hilang. Ini dikerjakan di dalam shell yang sama — bukan modal kedua.</p>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" data-confirm-cancel>Lanjut mengisi</button>
+          <button class="btn btn-primary" data-confirm-discard>Buang</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL 2 · UPDATE CV MINI ══════════════════════════════════════ -->
+<div class="ov" id="ov-cv" hidden>
+  <div class="ov-scrim" data-close></div>
+  <div class="panel" style="--tone:var(--color-accent-sky)" role="dialog" aria-modal="true" aria-labelledby="cv-t" aria-describedby="cv-s">
+    <div class="drag"></div>
+    <div class="p-head">
+      <div class="hic" style="color:var(--color-accent-sky)">&#128100;</div>
+      <div style="flex:1;min-width:0">
+        <h3 id="cv-t">Update CV Mini</h3>
+        <p class="sub" id="cv-s">Data ini dipakai di kartu profil dan berkas lamaran.</p>
+      </div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <form class="p-body" id="cv-form" novalidate>
+      <!-- Progres: cincin + bar, menggantikan grid datar tanpa umpan balik -->
+      <div class="blk" style="display:flex;align-items:center;gap:14px">
+        <div class="ring">
+          <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+            <circle class="tr" cx="26" cy="26" r="22"></circle>
+            <circle class="vl" id="cv-ring" cx="26" cy="26" r="22" stroke-dasharray="138.2" stroke-dashoffset="138.2"></circle>
+          </svg>
+          <b id="cv-ring-t">0%</b>
+        </div>
+        <div style="flex:1;min-width:0">
+          <b style="font-size:13px">Kelengkapan CV Mini</b>
+          <p class="small muted" style="margin:2px 0 8px" id="cv-count">0 dari 7 terisi</p>
+          <div class="bar"><i id="cv-bar" style="width:0%"></i></div>
+        </div>
+      </div>
+
+      <div class="blk">
+        <h4>&#128247; Foto terbaru</h4>
+        <!-- M-12: dropzone nyata + pratinjau + kamera -->
+        <div class="dz" id="cv-dz" tabindex="0" role="button" aria-label="Unggah atau lepas foto di sini">
+          <div class="ph" id="cv-ph">&#128247;</div>
+          <div style="flex:1;min-width:0">
+            <b id="cv-dz-t">Lepas foto di sini</b>
+            <p id="cv-dz-p">atau klik untuk memilih · JPG/PNG, maks 2 MB</p>
+          </div>
+        </div>
+        <input type="file" id="cv-file" accept="image/*" hidden>
+        <p class="hint">Di ponsel, tombol yang sama membuka kamera depan (<code>capture="user"</code>) — input file polos dulu tidak bisa.</p>
+      </div>
+
+      <div class="blk">
+        <h4>&#128203; Biodata</h4>
+        <div class="grid2">
+          <div class="field" style="margin-bottom:0">
+            <label for="cv-g">Jenis kelamin</label>
+            <select class="inp" id="cv-g" data-dirty><option>LAKI-LAKI</option><option>PEREMPUAN</option></select>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label for="cv-u">Usia</label>
+            <input class="inp" id="cv-u" type="number" inputmode="numeric" placeholder="22" data-num="15,60" data-dirty>
+            <p class="err" id="cv-u-e" hidden><span>&#9888;</span><span>Usia harus 15–60.</span></p>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label for="cv-tb">Tinggi (cm)</label>
+            <input class="inp" id="cv-tb" type="number" inputmode="numeric" placeholder="165" data-num="120,200" data-dirty>
+            <p class="err" id="cv-tb-e" hidden><span>&#9888;</span><span>Tinggi harus 120–200 cm.</span></p>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label for="cv-bb">Berat (kg)</label>
+            <input class="inp" id="cv-bb" type="number" inputmode="numeric" placeholder="55" data-num="30,120" data-dirty>
+            <p class="err" id="cv-bb-e" hidden><span>&#9888;</span><span>Berat harus 30–120 kg.</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="blk" style="margin-bottom:0">
+        <h4>&#127891; Bahasa &amp; keterampilan</h4>
+        <div class="field" style="margin-bottom:10px">
+          <label for="cv-p">Pendidikan terakhir</label>
+          <select class="inp" id="cv-p" data-dirty><option value="-">— Belum dipilih —</option><option>SMA</option><option>SMK</option><option>MA</option><option>D3</option><option>S1</option></select>
+        </div>
+        <div class="grid2">
+          <div class="field" style="margin-bottom:0">
+            <label for="cv-j">Level JFT</label>
+            <input class="inp" id="cv-j" placeholder="mis. N4" data-dirty>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label for="cv-ssw">Bidang SSW</label>
+            <input class="inp" id="cv-ssw" placeholder="mis. Kaigo" data-dirty>
+          </div>
+        </div>
+      </div>
+    </form>
+    <div class="p-foot">
+      <div class="row">
+        <button class="btn btn-ghost" data-close style="flex:0 0 auto">Batal</button>
+        <button class="btn btn-primary" id="cv-save" form="cv-form" type="submit">Simpan CV Mini</button>
+      </div>
+    </div>
+    <div class="confirm" id="cv-confirm" hidden>
+      <div class="box">
+        <h4>Buang perubahan?</h4>
+        <p>7 field yang sudah kamu ubah akan hilang. Dulu Escape membuangnya tanpa bertanya (M-13).</p>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" data-confirm-cancel>Lanjut mengisi</button>
+          <button class="btn btn-primary" data-confirm-discard>Buang</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL 3 · SIMULASI INTERVIEW ══════════════════════════════════ -->
+<div class="ov" id="ov-iv" hidden>
+  <div class="ov-scrim" data-close></div>
+  <div class="panel lg" style="--tone:var(--color-accent-violet)" role="dialog" aria-modal="true" aria-labelledby="iv-t" aria-describedby="iv-s">
+    <div class="drag"></div>
+    <div class="p-head" style="background:linear-gradient(90deg,color-mix(in srgb,var(--color-accent-violet) 22%,transparent),transparent)">
+      <div class="hic" style="color:var(--color-accent-violet)">&#127908;</div>
+      <div style="flex:1;min-width:0">
+        <h3 id="iv-t">Jeklin Sensei</h3>
+        <p class="sub" id="iv-s">Simulasi interview · bahasa Jepang &amp; Indonesia</p>
+      </div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <div class="p-body">
+      <!-- M-15: aria-live supaya jawaban AI diumumkan pembaca layar -->
+      <div class="chat" id="iv-chat" aria-live="polite">
+        <div class="msg ai"><div class="who">Jeklin Sensei</div>Selamat datang! Perkenalkan diri kamu dalam bahasa Jepang, ya. Mulai dari nama dan asal sekolah.</div>
+        <div class="msg me"><div class="who">Kamu</div>はじめまして。アニサです。SMK Negeri 1 から来ました。</div>
+        <div class="msg ai"><div class="who">Jeklin Sensei</div>Bagus! Pelafalan jelas. Sekarang coba jelaskan alasan kamu ingin bekerja di Jepang.</div>
+      </div>
+    </div>
+    <div class="p-foot">
+      <div class="composer">
+        <textarea id="iv-in" rows="1" placeholder="Ketik jawabanmu…" aria-label="Tulis jawaban"></textarea>
+        <button class="send" id="iv-send" aria-label="Kirim jawaban">&#10148;</button>
+      </div>
+      <p class="hint" style="margin:0">Tombol kirim 48 px · sheet punya drag handle dan bisa ditutup dengan swipe</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL 4 · E-SIGN NAITEI ═══════════════════════════════════════ -->
+<div class="ov" id="ov-es" hidden>
+  <div class="ov-scrim" data-close></div>
+  <div class="panel" style="--tone:var(--color-accent-red)" role="dialog" aria-modal="true" aria-labelledby="es-t" aria-describedby="es-s">
+    <div class="drag"></div>
+    <div class="p-head">
+      <div class="hic" style="color:var(--color-accent-red)">&#9997;</div>
+      <div style="flex:1;min-width:0">
+        <h3 id="es-t">E-Sign Dokumen Naitei</h3>
+        <p class="sub" id="es-s">Dua pihak, satu kali kirim.</p>
+      </div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <div class="p-body">
+      <!-- Stepper menggantikan dua blok sejajar yang mudah tersesat -->
+      <div class="steps" id="es-steps">
+        <div class="s" data-on="true"><i>1</i>Pihak 1</div><div class="ln"></div>
+        <div class="s"><i>2</i>Pihak 2</div><div class="ln"></div>
+        <div class="s"><i>3</i>Tinjau</div><div class="ln"></div>
+        <div class="s"><i>4</i>Kirim</div>
+      </div>
+
+      <div data-step="0">
+        <div class="blk">
+          <h4>&#128100; Data pihak pertama</h4>
+          <div class="grid2">
+            <div class="field" style="margin-bottom:0"><label for="es-a1">Nama lengkap</label><input class="inp" id="es-a1" data-dirty placeholder="Sesuai paspor"></div>
+            <div class="field" style="margin-bottom:0"><label for="es-a2">Nama Jepang (katakana)</label><input class="inp" id="es-a2" data-dirty placeholder="アニサ"></div>
+            <div class="field" style="margin-bottom:0"><label for="es-a3">Nomor paspor</label><input class="inp" id="es-a3" data-dirty></div>
+            <div class="field" style="margin-bottom:0"><label for="es-a4">Tanggal lahir</label><input class="inp" id="es-a4" type="date" data-dirty></div>
+          </div>
+        </div>
+      </div>
+      <div data-step="1" hidden>
+        <div class="blk">
+          <h4>&#127970; Data pihak kedua</h4>
+          <div class="grid2">
+            <div class="field" style="margin-bottom:0"><label for="es-b1">Nama perusahaan</label><input class="inp" id="es-b1" data-dirty></div>
+            <div class="field" style="margin-bottom:0"><label for="es-b2">Perwakilan</label><input class="inp" id="es-b2" data-dirty></div>
+            <div class="field" style="margin-bottom:0"><label for="es-b3">Alamat</label><input class="inp" id="es-b3" data-dirty></div>
+            <div class="field" style="margin-bottom:0"><label for="es-b4">Tanggal naitei</label><input class="inp" id="es-b4" type="date" data-dirty></div>
+          </div>
+        </div>
+      </div>
+      <div data-step="2" hidden>
+        <div class="blk"><h4>&#128269; Tinjau</h4>
+          <p class="small muted" style="margin:0">Pastikan nama, paspor, dan perusahaan sudah sesuai sebelum dikirim. Setelah dikirim, dokumen tidak bisa diubah sendiri.</p>
+        </div>
+        <div class="frow"><div class="nm">Berkas naitei (PDF)<span>2 halaman · dihasilkan otomatis</span></div><span class="pill ok">Siap</span></div>
+        <div class="frow"><div class="nm">Tanda tangan digital<span>Kedua pihak</span></div><span class="pill no">Belum</span></div>
+      </div>
+      <div data-step="3" hidden>
+        <div class="blk" style="text-align:center;padding:26px 14px">
+          <div style="font-size:34px;margin-bottom:8px">&#127881;</div>
+          <b>Semua siap dikirim</b>
+          <p class="small muted" style="margin:6px 0 0">Kamu akan menerima salinan PDF setelah kedua pihak menandatangani.</p>
+        </div>
+      </div>
+    </div>
+    <div class="p-foot">
+      <div class="row">
+        <button class="btn btn-ghost" id="es-back" style="flex:0 0 auto">Kembali</button>
+        <button class="btn btn-primary" id="es-next">Lanjut ke Pihak 2</button>
+      </div>
+    </div>
+    <div class="confirm" id="es-confirm" hidden>
+      <div class="box">
+        <h4>Buang perubahan?</h4>
+        <p>Data pihak pertama dan kedua yang sudah diisi akan hilang.</p>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" data-confirm-cancel>Lanjut mengisi</button>
+          <button class="btn btn-primary" data-confirm-discard>Buang</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL 5 · PEMBERKASAN ═════════════════════════════════════════ -->
+<div class="ov" id="ov-pb" hidden>
+  <div class="ov-scrim" data-close></div>
+  <div class="panel lg" style="--tone:var(--color-accent-emerald)" role="dialog" aria-modal="true" aria-labelledby="pb-t" aria-describedby="pb-s">
+    <div class="drag"></div>
+    <div class="p-head">
+      <div class="hic" style="color:var(--color-accent-emerald)">&#128193;</div>
+      <div style="flex:1;min-width:0">
+        <h3 id="pb-t">Pusat Berkas</h3>
+        <p class="sub" id="pb-s">ANISA RAHMAWATI · <span style="color:var(--color-accent-emerald)">Tahap: Pemberkasan</span></p>
+      </div>
+      <!-- Header lengket membawa progres: kandidat tahu posisinya tanpa menggulir -->
+      <div class="ring" style="width:44px;height:44px">
+        <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+          <circle class="tr" cx="22" cy="22" r="18"></circle>
+          <circle class="vl" cx="22" cy="22" r="18" stroke-dasharray="113.1" stroke-dashoffset="50.3"></circle>
+        </svg>
+        <b style="font-size:11px">5/9</b>
+      </div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <div class="p-body">
+      <div class="blk">
+        <h4>&#128193; Berkas wajib</h4>
+        <div class="frow"><div class="nm">Pas foto 4×6<span>JPG · maks 1 MB</span></div><span class="pill ok">Terunggah</span><button class="btn btn-sm">Ganti</button></div>
+        <div class="frow"><div class="nm">KTP<span>JPG/PDF</span></div><span class="pill ok">Terunggah</span><button class="btn btn-sm">Ganti</button></div>
+        <div class="frow"><div class="nm">Ijazah terakhir<span>PDF · maks 2 MB</span></div><span class="pill ok">Terunggah</span><button class="btn btn-sm">Ganti</button></div>
+        <div class="frow"><div class="nm">Sertifikat JFT<span>PDF · maks 2 MB</span></div><span class="pill ok">Terunggah</span><button class="btn btn-sm">Ganti</button></div>
+        <div class="frow"><div class="nm">Surat izin orang tua<span>PDF · wajib</span></div><span class="pill no">Belum ada</span><button class="btn btn-sm btn-primary">Unggah</button></div>
+      </div>
+      <div class="blk" style="margin-bottom:0">
+        <h4>&#9989; Verifikasi admin</h4>
+        <p class="small muted" style="margin:0">Semua berkas akan diperiksa admin. Kamu akan menerima notifikasi bila ada yang perlu diperbaiki.</p>
+      </div>
+    </div>
+    <div class="p-foot">
+      <div class="row">
+        <button class="btn btn-ghost" data-close style="flex:0 0 auto">Tutup</button>
+        <button class="btn btn-primary" id="pb-save">Simpan &amp; kirim ke admin</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL 6 · PREVIEW DOKUMEN ═════════════════════════════════════ -->
+<div class="ov" id="ov-dp" hidden>
+  <div class="ov-scrim" data-close></div>
+  <div class="panel lg" style="--tone:var(--color-accent-sky);max-width:64rem" role="dialog" aria-modal="true" aria-labelledby="dp-t">
+    <div class="p-head">
+      <div class="hic" style="color:var(--color-accent-sky)">&#128196;</div>
+      <div style="flex:1;min-width:0">
+        <h3 id="dp-t">Ijazah_Terakhir.pdf</h3>
+        <p class="sub">Halaman 1 dari 1 · 428 KB</p>
+      </div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <!-- M-05: ikon telanjang dengan `title` bukan nama aksesibel -> label teks -->
+    <div class="vbar" role="toolbar" aria-label="Alat tampilan dokumen">
+      <button class="btn btn-sm" id="dp-out" aria-label="Perkecil">&minus; Perkecil</button>
+      <button class="btn btn-sm" id="dp-in" aria-label="Perbesar">+ Perbesar</button>
+      <span class="small muted" id="dp-zoom" aria-live="polite" style="min-width:44px;text-align:center">100%</span>
+      <span class="sp"></span>
+      <button class="btn btn-sm">&#8635; Putar</button>
+      <a class="btn btn-sm btn-primary" href="#" onclick="return false">&#11015; Unduh</a>
+    </div>
+    <div class="p-body" style="display:flex;flex-direction:column">
+      <div class="pagebox" id="dp-page">
+        <div>
+          <div style="font-size:30px;margin-bottom:6px">&#128196;</div>
+          Pratinjau halaman 1<br>
+          <span class="small">Zoom dan putar tanpa menutup viewer</span>
+        </div>
+      </div>
+      <p class="hint" style="margin:0">Toolbar memakai label teks. Dulu tombol unduh hanya ikon 16 px dengan atribut <code>title</code> — <code>title</code> bukan nama aksesibel (M-05).</p>
+    </div>
+    <div class="p-foot">
+      <div class="row">
+        <button class="btn btn-ghost" data-close style="flex:0 0 auto">Tutup</button>
+        <button class="btn btn-primary">Kirim sebagai lampiran lamaran</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var stage = document.getElementById('stage');
+
+  /* ── Tema ─────────────────────────────────────────────────────── */
+  var btnTheme = document.getElementById('btn-theme');
+  btnTheme.addEventListener('click', function () {
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    document.documentElement.setAttribute('data-theme', light ? 'dark' : 'light');
+    btnTheme.textContent = light ? 'Tema terang' : 'Tema gelap';
+  });
+
+  /* ── Anotasi ──────────────────────────────────────────────────── */
+  var btnAnno = document.getElementById('btn-anno');
+  btnAnno.addEventListener('click', function () {
+    var on = btnAnno.getAttribute('aria-pressed') === 'true';
+    btnAnno.setAttribute('aria-pressed', String(!on));
+    document.querySelectorAll('.panel').forEach(function (p) { p.classList.toggle('anno-on', !on); });
+  });
+
+  /* ── Simulasi 390 px: CSS yang menyempitkan overlay, bukan JS ──── */
+  var btnSim = document.getElementById('btn-sim');
+  btnSim.addEventListener('click', function () {
+    var on = document.body.classList.toggle('sim');
+    btnSim.setAttribute('aria-pressed', String(on));
+  });
+
+  /* ── Shell: buka / tutup + penjaga `dirty` (M-13) ─────────────── */
+  var openId = null;
+  function overlay(id) { return document.getElementById('ov-' + id); }
+  function panelOf(ov) { return ov.querySelector('.panel'); }
+  /* Dirty = pengguna BENAR-BENAR menyentuh field, bukan "field tidak kosong".
+     Versi pertama membaca `.value !== ''` dan itu salah: <select> di sini punya
+     default non-kosong ("LAKI-LAKI", "-"), jadi penjaga konfirmasi menyala
+     bahkan saat kandidat belum mengubah apa pun. Ditandai lewat event. */
+  function isDirty(ov) { return !!ov.querySelector('[data-touched]'); }
+  function resetDirty(ov) {
+    ov.querySelectorAll('[data-touched]').forEach(function (el) {
+      el.removeAttribute('data-touched');
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.value = '';
+      if (el.tagName === 'SELECT') el.selectedIndex = 0;
+    });
+  }
+  function open(id) {
+    var ov = overlay(id);
+    if (!ov) return;
+    /* `inert` pada sibling di luar overlay (M-15) */
+    Array.prototype.forEach.call(document.body.children, function (n) {
+      if (n !== ov && n.tagName !== 'SCRIPT') n.setAttribute('inert', '');
+    });
+    ov.hidden = false;
+    openId = id;
+    var f = ov.querySelector('input:not([type=hidden]), select, textarea, .dz');
+    if (f) f.focus();
+  }
+  function close() {
+    if (!openId) return;
+    var id = openId;
+    var ov = overlay(id);
+    var c = ov.querySelector('.confirm');
+    if (c) c.hidden = true;
+    ov.hidden = true;
+    resetDirty(ov);
+    /* Setelah reset, progres HARUS dihitung ulang — kalau tidak, cincin dan
+       meter tetap menunjukkan nilai dari sesi sebelumnya (terukur: 14 %
+       tertinggal di modal yang baru dibuka). */
+    if (id === 'cv') cvProgress();
+    if (id === 'pw') pwCheck();
+    Array.prototype.forEach.call(document.body.children, function (n) { n.removeAttribute('inert'); });
+    openId = null;
+  }
+  function attemptClose() {
+    var ov = overlay(openId);
+    if (!ov) return;
+    var c = ov.querySelector('.confirm');
+    if (c && isDirty(ov)) { c.hidden = false; return; }   /* konfirmasi di dalam shell */
+    close();
+  }
+
+  document.querySelectorAll('[data-open]').forEach(function (b) {
+    b.addEventListener('click', function () { open(b.getAttribute('data-open')); });
+  });
+  document.querySelectorAll('[data-close]').forEach(function (b) {
+    b.addEventListener('click', function () { attemptClose(); });
+  });
+  document.querySelectorAll('[data-dirty]').forEach(function (el) {
+    ['input', 'change'].forEach(function (ev) {
+      el.addEventListener(ev, function () { el.setAttribute('data-touched', '1'); });
+    });
+  });
+  document.querySelectorAll('.confirm').forEach(function (c) {
+    c.querySelector('[data-confirm-cancel]').addEventListener('click', function () { c.hidden = true; });
+    c.querySelector('[data-confirm-discard]').addEventListener('click', function () { close(); });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var c = openId && overlay(openId).querySelector('.confirm');
+    if (c && !c.hidden) { c.hidden = true; return; }      /* Escape menutup lapisan teratas dulu */
+    if (openId) attemptClose();
+  });
+
+  /* ── MODAL 1: checklist hidup + meter + Enter ─────────────────── */
+  var pwForm = document.getElementById('pw-form');
+  var pwB = document.getElementById('pw-b');
+  var pwC = document.getElementById('pw-c');
+  function pwCheck() {
+    var v = pwB.value;
+    var rules = {
+      len: v.length >= 6 && v.length <= 20,
+      sp: v.length > 0 && !/\s/.test(v),
+      mix: /[a-z]/.test(v) && /[A-Z]/.test(v),
+      num: /\d/.test(v)
+    };
+    document.querySelectorAll('#pw-rules .rule').forEach(function (r) {
+      r.setAttribute('data-ok', String(!!rules[r.getAttribute('data-rule')]));
+    });
+    var score = (rules.len ? 1 : 0) + (rules.sp ? 1 : 0) + (rules.mix ? 1 : 0) + (rules.num ? 1 : 0) + (v.length >= 12 ? 1 : 0);
+    var lv = v.length === 0 ? 0 : score <= 2 ? 1 : score <= 4 ? 2 : 3;
+    document.getElementById('pw-meter').setAttribute('data-lv', String(lv));
+    document.getElementById('pw-lbl').textContent = 'Kekuatan: ' + ['—', 'Lemah', 'Sedang', 'Kuat'][lv];
+    var match = pwC.value.length > 0 && pwC.value === v;
+    document.getElementById('pw-c-e').hidden = pwC.value.length === 0 || match;
+    pwC.setAttribute('aria-invalid', String(pwC.value.length > 0 && !match));
+    document.getElementById('pw-save').disabled = !(rules.len && rules.sp && match);
+  }
+  pwB.addEventListener('input', pwCheck);
+  pwC.addEventListener('input', pwCheck);
+  document.querySelectorAll('.eye').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var inp = document.getElementById(b.getAttribute('data-eye'));
+      var show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      b.setAttribute('aria-label', (show ? 'Sembunyikan' : 'Tampilkan') + ' password');
+      b.innerHTML = show ? '&#128584;' : '&#128065;';
+    });
+  });
+  pwForm.addEventListener('submit', function (e) { e.preventDefault(); pwCheck(); });
+  document.getElementById('pw-save').addEventListener('click', function (e) {
+    e.preventDefault();
+    var a = document.getElementById('pw-a');
+    var aErr = document.getElementById('pw-a-e');
+    aErr.hidden = a.value.length > 0;
+    a.setAttribute('aria-invalid', String(a.value.length === 0));
+    if (a.value.length === 0) { a.focus(); return; }
+    close();
+  });
+
+  /* ── MODAL 2: dropzone + cincin progres + validasi numerik ────── */
+  var dz = document.getElementById('cv-dz');
+  var file = document.getElementById('cv-file');
+  function readPhoto(f) {
+    if (!f || !/^image\//.test(f.type)) return;
+    var r = new FileReader();
+    r.onload = function (e) {
+      document.getElementById('cv-ph').innerHTML = '<img src="' + e.target.result + '" alt="Pratinjau foto">';
+      document.getElementById('cv-dz-t').textContent = f.name;
+      document.getElementById('cv-dz-p').textContent = Math.round(f.size / 1024) + ' KB · siap diunggah';
+      cvProgress();
+    };
+    r.readAsDataURL(f);
+  }
+  dz.addEventListener('click', function () { file.click(); });
+  dz.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); } });
+  file.addEventListener('change', function () { readPhoto(file.files[0]); });
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    dz.addEventListener(ev, function (e) { e.preventDefault(); dz.setAttribute('data-over', 'true'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    dz.addEventListener(ev, function (e) { e.preventDefault(); dz.setAttribute('data-over', 'false'); });
+  });
+  dz.addEventListener('drop', function (e) {
+    if (e.dataTransfer && e.dataTransfer.files[0]) readPhoto(e.dataTransfer.files[0]);
+  });
+
+  function cvProgress() {
+    var ids = ['cv-u', 'cv-tb', 'cv-bb', 'cv-j', 'cv-ssw'];
+    var filled = ids.filter(function (id) { return document.getElementById(id).value.trim() !== ''; }).length;
+    if (document.getElementById('cv-ph').querySelector('img')) filled += 1;
+    if (document.getElementById('cv-p').value !== '-') filled += 1;
+    var pct = Math.round((filled / 7) * 100);
+    document.getElementById('cv-ring').setAttribute('stroke-dashoffset', String(138.2 * (1 - pct / 100)));
+    document.getElementById('cv-ring-t').textContent = pct + '%';
+    document.getElementById('cv-bar').style.width = pct + '%';
+    document.getElementById('cv-count').textContent = filled + ' dari 7 terisi';
+  }
+  document.querySelectorAll('#cv-form input, #cv-form select').forEach(function (el) {
+    el.addEventListener('input', function () {
+      var lim = el.getAttribute('data-num');
+      if (lim) {
+        var parts = lim.split(','), v = parseFloat(el.value), bad = el.value !== '' && (v < +parts[0] || v > +parts[1]);
+        var errEl = document.getElementById(el.id + '-e');
+        if (errEl) errEl.hidden = !bad;
+        el.setAttribute('aria-invalid', String(bad));
+      }
+      cvProgress();
+    });
+  });
+  document.getElementById('cv-form').addEventListener('submit', function (e) { e.preventDefault(); close(); });
+  document.getElementById('cv-save').addEventListener('click', function (e) { e.preventDefault(); close(); });
+
+  /* ── MODAL 3: chat ────────────────────────────────────────────── */
+  var ivIn = document.getElementById('iv-in');
+  function sendIv() {
+    var v = ivIn.value.trim();
+    if (!v) return;
+    var chat = document.getElementById('iv-chat');
+    var me = document.createElement('div');
+    me.className = 'msg me';
+    me.innerHTML = '<div class="who">Kamu</div>';
+    me.appendChild(document.createTextNode(v));
+    chat.appendChild(me);
+    ivIn.value = '';
+    chat.parentNode.scrollTop = chat.parentNode.scrollHeight;
+  }
+  document.getElementById('iv-send').addEventListener('click', sendIv);
+  ivIn.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendIv(); }
+  });
+
+  /* ── MODAL 4: stepper ─────────────────────────────────────────── */
+  var esStep = 0;
+  var esLabels = ['Lanjut ke Pihak 2', 'Lanjut ke Tinjau', 'Lanjut ke Kirim', 'Kirim dokumen'];
+  function esRender() {
+    document.querySelectorAll('#ov-es [data-step]').forEach(function (d) {
+      d.hidden = +d.getAttribute('data-step') !== esStep;
+    });
+    document.querySelectorAll('#es-steps .s').forEach(function (s, i) {
+      s.setAttribute('data-on', String(i <= esStep));
+    });
+    document.getElementById('es-next').textContent = esLabels[esStep];
+    document.getElementById('es-back').style.visibility = esStep === 0 ? 'hidden' : 'visible';
+  }
+  document.getElementById('es-next').addEventListener('click', function () {
+    if (esStep === 3) { close(); return; }
+    esStep = Math.min(3, esStep + 1); esRender();
+  });
+  document.getElementById('es-back').addEventListener('click', function () { esStep = Math.max(0, esStep - 1); esRender(); });
+
+  /* ── MODAL 6: zoom ────────────────────────────────────────────── */
+  var zoom = 1;
+  function dpRender() {
+    document.getElementById('dp-page').style.transform = 'scale(' + zoom + ')';
+    document.getElementById('dp-zoom').textContent = Math.round(zoom * 100) + '%';
+  }
+  document.getElementById('dp-in').addEventListener('click', function () { zoom = Math.min(1.6, zoom + 0.2); dpRender(); });
+  document.getElementById('dp-out').addEventListener('click', function () { zoom = Math.max(0.6, zoom - 0.2); dpRender(); });
+
+  document.getElementById('pb-save').addEventListener('click', close);
+  esRender();
+  cvProgress();
+  pwCheck();
+})();
+</script>
+</body>
+</html>
