@@ -248,6 +248,50 @@ async function walkWizardSectionTitles(width) {
   return { tags, perStep };
 }
 
+/**
+ * ⚠ WHAT THIS GATE DOES NOT COVER — MEASURED 2026-09-28, NOT ASSUMED.
+ *
+ * The outline checks below read each route ONCE. For /admin that means the default
+ * `kelola` tab only: `AdminPanel` renders a single tab at a time
+ * (`<TabContent tab={activeTab} />`, AdminPanel.tsx:229), so the other nine tabs'
+ * headings are never in the DOM. /candidate is the same shape — the fabricated
+ * session is rejected by the API, so it renders "Data tidak ditemukan!" and only
+ * the shell's `H1` is visible.
+ *
+ * This was found the honest way: mutation M8 aimed at the `agenda` tab's heading
+ * and M9 at the candidate app-list heading, and BOTH SURVIVED — not because the
+ * assertions are weak, but because the mutated markup was never rendered by the
+ * load under test (see M8/M9 in e2e/test-headings.mutations.sh). Re-aimed at
+ * headings the load DOES render, both are KILLED.
+ *
+ * A tab WALK was written and then REMOVED, because it could not be made
+ * deterministic with a fabricated session. The tabs are hash-routable
+ * (`tabFromHash()`, AdminPanel.tsx:96), so `/admin#agenda` mounts the tab
+ * directly and no clicking (or responsive sidebar) is involved — but any tab that
+ * mounts `api.secure(...)` gets its rejection routed through `apiClient`, which
+ * logs the session out and redirects to `/`. Measured, twice, ten minutes apart:
+ *
+ *   run A (one page, tabs in order): #kelola stays, then #dbjob … #wa bounce
+ *   run B (fresh context per tab):   #kelola #tugas stay; #dbjob #wa #config
+ *                                    #agenda bounce; #mail stays
+ *
+ * The two runs DISAGREE — `#dbjob` and `#mail` flip — so the outcome is a race
+ * between the API's rejection and the redirect, not a property of the tab id. A
+ * gate built on it would be flaky, and a flaky gate is worse than an absent one:
+ * it gets muted, and then it never reports anything. So no tab-walk ships.
+ *
+ * Asserting the LANDING page and calling it "the agenda tab's outline" was the
+ * available alternative and is exactly the §20 mistake this file exists to
+ * prevent — reporting a verdict for content that was never rendered. The coverage
+ * gap is therefore RECORDED and left open, to be closed by a gate that can hold a
+ * session the API accepts (which this one must not require — it runs in CI with
+ * no credentials).
+ *
+ * Consequence for mutation M8: it targets `TabKelola.tsx`, the DEFAULT tab's
+ * heading, precisely because that is the tab this load reaches. It proves the
+ * outline rule fires; it does not claim the other nine tabs are covered.
+ */
+
 let browser;
 const failures = [];
 
@@ -356,8 +400,35 @@ async function inspectUncached(route, width, useSession) {
             };
           });
         })(),
-        gate: markers.find((m) => text.includes(m)) || null,
+        gate: markers.find((m) => m && text.includes(m)) || null,
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        /**
+         * MAIN LANDMARKS. A page needs its `<main>` for the skip-link above to
+         * have a destination, and it needs EXACTLY ONE. The `.astro` page shells
+         * each render `<main id="main-content">` for that reason — but a hydrated
+         * island that also renders a `<main>` puts a SECOND one INSIDE the first.
+         *
+         * Measured 2026-09-28 on the built artifact, BEFORE the fix: `/apply`,
+         * `/master`, `/share` and `/siswa-baru` each had 2 `<main>` elements, with
+         * the shell's own `<main>` reporting one nested `<main>` inside it. Two
+         * `main` landmarks on one page is invalid HTML and, unlike a stray wrapper,
+         * browsers do NOT merge them: a screen-reader user gets two "main" regions
+         * and no way to tell which is the page body. The skip-link still worked,
+         * so nothing else in this file noticed.
+         *
+         * Depth, not just the count, is what makes the collision visible — so both
+         * are returned and both are asserted. Reported as `role` too, because a
+         * `[role="main"]` collides with an implicit `<main>` exactly the same way.
+         */
+        mainLandmarks: [...document.querySelectorAll('main, [role="main"]')].map((el) => {
+          const r = el.getBoundingClientRect();
+          return {
+            id: el.id || '',
+            tag: el.tagName,
+            visible: r.width > 0 && r.height > 0,
+            nestedCount: el.querySelectorAll('main, [role="main"]').length,
+          };
+        }),
         /**
          * Toolbar geometry. The collision check must be an invariant that CAN
          * fail: comparing `h1.right` to the toggles' left edge cannot, because
@@ -637,6 +708,74 @@ async function run() {
                 `skip link must be the main landmark, or focus lands somewhere arbitrary.`,
             );
           }
+        }
+      });
+    }
+  }
+
+  /**
+   * ONE MAIN LANDMARK, AND IT IS NOT NESTED.
+   *
+   * The skip-link block above proves `#main-content` EXISTS. It cannot see the
+   * defect this block exists for: a second `<main>` nested inside it. Measured
+   * 2026-09-28 before the fix — `/apply`, `/master`, `/share`, `/siswa-baru` each
+   * rendered 2 `main` landmarks, the shell's own reporting `nestedCount=1`. Every
+   * other check in this file passed on those pages, which is why the count is
+   * asserted here rather than left to the skip-link check to notice.
+   *
+   * WHY BOTH ASSERTIONS. They fail for different reasons and the fix differs:
+   *   - count > 1    → a component renders its own `<main>` alongside the shell's
+   *                    (`/share` broke this way TWICE: once as a brand `<h1>` in
+   *                    ShareView, now as a `<main>` in five islands)
+   *   - nestedCount  → the same defect, but the island's element is INSIDE the
+   *                    shell's rather than beside it. A count of 2 catches it, but
+   *                    only the nesting check names the shape, and the shape is
+   *                    what tells you which file to open.
+   *
+   * THE ROUTES ARE ASSERTED, NOT HOPED FOR. A selector that matched nothing would
+   * report "0 main landmarks" and the count assertion would fail loudly — good —
+   * but the ISLAND routes are `client:only`, so a page read before hydration has
+   * the shell's `<main>` and not the island's. The 400ms wait in `inspect` is what
+   * makes the island's element observable; if that regressed, these routes would
+   * go back to a false green. So each route must find AT LEAST one visible `main`
+   * and the assertion is skipped only when the route redirected or gated (both of
+   * which are already failures in the blocks above).
+   */
+  for (const { path, session } of ALL_HEADING_ROUTES) {
+    for (const width of [390, 1280]) {
+      const label = `${width}px ${path}`;
+
+      await test(`${label}: exactly one main landmark, not nested`, async () => {
+        const d = await inspect(path, width, session);
+        if (d.path !== path) throw new Error(`redirected to ${d.path}`);
+
+        const total = d.mainLandmarks.length;
+        if (total === 0) {
+          throw new Error(
+            'no main landmark found. Every route here renders BaseLayout, whose skip-link ' +
+              'targets `#main-content` — finding none means the layout or the selector changed, ' +
+              'not that the page is fine.',
+          );
+        }
+        if (total > 1) {
+          const shape = d.mainLandmarks
+            .map((m) => `${m.tag}${m.id ? `#${m.id}` : ''}${m.nestedCount ? `(holds ${m.nestedCount})` : ''}`)
+            .join(' + ');
+          throw new Error(
+            `${total} main landmarks (${shape}) — a page must have exactly one. A component ` +
+              'renders its own `<main>` alongside or inside the shell\'s. Screen readers do NOT ' +
+              'merge them, so this is two "main" regions with no way to tell them apart. The five ' +
+              'islands that did this (ApplyFullForm, MasterFullForm, ShareView, SiswaBaruForm, ' +
+              'AiCvForm) render a `<div>` instead — the class string is unchanged, only the role.',
+          );
+        }
+        const nested = d.mainLandmarks.find((m) => m.nestedCount > 0);
+        if (nested) {
+          throw new Error(
+            `the main landmark contains ${nested.nestedCount} more main landmark(s) inside it ` +
+              `(${nested.tag}${nested.id ? `#${nested.id}` : ''}) — nested \`main\` is invalid and ` +
+              'splits the page body into indistinguishable regions.',
+          );
         }
       });
     }
