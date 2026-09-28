@@ -170,15 +170,15 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
       {/* Filters */}
       <div class="flex flex-wrap gap-3 mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
         <div class="flex items-center gap-2 text-sky-400 font-bold text-sm mr-2"><Icon name="filter" /> {t('admin.filter')}</div>
-        <select value={filterGender} onChange={(e) => { setAdminFilterGender((e.target as HTMLSelectElement).value); }}
+        <select value={filterGender} aria-label={t('share.gen_all')} onChange={(e) => { setAdminFilterGender((e.target as HTMLSelectElement).value); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">{t('share.gen_all')}</option><option value="l">{t('share.gen_l')}</option><option value="p">{t('share.gen_p')}</option>
         </select>
-        <select value={filterAge} onChange={(e) => { setAdminFilterAge((e.target as HTMLSelectElement).value); }}
+        <select value={filterAge} aria-label={t('share.age_all')} onChange={(e) => { setAdminFilterAge((e.target as HTMLSelectElement).value); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">{t('share.age_all')}</option><option value="under20">&lt; 20</option><option value="20to25">20 - 25</option><option value="over25">&gt; 25</option>
         </select>
-        <select value={filterJft} onChange={(e) => { setAdminFilterJft((e.target as HTMLSelectElement).value); }}
+        <select value={filterJft} aria-label={t('share.jft_all')} onChange={(e) => { setAdminFilterJft((e.target as HTMLSelectElement).value); }}
           class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">{t('share.jft_all')}</option><option value="a2">A2 / N4</option><option value="b1">B1 / N3</option>
         </select>
@@ -200,7 +200,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
               </div>
               <div class="flex items-center gap-2">
                 <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan}</span>
-                <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} class="w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs cursor-pointer"><Icon name="whatsapp" /></button>
+                <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} aria-label={t('admin.tt_chat_wa')} title={t('admin.tt_chat_wa')} class="w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs cursor-pointer"><Icon name="whatsapp" /></button>
               </div>
             </div>
           ))}
@@ -234,7 +234,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
                   <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatanExt || k.catatan || ''}>{(k.catatanExt || k.catatan) || '-'}</td>
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-1">
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} aria-label={t('admin.tt_riwayat_kandidat')} title={t('admin.tt_riwayat_kandidat')} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
                       <button onClick={()=>{setShowCvTemplateSelector(true);}} class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
 <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
                       <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>

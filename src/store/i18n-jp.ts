@@ -13,6 +13,7 @@ export const jpTranslations: Record<string, string> = {
     "ui.install_app": "アプリインストール",
     "ui.menu": "メニュー",
     "ui.close": "閉じる",
+    "ui.select_all": "すべて選択",
     "ui.language": "言語",
     "ui.doc_count_suffix": " 件の書類",
     "ui.ai_cv_assistant": "AI履歴書作成アシスタント",
@@ -1404,6 +1405,7 @@ export const jpTranslations: Record<string, string> = {
 "ui.catatan_ph": "自由記入：分割払い、カイシャ都合キャンセル時返金、研修必須など",
 "ui.add_fav": "お気に入りコレクションに保存",
 "ui.remove_fav": "お気に入りコレクションから削除",
+"ui.remove_doc": "行を削除",
 "ui.toast_fav_added": "お気に入りに追加しました！",
 "ui.toast_fav_save_failed": "お気に入りの保存に失敗しました。",
 "ui.toast_fav_remove_failed": "お気に入りの削除に失敗しました。",
@@ -1766,6 +1768,7 @@ export const jpTranslations: Record<string, string> = {
     // ─── Tooltip (title=) ────────────────────────────────────────────────────
     "admin.tt_lihat_profil": "候補者のプロフィール・履歴書を見る",
     "admin.tt_chat_wa": "WhatsAppでチャット",
+    "admin.tt_riwayat_kandidat": "候補者の履歴",
     "admin.tt_tandai_gagal": "不合格にして求人から外す",
     "admin.tt_segera_hadir": "近日公開",
     "landing.tt_grup_wa": "WhatsAppグループに参加",

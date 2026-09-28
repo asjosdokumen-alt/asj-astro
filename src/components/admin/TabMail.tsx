@@ -209,7 +209,7 @@ export default function TabMail() {
           <thead class="bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700">
             <tr>
               <th scope="col" class="p-4 text-center">
-                <input type="checkbox" class="w-5 h-5 accent-rose-500 cursor-pointer"
+                <input type="checkbox" aria-label={t('ui.select_all')} class="w-5 h-5 accent-rose-500 cursor-pointer"
                   checked={selected.size === filtered.length && filtered.length > 0}
                   onChange={toggleAll} />
               </th>

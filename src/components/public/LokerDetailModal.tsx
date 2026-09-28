@@ -104,7 +104,7 @@ export default function LokerDetailModal({ job, onClose, closing = false }: Prop
       <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[85vh] u-scroll-area shadow-2xl custom-scrollbar" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
           <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>
-          <button onClick={onClose} class="text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
+          <button onClick={onClose} aria-label={t('ui.close')} class="text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
         </div>
         <div class="p-5">
           <div class="flex items-start gap-4 mb-6">

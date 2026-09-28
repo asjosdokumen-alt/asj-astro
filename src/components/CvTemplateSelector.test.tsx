@@ -164,3 +164,39 @@ describe('CvTemplateSelector custom template upload', () => {
     expect(mocks.loadPdfTemplate).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The close button's ACCESSIBLE NAME — and why it is pinned HERE.
+ *
+ * `e2e/test-aria-names.mjs` sweeps every surface a gate can reach (ten routes,
+ * the eight admin tabs, the job-detail dialog). This component is on NONE of
+ * them: it is opened from an admin row action inside a tab, so no e2e surface
+ * mounts it. That is exactly the case where a defect survives because it sits
+ * outside every sweep's blast radius.
+ *
+ * The defect is the class the sweep exists for: a button whose only content is
+ * an `<svg>` (here the `Icon` mock renders nothing, which is the same shape)
+ * has NO accessible name, so it is announced as "button" and nothing else.
+ * Measured 2026-09-28: it had no label.
+ *
+ * The assertion is written against the CLASS rather than a specific key, so it
+ * cannot rot when the copy changes — and the "found something" guard is there
+ * because a selector that matches nothing would pass vacuously.
+ */
+describe('CvTemplateSelector — icon-only controls are announced', () => {
+  afterEach(cleanup);
+
+  it('every button with no text of its own carries an accessible name', () => {
+    renderSelector();
+    const buttons = [...document.querySelectorAll('button')];
+    expect(buttons.length, 'no button rendered — the selector is stale').toBeGreaterThan(0);
+
+    const iconOnly = buttons.filter((b) => !(b.textContent || '').trim());
+    expect(iconOnly.length, 'no icon-only button found — the assertion would pass vacuously').toBeGreaterThan(0);
+
+    const unnamed = iconOnly
+      .filter((b) => !(b.getAttribute('aria-label') || '').trim())
+      .map((b) => b.outerHTML.replace(/\s+/g, ' ').slice(0, 120));
+    expect(unnamed, 'an icon-only button has no accessible name').toEqual([]);
+  });
+});

@@ -195,7 +195,7 @@ export default function InputManualModal() {
         <div class="p-6">
           <div class="flex justify-between items-center mb-4 border-b border-sky-900/50 pb-3">
             <h3 class="text-xl font-bold text-sky-400"><Icon name="user-plus" class="mr-2" /> {t("admin.input_manual_title")}</h3>
-            <button onClick={onClose} class="text-slate-400 hover:text-white transition"><Icon name="times" class="text-2xl" /></button>
+            <button onClick={onClose} aria-label={t('ui.close')} class="text-slate-400 hover:text-white transition"><Icon name="times" class="text-2xl" /></button>
           </div>
           <form onSubmit={handleSubmit} class="space-y-4">
             {/* Search existing candidate */}
@@ -285,7 +285,7 @@ export default function InputManualModal() {
                     </label>
                     <span class="text-[11px] text-slate-400 truncate">{d.file ? d.file.name : 'No file chosen'}</span>
                   </div>
-                  <button type="button" onClick={() => removeExtraDoc(i)}
+                  <button type="button" onClick={() => removeExtraDoc(i)} aria-label={t('ui.remove_doc')}
                     class="w-8 h-8 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded text-xs transition">
                     <Icon name="minus" />
                   </button>

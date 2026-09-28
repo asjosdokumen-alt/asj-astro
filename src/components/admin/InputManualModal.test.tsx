@@ -208,3 +208,36 @@ describe('InputManualModal — dialog semantics survive a reopen', () => {
     });
   });
 });
+
+// ==========================================
+// The close button's ACCESSIBLE NAME — and why it is pinned HERE.
+//
+// `e2e/test-aria-names.mjs` sweeps every surface a gate can reach (ten routes,
+// the eight admin tabs, the job-detail dialog). This modal is on NONE of them:
+// `TabPelamar` mounts it unconditionally and it gates itself on the
+// `inputModalOpen` atom, which no e2e surface toggles — so the sweep would have
+// to open it by setting store state, which is not a user action.
+//
+// The defect is the class the sweep exists for: a button whose only content is
+// an `<svg>` has NO accessible name and is announced as "button" and nothing
+// else. Measured 2026-09-28: it had no label.
+//
+// The assertion is written against the CLASS rather than one key, so it cannot
+// rot when the copy changes — and the "found something" guard is there because
+// a selector that matches nothing would pass vacuously.
+// ==========================================
+describe('InputManualModal — icon-only controls are announced', () => {
+  it('every button with no text of its own carries an accessible name', async () => {
+    const root = await renderModal();
+    const buttons = [...root.querySelectorAll('button')];
+    expect(buttons.length, 'no button rendered — the selector is stale').toBeGreaterThan(0);
+
+    const iconOnly = buttons.filter((b) => !(b.textContent || '').trim());
+    expect(iconOnly.length, 'no icon-only button found — the assertion would pass vacuously').toBeGreaterThan(0);
+
+    const unnamed = iconOnly
+      .filter((b) => !(b.getAttribute('aria-label') || '').trim())
+      .map((b) => b.outerHTML.replace(/\s+/g, ' ').slice(0, 120));
+    expect(unnamed, 'an icon-only button has no accessible name').toEqual([]);
+  });
+});

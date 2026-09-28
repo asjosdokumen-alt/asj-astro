@@ -56,6 +56,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.install_app": "Install App",
     "ui.menu": "Menu",
     "ui.close": "Tutup",
+    "ui.select_all": "Pilih semua",
     "ui.language": "Bahasa",
     "ui.doc_count_suffix": " dokumen",
     "ui.ai_cv_assistant": "AI CV Master Assistant",
@@ -1942,6 +1943,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // berbahasa Indonesia tanpa pernah memerahkannya. Semuanya terlihat user.
     "admin.tt_lihat_profil": "Lihat profil/CV kandidat",
     "admin.tt_chat_wa": "Chat WA",
+    "admin.tt_riwayat_kandidat": "Riwayat kandidat",
     "admin.tt_tandai_gagal": "Tandai gagal & lepas dari job",
     "admin.tt_segera_hadir": "Segera hadir",
     "landing.tt_grup_wa": "Join Grup WhatsApp",

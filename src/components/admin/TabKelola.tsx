@@ -133,7 +133,7 @@ export default function TabKelola() {
                     </div>
                   </td>
                   <td class="p-4 text-center">
-                    <button onClick={() => deleteJob(j.code)} class="w-11 h-11 flex items-center justify-center bg-red-600 text-white rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-transform mx-auto"><Icon name="trash" /></button>
+                    <button onClick={() => deleteJob(j.code)} aria-label={t('button.delete')} class="w-11 h-11 flex items-center justify-center bg-red-600 text-white rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-transform mx-auto"><Icon name="trash" /></button>
                   </td>
                 </tr>
               ))}

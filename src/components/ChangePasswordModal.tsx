@@ -68,7 +68,7 @@ export default function ChangePasswordModal({ onClose, closing = false }: Props)
       <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full max-w-sm shadow-2xl">
         <div class="flex items-center justify-between mb-5">
           <h3 class="text-lg font-bold text-amber-400"><Icon name="lock" class="mr-2" />{t('changepass.title')}</h3>
-          <button onClick={onClose} class="text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
+          <button onClick={onClose} aria-label={t('ui.close')} class="text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
         </div>
         <div class="space-y-3">
           <div>

@@ -102,7 +102,7 @@ export default function TabWA() {
           </div>
           <div class="flex gap-2 pt-2">
             <button type="submit" disabled={saving} class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold shadow-lg transition text-sm"><Icon name="save" class="mr-1" /> {saving ? t('ui.saving') : t('ui.save_template')}</button>
-            {editingId && <button type="button" onClick={handleCancel} class="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold shadow-lg transition text-sm"><Icon name="times" /></button>}
+            {editingId && <button type="button" onClick={handleCancel} aria-label={t('button.cancel')} class="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold shadow-lg transition text-sm"><Icon name="times" /></button>}
           </div>
         </form>
       </div>
@@ -117,7 +117,7 @@ export default function TabWA() {
               <pre class="text-xs text-slate-300 bg-black/40 rounded-lg p-3 mb-3 whitespace-pre-wrap max-h-32 u-scroll-area custom-scrollbar">{tpl.isi}</pre>
               <div class="flex gap-2">
                 <button onClick={() => handleEdit(tpl)} class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition"><Icon name="edit" class="mr-1" /> {t('ui.template_edit')}</button>
-                <button onClick={() => handleDelete(tpl.id)} class="px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition"><Icon name="trash" /></button>
+                <button onClick={() => handleDelete(tpl.id)} aria-label={t('button.delete')} class="px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition"><Icon name="trash" /></button>
               </div>
             </div>
           ))}</div>}
