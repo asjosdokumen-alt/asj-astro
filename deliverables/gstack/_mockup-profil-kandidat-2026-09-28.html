@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASJ — Profil Kandidat: 3 arah desain (desktop + HP)</title>
+<!--
+  MOCKUP KERJA, bukan aplikasi. Satu berkas, tanpa CDN, tanpa dependensi.
+
+  Semuanya BENAR-BENAR JALAN: field menerima input, validasi numerik hidup,
+  progres dihitung, foto diunggah lewat FileReader, tombol simpan memberi
+  umpan balik. Dua model (desktop 1180 px / HP 390 px) merender MARKUP YANG SAMA
+  dan dibedakan oleh CONTAINER QUERY — jadi mengetik di model desktop langsung
+  terlihat di model HP. Itu bukti datanya satu sumber, bukan dua salinan.
+
+  CATATAN TEKNIK: repo ini belum memakai `@container` sama sekali (diperiksa
+  2026-09-28: `grep -n 'container-type\|@container' src/styles/*.css` kosong).
+  Container query dipakai DI SINI karena satu halaman harus memuat dua lebar
+  perangkat sekaligus. Implementasi produksi tidak butuh itu — `u-grid-auto`
+  sudah breakpoint-free, dan `@media` biasa cukup.
+
+  Token = nilai asli src/styles/theme.css. Angka = DESIGN.md (radius, gerak
+  180 ms, target sentuh 44/48 px, z-index).
+-->
+<style>
+:root, [data-theme="dark"] {
+  --color-canvas:#020617; --color-surface:#0f172a; --color-surface-raised:#1e293b;
+  --color-surface-sunken:#000000;
+  --color-fg:#f1f5f9; --color-fg-muted:#94a3b8; --color-fg-subtle:#8595aa;
+  --color-line:#334155; --color-line-strong:#475569;
+  --color-accent:#f9a8d4; --color-accent-emerald:#34d399; --color-accent-sky:#38bdf8;
+  --color-accent-amber:#fbbf24; --color-accent-violet:#a78bfa; --color-accent-red:#f87171;
+  --color-brand:#10b981; --color-brand-fg:#04211a;
+  --ring:rgba(56,189,248,.55);
+  --shadow:0 20px 50px -18px rgba(0,0,0,.8);
+  --tint:rgba(241,245,249,.04);
+}
+[data-theme="light"] {
+  --color-canvas:#f7f7f9; --color-surface:#ffffff; --color-surface-raised:#ffffff;
+  --color-surface-sunken:#f1f2f6;
+  --color-fg:#16121c; --color-fg-muted:#514a5c; --color-fg-subtle:#6d6678;
+  --color-line:#e6e3ea; --color-line-strong:#cfcad6;
+  --color-accent:#be185d; --color-accent-emerald:#047857; --color-accent-sky:#0369a1;
+  --color-accent-amber:#b45309; --color-accent-violet:#6d28d9; --color-accent-red:#b91c1c;
+  --ring:rgba(3,105,161,.45);
+  --shadow:0 18px 40px -20px rgba(90,50,80,.28);
+  --tint:rgba(22,18,28,.035);
+}
+:root {
+  --r-control:.75rem; --r-card:1rem; --r-panel:1.5rem; --r-band:2rem; --r-pill:9999px;
+  --ease:cubic-bezier(.16,1,.3,1); --dur:180ms;
+}
+* { box-sizing:border-box; }
+html { font-family:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { margin:0; background:var(--color-canvas); color:var(--color-fg); font-size:15px; line-height:1.55;
+  transition:background-color var(--dur) var(--ease); }
+h1,h2,h3,h4 { margin:0; line-height:1.25; }
+button { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--ring); outline-offset:2px; border-radius:6px; }
+/* Aturan `[hidden]` sengaja ada di PALING AKHIR berkas ini — lihat catatannya
+   di sana. Menaruhnya di sini (versi pertama) membuatnya kalah dari
+   `.err { display:flex }` di baris 142 dan tiga pesan error muncul di form
+   yang masih kosong. */
+
+.wrap { max-width:1560px; margin:0 auto; padding:0 20px 90px; }
+
+/* ── TOPBAR ───────────────────────────────────────────────────────── */
+.topbar { position:sticky; top:0; z-index:60; border-bottom:1px solid var(--color-line);
+  background:color-mix(in srgb, var(--color-canvas) 90%, transparent); backdrop-filter:blur(12px); }
+.topbar-in { max-width:1560px; margin:0 auto; padding:10px 20px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.brand { display:flex; align-items:center; gap:10px; margin-right:auto; }
+.brand .dot { width:34px;height:34px;border-radius:var(--r-control);flex:0 0 auto;display:grid;place-items:center;
+  background:linear-gradient(140deg,var(--color-brand),var(--color-accent-sky)); font-weight:900;color:#04211a;font-size:12px; }
+.brand b { font-size:13.5px; display:block; }
+.brand i { font-style:normal; font-size:10.5px; color:var(--color-fg-subtle); text-transform:uppercase; letter-spacing:.14em; }
+.tbtn { min-height:44px; padding:8px 13px; cursor:pointer; border-radius:var(--r-control);
+  border:1px solid var(--color-line-strong); background:var(--color-surface-raised);
+  font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+.tbtn:hover { border-color:var(--color-accent-sky); }
+.tbtn[aria-pressed="true"] { border-color:var(--color-accent-sky); color:var(--color-accent-sky); }
+
+/* ── TAB VARIAN ───────────────────────────────────────────────────── */
+.tabs { display:flex; gap:8px; flex-wrap:wrap; padding:14px 0 4px; }
+.tab { min-height:48px; padding:8px 16px; cursor:pointer; border-radius:var(--r-control);
+  border:1px solid var(--color-line-strong); background:var(--color-surface-raised);
+  font-size:13px; font-weight:800; display:inline-flex; align-items:center; gap:8px; }
+.tab .n { width:20px;height:20px;border-radius:var(--r-pill);display:grid;place-items:center;font-size:10.5px;
+  background:var(--color-surface-sunken); border:1px solid var(--color-line-strong); }
+.tab[aria-selected="true"] { border-color:var(--color-accent-sky); color:var(--color-accent-sky);
+  background:color-mix(in srgb, var(--color-accent-sky) 12%, var(--color-surface-raised)); }
+.tab[aria-selected="true"] .n { background:var(--color-accent-sky); color:#04121f; border-color:transparent; }
+
+section.blk-intro { margin-top:34px; }
+.eyebrow { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--color-accent-sky); margin-bottom:6px; }
+h2 { font-size:clamp(20px,2.6vw,27px); font-weight:900; letter-spacing:-.01em; }
+.lede { color:var(--color-fg-muted); max-width:78ch; margin:10px 0 20px; }
+.lede b { color:var(--color-fg); }
+.card { background:var(--color-surface-raised); border:1px solid var(--color-line); border-radius:var(--r-panel); padding:18px; }
+.muted { color:var(--color-fg-muted); } .small { font-size:12.5px; }
+.note { margin-top:18px; padding:13px 16px; border-left:3px solid var(--color-accent-sky);
+  background:color-mix(in srgb, var(--color-accent-sky) 8%, transparent);
+  border-radius:0 var(--r-card) var(--r-card) 0; font-size:12.5px; color:var(--color-fg-muted); }
+.note b { color:var(--color-fg); }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th,td { text-align:left; padding:9px 11px; border-bottom:1px solid var(--color-line); vertical-align:top; }
+th { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--color-fg-subtle); }
+tbody tr:last-child td { border-bottom:0; }
+code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;
+  background:var(--tint); padding:2px 6px; border-radius:6px; }
+.scroller { overflow-x:auto; }
+.good { color:var(--color-accent-emerald); } .bad { color:var(--color-accent-red); }
+.warn { color:var(--color-accent-amber); }
+
+/* ── FRAME PERANGKAT ──────────────────────────────────────────────── */
+.variant-block { margin-top:26px; }
+.variant-block[hidden] { display:none; }
+.frames { display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap; justify-content:center; }
+.frames.only-desktop .frame-mobile, .frames.only-mobile .frame-desktop { display:none; }
+.frames.only-mobile { justify-content:center; }
+.frame { border:1px solid var(--color-line-strong); border-radius:var(--r-band);
+  background:var(--color-surface); padding:10px; box-shadow:var(--shadow); }
+.frame-desktop { flex:1 1 920px; min-width:920px; max-width:1200px; }
+.frame-mobile { flex:0 0 auto; width:412px; max-width:100%; }
+.chrome { display:flex; align-items:center; gap:8px; padding:2px 6px 10px; font-size:11px;
+  font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--color-fg-subtle); }
+.chrome .lamp { width:9px;height:9px;border-radius:var(--r-pill);background:var(--color-line-strong); }
+/* `container-type: inline-size` = lebar frame jadi sumbu query, bukan viewport. */
+.screen { container-type:inline-size; container-name:screen; overflow-y:auto;
+  background:var(--color-canvas); border:1px solid var(--color-line); border-radius:var(--r-card);
+  overscroll-behavior:contain; scrollbar-gutter:stable; }
+.frame-desktop .screen { height:660px; }
+.frame-mobile .screen { height:700px; }
+
+/* ── KONTROL FORM (dipakai semua varian) ──────────────────────────── */
+.f { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.f > span { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--color-fg-muted); }
+.inp { width:100%; min-height:44px; padding:10px 12px; font:inherit; font-size:14px;
+  background:var(--color-surface-sunken); color:var(--color-fg);
+  border:1px solid var(--color-line-strong); border-radius:var(--r-control); outline:none; }
+.inp:focus { border-color:var(--color-accent-sky); box-shadow:0 0 0 3px var(--ring); }
+.inp[aria-invalid="true"] { border-color:var(--color-accent-red); }
+select.inp { appearance:none; background-image:none; padding-right:30px; }
+.err { display:flex; gap:5px; font-size:11.5px; font-weight:700; color:var(--color-accent-red); font-style:normal; }
+.err::before { content:"!"; width:14px;height:14px;flex:0 0 auto;border-radius:var(--r-pill);
+  background:var(--color-accent-red); color:var(--color-canvas); display:grid;place-items:center; font-size:9px; font-weight:900; }
+.btn { min-height:44px; padding:10px 16px; cursor:pointer; font-weight:800; font-size:13.5px;
+  border-radius:var(--r-control); border:1px solid var(--color-line-strong);
+  background:var(--color-surface-sunken); display:inline-flex; align-items:center; justify-content:center; gap:7px;
+  transition:transform var(--dur) var(--ease), filter var(--dur) var(--ease); }
+.btn:hover { transform:translateY(-1px); }
+.btn-p { background:var(--color-brand); border-color:transparent; color:#04211a; }
+.btn-p:hover { filter:brightness(1.08); }
+.btn-g { background:transparent; }
+.btn-sm { min-height:38px; padding:6px 12px; font-size:12px; }
+.btn[disabled] { opacity:.45; cursor:not-allowed; transform:none; }
+.bar { height:7px; border-radius:var(--r-pill); background:var(--color-line); overflow:hidden; }
+.bar > i { display:block; height:100%; border-radius:var(--r-pill);
+  background:linear-gradient(90deg,var(--color-brand),var(--color-accent-sky));
+  transition:width var(--dur) var(--ease); }
+.ring { position:relative; display:inline-grid; place-items:center; flex:0 0 auto;
+  width:var(--sz,54px); height:var(--sz,54px); }
+.ring svg { transform:rotate(-90deg); width:100%; height:100%; }
+.ring circle { fill:none; stroke-width:5; stroke-linecap:round; }
+.ring .tr { stroke:var(--color-line); }
+.ring .vl { stroke:var(--color-accent-emerald); transition:stroke-dashoffset var(--dur) var(--ease); }
+.ring b { position:absolute; font-size:11.5px; font-weight:900; }
+.dz { display:flex; align-items:center; gap:12px; padding:14px; cursor:pointer;
+  border:1.5px dashed var(--color-line-strong); border-radius:var(--r-card);
+  transition:border-color var(--dur) var(--ease), background-color var(--dur) var(--ease); }
+.dz:hover, .dz[data-over="true"] { border-color:var(--color-accent-sky); background:color-mix(in srgb,var(--color-accent-sky) 8%,transparent); }
+.dz .ph { width:58px;height:58px;flex:0 0 auto;border-radius:var(--r-pill);overflow:hidden;display:grid;place-items:center;
+  background:var(--color-surface-sunken); border:1px solid var(--color-line-strong); color:var(--color-fg-subtle); font-size:20px; }
+.dz .ph img { width:100%;height:100%;object-fit:cover;display:block; }
+.dz b { font-size:13px; display:block; }
+.dz i { font-style:normal; font-size:11.5px; color:var(--color-fg-muted); }
+.pill { font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; padding:4px 9px;
+  border-radius:var(--r-pill); border:1px solid var(--color-line-strong); color:var(--color-fg-muted); white-space:nowrap; }
+.pill.ok { color:var(--color-accent-emerald); border-color:color-mix(in srgb,var(--color-accent-emerald) 55%,transparent); }
+.pill.no { color:var(--color-accent-amber); border-color:color-mix(in srgb,var(--color-accent-amber) 55%,transparent); }
+.saved { font-size:12px; font-weight:800; color:var(--color-accent-emerald); display:flex; align-items:center; gap:6px; }
+.saved[hidden] { display:none; }
+
+/* ══ VARIAN A — BENTO ═══════════════════════════════════════════════
+   Mobile dulu (lebar container kecil), lalu >=880px jadi grid bento. */
+.vA { padding:14px; display:flex; flex-direction:column; gap:12px; }
+.vA-grid { display:grid; gap:12px; grid-template-columns:1fr; }
+.vA-card { background:var(--color-surface-raised); border:1px solid var(--color-line);
+  border-radius:var(--r-card); padding:14px; min-width:0; }
+.vA-card > h3 { font-size:12px; text-transform:uppercase; letter-spacing:.09em;
+  color:var(--color-accent-sky); margin-bottom:11px; display:flex; align-items:center; gap:7px; }
+.vA-id { display:flex; gap:12px; align-items:center; }
+.vA-id .av { width:52px;height:52px;border-radius:var(--r-pill);flex:0 0 auto;display:grid;place-items:center;
+  background:linear-gradient(140deg,var(--color-brand),var(--color-accent-sky)); color:#04211a; font-weight:900; font-size:17px; }
+.vA-id b { font-size:15px; display:block; }
+.vA-id i { font-style:normal; font-size:11.5px; color:var(--color-fg-subtle); font-family:ui-monospace,monospace; }
+.vA-prog { display:flex; gap:13px; align-items:center; }
+.vA-fields { display:grid; gap:11px; grid-template-columns:1fr 1fr; }
+.vA-fields .wide { grid-column:1 / -1; }
+.vA-sticky { position:sticky; bottom:0; display:flex; gap:9px; padding:11px 14px;
+  background:var(--color-surface); border-top:1px solid var(--color-line); align-items:center; }
+.vA-sticky .btn { flex:1; }
+@container screen (min-width:880px) {
+  .vA { padding:20px; gap:16px; }
+  .vA-grid { grid-template-columns:repeat(12,1fr); gap:16px; }
+  .vA-grid > .c3 { grid-column:span 4; }
+  .vA-grid > .c4 { grid-column:span 7; }
+  .vA-grid > .c5 { grid-column:span 5; }
+  .vA-fields { grid-template-columns:repeat(3,1fr); }
+  .vA-sticky { position:static; border:0; background:transparent; padding:0; }
+  .vA-sticky .btn { flex:0 0 auto; min-width:200px; margin-left:auto; }
+}
+
+/* ══ VARIAN B — RAIL + PANEL ════════════════════════════════════════ */
+.vB { display:flex; flex-direction:column; min-height:100%; }
+.vB-rail { border-bottom:1px solid var(--color-line); background:var(--color-surface); padding:10px 12px; }
+.vB-rail > .ttl { display:none; }
+.vB-nav { display:flex; gap:7px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none; }
+.vB-nav::-webkit-scrollbar { display:none; }
+.vB-nav button { min-height:40px; padding:7px 12px; cursor:pointer; white-space:nowrap;
+  border-radius:var(--r-pill); border:1px solid var(--color-line-strong);
+  background:var(--color-surface-raised); font-size:12.5px; font-weight:700;
+  display:inline-flex; align-items:center; gap:7px; }
+.vB-nav button .dt { width:7px;height:7px;border-radius:var(--r-pill); background:var(--color-line-strong); flex:0 0 auto; }
+.vB-nav button[data-done="1"] .dt { background:var(--color-accent-emerald); }
+.vB-nav button[aria-current="true"] { border-color:var(--color-accent-sky); color:var(--color-accent-sky);
+  background:color-mix(in srgb,var(--color-accent-sky) 12%, var(--color-surface-raised)); }
+.vB-main { flex:1; display:flex; flex-direction:column; min-width:0; }
+.vB-head { display:flex; align-items:center; gap:12px; padding:13px 14px; border-bottom:1px solid var(--color-line);
+  background:var(--color-surface-raised); position:sticky; top:0; z-index:2; }
+.vB-head h2 { font-size:15px; font-weight:900; }
+.vB-head p { margin:1px 0 0; font-size:11.5px; color:var(--color-fg-muted); }
+.vB-body { padding:14px; flex:1; }
+.vB-pane[hidden] { display:none; }
+.vB-foot { position:sticky; bottom:0; display:flex; gap:9px; align-items:center;
+  padding:11px 14px; border-top:1px solid var(--color-line); background:var(--color-surface-raised); }
+.vB-foot .btn { flex:1; }
+.vB-list { display:flex; flex-direction:column; gap:9px; }
+.vB-row { display:flex; align-items:center; gap:11px; padding:11px 0; border-bottom:1px solid var(--color-line); }
+.vB-row:last-child { border-bottom:0; }
+.vB-row .nm { flex:1; min-width:0; font-size:13px; }
+.vB-row .nm span { display:block; font-size:11.5px; color:var(--color-fg-subtle); }
+@container screen (min-width:880px) {
+  .vB { flex-direction:row; }
+  .vB-rail { flex:0 0 236px; border-bottom:0; border-right:1px solid var(--color-line); padding:18px 14px; }
+  .vB-rail > .ttl { display:block; font-size:15px; font-weight:900; margin-bottom:14px; }
+  .vB-nav { flex-direction:column; overflow:visible; gap:5px; }
+  .vB-nav button { border-radius:var(--r-control); border-color:transparent; background:transparent;
+    justify-content:flex-start; width:100%; min-height:44px; }
+  .vB-nav button[aria-current="true"] { background:color-mix(in srgb,var(--color-accent-sky) 14%,transparent); }
+  .vB-nav button .cnt { margin-left:auto; font-size:11px; font-weight:800; color:var(--color-fg-subtle); }
+  .vB-railfoot { margin-top:auto; padding-top:16px; border-top:1px solid var(--color-line); }
+  .vB-body { padding:20px 24px; }
+  .vB-foot { padding:13px 24px; }
+  .vB-foot .btn { flex:0 0 auto; }
+  .vB-fields { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+  .vB-fields .wide { grid-column:1 / -1; }
+}
+
+/* ══ VARIAN C — FORM + PRATINJAU LANGSUNG ═══════════════════════════ */
+.vC { display:flex; flex-direction:column; min-height:100%; }
+.vC-body { padding:14px; display:flex; flex-direction:column; gap:13px; flex:1; }
+.vC-group { background:var(--color-surface-raised); border:1px solid var(--color-line);
+  border-radius:var(--r-card); padding:14px; }
+.vC-group > h3 { font-size:12px; text-transform:uppercase; letter-spacing:.09em; color:var(--color-accent-sky); margin-bottom:11px; }
+.vC-fields { display:grid; gap:11px; grid-template-columns:1fr 1fr; }
+.vC-fields .wide { grid-column:1 / -1; }
+.vC-prev { background:var(--color-surface-raised); border:1px solid var(--color-line-strong);
+  border-radius:var(--r-card); padding:14px; }
+.vC-prev .pcard { border-radius:var(--r-control); border:1px solid var(--color-line);
+  background:var(--color-surface); padding:13px; }
+.vC-prev .phead { display:flex; gap:11px; align-items:center; margin-bottom:11px; }
+.vC-prev .pav { width:46px;height:46px;border-radius:var(--r-pill);flex:0 0 auto;display:grid;place-items:center;
+  overflow:hidden; background:var(--color-surface-sunken); border:1px solid var(--color-line-strong);
+  font-weight:900; color:var(--color-fg-subtle); font-size:16px; }
+.vC-prev .pav img { width:100%;height:100%;object-fit:cover; }
+.vC-prev dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:5px 11px; font-size:12.5px; }
+.vC-prev dt { color:var(--color-fg-subtle); }
+.vC-prev dd { margin:0; font-weight:700; overflow-wrap:anywhere; }
+.vC-prev dd.empty { color:var(--color-fg-subtle); font-weight:500; font-style:italic; }
+.vC-toggle { display:flex; }
+.vC-foot { position:sticky; bottom:0; display:flex; gap:9px; align-items:center; padding:11px 14px;
+  border-top:1px solid var(--color-line); background:var(--color-surface-raised); }
+.vC-foot .btn { flex:1; }
+.vC-prev[data-open="0"] .pcard { display:none; }
+@container screen (min-width:880px) {
+  /* `.vC` TETAP kolom: anaknya hanya `.vC-body` dan `.vC-foot`.
+     Versi pertama menulis `.vC { flex-direction:row }` di sini — itu membuat
+     BODY dan FOOTER berdampingan (tombol simpan jadi kolom sempit di kanan),
+     bukan form dan pratinjau. Yang harus jadi baris adalah `.vC-body`. */
+  .vC { flex-direction:column; }
+  .vC-body { flex-direction:row; align-items:flex-start; padding:20px; gap:20px; }
+  .vC-form { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:14px; }
+  .vC-prev { flex:0 0 320px; position:sticky; top:0; align-self:flex-start; }
+  .vC-prev .pcard { display:block !important; }
+  .vC-toggle { display:none; }
+  .vC-fields { grid-template-columns:repeat(3,1fr); }
+  .vC-foot { padding:13px 20px; }
+  .vC-foot .btn { flex:0 0 auto; }
+  .vC-foot .btn:first-child { margin-right:auto; }
+}
+
+/* ══ BASELINE — modal CV Mini yang ada sekarang ═════════════════════ */
+.vBase { position:relative; min-height:100%; background:rgba(0,0,0,.55); display:flex;
+  align-items:center; justify-content:center; padding:12px; }
+.vBase-panel { width:100%; max-width:28rem; background:#0f172a; border:1px solid #334155;
+  border-radius:32px; padding:22px; max-height:calc(100% - 24px); overflow-y:auto; }
+.vBase-panel h3 { font-size:17px; font-weight:800; color:#38bdf8; margin-bottom:5px; }
+.vBase-panel .hint { font-size:11.5px; color:#94a3b8; margin-bottom:16px; }
+.vBase-grid { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+.vBase-grid .wide { grid-column:1 / -1; }
+.vBase-panel label { display:block; font-size:10.5px; font-weight:800; text-transform:uppercase;
+  color:#94a3b8; margin-bottom:5px; letter-spacing:.06em; }
+.vBase-panel .inp { background:rgba(0,0,0,.6); border-color:#475569; border-radius:12px; }
+.vBase-x { position:absolute; top:14px; right:16px; width:20px;height:20px; cursor:pointer; border:0;
+  background:transparent; color:#94a3b8; font-size:17px; line-height:1; }
+.vBase-note { position:absolute; left:12px; right:12px; bottom:10px; font-size:11px; font-weight:700;
+  text-align:center; color:#fbbf24; }
+
+/* ── perbandingan ─────────────────────────────────────────────────── */
+.cmp { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(min(250px,100%),1fr)); }
+.cmp > div { border:1px solid var(--color-line); border-radius:var(--r-card); padding:13px; }
+.cmp h4 { font-size:13.5px; margin-bottom:6px; }
+.cmp p { margin:0; font-size:12.5px; color:var(--color-fg-muted); }
+.cmp .win { color:var(--color-accent-emerald); font-weight:800; }
+.foot { margin-top:50px; padding-top:18px; border-top:1px solid var(--color-line); font-size:12px; color:var(--color-fg-subtle); }
+@media (prefers-reduced-motion: reduce) { * { animation-duration:.01ms !important; transition-duration:.01ms !important; } }
+
+/* ── `hidden` HARUS menang — dan itu berarti PALING AKHIR ────────────
+   Atribut `hidden` hanya diatur UA stylesheet (`display:none`), dan aturan
+   PENULIS menang atas UA tanpa peduli spesifisitas. Jadi `.err { display:flex }`
+   di baris ~142 membuat pesan error ber-`hidden` tetap terlihat.
+   `[hidden]` dan `.err` sama-sama spesifisitas (0,1,0), jadi yang menang adalah
+   yang LEBIH BELAKANGAN di berkas — bukan yang tulisannya lebih tegas.
+   Diukur 2026-09-28: menaruh aturan ini di atas (dekat `:focus-visible`) TIDAK
+   cukup; baseline sempat menampilkan tiga badge error di form kosong. */
+[hidden] { display:none; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <div class="dot">ASJ</div>
+      <div><b>Profil Kandidat — 3 arah desain</b><i>Desktop + HP · semuanya jalan</i></div>
+    </div>
+    <button class="tbtn" id="dev-both" aria-pressed="true">Desktop + HP</button>
+    <button class="tbtn" id="dev-desk" aria-pressed="false">Desktop saja</button>
+    <button class="tbtn" id="dev-mob" aria-pressed="false">HP saja</button>
+    <button class="tbtn" id="btn-theme">Tema terang</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section class="blk-intro">
+    <p class="eyebrow">Keputusan dulu · 2026-09-28</p>
+    <h1 style="font-size:clamp(23px,3.4vw,34px);font-weight:900;letter-spacing:-.02em">
+      "CV Mini" itu bukan CV. Ia <span style="color:var(--color-accent-sky)">profil</span> — dan tempatnya bukan di modal.
+    </h1>
+    <p class="lede">
+      Yang sekarang ada (`CvMiniModal`, 188 baris) adalah <b>7 field biodata</b> — jenis kelamin, usia,
+      tinggi, berat, pendidikan, JFT, SSW — plus satu foto. Itu <em>profil</em>, bukan curriculum vitae,
+      dan tidak satu pun isinya adalah riwayat pekerjaan atau pendidikan formal.
+      Nama "CV Mini" membuat kandidat mengira ia sedang menyusun dokumen lamaran, padahal ia sedang
+      <b>melengkapi data dirinya</b>. Usulan: ganti nama jadi <b>Profil</b>, dan pindahkan dari modal
+      ke permukaan tersendiri.
+    </p>
+    <div class="card scroller">
+      <table>
+        <thead><tr><th>Kenapa bukan modal lagi</th><th>Angka / alasan</th></tr></thead>
+        <tbody>
+          <tr><td>Panduan modal 2026</td><td>Modal untuk <b>satu tugas pendek</b>. "Jangan menjejalkan form panjang ke kotak kecil." 7 field + unggah foto sudah melewatinya</td></tr>
+          <tr><td>Judul &amp; tombol simpan hilang</td><td><code>u-scroll-area</code> dipasang di <b>panel</b> (<code>max-h-[85vh]</code>) → header dan CTA ikut tergulir</td></tr>
+          <tr><td>Validasi tidak terlihat</td><td>Error lewat <code>showToast</code> — jauh dari field, dan hilang sendiri</td></tr>
+          <tr><td>Enter tidak mengirim</td><td>0 elemen <code>&lt;form&gt;</code> di 6 modal</td></tr>
+          <tr><td>Perubahan hilang senyap</td><td>Escape / klik backdrop membuang ketikan tanpa bertanya</td></tr>
+          <tr><td>Keyboard menutupi field</td><td>5 dari 6 modal <em>centered</em>; sheet bawah lebih baik di HP</td></tr>
+          <tr><td>Tidak bisa ditautkan</td><td>Modal tidak punya URL. "Lengkapi profil" dari notifikasi WhatsApp tidak bisa mengarah ke field yang kurang</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <b>Yang dipertahankan:</b> seluruh perilaku backend tidak berubah — 7 field yang sama, nama field
+      yang sama (<code>gender</code>, <code>usia</code>, <code>tb</code>, <code>bb</code>,
+      <code>pendidikan</code>, <code>jft_text</code>, <code>ssw_text</code>), dan foto tetap lewat
+      <code>photoFile</code>. Ini murni soal <em>permukaan</em>, bukan data.
+    </div>
+  </section>
+
+  <section class="blk-intro">
+    <p class="eyebrow">Pilih satu</p>
+    <h2>Tiga arah, satu markup, dua model</h2>
+    <p class="lede">
+      Setiap arah dirender <b>dua kali</b> — desktop 1180 px dan HP 390 px — dari markup yang
+      <b>sama</b>. Perbedaannya datang dari container query, bukan dari dua salinan kode.
+      Coba ketik di model desktop: <b>model HP ikut berubah</b>, karena datanya satu.
+    </p>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="base" aria-selected="false"><span class="n">0</span>Baseline — modal sekarang</button>
+      <button class="tab" role="tab" data-tab="a" aria-selected="true"><span class="n">A</span>Bento — semua terlihat</button>
+      <button class="tab" role="tab" data-tab="b" aria-selected="false"><span class="n">B</span>Rail + panel — per bagian</button>
+      <button class="tab" role="tab" data-tab="c" aria-selected="false"><span class="n">C</span>Form + pratinjau langsung</button>
+    </div>
+  </section>
+
+  <!-- ══════════ BASELINE ══════════ -->
+  <section class="variant-block" data-v="base" hidden>
+    <div class="card" style="margin-bottom:16px">
+      <b style="font-size:14px">Baseline — yang ada sekarang, dirender di kedua model</b>
+      <p class="small muted" style="margin:6px 0 0">
+        Perhatikan model HP: panel <code>max-w-md</code> hampir menutupi layar, keyboard akan menutupi
+        separuh field bawah, dan tombol simpan ada di luar area pandang setelah menggulir.
+      </p>
+    </div>
+    <div class="frames" data-frames="base"></div>
+  </section>
+
+  <!-- ══════════ VARIAN A ══════════ -->
+  <section class="variant-block" data-v="a">
+    <div class="card" style="margin-bottom:16px">
+      <b style="font-size:14px">A — Bento: semua terlihat sekaligus</b>
+      <p class="small muted" style="margin:6px 0 0">
+        Kartu identitas, cincin kelengkapan, foto, biodata, dan keterampilan dalam satu grid.
+        Desktop: 12 kolom. HP: satu kolom dengan bilah simpan lengket di bawah.
+        <b>Terbaik kalau kandidat datang untuk memeriksa, bukan mengisi.</b>
+      </p>
+    </div>
+    <div class="frames" data-frames="a"></div>
+  </section>
+
+  <!-- ══════════ VARIAN B ══════════ -->
+  <section class="variant-block" data-v="b" hidden>
+    <div class="card" style="margin-bottom:16px">
+      <b style="font-size:14px">B — Rail + panel: satu bagian setiap kali</b>
+      <p class="small muted" style="margin:6px 0 0">
+        Rail berisi daftar bagian dengan titik selesai dan hitungan. Desktop: rail vertikal 236 px.
+        HP: rail jadi strip chip yang bisa digeser. <b>Terbaik kalau bagiannya akan bertambah</b>
+        (dokumen, pengalaman, keluarga) tanpa membuat halaman jadi sangat panjang.
+      </p>
+    </div>
+    <div class="frames" data-frames="b"></div>
+  </section>
+
+  <!-- ══════════ VARIAN C ══════════ -->
+  <section class="variant-block" data-v="c" hidden>
+    <div class="card" style="margin-bottom:16px">
+      <b style="font-size:14px">C — Form + pratinjau langsung</b>
+      <p class="small muted" style="margin:6px 0 0">
+        Form di kiri, <b>kartu profil yang terisi sambil kamu mengetik</b> di kanan. Di HP pratinjau
+        dilipat jadi kartu di atas, bisa dibuka-tutup.
+        <b>Terbaik kalau masalahnya "kandidat tidak tahu untuk apa data ini"</b> — hasilnya terlihat
+        seketika.
+      </p>
+    </div>
+    <div class="frames" data-frames="c"></div>
+  </section>
+
+  <section class="blk-intro">
+    <p class="eyebrow">Perbandingan</p>
+    <h2>Mana untuk apa</h2>
+    <div class="cmp">
+      <div>
+        <h4>A · Bento</h4>
+        <p><span class="win">Menang:</span> sekali lihat tahu kurang apa; desktop paling enak.<br>
+        <span class="bad">Kalah:</span> di HP jadi gulir panjang; fokus pecah.</p>
+      </div>
+      <div>
+        <h4>B · Rail + panel</h4>
+        <p><span class="win">Menang:</span> progres per bagian selalu terlihat; tumbuh paling baik.<br>
+        <span class="bad">Kalah:</span> di HP "aku di mana" lebih lemah; butuh satu klik per bagian.</p>
+      </div>
+      <div>
+        <h4>C · Pratinjau</h4>
+        <p><span class="win">Menang:</span> alasan mengisi jadi kelihatan; umpan balik seketika.<br>
+        <span class="bad">Kalah:</span> pratinjau memakan ruang di HP kalau dibiarkan terbuka.</p>
+      </div>
+    </div>
+    <div class="note">
+      <b>Rekomendasi saya: C</b>, dengan cincin progres dari B ditempel di kartunya. Alasannya bukan
+      estetika: masalah nyata di sini adalah <b>profil tidak lengkap</b>, dan C adalah satu-satunya arah
+      yang menjawab "untuk apa aku mengisi ini" <em>sambil</em> mengisi — kartu profil yang terisi di
+      sebelah adalah hadiah langsungnya. Kalau bagian profil nanti bertambah banyak (dokumen,
+      pengalaman kerja, data keluarga), <b>pindah ke B</b>; rail-nya akan menanggung pertumbuhan itu
+      jauh lebih baik daripada halaman yang makin panjang.
+    </div>
+    <div class="note" style="border-left-color:var(--color-accent-amber);background:color-mix(in srgb,var(--color-accent-amber) 8%,transparent)">
+      <b>Yang saya tolak, dan kenapa.</b> Wizard/stepper bertahap (4 langkah) <b>tidak</b> saya buat:
+      untuk 7 field ia menambah klik tanpa mengurangi beban pikir — panduan progressive disclosure
+      berguna saat fieldnya puluhan, bukan tujuh. Kalau nanti fieldnya lewat 20, itu baru masuk akal.
+    </div>
+  </section>
+
+  <div class="foot">
+    Mockup kerja · <code>deliverables/gstack/_mockup-profil-kandidat-2026-09-28.html</code><br>
+    Token disalin dari <code>src/styles/theme.css</code>; angka dari <code>DESIGN.md</code>
+    (radius, gerak 180 ms, target sentuh 44/48 px). Nama field mengikuti <code>CvMiniModal.tsx</code>
+    supaya backend tidak perlu berubah. Tidak ada berkas <code>src/</code> yang diubah.
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var esc = function (s) { return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;"); };
+
+  var VARIANTS = ["base", "a", "b", "c"];
+  var photo = { base: null, a: null, b: null, c: null };
+  var saved = { base: false, a: false, b: false, c: false };
+  var activeSec = { b: "biodata" };
+  var prevOpen = { c: "0" };
+
+  var RANGE = { usia: [15, 60, "Usia harus 15\u201360."],
+                tb: [120, 200, "Tinggi harus 120\u2013200 cm."],
+                bb: [30, 120, "Berat harus 30\u2013120 kg."] };
+  var NUMKEYS = ["usia", "tb", "bb"];
+  var TOTAL = 7;   /* 5 angka/teks + pendidikan + foto — `gender` selalu ada, tidak dihitung */
+
+  var SECTIONS = [
+    { id: "biodata", label: "Biodata", sub: "Jenis kelamin, usia, tinggi, berat, pendidikan", keys: ["gender", "usia", "tb", "bb", "pendidikan"] },
+    { id: "skill", label: "Bahasa & keterampilan", sub: "Level JFT dan bidang SSW", keys: ["jft", "ssw"] },
+    { id: "foto", label: "Foto terbaru", sub: "Foto wajah untuk kartu profil", keys: [] },
+    { id: "ringkas", label: "Ringkasan & simpan", sub: "Periksa lalu simpan", keys: [] }
+  ];
+
+  /* ── potongan markup yang dipakai bersama ───────────────────────── */
+  function ringHTML(size) {
+    var r = (size / 2) - 5, c = 2 * Math.PI * r;
+    return '<span class="ring" style="--sz:' + size + 'px" data-ring data-circ="' + c.toFixed(2) + '">' +
+      '<svg viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
+      '<circle class="tr" cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '"></circle>' +
+      '<circle class="vl" cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" stroke-dasharray="' + c.toFixed(2) + '" stroke-dashoffset="' + c.toFixed(2) + '"></circle>' +
+      '</svg><b data-out="pct">0%</b></span>';
+  }
+  function numField(k, label, ph, extraClass) {
+    return '<label class="f ' + (extraClass || "") + '"><span>' + label + '</span>' +
+      '<input class="inp" data-k="' + k + '" type="number" inputmode="numeric" placeholder="' + ph + '">' +
+      '<em class="err" data-err="' + k + '" hidden></em></label>';
+  }
+  function txtField(k, label, ph, extraClass) {
+    return '<label class="f ' + (extraClass || "") + '"><span>' + label + '</span>' +
+      '<input class="inp" data-k="' + k + '" placeholder="' + ph + '"></label>';
+  }
+  function genderField(cls) {
+    return '<label class="f ' + (cls || "") + '"><span>Jenis kelamin</span>' +
+      '<select class="inp" data-k="gender"><option>LAKI-LAKI</option><option>PEREMPUAN</option></select></label>';
+  }
+  function pendidikanField(cls) {
+    return '<label class="f ' + (cls || "") + '"><span>Pendidikan terakhir</span>' +
+      '<select class="inp" data-k="pendidikan"><option value="-">\u2014 Belum dipilih \u2014</option>' +
+      '<option>SMA</option><option>SMK</option><option>MA</option><option>D3</option><option>S1</option></select></label>';
+  }
+  function photoBlock(vid) {
+    return '<div class="dz" data-dz="' + vid + '" tabindex="0" role="button" aria-label="Unggah foto terbaru">' +
+      '<span class="ph" data-out="photo">\u25a3</span>' +
+      '<span><b data-out="phototitle">Lepas foto di sini</b>' +
+      '<i data-out="photohint">atau klik untuk memilih \u00b7 JPG/PNG, maks 2 MB</i></span></div>' +
+      '<input type="file" accept="image/*" hidden data-file="' + vid + '">';
+  }
+
+  /* ── VARIAN A — BENTO ───────────────────────────────────────────── */
+  function renderA(vid) {
+    return '<div class="vA">' +
+      '<div class="vA-grid">' +
+        '<section class="vA-card c3">' +
+          '<h3>\u25c9 Identitas</h3>' +
+          '<div class="vA-id"><span class="av">AR</span><span><b>ANISA RAHMAWATI</b>' +
+          '<i>ASJ-2026-0481</i></span></div>' +
+          '<p class="small muted" style="margin:10px 0 0">Tahap: <b style="color:var(--color-accent-emerald)">Pemberkasan</b></p>' +
+        '</section>' +
+        '<section class="vA-card c3">' +
+          '<h3>\u25ce Kelengkapan profil</h3>' +
+          '<div class="vA-prog">' + ringHTML(56) +
+            '<span style="flex:1;min-width:0">' +
+            '<b style="font-size:13px" data-out="count">0 dari ' + TOTAL + ' terisi</b>' +
+            '<div class="bar" style="margin:7px 0 0"><i data-out="bar" style="width:0%"></i></div>' +
+            '<i style="font-style:normal;font-size:11.5px;color:var(--color-fg-subtle);display:block;margin-top:6px" data-out="next">Lengkapi biodata dulu.</i>' +
+            '</span></div>' +
+        '</section>' +
+        '<section class="vA-card c3">' +
+          '<h3>\u25a3 Foto terbaru</h3>' + photoBlock(vid) +
+        '</section>' +
+        '<section class="vA-card c4">' +
+          '<h3>\u2637 Biodata</h3>' +
+          '<div class="vA-fields">' + genderField() + numField("usia", "Usia", "22") +
+          numField("tb", "Tinggi (cm)", "165") + numField("bb", "Berat (kg)", "55") +
+          pendidikanField("wide") + '</div>' +
+        '</section>' +
+        '<section class="vA-card c5">' +
+          '<h3>\u2691 Bahasa &amp; keterampilan</h3>' +
+          '<div class="vA-fields">' + txtField("jft", "Level JFT", "mis. N4") +
+          txtField("ssw", "Bidang SSW", "mis. Kaigo") + '</div>' +
+          '<p class="small muted" style="margin:11px 0 0">JFT dan SSW menentukan loker mana yang terbuka untukmu.</p>' +
+        '</section>' +
+      '</div>' +
+      '<div class="vA-sticky">' +
+        '<span class="saved" data-out="saved" hidden>\u2713 Tersimpan</span>' +
+        '<button class="btn btn-p" data-save="' + vid + '">Simpan profil</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  /* ── VARIAN B — RAIL + PANEL ────────────────────────────────────── */
+  function paneB(id) {
+    if (id === "biodata") return '<div class="vB-fields">' + genderField() + numField("usia", "Usia", "22") +
+      numField("tb", "Tinggi (cm)", "165") + numField("bb", "Berat (kg)", "55") + pendidikanField("wide") + '</div>';
+    if (id === "skill") return '<div class="vB-fields">' + txtField("jft", "Level JFT", "mis. N4") +
+      txtField("ssw", "Bidang SSW", "mis. Kaigo") + '</div>' +
+      '<p class="small muted" style="margin:13px 0 0">Kalau kamu belum punya JFT, tulis targetmu \u2014 admin akan menyarankan jadwal tes.</p>';
+    if (id === "foto") return photoBlock("b") +
+      '<p class="small muted" style="margin:13px 0 0">Foto dipakai di kartu profil dan berkas lamaran. Wajah terlihat jelas, latar polos.</p>';
+    return '<div class="vB-list">' +
+      '<div class="vB-row"><span class="nm">Biodata<span data-out="sum-bio">Belum lengkap</span></span><span class="pill" data-out="pill-bio">Kurang</span></div>' +
+      '<div class="vB-row"><span class="nm">Bahasa &amp; keterampilan<span data-out="sum-skill">Belum lengkap</span></span><span class="pill" data-out="pill-skill">Kurang</span></div>' +
+      '<div class="vB-row"><span class="nm">Foto terbaru<span data-out="sum-foto">Belum ada</span></span><span class="pill" data-out="pill-foto">Kurang</span></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:13px;align-items:center;margin-top:16px">' + ringHTML(56) +
+      '<span><b style="font-size:13px" data-out="count">0 dari ' + TOTAL + ' terisi</b>' +
+      '<div class="bar" style="margin:7px 0 0;min-width:120px"><i data-out="bar" style="width:0%"></i></div></span></div>';
+  }
+  function renderB() {
+    var nav = SECTIONS.map(function (s) {
+      return '<button data-sec="' + s.id + '" data-done="0" aria-current="' +
+        (s.id === activeSec.b ? "true" : "false") + '"><span class="dt"></span>' + s.label +
+        '<span class="cnt" data-out="cnt-' + s.id + '"></span></button>';
+    }).join("");
+    var panes = SECTIONS.map(function (s) {
+      return '<div class="vB-pane" data-pane="' + s.id + '"' + (s.id === activeSec.b ? "" : " hidden") + '>' +
+        paneB(s.id) + '</div>';
+    }).join("");
+    return '<div class="vB">' +
+      '<aside class="vB-rail"><div class="ttl">Profil</div><nav class="vB-nav">' + nav + '</nav></aside>' +
+      '<div class="vB-main">' +
+        '<header class="vB-head">' + ringHTML(44) +
+          '<span style="flex:1;min-width:0"><h2 data-out="secttl">Biodata</h2>' +
+          '<p data-out="secsub">Jenis kelamin, usia, tinggi, berat, pendidikan</p></span></header>' +
+        '<div class="vB-body">' + panes + '</div>' +
+        '<footer class="vB-foot"><span class="saved" data-out="saved" hidden>\u2713 Tersimpan</span>' +
+          '<button class="btn btn-p" data-save="b">Simpan profil</button></footer>' +
+      '</div></div>';
+  }
+
+  /* ── VARIAN C — FORM + PRATINJAU ────────────────────────────────── */
+  function renderC(vid) {
+    return '<div class="vC">' +
+      '<div class="vC-body">' +
+        '<div class="vC-form">' +
+          '<div class="vC-group"><h3>\u2637 Biodata</h3><div class="vC-fields">' +
+            genderField() + numField("usia", "Usia", "22") + numField("tb", "Tinggi (cm)", "165") +
+            numField("bb", "Berat (kg)", "55") + pendidikanField() + '</div></div>' +
+          '<div class="vC-group"><h3>\u2691 Bahasa &amp; keterampilan</h3><div class="vC-fields">' +
+            txtField("jft", "Level JFT", "mis. N4") + txtField("ssw", "Bidang SSW", "mis. Kaigo") + '</div></div>' +
+          '<div class="vC-group"><h3>\u25a3 Foto terbaru</h3>' + photoBlock(vid) + '</div>' +
+        '</div>' +
+        '<aside class="vC-prev" data-open="' + prevOpen.c + '">' +
+          '<div class="vC-toggle" style="margin-bottom:11px">' +
+            '<button class="btn btn-sm btn-g" data-prev-toggle style="width:100%">Lihat kartu profil</button></div>' +
+          '<div class="pcard">' +
+            '<div class="phead"><span class="pav" data-out="pav">\u25a3</span>' +
+              '<span><b style="font-size:13.5px">ANISA RAHMAWATI</b>' +
+              '<i style="font-style:normal;display:block;font-size:11px;color:var(--color-fg-subtle)">KARTU PROFIL \u00b7 pratinjau</i></span></div>' +
+            '<dl>' +
+              '<dt>Usia</dt><dd data-out="pv-usia">\u2014</dd>' +
+              '<dt>Tinggi / berat</dt><dd data-out="pv-fisik">\u2014</dd>' +
+              '<dt>Pendidikan</dt><dd data-out="pv-pendidikan">\u2014</dd>' +
+              '<dt>JFT</dt><dd data-out="pv-jft">\u2014</dd>' +
+              '<dt>SSW</dt><dd data-out="pv-ssw">\u2014</dd>' +
+            '</dl>' +
+            '<div style="margin-top:12px"><div class="bar"><i data-out="bar" style="width:0%"></i></div>' +
+            '<p class="small muted" style="margin:6px 0 0" data-out="count">0 dari ' + TOTAL + ' terisi</p></div>' +
+          '</div>' +
+        '</aside>' +
+      '</div>' +
+      '<footer class="vC-foot"><span class="saved" data-out="saved" hidden>\u2713 Tersimpan</span>' +
+        '<button class="btn btn-g" data-reset="' + vid + '">Kosongkan</button>' +
+        '<button class="btn btn-p" data-save="' + vid + '">Simpan profil</button></footer>' +
+    '</div>';
+  }
+
+  /* ── BASELINE — modal sekarang, apa adanya ──────────────────────── */
+  function renderBase() {
+    return '<div class="vBase"><div class="vBase-panel">' +
+      '<button class="vBase-x" aria-label="Tutup" onclick="return false">\u00d7</button>' +
+      '<h3>\u263a Update CV Mini</h3>' +
+      '<p class="hint">Perbarui data dasar untuk melengkapi profil lamaran kamu.</p>' +
+      '<div class="vBase-grid">' +
+        '<div>' + genderField() + '</div><div>' + numField("usia", "Usia", "22") + '</div>' +
+        '<div>' + numField("tb", "Tinggi (cm)", "165") + '</div><div>' + numField("bb", "Berat (kg)", "55") + '</div>' +
+        '<div class="wide">' + pendidikanField() + '</div>' +
+        '<div>' + txtField("jft", "Level JFT", "mis. N4") + '</div>' +
+        '<div>' + txtField("ssw", "Bidang SSW", "mis. Kaigo") + '</div>' +
+      '</div>' +
+      '<div style="margin-top:14px">' + photoBlock("base") + '</div>' +
+      '<button class="btn btn-p" style="width:100%;margin-top:16px" data-save="base">Simpan CV Mini</button>' +
+      '</div>' +
+      '<div class="vBase-note">\u26a0 Panel ini sendiri yang menggulir \u2014 judul dan tombol simpan ikut hilang</div>' +
+    '</div>';
+  }
+
+  /* ── MOUNT ──────────────────────────────────────────────────────── */
+  function frameHTML(vid, model) {
+    var label = model === "desktop" ? "Desktop \u00b7 1180 px" : "HP \u00b7 390 px";
+    var body = vid === "base" ? renderBase()
+      : vid === "a" ? renderA(vid)
+      : vid === "b" ? renderB()
+      : renderC(vid);
+    return '<div class="frame frame-' + model + '">' +
+      '<div class="chrome"><span class="lamp"></span>' + label + '</div>' +
+      '<div class="screen" data-variant="' + vid + '" data-model="' + model + '">' + body + '</div>' +
+      '</div>';
+  }
+  VARIANTS.forEach(function (vid) {
+    var host = document.querySelector('[data-frames="' + vid + '"]');
+    host.innerHTML = frameHTML(vid, "desktop") + frameHTML(vid, "mobile");
+  });
+
+  /* ── STATE ──────────────────────────────────────────────────────── */
+  function roots(vid) { return document.querySelectorAll('[data-variant="' + vid + '"]'); }
+  function read(vid) {
+    var s = { gender: "LAKI-LAKI", usia: "", tb: "", bb: "", pendidikan: "-", jft: "", ssw: "" };
+    var root = roots(vid)[0];
+    if (root) root.querySelectorAll("[data-k]").forEach(function (el) { s[el.getAttribute("data-k")] = el.value; });
+    return s;
+  }
+  function filledCount(vid, s) {
+    var n = 0;
+    NUMKEYS.forEach(function (k) { if (String(s[k]).trim() !== "") n++; });
+    if (String(s.jft).trim() !== "") n++;
+    if (String(s.ssw).trim() !== "") n++;
+    if (s.pendidikan !== "-") n++;
+    if (photo[vid]) n++;
+    return n;
+  }
+  function sectionDone(vid, id) {
+    var s = read(vid);
+    if (id === "biodata") return NUMKEYS.every(function (k) { return String(s[k]).trim() !== ""; }) && s.pendidikan !== "-";
+    if (id === "skill") return String(s.jft).trim() !== "" && String(s.ssw).trim() !== "";
+    if (id === "foto") return !!photo[vid];
+    return filledCount(vid, s) === TOTAL;
+  }
+  function valid(vid) {
+    var s = read(vid);
+    return NUMKEYS.every(function (k) {
+      var v = s[k]; if (String(v).trim() === "") return true;
+      var r = RANGE[k], n = parseFloat(v);
+      return !isNaN(n) && n >= r[0] && n <= r[1];
+    });
+  }
+  function nextHint(vid, s) {
+    if (String(s.usia).trim() === "" || String(s.tb).trim() === "" || String(s.bb).trim() === "" || s.pendidikan === "-")
+      return "Lengkapi biodata dulu.";
+    if (String(s.jft).trim() === "" || String(s.ssw).trim() === "") return "Tambahkan level JFT dan bidang SSW.";
+    if (!photo[vid]) return "Unggah foto terbaru.";
+    return "Profil lengkap. Siap melamar.";
+  }
+
+  /* ── REFRESH: memperbarui TURUNAN saja, bukan seluruh pohon ──────
+     Input tidak pernah dirender ulang, jadi fokus tidak pernah lepas
+     saat mengetik. Ini alasan utama memakai input tak-terkendali. */
+  function refresh(vid) {
+    var s = read(vid);
+    var pct = Math.round(filledCount(vid, s) / TOTAL * 100);
+    roots(vid).forEach(function (root) {
+      root.querySelectorAll("[data-ring]").forEach(function (el) {
+        var c = parseFloat(el.getAttribute("data-circ"));
+        var vl = el.querySelector(".vl");
+        if (vl) vl.setAttribute("stroke-dashoffset", String(c * (1 - pct / 100)));
+        var b = el.querySelector('[data-out="pct"]');
+        if (b) b.textContent = pct + "%";
+      });
+      root.querySelectorAll('[data-out="bar"]').forEach(function (e) { e.style.width = pct + "%"; });
+      root.querySelectorAll('[data-out="count"]').forEach(function (e) {
+        e.textContent = filledCount(vid, s) + " dari " + TOTAL + " terisi";
+      });
+      root.querySelectorAll('[data-out="next"]').forEach(function (e) { e.textContent = nextHint(vid, s); });
+
+      /* validasi inline */
+      NUMKEYS.forEach(function (k) {
+        var r = RANGE[k], v = String(s[k]).trim(), bad = false;
+        if (v !== "") { var n = parseFloat(v); bad = isNaN(n) || n < r[0] || n > r[1]; }
+        root.querySelectorAll('[data-err="' + k + '"]').forEach(function (e) {
+          e.hidden = !bad; if (bad) e.textContent = r[2];
+        });
+        root.querySelectorAll('[data-k="' + k + '"]').forEach(function (e) { e.setAttribute("aria-invalid", String(bad)); });
+      });
+
+      /* foto */
+      root.querySelectorAll('[data-out="photo"]').forEach(function (e) {
+        e.innerHTML = photo[vid] ? '<img src="' + photo[vid] + '" alt="Pratinjau foto">' : "\u25a3";
+      });
+      root.querySelectorAll('[data-out="phototitle"]').forEach(function (e) {
+        e.textContent = photo[vid] ? "Foto terpasang" : "Lepas foto di sini";
+      });
+      root.querySelectorAll('[data-out="photohint"]').forEach(function (e) {
+        e.textContent = photo[vid] ? "Klik untuk mengganti" : "atau klik untuk memilih \u00b7 JPG/PNG, maks 2 MB";
+      });
+      root.querySelectorAll('[data-out="pav"]').forEach(function (e) {
+        e.innerHTML = photo[vid] ? '<img src="' + photo[vid] + '" alt="">' : "\u25a3";
+      });
+
+      /* pratinjau varian C */
+      var pv = {
+        "pv-usia": s.usia ? s.usia + " tahun" : null,
+        "pv-fisik": (s.tb || s.bb) ? [s.tb ? s.tb + " cm" : null, s.bb ? s.bb + " kg" : null].filter(Boolean).join(" / ") : null,
+        "pv-pendidikan": s.pendidikan !== "-" ? s.pendidikan : null,
+        "pv-jft": s.jft || null,
+        "pv-ssw": s.ssw || null
+      };
+      Object.keys(pv).forEach(function (key) {
+        root.querySelectorAll('[data-out="' + key + '"]').forEach(function (e) {
+          e.textContent = pv[key] || "\u2014";
+          e.classList.toggle("empty", !pv[key]);
+        });
+      });
+
+      /* rail varian B */
+      SECTIONS.forEach(function (sec) {
+        var done = sectionDone(vid, sec.id);
+        root.querySelectorAll('[data-out="cnt-' + sec.id + '"]').forEach(function (e) {
+          e.textContent = done ? "\u2713" : "";
+        });
+        root.querySelectorAll('[data-sec="' + sec.id + '"]').forEach(function (b) {
+          b.setAttribute("data-done", done ? "1" : "0");
+        });
+      });
+      ["bio", "skill", "foto"].forEach(function (key) {
+        var id = key === "bio" ? "biodata" : key;
+        var done = sectionDone(vid, id);
+        root.querySelectorAll('[data-out="pill-' + key + '"]').forEach(function (e) {
+          e.textContent = done ? "Lengkap" : "Kurang";
+          e.className = "pill " + (done ? "ok" : "no");
+        });
+        root.querySelectorAll('[data-out="sum-' + key + '"]').forEach(function (e) {
+          e.textContent = done ? "Sudah lengkap" : "Belum lengkap";
+        });
+      });
+
+      /* tombol simpan — LABELNYA TETAP "Simpan profil".
+         Versi pertama mengganti labelnya jadi "\u2713 Tersimpan", dan karena
+         status di sebelahnya sudah berbunyi "\u2713 Tersimpan", hasilnya
+         tampil dua kali. Label tombol menyebut AKSI, bukan keadaan. */
+      root.querySelectorAll('[data-save="' + vid + '"]').forEach(function (b) {
+        b.disabled = !valid(vid) || saved[vid];
+        b.textContent = vid === "base" ? "Simpan CV Mini" : "Simpan profil";
+      });
+      root.querySelectorAll('[data-out="saved"]').forEach(function (e) { e.hidden = !saved[vid]; });
+    });
+  }
+  function refreshAll() { VARIANTS.forEach(refresh); }
+
+  /* ── EVENT: delegasi di document ────────────────────────────────── */
+  document.addEventListener("input", function (e) {
+    var el = e.target;
+    if (!el.matches || !el.matches("[data-k]")) return;
+    var root = el.closest("[data-variant]"); if (!root) return;
+    var vid = root.getAttribute("data-variant"), key = el.getAttribute("data-k");
+    saved[vid] = false;
+    /* cermin ke model yang lain — bukti datanya satu sumber */
+    roots(vid).forEach(function (r) {
+      r.querySelectorAll('[data-k="' + key + '"]').forEach(function (o) { if (o !== el) o.value = el.value; });
+    });
+    refresh(vid);
+  });
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (el.matches && el.matches("[data-k]")) {
+      var root = el.closest("[data-variant]");
+      if (root) { saved[root.getAttribute("data-variant")] = false; }
+    }
+    if (el.matches && el.matches("[data-file]")) {
+      var vid = el.getAttribute("data-file"), f = el.files && el.files[0];
+      if (f && /^image\//.test(f.type)) {
+        var rd = new FileReader();
+        rd.onload = function (ev) { photo[vid] = ev.target.result; saved[vid] = false; refresh(vid); };
+        rd.readAsDataURL(f);
+      }
+    }
+  });
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    var dz = t.closest && t.closest("[data-dz]");
+    if (dz) {
+      var vid = dz.getAttribute("data-dz");
+      var inp = document.querySelector('[data-file="' + vid + '"]');
+      if (inp) inp.click();
+      return;
+    }
+    var sec = t.closest && t.closest("[data-sec]");
+    if (sec) {
+      activeSec.b = sec.getAttribute("data-sec");
+      var rootB = roots("b")[0];
+      if (rootB) {
+        rootB.querySelectorAll("[data-pane]").forEach(function (p) {
+          p.hidden = p.getAttribute("data-pane") !== activeSec.b;
+        });
+        rootB.querySelectorAll("[data-sec]").forEach(function (b) {
+          b.setAttribute("aria-current", String(b === sec));
+        });
+        var meta = SECTIONS.filter(function (s) { return s.id === activeSec.b; })[0];
+        rootB.querySelectorAll('[data-out="secttl"]').forEach(function (x) { x.textContent = meta.label; });
+        rootB.querySelectorAll('[data-out="secsub"]').forEach(function (x) { x.textContent = meta.sub; });
+      }
+      return;
+    }
+    if (t.closest && t.closest("[data-prev-toggle]")) {
+      prevOpen.c = prevOpen.c === "1" ? "0" : "1";
+      roots("c").forEach(function (r) {
+        r.querySelectorAll(".vC-prev").forEach(function (p) { p.setAttribute("data-open", prevOpen.c); });
+      });
+      return;
+    }
+    var sv = t.closest && t.closest("[data-save]");
+    if (sv) { saved[sv.getAttribute("data-save")] = true; refreshAll(); return; }
+    var rs = t.closest && t.closest("[data-reset]");
+    if (rs) {
+      var vid2 = rs.getAttribute("data-reset");
+      roots(vid2).forEach(function (r) {
+        r.querySelectorAll("[data-k]").forEach(function (el) {
+          el.value = el.tagName === "SELECT" ? el.options[0].value : "";
+        });
+      });
+      photo[vid2] = null; saved[vid2] = false; refresh(vid2);
+    }
+  });
+  /* drag & drop foto */
+  document.addEventListener("dragover", function (e) {
+    var dz = e.target.closest && e.target.closest("[data-dz]");
+    if (dz) { e.preventDefault(); dz.setAttribute("data-over", "true"); }
+  });
+  document.addEventListener("dragleave", function (e) {
+    var dz = e.target.closest && e.target.closest("[data-dz]");
+    if (dz) dz.setAttribute("data-over", "false");
+  });
+  document.addEventListener("drop", function (e) {
+    var dz = e.target.closest && e.target.closest("[data-dz]");
+    if (!dz) return;
+    e.preventDefault(); dz.setAttribute("data-over", "false");
+    var vid = dz.getAttribute("data-dz"), f = e.dataTransfer && e.dataTransfer.files[0];
+    if (f && /^image\//.test(f.type)) {
+      var rd = new FileReader();
+      rd.onload = function (ev) { photo[vid] = ev.target.result; saved[vid] = false; refresh(vid); };
+      rd.readAsDataURL(f);
+    }
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var dz = e.target.closest && e.target.closest("[data-dz]");
+    if (dz) { e.preventDefault(); var i = document.querySelector('[data-file="' + dz.getAttribute("data-dz") + '"]'); if (i) i.click(); }
+  });
+
+  /* ── TAB VARIAN ─────────────────────────────────────────────────── */
+  document.querySelectorAll(".tab").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      var v = tab.getAttribute("data-tab");
+      document.querySelectorAll(".tab").forEach(function (t) { t.setAttribute("aria-selected", String(t === tab)); });
+      document.querySelectorAll(".variant-block").forEach(function (b) {
+        b.hidden = b.getAttribute("data-v") !== v;
+      });
+    });
+  });
+
+  /* ── MODE PERANGKAT ─────────────────────────────────────────────── */
+  var devBtns = { both: document.getElementById("dev-both"), desk: document.getElementById("dev-desk"), mob: document.getElementById("dev-mob") };
+  function setDevice(mode) {
+    Object.keys(devBtns).forEach(function (k) { devBtns[k].setAttribute("aria-pressed", String(k === mode)); });
+    document.querySelectorAll(".frames").forEach(function (f) {
+      f.classList.toggle("only-desktop", mode === "desk");
+      f.classList.toggle("only-mobile", mode === "mob");
+    });
+  }
+  devBtns.both.addEventListener("click", function () { setDevice("both"); });
+  devBtns.desk.addEventListener("click", function () { setDevice("desk"); });
+  devBtns.mob.addEventListener("click", function () { setDevice("mob"); });
+
+  /* ── TEMA ───────────────────────────────────────────────────────── */
+  var btnTheme = document.getElementById("btn-theme");
+  btnTheme.addEventListener("click", function () {
+    var light = document.documentElement.getAttribute("data-theme") === "light";
+    document.documentElement.setAttribute("data-theme", light ? "dark" : "light");
+    btnTheme.textContent = light ? "Tema terang" : "Tema gelap";
+  });
+
+  refreshAll();
+})();
+</script>
+</body>
+</html>
