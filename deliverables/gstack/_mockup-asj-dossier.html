@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASJ DOSSIER — card spec, both themes</title>
+<!--
+  Visual mockup for the ASJ DOSSIER candidate-profile card.
+  Tokens are the REAL values from src/styles/theme.css (dark = @theme defaults,
+  light = html[data-theme="light"] block). Nothing here is invented.
+  Toggle the theme with the buttons — this is a mockup, not the app.
+  No external dependencies: no CDN font, no framework, one file.
+-->
+<style>
+  /* ── REAL TOKENS, copied from src/styles/theme.css ─────────────── */
+  :root, [data-theme="dark"] {
+    --color-canvas:         #020617;
+    --color-surface:        #0f172a;
+    --color-surface-raised: #1e293b;
+    --color-surface-sunken: #000000;
+    --color-fg:             #f1f5f9;
+    --color-fg-muted:       #94a3b8;
+    --color-fg-subtle:      #8595aa;
+    --color-line:           #334155;
+    --color-line-strong:    #475569;
+    --color-accent:         #f9a8d4;
+    --color-accent-emerald: #34d399;
+    --color-accent-sky:     #38bdf8;
+    --color-accent-amber:   #fbbf24;
+    --color-brand:          #10b981;
+    --color-brand-fg:       #04211a;
+    --radius-control: .75rem; --radius-card: 1rem; --radius-panel: 1.5rem; --radius-pill: 9999px;
+    --page: var(--color-canvas);
+  }
+  [data-theme="light"] {
+    --color-canvas:         #ffffff;
+    --color-surface:        #ffffff;
+    --color-surface-raised: #fff7fa;
+    --color-surface-sunken: #fdf2f6;
+    --color-fg:             #16121c;
+    --color-fg-muted:       #514a5c;
+    --color-fg-subtle:      #726a80;
+    --color-line:           #f0dfe7;
+    --color-line-strong:    #dfc4d1;
+    --color-accent:         #be185d;
+    --color-accent-emerald: #047857;
+    --color-accent-sky:     #0369a1;
+    --color-accent-amber:   #b45309;
+  }
+
+  * { box-sizing: border-box; }
+  html { font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  body {
+    margin: 0; padding: 24px;
+    background: var(--page); color: var(--color-fg);
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
+    transition: background-color 180ms cubic-bezier(.16,1,.3,1);
+  }
+  .toolbar { display: flex; gap: 8px; align-self: center; }
+  .toolbar button {
+    font: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    padding: 8px 16px; min-height: 44px;
+    border-radius: var(--radius-control);
+    border: 1px solid var(--color-line-strong);
+    background: var(--color-surface-raised); color: var(--color-fg);
+  }
+  .toolbar button[aria-pressed="true"] { border-color: var(--color-accent); color: var(--color-accent); }
+
+  /* ── THE CARD ─────────────────────────────────────────────────── */
+  .dossier {
+    width: 100%; max-width: 720px;
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-line-strong);
+    border-radius: var(--radius-panel);
+    padding: 1.25rem;
+  }
+  @media (min-width: 768px) { .dossier { padding: 1.5rem; } }
+
+  .head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem;
+    padding-bottom: 1rem; margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .wordmark { font-size: 1.25rem; line-height: 1.3; font-weight: 900; letter-spacing: .01em; text-transform: uppercase; margin: 0; color: var(--color-fg); }
+  .eyebrow { font-size: .6875rem; line-height: 1.2; letter-spacing: .18em; font-weight: 700; text-transform: uppercase; margin: 0; }
+  .sub { color: var(--color-accent); margin-top: 2px; }
+  .check {
+    flex: 0 0 auto; width: 2.25rem; height: 2.25rem; border-radius: var(--radius-pill);
+    display: grid; place-items: center;
+    background: var(--color-surface-sunken); border: 1px solid var(--color-line-strong);
+    color: var(--color-accent-emerald); font-size: 1.1rem;
+  }
+
+  .body-grid { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+  @media (min-width: 512px) { .body-grid { grid-template-columns: 9rem 1fr; } }
+
+  .col-left { display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+  .photo {
+    width: 7rem; height: 8rem; border-radius: var(--radius-card); overflow: hidden;
+    background: var(--color-surface-sunken); border: 1px solid var(--color-line-strong);
+    display: grid; place-items: center; font-size: 2rem; font-weight: 900; color: var(--color-fg-subtle);
+  }
+  .plate {
+    border-radius: var(--radius-control); background: var(--color-surface-sunken);
+    border: 1px solid var(--color-line-strong); padding: .375rem .75rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .6875rem; letter-spacing: .18em; font-weight: 700; color: var(--color-fg-muted);
+  }
+  .chip {
+    border-radius: var(--radius-pill); padding: .25rem .75rem;
+    font-size: .75rem; line-height: 1.4; letter-spacing: .02em; font-weight: 700;
+    border: 1px solid #6ee7b7; background: #d1fae5; color: #047857;
+  }
+  [data-theme="dark"] .chip { border-color: rgba(16,185,129,.3); background: rgba(6,78,59,.4); color: var(--color-accent-emerald); }
+
+  .name { font-size: clamp(1.5rem, 3vw, 1.875rem); line-height: 1.15; letter-spacing: -.01em; font-weight: 900; text-transform: uppercase; margin: 0; color: var(--color-fg); overflow-wrap: anywhere; }
+  .iconrow { display: flex; align-items: center; gap: .5rem; margin-top: .25rem; color: var(--color-fg-subtle); font-size: .9rem; }
+
+  .wa {
+    margin-top: .75rem; display: inline-flex; align-items: center; gap: .5rem; width: 100%;
+    border-radius: var(--radius-control); padding: .625rem 1rem;
+    background: #047857; color: #fff; font-weight: 700; text-decoration: none;
+    min-height: 44px;
+  }
+  .wa:hover { background: #065f46; }
+  .wa .num { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin: 1rem 0 0; padding: 0; }
+  .field {
+    border-radius: var(--radius-card); background: var(--color-surface-sunken);
+    border: 1px solid var(--color-line-strong); padding: .75rem; min-width: 0; margin: 0;
+  }
+  .field dt, .row dt, .tile dt { margin: 0; color: var(--color-fg-subtle); }
+  .field dd, .row dd, .tile dd { margin: .25rem 0 0; font-size: .875rem; line-height: 1.65; font-weight: 700; color: var(--color-fg); overflow-wrap: anywhere; }
+
+  .rows { margin: 1.25rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .75rem; }
+  .row { margin: 0; min-width: 0; }
+
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: 1rem; }
+  .tile { border-radius: var(--radius-card); background: var(--color-surface-sunken); border: 1px solid var(--color-line-strong); padding: .75rem; text-align: center; margin: 0; min-width: 0; }
+
+  .jobblock { margin-top: 1rem; border-radius: var(--radius-card); background: var(--color-surface-sunken); border: 1px solid var(--color-line-strong); padding: 1rem; }
+  .jobblock .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+
+  .cta {
+    margin-top: 1.25rem; width: 100%; min-height: 48px; padding: .75rem 1.5rem;
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    font: inherit; font-size: .875rem; font-weight: 700; cursor: pointer;
+    border: 0; border-radius: var(--radius-control);
+    background: #047857; color: #fff;
+    transition: background-color 180ms cubic-bezier(.16,1,.3,1);
+  }
+  .cta:hover { background: #065f46; }
+  .cta:focus-visible, .wa:focus-visible, .toolbar button:focus-visible {
+    outline: 2px solid var(--color-accent-sky); outline-offset: 2px;
+  }
+
+  /* Legend: which values are measured and which are open decisions. */
+  .legend { max-width: 720px; width: 100%; font-size: .75rem; line-height: 1.6; color: var(--color-fg-muted); border-top: 1px solid var(--color-line); padding-top: 1rem; }
+  .legend b { color: var(--color-fg); }
+  .legend .ok { color: var(--color-accent-emerald); font-weight: 700; }
+  .legend .no { color: var(--color-accent-amber); font-weight: 700; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="toolbar" role="group" aria-label="Tema">
+  <button id="t-dark"  aria-pressed="true">Dark</button>
+  <button id="t-light" aria-pressed="false">Light</button>
+</div>
+
+<section class="dossier" aria-labelledby="dossier-name">
+  <header class="head">
+    <div>
+      <p class="wordmark" id="dossier-wordmark">ASJ DOSSIER</p>
+      <!-- OPEN DECISION 6.1: this subtitle is a verification CLAIM. No is_verified column exists. -->
+      <p class="eyebrow sub">VERIFIED CANDIDATE</p>
+    </div>
+    <!-- OPEN DECISION 6.1: rendered only when a real signal exists (isSiswaASJ / isVIP / status=LULUS). -->
+    <span class="check" title="Terverifikasi" aria-hidden="true">&#10004;</span>
+  </header>
+
+  <div class="body-grid">
+    <div class="col-left">
+      <div class="photo" role="img" aria-label="Pas foto kandidat">A</div>
+      <!-- source: row.idKandidat (mapCandidate <- id_kandidat). Format in the legacy
+           screenshot (ASJ-20250930-1052) is NOT produced anywhere — decision 6.4. -->
+      <span class="plate">ASJ00159</span>
+      <!-- source: row.status. The legacy card printed "LULUS (LULUS)" — a duplicated
+           value, i.e. a legacy rendering artefact. Decision 6.3: render once. -->
+      <span class="chip">LULUS</span>
+    </div>
+
+    <div style="min-width:0">
+      <h3 class="name" id="dossier-name">AGUS KHOCI</h3>
+
+      <!-- OPEN DECISION 6.6: the legacy row is flag / medal / star / seal.
+           `flag` and `seal` DO NOT EXIST in the 155-glyph sprite (Icon renders
+           nothing, silently). Shown here with glyphs that DO exist. -->
+      <div class="iconrow" aria-hidden="true">
+        <span>&#9733;</span><span>&#127894;</span><span>&#10003;</span>
+        <span style="font-size:.65rem;letter-spacing:.18em;font-weight:700;text-transform:uppercase">SISWA ASJ</span>
+      </div>
+
+      <!-- source: row.wa (mapCandidate <- no_wa, digits only). bg #047857 + white = 5.48:1 in BOTH themes. -->
+      <a class="wa" href="https://wa.me/6281230442661" target="_blank" rel="noopener noreferrer">
+        <span aria-hidden="true">&#128241;</span><span class="num">6281230442661</span>
+      </a>
+
+      <dl class="fields">
+        <div class="field"><dt class="eyebrow">JENIS KELAMIN</dt><dd>Laki-laki</dd></div>
+        <div class="field"><dt class="eyebrow">USIA</dt><dd>36 Tahun</dd></div>
+        <div class="field"><dt class="eyebrow">TB / BB</dt><dd>165 / 57</dd></div>
+        <div class="field"><dt class="eyebrow">PENDIDIKAN</dt><dd>SMK</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <dl class="rows">
+    <div class="row"><dt class="eyebrow">TEMPAT, TANGGAL LAHIR</dt><dd>PONOROGO, 1989-10-05</dd></div>
+    <div class="row"><dt class="eyebrow">EMAIL</dt><dd>khoci89@gmail.com</dd></div>
+    <!-- The legacy label says "(KTP)". The ADDRESS is alamat_lengkap; the KTP NUMBER is
+         row.nik and must NOT be shown to candidates without an explicit ruling (6.6/#6). -->
+    <div class="row"><dt class="eyebrow">ALAMAT (KTP)</dt><dd>Dusun Krajan RT 02 RW 03<br>Desa Ngumpul, Kec. Balong<br>Ponorogo, Jawa Timur</dd></div>
+  </dl>
+
+  <div class="tiles">
+    <dl class="tile"><dt class="eyebrow">JFT / JLPT</dt><dd>JLPT N3</dd></dl>
+    <dl class="tile"><dt class="eyebrow">SSW / BIDANG</dt><dd>MANUFACTUR</dd></dl>
+  </div>
+
+  <div class="jobblock">
+    <p class="eyebrow" style="color:var(--color-fg-muted)">JOB / BIDANG YANG DILAMAR:</p>
+    <div class="chips">
+      <span class="chip">LULUS</span>
+      <span class="chip" style="border-color:var(--color-line-strong);background:transparent;color:var(--color-fg-muted)">TG658</span>
+    </div>
+  </div>
+
+  <!-- No new backend: wire to the existing RirekishoBuilder (already imported by
+       CandidateDash) or reuse handleDownloadBiodata's text export. Decision 6.7. -->
+  <button class="cta" type="button"><span aria-hidden="true">&#11015;</span> DOWNLOAD FULL BIODATA</button>
+</section>
+
+<p class="legend">
+  <b>Measured pairs</b> (WCAG 2.1 relative luminance, floors 4.5:1 body / 3:1 UI):
+  name on card <span class="ok">13.35:1 dark / 17.53:1 light</span> &middot;
+  eyebrows <span class="ok">4.79:1 dark / 4.88:1 light</span> (tightest — do not "tidy") &middot;
+  white on the WhatsApp/CTA green <span class="ok">5.48:1 in both themes</span> (no shim needed).
+  <br>
+  <b>Open finding:</b> the field-box border is
+  <span class="no">1.93:1 dark / 1.54:1 light</span> — below the 3:1 UI floor. Acceptable
+  only because the border is grouping decoration (label + value are both legible). Raise it
+  to an accent tint (<code>border-accent-sky/40</code> = 6.83:1) or add a token — decision 6.5.
+  <br>
+  <b>Not buildable as shown:</b> the "verified" claim (no <code>is_verified</code> column),
+  the <code>flag</code>/<code>seal</code> glyphs (absent from the sprite),
+  the duplicated <code>LULUS (LULUS)</code>, the <code>ASJ-YYYYMMDD-HHMM</code> ID format,
+  and NIK. See §3.3 of the spec.
+</p>
+
+<script>
+  const root = document.documentElement;
+  const dark = document.getElementById('t-dark');
+  const light = document.getElementById('t-light');
+  function set(theme) {
+    root.setAttribute('data-theme', theme);
+    dark.setAttribute('aria-pressed', String(theme === 'dark'));
+    light.setAttribute('aria-pressed', String(theme === 'light'));
+  }
+  dark.addEventListener('click', () => set('dark'));
+  light.addEventListener('click', () => set('light'));
+</script>
+</body>
+</html>
