@@ -16,6 +16,8 @@ import api from '../lib/apiClient';
 
 interface Props {
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
 }
 
 interface SiswaRow {
@@ -32,7 +34,7 @@ type State =
   | { kind: 'session' }
   | { kind: 'ready'; rows: SiswaRow[] };
 
-export default function CekSiswaModal({ onClose }: Props) {
+export default function CekSiswaModal({ onClose, closing = false }: Props) {
   const _lang = useStore(langStore);
   const [state, setState] = useState<State>({ kind: 'loading' });
 
@@ -90,7 +92,7 @@ export default function CekSiswaModal({ onClose }: Props) {
     return () => { cancelled = true; };
   }, []);
 
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
 
   const genderBadge = (g: string) => {
     const val = String(g || '').trim().toUpperCase();

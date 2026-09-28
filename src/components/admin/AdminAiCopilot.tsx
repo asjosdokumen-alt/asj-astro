@@ -43,6 +43,8 @@ interface Props {
   candidateId?: string;
   candidateWa?: string;
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
 }
 
 function esc(s: string): string {
@@ -59,7 +61,7 @@ export function boldHtml(text: string): string {
   return parts.map((p, i) => (i % 2 === 1 ? "<b>" + p + "</b>" : p)).join("");
 }
 
-export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Props) {
+export default function AdminAiCopilot({ candidateId, candidateWa, onClose, closing = false }: Props) {
   const user = useStore(authStore);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
@@ -84,7 +86,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose }: Pr
   // `open: true` is the honest value here rather than a hardcoded role.
   // The <h3> below names the dialog — the same text a sighted user reads as
   // the title, which is what the hook resolves `aria-labelledby` from.
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
 
   const now = () =>
     new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });

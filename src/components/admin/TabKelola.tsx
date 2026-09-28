@@ -9,6 +9,7 @@ import { langStore, t } from '../../store/i18n';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import Icon from '../ui/Icon';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
 
 // A15: share config needs dokumenShare/tsk; getAppData('admin') is admin-guarded
@@ -35,6 +36,9 @@ export default function TabKelola() {
   const [loading, setLoading] = useState(true);
   const [editJob, setEditJob] = useState<Loker | null>(null);
   const [shareJob, setShareJob] = useState<Loker | null>(null);
+  /* Exit window (2026-09-28) — see `useOverlayPresence`. */
+  const editJobP = useOverlayPresence(editJob);
+  const shareJobP = useOverlayPresence(shareJob);
 
   useEffect(() => { fetchLoker(); }, []);
 
@@ -139,8 +143,8 @@ export default function TabKelola() {
       )}
       <p class="text-xs text-slate-500 mt-3">{filtered.length} {t('ui.jobs_suffix')}</p>
 
-      {editJob && <AdminJobEditModal job={editJob as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
-      {shareJob && <AdminShareModal job={shareJob} onClose={() => setShareJob(null)} />}
+      {editJobP.present && <AdminJobEditModal job={editJobP.held as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} closing={editJobP.closing} />}
+      {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} closing={shareJobP.closing} />}
     </div>
   );
 }

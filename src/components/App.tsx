@@ -55,6 +55,7 @@ import CekSiswaModal from './CekSiswaModal';
 import AdminAiCopilot from './admin/AdminAiCopilot';
 import { showToast } from './Toast';
 import Icon from './ui/Icon';
+import { useOverlayPresence } from './ui/useOverlayPresence';
 import { ErrorBoundary } from './ErrorBoundary';
 
 /** User state from auth store */
@@ -126,6 +127,10 @@ export default function App(
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAiCopilot, setShowAiCopilot] = useState(false);
   const [showCekSiswa, setShowCekSiswa] = useState(false);
+  /* Exit window (2026-09-28) — see `useOverlayPresence`. LoginModal is NOT
+     here: it is mounted unconditionally and owns its own presence. */
+  const cekSiswaP = useOverlayPresence(showCekSiswa);
+  const aiCopilotP = useOverlayPresence(showAiCopilot);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => { setHydrated(true); }, []);
   // Hero background is now a CSS gradient (`.hero-gradient` class in global.css)
@@ -817,8 +822,8 @@ export default function App(
         </div>
       </nav>
 
-      {showAiCopilot && <AdminAiCopilot onClose={() => setShowAiCopilot(false)} />}
-      {showCekSiswa && <CekSiswaModal onClose={() => setShowCekSiswa(false)} />}
+      {aiCopilotP.present && <AdminAiCopilot onClose={() => setShowAiCopilot(false)} closing={aiCopilotP.closing} />}
+      {cekSiswaP.present && <CekSiswaModal onClose={() => setShowCekSiswa(false)} closing={cekSiswaP.closing} />}
       {hydrated && <LoginModal mode={modalMode} onClose={closeModal} onSwitchMode={setModalMode} />}
     </ErrorBoundary>
   );

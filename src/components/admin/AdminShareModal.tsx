@@ -37,7 +37,12 @@ interface Job {
   tsk?: string;
   dokumenShare?: string;
 }
-interface Props { job: Job; onClose: () => void; }
+interface Props {
+  job: Job;
+  onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
+}
 
 /** Chip dokumen share — parity legacy js/render/share.ts SHARE_DOC_CHIPS. */
 export const SHARE_DOC_CHIPS = [
@@ -85,10 +90,10 @@ export function shareWaTemplate(code: string, pekerjaan: string, shareUrl: strin
   );
 }
 
-export default function AdminShareModal({ job, onClose }: Props) {
+export default function AdminShareModal({ job, onClose, closing = false }: Props) {
   const [checked, setChecked] = useState<Set<string>>(() => parseDocsShare(job.dokumenShare));
   const [saving, setSaving] = useState(false);
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
 
   // Public by job code, exactly as legacy (`share.html?job=CODE`). The TSK are
   // outside parties with no accounts, so the link itself IS the access — there

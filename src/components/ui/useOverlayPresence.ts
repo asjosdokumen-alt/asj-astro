@@ -85,21 +85,36 @@ export function useOverlayPresence<T>(
      call site still needs nothing but the flags while an object call site
      needs the object back. */
   const active = Boolean(value);
-  const [held, setHeld] = useState<T | null>(active ? (value as T) : null);
+  const [retained, setRetained] = useState<T | null>(null);
 
   useEffect(() => {
     if (active) {
-      // Opening (or re-opening during an exit): adopt it and cancel any timer.
-      setHeld(value as T);
+      setRetained(value as T);
       return;
     }
     if (exitMs <= 0) {
-      setHeld(null);
+      setRetained(null);
       return;
     }
-    const timer = setTimeout(() => setHeld(null), exitMs);
+    const timer = setTimeout(() => setRetained(null), exitMs);
     return () => clearTimeout(timer);
   }, [active, value, exitMs]);
+
+  /* `held` IS DERIVED, NOT READ STRAIGHT FROM STATE — and that is load-bearing,
+     not a shortcut. Reading only the retained state makes the hook lag ONE
+     render behind the value it is opening on: `present` is still false on the
+     render where the caller's boolean flips true. For a self-gating modal
+     (`LoginModal`, `InputManualModal`, `PamfletModal` — mounted unconditionally,
+     `if (!present) return null`) that render returns null, so `containerRef`
+     is null — and `useOverlay`'s role effect, which fires on the `open`
+     TRANSITION, therefore runs with no node, writes nothing, and never fires
+     again because `open` is already true.
+
+     MEASURED, and it is why this is derived: with the state-reading version,
+     `LoginModal.test.tsx > keeps role="dialog" and aria-modal on a SECOND open`
+     failed with `expected null to be 'dialog'` — the dialog lost its role on
+     reopen, which is the exact defect that file was written to prevent. */
+  const held = active ? (value as T) : retained;
 
   return {
     present: held !== null,

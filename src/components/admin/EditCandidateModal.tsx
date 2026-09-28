@@ -31,6 +31,8 @@ interface Props {
   };
   isOpen: boolean;
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
 }
 
 const GENDER_OPTIONS = ['', 'LAKI-LAKI', 'PEREMPUAN'];
@@ -66,7 +68,7 @@ function computeAge(tglLahir: string): number | null {
   return age > 0 ? age : null;
 }
 
-export default function EditCandidateModal({ candidate, isOpen, onClose }: Props) {
+export default function EditCandidateModal({ candidate, isOpen, onClose, closing = false }: Props) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -91,7 +93,7 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
   // padahal isVipCatatan (gerbang AI CV/simulator) menolaknya — toggle dan
   // gerbang tidak sepakat untuk kandidat yang sama.
   const [isVIP, setIsVIP] = useState(() => (candidate.catatanInt || '').includes('[VIP]'));
-  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen || closing, onClose, closing });
 
   useEffect(() => {
     if (isOpen) {
@@ -195,7 +197,7 @@ export default function EditCandidateModal({ candidate, isOpen, onClose }: Props
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !closing) return null;
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>

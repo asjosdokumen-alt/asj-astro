@@ -13,6 +13,7 @@ import ListKandidatModal from './ListKandidatModal';
 import { useStore } from '@nanostores/preact';
 import { allKandidatList, fetchAllKandidat } from '../../store/adminStore';
 import Icon from '../ui/Icon';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 
 interface DbJob {
   code: string; tsk: string; pekerjaan: string; kategori: string;
@@ -107,6 +108,12 @@ export default function TabDbJob() {
   const [shareJob, setShareJob] = useState<DbJob | null>(null);
   const [matchJob, setMatchJob] = useState<DbJob | null>(null);
   const [listJobCode, setListJobCode] = useState<string | null>(null);
+  /* Exit window (2026-09-28) — see `useOverlayPresence`. All four render their
+     value's fields, so each is fed the value itself. */
+  const editJobP = useOverlayPresence(editJob);
+  const shareJobP = useOverlayPresence(shareJob);
+  const listJobCodeP = useOverlayPresence(listJobCode);
+  const matchJobP = useOverlayPresence(matchJob);
   const allCandidates = useStore(allKandidatList);
 
   useEffect(() => { fetchLoker(); }, []);
@@ -271,10 +278,10 @@ export default function TabDbJob() {
           </table>
         </div>
       )}
-      {editJob && <AdminJobEditModal job={editJob as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} />}
-      {shareJob && <AdminShareModal job={shareJob} onClose={() => setShareJob(null)} />}
-      {listJobCode && <ListKandidatModal jobCode={listJobCode} isOpen={!!listJobCode} onClose={() => setListJobCode(null)} />}
-      {matchJob && <MatchmakingModal job={matchJob} candidates={allCandidates} isOpen={!!matchJob} onClose={() => setMatchJob(null)} />}
+      {editJobP.present && <AdminJobEditModal job={editJobP.held as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} closing={editJobP.closing} />}
+      {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} closing={shareJobP.closing} />}
+      {listJobCodeP.present && listJobCodeP.held && <ListKandidatModal jobCode={listJobCodeP.held} isOpen={!!listJobCode} onClose={() => setListJobCode(null)} closing={listJobCodeP.closing} />}
+      {matchJobP.present && matchJobP.held && <MatchmakingModal job={matchJobP.held} candidates={allCandidates} isOpen={!!matchJob} onClose={() => setMatchJob(null)} closing={matchJobP.closing} />}
       <p class="text-xs text-slate-500 mt-3">{filtered.length} job internal</p>
     </div>
   );

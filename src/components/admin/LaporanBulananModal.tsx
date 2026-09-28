@@ -21,6 +21,7 @@ import { useStore } from '@nanostores/preact';
 import { reportModalOpen, closeReportModal } from '../../store/adminStore';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
@@ -49,7 +50,10 @@ export default function LaporanBulananModal() {
   const [report, setReport] = useState<ReportLoker[] | null>(null);
   const [meta, setMeta] = useState<{ totalCandidates: number; generatedAt: string } | null>(null);
 
-  const { containerRef, onBackdropClick } = useOverlay({ open, onClose });
+  /* Exit window (2026-09-28). Mounted unconditionally — TabPelamar renders
+     `<LaporanBulananModal />` with no props — so presence lives here. */
+  const presence = useOverlayPresence(open);
+  const { containerRef, onBackdropClick } = useOverlay({ open: open || presence.closing, onClose, closing: presence.closing });
 
   useEffect(() => {
     if (!open) return;
@@ -84,7 +88,7 @@ export default function LaporanBulananModal() {
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!presence.present) return null;
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>

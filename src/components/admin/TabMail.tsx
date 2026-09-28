@@ -12,6 +12,7 @@ import {
 import { t, langStore } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
 import RejectMailModal from './RejectMailModal';
 
@@ -36,6 +37,9 @@ export default function TabMail() {
    * nama kandidat — admin perlu yakin barisnya benar sebelum menolak.
    */
   const [rejectTarget, setRejectTarget] = useState<null | { id: unknown; nama?: string }>(null);
+  /* Exit window (2026-09-28) — see `useOverlayPresence`. The render reads
+     `rejectTarget.nama`, so the HELD value is what gets passed down. */
+  const rejectTargetP = useOverlayPresence(rejectTarget);
 
   useEffect(() => { fetchMailFromAPI(); }, []);
 
@@ -265,11 +269,12 @@ export default function TabMail() {
         </table>
       </div>
 
-      {rejectTarget && (
+      {rejectTargetP.present && rejectTargetP.held && (
         <RejectMailModal
-          candidateName={rejectTarget.nama}
+          candidateName={rejectTargetP.held.nama}
           onCancel={() => setRejectTarget(null)}
           onConfirm={confirmReject}
+          closing={rejectTargetP.closing}
         />
       )}
     </div>

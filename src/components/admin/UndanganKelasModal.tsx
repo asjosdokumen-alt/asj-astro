@@ -7,7 +7,12 @@ import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
 
-interface Props { isOpen: boolean; onClose: () => void; }
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
+}
 
 const DEFAULT_PESAN = [
   "Assalamu'alaikum Wr. Wb. Yth. Bapak/Ibu Wali dari {nama}.",
@@ -44,7 +49,7 @@ export function parseVarianPesan(tpl: string): string[] {
   return String(tpl || "").split(/^---\s*$/m).map(s => s.trim()).filter(Boolean);
 }
 
-export default function UndanganKelasModal({ isOpen, onClose }: Props) {
+export default function UndanganKelasModal({ isOpen, onClose, closing = false }: Props) {
   const [daftar, setDaftar] = useState("");
   const [linkGrup, setLinkGrup] = useState(() => { try { return localStorage.getItem("asj_link_grup_kelas") || ""; } catch { return ""; } });
   const [interval, setInterval_] = useState(10);
@@ -143,9 +148,9 @@ export default function UndanganKelasModal({ isOpen, onClose }: Props) {
     }
   }, [list, invalid, linkGrup, interval, pesan, onClose, pollJobStatus]);
 
-  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen || closing, onClose, closing });
 
-  if (!isOpen) return null;
+  if (!isOpen && !closing) return null;
 
   return h("div", { class: "fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[999] flex items-center justify-center p-4", ref: containerRef, onClick: onBackdropClick },
     h("div", { class: "glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col border border-emerald-500/50" },

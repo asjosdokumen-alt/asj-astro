@@ -226,6 +226,8 @@ interface PresetItem {
 
 interface Props {
   open: boolean;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
   initialTotal?: string;
   initialRincian?: string;
   onApply: (total: string, rincian: string) => void;
@@ -255,7 +257,7 @@ const SECTION_ICON_CLS: Record<RincianSec, string> = {
   persyaratan: 'text-sky-400',
 };
 
-export default function RincianBiayaModal({ open, initialTotal = '', initialRincian = '', onApply, onClose }: Props) {
+export default function RincianBiayaModal({ open, initialTotal = '', initialRincian = '', onApply, onClose, closing = false }: Props) {
   // Builder state mirrors legacy DOM state.
   const [total, setTotal] = useState('');
   const [rows, setRows] = useState<RincianRow[]>([]);
@@ -440,9 +442,9 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
     setRows((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  const { containerRef, onBackdropClick } = useOverlay({ open, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: open || closing, onClose, closing });
 
-  if (!open) return null;
+  if (!open && !closing) return null;
 
   const inputCls =
     'w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-emerald-500 transition';

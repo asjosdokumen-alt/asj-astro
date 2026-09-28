@@ -10,6 +10,7 @@ import { inputModalOpen, closeInputModal } from '../../store/adminStore';
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { uploadToCloudinary } from '../../lib/cloudinary';
@@ -170,7 +171,10 @@ export default function InputManualModal() {
     }
   }
 
-  const { containerRef, onBackdropClick } = useOverlay({ open, onClose });
+  /* Exit window (2026-09-28). Mounted unconditionally — TabPelamar renders
+     `<InputManualModal />` with no props — so presence lives here. */
+  const presence = useOverlayPresence(open);
+  const { containerRef, onBackdropClick } = useOverlay({ open: open || presence.closing, onClose, closing: presence.closing });
 
   /* THE RENDER GUARD MUST SIT AFTER THE HOOK, NOT BEFORE IT.
      It used to be `if (!open) return null;` above the `useOverlay` call, so the
@@ -183,7 +187,7 @@ export default function InputManualModal() {
      the REAL `open` state (instead of the old hardcoded `true`) plus moving the
      guard below the hook makes every hook run unconditionally and re-run its
      effects on each open/close. The rendered markup and classes are unchanged. */
-  if (!open) return null;
+  if (!presence.present) return null;
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>

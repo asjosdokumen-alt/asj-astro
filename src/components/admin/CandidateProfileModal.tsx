@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api, { apiClient } from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
@@ -12,6 +13,8 @@ interface Props {
   nama: string;
   isOpen: boolean;
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
   /**
    * Row kandidat yang SUDAH ter-dekorasi (mapCandidate + berkas/bio/
    * applications dari getCandidatesPage) — dioper dari TabPelamar supaya
@@ -115,7 +118,7 @@ function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbac
   };
 }
 
-export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candidate }: Props) {
+export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candidate, closing = false }: Props) {
   const [data, setData] = useState<CandidateData | null>(null);
   // Row MENTAH (ter-dekorasi mapCandidate / getExistingCandidateJsonByWa) —
   // diteruskan apa adanya ke openCandidateEdit supaya EditCandidateModal
@@ -129,7 +132,9 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
   const [isVIP, setIsVIP] = useState(false);
   // B03: preview dokumen inline — parity legacy un()/bukaPreviewDokumen di #modal-cv.
   const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
-  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
+  /* Exit window (2026-09-28) — see `useOverlayPresence`. */
+  const previewP = useOverlayPresence(preview);
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen || closing, onClose, closing });
 
   // Row yang sudah ter-dekorasi (dari getCandidatesPage) — kalau ada, tidak
   // perlu fetch sama sekali (fix: getAppData mode 'kandidat' menolak sesi
@@ -205,7 +210,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     return () => controller.abort();
   }, [isOpen, wa, seed]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !closing) return null;
 
   // Parity dengan legacy simpanCatatanCv (js/admin_modal/cv.ts): tulis ulang
   // tag [VIP] sesuai toggle & pertahankan tag kelas ([KELAS X] / [X]), lalu
@@ -513,8 +518,8 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
           </>
         )}
       </div>
-      {preview && (
-        <DocumentPreviewModal url={preview.url} title={preview.title} onClose={() => setPreview(null)} />
+      {previewP.present && previewP.held && (
+        <DocumentPreviewModal url={previewP.held.url} title={previewP.held.title} onClose={() => setPreview(null)} closing={previewP.closing} />
       )}
     </div>
   );

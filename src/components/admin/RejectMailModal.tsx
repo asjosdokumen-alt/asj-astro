@@ -28,11 +28,13 @@ interface Props {
   /** Nama kandidat, untuk ditampilkan di judul supaya admin yakin barisnya benar. */
   candidateName?: string;
   onCancel: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
   /** Dipanggil dengan alasan final. Induk yang mengirim ke backend. */
   onConfirm: (reason: string) => void | Promise<void>;
 }
 
-export default function RejectMailModal({ candidateName, onCancel, onConfirm }: Props) {
+export default function RejectMailModal({ candidateName, onCancel, onConfirm, closing = false }: Props) {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -43,7 +45,7 @@ export default function RejectMailModal({ candidateName, onCancel, onConfirm }: 
   //
   // No `label`: the hook names the dialog after its first heading (the <h3>
   // below), which is the same text a sighted user reads as the title.
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose: onCancel });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose: onCancel, closing });
 
   const submit = async () => {
     if (busy) return;

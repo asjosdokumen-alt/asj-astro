@@ -62,6 +62,8 @@ interface Props {
   candidates: Candidate[];
   isOpen: boolean;
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
 }
 
 const GENDER_OPTIONS = [
@@ -99,7 +101,7 @@ function getPendidikanScore(pendidikan: string): number {
   return 0;
 }
 
-export default function MatchmakingModal({ job, candidates, isOpen, onClose }: Props) {
+export default function MatchmakingModal({ job, candidates, isOpen, onClose, closing = false }: Props) {
   const [filters, setFilters] = useState({
     gender: genderFromJob(job.gender),
     usiaMin: '',
@@ -115,7 +117,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose }: P
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
   const [sending, setSending] = useState(false);
-  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen || closing, onClose, closing });
 
   useEffect(() => {
     if (isOpen) {
@@ -241,7 +243,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose }: P
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !closing) return null;
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4" onClick={onBackdropClick}>

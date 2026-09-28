@@ -19,6 +19,7 @@
 import { h } from "preact";
 import { useState, useEffect, useRef } from "preact/hooks";
 import { useOverlay } from '../ui/useOverlay';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import { t } from '../../store/i18n';
 
 interface Props { isOpen: boolean; url: string; onClose: () => void; }
@@ -39,13 +40,17 @@ export default function PamfletModal({ isOpen, url, onClose }: Props) {
    after its first heading" has nothing to point `aria-labelledby` at and the
    zoom dialog would ship unnamed. Measured §25 — a stacked-dialog check reported
    2 dialogs carrying 1 title id, which is how the gap was found. */
+/* Exit window (2026-09-28). Both call sites (LokerDetailModal, LokerTable)
+   render this UNCONDITIONALLY with `isOpen`, so presence lives here. */
+const presence = useOverlayPresence(isOpen);
 const { containerRef, onBackdropClick } = useOverlay({
-  open: isOpen,
+  open: isOpen || presence.closing,
   onClose,
+  closing: presence.closing,
   label: t("ui.alt_pamflet"),
 });
 
-  if (!isOpen || !url || url === "-") return null;
+  if (!presence.present || !url || url === "-") return null;
 
   return h("div", {
     class: "fixed inset-0 u-modal-shell bg-black/90 z-[9999] flex items-center justify-center p-4",

@@ -30,6 +30,7 @@ import CandidateProfileModal from './CandidateProfileModal';
 import EditCandidateModal from './EditCandidateModal';
 import MatchmakingModal from './MatchmakingModal';
 import Icon from '../ui/Icon';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 
 function useModal<T = void>() {
   const [open, setOpen] = useState(false);
@@ -154,6 +155,18 @@ export default function AdminPanel() {
   const profile = useModal<{wa: string; nama: string; candidate?: Record<string, any> | null}>();
   const editModal = useModal<any>();
   const matchmaking = useModal<{job: any; candidates: any[]}>();
+  /* Exit window (2026-09-28) — see `useOverlayPresence`.
+     `editModal`/`matchmaking` are fed the TARGET, because their original guard
+     required it (`{editModal.isOpen && editModal.target && …}`) and the render
+     reads the target's fields. Feeding them `isOpen` alone would render a modal
+     whose `job`/`candidate` is null. The other four render on `isOpen` only and
+     reach their fields through optional chaining, so they keep that condition. */
+  const pemberkasanP = useOverlayPresence(pemberkasan.isOpen);
+  const undanganP = useOverlayPresence(undangan.isOpen);
+  const aiCopilotP = useOverlayPresence(aiCopilot.isOpen);
+  const profileP = useOverlayPresence(profile.isOpen);
+  const editModalP = useOverlayPresence(editModal.isOpen && editModal.target ? editModal.target : null);
+  const matchmakingP = useOverlayPresence(matchmaking.isOpen && matchmaking.target ? matchmaking.target : null);
 
   /* Papan Tugas Tim moved out of this file on 2026-09-26 — it is now the
      `tugas` tab (`TabTugas.tsx`) with its state in `store/adminTasks.ts`. It
@@ -230,12 +243,12 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {pemberkasan.isOpen && <PemberkasanModal isOpen={pemberkasan.isOpen} onClose={pemberkasan.hide} waTarget={pemberkasan.target?.wa || ''} namaTarget={pemberkasan.target?.nama || ''} candidate={pemberkasan.target?.candidate || null} isAdmin />}
-      {undangan.isOpen && <UndanganKelasModal isOpen={undangan.isOpen} onClose={undangan.hide} />}
-      {aiCopilot.isOpen && <AdminAiCopilot candidateWa={aiCopilot.target?.wa} candidateId={aiCopilot.target?.id} onClose={aiCopilot.hide} />}
-      {profile.isOpen && <CandidateProfileModal wa={profile.target?.wa || ''} nama={profile.target?.nama || ''} candidate={profile.target?.candidate} isOpen={profile.isOpen} onClose={profile.hide} />}
-      {editModal.isOpen && editModal.target && <EditCandidateModal candidate={editModal.target} isOpen={editModal.isOpen} onClose={editModal.hide} />}
-      {matchmaking.isOpen && matchmaking.target && <MatchmakingModal job={matchmaking.target.job} candidates={matchmaking.target.candidates} isOpen={matchmaking.isOpen} onClose={matchmaking.hide} />}
+      {pemberkasanP.present && <PemberkasanModal isOpen={pemberkasan.isOpen} onClose={pemberkasan.hide} closing={pemberkasanP.closing} waTarget={pemberkasan.target?.wa || ''} namaTarget={pemberkasan.target?.nama || ''} candidate={pemberkasan.target?.candidate || null} isAdmin />}
+      {undanganP.present && <UndanganKelasModal isOpen={undangan.isOpen} onClose={undangan.hide} closing={undanganP.closing} />}
+      {aiCopilotP.present && <AdminAiCopilot candidateWa={aiCopilot.target?.wa} candidateId={aiCopilot.target?.id} onClose={aiCopilot.hide} closing={aiCopilotP.closing} />}
+      {profileP.present && <CandidateProfileModal wa={profile.target?.wa || ''} nama={profile.target?.nama || ''} candidate={profile.target?.candidate} isOpen={profile.isOpen} onClose={profile.hide} closing={profileP.closing} />}
+      {editModalP.present && editModalP.held && <EditCandidateModal candidate={editModalP.held} isOpen={editModal.isOpen} onClose={editModal.hide} closing={editModalP.closing} />}
+      {matchmakingP.present && matchmakingP.held && <MatchmakingModal job={matchmakingP.held.job} candidates={matchmakingP.held.candidates} isOpen={matchmaking.isOpen} onClose={matchmaking.hide} closing={matchmakingP.closing} />}
     </div>
   );
 }

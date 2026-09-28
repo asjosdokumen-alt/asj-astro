@@ -20,9 +20,11 @@ interface Props {
   phone: string;
   templates: WaTemplate[];
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
 }
 
-export default function WAPintarModal({ candidateName, candidateJob, phone, templates, onClose }: Props) {
+export default function WAPintarModal({ candidateName, candidateJob, phone, templates, onClose, closing = false }: Props) {
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -47,7 +49,7 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
     onClose();
   };
 
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>

@@ -34,6 +34,7 @@ import type { WaTemplate } from '../../types/api';
 import { t, langStore } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 
 export default function TabPelamar() {
   const _lang = useStore(langStore);
@@ -64,6 +65,10 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
   // old button was a bare wa.me link with no template/message support.
   const [waTemplates, setWaTemplates] = useState<WaTemplate[]>([]);
   const [waTarget, setWaTarget] = useState<{ nama: string; job: string; phone: string } | null>(null);
+  /* Exit window (2026-09-28) — see `useOverlayPresence`. `waTarget` is fed
+     directly: its fields are read in the render, and `onClose` nulls it. */
+  const waTargetP = useOverlayPresence(waTarget);
+  const rirekP = useOverlayPresence(showRirek);
   useEffect(() => {
     // Templates datang dari getAppData (parity legacy window.ALL_WA_TEMPLATES).
     api.secure('getAppData', ['admin']).then((d: any) => {
@@ -254,12 +259,12 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
       {/* Modals */}
       <InputManualModal />
       <LaporanBulananModal />
-      {waTarget && (
-        <WAPintarModal candidateName={waTarget.nama} candidateJob={waTarget.job} phone={waTarget.phone}
-          templates={waTemplates} onClose={() => setWaTarget(null)} />
+      {waTargetP.present && waTargetP.held && (
+        <WAPintarModal candidateName={waTargetP.held.nama} candidateJob={waTargetP.held.job} phone={waTargetP.held.phone}
+          templates={waTemplates} onClose={() => setWaTarget(null)} closing={waTargetP.closing} />
       )}
           {showCvTemplateSelector && <CvTemplateSelector waTarget={rirekWa} isAdmin={true} onClose={() => setShowCvTemplateSelector(false)} onOpenRirekisho={() => { setShowCvTemplateSelector(false); setShowRirek(true); }} />}
-            <RirekishoBuilder waTarget={rirekWa} isOpen={showRirek} onClose={()=>setShowRirek(false)} fotoFallback={fotoFallbackFor(rirekWa)} />
+            <RirekishoBuilder waTarget={rirekWa} isOpen={showRirek} onClose={()=>setShowRirek(false)} fotoFallback={fotoFallbackFor(rirekWa)} closing={rirekP.closing} />
 
       {/* Panel CV AI admin — komponen yang SAMA dengan dashboard kandidat
           (/ai-cv). `adminMode` melewati gate login; backend sudah mengizinkan

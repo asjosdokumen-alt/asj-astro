@@ -32,6 +32,8 @@ interface Props {
   jobCode: string;
   isOpen: boolean;
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
 }
 
 interface Kandidat {
@@ -43,7 +45,7 @@ interface Kandidat {
   status?: string;
 }
 
-export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
+export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = false }: Props) {
   const allCandidates = useStore(allKandidatList);
   const [showUndangPanel, setShowUndangPanel] = useState(false);
   const [linkGrup, setLinkGrup] = useState('');
@@ -55,7 +57,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
   // called BEFORE the `if (!isOpen) return null` below — hooks may not be
   // skipped, and `open: isOpen` already tells it the overlay is closed, which
   // is the path that strips role/aria-modal off a hidden container.
-  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen || closing, onClose, closing });
 
   // Legacy behaviour: pastikan memori kandidat penuh + segar setiap buka.
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, jobCode]);
 
-  if (!isOpen) return null;
+  if (!isOpen && !closing) return null;
 
   const cands = (allCandidates as any[]).filter(
     (c: any) => c && c.idLoker && String(c.idLoker).includes(jobCode),

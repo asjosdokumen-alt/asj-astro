@@ -32,6 +32,7 @@ import {
 } from "../../lib/berkasCatalog";
 import Icon from "../ui/Icon";
 import { useOverlay } from "../ui/useOverlay";
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import { showToast } from "../Toast";
 import DocumentPreviewModal from "../DocumentPreviewModal";
 
@@ -280,6 +281,9 @@ export default function PemberkasanModal({
   const [snapshotBerkas, setSnapshotBerkas] = useState<Record<string, string>>({});
   // B03: preview inline (parity legacy setStatusBerkas → bukaPreviewDokumen).
   const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
+  /* Exit window (2026-09-28) — see `useOverlayPresence`. This is the NESTED
+     overlay: Pusat Berkas opens Preview Dokumen on top of itself. */
+  const previewP = useOverlayPresence(preview);
 
   useEffect(() => {
     if (isOpen) {
@@ -632,11 +636,12 @@ export default function PemberkasanModal({
           </div>
         )}
       </div>
-      {preview && (
+      {previewP.present && previewP.held && (
         <DocumentPreviewModal
-          url={preview.url}
-          title={preview.title}
+          url={previewP.held.url}
+          title={previewP.held.title}
           onClose={() => setPreview(null)}
+          closing={previewP.closing}
         />
       )}
     </div>

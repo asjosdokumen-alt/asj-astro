@@ -32,6 +32,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import { api } from '../../lib/apiClient';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { showToast } from '../Toast';
@@ -58,6 +59,8 @@ export interface EditableJob {
 interface Props {
   job: EditableJob;
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
   onSave?: (data: EditableJob) => void;
 }
 
@@ -74,7 +77,7 @@ interface FormState {
   rincianBiaya: string;
 }
 
-export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
+export default function AdminJobEditModal({ job, onClose, onSave, closing = false }: Props) {
   const [form, setForm] = useState<FormState>({
     pekerjaan: job.pekerjaan || '',
     kategori: job.kategori || '',
@@ -95,6 +98,8 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
   const [pamfletFile, setPamfletFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [rbOpen, setRbOpen] = useState(false);
+  /* Exit window (2026-09-28) — see `useOverlayPresence`. */
+  const rbP = useOverlayPresence(rbOpen);
 
   useEffect(() => {
     let alive = true;
@@ -185,7 +190,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
     }
   };
 
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
 
   const rbSt = parseRincianState(form.rincianBiaya);
   if (form.totalBiaya.trim() && !rbSt.total.trim()) rbSt.total = form.totalBiaya.trim();
@@ -397,6 +402,7 @@ export default function AdminJobEditModal({ job, onClose, onSave }: Props) {
         initialRincian={form.rincianBiaya}
         onApply={onRincianApply}
         onClose={() => setRbOpen(false)}
+        closing={rbP.closing}
       />
     </div>
   );

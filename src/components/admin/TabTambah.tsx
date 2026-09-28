@@ -22,6 +22,7 @@ import { uploadToCloudinary } from '../../lib/cloudinary';
 import { api } from '../../lib/apiClient';
 import { authStore } from '../../store/authReactive';
 import Icon from '../ui/Icon';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import RincianBiayaModal, { parseRincianState, rincianSerialize, rincianSummary } from './RincianBiayaModal';
 
 interface DD {
@@ -58,6 +59,9 @@ export default function TabTambah() {
   const [templateFile, setTemplateFile] = useState<File | null>(null);
   const [pamfletFile, setPamfletFile] = useState<File | null>(null);
   const [rbOpen, setRbOpen] = useState(false);
+  /* Exit window (2026-09-28) — see `useOverlayPresence`. RincianBiayaModal is
+     rendered unconditionally and gates itself, so it only needs the flag. */
+  const rbP = useOverlayPresence(rbOpen);
 
   useEffect(() => {
     async function load() {
@@ -295,6 +299,7 @@ export default function TabTambah() {
         initialRincian={rincianBiaya}
         onApply={onRincianApply}
         onClose={() => setRbOpen(false)}
+        closing={rbP.closing}
       />
     </div>
   );

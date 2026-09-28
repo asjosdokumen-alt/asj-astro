@@ -32,6 +32,7 @@ import { langStore, t, useLang } from '../../store/i18n';
 import { shareDocTypeOf, shareExtraDocLabel } from '../../lib/shareDocs';
 import DocumentPreviewModal from '../DocumentPreviewModal';
 import Icon from '../ui/Icon';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 
 interface ShareCandidate {
   id_kandidat: string;
@@ -111,6 +112,8 @@ export default function ShareView() {
   const [filterJft, setFilterJft] = useState('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
+  /* Exit window (2026-09-28) — see `useOverlayPresence`. */
+  const previewP = useOverlayPresence(preview);
 
   useEffect(() => {
     let alive = true;
@@ -412,12 +415,13 @@ export default function ShareView() {
       )}
 
       {/* Preview Modal */}
-      {preview && (
+      {previewP.present && previewP.held && (
         <DocumentPreviewModal
-          url={preview.url}
-          title={preview.title}
+          url={previewP.held.url}
+          title={previewP.held.title}
           onClose={closePreview}
           previewOnly={false}
+          closing={previewP.closing}
         />
       )}
     </div>

@@ -13,6 +13,7 @@ import { t, langStore } from '../store/i18n';
 import { apiClient, type ApiError } from '../lib/apiClient';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
+import { useOverlayPresence } from './ui/useOverlayPresence';
 
 type ModalMode = "closed" | "login" | "daftar";
 type AdminStep = 0 | 1 | 2 | 3;
@@ -222,7 +223,13 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   // The mode branches are mutually exclusive, so only one marker is ever in
   // the DOM at a time.
   const isOpen = mode !== "closed" && !loggedIn;
-  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
+  /* Exit window (2026-09-28). This modal is mounted UNCONDITIONALLY — App.tsx
+     renders it with mode="closed" — so there is no parent boolean to hold it
+     mounted and the presence hook lives here. `open` stays true through the
+     exit window on purpose: the overlay is still a dialog until it is gone, so
+     role/aria-modal/Tab-trap must not be torn down mid-animation. */
+  const presence = useOverlayPresence(isOpen);
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen || presence.closing, onClose, closing: presence.closing });
 
   /* THE RENDER GUARD MUST SIT AFTER EVERY HOOK, NOT BEFORE THEM.
      It used to be `if (loggedIn || mode === "closed") return null;` at the top
@@ -237,7 +244,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
      REAL state instead of the old hardcoded `true`, so the hook's effects re-run
      on each open/close and re-write the role, the name and the initial focus.
      The rendered markup and every class are unchanged. */
-  if (!isOpen) return null;
+  if (!presence.present) return null;
 
   return (
     <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
