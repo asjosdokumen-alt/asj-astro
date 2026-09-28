@@ -388,8 +388,19 @@ export default function ApplyFullForm() {
         </div>
       </div>
 
-      {/* Container */}
-      <main class="max-w-[480px] mx-auto px-[15px] mt-[-40px] relative z-20">
+      {/* Container.
+          ⚠ THIS IS A div, NOT A main, AND THAT IS A BUG FIX (2026-09-28).
+          The shell (`src/pages/apply.astro`) already renders a `main` element
+          with id="main-content" around this island, so a second `main` here was
+          NESTED inside the first. Two `main` landmarks on one page is invalid,
+          and browsers do NOT collapse them: a screen-reader user gets two
+          "main" regions with no way to tell them apart. Measured with
+          `.tmp-aria-probe.mjs` — the shell's `main` reported
+          `nestedMainsInside=1` on /apply, /master, /share and /siswa-baru.
+          The class string is deliberately unchanged; only the landmark role is.
+          Angle brackets are avoided in this comment on purpose: this repo's
+          indexer reads tag-like tokens in comments as real component tags. */}
+      <div class="max-w-[480px] mx-auto px-[15px] mt-[-40px] relative z-20">
         <div class="bg-slate-900/88 backdrop-blur-xl border border-white/[.08] rounded-[28px] p-[25px] shadow-[0_25px_60px_rgba(0,0,0,.45)]">
 
           {/* Stepper */}
@@ -501,7 +512,7 @@ export default function ApplyFullForm() {
           </div>
 
         </div>
-      </main>
+      </div>
 
       {/* Sticky Nav — `from-pink-600`, NOT `from-pink-500` (measured 2026-09-27).
           The step CTA below is a gradient, so it falls BETWEEN §5c and §5d of

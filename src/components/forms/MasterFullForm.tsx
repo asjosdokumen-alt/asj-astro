@@ -633,7 +633,11 @@ export default function MasterFullForm() {
         )}
       </div>
 
-      <main class="max-w-[600px] mx-auto px-4 -mt-8 relative z-20">
+      {/* Container. A div, NOT a main — bug fix 2026-09-28. The shell
+          (`src/pages/master.astro`) already provides the one `main` landmark for
+          this page; a second one here was nested inside it, which is invalid and
+          gives a screen-reader user two indistinguishable "main" regions. */}
+      <div class="max-w-[600px] mx-auto px-4 -mt-8 relative z-20">
         <div class="bg-surface/95 border border-line rounded-3xl p-6 shadow-2xl">
           {/* Stepper */}
           <div class="flex justify-between items-center relative mb-8">
@@ -937,7 +941,7 @@ export default function MasterFullForm() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Nav Bar */}
       <div class="fixed bottom-0 left-0 w-full py-4 px-5 z-50 flex justify-between gap-4 bg-canvas/95 border-t border-line">

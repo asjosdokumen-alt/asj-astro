@@ -393,7 +393,12 @@ export default function SiswaBaruForm() {
       </div>
 
       {/* Form Panel */}
-      <main class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[60%] h-[calc(100vh-42px)] md:h-full u-scroll-area bg-slate-950 p-4 md:p-8`}>
+      {/* A div, NOT a main — bug fix 2026-09-28. `src/pages/siswa-baru.astro`
+          wraps this island in a `main` element (id="main-content") already, so a
+          second one here was nested inside the first: two `main` landmarks on a
+          single page, which is invalid and indistinguishable to a screen reader.
+          Measured on /siswa-baru with `.tmp-aria-probe.mjs`. */}
+      <div class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[60%] h-[calc(100vh-42px)] md:h-full u-scroll-area bg-slate-950 p-4 md:p-8`}>
         <div class="max-w-3xl mx-auto pb-20 w-full">
           <div class="flex justify-between items-center mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
             <div class="flex items-center gap-3">
@@ -479,7 +484,7 @@ export default function SiswaBaruForm() {
             ))}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

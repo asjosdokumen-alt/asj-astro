@@ -917,7 +917,12 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
       </div>
 
       {/* Form Panel */}
-      <main class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[65%] h-[calc(100vh-42px)] md:h-full u-scroll-area bg-slate-950 p-3 md:p-6`}>
+      {/* A div, NOT a main — bug fix 2026-09-28. `src/pages/ai-cv.astro` already
+          wraps this island in a `main` element (id="main-content"), so a second
+          one here was nested inside the first. Two `main` landmarks on one page
+          is invalid; browsers do not merge them and a screen reader cannot tell
+          them apart. The class string is unchanged — only the landmark role is. */}
+      <div class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[65%] h-[calc(100vh-42px)] md:h-full u-scroll-area bg-slate-950 p-3 md:p-6`}>
         <div class="max-w-5xl mx-auto pb-20 w-full">
           <div class="flex justify-between items-center mb-4 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
             <div class="flex items-center gap-3">
@@ -1322,7 +1327,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
             <UploadRow type="univ" label={t("cv.upload_ijazah_univ")} icon="fa-university" color="indigo" accept=".pdf,image/*" status={docStatus['univ']} onUpload={handleDocUpload} />
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

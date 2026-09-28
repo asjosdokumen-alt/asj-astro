@@ -220,8 +220,10 @@ export default function ShareView() {
         </div>
       </header>
 
-      {/* Main */}
-      <main class="max-w-7xl mx-auto px-4 md:px-8 py-10 relative z-10">
+      {/* Main. A div, NOT a main — bug fix 2026-09-28. The shell
+          (`src/pages/share.astro`) already provides the page's single `main`
+          landmark; this was a second one nested inside it. */}
+      <div class="max-w-7xl mx-auto px-4 md:px-8 py-10 relative z-10">
         {/* Loading */}
         {loading && (
           <div class="u-grid-auto u-grid-auto--panels gap-4 md:gap-6 animate-[fadeIn_0.8s_ease-out]">
@@ -380,7 +382,7 @@ export default function ShareView() {
             <p class="text-slate-400 text-sm">{t('share.empty_msg')}</p>
           </div>
         )}
-      </main>
+      </div>
 
       {/* Selection Bar */}
       {selected.size > 0 && (
