@@ -4,7 +4,7 @@
 *"baterai mutasi gate hover belum pernah lulus di lingkungan mana pun"*, item **P0**
 di `backlog-execution-2026-09-28.md`.
 
-**Gate:** `e2e:test-hover-contrast` (`e2e/test-hover-contrast.mjs`)
+**Gate:** `e2e:hover-contrast` (`e2e/test-hover-contrast.mjs`)
 **Baterai:** `e2e/test-hover-contrast.mutations.sh`
 **Build yang diukur:** disajikan `node server.cjs` di `127.0.0.1:4321`
 
