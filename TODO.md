@@ -42,7 +42,24 @@
       hanya melihat CSS — komponen yang menyetel warna hover dari state JS
       terukur pada warna DIAM. Panel admin juga belum tercakup (lubang yang sama
       yang dicatat `test-contrast.mjs`).
-      ⚠ **SISA:** **(b) urutan heading & ARIA di semua halaman belum disapu.**
+      ✅ **NAMA AKSESIBEL kini DISAPU juga (2026-09-28).** Gate `e2e:aria-names` ada
+      dan **hijau** (40 cek): 10 rute × 2 lebar, **sembilan tab admin** × 2 lebar,
+      dan dialog detail loker yang dibuka klik sungguhan. Ia membaca
+      **accessibility tree ASLI** lewat `Accessibility.getFullAXTree` — bukan grep
+      `aria-label`, yang mengembalikan ~60 kemunculan dan tidak satu pun memberi
+      tahu apakah kontrol yang DIRENDER bernama. **14 kontrol anonim ditemukan dan
+      diperbaiki.** Baterai mutasinya membuktikan gate-nya bisa merah:
+      **5 KILLED + 1 OK-GREEN, 0 SURVIVED**. Laporan bukti:
+      `deliverables/gstack/aria-audit-2026-09-28.md`.
+      ⚠ **Batas yang jujur, dan ini bukan daftar yang akan habis:** nama yang ADA
+      tapi SALAH ("Tutup" pada tombol hapus) tidak bisa dideteksi alat otomatis
+      mana pun; hanya keadaan **DIAM** yang diukur (toast galat, pesan validasi,
+      dan menu yang dibuka klik tidak tersapu); modal **tingkat-kedua** tidak
+      disapu; dan `CvTemplateSelector`/`InputManualModal` berada di luar semua
+      permukaan e2e sehingga dipatok tes komponennya sendiri.
+      **Urutan heading, `<main>` tunggal, dan target skip-link sudah ditegakkan
+      `e2e:headings` sejak §23/§24** — item (b) di catatan lama sudah tertutup,
+      dan catatan itu salah menyebutnya "belum disapu".
 - [ ] Loading skeleton di semua halaman yang memuat data
 
 ### Polish
