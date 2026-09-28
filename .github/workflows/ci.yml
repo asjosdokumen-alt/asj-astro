@@ -266,6 +266,9 @@ jobs:
           npm run e2e:drawer
           npm run e2e:labels
           npm run e2e:contrast
+          npm run e2e:theme-gradients
+          npm run e2e:hover-contrast
+          npm run e2e:scroll-motion
 
   # ══ Gate 1c · the gates CI *still* skipped ══════════════════════════════════
   # Gate 1b above closed the gap for the functions tree. This job closes the
