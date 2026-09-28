@@ -268,6 +268,7 @@ jobs:
           npm run e2e:contrast
           npm run e2e:theme-gradients
           npm run e2e:hover-contrast
+          npm run e2e:aria-names
           npm run e2e:scroll-motion
 
   # ══ Gate 1c · the gates CI *still* skipped ══════════════════════════════════

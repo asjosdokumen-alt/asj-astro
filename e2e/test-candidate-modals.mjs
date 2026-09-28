@@ -49,6 +49,7 @@
  *   BASE_URL=http://127.0.0.1:4321 node e2e/test-candidate-modals.mjs
  */
 import { chromium } from 'playwright';
+import { describeOffenders, sweepNames } from './lib/aria-names.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4321';
 
@@ -106,6 +107,12 @@ const ctx = await browser.newContext({
   },
 });
 const page = await ctx.newPage();
+
+/* The accessible-name sweep below reads the REAL accessibility tree, and the
+   tree is fetched over CDP. One session for the whole run: `getFullAXTree` is
+   called fresh per overlay, so nothing is cached between them. */
+const cdp = await ctx.newCDPSession(page);
+await cdp.send('Accessibility.enable');
 
 /* The dashboard is fed from `get-app-data`. `catatanInt: '[VIP]'` is what opens
    the interview gate (`isVipCatatan`); without it that trigger is dead and the
@@ -237,6 +244,25 @@ for (const [id, label] of TRIGGERS) {
     }
     if (!open.name) {
       throw new Error('opened with an EMPTY accessible name — aria-labelledby did not resolve to text');
+    }
+
+    /* The overlay is NAMED — but are the controls INSIDE it? A dialog can have a
+       perfect name and still ship a close button that announces nothing, because
+       that button holds only an `<svg>`. Measured 2026-09-28: `CvMiniModal` and
+       `ChangePasswordModal` each had exactly that, and no gate in the repo could
+       see it — `test-dialog.mjs` reads `/public` and `/`, which never open these
+       two, and `test-aria-names.mjs` sweeps resting pages, where they are not
+       mounted.
+
+       The rule and the AX read live in `e2e/lib/aria-names.mjs` so this file and
+       `test-aria-names.mjs` cannot drift into two versions of one rule. */
+    const { offenders } = await sweepNames(cdp);
+    const inside = offenders.filter((o) => o.overlay >= 0);
+    if (inside.length) {
+      throw new Error(
+        `${inside.length} control(s) inside this dialog have no usable accessible name:` +
+          describeOffenders(inside),
+      );
     }
 
     /* Close, then SAMPLE ACROSS THE WINDOW. A single probe cannot tell a
