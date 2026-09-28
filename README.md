@@ -11,8 +11,8 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions, data
 | Resource | URL |
 |----------|-----|
 | **GitHub** | https://github.com/asjosdokumen-alt/asj-astro |
-| **Live Site** | https://asjastro.netlify.app |
-| **Netlify project** | https://app.netlify.com/projects/asjastro |
+| **Live Site** | https://boisterous-taiyaki-c61202.netlify.app |
+| **Netlify project** | ⚠ moved 2026-09-28 to a different Netlify account — open it from the site's own dashboard, the old `app.netlify.com/projects/asjastro` link is the retired one |
 | **Supabase (data)** | https://supabase.com/dashboard/project/bimqyugdhiuxcqltjjnt |
 | **Supabase (aset publik)** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
 
@@ -67,7 +67,8 @@ cp .env.example .env      # lalu isi kredensialnya
 
 # Preview lokal DENGAN backend nyata (paling berguna)
 npm run serve             # = node server.cjs → http://localhost:4321
-                          # proxy /.netlify/functions/* → https://asjastro.netlify.app
+                          # proxy /.netlify/functions/* → the live site (see server.cjs:
+                          # it must be the site that is DEPLOYING, not merely one that answers)
 
 # Dev server untuk mengedit
 npm run dev               # astro dev, default port 4321

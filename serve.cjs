@@ -4,8 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const mimeTypes = {'.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.woff2':'font/woff2','.webp':'image/webp','.webmanifest':'application/manifest+json'};
 const dist = path.join(__dirname, 'dist');
-// See server.cjs for why this is the Astro site and not asjportal (legacy).
-const PROXY_TARGET = process.env.BACKEND_TARGET || 'https://asjastro.netlify.app';
+// See server.cjs for the rule: proxy to the site that is DEPLOYING, not merely
+// one that answers. The previous target kept returning 200 while being frozen
+// at a 2026-09-24 build after its account ran out of credit.
+const PROXY_TARGET = process.env.BACKEND_TARGET || 'https://boisterous-taiyaki-c61202.netlify.app';
 
 function serveFile(res, fp) {
   const ext = path.extname(fp);

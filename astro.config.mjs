@@ -16,11 +16,17 @@ export default defineConfig({
     server: {
       proxy: {
         "/.netlify/functions": {
-          // Must be the NEW Astro site, not the legacy one. Pointing this at
-          // asjportal.netlify.app (legacy) silently serves the OLD backend and
-          // the OLD frontend assets, which makes `astro dev` look like it is
-          // running stale code. Override with FUNCTIONS_PROXY_TARGET.
-          target: process.env.FUNCTIONS_PROXY_TARGET || "https://asjastro.netlify.app",
+          // Must be the site that is DEPLOYING, not merely one that answers.
+          // Pointing this at a retired host silently serves an OLD backend, which
+          // makes `astro dev` look like it is running stale code. It has happened
+          // twice: asjportal.netlify.app (legacy app) and, from 2026-09-28,
+          // asjastro.netlify.app — that one still returned HTTP 200 and a healthy
+          // /health while frozen at its 2026-09-24 build, because its account ran
+          // out of credit and every later deploy was skipped. A liveness check
+          // cannot see that; the deploy list can. Override with
+          // FUNCTIONS_PROXY_TARGET.
+          target:
+            process.env.FUNCTIONS_PROXY_TARGET || "https://boisterous-taiyaki-c61202.netlify.app",
           changeOrigin: true,
           secure: false,
         },

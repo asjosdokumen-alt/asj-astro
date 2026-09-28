@@ -239,10 +239,21 @@ npx serve dist
 | Resource | URL |
 |----------|-----|
 | **GitHub** | https://github.com/asjosdokumen-alt/asj-astro |
-| **Netlify** | https://asjastro.netlify.app |
+| **Netlify** | https://boisterous-taiyaki-c61202.netlify.app |
 | **Supabase** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
 
 > Diperbarui 2026-09-26: ketiga URL di atas sebelumnya menunjuk repo/situs/proyek
 > yang sudah tidak dipakai (`khoci280-arch`, `incredible-starship-054a78`,
 > `bimqyugdhiuxcqltjjnt`). Sumber kebenaran selalu `git remote -v` dan
 > `netlify status`, bukan dokumen ini.
+>
+> Diperbarui lagi 2026-09-28: **host Netlify berpindah** ke
+> `boisterous-taiyaki-c61202.netlify.app` karena akun pemilik `asjastro.netlify.app`
+> kehabisan kredit. **Host lama masih menjawab HTTP 200 dan `/health`-nya masih
+> `ok`** — jadi uji liveness tidak bisa membedakan keduanya; yang membedakan
+> adalah daftar deploy. Deploy terakhirnya yang berhasil **2026-09-24T10:41Z**
+> (commit `742e956`), dan semua sesudahnya di-skip
+> (`Skipped due to account credit usage exceeded`). Situs baru itu build dari
+> repo & branch yang sama. **Tiga target proxy** yang menunjuk host lama
+> (`astro.config.mjs`, `server.cjs`, `serve.cjs`) ikut diperbarui — kalau tidak,
+> `npm run dev` dan `npm run serve` akan diam-diam melayani backend yang beku.

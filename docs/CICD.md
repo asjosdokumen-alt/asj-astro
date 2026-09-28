@@ -354,7 +354,7 @@ Apply the same checks to `develop`, minus the reviewer requirement.
 ```bash
 npm run ci:quality                    # ratchet + boundary + full test suite
 npm run verify:md                     # markdown table structure (docs/**)
-npm run cold:start -- --url https://asjastro.netlify.app   # cold-start latency, report-only
+npm run cold:start -- --url https://boisterous-taiyaki-c61202.netlify.app  # cold-start latency, report-only
 npm run test:frontend                 # jsdom suite
 npm run test:backend -- --shard=1/3   # one shard, as CI runs it
 npm run verify:env -- --profile build # env gate

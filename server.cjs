@@ -6,16 +6,27 @@ const net = require('net');
 
 const PREFERRED_PORT = 4321;
 const DIST = path.join(__dirname, 'dist');
-// Backend target for the / .netlify/functions/ proxy.
+// Backend target for the /.netlify/functions/ proxy.
 //
-// This is the ASTRO site (asjastro), not asjportal. `asjportal.netlify.app`
-// runs the LEGACY app (/assets/app-*.js, /vendor/xlsx) and 404s on /public/,
-// /candidate/, /apply/, /ai-cv/ and /master/ — so proxying there silently
-// compared this build against a different application.
+// THE RULE IS "THE SITE THAT IS DEPLOYING", NOT "A SITE THAT ANSWERS". There
+// have now been three hosts and the trap has bitten twice, both times silently:
 //
-// Override with BACKEND_TARGET when pointing at a preview deploy or a local
-// `netlify dev` (e.g. BACKEND_TARGET=http://127.0.0.1:8888 node server.cjs).
-const TARGET = process.env.BACKEND_TARGET || 'https://asjastro.netlify.app';
+//   1. `asjportal.netlify.app` — the LEGACY app (/assets/app-*.js,
+//      /vendor/xlsx). It 404s on /public/, /candidate/, /apply/, /ai-cv/ and
+//      /master/, so proxying there compared this build against a different
+//      application.
+//   2. `asjastro.netlify.app` — correct until 2026-09-28, when its account ran
+//      out of credit. MEASURED that day: it still answers HTTP 200 and its
+//      /.netlify/functions/health still returns {"status":"ok"}, but its last
+//      successful deploy was 2026-09-24T10:41Z (commit 742e956) and every
+//      deploy after it was skipped with "Skipped due to account credit usage
+//      exceeded". So it is FROZEN — healthy-looking, permanently old backend.
+//      A liveness check cannot tell you this; only the deploy list can.
+//
+// The replacement builds from the same repo and branch. Override with
+// BACKEND_TARGET when pointing at a preview deploy or a local `netlify dev`
+// (e.g. BACKEND_TARGET=http://127.0.0.1:8888 node server.cjs).
+const TARGET = process.env.BACKEND_TARGET || 'https://boisterous-taiyaki-c61202.netlify.app';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
