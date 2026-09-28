@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASJ — Dashboard Kandidat penuh + penataan animasi 6 modal</title>
+<!--
+  MOCKUP KERJA. Satu berkas, tanpa CDN, tanpa dependensi.
+
+  Yang ini menjawab permintaan: SATU dashboard utuh (full page) dalam dua model
+  (desktop + HP), dan PENATAAN ANIMASI untuk SEMUA modal di halaman itu —
+  bukan galeri modal lepas.
+
+  Enam modal di /candidate (dibaca dari CandidateDash.tsx:783-789):
+    1. ChangePasswordModal      -> data-kind="auto"    dialog / sheet di HP
+    2. CvMiniModal              -> data-kind="auto"
+    3. InterviewSimulatorModal  -> data-kind="full"    layar penuh
+    4. EsignNaiteiModal         -> data-kind="auto"
+    5. PemberkasanModal         -> data-kind="auto"    (membuka modal ke-7 di atasnya)
+    6. RirekishoBuilder         -> data-kind="paper"   kertas A4
+  Plus DocumentPreviewModal yang dibuka DARI DALAM PemberkasanModal
+  (PemberkasanModal.tsx:633) — satu-satunya tumpukan modal di halaman ini.
+
+  ATURAN GERAK yang dipatuhi (DESIGN.md §3.7): hanya `opacity` + `transform`
+  yang dianimasikan; kurva dari theme.css; `prefers-reduced-motion` menolkan
+  semuanya. Tidak ada `will-change`.
+-->
+<style>
+:root, [data-theme="dark"] {
+  --color-canvas:#020617; --color-surface:#0f172a; --color-surface-raised:#1e293b;
+  --color-surface-sunken:#000000;
+  --color-fg:#f1f5f9; --color-fg-muted:#94a3b8; --color-fg-subtle:#8595aa;
+  --color-line:#334155; --color-line-strong:#475569;
+  --color-accent:#f9a8d4; --color-accent-emerald:#34d399; --color-accent-sky:#38bdf8;
+  --color-accent-amber:#fbbf24; --color-accent-violet:#a78bfa; --color-accent-red:#f87171;
+  --color-brand:#10b981;
+  --ring:rgba(56,189,248,.55);
+  --shadow:0 24px 60px -18px rgba(0,0,0,.85);
+  --tint:rgba(241,245,249,.04);
+  --scrim:rgba(0,0,0,.6);
+}
+[data-theme="light"] {
+  --color-canvas:#f6f6f9; --color-surface:#ffffff; --color-surface-raised:#ffffff;
+  --color-surface-sunken:#f1f2f6;
+  --color-fg:#16121c; --color-fg-muted:#514a5c; --color-fg-subtle:#6d6678;
+  --color-line:#e6e3ea; --color-line-strong:#cfcad6;
+  --color-accent:#be185d; --color-accent-emerald:#047857; --color-accent-sky:#0369a1;
+  --color-accent-amber:#b45309; --color-accent-violet:#6d28d9; --color-accent-red:#b91c1c;
+  --color-brand:#059669;
+  --ring:rgba(3,105,161,.45);
+  --shadow:0 20px 46px -22px rgba(90,50,80,.30);
+  --tint:rgba(22,18,28,.035);
+  --scrim:rgba(28,20,30,.45);
+}
+:root {
+  --radius-control:.75rem; --radius-card:1rem; --radius-panel:1.5rem; --radius-band:2rem; --radius-pill:9999px;
+  /* kurva ASLI dari theme.css:106-108 */
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --ease-inout:cubic-bezier(.4,0,.2,1);
+  --z-modal:200; --z-popover:300;
+  /* ── SATU TOMBOL UNTUK SELURUH SISTEM GERAK ──
+     `--speed` memperlambat semua durasi sekaligus supaya animasinya bisa
+     DIPERIKSA. Durasi dasar: masuk 200 ms, keluar 140 ms (keluar lebih cepat
+     dari masuk — itu disengaja, lihat tabel di halaman). */
+  --speed:1;
+  --t-in:calc(200ms * var(--speed));
+  --t-out:calc(140ms * var(--speed));
+  --stagger:calc(40ms * var(--speed));
+}
+* { box-sizing:border-box; }
+html { font-family:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif; }
+body { margin:0; background:var(--color-canvas); color:var(--color-fg); font-size:15px; line-height:1.55;
+  transition:background-color 180ms var(--ease-out); }
+h1,h2,h3,h4 { margin:0; line-height:1.25; }
+button { font:inherit; color:inherit; }
+:focus-visible { outline:2px solid var(--ring); outline-offset:2px; border-radius:6px; }
+/* `hidden` di PALING AKHIR — aturan penulis menang atas UA stylesheet, jadi
+   `.err{display:flex}` di atas akan mengalahkannya kalau aturan ini di atas. */
+[hidden] { display:none; }
+
+.wrap { max-width:1600px; margin:0 auto; padding:0 20px 90px; }
+
+/* ── TOPBAR ───────────────────────────────────────────────────────── */
+.topbar { position:sticky; top:0; z-index:60; border-bottom:1px solid var(--color-line);
+  background:color-mix(in srgb, var(--color-canvas) 90%, transparent); backdrop-filter:blur(12px); }
+.topbar-in { max-width:1600px; margin:0 auto; padding:10px 20px; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+.brand { display:flex; align-items:center; gap:10px; margin-right:auto; }
+.brand .dot { width:34px;height:34px;border-radius:var(--radius-control);flex:0 0 auto;display:grid;place-items:center;
+  background:linear-gradient(140deg,var(--color-brand),var(--color-accent-sky)); font-weight:900;color:#04211a;font-size:12px; }
+.brand b { font-size:13.5px; display:block; }
+.brand i { font-style:normal; font-size:10.5px; color:var(--color-fg-subtle); text-transform:uppercase; letter-spacing:.14em; }
+.tbtn { min-height:44px; padding:8px 13px; cursor:pointer; border-radius:var(--radius-control);
+  border:1px solid var(--color-line-strong); background:var(--color-surface-raised);
+  font-size:12px; font-weight:700; display:inline-flex; align-items:center; gap:6px; }
+.tbtn:hover { border-color:var(--color-accent-sky); }
+.tbtn[aria-pressed="true"] { border-color:var(--color-accent-sky); color:var(--color-accent-sky);
+  background:color-mix(in srgb, var(--color-accent-sky) 12%, var(--color-surface-raised)); }
+
+.eyebrow { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.16em; color:var(--color-accent-sky); margin-bottom:6px; }
+section { margin-top:40px; }
+h2 { font-size:clamp(20px,2.6vw,27px); font-weight:900; letter-spacing:-.01em; }
+.lede { color:var(--color-fg-muted); max-width:80ch; margin:10px 0 20px; }
+.lede b { color:var(--color-fg); }
+.card { background:var(--color-surface-raised); border:1px solid var(--color-line); border-radius:var(--radius-panel); padding:18px; }
+.muted { color:var(--color-fg-muted); } .small { font-size:12.5px; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th,td { text-align:left; padding:9px 11px; border-bottom:1px solid var(--color-line); vertical-align:top; }
+th { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--color-fg-subtle); }
+tbody tr:last-child td { border-bottom:0; }
+code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px;
+  background:var(--tint); padding:2px 6px; border-radius:6px; }
+.scroller { overflow-x:auto; }
+.good { color:var(--color-accent-emerald); } .bad { color:var(--color-accent-red); } .warn { color:var(--color-accent-amber); }
+.note { margin-top:18px; padding:13px 16px; border-left:3px solid var(--color-accent-sky);
+  background:color-mix(in srgb,var(--color-accent-sky) 8%,transparent);
+  border-radius:0 var(--radius-card) var(--radius-card) 0; font-size:12.5px; color:var(--color-fg-muted); }
+.note b { color:var(--color-fg); }
+
+/* ── PENATAAN: strip purwarupa animasi ───────────────────────────── */
+.arch { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr)); }
+.arch > button { text-align:left; cursor:pointer; border:1px solid var(--color-line);
+  background:var(--color-surface-raised); border-radius:var(--radius-card); padding:15px;
+  display:flex; flex-direction:column; gap:7px; min-height:130px; }
+.arch > button:hover { border-color:var(--color-accent-sky); }
+.arch b { font-size:14px; }
+.arch p { margin:0; font-size:12px; color:var(--color-fg-muted); flex:1; }
+.arch .meta { font-family:ui-monospace,monospace; font-size:11px; color:var(--color-fg-subtle); }
+
+/* ── FRAME PERANGKAT ─────────────────────────────────────────────── */
+.frames { display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap; justify-content:center; }
+.frames.only-desktop .frame-mobile, .frames.only-mobile .frame-desktop { display:none; }
+.frame { border:1px solid var(--color-line-strong); border-radius:var(--radius-band);
+  background:var(--color-surface); padding:10px; box-shadow:var(--shadow); }
+.frame-desktop { flex:1 1 920px; min-width:920px; max-width:1200px; }
+.frame-mobile { flex:0 0 auto; width:412px; max-width:100%; }
+.chrome { display:flex; align-items:center; gap:8px; padding:2px 6px 10px; font-size:11px;
+  font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--color-fg-subtle); }
+.chrome .lamp { width:9px;height:9px;border-radius:var(--radius-pill);background:var(--color-line-strong); }
+/* `container-type: inline-size` di PEMBUNG (bukan di area scroll) supaya
+   overlay — yang bersaudara dengan area scroll, bukan keturunannya — juga
+   bisa di-query. Overlay WAJIB di luar area scroll, kalau tidak ia ikut
+   tergulir bersama konten. */
+.screen-wrap { container-type:inline-size; container-name:screen; position:relative; overflow:hidden;
+  background:var(--color-canvas); border:1px solid var(--color-line); border-radius:var(--radius-card); }
+.frame-desktop .screen-wrap { height:680px; }
+.frame-mobile .screen-wrap { height:720px; }
+.screen { height:100%; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+
+/* ── KONTEN DASHBOARD ────────────────────────────────────────────── */
+.dash { padding:12px; display:flex; flex-direction:column; gap:12px; }
+.dcard { background:var(--color-surface-raised); border:1px solid var(--color-line);
+  border-radius:var(--radius-card); padding:14px; min-width:0; }
+.dcard > h3 { font-size:12px; text-transform:uppercase; letter-spacing:.09em; color:var(--color-accent-sky);
+  margin-bottom:11px; display:flex; align-items:center; gap:7px; }
+.dgrid { display:grid; gap:12px; grid-template-columns:1fr; }
+
+/* dossier */
+.dos { display:flex; gap:13px; align-items:flex-start; }
+.dos .av { width:60px;height:74px;border-radius:var(--radius-control);flex:0 0 auto;display:grid;place-items:center;
+  background:linear-gradient(140deg,var(--color-brand),var(--color-accent-sky)); color:#04211a; font-weight:900; font-size:18px; }
+.dos b { font-size:17px; display:block; letter-spacing:-.01em; }
+.dos .ids { display:flex; flex-wrap:wrap; gap:5px; margin-top:7px; }
+.tag { font-size:10.5px; font-weight:800; padding:3px 8px; border-radius:var(--radius-pill);
+  border:1px solid var(--color-line-strong); color:var(--color-fg-muted); }
+.tag.ok { color:var(--color-accent-emerald); border-color:color-mix(in srgb,var(--color-accent-emerald) 55%,transparent); }
+.tag.warn { color:var(--color-accent-amber); border-color:color-mix(in srgb,var(--color-accent-amber) 55%,transparent); }
+.kv { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:12.5px; margin-top:10px; }
+.kv dt { color:var(--color-fg-subtle); } .kv dd { margin:0; font-weight:600; }
+
+/* kartu siswa */
+.vip { border-radius:var(--radius-card); padding:14px; position:relative; overflow:hidden;
+  background:linear-gradient(135deg,#0f172a,#1e293b); border:1px solid var(--color-line-strong); color:#f1f5f9; }
+.vip .row { display:flex; justify-content:space-between; align-items:center; }
+.vip .qr { width:64px;height:64px;background:#fff;border-radius:9px;display:grid;place-items:center;font-size:9px;color:#111; }
+.vip h4 { font-size:12px; letter-spacing:.16em; font-weight:900; }
+.vip .cls { font-size:10.5px; color:#fbbf24; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+.vip .nm { font-size:14px; font-weight:900; margin-top:10px; }
+.vip .id { font-family:ui-monospace,monospace; font-size:12px; color:#7dd3fc; }
+
+/* progres */
+.bar { height:7px; border-radius:var(--radius-pill); background:var(--color-line); overflow:hidden; }
+.bar > i { display:block; height:100%; border-radius:var(--radius-pill);
+  background:linear-gradient(90deg,var(--color-brand),var(--color-accent-sky)); }
+.ring { position:relative; display:inline-grid; place-items:center; width:var(--sz,54px); height:var(--sz,54px); flex:0 0 auto; }
+.ring svg { transform:rotate(-90deg); width:100%; height:100%; }
+.ring circle { fill:none; stroke-width:5; stroke-linecap:round; }
+.ring .tr { stroke:var(--color-line); } .ring .vl { stroke:var(--color-accent-emerald); }
+.ring b { position:absolute; font-size:11.5px; font-weight:900; }
+.prow { display:flex; justify-content:space-between; align-items:center; font-size:12.5px; font-weight:700; margin-bottom:6px; }
+
+/* pipeline */
+.steps { display:flex; flex-wrap:wrap; gap:6px 12px; margin-top:9px; }
+.steps span { font-size:10.5px; font-weight:700; color:var(--color-fg-subtle); display:flex; align-items:center; gap:4px; }
+.steps span.done { color:var(--color-accent-emerald); }
+.steps span.now { color:var(--color-accent-amber); }
+
+/* grid aksi */
+.acts { display:grid; gap:9px; grid-template-columns:1fr 1fr; }
+.act { min-height:46px; padding:9px 12px; cursor:pointer; border-radius:var(--radius-pill);
+  border:1px solid transparent; font-size:12.5px; font-weight:800; color:#fff;
+  display:inline-flex; align-items:center; justify-content:center; gap:6px; text-align:center;
+  transition:transform var(--t-in) var(--ease-out); }
+.act:hover { transform:translateY(-2px); }
+.act:active { transform:translateY(0); }
+.a-sky{background:#0284c7} .a-violet{background:#7c3aed} .a-rose{background:#e11d48}
+.a-amber{background:#d97706} .a-slate{background:#334155} .a-teal{background:#0d9488}
+.a-light{background:#e2e8f0;color:#0f172a}
+[data-theme="light"] .a-light{background:#1e293b;color:#f1f5f9}
+
+/* berkas */
+.frow { display:flex; align-items:center; gap:11px; padding:9px 0; border-bottom:1px solid var(--color-line); }
+.frow:last-child { border-bottom:0; }
+.frow .nm { flex:1; min-width:0; font-size:12.5px; }
+.frow .nm span { display:block; font-size:11px; color:var(--color-fg-subtle); }
+.pill { font-size:10px; font-weight:900; text-transform:uppercase; padding:3px 8px;
+  border-radius:var(--radius-pill); border:1px solid var(--color-line-strong); color:var(--color-fg-muted); white-space:nowrap; }
+.pill.ok { color:var(--color-accent-emerald); border-color:color-mix(in srgb,var(--color-accent-emerald) 55%,transparent); }
+.pill.no { color:var(--color-accent-amber); border-color:color-mix(in srgb,var(--color-accent-amber) 55%,transparent); }
+
+/* ── SISTEM ANIMASI MODAL ────────────────────────────────────────
+   Semua transisi HANYA `opacity` + `transform` (DESIGN.md §3.7). */
+.ov { position:absolute; inset:0; z-index:var(--z-modal); display:flex;
+  align-items:center; justify-content:center; padding:16px;
+  pointer-events:none; visibility:hidden;
+  /* visibility ditunda sampai animasi KELUAR selesai — kalau tidak, panel
+     hilang seketika dan animasi keluarnya tidak pernah terlihat. */
+  transition:visibility 0s linear calc(var(--t-out) + 60ms); }
+.ov.is-open { pointer-events:auto; visibility:visible; transition:visibility 0s; }
+.scrim { position:absolute; inset:0; background:var(--scrim);
+  backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+  opacity:0; transition:opacity var(--t-out) var(--ease-out); }
+.ov.is-open > .scrim { opacity:1; transition:opacity var(--t-in) var(--ease-out); }
+
+.panel { position:relative; display:flex; flex-direction:column; width:100%; max-width:28rem;
+  max-height:min(90%,860px); overflow:hidden;
+  background:var(--color-surface-raised); border:1px solid var(--color-line-strong);
+  border-radius:var(--radius-panel); box-shadow:var(--shadow);
+  /* `--closed` = keadaan SEBELUM masuk. Satu variabel, di-override per
+     archetype, jadi tidak ada perang spesifisitas dengan `.is-open`. */
+  --closed:translateY(12px) scale(.97);
+  transform:var(--closed); opacity:0;
+  transition:opacity var(--t-out) var(--ease-out), transform var(--t-out) var(--ease-out); }
+.ov.is-open > .panel { transform:none; opacity:1;
+  transition:opacity var(--t-in) var(--ease-out), transform var(--t-in) var(--ease-out); }
+/* archetype: bentuk keadaan-tertutup */
+.ov[data-kind="sheet"] .panel { --closed:translateY(100%); }
+.ov[data-kind="paper"] .panel { --closed:scale(.96); max-width:210mm; background:#fff; color:#111; }
+.ov[data-kind="full"]  .panel { --closed:translateY(26px); max-width:none; width:100%; height:100%;
+  max-height:none; border-radius:0; }
+/* tumpukan: modal di bawah MUNDUR, bukan menghilang. Tidak menumpuk scrim. */
+.ov.is-behind > .panel { transform:scale(.95) translateY(-10px); opacity:.5; }
+.ov.is-behind > .scrim { opacity:0; }
+
+/* stagger masuk: header -> body -> footer. KELUAR tanpa stagger. */
+.p-head, .p-body, .p-foot { opacity:0; transform:translateY(6px);
+  transition:opacity var(--t-out) var(--ease-out), transform var(--t-out) var(--ease-out); }
+.ov.is-open .p-head { opacity:1; transform:none; transition-delay:calc(20ms * var(--speed)); }
+.ov.is-open .p-body { opacity:1; transform:none; transition-delay:calc(60ms * var(--speed)); }
+.ov.is-open .p-foot { opacity:1; transform:none; transition-delay:calc(100ms * var(--speed)); }
+
+.p-head { flex:0 0 auto; display:flex; align-items:flex-start; gap:11px; padding:14px 14px 12px;
+  border-bottom:1px solid var(--color-line); background:var(--color-surface-raised); }
+.p-head .hic { width:38px;height:38px;flex:0 0 auto;border-radius:var(--radius-control);display:grid;place-items:center;
+  font-size:17px; background:color-mix(in srgb,var(--tone,var(--color-accent-sky)) 18%,transparent);
+  border:1px solid color-mix(in srgb,var(--tone,var(--color-accent-sky)) 45%,transparent); }
+.p-head h3 { font-size:15.5px; font-weight:900; }
+.p-head .sub { font-size:11.5px; color:var(--color-fg-muted); margin-top:2px; }
+.p-close { flex:0 0 auto; width:44px;height:44px;margin:-3px -3px 0 0; display:grid;place-items:center;
+  cursor:pointer; border:1px solid transparent; border-radius:var(--radius-control);
+  background:transparent; font-size:19px; line-height:1; color:var(--color-fg-muted); }
+.p-close:hover { background:color-mix(in srgb,var(--color-fg) 9%,transparent); color:var(--color-fg); }
+.p-body { flex:1 1 auto; min-height:0; overflow-y:auto; padding:14px; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.p-foot { flex:0 0 auto; padding:11px 14px 14px; border-top:1px solid var(--color-line);
+  background:var(--color-surface-raised); display:flex; gap:9px; align-items:center; }
+.p-foot .btn { flex:1; }
+.drag { display:none; width:44px;height:5px;border-radius:var(--radius-pill);
+  background:var(--color-line-strong); margin:8px auto 0; }
+
+.btn { min-height:44px; padding:10px 15px; cursor:pointer; font-weight:800; font-size:13.5px;
+  border-radius:var(--radius-control); border:1px solid var(--color-line-strong);
+  background:var(--color-surface-sunken); display:inline-flex; align-items:center; justify-content:center; gap:7px; }
+.btn-p { background:var(--color-brand); border-color:transparent; color:#04211a; }
+.btn-g { background:transparent; }
+.btn-sm { min-height:38px; padding:6px 12px; font-size:12px; }
+.f { display:flex; flex-direction:column; gap:5px; margin-bottom:11px; min-width:0; }
+.f > span { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--color-fg-muted); }
+.inp { width:100%; min-height:44px; padding:10px 12px; font:inherit; font-size:14px;
+  background:var(--color-surface-sunken); color:var(--color-fg);
+  border:1px solid var(--color-line-strong); border-radius:var(--radius-control); outline:none; }
+.inp:focus { border-color:var(--color-accent-sky); box-shadow:0 0 0 3px var(--ring); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+.err { display:flex; gap:5px; font-size:11.5px; font-weight:700; color:var(--color-accent-red); font-style:normal; }
+.msg { max-width:86%; padding:10px 13px; border-radius:var(--radius-card); font-size:13px; }
+.msg.ai { align-self:flex-start; background:color-mix(in srgb,var(--color-accent-violet) 16%,transparent);
+  border:1px solid color-mix(in srgb,var(--color-accent-violet) 35%,transparent); }
+.msg.me { align-self:flex-end; background:var(--color-accent-violet); color:#12061f; font-weight:600; }
+.chat { display:flex; flex-direction:column; gap:10px; }
+
+/* ── MOBILE (container query): dialog -> bottom sheet ────────────── */
+@container screen (max-width:640px) {
+  .ov[data-kind="auto"] { align-items:flex-end; padding:0; }
+  .ov[data-kind="auto"] .panel { --closed:translateY(100%); max-width:100%;
+    border-radius:var(--radius-panel) var(--radius-panel) 0 0; max-height:92%; }
+  .ov[data-kind="auto"] .drag { display:block; }
+  .ov[data-kind="auto"] .p-head { padding-top:8px; }
+  .acts { grid-template-columns:1fr; }
+}
+/* ── DESKTOP (container query): dashboard jadi grid bento ────────── */
+@container screen (min-width:880px) {
+  .dash { padding:18px; gap:16px; }
+  .dgrid { grid-template-columns:repeat(12,1fr); gap:16px; }
+  .c3 { grid-column:span 4; } .c4 { grid-column:span 7; } .c5 { grid-column:span 5; }
+  .c6 { grid-column:span 6; } .c12 { grid-column:span 12; }
+  .acts { grid-template-columns:repeat(4,1fr); }
+}
+/* ── reduced motion: netralkan SEMUA ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; transition-delay:0ms !important; }
+}
+/* `hidden` PALING AKHIR */
+[hidden] { display:none; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <div class="dot">ASJ</div>
+      <div><b>Dashboard Kandidat — full page + penataan animasi</b><i>6 modal · 2 model</i></div>
+    </div>
+    <button class="tbtn" id="dev-both" aria-pressed="true">Desktop + HP</button>
+    <button class="tbtn" id="dev-desk" aria-pressed="false">Desktop saja</button>
+    <button class="tbtn" id="dev-mob" aria-pressed="false">HP saja</button>
+    <button class="tbtn" id="btn-slow" aria-pressed="false">Gerak 0,3× (periksa)</button>
+    <button class="tbtn" id="btn-replay">Putar ulang animasi</button>
+    <button class="tbtn" id="btn-theme">Tema terang</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section>
+    <p class="eyebrow">Klarifikasi · 2026-09-28</p>
+    <h1 style="font-size:clamp(23px,3.4vw,34px);font-weight:900;letter-spacing:-.02em">
+      Satu dashboard utuh, dan <span style="color:var(--color-accent-sky)">penataan animasi keenam modalnya</span>.
+    </h1>
+    <p class="lede">
+      Halaman ini memuat <b>seluruh dashboard kandidat</b> dalam dua model — desktop dan HP — dan
+      <b>semua tombol di dalamnya benar-benar membuka modalnya</b>. Yang jadi inti bukan bentuk
+      modalnya satu per satu, tapi <b>sistem gerak bersama</b>: kapan sesuatu masuk, kapan keluar,
+      berapa lama, dan apa yang terjadi saat dua modal bertumpuk.
+    </p>
+    <div class="card scroller">
+      <table>
+        <thead><tr><th>Enam modal di <code>/candidate</code></th><th>Sumber</th><th>Archetype gerak</th></tr></thead>
+        <tbody>
+          <tr><td>Ganti Password</td><td><code>CandidateDash.tsx:783</code></td><td><span class="good">auto</span> — dialog tengah; di HP jadi sheet</td></tr>
+          <tr><td>Profil (dulu "Update CV Mini")</td><td><code>:784</code></td><td><span class="good">auto</span></td></tr>
+          <tr><td>Preview Desain CV</td><td><code>:785</code> <code>RirekishoBuilder</code></td><td><span class="warn">paper</span> — kertas A4, skala dari 96 %</td></tr>
+          <tr><td>E-Sign Naitei</td><td><code>:786</code></td><td><span class="good">auto</span></td></tr>
+          <tr><td>Pusat Berkas</td><td><code>:787</code></td><td><span class="good">auto</span> — <b>membuka modal ke-7 di atasnya</b></td></tr>
+          <tr><td>Simulasi Interview</td><td><code>:788</code></td><td><span class="warn">full</span> — layar penuh, geser dari bawah</td></tr>
+          <tr><td><em>Preview Dokumen</em> (bersarang)</td><td><code>PemberkasanModal.tsx:633</code></td><td><span class="bad">stack</span> — modal di bawah MUNDUR</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Penataan animasi · inti</p>
+    <h2>Empat archetype, satu sistem</h2>
+    <p class="lede">
+      Klik salah satu untuk melihat geraknya. Nyalakan <b>Gerak 0,3×</b> supaya bisa diperiksa
+      pelan, lalu <b>Putar ulang animasi</b> untuk mengulang modal terakhir tanpa menutupnya sendiri.
+      Semua hanya menganimasikan <code>opacity</code> + <code>transform</code> — aturan
+      <code>DESIGN.md §3.7</code>.
+    </p>
+    <div class="arch">
+      <button data-demo="profil"><b>1 · Dialog tengah</b><p>Masuk dari 12 px di bawah + skala 97 %. Dipakai Ganti Password, Profil, E-Sign, Pusat Berkas.</p><span class="meta">masuk 200 ms · keluar 140 ms</span></button>
+      <button data-demo="interview"><b>2 · Layar penuh</b><p>Naik 26 px. Dipakai Simulasi Interview, yang butuh seluruh layar untuk percakapan.</p><span class="meta">masuk 200 ms · keluar 140 ms</span></button>
+      <button data-demo="rirekisho"><b>3 · Kertas A4</b><p>Tumbuh dari skala 96 %. Dipakai Preview Desain CV — kertas putih di atas kanvas gelap.</p><span class="meta">masuk 200 ms · keluar 140 ms</span></button>
+      <button data-demo="berkas"><b>4 · Bersarang</b><p>Pusat Berkas membuka Preview Dokumen. Modal di bawah <b>mundur</b>, tidak menghilang.</p><span class="meta">+ modal bawah: skala 95 %, opacity 50 %</span></button>
+    </div>
+
+    <div class="card scroller" style="margin-top:16px">
+      <table>
+        <thead><tr><th>Yang bergerak</th><th>Masuk</th><th>Keluar</th><th>Kurva</th><th>Kenapa</th></tr></thead>
+        <tbody>
+          <tr><td>Scrim</td><td><b>200 ms</b> opacity 0→1</td><td><b>140 ms</b></td><td><code>--ease-out-expo</code></td><td>Satu nilai <code>rgba(0,0,0,.6)</code> untuk keenam modal (sekarang 70/80/90)</td></tr>
+          <tr><td>Panel dialog</td><td>200 ms · <code>translateY(12px) scale(.97)</code> → 0</td><td>140 ms</td><td><code>--ease-out-expo</code></td><td>Naik sedikit = "datang dari bawah", bukan "muncul begitu saja"</td></tr>
+          <tr><td>Panel sheet (HP)</td><td>200 ms · <code>translateY(100%)</code> → 0</td><td>140 ms</td><td><code>--ease-out-expo</code></td><td>Pola native HP; keyboard tidak menutupi field</td></tr>
+          <tr><td>Panel layar penuh</td><td>200 ms · <code>translateY(26px)</code> → 0</td><td>140 ms</td><td><code>--ease-out-expo</code></td><td>Jarak lebih jauh karena bidangnya lebih besar</td></tr>
+          <tr><td>Panel kertas A4</td><td>200 ms · <code>scale(.96)</code> → 1</td><td>140 ms</td><td><code>--ease-out-expo</code></td><td>Skala, bukan geser — kertas "dibentangkan", bukan "naik"</td></tr>
+          <tr><td>Header → body → footer</td><td>+20 / +60 / +100 ms</td><td><b>tanpa jeda</b></td><td><code>--ease-out-expo</code></td><td>Stagger hanya saat MASUK. Saat keluar semua serentak supaya terasa cepat</td></tr>
+          <tr><td>Modal di bawah tumpukan</td><td>200 ms · <code>scale(.95) translateY(-10px)</code>, opacity 50 %</td><td>140 ms</td><td><code>--ease-out-expo</code></td><td>Menjaga konteks: pengguna tahu modal pertama masih ada</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <b>Kenapa keluar lebih cepat dari masuk (140 vs 200 ms).</b> Bukan selera. Pengguna yang
+      menutup sudah tahu apa yang ia lihat — ia menunggu alat itu pergi. Menahan animasi keluar
+      selama animasi masuk membuat aplikasi terasa lambat pada aksi yang paling sering diulang.
+      Aturan yang sama juga menjelaskan kenapa <b>stagger hanya ada saat masuk</b>.
+    </div>
+    <div class="note" style="border-left-color:var(--color-accent-amber);background:color-mix(in srgb,var(--color-accent-amber) 8%,transparent)">
+      <b>Yang TIDAK dipakai:</b> <code>--ease-spring</code> hanya untuk umpan balik sentuh langsung,
+      <b>tidak pernah</b> untuk tata letak (aturan <code>DESIGN.md §3.7</code>). Tidak ada
+      <code>will-change</code> — memakainya berarti mengunci memori GPU untuk seluruh sesi.
+      Tidak ada animasi <code>height</code>/<code>top</code>/<code>background-color</code> pada
+      elemen seluas viewport.
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Dashboard penuh</p>
+    <h2>Satu halaman, dua model, semua tombol hidup</h2>
+    <p class="lede">
+      Ini dashboard kandidat <b>seluruhnya</b>, dirender dua kali dari markup yang sama.
+      Tombol berwarna di panel "Status Lamaran Terkini" membuka modalnya masing-masing —
+      di model HP, modal yang sama otomatis menjadi <b>bottom sheet</b>.
+    </p>
+    <div class="frames" id="frames">
+      <div class="frame frame-desktop">
+        <div class="chrome"><span class="lamp"></span>Desktop · 1180 px</div>
+        <div class="screen-wrap" data-model="desktop"><div class="screen" id="dash-desktop"></div></div>
+      </div>
+      <div class="frame frame-mobile">
+        <div class="chrome"><span class="lamp"></span>HP · 390 px</div>
+        <div class="screen-wrap" data-model="mobile"><div class="screen" id="dash-mobile"></div></div>
+      </div>
+    </div>
+    <div class="note">
+      <b>Perhatikan saat menekan tombol di model HP:</b> panelnya tidak lagi muncul di tengah
+      (seperti 5 dari 6 modal sekarang), tapi naik dari bawah. Peralihan itu dari container query
+      pada lebar frame — bukan dua salinan kode.
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Temuan</p>
+    <h2>Tiga hal yang penataan animasi ini sekaligus perbaiki</h2>
+    <div class="card scroller">
+      <table>
+        <thead><tr><th>#</th><th>Temuan</th><th>Bukti</th><th>Perbaikan</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td><b>Modal bersarang tanpa penanda</b></td>
+            <td><code>PemberkasanModal.tsx:633</code> membuka <code>DocumentPreviewModal</code> di atas dirinya. Dua scrim gelap menumpuk, dan modal pertama hilang sama sekali dari pandangan</td>
+            <td>Modal bawah <b>mundur</b>: skala 95 %, opacity 50 %, scrim-nya dimatikan supaya tidak menggelapkan dua kali</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td><b>Dua area scroll bersarang di Preview CV</b></td>
+            <td><code>RirekishoBuilder.tsx:294-295</code> — <code>u-scroll-area</code> dipasang di <b>overlay</b> DAN di panelnya (<code>max-h-[95vh]</code>)</td>
+            <td>Satu area scroll saja: panelnya. Overlay tidak boleh menggulir</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td><b>Tidak ada gerak sama sekali</b></td>
+            <td>0 transisi di keenam modal. Panel "nongol"</td>
+            <td>Satu sistem: 200/140 ms, empat archetype, stagger hanya saat masuk</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">
+      <b>Cara memeriksa.</b> Nyalakan <b>Gerak 0,3×</b>, lalu buka modal dan perhatikan tiga hal
+      berurutan: scrim menggelap lebih dulu, panel menyusul, isi panel menyusul lagi
+      (header → body → footer). Lalu tekan Escape — ketiganya keluar <b>serentak</b> dan lebih cepat.
+      Itulah bedanya masuk dan keluar.
+    </div>
+  </section>
+
+  <div style="margin-top:50px;padding-top:18px;border-top:1px solid var(--color-line);font-size:12px;color:var(--color-fg-subtle)">
+    Mockup kerja · <code>deliverables/gstack/_mockup-dashboard-kandidat-fullpage-2026-09-28.html</code><br>
+    Token &amp; kurva dari <code>src/styles/theme.css</code>; durasi, radius, target sentuh dari
+    <code>DESIGN.md</code>. Nama field &amp; urutan bagian mengikuti <code>CandidateDash.tsx</code>
+    dan enam komponen modalnya, supaya backend tidak perlu berubah.
+    Tidak ada berkas <code>src/</code> yang diubah.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SUMBER MODAL — satu salinan markup, di-clone ke SETIAP model oleh JS.
+     Tidak ditulis dua kali: dua salinan berarti dua tempat yang bisa
+     menyimpang. Id di dalamnya diberi akhiran per model supaya tidak ada
+     id duplikat di dokumen (getElementById mengembalikan yang PERTAMA).
+     ══════════════════════════════════════════════════════════════════ -->
+<template id="modals-src">
+
+<!-- ══════════ MODAL 1 · PROFIL (dulu CV Mini) ══════════ -->
+<div class="ov" data-kind="auto" data-modal="profil" style="--tone:var(--color-accent-sky)">
+  <div class="scrim" data-close></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="m-profil-t">
+    <div class="drag"></div>
+    <div class="p-head">
+      <div class="hic" style="color:var(--color-accent-sky)">&#9673;</div>
+      <div style="flex:1;min-width:0"><h3 id="m-profil-t">Profil</h3>
+      <p class="sub">Data ini dipakai di kartu profil dan berkas lamaran.</p></div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <form class="p-body" onsubmit="return false">
+      <div class="grid2">
+        <label class="f"><span>Usia</span><input class="inp" data-k="usia" type="number" placeholder="22"><em class="err" data-err="usia" hidden>Usia harus 15–60.</em></label>
+        <label class="f"><span>Tinggi (cm)</span><input class="inp" data-k="tb" type="number" placeholder="165"><em class="err" data-err="tb" hidden>Tinggi harus 120–200 cm.</em></label>
+        <label class="f"><span>Berat (kg)</span><input class="inp" data-k="bb" type="number" placeholder="55"><em class="err" data-err="bb" hidden>Berat harus 30–120 kg.</em></label>
+        <label class="f"><span>Pendidikan</span>
+          <select class="inp" data-k="pendidikan"><option value="-">— Belum dipilih —</option><option>SMA</option><option>SMK</option><option>MA</option><option>D3</option><option>S1</option></select></label>
+        <label class="f"><span>Level JFT</span><input class="inp" data-k="jft" placeholder="mis. N4"></label>
+        <label class="f"><span>Bidang SSW</span><input class="inp" data-k="ssw" placeholder="mis. Kaigo"></label>
+      </div>
+      <p class="small muted" style="margin:2px 0 0">Validasi muncul di bawah field, bukan sebagai toast di pojok layar.</p>
+    </form>
+    <div class="p-foot">
+      <button class="btn btn-g" data-close style="flex:0 0 auto">Batal</button>
+      <button class="btn btn-p" data-save>Simpan profil</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL 2 · GANTI PASSWORD ══════════ -->
+<div class="ov" data-kind="auto" data-modal="password" style="--tone:var(--color-accent-amber)">
+  <div class="scrim" data-close></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="m-pw-t" style="max-width:24rem">
+    <div class="drag"></div>
+    <div class="p-head">
+      <div class="hic" style="color:var(--color-accent-amber)">&#128274;</div>
+      <div style="flex:1;min-width:0"><h3 id="m-pw-t">Ganti Password</h3>
+      <p class="sub">6–20 karakter, tanpa spasi.</p></div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <form class="p-body" onsubmit="return false">
+      <label class="f"><span>Password lama</span><input class="inp" type="password" placeholder="••••••"></label>
+      <label class="f"><span>Password baru</span><input class="inp" type="password" placeholder="••••••"></label>
+      <label class="f" style="margin-bottom:0"><span>Ulangi password baru</span><input class="inp" type="password" placeholder="••••••"></label>
+    </form>
+    <div class="p-foot"><button class="btn btn-p" data-save>Simpan password</button></div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL 3 · E-SIGN NAITEI ══════════ -->
+<div class="ov" data-kind="auto" data-modal="esign" style="--tone:var(--color-accent-red)">
+  <div class="scrim" data-close></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="m-es-t">
+    <div class="drag"></div>
+    <div class="p-head">
+      <div class="hic" style="color:var(--color-accent-red)">&#9997;</div>
+      <div style="flex:1;min-width:0"><h3 id="m-es-t">E-Sign Dokumen Naitei</h3>
+      <p class="sub">Dua pihak, satu kali kirim.</p></div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <div class="p-body">
+      <div class="frow"><span class="nm">Data pihak pertama<span>Nama, paspor, tanggal lahir</span></span><span class="pill ok">Lengkap</span></div>
+      <div class="frow"><span class="nm">Data pihak kedua<span>Perusahaan, perwakilan</span></span><span class="pill no">Belum</span></div>
+      <div class="frow"><span class="nm">Berkas naitei<span>Dihasilkan otomatis</span></span><span class="pill ok">Siap</span></div>
+    </div>
+    <div class="p-foot">
+      <button class="btn btn-g" data-close style="flex:0 0 auto">Batal</button>
+      <button class="btn btn-p" data-save>Kirim untuk ditandatangani</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL 4 · PUSAT BERKAS (+ anak bersarang) ══════════ -->
+<div class="ov" data-kind="auto" data-modal="berkas" style="--tone:var(--color-accent-emerald)">
+  <div class="scrim" data-close></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="m-pb-t" style="max-width:56rem">
+    <div class="drag"></div>
+    <div class="p-head">
+      <div class="hic" style="color:var(--color-accent-emerald)">&#128193;</div>
+      <div style="flex:1;min-width:0"><h3 id="m-pb-t">Pusat Berkas</h3>
+      <p class="sub">ANISA RAHMAWATI · <span style="color:var(--color-accent-emerald)">Tahap: Pemberkasan</span></p></div>
+      <span class="ring" style="--sz:42px"><svg viewBox="0 0 42 42" aria-hidden="true"><circle class="tr" cx="21" cy="21" r="17"></circle><circle class="vl" cx="21" cy="21" r="17" stroke-dasharray="106.8" stroke-dashoffset="47.5"></circle></svg><b style="font-size:10.5px">5/9</b></span>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <div class="p-body">
+      <div class="frow"><span class="nm">Pas foto 4×6<span>JPG · maks 1 MB</span></span><span class="pill ok">Terunggah</span><button class="btn btn-sm" data-open="preview">Lihat</button></div>
+      <div class="frow"><span class="nm">KTP<span>JPG/PDF</span></span><span class="pill ok">Terunggah</span><button class="btn btn-sm" data-open="preview">Lihat</button></div>
+      <div class="frow"><span class="nm">Ijazah terakhir<span>PDF · maks 2 MB</span></span><span class="pill ok">Terunggah</span><button class="btn btn-sm" data-open="preview">Lihat</button></div>
+      <div class="frow"><span class="nm">Sertifikat JFT<span>PDF · maks 2 MB</span></span><span class="pill ok">Terunggah</span><button class="btn btn-sm" data-open="preview">Lihat</button></div>
+      <div class="frow"><span class="nm">Surat izin orang tua<span>PDF · wajib</span></span><span class="pill no">Belum ada</span><button class="btn btn-sm btn-p">Unggah</button></div>
+      <p class="small muted" style="margin:12px 0 0">Tekan <b>Lihat</b> untuk melihat bagaimana modal kedua masuk <b>di atas</b> modal ini — perhatikan modal ini mundur, tidak hilang.</p>
+    </div>
+    <div class="p-foot">
+      <button class="btn btn-g" data-close style="flex:0 0 auto">Tutup</button>
+      <button class="btn btn-p" data-save>Simpan &amp; kirim ke admin</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL 5 · PREVIEW DOKUMEN (bersarang di atas Pusat Berkas) ══════════ -->
+<div class="ov" data-kind="auto" data-modal="preview" style="--tone:var(--color-accent-sky)">
+  <div class="scrim" data-close></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="m-dp-t" style="max-width:64rem">
+    <div class="drag"></div>
+    <div class="p-head">
+      <div class="hic" style="color:var(--color-accent-sky)">&#128196;</div>
+      <div style="flex:1;min-width:0"><h3 id="m-dp-t">Ijazah_Terakhir.pdf</h3>
+      <p class="sub">Halaman 1 dari 1 · 428 KB</p></div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <div class="p-body" style="display:flex;flex-direction:column;gap:10px">
+      <div style="flex:1;min-height:190px;border-radius:var(--radius-control);background:var(--color-surface-sunken);
+        border:1px solid var(--color-line);display:grid;place-items:center;color:var(--color-fg-subtle);font-size:12.5px">
+        Pratinjau halaman 1</div>
+      <div style="display:flex;gap:8px"><button class="btn btn-sm">&minus; Perkecil</button>
+      <button class="btn btn-sm">+ Perbesar</button><button class="btn btn-sm">&crarr; Putar</button></div>
+    </div>
+    <div class="p-foot">
+      <button class="btn btn-g" data-close style="flex:0 0 auto">Tutup</button>
+      <button class="btn btn-p">Unduh</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL 6 · SIMULASI INTERVIEW (layar penuh) ══════════ -->
+<div class="ov" data-kind="full" data-modal="interview" style="--tone:var(--color-accent-violet)">
+  <div class="scrim" data-close></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="m-iv-t">
+    <div class="drag"></div>
+    <div class="p-head" style="background:linear-gradient(90deg,color-mix(in srgb,var(--color-accent-violet) 22%,transparent),transparent)">
+      <div class="hic" style="color:var(--color-accent-violet)">&#127908;</div>
+      <div style="flex:1;min-width:0"><h3 id="m-iv-t">Jeklin Sensei</h3>
+      <p class="sub">Simulasi interview · bahasa Jepang &amp; Indonesia</p></div>
+      <button class="p-close" data-close aria-label="Tutup dialog">&times;</button>
+    </div>
+    <div class="p-body">
+      <div class="chat">
+        <div class="msg ai">Selamat datang! Perkenalkan diri kamu dalam bahasa Jepang, ya.</div>
+        <div class="msg me">はじめまして。アニサです。SMK Negeri 1 から来ました。</div>
+        <div class="msg ai">Bagus! Sekarang coba jelaskan alasan kamu ingin bekerja di Jepang.</div>
+      </div>
+    </div>
+    <div class="p-foot" style="flex-direction:column;align-items:stretch">
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <textarea class="inp" rows="1" placeholder="Ketik jawabanmu…" aria-label="Tulis jawaban" style="flex:1;resize:none"></textarea>
+        <button class="btn btn-p" style="flex:0 0 auto;width:48px;padding:0" aria-label="Kirim jawaban">&#10148;</button>
+      </div>
+      <p class="small muted" style="margin:0">Layar penuh: naik 26 px, bukan 12 px — bidangnya lebih besar, jaraknya ikut lebih jauh.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL 7 · PREVIEW DESAIN CV (kertas A4) ══════════ -->
+<div class="ov" data-kind="paper" data-modal="rirekisho">
+  <div class="scrim" data-close></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="m-rr-t">
+    <div class="p-head" style="background:#fff;border-color:#ddd">
+      <div class="hic" style="color:#b91c1c;background:#fee2e2;border-color:#fecaca">&#128196;</div>
+      <div style="flex:1;min-width:0"><h3 id="m-rr-t" style="color:#111">Desain CV (Rirekisho)</h3>
+      <p class="sub" style="color:#666">Format A4 · siap cetak</p></div>
+      <button class="p-close" data-close aria-label="Tutup dialog" style="color:#666">&times;</button>
+    </div>
+    <div class="p-body" style="background:#fff;color:#111">
+      <div style="border:1px solid #ddd;border-radius:8px;padding:16px;min-height:230px">
+        <div style="display:flex;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:12px">
+          <b style="font-size:14px">履歴書 · RIREKISHO</b><span style="font-size:11px;color:#666">ASJ-2026-0481</span>
+        </div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px">
+          <span style="color:#666">Nama</span><b>ANISA RAHMAWATI</b>
+          <span style="color:#666">Usia</span><span>24 tahun</span>
+          <span style="color:#666">Pendidikan</span><span>SMK</span>
+          <span style="color:#666">JFT</span><span>N4</span>
+        </div>
+        <p style="font-size:11px;color:#888;margin-top:16px">
+          Satu area scroll saja. Versi aslinya (<code>RirekishoBuilder.tsx:294-295</code>) memasang
+          <code>u-scroll-area</code> di overlay <b>dan</b> di panel — dua scroll bersarang.
+        </p>
+      </div>
+    </div>
+    <div class="p-foot" style="background:#fff;border-color:#ddd">
+      <button class="btn btn-g" data-close style="flex:0 0 auto;color:#111;border-color:#ccc">Tutup</button>
+      <button class="btn btn-p" style="background:#b91c1c;color:#fff">Cetak / Simpan PDF</button>
+    </div>
+  </div>
+</div>
+</template>
+
+<script>
+(function () {
+  "use strict";
+  /* ══ 1. DASHBOARD — satu markup, dua model ═════════════════════ */
+  var BERKAS = [
+    ["Pas foto 4×6", "JPG · maks 1 MB", 1],
+    ["KTP", "JPG/PDF", 1],
+    ["Ijazah terakhir", "PDF · maks 2 MB", 1],
+    ["Sertifikat JFT", "PDF · maks 2 MB", 1],
+    ["Surat izin orang tua", "PDF · wajib", 0]
+  ];
+  var STEPS = ["Lamaran", "Seleksi", "Interview", "Pemberkasan", "Naitei"];
+  var NOW = 3;
+
+  function dashHTML() {
+    return '<div class="dash">' +
+
+    /* ── dossier ── */
+    '<div class="dgrid">' +
+      '<section class="dcard c6"><div class="dos"><span class="av">AR</span>' +
+        '<div style="min-width:0"><b>ANISA RAHMAWATI</b>' +
+        '<div class="ids"><span class="tag ok">TERVERIFIKASI</span><span class="tag">ASJ-2026-0481</span>' +
+        '<span class="tag warn">Pemberkasan</span></div>' +
+        '<dl class="kv"><dt>WhatsApp</dt><dd>0812••••4471</dd>' +
+        '<dt>Pendidikan</dt><dd>SMK</dd><dt>JFT</dt><dd>N4</dd></dl></div></div></section>' +
+
+      /* ── kartu siswa VIP ── */
+      '<section class="dcard c6"><h3>&#9673; Kartu Siswa</h3>' +
+        '<div class="vip"><div class="row"><div><h4>KARTU SISWA ASJ</h4>' +
+        '<div class="cls">Kelas N4 · Angkatan 12</div></div>' +
+        '<div class="qr">QR</div></div>' +
+        '<div class="nm">ANISA RAHMAWATI</div><div class="id">ASJ-2026-0481</div></div></section>' +
+
+      /* ── kelengkapan profil ── */
+      '<section class="dcard c3"><h3>&#9678; Kelengkapan Profil</h3>' +
+        '<div class="prow"><span>CV Mini (profil)</span><span style="color:var(--color-accent-sky)">86%</span></div>' +
+        '<div class="bar"><i style="width:86%"></i></div>' +
+        '<div class="prow" style="margin-top:12px"><span>CV Master (berkas)</span><span style="color:var(--color-accent-emerald)">64%</span></div>' +
+        '<div class="bar"><i style="width:64%"></i></div>' +
+        '<p class="small muted" style="margin:12px 0 0">Kurang 1 field untuk membuka semua loker.</p></section>' +
+
+      /* ── jadwal ── */
+      '<section class="dcard c3"><h3>&#128197; Jadwal Kamu</h3>' +
+        '<div style="border:1px solid var(--color-line);border-radius:var(--radius-control);padding:11px">' +
+        '<b style="font-size:13px">Tes JFT Simulasi</b>' +
+        '<div class="small" style="color:var(--color-accent-amber);font-family:ui-monospace,monospace">30 Sep 2026 · 09.00</div>' +
+        '<div class="small muted">Ruang B · ASJ Center</div></div></section>' +
+
+      /* ── pemberkasan ── */
+      '<section class="dcard c3"><h3>&#128193; Berkas</h3>' +
+        '<div style="display:flex;gap:12px;align-items:center">' +
+        '<span class="ring"><svg viewBox="0 0 54 54" aria-hidden="true"><circle class="tr" cx="27" cy="27" r="22"></circle>' +
+        '<circle class="vl" cx="27" cy="27" r="22" stroke-dasharray="138.2" stroke-dashoffset="61.4"></circle></svg><b>56%</b></span>' +
+        '<div style="flex:1"><b style="font-size:13px">5/9 berkas</b>' +
+        '<p class="small muted" style="margin:2px 0 9px">Sisa 4 berkas lagi.</p>' +
+        '<button class="btn btn-sm btn-p" data-open="berkas">Buka Pusat Berkas</button></div></div></section>' +
+
+      /* ── catatan admin ── */
+      '<section class="dcard c3"><h3>&#9993; Pesan dari Admin</h3>' +
+        '<p class="small" style="margin:0;font-style:italic;color:var(--color-fg-muted)">' +
+        '"Ijazah sudah oke. Tolong lengkapi surat izin orang tua sebelum Jumat ya."</p></section>' +
+
+      /* ── status lamaran + pipeline + aksi ── */
+      '<section class="dcard c12"><h3>&#9889; Status Lamaran Terkini</h3>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">' +
+        '<span class="tag ok">JP-KAIGO-2026</span><span class="tag">JP-FOOD-2026</span></div>' +
+        '<div style="border:1px solid var(--color-line);border-radius:var(--radius-control);padding:13px">' +
+        '<div class="prow"><span>JP-KAIGO-2026 · Perawatan Lansia</span><span style="color:var(--color-accent-emerald)">Pemberkasan</span></div>' +
+        '<div class="bar"><i style="width:75%"></i></div>' +
+        '<div class="steps">' + STEPS.map(function (s, i) {
+          return '<span class="' + (i < NOW ? "done" : i === NOW ? "now" : "") + '">' +
+            (i < NOW ? "&#10003;" : i === NOW ? "&#9679;" : "&#9675;") + ' ' + s + '</span>';
+        }).join("") + '</div></div>' +
+
+        '<div class="acts" style="margin-top:14px">' +
+          '<button class="act a-sky" data-open="profil">Update Profil</button>' +
+          '<button class="act a-violet" data-open="interview">Latihan Interview</button>' +
+          '<button class="act a-rose" data-open="esign">E-Sign Naitei</button>' +
+          '<button class="act a-amber" data-open="berkas">Pusat Berkas</button>' +
+          '<button class="act a-light" data-open="rirekisho">Preview Desain CV</button>' +
+          '<button class="act a-teal" data-open="password">Ganti Password</button>' +
+          '<button class="act a-slate" data-open="profil">Form Master Lengkap</button>' +
+          '<button class="act a-slate" data-open="profil">Asisten AI CV</button>' +
+        '</div>' +
+        '<p class="small muted" style="margin:11px 0 0">Delapan tombol: enam membuka modal (satu di antaranya membuka modal kedua di atasnya), dua menuju halaman lain.</p>' +
+      '</section>' +
+
+      /* ── pemandu langkah ── */
+      '<section class="dcard c4"><h3>&#9873; Langkah Berikutnya</h3>' +
+        '<div style="display:flex;flex-direction:column;gap:9px">' +
+        '<div style="display:flex;gap:9px;align-items:flex-start"><span class="tag ok">&#10003;</span><span class="small">Lengkapi biodata</span></div>' +
+        '<div style="display:flex;gap:9px;align-items:flex-start"><span class="tag warn">2</span><span class="small">Unggah surat izin orang tua</span></div>' +
+        '<div style="display:flex;gap:9px;align-items:flex-start"><span class="tag">3</span><span class="small">Tanda tangan naitei</span></div>' +
+        '</div></section>' +
+
+      /* ── level ── */
+      '<section class="dcard c5"><h3>&#9733; Level Profil</h3>' +
+        '<div style="display:flex;gap:13px;align-items:center">' +
+        '<span style="font-size:30px">&#129351;</span>' +
+        '<div style="flex:1"><b style="font-size:14px">Kandidat Emas</b>' +
+        '<p class="small muted" style="margin:2px 0 8px">Lengkapi profil 100 % untuk membuka semua loker VIP.</p>' +
+        '<div class="bar"><i style="width:86%"></i></div></div></div></section>' +
+    '</div></div>';
+  }
+  document.getElementById('dash-desktop').innerHTML = dashHTML();
+  document.getElementById('dash-mobile').innerHTML = dashHTML();
+
+  /* ══ 2. TUMPUKAN MODAL + ANIMASI ════════════════════════════════ */
+  var scopes = Array.prototype.slice.call(document.querySelectorAll('.screen-wrap'));
+
+  /* ── Clone 7 modal ke SETIAP model ─────────────────────────────
+     Id ditulis ulang dengan akhiran model: dua clone tanpa itu berarti
+     id duplikat di dokumen, dan `getElementById` diam-diam mengembalikan
+     yang pertama — bug yang sudah pernah menggigit (lihat catatan skill). */
+  (function cloneModals() {
+    var tpl = document.getElementById('modals-src');
+    scopes.forEach(function (wrap) {
+      var sfx = '-' + wrap.getAttribute('data-model');
+      Array.prototype.forEach.call(tpl.content.children, function (node) {
+        var clone = node.cloneNode(true);
+        var idMap = {};
+        Array.prototype.forEach.call(clone.querySelectorAll('[id]'), function (el) {
+          idMap[el.id] = el.id + sfx;
+          el.id = idMap[el.id];
+        });
+        Array.prototype.forEach.call(clone.querySelectorAll('[aria-labelledby]'), function (el) {
+          el.setAttribute('aria-labelledby', el.getAttribute('aria-labelledby').split(/\s+/)
+            .map(function (r) { return idMap[r] || r; }).join(' '));
+        });
+        wrap.appendChild(clone);
+      });
+    });
+  })();
+
+  var stack = [];   /* {scope, ov} — tumpukan GLOBAL, satu per halaman */
+
+  function ovIn(scope, name) { return scope.querySelector('.ov[data-modal="' + name + '"]'); }
+
+  function open(name, scope) {
+    scope = scope || scopes[0];
+    var ov = ovIn(scope, name);
+    if (!ov) return;
+    /* modal yang sudah terbuka di scope ini, dan belum di atas: mundur */
+    var prev = stack[stack.length - 1];
+    if (prev && prev.scope === scope) prev.ov.classList.add('is-behind');
+    stack.push({ scope: scope, ov: ov });
+    ov.classList.add('is-open');
+    var f = ov.querySelector('input, select, textarea, .btn');
+    if (f) f.focus({ preventScroll: true });
+  }
+  function closeTop() {
+    var top = stack.pop();
+    if (!top) return;
+    top.ov.classList.remove('is-open');
+    /* buang dari DOM-setelah-animasi supaya tidak tertinggal 'is-behind' */
+    var prev = stack[stack.length - 1];
+    if (prev && prev.scope === top.scope) prev.ov.classList.remove('is-behind');
+  }
+  function closeAll() { while (stack.length) closeTop(); }
+
+  /* delegasi: tombol pembuka ada di dalam dashboard (kedua model) */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var op = t.closest && t.closest('[data-open]');
+    if (op) {
+      e.preventDefault();
+      open(op.getAttribute('data-open'), op.closest('.screen-wrap'));
+      return;
+    }
+    if (t.closest && t.closest('[data-close]')) { closeTop(); return; }
+    if (t.closest && t.closest('[data-save]')) { closeTop(); return; }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && stack.length) { e.preventDefault(); closeTop(); }
+  });
+
+  /* ══ 3. VALIDASI INLINE DI MODAL PROFIL ═════════════════════════ */
+  var RANGE = { usia: [15, 60, "Usia harus 15\u201360."], tb: [120, 200, "Tinggi harus 120\u2013200 cm."],
+                bb: [30, 120, "Berat harus 30\u2013120 kg."] };
+  document.addEventListener('input', function (e) {
+    var el = e.target;
+    if (!el.matches || !el.matches('[data-k]')) return;
+    var k = el.getAttribute('data-k'), r = RANGE[k];
+    if (!r) return;
+    var v = String(el.value).trim(), bad = false;
+    if (v !== "") { var n = parseFloat(v); bad = isNaN(n) || n < r[0] || n > r[1]; }
+    var root = el.closest('.ov');
+    var msg = root.querySelector('[data-err="' + k + '"]');
+    if (msg) { msg.hidden = !bad; if (bad) msg.textContent = r[2]; }
+    el.setAttribute('aria-invalid', String(bad));
+  });
+
+  /* ══ 4. KENDALI ═════════════════════════════════════════════════ */
+  /* gerak lambat: satu variabel mengubah SEMUA durasi */
+  var btnSlow = document.getElementById('btn-slow');
+  btnSlow.addEventListener('click', function () {
+    var on = document.documentElement.style.getPropertyValue('--speed') === '3';
+    document.documentElement.style.setProperty('--speed', on ? '1' : '3');
+    btnSlow.setAttribute('aria-pressed', String(!on));
+    btnSlow.textContent = on ? 'Gerak 0,3× (periksa)' : 'Gerak 1× (normal)';
+  });
+  /* putar ulang: tutup lalu buka lagi modal yang sama */
+  document.getElementById('btn-replay').addEventListener('click', function () {
+    var last = stack[stack.length - 1];
+    if (!last) { open('profil', scopes[0]); return; }
+    var name = last.ov.getAttribute('data-modal'), scope = last.scope;
+    closeAll();
+    setTimeout(function () { open(name, scope); }, 420);
+  });
+  /* demo dari strip archetype */
+  document.querySelectorAll('[data-demo]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var map = { profil: 'profil', interview: 'interview', rirekisho: 'rirekisho', berkas: 'berkas' };
+      closeAll();
+      open(map[b.getAttribute('data-demo')], scopes[0]);
+      document.getElementById('frames').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  });
+  /* mode perangkat */
+  var devBtns = { both: document.getElementById('dev-both'), desk: document.getElementById('dev-desk'), mob: document.getElementById('dev-mob') };
+  function setDevice(mode) {
+    Object.keys(devBtns).forEach(function (k) { devBtns[k].setAttribute('aria-pressed', String(k === mode)); });
+    var f = document.getElementById('frames');
+    f.classList.toggle('only-desktop', mode === 'desk');
+    f.classList.toggle('only-mobile', mode === 'mob');
+  }
+  devBtns.both.addEventListener('click', function () { setDevice('both'); });
+  devBtns.desk.addEventListener('click', function () { setDevice('desk'); });
+  devBtns.mob.addEventListener('click', function () { setDevice('mob'); });
+  /* tema */
+  var btnTheme = document.getElementById('btn-theme');
+  btnTheme.addEventListener('click', function () {
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    document.documentElement.setAttribute('data-theme', light ? 'dark' : 'light');
+    btnTheme.textContent = light ? 'Tema terang' : 'Tema gelap';
+  });
+})();
+</script>
+</body>
+</html>
