@@ -114,7 +114,7 @@ describe('server.cjs — MIME map', () => {
 
   it('does not serve any image extension as octet-stream', () => {
     const map = readMimeMap();
-    const broken = [...IMAGE_EXTENSIONS].filter((e) => !map[e] || !map[e].startsWith('image/'));
+    const broken = [...IMAGE_EXTENSIONS].filter((e) => !map[e]?.startsWith('image/'));
     expect(broken, `image extensions falling back to application/octet-stream: ${broken.join(', ')}`).toEqual([]);
   });
 
