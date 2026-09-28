@@ -359,6 +359,124 @@
 
 
 /* ══════════════════════════════════════════════════════════════════
+   5b. MODAL ENTRY — the panel ARRIVES instead of appearing
+   ══════════════════════════════════════════════════════════════════
+
+   Added 2026-09-28. Before this, every overlay in the repo "popped": the
+   panel was there on one frame and absent the frame before, with no
+   transition anywhere. MEASURED across the six modals on /candidate —
+   `ChangePasswordModal`, `CvMiniModal`, `InterviewSimulatorModal`,
+   `EsignNaiteiModal`, `PemberkasanModal`, `RirekishoBuilder` — and the
+   count of transitions on their panels was 0.
+
+   WHY `@starting-style` AND NOTHING ELSE
+   --------------------------------------
+   Every modal here is conditionally rendered — `{showX && <Modal/>}`
+   (`CandidateDash.tsx:783-789` and ~24 more places). The element is
+   MOUNTED on open, so there is no previous state to transition FROM.
+   That is exactly the gap `@starting-style` fills: it declares the state
+   the browser starts from on an element's FIRST render.
+
+   MEASURED on this repo's own mount pattern, Chromium, panel opacity:
+       t0 = 0        t+30ms = 0.43        t+330ms = 1
+   No component edit, no JS, no class toggling. `useOverlay` — and so all
+   28 call sites — is untouched by this block.
+
+   WHY THERE IS NO `@supports` GUARD, AND WHY THAT IS NOT SLOPPY
+   -------------------------------------------------------------
+   `@starting-style` is an AT-RULE. A browser that does not know it
+   ignores the rule AND ITS CONTENTS, then renders the element at its
+   normal computed style — opacity 1, i.e. exactly today's behaviour.
+   The degradation is the at-rule's own semantics, not a fallback we
+   wrote, so a wrapper would add a line that cannot ever fire.
+
+   An `@supports (transition-behavior: allow-discrete)` wrapper is
+   specifically WRONG here: it would guard a property this rule never
+   uses. Entry from a fresh mount transitions `opacity` and `transform`,
+   never `display`, so `allow-discrete` is irrelevant — and so is
+   `overlay`, which only matters for TOP-LAYER elements. These overlays
+   are `position: fixed` divs, not `<dialog>`/popover.
+
+   WHY THE SCRIM IS SELECTED WITH `:has(> *)`
+   -------------------------------------------
+   The scrim IS the `.u-modal-shell` element; the panel is its child.
+   Animating every overlay would override a real, intended
+   `transition-opacity duration-300` on exactly one of them —
+   `AdminPanel.tsx:177`, the sidebar scrim — because these rules are
+   unlayered and unlayered beats Tailwind's `@layer utilities`.
+
+   That scrim and `App.tsx:721` (the drawer scrim) are the only two
+   `u-modal-shell` elements with NO element children, so `:has(> *)`
+   excludes precisely the two that must be excluded and keeps all ~30
+   real modals. VERIFIED by grep over `src/`: `AdminPanel.tsx:177` is the
+   ONLY place that pairs `u-modal-shell` with a `transition`.
+
+   DURATIONS COME FROM THE EXISTING SCALE — NO FIFTH STEP INVENTED
+   ---------------------------------------------------------------
+   Panel = a displacement → `--dur-move` (320ms), which theme.css already
+   documents as "a panel sliding". Scrim = opacity only → `--dur-hover`
+   (180ms). Published guidance for a modal entrance is 150–250ms, so
+   320ms sits at the TOP of that range; `--ease-out-expo` decelerates
+   hard and lands early, which is why it reads faster than it measures.
+   Using the token the repo already named for this job beats inventing a
+   sixth speed for one component.
+
+   REDUCED MOTION REMOVES THE EFFECT, IT DOES NOT SHORTEN IT
+   ---------------------------------------------------------
+   The whole block sits inside `no-preference`. Under `reduce` there is
+   no `@starting-style` at all, so the panel is NEVER at opacity 0 — no
+   window exists in which a reduced-motion user sees a blank panel. That
+   is strictly safer than relying on a duration clamp: measured with the
+   clamp alone the element also lands at 1, but it still passes through
+   0 on the first frame.
+
+   NOT DONE HERE, AND WHY: exit animation. It cannot be done in CSS on
+   this codebase. `{showX && <Modal/>}` unmounts the node the moment
+   `showX` flips, so there is no element left to animate — MEASURED, the
+   node is gone in the same frame. Exit needs `useOverlay` to hold the
+   overlay mounted for one transition, which is a separate, larger
+   change. See deliverables/gstack/riset-referensi-kelayakan-modal-2026-09-28.md
+   ---------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Scrim: opacity only. `:has(> *)` skips the two childless scrims, and
+     `:not([aria-hidden="true"])` skips the ambient layers.
+
+     THAT SECOND GUARD IS NOT DECORATION — IT WAS A REAL DEFECT, MEASURED.
+     The first version of this block had only `:has(> *)`, and
+     `#sakura-particles` (App.tsx — `fixed inset-0 u-modal-shell
+     overflow-hidden`, `aria-hidden="true"`, THIRTY child petals) matched it.
+     Probed in the browser: `matchesScrimRule: true`, and the layer came back
+     carrying `transition: opacity 0.18s` it was never meant to have. Any
+     later opacity change on that layer would then animate over 180ms instead
+     of landing instantly, and the layer itself faded in on every page load.
+     The panel selector already excluded `aria-hidden`; the scrim selector
+     did not. Both now do. */
+  .u-modal-shell:has(> *):not([aria-hidden="true"]) {
+    transition: opacity var(--dur-hover) var(--ease-out-expo);
+  }
+
+  /* Panel: opacity + displacement. `:first-child` is the panel in every
+     overlay in `src/` — checked one by one; none of them nests a separate
+     scrim element inside, because the scrim IS the overlay. */
+  .u-modal-shell:has(> *) > *:first-child:not([aria-hidden="true"]) {
+    transition: opacity var(--dur-move) var(--ease-out-expo),
+                transform var(--dur-move) var(--ease-out-expo);
+  }
+
+  @starting-style {
+    .u-modal-shell:has(> *):not([aria-hidden="true"]) {
+      opacity: 0;
+    }
+    .u-modal-shell:has(> *) > *:first-child:not([aria-hidden="true"]) {
+      opacity: 0;
+      transform: translateY(12px) scale(.97);
+    }
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
    9. ENTRANCE — ubin & kartu masuk sekali
    ══════════════════════════════════════════════════════════════════
 

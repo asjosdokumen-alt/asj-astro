@@ -52,6 +52,7 @@ HOOK=src/components/ui/useOverlay.ts
 APP=src/components/App.tsx
 PAMFLET=src/components/public/PamfletModal.tsx
 TABLE=src/components/public/LokerTable.tsx
+MOTION=src/styles/motion.css
 BAK=.tmp-dialog-bak
 
 fail=0
@@ -146,7 +147,7 @@ fi
 echo "baseline: green"
 echo
 
-for f in "$HOOK" "$APP" "$PAMFLET" "$TABLE"; do backup "$f"; done
+for f in "$HOOK" "$APP" "$PAMFLET" "$TABLE" "$MOTION"; do backup "$f"; done
 
 # ── one mutation per rule the guard claims to enforce ──────────────────────
 step "M1  the dialog never gets a role" \
@@ -191,8 +192,47 @@ step "M10 the detail dialog never opens (vacuity control)" \
   "$TABLE" \
   '[["onClick={() => setSelectedJob(job)}","onClick={() => {}}"]]'
 
+# ── M11–M13 — the ENTRY ANIMATION (motion.css §5b, added 2026-09-28) ───────
+# The opacity assertions are the only ones in the guard that read PIXELS
+# rather than attributes or geometry: `visibleOverlayCount` tests
+# `offsetWidth > 0`, and a panel at `opacity: 0` still has a width. So a panel
+# that never arrives is invisible to every other check here, and these
+# mutations are what proves the new assertions are not decorative.
+#
+# WHY THE ANCHORS ARE ONE LINE AND NOT A BLOCK.
+# `motion.css` is checked out with CRLF endings on this machine (measured:
+# 1603 CRLF, 0 LF-only). A multi-line anchor written with `\n` therefore
+# matches NOTHING, `mut` aborts on `hits !== 1`, and the whole battery dies
+# before it reports a single mutation. Each anchor below is a single unique
+# line — verified: each appears exactly once in the file.
+#
+# M11 and M12 simulate the SAME realistic mistake — the hidden state written
+# OUTSIDE `@starting-style`, where it becomes a permanent computed style
+# instead of the frame the transition starts from. Note that simply REMOVING
+# the transition would NOT be a valid mutation: with no transition the browser
+# ignores the starting style entirely and the element renders at opacity 1, so
+# the guard would correctly stay green.
+step "M11 the scrim is pinned transparent (hidden state outside @starting-style)" \
+  "$MOTION" \
+  '[["    transition: opacity var(--dur-hover) var(--ease-out-expo);","    opacity: 0;\n    transition: opacity var(--dur-hover) var(--ease-out-expo);"]]'
+
+step "M12 the panel is pinned at the entry frame (never arrives)" \
+  "$MOTION" \
+  '[["    transition: opacity var(--dur-move) var(--ease-out-expo),","    opacity: 0;\n    transition: opacity var(--dur-move) var(--ease-out-expo),"]]'
+
+# M13 — the ambient layer must stay untouched by §5b. Without the
+# `:not([aria-hidden="true"])` on the scrim selector, `#sakura-particles`
+# (30 child petals) picks up a `transition: opacity .18s` it was never meant to
+# have. MEASURED — that was a real defect in the first version of the block,
+# and nothing else in this guard can see it, because the sweep skips
+# `aria-hidden` layers by design. The dedicated assertion added with §5b is
+# what makes this mutation fatal.
+step "M13 the decorative layer is swept into the animation" \
+  "$MOTION" \
+  '[["  @starting-style {","  .u-modal-shell:has(> *) { transition: opacity var(--dur-hover) var(--ease-out-expo); }\n  @starting-style {"]]'
+
 # ── restore + rebuild so dist/ is not left mutated ─────────────────────────
-for f in "$HOOK" "$APP" "$PAMFLET" "$TABLE"; do restore_one "$f"; done
+for f in "$HOOK" "$APP" "$PAMFLET" "$TABLE" "$MOTION"; do restore_one "$f"; done
 node node_modules/astro/astro.js build >/dev/null 2>&1
 node scripts/build-sw-manifest.mjs >/dev/null 2>&1
 

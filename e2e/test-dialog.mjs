@@ -308,6 +308,35 @@ await test('the decorative sakura layer is declared presentational', async () =>
   }
 });
 
+/* ── 1b. The decorative layer must stay OUT of the modal entry animation ──
+   Added 2026-09-28 with motion.css §5b. That block animates `.u-modal-shell`,
+   and `#sakura-particles` IS a `.u-modal-shell` — with THIRTY child petals —
+   so a selector that forgets `:not([aria-hidden="true"])` sweeps it in.
+
+   MEASURED, and this was a real defect in the first version of §5b: the layer
+   came back carrying `transition: opacity 0.18s` it was never meant to have,
+   which also means any later opacity change on it would animate over 180 ms
+   instead of landing instantly, and the ambient layer faded in on every page
+   load. Nothing else in this file would have caught that — the sweep skips
+   `aria-hidden` layers by design, so the regression is invisible to it.
+
+   `transition-property: all` + `transition-duration: 0s` is the initial
+   computed value, i.e. "no transition at all". */
+await test('the decorative layer carries NO transition (motion.css §5b must skip it)', async () => {
+  const r = await page.evaluate(() => {
+    const el = document.querySelector('#sakura-particles');
+    if (!el) throw new Error('#sakura-particles is not in the DOM');
+    const cs = getComputedStyle(el);
+    return { prop: cs.transitionProperty, dur: cs.transitionDuration };
+  });
+  if (r.prop !== 'all' || r.dur !== '0s') {
+    throw new Error(
+      `decorative layer carries transition ${r.prop} ${r.dur} — motion.css §5b is matching it ` +
+        '(the scrim selector is missing :not([aria-hidden="true"]))',
+    );
+  }
+});
+
 /* ── 2. Closed state ──────────────────────────────────────────────────── */
 await test('no overlay is visible before anything is opened', async () => {
   const n = await visibleOverlayCount(page);
@@ -321,6 +350,57 @@ await test('clicking Detail opens exactly one overlay', async () => {
   await page.waitForTimeout(450);
   const n = await visibleOverlayCount(page);
   if (n !== 1) throw new Error(`${n} visible overlays after clicking Detail (expected 1)`);
+});
+
+/* ── 3b. The entry animation must LAND ──────────────────────────────────
+   Added 2026-09-28 with motion.css §5b, which gives every overlay an
+   entrance via `@starting-style`. That rule renders the panel at opacity 0
+   on its first frame. So a duration token that resolves to 0s, a curve
+   that never settles, or a `transform` that never returns to `none` leaves
+   the panel INVISIBLE — while every assertion above still passes, because
+   they read attributes and an invisible element has all of them.
+
+   `visibleOverlayCount` cannot see this either: it tests
+   `getBoundingClientRect().width > 0`, and an opacity-0 panel still has a
+   width. That is deliberate — it keeps the count stable mid-animation — so
+   "settled" has to be asserted separately, here.
+
+   THIS PROBE MUST USE THE SAME PREDICATE AS `openOverlay`/`visibleOverlayCount`
+   — width AND `aria-hidden !== "true"`. The first version used width alone and
+   measured `#sakura-particles` instead of the dialog: that ambient layer is
+   `.u-modal-shell` with thirty child petals and came back at opacity 0.63,
+   failing this check for a reason that had nothing to do with the dialog.
+
+   The 450 ms wait above already exceeds `--dur-move` (320 ms), so this reads
+   the settled state rather than racing it. */
+await test('the opened panel settles opaque, not stuck on the entry frame', async () => {
+  const r = await page.evaluate(() => {
+    const o = [...document.querySelectorAll('.u-modal-shell')].find(
+      (el) =>
+        (el.offsetWidth > 0 || el.offsetHeight > 0) && el.getAttribute('aria-hidden') !== 'true',
+    );
+    if (!o) return { err: 'no visible non-decorative overlay' };
+    const panel = o.firstElementChild;
+    if (!panel) return { err: 'visible overlay has no panel child' };
+    const p = getComputedStyle(panel);
+    return {
+      panelOpacity: p.opacity,
+      panelTransform: p.transform,
+      scrimOpacity: getComputedStyle(o).opacity,
+    };
+  });
+  if (r.err) throw new Error(r.err);
+  if (Number(r.panelOpacity) < 0.99) {
+    throw new Error(
+      `panel opacity settled at ${r.panelOpacity} — the entry animation did not land (motion.css §5b)`,
+    );
+  }
+  if (Number(r.scrimOpacity) < 0.99) {
+    throw new Error(`scrim opacity settled at ${r.scrimOpacity} (motion.css §5b)`);
+  }
+  console.log(
+    `     ↳ settled: panel opacity ${r.panelOpacity}, transform ${r.panelTransform}, scrim ${r.scrimOpacity}`,
+  );
 });
 
 await test('the dialog declares role="dialog" and aria-modal="true"', async () => {
