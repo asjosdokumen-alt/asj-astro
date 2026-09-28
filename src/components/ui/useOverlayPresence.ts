@@ -66,12 +66,31 @@ export function useOverlayPresence<T>(
   value: T | null | undefined,
   exitMs: number = OVERLAY_EXIT_MS,
 ): OverlayPresence<T> {
-  const [held, setHeld] = useState<T | null>(value ?? null);
+  /* ── `active`, not `value !== null` ────────────────────────────────────
+     The first version of this hook was written against ONE call site —
+     `LokerTable`, which passes an object that becomes `null` when closed — and
+     it seeded state with `useState(value ?? null)` and tested `held !== null`.
+     For a BOOLEAN call site that is wrong in a way nothing visible reports:
+     `??` falls through only on null/undefined, so `false ?? null` is `false`,
+     and `held !== null` is then TRUE. Every boolean overlay would report
+     `present` while closed, i.e. render permanently.
+
+     `useOverlayPresence.test.tsx` pins this: the closed-boolean case is the
+     FIRST assertion, and it failed on the original implementation with
+     `expected 'present=true;closing=true' to be 'present=false;closing=false'`.
+
+     So presence is decided by TRUTHINESS, which is the only reading that is
+     correct for both shapes (`false` and `null` are both "closed", and any
+     object is "open"). The retained value stays typed `T`, because a boolean
+     call site still needs nothing but the flags while an object call site
+     needs the object back. */
+  const active = Boolean(value);
+  const [held, setHeld] = useState<T | null>(active ? (value as T) : null);
 
   useEffect(() => {
-    if (value) {
+    if (active) {
       // Opening (or re-opening during an exit): adopt it and cancel any timer.
-      setHeld(value);
+      setHeld(value as T);
       return;
     }
     if (exitMs <= 0) {
@@ -80,12 +99,12 @@ export function useOverlayPresence<T>(
     }
     const timer = setTimeout(() => setHeld(null), exitMs);
     return () => clearTimeout(timer);
-  }, [value, exitMs]);
+  }, [active, value, exitMs]);
 
   return {
     present: held !== null,
     held,
-    // `held` non-null with no incoming value == we are in the exit window.
-    closing: held !== null && !value,
+    // A held value with nothing incoming == we are in the exit window.
+    closing: held !== null && !active,
   };
 }
