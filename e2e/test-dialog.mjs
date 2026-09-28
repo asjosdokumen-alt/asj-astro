@@ -443,6 +443,101 @@ await test('Tab is trapped inside the dialog', async () => {
   if (!o.focusInside) throw new Error('focus escaped the dialog after 4 Tab presses');
 });
 
+/* ── 3c. The exit must RUN, not just end ────────────────────────────────
+   Added 2026-09-28 with `useOverlayPresence` + motion.css §5b's exit block.
+
+   The NEXT check ("Escape closes the dialog") waits 450 ms and requires zero
+   visible overlays. An overlay that vanished INSTANTLY satisfies that too —
+   and instant removal is precisely the behaviour the exit animation exists to
+   replace. So that check cannot tell "animated out" from "never animated",
+   and this one samples INSIDE the exit window instead.
+
+   Timing: `OVERLAY_EXIT_MS` is 240 ms and the exit transition is 180 ms
+   (`--dur-hover`). The first sample is taken with no wait at all, so it lands
+   a few ms into a 240 ms window; the second at ~90 ms, still mid-transition.
+
+   The opacity assertion is deliberately one-sided (`< 1`, not `> 0`): it has
+   to prove the fade STARTED, and a strict two-sided bound would turn a slow
+   frame into a false failure. The value is printed either way. */
+await test('closing the dialog animates out instead of vanishing', async () => {
+  const read = () =>
+    page.evaluate(() => {
+      const o = [...document.querySelectorAll('.u-modal-shell')].find(
+        (el) =>
+          (el.offsetWidth > 0 || el.offsetHeight > 0) && el.getAttribute('aria-hidden') !== 'true',
+      );
+      if (!o) return { gone: true };
+      const panel = o.firstElementChild;
+      return {
+        gone: false,
+        closing: o.getAttribute('data-closing'),
+        scrimOpacity: getComputedStyle(o).opacity,
+        panelOpacity: panel ? getComputedStyle(panel).opacity : null,
+        role: o.getAttribute('role'),
+      };
+    });
+
+  await page.keyboard.press('Escape');
+
+  /* COLLECT SAMPLES ACROSS THE WINDOW — do not probe one instant.
+     Two separate timing facts make a single sample unreliable:
+       1. `page.keyboard.press` returns when the key event is dispatched, but
+          Preact re-renders on a MICROTASK, so an "immediate" read can still
+          show `data-closing=null` while the overlay is correctly being held.
+          (Measured — the first version of this check failed that way.)
+       2. `data-closing` is written in an EFFECT, i.e. after commit, so the
+          transition has not started on the frame the flag first appears —
+          opacity is still 1 there. (Measured — the second version failed that
+          way, reporting "opacity is still 1" for a working exit.)
+     So the assertion is about the SEQUENCE: over ~200 ms of 15 ms samples
+     (the exit window is 240 ms), the overlay must stay present, must report
+     `data-closing="true"` at least once, and must be caught at least once with
+     the scrim strictly between 0 and 1 — i.e. actually mid-fade. */
+  const seen = [];
+  for (let i = 0; i < 14; i++) {
+    const s = await read();
+    seen.push(s);
+    if (s.gone) break;
+    await page.waitForTimeout(15);
+  }
+
+  if (seen[0].gone) {
+    throw new Error(
+      'the overlay was gone on the first sample after Escape — the node is being torn down before ' +
+        'the exit can run (is useOverlayPresence holding it?)',
+    );
+  }
+  const live = seen.filter((s) => !s.gone);
+  const closing = live.filter((s) => s.closing === 'true');
+  const midFade = closing.filter((s) => Number(s.scrimOpacity) > 0 && Number(s.scrimOpacity) < 1);
+
+  if (closing.length === 0) {
+    throw new Error(
+      `data-closing was never "true" across ${live.length} samples — useOverlay was not told it is ` +
+        'closing, so CSS has no exit state to animate to',
+    );
+  }
+  if (midFade.length === 0) {
+    throw new Error(
+      `the scrim never left opacity 1 across ${closing.length} closing samples — the exit transition ` +
+        'did not run (opacities seen: ' +
+        closing.map((s) => s.scrimOpacity).join(', ') +
+        ')',
+    );
+  }
+  if (closing.some((s) => s.role !== 'dialog')) {
+    throw new Error(
+      'role was torn down mid-exit — the overlay is still visible and trapping focus, so it must ' +
+        'still announce itself as a dialog',
+    );
+  }
+  const last = midFade[0];
+  console.log(
+    `     ↳ mid-exit: scrim ${last.scrimOpacity}, panel ${last.panelOpacity}, data-closing=${last.closing}, ` +
+      `samples live=${live.length}`,
+  );
+});
+
 await test('Escape closes the dialog', async () => {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(450);

@@ -473,6 +473,47 @@
       transform: translateY(12px) scale(.97);
     }
   }
+
+  /* ── EXIT ────────────────────────────────────────────────────────────
+     Added 2026-09-28 with `useOverlayPresence` ("Tingkat 2").
+
+     `@starting-style` above gives the ENTRY and nothing else: it declares the
+     state an element starts from on its first render. Exit is a different
+     mechanism — the element must SURVIVE while its computed style changes, and
+     the hook marks it with `data-closing="true"` for exactly that window.
+
+     WHY THE PARENT HAS TO COOPERATE. These overlays are conditionally
+     rendered, so the node is removed on the same frame the state flips and
+     there is nothing left to animate. `useOverlayPresence` keeps it mounted
+     for `OVERLAY_EXIT_MS` (240 ms); this block animates it out during that
+     window. Neither half works alone.
+
+     EXIT IS FASTER THAN ENTRY, AND THAT IS THE POINT. Enter uses
+     `--dur-move` (320 ms) for the panel because it is a displacement the user
+     is waiting to see. Exit drops to `--dur-hover` (180 ms) for both scrim and
+     panel: the user already knows what is on screen and is waiting for the
+     tool to get out of the way. Holding the exit for the entry's duration
+     makes the app feel slow on its most-repeated action. No new duration token
+     is introduced — 180 ms is the repo's existing `hover` step.
+
+     SPECIFICITY IS LOAD-BEARING. `[data-closing="true"]` adds (0,1,0), so
+     these rules outrank the entry rules above without `!important`. And
+     `transition-duration` is written as its own declaration rather than
+     re-stating the shorthand, so the easing and property list cannot drift
+     apart from the entry block.
+
+     RE-OPENING MID-EXIT IS HANDLED FOR FREE: removing `data-closing` drops
+     these rules, the entry rules apply again, and the panel eases back to
+     opacity 1 from wherever it had got to — a bounce-back, not a jump. */
+  .u-modal-shell[data-closing='true']:has(> *):not([aria-hidden='true']) {
+    opacity: 0;
+    transition-duration: var(--dur-hover);
+  }
+  .u-modal-shell[data-closing='true']:has(> *) > *:first-child:not([aria-hidden='true']) {
+    opacity: 0;
+    transform: translateY(12px) scale(.97);
+    transition-duration: var(--dur-hover);
+  }
 }
 
 

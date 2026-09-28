@@ -98,6 +98,25 @@ export interface OverlayOptions {
    * first heading, which is the same text a sighted user reads as the title.
    */
   label?: string;
+  /**
+   * Exit animation (added 2026-09-28). While true the hook writes
+   * `data-closing="true"` on the container, which is the hook CSS keys the
+   * exit transition on (`motion.css` §5b).
+   *
+   * Deliberately OPTIONAL and defaulted to `false`, so all 28 existing call
+   * sites keep byte-identical behaviour and only a migrated one opts in.
+   *
+   * The hook does NOT unmount anything — it cannot; the parent owns the
+   * element. Keeping the overlay mounted for the transition is
+   * `useOverlayPresence`'s job, and the two are used together.
+   *
+   * NOTE the semantics deliberately stay ON while closing: the overlay is
+   * still a dialog until it is gone, so `role`/`aria-modal`/the Tab trap must
+   * not be torn down mid-animation. Passing `open: false` here would drop all
+   * three and leave a visible, focus-trapping element that announces nothing —
+   * the exact defect this file's header exists to prevent.
+   */
+  closing?: boolean;
 }
 
 export function useOverlay<T extends HTMLElement>({
@@ -108,6 +127,7 @@ export function useOverlay<T extends HTMLElement>({
   closeOnBackdrop = true,
   restoreFocusTo,
   label,
+  closing = false,
 }: OverlayOptions) {
   const containerRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -212,6 +232,19 @@ export function useOverlay<T extends HTMLElement>({
     document.addEventListener('keydown', onKeyDown, true);
     return () => document.removeEventListener('keydown', onKeyDown, true);
   }, [open, role]);
+
+  /* ── Exit flag ─────────────────────────────────────────────────────
+     A single attribute, so the exit transition is declared once in CSS
+     (`motion.css` §5b) instead of inline at every call site. Written
+     imperatively on the same node the rest of this hook already writes to,
+     for the same reason the dialog semantics are: that node IS the overlay,
+     and only this hook knows which element that is. */
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    if (closing) root.setAttribute('data-closing', 'true');
+    else root.removeAttribute('data-closing');
+  }, [closing]);
 
   /* ── Escape ──────────────────────────────────────────────────────── */
   useEffect(() => {

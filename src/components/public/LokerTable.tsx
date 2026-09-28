@@ -55,6 +55,7 @@ import {
 import { getPublicData } from '../../lib/publicData';
 import { ErrorBoundary } from '../ErrorBoundary';
 import LokerDetailModal from './LokerDetailModal';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import Icon from '../ui/Icon';
 
 // NOTE: Shared Job type available at types/api.ts
@@ -104,6 +105,7 @@ export default function LokerTable() {
   const [pamfletUrl, setPamfletUrl] = useState("");
   const [showPamflet, setShowPamflet] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const detail = useOverlayPresence(selectedJob);
   const [error, setError] = useState("");
 
   useEffect(() => { fetchJobs(); }, []);
@@ -318,7 +320,20 @@ export default function LokerTable() {
         </div>
       )}
 
-      {selectedJob && <LokerDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />}
+      {/*
+        The detail modal is held mounted for one exit transition (2026-09-28).
+        `detail.held` — NOT `selectedJob` — is what gets passed down: `onClose`
+        nulls `selectedJob` immediately, so reading it here would re-render the
+        modal with `job === null` during the exit window and throw on
+        `job.status`. See `useOverlayPresence`'s header.
+      */}
+      {detail.present && (
+        <LokerDetailModal
+          job={detail.held as Job}
+          closing={detail.closing}
+          onClose={() => setSelectedJob(null)}
+        />
+      )}
           <PamfletModal isOpen={showPamflet} url={pamfletUrl} onClose={() => setShowPamflet(false)} />
 </div>
     </ErrorBoundary>

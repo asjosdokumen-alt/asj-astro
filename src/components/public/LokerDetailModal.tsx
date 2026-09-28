@@ -20,7 +20,18 @@ import { useOverlay } from '../ui/useOverlay';
 import PamfletModal from './PamfletModal';
 
 interface Job { code: string; pekerjaan: string; status: string; tahapan: string; keterangan: string; kategori: string; kuota: string; gender: string; lokasi: string; syarat: string; rincianBiaya?: string; totalBiaya?: string; pamflet?: string; templateCv?: string; dokumenShare?: string; }
-interface Props { job: Job; onClose: () => void; }
+interface Props {
+  job: Job;
+  onClose: () => void;
+  /**
+   * Exit animation (2026-09-28). True while `useOverlayPresence` is holding this
+   * modal mounted for its exit transition. Forwarded straight to `useOverlay`,
+   * which marks the shell with `data-closing="true"` — the attribute
+   * `motion.css` §5b keys the exit on. Defaults to false, so a call site that
+   * has not been migrated behaves exactly as before.
+   */
+  closing?: boolean;
+}
 interface Step { nomor: string; nama: string; nominal: string; }
 interface RSection { type: string; items: (Step | string)[]; }
 interface Parsed { total: string; sections: RSection[]; }
@@ -71,7 +82,7 @@ function GenderBadge({ gender }: { gender: string }) {
   if (v.includes('WANITA') || v.includes('PEREMPUAN') || v === 'P') return <span class="gender-badge gender-badge--female px-2.5 py-1 rounded font-bold"><Icon name="venus" class="mr-1" />{t('candidate.gender_p')}</span>;
   return <span class="gender-badge gender-badge--mixed px-2.5 py-1 rounded font-bold"><Icon name="venus-mars" class="mr-1" />{jobGenderLabel(gender) || '-'}</span>;
 }
-export default function LokerDetailModal({ job, onClose }: Props) {
+export default function LokerDetailModal({ job, onClose, closing = false }: Props) {
   const st = (job.status || '').toUpperCase();
   const isOpen = st.includes('OPEN') || st.includes('URGENT');
   const isUrgent = st.includes('URGENT');
@@ -85,7 +96,7 @@ export default function LokerDetailModal({ job, onClose }: Props) {
   const pamfletUrl = job.pamflet && job.pamflet !== '-' && job.pamflet.length > 5 ? job.pamflet : '';
 
   const [zoomOpen, setZoomOpen] = useState(false);
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
 
   return (
     <>

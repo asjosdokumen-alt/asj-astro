@@ -52,6 +52,8 @@ HOOK=src/components/ui/useOverlay.ts
 APP=src/components/App.tsx
 PAMFLET=src/components/public/PamfletModal.tsx
 TABLE=src/components/public/LokerTable.tsx
+DETAIL=src/components/public/LokerDetailModal.tsx
+PRESENCE=src/components/ui/useOverlayPresence.ts
 MOTION=src/styles/motion.css
 BAK=.tmp-dialog-bak
 
@@ -147,7 +149,7 @@ fi
 echo "baseline: green"
 echo
 
-for f in "$HOOK" "$APP" "$PAMFLET" "$TABLE" "$MOTION"; do backup "$f"; done
+for f in "$HOOK" "$APP" "$PAMFLET" "$TABLE" "$MOTION" "$DETAIL" "$PRESENCE"; do backup "$f"; done
 
 # ── one mutation per rule the guard claims to enforce ──────────────────────
 step "M1  the dialog never gets a role" \
@@ -231,8 +233,36 @@ step "M13 the decorative layer is swept into the animation" \
   "$MOTION" \
   '[["  @starting-style {","  .u-modal-shell:has(> *) { transition: opacity var(--dur-hover) var(--ease-out-expo); }\n  @starting-style {"]]'
 
+# ── M14–M16 — the EXIT animation (useOverlayPresence + motion.css §5b) ─────
+# The exit is a two-part fix and BOTH halves are load-bearing:
+#   * `useOverlayPresence` keeps the node mounted (or there is no frame left),
+#   * the CSS gives it somewhere to animate TO.
+# Each mutation below breaks exactly one half, so each must be fatal on its own.
+# A mutation that broke both at once would be a conjunction and would prove
+# nothing about either.
+#
+# M14 — the hook is never told it is closing, so `data-closing` never lands and
+# CSS has no exit state to reach. Kills on "data-closing was never true".
+step "M14 useOverlay is never told it is closing (no exit state)" \
+  "$DETAIL" \
+  '[["useOverlay({ open: true, onClose, closing });","useOverlay({ open: true, onClose });"]]'
+
+# M15 — the exit CSS is present but can never match. `data-closing` IS written,
+# so this kills on the DIFFERENT branch: "the scrim never left opacity 1".
+step "M15 the exit rule can never match (transition never runs)" \
+  "$MOTION" \
+  '[["  .u-modal-shell[data-closing='"'"'true'"'"']:has(> *):not([aria-hidden='"'"'true'"'"']) {","  .u-modal-shell[data-closing='"'"'true'"'"'].zzz-never-matches:has(> *):not([aria-hidden='"'"'true'"'"']) {"]]'
+
+# M16 — the hook keeps the node mounted but ALSO tears the semantics down by
+# passing `open: !closing`, which is the tempting "fix" for the exit. The
+# overlay stays visible and focus-trapping while announcing nothing. Kills on
+# the third branch: "role was torn down mid-exit".
+step "M16 role is torn down mid-exit (open: !closing)" \
+  "$DETAIL" \
+  '[["useOverlay({ open: true, onClose, closing });","useOverlay({ open: !closing, onClose, closing });"]]'
+
 # ── restore + rebuild so dist/ is not left mutated ─────────────────────────
-for f in "$HOOK" "$APP" "$PAMFLET" "$TABLE" "$MOTION"; do restore_one "$f"; done
+for f in "$HOOK" "$APP" "$PAMFLET" "$TABLE" "$MOTION" "$DETAIL" "$PRESENCE"; do restore_one "$f"; done
 node node_modules/astro/astro.js build >/dev/null 2>&1
 node scripts/build-sw-manifest.mjs >/dev/null 2>&1
 
