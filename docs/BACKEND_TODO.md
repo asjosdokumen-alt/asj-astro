@@ -49,6 +49,23 @@ health). Yang **benar-benar masih 🟡** tinggal **#16 (realtime)** dan **#17 (e
 `dev` sudah tidak ada). **Jadi tidak ada lagi pekerjaan backend yang bisa saya kerjakan tanpa keputusan
 Anda.**
 
+> **⚠ KOREKSI 2026-09-28 — nama remote-nya sudah berganti LAGI, dan blok di bawah jadi menyesatkan.**
+> `newrepo` **tidak ada lagi**. `git remote -v` hari ini → **hanya `origin`**
+> (`https://github.com/asjosdokumen-alt/asj-astro.git`), dan `origin/main` **punya tracking ref
+> yang berfungsi**. Jadi dua klaim di bawah sudah basi: (a) nama remote-nya `newrepo`; (b) "objek
+> store rusak, `git fetch` gagal". Perintah `git ls-remote newrepo …` sekarang memble dengan
+> **`'newrepo' does not appear to be a git repository`** — itu **gejala nama yang sudah dibuang,
+> BUKAN repo rusak**; jangan simpulkan kerusakan dari pesan itu.
+>
+> Perintah pengukuran yang benar **per 2026-09-28** (dan tetap dua langkah, karena ref lokal tanpa
+> `fetch` itu basi):
+>
+> 1. `git fetch` → **wajib dulu**; `git rev-list @{upstream}...HEAD` memakai ref BASI tanpa itu;
+> 2. `git rev-list --left-right --count origin/main...HEAD` → `<behind>  <ahead>`.
+>
+> Terukur 2026-09-28: **`0  26`** — **26 commit lokal belum di-push, 0 di belakang.** (Angka ini akan
+> basi lagi; jalankan perintahnya, jangan percaya baris ini.)
+>
 > **Catatan kepercayaan angka.** Dua baris di dokumen ini sebelumnya tertinggal jauh dari kenyataan
 > (`#2` bilang remote masih `47c4440`/ahead 23 padahal seluruh sesi sebelumnya sudah tayang; `#26`
 > menyuruh membereskan `origin`/`dev` yang sudah tidak ada). **Setiap angka commit di sini harus

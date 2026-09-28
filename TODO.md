@@ -1,6 +1,6 @@
 # 📋 TODO — ASJ Portal v2 (Astro)
 
-**Terakhir dirapikan:** 2026-09-26
+**Terakhir dirapikan:** 2026-09-28
 
 > ## ➡️ Pekerjaan BACKEND ada di satu tempat: **`docs/BACKEND_TODO.md`**
 >
@@ -31,11 +31,18 @@
           gstack/wcag-unmeasurable-audit-2026-09-27.md`);
         · **5 kegagalan AA nyata ditemukan dan diperbaiki** — `/apply` sticky CTA
           (`f02a352`) dan empat CTA gradien (`c000ca4`).
-      ⚠ **Yang BELUM**: (a) **keadaan HOVER/FOCUS tidak diukur** — dua dari lima
-      temuan hanya muncul di hover, dan hover yang membuatnya justru keadaan
-      TERBURUK di halaman (2.54:1, lebih buruk dari kondisi diam 3.77:1) karena
-      konvensi "menyala saat hover" selalu menurunkan kontras teks putih;
-      (b) urutan heading & ARIA di semua halaman belum disapu.
+      ✅ **HOVER kini DIUKUR juga (2026-09-28).** Gate `e2e/test-hover-contrast.mjs`
+      ada dan **hijau**: 132 elemen, 4 rute × 2 tema × 2 lebar, **0 temuan**, rasio
+      hover terendah **4.69:1** (`/apply` "Lanjut"). Keadaan `:hover` TIDAK bisa
+      dibaca dengan pointer, jadi dibangkitkan lewat `CSS.forcePseudoState` — dan
+      asumsi itu **diverifikasi terhadap pointer sungguhan**, bukan diasumsikan.
+      Gate-nya menegakkan LANTAI cakupan (MIN_PROBED = 60), jadi rewrite yang
+      memindahkan warna hover ke JS akan GAGAL, bukan lolos diam-diam.
+      ⚠ **Batas yang jujur:** `:active` & `:disabled` TIDAK diprobe; dan gate
+      hanya melihat CSS — komponen yang menyetel warna hover dari state JS
+      terukur pada warna DIAM. Panel admin juga belum tercakup (lubang yang sama
+      yang dicatat `test-contrast.mjs`).
+      ⚠ **SISA:** **(b) urutan heading & ARIA di semua halaman belum disapu.**
 - [ ] Loading skeleton di semua halaman yang memuat data
 
 ### Polish
@@ -47,11 +54,43 @@
 - [ ] PostHog / analytics perilaku
 - [ ] Dashboard analytics admin (views, applies)
 
+### Harness uji / tooling (bukan fitur)
+- [x] ~~**`server.cjs` belum memetakan `.avif`**~~ → **SELESAI 2026-09-28.**
+      `'.avif': 'image/avif'` ditambahkan (sebelumnya jatuh ke
+      `application/octet-stream` — `text/html` untuk berkas yang TIDAK ada,
+      karena SPA-fallback di `server.cjs:117` tidak memeriksa keberadaan
+      `dist/index.html`).
+      ⚠ **Severity-nya perlu dikoreksi, dan itu bagian dari temuan.** `server.cjs`
+      **BUKAN produksi** — Netlify menyajikan situs dengan penanganan MIME-nya
+      sendiri. Ia adalah **harness yang dipakai lima gate e2e** (`test-contrast`,
+      `test-hover-contrast`, `test-headings`, `test-dialog`, WCAG audit). Jadi
+      cacat ini **tidak terlihat di produksi** sementara **nyata di setiap tempat
+      yang benar-benar mengukur**. Dampaknya luas: **18 referensi AVIF unik** di
+      `dist/*.html`, semuanya di dalam `srcset` (itu sebabnya `grep src=` biasa
+      melewatkannya) — dan semuanya tetap ter-paint, jadi tidak ada yang sadar.
+      **Gate regresi:** `src/lib/serverMime.test.ts` — menegakkan invarian yang
+      membuat bug ini mungkin, bukan hanya memperbaiki satu barisnya: setiap
+      ekstensi gambar yang **benar-benar direferensikan `dist/`** harus punya
+      entri MIME ber-`image/*`. Diverifikasi **merah** saat perbaikan dikembalikan
+      (2 dari 4 tes gagal: `.avif` spesifik + cakupan gambar generik).
+- [ ] `e2e/test-hover-contrast.mjs` + baterainya + `e2e/measure-hover-contrast.mjs`
+      masih **belum di-commit** (lihat `git status`); wiring `package.json`,
+      `.github/workflows/ci.yml`, dan `review-manifest.json` juga. Gate-nya
+      **hijau** (diverifikasi 2026-09-28, 132 elemen / 0 temuan), tapi selama belum
+      di-commit ia tidak melindungi apa pun di riwayat.
+
 ### Diketahui belum selesai (bukan bug, memang belum dibangun)
-- [ ] **Daftar Agenda di panel admin masih kosong.** `#dash-agenda-list` adalah
-      empty-state hardcoded ("Jadwal akan dimuat dari backend."); tidak ada penulis
-      untuk id itu di seluruh repo. Tab `Agenda` karenanya tampil kosong sampai
-      disambungkan ke data jadwal sungguhan.
+- [x] ~~**Daftar Agenda di panel admin masih kosong.**~~ → **SELESAI 2026-09-27**
+      (`09878b9`). **Premis catatan lama ini SALAH** — lapisan datanya **sudah ada**
+      (`netlify/functions/schedule.js` punya surface penuh, dan tab `jadwal` sudah
+      membacanya: aksi sama, argumen sama, bentuk `d.schedules` sama). Yang hilang
+      bukan backend, melainkan **komponen yang tidak pernah disambungkan** ke
+      backend yang sudah ada. "Belum dibangun" dan "belum disambung" terlihat
+      identik dari sebuah div kosong — hanya satu dari keduanya ketiadaan yang
+      nyata. **Sebelum memercayai catatan "belum dibangun", cari dulu surface-nya.**
+      Tile-nya kini juga membedakan LOADING / FAILED / EMPTY (sebelumnya ketiganya
+      dirender identik), mengurut `waktu` menaik, dan menampilkan "5/9" supaya cap
+      5 baris tidak disangka daftar lengkap.
 - [x] ~~**`/loker` judul perusahaan terpotong**~~ → **SELESAI 2026-09-27**
       (commit `672d2f1`). Cap `max-w-[210px]` dibuang; nama perusahaan kini
       **utuh dari 390px** ke atas (sebelumnya selalu terpotong di 210px).
