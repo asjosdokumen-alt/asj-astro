@@ -429,6 +429,16 @@ for (const line of ignoreLines) {
 const ILLUSTRATIONS = new Set([
   'ilustrasi/hero-sakura.webp',
   'ilustrasi/lokasi-banner.webp',
+  // The three program cards. THEIR ARTWORK CHANGED ON 2026-09-28: the owner
+  // replaced the flat-vector scenes (a factory, a skyline, an open book) with
+  // generated anime illustrations that DO depict people. The paragraph above
+  // describes the set as it was in 2026-09-20, so it is now false for these
+  // three in the same way it was already false for `hero-sakura`, and the same
+  // reasoning keeps them here: the figures are generated, so there is no person
+  // whose likeness it is and §11.2's consent requirement has no subject. The
+  // criterion is "is there a subject who could consent or refuse", NOT "is it a
+  // drawing" — if a REAL photograph is ever dropped at one of these paths, this
+  // entry must be re-examined rather than inherited.
   'ilustrasi/program-bahasa.webp',
   'ilustrasi/program-magang.webp',
   'ilustrasi/program-ssw.webp',
@@ -440,14 +450,40 @@ const ILLUSTRATIONS = new Set([
   'ilustrasi/qr-whatsapp.webp',
   'ilustrasi/qr-instagram.webp',
   'ilustrasi/qr-tiktok.webp',
-  // The placement scenery band. It is a photograph, and the reason it belongs
-  // here rather than in OWNER_APPROVED is the criterion above: `fuji banner.jpg`
-  // (the source, 5325x3550) contains NO people — Mt Fuji, a lake, and swans — so
-  // there is no likeness to consent to. The alternative source, `Japan
-  // banner.jpg`, is a Shibuya-crossing long exposure with a crowd in it; that one
-  // would NOT be admissible here without an owner ruling, and is the reason the
-  // banner choice was made on more than crop ratio.
+  // The placement band. ITS ARTWORK CHANGED ON 2026-09-28, so the justification
+  // recorded here before is REPLACED rather than left standing — it said the
+  // file was a photograph of Mt Fuji across a lake (`fuji banner.jpg`,
+  // 5325x3550), admitted because it contains no people. It is now a GENERATED
+  // MAP OF JAPAN. The set's criterion is unchanged and still satisfied, but by
+  // the other half of it: there is no photograph here at all, hence no subject
+  // who could consent or refuse. Do not move the entry to OWNER_APPROVED, whose
+  // every other member is a consent decision.
   'ilustrasi/penempatan-banner.webp',
+  // ADDED 2026-09-28 — the six "Bagaimana Prosesnya?" step illustrations. Each
+  // is one slice of a single generated composite the owner supplied; they are
+  // wired through `Step.image` in companyProfile.ts, which is the same
+  // `image: { name: … }` shape `TILE_IMAGE_NAMES` above already resolves, so the
+  // indirect-reference scan picks all six up with no change to it.
+  //
+  // They belong in this set rather than OWNER_APPROVED for the criterion stated
+  // above: they are generated drawings, so §11.2's consent requirement has no
+  // subject to attach to.
+  //
+  // ⚠ RECORDED DEPARTURE, NOT A SILENT ONE. These six DO contain incidental
+  // in-scene lettering (a whiteboard, a passport cover, a contract sheet).
+  // `docs/ILLUSTRATION_SPEC.md` §2.1 rule 1 bans text inside images, and its
+  // reason is specific: page text must stay translatable. No step TITLE or
+  // DESCRIPTION is baked in — every word on these cards is still a keyed
+  // `Text` rendered as `data-lang`, so the JP toggle still reaches all of it.
+  // The rule is a prose convention and this gate does not enforce it; the
+  // departure is written down here so the next reader meets it at the asset
+  // rather than discovering it by opening the file.
+  'ilustrasi/langkah-1.webp',
+  'ilustrasi/langkah-2.webp',
+  'ilustrasi/langkah-3.webp',
+  'ilustrasi/langkah-4.webp',
+  'ilustrasi/langkah-5.webp',
+  'ilustrasi/langkah-6.webp',
   // The footer emblem, localised off Supabase on 2026-09-24. A logo is a mark,
   // not a person, so the same criterion applies. It is the only member of this
   // set that lives outside `public/assets/` (under `public/icons/`); the gate

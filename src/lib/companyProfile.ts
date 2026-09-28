@@ -81,10 +81,21 @@ export interface Tile {
   image?: TileImage;
 }
 
-/** A numbered step in a sequential flow. */
+/**
+ * A numbered step in a sequential flow.
+ *
+ * `image` was added 2026-09-28, when the owner supplied generated illustrations
+ * for "Bagaimana Prosesnya?" — the six steps had been text-only since the
+ * section existed. It is OPTIONAL for the same reason `Tile.image` is: a
+ * required field would force every future step list to invent a picture. The
+ * `alt` stays REQUIRED whenever the field is present, which `TileImage` already
+ * enforces — a step illustration carries meaning (a classroom for the training
+ * step), so it is content rather than decoration.
+ */
 export interface Step {
   title: Text;
   body: Text;
+  image?: TileImage;
 }
 
 /**
@@ -185,7 +196,23 @@ export const WHY_JAPAN_TIP: Text = {
   text: 'Tekanan kerja di Jepang lebih besar: pilih pekerjaan sesuai kemampuan yang paling dikuasai, dan galilah bahasa Jepang sedalam mungkin.',
 };
 
-/* ── Program (pages 3 and 4) ────────────────────────────────────────────── */
+/**
+ * Program (pages 3 and 4).
+ *
+ * ARTWORK REPLACED 2026-09-28. The owner supplied three generated illustrations
+ * and asked for them in place of the flat-vector scenes. Two consequences worth
+ * recording, because both are measurable rather than stylistic:
+ *
+ *  - the ratio moved from 4:3 (1200x900) to 3:2 (600x400), which is the new
+ *    source's own shape, so `IconTileGrid`'s `aspect-[3/2]` renders it with no
+ *    crop. The declared `w`/`h` are the REAL size of the 1x file, per
+ *    `docs/ILLUSTRATION_SPEC.md` §3.2 — the previous 1200x900 was also real,
+ *    and the number is read from disk, never copied from a spec;
+ *  - the source composite is 1790x879, so each card's slice is ~562px wide.
+ *    The 600px 1x file is therefore a ~1.07x upscale and the 1200px @2x is
+ *    synthetic — acceptable for flat illustration, and the reason the files
+ *    are smaller than the 2400x1800 they replace.
+ */
 export const PROGRAMS: Tile[] = [
   {
     icon: 'graduation-cap',
@@ -197,9 +224,9 @@ export const PROGRAMS: Tile[] = [
     },
     image: {
       name: 'program-magang',
-      alt: 'Ilustrasi peserta magang berangkat ke Jepang.',
-      w: 1200,
-      h: 900,
+      alt: 'Ilustrasi peserta magang di depan gedung pelatihan, berlatar Gunung Fuji.',
+      w: 600,
+      h: 400,
     },
   },
   {
@@ -212,9 +239,9 @@ export const PROGRAMS: Tile[] = [
     },
     image: {
       name: 'program-ssw',
-      alt: 'Ilustrasi kawasan industri di Jepang, tempat penempatan pekerja terampil.',
-      w: 1200,
-      h: 900,
+      alt: 'Ilustrasi dua pekerja terampil berlatar cakrawala kota Tokyo saat senja.',
+      w: 600,
+      h: 400,
     },
   },
   {
@@ -227,9 +254,9 @@ export const PROGRAMS: Tile[] = [
     },
     image: {
       name: 'program-bahasa',
-      alt: 'Ilustrasi buku dan gelombang suara, lambang pelatihan bahasa Jepang.',
-      w: 1200,
-      h: 900,
+      alt: 'Ilustrasi peserta menulis aksara Jepang dengan buku teks dan latar Gunung Fuji.',
+      w: 600,
+      h: 400,
     },
   },
 ];
@@ -269,12 +296,38 @@ export const PROGRAM_INCLUDES: Text[] = [
 ];
 
 /* ── Admission flow (page 3, verbatim) ──────────────────────────────────── */
+
+/**
+ * ILLUSTRATIONS ADDED 2026-09-28. The owner supplied one generated composite
+ * containing all six steps and asked for it to be used here; the six slices are
+ * cropped out of it (`langkah-1` … `langkah-6`), NOT the composite itself.
+ *
+ * WHY SLICES RATHER THAN THE WHOLE PICTURE. The composite has the step titles
+ * and descriptions burned into its pixels. Dropping it in whole would replace
+ * live, translatable `data-lang` text with a bitmap — the exact defect
+ * `docs/ILLUSTRATION_SPEC.md` §2.1 rule 1 exists to prevent, and one this repo
+ * can measure: `e2e/probe-untranslated.mjs` walks `[data-lang]` nodes, so the
+ * strings would simply stop localising on the JP toggle. Every word on these
+ * cards stays a `Text` with a key.
+ *
+ * The `w`/`h` are the measured size of the 1x files. All six share one ratio
+ * (7:5) so a single `aspect-[7/5]` box can reserve their space before load —
+ * the six source slices were 1.29–1.51, so a shared box unavoidably re-crops
+ * each one, and 7:5 is the compromise that costs the least on the widest and
+ * the tallest.
+ */
 export const FLOW_STEPS: Step[] = [
   {
     title: { key: 'profile.step_reg_title', text: 'Registration' },
     body: {
       key: 'profile.step_reg_body',
       text: 'Pemeriksaan kesehatan, dokumen, dan mengisi form pendaftaran.',
+    },
+    image: {
+      name: 'langkah-1',
+      alt: 'Ilustrasi peserta mengisi formulir pendaftaran di meja pendaftaran.',
+      w: 560,
+      h: 400,
     },
   },
   {
@@ -283,6 +336,12 @@ export const FLOW_STEPS: Step[] = [
       key: 'profile.step_train_body',
       text: 'Pelatihan bahasa Jepang, keterampilan, dan pengenalan budaya Jepang.',
     },
+    image: {
+      name: 'langkah-2',
+      alt: 'Ilustrasi kelas pelatihan bahasa Jepang dengan pengajar di depan papan tulis.',
+      w: 560,
+      h: 400,
+    },
   },
   {
     title: { key: 'profile.step_interview_title', text: 'Interview' },
@@ -290,10 +349,22 @@ export const FLOW_STEPS: Step[] = [
       key: 'profile.step_interview_body',
       text: 'Wawancara kerja dengan perusahaan Jepang.',
     },
+    image: {
+      name: 'langkah-3',
+      alt: 'Ilustrasi wawancara kerja antara peserta dan pewawancara dari perusahaan Jepang.',
+      w: 560,
+      h: 400,
+    },
   },
   {
     title: { key: 'profile.step_doc_title', text: 'Employment Document' },
     body: { key: 'profile.step_doc_body', text: 'Kepengurusan berkas di Indonesia.' },
+    image: {
+      name: 'langkah-4',
+      alt: 'Ilustrasi petugas menyusun tumpukan berkas kepengurusan di kantor.',
+      w: 560,
+      h: 400,
+    },
   },
   {
     title: { key: 'profile.step_prep_title', text: 'Document Preparing' },
@@ -303,12 +374,24 @@ export const FLOW_STEPS: Step[] = [
       key: 'profile.step_prep_body',
       text: 'Pemeriksaan kesehatan (MCU) dan tanda tangan kontrak kerja, lalu kepengurusan berkas imigrasi Jepang (COE).',
     },
+    image: {
+      name: 'langkah-5',
+      alt: 'Ilustrasi pemeriksaan kesehatan dan penandatanganan kontrak kerja beserta dokumen COE.',
+      w: 560,
+      h: 400,
+    },
   },
   {
     title: { key: 'profile.step_go_title', text: 'GO TO JAPAN' },
     body: {
       key: 'profile.step_go_body',
       text: 'Pengurusan paspor, visa, dan EKTLN di Indonesia.',
+    },
+    image: {
+      name: 'langkah-6',
+      alt: 'Ilustrasi peserta membawa paspor dan koper menuju pesawat menuju Jepang.',
+      w: 560,
+      h: 400,
     },
   },
 ];

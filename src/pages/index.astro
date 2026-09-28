@@ -417,14 +417,23 @@ import { GALLERY } from '../lib/gallery';
           band carries no information those two do not, which is the same test
           the `#lokasi` note applies to its own skyline.
 
-          WHY `fuji banner.jpg` AND NOT `Japan banner.jpg`. Three measured
-          reasons: (1) the source is exactly 3:2, so `aspect-[3/2]` renders it
-          with NO crop, while the Shibuya shot is 1.62:1 and would be cropped by
-          any clean ratio; (2) it contains no people, so it belongs in the asset
-          gate's ILLUSTRATIONS set ("no subject who could consent or refuse")
-          without a judgement call; (3) it is the larger source (5325px vs
-          4997px). The declared 1200x800 is the real size of the 1x file. */}
-      <picture class="u-drift-frame block mt-6 aspect-[3/2] overflow-clip rounded-panel border border-line/30">
+          ARTWORK REPLACED 2026-09-28. This slot used to hold a photograph of Mt
+          Fuji across a lake, chosen because it was exactly 3:2 and contained no
+          people. The owner supplied a generated map of Japan instead and asked
+          for it here, so both of those properties moved, and neither move is
+          cosmetic:
+
+            - the ratio is now 4:3, the source's own shape. It is read from the
+              file rather than kept at 3:2, because a 3:2 box over a 4:3 picture
+              makes `object-cover` discard a quarter of the map's height — and
+              on a map the missing band is Kyushu or Hokkaido;
+            - it is an ILLUSTRATION, not a photograph, so it sits in the asset
+              gate's ILLUSTRATIONS set for the stronger of that set's two
+              reasons: there is no subject who could consent or refuse, so
+              §11.2's consent requirement has nothing to attach to.
+
+          The declared 1200x900 is the real size of the 1x file. */}
+      <picture class="u-drift-frame block mt-6 aspect-[4/3] overflow-clip rounded-panel border border-line/30">
         <source
           type="image/avif"
           srcset="/assets/ilustrasi/penempatan-banner.avif 1x, /assets/ilustrasi/penempatan-banner@2x.avif 2x"
@@ -438,7 +447,7 @@ import { GALLERY } from '../lib/gallery';
           alt=""
           aria-hidden="true"
           width="1200"
-          height="800"
+          height="900"
           loading="lazy"
           decoding="async"
           class="u-drift"

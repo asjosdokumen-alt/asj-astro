@@ -92,11 +92,14 @@ export default function IconTileGrid({ tiles, columns = 3, class: className }: P
               with its own padding would also work but would leave the card's
               visual edge inset from the image, which reads as a double frame.
 
-              `aspect-[4/3]` is fixed rather than derived from the file, because
+              `aspect-[3/2]` is fixed rather than derived from the file, because
               the ratio must be reserved BEFORE the image loads — deriving it
               from the decoded file is what causes layout shift. All three
-              program illustrations ship at 1200x900, so 4/3 is their true
-              ratio, not an approximation. */}
+              program illustrations ship at 600x400, so 3/2 is their true
+              ratio, not an approximation. It was `4/3` until 2026-09-28, when
+              the artwork was replaced; the ratio follows the artwork, so the
+              two moved together rather than leaving `object-cover` to crop
+              14% of every card's width. */}
           {tile.image ? (
             <picture class="block -mx-5 -mt-5 md:-mx-6 md:-mt-6 mb-1">
               <source
@@ -114,7 +117,7 @@ export default function IconTileGrid({ tiles, columns = 3, class: className }: P
                 height={tile.image.h}
                 loading="lazy"
                 decoding="async"
-                class="w-full aspect-[4/3] object-cover u-zoom"
+                class="w-full aspect-[3/2] object-cover u-zoom"
               />
             </picture>
           ) : null}

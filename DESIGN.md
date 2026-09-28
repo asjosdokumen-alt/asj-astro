@@ -751,13 +751,27 @@ nama kelas Tailwind di dalamnya.
 
 ### 5.7 StepList (Bagaimana Prosesnya)
 
-Enam langkah: Daftar → Lengkapi Profil → Pilih Lowongan → Seleksi → Pemberkasan →
-Berangkat. Nomor **tegas dan berurutan** (1..6), bukan grid sejajar — riset
-menempatkan alur berurutan sebagai kasus di mana bento **kalah**.
+Enam langkah dari dokumen: Registration → Training & Education → Interview →
+Employment Document → Document Preparing → GO TO JAPAN. **Label diambil dari
+`FLOW_STEPS`.** Bagian ini dulu mencantumkan enam nama yang tidak ada di kode
+(Daftar → Lengkapi Profil → …); daftar itu salah dan diganti 2026-09-28, bukan
+karena alurnya berubah, tapi karena dokumen yang menyebut nama berkas/langkah
+yang tidak ada lebih buruk daripada tidak ada dokumen.
 
-Mobile: satu kolom, garis penghubung vertikal. Desktop: 6 kolom dengan garis
-horizontal, **atau** 3×2 kalau labelnya panjang. Panah (`arrow-right`) hanya dipakai
-di desktop; di mobile arahnya sudah jelas dari urutan.
+Nomor **tegas dan berurutan** (1..6) — riset menempatkan alur berurutan sebagai
+kasus di mana bento **kalah**. Karena itu urutannya dibawa oleh `<ol>` + nomor
+yang terlihat, bukan oleh bentuk gridnya.
+
+**3×2 dengan ilustrasi per langkah — diukur 2026-09-28.** Sebelumnya 6 kolom teks
+saja. Owner memasok satu ilustrasi per langkah, dan 6 kolom pada viewport 1280
+hanya menyisakan **~180px per kolom**; gambar sebesar itu tidak terbaca, padahal
+justru gambarnya yang membawa isi. Tier-nya karena itu turun ke 3×2 — opsi yang
+sudah diizinkan kalimat di bawah — dengan urutan tetap dijaga nomor 1..6 yang
+terlihat di setiap kartu. Mobile: satu kolom.
+
+Desktop: 3×2. Panah (`arrow-right`) tidak dipakai di sini: pada 3×2 arahnya sudah
+dibawa oleh nomor, dan panah antar-baris akan terbaca sebagai alur yang berputar
+balik.
 
 ### 5.8 ClosingBand
 

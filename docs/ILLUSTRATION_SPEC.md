@@ -80,6 +80,21 @@ Diturunkan dari gaya ilustrasi yang **sudah dipasang** (hero + 3 kartu program,
 1. **TIDAK ADA teks di dalam gambar.** Semua teks hidup sebagai teks halaman —
    translatable, dan itu sudah jadi aturan repo (`GALLERY_EXCLUDED` menolak
    `poster-rekrutmen.webp` justru karena teks & harga terbakar di piksel).
+   **Alasan aturan ini adalah translatability, bukan estetika** — dan itu yang
+   membedakan dua hal yang sering disamakan:
+   - **teks halaman yang dibakar ke piksel** (judul kartu, harga, label langkah):
+     dilarang, tanpa pengecualian. Pembaca berbahasa Jepang tidak punya cara
+     membacanya.
+   - **huruf insidental di dalam adegan** (papan tulis, sampul paspor, lembar
+     kontrak): ini yang muncul di `langkah-1..6` dan di `hero-sakura`
+     (`ASJ PORTAL` di jaket). Tidak ada yang perlu diterjemahkan karena tidak ada
+     yang membacanya sebagai UI.
+
+   ⚠ **Penyimpangan 2026-09-28 dicatat, bukan disembunyikan.** Enam ilustrasi
+   `langkah-*` mengandung huruf insidental jenis kedua. Aturan di atas tidak
+   diubah untuk membenarkannya: catatan ini ditulis supaya pembaca berikutnya
+   bertemu fakta itu **di berkasnya**, bukan saat membuka gambarnya. Tidak ada
+   judul/deskripsi langkah yang dibakar — semuanya tetap `data-lang`.
 2. **Tidak ada wajah orang nyata yang bisa dikenali.** Ini yang menyelesaikan
    §11.2: ilustrasi menghapus kebutuhan consent. Kalau ilustrasi dibuat “berdasarkan”
    orang tertentu, aturannya kembali berlaku.
@@ -91,21 +106,65 @@ Diturunkan dari gaya ilustrasi yang **sudah dipasang** (hero + 3 kartu program,
 
 ## 3. Daftar gambar
 
-**Lima slot, dan semuanya sudah dipasang.** Tabel ini ditulis dari berkas yang ada
-di disk dan dari markup yang benar-benar dirender — bukan dari rencana lama. Kolom
-“Dipakai di” menyebut lokasi kode yang merender berkas itu, supaya klaim “sudah
-dipasang” bisa diperiksa, bukan dipercaya.
+**Enam belas slot ilustrasi, dan semuanya sudah dipasang.** Tabel ini ditulis dari
+berkas yang ada di disk — dimensinya **diukur** dengan `sharp`, bukan disalin dari
+spesifikasi — dan dari markup yang benar-benar dirender. Kolom “Dipakai di”
+menyebut lokasi kode yang merender berkas itu, supaya klaim “sudah dipasang” bisa
+diperiksa, bukan dipercaya.
+
+> **Sumber kebenaran daftarnya ada di kode, bukan di sini.**
+> `scripts/ci/verify-assets.mjs` set `ILLUSTRATIONS` adalah daftar yang ditegakkan
+> gate: ilustrasi yang dirender tapi tidak terdaftar di situ membuat gate merah.
+> Tabel di bawah boleh tertinggal; jangan jadikan acuan saat memasang berkas baru.
 
 | # | Berkas (basename) | Peran | Ukuran 1x / @2x | Dipakai di | `loading` | `alt` |
 |---|---|---|---|---|---|---|
-| 1 | `hero-sakura` | Latar band hero: Fuji, pagoda, skyline, sakura senja | 1600×900 / 3200×1800 | `src/components/App.tsx` (varian `hero`) | `eager` | `""` (dekoratif) |
+| 1 | `hero-sakura` | Latar band hero: Fuji, pagoda, skyline, sakura senja | 1600×582 / 3200×1164 | `src/components/App.tsx` (varian `hero`) | `eager` | `""` (dekoratif) |
 | 2 | `lokasi-banner` | Pita skyline senja di atas kartu peta | 1200×600 / 2400×1200 | `src/pages/index.astro` §`#lokasi` | `lazy` | `""` (dekoratif) |
-| 3 | `program-magang` | Kartu Program: jalur Magang | 1200×900 / 2400×1800 | `src/lib/companyProfile.ts` → `PROGRAMS[0].image` | `lazy` | deskriptif |
-| 4 | `program-ssw` | Kartu Program: Tokutei Ginou (kawasan industri) | 1200×900 / 2400×1800 | `PROGRAMS[1].image` | `lazy` | deskriptif |
-| 5 | `program-bahasa` | Kartu Program: Bahasa Jepang (buku + gelombang suara) | 1200×900 / 2400×1800 | `PROGRAMS[2].image` | `lazy` | deskriptif |
+| 3 | `program-magang` | Kartu Program: jalur Magang | 600×400 / 1200×800 | `src/lib/companyProfile.ts` → `PROGRAMS[0].image` | `lazy` | deskriptif |
+| 4 | `program-ssw` | Kartu Program: Tokutei Ginou | 600×400 / 1200×800 | `PROGRAMS[1].image` | `lazy` | deskriptif |
+| 5 | `program-bahasa` | Kartu Program: Bahasa Jepang | 600×400 / 1200×800 | `PROGRAMS[2].image` | `lazy` | deskriptif |
+| 6 | `langkah-1` | Langkah 1 — Registration | 560×400 / 1120×800 | `FLOW_STEPS[0].image` | `lazy` | deskriptif |
+| 7 | `langkah-2` | Langkah 2 — Training & Education | 560×400 / 1120×800 | `FLOW_STEPS[1].image` | `lazy` | deskriptif |
+| 8 | `langkah-3` | Langkah 3 — Interview | 560×400 / 1120×800 | `FLOW_STEPS[2].image` | `lazy` | deskriptif |
+| 9 | `langkah-4` | Langkah 4 — Employment Document | 560×400 / 1120×800 | `FLOW_STEPS[3].image` | `lazy` | deskriptif |
+| 10 | `langkah-5` | Langkah 5 — Document Preparing | 560×400 / 1120×800 | `FLOW_STEPS[4].image` | `lazy` | deskriptif |
+| 11 | `langkah-6` | Langkah 6 — GO TO JAPAN | 560×400 / 1120×800 | `FLOW_STEPS[5].image` | `lazy` | deskriptif |
+| 12 | `penempatan-banner` | Peta Jepang di pita `#penempatan` | 1200×900 / 2400×1800 | `src/pages/index.astro` §`#penempatan` | `lazy` | `""` (dekoratif) |
+| 13 | `qr-whatsapp` | Kode QR kontak | 256×256 / 512×512 | `src/pages/index.astro` §`#kontak` | `lazy` | deskriptif |
+| 14 | `qr-instagram` | Kode QR kontak | 256×256 / 512×512 | `src/pages/index.astro` §`#kontak` | `lazy` | deskriptif |
+| 15 | `qr-tiktok` | Kode QR kontak | 256×256 / 512×512 | `src/pages/index.astro` §`#kontak` | `lazy` | deskriptif |
+| 16 | `icons/logo-asj` | Emblem footer & halaman 404 (satu-satunya yang di luar `public/assets/`) | 500×500 / 1000×1000 | `src/components/Footer.astro`, `src/pages/404.astro` | `lazy` | deskriptif |
 
 Setiap slot dikirim dalam **4 berkas**: `.webp` + `.avif`, masing-masing 1x dan
-`@2x`. Total 20 berkas, 904 KB.
+`@2x`.
+
+### 3.0 Dua koreksi terhadap tabel ini — keduanya hasil mengukur, 2026-09-28
+
+Ditulis di sini karena keduanya adalah contoh persis kenapa §3.2 menuntut
+“ukur, jangan salin”:
+
+1. **`hero-sakura` terukur 1600×582, bukan 1600×900.** Angka 1600×900 tertulis di
+   tabel lama dan **salah**; ia tidak pernah dipakai siapa pun untuk memasang
+   berkas (yang memasang memakai `width`/`height` dari komponennya sendiri).
+2. **Tiga QR dan emblem footer sudah dirender sejak 2026-09-24** tapi belum pernah
+   masuk tabel ini. Keduanya ada di `ILLUSTRATIONS` dan lolos gate, jadi
+   ketiadaannya di sini berarti tabelnya tertinggal — bukan bahwa berkasnya tidak
+   dipakai.
+
+**Perubahan artwork 2026-09-28.** Owner memasok empat berkas hasil generate
+(ChatGPT) dan memintanya dipasang: tiga ilustrasi kartu program, enam ilustrasi
+langkah, dan satu peta Jepang untuk pita `#penempatan`. Yang berubah:
+
+| Slot | Sebelum | Sesudah |
+|---|---|---|
+| `program-*` | gambar vektor datar, 4:3, 1200×900 | ilustrasi anime, **3:2, 600×400** — rasionya ikut artwork, karena kotak 4:3 di atas gambar 3:2 membuat `object-cover` membuang 14% lebar tiap kartu |
+| `langkah-1..6` | **tidak ada** — bagiannya teks saja | 6 ilustrasi, **7:5, 560×400**, dipotong dari satu komposit 1536×1024 |
+| `penempatan-banner` | foto Fuji + danau, 3:2, 1200×800 | **peta Jepang, 4:3, 1200×900** — di peta, pita yang terpotong itu Kyushu atau Hokkaido |
+
+Yang **tidak** berubah: tidak ada satu kata pun yang jadi bagian dari piksel.
+Judul dan deskripsi di kartu program maupun kartu langkah tetap `Text` ber-`key`
+yang dirender sebagai `data-lang`, jadi toggle ID/EN/JP tetap menjangkaunya.
 
 ### 3.1 Kenapa `alt` berbeda: dekoratif vs deskriptif
 
@@ -115,8 +174,13 @@ Ini bukan kelalaian, dan bukan pilihan per-berkas yang bisa dibalik tanpa alasan
   mengulang makna yang **sudah** dinyatakan teks: hero punya `h1` (“Karier ke
   Jepang, dimulai dari sini.”) dan seksi lokasi sudah menyebut nama serta alamat.
   Membacakannya lagi membuat pembaca layar mengucapkan gagasan yang sama dua kali.
-- **Tiga kartu program** memakai `alt` deskriptif, karena di sana gambar memang
-  membawa isi: pabrik untuk penempatan SSW, buku untuk pelatihan bahasa.
+- **Kartu program dan kartu langkah** memakai `alt` deskriptif, karena di sana
+  gambar memang membawa isi: pabrik untuk penempatan SSW, buku untuk pelatihan
+  bahasa, kelas untuk langkah Training & Education. Aturan yang dipakai bukan
+  “apakah ini ilustrasi” melainkan **apakah gambar ini mengulang kalimat yang
+  sudah ada di sebelahnya**. Pada kartu, judul kartunya pendek dan gambarnya
+  menambah — jadi `alt` deskriptif. Pada hero dan pita `#penempatan`, teks di
+  sekitarnya sudah menyatakan hal yang sama, jadi `alt=""`.
 
 ### 3.2 Cara memasang berikutnya (kontrak yang sudah terbukti)
 
@@ -126,6 +190,10 @@ terbukti benar di 5 slot ini. Yang dibutuhkan hanya:
 1. Buat 4 berkas dengan basename sama di `public/assets/ilustrasi/`.
 2. Untuk kartu program: isi `image: { name, alt, w, h }` pada `Tile` di
    `src/lib/companyProfile.ts`. `name` adalah **basename saja**, bukan path.
+   Untuk kartu langkah, bentuk field-nya **sama persis**, hanya objeknya `Step`:
+   `FLOW_STEPS[n].image`. `Step.image` opsional sejak 2026-09-28, dan
+   `IconTileGrid.tsx` / `StepList.tsx` memakai markup gambar yang sengaja
+   identik, jadi keduanya tidak bisa berbeda padding atau rasio.
 3. Untuk slot hero/banner: `<picture>` sudah ada; cukup ganti `srcset` dan
    `width`/`height` di `App.tsx` / `index.astro`.
 
