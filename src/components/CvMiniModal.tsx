@@ -70,9 +70,14 @@ export function pendidikanLevel(v?: string | null): string {
   return '-';
 }
 
-interface Props { onClose: () => void; prefill?: CvMiniPrefill; }
+interface Props {
+  onClose: () => void;
+  prefill?: CvMiniPrefill;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
+}
 
-export default function CvMiniModal({ onClose, prefill }: Props) {
+export default function CvMiniModal({ onClose, prefill, closing = false }: Props) {
   const user = useStore(authStore);
   const [gender, setGender] = useState<'LAKI-LAKI' | 'PEREMPUAN'>(() => normalizeGender(prefill?.gender));
   const [usia, setUsia] = useState(() => digitsOnly(prefill?.usia));
@@ -122,7 +127,7 @@ export default function CvMiniModal({ onClose, prefill }: Props) {
     } finally { setLoading(false); }
   };
 
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>

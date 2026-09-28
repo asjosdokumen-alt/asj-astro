@@ -11,6 +11,8 @@ interface Props {
   waTarget: string;
   isOpen: boolean;
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
   /** A10 parity: fallback pas_photo baris kandidat saat uploads.photo master kosong
    *  (legacy renderCVAjaib: master uploads.photo dulu, lalu pasPhoto dari
    *  ALL_CANDIDATES). TabPelamar & CandidateDash meneruskan row.pasPhoto. */
@@ -240,7 +242,7 @@ export function buildKertasA4(p: Record<string, any>) {
   h+=raw("</table>");
   return h;
 }
-export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback}:Props) {
+export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback,closing=false}:Props) {
   const u = useStore(authStore) as {isLoggedIn?:boolean;role?:string};
   const [loading,setLoading] = useState(false);
   const [error,setError] = useState("");
@@ -252,7 +254,7 @@ export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback}:
   // Escape; the backdrop close was hand-rolled below. The sheet has no
   // <h1>-<h6> (its title is a styled <div> inside the generated HTML), so the
   // name has to come from `label` — the hook cannot derive it from a heading.
-  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose, label: t("admin.rirekisho_title") });
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen || closing, onClose, closing, label: t("admin.rirekisho_title") });
 
   useEffect(() => {
     if(!isOpen||!waTarget) return;
@@ -290,7 +292,7 @@ export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback}:
     return () => { cancelled=true; };
   },[isOpen,waTarget]);
 
-  if(!isOpen) return null;
+  if(!isOpen&&!closing) return null;
   return h("div",{ref:containerRef,id:"rirek-modal",class:"fixed inset-0 u-modal-shell z-[200] bg-black/80 flex items-center justify-center p-4 u-scroll-area",onClick:onBackdropClick},
     h("div",{class:"bg-white rounded-xl shadow-2xl max-w-[210mm] w-full max-h-[95vh] u-scroll-area p-6 relative"},
       h("button",{"type":"button","aria-label":t("public.close"),onClick:onClose,class:"absolute top-3 right-3 z-50 text-slate-500 hover:text-red-500 text-2xl print:hidden"},"×"),

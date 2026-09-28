@@ -19,6 +19,8 @@ interface Props {
   title: string;
   onClose: () => void;
   previewOnly?: boolean;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
 }
 
 // Lazy-loaded SheetJS vendor for Excel/CSV rendering
@@ -136,7 +138,7 @@ async function renderExcelToHtml(url: string): Promise<string | null> {
   }
 }
 
-export default function DocumentPreviewModal({ url, title, onClose, previewOnly }: Props) {
+export default function DocumentPreviewModal({ url, title, onClose, previewOnly, closing = false }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [excelHtml, setExcelHtml] = useState<string | null>(null);
@@ -280,7 +282,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly 
     );
   };
 
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex flex-col p-2 md:p-6" ref={containerRef} onClick={onBackdropClick}>

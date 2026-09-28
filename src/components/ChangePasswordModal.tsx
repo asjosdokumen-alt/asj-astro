@@ -23,9 +23,13 @@ import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
 import { api } from '../lib/apiClient';
 
-interface Props { onClose: () => void; }
+interface Props {
+  onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
+}
 
-export default function ChangePasswordModal({ onClose }: Props) {
+export default function ChangePasswordModal({ onClose, closing = false }: Props) {
   const user = useStore(authStore);
   const [lama, setLama] = useState('');
   const [baru, setBaru] = useState('');
@@ -57,7 +61,7 @@ export default function ChangePasswordModal({ onClose }: Props) {
     } finally { setLoading(false); }
   };
 
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>

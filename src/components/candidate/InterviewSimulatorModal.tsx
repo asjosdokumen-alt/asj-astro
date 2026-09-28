@@ -42,6 +42,8 @@ interface Props {
   /** Nama kandidat — dipakai AI untuk sapaan (nama-san). */
   nama: string;
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
 }
 
 /** VIP / KELAS gate — parity legacy js/03_candidate.ts isVipCatatan().
@@ -96,7 +98,7 @@ export function boldSegments(text: string): { text: string; bold: boolean }[] {
     .map((s, i) => ({ text: s, bold: i % 2 === 1 }));
 }
 
-export default function InterviewSimulatorModal({ wa, nama, onClose }: Props) {
+export default function InterviewSimulatorModal({ wa, nama, onClose, closing = false }: Props) {
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState<null | 'ask' | 'summarize'>(null);
@@ -105,7 +107,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose }: Props) {
   const mountedRef = useRef(true);
   const chatBoxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
 
   msgsRef.current = msgs;
 

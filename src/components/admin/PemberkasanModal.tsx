@@ -44,6 +44,8 @@ interface CandidateCtx {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
   waTarget: string;
   namaTarget: string;
   /** Row kandidat ter-dekorasi (berkas/bio/tahapan) untuk prefill — opsional. */
@@ -252,6 +254,7 @@ function Section({ label }: { label: string }) {
 export default function PemberkasanModal({
   isOpen,
   onClose,
+  closing = false,
   waTarget,
   namaTarget,
   candidate,
@@ -299,7 +302,7 @@ export default function PemberkasanModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, waTarget, namaTarget]);
 
-  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen || closing, onClose, closing });
 
   const refreshAfterChange = () => {
     window.dispatchEvent(new CustomEvent("candidates-changed", { detail: { wa: waTarget } }));
@@ -459,7 +462,7 @@ export default function PemberkasanModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !closing) return null;
 
   // B03: legacy setStatusBerkas → window.bukaPreviewDokumen — preview INLINE
   // dalam modal ("bukan buka tab baru"); Astro lama memakai <a target=_blank>

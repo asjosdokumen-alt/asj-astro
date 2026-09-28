@@ -17,6 +17,7 @@ import PemberkasanModal from '../admin/PemberkasanModal';
 import { uploadBerkasToStorage } from "../../lib/uploadBerkas";
 import { showToast } from "../Toast";
 import Icon from '../ui/Icon';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 import { apiClient } from '../../lib/apiClient';
 import { ALL_BERKAS, hasBerkasUrl } from '../../lib/berkasCatalog';
 import { computeCvMiniProgress, computeCvMasterProgress, computeOverallProgress } from '../../lib/profileProgress';
@@ -182,6 +183,23 @@ export default function CandidateDash() {
   const [showRirekisho, setShowRirekisho] = useState(false);
   const [showInterview, setShowInterview] = useState(false);
   const [selectedLoker, setSelectedLoker] = useState<string | null>(null);
+
+  /* ── Exit animation (2026-09-28) ──────────────────────────────────────
+     Six overlays on this dashboard, every one of them conditionally
+     rendered — so each was removed on the same frame its state flipped and
+     CSS had nothing left to animate. These hooks keep the node mounted for
+     one exit transition and report whether we are inside that window.
+
+     They are fed the BOOLEAN states directly. `useOverlayPresence` decides
+     presence by truthiness rather than `!== null` for exactly this reason:
+     see its header, and `useOverlayPresence.test.tsx`, whose FIRST case is a
+     boolean that has never been opened. */
+  const passwordModal = useOverlayPresence(showPasswordModal);
+  const cvMiniModal = useOverlayPresence(showCvMiniModal);
+  const esignModal = useOverlayPresence(showESign);
+  const pemberkasanModal = useOverlayPresence(showPemberkasan);
+  const rirekishoModal = useOverlayPresence(showRirekisho);
+  const interviewModal = useOverlayPresence(showInterview);
 
   useEffect(() => { loadDashboard(); }, []);
 
@@ -779,14 +797,25 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         <a href="/public" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm inline-block">{t('button.view_public_jobs')}</a>
       </div>
 
-      {/* ── Modals ── */}
-      {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
-      {showCvMiniModal && <CvMiniModal onClose={() => setShowCvMiniModal(false)} prefill={data.cvmini || undefined} />}
-{showRirekisho && <RirekishoBuilder waTarget={user?.wa || data.wa} isOpen={showRirekisho} onClose={() => setShowRirekisho(false)} fotoFallback={data.pasPhoto || undefined} />}
-      {showESign && <EsignNaiteiModal isOpen={showESign} wa={user?.wa || ""} onClose={() => setShowESign(false)} />}
-      {showPemberkasan && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} waTarget={user?.wa || ""} namaTarget={user?.name || ""} candidate={data ? { tahapan: data.tahapan, berkas: data.berkas || {}, bio: data.bio || {} } : null} />}
-      {showInterview && data && (
-        <InterviewSimulatorModal wa={user?.wa || data.wa || ''} nama={data.nama} onClose={() => setShowInterview(false)} />
+      {/* ── Modals ──
+          Each is held mounted for one exit transition (2026-09-28). The
+          PRESENCE flags decide what renders, not the raw booleans: the state
+          flips to false on the same frame the user clicks close, so gating on
+          it would remove the node before CSS could animate it out. `closing`
+          is handed to the modal, which forwards it to `useOverlay` — that is
+          what marks the shell `data-closing="true"` (see `motion.css` §5b).
+
+          The `isOpen` prop is deliberately still passed as the RAW boolean.
+          The modals render themselves while `closing` is true and keep
+          `open` true for the same window, so the dialog semantics survive the
+          animation instead of being torn down halfway through it. */}
+      {passwordModal.present && <ChangePasswordModal closing={passwordModal.closing} onClose={() => setShowPasswordModal(false)} />}
+      {cvMiniModal.present && <CvMiniModal closing={cvMiniModal.closing} onClose={() => setShowCvMiniModal(false)} prefill={data.cvmini || undefined} />}
+{rirekishoModal.present && <RirekishoBuilder waTarget={user?.wa || data.wa} isOpen={showRirekisho} onClose={() => setShowRirekisho(false)} fotoFallback={data.pasPhoto || undefined} closing={rirekishoModal.closing} />}
+      {esignModal.present && <EsignNaiteiModal isOpen={showESign} wa={user?.wa || ""} onClose={() => setShowESign(false)} closing={esignModal.closing} />}
+      {pemberkasanModal.present && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} closing={pemberkasanModal.closing} waTarget={user?.wa || ""} namaTarget={user?.name || ""} candidate={data ? { tahapan: data.tahapan, berkas: data.berkas || {}, bio: data.bio || {} } : null} />}
+      {interviewModal.present && data && (
+        <InterviewSimulatorModal wa={user?.wa || data.wa || ''} nama={data.nama} onClose={() => setShowInterview(false)} closing={interviewModal.closing} />
       )}
     </div>
     </ErrorBoundary>

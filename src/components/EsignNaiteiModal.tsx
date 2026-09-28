@@ -27,6 +27,8 @@ import { showToast } from "./Toast";
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
+  closing?: boolean;
   /** Nomor WA kandidat yang menandatangani (dari sesi, scope owner-or-admin di backend). */
   wa: string;
 }
@@ -69,7 +71,7 @@ const FIELDS_PARTY2: FieldDef[] = [
 const LOGICAL_W = { ttd: 900, nama: 1100 };
 const LOGICAL_H = { ttd: 340, nama: 300 };
 
-export default function EsignNaiteiModal({ isOpen, onClose, wa }: Props) {
+export default function EsignNaiteiModal({ isOpen, onClose, wa, closing = false }: Props) {
   const [sigs, setSigs] = useState<SigState>({ ttd1: null, nama1: null, ttd2: null, nama2: null });
   const [drawField, setDrawField] = useState<FieldDef | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -84,7 +86,7 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa }: Props) {
     setDrawField(field);
   };
 
-  const { containerRef, onBackdropClick } = useOverlay({ open: isOpen && !drawField, onClose });
+  const { containerRef, onBackdropClick } = useOverlay({ open: (isOpen || closing) && !drawField, onClose, closing });
 
   // Ukur + siapkan kanvas saat layar gambar dibuka.
   useEffect(() => {
@@ -211,7 +213,7 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa }: Props) {
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !closing) return null;
 
   const fieldCard = (field: FieldDef, tone: "sky" | "amber") => {
     const done = !!sigs[field.key];
