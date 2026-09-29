@@ -698,6 +698,35 @@ async function inspectLanding(width) {
           /** Only the visible text — innerText excludes display:none subtrees. */
           bodyTextSample: bodyText.slice(0, 400),
           lowered,
+          /**
+           * The visible text of #mitra ALONE, for the partner-name check.
+           *
+           * Scoped to the section rather than read from the whole page on
+           * purpose: a name matched anywhere in the document would pass even if
+           * the partner card never rendered it — the same "selector broader than
+           * the name" trap R14 §16 records for the header check. It resolves the
+           * section through the same `byId` map `sections` uses, so the two
+           * cannot disagree about which node is the section.
+           */
+          mitraText: (() => {
+            const el = byId.get('mitra');
+            return el ? (el.innerText || '').replace(/\s+/g, ' ') : '';
+          })(),
+          /**
+           * The partner card split, read from `data-filled` on each <li> in
+           * #mitra. Counting CARDS rather than names is deliberate — the card
+           * count is what catches a slot that stopped rendering, and the name
+           * check is what catches a card whose name went missing. Both are
+           * needed; neither alone is enough.
+           */
+          mitraFilled: (() => {
+            const el = byId.get('mitra');
+            return el ? el.querySelectorAll('li[data-filled="true"]').length : 0;
+          })(),
+          mitraEmpty: (() => {
+            const el = byId.get('mitra');
+            return el ? el.querySelectorAll('li[data-filled="false"]').length : 0;
+          })(),
           linkedFragments,
           unresolvedFragments,
           h2Count,
@@ -882,6 +911,128 @@ async function run() {
           `${nameless.length} visible section(s) contain no heading at all: ${nameless.join(', ')}. ` +
             `docs/LANDING_PAGE_SPEC.md §6 requires one heading per section; a region with no ` +
             `heading is announced as an unnamed landmark.`,
+        );
+      }
+    });
+
+    // ── L9.1 — the MoU partner grid actually names its partners ────────────
+    //
+    // WHY THIS EXISTS. #mitra shipped 2026-09-27 with six EMPTY slots, so the
+    // only thing worth asserting then was that the section existed. On
+    // 2026-09-29 the owner supplied the six MoU partners and the slots were
+    // filled — at which point "the section renders" stopped describing the
+    // deliverable. A section that is present, visible and empty is exactly the
+    // state the owner asked to be rid of, and every check above passes on it.
+    //
+    // The rule is TWO-WAY, the same shape as the team-grid honest-absence
+    // invariant below: the page must name EVERY partner the data names, and
+    // must render the pending copy for every partner the data leaves unnamed.
+    // Reading only the "is present" side would stay green if a partner's name
+    // silently stopped rendering while its card remained.
+    //
+    // The DATA side is read from the source, not the DOM, for the reason the
+    // team check states: the gate may run against a build older than the working
+    // tree, and "does the data name a partner" is a property of the data.
+    await test(`${width}px /: the partner grid names every MoU partner in the data`, async () => {
+      const d = await inspect(width);
+      const { readFileSync, existsSync } = await import('node:fs');
+      const { fileURLToPath } = await import('node:url');
+      const { dirname, join } = await import('node:path');
+      const here = dirname(fileURLToPath(import.meta.url));
+      const partnersPath = join(here, '..', 'src/lib/partners.ts');
+      if (!existsSync(partnersPath)) {
+        throw new Error(`expected ${partnersPath} — it holds the PARTNERS data this check reads`);
+      }
+      // Strip comments BEFORE parsing, for the reason the team check gives: the
+      // file's own prose explains the shape of an entry, and a naive scan would
+      // match the explanation.
+      const src = stripComments(readFileSync(partnersPath, 'utf8'));
+      const start = src.indexOf('export const PARTNERS');
+      if (start < 0) {
+        throw new Error(
+          'could not find `export const PARTNERS` in partners.ts — the partner check cannot be judged',
+        );
+      }
+      const close = src.indexOf('];', start);
+      const block = src.slice(start, close + 2);
+      // A row opens with `{` on its own line; split there so a multi-line row
+      // stays ONE chunk (same parse as the TEAM block below).
+      const rows = block.split(/\n\s*\{/).slice(1);
+      if (rows.length === 0) {
+        throw new Error(
+          'parsed 0 rows out of the PARTNERS array — the parse is broken, so this check would ' +
+            'pass vacuously. Fix the parse; do not weaken this guard.',
+        );
+      }
+      const named = rows
+        .map((r) => /text:\s*'([^']+)'/.exec(r))
+        .filter(Boolean)
+        .map((m) => m[1]);
+      // ── THE FLOOR, AND WHY IT IS MANDATORY ────────────────────────────────
+      //
+      // The data-vs-page comparison above is TWO-WAY, which sounds strict — but
+      // it is satisfied by DELETING from BOTH sides. Measured 2026-09-29: the
+      // first version of this check was mutated by replacing one partner's name
+      // with `null` in partners.ts, rebuilding, and running it — and it PASSED.
+      // The name was gone from the data, so it was never in the `missing` list,
+      // and the page was "consistent" with a section that named five partners.
+      //
+      // A consistency check with no floor is a check that reports success when
+      // the content is emptied. The floor is the owner's own list: the section
+      // was built for six, the owner supplied six. If this number changes, the
+      // OWNER'S LIST changed — so it moves deliberately, and never to make a
+      // run go green.
+      //
+      // A floor ALONE is also not enough (R25: a floor does not protect against
+      // "one item was skipped"), which is why the per-name comparison above
+      // stays. The two cover different failures: the floor catches "the list was
+      // emptied"; the comparison catches "one name stopped rendering".
+      const MIN_NAMED = 6;
+      if (named.length < MIN_NAMED) {
+        throw new Error(
+          `src/lib/partners.ts names only ${named.length} partner(s) but the owner supplied ` +
+            `${MIN_NAMED} (2026-09-29). A partner leaving the list is an OWNER DECISION, not a ` +
+            `side effect of an edit — if it is intended, lower MIN_NAMED in this file and say ` +
+            `why, because otherwise this check would report a five-partner grid as correct.`,
+        );
+      }
+      const section = d.mitraText ?? '';
+      if (section.length < 40) {
+        throw new Error(
+          `#mitra rendered ${section.length} characters of visible text — too little to judge, ` +
+            `so "every partner is named" would pass vacuously. The section did not render.`,
+        );
+      }
+      // The rendered card count must equal the data's row count. `data-filled`
+      // is set by PartnerGrid per <li>, so this counts CARDS, not names — a card
+      // whose name silently stopped rendering still counts here and is caught by
+      // the per-name check below instead. Two different failures, two checks.
+      const cards = (d.mitraFilled ?? 0) + (d.mitraEmpty ?? 0);
+      if (cards !== rows.length) {
+        throw new Error(
+          `#mitra rendered ${cards} partner card(s) but the data has ${rows.length} slot(s). ` +
+            `A slot that does not render is a partner a visitor cannot see.`,
+        );
+      }
+      const missing = named.filter((n) => !section.includes(n));
+      if (missing.length) {
+        throw new Error(
+          `${missing.length} partner(s) are named in src/lib/partners.ts but not rendered in ` +
+            `#mitra: ${missing.map((n) => JSON.stringify(n)).join(', ')}. ` +
+            `A named partner that does not appear is the section failing at its one job — a ` +
+            `visitor cannot learn who departs them. (If the name is only cosmetically different, ` +
+            `the i18n value and the data value have drifted apart.)`,
+        );
+      }
+      const pendingRendered = d.lowered.includes('slot belum diisi');
+      const unnamed = rows.filter((r) => /name:\s*null/.test(r)).length;
+      if ((unnamed > 0) !== pendingRendered) {
+        throw new Error(
+          `the partner honest-absence invariant is broken — the data and the page disagree. ` +
+            `DATA: ${rows.length} slot(s), ${unnamed} unnamed. PAGE: ${
+              pendingRendered ? 'prints' : 'does not print'
+            } the slot-pending copy. These must agree (data leaves a slot unnamed ` +
+            `<=> the page prints the pending copy).`,
         );
       }
     });

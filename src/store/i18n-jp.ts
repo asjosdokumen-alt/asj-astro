@@ -920,9 +920,19 @@ export const jpTranslations: Record<string, string> = {
   "profile.place_note": "都道府県名は公式資料に合わせてラテン文字で表記しています。",
   "profile.mitra_title": "提携パートナー",
   "profile.mitra_desc": "日本への渡航は、以下の提携LPKおよびPT（SO）と共同で行っています。",
-  "profile.mitra_note": "当社はSOの認定を受けていないため、受講者の日本への渡航は、当社とMoUを締結した提携LPKおよびPT（SO）が実施します。以下の一覧は現在公開準備中です。",
+  "profile.mitra_note": "当社はSOの認定を受けていないため、受講者の日本への渡航は、当社とMoUを締結した提携LPKおよびPT（SO）が実施します。",
   "profile.mitra_cta_desc": "当社との提携（MoU）をご希望の方は、下の「お問い合わせ」よりご連絡ください。",
   "profile.mitra_slot_pending": "スロット未設定",
+  // 提携先の6社名（オーナーが2026-09-29に提供）。
+  // 社名は固有名詞なので翻訳しない——日本語ページでも登記上の名称をそのまま
+  // 表示する。「PT Flora Talent Indonesia」を別名に置き換えると、提携先が
+  // 自ら公開している名称と食い違い、第三者の社名を書き換えたことになる。
+  "profile.mitra_1_name": "PT Flora Talent Indonesia",
+  "profile.mitra_2_name": "PT Human Mandiri Indonesia",
+  "profile.mitra_3_name": "LPK Japanesia",
+  "profile.mitra_4_name": "PT JIPA",
+  "profile.mitra_5_name": "LPK Jinzai Servis Indonesia",
+  "profile.mitra_6_name": "PT Hibiki Cendekia Mandala",
 
   // ── 求人概要（R2、右レール） — 2026-09-24 削除 ────────────────────────
   // `profile.mini_*` の4キーは `#loker-ringkas` セクションと `JobMiniList` の

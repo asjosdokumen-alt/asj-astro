@@ -655,13 +655,17 @@ import { GALLERY } from '../lib/gallery';
          learned "ASJ is not an SO" is answered before they leave the page, and
          the contact section stays the single final action on the page.
 
-         WHY THE SLOTS ARE EMPTY AND THAT IS DELIBERATE — see
-         src/lib/partners.ts. Six slots render an explicit "Belum
-         dipublikasikan" state, and `e2e/test-landing.mjs` ties the filled/empty
-         split to the data so the two cannot drift. Do NOT fill a slot with a
-         plausible name to make the grid look finished: an unfilled slot is an
-         honest blank, and an invented partner is a false claim about a real
-         company on the page built to earn partners' trust.
+         WHY THE SLOTS WERE EMPTY, AND WHAT CHANGED — see src/lib/partners.ts.
+         The section shipped 2026-09-27 with six empty slots whose names the
+         owner would supply later; the owner supplied them 2026-09-29 and the
+         grid now shows six named partners. The empty branch is NOT dead — it is
+         the state a seventh, not-yet-named slot takes — and the grid still
+         renders the same explicit not-yet-filled copy for it.
+
+         Do NOT add a partner the owner has not named: an invented partner is a
+         false claim about a real company on the page built to earn partners'
+         trust. A name goes in only with the partner's own publication as the
+         basis (partners.ts records where each was read from).
 
          WHY THIS SECTION HAS NO `enter` VALUE THAT COLLIDES WITH THE DRIFT.
          It takes `enter="slide-left"` like its neighbours, so it enters and
@@ -680,12 +684,25 @@ import { GALLERY } from '../lib/gallery';
            above the grid, so a reader who only skims the cards still learns
            WHAT the cards are — a logo wall with no explanation is the shape
            this section has to avoid, because it would read as "our clients"
-           rather than "the bodies that send our participants". -->
+           rather than "the bodies that send our participants".
+
+           THE TRAILING CLAUSE THAT SAID THE LIST WAS STILL BEING PREPARED WAS
+           REMOVED 2026-09-29, when the owner supplied the six partner names. It
+           was true while the grid rendered six empty slots and became false the
+           moment they were filled — a page that lists six partners and
+           simultaneously says the list is still being prepared contradicts
+           itself in adjacent sentences. The note now states only the
+           relationship, which is permanent.
+
+           That retired clause is NOT quoted verbatim here, deliberately: Astro
+           ships HTML comments to the browser, so a literal copy would keep a
+           text search of the built page non-empty and read as "the old copy is
+           still on the page". State the change, not the string. -->
       <p
         data-lang="profile.mitra_note"
         class="mt-6 max-w-[70ch] text-body-sm text-fg-muted"
       >
-        Kami belum berstatus SO, sehingga keberangkatan peserta ke Jepang dilaksanakan oleh mitra LPK dan PT (SO) yang telah menandatangani MoU dengan kami. Daftar berikut masih dalam proses publikasi.
+        Kami belum berstatus SO, sehingga keberangkatan peserta ke Jepang dilaksanakan oleh mitra LPK dan PT (SO) yang telah menandatangani MoU dengan kami.
       </p>
       <div class="mt-8">
         <PartnerGrid partners={PARTNERS} />

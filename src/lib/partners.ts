@@ -9,25 +9,38 @@
  * signed MoUs with. A page that only apologises for not being an SO leaves the
  * reader with "so who does send me?", and the honest answer is this list.
  *
- * ── THE SLOTS ARE EMPTY ON PURPOSE, AND THAT IS THE DELIVERABLE ─────────────
- * The owner asked for the section to be BUILT with placeholder slots whose names
- * are filled in later ("Siapkan slot logo, nama diisi kemudian"). So a record
- * here carries a SLOT NUMBER, a role, and `null` for the name and logo — never a
- * fabricated partner name.
+ * ── THE SLOTS ARE NOW FILLED, AND WHERE THE NAMES CAME FROM ─────────────────
+ * The section was built 2026-09-27 with six empty slots whose names were to be
+ * supplied later. On 2026-09-29 the OWNER supplied the six partner websites as
+ * the MoU list, and the names below are read from those sites' own pages (their
+ * legal entity name, their own about/company page — never inferred from a domain
+ * alone). That origin is the publication basis: a name here is on the page
+ * because the partner publishes it as its own identity, which is the same
+ * standard `COMPANY_PROFILE_DATA.md` holds ASJ's own data to.
  *
- * A fabricated partner is not a placeholder, it is a false claim about a third
- * party: it would put a real company's name on a partnership it has not agreed
- * to. That is why the type makes the name nullable and the component renders an
- * explicit "coming soon" state, rather than the section being written with dummy
- * names that must be remembered and removed.
+ * ⚠ A NAME MAY ONLY BE ADDED once the owner has named the partner. A fabricated
+ * partner is not a placeholder, it is a false claim about a third party — a real
+ * company's name on a partnership it has not agreed to. That is why the type
+ * makes `name` nullable and the component still renders an explicit pending
+ * state: the empty branch is not dead, it is the state a seventh slot would take.
  *
- * ── HOW TO FILL A SLOT ──────────────────────────────────────────────────────
- *   1. Set `name` (and its `nameKey`, once the Japanese spelling is known).
+ * ── WHAT IS DELIBERATELY NOT HERE ───────────────────────────────────────────
+ * No partner COUNT is published (`COMPANY_PROFILE_DATA.md` §12 bans a partner
+ * count as a claim; §8's "Batas klaim" says the same). The grid shows names, not
+ * a statistic, and `PARTNER_TOTAL` is for a progress note — never page copy.
+ * No logos are set: none were supplied, and a logo is a trademark, so a slot
+ * without one renders the dashed box rather than a wrong or borrowed mark.
+ *
+ * ── HOW TO FILL OR CHANGE A SLOT ────────────────────────────────────────────
+ *   1. Set `name` to `{ key, text }` — `key` is the i18n key, `text` the
+ *      Indonesian fallback. Add the same key to BOTH dictionaries (id + jp).
  *   2. Set `kind` to `'SO'` or `'LPK'` — see PartnerKind.
- *   3. Drop the logo at `public/assets/mitra/<slug>.webp` (+ `@2x`), and set
- *      `logo: '<slug>'`. The component derives the URL, so a caller cannot point
- *      at a `@2x` file by mistake.
- *   4. Nothing else. The grid, the count and the empty-slot fallback all follow
+ *   3. Set `home` to the URL the name was read from, so the entry stays checkable.
+ *   4. Drop the logo at `public/assets/mitra/<slug>.webp`, set `logo: '<slug>'`,
+ *      and record it in `scripts/ci/verify-assets.mjs` (a new asset that is
+ *      rendered but unregistered fails that gate). The component derives the URL,
+ *      so a caller cannot point at a `@2x` file by mistake.
+ *   5. Nothing else. The grid, the count and the empty-slot fallback all follow
  *      from this array — there is no second copy of the list to keep in sync.
  *
  * ── THE COUNT IS DERIVED, NOT TYPED ────────────────────────────────────────
@@ -79,30 +92,81 @@ export interface Partner {
    * double-size image.
    */
   logo: null | string;
+  /**
+   * The partner's own public website, or `null`.
+   *
+   * Carried for TRACEABILITY, not for rendering: it is the page a name in this
+   * list was read from, so anyone reviewing the section can confirm the name is
+   * the partner's own and not an invention. The grid does NOT link it (a
+   * partner's site is not ours to advertise from a slot that exists to describe
+   * the relation), so this is documentation the type keeps honest — a field that
+   * nothing renders is easy to let drift, and a comment beside the data is
+   * easier still.
+   */
+  home: null | string;
 }
 
 /**
  * The partner slots.
  *
- * SIX is a deliberate, modest number: it is enough to show that the network is
- * real and plural — which is the entire point of the section — without
- * implying a scale ASJ cannot currently evidence. It is also exactly the count
- * the owner's own phrasing ("banyak rekan MoU LPK dan PT") supports without
- * turning into a statistic, and this repo does not publish partner COUNTS as a
- * claim anywhere (see companyProfile.ts's header, which bans exactly that).
+ * SIX is the owner's own list as supplied 2026-09-29. It is also exactly the
+ * count the section was built for, so the grid, the entrance oracle and the
+ * `data-filled` split all keep working unchanged.
  *
- * ⚠ DO NOT fill these with placeholder names to make the section look finished.
- * An unfilled slot renders an honest "belum dipublikasikan" state. A renamed
- * slot that was never actually signed is a false statement about a real
- * company, which is the one thing this section cannot afford.
+ * ORDER IS NOT RANK. It follows the order the owner listed the six sites in,
+ * deliberately: any other order would imply a preference among partners that
+ * the owner never stated. `slot` stays the stable id (it is the React key and
+ * the empty-slot label) and does not renumber when a name changes.
+ *
+ * The names and the `kind` values are read from each partner's own site — see
+ * the header for the publication basis. `kind` is the DECLARED status on that
+ * site (an SO licence number, or a P3MI/LPK identity), never a guess from the
+ * domain: putting "SO" on a partner that only publishes itself as an LPK would
+ * overstate what it can legally do.
  */
 export const PARTNERS: Partner[] = [
-  { slot: 1, name: null, kind: 'SO', logo: null },
-  { slot: 2, name: null, kind: 'SO', logo: null },
-  { slot: 3, name: null, kind: 'LPK', logo: null },
-  { slot: 4, name: null, kind: 'LPK', logo: null },
-  { slot: 5, name: null, kind: 'LPK', logo: null },
-  { slot: 6, name: null, kind: 'LPK', logo: null },
+  {
+    slot: 1,
+    name: { key: 'profile.mitra_1_name', text: 'PT Flora Talent Indonesia' },
+    kind: 'LPK',
+    logo: null,
+    home: 'https://www.ysfloraindonesia.com/',
+  },
+  {
+    slot: 2,
+    name: { key: 'profile.mitra_2_name', text: 'PT Human Mandiri Indonesia' },
+    kind: 'LPK',
+    logo: null,
+    home: 'https://humanindonesia.com/id',
+  },
+  {
+    slot: 3,
+    name: { key: 'profile.mitra_3_name', text: 'LPK Japanesia' },
+    kind: 'SO',
+    logo: null,
+    home: 'https://lpkjapanesia.com/',
+  },
+  {
+    slot: 4,
+    name: { key: 'profile.mitra_4_name', text: 'PT JIPA' },
+    kind: 'LPK',
+    logo: null,
+    home: 'https://www.jipa.co.id/',
+  },
+  {
+    slot: 5,
+    name: { key: 'profile.mitra_5_name', text: 'LPK Jinzai Servis Indonesia' },
+    kind: 'SO',
+    logo: null,
+    home: 'http://jsi-jinzai.com/',
+  },
+  {
+    slot: 6,
+    name: { key: 'profile.mitra_6_name', text: 'PT Hibiki Cendekia Mandala' },
+    kind: 'LPK',
+    logo: null,
+    home: 'https://www.hibikicendekia.com/',
+  },
 ];
 
 /** How many slots are filled — derived, so it cannot drift from PARTNERS. */

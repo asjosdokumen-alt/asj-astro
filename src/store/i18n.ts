@@ -1267,14 +1267,27 @@ export const translations: Record<Lang, Record<string, string>> = {
   // sends me?" — and the one place the network is visible to a prospective
   // partner.
   //
-  // The names and logos are SLOTS, filled later (owner's ruling). The generic
-  // keys below are the only copy that ships until then; a partner's own NAME
-  // would get its own key per the `Text` rule in companyProfile.ts.
+  // The names WERE slots; the owner supplied the six MoU partners 2026-09-29, so
+  // each now has its own key. `profile.mitra_slot_pending` STAYS: it is the
+  // rendering for a slot with no name yet, and a seventh partner would take it —
+  // a key removed because nothing currently renders it is a key the next slot
+  // has to reinvent.
+  //
+  // The Indonesian value is the partner's own LEGAL NAME, not a translation:
+  // a company called "PT Flora Talent Indonesia" is that name in both languages.
+  // The JP dictionary carries the same string for the same reason a proper noun
+  // is not translated — see that file for the note.
   "profile.mitra_title": "Mitra Kami",
   "profile.mitra_desc": "Keberangkatan ke Jepang dijalankan bersama mitra LPK dan PT (SO) berikut.",
-  "profile.mitra_note": "Kami belum berstatus SO, sehingga keberangkatan peserta ke Jepang dilaksanakan oleh mitra LPK dan PT (SO) yang telah menandatangani MoU dengan kami. Daftar berikut masih dalam proses publikasi.",
+  "profile.mitra_note": "Kami belum berstatus SO, sehingga keberangkatan peserta ke Jepang dilaksanakan oleh mitra LPK dan PT (SO) yang telah menandatangani MoU dengan kami.",
   "profile.mitra_cta_desc": "Ingin menjadi mitra penempatan (MoU) kami? Silakan hubungi kami melalui bagian Kontak di bawah.",
   "profile.mitra_slot_pending": "Slot belum diisi",
+  "profile.mitra_1_name": "PT Flora Talent Indonesia",
+  "profile.mitra_2_name": "PT Human Mandiri Indonesia",
+  "profile.mitra_3_name": "LPK Japanesia",
+  "profile.mitra_4_name": "PT JIPA",
+  "profile.mitra_5_name": "LPK Jinzai Servis Indonesia",
+  "profile.mitra_6_name": "PT Hibiki Cendekia Mandala",
 
   // ── Lowongan Ringkas (R2, rail) — REMOVED 2026-09-24 ───────────────────
   // The `profile.mini_*` keys (`mini_title`, `mini_desc`, `mini_all`,
