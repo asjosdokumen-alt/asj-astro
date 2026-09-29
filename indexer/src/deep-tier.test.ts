@@ -371,7 +371,25 @@ const show = true;
     // it to `data-title-key` on <html>, and `applyDocTitle()` reads it back. It
     // appears in this scope because the layout both destructures it and renders it
     // (`data-title-key={titleKey}`), which is the same shape that put `title` here.
-    expect(occs.map((o) => o.name).sort()).toEqual(['description', 'lang', 'showBottomNav', 'showFooter', 'sprite', 'title', 'titleKey']);
+    // 7 -> 12 (2026-09-29, items A-D of the company-page assessment): five more
+    // occurrences, all in the <head> markup this batch added, and all resolved
+    // via `scope` by the loop below — which is the point of this test:
+    //   `canonical`  x2 — `{canonical && <link rel="canonical" href={canonical} />}`
+    //                     (the guard is one occurrence, the attribute another)
+    //   `alternates` x1 — passed to the HreflangLinks component
+    //   `orgJsonLd`  x2 — `{orgJsonLd && <script … set:html={orgJsonLd} />}`
+    // MEASURED from the failure message, not derived: "expected
+    // [ 'alternates', 'canonical', …(10) ] to deeply equal
+    // [ 'description', 'lang', …(5) ]".
+    //
+    // NOTE that `alternates` appears ONCE and not twice: the alternates list is
+    // rendered by HreflangLinks.tsx rather than by an inline `.map()`, because a
+    // callback parameter in an `.astro` template is reported as an unresolved
+    // global (see src/pages/index.astro:63). Had the `.map()` stayed inline, the
+    // name would appear here as a third occurrence — and the unresolved-count
+    // assertion at the end of this test would be red, which is exactly how the
+    // inline version was caught.
+    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'description', 'lang', 'orgJsonLd', 'orgJsonLd', 'showBottomNav', 'showFooter', 'sprite', 'title', 'titleKey']);
     for (const o of occs) {
       const ref = r.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
       expect(ref).toBeDefined();

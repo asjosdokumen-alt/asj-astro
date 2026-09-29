@@ -143,6 +143,10 @@ const SECTIONS = [
   // model). Listed for the same reason #mitra is: an unnamed section is a
   // section the presence/order/visibility checks silently skip.
   { id: 'testimoni', phase: 'L9', visible: true },
+  // ADDED 2026-09-29 with the #faq section. Registered here for the same reason
+  // as #mitra and #testimoni: an unlisted section is one the presence, visibility
+  // and order checks silently skip, so a section could disappear without a red.
+  { id: 'faq', phase: 'L9', visible: true },
   { id: 'kontak', phase: 'L3', visible: true },
   { id: 'lokasi', phase: 'L3', visible: true },
   // The closing CTA band. It is rendered by ClosingBand.astro OUTSIDE <main>, so
@@ -749,6 +753,24 @@ async function inspectLanding(width) {
             const el = byId.get('testimoni');
             return el ? el.querySelectorAll('li[data-filled="false"]').length : 0;
           })(),
+          /**
+           * The FAQ section's visible text and row count, scoped to #faq.
+           *
+           * ADDED 2026-09-29 with the section. Scoped by id for the same reason
+           * the review counters are: a match anywhere in the document would pass
+           * even if the accordion never rendered.
+           *
+           * `faqRows` counts the native `details` elements (see FaqList.tsx) —
+           * the one structural fact that says one row rendered per question.
+           */
+          faqText: (() => {
+            const el = byId.get('faq');
+            return el ? (el.innerText || '').replace(/\s+/g, ' ') : '';
+          })(),
+          faqRows: (() => {
+            const el = byId.get('faq');
+            return el ? el.querySelectorAll('details[data-role="faq-item"]').length : 0;
+          })(),
           linkedFragments,
           unresolvedFragments,
           h2Count,
@@ -1138,6 +1160,105 @@ async function run() {
             `pending card(s). These must agree (a slot has no quote <=> its card shows the ` +
             `pending copy).`,
         );
+      }
+    });
+
+    // ── FAQ: one row per question in the data ──────────────────────────────
+    // ADDED 2026-09-29 with the #faq section. Mirrors the testimonial gate's
+    // shape deliberately, including its two anti-vacuity guards, because the
+    // same two failures are available here:
+    //
+    //   * the DATA could be emptied (`FAQ = []`) and the page with it, and a
+    //     two-way comparison would then be trivially satisfied — so MIN_ROWS is
+    //     the floor that makes that mutation fail. A FAQ with no questions is
+    //     not a smaller FAQ, it is a missing section.
+    //   * the parse could silently find nothing, so a zero-row parse throws
+    //     rather than reporting a confident pass.
+    await test(`${width}px /: the FAQ renders one row per question in the data`, async () => {
+      const d = await inspect(width);
+      const { readFileSync, existsSync } = await import('node:fs');
+      const { fileURLToPath } = await import('node:url');
+      const { dirname, join } = await import('node:path');
+      const here = dirname(fileURLToPath(import.meta.url));
+      const path = join(here, '..', 'src/lib/faq.ts');
+      if (!existsSync(path)) {
+        throw new Error(`expected ${path} — it holds the FAQ data this check reads`);
+      }
+      const src = stripComments(readFileSync(path, 'utf8'));
+      const start = src.indexOf('export const FAQ');
+      if (start < 0) {
+        throw new Error(
+          'could not find `export const FAQ` in faq.ts — this check cannot be judged',
+        );
+      }
+      const close = src.indexOf('];', start);
+      const block = src.slice(start, close + 2);
+
+      // Count `id:` keys inside the array. Each entry carries exactly one, and
+      // unlike counting braces inside strings it cannot be thrown off by the
+      // answer text (which contains no `id:` followed by a quoted value).
+      const ids = block.match(/\bid:\s*'/g) ?? [];
+      const rows = ids.length;
+      if (rows === 0) {
+        throw new Error(
+          'parsed 0 FAQ rows out of the FAQ array — the parse is broken, so this check would ' +
+            'pass vacuously. Fix the parse; do not weaken this guard.',
+        );
+      }
+
+      // The floor. Without it, deleting the questions AND the section passes.
+      const MIN_ROWS = 5;
+      if (rows < MIN_ROWS) {
+        throw new Error(
+          `the FAQ data has ${rows} question(s), below the floor of ${MIN_ROWS}. This section ` +
+            `exists to answer the questions that recur across all six MoU partner sites ` +
+            `(cost, instalments, bridging fund, requirements, process). Fewer than ${MIN_ROWS} ` +
+            `means the coverage this section was built for is no longer there.`,
+        );
+      }
+
+      const section = d.faqText ?? '';
+      if (section.length < 40) {
+        throw new Error(
+          `#faq rendered ${section.length} characters of visible text — too little to judge, ` +
+            `so the section did not render.`,
+        );
+      }
+
+      const rendered = d.faqRows ?? 0;
+      if (rendered !== rows) {
+        throw new Error(
+          `#faq rendered ${rendered} row(s) but the data has ${rows} question(s). A question ` +
+            `that does not render is an answer a visitor cannot reach, and the section failing ` +
+            `at its one job.`,
+        );
+      }
+    });
+
+    // ── FAQ: the disputed height figure must NOT be published ──────────────
+    // ADDED 2026-09-29. `COMPANY_PROFILE_DATA.md` §12 **K-3** records that the
+    // printed profile CONTRADICTS ITSELF on the women's minimum height — page 3
+    // says 145 cm, page 4 says 150 cm — and the owner has not decided. It is a
+    // SELECTION criterion, so publishing either number would turn away a
+    // candidate who should have passed.
+    //
+    // This is a real risk, not a hypothetical: the height requirement is the
+    // most natural sixth FAQ question, and the obvious "missing content" fix for
+    // a future editor is to add it. The gate makes that fail loudly instead of
+    // shipping a number that rejects people.
+    await test(`${width}px /: the FAQ does not publish the unresolved height rule`, async () => {
+      const d = await inspect(width);
+      const text = d.faqText ?? '';
+      // Both candidate values, in the spellings a page would render them.
+      for (const banned of ['145', '150']) {
+        if (new RegExp(`${banned}\\s*cm`, 'i').test(text)) {
+          throw new Error(
+            `#faq publishes "${banned} cm" — COMPANY_PROFILE_DATA.md §12 K-3 leaves the minimum ` +
+              `height UNDECIDED (h.3 says 145, h.4 says 150). This is a selection criterion, so ` +
+              `either number turns away a candidate who should have passed. Resolve K-3 with the ` +
+              `owner before publishing any figure here.`,
+          );
+        }
       }
     });
 

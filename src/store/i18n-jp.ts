@@ -946,6 +946,26 @@ export const jpTranslations: Record<string, string> = {
   "profile.review_slot_pending": "口コミ未掲載",
   "profile.review_pending_author": "口コミ待ち",
 
+  // ── FAQ（#faq） — 2026-09-29 追加 ─────────────────────────────────────
+  // 回答はすべて docs/COMPANY_PROFILE_DATA.md（会社の公式印刷プロフィール）から
+  // 転記。出典は src/lib/faq.ts に項目ごとに記載。
+  // ⚠ 出典のない質問を追加しないこと。特に最低身長は印刷ページ間で矛盾したまま
+  //（§12 K-3）で選考基準のため、記載しない。
+  "profile.faq_title": "よくあるご質問",
+  "profile.faq_desc": "受講希望者からよく寄せられる質問に、機関の公式資料に基づいてお答えします。",
+  "profile.faq_q_cost": "プログラムの費用はいくらですか？",
+  "profile.faq_a_cost": "プログラム費用は600万ルピアです。",
+  "profile.faq_q_includes": "600万ルピアには何が含まれますか？",
+  "profile.faq_a_includes": "学習モジュールと辞書、機関の制服、寮、そしてJFTおよびSSWの試験（各1回）の4つが含まれます。",
+  "profile.faq_q_installment": "費用は分割払いできますか？",
+  "profile.faq_a_installment": "可能です。分割でのお支払いができます。",
+  "profile.faq_q_bridge": "渡航費用がまだ用意できない場合は？",
+  "profile.faq_a_bridge": "渡航費用を支援するための立替制度（ダナ・タラン）があります。",
+  "profile.faq_q_requirements": "参加するための条件は何ですか？",
+  "profile.faq_a_requirements": "18〜28歳、学歴は高校／専門学校卒業以上、心身ともに健康で、タトゥーおよびピアスがないこと。最低身長やその他の条件はプログラム経路により異なりますので、お問い合わせください。",
+  "profile.faq_q_process": "手続きにはどのくらいかかり、どのような段階がありますか？",
+  "profile.faq_a_process": "6段階です。登録と書類審査、日本語・日本文化の研修、日本企業との採用面接、インドネシアでの書類手続き、健康診断（MCU）と契約署名およびCOE申請、そして日本への渡航です。",
+
   // ── 求人概要（R2、右レール） — 2026-09-24 削除 ────────────────────────
   // `profile.mini_*` の4キーは `#loker-ringkas` セクションと `JobMiniList` の
   // 削除に伴い削除した。オーナー判断: `/` は MoU・取引先向けの会社プロフィール

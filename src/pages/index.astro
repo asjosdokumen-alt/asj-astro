@@ -11,6 +11,7 @@ import IconTileGrid from '../components/public/IconTileGrid.tsx';
 import PersonGrid from '../components/public/PersonGrid.tsx';
 import PartnerGrid from '../components/public/PartnerGrid.tsx';
 import ReviewGrid from '../components/public/ReviewGrid.tsx';
+import FaqList from '../components/public/FaqList.tsx';
 import HistoryTimeline from '../components/public/HistoryTimeline.tsx';
 import ContactForm from '../components/public/ContactForm.tsx';
 import GalleryGrid from '../components/public/GalleryGrid.tsx';
@@ -48,6 +49,7 @@ import {
 } from '../lib/companyProfile';
 import { PARTNERS } from '../lib/partners';
 import { REVIEWS, REVIEW_SOURCE } from '../lib/testimonials';
+import { FAQ } from '../lib/faq';
 import { GALLERY } from '../lib/gallery';
 
 /* WHY THE SECTIONS ARE COMPOSED HERE AND NOT EACH IN THEIR OWN FILE.
@@ -793,6 +795,39 @@ import { GALLERY } from '../lib/gallery';
       >
         Sudah pernah belajar atau berangkat bersama kami? Bagikan cerita Anda melalui kontak di bawah.
       </p>
+    </Section>
+
+    <!-- Section: Pertanyaan Umum (FAQ) — ADDED 2026-09-29.
+         MEASURED that day: this page had no FAQ while JIPA publishes 6 Q&A and
+         the other partners answer cost/schedule questions inline. The five
+         questions are the ones that recur across all six partner sites.
+
+         WHY IT SITS HERE, BETWEEN TESTIMONI AND KONTAK. A reader who is not yet
+         persuaded by other people's experience is the one holding a question;
+         the answer sits directly above the way to ask another one. That order is
+         also why the CONTACT form follows rather than leads.
+
+         WHY THERE IS NO HEIGHT QUESTION. The printed profile contradicts itself
+         on the women's minimum (h.3 says 145 cm, h.4 says 150 cm) and the
+         decision is still open — COMPANY_PROFILE_DATA.md §12 K-3. It is a
+         selection criterion, so publishing either number would reject a
+         candidate who should have passed. The requirement answer names the
+         intake range and routes the rest to contact instead. Do not "complete" it.
+
+         Every answer is transcribed from docs/COMPANY_PROFILE_DATA.md; per-entry
+         sources are recorded in src/lib/faq.ts. -->
+    <Section id="faq" labelledBy="faq-title" class="section-alt border border-line/30 rounded-panel" enter="slide-right">
+      <SectionTitle
+        titleKey="profile.faq_title"
+        title="Pertanyaan Umum"
+        descKey="profile.faq_desc"
+        desc="Pertanyaan yang paling sering ditanyakan calon peserta, dijawab dari dokumen resmi lembaga."
+        accent="identity"
+        headingId="faq-title"
+      />
+      <div class="mt-6">
+        <FaqList items={FAQ} />
+      </div>
     </Section>
 
     <Section id="kontak" labelledBy="kontak-title" enter="drop">

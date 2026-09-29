@@ -2,7 +2,19 @@
 import Footer from '../components/Footer.astro';
 import BottomNav from '../components/BottomNav.tsx';
 import Toast from '../components/Toast.tsx';
+import HreflangLinks from '../components/public/HreflangLinks.tsx';
 import sprite from '../icons/sprite.svg?raw';
+import { hreflangAlternates, organizationJsonLd, jsonLdScript, absoluteUrl } from '../lib/siteMeta';
+import {
+  CONTACT_ADDRESS,
+  CONTACT_EMAIL,
+  CONTACT_PHONES,
+  CONTACT_INSTAGRAM,
+  CONTACT_TIKTOK,
+  CONTACT_MAPS_URL,
+  MAPS_LAT,
+  MAPS_LNG,
+} from '../lib/companyProfile';
 import '@fontsource/inter/latin-400.css';
 import '@fontsource/inter/latin-600.css';
 import '@fontsource/inter/latin-700.css';
@@ -81,6 +93,43 @@ export interface Props {
 }
 
 const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false, titleKey } = Astro.props;
+
+// ─── Discovery metadata (JSON-LD + hreflang) ─────────────────────────────────
+// ADDED 2026-09-29. MEASURED that day: this site emitted 0 JSON-LD and 0
+// hreflang while 3 of 6 MoU partner sites emit JSON-LD and two emit hreflang.
+// We have the fullest bilingual content of the seven, so the missing hreflang
+// was discarding a real advantage. See siteMeta.ts for why the origin is an
+// env var, and docs/COMPANY_PAGE_ASSESSMENT_2026-09-29.md §3.7.
+//
+// ⚠ BOTH ARE OPTIONAL BY DESIGN. With no `PUBLIC_SITE_URL` set (every local
+// build, every test) `siteOrigin()` returns null and both blocks emit nothing.
+// That is deliberate: an absolute URL guessed wrong points crawlers at a FROZEN
+// host — this project's host has already moved twice — which is worse than
+// emitting none. So a missing block here is a config state, not a bug.
+//
+// The JP counterpart of `/` is the same route with the language switched in the
+// browser (`data-lang` + translateDataLang), not a separate path, so the
+// alternate points at `/?lang=jp`. That is the parameter the language store
+// reads; see src/store/langStore.ts.
+const alternates = hreflangAlternates({ id: '/', jp: '/?lang=jp' });
+const canonical = absoluteUrl('/');
+const orgJsonLd = jsonLdScript(
+  organizationJsonLd({
+    name: 'PT Amanah Sakura Japan',
+    description:
+      'LPK (Lembaga Pelatihan Kerja) bahasa Jepang di Ponorogo, Jawa Timur. Pelatihan bahasa dan budaya Jepang, serta persiapan penempatan kerja ke Jepang.',
+    streetAddress: CONTACT_ADDRESS.text,
+    telephone: CONTACT_PHONES[1],
+    email: CONTACT_EMAIL,
+    latitude: MAPS_LAT,
+    longitude: MAPS_LNG,
+    sameAs: [
+      `https://www.instagram.com/${CONTACT_INSTAGRAM}`,
+      `https://www.tiktok.com/@${CONTACT_TIKTOK}`,
+      CONTACT_MAPS_URL,
+    ],
+  }),
+);
 ---
 <!DOCTYPE html>
 <html lang={lang} data-title-key={titleKey}>
@@ -110,6 +159,32 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
        cannot rewrite a <title> for a crawler or a shared link preview. -->
   <title>{title}</title>
   <meta name="description" content={description} />
+
+  {/* ─── hreflang + JSON-LD (added 2026-09-29) ──────────────────────────────
+       Both render only when PUBLIC_SITE_URL resolves to a real origin; see the
+       note in the frontmatter and siteMeta.ts. When it does not, the component
+       and the conditional below emit nothing at all, which is the intended
+       state on a local build.
+
+       WHY THE ALTERNATES ARE A `.tsx` COMPONENT AND NOT AN INLINE `.map()`:
+       iterating in an `.astro` template reports the callback parameter as an
+       unresolved global, which `indexer/src/build.test.ts` forbids outside test
+       files. This was MEASURED here, not assumed — the inline version produced
+       exactly two `global-unknown` refs, both the name `a`. The repo already
+       records this rule at src/pages/index.astro:63; see HreflangLinks.tsx for
+       the full reasoning. Do not inline it back.
+
+       NOTE FOR ANYONE EDITING THESE COMMENTS: the indexer parses Astro template
+       tags INCLUDING the ones inside HTML comments (see the long note above the
+       title element). A literal capitalised tag written in a comment here
+       becomes a phantom unresolved reference and indexer/src/build.test.ts
+       fails. That is why these comments name elements in lower case in prose
+       instead of writing them as tags. */}
+  {canonical && <link rel="canonical" href={canonical} />}
+  <HreflangLinks alternates={alternates} />
+  {orgJsonLd && (
+    <script type="application/ld+json" set:html={orgJsonLd} />
+  )}
   <meta name="theme-color" content="#020617" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />

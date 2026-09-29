@@ -123,6 +123,13 @@ export const SECTION_MOTION: readonly SectionMotion[] = [
   // section enters like `lokasi` far below; that is legal because non-adjacent
   // repetition is fine, and `mitra`/`kontak` sit between them.
   { id: 'testimoni', label: 'Kata Alumni', enter: 'rise' },
+  // ADDED 2026-09-29. Sits between the social-proof section and the contact form
+  // on purpose: a reader who is not yet convinced by other people's experience is
+  // the one with a question, and the answer sits directly above the way to ask
+  // a further one. `slide-right` is chosen because neither neighbour uses it
+  // (`rise` above, `drop` below) — the table's own test fails if adjacent rows
+  // repeat, so this is not a free choice.
+  { id: 'faq', label: 'Pertanyaan Umum', enter: 'slide-right' },
   { id: 'kontak', label: 'Kontak', enter: 'drop' },
   { id: 'lokasi', label: 'Lokasi', enter: 'rise' },
   { id: 'daftar', label: 'Daftar', enter: 'focus' },

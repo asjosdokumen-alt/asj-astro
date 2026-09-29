@@ -1301,6 +1301,27 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.review_slot_pending": "Review belum tayang",
   "profile.review_pending_author": "Menunggu review",
 
+  // ── FAQ (#faq) — ADDED 2026-09-29 ─────────────────────────────────────
+  // Every ANSWER below is transcribed from docs/COMPANY_PROFILE_DATA.md, the
+  // company's own printed profile. See src/lib/faq.ts for the per-entry source.
+  // ⚠ Do NOT add a question whose answer is not in that document — and in
+  // particular do not add the minimum-height figure, which is still contradictory
+  // between printed pages (§12 K-3) and is a selection criterion.
+  "profile.faq_title": "Pertanyaan Umum",
+  "profile.faq_desc": "Pertanyaan yang paling sering ditanyakan calon peserta, dijawab dari dokumen resmi lembaga.",
+  "profile.faq_q_cost": "Berapa biaya programnya?",
+  "profile.faq_a_cost": "Biaya program adalah 6 juta rupiah.",
+  "profile.faq_q_includes": "Biaya 6 juta itu untuk apa saja?",
+  "profile.faq_a_includes": "Mencakup empat hal: modul pembelajaran dan kamus, seragam lembaga, asrama, serta ujian JFT dan SSW masing-masing satu kali.",
+  "profile.faq_q_installment": "Apakah biayanya bisa dicicil?",
+  "profile.faq_a_installment": "Bisa. Pembayaran dapat dilakukan secara bertahap (dicicil).",
+  "profile.faq_q_bridge": "Bagaimana kalau belum ada biaya keberangkatan?",
+  "profile.faq_a_bridge": "Tersedia dana talang untuk membantu biaya keberangkatan.",
+  "profile.faq_q_requirements": "Apa syarat untuk ikut program?",
+  "profile.faq_a_requirements": "Usia 18–28 tahun, pendidikan minimal SMA/SMK sederajat, sehat jasmani dan rohani, serta tidak bertato dan tidak bertindik. Untuk tinggi badan minimum dan syarat lain, silakan hubungi kami karena ada ketentuan yang berbeda antar jalur program.",
+  "profile.faq_q_process": "Berapa lama prosesnya, dan tahapannya apa saja?",
+  "profile.faq_a_process": "Enam tahap: pendaftaran dan pemeriksaan dokumen, pelatihan bahasa dan budaya Jepang, wawancara kerja dengan perusahaan Jepang, pengurusan berkas di Indonesia, pemeriksaan kesehatan (MCU) dan tanda tangan kontrak beserta pengurusan COE, lalu keberangkatan ke Jepang.",
+
   // ── Lowongan Ringkas (R2, rail) — REMOVED 2026-09-24 ───────────────────
   // The `profile.mini_*` keys (`mini_title`, `mini_desc`, `mini_all`,
   // `mini_cta`) were deleted together with the `#loker-ringkas` section and its
