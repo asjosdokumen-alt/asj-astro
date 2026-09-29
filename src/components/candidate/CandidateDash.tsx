@@ -413,7 +413,11 @@ export default function CandidateDash() {
 if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
 
   const overallProgress = computeOverallProgress(data.cvMiniProgress, data.cvMasterProgress);
-  const crown = overallProgress >= 100 ? 'gold' : overallProgress >= 50 ? 'silver' : overallProgress > 0 ? 'bronze' : 'none';
+  // `crown` DIHAPUS 2026-09-30 bersama kartu "CV Progress": variabel itu hanya
+  // dipakai kalimat "Silver Crown! Selesaikan Master Profile" di kartu tersebut,
+  // dan ambang yang sama sudah dihitung ulang di dalam `CrownBadge` (baris 167)
+  // serta `LevelCard.levelFor`. Meninggalkannya berarti satu variabel mati yang
+  // menambah diagnostik lint tanpa mengubah apa pun.
 
   // Filter riwayat by selected loker
   const filteredRiwayat = selectedLoker
@@ -535,24 +539,36 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           </div>
         )}
 
-        {/* ── CV Progress ── */}
-        <div class="mb-6 md:mb-8 bg-black/40 border border-slate-700 p-5 md:p-6 rounded-panel text-left shadow-lg">
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm font-bold text-slate-300"><Icon name="id-badge" class="text-sky-400 mr-1" /> {t('ui.cv_mini_basic')}</span>
-            <span class="text-sm font-bold text-sky-400">{data.cvMiniProgress}%</span>
-          </div>
-          <div class="w-full bg-slate-800 rounded-full h-2.5 mb-4 shadow-inner">
-            <div class="bg-gradient-to-r from-sky-600 to-sky-400 h-2.5 rounded-full transition-[width] duration-1000" style={`width:${data.cvMiniProgress}%`}></div>
-          </div>
-          <div class="flex justify-between items-center mb-2">
-            <span class="text-sm font-bold text-slate-300"><Icon name="file-signature" class="text-emerald-400 mr-1" /> {t('ui.cv_master_detail')}</span>
-            <span class="text-sm font-bold text-emerald-400">{data.cvMasterProgress}%</span>
-          </div>
-          <div class="w-full bg-slate-800 rounded-full h-2.5 shadow-inner">
-            <div class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-2.5 rounded-full transition-[width] duration-1000" style={`width:${data.cvMasterProgress}%`}></div>
-          </div>
-          <p class="text-xs text-slate-300 mt-4 italic text-center font-bold">{data.isVIP && data.cvMiniProgress === 100 && data.cvMasterProgress === 100 ? <span class="text-amber-400 font-black tracking-widest not-italic"><Icon name="star" class="mr-1" /> {t('ui.perfect_student')} <Icon name="star" class="ml-1" /></span> : <>{crown === 'gold' ? t('ui.profile_100') : crown === 'silver' ? t('ui.profile_silver_next') : t('ui.profile_incomplete')} <Icon name="medal" /></>}</p>
-        </div>
+        {/* ── Kelengkapan: SATU meter untuk seluruh halaman ──
+            Sebelum 2026-09-30 di sini ada kartu "CV Progress" dengan DUA bar
+            (CV Mini + Master Profil), lalu di bawahnya `LevelCard` mencetak
+            ULANG kedua angka yang sama, lalu `Progres Pemberkasan` menambah
+            bar ketiga dengan persentase yang sama pula. Terukur di DOM: 7
+            string persen, 12 bar, dan `100%`/`0%`/`50%` masing-masing tampil
+            dua kali. Sekarang angka-angka itu jadi LEGENDA dari satu bar, dan
+            pemandu langkah duduk DI DALAM kartu yang sama karena keduanya
+            membahas subjek yang sama.
+
+            Diletakkan paling atas di antara kartu-kartu isi dengan sengaja:
+            ia menjawab "bagaimana keadaan saya" sebelum yang lain menjawab
+            "apa isinya", dan itu juga yang membuatnya jadi
+            `role="progressbar"` PERTAMA di halaman. */}
+        <LevelCard
+          percent={overallProgress}
+          mini={data.cvMiniProgress}
+          master={data.cvMasterProgress}
+          berkasDone={data.berkasList.filter(b => b.done).length}
+          berkasTotal={data.berkasTotal}
+          vip={data.isVIP}
+        >
+          <StepGuide
+            variant="inline"
+            mini={data.cvMiniProgress}
+            master={data.cvMasterProgress}
+            berkasProgress={data.berkasProgress}
+            berkasTotal={data.berkasTotal}
+          />
+        </LevelCard>
 
         {/* ── Jadwal Panel ── */}
         {data.jadwal.length > 0 && (
@@ -738,40 +754,23 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           </div>
         )}
 
-        {/* ── Pemandu langkah ──
-            Kartu yang menjawab "apa satu hal berikutnya?". Diletakkan SEBELUM
-            LevelCard karena menjawab pertanyaan yang lebih mendesak: LevelCard
-            mengatakan seberapa jauh, StepGuide mengatakan ke mana. Semua
-            angkanya datang dari data yang sudah ada di sini — tidak ada state
-            baru dan tidak ada request baru. */}
-        <StepGuide
-          mini={data.cvMiniProgress}
-          master={data.cvMasterProgress}
-          berkasProgress={data.berkasProgress}
-          berkasTotal={data.berkasTotal}
-        />
-
-        {/* ── Level kelengkapan profil ──
-            Angka yang SAMA dengan CrownBadge di atas (overallProgress), tapi
-            disajikan sebagai tingkat + langkah berikutnya. Sumber datanya tidak
-            berubah: computeOverallProgress dari profileProgress.ts — mengukur
-            KELENGKAPAN BERKAS, bukan penilaian seleksi. Jangan ubah jadi "skor". */}
-        {data.berkasTotal > 0 && (
-          <LevelCard percent={overallProgress} mini={data.cvMiniProgress} master={data.cvMasterProgress} />
-        )}
+        {/* Pemandu langkah + Level kelengkapan DIHAPUS dari sini 2026-09-30.
+            Keduanya sekarang hidup di dalam SATU kartu kelengkapan di atas
+            (lihat komentar di blok `LevelCard`). Yang tersisa di sini hanya
+            berkas — satu-satunya bagian yang punya isi sendiri (daftar 18
+            dokumen) dan karena itu tidak bisa dilipat ke dalam meter. */}
 
         {/* ── Pemberkasan Progress ── */}
         {data.berkasTotal > 0 && (
           <div class="mb-8">
             <div class="bg-black/60 border border-emerald-500/30 rounded-panel p-5 md:p-6 mb-4 text-left">
+              {/* Persentase + bar DIHAPUS 2026-09-30: keduanya sudah ada di
+                  legenda meter kelengkapan di atas, dan bar ini adalah bar
+                  ke-12 di halaman untuk angka yang sama. Yang tersisa di sini
+                  hanya yang benar-benar milik kartu ini — daftar dokumennya
+                  dan berapa yang sudah masuk. */}
               <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <h4 class="text-sm font-black text-emerald-400 uppercase tracking-widest"><Icon name="tasks" class="mr-1.5" /> {t('ui.berkas_progress')}</h4>
-                <span class="text-lg font-black text-white">{Math.round(data.berkasProgress)}%</span>
-              </div>
-              <div class="h-2.5 bg-slate-800 rounded-full overflow-hidden mb-3">
-                <div class="h-full bg-gradient-to-r from-emerald-600 to-sky-500 rounded-full transition-[width] duration-500" style={`width:${data.berkasProgress}%`}></div>
-              </div>
-              <div class="flex flex-wrap items-center gap-2 mb-4">
+                <h4 class="text-sm font-black text-accent-emerald uppercase tracking-widest"><Icon name="tasks" class="mr-1.5" /> {t('ui.berkas_progress')}</h4>
                 <span class="text-xs font-bold text-white">{data.berkasList.filter(b => b.done).length}/{data.berkasTotal}{t('ui.doc_count_suffix')}</span>
               </div>
               <div class="grid grid-cols-2 gap-1.5 max-h-44 u-scroll-area custom-scrollbar pr-1">

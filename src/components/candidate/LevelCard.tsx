@@ -1,15 +1,23 @@
 /**
- * LevelCard.tsx — the candidate's progress presented as a level, not a score.
+ * LevelCard.tsx — the candidate's completeness, in ONE block.
  *
- * WHY THIS EXISTS
- * ---------------
- * The dashboard already computed three completeness numbers
- * (`computeCvMiniProgress`, `computeCvMasterProgress`, `computeOverallProgress`)
- * and rendered them as a bare percentage plus a CrownBadge emoji. That is
- * accurate but it reads as bookkeeping. The owner asked to give the app a
- * game-like feel for a young audience, and the cheapest honest way to do that is
- * to present the number the candidate ALREADY has as a level with a visible
- * next step.
+ * WHY THIS FILE LOOKS LIKE THIS
+ * -----------------------------
+ * The dashboard used to answer "how complete am I?" in FIVE places: this card,
+ * a separate `CV Progress` card with two bars, `StepGuide`, the `Progres
+ * Pemberkasan` card's own bar, and a `CrownBadge` in the dossier. MEASURED on
+ * the rendered page 2026-09-30: 7 percentage strings and 12 progress bars, with
+ * `100%`, `0%` and `50%` EACH appearing twice. Worst of it, the old version of
+ * this card printed "CV Mini: 100% · Master Profil: 0%" — the exact two numbers
+ * the `CV Progress` card had already drawn as bars two cards above it.
+ *
+ * That is not repetition that helps; it is two sources of truth for one fact.
+ * The owner's words: "kartunya kek redundant".
+ *
+ * So the CV Progress card was deleted and its two numbers became the LEGEND of
+ * the single meter below, where they are read once, next to the one bar they
+ * describe. The `Progres Pemberkasan` card lost its own bar and percentage for
+ * the same reason and kept only the checklist it alone owns.
  *
  * NO NEW DATA, NO NEW BACKEND. Every value here is derived from numbers the
  * dashboard already fetched. Nothing is invented and nothing is stored.
@@ -30,6 +38,7 @@
  * document is removed the bar reflects reality (that is honest), but nothing
  * here frames a decrease as failure — no red, no minus, no "you lost X".
  */
+import type { ComponentChildren } from 'preact';
 import { t } from '../../store/i18n';
 import Icon from '../ui/Icon';
 
@@ -99,12 +108,46 @@ export function pointsToNext(percent: number): number {
 export interface LevelCardProps {
   /** 0–100 completeness from `computeOverallProgress`. NOT a suitability score. */
   percent: number;
-  /** Optional per-section completeness, shown as small bars. */
+  /** CV Mini completeness — one legend value. */
   mini?: number;
+  /** Master Profile completeness — one legend value. */
   master?: number;
+  /** Berkas uploaded / required — the third legend value. */
+  berkasDone?: number;
+  berkasTotal?: number;
+  /**
+   * VIP standing (`[VIP]` in `catatanInt`). Only decides WHICH completion
+   * message is shown at 100%; it never changes the number, the tier, or the
+   * bar. Those two messages used to live in the deleted `CV Progress` card, and
+   * they are preserved here rather than dropped — the "PERFECT ASJ STUDENT"
+   * celebration is the reward for finishing every field, and losing it would be
+   * a silent feature removal dressed up as a layout cleanup.
+   */
+  vip?: boolean;
+  /**
+   * Rendered under the meter. The dashboard passes an inline `StepGuide`, so the
+   * "what do I do next" answer sits with the number it is about instead of in a
+   * second card that repeats the same subject.
+   */
+  children?: ComponentChildren;
 }
 
-export default function LevelCard({ percent, mini, master }: LevelCardProps) {
+/** One legend entry: a colour dot, a label, a value. */
+function Legend(props: { tone: 'sky' | 'violet' | 'emerald'; label: string; value: string }) {
+  const dot = props.tone === 'sky' ? 'bg-sky-400' : props.tone === 'violet' ? 'bg-violet-400' : 'bg-emerald-400';
+  return (
+    // The label carries the meaning; the dot is decoration. A screen reader
+    // hears "CV Mini 100%", not "blue dot 100%" (§6.6 — colour is never the
+    // only carrier).
+    <span class="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
+      <span class={`w-2 h-2 rounded-full shrink-0 ${dot}`} aria-hidden="true" />
+      {props.label}
+      <span class="text-slate-200 tabular-nums">{props.value}</span>
+    </span>
+  );
+}
+
+export default function LevelCard({ percent, mini, master, berkasDone, berkasTotal, vip, children }: LevelCardProps) {
   const level = levelFor(percent);
   const next = nextLevelFor(percent);
   const remaining = pointsToNext(percent);
@@ -118,6 +161,9 @@ export default function LevelCard({ percent, mini, master }: LevelCardProps) {
   // tier has no badge glyph — showing a tier icon at 0% would grant a reward for
   // nothing, which is the opposite of what this meter means.
   const iconName = level === 'empty' ? 'circle' : (LEVELS.find((l) => l.key === level)?.icon ?? 'circle');
+
+  const hasBerkas = typeof berkasTotal === 'number' && berkasTotal > 0;
+  const hasLegend = typeof mini === 'number' || typeof master === 'number' || hasBerkas;
 
   return (
     <div class="w-full mb-6 md:mb-8 text-left" data-level={level}>
@@ -141,7 +187,10 @@ export default function LevelCard({ percent, mini, master }: LevelCardProps) {
         </div>
 
         {/* The meter. `aria` carries the meaning for screen readers, since a
-            coloured bar conveys nothing to them. */}
+            coloured bar conveys nothing to them. It is the FIRST and only
+            `role="progressbar"` on the page, which is what lets a screen reader
+            — and `CandidateDash.test.tsx` — treat it as THE completeness value
+            rather than one of a dozen decorative bars. */}
         <div
           class="h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700/50"
           role="progressbar"
@@ -156,19 +205,22 @@ export default function LevelCard({ percent, mini, master }: LevelCardProps) {
           />
         </div>
 
-        {/* Per-section breakdown, only when the caller supplies it. */}
-        {(typeof mini === 'number' || typeof master === 'number') && (
+        {/* The three numbers this meter is made of, each read ONCE. Before the
+            merge these same values were drawn as bars in a second card above. */}
+        {hasLegend && (
           <div class="flex flex-wrap gap-x-5 gap-y-1.5 mt-3">
+            {hasBerkas && (
+              <Legend
+                tone="emerald"
+                label={t('ui.berkas_progress')}
+                value={`${typeof berkasDone === 'number' ? berkasDone : 0}/${berkasTotal}`}
+              />
+            )}
             {typeof mini === 'number' && (
-              <span class="text-[11px] font-bold text-slate-400">
-                {t('candidate.level_mini')}: <span class="text-slate-200 tabular-nums">{Math.round(mini)}%</span>
-              </span>
+              <Legend tone="sky" label={t('candidate.level_mini')} value={`${Math.round(mini)}%`} />
             )}
             {typeof master === 'number' && (
-              <span class="text-[11px] font-bold text-slate-400">
-                {t('candidate.level_master')}:{' '}
-                <span class="text-slate-200 tabular-nums">{Math.round(master)}%</span>
-              </span>
+              <Legend tone="violet" label={t('candidate.level_master')} value={`${Math.round(master)}%`} />
             )}
           </div>
         )}
@@ -182,6 +234,27 @@ export default function LevelCard({ percent, mini, master }: LevelCardProps) {
             {t('candidate.level_next_after')}
           </p>
         )}
+
+        {/* At the top tier the hint above disappears, and this takes its place.
+            Both branches came from the deleted `CV Progress` card; the third and
+            fourth it used to have ("silver, keep going" / "not complete yet")
+            were dropped on purpose — they said the same thing as the hint above,
+            which is the duplication this merge exists to remove. */}
+        {shown >= 100 && (
+          <p class="text-xs mt-3 font-bold">
+            {vip ? (
+              <span class="text-accent-amber font-black tracking-widest">
+                <Icon name="star" class="mr-1" /> {t('ui.perfect_student')} <Icon name="star" class="ml-1" />
+              </span>
+            ) : (
+              <span class="text-slate-300">
+                {t('ui.profile_100')} <Icon name="medal" />
+              </span>
+            )}
+          </p>
+        )}
+
+        {children}
       </div>
     </div>
   );

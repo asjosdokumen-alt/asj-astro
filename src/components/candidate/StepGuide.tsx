@@ -126,6 +126,15 @@ export function bodyKeyFor(key: StepKey): string {
 export interface Props extends StepInput {
   /** Kelas tambahan dari pemanggil. */
   class?: string;
+  /**
+   * `'card'` (bawaan) — kartu berdiri sendiri, dipakai kalau pemandu ini
+   *   memang berdiri sendiri.
+   * `'inline'` — TANPA latar, border, padding, atau margin: hanya baris di
+   *   dalam kartu milik pemanggil. Dipakai dashboard, yang menaruh pemandu ini
+   *   DI DALAM kartu kelengkapan supaya "seberapa lengkap" dan "apa
+   *   berikutnya" tidak lagi jadi dua kartu yang membahas hal yang sama.
+   */
+  variant?: 'card' | 'inline';
 }
 
 export default function StepGuide({
@@ -134,14 +143,21 @@ export default function StepGuide({
   berkasProgress,
   berkasTotal,
   class: className = '',
+  variant = 'card',
 }: Props) {
   const key = nextStep({ mini, master, berkasProgress, berkasTotal });
 
-  const classes = [
-    'bg-black/60 border border-sky-500/30 rounded-panel p-5 md:p-6 mb-6 md:mb-8 text-left',
-    'flex items-center gap-4',
-    className,
-  ]
+  const classes = (
+    variant === 'inline'
+      // `pt-4 mt-4 border-t` is the separator: the caller's card supplies the
+      // surface, so adding one here would draw a box inside a box.
+      ? ['pt-4 mt-4 border-t border-line text-left', 'flex items-center gap-3', className]
+      : [
+          'bg-black/60 border border-sky-500/30 rounded-panel p-5 md:p-6 mb-6 md:mb-8 text-left',
+          'flex items-center gap-4',
+          className,
+        ]
+  )
     .filter(Boolean)
     .join(' ');
 
@@ -154,15 +170,20 @@ export default function StepGuide({
           dihapus dari situs (2026-09-24), jadi yang tersisa adalah ikon yang
           menunjukkan BAGIAN mana yang ditunjuk. */}
       <div class="shrink-0">
-        <Icon name={iconFor(key)} class="text-5xl text-sky-400" />
+        <Icon
+          name={iconFor(key)}
+          class={variant === 'inline' ? 'text-3xl text-accent-sky' : 'text-5xl text-sky-400'}
+        />
       </div>
 
       <div class="min-w-0 flex-1">
         <p class="text-[11px] font-black text-sky-400 uppercase tracking-widest mb-0.5">
           {t('candidate.step_label')}
         </p>
-        <h3 class="text-base font-black text-white mb-1">{t(titleKeyFor(key))}</h3>
-        <p class="text-sm text-fg-muted">{t(bodyKeyFor(key))}</p>
+        <h3 class={variant === 'inline' ? 'text-sm font-black text-white mb-0.5' : 'text-base font-black text-white mb-1'}>
+          {t(titleKeyFor(key))}
+        </h3>
+        <p class={variant === 'inline' ? 'text-xs text-fg-muted' : 'text-sm text-fg-muted'}>{t(bodyKeyFor(key))}</p>
       </div>
     </div>
   );
