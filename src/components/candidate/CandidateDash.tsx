@@ -688,12 +688,32 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               </div>
             </div>
             {/* Action buttons grid */}
+            {/* Action buttons grid — bobot seragam, SENGAJA.
+                Dulu tujuh tombol ini punya tujuh warna pekat (sky/violet/rose/
+                amber/slate/putih/teal) masing-masing dengan glow dan
+                `hover:-translate-y-1`, jadi ketujuhnya berteriak bersamaan dan
+                tidak ada satu pun yang terbaca sebagai "kerjakan ini dulu".
+                Aksi utama halaman ini adalah "Lengkapi Berkas" — satu-satunya
+                CTA bergradien, di kartu atas — jadi tujuh ini turun pangkat
+                jadi aksi SEKUNDER yang seragam: satu permukaan, satu border,
+                dan warna hanya tinggal di ikonnya.
+
+                Kenapa TIDAK disembunyikan di menu overflow: enam di antaranya
+                membuka modal yang diukur `e2e/test-candidate-modals.mjs`, dan
+                gate itu menuntut pemicunya ADA dan bisa diklik TANPA satu klik
+                tambahan. Jadi bobotnya yang diturunkan, bukan keberadaannya —
+                kalau tidak, "merapikan" di sini sama dengan mematikan gate.
+
+                `min-h-11` = 44px, lantai sentuh proyek ini (DESIGN.md:691).
+                Sebelumnya tinggi tombol ditentukan `py-3` (12+12+20 = 44px):
+                pas di ambang, dan jatuh di bawahnya begitu line-height font
+                berubah. Sekarang eksplisit, jadi tidak bergantung pada itu. */}
             <div class="u-grid-auto u-grid-auto--cards gap-3 mt-5">
-              <button data-testid="cmt-cvmini" onClick={() => setShowCvMiniModal(true)} class="w-full px-3 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(118,185,0,0.5)] hover:-translate-y-1 transition"><Icon name="user-edit" class="mr-1.5" /> {t('ui.update_cv_mini')}</button>
-              <button data-testid="cmt-interview" onClick={openInterview} class="w-full px-3 py-3 bg-violet-600 hover:bg-violet-500 border border-violet-400/50 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(124,58,237,0.5)] hover:-translate-y-1 transition"><Icon name="microphone-alt" class="mr-1.5" /> {t('ui.interview_practice')}</button>
-              <button data-testid="cmt-esign" onClick={openEsign} class="w-full px-3 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-sm font-bold shadow-[0_0_15px_rgba(225,29,72,0.4)] hover:-translate-y-1 transition"><Icon name="signature" class="mr-1.5" /> {t('ui.esign_naitei')}</button>
-              <button onClick={openAiCvMaster} class="w-full px-3 py-3 bg-amber-600 hover:bg-amber-500 border border-amber-400/50 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition cursor-pointer"><Icon name="robot" class="mr-1.5" /> {t('ui.ai_cv_assistant')}</button>
-              <a href="/master" class="w-full px-3 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition text-center"><Icon name="clipboard-list" class="mr-1.5 text-sky-400" /> {t('ui.master_full_form')}</a>
+              <button data-testid="cmt-cvmini" onClick={() => setShowCvMiniModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="user-edit" class="text-accent-sky shrink-0" /> {t('ui.update_cv_mini')}</button>
+              <button data-testid="cmt-interview" onClick={openInterview} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-violet text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="microphone-alt" class="text-accent-violet shrink-0" /> {t('ui.interview_practice')}</button>
+              <button data-testid="cmt-esign" onClick={openEsign} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="signature" class="text-accent-red shrink-0" /> {t('ui.esign_naitei')}</button>
+              <button onClick={openAiCvMaster} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-amber text-slate-200 rounded-control text-sm font-bold transition text-left cursor-pointer"><Icon name="robot" class="text-accent-amber shrink-0" /> {t('ui.ai_cv_assistant')}</button>
+              <a href="/master" class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-emerald text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="clipboard-list" class="text-accent-emerald shrink-0" /> {t('ui.master_full_form')}</a>
               {/* ── "Pilih Template CV" WAS HERE AND IS NOT COMING BACK ──
                   Owner ruling 2026-09-25: "template cv itu fitur admin bukan
                   buat kandidat". The feature still exists — it is the admin's,
@@ -707,8 +727,8 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                   CV"), which is the read/preview side of the same feature — so
                   removing this button takes away a chooser, not the ability to
                   see a CV. */}
-<button data-testid="cmt-rirekisho" onClick={() => setShowRirekisho(true)} class="w-full px-3 py-3 bg-slate-200 hover:bg-white text-slate-900 rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="file-alt" class="mr-1.5 text-red-600" /> {t('candidate.btn_preview_cv')}</button>
-              <button data-testid="cmt-password" onClick={() => setShowPasswordModal(true)} class="w-full px-3 py-3 bg-teal-600 hover:bg-teal-500 text-white rounded-full text-sm font-bold shadow-lg hover:-translate-y-1 transition"><Icon name="key" class="mr-1.5" /> {t('ui.change_password')}</button>
+<button data-testid="cmt-rirekisho" onClick={() => setShowRirekisho(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="file-alt" class="text-accent-red shrink-0" /> {t('candidate.btn_preview_cv')}</button>
+              <button data-testid="cmt-password" onClick={() => setShowPasswordModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="key" class="text-accent-sky shrink-0" /> {t('ui.change_password')}</button>
             </div>
           </div>
         </div>
@@ -828,7 +848,11 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           </div>
         )}
 
-        <a href="/public" class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold shadow-lg hover:scale-105 transition text-sm inline-block">{t('button.view_public_jobs')}</a>
+        {/* Dulu `inline-block px-6` di dalam panel yang `text-center`, jadi
+            tombol ini mengambang 124px di tengah kolom 846px — satu-satunya
+            elemen di halaman yang tepinya tidak sejajar dengan apa pun. Sekarang
+            selebar kolomnya, seperti setiap kartu lain di atasnya. */}
+        <a href="/public" class="w-full inline-flex items-center justify-center gap-2 px-6 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control font-bold transition text-sm">{t('button.view_public_jobs')}</a>
       </div>
 
       {/* ── Modals ──
