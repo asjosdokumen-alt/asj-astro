@@ -506,6 +506,21 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
       />
 
       <div class="glass-panel p-5 md:p-6 rounded-panel shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
+        {/* ── Sapaan: h2 pertama halaman ──
+            `h1` rute ini dipegang FormToolbar ("Dashboard Kandidat"), jadi sapaan
+            tidak boleh jadi `h1` kedua — `e2e/test-headings.mjs` menuntut TEPAT
+            satu. Yang hilang sebelumnya bukan `h1`, melainkan lapisan `h2`:
+            outline-nya H1 -> H3 -> H4, melompati satu tingkat, sehingga pembaca
+            layar tidak punya daftar isi yang bisa dipakai. */}
+        <h2 class="mb-6 md:mb-8 text-left">
+          <span class="block text-lg md:text-xl font-black text-white">
+            {t('dash.welcome')} {data.nama}
+          </span>
+          <span class="block text-xs text-fg-muted mt-1">
+            {[data.job, data.tahapan].filter(Boolean).join(' · ') || t('ui.cv_type_hint')}
+          </span>
+        </h2>
+
         {/* ── DIGITAL STUDENT CARD (VIP only) ── */}
         {(data.isVIP || data.isSiswaASJ) && data.idKandidat && (
           <div class="max-w-sm mx-auto mb-8 relative group">
@@ -518,7 +533,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                     <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-full h-full object-cover scale-110" />
                   </div>
                   <div>
-                    <h3 class="text-white font-black text-sm tracking-widest">{t('ui.student_id')}</h3>
+                    <h2 class="text-white font-black text-sm tracking-widest">{t('ui.student_id')}</h2>
                     <p class="text-amber-400 text-[11px] font-bold uppercase tracking-[0.2em]">{data.kelas || t('ui.vip_member')}</p>
                   </div>
                 </div>
@@ -574,7 +589,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         {data.jadwal.length > 0 && (
           <div class="mb-6 md:mb-8 bg-amber-500/10 border border-amber-500/40 p-5 md:p-6 rounded-panel text-left shadow-xl relative overflow-hidden">
             <div class="absolute -right-4 -top-4 text-amber-500/10 text-7xl"><Icon name="calendar-alt" /></div>
-            <h3 class="relative z-10 text-lg font-black text-accent-amber mb-4"><Icon name="calendar-check" class="mr-2 text-accent-red animate-pulse" /> {t('ui.your_schedule')}</h3>
+            <h2 class="relative z-10 text-lg font-black text-accent-amber mb-4"><Icon name="calendar-check" class="mr-2 text-accent-red animate-pulse" /> {t('ui.your_schedule')}</h2>
             <div class="relative z-10 space-y-3">
               {data.jadwal.map((j, i) => (
                 <div key={i} class="bg-surface-raised/60 border border-amber-500/30 rounded-xl p-4">
@@ -611,7 +626,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         <div class="mb-6 md:mb-8 bg-sky-500/10 border border-sky-500/30 p-5 md:p-6 rounded-panel shadow-xl relative overflow-hidden text-left">
           <div class="absolute -right-6 -top-10 text-sky-500/10 text-[10rem]"><Icon name="rocket" /></div>
           <div class="relative z-10">
-            <h3 class="text-xl font-black text-accent-sky mb-2"><Icon name="bolt" class="mr-2 text-accent-amber" /> {t('ui.app_status_latest')}</h3>
+            <h2 class="text-xl font-black text-accent-sky mb-2"><Icon name="bolt" class="mr-2 text-accent-amber" /> {t('ui.app_status_latest')}</h2>
             <p class="text-sm text-slate-300 mb-5">{t('ui.cv_type_hint')}</p>
             <div class="mt-6 p-1 rounded-panel bg-gradient-to-r from-sky-500/30 to-emerald-500/30 border border-slate-700/50 shadow-xl">
               <div class="bg-surface rounded-card p-5 md:p-6">
@@ -619,7 +634,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                     atasnya (ui.app_status_latest), jadi outline terbaca
                     "Status Lamaran Terkini" dua kali berurutan. Sekarang ia punya
                     label sendiri yang menyebut isinya: daftar loker yang dilamar. */}
-                <h4 class="text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400 animate-pulse" /> {t('ui.app_list_title')}</h4>
+                <h3 class="text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400 animate-pulse" /> {t('ui.app_list_title')}</h3>
                 {/* Loker pills */}
                 {uniqueLokers.length > 1 && (
                   <div class="flex flex-wrap gap-1.5 mb-3">
@@ -770,7 +785,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                   hanya yang benar-benar milik kartu ini — daftar dokumennya
                   dan berapa yang sudah masuk. */}
               <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <h4 class="text-sm font-black text-accent-emerald uppercase tracking-widest"><Icon name="tasks" class="mr-1.5" /> {t('ui.berkas_progress')}</h4>
+                <h2 class="text-sm font-black text-accent-emerald uppercase tracking-widest"><Icon name="tasks" class="mr-1.5" /> {t('ui.berkas_progress')}</h2>
                 <span class="text-xs font-bold text-white">{data.berkasList.filter(b => b.done).length}/{data.berkasTotal}{t('ui.doc_count_suffix')}</span>
               </div>
               <div class="grid grid-cols-2 gap-1.5 max-h-44 u-scroll-area custom-scrollbar pr-1">

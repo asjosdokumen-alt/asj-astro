@@ -180,7 +180,14 @@ export default function AsjDossierCard(props: AsjDossierCardProps) {
 
         <div class="w-full md:w-2/3 space-y-4 min-w-0">
           <div>
-            <h3 class="text-section font-black uppercase text-fg break-words">{nama}</h3>
+            {/* `<div>`, bukan `<h3>`. Nama kandidat adalah DATA identitas, bukan
+                judul bagian: kartu ini tidak punya sub-bagian yang bisa
+                ditumpangkan padanya, jadi `<h3>` di sini hanya menghasilkan satu
+                heading tanpa anak di puncak outline — persis yang membuat
+                outline /candidate melompat H1 -> H3. Judul bagian halaman ini
+                sekarang dipegang `CandidateDash` (sapaan + satu `h2` per
+                seksi). */}
+            <div class="text-section font-black uppercase text-fg break-words">{nama}</div>
             {(props.badge || kelas) && (
               <div class="flex flex-wrap items-center gap-2 mt-1">
                 {props.badge}
@@ -236,7 +243,12 @@ export default function AsjDossierCard(props: AsjDossierCardProps) {
 
       {jobs.length > 0 && (
         <div class="mb-5 bg-surface-sunken p-4 rounded-card border border-line-strong">
-          <h4 class="text-caption font-bold uppercase text-fg-subtle mb-2">{t('ui.cv_jobs_header')}:</h4>
+          {/* Label daftar, bukan judul bagian — sama alasannya dengan nama di
+              atas: `<h4>` di sini duduk SEBELUM `h2` pertama halaman (kartu
+              dossier dirender di atas panel dashboard), jadi outline-nya
+              melompat H1 -> H4. Tidak ada sub-bagian yang ditumpangkan pada
+              label ini. */}
+          <div class="text-caption font-bold uppercase text-fg-subtle mb-2">{t('ui.cv_jobs_header')}:</div>
           <div class="flex flex-wrap gap-2">
             {jobs.map((j) => (
               <span key={j} class="rounded-control bg-surface border border-line-strong px-2.5 py-1 text-caption font-bold text-fg break-all">{j}</span>

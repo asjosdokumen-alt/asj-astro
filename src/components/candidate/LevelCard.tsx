@@ -177,9 +177,12 @@ export default function LevelCard({ percent, mini, master, berkasDone, berkasTot
               <Icon name={iconName} />
             </span>
             <div class="min-w-0">
-              <div class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+              {/* `h2`: ini judul seksi halaman, bukan label dekoratif. Karena
+                  `StepGuide` di dalamnya memakai `h3`, keduanya sekarang punya
+                  induk yang benar di outline. */}
+              <h2 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                 {t('candidate.level_label')}
-              </div>
+              </h2>
               <div class="text-base md:text-lg font-black text-white truncate">{label}</div>
             </div>
           </div>
