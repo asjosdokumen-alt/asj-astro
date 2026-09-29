@@ -921,6 +921,7 @@ export const jpTranslations: Record<string, string> = {
   "profile.mitra_title": "提携パートナー",
   "profile.mitra_desc": "日本への渡航は、以下の提携LPKおよびPT（SO）と共同で行っています。",
   "profile.mitra_note": "当社はSOの認定を受けていないため、受講者の日本への渡航は、当社とMoUを締結した提携LPKおよびPT（SO）が実施します。",
+  "profile.mitra_kind_gloss": "注記：社名下のバッジは「渡航許可のステータス」です（SO＝送出し機関として渡航を実施する権限）。法人形態（PT／LPK）を示すものではありません。社名は各社が自称する名称をそのまま使っているため、「LPK」と名乗りつつSO許可を持つ提携先もあります。",
   "profile.mitra_cta_desc": "当社との提携（MoU）をご希望の方は、下の「お問い合わせ」よりご連絡ください。",
   "profile.mitra_slot_pending": "スロット未設定",
   // 提携先の6社名（オーナーが2026-09-29に提供）。

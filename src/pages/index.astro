@@ -712,6 +712,19 @@ import { GALLERY } from '../lib/gallery';
       <div class="mt-8">
         <PartnerGrid partners={PARTNERS} />
       </div>
+      <!-- The badge gloss — ADDED 2026-09-30, at the owner's ruling.
+           The owner spotted that the six MoU partners are mostly SO, not LPK,
+           and the corrected badges left two cards reading "LPK Japanesia" with
+           an "SO" badge beside it — a contradiction on its face. The fix keeps
+           the partner's own name (a name is theirs to state) and explains what
+           the badge ASSERTS: a departure-licence standing, not a legal-entity
+           type. Sits BELOW the grid because it annotates the badges above it. -->
+      <p
+        data-lang="profile.mitra_kind_gloss"
+        class="mt-4 max-w-[70ch] text-caption text-fg-muted"
+      >
+        Keterangan: badge di bawah nama adalah STATUS IZIN keberangkatan (SO = Sending Organization, berwenang memberangkatkan), bukan bentuk badan hukum. Nama mitra tetap memakai sebutan yang mereka pakai sendiri, sehingga ada mitra yang berbunyi "LPK" namun berizin SO.
+      </p>
       <p
         data-lang="profile.mitra_cta_desc"
         class="mt-6 max-w-[70ch] text-body-sm text-fg-muted"

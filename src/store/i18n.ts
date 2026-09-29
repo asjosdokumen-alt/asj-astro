@@ -1280,6 +1280,7 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.mitra_title": "Mitra Kami",
   "profile.mitra_desc": "Keberangkatan ke Jepang dijalankan bersama mitra LPK dan PT (SO) berikut.",
   "profile.mitra_note": "Kami belum berstatus SO, sehingga keberangkatan peserta ke Jepang dilaksanakan oleh mitra LPK dan PT (SO) yang telah menandatangani MoU dengan kami.",
+  "profile.mitra_kind_gloss": "Keterangan: badge di bawah nama adalah STATUS IZIN keberangkatan (SO = Sending Organization, berwenang memberangkatkan), bukan bentuk badan hukum. Nama mitra tetap memakai sebutan yang mereka pakai sendiri, sehingga ada mitra yang berbunyi \"LPK\" namun berizin SO.",
   "profile.mitra_cta_desc": "Ingin menjadi mitra penempatan (MoU) kami? Silakan hubungi kami melalui bagian Kontak di bawah.",
   "profile.mitra_slot_pending": "Slot belum diisi",
   "profile.mitra_1_name": "PT Flora Talent Indonesia",

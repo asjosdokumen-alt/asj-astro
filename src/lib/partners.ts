@@ -148,6 +148,10 @@ export const PARTNERS: Partner[] = [
   {
     slot: 1,
     name: { key: 'profile.mitra_1_name', text: 'PT Flora Talent Indonesia' },
+    // LPK — CORRECT, and the one entry that stays. Its own site declares no
+    // P3MI and no SO: "lembaga pelatihan dan penyalur tenaga kerja resmi di
+    // bawah YS Talent Japan". No SO licence number appears anywhere on it. This
+    // is the only partner that publishes itself as a training body only.
     kind: 'LPK',
     logo: 'ysflora',
     home: 'https://www.ysfloraindonesia.com/',
@@ -155,13 +159,27 @@ export const PARTNERS: Partner[] = [
   {
     slot: 2,
     name: { key: 'profile.mitra_2_name', text: 'PT Human Mandiri Indonesia' },
-    kind: 'LPK',
+    // SO — CORRECTED 2026-09-30 from LPK. Its own site: "dengan nama Gunamandiri
+    // Paripurna, kami juga telah resmi memperoleh izin P3MI dari pemerintah
+    // Indonesia dan menjalankan bisnis penempatan tenaga kerja ke luar negeri."
+    // A P3MI licence is the placement authority — the same standing this list
+    // calls SO. NOTE the licence is held under the PARENT name (Gunamandiri
+    // Paripurna), and the entry here is the site that publishes it; the owner
+    // supplied this URL as the partner. Recorded rather than smoothed over: if
+    // the MoU is signed with the parent, the `name` may warrant the parent's
+    // legal name — an owner question, not one this file may decide.
+    kind: 'SO',
     logo: 'human',
     home: 'https://humanindonesia.com/id',
   },
   {
     slot: 3,
     name: { key: 'profile.mitra_3_name', text: 'LPK Japanesia' },
+    // SO — unchanged, now with the citation. Its own site: "ジャパネシア送り出し
+    // 機関はインドネシア国内から認定された送出し機関として" ("recognised by the
+    // Indonesian government as a sending organisation"). 送出し機関 = SO.
+    // The name still reads "LPK" because that is the brand the partner trades
+    // under; the badge is the LEGAL standing, which is what a candidate needs.
     kind: 'SO',
     logo: 'japanesia',
     home: 'https://lpkjapanesia.com/',
@@ -169,13 +187,21 @@ export const PARTNERS: Partner[] = [
   {
     slot: 4,
     name: { key: 'profile.mitra_4_name', text: 'PT JIPA' },
-    kind: 'LPK',
+    // SO — CORRECTED 2026-09-30 from LPK. Its own site lists "Sending
+    // Organization (SO) JIPA P3MI ... PT. Jaya Indonesia Pandu Abhipraya, yang
+    // mempunyai izin resmi dari Pemerintah Indonesia". JIPA is the LPK arm (LPK
+    // MOMIJI sits beside it), but the group's declared SO/P3MI standing is what
+    // the badge reports, and the site states it in those words.
+    kind: 'SO',
     logo: 'jipa',
     home: 'https://www.jipa.co.id/',
   },
   {
     slot: 5,
     name: { key: 'profile.mitra_5_name', text: 'LPK Jinzai Servis Indonesia' },
+    // SO — unchanged. Its own site carries an explicit licence: "送り出し機関
+    // 許可番号（SO)： 2/4276/HK.03.01/X/2023" plus OTIT registration IDN000431.
+    // The strongest evidence in this list — an actual SO permit number.
     kind: 'SO',
     logo: 'jinzai',
     home: 'http://jsi-jinzai.com/',
@@ -183,7 +209,11 @@ export const PARTNERS: Partner[] = [
   {
     slot: 6,
     name: { key: 'profile.mitra_6_name', text: 'PT Hibiki Cendekia Mandala' },
-    kind: 'LPK',
+    // SO — CORRECTED 2026-09-30 from LPK. The site's own meta description reads
+    // "PT Hibiki Cendekia Mandala adalah P3MI resmi yang menyediakan pelatihan
+    // bahasa Jepang dan penempatan kerja legal ke Jepang" — a P3MI placement
+    // licence, i.e. SO standing.
+    kind: 'SO',
     logo: 'hibiki',
     home: 'https://www.hibikicendekia.com/',
   },
