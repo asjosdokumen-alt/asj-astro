@@ -934,6 +934,18 @@ export const jpTranslations: Record<string, string> = {
   "profile.mitra_5_name": "LPK Jinzai Servis Indonesia",
   "profile.mitra_6_name": "PT Hibiki Cendekia Mandala",
 
+  // ── 卒業生の声（口コミモデル、2026-09-29追加）──────────────────────────
+  // 引用文そのものはまだ入っていない——オーナー提供の実際の口コミとともに入る
+  // （src/lib/testimonials.ts 参照）。ここにあるのはセクション自身のラベル。
+  "profile.review_title": "卒業生の声",
+  "profile.review_desc": "当校で学び、ともに日本へ渡航した受講者の声です。",
+  "profile.review_count_from": "Googleマップの",
+  "profile.review_count_of": "件の口コミより",
+  "profile.review_open_maps": "Googleマップで見る",
+  "profile.review_cta_desc": "当校で学んだ経験や渡航経験のある方は、下のお問い合わせよりお聞かせください。",
+  "profile.review_slot_pending": "口コミ未掲載",
+  "profile.review_pending_author": "口コミ待ち",
+
   // ── 求人概要（R2、右レール） — 2026-09-24 削除 ────────────────────────
   // `profile.mini_*` の4キーは `#loker-ringkas` セクションと `JobMiniList` の
   // 削除に伴い削除した。オーナー判断: `/` は MoU・取引先向けの会社プロフィール

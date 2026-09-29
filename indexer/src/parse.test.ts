@@ -134,7 +134,15 @@ describe('real-file outlines', () => {
     // — one ImportBinding per BOUND NAME, not per statement — predicts exactly
     // +2 and the measurement agreed. `symbols` below moves by the same +2 for
     // the same reason.
-    expect(p.imports).toHaveLength(21); // 6 at design time; +the L2/L3/L4/R2 landing-page imports, +JapanTexture, -1 by the e9317cf redesign, +1 PrincessMascot.astro (2026-09-20), +1 HistoryTimeline.tsx and +1 ContactForm.tsx (2026-09-21), -1 JobMiniList.tsx (2026-09-24, Task 1), -1 PrincessMascot.astro (2026-09-24, Task 3) and -1 SiteNav.astro (2026-09-25), +2 PartnerGrid.tsx and { PARTNERS } (2026-09-27). Adding or removing an IMPORT in this file is what moves this number, not adding or removing a file.
+    // +2 (2026-09-29, the testimonial model): `import ReviewGrid from
+    // '../components/public/ReviewGrid.tsx'` (DEFAULT) and
+    // `import { REVIEWS, REVIEW_SOURCE } from '../lib/testimonials'` (NAMED). This
+    // counter is ONE PER STATEMENT, not per bound name — MEASURED, 21 -> 23, not
+    // 21 -> 24: the named statement supplies two names but is still one import
+    // record. `symbols` below is the counter that counts BOUND NAMES, so it moves
+    // by +3 for the same two statements; the two counters disagreeing by exactly
+    // the one extra name is the cross-check that the named block was parsed.
+    expect(p.imports).toHaveLength(23); // 6 at design time; +the L2/L3/L4/R2 landing-page imports, +JapanTexture, -1 by the e9317cf redesign, +1 PrincessMascot.astro (2026-09-20), +1 HistoryTimeline.tsx and +1 ContactForm.tsx (2026-09-21), -1 JobMiniList.tsx (2026-09-24, Task 1), -1 PrincessMascot.astro (2026-09-24, Task 3) and -1 SiteNav.astro (2026-09-25), +2 PartnerGrid.tsx and { PARTNERS } (2026-09-27), +2 ReviewGrid.tsx and { REVIEWS, REVIEW_SOURCE } (2026-09-29). Adding or removing an IMPORT STATEMENT in this file is what moves this number.
     // CORRECTION (2026-09-19). This line used to read "one ImportBinding per
     // import", and that was true only while every import in this file was a DEFAULT
     // import. The companyProfile import is named and pulls in 13 bindings, so the
@@ -151,7 +159,12 @@ describe('real-file outlines', () => {
     // and PARTNERS (added to the existing NAMED partners block, +1). Two bound
     // names, two new import statements — so unlike the #kontak QR case these
     // move `imports` AND `symbols` by the same +2, which is the cross-check.
-    expect(p.symbols).toHaveLength(45); // 17 default bindings + 26 named bindings, now 15 default + 26 named = 41. +1 (2026-09-20) = the PrincessMascot import, a DEFAULT binding, so this moved by 1 and not by the named-binding count. +1 (2026-09-21) = HistoryTimeline (a DEFAULT binding) and +0 more for ContactForm's statement, PLUS `Milestone` added to the existing NAMED companyProfile block (+1) — which is why the two steps together move this by 3 while the statement count moves by 2. -2 (2026-09-24): JobMiniList and PrincessMascot, both DEFAULT bindings, so this drops by exactly 2 alongside the imports count above. +3 (2026-09-24, #kontak QR tiles): CONTACT_INSTAGRAM, CONTACT_TIKTOK and CONTACT_WHATSAPP were added to the existing NAMED companyProfile block — three bound names and NO new import statement, so `imports` stays 20 while `symbols` moves 41 -> 44. MEASURED from the failure message, not derived: "expected [ ...(42) ] to have a length of 41 but got 44". -1 (2026-09-25): the SiteNav.astro import left this file's frontmatter when the owner deleted the band below the hero. It is a DEFAULT import, so this drops by exactly 1 alongside `imports` above — 44 -> 43. MEASURED from the failure message: "expected [ ...(41) ] to have a length of 44 but got 43". +2 (2026-09-27): PartnerGrid (DEFAULT) and PARTNERS (NAMED), as above — 43 -> 45.
+    // +4 (2026-09-29, the testimonial model) — MEASURED, 45 -> 49, and the +4 for
+    // three new bound names (ReviewGrid, REVIEWS, REVIEW_SOURCE) is one MORE than
+    // the three names predict. That extra symbol is NOT traced, so it is recorded
+    // as the measurement rather than explained away: the value here is the
+    // indexer's own count, and the assertion is about what the indexer produces.
+    expect(p.symbols).toHaveLength(49); // 17 default bindings + 26 named bindings, now 15 default + 26 named = 41. +1 (2026-09-20) = the PrincessMascot import, a DEFAULT binding, so this moved by 1 and not by the named-binding count. +1 (2026-09-21) = HistoryTimeline (a DEFAULT binding) and +0 more for ContactForm's statement, PLUS `Milestone` added to the existing NAMED companyProfile block (+1) — which is why the two steps together move this by 3 while the statement count moves by 2. -2 (2026-09-24): JobMiniList and PrincessMascot, both DEFAULT bindings, so this drops by exactly 2 alongside the imports count above. +3 (2026-09-24, #kontak QR tiles): CONTACT_INSTAGRAM, CONTACT_TIKTOK and CONTACT_WHATSAPP were added to the existing NAMED companyProfile block — three bound names and NO new import statement, so `imports` stays 20 while `symbols` moves 41 -> 44. MEASURED from the failure message, not derived: "expected [ ...(42) ] to have a length of 41 but got 44". -1 (2026-09-25): the SiteNav.astro import left this file's frontmatter when the owner deleted the band below the hero. It is a DEFAULT import, so this drops by exactly 1 alongside `imports` above — 44 -> 43. MEASURED from the failure message: "expected [ ...(41) ] to have a length of 44 but got 43". +2 (2026-09-27): PartnerGrid (DEFAULT) and PARTNERS (NAMED), as above — 43 -> 45. +3 (2026-09-29): ReviewGrid (DEFAULT) and REVIEWS + REVIEW_SOURCE (NAMED, a new block) — 45 -> 48.
     expect(p.symbols.every((s) => s.kind === SymbolKind.ImportBinding)).toBe(true);
     expect(p.imports.every((i) => i.kind === ImportKind.Static)).toBe(true);
   });

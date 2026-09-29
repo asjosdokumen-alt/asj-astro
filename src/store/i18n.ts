@@ -1289,6 +1289,18 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.mitra_5_name": "LPK Jinzai Servis Indonesia",
   "profile.mitra_6_name": "PT Hibiki Cendekia Mandala",
 
+  // ── Kata Alumni (testimonial model, added 2026-09-29) ──────────────────
+  // The review QUOTES are not here yet — they arrive with the owner's real
+  // reviews (see src/lib/testimonials.ts). These are the section's own labels.
+  "profile.review_title": "Kata Alumni",
+  "profile.review_desc": "Cerita peserta yang telah belajar dan berangkat bersama kami.",
+  "profile.review_count_from": "dari",
+  "profile.review_count_of": "ulasan di Google Maps",
+  "profile.review_open_maps": "Lihat di Google Maps",
+  "profile.review_cta_desc": "Sudah pernah belajar atau berangkat bersama kami? Bagikan cerita Anda melalui kontak di bawah.",
+  "profile.review_slot_pending": "Review belum tayang",
+  "profile.review_pending_author": "Menunggu review",
+
   // ── Lowongan Ringkas (R2, rail) — REMOVED 2026-09-24 ───────────────────
   // The `profile.mini_*` keys (`mini_title`, `mini_desc`, `mini_all`,
   // `mini_cta`) were deleted together with the `#loker-ringkas` section and its

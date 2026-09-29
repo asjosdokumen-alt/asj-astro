@@ -1611,6 +1611,86 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
 
 
 /* ══════════════════════════════════════════════════════════════════
+   9g. SURFACE DEPTH — the "kaku" fix
+   ══════════════════════════════════════════════════════════════════
+
+   WHY THIS EXISTS. Owner feedback 2026-09-29: "css mereka bagus bagus
+   keknya punya kita masih kaku bgd" — the MoU partners' sites read as
+   more polished than ours. The measurable cause is NOT a missing
+   animation; it is that every surface here is a FLAT, SINGLE-TONE
+   rectangle with one uniform 1px border. `--color-surface` is one hex
+   for the whole card, so a card at rest has zero internal light and
+   reads as a box drawn on the page rather than a pane sitting above it.
+   That flatness is what "kaku" names.
+
+   WHAT THIS ADDS, AND WHAT IT COSTS. A one-pixel top-lit gradient and a
+   soft hover glow, both from EXISTING tokens (`--color-surface-raised`,
+   `--glow-pink`, `--glow-sky`). No new image, no new library, no new
+   request: `background-image` with a `linear-gradient` is rasterised in
+   one paint, and `box-shadow` at these sizes is a single composite.
+
+   ⚠ WHY A GRADIENT AND NOT A SHADOW, GIVEN Card.astro's OWN RULING.
+   Card.astro moved depth OFF shadows and ONTO borders because on a dark
+   canvas a drop shadow is nearly invisible (DESIGN.md §3.6). That ruling
+   still holds and is NOT contradicted here: the gradient is INTERNAL
+   light (a highlight inside the surface), not an external cast shadow.
+   The two are different devices — a border says where the edge is, an
+   internal highlight says which way is up. Cards keep their border.
+
+   ⚠ THE HOVER GLOW IS A RING, NOT A BLUR. `box-shadow: 0 0 0 1px …` plus
+   a low-alpha spread ring costs one composite and does not promote a
+   layer for the life of the element, which is the same reasoning §9c
+   records for the lift's border transition. A blurred `blur(40px)` glow
+   on every card in a 6-card grid WOULD be the bloat the owner asked to
+   avoid, so the tokens are used at a small spread, not as a bloom.
+
+   TOUCH: the glow is inside the same `@media (hover: hover)` guard the
+   lift uses, because `:hover` sticks after a tap and a card would stay
+   lit. REDUCED MOTION: the glow is a colour/light change, not motion, so
+   it is kept — matching §9c's decision to keep the border brightening. */
+
+@supports (background-image: linear-gradient(180deg, red, blue)) {
+  /*
+     `.u-surface-depth` — opt-in surface light. Applied to cards and panels
+     that want to read as lit panes. Kept as a UTILITY rather than baked into
+     `bg-surface` so a caller can opt out (a full-bleed image card must not
+     have a gradient painted under its picture).
+
+     The gradient is deliberately 0.5%–100% over a TINY alpha range: the top
+     is `--color-surface-raised` at ~35% and the bottom stays the surface. A
+     stronger ramp reads as a two-tone card and draws the eye to the colour
+     instead of the content. */
+  .u-surface-depth {
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-surface-raised) 35%, transparent) 0%,
+      transparent 55%
+    );
+  }
+
+  @media (hover: hover) {
+    /*
+       The lit edge. `--u-glow` is set per call site (defaults to the neutral
+       accent); a hovered interactive card gets a 1px ring in the accent plus a
+       soft spread, so it reads as "this came forward" without a blur pass. */
+    .u-lift {
+      --u-glow: color-mix(in oklab, var(--color-line-strong) 55%, transparent);
+    }
+    .u-lift:hover {
+      box-shadow:
+        0 0 0 1px var(--u-glow),
+        0 8px 24px -12px color-mix(in oklab, var(--u-glow) 80%, transparent);
+    }
+  }
+}
+
+/* REDUCED MOTION — the glow is light, not movement, so it is KEPT (see §9c
+   for the same call on the border). Nothing to disable here; the block is
+   noted so a future reader does not "fix" the omission by adding a rule that
+   would remove the only remaining hover cue on a static card. */
+
+
+/* ══════════════════════════════════════════════════════════════════
    8. REDUCED MOTION — final safety net
    ══════════════════════════════════════════════════════════════════
 

@@ -139,6 +139,10 @@ const SECTIONS = [
   // skip the band entirely. A section the gate does not name is a section the
   // gate does not check.
   { id: 'mitra', phase: 'L9', visible: true },
+  // ADDED 2026-09-29 with the #testimoni section (the "Kata Alumni" review
+  // model). Listed for the same reason #mitra is: an unnamed section is a
+  // section the presence/order/visibility checks silently skip.
+  { id: 'testimoni', phase: 'L9', visible: true },
   { id: 'kontak', phase: 'L3', visible: true },
   { id: 'lokasi', phase: 'L3', visible: true },
   // The closing CTA band. It is rendered by ClosingBand.astro OUTSIDE <main>, so
@@ -727,6 +731,24 @@ async function inspectLanding(width) {
             const el = byId.get('mitra');
             return el ? el.querySelectorAll('li[data-filled="false"]').length : 0;
           })(),
+          /**
+           * The testimonial section's visible text, scoped to #testimoni for the
+           * same reason `mitraText` is scoped: a string matched anywhere in the
+           * document would pass even if the review card never rendered it.
+           */
+          reviewText: (() => {
+            const el = byId.get('testimoni');
+            return el ? (el.innerText || '').replace(/\s+/g, ' ') : '';
+          })(),
+          /** The review card split, from `data-filled` on each <li> in #testimoni. */
+          reviewFilled: (() => {
+            const el = byId.get('testimoni');
+            return el ? el.querySelectorAll('li[data-filled="true"]').length : 0;
+          })(),
+          reviewEmpty: (() => {
+            const el = byId.get('testimoni');
+            return el ? el.querySelectorAll('li[data-filled="false"]').length : 0;
+          })(),
           linkedFragments,
           unresolvedFragments,
           h2Count,
@@ -1033,6 +1055,88 @@ async function run() {
               pendingRendered ? 'prints' : 'does not print'
             } the slot-pending copy. These must agree (data leaves a slot unnamed ` +
             `<=> the page prints the pending copy).`,
+        );
+      }
+    });
+
+    // ── L9 — the testimonial model renders its slots, and its honest-absence
+    //        invariant holds ──────────────────────────────────────────────────
+    //
+    // SCOPE, AND WHY IT IS SHAPED THIS WAY. The reviews themselves are EMPTY on
+    // purpose (COMPANY_PROFILE_DATA.md §8 bans an invented testimonial; the owner
+    // will supply real ones later). So this check CANNOT assert "every review is
+    // quoted" — there are none to quote yet, and such a check would be red on the
+    // correct page. What it CAN and MUST assert is that the MODEL is wired: the
+    // grid renders one card per data slot, and the data and the page agree about
+    // how many are pending.
+    //
+    // ⚠ WHEN THE OWNER FILLS REVIEWS, THIS CHECK MUST BE STRENGTHENED — add the
+    // per-quote comparison the partner gate has (each `quote.text` appears in
+    // #testimoni) plus a floor. Until then there are no quote values to compare,
+    // and a per-quote loop over an empty set is the vacuous pass R25 warns about.
+    // The `reviewFilled`/`reviewEmpty` counts below are what keep this check
+    // non-vacuous NOW: they fail if the grid stops rendering, or renders the
+    // wrong number of cards, either of which the text scan alone would miss.
+    await test(`${width}px /: the testimonial model renders one card per review slot`, async () => {
+      const d = await inspect(width);
+      const { readFileSync, existsSync } = await import('node:fs');
+      const { fileURLToPath } = await import('node:url');
+      const { dirname, join } = await import('node:path');
+      const here = dirname(fileURLToPath(import.meta.url));
+      const path = join(here, '..', 'src/lib/testimonials.ts');
+      if (!existsSync(path)) {
+        throw new Error(`expected ${path} — it holds the REVIEWS data this check reads`);
+      }
+      // Strip comments first, for the same reason the partner gate does: the
+      // file's prose explains the entry shape and a naive scan would match it.
+      const src = stripComments(readFileSync(path, 'utf8'));
+      const start = src.indexOf('export const REVIEWS');
+      if (start < 0) {
+        throw new Error(
+          'could not find `export const REVIEWS` in testimonials.ts — this check cannot be judged',
+        );
+      }
+      const close = src.indexOf('];', start);
+      const block = src.slice(start, close + 2);
+      const rows = block.split(/\n\s*\{/).slice(1);
+      if (rows.length === 0) {
+        throw new Error(
+          'parsed 0 rows out of the REVIEWS array — the parse is broken, so this check would ' +
+            'pass vacuously. Fix the parse; do not weaken this guard.',
+        );
+      }
+      // The section must have rendered enough text to judge. While every slot is
+      // pending the copy is the section title + description + per-card pending
+      // text, so the floor is deliberately low — it is a "did the section render
+      // at all" guard, not a content check.
+      const section = d.reviewText ?? '';
+      if (section.length < 40) {
+        throw new Error(
+          `#testimoni rendered ${section.length} characters of visible text — too little to ` +
+            `judge, so the section did not render.`,
+        );
+      }
+      const cards = (d.reviewFilled ?? 0) + (d.reviewEmpty ?? 0);
+      if (cards !== rows.length) {
+        throw new Error(
+          `#testimoni rendered ${cards} review card(s) but the data has ${rows.length} slot(s). ` +
+            `A slot that does not render is a review a visitor cannot see, and the section ` +
+            `failing at its one job.`,
+        );
+      }
+      // The honest-absence invariant, mirroring the partner gate: the data's
+      // count of unfilled slots and the page's count of pending cards must agree.
+      // A filled review can only appear once the owner supplies it, so today both
+      // sides are "all pending" — and the check is what catches a slot that was
+      // filled in the data but silently NOT rendered (or vice versa).
+      const unfilled = rows.filter((r) => /quote:\s*null/.test(r)).length;
+      const renderedPending = d.reviewEmpty ?? 0;
+      if (unfilled !== renderedPending) {
+        throw new Error(
+          `the testimonial honest-absence invariant is broken — the data and the page disagree. ` +
+            `DATA: ${rows.length} slot(s), ${unfilled} without a quote. PAGE: ${renderedPending} ` +
+            `pending card(s). These must agree (a slot has no quote <=> its card shows the ` +
+            `pending copy).`,
         );
       }
     });

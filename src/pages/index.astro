@@ -10,6 +10,7 @@ import Card from '../components/public/Card.astro';
 import IconTileGrid from '../components/public/IconTileGrid.tsx';
 import PersonGrid from '../components/public/PersonGrid.tsx';
 import PartnerGrid from '../components/public/PartnerGrid.tsx';
+import ReviewGrid from '../components/public/ReviewGrid.tsx';
 import HistoryTimeline from '../components/public/HistoryTimeline.tsx';
 import ContactForm from '../components/public/ContactForm.tsx';
 import GalleryGrid from '../components/public/GalleryGrid.tsx';
@@ -24,6 +25,7 @@ import {
   CONTACT_EMAIL,
   CONTACT_INSTAGRAM,
   CONTACT_LOCATION,
+  CONTACT_MAPS_URL,
   CONTACT_PHONES,
   CONTACT_TIKTOK,
   CONTACT_WHATSAPP,
@@ -45,6 +47,7 @@ import {
   WHY_JAPAN_TIP,
 } from '../lib/companyProfile';
 import { PARTNERS } from '../lib/partners';
+import { REVIEWS, REVIEW_SOURCE } from '../lib/testimonials';
 import { GALLERY } from '../lib/gallery';
 
 /* WHY THE SECTIONS ARE COMPOSED HERE AND NOT EACH IN THEIR OWN FILE.
@@ -715,6 +718,83 @@ import { GALLERY } from '../lib/gallery';
       </p>
     </Section>
 
+    <!-- Section: Kata Alumni (testimonials) — ADDED 2026-09-29, OWNER'S REQUEST.
+         The owner asked for a review section, to be filled from the Google Maps
+         reviews of our own listing and upgraded later, in the same message as the
+         CSS-polish and map-link work. Verbatim: "kalau untuk review testimoni
+         nanti saya carikan sekarang buat kan model dasarnya saja. isi sementara
+         dengan isi review dari google maps".
+
+         WHY IT SITS BETWEEN MITRA AND KONTAK. The page's argument is: who we are
+         → what we teach → where that leads → who we are (team) → the network that
+         departs you → what that network's alumni say → talk to us. Social proof
+         belongs immediately after the partner grid, because it answers the
+         question the partner grid raises ("you are not an SO — who sends me, and
+         does it work?"). The contact section stays the single final action.
+
+         WHY THE GRID SHIPS EMPTY, AND WHY THAT IS NOT A BUG OR AN OVERSIGHT.
+         `COMPANY_PROFILE_DATA.md` §8 bans an invented testimonial: a quoted
+         sentence attributed to a named person who never said it is a fabricated
+         claim about a third party. The owner will supply real reviews; until
+         then every slot renders an explicit "review belum tayang" state. This is
+         the SAME pattern the Mitra grid used — built with empty slots on
+         2026-09-27, filled 2026-09-29 — so a reader who sees an empty grid here
+         sees the honest shape of the section, not filler. Do NOT paraphrase a
+         review to make the grid look finished.
+
+         THE ONE REAL NUMBER IS THE LISTING'S, NOT OURS. `REVIEW_SOURCE` carries
+         the Google rating (5.00) and review count (7), read from the live listing
+         on 2026-09-29. That is fine because it cites the platform's own public
+         figure rather than a claim we make up; §8's ban is on invented totals of
+         CANDIDATES / DEPARTURES / PARTNERS, not on citing a platform's own score.
+         The aggregate links to the live listing so a sceptical reader can check
+         it — a rating with no way to verify it is the shape to avoid. -->
+    <Section id="testimoni" labelledBy="testimoni-title" class="section-alt border border-line/30 rounded-panel" enter="rise">
+      <SectionTitle
+        titleKey="profile.review_title"
+        title="Kata Alumni"
+        descKey="profile.review_desc"
+        desc="Cerita peserta yang telah belajar dan berangkat bersama kami."
+        accent="exam"
+        headingId="testimoni-title"
+      />
+      <!-- The aggregate strip. Shows the listing's real rating and count, and
+           links out to the live listing. Renders even while the grid is empty:
+           the rating is about the LISTING, and the listing already has reviews —
+           hiding it until our own cards are filled would understate a fact that
+           is already public. -->
+      <div class="u-surface-depth mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-card border border-line/40 bg-surface px-5 py-4">
+        <span class="flex items-center gap-2">
+          <span class="flex gap-0.5 text-accent-amber text-card-title" aria-hidden="true">★★★★★</span>
+          <span class="text-card-title font-black text-fg">{REVIEW_SOURCE.rating.toFixed(1)}</span>
+        </span>
+        <span class="flex items-baseline gap-1 text-body-sm text-fg-muted">
+          <span data-lang="profile.review_count_from">dari</span>
+          <span class="font-bold text-fg">{REVIEW_SOURCE.count}</span>
+          <span data-lang="profile.review_count_of">ulasan di Google Maps</span>
+        </span>
+        <a
+          href={REVIEW_SOURCE.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="u-lift ml-auto min-h-11 inline-flex items-center gap-2 rounded-control border border-line/50 bg-surface-raised px-4 text-body-sm font-bold text-accent hover:text-fg transition-colors"
+          style="--u-lift-border:var(--color-accent-amber);--u-glow:color-mix(in oklab, var(--color-accent-amber) 45%, transparent)"
+        >
+          <Icon name="location-arrow" />
+          <span data-lang="profile.review_open_maps">Lihat di Google Maps</span>
+        </a>
+      </div>
+      <div class="mt-6">
+        <ReviewGrid reviews={REVIEWS} />
+      </div>
+      <p
+        data-lang="profile.review_cta_desc"
+        class="mt-6 max-w-[70ch] text-body-sm text-fg-muted"
+      >
+        Sudah pernah belajar atau berangkat bersama kami? Bagikan cerita Anda melalui kontak di bawah.
+      </p>
+    </Section>
+
     <Section id="kontak" labelledBy="kontak-title" enter="drop">
       <SectionTitle
         titleKey="profile.contact_title"
@@ -876,7 +956,7 @@ import { GALLERY } from '../lib/gallery';
            <h2>: `e2e/test-headings.mjs` asserts `/` has exactly one <h1> and one
            heading per visible section, and a peer heading here would make the
            contact section report two. */}
-      <div class="mt-8 rounded-panel border border-line/30 bg-surface p-5 sm:p-6">
+      <div class="u-surface-depth mt-8 rounded-panel border border-line/30 bg-surface p-5 sm:p-6">
         <h3 class="text-card-title font-bold text-fg" data-lang="contact.title">
           Kirim Pesan
         </h3>
@@ -933,7 +1013,7 @@ import { GALLERY } from '../lib/gallery';
           class="u-drift"
         />
       </picture>
-      <div class="mt-8 bg-slate-800 border border-slate-700 rounded-panel p-5 flex flex-col sm:flex-row justify-between items-center gap-5 text-center sm:text-left shadow-lg">
+      <div class="u-surface-depth mt-8 bg-surface-raised border border-line rounded-panel p-5 flex flex-col sm:flex-row justify-between items-center gap-5 text-center sm:text-left">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center shrink-0">
             <Icon name="map-marker-alt" class="text-red-500 text-xl" />
@@ -949,10 +1029,11 @@ import { GALLERY } from '../lib/gallery';
         </div>
         <a
           id="maps-lpk-link"
-          href="https://maps.app.goo.gl/rXZ1YZAtT9JUNn6q6?g_st=ic"
+          href={CONTACT_MAPS_URL}
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex items-center gap-2 px-6 py-3 rounded-control bg-slate-700 hover:bg-slate-600 text-white text-body-sm font-bold border border-slate-500 transition whitespace-nowrap"
+          class="u-lift inline-flex items-center gap-2 px-6 py-3 rounded-control bg-surface border border-line text-fg text-body-sm font-bold transition whitespace-nowrap"
+          style="--u-glow: var(--color-accent-sky);"
         >
           <Icon name="location-arrow" />
           <span data-lang="profile.loc_open_maps">Buka di Google Maps</span>

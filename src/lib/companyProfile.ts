@@ -735,3 +735,32 @@ export const CONTACT_INSTAGRAM = 'amanah_sakura_japan';
  * confirms a different handle, correct it here AND in Footer.astro together.
  */
 export const CONTACT_TIKTOK = 'amahsakurajp';
+
+/**
+ * The Google Maps link to our PLACE LISTING — the single source for both the
+ * `#lokasi` section and the footer's GPS icon.
+ *
+ * ── WHY THIS CONSTANT EXISTS (and why the old link was wrong) ───────────────
+ * Until 2026-09-29 both call sites hardcoded `https://maps.app.goo.gl/rXZ1YZAtT9JUNn6q6`,
+ * whose redirect target was MEASURED this session:
+ *   https://www.google.com/maps/@-7.8560331,111.4328680,3a,…/data=!3m4!1e1!3m2!1s…
+ * That is a STREET-VIEW PANORAMA (`/maps/@`, `!3m4!1e1`, `!2e0`), not the business
+ * listing — so the owner's "link fotonya masih lama" was correct: the button
+ * dropped visitors into a stale 360° photo instead of our Maps place card.
+ *
+ * The value now is a `place_id:` query, which Google resolves to the CURRENT
+ * place card (name, rating, hours, directions) regardless of how the listing is
+ * edited later — unlike a short link, which pins whatever it was minted from.
+ * `PLACE_ID` is the CID from the owner's own Maps URL (2026-09-29); the coords
+ * below are the listing centre, kept as documentation so the id can be re-derived
+ * if it ever changes.
+ *
+ * ⚠ Keep BOTH call sites on this constant. The bug this fixes was two hardcoded
+ * copies of one URL drifting from the place they were meant to point at.
+ */
+export const PLACE_ID = 'ChIJVdybaAKfeS4RzVbekeKOhKE';
+export const MAPS_LAT = -7.8560232;
+export const MAPS_LNG = 111.433092;
+/** Google's Plus Code for the listing, the human-checkable pin of the same place. */
+export const MAPS_PLUS_CODE = '4CVM+C69';
+export const CONTACT_MAPS_URL = `https://www.google.com/maps/place/?q=place_id:${PLACE_ID}`;

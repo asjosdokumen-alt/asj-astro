@@ -58,7 +58,7 @@ export default function PartnerGrid({ partners, class: className }: Props) {
           <li
             key={partner.slot}
             data-filled={filled ? 'true' : 'false'}
-            class="flex flex-col items-center justify-center gap-3 rounded-card border border-line bg-surface p-5 text-center min-h-[8.5rem]"
+            class="u-surface-depth flex flex-col items-center justify-center gap-3 rounded-card border border-line bg-surface p-5 text-center min-h-[8.5rem]"
           >
             {partner.logo && filled ? (
               <img

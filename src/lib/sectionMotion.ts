@@ -117,6 +117,12 @@ export const SECTION_MOTION: readonly SectionMotion[] = [
   // `slide-left` — the same kind as `fasilitas` two rows up, which is legal: the
   // no-repeat rule is about ADJACENT rows, and `tentang`/`tim` sit between them.
   { id: 'mitra', label: 'Mitra', enter: 'slide-left' },
+  // ADDED 2026-09-29 with the #testimoni section (the "Kata Alumni" review
+  // model). It takes `rise` — different from BOTH neighbours (`mitra` slide-left
+  // above, `kontak` drop below), which the adjacent-no-repeat rule requires. The
+  // section enters like `lokasi` far below; that is legal because non-adjacent
+  // repetition is fine, and `mitra`/`kontak` sit between them.
+  { id: 'testimoni', label: 'Kata Alumni', enter: 'rise' },
   { id: 'kontak', label: 'Kontak', enter: 'drop' },
   { id: 'lokasi', label: 'Lokasi', enter: 'rise' },
   { id: 'daftar', label: 'Daftar', enter: 'focus' },
