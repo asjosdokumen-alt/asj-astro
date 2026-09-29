@@ -556,15 +556,15 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
 
         {/* ── Jadwal Panel ── */}
         {data.jadwal.length > 0 && (
-          <div class="mb-6 md:mb-8 max-w-xl mx-auto bg-gradient-to-r from-amber-950 to-rose-950 border border-amber-500/40 p-5 rounded-[2rem] text-left shadow-xl relative overflow-hidden">
+          <div class="mb-6 md:mb-8 max-w-xl mx-auto bg-amber-500/10 border border-amber-500/40 p-5 rounded-[2rem] text-left shadow-xl relative overflow-hidden">
             <div class="absolute -right-4 -top-4 text-amber-500/10 text-7xl"><Icon name="calendar-alt" /></div>
-            <h3 class="relative z-10 text-lg font-black text-amber-400 mb-4"><Icon name="calendar-check" class="mr-2 text-rose-400 animate-pulse" /> {t('ui.your_schedule')}</h3>
+            <h3 class="relative z-10 text-lg font-black text-accent-amber mb-4"><Icon name="calendar-check" class="mr-2 text-accent-red animate-pulse" /> {t('ui.your_schedule')}</h3>
             <div class="relative z-10 space-y-3">
               {data.jadwal.map((j, i) => (
-                <div key={i} class="bg-black/30 border border-amber-900/50 rounded-xl p-4">
-                  <div class="flex justify-between"><span class="font-bold text-white text-sm">{j.nama}</span><span class="text-[11px] text-amber-400 font-mono">{j.waktu}</span></div>
+                <div key={i} class="bg-surface-raised/60 border border-amber-500/30 rounded-xl p-4">
+                  <div class="flex justify-between"><span class="font-bold text-white text-sm">{j.nama}</span><span class="text-[11px] text-accent-amber font-mono">{j.waktu}</span></div>
                   <p class="text-xs text-slate-400 mt-1"><Icon name="map-marker-alt" class="mr-1" />{j.lokasi}</p>
-                  {j.link && <a href={j.link} target="_blank" class="text-[11px] text-sky-400 underline mt-1 inline-block">{t('ui.open_link')}</a>}
+                  {j.link && <a href={j.link} target="_blank" class="text-[11px] text-accent-sky underline mt-1 inline-block">{t('ui.open_link')}</a>}
                 </div>
               ))}
             </div>
@@ -592,13 +592,13 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             other consumer. */}
 
         {/* ── Status Lamaran Terkini (with tahapan pipeline) ── */}
-        <div class="mb-6 md:mb-8 bg-gradient-to-r from-sky-950 to-indigo-950 border border-sky-500/30 p-5 md:p-8 rounded-[2rem] shadow-xl relative overflow-hidden text-left">
+        <div class="mb-6 md:mb-8 bg-sky-500/10 border border-sky-500/30 p-5 md:p-8 rounded-[2rem] shadow-xl relative overflow-hidden text-left">
           <div class="absolute -right-6 -top-10 text-sky-500/10 text-[10rem]"><Icon name="rocket" /></div>
           <div class="relative z-10">
-            <h3 class="text-xl font-black text-sky-300 mb-2"><Icon name="bolt" class="mr-2 text-amber-400" /> {t('ui.app_status_latest')}</h3>
+            <h3 class="text-xl font-black text-accent-sky mb-2"><Icon name="bolt" class="mr-2 text-accent-amber" /> {t('ui.app_status_latest')}</h3>
             <p class="text-sm text-slate-300 mb-5">{t('ui.cv_type_hint')}</p>
             <div class="mt-6 p-1 rounded-[1.5rem] bg-gradient-to-r from-sky-500/30 to-emerald-500/30 border border-slate-700/50 shadow-xl">
-              <div class="bg-[#0f172a] rounded-[1.3rem] p-5 md:p-7">
+              <div class="bg-surface rounded-[1.3rem] p-5 md:p-7">
                 {/* Judul panel ini dulu memakai kunci i18n YANG SAMA dengan h3 di
                     atasnya (ui.app_status_latest), jadi outline terbaca
                     "Status Lamaran Terkini" dua kali berurutan. Sekarang ia punya
@@ -682,8 +682,8 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           </div>
         </div>
         {data.needRevision && (
-          <div class="bg-red-950 border border-red-500/40 rounded-[2rem] p-5 mb-6 md:mb-8 text-left">
-            <h3 class="text-red-400 font-bold mb-2 text-lg"><Icon name="exclamation-triangle" class="mr-2" /> {t('candidate.doc_revise_title')}</h3>
+          <div class="bg-red-500/10 border border-red-500/40 rounded-[2rem] p-5 mb-6 md:mb-8 text-left">
+            <h3 class="text-accent-red font-bold mb-2 text-lg"><Icon name="exclamation-triangle" class="mr-2" /> {t('candidate.doc_revise_title')}</h3>
             <p class="text-sm text-slate-300 mb-5">{data.revisionNote || t('candidate.doc_revise_desc')}</p>
             <button
               onClick={() => {
