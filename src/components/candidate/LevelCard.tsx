@@ -120,8 +120,8 @@ export default function LevelCard({ percent, mini, master }: LevelCardProps) {
   const iconName = level === 'empty' ? 'circle' : (LEVELS.find((l) => l.key === level)?.icon ?? 'circle');
 
   return (
-    <div class="w-full max-w-xl mx-auto mb-6 text-left" data-level={level}>
-      <div class="bg-black/60 border border-slate-700/60 rounded-[2rem] p-5">
+    <div class="w-full mb-6 md:mb-8 text-left" data-level={level}>
+      <div class="bg-black/60 border border-slate-700/60 rounded-panel p-5 md:p-6">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-3">
           <div class="flex items-center gap-3 min-w-0">
             <span

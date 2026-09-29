@@ -259,7 +259,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
       onClick={onBackdropClick}
     >
       <div
-        class="glass-panel w-full md:max-w-2xl h-[90vh] md:h-[80vh] md:rounded-[2rem] rounded-t-[2rem] shadow-2xl relative border-t border-violet-500/50 flex flex-col overflow-hidden bg-slate-950"
+        class="glass-panel w-full md:max-w-2xl h-[90vh] md:h-[80vh] md:rounded-panel rounded-t-panel shadow-2xl relative border-t border-violet-500/50 flex flex-col overflow-hidden bg-slate-950"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

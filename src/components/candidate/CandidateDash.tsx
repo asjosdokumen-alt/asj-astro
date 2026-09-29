@@ -501,12 +501,12 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         })}
       />
 
-      <div class="glass-panel p-5 sm:p-8 md:p-10 rounded-[2.5rem] shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
+      <div class="glass-panel p-5 md:p-6 rounded-panel shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
         {/* ── DIGITAL STUDENT CARD (VIP only) ── */}
         {(data.isVIP || data.isSiswaASJ) && data.idKandidat && (
           <div class="max-w-sm mx-auto mb-8 relative group">
-            <div class="absolute -inset-1 bg-gradient-to-r from-amber-400 to-yellow-600 rounded-[2rem] blur opacity-25 group-hover:opacity-60 transition duration-1000"></div>
-            <div class="relative w-full h-56 md:h-64 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-[2rem] p-6 shadow-2xl flex flex-col justify-between overflow-hidden text-left transform transition-transform duration-500 hover:scale-105">
+            <div class="absolute -inset-1 bg-gradient-to-r from-amber-400 to-yellow-600 rounded-panel blur opacity-25 group-hover:opacity-60 transition duration-1000"></div>
+            <div class="relative w-full h-56 md:h-64 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-panel p-6 shadow-2xl flex flex-col justify-between overflow-hidden text-left transform transition-transform duration-500 hover:scale-105">
               <div class="absolute -right-10 -top-10 text-slate-800/50 text-[10rem] opacity-20 transform rotate-12 pointer-events-none"><Icon name="sun" /></div>
               <div class="flex justify-between items-start z-10">
                 <div class="flex items-center gap-3">
@@ -536,7 +536,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         )}
 
         {/* ── CV Progress ── */}
-        <div class="max-w-xl mx-auto mb-6 md:mb-8 bg-black/40 border border-slate-700 p-4 md:p-5 rounded-2xl text-left shadow-lg">
+        <div class="mb-6 md:mb-8 bg-black/40 border border-slate-700 p-5 md:p-6 rounded-panel text-left shadow-lg">
           <div class="flex justify-between items-center mb-2">
             <span class="text-sm font-bold text-slate-300"><Icon name="id-badge" class="text-sky-400 mr-1" /> {t('ui.cv_mini_basic')}</span>
             <span class="text-sm font-bold text-sky-400">{data.cvMiniProgress}%</span>
@@ -556,7 +556,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
 
         {/* ── Jadwal Panel ── */}
         {data.jadwal.length > 0 && (
-          <div class="mb-6 md:mb-8 max-w-xl mx-auto bg-amber-500/10 border border-amber-500/40 p-5 rounded-[2rem] text-left shadow-xl relative overflow-hidden">
+          <div class="mb-6 md:mb-8 bg-amber-500/10 border border-amber-500/40 p-5 md:p-6 rounded-panel text-left shadow-xl relative overflow-hidden">
             <div class="absolute -right-4 -top-4 text-amber-500/10 text-7xl"><Icon name="calendar-alt" /></div>
             <h3 class="relative z-10 text-lg font-black text-accent-amber mb-4"><Icon name="calendar-check" class="mr-2 text-accent-red animate-pulse" /> {t('ui.your_schedule')}</h3>
             <div class="relative z-10 space-y-3">
@@ -573,7 +573,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
 
         {/* ── Catatan Admin ── */}
         {data.catatan && (
-          <div class="mb-8 max-w-xl mx-auto bg-sky-900/20 border border-sky-500/30 p-5 rounded-2xl text-center shadow-lg">
+          <div class="mb-6 md:mb-8 bg-sky-900/20 border border-sky-500/30 p-5 md:p-6 rounded-panel text-center shadow-lg">
             <p class="text-xs text-sky-400 font-bold uppercase mb-2"><Icon name="envelope-open-text" class="mr-1" /> {t('ui.admin_eval_msg')}</p>
             <p class="text-sm text-slate-200 italic">"{data.catatan}"</p>
           </div>
@@ -592,13 +592,13 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             other consumer. */}
 
         {/* ── Status Lamaran Terkini (with tahapan pipeline) ── */}
-        <div class="mb-6 md:mb-8 bg-sky-500/10 border border-sky-500/30 p-5 md:p-8 rounded-[2rem] shadow-xl relative overflow-hidden text-left">
+        <div class="mb-6 md:mb-8 bg-sky-500/10 border border-sky-500/30 p-5 md:p-6 rounded-panel shadow-xl relative overflow-hidden text-left">
           <div class="absolute -right-6 -top-10 text-sky-500/10 text-[10rem]"><Icon name="rocket" /></div>
           <div class="relative z-10">
             <h3 class="text-xl font-black text-accent-sky mb-2"><Icon name="bolt" class="mr-2 text-accent-amber" /> {t('ui.app_status_latest')}</h3>
             <p class="text-sm text-slate-300 mb-5">{t('ui.cv_type_hint')}</p>
-            <div class="mt-6 p-1 rounded-[1.5rem] bg-gradient-to-r from-sky-500/30 to-emerald-500/30 border border-slate-700/50 shadow-xl">
-              <div class="bg-surface rounded-[1.3rem] p-5 md:p-7">
+            <div class="mt-6 p-1 rounded-panel bg-gradient-to-r from-sky-500/30 to-emerald-500/30 border border-slate-700/50 shadow-xl">
+              <div class="bg-surface rounded-card p-5 md:p-6">
                 {/* Judul panel ini dulu memakai kunci i18n YANG SAMA dengan h3 di
                     atasnya (ui.app_status_latest), jadi outline terbaca
                     "Status Lamaran Terkini" dua kali berurutan. Sekarang ia punya
@@ -682,7 +682,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           </div>
         </div>
         {data.needRevision && (
-          <div class="bg-red-500/10 border border-red-500/40 rounded-[2rem] p-5 mb-6 md:mb-8 text-left">
+          <div class="bg-red-500/10 border border-red-500/40 rounded-panel p-5 md:p-6 mb-6 md:mb-8 text-left">
             <h3 class="text-accent-red font-bold mb-2 text-lg"><Icon name="exclamation-triangle" class="mr-2" /> {t('candidate.doc_revise_title')}</h3>
             <p class="text-sm text-slate-300 mb-5">{data.revisionNote || t('candidate.doc_revise_desc')}</p>
             <button
@@ -762,8 +762,8 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
 
         {/* ── Pemberkasan Progress ── */}
         {data.berkasTotal > 0 && (
-          <div class="mb-8 max-w-xl mx-auto">
-            <div class="bg-black/60 border border-emerald-500/30 rounded-[2rem] p-5 mb-4 text-left">
+          <div class="mb-8">
+            <div class="bg-black/60 border border-emerald-500/30 rounded-panel p-5 md:p-6 mb-4 text-left">
               <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
                 <h4 class="text-sm font-black text-emerald-400 uppercase tracking-widest"><Icon name="tasks" class="mr-1.5" /> {t('ui.berkas_progress')}</h4>
                 <span class="text-lg font-black text-white">{Math.round(data.berkasProgress)}%</span>
@@ -787,7 +787,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                 text-sm/700 normal size (emerald-600 = 3.77, emerald-500 = 2.54);
                 the 700 stops are 5.48 and the hover darkens to the 800s (7.56).
                 Same pair as the install button and the 404 link. */}
-            <button data-testid="cmt-pemberkasan" onClick={() => setShowPemberkasan(true)} class="w-full py-4 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-[1.5rem] font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
+            <button data-testid="cmt-pemberkasan" onClick={() => setShowPemberkasan(true)} class="w-full py-4 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-panel font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
               <Icon name="folder-open" class="mr-2" />{t('ui.complete_berkas_biodata')}
             </button>
             <p class="text-sm text-emerald-400 mt-3 font-bold animate-pulse text-center"><Icon name="info-circle" class="mr-1" /> {t('ui.berkas_stage_hint')}</p>

@@ -138,7 +138,7 @@ export default function StepGuide({
   const key = nextStep({ mini, master, berkasProgress, berkasTotal });
 
   const classes = [
-    'bg-black/60 border border-sky-500/30 rounded-[2rem] p-5 mb-4 text-left',
+    'bg-black/60 border border-sky-500/30 rounded-panel p-5 md:p-6 mb-6 md:mb-8 text-left',
     'flex items-center gap-4',
     className,
   ]
