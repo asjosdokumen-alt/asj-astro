@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Review UI — Dashboard Kandidat (/candidate) · ASJ Portal</title>
+<style>
+  :root {
+    --radius-control: 12px; --radius-card: 16px; --radius-panel: 24px; --radius-band: 32px;
+    --ok: #10b981; --warn: #f59e0b; --bad: #ef4444; --info: #38bdf8;
+  }
+  html[data-theme="dark"] {
+    --bg: #070c18; --bg2: #0b1220; --surf: #101a2e; --surf2: #16233c;
+    --fg: #f1f5f9; --fg-mut: #94a3b8; --fg-sub: #64748b;
+    --line: #1e293b; --line-s: #334155;
+    --accent: #38bdf8; --accent2: #f472b6; --brand: #be185d;
+    --shadow: 0 20px 50px rgba(0,0,0,.55);
+  }
+  html[data-theme="light"] {
+    --bg: #fdf6f9; --bg2: #fff7fa; --surf: #ffffff; --surf2: #fdf2f6;
+    --fg: #1c1917; --fg-mut: #57534e; --fg-sub: #8a8280;
+    --line: #f0dfe7; --line-s: #dfc4d1;
+    --accent: #0369a1; --accent2: #be185d; --brand: #be185d;
+    --shadow: 0 16px 40px rgba(190,24,93,.10);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.6 ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 96px; }
+  h1 { font-size: clamp(26px, 4vw, 40px); font-weight: 900; letter-spacing: -.02em; margin: 0 0 8px; }
+  h2 { font-size: 22px; font-weight: 900; letter-spacing: -.01em; margin: 56px 0 6px; padding-top: 24px; border-top: 1px solid var(--line); }
+  h3 { font-size: 15px; font-weight: 800; margin: 0 0 6px; }
+  h4 { font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--fg-sub); margin: 0 0 8px; }
+  p { margin: 0 0 12px; color: var(--fg-mut); }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .88em;
+         background: var(--surf2); border: 1px solid var(--line); padding: 1px 5px; border-radius: 6px; color: var(--fg); }
+  .lede { font-size: 17px; max-width: 74ch; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 20px 0 0; }
+  button.tg { background: var(--surf); color: var(--fg); border: 1px solid var(--line-s);
+              border-radius: 9999px; padding: 8px 16px; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; }
+  button.tg:hover { border-color: var(--accent); color: var(--accent); }
+
+  .card { background: var(--surf); border: 1px solid var(--line); border-radius: var(--radius-panel); padding: 20px; }
+  .grid2 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .grid3 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+  .tag { display: inline-block; font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase;
+         padding: 3px 9px; border-radius: 9999px; border: 1px solid currentColor; }
+  .t-bad { color: var(--bad); } .t-warn { color: var(--warn); } .t-ok { color: var(--ok); } .t-info { color: var(--info); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--fg-sub); }
+  td.n { font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .num-bad { color: var(--bad); font-weight: 800; }
+  .num-ok  { color: var(--ok); font-weight: 800; }
+
+  /* ── wireframes ── */
+  .compare { display: grid; gap: 20px; grid-template-columns: 1fr; }
+  @media (min-width: 1000px) { .compare { grid-template-columns: 1fr 1fr; } }
+  .col > .hdr { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .frame { background: var(--bg2); border: 1px solid var(--line); border-radius: var(--radius-panel); padding: 14px; }
+  .blk { border: 1px dashed var(--line-s); border-radius: 10px; padding: 7px 54px 7px 10px; margin-bottom: 7px;
+         font-size: 11.5px; font-weight: 700; color: var(--fg-mut); background: var(--surf);
+         position: relative; overflow: hidden; }
+  .blk b { color: var(--fg); font-weight: 800; }
+  .blk .w { position: absolute; right: 8px; top: 7px; font-family: ui-monospace, monospace;
+            font-size: 10px; color: var(--fg-sub); font-weight: 600; }
+  .blk.narrow { width: 124px; margin-left: auto; margin-right: auto; padding-right: 10px; text-align: center; }
+  .blk.dim { opacity: .55; }
+  .edge { display: flex; align-items: center; gap: 6px; margin: 2px 0 2px 0; }
+  .edge .ln { height: 1px; background: var(--bad); flex: 1; opacity: .7; }
+  .edge .lb { font-family: ui-monospace, monospace; font-size: 10px; color: var(--bad); font-weight: 700; }
+
+  .bar { height: 10px; border-radius: 9999px; background: var(--surf2); overflow: hidden; display: flex; border: 1px solid var(--line); }
+  .bar > i { display: block; height: 100%; }
+  .seg-b { background: linear-gradient(90deg,#0ea5e9,#38bdf8); }
+  .seg-m { background: linear-gradient(90deg,#7c3aed,#a78bfa); }
+  .seg-k { background: linear-gradient(90deg,#059669,#10b981); }
+
+  .note { border-left: 3px solid var(--accent); background: var(--surf2); padding: 12px 14px; border-radius: 0 var(--radius-control) var(--radius-control) 0; font-size: 13.5px; }
+  .note.bad { border-left-color: var(--bad); }
+  .note.warn { border-left-color: var(--warn); }
+  .note.ok { border-left-color: var(--ok); }
+  .note b { color: var(--fg); }
+
+  ul.tight { margin: 8px 0 0; padding-left: 20px; color: var(--fg-mut); font-size: 13.5px; }
+  ul.tight li { margin-bottom: 5px; }
+  ul.tight li b { color: var(--fg); }
+  .kpi { font-family: ui-monospace, monospace; font-size: 26px; font-weight: 900; letter-spacing: -.03em; color: var(--fg); }
+  .kpi small { display: block; font-family: inherit; font-size: 11px; font-weight: 700; letter-spacing: .1em;
+               text-transform: uppercase; color: var(--fg-sub); margin-top: 2px; }
+  .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; border: 1px solid var(--line-s); }
+  hr.soft { border: 0; border-top: 1px solid var(--line); margin: 40px 0 0; }
+  .foot { color: var(--fg-sub); font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="tag t-info">Review UI</span>
+  <h1 style="margin-top:14px">Dashboard Kandidat <code>/candidate</code></h1>
+  <p class="lede">
+    Semua angka di bawah ini <b>diukur</b> dari halaman yang benar-benar dirender
+    (<code>chromium</code>, 1280×900 dan 390×844, tema terang <i>dan</i> gelap),
+    bukan dibaca dari kode. Fixture sengaja diisi penuh supaya yang terukur adalah
+    kasus terburuk, bukan dashboard kosong.
+  </p>
+
+  <div class="toolbar">
+    <button class="tg" id="tg">Ganti tema: Terang / Gelap</button>
+    <span style="font-size:12px;color:var(--fg-sub)">Tema awal mengikuti pilihanmu (default situs = terang).</span>
+  </div>
+
+  <!-- ══════════════════════════ 1. RINGKASAN ══════════════════════════ -->
+  <h2>1. Ringkasan — kenapa terasa "kurang sreg"</h2>
+  <p>
+    Masalahnya bukan warna atau selera. Halaman ini <b>secara struktur</b> belum
+    berbentuk dashboard: ia satu kolom panjang berisi 10 blok yang sebagian besar
+    menjawab pertanyaan yang sama, dengan <b>empat lebar kolom berbeda</b> yang
+    membuat tidak ada satu pun garis lurus untuk diikuti mata.
+  </p>
+
+  <div class="grid3" style="margin:18px 0 8px">
+    <div class="card"><div class="kpi">3,9<small>layar desktop</small></div>
+      <p style="margin:8px 0 0;font-size:13px">3481 px pada viewport 900 px. Di ponsel <b>4,9 layar</b> (4127 px) — tanpa satu pun navigasi.</p></div>
+    <div class="card"><div class="kpi num-bad">4<small>lebar kolom berbeda</small></div>
+      <p style="margin:8px 0 0;font-size:13px">896 / 814 / 576 / 384 px. Empat tepi kiri: <code>185 · 226 · 345 · 441</code>.</p></div>
+    <div class="card"><div class="kpi num-bad">5<small>kartu, satu pertanyaan</small></div>
+      <p style="margin:8px 0 0;font-size:13px">"Seberapa lengkap saya?" dijawab 5 kali. <b>7 angka persen</b> tampil, dua di antaranya duplikat persis.</p></div>
+  </div>
+
+  <div class="note bad">
+    <b>Ini jawaban langsung untuk keluhan "kartunya kek redundant".</b>
+    Ada <b>5 blok</b> yang menjawab satu pertanyaan yang sama, dan salah satunya
+    mencetak ulang angka yang sudah dicetak blok lain:
+    <ul class="tight">
+      <li><b>CrownBadge</b> 🥈 (di dalam dossier) → 50%</li>
+      <li><b>CV Progress</b> — dua bar: "Profil (Data Dasar) 100%" + "Profil (Data Lengkap) 0%"</li>
+      <li><b>StepGuide</b> — "Langkah Berikutnya: Lengkapi berkas yang kurang"</li>
+      <li><b>LevelCard</b> — "Setengah Jalan <b>50%</b>" + bar + <b>"CV Mini: 100% · Master Profil: 0%"</b> + "Kurang 50% lagi"</li>
+      <li><b>Progres Pemberkasan</b> — "0%" + "0/18 dokumen" + checklist 18 baris</li>
+    </ul>
+    Baris tebal di LevelCard adalah <b>angka yang sama persis</b> yang sudah
+    ditampilkan CV Progress sebagai bar, dua kartu di atasnya. Itu bukan
+    pengulangan yang informatif — itu dua sumber kebenaran untuk satu fakta.
+  </div>
+
+  <!-- ══════════════════════════ 2. BUKTI ══════════════════════════ -->
+  <h2>2. Bukti terukur</h2>
+
+  <h3 style="margin-top:22px">2a. Tepi kolom berzig-zag</h3>
+  <p>Setiap blok diukur <code>getBoundingClientRect()</code> pada viewport 1280 px.</p>
+  <table>
+    <thead><tr><th>Blok</th><th>kiri</th><th>kanan</th><th>lebar</th><th>Selisih dari dossier</th></tr></thead>
+    <tbody>
+      <tr><td>Dossier</td><td class="n">185</td><td class="n">1081</td><td class="n">896</td><td class="n num-ok">0</td></tr>
+      <tr><td>Panel utama (<code>.glass-panel</code>)</td><td class="n">185</td><td class="n">1081</td><td class="n">896</td><td class="n num-ok">0</td></tr>
+      <tr><td>Kartu ID Siswa (<code>max-w-sm</code>)</td><td class="n">441</td><td class="n">825</td><td class="n">384</td><td class="n num-bad">+256 px</td></tr>
+      <tr><td>Progres CV (<code>max-w-xl</code>)</td><td class="n">345</td><td class="n">921</td><td class="n">576</td><td class="n num-bad">+160 px</td></tr>
+      <tr><td>Jadwalmu</td><td class="n">345</td><td class="n">921</td><td class="n">576</td><td class="n num-bad">+160 px</td></tr>
+      <tr><td>Pesan / Evaluasi Admin</td><td class="n">345</td><td class="n">921</td><td class="n">576</td><td class="n num-bad">+160 px</td></tr>
+      <tr><td>Status Lamaran Terkini</td><td class="n">226</td><td class="n">1040</td><td class="n">814</td><td class="n num-bad">+41 px</td></tr>
+      <tr><td>Langkah Berikutnya</td><td class="n">226</td><td class="n">1040</td><td class="n">814</td><td class="n num-bad">+41 px</td></tr>
+      <tr><td>Kelengkapan Profil</td><td class="n">345</td><td class="n">921</td><td class="n">576</td><td class="n num-bad">+160 px</td></tr>
+      <tr><td>Progres Pemberkasan</td><td class="n">345</td><td class="n">921</td><td class="n">576</td><td class="n num-bad">+160 px</td></tr>
+    </tbody>
+  </table>
+  <div class="note bad" style="margin-top:14px">
+    <b>4 tepi kiri berbeda dalam satu kolom.</b> <code>DESIGN.md §4.1</code> mensyaratkan
+    <b>satu</b> kontainer: <code>max-w-7xl mx-auto px-4 md:px-6</code>. Di sini ada
+    <code>max-w-4xl</code> + <code>max-w-sm</code> + <code>max-w-xl</code> bersarang di
+    dalamnya. <code>§3.5</code> juga menulis "Padding dalam kartu <b>wajib sama</b>
+    untuk semua kartu" — yang dipakai di halaman ini: <code>p-4</code>,
+    <code>p-5</code>, <code>p-6</code>, dan <code>p-8</code>.
+  </div>
+
+  <h3 style="margin-top:32px">2b. Kontras gagal di <i>kedua</i> tema</h3>
+  <p>Rasio dihitung dari warna teks terkomputasi terhadap latar efektif (nenek moyang pertama yang tidak transparan). Ambang WCAG AA untuk teks kecil = <b>4,5</b>.</p>
+  <table>
+    <thead><tr><th>Elemen</th><th>Tema terang</th><th>Tema gelap</th><th>Ukuran</th></tr></thead>
+    <tbody>
+      <tr><td><code>PILIH LOKER:</code> — label di panel riwayat</td><td class="n num-bad">2,54</td><td class="n num-bad">2,10</td><td class="n">11 px</td></tr>
+      <tr><td>"Klinik Sehat Ponorogo" — kartu Jadwalmu</td><td class="n num-bad">2,99</td><td class="n num-bad">2,47</td><td class="n">12 px</td></tr>
+      <tr><td>"Pilih data dasar untuk profil singkat…" — di atas gradien</td><td class="n num-bad">tak terukur</td><td class="n num-bad">tak terukur</td><td class="n">13 px</td></tr>
+      <tr><td><code>JOB / BIDANG YANG DILAMAR:</code></td><td class="n num-ok">4,70</td><td class="n num-ok">4,79</td><td class="n">11 px</td></tr>
+      <tr><td><code>VERIFIED CANDIDATE</code></td><td class="n num-ok">5,73</td><td class="n num-ok">8,07</td><td class="n">11 px</td></tr>
+    </tbody>
+  </table>
+  <div class="note bad" style="margin-top:14px">
+    <b>Akar masalahnya satu baris kode.</b> Panel "DAFTAR LAMARAN" memakai latar
+    <b>literal</b> <code>bg-[#0f172a]</code> — warna navy mode gelap yang ditulis
+    langsung, bukan token. Terbukti dari pengukuran: pada <b>tema terang</b>, latar
+    efektif label itu terukur <code>rgb(15, 23, 42)</code> — yaitu <code>#0f172a</code> itu
+    sendiri. Jadi di tema terang (yang justru <b>default</b> sejak keputusan pemilik
+    2026-09-20) muncul <b>balok navy gelap</b> di tengah kartu terang.
+  </div>
+
+  <h3 style="margin-top:32px">2c. Sisa temuan</h3>
+  <table>
+    <thead><tr><th>Temuan</th><th>Terukur</th><th>Aturan yang dilanggar</th></tr></thead>
+    <tbody>
+      <tr><td>Outline heading</td><td class="n num-bad">0 h1, 0 h2</td><td><code>DESIGN.md §6.1</code> — outline halaman mulai dari <code>h3</code>. Pembaca layar tidak dapat daftar isi.</td></tr>
+      <tr><td>Bar progres</td><td class="n num-bad">12 bar, 1 ber-<code>role="progressbar"</code></td><td><code>§6.6</code> — 11 bar hanya menyampaikan makna lewat warna/lebar.</td></tr>
+      <tr><td>Kotak bergaya kartu</td><td class="n num-bad">26 elemen</td><td><code>§4.2</code> — "jumlah kartu maksimum 8–10" sebelum berhenti jadi bento.</td></tr>
+      <tr><td>Kedalaman kartu bersarang</td><td class="n num-bad">4 tingkat</td><td>Border + radius ≥12 px bersarang 4 lapis: panel → kartu → sub-panel → baris.</td></tr>
+      <tr><td>Skala radius</td><td class="n num-bad">4 dari 5 token + 2 literal</td><td><code>§3.4</code> — token ada, tapi ditulis ulang sebagai <code>rounded-[2rem]</code> (32 px) dan <code>rounded-2xl</code> (16 px).</td></tr>
+      <tr><td>Anatomi header kartu</td><td class="n num-bad">4 pola berbeda</td><td>Ikon+h3 (Jadwalmu), ikon+h4 (Pemberkasan), eyebrow+judul besar (LevelCard), eyebrow di tengah (Catatan Admin), <b>tanpa judul</b> (Progres CV).</td></tr>
+      <tr><td>Tombol aksi setara bobot</td><td class="n num-bad">7 tombol</td><td>Tidak ada CTA utama. Di ponsel (390 px) grid tombol ini duduk di <b>±2700 px</b> dari atas — blok Status Lamaran mulai di 2001 px dan tingginya 1033 px.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ══════════════════════════ 3. WIREFRAME ══════════════════════════ -->
+  <h2>3. Sekarang vs usulan</h2>
+  <p>
+    Wireframe di bawah memakai <b>proporsi dan lebar yang terukur</b>, supaya
+    zig-zag-nya terlihat sebagai bentuk, bukan sebagai tabel. Angka di kanan tiap
+    blok = lebar sesungguhnya pada viewport 1280 px.
+  </p>
+
+  <div class="compare" style="margin-top:18px">
+    <div class="col">
+      <div class="hdr"><span class="tag t-bad">Sekarang</span><span style="font-size:12px;color:var(--fg-sub)">10 blok · 4 lebar · 1 kolom</span></div>
+      <div class="frame">
+        <div class="blk" style="margin-left:0;margin-right:0">Dossier — logo, foto, biodata<span class="w">896</span></div>
+        <div class="edge"><span class="ln"></span><span class="lb">kiri 185</span><span class="ln"></span></div>
+        <div class="blk" style="margin-left:22%;margin-right:22%">Kartu ID Siswa<span class="w">384</span></div>
+        <div class="edge"><span class="ln"></span><span class="lb">kiri 441</span><span class="ln"></span></div>
+        <div class="blk" style="margin-left:12%;margin-right:12%">Progres CV <span style="color:var(--bad)">100% / 0%</span><span class="w">576</span></div>
+        <div class="blk" style="margin-left:12%;margin-right:12%">Jadwalmu<span class="w">576</span></div>
+        <div class="blk" style="margin-left:12%;margin-right:12%">Pesan / Evaluasi Admin<span class="w">576</span></div>
+        <div class="edge"><span class="ln"></span><span class="lb">kiri 345</span><span class="ln"></span></div>
+        <div class="blk" style="margin-left:3%;margin-right:3%">Status Lamaran Terkini <span style="color:var(--bad)">(1033 px tinggi di ponsel)</span><span class="w">814</span></div>
+        <div class="blk" style="margin-left:3%;margin-right:3%">Langkah Berikutnya<span class="w">814</span></div>
+        <div class="edge"><span class="ln"></span><span class="lb">kiri 226</span><span class="ln"></span></div>
+        <div class="blk" style="margin-left:12%;margin-right:12%">Kelengkapan Profil <span style="color:var(--bad)">50% · CV Mini 100% · Master 0%</span><span class="w">576</span></div>
+        <div class="blk" style="margin-left:12%;margin-right:12%">Progres Pemberkasan <span style="color:var(--bad)">0% · 0/18</span><span class="w">576</span></div>
+        <div class="edge"><span class="ln"></span><span class="lb">kiri 345</span><span class="ln"></span></div>
+        <div class="blk narrow">Lihat Loker<span class="w">124</span></div>
+        <p style="font-size:12px;margin:12px 0 0;color:var(--bad)">
+          ↑ 5 blok di atas mencetak angka yang sama. Perhatikan tepi kirinya —
+          tidak ada satu pun garis lurus.
+        </p>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="hdr"><span class="tag t-ok">Usulan</span><span style="font-size:12px;color:var(--fg-sub)">6 blok · 2 lebar · grid + rail</span></div>
+      <div class="frame">
+        <div class="blk" style="border-style:solid;border-color:var(--accent);margin-left:0;margin-right:0">
+          <b>Halo, Budi 👋</b> &nbsp;<span style="font-weight:600">Lamaran TG591ASJ · PEMBERKASAN</span>
+          <div class="bar" style="margin:8px 0 6px"><i class="seg-k" style="width:0%"></i><i class="seg-b" style="width:78%"></i><i class="seg-m" style="width:22%"></i></div>
+          <span style="font-size:11px;font-weight:600">Berkas 0/18 · CV Mini 100% · Master 0% — <b>satu</b> bar, tiga segmen</span>
+          <span class="w">896</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 240px;gap:8px;margin-top:10px">
+          <div>
+            <div class="blk" style="border-style:solid;border-color:var(--ok);margin-bottom:7px">
+              <b>Langkah berikutnya:</b> Lengkapi berkas yang kurang
+              <span class="w">~640</span>
+              <div style="margin-top:7px"><span style="display:inline-block;background:var(--ok);color:#04120c;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:800">Unggah berkas</span></div>
+            </div>
+            <div class="blk">Lamaran terkini — terbuka penuh, pipeline ringkas<span class="w">~640</span></div>
+            <div class="blk dim">Lamaran sebelumnya (terlipat, 1 baris)<span class="w">~640</span></div>
+            <div class="blk dim">▸ Biodata lengkap · 18 dokumen (terlipat)<span class="w">~640</span></div>
+          </div>
+          <div>
+            <div class="blk">Jadwalmu<span class="w">240</span></div>
+            <div class="blk">Pesan Admin<span class="w">240</span></div>
+            <div class="blk dim">Aksi cepat<span class="w">240</span></div>
+          </div>
+        </div>
+        <p style="font-size:12px;margin:12px 0 0;color:var(--ok)">
+          ↑ Dua tepi kiri saja (<code>185</code> dan <code>833</code>). Satu bar
+          untuk semua progres. Satu CTA utama.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 4. MERGE PROGRES ══════════════════════════ -->
+  <h2>4. Perbaikan inti — 5 sumber progres jadi 1</h2>
+  <p>
+    Ini yang menghapus kesan redundant, dan ini juga yang paling murah: <b>tidak ada
+    data baru, tidak ada request baru</b>. Semua angka sudah ada di
+    <code>computeCvMiniProgress</code>, <code>computeCvMasterProgress</code>,
+    <code>computeOverallProgress</code>, dan <code>berkasProgress</code>.
+  </p>
+
+  <div class="compare">
+    <div class="col">
+      <div class="hdr"><span class="tag t-bad">Sebelum</span></div>
+      <div class="card" style="background:var(--surf2)">
+        <h4>5 blok terpisah</h4>
+        <div class="blk">🥈 CrownBadge — <b>50%</b></div>
+        <div class="blk">Profil (Data Dasar) <b>100%</b> ▬▬▬▬▬▬ &nbsp;·&nbsp; Profil (Data Lengkap) <b>0%</b> ▬</div>
+        <div class="blk">Langkah Berikutnya — Lengkapi berkas yang kurang</div>
+        <div class="blk">Kelengkapan Profil <b>50%</b> ▬▬▬▬▬ &nbsp; CV Mini <b>100%</b> · Master Profil <b>0%</b></div>
+        <div class="blk">Progres Pemberkasan <b>0%</b> · 0/18 dokumen</div>
+        <p style="font-size:12px;margin:12px 0 0;color:var(--bad)">
+          <b>7</b> string persen di halaman. <b>12</b> bar. Angka <b>100%</b> dan <b>0%</b>
+          masing-masing tampil dua kali; <b>50%</b> tampil dua kali.
+        </p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="hdr"><span class="tag t-ok">Sesudah</span></div>
+      <div class="card" style="background:var(--surf2)">
+        <h4>1 bar bersegmen</h4>
+        <div class="bar" style="height:14px"><i class="seg-k" style="width:0%"></i><i class="seg-b" style="width:78%"></i><i class="seg-m" style="width:22%"></i></div>
+        <p style="font-size:12.5px;margin:10px 0 0">
+          <b>50%</b> lengkap · <span class="swatch seg-b"></span>CV Mini 100%
+          <span class="swatch seg-m" style="margin-left:10px"></span>Master 0%
+          <span class="swatch seg-k" style="margin-left:10px"></span>Berkas 0/18
+        </p>
+        <p style="font-size:12.5px;margin:10px 0 0;color:var(--fg-mut)">
+          Langkah berikutnya: <b style="color:var(--fg)">lengkapi berkas</b> — 50% lagi untuk tingkat Gold.
+        </p>
+        <p style="font-size:12px;margin:12px 0 0;color:var(--ok)">
+          <b>1</b> string persen. <b>1</b> bar dengan <code>role="progressbar"</code>.
+          Tiap segmen punya label warna + teks, jadi maknanya tidak bergantung warna saja (<code>§6.6</code>).
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="note ok" style="margin-top:16px">
+    <b>Yang dijaga:</b> aturan di <code>LevelCard.tsx</code> dan <code>StepGuide.tsx</code> tetap
+    berlaku penuh — ini <b>meter kelengkapan</b>, bukan skor seleksi; tidak ada
+    peringkat, tidak ada peluang lolos, dan tidak ada penurunan yang dirayakan.
+    Penggabungan ini <b>mengurangi</b> peluang angka itu disalahbaca, karena
+    konteksnya cuma muncul sekali.
+  </div>
+
+  <!-- ══════════════════════════ 5. YANG KURANG ══════════════════════════ -->
+  <h2>5. Yang belum ada, dibanding dashboard modern</h2>
+  <div class="grid2">
+    <div class="card">
+      <span class="tag t-warn">Kurang</span>
+      <h3 style="margin-top:10px">Tidak ada sapaan &amp; judul halaman</h3>
+      <p style="font-size:13.5px">Halaman dibuka oleh <b>furnitur brand</b> ("ASJ DOSSIER /
+      VERIFIED CANDIDATE") — bukan oleh orientasi. Dashboard modern membuka dengan
+      <code>h1</code> yang menyebut orangnya dan konteksnya sekali baca. Sekarang
+      outline mulai dari <code>h3</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-warn">Kurang</span>
+      <h3 style="margin-top:10px">Tidak ada CTA utama</h3>
+      <p style="font-size:13.5px">7 tombol dengan bobot warna setara. Tidak ada satu pun
+      yang jelas "kerjakan ini dulu". Tombol <b>Ganti Password</b> — yang hampir tidak
+      pernah dipakai — duduk sederajat dengan <b>Update Profil</b>.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-warn">Kurang</span>
+      <h3 style="margin-top:10px">Riwayat tidak bisa dipindai</h3>
+      <p style="font-size:13.5px">2 lamaran memakan <b>1033 px</b> di ponsel karena setiap
+      entri merender <b>pipeline 10 tahap penuh</b>. Tidak ada ringkasan "3 lamaran ·
+      1 tahap PEMBERKASAN".</p>
+    </div>
+    <div class="card">
+      <span class="tag t-warn">Kurang</span>
+      <h3 style="margin-top:10px">Checklist 18 baris selalu terbuka</h3>
+      <p style="font-size:13.5px">Daftar berkas adalah <b>bahan rujukan</b>, bukan bacaan
+      berurutan. 442 px di ponsel untuk daftar yang isinya masih 0/18. Di dashboard
+      modern ini jadi ringkasan + <code>&lt;details&gt;</code>.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-warn">Kurang</span>
+      <h3 style="margin-top:10px">Anatomi kartu tidak seragam</h3>
+      <p style="font-size:13.5px">4 pola header berbeda dalam satu kolom — ada yang pakai
+      ikon + <code>h3</code>, ada yang <code>h4</code>, ada yang eyebrow di tengah,
+      dan kartu Progres CV <b>tidak punya judul sama sekali</b>.</p>
+    </div>
+    <div class="card">
+      <span class="tag t-warn">Kurang</span>
+      <h3 style="margin-top:10px">Tanpa rail di layar lebar</h3>
+      <p style="font-size:13.5px">Di 1280 px isi tetap satu kolom sempit 576–896 px.
+      <code>DESIGN.md §4.3</code> sudah mendokumentasikan pola <b>satu DOM, dua bentuk</b>
+      (grid + rail 22rem) yang persis cocok di sini, tapi belum dipakai di rute ini.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 6. RENCANA ══════════════════════════ -->
+  <h2>6. Urutan pengerjaan</h2>
+  <p>Disusun supaya tiap langkah bisa dikirim dan diukur sendiri — bukan satu commit besar.</p>
+  <table>
+    <thead><tr><th style="width:44px">#</th><th>Langkah</th><th>Menyentuh</th><th>Dampak</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td>
+        <td><b>Ganti <code>bg-[#0f172a]</code> jadi token</b> (<code>bg-surface-sunken</code>), dan ganti dua gradien gelap (<code>from-amber-950</code>, <code>from-sky-950</code>) jadi token tema. <b>Perbaikan bug</b>, bukan selera — tema terang default sekarang menampilkan balok navy.</td>
+        <td class="n">1–3 baris</td><td class="n num-ok">tinggi</td></tr>
+      <tr><td class="n">2</td>
+        <td><b>Satukan tepi kolom.</b> Semua blok jadi satu lebar; hapus <code>max-w-sm</code>/<code>max-w-xl</code> bersarang. Seragamkan padding ke <code>p-5 md:p-6</code> dan radius ke <code>rounded-panel</code>.</td>
+        <td class="n">CandidateDash.tsx</td><td class="n num-ok">tinggi</td></tr>
+      <tr><td class="n">3</td>
+        <td><b>Gabung 5 progres jadi 1 bar bersegmen</b> + satu baris langkah berikutnya. Hapus blok CV Progress dan LevelCard sebagai kartu berdiri sendiri.</td>
+        <td class="n">CandidateDash, LevelCard, StepGuide</td><td class="n num-ok">tinggi</td></tr>
+      <tr><td class="n">4</td>
+        <td><b>Tambah <code>h1</code> + <code>h2</code></b> — sapaan pemilik halaman, lalu satu <code>h2</code> per seksi nyata. Turunkan nama brand di dossier dari <code>h3</code> jadi <code>div</code>.</td>
+        <td class="n">CandidateDash, AsjDossierCard</td><td class="n num-ok">sedang</td></tr>
+      <tr><td class="n">5</td>
+        <td><b>Lipat yang memang rujukan.</b> Checklist 18 dokumen dan lamaran lama masuk <code>&lt;details&gt;</code>; hanya lamaran terkini yang pipeline-nya terbuka penuh.</td>
+        <td class="n">CandidateDash</td><td class="n num-ok">tinggi</td></tr>
+      <tr><td class="n">6</td>
+        <td><b>Satu CTA utama + menu overflow.</b> "Unggah berkas" (atau langkah yang ditunjuk) jadi tombol solid; 6 sisanya jadi baris sekunder/overflow.</td>
+        <td class="n">CandidateDash</td><td class="n num-ok">sedang</td></tr>
+      <tr><td class="n">7</td>
+        <td><b>Rail 22rem di ≥1280 px</b> per <code>§4.3</code>: main = langkah + lamaran + berkas; rail = jadwal + pesan admin + aksi cepat.</td>
+        <td class="n">candidate.astro, CandidateDash</td><td class="n num-ok">sedang</td></tr>
+      <tr><td class="n">8</td>
+        <td><b>Perbaiki kontras</b> <code>PILIH LOKER</code> (2,54/2,10) dan "Klinik Sehat Ponorogo" (2,99/2,47); beri <code>role="progressbar"</code> pada bar yang tersisa.</td>
+        <td class="n">CandidateDash</td><td class="n num-ok">sedang</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note warn" style="margin-top:16px">
+    <b>Catatan gate.</b> Langkah 2–8 menyentuh <code>CandidateDash.tsx</code>, yang
+    diuji <code>CandidateDash.test.tsx</code> (714 baris) dan
+    <code>e2e/test-candidate-modals.mjs</code>. Langkah 3 berpotensi menggeser
+    penanda yang di-assert test (<code>data-level</code>, <code>data-step-guide</code>).
+    Kerjakan <b>satu langkah per commit</b> dan jalankan <code>vitest</code> dulu,
+    baru <code>astro build</code>.
+  </div>
+
+  <hr class="soft" />
+  <p class="foot">
+    Diukur 2026-09-30 · chromium headless · viewport 1280×900 dan 390×844 ·
+    tema terang &amp; gelap · fixture penuh (VIP, jadwal, riwayat 3 entri, biodata
+    lengkap). Angka kontras dihitung dari warna terkomputasi, bukan dari berkas CSS.
+  </p>
+</div>
+
+<script>
+  const root = document.documentElement;
+  // Start in the theme the reader's OS prefers; the toggle flips it.
+  root.dataset.theme = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  document.getElementById('tg').addEventListener('click', () => {
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  });
+</script>
+</body>
+</html>
