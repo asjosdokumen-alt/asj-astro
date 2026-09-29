@@ -784,17 +784,37 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                   ke-12 di halaman untuk angka yang sama. Yang tersisa di sini
                   hanya yang benar-benar milik kartu ini — daftar dokumennya
                   dan berapa yang sudah masuk. */}
-              <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+              <div class="flex items-center justify-between flex-wrap gap-2">
                 <h2 class="text-sm font-black text-accent-emerald uppercase tracking-widest"><Icon name="tasks" class="mr-1.5" /> {t('ui.berkas_progress')}</h2>
-                <span class="text-xs font-bold text-white">{data.berkasList.filter(b => b.done).length}/{data.berkasTotal}{t('ui.doc_count_suffix')}</span>
               </div>
-              <div class="grid grid-cols-2 gap-1.5 max-h-44 u-scroll-area custom-scrollbar pr-1">
-                {data.berkasList.map((b, i) => (
-                  <div key={i} class={`flex items-center gap-2 text-xs px-2 py-1 rounded ${b.done ? 'text-emerald-400' : 'text-slate-500'}`}>
-                    <Icon name={b.done ? 'check-circle' : 'circle'} /> {t(b.label)}
-                  </div>
-                ))}
-              </div>
+              {/* Daftar 18 dokumen adalah BAHAN RUJUKAN, bukan bacaan
+                  berurutan: kandidat membukanya untuk mengecek satu baris,
+                  bukan untuk membaca dari atas ke bawah. Terbuka terus, ia
+                  memakan 442 px di ponsel untuk daftar yang isinya masih 0/18.
+                  `<details>` memberi buka-tutup NATIF — tanpa state hook, tanpa
+                  JS — dan polanya sudah ada di repo ini (`FaqList.tsx`), jadi
+                  `summary`-nya memakai kelas yang sama, termasuk cincin fokus
+                  keyboard yang sama.
+
+                  Hitungannya PINDAH ke dalam `summary`: ia sekarang jadi label
+                  buka-tutupnya sekaligus, jadi satu teks melayani dua maksud
+                  dan tidak ada angka yang tampil dua kali di kartu ini.
+
+                  Tombol "Lengkapi Berkas" sengaja tetap di LUAR `<details>`:
+                  ia satu-satunya aksi di kartu ini, dan menguburnya di balik
+                  buka-tutup akan membuat aksi utama halaman ini tidak terlihat. */}
+              <details class="mt-1">
+                <summary class="flex cursor-pointer list-item items-center gap-2 pt-2 text-xs font-bold text-accent-emerald marker:text-accent-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-sky">
+                  {data.berkasList.filter(b => b.done).length}/{data.berkasTotal}{t('ui.doc_count_suffix')}
+                </summary>
+                <div class="grid grid-cols-2 gap-1.5 max-h-44 u-scroll-area custom-scrollbar pr-1 pt-3">
+                  {data.berkasList.map((b, i) => (
+                    <div key={i} class={`flex items-center gap-2 text-xs px-2 py-1 rounded ${b.done ? 'text-emerald-400' : 'text-slate-500'}`}>
+                      <Icon name={b.done ? 'check-circle' : 'circle'} /> {t(b.label)}
+                    </div>
+                  ))}
+                </div>
+              </details>
             </div>
             {/* Gradient CTA — `from-emerald-700 to-sky-700`, hover DARKENS.
                 White on this family's 600/500 stops fails the 4.5 floor at
