@@ -28,8 +28,18 @@
  * No partner COUNT is published (`COMPANY_PROFILE_DATA.md` §12 bans a partner
  * count as a claim; §8's "Batas klaim" says the same). The grid shows names, not
  * a statistic, and `PARTNER_TOTAL` is for a progress note — never page copy.
- * No logos are set: none were supplied, and a logo is a trademark, so a slot
- * without one renders the dashed box rather than a wrong or borrowed mark.
+ * The logos WERE fetched from each partner's own site on 2026-09-29, from the
+ * same `home` URL the name was read from — the mark is the partner's own, served
+ * by the partner, never a redraw or a lookalike. `COMPANY_PROFILE_DATA.md` §11.2
+ * rules that a logo MAY live in the public repo ("Logo bukan data pribadi"), and
+ * §11.1 caps a logo at 512 px wide; each file here is ≤512 px on its long edge
+ * and renders at 48 px tall. Each is registered in `scripts/ci/verify-assets.mjs`
+ * — a rendered asset with no recorded basis fails that gate, deliberately.
+ *
+ * That is a SECOND owner ruling, distinct from the name ruling above: a name and
+ * a mark are different acts. A name says "we have an MoU with this body"; a
+ * borrowed mark says "this body endorses what is beside it". The owner asked for
+ * the marks on 2026-09-29, which is the basis recorded here.
  *
  * ── HOW TO FILL OR CHANGE A SLOT ────────────────────────────────────────────
  *   1. Set `name` to `{ key, text }` — `key` is the i18n key, `text` the
@@ -39,7 +49,17 @@
  *   4. Drop the logo at `public/assets/mitra/<slug>.webp`, set `logo: '<slug>'`,
  *      and record it in `scripts/ci/verify-assets.mjs` (a new asset that is
  *      rendered but unregistered fails that gate). The component derives the URL,
- *      so a caller cannot point at a `@2x` file by mistake.
+ *      so a caller cannot point at a `@2x` file by mistake. Fetch the file from
+ *      the partner's OWN site — the same `home` URL at step 3 — and scale it to
+ *      ≤512 px wide (§11.1); a mark taken from anywhere else is a borrowed mark,
+ *      which is the failure this list exists to prevent.
+ *
+ *      THE FILE'S REAL PIXEL SIZE IS NOT IN THE MARKUP. `PartnerGrid.tsx` renders
+ *      every logo into one 120x48 box (`max-h-12 max-w-[7.5rem]`), because these
+ *      six marks have aspect ratios from 0.97 to 4.30 — sizing by height alone
+ *      would make the widest render ~4x the width of the narrowest. The box is
+ *      what keeps the grid even; the file just has to be big enough to be sharp
+ *      at 120 px, which 512 px comfortably is.
  *   5. Nothing else. The grid, the count and the empty-slot fallback all follow
  *      from this array — there is no second copy of the list to keep in sync.
  *
@@ -129,42 +149,42 @@ export const PARTNERS: Partner[] = [
     slot: 1,
     name: { key: 'profile.mitra_1_name', text: 'PT Flora Talent Indonesia' },
     kind: 'LPK',
-    logo: null,
+    logo: 'ysflora',
     home: 'https://www.ysfloraindonesia.com/',
   },
   {
     slot: 2,
     name: { key: 'profile.mitra_2_name', text: 'PT Human Mandiri Indonesia' },
     kind: 'LPK',
-    logo: null,
+    logo: 'human',
     home: 'https://humanindonesia.com/id',
   },
   {
     slot: 3,
     name: { key: 'profile.mitra_3_name', text: 'LPK Japanesia' },
     kind: 'SO',
-    logo: null,
+    logo: 'japanesia',
     home: 'https://lpkjapanesia.com/',
   },
   {
     slot: 4,
     name: { key: 'profile.mitra_4_name', text: 'PT JIPA' },
     kind: 'LPK',
-    logo: null,
+    logo: 'jipa',
     home: 'https://www.jipa.co.id/',
   },
   {
     slot: 5,
     name: { key: 'profile.mitra_5_name', text: 'LPK Jinzai Servis Indonesia' },
     kind: 'SO',
-    logo: null,
+    logo: 'jinzai',
     home: 'http://jsi-jinzai.com/',
   },
   {
     slot: 6,
     name: { key: 'profile.mitra_6_name', text: 'PT Hibiki Cendekia Mandala' },
     kind: 'LPK',
-    logo: null,
+    logo: 'hibiki',
     home: 'https://www.hibikicendekia.com/',
   },
 ];

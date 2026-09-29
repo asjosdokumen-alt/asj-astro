@@ -235,6 +235,66 @@ const TILE_IMAGE_NAMES = [...TILE_IMAGE_SRC.matchAll(/image:\s*\{\s*name:\s*'([^
 );
 const tileImageFiles = TILE_IMAGE_NAMES.map((n) => `${TILE_URL_DIR}/${n}.webp`);
 
+/**
+ * PARTNER LOGOS — the same indirect-reference shape as Tile.image, added
+ * 2026-09-29 when the six MoU partner marks were wired into the "Mitra Kami" grid.
+ *
+ * The reference is assembled, not literal:
+ *     partners.ts:      logo: 'ysflora'
+ *     PartnerGrid.tsx:  src={`/assets/mitra/${partner.logo}.webp`}
+ * So `REF_RE` — which matches a literal `/assets/…webp` string — sees nothing in
+ * either file, and without this block all six files fall out of `published`.
+ *
+ * WHAT THAT WOULD COST, MEASURED. Before this block existed, `--list` showed the
+ * six `mitra/*.webp` files as `ON DISK yes / PUBLISHED no`. Check (c) only
+ * polices what is in `published`, so a logo renamed on one side of the pair — the
+ * `.ts` sets `logo` but the file is called something else — would ship a broken
+ * image to every visitor and the gate would stay green. That is the exact
+ * failure (c) exists to catch, so the pair is resolved here the same narrow way
+ * `TILE_IMAGE_NAMES` resolves its one templated form.
+ *
+ * NARROWNESS IS THE POINT. A general interpolation scanner would be guessing, and
+ * a guess that matches nothing looks identical to a pass. If `PARTNERS` or the
+ * `logo:` key is renamed, `PARTNER_LOGO_NAMES` comes back empty and the guard
+ * below fails loudly rather than passing vacuously.
+ */
+const PARTNER_URL_DIR = 'mitra';
+const PARTNER_SRC = readFileSync(join(ROOT, 'src/lib/partners.ts'), 'utf8');
+// Only a NON-NULL logo is a rendered path. `logo: null` is the deliberate
+// "no mark supplied" state — it renders the dashed box, so it must NOT be added
+// to `published` (that would make check (c) demand a file that is meant to be
+// absent).
+//
+// ⚠ THE LEADING WHITESPACE IS LOAD-BEARING, AND ITS ABSENCE WAS A REAL BUG.
+// The first version of this regex was `/logo:\s*'([^']+)'/g`, unanchored, and it
+// matched the DOC COMMENT at the top of partners.ts — the line that reads
+// `set \`logo: '<slug>'\`` inside a backtick code span. It captured the literal
+// string `<slug>`, produced a phantom `mitra/<slug>.webp` entry, and the gate
+// failed with BOTH "no publication basis" and "published but missing" for a file
+// that does not and should never exist. This is the same defect the ILLUSTRATIONS
+// block names: a comment can satisfy a scan that reads text instead of code.
+//
+// The fix anchors on the indentation a real object-literal property has (four
+// spaces at this nesting) and excludes `<`, so a placeholder in prose cannot
+// stand in for a wired slug.
+const PARTNER_LOGO_NAMES = [...PARTNER_SRC.matchAll(/^\s{4}logo:\s*'([^'<]+)'/gm)].map(
+  (m) => m[1],
+);
+const partnerLogoFiles = PARTNER_LOGO_NAMES.map((n) => `${PARTNER_URL_DIR}/${n}.webp`);
+
+// A scan whose expected input has moved must not pass quietly. `partners.ts` is
+// where `logo:` lives; if the section were ever emptied back to all-null, this
+// would fire — and that is CORRECT, because the moment the regex stops matching
+// is the moment this block stopped policing anything.
+if (PARTNER_LOGO_NAMES.length === 0) {
+  console.error('\n   ✗ ASSET GATE — found 0 non-null `logo:` entries in');
+  console.error(`     ${join(ROOT, 'src/lib/partners.ts')}`);
+  console.error('     This is either the deliberate all-null state (fine — then delete this');
+  console.error('     block) or a rename that has silently blinded it (not fine). Do not let');
+  console.error('     it pass without saying which.\n');
+  process.exit(2);
+}
+
 // A scan whose expected input has moved must not pass quietly — the failure mode
 // this whole block exists to avoid. `companyProfile.ts` is where Tile.image
 // lives; if that data vanished, `tileImageFiles` is empty and the gate would go
@@ -248,7 +308,9 @@ if (TILE_IMAGE_NAMES.length === 0) {
   process.exit(2);
 }
 
-const published = [...new Set([...galleryFiles, ...directFiles, ...tileImageFiles])].sort();
+const published = [
+  ...new Set([...galleryFiles, ...directFiles, ...tileImageFiles, ...partnerLogoFiles]),
+].sort();
 
 /**
  * Photographs the owner has ruled publishable, with the basis for the ruling.
@@ -295,6 +357,28 @@ const OWNER_APPROVED = new Set([
   'fasilitas-grup-siswa-1.webp', // ~50 people in uniform — owner's ruling 2026-09-23
   'galeri-keberangkatan-1.webp', // departure group — owner's ruling 2026-09-23
   'tim-hadi-prasojo.webp', // named individual, a manager — owner's ruling 2026-09-23
+  // ── THE SIX MoU PARTNER LOGOS — added 2026-09-29 ──────────────────────────
+  // These are MARKS, not photographs, and that distinction is deliberate rather
+  // than incidental: a logo has no subject who could consent or refuse in the
+  // §11.2 sense, because it is a company's trademark, not a person's likeness.
+  // So they are NOT in `ILLUSTRATIONS` either — that set's criterion is "is
+  // there a subject who could consent or refuse", and a trademark's printed rule
+  // (§11.2) is a different one: "Logo boleh masuk repo — Logo bukan data
+  // pribadi", which this set is the record of.
+  //
+  // THE PUBLICATION BASIS IS THE OWNER'S REQUEST, 2026-09-29. Each mark was
+  // fetched from the SAME `home` URL the partner's name was read from, so the
+  // mark is the partner's own, served by the partner — never a redraw, a
+  // lookalike, or a mark borrowed from an unrelated page. Do not add a seventh
+  // entry here without the same basis: a wrong or borrowed logo is a false claim
+  // about a third party, which is the failure `partners.ts` warns about in its
+  // own header.
+  'mitra/ysflora.webp', // owner's request 2026-09-29 — from ysfloraindonesia.com
+  'mitra/human.webp', // owner's request 2026-09-29 — from humanindonesia.com
+  'mitra/japanesia.webp', // owner's request 2026-09-29 — from lpkjapanesia.com
+  'mitra/jipa.webp', // owner's request 2026-09-29 — from jipa.co.id
+  'mitra/jinzai.webp', // owner's request 2026-09-29 — from jsi-jinzai.com
+  'mitra/hibiki.webp', // owner's request 2026-09-29 — from hibikicendekia.com
 ]);
 
 /**

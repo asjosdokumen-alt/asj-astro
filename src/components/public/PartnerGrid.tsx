@@ -61,16 +61,36 @@ export default function PartnerGrid({ partners, class: className }: Props) {
             class="u-surface-depth flex flex-col items-center justify-center gap-3 rounded-card border border-line bg-surface p-5 text-center min-h-[8.5rem]"
           >
             {partner.logo && filled ? (
-              <img
-                src={`/assets/mitra/${partner.logo}.webp`}
-                alt=""
-                aria-hidden="true"
-                width="120"
-                height="48"
-                loading="lazy"
-                decoding="async"
-                class="h-12 w-auto object-contain"
-              />
+              /* A BOUNDED BOX, NOT A FIXED HEIGHT — and the second bound is the
+                 whole point. `h-12 w-auto` sizes six logos by HEIGHT alone, so
+                 the rendered widths follow each mark's own aspect ratio: the
+                 widest mark here (human.webp, 512x119, ratio 4.30) would render
+                 ~206 px wide while the near-square mark (hibiki.webp, 512x529,
+                 ratio 0.97) renders 48 px — a 4x spread in visual weight within
+                 one row, and the wide one would overflow the 120 px dashed box it
+                 replaces. `max-w-[7.5rem] max-h-12` bounds BOTH axes to the slot
+                 the placeholder already reserves, so every card's logo box is the
+                 same size and no mark can escape its cell. `object-contain`
+                 preserves each aspect ratio inside that box.
+
+                 width/height stay as the intrinsic-ratio hint for the browser to
+                 reserve space before the image loads — they are the 120x48 box,
+                 not either file's real pixel size, because what matters here is
+                 the layout box, and using a real file size would reserve a wrong
+                 one for five of the six marks. A CLS-free grid needs the box the
+                 image actually occupies. */
+              <span class="flex h-12 w-[7.5rem] items-center justify-center">
+                <img
+                  src={`/assets/mitra/${partner.logo}.webp`}
+                  alt=""
+                  aria-hidden="true"
+                  width="120"
+                  height="48"
+                  loading="lazy"
+                  decoding="async"
+                  class="max-h-12 max-w-[7.5rem] object-contain"
+                />
+              </span>
             ) : (
               /* The empty logo slot. A dashed box rather than nothing, because
                  the SIZE of the slot is information: it says a logo goes here
