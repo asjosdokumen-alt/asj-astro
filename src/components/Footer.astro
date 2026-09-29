@@ -132,14 +132,21 @@ const TEL_HREF = (raw: string) => `tel:+62${raw.replace(/\D/g, '').replace(/^0/,
             applied per-anchor rather than to the column. `gap-1` then keeps the
             visual rhythm close to the previous `gap-2` now that the links carry
             their own padding.
+            ⚠ CORRECTED 2026-09-30: the measurement above was of THREE links.
+            The owner retired the second phone, so there are now TWO (one
+            tel, one mailto). The 44px floor and the per-anchor placement are
+            unchanged -- only the count in the sentence was stale, and it is
+            fixed rather than deleted because the measurement is the reason the
+            floor is applied this way.
           */}
           <div class="flex flex-col gap-1 text-body-sm text-fg-muted">
             <span class="py-1" data-lang={CONTACT_ADDRESS.key}>{CONTACT_ADDRESS.text}</span>
+            <!-- ONE phone line, owner's order 2026-09-30 ("lainnya matikan").
+                 The second <a> is deleted rather than kept-but-unrendered: a
+                 retired number left in the markup still ships in the HTML and
+                 would read as live to anyone grepping the page. -->
             <a id="footer-tel" href={TEL_HREF(CONTACT_PHONES[0])} class="min-h-11 inline-flex items-center hover:text-fg transition-colors">
               <Icon name="phone" class="mr-1.5 text-accent-sky" />{CONTACT_PHONES[0]}
-            </a>
-            <a href={TEL_HREF(CONTACT_PHONES[1])} class="min-h-11 inline-flex items-center hover:text-fg transition-colors">
-              <Icon name="phone" class="mr-1.5 text-accent-sky" />{CONTACT_PHONES[1]}
             </a>
             <a href={`mailto:${CONTACT_EMAIL}`} class="min-h-11 inline-flex items-center hover:text-fg transition-colors">
               <Icon name="envelope" class="mr-1.5 text-accent-sky" />{CONTACT_EMAIL}

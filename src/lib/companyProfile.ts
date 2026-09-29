@@ -706,11 +706,69 @@ export const CONTACT_ADDRESS: Text = {
   text: 'Jl. Kyai Ageng Musakaf, Rw 03 Rt 03, Dukuh Ngujung, Desa Gandu Kepuh, Kec. Sukorejo, Kab. Ponorogo, Jawa Timur',
 };
 
-/** Both numbers are on the letterhead; the repo previously carried only the second. */
-export const CONTACT_PHONES = ['0821-3178-1435', '0878-8950-2004'] as const;
+/**
+ * The ONE published phone number.
+ *
+ * ── WHY THIS WENT FROM TWO NUMBERS TO ONE, 2026-09-30 ──────────────────────
+ * The letterhead in the profile prints two (`0821-3178-1435` and
+ * `0878-8950-2004`) and this list used to carry both, on the reasoning that the
+ * document did. The OWNER then ruled, verbatim: "telpon cukup 1 saja pake yg
+ * ini +62 878-8950-2004 lainnya matikan" — publish only `0878-8950-2004`, retire
+ * the other.
+ *
+ * So the SECOND number is DELETED, not merely hidden. Deleting is what the
+ * order means: a number kept in the array but not rendered is a value that
+ * drifts, and the next reader would have to work out whether it was retired or
+ * forgotten. `CONTACT_PHONES` is also read by `BaseLayout.astro` (the
+ * `telephone` field of the Organization JSON-LD) and by the footer, so a hidden
+ * third entry would leave a retired number in machine-readable data — the
+ * opposite of "matikan". A single-entry array keeps all three call sites on the
+ * same value with no branch.
+ *
+ * The array SHAPE is kept rather than collapsing to a bare string: every call
+ * site indexes it (`CONTACT_PHONES[0]`), the JSON-LD takes `[0]`, and a future
+ * owner may reinstate a second line without re-threading three files.
+ */
+export const CONTACT_PHONES = ['0878-8950-2004'] as const;
 export const CONTACT_WHATSAPP = '6287889502004';
 /** An identifier: typed, copied, and pasted into a mail client. Never translated. */
 export const CONTACT_EMAIL = 'amanahsakurajapan@gmail.com';
+
+/**
+ * Office operating hours — the answer to `COMPANY_PROFILE_DATA.md` P-4.
+ *
+ * SUPPLIED BY THE OWNER, 2026-09-30, verbatim: "jam operasianal senin -sabtu jam
+ * 8-jam 4 sore. tgl merah / hari libur di luar jam kerja slow respon." The
+ * letterhead carries no hours, which is why this sat open as P-4 until now.
+ *
+ * ── WHY IT IS TWO STRINGS AND NOT ONE ──────────────────────────────────────
+ * The owner stated two DIFFERENT facts in one breath: WHEN the office is open,
+ * and what happens OUTSIDE that window. Merging them into a single sentence
+ * would bury the second — "slow response on holidays" is exactly the
+ * expectation a caller needs set BEFORE they dial and get no answer, so it
+ * reads as its own line rather than a clause trailing the hours.
+ *
+ * ── WHY BOTH ARE KEYED ─────────────────────────────────────────────────────
+ * These are prose, not identifiers: "Senin–Sabtu" and "slow respon" both need a
+ * Japanese rendering, unlike a phone number or an email. Same rule as
+ * `CONTACT_ADDRESS` above — a name is translatable, an address you type is not.
+ *
+ * The phrase "slow respon" is the owner's own and is kept, not polished into
+ * "waktu respons lebih lama": the site's voice is the owner's, and a softened
+ * paraphrase would be a small editorial claim about how slow is slow. The JP
+ * side says the same thing in kana rather than inventing a service-level
+ * promise neither the owner nor this file can keep.
+ */
+export const CONTACT_HOURS: Text = {
+  key: 'profile.contact_hours_value',
+  text: 'Senin – Sabtu, 08.00 – 16.00 WIB',
+};
+
+/** What to expect outside the window above — see CONTACT_HOURS. */
+export const CONTACT_HOURS_NOTE: Text = {
+  key: 'profile.contact_hours_note',
+  text: 'Tanggal merah / hari libur, dan di luar jam kerja: respons lebih lambat.',
+};
 
 /**
  * The Instagram handle from the profile's own banners.

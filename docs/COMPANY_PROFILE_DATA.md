@@ -414,17 +414,33 @@ Semuanya masuk §13.
 
 ## 13. Yang masih perlu pemilik
 
-Tujuh item. Selebihnya sudah terverifikasi di atas.
+Enam item tersisa. Selebihnya sudah terverifikasi di atas.
 
 | # | Data | Dipakai di | Kalau belum ada |
 |---|---|---|---|
 | P-1 | Jumlah kandidat terlatih | S1 hero, bento statistik | ubin angka dikurangi; **jangan** pakai 500+ |
 | P-2 | Jumlah keberangkatan | S1 hero | idem |
 | P-3 | Jumlah perusahaan mitra Jepang | S1 hero, penempatan | idem |
-| P-4 | Jam operasional kantor | R1 kontak | baris jam dihilangkan |
+| ~~P-4~~ | ~~Jam operasional kantor~~ | ~~R1 kontak~~ | ✅ **DIJAWAB 2026-09-30** — lihat di bawah |
 | P-5 | Konfirmasi tinggi badan wanita (K-3) | S6 persyaratan | tampilkan **kedua** angka dengan catatan, atau tahan section-nya |
 | P-6 | Akun TikTok masih aktif atau tidak (K-4) | footer | tautan dilepas |
 | P-7 | Izin tayang foto kandidat (§11.2) | galeri, penempatan | hanya foto gedung/kantor/kelas yang dipakai |
+
+> **✅ P-4 DIJAWAB — 2026-09-30.** Pemilik, verbatim: *"jam operasianal senin -sabtu
+> jam 8-jam 4 sore. tgl merah / hari libur di luar jam kerja slow respon."*
+> Terbit sebagai `CONTACT_HOURS` + `CONTACT_HOURS_NOTE` (`companyProfile.ts`), dua
+> kunci di kedua kamus, dan satu baris baru di kartu Telepon `#kontak`.
+> Dipecah dua baris dengan sengaja: yang satu JAM BUKA, yang lain apa yang terjadi
+> DI LUAR jam itu — "slow respon" justru hal yang perlu dipahami penelepon
+> **sebelum** ia menelepon, jadi ia tidak boleh jadi anak kalimat yang tercecer.
+
+> **⚠ K-10 DIBATALKAN — 2026-09-30.** §12 K-10 menyuruh **menambahkan** nomor kedua
+> (`0821-3178-1435`) ke bagian kontak. Pemilik membalikkan itu, verbatim:
+> *"telpon cukup 1 saja pake yg ini +62 878-8950-2004 lainnya matikan."*
+> Jadi `CONTACT_PHONES` kini **satu** elemen (`0878-8950-2004`); nomor kedua
+> **dihapus dari data**, bukan disembunyikan — ia juga sudah keluar dari JSON-LD
+> `telephone` (`BaseLayout.astro`, dulu `[1]` ⇒ `undefined`, kini `[0]`).
+> **Aturan lama K-10 tidak berlaku lagi; jangan dihidupkan kembali tanpa perintah baru.**
 
 **Satu hal yang tidak perlu ditanyakan lagi:** angka yang sudah ada di dokumen resmi.
 Harga **6 juta**, bidang **5 jenis**, prefektur **4**, alur **6 langkah**, persyaratan

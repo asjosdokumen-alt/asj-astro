@@ -24,6 +24,8 @@ import {
   ABOUT_WELCOME,
   CONTACT_ADDRESS,
   CONTACT_EMAIL,
+  CONTACT_HOURS,
+  CONTACT_HOURS_NOTE,
   CONTACT_INSTAGRAM,
   CONTACT_LOCATION,
   CONTACT_MAPS_URL,
@@ -863,8 +865,17 @@ import { GALLERY } from '../lib/gallery';
           <span data-lang="profile.contact_phone" class="text-caption uppercase font-bold text-accent">
             Telepon
           </span>
+          <!-- ONE number, not two — owner's order 2026-09-30. The array is
+               length 1, so there is deliberately no [1] line here; a second
+               <span> would render an empty row the moment the tuple shrinks. -->
           <span class="text-body-sm text-fg-muted">{CONTACT_PHONES[0]}</span>
-          <span class="text-body-sm text-fg-muted">{CONTACT_PHONES[1]}</span>
+          <div class="flex flex-col gap-1 pt-2 border-t border-line">
+            <span data-lang="profile.contact_hours" class="text-caption uppercase font-bold text-accent">
+              Jam Operasional
+            </span>
+            <span class="text-body-sm text-fg-muted" data-lang={CONTACT_HOURS.key}>{CONTACT_HOURS.text}</span>
+            <span class="text-caption text-fg-muted" data-lang={CONTACT_HOURS_NOTE.key}>{CONTACT_HOURS_NOTE.text}</span>
+          </div>
           <div class="flex flex-col gap-1 pt-2 border-t border-line">
             <span data-lang="profile.contact_email" class="text-caption uppercase font-bold text-accent">
               Surel

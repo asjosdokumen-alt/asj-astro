@@ -1222,6 +1222,13 @@ export const translations: Record<Lang, Record<string, string>> = {
   // di companyProfile.ts — alamat adalah NAME, bukan identifier, jadi ia ikut
   // diterjemahkan; sedangkan email dan nomor telepon tidak.
   "profile.contact_address_value": "Jl. Kyai Ageng Musakaf, Rw 03 Rt 03, Dukuh Ngujung, Desa Gandu Kepuh, Kec. Sukorejo, Kab. Ponorogo, Jawa Timur",
+  // Jam operasional — dijawab pemilik 2026-09-30 (COMPANY_PROFILE_DATA.md P-4).
+  // Dua kunci terpisah: yang satu JAM BUKA, yang lain apa yang terjadi DI LUAR
+  // jam itu. Digabung jadi satu kalimat akan mengubur "slow respon", padahal
+  // itulah yang perlu dipahami penelepon SEBELUM ia menelepon.
+  "profile.contact_hours": "Jam Operasional",
+  "profile.contact_hours_value": "Senin – Sabtu, 08.00 – 16.00 WIB",
+  "profile.contact_hours_note": "Tanggal merah / hari libur, dan di luar jam kerja: respons lebih lambat.",
   "profile.fac_title": "Fasilitas & Dukungan",
   "profile.fac_desc": "Yang kandidat dapatkan selama pelatihan.",
   "profile.fac_class_title": "Kelas Bahasa Jepang",

@@ -885,6 +885,12 @@ export const jpTranslations: Record<string, string> = {
   // 読みの補助。日本語話者がラテン文字の転写を読めない場合に備えてカタカナ・
   // 漢字で示す。封筒や配送伝票にはインドネシア語の表記を使うこと。
   "profile.contact_address_value": "東ジャワ州ポノロゴ県スコレジョ郡ガンドゥ・ケプフ村ヌグンジュン集落 03RW/03RT、カイ・アグン・ムサカフ通り",
+  // 営業時間 — オーナー回答 2026-09-30（COMPANY_PROFILE_DATA.md P-4）。
+  // 「スロー・レスポンス」というオーナー自身の表現をそのまま残している。より丁寧な
+  // 言い換えにすると、どの程度遅いのかという小さな編集上の主張をこちらが加えることになる。
+  "profile.contact_hours": "営業時間",
+  "profile.contact_hours_value": "月曜 – 土曜、08:00 – 16:00（WIB／インドネシア西部時間）",
+  "profile.contact_hours_note": "祝日・休業日、および営業時間外は、ご返信が遅くなります。",
   "profile.fac_title": "施設とサポート",
   "profile.fac_desc": "研修中に利用できる環境。",
   "profile.fac_class_title": "日本語教室",
