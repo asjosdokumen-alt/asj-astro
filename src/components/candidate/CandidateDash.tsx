@@ -670,7 +670,29 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                             <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider"><Icon name="route" class="mr-1 text-sky-400" /> {t('form.txt_tahapan_saat_ini')}</span>
                             <span class="text-[11px] font-black text-emerald-400"><Icon name="map-pin" /> {TAHAPAN_STEPS[stepIdx] || r.tahapan}</span>
                           </div>
-                          <div class="w-full bg-slate-800 rounded-full h-1.5 border border-slate-700/50">
+                          {/* `role="progressbar"` + nama yang bisa dibaca.
+                              Sebelumnya bar ini hanya sebuah div: lebar dan
+                              warnanya menyampaikan "sudah sampai tahap mana",
+                              dan pembaca layar tidak menerima apa pun — padahal
+                              inilah status lamaran kandidat.
+
+                              Aman terhadap `CandidateDash.test.tsx`, yang
+                              membaca `document.querySelector('[role="progressbar"]')`
+                              dan menuntut `aria-valuenow` = kelengkapan profil.
+                              Bar itu milik LevelCard, dan LevelCard dirender
+                              SEBELUM kartu ini (ia kartu isi pertama di panel),
+                              jadi ia tetap `[role="progressbar"]` pertama.
+                              Menaruh bar ini di atasnya akan membuat asersi itu
+                              membaca angka yang salah — bukan gagal, tapi LULUS
+                              dengan makna yang berbeda, yang lebih buruk. */}
+                          <div
+                            class="w-full bg-slate-800 rounded-full h-1.5 border border-slate-700/50"
+                            role="progressbar"
+                            aria-valuenow={progressPct}
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-label={`${r.jobCode} — ${TAHAPAN_STEPS[stepIdx] || r.tahapan}`}
+                          >
                             <div class="bg-gradient-to-r from-emerald-600 to-sky-500 h-1.5 rounded-full transition-[width] duration-1000" style={`width:${progressPct}%`}></div>
                           </div>
                           <div class="flex flex-wrap justify-between gap-x-2 gap-y-1 mt-1.5">
