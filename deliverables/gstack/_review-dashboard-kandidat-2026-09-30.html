@@ -115,6 +115,59 @@
     <span style="font-size:12px;color:var(--fg-sub)">Tema awal mengikuti pilihanmu (default situs = terang).</span>
   </div>
 
+  <!-- ══════════════════════ 0. STATUS IMPLEMENTASI ══════════════════════ -->
+  <h2 style="margin-top:40px">0. Status implementasi — 6 dari 8 langkah selesai</h2>
+  <p>
+    Enam langkah pertama sudah dikerjakan dan diukur ulang. Satu langkah
+    (rail) <b>sengaja belum</b> dikerjakan; alasannya ada di bawah tabel.
+  </p>
+  <table>
+    <thead><tr><th style="width:44px">#</th><th>Langkah</th><th>Status</th><th>Hasil terukur</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td>Token tema (bug mode gelap bocor ke terang)</td><td class="n num-ok">selesai</td>
+        <td><code>PILIH LOKER</code> 2,54/2,10 → <b>7,03/6,79</b>; "Klinik Sehat Ponorogo" 2,99/2,47 → <b>6,60/5,70</b></td></tr>
+      <tr><td class="n">2</td><td>Satu tepi kolom, padding, radius</td><td class="n num-ok">selesai</td>
+        <td>4 tepi (185/226/345/441) → <b>satu tepi 210</b>, lebar 846 untuk 7 blok</td></tr>
+      <tr><td class="n">3</td><td>5 sumber progres → 1 meter + 1 legenda</td><td class="n num-ok">selesai</td>
+        <td>bar 12 → <b>7</b>; string persen 7 → <b>4</b>; kartu "CV Progress" dihapus</td></tr>
+      <tr><td class="n">4</td><td>Outline <code>h1 → h2 → h3</code></td><td class="n num-ok">selesai</td>
+        <td>H1→H3 (lompat) → <b>H1→H2→H2→H2→H3→H2→H2→H3→H2</b>, tanpa lompatan</td></tr>
+      <tr><td class="n">5</td><td>Checklist 18 dokumen → <code>&lt;details&gt;</code></td><td class="n num-ok">selesai</td>
+        <td>−80 px; tombol CTA tetap di luar (tetap terlihat)</td></tr>
+      <tr><td class="n">6</td><td>Satu CTA utama, 7 aksi jadi sekunder</td><td class="n num-ok">selesai</td>
+        <td>Tepi mengambang 571 hilang; <code>min-h-11</code> (44 px) eksplisit</td></tr>
+      <tr><td class="n">7</td><td>Rail 22 rem di ≥1280 px</td><td class="n" style="color:var(--warn)">belum</td>
+        <td>Butuh mengukur dulu — lihat catatan di bawah</td></tr>
+      <tr><td class="n">8</td><td>Kontras + <code>role="progressbar"</code></td><td class="n num-ok">selesai</td>
+        <td>Kontras tuntas di langkah 1; bar tahapan kini punya nama + nilai</td></tr>
+    </tbody>
+  </table>
+  <div class="grid3" style="margin:18px 0 8px">
+    <div class="card"><div class="kpi">3094<small>px tinggi desktop</small></div>
+      <p style="margin:8px 0 0;font-size:13px">Dari <b>3481</b> px — turun 387 px (3,9 → 3,4 layar).</p></div>
+    <div class="card"><div class="kpi">3725<small>px tinggi ponsel</small></div>
+      <p style="margin:8px 0 0;font-size:13px">Dari <b>4127</b> px — turun 402 px (4,9 → 4,4 layar).</p></div>
+    <div class="card"><div class="kpi num-ok">4 / 2021<small>merah / lulus di suite penuh</small></div>
+      <p style="margin:8px 0 0;font-size:13px">Empat merah itu <b>pre-existing</b> (2 lingkungan, 2 terbuka lama) — sama persis dengan baseline sebelum kerja ini.</p></div>
+  </div>
+  <div class="note warn">
+    <b>Kenapa langkah 7 belum dikerjakan.</b> Rail menuntut
+    <code>candidate.astro</code> diubah jadi <code>.page-grid</code> +
+    <code>&lt;aside class="rail"&gt;</code>. Itu bisa dilakukan — pipeline 10
+    tahap memakai <code>flex-wrap</code>, jadi ia membungkus, bukan meluber. Tapi
+    kolom utama menyempit ke ±600 px dan kartu Status akan menambah baris, dan
+    <b>belum diukur</b> apakah hasilnya lebih baik daripada kolom tengah 846 px
+    untuk konten "status pribadi" seperti ini. Memasangnya tanpa mengukur dulu
+    berarti menukar satu masalah tampilan dengan masalah lain yang belum dilihat.
+  </div>
+  <div class="note ok">
+    <b>Yang sengaja dipertahankan.</b> Saat kartu "CV Progress" dihapus, dua test
+    merah — dan keduanya benar: keduanya memaku pesan VIP <b>"PERFECT ASJ
+    STUDENT"</b> dan pesan profil lengkap. Keduanya <b>dipindah</b> ke slot
+    tingkat tertinggi di meter baru, bukan dihapus bersama kartunya. Menghapus
+    test itu akan terlihat seperti "semua hijau" padahal satu fitur hilang.
+  </div>
+
   <!-- ══════════════════════════ 1. RINGKASAN ══════════════════════════ -->
   <h2>1. Ringkasan — kenapa terasa "kurang sreg"</h2>
   <p>
