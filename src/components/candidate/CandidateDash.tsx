@@ -710,13 +710,36 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                                 default 180 ms (`--default-transition-duration`). */}
                             <div class="w-full bg-gradient-to-r from-emerald-600 to-sky-500 h-1.5 rounded-full origin-left transition-transform motion-reduce:transition-none" style={`transform:scaleX(${progressPct / 100})`}></div>
                           </div>
-                          <div class="flex flex-wrap justify-between gap-x-2 gap-y-1 mt-1.5">
-                            {TAHAPAN_STEPS.map((nm, si) => {
-                              const done = si < stepIdx;
-                              const active = si === stepIdx;
-                              return <span key={si} class={`flex items-center gap-1 text-[11px] font-bold whitespace-nowrap ${done ? 'text-emerald-400' : active ? 'text-amber-400' : 'text-slate-500'}`}><Icon name={done ? 'check-circle' : 'circle'} class="flex-shrink-0" /> {nm}</span>;
-                            })}
-                          </div>
+                          {/* Rantai 10 tahap: dirender SEKALI, untuk lamaran
+                              terbaru saja (`sortedRiwayat` menurun, jadi `i === 0`
+                              adalah yang terbaru).
+
+                              Kenapa. Diukur 2026-09-30: baris label ini memakan
+                              **119 px dari 323 px** tinggi satu entri di ponsel —
+                              36%, anak terbesar di dalam kartu. Dan isinya IDENTIK
+                              untuk setiap entri, karena urutan tahap adalah sifat
+                              PROSES, bukan sifat satu lamaran. Tiga lamaran berarti
+                              tiga salinan daftar yang sama: 357 px dari 1002 px isi
+                              kotak gulir, di ponsel.
+
+                              Yang TIDAK dihapus: bar di atasnya (posisi) dan nama
+                              tahap di baris `txt_tahapan_saat_ini` (tahap aktif).
+                              Jadi "saya di mana" tetap terjawab di setiap entri;
+                              yang tersisa sekali hanyalah "urutannya apa saja".
+
+                              Kalau nanti urutannya perlu terlihat juga saat
+                              menggulir ke entri lama, pindahkan blok ini ke ATAS
+                              kotak gulir sebagai legenda bersama — jangan
+                              mengembalikannya per entri. */}
+                          {i === 0 && (
+                            <div class="flex flex-wrap justify-between gap-x-2 gap-y-1 mt-1.5">
+                              {TAHAPAN_STEPS.map((nm, si) => {
+                                const done = si < stepIdx;
+                                const active = si === stepIdx;
+                                return <span key={si} class={`flex items-center gap-1 text-[11px] font-bold whitespace-nowrap ${done ? 'text-emerald-400' : active ? 'text-amber-400' : 'text-slate-500'}`}><Icon name={done ? 'check-circle' : 'circle'} class="flex-shrink-0" /> {nm}</span>;
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
