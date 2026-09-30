@@ -28,12 +28,12 @@
     "shared/wa-rules.ts"
   ],
   "program": {
-    "rootNames": 509,
+    "rootNames": 527,
     "options": {}
   },
-  "universe": 3946,
+  "universe": 3968,
   "counts": {
-    "agreeBound": 3946,
+    "agreeBound": 3968,
     "agreeUnresolved": 0,
     "libNotLoaded": 0,
     "libCompilerBinds": 0,
@@ -42,16 +42,16 @@
     "libRefAgree": 1244,
     "libRefDisagree": 0,
     "libRefFramework": 1,
-    "skippedNonBindable": 1998,
+    "skippedNonBindable": 2030,
     "skippedJsxIntrinsic": 55,
-    "skippedAstroTemplate": 36,
+    "skippedAstroTemplate": 50,
     "offsetMismatch": 0,
     "disagreeBoundNoCompiler": 0,
     "disagreeNameMismatch": 0,
     "disagreeFalsePositive": 0
   },
   "identity": {
-    "match": 3865,
+    "match": 3887,
     "alias-vs-chase": 57,
     "merged-declaration": 22,
     "shadowing-disagreement": 2,
@@ -69,11 +69,11 @@
     },
     {
       "path": "src/components/admin/TabMail.tsx",
-      "universe": 219,
-      "agreeBound": 219,
+      "universe": 228,
+      "agreeBound": 228,
       "agreeUnresolved": 0,
       "lib": 61,
-      "skipped": 124,
+      "skipped": 125,
       "disagree": 0
     },
     {
@@ -150,11 +150,11 @@
     },
     {
       "path": "src/layouts/BaseLayout.astro",
-      "universe": 0,
-      "agreeBound": 0,
+      "universe": 13,
+      "agreeBound": 13,
       "agreeUnresolved": 0,
       "lib": 1,
-      "skipped": 12,
+      "skipped": 40,
       "disagree": 0
     },
     {
@@ -163,7 +163,7 @@
       "agreeBound": 0,
       "agreeUnresolved": 0,
       "lib": 0,
-      "skipped": 74,
+      "skipped": 91,
       "disagree": 0
     },
     {
@@ -288,15 +288,6 @@
   "identityExamples": [
     {
       "path": "src/components/admin/TabMail.tsx",
-      "line": 28,
-      "name": "useStore",
-      "role": "Callee",
-      "reason": "alias-vs-chase",
-      "indexer": "bound",
-      "compiler": "useStore → indexer src/components/admin/TabMail.tsx decls 216 · compiler <unmappable>:759"
-    },
-    {
-      "path": "src/components/admin/TabMail.tsx",
       "line": 29,
       "name": "useStore",
       "role": "Callee",
@@ -325,6 +316,15 @@
     {
       "path": "src/components/admin/TabMail.tsx",
       "line": 32,
+      "name": "useStore",
+      "role": "Callee",
+      "reason": "alias-vs-chase",
+      "indexer": "bound",
+      "compiler": "useStore → indexer src/components/admin/TabMail.tsx decls 216 · compiler <unmappable>:759"
+    },
+    {
+      "path": "src/components/admin/TabMail.tsx",
+      "line": 33,
       "name": "useState",
       "role": "Callee",
       "reason": "alias-vs-chase",
@@ -333,7 +333,7 @@
     },
     {
       "path": "src/components/admin/TabMail.tsx",
-      "line": 38,
+      "line": 39,
       "name": "useState",
       "role": "Callee",
       "reason": "alias-vs-chase",
@@ -342,7 +342,7 @@
     },
     {
       "path": "src/components/admin/TabMail.tsx",
-      "line": 40,
+      "line": 44,
       "name": "useEffect",
       "role": "Callee",
       "reason": "alias-vs-chase",
@@ -387,7 +387,7 @@
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 2201,
+      "line": 2270,
       "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",
@@ -396,7 +396,7 @@
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 2202,
+      "line": 2271,
       "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",
