@@ -505,7 +505,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         })}
       />
 
-      <div class="glass-panel p-5 md:p-6 rounded-panel shadow-2xl text-center max-w-4xl mx-auto relative overflow-hidden">
+      <div class="glass-panel p-5 md:p-6 rounded-panel text-center max-w-4xl mx-auto relative overflow-hidden">
         {/* ── Sapaan: h2 pertama halaman ──
             `h1` rute ini dipegang FormToolbar ("Dashboard Kandidat"), jadi sapaan
             tidak boleh jadi `h1` kedua — `e2e/test-headings.mjs` menuntut TEPAT
@@ -525,11 +525,11 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         {(data.isVIP || data.isSiswaASJ) && data.idKandidat && (
           <div class="max-w-sm mx-auto mb-8 relative group">
             <div class="absolute -inset-1 bg-gradient-to-r from-amber-400 to-yellow-600 rounded-panel blur opacity-25 group-hover:opacity-60 transition duration-1000"></div>
-            <div class="relative w-full h-56 md:h-64 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-panel p-6 shadow-2xl flex flex-col justify-between overflow-hidden text-left transform transition-transform duration-500 hover:scale-105">
+            <div class="relative w-full h-56 md:h-64 bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-panel p-6 flex flex-col justify-between overflow-hidden text-left transform transition-transform duration-500 hover:scale-105">
               <div class="absolute -right-10 -top-10 text-slate-800/50 text-[10rem] opacity-20 transform rotate-12 pointer-events-none"><Icon name="sun" /></div>
               <div class="flex justify-between items-start z-10">
                 <div class="flex items-center gap-3">
-                  <div class="w-11 h-11 bg-white rounded-full shadow-lg overflow-hidden flex items-center justify-center border border-slate-600">
+                  <div class="w-11 h-11 bg-white rounded-full overflow-hidden flex items-center justify-center border border-slate-600">
                     <img src="/icons/logo-asj.webp" alt="Logo ASJ" class="w-full h-full object-cover scale-110" />
                   </div>
                   <div>
@@ -546,7 +546,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                   <p class="text-slate-300 text-[11px] uppercase font-bold mt-3 mb-0.5">{t('ui.reg_id')}</p>
                   <p class="text-sky-300 font-mono text-sm font-bold">{data.idKandidat}</p>
                 </div>
-                <div class="bg-white p-2 rounded-xl shadow-lg border-2 border-slate-200">
+                <div class="bg-white p-2 rounded-xl border-2 border-slate-200">
                   <img src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(data.idKandidat || '')}`} alt="QR Code" class="w-20 h-20 md:w-24 md:h-24 object-contain" />
                 </div>
               </div>
@@ -587,7 +587,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
 
         {/* ── Jadwal Panel ── */}
         {data.jadwal.length > 0 && (
-          <div class="mb-6 md:mb-8 bg-amber-500/10 border border-amber-500/40 p-5 md:p-6 rounded-panel text-left shadow-xl relative overflow-hidden">
+          <div class="mb-6 md:mb-8 bg-amber-500/10 border border-amber-500/40 p-5 md:p-6 rounded-panel text-left relative overflow-hidden">
             <div class="absolute -right-4 -top-4 text-amber-500/10 text-7xl"><Icon name="calendar-alt" /></div>
             {/* `animate-pulse` REMOVED 2026-09-30 (§1.2 rejects kinetic type, and
                 §6.5 keeps motion out of anything that carries meaning). Three
@@ -610,7 +610,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
 
         {/* ── Catatan Admin ── */}
         {data.catatan && (
-          <div class="mb-6 md:mb-8 bg-sky-900/20 border border-sky-500/30 p-5 md:p-6 rounded-panel text-center shadow-lg">
+          <div class="mb-6 md:mb-8 bg-sky-900/20 border border-sky-500/30 p-5 md:p-6 rounded-panel text-center">
             <p class="text-xs text-sky-400 font-bold uppercase mb-2"><Icon name="envelope-open-text" class="mr-1" /> {t('ui.admin_eval_msg')}</p>
             <p class="text-sm text-slate-200 italic">"{data.catatan}"</p>
           </div>
@@ -629,7 +629,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             other consumer. */}
 
         {/* ── Status Lamaran Terkini (with tahapan pipeline) ── */}
-        <div class="mb-6 md:mb-8 bg-sky-500/10 border border-sky-500/30 p-5 md:p-6 rounded-panel shadow-xl relative overflow-hidden text-left">
+        <div class="mb-6 md:mb-8 bg-sky-500/10 border border-sky-500/30 p-5 md:p-6 rounded-panel relative overflow-hidden text-left">
           <div class="absolute -right-6 -top-10 text-sky-500/10 text-[10rem]"><Icon name="rocket" /></div>
           <div class="relative z-10">
             <h2 class="text-xl font-black text-accent-sky mb-2"><Icon name="bolt" class="mr-2 text-accent-amber" /> {t('ui.app_status_latest')}</h2>
@@ -671,13 +671,13 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                     const stepIdx = tahapanStepIndex(r.tahapan || r.status);
                     const progressPct = Math.round(((stepIdx + 1) / TAHAPAN_STEPS.length) * 100);
                     return (
-                      <div key={i} class="u-cv-auto u-cv-auto--card flex flex-col p-4 rounded-2xl border border-slate-700/50 bg-black/60 hover:bg-black/80 transition-colors shadow-lg mb-3 overflow-hidden">
+                      <div key={i} class="u-cv-auto u-cv-auto--card flex flex-col p-4 rounded-2xl border border-slate-700/50 bg-black/60 hover:bg-black/80 transition-colors mb-3 overflow-hidden">
                         <div class="flex flex-col sm:flex-row justify-between sm:items-start gap-3 mb-1">
                           <div class="min-w-0">
                             <div class="text-sm font-black text-white tracking-wide"><Icon name="building" class="text-slate-500 mr-2" />{r.jobCode || '-'} <span class="text-[11px] px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded ml-2 font-normal">{(r.tanggal || '').substring(0, 10)}</span></div>
                             {r.kategori && <div class="text-[11px] text-slate-400 mt-1"><Icon name="tag" class="mr-1 text-sky-500/70" /> {r.kategori}</div>}
                           </div>
-                          <span class={`inline-flex items-start gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] md:text-xs font-bold max-w-full break-words text-left shadow-sm ${statusBadgeClass(r.status)}`}>
+                          <span class={`inline-flex items-start gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] md:text-xs font-bold max-w-full break-words text-left ${statusBadgeClass(r.status)}`}>
                             <Icon name={statusIcon(r.status)} class="mt-0.5 flex-shrink-0" /> {statusText(r.status, isBiodataRow(r))}
                           </span>
                         </div>
@@ -852,7 +852,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                 };
                 input.click();
               }}
-              class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold shadow-lg transition-colors"
+              class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white rounded-full text-sm font-bold transition-colors"
             >
               <Icon name="upload" class="mr-2" />{t('button.upload_revise')}
             </button>
