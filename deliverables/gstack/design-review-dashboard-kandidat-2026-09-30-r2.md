@@ -413,7 +413,36 @@ dibalik kalau pemilik lebih suka urutan usulan awal.
 | `prefers-reduced-motion: reduce` | **0 elemen** pada opacity < 0,05 dari 22.833 px |
 | JavaScript mati | **halaman putih** — lihat F10 di bawah |
 
-### F10 · Enam rute aplikasi tidak punya keadaan "JavaScript mati" 🟡
+### F10 · Enam rute aplikasi tidak punya keadaan "JavaScript mati" 🟡 → ✅ **SELESAI `027bba4`**
+
+> **Diperbaiki 2026-09-30.** Keenam rute `client:only` sekarang merender banner
+> `<noscript>` sebagai anak pertama `<main>`. Terverifikasi di peramban, 12/12:
+> JS mati + 6 rute aplikasi → banner tampil; JS mati + 3 rute publik → tidak
+> tampil (halaman tetap ter-render); JS hidup + 9 rute → tidak tampil.
+>
+> **Dua hal terukur yang mahal untuk ditemukan ulang.**
+>
+> 1. **Token tema tidak bisa dipakai di keadaan tanpa-JS.** Percobaan pertama
+>    memakai `text-accent-amber` di atas `bg-amber-500/10` dan terukur
+>    **1,53:1** (ambang 4,5) — praktis tidak terbaca. Sebabnya: tanpa skrip,
+>    tidak ada yang pernah menulis `data-theme` (diverifikasi: atributnya
+>    **absen**), sehingga nilai token dark-first yang berlaku sementara kanvas
+>    ter-render terang. Keadaan tanpa-JS adalah tepat keadaan ketika sistem tema
+>    tidak bisa menyelesaikan dirinya sendiri, jadi banner tidak boleh
+>    bergantung padanya. Dipakai kelas palet tetap
+>    (`border-amber-400 bg-amber-100 text-amber-900`) → **8,13:1**.
+> 2. **`<noscript>` TIDAK bisa digerbangi ekspresi di Astro.** Baik
+>    `{requiresJs && (<noscript>…</noscript>)}` maupun versi yang dibungkus
+>    `<div class="contents">` **tetap mengeluarkan elemennya di SEMUA rute**,
+>    termasuk rute publik yang tidak boleh menampilkannya. `data-debug=
+>    {String(requiresJs)}` membuktikan propnya benar (`false` di `/` dan
+>    `/loker`, `true` di `/candidate` dan `/admin`) sementara elemennya tetap
+>    ter-render di keempatnya. Solusinya: taruh langsung di halaman yang
+>    membutuhkannya, tanpa kondisi. Pendekatan prop bersama di `BaseLayout`
+>    ditulis, terukur salah, lalu dikembalikan.
+
+<details>
+<summary>Pengukuran awal (disimpan supaya tidak diulang)</summary>
 
 **Diukur 2026-09-30, setelah langkah 7–8 selesai.** Bukan akibat perubahan tata
 letak — sifatnya sudah ada sebelumnya, tetapi baru terukur sekarang.
@@ -459,6 +488,8 @@ ditangani `translateDataLang`) **dijalankan oleh skrip** — jadi ia tidak bisa
 menerjemahkan apa pun saat skrip memang tidak jalan. Artinya `<noscript>` hanya
 bisa menampilkan SATU bahasa, dan itu keputusan produk (Indonesia sebagai default
 adalah pilihan yang masuk akal). Belum dikerjakan — menunggu keputusan itu.
+
+</details>
 
 ---
 
