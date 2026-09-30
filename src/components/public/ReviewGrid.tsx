@@ -62,7 +62,7 @@ export default function ReviewGrid({ reviews, class: className }: Props) {
           <li
             key={review.slot}
             data-filled={filled ? 'true' : 'false'}
-            class="u-surface-depth flex flex-col gap-3 rounded-card border border-line bg-surface p-5 min-h-[12rem]"
+            class="u-surface-depth flex flex-col gap-3 rounded-card border border-line bg-surface p-5 md:p-6 min-h-[12rem]"
           >
             <span class="flex items-center justify-between gap-3">
               <Stars rating={review.rating} />

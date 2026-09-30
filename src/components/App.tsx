@@ -267,9 +267,23 @@ export default function App(
      "src/components/App.tsx: 17 -> 20" with noExplicitAny +1). Lifting it into one
      const keeps the count where it was and removes the chance of the two copies
      drifting. The size is the EXISTING one, so every route that already renders
-     this header is unchanged; only the new hero variant adopts it. */
+     this header is unchanged; only the new hero variant adopts it.
+
+     LOCAL FILE AS OF 2026-09-30, and the error handler went with the hotlink.
+     This pointed at
+     `…supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp`
+     — 66.140 B, 500x500, drawn at 48/64 px, so **7,8x more pixels than any screen
+     could show**, fetched from a third-party CDN on EVERY page. `Footer.astro` had
+     already made exactly this swap, and recorded the reasoning: `/icons/logo-asj.webp`
+     is the same emblem WITH an alpha channel, so it drops onto the header gradient
+     with no white box, and it is already committed and already published — no new
+     asset, no new §11.2 decision. Verified by rendering both side by side before the
+     swap, not assumed from the name.
+     `onError` was there so a failed CDN fetch would not show a broken icon; a file
+     that ships with the build cannot fail that way, and silently hiding the brand
+     mark is the wrong behaviour for it. Removing it also drops one `any`. */
   const brandLogo = (
-    <img id="logo-asj" src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-12 h-12 md:w-16 md:h-16 shrink-0 object-contain drop-shadow-2xl" onError={(e: any) => { e.target.style.display = "none" }} />
+    <img id="logo-asj" src="/icons/logo-asj.webp" alt="Logo ASJ" class="w-12 h-12 md:w-16 md:h-16 shrink-0 object-contain drop-shadow-2xl" />
   );
 
   return (

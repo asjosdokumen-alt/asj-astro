@@ -90,10 +90,34 @@ export interface GalleryItem {
    * Intrinsic pixel size. Declared so the browser can reserve the box before the
    * image arrives — a gallery without intrinsic dimensions reflows the whole page
    * on load, which is the layout shift the hero was already measured for.
+   *
+   * ⚠ IT MUST EQUAL THE FILE ON DISK, and that is why the numbers here SHRANK on
+   * 2026-09-30. They are not historical records; they are a claim about the
+   * current bytes, and `gallery.test.ts` fails if the claim stops being true.
    */
   width: number;
   height: number;
 }
+
+/**
+ * THE FILES WERE RE-ENCODED TO THE SIZE THEY ARE DRAWN AT (2026-09-30).
+ *
+ * Measured before: the landing page cost **2.481 KB over the wire, 2.116 KB of
+ * it images (85,3 %)** — see `deliverables/gstack/audit-landing-2026-09-30.md`.
+ * A tile here is drawn at **394 px** (341 px at 390), and the files backing it
+ * were **1400–1600 px wide**: 3,2–4,7x more pixels than any visitor could see,
+ * because there is no lightbox and therefore no larger surface they were being
+ * reserved for (see the "NO LIGHTBOX" note in `GalleryGrid.tsx`).
+ *
+ * They now carry 800 px (1000 px for the one photo also drawn at 499 px in
+ * "Tentang Kami"), which still covers a 2x screen at the widest tile. The six
+ * files went **1.021 KB -> 389 KB**.
+ *
+ * WHAT DID NOT CHANGE: which photographs are published, their order, their alt
+ * text, their captions, and the consent rulings recorded beside them. Only the
+ * number of bytes carrying them. The originals are recoverable from git history
+ * — the commit before this one holds the full-resolution files.
+ */
 
 export const GALLERY: readonly GalleryItem[] = Object.freeze([
   {
@@ -101,8 +125,8 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     alt: 'Peserta dan staf berfoto bersama di depan kantor LPK Amanah Sakura Japan dengan seragam batik.',
     captionKey: 'profile.gal_gedung',
     caption: 'Kantor & peserta di Ponorogo',
-    width: 1600,
-    height: 1066,
+    width: 1000,
+    height: 666,
   },
   {
     // CONSENT — ANSWERED BY THE OWNER, 2026-09-23. The owner holds full authority
@@ -117,24 +141,24 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     alt: 'Staf pengajar dan pengurus LPK Amanah Sakura Japan berfoto bersama.',
     captionKey: 'profile.gal_staf',
     caption: 'Tim pengajar dan pengurus',
-    width: 1400,
-    height: 1141,
+    width: 800,
+    height: 652,
   },
   {
     src: '/assets/fasilitas-kelas-bahasa-2.webp',
     alt: 'Peserta pria berbaris rapi mengenakan kemeja putih dan dasi hitam dengan nomor dada, siap sesi wawancara.',
     captionKey: 'profile.gal_kelas',
     caption: 'Persiapan wawancara kerja',
-    width: 1139,
-    height: 738,
+    width: 800,
+    height: 518,
   },
   {
     src: '/assets/fasilitas-ruang-tamu-1.webp',
     alt: 'Empat peserta menunjukkan dokumen di depan dinding bertuliskan LPK Amanah Sakura Japan.',
     captionKey: 'profile.gal_tamu',
     caption: 'Penyerahan dokumen peserta',
-    width: 1400,
-    height: 1050,
+    width: 800,
+    height: 600,
   },
   {
     // CONSENT — ANSWERED BY THE OWNER, 2026-09-23. Publishable by the owner's
@@ -145,8 +169,8 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     alt: 'Peserta pelatihan berfoto bersama mengenakan seragam lembaga.',
     captionKey: 'profile.gal_siswa',
     caption: 'Angkatan peserta pelatihan',
-    width: 1400,
-    height: 766,
+    width: 800,
+    height: 438,
   },
   {
     // CONSENT — ANSWERED BY THE OWNER, 2026-09-23. Publishable by the owner's
@@ -206,8 +230,8 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     alt: 'Tiga peserta berdiri memegang dokumen masing-masing di depan dinding bertuliskan LPK Amanah Sakura Japan.',
     captionKey: 'profile.gal_layanan',
     caption: 'Peserta dengan dokumen',
-    width: 1400,
-    height: 1050,
+    width: 800,
+    height: 600,
   },
 ]);
 

@@ -599,7 +599,7 @@ export default function MasterFullForm() {
         <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/dark_tokyo_banner.webp" class="absolute inset-0 w-full h-full object-cover brightness-[.35]" alt="" />
         <div class="absolute inset-0 bg-gradient-to-b from-black/25 to-canvas"></div>
         <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-full z-10">
-          <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" class="w-20 h-20 rounded-full mx-auto shadow-[0_10px_25px_rgba(0,0,0,.5)] object-contain" alt="Logo ASJ" />
+          <img src="/icons/logo-asj.webp" class="w-20 h-20 rounded-full mx-auto shadow-[0_10px_25px_rgba(0,0,0,.5)] object-contain" alt="Logo ASJ" />
           <div class="text-2xl font-black mt-2 uppercase text-accent-sky">{t("master.form_brand")}</div>
           <div class="text-[11px] mt-1 text-fg-muted" style={{ letterSpacing: 2 }}>{t("master.form_sub")}</div>
         </div>

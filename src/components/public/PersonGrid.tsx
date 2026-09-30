@@ -49,7 +49,7 @@ export default function PersonGrid({ people, class: className }: Props) {
         return (
           <li
             key={person.role.key}
-            class="flex flex-col gap-1 rounded-card border border-line bg-surface p-5"
+            class="flex flex-col gap-1 rounded-card border border-line bg-surface p-5 md:p-6"
           >
             <span class="text-card-title font-bold text-fg">
               {name === null ? (
@@ -60,7 +60,7 @@ export default function PersonGrid({ people, class: className }: Props) {
                 <span data-lang={name.key}>{name.text}</span>
               )}
             </span>
-            <span data-lang={person.role.key} class="text-body-sm text-accent font-medium">
+            <span data-lang={person.role.key} class="text-body-sm text-accent font-semibold">
               {person.role.text}
             </span>
             {person.note ? (

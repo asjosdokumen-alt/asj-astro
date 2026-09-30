@@ -22,6 +22,16 @@
  * the accessible name or the focus ring. The triangle is an affordance users
  * already recognise; it does not need to become a design element.
  *
+ * ── WHY THE ANSWER HAS A MEASURE AND THE QUESTION DOES NOT ─────────────────
+ * Measured 2026-09-30: without a cap the answer ran the full container —
+ * **1.173 px at 1280**, about 180 characters on one line, on the longest entry
+ * 265 characters. `DESIGN.md` §3.3 caps a body sentence at 15–20 words, which a
+ * 180-character line cannot honour. `max-w-prose` (65ch) puts it back near the
+ * 45–75 character band a reader can actually track.
+ *
+ * The QUESTION stays full width on purpose: it is the click target, and a target
+ * that shrinks with its text is a worse target. Only the prose is capped.
+ *
  * ── WHY .tsx AND NOT .astro ────────────────────────────────────────────────
  * It iterates, and iterating inside an `.astro` template breaks the indexer's
  * zero-unresolved invariant — the same reason recorded in CheckList.tsx,
@@ -49,7 +59,7 @@ export default function FaqList({ items, class: className }: Props) {
             <span data-lang={item.question.key}>{item.question.text}</span>
           </summary>
           <p
-            class="pb-4 pl-6 text-body-sm leading-relaxed text-fg-muted"
+            class="pb-4 pl-6 pr-4 text-body-sm leading-relaxed text-fg-muted max-w-prose"
             data-lang={item.answer.key}
           >
             {item.answer.text}

@@ -58,14 +58,15 @@ export default function PartnerGrid({ partners, class: className }: Props) {
           <li
             key={partner.slot}
             data-filled={filled ? 'true' : 'false'}
-            class="u-surface-depth flex flex-col items-center justify-center gap-3 rounded-card border border-line bg-surface p-5 text-center min-h-[8.5rem]"
+            class="u-surface-depth flex flex-col items-center justify-center gap-3 rounded-card border border-line bg-surface p-5 md:p-6 text-center min-h-[8.5rem]"
           >
             {partner.logo && filled ? (
               /* A BOUNDED BOX, NOT A FIXED HEIGHT — and the second bound is the
                  whole point. `h-12 w-auto` sizes six logos by HEIGHT alone, so
                  the rendered widths follow each mark's own aspect ratio: the
-                 widest mark here (human.webp, 512x119, ratio 4.30) would render
-                 ~206 px wide while the near-square mark (hibiki.webp, 512x529,
+                 widest mark here (human.webp, 240x56 after the 2026-09-30 resize,
+                 ratio 4.29; it was 512x119, ratio 4.30) would render
+                 ~206 px wide while the near-square mark (hibiki.webp, 240x248,
                  ratio 0.97) renders 48 px — a 4x spread in visual weight within
                  one row, and the wide one would overflow the 120 px dashed box it
                  replaces. `max-w-[7.5rem] max-h-12` bounds BOTH axes to the slot
