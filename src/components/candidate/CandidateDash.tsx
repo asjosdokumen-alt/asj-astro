@@ -589,7 +589,13 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
         {data.jadwal.length > 0 && (
           <div class="mb-6 md:mb-8 bg-amber-500/10 border border-amber-500/40 p-5 md:p-6 rounded-panel text-left shadow-xl relative overflow-hidden">
             <div class="absolute -right-4 -top-4 text-amber-500/10 text-7xl"><Icon name="calendar-alt" /></div>
-            <h2 class="relative z-10 text-lg font-black text-accent-amber mb-4"><Icon name="calendar-check" class="mr-2 text-accent-red animate-pulse" /> {t('ui.your_schedule')}</h2>
+            {/* `animate-pulse` REMOVED 2026-09-30 (§1.2 rejects kinetic type, and
+                §6.5 keeps motion out of anything that carries meaning). Three
+                elements pulsed `infinite 2s`: this icon, the Daftar Lamaran
+                icon, and — worst — a whole sentence of instruction text. A
+                heading icon that blinks forever competes with the heading for
+                attention and never stops. The icons keep their accent colour. */}
+            <h2 class="relative z-10 text-lg font-black text-accent-amber mb-4"><Icon name="calendar-check" class="mr-2 text-accent-red" /> {t('ui.your_schedule')}</h2>
             <div class="relative z-10 space-y-3">
               {data.jadwal.map((j, i) => (
                 <div key={i} class="bg-surface-raised/60 border border-amber-500/30 rounded-xl p-4">
@@ -634,7 +640,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                     atasnya (ui.app_status_latest), jadi outline terbaca
                     "Status Lamaran Terkini" dua kali berurutan. Sekarang ia punya
                     label sendiri yang menyebut isinya: daftar loker yang dilamar. */}
-                <h3 class="text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400 animate-pulse" /> {t('ui.app_list_title')}</h3>
+                <h3 class="text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400" /> {t('ui.app_list_title')}</h3>
                 {/* Loker pills */}
                 {uniqueLokers.length > 1 && (
                   <div class="flex flex-wrap gap-1.5 mb-3">
@@ -875,7 +881,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             <button data-testid="cmt-pemberkasan" onClick={() => setShowPemberkasan(true)} class="w-full py-4 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-panel font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
               <Icon name="folder-open" class="mr-2" />{t('ui.complete_berkas_biodata')}
             </button>
-            <p class="text-sm text-emerald-400 mt-3 font-bold animate-pulse text-center"><Icon name="info-circle" class="mr-1" /> {t('ui.berkas_stage_hint')}</p>
+            <p class="text-sm text-emerald-400 mt-3 font-bold text-center"><Icon name="info-circle" class="mr-1" /> {t('ui.berkas_stage_hint')}</p>
           </div>
         )}
 
