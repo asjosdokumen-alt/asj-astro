@@ -259,7 +259,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
       onClick={onBackdropClick}
     >
       <div
-        class="glass-panel w-full md:max-w-2xl h-[90vh] md:h-[80vh] md:rounded-panel rounded-t-panel shadow-2xl relative border-t border-violet-500/50 flex flex-col overflow-hidden bg-slate-950"
+        class="glass-panel w-full md:max-w-2xl h-[90vh] md:h-[80vh] md:rounded-panel rounded-t-panel relative border-t border-violet-500/50 flex flex-col overflow-hidden bg-slate-950"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -270,7 +270,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
             </div>
             <div>
               <h3 class="text-base font-black text-white tracking-wide">Jeklin Sensei</h3>
-              <p class="text-xs text-violet-300 font-bold uppercase tracking-widest animate-pulse">
+              <p class="text-xs text-violet-300 font-bold uppercase tracking-widest">
                 {t('ui.interview_sim')}
               </p>
             </div>
@@ -278,7 +278,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
           <button
             onClick={onClose}
             aria-label={t('public.close')}
-            class="text-slate-400 hover:text-white transition"
+            class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition"
           >
             <Icon name="times" class="text-2xl" />
           </button>
@@ -294,7 +294,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
             return m.role === 'user' ? (
               <div key={i} class="flex justify-end gap-3 fade-in">
                 <div
-                  class="bg-violet-600 text-white text-sm p-3.5 rounded-2xl rounded-tr-none shadow-md max-w-[85%]"
+                  class="bg-violet-600 text-white text-sm p-3.5 rounded-2xl rounded-tr-none max-w-[85%]"
                   data-testid="iv-user-bubble"
                 >
                   <p class="whitespace-pre-wrap m-0 leading-relaxed">
@@ -306,11 +306,11 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
               </div>
             ) : (
               <div key={i} class="flex items-start gap-3 fade-in">
-                <div class="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center shadow-sm border border-violet-400 flex-shrink-0 text-slate-100 text-sm">
+                <div class="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center border border-violet-400 flex-shrink-0 text-slate-100 text-sm">
                   <Icon name="microphone-alt" />
                 </div>
                 <div
-                  class="bg-slate-800 text-slate-200 text-sm p-3.5 rounded-2xl rounded-tl-none shadow-md border border-violet-500/30 max-w-[85%]"
+                  class="bg-slate-800 text-slate-200 text-sm p-3.5 rounded-2xl rounded-tl-none border border-violet-500/30 max-w-[85%]"
                   data-testid="iv-ai-bubble"
                 >
                   <p class="whitespace-pre-wrap m-0 leading-relaxed">
@@ -324,10 +324,10 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
           })}
           {busy && (
             <div class="flex items-start gap-3">
-              <div class="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center shadow-sm border border-violet-400 flex-shrink-0 text-slate-100 text-sm">
+              <div class="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center border border-violet-400 flex-shrink-0 text-slate-100 text-sm">
                 <Icon name="microphone-alt" />
               </div>
-              <div class="bg-slate-800 p-3.5 rounded-2xl rounded-tl-none shadow-md border border-violet-500/30">
+              <div class="bg-slate-800 p-3.5 rounded-2xl rounded-tl-none border border-violet-500/30">
                 <div class="flex items-center gap-2">
                   <div class="flex gap-1.5 items-center">
                     <span class="w-2 h-2 bg-violet-400/80 rounded-full animate-bounce" />
@@ -366,7 +366,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
               disabled={!!busy}
               title={t('ui.ai_interview_done_btn')}
               aria-label={t('ui.ai_interview_done_btn')}
-              class="w-14 h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl flex flex-col items-center justify-center shadow-lg transition active:scale-95 flex-shrink-0 disabled:opacity-50"
+              class="w-14 h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl flex flex-col items-center justify-center transition active:scale-95 flex-shrink-0 disabled:opacity-50"
             >
               <Icon name="check-double" class="text-lg" />
               <span class="text-[7px] font-black leading-none mt-0.5">{t('ui.ai_interview_done_text')}</span>
@@ -375,7 +375,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
               onClick={sendMessage}
               disabled={!!busy}
               aria-label={t('ui.iv_send')}
-              class="w-14 h-14 bg-violet-600 hover:bg-violet-500 text-white rounded-xl flex items-center justify-center shadow-lg transition active:scale-95 flex-shrink-0 disabled:opacity-50"
+              class="w-14 h-14 bg-violet-600 hover:bg-violet-500 text-white rounded-xl flex items-center justify-center transition active:scale-95 flex-shrink-0 disabled:opacity-50"
             >
               <Icon name="paper-plane" class="text-xl" />
             </button>

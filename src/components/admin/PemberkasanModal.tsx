@@ -154,7 +154,7 @@ function FileInput({ def, statusNode, disabled }: { def: BerkasDef; statusNode: 
         id={`berkas-${def.key}`}
         accept={def.accept}
         disabled={disabled}
-        class={`w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold ${def.amber
+        class={`w-full min-h-12 text-xs text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold ${def.amber
           ? "file:bg-amber-900/40 file:text-amber-300"
           : "file:bg-slate-700 file:text-white"
         } disabled:opacity-40`}
@@ -180,7 +180,7 @@ function Panel({
 }) {
   const c = PANEL_TONE[tone];
   return (
-    <div class={`bg-black/40 border ${c.border} rounded-[2rem] overflow-hidden text-left shadow-lg`}>
+    <div class={`bg-black/40 border ${c.border} rounded-[2rem] overflow-hidden text-left`}>
       <button
         type="button"
         onClick={onToggle}
@@ -228,7 +228,7 @@ function BioInput({
           rows={2}
           value={value}
           onInput={(e: Event) => onChange((e.target as HTMLTextAreaElement).value)}
-          class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500"
+          class="w-full min-h-11 p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500"
         />
       ) : (
         <input
@@ -236,7 +236,7 @@ function BioInput({
           type={type}
           value={value}
           onInput={(e: Event) => onChange((e.target as HTMLInputElement).value)}
-          class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500"
+          class="w-full min-h-11 p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500"
         />
       )}
     </div>
@@ -504,7 +504,7 @@ export default function PemberkasanModal({
         <button
           type="button"
           onClick={onClose}
-          class="absolute top-6 right-6 text-slate-400 hover:text-white transition z-[100]"
+          class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-6 right-6 text-slate-400 hover:text-white transition z-[100]"
           aria-label={t("public.close")}
         >
           <Icon name="times" class="text-2xl" />
@@ -550,7 +550,7 @@ export default function PemberkasanModal({
                   type="button"
                   onClick={() => handleUpload(1)}
                   disabled={uploading !== null}
-                  class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg transition mt-4 disabled:opacity-50"
+                  class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition mt-4 disabled:opacity-50"
                 >
                   <Icon name="cloud-upload-alt" class="mr-1" />
                   {uploading === 1 ? t("ui.uploading") : t("ui.upload_berkas_tahap_1")}
@@ -575,7 +575,7 @@ export default function PemberkasanModal({
                   type="button"
                   onClick={() => handleUpload(2)}
                   disabled={uploading !== null}
-                  class="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold shadow-lg transition mt-4 disabled:opacity-50"
+                  class="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold transition mt-4 disabled:opacity-50"
                 >
                   <Icon name="cloud-upload-alt" class="mr-1" />
                   {uploading === 2 ? t("ui.uploading") : t("ui.upload_berkas_tahap_2")}
@@ -626,7 +626,7 @@ export default function PemberkasanModal({
                   type="button"
                   onClick={handleSaveBio}
                   disabled={savingBio || uploading !== null}
-                  class="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold shadow-lg transition mt-4 text-sm disabled:opacity-50"
+                  class="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold transition mt-4 text-sm disabled:opacity-50"
                 >
                   <Icon name="save" class="mr-1" />
                   {savingBio ? t("ui.saving") : t("ui.save_biodata")}

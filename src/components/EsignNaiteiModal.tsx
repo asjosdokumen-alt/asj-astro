@@ -234,7 +234,7 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa, closing = false 
         <button
           type="button"
           onClick={() => openDraw(field)}
-          class={`px-3 py-1.5 ${tone === "sky" ? "bg-sky-600 hover:bg-sky-500" : "bg-amber-600 hover:bg-amber-500"} text-white rounded text-xs font-bold transition shadow mt-auto`}
+          class={`min-h-11 px-3 py-1.5 ${tone === "sky" ? "bg-sky-600 hover:bg-sky-500" : "bg-amber-600 hover:bg-amber-500"} text-white rounded text-xs font-bold transition mt-auto`}
         >
           <Icon name="pen" class="mr-1" />
           {btn}
@@ -267,11 +267,11 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa, closing = false 
         ref={containerRef}
         onClick={onBackdropClick}
       >
-        <div class="glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-lg shadow-2xl relative border border-rose-500/50 max-h-[90vh] u-scroll-area custom-scrollbar">
+        <div class="glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-lg relative border border-rose-500/50 max-h-[90vh] u-scroll-area custom-scrollbar">
           <button
             type="button"
             onClick={onClose}
-            class="absolute top-5 right-6 text-slate-400 hover:text-white transition z-[100]"
+            class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-5 right-6 text-slate-400 hover:text-white transition z-[100]"
             aria-label={t("public.close")}
           >
             <Icon name="times" class="text-2xl" />
@@ -305,7 +305,7 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa, closing = false 
   // ── Layar gambar penuh (full-screen canvas) ──────────────────────────────
   return (
     <div class="fixed inset-0 u-modal-shell bg-slate-950 z-[999] flex flex-col">
-      <div class="px-4 py-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center shadow-md">
+      <div class="px-4 py-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
         <div>
           <h3 class="text-sm font-bold text-white uppercase tracking-wider">{drawField.drawTitle}</h3>
           <p class="text-[11px] text-slate-400">
