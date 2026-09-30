@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="id" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review r2 — Dashboard Kandidat /candidate</title>
+<style>
+  :root{
+    --canvas:#020617; --surface:#0f172a; --raised:#1e293b; --line:#1e293b; --line-strong:#334155;
+    --fg:#e2e8f0; --fg-muted:#94a3b8; --fg-subtle:#8595aa;
+    --emerald:#34d399; --sky:#38bdf8; --amber:#fbbf24; --rose:#fb7185; --violet:#a78bfa;
+    --bad:#f87171; --warn:#fbbf24; --ok:#34d399;
+    --radius:16px; --radius-sm:10px;
+  }
+  [data-theme="light"]{
+    --canvas:#f7f6f8; --surface:#ffffff; --raised:#f1eef2; --line:#e4dfe4; --line-strong:#cfc8d0;
+    --fg:#1f1d1c; --fg-muted:#4a4642; --fg-subtle:#726a80;
+    --emerald:#047857; --sky:#0369a1; --amber:#b45309; --rose:#be123c; --violet:#6d28d9;
+    --bad:#b91c1c; --warn:#b45309; --ok:#047857;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--canvas); color:var(--fg);
+    font:400 15px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    padding:32px 20px 80px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  header.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:8px}
+  h1{font-size:26px;line-height:1.2;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--fg-muted);font-size:13px;margin:0}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--fg-subtle);margin:0 0 6px}
+  button.toggle{
+    background:var(--raised);color:var(--fg);border:1px solid var(--line-strong);
+    border-radius:9999px;padding:9px 16px;font:700 12px/1 Inter,sans-serif;cursor:pointer;white-space:nowrap;
+  }
+  button.toggle:hover{border-color:var(--sky)}
+  h2{font-size:19px;margin:44px 0 6px;letter-spacing:-.01em}
+  h2 .n{color:var(--fg-subtle);font-weight:400;margin-right:8px}
+  h3{font-size:15px;margin:26px 0 8px}
+  p{margin:0 0 12px}
+  .lead{color:var(--fg-muted);font-size:14px;margin-bottom:16px}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin:16px 0}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin:12px 0}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-subtle)}
+  td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  tr:last-child td{border-bottom:0}
+  code{font:600 12.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--raised);padding:2px 6px;border-radius:6px;color:var(--fg)}
+  .pill{display:inline-block;font:700 10.5px/1 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:9999px;border:1px solid}
+  .p-high{color:var(--bad);border-color:var(--bad)}
+  .p-med{color:var(--warn);border-color:var(--warn)}
+  .p-low{color:var(--fg-subtle);border-color:var(--line-strong)}
+  .p-ok{color:var(--ok);border-color:var(--ok)}
+  .good{color:var(--ok);font-weight:700}
+  .bad{color:var(--bad);font-weight:700}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  @media(max-width:760px){.cols{grid-template-columns:1fr}}
+  .fig{margin:0}
+  .fig figcaption{font-size:12px;color:var(--fg-muted);margin-top:10px}
+  .fig figcaption b{color:var(--fg)}
+  svg{display:block;width:100%;height:auto}
+  .kv{font-size:13px;color:var(--fg-muted)}
+  .note{border-left:3px solid var(--sky);padding:10px 0 10px 14px;margin:16px 0;color:var(--fg-muted);font-size:13.5px}
+  .note.warnbox{border-left-color:var(--warn)}
+  .note.badbox{border-left-color:var(--bad)}
+  ul{margin:0 0 12px;padding-left:20px}
+  li{margin:4px 0}
+  .tag{font:700 11px/1 ui-monospace,monospace;color:var(--fg-subtle)}
+  footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--fg-subtle);font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <p class="eyebrow">Design review r2 · 2026-09-30</p>
+      <h1>Dashboard Kandidat <code>/candidate</code></h1>
+      <p class="sub">Diukur di <code>astro dev</code>, chromium headless · 1280×900 &amp; 390×844 · tema gelap &amp; terang · fixture sesi + <code>/.netlify/functions/**</code> di-fulfill lokal</p>
+    </div>
+    <button class="toggle" id="t" type="button">☀ Tema terang</button>
+  </header>
+
+  <div class="note">
+    Review <b>kedua</b> hari ini. Yang pertama (02:07) menutup 6 langkah lewat commit
+    <code>04a204b</code>…<code>58efe33</code>. Dokumen ini mengukur <b>keadaan sesudahnya</b>
+    dan mengusulkan apa yang masih tersisa.
+  </div>
+
+  <h2><span class="n">1</span>Yang sudah membaik (terukur)</h2>
+  <p class="lead">Angka "sebelum" dari dokumen review 02:07 — bukan diukur ulang.</p>
+  <table>
+    <thead><tr><th>Metrik</th><th class="num">Sebelum</th><th class="num">Sekarang</th><th class="num">Δ</th></tr></thead>
+    <tbody>
+      <tr><td>String persen di DOM</td><td class="num">7</td><td class="num good">4</td><td class="num">−3</td></tr>
+      <tr><td>Bar progres</td><td class="num">12</td><td class="num good">4</td><td class="num">−8</td></tr>
+      <tr><td>Tinggi halaman · desktop</td><td class="num">3481 px</td><td class="num good">3094 px</td><td class="num">−387 (−11%)</td></tr>
+      <tr><td>Tinggi halaman · ponsel</td><td class="num">4127 px</td><td class="num good">3725 px</td><td class="num">−402 (−10%)</td></tr>
+      <tr><td>Hex literal di <code>components/candidate/</code></td><td class="num">1</td><td class="num good">0</td><td class="num">−1</td></tr>
+      <tr><td>Gradien gelap bocor ke tema terang</td><td class="num">2 kartu</td><td class="num good">0</td><td class="num">−2</td></tr>
+      <tr><td>Outline heading</td><td class="num">0 h1 · 0 h2</td><td class="num good">1 h1 · 6 h2 · 2 h3</td><td class="num">✅</td></tr>
+      <tr><td>Checklist 18 dokumen</td><td class="num">442 px</td><td class="num good">176 px</td><td class="num">−266</td></tr>
+      <tr><td><code>role="progressbar"</code></td><td class="num">1</td><td class="num good">4 (semua bernama)</td><td class="num">+3</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note warnbox">
+    <b>Satu temuan palsu yang hampir saya laporkan.</b> Di tema terang, teks kartu siswa
+    terhitung <code>rgb(31,29,28)</code> — hampir hitam — di atas kartu yang tampak gelap.
+    Terlihat seperti bug "teks tak terbaca". <b>Itu salah saya.</b> Shim tema terang tidak
+    hanya membalik <code>.text-white</code>; ia juga <b>memetakan ulang gradien kartunya</b>
+    (<code>from-slate-900 via-slate-800</code> → <code>rgba(243,239,243,.95)…rgb(236,231,236)</code>).
+    Kartunya memang jadi kartu terang; kontrasnya lolos di kedua tema.
+  </div>
+
+  <h2><span class="n">2</span>F1 · Lima permukaan bersarang — biang "kartunya kek redundant"</h2>
+  <p class="lead">Ini temuan utama, dan bukan soal warna. Rantai bersarang yang terukur, dari <code>main</code> ke elemen terdalam:</p>
+
+  <div class="cols">
+    <figure class="fig">
+      <svg viewBox="0 0 460 320" role="img" aria-label="Wireframe bersarang sekarang: lima tepi kiri">
+        <rect x="8" y="8" width="440" height="300" rx="12" fill="none" stroke="var(--line-strong)" stroke-dasharray="4 4"/>
+        <text x="8" y="302" font-size="10" fill="var(--fg-subtle)" font-family="monospace">main · 1265 px</text>
+
+        <rect x="46" y="24" width="384" height="268" rx="12" fill="var(--surface)" stroke="var(--bad)" stroke-width="1.5"/>
+        <text x="52" y="40" font-size="9.5" fill="var(--bad)" font-family="monospace">x=185 · w=896 · r24 · shadow-2xl</text>
+        <text x="52" y="52" font-size="9.5" fill="var(--fg-subtle)" font-family="monospace">.glass-panel</text>
+
+        <rect x="60" y="62" width="356" height="218" rx="12" fill="var(--raised)" stroke="var(--bad)" stroke-width="1.5"/>
+        <text x="66" y="78" font-size="9.5" fill="var(--bad)" font-family="monospace">x=210 · w=846 · shadow-xl</text>
+
+        <rect x="74" y="86" width="328" height="184" rx="12" fill="none" stroke="var(--bad)" stroke-width="1.5"/>
+        <text x="80" y="102" font-size="9.5" fill="var(--bad)" font-family="monospace">x=235 · w=796 · shadow-lg</text>
+
+        <rect x="88" y="110" width="300" height="150" rx="9" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text x="94" y="126" font-size="9.5" fill="var(--fg-muted)" font-family="monospace">x=240 · w=786</text>
+
+        <rect x="102" y="134" width="272" height="114" rx="9" fill="var(--raised)" stroke="var(--bad)" stroke-width="1.5"/>
+        <text x="108" y="150" font-size="9.5" fill="var(--bad)" font-family="monospace">x=264 · w=720 · shadow-lg</text>
+        <rect x="108" y="160" width="260" height="8" rx="4" fill="var(--line-strong)"/>
+        <rect x="108" y="174" width="180" height="8" rx="4" fill="var(--line-strong)"/>
+        <rect x="108" y="188" width="230" height="8" rx="4" fill="var(--line-strong)"/>
+        <rect x="108" y="202" width="140" height="8" rx="4" fill="var(--line-strong)"/>
+        <rect x="108" y="216" width="200" height="8" rx="4" fill="var(--line-strong)"/>
+
+        <line x1="46" y1="308" x2="102" y2="308" stroke="var(--bad)" stroke-width="1.5"/>
+        <text x="120" y="312" font-size="10" fill="var(--bad)" font-family="monospace">5 tepi · 79 px hilang ke padding</text>
+      </svg>
+      <figcaption><b>Sekarang.</b> Lima tepi kiri: <span class="tag">185 · 210 · 235 · 264 · 281</span>. Empat bayangan bersarang. Di ponsel tepi terdalam di <span class="tag">x=124</span> — <b>108 px (28% lebar layar)</b> habis sebelum satu karakter isi.</figcaption>
+    </figure>
+
+    <figure class="fig">
+      <svg viewBox="0 0 460 320" role="img" aria-label="Wireframe usulan: dua tepi">
+        <rect x="8" y="8" width="440" height="300" rx="12" fill="none" stroke="var(--line-strong)" stroke-dasharray="4 4"/>
+        <text x="8" y="302" font-size="10" fill="var(--fg-subtle)" font-family="monospace">main · 1265 px</text>
+
+        <rect x="30" y="24" width="400" height="46" rx="12" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text x="42" y="44" font-size="10" fill="var(--fg)" font-family="monospace">header — kartu dossier</text>
+        <text x="42" y="58" font-size="9" fill="var(--fg-subtle)" font-family="monospace">x=16 · tanpa panel pembungkus</text>
+
+        <rect x="30" y="82" width="252" height="82" rx="12" fill="var(--surface)" stroke="var(--ok)" stroke-width="1.5"/>
+        <text x="42" y="100" font-size="10" fill="var(--ok)" font-family="monospace">section — Kelengkapan</text>
+        <rect x="42" y="110" width="228" height="10" rx="5" fill="var(--emerald)" opacity=".85"/>
+        <rect x="42" y="126" width="70" height="7" rx="3.5" fill="var(--line-strong)"/>
+        <rect x="120" y="126" width="70" height="7" rx="3.5" fill="var(--line-strong)"/>
+        <rect x="198" y="126" width="70" height="7" rx="3.5" fill="var(--line-strong)"/>
+        <text x="42" y="150" font-size="9" fill="var(--fg-subtle)" font-family="monospace">isi langsung di permukaan seksi</text>
+
+        <rect x="30" y="176" width="252" height="96" rx="12" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text x="42" y="194" font-size="10" fill="var(--fg)" font-family="monospace">section — Lamaran terkini</text>
+        <rect x="42" y="204" width="228" height="28" rx="9" fill="var(--raised)" stroke="var(--ok)" stroke-width="1.5"/>
+        <text x="50" y="222" font-size="9" fill="var(--ok)" font-family="monospace">x=58 · w=228 · entry card — satu-satunya bingkai</text>
+        <rect x="42" y="238" width="228" height="22" rx="9" fill="var(--raised)" stroke="var(--line-strong)"/>
+        <text x="50" y="253" font-size="9" fill="var(--fg-muted)" font-family="monospace">● ● ● ● ● ○ ○ ○ ○ ○   PEMBERKASAN</text>
+
+        <rect x="294" y="82" width="136" height="190" rx="12" fill="var(--surface)" stroke="var(--sky)" stroke-width="1.5"/>
+        <text x="304" y="100" font-size="10" fill="var(--sky)" font-family="monospace">rail · 22rem</text>
+        <rect x="304" y="110" width="116" height="44" rx="9" fill="var(--raised)" stroke="var(--line-strong)"/>
+        <text x="312" y="128" font-size="9" fill="var(--fg-muted)" font-family="monospace">Jadwalmu</text>
+        <rect x="304" y="162" width="116" height="36" rx="9" fill="var(--raised)" stroke="var(--line-strong)"/>
+        <text x="312" y="180" font-size="9" fill="var(--fg-muted)" font-family="monospace">Pesan admin</text>
+        <rect x="304" y="206" width="116" height="56" rx="9" fill="var(--raised)" stroke="var(--line-strong)"/>
+        <text x="312" y="224" font-size="9" fill="var(--fg-muted)" font-family="monospace">Aksi cepat</text>
+        <text x="312" y="240" font-size="9" fill="var(--fg-muted)" font-family="monospace">7 sekunder</text>
+
+        <line x1="30" y1="308" x2="58" y2="308" stroke="var(--ok)" stroke-width="1.5"/>
+        <text x="76" y="312" font-size="10" fill="var(--ok)" font-family="monospace">2 tepi · 369 px ruang mati terpakai</text>
+      </svg>
+      <figcaption><b>Usulan.</b> Dua tepi saja: halaman + kartu entri. Kartu dossier keluar dari panel, setiap seksi jadi <code>&lt;section&gt;</code> saudara, bingkai gradien dihapus. Rail <code>22rem</code> mengisi ruang mati.</figcaption>
+    </figure>
+  </div>
+
+  <h2><span class="n">3</span>F2 · Satu blok memakan seperempat halaman</h2>
+  <p class="lead">Tinggi seksi terukur. <code>Status Lamaran Terkini</code> merender pipeline 10 tahap penuh untuk <b>setiap</b> entri — dan kedua entri memakai 10 label yang sama.</p>
+  <table>
+    <thead><tr><th>Seksi</th><th class="num">Desktop 1280</th><th class="num">Ponsel 390</th></tr></thead>
+    <tbody>
+      <tr><td><i>sebelum seksi pertama</i> (header + dossier + toolbar)</td><td class="num">954 px · <b>31%</b></td><td class="num">1221 px</td></tr>
+      <tr><td>Kartu siswa</td><td class="num">256</td><td class="num">224</td></tr>
+      <tr><td>Kelengkapan Profil</td><td class="num">263</td><td class="num">353</td></tr>
+      <tr><td>Jadwalmu</td><td class="num">168</td><td class="num">160</td></tr>
+      <tr><td>Pesan admin</td><td class="num">94</td><td class="num">126</td></tr>
+      <tr><td><b>Status Lamaran Terkini</b></td><td class="num bad">749 · 24%</td><td class="num bad">1041 · 28%</td></tr>
+      <tr><td>Progres Pemberkasan</td><td class="num">204</td><td class="num">192</td></tr>
+      <tr><td><i>total halaman</i></td><td class="num">3094</td><td class="num">3725</td></tr>
+    </tbody>
+  </table>
+  <p class="kv">Di dalam blok itu ada kotak gulir <code>max-h-[300px]</code> yang isinya <b>1038 px</b> di ponsel — gulir di dalam halaman, di dalam panel.</p>
+
+  <div class="cols" style="margin-top:18px">
+    <figure class="fig">
+      <svg viewBox="0 0 460 150" role="img" aria-label="Pipeline sekarang: sepuluh label per entri">
+        <rect x="8" y="10" width="444" height="130" rx="12" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text x="22" y="32" font-size="11" fill="var(--fg)" font-family="monospace">TG591ASJ · 2026-09-10</text>
+        <text x="330" y="32" font-size="10" fill="var(--ok)" font-family="monospace">Telah disetujui</text>
+        <text x="22" y="52" font-size="9.5" fill="var(--fg-subtle)" font-family="monospace">TAHAPAN SAAT INI</text>
+        <text x="380" y="52" font-size="9.5" fill="var(--emerald)" font-family="monospace">PEMBERKASAN</text>
+        <rect x="22" y="60" width="412" height="6" rx="3" fill="var(--line-strong)"/>
+        <rect x="22" y="60" width="247" height="6" rx="3" fill="var(--emerald)"/>
+        <g font-size="8.5" font-family="monospace" fill="var(--fg-subtle)">
+          <text x="22" y="82">● PENDAFTARAN</text><text x="124" y="82">● CHECK KAIWA</text>
+          <text x="222" y="82">● MENDAN</text><text x="300" y="82">● LOLOS USER</text>
+          <text x="380" y="82">● MCU</text>
+        </g>
+        <g font-size="8.5" font-family="monospace" fill="var(--fg-subtle)">
+          <text x="22" y="100">● PEMBERKASAN</text><text x="124" y="100">○ NAITEI</text>
+          <text x="200" y="100">○ COE</text><text x="250" y="100">○ VISA</text>
+          <text x="300" y="100">○ FLIGHT</text>
+        </g>
+        <text x="22" y="124" font-size="9.5" fill="var(--bad)" font-family="monospace">10 label × 2 entri = 20 label, isinya sama</text>
+      </svg>
+      <figcaption><b>Sekarang.</b> Sepuluh label penuh per entri, selalu terbuka.</figcaption>
+    </figure>
+
+    <figure class="fig">
+      <svg viewBox="0 0 460 150" role="img" aria-label="Usulan: rail titik plus details">
+        <rect x="8" y="10" width="444" height="130" rx="12" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text x="22" y="32" font-size="11" fill="var(--fg)" font-family="monospace">TG591ASJ · 2026-09-10</text>
+        <text x="330" y="32" font-size="10" fill="var(--ok)" font-family="monospace">Telah disetujui</text>
+        <g font-size="15" font-family="monospace" fill="var(--emerald)">
+          <text x="22" y="62">●</text><text x="40" y="62">●</text><text x="58" y="62">●</text>
+          <text x="76" y="62">●</text><text x="94" y="62">●</text>
+        </g>
+        <g font-size="15" font-family="monospace" fill="var(--fg-subtle)">
+          <text x="112" y="62">○</text><text x="130" y="62">○</text><text x="148" y="62">○</text>
+          <text x="166" y="62">○</text><text x="184" y="62">○</text>
+        </g>
+        <text x="216" y="62" font-size="11" fill="var(--emerald)" font-family="monospace">PEMBERKASAN</text>
+        <text x="22" y="84" font-size="9.5" fill="var(--fg-muted)" font-family="monospace">tahap 6 dari 10 · diperbarui 10 Sep</text>
+        <text x="22" y="108" font-size="9.5" fill="var(--sky)" font-family="monospace">▸ lihat 10 tahap</text>
+        <text x="22" y="128" font-size="9.5" fill="var(--ok)" font-family="monospace">−500 px di ponsel · kotak gulir 300 px hilang</text>
+      </svg>
+      <figcaption><b>Usulan.</b> Rail titik + tahap aktif + <code>&lt;details&gt;</code> (pola yang sudah dipakai <code>FaqList.tsx</code> dan kartu Berkas).</figcaption>
+    </figure>
+  </div>
+
+  <h2><span class="n">4</span>Temuan lain</h2>
+  <table>
+    <thead><tr><th>Temuan</th><th>Terukur</th><th>Aturan</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill p-high">F4</span> animasi <code>width</code></td><td>4 instance — bar tahapan ×3 <b>1 s</b>, meter 0,5 s</td><td>P7 / §3.7 melarang menganimasikan <code>width</code>; default 180 ms</td></tr>
+      <tr><td><span class="pill p-med">F5</span> <code>animate-pulse</code></td><td>×3 · <code>infinite 2s</code> — termasuk <b>satu paragraf penuh</b> (<code>ui.berkas_stage_hint</code>)</td><td>§1.2 menolak kinetic typography</td></tr>
+      <tr><td><span class="pill p-med">F6</span> kontras AA</td><td>jam jadwal <b>4,15</b> gelap / <b>3,46</b> terang · lokasi <b>2,63</b> gelap (ambang 4,5)</td><td>§6.3</td></tr>
+      <tr><td><span class="pill p-med">F7</span> satu kunci, dua maksud</td><td><code>ui.cv_type_hint</code> dipakai di <code>:520</code> (subjudul sapaan) <b>dan</b> <code>:630</code> (deskripsi Status Lamaran) — keduanya salah</td><td>§7.1</td></tr>
+      <tr><td><span class="pill p-low">F8</span> <code>font-black</code> &lt; 20 px</td><td>11–19 instance</td><td>§3.3 <i>"Yang dihentikan: … font-black pada teks di bawah 20 px"</i></td></tr>
+      <tr><td><span class="pill p-low">F8</span> bayangan bertingkat</td><td>4 bersarang: <code>2xl → xl → lg → lg</code></td><td>§3.6 <i>"tidak memakai skala bayangan bertingkat"</i></td></tr>
+      <tr><td><span class="pill p-low">F8</span> target sentuh</td><td>pil loker <code>h=27</code> ×2 · <code>&lt;summary&gt;</code> <code>h=24</code></td><td>§6.4 — 44×44</td></tr>
+      <tr><td><span class="pill p-low">F8</span> judul kartu jadi <code>h2</code></td><td><code>"ID Siswa ASJ"</code></td><td>§6.1 — judul di dalam kartu = <code>h3</code></td></tr>
+      <tr><td><span class="pill p-ok">patuh</span> radius</td><td><code>{12, 16, 24, pill}</code> — 4 dari 5 token, tanpa literal</td><td>§3.4</td></tr>
+      <tr><td><span class="pill p-ok">patuh</span> padding kartu</td><td>panel 24/20 · kartu dalam 16 · chip 4–8</td><td>§3.5</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note badbox">
+    <b>Bukan temuan: CTA <code>Lengkapi Pemberkasan &amp; Biodata</code>.</b> Audit generik saya
+    melaporkan rasio <b>1</b> (di atas gradien) — itu titik buta metode, bukan cacat.
+    Gradiennya <b>identik di kedua tema</b> (<code>oklch(0.508 .118 165.612)</code> →
+    <code>oklch(0.5 .134 242.749)</code> = <code>emerald-700</code> → <code>sky-700</code>), teksnya putih,
+    dan <code>global.css:1067-1068</code> memang memuat kedua kelas itu di daftar re-light.
+    <b>5,48 – 5,93 → LULUS</b>, hover menggelap (7,68 / 7,56).
+  </div>
+
+  <h2><span class="n">5</span>Urutan pengerjaan</h2>
+  <p class="lead">Satu langkah per commit. <code>vitest</code> dulu, baru <code>npm run build</code> — <b>bukan</b> <code>astro build</code> sendiri (<code>dist/sw.js</code> tertinggal sebagai file dev → 5 tes <code>swOffline</code> merah).</p>
+  <table>
+    <thead><tr><th class="num">#</th><th>Langkah</th><th>Sentuh</th><th>Risiko</th><th>Dampak</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td><code>scaleX()</code> untuk 4 bar</td><td><code>CandidateDash</code>, <code>LevelCard</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-high">tinggi</span></td></tr>
+      <tr><td class="num">2</td><td>2 kegagalan kontras</td><td><code>CandidateDash</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-high">tinggi</span></td></tr>
+      <tr><td class="num">3</td><td>Hapus 3 <code>animate-pulse</code></td><td><code>CandidateDash</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-med">sedang</span></td></tr>
+      <tr><td class="num">4</td><td>2 kunci i18n untuk 2 maksud</td><td><code>CandidateDash</code>, <code>i18n</code>, <code>i18n-jp</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-med">sedang</span></td></tr>
+      <tr><td class="num">5</td><td>Target sentuh + <code>h3</code></td><td><code>CandidateDash</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-med">sedang</span></td></tr>
+      <tr><td class="num">6</td><td>Pipeline → rail titik + <code>&lt;details&gt;</code></td><td><code>CandidateDash</code></td><td><span class="pill p-med">sedang</span></td><td><span class="pill p-high">tinggi</span></td></tr>
+      <tr><td class="num">7</td><td>Lima permukaan → dua</td><td><code>CandidateDash</code>, <code>candidate.astro</code></td><td><span class="pill p-high">tinggi</span></td><td><span class="pill p-high">tinggi</span></td></tr>
+      <tr><td class="num">8</td><td>Rail 22rem <code>≥1280px</code></td><td><code>candidate.astro</code>, <code>CandidateDash</code></td><td><span class="pill p-med">sedang</span></td><td><span class="pill p-high">tinggi</span></td></tr>
+      <tr><td class="num">9</td><td>Bayangan → border</td><td><code>CandidateDash</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-low">rendah</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="note warnbox">
+    <b>Langkah 6–9 menyentuh penanda yang di-assert test.</b>
+    <code>CandidateDash.test.tsx</code> (714 baris) membaca
+    <code>document.querySelector('[role="progressbar"]')</code> dan menuntut
+    <code>aria-valuenow</code> = kelengkapan profil — <b>bar pertama harus tetap milik
+    <code>LevelCard</code></b>. <code>e2e/test-candidate-modals.mjs</code> menuntut 6 pemicu
+    modal ada dan bisa diklik <b>tanpa satu klik tambahan</b>: bobotnya boleh diturunkan,
+    <b>tidak boleh</b> disembunyikan di menu overflow.
+  </div>
+
+  <h2><span class="n">6</span>Batas review ini</h2>
+  <ul>
+    <li>Yang diukur adalah <b>DOM yang dirender</b> dari fixture, bukan data produksi. Kandidat tanpa riwayat/jadwal akan terlihat berbeda (beberapa blok di-<code>omit</code>).</li>
+    <li><b>Tidak ada berkas sumber yang diubah.</b> <code>CandidateDash.tsx</code>, <code>LevelCard.tsx</code>, <code>StepGuide.tsx</code>, <code>AsjDossierCard.tsx</code>, <code>candidate.astro</code> hanya dibaca.</li>
+    <li>Skrip pengukuran ditulis <b>di luar repo</b> (<code>F:/tmp/ui-probe/r2*.mjs</code>) supaya tidak menggeser inventaris beku indexer.</li>
+    <li><code>dist/</code> tidak dipakai — ia dari 10:10, lebih tua dari commit terakhir <code>58efe33</code>.</li>
+    <li>Pohon kerja tidak bersih saat review dibuat: 25 berkas termodifikasi + 12 untracked (backlog lama).</li>
+  </ul>
+
+  <footer>
+    Review r2 · 2026-09-30 · rute <code>/candidate</code> · deliverable visual untuk
+    <code>design-review-dashboard-kandidat-2026-09-30-r2.md</code>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement, b = document.getElementById('t');
+    b.addEventListener('click', function () {
+      var light = root.getAttribute('data-theme') === 'light';
+      root.setAttribute('data-theme', light ? 'dark' : 'light');
+      b.textContent = light ? '\u2600 Tema terang' : '\u263D Tema gelap';
+    });
+  })();
+</script>
+</body>
+</html>
