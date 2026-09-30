@@ -473,6 +473,8 @@ export const jpTranslations: Record<string, string> = {
 
     "dash.title": "候補者ダッシュボード",
     "dash.welcome": "ようこそ、",
+    "dash.greeting_subtitle_empty": "現在、応募中の求人はありません",
+    "dash.app_status_desc": "応募した求人と現在のステータスの一覧です。",
     "dash.status": "ステータス",
     "toast.session_expired": "セッションが期限切れです。再ログインしてください。",
     "toast.session_invalid": "セッションが無効です。再ログインしてください。",
@@ -672,7 +674,7 @@ export const jpTranslations: Record<string, string> = {
     "ui.toast_cvmini_updated": "CVミニを更新しました！",
     "ui.cv_mini_basic": "プロフィール（基本）",
     "ui.cv_master_detail": "プロフィール（詳細）",
-    "ui.cv_type_hint": "基本を選ぶと簡単なプロフィール、詳細を選ぶとより細かい情報を登録できます。",
+    // "ui.cv_type_hint" は 2026-09-30 に削除（i18n.ts の同じ箇所のコメント参照）。
     "ui.detail_total_title": "合計金額",
     "ui.detail_total_sub": "合計サブ",
     "ui.detail_syarat": "条件",

@@ -438,6 +438,12 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.tab_wa": "Template WA",
     "dash.title": "Dashboard Kandidat",
     "dash.welcome": "Selamat datang,",
+    // Dua kunci ini menggantikan pemakaian ulang `ui.cv_type_hint`, yang adalah
+    // petunjuk FORM CV ("Pilih data dasar…") tetapi dipakai sebagai subjudul
+    // sapaan DAN sebagai deskripsi "Status Lamaran Terkini" — dua pekerjaan yang
+    // tidak ada hubungannya dengan pilihan CV. Lihat review r2 §F7.
+    "dash.greeting_subtitle_empty": "Belum ada lamaran aktif",
+    "dash.app_status_desc": "Daftar loker yang Anda lamar beserta tahapan terkininya.",
     "admin.tab_public_job": "Lowongan Publik",
     "admin.search_placeholder": "Cari...",
     "admin.form_job_name": "Nama Pekerjaan",
@@ -600,7 +606,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.update_cv_mini": "Update Profil",
     "ui.cv_mini_basic": "Profil (Data Dasar)",
     "ui.cv_master_detail": "Profil (Data Lengkap)",
-    "ui.cv_type_hint": "Pilih data dasar untuk profil singkat, data lengkap untuk rincian menyeluruh.",
+    // "ui.cv_type_hint" DIHAPUS 2026-09-30 bersama dua pemakaian terakhirnya.
+    // Nilainya ("Pilih data dasar untuk profil singkat, data lengkap untuk
+    // rincian menyeluruh") adalah petunjuk pilihan FORM CV, tetapi ia dipakai
+    // sebagai subjudul sapaan dan sebagai deskripsi "Status Lamaran Terkini".
+    // `CvMiniModal` tidak punya pilihan dasar/lengkap sama sekali, jadi kuncinya
+    // tidak punya pemilik yang sah — dibiarkan hidup, ia hanya akan dipakai ulang
+    // untuk maksud yang tidak berhubungan lagi. Penggantinya:
+    // `dash.greeting_subtitle_empty` dan `dash.app_status_desc`. (Review r2 §F7.)
     "ui.detail_total_title": "Total Biaya Ke Jepang",
     "ui.detail_total_sub": "Bisa dicicil sesuai tahapan",
     "ui.detail_syarat": "Persyaratan",

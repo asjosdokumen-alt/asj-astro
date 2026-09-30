@@ -517,7 +517,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             {t('dash.welcome')} {data.nama}
           </span>
           <span class="block text-xs text-fg-muted mt-1">
-            {[data.job, data.tahapan].filter(Boolean).join(' · ') || t('ui.cv_type_hint')}
+            {[data.job, data.tahapan].filter(Boolean).join(' · ') || t('dash.greeting_subtitle_empty')}
           </span>
         </h2>
 
@@ -633,7 +633,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           <div class="absolute -right-6 -top-10 text-sky-500/10 text-[10rem]"><Icon name="rocket" /></div>
           <div class="relative z-10">
             <h2 class="text-xl font-black text-accent-sky mb-2"><Icon name="bolt" class="mr-2 text-accent-amber" /> {t('ui.app_status_latest')}</h2>
-            <p class="text-sm text-slate-300 mb-5">{t('ui.cv_type_hint')}</p>
+            <p class="text-sm text-slate-300 mb-5">{t('dash.app_status_desc')}</p>
             <div class="mt-6 p-1 rounded-panel bg-gradient-to-r from-sky-500/30 to-emerald-500/30 border border-slate-700/50 shadow-xl">
               <div class="bg-surface rounded-card p-5 md:p-6">
                 {/* Judul panel ini dulu memakai kunci i18n YANG SAMA dengan h3 di
