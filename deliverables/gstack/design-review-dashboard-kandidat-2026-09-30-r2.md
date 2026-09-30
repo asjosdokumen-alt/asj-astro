@@ -405,6 +405,121 @@ bawah, dan jadwal MCU adalah hal paling terikat waktu di halaman ini — menurun
 di bawah "Progres Pemberkasan" adalah regresi. Alasan itu ada di kode, jadi mudah
 dibalik kalau pemilik lebih suka urutan usulan awal.
 
+**Verifikasi konteks sesudah restrukturisasi** (1280 px, dua tema):
+
+| Konteks | Hasil |
+|---|---|
+| Tema terang | geometri identik dengan gelap (`857px 352px`, aside `sticky` di x=897) |
+| `prefers-reduced-motion: reduce` | **0 elemen** pada opacity < 0,05 dari 22.833 px |
+| JavaScript mati | **halaman putih** — lihat F10 di bawah |
+
+### F10 · Enam rute aplikasi tidak punya keadaan "JavaScript mati" 🟡
+
+**Diukur 2026-09-30, setelah langkah 7–8 selesai.** Bukan akibat perubahan tata
+letak — sifatnya sudah ada sebelumnya, tetapi baru terukur sekarang.
+
+Dengan JavaScript dimatikan (`javaScriptEnabled: false`):
+
+| Rute | Pemasangan | Teks di `<body>` | `h1` |
+|---|---|---|---|
+| `/` | `client:load` (publik) | **10.802** | 1 |
+| `/loker` | `client:load` (publik) | 577 | 1 |
+| `/public` | `client:load` (publik) | 511 | 1 |
+| `/admin` | `client:only` (aplikasi) | **22** | **0** |
+| `/apply` | `client:only` (aplikasi) | **22** | **0** |
+| `/candidate` | `client:only` (aplikasi) | **22** | **0** |
+| `/master` | `client:only` (aplikasi) | **22** | **0** |
+| `/share` | `client:only` (aplikasi) | **22** | **0** |
+| `/ai-cv` | `client:only` (aplikasi) | **22** | **0** |
+
+Halaman jadi **putih kosong**: 22 karakter, tanpa `h1`, tanpa `nav`. Tangkapan
+layarnya benar-benar putih.
+
+**Ini BUKAN bug `/candidate`, dan bukan kecelakaan.** Keenam rute aplikasi
+memakai `client:only="preact"` secara konsisten dan itu tercatat di
+`docs/ARCHITECTURE.md` ("Preact islands with `client:only="preact"` — said
+`client:load`; the app ships `client:only`"). Alasannya masuk akal: halaman ini
+butuh sesi dari `localStorage`, jadi SSR akan menghasilkan hydration mismatch.
+Rute publik memakai `client:load` dan tetap ter-render.
+
+**Celahnya adalah tidak adanya penjelasan.** Kalau bundle gagal dimuat — jaringan,
+CSP, pemblokir iklan, peramban lama, atau satu `throw` di awal boot — kandidat
+melihat halaman putih tanpa satu kata pun. Itu biaya dukungan nyata: keluhannya
+akan berbunyi "dashboard-nya kosong" tanpa petunjuk apa pun.
+
+Gate `e2e/test-headings.mjs` **sudah** menguji sifat ini, tetapi hanya untuk rute
+publik (`no-JS /public: the h1 is in the SERVER HTML`, `no-JS /loker: …`). Rute
+aplikasi tidak tercakup.
+
+**Usulan:** satu `<noscript>` di keenam rute aplikasi yang mengatakan halaman ini
+butuh JavaScript. ⚠ Tidak sesederhana satu baris: `i18n.keys.test.ts` memindai
+seluruh `src/**` termasuk `.astro` dan melarang teks Indonesia mentah di simpul
+teks, sedangkan mekanisme resminya (`data-lang-title` / `data-lang-aria`,
+ditangani `translateDataLang`) **dijalankan oleh skrip** — jadi ia tidak bisa
+menerjemahkan apa pun saat skrip memang tidak jalan. Artinya `<noscript>` hanya
+bisa menampilkan SATU bahasa, dan itu keputusan produk (Indonesia sebagai default
+adalah pilihan yang masuk akal). Belum dikerjakan — menunggu keputusan itu.
+
+---
+
+## Lampiran · Backlog pohon kerja saat review ini selesai
+
+`git status`: **24 modified + 12 untracked**, semuanya **bukan** dari review ini.
+Dua kelompok yang koheren, bukan sampah acak:
+
+**Kelompok A — optimasi gambar (13 berkas + 1 laporan).** Dua belas `.webp` di
+`public/assets/` dan `public/icons/logo-asj.webp`, semuanya **mengecil**:
+
+| Berkas | Sebelum | Sesudah |
+|---|---|---|
+| `fasilitas-gedung.webp` | 239.394 B | 106.008 B |
+| `fasilitas-grup-staf.webp` | 200.570 B | 72.694 B |
+| `logo-asj.webp` | 66.140 B | 29.192 B |
+| `mitra/hibiki.webp` | 14.772 B | 5.032 B |
+
+Totalnya ~1,25 MB → ~0,47 MB (−62%). `indexer/validate-report.json` ikut berubah
+karena ia ditulis ulang setiap kali indexer dijalankan.
+
+**Kelompok B — audit landing + pemisahan company profile (9 berkas kode + 12
+untracked).** `src/lib/gallery.ts` (+48/−7) adalah perubahan terbesar;
+`App.tsx` (+18), lalu `FaqList`, `PartnerGrid`, `PersonGrid`, `ReviewGrid`,
+`LayananSection.astro`, `404.astro`, `index.astro`, `MasterFullForm.tsx`.
+Dokumentasinya ada di untracked: `audit-landing-2026-09-30.md`,
+`split-company-profile-2026-09-30.md`, dan tangkapan layarnya.
+
+**Sudah diverifikasi aman (bukan sekadar "kelihatannya beres").** Dengan kedua
+kelompok itu ada di pohon kerja:
+
+- suite penuh **2022 lulus / 3 gagal** — ketiganya cacat sandbox yang sudah
+  dikenal, bukan dari perubahan ini
+- `e2e:landing` — **semua lulus** (17 seksi × 2 lebar)
+- `e2e:theme-gradients` — **3/3 lulus**
+- `e2e:headings` — **semua lulus**
+
+**Tidak saya commit.** Ini pekerjaan sesi lain, dan R11 menunjukkan HEAD yang tidak
+sama dengan pohon yang diuji adalah cacat tersendiri — jadi meng-commit-nya justru
+memperbaiki keadaan. Tetapi memecahnya menjadi beberapa commit (gambar vs kode)
+adalah keputusan pemilik, bukan keputusan saya. Perintahnya kalau mau langsung:
+
+```bash
+# Kelompok A
+git add public/assets/*.webp public/assets/mitra/*.webp public/icons/logo-asj.webp indexer/validate-report.json
+git commit -m "perf(assets): recompress 13 webp images, ~1.25MB -> ~0.47MB (-62%)"
+
+# Kelompok B
+git add src/lib/gallery.ts src/components/App.tsx src/components/forms/MasterFullForm.tsx \
+        src/components/public/FaqList.tsx src/components/public/PartnerGrid.tsx \
+        src/components/public/PersonGrid.tsx src/components/public/ReviewGrid.tsx \
+        src/components/public/LayananSection.astro src/pages/404.astro src/pages/index.astro \
+        deliverables/gstack/audit-landing-2026-09-30.md deliverables/gstack/split-company-profile-2026-09-30.md \
+        deliverables/gstack/_after-*.png deliverables/gstack/_audit-landing-*.png deliverables/gstack/_newrepo-hero-1280.png
+git commit -m "docs(landing): landing-page audit + company-profile split, with evidence"
+```
+
+**14 commit belum di-push** (`git rev-list --count origin/main..HEAD`). Itu
+disengaja: push ke `main` men-deploy kedua situs Netlify (R19).
+
+
 **Prasyarat yang ternyata juga merah:** `npx vitest run` di pohon ini
 **4 gagal | 2021 lulus**. Tiga di antaranya cacat sandbox (proses anak tidak
 bisa di-spawn dari dalam vitest: `EBUSY` pada `spawnSync cmd.exe`, `exit null`
