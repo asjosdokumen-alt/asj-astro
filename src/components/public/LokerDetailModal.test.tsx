@@ -10,7 +10,7 @@
 //   - Pamflet was a static <img>; legacy opens bukaPamflet (zoom modal) on
 //     click with a ui.click_zoom title — same as the list rows. Now wired.
 // ==========================================
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/preact';
+import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/preact';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import LokerDetailModal from './LokerDetailModal';
 import { t } from '../../store/i18n';
@@ -93,8 +93,17 @@ describe('LokerDetailModal (B04)', () => {
     await waitFor(() => {
       expect(document.querySelectorAll('img[alt="Pamflet"]').length).toBe(2);
     });
-    // close the zoom overlay again (aria now keyed — B05)
-    fireEvent.click(screen.getByLabelText(t('public.close')));
+    // Close the zoom overlay again (aria now keyed — B05).
+    //
+    // SCOPED ON PURPOSE. `getByLabelText(t('public.close'))` alone is AMBIGUOUS,
+    // because `ui.close` and `public.close` both resolve to "Tutup" in the id
+    // dictionary — so the query matched TWO buttons (this modal's own header
+    // close, and the zoom overlay's ×) and threw "Found multiple elements".
+    // Distinct keys do not help when the VALUES collide; the query has to name
+    // the node it means. The zoom overlay is the dialog named after the
+    // artwork (`ui.alt_pamflet`), so scope to that.
+    const zoom = screen.getByRole('dialog', { name: t('ui.alt_pamflet') });
+    fireEvent.click(within(zoom).getByLabelText(t('public.close')));
     await waitFor(() => {
       expect(document.querySelectorAll('img[alt="Pamflet"]').length).toBe(1);
     });
