@@ -137,16 +137,49 @@ memaksa reflow tiap frame; padanannya `transform: scaleX()` tidak.
 §1.2 menolak kinetic typography; teks instruksi yang berdenyut 2 detik terus-menerus
 adalah penghalang baca, bukan penekanan.
 
-### F6 · Dua kegagalan kontras AA 🟠
+### F6 · ~~Dua kegagalan kontras AA~~ — **DITARIK. Tidak ada kegagalan kontras.** ⛔
 
-Diukur dengan normalisasi `canvas`, ambang 4,5 (teks normal):
+> **KOREKSI 2026-09-30 (sesi yang sama, beberapa jam kemudian).**
+> Klaim di bawah **salah**, dan salahnya karena alat ukur saya, bukan karena
+> halaman. Angka 4,15 / 3,46 / 2,63 dihasilkan oleh *backdrop resolver* yang
+> menjumlahkan `backgroundColor` leluhur dengan dua cacat: lapisan tembus cahaya
+> dicampur pada opasitas penuh (`over(acc, c)` memperlakukan rgb milik `c`
+> seolah opaque), dan akumulasinya berjalan dari lapisan TERDEKAT ke luar,
+> bukan dari lapisan opaque pertama ke dalam. Akibatnya tint amber 10% menyeret
+> latar gelap menjadi mid-tone.
+>
+> **Diukur ulang dengan benar** — latar disampel dari piksel yang benar-benar
+> tergambar, diambil dari ruang kosong di sebelah teks (bukan dari glyph, ikon,
+> atau elemen di dalam kotak gulir yang terpotong):
+>
+> | Teks | Gelap | Terang | Ambang |
+> |---|---|---|---|
+> | `2026-10-05 08:00` | **9,32** ✅ | **4,61** ✅ | 4,5 |
+> | `Klinik Sehat Ponorogo` | **5,92** ✅ | **6,46** ✅ | 4,5 |
+>
+> Keempatnya lolos dengan lega. **Tidak ada yang perlu diperbaiki di sini** —
+> dan "memperbaiki" teks yang sudah lolos hanya akan menggeser token tema tanpa
+> sebab. Review pertama (02:07) melaporkan elemen yang sama pada 2,99 / 2,47;
+> alatnya kemungkinan besar punya cacat yang sama.
+>
+> Catatan yang sama berlaku untuk audit piksel yang saya tulis untuk
+> memverifikasi ini: ia melaporkan ~8 kegagalan, dan **semuanya artefak** —
+> baris checklist berada di dalam kotak gulir `max-h-44` yang terpotong, jadi
+> piksel di koordinatnya digambar oleh elemen lain (dalam kasus ini gradien bar
+> progres). Kesimpulannya: **di halaman ini tidak ada kegagalan kontras AA**,
+> diukur dari kedua sisi.
+
+<details>
+<summary>Klaim yang ditarik (disimpan supaya tidak diulang)</summary>
+
+Diukur dengan `getComputedStyle` + penjumlahan leluhur, ambang 4,5:
 
 | Teks | Kelas | Gelap | Terang | Ukuran |
 |---|---|---|---|---|
-| `2026-10-05 08:00` (jam jadwal) | `text-[11px] text-accent-amber font-mono` | **4,15** ❌ | **3,46** ❌ | 11 px |
-| `Klinik Sehat Ponorogo` (lokasi) | `text-xs text-slate-400` | **2,63** ❌ | lolos | 12 px |
+| `2026-10-05 08:00` (jam jadwal) | `text-[11px] text-accent-amber font-mono` | ~~4,15~~ ❌ | ~~3,46~~ ❌ | 11 px |
+| `Klinik Sehat Ponorogo` (lokasi) | `text-xs text-slate-400` | ~~2,63~~ ❌ | lolos | 12 px |
 
-Keduanya di kartu Jadwalmu. Sisanya bersih.
+</details>
 
 **Bukan temuan:** CTA `Lengkapi Pemberkasan & Biodata`. Audit generik saya
 melaporkan rasio **1** (di atas gradien) — itu titik buta metode, bukan cacat.
@@ -265,12 +298,11 @@ penekanan perlu, pakai border atau ikon statis.
 4 bayangan bersarang → border saja (§3.6). Pertahankan **satu** tingkat elevasi
 untuk lapisan modal, yang memang butuh memisahkan diri dari halaman.
 
-### U7 · Perbaiki 2 kontras 🟠
+### U7 · ~~Perbaiki 2 kontras~~ — **DIBATALKAN** ⛔
 
-| Teks | Perbaikan |
-|---|---|
-| jam jadwal 4,15 / 3,46 | naikkan dari `text-[11px]` ke `text-caption` (12 px) **dan** pakai token aksen tema yang sudah lolos, atau gelapkan satu langkah |
-| `Klinik Sehat Ponorogo` 2,63 (gelap) | `text-slate-400` → `text-fg-subtle` (§3.1 sudah menetapkan `#8595aa` = 4,79 di `surface-raised`) |
+Tidak ada yang diperbaiki. Lihat koreksi di **F6**: keempat angka lolos
+(9,32 / 4,61 / 5,92 / 6,46). Mengubah token tema di sini akan menggeser warna
+tanpa memperbaiki apa pun — dan berisiko menurunkan kontras yang sekarang lolos.
 
 ### U8 · Dua kunci i18n untuk dua maksud 🟡
 
@@ -294,17 +326,25 @@ Satu langkah per commit (R3). `vitest` dulu, baru `npm run build` — **bukan**
 `astro build` sendiri (§3f: `dist/sw.js` tertinggal sebagai file dev dan 5 tes
 `swOffline` jadi merah).
 
-| # | Langkah | Sentuh | Risiko | Dampak |
-|---|---|---|---|---|
-| 1 | `scaleX()` untuk 4 bar (U4) | `CandidateDash`, `LevelCard` | rendah | tinggi |
-| 2 | 2 kontras (U7) | `CandidateDash` | rendah | tinggi |
-| 3 | Hapus 3 `animate-pulse` (U5) | `CandidateDash` | rendah | sedang |
-| 4 | 2 kunci i18n (U8) | `CandidateDash`, `i18n`, `i18n-jp` | rendah | sedang |
-| 5 | Target sentuh + `h3` (U9) | `CandidateDash` | rendah | sedang |
-| 6 | Pipeline → rail titik + `<details>` (U3) | `CandidateDash` | **sedang** | tinggi |
-| 7 | Lima permukaan → dua (U1) | `CandidateDash`, `candidate.astro` | **tinggi** | tinggi |
-| 8 | Rail 22rem (U2) | `candidate.astro`, `CandidateDash` | sedang | tinggi |
-| 9 | Bayangan → border (U6) | `CandidateDash` | rendah | rendah |
+| # | Langkah | Sentuh | Risiko | Dampak | Status |
+|---|---|---|---|---|---|
+| 1 | `scaleX()` untuk 4 bar (U4) | `CandidateDash`, `LevelCard` | rendah | tinggi | ✅ **selesai** `21f7361` |
+| 2 | ~~2 kontras (U7)~~ | — | — | — | ⛔ **dibatalkan** (F6: tidak ada kegagalan) |
+| 3 | Hapus 3 `animate-pulse` (U5) | `CandidateDash` | rendah | sedang | |
+| 4 | 2 kunci i18n (U8) | `CandidateDash`, `i18n`, `i18n-jp` | rendah | sedang | |
+| 5 | Target sentuh + `h3` (U9) | `CandidateDash` | rendah | sedang | |
+| 6 | Pipeline → rail titik + `<details>` (U3) | `CandidateDash` | **sedang** | tinggi | |
+| 7 | Lima permukaan → dua (U1) | `CandidateDash`, `candidate.astro` | **tinggi** | tinggi | |
+| 8 | Rail 22rem (U2) | `candidate.astro`, `CandidateDash` | sedang | tinggi | |
+| 9 | Bayangan → border (U6) | `CandidateDash` | rendah | rendah | |
+
+**Prasyarat yang ternyata juga merah:** `npx vitest run` di pohon ini
+**4 gagal | 2021 lulus**. Tiga di antaranya cacat sandbox (proses anak tidak
+bisa di-spawn dari dalam vitest: `EBUSY` pada `spawnSync cmd.exe`, `exit null`
+pada oracle depcruise, dan `execFileSync('git')` yang melempar) — ketiganya
+**lulus** ketika perintahnya dijalankan langsung dari shell. Yang keempat nyata
+dan sudah diperbaiki: `LokerDetailModal.test.tsx` merah **di HEAD**
+(`ui.close` dan `public.close` sama-sama berbunyi "Tutup") → `6a2c45a`.
 
 ⚠ **Langkah 6–9 menyentuh penanda yang di-assert test.** `CandidateDash.test.tsx`
 (714 baris) membaca `document.querySelector('[role="progressbar"]')` dan menuntut

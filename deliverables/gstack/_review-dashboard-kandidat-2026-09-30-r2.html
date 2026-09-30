@@ -260,7 +260,7 @@
     <tbody>
       <tr><td><span class="pill p-high">F4</span> animasi <code>width</code></td><td>4 instance — bar tahapan ×3 <b>1 s</b>, meter 0,5 s</td><td>P7 / §3.7 melarang menganimasikan <code>width</code>; default 180 ms</td></tr>
       <tr><td><span class="pill p-med">F5</span> <code>animate-pulse</code></td><td>×3 · <code>infinite 2s</code> — termasuk <b>satu paragraf penuh</b> (<code>ui.berkas_stage_hint</code>)</td><td>§1.2 menolak kinetic typography</td></tr>
-      <tr><td><span class="pill p-med">F6</span> kontras AA</td><td>jam jadwal <b>4,15</b> gelap / <b>3,46</b> terang · lokasi <b>2,63</b> gelap (ambang 4,5)</td><td>§6.3</td></tr>
+      <tr><td><span class="pill p-ok">F6 ditarik</span> kontras AA</td><td><s>jam jadwal 4,15 gelap / 3,46 terang · lokasi 2,63 gelap</s> — <b>tidak ada kegagalan kontras</b>. Diukur ulang: jam <b>9,32</b> gelap / <b>4,61</b> terang · lokasi <b>5,92</b> / <b>6,46</b>. Semuanya lolos ambang 4,5</td><td>§6.3 — alat ukur saya yang salah, bukan halaman</td></tr>
       <tr><td><span class="pill p-med">F7</span> satu kunci, dua maksud</td><td><code>ui.cv_type_hint</code> dipakai di <code>:520</code> (subjudul sapaan) <b>dan</b> <code>:630</code> (deskripsi Status Lamaran) — keduanya salah</td><td>§7.1</td></tr>
       <tr><td><span class="pill p-low">F8</span> <code>font-black</code> &lt; 20 px</td><td>11–19 instance</td><td>§3.3 <i>"Yang dihentikan: … font-black pada teks di bawah 20 px"</i></td></tr>
       <tr><td><span class="pill p-low">F8</span> bayangan bertingkat</td><td>4 bersarang: <code>2xl → xl → lg → lg</code></td><td>§3.6 <i>"tidak memakai skala bayangan bertingkat"</i></td></tr>
@@ -270,6 +270,19 @@
       <tr><td><span class="pill p-ok">patuh</span> padding kartu</td><td>panel 24/20 · kartu dalam 16 · chip 4–8</td><td>§3.5</td></tr>
     </tbody>
   </table>
+
+  <div class="note badbox">
+    <b>Koreksi: F6 ditarik — tidak ada kegagalan kontras di halaman ini.</b>
+    Angka 4,15 / 3,46 / 2,63 dihasilkan oleh <i>backdrop resolver</i> saya yang
+    menjumlahkan <code>backgroundColor</code> leluhur dengan dua cacat: lapisan
+    tembus cahaya dicampur pada opasitas penuh, dan akumulasinya berjalan dari
+    lapisan terdekat ke luar alih-alih dari lapisan opaque pertama ke dalam —
+    sehingga tint amber 10% menyeret latar gelap menjadi mid-tone. Diukur ulang
+    dari piksel yang benar-benar tergambar: jam jadwal <b>9,32</b> gelap /
+    <b>4,61</b> terang, lokasi <b>5,92</b> / <b>6,46</b>. Keempatnya lolos.
+    <b>Langkah perbaikan kontras dibatalkan</b> — mengubah token di sana hanya
+    akan menggeser warna tanpa sebab.
+  </div>
 
   <div class="note badbox">
     <b>Bukan temuan: CTA <code>Lengkapi Pemberkasan &amp; Biodata</code>.</b> Audit generik saya
@@ -285,8 +298,8 @@
   <table>
     <thead><tr><th class="num">#</th><th>Langkah</th><th>Sentuh</th><th>Risiko</th><th>Dampak</th></tr></thead>
     <tbody>
-      <tr><td class="num">1</td><td><code>scaleX()</code> untuk 4 bar</td><td><code>CandidateDash</code>, <code>LevelCard</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-high">tinggi</span></td></tr>
-      <tr><td class="num">2</td><td>2 kegagalan kontras</td><td><code>CandidateDash</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-high">tinggi</span></td></tr>
+      <tr><td class="num">1</td><td><code>scaleX()</code> untuk 4 bar <span class="tag">✅ 21f7361</span></td><td><code>CandidateDash</code>, <code>LevelCard</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-high">tinggi</span></td></tr>
+      <tr><td class="num">2</td><td><s>2 kegagalan kontras</s> <span class="tag">⛔ dibatalkan — F6 ditarik</span></td><td>—</td><td>—</td><td>—</td></tr>
       <tr><td class="num">3</td><td>Hapus 3 <code>animate-pulse</code></td><td><code>CandidateDash</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-med">sedang</span></td></tr>
       <tr><td class="num">4</td><td>2 kunci i18n untuk 2 maksud</td><td><code>CandidateDash</code>, <code>i18n</code>, <code>i18n-jp</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-med">sedang</span></td></tr>
       <tr><td class="num">5</td><td>Target sentuh + <code>h3</code></td><td><code>CandidateDash</code></td><td><span class="pill p-ok">rendah</span></td><td><span class="pill p-med">sedang</span></td></tr>
