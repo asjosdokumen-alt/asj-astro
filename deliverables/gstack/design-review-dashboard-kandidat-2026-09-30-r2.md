@@ -213,6 +213,36 @@ ada di `i18n.ts` **dan** `i18n-jp.ts`).
 | Radius | `{12, 16, 24, pill}` | ✅ **patuh** — 4 dari 5 token, tanpa literal |
 | Padding kartu | panel 24/20, kartu dalam 16, chip 4–8 | ✅ **patuh** — dua tingkat yang konsisten |
 
+### F9 · Tujuh tombol aksi berada di dalam kartu "Status Lamaran Terkini" 🟠
+
+**Ditemukan 2026-09-30 saat memeriksa hasil `c01eaaf`, bukan dari pengukuran awal.**
+
+Kartu `Status Lamaran Terkini` (`h2`) membungkus:
+
+```
+h2  Status Lamaran Terkini
+p   deskripsi
+h3  DAFTAR LAMARAN          ← daftar lamaran
+    …pills, kotak gulir, entri…
+    grid 7 tombol aksi      ← Update Profil, Latihan Interview, E-Sign Naitei,
+                              AI CV Master, Form Master Lengkap, Preview Desain CV,
+                              Ganti Password
+```
+
+Tujuh tombol itu tidak ada hubungannya dengan status lamaran, dan **tidak punya
+judul sendiri** — jadi pembaca layar mendengarnya sebagai bagian dari "Status
+Lamaran Terkini". Sebelumnya bingkai gradien + permukaan dalam membuat keduanya
+*terlihat* seperti dua blok; setelah `c01eaaf` keduanya duduk di permukaan yang
+sama, sehingga ketidaksesuaiannya jadi terlihat.
+
+Ini juga melanggar §9 *"Kartu bersarang di dalam kartu … **Satu tingkat saja**"*.
+
+**Usul:** pindahkan grid aksi keluar dari kartu status, jadi seksi tingkat halaman
+dengan `h2` sendiri (mis. `dash.quick_actions` = "Aksi Cepat"). Butuh kunci i18n
+baru di kedua kamus. ⚠ `e2e/test-candidate-modals.mjs` menuntut 6 pemicu modal ada
+dan bisa diklik **tanpa satu klik tambahan** — memindahkan boleh, menyembunyikan
+tidak.
+
 ---
 
 ## 3. Usulan
@@ -330,13 +360,41 @@ Satu langkah per commit (R3). `vitest` dulu, baru `npm run build` — **bukan**
 |---|---|---|---|---|---|
 | 1 | `scaleX()` untuk 4 bar (U4) | `CandidateDash`, `LevelCard` | rendah | tinggi | ✅ **selesai** `21f7361` |
 | 2 | ~~2 kontras (U7)~~ | — | — | — | ⛔ **dibatalkan** (F6: tidak ada kegagalan) |
-| 3 | Hapus 3 `animate-pulse` (U5) | `CandidateDash` | rendah | sedang | |
-| 4 | 2 kunci i18n (U8) | `CandidateDash`, `i18n`, `i18n-jp` | rendah | sedang | |
-| 5 | Target sentuh + `h3` (U9) | `CandidateDash` | rendah | sedang | |
-| 6 | Pipeline → rail titik + `<details>` (U3) | `CandidateDash` | **sedang** | tinggi | |
-| 7 | Lima permukaan → dua (U1) | `CandidateDash`, `candidate.astro` | **tinggi** | tinggi | |
-| 8 | Rail 22rem (U2) | `candidate.astro`, `CandidateDash` | sedang | tinggi | |
-| 9 | Bayangan → border (U6) | `CandidateDash` | rendah | rendah | |
+| 3 | Hapus 3 `animate-pulse` (U5) | `CandidateDash` | rendah | sedang | ✅ **selesai** `14f65bd` |
+| 4 | 2 kunci i18n (U8) | `CandidateDash`, `i18n`, `i18n-jp` | rendah | sedang | ✅ **selesai** `4e0fd52` |
+| 5 | Target sentuh + `h3` (U9) | `CandidateDash` | rendah | sedang | ✅ **selesai** `cc609b3` |
+| 6 | Pipeline → rail titik + `<details>` (U3) | `CandidateDash` | **sedang** | tinggi | ✅ **selesai** `b1fa7f4` |
+| 7 | Lima permukaan → dua (U1) | `CandidateDash`, `candidate.astro` | **tinggi** | tinggi | 🟡 **sebagian** `c01eaaf` — 2 dari 4 tingkat bersarang dihapus |
+| 8 | Rail 22rem (U2) | `candidate.astro`, `CandidateDash` | sedang | tinggi | ⏸ belum — perlu mockup dulu |
+| 9 | Bayangan → border (U6) | `CandidateDash` | rendah | rendah | ✅ **selesai** `6327fda` |
+
+### Hasil terukur sesudah langkah 1–7, 9
+
+| Metrik | Sebelum | Sesudah |
+|---|---|---|
+| `transition: width` | 4 | **0** |
+| `animate-pulse` | 3 | **0** |
+| Kontrol < 44 px | 3 dari 11 | **0 dari 14** |
+| `shadow-*` di `CandidateDash` | 10 | **0** |
+| Isi kotak gulir riwayat (ponsel) | 1038 px | **788 px** (−24%) |
+| Entri riwayat (ponsel) | 356/323/323 | **356/198/198** |
+| Tepi kiri entri (desktop) | x=264, w=720 | **x=235, w=778** (+58 px) |
+| Tinggi halaman desktop | 3132 px | **3074 px** (−58) |
+| Tinggi halaman ponsel | 3780 px | **3680 px** (−100) |
+
+**Yang belum dikerjakan, dan kenapa.** Langkah 7 (sisa) dan 8 mengubah
+**kerangka halaman** — menghapus panel pembungkus `.glass-panel` dan menambah rail
+22 rem. Keduanya terlihat jelas dan tidak bisa dinilai dari diff; pemilik sebaiknya
+melihat mockupnya dulu (wireframe-nya ada di deliverable HTML, bagian F1/U1–U2).
+Mengerjakannya tanpa persetujuan berisiko membongkar tata letak yang baru saja
+dibuat patuh.
+
+**Temuan baru, belum diperbaiki.** Tujuh tombol aksi (Update Profil … Ganti
+Password) ternyata **berada DI DALAM** kartu "Status Lamaran Terkini", di bawah
+`h2` yang tidak menjelaskan isinya. Pembungkus gradien yang dihapus di `c01eaaf`
+menyembunyikan ketidaksesuaian itu. Memindahkannya ke kelompok tingkat halaman
+dengan judulnya sendiri adalah keputusan terpisah (mengubah urutan DOM + butuh
+kunci i18n baru), jadi dilaporkan, bukan dikerjakan diam-diam.
 
 **Prasyarat yang ternyata juga merah:** `npx vitest run` di pohon ini
 **4 gagal | 2021 lulus**. Tiga di antaranya cacat sandbox (proses anak tidak
