@@ -533,7 +533,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                     <img src="/icons/logo-asj.webp" alt="Logo ASJ" class="w-full h-full object-cover scale-110" />
                   </div>
                   <div>
-                    <h2 class="text-white font-black text-sm tracking-widest">{t('ui.student_id')}</h2>
+                    <h3 class="text-white font-black text-sm tracking-widest">{t('ui.student_id')}</h3>
                     <p class="text-amber-400 text-[11px] font-bold uppercase tracking-[0.2em]">{data.kelas || t('ui.vip_member')}</p>
                   </div>
                 </div>
@@ -647,7 +647,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider self-center">{t('ui.pilih_loker')}</span>
                     {uniqueLokers.map(code => (
                       <button onClick={() => setSelectedLoker(selectedLoker === code ? null : code)}
-                        class={`px-2.5 py-1 rounded-full border text-[11px] font-black transition ${selectedLoker === code ? 'bg-emerald-600 text-white border-emerald-400' : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-emerald-500/60'}`}>
+                        class={`min-h-11 inline-flex items-center justify-center px-3 rounded-full border text-[11px] font-black transition ${selectedLoker === code ? 'bg-emerald-600 text-white border-emerald-400' : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-emerald-500/60'}`}>
                         {code}
                       </button>
                     ))}
@@ -861,7 +861,11 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                   ia satu-satunya aksi di kartu ini, dan menguburnya di balik
                   buka-tutup akan membuat aksi utama halaman ini tidak terlihat. */}
               <details class="mt-1">
-                <summary class="flex cursor-pointer list-item items-center gap-2 pt-2 text-xs font-bold text-accent-emerald marker:text-accent-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-sky">
+                {/* `min-h-11` for the 44 px touch floor (§6.4). Measured before:
+                    24 px tall. `list-item` is KEPT — it is what draws the native
+                    disclosure marker; swapping it for `flex` alone would make the
+                    control look like static text. */}
+                <summary class="min-h-11 flex cursor-pointer list-item items-center gap-2 pt-2 text-xs font-bold text-accent-emerald marker:text-accent-emerald focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-sky">
                   {data.berkasList.filter(b => b.done).length}/{data.berkasTotal}{t('ui.doc_count_suffix')}
                 </summary>
                 <div class="grid grid-cols-2 gap-1.5 max-h-44 u-scroll-area custom-scrollbar pr-1 pt-3">
