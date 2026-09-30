@@ -387,7 +387,7 @@
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 2270,
+      "line": 2276,
       "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",
@@ -396,7 +396,7 @@
     },
     {
       "path": "src/store/i18n.ts",
-      "line": 2271,
+      "line": 2277,
       "name": "useStore",
       "role": "Callee",
       "reason": "alias-vs-chase",

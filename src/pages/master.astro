@@ -6,6 +6,7 @@ import FormToolbar from "../components/forms/FormToolbar";
 <BaseLayout title="ASJ MASTER PROFIL" titleKey="doc.title_master">
   <FormToolbar client:only="preact" titleKey="toolbar.master" />
   <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[42px]">
+  <noscript data-lang="doc.needs_js" class="block mx-4 mt-6 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.</noscript>
     <MasterFullForm client:only="preact" />
   </main>
 </BaseLayout>

@@ -16,6 +16,7 @@ import FormToolbar from '../components/forms/FormToolbar';
        The utility derives the clearance from `--u-nav-h` instead, so it
        tracks the bar automatically. No-op above md:. -->
   <main id="main-content" class="u-has-bottomnav w-full min-h-[50vh] pt-[42px]">
+  <noscript data-lang="doc.needs_js" class="block mx-4 mt-6 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.</noscript>
     <AuthGuard requiredRole="admin" redirectTo="/" client:only="preact">
       <AdminPanel client:only="preact" />
     </AuthGuard>

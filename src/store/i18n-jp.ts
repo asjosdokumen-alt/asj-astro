@@ -1839,6 +1839,7 @@ export const jpTranslations: Record<string, string> = {
     // keys after hydration and on every toggle. The company's legal name stays
     // as-is in both languages, which is why every entry keeps it verbatim.
     "doc.title_home": "PT Amanah Sakura Japan — 求人ポータル",
+    "doc.needs_js": "このページには JavaScript が必要です。JavaScript を有効にして再読み込みしてください。",
     "doc.title_loker": "求人情報 — PT Amanah Sakura Japan",
     "doc.title_public": "求人・サービス — ASJポータル",
     "doc.title_apply": "ASJ - 求人応募フォーム",

@@ -2047,6 +2047,12 @@ export const translations: Record<Lang, Record<string, string>> = {
     // adding an attribute to that tag would break it. Same reasoning the skill
     // for this defect class records.
     "doc.title_home": "PT Amanah Sakura Japan — Job Portal",
+    // Ditampilkan oleh `<noscript>` di BaseLayout untuk rute `client:only`
+    // (lihat Props.requiresJs). Nilai JP-nya TIDAK TERJANGKAU saat runtime —
+    // `<noscript>` hanya dirender ketika skrip mati, jadi `translateDataLang()`
+    // tidak pernah bisa menimpanya. Kunci ini tetap ada di kedua kamus karena
+    // §7.1 menuntutnya, bukan karena ada pembaca JP yang akan melihatnya.
+    "doc.needs_js": "Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.",
     "doc.title_loker": "Lowongan Kerja — PT Amanah Sakura Japan",
     "doc.title_public": "Lowongan & Layanan — ASJ Portal",
     "doc.title_apply": "ASJ - Form Lamaran Kerja",
