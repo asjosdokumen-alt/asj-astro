@@ -634,13 +634,24 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           <div class="relative z-10">
             <h2 class="text-xl font-black text-accent-sky mb-2"><Icon name="bolt" class="mr-2 text-accent-amber" /> {t('ui.app_status_latest')}</h2>
             <p class="text-sm text-slate-300 mb-5">{t('dash.app_status_desc')}</p>
-            <div class="mt-6 p-1 rounded-panel bg-gradient-to-r from-sky-500/30 to-emerald-500/30 border border-slate-700/50 shadow-xl">
-              <div class="bg-surface rounded-card p-5 md:p-6">
+            {/* DUA PEMBUNGKUS DIHAPUS 2026-09-30 (review r2 §U1).
+                Di sini dulu ada bingkai gradien
+                (`mt-6 p-1 rounded-panel bg-gradient-to-r from-sky-500/30
+                to-emerald-500/30 border shadow-xl`) yang membungkus satu
+                permukaan lagi (`bg-surface rounded-card p-5 md:p-6`).
+                Keduanya adalah kedalaman ke-3 dan ke-4 dari lima tepi
+                bersarang, dan tidak satu pun membedakan isinya dari kartu
+                induk: yang terukur hanyalah 30 px lebar hilang di desktop dan
+                42 px di ponsel. Daftar ini sudah punya `h3` sendiri sebagai
+                judul, jadi pengelompokannya tidak bergantung pada bingkai itu.
+                Entri riwayat membawa `bg-black/60` + border sendiri, jadi ia
+                tetap terbaca sebagai kartu di atas permukaan seksi. */}
+            <div>
                 {/* Judul panel ini dulu memakai kunci i18n YANG SAMA dengan h3 di
                     atasnya (ui.app_status_latest), jadi outline terbaca
                     "Status Lamaran Terkini" dua kali berurutan. Sekarang ia punya
                     label sendiri yang menyebut isinya: daftar loker yang dilamar. */}
-                <h3 class="text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400" /> {t('ui.app_list_title')}</h3>
+                <h3 class="mt-6 text-sm md:text-base font-black text-white mb-4 uppercase"><Icon name="satellite-dish" class="mr-2 text-sky-400" /> {t('ui.app_list_title')}</h3>
                 {/* Loker pills */}
                 {uniqueLokers.length > 1 && (
                   <div class="flex flex-wrap gap-1.5 mb-3">
@@ -746,7 +757,6 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                   })}
                 </div>
               </div>
-            </div>
             {/* Action buttons grid */}
             {/* Action buttons grid — bobot seragam, SENGAJA.
                 Dulu tujuh tombol ini punya tujuh warna pekat (sky/violet/rose/
