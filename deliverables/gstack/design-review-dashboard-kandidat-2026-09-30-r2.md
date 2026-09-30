@@ -493,10 +493,71 @@ adalah pilihan yang masuk akal). Belum dikerjakan — menunggu keputusan itu.
 
 ---
 
-## Lampiran · Backlog pohon kerja saat review ini selesai
+### F11 · Enam modal dashboard: tombol tutup 16×24 px, dan bayangan yang tak terlihat 🟠 → ✅ **SELESAI `39f5757`**
 
-`git status`: **24 modified + 12 untracked**, semuanya **bukan** dari review ini.
-Dua kelompok yang koheren, bukan sampah acak:
+**Diukur 2026-10-01**, setelah semua langkah review selesai — permukaan yang
+sebelumnya saya tinggalkan dengan sengaja, karena berada di luar halaman yang
+diukur review ini. Ternyata mengukur dulu berbuah: yang paling parah bukan
+bayangannya.
+
+**Tombol tutup di KEENAM modal berukuran 16×24 px** (16×32 di `RirekishoBuilder`).
+Bukan 24×24, bukan 32×32 — 16 lebar, karena tombolnya elemen inline yang
+menyesuaikan glyph-nya (`<Icon name="times" />` tanpa padding). §6.4 menetapkan
+44×44. Ini berlaku di setiap modal, setiap kali dibuka — dan modal adalah tempat
+orang menutup sesuatu yang salah, sering kali di ponsel. Diperbaiki dengan pola
+yang **sudah ada di repo** (`AdminPanel.tsx:214`):
+`min-w-11 min-h-11 inline-flex items-center justify-center`.
+
+Kontrol lain yang juga di bawah ambang, dinamai dengan tag+id, bukan ditebak:
+
+| Modal | Kontrol | Terukur | Perbaikan |
+|---|---|---|---|
+| CvMiniModal | `#cm-photo` | 354×28 `<input type=file>` | `min-h-12` |
+| Pemberkasan | `#berkas-*` ×12 | 770×36 `<input type=file>` | `min-h-12` |
+| Pemberkasan | `#bio-*` ×16 | 377×42 text/date/email | `min-h-11` |
+| EsignNaitei | "Mulai Gambar" ×4 | 121×28 `<button>` | `min-h-11` |
+
+`min-h-12` (48 px) untuk input berkas karena §6.4 menetapkan 48 px untuk kontrol
+di dalam formulir ponsel — dan mengunggah dokumen hasil pindai adalah aksi utama
+alur Pemberkasan.
+
+**Bayangan: §9 benar, tapi itu klaim dan saya ukur dulu.** §9 menyebut bayangan
+"nyaris tak terbaca di latar dark". Saya buka tiap modal dan membandingkan piksel
+tepat di luar tepi panel dengan piksel scrim jauh dari panel: **delta maksimum
+3/255** di lima dari enam modal — tidak terlihat. Semua scrim memakai
+`bg-black/40`…`/90`, yaitu hitam palet tetap di KEDUA tema, jadi bayangan hitam di
+atasnya memang tidak melukis apa pun. 21 token skala bayangan dihapus; bacaan
+keenam (delta 252) adalah artefak probe — ia menyampel di dalam lembar CV putih.
+
+Yang **sengaja DIPERTAHANKAN**: nilai arbitrer `shadow-[…]`. Itu glow aksen
+berwarna (`0 0 15px rgba(139,92,246,.5)` di avatar, glow signature pad), bukan
+skala elevasi yang ditolak §9. Menghapusnya adalah desain ulang, bukan
+pembersihan.
+
+**Sesudah, terukur di keenam modal:** kontrol < 44 px **0** (sebelumnya 1–16 per
+modal), animasi **none**, elemen berskala bayangan **0**.
+
+⚠ **Gate `e2e/test-candidate-modals.mjs` sempat merah, dan itu bukan regresi.**
+Tiga jalan berturut-turut di bawah beban CPU memberi 7/8, lalu 6/8, lalu 5/8 —
+**kasus yang gagal berpindah-pindah**, padahal perubahan saya hanya kelas
+(`min-h-*`, penghapusan `shadow-*`) di berkas yang logika transisinya tidak
+disentuh. Penyebabnya: gate itu menyampel transisi keluar secara real-time, dan
+suite penuh sedang berjalan di latar. Setelah beban dihilangkan: **8/8, 8/8, 8/8**.
+
+
+## Lampiran · Backlog pohon kerja — ✅ **SELESAI, pohon bersih**
+
+> **Diselesaikan 2026-10-01.** Kedua kelompok di bawah sudah di-commit dan pohon
+> kerja **0 modified + 0 untracked** untuk pertama kalinya. `390c8fb` = kelompok A
+> (gambar), `2067a0a` = kelompok B (audit landing + pemisahan company profile +
+> berkas buktinya). Dipisah gambar-vs-kode supaya keduanya bisa ditelusuri
+> terpisah. Isi di bawah disimpan sebagai catatan apa yang sempat menumpuk.
+>
+> **Belum ada yang di-push.** Disengaja: push ke `main` men-deploy kedua situs
+> Netlify (R19). Cek jumlahnya dengan `git rev-list --count origin/main..HEAD`.
+
+`git status` saat itu: **24 modified + 12 untracked**, semuanya **bukan** dari
+review ini. Dua kelompok yang koheren, bukan sampah acak:
 
 **Kelompok A — optimasi gambar (13 berkas + 1 laporan).** Dua belas `.webp` di
 `public/assets/` dan `public/icons/logo-asj.webp`, semuanya **mengecil**:
