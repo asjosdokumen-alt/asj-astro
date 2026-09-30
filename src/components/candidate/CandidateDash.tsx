@@ -530,7 +530,7 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
               <div class="flex justify-between items-start z-10">
                 <div class="flex items-center gap-3">
                   <div class="w-11 h-11 bg-white rounded-full shadow-lg overflow-hidden flex items-center justify-center border border-slate-600">
-                    <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo-removebg-preview.webp" alt="Logo ASJ" class="w-full h-full object-cover scale-110" />
+                    <img src="/icons/logo-asj.webp" alt="Logo ASJ" class="w-full h-full object-cover scale-110" />
                   </div>
                   <div>
                     <h2 class="text-white font-black text-sm tracking-widest">{t('ui.student_id')}</h2>
@@ -693,7 +693,16 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
                             aria-valuemax={100}
                             aria-label={`${r.jobCode} — ${TAHAPAN_STEPS[stepIdx] || r.tahapan}`}
                           >
-                            <div class="bg-gradient-to-r from-emerald-600 to-sky-500 h-1.5 rounded-full transition-[width] duration-1000" style={`width:${progressPct}%`}></div>
+                            {/* `scaleX`, NOT `width`. P7 (§3.7) allows only
+                                `opacity` and `transform`; a `transition-[width]`
+                                animates a LAYOUT property, so every frame reflows
+                                the row and its ten sibling labels. `scaleX` is
+                                compositor-only and paints the identical result —
+                                `w-full` + `origin-left` is what makes the scaled
+                                box grow from the left edge instead of the centre.
+                                The bare `transition-transform` inherits the repo's
+                                default 180 ms (`--default-transition-duration`). */}
+                            <div class="w-full bg-gradient-to-r from-emerald-600 to-sky-500 h-1.5 rounded-full origin-left transition-transform motion-reduce:transition-none" style={`transform:scaleX(${progressPct / 100})`}></div>
                           </div>
                           <div class="flex flex-wrap justify-between gap-x-2 gap-y-1 mt-1.5">
                             {TAHAPAN_STEPS.map((nm, si) => {

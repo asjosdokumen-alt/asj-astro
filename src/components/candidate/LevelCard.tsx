@@ -202,9 +202,13 @@ export default function LevelCard({ percent, mini, master, berkasDone, berkasTot
           aria-valuemax={100}
           aria-label={t('candidate.level_label')}
         >
+          {/* `scaleX`, not `width` — same reason as the stage bar in
+              CandidateDash. The parent already clips (`overflow-hidden`), so the
+              scaled box cannot escape the track, and `origin-left` keeps the
+              fill anchored to the left edge. */}
           <div
-            class="h-full bg-gradient-to-r from-emerald-600 to-sky-500 rounded-full transition-[width] duration-500 motion-reduce:transition-none"
-            style={`width:${shown}%`}
+            class="w-full h-full bg-gradient-to-r from-emerald-600 to-sky-500 rounded-full origin-left transition-transform motion-reduce:transition-none"
+            style={`transform:scaleX(${shown / 100})`}
           />
         </div>
 
