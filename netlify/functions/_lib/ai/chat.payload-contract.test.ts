@@ -112,3 +112,46 @@ describe('processSiswaAIChat — kontrak payload', () => {
     expect(history).toEqual(HISTORY);
   });
 });
+
+// ==========================================
+// TESTS: auto-terjemahan dijalankan PARALEL (T7) — dan karena itu harus
+// BEST-EFFORT.
+//
+// Terjemahan dipanggil lebih dulu, dan `geminiGenerate` memanggil
+// `breaker.check()` secara sinkron sebelum await pertamanya. Dengan kunci
+// breaker yang sama, dua hal terjadi pada satu giliran pengguna:
+//
+//   1. saat breaker `gemini` sudah `open` melewati cooldown, TERJEMAHAN yang
+//      mengambil probe `half-open` — dan balasan yang ditunggu pengguna ditolak
+//      `SERVICE_UNAVAILABLE` padahal providernya sehat;
+//   2. satu giliran yang gagal menyumbang DUA kegagalan (ambang breaker `gemini`
+//      adalah 3), jadi pengguna berjaringan buruk membuka breaker dua kali
+//      lebih cepat — amplifikasi yang sama dengan T1, dimasukkan kembali oleh
+//      perbaikan T7.
+// ==========================================
+describe('processAIChat — auto-terjemahan adalah panggilan best-effort', () => {
+  beforeEach(() => {
+    geminiMock.mockReset();
+    geminiMock.mockResolvedValue({ reply: AI_JSON });
+  });
+
+  it('panggilan terjemahan ditandai bestEffort (breaker terpisah, tanpa Grok)', async () => {
+    // `alergi_id` terisi sementara `alergi_jp` kosong — pasangan di
+    // AI_ID_JP_PAIRS, jadi autoTranslateMissingJp benar-benar memanggil model.
+    const currentData = { medis: { alergi_id: 'Udang' } };
+
+    await handleProcessAIChat([{ history: HISTORY, currentData }], 'tok-admin');
+
+    expect(geminiMock).toHaveBeenCalledTimes(2);
+    const translation = geminiMock.mock.calls.find((c) =>
+      String(c[0]).includes('Terjemahkan Bahasa Indonesia'),
+    );
+    expect(translation, 'terjemahan harus benar-benar memanggil model').toBeTruthy();
+    expect(translation?.[2]).toMatchObject({ bestEffort: true });
+
+    // Dan balasan yang ditunggu pengguna TIDAK ditandai best-effort — ia yang
+    // berhak atas breaker utama dan provider cadangan.
+    const reply = geminiMock.mock.calls.find((c) => !String(c[0]).includes('Terjemahkan'));
+    expect(reply?.[2]).toBeUndefined();
+  });
+});

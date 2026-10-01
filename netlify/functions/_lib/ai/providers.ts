@@ -33,6 +33,59 @@ const PARSE_MODEL_TIMEOUT_MS = 11000;
 // platform.
 const TOTAL_AI_BUDGET_MS = 9000;
 
+// Timeout provider fallback Grok (ms).
+//
+// Angka 5 dtk bukan pilihan baru: komentar di kepala berkas ini sudah menulis
+// "Gemini race (4s) + Grok fallback (5s) = 9s worst case", jadi konstanta 10 dtk
+// yang dulu ada di sini bertentangan dengan anggaran yang didokumentasikan
+// sendiri dua baris di atasnya.
+const GROK_TIMEOUT_MS = 5000;
+
+// Jarak aman antara akhir rantai Gemini dan awal fallback Grok (ms).
+//
+// Terukur 2026-10-01, dan inilah yang membuat margin ini ada: dengan anggaran
+// rantai PERSIS `TOTAL - grok` (4000 ms), rantai yang menghabiskan seluruh
+// waktunya berakhir pada **4015 ms** — bukan 4000 — karena abort terakhir dan
+// pemeriksaan `shouldTryGrok()` tidak berjalan pada milidetik yang sama.
+// Hasilnya `4015 + 5000 > 9000`, dan Grok ditolak lagi. Batas kesetaraan tanpa
+// jarak aman mengulang cacat aslinya (yang juga berupa `4000` dibanding `4000`),
+// hanya berpindah tempat. 250 ms ≈ 16x jitter yang terukur.
+const FALLBACK_HANDOFF_MS = 250;
+
+// Anggaran RANTAI Gemini untuk chat (ms) — TURUNAN, bukan angka bebas.
+//
+// Kenapa turunan: cacat aslinya bukan salah satu angka, melainkan aritmetika
+// yang TERSEBAR. Jendela fallback dihitung `TOTAL - grok` di satu tempat,
+// sementara rantai utama tidak dibatasi sama sekali di tempat lain — ia hanya
+// dipotong ke sisa DEADLINE PERMINTAAN (12 dtk). Jadi rantai bisa berjalan
+// 1,5 (hedge) + 1,5 (hedge) + 4 (timeout model terakhir) = ~7 dtk, dan
+// `TOTAL_AI_BUDGET_MS` baru dibaca SESUDAHNYA, di `shouldTryGrok()` — artinya
+// konstanta bernama "total anggaran AI" itu tidak membatasi apa pun.
+//
+// Terukur 2026-10-01: rantai berkasus-terburuk 7.030 ms, lalu Grok DITOLAK
+// karena 7030 + 5000 > 9000. Satu-satunya provider cadangan praktis mati tepat
+// di kasus yang paling membutuhkannya.
+//
+// Sebagai turunan, kedua angka tidak bisa lagi bergeser sendiri-sendiri, dan
+// `hedgedInvoke` menerima anggaran ini sebagai PLAFON NYATA (lihat
+// `chainBudgetMs`), bukan sekadar perbandingan setelah pekerjaan selesai.
+const CHAT_CHAIN_BUDGET_MS = TOTAL_AI_BUDGET_MS - GROK_TIMEOUT_MS - FALLBACK_HANDOFF_MS;
+
+// Anggaran rantai untuk panggilan BEST-EFFORT (terjemahan `_jp` latar).
+//
+// Terjemahan adalah pekerjaan tambahan yang bisa disusulkan giliran berikutnya,
+// jadi ia tidak boleh menandingi balasan yang sedang ditunggu pengguna: dengan
+// anggaran rantai yang sama besarnya, `await translation` membuat waktu balas
+// ditentukan oleh yang LEBIH LAMBAT dari dua panggilan — dan terjemahan bisa
+// memakai seluruh jendela Grok (9 dtk) hanya untuk menerjemahkan beberapa field.
+const TRANSLATE_CHAIN_BUDGET_MS = 3000;
+
+// Kunci breaker. Dipisah karena panggilan best-effort berjalan PARALEL dengan
+// balasan pengguna dan `breaker.check()` dipanggil secara sinkron sebelum await
+// pertama — lihat catatan panjang di `geminiGenerate`.
+const BREAKER_GEMINI = 'gemini';
+const BREAKER_TRANSLATE = 'gemini-translate';
+
 // ---------------------------------------------------------------------------
 // Hedging — bukan "tembak semua model sekaligus"
 // ---------------------------------------------------------------------------
@@ -78,9 +131,14 @@ const MODELS = ['gemini-3.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5
 const AI_BUDGETS = {
   chatModelMs: CHAT_MODEL_TIMEOUT_MS,
   parseModelMs: PARSE_MODEL_TIMEOUT_MS,
+  /** Plafon NYATA rantai Gemini untuk chat — dipotong dari `totalMs` oleh `grokMs`. */
+  chatChainMs: CHAT_CHAIN_BUDGET_MS,
+  translateChainMs: TRANSLATE_CHAIN_BUDGET_MS,
   chatHedgeAfterMs: CHAT_HEDGE_AFTER_MS,
   totalMs: TOTAL_AI_BUDGET_MS,
-  grokMs: 5000,
+  grokMs: GROK_TIMEOUT_MS,
+  /** Jitter allowance so the chain never eats the fallback's window. */
+  fallbackHandoffMs: FALLBACK_HANDOFF_MS,
 } as const;
 
 // Gemini API menolak request yang berakhiran giliran model ("Requests ending
@@ -102,8 +160,24 @@ type ModelAttempt = (model: string, signal: AbortSignal, budgetMs: number) => Pr
 interface HedgeOpts {
   /** Plafon satu panggilan model, sebelum dipotong ke sisa deadline. */
   modelBudgetMs: number;
-  /** Jendela sendirian untuk percobaan aktif sebelum yang berikutnya ditembak. */
-  hedgeAfterMs: number;
+  /**
+   * Plafon SELURUH rantai (ms) — plafon nyata, bukan sekadar pembanding.
+   *
+   * Inilah yang membuat `TOTAL_AI_BUDGET_MS` berarti: tanpa ini, satu-satunya
+   * batas adalah sisa deadline permintaan, sehingga hedge berlipat
+   * (1,5 + 1,5 + 4 = ~7 dtk) dan fallback provider kehabisan jendela sebelum
+   * sempat dicoba. Setiap percobaan dipotong ke `min(plafon model, sisa rantai)`,
+   * jadi rantai berakhir tepat di plafonnya — bukan di jumlah kebetulan dari
+   * timeout-timeout yang berurutan.
+   */
+  chainBudgetMs: number;
+  /**
+   * Jendela sendirian untuk percobaan aktif sebelum yang berikutnya ditembak.
+   * `undefined` = JANGAN pernah hedge: percobaan berikutnya hanya dijalankan
+   * kalau yang aktif benar-benar GAGAL. Dipakai panggilan best-effort, yang
+   * tidak mengejar latensi dan tidak boleh menggandakan kuota provider.
+   */
+  hedgeAfterMs?: number;
 }
 
 /**
@@ -127,6 +201,12 @@ async function hedgedInvoke(
   let settled = false;
   let hedgeTimer: ReturnType<typeof setTimeout> | undefined;
 
+  // Plafon rantai dihitung SEKALI, dari waktu mulai, lalu dipotong ke sisa
+  // deadline permintaan (kalau ada). Semua percobaan berbagi plafon yang sama —
+  // itu yang membuat durasi total bisa diprediksi, alih-alih menjadi jumlah dari
+  // timeout-timeout yang berurutan.
+  const chainDeadline = Date.now() + clampBudget(opts.chainBudgetMs);
+
   return new Promise<string>((resolve, reject) => {
     const settle = (fn: () => void) => {
       if (settled) return;
@@ -141,6 +221,9 @@ async function hedgedInvoke(
     };
 
     const scheduleHedge = () => {
+      // Tanpa `hedgeAfterMs` tidak ada hedge sama sekali: percobaan berikutnya
+      // menunggu kegagalan, bukan waktu.
+      if (opts.hedgeAfterMs === undefined) return;
       if (hedgeTimer || settled || launched >= models.length) return;
       hedgeTimer = setTimeout(() => {
         hedgeTimer = undefined;
@@ -186,7 +269,13 @@ async function hedgedInvoke(
       // Kehabisan waktu: panggilan yang dibuat sekarang tidak mungkin selesai
       // di dalam deadline, jadi ia hanya akan menahan slot. Gagal lokal saja —
       // aturan yang sama dengan kernel/http.ts.
-      const budgetMs = clampBudget(opts.modelBudgetMs);
+      //
+      // Dua batas sekaligus: plafon model, dan SISA RANTAI. Yang kedua inilah
+      // yang membuat anggaran total mengikat; tanpa itu tiap percobaan hanya
+      // dipotong ke deadline permintaan dan rantai berjalan sampai jumlah
+      // kebetulan dari timeout-timeout berurutan.
+      const chainLeft = chainDeadline - Date.now();
+      const budgetMs = Math.min(clampBudget(opts.modelBudgetMs), chainLeft);
       if (budgetMs <= MIN_SLICE_MS) {
         onFailure(
           new AppError('DEADLINE_EXCEEDED', {
@@ -346,12 +435,56 @@ async function grokGenerate(
  *
  * `grokBudgetMs` adalah anggaran yang SUDAH dipotong deadline, jadi fallback
  * yang sebenarnya masih muat tidak ditolak.
+ *
+ * SEJAK 2026-10-01 jendela ini STRUKTURAL, bukan harapan: rantai Gemini
+ * dibatasi `CHAT_CHAIN_BUDGET_MS = TOTAL_AI_BUDGET_MS - GROK_TIMEOUT_MS`, jadi
+ * selama anggaran rantai belum terpakai, `elapsed + grokBudget <= TOTAL` selalu
+ * benar dan Grok benar-benar dicoba — termasuk saat SEMUA model Gemini
+ * menghabiskan waktunya, kasus yang dulu membuatnya selalu ditolak. Penjaga ini
+ * tetap ada sebagai jaring untuk kasus anggaran-yang-sudah-dipotong-deadline
+ * (`grokBudgetMs < grokMs`), di mana jumlahnya bisa saja tidak muat.
  */
 function shouldTryGrok(elapsedMs: number, grokBudgetMs: number): boolean {
   return grokBudgetMs > MIN_SLICE_MS && elapsedMs + grokBudgetMs <= TOTAL_AI_BUDGET_MS;
 }
 
-async function geminiGenerate(systemPrompt: string, history: Array<{ role?: string; content?: unknown }>) {
+/**
+ * Opsi satu panggilan logis ke Gemini.
+ *
+ * `bestEffort` menandai pekerjaan LATAR yang tidak sedang ditunggu siapa pun —
+ * saat ini hanya auto-terjemahan `_jp` di `chat.ts`. Ia mengubah tiga hal
+ * sekaligus, dan ketiganya harus bersama-sama:
+ *
+ *   1. KUNCI BREAKER SENDIRI. `autoTranslateMissingJp` dijalankan PARALEL dan
+ *      dipanggil LEBIH DULU daripada balasan chat, sedangkan `breaker.check()`
+ *      sinkron. Saat breaker `gemini` sudah `open` melewati cooldown, `check()`
+ *      memindahkannya ke `half-open` dan mengizinkan SATU probe — panggilan
+ *      kedua untuk dependency yang sama ditolak `SERVICE_UNAVAILABLE`
+ *      ("Circuit breaker probing"). Jadi terjemahanlah yang mengambil probe,
+ *      dan balasan yang ditunggu pengguna gagal padahal providernya sehat.
+ *      Terukur 2026-10-01: dengan kunci bersama, `gemini` berpindah dari
+ *      `open` ke `closed` karena panggilan terjemahan — probe itu memang
+ *      diambilnya. Satu giliran yang gagal juga menyumbang DUA kegagalan
+ *      (ambang breaker `gemini` adalah 3), yaitu amplifikasi T1 yang dimasukkan
+ *      kembali oleh perbaikan T7.
+ *   2. TANPA FALLBACK GROK. Provider cadangan adalah sumber daya terakhir untuk
+ *      balasan yang sedang ditunggu; terjemahan bisa disusulkan giliran
+ *      berikutnya, balasan tidak bisa.
+ *   3. TANPA HEDGE, anggaran rantai lebih kecil. Terjemahan tidak mengejar
+ *      latensi, jadi menembak model kedua hanya menggandakan kuota — sementara
+ *      `await translation` di `handleProcessAIChat` membuat waktu balas
+ *      ditentukan oleh yang LEBIH LAMBAT dari dua panggilan.
+ */
+interface AiCallOpts {
+  /** Pekerjaan latar non-kritis: terisolasi dari breaker & fallback balasan. */
+  bestEffort?: boolean;
+}
+
+async function geminiGenerate(
+  systemPrompt: string,
+  history: Array<{ role?: string; content?: unknown }>,
+  opts: AiCallOpts = {},
+) {
   const key = env('GEMINI_API_KEY');
   if (!key) {
     // Used to RETURN a friendly reply, which made "the AI is not configured"
@@ -360,6 +493,7 @@ async function geminiGenerate(systemPrompt: string, history: Array<{ role?: stri
     // but with `code: 'AI_UNAVAILABLE'`.
     throw Errors.aiUnavailable('Asisten AI belum dikonfigurasi di server. Hubungi admin ya!');
   }
+  const breakerKey = opts.bestEffort ? BREAKER_TRANSLATE : BREAKER_GEMINI;
   const contents = [{ role: 'user', parts: [{ text: systemPrompt }] }];
   for (const h of Array.isArray(history) ? history : []) {
     const role = h && h.role === 'assistant' ? 'model' : 'user';
@@ -374,32 +508,42 @@ async function geminiGenerate(systemPrompt: string, history: Array<{ role?: stri
     // dicoba. Sebelumnya tiap model memanggil breaker sendiri, jadi satu
     // giliran chat yang gagal menyumbang tiga kegagalan sekaligus dan langsung
     // melampaui ambang 3 — satu pengguna bisa mematikan AI untuk semua orang.
-    breaker.check('gemini');
+    breaker.check(breakerKey);
     const text = await hedgedInvoke(
       MODELS,
-      { modelBudgetMs: CHAT_MODEL_TIMEOUT_MS, hedgeAfterMs: CHAT_HEDGE_AFTER_MS },
+      {
+        modelBudgetMs: CHAT_MODEL_TIMEOUT_MS,
+        chainBudgetMs: opts.bestEffort ? TRANSLATE_CHAIN_BUDGET_MS : CHAT_CHAIN_BUDGET_MS,
+        // Best-effort: `undefined` = jangan pernah hedge.
+        hedgeAfterMs: opts.bestEffort ? undefined : CHAT_HEDGE_AFTER_MS,
+      },
       (model, signal, budgetMs) => fetchGemini(model, key, body, budgetMs, signal),
     );
-    breaker.success('gemini');
+    breaker.success(breakerKey);
     return { reply: text };
   } catch (e) {
     geminiError = e;
     // Penolakan `check()` berarti breaker SUDAH terbuka: mencatat kegagalan
     // lagi hanya memperpanjang outage tanpa menambah informasi.
-    if (!(e instanceof AppError && e.code === 'SERVICE_UNAVAILABLE')) breaker.failure('gemini');
+    if (!(e instanceof AppError && e.code === 'SERVICE_UNAVAILABLE')) breaker.failure(breakerKey);
   }
 
   // Grok (xAI) — provider yang benar-benar berbeda, jadi tetap layak dicoba
   // walaupun breaker Gemini sedang terbuka. Batasnya ada di `shouldTryGrok`,
   // yang diuji langsung sebagai fungsi murni.
   //
-  // BATAS YANG JUJUR, dan ini belum selesai: dengan hedge, rantai Gemini
-  // berkasus-terburuk ~7 dtk (1,5 + 1,5 + 4), sedangkan jendela Grok di sini
-  // hanya TOTAL_AI_BUDGET_MS - GROK_TIMEOUT_MS = 4 dtk. Jadi Grok menangani
-  // kegagalan CEPAT, belum timeout penuh. Untuk menutup itu, salah satu dari dua
-  // angka harus berubah (naikkan TOTAL_AI_BUDGET_MS, atau beri hedgedInvoke
-  // anggaran rantai sendiri) — dan keduanya keputusan kalibrasi yang butuh
-  // provider sungguhan, bukan tebakan di sini.
+  // Jendela Grok sekarang STRUKTURAL: rantai Gemini dibatasi
+  // `CHAT_CHAIN_BUDGET_MS` = `TOTAL_AI_BUDGET_MS - GROK_TIMEOUT_MS`, jadi
+  // selama anggaran itu belum terpakai, `elapsed + grokBudget <= TOTAL` selalu
+  // benar dan fallback benar-benar dicoba. Sebelumnya rantai tidak dibatasi dan
+  // berkasus-terburuk berjalan 7 dtk, sehingga penjaga ini menolak Grok tepat
+  // di kasus yang paling membutuhkannya. `shouldTryGrok` tetap dipertahankan
+  // sebagai jaring untuk kasus anggaran-yang-sudah-dipotong-deadline.
+  //
+  // Panggilan best-effort berhenti di sini: provider cadangan disisakan untuk
+  // balasan yang sedang ditunggu pengguna.
+  if (opts.bestEffort) throw Errors.aiUnavailable(undefined, 5, geminiError);
+
   const elapsed = Date.now() - started;
   const grokBudget = clampBudget(AI_BUDGETS.grokMs);
   if (shouldTryGrok(elapsed, grokBudget)) {
@@ -426,6 +570,12 @@ async function geminiParseFile(systemPrompt: string, file: { mimeType?: string; 
       MODELS,
       {
         modelBudgetMs: PARSE_MODEL_TIMEOUT_MS,
+        // Parse tidak punya fallback provider, jadi ia boleh memakai SELURUH
+        // anggaran AI — tidak ada jendela yang perlu disisakan. Tapi tetap
+        // DIBATASI anggaran itu: sebelumnya satu berkas bisa memegang 11 dtk
+        // dari deadline 12 dtk, karena PARSE_MODEL_TIMEOUT_MS (11000) melebihi
+        // TOTAL_AI_BUDGET_MS (9000) yang seharusnya membatasinya.
+        chainBudgetMs: TOTAL_AI_BUDGET_MS,
         hedgeAfterMs: Math.round(PARSE_MODEL_TIMEOUT_MS * PARSE_HEDGE_FRACTION),
       },
       (model, signal, budgetMs) => fetchGemini(model, key, contents, budgetMs, signal),

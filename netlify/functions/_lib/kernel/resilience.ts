@@ -308,6 +308,15 @@ export const DEPENDENCY_CONFIGS: Record<string, BreakerOpts> = {
   // Ambangnya disamakan dengan gemini: keduanya melayani permintaan yang sama
   // dan kegagalannya sama-sama berarti "AI sedang tidak bisa menjawab".
   grok:      { threshold: 3, windowMs: 60_000, coolDownMs: 30_000 },
+  // Auto-terjemahan `_jp` (`_lib/ai/chat.ts`) berjalan PARALEL dengan balasan
+  // chat dan dipanggil LEBIH DULU, sementara `breaker.check()` sinkron — jadi
+  // dengan kunci `gemini` yang sama, terjemahanlah yang mengambil probe
+  // `half-open` dan balasan yang ditunggu pengguna ditolak
+  // `SERVICE_UNAVAILABLE` padahal providernya sehat. Satu giliran yang gagal
+  // juga menyumbang DUA kegagalan pada ambang 3. Ambangnya disamakan karena
+  // providernya sama; yang dipisahkan adalah BLAST RADIUS-nya, bukan
+  // toleransinya.
+  'gemini-translate': { threshold: 3, windowMs: 60_000, coolDownMs: 30_000 },
   fonnte:    { threshold: 3, windowMs: 60_000, coolDownMs: 60_000 },
   fcm:       { threshold: 10, windowMs: 60_000, coolDownMs: 15_000 },
   storage:   { threshold: 5, windowMs: 60_000, coolDownMs: 15_000 },

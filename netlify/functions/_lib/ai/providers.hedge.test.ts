@@ -431,3 +431,164 @@ describe('anggaran parse dokumen — terpisah dari chat', () => {
     expect(calls).toHaveLength(1);
   }, 10_000);
 });
+
+// ==========================================
+// TESTS: anggaran RANTAI — `TOTAL_AI_BUDGET_MS` harus MENGIKAT, bukan sekadar
+// nama yang dipakai setelah pekerjaannya selesai.
+//
+// Cacat yang dijaga di sini (dinyatakan terbuka di tinjauan 2026-10-01 §4c P8):
+// `TOTAL_AI_BUDGET_MS` = 9 dtk hanya muncul di `shouldTryGrok()`, yaitu SETELAH
+// rantai Gemini selesai. Rantai itu sendiri tidak punya anggaran: tiap model
+// hanya dipotong ke sisa DEADLINE PERMINTAAN (12 dtk), jadi hedge 1,5 + hedge
+// 1,5 + timeout model terakhir 4 = ~7 dtk. Akibatnya jendela Grok
+// (TOTAL - grok = 4 dtk) sudah habis sebelum fallback sempat dicoba — tepat di
+// kasus yang paling membutuhkannya. Dan pada jalur parse, satu berkas bisa
+// memegang 11 dtk dari 12 dtk deadline, karena PARSE_MODEL_TIMEOUT_MS (11000)
+// melebihi TOTAL_AI_BUDGET_MS (9000) yang seharusnya membatasinya.
+// ==========================================
+describe('anggaran rantai — TOTAL_AI_BUDGET_MS benar-benar membatasi rantai', () => {
+  /** Model yang hanya bisa berakhir karena abort — cara termurah mengukur durasi rantai. */
+  const hangingHandler = (_model: string, signal: AbortSignal) =>
+    new Promise<Response>((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+    });
+
+  it('rantai Gemini berhenti di anggaran rantai, bukan di 1,5 + 1,5 + 4 dtk', async () => {
+    handler = hangingHandler;
+
+    const started = Date.now();
+    await expect(geminiGenerate('sys', [])).rejects.toMatchObject({ code: 'AI_UNAVAILABLE' });
+    const elapsed = Date.now() - started;
+
+    // Ketiga model tetap dicoba — anggaran rantai memotong DURASI, bukan jumlah
+    // percobaan.
+    expect(calls).toHaveLength(3);
+    // Yang mengikat sekarang adalah anggaran rantai. Sebelumnya tidak ada yang
+    // mengikat selain deadline permintaan (12 dtk), sehingga rantai berjalan ~7
+    // dtk dan konstanta 9 dtk itu tidak pernah membatasi apa pun.
+    expect(elapsed).toBeLessThan(AI_BUDGETS.chatChainMs + 1200);
+  }, 20_000);
+
+  it('SEMUA model Gemini menghabiskan waktunya → Grok TETAP dicoba (dulu tidak pernah)', async () => {
+    // Inilah cacat yang dinyatakan terbuka di tinjauan: Grok hanya menangani
+    // kegagalan CEPAT. Kalau Gemini menghabiskan timeout-nya, `elapsed` sudah
+    // melewati `TOTAL - grok`, jadi fallback tidak pernah dicoba — satu-satunya
+    // provider cadangan praktis mati di kasus terburuk.
+    vi.stubEnv('XAI_API_KEY', 'test-xai-key');
+    handler = hangingHandler;
+    grokHandler = () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ choices: [{ message: { content: 'halo dari grok' } }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+    const out = await geminiGenerate('sys', []);
+
+    expect(out.reply).toBe('halo dari grok');
+    expect(grokCalls).toBe(1);
+  }, 20_000);
+
+  it('anggaran rantai + jendela Grok + jarak aman = TOTAL — tak bisa bergeser sendiri', () => {
+    // Bentuk cacat aslinya adalah aritmetika yang tersebar: jendela fallback
+    // dihitung dari `TOTAL - grok` di satu tempat, sementara rantai utama tidak
+    // dibatasi sama sekali di tempat lain. Sebagai turunan, keduanya tidak bisa
+    // lagi bergeser sendiri-sendiri.
+    //
+    // `fallbackHandoffMs` ada karena kesetaraan tanpa jarak aman TERUKUR gagal:
+    // rantai berakhir di 4015 ms (bukan 4000) sehingga `4015 + 5000 > 9000` dan
+    // Grok ditolak lagi — cacat aslinya berpindah tempat, bukan hilang.
+    expect(AI_BUDGETS.chatChainMs + AI_BUDGETS.grokMs + AI_BUDGETS.fallbackHandoffMs).toBe(
+      AI_BUDGETS.totalMs,
+    );
+    // Parse tidak punya fallback, jadi ia boleh memakai SELURUH anggaran AI —
+    // tapi tetap di bawah anggaran itu, bukan 11 dtk dari deadline 12 dtk.
+    expect(AI_BUDGETS.parseModelMs).toBeGreaterThan(AI_BUDGETS.chatChainMs);
+    expect(AI_BUDGETS.parseModelMs).toBeGreaterThan(AI_BUDGETS.totalMs);
+    // Terjemahan latar tidak boleh sebesar rantai yang ditunggu pengguna.
+    expect(AI_BUDGETS.translateChainMs).toBeLessThan(AI_BUDGETS.chatChainMs);
+  });
+});
+
+// ==========================================
+// TESTS: panggilan BEST-EFFORT (terjemahan `_jp` latar) — harus terisolasi dari
+// balasan yang sedang ditunggu pengguna.
+//
+// `handleProcessAIChat` menjalankan auto-terjemahan PARALEL dengan balasan chat
+// (perbaikan T7). Tapi `autoTranslateMissingJp` dipanggil LEBIH DULU, dan
+// `geminiGenerate` memanggil `breaker.check()` secara sinkron sebelum await
+// pertamanya — jadi terjemahanlah yang mengambil probe `half-open` milik
+// balasan. Saat breaker sudah `open` lebih dari cooldown, `check()` mentransisikan
+// ke `half-open` dan mengembalikan izin; panggilan KEDUA untuk dependency yang
+// sama langsung ditolak `SERVICE_UNAVAILABLE` ("Circuit breaker probing"). Jadi
+// balasan yang ditunggu pengguna gagal padahal providernya sehat — dan satu
+// giliran yang gagal menyumbang DUA kegagalan breaker (ambangnya 3).
+// ==========================================
+describe('panggilan best-effort — terisolasi dari balasan pengguna', () => {
+  it('kegagalannya dicatat di breaker SENDIRI, bukan di breaker balasan', async () => {
+    handler = () => Promise.resolve(new Response('high demand', { status: 503 }));
+
+    await expect(geminiGenerate('sys', [], { bestEffort: true })).rejects.toMatchObject({
+      code: 'AI_UNAVAILABLE',
+    });
+
+    const snap = breaker.snapshot();
+    expect(snap['gemini-translate'].failures).toBeGreaterThan(0);
+    // Balasan pengguna tidak boleh ikut tercemar: ambang breaker `gemini` adalah
+    // 3, jadi satu giliran dengan terjemahan yang gagal tidak boleh menyumbang 2.
+    expect(snap.gemini.failures).toBe(0);
+    expect(breaker.getState('gemini')).toBe('closed');
+  });
+
+  it('tidak memakai provider fallback — kuota Grok disisakan untuk balasan', async () => {
+    vi.stubEnv('XAI_API_KEY', 'test-xai-key');
+    handler = () => Promise.resolve(new Response('high demand', { status: 503 }));
+    grokHandler = () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ choices: [{ message: { content: 'grok' } }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+    await expect(geminiGenerate('sys', [], { bestEffort: true })).rejects.toMatchObject({
+      code: 'AI_UNAVAILABLE',
+    });
+
+    // Terjemahan adalah pekerjaan latar yang bisa disusulkan giliran berikutnya.
+    // Balasan yang sedang ditunggu tidak punya alternatif lain — jadi provider
+    // cadangan disisakan untuknya.
+    expect(grokCalls).toBe(0);
+  });
+
+  it('tidak bisa mencuri probe half-open milik balasan pengguna', async () => {
+    for (let i = 0; i < 3; i++) breaker.failure('gemini');
+    expect(breaker.getState('gemini')).toBe('open');
+    // Backdate alih-alih menunggu 30 dtk — pola yang sama dengan health.test.ts.
+    // Helper eksplisit (bukan `!`): record yang hilang harus GAGAL KERAS, sebab
+    // kalau tidak, tes ini akan lulus tanpa pernah benar-benar memundurkan
+    // `openedAt` — hijau yang tidak mengukur apa pun.
+    const backdateOpen = (dep: string) => {
+      const records = (
+        breaker as unknown as { records: Map<string, { openedAt: number }> }
+      ).records;
+      const rec = records.get(dep);
+      if (!rec) throw new Error(`tidak ada record breaker untuk ${dep}`);
+      rec.openedAt = Date.now() - 31_000;
+    };
+    backdateOpen('gemini');
+
+    handler = () => Promise.resolve(ok('{"reply":"balasan"}'));
+    // Urutan ini yang terjadi di produksi: terjemahan dijalankan lebih dulu.
+    await geminiGenerate('sys', [], { bestEffort: true });
+
+    // Probe `half-open` harus UTUH untuk balasan pengguna. Kalau terjemahan
+    // memakai kunci breaker yang sama, ia sudah mentransisikan breaker ke
+    // `half-open` dan balasan berikutnya ditolak SERVICE_UNAVAILABLE.
+    expect(breaker.getState('gemini')).toBe('open');
+
+    const out = await geminiGenerate('sys', []);
+    expect(out.reply).toBe('{"reply":"balasan"}');
+  });
+});

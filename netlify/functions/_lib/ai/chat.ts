@@ -143,7 +143,22 @@ async function autoTranslateMissingJp(data: Record<string, any>): Promise<void> 
   const lines = pairs.map((p) => p.index + 1 + '. ' + p.idText).join(NL);
   const prompt = 'Terjemahkan Bahasa Indonesia ke Bahasa Jepang untuk CV kerja.' + NL + 'Kembalikan JSON: ' + String.fromCharCode(123) + '"0":"jp0","1":"jp1",...' + String.fromCharCode(125) + ' tanpa teks lain.' + NL + NL + lines;
   try {
-    const r = await geminiGenerate(prompt, []);
+    // `bestEffort: true` — WAJIB, dan bukan sekadar penanda kosmetik:
+    //
+    //   1. Terjemahan ini dipanggil LEBIH DULU daripada balasan chat, dan
+    //      `breaker.check()` dipanggil sinkron sebelum await pertama. Dengan
+    //      kunci breaker `gemini` yang sama, saat breaker `open` melewati
+    //      cooldown, TERJEMAHAN yang mengambil probe `half-open` — lalu balasan
+    //      yang ditunggu pengguna ditolak `SERVICE_UNAVAILABLE` ("Circuit
+    //      breaker probing") padahal providernya sehat.
+    //   2. Satu giliran yang gagal menyumbang DUA kegagalan pada ambang 3.
+    //   3. Provider cadangan Grok disisakan untuk balasan, bukan untuk
+    //      pekerjaan latar yang bisa disusulkan giliran berikutnya.
+    //
+    // Anggarannya juga lebih kecil dan tanpa hedge, karena `await translation`
+    // di bawah membuat waktu balas ditentukan oleh yang LEBIH LAMBAT dari dua
+    // panggilan.
+    const r = await geminiGenerate(prompt, [], { bestEffort: true });
     const text = String(r && r.reply ? r.reply : '').trim();
     if (!text) { console.log('[autoTranslate] Empty response from Gemini'); return; }
     const parsed = parseJsonLoose(text);
