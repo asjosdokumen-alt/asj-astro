@@ -240,8 +240,10 @@ describe('nilai dari klien tidak bisa menyusun ulang system prompt', () => {
     const line = systemPrompt()
       .split('\n')
       .find((l) => l.startsWith('Nama: '));
-    expect(line).toBeTruthy();
-    expect(line!.length).toBeLessThan(500);
+    // `toHaveLength` gagal dengan pesan yang jelas bila barisnya tidak ada —
+    // jadi tidak perlu assertion terpisah plus `!` (yang memicu noNonNullAssertion).
+    expect(line ?? '').toHaveLength(Math.min(300, 5000) + 'Nama: '.length);
+    expect(line ?? '').toContain('A'.repeat(200));
   });
 
   it('nama kandidat dari database juga tidak bisa memecah baris (copilot admin)', async () => {

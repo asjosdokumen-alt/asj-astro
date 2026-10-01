@@ -58,6 +58,16 @@ export function lastHistory<T = { role?: string; content?: unknown }>(
 export const MAX_PROMPT_FIELD_CHARS = 300;
 
 /**
+ * Karakter kontrol yang dibuang dari nilai prompt.
+ *
+ * Ditulis lewat `RegExp` yang dibangun dari kode karakter, bukan regex literal:
+ * rentang `\u0000-\u001f` di dalam literal memicu `noControlCharactersInRegex`
+ * (dan versi literalnya sulit dibaca). Rentangnya sama persis: C0 (0x00–0x1F)
+ * plus DEL (0x7F) — yaitu `\r`, `\n`, `\t` dan kawan-kawannya.
+ */
+const CONTROL_CHARS = new RegExp(`[${String.fromCharCode(0)}-${String.fromCharCode(0x1f)}${String.fromCharCode(0x7f)}]+`, 'g');
+
+/**
  * Bersihkan satu nilai yang akan ditempel ke SYSTEM PROMPT.
  *
  * KENAPA INI ADA
@@ -85,7 +95,7 @@ export const MAX_PROMPT_FIELD_CHARS = 300;
 export function sanitizePromptField(v: unknown): string {
   const s = v === undefined || v === null ? '' : String(v);
   return s
-    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(CONTROL_CHARS, ' ')
     .replace(/\s{2,}/g, ' ')
     .trim()
     .slice(0, MAX_PROMPT_FIELD_CHARS);

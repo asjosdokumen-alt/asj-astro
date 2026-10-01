@@ -380,7 +380,7 @@ async function handleProcessAdminAIChat(payload: unknown[], sessionToken?: strin
     try {
       const ctx = await findAdminAiCandidateContext(d as Record<string, unknown>);
       if (ctx) ringkasKandidat = buildRingkasData(ctx);
-    } catch (e) {
+    } catch {
       /* konteks opsional — chat tetap jalan */
     }
   }
@@ -444,7 +444,7 @@ function buildSiswaRingkas(cur: unknown): string {
     // jadi ia tidak boleh bisa memecah baris di dalam prompt (lihat catatan di
     // interview-shared.ts).
     const s = sanitizePromptField(rec[key]);
-    if (s && s !== '-') lines.push(label + ': ' + s);
+    if (s && s !== '-') lines.push(`${label}: ${s}`);
   }
   return lines.join('\n');
 }
