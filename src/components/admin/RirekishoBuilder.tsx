@@ -242,6 +242,40 @@ export function buildKertasA4(p: Record<string, any>) {
   h+=raw("</table>");
   return h;
 }
+/* ── Kerangka A4 selama `getDrafCvMaster` berjalan ────────────────────────────
+   Sebelum 2026-10-01 keadaan ini HANYA teks: `text-center py-20` + "Memuat...".
+   Panel 794x855 terbuka sebagai halaman putih KOSONG, lalu seluruh lembar muncul
+   sekaligus — pola yang persis sama dengan spinner dashboard yang diganti
+   `CandidateSkeleton`, dan alasan yang sama: skeleton memberi tahu BENTUK
+   sebelum isinya ada.
+
+   ⚠ Warna di sini BUKAN token tema, dan itu disengaja. Lembar CV selalu putih
+   (panelnya `bg-white`) di KEDUA tema, karena ia dokumen cetak. `bg-line-strong`
+   akan menghasilkan balok gelap di atas kertas putih pada tema gelap. Karena itu
+   palet tetap `slate-*` yang dipakai, alasannya sama dengan banner `<noscript>`
+   di enam rute aplikasi (lihat `src/pages/candidate.astro`): token tema tidak
+   bisa dipakai di permukaan yang warnanya memang tidak ikut tema.
+
+   ⚠ TIDAK ADA heading di sini. `e2e/test-headings.mjs` menuntut tepat satu `h1`
+   per halaman, dan panel ini sudah dinamai lewat `useOverlay({ label })`. */
+function rirekishoSkeleton(){
+  const bar=(c:string)=>h("div",{class:`bg-slate-200 rounded ${c}`});
+  return h("div",{"aria-hidden":"true"},
+    bar("h-9 w-56 rounded-lg mb-4"),
+    h("div",{class:"flex flex-col sm:flex-row gap-4 mb-5"},
+      bar("w-32 h-48 rounded-lg shrink-0"),
+      h("div",{class:"flex-1 space-y-3"},
+        bar("h-6 w-2/3"),
+        bar("h-4 w-1/2"),
+        bar("h-4 w-3/4"),
+        bar("h-4 w-1/3"),
+      ),
+    ),
+    h("div",{class:"space-y-2"},...Array.from({length:8},()=>bar("h-5 w-full"))),
+    bar("h-16 w-full mt-5"),
+  );
+}
+
 export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback,closing=false}:Props) {
   const u = useStore(authStore) as {isLoggedIn?:boolean;role?:string};
   const [loading,setLoading] = useState(false);
@@ -296,7 +330,7 @@ export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback,c
   return h("div",{ref:containerRef,id:"rirek-modal",class:"fixed inset-0 u-modal-shell z-[200] bg-black/80 flex items-center justify-center p-4 u-scroll-area",onClick:onBackdropClick},
     h("div",{class:"bg-white rounded-xl max-w-[210mm] w-full max-h-[95vh] u-scroll-area p-6 relative"},
       h("button",{"type":"button","aria-label":t("public.close"),onClick:onClose,class:"min-w-11 min-h-11 inline-flex items-center justify-center absolute top-3 right-3 z-50 text-slate-500 hover:text-red-500 text-2xl print:hidden"},"×"),
-      loading&&h("div",{class:"text-center py-20 text-slate-500"},t("ui.loading")),
+      loading&&h("div",{role:"status"},h("span",{class:"sr-only"},t("ui.loading")),rirekishoSkeleton()),
       error&&h("div",{class:"text-center py-20 text-red-500"},error),
       !loading&&!error&&h("div",{class:"rirek-a4",dangerouslySetInnerHTML:{__html:html}}),
     ),
