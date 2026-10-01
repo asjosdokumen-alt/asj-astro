@@ -8,6 +8,7 @@ import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
 import { findFormsByWa } from '../db/forms.ts';
 import { isAllowedDocumentUrl } from '../storage';
 import { hashPii, log } from '../kernel/log';
+import { sanitizePromptField } from './interview-shared';
 // ai/cv.js — domain AI master/CV: auto-fill data kandidat (buildMasterNested /
 // buildRingkasData), konteks admin AI copilot, & penyimpanan data AI form
 // (ai_form_submissions + master_database_candidate). MODUL BARU (Fase 1.4
@@ -114,8 +115,12 @@ function buildRingkasData(cur: any) {
   const ww = (cur && cur.wawancara) || {};
   const lines: string[] = [];
   const add = (label: string, val: unknown) => {
-    const s = val === undefined || val === null ? '' : String(val).trim();
-    if (s && s !== '' && s !== '-') lines.push(label + ': ' + s);
+    // `sanitizePromptField`: nilai kandidat berasal dari form (dan sebagian dari
+    // AI), lalu ditempel ke SYSTEM PROMPT. Nilai yang mengandung baris baru bisa
+    // membuat barisnya sendiri di dalam prompt dan menyamar sebagai instruksi
+    // sistem — lihat catatan di interview-shared.ts.
+    const s = sanitizePromptField(val);
+    if (s && s !== '-') lines.push(label + ': ' + s);
   };
   add('Nama lengkap', id.nama_lengkap);
   add('Nama panggilan', id.panggilan);
@@ -209,24 +214,45 @@ function buildRingkasData(cur: any) {
   return lines.join('\n');
 }
 
+/**
+ * Data master kandidat dalam bentuk BERSARANG (bentuk yang diharapkan
+ * `buildRingkasData`), untuk konteks AI.
+ *
+ * Diambil dari `handleGetAdminAiContext` supaya copilot admin dan aksi
+ * `getAdminAiContext` memakai SATU jalur pengambilan. Sebelumnya copilot hanya
+ * menempelkan ID kandidat ke system prompt sementara prompt-nya meminta
+ * "analisis data kandidat" — jadi model diminta menganalisis data yang tidak
+ * pernah sampai kepadanya, dan setiap jawabannya generik walaupun panggilan
+ * providernya tetap dibayar.
+ *
+ * TIGA hasil, sama seperti helper lookup lain di berkas ini: data · `null`
+ * (kandidatnya memang tidak ada) · MELEMPAR (transport gagal). Pemanggil yang
+ * tidak peduli bisa membungkusnya dengan try/catch; pemanggil yang peduli bisa
+ * membedakan "tidak ada" dari "tidak bisa dibaca".
+ */
+async function findAdminAiCandidateContext(
+  d: Record<string, unknown>,
+): Promise<Record<string, unknown> | null> {
+  const wa = String(d.wa || d.waTarget || '');
+  let row = null;
+  if (wa) row = await findMasterByWa(wa);
+  if (!row && (d.candidateId || d.idKandidat || d.wa)) {
+    const id = String(d.candidateId || d.idKandidat || '');
+    // Jalur cepat: cari baris kandidat via query server-side (by id / WA).
+    const cand = id
+      ? await findCandidateByIdOrNull(id)
+      : await findCandidateByWaOrNull(String(d.wa || ''));
+    if (cand) row = await findMasterByWa(String(cand.no_wa || ''));
+  }
+  return row ? buildMasterNested(row) : null;
+}
+
 async function handleGetAdminAiContext(payload: unknown[], sessionToken?: string) {
   const guard = requireRole(sessionToken as string, 'admin');
   if (guard.error) return guard.error;
   const d = ((payload && payload[0]) || {}) as Record<string, any>;
-  const wa = String(d.wa || d.waTarget || '');
   try {
-    let row = null;
-    if (wa) row = await findMasterByWa(wa);
-    if (!row && (d.candidateId || d.idKandidat || d.wa)) {
-      const id = String(d.candidateId || d.idKandidat || '');
-      // Jalur cepat: cari baris kandidat via query server-side (by id / WA).
-      const cand = id
-        ? await findCandidateByIdOrNull(id)
-        : await findCandidateByWaOrNull(String(d.wa || ''));
-      if (cand) row = await findMasterByWa(String(cand.no_wa || ''));
-    }
-    if (!row) return { success: true, data: null };
-    return { success: true, data: buildMasterNested(row) };
+    return { success: true, data: await findAdminAiCandidateContext(d) };
   } catch (e) {
     return { success: false, error: 'Terjadi kesalahan saat mengambil data kandidat.' };
   }
@@ -688,6 +714,7 @@ export {
   findMasterByWa,
   findCandidateByWaOrNull,
   findCandidateByIdOrNull,
+  findAdminAiCandidateContext,
   handleGetAdminAiContext,
   handleBuildAdminAiCandidateSummary,
   handleSubmitDataAsj,

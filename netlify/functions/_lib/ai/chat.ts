@@ -7,9 +7,10 @@ import {
   findMasterByWa,
   findCandidateByWaOrNull,
   findCandidateByIdOrNull,
+  findAdminAiCandidateContext,
 } from './cv';
 import { geminiGenerate, parseJsonLoose } from './providers';
-import { isVipCatatan, unwrapPayloadArgs, lastHistory } from './interview-shared';
+import { isVipCatatan, unwrapPayloadArgs, lastHistory, sanitizePromptField } from './interview-shared';
 import { AppError, safeError } from '../kernel/errors';
 
 /**
@@ -359,6 +360,31 @@ async function handleProcessAdminAIChat(payload: unknown[], sessionToken?: strin
   // Cap riwayat SEBELUM giliran baru disisipkan, supaya pesan yang baru diketik
   // admin tidak pernah ikut terpotong. Lihat catatan cap di handleProcessAIChat.
   const history = lastHistory(d.history).concat([{ role: 'user', content: d.message || '' }]);
+
+  // Data kandidat yang sedang dibahas.
+  //
+  // Dulu satu-satunya yang sampai ke model adalah ID-nya — padahal system prompt
+  // di bawah MEMINTA "bantu analisis data kandidat". Model diminta menganalisis
+  // data yang tidak pernah diterimanya, jadi setiap jawabannya generik walaupun
+  // panggilan providernya tetap dibayar. Klien (`AdminAiCopilot.tsx:151`) memang
+  // hanya mengirim `candidateId`, jadi datanya harus diambil di sini — dan
+  // mesinnya sudah ada: `findAdminAiCandidateContext` + `buildRingkasData`,
+  // yang justru sudah dipakai alur CV.
+  //
+  // Best-effort: kegagalan lookup TIDAK boleh menggagalkan chat. Dan blok
+  // konteksnya ABSEN kalau kandidatnya tidak bisa dibaca — bukan kosong —
+  // karena blok kosong akan membuat model menyangka kandidatnya memang tidak
+  // punya data sama sekali.
+  let ringkasKandidat = '';
+  if (d.candidateId || d.wa) {
+    try {
+      const ctx = await findAdminAiCandidateContext(d as Record<string, unknown>);
+      if (ctx) ringkasKandidat = buildRingkasData(ctx);
+    } catch (e) {
+      /* konteks opsional — chat tetap jalan */
+    }
+  }
+
   const system =
     'Kamu adalah Jeklin, asisten HRD admin ASJ (PT Amanah Sakura Japan). Admin: ' +
     String(d.adminName || '') +
@@ -366,7 +392,12 @@ async function handleProcessAdminAIChat(payload: unknown[], sessionToken?: strin
     'Kandidat yang sedang dibahas ID: ' +
     String(d.candidateId || '-') +
     '. ' +
-    'Bantu analisis data kandidat, saran rekrutmen, dan jawaban profesional. Balas singkat & jelas dalam Bahasa Indonesia.';
+    'Bantu analisis data kandidat, saran rekrutmen, dan jawaban profesional. Balas singkat & jelas dalam Bahasa Indonesia.' +
+    (ringkasKandidat
+      ? '\n\nDATA KANDIDAT SAAT INI (sudah terisi di database):\n' +
+        ringkasKandidat +
+        '\n\nAturan: pakai data di atas sebagai dasar analisis. Jangan mengarang field yang tidak tercantum.'
+      : '');
   try {
     const r = await geminiGenerate(system, history);
     return { success: true, reply: r.reply, suggestedActions: [], analysis: null };
@@ -377,13 +408,63 @@ async function handleProcessAdminAIChat(payload: unknown[], sessionToken?: strin
   }
 }
 
+/**
+ * Ringkasan data siswa baru untuk system prompt Dede Jeklin.
+ *
+ * Klien (`SiswaBaruForm.tsx:196`) SUDAH mengirim `currentData` berisi field yang
+ * baru diisi, dan handler ini dulu MEMBUANGNYA — sehingga Dede menanyakan ulang
+ * data yang baru saja diisi siswa. Alur CV menyuntikkan `buildRingkasData`
+ * sebagai "DATA KANDIDAT SAAT INI"; alur siswa tidak menyuntikkan apa pun.
+ *
+ * Bentuknya berbeda dari alur CV: payload siswa itu snake_case DATAR
+ * (`toSnakePayload(biodata)`), bukan bersarang, jadi ia butuh formatter sendiri
+ * alih-alih `buildRingkasData` yang mengharapkan `identitas.nama_lengkap` dsb.
+ *
+ * Field kosong DILEWATI, bukan ditulis sebagai label menggantung: "Nama: " tanpa
+ * nilai akan membuat model mengira fieldnya ada dan kosong.
+ */
+const SISWA_FIELDS: Array<[string, string]> = [
+  ['nama', 'Nama'],
+  ['ttl', 'Tempat/tanggal lahir'],
+  ['gender', 'Gender'],
+  ['agama', 'Agama'],
+  ['alamat', 'Alamat'],
+  ['email', 'Email'],
+  ['pendidikan', 'Pendidikan'],
+  ['wa_siswa', 'WA siswa'],
+  ['wa_ortu', 'WA orang tua'],
+];
+
+function buildSiswaRingkas(cur: unknown): string {
+  if (!cur || typeof cur !== 'object' || Array.isArray(cur)) return '';
+  const rec = cur as Record<string, unknown>;
+  const lines: string[] = [];
+  for (const [key, label] of SISWA_FIELDS) {
+    // `sanitizePromptField`: nilai ini datang dari KLIEN di alur yang PUBLIK,
+    // jadi ia tidak boleh bisa memecah baris di dalam prompt (lihat catatan di
+    // interview-shared.ts).
+    const s = sanitizePromptField(rec[key]);
+    if (s && s !== '-') lines.push(label + ': ' + s);
+  }
+  return lines.join('\n');
+}
+
 async function handleProcessSiswaAIChat(payload: unknown) {
   // Sama seperti processAIChat: apiClient membungkus argumen jadi array, jadi
   // `p.history` harus di-unwrap dulu atau Dede Jeklin kehilangan riwayatnya.
   const p = unwrapPayloadArgs(payload);
+  // `currentData` yang dikirim klien ikut masuk prompt. Bloknya ABSEN kalau
+  // tidak ada field yang terisi — bukan blok kosong.
+  const ringkasSiswa = buildSiswaRingkas(p.currentData);
   const system =
     'Kamu adalah Dede Jeklin, asisten pendaftaran siswa baru LPK ASJ. Bantu siswa/orang tua melengkapi form ' +
-    '(nama, TTL, gender, agama, alamat, email, pendidikan, WA siswa, WA ortu). Balas ramah dan singkat dalam Bahasa Indonesia.\n' +
+    '(nama, TTL, gender, agama, alamat, email, pendidikan, WA siswa, WA ortu). Balas ramah dan singkat dalam Bahasa Indonesia.' +
+    (ringkasSiswa
+      ? '\n\nDATA SISWA SAAT INI (sudah diisi di form):\n' +
+        ringkasSiswa +
+        '\n\nAturan: JANGAN menanyakan ulang data yang sudah terisi di atas.'
+      : '') +
+    '\n' +
     'PENTING — jawab SELALU dalam SATU objek JSON valid (tanpa teks lain, tanpa ```):\n' +
     '{"reply": "<balasan ramah>", "data": {"nama": "...", "ttl": "...", "gender": "LAKI-LAKI atau PEREMPUAN", "agama": "...", "alamat": "...", "email": "...", "pendidikan": "...", "wa_siswa": "...", "wa_ortu": "..."}}\n' +
     'Isi hanya field yang diketahui dari percakapan; yang belum diketahui biarkan "" (string kosong). ' +
