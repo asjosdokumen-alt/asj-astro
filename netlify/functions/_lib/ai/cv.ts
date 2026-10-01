@@ -1,4 +1,5 @@
 import { normalizeWa, supabaseJson, APPLY_WA_COLS } from '../db/client.ts';
+import type { FormRawRow } from '../db/row-types';
 import { AI_SUBMISSION_COLS, ESIGNATURE_COLS } from '../db/projections.ts';
 import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
 import { buildMasterNested } from '../../contexts/master-data';
@@ -294,6 +295,35 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
     if (bad.length) {
       return { success: false, error: 'URL dokumen tidak valid (https + host penyimpanan resmi saja): ' + bad.join(', ') };
     }
+    // SATU pembacaan `database_asj_form` untuk SATU permintaan.
+    //
+    // Terukur 2026-10-01 (`cv.submit.test.ts`): tabel ini dibaca **4x** untuk WA
+    // yang sama dalam satu permintaan — (1) di sini untuk mencari baris
+    // pemberkasan, (2) di dalam `syncBiodataKeMail`, (3) di sini LAGI untuk
+    // memutuskan `hasMail`, (4) di dalam `syncFormMailDariUpload`. Total 11
+    // percakapan ke database untuk satu penekanan "Simpan CV AI"; pada RTT ~40 ms
+    // itu ~160 ms hanya untuk menanyakan hal yang sama, di jalur INTERAKTIF
+    // kandidat.
+    //
+    // Aman di-hoist karena TIDAK ADA yang membuat baris `database_asj_form` di
+    // antara titik-titik itu: `syncBiodataKeMail` memanggil `patchForm`
+    // (`contexts/applications/repository.ts:37`) yang PATCH murni, tidak pernah
+    // INSERT. Jadi jawaban "apakah barisnya ada" tidak berubah — dan itulah yang
+    // membuat pembacaan ketiga murni berulang.
+    //
+    // (Tinjauan 2026-10-01 §5.2 menahan perubahan ini dengan alasan
+    // `syncBiodataKeMail` "bisa membuat" baris mail. Alasan itu TIDAK BENAR,
+    // dan sudah diperiksa langsung ke `patchForm`: tidak ada INSERT di sana.)
+    //
+    // `undefined` = pembacaan gagal; helper di bawah lalu membaca sendiri
+    // (perilaku lama) alih-alih berpura-pura tidak ada baris.
+    let formRows: FormRawRow[] | undefined;
+    try {
+      const r = await findFormsByWa(wa);
+      if (Array.isArray(r)) formRows = r;
+    } catch (e) {
+      /* biarkan helper membaca sendiri */
+    }
     const aiData = {
       identitas: d.identitas || {},
       fisik: d.fisik || {},
@@ -456,9 +486,9 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       try {
         if (d.ktpFile) {
           const want = normalizeWa(wa);
-          const pRows = await findFormsByWa(wa);
-          const pRow = Array.isArray(pRows) && pRows.find(
-            (r) => normalizeWa(String(r.no_wa || r.wa || '')) === want,
+          // Memakai `formRows` yang sudah dibaca di atas — bukan pembacaan kedua.
+          const pRow = Array.isArray(formRows) && formRows.find(
+            (r: any) => normalizeWa(String(r.no_wa || r.wa || '')) === want,
           );
           if (pRow && pRow.id !== undefined) {
             await supabaseJson('PATCH', 'pemberkasan_checklist', {
@@ -490,6 +520,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
               String(identitas.nama_lengkap || identitas.nama || '').trim() || 'KANDIDAT',
               labels,
               sessionToken,
+              formRows,
             );
           }
         } catch (e) {
@@ -498,7 +529,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       } else {
         // Baris baru — buat mail entry jika belum ada
         try {
-          await syncBiodataKeMail(wa, nama, ['CV AI Baru'], sessionToken);
+          await syncBiodataKeMail(wa, nama, ['CV AI Baru'], sessionToken, formRows);
         } catch (e) {}
       }
 
@@ -508,10 +539,11 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       // database_asj_form → mail tidak dibuat. syncFormMailDariUpload membuat
       // baris baru jika belum ada.
       try {
-        const mailRows = await findFormsByWa(wa);
+        // Memakai `formRows` yang sudah dibaca di atas — bukan pembacaan ketiga.
+        const mailRows = Array.isArray(formRows) ? formRows : await findFormsByWa(wa);
         const want = normalizeWa(wa);
         const hasMail = Array.isArray(mailRows) && mailRows.some(
-          (r) => normalizeWa(String(r.no_wa || r.wa || '')) === want,
+          (r: any) => normalizeWa(String(r.no_wa || r.wa || '')) === want,
         );
         if (!hasMail) {
           await syncFormMailDariUpload(
@@ -521,6 +553,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
             d.fotoFile || '',
             jobCode,
             sessionToken,
+            formRows,
           );
         }
       } catch (e) {

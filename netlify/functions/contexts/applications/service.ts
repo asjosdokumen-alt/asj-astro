@@ -344,9 +344,37 @@ export async function handleTandaiDibacaForm(payload: unknown[], sessionToken?: 
   }
 }
 
-export async function syncBiodataKeMail(wa: string, nama: string, labels: string[], sessionToken?: string) {
+/**
+ * Satu baris `database_asj_form`, persis seperti yang dikembalikan
+ * `getFormsByWa`. Dipakai sebagai tipe `preloadedRows` supaya `r.id` tetap
+ * bertipe saat barisnya diserahkan pemanggil — bukan `unknown`.
+ */
+type FormRow = Awaited<ReturnType<typeof getFormsByWa>>[number];
+
+/**
+ * `preloadedRows` (opsional) — baris `database_asj_form` yang SUDAH dibaca
+ * pemanggil untuk WA yang sama, supaya satu permintaan tidak menanyakan tabel
+ * yang sama berkali-kali.
+ *
+ * Aman dipakai di sini karena fungsi ini TIDAK PERNAH membuat baris: ia hanya
+ * `patchForm()` baris yang sudah ada (lihat repository.ts — `patchForm` adalah
+ * PATCH murni). Jadi jawaban "baris mana milik WA ini" tidak bisa berubah
+ * antara pembacaan pemanggil dan pemakaian di sini.
+ *
+ * `undefined` = pemanggil tidak punya baris yang bisa dipakai (mis. pembacaan
+ * sebelumnya gagal); fungsi membaca sendiri seperti sebelumnya. Array KOSONG
+ * tetap dipakai — "tidak ada baris" adalah jawaban yang sah, dan justru itulah
+ * kasus yang paling sering.
+ */
+export async function syncBiodataKeMail(
+  wa: string,
+  nama: string,
+  labels: string[],
+  sessionToken?: string,
+  preloadedRows?: FormRow[],
+) {
   const want = normWa(wa);
-  let rows = await getFormsByWa(wa);
+  const rows: FormRow[] = Array.isArray(preloadedRows) ? preloadedRows : await getFormsByWa(wa);
   const mine = rows.filter((r: Record<string, unknown>) => normWa(String(r.no_wa || r.wa || '')) === want);
   if (!mine.length) return;
   for (const r of mine) {
@@ -371,9 +399,18 @@ export async function syncBiodataKeMail(wa: string, nama: string, labels: string
   }
 }
 
-export async function syncFormMailDariUpload(wa: string, nama: string, docLabel: string, url: string, jobCode: string, sessionToken?: string) {
+/** `preloadedRows` — sama dengan `syncBiodataKeMail`; lihat catatannya di atas. */
+export async function syncFormMailDariUpload(
+  wa: string,
+  nama: string,
+  docLabel: string,
+  url: string,
+  jobCode: string,
+  sessionToken?: string,
+  preloadedRows?: FormRow[],
+) {
   const want = normWa(wa);
-  const rows = await getFormsByWa(wa);
+  const rows: FormRow[] = Array.isArray(preloadedRows) ? preloadedRows : await getFormsByWa(wa);
   const label = String(docLabel || 'DOKUMEN').trim().toUpperCase();
   const code = String(jobCode || '').trim();
 

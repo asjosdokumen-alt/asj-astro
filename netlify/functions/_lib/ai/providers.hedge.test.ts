@@ -87,6 +87,8 @@ beforeEach(() => {
   vi.stubEnv('XAI_API_KEY', '');
   breaker.reset('gemini');
   breaker.reset('grok');
+  breaker.reset('gemini-parse');
+  breaker.reset('gemini-translate');
   installFetch();
 });
 
@@ -95,6 +97,8 @@ afterEach(() => {
   vi.unstubAllEnvs();
   breaker.reset('gemini');
   breaker.reset('grok');
+  breaker.reset('gemini-parse');
+  breaker.reset('gemini-translate');
 });
 
 describe('hedging — model berikutnya hanya kalau perlu', () => {
@@ -311,6 +315,26 @@ describe('diagnosa — sebab kegagalan harus bisa ditindaklanjuti', () => {
 
     expect(metrics.metricsSnapshot().counters['ai.hedge.fired'] ?? 0).toBe(before);
   });
+
+  it('latensi PER MODEL tercatat — angka yang hilang untuk kalibrasi hedge', async () => {
+    handler = () =>
+      new Promise<Response>((resolve) =>
+        setTimeout(() => resolve(ok('{"reply":"lambat"}')), 40),
+      );
+
+    await geminiGenerate('sys', []);
+
+    // Tinjauan 2026-10-01 §7 menyatakan batas jujurnya: "Kalibrasi lebar hedge
+    // masih belum terukur… latensi per model masih hanya terlihat lewat
+    // histogram `handler.dispatch` per aksi, bukan per dependency." Tanpa angka
+    // per model, lebar hedge (1,5 dtk) hanya bisa diasumsikan, dan asumsi itu
+    // yang menentukan berapa kali kuota provider dibayar.
+    const snap = metrics.metricsSnapshot();
+    const key = 'ai.model.latency.model=gemini-3.5-flash-lite.outcome=success';
+    expect(snap.histograms[key]).toBeDefined();
+    expect(snap.histograms[key].count).toBeGreaterThan(0);
+    expect(snap.histograms[key].max).toBeGreaterThanOrEqual(30);
+  }, 10_000);
 });
 
 describe('fallback Grok — penjaganya harus benar-benar bisa tercapai', () => {
@@ -525,6 +549,51 @@ describe('anggaran rantai — TOTAL_AI_BUDGET_MS benar-benar membatasi rantai', 
 // balasan yang ditunggu pengguna gagal padahal providernya sehat — dan satu
 // giliran yang gagal menyumbang DUA kegagalan breaker (ambangnya 3).
 // ==========================================
+describe('breaker parse — berkas yang tidak terbaca tidak boleh mematikan chat', () => {
+  it('tiga parse gagal TIDAK membuka breaker yang menjaga balasan pengguna', async () => {
+    // Penyebabnya BUKAN kesehatan provider: berkas yang terlalu besar untuk
+    // dibaca model, berkas hasil scan yang tidak terbaca, atau blokir filter
+    // keamanan. Dan UI-nya sendiri MENGAJAK mencoba lagi — `classify.ts:140`
+    // menjawab "Coba file lain" — jadi tiga percobaan adalah perilaku yang
+    // diharapkan, bukan penyalahgunaan.
+    handler = () => Promise.resolve(new Response('file too large for model', { status: 413 }));
+    for (let i = 0; i < 3; i++) {
+      await expect(
+        geminiParseFile('sys', { mimeType: 'application/pdf', data: 'AAA' }),
+      ).rejects.toMatchObject({ code: 'AI_UNAVAILABLE' });
+    }
+
+    // Sebelumnya ketiga kegagalan ini dicatat di breaker `gemini` — ambangnya 3
+    // — sehingga SATU admin dengan tiga berkas buruk mematikan CV AI, HRD AI,
+    // simulator wawancara, dan parse itu sendiri untuk SEMUA pengguna selama
+    // `coolDownMs` 30 dtk. Kelas yang sama dengan T1/T9: blast radius satu
+    // permukaan menimpa permukaan lain.
+    expect(breaker.getState('gemini')).toBe('closed');
+    // Proteksinya tidak hilang — hanya pindah ke breaker yang benar.
+    expect(breaker.snapshot()['gemini-parse'].failures).toBeGreaterThan(0);
+  }, 20_000);
+
+  it('setelah parse gagal berulang, balasan pengguna masih benar-benar dikirim', async () => {
+    handler = () => Promise.resolve(new Response('file too large for model', { status: 413 }));
+    for (let i = 0; i < 3; i++) {
+      await expect(
+        geminiParseFile('sys', { mimeType: 'application/pdf', data: 'AAA' }),
+      ).rejects.toMatchObject({ code: 'AI_UNAVAILABLE' });
+    }
+
+    // Bukan sekadar "state breaker terlihat benar": panggilan berikutnya harus
+    // benar-benar MENYENTUH provider. Kalau breaker `gemini` terbuka, panggilan
+    // ini ditolak lokal dan `calls` tetap kosong.
+    calls.length = 0;
+    handler = () => Promise.resolve(ok('{"reply":"masih hidup"}'));
+
+    const out = await geminiGenerate('sys', []);
+
+    expect(out.reply).toBe('{"reply":"masih hidup"}');
+    expect(calls).toHaveLength(1);
+  }, 20_000);
+});
+
 describe('panggilan best-effort — terisolasi dari balasan pengguna', () => {
   it('kegagalannya dicatat di breaker SENDIRI, bukan di breaker balasan', async () => {
     handler = () => Promise.resolve(new Response('high demand', { status: 503 }));

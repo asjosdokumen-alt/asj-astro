@@ -317,6 +317,13 @@ export const DEPENDENCY_CONFIGS: Record<string, BreakerOpts> = {
   // providernya sama; yang dipisahkan adalah BLAST RADIUS-nya, bukan
   // toleransinya.
   'gemini-translate': { threshold: 3, windowMs: 60_000, coolDownMs: 30_000 },
+  // Parse dokumen: providernya sama dengan `gemini`, tapi ARTI kegagalannya
+  // berbeda. Berkas terlalu besar untuk dibaca model / hasil scan tidak terbaca
+  // / blokir filter keamanan semuanya `failure()` yang sama, dan UI-nya
+  // mengajak mencoba lagi ("Coba file lain") — jadi tiga percobaan adalah
+  // perilaku normal. Dengan kunci bersama, satu admin dengan tiga berkas buruk
+  // mematikan SELURUH fitur AI untuk semua pengguna selama 30 dtk.
+  'gemini-parse': { threshold: 3, windowMs: 60_000, coolDownMs: 30_000 },
   fonnte:    { threshold: 3, windowMs: 60_000, coolDownMs: 60_000 },
   fcm:       { threshold: 10, windowMs: 60_000, coolDownMs: 15_000 },
   storage:   { threshold: 5, windowMs: 60_000, coolDownMs: 15_000 },

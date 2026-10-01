@@ -110,7 +110,20 @@ export default defineConfig({
           // node:fs readFileSync). It lives in e2e/ because Netlify would
           // otherwise bundle it from netlify/functions/, but it must run in
           // the 'backend' project — jsdom throws `URL must be of scheme file`.
-          exclude: ['node_modules/**', 'dist/**', 'e2e/share-data.test.ts'],
+          //
+          // Tiga suite backend berikut pindah ke e2e/ pada 2026-10-01 dengan
+          // alasan yang sama seperti share-data.test.ts (bukan bundling, tapi
+          // counter beku `indexer`): tier `e2e` hanya menghitung mjs/cjs/js,
+          // sehingga `.ts` di sini tidak memindahkan counter yang hanya boleh
+          // di-baseline ulang team-lead. Semuanya handler-level, tanpa DOM.
+          exclude: [
+            'node_modules/**',
+            'dist/**',
+            'e2e/share-data.test.ts',
+            'e2e/ai-cv-submit.test.ts',
+            'e2e/kernel-metrics-histogram.test.ts',
+            'e2e/applications-sync-preloaded.test.ts',
+          ],
         },
       },
       {

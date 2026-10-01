@@ -85,6 +85,17 @@ const TRANSLATE_CHAIN_BUDGET_MS = 3000;
 // pertama — lihat catatan panjang di `geminiGenerate`.
 const BREAKER_GEMINI = 'gemini';
 const BREAKER_TRANSLATE = 'gemini-translate';
+// Parse dokumen dipisah karena KEGAGALANNYA BERBEDA ARTI, bukan karena
+// providernya berbeda. Berkas yang terlalu besar untuk dibaca model, hasil scan
+// yang tidak terbaca, atau blokir filter keamanan semuanya menghasilkan
+// `breaker.failure()` yang sama — padahal ketiganya tidak mengatakan apa pun
+// tentang kesehatan Gemini. Dan UI-nya MENGAJAK mencoba lagi
+// (`classify.ts:140`: "Coba file lain"), jadi tiga percobaan adalah perilaku
+// yang diharapkan. Dengan kunci bersama, ambang 3 berarti: satu admin dengan
+// tiga berkas buruk mematikan CV AI, HRD AI, simulator wawancara, dan parse
+// untuk SEMUA pengguna selama 30 dtk. Terukur 2026-10-01: tiga parse gagal
+// memang membuka breaker `gemini` (`expected 'open' to be 'closed'`).
+const BREAKER_PARSE = 'gemini-parse';
 
 // ---------------------------------------------------------------------------
 // Hedging — bukan "tembak semua model sekaligus"
@@ -286,6 +297,7 @@ async function hedgedInvoke(
         return;
       }
       const model = models[launched++];
+      const attemptStarted = Date.now();
       // Seberapa sering hedge BENAR-BENAR ditembakkan adalah satu-satunya angka
       // yang bisa mengkalibrasi lebar hedge: kalau ~0, jendelanya bisa dipendekkan;
       // kalau tinggi, asumsi "model lite menjawab 0,6-1,3 dtk" sudah bergeser dan
@@ -293,12 +305,30 @@ async function hedgedInvoke(
       if (fromHedge) metrics.increment('ai.hedge.fired');
       metrics.increment('ai.model.attempt', { model });
       attempt(model, controller.signal, budgetMs).then((text) => {
+        const ms = Date.now() - attemptStarted;
         if (settled) return;
         if (text) {
+          // Latensi PER MODEL — angka yang tidak pernah ada sebelumnya, dan
+          // tanpa itu lebar hedge (1,5 dtk) hanya bisa diasumsikan. Ia yang
+          // menentukan berapa kali kuota provider dibayar per giliran.
+          metrics.observe('ai.model.latency', ms, { model, outcome: 'success' });
           metrics.increment('ai.call', { outcome: 'success', attempts: String(launched) });
           settle(() => resolve(text));
-        } else onFailure(new Error(`model ${model} mengembalikan jawaban kosong`));
-      }, onFailure);
+        } else {
+          metrics.observe('ai.model.latency', ms, { model, outcome: 'empty' });
+          onFailure(new Error(`model ${model} mengembalikan jawaban kosong`));
+        }
+      }, (e) => {
+        // `cancelled` dibedakan dari `error`: pecundang hedge memang dibatalkan
+        // dan itu SEHAT. Mencampurnya dengan kegagalan sungguhan akan membuat
+        // tingkat kegagalan per model terlihat jauh lebih buruk daripada
+        // kenyataannya — persis jenis angka menyesatkan yang mahal.
+        metrics.observe('ai.model.latency', Date.now() - attemptStarted, {
+          model,
+          outcome: settled ? 'cancelled' : 'error',
+        });
+        onFailure(e);
+      });
       scheduleHedge();
     };
 
@@ -565,7 +595,7 @@ async function geminiParseFile(systemPrompt: string, file: { mimeType?: string; 
     },
   ];
   try {
-    breaker.check('gemini');
+    breaker.check(BREAKER_PARSE);
     const text = await hedgedInvoke(
       MODELS,
       {
@@ -580,10 +610,10 @@ async function geminiParseFile(systemPrompt: string, file: { mimeType?: string; 
       },
       (model, signal, budgetMs) => fetchGemini(model, key, contents, budgetMs, signal),
     );
-    breaker.success('gemini');
+    breaker.success(BREAKER_PARSE);
     return text;
   } catch (e) {
-    if (!(e instanceof AppError && e.code === 'SERVICE_UNAVAILABLE')) breaker.failure('gemini');
+    if (!(e instanceof AppError && e.code === 'SERVICE_UNAVAILABLE')) breaker.failure(BREAKER_PARSE);
     throw Errors.aiUnavailable(undefined, 5, e);
   }
 }

@@ -30,8 +30,26 @@ const counters = new Map<string, number>();
  * Labels are appended as `.key=value` to the counter name for structured logging.
  */
 export function increment(name: string, labels?: Record<string, string>): void {
-  const key = labels ? name + '.' + Object.entries(labels).map(([k, v]) => `${k}=${v}`).join('.') : name;
+  const key = metricKey(name, labels);
   counters.set(key, (counters.get(key) ?? 0) + 1);
+}
+
+/**
+ * Build the metric key for a name + labels.
+ *
+ * ONE source for counters AND histograms. They used to differ: `increment`
+ * appended labels into the key, while `metricsSnapshot` grouped histograms by
+ * NAME ALONE and discarded the labels. So the keys that are actually
+ * DOCUMENTED never appeared in the payload —
+ * `handler.latency.action=getAppData` (`docs/PHASE_C_SINK_SETUP.md:29`, and the
+ * shape `otlp.test.ts` converts) and `dependency.call.latency{dep}`
+ * (`metrics-receiver.ts:30`) — even though every caller passes those labels.
+ * Two formatters for one convention is how they drifted; hence one function.
+ */
+function metricKey(name: string, labels?: Record<string, string>): string {
+  if (!labels) return name;
+  const parts = Object.entries(labels).map(([k, v]) => `${k}=${v}`);
+  return parts.length ? name + '.' + parts.join('.') : name;
 }
 
 // ── Histograms ───────────────────────────────────────────────────────────────
@@ -46,6 +64,20 @@ interface HistogramEntry {
 const histograms: HistogramEntry[] = [];
 
 /**
+ * Record a duration that was ALREADY measured.
+ *
+ * `histogram()` STARTS a timer and only records when the returned stop function
+ * is called. `recordDependencyCall()` already receives `durationMs`, so calling
+ * `histogram()` there started a second timer, threw the stop function away, and
+ * therefore recorded **no sample at all** — while `durationMs` survived only in
+ * the log line. Any caller that already knows the duration needs this, not
+ * `histogram()`.
+ */
+export function observe(name: string, durationMs: number, labels?: Record<string, string>): void {
+  histograms.push({ name, durationMs: Math.round(durationMs), labels });
+}
+
+/**
  * Start a histogram timer. Returns a stop function that records the duration.
  *
  * @example
@@ -55,10 +87,7 @@ const histograms: HistogramEntry[] = [];
  */
 export function histogram(name: string, labels?: Record<string, string>): () => void {
   const start = performance.now();
-  return () => {
-    const durationMs = Math.round(performance.now() - start);
-    histograms.push({ name, durationMs, labels });
-  };
+  return () => observe(name, performance.now() - start, labels);
 }
 
 // ── Gauges ───────────────────────────────────────────────────────────────────
@@ -106,8 +135,13 @@ export function metricsSnapshot(): MetricsPayload {
   const histogramObj: Record<string, { count: number; avg: number; p50: number; p95: number; max: number }> = {};
   const byName = new Map<string, number[]>();
   for (const h of histograms) {
-    if (!byName.has(h.name)) byName.set(h.name, []);
-    byName.get(h.name)!.push(h.durationMs);
+    // Label ikut masuk kunci — konvensi yang sama dengan `increment`. Tanpa ini
+    // `dependency.call.latency{dep}` dan `handler.latency{action}` mustahil
+    // dibedakan, padahal keduanya didokumentasikan sebagai per-dependency /
+    // per-aksi.
+    const key = metricKey(h.name, h.labels);
+    if (!byName.has(key)) byName.set(key, []);
+    byName.get(key)!.push(h.durationMs);
   }
   for (const [name, durations] of byName) {
     durations.sort((a, b) => a - b);
@@ -192,7 +226,12 @@ export function recordDependencyCall(
   breakerState: string = 'closed',
 ): void {
   increment('dependency.call', { dep, outcome });
-  histogram('dependency.call.latency', { dep });
+  // `observe`, BUKAN `histogram`: durasinya sudah diukur pemanggil dan
+  // diserahkan ke sini. `histogram()` memulai timer BARU dan hanya mencatat
+  // kalau stop-nya dipanggil — stop itu dulu dibuang, sehingga
+  // `dependency.call.latency` tidak pernah menerima satu sampel pun dan tidak
+  // ada dependency yang punya p50/p95.
+  observe('dependency.call.latency', durationMs, { dep });
 
   // Also log to dependency_calls table via structured log
   log.info('dependency.call', {
@@ -231,6 +270,7 @@ export function recordRateLimit(action: string, key: string): void {
 export const metrics = {
   increment,
   histogram,
+  observe,
   gauge,
   flushMetrics,
   metricsSnapshot,
