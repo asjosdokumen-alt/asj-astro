@@ -270,6 +270,12 @@ jobs:
           npm run e2e:hover-contrast
           npm run e2e:aria-names
           npm run e2e:scroll-motion
+          # The six candidate-dashboard overlays. It was the ONLY gate that
+          # opened them, and it ran in NO workflow and had no npm script — so
+          # the overlays were covered on paper and unguarded in practice. Its
+          # own header records the fixture it needs; nothing else reaches
+          # these six modals.
+          npm run e2e:test-candidate-modals
 
   # ══ Gate 1c · the gates CI *still* skipped ══════════════════════════════════
   # Gate 1b above closed the gap for the functions tree. This job closes the
