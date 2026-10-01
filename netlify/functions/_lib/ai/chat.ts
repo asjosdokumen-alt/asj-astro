@@ -1,8 +1,13 @@
-import { normalizeWa, pick, supabaseJson } from '../db/client.ts';
+import { normalizeWa, supabaseJson } from '../db/client.ts';
 import { AI_SUBMISSION_COLS } from '../db/projections.ts';
 import * as session from '../session';
 import { requireRole } from '../../contexts/identity';
-import { buildRingkasData, findMasterByWa, APPLY_WA_COLS } from './cv';
+import {
+  buildRingkasData,
+  findMasterByWa,
+  findCandidateByWaOrNull,
+  findCandidateByIdOrNull,
+} from './cv';
 import { geminiGenerate, parseJsonLoose } from './providers';
 import { isVipCatatan, unwrapPayloadArgs, lastHistory } from './interview-shared';
 import { AppError, safeError } from '../kernel/errors';
@@ -155,12 +160,6 @@ async function autoTranslateMissingJp(data: Record<string, any>): Promise<void> 
 // ai/chat.js — domain AI chat & wawancara: Qween Jeklin (chat kandidat master),
 // Jeklin copilot admin, Dede Jeklin (siswa baru), wawancara kerja (mensetsu)
 
-import {
-  findCandidateByIdFiltered,
-  findCandidateByWaFiltered,
-  findCandidates,
-} from '../db/candidates.ts';
-
 // VIP / KELAS feature gate — imported from interview-shared (parity legacy
 // js/03_candidate.ts isVipCatatan TIGHTENED: only literal [VIP] or [KELAS x];
 // the old broad /\[[A-Z0-9]+\]/ regex matched ANY bracketed tag like [MCU]).
@@ -220,7 +219,11 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
         let lookupError = false;
         let catatan = '';
         try {
-          const cand = await findCandidateByWaFiltered(wa);
+          // `findCandidateByWaOrNull` juga mencatat saat lookup-nya TIDAK BISA
+          // JALAN (skema bergeser) — dulu keadaan itu tidak terbedakan dari
+          // "catatan kandidat memang kosong", sehingga gate VIP gagal-terbuka
+          // tanpa jejak.
+          const cand = await findCandidateByWaOrNull(wa);
           if (cand) {
             catatan = String(cand.catatan_internal || cand.catatan_int || cand.catatan_admin || '');
           } else {
@@ -244,7 +247,14 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
       }
     }
   }
-  const history = Array.isArray(p.history) ? p.history : [];
+  // Riwayat di-cap di SERVER, bukan hanya di klien. Frontend (AiCvForm,
+  // AdminAiCopilot, SiswaBaruForm) memang sudah mengirim `.slice(-20)`, tapi itu
+  // janji klien — dan klien bisa diganti. Tanpa cap di sini, riwayat yang panjang
+  // membengkakkan prompt pada SETIAP giliran: latensi naik, biaya token naik,
+  // dan akhirnya permintaan ditolak karena melewati jendela konteks model.
+  // processAiInterview sudah memakai lastHistory sejak A16; tiga handler ini
+  // belum, jadi aturannya berbeda-beda per alur.
+  const history = lastHistory(p.history);
   const lang = String(p.lang || 'id');
   // `currentData` keluar sebagai `unknown` dari normalizer, sedangkan bentuk yang
   // diharapkan buildRingkasData/autoTranslateMissingJp adalah objek bersarang.
@@ -270,6 +280,17 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
       : '') +
     AI_FORM_DATA_INSTRUCTION;
   try {
+    // Terjemahan field _jp dan balasan chat TIDAK saling bergantung: prompt
+    // terjemahan dibangun dari `currentData`, bukan dari jawaban model. Menjalankan
+    // keduanya berurutan berarti menjumlahkan latensinya — di jalur terburuk
+    // 4 dtk (chat) + 4 dtk (terjemahan) = 8 dtk dari deadline 12 dtk — padahal
+    // keduanya bisa tumpang tindih. Sekarang dijalankan paralel.
+    //
+    // autoTranslateMissingJp sudah menangkap error-nya sendiri (dan tidak
+    // memanggil provider sama sekali kalau tidak ada field _jp yang kosong).
+    // `catch` di sini hanya jaring supaya promise yang tidak sempat di-await —
+    // saat balasan chat kosong — tidak menjadi unhandled rejection.
+    const translation = autoTranslateMissingJp(currentData).catch(() => {});
     const r = await geminiGenerate(system, history);
     const text = String(r && r.reply ? r.reply : '').trim();
     if (text) {
@@ -282,7 +303,7 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
           // because AI often returns only _id without _jp for some fields.
           // autoTranslateMissingJp only calls Gemini for fields where _id exists
           // but _jp is empty, so no duplicate translations.
-          await autoTranslateMissingJp(currentData);
+          await translation;
           // Merge translated JP fields from p.currentData back into aiData
           // so the frontend receives the translated values.
           if (aiData) {
@@ -294,6 +315,11 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
             }
           }
           return {
+            // `success: true` disengaja: `handlers.ts` mencatat
+            // `handler.end { action, success: out?.success }`, dan tanpa kunci ini
+            // log-nya menulis `undefined` untuk aksi AI yang paling ramai —
+            // satu-satunya aksi yang statusnya tidak terbaca dari log.
+            success: true,
             reply: String(parsed.reply),
             data: aiData || {},
           };
@@ -301,9 +327,9 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
       } catch (e) {
         /* bukan JSON — fallback balas teks biasa */
       }
-      return { reply: text };
+      return { success: true, reply: text };
     }
-    return r;
+    return { success: true, reply: String(r?.reply || '') };
   } catch (e) {
     // Jangan bocorkan detail error mentah ke user — log detailnya di server saja.
     console.error('[AI] processAIChat error:', (e as { message?: string })?.message || e);
@@ -315,7 +341,9 @@ async function handleProcessAdminAIChat(payload: unknown[], sessionToken?: strin
   const guard = requireRole(sessionToken as string, 'admin');
   if (guard.error) return guard.error;
   const d = ((payload && payload[0]) || {}) as Record<string, any>;
-  const history = (d.history || []).concat([{ role: 'user', content: d.message || '' }]);
+  // Cap riwayat SEBELUM giliran baru disisipkan, supaya pesan yang baru diketik
+  // admin tidak pernah ikut terpotong. Lihat catatan cap di handleProcessAIChat.
+  const history = lastHistory(d.history).concat([{ role: 'user', content: d.message || '' }]);
   const system =
     'Kamu adalah Jeklin, asisten HRD admin ASJ (PT Amanah Sakura Japan). Admin: ' +
     String(d.adminName || '') +
@@ -346,13 +374,15 @@ async function handleProcessSiswaAIChat(payload: unknown) {
     'Isi hanya field yang diketahui dari percakapan; yang belum diketahui biarkan "" (string kosong). ' +
     'Normalisasi gender SELALU ke "LAKI-LAKI" atau "PEREMPUAN" (jangan L/P).';
   try {
-    const r = await geminiGenerate(system, Array.isArray(p.history) ? p.history : []);
+    // Cap riwayat di server (paritas processAIChat/processAdminAIChat).
+    const r = await geminiGenerate(system, lastHistory(p.history));
     const text = String(r && r.reply ? r.reply : '').trim();
     if (text) {
       try {
         const parsed = parseJsonLoose(text);
         if (parsed && typeof parsed === 'object' && parsed.reply) {
           return {
+            success: true,
             reply: String(parsed.reply),
             data: parsed.data && typeof parsed.data === 'object' ? parsed.data : undefined,
           };
@@ -360,9 +390,9 @@ async function handleProcessSiswaAIChat(payload: unknown) {
       } catch (e) {
         /* bukan JSON — fallback balas teks biasa */
       }
-      return { reply: text };
+      return { success: true, reply: text };
     }
-    return r;
+    return { success: true, reply: String(r?.reply || '') };
   } catch (e) {
     return aiReplyFailure(e, 'Maaf, jaringan AI sedang sibuk. Coba lagi ya!');
   }
@@ -477,14 +507,10 @@ async function resolveProfilKandidat(wa: string) {
   }
   if (!nama || !bidangRaw) {
     try {
-      let c = await findCandidateByWaFiltered(want);
-      if (c === undefined) {
-        const found = await findCandidates();
-        c =
-          (found.rows || []).find(
-            (r) => normalizeWa(String(pick(r, APPLY_WA_COLS) || '')) === want,
-          ) || null;
-      }
+      // `findCandidateByWaOrNull` membedakan "tidak ada" dari "lookup tidak bisa
+      // jalan" dan MENCATAT yang kedua — lihat catatannya di cv.ts. Pola lama
+      // (`findCandidates()` sebagai fallback) tidak pernah bisa menemukan apa pun.
+      const c = await findCandidateByWaOrNull(want);
       if (c) {
         if (!nama) nama = String(c.nama || c.nama_lengkap || '');
         if (!bidangRaw) bidangRaw = String(c.bidang || c.ssw || c.bidangssw || '');
@@ -566,14 +592,7 @@ async function handleGenerateWawancaraModel(payload: unknown[], sessionToken?: s
   // Resolve WA dari candidateId (sama seperti parseDokumenBiodata) atau wa eksplisit.
   let wa = normalizeWa(String(d.wa || ''));
   if (!wa && d.candidateId) {
-    let cand = await findCandidateByIdFiltered(String(d.candidateId));
-    if (cand === undefined) {
-      const found = await findCandidates();
-      cand =
-        (found.rows || []).find(
-          (r) => String(pick(r, ['id_kandidat', 'id']) || '') === String(d.candidateId),
-        ) || null;
-    }
+    const cand = await findCandidateByIdOrNull(String(d.candidateId));
     if (cand) wa = normalizeWa(String(cand.no_wa || ''));
   }
   if (!wa) {
@@ -621,6 +640,36 @@ async function handleGenerateWawancaraModel(payload: unknown[], sessionToken?: s
 }
 
 // ---------------------------------------------------------------------------
+// boundTranscript — batasi transkrip wawancara yang ditempel ke system prompt.
+//
+// Satu-satunya tempat di lapisan AI yang sengaja TIDAK memakai cap berbasis
+// jumlah giliran: di sini transkrip adalah MUATAN-nya, bukan konteks tambahan,
+// jadi memotong per giliran berarti membuang isi wawancara. Tapi tanpa batas
+// sama sekali, wawancara 60 giliran menempel utuh ke system prompt pada satu
+// permintaan — prompt yang membengkak, dan akhirnya penolakan karena melewati
+// jendela konteks.
+//
+// Jendela KEPALA + EKOR, bukan ekor saja: bagian awal berisi jikoshoukai dan
+// biodata (nama, TTL, pendidikan, pengalaman) yang justru paling sering masuk
+// ke `biodata` di hasil rangkuman, sementara bagian akhir berisi jawaban
+// terbaru. Yang dibuang hanya bagian tengah, dan pembuangannya DITANDAI di
+// dalam prompt supaya model tahu ada bagian yang tidak dibacanya — bukan
+// menyangka wawancaranya memang sependek itu.
+const TRANSCRIPT_HEAD_CHARS = 4000;
+const TRANSCRIPT_TAIL_CHARS = 8000;
+
+function boundTranscript(text: string): string {
+  const budget = TRANSCRIPT_HEAD_CHARS + TRANSCRIPT_TAIL_CHARS;
+  if (text.length <= budget) return text;
+  const dropped = text.length - budget;
+  return (
+    text.slice(0, TRANSCRIPT_HEAD_CHARS) +
+    `\n\n[... ${dropped} karakter bagian tengah transkrip dipotong agar muat ...]\n\n` +
+    text.slice(-TRANSCRIPT_TAIL_CHARS)
+  );
+}
+
+// ---------------------------------------------------------------------------
 // selesaikanWawancara — kandidat: dari TRANSCRIPT wawancara yang sudah jalan,
 // buat JSON hasil wawancara {score, nilai, rekomendasi, biodata, catatan}.
 // Dipanggil saat kandidat klik "Selesai & Kirim Hasil" (deterministik, tidak
@@ -633,12 +682,14 @@ async function handleSelesaikanWawancara(payload: unknown[], sessionToken?: stri
   const profil = await resolveProfilKandidat(d.wa || '');
   const b = (profil && profil.bidang) || BIDANG_DEFAULT;
   const history = Array.isArray(d.history) ? d.history : [];
-  const transkrip = history
-    .map((h) => {
-      const role = h && h.role === 'assistant' ? 'Jeklin' : 'Kandidat';
-      return role + ': ' + String((h && h.content) || '');
-    })
-    .join('\n');
+  const transkrip = boundTranscript(
+    history
+      .map((h) => {
+        const role = h && h.role === 'assistant' ? 'Jeklin' : 'Kandidat';
+        return role + ': ' + String((h && h.content) || '');
+      })
+      .join('\n'),
+  );
   const system =
     'Kamu adalah Jeklin Sensei, pewawancara kerja Jepang untuk LPK ASJ. Kandidat: ' +
     (profil && profil.nama ? profil.nama + '-san' : 'kandidat') +
@@ -728,14 +779,7 @@ async function handleGetHasilWawancara(payload: unknown[], sessionToken?: string
   const d = ((payload && payload[0]) || {}) as Record<string, any>;
   let wa = normalizeWa(String(d.wa || ''));
   if (!wa && d.candidateId) {
-    let cand = await findCandidateByIdFiltered(String(d.candidateId));
-    if (cand === undefined) {
-      const found = await findCandidates();
-      cand =
-        (found.rows || []).find(
-          (r) => String(pick(r, ['id_kandidat', 'id']) || '') === String(d.candidateId),
-        ) || null;
-    }
+    const cand = await findCandidateByIdOrNull(String(d.candidateId));
     if (cand) wa = normalizeWa(String(cand.no_wa || ''));
   }
   if (!wa) {
@@ -772,6 +816,7 @@ async function handleGetHasilWawancara(payload: unknown[], sessionToken?: string
 }
 
 export {
+  boundTranscript,
   buildInterviewSystem,
   normalizeBidang,
   resolveProfilKandidat,

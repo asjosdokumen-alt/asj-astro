@@ -147,6 +147,52 @@ describe('AdminAiCopilot (A11)', () => {
     expect(mockSecure).not.toHaveBeenCalled();
   });
 
+  it('berkas > batas ditolak SEBELUM dibaca, dan pesannya menyebut nama + angkanya', async () => {
+    vi.stubGlobal('FileReader', FakeFileReader);
+    render(<AdminAiCopilot onClose={() => {}} />);
+    openParseTab();
+
+    // 4 MiB + 1 byte: satu byte di atas batas server. Berkas 8 MB tidak pernah
+    // sampai ke handler sama sekali — base64-nya ~10,7 MiB, di atas batas body
+    // 6 MB platform — jadi tanpa pemeriksaan di sini admin hanya melihat
+    // kegagalan jaringan generik.
+    const tooBig = new File(['x'], 'scan-besar.pdf', { type: 'application/pdf' });
+    Object.defineProperty(tooBig, 'size', { value: 4 * 1024 * 1024 + 1 });
+    fireEvent.change(screen.getByLabelText('Upload CV/Excel/PDF — auto parse & update biodata'), {
+      target: { files: [tooBig] },
+    });
+
+    await waitFor(() =>
+      expect(vi.mocked(showToast)).toHaveBeenCalledWith(
+        // Nama berkas DAN angkanya ikut tersubstitusi — pesannya menjelaskan
+        // kenapa (base64 melewati limit server), bukan sekadar "gagal".
+        expect.stringContaining('scan-besar.pdf terlalu besar (maks 4 MB)'),
+        'error',
+      ),
+    );
+    // Berkasnya tidak tersimpan, jadi menekan Parse tidak mengirim apa pun.
+    expect(screen.queryByText('scan-besar.pdf')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Parse & Update' }));
+    expect(mockSecure).not.toHaveBeenCalled();
+  });
+
+  it('berkas tepat DI batas tetap diterima', async () => {
+    vi.stubGlobal('FileReader', FakeFileReader);
+    render(<AdminAiCopilot onClose={() => {}} />);
+    openParseTab();
+
+    const atLimit = new File(['x'], 'pas-batas.pdf', { type: 'application/pdf' });
+    Object.defineProperty(atLimit, 'size', { value: 4 * 1024 * 1024 });
+    fireEvent.change(screen.getByLabelText('Upload CV/Excel/PDF — auto parse & update biodata'), {
+      target: { files: [atLimit] },
+    });
+
+    // Batasnya inklusif: 4 MiB diterima, 4 MiB + 1 byte tidak. Pin titik itu
+    // supaya penjaganya tidak diam-diam menggeser batas yang diumumkan.
+    await waitFor(() => expect(screen.getByText('pas-batas.pdf')).toBeTruthy());
+    expect(vi.mocked(showToast)).not.toHaveBeenCalled();
+  });
+
   it('parse is TWO-STEP: parseDokumenBiodata → submitMasterForm, success + refresh', async () => {
     vi.stubGlobal('FileReader', FakeFileReader);
     const changed = vi.fn();

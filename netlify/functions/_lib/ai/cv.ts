@@ -1,4 +1,4 @@
-import { normalizeWa, pick, supabaseJson, APPLY_WA_COLS } from '../db/client.ts';
+import { normalizeWa, supabaseJson, APPLY_WA_COLS } from '../db/client.ts';
 import { AI_SUBMISSION_COLS, ESIGNATURE_COLS } from '../db/projections.ts';
 import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
 import { buildMasterNested } from '../../contexts/master-data';
@@ -6,6 +6,7 @@ import { syncBiodataKeMail, syncFormMailDariUpload } from '../../contexts/applic
 import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
 import { findFormsByWa } from '../db/forms.ts';
 import { isAllowedDocumentUrl } from '../storage';
+import { hashPii, log } from '../kernel/log';
 // ai/cv.js — domain AI master/CV: auto-fill data kandidat (buildMasterNested /
 // buildRingkasData), konteks admin AI copilot, & penyimpanan data AI form
 // (ai_form_submissions + master_database_candidate). MODUL BARU (Fase 1.4
@@ -13,7 +14,6 @@ import { isAllowedDocumentUrl } from '../storage';
 import {
   findCandidateByIdFiltered,
   findCandidateByWaFiltered,
-  findCandidates,
 } from '../db/candidates.ts';
 
 // C6 fix (2026-09-04): URL dokumen dari request harus https + host
@@ -54,6 +54,52 @@ async function findMasterByWa(wa: string) {
   return (
     rows.find((r) => normalizeWa(String(r.no_wa || r.wa || r.whatsapp || '')) === want) || null
   );
+}
+
+// ---------------------------------------------------------------------------
+// Lookup kandidat — bedakan "tidak ada" dari "lookup tidak bisa jalan".
+// ---------------------------------------------------------------------------
+// `findCandidateByWaFiltered` / `findCandidateByIdFiltered` punya TIGA hasil,
+// dan dua di antaranya terlihat sama bagi pemanggil yang hanya memeriksa
+// truthiness:
+//
+//   - row        → ketemu
+//   - null       → query JALAN, kandidatnya memang tidak ada
+//   - undefined  → query tidak bisa jalan (kolom WA/ID tidak ada di skema)
+//
+// Hanya yang ketiga yang bermasalah, dan setiap pemanggil di lapisan AI dulu
+// menanganinya dengan `findCandidates()` — yang mengembalikan `{ rows: [] }`
+// tanpa syarat (`db/candidates.ts:90`), sehingga "fallback" itu TIDAK PERNAH
+// bisa menemukan apa pun. Kegagalannya senyap: saat skema bergeser, Jeklin
+// kehilangan seluruh blok "DATA KANDIDAT SAAT INI", gate VIP/KELAS membaca
+// catatan kosong, dan wawancara jatuh ke BIDANG_DEFAULT — semuanya sambil tetap
+// menjawab dengan normal, tanpa satu pun error.
+//
+// Fallback yang SEBENARNYA ada (`findAllCandidatesLight`), tapi ia adalah
+// pembacaan keyset penuh atas SELURUH kandidat: mengaktifkannya di sini akan
+// mengubah cabang yang sekarang gratis menjadi table scan di jalur AI yang
+// panas. Itu keputusan yang harus diambil sadar, bukan efek samping — jadi
+// helper ini mengembalikan `null` (AI degradasi) dan MENGATAKANNYA, alih-alih
+// berpura-pura sudah mencari.
+async function findCandidateByWaOrNull(wa: string) {
+  const row = await findCandidateByWaFiltered(wa);
+  if (row === undefined) {
+    log.warn('ai.candidate-lookup-unavailable', {
+      by: 'wa',
+      wa: hashPii(normalizeWa(wa)),
+    });
+    return null;
+  }
+  return row;
+}
+
+async function findCandidateByIdOrNull(id: string) {
+  const row = await findCandidateByIdFiltered(id);
+  if (row === undefined) {
+    log.warn('ai.candidate-lookup-unavailable', { by: 'id', id: hashPii(String(id)) });
+    return null;
+  }
+  return row;
 }
 
 // Ringkasan data kandidat (bentuk nested dari buildMasterNested) yang disuntikkan
@@ -173,16 +219,9 @@ async function handleGetAdminAiContext(payload: unknown[], sessionToken?: string
     if (!row && (d.candidateId || d.idKandidat || d.wa)) {
       const id = String(d.candidateId || d.idKandidat || '');
       // Jalur cepat: cari baris kandidat via query server-side (by id / WA).
-      let cand = id ? await findCandidateByIdFiltered(id) : await findCandidateByWaFiltered(d.wa);
-      if (cand === undefined) {
-        const found = await findCandidates();
-        cand =
-          (found.rows || []).find((r) =>
-            id
-              ? String(pick(r, ['id_kandidat', 'id']) || '') === id
-              : normalizeWa(String(pick(r, APPLY_WA_COLS) || '')) === normalizeWa(d.wa),
-          ) || null;
-      }
+      const cand = id
+        ? await findCandidateByIdOrNull(id)
+        : await findCandidateByWaOrNull(String(d.wa || ''));
       if (cand) row = await findMasterByWa(String(cand.no_wa || ''));
     }
     if (!row) return { success: true, data: null };
@@ -371,22 +410,35 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
         });
       }
 
-      // Sinkronisasi ringan ke database_candidate untuk panel utama (pas_photo dsb)
+      // Sinkronisasi ke database_candidate untuk panel utama (pas_photo dsb) DAN
+      // field identitas dasar (nama, gender, usia, tempat/tgl lahir) supaya edit
+      // super di CV modal admin bisa auto-fill.
+      //
+      // Dulu ini DUA blok terpisah, masing-masing dengan lookup sendiri dan
+      // PATCH sendiri ke baris yang SAMA: dua round-trip baca untuk `.id` yang
+      // tidak pernah berubah, lalu dua round-trip tulis ke baris yang sama
+      // dengan kolom yang tidak beririsan. Digabung jadi satu baca + satu tulis.
+      //
+      // Isolasi kegagalan tidak hilang: keduanya menargetkan baris yang sama
+      // dengan filter yang sama, jadi kegagalan PATCH hampir pasti soal baris
+      // atau tabelnya, bukan soal kolomnya — dan seluruh blok ini memang
+      // best-effort ("opsional"). Yang hilang hanyalah kemungkinan "satu kolom
+      // tersimpan, satu tidak", yang justru lebih buruk daripada gagal utuh.
       try {
         const candBody: any = {};
         if (d.fotoFile) candBody.pas_photo = d.fotoFile;
         if (d.jftFile) candBody.jft = d.jftFile;
         if (d.sswFile) candBody.ssw = d.sswFile;
         if (d.ktpFile) candBody.ktp_url = d.ktpFile;
+        if (identitas.nama_lengkap) candBody.nama_lengkap = identitas.nama_lengkap;
+        if (identitas.gender) candBody.gender = identitas.gender;
+        if (identitas.usia) candBody.usia = identitas.usia;
+        if (identitas.tempat_lahir) candBody.tempat_lahir = identitas.tempat_lahir;
+        if (identitas.tgl_lahir) candBody.tgl_lahir = identitas.tgl_lahir;
+        if (identitas.hp) candBody.no_wa = wa;
 
         if (Object.keys(candBody).length > 0) {
-          let c = await findCandidateByWaFiltered(wa);
-          if (c === undefined) {
-            const found = await findCandidates();
-            c =
-              found.rows.find((r) => normalizeWa(String(pick(r, APPLY_WA_COLS) || '')) === wa) ||
-              null;
-          }
+          const c = await findCandidateByWaOrNull(wa);
           if (c && c.id !== undefined) {
             await supabaseJson('PATCH', 'database_candidate', {
               query: { id: 'eq.' + c.id },
@@ -396,38 +448,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
           }
         }
       } catch (e) {
-        // opsional
-      }
-
-      // Sinkron field identitas dasar ke database_candidate supaya edit super
-      // di CV modal admin bisa auto-fill (nama, gender, usia, tempat/tgl lahir).
-      try {
-        const idBody: any = {};
-        if (identitas.nama_lengkap) idBody.nama_lengkap = identitas.nama_lengkap;
-        if (identitas.gender) idBody.gender = identitas.gender;
-        if (identitas.usia) idBody.usia = identitas.usia;
-        if (identitas.tempat_lahir) idBody.tempat_lahir = identitas.tempat_lahir;
-        if (identitas.tgl_lahir) idBody.tgl_lahir = identitas.tgl_lahir;
-        if (identitas.hp) idBody.no_wa = wa;
-        if (Object.keys(idBody).length > 0) {
-          let c2 = await findCandidateByWaFiltered(wa);
-          if (c2 === undefined) {
-            const found2 = await findCandidates();
-            c2 =
-              found2.rows.find(
-                (r) => normalizeWa(String(pick(r, APPLY_WA_COLS) || '')) === wa,
-              ) || null;
-          }
-          if (c2 && c2.id !== undefined) {
-            await supabaseJson('PATCH', 'database_candidate', {
-              query: { id: 'eq.' + c2.id },
-              body: idBody,
-              headers: { Prefer: 'return=minimal' },
-            });
-          }
-        }
-      } catch (e) {
-        /* opsional — sync identitas ke database_candidate */
+        /* opsional — sync ke database_candidate */
       }
 
       // Sinkron KTP URL ke pemberkasan_checklist supaya admin bisa
@@ -632,6 +653,8 @@ export {
   buildMasterNested,
   buildRingkasData,
   findMasterByWa,
+  findCandidateByWaOrNull,
+  findCandidateByIdOrNull,
   handleGetAdminAiContext,
   handleBuildAdminAiCandidateSummary,
   handleSubmitDataAsj,

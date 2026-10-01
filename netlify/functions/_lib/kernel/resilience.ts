@@ -301,6 +301,13 @@ class CircuitBreaker {
 export const DEPENDENCY_CONFIGS: Record<string, BreakerOpts> = {
   postgrest: { threshold: 5, windowMs: 30_000, coolDownMs: 15_000 },
   gemini:    { threshold: 3, windowMs: 60_000, coolDownMs: 30_000 },
+  // `grok` sudah lama dipanggil (`breaker.check/failure/success('grok')` di
+  // _lib/ai/providers.ts) tapi tidak pernah terdaftar di sini, jadi ia memakai
+  // default (ambang 5) DAN tidak ikut ter-enumerasi oleh `snapshot()` — artinya
+  // provider fallback satu-satunya di sistem ini tidak pernah muncul di /health.
+  // Ambangnya disamakan dengan gemini: keduanya melayani permintaan yang sama
+  // dan kegagalannya sama-sama berarti "AI sedang tidak bisa menjawab".
+  grok:      { threshold: 3, windowMs: 60_000, coolDownMs: 30_000 },
   fonnte:    { threshold: 3, windowMs: 60_000, coolDownMs: 60_000 },
   fcm:       { threshold: 10, windowMs: 60_000, coolDownMs: 15_000 },
   storage:   { threshold: 5, windowMs: 60_000, coolDownMs: 15_000 },

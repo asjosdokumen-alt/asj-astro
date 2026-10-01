@@ -33,6 +33,17 @@ import { useOverlay } from "../ui/useOverlay";
 const JEKLIN_IMG =
   "https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png";
 
+/**
+ * Batas ukuran berkas untuk parse dokumen biodata, dalam MB.
+ *
+ * HARUS ≤ batas server. Server memakai 4 MiB (`netlify/functions/_lib/ai/classify.ts`)
+ * karena berkas dikirim sebagai base64 DI DALAM body JSON, dan batas body
+ * Netlify Functions adalah 6 MB — 8 MiB menjadi ~10,7 MiB dan ditolak platform
+ * sebelum handler jalan. Memeriksa di sini mengubah "kegagalan jaringan" menjadi
+ * pesan yang benar, tanpa membaca berkasnya lebih dulu.
+ */
+const PARSE_MAX_MB = 4;
+
 interface ChatMsg {
   role: "assistant" | "user";
   text: string;
@@ -524,7 +535,26 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*"
                 onChange={(e) => {
                   const f = (e.target as HTMLInputElement).files?.[0];
-                  if (f) setParseFile(f);
+                  if (!f) return;
+                  // Ditolak SEBELUM berkas dibaca ke memori. Server memakai batas
+                  // 4 MiB (`_lib/ai/classify.ts`) karena berkas dikirim sebagai
+                  // base64 DI DALAM body JSON: 8 MiB menjadi ~10,7 MiB, di atas
+                  // batas body 6 MB Netlify Functions. Tanpa pemeriksaan di sini,
+                  // berkas sebesar itu gagal dengan error jaringan generik —
+                  // platform menolaknya sebelum handler jalan, jadi pesan server
+                  // yang sebenarnya ("File terlalu besar") tidak pernah tampil.
+                  // Angka ini harus ≤ batas server; kalau server berubah, ini ikut.
+                  if (f.size > PARSE_MAX_MB * 1024 * 1024) {
+                    showToast(
+                      t("ui.toast_file_too_big")
+                        .replace("{nama}", f.name)
+                        .replace("{mb}", String(PARSE_MAX_MB)),
+                      "error",
+                    );
+                    setParseFile(null);
+                    return;
+                  }
+                  setParseFile(f);
                 }}
                 class="w-full text-[11px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-amber-600 file:text-white file:text-[11px] file:font-bold"
               />

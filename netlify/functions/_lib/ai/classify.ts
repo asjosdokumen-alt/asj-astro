@@ -1,7 +1,6 @@
-import { normalizeWa, pick, normalizeGender } from '../db/client.ts';
-import { findCandidateByIdFiltered, findCandidates } from '../db/candidates.ts';
+import { normalizeWa, normalizeGender } from '../db/client.ts';
 import { requireRole } from '../../contexts/identity';
-import { findMasterByWa } from './cv';
+import { findMasterByWa, findCandidateByIdOrNull } from './cv';
 import { geminiParseFile, parseJsonLoose } from './providers';
 import { AppError, safeError } from '../kernel/errors';
 // ai/classify.js — domain AI klasifikasi & parse dokumen biodata/CV admin
@@ -12,7 +11,31 @@ import { AppError, safeError } from '../kernel/errors';
 // → Gemini parse → JSON biodata (kunci MASTER_COLUMN_MAP camelCase, sama
 // dengan payload submitMasterForm) → frontend bisa langsung update master.
 // ---------------------------------------------------------------------------
-const PARSE_MAX_BYTES = 8 * 1024 * 1024;
+// Batas body fungsi. Netlify Functions berjalan di atas AWS Lambda, yang
+// menolak body permintaan sinkron di atas 6 MB — dan penolakan itu terjadi di
+// PLATFORM, sebelum handler ini jalan.
+const PLATFORM_BODY_LIMIT_BYTES = 6 * 1024 * 1024;
+
+// Batas berkas yang BENAR-BENAR bisa kami periksa.
+//
+// Nilai sebelumnya 8 MiB, dan itu mustahil dieksekusi: klien mengirim berkas
+// sebagai base64 DI DALAM body JSON (AdminAiCopilot.handleParse → `data`),
+// sehingga 8 MiB menjadi ~10,7 MiB — di atas batas 6 MB platform. Artinya
+// berkas 8 MB tidak pernah sampai ke sini sama sekali; yang terjadi adalah
+// platform menolaknya, klien melihat kegagalan jaringan generik, dan pesan
+// "File terlalu besar (maks 8 MB)" di bawah TIDAK PERNAH tampil. Batas yang
+// diumumkan 1,8x lebih tinggi daripada yang bisa platform antarkan.
+//
+// Aritmetika: base64 = ceil(n/3)*4 ≈ n * 4/3. Agar muat di 6 MB (dikurangi
+// amplop JSON yang kecil), n <= 6 MB * 3/4 ≈ 4,5 MiB. Kami mengambil 4 MiB,
+// yang menyisakan ~11% ruang (5,59 MB terpakai dari 6,29 MB) — cukup untuk
+// header dan amplop, dan cukup ketat sehingga TIDAK ADA berkas yang lolos
+// penjaga ini lalu ditolak platform.
+//
+// Batas ini juga menjaga janji pemeriksaan MIME/ukuran di atas tetap bisa
+// ditepati: penjaga yang tidak pernah dieksekusi bukan penjaga.
+const PARSE_MAX_BYTES = 4 * 1024 * 1024;
+
 const PARSE_ALLOWED_MIME = new Set([
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
@@ -67,7 +90,10 @@ async function handleParseDokumenBiodata(payload: unknown, sessionToken: string 
     return { success: false, error: 'File tidak bisa dibaca.' };
   }
   if (buf.length > PARSE_MAX_BYTES) {
-    return { success: false, error: 'File terlalu besar (maks 8 MB).' };
+    return {
+      success: false,
+      error: `File terlalu besar (maks ${PARSE_MAX_BYTES / (1024 * 1024)} MB).`,
+    };
   }
   if (!PARSE_ALLOWED_MIME.has(mimeType)) {
     return {
@@ -83,14 +109,11 @@ async function handleParseDokumenBiodata(payload: unknown, sessionToken: string 
   // membuka AI copilot dari baris kandidat → cukup klik upload).
   let wa = normalizeWa(String(d.wa || ''));
   if (!wa && d.candidateId) {
-    let cand = await findCandidateByIdFiltered(String(d.candidateId));
-    if (cand === undefined) {
-      const found = await findCandidates();
-      cand =
-        (found.rows || []).find(
-          (r) => String(pick(r, ['id_kandidat', 'id']) || '') === String(d.candidateId),
-        ) || null;
-    }
+    // `findCandidateByIdOrNull` mencatat saat lookup-nya tidak bisa jalan —
+    // lihat catatannya di cv.ts. Pola lama memakai `findCandidates()` sebagai
+    // fallback, dan stub itu mengembalikan `rows: []` tanpa syarat, jadi
+    // cabangnya tidak pernah bisa menemukan kandidat.
+    const cand = await findCandidateByIdOrNull(String(d.candidateId));
     if (cand) wa = normalizeWa(String(cand.no_wa || ''));
   }
   if (!wa) {
@@ -154,4 +177,4 @@ async function handleParseDokumenBiodata(payload: unknown, sessionToken: string 
   }
 }
 
-export { handleParseDokumenBiodata };
+export { PARSE_MAX_BYTES, PLATFORM_BODY_LIMIT_BYTES, handleParseDokumenBiodata };

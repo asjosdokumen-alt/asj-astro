@@ -87,6 +87,30 @@ function mapCandidate(row: Record<string, unknown>) {
 
 // Nama tabel kandidat yang umum (urutan prioritas) — dipakai findCandidates &
 // findAllCandidatesLight supaya jalur cepat & fallback mencari tabel yang sama.
+/**
+ * ⚠️ STUB — SELALU KOSONG. Ini BUKAN "fallback scan penuh".
+ *
+ * Mengembalikan `{ rows: [] }` tanpa syarat dan tanpa menyentuh database. Sepuluh
+ * pemanggil memperlakukannya sebagai fallback terakhir untuk kasus "lookup
+ * bertarget mengembalikan `undefined`" (= kolom WA/ID tidak ada di skema) —
+ * `contexts/catalog/repository.ts:158`, `contexts/catalog/service.ts:75,160`,
+ * `contexts/diagnostics/repository.ts:42`, `contexts/documents/repository.ts:32,43,59`,
+ * `contexts/documents/service.ts:267,322`, dan `contexts/jobs/service.ts:99`.
+ *
+ * Karena selalu kosong, cabang-cabang itu TIDAK PERNAH bisa menemukan apa pun,
+ * dan kegagalannya senyap: yang terlihat adalah "kandidat tidak ditemukan",
+ * bukan "lookup tidak bisa jalan".
+ *
+ * Lapisan AI sudah berhenti memakainya — `_lib/ai/cv.ts` memakai
+ * `findCandidateByWaOrNull` / `findCandidateByIdOrNull`, yang mencatat keadaan
+ * itu sebagai `ai.candidate-lookup-unavailable`. Sisa pemanggil di luar lapisan
+ * AI belum diperbaiki; lihat `deliverables/ai-inference/`.
+ *
+ * Implementasi yang benar sudah ada: `findAllCandidatesLight()` (keyset penuh,
+ * proyeksi ringan). Jangan arahkan fungsi ini ke sana tanpa memutuskan biayanya
+ * lebih dulu: cabang yang sekarang gratis akan berubah menjadi pembacaan seluruh
+ * tabel setiap kali skema bergeser.
+ */
 async function findCandidates(): Promise<{ table: string; rows: any[] }> {
   return { table: TABLE_CANDIDATE, rows: [] };
 }
