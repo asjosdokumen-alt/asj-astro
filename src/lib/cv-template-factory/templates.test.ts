@@ -53,9 +53,16 @@ const mockContext: RenderContext = {
 };
 
 describe('CV Template Factory', () => {
-  it('factory has 4 registered templates', () => {
+  it('factory has 5 registered templates', () => {
     const list = cvFactory.list();
-    expect(list.length).toBe(4);
+    expect(list.length).toBe(5);
+  });
+
+  it('includes the real rirekisho form as an xlsx template', () => {
+    const t = cvFactory.get('rirekisho-xlsx');
+    expect(t).toBeTruthy();
+    expect(t?.type).toBe('xlsx');
+    expect(t?.category).toBe('form');
   });
 
   it('includes rirekisho-a4 as a registered template', () => {
