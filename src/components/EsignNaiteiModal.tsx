@@ -38,7 +38,11 @@ type FieldKey = "ttd1" | "nama1" | "ttd2" | "nama2";
 interface FieldDef {
   key: FieldKey;
   labelKey: string;
-  drawTitle: string;
+  /** KUNCI i18n, bukan teks. Dulu literal Indonesia ("Tanda Tangan Kandidat"),
+   *  dirender sebagai `<h3>` di layar gambar penuh — jadi pengguna JP selalu
+   *  membaca bahasa Indonesia, dan `i18n.keys.test.ts` tidak bisa melihatnya
+   *  karena ia memang bukan kunci. */
+  drawTitleKey: string;
   isNama: boolean;
 }
 
@@ -58,13 +62,13 @@ export function allowedTahapanEsign(tahapanRaw: string | undefined | null): bool
 }
 
 const FIELDS_PARTY1: FieldDef[] = [
-  { key: "ttd1", labelKey: "ui.sign1", drawTitle: "Tanda Tangan Kandidat", isNama: false },
-  { key: "nama1", labelKey: "ui.name1", drawTitle: "Tulisan Nama Kandidat", isNama: true },
+  { key: "ttd1", labelKey: "ui.sign1", drawTitleKey: "ui.esign_draw_ttd1", isNama: false },
+  { key: "nama1", labelKey: "ui.name1", drawTitleKey: "ui.esign_draw_nama1", isNama: true },
 ];
 
 const FIELDS_PARTY2: FieldDef[] = [
-  { key: "ttd2", labelKey: "ui.sign2", drawTitle: "Tanda Tangan Wali", isNama: false },
-  { key: "nama2", labelKey: "ui.name2", drawTitle: "Tulisan Nama Wali", isNama: true },
+  { key: "ttd2", labelKey: "ui.sign2", drawTitleKey: "ui.esign_draw_ttd2", isNama: false },
+  { key: "nama2", labelKey: "ui.name2", drawTitleKey: "ui.esign_draw_nama2", isNama: true },
 ];
 
 // Resolusi logis kanvas per jenis (TTD persegi, Nama lebar utk tulisan).
@@ -307,7 +311,7 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa, closing = false 
     <div class="fixed inset-0 u-modal-shell bg-slate-950 z-[999] flex flex-col">
       <div class="px-4 py-3 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
         <div>
-          <h3 class="text-sm font-bold text-white uppercase tracking-wider">{drawField.drawTitle}</h3>
+          <h3 class="text-sm font-bold text-white uppercase tracking-wider">{t(drawField.drawTitleKey)}</h3>
           <p class="text-[11px] text-slate-400">
             {drawField.isNama ? (
               <>
@@ -321,7 +325,7 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa, closing = false 
         <button
           type="button"
           onClick={() => setDrawField(null)}
-          class="text-slate-400 hover:text-white px-3 py-1 bg-slate-800 rounded"
+          class="min-h-11 inline-flex items-center text-slate-400 hover:text-white px-3 bg-slate-800 rounded"
         >
           <Icon name="times" class="mr-1" />
           {t("public.close")}

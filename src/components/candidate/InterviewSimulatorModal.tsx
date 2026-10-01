@@ -231,7 +231,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
       ])) as { success?: boolean; hasil?: Record<string, unknown>; error?: string } | null;
       if (!mountedRef.current) return;
       if (!res || res.success === false) {
-        throw new Error((res && res.error) || 'AI sibuk');
+        throw new Error((res && res.error) || t('ui.iv_ai_busy'));
       }
       await saveHasilKeAdmin(res.hasil || {});
       showToast(t('ui.ai_interview_sent'), 'success');
@@ -240,7 +240,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
         const errText = err instanceof Error ? err.message : String(err);
         appendMsg({
           role: 'assistant',
-          content: t('ui.iv_err_summarize').replace('{e}', errText || 'AI sibuk'),
+          content: t('ui.iv_err_summarize').replace('{e}', errText || t('ui.iv_ai_busy')),
         });
       }
     } finally {

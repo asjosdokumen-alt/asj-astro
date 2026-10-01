@@ -713,6 +713,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.interview_sim": "Simulator 面接 (Mentsetsu)",
     "ui.iv_err_disconnect": "Koneksi terputus. Silakan kirim ulang jawabanmu.",
     "ui.iv_err_summarize": "⚠️ Gagal merangkum hasil: {e}",
+    // Cadangan saat server tidak mengirim pesan galat sama sekali. Sebelumnya
+    // literal `'AI sibuk'` di `InterviewSimulatorModal.tsx:243`, jadi pengguna JP
+    // membaca bahasa Indonesia — dan `i18n.keys.test.ts` tidak bisa melihatnya
+    // karena ia memang BUKAN kunci.
+    "ui.iv_ai_busy": "AI sibuk",
     "ui.iv_greet_fallback": "Konnichiwa **{name}**-san! Saya Jeklin-sensei.\nKetik jawabanmu untuk memulai latihan wawancara ya!",
     "ui.iv_res_bio_fields": "🧬 Data biodata terekam: {n} field",
     "ui.iv_res_rekom": "💡 Rekomendasi: ",
@@ -1531,8 +1536,18 @@ export const translations: Record<Lang, Record<string, string>> = {
   "ui.party2": "Pihak 2 (Wali)",
   "ui.sign1": "TANDA TANGAN 1",
   "ui.name1": "NAMA TERANG 1",
-  "ui.sign2": "TANDA TANGAN 2",
-  "ui.name2": "NAMA TERANG 2",
+    "ui.sign2": "TANDA TANGAN 2",
+    "ui.name2": "NAMA TERANG 2",
+    // Judul layar gambar E-Sign. Sebelumnya literal `drawTitle` di
+    // `EsignNaiteiModal.tsx:61-68` ("Tanda Tangan Kandidat", dst.) yang dirender
+    // sebagai `<h3>` di layar penuh — jadi pengguna JP selalu melihat bahasa
+    // Indonesia. `ui.sign1`/`ui.name1` TIDAK dipakai ulang: itu label chip
+    // ("TANDA TANGAN 1"), bukan judul tugas ("Tanda Tangan Kandidat"), dan
+    // menukarnya akan mengubah teks yang dilihat pengguna Indonesia juga.
+    "ui.esign_draw_ttd1": "Tanda Tangan Kandidat",
+    "ui.esign_draw_nama1": "Tulisan Nama Kandidat",
+    "ui.esign_draw_ttd2": "Tanda Tangan Wali",
+    "ui.esign_draw_nama2": "Tulisan Nama Wali",
   "ui.start_draw": "Mulai Gambar",
   "ui.start_drawing": "Mulai Menggambar",
   "ui.redo_sign": "Ulangi Gambar",
