@@ -49,6 +49,16 @@ Diuji dan bekerja untuk `oklch()`, `oklab()`, `color-mix()`, dan bentuk `oklch(�
 Akibatnya audit kontras bisa dilakukan **seluruhnya di dalam peramban**, tanpa
 tangkapan layar + `sharp`. Semua angka §6 di bawah memakai jalur ini.
 
+> ⚠ **`clearRect` sebelum `fillRect` WAJIB.** `fillRect` **menimpa-komposit** piksel
+> yang sudah ada di kanvas, jadi nilai tembus-cahaya (`rgba(0,0,0,0)`,
+> `oklab(… / 0.5)`) bercampur dengan piksel panggilan SEBELUMNYA alih-alih
+> menggantinya — dan panggilan sebelumnya hampir selalu warna teks. Gejalanya
+> khas: **setiap elemen kembali sebagai "warnanya sendiri di atas warnanya
+> sendiri"** → `ratio: 1` seragam di seluruh halaman, dan rantai latar berhenti di
+> lapisan tembus-cahaya pertama sehingga gradien di belakangnya tak pernah
+> terlihat. Satu `clearRect` yang hilang menghasilkan **22 kegagalan kontras palsu**
+> pada halaman yang sebenarnya nol.
+
 ### 0.2 Dua pembacaan palsu yang hampir menjadi temuan
 
 Sapuan pertama melaporkan **10 kegagalan kontras** dan **70 overflow horizontal**.
