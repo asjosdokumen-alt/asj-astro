@@ -123,6 +123,17 @@ export default defineConfig({
             'e2e/ai-cv-submit.test.ts',
             'e2e/kernel-metrics-histogram.test.ts',
             'e2e/applications-sync-preloaded.test.ts',
+            // Ditambahkan 2026-10-02. Keduanya handler-level TANPA DOM, jadi
+            // memang milik project 'backend' — tapi yang membuat ini wajib
+            // (bukan sekadar rapi) adalah `candidates-lookup-stub.test.ts`:
+            // di jsdom impor relatifnya (`../../netlify/functions/...`) gagal
+            // diselesaikan, dan kegagalannya muncul sebagai "Failed to resolve
+            // import", bukan sebagai tes yang salah. `ai-chat-context.test.ts`
+            // kebetulan LOLOS di jsdom, yang justru lebih buruk: ia menjalankan
+            // suite backend di lingkungan yang bukan miliknya, dan lulusnya
+            // menyembunyikan bahwa penempatannya belum terdaftar.
+            'e2e/ai-chat-context.test.ts',
+            'e2e/candidates-lookup-stub.test.ts',
           ],
         },
       },
