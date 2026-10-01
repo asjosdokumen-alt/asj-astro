@@ -34,6 +34,7 @@ import type { WaTemplate } from '../../types/api';
 import { t, langStore } from '../../store/i18n';
 import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
+import { Status, TableRows } from '../ui/Skeleton';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 
 export default function TabPelamar() {
@@ -185,7 +186,18 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
       </div>
 
       {loading ? (
-        <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-sky-400" /><p class="text-slate-500 mt-2 text-sm">{t('admin.loading_candidates')}</p></div>
+        /* Kerangka tabel 6 kolom. `simpleView` punya bentuk daftar yang berbeda,
+           tetapi keadaan memuat tidak boleh menebak mode mana yang akan dipakai
+           — tabel adalah tampilan DEFAULT, jadi itu yang dicerminkan. */
+        <Status labelKey="admin.loading_candidates">
+          <div class="u-scroll-x rounded-xl border border-slate-800">
+            <table class="w-full text-sm text-left whitespace-nowrap">
+              <tbody>
+                <TableRows rows={6} widths={['h-4 w-16', 'h-4 w-3/4', 'h-4 w-20', 'h-4 w-24', 'h-4 w-20', 'h-4 w-24']} />
+              </tbody>
+            </table>
+          </div>
+        </Status>
       ) : simpleView ? (
         /* Simple View — compact list */
         <div class="space-y-2">

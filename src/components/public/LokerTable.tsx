@@ -57,6 +57,7 @@ import { ErrorBoundary } from '../ErrorBoundary';
 import LokerDetailModal from './LokerDetailModal';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 import Icon from '../ui/Icon';
+import { Status, TableRows } from '../ui/Skeleton';
 
 // NOTE: Shared Job type available at types/api.ts
 // This local interface extends it with public-view specific fields
@@ -232,6 +233,10 @@ export default function LokerTable() {
         </div>
       </div>
       <div class="u-scroll-x rounded-xl border border-slate-800 shadow-xl bg-slate-900">
+        {/* Pengumuman "sedang memuat" duduk di LUAR tabel dengan sengaja:
+            `role="status"` tidak boleh dipasang pada `<tr>`, karena itu menimpa
+            peran `row` dan merusak semantik tabelnya. */}
+        {loading && <Status labelKey="public.loading" class="sr-only" />}
         <table class="w-full min-w-[700px] text-left text-sm whitespace-nowrap">
           <thead class="bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700">
             <tr>
@@ -244,7 +249,11 @@ export default function LokerTable() {
           </thead>
           <tbody class="divide-y divide-white/5">
             {loading ? (
-              <tr><td colSpan={5} class="p-8 text-center text-slate-500"><Icon spin name="spinner" class="mr-2" /> {t("public.loading")}</td></tr>
+              /* Kerangka baris, bukan spinner di tengah sel. `widths` mengikuti
+                 lebar kolom tabelnya (kode w-24, pekerjaan lebar, status w-24,
+                 syarat lebar, aksi w-20) supaya kolomnya tetap sejajar dengan
+                 `thead` di atasnya saat isinya tiba. */
+              <TableRows rows={6} widths={['h-4 w-14 mx-auto', 'h-5 w-4/5', 'h-4 w-12 mx-auto', 'h-4 w-3/4', 'h-4 w-10 mx-auto']} />
             ) : error ? (
               <tr><td colSpan={5} class="p-10 text-center text-rose-400 font-bold"><Icon name="exclamation-triangle" class="mr-2" /> {t("public.load_error")} <button onClick={() => fetchJobs()} class="ml-3 min-h-11 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-lg transition"><Icon name="sync-alt" class="mr-1" /> {t("button.retry")}</button></td></tr>
             ) : displayed.length === 0 ? (

@@ -20,6 +20,7 @@ import { t, langStore } from '../../store/i18n';
 
 import type { WaTemplate } from '../../types/api';
 import Icon from '../ui/Icon';
+import { Bar, Status } from '../ui/Skeleton';
 
 export default function TabWA() {
   const _lang = useStore(langStore);
@@ -78,7 +79,22 @@ export default function TabWA() {
 
   const ic = 'w-full p-2.5 rounded-lg bg-black/60 border border-slate-600 text-white text-sm outline-none focus:border-emerald-500 transition';
 
-  if (loading) return <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-emerald-400" /><p class="text-slate-500 mt-2 text-sm">{t('ui.memuat_template')}</p></div>;
+  // Kerangka: judul + kartu undangan kelas + formulir template. Tiga blok itu
+  // ada TERLEPAS dari datanya, jadi kerangkanya tidak menebak apa pun.
+  if (loading) return (
+    <Status labelKey="ui.memuat_template">
+      <Bar class="h-6 w-64 mb-6" />
+      <Bar class="h-28 w-full rounded-2xl mb-6" />
+      <div class="space-y-4">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} class="space-y-2">
+            <Bar class="h-4 w-32" />
+            <Bar class="h-11 w-full rounded-control" />
+          </div>
+        ))}
+      </div>
+    </Status>
+  );
 
   return (<div>
     <h2 class="text-emerald-400 font-bold mb-6 border-b border-emerald-900/50 pb-3 text-lg"><Icon name="whatsapp" class="mr-2" /> {t('ui.manage_wa_templates')}</h2>

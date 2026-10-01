@@ -13,6 +13,7 @@ import ListKandidatModal from './ListKandidatModal';
 import { useStore } from '@nanostores/preact';
 import { allKandidatList, fetchAllKandidat } from '../../store/adminStore';
 import Icon from '../ui/Icon';
+import { Status, TableRows } from '../ui/Skeleton';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 
 interface DbJob {
@@ -231,7 +232,17 @@ export default function TabDbJob() {
       </div>
 
       {loading ? (
-        <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-purple-400" /><p class="text-slate-500 mt-2 text-sm">{t('ui.loading')}</p></div>
+        /* Kerangka tabel dengan jumlah kolom dan `min-w` yang SAMA dengan tabel
+           aslinya, jadi `thead` di bawahnya tidak bergeser saat isinya tiba. */
+        <Status>
+          <div class="u-scroll-x rounded-xl border border-slate-800">
+            <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
+              <tbody>
+                <TableRows rows={6} widths={['h-4 w-16', 'h-4 w-3/4', 'h-4 w-20', 'h-4 w-24', 'h-4 w-20', 'h-4 w-24']} />
+              </tbody>
+            </table>
+          </div>
+        </Status>
       ) : (
         <div class="u-scroll-x rounded-xl border border-slate-800">
           <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">

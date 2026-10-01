@@ -22,6 +22,7 @@ import { uploadToCloudinary } from '../../lib/cloudinary';
 import { api } from '../../lib/apiClient';
 import { authStore } from '../../store/authReactive';
 import Icon from '../ui/Icon';
+import { Bar, Status } from '../ui/Skeleton';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 import RincianBiayaModal, { parseRincianState, rincianSerialize, rincianSummary } from './RincianBiayaModal';
 
@@ -145,11 +146,20 @@ export default function TabTambah() {
   }
 
   if (loading) {
+    // Kerangka formulir: tab ini seluruhnya satu formulir, jadi bentuknya
+    // diketahui sepenuhnya sebelum datanya tiba.
     return (
-      <div class="text-center py-8">
-        <Icon spin name="spinner" class="text-2xl text-red-400" />
-        <p class="text-slate-500 mt-2 text-sm">{t('ui.loading')}</p>
-      </div>
+      <Status>
+        <Bar class="h-6 w-56 mb-6" />
+        <div class="space-y-4">
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} class="space-y-2">
+              <Bar class="h-4 w-28" />
+              <Bar class="h-11 w-full rounded-control" />
+            </div>
+          ))}
+        </div>
+      </Status>
     );
   }
 

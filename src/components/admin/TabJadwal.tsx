@@ -9,6 +9,7 @@ import { t } from '../../store/i18n';
 
 import type { Jadwal } from '../../types/api';
 import Icon from '../ui/Icon';
+import { Bar, Status, TableRows } from '../ui/Skeleton';
 
 export default function TabJadwal() {
   const [jadwal, setJadwal] = useState<Jadwal[]>([]);
@@ -41,7 +42,24 @@ export default function TabJadwal() {
 
   const ic = 'w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition';
 
-  if (loading) return <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-amber-400" /><p class="text-slate-500 mt-2 text-sm">{t("admin.jadwal_loading")}</p></div>;
+  // Kerangka: header (judul + tombol) + tabel jadwal. Bentuknya tetap sama
+  // apakah formulir tambah sedang terbuka atau tidak — formulir itu muncul
+  // karena AKSI, bukan karena data, jadi ia tidak perlu diramalkan di sini.
+  if (loading) return (
+    <Status labelKey="admin.jadwal_loading">
+      <div class="flex justify-between items-center border-b border-amber-900/50 pb-4 mb-4">
+        <Bar class="h-6 w-48" />
+        <Bar class="h-11 w-36 rounded-control" />
+      </div>
+      <div class="u-scroll-x rounded-xl border border-slate-800">
+        <table class="w-full min-w-[800px] text-sm text-left whitespace-nowrap">
+          <tbody>
+            <TableRows rows={5} widths={['h-4 w-20', 'h-4 w-3/4', 'h-4 w-28', 'h-4 w-20']} />
+          </tbody>
+        </table>
+      </div>
+    </Status>
+  );
 
   return (<div>
     <div class='flex justify-between items-center border-b border-amber-900/50 pb-4 mb-4'>

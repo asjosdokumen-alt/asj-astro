@@ -10,6 +10,7 @@ import { t, langStore } from '../../store/i18n';
 
 import type { ConfigGroup } from '../../types/api';
 import Icon from '../ui/Icon';
+import { Bar, Status } from '../ui/Skeleton';
 
 export default function TabConfig() {
   const _lang = useStore(langStore);
@@ -53,7 +54,23 @@ export default function TabConfig() {
     } catch (e: unknown) { showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error'); }
   }
 
-  if (loading) return <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-slate-400" /><p class="text-slate-500 mt-2 text-sm">{t('ui.loading')}</p></div>;
+  // Kerangka, bukan spinner: bentuk tab ini sudah diketahui sebelum datanya tiba
+  // (judul + deskripsi + baris pengaturan). Lihat `../ui/Skeleton.tsx` untuk
+  // alasan palet dan kontrak a11y-nya.
+  if (loading) return (
+    <Status>
+      <Bar class="h-6 w-56 mb-6" />
+      <Bar class="h-4 w-2/3 mb-6" />
+      <div class="space-y-4">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} class="space-y-2">
+            <Bar class="h-4 w-32" />
+            <Bar class="h-11 w-full rounded-control" />
+          </div>
+        ))}
+      </div>
+    </Status>
+  );
 
   return (<div>
     <h2 class="text-white font-bold mb-6 border-b border-slate-700 pb-3 text-lg"><Icon name="cogs" class="mr-2 text-slate-300" /> {t('admin.tab_config_title')}</h2>

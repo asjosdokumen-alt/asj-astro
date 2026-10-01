@@ -9,6 +9,7 @@ import { langStore, t } from '../../store/i18n';
 import AdminJobEditModal from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import Icon from '../ui/Icon';
+import { Status, TableRows } from '../ui/Skeleton';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
 
@@ -101,7 +102,16 @@ export default function TabKelola() {
       </div>
 
       {loading ? (
-        <div class="text-center py-8"><Icon spin name="spinner" class="text-2xl text-red-400" /><p class="text-slate-500 mt-2 text-sm">{t('ui.loading')}</p></div>
+        /* Kerangka tabel: 5 kolom, `min-w-[800px]`, sama dengan tabel aslinya. */
+        <Status>
+          <div class="u-scroll-x rounded-xl border border-slate-800">
+            <table class="w-full min-w-[800px] text-sm text-left whitespace-nowrap">
+              <tbody>
+                <TableRows rows={6} widths={['h-4 w-16', 'h-4 w-3/4', 'h-4 w-24', 'h-4 w-20', 'h-4 w-24']} />
+              </tbody>
+            </table>
+          </div>
+        </Status>
       ) : (
         <div class="u-scroll-x rounded-xl border border-slate-800">
           <table class="w-full min-w-[800px] text-sm text-left whitespace-nowrap">
