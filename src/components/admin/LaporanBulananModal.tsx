@@ -101,7 +101,7 @@ export default function LaporanBulananModal() {
             <button
               aria-label={t('ui.close')}
               onClick={onClose}
-              class="text-slate-400 hover:text-white text-2xl leading-none"
+              class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white text-2xl leading-none"
             >
               ×
             </button>

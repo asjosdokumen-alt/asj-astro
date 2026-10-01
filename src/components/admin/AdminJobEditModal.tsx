@@ -198,7 +198,7 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
     ? rincianSummary(rbSt)
     : t('ui.summary_empty');
 
-  const ic = 'w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition';
+  const ic = 'min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition';
   const lc = 'block text-xs font-bold text-slate-400 mb-1';
 
   return (
@@ -213,7 +213,7 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
             <Icon name="edit" class="mr-2 text-red-400" />
             {t('admin.modal_edit_job_title')}
           </h3>
-          <button onClick={onClose} aria-label={t('public.close')} class="text-slate-400 hover:text-white p-1">
+          <button onClick={onClose} aria-label={t('public.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white p-1">
             <Icon name="times" class="text-xl" />
           </button>
         </div>
@@ -378,7 +378,7 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
               <button
                 type="button"
                 onClick={() => setRbOpen(true)}
-                class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black uppercase transition"
+                class="min-h-11 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black uppercase transition"
               >
                 <Icon name="edit" class="mr-1" /> {t('ui.open_rincian_editor')}
               </button>

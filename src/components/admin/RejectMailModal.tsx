@@ -75,7 +75,7 @@ export default function RejectMailModal({ candidateName, onCancel, onConfirm, cl
             {t('ui.reject_app')}
             {candidateName ? <span class="text-slate-400 font-normal text-sm ml-2">— {candidateName}</span> : null}
           </h3>
-          <button type="button" onClick={onCancel} class="text-slate-400 hover:text-white transition" aria-label={t('public.close')}>
+          <button type="button" onClick={onCancel} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition" aria-label={t('public.close')}>
             <Icon name="times" class="text-xl" />
           </button>
         </div>
@@ -93,11 +93,11 @@ export default function RejectMailModal({ candidateName, onCancel, onConfirm, cl
 
         <div class="p-4 border-t border-slate-700 bg-slate-900 flex justify-end gap-2">
           <button onClick={onCancel} disabled={busy}
-            class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition disabled:opacity-50">
+            class="min-h-11 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition disabled:opacity-50">
             {t('button.cancel')}
           </button>
           <button onClick={submit} disabled={busy}
-            class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-bold transition disabled:opacity-50">
+            class="min-h-11 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-sm font-bold transition disabled:opacity-50">
             <Icon name={busy ? 'spinner' : 'ban'} spin={busy} class="mr-1" />
             {t('ui.set_fail')}
           </button>

@@ -274,7 +274,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
       <div ref={containerRef} class="glass-panel p-6 rounded-[2rem] w-full max-w-2xl max-h-[90vh] u-scroll-area relative">
-        <button onClick={onClose} class="absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
+        <button onClick={onClose} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
 
@@ -373,7 +373,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                 // gender/usia/tempatLahir/tglLahir/tb/bb/jftText/sswText/catatanInt.
                 window.dispatchEvent(new CustomEvent('openCandidateEdit', { detail: row || data }));
               }}
-              class="w-full mb-4 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+              class="min-h-11 w-full mb-4 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
             >
               <Icon name="edit" /> {t('ui.edit_quick_cv')}
             </button>
@@ -383,7 +383,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('openPemberkasan', { detail: { wa: data.wa, nama: data.nama, candidate: data } }));
               }}
-              class="w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+              class="min-h-11 w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
             >
               <Icon name="folder-open" /> {t('ui.complete_berkas_biodata')}
             </button>
@@ -446,7 +446,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
             {/* 5. Download Full Biodata */}
             <button
               onClick={handleDownloadBiodata}
-              class="w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+              class="min-h-11 w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
             >
               <Icon name="download" /> {t('ui.cv_download_biodata')}
             </button>
@@ -456,7 +456,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
               <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">{t('ui.cand_eval')}</h3>
               <button
                 onClick={() => setIsVIP(!isVIP)}
-                class={`w-full px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 ${
+                class={`min-h-11 w-full px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 ${
                   isVIP
                     ? 'bg-amber-600 hover:bg-amber-500 text-white'
                     : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
@@ -475,7 +475,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                   value={catatanInternal}
                   onInput={(e) => setCatatanInternal((e.target as HTMLTextAreaElement).value)}
                   placeholder={t('ui.cv_note_int_ph')}
-                  class="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 outline-none focus:border-sky-500 transition resize-none"
+                  class="min-h-11 w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 outline-none focus:border-sky-500 transition resize-none"
                   rows={3}
                 />
               </div>
@@ -486,7 +486,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                   value={catatanExternal}
                   onInput={(e) => setCatatanExternal((e.target as HTMLTextAreaElement).value)}
                   placeholder={t('ui.cv_note_ext_ph')}
-                  class="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 outline-none focus:border-sky-500 transition resize-none"
+                  class="min-h-11 w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 outline-none focus:border-sky-500 transition resize-none"
                   rows={3}
                 />
               </div>
@@ -497,7 +497,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
               <button
                 onClick={handleSaveCatatan}
                 disabled={saving}
-                class="w-full px-4 py-2.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-60 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+                class="min-h-11 w-full px-4 py-2.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-60 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
               >
                 {saving ? <><Icon spin name="spinner" /> {t('ui.saving')}</> : <><Icon name="save" /> {t('ui.cv_save_eval')}</>}
               </button>

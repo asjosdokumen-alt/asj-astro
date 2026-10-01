@@ -145,9 +145,17 @@ describe('RincianBiayaModal (A12)', () => {
     render(<RincianBiayaModal open initialRincian="" onApply={() => {}} onClose={() => {}} />);
     // Fallback default presets shown after empty collection.
     await waitFor(() => expect(screen.getByText('TIKET PESAWAT')).toBeTruthy());
-    const chip = screen.getByText('TIKET PESAWAT').closest('button') as HTMLButtonElement;
-    expect(chip.textContent).toContain('☆');
-    const star = chip.querySelector('span') as HTMLSpanElement;
+    /* The star is now a SIBLING button of the chip label, not a `<span
+       role="button">` nested inside the chip's `<button>`.
+       MEASURED 2026-10-01: the nested form was interactive content inside a
+       button (invalid), forced `e.stopPropagation()` on every star click, added a
+       second tab stop inside the first, and measured 9x17 px — a quarter of the
+       44px floor. The pill is now a non-interactive wrapper holding two real
+       buttons, so the star is reached by its accessible name. */
+    const pill = screen.getByText('TIKET PESAWAT').closest('span') as HTMLElement;
+    const star = pill.querySelector('button') as HTMLButtonElement;
+    expect(star.textContent).toContain('☆');
+    expect(star.getAttribute('aria-label')).toBeTruthy();
     fireEvent.click(star);
     await waitFor(() =>
       expect(mockSecure).toHaveBeenCalledWith('saveRincianPreset', [
@@ -155,9 +163,11 @@ describe('RincianBiayaModal (A12)', () => {
       ]),
     );
     await waitFor(() => expect(vi.mocked(showToast)).toHaveBeenCalled());
-    await waitFor(() => expect(screen.getByText('TIKET PESAWAT').closest('button')?.textContent).toContain('★'));
+    await waitFor(() =>
+      expect((screen.getByText('TIKET PESAWAT').closest('span') as HTMLElement).querySelector('button')?.textContent).toContain('★'),
+    );
     // Remove favorite → deleteRincianPreset with the id.
-    const star2 = (screen.getByText('TIKET PESAWAT').closest('button') as HTMLButtonElement).querySelector('span') as HTMLSpanElement;
+    const star2 = (screen.getByText('TIKET PESAWAT').closest('span') as HTMLElement).querySelector('button') as HTMLButtonElement;
     fireEvent.click(star2);
     await waitFor(() =>
       expect(mockSecure).toHaveBeenCalledWith('deleteRincianPreset', [{ id: '9' }]),

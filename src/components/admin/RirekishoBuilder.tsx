@@ -183,9 +183,17 @@ export function buildKertasA4(p: Record<string, any>) {
   const center = (txt: string, span?: number|string) => td(txt,"val-center",span);
   const rs11 = (txt: string) => "<td colspan=\"3\" rowspan=\"11\" style=\"padding:0;vertical-align:top;\">"+txt+"</td>";
   let h = raw("<style>"+CSS+"</style>");
-  h+=raw("<div style=\"text-align:center;font-weight:bold;font-size:22px;letter-spacing:2px;\">実習生経歴書</div>");
-  h+=raw("<div style=\"text-align:center;font-weight:bold;font-size:18px;margin-bottom:2px;\">" + t("admin.rirekisho_title") + "</div>");
-  h+=raw("<div style=\"text-align:right;font-size:10px;font-style:italic;margin-bottom:2px;\">Ver.2025</div>");
+  /* `color:black` IS REQUIRED ON THESE THREE, and it is not cosmetic.
+     MEASURED 2026-10-01 with a pixel sample: the sheet is `bg-white`, and the
+     CV's own stylesheet sets `color:black` only on `.cv-excel` — the table. The
+     title block sits OUTSIDE that table, so it inherited the modal's text colour.
+     In dark mode (the default) that is `rgb(255,255,255)`: white on white.
+     Sampled along the title's baseline, **725 of 730 pixels were pure white** —
+     no glyphs rendered at all. The document an admin prints and sends was
+     missing its title, in the theme almost everyone uses. */
+  h+=raw("<div style=\"color:black;text-align:center;font-weight:bold;font-size:22px;letter-spacing:2px;\">実習生経歴書</div>");
+  h+=raw("<div style=\"color:black;text-align:center;font-weight:bold;font-size:18px;margin-bottom:2px;\">" + t("admin.rirekisho_title") + "</div>");
+  h+=raw("<div style=\"color:black;text-align:right;font-size:10px;font-style:italic;margin-bottom:2px;\">Ver.2025</div>");
   h+=raw("<table class=\"cv-excel\"><colgroup><col class=\"col-1\"><col class=\"col-2\"><col class=\"col-3\"><col class=\"col-4\"><col class=\"col-5\"><col class=\"col-6\"><col class=\"col-7\"></colgroup>");
   // Row 1: Photo + Nomor + Gender
   h+=btn+tr([rs11(foto),amber(raw("実習生 NOMOR<br>番号")),center(nr),amber(raw("性別&nbsp;&nbsp;&nbsp;JENIS KELAMIN")),center(gS)]);
@@ -314,8 +322,8 @@ export default function RirekishoBuilder({waTarget,isOpen,onClose,fotoFallback,c
         // dibangun jadi <img>. Fragment foto ini trusted-by-construction —
         // satu-satunya bagian dari kandidat (URL) sudah lewat esc() + whitelist.
         const safePhoto = photo && /^https:\/\/[^\s"'<>]+$/.test(photo) ? esc(photo) : '';
-        const foto = safePhoto ? "<img src=\""+safePhoto+"\" style=\"width:100%;height:100%;min-height:195px;object-fit:cover;object-position:top center;display:block;\">" : "<div style=\"width:100%;min-height:195px;display:flex;align-items:center;justify-content:center;font-size:10px;color:gray;\">" + t("admin.foto") + "</div>";
-        const btn = isAdmin ? "<div class=\"flex flex-wrap items-center gap-2 mb-3 print:hidden z-50 relative\"><button onclick=\"window.print()\" class=\"px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg flex items-center font-sans text-sm transition-transform hover:scale-105 border border-emerald-500\"><svg class=\"asj-icon mr-2\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-print\"/></svg> "+t("admin.print_rirekisho")+"</button><button onclick=\"window.print()\" class=\"px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg flex items-center font-sans text-sm transition-transform hover:scale-105 border border-sky-500\"><svg class=\"asj-icon mr-2\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-file-pdf\"/></svg> "+t("admin.save_pdf")+"</button></div>" : "<div class=\"text-center mb-3 print:hidden z-50 relative\"><span class=\"inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/80 text-slate-300 text-[11px] font-bold rounded-full border border-slate-500/50\"><svg class=\"asj-icon mr-1\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-eye\"/></svg> "+t("admin.preview_mode_admin_only")+"</span></div>";
+        const foto = safePhoto ? "<img src=\""+safePhoto+"\" style=\"width:100%;height:100%;min-height:195px;object-fit:cover;object-position:top center;display:block;\">" : "<div style=\"width:100%;min-height:195px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6b7280;\">" + t("admin.foto") + "</div>";
+        const btn = isAdmin ? "<div class=\"flex flex-wrap items-center gap-2 mb-3 print:hidden z-50 relative\"><button onclick=\"window.print()\" class=\"min-h-11 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg flex items-center font-sans text-sm transition-transform hover:scale-105 border border-emerald-500\"><svg class=\"asj-icon mr-2\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-print\"/></svg> "+t("admin.print_rirekisho")+"</button><button onclick=\"window.print()\" class=\"min-h-11 px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg flex items-center font-sans text-sm transition-transform hover:scale-105 border border-sky-500\"><svg class=\"asj-icon mr-2\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-file-pdf\"/></svg> "+t("admin.save_pdf")+"</button></div>" : "<div class=\"text-center mb-3 print:hidden z-50 relative\"><span class=\"inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700/80 text-slate-300 text-[11px] font-bold rounded-full border border-slate-500/50\"><svg class=\"asj-icon mr-1\" width=\"1em\" height=\"1em\" fill=\"currentColor\" aria-hidden=\"true\" focusable=\"false\"><use href=\"#fas-eye\"/></svg> "+t("admin.preview_mode_admin_only")+"</span></div>";
         const id = buildCvIdentitas(v);
         const rendered = buildKertasA4({v,foto,btn,tgl:tglFmt,wa:waTarget,...id,edu:buildEduRows(edu,v),job:buildJobRows(job,v),fam:buildFamRows(fam,v)});
         if(!cancelled) setHtml(rendered);

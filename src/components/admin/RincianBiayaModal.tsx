@@ -447,7 +447,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
   if (!open && !closing) return null;
 
   const inputCls =
-    'w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-emerald-500 transition';
+    'min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-emerald-500 transition';
 
   return (
     <div
@@ -460,7 +460,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
           <h3 class="text-xl font-black text-emerald-400">
             <Icon name="list-check" class="mr-2" /> {t('ui.rincian_biaya')}
           </h3>
-          <button onClick={onClose} class="text-slate-400 hover:text-white transition" aria-label={t('ui.close')}>
+          <button onClick={onClose} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition" aria-label={t('ui.close')}>
             <Icon name="times" class="text-2xl" />
           </button>
         </div>
@@ -489,7 +489,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
             <button
               type="button"
               onClick={() => setRows((prev) => [...prev, { nama: '', nominal: '' }])}
-              class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition"
+              class="min-h-11 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-bold transition"
             >
               <Icon name="plus" class="mr-1" /> {t('ui.add_stage')}
             </button>
@@ -505,7 +505,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
                     setRows((prev) => prev.map((x, xi) => (xi === i ? { ...x, nama: (e.target as HTMLInputElement).value } : x)))
                   }
                   placeholder={t('ui.stage_name_ph')}
-                  class="flex-1 p-2 rounded-lg bg-black/60 border border-slate-700 text-white text-xs outline-none focus:border-amber-500 transition"
+                  class="min-h-11 flex-1 p-2 rounded-lg bg-black/60 border border-slate-700 text-white text-xs outline-none focus:border-amber-500 transition"
                 />
                 <input
                   type="text"
@@ -527,14 +527,14 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
                     );
                   }}
                   placeholder="0"
-                  class="w-28 p-2 rounded-lg bg-black/60 border border-slate-700 text-emerald-300 text-xs font-bold outline-none focus:border-amber-500 transition text-right"
+                  class="min-h-11 w-28 p-2 rounded-lg bg-black/60 border border-slate-700 text-emerald-300 text-xs font-bold outline-none focus:border-amber-500 transition text-right"
                 />
                 <button
                   type="button"
                   onClick={() => moveRow(i, -1)}
                   title="↑"
                   aria-label="↑"
-                  class="w-7 h-7 flex items-center justify-center bg-slate-700/50 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition flex-shrink-0"
+                  class="w-11 h-11 flex items-center justify-center bg-slate-700/50 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition flex-shrink-0"
                 >
                   ↑
                 </button>
@@ -543,7 +543,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
                   onClick={() => moveRow(i, 1)}
                   title="↓"
                   aria-label="↓"
-                  class="w-7 h-7 flex items-center justify-center bg-slate-700/50 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition flex-shrink-0"
+                  class="w-11 h-11 flex items-center justify-center bg-slate-700/50 hover:bg-slate-600 text-slate-300 rounded-lg text-xs font-bold transition flex-shrink-0"
                 >
                   ↓
                 </button>
@@ -552,7 +552,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
                   onClick={() => removeRow(i)}
                   aria-label={t('ui.delete_stage')}
                   title={t('ui.delete_stage')}
-                  class="w-7 h-7 flex items-center justify-center bg-red-900/40 hover:bg-red-600 text-red-300 hover:text-white rounded-lg text-xs font-bold transition flex-shrink-0"
+                  class="w-11 h-11 flex items-center justify-center bg-red-900/40 hover:bg-red-600 text-red-300 hover:text-white rounded-lg text-xs font-bold transition flex-shrink-0"
                 >
                   <Icon name="times" />
                 </button>
@@ -577,31 +577,54 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
                         (x) => x.trim().toUpperCase() === String(c.item).trim().toUpperCase(),
                       );
                       return (
-                        <button
-                          type="button"
+                        /* ONE pill, TWO buttons — the star is a SIBLING of the
+                           chip, not a child of it.
+
+                           MEASURED 2026-10-01: this used to be a
+                           `<span role="button" tabIndex={0}>` INSIDE the chip's
+                           `<button>`. That is interactive content nested in a
+                           button: invalid HTML, and it forced
+                           `e.stopPropagation()` on every star click just to keep
+                           the chip from firing too. The star also measured
+                           **9x17 px** — a quarter of the 44px floor — twenty
+                           times over in one screen, and it added a second tab
+                           stop inside the first.
+
+                           The pill's border and fill move to a non-interactive
+                           wrapper so the appearance is unchanged; both real
+                           controls inside it now meet §6.4.
+                           `aria-pressed` is added because the chip's selected
+                           state was carried by COLOUR ALONE (§6.6). */
+                        <span
                           key={sec + '-' + i}
                           class={
-                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer ' +
+                            'inline-flex items-center rounded-full text-[11px] font-bold border transition ' +
                             (on
                               ? 'bg-emerald-600 text-white border-emerald-400/60'
                               : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-emerald-400/50')
                           }
-                          onClick={() => toggleChip(sec, c.item)}
                         >
-                          <span
-                            role="button"
-                            tabIndex={0}
+                          <button
+                            type="button"
                             title={c.id ? t('ui.remove_fav') : t('ui.add_fav')}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(sec, c);
-                            }}
-                            class={'mr-0.5 ' + (c.id ? 'text-amber-400' : 'text-slate-500')}
+                            aria-label={c.id ? t('ui.remove_fav') : t('ui.add_fav')}
+                            onClick={() => toggleFavorite(sec, c)}
+                            class={
+                              'min-w-11 min-h-11 inline-flex items-center justify-center cursor-pointer ' +
+                              (c.id ? 'text-amber-400' : 'text-slate-500')
+                            }
                           >
                             {c.id ? '★' : '☆'}
-                          </span>
-                          {c.item}
-                        </button>
+                          </button>
+                          <button
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => toggleChip(sec, c.item)}
+                            class="min-h-11 pl-0.5 pr-2.5 inline-flex items-center cursor-pointer"
+                          >
+                            {c.item}
+                          </button>
+                        </span>
                       );
                     })}
               </div>
@@ -623,12 +646,12 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
                     }
                   }}
                   placeholder={t('ui.custom_item_ph')}
-                  class="flex-1 p-2 rounded-lg bg-black/60 border border-slate-700 text-white text-xs outline-none focus:border-emerald-500 transition"
+                  class="min-h-11 flex-1 p-2 rounded-lg bg-black/60 border border-slate-700 text-white text-xs outline-none focus:border-emerald-500 transition"
                 />
                 <button
                   type="button"
                   onClick={() => addCustom(sec)}
-                  class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition"
+                  class="min-w-11 min-h-11 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition"
                 >
                   +
                 </button>

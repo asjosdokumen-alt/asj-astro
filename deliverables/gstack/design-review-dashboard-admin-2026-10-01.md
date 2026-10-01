@@ -454,7 +454,179 @@ bukan dari gate.
 
 ---
 
-## 5. Batas review ini
+## 5. Modal: 12 permukaan diukur, satu cacat yang tidak terlihat
+
+**Ditambahkan 2026-10-01 (sesi kedua).** Setelah dashboard-nya selesai, kedua belas modal
+admin dibuka satu per satu di peramban dan diukur. Presedennya `39f5757` (modal kandidat):
+di sana tombol tutupnya terukur **16×24 px di KETUJUH-tujuhnya** — bukan dugaan, hasil ukur.
+
+### Cara membukanya (dan dua yang butuh usaha)
+
+Sebagian lewat event yang sudah dipakai `AdminPanel` (`openPemberkasan`, `openMatchmaking`,
+…), sebagian lewat klik tombol. **Dua modal tidak terbuka sama sekali pada percobaan
+pertama**, dan keduanya mengungkap hal yang berbeda:
+
+| Modal | Kenapa gagal dibuka | Yang sebenarnya terjadi |
+|---|---|---|
+| `RirekishoBuilder` | pemilih `button.bg-sky-600` cocok dengan tombol "Input Manual" lebih dulu | selector diperbaiki ke `tbody` |
+| `RejectMailModal` | **fixture-nya salah**, bukan selector-nya | `TabMail` membaca **`formInbox`**, bukan `forms` (`src/store/adminStore.ts:298`). Tanpa kunci itu tab Mail merender **nol baris** dan modalnya tidak akan pernah bisa dibuka |
+
+Pelajarannya sama dengan F8: **fixture yang kurang lengkap bukan sekadar merender lebih
+sedikit — ia membuat permukaan tertentu tidak terukur sama sekali.**
+
+### Temuan
+
+#### M1 · Judul dokumen CV tidak terlihat sama sekali 🔴 → ✅ DIPERBAIKI
+
+**Ini temuan terpenting di sesi ini, dan satu-satunya yang butuh sampel piksel untuk
+membuktikannya.**
+
+`RirekishoBuilder` menyusun dokumen CV sebagai string HTML. Lembarnya `bg-white`, dan
+stylesheet dokumennya (`const CSS`) menetapkan `color:black` — **tetapi hanya pada
+`.cv-excel`, yaitu tabelnya**. Blok judul berada **di luar** tabel itu:
+
+```js
+h+=raw("<div style=\"text-align:center;font-weight:bold;font-size:22px;…\">実習生経歴書</div>");
+h+=raw("<div style=\"text-align:center;font-weight:bold;font-size:18px;…\">" + t("admin.rirekisho_title") + "</div>");
+h+=raw("<div style=\"text-align:right;font-size:10px;…\">Ver.2025</div>");
+```
+
+Ketiganya **mewarisi warna teks modal**. Di tema gelap — tema default repo — itu
+`rgb(255,255,255)`. **Putih di atas kertas putih.**
+
+Diukur dengan menyampel piksel di sepanjang garis dasar judul, dari tangkapan layar
+sesungguhnya:
+
+| | Piksel putih | Piksel hitam |
+|---|---|---|
+| **Sebelum** | **725 dari 730** | **0** |
+| Sesudah | 606 | 23 (+14 nyaris-hitam, +12 gelap) |
+
+**Nol piksel hitam** = tidak ada glyph yang tergambar. Judul, judul Indonesia, dan penanda
+versi hilang dari dokumen yang dicetak dan dikirim admin — di tema yang hampir semua orang
+pakai. Diperbaiki dengan `color:black` pada ketiga div itu.
+
+Ini juga contoh kenapa "periksa warnanya" tidak cukup: `getComputedStyle` melaporkan
+`rgb(255,255,255)` dan latarnya `rgb(255,255,255)`, dan itu **baru menjadi bukti** setelah
+pikselnya disampel.
+
+#### M2 · Tombol tutup di bawah lantai 44 px — di SEMBILAN modal 🟠 → ✅ DIPERBAIKI
+
+Pola yang sama persis dengan `39f5757`, kali ini di `/admin`:
+
+| Modal | Sebelum |
+|---|---|
+| `MatchmakingModal`, `InputManualModal`, `LaporanBulananModal`, `RincianBiayaModal` | **16×24** |
+| `AdminJobEditModal`, `AdminShareModal` | **24×32** |
+| `CandidateProfileModal`, `EditCandidateModal` | tanpa padding sama sekali |
+| `UndanganKelasModal`, `RejectMailModal` | tanpa padding sama sekali |
+
+`PemberkasanModal` sudah memakai pola yang benar (`min-w-11 min-h-11 inline-flex items-center
+justify-center`) — itulah rujukannya. Sebelas berkas diseragamkan ke pola itu.
+
+#### M3 · `useOverlay` bisa mengirim dialog TANPA NAMA 🟠 → ✅ DIPERBAIKI
+
+Hook itu menulis sendiri di komentarnya:
+
+> *"Resolved from the DOM rather than required of the call site, so a modal cannot ship
+> unnamed by omission — the failure mode this round exists to close."*
+
+**Klaim itu tidak benar, dan ini kasus yang mematahkannya.** Efeknya hanya berjalan ulang
+saat `open`/`role`/`titleId`/`label` berubah. `CandidateProfileModal` merender **spinner**,
+bukan `<h2>`-nya, selama data dimuat:
+
+```jsx
+{loading || !data ? (<spinner/>) : (<><h2>{data.nama}</h2>…</>)}
+```
+
+Jadi hook menamai dialog **sekali, terhadap pohon yang masih kosong**, lalu tidak pernah
+mencoba lagi. Terukur: `role="dialog"`, `aria-modal="true"`, **`aria-labelledby` absen** —
+pembaca layar mengumumkan "dialog" dan tidak apa-apa lagi, permanen.
+
+Diperbaiki di hook: penamaan diulang lewat `MutationObserver` pada sub-pohon overlay, dan
+**observer diputus begitu nama ditemukan**. Biayanya satu observer selama beberapa ratus
+milidetik saat fetch — bukan biaya tetap di 28 call site.
+
+#### M4 · Kontrol di dalam modal di bawah 44 px 🟠 → ✅ DIPERBAIKI
+
+Terukur per modal (desktop, tema gelap):
+
+| Modal | Sebelum | Sesudah |
+|---|---|---|
+| `RincianBiayaModal` | **60** | **1** |
+| `AdminShareModal` | 14 | 14 (semuanya artefak — lihat bawah) |
+| `EditCandidateModal` | 12 | **0** |
+| `InputManualModal` | 12 | **0** |
+| `MatchmakingModal` | 9 | 2 (artefak) |
+| `AdminJobEditModal` | 8 | **0** |
+| `CandidateProfileModal` | 5 | **0** |
+| `UndanganKelasModal` | 2 | **0** |
+| `RirekishoBuilder` | 2 | **0** |
+| `LaporanBulananModal` | 1 | **0** |
+| `PemberkasanModal` | 0 | 0 |
+| `RejectMailModal` | tidak terukur | **0** |
+
+Polanya: input/select 34–42 px, tombol ikon `w-7 h-7`/`w-8 h-8`, tombol `px-4 py-1.5` 28 px,
+dan satu tombol sakelar 44×24. Sakelar VIP diperbaiki dengan **membungkus track 44×24 yang
+tidak berubah di dalam tombol 44×44** — tampilannya identik, kotaknya benar-benar 44.
+
+#### M5 · Kontrol interaktif bersarang di dalam tombol 🟠 → ✅ DIPERBAIKI
+
+`RincianBiayaModal` merender **20** bintang favorit sebagai
+`<span role="button" tabIndex={0}>` **di dalam** `<button>` chip-nya. Itu:
+- HTML tidak sah (konten interaktif di dalam tombol),
+- memaksa `e.stopPropagation()` di setiap klik bintang hanya agar chip-nya tidak ikut menyala,
+- **tab stop kedua di dalam yang pertama**,
+- dan terukur **9×17 px** — seperempat lantai 44 px.
+
+Strukturnya diubah: pilnya kini pembungkus **non-interaktif** yang berisi **dua tombol
+sungguhan** (bintang dan label). Tampilan pil tidak berubah karena border dan isiannya pindah
+ke pembungkus. `aria-pressed` ditambahkan pada tombol label, karena status terpilih chip itu
+sebelumnya **hanya dibawa warna** (§6.6).
+
+Satu unit test menegaskan struktur lama (`chip.querySelector('span')`); test itu diperbarui —
+DOM-nya memang sengaja berubah.
+
+#### M6 · `FOTO` 3,95:1 pada placeholder CV 🟡 → ✅ DIPERBAIKI
+
+Placeholder foto memakai `color:gray` = `#808080` → **3,95:1** di atas kertas putih, di bawah
+ambang 4,5 untuk teks normal. Diganti `#6b7280` (4,83:1).
+
+### Dua hal yang **bukan** temuan (pembacaan palsu)
+
+1. **"Tiga modal tanpa `role="dialog"`".** Sapuan pertama membaca `role` dari elemen
+   `.u-modal-shell`. Ternyata `useOverlay` memasang `containerRef` — dan karenanya `role`
+   dan `aria-modal` — pada elemen tempat komponen meletakkan ref-nya: sebagian di shell luar,
+   sebagian di panel dalam. Membaca hanya shell melaporkan tiga modal "tanpa peran" yang
+   sebenarnya punya. Setelah pembacanya diperbaiki: **12 dari 12 `role=dialog`,
+   `aria-modal=true`**.
+2. **"`AdminShareModal` 14 pelanggaran 44 px".** Keempat belasnya `<input type=checkbox>`
+   16×16 yang dibungkus `<label>`. Sasaran sentuhnya labelnya, dan labelnya **66×44 / 103×44 /
+   108×44** — sudah lolos. Sama untuk 2 di `MatchmakingModal`.
+
+### Hasil akhir kedua belas modal
+
+| Metrik | Sebelum | Sesudah |
+|---|---|---|
+| Modal dengan `role="dialog"` + `aria-modal` + nama | 9 dari 12 | **12 dari 12** |
+| Kontrol < 44 px (desktop, total) | 125 | **3** (semuanya artefak checkbox) |
+| `shadow-*` | 0 | 0 |
+| Kegagalan kontras | 2 (`RirekishoBuilder`) | **0** |
+| Tombol tutup ≥ 44×44 | 1 dari 12 | **12 dari 12** |
+| Judul dokumen CV terlihat | **tidak** | **ya** (0 → 49 piksel hitam) |
+
+⚠ **Satu modal masih tanpa heading: `RirekishoBuilder`** (`h=none`). Itu keputusan pemilik
+yang sudah tercatat — menambah `h3` mengubah outline halaman, dan dokumennya adalah lembar
+cetak. Tidak diubah di sini.
+
+Gate yang menjaga perubahan ini: `vitest src/components/admin src/components/ui` **252 lulus**
+· `tsc` bersih · `verify:classes` · `lint-ratchet` PASSED (utang **−22**) · `e2e:dialog`
+**20/0** · `e2e:aria-names` **40/0** · `e2e:drawer` **7/7** · `e2e:headings` · `e2e:labels`
+**4/4** · `e2e:contrast` **0** di bawah ambang.
+
+---
+
+## 6. Batas review ini
 
 - Yang diukur adalah **DOM yang dirender** dari fixture, bukan data produksi.
 - `dist/` **tidak dipakai** — lebih tua dari HEAD.
@@ -463,6 +635,13 @@ bukan dari gate.
   halaman dipotong penuh. Semua klaim geometri di dokumen ini dari DOM, bukan gambar.
 - **Pohon kerja tidak bersih**: 9 berkas dari sesi lain (`netlify/functions/_lib/ai/*`,
   `AdminAiCopilot.*`) tetap termodifikasi dan **tidak disentuh** review ini.
-- Probe mengukur `<input>` alih-alih `<label>` untuk kotak centang — lihat §4.
+- Probe mengukur `<input>` alih-alih `<label>` untuk kotak centang — lihat §4 dan §5 (M4).
 - Sisa yang belum dikerjakan: F10 (keputusan pemilik), `FormToolbar` 33×44, dan
   `pt-[42px]` di 9 rute lain.
+- **Skrip probe ada di luar repo** (`E:/tmp/ui-probe/`), dengan `node_modules` berupa
+  junction ke `E:/astro/node_modules`. `admin-modals.mjs` membuka kedua belas modal dan
+  mengukur masing-masing di 2 viewport × 2 tema.
+- Dua pembacaan palsu yang ditemukan **di dalam probe sendiri**, keduanya sudah diperbaiki
+  dan keduanya dicatat di atas: `role` dibaca dari shell alih-alih elemen ber-ref (M3/nomor 1
+  di daftar "bukan temuan"), dan kotak centang diukur alih-alih labelnya (nomor 2).
+- `RirekishoBuilder` sengaja tetap tanpa heading — keputusan pemilik, bukan kelalaian.

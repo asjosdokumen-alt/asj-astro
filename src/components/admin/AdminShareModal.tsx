@@ -161,7 +161,7 @@ export default function AdminShareModal({ job, onClose, closing = false }: Props
       <div onClick={(e) => e.stopPropagation()} class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] u-scroll-area custom-scrollbar">
         <div class="p-4 border-b border-slate-700 flex items-center justify-between">
           <h3 class="text-lg font-bold text-emerald-400"><Icon name="share-alt" class="mr-2" />{t('ui.share_modal_title')}</h3>
-          <button onClick={onClose} aria-label={t('public.close')} class="text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
+          <button onClick={onClose} aria-label={t('public.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
         </div>
         <div class="p-5 space-y-5">
           <p class="text-[11px] font-bold text-slate-400">
@@ -193,7 +193,7 @@ export default function AdminShareModal({ job, onClose, closing = false }: Props
                     ? 'border-emerald-500/60 text-emerald-200'
                     : 'border-slate-700 hover:border-emerald-500/50 text-slate-200';
                 return (
-                  <label key={key} class={`inline-flex items-center gap-2 px-3 py-2 bg-slate-950/60 border rounded-lg cursor-pointer text-[11px] font-bold ${accent}`}>
+                  <label key={key} class={`min-h-11 inline-flex items-center gap-2 px-3 py-2 bg-slate-950/60 border rounded-lg cursor-pointer text-[11px] font-bold ${accent}`}>
                     <input type="checkbox" checked={on} onChange={() => toggleDoc(key)} class={`${isAll ? 'accent-pink-500' : 'accent-emerald-500'} w-4 h-4`} />
                     {shareDocLabelKey(key) ? t(shareDocLabelKey(key) as string) : key}
                   </label>

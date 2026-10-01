@@ -165,18 +165,45 @@ export function useOverlay<T extends HTMLElement>({
     // Name the dialog after its own first heading. Resolved from the DOM
     // rather than required of the call site, so a modal cannot ship unnamed
     // by omission — the failure mode this round exists to close.
-    const heading = root.querySelector<HTMLElement>('h1,h2,h3,h4,h5,h6');
-    if (heading) {
-      if (!heading.id) heading.id = titleId;
-      root.setAttribute('aria-labelledby', heading.id);
-      root.removeAttribute('aria-label');
-    } else if (label) {
-      root.setAttribute('aria-label', label);
-      root.removeAttribute('aria-labelledby');
-    }
+    const nameDialog = () => {
+      const heading = root.querySelector<HTMLElement>('h1,h2,h3,h4,h5,h6');
+      if (heading) {
+        if (!heading.id) heading.id = titleId;
+        root.setAttribute('aria-labelledby', heading.id);
+        root.removeAttribute('aria-label');
+        return true;
+      }
+      if (label) {
+        root.setAttribute('aria-label', label);
+        root.removeAttribute('aria-labelledby');
+        return true;
+      }
+      return false;
+    };
+
+    if (nameDialog()) return;
+
+    /* MEASURED 2026-10-01 — the claim above was not true, and this is the case
+       that broke it. This effect re-runs only when `open`/`role`/`titleId`/`label`
+       change, so a modal whose heading appears AFTER its data arrives was named
+       once — against an empty tree — and then never again. `CandidateProfileModal`
+       renders a spinner instead of its `<h2>` while loading, so its dialog shipped
+       with `role="dialog"`, `aria-modal="true"` and NO accessible name at all:
+       a screen reader announced "dialog" and nothing else, permanently.
+
+       The fix is to keep looking until a name exists, and stop the moment one
+       does. Bounded to the open overlay, and disconnected on close, so the cost
+       is a childList observer on one subtree for the few hundred ms a fetch
+       takes — not a standing cost on all 28 call sites. */
+    const observer = new MutationObserver(() => {
+      if (nameDialog()) observer.disconnect();
+    });
+    observer.observe(root, { childList: true, subtree: true });
+
     // No heading and no label: the guard reports it. Deliberately not
     // falling back to a generic name — "dialog" with no name is honest,
     // and a placeholder like "Dialog" would hide the real gap.
+    return () => observer.disconnect();
   }, [open, role, titleId, label]);
 
   /* ── Save / restore focus ────────────────────────────────────────── */

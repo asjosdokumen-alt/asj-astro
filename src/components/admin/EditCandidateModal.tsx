@@ -202,7 +202,7 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
       <div ref={containerRef} onClick={e => e.stopPropagation()} class="glass-panel p-6 rounded-[2rem] w-full max-w-lg max-h-[90vh] u-scroll-area relative">
-        <button onClick={onClose} class="absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
+        <button onClick={onClose} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
 
@@ -213,8 +213,17 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
 
         <div class="flex items-center gap-3 mb-4 p-2 bg-slate-800/30 rounded-xl border border-slate-700/50">
           <span class="text-xs text-slate-400 font-bold">{t("admin.privilege_tag")}</span>
-          <button onClick={toggleVIP} class={`relative w-11 h-6 rounded-full transition-colors ${isVIP ? 'bg-amber-500' : 'bg-slate-600'}`}>
-            <span class={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isVIP ? 'translate-x-5' : ''}`} />
+          {/* 44x44 BUTTON around an UNCHANGED 44x24 track.
+              MEASURED 2026-10-01: this button WAS the track, so it measured
+              44x24 — half the §6.4 floor on the height. Padding could not fix it
+              without fattening the pill, and a `::before` overlay would enlarge
+              the pointer target while leaving the box 24px tall (still failing
+              any box-based check). Wrapping the track in a full-height button
+              gives a real 44x44 target and leaves the switch looking identical. */}
+          <button onClick={toggleVIP} class="relative inline-flex items-center justify-center w-11 h-11">
+            <span class={`relative block w-11 h-6 rounded-full transition-colors ${isVIP ? 'bg-amber-500' : 'bg-slate-600'}`}>
+              <span class={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isVIP ? 'translate-x-5' : ''}`} />
+            </span>
           </button>
           <span class={`text-xs font-bold ${isVIP ? 'text-amber-400' : 'text-slate-500'}`}>
             {isVIP ? '[VIP] Aktif' : 'Non-VIP'}
@@ -225,7 +234,7 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
           {/* Gender */}
           <div>
             <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-gender">{t("admin.edit_gender")}</label>
-            <select id="ec-gender" value={form.gender} onChange={e => setField('gender', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
+            <select id="ec-gender" value={form.gender} onChange={e => setField('gender', (e.target as HTMLSelectElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
               {GENDER_OPTIONS.map(g => <option key={g} value={g}>{g || '- Pilih -'}</option>)}
             </select>
           </div>
@@ -234,15 +243,15 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
           <div class="grid grid-cols-3 gap-3">
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-usia">{t("ui.cv_usia")}</label>
-              <input id="ec-usia" type="number" value={form.usia} onInput={e => setField('usia', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <input id="ec-usia" type="number" value={form.usia} onInput={e => setField('usia', (e.target as HTMLInputElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-tb">{t("admin.edit_tb")}</label>
-              <input id="ec-tb" type="number" value={form.tb} onInput={e => setField('tb', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <input id="ec-tb" type="number" value={form.tb} onInput={e => setField('tb', (e.target as HTMLInputElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-bb">{t("admin.edit_bb")}</label>
-              <input id="ec-bb" type="number" value={form.bb} onInput={e => setField('bb', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <input id="ec-bb" type="number" value={form.bb} onInput={e => setField('bb', (e.target as HTMLInputElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
           </div>
 
@@ -250,18 +259,18 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-tempat-lahir">{t("admin.edit_tempat_lahir")}</label>
-              <input id="ec-tempat-lahir" type="text" value={form.tempatLahir} onInput={e => setField('tempatLahir', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <input id="ec-tempat-lahir" type="text" value={form.tempatLahir} onInput={e => setField('tempatLahir', (e.target as HTMLInputElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-tgl-lahir">{t("admin.edit_tgl_lahir")}</label>
-              <input id="ec-tgl-lahir" type="date" value={form.tglLahir} onInput={e => setField('tglLahir', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <input id="ec-tgl-lahir" type="date" value={form.tglLahir} onInput={e => setField('tglLahir', (e.target as HTMLInputElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
           </div>
 
           {/* Pendidikan */}
           <div>
             <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-pendidikan">{t("admin.edit_pendidikan")}</label>
-            <select id="ec-pendidikan" value={form.pendidikan} onChange={e => setField('pendidikan', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
+            <select id="ec-pendidikan" value={form.pendidikan} onChange={e => setField('pendidikan', (e.target as HTMLSelectElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
               {PENDIDIKAN_OPTIONS.map(p => <option key={p} value={p}>{p || '- Pilih -'}</option>)}
             </select>
           </div>
@@ -270,11 +279,11 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-jft">{t("admin.edit_jft")}</label>
-              <input id="ec-jft" type="text" value={form.jftText} onInput={e => setField('jftText', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <input id="ec-jft" type="text" value={form.jftText} onInput={e => setField('jftText', (e.target as HTMLInputElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-ssw">{t("admin.edit_ssw")}</label>
-              <input id="ec-ssw" type="text" value={form.sswText} onInput={e => setField('sswText', (e.target as HTMLInputElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
+              <input id="ec-ssw" type="text" value={form.sswText} onInput={e => setField('sswText', (e.target as HTMLInputElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500" />
             </div>
           </div>
 
@@ -282,13 +291,13 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-tahapan">{t("admin.edit_tahapan")}</label>
-              <select id="ec-tahapan" value={form.tahapan} onChange={e => setField('tahapan', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
+              <select id="ec-tahapan" value={form.tahapan} onChange={e => setField('tahapan', (e.target as HTMLSelectElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
                 {TAHAPAN_OPTIONS.map(t => <option key={t} value={t}>{t || '- Pilih -'}</option>)}
               </select>
             </div>
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-status">{t("admin.edit_status")}</label>
-              <select id="ec-status" value={form.status} onChange={e => setField('status', (e.target as HTMLSelectElement).value)} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
+              <select id="ec-status" value={form.status} onChange={e => setField('status', (e.target as HTMLSelectElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
                 {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s || '- Pilih -'}</option>)}
               </select>
             </div>
@@ -296,7 +305,7 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
           {/* Catatan External (legacy: textarea super-edit = catatanExt) */}
           <div>
             <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-catatan-ext">{t("admin.edit_catatan_ext")}</label>
-            <textarea id="ec-catatan-ext" value={form.catatanExt} onInput={e => setField('catatanExt', (e.target as HTMLTextAreaElement).value)} rows={3} class="w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500 resize-none" placeholder={t("admin.ph_feedback")} />
+            <textarea id="ec-catatan-ext" value={form.catatanExt} onInput={e => setField('catatanExt', (e.target as HTMLTextAreaElement).value)} rows={3} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500 resize-none" placeholder={t("admin.ph_feedback")} />
           </div>
 
           {/* Document Upload */}

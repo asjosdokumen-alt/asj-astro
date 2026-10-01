@@ -195,50 +195,50 @@ export default function InputManualModal() {
         <div class="p-6">
           <div class="flex justify-between items-center mb-4 border-b border-sky-900/50 pb-3">
             <h3 class="text-xl font-bold text-sky-400"><Icon name="user-plus" class="mr-2" /> {t("admin.input_manual_title")}</h3>
-            <button onClick={onClose} aria-label={t('ui.close')} class="text-slate-400 hover:text-white transition"><Icon name="times" class="text-2xl" /></button>
+            <button onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition"><Icon name="times" class="text-2xl" /></button>
           </div>
           <form onSubmit={handleSubmit} class="space-y-4">
             {/* Search existing candidate */}
             <div class="bg-sky-900/20 p-3 rounded-xl border border-sky-500/30">
               <label class="block text-xs font-bold text-sky-400 mb-1" for="im-cari">{t("admin.manual_cari_title")}</label>
               <input type="text" id="im-cari" placeholder={t("input.placeholder_auto")}
-                class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" />
+                class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" />
               <p class="text-[11px] text-slate-400 mt-1">{t("admin.keep_existing_docs")}</p>
             </div>
 
             {/* Basic info */}
             <div><label class="block text-xs font-bold text-slate-400 mb-1" for="im-nama">{t("admin.manual_nama")}</label>
               <input type="text" id="im-nama" value={nama} onInput={(e) => setNama((e.target as HTMLInputElement).value)}
-                required class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
+                required class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
             <div><label class="block text-xs font-bold text-slate-400 mb-1" for="im-wa">{t("admin.manual_wa")}</label>
               <input type="tel" id="im-wa" value={wa} onInput={(e) => setWa((e.target as HTMLInputElement).value)}
-                required placeholder="08..." class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
+                required placeholder="08..." class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
             <div><label class="block text-xs font-bold text-slate-400 mb-1" for="im-job">{t("admin.manual_job")}</label>
               <input type="text" id="im-job" value={loker} onInput={(e) => setLoker((e.target as HTMLInputElement).value)}
-                placeholder={t("admin.ph_umum_kode")} class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
+                placeholder={t("admin.ph_umum_kode")} class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
 
             {/* Physical data */}
             <div class="grid grid-cols-2 gap-3">
               <div><label class="block text-xs font-bold text-slate-400 mb-1" for="im-gender">{t("admin.edit_gender")}</label>
                 <select id="im-gender" value={gender} onChange={(e) => setGender((e.target as HTMLSelectElement).value)}
-                  class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition">
+                  class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition">
                   <option value="">-</option><option value="LAKI-LAKI">{t("option.LAKI-LAKI")}</option><option value="PEREMPUAN">{t("admin.manual_perempuan")}</option>
                 </select></div>
               <div><label class="block text-xs font-bold text-slate-400 mb-1" for="im-usia">{t("ui.cv_usia")}</label>
                 <input type="number" id="im-usia" value={usia} onInput={(e) => setUsia((e.target as HTMLInputElement).value)}
-                  min="15" max="60" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
+                  min="15" max="60" class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
               <div><label class="block text-xs font-bold text-slate-400 mb-1" for="im-tinggi">{t("admin.manual_tinggi")}</label>
                 <input type="number" id="im-tinggi" value={tinggi} onInput={(e) => setTinggi((e.target as HTMLInputElement).value)}
-                  min="100" max="250" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
+                  min="100" max="250" class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
               <div><label class="block text-xs font-bold text-slate-400 mb-1" for="im-berat">{t("admin.manual_berat")}</label>
                 <input type="number" id="im-berat" value={berat} onInput={(e) => setBerat((e.target as HTMLInputElement).value)}
-                  min="30" max="200" class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
+                  min="30" max="200" class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
               <div class="col-span-2"><label class="block text-xs font-bold text-slate-400 mb-1" for="im-pendidikan">{t("admin.manual_pendidikan")}</label>
                 {/* C09: jenjang disamakan dengan MasterFullForm (SD…S2) supaya
                     admin yang membuat entri manual tidak menghasilkan nilai
                     yang tidak bisa dipilih kandidat di form utamanya. */}
                 <select id="im-pendidikan" value={pendidikan} onChange={(e) => setPendidikan((e.target as HTMLSelectElement).value)}
-                  class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition">
+                  class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition">
                   <option value="">-</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA">SMA</option><option value="SMK">SMK</option><option value="MA">MA</option><option value="D3">D3</option><option value="S1">S1</option><option value="S2">S2</option>
                 </select></div>
             </div>
@@ -274,7 +274,7 @@ export default function InputManualModal() {
               {extraDocs.map((d, i) => (
                 <div key={i} class="flex gap-2 items-center">
                   <select aria-label={`${t("admin.manual_jenis_doc")} ${i + 1}`} value={d.type} onChange={(e) => updateExtraDocType(i, (e.target as HTMLSelectElement).value)}
-                    class="w-40 p-2 rounded-lg bg-black/60 border border-slate-700 text-white text-xs outline-none focus:border-sky-500 transition">
+                    class="min-h-11 w-40 p-2 rounded-lg bg-black/60 border border-slate-700 text-white text-xs outline-none focus:border-sky-500 transition">
                     {EXTRA_DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                   <div class="flex-1 flex items-center gap-2">
@@ -293,11 +293,11 @@ export default function InputManualModal() {
               ))}
               <div class="flex items-center gap-2 pt-1">
                 <button type="button" onClick={addExtraDoc}
-                  class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition">
+                  class="min-h-11 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition">
                   <Icon name="plus" class="mr-1" /> {t("button.add")}
                 </button>
                 <button type="button" onClick={() => removeExtraDoc(extraDocs.length - 1)}
-                  class="px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition">
+                  class="min-h-11 px-4 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition">
                   <Icon name="minus" class="mr-1" /> {t("button.delete")}
                 </button>
               </div>
