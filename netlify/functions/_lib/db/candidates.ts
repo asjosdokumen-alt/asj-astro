@@ -2,6 +2,7 @@ import { supabaseJson, pick, toText, normalizeWa } from './client';
 import { fetchAllKeyset } from './pagination';
 import { TABLE_CANDIDATE, CANDIDATE_WA_COL, allColumns } from './schema.generated';
 import { CAND_LIGHT_COLS, CAND_MAP_COLS } from './projections';
+import { log } from '../kernel/log';
 // db/candidates.js — repo kandidat (database_candidate): mapCandidate, query WA/ID,
 
 // Kolom asli tabel database_candidate:
@@ -110,8 +111,22 @@ function mapCandidate(row: Record<string, unknown>) {
  * proyeksi ringan). Jangan arahkan fungsi ini ke sana tanpa memutuskan biayanya
  * lebih dulu: cabang yang sekarang gratis akan berubah menjadi pembacaan seluruh
  * tabel setiap kali skema bergeser.
+ *
+ * MENGAPA STUB INI SEKARANG MENCATAT. Empat belas pemanggil memperlakukannya
+ * sebagai fallback terakhir, dan karena hasilnya selalu kosong, mereka semua
+ * melaporkan "kandidat tidak ditemukan" untuk keadaan yang sebenarnya berbeda:
+ * "lookup tidak bisa dijalankan" (kolom WA/ID tidak ada di skema). Itu kegagalan
+ * yang menyamar sebagai hasil normal — di permukaan ia tak bisa dibedakan dari
+ * kandidat yang memang tidak ada, jadi tidak ada yang tahu kapan harus
+ * memperbaikinya. Lapisan AI sudah memutuskan soal ini di `_lib/ai/cv.ts`
+ * (mencatat + degradasi, bukan menebak); stub ini melakukan hal yang sama untuk
+ * SEMUA pemanggil, tanpa mengubah satu pun dari mereka:
+ *   - ia tetap mengembalikan `[]` (perilaku tidak berubah),
+ *   - ia TIDAK menambah satu request pun (cabangnya tetap gratis).
+ * Efek satu-satunya: keadaan itu akhirnya terlihat di log.
  */
 async function findCandidates(): Promise<{ table: string; rows: any[] }> {
+  log.warn('candidates.lookup-unavailable', { fallback: 'findCandidates-stub', table: TABLE_CANDIDATE });
   return { table: TABLE_CANDIDATE, rows: [] };
 }
 
