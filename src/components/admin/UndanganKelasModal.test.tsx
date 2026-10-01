@@ -118,7 +118,7 @@ describe('UndanganKelasModal — poll failure paths (PR2 redaction contract)', (
       'error',
     );
   });
-
+
   it('status dead → fixed copy, not server error text', async () => {
     await sendAndPoll({ success: true, status: 'dead', hasError: true });
     expect(showToast).toHaveBeenCalledWith(
@@ -126,7 +126,7 @@ describe('UndanganKelasModal — poll failure paths (PR2 redaction contract)', (
       'error',
     );
   });
-
+
   it('status not_found → server message field, error paths never read lastError', async () => {
     await sendAndPoll({ success: true, status: 'not_found', message: 'Job tidak ditemukan' });
     expect(showToast).toHaveBeenCalledWith(
@@ -134,7 +134,7 @@ describe('UndanganKelasModal — poll failure paths (PR2 redaction contract)', (
       'error',
     );
   });
-
+
   it('hasError=true on pending keeps polling; done delivers per-recipient results', async () => {
     // Kontrak server saat ini: pending dengan hasError (last_error ada di DB,
     // tidak pernah dikirim). Poll harus lanjut, bukan gagal.
@@ -155,7 +155,7 @@ describe('UndanganKelasModal — poll failure paths (PR2 redaction contract)', (
     expect(shown).not.toContain('lastError');
     expect(shown).not.toContain('undefined');
   });
-
+
   it('all poll responses are consumed without any lastError field reaching the UI', async () => {
     // Guard kontrak: jika implementasi kembali membaca st.lastError, copy akan
     // berubah dari copy tetap → asersi exact-match di atas gagal. Tambahan:
