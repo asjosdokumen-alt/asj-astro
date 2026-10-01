@@ -712,3 +712,97 @@ describe('CandidateDash — kartu dossier sebagai header profil', () => {
     expect(document.body.textContent || '').not.toContain('ui.cv_ttl');
   });
 });
+
+// ==========================================
+// TESTS: keadaan `loading` adalah KERANGKA halaman, bukan spinner di tengah
+// bidang kosong.
+//
+// Sumber: TODO.md ("Candidate experience") — "Loading skeleton di semua halaman
+// yang memuat data". `/candidate` adalah halaman pertama yang mengerjakannya.
+//
+// DUA asersi di sini bukan soal tampilan. Keduanya menjaga invarian milik berkas
+// LAIN, dan keduanya adalah cara yang paling mudah dirusak tanpa sadar:
+//   • NOL heading — `e2e/test-headings.mjs` menuntut TEPAT satu `h1` per halaman,
+//     dan `h1` rute ini dipegang `FormToolbar`. Skeleton yang menaruh `h3` di
+//     dalamnya merusak outline halaman SUNGGUHAN hanya selama memuat — yaitu
+//     saat gate itu paling jarang dijalankan.
+//   • NOL `role="progressbar"` — describe "LevelCard benar-benar terpasang"
+//     membaca `document.querySelector('[role="progressbar"]')`, elemen PERTAMA,
+//     dan menuntut `aria-valuenow` = kelengkapan profil. Skeleton yang ikut
+//     memasangnya membuat asersi itu membaca angka yang salah: LULUS dengan
+//     makna berbeda, dan itu lebih buruk daripada gagal.
+// ==========================================
+describe('CandidateDash — loading skeleton', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    fetchMock.mockReset();
+    apiClientMock.mockReset();
+    vi.mocked(showToast).mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+    stubLocation();
+  });
+  afterEach(() => {
+    cleanup();
+    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * Menahan jawaban `getAppData` supaya keadaan `loading` benar-benar bisa
+   * DIAMATI. Tanpa ini ia lewat dalam satu microtask, dan setiap asersi di bawah
+   * mengukur halaman yang sudah selesai — hijau tanpa membuktikan apa pun.
+   * Yang dikembalikan adalah pelepasnya.
+   */
+  function holdDashboard() {
+    let release!: (v: unknown) => void;
+    apiClientMock.mockImplementation(() => new Promise((res) => { release = res; }));
+    return () => release({
+      success: true,
+      candidates: [row()],
+      kandidatData: { cvMiniProgress: 0, cvMasterProgress: 0 },
+      kandidatRiwayat: [], mySchedules: [],
+    });
+  }
+
+  it('merender kerangka selama memuat, lalu menghapusnya saat data tiba', async () => {
+    const release = holdDashboard();
+    render(<CandidateDash />);
+
+    expect(screen.getByTestId('candidate-skeleton')).toBeTruthy();
+
+    release();
+    await waitFor(() => expect(screen.queryByTestId('candidate-skeleton')).toBeNull());
+    // KONTROL POSITIF — tanpa ini, "skeleton hilang" juga benar di halaman
+    // yang gagal memuat dan tidak merender apa pun.
+    expect(screen.getByRole('button', { name: 'ui.ai_cv_assistant' })).toBeTruthy();
+  });
+
+  it('tidak menyumbang heading dan tidak menyumbang progressbar', async () => {
+    holdDashboard();
+    render(<CandidateDash />);
+    const sk = screen.getByTestId('candidate-skeleton');
+    expect(sk.querySelectorAll('h1,h2,h3,h4,h5,h6')).toHaveLength(0);
+    expect(sk.querySelectorAll('[role="progressbar"]')).toHaveLength(0);
+  });
+
+  it('mengumumkan "sedang memuat" ke pembaca layar, dan menyembunyikan dekorasinya', async () => {
+    holdDashboard();
+    render(<CandidateDash />);
+    const sk = screen.getByTestId('candidate-skeleton');
+
+    expect(sk.getAttribute('role')).toBe('status');
+    // `aria-busy` SENGAJA TIDAK ada, dan asersi ini mengunci keputusan itu
+    // supaya tidak ada yang "melengkapinya" kembali. Simpul ini DIGANTI, bukan
+    // diperbarui, jadi `aria-busy="true"` tidak akan pernah kembali ke `false` —
+    // dan ia memerintahkan pembaca layar MENAHAN pengumuman, sehingga teks di
+    // bawah ini tidak akan pernah dibacakan. Ditemukan di review, bukan ditebak.
+    expect(sk.getAttribute('aria-busy')).toBeNull();
+    // Satu-satunya TEKS di dalam kerangka: label `sr-only`. Kalau suatu saat ada
+    // teks lain ikut ter-render, ia akan muncul di sini — dan itu memang yang
+    // ingin kita ketahui, karena keadaan ini tidak boleh mengklaim apa pun.
+    expect(sk.textContent).toBe('ui.loading');
+    // Dekorasi tidak dibacakan: dua kolom + setiap Bar.
+    expect(sk.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(1);
+  });
+});

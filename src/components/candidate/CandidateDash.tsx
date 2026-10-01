@@ -24,6 +24,7 @@ import { computeCvMiniProgress, computeCvMasterProgress, computeOverallProgress 
 import LevelCard from './LevelCard';
 import StepGuide from './StepGuide';
 import AsjDossierCard from './AsjDossierCard';
+import CandidateSkeleton from './CandidateSkeleton';
 import { downloadBiodataText } from '../../lib/biodataExport';
 import { ErrorBoundary } from '../ErrorBoundary';
 
@@ -366,7 +367,9 @@ export default function CandidateDash() {
     finally { setLoading(false); }
   }
 
-  if (loading) return <div class="text-center py-12"><Icon spin name="spinner" class="text-3xl text-emerald-400 mb-4" /><p class="text-slate-400">{t('ui.loading')}</p></div>;
+  // Keadaan `loading` = KERANGKA halaman, bukan spinner di tengah bidang kosong.
+  // Alasannya (dan bentuk tiap bloknya) ada di `CandidateSkeleton.tsx`.
+  if (loading) return <CandidateSkeleton />;
     function openEsign() {
       // A07 parity bukaModalTtd: kandidat hanya boleh saat tahapan masuk
       // Lolos/Pemberkasan..Naitei; admin selalu bisa (guard tetap backend).
