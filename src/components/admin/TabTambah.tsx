@@ -69,7 +69,19 @@ export default function TabTambah() {
       try {
         const d = await api.get('getAppData', ['admin']);
         if (d && (d as Record<string, any>).success && (d as Record<string, any>).dropdowns) {
-          setDd((d as Record<string, any>).dropdowns);
+          /* MERGE, do not replace.
+             MEASURED 2026-10-01 (/admin#tambah): this used to be
+             `setDd(d.dropdowns)`, which threw away the six keys the state was
+             initialised with and installed whatever the payload happened to
+             carry. The render then calls `dd.gender.map(...)`,
+             `dd.lokasi.map(...)`, `dd.syarat.map(...)`. With a payload holding
+             only tsk/kategori/tahapan the page raised
+             "Cannot read properties of undefined (reading 'map')" and the tab
+             rendered as a BLANK PANEL — no `h2`, 0 inputs, no message. One key
+             missing on the server took the whole input form down. Spreading the
+             previous value keeps every known key present, so a partial payload
+             degrades to an empty list instead of a dead tab. */
+          setDd((prev) => ({ ...prev, ...(d as Record<string, any>).dropdowns }));
         }
       } catch (e) { console.error(e); } finally { setLoading(false); }
     }
@@ -231,13 +243,13 @@ export default function TabTambah() {
             <label for="tt-template-file" class="block text-xs font-bold text-sky-400 mb-1.5 uppercase">
               <Icon name="file-excel" class="mr-1" /> {t('admin.upload_format_cv')}
             </label>
-            <input id="tt-template-file" type="file" accept=".pdf,.xls,.xlsx,.doc,.docx" onChange={(e) => setTemplateFile((e.target as HTMLInputElement).files?.[0] || null)} class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-sky-900/50 file:text-sky-400 hover:file:bg-sky-900/80 cursor-pointer" />
+            <input id="tt-template-file" type="file" accept=".pdf,.xls,.xlsx,.doc,.docx" onChange={(e) => setTemplateFile((e.target as HTMLInputElement).files?.[0] || null)} class="min-h-12 w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-sky-900/50 file:text-sky-400 hover:file:bg-sky-900/80 cursor-pointer" />
           </div>
           <div>
             <label for="tt-pamflet-file" class="block text-xs font-bold text-pink-400 mb-1.5 uppercase">
               <Icon name="image" class="mr-1" /> {t('admin.upload_pamflet')}
             </label>
-            <input id="tt-pamflet-file" type="file" accept="image/*" onChange={(e) => setPamfletFile((e.target as HTMLInputElement).files?.[0] || null)} class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-pink-900/50 file:text-pink-400 hover:file:bg-pink-900/80 cursor-pointer" />
+            <input id="tt-pamflet-file" type="file" accept="image/*" onChange={(e) => setPamfletFile((e.target as HTMLInputElement).files?.[0] || null)} class="min-h-12 w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-pink-900/50 file:text-pink-400 hover:file:bg-pink-900/80 cursor-pointer" />
           </div>
         </div>
         <div class="space-y-5">
@@ -245,7 +257,7 @@ export default function TabTambah() {
             <legend class={`${lc} p-0`}>{t('admin.penempatan_lokasi')}</legend>
             <div class="grid grid-cols-2 gap-2 h-28 u-scroll-area p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {dd.lokasi.map((l) => (
-                <label key={l} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
+                <label key={l} class="min-h-11 flex items-center gap-2 cursor-pointer hover:text-white transition">
                   <input type="checkbox" checked={lokasi.includes(l)} onChange={() => tog(lokasi, setLokasi, l)} class="accent-red-500 w-5 h-5" /> {l}
                 </label>
               ))}
@@ -256,7 +268,7 @@ export default function TabTambah() {
             <legend class={`${lc} p-0`}>{t('admin.syarat_kandidat')}</legend>
             <div class="grid grid-cols-2 gap-2 h-24 u-scroll-area p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {dd.syarat.map((s) => (
-                <label key={s} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
+                <label key={s} class="min-h-11 flex items-center gap-2 cursor-pointer hover:text-white transition">
                   <input type="checkbox" checked={syarat.includes(s)} onChange={() => tog(syarat, setSyarat, s)} class="accent-red-500 w-5 h-5" /> {s}
                 </label>
               ))}
@@ -267,7 +279,7 @@ export default function TabTambah() {
             <legend class={`${lc} p-0`}><Icon name="file-upload" class="mr-1" /> {t('admin.syarat_dokumen')}</legend>
             <div class="grid grid-cols-2 gap-2 h-24 u-scroll-area p-3 bg-black/40 border border-slate-700 rounded-lg text-sm text-slate-300 mb-2">
               {RF.map((f) => (
-                <label key={f} class="flex items-center gap-2 cursor-pointer hover:text-white transition">
+                <label key={f} class="min-h-11 flex items-center gap-2 cursor-pointer hover:text-white transition">
                   <input type="checkbox" checked={reqFiles.includes(f)} onChange={() => tog(reqFiles, setReqFiles, f)} class={'accent-' + (f === 'ALL' ? 'pink' : 'red') + '-500 w-5 h-5'} /> {f}
                 </label>
               ))}
@@ -290,14 +302,14 @@ export default function TabTambah() {
             <div class="block text-sm font-bold text-emerald-400 mb-1.5 uppercase">
               <Icon name="list-check" class="mr-1" /> {t('ui.rincian_biaya')}
             </div>
-            <button type="button" onClick={() => setRbOpen(true)} class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-black uppercase shadow-lg transition">
+            <button type="button" onClick={() => setRbOpen(true)} class="min-h-11 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-black uppercase transition">
               <Icon name="edit" class="mr-1" /> {t('ui.open_rincian_editor')}
             </button>
             <div class="text-xs font-bold text-emerald-300 mt-1.5 min-h-[16px]">{rbSummary}</div>
           </div>
         </div>
         <div class="lg:col-span-2 mt-4">
-          <button type="submit" disabled={submitting} class="w-full py-4 rounded-xl bg-red-600 hover:bg-red-500 font-black tracking-widest text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] transition text-base disabled:opacity-50">
+          <button type="submit" disabled={submitting} class="min-h-11 w-full py-4 rounded-xl bg-red-600 hover:bg-red-500 font-black tracking-widest text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] transition text-base disabled:opacity-50">
             <Icon name="cloud-upload-alt" spin={submitting} class="mr-2" /> {submitting ? t('ui.uploading_job') : t('ui.upload_job')}
           </button>
         </div>

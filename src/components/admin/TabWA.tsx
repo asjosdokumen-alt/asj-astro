@@ -77,7 +77,7 @@ export default function TabWA() {
     }
   }
 
-  const ic = 'w-full p-2.5 rounded-lg bg-black/60 border border-slate-600 text-white text-sm outline-none focus:border-emerald-500 transition';
+  const ic = 'w-full min-h-11 p-2.5 rounded-lg bg-black/60 border border-slate-600 text-white text-sm outline-none focus:border-emerald-500 transition';
 
   // Kerangka: judul + kartu undangan kelas + formulir template. Tiga blok itu
   // ada TERLEPAS dari datanya, jadi kerangkanya tidak menebak apa pun.
@@ -105,7 +105,7 @@ export default function TabWA() {
         <h3 class="text-sm font-bold text-emerald-300 uppercase tracking-widest mb-1"><Icon name="whatsapp" class="text-emerald-400 mr-1" /> {t('ui.invite_class_title')}</h3>
         <p class="text-xs text-slate-300 leading-relaxed">{t('ui.invite_class_wa_desc')}</p>
       </div>
-      <button onClick={() => { window.dispatchEvent(new CustomEvent("openUndanganKelas")); }} class="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold text-center rounded-xl shadow-lg shadow-emerald-900/60 transition hover:-translate-y-0.5 shrink-0 cursor-pointer"><Icon name="whatsapp" class="text-white text-lg mr-1" /> {t('ui.start_invite')}</button>
+      <button onClick={() => { window.dispatchEvent(new CustomEvent("openUndanganKelas")); }} class="min-h-11 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold text-center rounded-xl transition hover:-translate-y-0.5 shrink-0 cursor-pointer"><Icon name="whatsapp" class="text-white text-lg mr-1" /> {t('ui.start_invite')}</button>
     </div>
 
     <div class="u-grid-auto u-grid-auto--cards gap-6">
@@ -117,8 +117,8 @@ export default function TabWA() {
             <p class="text-[11px] text-emerald-400/80 mt-1.5 leading-relaxed font-mono bg-emerald-900/20 p-2 rounded" dangerouslySetInnerHTML={{ __html: t('ui.template_code_hint') }} />
           </div>
           <div class="flex gap-2 pt-2">
-            <button type="submit" disabled={saving} class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold shadow-lg transition text-sm"><Icon name="save" class="mr-1" /> {saving ? t('ui.saving') : t('ui.save_template')}</button>
-            {editingId && <button type="button" onClick={handleCancel} aria-label={t('button.cancel')} class="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold shadow-lg transition text-sm"><Icon name="times" /></button>}
+            <button type="submit" disabled={saving} class="min-h-11 flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold transition text-sm"><Icon name="save" class="mr-1" /> {saving ? t('ui.saving') : t('ui.save_template')}</button>
+            {editingId && <button type="button" onClick={handleCancel} aria-label={t('button.cancel')} class="min-h-11 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold transition text-sm"><Icon name="times" /></button>}
           </div>
         </form>
       </div>
@@ -132,8 +132,8 @@ export default function TabWA() {
               <div class="flex items-center justify-between mb-2"><span class="text-emerald-400 font-bold text-sm">{tpl.nama}</span></div>
               <pre class="text-xs text-slate-300 bg-black/40 rounded-lg p-3 mb-3 whitespace-pre-wrap max-h-32 u-scroll-area custom-scrollbar">{tpl.isi}</pre>
               <div class="flex gap-2">
-                <button onClick={() => handleEdit(tpl)} class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition"><Icon name="edit" class="mr-1" /> {t('ui.template_edit')}</button>
-                <button onClick={() => handleDelete(tpl.id)} aria-label={t('button.delete')} class="px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition"><Icon name="trash" /></button>
+                <button onClick={() => handleEdit(tpl)} class="min-h-11 flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition"><Icon name="edit" class="mr-1" /> {t('ui.template_edit')}</button>
+                <button onClick={() => handleDelete(tpl.id)} aria-label={t('button.delete')} class="min-w-11 min-h-11 px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition"><Icon name="trash" /></button>
               </div>
             </div>
           ))}</div>}

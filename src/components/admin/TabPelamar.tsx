@@ -158,13 +158,13 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
               placeholder={t("pelamar.placeholder_search")}
               class="min-h-11 w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition" />
           </div>
-          <button onClick={() => openInputModal()} class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition whitespace-nowrap"><Icon name="user-plus" class="mr-1" /> {t('admin.input_manual')}</button>
-          <button onClick={() => toggleSimpleView()} class="px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap">
+          <button onClick={() => openInputModal()} class="min-h-11 px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 transition whitespace-nowrap"><Icon name="user-plus" class="mr-1" /> {t('admin.input_manual')}</button>
+          <button onClick={() => toggleSimpleView()} class="min-h-11 px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition whitespace-nowrap">
             <Icon name={simpleView ? 'table-list' : 'table-cells-large'} class="mr-1" /> {simpleView ? t('admin.view_full') : t('admin.view_simple')}
           </button>
-          <button onClick={exportCsv} class="px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="file-csv" class="mr-1" /> {t('admin.export_csv')}</button>
-          <button onClick={exportExcel} class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="file-excel" class="mr-1" /> {t('admin.export_excel')}</button>
-          <button onClick={() => openReportModal()} class="px-5 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg transition whitespace-nowrap"><Icon name="chart-bar" class="mr-1" /> {t('admin.monthly_report')}</button>
+          <button onClick={exportCsv} class="min-h-11 px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition whitespace-nowrap"><Icon name="file-csv" class="mr-1" /> {t('admin.export_csv')}</button>
+          <button onClick={exportExcel} class="min-h-11 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition whitespace-nowrap"><Icon name="file-excel" class="mr-1" /> {t('admin.export_excel')}</button>
+          <button onClick={() => openReportModal()} class="min-h-11 px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-bold transition whitespace-nowrap"><Icon name="chart-bar" class="mr-1" /> {t('admin.monthly_report')}</button>
         </div>
       </div>
 
@@ -172,15 +172,15 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
       <div class="flex flex-wrap gap-3 mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
         <div class="flex items-center gap-2 text-sky-400 font-bold text-sm mr-2"><Icon name="filter" /> {t('admin.filter')}</div>
         <select value={filterGender} aria-label={t('share.gen_all')} onChange={(e) => { setAdminFilterGender((e.target as HTMLSelectElement).value); }}
-          class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
+          class="min-h-11 bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">{t('share.gen_all')}</option><option value="l">{t('share.gen_l')}</option><option value="p">{t('share.gen_p')}</option>
         </select>
         <select value={filterAge} aria-label={t('share.age_all')} onChange={(e) => { setAdminFilterAge((e.target as HTMLSelectElement).value); }}
-          class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
+          class="min-h-11 bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">{t('share.age_all')}</option><option value="under20">&lt; 20</option><option value="20to25">20 - 25</option><option value="over25">&gt; 25</option>
         </select>
         <select value={filterJft} aria-label={t('share.jft_all')} onChange={(e) => { setAdminFilterJft((e.target as HTMLSelectElement).value); }}
-          class="bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
+          class="min-h-11 bg-black/40 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:border-sky-500 outline-none">
           <option value="all">{t('share.jft_all')}</option><option value="a2">A2 / N4</option><option value="b1">B1 / N3</option>
         </select>
       </div>
@@ -207,8 +207,8 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
             <div key={k.id || k.wa} class="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50 hover:bg-white/5 transition">
               <div class="flex items-center gap-3">
                 <span class="font-mono text-sky-300 font-bold text-xs">{k.id || k.wa}</span>
-                <span class="font-bold text-white text-sm">{k.nama}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50 drop-shadow-md" />}</span>
-                <span class="font-mono text-purple-300 text-xs">{k.idLoker}</span>
+                <span class="font-bold text-white text-sm">{k.nama}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50" />}</span>
+                <span class="font-mono text-sky-300 text-xs">{k.idLoker}</span>
               </div>
               <div class="flex items-center gap-2">
                 <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan}</span>
@@ -237,8 +237,8 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
               ) : shown.map((k) => (
                 <tr key={k.id || k.wa} class="hover:bg-white/5 transition-colors">
                   <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.id || k.wa || '-'}</td>
-                  <td class="p-4 font-bold text-white">{k.nama || '-'}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50 drop-shadow-md" />}</td>
-                  <td class="p-4"><span class="font-mono text-purple-300 text-xs">{k.idLoker || '-'}</span></td>
+                  <td class="p-4 font-bold text-white">{k.nama || '-'}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50" />}</td>
+                  <td class="p-4"><span class="font-mono text-sky-300 text-xs">{k.idLoker || '-'}</span></td>
                   <td class="p-4">
                     <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan || '-'}</span>
                     <span class="ml-1 text-xs text-slate-400">{k.status || '-'}</span>
@@ -246,13 +246,13 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
                   <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatanExt || k.catatan || ''}>{(k.catatanExt || k.catatan) || '-'}</td>
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-1">
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} aria-label={t('admin.tt_riwayat_kandidat')} title={t('admin.tt_riwayat_kandidat')} class="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
-                      <button onClick={()=>{setShowCvTemplateSelector(true);}} class="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
-<button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
-                      <button onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="px-2 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
-                      <button title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-8 h-8 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} aria-label={t('admin.tt_riwayat_kandidat')} title={t('admin.tt_riwayat_kandidat')} class="w-11 h-11 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
+                      <button onClick={()=>{setShowCvTemplateSelector(true);}} class="min-h-11 px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
+<button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
+                      <button onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="min-h-11 px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
+                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="min-h-11 px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
+                      <button title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-11 h-11 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
                     </div>
                   </td>
                 </tr>
@@ -264,7 +264,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
       <div class="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-sky-900/50 text-sm">
         <span class="text-slate-300 font-bold text-xs">{filtered.length} {t('admin.of')} {totalAll} {t('admin.candidates')}</span>
         {shown.length < filtered.length && (
-          <button onClick={() => nextPage()} class="px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition shadow-lg"><Icon name="chevron-down" class="mr-1" /> {t('button.more')}</button>
+          <button onClick={() => nextPage()} class="min-h-11 px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition"><Icon name="chevron-down" class="mr-1" /> {t('button.more')}</button>
         )}
       </div>
 
@@ -285,7 +285,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
         <div class="fixed inset-0 z-[150] bg-slate-950">
           <AiCvForm waTarget={aiCvWa} adminMode />
           <button onClick={() => setAiCvWa('')} title={t('button.close')} aria-label={t('button.close')}
-            class="fixed top-2 right-3 z-[200] w-9 h-9 flex items-center justify-center rounded-full bg-rose-600 hover:bg-rose-500 text-white shadow-lg transition cursor-pointer">
+            class="fixed top-2 right-3 z-[200] w-9 h-9 flex items-center justify-center rounded-full bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer">
             <Icon name="times" />
           </button>
         </div>

@@ -137,13 +137,13 @@ export default function TabKelola() {
                   <td class="p-4 text-center">
                     <div class="flex flex-wrap justify-center gap-2">
                       <button onClick={() => toggleStatus(j.code, 'OPEN')} class="min-h-11 inline-flex items-center px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-full text-[11px] text-white font-bold shadow transition">{t("status.open")}</button>
-                      <button onClick={() => toggleStatus(j.code, 'CLOSE')} class="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-full text-[11px] text-white font-bold shadow transition">{t("status.close")}</button>
-                      <button onClick={() => setEditJob(j)} class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-full text-[11px] font-bold shadow transition"><Icon name="edit" /> Edit</button>
-                      <button onClick={() => setShareJob(j)} class="px-3 py-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-full text-[11px] font-bold shadow transition"><Icon name="share-alt" /> Share</button>
+                      <button onClick={() => toggleStatus(j.code, 'CLOSE')} class="min-h-11 px-3 py-1.5 bg-slate-600 hover:bg-slate-500 rounded-full text-[11px] text-white font-bold shadow transition">{t("status.close")}</button>
+                      <button onClick={() => setEditJob(j)} class="min-h-11 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded-full text-[11px] font-bold shadow transition"><Icon name="edit" /> Edit</button>
+                      <button onClick={() => setShareJob(j)} class="min-h-11 px-3 py-1.5 bg-pink-600 hover:bg-pink-500 text-white rounded-full text-[11px] font-bold shadow transition"><Icon name="share-alt" /> Share</button>
                     </div>
                   </td>
                   <td class="p-4 text-center">
-                    <button onClick={() => deleteJob(j.code)} aria-label={t('button.delete')} class="w-11 h-11 flex items-center justify-center bg-red-600 text-white rounded-full text-xs font-bold shadow-lg hover:scale-105 transition-transform mx-auto"><Icon name="trash" /></button>
+                    <button onClick={() => deleteJob(j.code)} aria-label={t('button.delete')} class="w-11 h-11 flex items-center justify-center bg-red-600 text-white rounded-full text-xs font-bold hover:scale-105 transition-transform mx-auto"><Icon name="trash" /></button>
                   </td>
                 </tr>
               ))}

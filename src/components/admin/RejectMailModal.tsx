@@ -68,7 +68,7 @@ export default function RejectMailModal({ candidateName, onCancel, onConfirm, cl
   return (
     <div ref={containerRef} onClick={onBackdropClick}
       class="fixed inset-0 u-modal-shell bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-      <div class="w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-700 bg-slate-900 flex flex-col">
+      <div class="w-full max-w-lg rounded-2xl overflow-hidden border border-slate-700 bg-slate-900 flex flex-col">
         <div class="p-5 border-b border-slate-700 bg-slate-900 flex justify-between items-center">
           <h3 class="text-white font-bold text-lg">
             <Icon name="ban" class="text-red-500 mr-2" />

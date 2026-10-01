@@ -50,6 +50,7 @@ import { t, useLang } from '../../store/i18n';
 
 import type { Jadwal } from '../../types/api';
 import Icon from '../ui/Icon';
+import { Bar, Status } from '../ui/Skeleton';
 
 /** Ask AdminPanel to switch tabs. */
 export function gotoAdminTab(id: string): void {
@@ -129,10 +130,21 @@ export default function TabAgenda() {
 
       <div id="dash-agenda-list" class="u-scroll-area custom-scrollbar pr-2 space-y-2" style={{ maxHeight: '380px' }}>
         {loading ? (
-          <p class="text-xs text-slate-500">
-            <Icon spin name="spinner" class="mr-2" />
-            {t('admin.jadwal_loading')}
-          </p>
+          /* Shared skeleton, not a spinner. MEASURED 2026-10-01: this was the
+             LAST of the ten admin tabs still rendering a spinner while the other
+             nine already used `Skeleton.tsx` (`2543971`). A skeleton tells the
+             admin the SHAPE of what is coming — here, a list of short schedule
+             cards — which a spinner cannot. The four bars mirror the real card's
+             `rounded-lg border px-3 py-2` box, and `Status` keeps the same
+             `admin.jadwal_loading` sentence so nothing is lost. */
+          <Status labelKey="admin.jadwal_loading" class="space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} class="rounded-lg border border-slate-800 bg-black/30 px-3 py-2">
+                <Bar class="h-4 w-2/3 mb-2" />
+                <Bar class="h-3 w-1/3" />
+              </div>
+            ))}
+          </Status>
         ) : failed ? (
           // Distinct from the empty state on purpose: "could not load" and
           // "nothing scheduled" are different facts and only one of them is

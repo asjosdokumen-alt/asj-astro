@@ -15,7 +15,16 @@ import FormToolbar from '../components/forms/FormToolbar';
        bar ever grew, this page would break silently with no signal.
        The utility derives the clearance from `--u-nav-h` instead, so it
        tracks the bar automatically. No-op above md:. -->
-  <main id="main-content" class="u-has-bottomnav w-full min-h-[50vh] pt-[42px]">
+  <!-- `pt-[var(--u-toolbar-h)]`, NOT `pt-[42px]`.
+       MEASURED 2026-10-01 (/admin at 390): `--u-toolbar-h` is 61px — `layout.css`
+       defines it as "the fixed FormToolbar's height" and measured it at 61px at
+       both 390 and 1280. The literal 42 was 19px SHORT, so the first 19px of
+       `main` sat behind the fixed toolbar (z-[100]). Hit-testing down the centre
+       line of the sidebar toggle proved it: y=50/54/58 were owned by
+       `div.fixed` (the toolbar), y>=62 by the button — only 25px of its 44px
+       were visible, and its vertically-centred "Menu" label was cut in half.
+       The token tracks the bar; the literal does not. -->
+  <main id="main-content" class="u-has-bottomnav w-full min-h-[50vh] pt-[var(--u-toolbar-h)]">
   <noscript data-lang="doc.needs_js" class="block mx-4 mt-6 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.</noscript>
     <AuthGuard requiredRole="admin" redirectTo="/" client:only="preact">
       <AdminPanel client:only="preact" />

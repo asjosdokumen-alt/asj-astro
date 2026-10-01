@@ -181,7 +181,17 @@ export default function AdminPanel() {
           and `tugas` — so the panel's top is free and the tab content starts at
           the top of the page. Removed 2026-09-26 at the owner's request. */}
 
-      <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: 30 }} class="min-h-11 sticky top-2 ml-1 mb-2 px-3 py-1.5 inline-flex items-center bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-colors duration-200 border border-slate-700 hover:border-red-500 shadow-lg inline-flex items-center gap-1.5">
+      {/* Sidebar toggle — MOBILE ONLY.
+          MEASURED 2026-10-01 (/admin, 10 tabs, 1280x900 + 390x844): this button
+          carried no `lg:hidden`, so on desktop it stayed in the DOM at
+          x=4 y=42 w=77 h=44 with `tabIndex: 0` while the fixed `aside`
+          (z-index 96) covered it completely — `elementFromPoint` at its centre
+          returned `aside.fixed`. Dead UI for mouse users, and a phantom tab stop
+          for keyboard/screen-reader users, on every tab. Its sibling, the close
+          button below, has had `lg:hidden` all along; the inconsistency was one
+          attribute wide. (The duplicate `inline-flex items-center` in the old
+          class list is dropped here too.) */}
+      <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: 30 }} class="min-h-11 sticky top-2 ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-colors duration-200 border border-slate-700 hover:border-red-500 inline-flex items-center gap-1.5 lg:hidden">
         <Icon name="bars" /> {t("ui.menu")}
       </button>
 
@@ -199,7 +209,7 @@ export default function AdminPanel() {
       <aside
         role="navigation"
         id="admin-sidebar" aria-label="Admin sidebar"
-        class={`fixed top-[var(--u-toolbar-h)] left-0 h-[calc(100%-var(--u-toolbar-h))] w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 shadow-2xl u-scroll-area transition-transform duration-300 ease-in-out
+        class={`fixed top-[var(--u-toolbar-h)] left-0 h-[calc(100%-var(--u-toolbar-h))] w-64 bg-slate-900 border-r border-slate-700 p-3 flex flex-col gap-1 u-scroll-area transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0`}
         style={{ zIndex: 96 }}
@@ -219,7 +229,7 @@ export default function AdminPanel() {
             onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }}
             class={`min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 ${
               activeTab === tab.id
-                ? 'bg-red-600 text-white shadow-md'
+                ? 'bg-red-600 text-white '
                 : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
             }`}
             aria-label={t(tab.labelKey)}
@@ -231,14 +241,28 @@ export default function AdminPanel() {
         <button onClick={() => aiCopilot.show({ wa: '', nama: '' })} class="min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 bg-violet-900/50 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/30" title="AI HR Copilot">
           <Icon name="robot" class="w-5 text-center" /> <span>AI HR</span>
         </button>
-        <button onClick={() => setActiveTab('config')} class={`min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 mt-auto ${activeTab === 'config' ? 'bg-red-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'}`} aria-label={t('ui.settings')}>
+        <button onClick={() => setActiveTab('config')} class={`min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 mt-auto ${activeTab === 'config' ? 'bg-red-600 text-white ' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'}`} aria-label={t('ui.settings')}>
           <Icon name="cog" class="w-5 text-center" /> <span>{t('ui.settings')}</span>
         </button>
       </aside>
 
 
       <div class="pl-0 lg:pl-64 min-w-0">
-        <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 shadow-xl u-scroll-x">
+        {/* MEASURED 2026-10-01 (1280x900, 10 tabs): this panel hugged its content,
+            so it floated at the top of a mostly-empty page. The gap below it was
+            477px on `kelola`, 511px on `mail`, 570px on `agenda` and 639px on
+            `tugas` — 7 of the 10 tabs left 30-71% of the viewport as bare page
+            background. `main` already carried `min-h-[50vh]` (450px), which is
+            why the intent was there but the guarantee never bit: it is smaller
+            than the gap it was supposed to cover.
+            The panel now occupies the height the viewport actually offers —
+            100dvh minus the fixed toolbar minus a 1rem breathing gap — so the
+            page reads as one surface instead of a small card in a void. Tab
+            content still sits at the top; nothing is stretched or re-ordered.
+            (The same element also gets `mx-4 lg:mx-0`: at 390px it sat at
+            `x=0 w=375` with `border-radius: 12px`, so its rounded corners were
+            clipped by the viewport edge and the border hugged the screen.) */}
+        <div class="mx-4 lg:mx-0 min-h-[calc(100dvh-var(--u-toolbar-h)-1rem)] bg-slate-900 p-4 rounded-xl border border-slate-700 u-scroll-x">
           <TabContent tab={activeTab} />
         </div>
       </div>

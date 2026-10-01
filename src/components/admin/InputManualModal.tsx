@@ -191,7 +191,7 @@ export default function InputManualModal() {
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
-      <div class="bg-slate-900 border border-sky-900/50 rounded-2xl w-full max-w-lg max-h-[90vh] u-scroll-area shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div class="bg-slate-900 border border-sky-900/50 rounded-2xl w-full max-w-lg max-h-[90vh] u-scroll-area" onClick={(e) => e.stopPropagation()}>
         <div class="p-6">
           <div class="flex justify-between items-center mb-4 border-b border-sky-900/50 pb-3">
             <h3 class="text-xl font-bold text-sky-400"><Icon name="user-plus" class="mr-2" /> {t("admin.input_manual_title")}</h3>
@@ -247,19 +247,19 @@ export default function InputManualModal() {
             <div class="p-4 bg-sky-900/20 border border-sky-500/30 rounded-xl space-y-3">
               <div><label class="block text-xs font-bold text-sky-400 mb-1" for="im-pas">{t("admin.manual_pas")}</label>
                 <input type="file" id="im-pas" accept="image/*" onChange={(e) => setPhoto((e.target as HTMLInputElement).files?.[0] || null)}
-                  class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
+                  class="min-h-12 w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
                 {photo && <span class="block mt-1 text-xs font-bold text-emerald-400">{photo.name}</span>}</div>
               <div><label class="block text-xs font-bold text-sky-400 mb-1" for="im-cv">{t("admin.manual_cv")}</label>
                 <input type="file" id="im-cv" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.png" onChange={(e) => setCv((e.target as HTMLInputElement).files?.[0] || null)}
-                  class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
+                  class="min-h-12 w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
                 {cv && <span class="block mt-1 text-xs font-bold text-emerald-400">{cv.name}</span>}</div>
               <div><label class="block text-xs font-bold text-sky-400 mb-1" for="im-jft">{t("admin.manual_jft_pdf")}</label>
                 <input type="file" id="im-jft" accept=".pdf" onChange={(e) => setJft((e.target as HTMLInputElement).files?.[0] || null)}
-                  class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
+                  class="min-h-12 w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
                 {jft && <span class="block mt-1 text-xs font-bold text-emerald-400">{jft.name}</span>}</div>
               <div><label class="block text-xs font-bold text-sky-400 mb-1" for="im-ssw">{t("admin.manual_ssw_pdf")}</label>
                 <input type="file" id="im-ssw" accept=".pdf" onChange={(e) => setSsw((e.target as HTMLInputElement).files?.[0] || null)}
-                  class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
+                  class="min-h-12 w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-slate-700 file:text-white" />
                 {ssw && <span class="block mt-1 text-xs font-bold text-emerald-400">{ssw.name}</span>}</div>
             </div>
 
@@ -286,7 +286,7 @@ export default function InputManualModal() {
                     <span class="text-[11px] text-slate-400 truncate">{d.file ? d.file.name : 'No file chosen'}</span>
                   </div>
                   <button type="button" onClick={() => removeExtraDoc(i)} aria-label={t('ui.remove_doc')}
-                    class="w-8 h-8 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded text-xs transition">
+                    class="w-11 h-11 flex items-center justify-center bg-red-600 hover:bg-red-500 text-white rounded text-xs transition">
                     <Icon name="minus" />
                   </button>
                 </div>
@@ -304,7 +304,7 @@ export default function InputManualModal() {
             </fieldset>
 
             <button type="submit" disabled={saving}
-              class="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold shadow-lg transition mt-2 disabled:opacity-50">
+              class="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold transition mt-2 disabled:opacity-50">
               {saving ? <><Icon spin name="spinner" class="mr-1" /> {t("admin.saving")}</> : <><Icon name="save" class="mr-1" /> {t("admin.save_upload")}</>}
             </button>
           </form>

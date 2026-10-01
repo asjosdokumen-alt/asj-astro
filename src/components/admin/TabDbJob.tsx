@@ -89,7 +89,7 @@ export function sortDbJobs(
 
 const STATUS_BADGE: Record<string, string> = {
   OPEN: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
-  URGENT: 'bg-red-500/20 text-purple-400 border-red-500/40',
+  URGENT: 'bg-red-500/20 text-red-400 border-red-500/40',
   CLOSE: 'bg-slate-500/20 text-slate-400 border-slate-500/40',
 };
 
@@ -161,10 +161,22 @@ export default function TabDbJob() {
     [fTahapanOpts, jobs],
   );
 
+  /* URGENT vs CLOSE: the difference must NOT be the animation.
+     MEASURED 2026-10-01: the two badges were the SAME class string apart from
+     `animate-pulse`, and `global.css:1528-1535` clamps
+     `animation-duration: 0.01ms !important; animation-iteration-count: 1
+     !important` under `prefers-reduced-motion: reduce` — so for those users the
+     visual weight vanished entirely, while for everyone else an infinite pulse
+     repainted the table row forever for no informational gain.
+     (The STATUS itself was never at risk: the badge renders `{db.tahapan}`, so
+     it reads "URGENT" or "CLOSE" either way — §6.6 is satisfied by the text.
+     What was lost was the emphasis, and that is all this fixes.)
+     The replacement is a static ring: a shape difference that survives
+     reduced-motion and costs no frames. */
   function badgeColor(t: string) {
     const u = (t || '-').toUpperCase();
     if (/OPEN/.test(u)) return 'bg-emerald-600 text-white border-emerald-400/60';
-    if (/URGENT/.test(u)) return 'bg-red-600 text-white border-red-400/60 animate-pulse';
+    if (/URGENT/.test(u)) return 'bg-red-600 text-white border-red-400/60 ring-2 ring-red-400/70';
     if (/CLOSE/.test(u)) return 'bg-red-600 text-white border-red-400/60';
     return 'bg-slate-800 text-slate-300 border-slate-600';
   }
@@ -172,7 +184,7 @@ export default function TabDbJob() {
   return (
     <div>
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-purple-400 font-bold text-lg"><Icon name="server" class="mr-2" /> {t('admin.history_internal')}</h2>
+        <h2 class="text-violet-400 font-bold text-lg"><Icon name="server" class="mr-2" /> {t('admin.history_internal')}</h2>
         <div class="relative w-72">
           <Icon name="search" class="absolute left-3 top-2.5 text-slate-300 text-sm" />
           <input
@@ -180,12 +192,12 @@ export default function TabDbJob() {
             value={search}
             onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
             placeholder={t("db.placeholder_search")}
-            class="min-h-11 w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-purple-500 transition"
+            class="min-h-11 w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-violet-500 transition"
           />
         </div>
       </div>
 
-      <div class="flex flex-col gap-3 mb-5 bg-black/30 p-4 rounded-lg border border-purple-900/30 text-sm">
+      <div class="flex flex-col gap-3 mb-5 bg-black/30 p-4 rounded-lg border border-violet-900/30 text-sm">
         <div class="flex items-center gap-2 u-scroll-x whitespace-nowrap pb-1">
           <span class="text-xs font-bold text-slate-300 mr-2 uppercase tracking-widest"><Icon name="sort-amount-down" class="mr-1" /> {t('admin.sort')}</span>
           {[
@@ -194,7 +206,7 @@ export default function TabDbJob() {
             {id: 'TERBANYAK', l: t('admin.sort_most')},
           ].map(o => (
             <button key={o.id} onClick={() => setSortType(o.id)}
-              class={'px-4 py-1.5 rounded-full font-bold transition ' + (sortType === o.id ? 'bg-purple-600 text-white shadow-lg' : 'bg-slate-700 text-slate-300 hover:bg-slate-600')}>
+              class={'min-h-11 px-4 py-1.5 rounded-full font-bold transition ' + (sortType === o.id ? 'bg-violet-600 text-white ' : 'bg-slate-700 text-slate-300 hover:bg-slate-600')}>
               {o.l}
             </button>
           ))}
@@ -203,12 +215,12 @@ export default function TabDbJob() {
         {catOptions.length > 0 && (
           <div class="flex items-center gap-2 u-scroll-x whitespace-nowrap pb-1 custom-scrollbar">
             <button onClick={() => setFBidang('ALL')}
-              class={'px-3 py-1 rounded-full font-bold transition text-xs ' + (fBidang === 'ALL' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
+              class={'min-h-11 px-3 py-1 rounded-full font-bold transition text-xs ' + (fBidang === 'ALL' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
               {t('public.all')}
             </button>
             {catOptions.map((kat) => (
               <button key={kat} onClick={() => setFBidang(kat)}
-                class={'px-3 py-1 rounded-full font-bold transition text-xs ' + (fBidang === kat ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
+                class={'min-h-11 px-3 py-1 rounded-full font-bold transition text-xs ' + (fBidang === kat ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
                 {kat}
               </button>
             ))}
@@ -218,12 +230,12 @@ export default function TabDbJob() {
         {tahapOptions.length > 0 && (
           <div class="flex items-center gap-2 u-scroll-x whitespace-nowrap pb-1 custom-scrollbar">
             <button onClick={() => setFTahapan('ALL')}
-              class={'px-3 py-1 rounded-full font-bold transition text-xs ' + (fTahapan === 'ALL' ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
+              class={'min-h-11 px-3 py-1 rounded-full font-bold transition text-xs ' + (fTahapan === 'ALL' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
               {t('public.all')}
             </button>
             {tahapOptions.map((thp) => (
               <button key={thp} onClick={() => setFTahapan(thp)}
-                class={'px-3 py-1 rounded-full font-bold transition text-xs ' + (fTahapan === thp ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
+                class={'min-h-11 px-3 py-1 rounded-full font-bold transition text-xs ' + (fTahapan === thp ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
                 {thp}
               </button>
             ))}
@@ -261,7 +273,7 @@ export default function TabDbJob() {
                 <tr><td colSpan={6} class="p-6 text-center text-slate-500">{t('db.empty')}</td></tr>
               ) : filtered.slice(0, limit).map(db => (
                 <tr key={db.code} class="border-b border-slate-800 hover:bg-white/5">
-                  <td class="p-4 font-mono text-purple-300 font-bold">{db.code}</td>
+                  <td class="p-4 font-mono text-sky-300 font-bold">{db.code}</td>
                   <td class="p-4">{db.tsk || '-'}</td>
                   <td class="p-4">
                     <div class="font-bold text-white text-[13px]">{db.pekerjaan || '-'}</div>
@@ -278,10 +290,10 @@ export default function TabDbJob() {
                   </td>
                   <td class="p-4 text-center"><span class={'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold ' + badgeColor(db.tahapan)}><Icon name="chevron-circle-right" /> {db.tahapan || '-'}</span></td>
                   <td class="p-4 text-center">
-                    <button onClick={() => setEditJob(db)} class="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button>
+                    <button onClick={() => setEditJob(db)} class="min-h-11 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button>
                     <button onClick={() => setShareJob(db)} class="min-h-11 inline-flex items-center ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="share-alt" /> Share</button>
-                    <button onClick={() => setMatchJob(db)} class="ml-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="search" /> {t('admin.btn_match')}</button>
-                    <button onClick={async () => { try { const d: any = await api.secure('downloadJobDocs', [db.code]); if(d && d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(t('ui.toast_error_prefix')+(d?.error||''),"error");} } catch(e: unknown) {showToast(t('alert.network')+(e instanceof Error ? e.message : String(e)),"error");} }} class="ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="download" /> Docs</button>
+                    <button onClick={() => setMatchJob(db)} class="min-h-11 ml-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="search" /> {t('admin.btn_match')}</button>
+                    <button onClick={async () => { try { const d: any = await api.secure('downloadJobDocs', [db.code]); if(d && d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(t('ui.toast_error_prefix')+(d?.error||''),"error");} } catch(e: unknown) {showToast(t('alert.network')+(e instanceof Error ? e.message : String(e)),"error");} }} class="min-h-11 ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="download" /> Docs</button>
                   </td>
                 </tr>
               ))}

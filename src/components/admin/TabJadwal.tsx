@@ -40,7 +40,7 @@ export default function TabJadwal() {
     } catch (e: unknown) { showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error'); }
   }
 
-  const ic = 'w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition';
+  const ic = 'w-full min-h-11 p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500 transition';
 
   // Kerangka: header (judul + tombol) + tabel jadwal. Bentuknya tetap sama
   // apakah formulir tambah sedang terbuka atau tidak — formulir itu muncul
@@ -64,10 +64,10 @@ export default function TabJadwal() {
   return (<div>
     <div class='flex justify-between items-center border-b border-amber-900/50 pb-4 mb-4'>
       <h2 class='text-amber-400 font-bold text-lg'><Icon name="calendar-alt" class="mr-2" /> {t("admin.tab_schedule")}</h2>
-      <button onClick={()=>setShowForm(!showForm)} class='px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 shadow-lg transition'><Icon name="plus" class="mr-1" /> {showForm ? t("ui.close") : t("admin.new_schedule")}</button>
+      <button onClick={()=>setShowForm(!showForm)} class='min-h-11 px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 transition'><Icon name="plus" class="mr-1" /> {showForm ? t("ui.close") : t("admin.new_schedule")}</button>
     </div>
 
-    {showForm && <div class='bg-black/40 border border-slate-700 rounded-xl p-5 mb-5 shadow-inner'>
+    {showForm && <div class='bg-black/40 border border-slate-700 rounded-xl p-5 mb-5 '>
       {/* EXPLICIT grid, not `.u-grid-auto` — see AdminJobEditModal.tsx for the
           full measurement. The `md:col-span-2` submit row below forces an
           IMPLICIT 0px track on `.u-grid-auto` whenever auto-fit yields one
@@ -80,7 +80,7 @@ export default function TabJadwal() {
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-lokasi">{t("admin.jadwal_lokasi")}</label><input type='text' id="tj-lokasi" value={lokasi} onInput={(e)=>setLokasi((e.target as HTMLInputElement).value)} placeholder='Zoom / Kantor...' class={ic} /></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-pengurus">{t("admin.jadwal_pengurus")}</label><select id="tj-pengurus" value={tsk} onInput={(e)=>setTsk((e.target as HTMLSelectElement).value)} required class={ic}><option value=''>-</option>{tskList.map(t=><option key={t} value={t}>{t}</option>)}</select></div>
         <div><label class='block text-xs font-bold text-slate-300 mb-1.5' for="tj-link">{t("admin.jadwal_link")}</label><input type='url' id="tj-link" value={link} onInput={(e)=>setLink((e.target as HTMLInputElement).value)} placeholder='https://...' class={ic} /></div>
-        <div class='lg:col-span-2 mt-2'><button type='submit' class='w-full py-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-white text-sm shadow-lg transition'><Icon name="save" class="mr-2" /> {t("admin.save_schedule")}</button></div>
+        <div class='lg:col-span-2 mt-2'><button type='submit' class='w-full py-4 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-white text-sm transition'><Icon name="save" class="mr-2" /> {t("admin.save_schedule")}</button></div>
       </form>
     </div>}
 
@@ -108,7 +108,7 @@ export default function TabJadwal() {
             <td class='p-4 font-bold text-white'>{j.nama}</td>
             <td class='p-4'><div class='text-white font-bold'>{j.loker || '-'}</div><div class='text-[11px] text-slate-400 mt-1'>{j.waktu || '-'}</div></td>
             <td class='p-4'><div class='text-white'>{j.lokasi || '-'}</div>{j.link && <a href={j.link} target='_blank' class='text-xs text-sky-400 hover:underline'>{t("admin.jadwal_link_zoom")}</a>}</td>
-            <td class='p-4 text-center'><button onClick={() => { setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="min-h-11 inline-flex items-center px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button><button onClick={async () => { if(!confirm(t('ui.confirm_delete_schedule'))) return; try { const d: any = await api.secure('hapusJadwal', [j.id]); if(d && d.success){showToast(t('ui.toast_schedule_deleted'),'success'); await load();} else showToast(t('ui.toast_error_prefix')+(d?.error||''),'error'); } catch(e){showToast(t('alert.network'),'error');} }} class="min-h-11 inline-flex items-center ml-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="trash" /></button></td>
+            <td class='p-4 text-center'><button onClick={() => { setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="min-h-11 inline-flex items-center px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button><button onClick={async () => { if(!confirm(t('ui.confirm_delete_schedule'))) return; try { const d: any = await api.secure('hapusJadwal', [j.id]); if(d && d.success){showToast(t('ui.toast_schedule_deleted'),'success'); await load();} else showToast(t('ui.toast_error_prefix')+(d?.error||''),'error'); } catch(e){showToast(t('alert.network'),'error');} }} class="min-w-11 min-h-11 inline-flex items-center ml-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="trash" /></button></td>
           </tr>))}
       </tbody>
     </table>

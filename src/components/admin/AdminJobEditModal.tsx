@@ -207,7 +207,7 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
       ref={containerRef}
       onClick={onBackdropClick}
     >
-      <div onClick={(e) => e.stopPropagation()} class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[88vh] u-scroll-area shadow-2xl custom-scrollbar">
+      <div onClick={(e) => e.stopPropagation()} class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[88vh] u-scroll-area custom-scrollbar">
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
           <h3 class="text-sm font-bold text-white">
             <Icon name="edit" class="mr-2 text-red-400" />
@@ -341,7 +341,7 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
               id="ef-template"
               accept=".pdf,.xls,.xlsx,.doc,.docx"
               onChange={(e) => setTemplateFile((e.target as HTMLInputElement).files?.[0] || null)}
-              class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-sky-900/50 file:text-sky-400 hover:file:bg-sky-900/80 cursor-pointer"
+              class="min-h-12 w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-sky-900/50 file:text-sky-400 hover:file:bg-sky-900/80 cursor-pointer"
             />
           </div>
           <div>
@@ -353,7 +353,7 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
               id="ef-pamflet"
               accept="image/*"
               onChange={(e) => setPamfletFile((e.target as HTMLInputElement).files?.[0] || null)}
-              class="w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-pink-900/50 file:text-pink-400 hover:file:bg-pink-900/80 cursor-pointer"
+              class="min-h-12 w-full text-sm text-slate-400 file:mr-2 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-pink-900/50 file:text-pink-400 hover:file:bg-pink-900/80 cursor-pointer"
             />
           </div>
 
@@ -378,7 +378,7 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
               <button
                 type="button"
                 onClick={() => setRbOpen(true)}
-                class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black uppercase shadow-lg transition"
+                class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-black uppercase transition"
               >
                 <Icon name="edit" class="mr-1" /> {t('ui.open_rincian_editor')}
               </button>
@@ -389,7 +389,7 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
           <button
             onClick={handleSave}
             disabled={loading}
-            class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg disabled:opacity-50 transition"
+            class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm disabled:opacity-50 transition"
           >
             {loading ? t('ui.loading') : t('button.save_changes')}
           </button>

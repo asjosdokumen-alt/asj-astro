@@ -168,7 +168,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
       onClick={onBackdropClick}
       class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4"
     >
-      <div class="glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-md shadow-2xl relative max-h-[90vh] flex flex-col border border-sky-500/50">
+      <div class="glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-md relative max-h-[90vh] flex flex-col border border-sky-500/50">
         <button type="button" onClick={onClose} aria-label={t('public.close')} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>

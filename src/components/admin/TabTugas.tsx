@@ -50,7 +50,7 @@ export default function TabTugas() {
         <button
           type="button"
           onClick={submit}
-          class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition shadow-lg"
+          class="bg-red-600 hover:bg-red-500 px-5 rounded-lg text-sm text-white font-bold transition"
           aria-label={t('button.add')}
         >
           <Icon name="plus" />

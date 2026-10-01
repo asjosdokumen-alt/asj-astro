@@ -155,7 +155,7 @@ export default function TabMail() {
   });
 
   return (
-    <div class="bg-slate-900 rounded-xl border border-sky-900/50 p-4 shadow-xl u-scroll-x">
+    <div class="bg-slate-900 rounded-xl border border-sky-900/50 p-4 u-scroll-x">
       {/* Header */}
       <div class="flex flex-wrap justify-between items-center gap-3 border-b border-sky-900/50 pb-4 mb-4">
         <h2 class="text-sky-400 font-bold text-lg"><Icon name="envelope" class="mr-2" /> {t('admin.mail_inbox')}</h2>
@@ -163,13 +163,13 @@ export default function TabMail() {
           <input type="text" value={searchText}
             onInput={(e) => setMailSearchText((e.target as HTMLInputElement).value)}
             placeholder={t("admin.search_mail")}
-            class="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:border-sky-500 outline-none w-52" />
+            class="min-h-11 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:border-sky-500 outline-none w-52" />
 
           {/* Status filter buttons */}
           <div class="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
             {STATUSES.map((s) => (
               <button key={s} onClick={() => setMailFilterStatus(s)}
-                class={`px-3 py-2 text-xs font-bold transition ${
+                class={`min-h-11 px-3 py-2 text-xs font-bold transition ${
                   filterStatus === s
                     ? 'bg-sky-600 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700'
@@ -180,7 +180,7 @@ export default function TabMail() {
           </div>
 
           <button onClick={() => fetchMailFromAPI()}
-            class="px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 shadow-lg transition">
+            class="min-h-11 px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 transition">
             <Icon name="sync-alt" class="mr-1" /> {t('admin.refresh_mail')}
           </button>
 
@@ -188,7 +188,7 @@ export default function TabMail() {
               jadi tombol mati yang membingungkan. */}
           {selected.size > 0 && (
             <button onClick={deleteSelected}
-              class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-500 shadow-lg transition">
+              class="px-5 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-500 transition">
               <Icon name="trash" class="mr-1" /> {t('ui.delete_selected_mail')} ({selected.size})
             </button>
           )}
@@ -236,7 +236,7 @@ export default function TabMail() {
                     onChange={() => toggleOne(String(m.id ?? m.wa ?? m.nama ?? ''))} />
                 </td>
                 <td class="p-4 text-xs text-slate-400">{m.timestamp || '-'}</td>
-                <td class="p-4"><span class="font-mono text-purple-300 text-xs">{m.idLoker || '-'}</span></td>
+                <td class="p-4"><span class="font-mono text-sky-300 text-xs">{m.idLoker || '-'}</span></td>
                 <td class="p-4 text-xs text-slate-400">{m.kategori || '-'}</td>
                 <td class="p-4 font-bold text-white text-sm">{m.nama || '-'}</td>
                 <td class="p-4 font-mono text-sky-300 text-xs">{m.wa || '-'}</td>
@@ -246,19 +246,19 @@ export default function TabMail() {
                   </span>
                 </td>
                 <td class="p-4 text-center">
-                  <button disabled class="px-2 py-1 bg-slate-700/40 text-slate-500 rounded text-[11px] font-bold shadow cursor-not-allowed" title={t('admin.tt_segera_hadir')}>
+                  <button disabled class="min-h-11 px-2 py-1 bg-slate-700/40 text-slate-500 rounded text-[11px] font-bold shadow cursor-not-allowed" title={t('admin.tt_segera_hadir')}>
                     <Icon name="folder-open" class="mr-1" /> {t('button.view')}
                   </button>
                 </td>
                 <td class="p-4 text-center">
                   <div class="flex flex-wrap justify-center gap-1">
-                    <button onClick={() => act('approveForm', m.id ?? m.wa, 'Lamaran LULUS')} class="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition">
+                    <button onClick={() => act('approveForm', m.id ?? m.wa, 'Lamaran LULUS')} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition">
                       <Icon name="check" class="mr-1" /> {t('button.pass')}
                     </button>
-                    <button onClick={() => act('reviewForm', m.id ?? m.wa, 'Status REVIEW')} class="px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition">
+                    <button onClick={() => act('reviewForm', m.id ?? m.wa, 'Status REVIEW')} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition">
                       <Icon name="eye" class="mr-1" /> {t('button.review')}
                     </button>
-                    <button onClick={() => setRejectTarget({ id: m.id ?? m.wa, nama: m.nama })} class="px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[11px] font-bold shadow transition">
+                    <button onClick={() => setRejectTarget({ id: m.id ?? m.wa, nama: m.nama })} class="min-h-11 px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[11px] font-bold shadow transition">
                       <Icon name="times" class="mr-1" /> {t('button.reject')}
                     </button>
                   </div>

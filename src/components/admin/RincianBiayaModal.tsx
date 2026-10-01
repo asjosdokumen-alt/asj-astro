@@ -455,7 +455,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
       ref={containerRef}
       onClick={onBackdropClick}
     >
-      <div class="bg-slate-900 border border-emerald-700/40 rounded-[2rem] w-full max-w-3xl max-h-[92vh] u-scroll-area shadow-2xl p-6 md:p-8">
+      <div class="bg-slate-900 border border-emerald-700/40 rounded-[2rem] w-full max-w-3xl max-h-[92vh] u-scroll-area p-6 md:p-8">
         <div class="flex justify-between items-start mb-1">
           <h3 class="text-xl font-black text-emerald-400">
             <Icon name="list-check" class="mr-2" /> {t('ui.rincian_biaya')}
@@ -663,7 +663,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
         <button
           onClick={apply}
           disabled={saving}
-          class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black shadow-lg transition text-base disabled:opacity-50"
+          class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition text-base disabled:opacity-50"
         >
           <Icon name="save" spin={saving} class="mr-2" /> {t('ui.save_rincian')}
         </button>

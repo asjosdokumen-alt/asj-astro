@@ -247,7 +247,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose, clo
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4" onClick={onBackdropClick}>
-      <div ref={containerRef} onClick={(e) => e.stopPropagation()} class="glass-panel p-6 rounded-[2rem] w-full max-w-3xl shadow-2xl relative border border-violet-500/50 max-h-[90vh] flex flex-col">
+      <div ref={containerRef} onClick={(e) => e.stopPropagation()} class="glass-panel p-6 rounded-[2rem] w-full max-w-3xl relative border border-violet-500/50 max-h-[90vh] flex flex-col">
         <button onClick={onClose} aria-label={t('ui.close')} class="absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
@@ -313,7 +313,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose, clo
               </label>
             </div>
           </div>
-          <button onClick={runMatchmaking} disabled={searching} class="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold shadow-lg transition disabled:opacity-50">
+          <button onClick={runMatchmaking} disabled={searching} class="min-h-11 w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold transition disabled:opacity-50">
             <Icon name="search" class="mr-1" /> {searching ? t('ui.sifting_db') : t('ui.start_specific_search')}
           </button>
         </div>
@@ -365,7 +365,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose, clo
                   </div>
                 ))}
               </div>
-              <button onClick={sendBlast} disabled={sending} class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg transition mt-4 disabled:opacity-50">
+              <button onClick={sendBlast} disabled={sending} class="min-h-11 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition mt-4 disabled:opacity-50">
                 <Icon name="whatsapp" class="mr-1" /> {sending ? t('ui.sending') : t('ui.send_offer_all')}
               </button>
             </>

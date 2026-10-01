@@ -153,7 +153,7 @@ export default function UndanganKelasModal({ isOpen, onClose, closing = false }:
   if (!isOpen && !closing) return null;
 
   return h("div", { class: "fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[999] flex items-center justify-center p-4", ref: containerRef, onClick: onBackdropClick },
-    h("div", { class: "glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col border border-emerald-500/50" },
+    h("div", { class: "glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-2xl relative max-h-[90vh] flex flex-col border border-emerald-500/50" },
       h("button", { onClick: onClose, class: "absolute top-5 right-6 text-slate-400 hover:text-white transition z-[100]" }, h(Icon, { name: "times", class: "text-2xl" })),
       h("h3", { class: "text-xl font-black text-white mb-2 border-b border-emerald-900/50 pb-3" }, h(Icon, { name: "whatsapp", class: "text-emerald-400 mr-2" }), t("ui.invite_class_title")),
       h("p", { class: "text-xs text-slate-400 mb-4 leading-relaxed" }, t("ui.invite_class_desc")),

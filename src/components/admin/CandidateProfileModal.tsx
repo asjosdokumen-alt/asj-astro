@@ -273,7 +273,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
-      <div ref={containerRef} class="glass-panel p-6 rounded-[2rem] w-full max-w-2xl max-h-[90vh] u-scroll-area shadow-2xl relative">
+      <div ref={containerRef} class="glass-panel p-6 rounded-[2rem] w-full max-w-2xl max-h-[90vh] u-scroll-area relative">
         <button onClick={onClose} class="absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
@@ -510,7 +510,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                 >
                   <Icon name="whatsapp" /> {t('ui.cv_wa')}
                 </a>
-                <button onClick={onClose} class="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition">
+                <button onClick={onClose} class="min-h-11 flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition">
                   {t('ui.close')}
                 </button>
               </div>
