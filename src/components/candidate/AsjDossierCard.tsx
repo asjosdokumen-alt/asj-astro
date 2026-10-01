@@ -142,7 +142,17 @@ export default function AsjDossierCard(props: AsjDossierCardProps) {
   const statusLine = [...new Set([tahapan, status].filter(Boolean))].join(' · ');
 
   return (
-    <section class="rounded-panel bg-surface-raised border border-line-strong p-5 md:p-6 mb-6 md:mb-8 max-w-4xl mx-auto text-left">
+    /* `max-w-4xl mx-auto` DIHAPUS 2026-10-01 — temuan F12.
+       Kartu ini adalah HEADER halaman, dan ia duduk di x=185 w=896 sementara
+       grid yang ia kepalai membentang x=16 w=1233. Dua tepi kiri berbeda
+       169 px, di blok paling atas halaman — persis cacat "tepi berzig-zag"
+       yang dilaporkan review pertama dan diklaim selesai di `a992dd0`. Ia
+       bertahan di sini karena lebar 896 px ini sisa dari `.glass-panel
+       max-w-4xl` yang dulu membungkus SELURUH dashboard: waktu panelnya
+       dibuang (`c01eaaf`), kartu ini keluar dari panel tetapi membawa serta
+       lebarnya. Sekarang ia memakai lebar `main` yang sama dengan gridnya.
+       Diukur sesudah: tepi kartu = tepi grid = x=16, lebar 1233. */
+    <section class="rounded-panel bg-surface-raised border border-line-strong p-5 md:p-6 mb-6 md:mb-8 text-left">
       {/* ── Header: logo, wordmark, subtitle, verified mark ── */}
       <header class="flex items-center justify-between gap-3 pb-4 mb-6 border-b border-line">
         <div class="flex items-center gap-4 min-w-0">

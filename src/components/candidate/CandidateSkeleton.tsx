@@ -91,14 +91,13 @@ export default function CandidateSkeleton() {
       <span class="sr-only">{t('ui.loading')}</span>
 
       {/* ── Kartu dossier — header identitas, DI LUAR grid ──
-          `max-w-4xl mx-auto` disalin dari `AsjDossierCard.tsx:145` APA ADANYA,
-          termasuk keanehannya: kartu ini 896 px di tengah sementara seluruh grid
-          di bawahnya 1233 px, jadi tepi kirinya x=185 dan tepi grid x=16 —
-          beda 169 px. Itu BUKAN kelalaian salin: skeleton yang memakai lebar
-          berbeda dari halaman aslinya akan MENIMBULKAN lompatan yang justru
-          ingin dihilangkannya. Ketidakcocokan tepi itu sendiri dicatat sebagai
-          temuan terpisah, bukan diperbaiki diam-diam di sini. */}
-      <section class="rounded-panel bg-surface-raised border border-line-strong p-5 md:p-6 mb-6 md:mb-8 max-w-4xl mx-auto">
+          Lebarnya WAJIB sama dengan `AsjDossierCard.tsx:145`. Sampai
+          2026-10-01 keduanya memakai `max-w-4xl mx-auto`: 896 px di tengah
+          sementara grid di bawahnya 1233 px, tepi kiri berbeda 169 px — temuan
+          F12. Keduanya sekarang selebar `main`. Kalau salah satu diubah tanpa
+          yang lain, skeleton akan menimbulkan lompatan LEBAR yang justru ingin
+          dihilangkannya, jadi dua tempat ini harus bergerak bersama. */}
+      <section class="rounded-panel bg-surface-raised border border-line-strong p-5 md:p-6 mb-6 md:mb-8">
         <div aria-hidden="true">
           {/* Header: logo + dua baris brand, satu ikon di kanan. */}
           <div class="flex items-center justify-between gap-3 pb-4 mb-6 border-b border-line">
