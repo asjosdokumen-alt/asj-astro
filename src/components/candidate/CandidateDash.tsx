@@ -907,56 +907,56 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
             `xl:self-start` wajib: tanpa itu item grid meregang setinggi kolom
             utama dan `sticky` tidak punya ruang untuk bergerak. */}
         <aside class="min-w-0 flex flex-col xl:sticky xl:top-[5.5rem] xl:self-start">
-              {/* ── Catatan Admin ── */}
-              {data.catatan && (
-                <div class="mb-6 md:mb-8 bg-sky-900/20 border border-sky-500/30 p-5 md:p-6 rounded-panel text-center">
-                  <p class="text-xs text-sky-400 font-bold uppercase mb-2"><Icon name="envelope-open-text" class="mr-1" /> {t('ui.admin_eval_msg')}</p>
-                  <p class="text-sm text-slate-200 italic">"{data.catatan}"</p>
-                </div>
+              {/* ── Catatan Admin ── */}
+              {data.catatan && (
+                <div class="mb-6 md:mb-8 bg-sky-900/20 border border-sky-500/30 p-5 md:p-6 rounded-panel text-center">
+                  <p class="text-xs text-sky-400 font-bold uppercase mb-2"><Icon name="envelope-open-text" class="mr-1" /> {t('ui.admin_eval_msg')}</p>
+                  <p class="text-sm text-slate-200 italic">"{data.catatan}"</p>
+                </div>
               )}
 
-                  {/* Action buttons grid */}
-                  {/* Action buttons grid — bobot seragam, SENGAJA.
-                      Dulu tujuh tombol ini punya tujuh warna pekat (sky/violet/rose/
-                      amber/slate/putih/teal) masing-masing dengan glow dan
-                      `hover:-translate-y-1`, jadi ketujuhnya berteriak bersamaan dan
-                      tidak ada satu pun yang terbaca sebagai "kerjakan ini dulu".
-                      Aksi utama halaman ini adalah "Lengkapi Berkas" — satu-satunya
-                      CTA bergradien, di kartu atas — jadi tujuh ini turun pangkat
-                      jadi aksi SEKUNDER yang seragam: satu permukaan, satu border,
-                      dan warna hanya tinggal di ikonnya.
-
-                      Kenapa TIDAK disembunyikan di menu overflow: enam di antaranya
-                      membuka modal yang diukur `e2e/test-candidate-modals.mjs`, dan
-                      gate itu menuntut pemicunya ADA dan bisa diklik TANPA satu klik
-                      tambahan. Jadi bobotnya yang diturunkan, bukan keberadaannya —
-                      kalau tidak, "merapikan" di sini sama dengan mematikan gate.
-
-                      `min-h-11` = 44px, lantai sentuh proyek ini (DESIGN.md:691).
-                      Sebelumnya tinggi tombol ditentukan `py-3` (12+12+20 = 44px):
-                      pas di ambang, dan jatuh di bawahnya begitu line-height font
-                      berubah. Sekarang eksplisit, jadi tidak bergantung pada itu. */}
-                  <div class="u-grid-auto u-grid-auto--cards gap-3 mt-5">
-                    <button data-testid="cmt-cvmini" onClick={() => setShowCvMiniModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="user-edit" class="text-accent-sky shrink-0" /> {t('ui.update_cv_mini')}</button>
-                    <button data-testid="cmt-interview" onClick={openInterview} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-violet text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="microphone-alt" class="text-accent-violet shrink-0" /> {t('ui.interview_practice')}</button>
-                    <button data-testid="cmt-esign" onClick={openEsign} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="signature" class="text-accent-red shrink-0" /> {t('ui.esign_naitei')}</button>
-                    <button onClick={openAiCvMaster} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-amber text-slate-200 rounded-control text-sm font-bold transition text-left cursor-pointer"><Icon name="robot" class="text-accent-amber shrink-0" /> {t('ui.ai_cv_assistant')}</button>
-                    <a href="/master" class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-emerald text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="clipboard-list" class="text-accent-emerald shrink-0" /> {t('ui.master_full_form')}</a>
-                    {/* ── "Pilih Template CV" WAS HERE AND IS NOT COMING BACK ──
-                        Owner ruling 2026-09-25: "template cv itu fitur admin bukan
-                        buat kandidat". The feature still exists — it is the admin's,
-                        at `admin/TabPelamar.tsx` (the button) and
-                        `CvTemplateSelector.tsx` (`isAdmin={true}`). Only the candidate
-                        entry point is gone, so the component and its
-                        `button.pilih_template_cv` key are still LIVE and must not be
-                        cleaned up as orphans.
-
-                        The candidate keeps `RirekishoBuilder` below ("Preview Desain
-                        CV"), which is the read/preview side of the same feature — so
-                        removing this button takes away a chooser, not the ability to
-                        see a CV. */}
-          <button data-testid="cmt-rirekisho" onClick={() => setShowRirekisho(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="file-alt" class="text-accent-red shrink-0" /> {t('candidate.btn_preview_cv')}</button>
-                    <button data-testid="cmt-password" onClick={() => setShowPasswordModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="key" class="text-accent-sky shrink-0" /> {t('ui.change_password')}</button>
+                  {/* Action buttons grid */}
+                  {/* Action buttons grid — bobot seragam, SENGAJA.
+                      Dulu tujuh tombol ini punya tujuh warna pekat (sky/violet/rose/
+                      amber/slate/putih/teal) masing-masing dengan glow dan
+                      `hover:-translate-y-1`, jadi ketujuhnya berteriak bersamaan dan
+                      tidak ada satu pun yang terbaca sebagai "kerjakan ini dulu".
+                      Aksi utama halaman ini adalah "Lengkapi Berkas" — satu-satunya
+                      CTA bergradien, di kartu atas — jadi tujuh ini turun pangkat
+                      jadi aksi SEKUNDER yang seragam: satu permukaan, satu border,
+                      dan warna hanya tinggal di ikonnya.
+
+                      Kenapa TIDAK disembunyikan di menu overflow: enam di antaranya
+                      membuka modal yang diukur `e2e/test-candidate-modals.mjs`, dan
+                      gate itu menuntut pemicunya ADA dan bisa diklik TANPA satu klik
+                      tambahan. Jadi bobotnya yang diturunkan, bukan keberadaannya —
+                      kalau tidak, "merapikan" di sini sama dengan mematikan gate.
+
+                      `min-h-11` = 44px, lantai sentuh proyek ini (DESIGN.md:691).
+                      Sebelumnya tinggi tombol ditentukan `py-3` (12+12+20 = 44px):
+                      pas di ambang, dan jatuh di bawahnya begitu line-height font
+                      berubah. Sekarang eksplisit, jadi tidak bergantung pada itu. */}
+                  <div class="u-grid-auto u-grid-auto--cards gap-3 mt-5">
+                    <button data-testid="cmt-cvmini" onClick={() => setShowCvMiniModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="user-edit" class="text-accent-sky shrink-0" /> {t('ui.update_cv_mini')}</button>
+                    <button data-testid="cmt-interview" onClick={openInterview} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-violet text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="microphone-alt" class="text-accent-violet shrink-0" /> {t('ui.interview_practice')}</button>
+                    <button data-testid="cmt-esign" onClick={openEsign} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="signature" class="text-accent-red shrink-0" /> {t('ui.esign_naitei')}</button>
+                    <button onClick={openAiCvMaster} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-amber text-slate-200 rounded-control text-sm font-bold transition text-left cursor-pointer"><Icon name="robot" class="text-accent-amber shrink-0" /> {t('ui.ai_cv_assistant')}</button>
+                    <a href="/master" class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-emerald text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="clipboard-list" class="text-accent-emerald shrink-0" /> {t('ui.master_full_form')}</a>
+                    {/* ── "Pilih Template CV" WAS HERE AND IS NOT COMING BACK ──
+                        Owner ruling 2026-09-25: "template cv itu fitur admin bukan
+                        buat kandidat". The feature still exists — it is the admin's,
+                        at `admin/TabPelamar.tsx` (the button) and
+                        `CvTemplateSelector.tsx` (`isAdmin={true}`). Only the candidate
+                        entry point is gone, so the component and its
+                        `button.pilih_template_cv` key are still LIVE and must not be
+                        cleaned up as orphans.
+
+                        The candidate keeps `RirekishoBuilder` below ("Preview Desain
+                        CV"), which is the read/preview side of the same feature — so
+                        removing this button takes away a chooser, not the ability to
+                        see a CV. */}
+          <button data-testid="cmt-rirekisho" onClick={() => setShowRirekisho(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="file-alt" class="text-accent-red shrink-0" /> {t('candidate.btn_preview_cv')}</button>
+                    <button data-testid="cmt-password" onClick={() => setShowPasswordModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="key" class="text-accent-sky shrink-0" /> {t('ui.change_password')}</button>
                   </div>
         </aside>
       </div>
