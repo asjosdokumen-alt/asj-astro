@@ -510,6 +510,29 @@ interface AiCallOpts {
   bestEffort?: boolean;
 }
 
+/**
+ * Catat satu panggilan AI sebagai dependency, dengan bentuk metrik yang SAMA
+ * dengan `kernel/http.ts`: `dependency.call{dep,outcome}` +
+ * `dependency.call.latency{dep}`.
+ *
+ * Kenapa ini ada: jalur AI memakai `fetch` langsung dan karena itu tidak pernah
+ * lewat `recordDependencyCall` — sementara `metrics-receiver.ts` mengimplementasi
+ * aturan peringatan di atas nama metrik itu. Akibatnya Gemini, provider yang
+ * paling sering gagal di sistem ini, tidak punya peringatan sama sekali.
+ *
+ * `dep` sengaja 'gemini' untuk chat, parse, DAN terjemahan: yang diukur adalah
+ * kesehatan PROVIDER-nya. Pemisahan blast radius (kunci breaker) dan pemisahan
+ * permukaan (label `action`) sudah punya dimensinya masing-masing.
+ *
+ * Yang TIDAK dicatat: penolakan `breaker.check()`. Di situ tidak ada panggilan
+ * yang pernah keluar dari kotak, dan mencatatnya sebagai kegagalan provider
+ * akan membuat tingkat kegagalan naik justru saat breaker sedang melindungi.
+ */
+function recordAiCall(dep: string, startedAt: number, outcome: 'success' | 'error') {
+  metrics.increment('dependency.call', { dep, outcome });
+  metrics.observe('dependency.call.latency', Date.now() - startedAt, { dep });
+}
+
 async function geminiGenerate(
   systemPrompt: string,
   history: Array<{ role?: string; content?: unknown }>,
@@ -550,12 +573,16 @@ async function geminiGenerate(
       (model, signal, budgetMs) => fetchGemini(model, key, body, budgetMs, signal),
     );
     breaker.success(breakerKey);
+    recordAiCall('gemini', started, 'success');
     return { reply: text };
   } catch (e) {
     geminiError = e;
     // Penolakan `check()` berarti breaker SUDAH terbuka: mencatat kegagalan
     // lagi hanya memperpanjang outage tanpa menambah informasi.
-    if (!(e instanceof AppError && e.code === 'SERVICE_UNAVAILABLE')) breaker.failure(breakerKey);
+    if (!(e instanceof AppError && e.code === 'SERVICE_UNAVAILABLE')) {
+      breaker.failure(breakerKey);
+      recordAiCall('gemini', started, 'error');
+    }
   }
 
   // Grok (xAI) — provider yang benar-benar berbeda, jadi tetap layak dicoba
@@ -578,7 +605,10 @@ async function geminiGenerate(
   const grokBudget = clampBudget(AI_BUDGETS.grokMs);
   if (shouldTryGrok(elapsed, grokBudget)) {
     const grokResult = await grokGenerate(systemPrompt, history, grokBudget);
-    if (grokResult) return grokResult;
+    if (grokResult) {
+      recordAiCall('grok', started, 'success');
+      return grokResult;
+    }
   }
   throw Errors.aiUnavailable(undefined, 5, geminiError);
 }
@@ -594,6 +624,7 @@ async function geminiParseFile(systemPrompt: string, file: { mimeType?: string; 
       parts: [{ inlineData: { mimeType: file.mimeType, data: file.data } }, { text: systemPrompt }],
     },
   ];
+  const parseStarted = Date.now();
   try {
     breaker.check(BREAKER_PARSE);
     const text = await hedgedInvoke(
@@ -611,9 +642,13 @@ async function geminiParseFile(systemPrompt: string, file: { mimeType?: string; 
       (model, signal, budgetMs) => fetchGemini(model, key, contents, budgetMs, signal),
     );
     breaker.success(BREAKER_PARSE);
+    recordAiCall('gemini', parseStarted, 'success');
     return text;
   } catch (e) {
-    if (!(e instanceof AppError && e.code === 'SERVICE_UNAVAILABLE')) breaker.failure(BREAKER_PARSE);
+    if (!(e instanceof AppError && e.code === 'SERVICE_UNAVAILABLE')) {
+      breaker.failure(BREAKER_PARSE);
+      recordAiCall('gemini', parseStarted, 'error');
+    }
     throw Errors.aiUnavailable(undefined, 5, e);
   }
 }

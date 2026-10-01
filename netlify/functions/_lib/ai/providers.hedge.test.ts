@@ -335,6 +335,21 @@ describe('diagnosa — sebab kegagalan harus bisa ditindaklanjuti', () => {
     expect(snap.histograms[key].count).toBeGreaterThan(0);
     expect(snap.histograms[key].max).toBeGreaterThanOrEqual(30);
   }, 10_000);
+
+  it('provider AI terlihat oleh aturan `dependency.call{dep,outcome}`', async () => {
+    handler = () => Promise.resolve(ok('{"reply":"halo"}'));
+
+    await geminiGenerate('sys', []);
+
+    // `metrics-receiver.ts` mengimplementasikan aturan peringatan di atas
+    // `dependency.call{dep,outcome}` — dan jalur AI memakai `fetch` langsung
+    // (sengaja, lihat tinjauan §7), jadi Gemini selama ini TIDAK PERNAH muncul
+    // di sana: satu-satunya provider yang paling sering gagal tidak punya
+    // peringatan sama sekali.
+    const snap = metrics.metricsSnapshot();
+    expect(snap.counters['dependency.call.dep=gemini.outcome=success']).toBeGreaterThan(0);
+    expect(snap.histograms['dependency.call.latency.dep=gemini']).toBeDefined();
+  });
 });
 
 describe('fallback Grok — penjaganya harus benar-benar bisa tercapai', () => {
