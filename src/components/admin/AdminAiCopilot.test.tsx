@@ -113,7 +113,6 @@ describe('AdminAiCopilot (A11)', () => {
     mockSecure.mockResolvedValueOnce({
       success: true,
       reply: 'Analisis **CV** selesai.',
-      suggestedActions: [],
     });
     render(<AdminAiCopilot candidateId="ASJ-1" candidateWa="6281234567890" onClose={() => {}} />);
     sendMessage('Analisis CV kandidat');
@@ -124,6 +123,7 @@ describe('AdminAiCopilot (A11)', () => {
           message: 'Analisis CV kandidat',
           history: [expect.objectContaining({ role: 'assistant' })],
           candidateId: 'ASJ-1',
+          wa: '6281234567890',
         },
       ]),
     );
@@ -132,6 +132,75 @@ describe('AdminAiCopilot (A11)', () => {
     await waitFor(() => expect(bubbleWith('Analisis CV selesai.').length).toBeGreaterThan(0));
     const bubbles = bubbleWith('Analisis CV selesai.');
     expect(bubbles.some((b) => b.innerHTML.includes('<b>CV</b>'))).toBe(true);
+  });
+
+  // 2026-10-02: `wa` ADA di props sejak awal tapi TIDAK PERNAH dikirim ke
+  // `processAdminAIChat`. Server (`chat.ts`) sudah lama siap menerimanya
+  // (`if (d.candidateId || d.wa)`), jadi jalur `wa` adalah kode mati dari klien
+  // ini — dan kandidat yang punya WA tanpa `candidateId` (mis. hanya ada di
+  // master) kehilangan blok konteksnya. Satu baris hilang memisahkan "kandidat
+  // terbaca" dari "kandidat tidak terbaca".
+  it('candidateWa ikut terkirim sebagai `wa` (jalur konteks kandidat master-only)', async () => {
+    render(<AdminAiCopilot candidateWa="6289999999999" onClose={() => {}} />);
+    sendMessage('cek kandidat');
+
+    await waitFor(() => expect(mockSecure).toHaveBeenCalledTimes(1));
+    const payload = mockSecure.mock.calls[0][1][0] as Record<string, unknown>;
+    expect(payload.wa).toBe('6289999999999');
+  });
+
+  it('tanpa candidateWa, `wa` tidak dikirim sama sekali (bukan string kosong)', async () => {
+    render(<AdminAiCopilot onClose={() => {}} />);
+    sendMessage('halo');
+
+    await waitFor(() => expect(mockSecure).toHaveBeenCalledTimes(1));
+    const payload = mockSecure.mock.calls[0][1][0] as Record<string, unknown>;
+    // `undefined` membuat server mengabaikannya; `''` akan lolos `||` juga, tapi
+    // kontraknya harus eksplisit: tidak ada WA = tidak ada kunci.
+    expect(payload.wa).toBeUndefined();
+  });
+
+  // 2026-10-02: riwayat diambil SEBELUM bubble admin disisipkan. Dulu state
+  // yang sudah memuat pesan baru dikirim, LALU `message` terpisah — sehingga
+  // server menambahkan giliran terakhir untuk kedua kalinya.
+  it('history yang dikirim TIDAK memuat pesan yang baru saja dikirim', async () => {
+    render(<AdminAiCopilot onClose={() => {}} />);
+    sendMessage('pesan pertama');
+
+    await waitFor(() => expect(mockSecure).toHaveBeenCalledTimes(1));
+    const payload = mockSecure.mock.calls[0][1][0] as { history: Array<{ content: string }> };
+    expect(payload.history.some((h) => h.content === 'pesan pertama')).toBe(false);
+  });
+
+  // 2026-10-02: dua klik cepat pada aksi AI = dua permintaan provider.
+  it('klik ganda pada "Buat Model" hanya menembak SATU permintaan AI', async () => {
+    let resolveFirst: (v: unknown) => void = () => {};
+    mockSecure.mockImplementationOnce(
+      () => new Promise((res) => { resolveFirst = res; }),
+    );
+    render(<AdminAiCopilot candidateWa="6281234567890" onClose={() => {}} />);
+    openParseTab();
+    const btn = screen.getByRole('button', { name: 'Model Doc' });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    resolveFirst({ success: true, wa: '6281234567890', model: 'M' });
+    await waitFor(() => expect(showToast).toHaveBeenCalled());
+    expect(mockSecure).toHaveBeenCalledTimes(1);
+  });
+
+  it('klik ganda pada "Hasil Wawancara" hanya menembak SATU permintaan', async () => {
+    let resolveFirst: (v: unknown) => void = () => {};
+    mockSecure.mockImplementationOnce(
+      () => new Promise((res) => { resolveFirst = res; }),
+    );
+    render(<AdminAiCopilot candidateWa="6281234567890" onClose={() => {}} />);
+    openParseTab();
+    const btn = screen.getByRole('button', { name: 'Hasil Wawancara' });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    resolveFirst({ success: true, hasil: null, wa: '6281234567890' });
+    await waitFor(() => expect(mockSecure).toHaveBeenCalledTimes(1));
+    expect(mockSecure).toHaveBeenCalledTimes(1);
   });
 
   it('parse tab: no file → toast ai.pick_file_first, no API call', async () => {

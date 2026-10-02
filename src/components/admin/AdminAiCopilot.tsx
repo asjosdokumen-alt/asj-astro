@@ -77,13 +77,18 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [mode, setMode] = useState<"chat" | "parse" | "results">("chat");
   const [parseFile, setParseFile] = useState<File | null>(null);
   const [parseStatus, setParseStatus] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parseWa, setParseWa] = useState(candidateWa || "");
   const [parseBidang, setParseBidang] = useState("");
+  // Satu penjaga kesibukan untuk SEMUA aksi AI di panel parse. Dulu hanya
+  // `parsing` (khusus parse berkas) yang ada, sehingga dua klik cepat pada
+  // "Buat Model" / "Hasil Wawancara" menembak DUA permintaan AI sekaligus —
+  // dua kali kuota provider untuk satu niat pengguna. Tombol-tombolnya kini
+  // memakai flag yang sama.
+  const [busy, setBusy] = useState(false);
   const [lastHasil, setLastHasil] = useState<Record<string, unknown> | null>(null);
   // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`. Non-null
   // shows the banner; a later successful AI call clears it.
@@ -104,7 +109,6 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
 
   useEffect(() => {
     setMessages([{ role: "assistant", text: t("ai.welcome_admin"), time: now() }]);
-    setSuggestions([t("ai.sug_analyze"), t("ai.sug_translate"), t("ai.sug_check_stage")]);
   }, []);
 
   useEffect(() => {
@@ -143,23 +147,30 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
   const handleSend = async (text?: string) => {
     const msg = (text || input).trim();
     if (!msg || sending) return;
+    // Riwayat diambil SEBELUM bubble admin disisipkan. Server menambahkan
+    // `message` ke ujung riwayat, jadi kalau kita mengirim state yang sudah
+    // memuatnya, giliran terakhir muncul DUA KALI di prompt. (Server juga
+    // memeriksanya sebagai jaring, tapi mengirim yang benar sejak awal adalah
+    // perbaikan yang sebenarnya — bukan mengandalkan pembersihan di hilir.)
+    const history = messages.map((m) => ({ role: m.role, content: m.text }));
     addMsg(msg, "user");
     setInput("");
     setSending(true);
-    setSuggestions([]);
     try {
       const data = await apiCall("processAdminAIChat", [
         {
           adminName: user.name || "Admin",
           message: msg,
-          history: messages.slice(-20).map((m) => ({ role: m.role, content: m.text })),
+          history,
           candidateId: candidateId || undefined,
+          // Jalur `wa` di server (`d.candidateId || d.wa`) sudah lama siap, tapi
+          // TIDAK PERNAH dikirim dari sini — jadi kandidat yang punya WA tanpa
+          // `candidateId` (mis. hanya ada di master) kehilangan blok konteksnya.
+          wa: candidateWa || undefined,
         },
       ]);
       addMsg(String(data?.reply || t("admin.ai_confused")), "assistant");
       setAiDown(null);
-      const acts = data?.suggestedActions;
-      if (Array.isArray(acts) && acts.length) setSuggestions(acts.map(String));
     } catch (e) {
       reportError(e);
     } finally {
@@ -249,10 +260,12 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
   };
 
   const handleGenModel = async () => {
+    if (busy) return;
     if (!parseWa && !candidateId) {
       showToast(t("ai.fill_wa_first"), "error");
       return;
     }
+    setBusy(true);
     setParseStatus(t("ai.status_generating"));
     try {
       const data = await apiCall("generateWawancaraModel", [
@@ -287,14 +300,18 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     } catch (e) {
       reportError(e);
       setParseStatus("");
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleResults = async () => {
+    if (busy) return;
     if (!parseWa && !candidateId) {
       showToast(t("ai.fill_wa_first"), "error");
       return;
     }
+    setBusy(true);
     setParseStatus(t("ai.status_fetching"));
     try {
       const data = await apiCall("getHasilWawancara", [
@@ -348,10 +365,13 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     } catch (e) {
       reportError(e);
       setParseStatus("");
+    } finally {
+      setBusy(false);
     }
   };
 
   const handleUpdateBio = async () => {
+    if (busy) return;
     const h = (lastHasil as any)?.hasil;
     const bio =
       h && h.biodata && typeof h.biodata === "object" ? (h.biodata as Record<string, unknown>) : null;
@@ -364,6 +384,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
       showToast(t("ai.fill_wa_first"), "error");
       return;
     }
+    setBusy(true);
     setParseStatus(t("ai.status_updating"));
     try {
       await apiCall("submitMasterForm", [{ wa, ...bio }]);
@@ -386,6 +407,8 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     } catch (e) {
       reportError(e);
       setParseStatus("");
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -486,19 +509,6 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                 </div>
               )}
             </div>
-            {suggestions.length > 0 && !sending && (
-              <div class="px-3 pb-2 flex gap-2 u-scroll-x">
-                {suggestions.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSend(s)}
-                    class="whitespace-nowrap px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 text-[11px] rounded-full border border-slate-700 flex-shrink-0"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
             <div class="p-3 border-t border-slate-700 flex gap-2">
               <input
                 ref={inputRef}
@@ -584,7 +594,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
             <div class="flex gap-2">
               <button
                 onClick={handleParse}
-                disabled={parsing}
+                disabled={busy}
                 class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
               >
                 <Icon name="bolt" class="mr-1" />
@@ -592,7 +602,8 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
               </button>
               <button
                 onClick={handleGenModel}
-                class="flex-1 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg"
+                disabled={busy}
+                class="flex-1 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
               >
                 <Icon name="clipboard-list" class="mr-1" />
                 {t("admin.ai_btn_model")}
@@ -601,14 +612,16 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
             <div class="flex gap-2">
               <button
                 onClick={handleResults}
-                class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold rounded-lg"
+                disabled={busy}
+                class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold rounded-lg disabled:opacity-50"
               >
                 <Icon name="file-alt" class="mr-1 text-sky-400" />
                 {t("admin.ai_results_title")}
               </button>
               <button
                 onClick={handleUpdateBio}
-                class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg"
+                disabled={busy}
+                class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg disabled:opacity-50"
               >
                 <Icon name="database" class="mr-1" />
                 {t("admin.ai_btn_update_bio")}
@@ -656,7 +669,8 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                 )}
                 <button
                   onClick={handleUpdateBio}
-                  class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg mt-2"
+                  disabled={busy}
+                  class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg mt-2 disabled:opacity-50"
                 >
                   <Icon name="database" class="mr-1" />
                   {t("admin.ai_btn_update_bio")}
