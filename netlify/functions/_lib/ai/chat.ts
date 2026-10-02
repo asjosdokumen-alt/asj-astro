@@ -359,7 +359,20 @@ async function handleProcessAdminAIChat(payload: unknown[], sessionToken?: strin
   const d = ((payload && payload[0]) || {}) as Record<string, any>;
   // Cap riwayat SEBELUM giliran baru disisipkan, supaya pesan yang baru diketik
   // admin tidak pernah ikut terpotong. Lihat catatan cap di handleProcessAIChat.
-  const history = lastHistory(d.history).concat([{ role: 'user', content: d.message || '' }]);
+  //
+  // PENTING — `d.message` disisipkan HANYA kalau riwayat tidak memuatnya di
+  // ujung. Klien (`AdminAiCopilot.handleSend`) memasukkan bubble admin ke state
+  // LEBIH DULU lalu mengirim `history: messages.slice(-20)` *dan* `message`
+  // terpisah; tanpa pemeriksaan ini giliran terakhir muncul DUA KALI di prompt
+  // (dua entri role 'user' berurutan), karena `trimTrailingModelTurn` hanya
+  // membuang giliran `model` di ujung.
+  const history = lastHistory(d.history);
+  const lastMsg = d.message ? String(d.message) : '';
+  const tail = history.length ? history[history.length - 1] : undefined;
+  const tailContent = tail ? String((tail as Record<string, unknown>).content ?? '') : '';
+  if (lastMsg && !(tailContent === lastMsg && (tail as Record<string, unknown>).role === 'user')) {
+    history.push({ role: 'user', content: lastMsg });
+  }
 
   // Data kandidat yang sedang dibahas.
   //
@@ -385,22 +398,36 @@ async function handleProcessAdminAIChat(payload: unknown[], sessionToken?: strin
     }
   }
 
+  // `adminName` dan `candidateId` SAMA-SAMA datang dari klien dan ditempel ke
+  // system prompt, jadi keduanya lewat `sanitizePromptField` seperti nilai klien
+  // lain di berkas ini. Sebelumnya keduanya mentah: adminName bisa memuat baris
+  // baru dan memalsukan blok instruksi (persis yang dicegah di alur siswa), dan
+  // candidateId adalah satu-satunya nilai klien di prompt admin yang belum
+  // melewati gerbang.
   const system =
     'Kamu adalah Jeklin, asisten HRD admin ASJ (PT Amanah Sakura Japan). Admin: ' +
-    String(d.adminName || '') +
+    sanitizePromptField(d.adminName) +
     '. ' +
     'Kandidat yang sedang dibahas ID: ' +
-    String(d.candidateId || '-') +
+    (sanitizePromptField(d.candidateId) || '-') +
     '. ' +
     'Bantu analisis data kandidat, saran rekrutmen, dan jawaban profesional. Balas singkat & jelas dalam Bahasa Indonesia.' +
     (ringkasKandidat
-      ? '\n\nDATA KANDIDAT SAAT INI (sudah terisi di database):\n' +
+      ? // Batas eksplisit antara INSTRUKSI dan DATA (lihat blok siswa untuk alasan
+        // yang sama). Delimiter membuat model tidak memperlakukan isi field sebagai
+        // lanjutan perintah. Isi field tetap ada — yang dijamin STRUCTURE-nya.
+        '\n\nDATA KANDIDAT SAAT INI (sudah terisi di database):\n<<<DATA\n' +
         ringkasKandidat +
-        '\n\nAturan: pakai data di atas sebagai dasar analisis. Jangan mengarang field yang tidak tercantum.'
+        '\nDATA>>>\n\nAturan: pakai data di atas sebagai dasar analisis. Jangan mengarang field yang tidak tercantum.'
       : '');
   try {
     const r = await geminiGenerate(system, history);
-    return { success: true, reply: r.reply, suggestedActions: [], analysis: null };
+    // `suggestedActions`/`analysis` DULU di sini sebagai literal `[]`/`null`.
+    // Tidak ada satu pun jalur yang mengisinya, sementara klien
+    // (`AdminAiCopilot.tsx`) membacanya dan merendernya sebagai chip tombol —
+    // janji dua sisi yang tidak pernah diproduksi di sisi mana pun. Field-nya
+    // dihapus dari kontrak, bukan dibiarkan sebagai `null` yang menyamar fitur.
+    return { success: true, reply: r.reply };
   } catch (e) {
     // Jangan bocorkan detail error mentah ke admin — log detailnya di server saja.
     console.error('[AI] processAdminAIChat error:', (e as { message?: string })?.message || e);
