@@ -129,6 +129,17 @@ const ALLOWED = {
       'timeout or session handling applies. The call is wrapped in try/catch and ' +
       'returns null on failure, which the modal renders as "no preview".',
   },
+  'src/lib/cv-template-factory/renderers/rirekisho-xlsx.ts': {
+    max: 1,
+    reason:
+      'Fetches the candidate PHOTO as a BLOB to rasterise it into the xlsx ' +
+      'drawing (photoToPngBytes -> createImageBitmap -> canvas -> PNG bytes). The ' +
+      'URL is a storage/CDN object, not a function endpoint, and the response is ' +
+      'read with .blob() rather than JSON — so none of apiClient\'s envelope, ' +
+      'timeout or session handling applies. Same shape as DocumentPreviewModal.tsx. ' +
+      'Wrapped in try/catch that returns null, which the renderer draws as an ' +
+      'empty photo cell rather than failing the export.',
+  },
 };
 
 /** Recursively collect source files under a directory, excluding tests. */
