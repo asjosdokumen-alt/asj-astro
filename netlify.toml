@@ -59,10 +59,60 @@
   [headers.values]
     Cache-Control = "no-cache"
 
-[[redirects]]
-  from = "/candidate"
-  to = "/index.html"
-  status = 200
+# ─── Security headers (2026-10-04) ───────────────────────────────────────────
+#
+# These are the headers that are pure wins: none of them can break a working
+# page. Measured before adding — the app uses no getUserMedia / mediaDevices /
+# geolocation anywhere under src/, so denying those APIs costs nothing.
+#
+# A Content-Security-Policy is deliberately ABSENT. Astro inlines boot scripts
+# and styles, so a CSP written without collecting violations on the real build
+# would either break the site or be so loose it means nothing. That task starts
+# by observing the deployed page, not by guessing here.
+#
+#   X-Content-Type-Options     stops a mis-served upload being sniffed as HTML/JS
+#   X-Frame-Options            this site is never legitimately framed
+#   Referrer-Policy            job codes ride in URLs; don't leak them cross-origin
+#   Permissions-Policy         camera/mic/geolocation are unused — deny them
+#   Strict-Transport-Security  HTTPS-only, and the site is HTTPS-only anyway
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+# ─── REMOVED 2026-10-03: the `/candidate` → `/index.html` rewrite ────────────
+#
+#   [[redirects]]
+#     from = "/candidate"
+#     to   = "/index.html"
+#     status = 200
+#
+# WHY IT WAS ALREADY DEAD IN PRODUCTION
+#   Netlify applies a redirect only when NO static file matches the path, unless
+#   the rule sets `force = true` — the same shadowing semantics the Phase A note
+#   below relies on. `src/pages/candidate.astro` (added 2026-08-28, one day
+#   BEFORE this rule) builds to `dist/candidate/index.html`, so production has
+#   always served the real dashboard and never this rewrite. Measured on the
+#   frozen 2026-09-24 deploy: `dist/candidate/index.html` is 102,087 bytes and
+#   titled "Dashboard Kandidat — ASJ Portal".
+#
+# WHY IT STILL HAD TO GO
+#   It was not merely inert — it was WRONG. `dist/index.html` is the landing page
+#   (201,882 bytes, "PT Amanah Sakura Japan — Job Portal"), so if the rule ever
+#   did take effect it would send candidates to the marketing page instead of
+#   their dashboard.
+#
+#   And it was not inert in development. `netlify dev` DOES honour it, so
+#   `/candidate` answered 404 on the local preview while `/admin`, `/loker` and
+#   the rest answered 200 — measured 2026-10-03 on `netlify dev --port 8888`
+#   with an Astro dev server behind it. The same path returned 200 on the Astro
+#   dev server directly (port 4399), which is what isolated the cause to this
+#   rule rather than to the page. A local preview whose `/candidate` 404s cannot
+#   exercise the candidate dashboard at all.
 
 # ─── Phase A: legacy function aliases — REMOVED 2026-09-11 ───────────────────
 #
