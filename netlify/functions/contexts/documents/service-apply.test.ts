@@ -150,3 +150,51 @@ describe('handleSubmitApply — gerbang VIP job MAGANG (item 11)', () => {
     expect(m.written[0].code_job).toBe('TG1ASJ');
   });
 });
+
+// ==========================================
+// TESTS: K3b (2026-10-04) — jalur publik tidak boleh MENULIS ke baris kandidat
+// milik orang lain.
+//
+// K3 hanya menjaga PATCH `database_asj_form`. Dua blok setelahnya berjalan
+// TANPA cek apa pun: penyerang anonim yang tahu nomor WA korban bisa menimpa
+// `database_candidate.pas_photo/jft/ssw/file_cv` dan kolom berkas di
+// `master_database_candidate`. `isOwnerOrAdmin` di-mock `false` di berkas ini,
+// jadi tiap kasus di bawah adalah pemanggil ANONIM.
+// ==========================================
+describe('handleSubmitApply — K3b: sinkronisasi dokumen hanya untuk pemilik', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    m.job = { id: 1, code_job: 'TG1ASJ', kategori: 'Tokutei Ginou', dokumen_share: '' };
+    m.existingForm = null; // lamaran BARU: gerbang K3 tidak terlibat
+    m.candidate = { id: 9, no_wa: '628123', catatan_internal: 'kandidat umum' };
+    m.written = [];
+  });
+
+  it('anonim TIDAK menulis ke database_candidate / master_database_candidate', async () => {
+    const { supabaseJson } = await import('./repository');
+
+    const res = await handleSubmitApply([
+      {
+        wa: '628123',
+        job: 'TG1ASJ',
+        nama: 'Penyerang',
+        photoFile: 'https://res.cloudinary.com/asj/image/upload/v1/x.png',
+        cvFile: 'https://res.cloudinary.com/asj/image/upload/v1/cv.pdf',
+        jftFile: 'https://res.cloudinary.com/asj/image/upload/v1/jft.pdf',
+        sswFile: '',
+        extraFiles: [],
+      },
+    ]);
+
+    // Lamaran tetap boleh dibuat (itu memang jalur publik)…
+    expect(res.success).toBe(true);
+    expect(m.written.length).toBe(1);
+
+    // …tetapi tidak ada PATCH ke baris milik kandidat.
+    const patches = (supabaseJson as unknown as { mock: { calls: unknown[][] } }).mock.calls
+      .filter((c) => c[0] === 'PATCH')
+      .map((c) => c[1]);
+    expect(patches).not.toContain('database_candidate');
+    expect(patches).not.toContain('master_database_candidate');
+  });
+});

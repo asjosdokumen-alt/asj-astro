@@ -499,53 +499,74 @@ export async function handleSubmitApply(payload: any[], sessionToken?: string) {
     } else {
       await upsertFormRow(body);
     }
-    try {
-      const candRow = await findCandidateRow(wa);
-      if (candRow && candRow.id !== undefined) {
-        const candPatch: Record<string, any> = {};
-        if (String(body.pas_photo || "").trim() && body.pas_photo !== "-")
-          candPatch.pas_photo = body.pas_photo;
-        if (String(body.jft || "").trim() && body.jft !== "-")
-          candPatch.jft = body.jft;
-        if (String(body.ssw || "").trim() && body.ssw !== "-")
-          candPatch.ssw = body.ssw;
-        if (String(body.file_cv || "").trim() && body.file_cv !== "-")
-          candPatch.file_cv = body.file_cv;
-        if (Object.keys(candPatch).length) {
-          await supabaseJson("PATCH", "database_candidate", {
-            query: { id: "eq." + candRow.id },
-            body: candPatch,
-            headers: { Prefer: "return=minimal" },
-          });
+
+    // K3b fix (2026-10-04): sinkronisasi dokumen ke baris kandidat/master HANYA
+    // untuk PEMILIK nomor (atau admin).
+    //
+    // K3 di atas hanya menjaga PATCH `database_asj_form`. Dua blok berikutnya
+    // berjalan TANPA cek apa pun, jadi penyerang ANONIM yang tahu nomor WA
+    // korban bisa menimpa `database_candidate.pas_photo/jft/ssw/file_cv` dan
+    // kolom berkas di `master_database_candidate` — dibuktikan oleh tes
+    // `service-apply.test.ts` ("anonim TIDAK menulis ke database_candidate"),
+    // yang gagal sebelum perubahan ini.
+    //
+    // Jalur publik TETAP boleh MEMBUAT lamaran (`upsertFormRow` di atas) —
+    // itu memang self-service by design (HANDOVER: "write/link publik
+    // self-service"). Yang ditutup hanya penulisan ke baris milik orang lain.
+    //
+    // `sessionToken` sengaja TIDAK diteruskan oleh surfaces/docs.ts (lihat
+    // catatan di gerbang VIP di atas), jadi guard ini selalu `false` hari ini;
+    // bentuknya sengaja sama dengan K3 supaya ia tetap benar kalau token itu
+    // suatu saat diteruskan.
+    if (isOwnerOrAdmin(sessionToken, wa)) {
+      try {
+        const candRow = await findCandidateRow(wa);
+        if (candRow && candRow.id !== undefined) {
+          const candPatch: Record<string, any> = {};
+          if (String(body.pas_photo || "").trim() && body.pas_photo !== "-")
+            candPatch.pas_photo = body.pas_photo;
+          if (String(body.jft || "").trim() && body.jft !== "-")
+            candPatch.jft = body.jft;
+          if (String(body.ssw || "").trim() && body.ssw !== "-")
+            candPatch.ssw = body.ssw;
+          if (String(body.file_cv || "").trim() && body.file_cv !== "-")
+            candPatch.file_cv = body.file_cv;
+          if (Object.keys(candPatch).length) {
+            await supabaseJson("PATCH", "database_candidate", {
+              query: { id: "eq." + candRow.id },
+              body: candPatch,
+              headers: { Prefer: "return=minimal" },
+            });
+          }
         }
+      } catch {
+        /* non-fatal */
       }
-    } catch {
-      /* non-fatal */
-    }
-    try {
-      const mRow = await findMasterByWa(wa);
-      if (mRow && mRow.id !== undefined) {
-        const masterPatch: Record<string, any> = {};
-        (d.extraFiles || []).forEach((x: any) => {
-          const label = String((x && x.name) || "")
-            .trim()
-            .toUpperCase();
-          const url = String((x && x.url) || "").trim();
-          if (!label || !url) return;
-          const key = fileLabelKey(label);
-          const map = key ? FILE_LABEL_COLUMNS[key] : null;
-          if (map && map.master) masterPatch[map.master] = url;
-        });
-        if (Object.keys(masterPatch).length) {
-          await supabaseJson("PATCH", "master_database_candidate", {
-            query: { id: "eq." + mRow.id },
-            body: masterPatch,
-            headers: { Prefer: "return=minimal" },
+      try {
+        const mRow = await findMasterByWa(wa);
+        if (mRow && mRow.id !== undefined) {
+          const masterPatch: Record<string, any> = {};
+          (d.extraFiles || []).forEach((x: any) => {
+            const label = String((x && x.name) || "")
+              .trim()
+              .toUpperCase();
+            const url = String((x && x.url) || "").trim();
+            if (!label || !url) return;
+            const key = fileLabelKey(label);
+            const map = key ? FILE_LABEL_COLUMNS[key] : null;
+            if (map && map.master) masterPatch[map.master] = url;
           });
+          if (Object.keys(masterPatch).length) {
+            await supabaseJson("PATCH", "master_database_candidate", {
+              query: { id: "eq." + mRow.id },
+              body: masterPatch,
+              headers: { Prefer: "return=minimal" },
+            });
+          }
         }
+      } catch {
+        /* non-fatal */
       }
-    } catch {
-      /* non-fatal */
     }
     try {
       const { notifyAdmins } = await import("../../_lib/fcm-helpers");
