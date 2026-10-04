@@ -25,6 +25,25 @@
 // ==========================================
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
+// HOISTED by vitest (`vi.mock`, bukan `vi.doMock`). Hanya lookup bertarget yang
+// diganti supaya fallback terakhir pemanggil (`findCandidates()`) benar-benar
+// tercapai.
+//
+// MENGAPA BUKAN `vi.doMock`: versi sebelumnya memakai `vi.doMock` +
+// `vi.resetModules()` di dalam badan tes, dan mock itu TIDAK PERNAH diterapkan.
+// Terukur 2026-10-04: fungsi yang diimpor bukan mock (`vi.isMockFunction` ->
+// false) dan lookup aslinya mengembalikan `null` (bukan `undefined`), sehingga
+// `c === undefined` tidak pernah benar dan cabang fallback tidak pernah jalan.
+// Itu sebabnya tes ini merah lama sambil terlihat seperti bug produk — padahal
+// stub-nya sendiri memang mencatat (tes #2 dan #3 lulus).
+vi.mock('../netlify/functions/_lib/db/candidates', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    findCandidateByWaFiltered: vi.fn(async () => undefined),
+  };
+});
+
 /** Baris log `candidates.lookup-unavailable` yang tercetak. */
 function unavailableLines(spy: ReturnType<typeof vi.spyOn>): string[] {
   return (spy.mock.calls as unknown[][])
@@ -42,17 +61,12 @@ describe('stub findCandidates() — kegagalan lookup harus terlihat di log', () 
 
     // `findCandidateByWaFiltered` -> `undefined` = "kolom WA tidak ada di skema".
     // Itu satu-satunya keadaan yang membuat pemanggil masuk ke `findCandidates()`.
-    vi.doMock('../../netlify/functions/_lib/db/candidates', async (importOriginal) => {
-      const actual = await importOriginal<Record<string, unknown>>();
-      return {
-        ...actual,
-        findCandidateByWaFiltered: vi.fn(async () => undefined),
-      };
-    });
+    // Mock-nya di-hoist di kepala berkas; `vi.doMock` di sini tidak diterapkan
+    // (lihat catatan di `vi.mock`), dan itulah sebab tes ini merah sejak lama.
     vi.resetModules();
 
     const { findCandidateRow } = await import(
-      '../../netlify/functions/contexts/documents/repository'
+      '../netlify/functions/contexts/documents/repository'
     );
     const row = await findCandidateRow('628123456789');
 
@@ -74,7 +88,7 @@ describe('stub findCandidates() — kegagalan lookup harus terlihat di log', () 
     // Stub-nya diekspor, jadi kita panggil LANGSUNG — bukan lewat pemanggil.
     // Kalau diukur lewat pemanggil, request milik lookup bertarget ikut terhitung
     // dan tesnya menuduh stub atas biaya yang bukan miliknya.
-    const { findCandidates } = await import('../../netlify/functions/_lib/db/candidates');
+    const { findCandidates } = await import('../netlify/functions/_lib/db/candidates');
     const out = await findCandidates();
 
     expect(out.rows).toEqual([]);
@@ -84,7 +98,7 @@ describe('stub findCandidates() — kegagalan lookup harus terlihat di log', () 
 
   it('pemanggil nyata (fallback bertarget) tetap menerima array kosong, bukan throw', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const { findCandidates } = await import('../../netlify/functions/_lib/db/candidates');
+    const { findCandidates } = await import('../netlify/functions/_lib/db/candidates');
     // Bentuk hasilnya adalah kontrak yang diandalkan 14 pemanggil:
     // `found.rows.find(...)`. Mengubahnya jadi throw = pemadaman, bukan degradasi.
     await expect(findCandidates()).resolves.toMatchObject({
