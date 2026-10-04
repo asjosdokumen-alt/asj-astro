@@ -6,6 +6,7 @@
  * Prevents bad data (WA with letters, invalid email, etc.)
  */
 import { z } from 'zod';
+import { normalizeWa } from '../../shared/wa-rules';
 
 // ─── Candidate Registration / Login ───
 
@@ -16,38 +17,18 @@ import { z } from 'zod';
  * - Internasional lain: 10-15 digit (tanpa spasi/simbol)
  */
 /**
- * Normalisasi WA — port KLIENT dari netlify/functions/shared/wa-rules.ts
- * (satu-satunya sumber kebenaran backend: auth/kandidat/mail/upload).
- * B01 fix: dulu klien punya aturan sendiri + regex RUSAK (/^8d{10,12}$/ —
- * huruf 'd' literal, bukan \\d) sehingga 8xx tanpa nol selalu ditolak;
- * sekarang aturan klien = aturan backend persis (Indonesia 628xx 12-15 digit,
- * Jepang 81xx 10-15 digit; 08xx→628, 090/070→81, 8xx→628, typo 6208→628).
+ * Normalisasi WA — delegasi ke SATU sumber kebenaran `shared/wa-rules.ts`.
+ *
+ * Dulu blok ini adalah SALINAN KETIGA dari aturan yang sama, dan salinan itu
+ * tertinggal dari perbaikan backend: `080…` (mobile Jepang) dipetakan ke `62…`
+ * dan `070…` 12-digit dipetakan balik ke `628170…` — jadi satu orang bisa
+ * menjadi dua baris kandidat. Sekarang ia hanya meneruskan, sehingga tidak ada
+ * lagi tempat kedua yang bisa menyimpang tanpa terlihat.
+ *
+ * B01 fix (historis): dulu klien punya regex RUSAK (huruf 'd' literal, bukan
+ * digit) sehingga 8xx tanpa nol selalu ditolak.
  */
-export function normalizeWaInput(v: string): string {
-  let s = String(v || '').replace(/\D/g, '');
-  if (!s) return '';
-  if (s.startsWith('0')) {
-    const second = s.charAt(1);
-    if (second === '8') s = '62' + s.slice(1);
-    else if (second === '9' || second === '7') s = '81' + s.slice(1);
-    else if (s.length >= 12) s = '62' + s.slice(1);
-    else return '';
-  }
-  // 6208 typo → 628
-  if (s.startsWith('620') && s.charAt(3) === '8') s = '62' + s.slice(3);
-  if (s.startsWith('628')) return s;
-  if (s.startsWith('81') && /[890]/.test(s.charAt(2))) return s;
-  if (s.startsWith('81')) {
-    const third = s.charAt(2);
-    if (third === '0' || third === '7' || third === '8' || third === '9') {
-      if (s.length >= 12) return '62' + s;
-      return s;
-    }
-    return '62' + s;
-  }
-  if (s.startsWith('8') && s.length >= 10) return '62' + s;
-  return '';
-}
+export const normalizeWaInput: (v: string) => string = normalizeWa;
 
 /** Validasi format WA — mirror isValidWaFormat backend (ID 628xx 12-15, JP 81xx 10-15). */
 function isWaValid(v: string): boolean {
