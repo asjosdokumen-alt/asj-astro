@@ -4,8 +4,25 @@
 // (KK_1786683312223.pdf) maupun polos (KK.jpg) ikut dihapus sebelum upload
 // baru, supaya tombol KK/KTP/CV di share view tidak pernah dobel.
 // ==========================================
-import { describe, it, expect } from 'vitest';
-import { isVarianOf, stemAliases, isAllowedDocumentUrl } from './storage';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// `uploadBase64` (see the S7 describe block at the bottom) must not touch the
+// network, and `.env.local` at the repo root makes `supabaseUrl()` resolve for
+// real. Stub ONLY `request`, spreading the actual module so `BUDGETS` /
+// `HttpError` / `TimeoutError` (imported elsewhere in this graph) stay real.
+// `storageRequest` never inspects the URL/key it is handed, so stubbing
+// `request` alone is sufficient — `db/client` and `env` are deliberately left
+// REAL so the `isAllowedDocumentUrl` tests below keep exercising the true
+// host-resolution path instead of a mock.
+const { requestMock } = vi.hoisted(() => ({
+  requestMock: vi.fn(async () => ({ ok: true, text: async () => '{}' })),
+}));
+vi.mock('./kernel/http', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./kernel/http')>();
+  return { ...actual, request: requestMock };
+});
+
+import { isVarianOf, stemAliases, isAllowedDocumentUrl, isAllowedUploadExtension, mimeFromName, uploadBase64 } from './storage';
 import { buildRingkasData } from './ai/cv';
 
 describe('isVarianOf', () => {
@@ -109,5 +126,107 @@ describe('isAllowedDocumentUrl (C6 — https-only + storage-host allow-list)', (
     expect(isAllowedDocumentUrl('not a url')).toBe(false);
     expect(isAllowedDocumentUrl('cv.pdf')).toBe(false);
     expect(isAllowedDocumentUrl(undefined as unknown as string)).toBe(false);
+  });
+});
+
+describe('isAllowedUploadExtension (S7 — allow-list tipe upload server-side)', () => {
+  // The set must be a SUPERSET of every `accept=` in src/components/** minus
+  // active content (see the coupling note in _lib/storage.ts). These are the
+  // extensions the UI actually offers — INCLUDING the ones a too-narrow set
+  // would have broken (.doc/.xls/.csv/.txt/.gif). That is the point of listing
+  // them: it fails loudly if the allow-list is narrowed again.
+  const UI_OFFERED = [
+    'pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', // gif/bmp via `image/*`
+    'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt',
+  ];
+
+  it('menerima SEMUA tipe yang ditawarkan UI (termasuk doc/xls/csv/txt/gif)', () => {
+    for (const ext of UI_OFFERED) {
+      expect(isAllowedUploadExtension(ext), ext).toBe(true);
+    }
+  });
+
+  it('doc/xls/csv/txt/gif khususnya — set sempit pertama akan GAGAL di sini', () => {
+    // Regresi yang dicegah: allow-list pertama (pdf/jpg/jpeg/png/webp/docx/xlsx)
+    // menolak kelimanya, padahal semuanya ditawarkan `accept=` di src/components.
+    for (const ext of ['doc', 'xls', 'csv', 'txt', 'gif']) {
+      expect(isAllowedUploadExtension(ext), ext).toBe(true);
+    }
+  });
+
+  it('tipe dokumen lawas dari peta MIME lama tetap diterima', () => {
+    for (const ext of ['ppt', 'pptx', 'rtf', 'odt']) {
+      expect(isAllowedUploadExtension(ext), ext).toBe(true);
+    }
+  });
+
+  it('case-insensitive & toleran titik depan (PDF, .JPG)', () => {
+    expect(isAllowedUploadExtension('PDF')).toBe(true);
+    expect(isAllowedUploadExtension('.JPG')).toBe(true);
+  });
+
+  it('menolak konten AKTIF/executable (svg, html, js, mjs, cjs, exe, sh)', () => {
+    for (const ext of ['svg', 'html', 'htm', 'js', 'mjs', 'cjs', 'exe', 'sh']) {
+      expect(isAllowedUploadExtension(ext), ext).toBe(false);
+    }
+  });
+
+  it('menolak ekstensi asing & input kosong', () => {
+    for (const ext of ['php', 'bin', 'zip', 'apk', 'bat', '', undefined]) {
+      expect(isAllowedUploadExtension(ext), String(ext)).toBe(false);
+    }
+  });
+});
+
+describe('mimeFromName (S7 — tipe allow-list punya MIME iner)', () => {
+  it('memetakan tipe yang diizinkan', () => {
+    expect(mimeFromName('a.pdf')).toBe('application/pdf');
+    expect(mimeFromName('a.png')).toBe('image/png');
+    expect(mimeFromName('a.doc')).toBe('application/msword');
+    expect(mimeFromName('a.xls')).toBe('application/vnd.ms-excel');
+    expect(mimeFromName('a.csv')).toBe('text/csv');
+    expect(mimeFromName('a.txt')).toBe('text/plain');
+    expect(mimeFromName('a.docx')).toContain('wordprocessingml');
+    expect(mimeFromName('a.xlsx')).toContain('spreadsheetml');
+  });
+
+  it('svg tidak lagi punya MIME (regresi: dulu image/svg+xml)', () => {
+    expect(mimeFromName('x.svg')).toBe('application/octet-stream');
+  });
+});
+
+// ==========================================
+// TESTS: uploadBase64 — gerbang allow-list SEBELUM menyentuh storage (S7).
+//
+// `uploadBase64` menurunkan Content-Type dari NAMA FILE yang dikirim klien dan
+// dulu menerima ekstensi apa pun (peta MIME-nya bahkan memuat svg). Sekarang
+// ekstensi di luar allow-list harus ditolak TANPA memanggil storage sama sekali.
+// Dipisah dari blok allow-list di atas karena blok itu hanya menguji fungsi
+// murni; di sini gerbangnya benar-benar dieksekusi lewat jalur upload.
+// ==========================================
+describe('uploadBase64 — gerbang allow-list sebelum storage (S7)', () => {
+  beforeEach(() => {
+    requestMock.mockClear();
+  });
+
+  it('menolak .svg tanpa memanggil storage sama sekali', async () => {
+    const out = await uploadBase64('ZmFrZQ==', 'folder', 'evil.svg');
+    expect(out).toBeNull();
+    expect(requestMock).not.toHaveBeenCalled();
+  });
+
+  it('menolak ekstensi aktif/asing lain (html, js, exe, bin) sebelum storage', async () => {
+    for (const ext of ['html', 'js', 'exe', 'bin']) {
+      requestMock.mockClear();
+      const out = await uploadBase64('ZmFrZQ==', 'folder', `x.${ext}`);
+      expect(out, ext).toBeNull();
+      expect(requestMock, ext).not.toHaveBeenCalled();
+    }
+  });
+
+  it('melanjutkan untuk ekstensi yang diizinkan (storage dipanggil)', async () => {
+    const out = await uploadBase64('ZmFrZQ==', 'folder', 'ok.pdf');
+    expect(String(out)).toContain('folder/ok.pdf');
+    expect(requestMock).toHaveBeenCalled();
   });
 });

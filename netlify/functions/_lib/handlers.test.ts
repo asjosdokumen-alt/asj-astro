@@ -3,7 +3,7 @@
 // supaya 1 loker = 1 CV/JFT/SSW/foto (tidak dobel di share view).
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { docTypeOf } from './handlers';
+import { docTypeOf, rateLimitChecks } from './handlers';
 
 describe('docTypeOf — pola baru (prefix kapital)', () => {
   it('KK / KTP / CVFILE / PHOTOFILE bertimestamp', () => {
@@ -36,5 +36,40 @@ describe('docTypeOf — pola lawas (nama kandidat + suffix tipe)', () => {
     expect(docTypeOf('nama_jft.pdf')).toBe('JFT');
     expect(docTypeOf('nama_ssw.pdf')).toBe('SSW');
     expect(docTypeOf('nama_photo.file')).toBe('PHOTO');
+  });
+});
+
+// ==========================================
+// TESTS: rateLimitChecks — pemetaan grup → bucket (S7 round-2).
+// Dua endpoint ANONIM sebelumnya tidak termeter sama sekali:
+//   - getExistingCandidateJsonByWa (prefill PII publik) — dulu di grup mana pun
+//     tidak ada → tanpa throttle;
+//   - processSiswaAIChat (chat AI publik) — dipindah ke bucket IP khusus.
+// ==========================================
+describe('rateLimitChecks — endpoint anonim termeter', () => {
+  const ip = '203.0.113.7';
+
+  it('getExistingCandidateJsonByWa → bucket IP prefill (dulu: tidak ada bucket)', () => {
+    const checks = rateLimitChecks('getExistingCandidateJsonByWa', { ip }, '');
+    expect(checks).toHaveLength(1);
+    expect(checks[0].key).toBe(`prefill:${ip}`);
+    expect(checks[0].opts.limit).toBeGreaterThan(0);
+  });
+
+  it('processSiswaAIChat → bucket IP siswaAi khusus, BUKAN grup ai: terautentikasi', () => {
+    const keys = rateLimitChecks('processSiswaAIChat', { ip }, '').map((c) => c.key);
+    expect(keys).toContain(`siswaAi:${ip}`);
+    expect(keys.some((k) => k.startsWith('ai:'))).toBe(false);
+  });
+
+  it('aksi AI terautentikasi tetap memakai bucket ai:', () => {
+    const keys = rateLimitChecks('processAIChat', { ip }, '').map((c) => c.key);
+    expect(keys).toContain(`ai:${ip}`);
+  });
+
+  it('tanpa IP (meta kosong) tetap dapat bucket, tidak lolos tanpa batas', () => {
+    const checks = rateLimitChecks('getExistingCandidateJsonByWa', {}, '');
+    expect(checks).toHaveLength(1);
+    expect(checks[0].key).toBe('prefill:anon');
   });
 });

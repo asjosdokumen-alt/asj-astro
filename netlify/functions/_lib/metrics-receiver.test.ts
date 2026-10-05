@@ -15,6 +15,8 @@
  */
 
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 // The entry point now exports a Netlify-modern default (Request -> Response)
 // wrapped around the legacy Lambda-shaped handler by _lib/netlify-adapter.ts.
 // The adapter is deliberately DUAL-MODE, so calling it with the plain event
@@ -159,5 +161,29 @@ describe('metrics-receiver — rule evaluation', () => {
   it('returns 200 even when rules fired (an alert is not a rejection)', async () => {
     const res = await invoke(evt({ counters: { 'sweep.failed': 3 }, histograms: {}, gauges: {} }));
     expect(res.statusCode).toBe(200);
+  });
+});
+
+// ─── REGRESI: token bearer dibandingkan constant-time ───────────────────────
+//
+// `got !== 'Bearer ' + expected` short-circuits pada byte pertama yang berbeda,
+// jadi token bisa dibaca satu karakter demi satu karakter lewat selisih waktu
+// respons — endpoint ini publik (hanya di-rate-limit, bukan dipercaya per-IP).
+// Timing tidak bisa diukur andal di unit test, jadi bentuk implementasinya yang
+// dipaku — pola yang sama dipakai netlify-wrapper-surface.test.ts untuk memeriksa
+// wiring ai-chat.js.
+describe('metrics-receiver — bearer token constant-time', () => {
+  const src = readFileSync(join(process.cwd(), 'netlify/functions/metrics-receiver.ts'), 'utf8');
+
+  it('memakai crypto.timingSafeEqual, bukan operator !==', () => {
+    expect(src).toContain('timingSafeEqual');
+    // Line-anchored so a comment that merely mentions the old form is not a match.
+    expect(src).not.toMatch(/^\s*if\s*\(\s*got\s*!==/m);
+  });
+
+  it('token beda panjang → 401, bukan crash (timingSafeEqual butuh panjang sama)', async () => {
+    // Satu karakter lebih pendek: tanpa guard panjang, timingSafeEqual melempar.
+    const res = await invoke(evt({ counters: {} }, 'Bearer test-receiver-toke'));
+    expect(res.statusCode).toBe(401);
   });
 });

@@ -23,19 +23,26 @@ vi.mock('../../_lib/session', () => ({
   })),
 }));
 
-vi.mock('../../_lib/storage', () => ({
-  bucket: () => 'b',
-  storageRequest: async (_method: string, url: string) => ({ url: '/' + url }),
-  publicUrl: (p: string) => 'https://cdn.example/' + p,
-  hapusJenisVarian: vi.fn(async () => undefined),
-  isAllowedDocumentUrl: () => true,
-  b64ToBuffer: () => Buffer.from(''),
-  mimeFromName: () => 'application/octet-stream',
-  stemAliases: (s: string) => [s],
-  isVarianOf: () => false,
-  uploadBase64: async () => null,
-  resolveFileUrl: (p: string) => p,
-}));
+// `importOriginal` keeps the REAL `isAllowedUploadExtension` /
+// `ALLOWED_UPLOAD_EXTENSIONS` in play — only the I/O helpers are stubbed. A
+// hand-written copy of the allow-list here would make the assertions below
+// vacuous (they would test the mock, not the code).
+vi.mock('../../_lib/storage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../_lib/storage')>();
+  return {
+    ...actual,
+    bucket: () => 'b',
+    storageRequest: async (_method: string, url: string) => ({ url: '/' + url }),
+    publicUrl: (p: string) => 'https://cdn.example/' + p,
+    hapusJenisVarian: vi.fn(async () => undefined),
+    b64ToBuffer: () => Buffer.from(''),
+    mimeFromName: () => 'application/octet-stream',
+    stemAliases: (s: string) => [s],
+    isVarianOf: () => false,
+    uploadBase64: async () => null,
+    resolveFileUrl: (p: string) => p,
+  };
+});
 
 import { handleGetUploadUrls } from './service';
 import { hapusJenisVarian } from '../../_lib/storage';
@@ -66,5 +73,39 @@ describe('handleGetUploadUrls — K3 folder upload kandidat dari sesi', () => {
       'kandidat/6285700000001',
       'foto',
     );
+  });
+
+  it('menolak ekstensi di luar allow-list (svg) — tidak menandatangani URL', async () => {
+    const res = await handleGetUploadUrls(
+      [{ files: [{ key: 'x', prefix: 'x', ext: 'svg' }], folder: 'misc' }],
+      'token-kandidat',
+    );
+    expect(res.success).toBe(false);
+    expect(String((res as { error?: string }).error || '')).toContain('svg');
+  });
+
+  it('menolak konten aktif/executable (html, js, mjs, cjs, exe, sh)', async () => {
+    for (const ext of ['html', 'js', 'mjs', 'cjs', 'exe', 'sh']) {
+      const res = await handleGetUploadUrls(
+        [{ files: [{ key: 'x', prefix: 'x', ext }], folder: 'misc' }],
+        'token-kandidat',
+      );
+      expect(res.success, `ext ${ext} harus ditolak`).toBe(false);
+    }
+  });
+
+  it('menerima SETIAP ekstensi yang ditawarkan UI (superset, minus konten aktif)', async () => {
+    // Termasuk doc/xls/csv/txt/gif — yang akan GAGAL terhadap set sempit pertama.
+    const accepted = [
+      'pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp',
+      'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt',
+    ];
+    for (const ext of accepted) {
+      const res = await handleGetUploadUrls(
+        [{ files: [{ key: 'f', prefix: 'f', ext }], folder: 'misc' }],
+        'token-kandidat',
+      );
+      expect(res.success, `ext ${ext} harus diterima`).toBe(true);
+    }
   });
 });

@@ -29,10 +29,14 @@ const LOGIN_ACTIONS = new Set([
   'refreshKandidatSession', 'loginKandidat', 'daftarKandidat',
 ]);
 const AI_ACTIONS = new Set([
-  'processAIChat', 'processSiswaAIChat', 'processAdminAIChat',
+  'processAIChat', 'processAdminAIChat',
   'processAiInterview', 'parseDokumenBiodata', 'processUploadDoc',
   'generateWawancaraModel',
 ]);
+// Anonymous AI chat — its own IP-only bucket (public /siswa-baru flow).
+const PUBLIC_AI_ACTIONS = new Set(['processSiswaAIChat']);
+// Anonymous candidate prefill — public by design, IP-only bucket.
+const PREFILL_ACTIONS = new Set(['getExistingCandidateJsonByWa']);
 const FONNTE_ACTIONS = new Set(['kirimSatuPesanFonnte', 'kirimTawaranMassal']);
 
 const ROOT = process.cwd();
@@ -87,6 +91,8 @@ describe('grup rate limit ⊆ registry', () => {
   for (const [label, set] of [
     ['LOGIN', LOGIN_ACTIONS],
     ['AI', AI_ACTIONS],
+    ['PUBLIC_AI', PUBLIC_AI_ACTIONS],
+    ['PREFILL', PREFILL_ACTIONS],
     ['FONNTE', FONNTE_ACTIONS],
   ]) {
     it(`${label}_ACTIONS hanya berisi action terdaftar`, () => {

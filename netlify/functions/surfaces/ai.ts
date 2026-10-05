@@ -25,7 +25,13 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
     const ai = await import('../contexts/ai-orchestration');
     return ai.handleProcessAIChat(p, s);
   },
-  processSiswaAIChat: async (p: unknown[], s?: string) => {
+  // PUBLIC BY DESIGN — the `/siswa-baru` registration chat has no session. The
+  // client posts it with `requireAuth: false` (SiswaBaruForm.test.tsx:104,
+  // "pendaftaran siswa baru publik, tanpa sesi") and the handler itself takes no
+  // sessionToken, so `s` is deliberately NOT forwarded. Do NOT "fix" this by
+  // requiring a session: that would break public registration. The exposure is
+  // bounded by the IP-only PUBLIC_AI_ACTIONS bucket in _lib/handlers.ts.
+  processSiswaAIChat: async (p: unknown[], _s?: string) => {
     const ai = await import('../contexts/ai-orchestration');
     return ai.handleProcessSiswaAIChat(p);
   },

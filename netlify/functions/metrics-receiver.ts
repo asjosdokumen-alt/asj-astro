@@ -53,6 +53,7 @@
  * (§3.3). A4/A5/A7 need the health probe and are covered by the §6 gate.
  */
 
+import { timingSafeEqual } from 'node:crypto';
 import { adapt } from './_lib/netlify-adapter.js';
 import type { LegacyEvent } from './_lib/netlify-adapter.js';
 import type { MetricsPayload } from './_lib/metrics-sink';
@@ -62,6 +63,24 @@ import type { MetricsPayload } from './_lib/metrics-sink';
 /** Shared secret; the sender sends it as `Authorization: Bearer <token>`. */
 function receiverToken(): string {
   return (process.env.METRICS_RECEIVER_TOKEN || '').trim();
+}
+
+/**
+ * Constant-time bearer-token comparison.
+ *
+ * The old plain `!==` comparison short-circuits on the first differing byte, so
+ * a caller can recover the token one character at a time by measuring response
+ * latency — this is a public endpoint (rate-limited, not IP-trusted), so it
+ * needs the same discipline as health.js. Length is checked first because
+ * `timingSafeEqual` throws on a length mismatch; the length of a bearer token is
+ * not itself secret.
+ */
+function safeEqual(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
 }
 
 /** Where to notify. Discord (`content`) / Slack (`text`) compatible. */
@@ -300,7 +319,7 @@ async function handler(event: LegacyEvent) {
     };
   }
   const got = (event.headers.authorization ?? event.headers.Authorization ?? '').trim();
-  if (got !== 'Bearer ' + expected) {
+  if (!safeEqual(got, 'Bearer ' + expected)) {
     return { statusCode: 401, body: JSON.stringify({ ok: false, error: 'unauthorized' }) };
   }
 

@@ -63,10 +63,24 @@ const LOGIN_ACTIONS = new Set([
   'refreshKandidatSession', 'loginKandidat', 'daftarKandidat',
 ]);
 const AI_ACTIONS = new Set([
-  'processAIChat', 'processSiswaAIChat', 'processAdminAIChat',
+  'processAIChat', 'processAdminAIChat',
   'processAiInterview', 'parseDokumenBiodata', 'processUploadDoc',
   'generateWawancaraModel',
 ]);
+/**
+ * `processSiswaAIChat` (surfaces/ai.ts) is the ONE anonymous AI action.
+ *
+ * The `/siswa-baru` registration chat is public BY DESIGN, so its surface
+ * deliberately drops the session token — see surfaces/ai.ts:28 and
+ * SiswaBaruForm.test.tsx:104, which asserts `requireAuth: false` ("pendaftaran
+ * siswa baru publik, tanpa sesi"). It therefore cannot be scoped to an identity
+ * and gets its own IP-only bucket rather than sharing the authenticated AI
+ * group. Limits are the SAME as the AI group (10/min + 60/min), so throttle
+ * strength is unchanged — the split exists so this public endpoint's exposure is
+ * explicit and tunable on its own, and cannot be silently un-throttled by a
+ * future edit to AI_ACTIONS.
+ */
+const PUBLIC_AI_ACTIONS = new Set(['processSiswaAIChat']);
 const FONNTE_ACTIONS = new Set(['kirimSatuPesanFonnte', 'kirimTawaranMassal']);
 
 /**
@@ -89,6 +103,20 @@ const FONNTE_ACTIONS = new Set(['kirimSatuPesanFonnte', 'kirimTawaranMassal']);
  */
 const CONTACT_ACTIONS = new Set(['kirimPesanKontak']);
 
+/**
+ * The anonymous candidate-prefill lookup (contexts/documents/service.ts
+ * `handleGetExistingCandidateJsonByWa`, exposed by files.js) is deliberately
+ * public: the `/apply` and `/master` forms read it BEFORE any session exists,
+ * and adding a session requirement would break that prefill contract (a
+ * documented trade-off — see the round-1 report, finding #4). Public AND
+ * PII-returning, so it must still be metered: before this it sat in NO group at
+ * all, i.e. completely unthrottled. IP-only (there is no identity to scope it
+ * to). The limit is intentionally loose enough for a human on a shared/CGNAT
+ * carrier IP who opens and retries the form, and tight enough that no script
+ * enumerates candidate rows at speed.
+ */
+const PREFILL_ACTIONS = new Set(['getExistingCandidateJsonByWa']);
+
 const NOT_IMPLEMENTED =
   'Fungsi ini belum diimplementasi di backend rebuild (repo GitHub hanya berisi frontend).';
 
@@ -98,7 +126,20 @@ function sessionIdentity(sessionToken: string) {
   return t.role === 'admin' ? 'admin:' + String(t.name || '') : 'kandidat:' + String(t.wa || '');
 }
 
-function rateLimitChecks(action: string, meta: RequestMeta, sessionToken: string) {
+/** One rate-limit bucket to charge for an action. */
+interface RateLimitCheck {
+  key: string;
+  opts: { limit: number; windowMs: number; lockoutAfter?: number; lockoutMs?: number };
+}
+
+// Exported for direct unit coverage of the group→bucket mapping (same rationale
+// as `outcomeStatusCode` in netlify-wrapper-surface.ts). Pure: reads only its
+// arguments.
+export function rateLimitChecks(
+  action: string,
+  meta: RequestMeta,
+  sessionToken: string,
+): RateLimitCheck[] {
   const ip = (meta && meta.ip && String(meta.ip).trim()) || 'anon';
   const ident = sessionIdentity(sessionToken);
   const adminKey = ident && ident.indexOf('admin:') === 0 ? ident : null;
@@ -108,6 +149,14 @@ function rateLimitChecks(action: string, meta: RequestMeta, sessionToken: string
   }
   if (action === 'loginKandidat' || action === 'daftarKandidat') {
     return [{ key: 'kandidatLogin:' + ip, opts: { limit: 10, windowMs: 60000, lockoutAfter: 15, lockoutMs: 300000 } }];
+  }
+  // Anonymous AI chat — checked BEFORE the authenticated AI group. Must stay
+  // IP-only: the surface drops the token on purpose (public /siswa-baru flow).
+  if (PUBLIC_AI_ACTIONS.has(action)) {
+    return [
+      { key: `siswaAi:${ip}`, opts: { limit: 10, windowMs: 60000 } },
+      { key: `siswaAiGlobal:${ip}`, opts: { limit: 60, windowMs: 60000 } },
+    ];
   }
   if (AI_ACTIONS.has(action)) {
     return [
@@ -123,6 +172,10 @@ function rateLimitChecks(action: string, meta: RequestMeta, sessionToken: string
       { key: `contactIp:${ip}`, opts: { limit: 10, windowMs: 60000 } },
       { key: `contactGlobal:${ip}`, opts: { limit: 30, windowMs: 60000 } },
     ];
+  }
+  // Anonymous candidate prefill — public by design, PII-returning, IP-only.
+  if (PREFILL_ACTIONS.has(action)) {
+    return [{ key: `prefill:${ip}`, opts: { limit: 20, windowMs: 60000 } }];
   }
   if (adminKey) {
     return [{ key: 'adminCrud:' + adminKey, opts: { limit: 120, windowMs: 60000 } }];
@@ -206,7 +259,9 @@ async function handleAction(action: string, payload: unknown[], sessionToken: st
     log.info('handler.end', { action, success: out?.success });
     if (out && out.success === false && !out.rateLimited && LOGIN_ACTIONS.has(action)) {
       for (const c of checks) {
-        // @ts-expect-error JS→TS migration
+        // The `RateLimitCheck` return type made `c.opts` assignable to
+        // RateLimitOpts, so the former `@ts-expect-error JS→TS migration` here
+        // became an unused directive (TS2578) and was removed.
         if (c.opts.lockoutAfter) await rateLimit.fail(c.key, c.opts);
       }
     }

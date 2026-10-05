@@ -34,7 +34,7 @@ import { safeError } from "../../_lib/kernel/errors";
 import { findJobByCodeFiltered, findJobs } from "../../_lib/db/jobs";
 import { isVipCatatan } from "../../_lib/ai/interview-shared";
 import * as session from "../../_lib/session";
-import { isAllowedDocumentUrl } from "../../_lib/storage";
+import { isAllowedDocumentUrl, isAllowedUploadExtension, ALLOWED_UPLOAD_EXTENSIONS } from "../../_lib/storage";
 
 const APPLY_WA_COLS = ["no_wa", "wa", "whatsapp"];
 // K3 fix: whitelist prefill anonim dipangkas — hapus URL dokumen (pasPhoto,
@@ -199,6 +199,23 @@ export async function handleGetUploadUrls(
         String(f.ext || "bin")
           .replace(/[^a-z0-9]/gi, "")
           .toLowerCase() || "bin";
+      // S7 hardening (2026-10-04): `ext` came straight from the client and was
+      // only stripped to [a-z0-9], so ANY extension (.svg, .html) was signed and
+      // then PUT straight to storage, bypassing this function. Enforce the
+      // server-side allow-list BEFORE signing the URL.
+      if (!isAllowedUploadExtension(ext)) {
+        // Built from the allow-list itself so the message cannot drift from the
+        // set that actually gates the request.
+        return {
+          success: false,
+          error:
+            `Tipe file tidak diizinkan (${ext}). Gunakan: ` +
+            [...ALLOWED_UPLOAD_EXTENSIONS]
+              .map((e) => e.toUpperCase())
+              .join(", ") +
+            ".",
+        };
+      }
       const path = (folder ? folder + "/" : "") + prefix + "." + ext;
       await hapusJenisVarian(folder, prefix);
       const res = await storageRequest(

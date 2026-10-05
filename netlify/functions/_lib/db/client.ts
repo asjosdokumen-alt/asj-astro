@@ -7,8 +7,11 @@ import { allColumns, columnsOf } from './schema.generated';
 // db/client.js — klien REST Supabase (PostgREST) + normalisasi data.
 // perilaku TIDAK berubah.
 
-// Aturan WA (normalisasi + gate) — satu sumber kebenaran: shared/wa-rules.js
-// (dipakai frontend js/04_auth.js juga). Jangan definisikan ulang di sini.
+// Aturan WA (normalisasi + gate) hidup di shared/wa-rules.ts — TAPI ada DUA
+// salinan fisik: shared/wa-rules.ts (dipakai klien) dan
+// netlify/functions/shared/wa-rules.ts (dipakai backend, karena bundler Netlify
+// tidak menjangkau root shared/). Paritas perilakunya dipaku oleh
+// shared/wa-rules.test.ts. Jangan definisikan aturan WA ketiga di sini.
 
 /** @typedef {{ query?: Record<string, string | number>, headers?: Record<string, string>, body?: unknown }} JsonOpts */
 /** @typedef {{ table: string | null, rows: Record<string, unknown>[] }} FindTableResult */

@@ -45,11 +45,66 @@ function b64ToBuffer(data: unknown) {
   return Buffer.from(s, 'base64');
 }
 
+// S7 hardening (2026-10-04): server-side upload allow-list — the single list of
+// file types this backend will ever sign or store.
+//
+// Two paths took the extension from the CLIENT:
+//   - handleGetUploadUrls (contexts/documents/service.ts) signs an upload URL
+//     whose object key ends in the client's `ext`; `ext` was only stripped to
+//     [a-z0-9], so ANY extension — .svg, .html — was signed.
+//   - uploadBase64 (below) set the stored object's Content-Type from the
+//     filename and accepted any extension; its MIME map even carried svg.
+//
+// The boundary that matters is ACTIVE CONTENT, not document type: svg (and
+// html/htm/js/…) can execute in a browser origin; .doc/.xls/.csv cannot. So this
+// is a SUPERSET of every extension the UI offers, MINUS anything scriptable or
+// executable — not a narrow list of "the types we happen to store today".
+//
+// ⚠️ COUPLING — do not narrow this without checking `src/components/**`.
+// `accept=` attributes across the portal (ApplyFullForm, MasterFullForm,
+// EditCandidateModal, PemberkasanModal, AdminJobEditModal, TabTambah,
+// CvTemplateSelector, AdminAiCopilot, InputManualModal, AiCvForm,
+// SiswaBaruForm, CvMiniModal) offer the types marked "UI" below, and
+// src/lib/uploadGuard.ts expands `image/*` to jpg/jpeg/png/gif/webp/bmp. A set
+// narrower than the UI offers means a client-validated file dies server-side
+// with "Upload gagal." — the failure the S7 first cut would have caused.
+//
+// Kept server-side and independent of those `accept=` hints (a renamed file or a
+// drag-and-drop bypasses them). NOTE ON SIZE: Supabase's create-signed-upload-url
+// API takes NO max-size parameter, and the client PUTs the object straight to the
+// signed URL — so the ONLY size bound is the bucket's own `file_size_limit` (an
+// ops setting), not this function. Do not add a maxBytes field here: it would be
+// a no-op that reads like a guard.
+const ALLOWED_UPLOAD_EXTENSIONS = new Set([
+  // Images. jpg/jpeg/png/webp/gif/bmp is exactly what `image/*` expands to, so
+  // every `accept="image/*"` slot is covered.
+  'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp',
+  // Documents offered by some `accept=` attribute in src/components/**.
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt',
+  // Legacy document types carried by the pre-S7 MIME map. No current `accept=`
+  // offers them; kept so this remains a complete non-active document set.
+  'ppt', 'pptx', 'rtf', 'odt',
+]);
+// Deliberately EXCLUDED (active or executable content): svg, html, htm, js,
+// mjs, cjs, exe, sh — anything that can execute in a browser origin or a host.
+
+/** True when `ext` (with or without a leading dot, any case) is an accepted upload type. */
+function isAllowedUploadExtension(ext: unknown): boolean {
+  const e = String(ext || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^\./, '');
+  return ALLOWED_UPLOAD_EXTENSIONS.has(e);
+}
+
 function mimeFromName(name: string, fallback?: string) {
   const ext = String(name || '')
     .split('.')
     .pop()!
     .toLowerCase();
+  // Every allow-listed type maps to a correct, INERT Content-Type so the stored
+  // object is served with the right MIME. svg is deliberately absent — it is
+  // scriptable content, the exact thing this allow-list exists to keep out.
   const map: Record<string, string> = {
     pdf: 'application/pdf',
     jpg: 'image/jpeg',
@@ -57,16 +112,15 @@ function mimeFromName(name: string, fallback?: string) {
     png: 'image/png',
     webp: 'image/webp',
     gif: 'image/gif',
-    svg: 'image/svg+xml',
     bmp: 'image/bmp',
     doc: 'application/msword',
     docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     xls: 'application/vnd.ms-excel',
     xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    csv: 'text/csv',
+    txt: 'text/plain',
     ppt: 'application/vnd.ms-powerpoint',
     pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    txt: 'text/plain',
-    csv: 'text/csv',
     rtf: 'application/rtf',
     odt: 'application/vnd.oasis.opendocument.text',
   };
@@ -136,6 +190,10 @@ async function hapusJenisVarian(folder: string, stem: string) {
 // Upload file base64 ke Storage, kembalikan public URL.
 async function uploadBase64(data: unknown, folder: string, fileName: string) {
   if (!data) return null;
+  // S7 hardening: refuse a type outside the allow-list BEFORE any storage call.
+  // Returning null (not throwing) keeps every caller's existing `?? ""` →
+  // "Upload gagal." handling intact — a rejection, not a new failure mode.
+  if (!isAllowedUploadExtension(String(fileName).split('.').pop())) return null;
   const buf = b64ToBuffer(data);
   const cleanName = String(fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
   const stem = cleanName.split('.')[0];
@@ -214,6 +272,8 @@ export {
   publicUrl,
   b64ToBuffer,
   mimeFromName,
+  ALLOWED_UPLOAD_EXTENSIONS,
+  isAllowedUploadExtension,
   stemAliases,
   isVarianOf,
   hapusJenisVarian,
