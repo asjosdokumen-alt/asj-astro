@@ -178,8 +178,7 @@ jobs:
         run: npm run test:backend -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
   # ══ Gate 3 · build + artifact ═══════════════════════════════════════════════
-
-  # ══ Gate 3 · build + artifact ═══════════════════════════════════════════════
+  #
   # Delegates to the shared reusable build so CI and both deploy pipelines
   # produce bit-identical artifacts from the same definition.
 
@@ -209,6 +208,22 @@ jobs:
       # run for that reason alone — the note left there has the measurement.
       - name: Verify the PWA manifest and icons
         run: npm run verify:pwa
+
+      # The two suites that only run when `dist/` exists. Their `hasBuild` is
+      # `existsSync(dist/...)`, and in Gate 2 (`test:frontend` / `test:backend`)
+      # that is ALWAYS false — those jobs run before the build, on a checkout
+      # with no `dist/`. Measured 2026-10-05: `src/lib/swOffline.test.ts`
+      # (offline navigation #18, redirected responses #31) and
+      # `src/lib/serverMime.test.ts` (the `server.cjs` MIME map against the
+      # built dist) had therefore NEVER executed in CI. They pass locally,
+      # because a dev `dist/` happens to exist — which is precisely the trap the
+      # note on the PWA step above describes.
+      #
+      # They live HERE for the same reason `verify:pwa` does: this is the only
+      # job that holds the built artifact. A suite that skips itself in the only
+      # job that runs it is coverage on paper.
+      - name: Run the build-dependent suites that Gate 2 always skips
+        run: node node_modules/vitest/vitest.mjs run src/lib/swOffline.test.ts src/lib/serverMime.test.ts
 
       # Prove the bytes we are about to test are the bytes that were built.
       - name: Verify artifact integrity
@@ -369,7 +384,7 @@ jobs:
       # the HTTP kernel. Both are static checks with no live environment, so they
       # belong here where every PR pays them — not only on the deploy path.
       - name: Verify surface bindings and the IO boundary
-        run: npm run verify:binding && npm run verify:io && npm run verify:fetch-boundary
+        run: npm run verify:binding && npm run verify:io && npm run verify:fetch-boundary && npm run verify:shim
       # Where do the e2e probes think the app is? Added 2026-09-18 after
       # `e2e/measure-riwayat-card.mjs` was found instructing
       # `BASE_URL=http://localhost:4322` in its header while defaulting to 4321,
