@@ -268,7 +268,7 @@ export function fitPhoto(naturalW: number, naturalH: number) {
 }
 
 /** Normalise any fetched image to PNG at the fitted pixel size. */
-async function photoToPngBytes(url: string, fit: { cx: number; cy: number }): Promise<Uint8Array | null> {
+async function photoToPngBytes(url: string, fit: { cx: number; cy: number }): Promise<Uint8Array<ArrayBuffer> | null> {
   try {
     const res = await fetch(url, { mode: 'cors' });
     if (!res.ok) return null;
@@ -317,7 +317,7 @@ export async function buildRirekishoWorkbook(data: CandidateData): Promise<Blob>
     const probe = await photoToPngBytes(photoUrl, PHOTO_BOX).catch(() => null);
     if (probe) {
       // Re-derive the fit from the real pixel size of the normalised PNG.
-      const bmp = await createImageBitmap(new Blob([probe as unknown as BlobPart], { type: 'image/png' })).catch(() => null);
+      const bmp = await createImageBitmap(new Blob([probe], { type: 'image/png' })).catch(() => null);
       if (bmp) {
         const fit = fitPhoto(bmp.width, bmp.height);
         const bytes = await photoToPngBytes(photoUrl, fit);

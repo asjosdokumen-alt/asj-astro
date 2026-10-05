@@ -256,6 +256,7 @@ const FAST_GATES = [
   'verify:binding',
   'verify:io',
   'verify:classes',
+  'verify:shim',
   'verify:keyframes',
   'verify:md',
   'verify:aliases',

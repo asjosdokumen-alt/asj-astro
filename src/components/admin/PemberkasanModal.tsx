@@ -479,7 +479,7 @@ export default function PemberkasanModal({
         <button
           type="button"
           onClick={() => setPreview({ url: String(url), title })}
-          class="text-emerald-400 hover:text-emerald-300 underline text-[11px] font-bold cursor-pointer"
+          class="min-h-11 inline-flex items-center text-emerald-400 hover:text-emerald-300 underline text-[11px] font-bold cursor-pointer"
         >
           <Icon name="check-circle" class="mr-1" />
           {t("ui.uploaded_view")}

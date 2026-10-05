@@ -169,7 +169,11 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
       class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4"
     >
       <div class="glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-md relative max-h-[90vh] flex flex-col border border-sky-500/50">
-        <button type="button" onClick={onClose} aria-label={t('public.close')} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
+        {/* Touch floor (DESIGN.md:852, 44x44). MEASURED 2026-10-02: this button
+            was 16x24 while every other admin modal had already been brought to
+            44px by 6a92f39 — ListKandidatModal was not in that commit's scope
+            and not in its probe's list, so it kept the pre-6a92f39 shape. */}
+        <button type="button" onClick={onClose} aria-label={t('public.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
         <h3 class="text-xl font-bold text-sky-400 mb-2 border-b border-sky-900/50 pb-3">
@@ -182,11 +186,11 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
         {/* Action buttons */}
         <div class="flex gap-2 mb-3">
           <button onClick={copyAllWa}
-            class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-xs transition">
+            class="flex-1 min-h-11 inline-flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-xs transition">
             <Icon name="copy" class="mr-1" /> Copy WA
           </button>
           <button onClick={() => setShowUndangPanel(!showUndangPanel)}
-            class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs transition">
+            class="flex-1 min-h-11 inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs transition">
             <Icon name="whatsapp" class="mr-1" /> Undang Grup
           </button>
         </div>
@@ -201,7 +205,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
               placeholder={t("admin.ph_jeda_pesan")}
               class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500" />
             <button onClick={sendUndangan} disabled={sending}
-              class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition disabled:opacity-50">
+              class="w-full min-h-11 inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition disabled:opacity-50">
               {sending ? 'Mengirim…' : 'Mulai Kirim Undangan'}
             </button>
           </div>
@@ -228,17 +232,17 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
                         new CustomEvent('showCandidateHistory', { detail: { wa: c.wa, nama: c.nama } })
                       )
                     }
-                    class="w-7 h-7 flex items-center justify-center bg-sky-900/50 hover:bg-sky-600 text-sky-400 hover:text-white rounded-full transition shadow"
+                    class="w-11 h-11 flex items-center justify-center bg-sky-900/50 hover:bg-sky-600 text-sky-400 hover:text-white rounded-full transition"
                     title={t('admin.tt_lihat_profil')}>
                     <Icon name="eye" class="text-xs" />
                   </button>
                   <a href={`https://wa.me/${c.wa}`} target="_blank" rel="noopener"
-                    class="w-7 h-7 flex items-center justify-center bg-emerald-900/50 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-full transition"
-                    title="Chat WA">
+                    class="w-11 h-11 flex items-center justify-center bg-emerald-900/50 hover:bg-emerald-600 text-emerald-400 hover:text-white rounded-full transition"
+                    title={t('admin.tt_chat_wa')}>
                     <Icon name="whatsapp" class="text-xs" />
                   </a>
                   <button onClick={() => removeFromJob(c.wa || '')} disabled={removing === c.wa}
-                    class="px-2 py-1 bg-red-900/40 hover:bg-red-600 disabled:opacity-50 text-red-400 hover:text-white rounded text-[11px] font-bold transition"
+                    class="min-h-11 px-3 inline-flex items-center justify-center bg-red-900/40 hover:bg-red-600 disabled:opacity-50 text-red-400 hover:text-white rounded text-[11px] font-bold transition"
                     title={t('admin.tt_tandai_gagal')}>
                     {removing === c.wa ? <Icon spin name="spinner" class="text-xs" /> : <Icon name="times" class="text-xs" />} Hapus
                   </button>

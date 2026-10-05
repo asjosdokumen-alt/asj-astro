@@ -431,6 +431,26 @@ body {
 :where([data-theme="light"]) .bg-slate-950\/95 {
   background-color: #fbfafcf2;          /* 95% opacity for blur scrim */
 }
+/* Shape 1 again: the family carried `/95` and skipped `/60` — and `/60` was the
+   other of the only TWO `bg-slate-950/nn` alphas this repo actually uses, so the
+   one alpha the shim missed was the one in service.
+
+   MEASURED 2026-10-02 (AdminShareModal, the `dokumen_share` checkbox chips,
+   `AdminShareModal.tsx:196`), Chromium at 1280x900 light, text colour read
+   unmasked and the surface read as a PAINTED PIXEL inside the chip's own
+   padding (a computed `backgroundColor` here is `oklab(... / 0.6)` and cannot
+   be scored by an rgba parser):
+
+     label text  rgb(31,29,28)        (§5b had flipped `text-slate-200`)
+     chip painted rgb(97,100,110)     (dark navy at 60% over the light panel)
+     ratio       2.84:1               (floor 4.5:1, 11px/700 = body text)
+
+   Dark theme is unaffected and was measured at 15.7:1 — the defect exists only
+   where the shim flips the text but not the surface. Alpha 60% < 88%, so it
+   takes the raised tint the `bg-slate-900/40..80` group uses, not the canvas. */
+:where([data-theme="light"]) .bg-slate-950\/60 {
+  background-color: #f3eff3f2;          /* matches --color-surface-raised */
+}
 
 :where([data-theme="light"]) .text-white { color: #1f1d1c; }
 :where([data-theme="light"]) .text-slate-100 { color: #1f1d1c; }
@@ -515,6 +535,22 @@ body {
 }
 :where([data-theme="light"]) .bg-slate-500\/10 {
   background-color: #b4aeb11a;
+}
+/* The other status-pill rung, and the one this family skipped: `bg-slate-600/50`
+   is the FALLBACK chip in CandidateProfileModal (`:438`) — any application whose
+   status is neither LULUS nor Aktif — paired with `text-slate-300`, which §5b
+   flips to #4a4642. So the surface stayed dark while the ink went dark.
+
+   MEASURED 2026-10-02, /admin light, Chromium 1280x900 AND 390x844, painted pixel
+   sampled inside the chip's own padding with `elementFromPoint` confirming the
+   sample belongs to the chip:
+     chip text   rgb(74,70,66)
+     chip painted rgb(157,163,176)
+     ratio       3.70:1   (floor 4.5:1, 11px/700 = body text)   → FAIL
+   Dark theme measured 7.17:1. Same alpha as the utility, matching the two
+   entries above rather than the raised-surface tint: this is a chip, not a panel. */
+:where([data-theme="light"]) .bg-slate-600\/50 {
+  background-color: #b4aeb180;
 }
 :where([data-theme="light"]) .hover\:bg-slate-600:hover {
   background-color: #dcd5d6;
@@ -1107,11 +1143,28 @@ body {
 /* emerald */
 :where([data-theme="light"]) :is(.bg-emerald-900,.bg-emerald-900\/10,.bg-emerald-900\/15,.bg-emerald-900\/20,.bg-emerald-900\/25,.bg-emerald-900\/30,.bg-emerald-900\/40,.bg-emerald-900\/50,.bg-emerald-900\/60,.bg-emerald-900\/70,.bg-emerald-900\/80,.bg-emerald-950,.bg-emerald-950\/60) { background-color: #ecfdf5; }
 :where([data-theme="light"]) :is(.bg-emerald-500\/20,.bg-emerald-500\/30,.bg-emerald-600\/20) { background-color: #d1fae5; }
-:where([data-theme="light"]) :is(.text-emerald-300,.text-emerald-400,.text-emerald-400\/70,.text-emerald-400\/80,.text-emerald-300\/80) { color: #047857; }
+/* `-200` was the rung this family skipped, and AdminShareModal is its only user
+   (`text-emerald-200` on the CHECKED doc chips, `AdminShareModal.tsx:193`).
+   MEASURED 2026-10-02: once `bg-slate-950/60` above is shimmed, the chip surface
+   becomes near-white, so an unflipped `text-emerald-200` (oklch(0.905 0.093
+   164.15)) measured 1.12:1. Shimming it to the same deep green the 300/400 rungs
+   use gives ~4.85:1. Zero blast radius: this class appears in exactly one file. */
+:where([data-theme="light"]) :is(.text-emerald-200,.text-emerald-300,.text-emerald-400,.text-emerald-400\/70,.text-emerald-400\/80,.text-emerald-300\/80) { color: #047857; }
 :where([data-theme="light"]) :is(.border-emerald-400\/60,.border-emerald-500,.border-emerald-500\/30,.border-emerald-500\/40,.border-emerald-500\/50,.border-emerald-500\/60,.border-emerald-600) { border-color: #6ee7b7; }
 /* sky */
 :where([data-theme="light"]) :is(.bg-sky-900,.bg-sky-900\/10,.bg-sky-900\/15,.bg-sky-900\/20,.bg-sky-900\/25,.bg-sky-900\/30,.bg-sky-900\/40,.bg-sky-900\/50,.bg-sky-900\/60,.bg-sky-900\/70,.bg-sky-900\/80) { background-color: #f0f9ff; }
-:where([data-theme="light"]) :is(.bg-sky-500\/20,.bg-sky-500\/30,.bg-sky-600\/20) { background-color: #e0f2fe; }
+/* `/30` was the alpha this group skipped while every sibling family — emerald,
+   amber, rose — lists it for their own `-500`. `bg-sky-600/30` is the
+   CandidateProfileModal candidate-ID pill (`CandidateProfileModal.tsx:308`) and
+   `LaporanBulananModal`.
+
+   MEASURED 2026-10-02, /admin light 1280x900, painted-pixel backdrop sampled
+   inside the pill's own padding:
+     pill text   rgb(3,105,161)       (§5b had flipped `text-sky-300`)
+     pill painted rgb(170,208,233)    (sky-600 at 30% left unflipped)
+     ratio       3.65:1               (floor 4.5:1, 11px/700 = body text)
+   Dark theme measured 6.67:1. */
+:where([data-theme="light"]) :is(.bg-sky-500\/20,.bg-sky-500\/30,.bg-sky-600\/20,.bg-sky-600\/30) { background-color: #e0f2fe; }
 :where([data-theme="light"]) :is(.text-sky-300,.text-sky-400,.text-sky-400\/70,.text-sky-500\/70,.text-sky-300\/80) { color: #0369a1; }
 :where([data-theme="light"]) :is(.border-sky-400\/60,.border-sky-500,.border-sky-500\/30,.border-sky-500\/40,.border-sky-500\/50,.border-sky-600) { border-color: #7dd3fc; }
 /* amber */
@@ -1132,7 +1185,10 @@ body {
 /* pink */
 :where([data-theme="light"]) :is(.bg-pink-900,.bg-pink-900\/10,.bg-pink-900\/15,.bg-pink-900\/20,.bg-pink-900\/25,.bg-pink-900\/30,.bg-pink-900\/40,.bg-pink-900\/50,.bg-pink-900\/60,.bg-pink-900\/70,.bg-pink-900\/80) { background-color: #fdf2f8; }
 :where([data-theme="light"]) :is(.bg-pink-500\/20,.bg-pink-500\/30,.bg-pink-600\/20) { background-color: #fce7f3; }
-:where([data-theme="light"]) :is(.text-pink-300,.text-pink-400,.text-pink-400\/70,.text-pink-300\/80) { color: #be185d; }
+/* Same missing rung as the emerald family above. `text-pink-200` is used only on
+   the ALL chip (`AdminShareModal.tsx:191`); measured 1.22:1 against the shimmed
+   light chip, ~5.33:1 after. */
+:where([data-theme="light"]) :is(.text-pink-200,.text-pink-300,.text-pink-400,.text-pink-400\/70,.text-pink-300\/80) { color: #be185d; }
 /* `text-pink-500` was the one rung of the pink TEXT ramp this list skipped
    (300/400 are here, 500 was not), and it is defect (c)'s second row:
      /apply 390-1280 light, step label "Data Diri" 3.01:1

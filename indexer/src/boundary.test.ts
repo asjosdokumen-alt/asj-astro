@@ -313,9 +313,21 @@ describe('violations over the real repo (oracle-pinned)', () => {
       ],
       { cwd: ROOT, encoding: 'utf8' },
     );
+    // `status === null` means the child was KILLED, or never started — NOT that the
+    // two checkers disagree. The message below used to claim a disagreement in both
+    // cases, and that false verdict cost two sessions (2026-10-02: status null at
+    // 24.9 s inside vitest, while the identical command run by hand exits 0 in
+    // 19.3 s with "no dependency violations found (223 modules, 686 dependencies)").
+    // Root cause measured, not guessed: this environment refuses to CREATE child
+    // processes at all — `spawnSync` of both node and git fails with EBUSY, with or
+    // without NODE_OPTIONS cleared, while the same commands run fine as top-level
+    // Bash. The assertion still FAILS — an oracle that could not run is not a pass —
+    // but it now says which of the two things happened.
     expect(
       cruise.status,
-      `depcruise oracle disagrees with boundary.ts (exit ${cruise.status}):\n${cruise.stdout ?? ''}${cruise.stderr ?? ''}`,
+      cruise.status === null
+        ? `depcruise oracle COULD NOT RUN (no exit status; signal=${cruise.signal ?? 'none'}, error=${cruise.error ? String(cruise.error) : 'none'}). This is NOT a disagreement — run the command by hand to get the verdict.`
+        : `depcruise oracle disagrees with boundary.ts (exit ${cruise.status}):\n${cruise.stdout ?? ''}${cruise.stderr ?? ''}`,
     ).toBe(0);
   }, 120000);});
 

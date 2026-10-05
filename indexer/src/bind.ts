@@ -136,6 +136,12 @@ const LIB_GLOBALS = new Set<string>([
   'MutationObserver', 'IntersectionObserver', 'ResizeObserver', 'CSSStyleDeclaration', 'DOMRect',
   'KeyboardEvent', 'MouseEvent', 'PointerEvent', 'TouchEvent', 'FocusEvent', 'WheelEvent',
   'ClipboardEvent', 'InputEvent', 'DragEvent', 'CompositionEvent', 'MediaQueryList', 'Image',
+  // `createImageBitmap` (lib.dom.d.ts) — omitted until 2026-10-02, which made the two
+  // calls in src/lib/cv-template-factory/renderers/rirekisho-xlsx.ts read as genuine
+  // `global-unknown` (caught by build.test.ts §prodGenuine, the same way CSS was).
+  // The compiler binds it to the lib declaration of the same name, so the lib pass
+  // graduates it into a lib ref exactly like `Image` above.
+  'createImageBitmap',
   'DOMParser', 'XMLHttpRequest', 'Storage', 'NodeList', 'HTMLCollection', 'Document', 'crypto',
   'matchMedia', 'getComputedStyle', 'getSelection', 'scrollTo', 'postMessage', 'queueMicrotask',
   // `declare namespace` DOM global (lib.dom.d.ts:37528) — same shape as Intl/Atomics/Reflect

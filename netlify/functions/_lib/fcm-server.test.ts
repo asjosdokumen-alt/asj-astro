@@ -382,8 +382,20 @@ describe('service-account resolution', () => {
       try {
         execFileSync('git', ['check-ignore', '-q', rel], { cwd: process.cwd() });
         return true;
-      } catch {
-        return false;
+      } catch (e) {
+        // `git check-ignore` exits 1 for "not ignored" — that IS the answer we want.
+        // Any OTHER failure means git could not RUN, and swallowing it here would
+        // report "not ignored" for a question that was never asked. That is the same
+        // silent-failure class as the empty stub in db/candidates.ts (e6baf19) —
+        // make it loud. Measured 2026-10-02: this environment cannot create child
+        // processes at all (`spawnSync git` fails with EBUSY, with or without
+        // NODE_OPTIONS cleared), while the same three paths answer correctly when git
+        // is run by hand from a shell.
+        const status = (e as { status?: number | null }).status;
+        if (status === 1) return false;
+        throw new Error(
+          `git check-ignore could not run for ${rel} (status=${status ?? 'none'}): ${(e as Error).message}`,
+        );
       }
     };
     expect(ignored('netlify/functions/secrets/firebase-service-account.json')).toBe(true);

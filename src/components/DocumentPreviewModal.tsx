@@ -286,7 +286,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
 
   return (
     <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex flex-col p-2 md:p-6" ref={containerRef} onClick={onBackdropClick}>
-      <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full h-full flex flex-col overflow-hidden shadow-2xl">
+      <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full h-full flex flex-col overflow-hidden">
         {/* Header */}
         <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">
           <h3 class="text-sm font-bold text-white truncate flex-1">
@@ -294,14 +294,16 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
           </h3>
           <div class="flex items-center gap-2 ml-3">
             {!previewOnly && (
+              /* Touch floor (DESIGN.md:852). MEASURED 2026-10-02: 36x28. */
               <a href={url} target="_blank" rel="noopener"
-                 class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition"
+                 class="min-w-11 min-h-11 inline-flex items-center justify-center bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition"
                  title={t('ui.download')}>
                 <Icon name="download" />
               </a>
             )}
+            {/* MEASURED 2026-10-02: 24x32 — same pre-6a92f39 shape as the rest. */}
             <button onClick={onClose}
-                    class="text-slate-400 hover:text-white transition p-1">
+                    class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition">
               <Icon name="times" class="text-xl" />
             </button>
           </div>

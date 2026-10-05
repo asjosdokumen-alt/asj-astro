@@ -66,6 +66,7 @@
     "memory:status": "node scripts/memory-archive.mjs --dry-run",
     "memory:check": "node scripts/memory-archive.mjs --check",
     "verify:classes": "node scripts/ci/verify-classes.mjs",
+    "verify:shim": "node scripts/ci/shim-coverage.mjs",
     "verify:keyframes": "node scripts/ci/check-keyframes.mjs",
     "cold:start": "node scripts/ci/cold-start-gate.mjs",
     "verify:aliases": "node scripts/ci/verify-aliases.mjs",

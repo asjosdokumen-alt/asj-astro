@@ -210,6 +210,19 @@
       "batteryNote": "Hermetic: no credentials, no server, no database. Runs in CI on every PR via `npm run verify:batteries`."
     },
     {
+      "script": "verify:shim",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": "scripts/ci/shim-coverage.mutations.sh",
+      "runs": [
+        "ci.yml#quality-gates",
+        "review:gate"
+      ],
+      "note": "Enforces that every alpha'd bg-* utility used in src/ is ACCOUNTED FOR: either present in the light-theme shim in global.css, or allow-listed in the gate with a reason carrying a measurement. Written 2026-10-03 after that class produced three real contrast defects across fourteen instances — bg-slate-950/60 2.84:1, bg-sky-600/30 3.65:1 and bg-slate-600/50 3.70:1 (floor 4.5 for 11px/700) — each invisible until someone rendered the page in light theme and sampled the painted pixel. The shim matches on the CLASS STRING, so any alpha nobody typed keeps its dark value while the text inside it is flipped to near-black; the defect is that a hand-written allow-list cannot be complete by inspection. This gate asserts ACCOUNTING, not contrast: it cannot see a class that is shimmed to a value that still fails, nor an unshimmed class that passes anyway. Its header says so, and the contrast verdict still needs a rendered pixel. Proven 2026-10-03: 6 killed / 0 survived. Two mutations were rejected rather than counted as coverage — bg-slate-800/40 SURVIVED correctly because it is shimmed in three places, so renaming one left the class shimmed (a not-a-mutation-at-all, documented in the battery), and M2 exits 2 because it is caught by the instruments own selector self-test rather than by the comparison, which is why M2b exists to exercise the coverage path itself.",
+      "battery": "ci",
+      "batteryNote": "Hermetic: reads global.css and src/, no server, no database, no browser. The battery restores by cp from a backup OUTSIDE the tree rather than git checkout, because several files under test carry uncommitted work and the gate itself is untracked; it asserts the modified-file set is unchanged before and after."
+    },
+    {
       "script": "verify:keyframes",
       "tier": 0,
       "blocking": true,

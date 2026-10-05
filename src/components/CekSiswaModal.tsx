@@ -115,7 +115,9 @@ export default function CekSiswaModal({ onClose, closing = false }: Props) {
             <Icon name="users" class="text-emerald-400 mr-2" />
             {t('siswa.title_registered')}
           </h3>
-          <button onClick={onClose} class="text-slate-400 hover:text-white transition">
+          {/* Touch floor (DESIGN.md:852). MEASURED 2026-10-02: 16x24, and the only
+              sub-44px control in this modal. */}
+          <button onClick={onClose} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition">
             <Icon name="times" class="text-xl" />
           </button>
         </div>
