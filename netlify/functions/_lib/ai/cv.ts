@@ -556,7 +556,9 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
         // Baris baru — buat mail entry jika belum ada
         try {
           await syncBiodataKeMail(wa, nama, ['CV AI Baru'], sessionToken, formRows);
-        } catch (e) {}
+        } catch (e) {
+          /* sync mail opsional — jangan gagalkan simpan AI form */
+        }
       }
 
       // Fallback: pastikan kandidat punya baris mail. syncBiodataKeMail hanya
