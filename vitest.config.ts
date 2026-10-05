@@ -134,6 +134,15 @@ export default defineConfig({
             // menyembunyikan bahwa penempatannya belum terdaftar.
             'e2e/ai-chat-context.test.ts',
             'e2e/candidates-lookup-stub.test.ts',
+            // Ditambahkan 2026-10-04 (QA round 2). Keduanya TANPA DOM dan harus
+            // jalan di project 'backend' (node): `contact-service.test.ts`
+            // meng-import service.ts yang menyentuh node:crypto/async_hooks
+            // lewat kernel/log, dan `uploadGuard.test.ts` menguji modul
+            // src/lib/uploadGuard.ts. Keduanya tinggal di e2e/ HANYA karena
+            // counter beku `indexer` menghitung `src/**` (semua ekstensi) dan
+            // `netlify/functions/**/*.ts`; `.ts` di tier e2e tidak dihitung.
+            'e2e/contact-service.test.ts',
+            'e2e/uploadGuard.test.ts',
           ],
         },
       },
@@ -168,7 +177,31 @@ export default defineConfig({
           name: 'indexer',
           // Real-tree suites (buildIndex now runs the checker-backed deep
           // tier, ~2-9 s per build) need more than the 5 s vitest default.
-          testTimeout: 60000,
+          //
+          // 60 s -> 180 s (2026-10-04, QA round 2). The five real-tree suites
+          // (build, exportTables, resolve, tier2, validate) each rebuild the
+          // whole repo, and 60 s sat ON their runtime, so a full-suite run was a
+          // coin flip: under parallel file execution they starved each other and
+          // blew the cap. MEASURED escalated (round 1): validate 61.9 s,
+          // build 51.7 s, tier2 26.8 s — the heaviest already EXCEEDED 60 s on
+          // its own, so this was a too-tight cap, not only a parallelism artifact.
+          // 180 s is ~3x the worst isolated measurement: headroom for the
+          // parallel-contention flake and a slower CI runner, while still
+          // bounding a genuine hang (the reason the cap exists at all). The two
+          // suites that also set an inline `{ timeout: TIMEOUT }` (validate,
+          // tier2) were raised to match, or the inline value would still cap them.
+          testTimeout: 180000,
+          // SERIALIZE the real-tree suites — this, not the timeout, is what
+          // de-flakes them. MEASURED 2026-10-04: run TOGETHER under parallel
+          // file execution, `build.test.ts` ("is deterministic across builds")
+          // and `validate.test.ts` (disagreeBoundNoCompiler 5 vs 0) FAIL; run
+          // ALONE, both PASS (37.1 s / 45.5 s, all green). The failures are
+          // cross-suite interference under CPU contention (validate.ts:553 also
+          // writes the shared indexer/validate-report.json), NOT a content
+          // regression — so a longer timeout cannot fix them, the files simply
+          // must not run at the same time. `fileParallelism: false` runs this
+          // project's files one at a time.
+          fileParallelism: false,
           environment: 'node',
           pool: 'threads',
           include: ['indexer/**/*.test.ts'],

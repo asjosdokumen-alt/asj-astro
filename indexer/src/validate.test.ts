@@ -17,7 +17,10 @@ const ROOT = process.cwd().replace(/\\/g, '/');
 describe('differential validation (sample)', () => {
   // The sample run builds the full 247-file program + index under vitest's
   // transform; the declaration-identity chains push it past the default 5 s.
-  const TIMEOUT = 60_000;
+  // 60 s -> 180 s (2026-10-04): MEASURED 61.9 s escalated, i.e. over the old cap
+  // on its own; under full-suite parallelism it flaked. Must match the indexer
+  // project's testTimeout in vitest.config.ts — an inline value wins over it.
+  const TIMEOUT = 180_000;
 
   it('agrees with the compiler on every bindable occurrence', { timeout: TIMEOUT }, () => {
     const r = runValidation(ROOT, { sampleOnly: true });

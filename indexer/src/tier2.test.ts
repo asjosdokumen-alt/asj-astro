@@ -179,7 +179,9 @@ h.svc.run();
   });
 
 describe('Tier 2 member binding (real tree)', () => {
-  const TIMEOUT = 60_000;
+  // 60 s -> 180 s (2026-10-04): this real-tree bind runs buildIndex(ROOT); the
+  // inline value must match the indexer project's testTimeout, since it wins.
+  const TIMEOUT = 180_000;
   it('binds member call sites in the real repo and every type-via ref joins', { timeout: TIMEOUT }, () => {
     const r = buildIndex(ROOT);
     const typeRefs = r.refs.filter((ref) => ref.resolvedVia === 'type');
