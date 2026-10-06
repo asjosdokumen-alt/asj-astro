@@ -10,7 +10,7 @@ import { t, useLang } from '../../store/i18n';
 import ChangePasswordModal from '../ChangePasswordModal';
 import CvMiniModal from '../CvMiniModal';
 import InterviewSimulatorModal from './InterviewSimulatorModal';
-import { isVipCatatan, ASJ_LOGO_URL } from '../../lib/vip';
+import { isVipFlags, ASJ_LOGO_URL } from '../../lib/vip';
 import RirekishoBuilder from '../admin/RirekishoBuilder';
 import EsignNaiteiModal, { allowedTahapanEsign } from '../EsignNaiteiModal';
 import PemberkasanModal from '../admin/PemberkasanModal';
@@ -36,8 +36,6 @@ type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: stri
 type CandidateData = {
   nama: string; wa: string; job: string; tahapan: string; status: string;
   isVIP: boolean; isSiswaASJ?: boolean; kelas?: string; idKandidat?: string;
-  /** catatan internal mentah — sumber tag [VIP]/[KELAS x] utk gate wawancara (A16). */
-  catatanInt?: string;
   cvMiniProgress: number; cvMasterProgress: number;
   riwayat: Riwayat[];
   jadwal: { id: string; nama: string; waktu: string; lokasi: string; link: string; }[];
@@ -247,11 +245,7 @@ export default function CandidateDash() {
       if (result.success) {
         const row: any = (Array.isArray(result.candidates) && result.candidates[0]) || null;
         const legacyD = result.kandidatData || {};
-        const catatanInt = row?.catatanInt || row?.catatan || '';
         const berkasMap: Record<string, string> = row?.berkas || legacyD.berkas || {};
-        // Catatan mentah disimpan utk gate VIP/KELAS wawancara (parity legacy
-        // bukaSimulatorInterview → isVipCatatan pada catatanInt sendiri).
-        const kelasMatch = /\[KELAS\s*([A-Z0-9]+)\]/i.exec(String(catatanInt));
         const berkasList = ALL_BERKAS.map((def) => ({
           label: def.label,
           done: hasBerkasUrl(berkasMap[def.key]),
@@ -269,10 +263,15 @@ export default function CandidateDash() {
           // memberi lencana padahal gerbang AI CV/simulator MENOLAKnya. Dua
           // predikat itu menjadi TIDAK SEPAKAT untuk kandidat yang sama — persis
           // divergensi yang dilaporkan. Tag `[vip]` non-kanonikal BUKAN VIP.
-          isVIP: catatanInt.includes('[VIP]') || !!legacyD.isVIP,
+          //
+          // 2026-10-05: `isVIP`/`kelas` kini datang dari SERVER (`mapCandidate`),
+          // bukan dari `catatanInt` mentah — memo internal tidak lagi dikirim ke
+          // kandidat (lihat `toKandidatView` di `_lib/db/candidates.ts`). Server
+          // memakai input yang sama (`catatan_internal || catatan_admin`), jadi
+          // perilakunya identik.
+          isVIP: !!row?.isVIP || !!legacyD.isVIP,
           isSiswaASJ: !!row?.isSiswaASJ || !!legacyD.isSiswaASJ,
-          catatanInt,
-          kelas: (kelasMatch && kelasMatch[1]) || legacyD.kelas || '',
+          kelas: row?.kelas || legacyD.kelas || '',
           idKandidat: row?.idKandidat || legacyD.idKandidat || '',
           // Progres profil DIHITUNG dari data nyata baris kandidat + objek bio,
           // bukan dibaca dari `result.kandidatData` yang tidak pernah dikirim
@@ -387,7 +386,7 @@ export default function CandidateDash() {
         showToast(t('ui.toast_session_invalid_relogin'), 'error');
         return;
       }
-      if (!isVipCatatan(data?.catatanInt)) {
+      if (!isVipFlags(data)) {
         showToast(t('ui.toast_feature_locked'), 'info');
         return;
       }
@@ -406,7 +405,7 @@ export default function CandidateDash() {
         showToast(t('ui.toast_session_invalid_relogin'), 'error');
         return;
       }
-      if (!isVipCatatan(data?.catatanInt)) {
+      if (!isVipFlags(data)) {
         showToast(t('ui.toast_ai_cv_locked'), 'info');
         return;
       }

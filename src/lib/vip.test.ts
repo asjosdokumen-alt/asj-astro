@@ -12,7 +12,7 @@
  * terbuka untuk kandidat biasa. Pelajaran ini dipertahankan sebagai tes.
  */
 import { describe, expect, it } from 'vitest';
-import { isVipCatatan, aiCvAccessRedirect, ASJ_LOGO_URL } from './vip';
+import { isVipCatatan, isVipFlags, aiCvAccessRedirect, ASJ_LOGO_URL } from './vip';
 
 describe('isVipCatatan — predikat gate (parity legacy)', () => {
   it('tag literal [VIP] membuka akses', () => {
@@ -44,25 +44,50 @@ describe('isVipCatatan — predikat gate (parity legacy)', () => {
   });
 });
 
-describe('aiCvAccessRedirect — penjaga halaman AI CV', () => {
+describe('isVipFlags — gate dari flag turunan server (2026-10-05)', () => {
+  it('isVIP ATAU kelas membuka; selain itu tidak', () => {
+    expect(isVipFlags({ isVIP: true })).toBe(true);
+    expect(isVipFlags({ kelas: 'G' })).toBe(true);
+    expect(isVipFlags({ isVIP: true, kelas: 'G' })).toBe(true);
+    expect(isVipFlags({})).toBe(false);
+    expect(isVipFlags({ isVIP: false, kelas: '' })).toBe(false);
+    expect(isVipFlags(null)).toBe(false);
+    expect(isVipFlags(undefined)).toBe(false);
+  });
+
+  it('sama dengan isVipCatatan atas memo yang menurunkannya (parity)', () => {
+    // Untuk tiap memo, `isVipFlags` atas flag yang diturunkan server harus sama
+    // dengan `isVipCatatan` atas memo itu — termasuk tag kurung non-KELAS yang
+    // TIDAK boleh membuka gate.
+    for (const memo of ['[VIP]', '[KELAS G]', '[kelas lp2]', '[vip]', '[MCU] x', 'biasa', '']) {
+      const flags = {
+        isVIP: memo.includes('[VIP]'),
+        kelas: (/\[KELAS\s*([A-Z0-9]+)\]/i.exec(memo) || [])[1] || '',
+      };
+      expect(isVipFlags(flags), memo).toBe(isVipCatatan(memo));
+    }
+  });
+});
+
+describe('aiCvAccessRedirect — penjaga halaman AI CV (flag turunan server)', () => {
   it('siswa ASJ (VIP atau KELAS) → null (boleh masuk)', () => {
-    expect(aiCvAccessRedirect('[VIP]', '0812', 'Budi')).toBeNull();
-    expect(aiCvAccessRedirect('[KELAS G]', '0812', 'Budi')).toBeNull();
+    expect(aiCvAccessRedirect({ isVIP: true }, '0812', 'Budi')).toBeNull();
+    expect(aiCvAccessRedirect({ kelas: 'G' }, '0812', 'Budi')).toBeNull();
   });
 
   it('non-siswa → /master dengan wa & nama ter-encode', () => {
-    expect(aiCvAccessRedirect('kandidat umum', '0812', 'Budi Santoso')).toBe(
+    expect(aiCvAccessRedirect({ isVIP: false, kelas: '' }, '0812', 'Budi Santoso')).toBe(
       '/master?wa=0812&nama=Budi%20Santoso',
     );
   });
 
-  it('catatan kosong/null → tetap diarahkan (parity legacy isAiVipCatatan("") === false)', () => {
-    expect(aiCvAccessRedirect('', '0812')).toBe('/master?wa=0812&nama=');
+  it('flag kosong/null → tetap diarahkan (parity legacy isAiVipCatatan("") === false)', () => {
+    expect(aiCvAccessRedirect({}, '0812')).toBe('/master?wa=0812&nama=');
     expect(aiCvAccessRedirect(null, '0812')).toBe('/master?wa=0812&nama=');
   });
 
   it('wa dinamis (+, spasi) ikut di-encode supaya URL tidak rusak', () => {
-    expect(aiCvAccessRedirect('x', '+62 812', undefined)).toBe('/master?wa=%2B62%20812&nama=');
+    expect(aiCvAccessRedirect({}, '+62 812', undefined)).toBe('/master?wa=%2B62%20812&nama=');
   });
 });
 

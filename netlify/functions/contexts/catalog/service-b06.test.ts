@@ -26,6 +26,8 @@ const m = vi.hoisted(() => ({
   findJob: vi.fn(),
   findCand: vi.fn(),
   findJobsAll: vi.fn(),
+  findCandWa: vi.fn(),
+  mapCandidate: vi.fn(),
 }));
 
 vi.mock('./repository', () => ({
@@ -37,26 +39,11 @@ vi.mock('./repository', () => ({
     return undefined;
   },
   toText: (v: unknown) => (v === undefined || v === null ? '' : String(v)),
-  // Faithful enough to the real mapper (_lib/db/candidates.ts): it translates the
-  // raw row into the camelCase shape `handleShareData` consumes (idKandidat/wa/
-  // nama/pasPhoto/fileCv/jftText/…). An identity mock silently made every output
-  // field `undefined` while still passing a length assertion — the fixture rows
-  // below therefore stay in RAW DB shape and this maps them.
-  mapCandidate: (r: any) => ({
-    idKandidat: r?.id_kandidat,
-    wa: r?.no_wa,
-    nama: r?.nama_lengkap,
-    gender: r?.gender,
-    usia: r?.usia,
-    tb: r?.tb,
-    bb: r?.bb,
-    pasPhoto: r?.pas_photo,
-    fileCv: r?.file_cv,
-    jft: r?.jft,
-    ssw: r?.ssw,
-    jftText: r?.nilai_jft_text,
-    sswText: r?.bidang_ssw_text,
-  }),
+  // The REAL mapper, injected in `beforeEach` (see below). A hand-written copy
+  // here would silently drift from `_lib/db/candidates.ts` — and the whole point
+  // of the kandidat-payload test is that the SHIPPED mapper's fields
+  // (`catatan`/`catatanInt`/`_raw`) are the ones `toKandidatView` removes.
+  mapCandidate: m.mapCandidate,
   stripRaw: (x: unknown) => x,
   loadCandidatesUnik: async () => ({ rows: [] }),
   loadSchedules: async () => [],
@@ -68,7 +55,7 @@ vi.mock('./repository', () => ({
   findFormsLight: async () => [],
   findForms: async () => [],
   parseDocs: () => [],
-  findCandidateByWaFiltered: async () => null,
+  findCandidateByWaFiltered: m.findCandWa,
   findCandidates: async () => ({ rows: [] }),
   attachApplications: async (rows: unknown) => rows,
   attachBerkasBio: async (rows: unknown) => rows,
@@ -84,7 +71,17 @@ vi.mock('./repository', () => ({
   supabaseUrl: () => 'https://x.supabase.co',
 }));
 
-import { handleShareData } from './service';
+import { handleShareData, handleGetAppData } from './service';
+import { mapCandidate as realMapCandidate } from '../../_lib/db/candidates';
+import { signToken } from '../../_lib/session';
+
+// Inject the REAL mapper (see the mock factory above) and reset the WA lookup
+// before every test, so both describes exercise the shipped `mapCandidate`.
+beforeEach(() => {
+  m.mapCandidate.mockImplementation(realMapCandidate as never);
+  m.findCandWa.mockReset();
+  m.findCandWa.mockResolvedValue(null);
+});
 
 const JOB_ROW = { code_job: 'TG658', pekerjaan: 'Perawat Jepang', dokumen_share: 'CV,JFT,SSW' };
 const CAND_ROW = {
@@ -182,5 +179,74 @@ describe('B06 — the share viewer is public by job code (legacy contract)', () 
     };
     expect(out.error).toBeUndefined();
     expect(out.job?.code).toBe('TG658');
+  });
+});
+
+// ==========================================
+// TESTS: kandidat payload — the admin memos must not leave the server (#10).
+//
+// The RENDERING was fixed long ago (`CandidateDash.tsx` shows only
+// `catatanExt`), but the PAYLOAD was not: `mapCandidate` returned `catatan`
+// (← catatan_admin) and `catatanInt` (← catatan_internal) plus `_raw` (the whole
+// DB row), and the kandidat branch handed the mapped row straight to the client.
+// "The UI hides it" is not a control when devtools is one keypress away.
+//
+// These assertions are on the SERIALISED RESPONSE — the strongest form: they do
+// not care WHICH field the memo hides in, only that its VALUE is not on the
+// wire. The real `mapCandidate` is injected (mock factory above), so the fields
+// removed are exactly the ones the shipped mapper emits.
+// ==========================================
+describe('kandidat payload — admin memos never leave the server (#10)', () => {
+  const KANDIDAT_ROW = {
+    id_kandidat: 'K1',
+    id_loker_pilihan: 'TG658',
+    no_wa: '628111222333',
+    nama_lengkap: 'Budi Santoso',
+    catatan_admin: 'MEMO-ADMIN-INTERNAL',
+    catatan_internal: 'MEMO-KANDIDAT-INTERNAL [VIP]',
+    catatan_external: 'CATATAN-UNTUK-KANDIDAT',
+    nik: '3512345678901234',
+    email: 'budi@contoh.test',
+    alamat_lengkap: 'Jl. Mawar 1, Ponorogo',
+  };
+
+  const asKandidat = () =>
+    handleGetAppData(['kandidat', '628111222333'], signToken({ role: 'kandidat', wa: '628111222333' })) as Promise<{
+      success: boolean;
+      candidates: Record<string, unknown>[];
+    }>;
+
+  it('mode=kandidat never serialises catatan_admin / catatan_internal / _raw', async () => {
+    m.findCandWa.mockResolvedValue(KANDIDAT_ROW);
+    const out = await asKandidat();
+    expect(out.success).toBe(true);
+
+    const wire = JSON.stringify(out);
+    // RED before the fix: both memo values used to be on the wire verbatim.
+    expect(wire).not.toContain('MEMO-ADMIN-INTERNAL');
+    expect(wire).not.toContain('MEMO-KANDIDAT-INTERNAL');
+
+    const row = out.candidates[0];
+    expect(row).not.toHaveProperty('catatan');
+    expect(row).not.toHaveProperty('catatanInt');
+    expect(row).not.toHaveProperty('_raw');
+  });
+
+  it('the candidate still receives the derived flags and their own external note', async () => {
+    m.findCandWa.mockResolvedValue(KANDIDAT_ROW);
+    const out = await asKandidat();
+    const row = out.candidates[0];
+
+    // Server-derived VIP flags — what the dashboard/guard read instead of the memo.
+    expect(row.isVIP).toBe(true); // `[VIP]` in the internal memo
+    expect(row.kelas).toBe(''); // no `[KELAS xx]`
+    expect(row.isSiswaASJ).toBe(false); // `[VIP]` is a VIP tag, NOT a class tag
+    // The note the admin wrote FOR the candidate is still delivered.
+    expect(row.catatanExt).toBe('CATATAN-UNTUK-KANDIDAT');
+    // The candidate's OWN profile fields are deliberately NOT stripped (they are
+    // viewing themselves) — stripping them would break the profile/dossier.
+    expect(row.email).toBe('budi@contoh.test');
+    expect(row.nik).toBe('3512345678901234');
+    expect(row.alamat).toBe('Jl. Mawar 1, Ponorogo');
   });
 });

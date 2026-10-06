@@ -427,9 +427,21 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
         // jangan redirect: kita tidak bisa memverifikasi, dan legacy pun
         // fail-open pada keadaan yang tak bisa diverifikasi.
         if (!cand && !my) return;
-        let catatan = cand ? String(cand.catatanInt || cand.catatan || '') : '';
-        if (!catatan && my) catatan = String(my.catatanInt || '');
-        const redirect = aiCvAccessRedirect(catatan, wa, a.name);
+        // Gate VIP/KELAS dihitung dari FLAG turunan server (`isVIP`/`kelas`).
+        // Memo mentah (`catatanInt`/`catatan`) tidak lagi dikirim ke kandidat —
+        // lihat `toKandidatView` di netlify/functions/_lib/db/candidates.ts.
+        // Bentuk `myData` lama (tak pernah dikirim backend saat ini) tetap
+        // dibaca sebagai fallback, flag dulu lalu memo mentahnya.
+        let flags = cand
+          ? { isVIP: !!cand.isVIP, kelas: String(cand.kelas || '') }
+          : null;
+        if (!flags && my) {
+          flags = {
+            isVIP: !!my.isVIP || String(my.catatanInt || '').includes('[VIP]'),
+            kelas: String(my.kelas || ''),
+          };
+        }
+        const redirect = aiCvAccessRedirect(flags, wa, a.name);
         if (redirect) window.location.href = redirect;
       } catch { /* gagal jaringan → jangan blokir (fallback aman legacy) */ }
     })();

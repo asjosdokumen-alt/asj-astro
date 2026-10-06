@@ -56,7 +56,7 @@ const apiClientMock = vi.mocked(apiClient);
 function row(over: Record<string, unknown> = {}) {
   return {
     nama: 'Budi', idLoker: 'JOB-1', tahapan: 'MCU', status: 'PROSES',
-    idKandidat: 'ASJ-001', catatanInt: '', cvMiniProgress: 0, cvMasterProgress: 0,
+    idKandidat: 'ASJ-001', isVIP: false, kelas: '', cvMiniProgress: 0, cvMasterProgress: 0,
     ...over,
   };
 }
@@ -110,21 +110,21 @@ describe('CandidateDash — gerbang AI CV Master (§6 gap 1)', () => {
   });
 
   it('kandidat NON-siswa → toast ui.toast_ai_cv_locked (info) dan TIDAK membuka /ai-cv', async () => {
-    await renderDash({ catatanInt: 'kandidat umum' });
+    await renderDash({ isVIP: false });
     await fireEvent.click(screen.getByRole('button', { name: 'ui.ai_cv_assistant' }));
     expect(showToast).toHaveBeenCalledWith('ui.toast_ai_cv_locked', 'info');
     expect(href()).toBe('');
   });
 
   it('siswa VIP ([VIP]) → membuka /ai-cv tanpa toast terkunci', async () => {
-    await renderDash({ catatanInt: '[VIP]' });
+    await renderDash({ isVIP: true });
     await fireEvent.click(screen.getByRole('button', { name: 'ui.ai_cv_assistant' }));
     expect(href()).toBe('/ai-cv');
     expect(showToast).not.toHaveBeenCalledWith('ui.toast_ai_cv_locked', 'info');
   });
 
   it('siswa KELAS ([KELAS G], tanpa [VIP]) → gate TERBUKA (isVipCatatan mencakup KELAS)', async () => {
-    await renderDash({ catatanInt: '[KELAS G] murid' });
+    await renderDash({ kelas: 'G' });
     await fireEvent.click(screen.getByRole('button', { name: 'ui.ai_cv_assistant' }));
     expect(href()).toBe('/ai-cv');
   });
@@ -148,36 +148,56 @@ describe('CandidateDash — lencana VIP + PERFECT ASJ STUDENT (§6 gap 4/5)', ()
   });
 
   it('VIP → lencana logo ASJ (title ui.badge_official) tampil di header', async () => {
-    await renderDash({ catatanInt: '[VIP]' });
+    await renderDash({ isVIP: true });
     expect(screen.getByTitle('ui.badge_official')).toBeTruthy();
   });
 
   it('NON-VIP → tanpa lencana logo ASJ', async () => {
-    await renderDash({ catatanInt: 'kandidat umum' });
+    await renderDash({ isVIP: false });
     expect(screen.queryByTitle('ui.badge_official')).toBeNull();
   });
 
   it('KELAS saja → tanpa lencana (badge legacy memakai [VIP] literal, bukan isVipCatatan)', async () => {
-    await renderDash({ catatanInt: '[KELAS G] murid' });
+    await renderDash({ kelas: 'G' });
     expect(screen.queryByTitle('ui.badge_official')).toBeNull();
   });
 
-  // REGRESI (item 10): lencana memakai `[VIP]` LITERAL case-SENSITIVE, sama
-  // seperti gate isVipCatatan. Catatan `[vip]` huruf kecil BUKAN VIP — kalau
-  // lencana tetap case-insensitive, kandidat `[vip]` tampil "Siswa Resmi ASJ"
-  // padahal gerbang AI CV/simulator menolaknya. Dua predikat itu wajib sepakat.
-  it('[vip] huruf kecil → TIDAK dapat lencana (case-sensitive, parity gate)', async () => {
-    await renderDash({ catatanInt: '[vip] rencana pribadi' });
+  // REGRESI (item 10): kartu "Digital Student Card" digerbangi `isVIP || isSiswaASJ`
+  // dan mencetak `kelas` — dua flag SERVER. Sebelumnya kelas diturunkan dari memo
+  // mentah; tes ini membuktikan TAMPILAN kelas tetap hidup setelah memo itu tidak
+  // lagi dikirim ke kandidat (regresi yang paling mungkin diperkenalkan).
+  it('siswa KELAS → kartu siswa tampil dan mencetak kode kelas dari flag server', async () => {
+    await renderDash({ isSiswaASJ: true, kelas: 'G' });
+    // Scope ke kartu siswa (heading ui.student_id) — 'G' sendirian bisa cocok di
+    // beberapa tempat, jadi `<p>` kelas-nya diambil relatif ke heading itu.
+    const heading = screen.getByText('ui.student_id');
+    expect(heading.parentElement?.querySelector('p')?.textContent).toBe('G');
+  });
+
+  it('VIP tanpa kelas → kartu siswa mencetak label ui.vip_member', async () => {
+    await renderDash({ isVIP: true });
+    const heading = screen.getByText('ui.student_id');
+    expect(heading.parentElement?.querySelector('p')?.textContent).toBe('ui.vip_member');
+  });
+
+  // REGRESI (item 10): lencana memakai tag `[VIP]` LITERAL case-SENSITIVE.
+  // Sejak 2026-10-05 tag itu diturunkan SERVER (`mapCandidate.isVIP`) dan memo
+  // mentahnya tidak lagi dikirim ke kandidat — jadi uji case-sensitivity-nya
+  // hidup di sisi server (`contexts/service-a02.test.ts`: "[vip] lowercase is
+  // NOT VIP"). Di sini cukup dipaku kontrak klien: lencana muncul HANYA bila
+  // server mengirim `isVIP: true`.
+  it('server isVIP:false → TIDAK dapat lencana (case-sensitivity kini di server)', async () => {
+    await renderDash({ isVIP: false });
     expect(screen.queryByTitle('ui.badge_official')).toBeNull();
   });
 
   it('VIP + CV Mini 100% + CV Master 100% → "PERFECT ASJ STUDENT"', async () => {
-    await renderDash({ catatanInt: '[VIP]', cvMiniProgress: 100, cvMasterProgress: 100 });
+    await renderDash({ isVIP: true, cvMiniProgress: 100, cvMasterProgress: 100 });
     expect(screen.getByText('ui.perfect_student')).toBeTruthy();
   });
 
   it('NON-VIP + keduanya 100% → bukan PERFECT (tetap pesan profil biasa)', async () => {
-    await renderDash({ catatanInt: 'kandidat umum', cvMiniProgress: 100, cvMasterProgress: 100 });
+    await renderDash({ isVIP: false, cvMiniProgress: 100, cvMasterProgress: 100 });
     expect(screen.queryByText('ui.perfect_student')).toBeNull();
     expect(screen.getByText('ui.profile_100')).toBeTruthy();
   });
@@ -638,7 +658,7 @@ describe('CandidateDash — kartu dossier sebagai header profil', () => {
        Kunci-kunci di bawah adalah penanda yang dipakai permukaan admin itu
        sendiri (admin/CandidateProfileModal.tsx), jadi tesnya menguji hal yang
        sama yang benar-benar dirender admin. */
-    await renderDash({ catatanInt: '[VIP]', catatan: 'catatan internal rahasia' });
+    await renderDash({ isVIP: true, catatan: 'catatan internal rahasia' });
     const body = document.body.textContent || '';
     for (const adminOnly of [
       'ui.edit_quick_cv',            // EDIT DATA CEPAT

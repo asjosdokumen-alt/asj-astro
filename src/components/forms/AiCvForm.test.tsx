@@ -666,7 +666,7 @@ describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
 
   it('kandidat non-siswa → diarahkan ke Form Master Lengkap, bukan dibiarkan di /ai-cv', async () => {
     authStore.set({ ...KANDIDAT });
-    vi.mocked(apiClient).mockResolvedValue({ candidates: [{ catatanInt: 'kandidat umum' }] } as any);
+    vi.mocked(apiClient).mockResolvedValue({ candidates: [{ isVIP: false, kelas: '' }] } as any);
     render(<AiCvForm />);
 
     await waitFor(() => expect(href()).toContain('/master'));
@@ -674,9 +674,20 @@ describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
     expect(apiClient).toHaveBeenCalledWith('getAppData', ['kandidat', KANDIDAT.wa]);
   });
 
-  it('kandidat siswa ([KELAS G]) → TIDAK diarahkan (boleh masuk)', async () => {
+  it('kandidat siswa (flag server kelas) → TIDAK diarahkan (boleh masuk)', async () => {
     authStore.set({ ...KANDIDAT });
-    vi.mocked(apiClient).mockResolvedValue({ candidates: [{ catatanInt: '[KELAS G] murid' }] } as any);
+    vi.mocked(apiClient).mockResolvedValue({ candidates: [{ kelas: 'G' }] } as any);
+    render(<AiCvForm />);
+
+    await waitFor(() => expect(apiClient).toHaveBeenCalledWith('getAppData', ['kandidat', KANDIDAT.wa]));
+    expect(href()).toBe('');
+  });
+
+  it('kandidat VIP (flag server isVIP) → TIDAK diarahkan (boleh masuk)', async () => {
+    // Flag kedua dari gate: `isVIP` ([VIP] literal). Memo mentahnya tidak lagi
+    // dikirim ke kandidat (lihat toKandidatView di _lib/db/candidates.ts).
+    authStore.set({ ...KANDIDAT });
+    vi.mocked(apiClient).mockResolvedValue({ candidates: [{ isVIP: true }] } as never);
     render(<AiCvForm />);
 
     await waitFor(() => expect(apiClient).toHaveBeenCalledWith('getAppData', ['kandidat', KANDIDAT.wa]));

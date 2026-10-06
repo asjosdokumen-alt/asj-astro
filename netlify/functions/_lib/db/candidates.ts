@@ -34,6 +34,26 @@ function mapCandidate(row: Record<string, unknown>) {
       }
     }
   }
+  // ── Server-derived VIP flags (2026-10-05) ────────────────────────────────
+  // The candidate dashboard and the /ai-cv guard used to derive these from the
+  // RAW internal memo (`CandidateDash.tsx` / `AiCvForm.tsx`:
+  // `catatanInt.includes('[VIP]')` and the `[KELAS xx]` regex). That forced an
+  // admin-only note onto the wire for `mode=kandidat`. Computing the flags here
+  // lets the kandidat payload drop the memo (see `toKandidatView` below) with no
+  // behaviour change:
+  //   · isVIP — the LITERAL `[VIP]` tag, case-SENSITIVE (parity: the "Siswa
+  //     Resmi ASJ" badge, legacy `catatanInt.includes('[VIP]')`). `[vip]` is NOT.
+  //   · kelas — the `[KELAS xx]` code, case-INSENSITIVE (parity: the class gate).
+  //   · the gate (`isVipCatatan`) == `isVIP OR kelas` — exactly `[VIP]` OR
+  //     `[KELAS xx]`, WITHOUT widening to a bare non-KELAS tag (see lib/vip.ts).
+  // Source string is `catatan_internal`, falling back to `catatan_admin` — the
+  // same input the client's old `row.catatanInt || row.catatan` used, so no
+  // candidate's badge or gate can flip.
+  const catatanAdmin = toText(pick(row, ['catatan_admin']));
+  const vipSource = catatanInt || catatanAdmin;
+  const isVIP = vipSource.includes('[VIP]');
+  const kelasMatch = /\[KELAS\s*([A-Z0-9]+)\]/i.exec(vipSource);
+  const kelas = kelasMatch ? kelasMatch[1] : '';
   const tb = toText(pick(row, ['tb']));
   const bb = toText(pick(row, ['bb']));
   const tempatLahir = toText(pick(row, ['tempat_lahir', 'tempatLahir']));
@@ -63,8 +83,10 @@ function mapCandidate(row: Record<string, unknown>) {
     sswText: toText(pick(row, ['bidang_ssw_text', 'ssw_text'])),
     catatanInt,
     catatanExt: toText(pick(row, ['catatan_external', 'catatan_ext'])),
-    catatan: toText(pick(row, ['catatan_admin'])),
+    catatan: catatanAdmin,
     isSiswaASJ: catatanHasClassTag,
+    isVIP,
+    kelas,
     tahapan: toText(pick(row, ['tahapan_seleksi', 'tahapan'])),
     status: toText(pick(row, ['status_kandidat', 'status'])),
     idLoker: toText(pick(row, ['id_loker_pilihan', 'id_loker'])),
@@ -84,6 +106,32 @@ function mapCandidate(row: Record<string, unknown>) {
     createdAt: pick(row, ['created_at']) || '',
     _raw: row,
   };
+}
+
+/**
+ * Kandidat-mode view of a mapped candidate row (2026-10-05).
+ *
+ * `mapCandidate` keeps the admin-authored memos on purpose — `catatan`
+ * (← `catatan_admin`) and `catatanInt` (← `catatan_internal`) — because the admin
+ * list and the CV dossier read them, and `_raw` carries the entire DB row. None
+ * of the three may cross the wire for `mode=kandidat`: they are internal notes,
+ * and "the rendering hides it" is not a control when devtools is one keypress
+ * away.
+ *
+ * The dashboard and the /ai-cv guard do not need the memo any more — they need
+ * the flags `mapCandidate` derives from it (`isVIP`, `isSiswaASJ`, `kelas`),
+ * which pass through untouched. This is the server half of that contract; the
+ * client half is `CandidateDash.tsx` / `AiCvForm.tsx`, which read those flags.
+ *
+ * The candidate's OWN profile fields (`email`, `alamat`, `nik`, `noPasport`, …)
+ * are deliberately NOT stripped: in `mode=kandidat` the caller is viewing
+ * themselves, and the dossier/profile surfaces need them.
+ */
+const KANDIDAT_MEMO_KEYS = ['catatan', 'catatanInt', '_raw'] as const;
+function toKandidatView(row: Record<string, unknown>): Record<string, unknown> {
+  const safe: Record<string, unknown> = { ...row };
+  for (const k of KANDIDAT_MEMO_KEYS) delete safe[k];
+  return safe;
 }
 
 // Nama tabel kandidat yang umum (urutan prioritas) — dipakai findCandidates &
@@ -367,6 +415,7 @@ function attachApplications(candidates: Record<string, any>[], forms: Record<str
 
 export {
   mapCandidate,
+  toKandidatView,
   findCandidates,
   findAllCandidatesLight,
   findCandidatesByIds,

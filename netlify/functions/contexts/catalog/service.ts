@@ -14,6 +14,7 @@ import {
   BERKAS_COLUMNS, supabaseJson, docTypeOf, docAge, mapForm,
 } from './repository';
 import { MASTER_LIGHT_COLS, PEMBERKASAN_COLS } from '../../_lib/db/projections';
+import { toKandidatView } from '../../_lib/db/candidates';
 
 export async function handleGetAppData(payload: any[], sessionToken?: string) {
   const mode = (payload && payload[0]) || 'public';
@@ -76,7 +77,12 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
         row = foundCand.rows.find((r) => normalizeWa(pick(r, ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp']) || '') === w) || null;
       }
       result.dbJobs = pub.jobs;
-      const myCands = row ? stripRaw([mapCandidate(row)]) : [];
+      // Admin-authored memos (`catatan` ← catatan_admin, `catatanInt` ←
+      // catatan_internal) and the raw DB row (`_raw`) must NOT reach the
+      // candidate's browser — the rendering already hides them, but the payload
+      // was still on the wire. `toKandidatView` drops them; the server-derived
+      // VIP/class flags (`isVIP`, `isSiswaASJ`, `kelas`) survive for the dash.
+      const myCands = row ? [toKandidatView(mapCandidate(row))] : [];
       await attachBerkasBio(myCands);
       let myForms = results[2];
       if (myForms === undefined) myForms = await findForms();

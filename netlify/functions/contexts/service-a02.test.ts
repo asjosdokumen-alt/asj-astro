@@ -12,7 +12,7 @@
 // Every rejection below fires BEFORE any DB/network call (DB-free).
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { mapCandidate } from '../_lib/db/candidates';
+import { mapCandidate, toKandidatView } from '../_lib/db/candidates';
 import { signToken } from '../_lib/session';
 import { handleUpdateCatatanKandidat, buildKandidatSuperPatch } from './registry/service';
 
@@ -39,6 +39,73 @@ describe('mapCandidate — [VIP] is not a class tag (A02)', () => {
   it('an empty internal note is not an ASJ student', () => {
     const c = mapCandidate({ catatan_internal: '' });
     expect(c.isSiswaASJ).toBe(false);
+  });
+});
+
+// ==========================================
+// TESTS: server-derived VIP flags + kandidat payload (#10, 2026-10-05)
+//
+// The dashboard and the /ai-cv guard used to read the RAW internal memo
+// (`catatanInt`) to decide VIP/class. That forced an admin-only note onto the
+// wire for `mode=kandidat`. `mapCandidate` now derives the flags and
+// `toKandidatView` drops the memo — the client reads only the flags.
+// ==========================================
+describe('mapCandidate — server-derived VIP flags for the kandidat payload (#10)', () => {
+  it('a [VIP]-only note sets isVIP, but NOT kelas / isSiswaASJ', () => {
+    const c = mapCandidate({ catatan_internal: '[VIP] Rencana resmi' });
+    expect(c.isVIP).toBe(true);
+    expect(c.kelas).toBe('');
+    expect(c.isSiswaASJ).toBe(false);
+  });
+
+  it('a [KELAS G] note sets kelas (the code) and isSiswaASJ, but not isVIP', () => {
+    const c = mapCandidate({ catatan_internal: '[KELAS G] Angkatan Genji' });
+    expect(c.kelas).toBe('G');
+    expect(c.isSiswaASJ).toBe(true);
+    expect(c.isVIP).toBe(false);
+  });
+
+  it('[vip] lowercase is NOT VIP (case-sensitive — parity the dashboard badge)', () => {
+    const c = mapCandidate({ catatan_internal: '[vip] catatan pribadi' });
+    expect(c.isVIP).toBe(false);
+    expect(c.kelas).toBe('');
+  });
+
+  it('falls back to catatan_admin ONLY when catatan_internal is empty (parity old client)', () => {
+    // The client's old source was `row.catatanInt || row.catatan`; this keeps the
+    // same input so no candidate's badge or gate can flip.
+    expect(mapCandidate({ catatan_internal: '', catatan_admin: '[VIP] memo' }).isVIP).toBe(true);
+    expect(mapCandidate({ catatan_internal: 'biasa', catatan_admin: '[VIP] memo' }).isVIP).toBe(false);
+  });
+
+  // `toKandidatView` removes `catatan`/`catatanInt`/`_raw` BY NAME. If the mapper
+  // ever renames one, the strip silently stops matching — so the names are pinned
+  // here, next to the mapper that emits them.
+  it('still carries the raw memo + row for ADMIN use (the keys toKandidatView removes)', () => {
+    const c = mapCandidate({ catatan_admin: 'ADMIN', catatan_internal: 'INT' });
+    expect(c.catatan).toBe('ADMIN');
+    expect(c.catatanInt).toBe('INT');
+    expect(c._raw).toEqual({ catatan_admin: 'ADMIN', catatan_internal: 'INT' });
+  });
+});
+
+describe('toKandidatView — the server half of the kandidat payload contract (#10)', () => {
+  it('drops catatan/catatanInt/_raw and keeps the derived flags + own fields', () => {
+    const view = toKandidatView(
+      mapCandidate({
+        catatan_admin: 'MEMO-ADMIN',
+        catatan_internal: '[KELAS G] MEMO-INTERNAL',
+        email: 'a@b.test',
+      }),
+    );
+    expect(view).not.toHaveProperty('catatan');
+    expect(view).not.toHaveProperty('catatanInt');
+    expect(view).not.toHaveProperty('_raw');
+    const wire = JSON.stringify(view);
+    expect(wire).not.toContain('MEMO-ADMIN');
+    expect(wire).not.toContain('MEMO-INTERNAL');
+    expect(view.kelas).toBe('G');
+    expect(view.email).toBe('a@b.test');
   });
 });
 
