@@ -107,7 +107,7 @@ export async function handleDownloadJobDocs(payload: unknown[], sessionToken?: s
             archive.append(buf, { name: d.folder + '/' + filenameFromUrl(d.url, d.label) });
           }
           await processNext();
-        } catch (err: unknown) { archive.abort(); }
+        } catch (_err: unknown) { archive.abort(); }
       }
       const total = downloads.length;
       processNext().catch(() => archive.abort());

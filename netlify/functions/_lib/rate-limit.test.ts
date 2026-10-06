@@ -5,7 +5,7 @@
 // - Window reset: count resets after windowMs.
 // - Bucket pruning: max 20000 buckets.
 // ==========================================
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { check, fail } from './rate-limit';
 

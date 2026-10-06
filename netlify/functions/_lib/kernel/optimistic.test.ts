@@ -5,7 +5,7 @@ vi.mock('../db/client', () => ({
   supabaseJson: vi.fn(),
 }));
 
-import { optimisticUpdate, optimisticUpdateWithRetry, readUpdatedAt } from './optimistic';
+import { optimisticUpdate, readUpdatedAt } from './optimistic';
 import { supabaseJson } from '../db/client';
 
 const mockSupabaseJson = vi.mocked(supabaseJson);

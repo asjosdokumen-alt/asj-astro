@@ -117,7 +117,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
     if (reason !== null && reason !== undefined) body.keterangan = reason;
     await patchForm(f.id as number, body, sessionToken);
     let generatedPassword: string | null = null;
-    try { generatedPassword = await syncCandidateDariForm(f, status); } catch (e) { /* best-effort */ }
+    try { generatedPassword = await syncCandidateDariForm(f, status); } catch (_e) { /* best-effort */ }
 
     // Emit domain event for cross-context communication
     const waEvent = normWa(String(f.no_wa || f.wa || ''));
@@ -226,7 +226,7 @@ export async function handleDeleteForm(payload: unknown[], sessionToken?: string
     if (!f) return { success: false, error: 'Form tidak ditemukan.' };
     await deleteForm(f.id as number, sessionToken);
     return { success: true, rowIndex: idx };
-  } catch (e: unknown) {
+  } catch (_e: unknown) {
     return { success: false, error: 'Gagal menghapus form. Silakan coba lagi.' };
   }
 }

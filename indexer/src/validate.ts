@@ -31,7 +31,6 @@ import { join } from 'node:path';
 import ts from 'typescript';
 import { buildProgram, identifierIndex, norm } from './program.js';
 import { buildIndex, type BuildResult } from './build.js';
-import type { BoundRef } from './bind.js';
 import { splitAstroFrontmatter } from './parse.js';
 import {
   OccurrenceRole,
@@ -106,7 +105,7 @@ interface DiffRow {
 /** Declaration-identity categories (§13 differential validation). */
 type IdentityCategory = 'match' | 'alias-vs-chase' | 'merged-declaration' | 'shadowing-disagreement' | 'unmappable';
 
-const IDENTITY_CATEGORIES: readonly IdentityCategory[] = [
+const _IDENTITY_CATEGORIES: readonly IdentityCategory[] = [
   'match',
   'alias-vs-chase',
   'merged-declaration',
@@ -146,7 +145,7 @@ export function compilerNameAt(checker: ts.TypeChecker, id: ts.Identifier): stri
  */
 function makeIdentityComparator(
   r: BuildResult,
-  program: ts.Program,
+  _program: ts.Program,
   checker: ts.TypeChecker,
   astroOffset: Map<string, number>,
 ): {
@@ -198,7 +197,7 @@ function makeIdentityComparator(
     return out;
   };
 
-  const classify = (o: Occurrence, refTarget: SymKey, id: ts.Identifier): IdentityCategory => {
+  const classify = (_o: Occurrence, refTarget: SymKey, id: ts.Identifier): IdentityCategory => {
     const target = keyToSym.get(refTarget);
     if (!target) return 'unmappable';
     const identSet = symDeclSet(target);
@@ -242,7 +241,7 @@ function makeIdentityComparator(
     return 'unmappable';
   };
 
-  const example = (o: Occurrence, refTarget: SymKey, id: ts.Identifier): string => {
+  const example = (_o: Occurrence, refTarget: SymKey, id: ts.Identifier): string => {
     const target = keyToSym.get(refTarget);
     const s = checker.getSymbolAtLocation(id);
     const t = s && (s.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(s) : s;

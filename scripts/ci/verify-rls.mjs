@@ -50,7 +50,7 @@
  */
 
 import { writeFileSync } from 'node:fs';
-import { applyEnvFiles, initDbEnv } from '../lib/load-env.mjs';
+import { initDbEnv } from '../lib/load-env.mjs';
 
 function parseArgs(argv) {
   const args = { warnOnly: false, json: '' };
@@ -76,7 +76,7 @@ const CANDIDATE_FACING = new Set([
   'database_asj_form',
 ]);
 
-async function definitive(args) {
+async function definitive(_args) {
   const pg = (await import('pg')).default;
   const url = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
   // SSL is on by default because both real targets (the Supavisor pooler and a

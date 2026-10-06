@@ -8,7 +8,7 @@
  * dependency has no record. That omission is exactly the regression this file
  * guards, so it is asserted directly rather than inferred.
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { buildHealthReport, HEALTH_THRESHOLDS } from '../health';
 import { breaker, DEPENDENCY_CONFIGS, bulkhead } from './resilience';
 

@@ -249,7 +249,7 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
               ? String(m.catatan_internal || m.catatan_int || m.catatan || m.catatan_admin || '')
               : '';
           }
-        } catch (e) {
+        } catch (_e) {
           // Error lookup → jangan blokir (fail-open, sama seperti guard frontend).
           lookupError = true;
         }
@@ -340,7 +340,7 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
             data: aiData || {},
           };
         }
-      } catch (e) {
+      } catch (_e) {
         /* bukan JSON — fallback balas teks biasa */
       }
       return { success: true, reply: text };
@@ -510,7 +510,7 @@ async function handleProcessSiswaAIChat(payload: unknown) {
             data: parsed.data && typeof parsed.data === 'object' ? parsed.data : undefined,
           };
         }
-      } catch (e) {
+      } catch (_e) {
         /* bukan JSON — fallback balas teks biasa */
       }
       return { success: true, reply: text };
@@ -625,7 +625,7 @@ async function resolveProfilKandidat(wa: string) {
       nama = String(m.nama_lengkap || '');
       bidangRaw = String(m.bidangssw || m.ssw || m.bidang || m.lisensi || '');
     }
-  } catch (e) {
+  } catch (_e) {
     /* opsional */
   }
   if (!nama || !bidangRaw) {
@@ -638,7 +638,7 @@ async function resolveProfilKandidat(wa: string) {
         if (!nama) nama = String(c.nama || c.nama_lengkap || '');
         if (!bidangRaw) bidangRaw = String(c.bidang || c.ssw || c.bidangssw || '');
       }
-    } catch (e2) {
+    } catch (_e2) {
       /* opsional */
     }
   }
@@ -887,7 +887,7 @@ async function handleSimpanHasilWawancara(payload: unknown[], sessionToken?: str
       });
     }
     return { success: true };
-  } catch (e) {
+  } catch (_e) {
     return { success: false, message: 'Gagal menyimpan hasil wawancara. Silakan coba lagi.' };
   }
 }
@@ -923,7 +923,7 @@ async function handleGetHasilWawancara(payload: unknown[], sessionToken?: string
     let hasil: Record<string, any> = {};
     try {
       hasil = JSON.parse(row.ai_data_json || '{}');
-    } catch (e) {
+    } catch (_e) {
       hasil = { catatan: String(row.ai_data_json || '').slice(0, 2000) };
     }
     return {
@@ -933,7 +933,7 @@ async function handleGetHasilWawancara(payload: unknown[], sessionToken?: string
       updatedAt: String(row.updated_at || ''),
       nama: String(row.nama_lengkap || (hasil.biodata && hasil.biodata.nama) || ''),
     };
-  } catch (e) {
+  } catch (_e) {
     return { success: false, error: 'Terjadi kesalahan. Silakan coba lagi.' };
   }
 }

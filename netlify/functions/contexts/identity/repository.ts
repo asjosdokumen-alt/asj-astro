@@ -7,9 +7,8 @@
  * These are the ONLY files that may query auth-related tables.
  */
 
-import { supabaseJson, normalizeWa, pick } from '../../_lib/db/client';
+import { supabaseJson } from '../../_lib/db/client';
 import { CAND_AUTH_COLS } from '../../_lib/db/projections';
-import { env } from '../../_lib/env';
 
 // ── Admin credentials ────────────────────────────────────────────────────────
 //

@@ -223,7 +223,7 @@ function detectDependency(url: string): string {
 
 
 import { metrics } from './metrics';
-import { log, asyncLocalStorage } from './log';
+import { asyncLocalStorage } from './log';
 import { breaker, bulkhead } from './resilience';
 import { AppError } from './errors';
 import { clampBudget, MIN_SLICE_MS } from './deadline';

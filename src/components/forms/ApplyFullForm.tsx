@@ -61,7 +61,7 @@ export default function ApplyFullForm() {
   const [waLoading, setWaLoading] = useState(false);
   const [waMsg, setWaMsg] = useState('');
   const [waWarn, setWaWarn] = useState('');
-  const [extraDocs, setExtraDocs] = useState<string[]>([]);
+  const [_extraDocs, _setExtraDocs] = useState<string[]>([]);
   const [oldDocs, setOldDocs] = useState<{ photo?: string; jft?: string; ssw?: string }>({});
   // Kategori job dari server (getAppData public → job.kategori). Dipakai untuk
   // pre-check keterjangkauan: job "Magang" hanya untuk siswa VIP (lihat submitApply).

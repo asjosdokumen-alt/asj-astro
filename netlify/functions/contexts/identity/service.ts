@@ -198,7 +198,7 @@ export async function refreshKandidatSession(refreshToken: string) {
   return { success: true, sessionToken: newToken, wa: t.wa };
 }
 
-export async function registerKandidat(nama: string, wa: string, password?: string, usia?: number) {
+export async function registerKandidat(nama: string, wa: string, password?: string, _usia?: number) {
   // Check if already registered
   const existing = await repo.findCandidateForAuth(wa);
   if (existing) return { success: false, message: 'Nomor WA sudah terdaftar.' };

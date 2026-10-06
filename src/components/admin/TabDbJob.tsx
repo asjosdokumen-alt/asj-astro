@@ -87,7 +87,7 @@ export function sortDbJobs(
   });
 }
 
-const STATUS_BADGE: Record<string, string> = {
+const _STATUS_BADGE: Record<string, string> = {
   OPEN: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
   URGENT: 'bg-red-500/20 text-red-400 border-red-500/40',
   CLOSE: 'bg-slate-500/20 text-slate-400 border-slate-500/40',
@@ -98,7 +98,7 @@ export default function TabDbJob() {
   const [sortType, setSortType] = useState('TERBARU');
   const [fBidang, setFBidang] = useState('ALL');
   const [fTahapan, setFTahapan] = useState('ALL');
-  const [limit, setLimit] = useState(10);
+  const [limit, _setLimit] = useState(10);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   // Opsi chip filter dari dropdown config (getAppData admin → dropdowns) —

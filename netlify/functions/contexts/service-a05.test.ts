@@ -17,7 +17,7 @@ import { signToken } from '../_lib/session';
 import { handleSimpanBiodataLengkap, buildBioPatch, buildCandSyncPatch } from './master-data/service';
 import { FILE_LABEL_COLUMNS } from './documents/service';
 
-const kandidatA = signToken({ role: 'kandidat', wa: '6281111111111' });
+const _kandidatA = signToken({ role: 'kandidat', wa: '6281111111111' });
 const kandidatB = signToken({ role: 'kandidat', wa: '6289999999999' });
 const admin = signToken({ role: 'admin', wa: '6280000000000' });
 

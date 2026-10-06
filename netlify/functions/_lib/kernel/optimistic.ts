@@ -34,7 +34,6 @@
  */
 
 import { supabaseJson } from '../db/client';
-import { AppError } from './errors';
 import { log } from './log';
 
 interface OptimisticOpts {

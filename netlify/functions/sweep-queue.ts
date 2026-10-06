@@ -40,7 +40,7 @@ import type { Job } from './_lib/kernel/job-queue';
 // Each handler receives the job payload and executes the actual work.
 // Import from the same contexts the surfaces use.
 
-const NOT_IMPL = { success: false, message: 'Fungsi ini belum diimplementasi di backend rebuild.' };
+const _NOT_IMPL = { success: false, message: 'Fungsi ini belum diimplementasi di backend rebuild.' };
 
 const HANDLERS: Record<string, (payload: Record<string, unknown>) => Promise<unknown>> = {
   'ai.interview': async (payload) => {

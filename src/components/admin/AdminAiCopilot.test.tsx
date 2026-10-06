@@ -77,7 +77,7 @@ function sendMessage(text: string) {
 
 /** Bubbles may contain <b> children — match by textContent across elements. */
 function bubbleWith(text: string) {
-  return screen.getAllByText((content: string, el: Element | null) => {
+  return screen.getAllByText((_content: string, el: Element | null) => {
     if (!el) return false;
     const t = el.textContent || '';
     return t.length < 400 && t.includes(text);

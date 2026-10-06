@@ -25,7 +25,6 @@
  */
 
 import { supabaseJson } from '../db/client';
-import { log } from './log';
 
 interface RateLimitOpts {
   limit?: number;
@@ -46,7 +45,7 @@ interface CounterRow {
   locked_until: string | null;
 }
 
-const TABLE = 'rate_counters';
+const _TABLE = 'rate_counters';
 
 // B6 fix: Use atomic RPC function instead of non-atomic read-modify-write
 // The rate_limit_check function atomically increments and checks limits

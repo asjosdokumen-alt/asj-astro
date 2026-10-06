@@ -24,7 +24,7 @@ import { authStore } from '../../store/authReactive';
 import Icon from '../ui/Icon';
 import { Bar, Status } from '../ui/Skeleton';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
-import RincianBiayaModal, { parseRincianState, rincianSerialize, rincianSummary } from './RincianBiayaModal';
+import RincianBiayaModal, { parseRincianState, rincianSummary } from './RincianBiayaModal';
 
 interface DD {
   tsk: string[];

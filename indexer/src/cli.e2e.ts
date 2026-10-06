@@ -120,7 +120,7 @@ probedBody.query.file = oracleBody.query.file; // resolveAt echoes the needle as
 assert.deepEqual(probedBody, oracleBody, 'probed def must equal exact-path def');
 
 // 3. def at a reference site resolves back to the referenced symbol.
-const oracleRef = resolveAt(index, refSite.file, refSite.line, refSite.char);
+const _oracleRef = resolveAt(index, refSite.file, refSite.line, refSite.char);
 const cliRef = runCli(['def', refSite.file + ':' + refSite.line + ':' + refSite.char, '--snapshot', SNAP]);
 assert.equal(cliRef.code, 0, 'def at ref site must exit 0');
 assert(cliRef.stdout.includes(greetSym.id), 'text def must name the resolved symbol');

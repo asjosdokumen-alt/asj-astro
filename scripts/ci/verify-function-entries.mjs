@@ -32,8 +32,8 @@
  * EXIT CODES  0 pass · 1 fail
  */
 
-import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
-import { join, relative, dirname, resolve, basename } from 'node:path';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));

@@ -1,6 +1,5 @@
 import { defineConfig } from 'astro/config';
 import preact from '@astrojs/preact';
-import netlify from '@astrojs/netlify';
 import tailwindcss from '@tailwindcss/vite';
 import stripHtmlComments from './scripts/build/strip-html-comments.mjs';
 

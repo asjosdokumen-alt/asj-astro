@@ -18,8 +18,6 @@
 import { validatePayload, schemas } from '../_lib/kernel/validate';
 import { normalizeWa } from '../shared/wa-rules';
 import * as identity from '../contexts/identity';
-import * as session from '../_lib/session';
-import { supabaseJson } from '../_lib/db/client';
 
 /**
  * Surface registry: action name → handler function.

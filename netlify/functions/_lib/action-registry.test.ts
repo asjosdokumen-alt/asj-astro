@@ -216,3 +216,47 @@ describe('kontrak rute klien → entry point', () => {
     ).toEqual([]);
   });
 });
+
+// ─── KONTRAK REGISTRY → RUTE KLIEN (2026-10-06) ─────────────────────────────
+//
+// Blok di atas menjaga arah rute → entry: action yang DIRUTEKAN harus diterima
+// entry point yang ditunjuknya. Arah sebaliknya tidak dijaga siapa pun: sebuah
+// action yang terdaftar di registry (dan dipanggil frontend) tetapi TIDAK punya
+// rute sendiri. Yang terjadi bukan error, melainkan degradasi senyap —
+// `getEndpoint()` mengembalikan FALLBACK bridge-links (`apiEndpoint.ts:135`),
+// dan apiClient mengulang ke catch-all saat entry yang dituju membalas 404
+// (`apiClient.ts:335-337`). Fitur tetap jalan, jadi tidak ada yang sadar.
+//
+// Kelas cacat ini sudah dua kali nyata di repo ini, dan keduanya tercatat di
+// komentar `src/lib/apiEndpoint.ts` sendiri:
+//   parseDokumenBiodata — tidak punya rute sama sekali, selalu ke FALLBACK
+//   getAppConfig / reportWebVital — hanya terjangkau lewat catch-all
+// `reportWebVital` khususnya dipanggil klien pada SETIAP page view, jadi ia
+// membayar satu round-trip sia-sia ke fungsi terberat di repo tiap kali.
+//
+// `scripts/ci/surface-binding.mjs` punya gate statis untuk reachability sisi
+// entry; blok ini menutup sisi kliennya supaya rute yang hilang gagal DI SINI,
+// bukan menghilang ke catch-all.
+describe('kontrak registry → rute klien', () => {
+  const routes = clientRoutes();
+
+  /** Rute cadangan yang dipakai getEndpoint() untuk action tak dikenal. */
+  function fallbackRoute(): string | null {
+    const src = readFileSync(join(ROOT, 'src/lib/apiEndpoint.ts'), 'utf8');
+    const m = src.match(/const FALLBACK\s*=\s*'([^']+)'/);
+    return m ? m[1].replace('/.netlify/functions/', '') : null;
+  }
+
+  it('FALLBACK masih bridge-links (sanity — kalau ini berubah, blok ini salah sasaran)', () => {
+    expect(fallbackRoute()).toBe('bridge-links');
+  });
+
+  it('setiap action yang dipanggil frontend punya rute EKSPLISIT (bukan catch-all)', () => {
+    const unrouted = frontendActions().filter((a) => !(a in routes));
+    expect(
+      unrouted,
+      'action dipanggil frontend TANPA rute eksplisit — akan jatuh ke catch-all ' +
+        `bridge-links secara diam-diam (404 lalu retry): ${unrouted.join(', ')}`,
+    ).toEqual([]);
+  });
+});

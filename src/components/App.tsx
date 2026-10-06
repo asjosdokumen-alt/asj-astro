@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
-import { authStore, logout } from '../store/authReactive';
+import { authStore } from '../store/authReactive';
 import { initializeAuthListener, logoutSupabase } from '../store/userStore';
 import { toggleLang, t, translateDataLang, useLang } from '../store/i18n';
 import { bannerStore } from '../store/theme';

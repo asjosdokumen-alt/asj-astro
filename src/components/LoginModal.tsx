@@ -180,7 +180,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
     finally { setLoading(false); }
   }
 
-  function selectAdmin(n: string) { setSelectedAdmin(n); }
+  function _selectAdmin(n: string) { setSelectedAdmin(n); }
 
   // ─── Admin Personal PIN ───
   async function handlePersonal() {

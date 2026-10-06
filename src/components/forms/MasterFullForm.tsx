@@ -143,7 +143,7 @@ export default function MasterFullForm() {
   const [kenalan, setKenalan] = useState({ nama:'', usia:'', hubungan:'', pekerjaan:'', alamat:'' });
   const [files, setFiles] = useState<Record<string, File|null>>({});
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
+  const [_loading, _setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loginGate, setLoginGate] = useState(true);
   const [gatePass, setGatePass] = useState('');

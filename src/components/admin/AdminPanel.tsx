@@ -11,7 +11,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { FunctionComponent } from 'preact';
 import { t, useLang } from '../../store/i18n';
-import { showToast } from '../Toast';
 import TabKelola from './TabKelola.tsx';
 import TabPelamar from './TabPelamar.tsx';
 

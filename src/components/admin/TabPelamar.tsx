@@ -29,7 +29,6 @@ import {
   toCsvText,
 } from '../../lib/candidateExport';
 
-import type { Kandidat } from "../../store/adminStore";
 import type { WaTemplate } from '../../types/api';
 import { t, langStore } from '../../store/i18n';
 import { showToast } from '../Toast';

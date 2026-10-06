@@ -105,7 +105,7 @@ export function buildEduRows(eduList: Record<string, any>[], v: (...keys: string
     const sj=isGood(p.sekolah_jp)?String(p.sekolah_jp):v("PENDIDIKAN"+i+"SEKOLAHJP");
     const j=isGood(p.jurusan_id)?String(p.jurusan_id):v("PENDIDIKAN"+i+"JURUSAN","PENDIDIKAN"+i+"JURUSANID");
     const jj=isGood(p.jurusan_jp)?String(p.jurusan_jp):v("PENDIDIKAN"+i+"JURUSANJP");
-    [m,l,s,j,sj,jj].forEach((x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
+    [m,l,s,j,sj,jj].forEach((_x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
     if(i>3&&!(s||m||l)) continue;
     const fs=sj?escHtml`${s}<br><span style="font-size:8px;font-weight:normal;">${sj}</span>`:escVal(s);
     const fj=jj?escHtml`${j}<br><span style="font-size:8px;font-weight:normal;">${jj}</span>`:escVal(j);
@@ -127,7 +127,7 @@ export function buildJobRows(jobList: Record<string, any>[], v: (...keys: string
     const ker=isGood(p.jabatan)?String(p.jabatan):v("PEKERJAAN"+i+"JENISKERJA","PEKERJAAN"+i+"POSISI","PEKERJAAN"+i+"JABATANID");
     const kerj=isGood(p.jabatan_jp)?String(p.jabatan_jp):v("PEKERJAAN"+i+"JABATANJP");
     const gaji=isGood(p.gaji)?String(p.gaji):v("PEKERJAAN"+i+"GAJI");
-    [m,k,pt,ker,gaji,ptj,kerj].forEach((x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
+    [m,k,pt,ker,gaji,ptj,kerj].forEach((_x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
     if(i>2&&!(pt||m||k)) continue;
     const kf=(k.toUpperCase().includes("SEKARANG")||k.toUpperCase().includes("IMA"))?"現在に至る":fmtMonthYearJp(k);
     const fpt=ptj?escHtml`${pt}<br><span style="font-size:8px;font-weight:normal;">${ptj}</span>`:escVal(pt);
@@ -149,7 +149,7 @@ export function buildFamRows(famList: Record<string, any>[], v: (...keys: string
     const pk=isGood(p.pekerjaan)?String(p.pekerjaan):v("KELUARGA"+i+"PEKERJAANID","KELUARGA"+i+"PEKERJAAN");
     const pkj=isGood(p.pekerjaan_jp)?String(p.pekerjaan_jp):v("KELUARGA"+i+"PEKERJAANJP");
     const g=isGood(p.gaji)?String(p.gaji):v("KELUARGA"+i+"GAJI");
-    [hub,nm,u,pk,g,hubj,pkj].forEach((x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
+    [hub,nm,u,pk,g,hubj,pkj].forEach((_x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
     const fh=hubj?escHtml`${hub.toUpperCase()}  ${hubj}`:escVal(hub.toUpperCase());
     const fp=pkj?escHtml`${pk}<br><span style="font-size:8px;font-weight:normal;">${pkj}</span>`:escVal(pk);
     html+=escHtml`<tr><td colspan="2" class="val-center">${fh}</td><td colspan="2" class="val-center">${nm.toUpperCase()}</td><td class="val-center">${u?u+"歳":""}</td><td class="val-center">${fp}</td><td class="val-right pr-1">${g?"¥   "+g:"¥        -"}</td></tr>`;

@@ -27,7 +27,7 @@ interface Props {
 export default function WAPintarModal({ candidateName, candidateJob, phone, templates, onClose, closing = false }: Props) {
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [message, setMessage] = useState('');
-  const [sending, setSending] = useState(false);
+  const [_sending, _setSending] = useState(false);
 
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplate(templateId);

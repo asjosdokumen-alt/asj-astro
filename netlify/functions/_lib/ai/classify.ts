@@ -86,7 +86,7 @@ async function handleParseDokumenBiodata(payload: unknown, sessionToken: string 
   let buf;
   try {
     buf = Buffer.from(data, 'base64');
-  } catch (e: any) {
+  } catch (_e: any) {
     return { success: false, error: 'File tidak bisa dibaca.' };
   }
   if (buf.length > PARSE_MAX_BYTES) {
@@ -127,7 +127,7 @@ async function handleParseDokumenBiodata(payload: unknown, sessionToken: string 
   try {
     const m = await findMasterByWa(wa);
     if (m) namaSekarang = String(m.nama_lengkap || '');
-  } catch (e: any) {
+  } catch (_e: any) {
     /* opsional */
   }
 

@@ -14,7 +14,7 @@ function siteBase(): string {
   return (env('NETLIFY_SITE_URL') || 'https://asjportal.netlify.app').replace(/\/$/, '');
 }
 
-export async function handleGetDaftarSiswaBaru(payload: any[], sessionToken?: string) {
+export async function handleGetDaftarSiswaBaru(_payload: any[], sessionToken?: string) {
   // C4/C5 hardening (2026-09-04): the roster of ALL registrants (id, nama,
   // alamat, kelamin) is admin-only — an authenticated kandidat must not be
   // able to enumerate other candidates' PII.

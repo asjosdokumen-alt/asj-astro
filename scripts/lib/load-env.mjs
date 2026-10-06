@@ -77,7 +77,7 @@ const DB_URL_ALIASES = [
  */
 const DEFAULT_POOLER_REGION = 'ap-southeast-1';
 const POOLER_PORT = '6543';
-const DIRECT_PORT = '5432';
+const _DIRECT_PORT = '5432';
 
 /**
  * Parse a KEY=value line. Returns null for anything that is not a plain

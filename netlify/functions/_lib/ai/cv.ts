@@ -253,7 +253,7 @@ async function handleGetAdminAiContext(payload: unknown[], sessionToken?: string
   const d = ((payload && payload[0]) || {}) as Record<string, any>;
   try {
     return { success: true, data: await findAdminAiCandidateContext(d) };
-  } catch (e) {
+  } catch (_e) {
     return { success: false, error: 'Terjadi kesalahan saat mengambil data kandidat.' };
   }
 }
@@ -347,7 +347,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
     try {
       const r = await findFormsByWa(wa);
       if (Array.isArray(r)) formRows = r;
-    } catch (e) {
+    } catch (_e) {
       /* biarkan helper membaca sendiri */
     }
     const aiData = {
@@ -430,7 +430,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
             }
             for (const k of Object.keys(aiData)) aiOut[k] = (aiData as Record<string, unknown>)[k];
           }
-        } catch (e) {
+        } catch (_e) {
           prev = null;
         }
       }
@@ -503,7 +503,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
             });
           }
         }
-      } catch (e) {
+      } catch (_e) {
         /* opsional — sync ke database_candidate */
       }
 
@@ -524,7 +524,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
             });
           }
         }
-      } catch (e) {
+      } catch (_e) {
         /* sync pemberkasan ktp_url opsional */
       }
 
@@ -549,14 +549,14 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
               formRows,
             );
           }
-        } catch (e) {
+        } catch (_e) {
           /* sync mail opsional — jangan gagalkan simpan AI form */
         }
       } else {
         // Baris baru — buat mail entry jika belum ada
         try {
           await syncBiodataKeMail(wa, nama, ['CV AI Baru'], sessionToken, formRows);
-        } catch (e) {
+        } catch (_e) {
           /* sync mail opsional — jangan gagalkan simpan AI form */
         }
       }
@@ -584,14 +584,14 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
             formRows,
           );
         }
-      } catch (e) {
+      } catch (_e) {
         /* sync mail fallback opsional */
       }
-    } catch (e) {
+    } catch (_e) {
       /* opsional */
     }
     return { success: true };
-  } catch (e) {
+  } catch (_e) {
     return { success: false, message: 'Gagal menyimpan data. Silakan coba lagi.' };
   }
 }
@@ -625,7 +625,7 @@ async function simpanEsignature(wa: string, data: Record<string, unknown>) {
           headers: { Prefer: 'return=minimal' },
         });
       }
-    } catch (e) {
+    } catch (_e) {
       /* tabel esignatures mungkin kosong/tanpa kolom wa — fallback ke ai_form_submissions */
       await supabaseJson('POST', 'ai_form_submissions', {
         body: {
@@ -670,7 +670,7 @@ async function handleSimpanDataTtdNaitei(payload: unknown, sessionToken?: string
       nama2: d.nama2 || '',
     };
     return await simpanEsignature(wa, data);
-  } catch (e) {
+  } catch (_e) {
     return { success: false, error: 'Terjadi kesalahan saat menyimpan tanda tangan.' };
   }
 }
@@ -703,7 +703,7 @@ async function handleSaveSignature(payload: unknown, sessionToken?: string) {
   }
   try {
     return await simpanEsignature(wa, { wa, ttd1: dataUrl, nama1: '', ttd2: '', nama2: '' });
-  } catch (e) {
+  } catch (_e) {
     return { success: false, error: 'Terjadi kesalahan saat menyimpan tanda tangan.' };
   }
 }

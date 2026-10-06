@@ -12,7 +12,7 @@ const rirekishoA4Template: CvTemplate = {
   description: 'Template CV rirekisho A4 asli yang sudah ada — format tabel Jepang standar',
   category: 'resume',
   icon: 'file-alt',
-  async render(data: CandidateData, context: RenderContext): Promise<RenderResult> {
+  async render(_data: CandidateData, _context: RenderContext): Promise<RenderResult> {
     return {
       success: true,
       mimeType: 'text/html',

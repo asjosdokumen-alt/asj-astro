@@ -66,7 +66,7 @@ console.log('env-resolve — asking the REAL runtime loader (netlify/functions/_
 console.log(`file keys the loader managed to parse: ${debugFileEnvKeys().length}`);
 
 const a = check(REQUIRED, 'REQUIRED for the function runtime');
-const b = check(IMPORTANT, 'FEATURE keys (empty = that feature is disabled)');
+const _b = check(IMPORTANT, 'FEATURE keys (empty = that feature is disabled)');
 
 // Sanity: the loader must not be silently picking up unrelated secrets.
 const parsed = debugFileEnvKeys();

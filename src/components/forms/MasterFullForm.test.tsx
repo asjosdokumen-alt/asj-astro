@@ -354,7 +354,7 @@ describe("MasterFullForm — paritas data legacy", () => {
 
   it("enam dokumen (ijazah/KTP/KK) menerima .pdf,image/* — bukan .pdf saja", async () => {
     const { container } = await openStep(4);
-    const byName = (n: string) => [...container.querySelectorAll("input[type=file]")].map((f) => (f as HTMLInputElement).accept);
+    const byName = (_n: string) => [...container.querySelectorAll("input[type=file]")].map((f) => (f as HTMLInputElement).accept);
     const accepts = byName("");
     // photo tetap gambar saja; jft & ssw tetap PDF; sisanya .pdf,image/*
     expect(accepts.filter((a) => a === ".pdf,image/*").length).toBe(6);
@@ -539,7 +539,7 @@ describe("MasterFullForm — C09 dropdown (jurusan/pekerjaan/kota/hubungan)", ()
     // nilainya lolos; sesudah jadi dropdown, risikonya justru nilai itu
     // ter-reset. Tes ini mengunci janji "data lama tidak hilang".
     fetchMock.mockReset();
-    fetchMock.mockImplementation((url: any, init: any) => {
+    fetchMock.mockImplementation((_url: any, init: any) => {
       const body = JSON.parse(String(init?.body || "{}"));
       if (body.action === "getDrafCvMaster") {
         return Promise.resolve(jsonRes({

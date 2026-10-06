@@ -14,7 +14,7 @@ import { describe, it, expect } from 'vitest';
 import { signToken } from '../_lib/session';
 import { handleSimpanDataTtdNaitei, handleSaveSignature } from '../_lib/ai/cv';
 
-const kandidatA = signToken({ role: 'kandidat', wa: '6281111111111' });
+const _kandidatA = signToken({ role: 'kandidat', wa: '6281111111111' });
 const kandidatB = signToken({ role: 'kandidat', wa: '6289999999999' });
 
 const asRecord = (p: Promise<unknown>): Promise<Record<string, any>> => p as Promise<Record<string, any>>;

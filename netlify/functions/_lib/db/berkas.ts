@@ -153,7 +153,7 @@ async function attachBerkasBio(candidates: any[]) {
         c.bio = {};
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Non-fatal: tanpa berkas/bio dashboard tetap render (progres 0/x).
   }
   return candidates;

@@ -91,7 +91,7 @@ console.log(`${defined.size} key(s) defined`);
 
 const a = report('BUILD (PUBLIC_* are inlined into client JS at build time)', REQUIRED_BUILD, true);
 const b = report('FUNCTIONS (server runtime — a missing one is a runtime 5xx)', REQUIRED_PRODUCTION, true);
-const c = report('RUNTIME EXTRAS (absent = feature silently disabled)', RUNTIME_EXTRA, false);
+const _c = report('RUNTIME EXTRAS (absent = feature silently disabled)', RUNTIME_EXTRA, false);
 
 if (bareValueLines.length) {
   console.log(`\n! ${bareValueLines.length} line(s) contain a value with no "KEY=" prefix:`);

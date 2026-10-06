@@ -88,7 +88,7 @@ export async function handleDeleteRincianPreset(payload: any[], sessionToken?: s
   }
 }
 
-export async function handleRunMigration(payload: any[], sessionToken?: string) {
+export async function handleRunMigration(_payload: any[], sessionToken?: string) {
   const guard = requireRole(sessionToken || '', 'admin');
   if (guard.error) return guard.error;
 

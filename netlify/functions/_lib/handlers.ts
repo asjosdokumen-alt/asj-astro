@@ -6,7 +6,7 @@ import { log, asyncLocalStorage } from './kernel/log';
 import { metrics } from './kernel/metrics';
 import { supabaseJson } from './db/client';
 import { IDEMPOTENCY_KEY_COLS } from './db/projections';
-import { handleGetJobStatus, enqueue } from './kernel/job-queue';
+import { enqueue } from './kernel/job-queue';
 import { admit, release, shedResponse, logShed, snapshot, deferralJobTypeFor } from './kernel/admission';
 
 // Register domain event handlers (side-effect import)
@@ -187,7 +187,7 @@ async function handleAction(action: string, payload: unknown[], sessionToken: st
   // The wrapper already sets the ALS context (requestId, action, idempotencyKey, traceparent).
   // Do NOT call runWithContext here — it would overwrite the parent store and drop
   // idempotencyKey/traceparent. Just read requestId from the existing store.
-  const requestId = (asyncLocalStorage.getStore() as any)?.requestId || String(Date.now());
+  const _requestId = (asyncLocalStorage.getStore() as any)?.requestId || String(Date.now());
 
   if (action === 'ping') return { statusCode: 200, body: 'pong' };
 

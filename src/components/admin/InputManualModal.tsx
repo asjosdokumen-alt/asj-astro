@@ -153,7 +153,7 @@ export default function InputManualModal() {
           if (!(lj && lj.success)) {
             showToast('Gagal simpan ' + d.type + ': ' + ((lj && lj.error) || 'respon tak dikenal'), 'error');
           }
-        } catch (err) {
+        } catch (_err) {
           showToast('Gagal upload ' + d.type + '.', 'error');
         }
       }

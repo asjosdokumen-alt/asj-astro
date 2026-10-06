@@ -566,7 +566,7 @@ function stateHolder(stateDir: string, refreshMs: number): IndexHolder {
 }
 
 /** Live-build serve: POST /rebuild schedules an async full rebuild + swap. */
-function liveHolder(root: string, build: () => BuildResult): IndexHolder {
+function liveHolder(_root: string, build: () => BuildResult): IndexHolder {
   const initial = dumpDoc(build());
   const holder: IndexHolder = { index: indexFromDoc(initial), source: 'build', history: [] };
   let current = initial;

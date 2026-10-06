@@ -9,10 +9,10 @@
 import { describe, expect, it } from 'vitest';
 import type { BoundRef } from './bind.js';
 import { bindIndex } from './bind.js';
-import { buildIndex, type BuildResult } from './build.js';
+import { buildIndex } from './build.js';
 import { buildExportSurfaces, createExportIndex } from './exportTables.js';
 import { buildModuleGraph } from './graph.js';
-import type { ExportRecord, InitType, RawImportRecord } from './parse.js';
+import type { ExportRecord, RawImportRecord } from './parse.js';
 import { parseFile } from './parse.js';
 import { createResolver } from './resolve.js';
 import { fileIdx } from './util.js';

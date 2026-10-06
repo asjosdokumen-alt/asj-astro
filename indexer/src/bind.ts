@@ -274,7 +274,7 @@ export function bindIndex(input: BindInput): BindResult {
   for (const [fileIdx, occs] of occurrencesByFile) {
     const scopeMap = scopesByFile.get(fileIdx);
     if (!scopeMap) continue;
-    const syms = symbolsByFile.get(fileIdx) ?? [];
+    const _syms = symbolsByFile.get(fileIdx) ?? [];
     const typeSymByScope = input.typeScopes.get(fileIdx) ?? new Map<number, SymKey>();
 
     // scope key → same-named candidates in declaration (source) order. Parse
@@ -319,7 +319,7 @@ export function bindIndex(input: BindInput): BindResult {
       return { kind: 'none' };
     };
 
-    const chaseImportBinding = (o: Occurrence, localName: string, valuePos: boolean): ChaseResult => {
+    const chaseImportBinding = (_o: Occurrence, localName: string, valuePos: boolean): ChaseResult => {
       for (const rec of input.resolvedImports.get(fileIdx) ?? []) {
         const b = rec.bindings?.find((x) => x.local === localName);
         if (!b || typeof rec.to !== 'number') continue;

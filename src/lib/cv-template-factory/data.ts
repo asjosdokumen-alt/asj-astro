@@ -1,5 +1,5 @@
 ﻿import type { CandidateData } from './types';
-import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, normalizeRiwayatFor, sortEdu } from '../helpers_cv';
+import { getPath, makeV, mergeArrRiwayat, normalizeRiwayatFor, sortEdu } from '../helpers_cv';
 
 const KEYOF: Record<string, (e: Record<string, unknown>) => string> = {
   pendidikan: (e) => (String(e.tingkat || '') + String(e.sekolah || e.sekolah_id || e.nama_sekolah || '')).toLowerCase().replace(/[^a-z0-9]/g, ''),

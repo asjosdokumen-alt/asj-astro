@@ -6,7 +6,7 @@
 
 import { get as httpGet, request as httpRequest } from 'node:http';
 import { describe, expect, it } from 'vitest';
-import { buildIndex, type BuildResult } from './build.js';
+import { buildIndex } from './build.js';
 import { dumpDoc, type DumpDoc } from './dump.js';
 import { cyclesOf, depsOf, depsOrphansOf, depsPathOf, fileSymbols, fileUnresolvedOf, importSitesOf, importTargetsOf, indexFromDoc, isImportBindingSymbol, refsOf, resolveAt, resolveLine, search, searchPage, statsOf, symbolCardOf, symbolsByExactName, symbolsDefining, type QueryIndex } from './query.js';
 import { EdgeType, SymbolKind } from '../../docs/code-index-schema.js';
@@ -920,7 +920,7 @@ describe('symbolsDefining (single-owner candidate policy)', () => {
     const byName = new Map<string, number>();
     for (const s of index.doc.symbols) byName.set(s.name, (byName.get(s.name) ?? 0) + 1);
     const single = [...byName.entries()]
-      .filter(([name, n]) => n === 1)
+      .filter(([_name, n]) => n === 1)
       .map(([name]) => name)
       .find((name) => symbolsDefining(index, name).length === 1);
     expect(single).toBeDefined();

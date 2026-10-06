@@ -132,7 +132,7 @@ describe('adminStore', () => {
     it('toggleSimpleView toggles', () => {
       expect(toggleSimpleView()).toBeUndefined();
       // Read the new value
-      const val1 = adminPage.get(); // just checking no crash
+      const _val1 = adminPage.get(); // just checking no crash
     });
   });
 });

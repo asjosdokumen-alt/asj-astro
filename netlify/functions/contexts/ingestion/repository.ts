@@ -4,7 +4,7 @@
  * Owns: parse results, master_database_candidate upsert
  */
 import {
-  normalizeWa, normalizeGender, pick, supabaseJson, supabaseUpsert, toText,
+  normalizeWa, normalizeGender, supabaseJson, supabaseUpsert,
 } from '../../_lib/db/client';
 import { allColumns } from '../../_lib/db/schema.generated';
 import { cacheClear } from '../../_lib/cache';

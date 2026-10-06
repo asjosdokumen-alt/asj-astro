@@ -13,7 +13,7 @@
  *   5. isOwnerOrAdmin — ownership check
  *   6. mailStatusUntukUpdate — mail inbox status transitions
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // ── 1. normalizeWa ──────────────────────────────────────────────────────────
 import { normalizeWa, isValidWaFormat, normalizeGender } from '../shared/wa-rules';

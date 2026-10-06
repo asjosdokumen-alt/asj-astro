@@ -1,6 +1,6 @@
 import { env } from '../env.ts';
 import { normalizeWa } from '../../shared/wa-rules';
-import { request, requestJson, BUDGETS, HttpError, TimeoutError } from '../kernel/http.ts';
+import { request, HttpError, TimeoutError } from '../kernel/http.ts';
 import { AppError } from '../kernel/errors';
 import { asyncLocalStorage } from '../kernel/log';
 import { allColumns, columnsOf } from './schema.generated';

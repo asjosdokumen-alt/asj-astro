@@ -13,7 +13,7 @@ import type { DumpDoc } from './dump.js';
 import { buildIndex } from './build.js';
 import { dumpDoc } from './dump.js';
 import { loadForbidRules } from './boundary.js';
-import { indexFromDoc, violationsOf, type ForbidRule, type QueryIndex } from './query.js';
+import { indexFromDoc, violationsOf, type ForbidRule } from './query.js';
 import { bind, createIndexServer } from './serve.js';
 
 const ROOT = process.cwd(); // buildIndex normalizes backslashes

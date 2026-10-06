@@ -15,8 +15,6 @@ import {
   findFormByWaJob,
   findCandidateRow,
   findMasterByWa,
-  findCandidatesByJob,
-  fetchAllMasters,
   findCandidates,
   findFormsByWa,
   findForms,
@@ -36,7 +34,7 @@ import { isVipCatatan } from "../../_lib/ai/interview-shared";
 import * as session from "../../_lib/session";
 import { isAllowedDocumentUrl, isAllowedUploadExtension, ALLOWED_UPLOAD_EXTENSIONS } from "../../_lib/storage";
 
-const APPLY_WA_COLS = ["no_wa", "wa", "whatsapp"];
+const _APPLY_WA_COLS = ["no_wa", "wa", "whatsapp"];
 // K3 fix: whitelist prefill anonim dipangkas — hapus URL dokumen (pasPhoto,
 // jft, ssw, fileCv), email, alamat & TTL yang bisa dipakai enumerasi PII.
 // Data lengkap tetap hanya untuk owner/admin.
@@ -239,7 +237,7 @@ export async function handleGetUploadUrls(
       };
     }
     return { success: true, urls };
-  } catch (e: any) {
+  } catch (_e: any) {
     return {
       success: false,
       error: "Gagal membuat link upload. Silakan coba lagi.",
@@ -929,7 +927,7 @@ export async function handleSimpanBerkasTahapan(
       /* non-fatal */
     }
     return { success: true };
-  } catch (e: any) {
+  } catch (_e: any) {
     return {
       success: false,
       error: "Gagal menyimpan berkas. Silakan coba lagi.",

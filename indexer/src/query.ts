@@ -1447,7 +1447,7 @@ export function violationsOf(index: QueryIndex, rules: ForbidRule[]): Violations
     const fromOk = ruleSideMatcher(rule.from);
     const toOk = ruleSideMatcher(rule.to);
     const wantsType = rule.dependencyTypes;
-    const isCircularRule = rule.to.circular !== undefined;
+    const _isCircularRule = rule.to.circular !== undefined;
     for (const e of index.doc.importEdges ?? []) {
       if (typeof e.to !== 'number') continue; // ext:/asset:/unresolved: module ids never match path rules
       const from = filePath(e.from);

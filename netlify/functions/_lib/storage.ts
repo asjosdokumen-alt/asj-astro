@@ -1,6 +1,6 @@
 import { supabaseKey, supabaseUrl } from './db/client';
 import { env } from './env';
-import { request, BUDGETS } from './kernel/http';
+import { request } from './kernel/http';
 // storage.js — helper Supabase Storage (upload base64, hapus varian lama,
 // actions-extra.js, perilaku TIDAK berubah.
 
@@ -182,7 +182,7 @@ async function hapusJenisVarian(folder: string, stem: string) {
         body: JSON.stringify({ prefixes: victims.map((n) => f + '/' + n) }),
       });
     }
-  } catch (e) {
+  } catch (_e) {
     // List/hapus gagal tidak memblokir upload — x-upsert tetap menimpa nama sama.
   }
 }

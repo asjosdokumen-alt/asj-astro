@@ -291,7 +291,7 @@ export default function ShareView() {
               const photo = c.pas_photo && c.pas_photo !== '-' ? c.pas_photo : avatarFor(nama);
               const buttons = docButtonsFor(c);
               const gText = String(c.gender || '');
-              const isP = gText.toUpperCase().includes('PEREMPUAN');
+              const _isP = gText.toUpperCase().includes('PEREMPUAN');
               const usia = parseInt(String(c.usia), 10) || 0;
               return (
                 <div key={c.id_kandidat}

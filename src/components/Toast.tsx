@@ -64,7 +64,7 @@ function ToastItem({ toast, paused }: { toast: ToastMessage; paused: boolean }) 
   const _lang = useLang();
   const tone = TONES[toast.type];
   const [remaining, setRemaining] = useState(AUTO_DISMISS_MS);
-  const lastTick = useRef(Date.now());
+  const _lastTick = useRef(Date.now());
 
   useEffect(() => {
     if (paused) return;

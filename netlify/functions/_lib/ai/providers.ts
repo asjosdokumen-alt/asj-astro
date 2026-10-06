@@ -667,7 +667,7 @@ function parseJsonLoose(text: unknown) {
     if (start >= 0 && end > start) {
       try {
         return JSON.parse(t.slice(start, end + 1));
-      } catch (e2) {
+      } catch (_e2) {
         /* fallthrough */
       }
     }

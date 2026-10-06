@@ -7,7 +7,7 @@
 
 import { readFileSync } from 'node:fs';
 import type { FileNode, IndexStats, Occurrence, ScopeNode, SymbolNode } from '../../docs/code-index-schema.js';
-import { discoverFiles, isDeniedDir, parseGitignore } from './discover.js';
+import { discoverFiles, parseGitignore } from './discover.js';
 import type { AstroGlobCall, ExportRecord, ParsedFile, RawImportRecord } from './parse.js';
 import { parseFile } from './parse.js';
 import { createResolver } from './resolve.js';

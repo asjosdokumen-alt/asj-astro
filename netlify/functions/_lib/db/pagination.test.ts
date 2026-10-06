@@ -23,7 +23,7 @@ const calls: Array<{ table: string; query: Record<string, string | number> }> = 
 let responder: (table: string, query: Record<string, string | number>) => unknown;
 
 vi.mock('./client', () => ({
-  supabaseJson: async (method: string, table: string, opts: any) => {
+  supabaseJson: async (_method: string, table: string, opts: any) => {
     calls.push({ table, query: opts.query });
     return responder(table, opts.query);
   },

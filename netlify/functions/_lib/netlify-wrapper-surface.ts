@@ -16,7 +16,6 @@
 import { randomUUID } from 'node:crypto';
 import { log, runWithContext } from './kernel/log';
 import type { LogContext } from './kernel/log';
-import { metrics } from './kernel/metrics';
 import { exportMetrics } from './metrics-sink';
 import { clientIp, sessionTokenFrom, corsHeaders, backpressureHeaders } from './kernel/request-helpers';
 import { codeToStatus } from './kernel/errors';

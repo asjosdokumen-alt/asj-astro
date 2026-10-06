@@ -4,10 +4,9 @@
  * Other contexts and surfaces import ONLY from index.ts.
  */
 import { findCandidateByWaFiltered, findCandidates } from '../../_lib/db/candidates';
-import { fetchMasterByWa } from '../../_lib/db/master';
 import { MASTER_LIGHT_COLS } from '../../_lib/db/projections';
 import * as session from '../../_lib/session';
-import { requireRole, isOwnerOrAdmin } from '../identity';
+import { isOwnerOrAdmin } from '../identity';
 import { syncBiodataKeMail } from '../applications';
 import { nextCandidateId } from '../../_lib/candidate-helpers';
 import { cacheClear } from '../../_lib/cache';
@@ -15,7 +14,7 @@ import { safeError } from '../../_lib/kernel/errors';
 import { resolveFileUrl } from '../../_lib/storage';
 import {
   findMasterByWa, patchMaster, upsertMaster, findCandidateRow,
-  normalizeWa as nw, normalizeWa, pick, supabaseJson, supabaseUpsert,
+  normalizeWa as nw, pick, supabaseJson,
   toText, APPLY_WA_COLS,
 } from './repository';
 
@@ -515,7 +514,7 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
     let jpTranslations: Record<string, string> = {};
     try {
       const existingJp: Record<string, string> = {};
-      if (row) { for (const [fk, jc] of Object.entries(JP_TRANSLATE_MAP)) { const v = row[jc]; if (v !== undefined && v !== null && String(v).trim()) existingJp[jc] = String(v); } }
+      if (row) { for (const [_fk, jc] of Object.entries(JP_TRANSLATE_MAP)) { const v = row[jc]; if (v !== undefined && v !== null && String(v).trim()) existingJp[jc] = String(v); } }
       jpTranslations = await autoTranslateToJp(d, existingJp);
       for (const [fk, jc] of Object.entries(JP_TRANSLATE_MAP)) { if (jpTranslations[fk]) body[jc] = jpTranslations[fk]; }
     } catch { /* non-fatal */ }

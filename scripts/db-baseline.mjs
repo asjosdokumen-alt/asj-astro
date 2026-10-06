@@ -164,7 +164,7 @@ async function main() {
     ['idx_cand_loker_trgm', 'database_candidate', '2026-08-16'],
     ['idx_berkas_wa', 'pemberkasan_checklist', '2026-08-16'],
   ];
-  for (const [name, tbl, src] of migChecks) {
+  for (const [name, _tbl, src] of migChecks) {
     const r = await q(`SELECT 1 FROM pg_indexes WHERE schemaname='public' AND indexname=$1`, [name]);
     console.log(`${r.length ? 'ADA   ' : 'TIDAK '} ${pad(name, 28)} (${src})`);
   }

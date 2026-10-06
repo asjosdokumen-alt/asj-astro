@@ -8,5 +8,5 @@ export const SCHEDULE_ACTIONS: Record<string, (payload: unknown[], sessionToken?
   tambahTugasBaru: (p, s) => scheduling.handleTambahTugasBaru(p, s),
   setTugasStatus: (p, s) => scheduling.handleSetTugasStatus(p, s),
   hapusTugas: (p, s) => scheduling.handleHapusTugas(p, s),
-  checkAndSendAgendaReminders: (p, s) => scheduling.handleCheckAndSendAgendaReminders(s),
+  checkAndSendAgendaReminders: (_p, s) => scheduling.handleCheckAndSendAgendaReminders(s),
 };

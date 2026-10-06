@@ -119,7 +119,7 @@ export interface OverlayOptions {
   closing?: boolean;
 }
 
-export function useOverlay<T extends HTMLElement>({
+export function useOverlay<_T extends HTMLElement>({
   open,
   onClose,
   role = 'dialog',

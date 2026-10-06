@@ -165,7 +165,7 @@ async function ensureLedger(client) {
   `);
 }
 
-const sleepSafe = (ms) => sleep(ms);
+const _sleepSafe = (ms) => sleep(ms);
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
