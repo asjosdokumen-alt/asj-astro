@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 
 function walk(dir, base) {
   let results = [];
@@ -83,6 +83,8 @@ eocd.writeUInt16LE(0, 20);
 
 const zip = Buffer.concat([...entries, ...centralDir, eocd]);
 fs.writeFileSync('deploy.zip', zip);
-console.log('Created deploy.zip: ' + zip.length + ' bytes, ' + files.length + ' files');
+console.log(`Created deploy.zip: ${zip.length} bytes, ${files.length} files`);
 // Show first 5 paths
-files.slice(0,5).forEach(f => console.log('  ' + f.rel));
+files.slice(0, 5).forEach((f) => {
+  console.log(`  ${f.rel}`);
+});
