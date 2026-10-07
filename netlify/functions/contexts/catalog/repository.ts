@@ -29,6 +29,14 @@ import {
 } from '../../_lib/db/candidates';
 import { findJobs, mapJob, JOB_BOARD_LIMIT } from '../../_lib/db/jobs';
 import { findForms, findFormsByWa, findFormsByWaList, findFormsLight, mapForm as _mapForm, parseDocs } from '../../_lib/db/forms';
+// ⚠️ DO NOT DELETE. Biome reports this as `noUnusedVariables` and it genuinely is
+// never read by runtime code — but it is a LOAD-BEARING FIXTURE, not dead code.
+// `indexer/src/parse.test.ts:37-47` pins THIS file as its real-world example of
+// "aliased re-export shadowed by a local const", asserting that `mapForm` is a
+// SymbolKind.Constant with exportNames ['mapForm'] while the imported binding is
+// `_mapForm`. Removing this line on 2026-10-07 as an unused binding turned that
+// gate red (`real-file outlines > catalog/repository.ts — aliased re-export`).
+// The parser needs a subject to be tested against; this is it.
 const mapForm = _mapForm;
 export { _mapForm as mapForm };
 import { attachBerkasBio } from '../../_lib/db/berkas';

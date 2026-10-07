@@ -125,7 +125,6 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
     const row = await findCandidateByWa(data.wa as string);
     if (!row) return { success: false, error: 'Kandidat tidak ditemukan.' };
     const body = buildKandidatSuperPatch(row, data);
-    const { normalizeWa } = await import('./repository');
     await patchCandidate(row.id, body, updatedAt, sessionToken);
 
     // Emit stage-changed event if status_kandidat was modified

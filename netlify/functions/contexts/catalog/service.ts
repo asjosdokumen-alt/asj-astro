@@ -111,7 +111,11 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
   }
 }
 
-export async function handleGetMonthlyReport(payload: any[], sessionToken?: string) {
+// `payload` is deliberately unused: this is a faithful port of the legacy
+// `handleGetMonthlyReport`, which took no filter argument — the report always
+// aggregates over ALL candidates. The parameter stays (prefixed `_`) because
+// PUBLIC_ACTIONS invokes every handler positionally as `(payload, sessionToken)`.
+export async function handleGetMonthlyReport(_payload: any[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   try {
@@ -155,7 +159,7 @@ export async function handleShareData(jobCode: string) {
   try {
     let jobRow: any = await findJobByCodeFiltered(code);
     if (jobRow === undefined) {
-      const { findJobs, pick, toText } = await import('./repository');
+      const { findJobs, pick } = await import('./repository');
       const found = await findJobs();
       jobRow = found.rows.find((r) => String(pick(r, ['code_job', 'code']) || '') === code) || null;
     }

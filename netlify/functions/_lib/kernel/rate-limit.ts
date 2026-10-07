@@ -37,14 +37,6 @@ type RateLimitResult =
   | { ok: true; retryAfter?: undefined; locked?: undefined }
   | { ok: false; retryAfter: number; locked?: boolean };
 
-interface CounterRow {
-  bucket: string;
-  window_start: string;
-  count: number;
-  fails: number;
-  locked_until: string | null;
-}
-
 const _TABLE = 'rate_counters';
 
 // B6 fix: Use atomic RPC function instead of non-atomic read-modify-write
