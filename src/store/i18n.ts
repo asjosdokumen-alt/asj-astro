@@ -104,6 +104,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "public.close": "Tutup",
     "public.no_data": "Tidak ada lowongan ditemukan.",
     "public.loading": "Memuat data lowongan...",
+    "public.noscript_jobs": "Daftar lowongan ini dimuat dengan JavaScript. Aktifkan JavaScript, atau hubungi kami di WhatsApp — kami kirimkan daftar lowongan terbaru.",
     "public.load_error": "Gagal memuat data lowongan. Coba lagi.",
     "public.empty": "Tidak ada lowongan ditemukan.",
     "public.lowongan_count": "lowongan",

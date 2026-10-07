@@ -28,6 +28,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import App from '../components/App.tsx';
 import LokerTable from '../components/public/LokerTable.tsx';
 import SectionTitle from '../components/public/SectionTitle.astro';
+// The WhatsApp fallback in the <noscript> below — the same constant the footer
+// and `LayananSection` use, so the number never has a second copy.
+import { CONTACT_WHATSAPP } from '../lib/companyProfile';
 ---
 
 <BaseLayout title="Lowongan Kerja — PT Amanah Sakura Japan" titleKey="doc.title_loker" description="Daftar lowongan kerja aktif di Jepang. Program SSW (Tokutei Ginou) dan Magang (Jisshu). Lamar sekarang!" showFooter={true}>
@@ -53,6 +56,19 @@ import SectionTitle from '../components/public/SectionTitle.astro';
 
     <div class="pb-14">
       <LokerTable client:only="preact" />
+      <!-- This page is the main public destination, and its whole point is the
+           table below — which is a `client:only` island, so it emits NO server
+           HTML. MEASURED 2026-10-07, JavaScript off: this route rendered **104
+           characters** (the heading and nothing else). A visitor who reaches it
+           from a WhatsApp link on a locked-down browser must not be stranded, so
+           the fallback names the content and gives a way to get it.
+           Guarded by `e2e:headings` "not left with an empty page". -->
+      <noscript>
+        <p class="rounded-xl border border-slate-700 bg-slate-900 p-4 text-sm leading-relaxed text-slate-300">
+          <span data-lang="public.noscript_jobs">Daftar lowongan ini dimuat dengan JavaScript. Aktifkan JavaScript, atau hubungi kami di WhatsApp — kami kirimkan daftar lowongan terbaru.</span>
+          <a class="ml-1 inline-flex min-h-11 items-center font-bold text-sky-400 underline" href={`https://wa.me/${CONTACT_WHATSAPP}`} target="_blank">WhatsApp</a>
+        </p>
+      </noscript>
     </div>
   </main>
 </BaseLayout>

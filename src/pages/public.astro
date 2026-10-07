@@ -4,6 +4,9 @@ import LayananSection from '../components/public/LayananSection.astro';
 import LokerTable from '../components/public/LokerTable.tsx';
 import App from '../components/App.tsx';
 import Icon from '../components/ui/Icon';
+// The WhatsApp fallback in the <noscript> below. Same constant the footer and
+// `LayananSection` already use — never a second copy of the number.
+import { CONTACT_WHATSAPP } from '../lib/companyProfile';
 ---
 
 <BaseLayout title="Lowongan & Layanan — ASJ Portal" titleKey="doc.title_public" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true}>
@@ -69,13 +72,50 @@ import Icon from '../components/ui/Icon';
     <!-- Section: Loker (Preact island) -->
     <div id="section-loker" data-public-panel="loker">
       <LokerTable client:only="preact" />
+      <!-- The table is a `client:only` island, so it emits NO server HTML — with
+           JavaScript off there is nothing here to read. This is the only honest
+           thing to say in that case: what the content is, and how to get it. -->
+      <noscript>
+        <p class="rounded-xl border border-slate-700 bg-slate-900 p-4 text-sm leading-relaxed text-slate-300">
+          <span data-lang="public.noscript_jobs">Daftar lowongan ini dimuat dengan JavaScript. Aktifkan JavaScript, atau hubungi kami di WhatsApp — kami kirimkan daftar lowongan terbaru.</span>
+          <a class="ml-1 inline-flex min-h-11 items-center font-bold text-sky-400 underline" href={`https://wa.me/${CONTACT_WHATSAPP}`} target="_blank">WhatsApp</a>
+        </p>
+      </noscript>
     </div>
 
-    <!-- Section: Layanan (static Astro) -->
-    <div id="section-layanan" data-public-panel="layanan" hidden>
+    <!-- Section: Layanan (static Astro).
+         ⚠ NO `hidden` ATTRIBUTE HERE, and that is load-bearing. MEASURED
+         2026-10-07: with it, this panel's content was **unreachable** without
+         JavaScript — the only thing that could open it was a bundled `<script>`,
+         so `/public` rendered 39 characters with JS off and the whole
+         "Program & Layanan" section was invisible to a no-JS reader and to a
+         crawler that does not execute scripts. Both panels now ship in the server
+         HTML; the inline script below hides the inactive one AT PARSE POSITION,
+         so a JS visitor still sees tabs and no flash, and a no-JS visitor sees
+         the content. Guarded by `e2e:headings` "not left with an empty page". -->
+    <div id="section-layanan" data-public-panel="layanan">
       <LayananSection />
     </div>
   </main>
+
+  <!-- Initial tab state, at PARSE POSITION.
+       `is:inline` on purpose: Astro ships it verbatim, where a bundled script is
+       deferred and would let BOTH panels paint for one frame. With JavaScript
+       disabled this never runs and both panels stay visible — which is exactly
+       the point of the change above. -->
+  <script is:inline>
+    (function () {
+      var active = (location.hash || '').replace(/^#/, '').toLowerCase() === 'layanan' ? 'layanan' : 'loker';
+      var panels = document.querySelectorAll('[data-public-panel]');
+      for (var i = 0; i < panels.length; i++) {
+        panels[i].hidden = panels[i].getAttribute('data-public-panel') !== active;
+      }
+      var tabs = document.querySelectorAll('[data-public-tab]');
+      for (var j = 0; j < tabs.length; j++) {
+        tabs[j].setAttribute('aria-pressed', String(tabs[j].getAttribute('data-public-tab') === active));
+      }
+    })();
+  </script>
 
   <script>
     import { bindPublicSections } from '../lib/publicSections';

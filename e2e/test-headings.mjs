@@ -151,6 +151,14 @@ const PUBLIC_ROUTES = [
  */
 const NO_JS_ROUTES = ['/', '/public', '/loker'];
 
+/**
+ * Routes whose CONTENT — not just their heading — must survive without
+ * JavaScript. `/` is deliberately absent: it already renders its 17 sections as
+ * server HTML (measured 9,776 characters with JS off), so it has no panel or
+ * island-only content to assert. See the "not left with an empty page" check.
+ */
+const NO_JS_CONTENT_ROUTES = ['/public', '/loker'];
+
 /** Routes asserted for h1 and skip-link correctness. */
 const ALL_HEADING_ROUTES = [...ROUTES, ...PUBLIC_ROUTES];
 
@@ -551,6 +559,18 @@ async function inspectNoJsUncached(route) {
          */
         headerEls: document.querySelectorAll('header').length,
         bodyText: (document.body.innerText || '').replace(/\s+/g, ' ').trim().length,
+        /**
+         * Text a no-JS visitor can actually READ inside the content panels, and
+         * the guidance offered when the content itself cannot be rendered.
+         *
+         * These exist because the h1/header assertions above are satisfied by a
+         * page with nothing on it — see the "not left with an empty page" check.
+         */
+        panelText: [...document.querySelectorAll('[data-public-panel]')]
+          .filter((el) => !el.hasAttribute('hidden'))
+          .reduce((s, el) => s + (el.innerText || '').replace(/\s+/g, ' ').trim().length, 0),
+        noscriptText: [...document.querySelectorAll('noscript')]
+          .reduce((s, el) => s + (el.textContent || '').replace(/\s+/g, ' ').trim().length, 0),
       };
     });
   } finally {
@@ -929,6 +949,39 @@ async function run() {
             'Use `client:load`.',
         );
       }
+    });
+  }
+
+  /**
+   * CONTENT, not just the heading.
+   *
+   * Every assertion above is satisfied by a page that renders almost nothing.
+   * MEASURED 2026-10-07, JavaScript off: `/public` rendered **39 characters** and
+   * `/loker` **104** (against 9,776 on `/`). Two causes stacked:
+   *
+   *   • `LokerTable` is `client:only="preact"` — it emits NO server HTML at all;
+   *   • `/public`'s "Program & Layanan" panel carried the `hidden` attribute and
+   *     its only opener was a bundled `<script>`, so that content was
+   *     **unreachable**, not merely unrendered.
+   *
+   * A heading over an empty page is not a page. The floor is deliberately low and
+   * accepts EITHER outcome, because for content that is a live database query
+   * there are only two honest ones: server-render it, or tell the visitor what to
+   * do instead. What is not acceptable is silence.
+   */
+  for (const route of NO_JS_CONTENT_ROUTES) {
+    await test(`no-JS ${route}: the visitor is not left with an empty page`, async () => {
+      const d = await inspectNoJs(route);
+      if (d.path !== route) throw new Error(`redirected to ${d.path}`);
+      if (d.panelText >= 400 || d.noscriptText >= 120) return;
+      throw new Error(
+        `with JavaScript disabled this route renders ${d.bodyText} characters of body text, ` +
+          `${d.panelText} of them inside its content panels, and offers no <noscript> guidance ` +
+          `(${d.noscriptText} characters). Either server-render the content — do not leave a ` +
+          `panel behind a JS-only opener, and do not put content only a ` +
+          '`client:only` island can produce — or ship a <noscript> that gives the visitor a way ' +
+          'to reach the information.',
+      );
     });
   }
 

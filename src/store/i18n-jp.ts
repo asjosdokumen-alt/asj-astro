@@ -89,6 +89,7 @@ export const jpTranslations: Record<string, string> = {
     "public.close": "終了",
     "public.no_data": "求人が見つかりませんでした。",
     "public.loading": "求人データを読み込み中...",
+    "public.noscript_jobs": "求人一覧はJavaScriptで読み込まれます。JavaScriptを有効にするか、WhatsAppでお問い合わせください。最新の求人一覧をお送りします。",
     "public.load_error": "求人データの読み込みに失敗しました。もう一度お試しください。",
     "public.lowongan_count": "件",
     "public.badge_new": "新クラス開始",

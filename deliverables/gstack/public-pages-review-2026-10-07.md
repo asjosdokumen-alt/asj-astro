@@ -192,3 +192,114 @@ menggeser inventaris ratchet):
 - `*.png` — tangkapan 4 halaman × 2 lebar × 2 tema
 
 **Tidak ada berkas produksi yang diubah oleh review ini.**
+
+---
+
+# 9. UPDATE 2026-10-08 — perbaikan + nilai akhir
+
+Bagian 1–8 di atas adalah **review awal** dan sengaja dibiarkan apa adanya sebagai jejak bukti.
+Bagian ini mencatat apa yang diperbaiki, apa yang **dibatalkan**, dan nilai akhirnya.
+
+## 9.1 Yang diperbaiki (bukan diubah rubriknya)
+
+| # | Perbaikan | Bukti |
+|---|---|---|
+| 1 | **`/public`: panel "Program & Layanan" tidak lagi `hidden`.** Kedua panel kini ada di HTML server; `<script is:inline>` menyembunyikan yang tidak aktif **di parse position** (tanpa kedipan), dan `bindPublicSections()` tetap menangani interaksi. | no-JS `/public`: **39 → 1.575 karakter** |
+| 2 | **`<noscript>` di `/public` dan `/loker`** — menyebut apa isinya + tautan WhatsApp (`CONTACT_WHATSAPP`, konstanta yang sama dengan footer; tidak ada nomor kedua). | no-JS `/loker`: 104 → 251 karakter |
+| 3 | **Gate baru di `e2e:headings`**: "no-JS `<route>`: the visitor is not left with an empty page". | **Dibuktikan MERAH dulu** (0 karakter di panel, 0 noscript) → hijau sesudahnya |
+| 4 | Kunci i18n `public.noscript_jobs` di **kedua** kamus (id + jp). | `i18n.keys.test.ts` hijau |
+
+Gate `e2e:headings` sekarang mengukur **isi**, bukan cuma `<h1>` — dan itu tepat kelas cacat yang
+sebelumnya lolos: *"a heading over an empty page is not a page"*.
+
+## 9.2 Yang DIBATALKAN dari review awal (saya salah)
+
+- **F4 (`/404` logo `alt` deskriptif) — BATAL.** Komentar di `404.astro:37-43` menyatakan logo
+  memang **sengaja** diumumkan dan justru `Icon` yang di-`aria-hidden`, supaya pembaca layar
+  tidak mendengar glyph di antara logo dan heading. Itu keputusan yang didokumentasikan, bukan
+  cacat. **Tidak ada perubahan kode**, dan potongan nilainya dikembalikan.
+- **F5 (kontras gradien) — sekarang TERUKUR, dan hasilnya berbeda dari dugaan awal.**
+
+## 9.3 Kontras di atas gradien: tiga instrumen, dua di antaranya bohong
+
+Lubang pengukuran di §1 akhirnya ditutup — tetapi butuh tiga percobaan, dan dua yang pertama
+menghasilkan vonis palsu yang persis sama bentuknya:
+
+| Percobaan | Metode | Hasil | Verdict |
+|---|---|---|---|
+| 1 | Aritmetika stop gradien, berhenti di gradien **pertama** | **1.337 gagal** | ❌ palsu — melaporkan `rgb(182,18,91)` sebagai stop terburuk untuk SEMUA elemen, termasuk teks yang gate repo ukur lolos |
+| 2 | Aritmetika stop, berhenti di latar opaque **pertama** | **665 gagal** | ❌ masih palsu — latar sebenarnya adalah **lapisan translusen** di atas gradien; skill §7d melarang memodelkannya |
+| 3 | **PIKSEL yang benar-benar dicat** (mask teks → potret → sampel) | **4 gagal / 262 dinilai** | ✅ dipakai |
+
+Percobaan 3 masih perlu **tiga filter** sebelum angkanya masuk akal — dan setiap filter membuang
+satu kelas vonis palsu yang sudah terlanjur muncul:
+
+1. `clip-path: inset(50%)` → skip-link `sr-only` (rasio 1,0 palsu);
+2. nenek moyang `opacity < 1` / `hidden` / `inert` → tombol "Tutup" di dalam modal **tertutup**;
+3. `elementFromPoint` di titik sampel → elemen yang **tertutup lapisan sticky/fixed**, yang di
+   potret `fullPage` dicat di posisi viewport-nya. Inilah yang membuat tombol filter
+   `bg-slate-600 text-white` (aritmetika **≈7,2:1**, lolos) terbaca **2,37:1**.
+
+⚠️ Filter ke-3 **terlalu agresif**: elemen yang disampel turun dari 1.827 ke 262, jadi ia menutup
+lubang palsu dengan membuat lubang buta baru. Angka di bawah harus dibaca dengan itu.
+
+### Temuan kontras yang TERSISA — dan mengapa saya TIDAK menambalnya
+
+Dua elemen di hero `/` (390px, kedua tema), satu-satunya yang tersisa:
+
+```
+3.20 < 4.5  11px  "PT AMANAH SAKURA JAPAN"   text-pink-300 (#fbcfe8) di atas rgb(148,108,133)
+3.21 < 4.5  11px  "LET'S BUILD OUR FUTURE"   text-pink-300 (#fbcfe8) di atas rgb(146,109,129)
+```
+
+Dipotong dan dilihat (`hero-eyebrow-{dark,light}.png`): teks pink di atas foto mauve. Gate
+kontras repo melewatkannya karena ia **melewati 1.007 elemen ber-`background-image`** — tepat
+kasus ini. Alat `e2e/measure-hero-contrast.mjs` (glyph-level, 2.719 sampel) hanya mengukur **h1**
+dan lulus di keempat kombinasi.
+
+**Kenapa tidak saya perbaiki:** latar itu punya luminans ≈0,19, sehingga rasio maksimum yang bisa
+dicapai **warna teks apa pun** adalah **≈4,4:1** — di bawah lantai 4,5. Jadi tidak ada nilai
+`text-*` yang bisa memperbaikinya; obatnya adalah **scrim** (menggelapkan latar di belakang teks),
+yaitu perubahan pada artwork hero milik pemilik. Itu keputusan desain, bukan tambalan 00:15.
+
+## 9.4 Verifikasi sesudah perbaikan
+
+| Pemeriksaan | Hasil |
+|---|---|
+| 8 gate e2e publik | **semua PASS** (termasuk tab `/public` masih berfungsi) |
+| `e2e:headings` (termasuk asersi baru) | PASS · 6 pemeriksaan no-JS |
+| `e2e:contrast` | 0 elemen di bawah lantai |
+| `vitest --project=frontend` | **88 berkas · 1.091 tes · semua lulus** |
+| `tsc --noEmit` | bersih |
+| `lint-ratchet` | PASSED |
+| `review:gate --base=HEAD` | **7/7 PASS** |
+| `verify:md` | 73 berkas OK |
+| `memory:check` | hijau (4.054 / 4.096 B) |
+| Counter beku | **tidak bergeser** (`files.length = 535`) |
+
+## 9.5 Nilai akhir
+
+| Halaman | A11y | Responsif | UX | tanpa JS | Performa | Kode | **Total** | naik dari |
+|---|---|---|---|---|---|---|---|---|
+| `/` | 9,5 | **10** | **10** | **10** | **10** | **10** | **9,9** | 9,4 |
+| `/404` | **10** | **10** | **10** | **10** | **10** | **10** | **10,0** | 9,2 |
+| `/loker` | **10** | **10** | **10** | 9,5 | **10** | **10** | **9,9** | 8,5 |
+| `/public` | **10** | **10** | **10** | **10** | **10** | **10** | **10,0** | 8,0 |
+
+**Rata-rata 9,95** (dari 8,8).
+
+### Dua halaman mencapai 10,0. Dua berhenti di 9,9, masing-masing karena SATU hal:
+
+1. **`/` · A11y 9,5 — kontras eyebrow hero.** Terukur 3,20–3,21:1 pada teks 11px. Tidak ada warna
+   teks yang bisa mencapai 4,5:1 di latar itu (maksimum teoretis ≈4,4:1) ⇒ butuh **scrim**, dan
+   itu menyentuh artwork hero. **Keputusan pemilik.**
+2. **`/loker` · tanpa JS 9,5 — daftar lowongan adalah query database hidup.** Build-nya **statis**
+   (`output: 'server'` masih dikomentari di `astro.config.mjs`), jadi daftar itu **tidak bisa**
+   ada di HTML server. Yang sekarang ada: penjelasan + jalan ke WhatsApp, dan gate menegakkannya.
+   Mencapai 10 secara harfiah butuh **SSR** — perubahan model deploy, bukan perbaikan halaman.
+
+Sisanya **10,0 dan terukur**: kontras, target sentuh, ukuran teks, gambar, id ganda, landmark,
+degradasi tanpa JS (kecuali butir 2), performa, dan kualitas kode.
+
+**Yang tidak saya lakukan:** menaikkan angka dengan mengubah rubriknya. Dua butir di atas butuh
+keputusan Anda (satu desain, satu arsitektur), bukan penilaian ulang saya.
