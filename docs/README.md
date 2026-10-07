@@ -15,7 +15,8 @@ tidak tahu harus baca yang mana, mulai dari tabel di bawah.
 |---|---|---|
 | 1 | [[DEVELOPMENT_ROADMAP]] | **Urutan eksekusi.** Apa yang dikerjakan sekarang, apa yang sengaja ditunda, dan kenapa. Ini otoritas urutan kerja. |
 | 2 | [[REMAINING_BY_DISCIPLINE]] | Apa yang belum selesai, dikelompokkan per disiplin (frontend, backend, CI, data). |
-| 3 | `../HANDOFF.md` | Kondisi terkini + apa yang sedang dikerjakan sesi terakhir. |
+| 3 | `../README.md` §Status | **Kondisi terkini**, diukur dan bertanggal. |
+| 3b | `../TODO.md` | Pekerjaan non-backend yang benar-benar tersisa. |
 
 ## Landing page (pekerjaan besar yang berjalan)
 

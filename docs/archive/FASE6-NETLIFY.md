@@ -77,8 +77,21 @@ npm run build
 powershell -Command "Compress-Archive -Path 'dist\*' -DestinationPath 'deploy.zip'"
 
 # Upload to Netlify
-curl -X POST "https://api.netlify.com/api/v1/sites/d2ba3305-6397-434e-bdba-71e71ce0b4f2/deploys" \
-  -H "Authorization: Bearer nfp_DRuo5g3bfU1b6C4SMFf78WKeH34paBM4f5fb" \
+#
+# ⛔ TOKEN REDACTED 2026-10-08. This block used to carry a real
+# `nfp_…` personal access token in plaintext, committed in 8280792 while this
+# repository is PUBLIC. It is still present in git history — redacting it here
+# removes it from the working tree, NOT from the past.
+#
+#   ACTION REQUIRED BY THE OWNER: revoke that token in Netlify
+#   (User settings → Applications → Personal access tokens). Until it is
+#   revoked, anyone who reads the history can use it.
+#
+# This whole manual-upload flow is obsolete anyway: deploys now run from the
+# GitHub integration (`git push` → Netlify build), so no token belongs here.
+# Pass it through the environment instead: `-H "Authorization: Bearer $NETLIFY_AUTH_TOKEN"`.
+curl -X POST "https://api.netlify.com/api/v1/sites/${NETLIFY_SITE_ID}/deploys" \
+  -H "Authorization: Bearer ${NETLIFY_AUTH_TOKEN}" \
   -H "Content-Type: application/zip" \
   --data-binary @deploy.zip
 ```

@@ -8,6 +8,40 @@
 
 ---
 
+## 🔄 STATUS PER 2026-10-08 — laporan ini sebagian sudah usang
+
+> **Blocker utamanya SUDAH HILANG.** TL;DR di bawah menyimpulkan *"🔴 No-Go to publish
+> today"* karena kanal deploy mati (kredit Netlify habis). **Itu tidak lagi benar:** sejak
+> **7 Okt 2026** deploy kembali `ready`, dan 36 commit ter-publish ke produksi. Push ke
+> `main` sekarang **benar-benar tayang** — jadi bobot R19 kembali penuh (tiap push = satu
+> deploy berbayar), bukan lagi "push tidak mempublish apa pun".
+>
+> **Temuan yang sudah ditutup** (diverifikasi ulang 2026-10-08):
+>
+> | # | Dulu | Sekarang |
+> |---|---|---|
+> | 2 | Normalisasi WA terbelah (3 salinan) | ✅ `63b4016` — dua salinan identik + 22 fixture paritas |
+> | 3 | `submitApply` bisa diakses anonim | ✅ `e4a8e46` — `sessionToken` diteruskan, guard hidup |
+> | 6 | `verify:fetch-boundary` merah | ✅ `907c69d` — allow-list `rirekisho-xlsx.ts:273` |
+> | 7 | Tes `e2e/candidates-lookup-stub.test.ts` vakum | ✅ `ba07fba` |
+> | 21 | `key={i}` pada `RepeaterRow` yang bisa dihapus | ✅ baris kini ber-`key={edu.id}`/`{job.id}`/`{fam.id}`; `key={i}` yang tersisa hanya di daftar pesan chat yang append-only |
+> | 23 | Root cruft | ✅ **diarsipkan** 2026-10-08 → `docs/archive/` |
+> | 24 | `src/lib/supabase-server.ts` mati | ✅ **dihapus** (`a5226bd`) |
+>
+> **Masih terbuka:** #9 (share page membocorkan nomor HP — **PII, prioritas tertinggi yang
+> tersisa**), #10 (`catatan_admin` masih ikut di payload mode-kandidat), #13 (batas unggah),
+> #17 (AiCvForm 1.861 baris), #18/#19 (104 binding & 435 `any`), dan bump `astro` ≥ 5.18.2.
+>
+> **Temuan BARU 2026-10-08 — keamanan, bukan dari tabel di bawah:** satu token Netlify
+> (`nfp_…`) pernah ter-commit saat repo **PUBLIK** (`8280792`,
+> `docs/FASE6-NETLIFY.md`). Sudah diredaksi di HEAD, **masih ada di riwayat git** ⇒
+> **token harus di-revoke di Netlify.** Meredaksi bukan memulihkan.
+>
+> **Status halaman publik** (terukur, `public-pages-review-2026-10-07.md`):
+> `/` 9,9 · `/public` 10,0 · `/loker` 9,9 · `/404` 10,0.
+
+---
+
 ## 📌 TL;DR (Executive Summary)
 
 - **Overall: 🔴 No-Go to publish today** — but the blocker is **not** code quality. It is the billing state of the deploy channel.
@@ -98,8 +132,8 @@
 | 20 | 🟢 | Error-handling | `_lib/ai/cv.ts:559` `catch (e) {}` | The only bare empty catch; every sibling carries an explanatory comment | Add the same one-line rationale | code-reviewer |
 | 21 | 🟢 | Anti-pattern | `AiCvForm.tsx:1147,1180,1222` `key={i}` | Index-as-key on add/remove-able `RepeaterRow`s | Key by row identity | code-reviewer |
 | 22 | 🟢 | Comment drift | `_lib/db/client.ts:10-11` | Says "satu sumber kebenaran: shared/wa-rules.js" — false (two copies) and cites legacy `js/04_auth.js` | Fix once WA is collapsed | code-reviewer |
-| 23 | 🟢 | Hygiene | root `Laporan*.txt`, `preview-index.html`, `test_excel_template.cjs`, `cv-selector-candidate.png` | Legacy cruft tracked in the repo root | Archive/remove | code-reviewer |
-| 24 | 🟢 | Dead-code | `src/lib/supabase-server.ts` | 0 importers anywhere, 0 tests | Remove or ignore | qa-lead |
+| 23 | ✅ **CLOSED 2026-10-08** | Hygiene | root `Laporan*.txt`, `preview-index.html`, `test_excel_template.cjs`, `cv-selector-candidate.png` | Legacy cruft tracked in the repo root | **Archived** to `docs/archive/` (`Laporan*.txt` on 2026-10-07; the other three + `HANDOFF.md` + `make-zip.cjs` on 2026-10-08). Root is now config + `README.md`/`TODO.md`/`DESIGN.md` only. Nothing deleted — `git mv`, so every entry is recoverable | code-reviewer |
+| 24 | ✅ **CLOSED** | Dead-code | `src/lib/supabase-server.ts` | 0 importers anywhere, 0 tests | **Deleted** (`a5226bd`, 2026-10-07 — "chore: delete the dead supabase-server.ts and re-baseline the counters"). Verified absent from the tree 2026-10-08 | qa-lead |
 | 25 | 🟢 | Cryptography | `metrics-receiver.ts:303` | Bearer token compared with `!==` (not constant-time), inconsistent with `health.js:54-60`. Low risk (rate-limited) | `timingSafeEqual` | security-officer |
 | 26 | 🟢 | Robustness (security-adjacent) | `contexts/contact/service.ts:64-65,97` | The contact honeypot is bound to `HONEYPOT_SLOT = 4`. The file's own comment (`:60-62`) warns that if the guard list is reordered, the honeypot reads the visitor's **subject** and *every honest submission is discarded as a bot while suspicious ones pass*. Correct today (named constant + assertion) but **no test pins the coupling** | Add a test asserting the field-name ↔ slot mapping | security-officer |
 | 27 | 🟢 | Regression | `src/lib/swOffline.test.ts:49,161`, `src/lib/serverMime.test.ts:121` | `describe.skipIf(!hasBuild)` — SW offline-navigation + server-MIME are **untested pre-build** (by design; they need `dist/`) | Ensure the build-time gate runs them | qa-lead |

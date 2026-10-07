@@ -1,6 +1,17 @@
 # 📋 TODO — ASJ Portal v2 (Astro)
 
-**Terakhir dirapikan:** 2026-09-28
+**Terakhir dirapikan:** 2026-10-08
+
+> ### Yang ditutup pada 2026-10-08
+> - **Root cruft diarsipkan** — `HANDOFF.md`, `make-zip.cjs`, `preview-index.html`,
+>   `test_excel_template.cjs`, `cv-selector-candidate.png` → `docs/archive/`. Ini menutup
+>   temuan **#23** di `deliverables/gstack/pre-launch-check-2026-10-04.md`. Root sekarang hanya
+>   konfigurasi + `README.md`, `TODO.md`, `DESIGN.md`.
+> - **Halaman publik tanpa JavaScript** — `/public` 39 → 1.575 karakter, `/loker` dapat
+>   fallback WhatsApp; dijaga asersi baru di `e2e:headings`. Lihat
+>   `deliverables/gstack/public-pages-review-2026-10-07.md`.
+> - **Token Netlify diredaksi** dari `docs/archive/FASE6-NETLIFY.md` (⚠️ **masih di riwayat git —
+>   token harus di-revoke**, lihat `README.md` §Status).
 
 > ## ➡️ Pekerjaan BACKEND ada di satu tempat: **`docs/BACKEND_TODO.md`**
 >

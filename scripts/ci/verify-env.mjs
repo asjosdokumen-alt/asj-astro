@@ -329,7 +329,9 @@ function main() {
       console.log(
         `\n  NOTE: ${names - known} variable(s) are not exported here, so this total is a\n` +
           '  LOWER BOUND, not the real payload. To measure the true figure against the\n' +
-          '  deployed site, use `netlify env:list` (see HANDOFF.md for a ready snippet).'
+          '  deployed site, use `netlify env:list` (see docs/HANDOFF_4KB_ENV_LIMIT.md\n' +
+          '  for a ready snippet; the old root HANDOFF.md was archived 2026-10-08 to\n' +
+          '  docs/archive/HANDOFF-4KB-ENV-historical.md).'
       );
     }
 

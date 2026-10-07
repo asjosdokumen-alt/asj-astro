@@ -6,6 +6,33 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions, data
 
 ---
 
+## 📊 Status (terukur 2026-10-08)
+
+| | |
+|---|---|
+| **Suite uji** | **183 berkas · 2.221 tes · ~323 s.** 3 merah selalu = artefak sandbox (`spawnSync … EBUSY`), **hijau di CI** — jangan "diperbaiki" |
+| **Gate** | `lint-ratchet` PASSED · `review:gate --base=HEAD` **7/7** · `tsc` bersih · `verify:md` OK |
+| **Halaman publik** | `/` **9,9** · `/public` **10,0** · `/loker` **9,9** · `/404` **10,0** — `deliverables/gstack/public-pages-review-2026-10-07.md` |
+| **Deploy produksi** | **hidup** sejak 7 Okt 2026 ⇒ push `main` = deploy berbayar yang langsung tayang |
+| **Berkas tracked** | 950 berkas · ~22 MB (terbesar: `deliverables/` bukti audit, `public/` aset) |
+| **Counter beku** | `files.length = 535` — **hanya team-lead** yang boleh menggesernya |
+
+> ⚠️ **Dua butir yang butuh keputusan owner** — sudah terukur, **belum** dikerjakan:
+>
+> 1. **Kontras eyebrow hero `/`** — `text-pink-300` 11px di atas foto, terukur **3,20:1**
+>    (lantai 4,5). Latarnya berluminans ≈0,19, jadi **tidak ada warna teks yang bisa lolos**;
+>    obatnya *scrim*, dan itu menyentuh artwork hero.
+> 2. **Daftar lowongan tanpa JavaScript** — build-nya statis, jadi `/loker` memberi penjelasan +
+>    tautan WhatsApp, bukan daftarnya. Daftar itu di HTML server butuh **SSR** (`output: 'server'`
+>    masih dikomentari di `astro.config.mjs`).
+
+> 🔴 **Keamanan — tindakan owner diperlukan.** Satu token Netlify (`nfp_…`) pernah ter-commit
+> saat repo ini **PUBLIK** (commit `8280792`, berkas `docs/FASE6-NETLIFY.md`). Sudah diredaksi di
+> HEAD pada 2026-10-08, tetapi **masih ada di riwayat git** — meredaksi bukan memulihkan.
+> **Revoke token itu di Netlify** (User settings → Applications → Personal access tokens).
+
+---
+
 ## 🔗 Links
 
 | Resource | URL |
@@ -31,14 +58,28 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions, data
 > dan memindahkan aset berarti menyunting 17 URL hardcoded. Catat ini sebelum
 > migrasi proyek.
 
-> ⚠️ **Status deploy (26 Sep 2026):** Netlify **menolak build** — setiap push ke
-> `main` muncul sebagai `error: Skipped due to account credit usage exceeded`.
-> Deploy sukses terakhir **24 Sep 2026 10:41**. Jadi `main` di GitHub **lebih baru
-> daripada** situs live. Cek riwayatnya dengan:
+> 🔴 **Status deploy — HIDUP LAGI, dan push kini benar-benar tayang.**
+>
+> Riwayat singkatnya: kredit akun Netlify habis, dan dari **24 Sep 2026** setiap
+> push ke `main` di-skip (`Skipped due to account credit usage exceeded`) sehingga
+> `main` di GitHub **lebih baru daripada** situs live selama dua minggu. Itu
+> **sudah tidak berlaku** — sejak **7 Okt 2026** deploy kembali `ready`, dan 36
+> commit sesi itu ter-publish ke produksi.
+>
+> Konsekuensinya sekarang: **setiap push ke `main` = satu deploy produksi
+> berbayar yang langsung tayang.** Tidak ada langkah manual, dan tidak ada tahap
+> pratinjau.
+>
+> ⚠️ **Jangan hardcode site id.** Ia sudah berpindah akun dan berubah sekali;
+> bacalah dari `.netlify/state.json`, dan verifikasi dengan:
 >
 > ```bash
-> netlify api listSiteDeploys --data '{"site_id":"be40978f-aeab-42b7-a549-d9556e4f15de","per_page":6}'
+> netlify api listSiteDeploys --data "{\"site_id\":\"$(node -p "require('./.netlify/state.json').siteId")\",\"per_page\":6}"
 > ```
+>
+> Liveness check (`curl` → HTTP 200) **tidak bisa** membedakan situs yang hidup
+> dari situs yang beku; hanya daftar deploy yang bisa. Lihat R19 di skill
+> `asj-session-rules`.
 
 ---
 
@@ -112,26 +153,26 @@ di-commit — repo ini publik. Hanya berkas `.example` yang boleh masuk.
 src/
 ├── components/
 │   ├── App.tsx            # Root (header, drawer, login, toast)
-│   ├── admin/             # Panel admin (25 komponen: 9 tab + 13 modal + copilot)
-│   ├── candidate/         # Dasbor kandidat (5)
+│   ├── admin/             # Panel admin (25 komponen: 9 tab + modal + copilot)
+│   ├── candidate/         # Dasbor kandidat (6)
 │   ├── forms/             # Wizard form: Apply, AI CV, Master (6)
-│   ├── public/            # Halaman publik: loker, layanan, profil (17)
-│   └── ui/                # Primitif bersama (Icon, Toast, dll — 5)
+│   ├── public/            # Halaman publik: loker, layanan, profil (21)
+│   └── ui/                # Primitif bersama (Icon, Toast, dll — 7)
 ├── store/                 # Nanostores
 │   ├── authReactive.ts    # Sesi (persistent, localStorage 'asj_auth')
 │   ├── adminStore.ts      # Data admin reaktif
 │   ├── adminTasks.ts      # Papan Tugas Tim (scratchpad sesi, tanpa DB)
 │   ├── theme.ts           # Mode terang/gelap
 │   └── i18n.ts, i18n-jp.ts # Kamus ID + JP
-├── lib/                   # 34 modul utilitas (apiClient, schemas, supabase, helpers_cv, …)
+├── lib/                   # 65 modul (apiClient, schemas, supabase, helpers_cv, …)
 ├── pages/                 # 11 rute Astro
 ├── layouts/               # BaseLayout.astro
 ├── styles/                # global.css, theme.css, layout.css, motion.css
 └── icons/                 # sprite-map.ts (hasil generate)
 
 netlify/functions/
-├── *.js, *.ts             # ~25 entry point (auth, candidates, jobs, mail, schedule, …)
-├── surfaces/              # 17 entry per-surface (public, auth, admin, kandidat)
+├── *.js, *.ts             # Entry point (auth, candidates, jobs, mail, schedule, …)
+├── surfaces/              # 16 entry per-surface (public, auth, admin, kandidat)
 ├── contexts/              # 15 domain logika bisnis
 ├── _lib/                  # Kernel bersama (db, session, rate-limit, …)
 ├── shared/                # Dipakai bareng frontend & function
@@ -141,7 +182,14 @@ migrations/                # 15 migrasi SQL (di ROOT repo, bukan di dalam netlif
 indexer/                   # Code-indexer + boundary checker (alat, punya suite sendiri)
 scripts/ci/                # Gate CI
 e2e/                       # Gate Playwright
+deliverables/              # Laporan audit & review (bukti, bukan kode)
+docs/archive/              # Dokumen historis — JANGAN dipakai sebagai acuan kode
 ```
+
+**Root sengaja hanya berisi konfigurasi + 3 dokumen status** (`README.md`, `TODO.md`,
+`DESIGN.md`). Berkas sekali-pakai tidak ditaruh di root — itu temuan #23 di
+`deliverables/gstack/pre-launch-check-2026-10-04.md`, ditutup 2026-10-08 dengan
+memindahkannya ke `docs/archive/`.
 
 ---
 
@@ -184,7 +232,7 @@ bukan `useState` di dalam tab, karena tab di-unmount saat berpindah.
 ## 🧪 Testing & Gates
 
 ```bash
-npm test                      # suite penuh (167 berkas, 1970 tes)
+npm test                      # suite penuh: 183 berkas · 2.221 tes · ~323 s
 npm run typecheck             # tsc (frontend)
 npm run typecheck:indexer     # tsc (indexer)
 npm run icons                 # regenerate sprite ikon
@@ -245,7 +293,8 @@ integrasi GitHub-nya.
 
 ## 📚 Docs
 
-`docs/` berisi 38 dokumen. Titik masuk yang paling berguna:
+`docs/` berisi 40 dokumen aktif + 33 di `docs/archive/`. Peta lengkapnya ada di
+**`docs/README.md`** — mulai dari situ. Titik masuk yang paling berguna:
 
 | Dokumen | Isi |
 |---------|-----|
