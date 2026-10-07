@@ -474,6 +474,53 @@ describe('AiCvForm — mode admin (panel CV AI di tab Pelamar)', () => {
     expect(showToast).toHaveBeenCalledWith('toast.saved', 'success');
   });
 
+  /**
+   * Terukur 2026-10-07 (laporan owner): "kenapa data saya gak masuk padahal di
+   * supabase ada, di rirekisho juga ada" — Pendidikan / Pekerjaan / Keluarga
+   * tampil kosong di form AI CV sementara rirekisho menampilkan isinya.
+   *
+   * Sebabnya `parseAiCvDraft` hanya memetakan kolom tunggal; array ketiga seksi
+   * itu tidak punya tempat dan dibuang. Akibat keduanya bukan cuma tampilan:
+   * satu penekanan Simpan menuliskan array KOSONG kembali ke `ai_data_json`,
+   * jadi rirekisho kehilangan riwayat yang tadinya ada.
+   */
+  it('draf dengan riwayat pendidikan/pekerjaan/keluarga → barisnya terisi DAN tersimpan kembali', async () => {
+    interface SubmitPayload {
+      pendidikan: Array<Record<string, string>>;
+      pekerjaan: Array<Record<string, string>>;
+      keluarga: Array<Record<string, string>>;
+    }
+    const DRAFT_ROWS = {
+      ...DRAFT,
+      // Bentuk `buildMasterNested` (kolom master) dan bentuk payload AI form
+      // sekaligus — kedua ejaan harus terbaca.
+      pendidikan: [{ tingkat: 'SMA/SMK', nama_sekolah: 'SMAN 1 JAKARTA', tahun_masuk: '2018', tahun_lulus: '2021' }],
+      pekerjaan: [{ perusahaan: 'PT ABC', jabatan: 'Operator', gaji: '150000' }],
+      keluarga: [{ hubungan: 'Ayah', nama: 'BUDI SENIOR', usia: '55' }],
+    };
+    routeApi({ getDrafCvMaster: DRAFT_ROWS });
+    render(<AiCvForm waTarget={WA} adminMode />);
+    await settled();
+
+    // (1) Seksi repeater benar-benar terisi dari draf.
+    expect((screen.getByDisplayValue('SMAN 1 JAKARTA') as HTMLInputElement).value).toBe('SMAN 1 JAKARTA');
+    expect((screen.getByDisplayValue('PT ABC') as HTMLInputElement).value).toBe('PT ABC');
+    expect((screen.getByDisplayValue('BUDI SENIOR') as HTMLInputElement).value).toBe('BUDI SENIOR');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(true));
+    const call = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'submitDataAsj');
+    if (!call) throw new Error('submitDataAsj tidak pernah dipanggil');
+    const payload = (call[1] ?? [])[0] as SubmitPayload;
+
+    // (2) Round-trip: riwayat yang dimuat ikut ditulis kembali — bukan `[]`.
+    expect(payload.pendidikan).toHaveLength(1);
+    expect(payload.pendidikan[0].nama_sekolah).toBe('SMAN 1 JAKARTA');
+    expect(payload.pendidikan[0].tahun_lulus).toBe('2021');
+    expect(payload.pekerjaan[0].nama_perusahaan).toBe('PT ABC');
+    expect(payload.keluarga[0].nama).toBe('BUDI SENIOR');
+  });
+
   it('draf tidak ada → toast pesan server apa adanya, form tetap tampil (tidak crash)', async () => {
     vi.mocked(apiClient).mockResolvedValue({ error: 'Data Master belum ada untuk BUDI (0812). Isi Form Master dulu.' } as any);
     render(<AiCvForm waTarget={WA} adminMode />);

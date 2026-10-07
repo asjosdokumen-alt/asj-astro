@@ -32,7 +32,7 @@
  * Sengaja TIDAK mengubah kunci payload: itu kontrak dengan backend yang sudah
  * menyimpan data produksi. Hanya sisi BACA yang dibuat toleran.
  */
-import { getPath, isGood } from './helpers_cv';
+import { getPath, isGood, mergeArrRiwayat, normalizeRiwayatFor } from './helpers_cv';
 
 /**
  * Daftar lengkap kunci flat AiCvForm — SATU sumber kebenaran. AiCvForm
@@ -210,15 +210,142 @@ export function mapAiCvDraft(draft: unknown): Record<string, string> {
  * pernah ikut terbaca.
  */
 export function parseAiCvDraft(res: unknown): Record<string, string> {
-  const r = (res || {}) as Record<string, unknown>;
-  let ai: unknown = null;
-  const raw = r.AIDATAJSON;
+  return mapAiCvDraft(mergeAiDraft((res || {}) as Record<string, unknown>, parseAiBlob(res)));
+}
+
+/**
+ * Blob `AIDATAJSON` dari balasan `getDrafCvMaster`, sudah di-parse.
+ *
+ * `null` berarti "tidak ada / rusak" — kedua pembaca di bawah memperlakukannya
+ * sama: pakai bagian master saja, jangan lempar.
+ */
+function parseAiBlob(res: unknown): unknown {
+  const raw = (res as Record<string, unknown> | null | undefined)?.AIDATAJSON;
   if (typeof raw === 'string' && raw.trim() && raw !== '-') {
     try {
-      ai = JSON.parse(raw);
+      return JSON.parse(raw);
     } catch {
-      ai = null; // draf lama/rusak — pakai bagian master saja
+      return null; // draf lama/rusak — pakai bagian master saja
     }
   }
-  return mapAiCvDraft(mergeAiDraft(r, ai));
+  return null;
+}
+
+/** Satu baris repeater, dalam kunci FLAT milik `AiCvForm` (`sekolah_id`, …). */
+export type AiCvRow = Record<string, string>;
+
+/** Tiga seksi repeater `AiCvForm` yang HANYA hidup sebagai array. */
+export interface AiCvRows {
+  pendidikan: AiCvRow[];
+  pekerjaan: AiCvRow[];
+  keluarga: AiCvRow[];
+}
+
+const RIWAYAT_TIPE = ['pendidikan', 'pekerjaan', 'keluarga'] as const;
+
+/**
+ * Kunci baris per seksi, urut prioritas.
+ *
+ * Sisi KIRI adalah kunci flat milik state `AiCvForm`; sisi kanan adalah SETIAP
+ * ejaan yang pernah ditulis ke database — bentuk kanonikal `buildMasterNested`
+ * (`sekolah`, `perusahaan`, `jabatan`), bentuk payload AI form
+ * (`sekolah_id`, `nama_sekolah`, `nama_sekolah_jp`, `tahun_masuk`), dan ejaan
+ * `camelCase` warisan. Sama alasannya dengan `AI_CV_PATHS`: satu pembaca yang
+ * hanya mengenal satu ejaan akan menampilkan baris kosong, lalu "Simpan"
+ * menuliskan baris kosong itu kembali.
+ */
+const ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, readonly string[]>> = {
+  pendidikan: {
+    tingkat: ['tingkat'],
+    sekolah_id: ['sekolah_id', 'sekolah', 'nama_sekolah', 'namaSekolah'],
+    sekolah_jp: ['sekolah_jp', 'nama_sekolah_jp'],
+    jurusan_id: ['jurusan_id', 'jurusan'],
+    jurusan_jp: ['jurusan_jp'],
+    masuk: ['masuk', 'tahun_masuk', 'tahunMasuk'],
+    lulus: ['lulus', 'tahun_lulus', 'tahunLulus'],
+  },
+  pekerjaan: {
+    perusahaan_id: ['perusahaan_id', 'perusahaan', 'nama_perusahaan', 'namaPerusahaan', 'namaPt'],
+    perusahaan_jp: ['perusahaan_jp', 'nama_perusahaan_jp'],
+    jabatan_id: ['jabatan_id', 'jabatan', 'posisi'],
+    jabatan_jp: ['jabatan_jp'],
+    masuk: ['masuk', 'tahun_masuk', 'tahunMasuk'],
+    keluar: ['keluar', 'tahun_keluar', 'tahunKeluar'],
+    gaji: ['gaji'],
+  },
+  keluarga: {
+    hubungan_id: ['hubungan_id', 'hubungan'],
+    hubungan_jp: ['hubungan_jp'],
+    nama: ['nama'],
+    katakana: ['katakana'],
+    umur: ['umur', 'usia'],
+    pekerjaan_id: ['pekerjaan_id', 'pekerjaan'],
+    pekerjaan_jp: ['pekerjaan_jp'],
+    gaji: ['gaji'],
+  },
+};
+
+/**
+ * Kunci dedupe — SAMA dengan `KEYOF` di `cv-template-factory/data.ts` dan
+ * `keyOf` di `RirekishoBuilder.tsx` (tiga salinan, sengaja: mengekspornya dari
+ * `helpers_cv` mengubah dua modul yang punya tes sendiri, dan ketiganya harus
+ * sepakat supaya baris yang sama dari kolom master dan dari `ai_data_json`
+ * tidak muncul dua kali di form DAN di rirekisho).
+ */
+const ROW_KEYOF: Record<(typeof RIWAYAT_TIPE)[number], (e: Record<string, unknown>) => string> = {
+  pendidikan: (e) => cleanRowKey(String(e.tingkat || '') + String(e.sekolah || e.sekolah_id || e.nama_sekolah || '')),
+  pekerjaan: (e) => cleanRowKey(String(e.perusahaan || e.perusahaan_id || e.nama_perusahaan || '') + String(e.jabatan || e.jabatan_id || '')),
+  keluarga: (e) => cleanRowKey(String(e.nama || '')),
+};
+
+function cleanRowKey(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** Satu entri (ejaan apa pun) → baris flat `AiCvForm`. Kunci kosong dibuang. */
+function toFlatRow(entry: Record<string, unknown>, keys: Record<string, readonly string[]>): AiCvRow {
+  const out: AiCvRow = {};
+  for (const [flat, aliases] of Object.entries(keys)) {
+    for (const alias of aliases) {
+      const val = entry[alias];
+      if (isGood(val)) {
+        out[flat] = String(val).trim();
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Tiga seksi repeater dari balasan `getDrafCvMaster`.
+ *
+ * Kenapa terpisah dari `parseAiCvDraft`: fungsi itu mengembalikan
+ * `Record<string, string>` — satu kolom, satu nilai — sehingga array
+ * `pendidikan` / `pekerjaan` / `keluarga` **tidak punya tempat** di dalamnya dan
+ * dibuang di situ. Akibatnya form AI CV menampilkan tiga seksi itu KOSONG
+ * meskipun datanya ada (terlihat di rirekisho, yang membaca array yang sama),
+ * dan satu penekanan "Simpan" menuliskan kembali array kosong itu.
+ *
+ * Gabungannya UNION, bukan "yang satu menimpa yang lain": baris bisa hidup di
+ * kolom master (`pendidikan_1_*`) ATAU di `ai_data_json`, dan rirekisho
+ * menggabungkan keduanya (`mergeArrRiwayat`). Membaca hanya satu sumber akan
+ * membuat form dan rirekisho menampilkan daftar yang berbeda untuk kandidat
+ * yang sama.
+ */
+export function parseAiCvRows(res: unknown): AiCvRows {
+  const r = (res || {}) as Record<string, unknown>;
+  const ai = parseAiBlob(res);
+  const out = { pendidikan: [], pekerjaan: [], keluarga: [] } as AiCvRows;
+  for (const tipe of RIWAYAT_TIPE) {
+    out[tipe] = mergeArrRiwayat(
+      getPath(r, tipe),
+      getPath(ai, tipe),
+      ROW_KEYOF[tipe],
+      normalizeRiwayatFor(tipe),
+    )
+      .map((entry) => toFlatRow(entry as Record<string, unknown>, ROW_KEYS[tipe]))
+      .filter((row) => Object.keys(row).length > 0);
+  }
+  return out;
 }

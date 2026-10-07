@@ -8,7 +8,7 @@
 // cakupan lengkap + pembacaan multi-path itu.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { AI_CV_FLAT_KEYS, AI_CV_PATHS, mapAiCvDraft, mergeAiDraft, parseAiCvDraft } from './aiCvDraft';
+import { AI_CV_FLAT_KEYS, AI_CV_PATHS, mapAiCvDraft, mergeAiDraft, parseAiCvDraft, parseAiCvRows } from './aiCvDraft';
 
 describe('aiCvDraft — cakupan peta', () => {
   it('setiap kunci flat punya minimal satu path (kunci tak terpetakan = kolom selalu kosong)', () => {
@@ -171,5 +171,69 @@ describe('aiCvDraft — parseAiCvDraft (balasan getDrafCvMaster)', () => {
   it('balasan error ({error}) menghasilkan objek kosong, bukan lemparan', () => {
     expect(parseAiCvDraft({ error: 'Data Master belum ada (6281).' })).toEqual({});
     expect(parseAiCvDraft(null)).toEqual({});
+  });
+});
+
+// ==========================================
+// TESTS: parseAiCvRows — tiga seksi repeater
+//
+// Terukur 2026-10-07 pada /ai-cv: Pendidikan / Pekerjaan / Keluarga tampil
+// KOSONG walaupun datanya ada di Supabase dan muncul di rirekisho. Sebabnya
+// `parseAiCvDraft` mengembalikan `Record<string, string>` — satu kolom, satu
+// nilai — sehingga array ketiga seksi itu tidak punya tempat dan dibuang.
+// `parseAiCvRows` adalah pembaca yang hilang; tes di bawah mengunci
+// penggabungan (union master + AI) dan normalisasi alias yang membuat baris
+// dari kolom master DAN dari `ai_data_json` sama-sama terbaca.
+// ==========================================
+describe('aiCvDraft — parseAiCvRows (tiga seksi repeater)', () => {
+  it('menggabungkan array master + AIDATAJSON dan menormalkan alias ke kunci flat form', () => {
+    const out = parseAiCvRows({
+      // Bentuk `buildMasterNested` (kolom master).
+      pendidikan: [{ tingkat: 'SMA/SMK', nama_sekolah: 'SMAN 1', tahun_lulus: '2021' }],
+      // Bentuk payload AI form (yang ditulis AiCvForm sendiri).
+      AIDATAJSON: JSON.stringify({
+        pendidikan: [{ tingkat: 'SMP', sekolah_id: 'SMPN 2', tahun_masuk: '2015' }],
+        pekerjaan: [{ perusahaan: 'PT ABC', jabatan: 'Operator', gaji: '150000' }],
+        keluarga: [{ hubungan: 'Ayah', nama: 'BUDI SENIOR', usia: '55' }],
+      }),
+    });
+    // Union: master dulu, lalu AI — bukan saling menimpa.
+    expect(out.pendidikan.map((r) => r.sekolah_id)).toEqual(['SMAN 1', 'SMPN 2']);
+    expect(out.pendidikan[0].lulus).toBe('2021');
+    expect(out.pendidikan[1].masuk).toBe('2015');
+    expect(out.pekerjaan[0]).toMatchObject({ perusahaan_id: 'PT ABC', jabatan_id: 'Operator', gaji: '150000' });
+    expect(out.keluarga[0]).toMatchObject({ hubungan_id: 'Ayah', nama: 'BUDI SENIOR', umur: '55' });
+  });
+
+  it('baris yang sama dari kedua sumber tidak digandakan', () => {
+    const out = parseAiCvRows({
+      pendidikan: [{ tingkat: 'SMA', nama_sekolah: 'SMAN 1' }],
+      AIDATAJSON: JSON.stringify({ pendidikan: [{ tingkat: 'SMA', sekolah_id: 'SMAN 1' }] }),
+    });
+    expect(out.pendidikan).toHaveLength(1);
+    expect(out.pendidikan[0].sekolah_id).toBe('SMAN 1');
+  });
+
+  it('ejaan kanji dari payload AI form ikut terbaca (nama_sekolah_jp → sekolah_jp)', () => {
+    const out = parseAiCvRows({
+      AIDATAJSON: JSON.stringify({
+        pendidikan: [{ tingkat: 'SMA', nama_sekolah: 'SMAN 1', nama_sekolah_jp: 'スマン1' }],
+        pekerjaan: [{ nama_perusahaan: 'PT ABC', nama_perusahaan_jp: 'ABC社' }],
+      }),
+    });
+    expect(out.pendidikan[0].sekolah_jp).toBe('スマン1');
+    expect(out.pekerjaan[0].perusahaan_jp).toBe('ABC社');
+  });
+
+  it('tanpa data (atau AIDATAJSON rusak) → tiga array kosong, bukan lemparan', () => {
+    const empty = { pendidikan: [], pekerjaan: [], keluarga: [] };
+    expect(parseAiCvRows(null)).toEqual(empty);
+    expect(parseAiCvRows({ AIDATAJSON: '-' })).toEqual(empty);
+    expect(parseAiCvRows({ AIDATAJSON: '{bukan json' })).toEqual(empty);
+  });
+
+  it('baris tanpa satu pun kunci yang dikenal dibuang (tidak ada baris hantu)', () => {
+    const out = parseAiCvRows({ pendidikan: [{}, { tingkat: 'SMP' }] });
+    expect(out.pendidikan).toEqual([{ tingkat: 'SMP' }]);
   });
 });

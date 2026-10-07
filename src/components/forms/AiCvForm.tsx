@@ -17,7 +17,7 @@ import AiUnavailableBanner from '../ui/AiUnavailableBanner';
 import { mapAiCvDraft } from '../../lib/aiCvDraft';
 import { uploadMany, type UploadCollectionError } from '../../lib/cloudinary';
 import { AI_FILE_COLUMNS } from '../../lib/documentColumns';
-import { AI_CV_FLAT_KEYS, parseAiCvDraft } from '../../lib/aiCvDraft';
+import { AI_CV_FLAT_KEYS, parseAiCvDraft, parseAiCvRows, type AiCvRow } from '../../lib/aiCvDraft';
 import { PAIRED_FIELDS, resolvePairEdit, jpOf, GENDER_PAIRS, AGAMA_PAIRS, GOLDAR_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS, YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS } from '../../lib/aiCvPairs';
 import { PEKERJAAN, HUBUNGAN_KELUARGA, labelJp, pairDisplay, type Opsi } from '../../lib/opsi-form';
 import { levelOptions, sortEduRows } from '../../lib/cvRows';
@@ -135,6 +135,35 @@ const nextRowId = (): number => ++rowSeq;
 const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '', sekolah_jp: '', jurusan_id: '', jurusan_jp: '', masuk: '', lulus: '' });
 const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '' });
 const newFamRow = (): FamRow => ({ id: nextRowId(), hubungan_id: '', hubungan_jp: '', nama: '', katakana: '', umur: '', pekerjaan_id: '', pekerjaan_jp: '', gaji: '' });
+
+/**
+ * Baris tersimpan (`parseAiCvRows`) → state repeater.
+ *
+ * `id` selalu datang dari `make()`, tidak pernah dari server: identitas baris
+ * hanya dipakai sebagai `key` render, dan dua baris dari server tidak punya
+ * jaminan membawa id yang unik. Kunci lain menimpa nilai kosong milik `make()`.
+ *
+ * Daftar kosong tetap menghasilkan SATU baris kosong — seksi tanpa baris sama
+ * sekali tidak bisa diketik, dan itu keadaan yang lebih buruk daripada baris
+ * kosong.
+ */
+function rowsToState<T extends { id: number }>(rows: AiCvRow[], make: () => T): T[] {
+  if (!rows.length) return [make()];
+  return rows.map((row) => Object.assign(make(), row) as T);
+}
+
+/**
+ * Apakah baris ini sudah diisi manusia?
+ *
+ * Predikatnya SENGAJA sama dengan filter di payload simpan
+ * (`pendidikan` → `e.sekolah_id || e.tingkat`, dst). Baris yang akan IKUT
+ * terkirim adalah baris yang sama yang memblokir pengisian dari draf — jadi
+ * tidak mungkin ada baris yang dianggap "kosong" oleh satu sisi dan "berisi"
+ * oleh sisi lain.
+ */
+const eduRowHasData = (r: EduRow): boolean => Boolean(r.sekolah_id || r.tingkat);
+const jobRowHasData = (r: JobRow): boolean => Boolean(r.perusahaan_id || r.jabatan_id);
+const famRowHasData = (r: FamRow): boolean => Boolean(r.nama || r.hubungan_id);
 
 /** School levels — legacy `TINGKAT_OPTIONS`, and the canonical order. */
 
@@ -404,6 +433,20 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
         if (Object.keys(loaded).length === 0 && typeof res?.error === 'string') {
           showToast(String(res.error), 'error');
         }
+        // Tiga seksi repeater hidup sebagai ARRAY, sedangkan `parseAiCvDraft`
+        // mengembalikan satu kolom = satu nilai — jadi array itu tidak punya
+        // tempat di dalamnya dan dibuang di situ. Akibatnya Pendidikan /
+        // Pekerjaan / Keluarga tampil KOSONG walaupun datanya ada (rirekisho
+        // membacanya dari balasan yang sama), lalu "Simpan" menuliskan kembali
+        // array kosong itu ke `ai_data_json`.
+        const rows = parseAiCvRows(res);
+        // Draf tidak pernah menimpa apa yang sudah diketik manusia: jalur
+        // kandidat sengaja TIDAK memblokir form selama draf dimuat
+        // (lihat `loadingDraft`), jadi balasannya bisa tiba setelah baris
+        // pertama diketik.
+        setEduList(prev => (prev.some(eduRowHasData) ? prev : sortEduRows(rowsToState(rows.pendidikan, newEduRow))));
+        setJobList(prev => (prev.some(jobRowHasData) ? prev : rowsToState(rows.pekerjaan, newJobRow)));
+        setFamList(prev => (prev.some(famRowHasData) ? prev : rowsToState(rows.keluarga, newFamRow)));
         // hp = WA kandidat; kalau master belum punya no_wa, pakai target supaya
         // payload simpan tetap membawa nomor yang benar. NOTE: sengaja tetap
         // `waTarget`, bukan `draftWa` — pada jalur kandidat `cv.hp` sudah diisi
