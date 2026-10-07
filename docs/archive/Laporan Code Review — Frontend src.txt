@@ -1,0 +1,46 @@
+Laporan Code Review — Frontend src/ (ASJ Portal v2)
+Review full-codebase (bukan diff) atas ~100 file non-test di src/ (≈17.000 baris), dikerjakan 4 reviewer paralel (lib+store, admin, forms+public+root+ui, pages/layouts/types) dan diverifikasi ulang langsung ke kode untuk setiap temuan berikut.
+
+Temuan
+[KRITIS] src/components/admin/RirekishoBuilder.tsx:57-59,80-82,100-102,237 — Stored XSS: builder HTML menyuntik nilai mentah — buildEduRows/buildJobRows/buildFamRows menggabungkan s, sj, j, pt, ker, nm, pk mentah (tanpa esc()), dan baris 150 menyuntikkan tgl mentah (fallback tglAsli di baris 211); sumbernya getDrafCvMaster + AIDATAJSON milik kandidat, lalu dirender via dangerouslySetInnerHTML (baris 237) — kandidat jahat bisa menyimpan <img src=x onerror=…> di kolom sekolah/perusahaan/keluarga dan eksekusi script di sesi admin (yang menyimpan sessionToken di localStorage) — terapkan esc() pada semua nilai di tiga builder row itu dan pada tglFmt.
+
+[TINGGI] src/components/ui/useOverlay.ts:135 — onBackdropClick mengembalikan onClose mentah tanpa cek e.target — semua modal yang memasang onClick={onBackdropClick} di container (ChangePasswordModal:63, CvMiniModal:128, WAPintarModal:53, CekSiswaModal:87, ESignSignatureModal:116, DocumentPreviewModal:286, LokerDetailModal:86, InputManualModal:179, LaporanBulananModal:90, dst.) menutup saat klik DI DALAM modal karena event membubbling — isian form ganti password/biodata hilang setiap klik — perbaiki sekali di useOverlay: onBackdropClick: (e) => { if (e.target === containerRef.current) onClose(); } (mirip fix B05 PamfletModal).
+
+[TINGGI] src/components/admin/TabJadwal.tsx:37,76 — POST simpanJadwalBaru/hapusJadwal tanpa sessionToken (pola sama: TabConfig.tsx:45 run-migration, :56/:64 simpan config; TabDbJob.tsx:272 downloadJobDocs; CandidateDash.tsx:404 simpanBerkasTahapan) — padahal panggilan lain di file yang sama selalu mengirim token (TabJadwal:28) — jika backend meng-guard, fitur gagal diam-diam; jika tidak, endpoint unduh ZIP dokumen kandidat (PII) dan migrasi DB bisa dipanggil tanpa autentikasi — kirim sessionToken di body (atau pakai api.secure) dan pastikan guard di backend.
+
+[TINGGI] src/components/admin/PemberkasanModal.tsx:355-453 — FileInput, Panel, BioInput, Section didefinisikan di dalam body komponen — identitas tipe komponen berubah tiap render parent sehingga subtree di-unmount/mount ulang setiap setBio (baris 435/442) — fokus input biodata hilang tiap satu ketikan dan file yang sudah dipilih di input berkas-* reset — pindahkan definisi komponen ke scope file dan teruskan via props.
+
+[TINGGI] src/components/ESignatureModal.tsx:64-68 — startDraw menjalankan ctx.fillRect(0,0,rect.width,rect.height) warna background tiap pena diletakkan — seluruh coretan sebelumnya terhapus sehingga tanda tangan multi-goresan mustahil, padahal tombol "Hapus & Ulangi" sudah ada — hapus fillRect dari startDraw.
+
+[TINGGI] src/components/public/LayananSection.astro:80 — atribut onclick="window.dispatchEvent(new CustomEvent("openCekSiswaModal"))" memakai kutip ganda bersarang — parser HTML memotong nilai atribut, JS-nya syntax error, event openCekSiswaModal (didengar App.tsx:96-99) tidak pernah terkirim — tombol "Cek Data" di landing mati total — ganti kutip dalam menjadi 'openCekSiswaModal'.
+
+[SEDANG] src/lib/apiClient.ts:110-115 — invalidasi cache saat write memakai nama action write (mis. asj_cache_simpanJadwalBaru:) padahal kunci cache hanya pernah dibuat untuk action di CACHEABLE_READS (baris 17-22, 24-26) — invalidateCache(action) tidak pernah cocok sehingga setelah write sukses, read terkait tetap menyajikan data basi hingga TTL 30 detik — invalidasi seluruh prefix asj_cache_ atau petakan write→read terdampak.
+
+[SEDANG] src/store/userStore.ts:262-264 — normalizePhone memetakan semua nomor berawalan 0 ke prefix 62 — nomor Jepang 090/070/080 menjadi 6290… (bukan 81…), inkonsisten dengan normalizeWaInput di schemas.ts yang sudah benar — kandidat JP gagal login/mismatch identitas — pakai ulang normalizeWaInput atau tangani prefix 09x/07x/08x → 81.
+
+[SEDANG] src/components/admin/TabPelamar.tsx:71-80,126-129 — dropdown "Semua Usia" tidak berpengaruh: filtered hanya memfilter search/gender/jft, filterAge (baris 63) tidak pernah dipakai — admin mengira kandidat tersaring usia; sekalian: class tabel full-view patah oleh newline "…border-sla\nte-800" (baris 159-160) sehingga border tidak pernah ter-apply — tambahkan klausa usia pada filtered dan gabungkan token class.
+
+[SEDANG] src/components/admin/TabMail.tsx:94,127-141 — checkbox select-all dan tombol "Lihat/Lulus/Review/Gagal" tanpa onClick/state sama sekali — UI tampak aktif tapi klik tidak melakukan apa pun tanpa feedback — wire ke aksi backend atau disable dengan label "segera hadir".
+
+[SEDANG] src/components/admin/AdminAiCopilot.tsx:152-156 — Promise FileReader hanya punya onload, tanpa onerror/reject — jika pembacaan file gagal, promise tidak pernah settle dan parseStatus macet selamanya; handleParse juga tanpa guard in-flight (state sending di file ini hanya melindungi fitur chat, bukan tombol parse) — tambahkan reader.onerror yang me-reject dan flag busy untuk men-disable tombol parse.
+
+[SEDANG] src/components/candidate/CandidateDash.tsx:167,414-417 — berkasProgress diisi JUMLAH dokumen selesai (berkasList.filter(…).length) lalu dirender {Math.round(data.berkasProgress)}% dan width:${…}% — 3 dari 12 dokumen tampil "3%" — hitung Math.round(done/total*100).
+
+[SEDANG] src/components/ui/useOverlay.ts:122-127 — Escape memakai e.stopPropagation() padahal listener tiap modal terpasang di node yang sama (document capture) — stopPropagation tidak menghentikan listener lain di node yang sama, jadi saat dua modal bertumpuk (mis. LokerDetailModal→PamfletModal) Escape menutup KEDUANYA sekaligus — gunakan e.stopImmediatePropagation().
+
+[SEDANG] src/components/public/LokerTable.tsx:61-69 — kegagalan fetch hanya console.error tanpa state error, lalu loading=false — halaman publik menampilkan "tidak ada lowongan" padahal API gagal, menyesatkan pencari kerja — tambahkan state error + tombol retry (pola ShareView:243-251).
+
+[SEDANG] src/store/authReactive.ts:60 — loginAsAdmin memanggil requestNotificationPermission(sessionToken) — JWT session dikirim sebagai userId registrasi FCM (bandingkan baris 76 yang mengirim wa), sehingga notifikasi admin tidak pernah nyambung dan string JWT terkirim ke endpoint FCM — kirim identifier admin yang benar.
+
+[SEDANG] src/store/i18n.ts:9-12 — persistentAtom dengan decode: JSON.parse eksplisit tanpa fallback — default library sebenarnya identity (aman); dengan override ini, nilai asj_lang non-JSON (mis. legacy teks polos jp) melempar SyntaxError saat inisialisasi modul → crash seluruh app, kelas bug yang sama sudah diperbaiki di authReactive (P21) — bungkus decode dengan try/catch, fallback "id".
+
+[SEDANG] src/env.d.ts:8-17 — secret server (SUPABASE_SERVICE_ROLE_KEY, SESSION_SECRET, ADMIN_PASSWORD, GEMINI_API_KEY, dll.) dideklarasikan non-opsional di ImportMetaEnv global — kode island/client yang membaca variabel ini lolos type-check padahal runtime-nya undefined di browser, dan deklarasi ini memancing kebocoran secret pada situs SSG — pisahkan deklarasi server ke file d.ts server-side/astro:env.
+
+[SEDANG] src/lib/masterPrefill.ts:65,69,74 — n.pendidikan/n.pekerjaan/n.keluarga didereferensi tanpa guard — padahal baris 34-39 sengaja menoleransi n null ((n && n.identitas) || {}) — TypeError saat prefill dipanggil dengan nested data null/hasil parse kosong — ganti ke n?.pendidikan dst.
+
+[RENDAH] src/lib/supabase-server.ts:54-59 — supabaseServiceRole() memakai require('@supabase/supabase-js') di modul ESM — ReferenceError pasti bila dipanggil (saat ini dead code — tidak ada pemanggil di src/), dan fallback diam-diam ke anon key (baris 58) mengaburkan missing secret — ganti ke static ESM import dan lempar error eksplisit bila service key kosong.
+
+[RENDAH] src/lib/applyDocs.ts:37 — normalizeToken memakai regex /s+/g (huruf "s" literal, bukan /\s+/g) — karena input sudah di-toUpperCase(), replace ini no-op total sehingga token ber-spasi ganda (mis. "PAS FOTO") tidak dinormalisasi ke PHOTO_ALIASES dan muncul sebagai kartu upload ekstra — perbaiki menjadi /\s+/g.
+
+Verdict
+Kesehatan umum frontend ini cukup baik untuk ukuran porting legacy: arsitektur sudah benar (apiClient terpusat dengan token+cache, useOverlay untuk aksesibilitas, i18n lazy-load, ErrorBoundary, dan komentar parity A/B/P yang menunjukkan disiplin perbaikan berkelanjutan), dan tidak ditemukan secret yang bocor ke bundle klien maupun XSS dari data publik di LokerTable/LokerDetailModal. Masalah terbesar justru pola yang diterapkan tidak merata: satu kelemahan desain di useOverlay (backdrop handler tanpa cek target) merusak ±15 modal sekaligus, beberapa komponen masih melakukan fetch manual yang melewati apiClient sehingga kehilangan sessionToken, dan builder CV berbasis string HTML lolos escape di tiga fungsi row — satu-satunya temuan KRITIS. Prioritas perbaikan: (1) escape RirekishoBuilder, (2) fix onBackdropClick sekali di useOverlay, (3) audit semua fetch manual agar lewat api.secure, sisanya bisa dikerjakan bertahap tanpa risiko arsitektural.
