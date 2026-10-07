@@ -846,7 +846,7 @@ async function handleSimpanHasilWawancara(payload: unknown[], sessionToken?: str
   if (guard.error) return guard.error;
   const d = ((payload && payload[0]) || {}) as Record<string, any>;
   // IDOR fix: hasil wawancara selalu di-scope ke WA dari sesi, bukan payload klien.
-  const wa = normalizeWa(String((guard.token && (guard.token as any).wa) || ''));
+  const wa = normalizeWa(String((guard.token && guard.token.wa) || ''));
   if (!wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
   const hasil = d.hasil || {};
   if (!hasil || typeof hasil !== 'object' || Array.isArray(hasil)) {

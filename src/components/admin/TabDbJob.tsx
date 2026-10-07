@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from 'preact/hooks';
 import api from '../../lib/apiClient';
 import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
-import AdminJobEditModal from './AdminJobEditModal';
+import AdminJobEditModal, { type EditableJob } from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import MatchmakingModal from './MatchmakingModal';
 import ListKandidatModal from './ListKandidatModal';
@@ -301,7 +301,7 @@ export default function TabDbJob() {
           </table>
         </div>
       )}
-      {editJobP.present && <AdminJobEditModal job={editJobP.held as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} closing={editJobP.closing} />}
+      {editJobP.present && <AdminJobEditModal job={editJobP.held as EditableJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} closing={editJobP.closing} />}
       {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} closing={shareJobP.closing} />}
       {listJobCodeP.present && listJobCodeP.held && <ListKandidatModal jobCode={listJobCodeP.held} isOpen={!!listJobCode} onClose={() => setListJobCode(null)} closing={listJobCodeP.closing} />}
       {matchJobP.present && matchJobP.held && <MatchmakingModal job={matchJobP.held} candidates={allCandidates} isOpen={!!matchJob} onClose={() => setMatchJob(null)} closing={matchJobP.closing} />}

@@ -146,7 +146,9 @@ export function emit(event: DomainEvent): void {
     type: event.type,
     // Hash PII fields for safe logging
     wa: 'wa' in event && event.wa ? hashForLog(event.wa) : undefined,
-    jobCode: 'jobCode' in event ? (event as any).jobCode : undefined,
+    // `'jobCode' in event` narrows the `DomainEvent` union to the variants
+    // that carry it, so no cast is needed to read it.
+    jobCode: 'jobCode' in event ? event.jobCode : undefined,
   });
 
   for (const handler of handlerList) {

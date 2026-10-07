@@ -69,8 +69,10 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
 
   if (!isOpen && !closing) return null;
 
-  const cands = (allCandidates as any[]).filter(
-    (c: any) => c && c.idLoker && String(c.idLoker).includes(jobCode),
+  // `allCandidates` is already `Kandidat[]` (the store's type) — the old
+  // index-signature casts only suppressed the declared interface.
+  const cands = allCandidates.filter(
+    (c) => c && c.idLoker && String(c.idLoker).includes(jobCode),
   );
 
   // Copy all WA numbers to clipboard (format sama dengan legacy)

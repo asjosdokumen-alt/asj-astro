@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { langStore, t } from '../../store/i18n';
-import AdminJobEditModal from './AdminJobEditModal';
+import AdminJobEditModal, { type EditableJob } from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import Icon from '../ui/Icon';
 import { Status, TableRows } from '../ui/Skeleton';
@@ -153,7 +153,7 @@ export default function TabKelola() {
       )}
       <p class="text-xs text-slate-500 mt-3">{filtered.length} {t('ui.jobs_suffix')}</p>
 
-      {editJobP.present && <AdminJobEditModal job={editJobP.held as any} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} closing={editJobP.closing} />}
+      {editJobP.present && <AdminJobEditModal job={editJobP.held as EditableJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} closing={editJobP.closing} />}
       {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} closing={shareJobP.closing} />}
     </div>
   );

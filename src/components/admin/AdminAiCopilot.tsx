@@ -72,6 +72,28 @@ export function boldHtml(text: string): string {
   return parts.map((p, i) => (i % 2 === 1 ? "<b>" + p + "</b>" : p)).join("");
 }
 
+/**
+ * The interview-result card state.
+ *
+ * This container is built by this component (see `setLastHasil` below), so its
+ * shape is NOT dynamic — declaring it here is what removes the eleven
+ * per-field casts that used to paper over the `Record<string, unknown>`
+ * annotation. The leaf values stay `unknown` on purpose: they come from the
+ * `getHasilWawancara` AI payload, so each read site narrows or stringifies
+ * rather than the type inventing a shape for the AI's answer.
+ */
+interface HasilWawancara {
+  wa?: unknown;
+  nama?: unknown;
+  updatedAt?: unknown;
+  hasil?: {
+    score?: unknown;
+    nilai?: unknown;
+    rekomendasi?: unknown;
+    biodata?: Record<string, unknown>;
+  };
+}
+
 export default function AdminAiCopilot({ candidateId, candidateWa, onClose, closing = false }: Props) {
   const user = useStore(authStore);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -89,7 +111,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
   // dua kali kuota provider untuk satu niat pengguna. Tombol-tombolnya kini
   // memakai flag yang sama.
   const [busy, setBusy] = useState(false);
-  const [lastHasil, setLastHasil] = useState<Record<string, unknown> | null>(null);
+  const [lastHasil, setLastHasil] = useState<HasilWawancara | null>(null);
   // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`. Non-null
   // shows the banner; a later successful AI call clears it.
   const [aiDown, setAiDown] = useState<string | null>(null);
@@ -322,7 +344,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
         setParseStatus("");
         return;
       }
-      const h = (data as Record<string, unknown>).hasil as Record<string, any>;
+      const h = (data as Record<string, unknown>).hasil as Record<string, unknown>;
       const bio =
         h.biodata && typeof h.biodata === "object"
           ? (h.biodata as Record<string, unknown>)
@@ -372,14 +394,14 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
 
   const handleUpdateBio = async () => {
     if (busy) return;
-    const h = (lastHasil as any)?.hasil;
+    const h = lastHasil?.hasil;
     const bio =
       h && h.biodata && typeof h.biodata === "object" ? (h.biodata as Record<string, unknown>) : null;
     if (!bio || !Object.keys(bio).length) {
       showToast(t("ai.no_biodata"), "error");
       return;
     }
-    const wa = String((lastHasil as any)?.wa || parseWa || "");
+    const wa = String(lastHasil?.wa || parseWa || "");
     if (!wa) {
       showToast(t("ai.fill_wa_first"), "error");
       return;
@@ -388,7 +410,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     setParseStatus(t("ai.status_updating"));
     try {
       await apiCall("submitMasterForm", [{ wa, ...bio }]);
-      const nama = String((lastHasil as any)?.nama || wa);
+      const nama = String(lastHasil?.nama || wa);
       addMsg(
         "✅ **" +
           nama +
@@ -643,28 +665,28 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                 <p class="text-xs text-slate-300">
                   {t("admin.ai_candidate_label")}
                   <span class="text-white font-bold">
-                    {(lastHasil as any).nama || (lastHasil as any).wa}
+                    {String(lastHasil.nama || lastHasil.wa || "")}
                   </span>
                 </p>
-                {String((lastHasil as any).updatedAt || "") !== "" && (
+                {String(lastHasil.updatedAt || "") !== "" && (
                   <p class="text-xs text-slate-300">
                     {t("admin.ai_updated_label")}
-                    <span class="text-slate-100">{(lastHasil as any).updatedAt}</span>
+                    <span class="text-slate-100">{String(lastHasil.updatedAt || "")}</span>
                   </p>
                 )}
                 <p class="text-xs text-slate-300">
                   {t("admin.ai_score")}
                   <span class="text-emerald-400 font-bold">
-                    {(lastHasil as any).hasil?.score ?? "-"}/10
+                    {String(lastHasil.hasil?.score ?? "-")}/10
                   </span>
-                  {(lastHasil as any).hasil?.nilai
-                    ? " (" + String((lastHasil as any).hasil.nilai) + ")"
+                  {lastHasil.hasil?.nilai
+                    ? " (" + String(lastHasil.hasil.nilai) + ")"
                     : ""}
                 </p>
-                {(lastHasil as any).hasil?.rekomendasi && (
+                {Boolean(lastHasil.hasil?.rekomendasi) && (
                   <p class="text-xs text-slate-300">
                     {t("admin.ai_recommendation")}
-                    {(lastHasil as any).hasil.rekomendasi}
+                    {String(lastHasil.hasil?.rekomendasi ?? "")}
                   </p>
                 )}
                 <button

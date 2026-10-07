@@ -1040,6 +1040,58 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     expect((document.getElementById('ai-edu-tingkat-1') as HTMLSelectElement).value).toBe('SMA/SMK');
   });
 
+  // The two tests above assert VALUES by slot, and a fully controlled input
+  // renders the right value even when the wrong DOM node is reused — so they
+  // pass with `key={index}` too. The defect index keys actually cause is that
+  // the *node* stays in its slot while the row underneath it changes. These two
+  // tests pin the node, which is what reorders incorrectly.
+  it('key baris = identitas, bukan indeks: node DOM ikut PINDAH saat baris diurut ulang', () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMA NEGERI 1' } });
+    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA/SMK' } });
+    fireEvent.click(screen.getAllByText('ai_cv.row_tambah')[0]);
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement, { target: { value: 'SD NEGERI 2' } });
+
+    // The actual DOM node holding the SD row, captured BEFORE the reorder.
+    const sdNode = document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement;
+    expect(sdNode.value).toBe('SD NEGERI 2');
+
+    // Changing the level triggers `sortEduRows`; SD outranks SMA/SMK and the
+    // two rows swap.
+    fireEvent.change(document.getElementById('ai-edu-tingkat-1') as HTMLSelectElement, { target: { value: 'SD' } });
+
+    // With `key={index}` the slot is reused: `sdNode` stays in slot 1 and is
+    // handed the SMA row's props, so the SD row silently loses its own input
+    // node (and its focus, IME composition and internal state). With `key={id}`
+    // the node travels with its row.
+    expect(sdNode.value).toBe('SD NEGERI 2');
+    expect(document.getElementById('ai_edu-sekolah-id-0')).toBe(sdNode);
+    expect((document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement).value).toBe('SMA NEGERI 1');
+  });
+
+  it('state internal baris (bulan pending) ikut PINDAH dengan barisnya saat diurut ulang', () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMA NEGERI 1' } });
+    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA/SMK' } });
+    fireEvent.click(screen.getAllByText('ai_cv.row_tambah')[0]);
+    fireEvent.input(document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement, { target: { value: 'SD NEGERI 2' } });
+
+    // A month picked before a year is held inside `MonthYearField` as
+    // `pendingMonth` — per-row state that lives in the DOM subtree rather than
+    // in the list, so it is the clearest witness of where a reused node's state
+    // ends up.
+    fireEvent.change(document.getElementById('ai-edu-masuk-1-month') as HTMLSelectElement, { target: { value: '02' } });
+    expect((document.getElementById('ai-edu-masuk-1-month') as HTMLSelectElement).value).toBe('02');
+
+    // SD outranks SMA/SMK → the rows swap.
+    fireEvent.change(document.getElementById('ai-edu-tingkat-1') as HTMLSelectElement, { target: { value: 'SD' } });
+
+    // The pending month belongs to the SD row, which is now row 0. It must be
+    // shown there — and must NOT be left behind on the SMA row it was typed in.
+    expect((document.getElementById('ai-edu-masuk-0-month') as HTMLSelectElement).value).toBe('02');
+    expect((document.getElementById('ai-edu-masuk-1-month') as HTMLSelectElement).value).toBe('');
+  });
+
   it('tingkat di luar daftar (mis. "SMK" bawaan data lama) tetap ikut terurut benar', () => {
     render(<AiCvForm />);
 

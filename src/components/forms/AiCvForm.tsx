@@ -93,15 +93,23 @@ const EMPTY_CV: CvData = Object.fromEntries(CV_FIELDS.map(k => [k, ''])) as CvDa
  * UI stops at the cap so the candidate is never asked for data that cannot be
  * shown.
  */
+/* `id` is a stable row identity, NOT the array index. The rows are reorderable
+   (see `sortEduRows`) and deletable, and both operations make the index a
+   moving target: a row keyed by its index hands its DOM node — and any state
+   inside it, e.g. `MonthYearField`'s pending month — to whatever row slides
+   into that slot. Keying by `id` makes the node travel with the row instead. */
 interface EduRow {
+  id: number;
   tingkat: string; sekolah_id: string; sekolah_jp: string;
   jurusan_id: string; jurusan_jp: string; masuk: string; lulus: string;
 }
 interface JobRow {
+  id: number;
   perusahaan_id: string; perusahaan_jp: string; jabatan_id: string; jabatan_jp: string;
   masuk: string; keluar: string; gaji: string;
 }
 interface FamRow {
+  id: number;
   hubungan_id: string; hubungan_jp: string; nama: string; katakana: string;
   umur: string; pekerjaan_id: string; pekerjaan_jp: string; gaji: string;
 }
@@ -110,9 +118,23 @@ const EDU_MAX = 5;
 const JOB_MAX = 3;
 const FAM_MAX = 5;
 
-const EMPTY_EDU: EduRow = { tingkat: '', sekolah_id: '', sekolah_jp: '', jurusan_id: '', jurusan_jp: '', masuk: '', lulus: '' };
-const EMPTY_JOB: JobRow = { perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '' };
-const EMPTY_FAM: FamRow = { hubungan_id: '', hubungan_jp: '', nama: '', katakana: '', umur: '', pekerjaan_id: '', pekerjaan_jp: '', gaji: '' };
+/**
+ * Monotonic source of row identities.
+ *
+ * Module scope rather than `useRef` for two reasons: the id is minted inside a
+ * click handler (outside any component instance), and it must be unique across
+ * every `AiCvForm` on the page — the admin panel mounts one per applicant, and
+ * two instances sharing a counter range would collide on keys. The id is only
+ * ever compared for equality: never rendered, never persisted, and never sent
+ * (the save payload maps explicit fields, so `id` cannot reach the wire).
+ */
+let rowSeq = 0;
+const nextRowId = (): number => ++rowSeq;
+
+/** A fresh, empty row carrying its own stable identity. */
+const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '', sekolah_jp: '', jurusan_id: '', jurusan_jp: '', masuk: '', lulus: '' });
+const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '' });
+const newFamRow = (): FamRow => ({ id: nextRowId(), hubungan_id: '', hubungan_jp: '', nama: '', katakana: '', umur: '', pekerjaan_id: '', pekerjaan_jp: '', gaji: '' });
 
 /** School levels — legacy `TINGKAT_OPTIONS`, and the canonical order. */
 
@@ -317,9 +339,9 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
   const [savePhase, setSavePhase] = useState<'idle' | 'extCheck' | 'uploading' | 'saving' | 'done'>('idle');
   /* The three dynamic sections. Seeded with one empty row each so the section
      is usable immediately — legacy showed a row and a "tambah" button too. */
-  const [eduList, setEduList] = useState<EduRow[]>([{ ...EMPTY_EDU }]);
-  const [jobList, setJobList] = useState<JobRow[]>([{ ...EMPTY_JOB }]);
-  const [famList, setFamList] = useState<FamRow[]>([{ ...EMPTY_FAM }]);
+  const [eduList, setEduList] = useState<EduRow[]>([newEduRow()]);
+  const [jobList, setJobList] = useState<JobRow[]>([newJobRow()]);
+  const [famList, setFamList] = useState<FamRow[]>([newFamRow()]);
   // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`.
   const [aiDown, setAiDown] = useState<string | null>(null);
   // C03 (2026-09-05): login gate pola MasterFullForm — backend minta sesi untuk
@@ -1156,7 +1178,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                   a property of the printed CV template: a sixth row would be
                   dropped at render time, so the form must not accept one. */}
               {eduList.map((edu, i) => (
-                <RepeaterRow key={i} index={i} label={t('ai_cv.row_pendidikan')}
+                <RepeaterRow key={edu.id} index={i} label={t('ai_cv.row_pendidikan')}
                   removable={eduList.length > 1}
                   onRemove={() => setEduList(l => l.filter((_, j) => j !== i))}>
                   <div class="grid grid-cols-2 gap-2">
@@ -1181,7 +1203,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                 </RepeaterRow>
               ))}
               {eduList.length < EDU_MAX && (
-                <button type="button" onClick={() => setEduList(l => [...l, { ...EMPTY_EDU }])}
+                <button type="button" onClick={() => setEduList(l => [...l, newEduRow()])}
                   class="inline-flex items-center min-h-11 text-sky-400 text-[11px] font-bold mb-1">
                   <Icon name="plus" class="mr-1" />{t('ai_cv.row_tambah')}
                 </button>
@@ -1189,7 +1211,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
             </Section>
             <Section title={t("ai_cv.sec_pekerjaan")} icon="fa-briefcase" color="blue">
               {jobList.map((job, i) => (
-                <RepeaterRow key={i} index={i} label={t('ai_cv.row_pekerjaan')}
+                <RepeaterRow key={job.id} index={i} label={t('ai_cv.row_pekerjaan')}
                   removable={jobList.length > 1}
                   onRemove={() => setJobList(l => l.filter((_, j) => j !== i))}>
                   <div class="grid grid-cols-2 gap-2">
@@ -1223,7 +1245,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                 </RepeaterRow>
               ))}
               {jobList.length < JOB_MAX && (
-                <button type="button" onClick={() => setJobList(l => [...l, { ...EMPTY_JOB }])}
+                <button type="button" onClick={() => setJobList(l => [...l, newJobRow()])}
                   class="inline-flex items-center min-h-11 text-sky-400 text-[11px] font-bold mb-1">
                   <Icon name="plus" class="mr-1" />{t('ai_cv.row_tambah')}
                 </button>
@@ -1231,7 +1253,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
             </Section>
             <Section title={t("ai_cv.sec_keluarga")} icon="fa-users" color="orange">
               {famList.map((fam, i) => (
-                <RepeaterRow key={i} index={i} label={t('ai_cv.row_keluarga')}
+                <RepeaterRow key={fam.id} index={i} label={t('ai_cv.row_keluarga')}
                   removable={famList.length > 1}
                   onRemove={() => setFamList(l => l.filter((_, j) => j !== i))}>
                   <div class="grid grid-cols-2 gap-2">
@@ -1262,7 +1284,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                 </RepeaterRow>
               ))}
               {famList.length < FAM_MAX && (
-                <button type="button" onClick={() => setFamList(l => [...l, { ...EMPTY_FAM }])}
+                <button type="button" onClick={() => setFamList(l => [...l, newFamRow()])}
                   class="inline-flex items-center min-h-11 text-sky-400 text-[11px] font-bold mb-1">
                   <Icon name="plus" class="mr-1" />{t('ai_cv.row_tambah')}
                 </button>
