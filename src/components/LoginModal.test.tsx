@@ -230,6 +230,34 @@ describe('LoginModal (B01)', () => {
     expect(vi.mocked(modeProps.onClose)).not.toHaveBeenCalled();
   });
 
+  /* Backdrop dismissal (2026-10-06). `useOverlay` returns `onBackdropClick`
+     but does NOT attach it — the hook binds only a keydown listener and hands
+     the handler back, so wiring it to the backdrop is the CALL SITE's job.
+     LoginModal destructured it and never used it, so clicking the dimmed
+     backdrop of the login modal did nothing while every other modal closed.
+     The `h()` modals (RirekishoBuilder, UndanganKelasModal, PamfletModal) pass
+     it as `onClick` — a JSX-shaped grep misses those, which is how this one
+     survived. Behavioural, not a source-string match: a click whose target IS
+     the container calls `onClose`; a click on the inner panel does not. */
+  it('klik backdrop memanggil onClose; klik panel dalam tidak', () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <LoginModal mode="login" onClose={onClose} onSwitchMode={vi.fn()} />,
+    );
+    const overlay = container.querySelector('.u-modal-shell') as HTMLElement | null;
+    const panel = overlay?.querySelector('.glass-panel') as HTMLElement | null;
+    expect(overlay, 'overlay tidak dirender').toBeTruthy();
+    expect(panel, 'panel dalam tidak dirender').toBeTruthy();
+
+    // Panel dalam: target !== containerRef.current → TIDAK menutup.
+    fireEvent.click(panel as HTMLElement);
+    expect(onClose, 'klik panel dalam tidak boleh menutup').not.toHaveBeenCalled();
+
+    // Backdrop = elemen container itu sendiri: target === containerRef.current → menutup.
+    fireEvent.click(overlay as HTMLElement);
+    expect(onClose, 'klik backdrop harus memanggil onClose').toHaveBeenCalledTimes(1);
+  });
+
   /* The companion glyph in the candidate login branch. Pinned because an icon
      that quietly disappears is indistinguishable from one that was never added
      — the render lives in a conditional branch, and a refactor that drops the

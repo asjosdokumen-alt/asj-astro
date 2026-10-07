@@ -247,7 +247,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   if (!presence.present) return null;
 
   return (
-    <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+    <div ref={containerRef} onClick={onBackdropClick} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
       <div class="glass-panel p-8 rounded-[2rem] w-full max-w-sm shadow-2xl relative">
         <button onClick={onClose} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
