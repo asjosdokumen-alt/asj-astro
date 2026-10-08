@@ -249,3 +249,75 @@ Dua catatan kejujuran:
   unit, bukan dari klik di browser.** Kontrak unit membaca elemen yang sama
   dengan sweep browser (`.u-modal-shell`), jadi cacat kelas ini tertangkap —
   tapi ia tidak bisa melihat cacat yang hanya muncul saat datanya datang.
+
+---
+
+# Sesi keempat — jalur nyata `#mail`
+
+## Kenapa jalur ini baru sekarang tersentuh
+
+Dua sebab, keduanya di probe saya, bukan di aplikasi:
+
+1. **Label bertabrakan.** Tombol aksi per-baris "Gagal" (reject) memakai
+   `button.reject` = **"Gagal"**, dan tombol FILTER status juga "Gagal".
+   Kolektor pemicu saya membuang label duplikat, jadi tombol barisnya selalu
+   hilang — bersama `RejectMailModal` di belakangnya.
+2. **Barisnya datang belakangan.** Tabel mail diisi `fetchMailFromAPI()` di
+   effect mount; mengumpulkan pemicu setelah 900 ms mengumpulkan **sebelum**
+   barisnya ada.
+
+Pelajarannya umum: **jalur tingkat baris harus disetir langsung**, bukan lewat
+sweep generik — dedupe dan waktu tunggu sama-sama bisa menyembunyikannya.
+
+## Cacat 7 — checkbox baris di tabel Mail tanpa nama
+
+Diukur di browser dengan satu baris mail nyata: accessibility tree melaporkan
+**satu `checkbox` tanpa nama**. Sumbernya `TabMail.tsx:234`:
+
+```jsx
+<input type="checkbox" class="w-4 h-4 accent-rose-500 cursor-pointer" … />
+```
+
+Checkbox **header** punya `aria-label={t('ui.select_all')}`; checkbox
+**barisnya** tidak punya apa pun. Pengguna pembaca layar mendengar "checkbox"
+tanpa tahu baris mana yang ia pilih — di tabel yang admin pakai untuk
+menyeleksi kandidat secara massal.
+
+Perbaikan: kunci i18n baru `ui.select_row` (`"Pilih {nama}"` /
+`"{nama}を選択"`) di **kedua** kamus, labelnya diisi dari subjek barisnya
+sendiri (`nama` → `wa` → `idLoker`). Terukur sesudah: **AX tanpa nama = 0**.
+
+### Kenapa tidak ada gate yang bisa melihatnya
+
+`e2e/test-aria-names.mjs` **memang** menyapu tab `mail` — tetapi fixture-nya
+tidak punya baris mail, jadi checkbox barisnya tidak pernah dirender dan tidak
+pernah diukur. **Gate itu menyapu kontrol yang ADA; ia tidak bisa menuntut
+kontrol yang seharusnya ada.** Ini batas yang perlu diketahui siapa pun yang
+menambah gate: fixture yang kosong membuat sweep-nya hijau tanpa arti.
+
+Penjaganya karena itu sebuah tes yang merender tabelnya **dengan satu baris**:
+`e2e/tab-mail-labels.test.tsx`, dan **dibuktikan bisa merah** (hapus
+`aria-label` → 1 merah).
+
+## Yang diverifikasi di jalur nyata (bukan cacat)
+
+| jalur | hasil |
+|---|---|
+| tombol baris **"Gagal"** (reject) | `RejectMailModal` → `role=dialog`, `aria-modal=true`, nama `Reject Lamaran— Aria Uji`; Escape menutup ✓ |
+| tombol baris **"Lulus"** (approve) | mengirim `approveForm` ke backend ✓ |
+| `act(action, id, okMsg)` | `okMsg` hanya teks toast — memang tidak dikirim ke backend, bukan bug |
+| console error di kedua jalur | bersih |
+
+## Verifikasi sesi keempat
+
+| Gate | Hasil |
+|---|---|
+| 11 gate browser | **hijau semua** |
+| `vitest run` penuh | **184 berkas · 2251 tes**; 3 merah = artefak spawn sandbox |
+| `tsc --noEmit` / `lint-ratchet` / `build` | exit 0 / PASSED / exit 0 |
+| `e2e/tab-mail-labels.test.tsx` | 3 tes, jalan **sekali** di project `frontend` |
+
+Catatan penempatan: berkasnya `.tsx` di `e2e/` karena tier itu hanya menghitung
+`mjs/cjs/js` — menambah satu berkas di `src/` akan memindahkan tiga counter
+beku yang hanya boleh di-baseline ulang team-lead. (Dan `.ts` berisi JSX tidak
+bisa di-parse esbuild — itu kesalahan pertama saya di sesi ini.)
