@@ -57,6 +57,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.menu": "Menu",
     "ui.close": "Tutup",
     "ui.select_all": "Pilih semua",
+    // Nama untuk checkbox per-baris. Tanpa ini tiap baris mengekspos
+    // "checkbox" tanpa keterangan apa pun di accessibility tree — terukur
+    // 2026-10-08 di #mail. `{nama}` di-substitusi di pemanggil, sama seperti
+    // `ui.list_preview_n` memakai `{n}`.
+    "ui.select_row": "Pilih {nama}",
     "ui.language": "Bahasa",
     "ui.doc_count_suffix": " dokumen",
     "ui.ai_cv_assistant": "AI CV Master Assistant",

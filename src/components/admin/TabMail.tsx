@@ -231,7 +231,14 @@ export default function TabMail() {
             ) : filtered.map((m, i) => (
               <tr key={m.id || i} class="hover:bg-white/5 transition-colors">
                 <td class="p-4 text-center">
+                  {/* Checkbox per-baris WAJIB punya nama: header punya
+                      `ui.select_all`, tapi barisnya tidak punya apa pun —
+                      terukur 2026-10-08 di accessibility tree, tiap baris
+                      mengekspos "checkbox" tanpa keterangan, jadi pengguna
+                      pembaca layar tidak tahu baris mana yang ia pilih.
+                      Nama diambil dari subjek barisnya sendiri. */}
                   <input type="checkbox" class="w-4 h-4 accent-rose-500 cursor-pointer"
+                    aria-label={t('ui.select_row').replace('{nama}', String(m.nama || m.wa || m.idLoker || ''))}
                     checked={selected.has(String(m.id ?? m.wa ?? m.nama ?? ''))}
                     onChange={() => toggleOne(String(m.id ?? m.wa ?? m.nama ?? ''))} />
                 </td>

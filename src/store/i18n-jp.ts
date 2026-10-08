@@ -14,6 +14,7 @@ export const jpTranslations: Record<string, string> = {
     "ui.menu": "メニュー",
     "ui.close": "閉じる",
     "ui.select_all": "すべて選択",
+    "ui.select_row": "{nama}を選択",
     "ui.language": "言語",
     "ui.doc_count_suffix": " 件の書類",
     "ui.ai_cv_assistant": "AI履歴書作成アシスタント",
