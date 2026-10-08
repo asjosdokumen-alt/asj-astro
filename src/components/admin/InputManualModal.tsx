@@ -115,7 +115,13 @@ export default function InputManualModal() {
       const payload = {
         nama: nama.trim(),
         wa: wa.trim(),
-        loker: loker.trim() || 'UMUM',
+        // Dulu `loker.trim() || 'UMUM'`. 'UMUM' BUKAN kategori — kode job yang
+        // sah hanya `TG<n>ASJ` (Tokutei Ginou) dan `GJ<n>ASJ` (Magang), lihat
+        // `JOB_CODE_PREFIX` di contexts/jobs/repository.ts. Sentinel itu
+        // mengalir ke `database_asj_form.code_job` dan membuat 12 baris lama
+        // tampil sebagai lowongan "UMUM" yang tidak pernah ada. Yang kosong
+        // sekarang dikirim kosong, dan pesan validasinya menyebut formatnya.
+        loker: loker.trim(),
         gender,
         usia,
         tb: tinggi,
@@ -215,7 +221,7 @@ export default function InputManualModal() {
                 required placeholder="08..." class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
             <div><label class="block text-xs font-bold text-slate-400 mb-1" for="im-job">{t("admin.manual_job")}</label>
               <input type="text" id="im-job" value={loker} onInput={(e) => setLoker((e.target as HTMLInputElement).value)}
-                placeholder={t("admin.ph_umum_kode")} class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
+                placeholder={t("admin.ph_kode_job")} class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" /></div>
 
             {/* Physical data */}
             <div class="grid grid-cols-2 gap-3">

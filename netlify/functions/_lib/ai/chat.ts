@@ -866,7 +866,7 @@ async function handleSimpanHasilWawancara(payload: unknown[], sessionToken?: str
     const body = {
       wa,
       mode: 'AI_MASTER',
-      job_code: 'UMUM',
+      job_code: '',
       bidang: '-',
       status: 'MENUNGGU',
       submitted_via: 'interview',

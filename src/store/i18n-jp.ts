@@ -1765,6 +1765,7 @@ export const jpTranslations: Record<string, string> = {
     "admin.ph_grup_wa": "WhatsAppグループリンク (https://chat…)",
     "admin.ph_jeda_pesan": "メッセージ間隔（秒）",
     "admin.ph_umum_kode": "UMUM またはコードを入力",
+    "admin.ph_kode_job": "例：TG591ASJ または GJ12ASJ",
     "admin.ph_feedback": "候補者へのフィードバック・メモ...",
     "admin.edit_data_kandidat": "候補者データの編集",
     "admin.upload_dokumen": "書類をアップロード",

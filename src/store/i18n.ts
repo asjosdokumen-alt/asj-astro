@@ -1968,6 +1968,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.ph_grup_wa": "Link Grup WA (https://chat…)",
     "admin.ph_jeda_pesan": "Jeda antar pesan (detik)",
     "admin.ph_umum_kode": "UMUM atau Ketik Kode",
+    // Pengganti `ph_umum_kode` untuk kolom kode job di Input Manual: tidak ada
+    // kategori "UMUM", jadi placeholder-nya menyebut format yang benar saja.
+    "admin.ph_kode_job": "Contoh: TG591ASJ atau GJ12ASJ",
     "admin.ph_feedback": "Feedback/catatan untuk kandidat...",
     "admin.edit_data_kandidat": "Edit Data Kandidat",
     "admin.upload_dokumen": "Upload Dokumen",
