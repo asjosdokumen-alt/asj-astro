@@ -196,3 +196,56 @@ berarti ini bentuk yang mudah salah tulis, bukan kelalaian satu orang.
 | `npm run build` | exit 0 |
 | `overlay-contract.test.tsx` | 28 tes (dari 25) |
 
+
+---
+
+# Sesi ketiga — empat modal terakhir
+
+Diperiksa dengan membaca bentuk cacat yang sudah dikenal di sumbernya, lalu
+dikunci di kontrak unit (yang memang membaca `.u-modal-shell`, `role`,
+`aria-modal`), baru diverifikasi di browser. Cara ini jauh lebih murah daripada
+membangun fixture browser baru per modal, dan tetap menangkap cacat yang sama.
+
+| modal | shell ber-`.u-modal-shell` | `containerRef` di shell | tombol tutup bernama | hasil |
+|---|---|---|---|---|
+| `RincianBiayaModal` | ya | ya | ya | **sudah benar** (masuk penjaga) |
+| `AdminJobEditModal` | ya | ya | ya | **sudah benar** (masuk penjaga) |
+| `PemberkasanModal` | ya | ya | ya | **sudah benar** (masuk penjaga) |
+| `CandidateProfileModal` | ya | **TIDAK — di panel dalam** | **TIDAK** | **cacat, diperbaiki** |
+
+## Cacat 6 — `CandidateProfileModal`: contoh KETIGA
+
+Persis sama dengan `EditCandidateModal` dan `MatchmakingModal`: `containerRef`
+di panel dalam, jadi `role`/`aria-modal`/`aria-labelledby` ditulis ke div yang
+tidak pernah dibaca sweep mana pun. Tombol tutupnya (glyph `aria-hidden`, tanpa
+`aria-label`) juga tanpa nama.
+
+Diperbaiki, diverifikasi di browser: tombol "Riwayat kandidat" di `#pelamar`
+kini membuka `role=dialog`, `aria-modal=true`, nama `Aria Uji`.
+
+**Tiga komponen dengan cacat identik** berarti ini bukan kelalaian satu orang,
+melainkan bentuk yang mudah salah tulis: `ref` yang jatuh ke elemen pertama
+setelah `<div class="... u-modal-shell ...">`. Karena itu kontrak unit sekarang
+mencakup **semua** modal admin yang membawa kelas itu — bukan daftar pilihan.
+
+## Verifikasi sesi ketiga
+
+| Gate | Hasil |
+|---|---|
+| 11 gate browser | **hijau semua** |
+| `vitest run` penuh | **183 berkas · 2248 tes**; 3 merah = artefak spawn sandbox |
+| `tsc --noEmit` | exit 0 |
+| `lint-ratchet` | PASSED |
+| `npm run build` | exit 0 |
+| `overlay-contract.test.tsx` | **33 tes** (dari 17 sebelum ronde ini) |
+
+Dua catatan kejujuran:
+
+- **`CandidateProfileModal` sempat "gagal" karena mock saya sendiri**, bukan
+  karena komponennya: `vi.mock('../../lib/apiClient')` tidak mengekspor
+  `apiClient` (named, callable). Pesan errornya menyebut mock dengan jelas, dan
+  itu memang tempat perbaikannya.
+- **Tiga modal "sudah benar" saya nyatakan dari pembacaan sumber + kontrak
+  unit, bukan dari klik di browser.** Kontrak unit membaca elemen yang sama
+  dengan sweep browser (`.u-modal-shell`), jadi cacat kelas ini tertangkap —
+  tapi ia tidak bisa melihat cacat yang hanya muncul saat datanya datang.
