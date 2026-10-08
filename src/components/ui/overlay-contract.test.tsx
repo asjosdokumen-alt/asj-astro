@@ -38,6 +38,7 @@ import AdminAiCopilot from '../admin/AdminAiCopilot';
 import RirekishoBuilder from '../admin/RirekishoBuilder';
 import EditCandidateModal from '../admin/EditCandidateModal';
 import CvTemplateSelector from '../CvTemplateSelector';
+import MatchmakingModal from '../admin/MatchmakingModal';
 
 vi.mock('../../store/i18n', async () => {
   const { atom } = await import('nanostores');
@@ -361,6 +362,52 @@ describe('§25 contract — EditCandidateModal is a real dialog', () => {
   it('closes on Escape', () => {
     let closed = false;
     render(<EditCandidateModal candidate={candidate} isOpen={true} onClose={() => { closed = true; }} />);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(closed).toBe(true);
+  });
+});
+
+/**
+ * MatchmakingModal — cacat yang SAMA dengan EditCandidateModal, ditemukan
+ * terpisah di tab `#dbjob` ("Match"), 2026-10-08.
+ *
+ * Terukur di browser: dialognya terbuka dan tampak normal, accessibility tree
+ * di dalamnya juga sehat (38 kontrol bernama), tetapi `.u-modal-shell` —
+ * elemen yang dipilih SEMUA gate overlay — berdiri dengan `role=null`,
+ * `aria-modal=null`, nama `""`. Sebabnya `containerRef` dipasang di panel
+ * DALAM, sehingga `useOverlay` menulis atributnya ke div yang tidak pernah
+ * dibaca sweep mana pun.
+ *
+ * Dua komponen dengan cacat identik berarti ini bukan kelalaian satu orang,
+ * melainkan bentuk yang mudah salah tulis. Karena itu asersinya menunjuk
+ * elemen yang sama seperti komponen lain di berkas ini: hasil
+ * `.u-modal-shell`, bukan kode sumbernya.
+ */
+describe('§25 contract — MatchmakingModal is a real dialog', () => {
+  const props = {
+    job: { code: 'TG591ASJ', pekerjaan: 'PETANI', kategori: 'NOUGYOU SAYURAN' } as never,
+    candidates: [] as never,
+    isOpen: true,
+    onClose: () => {},
+  };
+
+  it('puts the semantics on the SHELL, not on the inner panel', () => {
+    render(<MatchmakingModal {...props} />);
+    const c = dialogContract();
+    expect(c.role).toBe('dialog');
+    expect(c.ariaModal).toBe('true');
+    expect(c.ariaLabelledby).toBeTruthy();
+    expect(c.resolvedName.length).toBeGreaterThan(0);
+  });
+
+  it('claims NO semantics while isOpen is false', () => {
+    render(<MatchmakingModal {...props} isOpen={false} />);
+    expect(document.querySelector('.u-modal-shell')).toBeNull();
+  });
+
+  it('closes on Escape', () => {
+    let closed = false;
+    render(<MatchmakingModal {...props} onClose={() => { closed = true; }} />);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(closed).toBe(true);
   });

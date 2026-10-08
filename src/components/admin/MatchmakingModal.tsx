@@ -246,8 +246,17 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose, clo
   if (!isOpen && !closing) return null;
 
   return (
-    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4" onClick={onBackdropClick}>
-      <div ref={containerRef} onClick={(e) => e.stopPropagation()} class="glass-panel p-6 rounded-[2rem] w-full max-w-3xl relative border border-violet-500/50 max-h-[90vh] flex flex-col">
+    <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4" onClick={onBackdropClick}>
+      {/* `containerRef` belongs on the SHELL, not on this panel.
+          MEASURED 2026-10-08 in a real browser: with the ref here, `useOverlay`
+          wrote `role`/`aria-modal`/`aria-labelledby` onto this inner div, and
+          `.u-modal-shell` — the element every overlay gate and every sweep
+          selects — stayed bare. The measurement was `role=null, aria-modal=null,
+          name=""` on a dialog that was visibly open. The accessibility tree was
+          otherwise fine (38 named controls), so nothing else here was wrong.
+          The explicit `stopPropagation` is dropped with it: `onBackdropClick`
+          already closes only when `e.target === containerRef`. */}
+      <div class="glass-panel p-6 rounded-[2rem] w-full max-w-3xl relative border border-violet-500/50 max-h-[90vh] flex flex-col">
         <button onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
