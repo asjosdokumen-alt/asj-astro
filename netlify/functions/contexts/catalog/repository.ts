@@ -204,6 +204,30 @@ async function loadPublicBase(mode: string): Promise<Record<string, unknown>> {
   }
 
   const jobs = foundTable.rows.map(mapJob).filter((j) => j.pekerjaan && j.pekerjaan !== '');
+  // Job TERBARU di paling atas — untuk `/loker` DAN panel admin, karena
+  // keduanya membaca `pub.jobs` yang sama.
+  //
+  // MEASURED 2026-10-09: tidak ada klausa `order` di query job, dan
+  // `job_database` tidak punya kolom waktu, jadi urutannya apa pun yang
+  // dikembalikan Postgres. Diukur dengan membuat dua job nyata: keduanya
+  // mendarat di posisi TERAKHIR (158 dan 159 dari 160), bukan di atas.
+  //
+  // Nomor pada kode ADALAH penanda usia di sini: `nextJobCode` selalu memakai
+  // nomor terbesar + 1, jadi makin besar nomornya makin baru. Urutannya
+  // dihitung di sini, bukan di PostgREST, karena yang perlu dibandingkan
+  // adalah BAGIAN NUMERIK — `order=code_job.desc` adalah urutan string, dan
+  // 'TG99ASJ' > 'TG100ASJ' (bug yang sudah pernah tercatat di
+  // `_lib/db/jobs.ts:149`).
+  //
+  // ⚠ BATAS yang diketahui: TG dan GJ punya urutan nomor TERPISAH, jadi GJ
+  // pertama (GJ1) akan berada di bawah TG158. "Selalu paling atas" untuk
+  // kedua prefix hanya bisa dijamin dengan kolom `created_at` di
+  // `job_database`; lihat deliverables/gstack/uji-job-baru-2026-10-09.md.
+  const codeNumber = (c: unknown) => {
+    const m = String(c || '').match(/(\d+)ASJ$/);
+    return m ? Number(m[1]) : -1;
+  };
+  jobs.sort((a, b) => codeNumber(b.code) - codeNumber(a.code));
   const dropdowns: Record<string, string[]> = {};
   let pengumuman = '';
   if (settings.table) {

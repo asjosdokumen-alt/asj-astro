@@ -45,7 +45,13 @@ export const JOB_CODE_PREFIX = { magang: 'GJ', default: 'TG' } as const;
 /** Turunkan prefix kode dari kategori job. Magang → GJ, selainnya → TG. */
 export function jobCodePrefix(kategori: unknown): string {
   const k = String(kategori || '').trim().toLowerCase();
-  return k === 'magang' ? JOB_CODE_PREFIX.magang : JOB_CODE_PREFIX.default;
+  // 'magang' dicocokkan sebagai KATA di dalam kategori, bukan sebagai seluruh
+  // string. MEASURED 2026-10-09: `jobCodePrefix('🎓 MAGANG')` mengembalikan
+  // 'TG' — dan SETIAP kategori di data nyata berhias emoji ("🌾 PERTANIAN",
+  // "👵 KAIGO", …), jadi perbandingan `=== 'magang'` membuat satu-satunya
+  // cabang yang menghasilkan kode GJ tidak pernah bisa dipakai lewat jalur
+  // normal. Batas katanya eksplisit supaya 'MAGANGKERJA' tidak ikut cocok.
+  return /(^|[^a-z])magang([^a-z]|$)/.test(k) ? JOB_CODE_PREFIX.magang : JOB_CODE_PREFIX.default;
 }
 
 export async function nextJobCode(kategori?: unknown): Promise<string> {

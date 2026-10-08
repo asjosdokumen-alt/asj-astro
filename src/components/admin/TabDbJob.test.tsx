@@ -97,6 +97,22 @@ describe('TabDbJob DB filter/sort (A18)', () => {
     expect(sortDbJobs(ties, 'TERBARU', {}).map((j) => j.code)).toEqual(['X2', 'X1']);
   });
 
+  it('TERBARU memakai nomor kode, bukan urutan string (TG158 di atas TG9)', () => {
+    // MEASURED 2026-10-09: kolom `created_at` tidak ada di tabel
+    // `job_database`, jadi createdAt SELALU kosong dan tie-break inilah yang
+    // selalu jalan. Dengan
+    // localeCompare, 'TG9ASJ' > 'TG158ASJ' sebagai string sehingga job
+    // terbaru tidak pernah muncul paling atas.
+    const jobs = [
+      job({ code: 'TG9ASJ', createdAt: '' }),
+      job({ code: 'TG158ASJ', createdAt: '' }),
+      job({ code: 'TG100ASJ', createdAt: '' }),
+    ];
+    expect(sortDbJobs(jobs, 'TERBARU', {}).map((j) => j.code)).toEqual(['TG158ASJ', 'TG100ASJ', 'TG9ASJ']);
+    expect(sortDbJobs(jobs, 'TERLAMA', {}).map((j) => j.code)).toEqual(['TG9ASJ', 'TG100ASJ', 'TG158ASJ']);
+  });
+
+
   it('sortDbJobs tidak memutasi array asli', () => {
     const jobs = [job({ code: 'J2' }), job({ code: 'J1' })];
     sortDbJobs(jobs, 'TERBARU', {});

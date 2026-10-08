@@ -72,6 +72,19 @@ export function sortDbJobs(
   sortType: DbSort,
   countMap: Record<string, number>,
 ): DbJob[] {
+  // Bagian NUMERIK dari kode (`TG158ASJ` → 158). Dipakai sebagai tie-break
+  // karena `created_at` tidak ada di tabel `job_database`, sehingga
+  // `createdAt` SELALU kosong dan cabang tie-break ini yang selalu jalan.
+  //
+  // MEASURED 2026-10-09: dengan tie-break string (`localeCompare`), sortir
+  // default TERBARU menaruh `TG9ASJ` di ATAS `TG158ASJ` — 'TG9…' > 'TG1…'
+  // sebagai string. Job terbaru tidak pernah muncul paling atas begitu ada
+  // nomor 3 digit. Bandingkan numerik dulu, dan baru jatuh ke string kalau
+  // kedua nomornya sama/tidak ada.
+  const codeNumber = (code: unknown) => {
+    const m = /(\d+)ASJ$/.exec(String(code || ''));
+    return m ? Number(m[1]) : -1;
+  };
   return jobs.slice().sort((a, b) => {
     if (sortType === 'TERBANYAK') {
       return (countMap[b.code] || 0) - (countMap[a.code] || 0);
@@ -79,6 +92,8 @@ export function sortDbJobs(
     const tA = new Date(a.createdAt || 0).getTime();
     const tB = new Date(b.createdAt || 0).getTime();
     if (tA === tB || Number.isNaN(tA) || Number.isNaN(tB)) {
+      const byNumber = codeNumber(a.code) - codeNumber(b.code);
+      if (byNumber !== 0) return sortType === 'TERLAMA' ? byNumber : -byNumber;
       return sortType === 'TERLAMA'
         ? a.code.localeCompare(b.code)
         : b.code.localeCompare(a.code);
