@@ -117,16 +117,82 @@ re-baseline counter oleh team-lead — saya tidak melakukannya sendiri.
 
 ## Sisa temuan yang BELUM saya perbaiki
 
-1. **Drawer menu `App.tsx` saat tertutup masih bisa difokus.** Elemennya
-   `translate-x-full` (di luar layar, x=1440 pada viewport 1440) tetapi tanpa
-   `aria-hidden`/`inert`, jadi tombol-tombolnya tetap masuk urutan Tab dan
-   diumumkan pembaca layar. Ini yang membuat probe saya sendiri sempat
-   "gagal mengklik" tombol duplikat. Belum saya sentuh karena menyentuh
-   navigasi global, di luar lingkup panel admin.
+1. ~~**Drawer menu `App.tsx` saat tertutup masih bisa difokus.**~~
+   ⛔ **DITARIK — ini SALAH SAYA.** Lihat bagian "Koreksi" di bawah. Drawer-nya
+   sudah ditangani sejak 2026-09-16 (`el.inert = !menuOpen` di layout effect,
+   `App.tsx:221-224`) dan `e2e/test-drawer.mjs` sudah punya tesnya.
 2. **Overlay lain yang belum saya klik satu per satu:** `AdminJobEditModal`,
-   `CandidateProfileModal`, `AdminShareModal`, `MatchmakingModal`,
-   `PemberkasanModal`, `RincianBiayaModal`, `AdminAiCopilot`, `RejectMailModal`
-   (empat terakhir sudah tercakup kontrak unit). Tab `#tugas`, `#dbjob`,
-   `#mail`, `#agenda`, `#config` tidak membuka overlay apa pun dengan fixture
-   yang saya pakai — jadi "tidak ada temuan" di sana **belum** berarti "bersih",
-   hanya berarti fixture-nya belum memunculkan pemicunya.
+   `CandidateProfileModal`, `PemberkasanModal`, `RincianBiayaModal`
+   (`AdminAiCopilot`, `RejectMailModal`, `ListKandidatModal`, `RirekishoBuilder`
+   sudah tercakup kontrak unit).
+
+---
+
+# Koreksi dan lanjutan (sesi kedua, 2026-10-08)
+
+## Koreksi 1 — drawer: temuan saya SALAH
+
+Saya melaporkan drawer `App.tsx` tetap bisa difokus saat tertutup. **Itu tidak
+benar.** Saya menyimpulkannya dari `getBoundingClientRect()` + penolakan
+Playwright ("element is outside of the viewport"), **tanpa memeriksa `inert`**.
+Diukur ulang di browser:
+
+| | hasil |
+|---|---|
+| `nav.inert` saat tertutup | **`true`** |
+| atribut `inert` ada di DOM | **ya** |
+| Tab-walk 40 langkah, berapa yang mendarat di dalam drawer | **0** |
+
+Sudah ditangani sejak 2026-09-16 oleh `App.tsx:216-224`, dan `test-drawer.mjs`
+punya tes persis untuk itu ("a CLOSED drawer holds no Tab stops") yang hijau.
+Pelajaran: "Playwright menolak mengklik" ≠ "bisa difokus". Saya mengukur
+geometri, bukan kemampuan fokus.
+
+## Koreksi 2 — "13 checkbox tanpa nama": false positive heuristik saya
+
+Probe saya melaporkan 13 checkbox tanpa nama di modal **Share**. Accessibility
+tree sungguhan (CDP) bilang: **47 kontrol bernama, 0 tanpa nama.** Checkbox itu
+dibungkus `<label>` (label *implisit*), dan heuristik DOM saya hanya mengenal
+`label[for=...]`. Pelajaran: heuristik DOM tidak boleh dipakai untuk mengklaim
+cacat a11y — AX tree yang berwenang. Angka "3 → 0" pada `UndanganKelasModal`
+sebelumnya **sudah** saya konfirmasi ke AX tree, jadi itu tetap sah.
+
+## Lanjutan — 5 tab yang tadinya kosong
+
+Empat dari lima tab tampak "tanpa modal" karena **fixture saya** mengembalikan
+daftar kosong, jadi pemicu tingkat baris tidak pernah dirender. Setelah fixture
+diberi satu baris per daftar (`formInbox`, `dbJobs`, `schedules`, `sysConfig`):
+
+| tab | hasil |
+|---|---|
+| `#tugas` | form **inline** (draft + Tambah), bukan modal — bukan cacat |
+| `#dbjob` | 12 pemicu, **3 overlay** terbuka → menemukan cacat #5 di bawah |
+| `#mail` | hanya filter status; baris mail tetap tidak muncul (fixture belum tepat) |
+| `#agenda` | "Buka Kelola Jadwal" berpindah tab, bukan modal — bukan cacat |
+| `#config` | "Edit"/"Simpan" **inline** (textarea + Save/Cancel) — bukan cacat |
+
+## Cacat 5 — `MatchmakingModal`: cacat yang sama persis dengan `EditCandidateModal`
+
+Diukur di `#dbjob` → "Match": dialognya terbuka dan tampak normal, AX tree di
+dalamnya sehat (38 kontrol bernama), tetapi `.u-modal-shell` berdiri dengan
+`role=null`, `aria-modal=null`, nama `""` — karena `containerRef` dipasang di
+panel **dalam**, bukan di shell.
+
+Sesudah: `role=dialog`, `aria-modal=true`, nama `AI Headhunter (Match)` —
+diverifikasi ulang di browser. Guard unit ditambahkan dan **dibuktikan bisa
+merah** (kembalikan `ref` ke panel dalam → 1 merah).
+
+**Dua komponen dengan cacat identik** (`EditCandidateModal`, `MatchmakingModal`)
+berarti ini bentuk yang mudah salah tulis, bukan kelalaian satu orang.
+
+## Verifikasi sesi kedua
+
+| Gate | Hasil |
+|---|---|
+| 11 gate browser | **hijau semua** |
+| `vitest run` penuh | **183 berkas · 2243 tes**; 3 merah = artefak spawn sandbox |
+| `tsc --noEmit` | exit 0 |
+| `lint-ratchet` | PASSED |
+| `npm run build` | exit 0 |
+| `overlay-contract.test.tsx` | 28 tes (dari 25) |
+
