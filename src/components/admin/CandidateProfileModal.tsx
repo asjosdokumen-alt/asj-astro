@@ -272,9 +272,17 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
   };
 
   return (
-    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
-      <div ref={containerRef} class="glass-panel p-6 rounded-[2rem] w-full max-w-2xl max-h-[90vh] u-scroll-area relative">
-        <button onClick={onClose} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
+    <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
+      {/* `containerRef` di SHELL, bukan di panel ini. MEASURED 2026-10-08 di
+          browser: dengan ref di panel dalam, `useOverlay` menulis
+          role/aria-modal/aria-labelledby ke div yang tidak pernah dibaca sweep
+          mana pun, dan `.u-modal-shell` berdiri dengan role=null, nama "".
+          Ini contoh KETIGA dari cacat yang sama (lihat EditCandidateModal dan
+          MatchmakingModal) — lihat catatan di overlay-contract.test.tsx. */}
+      <div class="glass-panel p-6 rounded-[2rem] w-full max-w-2xl max-h-[90vh] u-scroll-area relative">
+        {/* Glyph-nya `aria-hidden`, jadi tanpa `aria-label` tombol ini tidak
+            punya nama sama sekali di accessibility tree — diukur 2026-10-08. */}
+        <button onClick={onClose} aria-label={t('button.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
 

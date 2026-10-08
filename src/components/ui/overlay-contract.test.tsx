@@ -39,6 +39,10 @@ import RirekishoBuilder from '../admin/RirekishoBuilder';
 import EditCandidateModal from '../admin/EditCandidateModal';
 import CvTemplateSelector from '../CvTemplateSelector';
 import MatchmakingModal from '../admin/MatchmakingModal';
+import CandidateProfileModal from '../admin/CandidateProfileModal';
+import RincianBiayaModal from '../admin/RincianBiayaModal';
+import AdminJobEditModal from '../admin/AdminJobEditModal';
+import PemberkasanModal from '../admin/PemberkasanModal';
 
 vi.mock('../../store/i18n', async () => {
   const { atom } = await import('nanostores');
@@ -54,7 +58,11 @@ vi.mock('../../lib/apiEndpoint', () => ({
 // render — which is the render whose contract this file is about.
 vi.mock('../../lib/apiClient', () => {
   const pending = () => new Promise(() => {});
-  return { default: { call: pending, secure: pending }, api: { call: pending, secure: pending } };
+  // `apiClient` (named, callable) ikut diekspor: `CandidateProfileModal`
+  // memanggilnya langsung, dan mock yang hanya punya `default` + `api` membuat
+  // render-nya gagal dengan "No apiClient export is defined on the mock" —
+  // kegagalan infrastruktur tes, bukan cacat komponen.
+  return { default: { call: pending, secure: pending }, api: { call: pending, secure: pending }, apiClient: pending };
 });
 vi.mock('../../store/authReactive', async () => {
   const { atom } = await import('nanostores');
@@ -410,5 +418,61 @@ describe('§25 contract — MatchmakingModal is a real dialog', () => {
     render(<MatchmakingModal {...props} onClose={() => { closed = true; }} />);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(closed).toBe(true);
+  });
+});
+
+/**
+ * Empat modal admin yang tersisa (2026-10-08, sesi ketiga).
+ *
+ * Dua di antaranya (`AdminJobEditModal`, `PemberkasanModal`) dan
+ * `RincianBiayaModal` sudah BENAR saat diperiksa — shell-nya membawa
+ * `.u-modal-shell` DAN `containerRef`, dan tombol tutupnya punya nama. Mereka
+ * masuk ke sini sebagai penjaga, bukan sebagai perbaikan.
+ *
+ * `CandidateProfileModal` adalah contoh **KETIGA** dari cacat yang sama
+ * (`EditCandidateModal`, `MatchmakingModal`, lalu ini): `containerRef` dipasang
+ * di panel DALAM, jadi `role`/`aria-modal` ditulis ke div yang tidak pernah
+ * dibaca sweep mana pun. Terukur di browser: `.u-modal-shell` dengan role=null
+ * dan nama "" pada dialog yang terbuka. Tombol tutupnya juga tanpa nama
+ * (glyph `aria-hidden`, tanpa `aria-label`).
+ *
+ * Yang diasersikan di sini adalah `role` + `aria-modal` + keberadaan kelas,
+ * BUKAN nama yang sudah teresolusi: `CandidateProfileModal` merender spinner
+ * sebelum datanya datang, dan hook sengaja mencari heading-nya lewat
+ * MutationObserver sesudah itu (lihat catatan di `useOverlay.ts`). Menuntut nama
+ * pada render pertama akan menguji waktu, bukan kontrak.
+ */
+describe('§25 contract — empat modal admin sisanya', () => {
+  const assertShellIsTheDialog = () => {
+    const c = dialogContract();
+    expect(c.role).toBe('dialog');
+    expect(c.ariaModal).toBe('true');
+  };
+
+  it('CandidateProfileModal — semantiknya di SHELL, bukan di panel dalam', () => {
+    render(<CandidateProfileModal wa="081234567890" nama="Aria Uji" isOpen={true} onClose={() => {}} />);
+    assertShellIsTheDialog();
+  });
+
+  it('CandidateProfileModal — tombol tutupnya punya nama', () => {
+    render(<CandidateProfileModal wa="081234567890" nama="Aria Uji" isOpen={true} onClose={() => {}} />);
+    const shell = document.querySelector('.u-modal-shell') as HTMLElement;
+    const close = shell.querySelector('button');
+    expect((close?.getAttribute('aria-label') || '').trim().length).toBeGreaterThan(0);
+  });
+
+  it('RincianBiayaModal — shell yang sama membawa semantiknya', () => {
+    render(<RincianBiayaModal open={true} onApply={() => {}} onClose={() => {}} />);
+    assertShellIsTheDialog();
+  });
+
+  it('AdminJobEditModal — shell yang sama membawa semantiknya', () => {
+    render(<AdminJobEditModal job={{ code: 'TG591ASJ', pekerjaan: 'PETANI' } as never} onClose={() => {}} />);
+    assertShellIsTheDialog();
+  });
+
+  it('PemberkasanModal — shell yang sama membawa semantiknya', () => {
+    render(<PemberkasanModal isOpen={true} onClose={() => {}} waTarget="081234567890" namaTarget="Aria Uji" />);
+    assertShellIsTheDialog();
   });
 });
