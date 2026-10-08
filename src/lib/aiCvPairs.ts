@@ -33,7 +33,7 @@
  * spellings for the same question, which is the exact defect `opsi-form.ts`
  * was created to end.
  */
-import { labelJp, type Opsi } from './opsi-form';
+import { HUBUNGAN_KELUARGA, PEKERJAAN, labelJp, type Opsi } from './opsi-form';
 
 /**
  * Lists that exist ONLY on the AI CV form (legacy `IDENTITAS_PAIRS`).
@@ -157,6 +157,22 @@ export const PAIRED_FIELDS: Record<string, PairedField> = {
 
   // ── Wawancara ──
   riwayatjepang: { pairs: RIWAYAT_JEPANG_PAIRS },
+
+  // ── Kenalan di Jepang: the two lists that already carry a kanji gloss ──
+  //
+  // These two used to be the ONLY paired questions with no registry entry, and
+  // the form compensated with a second free-text box for the kanji
+  // (`ai_kenalan_hub_jp` / `ai_kenalan_kerja_jp`). That box was pure noise: the
+  // dropdown already shows `AYAH（父）`, so the JP half is known the moment the
+  // Indonesian half is chosen — and two independent boxes for one answer is how
+  // the two halves end up disagreeing, which is the defect this module exists to
+  // prevent. Registering them lets the JP column be filled from the list, and
+  // the second box was removed from the form.
+  //
+  // Both lists live in `opsi-form.ts` and are only mapped here, per the
+  // ownership note at the top of this file.
+  kenalan_hub_id: { pairs: HUBUNGAN_KELUARGA, partner: 'kenalan_hub_jp' },
+  kenalan_kerja_id: { pairs: PEKERJAAN, partner: 'kenalan_kerja_jp' },
 };
 
 /**

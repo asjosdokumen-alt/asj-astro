@@ -887,7 +887,19 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
    * Deliberately narrow: only the paths under test are declared.
    */
   interface SavedPayload {
-    identitas: { gender: string; gender_jp: string };
+    identitas: {
+      gender: string; gender_jp: string;
+      agama: string; agama_jp: string;
+      status_nikah: string; status_nikah_jp: string;
+    };
+    // The kenalan block is where the owner's "ayah indo / ayah jp" report
+    // landed: the relation and the occupation each have an ID column and a
+    // kanji column, and both must still reach the wire now that the second
+    // input box for the kanji is gone.
+    kenalan_jepang: {
+      hubungan_id: string; hubungan_jp: string;
+      pekerjaan_id: string; pekerjaan_jp: string;
+    };
     // The period halves are part of the wire contract, not incidental: the
     // backend stores them in single text columns (`tahun_masuk` etc.) and
     // `fmtMonthYearJp` renders whichever shape arrives, so a regression that
@@ -946,27 +958,97 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     expect(nama.className).toContain('border-sky-400');
   });
 
-  it('gender memakai <select> berpasangan, dan memilihnya mengisi kolom JP', () => {
+  it('gender memakai <select> berpasangan, dan kolom JP tetap terkirim', async () => {
     render(<AiCvForm />);
     const sel = screen.getByTestId('ai-pair-gender') as HTMLSelectElement;
     expect(sel.tagName).toBe('SELECT');
 
     fireEvent.change(sel, { target: { value: 'PEREMPUAN' } });
-    // The JP half is a separate column the employer reads. Choosing the
-    // Indonesian term must fill it, or the two halves disagree on the printout.
-    const jp = document.getElementById('ai_gender_jp') as HTMLInputElement;
-    expect(jp.value).toBe('女性');
+    // The kanji half has NO input of its own any more — the dropdown already
+    // prints `PEREMPUAN（女性）`, so a second box asked the same question twice.
+    // What must not change is that the database still receives BOTH halves: the
+    // employer's copy of the CV prints the kanji column.
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+
+    const payload = savedPayload();
+    expect(payload.identitas.gender).toBe('PEREMPUAN');
+    expect(payload.identitas.gender_jp).toBe('女性');
   });
 
-  it('agama & status nikah juga berpasangan (bukan kotak readonly)', () => {
+  it('agama & status nikah juga berpasangan — dan kedua kolom JP ikut terkirim', async () => {
     render(<AiCvForm />);
     const agama = screen.getByTestId('ai-pair-agama') as HTMLSelectElement;
     fireEvent.change(agama, { target: { value: 'ISLAM' } });
-    expect((document.getElementById('ai_agama_jp') as HTMLInputElement).value).toBe('イスラム教');
 
     const status = screen.getByTestId('ai-pair-status') as HTMLSelectElement;
     fireEvent.change(status, { target: { value: 'MENIKAH' } });
-    expect((document.getElementById('ai_status_jp') as HTMLInputElement).value).toBe('既婚');
+
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+
+    const payload = savedPayload();
+    expect(payload.identitas.agama).toBe('ISLAM');
+    expect(payload.identitas.agama_jp).toBe('イスラム教');
+    expect(payload.identitas.status_nikah).toBe('MENIKAH');
+    expect(payload.identitas.status_nikah_jp).toBe('既婚');
+  });
+
+  /**
+   * The owner's report, verbatim: *"ada ayah indo ayah jp padahal di tab
+   * dropdownnya sudah ada pilihan dual bahasa jadi bikin noise saja, cukup 1
+   * tapi database boleh tetap isi 2 untuk build rekishou"*.
+   *
+   * So the rule has two halves and this test holds BOTH: one control on screen,
+   * two values in the payload.
+   */
+  it('kenalan: "AYAH" satu kali di layar, dua nilai (ID + kanji) di payload', async () => {
+    render(<AiCvForm />);
+    const hub = document.getElementById('ai_kenalan_hub_id') as HTMLSelectElement;
+    expect(hub.tagName).toBe('SELECT');
+    // The kanji travels inside the option label, which is why a second input
+    // for it is noise rather than a feature.
+    expect([...hub.options].map(o => o.textContent).some(l => l?.includes('父'))).toBe(true);
+
+    fireEvent.change(hub, { target: { value: 'AYAH' } });
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+
+    const payload = savedPayload();
+    expect(payload.kenalan_jepang.hubungan_id).toBe('AYAH');
+    expect(payload.kenalan_jepang.hubungan_jp).toBe('父');
+  });
+
+  it('kenalan: pekerjaan juga mengisi kolom kanji dari daftar, bukan diketik ulang', async () => {
+    render(<AiCvForm />);
+    const kerja = document.getElementById('ai_kenalan_kerja_id') as HTMLSelectElement;
+    fireEvent.change(kerja, { target: { value: 'OPERATOR PRODUKSI' } });
+
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+
+    const payload = savedPayload();
+    expect(payload.kenalan_jepang.pekerjaan_id).toBe('OPERATOR PRODUKSI');
+    // `jpOf` extracts the kanji, never the whole bilingual label.
+    expect(payload.kenalan_jepang.pekerjaan_jp).toBe('工場作業員');
+  });
+
+  it('tidak ada kotak JP kedua untuk field yang dropdownnya sudah bilingual', () => {
+    render(<AiCvForm />);
+    // The five boxes removed on 2026-10-08. Asserting ABSENCE is the point:
+    // re-adding one restores exactly the noise the owner asked to remove, and a
+    // test that only checked what renders would not notice.
+    for (const id of ['ai_gender_jp', 'ai_agama_jp', 'ai_status_jp', 'ai_kenalan_hub_jp', 'ai_kenalan_kerja_jp']) {
+      expect(document.getElementById(id), `${id} must not be rendered`).toBeNull();
+    }
+    // Control: the ID halves are still there, so a form that failed to render
+    // at all cannot make this test pass vacuously.
+    expect(document.getElementById('ai_gender')).toBeTruthy();
+    expect(document.getElementById('ai_kenalan_hub_id')).toBeTruthy();
   });
 
   it('ukuran sepatu/baju/topi memakai dropdown ukuran JP, bukan teks bebas', () => {

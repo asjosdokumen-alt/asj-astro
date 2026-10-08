@@ -1046,7 +1046,16 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
             {/* Every field here is editable — see `Field` and `handleManualEdit`.
                 The paired ones (gender/agama/status) are `<select>` over a
                 registry so the ID and JP halves cannot disagree; the rest take
-                free text. */}
+                free text.
+
+                There is deliberately NO separate input for the kanji half of a
+                paired column. The dropdown already shows both halves
+                (`MENIKAH（既婚）`), so a second box asked the same question twice
+                — and two answers to one question is how the halves drift apart.
+                `PairSelect` fills the JP column from the registry
+                (`resolvePairEdit`), so the printed CV and the payload still
+                carry both values; the owner's rule is "cukup 1 di layar, tetap 2
+                di database untuk rirekisho". */}
             <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
               <Field label={t("cv.field_nama")} id="nama" value={cv.nama} span={2}
                 touched={touchedFields.has('nama')} onInput={(v) => handleManualEdit('nama', v)} />
@@ -1068,21 +1077,15 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               <PairSelect label={t("form.mf_gender")} id="gender" value={cv.gender} pairs={GENDER_PAIRS}
                 touched={touchedFields.has('gender')} testId="ai-pair-gender"
                 onChange={(v) => handlePairEdit('gender', v)} />
-              <JpField label={t("form.mf_gender_jp")} id="gender_jp" value={cv.gender_jp}
-                touched={touchedFields.has('gender_jp')} onInput={(v) => handleManualEdit('gender_jp', v)} />
               <PairSelect label={t("form.mf_agama")} id="agama" value={cv.agama} pairs={AGAMA_PAIRS}
                 touched={touchedFields.has('agama')} testId="ai-pair-agama"
                 onChange={(v) => handlePairEdit('agama', v)} />
-              <JpField label={t("form.mf_agama_jp")} id="agama_jp" value={cv.agama_jp}
-                touched={touchedFields.has('agama_jp')} onInput={(v) => handleManualEdit('agama_jp', v)} />
               <PairSelect label={t("form.mf_goldar")} id="goldar" value={cv.goldar} pairs={GOLDAR_PAIRS}
                 touched={touchedFields.has('goldar')} testId="ai-pair-goldar"
                 onChange={(v) => handlePairEdit('goldar', v)} />
               <PairSelect label={t("cv.field_status_nikah")} id="status" value={cv.status} pairs={STATUS_NIKAH_PAIRS}
                 touched={touchedFields.has('status')} testId="ai-pair-status"
                 onChange={(v) => handlePairEdit('status', v)} />
-              <JpField label={t("cv.field_status_nikah_jp")} id="status_jp" value={cv.status_jp}
-                touched={touchedFields.has('status_jp')} onInput={(v) => handleManualEdit('status_jp', v)} />
               <Field label={t("form.mf_anak")} id="anak" value={cv.anak} center
                 touched={touchedFields.has('anak')} onInput={(v) => handleManualEdit('anak', v)} />
               <Field label={t("form.mf_email")} id="email" value={cv.email} span={2}
@@ -1344,19 +1347,24 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               {/* Relation and occupation are the two paired fields legacy kept
                   in sync (`KENALAN_PAIRS` / `PEKERJAAN_PAIRS`). Choosing the
                   Indonesian term fills the kanji automatically, which is the
-                  only way the two columns stay consistent. */}
+                  only way the two columns stay consistent.
+
+                  That sentence was NOT true until 2026-10-08: neither field was
+                  registered in `PAIRED_FIELDS`, so `resolvePairEdit` had no
+                  partner to fill and the kanji column was really being fed by a
+                  second free-text box beside each dropdown. Both boxes are gone
+                  (the dropdown shows `AYAH（父）` already), and the two entries
+                  added to `PAIRED_FIELDS` are what now fill `hubungan_jp` /
+                  `pekerjaan_jp` — so the payload still carries both halves for
+                  the rirekisho. */}
               <PairSelect label={t("cv.field_kenalan_hub_id")} id="kenalan_hub_id" value={cv.kenalan_hub_id}
                 pairs={HUBUNGAN_KELUARGA}
                 touched={touchedFields.has('kenalan_hub_id')}
-                onChange={(v) => handleManualEdit('kenalan_hub_id', v)} />
-              <Field label={t("cv.field_kenalan_hub_jp")} id="kenalan_hub_jp" value={cv.kenalan_hub_jp} jp
-                touched={touchedFields.has('kenalan_hub_jp')} onInput={(v) => handleManualEdit('kenalan_hub_jp', v)} />
+                onChange={(v) => handlePairEdit('kenalan_hub_id', v)} />
               <PairSelect label={t("cv.field_kenalan_kerja_id")} id="kenalan_kerja_id" value={cv.kenalan_kerja_id}
                 pairs={PEKERJAAN}
                 touched={touchedFields.has('kenalan_kerja_id')}
-                onChange={(v) => handleManualEdit('kenalan_kerja_id', v)} />
-              <Field label={t("cv.field_kenalan_kerja_jp")} id="kenalan_kerja_jp" value={cv.kenalan_kerja_jp} jp
-                touched={touchedFields.has('kenalan_kerja_jp')} onInput={(v) => handleManualEdit('kenalan_kerja_jp', v)} />
+                onChange={(v) => handlePairEdit('kenalan_kerja_id', v)} />
               <Field label={t("cv.field_kenalan_usia")} id="kenalan_usia" value={cv.kenalan_usia} unit="thn"
                 touched={touchedFields.has('kenalan_usia')} onInput={(v) => handleManualEdit('kenalan_usia', v)} />
               {/* `col-span-full` (= `grid-column: 1 / -1`) rather than
@@ -1786,30 +1794,21 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
   );
 }
 
-/**
- * The Japanese half of a paired field, editable in place.
+/*
+ * There used to be a `JpField` here — a free-text input for the kanji half of a
+ * paired column (gender/agama/status/kenalan relation/kenalan occupation).
  *
- * A pair is two columns on the printed CV, not one. `PairSelect` fills this from
- * the registry, but the candidate must still be able to correct the kanji when
- * the registry's wording does not fit (legacy `enableManualPreview()` made every
- * input editable — including these — and the port had dropped them entirely, so
- * the kanji column was always empty on submit).
+ * It was removed on 2026-10-08, by the owner's request: the dropdown already
+ * prints both halves (`MENIKAH（既婚）`, `AYAH（父）`), so the second box asked the
+ * same question twice and only added noise. It also invited the exact defect the
+ * pair registry exists to prevent — a hand-typed kanji disagreeing with the
+ * Indonesian value it belongs to.
+ *
+ * Both halves still reach the database: `PairSelect` reports the ID half and
+ * `resolvePairEdit` writes the JP column from the registry, so the rirekisho
+ * keeps its kanji column. Do not reintroduce a JP input for a field whose ID
+ * half is a `PairSelect`.
  */
-function JpField({ label, id, value, span, onInput, touched }: {
-  label: string; id: string; value: string; span?: number;
-  onInput: (value: string) => void; touched?: boolean;
-}) {
-  const spanClass = span === 3 ? 'col-span-3' : span === 2 ? 'col-span-2' : '';
-  const domId = `ai_${id}`;
-  return (
-    <div class={spanClass}>
-      <label class="block text-[11px] text-fg-subtle mb-0.5" for={domId}>{label}</label>
-      <input id={domId} type="text" value={value} lang="ja"
-        onInput={(e) => onInput((e.target as HTMLInputElement).value)}
-        class={`input-micro w-full bg-slate-800 border ${touched ? 'border-sky-400' : 'border-slate-600'} rounded p-1 text-[12px] text-pink-300 font-bold`} />
-    </div>
-  );
-}
 
 /**
  * Status + nomor dalam satu baris (legacy ai_form.html:150-151).
