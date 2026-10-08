@@ -301,7 +301,14 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
   if (isKandidat && !isOwnerOrAdmin(sessionToken as string, wa)) {
     return { success: false, error: 'Akses ditolak: nomor WA tidak sesuai sesi.' };
   }
-  const submittedBy = isAdmin ? 'admin:' + (adminGuard.token?.name || 'unknown') : 'kandidat';
+  // Who pressed Simpan used to be written to `ai_form_submissions.submitted_by`
+  // — a column this table does not have. PostgREST rejects the whole write with
+  // 400 / PGRST204 ("Could not find the 'submitted_by' column … in the schema
+  // cache"), measured 2026-10-08 against the live PostgREST, so EVERY save from
+  // this form failed and the outer catch turned it into the generic
+  // "Gagal menyimpan data" the owner saw. The attribution now goes to the log,
+  // which is where an audit trail belongs when the table has no column for it.
+  log.info('ai.cv.submit', { wa: hashPii(wa), by: isAdmin ? 'admin' : 'kandidat' });
   try {
     // C6 fix: validasi SEMUA URL dokumen dari klien sebelum ditulis ke
     // ai_form_submissions / master_database_candidate — host sembarangan tidak
@@ -391,7 +398,6 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       jft_url: d.jftFile || '',
       ssw_url: d.sswFile || '',
       submitted_via: 'ai_form',
-      submitted_by: submittedBy,
       updated_at: new Date().toISOString(),
     };
     const existingRows = await supabaseJson('GET', 'ai_form_submissions', {
@@ -485,7 +491,16 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
         if (d.fotoFile) candBody.pas_photo = d.fotoFile;
         if (d.jftFile) candBody.jft = d.jftFile;
         if (d.sswFile) candBody.ssw = d.sswFile;
-        if (d.ktpFile) candBody.ktp_url = d.ktpFile;
+        // `candBody.ktp_url` used to be set here. `database_candidate` has no
+        // such column — only `folder_url` — so the PATCH was rejected with
+        // 400 / PGRST204 and, because it is one body, EVERY field in this block
+        // was lost with it: nama, gender, usia, tempat/tgl lahir, no_wa and
+        // pas_photo never reached the admin panel from an AI CV save. Measured
+        // 2026-10-08 by the contract test in `e2e/ai-cv-submit.test.ts`. The KTP
+        // URL is not lost by dropping this line: it is written to
+        // `master_database_candidate.ktp_url` above and to
+        // `pemberkasan_checklist.ktp_url` just below, and those two columns do
+        // exist.
         if (identitas.nama_lengkap) candBody.nama_lengkap = identitas.nama_lengkap;
         if (identitas.gender) candBody.gender = identitas.gender;
         if (identitas.usia) candBody.usia = identitas.usia;
@@ -591,7 +606,13 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       /* opsional */
     }
     return { success: true };
-  } catch (_e) {
+  } catch (e) {
+    // This catch used to swallow the reason completely, so the only thing the
+    // owner or an admin ever saw was "Gagal menyimpan data" with nothing to act
+    // on — the defect that hid the phantom `submitted_by` column for weeks.
+    // The user-facing text stays generic on purpose (a candidate must not read
+    // PostgREST internals); the cause goes to the log, with the WA hashed.
+    log.error('ai.cv.submit-failed', { wa: hashPii(wa), err: String(e) });
     return { success: false, message: 'Gagal menyimpan data. Silakan coba lagi.' };
   }
 }

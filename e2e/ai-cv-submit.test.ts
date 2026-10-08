@@ -27,16 +27,20 @@
 // supaya totalnya tidak terlihat lebih kecil dari kenyataan.
 // ==========================================
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { TABLE_COLUMNS } from '../netlify/functions/_lib/db/schema.generated';
 
-/** Percakapan ke PostgREST: {method, table}. */
-const rtt: Array<{ method: string; table: string }> = [];
+/**
+ * Percakapan ke PostgREST: {method, table}. `body` dicatat untuk panggilan TULIS
+ * saja — lihat describe terakhir: kolom yang ditulis harus ada di kontrak.
+ */
+const rtt: Array<{ method: string; table: string; body?: unknown }> = [];
 
 vi.mock('../netlify/functions/_lib/db/client.ts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../netlify/functions/_lib/db/client.ts')>();
   return {
     ...actual,
-    supabaseJson: vi.fn(async (method: string, table: string) => {
-      rtt.push({ method, table });
+    supabaseJson: vi.fn(async (method: string, table: string, opts?: { body?: unknown }) => {
+      rtt.push({ method, table, body: opts?.body });
       return [];
     }),
     // `supabaseUpsert` dipanggil lewat `await import(...)` di dalam handler, dan
@@ -44,8 +48,8 @@ vi.mock('../netlify/functions/_lib/db/client.ts', async (importOriginal) => {
     // TIDAK mencegatnya. Tanpa mock ini, jalur master gagal di jaringan
     // sungguhan, handler berhenti di catch-nya, dan tesnya melaporkan 3
     // percakapan padahal jalur penuhnya jauh lebih panjang.
-    supabaseUpsert: vi.fn(async (table: string) => {
-      rtt.push({ method: 'POST', table });
+    supabaseUpsert: vi.fn(async (table: string, row?: unknown) => {
+      rtt.push({ method: 'POST', table, body: row });
     }),
   };
 });
@@ -194,5 +198,68 @@ describe('handleSubmitDataAsj — jumlah round-trip ke database', () => {
     // tanpa suara — tapi lihat §"batas" di laporan: yang lebih penting daripada
     // angkanya adalah bahwa tidak ada lagi pertanyaan yang diulang.
     expect(rtt.length).toBe(8);
+  });
+});
+
+/**
+ * ==========================================
+ * KENAPA TES INI ADA — "kok gagal menyimpan"
+ * ==========================================
+ * Keluhan pemilik, 2026-10-08: menekan Simpan di tab manual AI CV selalu
+ * berakhir `Network error: Gagal menyimpan data, silakan coba lagi.`
+ *
+ * Penyebabnya terukur, bukan dugaan. `handleSubmitDataAsj` menulis kunci
+ * `submitted_by` ke `ai_form_submissions`, dan tabel itu **tidak punya kolom
+ * itu**. PostgREST menolak SELURUH barisnya, bukan hanya kolom itu:
+ *
+ *   PATCH /rest/v1/ai_form_submissions (body berisi submitted_by)
+ *     -> HTTP 400 {"code":"PGRST204",
+ *        "message":"Could not find the 'submitted_by' column of
+ *        'ai_form_submissions' in the schema cache"}
+ *   PATCH yang sama tanpa kunci itu -> HTTP 204
+ *
+ * (diukur langsung terhadap PostgREST, 2026-10-08, dengan filter yang tidak
+ * mencocokkan baris mana pun sehingga tidak ada data yang tersentuh.)
+ *
+ * Yang membuatnya tak terlihat berhari-hari bukan PostgREST-nya, melainkan
+ * `catch` terluar handler yang mengubah SEMUA kegagalan menjadi satu kalimat
+ * generik. Karena itu tes ini memeriksa KOLOM, bukan pesan: satu kunci hantu
+ * cukup untuk membatalkan satu baris penuh, dan tidak ada gate lain di repo ini
+ * yang membandingkan body TULIS dengan kontrak skema — `verify-projections.mjs`
+ * hanya menjaga `select`, sementara `resolveSelect()` sudah menjaga sisi baca.
+ *
+ * Aman untuk diperketat: kontraknya digenerate dari PostgREST yang hidup
+ * (`scripts/ci/gen-schema.mjs`) dan dijaga gate drift, jadi tes ini merah hanya
+ * kalau kode menamai kolom yang benar-benar tidak ada.
+ */
+describe('handleSubmitDataAsj — kolom yang ditulis harus ada di kontrak skema', () => {
+  it('tidak ada body tulis yang menyebut kolom di luar kontrak', async () => {
+    await handleSubmitDataAsj(payloadWithKtp(), 'tok-admin');
+
+    const offenders: string[] = [];
+    for (const call of rtt) {
+      const body = call.body;
+      if (!body || typeof body !== 'object' || Array.isArray(body)) continue;
+      const known = TABLE_COLUMNS[call.table];
+      // Tabel di luar kontrak dilewati: tidak ada yang bisa dibandingkan.
+      if (!known) continue;
+      for (const key of Object.keys(body as Record<string, unknown>)) {
+        if (!known.includes(key)) offenders.push(`${call.method} ${call.table}.${key}`);
+      }
+    }
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('kontrol: setidaknya satu body tulis benar-benar diperiksa', async () => {
+    // Tanpa ini, tes di atas lulus secara VACUOUS kalau tidak ada satu pun
+    // panggilan tulis yang tercatat — hijau yang tidak berarti apa-apa.
+    await handleSubmitDataAsj(payloadWithKtp(), 'tok-admin');
+
+    const checked = rtt.filter(
+      (c) => c.body && typeof c.body === 'object' && !Array.isArray(c.body) && TABLE_COLUMNS[c.table],
+    );
+    expect(checked.length).toBeGreaterThan(0);
+    expect(checked.map((c) => c.table)).toContain('ai_form_submissions');
   });
 });

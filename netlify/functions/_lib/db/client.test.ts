@@ -4,7 +4,8 @@
 // normalisasi = kandidat duplikat (kasus SATRIA 6223 vs 6282, 2026-08-15).
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { normalizeWa, normalizeStatus, normalizeGender } from './client';
+import { normalizeWa, normalizeStatus, normalizeGender, writeBodyFor } from './client';
+import { TABLE_COLUMNS } from './schema.generated';
 
 describe('normalizeWa — format baku 628…', () => {
   it('0xx… dikonversi ke 62xx… (awalan HP)', () => {
@@ -87,5 +88,80 @@ describe('normalizeGender — kanonikal LAKI-LAKI/PEREMPUAN (konvensi situs lama
     expect(normalizeGender('')).toBe('');
     expect(normalizeGender('-')).toBe('');
     expect(normalizeGender('n/a')).toBe('');
+  });
+});
+
+/**
+ * ==========================================
+ * TESTS: db/client — writeBodyFor (sisi TULIS dari kontrak skema)
+ * ==========================================
+ * Sisi BACA sudah dijaga sejak Phase D: `resolveSelect()` melewatkan setiap
+ * `select` lewat `schema.generated.ts`, jadi kolom yang tidak ada tidak pernah
+ * sampai ke kabel. Sisi TULIS tidak punya penjaga apa pun, dan PostgREST
+ * membalas kolom asing di body dengan **400 / PGRST204** — SELURUH baris
+ * ditolak, bukan cuma kolomnya.
+ *
+ * Terukur 2026-10-08 (PATCH tanpa baris yang cocok, jadi tidak ada data yang
+ * tersentuh):
+ *   body {nama_lengkap, submitted_by} -> HTTP 400 "Could not find the
+ *     'submitted_by' column of 'ai_form_submissions' in the schema cache"
+ *   body {nama_lengkap}               -> HTTP 204
+ *
+ * Itulah kenapa "Simpan CV AI" selalu gagal: `handleSubmitDataAsj` mengirim
+ * kunci itu. `writeBodyFor` adalah penjaganya, dan tes di bawah memaku dua
+ * janjinya: kolom asing DIBUANG (supaya tulisannya selamat) dan namanya
+ * DILAPORKAN (supaya drift skema tidak hilang tanpa suara).
+ */
+describe('writeBodyFor — kolom asing dibuang, bukan membatalkan seluruh baris', () => {
+  it('membuang kolom yang tidak ada di kontrak dan melaporkan namanya', () => {
+    const { body, dropped } = writeBodyFor('ai_form_submissions', {
+      wa: '628123',
+      nama_lengkap: 'BUDI',
+      submitted_by: 'admin:test',
+    });
+
+    expect(body).toEqual({ wa: '628123', nama_lengkap: 'BUDI' });
+    expect(dropped).toEqual(['submitted_by']);
+  });
+
+  it('kolom yang benar-benar ada tidak tersentuh', () => {
+    const known = TABLE_COLUMNS.ai_form_submissions;
+    const body: Record<string, unknown> = {};
+    for (const col of known) body[col] = 'x';
+
+    const out = writeBodyFor('ai_form_submissions', body);
+    expect(out.dropped).toEqual([]);
+    expect(Object.keys(out.body as Record<string, unknown>).sort()).toEqual([...known].sort());
+  });
+
+  it('tabel di luar kontrak dibiarkan apa adanya (tidak ada dasar untuk memfilternya)', () => {
+    const row = { apa_saja: 1, submitted_by: 2 };
+    const out = writeBodyFor('tabel_yang_tidak_ada', row);
+    expect(out.body).toBe(row);
+    expect(out.dropped).toEqual([]);
+  });
+
+  it('body berupa array difilter per baris (insert massal)', () => {
+    const { body, dropped } = writeBodyFor('ai_form_submissions', [
+      { wa: '1', submitted_by: 'a' },
+      { wa: '2', nama_lengkap: 'B' },
+    ]);
+    expect(body).toEqual([{ wa: '1' }, { wa: '2', nama_lengkap: 'B' }]);
+    // Dilaporkan SEKALI walau muncul di beberapa baris.
+    expect(dropped).toEqual(['submitted_by']);
+  });
+
+  it('body yang bukan objek dilewatkan tanpa error', () => {
+    expect(writeBodyFor('ai_form_submissions', null).body).toBeNull();
+    expect(writeBodyFor('ai_form_submissions', 'teks').body).toBe('teks');
+    expect(writeBodyFor('ai_form_submissions', 42).body).toBe(42);
+  });
+
+  it('tidak mengubah objek pemanggil (body boleh dipakai ulang oleh caller)', () => {
+    const original = { wa: '628123', submitted_by: 'admin:test' };
+    writeBodyFor('ai_form_submissions', original);
+    // `supabaseUpsert` memakai ulang `row` di jalur fallback-nya, jadi mutasi di
+    // sini akan terlihat sebagai kolom yang hilang dari percobaan kedua.
+    expect(original).toEqual({ wa: '628123', submitted_by: 'admin:test' });
   });
 });

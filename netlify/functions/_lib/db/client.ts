@@ -2,7 +2,7 @@ import { env } from '../env.ts';
 import { normalizeWa } from '../../shared/wa-rules';
 import { request, HttpError, TimeoutError } from '../kernel/http.ts';
 import { AppError } from '../kernel/errors';
-import { asyncLocalStorage } from '../kernel/log';
+import { asyncLocalStorage, log } from '../kernel/log';
 import { allColumns, columnsOf } from './schema.generated';
 // db/client.js — klien REST Supabase (PostgREST) + normalisasi data.
 // perilaku TIDAK berubah.
@@ -55,6 +55,56 @@ function resolveSelect(table: string, requested?: string | number | null): strin
     return allColumns(table);
   }
   return String(requested);
+}
+
+/**
+ * Resolve a caller's WRITE body against the generated contract — the write-side
+ * twin of `resolveSelect()`.
+ *
+ * Reads have been contract-checked since Phase D: every `select` is resolved
+ * through `schema.generated.ts`, so a column the database does not expose cannot
+ * reach the wire. Writes had no such check, and PostgREST answers an unknown
+ * column in a body with **400 / PGRST204** and rejects the WHOLE write — one
+ * misspelled key loses the entire row.
+ *
+ * Measured 2026-10-08 on the live PostgREST, with a non-mutating PATCH that
+ * matched no rows:
+ *
+ *   body {nama_lengkap, submitted_by} -> HTTP 400
+ *     {"code":"PGRST204","message":"Could not find the 'submitted_by' column of
+ *      'ai_form_submissions' in the schema cache"}
+ *   body {nama_lengkap}               -> HTTP 204
+ *
+ * `handleSubmitDataAsj` sent exactly that key, so every "Simpan CV AI" failed —
+ * and the failure was invisible, because the handler's outer catch returned a
+ * generic message. Dropping the unknown key is what makes the write survive; the
+ * dropped names are returned so the caller can LOG them, because a silently
+ * discarded field is schema drift nobody would ever hear about.
+ *
+ * A table that is not in the contract is left untouched, exactly like
+ * `resolveSelect()`: there is nothing truthful to filter it with.
+ *
+ * Pure, so the policy is asserted directly instead of only through a live call.
+ */
+export function writeBodyFor(
+  table: string,
+  body: unknown,
+): { body: unknown; dropped: string[] } {
+  const known = columnsOf(table);
+  if (!known || known.length === 0) return { body, dropped: [] };
+  const keep = new Set(known);
+  const dropped = new Set<string>();
+  const strip = (row: unknown): unknown => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(row as Record<string, unknown>)) {
+      if (keep.has(k)) out[k] = v;
+      else dropped.add(k);
+    }
+    return out;
+  };
+  const next = Array.isArray(body) ? body.map(strip) : strip(body);
+  return { body: next, dropped: [...dropped] };
 }
 
 /** Seconds a client should wait before retrying a database outage. */
@@ -126,6 +176,20 @@ async function supabaseJson(
       new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)])).toString()
     : '';
   let res: Response;
+  // A write body naming a column the contract does not expose is rejected
+  // WHOLESALE by PostgREST (400 / PGRST204), so one stale key loses the entire
+  // row. See `writeBodyFor()`. The dropped names are logged, never silent.
+  let writeBody = opts.body;
+  if (opts.body && method !== 'GET') {
+    const resolved = writeBodyFor(pathname, opts.body);
+    if (resolved.dropped.length) {
+      log.warn('postgrest.write-dropped-unknown-columns', {
+        table: pathname,
+        columns: resolved.dropped.join(','),
+      });
+    }
+    writeBody = resolved.body;
+  }
   try {
     res = await request(url.replace(/\$/, '') + '/rest/v1/' + pathname + qs, {
       method,
@@ -135,7 +199,7 @@ async function supabaseJson(
         'Content-Type': 'application/json',
         ...(opts.headers || {}),
       },
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
+      body: writeBody ? JSON.stringify(writeBody) : undefined,
       budgetKey: opts.body ? 'postgrest_write' : 'postgrest_read',
     });
   } catch (e: unknown) {
