@@ -4,6 +4,7 @@ import type { CvTemplate, CandidateData } from '../lib/cv-template-factory';
 import apiClient from '../lib/apiClient';
 import { t } from '../store/i18n';
 import Icon from './ui/Icon';
+import { useOverlay } from './ui/useOverlay';
 
 interface Props {
   waTarget: string;
@@ -25,6 +26,28 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
   const [error, setError] = useState('');
   const [customFile, setCustomFile] = useState<File | null>(null);
   const [templates] = useState<CvTemplate[]>(() => cvFactory.list());
+
+  /**
+   * This overlay was the one modal in the admin panel that carried NEITHER
+   * `.u-modal-shell` NOR any dialog semantics — measured 2026-10-08 in a real
+   * browser, on `#pelamar` -> "Pilih Template CV".
+   *
+   * Two consequences, both real and both invisible:
+   *   - `e2e/test-dialog.mjs`, `e2e/test-candidate-modals.mjs` and
+   *     `e2e/test-aria-names.mjs` all key on `.u-modal-shell`, so the component
+   *     was unreachable by EVERY overlay gate. This is the same defect
+   *     `RejectMailModal` had, and `overlay-contract.test.tsx` records it there
+   *     verbatim: "the component was invisible to the guard by CLASS, not merely
+   *     by route".
+   *   - with no role/aria-modal there was no Escape handler and no focus
+   *     management either: the only way out was the mouse, and a keyboard user
+   *     stayed behind the scrim.
+   *
+   * `open: true` is correct because the component is mounted only while it is
+   * open (`TabPelamar` renders it behind `showCvTemplateSelector`), and the hook
+   * resolves the dialog's name from the `<h3>` below.
+   */
+  const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose });
 
   const downloadBlob = useCallback((blob: Blob, fileName: string) => {
     const url = URL.createObjectURL(blob);
@@ -99,11 +122,16 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
   }, [customFile, waTarget, downloadBlob]);
 
   return (
-    <div class="fixed inset-0 bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
+      {/* No `onClick={stopPropagation}` on the panel: `useOverlay`'s
+          `onBackdropClick` already closes only when `e.target === containerRef`,
+          so a click inside the panel cannot reach the close path. The explicit
+          guard is one fewer interactive static element for the a11y ratchet to
+          carry — `lint-ratchet` failed on exactly that when it was here. */}
       <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full max-w-lg max-h-[85vh] overflow-auto shadow-2xl">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-bold text-sky-400"><Icon name="file-alt" class="mr-2" />{t('ui.select_cv_template')}</h3>
-          <button onClick={onClose} aria-label={t('ui.close')} class="text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
+          <button onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
         </div>
         {error && <p class="text-red-400 text-sm mb-4">{error}</p>}
         <div class="space-y-3">

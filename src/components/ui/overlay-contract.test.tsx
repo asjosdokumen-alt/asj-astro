@@ -36,6 +36,8 @@ import ListKandidatModal from '../admin/ListKandidatModal';
 import RejectMailModal from '../admin/RejectMailModal';
 import AdminAiCopilot from '../admin/AdminAiCopilot';
 import RirekishoBuilder from '../admin/RirekishoBuilder';
+import EditCandidateModal from '../admin/EditCandidateModal';
+import CvTemplateSelector from '../CvTemplateSelector';
 
 vi.mock('../../store/i18n', async () => {
   const { atom } = await import('nanostores');
@@ -257,6 +259,108 @@ describe('§3.1(a) — RirekishoBuilder is a real dialog', () => {
   it('closes on Escape', () => {
     let closed = false;
     render(<RirekishoBuilder {...props} onClose={() => { closed = true; }} />);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(closed).toBe(true);
+  });
+});
+
+/**
+ * ==========================================
+ * The two overlays this contract was still MISSING (added 2026-10-08)
+ * ==========================================
+ * `CvTemplateSelector` and `EditCandidateModal` were not in this file's list,
+ * and both shipped broken in exactly the way §25 exists to catch. Found by
+ * driving the admin panel in a real browser tab by tab — no unit test could see
+ * either one, because the unit contract only reads the components it names.
+ *
+ *   CvTemplateSelector  — no `.u-modal-shell` at all, so it was invisible to
+ *                         every e2e overlay gate (they all select that class),
+ *                         and with no `useOverlay` it had no role, no
+ *                         aria-modal, no Escape and no focus management.
+ *   EditCandidateModal  — carried the class but put `containerRef` on the INNER
+ *                         panel, so `role`/`aria-modal`/`aria-labelledby` landed
+ *                         on a div the sweep never reads. Measured in the
+ *                         browser: `.u-modal-shell` with role=null, aria-modal=
+ *                         null, name="". Its close button was nameless too.
+ *
+ * Both are asserted the same way as every other component above: against the
+ * element the class selector actually returns, never against the source.
+ */
+describe('§25 contract — CvTemplateSelector is a real dialog', () => {
+  const props = { waTarget: '081234567890', isAdmin: true, onClose: () => {} };
+
+  it('carries the .u-modal-shell class the e2e sweeps key on', () => {
+    render(<CvTemplateSelector {...props} />);
+    expect(document.querySelectorAll('.u-modal-shell').length).toBe(1);
+  });
+
+  it('declares role="dialog" and aria-modal="true"', () => {
+    render(<CvTemplateSelector {...props} />);
+    const c = dialogContract();
+    expect(c.role).toBe('dialog');
+    expect(c.ariaModal).toBe('true');
+  });
+
+  it('has a name that RESOLVES to a non-empty element', () => {
+    render(<CvTemplateSelector {...props} />);
+    const c = dialogContract();
+    expect(c.ariaLabelledby).toBeTruthy();
+    expect(c.resolvedName.length).toBeGreaterThan(0);
+    // The hook names it from the component's own <h3>, so the resolved text is
+    // the title, not the container's whole textContent.
+    expect(c.resolvedName).toBe('ui.select_cv_template');
+  });
+
+  it('closes on Escape', () => {
+    // This is the assertion that fails on the pre-fix component: with no
+    // `useOverlay` there was no keydown handler, so the ONLY exit was the mouse.
+    let closed = false;
+    render(<CvTemplateSelector {...props} onClose={() => { closed = true; }} />);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(closed).toBe(true);
+  });
+});
+
+describe('§25 contract — EditCandidateModal is a real dialog', () => {
+  const candidate = {
+    nama: 'Aria Uji',
+    wa: '081234567890',
+    idLoker: 'TG591ASJ',
+    idKandidat: 'ASJ-001',
+    tahapan: 'PEMBERKASAN',
+    status: 'LULUS',
+  };
+
+  it('puts the semantics on the SHELL, not on the inner panel', () => {
+    // The defect: `ref={containerRef}` sat on the inner `glass-panel`, so the
+    // attributes were written there and the shell — the element every sweep
+    // reads — stayed bare. Asserting through `dialogContract()` (which starts
+    // from `.u-modal-shell`) is what makes the misplacement visible.
+    render(<EditCandidateModal candidate={candidate} isOpen={true} onClose={() => {}} />);
+    const c = dialogContract();
+    expect(c.role).toBe('dialog');
+    expect(c.ariaModal).toBe('true');
+    expect(c.ariaLabelledby).toBeTruthy();
+    expect(c.resolvedName.length).toBeGreaterThan(0);
+  });
+
+  it('names the only control that closes it', () => {
+    render(<EditCandidateModal candidate={candidate} isOpen={true} onClose={() => {}} />);
+    const shell = document.querySelector('.u-modal-shell') as HTMLElement;
+    const first = shell.querySelector('button');
+    // The glyph inside is `aria-hidden`, so without an explicit label the
+    // accessibility tree gives this button NO name — measured in the browser.
+    expect((first?.getAttribute('aria-label') || '').trim().length).toBeGreaterThan(0);
+  });
+
+  it('claims NO semantics while closed (the container is still mounted)', () => {
+    render(<EditCandidateModal candidate={candidate} isOpen={false} onClose={() => {}} />);
+    expect(document.querySelector('.u-modal-shell')).toBeNull();
+  });
+
+  it('closes on Escape', () => {
+    let closed = false;
+    render(<EditCandidateModal candidate={candidate} isOpen={true} onClose={() => { closed = true; }} />);
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(closed).toBe(true);
   });

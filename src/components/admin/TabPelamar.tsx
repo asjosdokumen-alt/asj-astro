@@ -35,6 +35,7 @@ import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
 import { Status, TableRows } from '../ui/Skeleton';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
+import { useOverlay } from '../ui/useOverlay';
 
 export default function TabPelamar() {
   const _lang = useStore(langStore);
@@ -69,6 +70,23 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
      directly: its fields are read in the render, and `onClose` nulls it. */
   const waTargetP = useOverlayPresence(waTarget);
   const rirekP = useOverlayPresence(showRirek);
+  /**
+   * The admin AI-CV panel is a full-screen overlay (`fixed inset-0`), and until
+   * 2026-10-08 it carried NEITHER `.u-modal-shell` NOR `role="dialog"` — so it
+   * was invisible to every overlay gate, exactly like `CvTemplateSelector`
+   * beside it. It is the panel the owner opens from "CV AI" on a candidate row.
+   *
+   * Escape and backdrop are deliberately OFF: this is an editor, not a dialog
+   * you dismiss, and a stray Escape would drop an admin's unsaved corrections.
+   * The close button is the only exit, and it already has a name.
+   */
+  const aiCvOverlay = useOverlay({
+    open: !!aiCvWa,
+    onClose: () => setAiCvWa(''),
+    closeOnEscape: false,
+    closeOnBackdrop: false,
+    label: t('form.preview_cv'),
+  });
   useEffect(() => {
     // Templates datang dari getAppData (parity legacy window.ALL_WA_TEMPLATES).
     api.secure('getAppData', ['admin']).then((d: any) => {
@@ -281,7 +299,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
           (/ai-cv). `adminMode` melewati gate login; backend sudah mengizinkan
           admin membaca & menulis CV kandidat mana pun (isOwnerOrAdmin). */}
       {aiCvWa && (
-        <div class="fixed inset-0 z-[150] bg-slate-950">
+        <div ref={aiCvOverlay.containerRef} class="fixed inset-0 u-modal-shell z-[150] bg-slate-950">
           <AiCvForm waTarget={aiCvWa} adminMode />
           <button onClick={() => setAiCvWa('')} title={t('button.close')} aria-label={t('button.close')}
             class="fixed top-2 right-3 z-[200] w-9 h-9 flex items-center justify-center rounded-full bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer">
