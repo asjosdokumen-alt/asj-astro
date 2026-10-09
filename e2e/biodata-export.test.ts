@@ -141,3 +141,116 @@ describe('biodataExport — berkas biodata rapi & lengkap', () => {
     expect(t).not.toContain('rahasia123');
   });
 });
+
+// ── DATA MASTER (LENGKAP) ───────────────────────────────────────────────────
+// Keluhan lanjutan pemilik 2026-10-09: "saya maunya semua data master nya ke
+// download … jadi lengkap semua" — dengan contoh satu berkas CV berisi seluruh
+// jawaban (data diri, keluarga, pendidikan, pekerjaan, sampai jawaban kanji).
+// Blok ini yang memenuhinya: seluruh baris `master_database_candidate`, bukan
+// hanya `bio` yang ikut di payload kandidat.
+const MASTER = {
+  identitas: {
+    nama_lengkap: 'AZMATUL',
+    katakana: 'アズマトゥル',
+    tgl_lahir: '2007-01-08',
+    umur: '19',
+    ktp: '3502144801070001',
+    alamat: 'DUKUH TAMANSARI',
+  },
+  fisik: { tb: '150', bb: '48' },
+  medis: { golongan_darah: 'A' },
+  wawancara: {
+    hobi_id: 'VOLLY',
+    hobi_jp: '趣味はバレーボール',
+    kelebihan_id: 'CEPAT BELAJAR',
+    kelebihan_jp: '私の長所は素早く覚えることです',
+    // Dua pasangan kunci yang menunjuk kolom yang sama.
+    rencana_setelah_pulang: 'RENCANA-UNIK',
+    rencana_pulang_id: 'RENCANA-UNIK',
+  },
+  // `bahasa_jepang`/`nilai`/`lisensi` adalah alias kolom yang sama dengan
+  // `jft`/`ssw` — nilainya tidak boleh tercetak dua kali. Nilainya sengaja
+  // BERBEDA dari `CAND.jft`/`CAND.ssw` supaya hitungannya mengukur alias di
+  // dalam master, bukan kemunculan di bagian ringkasan.
+  sertifikasi: { jft: 'N4', bahasa_jepang: 'N4', nilai: 'N4', ssw: 'BIDANG-X', lisensi: 'BIDANG-X' },
+  pendidikan: [
+    { tingkat: 'SD', sekolah: 'SDN 1', nama_sekolah: 'SDN 1', masuk: '2013', tahun_masuk: '2013' },
+    { tingkat: 'SMA', sekolah: 'MAN 1', jurusan_id: 'IPA', jurusan: 'IPA' },
+  ],
+  pekerjaan: [{ perusahaan: 'PT X', nama_perusahaan: 'PT X', jabatan: 'OPERATOR' }],
+  keluarga: [{ nama: 'SUKATNO', umur: '54', usia: '54', hubungan: 'AYAH' }],
+  kenalan_jepang: { nama_id: 'TANAKA' },
+  uploads: { cv: 'https://x/cv.pdf', ktp: 'https://x/ktp.jpg' },
+  AIDATAJSON: '{"blob":"RAW-JSON-JANGAN-CETAK"}',
+  id_kandidat: 'ASJ00123',
+};
+
+describe('biodataExport — DATA MASTER (LENGKAP)', () => {
+  const t = buildBiodataText({ ...CAND, master: MASTER });
+
+  it('mencetak seluruh baris master, berkelompok', () => {
+    expect(t).toContain('DATA MASTER (LENGKAP)');
+    for (const g of [
+      'IDENTITAS (MASTER)',
+      'FISIK & UKURAN',
+      'KESEHATAN & RIWAYAT MEDIS',
+      'WAWANCARA & MOTIVASI',
+      'SERTIFIKASI & BAHASA',
+      'RIWAYAT PENDIDIKAN',
+      'PENGALAMAN KERJA',
+      'KELUARGA (SESUAI KK)',
+      'KENALAN DI JEPANG',
+      'DOKUMEN (MASTER)',
+    ]) {
+      expect(t, `grup hilang: ${g}`).toContain(g);
+    }
+  });
+
+  it('memakai label manusia, termasuk field kanji', () => {
+    expect(t).toMatch(/Nama Lengkap\s*: AZMATUL/);
+    expect(t).toMatch(/Nama Katakana\s*: アズマトゥル/);
+    expect(t).toMatch(/NIK KTP\s*: 3502144801070001/);
+    expect(t).toContain('Hobi & Keterampilan (Kanji)');
+    expect(t).toContain('趣味はバレーボール');
+    expect(t).toContain('Kelebihan (Kanji)');
+    expect(t).toContain('私の長所は素早く覚えることです');
+  });
+
+  it('mencetak riwayat sebagai daftar bernomor', () => {
+    expect(t).toMatch(/RIWAYAT PENDIDIKAN[\s\S]*1\.[\s\S]*SDN 1/);
+    expect(t).toMatch(/RIWAYAT PENDIDIKAN[\s\S]*2\.[\s\S]*MAN 1/);
+    expect(t).toMatch(/PENGALAMAN KERJA[\s\S]*PT X/);
+    expect(t).toMatch(/KELUARGA \(SESUAI KK\)[\s\S]*SUKATNO/);
+  });
+
+  it('tidak mencetak nilai yang sama dua kali (alias kolom)', () => {
+    const count = (s: string) => t.split(s).length - 1;
+    expect(count('SDN 1'), 'nama_sekolah vs sekolah').toBe(1);
+    expect(count('IPA'), 'jurusan vs jurusan_id').toBe(1);
+    expect(count('2013'), 'tahun_masuk vs masuk').toBe(1);
+    expect(count('PT X'), 'nama_perusahaan vs perusahaan').toBe(1);
+    expect(count('54'), 'usia vs umur').toBe(1);
+    expect(count('A2'), 'bahasa_jepang/nilai vs jft').toBe(1);
+    expect(count('N4'), 'bahasa_jepang/nilai vs jft (master)').toBe(1);
+    expect(count('BIDANG-X'), 'lisensi vs ssw (master)').toBe(1);
+    expect(count('RENCANA-UNIK'), 'rencana_pulang_id vs rencana_setelah_pulang').toBe(1);
+  });
+
+  it('membuang plumbing: AIDATAJSON tidak pernah ikut', () => {
+    // Kontrol positif: master memang tercetak, jadi "tidak memuat" di bawah
+    // bukan hasil dari master yang tidak pernah dirender sama sekali.
+    expect(t).toContain('Nama Lengkap');
+    expect(t).not.toContain('RAW-JSON-JANGAN-CETAK');
+    expect(t).not.toContain('AIDATAJSON');
+  });
+
+  it('master menggantikan BIODATA DETAIL (bio adalah subset-nya)', () => {
+    expect(t).not.toContain('BIODATA DETAIL');
+  });
+
+  it('jatuh kembali ke BIODATA DETAIL kalau master tidak tersedia', () => {
+    const fallback = buildBiodataText(CAND);
+    expect(fallback).toContain('BIODATA DETAIL');
+    expect(fallback).not.toContain('DATA MASTER (LENGKAP)');
+  });
+});

@@ -264,14 +264,31 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     }
   };
 
-  const handleDownloadBiodata = () => {
+  const handleDownloadBiodata = async () => {
     if (!data) return;
     /* Shared formatter — `src/lib/biodataExport.ts`. The candidate's dossier card
        calls the SAME one, which is how legacy worked: one
        `downloadBiodataLengkap()` served both surfaces. Before the extraction this
        body was inline here, so the candidate's copy of the button had nothing to
-       call and the two would have drifted on the first format change. */
-    downloadBiodataText(data);
+       call and the two would have drifted on the first format change.
+
+       Berkasnya memuat SELURUH baris master, bukan hanya `bio` yang ikut di
+       payload kandidat: `getDrafCvMaster` mengembalikan `buildMasterNested(row)`
+       — identitas, fisik, medis, wawancara, sertifikasi, riwayat pendidikan/
+       pekerjaan/keluarga, kenalan di Jepang, dan tautan dokumen. Diambil SAAT
+       unduh supaya payload daftar kandidat tidak ikut membawa 169 kolom master
+       per baris. Gagal ambil ⇒ berkas tetap dibuat dari data yang sudah ada. */
+    let master: Record<string, unknown> | undefined;
+    try {
+      const m = (await api.secure('getDrafCvMaster', [data.wa], {
+        onSessionInvalid: 'throw',
+        silent: true,
+      })) as Record<string, unknown> | null;
+      if (m && !m.error) master = m;
+    } catch {
+      /* master opsional */
+    }
+    downloadBiodataText({ ...data, master });
   };
 
   return (

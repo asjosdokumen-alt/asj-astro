@@ -80,6 +80,20 @@ export type BiodataSource = {
   jobs?: string[];
   berkas?: Record<string, string>;
   bio?: Record<string, string>;
+  /**
+   * The FULL master row, nested as `buildMasterNested()` emits it (identitas /
+   * fisik / medis / wawancara / sertifikasi / pendidikan[] / pekerjaan[] /
+   * keluarga[] / kenalan_jepang / uploads). This is the "semua data master"
+   * block the owner asked for on 2026-10-09: `bio` above is only the handful of
+   * keys the dashboard happens to read, while this is the whole
+   * `master_database_candidate` row.
+   *
+   * It is NOT in the candidate payload — the client fetches it (`getDrafCvMaster`)
+   * at download time and passes it here, because widening the shared payload
+   * projection would cost ~169 columns × 500 rows on every admin/dashboard read.
+   * Absent (fetch failed, or no master row) ⇒ the exporter falls back to `bio`.
+   */
+  master?: Record<string, unknown>;
 };
 
 /** `'-'` is the projections' own "no value" marker, so it is normalised to it. */
@@ -142,9 +156,214 @@ function labelFor(map: Record<string, string>, key: string): string {
   return map[key] || key.toUpperCase();
 }
 
-const LABEL_WIDTH = 22;
+// Wide enough for the longest master label ("Rencana Setelah Pulang (Kanji)",
+// 30) plus a space, so every colon lines up. A shorter width lets the long ones
+// push their colon out of the column — the opposite of "rapikan".
+const LABEL_WIDTH = 31;
 const row = (label: string, value: string): string => `${label.padEnd(LABEL_WIDTH)}: ${value}`;
 const rule = (ch: string) => ch.repeat(52);
+
+// ── DATA MASTER (LENGKAP) ───────────────────────────────────────────────────
+// Keys of the nested master object (`buildMasterNested` in
+// `contexts/master-data/service.ts`). Grouped so the file reads like the CV
+// answer sheet rather than a 169-column dump.
+const MASTER_GROUP_LABEL: Record<string, string> = {
+  identitas: 'IDENTITAS (MASTER)',
+  fisik: 'FISIK & UKURAN',
+  medis: 'KESEHATAN & RIWAYAT MEDIS',
+  wawancara: 'WAWANCARA & MOTIVASI',
+  sertifikasi: 'SERTIFIKASI & BAHASA',
+  pendidikan: 'RIWAYAT PENDIDIKAN',
+  pekerjaan: 'PENGALAMAN KERJA',
+  keluarga: 'KELUARGA (SESUAI KK)',
+  kenalan_jepang: 'KENALAN DI JEPANG',
+  uploads: 'DOKUMEN (MASTER)',
+};
+
+const MASTER_LABEL: Record<string, string> = {
+  nama_lengkap: 'Nama Lengkap',
+  katakana: 'Nama Katakana',
+  panggilan: 'Nama Panggilan',
+  panggilan_katakana: 'Panggilan Katakana',
+  tempat_lahir: 'Tempat Lahir',
+  tempat_lahir_jp: 'Tempat Lahir (Kanji)',
+  tgl_lahir: 'Tanggal Lahir',
+  umur: 'Usia',
+  gender: 'Gender',
+  agama: 'Agama',
+  agama_jp: 'Agama (Kanji)',
+  golongan_darah: 'Golongan Darah',
+  status_nikah: 'Status Pernikahan',
+  status_pernikahan_jp: 'Status Pernikahan (Kanji)',
+  anak: 'Jumlah Anak',
+  email: 'Email',
+  alamat: 'Alamat',
+  alamat_jp: 'Alamat (Kanji)',
+  hp: 'No. WhatsApp',
+  hp_darurat: 'No. WA Darurat',
+  ktp: 'NIK KTP',
+  paspor: 'No. Paspor',
+  sim: 'SIM',
+  status_eks_jepang: 'Status Eks Jepang',
+  no_coe: 'No. COE',
+  tgl_terbit_paspor: 'Tanggal Terbit Paspor',
+  exp_paspor: 'Paspor Berlaku Sampai',
+  kota_terbit_paspor: 'Kota Terbit Paspor',
+  kontak_darurat_nama: 'Kontak Darurat — Nama',
+  kontak_darurat_hubungan: 'Kontak Darurat — Hubungan',
+  tb: 'Tinggi Badan',
+  bb: 'Berat Badan',
+  topi: 'Ukuran Topi',
+  baju: 'Ukuran Baju',
+  sepatu: 'Ukuran Sepatu',
+  tangan_dominan: 'Tangan Dominan',
+  tahan_ac: 'Tahan AC',
+  mata_kiri: 'Mata Minus Kiri',
+  mata_kanan: 'Mata Minus Kanan',
+  kacamata: 'Kacamata',
+  buta_warna: 'Buta Warna',
+  tato: 'Tato',
+  tindik: 'Tindik',
+  rokok: 'Merokok',
+  alkohol: 'Minum Alkohol',
+  alergi_id: 'Alergi',
+  alergi_jp: 'Alergi (Kanji)',
+  riwayat_medis_id: 'Riwayat Penyakit',
+  riwayat_medis_jp: 'Riwayat Penyakit (Kanji)',
+  riwayat_kecelakaan_id: 'Riwayat Kecelakaan',
+  riwayat_kecelakaan_jp: 'Riwayat Kecelakaan (Kanji)',
+  keinginan_id: 'Keinginan Pribadi',
+  keinginan_jp: 'Keinginan Pribadi (Kanji)',
+  tujuan_ke_jepang: 'Tujuan ke Jepang',
+  tujuan_ke_jepang_jp: 'Tujuan ke Jepang (Kanji)',
+  riwayat_jepang: 'Riwayat ke Jepang',
+  promosi_id: 'Promosi Diri',
+  promosi_jp: 'Promosi Diri (Kanji)',
+  kelebihan_id: 'Kelebihan',
+  kelebihan_jp: 'Kelebihan (Kanji)',
+  kekurangan_id: 'Kekurangan',
+  kekurangan_jp: 'Kekurangan (Kanji)',
+  hobi_id: 'Hobi & Keterampilan',
+  hobi_jp: 'Hobi & Keterampilan (Kanji)',
+  keahlian_khusus: 'Keahlian Khusus',
+  keahlian_khusus_jp: 'Keahlian Khusus (Kanji)',
+  motivasi_ke_jepang: 'Motivasi ke Jepang',
+  motivasi_ke_jepang_jp: 'Motivasi ke Jepang (Kanji)',
+  alasan_memilih_bidang: 'Alasan Memilih Bidang',
+  alasan_memilih_bidang_jp: 'Alasan Memilih Bidang (Kanji)',
+  rencana_setelah_pulang: 'Rencana Setelah Pulang',
+  rencana_setelah_pulang_jp: 'Rencana Setelah Pulang (Kanji)',
+  rencana_pulang_id: 'Rencana Setelah Pulang',
+  rencana_pulang_jp: 'Rencana Setelah Pulang (Kanji)',
+  gaji_yen: 'Harapan Gaji (Yen)',
+  tabungan: 'Harapan Tabungan',
+  lama_di_jepang: 'Lama di Jepang',
+  bahasa: 'Bahasa',
+  jft: 'JFT / JLPT',
+  ssw: 'SSW',
+  bidang: 'Bidang',
+  tingkat: 'Tingkat',
+  sekolah: 'Nama Sekolah',
+  sekolah_jp: 'Nama Sekolah (Kanji)',
+  jurusan_id: 'Jurusan',
+  jurusan_jp: 'Jurusan (Kanji)',
+  masuk: 'Tahun Masuk',
+  lulus: 'Tahun Lulus',
+  perusahaan: 'Nama Perusahaan',
+  perusahaan_jp: 'Nama Perusahaan (Kanji)',
+  jabatan: 'Jabatan',
+  jabatan_jp: 'Jabatan (Kanji)',
+  keluar: 'Tahun Keluar',
+  gaji: 'Gaji',
+  nama: 'Nama',
+  hubungan: 'Hubungan',
+  hubungan_id: 'Hubungan',
+  hubungan_jp: 'Hubungan (Kanji)',
+  pekerjaan: 'Pekerjaan',
+  pekerjaan_jp: 'Pekerjaan (Kanji)',
+  nama_id: 'Nama',
+  nama_jp: 'Nama (Kanji)',
+  pekerjaan_id: 'Pekerjaan',
+  alamat_id: 'Alamat',
+};
+
+/** `uploads` reuses keys that mean something else elsewhere (`jft` = a URL). */
+const UPLOAD_LABEL: Record<string, string> = {
+  photo: 'Foto',
+  cv: 'CV',
+  jft: 'Sertifikat JFT',
+  ssw: 'Sertifikat SSW',
+  ktp: 'KTP',
+  kk: 'Kartu Keluarga',
+  ijazahSd: 'Ijazah SD',
+  ijazahSmp: 'Ijazah SMP',
+  ijazahSma: 'Ijazah SMA',
+  univ: 'Ijazah Universitas',
+  sim: 'SIM',
+  cert: 'Sertifikat',
+};
+
+/**
+ * Alias keys the backend emits beside the column they duplicate. Skipped only
+ * when the canonical key is present, so no value is printed twice — and no
+ * value is lost either.
+ */
+const MASTER_ALIAS: Record<string, string> = {
+  nama_sekolah: 'sekolah',
+  jurusan: 'jurusan_id',
+  tahun_masuk: 'masuk',
+  tahun_lulus: 'lulus',
+  nama_perusahaan: 'perusahaan',
+  tahun_keluar: 'keluar',
+  usia: 'umur',
+  bahasa_jepang: 'jft',
+  nilai: 'jft',
+  lisensi: 'ssw',
+  // `buildMasterNested` emits the "rencana pulang" pair twice (short and long
+  // key) pointing at the same two columns.
+  rencana_pulang_id: 'rencana_setelah_pulang',
+  rencana_pulang_jp: 'rencana_setelah_pulang_jp',
+};
+
+/** Top-level keys that are plumbing, not biodata. */
+const MASTER_SKIP = new Set(['AIDATAJSON', 'id_kandidat']);
+
+function prettify(key: string): string {
+  return key
+    .split('_')
+    .map((w) => (w.toUpperCase() === 'JP' ? 'JP' : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(' ');
+}
+
+function masterRows(obj: Record<string, unknown>, group: string): string[] {
+  const out: string[] = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (!has(v)) continue;
+    const alias = MASTER_ALIAS[k];
+    if (alias && has(obj[alias])) continue;
+    const label = group === 'uploads' ? UPLOAD_LABEL[k] || prettify(k) : MASTER_LABEL[k] || prettify(k);
+    out.push(row(label, String(v).trim()));
+  }
+  return out;
+}
+
+/** One master group. Returns `[]` when it has nothing to show. */
+function masterGroupLines(group: string, value: unknown): string[] {
+  const title = MASTER_GROUP_LABEL[group] || group.toUpperCase();
+  if (Array.isArray(value)) {
+    const entries = value.filter((e) => e && typeof e === 'object') as Record<string, unknown>[];
+    const body = entries.flatMap((e, i) => {
+      const inner = masterRows(e, group);
+      return inner.length ? [`  ${i + 1}.`, ...inner.map((l) => `  ${l}`)] : [];
+    });
+    return body.length ? [title, rule('-'), ...body, ''] : [];
+  }
+  if (value && typeof value === 'object') {
+    const inner = masterRows(value as Record<string, unknown>, group);
+    return inner.length ? [title, rule('-'), ...inner, ''] : [];
+  }
+  return [];
+}
 
 /**
  * The text handed to the browser. Sections are fixed; a section with nothing in
@@ -222,12 +441,23 @@ export function buildBiodataText(c: BiodataSource): string {
     lines.push('  (belum ada berkas)');
   }
 
-  lines.push('', 'BIODATA DETAIL', rule('-'));
-  const detail = Object.entries(bio).filter(([k, v]) => has(v) && !SHOWN_IN_IDENTITY.has(k));
-  if (detail.length) {
-    for (const [k, v] of detail) lines.push(row(labelFor(BIO_LABEL, k), String(v).trim()));
+  // Full master row when the caller fetched it; otherwise the handful of `bio`
+  // keys that ride along in the candidate payload. Never both — `bio` IS a
+  // subset of master, and printing it twice would be the opposite of "rapi".
+  const masterLines = Object.entries(c.master || {})
+    .filter(([g]) => !MASTER_SKIP.has(g))
+    .flatMap(([g, v]) => masterGroupLines(g, v));
+
+  if (masterLines.length) {
+    lines.push('', 'DATA MASTER (LENGKAP)', rule('='), '', ...masterLines);
   } else {
-    lines.push('  (belum ada biodata detail)');
+    lines.push('', 'BIODATA DETAIL', rule('-'));
+    const detail = Object.entries(bio).filter(([k, v]) => has(v) && !SHOWN_IN_IDENTITY.has(k));
+    if (detail.length) {
+      for (const [k, v] of detail) lines.push(row(labelFor(BIO_LABEL, k), String(v).trim()));
+    } else {
+      lines.push('  (belum ada biodata detail)');
+    }
   }
 
   return lines.join('\n');

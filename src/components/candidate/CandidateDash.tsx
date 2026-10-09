@@ -484,35 +484,54 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
            same formatter — legacy served both surfaces from one
            `downloadBiodataLengkap()`. Wiring it to `RirekishoBuilder` instead
            would have put a second, different document behind a label that says
-           "Download Full Biodata". */
-        onDownload={() => downloadBiodataText({
-          nama: data.nama,
-          wa: data.wa,
-          idKandidat: data.idKandidat,
-          gender: data.gender,
-          usia: data.usia,
-          fisik: data.tbBb,
-          pendidikan: data.pendidikan,
-          tmplahir: data.tempatLahir,
-          tgllahir: data.tglLahir,
-          email: data.email,
-          alamat: data.alamat,
-          jft: data.cvmini?.jftText,
-          ssw: data.cvmini?.sswText,
-          tahapan: data.tahapan,
-          status: data.status,
-          isVIP: data.isVIP,
-          isSiswaASJ: data.isSiswaASJ,
-          kelas: data.kelas,
-          /* "Job Yang Dilamar" tampil di kartu ini tepat di atas tombol, jadi ia
-             harus ikut ke berkasnya. `applications` (kode + status, dari mail)
-             dipakai lebih dulu; `dossierJobs` jadi jaring pengaman ketika belum
-             ada baris mail sama sekali. */
-          applications: (data.applications || []).map((a) => ({ code: a.code, status: a.status })),
-          jobs: dossierJobs,
-          berkas: data.berkas,
-          bio: data.bio,
-        })}
+           "Download Full Biodata".
+
+           Berkasnya memuat SELURUH baris master (bukan hanya `bio` yang ikut di
+           payload kandidat): `getDrafCvMaster` mengembalikan
+           `buildMasterNested(row)`. Diambil saat unduh supaya payload dashboard
+           tidak ikut membawa 169 kolom master. Gagal ambil ⇒ berkas tetap dibuat
+           dari data yang sudah ada. */
+        onDownload={async () => {
+          let master: Record<string, unknown> | undefined;
+          try {
+            const m = (await apiClient('getDrafCvMaster', [data.wa], {
+              onSessionInvalid: 'throw',
+              silent: true,
+            })) as Record<string, unknown> | null;
+            if (m && !m.error) master = m;
+          } catch {
+            /* master opsional */
+          }
+          downloadBiodataText({
+            nama: data.nama,
+            wa: data.wa,
+            idKandidat: data.idKandidat,
+            gender: data.gender,
+            usia: data.usia,
+            fisik: data.tbBb,
+            pendidikan: data.pendidikan,
+            tmplahir: data.tempatLahir,
+            tgllahir: data.tglLahir,
+            email: data.email,
+            alamat: data.alamat,
+            jft: data.cvmini?.jftText,
+            ssw: data.cvmini?.sswText,
+            tahapan: data.tahapan,
+            status: data.status,
+            isVIP: data.isVIP,
+            isSiswaASJ: data.isSiswaASJ,
+            kelas: data.kelas,
+            /* "Job Yang Dilamar" tampil di kartu ini tepat di atas tombol, jadi ia
+               harus ikut ke berkasnya. `applications` (kode + status, dari mail)
+               dipakai lebih dulu; `dossierJobs` jadi jaring pengaman ketika belum
+               ada baris mail sama sekali. */
+            applications: (data.applications || []).map((a) => ({ code: a.code, status: a.status })),
+            jobs: dossierJobs,
+            berkas: data.berkas,
+            bio: data.bio,
+            master,
+          });
+        }}
       />
 
       {/* ── Satu kontainer (§4.1) + rail kanan (§4.3) ──
