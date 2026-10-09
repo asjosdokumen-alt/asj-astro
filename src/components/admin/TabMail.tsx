@@ -33,10 +33,17 @@ export default function TabMail() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   /**
    * Baris yang sedang ditolak (#12). `null` = modal tertutup.
-   * Menyimpan seluruh baris, bukan cuma id, supaya judul modal bisa menyebut
-   * nama kandidat — admin perlu yakin barisnya benar sebelum menolak.
+   * Menyimpan seluruh baris, bukan cuma satu nilai, supaya judul modal bisa
+   * menyebut nama kandidat — admin perlu yakin barisnya benar sebelum menolak.
+   *
+   * 🔴 `rowIndex`, BUKAN `id`. Backend mail bekerja dengan **posisi baris**
+   * (`findFormByIndexFiltered` = `order=timestamp.desc&limit=1&offset=<idx>`),
+   * bukan primary key. Field `rowIndex` di payload `mapForm(row, i)` memang ada
+   * untuk dikirim balik. Mengirim `id` (mis. 144) membuatnya dibaca sebagai
+   * `offset=144` ⇒ baris yang di-approve bisa kandidat LAIN. Lihat
+   * `docs/PHASE_D_DATA_LAYER.md` §4.
    */
-  const [rejectTarget, setRejectTarget] = useState<null | { id: unknown; nama?: string }>(null);
+  const [rejectTarget, setRejectTarget] = useState<null | { rowIndex: unknown; nama?: string }>(null);
   /* Exit window (2026-09-28) — see `useOverlayPresence`. The render reads
      `rejectTarget.nama`, so the HELD value is what gets passed down. */
   const rejectTargetP = useOverlayPresence(rejectTarget);
@@ -59,9 +66,11 @@ export default function TabMail() {
     });
   };
 
-  const act = async (action: string, id: unknown, okMsg: string) => {
+  // `rowIndex` — posisi baris di daftar PENUH (urutan `timestamp.desc`), bukan
+  // `id`. Lihat catatan di `rejectTarget` di atas.
+  const act = async (action: string, rowIndex: unknown, okMsg: string) => {
     try {
-      const d: any = await api.secure(action, [id]);
+      const d: any = await api.secure(action, [rowIndex]);
       if (d && d.success) {
         showToast(okMsg, 'success');
         fetchMailFromAPI();
@@ -76,10 +85,15 @@ export default function TabMail() {
   /**
    * Hapus massal lamaran terpilih (#15).
    *
-   * Baris dikirim sebagai **index pada daftar `filtered`**, karena backend
-   * (`deleteForm`) memang bekerja dengan rowIndex. Backend menyelesaikan semua
-   * index → id lebih dulu, jadi mengirim daftar ini aman — pergeseran index
-   * ditangani di sana, bukan di sini.
+   * Baris dikirim sebagai **`rowIndex`** — posisi di daftar PENUH
+   * (`order=timestamp.desc`), sama persis dengan yang dibaca backend
+   * (`findFormByIndexFiltered`). ⚠ Sebelumnya dikirim posisi di daftar
+   * `filtered`: begitu ada filter status/pencarian aktif, index itu bergeser
+   * dan yang terhapus baris lain. `rowIndex` tidak bergeser saat difilter,
+   * jadi satu nilai benar untuk semua keadaan.
+   *
+   * Backend menyelesaikan semua index → id lebih dulu, jadi mengirim daftar
+   * ini aman — pergeseran index saat penghapusan ditangani di sana.
    *
    * Konfirmasi menyebut jumlah + menegaskan data kandidat TIDAK ikut terhapus,
    * persis teks legacy (`hapusFormMailTerpilih`).
@@ -90,8 +104,10 @@ export default function TabMail() {
       return;
     }
     const idxs: number[] = [];
-    filtered.forEach((m, i) => {
-      if (selected.has(String(m.id ?? m.wa ?? m.nama ?? ''))) idxs.push(i);
+    filtered.forEach((m) => {
+      if (!selected.has(String(m.id ?? m.wa ?? m.nama ?? ''))) return;
+      const ri = Number(m.rowIndex);
+      if (Number.isInteger(ri) && ri >= 0) idxs.push(ri);
     });
     if (idxs.length === 0) {
       showToast(t('ui.select_mail_first'), 'error');
@@ -123,9 +139,9 @@ export default function TabMail() {
    */
   const confirmReject = async (reason: string) => {
     if (!rejectTarget) return;
-    const { id, nama } = rejectTarget;
+    const { rowIndex, nama } = rejectTarget;
     try {
-      const d: any = await api.secure('rejectForm', [id, '', reason]);
+      const d: any = await api.secure('rejectForm', [rowIndex, '', reason]);
       if (d && d.success) {
         showToast(t('ui.toast_rejected_n').replace('{n}', String(nama || '')), 'success');
         setRejectTarget(null);
@@ -143,7 +159,7 @@ export default function TabMail() {
     const matchSearch = !searchText ||
       (m.nama || '').toLowerCase().includes(searchText.toLowerCase()) ||
       (m.wa || '').includes(searchText) ||
-      (m.idLoker || '').toLowerCase().includes(searchText.toLowerCase());
+      (m.code || '').toLowerCase().includes(searchText.toLowerCase());
     return matchStatus && matchSearch;
   });
 
@@ -238,12 +254,15 @@ export default function TabMail() {
                       pembaca layar tidak tahu baris mana yang ia pilih.
                       Nama diambil dari subjek barisnya sendiri. */}
                   <input type="checkbox" class="w-4 h-4 accent-rose-500 cursor-pointer"
-                    aria-label={t('ui.select_row').replace('{nama}', String(m.nama || m.wa || m.idLoker || ''))}
+                    aria-label={t('ui.select_row').replace('{nama}', String(m.nama || m.wa || m.code || ''))}
                     checked={selected.has(String(m.id ?? m.wa ?? m.nama ?? ''))}
                     onChange={() => toggleOne(String(m.id ?? m.wa ?? m.nama ?? ''))} />
                 </td>
                 <td class="p-4 text-xs text-slate-400">{m.timestamp || '-'}</td>
-                <td class="p-4"><span class="font-mono text-sky-300 text-xs">{m.idLoker || '-'}</span></td>
+                {/* Kode job dari `mapForm` bernama `code` (`row.code_job`), bukan
+                    `idLoker` — `idLoker` milik kandidat (`mapCandidate`), jadi
+                    kolom ini SELALU '-' sebelum dikoreksi. */}
+                <td class="p-4"><span class="font-mono text-sky-300 text-xs">{m.code || '-'}</span></td>
                 <td class="p-4 text-xs text-slate-400">{m.kategori || '-'}</td>
                 <td class="p-4 font-bold text-white text-sm">{m.nama || '-'}</td>
                 <td class="p-4 font-mono text-sky-300 text-xs">{m.wa || '-'}</td>
@@ -259,13 +278,13 @@ export default function TabMail() {
                 </td>
                 <td class="p-4 text-center">
                   <div class="flex flex-wrap justify-center gap-1">
-                    <button onClick={() => act('approveForm', m.id ?? m.wa, 'Lamaran LULUS')} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition">
+                    <button onClick={() => act('approveForm', m.rowIndex, 'Lamaran LULUS')} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition">
                       <Icon name="check" class="mr-1" /> {t('button.pass')}
                     </button>
-                    <button onClick={() => act('reviewForm', m.id ?? m.wa, 'Status REVIEW')} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition">
+                    <button onClick={() => act('reviewForm', m.rowIndex, 'Status REVIEW')} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition">
                       <Icon name="eye" class="mr-1" /> {t('button.review')}
                     </button>
-                    <button onClick={() => setRejectTarget({ id: m.id ?? m.wa, nama: m.nama })} class="min-h-11 px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[11px] font-bold shadow transition">
+                    <button onClick={() => setRejectTarget({ rowIndex: m.rowIndex, nama: m.nama })} class="min-h-11 px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[11px] font-bold shadow transition">
                       <Icon name="times" class="mr-1" /> {t('button.reject')}
                     </button>
                   </div>

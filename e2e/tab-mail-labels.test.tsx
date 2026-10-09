@@ -30,7 +30,7 @@
  * ikut mengukur hal lain yang bukan tanggung jawabnya.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, cleanup } from '@testing-library/preact';
+import { render, screen, fireEvent, cleanup } from '@testing-library/preact';
 import { atom } from 'nanostores';
 
 vi.mock('../src/store/i18n', () => ({
@@ -48,22 +48,26 @@ vi.mock('../src/store/i18n', () => ({
 vi.mock('../src/components/Toast', () => ({ showToast: () => {} }));
 // Tidak pernah selesai: `fetchMailFromAPI()` berjalan di effect mount, dan
 // promise yang resolve akan menimpa `mailList` yang sudah dipasang tes ini —
-// yaitu baris yang justru sedang diuji.
-vi.mock('../src/lib/apiClient', () => {
-  const pending = () => new Promise(() => {});
-  return {
-    default: { call: pending, secure: pending },
-    api: { call: pending, secure: pending },
-    apiClient: pending,
-  };
-});
+// yaitu baris yang justru sedang diuji. `secure` sekaligus MEREKAM panggilan,
+// supaya tes bisa memeriksa argumen yang dikirim tombol aksi.
+const { secureMock } = vi.hoisted(() => ({ secureMock: vi.fn(() => new Promise(() => {})) }));
+vi.mock('../src/lib/apiClient', () => ({
+  default: { call: secureMock, secure: secureMock },
+  api: { call: secureMock, secure: secureMock },
+  apiClient: secureMock,
+}));
 
 import { mailList, mailFilterStatus, mailSearchText } from '../src/store/adminStore';
 import TabMail from '../src/components/admin/TabMail';
 
+// Bentuk baris mengikuti payload NYATA: `mapForm(row, i)` mengirim `rowIndex`
+// (posisi di daftar penuh) dan `code` (dari kolom `code_job`). Sebelumnya fixture
+// memakai `idLoker` — field milik KANDIDAT, bukan mail — sehingga tes ini dulu
+// tidak pernah melihat ketidakcocokan yang ada di produksi.
 const ROW = {
   id: 'm1',
-  idLoker: 'TG591ASJ',
+  rowIndex: 0,
+  code: 'TG591ASJ',
   kategori: 'NOUGYOU SAYURAN',
   nama: 'Aria Uji',
   status: 'MENUNGGU',
@@ -72,6 +76,7 @@ const ROW = {
 };
 
 beforeEach(() => {
+  secureMock.mockClear();
   // Filter default bisa menyembunyikan barisnya, dan baris yang tak terlihat
   // membuat tes ini lulus secara hampa.
   mailFilterStatus.set('SEMUA');
@@ -83,7 +88,7 @@ afterEach(() => {
   mailList.set([]);
 });
 
-describe('TabMail — checkbox baris punya nama', () => {
+describe('TabMail — nama checkbox baris + payload aksi', () => {
   it('kontrol positif: barisnya benar-benar dirender', () => {
     render(<TabMail />);
     const rows = document.querySelectorAll('tbody tr');
@@ -111,5 +116,39 @@ describe('TabMail — checkbox baris punya nama', () => {
     const head = document.querySelector('thead input[type="checkbox"]');
     expect(head).toBeTruthy();
     expect((head?.getAttribute('aria-label') || '').trim()).toBe('ui.select_all');
+  });
+
+  // ── Payload aksi: `rowIndex`, bukan `id` ───────────────────────────────
+  // Backend mail membaca argumennya sebagai POSISI baris
+  // (`findFormByIndexFiltered` = `order=timestamp.desc&limit=1&offset=<idx>`).
+  // Mengirim `id` membuatnya dibaca sebagai offset — di daftar besar itu
+  // meng-approve kandidat LAIN tanpa error. Tes ini merah kalau kembali ke `id`.
+
+  it('tombol Lulus mengirim rowIndex (posisi), BUKAN id baris', () => {
+    render(<TabMail />);
+    const pass = screen.getByText('button.pass').closest('button') as HTMLButtonElement;
+    fireEvent.click(pass);
+
+    const call = secureMock.mock.calls.find((c) => c[0] === 'approveForm');
+    expect(call, 'approveForm tidak dipanggil').toBeTruthy();
+    expect(call?.[1]).toEqual([0]);
+    expect(call?.[1]).not.toEqual(['m1']);
+  });
+
+  it('tombol Review juga mengirim rowIndex', () => {
+    render(<TabMail />);
+    const review = screen.getByText('button.review').closest('button') as HTMLButtonElement;
+    fireEvent.click(review);
+
+    const call = secureMock.mock.calls.find((c) => c[0] === 'reviewForm');
+    expect(call, 'reviewForm tidak dipanggil').toBeTruthy();
+    expect(call?.[1]).toEqual([0]);
+  });
+
+  it('kolom Kode Job menampilkan kode dari field `code`', () => {
+    render(<TabMail />);
+    // Kolom ke-3 tabel: [0] checkbox, [1] tanggal, [2] kode job.
+    const cell = document.querySelectorAll('tbody tr td')[2];
+    expect(cell?.textContent).toContain('TG591ASJ');
   });
 });
