@@ -350,6 +350,8 @@ function isMutatingAction(action: string): boolean {
     'reviewForm', 'approveForm', 'rejectForm', 'deleteForm', 'hapusFormTerpilih',
     // Candidates
     'updateCatatanKandidat', 'updateKandidatSuper',
+    // CV template (2026-10-10) — `sys_config`, admin-only
+    'simpanTemplateCv', 'hapusTemplateCv',
     // Notify
     'simpanWaTemplate', 'hapusWaTemplate',
     'kirimSatuPesanFonnte', 'kirimTawaranMassal',

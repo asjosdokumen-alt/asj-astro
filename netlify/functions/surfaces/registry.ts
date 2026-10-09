@@ -73,6 +73,10 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   submitMasterForm:   () => import('./master').then(m => m.MASTER_ACTIONS),
   getDrafCvMaster:    () => import('./master').then(m => m.MASTER_ACTIONS),
   simpanUpdateMaster: () => import('./master').then(m => m.MASTER_ACTIONS),
+  // Template CV (2026-10-10) — admin-only CRUD `sys_config`.
+  getTemplateCvList:  () => import('./master').then(m => m.MASTER_ACTIONS),
+  simpanTemplateCv:   () => import('./master').then(m => m.MASTER_ACTIONS),
+  hapusTemplateCv:    () => import('./master').then(m => m.MASTER_ACTIONS),
 
   // ── Schedule ──────────────────────────────────────────────────────────────
   simpanJadwalBaru:    () => import('./schedule').then(m => m.SCHEDULE_ACTIONS),

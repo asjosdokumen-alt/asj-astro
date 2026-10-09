@@ -47,6 +47,10 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   submitMasterForm: '/.netlify/functions/master-data',
   getDrafCvMaster: '/.netlify/functions/master-data',
   simpanUpdateMaster: '/.netlify/functions/master-data',
+  // Template CV (2026-10-10) — admin-only CRUD `sys_config`.
+  getTemplateCvList: '/.netlify/functions/master-data',
+  simpanTemplateCv: '/.netlify/functions/master-data',
+  hapusTemplateCv: '/.netlify/functions/master-data',
 
   // Config
   updateSysConfig: '/.netlify/functions/config',
