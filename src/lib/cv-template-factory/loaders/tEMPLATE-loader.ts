@@ -131,6 +131,30 @@ export function flattenDataForPlaceholders(data: CandidateData): Record<string, 
   return flat;
 }
 
+/** `applyFieldMap` dan `applyRiwayatBlock` menulis satu nilai per sel. */
+export async function openWorkbookFromUrl(url: string): Promise<unknown> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Berkas template tidak bisa diambil (${res.status}).`);
+  const XLSX = await import('xlsx');
+  return XLSX.read(new Uint8Array(await res.arrayBuffer()), { type: 'array' });
+}
+
+/**
+ * Serialisasi workbook yang sudah diisi jadi berkas .xlsx.
+ *
+ * Dua helper ini ada supaya KOMPONEN tidak memanggil `fetch` mentah dan tidak
+ * meng-import `xlsx` sendiri: `CandidateProfileModal` punya tes yang menegakkan
+ * "tidak ada fetch mentah di sumbernya", dan satu tempat untuk aturan jaringan
+ * lebih baik daripada tersebar di tiap pemanggil.
+ */
+export async function workbookToXlsxBlob(workbook: unknown): Promise<Blob> {
+  const XLSX = await import('xlsx');
+  const buffer = XLSX.write(workbook as never, { type: 'buffer', bookType: 'xlsx' });
+  return new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+}
+
 function replacePlaceholders(text: string, flatData: Record<string, string>): string {
   return text.replace(PLACEHOLDER_RE, (match, key) => {
     const trimmed = key.trim();
