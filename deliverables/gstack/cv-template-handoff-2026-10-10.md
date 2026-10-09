@@ -1,5 +1,21 @@
 # Template CV — handoff penyambungan backend (langkah 1b + 2)
 
+> ## ✅ 1b + 2 SELESAI (commit `ea658e9`)
+> Tiga aksi sudah tersambung di **7 titik** dan semua gate hijau:
+> `getTemplateCvList`, `simpanTemplateCv`, `hapusTemplateCv` (admin-only,
+> `sys_config` config_type `cv_template`).
+>
+> Dua koreksi atas rencana di bawah, hasil pemeriksaan saat mengerjakan:
+> 1. **Tidak perlu Storage di server.** Berkas di-upload dari browser
+>    (`src/lib/uploadBerkas.ts`) dan pengisian berkas juga di browser
+>    (`applyFieldMap`/`applyRiwayatBlock` pakai `xlsx`), jadi server hanya CRUD
+>    `sys_config` — **tanpa berkas baru ⇒ ratchet `indexer` tidak bergeser**.
+> 2. **`surfaces/registry.ts` itu per-AKSI, bukan per-surface.** Rencana
+>    menganggapnya no-op; gate `verify:binding` menangkapnya
+>    (`allow-lists 'simpanTemplateCv' but its maps (master) do not own it`).
+>
+> **Sisa: hanya UI admin + entry point unduh (langkah 3).**
+
 Sisa pekerjaan fitur template CV. Semua mesinnya sudah ada dan **teruji**; yang
 kurang hanya penyambungan ke backend + UI. Dokumen ini mencatat titik-titik
 sunting yang persis, supaya sesi berikutnya mekanis.
