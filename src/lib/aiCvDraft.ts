@@ -32,7 +32,7 @@
  * Sengaja TIDAK mengubah kunci payload: itu kontrak dengan backend yang sudah
  * menyimpan data produksi. Hanya sisi BACA yang dibuat toleran.
  */
-import { getPath, isGood, mergeArrRiwayat, normalizeRiwayatFor } from './helpers_cv';
+import { getPath, isGood, mergeArrRiwayat, normalizeRiwayatFor, riwayatKeyOf } from './helpers_cv';
 
 /**
  * Daftar lengkap kunci flat AiCvForm — SATU sumber kebenaran. AiCvForm
@@ -286,21 +286,17 @@ const ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, readonly st
 };
 
 /**
- * Kunci dedupe — SAMA dengan `KEYOF` di `cv-template-factory/data.ts` dan
- * `keyOf` di `RirekishoBuilder.tsx` (tiga salinan, sengaja: mengekspornya dari
- * `helpers_cv` mengubah dua modul yang punya tes sendiri, dan ketiganya harus
- * sepakat supaya baris yang sama dari kolom master dan dari `ai_data_json`
- * tidak muncul dua kali di form DAN di rirekisho).
+ * Kunci dedupe — sekarang SATU definisi di `helpers_cv.ts` (`riwayatKeyOf`),
+ * dipakai bersama `cv-template-factory/data.ts` dan `RirekishoBuilder.tsx`.
+ * Sebelumnya tiga salinan yang "sengaja" dipisah; ketiganya sepakat pada aturan
+ * yang salah (`tingkat + sekolah`), jadi baris kembar lolos dari dedupe di
+ * KETIGA permukaan sekaligus.
  */
 const ROW_KEYOF: Record<(typeof RIWAYAT_TIPE)[number], (e: Record<string, unknown>) => string> = {
-  pendidikan: (e) => cleanRowKey(String(e.tingkat || '') + String(e.sekolah || e.sekolah_id || e.nama_sekolah || '')),
-  pekerjaan: (e) => cleanRowKey(String(e.perusahaan || e.perusahaan_id || e.nama_perusahaan || '') + String(e.jabatan || e.jabatan_id || '')),
-  keluarga: (e) => cleanRowKey(String(e.nama || '')),
+  pendidikan: (e) => riwayatKeyOf('pendidikan', e),
+  pekerjaan: (e) => riwayatKeyOf('pekerjaan', e),
+  keluarga: (e) => riwayatKeyOf('keluarga', e),
 };
-
-function cleanRowKey(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
 
 /** Satu entri (ejaan apa pun) → baris flat `AiCvForm`. Kunci kosong dibuang. */
 function toFlatRow(entry: Record<string, unknown>, keys: Record<string, readonly string[]>): AiCvRow {

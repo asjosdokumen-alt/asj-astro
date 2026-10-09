@@ -112,6 +112,40 @@ function cleanKey(s: string): string {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+/**
+ * Identitas satu baris riwayat.
+ *
+ * 🔴 NAMA dulu (sekolah / perusahaan / nama orang), baru tingkat/jabatan.
+ *
+ * Sebelumnya kuncinya `tingkat + sekolah` yang DISAMBUNG. Itu tidak pernah
+ * menyatukan baris yang sama dari dua sumber, karena kedua sumber menulis
+ * tingkat dengan ejaan berbeda: kolom master menyimpan `SMA/SMK` sementara
+ * `ai_data_json` menyimpan `SMK` untuk sekolah yang SAMA. Hasilnya baris
+ * kembar yang tidak bisa dibuang oleh dedupe — terukur pada AGUS KHOCI
+ * (ASJ00040): 11 baris pendidikan untuk 4 sekolah, dan angka itu ikut ke
+ * form master, rirekisho, DAN berkas unduhan biodata.
+ *
+ * Periode ikut masuk kunci supaya dua masa kerja di perusahaan yang sama tetap
+ * dua baris; baris tanpa periode di kedua sisi tetap menyatu.
+ */
+function riwayatKey(
+  e: Record<string, unknown> | null | undefined,
+  nameKeys: string[],
+  altKeys: string[],
+  periodKeys: string[],
+): string {
+  const pick = (keys: string[]): string => {
+    for (const k of keys) {
+      const v = e ? e[k] : undefined;
+      if (v !== undefined && v !== null && String(v).trim() !== '') return cleanKey(String(v));
+    }
+    return '';
+  };
+  const name = pick(nameKeys);
+  const alt = pick(altKeys);
+  return (name ? 's:' + name : 't:' + alt) + '|' + periodKeys.map((k) => pick([k])).join('');
+}
+
 function entryHasAny(entry: any, keys: string[]): boolean {
   return keys.some((k) => { const val = entry[k]; return val !== undefined && val !== null && String(val).trim() !== '' && String(val).trim() !== '-'; });
 }
@@ -182,7 +216,9 @@ export function buildMasterNested(row: any): any {
           tahun_lulus: v('pendidikan_' + i + '_tahun_lulus') });
       }
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['tingkat', 'sekolah', 'nama_sekolah', 'jurusan_id', 'jurusan', 'masuk', 'lulus'])),
-        aiArrOf('pendidikan'), (e) => cleanKey((e.tingkat || '') + (e.sekolah || e.sekolah_id || e.nama_sekolah || '')));
+        aiArrOf('pendidikan'), (e) => riwayatKey(e,
+          ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'],
+          ['masuk', 'tahun_masuk', 'lulus', 'tahun_lulus']));
     })(),
     pekerjaan: (function () {
       const arr: any[] = [];
@@ -196,7 +232,9 @@ export function buildMasterNested(row: any): any {
           tahun_keluar: v('pekerjaan_' + i + '_tahun_keluar'), gaji: v('pekerjaan_' + i + '_gaji') });
       }
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['perusahaan', 'nama_perusahaan', 'jabatan', 'masuk', 'keluar'])),
-        aiArrOf('pekerjaan'), (e) => cleanKey((e.perusahaan || e.perusahaan_id || e.nama_perusahaan || '') + (e.jabatan || e.jabatan_id || '')));
+        aiArrOf('pekerjaan'), (e) => riwayatKey(e,
+          ['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt'], ['jabatan', 'jabatan_id'],
+          ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar']));
     })(),
     keluarga: (function () {
       const arr: any[] = [];
@@ -293,8 +331,16 @@ function mergeAiOverflow(ai: any, overflow: any): any {
   };
   if (overflow.kenalan_jepang) ai.kenalan_jepang = mergeObj(ai.kenalan_jepang, overflow.kenalan_jepang);
   if (overflow.wawancara) ai.wawancara = mergeObj(ai.wawancara, overflow.wawancara);
-  if (overflow.pendidikan) setSlot('pendidikan', overflow.pendidikan, (e) => cleanKey((e.tingkat || '') + (e.sekolah || '')));
-  if (overflow.pekerjaan) setSlot('pekerjaan', overflow.pekerjaan, (e) => cleanKey(e.perusahaan || ''));
+  // Kunci yang SAMA dengan `buildMasterNested` — kalau keduanya berbeda,
+  // menyimpan menemukan "baris baru" untuk baris yang sebenarnya sudah ada dan
+  // menambahkannya lagi, yaitu persis kebocoran yang membuat baris riwayat
+  // berlipat.
+  if (overflow.pendidikan) setSlot('pendidikan', overflow.pendidikan, (e) => riwayatKey(e,
+    ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'],
+    ['masuk', 'tahun_masuk', 'lulus', 'tahun_lulus']));
+  if (overflow.pekerjaan) setSlot('pekerjaan', overflow.pekerjaan, (e) => riwayatKey(e,
+    ['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt'], ['jabatan', 'jabatan_id'],
+    ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar']));
   if (overflow.keluarga) setSlot('keluarga', overflow.keluarga, (e) => cleanKey((e.nama || '') + (e.hubungan || '')));
   return ai;
 }

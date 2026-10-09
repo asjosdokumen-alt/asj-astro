@@ -53,7 +53,7 @@ const genderSelect = () => selects()[0] as HTMLSelectElement;
 const pendidikanSelect = () => selects()[1] as HTMLSelectElement;
 
 function submit() {
-  fireEvent.click(screen.getByRole('button', { name: 'Simpan CV Mini' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Simpan Profil' }));
 }
 
 describe('CvMiniModal (A09)', () => {
@@ -77,7 +77,7 @@ describe('CvMiniModal (A09)', () => {
     render(<CvMiniModal onClose={() => {}} />);
     expect(screen.getByText('Update Profil')).toBeTruthy();
     expect(screen.getByText(/Perbarui data Anda di bawah ini agar perusahaan tertarik/)).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Simpan CV Mini' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Simpan Profil' })).toBeTruthy();
     expect(screen.getByText('PAS PHOTO TERBARU (JPG/PNG)')).toBeTruthy();
     const pend = pendidikanSelect();
     expect(Array.from(pend.options).map(o => o.value)).toEqual(['-', ...PENDIDIKAN_OPTIONS]);
@@ -125,7 +125,7 @@ describe('CvMiniModal (A09)', () => {
     expect(payload.photo).toBeUndefined();
     expect(payload.photoFile).toBeUndefined();
     await waitFor(() => expect(onClose).toHaveBeenCalled());
-    expect(vi.mocked(showToast)).toHaveBeenCalledWith('CV Mini Berhasil Diperbarui!', 'success');
+    expect(vi.mocked(showToast)).toHaveBeenCalledWith('Profil Berhasil Diperbarui!', 'success');
     expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: 'candidates-changed' }));
   });
 

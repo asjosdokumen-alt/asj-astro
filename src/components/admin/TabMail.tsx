@@ -259,10 +259,13 @@ export default function TabMail() {
                     onChange={() => toggleOne(String(m.id ?? m.wa ?? m.nama ?? ''))} />
                 </td>
                 <td class="p-4 text-xs text-slate-400">{m.timestamp || '-'}</td>
-                {/* Kode job dari `mapForm` bernama `code` (`row.code_job`), bukan
-                    `idLoker` — `idLoker` milik kandidat (`mapCandidate`), jadi
-                    kolom ini SELALU '-' sebelum dikoreksi. */}
-                <td class="p-4"><span class="font-mono text-sky-300 text-xs">{m.code || '-'}</span></td>
+                {/* Kode job dari `mapForm` bernama `code` (`row.code_job`).
+                    Baris TANPA kode job bukan lamaran loker melainkan baris
+                    biodata/dokumen — `database_asj_form` menyimpan keduanya di
+                    satu tabel (lihat `isBiodataRow`). Dulu baris itu berlabel
+                    sentinel "UMUM"; sentinel itu sudah dibuang, jadi labelnya
+                    sekarang kata yang sebenarnya: BIODATA. */}
+                <td class="p-4"><span class="font-mono text-sky-300 text-xs">{m.code || 'BIODATA'}</span></td>
                 <td class="p-4 text-xs text-slate-400">{m.kategori || '-'}</td>
                 <td class="p-4 font-bold text-white text-sm">{m.nama || '-'}</td>
                 <td class="p-4 font-mono text-sky-300 text-xs">{m.wa || '-'}</td>

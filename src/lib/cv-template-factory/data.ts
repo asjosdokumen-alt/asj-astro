@@ -1,10 +1,10 @@
 ﻿import type { CandidateData } from './types';
-import { getPath, makeV, mergeArrRiwayat, normalizeRiwayatFor, sortEdu } from '../helpers_cv';
+import { getPath, makeV, mergeArrRiwayat, normalizeRiwayatFor, sortEdu, riwayatKeyOf } from '../helpers_cv';
 
 const KEYOF: Record<string, (e: Record<string, unknown>) => string> = {
-  pendidikan: (e) => (String(e.tingkat || '') + String(e.sekolah || e.sekolah_id || e.nama_sekolah || '')).toLowerCase().replace(/[^a-z0-9]/g, ''),
-  pekerjaan: (e) => (String(e.perusahaan || e.perusahaan_id || e.nama_perusahaan || '') + String(e.jabatan || e.jabatan_id || '')).toLowerCase().replace(/[^a-z0-9]/g, ''),
-  keluarga: (e) => String(e.nama || '').toLowerCase().replace(/[^a-z0-9]/g, ''),
+  pendidikan: (e) => riwayatKeyOf('pendidikan', e),
+  pekerjaan: (e) => riwayatKeyOf('pekerjaan', e),
+  keluarga: (e) => riwayatKeyOf('keluarga', e),
 };
 
 export function normalizeMasterData(row: Record<string, unknown>): CandidateData {

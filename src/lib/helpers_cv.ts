@@ -132,6 +132,49 @@ export function mergeArrRiwayat(
 }
 
 // ---------------------------------------------------------------------------
+// ROW IDENTITY for the three riwayat sections — ONE definition.
+// ---------------------------------------------------------------------------
+// Previously each consumer (AiCvForm's draft, RirekishoBuilder, the CV template
+// factory) carried its own copy of this key and they had to "agree". They did
+// agree — on the WRONG rule, which is why the duplicates below survived.
+//
+// 🔴 The old rule concatenated `tingkat + sekolah`. That never unites the same
+// row coming from the two sources, because the two sources spell the level
+// differently: the master columns hold `SMA/SMK` while `ai_data_json` holds
+// `SMK` for the SAME school. The concatenated keys differ, so `mergeArrRiwayat`
+// keeps both and the row shows up twice — in the AI CV form, in the rirekisho,
+// and in the biodata download. Measured on AGUS KHOCI (ASJ00040): 11 education
+// rows for 4 schools.
+//
+// Identity is therefore the NAME (school / company / person), falling back to
+// the level only when no name is present. The period is part of the key so two
+// stints at the same company stay two rows.
+export function riwayatKeyOf(
+  tipe: 'pendidikan' | 'pekerjaan' | 'keluarga',
+  e: Record<string, unknown>,
+): string {
+  const clean = (s: unknown) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const pick = (keys: string[]): string => {
+    for (const k of keys) {
+      const v = e[k];
+      if (v !== undefined && v !== null && String(v).trim() !== '') return clean(v);
+    }
+    return '';
+  };
+  if (tipe === 'keluarga') return clean(e.nama);
+  const name =
+    tipe === 'pendidikan'
+      ? pick(['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'])
+      : pick(['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt']);
+  const alt = tipe === 'pendidikan' ? pick(['tingkat']) : pick(['jabatan', 'jabatan_id']);
+  const period =
+    tipe === 'pendidikan'
+      ? ['masuk', 'tahun_masuk', 'lulus', 'tahun_lulus'].map((k) => pick([k])).join('')
+      : ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar'].map((k) => pick([k])).join('');
+  return `${name ? `s:${name}` : `t:${alt}`}|${period}`;
+}
+
+// ---------------------------------------------------------------------------
 // CENTRAL RIWAYAT KEY NORMALIZER — ported from legacy js/helpers_cv.ts
 // ---------------------------------------------------------------------------
 // The two riwayat sources use two different key shapes:

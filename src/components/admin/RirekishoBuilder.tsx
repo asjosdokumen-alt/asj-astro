@@ -4,7 +4,7 @@ import { useStore } from "@nanostores/preact";
 import { authStore } from "../../store/authReactive";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
-import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, sortEdu } from "../../lib/helpers_cv";
+import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, sortEdu, riwayatKeyOf } from "../../lib/helpers_cv";
 import { useOverlay } from "../ui/useOverlay";
 
 interface Props {
@@ -82,9 +82,9 @@ body *{visibility:hidden!important}
 .cv-excel tr{page-break-inside:avoid}}
 `;
 const keyOf = {
-  pendidikan: (e: Record<string, string>) => String((e.tingkat||"")+(e.sekolah||e.sekolah_id||e.nama_sekolah||"")).toLowerCase().replace(/[^a-z0-9]/g,""),
-  pekerjaan: (e: Record<string, string>) => String((e.perusahaan||e.perusahaan_id||e.nama_perusahaan||"")+(e.jabatan||e.jabatan_id||"")).toLowerCase().replace(/[^a-z0-9]/g,""),
-  keluarga: (e: Record<string, string>) => String(e.nama||"").toLowerCase().replace(/[^a-z0-9]/g,""),
+  pendidikan: (e: Record<string, string>) => riwayatKeyOf('pendidikan', e),
+  pekerjaan: (e: Record<string, string>) => riwayatKeyOf('pekerjaan', e),
+  keluarga: (e: Record<string, string>) => riwayatKeyOf('keluarga', e),
 };
 export function buildEduRows(eduList: Record<string, any>[], v: (...keys: string[]) => string) {
   let html = "";
