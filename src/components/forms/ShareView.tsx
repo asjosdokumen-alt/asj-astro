@@ -4,11 +4,13 @@
  *
  * B06 parity (2026-09-05) fixed ROOT bugs:
  *  1. Data contract: the view read invented fields (id/nama/wa/photo/cvUrl/
- *     jftUrl/…) but the backend returns id_kandidat/nama_lengkap/no_wa/
+ *     jftUrl/…) but the backend returns id_kandidat/nama_lengkap/
  *     pas_photo/file_cv/jft/ssw/nilai_jft_text/bidang_ssw_text/extraDocs and
  *     job {code,name,tsk} — every card rendered with undefined name/gender,
  *     no document buttons, and a wa.me/<undefined> link. Now adapted exactly
  *     like legacy renderGrid + the backend response shape.
+ *     (2026-10-09, finding #9: the backend no longer sends `no_wa` — the phone
+ *     number was never rendered here, and this endpoint is public by job code.)
  *  2. Access model: public by job code, exactly as legacy — `share?job=CODE`,
  *     no account, no token. A stale `?tk=` in an old link is ignored, not
  *     rejected (the per-job token gate was retired 2026-09-13).
@@ -36,7 +38,6 @@ import { useOverlayPresence } from '../ui/useOverlayPresence';
 
 interface ShareCandidate {
   id_kandidat: string;
-  no_wa: string;
   nama_lengkap: string;
   gender: string;
   usia: number | string;

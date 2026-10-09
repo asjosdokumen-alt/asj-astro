@@ -118,12 +118,17 @@ describe('B06 — the share viewer is public by job code (legacy contract)', () 
     expect(out.job?.code).toBe('TG658');
     expect(out.job?.name).toBe('Perawat Jepang');
     expect(out.candidates).toHaveLength(1);
-    // Proves the raw→camelCase mapping is exercised: these three come out of
+    // Proves the raw→camelCase mapping is exercised: these come out of
     // `mapCandidate`, so an identity mapper cannot pass this by accident.
-    const c0 = (out.candidates as Array<{ id_kandidat?: string; no_wa?: string; nama_lengkap?: string }>)[0];
+    const c0 = (out.candidates as Array<Record<string, unknown>>)[0];
     expect(c0.id_kandidat).toBe('K1');
-    expect(c0.no_wa).toBe('628111222333');
     expect(c0.nama_lengkap).toBe('Budi Santoso');
+    // 🔴 Regression guard (finding #9, 2026-10-09): the PUBLIC share payload
+    // must NOT carry the candidate phone number. This endpoint is public by an
+    // enumerable job code, and the viewer never rendered `no_wa` — keeping it
+    // turned "guess a code, see a shortlist" into "harvest phone numbers".
+    expect('no_wa' in c0).toBe(false);
+    expect(JSON.stringify(out.candidates)).not.toContain('628111222333');
   });
 
   it('ignores a stale ?tk= — links handed out before 2026-09-13 keep working', async () => {

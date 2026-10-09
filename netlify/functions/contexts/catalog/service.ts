@@ -153,6 +153,12 @@ export async function handleGetMonthlyReport(_payload: any[], sessionToken?: str
 //     is set per job by an admin (default CV/JFT/SSW);
 //   · the list is what is protected here — the files themselves live on a public
 //     bucket, so a leaked document URL was never protected by this gate anyway.
+//
+// What the payload may carry was tightened on 2026-10-09 (finding #9): the
+// candidate phone number (`no_wa`) is gone. It was never read by the viewer, and
+// on an enumerable, CORS-open endpoint it was the one field that turned "guess a
+// code, see a shortlist" into "harvest phone numbers". Everything else the viewer
+// needs to do its job (name, id, chips, documents) is unchanged.
 export async function handleShareData(jobCode: string) {
   const code = String(jobCode || '').trim();
   if (!code) return { error: 'Kode job tidak ditemukan.' };
@@ -276,7 +282,14 @@ export async function handleShareData(jobCode: string) {
         else if (t === 'JFT' && (!finalJft || finalJft === '-')) { finalJft = doc.url; extraDocs.splice(i, 1); }
         else if (t === 'SSW' && (!finalSsw || finalSsw === '-')) { finalSsw = doc.url; extraDocs.splice(i, 1); }
       }
-      candidates.push({ id_kandidat: c.idKandidat, no_wa: c.wa, nama_lengkap: c.nama, gender: c.gender, usia: c.usia, tb: c.tb, bb: c.bb, pas_photo: pasPhoto, file_cv: finalCv, jft: finalJft, ssw: finalSsw, nilai_jft_text: c.jftText, bidang_ssw_text: c.sswText, extraDocs });
+      // 🔴 `no_wa` SENGAJA tidak dikirim (temuan #9, 2026-10-09). Halaman ini
+      // publik & kode job bisa dienumerasi (`TG1…TG999`), jadi nomor HP
+      // kandidat di sini = PII yang bisa dipanen lintas-origin (endpoint ini
+      // `Access-Control-Allow-Origin: *`). Viewer-nya tidak pernah memakainya —
+      // `ShareView` cuma membaca nama + id_kandidat (lihat `submitSelection`).
+      // Kalau kelak memang dibutuhkan, kembalikan bersama pembatas aksesnya
+      // (token per-job), bukan sendirian.
+      candidates.push({ id_kandidat: c.idKandidat, nama_lengkap: c.nama, gender: c.gender, usia: c.usia, tb: c.tb, bb: c.bb, pas_photo: pasPhoto, file_cv: finalCv, jft: finalJft, ssw: finalSsw, nilai_jft_text: c.jftText, bidang_ssw_text: c.sswText, extraDocs });
     }
     return { job: { code, name, tsk: toText(pick(jobRow, ['tsk', 'pengurus'])) }, candidates };
   } catch (e: any) {
