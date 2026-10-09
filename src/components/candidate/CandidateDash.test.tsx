@@ -643,7 +643,10 @@ describe('CandidateDash — kartu dossier sebagai header profil', () => {
        kandidat mengedit dari grid. Tes ini merah kalau tombol kedua muncul
        kembali di kartu (versi pertama kartu memang punya satu). */
     expect(screen.getAllByRole('button', { name: 'ui.update_cv_mini' })).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'ui.cv_download_biodata' })).toBeTruthy();
+    // Unduhan biodata = ADMIN SAJA (perintah pemilik 2026-10-10). Berkasnya
+    // memuat seluruh baris master (NIK, nomor HP, data keluarga), jadi tombolnya
+    // TIDAK boleh ada di permukaan kandidat. Dulu ada di sini.
+    expect(screen.queryByRole('button', { name: 'ui.cv_download_biodata' })).toBeNull();
   });
 
   it('TIDAK merender satu pun permukaan admin-only dari dossier legacy', async () => {

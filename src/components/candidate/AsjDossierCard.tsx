@@ -36,9 +36,9 @@
  * `CandidateDash.test.tsx` asserts this card renders none of those markers, so
  * re-adding one fails a test rather than quietly leaking a private field.
  *
- * PRESENTATIONAL ONLY. Props in, markup out: no fetch, no store, no query. It
- * takes an `onDownload` callback instead of importing the exporter, so the
- * component stays free of side effects and the dashboard owns the wiring.
+ * PRESENTATIONAL ONLY. Props in, markup out: no fetch, no store, no query — and
+ * no download CTA either (removed 2026-10-10, see the note at the end of the
+ * markup): the biodata download is admin-only.
  *
  * THEME-AWARE (owner ruling: "ikut tema"). The tinted chips reuse the legacy
  * literal classes (`bg-emerald-900/40`, `text-emerald-400`, …) ON PURPOSE: the
@@ -81,7 +81,6 @@ export type AsjDossierCardProps = {
   kelas?: string;
   /** Injected by the dashboard so this file does not own the crown/VIP artwork. */
   badge?: ComponentChildren;
-  onDownload: () => void;
 };
 
 /** `'-'`, `'null'`, `'undefined'` and whitespace all mean "no value" in this
@@ -267,17 +266,13 @@ export default function AsjDossierCard(props: AsjDossierCardProps) {
         </div>
       )}
 
-      {/* ── CTA. The same artefact the admin panel produces, from the same
-             formatter (`src/lib/biodataExport.ts`) — legacy served both surfaces
-             from one `downloadBiodataLengkap()`. ── */}
-      <button
-        type="button"
-        onClick={props.onDownload}
-        class="w-full mt-2 inline-flex items-center justify-center gap-2 py-3 min-h-[48px] rounded-control bg-surface-sunken border border-emerald-500/50 hover:bg-emerald-700 text-accent-emerald hover:text-white text-caption font-bold transition-colors select-none"
-      >
-        <Icon name="download" />
-        {t('ui.cv_download_biodata')}
-      </button>
+      {/* ── CTA DIHAPUS 2026-10-10 (perintah pemilik: unduhan biodata = ADMIN
+             SAJA). Dulu kartu ini memegang tombol "Download Full Biodata" yang
+             memanggil formatter yang sama dengan panel admin. Sekarang tombolnya
+             hanya ada di `admin/CandidateProfileModal.tsx`, sejalan dengan
+             aturan di `src/lib/biodataExport.ts`: berkas biodata memuat SELURUH
+             baris master (NIK, nomor HP, data keluarga), dan itu bukan dokumen
+             yang boleh beredar dari permukaan yang dipegang kandidat. ── */}
     </section>
   );
 }
