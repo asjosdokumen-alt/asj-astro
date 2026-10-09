@@ -7,6 +7,7 @@ export {
   loadPdfTemplate,
   flattenDataForPlaceholders,
   analyzeExcelTemplate,
+  analyzeFromExample,
   applyFieldMap,
 } from './loaders/tEMPLATE-loader';
-export type { ExcelTemplateOptions, TemplateFieldMap } from './loaders/tEMPLATE-loader';
+export type { ExcelTemplateOptions, TemplateFieldMap, ExampleAnalysis } from './loaders/tEMPLATE-loader';

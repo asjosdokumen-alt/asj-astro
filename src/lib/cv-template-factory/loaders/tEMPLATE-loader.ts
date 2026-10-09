@@ -141,6 +141,103 @@ function replacePlaceholders(text: string, flatData: Record<string, string>): st
   });
 }
 
+// ---------------------------------------------------------------------------
+// BELAJAR DARI CONTOH TERISI (keputusan pemilik 2026-10-09: opsi C)
+// ---------------------------------------------------------------------------
+// Admin mengisi template dengan data SATU kandidat nyata lalu meng-upload-nya
+// sekali. Peta sel→field disimpulkan dengan mencocokkan NILAI di setiap sel
+// terhadap nilai field kandidat itu — jadi tidak perlu mengetik
+// `{{placeholder}}` di setiap sel, dan template yang sudah terisi penuh
+// langsung bisa dipakai ulang untuk kandidat lain.
+//
+// Syarat yang tidak bisa dihindari: contohnya harus dari kandidat yang datanya
+// ADA di database. Tanpa itu tidak ada yang bisa dicocokkan, dan peta harus
+// diisi manual. Sel yang nilainya cocok dengan LEBIH DARI SATU field tidak
+// ditebak — dimasukkan ke `ambiguous` supaya admin memilih.
+export interface ExampleAnalysis {
+  /** sel → path data (siap diserahkan ke `applyFieldMap`) */
+  fieldMap: TemplateFieldMap;
+  /** sel → daftar path yang nilainya sama; admin harus memilih satu */
+  ambiguous: Record<string, string[]>;
+  /** path yang TIDAK ketemu di template — admin tahu apa yang belum tertampung */
+  unmatched: string[];
+}
+
+/** Nilai yang terlalu pendek/terlalu umum untuk dijadikan bukti. */
+function tooWeakToMatch(v: string): boolean {
+  const s = v.trim();
+  if (s.length < 3) return true;
+  if (/^[-–—.,;:/\\|]+$/.test(s)) return true;
+  return false;
+}
+
+function matchKey(v: unknown): string {
+  return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+export async function analyzeFromExample(
+  workbook: unknown,
+  data: CandidateData,
+): Promise<ExampleAnalysis> {
+  const XLSX = await import('xlsx');
+  const wb = workbook as {
+    SheetNames: string[];
+    Sheets: Record<string, Record<string, { v?: unknown; t?: string }>>;
+  };
+  const flat = flattenDataForPlaceholders(data);
+
+  // Nilai → path. Hanya nilai yang cukup khas yang boleh jadi bukti.
+  const byValue = new Map<string, string[]>();
+  for (const [path, value] of Object.entries(flat)) {
+    const key = matchKey(value);
+    if (!key || tooWeakToMatch(String(value))) continue;
+    const list = byValue.get(key) ?? [];
+    if (!list.includes(path)) list.push(path);
+    byValue.set(key, list);
+  }
+
+  const fieldMap: TemplateFieldMap = {};
+  const ambiguous: Record<string, string[]> = {};
+  const used = new Set<string>();
+
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    if (!sheet) continue;
+    const range = XLSX.utils.decode_range((sheet['!ref'] as string) || 'A1');
+    for (let row = range.s.r; row <= range.e.r; row++) {
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const addr = XLSX.utils.encode_cell({ r: row, c: col });
+        const cell = sheet[addr];
+        if (!cell || cell.v === null || cell.v === undefined) continue;
+        const text = String(cell.v);
+
+        // `{{path}}` selalu menang: itu perintah eksplisit, bukan tebakan.
+        const token = PLACEHOLDER_RE.exec(text);
+        PLACEHOLDER_RE.lastIndex = 0;
+        if (token && flat[token[1].trim()] !== undefined) {
+          fieldMap[addr] = token[1].trim();
+          used.add(token[1].trim());
+          continue;
+        }
+
+        const paths = byValue.get(matchKey(text));
+        if (!paths?.length) continue;
+        if (paths.length === 1) {
+          fieldMap[addr] = paths[0];
+          used.add(paths[0]);
+        } else {
+          ambiguous[addr] = paths;
+        }
+      }
+    }
+  }
+
+  const unmatched = Object.keys(flat).filter(
+    (p) => !used.has(p) && !tooWeakToMatch(String(flat[p])),
+  );
+  return { fieldMap, ambiguous, unmatched };
+}
+
 export async function analyzeExcelTemplate(workbook: unknown): Promise<TemplateFieldMap> {
   const XLSX = await import('xlsx');
   const wb = workbook as { SheetNames: string[]; Sheets: Record<string, Record<string, { v?: unknown; t?: string }>> };
