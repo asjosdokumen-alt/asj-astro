@@ -24,7 +24,32 @@
  * is deliberately absent too — it is rendered on the dashboard as
  * "Pesan / Evaluasi dari Admin", not exported into a file the candidate forwards
  * around.
+ *
+ * ── 2026-10-09: "rapikan dan semua datanya masuk" (owner request) ─────────────
+ * The first port reproduced the legacy string byte-for-byte. That string had two
+ * problems the owner hit immediately:
+ *
+ *   1. **It printed raw projection keys.** `berkas`/`bio` are keyed by the short
+ *      codes the backend uses (`kk`, `ayah`, `pt`, `kotapasport`), so the file
+ *      read `ayah: BUDI` and `pt: PT. X` — unreadable for anyone but the code.
+ *      Both sections now go through explicit label maps below.
+ *   2. **It was missing whole blocks the UI already shows.** "Job Yang Dilamar"
+ *      is rendered in the admin dossier AND on the candidate card, right above
+ *      the download button, and the file simply did not contain it. `kelas` and
+ *      the Siswa-ASJ flag were missing the same way.
+ *
+ * The identity rows fall back to the master copy in `bio` when the candidate row
+ * itself is empty, so no value can be present in one section and lost in the
+ * other. The four `bio` keys that duplicate an identity row are therefore not
+ * printed twice.
  */
+
+/** One row of the "Job Yang Dilamar" block, as `attachApplications` emits it. */
+export type BiodataApplication = {
+  code?: string;
+  kategori?: string;
+  status?: string;
+};
 
 export type BiodataSource = {
   nama?: string;
@@ -46,52 +71,165 @@ export type BiodataSource = {
   tahapan?: string;
   status?: string;
   isVIP?: boolean;
+  isSiswaASJ?: boolean;
+  /** Class tag (`[KELAS G]` → `"G"`), as `mapCandidate` derives it. */
+  kelas?: string;
+  /** Rich rows (admin dossier). Takes precedence over `jobs` when non-empty. */
+  applications?: BiodataApplication[];
+  /** Bare job codes (candidate dashboard's `dossierJobs`). */
+  jobs?: string[];
   berkas?: Record<string, string>;
   bio?: Record<string, string>;
 };
 
 /** `'-'` is the projections' own "no value" marker, so it is normalised to it. */
-function field(v: unknown): string {
+function has(v: unknown): boolean {
   const s = String(v ?? '').trim();
-  return s && s !== 'null' && s !== 'undefined' ? s : '-';
+  return !!s && s !== 'null' && s !== 'undefined' && s !== '-';
+}
+
+function field(v: unknown): string {
+  return has(v) ? String(v).trim() : '-';
 }
 
 /**
- * The exact text the legacy function produced. Kept byte-for-byte in shape
- * because people paste this into chat and email: changing a label here changes
- * a document, not a screen.
+ * Projection key → human label. Unknown keys are NOT dropped (a new document
+ * column must still show up in the file); they fall back to the raw key, which
+ * is what `labelFor` does.
+ */
+const BERKAS_LABEL: Record<string, string> = {
+  kk: 'Kartu Keluarga',
+  akte: 'Akta Lahir',
+  sd: 'Ijazah SD',
+  smp: 'Ijazah SMP',
+  sma: 'Ijazah SMA',
+  univ: 'Ijazah Universitas',
+  pasport: 'Paspor',
+  mcu: 'MCU / Medical Check-up',
+  kontrak: 'Kontrak Kerja',
+  cert: 'Sertifikat Jepang',
+  ktp: 'KTP',
+  foto2: 'Foto Studio',
+  ijinortu: 'Surat Izin Orang Tua',
+  cpmi: 'CPMI',
+  kawin: 'Buku Nikah',
+  sehat: 'Surat Sehat',
+  bpjs: 'BPJS',
+  psikotes: 'Psikotes',
+};
+
+const BIO_LABEL: Record<string, string> = {
+  email: 'Email',
+  tmplahir: 'Tempat Lahir',
+  tgllahir: 'Tanggal Lahir',
+  alamat: 'Alamat',
+  ayah: 'Nama Ayah',
+  pasport: 'No. Paspor',
+  coe: 'No. COE',
+  kotapasport: 'Kota Terbit Paspor',
+  tglpasport: 'Tanggal Terbit Paspor',
+  exppasport: 'Paspor Berlaku Sampai',
+  pt: 'Nama Perusahaan',
+};
+
+/**
+ * `bio` keys already printed as an identity row (see `buildBiodataText`), so the
+ * "BIODATA DETAIL" section does not repeat them.
+ */
+const SHOWN_IN_IDENTITY = new Set(['email', 'tmplahir', 'tgllahir', 'alamat']);
+
+function labelFor(map: Record<string, string>, key: string): string {
+  return map[key] || key.toUpperCase();
+}
+
+const LABEL_WIDTH = 22;
+const row = (label: string, value: string): string => `${label.padEnd(LABEL_WIDTH)}: ${value}`;
+const rule = (ch: string) => ch.repeat(52);
+
+/**
+ * The text handed to the browser. Sections are fixed; a section with nothing in
+ * it says so rather than vanishing, so a reader can tell "no documents" from
+ * "the exporter forgot documents".
  */
 export function buildBiodataText(c: BiodataSource): string {
-  const lines = [
+  const bio = c.bio || {};
+  // Identity falls back to the master copy, so a value present only in `bio`
+  // still reaches the file exactly once.
+  const pick = (own: unknown, bioKey: string) => (has(own) ? own : bio[bioKey]);
+
+  const lines: string[] = [
     'BIODATA KANDIDAT',
-    '================',
-    `Nama: ${field(c.nama)}`,
-    `WA: ${field(c.wa)}`,
-    `ID: ${field(c.idKandidat)}`,
-    `Gender: ${field(c.gender)}`,
-    `Usia: ${c.usia || '-'} Tahun`,
-    `Tempat Lahir: ${field(c.tmplahir)}`,
-    `Tanggal Lahir: ${field(c.tgllahir)}`,
-    `Email: ${field(c.email)}`,
-    `Alamat: ${field(c.alamat)}`,
-    `JFT: ${field(c.jft)}`,
-    `SSW: ${field(c.ssw)}`,
-    `Fisik: ${field(c.fisik)}`,
-    `Pendidikan: ${field(c.pendidikan)}`,
-    `Tahapan: ${field(c.tahapan)}`,
-    `Status: ${field(c.status)}`,
-    `VIP: ${c.isVIP ? 'YA' : 'TIDAK'}`,
+    rule('='),
     '',
-    'BERKAS:',
-    ...Object.entries(c.berkas || {})
-      .filter(([, v]) => v)
-      .map(([k, v]) => `  ${k}: ${v}`),
+    'IDENTITAS',
+    rule('-'),
+    row('Nama', field(c.nama)),
+    row('ID Kandidat', field(c.idKandidat)),
+    row('WhatsApp', field(c.wa)),
+    row('Gender', field(c.gender)),
+    row('Usia', has(c.usia) ? `${String(c.usia).trim()} Tahun` : '-'),
+    row('Tempat Lahir', field(pick(c.tmplahir, 'tmplahir'))),
+    row('Tanggal Lahir', field(pick(c.tgllahir, 'tgllahir'))),
+    row('Email', field(pick(c.email, 'email'))),
+    row('Alamat', field(pick(c.alamat, 'alamat'))),
     '',
-    'BIODATA DETAIL:',
-    ...Object.entries(c.bio || {})
-      .filter(([, v]) => v)
-      .map(([k, v]) => `  ${k}: ${v}`),
+    'FISIK & PENDIDIKAN',
+    rule('-'),
+    row('Tinggi / Berat', field(c.fisik)),
+    row('Pendidikan', field(c.pendidikan)),
+    '',
+    'JFT / SSW',
+    rule('-'),
+    row('JFT / JLPT', field(c.jft)),
+    row('SSW / Bidang', field(c.ssw)),
+    '',
+    'STATUS',
+    rule('-'),
+    row('Tahapan', field(c.tahapan)),
+    row('Status', field(c.status)),
+    row('VIP', c.isVIP ? 'YA' : 'TIDAK'),
+    row('Siswa ASJ', c.isSiswaASJ ? 'YA' : 'TIDAK'),
+    row('Kelas', field(c.kelas)),
+    '',
+    'JOB YANG DILAMAR',
+    rule('-'),
   ];
+
+  const apps = (c.applications || []).filter(
+    (a) => a && (has(a.kategori) || has(a.code)),
+  );
+  const jobs = (c.jobs || []).filter(has);
+  if (apps.length) {
+    apps.forEach((a, i) => {
+      const name = field(a.kategori || a.code);
+      const code = has(a.kategori) && has(a.code) ? ` (${String(a.code).trim()})` : '';
+      const st = has(a.status) ? ` — ${String(a.status).trim()}` : '';
+      lines.push(`${i + 1}. ${name}${code}${st}`);
+    });
+  } else if (jobs.length) {
+    jobs.forEach((j, i) => {
+      lines.push(`${i + 1}. ${String(j).trim()}`);
+    });
+  } else {
+    lines.push('  (belum ada lamaran)');
+  }
+
+  lines.push('', 'BERKAS', rule('-'));
+  const berkas = Object.entries(c.berkas || {}).filter(([, v]) => has(v));
+  if (berkas.length) {
+    for (const [k, v] of berkas) lines.push(row(labelFor(BERKAS_LABEL, k), String(v).trim()));
+  } else {
+    lines.push('  (belum ada berkas)');
+  }
+
+  lines.push('', 'BIODATA DETAIL', rule('-'));
+  const detail = Object.entries(bio).filter(([k, v]) => has(v) && !SHOWN_IN_IDENTITY.has(k));
+  if (detail.length) {
+    for (const [k, v] of detail) lines.push(row(labelFor(BIO_LABEL, k), String(v).trim()));
+  } else {
+    lines.push('  (belum ada biodata detail)');
+  }
+
   return lines.join('\n');
 }
 

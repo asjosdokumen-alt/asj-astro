@@ -502,6 +502,14 @@ if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('u
           tahapan: data.tahapan,
           status: data.status,
           isVIP: data.isVIP,
+          isSiswaASJ: data.isSiswaASJ,
+          kelas: data.kelas,
+          /* "Job Yang Dilamar" tampil di kartu ini tepat di atas tombol, jadi ia
+             harus ikut ke berkasnya. `applications` (kode + status, dari mail)
+             dipakai lebih dulu; `dossierJobs` jadi jaring pengaman ketika belum
+             ada baris mail sama sekali. */
+          applications: (data.applications || []).map((a) => ({ code: a.code, status: a.status })),
+          jobs: dossierJobs,
           berkas: data.berkas,
           bio: data.bio,
         })}

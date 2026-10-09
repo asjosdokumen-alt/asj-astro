@@ -44,6 +44,8 @@ interface CandidateData {
   catatanExternal?: string;
   isVIP?: boolean;
   isSiswaASJ?: boolean;
+  /** Class tag (`[KELAS G]` → `"G"`), as `mapCandidate` derives it. */
+  kelas?: string;
   foto?: string;
   /** URL berkas — parity tombol BUKA CV/JFT/SSW/FOTO dossier legacy (cvUrl/jftUrl/sswUrl/pasPhoto). */
   cvUrl?: string;
@@ -106,6 +108,7 @@ function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbac
     // false. Toggle dan gerbang jadi tidak sepakat. `[vip]` huruf kecil bukan VIP.
     isVIP: catatanInt.includes('[VIP]'),
     isSiswaASJ: !!c.isSiswaASJ || hasClassTag(catatanInt),
+    kelas: c.kelas || '',
     foto: c.berkas?.foto || c.pasPhoto || c.foto || '',
     // B03: surface sertifikat URL — row ter-dekorasi membawa cvUrl/jftUrl/sswUrl
     // (mapCandidate), dossier legacy #modal-cv membuka tombol BUKA CV/JFT/SSW/FOTO.
