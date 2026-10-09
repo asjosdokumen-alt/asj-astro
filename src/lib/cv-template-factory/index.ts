@@ -8,6 +8,13 @@ export {
   flattenDataForPlaceholders,
   analyzeExcelTemplate,
   analyzeFromExample,
+  detectRiwayatBlock,
+  applyRiwayatBlock,
   applyFieldMap,
 } from './loaders/tEMPLATE-loader';
-export type { ExcelTemplateOptions, TemplateFieldMap, ExampleAnalysis } from './loaders/tEMPLATE-loader';
+export type {
+  ExcelTemplateOptions,
+  TemplateFieldMap,
+  ExampleAnalysis,
+  RiwayatBlock,
+} from './loaders/tEMPLATE-loader';

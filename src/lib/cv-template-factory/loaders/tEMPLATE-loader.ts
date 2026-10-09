@@ -238,6 +238,136 @@ export async function analyzeFromExample(
   return { fieldMap, ambiguous, unmatched };
 }
 
+// ---------------------------------------------------------------------------
+// BLOK RIWAYAT MULTI-BARIS (pendidikan / pekerjaan / keluarga)
+// ---------------------------------------------------------------------------
+// `applyFieldMap` menulis SATU nilai per sel. Tabel riwayat butuh N baris
+// (satu baris per sekolah / perusahaan / anggota keluarga), jadi ia tidak bisa
+// ditangani peta sel biasa — tanpa ini, CV hasil regenerasi kehilangan justru
+// bagian terpentingnya.
+//
+// Bloknya juga dipelajari dari contoh yang sama: cari KOLOM yang nilainya
+// berurutan sama dengan nilai field kunci tiap entri (mis. `tingkat` untuk
+// pendidikan), lalu kolom-kolom lain di baris yang sama dipetakan dengan
+// mencocokkan nilainya ke field entri pada baris itu.
+export interface RiwayatBlock {
+  sheet: string;
+  /** Baris Excel (1-based) entri PERTAMA. */
+  startRow: number;
+  /** Berapa baris yang ditempati blok di template (dari contoh yang terisi). */
+  rows: number;
+  /** Kolom kunci, mis. 'A'. */
+  keyColumn: string;
+  /** Kolom → field entri, mis. `{ A: 'tingkat', B: 'sekolah' }`. */
+  columns: Record<string, string>;
+}
+
+const colName = (xlsx: { utils: { encode_col: (c: number) => string } }, c: number) => xlsx.utils.encode_col(c);
+
+export async function detectRiwayatBlock(
+  workbook: unknown,
+  entries: Array<Record<string, unknown>>,
+  keyField: string,
+): Promise<RiwayatBlock | null> {
+  if (!Array.isArray(entries) || entries.length < 2) return null;
+  const XLSX = await import('xlsx');
+  const wb = workbook as {
+    SheetNames: string[];
+    Sheets: Record<string, Record<string, { v?: unknown }>>;
+  };
+
+  for (const sheetName of wb.SheetNames) {
+    const sheet = wb.Sheets[sheetName];
+    if (!sheet) continue;
+    const range = XLSX.utils.decode_range((sheet['!ref'] as string) || 'A1');
+
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const letter = colName(XLSX, col);
+      // Baris mana saja di kolom ini yang cocok dengan field kunci entri ke-i?
+      const hits: number[] = [];
+      for (let row = range.s.r; row <= range.e.r; row++) {
+        const cell = sheet[`${letter}${row + 1}`];
+        if (!cell || cell.v === null || cell.v === undefined) continue;
+        const key = matchKey(cell.v);
+        if (!key) continue;
+        const i = entries.findIndex((e) => matchKey(e[keyField]) === key);
+        if (i >= 0 && !hits.includes(i)) hits.push(i);
+      }
+      // Blok dikenali kalau kolom ini memuat SEMUA entri (bukan kebetulan satu).
+      if (hits.length !== entries.length) continue;
+
+      const startRow = Math.min(
+        ...entries.map((e) => {
+          for (let row = range.s.r; row <= range.e.r; row++) {
+            const cell = sheet[`${letter}${row + 1}`];
+            if (cell && matchKey(cell.v) === matchKey(e[keyField])) return row + 1;
+          }
+          return Number.MAX_SAFE_INTEGER;
+        }),
+      );
+      if (!Number.isFinite(startRow) || startRow === Number.MAX_SAFE_INTEGER) continue;
+
+      // Kolom lain: nilainya harus cocok dengan field entri di BARIS yang sama.
+      const columns: Record<string, string> = { [letter]: keyField };
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cl = colName(XLSX, c);
+        if (cl === letter) continue;
+        const row0 = sheet[`${cl}${startRow}`];
+        if (!row0 || row0.v === null || row0.v === undefined) continue;
+        const key = matchKey(row0.v);
+        if (!key) continue;
+        for (const [field, value] of Object.entries(entries[0])) {
+          if (field === keyField) continue;
+          if (matchKey(value) === key) {
+            columns[cl] = field;
+            break;
+          }
+        }
+      }
+      return { sheet: sheetName, startRow, rows: entries.length, keyColumn: letter, columns };
+    }
+  }
+  return null;
+}
+
+/** Tulis N entri ke N baris berturut-turut mulai `block.startRow`. */
+export async function applyRiwayatBlock(
+  workbook: unknown,
+  block: RiwayatBlock,
+  entries: Array<Record<string, unknown>>,
+): Promise<Blob> {
+  const XLSX = await import('xlsx');
+  const wb = workbook as {
+    SheetNames: string[];
+    Sheets: Record<string, Record<string, { v?: unknown; t?: string }>>;
+  };
+  const sheet = wb.Sheets[block.sheet];
+  if (!sheet) throw new Error(`Sheet "${block.sheet}" not found in template`);
+
+  for (let i = 0; i < entries.length; i++) {
+    for (const [col, field] of Object.entries(block.columns)) {
+      const value = entries[i][field];
+      const addr = `${col}${block.startRow + i}`;
+      // Sel kosong pada entri tetap ditulis kosong: baris milik kandidat
+      // SEBELUMNYA tidak boleh tertinggal di baris kandidat berikutnya.
+      sheet[addr] = { t: 's', v: value === null || value === undefined ? '' : String(value) };
+    }
+  }
+  // Sisa baris blok (kandidat ini punya riwayat LEBIH PENDEK daripada contoh)
+  // harus dikosongkan — kalau tidak, nama sekolah milik kandidat contoh ikut
+  // tercetak sebagai riwayat kandidat ini. Ini kesalahan yang paling mudah
+  // lolos: hasilnya terlihat wajar, hanya isinya milik orang lain.
+  for (let i = entries.length; i < block.rows; i++) {
+    for (const col of Object.keys(block.columns)) {
+      sheet[`${col}${block.startRow + i}`] = { t: 's', v: '' };
+    }
+  }
+  const buffer = XLSX.write(wb as never, { type: 'buffer', bookType: 'xlsx' });
+  return new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+}
+
 export async function analyzeExcelTemplate(workbook: unknown): Promise<TemplateFieldMap> {
   const XLSX = await import('xlsx');
   const wb = workbook as { SheetNames: string[]; Sheets: Record<string, Record<string, { v?: unknown; t?: string }>> };
