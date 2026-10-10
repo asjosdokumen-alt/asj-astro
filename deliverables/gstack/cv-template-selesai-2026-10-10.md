@@ -147,22 +147,53 @@ tampilan template. Untuk rirekisho — yang identitas visualnya justru grid berg
 — ini terlihat jelas. Hasilnya lebih tepat disebut "data dipindah ke sheet"
 daripada "CV sesuai template".
 
-### Pilihan (belum dipilih — keputusan dependensi + berat bundel klien)
+### ✅ DIPUTUSKAN 2026-10-10: **B — `exceljs` 4.4.0** (commit `3ae8b41`)
 
-| opsi | cakupan | catatan |
+| diukur pada template rirekisho nyata | SheetJS (sebelum) | exceljs (sesudah) |
 |---|---|---|
-| **A. Perbaiki opsi baca saja** (`cellStyles:true`, `cellNF:true`) | lebar kolom, tinggi baris, format angka | **tanpa dependensi baru**; font/border/dropdown/gambar TETAP hilang |
-| **B. `exceljs` 4.4.0** (MIT, aktif, tersedia di registry) | semuanya: gaya, dropdown, gambar, page setup | punya `spliceRows()` ⇒ menggantikan `shiftRowsDown()` manual **dan** mewarisi gaya baris template untuk baris tambahan; paket besar (~1 MB) di browser |
-| **C. `xlsx-js-style` 1.2.0** | font/warna/border/perataan | perubahan paling kecil (ganti import), tapi tidak dirawat aktif, berbasis 0.18, dan **tidak** menyelesaikan dropdown/gambar |
-| **D. SheetJS Pro** | semuanya | berbayar |
-| **E. Terima apa adanya** | — | berkas dipakai sebagai sumber data, bukan dicetak apa adanya |
+| sel bergaya (font/warna/border/perataan) | 62 → **0** | 154 → **154** |
+| dropdown (`dataValidation`) | 8 → **0** | 17 → **17** |
+| gambar tertanam | ada → **hilang** | 1 → **1** |
+| sel gabungan | 83 → 83 | 83 → 83 |
+| `pageSetup` | ada → **hilang** | ada → **ada** |
+| ukuran berkas | 61.873 → 27.848 | 61.873 → **61.235** |
 
-Rekomendasi: **B**. A bisa dikerjakan lebih dulu sebagai jaring pengaman kalau
-ingin hasil lebih baik tanpa menunggu keputusan dependensi, tapi ia setengah jalan
-— dan kalau B dipilih, A jadi pekerjaan terbuang.
+**Konsekuensi desain yang menyederhanakan:** gaya **tidak perlu disalin**. Selama
+hanya `cell.value` yang diubah, exceljs mempertahankan `cell.style` yang sudah
+ada — jadi "mengisi CV" berhenti menjadi "menghapus tampilan".
 
-Catatan penempatan: pengisian berkas terjadi di **browser** (lihat "Keputusan
-arsitektur"), jadi B/C menambah berat halaman admin. Kalau itu mengganggu, logika
-`exceljs` bisa dipindah ke server — tapi `netlify/functions/**` dihitung counter
-beku `indexer`, jadi berkas baru di sana menggeser gate.
+**Yang tetap harus manual: MENAMBAH BARIS** (riwayat kandidat lebih panjang
+daripada contoh). `spliceRows` tidak mewarisi gaya dan tidak menggeser alamat
+dropdown, jadi:
+
+- baris baru **disalin gayanya** dari baris contoh TERAKHIR blok (+ tinggi baris);
+- `dataValidations.model` **digeser**, termasuk RENTANG SUMBER daftarnya
+  (`$J$29:$Z$29`). Kalau dibiarkan, dropdown menempel ke baris yang salah tanpa
+  error apa pun — persis kelas kesalahan yang paling sulit terlihat.
+
+⚠️ **Sel gabungan SENGAJA TIDAK digeser manual.** `spliceRows` sudah
+menggesernya, dan `ws.model.merges` mengembalikan nilai **BASI** tepat sesudah
+`spliceRows` (masih `A7:C7` padahal hasil tulisannya `A9:C9`). Menggeser hasil
+bacaan itu = menggeser **dua kali**. Diverifikasi dengan write+load; tesnya
+mengunci "tepat sekali, tidak dua kali".
+
+**API berubah:** `applyFieldMap` dan `applyRiwayatBlock` kini `Promise<void>`
+(dulu `Promise<Blob>`) — serialisasi dilakukan **sekali** oleh
+`workbookToXlsxBlob`, bukan empat kali per berkas. `readWorkbook` ditambah sebagai
+satu-satunya jalur baca; TabConfig memakainya supaya yang di-ANALISA persis yang
+nanti DIISI.
+
+**Tes:** 20 di tiga berkas — `cv-template-riwayat.test.ts` (8),
+`cv-template-example.test.ts` (6), dan `cv-template-fidelity.test.ts` (6, baru).
+Fidelity menguji **template nyata**, bukan mock: gaya/dropdown/gambar/merges harus
+selamat dari read → write. Dibuktikan bisa merah: pewarisan gaya dan pergeseran
+dropdown dimatikan ⇒ 2 tes gagal.
+
+**Berat bundel:** exceljs jadi chunk **LAZY 920 KB** (`exceljs.min.*.js`), hanya
+dimuat saat admin memakai fitur ini — **bukan** di jalur muat halaman.
+`master-data.js` tidak berubah (115,3 → 121,6 KB, gate pass).
+
+**Sisa yang belum berubah:** `renderers/excel.ts` dan `src/lib/candidateExport.ts`
+masih memakai `xlsx` langsung — keduanya jalur lain, tidak lewat loader ini.
+
 
