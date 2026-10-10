@@ -295,3 +295,80 @@ Tes: `cv-template-label-map.test.ts` +3 (10 total). Dibuktikan bisa merah: atura
 
 
 
+
+---
+
+## Polish — empat cacat yang tidak bisa ditangkap `tsc`/lint (2026-10-10)
+
+Semuanya punya ciri yang sama: **hasilnya terlihat wajar**, jadi tidak ada yang
+menyadarinya sampai ada yang membuka berkasnya.
+
+### 1. 🔴 Nilai kosong mewarisi data kandidat CONTOH
+
+```ts
+const value = getValueFromPath(data, fieldPath);
+if (value) writeCellValue(cell, value);   // ← nilai kosong DILEWATI
+```
+
+Template yang tersimpan berisi data kandidat **contoh** — itu justru cara petanya
+dipelajari. Jadi sel yang field-nya kosong untuk kandidat baru **mempertahankan
+nilai milik orang lain**. Diukur pada template rirekisho nyata:
+
+| sel | path | template (contoh) | kandidat tanpa data itu |
+|---|---|---|---|
+| `H5` | `identitas.umur` | `19` | **`19`** ✗ |
+| `H8` | `identitas.golongan_darah` | `O` | **`O`** ✗ |
+| `H10` | `identitas.agama` | `ISLAM（イスラム）` | **`ISLAM（イスラム）`** ✗ |
+
+Kesalahan yang sama sudah diperbaiki untuk tabel riwayat (baris sisa milik
+contoh); ini kasus **satu sel**. Sekarang nilai kosong mengosongkan sel.
+
+Pengecualian yang dipasang: sel yang teksnya sendiri **LABEL yang dikenal**
+(`looksLikeLabel`) tidak dihapus — peta bisa salah di template yang tata
+letaknya belum kita kenal, dan menghapus label template lebih merusak daripada
+membiarkannya. Cakupannya terbatas pada label yang punya pola di `FIELD_LABELS`;
+label seperti `訪日経験 PERNAH KE JEPANG` belum terlindungi — dan **tidak boleh**
+ditambahkan polanya tanpa field tujuan, karena selnya akan selalu ditulis kosong
+(yaitu menghapus label itu juga).
+
+**Catatan penting:** di DB cadangan saat ini **tidak ada** kandidat dengan field
+kosong di antara 13 sel yang terpetakan, jadi bug ini **laten** — tidak terlihat
+pada data sekarang, tapi pasti kena begitu ada kandidat baru yang belum
+melengkapi datanya.
+
+### 2. Simpan tanpa Analisa menghasilkan template kosong
+
+Menyimpan sebelum menekan Analisa menyimpan `fieldMap: {}`. Template seperti itu
+menghasilkan berkas **sama persis** dengan contoh yang dipakai admin — yaitu CV
+kandidat lain — atau berkas kosong. Sekarang ditolak dengan pesannya sendiri,
+dan penjaga yang sama dipakai di modal kandidat: record tanpa peta sel **dan**
+tanpa riwayat tidak diunduh.
+
+### 3. Ganti berkas setelah Analisa menyimpan peta berkas LAMA
+
+Peta milik berkas sebelumnya tetap di state, lalu disimpan bersama berkas baru →
+tiap kandidat terisi di **sel yang salah**, tanpa error apa pun. Sekarang
+mengganti berkas membatalkan hasil Analisa.
+
+### 4. `decodeTemplateRecord` menolak template yang hanya punya tabel riwayat
+
+Penjaga di tab Config mengizinkan `fieldMap` kosong asal ada riwayat; decode
+menuntut `fieldMap` objek. Akibatnya template seperti itu **tersimpan lalu
+terbaca sebagai "record rusak"**. Sekarang syaratnya sama. Ditambah: koordinat
+blok yang tidak sah (`startRow`/`rows` < 1, atau bukan bilangan bulat) dibuang —
+applier akan menulis/menyisipkan di **baris 0**, yang bukan baris Excel.
+
+### Tes
+
+| berkas | sebelum | sesudah |
+|---|---|---|
+| `e2e/cv-template-apply.test.ts` | — | **5 (BARU)** |
+| `e2e/tab-config-template.test.tsx` | 3 | **5** |
+| `e2e/cv-template-record.test.ts` | 10 | **12** |
+
+Semua dibuktikan bisa **MERAH**: perbaikan #1 dikembalikan ⇒ 2 gagal; penjaga
+#2/#3 dimatikan ⇒ 2 gagal; #4 dikembalikan ⇒ 2 gagal.
+
+Gate: `tsc` 0 · `lint-ratchet` PASSED · build OK (11 halaman) · vitest
+**185/186 berkas · 2213/2214 tes** (1 merah = artefak sandbox `git EBUSY`, tidak
+terkait).
