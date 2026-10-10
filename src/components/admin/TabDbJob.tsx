@@ -113,7 +113,7 @@ export default function TabDbJob() {
   const [sortType, setSortType] = useState('TERBARU');
   const [fBidang, setFBidang] = useState('ALL');
   const [fTahapan, setFTahapan] = useState('ALL');
-  const [limit, _setLimit] = useState(10);
+  const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   // Opsi chip filter dari dropdown config (getAppData admin → dropdowns) —
@@ -320,7 +320,15 @@ export default function TabDbJob() {
       {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} closing={shareJobP.closing} />}
       {listJobCodeP.present && listJobCodeP.held && <ListKandidatModal jobCode={listJobCodeP.held} isOpen={!!listJobCode} onClose={() => setListJobCode(null)} closing={listJobCodeP.closing} />}
       {matchJobP.present && matchJobP.held && <MatchmakingModal job={matchJobP.held} candidates={allCandidates} isOpen={!!matchJob} onClose={() => setMatchJob(null)} closing={matchJobP.closing} />}
-      <p class="text-xs text-slate-500 mt-3">{filtered.length} job internal</p>
+      {/* `limit` semula TIDAK PERNAH bisa berubah (`_setLimit` tidak dipakai),
+          jadi job ke-11 dan seterusnya tidak bisa dijangkau — sementara teks di
+          bawah mencetak jumlah TOTAL, sehingga daftarnya terlihat lengkap. */}
+      <div class="flex items-center justify-between gap-3 mt-3">
+        <p class="text-xs text-slate-500">{filtered.length} job internal</p>
+        {limit < filtered.length && (
+          <button onClick={() => setLimit((n) => n + 10)} class="min-h-11 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition"><Icon name="chevron-down" class="mr-1" /> {t('button.more')}</button>
+        )}
+      </div>
     </div>
   );
 }

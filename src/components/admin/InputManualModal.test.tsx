@@ -112,8 +112,11 @@ describe('InputManualModal — label/control wiring', () => {
     // Spot-check both ends of the wiring, so a `for=` that resolves to the WRONG
     // element (two fields sharing an id) is caught — "resolves to something" is
     // not the same as "resolves to the right thing".
+    // `im-cari` DIHAPUS dari daftar ini 2026-10-11 bersama kontrolnya: input
+    // "Cari kandidat" tidak punya `value`, `onInput`, maupun handler — jadi
+    // labelnya menamai kotak yang TIDAK terhubung ke state apa pun, persis yang
+    // seharusnya ditangkap tes ini. Fitur cari-lalu-isi-otomatis belum dibangun.
     for (const [id, tag] of [
-      ['im-cari', 'INPUT'],
       ['im-nama', 'INPUT'],
       ['im-wa', 'INPUT'],
       ['im-gender', 'SELECT'],

@@ -11,6 +11,7 @@ import { normalizeWa } from '../../shared/wa-rules';
 import {
   insertSchedule,
   findScheduleById,
+  updateScheduleById,
   deleteScheduleById,
   insertTask,
   findTaskById,
@@ -22,37 +23,57 @@ import {
   toText,
 } from './repository';
 
+/** Bentuk `schedule` pada respons — nama field-nya camelCase sejak awal. */
+function toScheduleResponse(idJadwal: string, d: Record<string, unknown>) {
+  return {
+    idJadwal,
+    namaAgenda: String(d.nama),
+    idLoker: String(d.loker || '-'),
+    waktu: String(d.waktu || ''),
+    link: String(d.link || d.lokasi || '-'),
+    kandidat: String(d.kandidat || '-'),
+    tsk: String(d.tsk || ''),
+  };
+}
+
 export async function handleSimpanJadwalBaru(payload: any[], sessionToken?: string) {
   const guard = requireRole(sessionToken || '', 'admin');
   if (guard.error) return guard.error;
   const d = (payload && payload[0]) || {};
   if (!d.nama) return { success: false, error: 'Nama agenda wajib diisi.' };
-  const idJadwal = 'JDW' + Date.now();
+  const fields = {
+    nama_agenda: String(d.nama),
+    id_loker_terkait: String(d.loker || '-'),
+    tanggal_waktu: String(d.waktu || ''),
+    lokasi_link: String(d.link || d.lokasi || '-'),
+    daftar_kandidat: String(d.kandidat || '-'),
+    tsk: String(d.tsk || ''),
+  };
   try {
+    // `d.id` ada ⇒ ini EDIT, bukan tambah. Sebelumnya handler ini selalu INSERT
+    // dengan id baru, jadi tombol "Edit" di tab Jadwal membuat SALINAN dan
+    // jadwal aslinya tidak pernah berubah. Jalur update tidak ditambahkan
+    // sebagai aksi baru karena aksi ini sudah tersambung di tujuh titik wiring;
+    // menambah aksi berarti satu paket perubahan yang tidak perlu untuk
+    // memperbaiki satu tombol.
+    if (d.id) {
+      const row = await findScheduleById(String(d.id));
+      if (!row || row.id === undefined || row.id === null) {
+        return { success: false, error: 'Jadwal tidak ditemukan.' };
+      }
+      await updateScheduleById(row.id, { ...fields, updated_at: new Date().toISOString() });
+      return { success: true, schedule: toScheduleResponse(String(d.id), d) };
+    }
+
+    const idJadwal = 'JDW' + Date.now();
     await insertSchedule({
       id_jadwal: idJadwal,
-      nama_agenda: String(d.nama),
-      id_loker_terkait: String(d.loker || '-'),
-      tanggal_waktu: String(d.waktu || ''),
-      lokasi_link: String(d.link || d.lokasi || '-'),
-      daftar_kandidat: String(d.kandidat || '-'),
-      tsk: String(d.tsk || ''),
+      ...fields,
       status_jadwal: 'AKTIF',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
-    return {
-      success: true,
-      schedule: {
-        idJadwal,
-        namaAgenda: String(d.nama),
-        idLoker: String(d.loker || '-'),
-        waktu: String(d.waktu || ''),
-        link: String(d.link || d.lokasi || '-'),
-        kandidat: String(d.kandidat || '-'),
-        tsk: String(d.tsk || ''),
-      },
-    };
+    return { success: true, schedule: toScheduleResponse(idJadwal, d) };
   } catch (e: any) {
     return { success: false, error: safeError('Gagal simpan jadwal.', e) };
   }

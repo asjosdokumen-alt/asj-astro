@@ -18,7 +18,18 @@ import { uploadToCloudinary } from '../../lib/cloudinary';
 // Props: no longer needed — reads from store directly
 // Kept minimal for backward compat
 
-const EXTRA_DOC_TYPES = [
+/**
+ * Pilihan jenis dokumen tambahan.
+ *
+ * Daftar ini harus SEPAKAT dengan `FILE_LABEL_COLUMNS` di
+ * `netlify/functions/contexts/documents/service.ts` — token yang tidak ada di
+ * sana tidak punya kolom tujuan, dan dulu berkasnya dibuang tanpa pesan apa pun
+ * (balasannya tetap `success: true`). `SIM`, `EKTLN`, dan `LAINNYA` DIHAPUS
+ * 2026-10-11 karena tidak ada kolomnya di `pemberkasan_checklist` maupun di
+ * `database_candidate`/`master_database_candidate`: menawarkannya hanya
+ * menjanjikan sesuatu yang tidak bisa disimpan.
+ */
+export const EXTRA_DOC_TYPES = [
   { value: 'PAS PHOTO', label: 'PAS PHOTO' },
   { value: 'CV', label: 'CV' },
   { value: 'JFT', label: 'JFT (Sertifikat Bahasa Jepang)' },
@@ -30,10 +41,8 @@ const EXTRA_DOC_TYPES = [
   { value: 'IJAZAH SMP', label: 'IJAZAH SMP' },
   { value: 'IJAZAH SMA', label: 'IJAZAH SMA' },
   { value: 'UNIVERSITAS', label: 'IJAZAH UNIVERSITAS' },
-  { value: 'SIM', label: 'SIM (Surat Izin Mengemudi)' },
   { value: 'PASPORT', label: 'PASPORT' },
   { value: 'MCU', label: 'MCU (Medical Check Up)' },
-  { value: 'EKTLN', label: 'EKTLN (Kartu Tenaga Kerja)' },
   { value: 'KONTRAK KERJA', label: 'KONTRAK KERJA' },
   { value: 'SERTIFIKAT JAPAN', label: 'SERTIFIKAT JAPAN' },
   { value: 'SURAT IJIN ORTU', label: 'SURAT IJIN ORTU' },
@@ -42,7 +51,6 @@ const EXTRA_DOC_TYPES = [
   { value: 'SURAT SEHAT', label: 'SURAT SEHAT PUSKESMAS' },
   { value: 'BPJS', label: 'BPJS KETENAGAKERJAAN' },
   { value: 'PSIKOTES', label: 'HASIL PSIKOTES' },
-  { value: 'LAINNYA', label: 'LAINNYA' },
 ];
 
 export default function InputManualModal() {
@@ -204,12 +212,16 @@ export default function InputManualModal() {
             <button onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition"><Icon name="times" class="text-2xl" /></button>
           </div>
           <form onSubmit={handleSubmit} class="space-y-4">
-            {/* Search existing candidate */}
+            {/* Kotak "Cari kandidat" DIHAPUS 2026-10-11: input-nya tidak punya
+                `value`, `onInput`, maupun handler apa pun — kontrol mati yang
+                menjanjikan pengisian otomatis dari data lama padahal tidak
+                melakukan apa-apa. Fitur legacy `inputManual` memang mencari
+                kandidat lewat WA lalu mengisi formnya; itu perlu dibangun
+                betulan (sumber data + daftar hasil), bukan sekadar kotak input.
+                Keterangan "data lama tetap disimpan" tetap ditampilkan karena
+                itu memang perilaku penyimpanannya. */}
             <div class="bg-sky-900/20 p-3 rounded-xl border border-sky-500/30">
-              <label class="block text-xs font-bold text-sky-400 mb-1" for="im-cari">{t("admin.manual_cari_title")}</label>
-              <input type="text" id="im-cari" placeholder={t("input.placeholder_auto")}
-                class="min-h-11 w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-sky-500 transition" />
-              <p class="text-[11px] text-slate-400 mt-1">{t("admin.keep_existing_docs")}</p>
+              <p class="text-[11px] text-slate-400">{t("admin.keep_existing_docs")}</p>
             </div>
 
             {/* Basic info */}

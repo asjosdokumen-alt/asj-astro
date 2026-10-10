@@ -22,6 +22,8 @@ export default function TabJadwal() {
   const [lokasi, setLokasi] = useState('');
   const [tsk, setTsk] = useState('');
   const [link, setLink] = useState('');
+  /** `id` jadwal yang sedang DIEDIT. Kosong = formulir menambah jadwal baru. */
+  const [editingId, setEditingId] = useState('');
 
   async function load() {
     try {
@@ -35,8 +37,17 @@ export default function TabJadwal() {
   async function handleSubmit(e: Event) {
     e.preventDefault();
     try {
-      const d: any = await api.secure('simpanJadwalBaru', [{ nama, loker, waktu, lokasi, tsk, link }]);
-      if (d && d.success) { showToast(t('ui.toast_schedule_saved'), 'success'); await load(); } else showToast(t('ui.toast_error_prefix') + ((d && d.error) || ''), 'error');
+      // `id` ikut dikirim HANYA saat mengedit. Tanpa ini backend selalu
+      // INSERT dengan id baru (`'JDW' + Date.now()`), jadi menekan Edit membuat
+      // jadwal SALINAN dan jadwal aslinya tidak pernah berubah.
+      const payload = { nama, loker, waktu, lokasi, tsk, link, ...(editingId ? { id: editingId } : {}) };
+      const d: any = await api.secure('simpanJadwalBaru', [payload]);
+      if (d && d.success) {
+        showToast(t('ui.toast_schedule_saved'), 'success');
+        setEditingId('');
+        setShowForm(false);
+        await load();
+      } else showToast(t('ui.toast_error_prefix') + ((d && d.error) || ''), 'error');
     } catch (e: unknown) { showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error'); }
   }
 
@@ -64,7 +75,7 @@ export default function TabJadwal() {
   return (<div>
     <div class='flex justify-between items-center border-b border-amber-900/50 pb-4 mb-4'>
       <h2 class='text-amber-400 font-bold text-lg'><Icon name="calendar-alt" class="mr-2" /> {t("admin.tab_schedule")}</h2>
-      <button onClick={()=>setShowForm(!showForm)} class='min-h-11 px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 transition'><Icon name="plus" class="mr-1" /> {showForm ? t("ui.close") : t("admin.new_schedule")}</button>
+      <button onClick={()=>{ setShowForm(!showForm); setEditingId(''); }} class='min-h-11 px-5 py-2 bg-amber-600 text-white rounded-lg text-sm font-bold hover:bg-amber-500 transition'><Icon name="plus" class="mr-1" /> {showForm ? t("ui.close") : t("admin.new_schedule")}</button>
     </div>
 
     {showForm && <div class='bg-black/40 border border-slate-700 rounded-xl p-5 mb-5 '>
@@ -108,7 +119,7 @@ export default function TabJadwal() {
             <td class='p-4 font-bold text-white'>{j.nama}</td>
             <td class='p-4'><div class='text-white font-bold'>{j.loker || '-'}</div><div class='text-[11px] text-slate-400 mt-1'>{j.waktu || '-'}</div></td>
             <td class='p-4'><div class='text-white'>{j.lokasi || '-'}</div>{j.link && <a href={j.link} target='_blank' class='text-xs text-sky-400 hover:underline'>{t("admin.jadwal_link_zoom")}</a>}</td>
-            <td class='p-4 text-center'><button onClick={() => { setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="min-h-11 inline-flex items-center px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button><button onClick={async () => { if(!confirm(t('ui.confirm_delete_schedule'))) return; try { const d: any = await api.secure('hapusJadwal', [j.id]); if(d && d.success){showToast(t('ui.toast_schedule_deleted'),'success'); await load();} else showToast(t('ui.toast_error_prefix')+(d?.error||''),'error'); } catch(_e){showToast(t('alert.network'),'error');} }} class="min-w-11 min-h-11 inline-flex items-center ml-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="trash" /></button></td>
+            <td class='p-4 text-center'><button onClick={() => { setEditingId(String(j.id)); setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="min-h-11 inline-flex items-center px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button><button onClick={async () => { if(!confirm(t('ui.confirm_delete_schedule'))) return; try { const d: any = await api.secure('hapusJadwal', [j.id]); if(d && d.success){showToast(t('ui.toast_schedule_deleted'),'success'); await load();} else showToast(t('ui.toast_error_prefix')+(d?.error||''),'error'); } catch(_e){showToast(t('alert.network'),'error');} }} class="min-w-11 min-h-11 inline-flex items-center ml-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="trash" /></button></td>
           </tr>))}
       </tbody>
     </table>

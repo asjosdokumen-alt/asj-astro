@@ -121,6 +121,13 @@ export const FILE_LABEL_COLUMNS: Record<
     pemberkasan: "sehat_url",
   },
   "HASIL PSIKOTES": { cand: null, master: null, pemberkasan: "psikotes_url" },
+  // Alias tambahan 2026-10-11: token yang DIKIRIM klien admin
+  // (`InputManualModal.EXTRA_DOC_TYPES`) tapi belum punya entri di sini —
+  // "KONTRAK KERJA", "SERTIFIKAT JAPAN", dan "PERNYATAAN CPMI" semuanya berakhir
+  // di kolom yang sama dengan bentuk pendeknya.
+  "KONTRAK KERJA": { cand: null, master: null, pemberkasan: "kontrak_url" },
+  "SERTIFIKAT JAPAN": { cand: null, master: null, pemberkasan: "cert_url" },
+  "PERNYATAAN CPMI": { cand: null, master: null, pemberkasan: "cpmi_url" },
   "IJAZAH UNIVERSITAS": {
     cand: null,
     master: "univ_url",
@@ -128,11 +135,20 @@ export const FILE_LABEL_COLUMNS: Record<
   },
 };
 
-function fileLabelKey(label: string): string | null {
-  const l = String(label || "")
+export function fileLabelKey(label: string): string | null {
+  const raw = String(label || "")
     .trim()
     .toUpperCase();
-  return FILE_LABEL_COLUMNS[l] ? l : null;
+  if (FILE_LABEL_COLUMNS[raw]) return raw;
+  // Spasi dan garis bawah dianggap sama. Klien mengirim "PAS PHOTO" sedangkan
+  // tabel ini memakai "PAS_PHOTO"; sebelumnya ketidakcocokan itu membuat berkas
+  // dibuang DIAM-DIAM sementara balasannya tetap `success: true`.
+  //
+  // Urutannya penting: label yang MEMANG memuat spasi ("KARTU KELUARGA",
+  // "SURAT IJIN ORTU") harus tetap ketemu lewat jalur pertama — normalisasi
+  // tanpa mencoba yang asli lebih dulu akan memutus label yang sudah bekerja.
+  const alt = raw.replace(/[\s-]+/g, "_");
+  return FILE_LABEL_COLUMNS[alt] ? alt : null;
 }
 
 const DOC_URL_SENTINELS = new Set(["-", "null", "undefined"]);
@@ -874,6 +890,16 @@ export async function handleSimpanBerkasTahapan(
     }
     const labelKey = fileLabelKey(jenis);
     const map = labelKey ? FILE_LABEL_COLUMNS[labelKey] : null;
+    // Jenis berkas yang tidak punya kolom tujuan TIDAK boleh dilaporkan sukses.
+    // Sebelumnya blok di bawah hanya dilewati dan fungsinya tetap
+    // `return { success: true }`, jadi admin melihat "berhasil" padahal berkasnya
+    // tidak tercatat di mana pun — kegagalan yang menyamar sebagai hasil normal.
+    if (!map) {
+      return {
+        success: false,
+        error: `Jenis berkas "${jenis || "-"}" belum punya kolom penyimpanan — berkas tidak disimpan.`,
+      };
+    }
     if (map) {
       if (candRow && candRow.id !== undefined && map.cand) {
         await supabaseJson("PATCH", "database_candidate", {

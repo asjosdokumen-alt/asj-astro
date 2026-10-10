@@ -15,6 +15,29 @@ export async function insertSchedule(row: Record<string, any>): Promise<void> {
   });
 }
 
+/**
+ * Perbarui jadwal yang sudah ada, berdasarkan PRIMARY KEY `id`.
+ *
+ * Dipakai jalur "Edit" di tab Jadwal. Sebelum ini tidak ada jalur update sama
+ * sekali — `handleSimpanJadwalBaru` selalu INSERT dengan id baru
+ * (`'JDW' + Date.now()`), jadi menekan Edit membuat salinan dan jadwal aslinya
+ * tidak pernah berubah.
+ *
+ * Parameternya `id` (primary key), bukan `id_jadwal`: baris legacy tidak selalu
+ * punya kolom `id_jadwal`, dan `findScheduleById` sudah mengembalikan barisnya
+ * supaya pemanggil bisa memakai kunci yang pasti ada.
+ */
+export async function updateScheduleById(
+  id: number | string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  await supabaseJson('PATCH', 'database_schedule', {
+    query: { id: `eq.${id}` },
+    body: patch,
+    headers: { Prefer: 'return=minimal' },
+  });
+}
+
 /** Find schedule by id_jadwal or id (legacy fallback) */
 export async function findScheduleById(id: string): Promise<any | null> {
   // Try id_jadwal first
