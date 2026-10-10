@@ -392,3 +392,26 @@ Batas itu penting — catatan statis template yang dipisahkan kolom kosong
 
 Tes: `e2e/cv-template-riwayat.test.ts` 8 → **10**. Dibuktikan bisa merah:
 rentang dikembalikan ke kolom terpetakan saja ⇒ 1 gagal.
+
+### 6. Deteksi kolom tabel hanya melihat baris contoh PERTAMA
+
+`detectRiwayatBlock` memetakan kolom dengan membandingkan nilai di baris contoh
+**pertama** terhadap field entri pertama. Field yang kosong di entri pertama
+(mis. `jurusan` untuk SD, atau `sekolah_jp` yang belum diisi) membuat kolomnya
+**tidak pernah terpetakan** — padahal kolomnya berisi data. Kolom yang tidak
+terpetakan lalu mempertahankan isi contoh di baris kandidat berikutnya.
+
+Sekarang **semua** baris blok diperiksa: baris mana pun yang nilainya cocok
+dengan field entri baris itu dipakai sebagai bukti. Kalau dua baris menunjuk
+field yang **berbeda**, kolom itu dilewati — dua sumber bukti yang bertentangan
+bukan dasar untuk menulis data.
+
+Tes: `e2e/cv-template-riwayat.test.ts` 10 → **12**. Dibuktikan bisa merah:
+kembali ke baris-pertama-saja ⇒ 2 gagal.
+
+**Batas yang tersisa (bukan bug, tapi perlu diketahui):** kolom yang nilainya
+**tidak cocok dengan field mana pun di SEMUA baris contoh** tetap tidak
+dipetakan. Di baris sisa kolom itu disapu (perbaikan #5); di baris yang
+**dipakai** ia dibiarkan apa adanya — karena tanpa bukti apa pun, "kolom ini
+data kandidat" dan "kolom ini hiasan statis template" tidak bisa dibedakan, dan
+menghapus hiasan template lebih merusak daripada membiarkannya.

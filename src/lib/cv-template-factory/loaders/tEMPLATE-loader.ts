@@ -479,19 +479,35 @@ export async function detectRiwayatBlock(
       if (!Number.isFinite(startRow) || startRow === Number.MAX_SAFE_INTEGER) continue;
 
       // Kolom lain: nilainya harus cocok dengan field entri di BARIS yang sama.
+      //
+      // Yang diperiksa SEMUA baris blok, bukan cuma baris pertama. Baris pertama
+      // saja tidak cukup: field yang kosong di entri pertama (mis. `sekolah_jp`
+      // atau `jurusan` yang belum diisi untuk SD) membuat kolomnya tidak pernah
+      // terpetakan — padahal kolom itu berisi data, dan yang tidak terpetakan
+      // akan mempertahankan isi contoh di baris kandidat berikutnya.
+      //
+      // Kalau dua baris menunjuk field yang BERBEDA, kolom itu dilewati: dua
+      // sumber bukti yang bertentangan bukan dasar untuk menulis data.
       const columns: Record<string, string> = { [letter]: keyField };
       for (let cc = 1; cc <= maxCol; cc++) {
         const cl = ws.getColumn(cc).letter;
         if (cl === letter) continue;
-        const key = matchKey(cellText(ws.getCell(startRow, cc)));
-        if (!key) continue;
-        for (const [field, value] of Object.entries(entries[0])) {
-          if (field === keyField) continue;
-          if (matchKey(value) === key) {
-            columns[cl] = field;
+        let mapped: string | null = null;
+        let conflict = false;
+        for (let i = 0; i < entries.length; i++) {
+          const key = matchKey(cellText(ws.getCell(startRow + i, cc)));
+          if (!key) continue;
+          const hit = Object.entries(entries[i]).find(
+            ([field, value]) => field !== keyField && matchKey(value) === key,
+          );
+          if (!hit) continue;
+          if (mapped && mapped !== hit[0]) {
+            conflict = true;
             break;
           }
+          mapped = hit[0];
         }
+        if (mapped && !conflict) columns[cl] = mapped;
       }
       return { sheet: ws.name, startRow, rows: entries.length, keyColumn: letter, columns };
     }

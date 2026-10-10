@@ -230,4 +230,53 @@ describe('applyRiwayatBlock — riwayat LEBIH PANJANG daripada contoh', () => {
     expect(ws.getCell('F4').value).toBe('JANGAN HILANG'); // catatan statis utuh
     expect(ws.getCell('F1').value).toBe('CATATAN STATIS');
   });
+
+  /**
+   * Deteksi kolom hanya melihat baris contoh PERTAMA. Field yang kosong di entri
+   * pertama (mis. `jurusan` untuk SD) membuat kolomnya tidak pernah terpetakan,
+   * padahal kolomnya berisi data — dan yang tidak terpetakan akan mempertahankan
+   * isi contoh di baris kandidat berikutnya.
+   */
+  it('kolom yang kosong di entri PERTAMA tetap terpetakan dari baris lain', async () => {
+    const wb = await sheetFrom([
+      ['RIWAYAT PENDIDIKAN', '', ''],
+      ['Tingkat', 'Nama Sekolah', 'Jurusan'],
+      ['SD', 'SDN 1', ''],
+      ['SMP', 'SMPN 2', 'TEKNIK MESIN'],
+    ]);
+    const contoh = [
+      { tingkat: 'SD', sekolah: 'SDN 1', jurusan: '' },
+      { tingkat: 'SMP', sekolah: 'SMPN 2', jurusan: 'TEKNIK MESIN' },
+    ];
+    const block = need(await detectRiwayatBlock(wb, contoh, 'tingkat'));
+    expect(block.columns.C).toBe('jurusan');
+
+    await applyRiwayatBlock(wb, block, [
+      { tingkat: 'SMA', sekolah: 'SMAN 3', jurusan: 'IPA' },
+    ]);
+    const out = await readBack(await workbookToXlsxBlob(wb));
+    const ws = out.worksheets[0];
+    expect(ws.getCell('C3').value).toBe('IPA');
+    // Dan baris sisa tidak menyimpan 'TEKNIK MESIN' milik contoh.
+    expect(ws.getCell('C4').value).toBeNull();
+  });
+
+  it('kolom yang dua barisnya menunjuk field BERBEDA dilewati, bukan ditebak', async () => {
+    const wb = await sheetFrom([
+      ['RIWAYAT PENDIDIKAN', '', ''],
+      ['Tingkat', 'Nama Sekolah', 'Campur'],
+      ['SD', 'SDN 1', '2013'],
+      ['SMP', 'SMPN 2', 'SMPN 2'],
+    ]);
+    const contoh = [
+      { tingkat: 'SD', sekolah: 'SDN 1', masuk: '2013' },
+      { tingkat: 'SMP', sekolah: 'SMPN 2', masuk: '2019' },
+    ];
+    const block = need(await detectRiwayatBlock(wb, contoh, 'tingkat'));
+    // Baris 0 → `masuk`, baris 1 → `sekolah`. Dua sumber bukti bertentangan,
+    // jadi kolomnya TIDAK dipetakan — menebak di sini menulis data ke sel salah.
+    expect(block.columns.C).toBeUndefined();
+    expect(block.columns.A).toBe('tingkat');
+    expect(block.columns.B).toBe('sekolah');
+  });
 });
