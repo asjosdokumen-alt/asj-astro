@@ -13,7 +13,7 @@ import Icon from '../ui/Icon';
 import { Bar, Status } from '../ui/Skeleton';
 import { normalizeMasterData } from '../../lib/cv-template-factory/data';
 import { analyzeFromExample, detectRiwayatBlock, readWorkbook } from '../../lib/cv-template-factory/loaders/tEMPLATE-loader';
-import { encodeTemplateRecord, decodeTemplateRecord, type CvTemplateRecord } from '../../lib/cv-template-factory/templates';
+import { encodeTemplateRecord, decodeTemplateRecord, templateIdFromName, type CvTemplateRecord } from '../../lib/cv-template-factory/templates';
 import { uploadBerkasToStorage } from '../../lib/uploadBerkas';
 
 /** Baris dari `getTemplateCvList` — `record` masih JSON mentah. */
@@ -162,7 +162,7 @@ export default function TabConfig() {
     }
     setTplBusy(true);
     try {
-      const id = `tpl-${nama.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+      const id = templateIdFromName(nama);
       const fileUrl = await uploadBerkasToStorage(tplFile, { key: id, folder: 'cv-templates' });
       const record: CvTemplateRecord = {
         id,

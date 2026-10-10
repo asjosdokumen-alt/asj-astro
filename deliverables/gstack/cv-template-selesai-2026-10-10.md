@@ -415,3 +415,28 @@ dipetakan. Di baris sisa kolom itu disapu (perbaikan #5); di baris yang
 **dipakai** ia dibiarkan apa adanya — karena tanpa bukti apa pun, "kolom ini
 data kandidat" dan "kolom ini hiasan statis template" tidak bisa dibedakan, dan
 menghapus hiasan template lebih merusak daripada membiarkannya.
+
+### 7. Nama template tanpa huruf/angka ASCII semuanya jadi id `tpl-`
+
+`id` diturunkan dari nama: `tpl-` + slug `[a-z0-9]`. Nama yang **tidak memuat
+huruf/angka ASCII sama sekali** — seluruhnya kanji/kana, atau `***` — menghasilkan
+slug **kosong**, jadi semuanya jatuh ke id yang sama:
+
+| nama | id lama |
+|---|---|
+| `Rirekisho Baku` | `tpl-rirekisho-baku` |
+| `履歴書` | **`tpl-`** |
+| `日本語テンプレート` | **`tpl-`** |
+| `***` | **`tpl-`** |
+
+Karena `id` dipakai sebagai **kunci baris `sys_config`** DAN **nama berkas di
+Storage**, template kedua **menimpa yang pertama** — record-nya maupun berkasnya,
+tanpa peringatan apa pun. Di aplikasi yang antarmukanya penuh label Jepang, nama
+template berbahasa Jepang itu sangat mungkin.
+
+Sekarang `templateIdFromName()` memakai sidik jari FNV-1a dari namanya kalau
+slug-nya kosong — tetap **deterministik** (unggah ulang dengan nama sama =
+memperbarui, bukan membuat salinan kedua).
+
+Tes: `e2e/cv-template-record.test.ts` 12 → **16**. Dibuktikan bisa merah:
+fallback sidik jari dimatikan ⇒ 2 gagal.

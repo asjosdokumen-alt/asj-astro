@@ -19,6 +19,7 @@ import {
   encodeTemplateRecord,
   decodeTemplateRecord,
   decodeTemplateRows,
+  templateIdFromName,
   type CvTemplateRecord,
 } from '../src/lib/cv-template-factory/templates';
 
@@ -126,5 +127,40 @@ describe('decodeTemplateRows — baris sys_config', () => {
 
   it('input bukan array ⇒ daftar kosong, bukan lempar', () => {
     expect(decodeTemplateRows(null)).toEqual([]);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// ID TEMPLATE — dipakai sebagai kunci `sys_config` DAN nama berkas di Storage,
+// jadi dua nama berbeda HARUS menghasilkan dua id berbeda.
+// ---------------------------------------------------------------------------
+describe('templateIdFromName', () => {
+  it('nama ASCII menghasilkan slug yang enak dibaca', () => {
+    expect(templateIdFromName('Rirekisho Baku')).toBe('tpl-rirekisho-baku');
+    expect(templateIdFromName('  Rirekisho   Baku  ')).toBe('tpl-rirekisho-baku');
+  });
+
+  it('nama sama ⇒ id sama (unggah ulang = perbarui, bukan salinan kedua)', () => {
+    expect(templateIdFromName('CV Contoh')).toBe(templateIdFromName('cv contoh'));
+  });
+
+  it('nama tanpa huruf/angka ASCII tidak menabrak nama lain', () => {
+    // Dulu semuanya jatuh ke `tpl-`, sehingga template kedua MENIMPA yang
+    // pertama — record-nya maupun berkasnya, tanpa peringatan apa pun.
+    const a = templateIdFromName('履歴書');
+    const b = templateIdFromName('日本語テンプレート');
+    const c = templateIdFromName('***');
+    expect(a).not.toBe('tpl-');
+    expect(new Set([a, b, c]).size).toBe(3);
+    // dan stabil untuk nama yang sama
+    expect(templateIdFromName('履歴書')).toBe(a);
+  });
+
+  it('id tidak pernah kosong atau hanya `tpl-`', () => {
+    for (const n of ['', '   ', '***', '---', '日本語', '  日本  ']) {
+      const id = templateIdFromName(n);
+      expect(id.length, JSON.stringify(n)).toBeGreaterThan('tpl-'.length);
+    }
   });
 });

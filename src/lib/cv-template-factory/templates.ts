@@ -79,6 +79,36 @@ export function encodeTemplateRecord(rec: CvTemplateRecord): string {
 }
 
 /**
+ * Nama template → id yang stabil.
+ *
+ * Dipakai sebagai kunci baris `sys_config` DAN sebagai nama berkas di Storage,
+ * jadi dua nama berbeda harus menghasilkan dua id berbeda. Nama yang tidak
+ * memuat huruf/angka ASCII sama sekali (mis. seluruhnya kanji/kana — sangat
+ * mungkin di aplikasi ini) menghasilkan slug KOSONG, sehingga semuanya jatuh ke
+ * id `tpl-`: template kedua lalu MENIMPA yang pertama, record-nya maupun
+ * berkasnya, tanpa peringatan apa pun.
+ *
+ * Sidik jari dari namanya menjaga mereka tetap berbeda, dan tetap deterministik
+ * — mengunggah ulang dengan nama yang sama berarti MEMPERBARUI template itu,
+ * bukan membuat salinan kedua.
+ */
+export function templateIdFromName(nama: string): string {
+  const trimmed = nama.trim();
+  const slug = trimmed
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  if (slug) return `tpl-${slug}`;
+  // FNV-1a 32-bit. Bukan untuk keamanan — hanya perlu tersebar dan stabil.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < trimmed.length; i++) {
+    h ^= trimmed.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return `tpl-${h.toString(36)}`;
+}
+
+/**
  * `null` untuk apa pun yang tidak bisa dipakai — record rusak, kolom wajib
  * kosong, atau `config_value` yang ternyata bukan JSON. Pemanggil memperlakukan
  * `null` sebagai "template ini tidak ada", bukan sebagai "template kosong":
