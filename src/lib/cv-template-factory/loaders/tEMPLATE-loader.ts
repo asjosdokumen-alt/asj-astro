@@ -354,6 +354,78 @@ export async function detectRiwayatBlock(
   return null;
 }
 
+type RawSheet = Record<string, unknown>;
+type XlsxModule = typeof import('xlsx');
+
+/** Kunci sel A1-style. Kunci lain di sheet (`!ref`, `!merges`, …) dilewati. */
+const CELL_RE = /^[A-Z]{1,3}[0-9]+$/;
+
+/**
+ * Geser semua baris ≥ `fromRow0` (0-based) turun sebanyak `delta`.
+ *
+ * SheetJS komunitas tidak punya `insert_row`, jadi penggeseran dilakukan
+ * manual. Satu detail yang menentukan benar/tidaknya: SELURUH kunci lama
+ * dihapus lebih dulu, baru kunci baru ditulis. Kalau tidak, sel yang sudah
+ * pindah bisa menimpa sel yang belum dipindah — dua alamat bertabrakan di kunci
+ * yang sama, dan isinya hilang tanpa error.
+ *
+ * Ikut digeser: `!ref`, `!merges`, `!rows` (tinggi baris), `!autofilter`. Kalau
+ * `!merges` tertinggal, sel gabungan akan menutupi baris yang salah.
+ */
+function shiftRowsDown(
+  sheet: RawSheet,
+  fromRow0: number,
+  delta: number,
+  XLSX: XlsxModule,
+): void {
+  const moves: Array<{ from: string; to: string; cell: unknown }> = [];
+  for (const key of Object.keys(sheet)) {
+    if (!CELL_RE.test(key)) continue;
+    const { c, r } = XLSX.utils.decode_cell(key);
+    if (r >= fromRow0) {
+      moves.push({ from: key, to: XLSX.utils.encode_cell({ c, r: r + delta }), cell: sheet[key] });
+    }
+  }
+  for (const m of moves) delete sheet[m.from];
+  for (const m of moves) sheet[m.to] = m.cell;
+
+  const ref = sheet['!ref'];
+  if (typeof ref === 'string' && ref) {
+    const rng = XLSX.utils.decode_range(ref);
+    const shifted = rng.e.r >= fromRow0 ? rng.e.r + delta : rng.e.r;
+    // Baris baru yang disisipkan WAJIB masuk `!ref`: kalau blok riwayat adalah
+    // hal terakhir di sheet, baris tambahannya berada di luar rentang lama dan
+    // akan dibuang diam-diam saat serialisasi.
+    rng.e.r = Math.max(shifted, fromRow0 + delta - 1);
+    sheet['!ref'] = XLSX.utils.encode_range(rng);
+  }
+
+  const merges = sheet['!merges'];
+  if (Array.isArray(merges)) {
+    sheet['!merges'] = merges.map((m) => {
+      const mg = m as { s?: { c: number; r: number }; e?: { c: number; r: number } };
+      if (!mg?.s || !mg.e || mg.s.r < fromRow0) return m;
+      return { s: { c: mg.s.c, r: mg.s.r + delta }, e: { c: mg.e.c, r: mg.e.r + delta } };
+    });
+  }
+
+  const heights = sheet['!rows'];
+  if (Array.isArray(heights) && heights.length > fromRow0) {
+    const pad: undefined[] = [];
+    for (let i = 0; i < delta; i++) pad.push(undefined);
+    heights.splice(fromRow0, 0, ...pad);
+  }
+
+  const af = sheet['!autofilter'] as { ref?: string } | undefined;
+  if (af && typeof af.ref === 'string') {
+    const rng = XLSX.utils.decode_range(af.ref);
+    if (rng.e.r >= fromRow0) {
+      rng.e.r += delta;
+      af.ref = XLSX.utils.encode_range(rng);
+    }
+  }
+}
+
 /** Tulis N entri ke N baris berturut-turut mulai `block.startRow`. */
 export async function applyRiwayatBlock(
   workbook: unknown,
@@ -361,12 +433,17 @@ export async function applyRiwayatBlock(
   entries: Array<Record<string, unknown>>,
 ): Promise<Blob> {
   const XLSX = await import('xlsx');
-  const wb = workbook as {
-    SheetNames: string[];
-    Sheets: Record<string, Record<string, { v?: unknown; t?: string }>>;
-  };
+  const wb = workbook as { SheetNames: string[]; Sheets: Record<string, RawSheet> };
   const sheet = wb.Sheets[block.sheet];
   if (!sheet) throw new Error(`Sheet "${block.sheet}" not found in template`);
+
+  // Kandidat ini punya riwayat LEBIH BANYAK daripada contoh ⇒ barisnya harus
+  // DITAMBAH, bukan dipotong. Sebelum ini kelebihannya dibuang tanpa jejak:
+  // sekolah/pekerjaan terakhir hilang, dan berkasnya tetap terlihat wajar.
+  const extra = entries.length - block.rows;
+  if (extra > 0) {
+    shiftRowsDown(sheet, block.startRow + block.rows - 1, extra, XLSX);
+  }
 
   for (let i = 0; i < entries.length; i++) {
     for (const [col, field] of Object.entries(block.columns)) {

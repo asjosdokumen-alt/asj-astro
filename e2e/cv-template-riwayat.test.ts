@@ -56,6 +56,14 @@ const SHEET = [
   ['SMA', 'MAN 1 PONOROGO', '2022'],
 ];
 
+/** Sama seperti SHEET, tapi ada isi di BAWAH tabel — untuk membuktikan
+ *  penggeseran baris, bukan penimpaan. */
+const SHEET_TAIL = [
+  ...SHEET,
+  ['', '', ''],
+  ['CATATAN', 'JANGAN HILANG', ''],
+];
+
 describe('detectRiwayatBlock — mengenali tabel dari contoh terisi', () => {
   it('menemukan kolom kunci, baris awal, dan kolom-kolom lain', async () => {
     const block = need(await detectRiwayatBlock(await sheetFrom(SHEET), A, 'tingkat'));
@@ -98,5 +106,58 @@ describe('applyRiwayatBlock — isi ulang tabel dengan kandidat lain', () => {
     expect(ws.B4?.v).toBe('SMPN 1 PONOROGO');
     expect(ws.B5?.v).toBe('');
     expect(ws.C5?.v).toBe('');
+  });
+});
+
+/**
+ * BUG YANG DIKUNCI
+ * ----------------
+ * Applier pertama hanya mengisi sampai `block.rows` (jumlah baris di CONTOH).
+ * Kandidat dengan riwayat lebih panjang kehilangan entri terakhirnya tanpa
+ * jejak: sekolah/pekerjaan terakhir tidak muncul, dan berkasnya tetap terlihat
+ * wajar. Barisnya harus DITAMBAH.
+ */
+describe('applyRiwayatBlock — riwayat LEBIH PANJANG daripada contoh', () => {
+  const LONG = [
+    ...B,
+    { tingkat: 'S1', sekolah: 'UNIV BRAWIJAYA', masuk: '2025' },
+    { tingkat: 'S2', sekolah: 'UNIV INDONESIA', masuk: '2029' },
+  ];
+
+  it('menambah baris sampai entri terakhir tertulis', async () => {
+    const wb = await sheetFrom(SHEET);
+    const block = need(await detectRiwayatBlock(wb, A, 'tingkat'));
+    expect(block.rows).toBe(3); // contoh cuma 3 baris
+    const out = await readBack(await applyRiwayatBlock(wb, block, LONG));
+    const ws = out.Sheets[out.SheetNames[0]];
+    // 5 entri mulai baris 3 ⇒ baris 3..7. Entri ke-4 dan ke-5 jatuh di 6 dan 7.
+    expect(ws.A6?.v).toBe('S1');
+    expect(ws.B6?.v).toBe('UNIV BRAWIJAYA');
+    expect(ws.A7?.v).toBe('S2');
+    expect(ws.B7?.v).toBe('UNIV INDONESIA');
+  });
+
+  it('baris di BAWAH tabel ikut turun, tidak tertimpa', async () => {
+    const wb = await sheetFrom(SHEET_TAIL);
+    const block = need(await detectRiwayatBlock(wb, A, 'tingkat'));
+    const out = await readBack(await applyRiwayatBlock(wb, block, LONG));
+    const ws = out.Sheets[out.SheetNames[0]];
+    // Baris 7 (`CATATAN`) semula, digeser 2 baris ke bawah.
+    expect(ws.A9?.v).toBe('CATATAN');
+    expect(ws.B9?.v).toBe('JANGAN HILANG');
+    // dan baris 6/7 sekarang milik kandidat ini, bukan sisa contoh
+    expect(ws.A6?.v).toBe('S1');
+    expect(ws.A7?.v).toBe('S2');
+  });
+
+  it('sel gabungan di bawah tabel ikut turun', async () => {
+    const wb = await sheetFrom(SHEET_TAIL);
+    const ws0 = wb.Sheets[wb.SheetNames[0]];
+    ws0['!merges'] = [{ s: { c: 0, r: 6 }, e: { c: 2, r: 6 } }];
+    const block = need(await detectRiwayatBlock(wb, A, 'tingkat'));
+    const out = await readBack(await applyRiwayatBlock(wb, block, LONG));
+    const ws = out.Sheets[out.SheetNames[0]];
+    const merges = (ws['!merges'] || []) as Array<{ s: { r: number }; e: { r: number } }>;
+    expect(merges.some((m) => m.s.r === 8 && m.e.r === 8)).toBe(true);
   });
 });

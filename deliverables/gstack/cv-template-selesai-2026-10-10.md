@@ -30,6 +30,7 @@ hasil regenerasi. **Admin-only.**
 | `ea658e9` | 3 aksi backend tersambung (7 titik wiring) |
 | `abbd225` | UI admin: upload, tinjau peta, pilih sel ambiguous, simpan |
 | `539a027` | tombol "Buat CV dari template" di modal kandidat |
+| `a5f…` | `applyRiwayatBlock` menambah baris saat riwayat lebih panjang dari contoh |
 
 ## Keputusan arsitektur (dan alasannya)
 
@@ -55,7 +56,61 @@ di `_lib/fcm-server.test.ts`, tidak terkait).
 - **docx/pdf** belum bisa diregenerasi — loader-nya mengembalikan HTML, bukan
   berkas. xlsx dulu, sesuai keputusan pemilik.
 - Template **tidak** menghapus berkasnya dari Storage saat record dihapus
-  (dikonfirmasi di dialognya).
-- `applyFieldMap` menulis satu nilai per sel; riwayat multi-baris ditangani
-  `applyRiwayatBlock`, tapi riwayat dengan **lebih banyak baris daripada contoh**
-  tidak menambah baris baru — hanya mengisi sampai `block.rows`.
+  (dikonfirmasi di dialognya). Menutup ini butuh aksi backend baru (signed
+  delete URL) ⇒ 7 titik wiring lagi, jadi sengaja belum.
+
+## ✅ Ditutup 2026-10-10: riwayat lebih panjang daripada contoh
+
+Dulu `applyRiwayatBlock` hanya mengisi sampai `block.rows` (jumlah baris di
+CONTOH). Kandidat dengan 5 sekolah pada template contoh 3 baris **kehilangan 2
+entri terakhirnya tanpa jejak** — berkasnya tetap terlihat wajar.
+
+Sekarang barisnya **ditambah**: `shiftRowsDown()` menggeser seluruh isi sheet di
+bawah tabel turun sebanyak baris yang dibutuhkan, beserta `!ref`, `!merges`,
+`!rows`, dan `!autofilter`. (SheetJS komunitas tidak punya `insert_row`, jadi
+penggeseran dilakukan manual — dan kunci lama dihapus SELURUHNYA sebelum kunci
+baru ditulis, supaya sel yang sudah pindah tidak menimpa sel yang belum pindah.)
+
+Tes: `e2e/cv-template-riwayat.test.ts` — 3 tes baru (baris bertambah, isi di
+bawah tabel ikut turun, sel gabungan ikut turun). Dibuktikan bisa merah: dengan
+penyisipan dimatikan, ketiganya gagal.
+
+## ⚠️ Temuan 2026-10-10: GAYA template HILANG saat regenerasi
+
+Ini yang paling perlu diketahui sebelum fitur dipakai serius, dan **bukan** salah
+satu dari tiga batas di atas — saya temukan saat memeriksa jalur tulis.
+
+`xlsx` di repo ini adalah **SheetJS 0.20.3 build komunitas**
+(`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`). Build komunitas
+menulis `.xlsx` **tanpa gaya**: `XLSX.write` tidak pernah mengeluarkan atribut
+`s` pada sel.
+
+Diukur pada template rirekisho nyata
+(`deliverables/gstack/_rirekisho-excel-sample-2026-10-01.xlsx`, 61.873 byte):
+
+| | |
+|---|---|
+| dibaca `cellStyles: true` | **62 sel bergaya** (isi `FFF2CB`, font, dsb.) |
+| setelah `write` → `read` ulang | **0 dari 62** bertahan — semua jadi `{"patternType":"none"}` |
+
+- **Bertahan:** teks, posisi sel, `!merges` (83), `!cols`, `!rows`, `!ref`.
+- **Hilang:** font, ukuran, tebal, warna isi, warna huruf, **garis/border**,
+  perataan.
+
+Catatan tambahan: pemanggil saat ini (`openWorkbookFromUrl`) membaca **tanpa**
+`cellStyles`, jadi gaya bahkan tidak pernah dimuat.
+
+**Artinya:** CV hasil regenerasi menaruh data di sel yang benar, tapi tampilannya
+bukan tampilan template. Untuk rirekisho — yang identitas visualnya justru grid
+bergaris — ini terlihat jelas. Hasilnya lebih tepat disebut "data dipindah ke
+sheet" daripada "CV sesuai template".
+
+**Pilihan (belum dipilih — ini keputusan dependensi + ukuran bundel klien):**
+
+1. **`xlsx-js-style`** — fork SheetJS yang bisa MENULIS gaya. Perubahan paling
+   kecil (ganti import), tapi paketnya tidak dirawat aktif dan berbasis 0.18.
+2. **`exceljs`** — MIT, aktif, baca+tulis gaya penuh, dan punya `spliceRows()`
+   yang menggantikan `shiftRowsDown()` manual. Lebih besar di bundel klien.
+3. **SheetJS Pro** — berbayar.
+4. **Terima tanpa gaya** — berkas dipakai sebagai sumber data, bukan untuk
+   dicetak apa adanya; gaya diserahkan ke jalur cetak/PDF nanti.
