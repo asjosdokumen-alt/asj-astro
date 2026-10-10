@@ -27,6 +27,7 @@ vi.mock('../../store/adminStore', () => {
     allKandidatList: mockStore([]),
     kandidatTotal: mockStore(1),
     kandidatLoading: mockStore(false),
+    kandidatExhausted: mockStore(false),
     adminSearch: mockStore(''),
     adminFilterGender: mockStore('all'),
     adminFilterAge: mockStore('all'),
@@ -44,6 +45,7 @@ vi.mock('../../store/adminStore', () => {
     openInputModal: vi.fn(),
     openReportModal: vi.fn(),
     fetchKandidatFromAPI: vi.fn(),
+    reloadKandidatList: vi.fn(async () => {}),
   };
 });
 

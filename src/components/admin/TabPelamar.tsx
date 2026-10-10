@@ -8,11 +8,11 @@ import { useStore } from '@nanostores/preact';
 import {
   kandidatList, kandidatTotal, kandidatLoading,
   adminSearch, adminFilterGender, adminFilterAge, adminFilterJft,
-  adminPage, adminSimpleView, PAGE_SIZE,
+  adminPage, adminSimpleView, kandidatExhausted, PAGE_SIZE,
   setAdminSearch, setAdminFilterGender, setAdminFilterAge, setAdminFilterJft,
   nextPage, toggleSimpleView, resetPage,
   openInputModal, openReportModal,
-  fetchKandidatFromAPI,
+  fetchKandidatFromAPI, reloadKandidatList,
 } from '../../store/adminStore';
 import InputManualModal from './InputManualModal.tsx';
 import RirekishoBuilder from './RirekishoBuilder';
@@ -44,7 +44,10 @@ export default function TabPelamar() {
   // Refresh daftar setelah evaluasi kandidat (catatan/VIP) disimpan dari
   // CandidateProfileModal — padanan legacy refreshDataDinamis('pelamar').
   useEffect(() => {
-    const onCandidatesChanged = () => { fetchKandidatFromAPI(); };
+    // `reloadKandidatList`, BUKAN `fetchKandidatFromAPI`: yang terakhir MENAMBAH
+    // saat halaman aktif bukan 0, jadi menyunting kandidat di halaman 3 akan
+    // menggandakan barisnya dan melewatkan halaman berikutnya.
+    const onCandidatesChanged = () => { reloadKandidatList(); };
     window.addEventListener('candidates-changed', onCandidatesChanged);
     return () => window.removeEventListener('candidates-changed', onCandidatesChanged);
   }, []);
@@ -101,6 +104,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
   const filterJft = useStore(adminFilterJft);
   const page = useStore(adminPage);
   const simpleView = useStore(adminSimpleView);
+  const exhausted = useStore(kandidatExhausted);
 
 
   // fetchKandidat moved to adminStore.fetchKandidatFromAPI()
@@ -280,8 +284,16 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
       )}
       <div class="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-sky-900/50 text-sm">
         <span class="text-slate-300 font-bold text-xs">{filtered.length} {t('admin.of')} {totalAll} {t('admin.candidates')}</span>
-        {shown.length < filtered.length && (
-          <button onClick={() => nextPage()} class="min-h-11 px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition"><Icon name="chevron-down" class="mr-1" /> {t('button.more')}</button>
+        {/* Pembandingnya TOTAL DI SERVER, bukan `filtered.length`.
+            `shown` = `filtered.slice(0, (page + 1) * PAGE_SIZE)`, jadi selama
+            satu halaman diambil per klik, `shown.length` SELALU sama dengan
+            `filtered.length` — tombolnya tidak pernah muncul, dan kandidat
+            ke-21 dan seterusnya tidak bisa dijangkau dari layar.
+            Kliknya juga harus MENGAMBIL halaman berikutnya: menaikkan
+            `adminPage` saja hanya memperbesar potongan dari daftar yang isinya
+            masih 20 baris. */}
+        {!exhausted && shown.length < totalAll && (
+          <button onClick={() => { nextPage(); fetchKandidatFromAPI(); }} class="min-h-11 px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition"><Icon name="chevron-down" class="mr-1" /> {t('button.more')}</button>
         )}
       </div>
 

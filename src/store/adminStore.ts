@@ -50,6 +50,16 @@ export const allKandidatList = atom<Kandidat[]>([]);
 export const kandidatLoading = atom<boolean>(true);
 // Total kandidat di server (getCandidatesPage.total) — dipakai teks "x dari y".
 export const kandidatTotal = atom<number>(0);
+/**
+ * Server sudah tidak punya baris lagi (`getCandidatesPage` mengembalikan kurang
+ * dari satu halaman penuh).
+ *
+ * Dibutuhkan karena `total` dihitung dengan filter SERVER (hanya `q`),
+ * sedangkan filter gender/usia/JFT berjalan di klien — jadi `total` bisa tetap
+ * besar walau semua baris yang cocok sudah dimuat. Tanpa penanda ini tombol
+ * "More" tetap tampil selamanya dan menekannya tidak menambah apa pun.
+ */
+export const kandidatExhausted = atom<boolean>(false);
 
 // ── Filter State ─────────────────────────────────────────
 export const adminSearch = atom<string>('');
@@ -161,6 +171,7 @@ export async function fetchKandidatFromAPI() {
       const k = data.candidates || [];
       setKandidatList(page === 0 ? k : [...kandidatList.get(), ...k]);
       kandidatTotal.set(Number(data.total) || kandidatTotal.get() + k.length);
+      kandidatExhausted.set(k.length < PAGE_SIZE);
     }
   } catch (err) {
     // `onSessionInvalid: 'throw'` adalah gerbang lokal tab ini: sesi yang tidak
@@ -183,6 +194,29 @@ export async function fetchKandidatFromAPI() {
     console.error('[adminStore] fetchKandidat failed:', err);
   } finally {
     setKandidatLoading(false);
+  }
+}
+
+/**
+ * Muat ulang daftar kandidat pada KEDALAMAN yang sedang dipakai admin.
+ *
+ * Dipakai setelah sebuah mutasi (edit kandidat, simpan catatan/VIP, unggah
+ * berkas) supaya barisnya langsung menunjukkan data baru.
+ *
+ * Kenapa tidak sekadar `fetchKandidatFromAPI()`: fungsi itu MENAMBAH
+ * (`page === 0 ? k : [...lama, ...k]`) ketika halaman aktif bukan 0. Memanggilnya
+ * di halaman 3 berarti menambahkan halaman 3 untuk KEDUA kalinya — barisnya
+ * berlipat dan halaman 4 tidak pernah ikut. Di sini halaman pertama dimuat
+ * dengan cara MENGGANTI, lalu sisanya ditambahkan berurutan, jadi hasilnya sama
+ * seperti kalau admin memuatnya sendiri sampai kedalaman itu.
+ */
+export async function reloadKandidatList() {
+  const depth = adminPage.get();
+  adminPage.set(0);
+  await fetchKandidatFromAPI();
+  for (let p = 1; p <= depth; p++) {
+    adminPage.set(p);
+    await fetchKandidatFromAPI();
   }
 }
 
