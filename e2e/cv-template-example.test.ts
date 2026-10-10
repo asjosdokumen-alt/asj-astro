@@ -1,5 +1,5 @@
 /**
- * TESTS: analyzeFromExample — belajar peta sel→field dari template yang SUDAH
+ * TESTS: analyzeFromExample — belajar peta sel->field dari template yang SUDAH
  * terisi data satu kandidat (keputusan pemilik 2026-10-09, opsi C).
  *
  * KENAPA DI `e2e/`
@@ -10,13 +10,19 @@
  *
  * ALUR YANG DIKUNCI
  * -----------------
- * admin isi template dengan data kandidat A → upload → peta sel→field → template
- * yang SAMA dipakai untuk kandidat B. Tes terakhir membuktikan bagian "tinggal
- * copy doank": sel yang sama berisi nilai kandidat B.
+ * admin isi template dengan data kandidat A -> upload -> peta sel->field ->
+ * template yang SAMA dipakai untuk kandidat B. Tes terakhir membuktikan bagian
+ * "tinggal copy doank": sel yang sama berisi nilai kandidat B.
  */
 import { describe, it, expect } from 'vitest';
+import { Workbook as ExcelWorkbook } from 'exceljs';
 import type { CandidateData } from '../src/lib/cv-template-factory/types';
-import { analyzeFromExample, applyFieldMap } from '../src/lib/cv-template-factory/loaders/tEMPLATE-loader';
+import {
+  analyzeFromExample,
+  applyFieldMap,
+  workbookToXlsxBlob,
+  readWorkbook,
+} from '../src/lib/cv-template-factory/loaders/tEMPLATE-loader';
 
 function cand(over: Record<string, Record<string, unknown>>): CandidateData {
   return {
@@ -53,21 +59,18 @@ const B = cand({
   fisik: { tb: '170', bb: '60' },
 });
 
-async function sheetFrom(rows: unknown[][]) {
-  const XLSX = await import('xlsx');
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'CV');
+async function sheetFrom(rows: unknown[][]): Promise<ExcelWorkbook> {
+  const wb = new ExcelWorkbook();
+  const ws = wb.addWorksheet('CV');
+  ws.addRows(rows as never[]);
   return wb;
 }
 
-async function readBack(blob: Blob) {
-  const XLSX = await import('xlsx');
-  const buf = new Uint8Array(await blob.arrayBuffer());
-  return XLSX.read(buf, { type: 'array' });
+async function readBack(blob: Blob): Promise<ExcelWorkbook> {
+  return readWorkbook(new Uint8Array(await blob.arrayBuffer()));
 }
 
-describe('analyzeFromExample — peta sel→field dari template terisi', () => {
+describe('analyzeFromExample — peta sel->field dari template terisi', () => {
   it('mencocokkan nilai sel ke field kandidat contoh', async () => {
     // "Template" yang sudah diisi admin dengan data kandidat A.
     const wb = await sheetFrom([
@@ -120,12 +123,12 @@ describe('analyzeFromExample + applyFieldMap — "tinggal copy" untuk kandidat l
     ]);
     const { fieldMap } = await analyzeFromExample(wb, A);
 
-    const out = await applyFieldMap(wb, fieldMap, B);
-    const read = await readBack(out);
-    const ws = read.Sheets[read.SheetNames[0]];
-    expect(ws.B1?.v).toBe('ARIA UJI');
-    expect(ws.B2?.v).toBe('2001-05-05');
-    expect(ws.B3?.v).toBe('JL MELATI 1');
-    expect(ws.B4?.v).toBe('170');
+    await applyFieldMap(wb, fieldMap, B);
+    const read = await readBack(await workbookToXlsxBlob(wb));
+    const ws = read.worksheets[0];
+    expect(ws.getCell('B1').value).toBe('ARIA UJI');
+    expect(ws.getCell('B2').value).toBe('2001-05-05');
+    expect(ws.getCell('B3').value).toBe('JL MELATI 1');
+    expect(ws.getCell('B4').value).toBe('170');
   });
 });

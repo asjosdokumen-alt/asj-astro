@@ -10,11 +10,17 @@
  * per sekolah/perusahaan/anggota keluarga), jadi tanpa applier ini CV hasil
  * regenerasi kehilangan bagian terpentingnya — dan baris milik kandidat
  * SEBELUMNYA bisa tertinggal di baris kandidat berikutnya.
+ *
+ * Ditambah 2026-10-10: applier hanya mengisi sampai jumlah baris CONTOH, jadi
+ * kandidat dengan riwayat lebih panjang kehilangan entri terakhirnya.
  */
 import { describe, it, expect } from 'vitest';
+import { Workbook as ExcelWorkbook } from 'exceljs';
 import {
   detectRiwayatBlock,
   applyRiwayatBlock,
+  workbookToXlsxBlob,
+  readWorkbook,
   type RiwayatBlock,
 } from '../src/lib/cv-template-factory/loaders/tEMPLATE-loader';
 
@@ -29,17 +35,15 @@ const B = [
   { tingkat: 'SMA', sekolah: 'SMAN 2 PONOROGO', masuk: '2020' },
 ];
 
-async function sheetFrom(rows: unknown[][]) {
-  const XLSX = await import('xlsx');
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'CV');
+async function sheetFrom(rows: unknown[][]): Promise<ExcelWorkbook> {
+  const wb = new ExcelWorkbook();
+  const ws = wb.addWorksheet('CV');
+  ws.addRows(rows as never[]);
   return wb;
 }
 
-async function readBack(blob: Blob) {
-  const XLSX = await import('xlsx');
-  return XLSX.read(new Uint8Array(await blob.arrayBuffer()), { type: 'array' });
+async function readBack(blob: Blob): Promise<ExcelWorkbook> {
+  return readWorkbook(new Uint8Array(await blob.arrayBuffer()));
 }
 
 /** Blok yang gagal terdeteksi harus MEMERAHKAN tes, bukan dilewati diam-diam. */
@@ -58,11 +62,7 @@ const SHEET = [
 
 /** Sama seperti SHEET, tapi ada isi di BAWAH tabel — untuk membuktikan
  *  penggeseran baris, bukan penimpaan. */
-const SHEET_TAIL = [
-  ...SHEET,
-  ['', '', ''],
-  ['CATATAN', 'JANGAN HILANG', ''],
-];
+const SHEET_TAIL = [...SHEET, ['', '', ''], ['CATATAN', 'JANGAN HILANG', '']];
 
 describe('detectRiwayatBlock — mengenali tabel dari contoh terisi', () => {
   it('menemukan kolom kunci, baris awal, dan kolom-kolom lain', async () => {
@@ -89,23 +89,25 @@ describe('applyRiwayatBlock — isi ulang tabel dengan kandidat lain', () => {
   it('menulis 3 baris kandidat B ke baris yang sama', async () => {
     const wb = await sheetFrom(SHEET);
     const block = need(await detectRiwayatBlock(wb, A, 'tingkat'));
-    const out = await readBack(await applyRiwayatBlock(wb, block, B));
-    const ws = out.Sheets[out.SheetNames[0]];
-    expect(ws.A3?.v).toBe('SD');
-    expect(ws.B3?.v).toBe('SDN 2 BALONG');
-    expect(ws.C3?.v).toBe('2011');
-    expect(ws.B4?.v).toBe('SMPN 1 PONOROGO');
-    expect(ws.B5?.v).toBe('SMAN 2 PONOROGO');
+    await applyRiwayatBlock(wb, block, B);
+    const out = await readBack(await workbookToXlsxBlob(wb));
+    const ws = out.worksheets[0];
+    expect(ws.getCell('A3').value).toBe('SD');
+    expect(ws.getCell('B3').value).toBe('SDN 2 BALONG');
+    expect(ws.getCell('C3').value).toBe('2011');
+    expect(ws.getCell('B4').value).toBe('SMPN 1 PONOROGO');
+    expect(ws.getCell('B5').value).toBe('SMAN 2 PONOROGO');
   });
 
   it('entri lebih sedikit ⇒ baris sisa DIKOSONGKAN, tidak ditinggali data kandidat sebelumnya', async () => {
     const wb = await sheetFrom(SHEET);
     const block = need(await detectRiwayatBlock(wb, A, 'tingkat'));
-    const out = await readBack(await applyRiwayatBlock(wb, block, B.slice(0, 2)));
-    const ws = out.Sheets[out.SheetNames[0]];
-    expect(ws.B4?.v).toBe('SMPN 1 PONOROGO');
-    expect(ws.B5?.v).toBe('');
-    expect(ws.C5?.v).toBe('');
+    await applyRiwayatBlock(wb, block, B.slice(0, 2));
+    const out = await readBack(await workbookToXlsxBlob(wb));
+    const ws = out.worksheets[0];
+    expect(ws.getCell('B4').value).toBe('SMPN 1 PONOROGO');
+    expect(ws.getCell('B5').value).toBeNull();
+    expect(ws.getCell('C5').value).toBeNull();
   });
 });
 
@@ -128,36 +130,48 @@ describe('applyRiwayatBlock — riwayat LEBIH PANJANG daripada contoh', () => {
     const wb = await sheetFrom(SHEET);
     const block = need(await detectRiwayatBlock(wb, A, 'tingkat'));
     expect(block.rows).toBe(3); // contoh cuma 3 baris
-    const out = await readBack(await applyRiwayatBlock(wb, block, LONG));
-    const ws = out.Sheets[out.SheetNames[0]];
+    await applyRiwayatBlock(wb, block, LONG);
+    const out = await readBack(await workbookToXlsxBlob(wb));
+    const ws = out.worksheets[0];
     // 5 entri mulai baris 3 ⇒ baris 3..7. Entri ke-4 dan ke-5 jatuh di 6 dan 7.
-    expect(ws.A6?.v).toBe('S1');
-    expect(ws.B6?.v).toBe('UNIV BRAWIJAYA');
-    expect(ws.A7?.v).toBe('S2');
-    expect(ws.B7?.v).toBe('UNIV INDONESIA');
+    expect(ws.getCell('A6').value).toBe('S1');
+    expect(ws.getCell('B6').value).toBe('UNIV BRAWIJAYA');
+    expect(ws.getCell('A7').value).toBe('S2');
+    expect(ws.getCell('B7').value).toBe('UNIV INDONESIA');
   });
 
   it('baris di BAWAH tabel ikut turun, tidak tertimpa', async () => {
     const wb = await sheetFrom(SHEET_TAIL);
     const block = need(await detectRiwayatBlock(wb, A, 'tingkat'));
-    const out = await readBack(await applyRiwayatBlock(wb, block, LONG));
-    const ws = out.Sheets[out.SheetNames[0]];
+    await applyRiwayatBlock(wb, block, LONG);
+    const out = await readBack(await workbookToXlsxBlob(wb));
+    const ws = out.worksheets[0];
     // Baris 7 (`CATATAN`) semula, digeser 2 baris ke bawah.
-    expect(ws.A9?.v).toBe('CATATAN');
-    expect(ws.B9?.v).toBe('JANGAN HILANG');
+    expect(ws.getCell('A9').value).toBe('CATATAN');
+    expect(ws.getCell('B9').value).toBe('JANGAN HILANG');
     // dan baris 6/7 sekarang milik kandidat ini, bukan sisa contoh
-    expect(ws.A6?.v).toBe('S1');
-    expect(ws.A7?.v).toBe('S2');
+    expect(ws.getCell('A6').value).toBe('S1');
+    expect(ws.getCell('A7').value).toBe('S2');
   });
 
-  it('sel gabungan di bawah tabel ikut turun', async () => {
+  /**
+   * `spliceRows` exceljs SUDAH menggeser sel gabungan sendiri — jadi tes ini
+   * bukan membuktikan "kita menggesernya", melainkan menjaga agar tidak
+   * digeser DUA KALI. Jebakannya nyata: `ws.model.merges` mengembalikan nilai
+   * BASI tepat sesudah `spliceRows` (masih `A7:C7` padahal hasil tulisannya
+   * `A9:C9`), jadi menggeser hasil bacaan itu menabrak pergeseran bawaan
+   * library dan menghasilkan `A11:C11`. Assertion di bawah menangkap itu.
+   */
+  it('sel gabungan di bawah tabel ikut turun — tepat sekali, tidak dua kali', async () => {
     const wb = await sheetFrom(SHEET_TAIL);
-    const ws0 = wb.Sheets[wb.SheetNames[0]];
-    ws0['!merges'] = [{ s: { c: 0, r: 6 }, e: { c: 2, r: 6 } }];
+    const ws0 = wb.worksheets[0];
+    ws0.mergeCells('A7:C7');
     const block = need(await detectRiwayatBlock(wb, A, 'tingkat'));
-    const out = await readBack(await applyRiwayatBlock(wb, block, LONG));
-    const ws = out.Sheets[out.SheetNames[0]];
-    const merges = (ws['!merges'] || []) as Array<{ s: { r: number }; e: { r: number } }>;
-    expect(merges.some((m) => m.s.r === 8 && m.e.r === 8)).toBe(true);
+    await applyRiwayatBlock(wb, block, LONG);
+    const out = await readBack(await workbookToXlsxBlob(wb));
+    const ws = out.worksheets[0];
+    expect(ws.model.merges).toContain('A9:C9');
+    expect(ws.model.merges).not.toContain('A7:C7');
+    expect(ws.model.merges).not.toContain('A11:C11');
   });
 });

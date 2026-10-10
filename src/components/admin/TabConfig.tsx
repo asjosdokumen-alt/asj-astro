@@ -12,7 +12,7 @@ import type { ConfigGroup } from '../../types/api';
 import Icon from '../ui/Icon';
 import { Bar, Status } from '../ui/Skeleton';
 import { normalizeMasterData } from '../../lib/cv-template-factory/data';
-import { analyzeFromExample, detectRiwayatBlock } from '../../lib/cv-template-factory/loaders/tEMPLATE-loader';
+import { analyzeFromExample, detectRiwayatBlock, readWorkbook } from '../../lib/cv-template-factory/loaders/tEMPLATE-loader';
 import { encodeTemplateRecord, decodeTemplateRecord, type CvTemplateRecord } from '../../lib/cv-template-factory/templates';
 import { uploadBerkasToStorage } from '../../lib/uploadBerkas';
 
@@ -84,8 +84,11 @@ export default function TabConfig() {
       })) as Record<string, unknown> | null;
       if (!m?.error) throw new Error(String(m?.error || 'Data master kandidat contoh tidak ditemukan.'));
       const data = normalizeMasterData(m);
-      const XLSX = await import('xlsx');
-      const wb = XLSX.read(new Uint8Array(await tplFile.arrayBuffer()), { type: 'array' });
+      // `readWorkbook` (exceljs) — bukan `xlsx` langsung. Membaca lewat helper
+      // yang sama dengan jalur unduh berarti apa yang di-ANALISA persis apa yang
+      // nanti DIISI; dua pembaca berbeda adalah cara termudah membuat peta sel
+      // yang benar di sini menjadi salah di sana.
+      const wb = await readWorkbook(new Uint8Array(await tplFile.arrayBuffer()));
 
       const { fieldMap, ambiguous, unmatched } = await analyzeFromExample(wb, data);
       const riwayat: CvTemplateRecord['riwayat'] = {};

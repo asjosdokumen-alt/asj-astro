@@ -1,3 +1,30 @@
+/**
+ * tEMPLATE-loader.ts — baca/tulis template CV (.xlsx) untuk fitur "Template CV".
+ *
+ * KENAPA exceljs, BUKAN `xlsx` (SheetJS) — keputusan pemilik 2026-10-10
+ * ---------------------------------------------------------------------
+ * Build KOMUNITAS SheetJS tidak bisa MENULIS gaya: `XLSX.write` tidak pernah
+ * mengeluarkan atribut `s`, dan ia juga tidak meng-*baca* data validation sama
+ * sekali. Diukur pada template rirekisho nyata:
+ *
+ *   | | SheetJS (read+write) | exceljs (read+write) |
+ *   |---|---|---|
+ *   | sel bergaya (font/warna/border/perataan) | 62 -> 0        | 154 -> 154 |
+ *   | dropdown (`dataValidation`)               |  8 -> 0        | 17 -> 17   |
+ *   | gambar tertanam                           | ada -> hilang  | 1 -> 1     |
+ *   | pengaturan cetak (`pageSetup`)            | ada -> hilang  | ada -> ada |
+ *   | sel gabungan                              | 83 -> 83       | 83 -> 83   |
+ *
+ * Konsekuensi desainnya penting: **gaya tidak perlu "disalin"** — selama kita
+ * hanya mengubah `cell.value`, exceljs mempertahankan `cell.style` yang sudah
+ * ada. Jadi mengisi CV tidak lagi menghapus tampilan template.
+ *
+ * Yang BENAR-BENAR harus dikerjakan manual cuma saat MENAMBAH BARIS (riwayat
+ * lebih panjang daripada contoh): `spliceRows` tidak mewarisi gaya, tidak
+ * menggeser sel gabungan, dan tidak menggeser alamat dropdown. Ketiganya
+ * ditangani di `insertRowsWithStyle()`.
+ */
+import type { Cell, Workbook, Worksheet } from 'exceljs';
 import type { CandidateData } from '../types';
 
 export type ExcelTemplateOptions = {
@@ -17,7 +44,7 @@ interface FieldLabel {
 }
 
 function rx(pattern: string): RegExp {
-  return new RegExp('^(' + pattern + ')$', 'i');
+  return new RegExp(`^(${pattern})$`, 'i');
 }
 
 export const FIELD_LABELS: FieldLabel[] = [
@@ -71,13 +98,124 @@ export const FIELD_LABELS: FieldLabel[] = [
   { pattern: rx('hubungan|relationship'), path: 'keluarga.hubungan' },
 ];
 
+// ---------------------------------------------------------------------------
+// Muat exceljs
+// ---------------------------------------------------------------------------
+// `exceljs` punya main CJS (`excel.js`) DAN browser field (`dist/exceljs.min.js`).
+// Interop-nya berbeda antara Node dan bundler, jadi konstruktornya diambil dari
+// dua tempat. Satu tempat untuk aturan ini lebih baik daripada di tiap pemanggil.
+type WorkbookCtor = new () => Workbook;
+
+async function workbookCtor(): Promise<WorkbookCtor> {
+  const mod = (await import('exceljs')) as unknown as {
+    Workbook?: unknown;
+    default?: { Workbook?: unknown };
+  };
+  const ctor = mod.Workbook ?? mod.default?.Workbook;
+  if (typeof ctor !== 'function') {
+    throw new Error('exceljs tidak bisa dimuat (Workbook tidak ditemukan).');
+  }
+  return ctor as WorkbookCtor;
+}
+
+/** Baca workbook dari buffer. */
+export async function readWorkbook(buffer: ArrayBuffer | Uint8Array): Promise<Workbook> {
+  const Ctor = await workbookCtor();
+  const wb = new Ctor();
+  await wb.xlsx.load(buffer as never);
+  return wb;
+}
+
+/** Ambil sheet pertama (atau yang namanya disebut). */
+function pickSheet(wb: Workbook, name?: string): Worksheet {
+  const ws = name ? wb.getWorksheet(name) : wb.worksheets[0];
+  if (!ws) throw new Error(`Sheet "${name || '(pertama)'}" tidak ada di template.`);
+  return ws;
+}
+
+/** `applyFieldMap` dan `applyRiwayatBlock` menulis satu nilai per sel. */
+export async function openWorkbookFromUrl(url: string): Promise<Workbook> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Berkas template tidak bisa diambil (${res.status}).`);
+  return readWorkbook(new Uint8Array(await res.arrayBuffer()));
+}
+
+/**
+ * Serialisasi workbook yang sudah diisi jadi berkas .xlsx.
+ *
+ * Helper ini ada supaya KOMPONEN tidak memanggil `fetch` mentah dan tidak
+ * meng-import exceljs sendiri: `CandidateProfileModal` punya tes yang menegakkan
+ * "tidak ada fetch mentah di sumbernya", dan satu tempat untuk aturan jaringan
+ * lebih baik daripada tersebar di tiap pemanggil.
+ */
+export async function workbookToXlsxBlob(workbook: Workbook): Promise<Blob> {
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Blob([buffer as ArrayBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Nilai sel: baca & tulis
+// ---------------------------------------------------------------------------
+/**
+ * Teks sebuah sel untuk pencocokan & pembacaan.
+ *
+ * exceljs menyimpan nilai kaya sebagai objek (`richText`, `{formula, result}`,
+ * `{text, hyperlink}`) dan tanggal sebagai `Date`. `String(value)` mentah akan
+ * menghasilkan `[object Object]` — itu akan membuat pencocokan nilai di
+ * `analyzeFromExample` diam-diam gagal, jadi tiap bentuk ditangani eksplisit.
+ */
+function cellText(cell: Cell | undefined): string {
+  if (!cell) return '';
+  const v: unknown = cell.value;
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (typeof v === 'object') {
+    const o = v as Record<string, unknown>;
+    if (Array.isArray(o.richText)) {
+      return (o.richText as Array<{ text?: unknown }>).map((t) => String(t.text ?? '')).join('');
+    }
+    if ('result' in o) return o.result === null || o.result === undefined ? '' : String(o.result);
+    if ('text' in o) return String(o.text ?? '');
+    return '';
+  }
+  return String(v);
+}
+
+/** Nilai entri riwayat -> string. */
+function toStr(v: unknown): string {
+  return v === null || v === undefined ? '' : String(v);
+}
+
+/**
+ * Tulis nilai ke sel TANPA menyentuh gayanya.
+ *
+ * `cell.value = x` mempertahankan `cell.style` — itulah sebabnya mengisi CV
+ * tidak lagi menghapus tampilan template. Tipe nilainya dijaga: kalau sel itu
+ * sebelumnya berisi ANGKA dan nilai barunya numerik, tulis sebagai angka lagi
+ * (kalau ditulis sebagai teks, format angka & perataannya berubah).
+ */
+function writeCellValue(cell: Cell, value: string): void {
+  if (value === '') {
+    // `null`, bukan `''`: mengosongkan baris sisa harus benar-benar kosong,
+    // tapi gaya/border sel tetap dipertahankan.
+    cell.value = null;
+    return;
+  }
+  const prev: unknown = cell.value;
+  if (typeof prev === 'number' && Number.isFinite(Number(value))) {
+    cell.value = Number(value);
+    return;
+  }
+  cell.value = value;
+}
+
 function getValueFromPath(data: CandidateData, path: string): string {
   const parts = path.split('.');
   let current: unknown = data;
   for (const part of parts) {
-    if (current === null || current === undefined || typeof current !== 'object') {
-      return '';
-    }
+    if (current === null || current === undefined || typeof current !== 'object') return '';
     current = (current as Record<string, unknown>)[part];
   }
   if (current === null || current === undefined) return '';
@@ -85,22 +223,15 @@ function getValueFromPath(data: CandidateData, path: string): string {
     return current
       .map((item) => {
         if (typeof item === 'object' && item !== null) {
-          return Object.values(item).map((v) => String(v ?? '')).join(' / ');
+          return Object.values(item)
+            .map((v) => String(v ?? ''))
+            .join(' / ');
         }
         return String(item);
       })
       .join('\n');
   }
   return String(current);
-}
-
-function hasPlaceholders(sheet: Record<string, unknown>): boolean {
-  for (const cell of Object.values(sheet)) {
-    if (cell && typeof (cell as { v?: unknown }).v === 'string' && PLACEHOLDER_RE.test((cell as { v: string }).v)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 export function flattenDataForPlaceholders(data: CandidateData): Record<string, string> {
@@ -131,45 +262,33 @@ export function flattenDataForPlaceholders(data: CandidateData): Record<string, 
   return flat;
 }
 
-/** `applyFieldMap` dan `applyRiwayatBlock` menulis satu nilai per sel. */
-export async function openWorkbookFromUrl(url: string): Promise<unknown> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Berkas template tidak bisa diambil (${res.status}).`);
-  const XLSX = await import('xlsx');
-  return XLSX.read(new Uint8Array(await res.arrayBuffer()), { type: 'array' });
-}
-
-/**
- * Serialisasi workbook yang sudah diisi jadi berkas .xlsx.
- *
- * Dua helper ini ada supaya KOMPONEN tidak memanggil `fetch` mentah dan tidak
- * meng-import `xlsx` sendiri: `CandidateProfileModal` punya tes yang menegakkan
- * "tidak ada fetch mentah di sumbernya", dan satu tempat untuk aturan jaringan
- * lebih baik daripada tersebar di tiap pemanggil.
- */
-export async function workbookToXlsxBlob(workbook: unknown): Promise<Blob> {
-  const XLSX = await import('xlsx');
-  const buffer = XLSX.write(workbook as never, { type: 'buffer', bookType: 'xlsx' });
-  return new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
-}
-
 function replacePlaceholders(text: string, flatData: Record<string, string>): string {
   return text.replace(PLACEHOLDER_RE, (match, key) => {
-    const trimmed = key.trim();
-    if (flatData[trimmed] !== undefined) {
-      return flatData[trimmed];
-    }
+    const trimmed = String(key).trim();
+    if (flatData[trimmed] !== undefined) return flatData[trimmed];
     return match;
   });
+}
+
+/** Semua sel berisi di sheet, sebagai daftar `{address, text}`. */
+function eachCell(ws: Worksheet, fn: (address: string, text: string) => void): void {
+  const maxRow = ws.rowCount;
+  const maxCol = ws.columnCount;
+  for (let r = 1; r <= maxRow; r++) {
+    for (let c = 1; c <= maxCol; c++) {
+      const cell = ws.getCell(r, c);
+      const text = cellText(cell);
+      if (text === '') continue;
+      fn(cell.address, text);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
 // BELAJAR DARI CONTOH TERISI (keputusan pemilik 2026-10-09: opsi C)
 // ---------------------------------------------------------------------------
 // Admin mengisi template dengan data SATU kandidat nyata lalu meng-upload-nya
-// sekali. Peta sel→field disimpulkan dengan mencocokkan NILAI di setiap sel
+// sekali. Peta sel->field disimpulkan dengan mencocokkan NILAI di setiap sel
 // terhadap nilai field kandidat itu — jadi tidak perlu mengetik
 // `{{placeholder}}` di setiap sel, dan template yang sudah terisi penuh
 // langsung bisa dipakai ulang untuk kandidat lain.
@@ -179,9 +298,9 @@ function replacePlaceholders(text: string, flatData: Record<string, string>): st
 // diisi manual. Sel yang nilainya cocok dengan LEBIH DARI SATU field tidak
 // ditebak — dimasukkan ke `ambiguous` supaya admin memilih.
 export interface ExampleAnalysis {
-  /** sel → path data (siap diserahkan ke `applyFieldMap`) */
+  /** sel -> path data (siap diserahkan ke `applyFieldMap`) */
   fieldMap: TemplateFieldMap;
-  /** sel → daftar path yang nilainya sama; admin harus memilih satu */
+  /** sel -> daftar path yang nilainya sama; admin harus memilih satu */
   ambiguous: Record<string, string[]>;
   /** path yang TIDAK ketemu di template — admin tahu apa yang belum tertampung */
   unmatched: string[];
@@ -196,21 +315,19 @@ function tooWeakToMatch(v: string): boolean {
 }
 
 function matchKey(v: unknown): string {
-  return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return String(v ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
 }
 
 export async function analyzeFromExample(
-  workbook: unknown,
+  workbook: Workbook,
   data: CandidateData,
 ): Promise<ExampleAnalysis> {
-  const XLSX = await import('xlsx');
-  const wb = workbook as {
-    SheetNames: string[];
-    Sheets: Record<string, Record<string, { v?: unknown; t?: string }>>;
-  };
   const flat = flattenDataForPlaceholders(data);
 
-  // Nilai → path. Hanya nilai yang cukup khas yang boleh jadi bukti.
+  // Nilai -> path. Hanya nilai yang cukup khas yang boleh jadi bukti.
   const byValue = new Map<string, string[]>();
   for (const [path, value] of Object.entries(flat)) {
     const key = matchKey(value);
@@ -224,41 +341,30 @@ export async function analyzeFromExample(
   const ambiguous: Record<string, string[]> = {};
   const used = new Set<string>();
 
-  for (const sheetName of wb.SheetNames) {
-    const sheet = wb.Sheets[sheetName];
-    if (!sheet) continue;
-    const range = XLSX.utils.decode_range((sheet['!ref'] as string) || 'A1');
-    for (let row = range.s.r; row <= range.e.r; row++) {
-      for (let col = range.s.c; col <= range.e.c; col++) {
-        const addr = XLSX.utils.encode_cell({ r: row, c: col });
-        const cell = sheet[addr];
-        if (!cell || cell.v === null || cell.v === undefined) continue;
-        const text = String(cell.v);
-
-        // `{{path}}` selalu menang: itu perintah eksplisit, bukan tebakan.
-        const token = PLACEHOLDER_RE.exec(text);
-        PLACEHOLDER_RE.lastIndex = 0;
-        if (token && flat[token[1].trim()] !== undefined) {
-          fieldMap[addr] = token[1].trim();
-          used.add(token[1].trim());
-          continue;
-        }
-
-        const paths = byValue.get(matchKey(text));
-        if (!paths?.length) continue;
-        if (paths.length === 1) {
-          fieldMap[addr] = paths[0];
-          used.add(paths[0]);
-        } else {
-          ambiguous[addr] = paths;
-        }
+  for (const ws of workbook.worksheets) {
+    eachCell(ws, (addr, text) => {
+      // `{{path}}` selalu menang: itu perintah eksplisit, bukan tebakan.
+      const token = PLACEHOLDER_RE.exec(text);
+      PLACEHOLDER_RE.lastIndex = 0;
+      if (token && flat[String(token[1]).trim()] !== undefined) {
+        const path = String(token[1]).trim();
+        fieldMap[addr] = path;
+        used.add(path);
+        return;
       }
-    }
+
+      const paths = byValue.get(matchKey(text));
+      if (!paths?.length) return;
+      if (paths.length === 1) {
+        fieldMap[addr] = paths[0];
+        used.add(paths[0]);
+      } else {
+        ambiguous[addr] = paths;
+      }
+    });
   }
 
-  const unmatched = Object.keys(flat).filter(
-    (p) => !used.has(p) && !tooWeakToMatch(String(flat[p])),
-  );
+  const unmatched = Object.keys(flat).filter((p) => !used.has(p) && !tooWeakToMatch(String(flat[p])));
   return { fieldMap, ambiguous, unmatched };
 }
 
@@ -282,37 +388,27 @@ export interface RiwayatBlock {
   rows: number;
   /** Kolom kunci, mis. 'A'. */
   keyColumn: string;
-  /** Kolom → field entri, mis. `{ A: 'tingkat', B: 'sekolah' }`. */
+  /** Kolom -> field entri, mis. `{ A: 'tingkat', B: 'sekolah' }`. */
   columns: Record<string, string>;
 }
 
-const colName = (xlsx: { utils: { encode_col: (c: number) => string } }, c: number) => xlsx.utils.encode_col(c);
-
 export async function detectRiwayatBlock(
-  workbook: unknown,
+  workbook: Workbook,
   entries: Array<Record<string, unknown>>,
   keyField: string,
 ): Promise<RiwayatBlock | null> {
   if (!Array.isArray(entries) || entries.length < 2) return null;
-  const XLSX = await import('xlsx');
-  const wb = workbook as {
-    SheetNames: string[];
-    Sheets: Record<string, Record<string, { v?: unknown }>>;
-  };
 
-  for (const sheetName of wb.SheetNames) {
-    const sheet = wb.Sheets[sheetName];
-    if (!sheet) continue;
-    const range = XLSX.utils.decode_range((sheet['!ref'] as string) || 'A1');
+  for (const ws of workbook.worksheets) {
+    const maxRow = ws.rowCount;
+    const maxCol = ws.columnCount;
 
-    for (let col = range.s.c; col <= range.e.c; col++) {
-      const letter = colName(XLSX, col);
+    for (let c = 1; c <= maxCol; c++) {
+      const letter = ws.getColumn(c).letter;
       // Baris mana saja di kolom ini yang cocok dengan field kunci entri ke-i?
       const hits: number[] = [];
-      for (let row = range.s.r; row <= range.e.r; row++) {
-        const cell = sheet[`${letter}${row + 1}`];
-        if (!cell || cell.v === null || cell.v === undefined) continue;
-        const key = matchKey(cell.v);
+      for (let r = 1; r <= maxRow; r++) {
+        const key = matchKey(cellText(ws.getCell(r, c)));
         if (!key) continue;
         const i = entries.findIndex((e) => matchKey(e[keyField]) === key);
         if (i >= 0 && !hits.includes(i)) hits.push(i);
@@ -322,9 +418,8 @@ export async function detectRiwayatBlock(
 
       const startRow = Math.min(
         ...entries.map((e) => {
-          for (let row = range.s.r; row <= range.e.r; row++) {
-            const cell = sheet[`${letter}${row + 1}`];
-            if (cell && matchKey(cell.v) === matchKey(e[keyField])) return row + 1;
+          for (let r = 1; r <= maxRow; r++) {
+            if (matchKey(cellText(ws.getCell(r, c))) === matchKey(e[keyField])) return r;
           }
           return Number.MAX_SAFE_INTEGER;
         }),
@@ -333,12 +428,10 @@ export async function detectRiwayatBlock(
 
       // Kolom lain: nilainya harus cocok dengan field entri di BARIS yang sama.
       const columns: Record<string, string> = { [letter]: keyField };
-      for (let c = range.s.c; c <= range.e.c; c++) {
-        const cl = colName(XLSX, c);
+      for (let cc = 1; cc <= maxCol; cc++) {
+        const cl = ws.getColumn(cc).letter;
         if (cl === letter) continue;
-        const row0 = sheet[`${cl}${startRow}`];
-        if (!row0 || row0.v === null || row0.v === undefined) continue;
-        const key = matchKey(row0.v);
+        const key = matchKey(cellText(ws.getCell(startRow, cc)));
         if (!key) continue;
         for (const [field, value] of Object.entries(entries[0])) {
           if (field === keyField) continue;
@@ -348,110 +441,114 @@ export async function detectRiwayatBlock(
           }
         }
       }
-      return { sheet: sheetName, startRow, rows: entries.length, keyColumn: letter, columns };
+      return { sheet: ws.name, startRow, rows: entries.length, keyColumn: letter, columns };
     }
   }
   return null;
 }
 
-type RawSheet = Record<string, unknown>;
-type XlsxModule = typeof import('xlsx');
+/** Salinan dalam — `cell.style` adalah objek hidup milik sel sumber. */
+function cloneStyle(cell: Cell): { style: unknown; numFmt: string } {
+  return {
+    style: JSON.parse(JSON.stringify(cell.style ?? {})),
+    numFmt: cell.numFmt || 'General',
+  };
+}
 
-/** Kunci sel A1-style. Kunci lain di sheet (`!ref`, `!merges`, …) dilewati. */
-const CELL_RE = /^[A-Z]{1,3}[0-9]+$/;
+const REF_RE = /(\$?)([A-Z]{1,3})(\$?)(\d+)/g;
+
+/** Geser SEMUA referensi sel di teks yang barisnya >= `fromRow0` (0-based). */
+function shiftRefs(text: string, fromRow0: number, delta: number): string {
+  return text.replace(REF_RE, (whole, dc: string, col: string, dr: string, row: string) => {
+    const r0 = Number(row) - 1;
+    return r0 >= fromRow0 ? `${dc}${col}${dr}${r0 + delta + 1}` : whole;
+  });
+}
 
 /**
- * Geser semua baris ≥ `fromRow0` (0-based) turun sebanyak `delta`.
+ * Tambah `extra` baris kosong mulai baris `at` (1-based) — dan perbaiki DUA hal
+ * yang `spliceRows` tidak kerjakan sendiri:
  *
- * SheetJS komunitas tidak punya `insert_row`, jadi penggeseran dilakukan
- * manual. Satu detail yang menentukan benar/tidaknya: SELURUH kunci lama
- * dihapus lebih dulu, baru kunci baru ditulis. Kalau tidak, sel yang sudah
- * pindah bisa menimpa sel yang belum dipindah — dua alamat bertabrakan di kunci
- * yang sama, dan isinya hilang tanpa error.
+ *  1. **Alamat dropdown** (`ws.dataValidations.model`) tidak ikut bergeser —
+ *     termasuk RENTANG SUMBER daftarnya (mis. `$J$29:$Z$29`). Kalau dibiarkan,
+ *     dropdown berpindah ke baris yang salah tanpa error apa pun.
+ *  2. **Gaya & tinggi baris** tidak diwarisi. Baris baru disalin dari baris
+ *     contoh TERAKHIR blok, supaya tabel tetap bergaris seperti template.
  *
- * Ikut digeser: `!ref`, `!merges`, `!rows` (tinggi baris), `!autofilter`. Kalau
- * `!merges` tertinggal, sel gabungan akan menutupi baris yang salah.
+ * ⚠️ **Sel gabungan JANGAN digeser manual.** `spliceRows` sudah menggesernya
+ * sendiri — tapi `ws.model.merges` mengembalikan nilai BASI tepat sesudah
+ * `spliceRows`, jadi membacanya di situ lalu menggeser hasilnya akan
+ * menggeser DUA KALI. (Diuji: merge `A7:C7` + sisip 2 baris di baris 4 ⇒
+ * `A9:C9` sesudah write+load, sementara getter masih bilang `A7:C7`.)
  */
-function shiftRowsDown(
-  sheet: RawSheet,
-  fromRow0: number,
-  delta: number,
-  XLSX: XlsxModule,
+function insertRowsWithStyle(
+  ws: Worksheet,
+  at: number,
+  extra: number,
+  styleFromRow: number,
+  cols: string[],
 ): void {
-  const moves: Array<{ from: string; to: string; cell: unknown }> = [];
-  for (const key of Object.keys(sheet)) {
-    if (!CELL_RE.test(key)) continue;
-    const { c, r } = XLSX.utils.decode_cell(key);
-    if (r >= fromRow0) {
-      moves.push({ from: key, to: XLSX.utils.encode_cell({ c, r: r + delta }), cell: sheet[key] });
+  const fromRow0 = at - 1;
+  const snapshots = cols.map((col) => ({ col, ...cloneStyle(ws.getCell(`${col}${styleFromRow}`)) }));
+  const height = ws.getRow(styleFromRow).height;
+
+  const blanks: unknown[][] = [];
+  for (let i = 0; i < extra; i++) blanks.push([]);
+  ws.spliceRows(at, 0, ...blanks);
+
+  // `dataValidations` TIDAK ada di typings exceljs (di index.d.ts baris itu
+  // dikomentari), jadi bentuknya diambil manual. Objeknya ada saat runtime —
+  // dibuktikan `e2e/cv-template-fidelity.test.ts`.
+  const dv = (
+    ws as unknown as {
+      dataValidations?: { model?: Record<string, Record<string, unknown>> };
     }
-  }
-  for (const m of moves) delete sheet[m.from];
-  for (const m of moves) sheet[m.to] = m.cell;
-
-  const ref = sheet['!ref'];
-  if (typeof ref === 'string' && ref) {
-    const rng = XLSX.utils.decode_range(ref);
-    const shifted = rng.e.r >= fromRow0 ? rng.e.r + delta : rng.e.r;
-    // Baris baru yang disisipkan WAJIB masuk `!ref`: kalau blok riwayat adalah
-    // hal terakhir di sheet, baris tambahannya berada di luar rentang lama dan
-    // akan dibuang diam-diam saat serialisasi.
-    rng.e.r = Math.max(shifted, fromRow0 + delta - 1);
-    sheet['!ref'] = XLSX.utils.encode_range(rng);
+  ).dataValidations;
+  if (dv?.model) {
+    const next: Record<string, Record<string, unknown>> = {};
+    for (const [addr, rule] of Object.entries(dv.model)) {
+      const clone = JSON.parse(JSON.stringify(rule)) as Record<string, unknown>;
+      if (Array.isArray(clone.formulae)) {
+        clone.formulae = (clone.formulae as string[]).map((f) => shiftRefs(String(f), fromRow0, extra));
+      }
+      next[shiftRefs(addr, fromRow0, extra)] = clone;
+    }
+    dv.model = next;
   }
 
-  const merges = sheet['!merges'];
-  if (Array.isArray(merges)) {
-    sheet['!merges'] = merges.map((m) => {
-      const mg = m as { s?: { c: number; r: number }; e?: { c: number; r: number } };
-      if (!mg?.s || !mg.e || mg.s.r < fromRow0) return m;
-      return { s: { c: mg.s.c, r: mg.s.r + delta }, e: { c: mg.e.c, r: mg.e.r + delta } };
-    });
-  }
-
-  const heights = sheet['!rows'];
-  if (Array.isArray(heights) && heights.length > fromRow0) {
-    const pad: undefined[] = [];
-    for (let i = 0; i < delta; i++) pad.push(undefined);
-    heights.splice(fromRow0, 0, ...pad);
-  }
-
-  const af = sheet['!autofilter'] as { ref?: string } | undefined;
-  if (af && typeof af.ref === 'string') {
-    const rng = XLSX.utils.decode_range(af.ref);
-    if (rng.e.r >= fromRow0) {
-      rng.e.r += delta;
-      af.ref = XLSX.utils.encode_range(rng);
+  for (let i = 0; i < extra; i++) {
+    const row = at + i;
+    ws.getRow(row).height = height;
+    for (const s of snapshots) {
+      const cell = ws.getCell(`${s.col}${row}`);
+      cell.style = s.style as never;
+      cell.numFmt = s.numFmt;
     }
   }
 }
 
 /** Tulis N entri ke N baris berturut-turut mulai `block.startRow`. */
 export async function applyRiwayatBlock(
-  workbook: unknown,
+  workbook: Workbook,
   block: RiwayatBlock,
   entries: Array<Record<string, unknown>>,
-): Promise<Blob> {
-  const XLSX = await import('xlsx');
-  const wb = workbook as { SheetNames: string[]; Sheets: Record<string, RawSheet> };
-  const sheet = wb.Sheets[block.sheet];
-  if (!sheet) throw new Error(`Sheet "${block.sheet}" not found in template`);
+): Promise<void> {
+  const ws = pickSheet(workbook, block.sheet);
+  const cols = Object.keys(block.columns);
 
-  // Kandidat ini punya riwayat LEBIH BANYAK daripada contoh ⇒ barisnya harus
+  // Kandidat ini punya riwayat LEBIH BANYAK daripada contoh => barisnya harus
   // DITAMBAH, bukan dipotong. Sebelum ini kelebihannya dibuang tanpa jejak:
   // sekolah/pekerjaan terakhir hilang, dan berkasnya tetap terlihat wajar.
   const extra = entries.length - block.rows;
   if (extra > 0) {
-    shiftRowsDown(sheet, block.startRow + block.rows - 1, extra, XLSX);
+    insertRowsWithStyle(ws, block.startRow + block.rows, extra, block.startRow + block.rows - 1, cols);
   }
 
   for (let i = 0; i < entries.length; i++) {
     for (const [col, field] of Object.entries(block.columns)) {
-      const value = entries[i][field];
-      const addr = `${col}${block.startRow + i}`;
       // Sel kosong pada entri tetap ditulis kosong: baris milik kandidat
       // SEBELUMNYA tidak boleh tertinggal di baris kandidat berikutnya.
-      sheet[addr] = { t: 's', v: value === null || value === undefined ? '' : String(value) };
+      writeCellValue(ws.getCell(`${col}${block.startRow + i}`), toStr(entries[i][field]));
     }
   }
   // Sisa baris blok (kandidat ini punya riwayat LEBIH PENDEK daripada contoh)
@@ -459,41 +556,25 @@ export async function applyRiwayatBlock(
   // tercetak sebagai riwayat kandidat ini. Ini kesalahan yang paling mudah
   // lolos: hasilnya terlihat wajar, hanya isinya milik orang lain.
   for (let i = entries.length; i < block.rows; i++) {
-    for (const col of Object.keys(block.columns)) {
-      sheet[`${col}${block.startRow + i}`] = { t: 's', v: '' };
-    }
+    for (const col of cols) writeCellValue(ws.getCell(`${col}${block.startRow + i}`), '');
   }
-  const buffer = XLSX.write(wb as never, { type: 'buffer', bookType: 'xlsx' });
-  return new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  });
 }
 
-export async function analyzeExcelTemplate(workbook: unknown): Promise<TemplateFieldMap> {
-  const XLSX = await import('xlsx');
-  const wb = workbook as { SheetNames: string[]; Sheets: Record<string, Record<string, { v?: unknown; t?: string }>> };
+export async function analyzeExcelTemplate(workbook: Workbook): Promise<TemplateFieldMap> {
   const fieldMap: TemplateFieldMap = {};
-  const sheetName = wb.SheetNames[0];
-  const sheet = wb.Sheets[sheetName];
-  if (!sheet) return fieldMap;
+  const ws = workbook.worksheets[0];
+  if (!ws) return fieldMap;
+  const maxRow = ws.rowCount;
+  const maxCol = ws.columnCount;
 
-  const range = XLSX.utils.decode_range((sheet['!ref'] as string) || 'A1');
-  const maxRow = range.e.r;
-  const maxCol = range.e.c;
-
-  for (let row = 0; row <= maxRow; row++) {
-    for (let col = 0; col <= maxCol; col++) {
-      const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-      const cell = sheet[cellAddress];
-      if (!cell || typeof cell.v !== 'string') continue;
-
-      const text = cell.v.trim();
+  for (let r = 1; r <= maxRow; r++) {
+    for (let c = 1; c <= maxCol; c++) {
+      const text = cellText(ws.getCell(r, c)).trim();
+      if (!text) continue;
       for (const { pattern, path } of FIELD_LABELS) {
         if (pattern.test(text)) {
-          const valueCell = findAdjacentValueCell(sheet, row, col, maxRow, maxCol, XLSX);
-          if (valueCell) {
-            fieldMap[valueCell] = path;
-          }
+          const valueCell = findAdjacentValueCell(ws, r, c, maxRow, maxCol);
+          if (valueCell) fieldMap[valueCell] = path;
           break;
         }
       }
@@ -504,144 +585,83 @@ export async function analyzeExcelTemplate(workbook: unknown): Promise<TemplateF
 }
 
 function findAdjacentValueCell(
-  sheet: Record<string, { v?: unknown; t?: string }>,
+  ws: Worksheet,
   row: number,
   col: number,
   maxRow: number,
   maxCol: number,
-  XLSX: { utils: { encode_cell: (o: { r: number; c: number }) => string } }
 ): string | null {
-  if (col < maxCol) {
-    const rightAddr = XLSX.utils.encode_cell({ r: row, c: col + 1 });
-    const rightCell = sheet[rightAddr];
-    if (rightCell && rightCell.v !== null && rightCell.v !== undefined && String(rightCell.v).trim() !== '') {
-      return rightAddr;
-    }
-  }
-  if (col < maxCol - 1) {
-    const farRightAddr = XLSX.utils.encode_cell({ r: row, c: col + 2 });
-    const farRightCell = sheet[farRightAddr];
-    if (farRightCell && farRightCell.v !== null && farRightCell.v !== undefined && String(farRightCell.v).trim() !== '') {
-      return farRightAddr;
-    }
-  }
-  if (row < maxRow) {
-    const belowAddr = XLSX.utils.encode_cell({ r: row + 1, c: col });
-    const belowCell = sheet[belowAddr];
-    if (belowCell && belowCell.v !== null && belowCell.v !== undefined && String(belowCell.v).trim() !== '') {
-      return belowAddr;
-    }
+  const candidates: Array<[number, number]> = [];
+  if (col < maxCol) candidates.push([row, col + 1]);
+  if (col < maxCol - 1) candidates.push([row, col + 2]);
+  if (row < maxRow) candidates.push([row + 1, col]);
+  for (const [r, c] of candidates) {
+    if (cellText(ws.getCell(r, c)).trim() !== '') return ws.getCell(r, c).address;
   }
   return null;
 }
 
-export async function applyFieldMap(workbook: unknown, fieldMap: TemplateFieldMap, data: CandidateData): Promise<Blob> {
-  const XLSX = await import('xlsx');
-  const wb = workbook as { SheetNames: string[]; Sheets: Record<string, Record<string, { v?: unknown; t?: string }>> };
-  const sheetName = wb.SheetNames[0];
-  const sheet = wb.Sheets[sheetName];
-
-  if (!sheet) {
-    throw new Error(`Sheet "${sheetName}" not found in template`);
-  }
-
+export async function applyFieldMap(
+  workbook: Workbook,
+  fieldMap: TemplateFieldMap,
+  data: CandidateData,
+): Promise<void> {
+  const ws = workbook.worksheets[0];
+  if (!ws) throw new Error('Template tidak punya sheet.');
   for (const [cellAddress, fieldPath] of Object.entries(fieldMap)) {
     const value = getValueFromPath(data, fieldPath);
-    if (value) {
-      sheet[cellAddress] = { t: 's', v: value };
-    }
+    if (value) writeCellValue(ws.getCell(cellAddress), value);
   }
-
-  const buffer = XLSX.write(wb as never, { type: 'buffer', bookType: 'xlsx' });
-  return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
 export async function loadExcelTemplate(
   file: File,
   data: CandidateData,
-  options: ExcelTemplateOptions = {}
+  options: ExcelTemplateOptions = {},
 ): Promise<Blob> {
-  const XLSX = await import('xlsx');
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  const workbook = await readWorkbook(new Uint8Array(await file.arrayBuffer()));
   const flatData = flattenDataForPlaceholders(data);
-  const sheetName = options.sheetName || workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
+  const ws = pickSheet(workbook, options.sheetName);
 
-  if (!sheet) {
-    throw new Error(`Sheet "${sheetName}" not found in template`);
-  }
+  const placeholderCells: Array<{ address: string; text: string }> = [];
+  eachCell(ws, (address, text) => {
+    if (PLACEHOLDER_RE.test(text)) placeholderCells.push({ address, text });
+    PLACEHOLDER_RE.lastIndex = 0;
+  });
 
-  if (hasPlaceholders(sheet as Record<string, unknown>)) {
-    const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
-    const maxRow = range.e.r;
-    const maxCol = range.e.c;
-
+  if (placeholderCells.length) {
     const arrayFields = options.arrayFields || ['pendidikan', 'pekerjaan', 'keluarga'];
     const arrayLengths: Record<string, number> = {};
     for (const field of arrayFields) {
       arrayLengths[field] = (data[field as keyof CandidateData] as unknown[] | undefined)?.length || 1;
     }
-
-    const newData: (string | number | boolean | null)[][] = [];
-    const templateRow: (string | number | boolean | null)[] = [];
-
-    for (let row = 0; row <= maxRow; row++) {
-      const rowData: (string | number | boolean | null)[] = [];
-      for (let col = 0; col <= maxCol; col++) {
-        const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        const cell = sheet[cellAddress];
-        let value = cell ? cell.v : null;
-
-        if (typeof value === 'string') {
-          const replaced = replacePlaceholders(value, flatData);
-          value = replaced;
-        }
-
-        rowData.push(value);
-      }
-      templateRow.push(...rowData);
-    }
-
     const maxArrayLength = Math.max(1, ...Object.values(arrayLengths));
+
     for (let i = 0; i < maxArrayLength; i++) {
-      const rowCopy = [...templateRow];
+      const itemFlat: Record<string, string> = {};
       for (const [field, length] of Object.entries(arrayLengths)) {
-        if (i < length) {
-          const arrayData = data[field as keyof CandidateData] as Record<string, unknown>[];
-          const item = arrayData[i];
-          if (item) {
-            const itemFlat: Record<string, string> = {};
-            for (const [k, v] of Object.entries(item)) {
-              if (v !== null && v !== undefined) {
-                itemFlat[`${field}.${k}`] = String(v);
-              }
-            }
-            for (let col = 0; col <= maxCol; col++) {
-              const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
-              const cell = sheet[cellAddress];
-              if (cell && typeof cell.v === 'string') {
-                let replaced = replacePlaceholders(cell.v, itemFlat);
-                replaced = replacePlaceholders(replaced, flatData);
-                rowCopy[col] = replaced;
-              }
-            }
-          }
+        if (i >= length) continue;
+        const item = (data[field as keyof CandidateData] as Record<string, unknown>[] | undefined)?.[i];
+        if (!item) continue;
+        for (const [k, v] of Object.entries(item)) {
+          if (v !== null && v !== undefined) itemFlat[`${field}.${k}`] = String(v);
         }
       }
-      newData.push(rowCopy);
+      for (const { address, text } of placeholderCells) {
+        let replaced = replacePlaceholders(text, itemFlat);
+        replaced = replacePlaceholders(replaced, flatData);
+        // Baris ke-i ditulis ke baris asal + i supaya blok placeholder bertambah
+        // ke bawah, bukan menimpa baris yang sama berulang kali.
+        const src = ws.getCell(address);
+        writeCellValue(ws.getCell(src.row + i, src.col), replaced);
+      }
     }
-
-    const newSheet = XLSX.utils.aoa_to_sheet(newData);
-    const newWorkbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(newWorkbook, newSheet, sheetName);
-
-    const buffer = XLSX.write(newWorkbook, { type: 'buffer', bookType: 'xlsx' });
-    return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    return workbookToXlsxBlob(workbook);
   }
 
   const fieldMap = await analyzeExcelTemplate(workbook);
-  return applyFieldMap(workbook, fieldMap, data);
+  await applyFieldMap(workbook, fieldMap, data);
+  return workbookToXlsxBlob(workbook);
 }
 
 export async function loadDocxTemplate(file: File, data: CandidateData): Promise<{ html: string; text: string }> {
@@ -660,9 +680,15 @@ export async function loadDocxTemplate(file: File, data: CandidateData): Promise
   return { html, text };
 }
 
+interface PdfParser {
+  load: () => Promise<void>;
+  getText: () => Promise<{ text?: string }>;
+  destroy: () => void;
+}
+
 export async function loadPdfTemplate(file: File, data: CandidateData): Promise<string> {
-  const pdfModule = await import('pdf-parse');
-  const PDFClass = (pdfModule as any).PDFParse || (pdfModule as any).default;
+  const pdfModule = (await import('pdf-parse')) as unknown as { PDFParse?: unknown; default?: unknown };
+  const PDFClass = (pdfModule.PDFParse ?? pdfModule.default) as new (b: Uint8Array) => PdfParser;
   const arrayBuffer = await file.arrayBuffer();
   const flatData = flattenDataForPlaceholders(data);
   const fresh = new Uint8Array(arrayBuffer as ArrayBuffer);
