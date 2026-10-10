@@ -253,5 +253,45 @@ CV AGUS KHOCI keluar terisi lengkap **tanpa pemetaan manual**, gaya tetap utuh
 Tes: `e2e/cv-template-label-map.test.ts` (7 baru) + 3 tes ambiguitas. Dibuktikan
 bisa merah: kedua bagian perbaikan dimatikan ⇒ 5 dari 7 gagal.
 
+## ✅ Ditutup juga 2026-10-10: tempat lahir menimpa label `訪日経験`
+
+Ditemukan saat memverifikasi peta sel **satu per satu** setelah perbaikan baris
+wawancara — bukan dari laporan.
+
+`F11 → identitas.tempat_lahir` SALAH. `F11` adalah sel **label**
+`訪日経験 / PERNAH KE JEPANG`, jadi tempat lahir kandidat (PONOROGO) menulis
+menimpa label itu di CV hasil. Termasuk **7 pemetaan LAMA** — sudah ada sebelum
+pekerjaan ini, dan lolos dari semua pemeriksaan sebelumnya.
+
+Sebabnya: formulir template ini punya **dua tata letak**, dan aturan
+"kanan dulu, baru bawah" hanya benar untuk salah satunya.
+
+| tata letak | contoh | nilai ada di |
+|---|---|---|
+| label band merge horizontal | `A37:C37` | KANAN (`D37:I37`) |
+| pasangan label sel tunggal | `D11 '出身地'`, `E11 'TEMPAT LAHIR'` | sel yang **DI-MERGE**, bisa DI BAWAH (`D12:E12`) |
+
+Untuk `E11`: sel kanannya `F11` **berisi** (label berikutnya, yang kebetulan tidak
+dikenal pola mana pun) sehingga lolos sebagai "nilai".
+
+**Perbaikan:** kandidat yang **di-merge** diutamakan di atas sel tunggal — di form
+ini sel nilai selalu merge, sedangkan labelnya sel tunggal. Urutannya jadi:
+(1-2) kandidat merge → (3) sel tunggal yang berisi → (4) kanan lalu bawah.
+
+**Verifikasi:** seluruh peta diperiksa satu per satu dengan konteks (teks sel
+tujuan, status merge, teks sel kiri & atas). **13/13 benar** — `D12` tempat lahir,
+`F11` **tidak lagi** dipetakan, dan baris 11 di CV hasil **tidak berubah lagi**
+(labelnya utuh). Sebelumnya `F11` berubah dari `訪日経験` menjadi `PONOROGO`.
+
+Juga ditambahkan: `日本語能力試験 / JLPT` → `sertifikasi.jft` (`C42`).
+
+**Sengaja BELUM:** `運転免許 / SURAT IZIN MENGEMUDI (SIM A)` — targetnya ambigu
+(`sertifikasi.lisensi` dipakai untuk lisensi SSW, sedangkan SIM juga berupa berkas
+unggahan). Menebak di situ berarti mengulang bug yang baru saja diperbaiki.
+
+Tes: `cv-template-label-map.test.ts` +3 (10 total). Dibuktikan bisa merah: aturan
+"utamakan yang di-merge" dimatikan ⇒ 3 gagal.
+
+
 
 

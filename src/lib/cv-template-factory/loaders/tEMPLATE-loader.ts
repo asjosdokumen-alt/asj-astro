@@ -119,6 +119,10 @@ export const FIELD_LABELS: FieldLabel[] = [
   { pattern: rxAny('KELEBIHAN', '長所'), path: 'wawancara.kelebihan' },
   { pattern: rxAny('KEKURANGAN', '短所'), path: 'wawancara.kekurangan' },
   { pattern: rxAny('HOBI', '趣味'), path: 'wawancara.hobi' },
+  // Baris `日本語能力試験 / JLPT / SETARA`. Target `sertifikasi.jft` — field yang
+  // sama dengan pola `jft|bahasa jepang` di atas (data.ts menaruh JFT, JFTTEXT,
+  // dan `bahasa_jepang` di satu field).
+  { pattern: rxAny('JLPT', '日本語能力試験'), path: 'sertifikasi.jft' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -657,6 +661,13 @@ function looksLikeLabel(text: string): boolean {
   return FIELD_LABELS.some(({ pattern }) => pattern.test(t));
 }
 
+/** Apakah `addr` adalah sel KIRI-ATAS sebuah merge? */
+function isMergeTopLeft(ranges: MergeRange[], addr: string): boolean {
+  const { r, c } = decodeAddr(addr);
+  const g = mergeAt(ranges, r, c);
+  return !!g && g.s.r === r && g.s.c === c;
+}
+
 /**
  * Sel NILAI untuk sebuah label.
  *
@@ -664,22 +675,23 @@ function looksLikeLabel(text: string): boolean {
  * rirekisho label menempati merge `A37:C37` dan nilai menempati merge
  * `D37:I37`, jadi "kanan dari merge label" = `D37` — sel kiri-atas area nilai.
  *
- * Aturan lama (kanan 1 kolom → kanan 2 kolom → bawah) TIDAK cukup di sini,
- * karena tiga sebab:
- *  1. labelnya di-merge, jadi salinan teksnya ADA juga di B37/C37 — "kanan satu
- *     kolom" menunjuk ke SALINAN LABEL, dan menulis ke situ menimpa labelnya;
- *  2. sel nilai boleh KOSONG (itu justru kasus yang mau diperbaiki), sedangkan
- *     aturan lama mensyaratkan tetangganya BERISI;
- *  3. "utamakan tetangga yang BERISI" salah kalau baris di bawah label adalah
- *     LABEL BERIKUTNYA yang kebetulan tidak dikenal pola mana pun — ia lolos
- *     sebagai "nilai". Ini bukan hipotesis: `長所/KELEBIHAN` (r38) benar hanya
- *     karena r39 kebetulan punya pola; `趣味/HOBI` (r40) SALAH karena r41
- *     (`面鏡・資格 SERTIFIKAT YANG DIMILIKI`) tidak punya pola, sehingga HOBI
- *     dipetakan ke sel label sertifikat.
+ * Aturan lama (kanan 1 kolom → kanan 2 kolom → bawah) TIDAK cukup, karena:
+ *  1. label yang di-merge menyalin teksnya ke B37/C37 juga, jadi "kanan satu
+ *     kolom" menunjuk SALINAN LABEL — menulis ke situ menimpa labelnya;
+ *  2. sel nilai boleh KOSONG (itu justru yang mau diperbaiki), sedangkan aturan
+ *     lama mensyaratkan tetangganya BERISI;
+ *  3. "utamakan tetangga yang BERISI" salah kalau tetangga itu LABEL BERIKUTNYA
+ *     yang kebetulan tidak dikenal pola mana pun — ia lolos sebagai "nilai".
  *
- * Karena itu: label yang di-merge HORIZONTAL berarti "band label | band nilai"
- * pada baris yang SAMA ⇒ nilainya di kanan, ke bawah TIDAK dilihat. Hanya label
- * satu sel yang memakai urutan berbasis bukti.
+ * Dua tingkat yang dipakai, hasil pengamatan template nyata:
+ *  - **label yang di-merge HORIZONTAL** = band `label | nilai` pada baris yang
+ *    sama ⇒ nilainya di KANAN, ke bawah TIDAK dilihat.
+ *  - **label satu sel** = formulir dua kolom. Di form ini sel NILAI adalah sel
+ *    yang DI-MERGE, sedangkan labelnya sel tunggal. Karena itu kandidat yang
+ *    di-merge diutamakan: `TEMPAT LAHIR` (E11, sel tunggal) nilainya ada di
+ *    `D12:E12` (merge, DI BAWAH), bukan di `F11` — yang justru label
+ *    `訪日経験 PERNAH KE JEPANG`. Tanpa aturan ini, tempat lahir kandidat
+ *    ditulis menimpa label itu.
  */
 function valueCellForLabel(
   ws: Worksheet,
@@ -704,6 +716,12 @@ function valueCellForLabel(
 
   const belowRow = (label ? label.e.r : row) + 1;
   const below = belowRow <= maxRow ? usable(topLeftOf(ws, ranges, belowRow, col)) : null;
+
+  // 1-2. kandidat yang DI-MERGE lebih dipercaya daripada sel tunggal
+  for (const addr of [right, below]) {
+    if (addr && isMergeTopLeft(ranges, addr)) return addr;
+  }
+  // 3. baru sel tunggal yang berisi
   for (const addr of [right, below]) {
     if (addr && cellText(ws.getCell(addr)).trim() !== '') return addr;
   }

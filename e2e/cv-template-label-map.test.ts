@@ -126,6 +126,42 @@ describe('sel nilai KOSONG tetap bisa dipelajari (inti perbaikan)', () => {
   });
 });
 
+describe('formulir dua kolom: nilai DI-MERGE, label sel tunggal', () => {
+  /**
+   * BUG YANG DIKUNCI
+   * ----------------
+   * Di template rirekisho, `TEMPAT LAHIR` (E11, sel tunggal) nilainya ada di
+   * `D12:E12` (merge, DI BAWAH) — sedangkan sel di KANANNYA adalah label
+   * `訪日経験 PERNAH KE JEPANG`. Aturan "kanan dulu" menulis tempat lahir
+   * kandidat MENIMPA label itu: `F11` berubah dari "訪日経験" jadi "PONOROGO".
+   * Sel nilai di formulir ini adalah yang DI-MERGE, jadi kandidat merge
+   * diutamakan.
+   */
+  const ROWS = [
+    ['', '', '', '出身地', 'TEMPAT LAHIR', '訪日経験', 'PERNAH KE JEPANG', 'TIDAK　（無）', 'TIDAK　（無）'],
+    ['', '', '', 'LAMPUNG', 'LAMPUNG', '', '', '', ''],
+  ];
+
+  it('memilih sel nilai yang di-merge, bukan label di kanannya', async () => {
+    const wb = await sheetFrom(ROWS, ['H1:I1', 'D2:E2']);
+    const map = await analyzeExcelTemplate(wb);
+    expect(map.D2).toBe('identitas.tempat_lahir');
+    // Kalau ini gagal dengan `identitas.tempat_lahir`, label 訪日経験 sudah
+    // ditimpa nilai kandidat.
+    expect(map.F1).toBeUndefined();
+  });
+
+  it('menulis nilai kandidat ke sel merge itu, dan labelnya tetap utuh', async () => {
+    const wb = await sheetFrom(ROWS, ['H1:I1', 'D2:E2']);
+    const { fieldMap } = await analyzeFromExample(wb, cand({ identitas: { tempat_lahir: 'PONOROGO' } }));
+    await applyFieldMap(wb, fieldMap, cand({ identitas: { tempat_lahir: 'PONOROGO' } }));
+    const out = await readWorkbook(new Uint8Array(await (await workbookToXlsxBlob(wb)).arrayBuffer()));
+    const ws = out.worksheets[0];
+    expect(ws.getCell('D2').value).toBe('PONOROGO');
+    expect(ws.getCell('F1').value).toBe('訪日経験');
+  });
+});
+
 describe('template rirekisho nyata', () => {
   it('lima baris wawancara kini terpetakan', async () => {
     const wb = await readWorkbook(
@@ -140,7 +176,20 @@ describe('template rirekisho nyata', () => {
     // Pemetaan lama yang sudah benar tidak boleh hilang.
     expect(map.H4).toBe('identitas.gender');
     expect(map.H8).toBe('identitas.golongan_darah');
+    expect(map.H5).toBe('identitas.umur');
+    expect(map.H10).toBe('identitas.agama');
+    // Baris JLPT (r42) — label di `A42:B42`, jawabannya di C42.
+    expect(map.C42).toBe('sertifikasi.jft');
     // Dan tidak boleh ada yang nyasar ke sel label sertifikat (baris 41).
     expect(map.A41).toBeUndefined();
+  });
+
+  it('tempat lahir ke sel NILAI, bukan menimpa label 訪日経験 di F11', async () => {
+    const wb = await readWorkbook(
+      new Uint8Array(fs.readFileSync('deliverables/gstack/_rirekisho-excel-sample-2026-10-01.xlsx')),
+    );
+    const map = await analyzeExcelTemplate(wb);
+    expect(map.D12).toBe('identitas.tempat_lahir');
+    expect(map.F11).toBeUndefined();
   });
 });
