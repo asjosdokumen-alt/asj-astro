@@ -47,6 +47,19 @@ function rx(pattern: string): RegExp {
   return new RegExp(`^(${pattern})$`, 'i');
 }
 
+/**
+ * Cocok kalau teks sel MEMUAT salah satu kata kunci.
+ *
+ * Label template nyata sering menggabungkan Jepang + Indonesia dalam SATU sel
+ * dengan baris baru, mis. `帰国後の目標　\nSETELAH PULANG DARI JEPANG`. Pola
+ * `^(...)$` biasa tidak bisa mencocokkannya — `.` tidak melintasi baris, jadi
+ * `^.*SETELAH PULANG.*$` gagal di sel itu. Di sini `[\s\S]` dipakai di kedua
+ * sisi kata kunci supaya baris baru ikut terjangkau.
+ */
+function rxAny(...keys: string[]): RegExp {
+  return new RegExp(`^[\\s\\S]*(?:${keys.join('|')})[\\s\\S]*$`, 'i');
+}
+
 export const FIELD_LABELS: FieldLabel[] = [
   { pattern: rx('nama\\s*lengkap|nama|name'), path: 'identitas.nama_lengkap' },
   { pattern: rx('furigana|katakana|nama_katakana'), path: 'identitas.katakana' },
@@ -96,6 +109,16 @@ export const FIELD_LABELS: FieldLabel[] = [
   { pattern: rx('jabatan|position'), path: 'pekerjaan.jabatan' },
   { pattern: rx('keluarga|family'), path: 'keluarga' },
   { pattern: rx('hubungan|relationship'), path: 'keluarga.hubungan' },
+  // Wawancara — DITAMBAH 2026-10-10. Tanpa ini, baris `帰国後の目標 /
+  // SETELAH PULANG`, `長所 / KELEBIHAN`, `短所 / KEKURANGAN`, `趣味 / HOBI`,
+  // dan `日本へ行く目的 / TUJUAN KE JEPANG` TIDAK PERNAH terisi: tidak ada pola
+  // labelnya, dan sel nilainya kosong di template sehingga tidak bisa dipelajari
+  // lewat pencocokan nilai. Ditemukan dari template rirekisho nyata.
+  { pattern: rxAny('TUJUAN\\s*KE\\s*JEPANG', '日本へ行く目的'), path: 'wawancara.tujuan_ke_jepang' },
+  { pattern: rxAny('SETELAH\\s*PULANG', '帰国後の目標'), path: 'wawancara.rencana_pulang' },
+  { pattern: rxAny('KELEBIHAN', '長所'), path: 'wawancara.kelebihan' },
+  { pattern: rxAny('KEKURANGAN', '短所'), path: 'wawancara.kekurangan' },
+  { pattern: rxAny('HOBI', '趣味'), path: 'wawancara.hobi' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -364,6 +387,31 @@ export async function analyzeFromExample(
     });
   }
 
+  // JARING PENGAMAN — sel yang TIDAK bisa dipelajari dari nilai.
+  //
+  // Sel nilai yang KOSONG di contoh mustahil dicocokkan: tidak ada nilainya.
+  // Tanpa langkah ini, field seperti KELEBIHAN / KEKURANGAN / HOBI / SETELAH
+  // PULANG tidak pernah masuk peta walau LABELNYA ADA di template — persis yang
+  // membuat baris 37-40 template rirekisho selalu kosong untuk SEMUA kandidat.
+  //
+  // Bukti nilai tetap MENANG: label hanya mengisi sel yang belum terpetakan.
+  for (const ws of workbook.worksheets) {
+    for (const [addr, path] of Object.entries(labelFieldMap(ws))) {
+      const candidates = ambiguous[addr];
+      if (candidates) {
+        // Nilainya cocok dengan >1 field. Label boleh MEMUTUSKAN — tapi hanya
+        // kalau ia menunjuk salah satu kandidat itu. Kalau label menunjuk field
+        // lain, dua sumber bukti ini bertentangan dan admin yang memilih.
+        if (!candidates.includes(path)) continue;
+        delete ambiguous[addr];
+      } else if (fieldMap[addr]) {
+        continue;
+      }
+      fieldMap[addr] = path;
+      used.add(path);
+    }
+  }
+
   const unmatched = Object.keys(flat).filter((p) => !used.has(p) && !tooWeakToMatch(String(flat[p])));
   return { fieldMap, ambiguous, unmatched };
 }
@@ -560,45 +608,131 @@ export async function applyRiwayatBlock(
   }
 }
 
-export async function analyzeExcelTemplate(workbook: Workbook): Promise<TemplateFieldMap> {
-  const fieldMap: TemplateFieldMap = {};
-  const ws = workbook.worksheets[0];
-  if (!ws) return fieldMap;
-  const maxRow = ws.rowCount;
-  const maxCol = ws.columnCount;
-
-  for (let r = 1; r <= maxRow; r++) {
-    for (let c = 1; c <= maxCol; c++) {
-      const text = cellText(ws.getCell(r, c)).trim();
-      if (!text) continue;
-      for (const { pattern, path } of FIELD_LABELS) {
-        if (pattern.test(text)) {
-          const valueCell = findAdjacentValueCell(ws, r, c, maxRow, maxCol);
-          if (valueCell) fieldMap[valueCell] = path;
-          break;
-        }
-      }
-    }
-  }
-
-  return fieldMap;
+interface MergeRange {
+  s: { r: number; c: number };
+  e: { r: number; c: number };
 }
 
-function findAdjacentValueCell(
+/** `'D37'` → `{ r: 37, c: 4 }`. Koordinat 1-based, seperti Excel. */
+const ADDR_RE = /^([A-Z]+)(\d+)$/;
+
+function decodeAddr(addr: string): { r: number; c: number } {
+  const m = ADDR_RE.exec(String(addr).toUpperCase());
+  if (!m) return { r: 1, c: 1 };
+  let c = 0;
+  for (const ch of m[1]) c = c * 26 + (ch.charCodeAt(0) - 64);
+  return { r: Number(m[2]), c };
+}
+
+/** Rentang merge di sheet, sebagai koordinat 1-based. */
+function mergeRanges(ws: Worksheet): MergeRange[] {
+  const raw = (ws.model as { merges?: string[] }).merges;
+  if (!Array.isArray(raw)) return [];
+  const out: MergeRange[] = [];
+  for (const text of raw) {
+    const [a, b] = String(text).split(':');
+    if (!a) continue;
+    out.push({ s: decodeAddr(a), e: decodeAddr(b ?? a) });
+  }
+  return out;
+}
+
+function mergeAt(ranges: MergeRange[], row: number, col: number): MergeRange | null {
+  for (const g of ranges) {
+    if (row >= g.s.r && row <= g.e.r && col >= g.s.c && col <= g.e.c) return g;
+  }
+  return null;
+}
+
+/** Kalau (row,col) ada di dalam merge, kembalikan alamat sel kiri-atasnya. */
+function topLeftOf(ws: Worksheet, ranges: MergeRange[], row: number, col: number): string {
+  const g = mergeAt(ranges, row, col);
+  return ws.getCell(g ? g.s.r : row, g ? g.s.c : col).address;
+}
+
+/** Teks sel ini sendiri adalah LABEL lain (bukan nilai)? */
+function looksLikeLabel(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  return FIELD_LABELS.some(({ pattern }) => pattern.test(t));
+}
+
+/**
+ * Sel NILAI untuk sebuah label.
+ *
+ * Aturan utamanya: **sel pertama di KANAN rentang merge label**. Di template
+ * rirekisho label menempati merge `A37:C37` dan nilai menempati merge
+ * `D37:I37`, jadi "kanan dari merge label" = `D37` — sel kiri-atas area nilai.
+ *
+ * Aturan lama (kanan 1 kolom → kanan 2 kolom → bawah) TIDAK cukup di sini,
+ * karena tiga sebab:
+ *  1. labelnya di-merge, jadi salinan teksnya ADA juga di B37/C37 — "kanan satu
+ *     kolom" menunjuk ke SALINAN LABEL, dan menulis ke situ menimpa labelnya;
+ *  2. sel nilai boleh KOSONG (itu justru kasus yang mau diperbaiki), sedangkan
+ *     aturan lama mensyaratkan tetangganya BERISI;
+ *  3. "utamakan tetangga yang BERISI" salah kalau baris di bawah label adalah
+ *     LABEL BERIKUTNYA yang kebetulan tidak dikenal pola mana pun — ia lolos
+ *     sebagai "nilai". Ini bukan hipotesis: `長所/KELEBIHAN` (r38) benar hanya
+ *     karena r39 kebetulan punya pola; `趣味/HOBI` (r40) SALAH karena r41
+ *     (`面鏡・資格 SERTIFIKAT YANG DIMILIKI`) tidak punya pola, sehingga HOBI
+ *     dipetakan ke sel label sertifikat.
+ *
+ * Karena itu: label yang di-merge HORIZONTAL berarti "band label | band nilai"
+ * pada baris yang SAMA ⇒ nilainya di kanan, ke bawah TIDAK dilihat. Hanya label
+ * satu sel yang memakai urutan berbasis bukti.
+ */
+function valueCellForLabel(
   ws: Worksheet,
+  ranges: MergeRange[],
   row: number,
   col: number,
   maxRow: number,
   maxCol: number,
 ): string | null {
-  const candidates: Array<[number, number]> = [];
-  if (col < maxCol) candidates.push([row, col + 1]);
-  if (col < maxCol - 1) candidates.push([row, col + 2]);
-  if (row < maxRow) candidates.push([row + 1, col]);
-  for (const [r, c] of candidates) {
-    if (cellText(ws.getCell(r, c)).trim() !== '') return ws.getCell(r, c).address;
+  const label = mergeAt(ranges, row, col);
+  const spansCols = !!label && label.e.c > label.s.c;
+  const rightCol = (label ? label.e.c : col) + 1;
+
+  const usable = (addr: string | null): string | null => {
+    if (!addr) return null;
+    const text = cellText(ws.getCell(addr)).trim();
+    return text && looksLikeLabel(text) ? null : addr;
+  };
+
+  const right = rightCol <= maxCol ? usable(topLeftOf(ws, ranges, row, rightCol)) : null;
+  if (spansCols) return right;
+
+  const belowRow = (label ? label.e.r : row) + 1;
+  const below = belowRow <= maxRow ? usable(topLeftOf(ws, ranges, belowRow, col)) : null;
+  for (const addr of [right, below]) {
+    if (addr && cellText(ws.getCell(addr)).trim() !== '') return addr;
   }
-  return null;
+  return right ?? below;
+}
+
+/** Peta sel→field dari LABEL template, tanpa melihat nilai selnya. */
+function labelFieldMap(ws: Worksheet): TemplateFieldMap {
+  const out: TemplateFieldMap = {};
+  const maxRow = ws.rowCount;
+  const maxCol = ws.columnCount;
+  const ranges = mergeRanges(ws);
+
+  for (let r = 1; r <= maxRow; r++) {
+    for (let c = 1; c <= maxCol; c++) {
+      const text = cellText(ws.getCell(r, c)).trim();
+      if (!text) continue;
+      const hit = FIELD_LABELS.find(({ pattern }) => pattern.test(text));
+      if (!hit) continue;
+      const addr = valueCellForLabel(ws, ranges, r, c, maxRow, maxCol);
+      if (addr) out[addr] = hit.path;
+    }
+  }
+  return out;
+}
+
+export async function analyzeExcelTemplate(workbook: Workbook): Promise<TemplateFieldMap> {
+  const ws = workbook.worksheets[0];
+  return ws ? labelFieldMap(ws) : {};
 }
 
 export async function applyFieldMap(

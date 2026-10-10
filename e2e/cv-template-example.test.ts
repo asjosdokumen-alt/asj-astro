@@ -85,7 +85,26 @@ describe('analyzeFromExample — peta sel->field dari template terisi', () => {
   });
 
   it('nilai yang cocok dengan >1 field TIDAK ditebak — masuk `ambiguous`', async () => {
+    // Labelnya sengaja 'X' supaya TIDAK ada petunjuk: murni dari nilai, dan
+    // nilai yang cocok dengan dua field tidak boleh ditebak.
+    const wb = await sheetFrom([['X', 'ISLAM']]);
+    const { fieldMap, ambiguous } = await analyzeFromExample(wb, A);
+    expect(fieldMap.B1).toBeUndefined();
+    expect(ambiguous.B1?.sort()).toEqual(['identitas.agama', 'sertifikasi.bahasa']);
+  });
+
+  it('label boleh MEMUTUSKAN nilai yang ambigu — kalau menunjuk salah satu kandidatnya', async () => {
     const wb = await sheetFrom([['Agama', 'ISLAM']]);
+    const { fieldMap, ambiguous } = await analyzeFromExample(wb, A);
+    expect(fieldMap.B1).toBe('identitas.agama');
+    expect(ambiguous.B1).toBeUndefined();
+  });
+
+  it('label yang menunjuk field LAIN tidak memutuskan ambiguitas', async () => {
+    // Label 'Alamat' menunjuk identitas.alamat, sedangkan nilainya ambigu antara
+    // identitas.agama dan sertifikasi.bahasa. Dua sumber bukti bertentangan ⇒
+    // admin yang memilih, bukan aplikasi yang menebak.
+    const wb = await sheetFrom([['Alamat', 'ISLAM']]);
     const { fieldMap, ambiguous } = await analyzeFromExample(wb, A);
     expect(fieldMap.B1).toBeUndefined();
     expect(ambiguous.B1?.sort()).toEqual(['identitas.agama', 'sertifikasi.bahasa']);
