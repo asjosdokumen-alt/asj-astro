@@ -18,6 +18,8 @@ export {
   MASTER_COLUMN_MISSING,
   buildAiOverflow,
   mergeAiOverflow,
+  buildRiwayatSlots,
+  pruneAiRiwayat,
 } from './service';
 // Alias: simpanUpdateMaster maps to handleSubmitMasterForm
 export { handleSubmitMasterForm as handleSimpanUpdateMaster } from './service';

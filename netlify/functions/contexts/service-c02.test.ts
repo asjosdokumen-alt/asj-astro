@@ -14,7 +14,7 @@
 // (skema chat.ts), slot kosong tidak ditulis. Pure builders → DB-free.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { buildMasterBody, buildAiOverflow, mergeAiOverflow, buildMasterNested } from './master-data';
+import { buildMasterBody, buildAiOverflow, mergeAiOverflow, buildMasterNested, buildRiwayatSlots, pruneAiRiwayat } from './master-data';
 
 describe('C02 — buildMasterBody (payload MasterFullForm → kolom master)', () => {
   it('eksJepang TIDAK ditimpa lamaJepang (kolisi status_eks_jepang)', () => {
@@ -100,5 +100,73 @@ describe('C02 — buildMasterNested (kunci prefill baru)', () => {
   it('ai_data_json rusak → lama_di_jepang kosong (tidak crash)', () => {
     const n = buildMasterNested({ ai_data_json: 'not-json' });
     expect(n.wawancara.lama_di_jepang).toBe('');
+  });
+});
+
+
+// ===========================================================================
+// HAPUS BARIS RIWAYAT HARUS BERLAKU
+// ===========================================================================
+// Keluhan pemilik 2026-10-10: sebuah sekolah dihapus di form, disimpan, tapi
+// muncul lagi. Dua tempat menyimpan riwayat yang sama dan dua-duanya tidak
+// pernah dikosongkan: kolom slot `pendidikan_N_*` (hanya ditulis kalau terisi)
+// dan `ai_data_json` (hanya ditambah/diperbarui). `buildMasterNested`
+// menggabungkan keduanya saat MEMBACA, jadi baris yang dihapus hidup kembali.
+describe('hapus baris riwayat harus berlaku', () => {
+  it('payload PARSIAL tidak mengosongkan slot — "tidak terkirim" bukan "dihapus"', () => {
+    const body = buildRiwayatSlots({ pendidikan: [{ tingkat: 'SD', nama_sekolah: 'SDN 1' }] }, false);
+    expect(body.pendidikan_1_tingkat).toBe('SD');
+    expect('pendidikan_2_tingkat' in body).toBe(false);
+    expect('pendidikan_5_nama_sekolah' in body).toBe(false);
+  });
+
+  it('payload LENGKAP mengosongkan slot yang tidak terpakai', () => {
+    const body = buildRiwayatSlots({ pendidikan: [{ tingkat: 'SD', nama_sekolah: 'SDN 1' }] }, true);
+    expect(body.pendidikan_1_nama_sekolah).toBe('SDN 1');
+    for (const i of [2, 3, 4, 5]) {
+      expect(body[`pendidikan_${i}_tingkat`]).toBe('');
+      expect(body[`pendidikan_${i}_nama_sekolah`]).toBe('');
+    }
+  });
+
+  it('slot yang terisi SEBAGIAN pun tuntas — kolom yang kini kosong ikut dihapus', () => {
+    const body = buildRiwayatSlots({ pendidikan: [{ tingkat: 'SMA', nama_sekolah: 'SMAN 1' }] }, true);
+    expect(body.pendidikan_1_tingkat).toBe('SMA');
+    expect(body.pendidikan_1_jurusan_id).toBe('');
+    expect(body.pendidikan_1_tahun_lulus).toBe('');
+  });
+
+  it('buildMasterBody meneruskan penanda `riwayatLengkap`', () => {
+    const body = buildMasterBody({ riwayatLengkap: true, pendidikan: [{ tingkat: 'SD' }] });
+    expect(body.pendidikan_2_tingkat).toBe('');
+  });
+});
+
+describe('ai_data_json tidak lagi menghidupkan baris yang dihapus', () => {
+  it('entri yang tidak ada di payload dibuang, kunci lain tidak tersentuh', () => {
+    const out = pruneAiRiwayat(
+      {
+        pendidikan: [
+          { tingkat: 'SD', nama_sekolah: 'SDN 1' },
+          { tingkat: 'SMP', nama_sekolah: 'SMPN 2' },
+        ],
+        kenalan_jepang: { nama_id: 'X' },
+      },
+      { pendidikan: [{ tingkat: 'SD', nama_sekolah: 'SDN 1' }] },
+    );
+    const list = out.pendidikan as Array<Record<string, unknown>>;
+    expect(list).toHaveLength(1);
+    expect(list[0].nama_sekolah).toBe('SDN 1');
+    expect(out.kenalan_jepang).toEqual({ nama_id: 'X' });
+  });
+
+  it('daftar yang TIDAK dikirim tidak disentuh sama sekali', () => {
+    const out = pruneAiRiwayat({ pekerjaan: [{ nama_perusahaan: 'PT A' }] }, { pendidikan: [] });
+    expect(out.pekerjaan as unknown[]).toHaveLength(1);
+  });
+
+  it('semua baris dihapus ⇒ kuncinya dibuang', () => {
+    const out = pruneAiRiwayat({ pendidikan: [{ tingkat: 'SD', nama_sekolah: 'SDN 1' }] }, { pendidikan: [] });
+    expect('pendidikan' in out).toBe(false);
   });
 });

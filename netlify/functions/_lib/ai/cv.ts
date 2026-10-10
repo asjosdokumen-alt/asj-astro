@@ -2,7 +2,7 @@ import { normalizeWa, supabaseJson, APPLY_WA_COLS } from '../db/client.ts';
 import type { FormRawRow } from '../db/row-types';
 import { AI_SUBMISSION_COLS, ESIGNATURE_COLS } from '../db/projections.ts';
 import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
-import { buildMasterNested } from '../../contexts/master-data';
+import { buildMasterNested, buildRiwayatSlots } from '../../contexts/master-data';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../../contexts/applications';
 import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
 import { findFormsByWa } from '../db/forms.ts';
@@ -445,6 +445,18 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
         ai_data_json: JSON.stringify(aiOut),
         ai_updated_at: new Date().toISOString(),
       };
+      // Kolom slot riwayat. Jalur ini DULU tidak menulisnya sama sekali, jadi
+      // sekolah/pekerjaan/keluarga yang dihapus di form tetap hidup di kolom
+      // `pendidikan_*` / `pekerjaan_*` / `keluarga_*` — dan `buildMasterNested`
+      // menggabungkan kolom itu dengan `ai_data_json` saat MEMBACA, sehingga
+      // baris yang sudah dihapus muncul lagi. Menulis `ai_data_json` saja TIDAK
+      // cukup: dua tempat menyimpan riwayat yang sama, jadi dua-duanya harus
+      // ikut diperbarui.
+      //
+      // Hanya kalau form menyatakan daftarnya LENGKAP: form CV AI memuat semua
+      // baris yang tersisa, tapi jangan sampai pemanggil yang mengirim daftar
+      // parsial malah menghapus baris yang masih ada.
+      if (d.riwayatLengkap === true) Object.assign(masterBody, buildRiwayatSlots(d, true));
       if (d.fotoFile) masterBody.pas_photo = d.fotoFile;
       if (d.kkFile) masterBody.kk_url = d.kkFile;
       if (d.ktpFile) masterBody.ktp_url = d.ktpFile;

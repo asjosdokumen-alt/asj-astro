@@ -317,6 +317,45 @@ function buildAiOverflow(d: any): Record<string, unknown> | null {
   return Object.keys(out).length ? out : null;
 }
 
+/**
+ * Buang entri riwayat di `ai_data_json` yang sudah TIDAK ADA lagi di payload.
+ *
+ * `mergeAiOverflow` hanya menambah/memperbarui — tidak pernah menghapus. Jadi
+ * baris yang dihapus pengguna tetap tinggal di `ai_data_json`, dan
+ * `buildMasterNested` menggabungkan kolom slot dengan array itu saat MEMBACA
+ * ⇒ baris yang dihapus muncul kembali di form. Ini separuh KEDUA dari "hapus
+ * tidak berlaku"; separuh pertama adalah kolom slot yang tidak pernah
+ * dikosongkan (`setSlots`).
+ *
+ * HANYA boleh dipanggil kalau pemanggil menyatakan daftarnya lengkap
+ * (`riwayatLengkap === true`). Tanpa jaminan itu, "tidak ada di payload" tidak
+ * berarti "sudah dihapus" — bisa saja cuma tidak ikut terkirim (mis. hasil
+ * ekstraksi AI yang parsial), dan memangkasnya = menghapus data kandidat.
+ *
+ * Kunci barisnya WAJIB sama dengan `buildMasterNested` dan `mergeAiOverflow`:
+ * kalau berbeda, yang terbuang justru baris yang masih ada.
+ */
+export function pruneAiRiwayat(ai: Record<string, unknown>, d: Record<string, unknown>): Record<string, unknown> {
+  const lists: Array<{ key: string; keyOf: (e: Record<string, unknown>) => string }> = [
+    { key: 'pendidikan', keyOf: (e) => riwayatKey(e, ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'], ['masuk', 'tahun_masuk', 'lulus', 'tahun_lulus']) },
+    { key: 'pekerjaan', keyOf: (e) => riwayatKey(e, ['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt'], ['jabatan', 'jabatan_id'], ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar']) },
+    { key: 'keluarga', keyOf: (e) => cleanKey(String(e.nama ?? '') + String(e.hubungan ?? '')) },
+  ];
+  for (const { key, keyOf } of lists) {
+    const cur = ai[key];
+    if (!Array.isArray(cur)) continue;
+    const payload = d[key];
+    // Payload tidak memuat daftar ini ⇒ jangan sentuh; bukan berarti kosong.
+    if (!Array.isArray(payload)) continue;
+    const hidup = new Set<string>();
+    for (const e of payload) { const k = keyOf((e || {}) as Record<string, unknown>); if (k) hidup.add(k); }
+    const sisa = cur.filter((e) => e && typeof e === 'object' && hidup.has(keyOf(e as Record<string, unknown>)));
+    if (sisa.length) ai[key] = sisa;
+    else delete ai[key];
+  }
+  return ai;
+}
+
 function mergeAiOverflow(ai: any, overflow: any): any {
   ai = ai && typeof ai === 'object' ? ai : {};
   const mergeObj = (base: any, patch: any) => { base = base && typeof base === 'object' ? base : {}; for (const [k, val] of Object.entries(patch || {})) { if (val !== undefined && val !== null && String(val).trim() !== '') base[k] = val; } return base; };
@@ -345,29 +384,41 @@ function mergeAiOverflow(ai: any, overflow: any): any {
   return ai;
 }
 
-export function buildMasterBody(d: any): Record<string, any> {
-  const body: Record<string, any> = {};
-  for (const [from, to] of Object.entries(SNAKE_TO_CAMEL)) {
-    if (d[from] !== undefined && d[from] !== null && d[from] !== '' && d[to] === undefined) d[to] = d[from];
-  }
-  for (const [from, to] of [['jft_text', 'nilai'], ['jftText', 'nilai'], ['ssw_text', 'lisensi'], ['sswText', 'lisensi']] as const) {
-    if (d[from] !== undefined && d[from] !== null && d[from] !== '' && d[to] === undefined) d[to] = d[from];
-  }
-  for (const [from, col] of Object.entries(MASTER_COLUMN_MAP)) {
-    if (d[from] !== undefined && d[from] !== null && d[from] !== '') body[col] = String(d[from]);
-  }
-  const pickItem = (p: any, ...keys: string[]) => { for (const k of keys) { if (p[k] !== undefined && p[k] !== null) return p[k]; } return ''; };
-  const setSlots = (prefix: string, list: any, count: number, defs: ReadonlyArray<readonly [string, ...string[]]>) => {
+/**
+ * Kolom slot riwayat (`pendidikan_*` / `pekerjaan_*` / `keluarga_*`) dari daftar baris.
+ *
+ * Dipakai DUA jalur simpan yang menulis baris master yang SAMA: form master
+ * (`buildMasterBody`) dan form CV AI (`_lib/ai/cv.ts`). Keduanya WAJIB memakai
+ * fungsi ini. Kalau salah satunya tidak menulis kolom slot, nilai LAMA di kolom
+ * itu tetap tinggal, dan `buildMasterNested` menggabungkannya kembali dengan
+ * `ai_data_json` saat MEMBACA ⇒ baris yang sudah dihapus muncul lagi. Itu persis
+ * keluhan "sudah saya hapus, kok balik lagi di DB".
+ *
+ * `lengkap` = daftar ini DAFTAR LENGKAP baris yang tersisa. Hanya kalau itu
+ * benar, slot yang tidak terisi boleh dikosongkan. Pemanggil yang mengirim daftar
+ * parsial (mis. hasil ekstraksi AI di AdminAiCopilot) tidak boleh mengosongkan
+ * apa pun — "tidak ikut terkirim" bukan berarti "sudah dihapus".
+ */
+export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean): Record<string, string> {
+  const out: Record<string, string> = {};
+  const pickItem = (p: Record<string, unknown>, ...keys: string[]): unknown => { for (const k of keys) { const v = p[k]; if (v !== undefined && v !== null) return v; } return ''; };
+  const setSlots = (prefix: string, list: unknown, count: number, defs: ReadonlyArray<readonly [string, ...string[]]>) => {
     if (!Array.isArray(list)) return;
     for (let i = 0; i < count; i++) {
-      const p = list[i] || {};
+      const p = (list[i] || {}) as Record<string, unknown>;
       const vals: Record<string, string> = {};
       for (const [suffix, ...pickKeys] of defs) {
         const v = String(pickItem(p, ...pickKeys));
         if (v !== '') vals[prefix + (i + 1) + suffix] = v;
       }
-      if (!Object.keys(vals).length) continue;
-      Object.assign(body, vals);
+      if (!Object.keys(vals).length) {
+        if (lengkap) for (const [suffix] of defs) out[prefix + (i + 1) + suffix] = '';
+        continue;
+      }
+      Object.assign(out, vals);
+      // Slot yang terisi SEBAGIAN pun harus tuntas: kalau kolom `jurusan_id`
+      // baris ini sekarang kosong, nilai lamanya harus ikut dihapus.
+      if (lengkap) for (const [suffix] of defs) { const col = prefix + (i + 1) + suffix; if (!(col in vals)) out[col] = ''; }
     }
   };
   setSlots('pendidikan_', d.pendidikan, 5, [
@@ -391,6 +442,23 @@ export function buildMasterBody(d: any): Record<string, any> {
     ['_pekerjaan', 'pekerjaan', 'pekerjaan_id'],
     ['_gaji', 'gaji', 'pendapatan'],
   ] as const);
+  return out;
+}
+
+export function buildMasterBody(d: any): Record<string, any> {
+  const body: Record<string, any> = {};
+  for (const [from, to] of Object.entries(SNAKE_TO_CAMEL)) {
+    if (d[from] !== undefined && d[from] !== null && d[from] !== '' && d[to] === undefined) d[to] = d[from];
+  }
+  for (const [from, to] of [['jft_text', 'nilai'], ['jftText', 'nilai'], ['ssw_text', 'lisensi'], ['sswText', 'lisensi']] as const) {
+    if (d[from] !== undefined && d[from] !== null && d[from] !== '' && d[to] === undefined) d[to] = d[from];
+  }
+  for (const [from, col] of Object.entries(MASTER_COLUMN_MAP)) {
+    if (d[from] !== undefined && d[from] !== null && d[from] !== '') body[col] = String(d[from]);
+  }
+  // Kolom slot riwayat: SATU implementasi, dipakai juga oleh jalur simpan CV AI
+  // (`_lib/ai/cv.ts`) — lihat catatan di `buildRiwayatSlots`.
+  Object.assign(body, buildRiwayatSlots(d, d.riwayatLengkap === true));
   for (const col of Object.keys(body)) { if (MASTER_COLUMN_MISSING.has(col)) delete body[col]; }
   return body;
 }
@@ -583,16 +651,28 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
     }
 
     try {
-      if (aiOverflow) {
+      const lengkap = d.riwayatLengkap === true;
+      // `lengkap` juga memicu tulis walau overflow kosong: menghapus SEMUA baris
+      // tidak menghasilkan overflow apa pun, dan justru itulah yang harus
+      // tersimpan (pemangkasan).
+      if (aiOverflow || lengkap) {
         let aiBase: any = null;
         if (row && row.ai_data_json) { try { const parsed = JSON.parse(row.ai_data_json); if (parsed && typeof parsed === 'object') aiBase = parsed; } catch { aiBase = null; } }
-        const aiNew = mergeAiOverflow(aiBase, aiOverflow);
-        const aiPatch = { ai_data_json: JSON.stringify(aiNew), ai_updated_at: new Date().toISOString() };
-        if (row && row.id !== undefined) { await patchMaster(row.id, aiPatch); }
-        else {
-          const rows2 = await supabaseJson('GET', 'master_database_candidate', { query: { select: MASTER_LIGHT_COLS, no_wa: 'eq.' + wa, limit: 5 } });
-          const r2 = (Array.isArray(rows2) ? rows2 : []).find((r: any) => nw(String(r.no_wa || '')) === wa);
-          if (r2 && r2.id !== undefined) await patchMaster(r2.id, aiPatch);
+        // Snapshot SEBELUM mutasi: `mergeAiOverflow` mengubah `aiBase` di tempat
+        // dan mengembalikan objek yang sama, jadi membandingkan sesudahnya akan
+        // selalu "tidak berubah" dan tulisan tidak pernah terjadi.
+        const before = aiBase ? JSON.stringify(aiBase) : null;
+        let aiNew = mergeAiOverflow(aiBase, aiOverflow || {});
+        if (lengkap) aiNew = pruneAiRiwayat(aiNew, d);
+        const after = JSON.stringify(aiNew);
+        if (before !== after && (before !== null || Object.keys(aiNew).length)) {
+          const aiPatch = { ai_data_json: after, ai_updated_at: new Date().toISOString() };
+          if (row && row.id !== undefined) { await patchMaster(row.id, aiPatch); }
+          else {
+            const rows2 = await supabaseJson('GET', 'master_database_candidate', { query: { select: MASTER_LIGHT_COLS, no_wa: 'eq.' + wa, limit: 5 } });
+            const r2 = (Array.isArray(rows2) ? rows2 : []).find((r: any) => nw(String(r.no_wa || '')) === wa);
+            if (r2 && r2.id !== undefined) await patchMaster(r2.id, aiPatch);
+          }
         }
       }
     } catch { /* ai merge non-fatal */ }

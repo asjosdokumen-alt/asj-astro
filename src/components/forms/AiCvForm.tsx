@@ -721,6 +721,13 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
       setSavePhase('saving');
       const payload = {
         context: { wa: cv.hp },
+        /* Daftar pendidikan/pekerjaan/keluarga di bawah ini adalah DAFTAR
+           LENGKAP baris yang tersisa — baris kosong sudah dibuang oleh filter
+           di masing-masing bagian. Server memakai penanda ini untuk
+           MENGOSONGKAN slot riwayat yang tidak terpakai; tanpa itu, menghapus
+           sebuah sekolah tidak pernah berlaku: kolom `pendidikan_N_*` yang lama
+           tetap tinggal dan barisnya muncul lagi saat CV dibaca. */
+        riwayatLengkap: true,
         identitas: {
           nama_lengkap: cv.nama, katakana: cv.katakana, panggilan: cv.panggilan,
           panggilan_katakana: cv.panggilan_katakana, tempat_lahir: cv.tmplahir,
