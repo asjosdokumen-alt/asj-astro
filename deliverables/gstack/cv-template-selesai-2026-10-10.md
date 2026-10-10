@@ -372,3 +372,23 @@ Semua dibuktikan bisa **MERAH**: perbaikan #1 dikembalikan ⇒ 2 gagal; penjaga
 Gate: `tsc` 0 · `lint-ratchet` PASSED · build OK (11 halaman) · vitest
 **185/186 berkas · 2213/2214 tes** (1 merah = artefak sandbox `git EBUSY`, tidak
 terkait).
+
+### 5. Baris sisa tabel riwayat: kolom yang TIDAK terpetakan tetap berisi data contoh
+
+Pengosongan baris sisa hanya menyapu kolom yang ada di `block.columns`.
+Kolom yang nilainya di baris contoh **pertama** tidak cocok dengan field mana pun
+(mis. kolom "Catatan") tidak pernah masuk `block.columns`, jadi data kandidat
+contoh bertahan di baris yang seharusnya kosong. Diukur:
+
+```
+baris 3 (dipakai) : A="SD"  B="SDN 9" C="2020" D=null
+baris 4 (SISA)    : A=null  B=null    C=null   D="JUARA"   ← data contoh
+```
+
+Perbaikannya: `blockSpan()` memperluas rentang kolom dari kolom terpetakan ke
+kanan DAN ke kiri **selama kolom berikutnya masih berisi data di baris blok**.
+Batas itu penting — catatan statis template yang dipisahkan kolom kosong
+**tidak** ikut terhapus; ada tes yang mengunci kedua arah.
+
+Tes: `e2e/cv-template-riwayat.test.ts` 8 → **10**. Dibuktikan bisa merah:
+rentang dikembalikan ke kolom terpetakan saja ⇒ 1 gagal.

@@ -607,8 +607,11 @@ export async function applyRiwayatBlock(
   // harus dikosongkan — kalau tidak, nama sekolah milik kandidat contoh ikut
   // tercetak sebagai riwayat kandidat ini. Ini kesalahan yang paling mudah
   // lolos: hasilnya terlihat wajar, hanya isinya milik orang lain.
+  // Seluruh RENTANG kolom disapu, bukan hanya yang terpetakan: kolom yang tidak
+  // berhasil dipetakan pun berisi data contoh di baris sisa ini.
+  const spanCols = blockSpan(ws, block, cols);
   for (let i = entries.length; i < block.rows; i++) {
-    for (const col of cols) writeCellValue(ws.getCell(`${col}${block.startRow + i}`), '');
+    for (const col of spanCols) writeCellValue(ws.getCell(`${col}${block.startRow + i}`), '');
   }
 }
 
@@ -626,6 +629,53 @@ function decodeAddr(addr: string): { r: number; c: number } {
   let c = 0;
   for (const ch of m[1]) c = c * 26 + (ch.charCodeAt(0) - 64);
   return { r: Number(m[2]), c };
+}
+
+/** Kebalikan `decodeAddr`: 4 → `'D'`. */
+function letterOf(n: number): string {
+  let s = '';
+  let x = n;
+  while (x > 0) {
+    const r = (x - 1) % 26;
+    s = String.fromCharCode(65 + r) + s;
+    x = Math.floor((x - 1) / 26);
+  }
+  return s;
+}
+
+/**
+ * Semua kolom tabel riwayat, dari yang paling kiri ke paling kanan.
+ *
+ * Dipakai untuk mengosongkan baris SISA tabel. Menyapu hanya kolom yang
+ * terpetakan tidak cukup: kolom yang nilainya di baris contoh pertama tidak
+ * cocok dengan field mana pun (mis. kolom "Catatan") tidak masuk
+ * `block.columns`, sehingga data kandidat CONTOH bertahan di baris yang
+ * seharusnya kosong — kelas kesalahan yang sama dengan nilai kosong di
+ * `applyFieldMap`.
+ *
+ * Rentangnya diperluas dari kolom terpetakan ke kanan DAN ke kiri **selama
+ * kolom berikutnya masih berisi data di baris blok** — jadi tabel yang lebarnya
+ * lebih besar dari yang berhasil dipetakan ikut tersapu, sementara catatan
+ * statis yang dipisahkan kolom kosong tidak ikut terhapus.
+ */
+function blockSpan(ws: Worksheet, block: RiwayatBlock, cols: string[]): string[] {
+  const mapped = cols.map((c) => decodeAddr(`${c}1`).c);
+  if (!mapped.length) return cols;
+  const first = block.startRow;
+  const last = block.startRow + block.rows - 1;
+  const hasData = (c: number): boolean => {
+    for (let r = first; r <= last; r++) {
+      if (cellText(ws.getCell(r, c)).trim() !== '') return true;
+    }
+    return false;
+  };
+  let lo = Math.min(...mapped);
+  let hi = Math.max(...mapped);
+  while (hi + 1 <= ws.columnCount && hasData(hi + 1)) hi++;
+  while (lo - 1 >= 1 && hasData(lo - 1)) lo--;
+  const out: string[] = [];
+  for (let i = lo; i <= hi; i++) out.push(letterOf(i));
+  return out;
 }
 
 /** Rentang merge di sheet, sebagai koordinat 1-based. */

@@ -174,4 +174,60 @@ describe('applyRiwayatBlock — riwayat LEBIH PANJANG daripada contoh', () => {
     expect(ws.model.merges).not.toContain('A7:C7');
     expect(ws.model.merges).not.toContain('A11:C11');
   });
+
+  /**
+   * Kolom yang tidak berhasil dipetakan (nilainya di baris contoh pertama tidak
+   * cocok dengan field mana pun) TIDAK boleh membuat baris sisa milik kandidat
+   * contoh bertahan. Dulu pengosongan sisa baris hanya menyapu kolom yang
+   * terpetakan, jadi kolom ke-4 ("Catatan") tetap berisi data contoh di baris
+   * yang seharusnya kosong — persis kelas kesalahan yang sama dengan nilai
+   * kosong di `applyFieldMap`.
+   */
+  it('kolom yang TIDAK terpetakan pun ikut dikosongkan di baris sisa', async () => {
+    const wb = await sheetFrom([
+      ['RIWAYAT PENDIDIKAN', '', '', ''],
+      ['Tingkat', 'Nama Sekolah', 'Tahun', 'Catatan'],
+      ['SD', 'SDN 1', '2013', 'JUARA'],
+      ['SMP', 'SMPN 2', '2019', 'JUARA'],
+    ]);
+    const contoh = [
+      { tingkat: 'SD', sekolah: 'SDN 1', masuk: '2013' },
+      { tingkat: 'SMP', sekolah: 'SMPN 2', masuk: '2019' },
+    ];
+    const block = need(await detectRiwayatBlock(wb, contoh, 'tingkat'));
+    // Kolom D tidak punya field yang cocok ⇒ tidak masuk `block.columns`.
+    expect(Object.keys(block.columns)).not.toContain('D');
+    await applyRiwayatBlock(wb, block, [{ tingkat: 'SD', sekolah: 'SDN 9', masuk: '2020' }]);
+    const out = await readBack(await workbookToXlsxBlob(wb));
+    const ws = out.worksheets[0];
+    // Baris 3 dipakai kandidat ini; baris 4 SISA dan harus kosong di semua kolom.
+    expect(ws.getCell('B3').value).toBe('SDN 9');
+    expect(ws.getCell('D4').value).toBeNull();
+    expect(ws.getCell('B4').value).toBeNull();
+  });
+
+  /**
+   * Batas dari pelebaran rentang: catatan statis template yang DIPISAHKAN kolom
+   * kosong tidak boleh ikut terhapus. Kalau tidak, "mengosongkan baris sisa"
+   * berubah jadi menghapus isi template.
+   */
+  it('catatan statis di kolom terpisah TIDAK ikut dikosongkan', async () => {
+    const wb = await sheetFrom([
+      ['RIWAYAT PENDIDIKAN', '', '', '', '', 'CATATAN STATIS'],
+      ['Tingkat', 'Nama Sekolah', 'Tahun', '', '', ''],
+      ['SD', 'SDN 1', '2013', '', '', 'JANGAN HILANG'],
+      ['SMP', 'SMPN 2', '2019', '', '', 'JANGAN HILANG'],
+    ]);
+    const contoh = [
+      { tingkat: 'SD', sekolah: 'SDN 1', masuk: '2013' },
+      { tingkat: 'SMP', sekolah: 'SMPN 2', masuk: '2019' },
+    ];
+    const block = need(await detectRiwayatBlock(wb, contoh, 'tingkat'));
+    await applyRiwayatBlock(wb, block, [{ tingkat: 'SD', sekolah: 'SDN 9', masuk: '2020' }]);
+    const out = await readBack(await workbookToXlsxBlob(wb));
+    const ws = out.worksheets[0];
+    expect(ws.getCell('B4').value).toBeNull(); // baris sisa disapu
+    expect(ws.getCell('F4').value).toBe('JANGAN HILANG'); // catatan statis utuh
+    expect(ws.getCell('F1').value).toBe('CATATAN STATIS');
+  });
 });
