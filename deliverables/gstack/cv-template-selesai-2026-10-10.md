@@ -196,4 +196,62 @@ dimuat saat admin memakai fitur ini — **bukan** di jalur muat halaman.
 **Sisa yang belum berubah:** `renderers/excel.ts` dan `src/lib/candidateExport.ts`
 masih memakai `xlsx` langsung — keduanya jalur lain, tidak lewat loader ini.
 
+## ✅ Ditutup 2026-10-10: baris wawancara akhirnya terisi (commit `238a701`)
+
+Dilaporkan pemilik dari CV AGUS KHOCI: `帰国後の目標 / SETELAH PULANG`,
+`長所 / KELEBIHAN`, `短所 / KEKURANGAN`, `趣味 / HOBI` selalu kosong.
+
+**Bukan karena data kandidat.** Data AGUS ada semua (`rencana_pulang`,
+`kelebihan`, `kekurangan` terisi; `hobi` = `"-"` — nilainya memang begitu).
+
+**Sebabnya: tidak ada yang mengajari aplikasi ke mana empat field itu pergi.** Di
+template rirekisho labelnya di merge `A37:C37` dan **area nilainya di merge
+`D37:I37` — kosong** di berkas template. Kedua jalur pemetaan gagal:
+
+| jalur | hasil | sebab |
+|---|---|---|
+| cocokkan **nilai** | **0 sel** | sel kosong dilewati ⇒ mustahil dipelajari |
+| cocokkan **label** | **7 sel**, tak satu pun baris itu | tidak ada pola untuk kelima label, **dan** pencari nilai mensyaratkan tetangganya berisi |
+
+### Tiga perubahan
+
+1. **Pola label** untuk kelima label (Indonesia + Jepang) lewat helper baru
+   `rxAny()`. Label nyata menggabungkan keduanya dalam SATU sel dengan baris baru
+   (`帰国後の目標　\nSETELAH PULANG DARI JEPANG`), jadi pola `^(...)$` biasa gagal —
+   `.` tidak melintasi baris. `rxAny` memakai `[\s\S]` di kedua sisi.
+2. **`valueCellForLabel()`** — resolusi sel nilai **sadar-merge**, menggantikan
+   `findAdjacentValueCell`. Label yang di-merge menyalin teksnya ke B37/C37 juga,
+   jadi "kanan satu kolom" menunjuk **salinan label** (menulis ke situ = menimpa
+   labelnya). Sel yang ternyata label lain selalu ditolak.
+3. **`analyzeFromExample` menjalankan peta label sebagai jaring pengaman** untuk
+   sel yang tidak bisa dipelajari dari nilai. Bukti nilai tetap menang. Untuk sel
+   yang **ambigu**, label boleh memutuskan — tapi hanya kalau ia menunjuk salah
+   satu kandidatnya; kalau menunjuk field lain, admin yang memilih.
+
+### Bug yang muncul di tengah jalan — dan mengapa urutannya penting
+
+Versi pertama mengutamakan tetangga yang **berisi**. Hasilnya SALAH: `趣味 / HOBI`
+(baris 40) dipetakan ke **`A41`** — sel label `面鏡・資格 SERTIFIKAT YANG DIMILIKI`,
+yang kebetulan tidak dikenal pola mana pun sehingga lolos sebagai "nilai". Baris 38
+aman **hanya** karena baris 39 kebetulan punya pola.
+
+⇒ Label yang di-merge **horizontal** sekarang tidak melihat ke bawah sama sekali:
+nilainya ada di band kanan pada baris yang sama. Dikunci tes khusus.
+
+### Hasil terukur
+
+| | sebelum | sesudah |
+|---|---|---|
+| sel terpetakan (template rirekisho) | 7 | **12** |
+| `D36`–`D40` | kosong | **semua benar** |
+| pemetaan lama (`H4`,`H5`,`H6`,`H7`,`H8`,`H10`,`F11`) | — | **tidak ada yang hilang** |
+| `A41` nyasar | ya | **tidak** |
+
+CV AGUS KHOCI keluar terisi lengkap **tanpa pemetaan manual**, gaya tetap utuh
+(border 388 · isi 427 · dropdown 17 · merges 83).
+
+Tes: `e2e/cv-template-label-map.test.ts` (7 baru) + 3 tes ambiguitas. Dibuktikan
+bisa merah: kedua bagian perbaikan dimatikan ⇒ 5 dari 7 gagal.
+
+
 
