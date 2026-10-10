@@ -691,6 +691,7 @@ export const jpTranslations: Record<string, string> = {
     "admin.tpl_del_aria": "テンプレートを削除",
     "admin.tpl_del_confirm": "このテンプレートを削除しますか？ストレージ上のファイルは残ります。",
     "admin.tpl_err_file": "先にテンプレート（.xlsx）を選んでください。",
+    "admin.tpl_err_not_xlsx": "テンプレートは .xlsx 形式のみ対応です（.docx/.pdf は未対応）。",
     "admin.tpl_err_wa": "見本の候補者のWA番号を入力してください。",
     "admin.tpl_err_name": "テンプレート名は必須です。",
     "admin.tpl_err_nofile": "テンプレートファイルが未選択です。",

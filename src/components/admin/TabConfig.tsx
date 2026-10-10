@@ -73,6 +73,10 @@ export default function TabConfig() {
   async function handleAnalisaTemplate() {
     const wa = tplContohWa.replace(/\D/g, '');
     if (!tplFile) { showToast(t('admin.tpl_err_file'), 'error'); return; }
+    // `accept=".xlsx"` di input hanya SARAN — browser tetap mengizinkan berkas
+    // lain dipilih (pemilik memilih .docx, lalu gagal dengan pesan exceljs yang
+    // tidak menjelaskan apa pun). Diperiksa di sini, dengan pesan yang jelas.
+    if (!/\.xlsx$/i.test(tplFile.name)) { showToast(t('admin.tpl_err_not_xlsx'), 'error'); return; }
     if (!wa) { showToast(t('admin.tpl_err_wa'), 'error'); return; }
     setTplBusy(true);
     setTplInfo('');
@@ -82,7 +86,11 @@ export default function TabConfig() {
         onSessionInvalid: 'throw',
         silent: true,
       })) as Record<string, unknown> | null;
-      if (!m?.error) throw new Error(String(m?.error || 'Data master kandidat contoh tidak ditemukan.'));
+      // GAGAL kalau tidak ada data ATAU balasannya membawa error. Sebelumnya
+      // syaratnya terbalik (`if (!m?.error) throw`), sehingga tombol Analisa
+      // SELALU melempar justru ketika datanya berhasil diambil — dan pesannya
+      // menyesatkan: "Data master kandidat contoh tidak ditemukan."
+      if (!m || m.error) throw new Error(String(m?.error || 'Data master kandidat contoh tidak ditemukan.'));
       const data = normalizeMasterData(m);
       // `readWorkbook` (exceljs) — bukan `xlsx` langsung. Membaca lewat helper
       // yang sama dengan jalur unduh berarti apa yang di-ANALISA persis apa yang

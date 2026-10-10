@@ -604,6 +604,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.tpl_del_aria": "Hapus template",
     "admin.tpl_del_confirm": "Hapus template ini? Berkas di Storage tidak ikut terhapus.",
     "admin.tpl_err_file": "Pilih berkas template (.xlsx) dulu.",
+    "admin.tpl_err_not_xlsx": "Template harus berkas .xlsx — berkas .docx/.pdf belum didukung di sini.",
     "admin.tpl_err_wa": "Isi nomor WA kandidat contoh dulu.",
     "admin.tpl_err_name": "Nama template wajib diisi.",
     "admin.tpl_err_nofile": "Berkas template belum dipilih.",
