@@ -695,6 +695,8 @@ export const jpTranslations: Record<string, string> = {
     "admin.tpl_err_wa": "見本の候補者のWA番号を入力してください。",
     "admin.tpl_err_name": "テンプレート名は必須です。",
     "admin.tpl_err_nofile": "テンプレートファイルが未選択です。",
+    "admin.tpl_err_empty": "対応付けられたセルがありません。先に「解析」を押してください。",
+    "admin.tpl_err_map": "このテンプレートにはセル対応表がありません。設定タブで作り直してください。",
     "admin.tpl_toast_saved": "CVテンプレートを保存しました。",
     "admin.tpl_toast_deleted": "テンプレートを削除しました。",
     "admin.tpl_btn": "テンプレートからCVを作成",

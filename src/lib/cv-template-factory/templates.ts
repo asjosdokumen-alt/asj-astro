@@ -100,11 +100,17 @@ export function decodeTemplateRecord(raw: unknown): CvTemplateRecord | null {
   const nama = String(parsed.nama ?? '').trim();
   const fileUrl = String(parsed.fileUrl ?? '').trim();
   if (!id || !nama || !fileUrl) return null;
-  if (!isObj(parsed.fieldMap)) return null;
+  // Peta sel BOLEH kosong asal ada tabel riwayat: template yang seluruh isinya
+  // berupa tabel (mis. hanya riwayat pendidikan) tetap sah, dan penjaga di tab
+  // Config memakai syarat yang sama. Dulu di sini `fieldMap` WAJIB objek,
+  // sehingga template seperti itu tersimpan lalu terbaca sebagai "record rusak".
+  if (!isObj(parsed.fieldMap) && !isObj(parsed.riwayat)) return null;
 
   const fieldMap: TemplateFieldMap = {};
-  for (const [cell, path] of Object.entries(parsed.fieldMap)) {
-    if (typeof path === 'string' && path.trim()) fieldMap[cell] = path.trim();
+  if (isObj(parsed.fieldMap)) {
+    for (const [cell, path] of Object.entries(parsed.fieldMap)) {
+      if (typeof path === 'string' && path.trim()) fieldMap[cell] = path.trim();
+    }
   }
 
   const rec: CvTemplateRecord = {
@@ -134,10 +140,16 @@ export function decodeTemplateRecord(raw: unknown): CvTemplateRecord | null {
         if (typeof field === 'string' && field.trim()) columns[col] = field.trim();
       }
       if (!Object.keys(columns).length) continue;
+      // Koordinat blok harus sah: `startRow`/`rows` < 1 membuat applier menulis
+      // atau menyisipkan di baris 0, yang bukan baris Excel.
+      const startRow = Number(blk.startRow);
+      const rows = Number(blk.rows);
+      if (!Number.isInteger(startRow) || startRow < 1) continue;
+      if (!Number.isInteger(rows) || rows < 1) continue;
       riwayat[tipe] = {
         sheet: String(blk.sheet ?? ''),
-        startRow: Number(blk.startRow) || 0,
-        rows: Number(blk.rows) || 0,
+        startRow,
+        rows,
         keyColumn: String(blk.keyColumn ?? ''),
         columns,
       };

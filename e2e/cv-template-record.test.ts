@@ -58,9 +58,19 @@ describe('decodeTemplateRecord — menolak yang tidak bisa dipakai', () => {
     expect(decodeTemplateRecord({ ...REC, id: '' })).toBeNull();
   });
 
-  it('fieldMap hilang/bukan objek ⇒ null (template tanpa peta = tidak berguna)', () => {
-    expect(decodeTemplateRecord({ ...REC, fieldMap: undefined })).toBeNull();
-    expect(decodeTemplateRecord({ ...REC, fieldMap: 'B2=identitas.nama' })).toBeNull();
+  it('fieldMap hilang DAN riwayat hilang ⇒ null (template tanpa isi = tidak berguna)', () => {
+    expect(decodeTemplateRecord({ ...REC, fieldMap: undefined, riwayat: undefined })).toBeNull();
+    expect(decodeTemplateRecord({ ...REC, fieldMap: 'B2=identitas.nama', riwayat: undefined })).toBeNull();
+  });
+
+  it('template yang HANYA punya tabel riwayat tetap diterima', () => {
+    // Penjaga di tab Config memakai syarat yang sama (`fieldMap` kosong boleh
+    // asal ada riwayat). Dulu decode menuntut `fieldMap` objek, jadi template
+    // seperti ini tersimpan lalu terbaca sebagai "record rusak".
+    const rec = decodeTemplateRecord({ ...REC, fieldMap: undefined });
+    expect(rec).not.toBeNull();
+    expect(rec?.fieldMap).toEqual({});
+    expect(rec?.riwayat?.pendidikan?.startRow).toBe(20);
   });
 
   it('entri fieldMap yang bukan string dibuang, sisanya tetap dipakai', () => {
@@ -77,6 +87,20 @@ describe('decodeTemplateRecord — menolak yang tidak bisa dipakai', () => {
       riwayat: { pendidikan: { sheet: 'CV', startRow: 20, rows: 3, keyColumn: 'A', columns: {} } },
     });
     expect(rec?.riwayat).toBeUndefined();
+  });
+
+  it('blok riwayat dengan koordinat tidak sah dibuang — baris 0 bukan baris Excel', () => {
+    const cols = { A: 'tingkat', B: 'sekolah' };
+    for (const bad of [
+      { sheet: 'CV', startRow: 0, rows: 3, keyColumn: 'A', columns: cols },
+      { sheet: 'CV', startRow: -1, rows: 3, keyColumn: 'A', columns: cols },
+      { sheet: 'CV', startRow: 20, rows: 0, keyColumn: 'A', columns: cols },
+      { sheet: 'CV', startRow: 20.5, rows: 3, keyColumn: 'A', columns: cols },
+      { sheet: 'CV', startRow: 'dua puluh', rows: 3, keyColumn: 'A', columns: cols },
+    ]) {
+      const rec = decodeTemplateRecord({ ...REC, riwayat: { pendidikan: bad } });
+      expect(rec?.riwayat, JSON.stringify(bad)).toBeUndefined();
+    }
   });
 });
 

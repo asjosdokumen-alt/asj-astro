@@ -70,6 +70,23 @@ export default function TabConfig() {
     }
   }
 
+  /**
+   * Ganti berkas template = batalkan hasil Analisa.
+   *
+   * Peta sel yang tersisa berasal dari berkas LAIN. Kalau ikut disimpan bersama
+   * berkas baru, tiap kandidat terisi di sel yang salah — dan hasilnya terlihat
+   * wajar, jadi tidak ada yang menyadarinya.
+   */
+  function pilihBerkasTemplate(f: File | null) {
+    setTplFile(f);
+    setTplFieldMap({});
+    setTplAmbiguous({});
+    setTplPilihan({});
+    setTplRiwayat({});
+    setTplBelum([]);
+    setTplInfo('');
+  }
+
   async function handleAnalisaTemplate() {
     const wa = tplContohWa.replace(/\D/g, '');
     if (!tplFile) { showToast(t('admin.tpl_err_file'), 'error'); return; }
@@ -134,6 +151,14 @@ export default function TabConfig() {
     for (const cell of Object.keys(tplAmbiguous)) {
       if (tplPilihan[cell]) fieldMap[cell] = tplPilihan[cell];
       else delete fieldMap[cell];
+    }
+    // Tanpa peta DAN tanpa tabel riwayat, template yang tersimpan akan
+    // menghasilkan berkas KOSONG untuk setiap kandidat — kegagalan yang menyamar
+    // sebagai hasil normal ("kok gak muncul apa apa"). Terjadi kalau admin
+    // menekan Simpan tanpa pernah menekan Analisa. Ditolak di depan.
+    if (!Object.keys(fieldMap).length && !Object.keys(tplRiwayat || {}).length) {
+      showToast(t('admin.tpl_err_empty'), 'error');
+      return;
     }
     setTplBusy(true);
     try {
@@ -281,7 +306,7 @@ npm run migrate:up</pre>
       <div class="flex flex-wrap gap-2 mb-3">
         <input type="text" value={tplNama} onInput={(e) => setTplNama((e.target as HTMLInputElement).value)} placeholder={t('admin.tpl_name_ph')} class="min-h-11 flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg text-sm px-3 text-white outline-none focus:border-sky-500" />
         <input type="text" value={tplContohWa} onInput={(e) => setTplContohWa((e.target as HTMLInputElement).value)} placeholder={t('admin.tpl_wa_ph')} class="min-h-11 flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg text-sm px-3 text-white outline-none focus:border-sky-500" />
-        <input type="file" accept=".xlsx" onChange={(e) => setTplFile((e.target as HTMLInputElement).files?.[0] || null)} aria-label={t('admin.tpl_file_aria')} class="min-h-11 flex-1 min-w-[220px] text-xs text-slate-300 file:mr-2 file:min-h-11 file:px-3 file:bg-slate-700 file:text-white file:border-0 file:rounded-lg" />
+        <input type="file" accept=".xlsx" onChange={(e) => pilihBerkasTemplate((e.target as HTMLInputElement).files?.[0] || null)} aria-label={t('admin.tpl_file_aria')} class="min-h-11 flex-1 min-w-[220px] text-xs text-slate-300 file:mr-2 file:min-h-11 file:px-3 file:bg-slate-700 file:text-white file:border-0 file:rounded-lg" />
         <button type="button" onClick={handleAnalisaTemplate} disabled={tplBusy} class="min-h-11 px-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition"><Icon name="eye" class="mr-1" /> {t('admin.tpl_analyze')}</button>
         <button type="button" onClick={handleSimpanTemplate} disabled={tplBusy} class="min-h-11 px-4 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition"><Icon name="save" class="mr-1" /> {t('admin.tpl_save')}</button>
       </div>

@@ -761,8 +761,24 @@ export async function applyFieldMap(
   const ws = workbook.worksheets[0];
   if (!ws) throw new Error('Template tidak punya sheet.');
   for (const [cellAddress, fieldPath] of Object.entries(fieldMap)) {
+    const cell = ws.getCell(cellAddress);
     const value = getValueFromPath(data, fieldPath);
-    if (value) writeCellValue(ws.getCell(cellAddress), value);
+    if (value) {
+      writeCellValue(cell, value);
+      continue;
+    }
+    // Nilai kosong TETAP harus dikosongkan. Kalau tidak, isi template — yaitu
+    // data kandidat CONTOH yang dipakai waktu admin meng-upload — tertinggal di
+    // sel itu dan tercetak sebagai milik kandidat ini. Diukur pada template
+    // rirekisho: kandidat tanpa agama/golongan darah/umur keluar dengan
+    // "ISLAM（イスラム） / O / 19" milik orang lain. Ini kesalahan yang sama
+    // seperti sisa baris riwayat, hanya satu sel.
+    //
+    // Satu pengecualian: kalau sel tujuan ternyata berisi LABEL (peta bisa salah
+    // di template yang tata letaknya belum kita kenal), sel itu TIDAK dihapus —
+    // menghapus label template jauh lebih merusak daripada membiarkannya.
+    if (looksLikeLabel(cellText(cell))) continue;
+    writeCellValue(cell, '');
   }
 }
 

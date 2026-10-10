@@ -23,6 +23,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/pr
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import TabConfig from '../src/components/admin/TabConfig';
 import { showToast } from '../src/components/Toast';
+import { uploadBerkasToStorage } from '../src/lib/uploadBerkas';
 
 const { mockSecure, mockReadWorkbook, mockAnalyze, mockDetect } = vi.hoisted(() => ({
   mockSecure: vi.fn(),
@@ -73,6 +74,15 @@ async function isiForm(namaBerkas: string): Promise<void> {
 
 function klikAnalisa(): void {
   fireEvent.click(screen.getByRole('button', { name: /analisa/i }));
+}
+
+function klikSimpan(): void {
+  fireEvent.click(screen.getByRole('button', { name: /simpan template/i }));
+}
+
+function gantiBerkas(nama: string): void {
+  const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+  fireEvent.change(input, { target: { files: [berkas(nama)] } });
 }
 
 beforeEach(() => {
@@ -131,5 +141,39 @@ describe('TabConfig — Template CV: berkas bukan .xlsx', () => {
     // dulu itu menghasilkan galat exceljs yang tidak menjelaskan apa pun.
     expect(mockReadWorkbook).not.toHaveBeenCalled();
     expect(mockAnalyze).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Template tanpa peta sel = berkas yang keluar SAMA PERSIS dengan contoh yang
+// dipakai admin waktu meng-upload — yaitu CV kandidat LAIN. Itu kegagalan yang
+// menyamar sebagai hasil normal ("kok gak muncul apa apa"), jadi ditolak di
+// depan, bukan dibiarkan tersimpan.
+// ---------------------------------------------------------------------------
+describe('TabConfig — Template CV: simpan tanpa peta sel', () => {
+  it('Simpan tanpa Analisa ditolak — tidak ada unggahan, tidak ada record', async () => {
+    render(<TabConfig />);
+    await isiForm('template.xlsx');
+    klikSimpan();
+
+    await waitFor(() => expect(vi.mocked(showToast)).toHaveBeenCalled());
+    expect(uploadBerkasToStorage).not.toHaveBeenCalled();
+    expect(mockSecure).not.toHaveBeenCalledWith('simpanTemplateCv', expect.anything());
+  });
+
+  it('ganti berkas membatalkan hasil Analisa — peta berkas lama tidak ikut tersimpan', async () => {
+    render(<TabConfig />);
+    await isiForm('template.xlsx');
+    klikAnalisa();
+    await waitFor(() => expect(screen.getByText(/1 sel terpetakan/)).toBeTruthy());
+
+    gantiBerkas('template-lain.xlsx');
+    // Ringkasan hilang: peta milik berkas sebelumnya tidak boleh tertinggal.
+    expect(screen.queryByText(/sel terpetakan/)).toBeNull();
+
+    klikSimpan();
+    await waitFor(() => expect(vi.mocked(showToast)).toHaveBeenCalled());
+    expect(uploadBerkasToStorage).not.toHaveBeenCalled();
+    expect(mockSecure).not.toHaveBeenCalledWith('simpanTemplateCv', expect.anything());
   });
 });

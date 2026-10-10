@@ -325,6 +325,13 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
       if (!rowId) { showToast(t('admin.tpl_pick'), 'error'); return; }
       const rec = decodeTemplateRecord(list.find((x) => x.rowId === rowId)?.record);
       if (!rec) throw new Error(t('admin.tpl_broken'));
+      // Template tanpa peta sel tidak menghasilkan apa pun: berkasnya keluar
+      // sama persis dengan contoh yang dipakai admin waktu meng-upload — yaitu
+      // CV kandidat LAIN. Lebih baik ditolak daripada mengunduh berkas yang
+      // isinya milik orang lain.
+      if (!Object.keys(rec.fieldMap).length && !Object.keys(rec.riwayat ?? {}).length) {
+        throw new Error(t('admin.tpl_err_map'));
+      }
 
       const m = (await api.secure('getDrafCvMaster', [data.wa], {
         onSessionInvalid: 'throw',

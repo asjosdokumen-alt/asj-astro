@@ -608,6 +608,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.tpl_err_wa": "Isi nomor WA kandidat contoh dulu.",
     "admin.tpl_err_name": "Nama template wajib diisi.",
     "admin.tpl_err_nofile": "Berkas template belum dipilih.",
+    "admin.tpl_err_empty": "Belum ada sel yang terpetakan — tekan Analisa dulu.",
+    "admin.tpl_err_map": "Template ini tidak punya peta sel — perbaiki di tab Config.",
     "admin.tpl_toast_saved": "Template CV tersimpan.",
     "admin.tpl_toast_deleted": "Template dihapus.",
     "admin.tpl_btn": "Buat CV dari template",
