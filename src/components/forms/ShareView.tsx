@@ -204,7 +204,7 @@ export default function ShareView() {
           <div class="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-between md:justify-end mt-2 md:mt-0">
             <button
               onClick={() => langStore.set(langStore.get() === 'id' ? 'jp' : 'id')}
-              class="px-2.5 py-1.5 md:px-3 bg-slate-800/80 border border-slate-600/50 rounded-lg text-[11px] md:text-xs font-bold flex items-center gap-1.5 shrink-0"
+              class="min-h-11 min-w-11 justify-center px-2.5 py-1.5 md:px-3 bg-slate-800/80 border border-slate-600/50 rounded-lg text-[11px] md:text-xs font-bold flex items-center gap-1.5 shrink-0"
             >
               <Icon name="language" class="text-pink-400" />
               <span class={langStore.get() === 'id' ? 'text-pink-400 font-black' : 'text-slate-500'}>ID</span>

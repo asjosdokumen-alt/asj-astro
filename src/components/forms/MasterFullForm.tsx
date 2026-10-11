@@ -575,7 +575,7 @@ export default function MasterFullForm() {
           <input id="mf-gate-pass" type="password" class="input" value={gatePass} placeholder="••••••••"
             onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
-          <button onClick={gateLogin} class="w-full mt-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl py-2.5 text-sm font-bold">{t("login.btn_masuk")}</button>
+          <button onClick={gateLogin} class="w-full mt-3 min-h-11 bg-sky-600 hover:bg-sky-500 text-white rounded-xl py-2.5 text-sm font-bold">{t("login.btn_masuk")}</button>
           {gateMsg && <div class="text-rose-400 text-xs text-center mt-2">{gateMsg}</div>}
         </div>
       </div>

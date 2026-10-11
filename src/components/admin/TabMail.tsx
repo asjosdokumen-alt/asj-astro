@@ -225,9 +225,18 @@ export default function TabMail() {
           <thead class="bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700">
             <tr>
               <th scope="col" class="p-4 text-center">
-                <input type="checkbox" aria-label={t('ui.select_all')} class="w-5 h-5 accent-rose-500 cursor-pointer"
-                  checked={selected.size === filtered.length && filtered.length > 0}
-                  onChange={toggleAll} />
+                {/* Sasaran sentuh: kotak 20x20 itu sendiri terlalu kecil untuk
+                    jari (lantai repo 44px). Berbeda dari checkbox di
+                    `TabTambah.tsx:261` yang dibungkus `<label class="min-h-11">`,
+                    yang ini telanjang di dalam `<th>`, sehingga seluruh area
+                    yang bisa diketuk hanya 20x20. Diukur 2026-10-11 pada enam
+                    lebar (320-1440): selalu 20x20. Label pembungkus memberi
+                    kotak sentuh 44x44 dengan tampilan kotak yang sama persis. */}
+                <label class="min-h-11 min-w-11 inline-flex items-center justify-center cursor-pointer align-middle">
+                  <input type="checkbox" aria-label={t('ui.select_all')} class="w-5 h-5 accent-rose-500 cursor-pointer"
+                    checked={selected.size === filtered.length && filtered.length > 0}
+                    onChange={toggleAll} />
+                </label>
               </th>
               <th scope="col" class="p-4">{t('table.upload_date')}</th>
               <th scope="col" class="p-4">{t('table.job_code')}</th>

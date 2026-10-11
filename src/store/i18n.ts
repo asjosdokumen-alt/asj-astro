@@ -1610,7 +1610,20 @@ export const translations: Record<Lang, Record<string, string>> = {
   "doc.preview_loading": "Memuat pratinjau...",
     "toolbar.admin": "Panel Admin",
     "toolbar.candidate": "Dashboard Kandidat",
-    "toolbar.siswa": "Pendaftaran Siswa Baru",
+    /* ⚠ DIPERDEK SANGAJA — dan hanya di toolbar. MEASURED 2026-10-11 di 320px:
+       "Pendaftaran Siswa Baru" (22 karakter) butuh 156px sementara bar
+       menyisakan 141px, jadi `truncate` di FormToolbar.tsx:43 memotong 15px
+       dan judulnya terbaca "Pendaftaran Siswa B…". Truncate-nya sendiri BENAR
+       (lihat §11.1: batasi elemen teksnya, jangan tambal wadahnya) — yang
+       salah adalah memaksakan judul yang memang tidak muat ke dalam bar 320px.
+       "Pendaftaran Siswa" (17 karakter, ~66px) muat penuh di 320px DAN
+       masih menjadi h1 yang bermakna.
+
+       Identitas lengkap halaman tidak hilang: `siswa.title` (yang TIDAK
+       diubah) tetap "Pendaftaran Siswa Baru" di judul tab browser dan di
+       judul in-page, jadi ini pelabelan ulang pada SATU permukaan sempit,
+       bukan penghapusan kata dari aplikasi. */
+    "toolbar.siswa": "Pendaftaran Siswa",
     "toolbar.ai_cv": "AI CV Chat",
     "toolbar.apply": "Form Lamaran",
     "toolbar.master": "CV Master",
