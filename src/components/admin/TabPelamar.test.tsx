@@ -72,14 +72,22 @@ describe('TabPelamar clock button', () => {
 
     const { container } = render(<TabPelamar />);
 
-    // The clock button is a small round button (w-8 h-8) in the action cell
-    // It's the first button in each row's action div
-    const actionDivs = container.querySelectorAll('.flex.justify-center');
+    // MEASURED 2026-10-11: `TabPelamar` kini punya DUA tata letak responsif —
+    // tabel (≥md) dan kartu (<md) — yang keduanya ada di DOM saat jsdom tidak
+    // menerapkan CSS. Selektor lama `.flex.justify-center` menangkap apa saja
+    // yang punya kelas itu, TERMASUK tombolnya sendiri (`... flex items-center
+    // justify-center ...`), lalu `[0]` bergantung pada urutan DOM: begitu kartu
+    // diletakkan sebelum tabel, `[0]` jadi sebuah BUTTON dan
+    // `querySelector('button')` mengembalikan null. Cacat itu milik selektornya,
+    // bukan komponennya. Ambil wadah aksi (DIV) yang benar-benar membungkus
+    // tombol, dan buktikan tombol pertama di dalamnya benar-benar tombol.
+    const actionDivs = [...container.querySelectorAll('div.flex.justify-center')];
     expect(actionDivs.length).toBeGreaterThan(0);
 
     // First button in the action div is the clock button
     const clockButton = actionDivs[0].querySelector('button') as HTMLButtonElement;
     expect(clockButton).toBeTruthy();
+    expect(clockButton.tagName).toBe('BUTTON');
 
     fireEvent.click(clockButton);
 
@@ -105,6 +113,14 @@ describe('TabPelamar clock button', () => {
 // Legacy render/candidate.ts:634 menempelkan <img> logo ASJ (title
 // ui.badge_official) di sebelah nama kandidat VIP. Astro memakai emoji 🏆/🎓 —
 // tidak bisa diterjemahkan, tidak ikut tema, dan bukan aset merek.
+//
+// MEASURED 2026-10-11: komponen kini merender DUA tata letak (tabel ≥md + kartu
+// <md) dan jsdom tidak menerapkan CSS, jadi satu baris menghasilkan satu lencana
+// PER TATA LETAK. Assertion karena itu memakai `getAllBy…` dan memeriksa SETIAP
+// lencana — bukan `getBy…` yang gagal begitu jumlahnya 2. Yang dijaga tetap
+// sama: tiap nama ber-lencana memakai logo ASJ, dan emoji tidak pernah muncul.
+// Sisi "tidak ada lencana" tetap eksak (`queryAllBy…` panjang 0), karena itu
+// memang harus tetap benar di kedua tata letak.
 // ==========================================
 describe('TabPelamar — lencana siswa ASJ (bukan emoji)', () => {
   beforeEach(() => { h.kandidatStore.set([BASE]); });
@@ -113,7 +129,9 @@ describe('TabPelamar — lencana siswa ASJ (bukan emoji)', () => {
   it('baris VIP → logo ASJ dengan title ui.badge_official, TANPA emoji', () => {
     h.kandidatStore.set([{ ...BASE, isVIP: true }]);
     render(<TabPelamar />);
-    expect(screen.getByTitle('ui.badge_official')).toBeTruthy();
+    const badges = screen.getAllByTitle('ui.badge_official');
+    expect(badges.length).toBeGreaterThan(0);
+    for (const b of badges) expect(b.tagName).toBe('IMG');
     expect(document.body.textContent).not.toContain('🏆');
     expect(document.body.textContent).not.toContain('🎓');
   });
@@ -121,12 +139,12 @@ describe('TabPelamar — lencana siswa ASJ (bukan emoji)', () => {
   it('baris siswa ASJ (KELAS) → logo ASJ juga (keduanya = siswa ASJ)', () => {
     h.kandidatStore.set([{ ...BASE, isSiswaASJ: true }]);
     render(<TabPelamar />);
-    expect(screen.getByTitle('ui.badge_official')).toBeTruthy();
+    expect(screen.getAllByTitle('ui.badge_official').length).toBeGreaterThan(0);
     expect(document.body.textContent).not.toContain('🎓');
   });
 
   it('baris biasa → TIDAK ada lencana (tidak semua kandidat ditandai siswa)', () => {
     render(<TabPelamar />);
-    expect(screen.queryByTitle('ui.badge_official')).toBeNull();
+    expect(screen.queryAllByTitle('ui.badge_official')).toHaveLength(0);
   });
 });

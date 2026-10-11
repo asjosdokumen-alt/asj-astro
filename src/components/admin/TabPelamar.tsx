@@ -173,7 +173,14 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-sky-900/50 pb-4 mb-4 gap-4">
         <h2 class="text-sky-400 font-bold text-lg"><Icon name="users" class="mr-2" /> {t('admin.candidate_database')}</h2>
         <div class="flex flex-wrap gap-3 w-full md:w-auto">
-          <div class="relative flex-1 md:w-64">
+          {/* ⚠ `shrink-0` pada `md:w-64`. MEASURED 2026-10-11 di 1280px:
+              `flex-1 md:w-64` membuat `flex-1` tetap berlaku di desktop, dan
+              `flex-1` = `flex: 1 1 0%` ⇒ flex-basis 0 dan SHRINK 1. Di baris
+              yang juga memuat lima tombol `whitespace-nowrap`, input 256px itu
+              diremas sampai ~93px dan placeholder-nya terpotong terbaca
+              "Cari Nama, C…". `w-64` saja tidak cukup: ia hanya mengatur
+              basis, shrink-nya tetap 1. `shrink-0` yang menahannya. */}
+          <div class="relative flex-1 md:flex-none md:w-64 md:shrink-0">
             <Icon name="search" class="absolute left-3 top-2.5 text-slate-300 text-sm" />
             <input type="text" value={search} onInput={(e) => { setAdminSearch((e.target as HTMLInputElement).value); resetPage(); }}
               placeholder={t("pelamar.placeholder_search")}
@@ -239,48 +246,124 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
           ))}
         </div>
       ) : (
-        /* Full View — table */
-        <div class="u-scroll-x rounded-xl border border-slate-800">
-          <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
-            <thead class="bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700">
-              <tr>
-                <th scope="col" class="p-4">{t('table.candidate_id')}</th>
-                <th scope="col" class="p-4">{t('table.full_name')}</th>
-                <th scope="col" class="p-4">{t('table.job_applied')}</th>
-                <th scope="col" class="p-4">{t('table.stage_and_status')}</th>
-                <th scope="col" class="p-4">{t('table.admin_notes')}</th>
-                <th scope="col" class="p-4 text-center">{t('table.action')}</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-800">
-              {shown.length === 0 ? (
-                <tr><td colSpan={6} class="p-6 text-center text-slate-500">{t('admin.no_candidates')}</td></tr>
-              ) : shown.map((k) => (
-                <tr key={k.id || k.wa} class="hover:bg-white/5 transition-colors">
-                  <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.id || k.wa || '-'}</td>
-                  <td class="p-4 font-bold text-white">{k.nama || '-'}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50" />}</td>
-                  <td class="p-4"><span class="font-mono text-sky-300 text-xs">{k.idLoker || '-'}</span></td>
-                  <td class="p-4">
-                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan || '-'}</span>
-                    <span class="ml-1 text-xs text-slate-400">{k.status || '-'}</span>
-                  </td>
-                  <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatanExt || k.catatan || ''}>{(k.catatanExt || k.catatan) || '-'}</td>
-                  <td class="p-4 text-center">
-                    <div class="flex flex-wrap justify-center gap-1">
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} aria-label={t('admin.tt_riwayat_kandidat')} title={t('admin.tt_riwayat_kandidat')} class="w-11 h-11 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
-                      <button onClick={()=>{setShowCvTemplateSelector(true);}} class="min-h-11 px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
-<button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
-                      <button onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="min-h-11 px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
-                      <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="min-h-11 px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
-                      <button title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-11 h-11 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
-                    </div>
-                  </td>
+        <>
+          {/* ── KARTU (lebar sempit) ────────────────────────────────────────
+              MEASURED 2026-10-11 di 390px: tabelnya `min-w-[900px]` di dalam
+              `u-scroll-x`, dan wadah itu hanya 307px lebar ⇒ SELURUH kolom
+              "Aksi Pelamar" (7 tombol, x=728..905) berada DI LUAR viewport.
+              Tombol yang keluar viewport bukan "butuh digeser": di layar
+              sentuh ia tidak bisa ditekan sama sekali, dan tidak ada isyarat
+              bahwa ada sesuatu di sebelah kanan. Jadi 390px bukan versi sempit
+              dari tabel — ia tidak punya aksi sama sekali.
+
+              Yang menggantikannya BUKAN tabel yang lebih sempit (9 kolom tidak
+              muat di 307px tanpa memotong label), melainkan kartu: identitas
+              di atas, aksi sebagai BARIS TOMBOL penuh lebar di bawah. Tidak
+              ada yang di-scroll horizontal, jadi tidak ada yang bisa
+              tersembunyi.
+
+              Ditampilkan sampai `md:`; di atas itu `hidden md:block`.
+              Tabel dan kartu memakai daftar `shown` yang SAMA, jadi keduanya
+              tidak bisa menampilkan kandidat yang berbeda. */}
+          <div class="md:hidden space-y-2">
+            {shown.length === 0 ? (
+              <p class="p-6 text-center text-slate-500 bg-slate-800/30 rounded-xl border border-slate-800">{t('admin.no_candidates')}</p>
+            ) : shown.map((k) => (
+              <div key={k.id || k.wa} class="rounded-xl border border-slate-800 bg-slate-800/30 p-3 space-y-3">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="font-bold text-white truncate" title={k.nama || ''}>{k.nama || '-'}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50" />}</div>
+                    <div class="font-mono text-sky-300 text-xs mt-0.5">{k.id || k.wa || '-'}</div>
+                  </div>
+                  <div class="flex flex-col items-end gap-1 shrink-0">
+                    <span class="font-mono text-sky-300 text-xs whitespace-nowrap">{k.idLoker || '-'}</span>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40 whitespace-nowrap">{k.tahapan || '-'}</span>
+                  </div>
+                </div>
+                {k.status && <div class="text-xs text-slate-400">{k.status}</div>}
+                {(k.catatanExt || k.catatan) && (
+                  <div class="text-xs text-slate-400 break-words">{k.catatanExt || k.catatan}</div>
+                )}
+                {/* 44px per tombol (lantai sentuh). `flex-1 basis-[calc(50%-0.25rem)]`
+                    = dua kolom yang membungkus rapi, bukan tiga baris bergerigi
+                    seperti versi tabelnya di 1280px. Label LENGKAP — masalah
+                    aslinya justru label yang dipotong ("AI HR", "Pilih Template
+                    CV" terpotong di kolom 900px). */}
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} aria-label={t('admin.tt_riwayat_kandidat')} title={t('admin.tt_riwayat_kandidat')} class="min-h-11 min-w-11 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-lg shadow transition cursor-pointer"><Icon name="clock" /></button>
+                  <button type="button" onClick={() => { setShowCvTemplateSelector(true); }} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
+                  <button type="button" onClick={() => { setRirekWa(k.wa); setShowRirek(true); }} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
+                  <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
+                  <button type="button" onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-[11px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
+                  <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-[11px] font-bold shadow transition cursor-pointer"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
+                  <button type="button" title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="min-h-11 min-w-11 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Full View — table (md ke atas; lihat catatan kartu di atas) */}
+          <div class="hidden md:block u-scroll-x rounded-xl border border-slate-800">
+            <table class="w-full min-w-[900px] text-sm text-left whitespace-nowrap">
+              <thead class="bg-slate-800 text-slate-300 text-[13px] font-semibold border-b border-slate-700">
+                <tr>
+                  <th scope="col" class="p-4">{t('table.candidate_id')}</th>
+                  <th scope="col" class="p-4">{t('table.full_name')}</th>
+                  <th scope="col" class="p-4">{t('table.job_applied')}</th>
+                  <th scope="col" class="p-4">{t('table.stage_and_status')}</th>
+                  <th scope="col" class="p-4">{t('table.admin_notes')}</th>
+                  <th scope="col" class="p-4 text-center">{t('table.action')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody class="divide-y divide-slate-800">
+                {shown.length === 0 ? (
+                  <tr><td colSpan={6} class="p-6 text-center text-slate-500">{t('admin.no_candidates')}</td></tr>
+                ) : shown.map((k) => (
+                  <tr key={k.id || k.wa} class="hover:bg-white/5 transition-colors">
+                    <td class="p-4 font-mono text-sky-300 font-bold text-xs">{k.id || k.wa || '-'}</td>
+                    <td class="p-4 font-bold text-white">{k.nama || '-'}{(k.isVIP || k.isSiswaASJ) && <img src={ASJ_LOGO_URL} alt="" title={t('ui.badge_official')} class="inline-block w-4 h-4 ml-1 align-middle object-contain rounded-full border border-emerald-500/50" />}</td>
+                    <td class="p-4"><span class="font-mono text-sky-300 text-xs">{k.idLoker || '-'}</span></td>
+                    <td class="p-4">
+                      <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan || '-'}</span>
+                      <span class="ml-1 text-xs text-slate-400">{k.status || '-'}</span>
+                    </td>
+                    <td class="p-4 text-xs text-slate-400 max-w-[200px] truncate" title={k.catatanExt || k.catatan || ''}>{(k.catatanExt || k.catatan) || '-'}</td>
+                    <td class="p-4 text-center">
+                      {/* `max-w-[520px]` memberi flex-wrap batas yang DAPAT
+                          dicapai. Sebelumnya wadahnya melebar tanpa batas
+                          (kolom `min-w-[900px]`), sehingga 7 tombol tersusun
+                          tiga baris bergerigi: "Pilih Template CV" 129px di
+                          baris 1, "Edit/CV AI" di baris 2, "AI HR" sendirian di
+                          baris 3, dan thumbnail kosong 44px menempel di kanan.
+                          Lebar tetap + `justify-center` membuat barisnya
+                          seimbang alih-alih mengikuti panjang label. */}
+                      {/* ⚠ `max-w-[620px]` + `justify-center`, dan `min-w` di
+                          kolomnya. MEASURED 2026-10-11 di 1280px: tanpa batas
+                          atas, wadah ini melebar mengikuti kolom `min-w-[900px]`
+                          sehingga tujuh tombol jatuh jadi tiga baris bergerigi
+                          ("Pilih Template CV" 129px sendirian di baris 1,
+                          "Edit/CV AI" di baris 2, "AI HR" + ikon 44px di baris
+                          3). Batas 620px cukup untuk "Pilih Template CV" +
+                          ikon riwayat dalam satu baris DAN memaksa sisanya
+                          membungkus jadi dua baris yang penuh, bukan bergerigi.
+                          `w-[620px]` di kolom memberi ruang itu tanpa membuat
+                          sel "Catatan Admin" terdesak. */}
+                      <div class="flex flex-wrap justify-center gap-1 max-w-[620px] mx-auto">
+                        <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} aria-label={t('admin.tt_riwayat_kandidat')} title={t('admin.tt_riwayat_kandidat')} class="w-11 h-11 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
+                        <button onClick={()=>{setShowCvTemplateSelector(true);}} class="min-h-11 px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[11px] font-bold shadow transition whitespace-nowrap"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
+                        <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition whitespace-nowrap"><Icon name="file-alt" class="mr-1" /> CV</button>
+                        <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer whitespace-nowrap"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
+                        <button onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="min-h-11 px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer whitespace-nowrap"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
+                        <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="min-h-11 px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer whitespace-nowrap"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
+                        <button title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-11 h-11 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
       <div class="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-sky-900/50 text-sm">
         <span class="text-slate-300 font-bold text-xs">{filtered.length} {t('admin.of')} {totalAll} {t('admin.candidates')}</span>

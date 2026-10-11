@@ -230,7 +230,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     "apply.gender_label": "Jenis Kelamin",
     "apply.gender_pilih": "Pilih",
     "apply.usia_label": "Usia",
-    "apply.usia_ph": "Contoh: 22",
+    /* "Contoh: 22" butuh 73px; MEASURED 2026-10-11 di kolom setengah lebar
+       (grid-cols-2) hanya tersedia 65px @390px ⇒ angka "22" itu sendiri yang
+       terpotong, bukan kata "Contoh". Label medan sudah berkata "Usia", jadi
+       placeholder cukup angka — muat di kolom tersempit. */
+    "apply.usia_ph": "22",
     "apply.tb_label": "Tinggi Badan",
     "apply.bb_label": "Berat Badan",
     "apply.photo_label": "Pas Foto",
@@ -379,7 +383,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     "form.mf_ph_pekerjaan_lain": "Ketik pekerjaan lain / \u305D\u306E\u4ED6\u306E\u8077\u696D\u3092\u5165\u529B",
     "form.mf_ph_promosi": "Tuliskan kelebihan dan dedikasi Anda agar perusahaan Jepang tertarik.",
     "form.mf_ph_sal": "Cth: 5000000",
-    "form.mf_ph_sim": "A / C / A & C (Kosongkan jika tidak ada)",
+    /* Diringkas: MEASURED 2026-10-11, "A / C / A & C (Kosongkan jika tidak ada)"
+       butuh 235px; di kolom setengah lebar hanya tersedia 221px @1280 (potong 14px)
+       dan 109px @390 (potong 126px) ⇒ FORMAT nilai yang justru terpotong, padahal
+       itulah satu-satunya petunjuk apa yang boleh diketik. Isi wajib (format)
+       dipertahankan utuh; keterangan "kosongkan jika tidak ada" dibuang karena
+       medan ini opsional (tanpa `required`) dan kekosongan itu jelas dengan
+       sendirinya. */
+    "form.mf_ph_sim": "A / C / A & C",
     "form.mf_ph_surabaya": "Misal: SURABAYA",
     "form.mf_ph_teks_jepang": "Teks Jepang",
     "form.mf_ph_teman": "Teman / Saudara",
@@ -484,7 +495,12 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.marquee_hint": "Teks ini akan muncul berjalan (Marquee) di semua halaman.",
     "admin.tab_candidate": "Data Pelamar",
     "admin.task_board": "Papan Tugas Tim",
-    "admin.task_placeholder": "Ketik tugas baru lalu tekan Tambah...",
+    /* "Ketik tugas baru lalu tekan Tambah..." butuh 243px; MEASURED 2026-10-11
+       di 390px hanya tersedia 225px (potong 18px) ⇒ justru nama tombolnya,
+       "Tambah", yang hilang — padahal instruksi itu menunjuk tombol. Tombolnya
+       adalah ikon "+" tepat di sebelah medan, jadi instruksi arah memang
+       berlebihan; sisanya dipertahankan utuh. */
+    "admin.task_placeholder": "Ketik tugas baru...",
     "admin.task_empty": "Belum ada tugas.",
     "admin.task_done": "Tandai selesai",
     "ui.agenda_recent": "Agenda & Jadwal Terdekat",
@@ -1788,7 +1804,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "input.placeholder_auto": "Ketik Nama / WA untuk auto-fill...",
     "db.placeholder_search": "Cari ID, TSK, Pekerjaan...",
     "db.empty": "Tidak ada data.",
-    "pelamar.placeholder_search": "Find Nama, Code, Tahapan...",
+    "pelamar.placeholder_search": "Cari Nama, Code, Tahapan...",
     "wa.fallback_msg": "Halo Admin ASJ, saya tertarik lowongan ",
     "wa.fallback_msg2": "Ketik Nama Orang Tua/Wali|628xxxxxxxxxx",
     "wa.nama_siswa": "Nama Siswa",
@@ -1803,7 +1819,12 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.placeholder_msg_tsk": "Pesan tambahan untuk TSK...",
     "admin.placeholder_08": "08...",
     "admin.placeholder_umum": "UMUM atau Ketik Kode",
-    "admin.announce_ph": "Ketik pengumuman di sini... (Kosongkan untuk menghapus)",
+    "admin.announce_ph": "Ketik pengumuman di sini...",
+    /* Catatan hapus dipindah dari placeholder ke helper text yang terlihat:
+       MEASURED 2026-10-11, placeholder 387px di ruang 191px @390px (potong 196px)
+       — klausa "(Kosongkan untuk menghapus)" hilang total, padahal ia satu-satunya
+       tempat perilaku hapus didokumentasikan. Helper text membungkus, jadi muat. */
+    "admin.announce_clear_hint": "Kosongkan lalu Simpan untuk menghapus pengumuman.",
     "admin.custom_lokasi": "Ketik manual lokasi lainnya...",
     "admin.custom_syarat": "Ketik manual syarat lainnya...",
     "admin.custom_dokumen": "Ketik dokumen lain...",

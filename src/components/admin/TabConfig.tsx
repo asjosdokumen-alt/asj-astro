@@ -293,7 +293,7 @@ npm run migrate:up</pre>
 
     <div class="bg-black/40 border border-rose-500/50 p-5 rounded-xl flex flex-col">
       <h3 class="text-sm font-bold text-rose-400 mb-2 uppercase tracking-wider"><Icon name="bullhorn" class="mr-1" /> {t('admin.marquee_announcement')}</h3>
-      <p class="text-xs text-slate-300 mb-3">{t("admin.marquee_hint")}</p>
+      <p class="text-xs text-slate-300 mb-3">{t("admin.marquee_hint")} <span class="text-rose-300">{t("admin.announce_clear_hint")}</span></p>
       <div class="flex gap-2">
         <input type="text" value={pengumuman} onInput={(e) => setPengumuman((e.target as HTMLInputElement).value)} placeholder={t("admin.announce_ph")} class="flex-1 bg-slate-800 border border-slate-600 rounded-lg text-sm px-4 py-2.5 text-white outline-none focus:border-rose-500" />
         <button onClick={handleSavePengumuman} class="min-w-11 min-h-11 bg-rose-600 hover:bg-rose-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition"><Icon name="save" class="mr-1" /> {t('admin.save_and_publish')}</button>
@@ -304,7 +304,12 @@ npm run migrate:up</pre>
       <h3 class="text-sm font-bold text-sky-300 mb-2 uppercase tracking-wider"><Icon name="file-alt" class="mr-1" /> {t('admin.tpl_title')}</h3>
       <p class="text-xs text-slate-300 mb-3">{t('admin.tpl_hint')}</p>
       <div class="flex flex-wrap gap-2 mb-3">
-        <input type="text" value={tplNama} onInput={(e) => setTplNama((e.target as HTMLInputElement).value)} placeholder={t('admin.tpl_name_ph')} class="min-h-11 flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg text-sm px-3 text-white outline-none focus:border-sky-500" />
+        {/* ⚠ `min-w-[260px]` (bukan 200px). MEASURED 2026-10-11 di 1280px:
+            placeholder "Nama template (mis. Rirekisho Baku)" butuh 241px; pada
+            `min-w-[200px]` kotak hanya dapat 193px ⇒ contoh "(mis. Rirekisho
+            Baku)" terpotong 48px. Medan ini satu-satunya yang membawa contoh
+            nama, jadi ia yang diberi ruang. */}
+        <input type="text" value={tplNama} onInput={(e) => setTplNama((e.target as HTMLInputElement).value)} placeholder={t('admin.tpl_name_ph')} class="min-h-11 flex-1 min-w-[260px] bg-slate-800 border border-slate-600 rounded-lg text-sm px-3 text-white outline-none focus:border-sky-500" />
         <input type="text" value={tplContohWa} onInput={(e) => setTplContohWa((e.target as HTMLInputElement).value)} placeholder={t('admin.tpl_wa_ph')} class="min-h-11 flex-1 min-w-[200px] bg-slate-800 border border-slate-600 rounded-lg text-sm px-3 text-white outline-none focus:border-sky-500" />
         <input type="file" accept=".xlsx" onChange={(e) => pilihBerkasTemplate((e.target as HTMLInputElement).files?.[0] || null)} aria-label={t('admin.tpl_file_aria')} class="min-h-11 flex-1 min-w-[220px] text-xs text-slate-300 file:mr-2 file:min-h-11 file:px-3 file:bg-slate-700 file:text-white file:border-0 file:rounded-lg" />
         <button type="button" onClick={handleAnalisaTemplate} disabled={tplBusy} class="min-h-11 px-4 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition"><Icon name="eye" class="mr-1" /> {t('admin.tpl_analyze')}</button>
