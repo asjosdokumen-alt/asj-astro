@@ -104,12 +104,21 @@
  * would only invite someone to raise the number.
  *
  * Run against a built artifact:
- *   node e2e/test-hover-contrast.mjs
- *   BASE_URL=http://localhost:4400 node e2e/test-hover-contrast.mjs
+ *   node e2e/test-hover-contrast.mjs        (gate menyalakan server sendiri)
+ *   BASE_URL=http://localhost:4321 node e2e/test-hover-contrast.mjs
+ *
+ * CATATAN PORT (2026-10-11): default dahulu `http://localhost:4400`, yang BUKAN
+ * port `server.cjs` (selalu 4321 — `PREFERRED_PORT`). 4400 adalah konvensi untuk
+ * "server yang dijalankan orang lain" (dipakai measure-*.mjs / probe-untranslated).
+ * Akibatnya gate ini SELALU gagal dengan ERR_CONNECTION_REFUSED di CI maupun
+ * lokal, dan manifest mengarsipkannya sebagai `infra` — padahal ia tidak
+ * membutuhkan infra apa pun. Kini defaultnya port yang benar dan server
+ * dinyalakan gate ini sendiri.
  */
 import { chromium } from 'playwright';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
-const BASE = process.env.BASE_URL || 'http://localhost:4400';
+const BASE = process.env.BASE_URL || 'http://localhost:4321';
 
 /** AA floors (WCAG 2.1 §1.4.3). Large = >=24px, or >=18.66px and bold. */
 const AA_NORMAL = 4.5;
@@ -355,6 +364,16 @@ async function probeElement({ page, cdp, handle, selector, cdpNodeId, force = ['
     }
   }
   return { reading, pixelRatio, pixelBg, pixelSamples, inkShare };
+}
+
+/* Server DIJAMIN hidup sebelum satu pun navigasi — lihat e2e/lib/server.mjs
+   untuk alasan lengkapnya (ringkas: gate yang navigasi ke server mati MENGARANG
+   temuan `0:1 ... undefined on undefined`, bukan sekadar melewatkan cacat). */
+try {
+  await ensureServer();
+} catch (err) {
+  console.error(`\n  FATAL  ${err.message}\n`);
+  process.exit(2);
 }
 
 const browser = await chromium.launch({ args: ['--no-proxy-server'] });
@@ -805,4 +824,10 @@ console.log('──────────────────────�
 
 const failed = results.filter(([s]) => s === 'fail');
 console.log(`\n${results.length - failed.length}/${results.length} passed`);
-if (failed.length) process.exit(1);
+/* Keluar EKSPLISIT di kedua jalur. Sebelumnya jalur "lulus" tidak pernah
+   memanggil `process.exit`, jadi gate bergantung pada event loop yang habis
+   sendiri — dan `page.route` yang masih terdaftar menahannya, sehingga
+   `with-timeout` membunuh dengan kode 124 yang dibaca CI sebagai GAGAL.
+   Menyalakan server sendiri (lib/server.mjs) menambah satu lagi penahan loop. */
+await stopServer();
+process.exit(failed.length ? 1 : 0);

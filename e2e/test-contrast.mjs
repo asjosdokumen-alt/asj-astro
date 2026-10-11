@@ -91,6 +91,7 @@
  *   BASE_URL=http://localhost:4321 node e2e/test-contrast.mjs
  */
 import { chromium } from 'playwright';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4321';
 const REPORT_ONLY = process.argv.includes('--report-only');
@@ -372,6 +373,19 @@ function installScanner() {
     }
     return out;
   };
+}
+
+/* Server DIJAMIN hidup sebelum satu pun navigasi.
+   Tanpa ini, setiap `page.goto` menjawab ERR_CONNECTION_REFUSED dan gate
+   mencetak `0:1 ... undefined on undefined` untuk SETIAP rute — 24 baris yang
+   terbaca persis seperti 24 kegagalan kontras padahal NOL elemen terukur. Itu
+   kelas kesalahan terburuk untuk sebuah gate: bukan melewatkan cacat, melainkan
+   MENGARANGNYA. `ensureServer()` melempar dengan instruksi bila tidak bisa. */
+try {
+  await ensureServer();
+} catch (err) {
+  console.error(`\n  FATAL  ${err.message}\n`);
+  process.exit(2);
 }
 
 const browser = await chromium.launch({ args: ['--no-proxy-server'] });
@@ -669,6 +683,8 @@ if (failures.length) {
 
 if (REPORT_ONLY) {
   console.log('\n--report-only: exiting 0 regardless (triage mode, NOT for CI)');
+  await stopServer();
   process.exit(0);
 }
+await stopServer();
 process.exit(failures.length ? 1 : 0);

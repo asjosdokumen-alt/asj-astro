@@ -89,8 +89,25 @@ import { chromium } from 'playwright';
 // edits one. This import is also what gives the module a real consumer — before
 // Task 6 it was referenced by two comments and imported by nobody.
 import { SECTION_MOTION, ENTER_KINDS, motionFor } from '../src/lib/sectionMotion.ts';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
-const BASE = process.env.BASE_URL || 'http://localhost:4321';
+/* ── WHY THIS GATE STARTS ITS OWN SERVER (2026-10-11) ────────────────────────
+   Found the same day as the other dormants, and red in the most misleading way
+   available: with nothing on 4321, every one of its 33 checks failed with
+   `net::ERR_CONNECTION_REFUSED`. That reads as "the landing page is broken in
+   33 ways" — a catastrophic product finding — when the only broken thing was
+   that no server was running. It was missed by the first sweep because it is
+   classified `infra` in the manifest, which is the very misclassification
+   `e2e/lib/server.mjs` exists to correct: this gate needs no database, no
+   Supabase and no network. It needs a process serving `dist/` on localhost.
+
+   The failure it produced also cost the reader real time: 33 named assertions
+   about the landing page's sections, anchors and entrances, all of them
+   individually plausible as regressions. */
+const BASE = await ensureServer().catch((err) => {
+  console.error(`ABORT: ${err.message}`);
+  process.exit(2);
+});
 
 /**
  * Every section the spec requires on `/`, in the spec's order, with the phase
@@ -1661,6 +1678,7 @@ async function run() {
   });
 
   await browser.close();
+  await stopServer();
 
   console.log('');
   if (failures.length) {
@@ -1674,9 +1692,13 @@ async function run() {
         `order + visibility + placeholders + anchors + entrances).`,
     );
   }
+  /* Explicit exit on the green path: a still-registered `page.route` holds the
+     event loop open, and the wrapper would then kill the run with code 124 —
+     which CI reads as a failure even though every check passed. */
+  process.exit(failures.length ? 1 : 0);
 }
 
 run().catch((err) => {
   console.error('landing: harness error —', err.message);
-  process.exitCode = 1;
+  process.exit(1);
 });

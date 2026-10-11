@@ -47,11 +47,28 @@
  *
  * Run against a built artifact:
  *   BASE_URL=http://127.0.0.1:4321 node e2e/test-candidate-modals.mjs
+ *
+ * ── WHY IT STARTS ITS OWN SERVER (2026-10-11) ───────────────────────────────
+ * Found dead the same day as `test-theme-gradients.mjs`, and dead the same way:
+ * with no server on 4321, `page.goto` threw `ERR_CONNECTION_REFUSED`, the
+ * rejection was unhandled, Node printed a stack — and the process exited **0**.
+ * To every runner here that is a PASS. So this gate, whose entire purpose is to
+ * reach six modals that NO other gate can reach, had been silently measuring
+ * nothing.
+ *
+ * It was also missing from `scripts/ci/review-manifest.json`, which is why no
+ * check enumerated it: the manifest gate proves every NAMED gate exists, and
+ * this one was never named. Both fixed together — a gate that owns its server
+ * through `e2e/lib/server.mjs` AND is registered, so it cannot go quiet again.
  */
 import { chromium } from 'playwright';
 import { describeOffenders, sweepNames } from './lib/aria-names.mjs';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
-const BASE = process.env.BASE_URL || 'http://localhost:4321';
+const BASE = await ensureServer().catch((err) => {
+  console.error(`ABORT: ${err.message}`);
+  process.exit(2);
+});
 
 /** 240 ms in `useOverlayPresence`; the exit transition is 180 ms. */
 const EXIT_WINDOW_MS = 240;
@@ -155,6 +172,7 @@ const status = resp ? resp.status() : 0;
 if (status !== 200) {
   console.log(`❌ GET /candidate -> HTTP ${status}; refusing to read the DOM of an error page`);
   await browser.close();
+  await stopServer();
   process.exit(1);
 }
 await page.waitForLoadState('networkidle').catch(() => {});
@@ -326,6 +344,7 @@ for (const [id, label] of TRIGGERS) {
 }
 
 await browser.close();
+await stopServer();
 
 console.log('');
 console.log(`checks passed: ${measured} · failed: ${failures.length}`);
@@ -334,3 +353,4 @@ if (failures.length) {
   console.log('failed:', failures.join(' | '));
   process.exit(1);
 }
+process.exit(0);

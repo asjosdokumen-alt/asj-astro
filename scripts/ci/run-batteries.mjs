@@ -30,14 +30,39 @@
  * The set is NOT hand-listed here. It is read from `review-manifest.json`, where
  * every gate carries a `battery` field:
  *
- *     "ci"     hermetic — no credentials, no server, no database. Runs here.
- *     "infra"  needs a live Postgres / the Supabase transport / a real HTTP
- *              server to be meaningful. Deliberately NOT run here.
+ *     "ci"     hermetic — no credentials, no database, and no server the runner
+ *              does not start for itself. Runs here.
+ *     "infra"  needs infrastructure this runner does not have and cannot start:
+ *              a live Postgres / the Supabase transport / a server some OTHER
+ *              process is already running. Deliberately NOT run here.
  *     "none"   no battery exists.
  *
  * Reading the classification from the manifest rather than repeating it is the
  * point: a list typed into this file would drift from the manifest the moment
  * someone reclassifies a battery, and the drift would be invisible.
+ *
+ * ── CORRECTED 2026-10-11: "starts its own server" IS "ci" ───────────────────
+ * The definition above used to read "or a real HTTP server" for `infra`, with no
+ * distinction between needing a server that is already up and starting one's own.
+ * That single missing clause misfiled SEVEN gates on 2026-09-16 — e2e:headings,
+ * dialog, drawer, labels, contrast, hover-contrast, aria-names — because each of
+ * them builds a dist/ and starts its own `server.cjs` on a port it owns, which is
+ * infrastructure the runner CAN provide. All seven sat in the skip list printed by
+ * this runner and had never executed, in CI or locally, while the manifest cited a
+ * battery for each as proof of coverage.
+ *
+ * The distinction is now explicit and is what the field is checked against: a
+ * dependency is infra when it is something the runner must FIND, not something the
+ * battery BRINGS. `verify-review-manifest.mjs` C7 enforces the consequence from
+ * the other side — a `ci` battery that names SUPABASE_URL / .env.local /
+ * start_server / initdb on a non-comment line fails the manifest gate — so this
+ * header and that check cannot drift apart.
+ *
+ * Four e2e gates remain `infra` and are NOT part of that correction: e2e:public,
+ * e2e:loker-layout, e2e:landing and e2e:scroll-motion. Their batteries start a
+ * server on a port that is deliberately NOT 4321, and they were not re-measured in
+ * this pass, so reclassifying them would have been a claim rather than a
+ * measurement.
  *
  * Cost was MEASURED before choosing the shape of this runner, not guessed:
  * the hermetic set takes minutes rather than seconds on a warm tree, with
@@ -213,10 +238,44 @@ function isTracked(rel) {
  * one was.
  */
 function untrackedSet() {
-  const out = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-  });
+  let out;
+  try {
+    out = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    });
+  } catch (err) {
+    /* ── WHY THIS IS NOT SWALLOWED (measured 2026-10-11) ──────────────────────
+       The tempting fix is `return new Set()`, matching `trackedDirty()` below.
+       That is WRONG here, and the difference is not stylistic:
+
+         `trackedDirty()` feeds an advisory dirty-tree check. An empty set
+         there means "nothing dirty", which is the safe direction.
+
+         THIS function is the baseline for `sweepLeaks(before)`, which computes
+         `after - before` to decide what a battery LEAKED. An empty set on
+         failure does not make the check conservative — it makes it VACUOUS:
+         `before` and `after` are both empty, the difference is empty, and every
+         leaked fixture is reported as "no leaks". A check that cannot fail while
+         claiming to have checked is the exact defect this file exists to avoid.
+
+       So the failure is raised, with the diagnosis attached, and main() turns it
+       into a TOOLING ERROR (exit 2) — a distinct verdict from "a battery
+       survived", which is what a bare throw would be misread as. */
+    const code = err && err.code;
+    if (code === 'EBUSY') {
+      throw new Error(
+        'git is unusable in this environment: every SYNCHRONOUS child_process call fails with ' +
+          `EBUSY (${err.message}). This is NOT a repository defect and no edit here fixes it — ` +
+          'measured 2026-10-11: execFileSync/execSync/spawnSync fail for node, git and cmd while ' +
+          'async spawn succeeds, so the block is in the shell, not the repo. The leak baseline ' +
+          'cannot be taken, and returning an empty set would make leak detection vacuous rather ' +
+          'than conservative. Run the batteries from a shell where synchronous spawning works ' +
+          '(CI, or a plain terminal outside this sandbox).',
+      );
+    }
+    throw err;
+  }
   const set = new Set();
   for (const line of out.split(/\r?\n/)) {
     if (!line.startsWith('?? ')) continue;
@@ -691,6 +750,34 @@ function main() {
 
   // Pre-flight: the file must exist AND be tracked. "On disk" is not "in the
   // checkout", and the whole point of running these in CI is the checkout.
+  //
+  // ── CAN THIS RUNNER EVEN OBSERVE GIT? (added 2026-10-11) ──────────────────
+  // Every battery is driven through `git` — the leak baseline, the tracked-dirty
+  // radius check, the untracked sweep. If git cannot be invoked, the runner
+  // cannot do its job, and the failure must NOT look like a battery verdict.
+  //
+  // This is a real environment, not a hypothetical: measured 2026-10-11, every
+  // SYNCHRONOUS `child_process` call in this sandbox fails `EBUSY` for `node`,
+  // `git` and `cmd.exe` alike, while async `spawn` succeeds. So this preflight
+  // is what turns "the batteries did not run" into a stated TOOLING ERROR rather
+  // than a stack trace, or — far worse — a silently empty leak baseline.
+  try {
+    execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, stdio: 'ignore' });
+  } catch (err) {
+    console.error('BATTERY RUNNER — TOOLING ERROR: git cannot be invoked synchronously.');
+    console.error(`  ${(err && err.message ? err.message : String(err)).split('\n')[0]}`);
+    console.error('');
+    console.error('Every battery here is driven through git: the leak baseline, the dirty-radius');
+    console.error('check and the untracked sweep. Without it the run cannot begin, and a leak');
+    console.error('baseline that silently returns empty would make leak detection VACUOUS —');
+    console.error('reporting "no leaks" without having looked — rather than conservative.');
+    console.error('');
+    console.error('This is an environment limitation, not a repository defect: no edit to this');
+    console.error('file makes a synchronous spawn succeed where the operating system refuses it.');
+    console.error('Run the batteries from CI, or from a shell where synchronous spawning works.');
+    process.exit(2);
+  }
+
   const preflight = [];
   for (const g of selected) {
     if (!g.provenBy) {
@@ -1125,4 +1212,34 @@ function main() {
   console.log('re-introduces a defect class and its gate still exits non-zero for it.');
 }
 
-main();
+/* ── The environment guard has to sit HERE, not only inside main() ───────────
+   Measured 2026-10-11: the EBUSY block is INTERMITTENT and LOAD-DEPENDENT, not
+   deterministic. `git rev-parse --is-inside-work-tree` succeeded 6 times out of
+   6 while `git status --porcelain --untracked-files=all` — a far heavier command
+   — failed moments earlier. So a preflight running inside `main()` can pass and
+   the very next git call can still throw, which is exactly what happened: the
+   preflight at the top of the pre-flight block was satisfied, and the run then
+   died at `sweepFixtures()` with an unhandled stack trace and exit code 1.
+
+   Exit 1 is the code that means "a battery survived a mutation" — a finding
+   about a GATE. An environment failure reported with that code tells the reader
+   their gate is broken when their shell is. So the EBUSY case is caught at the
+   boundary and re-labelled as TOOLING ERROR (exit 2), whichever git call raised
+   it and however late in the run that happened. */
+try {
+  main();
+} catch (err) {  
+    const message = err && err.message ? err.message : String(err);
+    if (/EBUSY/.test(message)) {
+      console.error('');
+      console.error('BATTERY RUNNER — TOOLING ERROR: a git call failed with EBUSY mid-run.');
+      console.error(`  ${message.split('\n')[0]}`);
+      console.error('');
+      console.error('This is an environment limitation, not a repository defect, and the batteries');
+      console.error('therefore did NOT run — their verdict is unknown, NOT "passed" and NOT "failed".');
+      console.error('Reported as exit 2 so it cannot be mistaken for a surviving mutation (exit 1).');
+      process.exit(2);
+    }
+    throw err;
+}
+

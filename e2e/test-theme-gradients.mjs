@@ -39,10 +39,28 @@
  * Run against a built artifact:
  *   node e2e/test-theme-gradients.mjs
  *   BASE_URL=http://localhost:4321 node e2e/test-theme-gradients.mjs
+ *
+ * ── WHY IT STARTS ITS OWN SERVER (2026-10-11) ───────────────────────────────
+ * This gate was DEAD and reported success. Run with no server, `page.goto`
+ * threw `net::ERR_CONNECTION_REFUSED`, the unhandled rejection killed Node —
+ * and the process still exited **0**, because the throw happened at top level
+ * on a line whose rejection nothing awaited a status from. A crash that exits 0
+ * is indistinguishable from a pass to every runner in this repo.
+ *
+ * It is the same disease as the seven gates fixed earlier the same day
+ * (`e2e/lib/server.mjs` documents the family): the gate needs a process serving
+ * `dist/` on localhost and nothing else. It was ALSO absent from
+ * `scripts/ci/review-manifest.json`, so nothing enumerated it and nothing
+ * noticed it had never run. Both are fixed here: this gate now owns its server
+ * through the shared module, and it is registered in the manifest.
  */
 import { chromium } from 'playwright';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
-const BASE = process.env.BASE_URL || 'http://localhost:4321';
+const BASE = await ensureServer().catch((err) => {
+  console.error(`ABORT: ${err.message}`);
+  process.exit(2);
+});
 
 const results = [];
 async function test(name, fn) {
@@ -93,6 +111,7 @@ const res = await page.goto(`${BASE}/`, { waitUntil: 'domcontentloaded' });
 if (res?.status() !== 200) {
   console.error(`ABORT: GET / returned ${res?.status()} — refusing to read an error page.`);
   await browser.close();
+  await stopServer();
   process.exit(1);
 }
 await page.waitForSelector('#atas h1', { timeout: 30_000 });
@@ -210,7 +229,14 @@ await test('OK-GREEN CONTROL: the detector does flag a known dark overlay', asyn
 
 await page.close();
 await browser.close();
+/* Release the server this gate started (a no-op when BASE_URL was supplied by
+   the caller, so a battery can share one server across gates). */
+await stopServer();
 
 const failed = results.filter(([s]) => s === 'fail');
 console.log(`\n${results.length - failed.length}/${results.length} passed`);
+/* Explicit exit on BOTH paths: a still-registered `page.route` holds the event
+   loop open, so falling off the end would hit the wrapper's timeout and be
+   killed with code 124 — which CI reads as a failure even on a green run. */
 if (failed.length) process.exit(1);
+process.exit(0);

@@ -41,6 +41,7 @@
  *   BASE_URL=http://127.0.0.1:4321 node e2e/test-headings.mjs
  */
 import { chromium } from 'playwright';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4321';
 
@@ -579,6 +580,14 @@ async function inspectNoJsUncached(route) {
 }
 
 async function run() {
+  /* Server DIJAMIN hidup sebelum browser dibuat (lihat e2e/lib/server.mjs). */
+  try {
+    await ensureServer();
+  } catch (err) {
+    console.error(`headings: FATAL — ${err.message}`);
+    process.exitCode = 2;
+    return;
+  }
   browser = await chromium.launch({ headless: true, args: ['--no-proxy-server'] });
 
   for (const { path, session } of ALL_HEADING_ROUTES) {
@@ -986,6 +995,7 @@ async function run() {
   }
 
   await browser.close();
+  await stopServer();
 
   console.log('');
   if (failures.length) {

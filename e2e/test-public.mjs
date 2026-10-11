@@ -1,10 +1,23 @@
 /**
  * E2E Test: Public Page
  * Tests: page load, tabs, loker table, layanan section
+ *
+ * ── WHY THIS GATE STARTS ITS OWN SERVER (2026-10-11) ────────────────────────
+ * Found dead on the same pass as the other dormants. With nothing on 4321 every
+ * assertion failed with `net::ERR_CONNECTION_REFUSED`, producing the report
+ * "Layanan cards render ✗ / Footer renders ✗ / Back button exists ✗" — three
+ * named defects on a page that was fine. It was skipped by `verify:batteries`
+ * because it is classified `infra`, which is the misclassification
+ * `e2e/lib/server.mjs` documents: this gate needs a process serving `dist/` on
+ * localhost and nothing more.
  */
 import { chromium } from 'playwright';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
-const BASE = process.env.BASE_URL || 'http://localhost:4321';
+const BASE = await ensureServer().catch((err) => {
+  console.error(`ABORT: ${err.message}`);
+  process.exit(2);
+});
 let browser, page;
 
 async function setup() {
@@ -12,7 +25,7 @@ async function setup() {
   page = await browser.newPage();
 }
 
-async function teardown() { await browser?.close(); }
+async function teardown() { await browser?.close(); await stopServer(); }
 
 async function test(name, fn) {
   try { await fn(); console.log(`✅ ${name}`); }
@@ -112,6 +125,10 @@ async function run() {
   });
 
   await teardown();
+  /* Explicit exit on both paths: a still-registered `page.route` holds the
+     event loop open and the wrapper would kill the run with code 124, which CI
+     reads as a failure even when every check passed. */
+  process.exit(process.exitCode || 0);
 }
 
 run();

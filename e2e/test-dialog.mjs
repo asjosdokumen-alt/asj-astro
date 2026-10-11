@@ -73,6 +73,7 @@
  *   BASE_URL=http://127.0.0.1:4321 node e2e/test-dialog.mjs
  */
 import { chromium } from 'playwright';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4321';
 
@@ -251,6 +252,18 @@ async function visibleOverlayCount(page) {
         (e) => (e.offsetWidth > 0 || e.offsetHeight > 0) && e.getAttribute('aria-hidden') !== 'true',
       ).length,
   );
+}
+
+/* Server DIJAMIN hidup sebelum browser dibuat.
+   Penjaga `status !== 200` di bawah TIDAK cukup: pada server mati, `page.goto`
+   MELEMPAR (`ERR_CONNECTION_REFUSED`) alih-alih mengembalikan status, sehingga
+   penjaga itu tak pernah tercapai dan gate mati dengan stack-trace Playwright —
+   terbaca seperti crash harness, bukan seperti "server belum siap". */
+try {
+  await ensureServer();
+} catch (err) {
+  console.error(`\n  FATAL  ${err.message}\n`);
+  process.exit(2);
 }
 
 browser = await chromium.launch({ args: ['--no-proxy-server'] });
@@ -812,6 +825,7 @@ await test('the login modal keeps role/aria-modal/focus on a SECOND open', async
 });
 
 await browser.close();
+await stopServer();
 
 console.log('');
 console.log(`checks passed: ${measured} · failed: ${failures.length}`);
@@ -820,3 +834,7 @@ if (failures.length) {
   console.log('failed:', failures.join(' | '));
   process.exit(1);
 }
+/* Keluar eksplisit saat LULUS. Sebelumnya tidak ada, jadi gate bergantung pada
+   event loop yang habis sendiri; `page.route` yang masih terdaftar menahannya
+   dan `with-timeout` membunuh dengan 124 — dibaca CI sebagai gagal. */
+process.exit(0);

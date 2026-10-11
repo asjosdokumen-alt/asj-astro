@@ -19,10 +19,25 @@
  *
  * Run against a built artifact:
  *   BASE_URL=http://127.0.0.1:4321 node e2e/test-loker-layout.mjs
+ *
+ * ── WHY THIS GATE STARTS ITS OWN SERVER (2026-10-11) ────────────────────────
+ * The twelfth gate found dead the same day, and dead in the most ordinary way:
+ * with nothing on 4321 it printed `ERR_CONNECTION_REFUSED` and set
+ * `process.exitCode = 1`. Unlike the others it at least EXITED non-zero, so CI
+ * would have shown a red — but only if something ran it, and its `battery:infra`
+ * classification meant `verify:batteries` skipped it while no local sweep
+ * reached it. The point of the hand-rolled row metrics it asserts is that the
+ * `rt-row`/`rt-full` mobile layout inflates controls and hides a real
+ * under-44px failure at tablet width; a gate that cannot open the page measures
+ * none of that.
  */
 import { chromium } from 'playwright';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
-const BASE = process.env.BASE_URL || 'http://localhost:4321';
+const BASE = await ensureServer().catch((err) => {
+  console.error(`ABORT: ${err.message}`);
+  process.exit(2);
+});
 
 const JOBS = Array.from({ length: 10 }, (_, i) => ({
   code: `ASJ-2026-${String(i + 1).padStart(3, '0')}`,
@@ -235,6 +250,7 @@ async function run() {
 
   await desktop.ctx.close();
   await browser.close();
+  await stopServer();
 
   if (failures.length) {
     console.log(`\n❌ loker layout: ${failures.length} check(s) failed.`);
@@ -242,10 +258,15 @@ async function run() {
   } else {
     console.log('\n✅ loker layout: all checks passed.');
   }
+  /* Explicit exit on the green path: a still-registered `page.route` holds the
+     event loop open and the wrapper would kill the run with code 124, which CI
+     reads as a failure even when every check passed. */
+  process.exit(failures.length ? 1 : 0);
 }
 
 run().catch(async (err) => {
   console.error(`❌ loker layout crashed: ${err?.stack || err}`);
   await browser?.close();
-  process.exitCode = 1;
+  await stopServer();
+  process.exit(1);
 });

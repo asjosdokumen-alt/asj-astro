@@ -67,6 +67,7 @@
  *   BASE_URL=http://localhost:4321 node e2e/test-drawer.mjs
  */
 import { chromium } from 'playwright';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
 /*
  * DEFAULT HOST IS `localhost`, NOT `127.0.0.1` — a measured fix, 2026-09-20.
@@ -103,6 +104,16 @@ async function test(name, fn) {
     results.push(['fail', name]);
     console.log(`❌ ${name}\n     ${e.message}`);
   }
+}
+
+/* Server DIJAMIN hidup sebelum browser dibuat (lihat e2e/lib/server.mjs).
+   Penjaga `status !== 200` di bawah tidak menolong pada server mati, karena
+   `page.goto` MELEMPAR lebih dulu — gate lalu mati dengan stack-trace. */
+try {
+  await ensureServer();
+} catch (err) {
+  console.error(`\n  FATAL  ${err.message}\n`);
+  process.exit(2);
 }
 
 /* `--no-proxy-server`: this sandbox exports HTTP(S)_PROXY, and Chromium would
@@ -358,6 +369,7 @@ await test('the login modal is a named dialog with focus inside and Tab trapped'
 });
 
 await browser.close();
+await stopServer();
 
 const failed = results.filter(([s]) => s === 'fail');
 console.log(`\n${results.length - failed.length}/${results.length} passed`);

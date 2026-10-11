@@ -49,6 +49,17 @@
  *       check in this file passed, because they all look at cited batteries
  *       only. An uncited battery is not the absence of a battery; it is a
  *       battery whose verdict nobody will ever read.
+ *   C9  every `e2e:*` npm script (a gate that DRIVES A PAGES/OVERLAY SURFACE) is
+ *       ACCOUNTED FOR in the manifest. C8 closed the reverse direction for
+ *       batteries; this closes it for the gates themselves, which is the gap
+ *       that let `e2e:theme-gradients` and `e2e:test-candidate-modals` sit
+ *       unregistered AND dead — both exited 0 on an unhandled
+ *       `ERR_CONNECTION_REFUSED`, so both read as passing while measuring
+ *       nothing. No `e2e:*` script is ever "just a helper": each one is a gate
+ *       with a stated purpose, and an unregistered gate is a verdict nobody
+ *       reads. The `e2e:` prefix is the honest boundary because the directory
+ *       also holds `measure-*` and `shot-*` EVIDENCE tools, which deliberately
+ *       make no pass/fail claim and must NOT be forced into the manifest.
  *
  *   C1 and C4 are the ones that would have caught the phantom `lint` gate.
  *   C3 is the one that would have caught the seven orphan gates.
@@ -59,6 +70,8 @@
  *   would have proven it.
  *   C8 is the one that catches the reverse of C2 — not a claim without an
  *   artifact, but an artifact without a claim.
+ *   C9 is the same reversal applied one level up: C8 asks who reads each
+ *   battery, C9 asks who reads each gate.
  *
  * REPORTED, NOT ENFORCED
  *   How many blocking gates have no mutation battery (`provenBy: null`). A gate
@@ -571,6 +584,52 @@ function main() {
       `C8 — testBatteries entry/entries whose \`proves\` target does not exist: ` +
         `${provesMissing.join(', ')}. A battery aimed at a deleted file still runs and ` +
         'still passes; it just proves nothing.'
+    );
+  }
+
+  // ── C9 ─────────────────────────────────────────────────────────────────────
+  // Every `e2e:*` npm script must be a gate the manifest accounts for.
+  //
+  // WHY THIS EXISTS — and why C1–C8 all passed while it was broken.
+  // C1 checks manifest -> package.json: every gate the manifest NAMES exists.
+  // Nothing checked package.json -> manifest. So two gates, `e2e:theme-gradients`
+  // and `e2e:test-candidate-modals`, existed as npm scripts, had real bodies,
+  // stated a real purpose in their headers — and were named by no manifest entry,
+  // no workflow and no checklist. Found 2026-10-11 by running them.
+  //
+  // Both were DEAD in the same way the seven `infra`-misfiled gates were dead:
+  // with no server on 4321, `page.goto` threw `net::ERR_CONNECTION_REFUSED` as an
+  // unhandled rejection, Node printed a stack trace, and the process exited
+  // **0**. A crash that exits 0 is indistinguishable from a pass to every runner
+  // here, so the failure mode was not "the gate is red" — it was "the gate is
+  // invisible". Registering them fixes the instance; this check fixes the class.
+  //
+  // SCOPE — deliberately `e2e:` only, not "every script in package.json".
+  // `e2e/` also contains `measure-*.mjs` and `shot-*.mjs` EVIDENCE tools. They
+  // are run by a human, answer a question, and deliberately make NO pass/fail
+  // claim. Forcing them into the manifest would either invent a `blocking: true`
+  // they do not have or flood it with `blocking: false` entries that mean "this
+  // proves nothing" — and a manifest full of those is worse than one that simply
+  // does not claim them. A script named `e2e:<x>` is different in kind: it is
+  // wired as a gate, so it must be accounted for as one.
+  //
+  // There is no allow-list, and that is intentional: the fix for a new gate is to
+  // REGISTER it, which is one edit and also the thing that makes it visible. An
+  // allow-list would let a gate go quiet again by adding a line.
+  const pkgScripts = JSON.parse(fs.readFileSync(PKG, 'utf8')).scripts || {};
+  const registeredScripts = new Set(gates.map((g) => g.script));
+  const unregisteredGates = Object.keys(pkgScripts)
+    .filter((name) => name.startsWith('e2e:'))
+    .filter((name) => !registeredScripts.has(name));
+  if (unregisteredGates.length) {
+    failures.push(
+      `C9 — \`e2e:\` npm script(s) that no manifest entry accounts for: ` +
+        `${unregisteredGates.join(', ')}. An unregistered gate is a verdict nobody reads: ` +
+        'nothing enumerates it, no workflow runs it, and nothing notices if it dies — which is ' +
+        'exactly what happened to these two (both exited 0 on an unhandled ' +
+        'ERR_CONNECTION_REFUSED, so both read as passing while measuring nothing). Register it ' +
+        'in `scripts/ci/review-manifest.json` with its tier, `blocking`, `runs` and a `battery` ' +
+        'classification, or delete the script if it is not a gate.'
     );
   }
 

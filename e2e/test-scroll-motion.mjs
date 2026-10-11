@@ -69,15 +69,30 @@
  * harness failures that look exactly like page failures. Run against a built
  * artifact served over HTTP:
  *
- *   node .tmp-serve-dist.mjs                                   # serves dist/ :4400
- *   BASE_URL=http://127.0.0.1:4400 node e2e/test-scroll-motion.mjs
+ *   node e2e/test-scroll-motion.mjs            # starts its own server
+ *   BASE_URL=http://127.0.0.1:4321 node e2e/test-scroll-motion.mjs   # use an existing one
+ *
+ * ── THE PORT WAS WRONG, AND THAT IS WHY IT LOOKED DEAD (fixed 2026-10-11) ────
+ * This gate defaulted to `http://127.0.0.1:4400` and told the reader to start a
+ * throwaway `.tmp-serve-dist.mjs` first. Nothing in the repository binds 4400 —
+ * `server.cjs` binds `PREFERRED_PORT = 4321` — and 4400 is the convention used
+ * by the `measure-*` and `probe-*` EVIDENCE tools, which deliberately attach to
+ * a server a human already started. A GATE must not depend on that: run on its
+ * own it died with `ERR_CONNECTION_REFUSED` on 4400 while a perfectly good
+ * server was listening on 4321 one port away. It now owns its server through
+ * `e2e/lib/server.mjs`, so it runs with nothing pre-started and still honours
+ * an explicit BASE_URL when a battery wants to share one server.
  *
  * `--no-proxy-server`: this sandbox exports HTTP(S)_PROXY and Chromium would
  * otherwise send 127.0.0.1 through it and read a 502 as "server down".
  */
 import { chromium } from 'playwright';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
-const BASE = process.env.BASE_URL || 'http://127.0.0.1:4400';
+const BASE = await ensureServer().catch((err) => {
+  console.error(`ABORT: ${err.message}`);
+  process.exit(2);
+});
 const ROUTE = '/';
 const VIEWPORT = { width: 1280, height: 800 };
 
@@ -461,7 +476,12 @@ await test('OK-GREEN CONTROL: the collision check does flag a planted offender',
 });
 
 await browser.close();
+await stopServer();
 
 const failed = results.filter(([s]) => s === 'fail');
 console.log(`\n${results.length - failed.length}/${results.length} passed`);
+/* Explicit exit on BOTH paths: a still-registered `page.route` holds the event
+   loop open, so falling off the end would hit the wrapper timeout and be killed
+   with code 124 — which CI reads as a failure even on a green run. */
 if (failed.length) process.exit(1);
+process.exit(0);

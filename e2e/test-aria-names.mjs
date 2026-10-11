@@ -25,6 +25,18 @@
  *   /public + Detail   the dialog's own close button
  *   /candidate modals  the close button of CvMiniModal and ChangePasswordModal
  *
+ * ALL OF THOSE ARE FIXED, and the paragraph above is HISTORY rather than a live
+ * defect list. It is kept because the shape of the defect is the argument for
+ * this file existing, not because it still describes the tree — an "MEASURED"
+ * block that stops being re-measured is how a fixed defect goes on being
+ * believed forever in BOTH directions: someone re-fixes what is already fixed,
+ * or reads a green run as a broken gate. RE-MEASURED 2026-10-11, full sweep:
+ * 40 checks, 0 failed, all eight admin tabs green at 390 AND 1280px, and the
+ * three `/admin#pelamar` filters now carry `aria-label` (TabPelamar.tsx:202,
+ * :206, :210). The FIX date is not recorded here because the fix was not
+ * re-derived from git in this pass; what IS recorded is the date the claim was
+ * last CONFIRMED, which is the only part a reader can act on.
+ *
  * A control with no name is announced as "button" / "combobox" / "checkbox" and
  * nothing else. The page looks correct, the mouse works, and no gate in the repo
  * could see it — which is exactly the class of defect this file is for.
@@ -97,6 +109,7 @@ import {
   sweepHiddenFocus,
   sweepNames,
 } from './lib/aria-names.mjs';
+import { ensureServer, stopServer } from './lib/server.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4321';
 const ROWS = 'table tbody tr';
@@ -349,6 +362,14 @@ async function assertReachedGate(page, path) {
 }
 
 async function run() {
+  /* Server DIJAMIN hidup sebelum browser dibuat (lihat e2e/lib/server.mjs). */
+  try {
+    await ensureServer();
+  } catch (err) {
+    console.error(`\n  FATAL  ${err.message}\n`);
+    process.exitCode = 2;
+    return;
+  }
   browser = await chromium.launch({ headless: true, args: ['--no-proxy-server'] });
 
   /* ── 0. POSITIVE CONTROL ────────────────────────────────────────────────
@@ -533,9 +554,14 @@ async function run() {
   console.log('════════════════════════════════════════════════════════════════');
   if (failures.length) {
     for (const f of failures) console.log(`  ❌ ${f}`);
+    await stopServer();
     process.exit(1);
   }
   console.log('every control on every measured surface has an accessible name');
+  await stopServer();
+  /* Keluar eksplisit: tanpa ini gate bergantung pada event loop yang habis
+     sendiri, dan sisi LULUS-lah yang paling rentan (jalur gagal sudah exit). */
+  process.exit(0);
 }
 
 run();
