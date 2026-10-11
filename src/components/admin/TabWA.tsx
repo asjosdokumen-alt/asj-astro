@@ -20,12 +20,14 @@ import { t, langStore } from '../../store/i18n';
 
 import type { WaTemplate } from '../../types/api';
 import Icon from '../ui/Icon';
-import { Bar, Status } from '../ui/Skeleton';
+import { Bar, LoadFailed, Status } from '../ui/Skeleton';
 
 export default function TabWA() {
   const _lang = useStore(langStore);
   const [templates, setTemplates] = useState<WaTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Permintaan GAGAL — beda dari daftar yang memang kosong. */
+  const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState('');
   const [nama, setNama] = useState('');
@@ -34,8 +36,12 @@ export default function TabWA() {
   async function load() {
     try {
       const d: any = await api.secure('getAppData', ['admin']);
-      if (d && d.success) setTemplates(Array.isArray(d.waTemplates) ? d.waTemplates : []);
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+      if (d && d.success) { setTemplates(Array.isArray(d.waTemplates) ? d.waTemplates : []); setFailed(false); }
+    } catch (e) {
+      // Dulu hanya `console.error`: layar menampilkan "belum ada template".
+      console.error(e);
+      setFailed(true);
+    } finally { setLoading(false); }
   }
 
   useEffect(() => { load(); }, []);
@@ -125,7 +131,9 @@ export default function TabWA() {
 
       <div class="lg:col-span-2">
         <h3 class="text-sm font-bold text-slate-300 uppercase tracking-widest mb-4"><Icon name="list" class="mr-1" /> {t('ui.template_saved')}</h3>
-        {templates.length === 0 ? <p class="text-slate-500 text-sm text-center py-8">{t('ui.template_empty')}</p> :
+        {templates.length === 0 ? (failed
+          ? <LoadFailed onRetry={load} />
+          : <p class="text-slate-500 text-sm text-center py-8">{t('ui.template_empty')}</p>) :
         <div class="u-grid-auto u-grid-auto--form gap-4">
           {templates.map(tpl => (
             <div key={tpl.id} class="bg-slate-800/80 border border-slate-700 rounded-xl p-4 hover:border-emerald-500/50 transition">

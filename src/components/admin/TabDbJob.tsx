@@ -13,7 +13,7 @@ import ListKandidatModal from './ListKandidatModal';
 import { useStore } from '@nanostores/preact';
 import { allKandidatList, fetchAllKandidat } from '../../store/adminStore';
 import Icon from '../ui/Icon';
-import { Status, TableRows } from '../ui/Skeleton';
+import { LoadFailed, Status, TableRows } from '../ui/Skeleton';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 
 interface DbJob {
@@ -116,6 +116,8 @@ export default function TabDbJob() {
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  /** Permintaan GAGAL — beda dari daftar yang memang kosong. */
+  const [failed, setFailed] = useState(false);
   // Opsi chip filter dari dropdown config (getAppData admin → dropdowns) —
   // parity renderDbFilters legacy (DROPDOWNS.kategori / DROPDOWNS.tahapan).
   const [fBidangOpts, setFBidangOpts] = useState<string[]>([]);
@@ -141,13 +143,17 @@ export default function TabDbJob() {
     try {
       const d: any = await api.secure('getAppData', ['admin']);
       if (d && d.success) {
+        setFailed(false);
         setJobs(d.dbJobs || d.jobs || []);
         const drop: Record<string, string[]> = d.dropdowns || {};
         if (Array.isArray(drop.kategori)) setFBidangOpts(drop.kategori);
         if (Array.isArray(drop.tahapan)) setFTahapanOpts(drop.tahapan);
       }
     } catch (err) {
+      // Dulu hanya `console.error`: layar menampilkan `db.empty`, sehingga
+      // kegagalan permintaan tampil sebagai "tidak ada job".
       console.error('[TabDbJob] Failed:', err);
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -285,7 +291,9 @@ export default function TabDbJob() {
             </thead>
             <tbody class="divide-y divide-slate-800">
               {filtered.length === 0 ? (
-                <tr><td colSpan={6} class="p-6 text-center text-slate-500">{t('db.empty')}</td></tr>
+                failed
+                  ? <tr><td colSpan={6} class="p-6"><LoadFailed onRetry={fetchLoker} /></td></tr>
+                  : <tr><td colSpan={6} class="p-6 text-center text-slate-500">{t('db.empty')}</td></tr>
               ) : filtered.slice(0, limit).map(db => (
                 <tr key={db.code} class="border-b border-slate-800 hover:bg-white/5">
                   <td class="p-4 font-mono text-sky-300 font-bold">{db.code}</td>
@@ -317,7 +325,7 @@ export default function TabDbJob() {
         </div>
       )}
       {editJobP.present && <AdminJobEditModal job={editJobP.held as EditableJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} closing={editJobP.closing} />}
-      {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} closing={shareJobP.closing} />}
+      {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} onSave={() => fetchLoker()} closing={shareJobP.closing} />}
       {listJobCodeP.present && listJobCodeP.held && <ListKandidatModal jobCode={listJobCodeP.held} isOpen={!!listJobCode} onClose={() => setListJobCode(null)} closing={listJobCodeP.closing} />}
       {matchJobP.present && matchJobP.held && <MatchmakingModal job={matchJobP.held} candidates={allCandidates} isOpen={!!matchJob} onClose={() => setMatchJob(null)} closing={matchJobP.closing} />}
       {/* `limit` semula TIDAK PERNAH bisa berubah (`_setLimit` tidak dipakai),

@@ -9,11 +9,13 @@ import { t } from '../../store/i18n';
 
 import type { Jadwal } from '../../types/api';
 import Icon from '../ui/Icon';
-import { Bar, Status, TableRows } from '../ui/Skeleton';
+import { Bar, LoadFailed, Status, TableRows } from '../ui/Skeleton';
 
 export default function TabJadwal() {
   const [jadwal, setJadwal] = useState<Jadwal[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Permintaan GAGAL — beda dari daftar yang memang kosong. */
+  const [failed, setFailed] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [tskList, setTskList] = useState<string[]>([]);
   const [nama, setNama] = useState('');
@@ -28,8 +30,12 @@ export default function TabJadwal() {
   async function load() {
     try {
       const d: any = await api.secure('getAppData', ['admin']);
-      if (d && d.success) { setJadwal(d.schedules || []); if (d.dropdowns?.tsk) setTskList(d.dropdowns.tsk); }
-    } catch (e) { console.error(e); } finally { setLoading(false); }
+      if (d && d.success) { setJadwal(d.schedules || []); setFailed(false); if (d.dropdowns?.tsk) setTskList(d.dropdowns.tsk); }
+    } catch (e) {
+      // Dulu hanya `console.error`: layar menampilkan "belum ada jadwal".
+      console.error(e);
+      setFailed(true);
+    } finally { setLoading(false); }
   }
 
   useEffect(() => { load(); }, []);
@@ -112,7 +118,9 @@ export default function TabJadwal() {
         <th class='p-4'>{t("admin.jadwal_col_id")}</th><th class='p-4'>{t("admin.jadwal_col_agenda")}</th><th class='p-4'>{t("admin.jadwal_col_job")}</th><th class='p-4'>{t("admin.jadwal_col_lokasi")}</th><th class='p-4 text-center'>{t("admin.aksi")}</th>
       </tr></thead>
       <tbody class='divide-y divide-slate-800'>
-        {jadwal.length===0 ? <tr><td colSpan={5} class='p-6 text-center text-slate-500'>{t("admin.jadwal_empty")}</td></tr> :
+        {jadwal.length===0 ? (failed
+          ? <tr><td colSpan={5} class='p-6'><LoadFailed onRetry={load} /></td></tr>
+          : <tr><td colSpan={5} class='p-6 text-center text-slate-500'>{t("admin.jadwal_empty")}</td></tr>) :
         jadwal.map(j => (
           <tr key={j.id} class='border-b border-slate-800 hover:bg-white/5'>
             <td class='p-4 font-mono text-amber-300 font-bold'>{j.id}</td>

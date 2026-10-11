@@ -51,6 +51,39 @@ export function Status({ labelKey = 'ui.loading', class: cls, children }: { labe
 }
 
 /**
+ * Keadaan **GAGAL MEMUAT** — beda dari "kosong".
+ *
+ * Tab yang `catch`-nya hanya `console.error` lalu membiarkan daftarnya kosong
+ * akan menampilkan "belum ada data" ketika permintaannya gagal. Bagi admin dua
+ * keadaan itu identik, padahal tindakannya berbeda: yang satu memang tidak ada
+ * isinya, yang satu lagi tinggal dicoba lagi. Ditemukan lewat sweep 2026-10-11
+ * di lima tab sekaligus — pola yang sama, bukan satu tempat.
+ *
+ * `role="alert"` (bukan `role="status"`): ini pengumuman yang tidak diminta,
+ * jadi pembaca layar harus langsung membacakannya.
+ */
+export function LoadFailed({ onRetry, class: cls }: { onRetry?: () => void; class?: string }) {
+  return (
+    <div
+      role="alert"
+      class={cls ?? 'p-6 text-center bg-black/30 border border-rose-900/50 rounded-xl'}
+    >
+      <p class="text-rose-300 text-sm font-bold">{t('ui.load_failed')}</p>
+      <p class="text-slate-400 text-xs mt-1">{t('ui.load_failed_hint')}</p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          class="mt-3 min-h-11 px-4 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition"
+        >
+          {t('ui.retry')}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
  * N baris tabel kerangka.
  *
  * Dipisah dari `Bar` karena `<tbody>` HANYA menerima `<tr>`/`<td>`: menaruh

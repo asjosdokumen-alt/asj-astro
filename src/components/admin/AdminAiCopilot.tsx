@@ -210,12 +210,18 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
 
   /** Two-step legacy parse: parseDokumenBiodata - then submitMasterForm. */
   const handleParse = async () => {
-    if (parsing) return;
+    // Penjaga yang SAMA dengan tombol-tombol lain. Dulu hanya `parsing` yang
+    // diperiksa di sini, sedangkan semua tombol memakai `busy` — jadi selama
+    // parse berjalan `busy` masih false, tombolnya tetap aktif, dan admin bisa
+    // menembak panggilan AI kedua (dua kali kuota untuk satu niat). Komentar di
+    // deklarasi `busy` sudah menyebut niat ini; implementasinya yang belum ikut.
+    if (busy || parsing) return;
     if (!parseFile) {
       showToast(t("ai.pick_file_first"), "error");
       return;
     }
     setParseStatus(t("ai.status_parsing").replace("{name}", parseFile.name));
+    setBusy(true);
     setParsing(true);
     try {
       const reader = new FileReader();
@@ -278,6 +284,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
       setParseStatus("");
     } finally {
       setParsing(false);
+      setBusy(false);
     }
   };
 

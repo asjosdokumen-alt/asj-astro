@@ -25,6 +25,7 @@ import LevelCard from './LevelCard';
 import StepGuide from './StepGuide';
 import AsjDossierCard from './AsjDossierCard';
 import CandidateSkeleton from './CandidateSkeleton';
+import { LoadFailed } from '../ui/Skeleton';
 import { ErrorBoundary } from '../ErrorBoundary';
 
 // `feedback` = `feedback_berkas` dari database_asj_form. Dipakai untuk
@@ -174,6 +175,8 @@ export default function CandidateDash() {
   const _lang = useLang();
   const [data, setData] = useState<CandidateData | null>(null);
   const [loading, setLoading] = useState(true);
+  /** Permintaan dashboard GAGAL — beda dari kandidat yang memang belum punya data. */
+  const [failed, setFailed] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showCvMiniModal, setShowCvMiniModal] = useState(false);
   const [showESign, setShowESign] = useState(false);
@@ -361,7 +364,13 @@ export default function CandidateDash() {
           applications: row?.applications || legacyD.applications || [],
         });
       }
-    } catch (e) { console.error('[CandidateDash]', e); }
+    } catch (e) {
+      // Dulu hanya `console.error`: `data` tetap null, lalu layar menampilkan
+      // "data tidak ditemukan" — kandidat yang koneksinya gagal diberi tahu
+      // bahwa datanya tidak ada, padahal datanya ada di server.
+      console.error('[CandidateDash]', e);
+      setFailed(true);
+    }
     finally { setLoading(false); }
   }
 
@@ -411,7 +420,9 @@ export default function CandidateDash() {
       window.location.href = '/ai-cv';
     }
 
-if (!data) return <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
+if (!data) return failed
+  ? <div class="py-8 max-w-md mx-auto"><LoadFailed onRetry={loadDashboard} /></div>
+  : <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
 
   const overallProgress = computeOverallProgress(data.cvMiniProgress, data.cvMasterProgress);
   // `crown` DIHAPUS 2026-09-30 bersama kartu "CV Progress": variabel itu hanya

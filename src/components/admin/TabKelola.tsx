@@ -9,7 +9,7 @@ import { langStore, t } from '../../store/i18n';
 import AdminJobEditModal, { type EditableJob } from './AdminJobEditModal';
 import AdminShareModal from './AdminShareModal';
 import Icon from '../ui/Icon';
-import { Status, TableRows } from '../ui/Skeleton';
+import { LoadFailed, Status, TableRows } from '../ui/Skeleton';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
 
@@ -35,6 +35,8 @@ export default function TabKelola() {
   const [loker, setLoker] = useState<Loker[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  /** Permintaan GAGAL — beda dari daftar yang memang kosong. */
+  const [failed, setFailed] = useState(false);
   const [editJob, setEditJob] = useState<Loker | null>(null);
   const [shareJob, setShareJob] = useState<Loker | null>(null);
   /* Exit window (2026-09-28) — see `useOverlayPresence`. */
@@ -59,8 +61,14 @@ export default function TabKelola() {
       const d = (await api.secure('getAppData', ['admin'], { onSessionInvalid: 'throw' })) as {
         success?: boolean; jobs?: Loker[];
       };
-      if (d && d.success) setLoker(d.jobs || []);
-    } catch (err) { console.error('[TabKelola]', err); }
+      if (d && d.success) { setLoker(d.jobs || []); setFailed(false); }
+    } catch (err) {
+      // Dulu hanya `console.error`: daftarnya tetap kosong, dan layar
+      // menampilkan "belum ada data" — admin tidak bisa membedakan "memang
+      // tidak ada" dari "gagal memuat".
+      console.error('[TabKelola]', err);
+      setFailed(true);
+    }
     finally { setLoading(false); }
   }
 
@@ -126,7 +134,9 @@ export default function TabKelola() {
             </thead>
             <tbody class="divide-y divide-slate-800">
               {filtered.length === 0 ? (
-                <tr><td colSpan={5} class="p-6 text-center text-slate-500">{t('ui.not_applied_general')}</td></tr>
+                failed
+                  ? <tr><td colSpan={5} class="p-6"><LoadFailed onRetry={fetchLoker} /></td></tr>
+                  : <tr><td colSpan={5} class="p-6 text-center text-slate-500">{t('ui.not_applied_general')}</td></tr>
               ) : filtered.map(j => (
                 <tr key={j.code} class="hover:bg-white/5 transition-colors">
                   <td class="p-4 font-mono text-red-300 font-bold">{j.code}</td>
@@ -154,7 +164,7 @@ export default function TabKelola() {
       <p class="text-xs text-slate-500 mt-3">{filtered.length} {t('ui.jobs_suffix')}</p>
 
       {editJobP.present && <AdminJobEditModal job={editJobP.held as EditableJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} closing={editJobP.closing} />}
-      {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} closing={shareJobP.closing} />}
+      {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} onSave={() => fetchLoker()} closing={shareJobP.closing} />}
     </div>
   );
 }

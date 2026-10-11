@@ -84,6 +84,35 @@ const BIO_SHORT_TO_LONG: Record<string, string> = {
   alamatpt: "alamat_perusahaan",
 };
 
+/**
+ * Field biodata yang BELUM punya kolom penyimpanan di database.
+ *
+ * Diperiksa 2026-10-11 terhadap skema: tidak satu pun dari tujuh kolom ini ada
+ * di `master_database_candidate`, `database_candidate`, maupun
+ * `pemberkasan_checklist` (periksa juga `_lib/db/schema.generated.ts`).
+ * `BIO_LENGKAP_MASTER_COLS` di backend hanya memetakan 11 field, dan loopnya
+ * MELEWATI sisanya tanpa error — jadi admin bisa mengisi ketujuhnya, menekan
+ * Simpan, melihat "berhasil", dan nilainya tidak tersimpan di mana pun.
+ *
+ * Field-nya TIDAK dihapus dari form karena dua alasan: nilainya masih bisa
+ * datang dari data lama (jadi harus tetap terlihat), dan `BIO_FIELDS.slice()`
+ * di render memakai indeks — menghapus entri akan menggeser pengelompokan
+ * section. Yang dipasang: input dibuat hanya-baca + satu catatan, supaya tidak
+ * ada lagi ketikan yang hilang diam-diam.
+ *
+ * Untuk mengaktifkannya kembali: tambah kolomnya di DB, lalu tambahkan pasangan
+ * `from → to` di `BIO_LENGKAP_MASTER_COLS` dan hapus nama dari himpunan ini.
+ */
+const UNSTORABLE_BIO_FIELDS = new Set([
+  'ttl_ayah',
+  'nama_ibu',
+  'ttl_ibu',
+  'nama_shacou',
+  'telp_perusahaan',
+  'web_perusahaan',
+  'alamat_perusahaan',
+]);
+
 const BIO_FIELDS: { field: string; label: string; type?: string; textarea?: boolean; span2?: boolean }[] = [
   { field: "email", label: "candidate.bio_email", type: "email" },
   { field: "tempat_lahir", label: "candidate.bio_pob" },
@@ -208,6 +237,7 @@ function BioInput({
   type = "text",
   textarea,
   span2,
+  readOnly,
   value,
   onChange,
 }: {
@@ -216,9 +246,14 @@ function BioInput({
   type?: string;
   textarea?: boolean;
   span2?: boolean;
+  /** Belum ada kolomnya di DB — lihat `UNSTORABLE_BIO_FIELDS`. */
+  readOnly?: boolean;
   value: string;
   onChange: (v: string) => void;
 }) {
+  const tone = readOnly
+    ? "bg-black/30 border-slate-800 text-slate-400 cursor-not-allowed"
+    : "bg-black/60 border-slate-700 text-white focus:border-amber-500";
   return (
     <div class={span2 ? "lg:col-span-2" : ""}>
       <label for={`bio-${field}`} class="block text-xs text-slate-400 mb-1 font-bold">{t(label)}</label>
@@ -227,16 +262,20 @@ function BioInput({
           id={`bio-${field}`}
           rows={2}
           value={value}
+          readOnly={readOnly}
+          aria-describedby={readOnly ? 'bio-unstorable-note' : undefined}
           onInput={(e: Event) => onChange((e.target as HTMLTextAreaElement).value)}
-          class="w-full min-h-11 p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500"
+          class={`w-full min-h-11 p-2.5 rounded-lg border text-sm outline-none ${tone}`}
         />
       ) : (
         <input
           id={`bio-${field}`}
           type={type}
           value={value}
+          readOnly={readOnly}
+          aria-describedby={readOnly ? 'bio-unstorable-note' : undefined}
           onInput={(e: Event) => onChange((e.target as HTMLInputElement).value)}
-          class="w-full min-h-11 p-2.5 rounded-lg bg-black/60 border border-slate-700 text-white text-sm outline-none focus:border-amber-500"
+          class={`w-full min-h-11 p-2.5 rounded-lg border text-sm outline-none ${tone}`}
         />
       )}
     </div>
@@ -605,21 +644,24 @@ export default function PemberkasanModal({
                     24rem = 384px, so the single-track regime extends past
                     `md`. Same remedy as SiswaBaruForm.tsx (commit dc88113). */}
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <p id="bio-unstorable-note" class="lg:col-span-2 text-[11px] text-slate-400 bg-black/40 border border-slate-700 rounded-lg px-3 py-2">
+                    <Icon name="info-circle" class="mr-1" /> {t("admin.bio_unstorable_note")}
+                  </p>
                   <Section label="candidate.bio_personal" />
                   {BIO_FIELDS.slice(0, 4).map((f) => (
-                    <BioInput key={f.field} {...f} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
+                    <BioInput key={f.field} {...f} readOnly={UNSTORABLE_BIO_FIELDS.has(f.field)} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
                   ))}
                   <Section label="ui.family_data" />
                   {BIO_FIELDS.slice(4, 8).map((f) => (
-                    <BioInput key={f.field} {...f} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
+                    <BioInput key={f.field} {...f} readOnly={UNSTORABLE_BIO_FIELDS.has(f.field)} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
                   ))}
                   <Section label="candidate.bio_passport" />
                   {BIO_FIELDS.slice(8, 13).map((f) => (
-                    <BioInput key={f.field} {...f} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
+                    <BioInput key={f.field} {...f} readOnly={UNSTORABLE_BIO_FIELDS.has(f.field)} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
                   ))}
                   <Section label="ui.company_data" />
                   {BIO_FIELDS.slice(13).map((f) => (
-                    <BioInput key={f.field} {...f} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
+                    <BioInput key={f.field} {...f} readOnly={UNSTORABLE_BIO_FIELDS.has(f.field)} value={bio[f.field] || ""} onChange={(v) => setBio({ ...bio, [f.field]: v })} />
                   ))}
                 </div>
                 <button

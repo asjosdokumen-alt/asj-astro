@@ -40,6 +40,14 @@ interface Job {
 interface Props {
   job: Job;
   onClose: () => void;
+  /**
+   * Dipanggil setelah simpan BERHASIL, SEBELUM `onClose()`.
+   *
+   * Induk memegang objek `job` yang dipakai modal ini, jadi tanpa pemberitahuan
+   * `dokumenShare` di sana tetap nilai lama: membuka ulang modal menampilkan
+   * chip yang baru saja diubah sebagai BELUM diubah.
+   */
+  onSave?: () => void;
   /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
   closing?: boolean;
 }
@@ -90,7 +98,7 @@ export function shareWaTemplate(code: string, pekerjaan: string, shareUrl: strin
   );
 }
 
-export default function AdminShareModal({ job, onClose, closing = false }: Props) {
+export default function AdminShareModal({ job, onClose, onSave, closing = false }: Props) {
   const [checked, setChecked] = useState<Set<string>>(() => parseDocsShare(job.dokumenShare));
   const [saving, setSaving] = useState(false);
   const { containerRef, onBackdropClick } = useOverlay({ open: true, onClose, closing });
@@ -145,6 +153,7 @@ export default function AdminShareModal({ job, onClose, closing = false }: Props
       };
       if (data.success) {
         showToast(t('ui.toast_share_saved'), 'success');
+        onSave?.();
         onClose();
       } else {
         showToast(t('alert.failed') + ' ' + (data.error || ''), 'error');
