@@ -14,7 +14,7 @@
 // ==========================================
 import { describe, it, expect } from 'vitest';
 import { signToken } from '../_lib/session';
-import { handleSimpanBiodataLengkap, buildBioPatch, buildCandSyncPatch } from './master-data/service';
+import { handleSimpanBiodataLengkap, buildBioPatch, buildCandSyncPatch, BIO_LENGKAP_MASTER_COLS } from './master-data/service';
 import { FILE_LABEL_COLUMNS } from './documents/service';
 
 const _kandidatA = signToken({ role: 'kandidat', wa: '6281111111111' });
@@ -78,16 +78,44 @@ describe('buildBioPatch — legacy flat payload → master columns (A05)', () =>
     expect(master.tgl_terbit_pasport).toBe('2026-01-01');
     expect(master.keluarga_1_nama).toBe('Ayah Budi');
     expect(master.pekerjaan_1_nama_perusahaan).toBe('PT Sakura Japan');
-    // Field legacy tanpa kolom di tabel di-drop (bukan 400 PostgREST).
-    // Skema keluarga hanya punya keluarga_1_nama — anggota 2+ hanya *_hubungan_jp.
+    // ── Tujuh field yang DULU tidak punya kolom (migration 016, 2026-10-11) ──
+    // Sampai 2026-10-11 tes ini justru menegaskan ketujuhnya DI-DROP, karena
+    // memang belum ada kolomnya. Itu mengunci bug-nya, bukan menjaganya: admin
+    // mengisi field, menekan Simpan, melihat "berhasil", nilainya hilang.
+    // Sekarang ketujuhnya punya kolom dan WAJIB masuk ke patch.
+    expect(master.keluarga_1_ttl).toBe('Ponorogo, 1970-01-01');
+    expect(master.keluarga_2_nama).toBe('Ibu Budi');
+    expect(master.keluarga_2_ttl).toBe('Ponorogo, 1972-02-02');
+    expect(master.perusahaan_1_nama_shacou).toBe('Sakura Shacou');
+    expect(master.perusahaan_1_telp).toBe('0352-123456');
+    expect(master.perusahaan_1_web).toBe('https://sakura.example');
+    expect(master.perusahaan_1_alamat).toBe('Jl. Jepang 1, Jakarta');
+    // Nama kunci LEGACY tidak boleh bocor sebagai nama kolom: PostgREST menolak
+    // SELURUH baris kalau ada satu kunci yang bukan kolom (400 PGRST204), jadi
+    // bug ini juga mematikan field yang sebenarnya sehat.
     expect(master.nama_ayah).toBeUndefined();
     expect(master.nama_ibu).toBeUndefined();
-    expect(master.keluarga_2_nama).toBeUndefined();
     expect(master.ttl_ayah).toBeUndefined();
     expect(master.nama_shacou).toBeUndefined();
+    expect(master.telp_perusahaan).toBeUndefined();
+    expect(master.web_perusahaan).toBeUndefined();
     expect(master.alamat_perusahaan).toBeUndefined();
-    // 11 pasangan [from,to] yang valid — semuanya terisi payload ini.
-    expect(Object.keys(master)).toHaveLength(11);
+    // 18 pasangan [from,to] yang valid — semuanya terisi payload ini.
+    expect(Object.keys(master)).toHaveLength(18);
+  });
+
+  it('setiap field biodata di payload punya kolom — tidak ada yang di-drop diam-diam', () => {
+    // Yang diperiksa adalah PEMETAAN-nya, bukan nama kolom: nama kunci payload
+    // (legacy) memang sengaja berbeda dari nama kolom tabel (format JP), jadi
+    // `k in master` akan selalu salah untuk sebagian besar field. Yang penting
+    // adalah tiap field yang dirender modal punya PASANGAN [from,to] — kalau
+    // tidak, loop `buildBioPatch` melewatinya tanpa error dan nilainya hilang.
+    const mapped = new Set(BIO_LENGKAP_MASTER_COLS.map(([from]) => from));
+    const META = new Set(['wa', 'nama', 'nama_lengkap']);
+    const unmapped = Object.keys(BIO_PAYLOAD)
+      .filter((k) => !META.has(k))
+      .filter((k) => !mapped.has(k));
+    expect(unmapped).toEqual([]);
   });
 
   it('skips placeholder (-) and empty values and unknown keys', () => {

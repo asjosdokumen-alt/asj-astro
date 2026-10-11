@@ -143,6 +143,14 @@ export default defineConfig({
             // `netlify/functions/**/*.ts`; `.ts` di tier e2e tidak dihitung.
             'e2e/contact-service.test.ts',
             'e2e/uploadGuard.test.ts',
+            // Ditambahkan 2026-10-11 (migration 016). Handler-level, tanpa DOM:
+            // membaca `schema.generated.ts` + berkas migrasi dari cakram. Tinggal
+            // di e2e/ HANYA karena counter beku `indexer` menghitung
+            // `netlify/functions/**/*.ts` (terukur: 292 -> 293 ts, 535 -> 536
+            // berkas bila diletakkan di sana). Lihat R13f-bis: menaruhnya di
+            // e2e/ TANPA baris ini membuatnya berjalan di jsdom dan terhitung
+            // dua kali.
+            'e2e/biodata-cols-contract.test.ts',
           ],
         },
       },

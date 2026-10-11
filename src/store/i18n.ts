@@ -610,7 +610,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.tpl_err_nofile": "Berkas template belum dipilih.",
     "admin.tpl_err_empty": "Belum ada sel yang terpetakan — tekan Analisa dulu.",
     "admin.tpl_err_map": "Template ini tidak punya peta sel — perbaiki di tab Config.",
-    "admin.bio_unstorable_note": "Kolom berlatar gelap belum ada di database — nilainya bisa dilihat tapi tidak bisa disimpan. Hubungi pengembang untuk menambah kolomnya.",
     "ui.load_failed": "Gagal memuat data.",
     "ui.load_failed_hint": "Ini bukan berarti datanya kosong — koneksi atau sesi yang bermasalah. Coba lagi.",
     "ui.retry": "Coba lagi",

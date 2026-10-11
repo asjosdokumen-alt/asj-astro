@@ -702,19 +702,33 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
 // js/03_candidate.ts prosesSimpanBiodataLengkap mengirim satu payload datar
 // dengan NAMA KUNCI LEGACY (nama_ayah, no_pasport, ...). master_database_candidate
 // sudah restruktur ke format JP — pasangan [from, to] memetakan kunci payload
-// ke KOLOM ASLI tabel. Field legacy tanpa kolom di-drop (diabaikan) —
-// memasukkannya membuat PostgREST menolak SELURUH PATCH (400). Yang di-drop:
-// ttl_ayah, ttl_ibu, nama_ibu (skema keluarga hanya punya keluarga_1_nama;
-// anggota 2+ hanya *_hubungan_jp), nama_shacou, telp_perusahaan,
-// web_perusahaan, alamat_perusahaan.
+// ke KOLOM ASLI tabel.
+//
+// SETIAP kunci payload di sini WAJIB punya kolom. Kunci tanpa pasangan
+// di-DIAMKAN (loop hanya melewatinya), jadi admin mengisi field, menekan Simpan,
+// melihat "berhasil", dan nilainya tidak tersimpan di mana pun. Tujuh kunci yang
+// dulu masuk kategori itu sekarang punya kolom — migrations/016_biodata_keluarga_perusahaan.sql.
+// Menambah field baru di PemberkasanModal TANPA kolom + pasangan di sini akan
+// mengulang bug yang sama.
 // ---------------------------------------------------------------------------
-const BIO_LENGKAP_MASTER_COLS: ReadonlyArray<readonly [string, string]> = [
+export const BIO_LENGKAP_MASTER_COLS: ReadonlyArray<readonly [string, string]> = [
   ['email', 'email'], ['tempat_lahir', 'tempat_lahir'], ['tgl_lahir', 'tgl_lahir'],
   ['alamat_lengkap', 'alamat_lengkap'], ['no_coe', 'no_coe'], ['exp_pasport', 'exp_pasport'],
   ['no_pasport', 'no_paspor'], ['kota_pasport', 'kota_terbit_pasport'],
   ['tgl_pasport', 'tgl_terbit_pasport'],
   ['nama_ayah', 'keluarga_1_nama'],
   ['nama_perusahaan', 'pekerjaan_1_nama_perusahaan'],
+  // ── migration 016 (2026-10-11): tujuh field yang dulu tidak punya kolom ──
+  // Ayah menempati slot keluarga 1 (sudah dipakai `nama_ayah`), ibu slot 2.
+  ['ttl_ayah', 'keluarga_1_ttl'],
+  ['nama_ibu', 'keluarga_2_nama'],
+  ['ttl_ibu', 'keluarga_2_ttl'],
+  // Perusahaan penempatan — SENGAJA bukan pekerjaan_1_*: itu riwayat kerja
+  // kandidat sendiri (rirekisho), bukan perusahaan yang mengirimnya.
+  ['nama_shacou', 'perusahaan_1_nama_shacou'],
+  ['telp_perusahaan', 'perusahaan_1_telp'],
+  ['web_perusahaan', 'perusahaan_1_web'],
+  ['alamat_perusahaan', 'perusahaan_1_alamat'],
 ] as const;
 
 // Kolom biodata yang juga dibaca mapCandidate dari database_candidate.

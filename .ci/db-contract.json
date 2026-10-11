@@ -27,7 +27,16 @@
     },
     "master_database_candidate": {
       "severity": "required",
-      "note": "169-column master record; backs lookup by WhatsApp number."
+      "note": "169-column master record; backs lookup by WhatsApp number.",
+      "columns": [
+        "keluarga_1_ttl",
+        "keluarga_2_nama",
+        "keluarga_2_ttl",
+        "perusahaan_1_nama_shacou",
+        "perusahaan_1_telp",
+        "perusahaan_1_web",
+        "perusahaan_1_alamat"
+      ]
     },
     "database_asj_form": {
       "severity": "required",
