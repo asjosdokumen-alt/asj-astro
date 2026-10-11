@@ -463,6 +463,88 @@ describe('apiClient — silent suppresses the toast, never the throw', () => {
 });
 
 // ==========================================
+// TESTS: the error toast text (2026-10-11)
+//
+// The owner screenshotted this toast while closing a job:
+//
+//     Network error: Server sedang sibuk.
+//     Coba lagi beberapa saat lagi.
+//
+// That is a 503 from `shedResponse()` (kernel/admission.ts) — the request
+// REACHED the server and the server answered with a complete Indonesian
+// sentence. The client's own network never failed, so "Network error" sends the
+// user to check their connection, which is not where the problem is; and the
+// prefix is glued onto a message that is already a whole sentence. The server
+// also sent `retryAfter` (2s for P1 — `SHED_AT`), which used to be dropped.
+//
+// These tests pin the three properties, and each fails on the old one-liner.
+// ==========================================
+describe('apiClient — toast text names the real cause and keeps retryAfter', () => {
+  const toastText = () =>
+    (showToast as unknown as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0] as string;
+
+  it('a 503 shed keeps the server sentence and appends the retry hint', async () => {
+    state = { isLoggedIn: true, sessionToken: 'tok' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Server sedang sibuk. Coba lagi sebentar lagi.',
+              code: 'OVERLOADED',
+              retryAfter: 2,
+            }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } },
+          ),
+      ),
+    );
+    (showToast as unknown as ReturnType<typeof vi.fn>).mockClear();
+    await expect(
+      apiClient('ubahStatusJob', ['TG1ASJ', 'CLOSE'], { onSessionInvalid: 'throw' }),
+    ).rejects.toThrow(/Server sedang sibuk/);
+    const text = toastText();
+    // Not mislabelled as a network problem — it was answered.
+    expect(text).not.toContain('Network error');
+    // The server's own sentence survives, unglued from a prefix.
+    expect(text).toContain('Server sedang sibuk. Coba lagi sebentar lagi.');
+    // …and the delay it named is shown rather than discarded.
+    expect(text).toContain('2 detik');
+  });
+
+  it('a plain 400 with a server message is shown verbatim, with no invented delay', async () => {
+    state = { isLoggedIn: true, sessionToken: 'tok' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ success: false, error: 'Kode loker wajib diisi.' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+      ),
+    );
+    (showToast as unknown as ReturnType<typeof vi.fn>).mockClear();
+    await expect(
+      apiClient('ubahStatusJob', ['', 'CLOSE'], { onSessionInvalid: 'throw' }),
+    ).rejects.toThrow(/Kode loker wajib diisi/);
+    expect(toastText()).toBe('Kode loker wajib diisi.');
+  });
+
+  it('CONTROL: a genuine transport failure still says "Network error:"', async () => {
+    // No response at all — this is the case the prefix was written for.
+    state = { isLoggedIn: true, sessionToken: 'tok' };
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))));
+    (showToast as unknown as ReturnType<typeof vi.fn>).mockClear();
+    await expect(
+      apiClient('ubahStatusJob', ['TG1ASJ', 'CLOSE'], { onSessionInvalid: 'throw' }),
+    ).rejects.toThrow(/Failed to fetch/);
+    expect(toastText()).toContain('Network error:');
+  });
+});
+
+// ==========================================
 // TESTS: `force` — bypass the read cache, and REFRESH it (2026-09-17)
 //
 // `getAppData` is in CACHEABLE_READS, so converting a caller that must see fresh

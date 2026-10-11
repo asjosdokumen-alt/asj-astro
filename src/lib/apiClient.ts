@@ -190,6 +190,51 @@ function sessionInvalidVerdict(onSessionInvalid: 'logout' | 'throw'): never {
 }
 
 /**
+ * Build the text for the generic error toast.
+ *
+ * The old body was a single line — `showToast('Network error: ' + message)` —
+ * and it produced the toast the owner screenshotted on 2026-10-11 when closing
+ * a job:
+ *
+ *     Network error: Server sedang sibuk.
+ *     Coba lagi beberapa saat lagi.
+ *
+ * Three things are wrong with that, and they are the same three things:
+ *
+ *   1. It calls the incident a "Network error" even when the request reached
+ *      the server and the server answered. `shedResponse()` (kernel/admission)
+ *      returns HTTP 503 with a complete Indonesian sentence; the client's own
+ *      network never failed. Mislabelling it sends the user to check their
+ *      connection, which is not where the problem is.
+ *   2. It prefixes onto a message that is ALREADY a complete sentence, so the
+ *      result reads like two sentences glued together. The server text is the
+ *      useful half; the prefix is noise that also truncates the visible text.
+ *   3. It drops `retryAfter`, which the server bothered to send (2s for P1,
+ *      5s for P2, 10s for P3 — `SHED_AT` in kernel/admission.ts). The user is
+ *      told "try again in a moment" with no idea how long a moment is.
+ *
+ * So: when the server supplied a message, show it verbatim and add the retry
+ * hint. Reserve the "Network error:" prefix for the case it actually describes
+ * — an error carrying no server message, i.e. `fetch` never reached the server.
+ *
+ * Deliberately NOT an automatic retry. Re-issuing a shed write is a correctness
+ * question (the caller may have moved on, the payload may have been edited),
+ * and silently retrying a `ubahStatusJob` is not this function's call to make.
+ * Telling the user when to retry is; doing it behind their back is not.
+ */
+function toastTextFor(err: unknown, message: string): string {
+  const apiErr = err as ApiError;
+  const fromServer = typeof apiErr?.status === 'number' && message.trim().length > 0;
+  if (!fromServer) return 'Network error: ' + (message || 'Unknown');
+
+  // Only a shed/throttled response names a delay; a plain 400 does not.
+  const retry = typeof apiErr.retryAfter === 'number' && apiErr.retryAfter > 0
+    ? ` (coba lagi dalam ${apiErr.retryAfter} detik)`
+    : '';
+  return message + retry;
+}
+
+/**
  * Core fetch wrapper — routes actions to surface-specific endpoints
  */
 export async function apiClient<T = ApiResponse>(
@@ -422,7 +467,7 @@ export async function apiClient<T = ApiResponse>(
     if (message === 'No valid session' || message === 'Session expired') throw err;
     // `silent` callers own their error UI; the throw below still carries the
     // server's message (see the !res.ok branch above), so nothing is lost.
-    if (!silent) showToast('Network error: ' + (message || 'Unknown'), 'error');
+    if (!silent) showToast(toastTextFor(err, message), 'error');
     throw err;
   } finally {
     // Always clear, on every path — success, HTTP error, abort and rethrow.
