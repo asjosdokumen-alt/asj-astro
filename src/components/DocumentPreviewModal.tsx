@@ -142,6 +142,34 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [excelHtml, setExcelHtml] = useState<string | null>(null);
+  // MEASURED 2026-10-11 on production `share?job=TG591ASJ`, in Chromium, with a
+  // HAR-level timeline:
+  //
+  //   75206 REQ  <CV .xlsx>              ← the iframe rendered HERE
+  //   75216 REQ  cdn.sheetjs.com/xlsx…   ← SheetJS only STARTED loading here
+  //   75305 REQ  <CV .xlsx>
+  //   75482 DOWNLOAD 1._DWI_AYU_ANGGRAINI_CV.xlsx
+  //
+  // 60 KB of spreadsheet can never render as HTML, so the browser did the only
+  // thing left and downloaded it. The owner reported exactly this: "buka preview
+  // cv malah auto donload juga".
+  //
+  // `renderContent()` was rendering the `<iframe src={url}>` fallback while the
+  // SheetJS render was still in flight, because nothing gated it on the pending
+  // work. Two facts make that fallback permanently wrong for a spreadsheet:
+  // `isExcel(url)` is true, so a *deferred* HTML render is coming; and Supabase
+  // serves these files as
+  // `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` with NO
+  // `Content-Disposition: inline`, which an iframe treats as a download, while
+  // `application/pdf` (the JFT/SSW siblings) renders inline and so never showed
+  // the bug.
+  //
+  // `excelPending` is what closes the race: while a client-side spreadsheet
+  // render is outstanding, show the spinner and DO NOT mount the iframe. It is
+  // initialised from `isExcel(url)` so the very first paint after the click is
+  // already holding back, rather than waiting for an effect that runs a tick too
+  // late.
+  const [excelPending, setExcelPending] = useState(() => isExcel(url));
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Escape is handled by `useOverlay` below, on the capture phase and with
@@ -164,18 +192,28 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
 
   // Excel/CSV client-side rendering (from legacy preview.ts)
   useEffect(() => {
-    if (isExcel(url)) {
-      setLoading(true);
-      renderExcelToHtml(url).then((html) => {
-        if (html) {
-          setExcelHtml(html);
-          setLoading(false);
-        } else {
-          // Fallback to iframe if client-side render fails
-          setError(false);
-        }
-      });
-    }
+    if (!isExcel(url)) return;
+    setLoading(true);
+    setExcelPending(true);
+    renderExcelToHtml(url).then((html) => {
+      if (html) {
+        setExcelHtml(html);
+        setLoading(false);
+      } else {
+        // Render failed (SheetJS CDN blocked, or the file is not really a
+        // spreadsheet). Release the gate BEFORE flipping to the iframe
+        // fallback — leaving `excelPending` true would trap the user on a
+        // spinner forever, which is a worse failure than a download.
+        //
+        // `loading` is cleared here too: the spinner is absolutely positioned
+        // over the content area (`inset-0`), so leaving it up would hide the
+        // iframe fallback that is about to render. The 8s timeout effect only
+        // clears `loading` on a stuck load, which is a different case.
+        setLoading(false);
+        setError(false);
+      }
+      setExcelPending(false);
+    });
   }, [url]);
 
   // Drive folder fallback (parity legacy bukaPreviewDokumen)
@@ -233,7 +271,12 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
     }
 
     if (isExcel(url)) {
-      // Fallback to iframe if client-side render failed
+      // Fallback to iframe if client-side render failed.
+      //
+      // Only reachable once `excelPending` is false — see the gate in the
+      // Content block below. Mounting this while the render was still in
+      // flight is what made the CV download instead of preview (2026-10-11),
+      // so the ordering there is load-bearing, not cosmetic.
       return (
         <iframe
           ref={iframeRef}
@@ -333,7 +376,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
                 )}
               </div>
             </div>
-          ) : renderContent()}
+          ) : excelPending ? null : renderContent()}
         </div>
       </div>
     </div>
