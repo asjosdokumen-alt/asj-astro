@@ -12,6 +12,7 @@ import {
   findTable,
   getSchema,
   hasBackend,
+  normalizeGender,
   normalizeWa,
   pick,
   supabaseJson,
@@ -134,6 +135,35 @@ export interface CandidateFilters {
 }
 
 /**
+ * Kode yang dikirim dropdown UI → nilai kanonik yang tersimpan di database.
+ *
+ * Dropdown (`TabPelamar.tsx`) mengirim `l` / `p`, sedangkan kolom `gender`
+ * menyimpan KATA PENUH. Diukur atas DB live 2026-10-12: `PEREMPUAN` 79 baris,
+ * `LAKI-LAKI` 82, `-` 25, kosong 32, null 8 — dan **nol** baris bernilai `P`/`L`.
+ * Karena itu perbandingan huruf-per-huruf lama (`'l'` vs `'laki-laki'`) tidak
+ * pernah cocok: memilih "Laki-laki" ATAU "Perempuan" selalu mengembalikan nol
+ * baris, dan itulah keluhan "filter gak mencari semua".
+ *
+ * Arah konversinya sengaja di sini (kode → kanonik), bukan sebaliknya: nilai
+ * kanonik adalah milik `normalizeGender()` (`_lib/db/client.ts`) — satu-satunya
+ * normalisasi gender backend, yang juga menangani `L`/`P`/`PRIA`/`WANITA`/`女`
+ * pada data lama.
+ */
+const GENDER_CODE_TO_CANON: Record<string, string> = { l: 'LAKI-LAKI', p: 'PEREMPUAN' };
+
+/**
+ * Semantik JFT legacy — `PARITY_CHECKLIST.md` B06 ("A2/N4 & B1/N3") dan
+ * implementasi yang sudah lebih dulu benar di `ShareView.tsx`: yang dibaca
+ * adalah **`nilai_jft_text`**, dan satu pilihan = DUA token.
+ *
+ * 🔴 Kolom `jft` BUKAN tempatnya: diukur atas DB live, `jft` menyimpan URL
+ * DOKUMEN (85 baris terisi, mis. `…/4._KHOIRUL_RUSLAN_JFT_vguwvc.pdf`) sementara
+ * `nilai_jft_text` memuat teks sertifikatnya. Mencocokkan token ke kolom URL
+ * karena itu selalu nol baris pada data nyata.
+ */
+const JFT_TOKENS: Record<string, string[]> = { a2: ['A2', 'N4'], b1: ['B1', 'N3'] };
+
+/**
  * Satu-satunya tempat penyaringan kandidat admin hidup.
  *
  * Sebelum 2026-10-12 hanya `q` yang sampai ke sini, sedangkan gender/usia/JFT
@@ -145,12 +175,14 @@ export interface CandidateFilters {
  * sebelum dipotong per halaman — jadi klien tidak perlu (dan tidak boleh)
  * menyaring ulang.
  *
- * Nama kolom dan aturan cocoknya SENGAJA disalin dari `mapCandidate()`
- * (`_lib/db/candidates.ts`): `pick()` dengan daftar alias yang sama, `gender`
- * dibandingkan huruf kecil persis, `usia` di-`parseInt` lalu dipecah ke tiga
- * ember, dan `jft` dicocokkan dengan `includes`. Kalau salah satu berubah di
- * sana, ubah di sini juga — kalau tidak, filter akan menjawab beda dari yang
- * dilihat admin di kolom tabel.
+ * DIPERBAIKI LAGI 2026-10-12 (sore): memindahkan penyaringan ke server belum
+ * cukup, karena dua dari empat kriteria membandingkan nilai dengan bentuk yang
+ * TIDAK PERNAH ada di database — `'l'`/`'p'` melawan `'LAKI-LAKI'`/`'PEREMPUAN'`,
+ * dan token JFT melawan kolom URL. Keduanya terukur mengembalikan **nol baris**
+ * untuk seluruh 226 kandidat. Aturan q/usia tetap disalin dari `mapCandidate()`;
+ * gender memakai `normalizeGender()` dan JFT mengikuti aturan legacy di atas.
+ * Kalau salah satu berubah di sana, ubah di sini juga — kalau tidak, filter akan
+ * menjawab beda dari yang dilihat admin di kolom tabel.
  */
 function saringKandidat(uniq: Record<string, unknown>[], f: CandidateFilters): Record<string, unknown>[] {
   const needle = String(f.q || '').trim().toLowerCase();
@@ -166,7 +198,11 @@ function saringKandidat(uniq: Record<string, unknown>[], f: CandidateFilters): R
       if (!nama.includes(needle) && !(digit && wa.includes(digit))) return false;
     }
     if (gender !== 'all') {
-      if (String(pick(r, ['gender', 'jenis_kelamin', 'jk']) || '').toLowerCase() !== gender) return false;
+      const mau = GENDER_CODE_TO_CANON[gender];
+      // Kode yang tidak dikenal tidak cocok dengan siapa pun. Arahnya sengaja:
+      // filter yang tidak bisa dipenuhi lebih baik menampilkan nol baris
+      // daripada diam-diam menampilkan semua orang.
+      if (!mau || normalizeGender(pick(r, ['gender', 'jenis_kelamin', 'jk'])) !== mau) return false;
     }
     if (age !== 'all') {
       const usia = parseInt(String(pick(r, ['usia', 'umur']) || ''), 10);
@@ -181,7 +217,10 @@ function saringKandidat(uniq: Record<string, unknown>[], f: CandidateFilters): R
       if (!cocok) return false;
     }
     if (jft !== 'all') {
-      if (!String(pick(r, ['jft', 'file_jft']) || '').toLowerCase().includes(jft)) return false;
+      const token = JFT_TOKENS[jft];
+      if (!token) return false;
+      const teks = String(pick(r, ['nilai_jft_text', 'jft_text']) || '').toUpperCase();
+      if (!token.some((t) => teks.includes(t))) return false;
     }
     return true;
   });

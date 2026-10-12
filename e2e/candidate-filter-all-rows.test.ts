@@ -22,11 +22,24 @@
 // ==========================================
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { loadCandidatesUnik } from '../netlify/functions/contexts/catalog';
+import { cacheClear } from '../netlify/functions/_lib/cache';
 
 /**
- * 45 baris: 30 laki-laki umur 30 dengan JFT B1, lalu 15 perempuan umur 18
- * dengan JFT A2. Yang perempuan/umur-18/A2 ada di BELAKANGAN, jadi filter yang
+ * 45 baris: 30 laki-laki umur 30 dengan JFT B1/N3, lalu 15 perempuan umur 18
+ * dengan JFT A2/N4. Yang perempuan/umur-18/A2 ada di BELAKANGAN, jadi filter yang
  * hanya melihat halaman pertama pasti tidak menemukannya.
+ *
+ * ⚠ FIXTURE INI DULU IKUT SALAH (diperbaiki 2026-10-12). Versi pertamanya menulis
+ * `gender: 'P'` dan `jft: 'https://cdn/A2.pdf'`, yaitu BENTUK YANG SAMA dengan
+ * asumsi implementasinya — jadi ia hijau sementara filter sebenarnya
+ * mengembalikan nol baris untuk data nyata. Diukur atas DB live:
+ *
+ *   gender  → `PEREMPUAN` 79 baris, `LAKI-LAKI` 82, `-`/kosong/null 65;
+ *             NOL baris bernilai `P`/`L`.
+ *   jft     → kolom itu menyimpan URL DOKUMEN (85 baris); teks sertifikat ada di
+ *             `nilai_jft_text` (4 baris terisi).
+ *
+ * Fixture harus menyerupai DB, bukan menyerupai bug.
  */
 const h = vi.hoisted(() => ({ rows: [] as Record<string, unknown>[] }));
 
@@ -37,9 +50,12 @@ function baris(i: number) {
     id_kandidat: `KD${i + 1}`,
     nama_lengkap: `KANDIDAT ${i}`,
     no_wa: `6281000${i}`,
-    gender: perempuan ? 'P' : 'L',
+    gender: perempuan ? 'PEREMPUAN' : 'LAKI-LAKI',
     usia: perempuan ? '18' : '30',
-    jft: perempuan ? 'https://cdn/A2.pdf' : 'https://cdn/B1.pdf',
+    // Bentuk nyata: `jft` = URL dokumen (TANPA token sertifikat di dalamnya),
+    // `nilai_jft_text` = teks sertifikat.
+    jft: `https://cdn/berkas/KANDIDAT_${i + 1}_JFT.pdf`,
+    nilai_jft_text: perempuan ? 'A2 / N4' : 'B1 / N3',
     status_kandidat: 'BARU',
     id_loker_pilihan: 'TG658',
     tahapan_seleksi: 'LIST',
@@ -66,6 +82,11 @@ vi.mock('../netlify/functions/_lib/db/candidates', async (importOriginal) => {
 });
 
 beforeEach(() => {
+  // `loadCandidatesUnik()` memoisasi hasil per kriteria selama 25 detik
+  // (`CAND_CACHE_TTL_MS`). Tanpa membersihkannya, tes yang mengganti fixture di
+  // tengah berkas akan membaca baris yang di-cache oleh tes SEBELUMNYA dan
+  // gagal dengan angka milik tes lain — terukur: "expected 15 to be 1".
+  cacheClear();
   h.rows = Array.from({ length: 45 }, (_, i) => baris(i));
 });
 
@@ -92,11 +113,33 @@ describe('loadCandidatesUnik — kriteria disaring atas seluruh baris', () => {
 
   it('gender=p menghitung seluruh 15 baris perempuan, dan mengembalikannya', async () => {
     const { total, rows } = await loadCandidatesUnik({ gender: 'p' }, { page: 1, pageSize: 20 });
-    // Kode lama: kriteria diabaikan ⇒ 45.
+    // Kode lama: kriteria diabaikan ⇒ 45. Versi 2026-10-12 pagi: 0, karena
+    // 'p' dibandingkan huruf-per-huruf dengan 'PEREMPUAN'.
     expect(total).toBe(15);
     expect(rows).toHaveLength(15);
     // Bukti "bukan satu halaman": baris yang cocok ada di urutan ke-31 dst.
-    for (const r of rows) expect(String(r.gender)).toBe('P');
+    for (const r of rows) expect(String(r.gender)).toBe('PEREMPUAN');
+  });
+
+  it('gender=l menghitung seluruh 30 baris laki-laki', async () => {
+    const { total, rows } = await loadCandidatesUnik({ gender: 'l' }, { page: 1, pageSize: 20 });
+    expect(total).toBe(30);
+    for (const r of rows) expect(String(r.gender)).toBe('LAKI-LAKI');
+  });
+
+  it('gender tanpa nilai yang bisa dipakai tidak ikut ke mana pun', async () => {
+    // Diukur di DB live: 65 dari 226 baris ber-`gender` `-`, kosong, atau null.
+    // Baris itu tidak boleh muncul di filter "l" MAUPUN "p".
+    h.rows = [
+      { ...baris(0), id: 1, gender: '-' },
+      { ...baris(1), id: 2, gender: '' },
+      { ...baris(2), id: 3, gender: null },
+      { ...baris(3), id: 4, gender: 'PEREMPUAN' },
+    ];
+    const p = await loadCandidatesUnik({ gender: 'p' }, { page: 1, pageSize: 20 });
+    const l = await loadCandidatesUnik({ gender: 'l' }, { page: 1, pageSize: 20 });
+    expect(p.total).toBe(1);
+    expect(l.total).toBe(0);
   });
 
   it('age=under20 menghitung seluruh 15 baris umur 18', async () => {
@@ -110,10 +153,29 @@ describe('loadCandidatesUnik — kriteria disaring atas seluruh baris', () => {
     expect(total).toBe(30);
   });
 
-  it('jft=a2 menghitung seluruh 15 baris bersertifikat A2', async () => {
+  it('jft=a2 menghitung seluruh 15 baris bersertifikat A2/N4', async () => {
     const { total, rows } = await loadCandidatesUnik({ jft: 'a2' }, { page: 1, pageSize: 20 });
     expect(total).toBe(15);
-    for (const r of rows) expect(String(r.jft).toLowerCase()).toContain('a2');
+    for (const r of rows) expect(String(r.nilai_jft_text)).toContain('A2');
+  });
+
+  it('jft=b1 menghitung seluruh 30 baris bersertifikat B1/N3', async () => {
+    const { total } = await loadCandidatesUnik({ jft: 'b1' }, { page: 1, pageSize: 20 });
+    expect(total).toBe(30);
+  });
+
+  it('jft dibaca dari nilai_jft_text, BUKAN dari URL dokumen di kolom `jft`', async () => {
+    // 🔴 Inilah kesalahan yang membuat filter JFT selalu nol di data nyata:
+    // kolom `jft` menyimpan URL (85 baris terisi di DB live), dan mencocokkan
+    // 'a2' ke URL kebetulan "berhasil" hanya pada fixture yang mengarang URL
+    // berisi 'A2'. Baris di bawah meniru URL nyata: tokennya tidak ada di sana.
+    h.rows = [
+      { ...baris(0), id: 1, jft: 'https://cdn/berkas/scan.pdf', nilai_jft_text: '' },
+      { ...baris(1), id: 2, jft: 'https://cdn/berkas/lain.pdf', nilai_jft_text: 'A2 / N4' },
+    ];
+    const { total, rows } = await loadCandidatesUnik({ jft: 'a2' }, { page: 1, pageSize: 20 });
+    expect(total).toBe(1);
+    expect(rows[0].nilai_jft_text).toBe('A2 / N4');
   });
 
   it('kriteria gabungan: perempuan + A2 tetap 15, dan totalnya konsisten dengan halaman', async () => {

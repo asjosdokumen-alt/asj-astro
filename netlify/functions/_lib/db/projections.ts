@@ -46,15 +46,19 @@ export const PROJECTIONS = {
   /**
    * Admin candidate list — dedupe by WA, keyword filter, sort by updated_at.
    *
-   * `gender`, `usia`, `jft` ada di sini karena penyaringan admin (kotak cari +
-   * tiga dropdown FILTER) berjalan di SERVER atas SELURUH baris, bukan lagi di
-   * klien atas 20 baris yang kebetulan sudah dimuat. Nama kolomnya HARUS sama
-   * dengan yang dibaca `mapCandidate()` — kalau tidak, baris ringan akan
-   * kehilangan nilainya dan filternya mengembalikan nol baris.
+   * `gender`, `usia`, `nilai_jft_text` ada di sini karena penyaringan admin
+   * (kotak cari + tiga dropdown FILTER) berjalan di SERVER atas SELURUH baris,
+   * bukan lagi di klien atas 20 baris yang kebetulan sudah dimuat. Nama kolomnya
+   * HARUS sama dengan yang dibaca `mapCandidate()` — kalau tidak, baris ringan
+   * akan kehilangan nilainya dan filternya mengembalikan nol baris.
+   *
+   * `nilai_jft_text`, BUKAN `jft`: diukur atas DB live 2026-10-12, `jft` memuat
+   * URL dokumen (85 baris) sementara teks sertifikatnya ada di `nilai_jft_text`.
+   * Filter JFT yang membaca kolom URL selalu mengembalikan nol baris.
    */
   CAND_LIGHT_COLS: {
     table: 'database_candidate',
-    columns: 'id,id_kandidat,nama_lengkap,no_wa,gender,usia,jft,status_kandidat,id_loker_pilihan,tahapan_seleksi,updated_at,created_at,tanggal_daftar',
+    columns: 'id,id_kandidat,nama_lengkap,no_wa,gender,usia,nilai_jft_text,status_kandidat,id_loker_pilihan,tahapan_seleksi,updated_at,created_at,tanggal_daftar',
   },
   /** Everything `mapCandidate()` reads. */
   CAND_MAP_COLS: {
