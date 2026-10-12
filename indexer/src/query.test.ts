@@ -5,6 +5,7 @@
  */
 
 import { get as httpGet, request as httpRequest } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { buildIndex } from './build.js';
 import { dumpDoc, type DumpDoc } from './dump.js';
@@ -1290,7 +1291,16 @@ describe('real-tree import linkage regressions (audit repros)', () => {
     const memberSites = refsOf(index, def!.id).references.filter((r) => r.file.endsWith('surfaces/master.ts'));
     expect(memberSites.length).toBeGreaterThan(0);
     for (const site of memberSites) expect(site.role).toBe(5); // Property: member access on a namespace import
-    const submit = memberSites.find((r) => r.line === 8); // submitMasterForm: (p, s) => masterData.handleSubmitMasterForm(...)
+    // The call site's LINE is DERIVED from the surface's own source, not hardcoded.
+    // A hardcoded `8` went stale silently: `ea658e9` (2026-10-10) grew the header
+    // comment by one line, so `submitMasterForm` moved 8 -> 9 — and nothing enforced
+    // it, because the `indexer` project is not run in CI (`ci.yml` = frontend+backend
+    // only). Same defect class as `parse.test.ts`. MEASURED, not guessed: the indexer
+    // reports member sites at line 9 (handleSubmitMasterForm) and 11 (the alias).
+    const surfaceLines = readFileSync(`${ROOT}/netlify/functions/surfaces/master.ts`, 'utf8').split(/\r?\n/);
+    const submitLine = surfaceLines.findIndex((l) => l.includes('masterData.handleSubmitMasterForm(')) + 1; // 1-based
+    expect(submitLine).toBeGreaterThan(0); // positive control: the call site IS in the source
+    const submit = memberSites.find((r) => r.line === submitLine);
     expect(submit).toBeDefined();
     const view = resolveAt(index, submit!.file, submit!.line, submit!.char);
     expect(view.resolved?.symId).toBe(def!.id);
