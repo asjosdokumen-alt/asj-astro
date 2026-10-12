@@ -13,10 +13,22 @@ import { attachApplications } from '../../_lib/db/candidates';
 import { stripRaw, loadCandidatesUnik } from '../catalog';
 
 export async function getCandidatesPage(opts: any): Promise<{ candidates: any[]; total: number }> {
-  const { rows: candRows, total } = await loadCandidatesUnik(opts.q || '', {
-    page: opts.page || 1,
-    pageSize: opts.pageSize || 50,
-  });
+  // Keempat kriteria diteruskan apa adanya: penyaringan terjadi di repository
+  // katalog SEBELUM potong-per-halaman, jadi `total` yang dikirim ke layar
+  // adalah jumlah yang BENAR-BENAR cocok dengan filter, bukan jumlah seluruh
+  // kandidat.
+  const { rows: candRows, total } = await loadCandidatesUnik(
+    {
+      q: opts.q || '',
+      gender: opts.gender || 'all',
+      age: opts.age || 'all',
+      jft: opts.jft || 'all',
+    },
+    {
+      page: opts.page || 1,
+      pageSize: opts.pageSize || 50,
+    },
+  );
   const cands = stripRaw(candRows.map(mapCandidate));
   const waList = cands.map((c) => normalizeWa(String(c.wa || ''))).filter(Boolean);
   let allForms: any;

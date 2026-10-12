@@ -161,6 +161,9 @@ export async function handleGetCandidatesPage(payload: unknown[], sessionToken?:
   try {
     const { candidates, total } = await getCandidatesPageRepo({
       q: (opts.q || '') as string,
+      gender: (opts.gender || 'all') as string,
+      age: (opts.age || 'all') as string,
+      jft: (opts.jft || 'all') as string,
       page: Number(opts.page) || 1,
       pageSize: Number(opts.pageSize) || 50,
     });

@@ -43,10 +43,18 @@ import type { TableName } from './schema.generated';
  * `table` is what the test validates `columns` against.
  */
 export const PROJECTIONS = {
-  /** Admin candidate list — dedupe by WA, keyword filter, sort by updated_at. */
+  /**
+   * Admin candidate list — dedupe by WA, keyword filter, sort by updated_at.
+   *
+   * `gender`, `usia`, `jft` ada di sini karena penyaringan admin (kotak cari +
+   * tiga dropdown FILTER) berjalan di SERVER atas SELURUH baris, bukan lagi di
+   * klien atas 20 baris yang kebetulan sudah dimuat. Nama kolomnya HARUS sama
+   * dengan yang dibaca `mapCandidate()` — kalau tidak, baris ringan akan
+   * kehilangan nilainya dan filternya mengembalikan nol baris.
+   */
   CAND_LIGHT_COLS: {
     table: 'database_candidate',
-    columns: 'id,id_kandidat,nama_lengkap,no_wa,status_kandidat,id_loker_pilihan,tahapan_seleksi,updated_at,created_at,tanggal_daftar',
+    columns: 'id,id_kandidat,nama_lengkap,no_wa,gender,usia,jft,status_kandidat,id_loker_pilihan,tahapan_seleksi,updated_at,created_at,tanggal_daftar',
   },
   /** Everything `mapCandidate()` reads. */
   CAND_MAP_COLS: {

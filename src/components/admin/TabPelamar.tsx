@@ -3,7 +3,7 @@
  * Source: legacy/index.html page-admin → admin-pelamar
  * With modals: Input Manual, Laporan Bulanan, Toggle View
  */
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import {
   kandidatList, kandidatTotal, kandidatLoading,
@@ -106,24 +106,44 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
   const simpleView = useStore(adminSimpleView);
   const exhausted = useStore(kandidatExhausted);
 
+  /**
+   * Muat ulang saat KRITERIA FILTER berubah.
+   *
+   * Sebelum 2026-10-12, mengetik di kotak cari atau memilih dropdown hanya
+   * mengubah atom — TIDAK ada permintaan baru. Daftarnya tetap 20 baris yang
+   * sudah dimuat, jadi pelamar ke-21 dan seterusnya tidak pernah bisa ditemukan
+   * dari layar. Sekarang keempat kriteria ikut ke server
+   * (`fetchKandidatFromAPI` → `saringKandidat()`), sehingga yang disaring adalah
+   * SELURUH kandidat.
+   *
+   * `reloadKandidatList`, bukan `fetchKandidatFromAPI`: setter kriteria sudah
+   * mereset `adminPage` ke 0, jadi kedalamannya 0 dan hanya halaman pertama yang
+   * diambil (yang terakhir MENAMBAH bila halaman aktif bukan 0).
+   *
+   * Debounce 300 ms supaya mengetik "AGUS" tidak menembak empat permintaan.
+   * Lompatan pertama dilewati: render awal sudah dilayani efek mount di atas.
+   */
+  const kriteria = `${search}|${filterGender}|${filterAge}|${filterJft}`;
+  const kriteriaAwalDilewati = useRef(false);
+  useEffect(() => {
+    if (!kriteriaAwalDilewati.current) {
+      kriteriaAwalDilewati.current = true;
+      return;
+    }
+    const id = setTimeout(() => { reloadKandidatList(); }, 300);
+    return () => clearTimeout(id);
+  }, [kriteria]);
+
 
   // fetchKandidat moved to adminStore.fetchKandidatFromAPI()
 
-  const filtered = kandidat.filter((k) => {
-    const matchSearch = !search ||
-      (k.nama || '').toLowerCase().includes(search.toLowerCase()) ||
-      (k.wa || '').includes(search) ||
-      (k.idLoker || '').toLowerCase().includes(search.toLowerCase()) ||
-      (k.tahapan || '').toLowerCase().includes(search.toLowerCase());
-    const matchGender = filterGender === 'all' || (k.gender || '').toLowerCase() === filterGender;
-    const matchJft = filterJft === 'all' || (k.jft || '').toLowerCase().includes(filterJft);
-    const usia = parseInt(String(k.usia || ''), 10);
-    const matchAge = filterAge === 'all' ||
-      (filterAge === 'under20' && !isNaN(usia) && usia < 20) ||
-      (filterAge === '20to25' && !isNaN(usia) && usia >= 20 && usia <= 25) ||
-      (filterAge === 'over25' && !isNaN(usia) && usia > 25);
-    return matchSearch && matchGender && matchJft && matchAge;
-  });
+  // Server SUDAH menyaring: `saringKandidat()` di
+  // `netlify/functions/contexts/catalog/repository.ts` menerapkan kotak cari +
+  // gender + usia + JFT atas SELURUH baris sebelum dipotong per halaman, dan
+  // `kandidatList` menerima hasilnya. Menyaring ulang di sini akan
+  // mengembalikan bug lama: baris yang server kirim bisa hilang lagi dari layar
+  // tanpa sebab yang terlihat (halaman yang belum dimuat tidak ada isinya).
+  const filtered = kandidat;
 
   const shown = filtered.slice(0, (page + 1) * PAGE_SIZE);
 

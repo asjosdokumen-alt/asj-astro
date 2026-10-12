@@ -122,23 +122,83 @@ async function loadWaTemplates(): Promise<Record<string, unknown>[]> {
   } catch { return []; }
 }
 
-function saringKandidatUnik(uniq: Record<string, unknown>[], q: string): Record<string, unknown>[] {
-  const needle = String(q || '').trim().toLowerCase();
-  if (!needle) return uniq;
+/**
+ * Kriteria daftar kandidat admin. `all` = tidak menyaring (bukan `''`), supaya
+ * "belum memilih" dan "memilih nilai kosong" tidak pernah tertukar.
+ */
+export interface CandidateFilters {
+  q?: string;
+  gender?: string;
+  age?: string;
+  jft?: string;
+}
+
+/**
+ * Satu-satunya tempat penyaringan kandidat admin hidup.
+ *
+ * Sebelum 2026-10-12 hanya `q` yang sampai ke sini, sedangkan gender/usia/JFT
+ * disaring di BROWSER atas `kandidatList` — yang isinya cuma halaman yang sudah
+ * dimuat (20 baris). Akibatnya, memilih "Perempuan" hanya menyaring 20 baris
+ * pertama: pelamar ke-21 dan seterusnya tidak pernah muncul, dan `total` di
+ * layar tetap menghitung seluruh baris sehingga angkanya tidak cocok dengan
+ * yang terlihat. Sekarang keempat kriteria disaring di sini, atas SELURUH baris,
+ * sebelum dipotong per halaman — jadi klien tidak perlu (dan tidak boleh)
+ * menyaring ulang.
+ *
+ * Nama kolom dan aturan cocoknya SENGAJA disalin dari `mapCandidate()`
+ * (`_lib/db/candidates.ts`): `pick()` dengan daftar alias yang sama, `gender`
+ * dibandingkan huruf kecil persis, `usia` di-`parseInt` lalu dipecah ke tiga
+ * ember, dan `jft` dicocokkan dengan `includes`. Kalau salah satu berubah di
+ * sana, ubah di sini juga — kalau tidak, filter akan menjawab beda dari yang
+ * dilihat admin di kolom tabel.
+ */
+function saringKandidat(uniq: Record<string, unknown>[], f: CandidateFilters): Record<string, unknown>[] {
+  const needle = String(f.q || '').trim().toLowerCase();
   const digit = needle.replace(/\D/g, '');
+  const gender = String(f.gender || 'all').toLowerCase();
+  const age = String(f.age || 'all');
+  const jft = String(f.jft || 'all').toLowerCase();
+  if (!needle && gender === 'all' && age === 'all' && jft === 'all') return uniq;
   return uniq.filter((r) => {
-    const nama = String(pick(r, ['nama_lengkap', 'nama', 'name']) || '').toLowerCase();
-    const wa = normalizeWa(String(pick(r, ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp', 'telp']) || ''));
-    return nama.includes(needle) || (digit && wa.includes(digit));
+    if (needle) {
+      const nama = String(pick(r, ['nama_lengkap', 'nama', 'name']) || '').toLowerCase();
+      const wa = normalizeWa(String(pick(r, ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp', 'telp']) || ''));
+      if (!nama.includes(needle) && !(digit && wa.includes(digit))) return false;
+    }
+    if (gender !== 'all') {
+      if (String(pick(r, ['gender', 'jenis_kelamin', 'jk']) || '').toLowerCase() !== gender) return false;
+    }
+    if (age !== 'all') {
+      const usia = parseInt(String(pick(r, ['usia', 'umur']) || ''), 10);
+      // `Number.isNaN`, bukan `isNaN` global: `usia` sudah berupa number dari
+      // `parseInt`, jadi keduanya setara di sini — dan `lint-ratchet` menolak
+      // menambah diagnostik baru (aturan repo: perbaiki di sumber, jangan geser
+      // baseline).
+      const cocok =
+        (age === 'under20' && !Number.isNaN(usia) && usia < 20) ||
+        (age === '20to25' && !Number.isNaN(usia) && usia >= 20 && usia <= 25) ||
+        (age === 'over25' && !Number.isNaN(usia) && usia > 25);
+      if (!cocok) return false;
+    }
+    if (jft !== 'all') {
+      if (!String(pick(r, ['jft', 'file_jft']) || '').toLowerCase().includes(jft)) return false;
+    }
+    return true;
   });
 }
 
 const CAND_CACHE_TTL_MS = 25_000;
 
-async function loadCandidatesUnik(q: string, opts: { page?: number; pageSize?: number } = {}): Promise<{ rows: Record<string, unknown>[]; total: number }> {
+async function loadCandidatesUnik(
+  f: CandidateFilters,
+  opts: { page?: number; pageSize?: number } = {},
+): Promise<{ rows: Record<string, unknown>[]; total: number }> {
   const page = Number(opts.page) || 1;
   const pageSize = Number(opts.pageSize) || 50;
-  const cacheKey = 'cand:' + String(q || '') + '|p' + page + '|s' + pageSize;
+  const cacheKey =
+    'cand:' +
+    [f.q || '', f.gender || 'all', f.age || 'all', f.jft || 'all'].join('\u0000') +
+    '|p' + page + '|s' + pageSize;
   const cached = cacheGet<{ rows: Record<string, unknown>[]; total: number }>(cacheKey);
   if (cached) return cached;
 
@@ -148,7 +208,7 @@ async function loadCandidatesUnik(q: string, opts: { page?: number; pageSize?: n
 
   const light = await findAllCandidatesLight();
   if (light !== undefined) {
-    let uniq = saringKandidatUnik(light, q);
+    let uniq = saringKandidat(light, f);
     urutkan(uniq);
     const total = uniq.length;
     const slice = uniq.slice(start, start + pageSize);
@@ -165,7 +225,7 @@ async function loadCandidatesUnik(q: string, opts: { page?: number; pageSize?: n
 
   const found = await findCandidates();
   const rows = Array.isArray(found.rows) ? found.rows : [];
-  let uniq = saringKandidatUnik(rows, q);
+  let uniq = saringKandidat(rows, f);
   urutkan(uniq);
   return { rows: uniq.slice(start, start + pageSize), total: uniq.length };
 }

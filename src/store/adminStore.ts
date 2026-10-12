@@ -54,10 +54,11 @@ export const kandidatTotal = atom<number>(0);
  * Server sudah tidak punya baris lagi (`getCandidatesPage` mengembalikan kurang
  * dari satu halaman penuh).
  *
- * Dibutuhkan karena `total` dihitung dengan filter SERVER (hanya `q`),
- * sedangkan filter gender/usia/JFT berjalan di klien — jadi `total` bisa tetap
- * besar walau semua baris yang cocok sudah dimuat. Tanpa penanda ini tombol
- * "More" tetap tampil selamanya dan menekannya tidak menambah apa pun.
+ * Sejak 2026-10-12 `total` dihitung dengan SELURUH kriteria (q + gender + usia +
+ * JFT) di server, jadi angkanya sama dengan yang tersaring di layar. Penanda ini
+ * tetap perlu untuk kasus tepi: baris yang cocok bisa lebih sedikit daripada
+ * `total` bila data berubah di antara dua permintaan, dan tanpa penanda ini
+ * tombol "More" akan terus tampil walau menekannya tidak menambah apa pun.
  */
 export const kandidatExhausted = atom<boolean>(false);
 
@@ -145,6 +146,12 @@ export function toggleSimpleView() {
 // P10 fix: Paginated fetch — request only the current page + filters
 // instead of loading all candidates client-side. The server handles
 // filtering and pagination, reducing payload size and client memory.
+//
+// 2026-10-12: "filters" itu sekarang BENAR-BENAR keempat kriteria yang terlihat
+// admin. Sebelumnya hanya `q` yang dikirim, sedangkan gender/usia/JFT disaring
+// di browser atas 20 baris yang sudah dimuat — jadi memilih "Perempuan" tidak
+// pernah menemukan pelamar ke-21 dan seterusnya.
+//
 // NOTE: only kandidatList (halaman aktif TabPelamar) yang diisi di sini;
 // allKandidatList milik konsumen penuh (TabDbJob count, ListKandidatModal,
 // MatchmakingModal) — isi lewat fetchAllKandidat().
@@ -163,7 +170,16 @@ export async function fetchKandidatFromAPI() {
     // (/.netlify/functions/candidates) seperti yang dipakai kode lama.
     const data = (await api.secure(
       'getCandidatesPage',
-      [{ page: page + 1, pageSize: PAGE_SIZE, q: search || '' }],
+      [{
+        page: page + 1,
+        pageSize: PAGE_SIZE,
+        q: search || '',
+        // Ketiga dropdown FILTER ikut ke server. Nilainya HARUS sama dengan
+        // yang dipakai `saringKandidat()` di `contexts/catalog/repository.ts`.
+        gender: adminFilterGender.get() || 'all',
+        age: adminFilterAge.get() || 'all',
+        jft: adminFilterJft.get() || 'all',
+      }],
       { onSessionInvalid: 'throw' },
     )) as { success?: boolean; total?: number | string; candidates?: Kandidat[] };
 

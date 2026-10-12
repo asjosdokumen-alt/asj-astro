@@ -37,7 +37,7 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
 
     const w = mode === 'kandidat' ? normalizeWa(t.wa || '') : '';
     const jobs: Promise<any>[] = [];
-    if (mode === 'admin') jobs.push(loadCandidatesUnik('', { page: 1, pageSize: 50 }));
+    if (mode === 'admin') jobs.push(loadCandidatesUnik({}, { page: 1, pageSize: 50 }));
     if (mode === 'kandidat') {
       jobs.push(findCandidateByWaFiltered(w), findFormsByWa(w), loadSchedules());
     }
@@ -119,7 +119,7 @@ export async function handleGetMonthlyReport(_payload: any[], sessionToken?: str
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
   try {
-    const { rows: candRows } = await loadCandidatesUnik('', { page: 1, pageSize: 5000 });
+    const { rows: candRows } = await loadCandidatesUnik({}, { page: 1, pageSize: 5000 });
     const cands = candRows.map(mapCandidate);
     const byLoker: Record<string, any> = {};
     for (const c of cands) {
