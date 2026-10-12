@@ -455,6 +455,22 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
         setEduList(prev => (prev.some(eduRowHasData) ? prev : sortEduRows(rowsToState(rows.pendidikan, newEduRow))));
         setJobList(prev => (prev.some(jobRowHasData) ? prev : rowsToState(rows.pekerjaan, newJobRow)));
         setFamList(prev => (prev.some(famRowHasData) ? prev : rowsToState(rows.keluarga, newFamRow)));
+        // 🔴 "Sudah ada" — helper berkas yang SUDAH terunggah (lapor pemilik
+        // 2026-10-12: "bukannya auto filled helper bagi yg sudah upload ya?").
+        // `docStatus` dulu HANYA diisi di `handleDocUpload`, jadi berkas yang
+        // sudah ada tidak pernah ditandai. Sumbernya `uploads` dari
+        // `getDrafCvMaster`; `prev` menang supaya berkas yang baru dipilih di
+        // sesi ini tidak tertimpa. Pratinjau foto ikut dipasang supaya sama
+        // seperti `PemberkasanModal`.
+        const up = (res.uploads ?? {}) as Record<string, unknown>;
+        const seeded: Record<string, string> = {};
+        for (const [type, key] of DOC_UPLOAD_SOURCES) {
+          const v = up[key];
+          if (v !== undefined && v !== null && String(v).trim() !== '' && String(v).trim() !== '-') seeded[type] = t('cv.doc_exists');
+        }
+        setDocStatus(prev => ({ ...seeded, ...prev }));
+        const photo = up.photo;
+        if (typeof photo === 'string' && /^https:\/\//.test(photo)) setFotoPreview(prev => prev ?? photo);
         // hp = WA kandidat; kalau master belum punya no_wa, pakai target supaya
         // payload simpan tetap membawa nomor yang benar. NOTE: sengaja tetap
         // `waTarget`, bukan `draftWa` — pada jalur kandidat `cv.hp` sudah diisi
@@ -1916,6 +1932,24 @@ function TextAreaPair({ label, groupLabel, helper, idId, idJp, valueId, valueJp,
     </fieldset>
   );
 }
+
+/**
+ * `uploads` dari `getDrafCvMaster` → `type` di `UploadRow`.
+ *
+ * Kuncinya SENGAJA tidak seragam: `buildMasterNested` menulis `photo` untuk
+ * foto (kolomnya `pas_photo`), sisanya camelCase sama seperti `type`.
+ */
+const DOC_UPLOAD_SOURCES: [string, string][] = [
+  ['foto', 'photo'],
+  ['jft', 'jft'],
+  ['ssw', 'ssw'],
+  ['ktp', 'ktp'],
+  ['kk', 'kk'],
+  ['ijazahSd', 'ijazahSd'],
+  ['ijazahSmp', 'ijazahSmp'],
+  ['ijazahSma', 'ijazahSma'],
+  ['univ', 'univ'],
+];
 
 function UploadRow({ type, label, icon, color, accept, status, preview, onUpload }: {
   type: string; label: string; icon: string; color: UploadColor; accept: string; status?: string;

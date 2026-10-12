@@ -1241,6 +1241,7 @@ export const jpTranslations: Record<string, string> = {
     "cv.upload_ijazah_smp": "中学校卒業証明書",
     "cv.upload_ijazah_sma": "高校卒業証明書",
     "cv.upload_ijazah_univ": "大学卒業証明書",
+    "cv.doc_exists": "登録済み",
     "ai_cv.sec_identitas": "1. 基本情報・連絡先",
     "ai_cv.sec_fisik": "2. 身体測定・サイズ",
     "ai_cv.sec_medis": "3. 健康状態・生活習慣",

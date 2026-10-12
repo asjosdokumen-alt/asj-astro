@@ -436,6 +436,28 @@ describe('AiCvForm — mode admin (panel CV AI di tab Pelamar)', () => {
     expect((screen.getByDisplayValue('Rajin') as HTMLTextAreaElement).value).toBe('Rajin');
   });
 
+  it('berkas yang SUDAH terunggah ditandai saat draf dimuat (lapor pemilik 2026-10-12)', async () => {
+    // `docStatus` dulu HANYA diisi `handleDocUpload`, jadi berkas yang sudah
+    // ada tidak pernah ditandai — pemakai tidak tahu fotonya sudah masuk.
+    // Sumber penandanya `uploads` dari `getDrafCvMaster` (buildMasterNested).
+    vi.mocked(apiClient).mockResolvedValue({
+      identitas: { nama_lengkap: 'BUDI', hp: WA },
+      uploads: {
+        photo: 'https://cdn.test/pas.jpg',
+        kk: 'https://cdn.test/kk.pdf',
+        ijazahSd: 'https://cdn.test/sd.pdf',
+        jft: '',
+        univ: '-',
+      },
+      AIDATAJSON: '',
+    });
+    render(<AiCvForm waTarget={WA} adminMode />);
+    await settled();
+
+    // Hanya slot yang BERISI yang ditandai; kosong dan "-" tidak.
+    expect(screen.getAllByText('cv.doc_exists')).toHaveLength(3);
+  });
+
   it('selama draf dimuat → overlay loading tampil dan tombol Simpan BELUM ada (cegah simpan form kosong)', () => {
     vi.mocked(apiClient).mockReturnValue(new Promise(() => {}) as any);
     render(<AiCvForm waTarget={WA} adminMode />);

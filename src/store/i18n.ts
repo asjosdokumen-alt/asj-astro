@@ -1706,6 +1706,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "cv.upload_ijazah_smp": "Ijazah SMP",
     "cv.upload_ijazah_sma": "Ijazah SMA",
     "cv.upload_ijazah_univ": "Ijazah Universitas",
+    "cv.doc_exists": "Sudah ada",
     "ai_cv.sec_identitas": "1. Identitas & Kontak",
     "ai_cv.sec_fisik": "2. Fisik & Ukuran",
     "ai_cv.sec_medis": "3. Medis & Kebiasaan",
