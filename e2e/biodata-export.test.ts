@@ -297,3 +297,120 @@ describe('biodataExport — DATA MASTER (LENGKAP)', () => {
     expect(fallback).not.toContain('DATA MASTER (LENGKAP)');
   });
 });
+
+// ── RINGKASAN MENGISI DIRI DARI MASTER ──────────────────────────────────────
+// Keluhan pemilik 2026-10-12: "kok gini doang downloadnya, gak semua data masuk
+// masternya". Berkas unduhan mencetak '-' di blok RINGKASAN (IDENTITAS / FISIK &
+// PENDIDIKAN / JFT-SSW) padahal blok DATA MASTER di berkas yang SAMA memuat
+// nilainya.
+//
+// TERUKUR atas DB live (gdw, 226 kandidat), baris ringkasan yang dicetak '-'
+// padahal master PUNYA nilai:
+//
+//     Tinggi / Berat   50        JFT / JLPT    20        Gender    6
+//     Usia             37        Pendidikan    11        SSW       4
+//
+// ⇒ **61 dari 226 kandidat (27%)** menerima berkas yang bagian atasnya kosong
+// sementara bagian bawahnya berisi. Satu kandidat nyata (FITRIANA, ASJ00189)
+// punya `gender`/`usia`/`tb`/`bb`/`pendidikan` semuanya NULL di baris kandidat.
+//
+// PENYEBABNYA. `pick()` hanya jatuh ke `bio` — peta kecil yang kebetulan dibaca
+// dasbor — dan TIDAK PERNAH ke `master` (baris penuh). Docblock modul ini sudah
+// menjanjikan sebaliknya: "The identity rows fall back to the master copy …
+// so no value can be present in one section and lost in the other".
+//
+// Bentuk nilai master SUDAH dipastikan benar sebelum dipakai (bukan diasumsikan):
+// `master.jft`/`master.ssw` berisi NILAI, bukan URL — terukur "A2/230", "JLPT N3
+// /  96", "PM", "PM , Senmonkyu Agri" (22 dan 5 baris terisi).
+describe('biodataExport — ringkasan mengisi diri dari master', () => {
+  /** Baris kandidat sengaja KOSONG — persis kasus 27% kandidat di DB. */
+  const KOSONG = { nama: 'UJI GAP', wa: '6285700000002', idKandidat: 'ASJ00999' };
+
+  const MASTER_GAP = {
+    identitas: {
+      gender: 'PEREMPUAN',
+      umur: '18',
+      tempat_lahir: 'PONOROGO',
+      tgl_lahir: '2007-01-08',
+      email: 'gap@contoh.com',
+      alamat: 'DUKUH TAMANSARI',
+      hp: '6285700000002',
+    },
+    fisik: { tb: '150', bb: '65' },
+    sertifikasi: { jft: 'A2/230', ssw: 'PM' },
+    pendidikan: [
+      { tingkat: 'SMA/SMK', sekolah: 'SMAN 1' },
+      { tingkat: 'SMP', sekolah: 'SMPN 2' },
+    ],
+  };
+
+  const t = buildBiodataText({ ...KOSONG, master: MASTER_GAP });
+
+  it('Gender / Usia / Tinggi-Berat terisi, bukan "-"', () => {
+    expect(t).toMatch(/Gender\s*: PEREMPUAN/);
+    expect(t).toMatch(/Usia\s*: 18 Tahun/);
+    expect(t).toMatch(/Tinggi \/ Berat\s*: 150 \/ 65/);
+  });
+
+  it('Tempat/Tanggal Lahir, Email, dan Alamat terisi', () => {
+    expect(t).toMatch(/Tempat Lahir\s*: PONOROGO/);
+    expect(t).toMatch(/Tanggal Lahir\s*: 2007-01-08/);
+    expect(t).toMatch(/Email\s*: gap@contoh\.com/);
+    expect(t).toMatch(/Alamat\s*: DUKUH TAMANSARI/);
+  });
+
+  it('Pendidikan terisi dari riwayat pendidikan master', () => {
+    expect(t).toMatch(/Pendidikan\s*: SMA\/SMK/);
+  });
+
+  it('JFT / SSW terisi dari sertifikasi master', () => {
+    expect(t).toMatch(/JFT \/ JLPT\s*: A2\/230/);
+    expect(t).toMatch(/SSW \/ Bidang\s*: PM/);
+  });
+
+  it('baris kandidat tetap MENANG bila keduanya berisi', () => {
+    // Arah fallback tidak boleh terbalik: master hanya MENGISI yang kosong.
+    const teks = buildBiodataText({
+      ...CAND,
+      gender: 'LAKI-LAKI',
+      usia: '24',
+      fisik: '170 / 60',
+      pendidikan: 'SMA',
+      jft: 'A2',
+      ssw: 'KAIGO',
+      master: MASTER_GAP,
+    });
+    expect(teks).toMatch(/Gender\s*: LAKI-LAKI/);
+    expect(teks).toMatch(/Usia\s*: 24 Tahun/);
+    expect(teks).toMatch(/Tinggi \/ Berat\s*: 170 \/ 60/);
+    expect(teks).toMatch(/Pendidikan\s*: SMA/);
+    expect(teks).toMatch(/JFT \/ JLPT\s*: A2\b/);
+    expect(teks).toMatch(/SSW \/ Bidang\s*: KAIGO/);
+    expect(teks).not.toMatch(/Usia\s*: 18 Tahun/);
+  });
+
+  it('tanpa master, ringkasan tetap "-" — tidak mengarang nilai', () => {
+    const kosong = buildBiodataText(KOSONG);
+    expect(kosong).toMatch(/Gender\s*: -/);
+    expect(kosong).toMatch(/Usia\s*: -/);
+    expect(kosong).toMatch(/Tinggi \/ Berat\s*: -/);
+    expect(kosong).toMatch(/Pendidikan\s*: -/);
+    expect(kosong).toMatch(/JFT \/ JLPT\s*: -/);
+    expect(kosong).toMatch(/SSW \/ Bidang\s*: -/);
+  });
+
+  it('ringkasan tidak menaikkan baris yang bukan miliknya (NIK tetap di blok master)', () => {
+    const denganNik = buildBiodataText({
+      ...KOSONG,
+      master: { identitas: { ...MASTER_GAP.identitas, ktp: '3502144801070001' } },
+    });
+    // Kontrol positif: master memang dipakai untuk mengisi ringkasan.
+    expect(denganNik).toMatch(/Gender\s*: PEREMPUAN/);
+    // `NIK KTP` hanya boleh muncul SEKALI — di blok DATA MASTER. Cadangan master
+    // dipasang per-baris (gender/usia/tb/…), bukan sebagai "cetak semua kunci",
+    // jadi ia tidak boleh menambah baris baru di ringkasan.
+    const n = denganNik.split('NIK KTP').length - 1;
+    expect(n, `NIK KTP muncul ${n} kali`).toBe(1);
+    expect(denganNik).toContain('3502144801070001');
+  });
+});

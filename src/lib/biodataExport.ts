@@ -38,10 +38,22 @@
  *      the download button, and the file simply did not contain it. `kelas` and
  *      the Siswa-ASJ flag were missing the same way.
  *
- * The identity rows fall back to the master copy in `bio` when the candidate row
- * itself is empty, so no value can be present in one section and lost in the
- * other. The four `bio` keys that duplicate an identity row are therefore not
- * printed twice.
+ * The identity rows fall back — first to the copy in `bio`, then to the FULL
+ * master row — when the candidate row itself is empty, so no value can be
+ * present in one section and lost in the other. The four `bio` keys that
+ * duplicate an identity row are therefore not printed twice.
+ *
+ * ── 2026-10-12: "kok gini doang downloadnya, gak semua data masuk" ───────────
+ * The fallback above only ever reached `bio`, which is the handful of keys the
+ * dashboard happens to read — NOT the master row. So the summary printed `-`
+ * while the DATA MASTER block at the bottom of the SAME file printed the value.
+ * Measured over the live DB (gdw, 226 candidates), rows printed `-` although
+ * master held a value: Tinggi/Berat 50, Usia 37, JFT/JLPT 20, Pendidikan 11,
+ * Gender 6, SSW 4 ⇒ **61 of 226 candidates (27%)**. One real example, ASJ00189,
+ * has `gender`/`usia`/`tb`/`bb`/`pendidikan` all NULL on the candidate row.
+ * `pick()` now ends at `fromMaster()`, and the master keys were checked to be
+ * the right KIND of value before being used — `master.jft`/`master.ssw` hold
+ * values ("A2/230", "PM"), not the Storage URLs.
  */
 
 /** One row of the "Job Yang Dilamar" block, as `attachApplications` emits it. */
@@ -381,6 +393,50 @@ function prettify(key: string): string {
     .join(' ');
 }
 
+/**
+ * Cari sebuah kunci di objek master yang BERSARANG (`identitas` / `fisik` /
+ * `medis` / `wawancara` / `sertifikasi` / …).
+ *
+ * `bio` hanya memuat segelintir kunci yang kebetulan dibaca dasbor; baris master
+ * yang penuh inilah yang menyimpan sisanya. Karena itu blok ringkasan TIDAK
+ * cukup jatuh ke `bio` — terukur 2026-10-12, 61 dari 226 kandidat (27%)
+ * menerima berkas yang bagian atasnya `-` padahal bagian bawahnya berisi.
+ */
+function fromMaster(master: Record<string, unknown>, key: string): unknown {
+  for (const group of Object.values(master)) {
+    if (!group || typeof group !== 'object' || Array.isArray(group)) continue;
+    const v = (group as Record<string, unknown>)[key];
+    if (has(v)) return v;
+  }
+  return undefined;
+}
+
+/**
+ * Tingkat pendidikan dari `master.pendidikan[]`. `buildMasterNested` menyusun
+ * array itu dari slot 1..5, dan slot 1 adalah jenjang TERTINGGI — jadi elemen
+ * pertama yang berisi `tingkat` yang dipakai, sama dengan yang dibaca
+ * `pendidikan_1_tingkat`.
+ */
+function masterPendidikan(master: Record<string, unknown>): string {
+  const arr = master.pendidikan;
+  if (!Array.isArray(arr)) return '';
+  for (const e of arr) {
+    if (e && typeof e === 'object') {
+      const t = (e as Record<string, unknown>).tingkat;
+      if (has(t)) return String(t).trim();
+    }
+  }
+  return '';
+}
+
+/** `tb / bb` — bentuk yang sama dengan `tbBb` milik `mapCandidate`. */
+function masterFisik(master: Record<string, unknown>): string {
+  return [fromMaster(master, 'tb'), fromMaster(master, 'bb')]
+    .filter(has)
+    .map((x) => String(x).trim())
+    .join(' / ');
+}
+
 function masterRows(obj: Record<string, unknown>, group: string): string[] {
   const out: string[] = [];
   for (const [k, v] of Object.entries(obj)) {
@@ -421,9 +477,21 @@ function masterGroupLines(group: string, value: unknown): string[] {
  */
 export function buildBiodataText(c: BiodataSource): string {
   const bio = c.bio || {};
-  // Identity falls back to the master copy, so a value present only in `bio`
-  // still reaches the file exactly once.
-  const pick = (own: unknown, bioKey: string) => (has(own) ? own : bio[bioKey]);
+  const master = c.master || {};
+  /* Rantai cadangan sebuah baris ringkasan, berurutan:
+   *   1. nilai di baris kandidat sendiri,
+   *   2. salinan di `bio` (peta kecil yang ikut di payload),
+   *   3. baris master yang penuh — diambil SAAT unduh oleh pemanggil.
+   * Langkah 3 ditambahkan 2026-10-12: tanpa itu baris identitas mencetak `-`
+   * padahal blok DATA MASTER di berkas yang SAMA memuat nilainya (61 dari 226
+   * kandidat). Arahnya satu arah — master hanya MENGISI yang kosong, tidak
+   * pernah menimpa nilai baris kandidat. */
+  const pick = (own: unknown, bioKey: string, masterKey?: string) =>
+    has(own) ? own : has(bio[bioKey]) ? bio[bioKey] : fromMaster(master, masterKey ?? bioKey);
+
+  const usia = pick(c.usia, 'usia', 'umur');
+  const fisik = has(c.fisik) ? c.fisik : masterFisik(master);
+  const pendidikan = has(c.pendidikan) ? c.pendidikan : masterPendidikan(master);
 
   const lines: string[] = [
     'BIODATA KANDIDAT',
@@ -431,25 +499,25 @@ export function buildBiodataText(c: BiodataSource): string {
     '',
     'IDENTITAS',
     rule('-'),
-    row('Nama', field(c.nama)),
+    row('Nama', field(pick(c.nama, 'nama', 'nama_lengkap'))),
     row('ID Kandidat', field(c.idKandidat)),
-    row('WhatsApp', field(c.wa)),
-    row('Gender', field(c.gender)),
-    row('Usia', has(c.usia) ? `${String(c.usia).trim()} Tahun` : '-'),
-    row('Tempat Lahir', field(pick(c.tmplahir, 'tmplahir'))),
-    row('Tanggal Lahir', field(asDate(pick(c.tgllahir, 'tgllahir')))),
+    row('WhatsApp', field(pick(c.wa, 'wa', 'hp'))),
+    row('Gender', field(pick(c.gender, 'gender'))),
+    row('Usia', has(usia) ? `${String(usia).trim()} Tahun` : '-'),
+    row('Tempat Lahir', field(pick(c.tmplahir, 'tmplahir', 'tempat_lahir'))),
+    row('Tanggal Lahir', field(asDate(pick(c.tgllahir, 'tgllahir', 'tgl_lahir')))),
     row('Email', field(pick(c.email, 'email'))),
     row('Alamat', field(pick(c.alamat, 'alamat'))),
     '',
     'FISIK & PENDIDIKAN',
     rule('-'),
-    row('Tinggi / Berat', field(c.fisik)),
-    row('Pendidikan', field(c.pendidikan)),
+    row('Tinggi / Berat', field(fisik)),
+    row('Pendidikan', field(pendidikan)),
     '',
     'JFT / SSW',
     rule('-'),
-    row('JFT / JLPT', field(c.jft)),
-    row('SSW / Bidang', field(c.ssw)),
+    row('JFT / JLPT', field(pick(c.jft, 'jft'))),
+    row('SSW / Bidang', field(pick(c.ssw, 'ssw'))),
     '',
     'STATUS',
     rule('-'),
