@@ -215,3 +215,21 @@ describe('normalizeMasterData', () => {
     expect(data.pekerjaan[0].perusahaan).toBe('PT MAJU');
   });
 });
+
+  it('bentuk NESTED dari getDrafCvMaster: nama + panggilan katakana terbaca (2026-10-12)', () => {
+    // `getDrafCvMaster` mengembalikan `buildMasterNested(row)` — bentuk
+    // BERSARANG, bukan baris datar. `makeV` hanya mencari kunci di TOP-LEVEL,
+    // jadi setiap field WAJIB punya fallback `identitas.*`. `nama_lengkap`
+    // tidak punya, sehingga sel NAMA di CV Excel/PDF/DOCX KOSONG, sementara
+    // pratinjau HTML (RirekishoBuilder) benar karena di sana fallback-nya ADA.
+    // Terukur pada ASJ00181: pratinjau menampilkan nama, `CV_Rirekisho_*.xlsx` tidak.
+    const row = {
+      identitas: { nama_lengkap: 'ADELLIA SALMA AGHISNA PUTRI', katakana: '', panggilan_katakana: 'アテル' },
+      AIDATAJSON: JSON.stringify({ identitas: { katakana: 'アデッリア サルマ アギスナ プトリ' } }),
+    };
+    const data = normalizeMasterData(row);
+    expect(data.identitas.nama_lengkap).toBe('ADELLIA SALMA AGHISNA PUTRI');
+    expect(data.identitas.panggilan_katakana).toBe('アテル');
+    // Kontrol positif: `katakana` memang SUDAH punya fallback `identitas.*`.
+    expect(data.identitas.katakana).toBe('アデッリア サルマ アギスナ プトリ');
+  });

@@ -28,10 +28,13 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
 
   return {
     identitas: {
-      nama_lengkap: v('NAMALENGKAP', 'NAMA', 'nama_lengkap'),
+      // 🔴 `identitas.nama_lengkap` WAJIB ada di daftar: `getDrafCvMaster`
+      // mengembalikan bentuk BERSARANG dan `makeV` hanya mencari di TOP-LEVEL.
+      // Tanpa ini sel NAMA di CV Excel/PDF/DOCX kosong (pratinjau HTML benar).
+      nama_lengkap: v('NAMALENGKAP', 'NAMA', 'nama_lengkap', 'identitas.nama_lengkap'),
       katakana: v('FURIGANA', 'KATAKANA', 'NAMAKATAKANA', 'furigana', 'identitas.katakana'),
       panggilan: v('NAMAPANGGILAN', 'PANGGILAN', 'namapanggilan', 'identitas.panggilan'),
-      panggilan_katakana: v('PANGGILANKATAKANA', 'KATAKANAPANGGILAN', 'PANGGILANJP', 'panggilan_katakana'),
+      panggilan_katakana: v('PANGGILANKATAKANA', 'KATAKANAPANGGILAN', 'PANGGILANJP', 'panggilan_katakana', 'identitas.panggilan_katakana'),
       tempat_lahir: v('TEMPATLAHIR', 'identitas.tempat_lahir'),
       tempat_lahir_jp: v('TEMPATLAHIRJP', 'identitas.tempat_lahir_jp'),
       tgl_lahir: v('TGLLAHIR', 'TANGGALLAHIR', 'identitas.tgl_lahir'),
