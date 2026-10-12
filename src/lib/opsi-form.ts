@@ -588,10 +588,26 @@ export const AGAMA_PAIRS: Opsi[] = [
   ['LAINNYA', 'その他'],
 ];
 
+/**
+ * Status pernikahan — EMPAT kategori.
+ *
+ * Pemilik 2026-10-12: "belum menikah, menikah, cerai, cerai meninggal?"
+ * `CERAI MENINGGAL` (janda/duda) memang belum ada, dan itu kategori yang lazim
+ * di rirekisho Jepang — di sana keempatnya dipisah tegas: 未婚 / 既婚 / 離婚 /
+ * 死別. Tanpa kategori keempat, kandidat yang pasangannya meninggal hanya bisa
+ * memilih `CERAI`, yang artinya berbeda.
+ *
+ * Nilai yang tersimpan di DB tetap yang lama (`BELUM MENIKAH`, `MENIKAH`,
+ * `CERAI`) — hanya satu nilai BARU yang ditambahkan, jadi tidak ada baris lama
+ * yang kehilangan opsinya. Ejaan lain yang terukur di DB (`SINGLE`,
+ * `BELUM KAWIN`, `SUDAH MENIKAH`) ditangani `statusNikahDisplay()` saat
+ * DITAMPILKAN; mengubahnya di data butuh migrasi yang belum dijalankan.
+ */
 export const STATUS_NIKAH_PAIRS: Opsi[] = [
   ['BELUM MENIKAH', '未婚'],
   ['MENIKAH', '既婚'],
   ['CERAI', '離婚'],
+  ['CERAI MENINGGAL', '死別'],
 ];
 
 export const TANGAN_PAIRS: Opsi[] = [
@@ -739,6 +755,44 @@ export function golonganDarahDisplay(v: unknown): string {
   const m = GOLONGAN_DARAH_RE.exec(s);
   if (!m) return s;
   return `${m[1].toUpperCase()} 型${m[2] ? ` Rh${m[2]}` : ''}`;
+}
+
+/**
+ * A stored marital status as the rirekisho cell prints it: `MENIKAH （既婚）`.
+ *
+ * This replaces a two-branch ternary in `RirekishoBuilder.tsx` that FABRICATED
+ * an answer. It was:
+ *
+ *   (nik.includes('MENIKAH') && !nik.includes('BELUM')) ? 'MENIKAH （已婚）'
+ *     : nik === '-' ? '' : 'BELUM MENIKAH （未婚）'
+ *
+ * so EVERY value that was not a plain "MENIKAH" fell through to
+ * `BELUM MENIKAH （未婚）` — including `CERAI`, `CERAI MENINGGAL`, and an EMPTY
+ * one. A divorced or widowed candidate's CV therefore stated they had never
+ * married, and a candidate who had not answered was given an answer on their
+ * behalf. Measured 2026-10-12: the live DB holds `CERAI`-family values, so this
+ * was reachable, not theoretical.
+ *
+ * It also printed `已婚`, which is not the word a Japanese rirekisho uses —
+ * the same pair list and the xlsx renderer both use `既婚`.
+ *
+ * An unknown value is returned UNCHANGED: this must never invent a status.
+ * `'SINGLE'`/`'KAWIN'` are matched because the live DB really holds them.
+ */
+const STATUS_NIKAH_JP: Array<[RegExp, string]> = [
+  // Widowed FIRST: `CERAI MENINGGAL` must not be read as a plain divorce.
+  [/MENINGGAL|WIDOW|死別/, 'CERAI MENINGGAL （死別）'],
+  [/CERAI|DIVORCE|離婚/, 'CERAI （離婚）'],
+  [/BELUM|SINGLE/, 'BELUM MENIKAH （未婚）'],
+  [/MENIKAH|KAWIN|既婚/, 'MENIKAH （既婚）'],
+];
+
+export function statusNikahDisplay(v: unknown): string {
+  const s = String(v ?? '').trim();
+  if (!s || s === '-') return '';
+  const t = s.toUpperCase();
+  const hit = STATUS_NIKAH_JP.find(([re]) => re.test(t));
+  return hit ? hit[1] : s;
 }
 
 /**

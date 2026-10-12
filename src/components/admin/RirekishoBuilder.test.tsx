@@ -263,6 +263,48 @@ describe('RirekishoBuilder (A10)', () => {
     expect(b.container.innerHTML).not.toContain(' 型</td>');
   });
 
+  /**
+   * 配偶者 — sel status pernikahan.
+   *
+   * Pemilik 2026-10-12: "belum menikah, menikah, cerai, cerai meninggal?" —
+   * kategori keempat memang belum ada. Yang lebih parah, sel ini MENGARANG
+   * jawaban: ternary lamanya
+   *
+   *   (nik.includes('MENIKAH') && !nik.includes('BELUM')) ? 'MENIKAH （已婚）'
+   *     : nik === '-' ? '' : 'BELUM MENIKAH （未婚）'
+   *
+   * menjatuhkan SETIAP nilai yang bukan "MENIKAH" polos ke `BELUM MENIKAH
+   * （未婚）` — termasuk `CERAI`, `CERAI MENINGGAL`, dan yang KOSONG. Jadi CV
+   * kandidat yang bercerai atau menjanda menyatakan ia belum pernah menikah,
+   * dan kandidat yang belum menjawab diberi jawaban atas namanya. Nilai
+   * `CERAI`-family terukur ada di DB live, jadi ini bukan kasus teoretis.
+   *
+   * Tiga hal yang dikunci di sini: (1) tiap nilai dapat selnya sendiri;
+   * (2) `CERAI MENINGGAL` tidak terbaca sebagai `CERAI` polos; (3) kosong
+   * menghasilkan sel KOSONG, bukan jawaban karangan.
+   */
+  it('status pernikahan: CERAI / CERAI MENINGGAL / kosong TIDAK pernah dicap "BELUM MENIKAH"', async () => {
+    const cases: Array<[string, string]> = [
+      ['BELUM MENIKAH', 'BELUM MENIKAH （未婚）'],
+      ['MENIKAH', 'MENIKAH （既婚）'],
+      ['CERAI', 'CERAI （離婚）'],
+      ['CERAI MENINGGAL', 'CERAI MENINGGAL （死別）'],
+    ];
+    for (const [stored, expected] of cases) {
+      mockDraft.mockResolvedValue({ ...draft, identitas: { ...draft.identitas, status_nikah: stored } });
+      const r = render(<RirekishoBuilder waTarget="6281234567890" isOpen={true} onClose={() => {}} />);
+      await waitFor(() => expect(r.container.innerHTML).toContain('実習生経歴書'));
+      expect(r.container.innerHTML, `status ${stored}`).toContain(expected);
+      r.unmount();
+    }
+
+    // Belum diisi → sel kosong. Versi lama mengarang "BELUM MENIKAH （未婚）".
+    mockDraft.mockResolvedValue({ ...draft, identitas: { ...draft.identitas, status_nikah: '' } });
+    const e = render(<RirekishoBuilder waTarget="6281234567890" isOpen={true} onClose={() => {}} />);
+    await waitFor(() => expect(e.container.innerHTML).toContain('実習生経歴書'));
+    expect(e.container.innerHTML).not.toContain('BELUM MENIKAH');
+  });
+
   it('isOpen=false → tidak render apa pun', () => {
     const { container } = render(
       <RirekishoBuilder waTarget="6281234567890" isOpen={false} onClose={() => {}} />,

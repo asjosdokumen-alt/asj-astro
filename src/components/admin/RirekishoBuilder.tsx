@@ -5,7 +5,7 @@ import { authStore } from "../../store/authReactive";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
 import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, sortEdu, riwayatKeyOf } from "../../lib/helpers_cv";
-import { golonganDarahDisplay } from "../../lib/opsi-form";
+import { golonganDarahDisplay, statusNikahDisplay } from "../../lib/opsi-form";
 import { useOverlay } from "../ui/useOverlay";
 
 interface Props {
@@ -162,8 +162,12 @@ export function buildFamRows(famList: Record<string, any>[], v: (...keys: string
 export function buildCvIdentitas(v: (...keys: string[]) => string) {
   const gen = String(v("GENDER","JENISKELAMIN","identitas.gender")).toUpperCase();
   const gStr = (gen.includes("PEREMPUAN")||gen.includes("WANITA")||gen.includes("CEWEK")||gen.includes("女")||gen==="W")?"PEREMPUAN (女)":gen==="-"?"":"LAKI LAKI (男)";
-  const nik = String(v("STATUSPERNIKAHAN","STATUSNIKAH","PASANGAN","identitas.status_nikah","identitas.status_nikah_id")).toUpperCase();
-  const nStr = (nik.includes("MENIKAH")&&!nik.includes("BELUM"))?"MENIKAH （已婚）":nik==="-"?"":"BELUM MENIKAH （未婚）";
+  // 配偶者: ternary lama mengarang jawaban — setiap nilai selain "MENIKAH"
+  // polos jatuh ke `BELUM MENIKAH （未婚）`, termasuk `CERAI`, `CERAI MENINGGAL`
+  // dan sel KOSONG. `statusNikahDisplay()` memetakan keempat kategori
+  // (未婚/既婚/離婚/死別) dan mengembalikan sel kosong bila memang belum diisi;
+  // nilai yang tidak dikenal dikembalikan APA ADANYA, tidak pernah dikarang.
+  const nStr = statusNikahDisplay(v("STATUSPERNIKAHAN","STATUSNIKAH","PASANGAN","identitas.status_nikah","identitas.status_nikah_id"));
   const jp = String(v("PERNAHKEJEPANG","PENGALAMANJEPANG","STATUSEKSJEPANG","wawancara.riwayat_jepang")).toUpperCase();
   const jStr = (!jp||jp==="-"||jp.includes("BELUM")||jp.includes("TIDAK")||jp==="NO")?(jp==="-"?"":"TIDAK （無）"):"ADA （有）";
   const ps = String(v("PASPOR","PASPORT","identitas.paspor")).toUpperCase();
