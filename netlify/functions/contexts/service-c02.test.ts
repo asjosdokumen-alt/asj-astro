@@ -169,4 +169,19 @@ describe('ai_data_json tidak lagi menghidupkan baris yang dihapus', () => {
     const out = pruneAiRiwayat({ pendidikan: [{ tingkat: 'SD', nama_sekolah: 'SDN 1' }] }, { pendidikan: [] });
     expect('pendidikan' in out).toBe(false);
   });
+  it('buildMasterNested: sekolah yang sama dari KOLOM dan ai_data_json jadi SATU baris', () => {
+    // Terukur 2026-10-12 atas 234 baris master gdw: kolom menulis `masuk` DAN
+    // `tahun_masuk` (periode "2016201620192019") sementara AI hanya "20162019"
+    // => kunci tak cocok => sekolah tampil DUA KALI (8 baris).
+    const row = {
+      pendidikan_1_tingkat: 'SMK',
+      pendidikan_1_nama_sekolah: 'SMK RADEN PATAH',
+      pendidikan_1_tahun_masuk: '2016',
+      pendidikan_1_tahun_lulus: '2019',
+      ai_data_json: JSON.stringify({ pendidikan: [{ tingkat: 'SMK', sekolah_id: 'SMK RADEN PATAH', masuk: '2016', lulus: '2019' }] }),
+    };
+    const out = buildMasterNested(row) as { pendidikan: Array<Record<string, unknown>> };
+    expect(out.pendidikan).toHaveLength(1);
+    expect(out.pendidikan[0].sekolah).toBe('SMK RADEN PATAH');
+  });
 });

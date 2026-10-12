@@ -162,15 +162,25 @@ export function riwayatKeyOf(
     return '';
   };
   if (tipe === 'keluarga') return clean(e.nama);
-  const name =
-    tipe === 'pendidikan'
-      ? pick(['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'])
-      : pick(['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt']);
-  const alt = tipe === 'pendidikan' ? pick(['tingkat']) : pick(['jabatan', 'jabatan_id']);
-  const period =
-    tipe === 'pendidikan'
-      ? ['masuk', 'tahun_masuk', 'lulus', 'tahun_lulus'].map((k) => pick([k])).join('')
-      : ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar'].map((k) => pick([k])).join('');
+  if (tipe === 'pendidikan') {
+    // 🔴 IDENTITAS SEKOLAH = NAMANYA SAJA, TANPA periode. Diukur atas 234 baris
+    // master gdw (2026-10-12): memasukkan periode membuat **8 baris** sekolahnya
+    // tampil DUA KALI (21 baris berlebih). Sebabnya baris master menulis `masuk`
+    // DAN `tahun_masuk` — plus `lulus`/`tahun_lulus` — dengan nilai yang SAMA,
+    // sehingga periodenya jadi "2005200520112011" sementara baris AI hanya
+    // "20052011"; kuncinya tak pernah cocok dan dedupe lolos. Tanpa periode: 0.
+    // Satu orang menempuh satu sekolah SEKALI, jadi periode tidak memisahkan apa
+    // pun di sini — berbeda dari pekerjaan, di mana dua masa kerja itu nyata.
+    const eduName = pick(['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah']);
+    return eduName ? `s:${eduName}` : `t:${pick(['tingkat'])}`;
+  }
+  const name = pick(['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt']);
+  const alt = pick(['jabatan', 'jabatan_id']);
+  // Periode pekerjaan: SATU nilai per slot. `pick` tiap kunci lalu dedupe + buang
+  // kosong — kalau tidak, baris master (yang menulis `masuk` DAN `tahun_masuk`)
+  // menghasilkan "20232023" sementara AI "2023". Terukur: 7 baris dobel → 5.
+  // Dua masa kerja di perusahaan yang sama TETAP dua baris.
+  const period = [...new Set(['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar'].map((k) => pick([k])).filter(Boolean))].join('');
   return `${name ? `s:${name}` : `t:${alt}`}|${period}`;
 }
 

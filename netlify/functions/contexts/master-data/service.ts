@@ -128,6 +128,17 @@ function cleanKey(s: string): string {
  * Periode ikut masuk kunci supaya dua masa kerja di perusahaan yang sama tetap
  * dua baris; baris tanpa periode di kedua sisi tetap menyatu.
  */
+/**
+ * Identitas pendidikan = NAMA sekolah saja, TANPA periode. Diukur atas 234 baris
+ * master gdw (2026-10-12): memasukkan periode membuat 8 baris sekolahnya tampil
+ * DUA KALI, karena baris master menulis `masuk` DAN `tahun_masuk` dengan nilai
+ * yang sama sehingga periodenya jadi "2005200520112011" sementara baris
+ * `ai_data_json` hanya "20052011" — kuncinya tak pernah cocok. Satu orang
+ * menempuh satu sekolah SEKALI. (Pekerjaan TETAP memakai periode: dua masa kerja
+ * di perusahaan yang sama itu nyata.)
+ */
+const EDU_PERIOD_KEYS: string[] = [];
+
 function riwayatKey(
   e: Record<string, unknown> | null | undefined,
   nameKeys: string[],
@@ -143,7 +154,12 @@ function riwayatKey(
   };
   const name = pick(nameKeys);
   const alt = pick(altKeys);
-  return (name ? 's:' + name : 't:' + alt) + '|' + periodKeys.map((k) => pick([k])).join('');
+  // Periode: SATU nilai per slot (dedupe + buang yang kosong). Baris master
+  // menulis `masuk` DAN `tahun_masuk` dengan nilai yang sama, jadi menjumlahkan
+  // semua kunci menghasilkan "2005200520112011" sementara baris `ai_data_json`
+  // hanya "20052011" — kuncinya tak pernah cocok dan sekolah tampil DUA KALI.
+  const period = [...new Set(periodKeys.map((k) => pick([k])).filter(Boolean))].join('');
+  return (name ? 's:' + name : 't:' + alt) + '|' + period;
 }
 
 function entryHasAny(entry: any, keys: string[]): boolean {
@@ -226,7 +242,7 @@ export function buildMasterNested(row: any): any {
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['tingkat', 'sekolah', 'nama_sekolah', 'jurusan_id', 'jurusan', 'masuk', 'lulus'])),
         aiArrOf('pendidikan'), (e) => riwayatKey(e,
           ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'],
-          ['masuk', 'tahun_masuk', 'lulus', 'tahun_lulus']));
+          EDU_PERIOD_KEYS));
     })(),
     pekerjaan: (function () {
       const arr: any[] = [];
@@ -345,7 +361,7 @@ function buildAiOverflow(d: any): Record<string, unknown> | null {
  */
 export function pruneAiRiwayat(ai: Record<string, unknown>, d: Record<string, unknown>): Record<string, unknown> {
   const lists: Array<{ key: string; keyOf: (e: Record<string, unknown>) => string }> = [
-    { key: 'pendidikan', keyOf: (e) => riwayatKey(e, ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'], ['masuk', 'tahun_masuk', 'lulus', 'tahun_lulus']) },
+    { key: 'pendidikan', keyOf: (e) => riwayatKey(e, ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'], EDU_PERIOD_KEYS) },
     { key: 'pekerjaan', keyOf: (e) => riwayatKey(e, ['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt'], ['jabatan', 'jabatan_id'], ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar']) },
     { key: 'keluarga', keyOf: (e) => cleanKey(String(e.nama ?? '') + String(e.hubungan ?? '')) },
   ];
@@ -384,7 +400,7 @@ function mergeAiOverflow(ai: any, overflow: any): any {
   // berlipat.
   if (overflow.pendidikan) setSlot('pendidikan', overflow.pendidikan, (e) => riwayatKey(e,
     ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'],
-    ['masuk', 'tahun_masuk', 'lulus', 'tahun_lulus']));
+    EDU_PERIOD_KEYS));
   if (overflow.pekerjaan) setSlot('pekerjaan', overflow.pekerjaan, (e) => riwayatKey(e,
     ['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt'], ['jabatan', 'jabatan_id'],
     ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar']));

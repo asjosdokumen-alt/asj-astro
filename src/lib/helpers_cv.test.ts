@@ -14,6 +14,7 @@ import {
   makeV,
   fmtMonthYearJp,
   mergeArrRiwayat,
+  riwayatKeyOf,
   esc,
   normalisasiRiwayat,
   normalizeRiwayatFor,
@@ -343,5 +344,40 @@ describe('isGood — sentinel literal "undefined"/"null"/"NaN" tidak pernah dire
     expect(v('umur')).toBe('-');
     // Nilai asli tidak terpengaruh.
     expect(makeV({ nama: 'Budi' }, {})('nama')).toBe('Budi');
+  });
+});
+
+describe('riwayatKeyOf — identitas baris riwayat (dedupe nyata, 2026-10-12)', () => {
+  it('pendidikan: baris master (masuk + tahun_masuk ganda) menyatu dengan baris AI', () => {
+    // Terukur atas 234 baris master gdw: memasukkan periode membuat kunci baris
+    // master "2016201620192019" vs baris AI "20162019" => sekolah tampil DUA KALI
+    // (8 baris / 21 baris berlebih). Sekarang identitas = NAMA saja.
+    const master = { tingkat: 'SMK', sekolah: 'SMK RADEN PATAH', nama_sekolah: 'SMK RADEN PATAH', masuk: '2016', tahun_masuk: '2016', lulus: '2019', tahun_lulus: '2019' };
+    const ai = { tingkat: 'SMK', sekolah_id: 'SMK RADEN PATAH', masuk: '2016', lulus: '2019' };
+    expect(riwayatKeyOf('pendidikan', master)).toBe(riwayatKeyOf('pendidikan', ai));
+    const merged = mergeArrRiwayat([master], [ai], (e) => riwayatKeyOf('pendidikan', e), normalizeRiwayatFor('pendidikan'));
+    expect(merged).toHaveLength(1);
+  });
+
+  it('pendidikan: sekolah yang sama dengan tahun BERBEDA tetap SATU baris', () => {
+    const a = { tingkat: 'SMA', sekolah: 'SMAN 1 JIWAN', masuk: '2013', lulus: '2016' };
+    const b = { tingkat: 'SMA', sekolah_id: 'SMAN 1 JIWAN', masuk: '2005', lulus: '2013' };
+    expect(riwayatKeyOf('pendidikan', a)).toBe(riwayatKeyOf('pendidikan', b));
+  });
+
+  it('pendidikan: sekolah BERBEDA tetap dua baris', () => {
+    const a = { tingkat: 'SD', sekolah: 'SDN 1' };
+    const b = { tingkat: 'SMP', sekolah: 'SMPN 1' };
+    expect(riwayatKeyOf('pendidikan', a)).not.toBe(riwayatKeyOf('pendidikan', b));
+    expect(mergeArrRiwayat([a], [b], (e) => riwayatKeyOf('pendidikan', e), normalizeRiwayatFor('pendidikan'))).toHaveLength(2);
+  });
+
+  it('pekerjaan: periode ganda menyatu dengan AI, tapi dua masa kerja tetap dua baris', () => {
+    const master = { perusahaan: 'PT A', nama_perusahaan: 'PT A', masuk: '2014', tahun_masuk: '2014', keluar: '2022', tahun_keluar: '2022' };
+    const ai = { perusahaan_id: 'PT A', masuk: '2014', keluar: '2022' };
+    expect(riwayatKeyOf('pekerjaan', master)).toBe(riwayatKeyOf('pekerjaan', ai));
+    const stint2 = { perusahaan: 'PT A', masuk: '2010', keluar: '2012' };
+    expect(riwayatKeyOf('pekerjaan', master)).not.toBe(riwayatKeyOf('pekerjaan', stint2));
+    expect(mergeArrRiwayat([master], [ai, stint2], (e) => riwayatKeyOf('pekerjaan', e), normalizeRiwayatFor('pekerjaan'))).toHaveLength(2);
   });
 });
