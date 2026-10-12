@@ -42,6 +42,10 @@
       "severity": "required",
       "note": "Submitted application forms."
     },
+    "database_asj_kontak": {
+      "severity": "required",
+      "note": "Public contact form inbox (contexts/contact/repository.ts reads and writes it). Created by 014_contact_messages.sql. Entry added 2026-10-12: the table was in production code and in migration 014 but NOT in this contract, so a deploy against an unmigrated database would have failed silently - the contact form would answer 200 and store nothing."
+    },
     "job_database": {
       "severity": "required",
       "note": "Job postings; the public board renders from this."

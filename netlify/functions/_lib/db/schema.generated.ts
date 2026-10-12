@@ -2,8 +2,8 @@
  * db/schema.generated.ts — AUTO-GENERATED — DO NOT EDIT BY HAND.
  *
  * Source  : PostgREST OpenAPI document of the live database
- * Digest  : sha256:22799ccccabc1468ea09a0e0ddf659f60a8a0b866e71f364ed10a57d93f76810
- * Tables  : 25
+ * Digest  : sha256:f9f3139f6a9115e678504e5831319a22c576291e1c6ca6b1f95ebdd5b582216f
+ * Tables  : 26
  *
  * Regenerate : npm run db:schema
  * Verify     : npm run verify:schema   (pre-deploy; needs SUPABASE_URL +
@@ -17,7 +17,7 @@
  */
 
 /** sha256 over `table:col,col,…` for every table, sorted by table name. */
-export const SCHEMA_FINGERPRINT = 'sha256:22799ccccabc1468ea09a0e0ddf659f60a8a0b866e71f364ed10a57d93f76810' as const;
+export const SCHEMA_FINGERPRINT = 'sha256:f9f3139f6a9115e678504e5831319a22c576291e1c6ca6b1f95ebdd5b582216f' as const;
 
 /**
  * The contract, one line per table: `<table>:<col>,<col>,…`.
@@ -28,10 +28,11 @@ export const SCHEMA_FINGERPRINT = 'sha256:22799ccccabc1468ea09a0e0ddf659f60a8a0b
  * for exactly the same information. Parsed once, at module load.
  */
 const SCHEMA_LINES = `
-ai_form_submissions:id,created_at,updated_at,wa,nama_lengkap,mode,job_code,bidang,status,ai_data_json,ai_updated_at,photo_url,jft_url,ssw_url,submitted_via
+ai_form_submissions:id,created_at,updated_at,wa,nama_lengkap,mode,job_code,bidang,status,ai_data_json,ai_updated_at,photo_url,jft_url,ssw_url,submitted_via,submitted_by
 data_archive:id,source_sheet,archived_at,row_data
 database_asj_form:id,timestamp,code_job,kategory,nama_lengkap,no_wa,gender,usia,tb,bb,pas_photo,jft,ssw,file_cv,folder_name,folder_id,folder_url,status,email,tempat_lahir,tgl_lahir,alamat_lengkap,created_at,updated_at,keterangan,ai_data_json,feedback_berkas
-database_candidate:id,id_kandidat,nama_lengkap,nik,gender,usia,tb,bb,pendidikan,no_wa,id_loker_pilihan,tahapan_seleksi,status_kandidat,tanggal_daftar,catatan_admin,pas_photo,folder_url,jft,ssw,file_cv,password_kandidat,no_pasport,email,tempat_lahir,tgl_lahir,alamat_lengkap,catatan_internal,catatan_external,nilai_jft_text,bidang_ssw_text,created_at,updated_at,password_diubah
+database_asj_kontak:id,nama,no_wa,subjek,pesan,status,created_at
+database_candidate:id,id_kandidat,nama_lengkap,nik,gender,usia,tb,bb,pendidikan,no_wa,id_loker_pilihan,tahapan_seleksi,status_kandidat,tanggal_daftar,catatan_admin,pas_photo,folder_url,jft,ssw,file_cv,password_kandidat,no_pasport,email,tempat_lahir,tgl_lahir,alamat_lengkap,catatan_internal,catatan_external,nilai_jft_text,bidang_ssw_text,created_at,updated_at,password_diubah,status_biodata
 database_schedule:id,id_jadwal,nama_agenda,id_loker_terkait,tanggal_waktu,lokasi_link,daftar_kandidat,tsk,status_jadwal,created_at,updated_at,reminder_sent,reminder_h7_sent,reminder_h1_sent
 database_tugas:id,id_tugas,nama_tugas,dibuat_oleh,waktu_dibuat,dikerjakan_oleh,status,waktu_selesai,created_at,updated_at
 dependency_calls:id,ts,dep,action,budget_ms,duration_ms,outcome,status_code,attempts,breaker_state
@@ -70,6 +71,7 @@ export type TableName =
   | "ai_form_submissions"
   | "data_archive"
   | "database_asj_form"
+  | "database_asj_kontak"
   | "database_candidate"
   | "database_schedule"
   | "database_tugas"
