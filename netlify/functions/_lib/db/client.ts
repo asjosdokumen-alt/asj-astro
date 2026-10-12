@@ -58,6 +58,77 @@ function resolveSelect(table: string, requested?: string | number | null): strin
 }
 
 /**
+ * ONE canonical shape for every date column: `yyyy-mm-dd`.
+ *
+ * MEASURED 2026-10-12 over the live DB (`F:/tmp/probe-dates.mjs`): a single
+ * column, `tgl_lahir`, was circulating in THREE shapes at once —
+ * `2008-04-04T17:00:00.000Z` (65 master rows / 53 candidate / 4 form rows),
+ * `2006-11-25` (26 / 34 / 7), and `05-04-2008` (1 / 5 / 0). The ISO shape is
+ * wrong twice over: unreadable, AND the day is one EARLY — the stamp is Jakarta
+ * midnight stored as UTC, so the date meant is 2008-04-05. The `dd-mm-yyyy`
+ * shape is wrong for `<input type="date">`, which accepts only `yyyy-mm-dd`:
+ * that is why a birth date showed up BLANK in the admin Edit modal and in the
+ * Master form.
+ *
+ * `yyyy-mm-dd` is the shape the whole pipeline already consumes
+ * (`<input type="date">`, `computeAge()` in `EditCandidateModal`, `birthDate()`
+ * in the rirekisho xlsx renderer, `masterPrefill`, `cv-template-factory`), and
+ * it is unambiguous — the real data contains `05-04-2008`, which reads as either
+ * 5 April or 4 May, so that ambiguity was not theoretical.
+ *
+ * Only recognised date shapes are rewritten; anything else passes through
+ * untouched, so a column that turns out NOT to hold a date cannot be mangled.
+ */
+const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/;
+const DATETIME_NO_ZONE = /^(\d{4})-(\d{2})-(\d{2})[ T]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?$/;
+const YMD = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/;
+const DMY = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/;
+const JAKARTA_YMD = new Intl.DateTimeFormat('en-GB', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  timeZone: 'Asia/Jakarta',
+});
+
+/** @param {unknown} v @returns {string} */
+function toDateOnly(v: unknown): string {
+  const s = toText(v).trim();
+  if (!s) return s;
+  if (ISO_STAMP.test(s)) {
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return s;
+    // Jakarta, not the server's zone: the stamp is Jakarta midnight stored as
+    // UTC, and reading it in UTC is exactly what shifted the day back one.
+    const p: Record<string, string> = {};
+    for (const part of JAKARTA_YMD.formatToParts(d)) p[part.type] = part.value;
+    return `${p.year}-${p.month}-${p.day}`;
+  }
+  // A timestamp with NO zone: its date part is already local, so take it as-is.
+  // Shifting it to WIB would invent an offset nobody recorded.
+  const naive = DATETIME_NO_ZONE.exec(s);
+  if (naive) return `${naive[1]}-${naive[2]}-${naive[3]}`;
+  const ymd = YMD.exec(s);
+  if (ymd) return `${ymd[1]}-${ymd[2].padStart(2, '0')}-${ymd[3].padStart(2, '0')}`;
+  // Legacy Indonesian `dd-mm-yyyy` — 5 rows in `database_candidate`, 1 in master.
+  const dmy = DMY.exec(s);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+  return s;
+}
+
+/**
+ * Date columns per table — deliberately narrow, and only tables PROVEN to hold
+ * dates. Machine timestamps stay out on purpose (`created_at`, `updated_at`,
+ * `tanggal_daftar`, `ai_updated_at`, `job_queue.run_after`,
+ * `database_schedule.tanggal_waktu`): their time of day is real, and truncating
+ * them to a date would destroy data. A table absent from this map is untouched.
+ */
+const DATE_COLUMNS: Record<string, string[]> = {
+  master_database_candidate: ['tgl_lahir', 'tgl_terbit_pasport', 'exp_pasport'],
+  database_candidate: ['tgl_lahir'],
+  database_asj_form: ['tgl_lahir'],
+};
+
+/**
  * Resolve a caller's WRITE body against the generated contract — the write-side
  * twin of `resolveSelect()`.
  *
@@ -84,6 +155,14 @@ function resolveSelect(table: string, requested?: string | number | null): strin
  * A table that is not in the contract is left untouched, exactly like
  * `resolveSelect()`: there is nothing truthful to filter it with.
  *
+ * This is also the ONE place a date is coerced on the way in (`DATE_COLUMNS` +
+ * `toDateOnly`). There are six separate write sites for `tgl_lahir` alone —
+ * `buildMasterBody`, the master↔candidate sync lists, `registry/service.ts`,
+ * `ingestion/service.ts` and `_lib/ai/cv.ts` — so guarding them individually
+ * would be six chances to forget one, and a re-sync from the source spreadsheet
+ * would plant a fresh ISO stamp each time. Every PostgREST write passes through
+ * here instead.
+ *
  * Pure, so the policy is asserted directly instead of only through a live call.
  */
 export function writeBodyFor(
@@ -93,13 +172,17 @@ export function writeBodyFor(
   const known = columnsOf(table);
   if (!known || known.length === 0) return { body, dropped: [] };
   const keep = new Set(known);
+  const dates = new Set(DATE_COLUMNS[table] || []);
   const dropped = new Set<string>();
   const strip = (row: unknown): unknown => {
     if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(row as Record<string, unknown>)) {
-      if (keep.has(k)) out[k] = v;
-      else dropped.add(k);
+      if (!keep.has(k)) {
+        dropped.add(k);
+        continue;
+      }
+      out[k] = dates.has(k) ? toDateOnly(v) : v;
     }
     return out;
   };
@@ -411,6 +494,7 @@ export {
   pick,
   APPLY_WA_COLS,
   toText,
+  toDateOnly,
   normalizeWa,
   normalizeStatus,
   normalizeGender,

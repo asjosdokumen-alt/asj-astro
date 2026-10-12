@@ -15,7 +15,7 @@ import { resolveFileUrl } from '../../_lib/storage';
 import {
   findMasterByWa, patchMaster, upsertMaster, findCandidateRow,
   normalizeWa as nw, pick, supabaseJson,
-  toText, APPLY_WA_COLS,
+  toText, toDateOnly, APPLY_WA_COLS,
 } from './repository';
 
 // --- Constants (moved from actions-master.ts) ---
@@ -161,6 +161,11 @@ export function buildMasterNested(row: any): any {
   const v = (col: string, fallback = '') => {
     const x = row[col]; return x !== undefined && x !== null && x !== '' ? toText(x) : fallback !== undefined ? fallback : '';
   };
+  // Kolom tanggal memakai bentuk baku `yyyy-mm-dd` (lihat `toDateOnly` di
+  // `_lib/db/client.ts`). Tanpa ini blok DATA MASTER di berkas unduhan biodata
+  // mencetak `2008-04-04T17:00:00.000Z` — cap waktu `timestamptz` yang sekaligus
+  // mundur satu hari dari tanggal yang dimaksud (2008-04-05 WIB).
+  const vd = (col: string) => toDateOnly(row[col]);
   let aiParsed: any = null;
   try { const raw = row.ai_data_json; if (typeof raw === 'string' && raw.trim() && raw !== '-') aiParsed = JSON.parse(raw); } catch { aiParsed = null; }
   const aiArrOf = (key: string) => (aiParsed && Array.isArray(aiParsed[key]) ? aiParsed[key] : null);
@@ -168,15 +173,15 @@ export function buildMasterNested(row: any): any {
     identitas: {
       nama_lengkap: v('nama_lengkap'), katakana: v('furigana'), panggilan: v('namapanggilan'),
       panggilan_katakana: v('panggilan_katakana'), tempat_lahir: v('tempat_lahir'),
-      tempat_lahir_jp: v('tempat_lahir_jp'), tgl_lahir: v('tgl_lahir'), umur: v('usia'),
+      tempat_lahir_jp: v('tempat_lahir_jp'), tgl_lahir: vd('tgl_lahir'), umur: v('usia'),
       gender: v('gender'), agama: v('agama'), agama_jp: v('agama_jp'),
       golongan_darah: v('golongan_darah'), status_nikah: v('status_pernikahan'),
       status_pernikahan_jp: v('status_pernikahan_jp'), anak: v('jumlah_anak'),
       email: v('email'), alamat: v('alamat_lengkap'), alamat_jp: v('alamat_jp'),
       hp: v('no_wa'), hp_darurat: v('kontak_darurat_wa'), ktp: v('nik'),
       paspor: v('no_paspor'), sim: v('driver_license'), status_eks_jepang: v('status_eks_jepang'),
-      no_coe: v('no_coe'), tgl_terbit_paspor: v('tgl_terbit_pasport'),
-      exp_paspor: v('exp_pasport'), kota_terbit_paspor: v('kota_terbit_pasport'),
+      no_coe: v('no_coe'), tgl_terbit_paspor: vd('tgl_terbit_pasport'),
+      exp_paspor: vd('exp_pasport'), kota_terbit_paspor: v('kota_terbit_pasport'),
       kontak_darurat_nama: v('kontak_darurat_nama'), kontak_darurat_hubungan: v('kontak_darurat_hubungan'),
     },
     fisik: { tb: v('tb'), bb: v('bb'), topi: v('ukuran_topi'), baju: v('ukuranbaju'),
@@ -504,6 +509,10 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
     const row = await findMasterByWa(wa);
     if (!row) return { error: 'Data Master belum ada. Silakan isi form Master dulu.' };
     const v = (col: string) => { const x = row[col]; return x !== undefined && x !== null ? toText(x) : ''; };
+    // Jalur ini mengisi form Master & CV AI. `<input type="date">` menampilkan
+    // KOSONG untuk cap waktu ISO maupun `dd-mm-yyyy`, jadi tanggal dinormalkan
+    // di sini seperti di `buildMasterNested` (satu implementasi: `toDateOnly`).
+    const vd = (col: string) => { const x = row[col]; return x !== undefined && x !== null ? toDateOnly(x) : ''; };
     let aiParsed: any = null;
     try { const raw = row.ai_data_json; if (typeof raw === 'string' && raw.trim() && raw !== '-') aiParsed = JSON.parse(raw); } catch { aiParsed = null; }
     const aiKen = (aiParsed && aiParsed.kenalan_jepang) || {};
@@ -511,7 +520,7 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
     const out: Record<string, any> = {
       NAMA_LENGKAP: v('nama_lengkap'), FURIGANA: v('furigana'), NAMAPANGGILAN: v('namapanggilan'),
       PANGGILAN_KATAKANA: v('panggilan_katakana'), TEMPAT_LAHIR: v('tempat_lahir'),
-      TEMPAT_LAHIR_JP: v('tempat_lahir_jp'), TGL_LAHIR: v('tgl_lahir'), GENDER: v('gender'),
+      TEMPAT_LAHIR_JP: v('tempat_lahir_jp'), TGL_LAHIR: vd('tgl_lahir'), GENDER: v('gender'),
       USIA: v('usia'), AGAMA: v('agama'), AGAMA_JP: v('agama_jp'),
       STATUS_PERNIKAHAN: v('status_pernikahan'), STATUS_NIKAH_JP: v('status_pernikahan_jp'),
       JUMLAH_ANAK: v('jumlah_anak'), NIK: v('nik'), DRIVER_LICENSE: v('driver_license'),
@@ -542,8 +551,8 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
       KENALAN_DI_JEPANG_USIA: aiOf('usia'),
       KENALAN_DI_JEPANG_ALAMAT: aiOf('alamat_id'),
       KENALAN_DI_JEPANG_ALAMAT_JP: aiOf('alamat_jp'),
-      NO_PASPORT: v('no_paspor'), TGL_TERBIT_PASPORT: v('tgl_terbit_pasport'),
-      EXP_PASPORT: v('exp_pasport'), KOTA_TERBIT_PASPORT: v('kota_terbit_pasport'),
+      NO_PASPORT: v('no_paspor'), TGL_TERBIT_PASPORT: vd('tgl_terbit_pasport'),
+      EXP_PASPORT: vd('exp_pasport'), KOTA_TERBIT_PASPORT: v('kota_terbit_pasport'),
       NO_COE: v('no_coe'), PAS_PHOTO: v('pas_photo'), JFT_URL: v('jft_url'),
       SSW_URL: v('ssw_url'), FILE_CV: v('file_cv'),
     };

@@ -1,4 +1,4 @@
-import { supabaseJson, toText, pick, normalizeWa } from './client';
+import { supabaseJson, toText, toDateOnly, pick, normalizeWa } from './client';
 import { storageRequest, bucket } from '../storage.ts';
 import { fetchMasterLightByWa } from './master';
 import { MASTER_LIGHT_COLS, PEMBERKASAN_COLS } from './projections';
@@ -54,6 +54,14 @@ const BIO_COLUMNS: [string, string[]][] = [
   ['exppasport', ['exp_pasport', 'exppasport']],
   ['pt', ['pekerjaan_1_nama_perusahaan', 'nama_perusahaan', 'pt']],
 ];
+
+// Kunci `bio` yang berisi TANGGAL. `bio` dikonsumsi langsung oleh berkas
+// unduhan biodata (`biodataExport`) DAN oleh prefill form (`PemberkasanModal`,
+// `MasterFullForm`) — dua-duanya butuh `yyyy-mm-dd`, bukan cap waktu. Terukur
+// 2026-10-12: kolom sumbernya (`master_database_candidate.tgl_lahir`) memuat 65
+// cap waktu ISO, jadi tanpa normalisasi di sini baris "Tanggal Lahir" di berkas
+// unduhan mencetak `2008-04-04T17:00:00.000Z` — sekaligus mundur satu hari.
+const DATE_BIO_KEYS = new Set(['tgllahir', 'tglpasport', 'exppasport']);
 
 // Tarik pemberkasan_checklist hanya untuk WA di daftar (fallback: null → scan).
 async function fetchBerkasByWa(waList: string[]) {
@@ -146,7 +154,7 @@ async function attachBerkasBio(candidates: any[]) {
         const bio: Record<string, any> = {};
         for (const [key, cols] of BIO_COLUMNS) {
           const v = pick(mr, cols);
-          bio[key] = v && v !== '-' ? toText(v) : '';
+          bio[key] = v && v !== '-' ? (DATE_BIO_KEYS.has(key) ? toDateOnly(v) : toText(v)) : '';
         }
         c.bio = bio;
       } else {

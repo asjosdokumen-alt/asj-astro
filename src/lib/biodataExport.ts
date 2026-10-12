@@ -123,16 +123,20 @@ function field(v: unknown): string {
  * `new Date()` and formats it itself (`2007年10月01日`). That is exactly why this
  * survived — it was only visible in the download, and only to an eye.
  *
- * This module IS the printing layer, so the formatting belongs here: one helper
- * serving both places a date is printed (the identity row and the master block).
- * Only an exact ISO stamp is rewritten; a plain `2001-05-05`, a year, or any
- * other text passes through untouched.
+ * The SERVER read boundary now normalises every date column to `yyyy-mm-dd`
+ * (`toDateOnly` in `netlify/functions/_lib/db/client.ts`), so in the live app the
+ * value reaching this function is already a plain date and passes through
+ * untouched. This helper stays as the printing layer's own guard: it is the
+ * thing that made the defect visible, `buildBiodataText` is also called directly
+ * with raw rows, and a regression here is a file a candidate actually downloads.
+ * It therefore emits the SAME canonical shape as the boundary — one format, not
+ * two — and only rewrites an exact ISO stamp.
  */
-const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
-const JAKARTA_DATE = new Intl.DateTimeFormat('id-ID', {
-  day: '2-digit',
-  month: '2-digit',
+const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})$/;
+const JAKARTA_YMD = new Intl.DateTimeFormat('en-GB', {
   year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
   timeZone: 'Asia/Jakarta',
 });
 
@@ -140,7 +144,10 @@ function asDate(v: unknown): string {
   const s = String(v ?? '').trim();
   if (!ISO_STAMP.test(s)) return s;
   const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? s : JAKARTA_DATE.format(d);
+  if (Number.isNaN(d.getTime())) return s;
+  const p: Record<string, string> = {};
+  for (const part of JAKARTA_YMD.formatToParts(d)) p[part.type] = part.value;
+  return `${p.year}-${p.month}-${p.day}`;
 }
 
 /**

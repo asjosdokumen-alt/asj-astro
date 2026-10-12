@@ -241,6 +241,12 @@ describe('biodataExport — DATA MASTER (LENGKAP)', () => {
    * CV rirekisho tidak pernah kena: ia mem-`new Date()` lalu memformat sendiri
    * (`2007年10月01日`), dan itu sebabnya cacat ini hanya terlihat di berkas
    * unduhan. Ditemukan justru karena preview lokal diperiksa dengan mata.
+   *
+   * Bentuk keluarannya `yyyy-mm-dd` — SAMA dengan yang dipakai batas baca server
+   * (`toDateOnly` di `_lib/db/client.ts`) dan seluruh pipa CV. Sebelumnya berkas
+   * ini sempat mencetak `05/04/2008` hanya untuk nilai ber-ISO, sehingga satu
+   * berkas memuat DUA bentuk tanggal sekaligus: baris bersih `2001-05-05`
+   * (lihat tes berikutnya) dan baris ISO `05/04/2008`.
    */
   it('tanggal ISO tidak dicetak mentah — dan harinya tidak mundur (WIB)', () => {
     const iso = '2008-04-04T17:00:00.000Z'; // = 2008-04-05 00:00 WIB
@@ -252,7 +258,7 @@ describe('biodataExport — DATA MASTER (LENGKAP)', () => {
     expect(teks).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
     const baris = teks.split('\n').filter((l) => l.startsWith('Tanggal Lahir'));
     expect(baris.length, 'baris Tanggal Lahir tidak ditemukan').toBeGreaterThan(0);
-    for (const l of baris) expect(l).toMatch(/:\s*05\/04\/2008\s*$/);
+    for (const l of baris) expect(l).toMatch(/:\s*2008-04-05\s*$/);
   });
 
   it('tanggal yang sudah berupa teks biasa TIDAK diubah', () => {

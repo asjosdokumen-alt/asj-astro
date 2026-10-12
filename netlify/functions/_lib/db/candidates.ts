@@ -1,4 +1,4 @@
-import { supabaseJson, pick, toText, normalizeWa } from './client';
+import { supabaseJson, pick, toText, toDateOnly, normalizeWa } from './client';
 import { fetchAllKeyset } from './pagination';
 import { TABLE_CANDIDATE, CANDIDATE_WA_COL, allColumns } from './schema.generated';
 import { CAND_LIGHT_COLS, CAND_MAP_COLS } from './projections';
@@ -57,7 +57,13 @@ function mapCandidate(row: Record<string, unknown>) {
   const tb = toText(pick(row, ['tb']));
   const bb = toText(pick(row, ['bb']));
   const tempatLahir = toText(pick(row, ['tempat_lahir', 'tempatLahir']));
-  const tglLahir = toText(pick(row, ['tgl_lahir', 'tglLahir', 'tanggal_lahir']));
+  // `tgl_lahir` is a `timestamptz` in the DB and `database_candidate` holds
+  // THREE shapes for it at once (measured 2026-10-12: 53 ISO stamps, 34 plain
+  // `yyyy-mm-dd`, 5 legacy `dd-mm-yyyy`). Normalised here so `tglLahir` and the
+  // `ttl` built from it are a plain date everywhere downstream — the dossier
+  // shows it, and the Edit modal feeds it to `<input type="date">`, which
+  // silently renders an ISO stamp or a `dd-mm-yyyy` as EMPTY.
+  const tglLahir = toDateOnly(pick(row, ['tgl_lahir', 'tglLahir', 'tanggal_lahir']));
   return {
     idKandidat,
     id: idKandidat,
