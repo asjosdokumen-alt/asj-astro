@@ -52,10 +52,17 @@ import {
  * (`GOLONGAN_DARAH`, `GENDER_PAIRS`, `AGAMA_PAIRS`, `STATUS_NIKAH_PAIRS`,
  * `TANGAN_PAIRS`, `YA_TIDAK_PAIRS`, `RIWAYAT_JEPANG_PAIRS`): the CV Master form
  * offers the same questions, so by the rule above they are shared. Keeping a
- * second spelling of each in `MasterFullForm.tsx` is what produced the measured
- * drift — the Master form offered `BUDHA`/`KATHOLIK` (misspelled, and missing
- * `KONGHUCU`/`LAINNYA`) while this file offered `BUDDHA`/`KATOLIK`, so the same
- * religion was stored two different ways depending on which form was used.
+ * second spelling of each in `MasterFullForm.tsx` is what produced the drift —
+ * the Master form offered `BUDHA`/`KATHOLIK` (misspelled, and missing
+ * `KONGHUCU`/`LAINNYA`) while this file offered `BUDDHA`/`KATOLIK`.
+ *
+ * That drift was in the SOURCE, not in the data: an earlier draft of this
+ * comment said "so the same religion was stored two different ways", which was
+ * never measured and is false — `master_database_candidate.agama` holds 0 rows
+ * spelled `BUDHA` or `KATHOLIK` (re-measured 2026-10-12). The evidence that the
+ * hazard was real is the workaround already in the tree: `AGAMA_JP` in
+ * `cv-template-factory/renderers/rirekisho-xlsx.ts:112-122` carries BOTH
+ * spellings and `agamaLabel()` does `.toUpperCase().trim()`.
  *
  * What remains here is genuinely AI-CV-only: the size lists, which the Master
  * form does not use (`baju`/`topi` are free text there and `sepatu` is a number).

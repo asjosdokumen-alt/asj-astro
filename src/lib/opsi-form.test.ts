@@ -256,8 +256,14 @@ describe('opsi-form — daftar enum BERSAMA (AI CV + CV Master)', () => {
   // Tujuh daftar ini dulu hidup di `aiCvPairs.ts` (milik AI CV saja) sementara
   // `MasterFullForm.tsx` menyimpan SALINAN-nya sendiri. Salinan itu sudah
   // berbeda: `agama` di form Master berbunyi `BUDHA`/`KATHOLIK`, di sini
-  // `BUDDHA`/`KATOLIK` — jadi satu agama tersimpan dua ejaan. Terukur atas DB
-  // live 2026-10-12: `BUDHA` 3 baris, `KATHOLIK` 1 baris.
+  // `BUDDHA`/`KATOLIK` — jadi satu agama BISA tersimpan dua ejaan.
+  //
+  // KOREKSI 2026-10-12: draf komentar sebelumnya menambahkan "terukur atas DB
+  // live: `BUDHA` 3 baris, `KATHOLIK` 1 baris". Itu TIDAK diukur dan SALAH —
+  // diukur ulang, `master_database_candidate.agama` dan `.religion` berisi 0
+  // baris dengan ejaan itu. Drift-nya nyata di SUMBER (terlihat di
+  // `git show 2dbcb44^`), belum pernah tertulis ke tabel. Jangan kembalikan
+  // angka barisnya.
   //
   // Tes ini mengunci kedua sisi: nilai tiap daftar (yang ditulis ke DB) dan
   // fakta bahwa `valuesOf` mengembalikan nilai tanpa label kanji — sebab form

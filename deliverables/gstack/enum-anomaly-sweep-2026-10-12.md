@@ -83,9 +83,34 @@ salinan itu sudah berbeda:
 |---|---|---|
 | agama | `ISLAM, KRISTEN, HINDU, **BUDHA**, **KATHOLIK**` | `… **BUDDHA**, **KATOLIK**, KONGHUCU, LAINNYA` |
 
-⇒ yang tersimpan: `BUDHA`×3, `KATHOLIK`×1. Agama yang sama disimpan dua ejaan
-tergantung form mana yang dipakai — dan ejaan yang salah terus diproduksi ulang
-setiap kali staf memakainya.
+> ⚠️ **KOREKSI — angka yang salah, dan tidak akan saya ulangi.**
+> Draf pertama laporan ini (dan komit `2dbcb44`) menulis *"⇒ yang tersimpan:
+> `BUDHA`×3, `KATHOLIK`×1"*. **Itu tidak pernah diukur dan SALAH.** Diukur ulang
+> langsung ke DB live (`master_database_candidate`, 2026-10-12):
+>
+> | kolom | nilai nyata |
+> |---|---|
+> | `agama` | `"ISLAM"`×20 · `"Islam"`×3 · `"ISLAM "`×1 |
+> | `religion` | `"ISLAM"`×1 |
+> | `agama_jp` | `"イスラム教"`×9 · `"イスラーム"`×1 · `"イスラム"`×1 |
+>
+> **0 baris** ber-ejaan `BUDHA` maupun `KATHOLIK`. Jadi drift-nya nyata **di
+> sumber** (masih terlihat di `git show 2dbcb44^`), tetapi **belum pernah
+> tertulis ke tabel**.
+>
+> Bukti bahwa bahayanya sudah diketahui adalah tambalan yang sudah ada di repo:
+> `AGAMA_JP` di `cv-template-factory/renderers/rirekisho-xlsx.ts:112-122`
+> memuat **kedua** ejaan (`BUDHA: '仏教', BUDDHA: '仏教'`), dan `agamaLabel()`
+> di sana melakukan `.toUpperCase().trim()`. Seseorang pernah menemui salah
+> ejaan itu dan menambal **renderer**-nya, bukan form-nya.
+>
+> Angka "119 nilai / 12 kolom" yang juga muncul di draf pertama berasal dari
+> pengukuran sesi sebelumnya, bukan pengukuran saya; angka yang benar adalah
+> **132 nilai / 17 kolom** (bagian 3b).
+
+Drift yang **memang** ada di datanya adalah beda huruf besar/kecil dan spasi
+(`"Islam"`, `"ISLAM "`) — dan itulah yang `.toUpperCase().trim()` di renderer
+serap diam-diam, sebab itu tidak ada yang pernah melihatnya.
 
 **Perbaikan** (`2dbcb44`): tujuh daftar pindah ke `opsi-form.ts` sebagai pemilik
 tunggal. Form Master memakai `valuesOf(...)` — **NILAI saja**, tanpa label kanji,
@@ -115,15 +140,37 @@ keduanya mempertahankan nilai tak dikenal sebagai opsi sendiri, jadi **tidak ada
 `<select>` yang tampil kosong**. Yang tersisa murni kualitas data, dan
 memperbaikinya = **migrasi data**, bukan perubahan kode.
 
-### Temuan terbesar: penanda `-` tersimpan sebagai data — 61 dari 132
+### Tabel lengkap — 132 nilai, 16 kolom (diukur 2026-10-12)
 
-`-` (penanda "belum diisi") bocor ke kolom yang daftarnya tidak mengenal `-`:
+Dihasilkan langsung dari probe, bukan dihitung tangan:
+
+| kolom | jumlah | nilai di luar daftar |
+|---|---|---|
+| `gender` | 22 | `-`×21 · `Laki-Laki`×1 |
+| `agama` | 3 | `Islam`×3 |
+| `status_pernikahan` | 11 | `SINGLE`×4 · `Belum Menikah`×2 · `BELUM KAWIN`×1 · `Belum`×1 · `Single`×1 · `未婚 Single`×1 · `SUDAH MENIKAH`×1 |
+| `golongan_darah` | 1 | `AB +`×1 |
+| `tangandominan` | 5 | `Kanan`×4 · `右`×1 |
+| `status_eks_jepang` | 8 | `Belum`×2 · `BELUM `×2 · `5`×1 · `EKS MAGANG (元技能実習生)`×1 · `Belum pernah`×1 · `BELUM`×1 |
+| `tahan_ac` | 8 | `Sanggup`×3 · `SANGGUP`×3 · `SIAP`×1 · `Ya`×1 |
+| `kacamata` | 8 | `-`×5 · `Tidak`×3 |
+| `buta_warna` | 8 | `-`×5 · `Tidak`×3 |
+| `tato` | 8 | `-`×5 · `Tidak`×3 |
+| `merokok` | 9 | `Tidak`×2 · `Iya`×2 · `-`×2 · `Ya`×1 · `無`×1 · `IYA`×1 |
+| `minum_alkohol` | 7 | `-`×3 · `Tidak`×2 · `Iya`×1 · `無`×1 |
+| `ukuranbaju` | 5 | `M/L`×2 · `xl`×1 · `64 CM`×1 · `L-XL`×1 |
+| `ukuransepatu` | 3 | `48-49`×1 · `26,5 CM`×1 · `27.5`×1 |
+| `ukuran_topi` | 13 | `-`×8 · `M`×2 · `L`×2 · `7`×1 |
+| `bahasa` | 13 | `-`×12 · `JLPT N3 \| N3`×1 |
+| **TOTAL** | **132** | |
+
+### Temuan terbesar: penanda `-` tersimpan sebagai data — 61 dari 132
 
 | kolom | `-` |
 |---|---|
 | `gender` | 21 |
-| `ukuran_topi` | 8 |
 | `bahasa` | 12 |
+| `ukuran_topi` | 8 |
 | `kacamata` / `buta_warna` / `tato` | 5 masing-masing |
 | `minum_alkohol` | 3 |
 | `merokok` | 2 |
@@ -131,13 +178,13 @@ memperbaikinya = **migrasi data**, bukan perubahan kode.
 
 ### Sisanya (71) — empat kelompok
 
-| kelompok | contoh (jumlah) |
+| kelompok | nilai |
 |---|---|
-| **Beda huruf besar/kecil** | `Laki-Laki` 1 · `Islam` 3 · `Belum Menikah` 2 · `Single` 1 · `Kanan` 4 · `Tidak` 3+3+3 · `Ya` 1 · `Iya` 2 · `IYA` 1 · `xl` 1 |
-| **Sinonim** | `SINGLE` 4 · `BELUM KAWIN` 1 · `Belum` 1 · `SUDAH MENIKAH` 1 · `Sanggup` 3 · `SANGGUP` 3 · `SIAP` 1 · `Belum` 2 · `Belum pernah` 1 · `5` 1 |
-| **Kanji bocor ke kolom Indonesia** | `右` 1 (tangan) · `無` 1 (merokok) + 1 (alkohol) · `EKS MAGANG (元技能実習生)` 1 · `JLPT N3 \| N3` 1 · `未婚 Single` 1 |
-| **Ukuran diisi bebas** | `M/L` 2 · `L-XL` 1 · `64 CM` 1 · `48-49` 1 · `26,5 CM` 1 · `27.5` 1 · `M` 2 · `L` 2 · `7` 1 |
-| **`golongan_darah`** | `AB +` 1 — sudah dinormalkan di batas tulis; baris lama menunggu disimpan ulang |
+| **Beda huruf besar/kecil** | `Laki-Laki`×1 · `Islam`×3 · `Belum Menikah`×2 · `Single`×1 · `Kanan`×4 · `Tidak`×13 · `Ya`×2 · `Iya`×3 · `IYA`×1 · `xl`×1 |
+| **Sinonim** | `SINGLE`×4 · `BELUM KAWIN`×1 · `Belum`×1 · `SUDAH MENIKAH`×1 · `Sanggup`×3 · `SANGGUP`×3 · `SIAP`×1 · `Belum`×2 · `Belum pernah`×1 · `5`×1 |
+| **Kanji bocor ke kolom Indonesia** | `右`×1 (tangan) · `無`×2 (merokok, alkohol) · `EKS MAGANG (元技能実習生)`×1 · `JLPT N3 \| N3`×1 · `未婚 Single`×1 |
+| **Ukuran diisi bebas** | `M/L`×2 · `L-XL`×1 · `64 CM`×1 · `48-49`×1 · `26,5 CM`×1 · `27.5`×1 · `M`×2 · `L`×2 · `7`×1 |
+| **`golongan_darah`** | `AB +`×1 — sudah dinormalkan di batas tulis; baris lama menunggu disimpan ulang |
 
 ### Di luar `master_database_candidate` (tabel `database_candidate`, 226 baris)
 

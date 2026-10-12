@@ -160,11 +160,16 @@ describe("MasterFullForm (C02) — error-return uploadMany + draft lokal-only", 
   //
   // Kelas cacat yang sama dengan golongan darah, di enam dropdown lain: form ini
   // menyimpan SALINAN daftar enum-nya sendiri, dan salinan itu sudah berbeda dari
-  // daftar yang dipakai form CV AI — jadi satu jawaban bisa tersimpan dua ejaan
-  // tergantung form mana yang dipakai. Terukur atas DB live 2026-10-12: `agama`
-  // menyimpan `BUDHA` 3 baris dan `KATHOLIK` 1 baris, dua ejaan yang TIDAK
-  // dikenal daftar CV AI (`BUDDHA`/`KATOLIK`) — dan dropdown form INI memang
-  // menawarkannya, jadi ejaan itu terus diproduksi ulang.
+  // daftar yang dipakai form CV AI — jadi satu jawaban BISA tersimpan dua ejaan
+  // tergantung form mana yang dipakai. Drift-nya nyata di SUMBER: `git show
+  // 2dbcb44^` menunjukkan baris ini menawarkan `BUDHA`/`KATHOLIK` sementara
+  // `AGAMA_PAIRS` memuat `BUDDHA`/`KATOLIK` + `KONGHUCU`/`LAINNYA`.
+  //
+  // KOREKSI 2026-10-12: draf komentar sebelumnya menambahkan "terukur atas DB
+  // live: `agama` menyimpan `BUDHA` 3 baris dan `KATHOLIK` 1 baris". Itu TIDAK
+  // diukur dan SALAH — diukur ulang, `agama`/`religion` berisi 0 baris dengan
+  // ejaan itu. Jangan kembalikan angka barisnya; klaim yang tidak diukur lebih
+  // berbahaya daripada tidak ada klaim.
   //
   // Dijaga lewat NILAI opsi yang benar-benar dirender, bukan lewat impor: yang
   // membuat drift tak bisa kembali adalah dropdown-nya sendiri memakai nilai

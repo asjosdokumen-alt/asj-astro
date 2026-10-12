@@ -537,16 +537,38 @@ export const GOLONGAN_DARAH: Opsi[] = [
  * That file declares the enums that exist ONLY on the AI CV form; a list the CV
  * Master form also offers belongs here instead. These were on the wrong side of
  * that line, and `MasterFullForm.tsx` therefore carried its OWN inline copies —
- * which is exactly how they drifted:
+ * and the two copies already disagreed:
  *
- *   agama — Master offered `['ISLAM','KRISTEN','HINDU','BUDHA','KATHOLIK']`,
- *           AI CV offered `AGAMA_PAIRS` (`BUDDHA`/`KATOLIK`, plus `KONGHUCU`
- *           and `LAINNYA`). So a candidate picking "Buddha" on the Master form
- *           stored `BUDHA` — a value the AI CV dropdown does not know, and one
- *           `AGAMA_JP` in the rirekisho renderer had to tolerate separately.
- *           Measured 2026-10-12 over the live DB: 119 values across 12 enum
- *           columns fall outside the option lists, and duplicated vocabularies
- *           are what manufacture them.
+ *   agama — Master offered `['ISLAM','KRISTEN','HINDU','BUDHA','KATHOLIK']`
+ *           while `AGAMA_PAIRS` held `BUDDHA`/`KATOLIK`, `KONGHUCU`,
+ *           `LAINNYA`. Verified from source, not from data: the OLD
+ *           `MasterFullForm.tsx` line 680 really did spell it `BUDHA`/
+ *           `KATHOLIK`, and the OLD `aiCvPairs.ts` really did hold `BUDDHA`/
+ *           `KATOLIK`.
+ *
+ * WHAT THE DATA ACTUALLY SHOWS (corrected 2026-10-12, second measurement)
+ * ---------------------------------------------------------------------
+ * An earlier draft of this comment claimed the drift had reached the table —
+ * "`BUDHA` 3 rows, `KATHOLIK` 1". **That was wrong.** Re-measured against the
+ * live DB (`gdwvffmevwtwnzrapjwy`, `master_database_candidate`), `agama` and
+ * `religion` contain NO row spelled `BUDHA` or `KATHOLIK` — 0 rows for both:
+ *
+ *   agama     "ISLAM"×20 · "Islam"×3 · "ISLAM "×1
+ *   religion  "ISLAM"×1
+ *   agama_jp  "イスラム教"×9 · "イスラーム"×1 · "イスラム"×1
+ *
+ * So the drift was real in the CODE but had not yet been written by anyone. The
+ * honest evidence that it was a KNOWN hazard is the workaround that already
+ * existed for it: `AGAMA_JP` in
+ * `cv-template-factory/renderers/rirekisho-xlsx.ts:112-122` carries BOTH
+ * spellings — `BUDHA: '仏教', BUDDHA: '仏教'` — and `agamaLabel()` there does
+ * `.toUpperCase().trim()`. Someone hit the misspelling and patched the renderer
+ * instead of the form. Removing the second spelling is what makes that patch
+ * unnecessary.
+ *
+ * The drift the DATA does show is case and whitespace (`"Islam"`, `"ISLAM "`),
+ * which the same `.toUpperCase().trim()` silently absorbs — which is why nobody
+ * ever saw it. `writeBodyFor()` now trims those on the way in.
  *
  * The `value` halves are unchanged, so no stored row is orphaned by the move.
  */
@@ -731,11 +753,22 @@ export function golonganDarahDisplay(v: unknown): string {
  * cannot read — so the Master form takes the values and keeps its own labels.
  *
  * What MUST be shared is the value set: that is what gets written to the
- * database. `MasterFullForm.tsx` used to carry inline copies and had drifted —
- * it offered `BUDHA`/`KATHOLIK` where this file has `BUDDHA`/`KATOLIK`, so the
- * same religion was stored two ways depending on which form was used (measured
- * 2026-10-12: `BUDHA` 3 rows, `KATHOLIK` 1). Projecting from the one list makes
- * that class of drift impossible to reintroduce.
+ * database. `MasterFullForm.tsx` used to carry inline copies and the two had
+ * drifted — it offered `BUDHA`/`KATHOLIK` where this file has `BUDDHA`/
+ * `KATOLIK`, so the same religion could be stored two ways depending on which
+ * form was used.
+ *
+ * CORRECTION (2026-10-12, second measurement): an earlier draft of this comment
+ * asserted that the drift HAD reached the table ("`BUDHA` 3 rows, `KATHOLIK` 1").
+ * That was not measured and is false — re-measured on the live DB,
+ * `master_database_candidate.agama` and `.religion` hold 0 rows spelled either
+ * way. The drift was real in the SOURCE (both spellings are still visible in
+ * `git show 2dbcb44^`), and the hazard was real enough that
+ * `rirekisho-xlsx.ts:112-122` already carried both spellings as a workaround —
+ * but no row was ever written with the wrong one. Do not restore the row counts.
+ *
+ * Projecting from the one list is what makes the drift impossible to
+ * reintroduce, whatever the current row count happens to be.
  */
 export function valuesOf(list: Opsi[]): string[] {
   return list.map(([v]) => v);

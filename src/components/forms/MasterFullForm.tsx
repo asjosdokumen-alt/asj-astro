@@ -683,11 +683,15 @@ export default function MasterFullForm() {
                     `['ISLAM','KRISTEN','HINDU','BUDHA','KATHOLIK']` di sini —
                     dua salah ejaan (`BUDHA`, `KATHOLIK`) yang TIDAK dikenal
                     daftar CV AI (`BUDDHA`, `KATOLIK`), dan tanpa `KONGHUCU`/
-                    `LAINNYA`. Akibatnya agama yang sama tersimpan dua cara
-                    tergantung form mana yang dipakai (terukur 2026-10-12:
-                    `BUDHA` 3 baris, `KATHOLIK` 1). `valuesOf` memakai NILAI-nya
-                    saja supaya label tetap istilah Indonesia — form Master
-                    diisi staf, bukan kandidat. */}
+                    `LAINNYA`. `valuesOf` memakai NILAI-nya saja supaya label
+                    tetap istilah Indonesia — form Master diisi staf, bukan
+                    kandidat.
+                    KOREKSI 2026-10-12: draf komentar sebelumnya menulis
+                    "terukur `BUDHA` 3 baris, `KATHOLIK` 1" — itu TIDAK diukur
+                    dan SALAH. Diukur ulang atas DB live, `agama` dan `religion`
+                    berisi 0 baris dengan ejaan itu. Drift-nya nyata di SUMBER
+                    (masih terlihat di `git show 2dbcb44^`), belum pernah
+                    tertulis ke tabel. Jangan kembalikan angka barisnya. */}
                 <F label={t("form.mf_agama")} k="agama" opts={valuesOf(AGAMA_PAIRS)} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
