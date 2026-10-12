@@ -85,7 +85,15 @@ export const FIELD_LABELS: FieldLabel[] = [
   { pattern: rx('ukuran\\s*baju|baju|UKURANBAJU'), path: 'fisik.baju' },
   { pattern: rx('ukuran\\s*sepatu|sepatu|UKURANSEPATU'), path: 'fisik.sepatu' },
   { pattern: rx('tangan\\s*dominan|TANGANDOMINAN'), path: 'fisik.tangan_dominan' },
-  { pattern: rx('tahan\\s*ac|TAHANAC'), path: 'fisik.tahan_ac' },
+  // 2026-10-12: pertanyaannya berubah dari "Tahan AC" ke "Bekerja di Cuaca
+  // Dingin" (pemilik: "jepang beda cuaca dengan indo ada musim panas ada musim
+  // dinginnya"). Kedua ejaan harus tetap terbaca: template yang SUDAH diunggah
+  // memakai label lama, dan template yang ditulis ulang memakai label baru.
+  // `rxAny` (bukan `rx`) karena sel label nyata menggabungkan Jepang +
+  // Indonesia dalam satu sel, jadi teks sel harus diuji "memuat", bukan "sama
+  // persis". Kata kuncinya tetap frasa utuh supaya baris lain tidak tertangkap
+  // — `Kacamata` memuat "ac" tapi bukan salah satu frasa ini.
+  { pattern: rxAny('tahan\\s*ac|TAHANAC|cuaca\\s*dingin'), path: 'fisik.tahan_ac' },
   { pattern: rx('mata\\s*kiri|MATAKIRI'), path: 'medis.mata_kiri' },
   { pattern: rx('mata\\s*kanan|MATAKANAN'), path: 'medis.mata_kanan' },
   { pattern: rx('kacamata|KACAMATA'), path: 'medis.kacamata' },

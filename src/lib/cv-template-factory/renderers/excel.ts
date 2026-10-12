@@ -34,7 +34,7 @@ function buildSheet(data: CandidateData): XLSX.WorkSheet {
   rows.push(['Baju', s(data.fisik.baju)]);
   rows.push(['Sepatu', s(data.fisik.sepatu)]);
   rows.push(['Tangan Dominan', s(data.fisik.tangan_dominan)]);
-  rows.push(['Tahan AC', s(data.fisik.tahan_ac)]);
+  rows.push(['Bekerja di Cuaca Dingin', s(data.fisik.tahan_ac)]);
   rows.push(['Kacamata', s(data.medis.kacamata)]);
   rows.push(['Buta Warna', s(data.medis.buta_warna)]);
   rows.push(['Tato', s(data.medis.tato)]);

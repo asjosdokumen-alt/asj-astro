@@ -27,7 +27,7 @@ const MASTER_FIELD_LABEL: Record<string, string> = {
   jumlah_anak: 'anak', nik: 'KTP/NIK', driver_license: 'SIM', alamat_lengkap: 'alamat',
   email: 'email', tb: 'tinggi', bb: 'berat', no_pasport: 'paspor', no_coe: 'nomor COE',
   golongan_darah: 'golongan darah', tangandominan: 'tangan dominan', ukuranbaju: 'ukuran baju',
-  ukuransepatu: 'ukuran sepatu', ukuran_topi: 'ukuran topi', tahan_ac: 'tahan AC',
+  ukuransepatu: 'ukuran sepatu', ukuran_topi: 'ukuran topi', tahan_ac: 'kerja di cuaca dingin',
   mata_kiri: 'mata kiri', mata_kanan: 'mata kanan', kacamata: 'kacamata',
   buta_warna: 'buta warna', tato: 'tato', tindik: 'tindik', merokok: 'merokok',
   minum_alkohol: 'alkohol', riwayat_penyakit: 'penyakit', alergi: 'alergi',

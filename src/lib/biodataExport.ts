@@ -261,7 +261,9 @@ const MASTER_LABEL: Record<string, string> = {
   baju: 'Ukuran Baju',
   sepatu: 'Ukuran Sepatu',
   tangan_dominan: 'Tangan Dominan',
-  tahan_ac: 'Tahan AC',
+  // 2026-10-12 (pemilik): "hapus bekerja dalam ac? harusnya kan bekerja di
+  // cuaca dingin itu" — kolomnya tetap `tahan_ac`, pertanyaannya yang berubah.
+  tahan_ac: 'Bekerja di Cuaca Dingin',
   mata_kiri: 'Mata Minus Kiri',
   mata_kanan: 'Mata Minus Kanan',
   kacamata: 'Kacamata',

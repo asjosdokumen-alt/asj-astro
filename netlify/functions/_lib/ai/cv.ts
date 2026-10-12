@@ -142,7 +142,7 @@ function buildRingkasData(cur: any) {
   add('Ukuran baju', fs.baju);
   add('Ukuran sepatu', fs.sepatu);
   add('Tangan dominan', fs.tangan_dominan);
-  add('Tahan AC', fs.tahan_ac);
+  add('Bekerja di Cuaca Dingin', fs.tahan_ac);
   add('Kacamata', md.kacamata);
   add('Buta warna', md.buta_warna);
   add('Tato', md.tato);
