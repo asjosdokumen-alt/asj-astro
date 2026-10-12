@@ -262,7 +262,7 @@ function untrackedSet() {
        So the failure is raised, with the diagnosis attached, and main() turns it
        into a TOOLING ERROR (exit 2) — a distinct verdict from "a battery
        survived", which is what a bare throw would be misread as. */
-    const code = err && err.code;
+    const code = err?.code;
     if (code === 'EBUSY') {
       throw new Error(
         'git is unusable in this environment: every SYNCHRONOUS child_process call fails with ' +
@@ -765,7 +765,7 @@ function main() {
     execFileSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, stdio: 'ignore' });
   } catch (err) {
     console.error('BATTERY RUNNER — TOOLING ERROR: git cannot be invoked synchronously.');
-    console.error(`  ${(err && err.message ? err.message : String(err)).split('\n')[0]}`);
+    console.error(`  ${(err?.message ? err.message : String(err)).split('\n')[0]}`);
     console.error('');
     console.error('Every battery here is driven through git: the leak baseline, the dirty-radius');
     console.error('check and the untracked sweep. Without it the run cannot begin, and a leak');
@@ -1229,7 +1229,7 @@ function main() {
 try {
   main();
 } catch (err) {  
-    const message = err && err.message ? err.message : String(err);
+    const message = err?.message ? err.message : String(err);
     if (/EBUSY/.test(message)) {
       console.error('');
       console.error('BATTERY RUNNER — TOOLING ERROR: a git call failed with EBUSY mid-run.');
