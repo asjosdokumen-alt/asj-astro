@@ -107,6 +107,43 @@ function field(v: unknown): string {
 }
 
 /**
+ * A master date column can arrive as a full ISO timestamp.
+ *
+ * `master_database_candidate.tgl_lahir` is a `timestamptz`, so PostgREST
+ * serialises it as `2008-04-04T17:00:00.000Z` and `String(v)` printed it raw:
+ *
+ *     Tanggal Lahir                  : 2008-04-04T17:00:00.000Z
+ *
+ * MEASURED 2026-10-12 over the live DB: **67 of 226 candidates (30%)** got a
+ * line like that in the downloaded file. Two faults at once — it is unreadable,
+ * and the day is one EARLY, because the stamp is Jakarta midnight stored as
+ * UTC (the date meant above is 2008-04-05).
+ *
+ * The CV never showed it: `buildKertasA4` runs the same value through
+ * `new Date()` and formats it itself (`2007年10月01日`). That is exactly why this
+ * survived — it was only visible in the download, and only to an eye.
+ *
+ * This module IS the printing layer, so the formatting belongs here: one helper
+ * serving both places a date is printed (the identity row and the master block).
+ * Only an exact ISO stamp is rewritten; a plain `2001-05-05`, a year, or any
+ * other text passes through untouched.
+ */
+const ISO_STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+const JAKARTA_DATE = new Intl.DateTimeFormat('id-ID', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  timeZone: 'Asia/Jakarta',
+});
+
+function asDate(v: unknown): string {
+  const s = String(v ?? '').trim();
+  if (!ISO_STAMP.test(s)) return s;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? s : JAKARTA_DATE.format(d);
+}
+
+/**
  * Projection key → human label. Unknown keys are NOT dropped (a new document
  * column must still show up in the file); they fall back to the raw key, which
  * is what `labelFor` does.
@@ -342,7 +379,10 @@ function masterRows(obj: Record<string, unknown>, group: string): string[] {
     const alias = MASTER_ALIAS[k];
     if (alias && has(obj[alias])) continue;
     const label = group === 'uploads' ? UPLOAD_LABEL[k] || prettify(k) : MASTER_LABEL[k] || prettify(k);
-    out.push(row(label, String(v).trim()));
+    // `asDate` — kolom tanggal master datang sebagai cap waktu ISO; lihat
+    // komentarnya. Aman untuk semua kolom lain: hanya stempel ISO persis yang
+    // ditulis ulang.
+    out.push(row(label, asDate(v)));
   }
   return out;
 }
@@ -388,7 +428,7 @@ export function buildBiodataText(c: BiodataSource): string {
     row('Gender', field(c.gender)),
     row('Usia', has(c.usia) ? `${String(c.usia).trim()} Tahun` : '-'),
     row('Tempat Lahir', field(pick(c.tmplahir, 'tmplahir'))),
-    row('Tanggal Lahir', field(pick(c.tgllahir, 'tgllahir'))),
+    row('Tanggal Lahir', field(asDate(pick(c.tgllahir, 'tgllahir')))),
     row('Email', field(pick(c.email, 'email'))),
     row('Alamat', field(pick(c.alamat, 'alamat'))),
     '',

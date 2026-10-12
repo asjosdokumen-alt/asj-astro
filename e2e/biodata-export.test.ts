@@ -223,6 +223,43 @@ describe('biodataExport — DATA MASTER (LENGKAP)', () => {
     expect(t).toMatch(/KELUARGA \(SESUAI KK\)[\s\S]*SUKATNO/);
   });
 
+  /**
+   * REGRESI — diukur 2026-10-12 dari preview lokal (`netlify dev`).
+   *
+   * `master_database_candidate.tgl_lahir` bertipe `timestamptz`, jadi PostgREST
+   * mengembalikannya sebagai cap waktu penuh. Nilai itu sampai ke berkas lewat
+   * DUA jalur — `bio.tgllahir` (baris identitas; sumbernya `BIO_COLUMNS` di
+   * `_lib/db/berkas.ts`) dan `master.identitas.tgl_lahir` (blok DATA MASTER) —
+   * dan keduanya dicetak apa adanya:
+   *
+   *     Tanggal Lahir                  : 2008-04-04T17:00:00.000Z
+   *
+   * Dua cacat sekaligus: tidak terbaca, DAN harinya mundur satu — stempel itu
+   * tengah malam WIB yang disimpan sebagai UTC, jadi tanggal yang dimaksud
+   * adalah 2008-04-05. Terukur atas DB live: 67 dari 226 kandidat (30%).
+   *
+   * CV rirekisho tidak pernah kena: ia mem-`new Date()` lalu memformat sendiri
+   * (`2007年10月01日`), dan itu sebabnya cacat ini hanya terlihat di berkas
+   * unduhan. Ditemukan justru karena preview lokal diperiksa dengan mata.
+   */
+  it('tanggal ISO tidak dicetak mentah — dan harinya tidak mundur (WIB)', () => {
+    const iso = '2008-04-04T17:00:00.000Z'; // = 2008-04-05 00:00 WIB
+    const teks = buildBiodataText({
+      ...CAND,
+      tgllahir: iso,
+      master: { ...MASTER, identitas: { ...MASTER.identitas, tgl_lahir: iso } },
+    });
+    expect(teks).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    const baris = teks.split('\n').filter((l) => l.startsWith('Tanggal Lahir'));
+    expect(baris.length, 'baris Tanggal Lahir tidak ditemukan').toBeGreaterThan(0);
+    for (const l of baris) expect(l).toMatch(/:\s*05\/04\/2008\s*$/);
+  });
+
+  it('tanggal yang sudah berupa teks biasa TIDAK diubah', () => {
+    const teks = buildBiodataText({ ...CAND, tgllahir: '2001-05-05', master: MASTER });
+    expect(teks).toMatch(/Tanggal Lahir\s*: 2001-05-05/);
+  });
+
   it('tidak mencetak nilai yang sama dua kali (alias kolom)', () => {
     const count = (s: string) => t.split(s).length - 1;
     expect(count('SDN 1'), 'nama_sekolah vs sekolah').toBe(1);
