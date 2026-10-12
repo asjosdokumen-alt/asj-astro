@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import MasterFullForm from "./MasterFullForm";
 import { showToast } from "../Toast";
-import { SENTINEL_LAINNYA } from "../../lib/opsi-form";
+import { SENTINEL_LAINNYA, valuesOf, GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS, YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS } from "../../lib/opsi-form";
 import { authStore, type AuthState } from "../../store/authReactive";
 import { uploadMany } from "../../lib/cloudinary";
 import { t } from "../../store/i18n";
@@ -131,6 +131,96 @@ describe("MasterFullForm (C02) — error-return uploadMany + draft lokal-only", 
     render(<MasterFullForm />);
     expect(screen.getByText("Verifikasi Akun Kandidat")).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  // Keluhan pemilik 2026-10-12: "golongan darah sekarang tolong perbanyak
+  // kategorinya jgn a b ab o tambahin + nya juga".
+  //
+  // DIUKUR atas DB live: daftar form hanya A/B/AB/O, tetapi data nyata sudah
+  // memuat `O+`, `A+`, `B+` dan `AB +`. Dua akibatnya — varian Rh tidak bisa
+  // dipilih, dan `AB +` (ASJ00171) tidak pernah cocok dengan opsi mana pun
+  // sehingga <select>-nya tampil kosong.
+  //
+  // Diperiksa pada DOM yang benar-benar dirender, bukan pada daftar di sumber:
+  // yang penting bagi pemilik adalah apa yang muncul di dropdown.
+  it("dropdown Gol. Darah menawarkan varian Rh (+/-), bukan hanya A/B/AB/O", async () => {
+    authStore.set({ ...KANDIDAT });
+    render(<MasterFullForm />);
+    await waitFor(() => expect(screen.queryByText("Verifikasi Akun Kandidat")).toBeNull());
+    const sel = document.getElementById("mf-goldar") as HTMLSelectElement | null;
+    if (!sel) throw new Error("select #mf-goldar tidak dirender");
+    const values = [...sel.querySelectorAll("option")].map((o) => o.value);
+    for (const v of ["A", "A+", "A-", "B", "B+", "B-", "AB", "AB+", "AB-", "O", "O+", "O-", "-"]) {
+      expect(values, `opsi hilang dari dropdown: ${v}`).toContain(v);
+    }
+  });
+
+  // Keluhan pemilik 2026-10-12 (bagian ketiga): "check lagi yg lain bila masih
+  // ada yg aneh apa saja sekalian di benerin juga".
+  //
+  // Kelas cacat yang sama dengan golongan darah, di enam dropdown lain: form ini
+  // menyimpan SALINAN daftar enum-nya sendiri, dan salinan itu sudah berbeda dari
+  // daftar yang dipakai form CV AI — jadi satu jawaban bisa tersimpan dua ejaan
+  // tergantung form mana yang dipakai. Terukur atas DB live 2026-10-12: `agama`
+  // menyimpan `BUDHA` 3 baris dan `KATHOLIK` 1 baris, dua ejaan yang TIDAK
+  // dikenal daftar CV AI (`BUDDHA`/`KATOLIK`) — dan dropdown form INI memang
+  // menawarkannya, jadi ejaan itu terus diproduksi ulang.
+  //
+  // Dijaga lewat NILAI opsi yang benar-benar dirender, bukan lewat impor: yang
+  // membuat drift tak bisa kembali adalah dropdown-nya sendiri memakai nilai
+  // kanonik. Karena itu ejaan lama diuji TIDAK ditawarkan lagi.
+  it("enam dropdown enum memakai NILAI kanonik bersama — ejaan lama hilang", async () => {
+    authStore.set({ ...KANDIDAT });
+    render(<MasterFullForm />);
+    await waitFor(() => expect(screen.queryByText("Verifikasi Akun Kandidat")).toBeNull());
+    // Hanya step 1 yang ada di DOM (step lain di-render bersyarat, bukan
+    // disembunyikan), jadi yang bisa diperiksa langsung adalah kelima field
+    // identitas ini. `eksJepang` (step 3) dijaga lewat invarian statis di bawah.
+    const canonical: Record<string, string[]> = {
+      "mf-gender": valuesOf(GENDER_PAIRS),
+      "mf-agama": valuesOf(AGAMA_PAIRS),
+      "mf-statusNikah": valuesOf(STATUS_NIKAH_PAIRS),
+      "mf-tangan": valuesOf(TANGAN_PAIRS),
+      "mf-tahanAc": valuesOf(YA_TIDAK_PAIRS),
+    };
+    for (const [id, want] of Object.entries(canonical)) {
+      const sel = document.getElementById(id) as HTMLSelectElement | null;
+      if (!sel) throw new Error(`select #${id} tidak dirender`);
+      const got = [...sel.querySelectorAll("option")].map((o) => o.value);
+      // Setiap nilai kanonik harus bisa dipilih…
+      for (const v of want) expect(got, `#${id} kehilangan opsi: ${v}`).toContain(v);
+      // …dan dropdown tidak boleh menawarkan nilai di luar daftar bersama —
+      // itulah yang memproduksi ejaan kedua.
+      expect(got.filter((v) => !want.includes(v)), `#${id} menawarkan nilai di luar daftar kanonik`).toEqual([]);
+    }
+    const agama = [...(document.getElementById("mf-agama") as HTMLSelectElement).options].map((o) => o.value);
+    expect(agama).not.toContain("BUDHA");
+    expect(agama).not.toContain("KATHOLIK");
+    expect(agama).toContain("BUDDHA");
+    expect(agama).toContain("KATOLIK");
+    expect(agama).toContain("KONGHUCU");
+
+    // Invarian statis: KETUJUH dropdown (termasuk `eksJepang` di step 3, yang
+    // tidak ada di DOM saat mount) harus mengambil daftarnya dari `opsi-form`,
+    // dan TIDAK boleh ada satu pun literal `opts={['…']}` yang memuat ejaan
+    // enum — salinan literal itulah bentuk drift yang baru saja dihapus. Satu-
+    // satunya literal yang sah adalah `['-', ...BAHASA_JEPANG]`: `'-'` penanda
+    // default form ini (bukan kosakata bersama) dan sisanya hasil sebar daftar.
+    const src = readFileSync("src/components/forms/MasterFullForm.tsx", "utf8");
+    for (const list of [
+      "GENDER_PAIRS", "AGAMA_PAIRS", "STATUS_NIKAH_PAIRS",
+      "TANGAN_PAIRS", "YA_TIDAK_PAIRS", "RIWAYAT_JEPANG_PAIRS",
+    ]) {
+      expect(src, `MasterFullForm tidak memakai daftar bersama ${list}`).toContain(`valuesOf(${list})`);
+    }
+    const literals = [...src.matchAll(/opts=\{\[([^\]]*)\]\}/g)].map((m) => m[1]);
+    for (const lit of literals) {
+      // `'ISLAM'`, `'LAKI-LAKI'`, `'BELUM MENIKAH'` … tapi BUKAN `'-'`.
+      expect(lit, `literal opts= memuat ejaan enum yang bisa drift: [${lit}]`)
+        .not.toMatch(/'(?:[A-Z][A-Z ]{2,})'/);
+    }
+    expect(literals, "hanya literal `['-', ...BAHASA_JEPANG]` yang boleh tersisa")
+      .toEqual(["'-', ...BAHASA_JEPANG"]);
   });
 
   // §4.1(a): the gate used to be a `.u-modal-shell` with no semantics at all.

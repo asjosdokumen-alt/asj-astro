@@ -33,7 +33,12 @@
  * spellings for the same question, which is the exact defect `opsi-form.ts`
  * was created to end.
  */
-import { HUBUNGAN_KELUARGA, PEKERJAAN, labelJp, type Opsi } from './opsi-form';
+import {
+  HUBUNGAN_KELUARGA, PEKERJAAN, labelJp,
+  GOLONGAN_DARAH, GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS,
+  TANGAN_PAIRS, YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS,
+  type Opsi,
+} from './opsi-form';
 
 /**
  * Lists that exist ONLY on the AI CV form (legacy `IDENTITAS_PAIRS`).
@@ -42,61 +47,18 @@ import { HUBUNGAN_KELUARGA, PEKERJAAN, labelJp, type Opsi } from './opsi-form';
  * `opsi-form.ts`, which is scoped to the candidate-facing dropdowns shared
  * with CV Master. They are declared here so the AI CV form has exactly one
  * owner for its own enums, mirroring how `opsi-form.ts` owns the shared ones.
- */
-export const GENDER_PAIRS: Opsi[] = [
-  ['LAKI-LAKI', '男性'],
-  ['PEREMPUAN', '女性'],
-];
-
-export const AGAMA_PAIRS: Opsi[] = [
-  ['ISLAM', 'イスラム教'],
-  ['KRISTEN', 'キリスト教'],
-  ['KATOLIK', 'カトリック'],
-  ['HINDU', 'ヒンドゥー教'],
-  ['BUDDHA', '仏教'],
-  ['KONGHUCU', '儒教'],
-  ['LAINNYA', 'その他'],
-];
-
-export const GOLDAR_PAIRS: Opsi[] = [
-  ['A', 'A型'],
-  ['B', 'B型'],
-  ['AB', 'AB型'],
-  ['O', 'O型'],
-  ['-', '不明'],
-];
-
-export const STATUS_NIKAH_PAIRS: Opsi[] = [
-  ['BELUM MENIKAH', '未婚'],
-  ['MENIKAH', '既婚'],
-  ['CERAI', '離婚'],
-];
-
-export const TANGAN_PAIRS: Opsi[] = [
-  ['KANAN', '右'],
-  ['KIRI', '左'],
-];
-
-/** Legacy `ya_tidak`: the yes/no answer the employer reads as 有り/無し. */
-export const YA_TIDAK_PAIRS: Opsi[] = [
-  ['TIDAK', '無し'],
-  ['YA', '有り'],
-];
-
-/** Legacy `RIWAYAT_JEPANG_PAIRS`. */
-export const RIWAYAT_JEPANG_PAIRS: Opsi[] = [
-  ['BELUM PERNAH', '未経験'],
-  ['EKS MAGANG', '技能実習生'],
-  ['EKS TOKUTEI GINO', '特定技能'],
-];
-
-/**
- * Shoe / clothes / hat sizes, in the ID and JP conventions.
  *
- * Legacy carried these as `SEPATU_PAIRS` / `BAJU_PAIRS` / `TOPI_PAIRS`
- * (`ai_form.ts:236-254`) and the port dropped them, so the size fields became
- * untyped text. The mapping matters because the two countries number sizes
- * differently — a bare "XL" is ambiguous on a Japanese form.
+ * SIX lists LEFT this group on 2026-10-12 and now live in `opsi-form.ts`
+ * (`GOLONGAN_DARAH`, `GENDER_PAIRS`, `AGAMA_PAIRS`, `STATUS_NIKAH_PAIRS`,
+ * `TANGAN_PAIRS`, `YA_TIDAK_PAIRS`, `RIWAYAT_JEPANG_PAIRS`): the CV Master form
+ * offers the same questions, so by the rule above they are shared. Keeping a
+ * second spelling of each in `MasterFullForm.tsx` is what produced the measured
+ * drift — the Master form offered `BUDHA`/`KATHOLIK` (misspelled, and missing
+ * `KONGHUCU`/`LAINNYA`) while this file offered `BUDDHA`/`KATOLIK`, so the same
+ * religion was stored two different ways depending on which form was used.
+ *
+ * What remains here is genuinely AI-CV-only: the size lists, which the Master
+ * form does not use (`baju`/`topi` are free text there and `sepatu` is a number).
  */
 export const SEPATU_PAIRS: Opsi[] = [
   ['36', '36 (JP 23.0cm)'], ['37', '37 (JP 23.5cm)'], ['38', '38 (JP 24.0cm)'],
@@ -139,7 +101,7 @@ export const PAIRED_FIELDS: Record<string, PairedField> = {
   status: { pairs: STATUS_NIKAH_PAIRS, partner: 'status_jp' },
 
   // ── Identitas: single column, constrained value only ──
-  goldar: { pairs: GOLDAR_PAIRS },
+  goldar: { pairs: GOLONGAN_DARAH },
   tangan: { pairs: TANGAN_PAIRS },
 
   // ── Fisik: sizes are one bilingual value, no partner column ──

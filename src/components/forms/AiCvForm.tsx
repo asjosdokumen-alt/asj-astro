@@ -18,8 +18,13 @@ import { mapAiCvDraft } from '../../lib/aiCvDraft';
 import { uploadMany, type UploadCollectionError } from '../../lib/cloudinary';
 import { AI_FILE_COLUMNS } from '../../lib/documentColumns';
 import { AI_CV_FLAT_KEYS, parseAiCvDraft, parseAiCvRows, type AiCvRow } from '../../lib/aiCvDraft';
-import { PAIRED_FIELDS, resolvePairEdit, jpOf, GENDER_PAIRS, AGAMA_PAIRS, GOLDAR_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS, YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS } from '../../lib/aiCvPairs';
-import { PEKERJAAN, HUBUNGAN_KELUARGA, labelJp, pairDisplay, type Opsi } from '../../lib/opsi-form';
+import { PAIRED_FIELDS, resolvePairEdit, jpOf, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS } from '../../lib/aiCvPairs';
+import {
+  PEKERJAAN, HUBUNGAN_KELUARGA, GOLONGAN_DARAH, BAHASA_JEPANG,
+  GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
+  YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS,
+  labelJp, pairDisplay, type Opsi,
+} from '../../lib/opsi-form';
 import { levelOptions, sortEduRows } from '../../lib/cvRows';
 import { joinPeriod, monthLabel, monthOptions, splitPeriod, yearOptions } from '../../lib/cvPeriod';
 import { useOverlay } from '../ui/useOverlay';
@@ -230,8 +235,11 @@ const UPLOAD_COLORS: Record<UploadColor, { tile: string; label: string }> = {
 /* ── Datalist (autocomplete) ────────────────────────────────────────────
    PARITY ai_form.html:227-245 — field bahasa Jepang & lisensi tetap
    `readonly` (isinya datang dari AI), tapi `list=` memberi kandidat daftar
-   nilai resmi yang sah. Tanpa ini ejaan bebas kandidat masuk apa adanya. */
-const JFT_OPTIONS = ['N1', 'N2', 'N3', 'N4', 'N5', 'JFT BASIC A2', 'BELUM LULUS', 'BELUM TES'];
+   nilai resmi yang sah. Tanpa ini ejaan bebas kandidat masuk apa adanya.
+
+   Levelnya TIDAK dideklarasikan di sini: `BAHASA_JEPANG` di `opsi-form.ts` juga
+   mengisi `<select>` di form CV Master, jadi satu salinan saja — dulu dua, dan
+   keduanya sudah berbeda (`-` ada di form Master, tidak di sini). */
 const SSW_OPTIONS = [
   'KAIGO', 'BUILDING CLEANING', 'FOUNDRY & PLASTIC', 'INDUSTRIAL MACHINERY',
   'ELECTRIC & ELECTRONIC', 'CONSTRUCTION', 'SHIPBUILDING', 'AUTOMOBILE REPAIR',
@@ -1087,7 +1095,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               <PairSelect label={t("form.mf_agama")} id="agama" value={cv.agama} pairs={AGAMA_PAIRS}
                 touched={touchedFields.has('agama')} testId="ai-pair-agama"
                 onChange={(v) => handlePairEdit('agama', v)} />
-              <PairSelect label={t("form.mf_goldar")} id="goldar" value={cv.goldar} pairs={GOLDAR_PAIRS}
+              <PairSelect label={t("form.mf_goldar")} id="goldar" value={cv.goldar} pairs={GOLONGAN_DARAH}
                 touched={touchedFields.has('goldar')} testId="ai-pair-goldar"
                 onChange={(v) => handlePairEdit('goldar', v)} />
               <PairSelect label={t("cv.field_status_nikah")} id="status" value={cv.status} pairs={STATUS_NIKAH_PAIRS}
@@ -1222,7 +1230,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                   touched={touchedFields.has('lisensi')} onInput={(v) => handleManualEdit('lisensi', v)} />
               </div>
               <datalist id="ai_jft_options">
-                {JFT_OPTIONS.map(o => <option key={o} value={o} />)}
+                {BAHASA_JEPANG.map(o => <option key={o} value={o} />)}
               </datalist>
               <datalist id="ai_ssw_options">
                 {SSW_OPTIONS.map(o => <option key={o} value={o} />)}

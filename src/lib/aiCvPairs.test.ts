@@ -24,23 +24,23 @@ import {
   resolvePairEdit,
   jpOf,
   idOf,
-  GENDER_PAIRS,
-  AGAMA_PAIRS,
-  GOLDAR_PAIRS,
-  STATUS_NIKAH_PAIRS,
-  YA_TIDAK_PAIRS,
   SEPATU_PAIRS,
   BAJU_PAIRS,
   TOPI_PAIRS,
-  RIWAYAT_JEPANG_PAIRS,
 } from './aiCvPairs';
 import { AI_CV_FLAT_KEYS, AI_CV_PATHS } from './aiCvDraft';
-import { PEKERJAAN } from './opsi-form';
+// TUJUH daftar pindah ke `opsi-form.ts` 2026-10-12: form CV Master menanyakan
+// hal yang sama, jadi daftar itu bukan lagi enum milik AI CV saja. Yang tersisa
+// di `aiCvPairs.ts` benar-benar hanya milik AI CV (tiga daftar ukuran).
+import {
+  PEKERJAAN, GOLONGAN_DARAH, GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS,
+  YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS,
+} from './opsi-form';
 
 describe('aiCvPairs — every pair is complete and two-directional', () => {
   it('every list has [id, jp] tuples with both halves non-empty', () => {
     const lists = {
-      GENDER_PAIRS, AGAMA_PAIRS, GOLDAR_PAIRS, STATUS_NIKAH_PAIRS,
+      GENDER_PAIRS, AGAMA_PAIRS, GOLONGAN_DARAH, STATUS_NIKAH_PAIRS,
       YA_TIDAK_PAIRS, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS, RIWAYAT_JEPANG_PAIRS,
     };
     for (const [name, list] of Object.entries(lists)) {
@@ -54,7 +54,7 @@ describe('aiCvPairs — every pair is complete and two-directional', () => {
   });
 
   it('no list repeats its ID half (a duplicate would make jpOf ambiguous)', () => {
-    const lists = { GENDER_PAIRS, AGAMA_PAIRS, GOLDAR_PAIRS, STATUS_NIKAH_PAIRS, YA_TIDAK_PAIRS, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS, RIWAYAT_JEPANG_PAIRS };
+    const lists = { GENDER_PAIRS, AGAMA_PAIRS, GOLONGAN_DARAH, STATUS_NIKAH_PAIRS, YA_TIDAK_PAIRS, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS, RIWAYAT_JEPANG_PAIRS };
     for (const [name, list] of Object.entries(lists)) {
       const ids = list.map(([v]) => v);
       expect(new Set(ids).size, `${name} has a duplicate ID value`).toBe(ids.length);
@@ -62,7 +62,7 @@ describe('aiCvPairs — every pair is complete and two-directional', () => {
   });
 
   it('no list repeats its JP half (a duplicate would make idOf ambiguous)', () => {
-    const lists = { GENDER_PAIRS, AGAMA_PAIRS, GOLDAR_PAIRS, STATUS_NIKAH_PAIRS, YA_TIDAK_PAIRS, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS, RIWAYAT_JEPANG_PAIRS };
+    const lists = { GENDER_PAIRS, AGAMA_PAIRS, GOLONGAN_DARAH, STATUS_NIKAH_PAIRS, YA_TIDAK_PAIRS, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS, RIWAYAT_JEPANG_PAIRS };
     for (const [name, list] of Object.entries(lists)) {
       const jps = list.map(([, v]) => v);
       expect(new Set(jps).size, `${name} has a duplicate JP value`).toBe(jps.length);

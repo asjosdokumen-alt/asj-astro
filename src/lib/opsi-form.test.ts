@@ -12,6 +12,8 @@ import {
   KOTA, HUBUNGAN_LEGACY, HUBUNGAN_KELUARGA,
   SENTINEL_LAINNYA, OPSI_KOSONG, OPSI_LAINNYA,
   withOther, isKnown, selectState, resolveOther, withEmpty,
+  valuesOf, GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
+  YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, BAHASA_JEPANG, GOLONGAN_DARAH,
 } from './opsi-form';
 
 describe('opsi-form — paritas nilai legacy', () => {
@@ -246,6 +248,67 @@ describe('opsi-form — integritas daftar gabungan', () => {
     for (const [name, list] of LISTS) {
       const has = list.some(([v]) => v === SENTINEL_LAINNYA);
       expect(has, `${name} mengandung sentinel`).toBe(false);
+    }
+  });
+});
+
+describe('opsi-form — daftar enum BERSAMA (AI CV + CV Master)', () => {
+  // Tujuh daftar ini dulu hidup di `aiCvPairs.ts` (milik AI CV saja) sementara
+  // `MasterFullForm.tsx` menyimpan SALINAN-nya sendiri. Salinan itu sudah
+  // berbeda: `agama` di form Master berbunyi `BUDHA`/`KATHOLIK`, di sini
+  // `BUDDHA`/`KATOLIK` — jadi satu agama tersimpan dua ejaan. Terukur atas DB
+  // live 2026-10-12: `BUDHA` 3 baris, `KATHOLIK` 1 baris.
+  //
+  // Tes ini mengunci kedua sisi: nilai tiap daftar (yang ditulis ke DB) dan
+  // fakta bahwa `valuesOf` mengembalikan nilai tanpa label kanji — sebab form
+  // Master harus tetap berlabel istilah Indonesia.
+  const BERSAMA: Record<string, [string, string][]> = {
+    GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
+    YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, GOLONGAN_DARAH,
+  };
+
+  it('valuesOf mengembalikan separuh NILAI saja, tanpa label kanji', () => {
+    expect(valuesOf(GENDER_PAIRS)).toEqual(['LAKI-LAKI', 'PEREMPUAN']);
+    expect(valuesOf(AGAMA_PAIRS)).toEqual([
+      'ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU', 'LAINNYA',
+    ]);
+    expect(valuesOf(YA_TIDAK_PAIRS)).toEqual(['TIDAK', 'YA']);
+    // Tidak ada label yang mengandung aksara Jepang yang ikut terbawa.
+    for (const [name, list] of Object.entries(BERSAMA)) {
+      for (const v of valuesOf(list)) {
+        expect(/[\u3040-\u30ff\u4e00-\u9fff]/.test(v), `${name}: nilai mengandung kanji: ${v}`).toBe(false);
+      }
+    }
+  });
+
+  it('ejaan agama kanonik TIDAK memuat `BUDHA`/`KATHOLIK`', () => {
+    // Dua ejaan inilah yang tersimpan di DB dan tidak dikenal daftar CV AI.
+    const v = valuesOf(AGAMA_PAIRS);
+    expect(v).not.toContain('BUDHA');
+    expect(v).not.toContain('KATHOLIK');
+    expect(v).toContain('BUDDHA');
+    expect(v).toContain('KATOLIK');
+  });
+
+  it('BAHASA_JEPANG memuat delapan level sah, tanpa penanda `-` milik form Master', () => {
+    // `-` adalah nilai DEFAULT form Master (`bhsJepang:'-'`), bukan level —
+    // form Master menambahkannya sendiri. Kalau ia masuk ke daftar ini, ia
+    // ikut muncul sebagai saran di <datalist> form kandidat.
+    expect(BAHASA_JEPANG).toEqual([
+      'N1', 'N2', 'N3', 'N4', 'N5', 'JFT BASIC A2', 'BELUM LULUS', 'BELUM TES',
+    ]);
+    expect(BAHASA_JEPANG).not.toContain('-');
+  });
+
+  it('tidak ada nilai yang mengandung spasi di tepinya (bentuk `AB +` di DB)', () => {
+    // Data nyata punya `"AB +"`. Daftar opsi tidak boleh memuat bentuk
+    // ber-spasi: itu akan mencocokkan baris yang salah, dan menyisakan baris
+    // aslinya tetap tak dikenal. Normalisasi ada di `normalizeBloodType`.
+    for (const [name, list] of Object.entries(BERSAMA)) {
+      for (const [v, label] of list) {
+        expect(v, `${name}: nilai punya spasi tepi`).toBe(v.trim());
+        expect(label.trim(), `${name}: label punya spasi tepi`).toBe(label);
+      }
     }
   });
 });

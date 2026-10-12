@@ -483,6 +483,136 @@ export const HUBUNGAN_TAMBAHAN: Opsi[] = [
 export const HUBUNGAN_KELUARGA: Opsi[] = [...HUBUNGAN_LEGACY, ...HUBUNGAN_TAMBAHAN];
 
 /* ══════════════════════════════════════════════════════════════════════════
+   3b. GOLONGAN DARAH — 血液型
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Blood type, ABO × Rh — the SINGLE list for both forms.
+ *
+ * Owner note: this list used to live in `aiCvPairs.ts` as `GOLDAR_PAIRS`, on the
+ * grounds that it was an AI-CV-only enum. It is not any more: the CV Master form
+ * needs the same options, and that file's own rule says a list shared with CV
+ * Master belongs here. Two spellings of one enum is the drift this file exists
+ * to prevent.
+ *
+ * MEASURED 2026-10-12 over the live DB (`master_database_candidate`, 234 rows):
+ * the old list offered A/B/AB/O while the stored data already held Rh variants —
+ *
+ *   null 210 · "O" 10 · "B" 4 · "-" 4 · "A" 2 · "O+" 1 · "A+" 1 · "B+" 1
+ *   · "AB +" 1   (ASJ00171 — note the SPACE)
+ *
+ * so `+`/`-` could not be chosen at all, and `"AB +"` matched no option, leaving
+ * its `<select>` blank. Owner request: "tolong perbanyak kategorinya jgn a b ab o
+ * tambahin + nya juga".
+ *
+ * The four PLAIN values stay deliberately: 16 real rows store them, and dropping
+ * them would leave those rows holding a value the list does not know.
+ *
+ * Order is grouped by ABO so the four families read as blocks; the sentinel-like
+ * `-` (unknown) stays last, where it has always been.
+ */
+export const GOLONGAN_DARAH: Opsi[] = [
+  ['A', 'A (A型)'],
+  ['A+', 'A+ (A型 Rh+)'],
+  ['A-', 'A- (A型 Rh-)'],
+  ['B', 'B (B型)'],
+  ['B+', 'B+ (B型 Rh+)'],
+  ['B-', 'B- (B型 Rh-)'],
+  ['AB', 'AB (AB型)'],
+  ['AB+', 'AB+ (AB型 Rh+)'],
+  ['AB-', 'AB- (AB型 Rh-)'],
+  ['O', 'O (O型)'],
+  ['O+', 'O+ (O型 Rh+)'],
+  ['O-', 'O- (O型 Rh-)'],
+  ['-', '不明'],
+];
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3c. ENUM BERSAMA — daftar yang dipakai AI CV DAN CV Master
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * These seven lists moved here from `aiCvPairs.ts` on 2026-10-12.
+ *
+ * That file declares the enums that exist ONLY on the AI CV form; a list the CV
+ * Master form also offers belongs here instead. These were on the wrong side of
+ * that line, and `MasterFullForm.tsx` therefore carried its OWN inline copies —
+ * which is exactly how they drifted:
+ *
+ *   agama — Master offered `['ISLAM','KRISTEN','HINDU','BUDHA','KATHOLIK']`,
+ *           AI CV offered `AGAMA_PAIRS` (`BUDDHA`/`KATOLIK`, plus `KONGHUCU`
+ *           and `LAINNYA`). So a candidate picking "Buddha" on the Master form
+ *           stored `BUDHA` — a value the AI CV dropdown does not know, and one
+ *           `AGAMA_JP` in the rirekisho renderer had to tolerate separately.
+ *           Measured 2026-10-12 over the live DB: 119 values across 12 enum
+ *           columns fall outside the option lists, and duplicated vocabularies
+ *           are what manufacture them.
+ *
+ * The `value` halves are unchanged, so no stored row is orphaned by the move.
+ */
+
+export const GENDER_PAIRS: Opsi[] = [
+  ['LAKI-LAKI', '男性'],
+  ['PEREMPUAN', '女性'],
+];
+
+export const AGAMA_PAIRS: Opsi[] = [
+  ['ISLAM', 'イスラム教'],
+  ['KRISTEN', 'キリスト教'],
+  ['KATOLIK', 'カトリック'],
+  ['HINDU', 'ヒンドゥー教'],
+  ['BUDDHA', '仏教'],
+  ['KONGHUCU', '儒教'],
+  ['LAINNYA', 'その他'],
+];
+
+export const STATUS_NIKAH_PAIRS: Opsi[] = [
+  ['BELUM MENIKAH', '未婚'],
+  ['MENIKAH', '既婚'],
+  ['CERAI', '離婚'],
+];
+
+export const TANGAN_PAIRS: Opsi[] = [
+  ['KANAN', '右'],
+  ['KIRI', '左'],
+];
+
+/** Legacy `ya_tidak`: the yes/no answer the employer reads as 有り/無し. */
+export const YA_TIDAK_PAIRS: Opsi[] = [
+  ['TIDAK', '無し'],
+  ['YA', '有り'],
+];
+
+/** Legacy `RIWAYAT_JEPANG_PAIRS`. */
+export const RIWAYAT_JEPANG_PAIRS: Opsi[] = [
+  ['BELUM PERNAH', '未経験'],
+  ['EKS MAGANG', '技能実習生'],
+  ['EKS TOKUTEI GINO', '特定技能'],
+];
+
+/**
+ * Level bahasa Jepang yang sah — nilai kolom `master_database_candidate.bahasa`.
+ *
+ * Sama kelasnya dengan daftar di atas: satu kosakata yang muncul di DUA tempat
+ * dengan dua salinan. `AiCvForm.tsx` menyimpannya sebagai `JFT_OPTIONS` (dipakai
+ * `<datalist>`, jadi sekadar saran untuk kolom teks bebas) dan
+ * `MasterFullForm.tsx` menyimpannya sebagai literal di dalam `<select>` — dengan
+ * satu entri tambahan, `'-'`, yang memang nilai DEFAULT form Master
+ * (`MasterFullForm.tsx`, state awal `bhsJepang:'-'`) untuk "belum diisi".
+ *
+ * Karena itu `'-'` TIDAK dimasukkan ke daftar ini: ia penanda keadaan form
+ * Master, bukan level. Form Master menambahkannya sendiri di depan daftar
+ * (lihat `MasterFullForm.tsx`), sehingga kosakata levelnya tetap satu.
+ *
+ * Tanpa gloss kanji: entri ini sudah notasi Jepang (`N1`, `JFT BASIC A2`), dan
+ * `labelJp`/`pairDisplay` tidak berlaku untuknya — maka bentuknya `string[]`,
+ * bukan `Opsi[]`.
+ */
+export const BAHASA_JEPANG: string[] = [
+  'N1', 'N2', 'N3', 'N4', 'N5', 'JFT BASIC A2', 'BELUM LULUS', 'BELUM TES',
+];
+
+/* ══════════════════════════════════════════════════════════════════════════
    4. Sentinel helpers — "Lainnya / ketik manual"
    ══════════════════════════════════════════════════════════════════════════ */
 
@@ -560,6 +690,55 @@ export function pairDisplay(value: string, label: string): string {
   if (!v) return jp;
   if (!jp) return v;
   return `${v}（${jp}）`;
+}
+
+/**
+ * A stored blood type as the rirekisho cell prints it: `O 型`, `O 型 Rh+`.
+ *
+ * The CV cell used to be `gd + " 型"` (`RirekishoBuilder.tsx`), which is right
+ * only for the four plain values. It broke twice the moment the option list
+ * gained Rh variants:
+ *
+ *   `O+`  → `O+ 型`  — reads as the blood type "O+", with 型 stuck on the end;
+ *   `''`  → `' 型'`  — a stray suffix in the cell when no type is recorded
+ *                      (the old code blanked `'-'` and then appended anyway).
+ *
+ * `AB +` (the real ASJ00171 row, with a space) also normalises here, so a dirty
+ * stored value still prints as a valid type rather than as its own oddity.
+ *
+ * Anything that is not an ABO(+Rh) token is returned UNCHANGED — this must never
+ * invent a type for a value it does not understand.
+ */
+const GOLONGAN_DARAH_RE = /^(AB|A|B|O)\s*(?:型)?\s*(?:Rh)?\s*([+-])?$/i;
+
+export function golonganDarahDisplay(v: unknown): string {
+  const s = String(v ?? '').trim();
+  if (!s || s === '-') return '';
+  const m = GOLONGAN_DARAH_RE.exec(s);
+  if (!m) return s;
+  return `${m[1].toUpperCase()} 型${m[2] ? ` Rh${m[2]}` : ''}`;
+}
+
+/**
+ * The ID halves of a pair list — the option VALUES, without the kanji labels.
+ *
+ * Why this exists: a list shared between the AI CV form and the CV Master form
+ * is one list, but the two forms do not want the same LABEL. The AI CV form is
+ * read by the candidate and its dropdown shows `LAKI-LAKI（男性）`
+ * (`pairDisplay`); the Master form is filled by ASJ staff and shows the plain
+ * Indonesian term. Passing `GENDER_PAIRS` straight into the Master form's
+ * `<F opts>` would print `男性` as the option text there — a dropdown the staff
+ * cannot read — so the Master form takes the values and keeps its own labels.
+ *
+ * What MUST be shared is the value set: that is what gets written to the
+ * database. `MasterFullForm.tsx` used to carry inline copies and had drifted —
+ * it offered `BUDHA`/`KATHOLIK` where this file has `BUDDHA`/`KATOLIK`, so the
+ * same religion was stored two ways depending on which form was used (measured
+ * 2026-10-12: `BUDHA` 3 rows, `KATHOLIK` 1). Projecting from the one list makes
+ * that class of drift impossible to reintroduce.
+ */
+export function valuesOf(list: Opsi[]): string[] {
+  return list.map(([v]) => v);
 }
 
 /**

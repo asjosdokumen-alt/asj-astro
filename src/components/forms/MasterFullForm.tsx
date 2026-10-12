@@ -14,7 +14,9 @@ import { uploadMany, UploadCollectionError } from '../../lib/cloudinary';
 import { MASTER_FILE_COLUMNS } from '../../lib/documentColumns';
 import { mapMasterNestedToForm } from '../../lib/masterPrefill';
 import {
-  PEKERJAAN, JURUSAN, KOTA, HUBUNGAN_KELUARGA,
+  PEKERJAAN, JURUSAN, KOTA, HUBUNGAN_KELUARGA, GOLONGAN_DARAH,
+  GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
+  YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, BAHASA_JEPANG, valuesOf,
   SENTINEL_LAINNYA, withOther, withEmpty, selectState, resolveOther,
 } from '../../lib/opsi-form';
 import type { Opsi } from '../../lib/opsi-form';
@@ -673,14 +675,23 @@ export default function MasterFullForm() {
               <F label={t("form.mf_tempat_lahir")} k="tempatLahir" ph={t("form.mf_ph_auto_jp")} />
               <div class="grid grid-cols-2 gap-3">
                 <F label={t("master.tgl_lahir")} k="tglLahir" type="date" twoCol />
-                <F label={t("form.mf_gender")} k="gender" opts={['LAKI-LAKI','PEREMPUAN']} twoCol />
+                <F label={t("form.mf_gender")} k="gender" opts={valuesOf(GENDER_PAIRS)} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
                 <F label={t("form.mf_usia")} k="usia" type="number" twoCol />
-                <F label={t("form.mf_agama")} k="agama" opts={['ISLAM','KRISTEN','HINDU','BUDHA','KATHOLIK']} twoCol />
+                {/* Satu daftar dengan form CV AI (`AGAMA_PAIRS`). Dulu literal
+                    `['ISLAM','KRISTEN','HINDU','BUDHA','KATHOLIK']` di sini —
+                    dua salah ejaan (`BUDHA`, `KATHOLIK`) yang TIDAK dikenal
+                    daftar CV AI (`BUDDHA`, `KATOLIK`), dan tanpa `KONGHUCU`/
+                    `LAINNYA`. Akibatnya agama yang sama tersimpan dua cara
+                    tergantung form mana yang dipakai (terukur 2026-10-12:
+                    `BUDHA` 3 baris, `KATHOLIK` 1). `valuesOf` memakai NILAI-nya
+                    saja supaya label tetap istilah Indonesia — form Master
+                    diisi staf, bukan kandidat. */}
+                <F label={t("form.mf_agama")} k="agama" opts={valuesOf(AGAMA_PAIRS)} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label={t("form.mf_status_nikah")} k="statusNikah" opts={['BELUM MENIKAH','MENIKAH','CERAI']} twoCol />
+                <F label={t("form.mf_status_nikah")} k="statusNikah" opts={valuesOf(STATUS_NIKAH_PAIRS)} twoCol />
                 <F label={t("form.mf_anak")} k="anak" type="number" ph="0 jika tidak ada" twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
@@ -696,8 +707,12 @@ export default function MasterFullForm() {
                 <F label={t("form.mf_bb")} k="bb" type="number" twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label={t("form.mf_goldar")} k="goldar" opts={['-','A','B','AB','O']} twoCol />
-                <F label={t("form.mf_tangan")} k="tangan" opts={['KANAN','KIRI']} twoCol />
+                {/* Satu daftar dengan form CV AI (`GOLONGAN_DARAH` di
+                    `opsi-form.ts`). Dulu literal `['-','A','B','AB','O']` di
+                    sini — jadi varian Rh tidak bisa dipilih, dan baris nyata
+                    `"AB +"` (ASJ00171) tidak cocok dengan opsi mana pun. */}
+                <F label={t("form.mf_goldar")} k="goldar" opts={GOLONGAN_DARAH} twoCol />
+                <F label={t("form.mf_tangan")} k="tangan" opts={valuesOf(TANGAN_PAIRS)} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
                 <F label={t("form.mf_baju")} k="baju" ph={t("form.mf_ph_baju")} twoCol />
@@ -705,7 +720,7 @@ export default function MasterFullForm() {
               </div>
               <div class="grid grid-cols-2 gap-3">
                 <F label={t("form.mf_topi")} k="topi" twoCol />
-                <F label={t("form.mf_tahan_ac")} k="tahanAc" opts={['YA','TIDAK']} twoCol />
+                <F label={t("form.mf_tahan_ac")} k="tahanAc" opts={valuesOf(YA_TIDAK_PAIRS)} twoCol />
               </div>
             </div>
           )}
@@ -719,16 +734,16 @@ export default function MasterFullForm() {
                 <F label={t("form.mf_mata_kanan")} k="mataKanan" ph={t("form.mf_ph_visus")} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label={t("form.mf_kacamata")} k="kacamata" opts={['TIDAK','YA']} twoCol />
-                <F label={t("form.mf_buta_warna")} k="butaWarna" opts={['TIDAK','YA']} twoCol />
+                <F label={t("form.mf_kacamata")} k="kacamata" opts={valuesOf(YA_TIDAK_PAIRS)} twoCol />
+                <F label={t("form.mf_buta_warna")} k="butaWarna" opts={valuesOf(YA_TIDAK_PAIRS)} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label={t("form.mf_tato")} k="tato" opts={['TIDAK','YA']} twoCol />
-                <F label={t("form.mf_tindik")} k="tindik" opts={['TIDAK','YA']} twoCol />
+                <F label={t("form.mf_tato")} k="tato" opts={valuesOf(YA_TIDAK_PAIRS)} twoCol />
+                <F label={t("form.mf_tindik")} k="tindik" opts={valuesOf(YA_TIDAK_PAIRS)} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label={t("form.mf_merokok")} k="merokok" opts={['TIDAK','YA']} twoCol />
-                <F label={t("form.mf_alkohol")} k="alkohol" opts={['TIDAK','YA']} twoCol />
+                <F label={t("form.mf_merokok")} k="merokok" opts={valuesOf(YA_TIDAK_PAIRS)} twoCol />
+                <F label={t("form.mf_alkohol")} k="alkohol" opts={valuesOf(YA_TIDAK_PAIRS)} twoCol />
               </div>
               <F label={t("form.mf_penyakit")} k="penyakit" ph={t("form.mf_ph_deskripsi")} rows={2} />
               <F label={t("form.mf_alergi")} k="alergi" ph={t("form.mf_ph_alergi")} rows={2} />
@@ -885,7 +900,7 @@ export default function MasterFullForm() {
           {step === 5 && (
             <div class="animate-[fadeIn_.4s_ease]">
               <h2 class="section-title">{t("master.status_passport")}</h2>
-              <F label={t("form.mf_eks_jepang")} k="eksJepang" opts={['BELUM PERNAH','EKS MAGANG','EKS TOKUTEI GINO']} />
+              <F label={t("form.mf_eks_jepang")} k="eksJepang" opts={valuesOf(RIWAYAT_JEPANG_PAIRS)} />
               <F label={t("form.mf_no_coe")} k="noCoe" ph={t("master.ph_kosongkan")} />
               <div class="mt-4"></div>
               <F label={t("form.mf_no_paspor")} k="noPaspor" ph={t("master.ph_kosongkan_belum")} />
@@ -906,7 +921,12 @@ export default function MasterFullForm() {
 
               <h2 class="section-title mt-6">{t("form.mf_sertifikasi")}</h2>
               <div class="grid grid-cols-2 gap-3">
-                <F label={t("form.mf_bhs_jepang")} k="bhsJepang" opts={['-','N1','N2','N3','N4','N5','JFT BASIC A2','BELUM LULUS','BELUM TES']} twoCol />
+                {/* `'-'` di depan: nilai DEFAULT form ini (`bhsJepang:'-'`,
+                    state awal) untuk "belum diisi", jadi ia harus tetap bisa
+                    dipilih kembali. Kosakata levelnya sendiri milik
+                    `BAHASA_JEPANG` (`opsi-form.ts`) — dulu literal di sini dan
+                    di `AiCvForm.tsx` sekaligus. */}
+                <F label={t("form.mf_bhs_jepang")} k="bhsJepang" opts={['-', ...BAHASA_JEPANG]} twoCol />
                 <F label={t("form.mf_nilai")} k="nilai" ph="Misal: 120/180" twoCol />
               </div>
               <SswField label={t("form.mf_lisensi")} k="lisensi" kManual="lisensiManual" labelManual={t("master.ketik_bidang")} />
