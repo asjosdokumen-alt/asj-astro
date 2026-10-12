@@ -47,8 +47,6 @@ const PENDIDIKAN_OPTIONS = ['', 'SD', 'SMP', 'SMA', 'SMK', 'MA', 'D1', 'D2', 'D3
 const TAHAPAN_OPTIONS = ['', 'Baru', 'Pendaftaran', 'LIST', 'MCU PARPOR', 'Wawancara', 'LULUS'];
 const STATUS_OPTIONS = ['', 'Aktif', 'LULUS', 'GAGAL', 'Non-Aktif'];
 
-// Jenis berkas = token FILE_LABEL_COLUMNS backend (simpanBerkasTahapan),
-// bukan nama kolom — dulu tombol upload cuma nembak Cloudinary tanpa persist.
 /** URL berkas yang sudah ada untuk satu token `jenis`, atau "" kalau belum. */
 function existingDocUrl(c: Props['candidate'], jenis: string): string {
   const b = c.berkas || {};
@@ -67,6 +65,8 @@ function existingDocUrl(c: Props['candidate'], jenis: string): string {
     default: return '';
   }
 }
+// Jenis berkas = token FILE_LABEL_COLUMNS backend (simpanBerkasTahapan),
+// bukan nama kolom — dulu tombol upload cuma nembak Cloudinary tanpa persist.
 
 const DOC_UPLOADS: { jenis: string; label: string; accept: string }[] = [
   { jenis: 'PAS_PHOTO', label: 'Pas Photo', accept: 'image/*' },

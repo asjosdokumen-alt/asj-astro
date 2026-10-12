@@ -113,6 +113,16 @@ function cleanKey(s: string): string {
 }
 
 /**
+ * Identitas pendidikan = NAMA sekolah saja, TANPA periode. Diukur atas 234 baris
+ * master gdw (2026-10-12): memasukkan periode membuat 8 baris sekolahnya tampil
+ * DUA KALI, karena baris master menulis `masuk` DAN `tahun_masuk` dengan nilai
+ * yang sama sehingga periodenya jadi "2005200520112011" sementara baris
+ * `ai_data_json` hanya "20052011" — kuncinya tak pernah cocok. Satu orang
+ * menempuh satu sekolah SEKALI. (Pekerjaan TETAP memakai periode: dua masa kerja
+ * di perusahaan yang sama itu nyata.)
+ */
+const EDU_PERIOD_KEYS: string[] = [];
+/**
  * Identitas satu baris riwayat.
  *
  * 🔴 NAMA dulu (sekolah / perusahaan / nama orang), baru tingkat/jabatan.
@@ -128,16 +138,6 @@ function cleanKey(s: string): string {
  * Periode ikut masuk kunci supaya dua masa kerja di perusahaan yang sama tetap
  * dua baris; baris tanpa periode di kedua sisi tetap menyatu.
  */
-/**
- * Identitas pendidikan = NAMA sekolah saja, TANPA periode. Diukur atas 234 baris
- * master gdw (2026-10-12): memasukkan periode membuat 8 baris sekolahnya tampil
- * DUA KALI, karena baris master menulis `masuk` DAN `tahun_masuk` dengan nilai
- * yang sama sehingga periodenya jadi "2005200520112011" sementara baris
- * `ai_data_json` hanya "20052011" — kuncinya tak pernah cocok. Satu orang
- * menempuh satu sekolah SEKALI. (Pekerjaan TETAP memakai periode: dua masa kerja
- * di perusahaan yang sama itu nyata.)
- */
-const EDU_PERIOD_KEYS: string[] = [];
 
 function riwayatKey(
   e: Record<string, unknown> | null | undefined,
@@ -156,8 +156,9 @@ function riwayatKey(
   const alt = pick(altKeys);
   // Periode: SATU nilai per slot (dedupe + buang yang kosong). Baris master
   // menulis `masuk` DAN `tahun_masuk` dengan nilai yang sama, jadi menjumlahkan
-  // semua kunci menghasilkan "2005200520112011" sementara baris `ai_data_json`
-  // hanya "20052011" — kuncinya tak pernah cocok dan sekolah tampil DUA KALI.
+  // semua kunci menghasilkan "20232023" sementara baris `ai_data_json` hanya
+  // "2023" — kuncinya tak pernah cocok. Pendidikan memakai `EDU_PERIOD_KEYS`
+  // (tanpa periode sama sekali); alasan terukurnya ada di sana.
   const period = [...new Set(periodKeys.map((k) => pick([k])).filter(Boolean))].join('');
   return (name ? 's:' + name : 't:' + alt) + '|' + period;
 }

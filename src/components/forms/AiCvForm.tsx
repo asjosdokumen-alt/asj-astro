@@ -240,6 +240,23 @@ const UPLOAD_COLORS: Record<UploadColor, { tile: string; label: string }> = {
    Levelnya TIDAK dideklarasikan di sini: `BAHASA_JEPANG` di `opsi-form.ts` juga
    mengisi `<select>` di form CV Master, jadi satu salinan saja — dulu dua, dan
    keduanya sudah berbeda (`-` ada di form Master, tidak di sini). */
+/**
+ * `uploads` dari `getDrafCvMaster` → `type` di `UploadRow`.
+ *
+ * Kuncinya SENGAJA tidak seragam: `buildMasterNested` menulis `photo` untuk
+ * foto (kolomnya `pas_photo`), sisanya camelCase sama seperti `type`.
+ */
+const DOC_UPLOAD_SOURCES: [string, string][] = [
+  ['foto', 'photo'],
+  ['jft', 'jft'],
+  ['ssw', 'ssw'],
+  ['ktp', 'ktp'],
+  ['kk', 'kk'],
+  ['ijazahSd', 'ijazahSd'],
+  ['ijazahSmp', 'ijazahSmp'],
+  ['ijazahSma', 'ijazahSma'],
+  ['univ', 'univ'],
+];
 const SSW_OPTIONS = [
   'KAIGO', 'BUILDING CLEANING', 'FOUNDRY & PLASTIC', 'INDUSTRIAL MACHINERY',
   'ELECTRIC & ELECTRONIC', 'CONSTRUCTION', 'SHIPBUILDING', 'AUTOMOBILE REPAIR',
@@ -1933,23 +1950,6 @@ function TextAreaPair({ label, groupLabel, helper, idId, idJp, valueId, valueJp,
   );
 }
 
-/**
- * `uploads` dari `getDrafCvMaster` → `type` di `UploadRow`.
- *
- * Kuncinya SENGAJA tidak seragam: `buildMasterNested` menulis `photo` untuk
- * foto (kolomnya `pas_photo`), sisanya camelCase sama seperti `type`.
- */
-const DOC_UPLOAD_SOURCES: [string, string][] = [
-  ['foto', 'photo'],
-  ['jft', 'jft'],
-  ['ssw', 'ssw'],
-  ['ktp', 'ktp'],
-  ['kk', 'kk'],
-  ['ijazahSd', 'ijazahSd'],
-  ['ijazahSmp', 'ijazahSmp'],
-  ['ijazahSma', 'ijazahSma'],
-  ['univ', 'univ'],
-];
 
 function UploadRow({ type, label, icon, color, accept, status, preview, onUpload }: {
   type: string; label: string; icon: string; color: UploadColor; accept: string; status?: string;
