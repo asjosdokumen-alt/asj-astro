@@ -53,7 +53,51 @@ const BIO_COLUMNS: [string, string[]][] = [
   ['tglpasport', ['tgl_terbit_pasport', 'tgl_pasport', 'tglpasport']],
   ['exppasport', ['exp_pasport', 'exppasport']],
   ['pt', ['pekerjaan_1_nama_perusahaan', 'nama_perusahaan', 'pt']],
+  // Identitas: kolom yang SAMA juga dibaca dossier profil. Terukur 226
+  // kandidat (2026-10-13): usia 32 · tb 44 · bb 46 · gender 2 hanya ada di
+  // master, KOSONG di `database_candidate`.
+  ['gender', ['gender']],
+  ['usia', ['usia', 'umur']],
+  ['tb', ['tb']],
+  ['bb', ['bb']],
 ];
+
+/**
+ * `bio` yang boleh ditambal dari `ai_data_json.identitas`.
+ *
+ * Nilainya datang dari `MASTER_LIGHT_COLS` lewat JSON-path PostgREST
+ * (`ai_gender:ai_data_json->identitas->gender`) — HANYA sub-objek kecil itu,
+ * bukan seluruh kolom JSON-nya, supaya proyeksi ringan tetap ringan.
+ * Terukur 2026-10-13: **21** kandidat punya `gender` HANYA di `ai_data_json`.
+ */
+const AI_BIO_FALLBACK: [string, string][] = [
+  ['gender', 'ai_gender'],
+  ['usia', 'ai_umur'],
+  ['tb', 'ai_tb'],
+  ['bb', 'ai_bb'],
+];
+
+/**
+ * Susun `bio` dari baris master: kolom `BIO_COLUMNS`, lalu tambalan
+ * `ai_data_json` untuk yang masih kosong. Urutannya SAMA dengan `makeV()` di
+ * CV — baris (master) menang, AI hanya mengisi yang kosong.
+ */
+export function buildBioFromMaster(mr: Record<string, any>): Record<string, string> {
+  const bio: Record<string, string> = {};
+  for (const [key, cols] of BIO_COLUMNS) {
+    const v = pick(mr, cols);
+    bio[key] = v && v !== '-' ? (DATE_BIO_KEYS.has(key) ? toDateOnly(v) : toText(v)) : '';
+  }
+  for (const [key, aiKey] of AI_BIO_FALLBACK) {
+    if (!bio[key]) {
+      // Sentinel `-` juga berarti kosong — kalau tidak, nilai AI yang kosong
+      // menyalin `-` ke dossier (tertangkap tes sentinel di e2e).
+      const ai = toText(pick(mr, [aiKey]));
+      bio[key] = ai && ai !== '-' ? ai : '';
+    }
+  }
+  return bio;
+}
 
 // Kunci `bio` yang berisi TANGGAL. `bio` dikonsumsi langsung oleh berkas
 // unduhan biodata (`biodataExport`) DAN oleh prefill form (`PemberkasanModal`,
@@ -151,12 +195,7 @@ async function attachBerkasBio(candidates: any[]) {
         c.berkas = {};
       }
       if (mr) {
-        const bio: Record<string, any> = {};
-        for (const [key, cols] of BIO_COLUMNS) {
-          const v = pick(mr, cols);
-          bio[key] = v && v !== '-' ? (DATE_BIO_KEYS.has(key) ? toDateOnly(v) : toText(v)) : '';
-        }
-        c.bio = bio;
+        c.bio = buildBioFromMaster(mr);
       } else {
         c.bio = {};
       }

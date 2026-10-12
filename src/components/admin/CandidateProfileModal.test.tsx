@@ -71,6 +71,34 @@ describe('CandidateProfileModal', () => {
     cleanup();
   });
 
+  it('menambal kolom identitas kosong dari `bio` (pemilik 2026-10-13)', () => {
+    // Baris kandidat dan ringkasan master masing-masing hanya punya SEBAGIAN
+    // kolom identitas. Terukur 226 kandidat: usia 32 · tb 44 · bb 46 · gender 2
+    // berisi di master tapi KOSONG di baris kandidat — rirekisho menampilkannya,
+    // dossier menampilkan "-". `bio` = ringkasan master (attachBerkasBio).
+    const sparse = {
+      ...mockCandidate,
+      gender: '',
+      usia: '',
+      tb: '',
+      bb: '',
+      bio: { tmplahir: 'Ponorogo', tgllahir: '2007-01-01', gender: 'PEREMPUAN', usia: '22', tb: '169 cm', bb: '86 kg' },
+    };
+    render(
+      <CandidateProfileModal
+        wa={sparse.wa}
+        nama="REVIN"
+        candidate={sparse}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+
+    expectExists('PEREMPUAN');
+    expectExists('22 Tahun');
+    expectExists('169 cm / 86 kg');
+  });
+
   it('renders from the passed decorated candidate row without any fetch', async () => {
     render(
       <CandidateProfileModal

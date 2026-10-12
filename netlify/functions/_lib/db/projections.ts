@@ -76,7 +76,11 @@ export const PROJECTIONS = {
    */
   MASTER_LIGHT_COLS: {
     table: 'master_database_candidate',
-    columns: 'id,id_kandidat,nama_lengkap,no_wa,kk_url,ijazah_sd_url,ijazah_smp_url,ijazah_sma_url,univ_url,ktp_url,email,tempat_lahir,tgl_lahir,alamat_lengkap,no_coe,exp_pasport,no_paspor,kota_terbit_pasport,tgl_terbit_pasport,keluarga_1_nama,pekerjaan_1_nama_perusahaan',
+    // Kolom identitas + sub-objek `ai_data_json.identitas` (JSON-path PostgREST
+    // dengan alias `ai_*`). Dossier profil hanya punya baris kandidat + `bio`;
+    // tanpa kolom ini ia menampilkan "-" untuk usia/tb/bb/gender yang ADA di
+    // master atau di AI (terukur 226 kandidat, 2026-10-13).
+    columns: 'id,id_kandidat,nama_lengkap,no_wa,kk_url,ijazah_sd_url,ijazah_smp_url,ijazah_sma_url,univ_url,ktp_url,email,tempat_lahir,tgl_lahir,alamat_lengkap,no_coe,exp_pasport,no_paspor,kota_terbit_pasport,tgl_terbit_pasport,keluarga_1_nama,pekerjaan_1_nama_perusahaan,gender,usia,tb,bb,ai_gender:ai_data_json->identitas->gender,ai_umur:ai_data_json->identitas->umur,ai_tb:ai_data_json->identitas->tb,ai_bb:ai_data_json->identitas->bb',
   },
   /** Mail inbox row — everything `mapForm()` reads. */
   FORM_LIGHT_COLS: {

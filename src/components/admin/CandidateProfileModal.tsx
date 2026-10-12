@@ -81,16 +81,19 @@ function hasClassTag(s: string): boolean {
 function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbackWa: string): CandidateData {
   const catatanInt = String(c.catatanInt || c.catatanInternal || '');
   const catatanExt = String(c.catatanExt || c.catatanExternal || '');
-  const tb = c.tb ?? '';
-  const bb = c.bb ?? '';
+  // Identitas tersebar: baris kandidat → `bio` (ringkasan master + AI).
+  // Terukur 226 kandidat (2026-10-13): usia 32 · tb 44 · bb 46 · gender 2
+  // berisi di master tapi KOSONG di baris kandidat.
+  const tb = c.tb || c.bio?.tb || '';
+  const bb = c.bb || c.bio?.bb || '';
   // Fisik = TB/BB gabungan (legacy dossier: cv-tbbb = c.tbBb), bukan URL.
-  const fisik = c.fisik || c.tbBb || ((tb || bb) ? [tb, bb].filter(Boolean).join(' / ') : '');
+  const fisik = c.fisik || (c.tbBb && c.tbBb !== '-' ? c.tbBb : '') || ((tb || bb) ? [tb, bb].filter(Boolean).join(' / ') : '');
   return {
     nama: c.nama || fallbackNama,
     wa: c.wa || fallbackWa,
     idKandidat: c.idKandidat || c.id,
-    gender: c.gender,
-    usia: c.usia,
+    gender: c.gender || c.bio?.gender,
+    usia: c.usia || c.bio?.usia,
     fisik,
     pendidikan: c.pendidikan,
     tmplahir: c.bio?.tmplahir || c.tempatLahir || c.tmplahir,
