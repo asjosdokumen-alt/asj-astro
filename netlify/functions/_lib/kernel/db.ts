@@ -80,6 +80,40 @@ function createSupabaseJwt(claims: { role: string; wa?: string; name?: string })
 // ── Client factories ────────────────────────────────────────────────────────
 
 /**
+ * Peran Postgres yang SAH untuk sebuah sesi.
+ *
+ * Token sesi memakai `role: 'admin' | 'kandidat'` (lihat _lib/session.ts dan
+ * contexts/identity/service.ts:59,135,150,173,188,197) — keduanya BUKAN role
+ * Postgres. PostgREST menolak peran yang tidak dikenal dengan
+ * `401 22023 role "X" does not exist` SEBELUM RLS sempat dievaluasi, jadi
+ * setiap tulis yang lewat `userClient()` mati selama pemetaan ini tidak ada.
+ * Terukur 2026-10-12 terhadap gdw DAN bimq:
+ *
+ *   role=admin        -> 401 {"code":"22023","message":"role \"admin\" does not exist"}
+ *   role=kandidat     -> 401 22023
+ *   role=service_role -> 204
+ *   role=authenticated-> 403 42501 (tanpa GRANT — efek migrasi 012)
+ *
+ *   admin   -> service_role   Admin butuh akses lintas-baris. Token sesi admin
+ *                             TIDAK membawa claim `wa`, sehingga policy
+ *                             `*_own_wa` (`no_wa = jwt.claims->>'wa'`) akan
+ *                             mencocokkan 0 baris dan UPDATE-nya menjawab 204
+ *                             tanpa mengubah apa pun — kegagalan yang LEBIH
+ *                             senyap daripada error. Migrasi 007 menyatakan
+ *                             hal yang sama: "For admin/service-role requests,
+ *                             RLS is bypassed ... admins need cross-user
+ *                             access".
+ *   lainnya -> authenticated  RLS berlaku; policy `*_own_wa` membatasi ke baris
+ *                             milik `wa` di token. Inilah yang menjaga kandidat
+ *                             tetap hanya bisa menyentuh barisnya sendiri.
+ *
+ * Fail-closed: peran yang tidak dikenal TIDAK pernah diteruskan apa adanya.
+ */
+function pgRoleFor(sessionRole?: string): string {
+  return sessionRole === 'admin' ? 'service_role' : 'authenticated';
+}
+
+/**
  * Client info with separate apikey (project identification) and
  * authKey (RLS evaluation via JWT). For anon/service, both are the same key.
  * For user client, apikey = anon key, authKey = Supabase JWT with wa claim.
@@ -132,7 +166,7 @@ export function userClient(sessionToken?: string): ClientInfo {
   // Token is cryptographically verified — safe to extract claims.
   try {
     const supabaseJwt = createSupabaseJwt({
-      role: verified.role || 'authenticated',
+      role: pgRoleFor(verified.role),
       wa: verified.wa,
       name: verified.name,
     });

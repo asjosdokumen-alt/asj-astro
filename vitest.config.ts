@@ -151,6 +151,13 @@ export default defineConfig({
             // e2e/ TANPA baris ini membuatnya berjalan di jsdom dan terhitung
             // dua kali.
             'e2e/biodata-cols-contract.test.ts',
+            // Ditambahkan 2026-10-12. Handler-level, tanpa DOM: meng-import
+            // `_lib/kernel/db.ts` + `_lib/session.ts` dan membaca secret dari
+            // `process.env`. Tinggal di e2e/ HANYA karena counter beku
+            // `indexer` menghitung `netlify/functions/**/*.ts`; `.ts` di tier
+            // e2e tidak dihitung. Lihat R13f-bis: menaruhnya di e2e/ TANPA
+            // baris ini membuatnya berjalan di jsdom dan terhitung dua kali.
+            'e2e/kernel-db-role.test.ts',
           ],
         },
       },
