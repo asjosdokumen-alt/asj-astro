@@ -175,7 +175,14 @@ export function buildCvIdentitas(v: (...keys: string[]) => string) {
   return {gStr,nStr,jStr,pStr,tStr,gd,nr};
 }
 export function buildKertasA4(p: Record<string, any>) {
-  const {v,foto,btn,tgl,wa,gS,nS,jS,pS,tS,gd,nr,edu,job,fam} = p;
+  // ⚠ NAMA KUNCI = kontrak `buildCvIdentitas()`. MEASURED 2026-10-12: di sini
+  // dulu tertulis `gS,nS,jS,pS,tS`, sementara produsennya mengembalikan
+  // `gStr,nStr,jStr,pStr,tStr` — jadi kelimanya `undefined`, dan
+  // `escVal(undefined)` menulis kata "undefined" ke SELURUH CV (JENIS KELAMIN,
+  // STATUS PERNIKAHAN, PERNAH KE JEPANG, PASPOR, TANGAN). Diukur atas DB live:
+  // 40 dari 40 kandidat nyata. Kalau salah satu nama di bawah diubah, ubah juga
+  // yang di `buildCvIdentitas()` — `RirekishoBuilder.test.tsx` menahannya.
+  const {v,foto,btn,tgl,wa,gStr,nStr,jStr,pStr,tStr,gd,nr,edu,job,fam} = p;
   // td adalah sink sel ini: nilai polos di-escape; markup tepercaya lewat raw().
   const tr = (cells: string[]) => "<tr>" + cells.map(c => c).join("") + "</tr>";
   const td = (txt: string, cls?: string, span?: number|string) => {let h="<td";if(cls)h+=" class=\""+cls+"\"";if(span)h+=" colspan=\""+span+"\"";return h+">"+escVal(txt)+"</td>";};
@@ -196,7 +203,7 @@ export function buildKertasA4(p: Record<string, any>) {
   h+=raw("<div style=\"color:black;text-align:right;font-size:10px;font-style:italic;margin-bottom:2px;\">Ver.2025</div>");
   h+=raw("<table class=\"cv-excel\"><colgroup><col class=\"col-1\"><col class=\"col-2\"><col class=\"col-3\"><col class=\"col-4\"><col class=\"col-5\"><col class=\"col-6\"><col class=\"col-7\"></colgroup>");
   // Row 1: Photo + Nomor + Gender
-  h+=btn+tr([rs11(foto),amber(raw("実習生 NOMOR<br>番号")),center(nr),amber(raw("性別&nbsp;&nbsp;&nbsp;JENIS KELAMIN")),center(gS)]);
+  h+=btn+tr([rs11(foto),amber(raw("実習生 NOMOR<br>番号")),center(nr),amber(raw("性別&nbsp;&nbsp;&nbsp;JENIS KELAMIN")),center(gStr)]);
   // Row 2: Nama + Usia
   h+=tr([amber(raw("名前&nbsp;&nbsp;&nbsp;NAMA"),2),amber(raw("年齢&nbsp;&nbsp;&nbsp;USIA")),center(String(v("USIA","UMUR","identitas.umur").replace(/\D/g,""))+" 歳")]);
   // Row 3: Nama Lengkap + Tinggi
@@ -206,15 +213,15 @@ export function buildKertasA4(p: Record<string, any>) {
   // Row 5: Panggilan + Goldar
   h+=tr([amber(raw("NAMA PANGGILAN<br>ニックネーム")),td(escHtml`<i>${v("NAMAPANGGILAN","PANGGILAN","PANGGILANID","identitas.panggilan")}<br>${v("PANGGILANKATAKANA","KATAKANAPANGGILAN","PANGGILANJP","identitas.panggilan_katakana")}</i>`,"val-center leading-tight"),amber(raw("血液型&nbsp;&nbsp;&nbsp;GOLONGAN DARAH")),center(gd+" 型")]);
   // Row 6: Tgl Lahir + Status Nikah
-  h+=tr([amber(raw("生年月日&nbsp;&nbsp;&nbsp;TANGGAL LAHIR"),2),amber(raw("配偶者&nbsp;&nbsp;&nbsp;STATUS PERNIKAHAN")),center(nS)]);
+  h+=tr([amber(raw("生年月日&nbsp;&nbsp;&nbsp;TANGGAL LAHIR"),2),amber(raw("配偶者&nbsp;&nbsp;&nbsp;STATUS PERNIKAHAN")),center(nStr)]);
   // Row 7: Tgl + Agama
   h+=tr([center(escHtml`<i>${tgl}</i>`,2),amber(raw("宗教&nbsp;&nbsp;&nbsp;AGAMA")),center(v("AGAMA","AGAMAID","AGAMAJP","identitas.agama"))]);
   // Row 8: Tempat Lahir + Pernah ke JP
-  h+=tr([amber(raw("出身地&nbsp;&nbsp;&nbsp;TEMPAT LAHIR"),2),amber(raw("来日経験&nbsp;&nbsp;&nbsp;PERNAH KE JEPANG")),center(jS)]);
+  h+=tr([amber(raw("出身地&nbsp;&nbsp;&nbsp;TEMPAT LAHIR"),2),amber(raw("来日経験&nbsp;&nbsp;&nbsp;PERNAH KE JEPANG")),center(jStr)]);
   // Row 9: Tempat Lahir JP + Paspor
-  h+=tr([td(escHtml`<i>${v("TEMPATLAHIR","TEMPATLAHIRID","identitas.tempat_lahir_id","identitas.tempat_lahir")}</i>`,"val-center uppercase",2),amber(raw("パスポート番号<br>PERNAH MEMILIKI PASPOR")),center(pS)]);
+  h+=tr([td(escHtml`<i>${v("TEMPATLAHIR","TEMPATLAHIRID","identitas.tempat_lahir_id","identitas.tempat_lahir")}</i>`,"val-center uppercase",2),amber(raw("パスポート番号<br>PERNAH MEMILIKI PASPOR")),center(pStr)]);
   // Row 10: Tempat Lahir JP transliteration + Tangan
-  h+=tr([td(escHtml`<i>${v("TEMPATLAHIRJP","identitas.tempat_lahir_jp")==="-"?"":v("TEMPATLAHIRJP","identitas.tempat_lahir_jp")}</i>`,"val-center",2),amber(raw("利き手&nbsp;&nbsp;&nbsp;TANGAN AHLI")),center(tS)]);
+  h+=tr([td(escHtml`<i>${v("TEMPATLAHIRJP","identitas.tempat_lahir_jp")==="-"?"":v("TEMPATLAHIRJP","identitas.tempat_lahir_jp")}</i>`,"val-center",2),amber(raw("利き手&nbsp;&nbsp;&nbsp;TANGAN AHLI")),center(tStr)]);
   // Row 11: No HP + Riwayat Penyakit
   h+=tr([amber(raw("携帯電話番号&nbsp;&nbsp;&nbsp;NO HP")),center("+"+wa.replace(/\D/g,"")),amber(raw("病歴の有無&nbsp;RIWAYAT PENYAKIT<br>(KERAS, LUKA DLL)")),center(v("RIWAYATPENYAKIT","RIWAYATPENYAKITID","RIWAYATMEDISID","medis.riwayat_medis_id")==="-"?raw("TIDAK (無)"):v("RIWAYATPENYAKIT","RIWAYATPENYAKITID","RIWAYATMEDISID","medis.riwayat_medis_id"))]);
   // Alamat

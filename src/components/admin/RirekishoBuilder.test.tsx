@@ -193,6 +193,50 @@ describe('RirekishoBuilder (A10)', () => {
     expect(container.innerHTML).toContain('PETANI');
   });
 
+  /**
+   * REGRESSION (measured 2026-10-12): the identity cells printed the literal
+   * string "undefined" on EVERY CV.
+   *
+   * `buildCvIdentitas()` returns `{gStr,nStr,jStr,pStr,tStr,gd,nr}`, and the
+   * caller spreads it (`...id`) into `buildKertasA4()`. The sheet destructured
+   * `{gS,nS,jS,pS,tS,…}` — five names the producer never emitted — so five
+   * `escVal(undefined)` calls wrote "undefined" into JENIS KELAMIN, STATUS
+   * PERNIKAHAN, PERNAH KE JEPANG, PASPOR and TANGAN.
+   *
+   * Measured against the live DB before the fix: 40 of 40 real candidates
+   * rendered a CV containing "undefined". `rirekishoEscape.test.ts` could not
+   * see it — that suite spreads `...id` too, but only asserts that XSS payloads
+   * come out escaped.
+   *
+   * The assertions are per-CELL and positive on purpose: "no undefined" alone
+   * would also pass if the cells were blanked to `-`, which is the same bug in
+   * a quieter costume.
+   */
+  it('identitas: lima kolom identitas terisi datanya — tidak pernah "undefined"', async () => {
+    mockDraft.mockResolvedValue({
+      ...draft,
+      identitas: {
+        nama_lengkap: 'KANDIDAT A',
+        gender: 'PEREMPUAN',
+        status_nikah: 'BELUM MENIKAH',
+        paspor: 'YA',
+        tgl_lahir: '1995-08-14',
+      },
+      wawancara: { riwayat_jepang: 'BELUM' },
+      fisik: { tangan_dominan: 'KANAN' },
+    });
+    const { container } = render(
+      <RirekishoBuilder waTarget="6281234567890" isOpen={true} onClose={() => {}} />,
+    );
+    await waitFor(() => expect(container.innerHTML).toContain('実習生経歴書'));
+    const html = container.innerHTML;
+    expect(html).not.toContain('undefined');
+    expect(html).toContain('PEREMPUAN (女)');
+    expect(html).toContain('BELUM MENIKAH （未婚）');
+    expect(html).toContain('ADA （有）');
+    expect(html).toContain('KANAN  (右)');
+  });
+
   it('isOpen=false → tidak render apa pun', () => {
     const { container } = render(
       <RirekishoBuilder waTarget="6281234567890" isOpen={false} onClose={() => {}} />,
