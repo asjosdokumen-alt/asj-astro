@@ -22,10 +22,52 @@ function parseInline(content: string, path = 'test/sample.ts', lang: Lang = 'ts'
 
 describe('real-file outlines', () => {
   it('master-data/index.ts — pure re-export barrel with an alias', () => {
-    const p = parseReal('netlify/functions/contexts/master-data/index.ts', 'ts');
+    const REL = 'netlify/functions/contexts/master-data/index.ts';
+    const p = parseReal(REL, 'ts');
     expect(p.symbols).toHaveLength(0); // barrel: no declarations
     expect(p.imports).toHaveLength(0);
-    expect(p.exports).toHaveLength(14); // 11 at design time; barrel grew with the contexts split
+
+    /* JUMLAH EKSPOR TIDAK LAGI DIHAFAL (2026-10-12).
+     *
+     * Baris ini dulu berbunyi `expect(p.exports).toHaveLength(14)` dengan
+     * komentar "11 at design time; barrel grew with the contexts split".
+     * Angkanya basi DIAM-DIAM: commit `99eb818` (fix riwayat) dan `ea658e9`
+     * (cv-template) menumbuhkan barrel ke **19** ekspor, dan tidak ada yang
+     * memperbarui baris itu. MEASURED dari pesan kegagalan, bukan diturunkan:
+     * "expected [ { fileIdx: +0, …(5) }, …(18) ] to have a length of 14 but
+     * got 19".
+     *
+     * SEBAB angkanya bisa basi selama itu: suite `indexer` **tidak dijalankan
+     * CI** (`ci.yml` hanya `test:frontend` + `test:backend`), jadi angka-angka
+     * di berkas ini hanya ditegakkan kalau seseorang menjalankannya lokal.
+     * Pola yang sama sudah pernah tercatat di tes `BaseLayout` di bawah
+     * ("`b3726ca` … ran `lint-ratchet`, but not this suite, which is why the
+     * drift sat here until 2026-09-30").
+     *
+     * Karena itu yang diuji sekarang adalah INVARIAN, bukan angka: parser harus
+     * melihat PERSIS nama-nama yang dideklarasikan berkas sumbernya. Nama-nama
+     * itu dihitung dengan cara yang BERBEDA dari parser — regex atas teks
+     * sumber, bukan AST — sehingga keduanya saling memeriksa, bukan sekadar
+     * sepakat dengan dirinya sendiri.
+     *
+     * Akibatnya barrel boleh tumbuh kapan saja tanpa membuat tes merah, dan
+     * tanpa perlu ada orang yang ingat memperbarui sebuah angka. Yang tetap
+     * merah bila rusak: parser diam-diam menjatuhkan atau menggandakan ekspor.
+     * (Properti "pure re-export barrel" tetap dijaga oleh `symbols` dan
+     * `imports` yang harus 0 di atas.) */
+    const src = readFileSync(`${ROOT}/${REL}`, 'utf8').replace(/^\s*\/\/.*$/gm, '');
+    const declared = new Set(
+      [...src.matchAll(/export\s*\{([^}]*)\}/g)]
+        .flatMap((m) => m[1].split(','))
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((s) => (s.includes(' as ') ? s.split(' as ')[1].trim() : s)),
+    );
+    // Kontrol positif: tanpa ini, regex yang rusak membuat `declared` kosong
+    // dan kesetaraan di bawah bisa lulus karena dua-duanya kosong.
+    expect(declared.size).toBeGreaterThan(0);
+    expect([...p.exports.map((e) => e.exportName)].sort()).toEqual([...declared].sort());
+
     const alias = p.exports.find((e) => e.exportName === 'handleSimpanUpdateMaster');
     expect(alias).toMatchObject({ localName: 'handleSubmitMasterForm', from: './service', kind: 'named' });
     const plain = p.exports.find((e) => e.exportName === 'findMasterByWa');
