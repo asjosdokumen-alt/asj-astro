@@ -237,6 +237,32 @@ describe('RirekishoBuilder (A10)', () => {
     expect(html).toContain('KANAN  (右)');
   });
 
+  /**
+   * 血液型 — sel golongan darah.
+   *
+   * Keluhan pemilik 2026-10-12: "golongan darah sekarang tolong perbanyak
+   * kategorinya jgn a b ab o tambahin + nya juga". Begitu varian Rh bisa
+   * dipilih, sel ini harus ikut benar: `gd + " 型"` mencetak `O+ 型`, yang
+   * terbaca sebagai golongan "O+" padahal `型` menempel pada ABO. Nilai nyata
+   * di DB: `O+`, `A+`, `B+`, dan satu baris `"AB +"` (ASJ00171, berspasi).
+   *
+   * Nilai kosong juga diperiksa: versi lama selalu menempelkan sufiks, jadi
+   * selnya berisi ` 型` saja ketika golongan darah tidak diisi.
+   */
+  it('血液型: `O+` dirender "O 型 Rh+", dan kosong TIDAK menyisakan " 型"', async () => {
+    mockDraft.mockResolvedValue({ ...draft, identitas: { ...draft.identitas, golongan_darah: 'O+' } });
+    const a = render(<RirekishoBuilder waTarget="6281234567890" isOpen={true} onClose={() => {}} />);
+    await waitFor(() => expect(a.container.innerHTML).toContain('実習生経歴書'));
+    expect(a.container.innerHTML).toContain('O 型 Rh+');
+    expect(a.container.innerHTML).not.toContain('O+ 型');
+    a.unmount();
+
+    mockDraft.mockResolvedValue({ ...draft, identitas: { ...draft.identitas, golongan_darah: '-' } });
+    const b = render(<RirekishoBuilder waTarget="6281234567890" isOpen={true} onClose={() => {}} />);
+    await waitFor(() => expect(b.container.innerHTML).toContain('実習生経歴書'));
+    expect(b.container.innerHTML).not.toContain(' 型</td>');
+  });
+
   it('isOpen=false → tidak render apa pun', () => {
     const { container } = render(
       <RirekishoBuilder waTarget="6281234567890" isOpen={false} onClose={() => {}} />,

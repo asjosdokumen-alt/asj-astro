@@ -116,16 +116,103 @@ function toDateOnly(v: unknown): string {
 }
 
 /**
- * Date columns per table — deliberately narrow, and only tables PROVEN to hold
- * dates. Machine timestamps stay out on purpose (`created_at`, `updated_at`,
- * `tanggal_daftar`, `ai_updated_at`, `job_queue.run_after`,
- * `database_schedule.tanggal_waktu`): their time of day is real, and truncating
- * them to a date would destroy data. A table absent from this map is untouched.
+ * Blood type, canonical: `ABO` + optional `+`/`-`, or `-` for unknown.
+ *
+ * MEASURED 2026-10-12 over the live DB (`master_database_candidate`, 234 rows):
+ * the stored values are `null` 210, `O` 10, `B` 4, `-` 4, `A` 2, `O+` 1, `A+` 1,
+ * `B+` 1 — and **`"AB +"` 1** (ASJ00171), with a SPACE inside it. That one row
+ * matches no option in any dropdown, so its `<select>` renders blank and the
+ * value is one keystroke away from being lost.
+ *
+ * Only the ABO(+Rh) shape is rewritten; any other text passes through, because
+ * this must never invent a blood type it does not understand.
  */
-const DATE_COLUMNS: Record<string, string[]> = {
-  master_database_candidate: ['tgl_lahir', 'tgl_terbit_pasport', 'exp_pasport'],
-  database_candidate: ['tgl_lahir'],
-  database_asj_form: ['tgl_lahir'],
+const BLOOD_TYPE_RE = /^(AB|A|B|O)([+-])?$/;
+
+/** @param {unknown} v @returns {string} */
+function normalizeBloodType(v: unknown): string {
+  const s = toText(v).trim();
+  if (!s || s === '-') return s;
+  // Compact only to TEST the shape: `"AB +"` → `AB+`. Anything that does not
+  // match is returned as the original trimmed text, never the compacted form —
+  // stripping the spaces out of `"TIDAK TAHU"` would be a silent edit of a value
+  // this function does not understand.
+  const m = BLOOD_TYPE_RE.exec(s.toUpperCase().replace(/\s+/g, ''));
+  return m ? m[1] + (m[2] || '') : s;
+}
+
+/**
+ * Trim surrounding whitespace from an enum value.
+ *
+ * A stored `"ISLAM "` (trailing space) matches no `<option>` in any dropdown:
+ * `F`/`PairSelect` keep it visible as its own stray row, so the row is one save
+ * away from being overwritten with a real value and the original spelling is
+ * silently lost. It is the same defect class as `"AB +"` — a stored SHAPE that
+ * the option list cannot match — and the fix belongs in the same place.
+ *
+ * Measured on the live DB 2026-10-12 (`master_database_candidate`):
+ *   `agama`              `"ISLAM "`        ×1
+ *   `status_pernikahan`  `"BELUM MENIKAH "`×1
+ *   `status_eks_jepang`  `"BELUM "`        ×2
+ *   `minum_alkohol`      `"TIDAK "`        ×1
+ *
+ * Trimming cannot lose meaning: leading/trailing whitespace is never a
+ * deliberate part of an enum answer. Unlike `normalizeBloodType` this does not
+ * rewrite the interior of a value it does not understand.
+ *
+ * @param {unknown} v @returns {string}
+ */
+function trimText(v: unknown): string {
+  return toText(v).trim();
+}
+
+/**
+ * The enum columns of `master_database_candidate` and how each is coerced.
+ *
+ * Listed one by one rather than "trim every text column": `writeBodyFor`'s
+ * doctrine is to coerce only what has been PROVEN to need it, so a free-text
+ * answer (`promosi_diri`, `motivasi_ke_jepang`, …) is never edited on the way
+ * in. `golongan_darah` is here too, but with its own coercer — it trims AND
+ * collapses `"AB +"` to `AB+`, so `trimText` would be a step backwards for it.
+ */
+const MASTER_ENUM_COERCERS: Record<string, (v: unknown) => string> = {
+  gender: trimText,
+  agama: trimText,
+  status_pernikahan: trimText,
+  golongan_darah: normalizeBloodType,
+  tangandominan: trimText,
+  status_eks_jepang: trimText,
+  tahan_ac: trimText,
+  kacamata: trimText,
+  buta_warna: trimText,
+  tato: trimText,
+  tindik: trimText,
+  merokok: trimText,
+  minum_alkohol: trimText,
+  ukuranbaju: trimText,
+  ukuransepatu: trimText,
+  ukuran_topi: trimText,
+  bahasa: trimText,
+};
+
+/**
+ * Per-column coercers applied to every WRITE body — table → column → coercer.
+ *
+ * Deliberately narrow, and only tables PROVEN to hold these columns. Machine
+ * timestamps stay out on purpose (`created_at`, `updated_at`, `tanggal_daftar`,
+ * `ai_updated_at`, `job_queue.run_after`, `database_schedule.tanggal_waktu`):
+ * their time of day is real, and truncating them to a date would destroy data.
+ * A table or column absent from this map is left exactly as the caller sent it.
+ */
+const COLUMN_COERCERS: Record<string, Record<string, (v: unknown) => string>> = {
+  master_database_candidate: {
+    tgl_lahir: toDateOnly,
+    tgl_terbit_pasport: toDateOnly,
+    exp_pasport: toDateOnly,
+    ...MASTER_ENUM_COERCERS,
+  },
+  database_candidate: { tgl_lahir: toDateOnly },
+  database_asj_form: { tgl_lahir: toDateOnly },
 };
 
 /**
@@ -155,13 +242,13 @@ const DATE_COLUMNS: Record<string, string[]> = {
  * A table that is not in the contract is left untouched, exactly like
  * `resolveSelect()`: there is nothing truthful to filter it with.
  *
- * This is also the ONE place a date is coerced on the way in (`DATE_COLUMNS` +
- * `toDateOnly`). There are six separate write sites for `tgl_lahir` alone —
- * `buildMasterBody`, the master↔candidate sync lists, `registry/service.ts`,
- * `ingestion/service.ts` and `_lib/ai/cv.ts` — so guarding them individually
- * would be six chances to forget one, and a re-sync from the source spreadsheet
- * would plant a fresh ISO stamp each time. Every PostgREST write passes through
- * here instead.
+ * This is also the ONE place a value is coerced on the way in
+ * (`COLUMN_COERCERS` + `toDateOnly` / `normalizeBloodType`). There are six
+ * separate write sites for `tgl_lahir` alone — `buildMasterBody`, the
+ * master↔candidate sync lists, `registry/service.ts`, `ingestion/service.ts`
+ * and `_lib/ai/cv.ts` — so guarding them individually would be six chances to
+ * forget one, and a re-sync from the source spreadsheet would plant a fresh ISO
+ * stamp each time. Every PostgREST write passes through here instead.
  *
  * Pure, so the policy is asserted directly instead of only through a live call.
  */
@@ -172,7 +259,7 @@ export function writeBodyFor(
   const known = columnsOf(table);
   if (!known || known.length === 0) return { body, dropped: [] };
   const keep = new Set(known);
-  const dates = new Set(DATE_COLUMNS[table] || []);
+  const coerce = COLUMN_COERCERS[table];
   const dropped = new Set<string>();
   const strip = (row: unknown): unknown => {
     if (!row || typeof row !== 'object' || Array.isArray(row)) return row;
@@ -182,7 +269,7 @@ export function writeBodyFor(
         dropped.add(k);
         continue;
       }
-      out[k] = dates.has(k) ? toDateOnly(v) : v;
+      out[k] = coerce?.[k] ? coerce[k](v) : v;
     }
     return out;
   };
@@ -495,6 +582,7 @@ export {
   APPLY_WA_COLS,
   toText,
   toDateOnly,
+  normalizeBloodType,
   normalizeWa,
   normalizeStatus,
   normalizeGender,

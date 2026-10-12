@@ -15,7 +15,7 @@ import { resolveFileUrl } from '../../_lib/storage';
 import {
   findMasterByWa, patchMaster, upsertMaster, findCandidateRow,
   normalizeWa as nw, pick, supabaseJson,
-  toText, toDateOnly, APPLY_WA_COLS,
+  toText, toDateOnly, normalizeBloodType, APPLY_WA_COLS,
 } from './repository';
 
 // --- Constants (moved from actions-master.ts) ---
@@ -166,6 +166,9 @@ export function buildMasterNested(row: any): any {
   // mencetak `2008-04-04T17:00:00.000Z` — cap waktu `timestamptz` yang sekaligus
   // mundur satu hari dari tanggal yang dimaksud (2008-04-05 WIB).
   const vd = (col: string) => toDateOnly(row[col]);
+  // Golongan darah: `"AB +"` (baris nyata ASJ00171) dirapikan jadi `AB+` supaya
+  // cocok dengan opsi dropdown mana pun — tanpa ini `<select>`-nya tampil kosong.
+  const vg = (col: string) => normalizeBloodType(row[col]);
   let aiParsed: any = null;
   try { const raw = row.ai_data_json; if (typeof raw === 'string' && raw.trim() && raw !== '-') aiParsed = JSON.parse(raw); } catch { aiParsed = null; }
   const aiArrOf = (key: string) => (aiParsed && Array.isArray(aiParsed[key]) ? aiParsed[key] : null);
@@ -175,7 +178,7 @@ export function buildMasterNested(row: any): any {
       panggilan_katakana: v('panggilan_katakana'), tempat_lahir: v('tempat_lahir'),
       tempat_lahir_jp: v('tempat_lahir_jp'), tgl_lahir: vd('tgl_lahir'), umur: v('usia'),
       gender: v('gender'), agama: v('agama'), agama_jp: v('agama_jp'),
-      golongan_darah: v('golongan_darah'), status_nikah: v('status_pernikahan'),
+      golongan_darah: vg('golongan_darah'), status_nikah: v('status_pernikahan'),
       status_pernikahan_jp: v('status_pernikahan_jp'), anak: v('jumlah_anak'),
       email: v('email'), alamat: v('alamat_lengkap'), alamat_jp: v('alamat_jp'),
       hp: v('no_wa'), hp_darurat: v('kontak_darurat_wa'), ktp: v('nik'),
@@ -513,6 +516,9 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
     // KOSONG untuk cap waktu ISO maupun `dd-mm-yyyy`, jadi tanggal dinormalkan
     // di sini seperti di `buildMasterNested` (satu implementasi: `toDateOnly`).
     const vd = (col: string) => { const x = row[col]; return x !== undefined && x !== null ? toDateOnly(x) : ''; };
+    // Golongan darah dirapikan seperti di `buildMasterNested` — nilai seperti
+    // `"AB +"` tidak cocok dengan opsi mana pun, jadi dropdown-nya tampil kosong.
+    const vg = (col: string) => { const x = row[col]; return x !== undefined && x !== null ? normalizeBloodType(x) : ''; };
     let aiParsed: any = null;
     try { const raw = row.ai_data_json; if (typeof raw === 'string' && raw.trim() && raw !== '-') aiParsed = JSON.parse(raw); } catch { aiParsed = null; }
     const aiKen = (aiParsed && aiParsed.kenalan_jepang) || {};
@@ -525,7 +531,7 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
       STATUS_PERNIKAHAN: v('status_pernikahan'), STATUS_NIKAH_JP: v('status_pernikahan_jp'),
       JUMLAH_ANAK: v('jumlah_anak'), NIK: v('nik'), DRIVER_LICENSE: v('driver_license'),
       ALAMAT_LENGKAP: v('alamat_lengkap'), ALAMAT_JP: v('alamat_jp'), EMAIL: v('email'),
-      TT: v('tb'), TB: v('tb'), BB: v('bb'), GOLONGAN_DARAH: v('golongan_darah'),
+      TT: v('tb'), TB: v('tb'), BB: v('bb'), GOLONGAN_DARAH: vg('golongan_darah'),
       TANGANDOMINAN: v('tangandominan'), UKURANBAJU: v('ukuranbaju'), UKURANSEPATU: v('ukuransepatu'),
       UKURAN_TOPI: v('ukuran_topi'), TAHAN_AC: v('tahan_ac'), MATA_KIRI: v('mata_kiri'),
       MATA_KANAN: v('mata_kanan'), KACAMATA: v('kacamata'), BUTA_WARNA: v('buta_warna'),

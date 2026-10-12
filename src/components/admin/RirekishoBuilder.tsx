@@ -5,6 +5,7 @@ import { authStore } from "../../store/authReactive";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
 import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, sortEdu, riwayatKeyOf } from "../../lib/helpers_cv";
+import { golonganDarahDisplay } from "../../lib/opsi-form";
 import { useOverlay } from "../ui/useOverlay";
 
 interface Props {
@@ -169,7 +170,10 @@ export function buildCvIdentitas(v: (...keys: string[]) => string) {
   const pStr = (ps.includes("YA")||ps.includes("ADA")||ps.length>5)?"ADA （有）":"TIDAK （無）";
   const tg = String(v("TANGANDOMINAN","TANGAN","fisik.tangan_dominan")).toUpperCase();
   const tStr = tg.includes("KIRI")?"KIRI (左)":tg==="-"?"":"KANAN  (右)";
-  let gd = v("GOLONGANDARAH","GOLDAR","identitas.golongan_darah"); if(gd==="-")gd="";
+  // 血液型: sufiks `型` menempel pada golongan ABO, jadi varian Rh dipisah —
+  // `O+` → `O 型 Rh+`, bukan `O+ 型`. Nilai kosong / '-' menghasilkan sel
+  // KOSONG; versi lama selalu menempelkan ` 型` sehingga sel berisi " 型" saja.
+  const gd = golonganDarahDisplay(v("GOLONGANDARAH","GOLDAR","identitas.golongan_darah"));
   let nr = v("id_kandidat","IDKANDIDAT","NOMOR","ID");
   if(nr!=="-"){const m=String(nr).match(/(\d{3,})$/);nr=m?"P - "+m[1]:nr;}else{nr="";}
   return {gStr,nStr,jStr,pStr,tStr,gd,nr};
@@ -211,7 +215,7 @@ export function buildKertasA4(p: Record<string, any>) {
   // Row 4: Furigana + Berat
   h+=tr([td(escHtml`<i>${v("FURIGANA","KATAKANA","NAMAKATAKANA","identitas.katakana")}</i>`,"val-center",2),amber(raw("体重&nbsp;&nbsp;&nbsp;BERAT BADAN")),center(String(v("BB","BERAT","fisik.bb").replace(/\D/g,""))+" KG")]);
   // Row 5: Panggilan + Goldar
-  h+=tr([amber(raw("NAMA PANGGILAN<br>ニックネーム")),td(escHtml`<i>${v("NAMAPANGGILAN","PANGGILAN","PANGGILANID","identitas.panggilan")}<br>${v("PANGGILANKATAKANA","KATAKANAPANGGILAN","PANGGILANJP","identitas.panggilan_katakana")}</i>`,"val-center leading-tight"),amber(raw("血液型&nbsp;&nbsp;&nbsp;GOLONGAN DARAH")),center(gd+" 型")]);
+  h+=tr([amber(raw("NAMA PANGGILAN<br>ニックネーム")),td(escHtml`<i>${v("NAMAPANGGILAN","PANGGILAN","PANGGILANID","identitas.panggilan")}<br>${v("PANGGILANKATAKANA","KATAKANAPANGGILAN","PANGGILANJP","identitas.panggilan_katakana")}</i>`,"val-center leading-tight"),amber(raw("血液型&nbsp;&nbsp;&nbsp;GOLONGAN DARAH")),center(gd)]);
   // Row 6: Tgl Lahir + Status Nikah
   h+=tr([amber(raw("生年月日&nbsp;&nbsp;&nbsp;TANGGAL LAHIR"),2),amber(raw("配偶者&nbsp;&nbsp;&nbsp;STATUS PERNIKAHAN")),center(nStr)]);
   // Row 7: Tgl + Agama
