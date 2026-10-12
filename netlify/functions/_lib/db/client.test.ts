@@ -111,17 +111,55 @@ describe('normalizeGender — kanonikal LAKI-LAKI/PEREMPUAN (konvensi situs lama
  * kunci itu. `writeBodyFor` adalah penjaganya, dan tes di bawah memaku dua
  * janjinya: kolom asing DIBUANG (supaya tulisannya selamat) dan namanya
  * DILAPORKAN (supaya drift skema tidak hilang tanpa suara).
+ *
+ * ⚠ 2026-10-12 — `submitted_by` BUKAN lagi contoh yang sah untuk "kolom hantu".
+ *
+ *   Pengukuran 2026-10-08 di atas dilakukan terhadap **bimq** (DB cadangan), dan
+ *   kontrak saat itu memang digenerate dari bimq — jadi keduanya sepakat bahwa
+ *   kolomnya tidak ada. Diukur ULANG 2026-10-12 terhadap **gdw** (legacy, target
+ *   produksi), kolom itu **ADA**:
+ *
+ *     ai_form_submissions.submitted_by — text, nullable, tanpa index/constraint,
+ *     dan **43 dari 43 baris terisi**. Tidak satu pun migrasi `001`–`016` yang
+ *     menciptakannya ⇒ artefak legacy di luar ledger migrasi.
+ *
+ *   `schema.generated.ts` digenerate dari DB yang ditunjuk `env`
+ *   (`scripts/ci/gen-schema.mjs`), jadi kontrak sekarang MEMUAT kolom itu dan
+ *   penjaga sengaja TIDAK membuangnya lagi.
+ *
+ *   ⇒ Contoh kolom hantu di tes ini **diturunkan dari kontrak** (`phantomKey()`),
+ *   bukan dihafal. Yang harus diuji adalah PENJAGA-nya, bukan kebetulan satu
+ *   database: contoh yang dihafal berbohong begitu `.env` menunjuk DB lain —
+ *   persis yang terjadi di sini.
+ *
+ *   Cakupan regresi aslinya (kode mengirim kolom di luar kontrak) TIDAK hilang:
+ *   itu dijaga `e2e/ai-cv-submit.test.ts` ("tidak ada body tulis yang menyebut
+ *   kolom di luar kontrak"), yang membandingkan setiap body tulis dengan
+ *   `TABLE_COLUMNS` secara dinamis.
  */
+/**
+ * Kunci yang DIJAMIN tidak ada di kontrak `table` — diturunkan dari kontrak itu
+ * sendiri, bukan dihafal (lihat catatan 2026-10-12 di atas). Tanpa ini, tes di
+ * bawah akan hijau/merah tergantung DB mana yang sedang ditunjuk `env`.
+ */
+function phantomKey(table: string): string {
+  const known: readonly string[] = TABLE_COLUMNS[table];
+  let key = 'kolom_yang_tidak_ada_di_kontrak';
+  while (known.includes(key)) key += '_';
+  return key;
+}
+
 describe('writeBodyFor — kolom asing dibuang, bukan membatalkan seluruh baris', () => {
   it('membuang kolom yang tidak ada di kontrak dan melaporkan namanya', () => {
+    const ghost = phantomKey('ai_form_submissions');
     const { body, dropped } = writeBodyFor('ai_form_submissions', {
       wa: '628123',
       nama_lengkap: 'BUDI',
-      submitted_by: 'admin:test',
+      [ghost]: 'admin:test',
     });
 
     expect(body).toEqual({ wa: '628123', nama_lengkap: 'BUDI' });
-    expect(dropped).toEqual(['submitted_by']);
+    expect(dropped).toEqual([ghost]);
   });
 
   it('kolom yang benar-benar ada tidak tersentuh', () => {
@@ -142,13 +180,14 @@ describe('writeBodyFor — kolom asing dibuang, bukan membatalkan seluruh baris'
   });
 
   it('body berupa array difilter per baris (insert massal)', () => {
+    const ghost = phantomKey('ai_form_submissions');
     const { body, dropped } = writeBodyFor('ai_form_submissions', [
-      { wa: '1', submitted_by: 'a' },
+      { wa: '1', [ghost]: 'a' },
       { wa: '2', nama_lengkap: 'B' },
     ]);
     expect(body).toEqual([{ wa: '1' }, { wa: '2', nama_lengkap: 'B' }]);
     // Dilaporkan SEKALI walau muncul di beberapa baris.
-    expect(dropped).toEqual(['submitted_by']);
+    expect(dropped).toEqual([ghost]);
   });
 
   it('body yang bukan objek dilewatkan tanpa error', () => {
