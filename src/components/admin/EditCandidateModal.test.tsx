@@ -70,6 +70,23 @@ describe('EditCandidateModal', () => {
     expect(screen.getByDisplayValue('Feedback untuk kandidat')).toBeTruthy();
   });
 
+  it('menandai berkas yang SUDAH terunggah (lapor pemilik 2026-10-12)', () => {
+    // Row ter-dekorasi membawa URL berkas yang sudah ada: `pasPhoto`/`cvUrl`/
+    // `jftUrl`/`sswUrl` dari mapCandidate, sisanya dari `berkas`
+    // (attachBerkasBio). Sebelumnya modal ini tidak pernah menampilkannya,
+    // jadi admin tidak tahu berkasnya sudah masuk.
+    const withDocs = {
+      ...mockCandidate,
+      pasPhoto: 'https://cdn.test/pas.jpg',
+      cvUrl: 'https://cdn.test/cv.pdf',
+      berkas: { kk: 'https://cdn.test/kk.pdf', sd: 'https://cdn.test/sd.pdf', smp: '', sma: '-' },
+    };
+    render(<EditCandidateModal candidate={withDocs} isOpen={true} onClose={() => {}} />);
+
+    // Hanya yang BERISI: pas photo, CV, KK, SD. Kosong dan "-" tidak.
+    expect(screen.getAllByText('Sudah ada')).toHaveLength(4);
+  });
+
   it('does not render when isOpen is false', () => {
     const { container } = render(
       <EditCandidateModal candidate={mockCandidate} isOpen={false} onClose={() => {}} />

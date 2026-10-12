@@ -28,6 +28,13 @@ interface Props {
     catatanExt?: string; // catatan_external — catatan utk kandidat
     isVIP?: boolean;
     isSiswaASJ?: boolean;
+    // URL berkas yang SUDAH terunggah — `pasPhoto`/`cvUrl`/`jftUrl`/`sswUrl`
+    // dari `mapCandidate`, sisanya dari `berkas` (attachBerkasBio).
+    pasPhoto?: string;
+    cvUrl?: string;
+    jftUrl?: string;
+    sswUrl?: string;
+    berkas?: Record<string, string>;
   };
   isOpen: boolean;
   onClose: () => void;
@@ -42,6 +49,25 @@ const STATUS_OPTIONS = ['', 'Aktif', 'LULUS', 'GAGAL', 'Non-Aktif'];
 
 // Jenis berkas = token FILE_LABEL_COLUMNS backend (simpanBerkasTahapan),
 // bukan nama kolom — dulu tombol upload cuma nembak Cloudinary tanpa persist.
+/** URL berkas yang sudah ada untuk satu token `jenis`, atau "" kalau belum. */
+function existingDocUrl(c: Props['candidate'], jenis: string): string {
+  const b = c.berkas || {};
+  const ok = (v: unknown) => (typeof v === 'string' && v.trim() !== '' && v.trim() !== '-' ? v.trim() : '');
+  switch (jenis) {
+    case 'PAS_PHOTO': return ok(c.pasPhoto) || ok(b.foto2);
+    case 'CV': return ok(c.cvUrl);
+    case 'JFT': return ok(c.jftUrl);
+    case 'SSW': return ok(c.sswUrl);
+    case 'KTP': return ok(b.ktp);
+    case 'KK': return ok(b.kk);
+    case 'IJAZAH SD': return ok(b.sd);
+    case 'IJAZAH SMP': return ok(b.smp);
+    case 'IJAZAH SMA': return ok(b.sma);
+    case 'UNIVERSITAS': return ok(b.univ);
+    default: return '';
+  }
+}
+
 const DOC_UPLOADS: { jenis: string; label: string; accept: string }[] = [
   { jenis: 'PAS_PHOTO', label: 'Pas Photo', accept: 'image/*' },
   { jenis: 'CV', label: 'CV / Rirekisho', accept: '.pdf,.doc,.docx,.xls,.xlsx,image/*' },
@@ -322,6 +348,12 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
                 <label key={doc.jenis} class="flex items-center gap-2 p-2 bg-slate-800/30 rounded-lg border border-slate-700/50 hover:border-sky-500/50 cursor-pointer transition">
                   <Icon name="upload" class="text-slate-500 text-xs" />
                   <span class="text-xs text-slate-400 truncate">{doc.label}</span>
+                  {/* "Sudah ada" — tanpa ini admin tidak tahu berkasnya sudah masuk
+                      dan mengunggah ulang tanpa sadar. Mengunggah ulang MENGGANTI
+                      yang lama: URL ditulis ke kolom yang sama (parity PemberkasanModal). */}
+                  {existingDocUrl(candidate, doc.jenis) && (
+                    <span class="text-[11px] text-emerald-400 font-bold ml-auto shrink-0"><Icon name="check" class="mr-0.5" />{t('cv.doc_exists')}</span>
+                  )}
                   <input type="file" accept={doc.accept} class="hidden" onChange={e => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleFileUpload(doc.jenis, f); }} />
                   {uploading === doc.jenis && <Icon spin name="spinner" class="text-sky-400 text-xs ml-auto" />}
                 </label>
