@@ -198,3 +198,70 @@ describe.skipIf(!hasBuild)('built service worker — redirected responses (#31)'
     for (const p of puts) expect(s.slice(p.index, p.index + p[0].length + 20)).toContain('.catch(');
   });
 });
+
+// ==========================================
+// TESTS: notifikasi push benar-benar tampil (2026-10-13)
+//
+// BUG YANG DIKUNCI
+//   Payload kita DATA-ONLY (`buildPushPayload()` mengirim `message.data`,
+//   tanpa blok `notification`). Untuk pesan data-only, FCM tidak menampilkan
+//   apa pun sendiri — browser menyerahkan PushEvent ke service worker, dan
+//   tanpa listener `push` yang memanggil `showNotification()` notifikasinya
+//   HILANG tanpa jejak. Itu persis keluhan pemilik "tidak ada notif".
+//
+//   Jebakannya: SDK Firebase biasanya memasang handler ini sendiri di
+//   `firebase-messaging-sw.js`, TAPI `src/lib/fcm.ts` mendaftarkan token
+//   dengan `serviceWorkerRegistration` EKSPLISIT ke `/sw.js`, sehingga
+//   penanganan bawaan SDK dilewati. Handler-nya harus ada di sw.js.
+//
+// KENAPA ASUMSI STRUKTURAL
+//   Handler ini hidup di dalam service worker dan hanya bisa diuji dengan
+//   push sungguhan dari FCM. Yang dipin adalah INVARIAN yang membuat bug itu
+//   mustahil: ada listener `push`, ia memanggil `showNotification()`, dan
+//   paketnya dibungkus `waitUntil`.
+// ==========================================
+describe.skipIf(!hasBuild)('built service worker — notifikasi push (#FCM)', () => {
+  const src = () => readFileSync(SW_PATH, 'utf8');
+
+  it('punya listener push', () => {
+    expect(src()).toContain("addEventListener('push'");
+  });
+
+  it('menampilkan notifikasi lewat showNotification', () => {
+    const s = src();
+    // Ini inti perbaikannya: tanpa panggilan ini PushEvent selesai tanpa
+    // menghasilkan apa pun yang terlihat oleh pengguna.
+    expect(s).toContain('showNotification');
+    expect(s).toContain('self.registration.showNotification');
+  });
+
+  it('menahan service worker tetap hidup sampai notifikasi tampil', () => {
+    expect(src()).toContain('e.waitUntil(');
+  });
+
+  it('membaca title/body/url dari payload DAN tidak melempar pada payload non-JSON', () => {
+    const s = src();
+    expect(s).toContain('e.data.json()');
+    // Payload uji / pesan kontrol bisa bukan JSON; handler yang melempar akan
+    // membatalkan seluruh penanganan push.
+    expect(s).toMatch(/catch\s*\{/);
+  });
+
+  it('menangani notificationclick dan membuka url tujuan', () => {
+    const s = src();
+    expect(s).toContain("addEventListener('notificationclick'");
+    expect(s).toContain('openWindow');
+  });
+
+  it('ikon notifikasi menunjuk berkas yang ada', () => {
+    // Ikon yang tidak ada ⇒ notifikasi tampil tanpa ikon; ikon opaque ⇒ kotak
+    // hitam (lihat e2e/pwa-icons-transparency.test.ts). Keduanya harus ABSOLUT
+    // dan benar.
+    const s = src();
+    const icons = [...s.matchAll(/icon:\s*'([^']+)'/g)].map((m) => m[1]);
+    expect(icons.length).toBeGreaterThan(0);
+    for (const i of icons) {
+      expect(i.startsWith('/icons/'), `${i} bukan path ikon`).toBe(true);
+    }
+  });
+});

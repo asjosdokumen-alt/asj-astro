@@ -60,6 +60,79 @@ self.addEventListener('message', (e) => {
   if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
+// ─── PUSH: tampilkan notifikasi FCM saat aplikasi TIDAK di depan ─────────────
+//
+// KENAPA WAJIB ADA — 2026-10-13. Payload kita DATA-ONLY
+// (`buildPushPayload()` mengirim `message.data`, tanpa blok `notification`).
+// Untuk pesan data-only, FCM TIDAK menampilkan apa pun sendiri: browser
+// menyerahkan PushEvent ke service worker, dan kalau tidak ada listener
+// `push` yang memanggil `showNotification()`, notifikasinya HILANG tanpa
+// jejak — persis keluhan "tidak ada notif".
+//
+// Biasanya SDK Firebase memasang handler ini sendiri di
+// `firebase-messaging-sw.js`, TAPI `src/lib/fcm.ts` mendaftarkan token dengan
+// `serviceWorkerRegistration` EKSPLISIT yang menunjuk ke berkas ini, sehingga
+// penanganan bawaan SDK dilewati. Jadi handler-nya harus ada di sini.
+//
+// `event.data.json()` = isi `message.data` dari `buildPushPayload()`
+// (`title`, `body`, `url`). Payload non-JSON (mis. pesan kontrol) diabaikan
+// dengan aman, dan `waitUntil` menahan SW tetap hidup sampai notifikasi
+// benar-benar tampil.
+self.addEventListener('push', (e) => {
+  let payload = {};
+  try {
+    payload = e.data ? e.data.json() : {};
+  } catch {
+    // Bukan JSON (payload uji atau pesan kontrol) — jangan melempar di dalam
+    // event handler, karena akan membatalkan seluruh penanganan push.
+    payload = {};
+  }
+
+  // Data-only: fieldnya di akar payload. `notification` juga dibaca supaya
+  // pesan yang (suatu saat) memakai blok itu tetap tampil.
+  const notif = payload.notification || {};
+  const data = payload.data || payload;
+  const title = data.title || notif.title || 'ASJ Portal';
+  const body = data.body || notif.body || '';
+  const url = data.url || '/';
+
+  e.waitUntil(
+    self.registration.showNotification(title, {
+      body: body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/favicon-32.png',
+      // Ikon mana pun yang ditunjuk HARUS ada dan tembus pandang, kalau tidak
+      // latar gelapnya terbaca sebagai kotak hitam di notifikasi.
+      data: { url: url },
+      tag: 'asj-notif',
+      renotify: true,
+    }),
+  );
+});
+
+// ─── NOTIFICATIONCLICK: buka/fokus tab tujuan ────────────────────────────────
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const target = (e.notification.data && e.notification.data.url) || '/';
+
+  e.waitUntil(
+    (async () => {
+      const url = new URL(target, self.location.origin).href;
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      // Sudah ada tab aplikasi? fokuskan dan arahkan ke tujuannya, jangan
+      // membuka tab baru — perilaku yang sama dengan notifikasi native.
+      for (const c of clients) {
+        if (c.url.startsWith(self.location.origin)) {
+          await c.focus();
+          if ('navigate' in c) await c.navigate(url).catch(() => {});
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })(),
+  );
+});
+
 // ─── FETCH: route by request type ────────────────────────────────────────────
 self.addEventListener('fetch', (e) => {
   const req = e.request;
