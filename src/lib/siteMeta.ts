@@ -14,11 +14,13 @@
  * lives in prose (`docs/ARCHITECTURE.md`) and in proxy targets, not in code.
  *
  * ── WHY THE ORIGIN IS AN ENV VAR AND NOT A LITERAL ─────────────────────────
- * ⚠ The host has MOVED TWICE. `docs/ARCHITECTURE.md` records that on 2026-09-28
- * the Netlify host changed to `boisterous-taiyaki-c61202.netlify.app` because the
- * account owning `asjastro.netlify.app` ran out of credit — and the OLD host still
- * answers HTTP 200 with a healthy `/health`, so a liveness check cannot tell them
- * apart. A hardcoded literal here would therefore:
+ * ⚠ The host has MOVED THREE TIMES: away from `asjastro.netlify.app` on
+ * 2026-09-28 (that account ran out of credit), to
+ * `boisterous-taiyaki-c61202.netlify.app`, and back again on 2026-10-13, when the
+ * owner retired the replacement (it answers 404 now). Each time the OLD host kept
+ * answering HTTP 200 with a healthy `/health` for a while, so a liveness check
+ * cannot tell a live host from a frozen one. A hardcoded literal here would
+ * therefore:
  *
  *   1. be a third copy of a value that already drifted twice, and
  *   2. silently emit canonical/hreflang URLs pointing at a FROZEN site, which is

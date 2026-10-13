@@ -38,8 +38,8 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions, data
 | Resource | URL |
 |----------|-----|
 | **GitHub** | https://github.com/asjosdokumen-alt/asj-astro |
-| **Live Site** | https://boisterous-taiyaki-c61202.netlify.app |
-| **Netlify project** | ⚠ moved 2026-09-28 to a different Netlify account — open it from the site's own dashboard, the old `app.netlify.com/projects/asjastro` link is the retired one |
+| **Live Site** | https://asjastro.netlify.app |
+| **Netlify project** | ⚠ the host has moved three times (away on 2026-09-28, back on 2026-10-13). Open it from the site's own dashboard — `app.netlify.com/projects/asjastro` is the one deploying again; `boisterous-taiyaki-c61202` is retired (404 as of 2026-10-13) |
 | **Supabase (data)** | https://supabase.com/dashboard/project/bimqyugdhiuxcqltjjnt |
 | **Supabase (aset publik)** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
 

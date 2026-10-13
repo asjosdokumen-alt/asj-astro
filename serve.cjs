@@ -5,9 +5,10 @@ const path = require('path');
 const mimeTypes = {'.html':'text/html','.js':'application/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.woff2':'font/woff2','.webp':'image/webp','.webmanifest':'application/manifest+json'};
 const dist = path.join(__dirname, 'dist');
 // See server.cjs for the rule: proxy to the site that is DEPLOYING, not merely
-// one that answers. The previous target kept returning 200 while being frozen
-// at a 2026-09-24 build after its account ran out of credit.
-const PROXY_TARGET = process.env.BACKEND_TARGET || 'https://boisterous-taiyaki-c61202.netlify.app';
+// one that answers. Two hosts have already looked usable while being wrong — one
+// frozen at a 2026-09-24 build, one that now answers 404. Live site since
+// 2026-10-13.
+const PROXY_TARGET = process.env.BACKEND_TARGET || 'https://asjastro.netlify.app';
 
 function serveFile(res, fp) {
   const ext = path.extname(fp);

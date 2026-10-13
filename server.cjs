@@ -8,8 +8,8 @@ const PREFERRED_PORT = 4321;
 const DIST = path.join(__dirname, 'dist');
 // Backend target for the /.netlify/functions/ proxy.
 //
-// THE RULE IS "THE SITE THAT IS DEPLOYING", NOT "A SITE THAT ANSWERS". There
-// have now been three hosts and the trap has bitten twice, both times silently:
+// THE RULE IS "THE SITE THAT IS DEPLOYING", NOT "A SITE THAT ANSWERS". The trap
+// has bitten twice, both times silently:
 //
 //   1. `asjportal.netlify.app` — the LEGACY app (/assets/app-*.js,
 //      /vendor/xlsx). It 404s on /public/, /candidate/, /apply/, /ai-cv/ and
@@ -23,10 +23,16 @@ const DIST = path.join(__dirname, 'dist');
 //      exceeded". So it is FROZEN — healthy-looking, permanently old backend.
 //      A liveness check cannot tell you this; only the deploy list can.
 //
-// The replacement builds from the same repo and branch. Override with
-// BACKEND_TARGET when pointing at a preview deploy or a local `netlify dev`
-// (e.g. BACKEND_TARGET=http://127.0.0.1:8888 node server.cjs).
-const TARGET = process.env.BACKEND_TARGET || 'https://boisterous-taiyaki-c61202.netlify.app';
+//   3. `boisterous-taiyaki-c61202.netlify.app` — the 2026-09-28 replacement.
+//      MEASURED 2026-10-13: **404 on every path** (/, /ai-cv, /health), so it is
+//      gone, not merely stale.
+//
+// The owner moved the live site BACK to `asjastro.netlify.app` on 2026-10-13 and
+// is shutting the other hosts down. MEASURED the same day: that host answers 200
+// and serves the CURRENT build (its /ai-cv bundle carries `cv.doc_exists`, a key
+// added that day). Override with BACKEND_TARGET when pointing at a preview deploy
+// or a local `netlify dev` (e.g. BACKEND_TARGET=http://127.0.0.1:8888 node server.cjs).
+const TARGET = process.env.BACKEND_TARGET || 'https://asjastro.netlify.app';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

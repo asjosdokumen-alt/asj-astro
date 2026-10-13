@@ -33,15 +33,20 @@ export default defineConfig({
         "/.netlify/functions": {
           // Must be the site that is DEPLOYING, not merely one that answers.
           // Pointing this at a retired host silently serves an OLD backend, which
-          // makes `astro dev` look like it is running stale code. It has happened
-          // twice: asjportal.netlify.app (legacy app) and, from 2026-09-28,
-          // asjastro.netlify.app — that one still returned HTTP 200 and a healthy
-          // /health while frozen at its 2026-09-24 build, because its account ran
-          // out of credit and every later deploy was skipped. A liveness check
-          // cannot see that; the deploy list can. Override with
+          // makes `astro dev` look like it is running stale code. The trap has
+          // bitten twice: asjportal.netlify.app (the legacy app) and, from
+          // 2026-09-28, asjastro.netlify.app — that one still returned HTTP 200
+          // and a healthy /health while frozen at its 2026-09-24 build, because
+          // its account ran out of credit and every later deploy was skipped. A
+          // liveness check cannot see that; the deploy list can.
+          //
+          // 2026-10-13: the owner moved the live site BACK to asjastro.netlify.app
+          // and is shutting the other hosts down. MEASURED that day:
+          // boisterous-taiyaki-c61202.netlify.app answers 404 on every path, while
+          // asjastro.netlify.app serves the CURRENT build (its /ai-cv bundle
+          // carries `cv.doc_exists`, a key added the same day). Override with
           // FUNCTIONS_PROXY_TARGET.
-          target:
-            process.env.FUNCTIONS_PROXY_TARGET || "https://boisterous-taiyaki-c61202.netlify.app",
+          target: process.env.FUNCTIONS_PROXY_TARGET || "https://asjastro.netlify.app",
           changeOrigin: true,
           secure: false,
         },

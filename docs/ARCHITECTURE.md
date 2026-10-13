@@ -239,7 +239,7 @@ npx serve dist
 | Resource | URL |
 |----------|-----|
 | **GitHub** | https://github.com/asjosdokumen-alt/asj-astro |
-| **Netlify** | https://boisterous-taiyaki-c61202.netlify.app |
+| **Netlify** | https://asjastro.netlify.app |
 | **Supabase** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
 
 > Diperbarui 2026-09-26: ketiga URL di atas sebelumnya menunjuk repo/situs/proyek
@@ -257,3 +257,11 @@ npx serve dist
 > repo & branch yang sama. **Tiga target proxy** yang menunjuk host lama
 > (`astro.config.mjs`, `server.cjs`, `serve.cjs`) ikut diperbarui — kalau tidak,
 > `npm run dev` dan `npm run serve` akan diam-diam melayani backend yang beku.
+>
+> Diperbarui lagi **2026-10-13**: pemilik **memindahkan situs live KEMBALI** ke
+> `asjastro.netlify.app` dan mematikan host yang lain. Terukur hari itu:
+> `boisterous-taiyaki-c61202.netlify.app` → **404 di semua jalur** (`/`, `/ai-cv`,
+> `/health`), sedangkan `asjastro.netlify.app` → 200 **dan menyajikan build
+> terkini** (bundle `/ai-cv`-nya memuat `cv.doc_exists`, kunci yang baru
+> ditambahkan hari itu) — jadi ia benar-benar DEPLOY, bukan sekadar menjawab.
+> Ketiga target proxy dikembalikan ke host itu.
