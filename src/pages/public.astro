@@ -60,10 +60,10 @@ import { CONTACT_WHATSAPP } from '../lib/companyProfile';
              moves to `aria-label` and the glyph keeps the icon-only affordance.
              `data-lang` is dropped with the span: with no text node it would
              only add a no-op translation target. -->
-        <button id="tab-pub-loker" data-public-tab="loker" aria-pressed="true" aria-label="Lowongan Loker" title="Lowongan Loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white aria-pressed:bg-sky-700 aria-pressed:text-white aria-pressed:shadow-md">
-          <Icon name="briefcase" aria-hidden="true" />
+        <button id="tab-pub-loker" type="button" data-public-tab="loker" aria-pressed="true" aria-label="Lowongan Loker" title="Lowongan Loker" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white aria-pressed:bg-sky-700 aria-pressed:text-white aria-pressed:shadow-md">
+          <Icon name="briefcase" />
         </button>
-        <button id="tab-pub-layanan" data-public-tab="layanan" aria-pressed="false" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white aria-pressed:bg-sky-700 aria-pressed:text-white aria-pressed:shadow-md">
+        <button id="tab-pub-layanan" type="button" data-public-tab="layanan" aria-pressed="false" class="px-6 py-3 rounded-full text-sm font-bold transition-colors bg-transparent text-slate-400 hover:text-white aria-pressed:bg-sky-700 aria-pressed:text-white aria-pressed:shadow-md">
           <Icon name="handshake" class="mr-2" /> <span data-lang="ui.tab_layanan">Program &amp; Layanan ASJ</span>
         </button>
       </div>
@@ -78,7 +78,7 @@ import { CONTACT_WHATSAPP } from '../lib/companyProfile';
       <noscript>
         <p class="rounded-xl border border-slate-700 bg-slate-900 p-4 text-sm leading-relaxed text-slate-300">
           <span data-lang="public.noscript_jobs">Daftar lowongan ini dimuat dengan JavaScript. Aktifkan JavaScript, atau hubungi kami di WhatsApp — kami kirimkan daftar lowongan terbaru.</span>
-          <a class="ml-1 inline-flex min-h-11 items-center font-bold text-sky-400 underline" href={`https://wa.me/${CONTACT_WHATSAPP}`} target="_blank">WhatsApp</a>
+          <a class="ml-1 inline-flex min-h-11 items-center font-bold text-sky-400 underline" href={`https://wa.me/${CONTACT_WHATSAPP}`} target="_blank" rel="noopener">WhatsApp</a>
         </p>
       </noscript>
     </div>

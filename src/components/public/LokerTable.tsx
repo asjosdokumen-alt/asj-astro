@@ -223,8 +223,15 @@ export default function LokerTable() {
             // text: a 9px badge is not large text, and growing it to dodge the
             // floor would be gaming the measurement instead of the contrast.
             const cntCls = "px-1.5 py-0.5 rounded-full text-[11px] ml-0.5 font-black " + (filter === fd.key ? "bg-white/20 text-white" : "bg-slate-900 text-slate-200");
+            // `aria-pressed` — the ACTIVE filter used to be conveyed by colour
+            // alone. MEASURED 2026-10-13 on the live /public in Chromium:
+            // `aria-pressed` was null on all four chips and there was no
+            // `aria-current`, so a screen reader could not tell which filter was
+            // in force (WCAG 4.1.2). The tabs on the same page already expose
+            // their state this way, so this is consistency as much as access.
             return (
-              <button key={fd.key} onClick={() => { setFilter(fd.key); setLimit(LIMIT_INITIAL); }} class={btnCls}>
+              <button key={fd.key} type="button" aria-pressed={filter === fd.key}
+                onClick={() => { setFilter(fd.key); setLimit(LIMIT_INITIAL); }} class={btnCls}>
                 <Icon name={fd.icon} class="mr-1" /> {fd.lbl} <span class={cntCls}>{filterCount(fd.key)}</span>
               </button>
             );
@@ -306,7 +313,7 @@ export default function LokerTable() {
                         sky-600, Lamar on emerald-600), which are white-on-accent too. */}
                     <button onClick={() => setSelectedJob(job)} class="min-h-11 px-2 py-1.5 bg-amber-500 hover:bg-amber-400 text-white rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[11px] font-black border border-amber-500/50" title={t("button.detail")}><Icon name="eye" /> <span class="hidden sm:inline">{t("button.detail")}</span></button>
                     {job.templateCv && job.templateCv !== "-" && (
-                      <a href={job.templateCv} target="_blank" class="inline-flex items-center justify-center min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[11px] font-bold border border-sky-500/50"><Icon name="download" /> <span class="hidden sm:inline">{t("button.format")}</span></a>
+                      <a href={job.templateCv} target="_blank" rel="noopener" class="inline-flex items-center justify-center min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[11px] font-bold border border-sky-500/50"><Icon name="download" /> <span class="hidden sm:inline">{t("button.format")}</span></a>
                     )}
                     {jobTutupUntukLamar(job) ? (
                       <button disabled class="min-h-11 px-2 py-1.5 bg-slate-600 rounded-lg text-white text-[11px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
