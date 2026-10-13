@@ -331,6 +331,36 @@ export async function registerFcmToken(payload: any[], sessionToken?: string): P
         last_used_at: new Date().toISOString(),
       },
     });
+
+    // Bersihkan token LAMA milik identitas yang sama yang sudah mati.
+    //
+    // KENAPA: token FCM web bersifat PER-REGISTRASI, bukan per-perangkat.
+    // Setiap kali `getToken()` dipanggil — dan klien memanggilnya di SETIAP
+    // login (`authReactive.ts`) — Firebase bisa menerbitkan token baru dan
+    // token lama langsung mati. Karena tabel di-upsert berdasarkan `token`,
+    // tiap token baru menambah BARIS BARU, dan token mati tidak pernah dibuang.
+    // Terukur 2026-10-13: 25 baris admin (satu nama, KHOCI) dengan hanya 5
+    // hidup. Logout TIDAK menghapus token (memenuhi permintaan pemilik), jadi
+    // pembersihannya harus di sini.
+    //
+    // Cara aman: probe token lain milik identitas ini, hapus HANYA yang
+    // dijawab NOT_FOUND oleh FCM. Token yang masih hidup DIBIARKAN, sehingga
+    // beberapa perangkat tetap bisa menerima push sekaligus.
+    try {
+      const siblings = (await supabaseJson('GET', 'fcm_tokens', {
+        query: { select: 'token', wa: 'eq.' + wa, limit: 50 },
+      })) as any[];
+      const stale = (Array.isArray(siblings) ? siblings : [])
+        .map((r) => r.token)
+        .filter((t): t is string => Boolean(t) && t !== token);
+      if (stale.length > 0) {
+        const { pruneDeadTokens } = await import('../../_lib/fcm-helpers');
+        await pruneDeadTokens(stale);
+      }
+    } catch {
+      /* pembersihan bersifat best-effort — pendaftaran sudah berhasil */
+    }
+
     return { success: true };
   } catch (e: unknown) {
     return { success: false, message: (e as Error).message };

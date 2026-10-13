@@ -183,15 +183,27 @@ function getGoogleAuthToken(serviceAccount: { client_email: string; private_key:
 }
 
 /**
+ * Hasil satu pengiriman. `unregistered` dipisahkan dari `failed` karena
+ * konsekuensinya berbeda: hanya `unregistered` yang berarti token mati
+ * permanen dan boleh dihapus (lihat `isDeviceUnregistered`).
+ */
+type SendResult = 'ok' | 'unregistered' | 'failed';
+
+/**
  * Mengirim Notifikasi via Firebase Cloud Messaging HTTP v1 API.
  * @param {string} token - FCM Token device tujuan
  * @param {string} title - Judul notifikasi
  * @param {string} body - Isi notifikasi
  * @param {string} url - URL tujuan saat notifikasi di-klik (opsional)
+ *
+ * Mengembalikan SEBAB kegagalan, bukan sekadar boolean: pembeda
+ * `unregistered` vs `failed` itulah yang membuat pembersihan token mati aman
+ * (hanya yang benar-benar tidak terdaftar yang dihapus). TIDAK ada request
+ * tambahan untuk ini — jawaban FCM sudah memuatnya.
  */
-async function sendPushNotification(token: string, title: string, body: string, url = '/') {
+async function sendPushNotification(token: string, title: string, body: string, url = '/'): Promise<SendResult> {
   const serviceAccount = loadServiceAccount();
-  if (!serviceAccount) return false;
+  if (!serviceAccount) return 'failed';
 
   try {
     const accessToken = await getGoogleAuthToken(serviceAccount);
@@ -211,14 +223,32 @@ async function sendPushNotification(token: string, title: string, body: string, 
 
     const data = await res.json();
     if (!res.ok) {
+      if (isUnregisteredError(data)) return 'unregistered';
       console.error('[FCM] Send Error:', data);
-      return false;
+      return 'failed';
     }
-    return true;
+    return 'ok';
   } catch (e) {
     console.error('[FCM] Catch Error:', (e as Error).message);
-    return false;
+    return 'failed';
   }
+}
+
+/**
+ * Apakah balasan FCM ini berarti "perangkat tidak terdaftar lagi"?
+ *
+ * FCM HTTP v1 menjawab token mati dengan 404 + `error.status = 'NOT_FOUND'` dan
+ * pesan 'Requested entity was not found' / 'Device unregistered' /
+ * 'NotRegistered' (ketiganya terukur atas token asli 2026-10-13). Hanya
+ * kombinasi itu yang dianggap bukti permanen: 401/429/500 atau galat jaringan
+ * BUKAN bukti, dan token yang sehat tidak boleh ikut terhapus.
+ */
+function isUnregisteredError(data: unknown): boolean {
+  const err = (data as { error?: { status?: string; message?: string } } | null)?.error;
+  if (!err) return false;
+  const status = String(err.status || '');
+  const message = String(err.message || '');
+  return status === 'NOT_FOUND' && /not found|unregistered|NotRegistered/i.test(message);
 }
 
 /**
@@ -237,8 +267,10 @@ async function sendMulticast(tokens: string[], title: string, body: string, url 
       chunk.map((token) => sendPushNotification(token, title, body, url)),
     );
     results.forEach((r, idx) => {
-      // Di API HTTP v1, token tidak valid akan menghasilkan error.
-      if (r.status !== 'fulfilled' || !r.value) invalidTokens.push(chunk[idx]);
+      // Hanya `unregistered` yang masuk daftar hapus. `failed` (jaringan,
+      // 429, 5xx) TIDAK — kalau ikut, satu gangguan sesaat akan menghapus
+      // perangkat yang sebenarnya sehat.
+      if (r.status === 'fulfilled' && r.value === 'unregistered') invalidTokens.push(chunk[idx]);
     });
   }
   return { successCount: unique.length - invalidTokens.length, invalidTokens };
@@ -265,6 +297,24 @@ export function __loadServiceAccountForTest(opts?: { reset?: boolean }) {
     _serviceAccountResolved = false;
   }
   return loadServiceAccount();
+}
+
+/**
+ * Benarkah token ini ditolak karena PERANGKAT sudah tidak terdaftar?
+ *
+ * Dipakai `fcm-helpers.ts` → `pruneDeadTokens()`. TIDAK menambah request
+ * keluar: ia memakai `sendPushNotification()` yang sudah ada, dan membaca
+ * sebab kegagalannya. Ini disengaja — gerbang `scripts/ci/io-boundary.mjs`
+ * membatasi berkas ini pada 2 `fetch` mentah, dan daftar pengecualiannya hanya
+ * boleh menyusut. Menambah `fetch` ketiga akan (dan memang sudah) ditolak
+ * gerbang, jadi jawabannya adalah memakai ulang request pengiriman.
+ *
+ * Efek sampingnya yang benar: bila perangkat ternyata HIDUP, probe ini benar-
+ * benar mengantarkan notifikasi "Pemeriksaan perangkat" — bukan request hantu.
+ */
+export async function isDeviceUnregistered(token: string): Promise<boolean> {
+  return (await sendPushNotification(token, 'ASJ Portal', 'Pemeriksaan perangkat', '/')) ===
+    'unregistered';
 }
 
 export { sendPushNotification, sendMulticast };

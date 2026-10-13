@@ -263,7 +263,11 @@ describe('§6.5 · FCM down', () => {
 
     // "Log and drop." A push failure must not reject into a caller that is
     // halfway through writing the row it was notifying about.
-    expect(ok).toBe(false);
+    //
+    // Returns the REASON since 2026-10-13: 'failed' (network/5xx) is distinct
+    // from 'unregistered' (dead token, safe to delete). A network outage must
+    // NOT be read as a dead device — see fcm-prune.test.ts.
+    expect(ok).toBe('failed');
   });
 });
 

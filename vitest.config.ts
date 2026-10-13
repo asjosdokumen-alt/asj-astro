@@ -170,6 +170,11 @@ export default defineConfig({
             // menghitung `src/**`, sehingga `.ts` baru di sana memindahkan
             // angkanya (R15). Tanpa baris ini ia jalan DUA KALI.
             'e2e/shared-anchor-targets.test.ts',
+            // Ditambahkan 2026-10-13. Murni membaca BINER (sharp + node:fs),
+            // tanpa DOM sama sekali — jadi memang milik project 'backend'.
+            // Tinggal di e2e/ HANYA karena counter beku `indexer` menghitung
+            // `src/**` (R15). Tanpa baris ini ia jalan DUA KALI.
+            'e2e/pwa-icons-transparency.test.ts',
           ],
         },
       },
