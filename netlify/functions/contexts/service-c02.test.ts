@@ -185,3 +185,38 @@ describe('ai_data_json tidak lagi menghidupkan baris yang dihapus', () => {
     expect(out.pendidikan[0].sekolah).toBe('SMK RADEN PATAH');
   });
 });
+
+describe('keluarga ber-nama kanji tidak boleh hilang (2026-10-13)', () => {
+  // Keluhan pemilik: "kok saya donload biodata ga ke donload semuanya".
+  // mergeRiwayatArrays menjatuhkan SETIAP baris yang kuncinya KOSONG, dan kunci
+  // keluarga = cleanKey(nama) sementara cleanKey membuang seluruh karakter
+  // non-ASCII => nama ber-kanji (ミセナヤンティ) menghasilkan kunci '' => barisnya
+  // dibuang. Terukur atas 234 baris master gdw: 5 kandidat kehilangan 8 anggota
+  // keluarga; ASJ00094 RIO ARMANDA PUTRA 3 masuk -> 0 keluar, sehingga SELURUH
+  // blok keluarga hilang dari CV DAN berkas biodata.
+  it('anggota keluarga bernama kanji tetap muncul', () => {
+    const n = buildMasterNested({
+      keluarga_1_nama: 'ミセナヤンティ', keluarga_1_hubungan: 'IBU', keluarga_1_usia: '50',
+    }) as { keluarga: Array<Record<string, unknown>> };
+    expect(n.keluarga).toHaveLength(1);
+    expect(n.keluarga[0].nama).toBe('ミセナヤンティ');
+  });
+
+  it('baris kanji dari KOLOM dan ai_data_json tidak digandakan', () => {
+    const n = buildMasterNested({
+      keluarga_1_nama: 'ミセナヤンティ', keluarga_1_hubungan: 'IBU', keluarga_1_usia: '50',
+      ai_data_json: JSON.stringify({ keluarga: [{ nama: 'ミセナヤンティ', hubungan: 'IBU', umur: '50' }] }),
+    }) as { keluarga: Array<Record<string, unknown>> };
+    expect(n.keluarga).toHaveLength(1);
+  });
+
+  // KONTROL POSITIF: dedupe nama Latin harus TETAP berlaku, supaya perbaikan
+  // "jangan buang kunci kosong" tidak berubah jadi "jangan dedupe sama sekali".
+  it('dedupe keluarga nama Latin tetap berlaku', () => {
+    const n = buildMasterNested({
+      keluarga_1_nama: 'SUPARNO', keluarga_1_hubungan: 'AYAH',
+      ai_data_json: JSON.stringify({ keluarga: [{ nama: 'SUPARNO', hubungan: 'AYAH' }] }),
+    }) as { keluarga: Array<Record<string, unknown>> };
+    expect(n.keluarga).toHaveLength(1);
+  });
+});

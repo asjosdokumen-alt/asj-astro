@@ -109,7 +109,13 @@ const MASTER_COLUMN_MISSING = new Set([
 // --- Helper functions (moved from actions-master.ts) ---
 
 function cleanKey(s: string): string {
-  return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  // `\p{L}\p{N}` = huruf & angka SEMUA aksara. Versi lama `[^a-z0-9]` membuang
+  // kanji/kana, sehingga nama Jepang menghasilkan kunci KOSONG — dan
+  // `mergeRiwayatArrays` menjatuhkan setiap baris berkunci kosong. Terukur
+  // 2026-10-13 atas 234 baris master gdw: 5 kandidat kehilangan 8 anggota
+  // keluarga; ASJ00094 RIO ARMANDA PUTRA 3 masuk -> 0 keluar. Kunci nama
+  // ber-Latin tidak berubah, jadi pencocokan lama tetap sama.
+  return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 }
 
 /**
@@ -167,10 +173,34 @@ function entryHasAny(entry: any, keys: string[]): boolean {
   return keys.some((k) => { const val = entry[k]; return val !== undefined && val !== null && String(val).trim() !== '' && String(val).trim() !== '-'; });
 }
 
+/**
+ * Kunci identitas satu anggota keluarga: NAMA + HUBUNGAN.
+ *
+ * Ketiga titik WAJIB memakai kunci yang sama — `buildMasterNested` (baca),
+ * `pruneAiRiwayat` (pangkas) dan `mergeAiOverflow` (simpan); docblock
+ * `pruneAiRiwayat` sudah mensyaratkannya, karena kunci yang berbeda membuat
+ * penyimpanan menganggap baris lama sebagai baris baru. Sebelum 2026-10-13
+ * pembacaan memakai `cleanKey(nama)` SAJA sementara dua jalur tulis memakai
+ * `cleanKey(nama + hubungan)`, jadi kunci baca dan kunci tulis tidak pernah
+ * bertemu — baris yang masih ada justru ikut terbuang.
+ */
+function keluargaKey(e: Record<string, unknown>): string {
+  return cleanKey(String(e.nama ?? '') + String(e.hubungan ?? ''));
+}
+
 function mergeRiwayatArrays(columns: any[], aiArr: any[] | null, keyFn: (e: any) => string): any[] {
   const seen = new Set(); const out: any[] = [];
   const lists: any[] = ([] as any[]).concat(Array.isArray(columns) ? columns : [], Array.isArray(aiArr) ? aiArr : []);
-  for (const e of lists) { if (!e || typeof e !== 'object') continue; const k = keyFn(e); if (!k || seen.has(k)) continue; seen.add(k); out.push(e); }
+  for (const e of lists) {
+    if (!e || typeof e !== 'object') continue;
+    const k = keyFn(e);
+    // Kunci KOSONG berarti "baris ini tidak punya identitas", BUKAN "baris ini
+    // tidak sah". Menjatuhkannya membuang data nyata: terukur 2026-10-13, 8
+    // anggota keluarga ber-nama kanji hilang dari 5 kandidat. Dedupe hanya
+    // dijalankan bila kuncinya benar-benar ada.
+    if (k) { if (seen.has(k)) continue; seen.add(k); }
+    out.push(e);
+  }
   return out;
 }
 
@@ -271,7 +301,7 @@ export function buildMasterNested(row: any): any {
           pekerjaan: v('keluarga_' + i + '_pekerjaan'), pekerjaan_jp: v('keluarga_' + i + '_pekerjaan_jp') });
       }
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['nama', 'hubungan', 'umur', 'usia', 'pekerjaan'])),
-        aiArrOf('keluarga'), (e) => cleanKey(e.nama || ''));
+        aiArrOf('keluarga'), keluargaKey);
     })(),
     kenalan_jepang: (function () {
       const aiK = (aiParsed && aiParsed.kenalan_jepang) || {};
@@ -364,7 +394,7 @@ export function pruneAiRiwayat(ai: Record<string, unknown>, d: Record<string, un
   const lists: Array<{ key: string; keyOf: (e: Record<string, unknown>) => string }> = [
     { key: 'pendidikan', keyOf: (e) => riwayatKey(e, ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'], EDU_PERIOD_KEYS) },
     { key: 'pekerjaan', keyOf: (e) => riwayatKey(e, ['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt'], ['jabatan', 'jabatan_id'], ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar']) },
-    { key: 'keluarga', keyOf: (e) => cleanKey(String(e.nama ?? '') + String(e.hubungan ?? '')) },
+    { key: 'keluarga', keyOf: keluargaKey },
   ];
   for (const { key, keyOf } of lists) {
     const cur = ai[key];
@@ -405,7 +435,7 @@ function mergeAiOverflow(ai: any, overflow: any): any {
   if (overflow.pekerjaan) setSlot('pekerjaan', overflow.pekerjaan, (e) => riwayatKey(e,
     ['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt'], ['jabatan', 'jabatan_id'],
     ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar']));
-  if (overflow.keluarga) setSlot('keluarga', overflow.keluarga, (e) => cleanKey((e.nama || '') + (e.hubungan || '')));
+  if (overflow.keluarga) setSlot('keluarga', overflow.keluarga, keluargaKey);
   return ai;
 }
 
