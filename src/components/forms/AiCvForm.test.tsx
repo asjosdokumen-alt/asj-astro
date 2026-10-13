@@ -15,7 +15,7 @@ import { showToast } from '../Toast';
 import { apiClient } from '../../lib/apiClient';
 import { uploadMany } from '../../lib/cloudinary';
 import { authStore, type AuthState } from '../../store/authReactive';
-import { PEKERJAAN, pairDisplay } from '../../lib/opsi-form';
+import { PEKERJAAN, JURUSAN, pairDisplay } from '../../lib/opsi-form';
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../store/i18n', async () => {
@@ -1438,5 +1438,71 @@ describe('AiCvForm — state tombol SIMPAN & guard ekstensi', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
     await waitFor(() => expect(vi.mocked(uploadMany)).toHaveBeenCalled());
+  });
+});
+
+// ==========================================
+// TESTS: keluhan pemilik 2026-10-13 — daftar pilihan yang tidak muncul
+//
+// (1) "kenapa isi manual di cv ai jenis pekerjaannya gak keluar, emang harus
+//     tulis manual ya baru keluar pilihannya?" Daftar ComboSelect DISARING oleh
+//     isi medan, jadi medan yang sudah berisi nilai — persis yang dilihat admin
+//     setelah draf kandidat dimuat — hanya menampilkan SATU baris: nilainya
+//     sendiri. Diukur di browser (Chromium, 1280x900, draf berisi
+//     "OPERATOR PRODUKSI"): klik -> 1 baris; dikosongkan -> 100 baris. Klik
+//     atau fokus harus MEMBUKA daftar, bukan menyaringnya.
+// (2) "sama dengan jurusan sekolah smk ke atas?" Jurusan memang TIDAK punya
+//     daftar sama sekali — ia kotak ketik bebas, padahal CV Master
+//     (MasterFullForm) memakai daftar resmi JURUSAN yang sama.
+// ==========================================
+describe('AiCvForm — daftar pilihan pekerjaan & jurusan (2026-10-13)', () => {
+  const WA = '081234567890';
+
+  it('klik medan yang SUDAH berisi nilai membuka SELURUH daftar, bukan 1 baris', () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+
+    const combo = document.getElementById('ai_job-jabatan-id-0') as HTMLInputElement;
+    // Nilai yang sudah ada — keadaan setelah draf kandidat dimuat.
+    fireEvent.input(combo, { target: { value: 'OPERATOR PRODUKSI' } });
+    expect(combo.value).toBe('OPERATOR PRODUKSI');
+
+    // Tutup daftar seperti pengguna (klik di luar), lalu buka lagi.
+    fireEvent.mouseDown(document.body);
+    fireEvent.focus(combo);
+
+    const list = document.getElementById('ai_job-jabatan-id-0-list') as HTMLUListElement | null;
+    if (!list) throw new Error('dropdown ComboSelect tidak terbuka saat fokus');
+    expect(list.querySelectorAll('li').length).toBe(PEKERJAAN.length);
+  });
+
+  it('medan yang diketik TETAP menyaring daftar (perilaku lama tidak hilang)', () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    const combo = document.getElementById('ai_job-jabatan-id-0') as HTMLInputElement;
+    fireEvent.focus(combo);
+    fireEvent.input(combo, { target: { value: 'OPE' } });
+    const list = document.getElementById('ai_job-jabatan-id-0-list') as HTMLUListElement | null;
+    if (!list) throw new Error('dropdown tidak terbuka setelah mengetik');
+    const n = list.querySelectorAll('li').length;
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThan(PEKERJAAN.length);
+  });
+
+  it('jurusan sekolah punya daftar resmi (SMK ke atas), bukan kotak ketik kosong', () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+
+    const jur = document.getElementById('ai_edu-jurusan-id-0') as HTMLInputElement | null;
+    if (!jur) throw new Error('medan jurusan tidak ada');
+    fireEvent.focus(jur);
+
+    const list = document.getElementById('ai_edu-jurusan-id-0-list') as HTMLUListElement | null;
+    if (!list) throw new Error('jurusan tidak punya daftar pilihan sama sekali');
+    expect(list.querySelectorAll('li').length).toBe(JURUSAN.length);
+
+    // Memilih jurusan resmi mengisi kolom kanji dari registri (sama seperti jabatan).
+    fireEvent.input(jur, { target: { value: 'TEKNIK MESIN' } });
+    expect((document.getElementById('ai_edu-jurusan-jp-0') as HTMLInputElement).value).toBe('機械工学');
   });
 });

@@ -20,7 +20,7 @@ import { AI_FILE_COLUMNS } from '../../lib/documentColumns';
 import { AI_CV_FLAT_KEYS, parseAiCvDraft, parseAiCvRows, type AiCvRow } from '../../lib/aiCvDraft';
 import { PAIRED_FIELDS, resolvePairEdit, jpOf, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS } from '../../lib/aiCvPairs';
 import {
-  PEKERJAAN, HUBUNGAN_KELUARGA, GOLONGAN_DARAH, BAHASA_JEPANG,
+  PEKERJAAN, JURUSAN, HUBUNGAN_KELUARGA, GOLONGAN_DARAH, BAHASA_JEPANG,
   GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
   YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS,
   labelJp, pairDisplay, type Opsi,
@@ -1286,8 +1286,24 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                       onInput={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, sekolah_id: v } : r))} />
                     <Field label={t('ai_cv.row_sekolah_jp')} id={`edu-sekolah-jp-${i}`} value={edu.sekolah_jp} jp
                       onInput={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, sekolah_jp: v } : r))} />
-                    <Field label={t('ai_cv.row_jurusan')} id={`edu-jurusan-id-${i}`} value={edu.jurusan_id}
-                      onInput={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, jurusan_id: v } : r))} />
+                    {/* Jurusan memakai daftar resmi yang SAMA dengan CV Master
+                        (MasterFullForm -> ManualSelect list JURUSAN), supaya kandidat
+                        tidak mengetik bebas di satu form dan memilih di form lain —
+                        itu persis drift yang DESIGN.md §5.5 larang. Dulu ini kotak
+                        ketik tanpa daftar (keluhan pemilik 2026-10-13: "sama dengan
+                        jurusan sekolah smk ke atas?"). Setiap entri sudah membawa
+                        label jenjangnya sendiri ("TEKNIK MESIN — KULIAH D3/S1"),
+                        jadi satu daftar tetap terbaca untuk SMK ke atas. */}
+                    <ComboSelect label={t('ai_cv.row_jurusan')} id={`edu-jurusan-id-${i}`} value={edu.jurusan_id}
+                      pairs={JURUSAN} placeholder={t('ai_cv.combo_hint')}
+                      onInput={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, jurusan_id: v } : r))}
+                      onPick={(v) => setEduList(l => l.map((r, j) => {
+                        if (j !== i) return r;
+                        // Sama seperti jabatan: entri daftar mengisi kolom kanji,
+                        // teks bebas membiarkan apa yang sudah ada (jangan dihapus).
+                        const jp = v ? jpOf(JURUSAN, v) : '';
+                        return { ...r, jurusan_jp: jp || r.jurusan_jp };
+                      }))} />
                     <Field label={t('ai_cv.row_jurusan_jp')} id={`edu-jurusan-jp-${i}`} value={edu.jurusan_jp} jp
                       onInput={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, jurusan_jp: v } : r))} />
                     <MonthYearField label={t('ai_cv.row_lulus')} id={`ai-edu-lulus-${i}`} value={edu.lulus}
@@ -1704,6 +1720,16 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  /**
+   * Teks yang DIKETIK pengguna di sesi buka ini, `null` selama belum mengetik.
+   *
+   * Daftar TIDAK boleh disaring oleh ISI MEDAN: medan yang sudah berisi nilai
+   * (draf kandidat) dulu hanya menampilkan SATU baris — nilainya sendiri —
+   * sehingga terbaca sebagai "tidak ada pilihan" dan kandidat merasa harus
+   * mengetik lebih dulu. Terukur 2026-10-13 di Chromium: medan berisi
+   * "OPERATOR PRODUKSI" -> 1 baris; dikosongkan -> 100 baris.
+   */
+  const [query, setQuery] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   /**
@@ -1724,11 +1750,12 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
   const domId = `ai_${id}`;
   const listId = `${domId}-list`;
 
-  const q = (value || '').trim().toLowerCase();
+  const typed = (query ?? '').trim();
+  const q = typed.toLowerCase();
   // Filter on BOTH halves: a candidate who knows the job by its Japanese name
   // should find it too, and legacy's manual box was kanji-agnostic.
-  const matches = q
-    ? pairs.filter(([v, l]) => v.toLowerCase().includes(q) || labelJp(l).includes(value.trim()))
+  const matches = typed
+    ? pairs.filter(([v, l]) => v.toLowerCase().includes(q) || labelJp(l).includes(typed))
     : pairs;
   // NO CAP. `shown` is every match, deliberately.
   //
@@ -1775,6 +1802,23 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
     onInput(v); onPick(v); setOpen(false); setActive(-1);
   };
 
+  /**
+   * Membuka daftar karena KLIK/FOKUS — bukan karena mengetik.
+   *
+   * Saat daftar memang belum terbuka, penyaring direset dan kursor diparkir
+   * pada nilai yang sedang terpasang (kalau ada), supaya seluruh daftar
+   * terlihat dan posisi nilai sekarang tetap terbaca. Saat daftar SUDAH
+   * terbuka (mis. klik kedua untuk memindah kursor) penyaring dibiarkan,
+   * supaya teks yang sudah diketik tidak mengubah isi daftar.
+   */
+  const openList = () => {
+    if (!open) {
+      setQuery(null);
+      setActive(pairs.findIndex(([v]) => v === (value || '').trim()));
+    }
+    setOpen(true);
+  };
+
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
@@ -1805,9 +1849,11 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
             // JP half manual by reporting no match.
             const hit = pairs.find(([v]) => v === text.trim());
             onPick(hit ? hit[0] : '');
+            setQuery(text);
             setOpen(true); setActive(-1);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={openList}
+          onClick={openList}
           onKeyDown={onKeyDown}
           class="input-micro w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white" />
         {open && (
