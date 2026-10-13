@@ -12,6 +12,8 @@
  * terbuka untuk kandidat biasa. Pelajaran ini dipertahankan sebagai tes.
  */
 import { describe, expect, it } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, sep } from 'node:path';
 import { isVipCatatan, isVipFlags, aiCvAccessRedirect, ASJ_LOGO_URL } from './vip';
 
 describe('isVipCatatan — predikat gate (parity legacy)', () => {
@@ -93,6 +95,67 @@ describe('aiCvAccessRedirect — penjaga halaman AI CV (flag turunan server)', (
 
 describe('ASJ_LOGO_URL', () => {
   it('aset logo ASJ untuk lencana ui.badge_official (parity legacy ASSETS.LOGO)', () => {
-    expect(ASJ_LOGO_URL).toContain('asj-files/assets/logo_asj.png');
+    expect(ASJ_LOGO_URL).toBe('/icons/logo-asj.webp');
+  });
+
+  /**
+   * REGRESI EGRESS (2026-10-14): emblem ini dulu di-hotlink dari Supabase Storage
+   * dengan `Cache-Control: no-cache` ⇒ diunduh ulang setiap buka halaman dan
+   * menghabiskan kuota Cached Egress (grace period berakhir 27 Okt 2026, lalu 402).
+   * Aset sekarang dilayani Netlify dari `public/` yang immutable.
+   */
+  it('BUKAN hotlink Supabase Storage (regresi egress)', () => {
+    expect(ASJ_LOGO_URL).not.toMatch(/supabase\.co\/storage/);
+  });
+});
+
+/**
+ * Pemindai repo: TIDAK BOLEH ada hotlink aset brand dari Supabase Storage.
+ *
+ * Alasannya bukan estetika — objek Storage publik dilayani `Cache-Control: no-cache`
+ * sehingga setiap buka halaman mengunduh ulang ~634 KB dan menembus kuota
+ * Cached Egress. Aset brand WAJIB tinggal di `public/` (dilayani Netlify, immutable).
+ *
+ * Komentar kode TIDAK dihitung: hanya string URL hidup yang diperiksa, dengan
+ * membuang komentar baris (`//`, `*`) sebelum memindai.
+ */
+describe('tidak ada hotlink aset brand Supabase Storage', () => {
+  const BRAND_ASSETS = ['logo_asj.png', 'logo_apply.png', 'jeklin.png'];
+  /** Berkas yang diizinkan menyebut URL Storage: hanya dokumentasi/legacy. */
+  const SKIP = [
+    // test ini sendiri menyebut nama berkas sebagai bagian dari pola pencarian
+    'src/lib/vip.test.ts',
+    // fixture yang di-mock, bukan hotlink
+    'src/lib/uploadBerkas.test.ts',
+  ];
+
+  function stripComments(src: string): string {
+    return src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+  }
+
+  function walk(dir: string, out: string[] = []): string[] {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) walk(p, out);
+      else if (/\.(ts|tsx|astro)$/.test(e.name)) out.push(p);
+    }
+    return out;
+  }
+
+  it('setiap aset brand dilayani dari public/, bukan Storage', () => {
+    const offenders: string[] = [];
+    for (const rel of walk('src')) {
+      const norm = rel.split(sep).join('/');
+      if (SKIP.includes(norm)) continue;
+      const code = stripComments(readFileSync(rel, 'utf8'));
+      for (const asset of BRAND_ASSETS) {
+        // hanya hitung kalau benar-benar di dalam URL Supabase Storage
+        const re = new RegExp(`storage/v1/object/public[^"'\\s]*${asset.replace('.', '\\.')}`);
+        if (re.test(code)) offenders.push(`${norm} → ${asset}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });

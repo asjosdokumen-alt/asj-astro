@@ -19,9 +19,14 @@
 /**
  * URL logo ASJ untuk lencana "Siswa Resmi ASJ" (`ui.badge_official`).
  * Aset yang sama dipakai legacy (ASSETS.LOGO, fallback logo_asj.png).
+ *
+ * 🔴 EGRESS (2026-10-14): dulu di-hotlink dari Supabase Storage, yang melayani objek
+ * publik dengan `Cache-Control: no-cache` ⇒ diunduh ulang setiap buka halaman dan
+ * menembus kuota Cached Egress (grace berakhir 27 Okt 2026, lalu HTTP 402).
+ * Sekarang aset lokal `public/icons/logo-asj.webp` (29 KB vs 138 KB) yang dilayani
+ * Netlify dengan cache immutable.
  */
-export const ASJ_LOGO_URL =
-  'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_asj.png';
+export const ASJ_LOGO_URL = '/icons/logo-asj.webp';
 
 /** True bila catatan internal menandai siswa ASJ (VIP atau KELAS LPK). */
 export function isVipCatatan(catatanInt: string | null | undefined): boolean {

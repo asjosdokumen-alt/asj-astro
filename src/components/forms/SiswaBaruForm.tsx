@@ -349,7 +349,7 @@ export default function SiswaBaruForm() {
         <div class="p-3 bg-slate-950 border-b border-slate-800 flex items-center gap-3 relative overflow-hidden">
           <div class="absolute -top-4 -right-4 w-16 h-16 bg-amber-500 rounded-full blur-2xl opacity-20"></div>
           <div class="w-10 h-10 rounded-full bg-amber-500 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.4)] flex-shrink-0">
-            <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png" alt="Qween Jeklin" class="w-full h-full rounded-full object-cover" />
+            <img src="/assets/jeklin.webp" alt="Qween Jeklin" class="w-full h-full rounded-full object-cover" />
           </div>
           <div>
             {/* Bound to the shared NAME key — see the same heading in AiCvForm.tsx. */}
@@ -402,7 +402,7 @@ export default function SiswaBaruForm() {
         <div class="max-w-3xl mx-auto pb-20 w-full">
           <div class="flex justify-between items-center mb-6 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
             <div class="flex items-center gap-3">
-              <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_asj.png" alt="ASJ Logo" class="h-10 object-contain" />
+              <img src="/icons/logo-asj.webp" alt="ASJ Logo" class="h-10 object-contain" />
               <div>
                 {/* h2, not h1: the page h1 is the FormToolbar title. This panel
                     heading was the page's ONLY h1, and because it lives inside a

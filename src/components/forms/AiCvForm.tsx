@@ -310,7 +310,7 @@ function sanitizeAiHtml(text: string): string {
     .replace(/<[^>]*>/g, '');
 }
 
-const JEKLIN_IMG = 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png';
+const JEKLIN_IMG = '/assets/jeklin.webp';
 
 /**
  * P2 (2026-09-14): dipakai dua cara.
@@ -1051,7 +1051,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
         <div class="max-w-5xl mx-auto pb-20 w-full">
           <div class="flex justify-between items-center mb-4 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
             <div class="flex items-center gap-3">
-              <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_asj.png" alt="ASJ" class="h-8 md:h-10 object-contain" />
+              <img src="/icons/logo-asj.webp" alt="ASJ" class="h-8 md:h-10 object-contain" />
               <div>
                 {/* h2, not h1: the page h1 is the FormToolbar title. /ai-cv had
                     NO h1 at all before this (§23) — this panel heading was it,

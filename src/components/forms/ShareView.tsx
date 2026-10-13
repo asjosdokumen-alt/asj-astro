@@ -207,7 +207,7 @@ export default function ShareView() {
       <header class="sticky top-0 z-50 bg-slate-900/[.97] border-b border-slate-700/50 shadow-2xl">
         <div class="max-w-7xl mx-auto px-3 md:px-8 py-3 md:py-4 flex flex-wrap md:flex-nowrap justify-between items-center gap-2 md:gap-4">
           <div class="flex items-center gap-3 md:gap-4 min-w-0">
-            <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_asj.png" alt="ASJ Logo" class="w-10 h-10 md:w-14 md:h-14 object-contain" />
+            <img src="/icons/logo-asj.webp" alt="ASJ Logo" class="w-10 h-10 md:w-14 md:h-14 object-contain" />
             <div class="min-w-0">
               {/* h2, not h1: the page h1 is the FormToolbar title ("Share Loker").
                   This brand heading was the page's own h1, so promoting the
