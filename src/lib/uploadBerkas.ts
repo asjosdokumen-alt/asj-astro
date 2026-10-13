@@ -1,72 +1,74 @@
 /**
- * uploadBerkas.ts — Upload dokumen pemberkasan ke Supabase Storage
+ * uploadBerkas.ts — Upload dokumen kandidat/pemberkasan ke CLOUDINARY.
  *
- * Pengganti uploadToCloudinary untuk dokumen kandidat: alur UI lama meng-upload
- * ke Cloudinary lalu menyimpan URL Cloudinary ke DB. Jalur ini memakai
- * getUploadUrls (files surface) yang MEMAKSA folder `kandidat/<wa>` dari sesi
- * (K3 fix) — folder dari klien tidak pernah dipakai untuk role kandidat.
+ * SEJARAH (jangan dibaca sebagai kebetulan):
+ *   2026-08-17 — alur lama meng-upload ke Cloudinary lalu menyimpan URL-nya.
+ *   2026-09-08 — dipindah KE Supabase Storage lewat `getUploadUrls` (signed URL)
+ *                supaya server bisa MEMAKSA folder `kandidat/<wa>` (K3 fix):
+ *                folder bebas dari klien bisa menimpa dokumen kandidat lain.
+ *   2026-10-14 — dipindah KEMBALI ke Cloudinary. Alasannya egress, bukan gaya:
+ *                objek Storage dilayani `Cache-Control: no-cache`, jadi setiap
+ *                kali berkas ini DILIHAT, byte-nya keluar dari kuota Supabase.
+ *                Berkas pemberkasan (KTP/KK/ijazah/foto) adalah byte terbesar di
+ *                sistem ini — itulah sebab kuota egress jebol walau trafik
+ *                halaman publik kecil.
  *
- * Alur: getUploadUrls → signed URL → PUT file → publicUrl disimpan ke DB oleh
- * pemanggil (simpanBerkasTahapan / simpanKandidatDanUpload).
+ * KEAMANAN TIDAK HILANG, hanya berpindah tempat. Yang dulu dijaga dengan
+ * memaksa folder sekarang dijaga saat URL-nya DISIMPAN:
+ *   • `simpanBerkasTahapan` / `simpanRevisiKandidat` memeriksa IDOR — untuk role
+ *     kandidat, `wa` pada payload HARUS sama dengan WA di sesi. Kandidat tidak
+ *     bisa mengaitkan berkas ke nomor orang lain.
+ *   • `badDocumentUrls` menolak URL yang bukan https dari host terdaftar, dan
+ *     `res.cloudinary.com` ada di allow-list itu.
+ * Konsekuensinya berbeda: pemaksa folder mencegah orang lain MENIMPA berkas;
+ * pemeriksa IDOR mencegah orang lain MENGAITKAN berkas. Karena yang kedua tetap
+ * ada, tidak ada data kandidat yang bocor — file asing yang diunggah tidak akan
+ * pernah muncul di dashboard siapa pun.
+ *
+ * Kontrak fungsi ini SENGAJA tidak berubah (`file` + `opts` → URL string) supaya
+ * tiga pemanggilnya tidak perlu disentuh:
+ *   • PemberkasanModal.tsx  — berkas pemberkasan kandidat (UI admin & kandidat)
+ *   • TabConfig.tsx         — template CV
+ *   • CandidateDash.tsx     — kandidat mengunggah revisi
  */
-import api from './apiClient';
+import { uploadToCloudinary } from './cloudinary';
 
 export interface UploadBerkasOptions {
   /** Kunci unik dokumen — dipakai sebagai prefix nama file di storage. */
   key: string;
-  /** Petunjuk folder. Untuk role kandidat selalu ditimpa server → kandidat/<wa>. */
+  /**
+   * Petunjuk folder. DULU dipakai untuk memilih folder Storage (`kandidat/<wa>`
+   * dipaksa server). Setelah pindah ke Cloudinary unsigned, folder tidak lagi
+   * bisa dipaksa server — nilai ini TIDAK dikirim ke Cloudinary, melainkan
+   * dipertahankan di tipe supaya tiga pemanggil lama tetap kompilasi tanpa
+   * diubah. Jangan hapus tanpa memeriksa ketiganya.
+   */
   folder?: string;
   maxRetries?: number;
 }
 
 /**
- * Upload satu file pemberkasan ke storage. Mengembalikan publicUrl (https)
- * yang siap disimpan ke kolom *_url di DB. Throw bila gagal setelah retries.
+ * Unggah satu file ke Cloudinary. Mengembalikan `secure_url` (https) yang siap
+ * disimpan ke kolom *_url di DB. Throw bila gagal setelah retries.
+ *
+ * `key` dipertahankan sebagai parameter (retry/penamaan di Cloudinary publik
+ * memakai `upload_preset`; nama berkas dikelola Cloudinary). Saat ini key hanya
+ * dipakai untuk jalur pesan galat agar pesan yang sampai ke pengguna tetap
+ * menyebut dokumen mana yang gagal.
  */
 export async function uploadBerkasToStorage(
   file: File,
   opts: UploadBerkasOptions,
 ): Promise<string> {
-  const { key, folder = 'kandidat', maxRetries = 3 } = opts;
-  const ext =
-    (file.name.split('.').pop() || 'bin')
-      .replace(/[^a-z0-9]/gi, '')
-      .toLowerCase() || 'bin';
-  let lastErr: unknown = null;
+  const { key, maxRetries = 3 } = opts;
+  if (!file) throw new Error('Tidak ada file untuk diunggah.');
 
+  let lastErr: unknown = null;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // `silent: true` — fungsi ini mencoba ULANG sampai 3 kali, jadi toast dari
-      // klien akan berbunyi sekali per percobaan untuk satu kegagalan yang sama.
-      // Pemanggilnya yang menampilkan pesan akhir; di sini kita hanya melempar.
-      const data = (await api.secure(
-        'getUploadUrls',
-        [{ folder, files: [{ key, prefix: key, ext }] }],
-        { onSessionInvalid: 'throw', silent: true },
-      )) as {
-        success?: boolean;
-        error?: string;
-        message?: string;
-        // `publicUrl` is what this function RETURNS (line below), so leaving it
-        // out of the shape is not cosmetic: the ratchet caught it as
-        // `TS2339: Property 'publicUrl' does not exist` on a file that was clean.
-        urls?: Record<string, { signedUrl?: string; publicUrl?: string }>;
-      };
-      const entry = data && data.urls && data.urls[key];
-      if (!data || data.success !== true || !entry || !entry.signedUrl) {
-        throw new Error((data && (data.error || data.message)) || 'Gagal membuat link upload.');
-      }
-      const put = await fetch(entry.signedUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type || 'application/octet-stream',
-        },
-        body: file,
-      });
-      if (!put.ok) {
-        throw new Error('Upload ke storage gagal (HTTP ' + put.status + ')');
-      }
-      return String(entry.publicUrl || '');
+      const url = await uploadToCloudinary(file, undefined, 1);
+      if (!url) throw new Error('Cloudinary tidak mengembalikan URL.');
+      return url;
     } catch (e) {
       lastErr = e;
       if (attempt < maxRetries) {
@@ -74,6 +76,6 @@ export async function uploadBerkasToStorage(
       }
     }
   }
-  console.warn('[uploadBerkas] Gagal upload storage:', lastErr);
+  console.warn('[uploadBerkas] Gagal upload Cloudinary (' + key + '):', lastErr);
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }

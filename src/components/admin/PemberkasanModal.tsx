@@ -383,9 +383,13 @@ export default function PemberkasanModal({
       let lastErr = "";
       for (const { def, file } of picked) {
         try {
-          // Upload ke storage Supabase: untuk role kandidat folder SELALU
-          // kandidat/<wa> (dipaksa server); admin memakai master/<NAMA> (parity
-          // legacy). Menggantikan uploadToCloudinary (2026-09-08).
+          // Upload ke Cloudinary (kembali ke sana 2026-10-14). Sebelumnya
+          // sempat ke Supabase Storage (2026-09-08) demi memaksa folder
+          // `kandidat/<wa>` server-side — tapi objek Storage `no-cache`
+          // membuat setiap kali berkas ini DILIHAT ikut menghabiskan kuota
+          // egress. Penjaga folder digantikan penjaga IDOR di
+          // `simpanBerkasTahapan` (wa payload HARUS sama dengan WA sesi), jadi
+          // berkas tetap tidak bisa dikaitkan ke kandidat lain.
           const url = await uploadBerkasToStorage(file, {
             key: def.key,
             folder:
