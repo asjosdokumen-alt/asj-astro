@@ -362,7 +362,7 @@ export default function ApplyFullForm() {
         <div class="absolute inset-0 bg-gradient-to-b from-black/25 to-[#020617]"></div>
         <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-full px-5 z-10">
           <img class="w-[100px] h-[100px] rounded-full mx-auto shadow-[0_15px_35px_rgba(0,0,0,.5)] object-cover relative z-[15]"
-            src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/logo_apply.png" alt="Logo ASJ" />
+            src="/assets/logo-apply.webp" alt="Logo ASJ" />
           {/* WHY THESE TWO LINES ARE KEYS AND NOT LITERALS. `header.tagline` already
               exists in BOTH dictionaries as exactly the pair of strings this band
               needs: id "Tantangan ke Jepang" / jp "日本への挑戦". The band was

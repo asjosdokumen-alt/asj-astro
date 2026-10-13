@@ -30,8 +30,7 @@ import AiUnavailableBanner from "../ui/AiUnavailableBanner";
 import { api } from "../../lib/apiClient";
 import { useOverlay } from "../ui/useOverlay";
 
-const JEKLIN_IMG =
-  "https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/jeklin.png";
+const JEKLIN_IMG = '/assets/jeklin.webp';
 
 /**
  * Batas ukuran berkas untuk parse dokumen biodata, dalam MB.
