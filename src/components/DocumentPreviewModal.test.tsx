@@ -126,3 +126,79 @@ describe('DocumentPreviewModal (B03)', () => {
     }, { timeout: 3000 });
   });
 });
+
+// ==========================================
+// 2026-10-13 — "tiap mo buka preview mengdonload"
+//
+// MEASURED pada hari itu: host vendor SheetJS **tidak bisa dihubungi sama
+// sekali** — `curl -I https://cdn.sheetjs.com/...` menjawab `http=000` (menggantung
+// 11 s lalu ditolak), dari jaringan yang sama dengan pemilik. Jadi
+// `loadXlsxVendor()` SELALU gagal, render spreadsheet SELALU batal, dan tiap
+// CV `.xlsx` jatuh ke cabang iframe `src={url}` — yang membuat browser
+// MENGUNDUH berkasnya, bukan menampilkannya.
+//
+// `xlsx` sudah menjadi dependensi repo ini dan sudah dibundel untuk browser oleh
+// dua pemanggil lain (`candidateExport.ts`, loader template CV) dengan pola
+// `await import('xlsx')`. Jadi CDN itu bukan cuma mati — ia berlebih.
+//
+// Dua sifat yang dikunci di sini, dan keduanya MERAH di HEAD:
+//   1. SheetJS tidak boleh dimuat dari CDN eksternal.
+//   2. Saat render gagal, TIDAK boleh ada iframe `src={url}` — harus keadaan
+//      "tidak bisa dipratinjau" + tombol Unduh (aksi eksplisit pengguna).
+//
+// ⚠ Kenapa tes lama (`spreadsheet (.xlsx) → TIDAK pernah memasang iframe src
+// mentah`) tidak menangkap ini: `waitFor` atas assertion NEGATIF lulus pada
+// tick pertama, saat render masih tertunda — jadi ia tidak pernah menunggu
+// kegagalan yang justru memunculkan iframe itu. Tes di bawah menunggu keadaan
+// AKHIR, bukan keadaan antara.
+// ==========================================
+describe('DocumentPreviewModal — spreadsheet tanpa CDN & tanpa auto-download', () => {
+  /** Simulasi kondisi produksi: setiap <script> yang dipasang gagal dimuat. */
+  function failEveryScript() {
+    const append = document.head.appendChild.bind(document.head);
+    const appended: string[] = [];
+    const spy = vi.spyOn(document.head, 'appendChild').mockImplementation((node: Node) => {
+      const el = node as HTMLScriptElement;
+      if (el.tagName === 'SCRIPT') {
+        appended.push(el.src);
+        queueMicrotask(() => el.onerror?.(new Event('error')));
+        return node;
+      }
+      return append(node);
+    });
+    return { appended, restore: () => spy.mockRestore() };
+  }
+
+  it('SheetJS TIDAK dimuat dari CDN eksternal', async () => {
+    const { appended, restore } = failEveryScript();
+    const fetchSpy = vi.fn().mockRejectedValue(new Error('offline'));
+    vi.stubGlobal('fetch', fetchSpy);
+    try {
+      renderAt('https://x.supabase.co/storage/master/X/1._X_CV.xlsx');
+      await waitFor(() => expect(screen.getByText('ui.preview_unavailable')).toBeTruthy(), { timeout: 5000 });
+      expect(appended.filter((s) => /^https?:\/\//.test(s)), 'CDN eksternal sebagai jalur muat SheetJS').toEqual([]);
+    } finally {
+      restore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('render gagal → keadaan "tidak bisa dipratinjau", BUKAN iframe src mentah', async () => {
+    const { restore } = failEveryScript();
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    try {
+      renderAt('https://x.supabase.co/storage/master/X/1._X_CV.xlsx');
+      // Tunggu keadaan AKHIR: kalau iframe mentah yang menang, teks ini tidak
+      // akan pernah muncul dan tes gagal di sini — persis bug yang dilaporkan.
+      await waitFor(() => expect(screen.getByText('ui.preview_unavailable')).toBeTruthy(), { timeout: 5000 });
+      const raw = Array.from(document.querySelectorAll('iframe')).find((f) =>
+        (f as HTMLIFrameElement).src.includes('.xlsx'));
+      expect(raw, 'iframe src mentah = browser mengunduh berkasnya').toBeUndefined();
+      // Tombol Unduh tetap tersedia — unduhan harus jadi AKSI pengguna.
+      expect(screen.getAllByText('ui.download').length).toBeGreaterThanOrEqual(1);
+    } finally {
+      restore();
+      vi.unstubAllGlobals();
+    }
+  });
+});

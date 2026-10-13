@@ -23,31 +23,44 @@ interface Props {
   closing?: boolean;
 }
 
-// Lazy-loaded SheetJS vendor for Excel/CSV rendering
-let xlsxVendorLoaded = false;
-let xlsxVendorPromise: Promise<void> | null = null;
+// Lazy-loaded SheetJS vendor for Excel/CSV rendering.
+//
+// ── WHY THE LOCAL MODULE AND NOT A CDN (2026-10-13) ─────────────────────────
+// This appended `<script src="https://cdn.sheetjs.com/xlsx-0.20.1/…">`.
+// MEASURED 2026-10-13: **that host is unreachable** — `curl -I` answers nothing
+// at all (`http=000`, 11 s then refused), from the same network as the owner.
+// The vendor therefore never loaded, the client-side render failed EVERY time,
+// and every spreadsheet fell through to the raw-iframe fallback and was
+// DOWNLOADED instead of previewed. That is the owner's report: "tiap mo buka
+// preview mengdonload".
+//
+// `xlsx` is already a dependency of this repo and is ALREADY bundled for the
+// browser by two other callers — `src/lib/candidateExport.ts` and the CV
+// template loader — both with this same `await import('xlsx')` shape. The CDN
+// was not merely dead, it was redundant.
+//
+// The dynamic import keeps SheetJS in its own async chunk: it is fetched the
+// first time somebody previews a spreadsheet, never on page load.
+//
+// The module is held in a local, NOT on `window.XLSX`. The global existed only
+// because the vendor used to arrive as a <script>; nothing else in the repo
+// reads or writes it (checked 2026-10-13), and keeping it meant four
+// `(window as any)` casts in a file that is already over the lint budget.
+let xlsxModule: typeof import('xlsx') | null = null;
+let xlsxPromise: Promise<void> | null = null;
 
-async function loadXlsxVendor(): Promise<boolean> {
-  if (typeof (window as any).XLSX !== 'undefined') return true;
-  if (xlsxVendorLoaded) return typeof (window as any).XLSX !== 'undefined';
-  
-  if (!xlsxVendorPromise) {
-    xlsxVendorPromise = new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js';
-      script.onload = () => {
-        xlsxVendorLoaded = true;
-        resolve();
-      };
-      script.onerror = () => {
-        xlsxVendorPromise = null;
-        resolve();
-      };
-      document.head.appendChild(script);
-    });
+async function loadXlsx(): Promise<typeof import('xlsx') | null> {
+  if (xlsxModule) return xlsxModule;
+  if (!xlsxPromise) {
+    xlsxPromise = import('xlsx')
+      .then((mod) => { xlsxModule = mod; })
+      .catch(() => {
+        // Retry on the next preview rather than caching the failure forever.
+        xlsxPromise = null;
+      });
   }
-  await xlsxVendorPromise;
-  return typeof (window as any).XLSX !== 'undefined';
+  await xlsxPromise;
+  return xlsxModule;
 }
 
 // Check if URL is an image (including Cloudinary URLs)
@@ -94,10 +107,9 @@ export function isDriveFolder(url: string): boolean {
 // Client-side Excel/CSV rendering via SheetJS
 async function renderExcelToHtml(url: string): Promise<string | null> {
   try {
-    const loaded = await loadXlsxVendor();
-    if (!loaded) return null;
-    
-    const XLSX = (window as any).XLSX;
+    const XLSX = await loadXlsx();
+    if (!XLSX) return null;
+
     const res = await fetch(url);
     if (!res.ok) return null;
     
@@ -270,24 +282,21 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
       );
     }
 
-    if (isExcel(url)) {
-      // Fallback to iframe if client-side render failed.
-      //
-      // Only reachable once `excelPending` is false — see the gate in the
-      // Content block below. Mounting this while the render was still in
-      // flight is what made the CV download instead of preview (2026-10-11),
-      // so the ordering there is load-bearing, not cosmetic.
-      return (
-        <iframe
-          ref={iframeRef}
-          src={url}
-          class="w-full h-full border-0 rounded-lg"
-          onLoad={handleLoad}
-          onError={handleError}
-          title={title}
-        />
-      );
-    }
+    // ⚠ THERE IS DELIBERATELY NO `if (isExcel(url)) <iframe src={url}>` HERE.
+    //
+    // One used to sit at this point, as the "render failed" fallback. Supabase
+    // serves these spreadsheets with no `Content-Disposition: inline`, so an
+    // iframe pointing at the file makes the browser DOWNLOAD it — the fallback
+    // *was* the auto-download. MEASURED 2026-10-13: the vendor CDN was
+    // unreachable, so that fallback was reached on EVERY spreadsheet preview,
+    // which is why the owner saw a download every time ("tiap mo buka preview
+    // mengdonload").
+    //
+    // A spreadsheet whose client-side render failed now falls through to the
+    // "cannot preview inline" state below, which offers an explicit Unduh
+    // button. An explicit click is the only way this modal may hand a file to
+    // the browser — do not reintroduce an iframe src pointing at a document
+    // URL here.
 
     if (isOffice(url)) {
       return (
