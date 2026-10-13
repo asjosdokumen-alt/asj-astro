@@ -25,27 +25,30 @@ import { bannerStore } from '../store/theme';
  *
  * WHY THIS IS BACK. The non-hero header (`/public`, `/loker`, `/share`, …) had
  * lost its banner: `bannerStore` was imported and never read, so every route
- * except the hero on `/` rendered a bare `hero-gradient` with no artwork. The
- * owner's item 3 asks for the banner asset back on the `asj-files` Supabase path
- * the legacy portal used.
+ * except the hero on `/` rendered a bare `hero-gradient` with no artwork.
  *
- * WHY THESE EXACT STRINGS. They are the legacy structure the owner chose, and
- * both filenames are ALREADY live in this repo — `LayananSection.astro:31,114`
- * fetch `sakra_banner.webp` and `dark_tokyo_banner.webp` from this same base.
- * Reusing them (rather than inventing names) keeps one source of truth for the
- * URLs; `sakra` is the legacy spelling and must NOT be "corrected" to `sakura`,
- * or the request 404s.
+ * WHY THE PATHS ARE LOCAL NOW (2026-10-14). These two files used to be fetched
+ * from Supabase Storage with the rest of the brand art. Storage serves public
+ * objects `Cache-Control: no-cache`, so every page view re-downloaded them and
+ * the Free-tier Cached Egress quota blew past 100%. They now sit in
+ * `public/assets/`, served by Netlify with a year-long immutable cache, and are
+ * resized to what the header actually needs (`1200px` → `800/900px`) — measured
+ * 112.858 + 143.094 B → 49.350 + 70.590 B. Same artwork, same URIs for callers,
+ * a fraction of the bytes. `LayananSection.astro` uses the same two files.
+ *
+ * The filenames deliberately differ from the legacy `sakra_banner` /
+ * `dark_tokyo_banner` spelling: those names only ever existed in the Supabase
+ * bucket, and nothing local referenced them. Do not "restore" the old names —
+ * `/assets/sakra_banner.webp` 404s.
  *
  * WHY THE MAP DEFAULT IS TOKYO. `BannerTheme` also has `INTER_VIP`; anything
  * that is not `SAKURA` resolves to the Tokyo artwork, matching the legacy
  * default. `bannerStore` is a `persistentAtom`, so flipping the theme swaps the
  * artwork — which is the whole reason the store exists.
  */
-const BANNER_BASE =
-  'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/';
 const BANNER_ART = {
-  SAKURA: `${BANNER_BASE}sakra_banner.webp`,
-  TOKYO: `${BANNER_BASE}dark_tokyo_banner.webp`,
+  SAKURA: '/assets/banner-sakura.webp',
+  TOKYO: '/assets/banner-tokyo.webp',
 } as const;
 
 import LoginModal from './LoginModal';

@@ -120,7 +120,15 @@ describe('ASJ_LOGO_URL', () => {
  * membuang komentar baris (`//`, `*`) sebelum memindai.
  */
 describe('tidak ada hotlink aset brand Supabase Storage', () => {
-  const BRAND_ASSETS = ['logo_asj.png', 'logo_apply.png', 'jeklin.png'];
+  const BRAND_ASSETS = [
+    'logo_asj.png',
+    'logo_apply.png',
+    'jeklin.png',
+    'sakra_banner.webp',
+    'dark_tokyo_banner.webp',
+    'momiji_banner.webp',
+    'logo-removebg-preview.webp',
+  ];
   /** Berkas yang diizinkan menyebut URL Storage: hanya dokumentasi/legacy. */
   const SKIP = [
     // test ini sendiri menyebut nama berkas sebagai bagian dari pola pencarian

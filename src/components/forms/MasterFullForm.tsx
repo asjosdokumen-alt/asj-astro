@@ -598,7 +598,7 @@ export default function MasterFullForm() {
           Logo memakai URL yang sama dengan CandidateDash; `/assets/logo.png`
           yang lama tidak pernah ada di `public/`, jadi itu gambar rusak. */}
       <div class="relative h-[220px] overflow-hidden">
-        <img src="https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/assets/dark_tokyo_banner.webp" class="absolute inset-0 w-full h-full object-cover brightness-[.35]" alt="" />
+        <img src="/assets/banner-tokyo.webp" class="absolute inset-0 w-full h-full object-cover brightness-[.35]" alt="" />
         <div class="absolute inset-0 bg-gradient-to-b from-black/25 to-canvas"></div>
         <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-full z-10">
           <img src="/icons/logo-asj.webp" class="w-20 h-20 rounded-full mx-auto shadow-[0_10px_25px_rgba(0,0,0,.5)] object-contain" alt="Logo ASJ" />
