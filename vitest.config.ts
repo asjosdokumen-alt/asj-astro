@@ -164,6 +164,12 @@ export default defineConfig({
             // menaruhnya di e2e/ TANPA baris ini membuatnya berjalan di jsdom
             // dan terhitung dua kali.
             'e2e/bio-identitas.test.ts',
+            // Ditambahkan 2026-10-13. Murni memindai BERKAS sebagai teks
+            // (node:fs), tanpa DOM sama sekali — jadi memang milik project
+            // 'backend'. Tinggal di e2e/ HANYA karena counter beku `indexer`
+            // menghitung `src/**`, sehingga `.ts` baru di sana memindahkan
+            // angkanya (R15). Tanpa baris ini ia jalan DUA KALI.
+            'e2e/shared-anchor-targets.test.ts',
           ],
         },
       },
