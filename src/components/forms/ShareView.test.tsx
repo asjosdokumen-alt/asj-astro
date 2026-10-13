@@ -141,3 +141,49 @@ describe('ShareView (B06)', () => {
     await waitFor(() => expect(screen.getByText('share.empty_title')).toBeTruthy());
   });
 });
+
+// ==========================================
+// POLISH 2026-10-13 — dua detail kecil di kartu share
+//
+// (1) SATUAN GANDA. Kartu menempelkan " cm"/" kg" tanpa memeriksa isi nilainya.
+//     Terukur atas 234 baris master_database_candidate: 58 dari 165 nilai tb/bb
+//     yang terisi (35%) SUDAH memuat satuannya sendiri ("149 cm", "49 kg")
+//     karena kandidat mengetiknya => kartunya mencetak "149 cm cm".
+// (2) IKON BERAT memakai id-card. Di seluruh repo id-card dipakai untuk
+//     KTP/identitas, dan sprite sudah punya weight-scale — jadi chip berat
+//     memakai ikon dokumen identitas.
+// ==========================================
+describe('ShareView — detail kecil kartu (2026-10-13)', () => {
+  const WITH_UNIT = [{
+    id_kandidat: 'C9', no_wa: '628111', nama_lengkap: 'Uji Satuan',
+    gender: 'LAKI-LAKI', usia: '30', tb: '149 cm', bb: '49 kg',
+    pas_photo: '', file_cv: '', jft: '', ssw: '',
+    nilai_jft_text: '', bidang_ssw_text: '', extraDocs: [],
+  }];
+
+  it('nilai yang SUDAH memuat satuan tidak ditambahi lagi', async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ job: API_JOB, candidates: WITH_UNIT }) });
+    render(<ShareView />);
+    await waitFor(() => expect(screen.getByText('Uji Satuan')).toBeTruthy());
+    expect(screen.getByText('149 cm')).toBeTruthy();
+    expect(screen.queryByText('149 cm cm')).toBeNull();
+    expect(screen.getByText('49 kg')).toBeTruthy();
+    expect(screen.queryByText('49 kg kg')).toBeNull();
+  });
+
+  // KONTROL POSITIF: angka polos harus TETAP mendapat satuan, supaya
+  // "jangan tambah kalau sudah ada" tidak berubah jadi "jangan tambah sama sekali".
+  it('angka polos TETAP mendapat satuan', async () => {
+    render(<ShareView />);
+    await waitFor(() => expect(screen.getByText('Budi Santoso')).toBeTruthy());
+    expect(screen.getByText('170 cm')).toBeTruthy();
+    expect(screen.getByText('65 kg')).toBeTruthy();
+  });
+
+  it('chip berat memakai ikon timbangan, bukan ikon KTP', async () => {
+    render(<ShareView />);
+    await waitFor(() => expect(screen.getByText('Budi Santoso')).toBeTruthy());
+    expect(document.querySelector('use[href="#fas-weight-scale"]')).toBeTruthy();
+    expect(document.querySelector('use[href="#fas-id-card"]')).toBeNull();
+  });
+});

@@ -63,6 +63,24 @@ function avatarFor(nama: string): string {
   return 'https://ui-avatars.com/api/?name=' + encodeURIComponent(nama) + '&background=0D8ABC&color=fff';
 }
 
+/**
+ * `"149"` -> `"149 cm"`; nilai yang SUDAH memuat satuan dibiarkan apa adanya.
+ *
+ * MEASURED 2026-10-13 atas 234 baris `master_database_candidate`: **58 dari 165
+ * nilai `tb`/`bb` yang terisi (35%) sudah memuat satuannya sendiri** ("149 cm",
+ * "49 kg") karena kandidat mengetiknya — menempelkan satuan tanpa memeriksa
+ * mencetak "149 cm cm" di kartu untuk setiap baris seperti itu.
+ *
+ * Satuan hanya ditambahkan pada ANGKA TELANJANG. Nilai lain (sudah bersatuan,
+ * atau bukan satu angka — mis. gabungan "165 / 57") ditampilkan apa adanya:
+ * menebak di situ berarti mengarang nilai yang tidak ada di database, dan itu
+ * lebih buruk daripada menampilkan yang tersimpan.
+ */
+function withUnit(v: string | number, unit: string): string {
+  const s = String(v ?? '').trim();
+  return /^\d+(?:[.,]\d+)?$/.test(s) ? s + ' ' + unit : s;
+}
+
 const MAIN_TYPES = new Set(['CV', 'JFT', 'SSW', 'FOTO']);
 
 /** Main CV/JFT/SSW + extra-doc buttons for a candidate (legacy card order). */
@@ -292,7 +310,6 @@ export default function ShareView() {
               const photo = c.pas_photo && c.pas_photo !== '-' ? c.pas_photo : avatarFor(nama);
               const buttons = docButtonsFor(c);
               const gText = String(c.gender || '');
-              const _isP = gText.toUpperCase().includes('PEREMPUAN');
               const usia = parseInt(String(c.usia), 10) || 0;
               return (
                 <div key={c.id_kandidat}
@@ -326,11 +343,13 @@ export default function ShareView() {
                         </div>
                         <div class="flex items-center gap-1.5 whitespace-nowrap overflow-hidden text-ellipsis bg-slate-800/50 rounded-md px-1.5 py-0.5 border border-slate-700/50">
                           <Icon name="ruler-vertical" class="text-emerald-400 opacity-80 w-3 text-center" />
-                          <span class="font-medium">{c.tb && c.tb !== '-' ? c.tb + ' cm' : '-'}</span>
+                          <span class="font-medium">{c.tb && c.tb !== '-' ? withUnit(c.tb, 'cm') : '-'}</span>
                         </div>
                         <div class="flex items-center gap-1.5 whitespace-nowrap overflow-hidden text-ellipsis bg-slate-800/50 rounded-md px-1.5 py-0.5 border border-slate-700/50">
-                          <Icon name="id-card" class="text-amber-400 opacity-80 w-3 text-center" />
-                          <span class="font-medium">{c.bb && c.bb !== '-' ? c.bb + ' kg' : '-'}</span>
+                          {/* weight-scale, bukan id-card: id-card adalah ikon KTP
+                              di seluruh repo, dan chip ini adalah BERAT BADAN. */}
+                          <Icon name="weight-scale" class="text-amber-400 opacity-80 w-3 text-center" />
+                          <span class="font-medium">{c.bb && c.bb !== '-' ? withUnit(c.bb, 'kg') : '-'}</span>
                         </div>
                         <div class="flex items-center gap-1.5 whitespace-nowrap overflow-hidden text-ellipsis bg-slate-800/50 rounded-md px-1.5 py-0.5 border border-slate-700/50">
                           <Icon name="user" class="text-pink-300 opacity-80 w-3 text-center" />
