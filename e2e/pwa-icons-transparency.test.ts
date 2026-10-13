@@ -89,3 +89,55 @@ describe('ikon PWA — transparansi', () => {
     }
   });
 });
+
+/**
+ * TESTS: NAMA APLIKASI harus "PT Amanah Sakura Japan" di SEMUA titik branding.
+ *
+ * KENAPA: nama app di header notifikasi Android, label ikon PWA, dan halaman
+ * beranda iOS datang dari TIGA tempat berbeda. Dulu ketiganya "ASJ Portal",
+ * jadi notifikasi berbunyi "ASJ Portal" alih-alih nama perusahaan. Tiga titik
+ * yang mudah lepas sinkron:
+ *   1. `manifest.webmanifest` `name`   → label app ter-install (Android)
+ *   2. `BaseLayout.astro` apple-mobile-web-app-title → label iOS
+ *   3. `public/sw.js` fallback judul   → dipakai bila payload push tanpa title
+ *
+ * DIPERIKSA: ketiganya memuat nama brand, dan TIDAK ada yang masih memakai
+ * nama lama sebagai nama APLIKASI (bukan sekadar judul halaman SEO).
+ */
+const BRAND = 'PT Amanah Sakura Japan';
+
+describe('nama aplikasi konsisten di titik branding', () => {
+  it('manifest.webmanifest memakai nama brand untuk name & short_name', () => {
+    const manifest = JSON.parse(readFileSync('public/manifest.webmanifest', 'utf8')) as {
+      name: string;
+      short_name: string;
+    };
+    expect(manifest.name, 'manifest.name masih nama lama').toBe(BRAND);
+    // short_name dipakai di bawah ikon home-screen, ruangnya sempit ⇒
+    // wajib pendek tapi tetap brand ASJ.
+    expect(manifest.short_name, 'manifest.short_name masih nama lama').toContain('ASJ');
+    expect(manifest.short_name.length, 'short_name terlalu panjang untuk home-screen').toBeLessThanOrEqual(
+      12,
+    );
+  });
+
+  it('BaseLayout menyetel apple-mobile-web-app-title ke nama brand', () => {
+    const layout = readFileSync('src/layouts/BaseLayout.astro', 'utf8');
+    expect(
+      layout.includes(`apple-mobile-web-app-title" content="${BRAND}"`),
+      'apple-mobile-web-app-title masih nama lama ⇒ label iOS salah',
+    ).toBe(true);
+  });
+
+  it('service worker TIDAK lagi memakai "ASJ Portal" sebagai judul app', () => {
+    const sw = readFileSync('public/sw.js', 'utf8');
+    // Hanya baris fallback judul yang diuji — komentar header menyebut nama
+    // proyek dan itu sah.
+    const pushBlock = sw.slice(sw.indexOf("addEventListener('push'"));
+    expect(
+      pushBlock.includes("'ASJ Portal'"),
+      'sw.js masih menjadikan "ASJ Portal" fallback judul push',
+    ).toBe(false);
+    expect(pushBlock.includes(BRAND), 'sw.js tidak memakai nama brand sebagai fallback').toBe(true);
+  });
+});

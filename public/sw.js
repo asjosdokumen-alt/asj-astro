@@ -92,7 +92,7 @@ self.addEventListener('push', (e) => {
   // pesan yang (suatu saat) memakai blok itu tetap tampil.
   const notif = payload.notification || {};
   const data = payload.data || payload;
-  const title = data.title || notif.title || 'ASJ Portal';
+  const title = data.title || notif.title || 'PT Amanah Sakura Japan';
   const body = data.body || notif.body || '';
   const url = data.url || '/';
 

@@ -313,7 +313,7 @@ export function __loadServiceAccountForTest(opts?: { reset?: boolean }) {
  * benar mengantarkan notifikasi "Pemeriksaan perangkat" — bukan request hantu.
  */
 export async function isDeviceUnregistered(token: string): Promise<boolean> {
-  return (await sendPushNotification(token, 'ASJ Portal', 'Pemeriksaan perangkat', '/')) ===
+  return (await sendPushNotification(token, 'PT Amanah Sakura Japan', 'Pemeriksaan perangkat', '/')) ===
     'unregistered';
 }
 
