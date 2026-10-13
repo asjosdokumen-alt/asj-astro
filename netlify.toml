@@ -59,6 +59,31 @@
   [headers.values]
     Cache-Control = "no-cache"
 
+# ─── Aset brand (2026-10-14): EGRESS, bukan kecepatan ───────────────────────
+#
+# WHY THIS IS HERE. Aset brand (logo, banner, jeklin, logo-apply) dulu di-hotlink
+# dari Supabase Storage. Objek publik Storage dilayani `Cache-Control: no-cache`,
+# jadi browser mengunduh ulang ~634 KB SETIAP kali halaman dibuka. Akibatnya kuota
+# Free "Cached Egress" (5 GB) tembus: 10.000 kunjungan ≈ 6,0 GB (121%). Grace
+# period berakhir 27 Okt 2026; setelah itu setiap request balas HTTP 402.
+#
+# Memindahkan berkas ke `public/` saja TIDAK cukup — Netlify memberi Cache-Control
+# bawaan yang tetap membuat browser me-revalidate. Karena isinya STATIS dan
+# berversi lewat nama (aset jarang berganti), `immutable` setahun adalah yang benar.
+#
+# Bila kelak aset ini perlu diganti, GANTI NAMANYA (mis. `logo-asj-v2.webp`) — URL
+# lama sudah tersimpan permanen di cache browser pengunjung dan tidak akan
+# menanyakan ulang ke server.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/icons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # ─── Security headers (2026-10-04) ───────────────────────────────────────────
 #
 # These are the headers that are pure wins: none of them can break a working
