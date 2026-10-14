@@ -87,7 +87,6 @@ describe('LokerDetailModal (B04)', () => {
     const pamflet = 'https://cdn.example/pamflet.jpg';
     render(<LokerDetailModal job={baseJob({ pamflet })} onClose={vi.fn()} />);
     const thumb = screen.getByAltText('Pamflet');
-    expect((thumb as HTMLElement).getAttribute('title')).toBe(t('ui.click_zoom'));
     expect(document.querySelectorAll('img[alt="Pamflet"]').length).toBe(1);
     fireEvent.click(thumb);
     await waitFor(() => {
@@ -107,6 +106,41 @@ describe('LokerDetailModal (B04)', () => {
     await waitFor(() => {
       expect(document.querySelectorAll('img[alt="Pamflet"]').length).toBe(1);
     });
+  });
+
+  /* Thumbnail pamflet harus berupa KONTROL yang bisa dipakai keyboard.
+   *
+   * SEBELUM 2026-10-14 ini `<img onClick=…>` — `<img>` tidak bisa di-Tab, jadi
+   * satu-satunya cara membuka pamflet adalah mouse (lint `useKeyWithClickEvents`).
+   * Sekarang `<button>` yang membungkus gambar.
+   *
+   * `title` PINDAH dari `<img>` ke `<button>`: ia menjelaskan AKSI ("Klik untuk
+   * memperbesar"), jadi tempatnya di kontrol, bukan di gambar. Nama aksesibel
+   * tombol tetap datang dari `alt` gambar di dalamnya — karena itu tes ini
+   * menanyakan `role=button` dengan nama itu, bukan lagi atribut `title`.
+   *
+   * Tes ini MENGUNCI bahwa thumbnya benar-benar kontrol keyboard, bukan sekadar
+   * elemen yang bisa diklik mouse. */
+  it('thumbnail pamflet adalah <button> yang bisa dipakai keyboard (a11y 2026-10-14)', () => {
+    const pamflet = 'https://cdn.example/pamflet.jpg';
+    render(<LokerDetailModal job={baseJob({ pamflet })} onClose={vi.fn()} />);
+    const thumb = screen.getByAltText('Pamflet');
+
+    // (a) pembungkusnya benar-benar <button>, bukan <div role=button> atau <img onClick>.
+    const kontrol = thumb.closest('button');
+    expect(kontrol).not.toBeNull();
+    expect(kontrol?.getAttribute('type')).toBe('button');
+
+    // (b) nama aksesibelnya ada. Diukur lewat `getByRole({name})` — itulah cara
+    //     testing-library menghitung nama aksesibel persis seperti pembaca layar.
+    //     Bukan `textContent`: tombol ini hanya memuat <img>, jadi teksnya kosong
+    //     sementara namanya tetap "Pamflet" (dari `alt`). Mengukurnya dengan
+    //     textContent akan melaporkan "tidak ada nama" secara KELIRU.
+    expect(screen.getByRole('button', { name: t('ui.alt_pamflet') })).toBeTruthy();
+
+    // (c) tooltip aksi ada di KONTROL, bukan di gambar.
+    expect(kontrol?.getAttribute('title')).toBe(t('ui.click_zoom'));
+    expect(thumb.getAttribute('title')).toBeNull();
   });
 
   it('calls onClose via the header close button', () => {

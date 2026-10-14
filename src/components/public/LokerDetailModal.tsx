@@ -100,15 +100,32 @@ export default function LokerDetailModal({ job, onClose, closing = false }: Prop
 
   return (
     <>
-    <div class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[150] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
-      <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[85vh] u-scroll-area shadow-2xl custom-scrollbar" onClick={(e: MouseEvent) => e.stopPropagation()}>
+    {/* `role="none"` (sinonim ARIA dari `presentation`) menandai dua lapisan ini
+        sebagai DEKORASI, bukan kontrol — jadi lint a11y tidak menuntut jalur
+        keyboard di sini. Itu memang benar: backdrop hanya penangkap klik, dan
+        inner div-nya hanya menahan `stopPropagation`.
+
+        Keyboard SUDAH dilayani penuh oleh `useOverlay` (Escape menutup +
+        memulihkan fokus + Tab trap), dan itu diuji `e2e/test-dialog.mjs`.
+        Menambahkan `onKeyDown`/`tabIndex` di sini justru SALAH: ia menciptakan
+        Tab stop tambahan di luar alur dialog.
+
+        Dipakai `none`, bukan `presentation` (yang sudah ada di repo), karena
+        biome hanya mengenali `none` untuk aturan `noStaticElementInteractions`.
+        Keduanya sinonim di ARIA, jadi tidak ada perubahan makna. */}
+    <div class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[150] flex items-center justify-center p-4" ref={containerRef} role="none" onClick={onBackdropClick}>
+      <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[85vh] u-scroll-area shadow-2xl custom-scrollbar" role="none" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
           <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>
           <button onClick={onClose} aria-label={t('ui.close')} class="text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
         </div>
         <div class="p-5">
           <div class="flex items-start gap-4 mb-6">
-            {pamfletUrl && <img src={pamfletUrl} loading="lazy" decoding="async" title={t('ui.click_zoom')} onClick={() => setZoomOpen(true)} class="w-20 h-28 object-cover rounded-xl border border-slate-600 shadow-lg cursor-pointer hover:scale-105 transition flex-shrink-0" alt={t('ui.alt_pamflet')} />}
+            {pamfletUrl && (
+              <button type="button" class="p-0 bg-transparent border-0 cursor-pointer flex-shrink-0 rounded-xl" title={t('ui.click_zoom')} onClick={() => setZoomOpen(true)}>
+                <img src={pamfletUrl} loading="lazy" decoding="async" class="w-20 h-28 object-cover rounded-xl border border-slate-600 shadow-lg hover:scale-105 transition" alt={t('ui.alt_pamflet')} />
+              </button>
+            )}
             <div class="flex-1 min-w-0">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>
