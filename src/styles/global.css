@@ -816,13 +816,44 @@ body {
    — the overlay alone cannot fix a heading whose TEXT was shimmed dark. See the
    §5d note. */
 .header-overlay {
-  background-image: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
+  background-image: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.66) 45%, rgba(0,0,0,0.46) 100%);
 }
 @media (min-width: 1024px) {
   .header-overlay {
-    background-image: linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 45%, transparent 82%);
+    background-image: linear-gradient(to right, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.60) 45%, rgba(0,0,0,0.30) 100%);
   }
 }
+
+/* ─── 5c-bis. Kedua scrim itu sekarang punya LANTAI, dan angkanya di bawah ──
+   WHY THE `transparent` ENDPOINTS ARE GONE (2026-10-14).
+
+   Kedua gradien di atas berakhir `transparent`. Itu hanya benar selama SEMUA
+   teks kebetulan berada di sisi yang digelapkan — dan itu tidak lagi benar:
+
+     · MOBILE (`to top`). Blok konten di `items-end`, jadi di 1440px ia satu
+       baris pendek di dekat dasar band — di dalam zona gelap. Di 390px blok itu
+       TUMBUH KE ATAS: eyebrow-nya mendarat di y≈226 dari band setinggi 900px,
+       tempat scrim-nya tinggal ≈0,2. Terukur lewat piksel glyph (potret
+       `color:transparent` sebagai latar, hanya piksel yang tertutup PENUH):
+         eyebrow "PT AMANAH SAKURA JAPAN" 11px  dark 2,60:1 · light 2,53:1
+         tagline "LET'S BUILD OUR FUTURE" 11px dark 3,30:1 · light 3,04:1
+         `profile.hero_sub` 16px                 light 3,93:1
+       Lantai 4,5 (teks normal). Sesudah: 5,59 / 5,08 / 5,44 — nol gagal.
+
+     · DESKTOP (`to right`). Kiri digelapkan karena copy ada di kiri — tapi
+       strip statistik ada di `lg:col-span-5`, yaitu KANAN, tempat gradiennya
+       sudah `transparent 82%`. Terukur: angka "2023" (`text-pink-300`,
+       30px, lantai 3,0 untuk teks besar) **2,71:1** di dark. Sesudah 3,50:1.
+
+   JADI INI BUKAN "ARTWORK-NYA DIBAWA KE OBJEK LAIN": `hero-sakura.avif` tidak
+   disentuh, dan opacity-nya tetap 0,6. Yang berubah hanya scrim — mekanisme
+   yang memang sudah ada untuk pekerjaan ini, kini diberi lantai supaya tidak
+   lagi bergantung pada DI MANA teks kebetulan mendarat. Itu yang membuat versi
+   lama rapuh: ia lulus di satu lebar dan gagal di lebar lain.
+
+   Diukur dengan probe di luar repo (potret elemen dua kali: dengan tinta, lalu
+   `color:transparent`), 390/768/1440 × dark/light. Angka "sebelum" di atas
+   berasal dari pohon yang sama sebelum suntingan ini. */
 
 /* ─── 5d. The DARK BANDS keep white text in light mode ────────────────
    THE BUG THIS FIXES, measured in a browser against a real server:
