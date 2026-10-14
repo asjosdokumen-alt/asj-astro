@@ -102,6 +102,37 @@ for (const theme of ['light', 'dark']) {
     const page = await ctx.newPage();
     await page.goto(BASE, { waitUntil: 'domcontentloaded', timeout: 30_000 });
     await page.waitForSelector('#atas h1', { timeout: 20_000 });
+    // ── QUIESCE BEFORE MEASURING (added 2026-10-14) ──────────────────────────
+    // Without this the tool reports DIFFERENT VERDICTS ON UNCHANGED CODE, which
+    // makes it useless for deciding whether a change worked — and it already
+    // produced one false "PASS" that was acted on.
+    //
+    // Measured, same build, three runs: glyph-sample counts 11193 / 10857 /
+    // 11834, and `light 1280px` came back 3.36:1 PASS then 2.60:1 FAIL. The
+    // backdrop under the h1 was simply not the same picture.
+    //
+    // Two causes, both closed here:
+    //   1. the band carries an oversized `<img>` (`hero-sakura.avif` at
+    //      opacity .6). Until it decodes, the reading is of the bare gradient,
+    //      which is DARKER — so a slow decode reads as a better contrast.
+    //   2. the hero has parallax planes driven by `animation-timeline: view()`,
+    //      so the artwork's position depends on when the screenshot is taken.
+    //      `animation: none !important` (not `animation-play-state: paused`)
+    //      is what pins them.
+    //
+    // Both waits are RACED against a timeout on purpose: a single asset that
+    // never loads must not hang the tool (that is how an earlier probe of mine
+    // died with no output at all).
+    await page.addStyleTag({
+      content: '*{animation:none !important;transition:none !important}',
+    });
+    await page.evaluate(async () => {
+      await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 3000))]);
+      await Promise.race([
+        Promise.all([...document.images].map((i) => i.decode().catch(() => {}))),
+        new Promise((r) => setTimeout(r, 5000)),
+      ]);
+    });
     await page.waitForTimeout(900);
 
     const box = await page.locator('#atas h1').first().boundingBox();
