@@ -122,7 +122,7 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
   }, [customFile, waTarget, downloadBlob]);
 
   return (
-    <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
+    <div ref={containerRef} role="none" class="fixed inset-0 u-modal-shell bg-black/70 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
       {/* No `onClick={stopPropagation}` on the panel: `useOverlay`'s
           `onBackdropClick` already closes only when `e.target === containerRef`,
           so a click inside the panel cannot reach the close path. The explicit

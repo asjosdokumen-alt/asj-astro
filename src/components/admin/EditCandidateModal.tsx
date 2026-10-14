@@ -226,8 +226,8 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
   if (!isOpen && !closing) return null;
 
   return (
-    <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
-      <div onClick={e => e.stopPropagation()} class="glass-panel p-6 rounded-[2rem] w-full max-w-lg max-h-[90vh] u-scroll-area relative">
+    <div ref={containerRef} role="none" class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
+      <div role="none" onClick={e => e.stopPropagation()} class="glass-panel p-6 rounded-[2rem] w-full max-w-lg max-h-[90vh] u-scroll-area relative">
         {/* `aria-label` is not decoration: the glyph is `aria-hidden`, so without
             it the only control that closes this modal announces nothing.
             MEASURED 2026-10-08 in a real browser: the accessibility tree gave it

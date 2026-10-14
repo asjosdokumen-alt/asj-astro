@@ -66,7 +66,7 @@ export default function RejectMailModal({ candidateName, onCancel, onConfirm, cl
   };
 
   return (
-    <div ref={containerRef} onClick={onBackdropClick}
+    <div ref={containerRef} role="none" onClick={onBackdropClick}
       class="fixed inset-0 u-modal-shell bg-black/90 backdrop-blur-md z-[200] flex items-center justify-center p-4">
       <div class="w-full max-w-lg rounded-2xl overflow-hidden border border-slate-700 bg-slate-900 flex flex-col">
         <div class="p-5 border-b border-slate-700 bg-slate-900 flex justify-between items-center">

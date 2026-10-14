@@ -246,7 +246,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose, clo
   if (!isOpen && !closing) return null;
 
   return (
-    <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4" onClick={onBackdropClick}>
+    <div ref={containerRef} role="none" class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4" onClick={onBackdropClick}>
       {/* `containerRef` belongs on the SHELL, not on this panel.
           MEASURED 2026-10-08 in a real browser: with the ref here, `useOverlay`
           wrote `role`/`aria-modal`/`aria-labelledby` onto this inner div, and

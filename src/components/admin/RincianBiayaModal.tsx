@@ -453,6 +453,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
     <div
       class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[350] flex items-center justify-center p-3 md:p-5"
       ref={containerRef}
+      role="none"
       onClick={onBackdropClick}
     >
       <div class="bg-slate-900 border border-emerald-700/40 rounded-[2rem] w-full max-w-3xl max-h-[92vh] u-scroll-area p-6 md:p-8">

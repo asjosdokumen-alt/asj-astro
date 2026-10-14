@@ -326,14 +326,14 @@ export default function ShareView() {
                   </div>
 
                   <div class="flex gap-3 md:gap-4 mb-3 md:mb-4 relative">
-                    <div class="w-[72px] h-[96px] md:w-[84px] md:h-[112px] shrink-0 rounded-xl overflow-hidden bg-slate-800 border ${isSel ? 'border-pink-400' : 'border-slate-600'} shadow-inner relative z-20 group/photo cursor-pointer" title={t('ui.click_zoom')}
+                    <button type="button" class="w-[72px] h-[96px] md:w-[84px] md:h-[112px] shrink-0 rounded-xl overflow-hidden bg-slate-800 border ${isSel ? 'border-pink-400' : 'border-slate-600'} shadow-inner relative z-20 group/photo cursor-pointer p-0" title={t('ui.click_zoom')}
                       onClick={(e) => { e.stopPropagation(); openPreview(photo, 'Foto - ' + nama); }}>
                       <img src={photo} loading="lazy" decoding="async" alt={nama} class="w-full h-full object-cover"
                         onError={(e) => { (e.target as HTMLImageElement).onerror = null; (e.target as HTMLImageElement).src = avatarFor(nama); }} />
                       {photo.includes('ui-avatars') ? null : (
                         <div class="absolute inset-0 bg-black/60 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center text-white"><Icon name="camera" class="text-lg drop-shadow-md" /></div>
                       )}
-                    </div>
+                    </button>
                     <div class="flex-1 flex flex-col justify-center min-w-0">
                       <h3 class="text-xs md:text-sm font-bold text-white mb-2 line-clamp-2 leading-tight pr-4">{nama}</h3>
                       <div class="grid grid-cols-2 gap-y-1.5 gap-x-2 text-[11px] md:text-[11px] text-slate-300 mb-2 w-full mt-1">
@@ -367,7 +367,7 @@ export default function ShareView() {
                     </div>
                   </div>
 
-                  <div class="flex flex-wrap gap-2 w-full relative z-20 mt-auto" onClick={(e) => e.stopPropagation()}>
+                  <div role="none" class="flex flex-wrap gap-2 w-full relative z-20 mt-auto" onClick={(e) => e.stopPropagation()}>
                     {buttons.map((b, i) => {
                       const main = b.type === 'CV' || b.type === 'JFT' || b.type === 'SSW';
                       const accent = b.type === 'CV'

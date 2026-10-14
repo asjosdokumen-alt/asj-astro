@@ -134,4 +134,51 @@ describe('AdminPanel — Papan Tugas Tim', () => {
     openTugasTab();
     expect(screen.getByText('Tugas yang harus bertahan')).toBeTruthy();
   });
+
+  /* ── Overlay sidebar bisa ditutup lewat KEYBOARD ──────────────────────────
+   *
+   * 2026-10-14. Overlay ini diklaim sebagai kontrol penuh — `role="button"` +
+   * `tabIndex={0}` + `aria-label` — jadi ia WAJIB bisa dioperasikan keyboard.
+   * Sebelum commit ini ia hanya punya `onClick`, artinya pengguna keyboard
+   * sampai ke sana (ia Tab stop) lalu TIDAK BISA menekannya: terjebak.
+   *
+   * Lebih buruk daripada tombol biasa yang tidak bisa di-Tab: Tab stop yang
+   * mati membuat fokus tampak "berhenti" tanpa jalan keluar.
+   *
+   * DIUKUR DULU bahwa tes lama TIDAK menangkap ini — membuang `onKeyDown`
+   * membiarkan keempat tes lain tetap hijau. Tes ini ada supaya perbaikan itu
+   * tidak hilang diam-diam di sesi berikutnya. */
+  it('overlay sidebar bisa ditutup dengan Enter dan Space (bukan hanya klik)', () => {
+    render(<AdminPanel />);
+
+    const overlay = () => screen.queryByLabelText('admin.close_sidebar');
+
+    // Buka sidebar dulu lewat tombol menu.
+    fireEvent.click(screen.getByRole('button', { name: 'ui.menu' }));
+    expect(overlay()).toBeTruthy();
+    expect(overlay()?.getAttribute('role')).toBe('button');
+    expect(overlay()?.getAttribute('tabindex')).toBe('0');
+
+    // Enter menutup.
+    fireEvent.keyDown(overlay() as Element, { key: 'Enter' });
+    expect(overlay()).toBeNull();
+
+    // Buka lagi, lalu Space menutup.
+    fireEvent.click(screen.getByRole('button', { name: 'ui.menu' }));
+    expect(overlay()).toBeTruthy();
+    fireEvent.keyDown(overlay() as Element, { key: ' ' });
+    expect(overlay()).toBeNull();
+  });
+
+  /* `role="navigation"` pada sidebar adalah LANDMARK, bukan hiasan.
+     Sesi ini hampir menghapusnya untuk membungkam lint `useKeyWithClickEvents`
+     pada `onClick={e => e.stopPropagation()}` di elemen yang sama — padahal
+     handler itu memang MATI (backdrop z-95 dan aside z-96 bersaudara, bukan
+     bersarang), jadi yang benar adalah membuang handler-nya dan MEMPERTAHANKAN
+     landmark. Tes ini mengunci landmark itu tetap ada. */
+  it('sidebar tetap landmark navigation (jangan dikorbankan demi lint)', () => {
+    render(<AdminPanel />);
+    const nav = screen.getByRole('navigation', { name: 'Admin sidebar' });
+    expect(nav.tagName.toLowerCase()).toBe('aside');
+  });
 });

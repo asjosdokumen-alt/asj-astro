@@ -256,10 +256,14 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
     <div
       class="fixed inset-0 u-modal-shell bg-black/90 backdrop-blur-md z-[300] flex flex-col justify-end md:justify-center items-center md:p-4"
       ref={containerRef}
+      role="none"
+
       onClick={onBackdropClick}
     >
       <div
         class="glass-panel w-full md:max-w-2xl h-[90vh] md:h-[80vh] md:rounded-panel rounded-t-panel relative border-t border-violet-500/50 flex flex-col overflow-hidden bg-slate-950"
+        role="none"
+
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

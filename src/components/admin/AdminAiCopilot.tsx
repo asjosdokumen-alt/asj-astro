@@ -450,10 +450,12 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     <div
       ref={containerRef}
       class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-2 md:p-4"
+      role="none"
       onClick={onBackdropClick}
     >
       <div
         class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+        role="none"
         onClick={(e) => e.stopPropagation()}
       >
         <div class="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">

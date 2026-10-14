@@ -198,6 +198,15 @@ export default function AdminPanel() {
       {sidebarOpen && (
         <div style={{ zIndex: 95 }} class="fixed inset-0 u-modal-shell bg-black/60 transition-opacity duration-300 lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          onKeyDown={(e: KeyboardEvent) => {
+            // Kontrol ini MEMANG diklaim `role="button"` + tabIndex, jadi ia
+            // wajib punya jalur keyboard. Space di-preventDefault supaya tidak
+            // menggulir halaman sebelum menutup sidebar.
+            if (e.key === 'Enter' || e.key === ' ') {
+              if (e.key === ' ') e.preventDefault();
+              setSidebarOpen(false);
+            }
+          }}
           role="button"
           tabIndex={0}
           aria-label={t("admin.close_sidebar")}
@@ -212,7 +221,6 @@ export default function AdminPanel() {
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:translate-x-0`}
         style={{ zIndex: 96 }}
-        onClick={(e: Event) => e.stopPropagation()}
       >
         <div class="flex items-center justify-between px-2 py-2 mb-2 border-b border-slate-700">
           <span class="text-xs font-bold text-slate-500 uppercase tracking-widest"><Icon name="th-large" class="mr-1" /> {t("ui.menu")}</span>

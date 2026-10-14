@@ -205,9 +205,10 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
     <div
       class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4"
       ref={containerRef}
+      role="none"
       onClick={onBackdropClick}
     >
-      <div onClick={(e) => e.stopPropagation()} class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[88vh] u-scroll-area custom-scrollbar">
+      <div role="none" onClick={(e) => e.stopPropagation()} class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[88vh] u-scroll-area custom-scrollbar">
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
           <h3 class="text-sm font-bold text-white">
             <Icon name="edit" class="mr-2 text-red-400" />

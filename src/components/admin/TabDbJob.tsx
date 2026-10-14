@@ -306,10 +306,16 @@ export default function TabDbJob() {
                       <span class="text-amber-300"><Icon name="map-marker-alt" class="text-red-400 mr-1" />{db.lokasi || '-'}</span>
                     </div>
                   </td>
-                  <td class="p-4 text-center cursor-pointer group" onClick={() => setListJobCode(db.code)}>
-                    <div class="inline-block px-4 py-1.5 bg-sky-900/30 group-hover:bg-sky-600 rounded-lg transition-colors">
-                      <span class="text-sky-400 group-hover:text-white font-bold text-lg">{countMap[db.code] || 0}</span>
-                    </div>
+                  <td class="p-4 text-center">
+                    {/* Dulu `<td onClick>` — sel tabel tidak bisa di-Tab, jadi satu-satunya
+                        cara membuka daftar pelamar per lowongan adalah mouse. Sekarang
+                        `<button>` DI DALAM sel (bukan mengganti `<td>`-nya, yang akan
+                        merusak layout tabel) supaya bisa dijangkau keyboard. */}
+                    <button type="button" class="cursor-pointer bg-transparent border-0 p-0 group" onClick={() => setListJobCode(db.code)}>
+                      <div class="inline-block px-4 py-1.5 bg-sky-900/30 group-hover:bg-sky-600 rounded-lg transition-colors">
+                        <span class="text-sky-400 group-hover:text-white font-bold text-lg">{countMap[db.code] || 0}</span>
+                      </div>
+                    </button>
                   </td>
                   <td class="p-4 text-center"><span class={'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold ' + badgeColor(db.tahapan)}><Icon name="chevron-circle-right" /> {db.tahapan || '-'}</span></td>
                   <td class="p-4 text-center">

@@ -204,8 +204,8 @@ export default function InputManualModal() {
   if (!presence.present) return null;
 
   return (
-    <div class="fixed inset-0 u-modal-shell bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
-      <div class="bg-slate-900 border border-sky-900/50 rounded-2xl w-full max-w-lg max-h-[90vh] u-scroll-area" onClick={(e) => e.stopPropagation()}>
+    <div class="fixed inset-0 u-modal-shell bg-black/80 z-[9999] flex items-center justify-center p-4" ref={containerRef} role="none" onClick={onBackdropClick}>
+      <div role="none" class="bg-slate-900 border border-sky-900/50 rounded-2xl w-full max-w-lg max-h-[90vh] u-scroll-area" onClick={(e) => e.stopPropagation()}>
         <div class="p-6">
           <div class="flex justify-between items-center mb-4 border-b border-sky-900/50 pb-3">
             <h3 class="text-xl font-bold text-sky-400"><Icon name="user-plus" class="mr-2" /> {t("admin.input_manual_title")}</h3>
