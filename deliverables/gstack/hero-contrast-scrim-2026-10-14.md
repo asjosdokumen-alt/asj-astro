@@ -38,10 +38,51 @@ dihitung.
 | 390 light · `profile.hero_sub` 16px | 3,93 | lulus | 4,5 |
 | 768 dark / light · eyebrow 11px | 3,45 / 3,64 | **6,36 / 6,52** | 4,5 |
 | 1440 dark · "2023" 30px (teks besar) | 2,71 | **4,21** | 3,0 |
-| 1280 light · h1 70px (alat repo) | 2,80 | **3,36** | 3,0 |
+
+### Angka yang DIKOREKSI (setelah alat ukurnya diperbaiki)
+
+Versi pertama laporan ini memuat baris `1280 light · h1 2,80 → 3,36` dari
+`e2e/measure-hero-contrast.mjs`. **Baris itu dicabut**: alat tersebut ternyata
+memberi verdict berbeda pada kode yang sama (lihat bagian terakhir), jadi kedua
+angka itu — yang FAIL maupun yang PASS — adalah kebisingan.
+
+Diukur ulang dengan probe yang ikut di-quiesce, 4 kombinasi lebar × tema:
+
+| kasus | sebelum | sesudah | elemen gagal |
+|---|---|---|---|
+| 390 light | 2,53 | **5,08** | 3 → 0 |
+| 390 dark | 2,60 | **5,59** | 2 → 0 |
+| 1280 light | 4,16 | **7,54** | 0 → 0 (**tidak pernah gagal**) |
+| 1280 dark | 2,97 | **4,67** | 2 → 0 |
 
 Perubahan: `to top, rgba(0,0,0,.95) 0%, .66 45%, .46 100%` ·
 `to right, .85 0%, .60 45%, .30 100%` — **ujung `transparent` dihapus**.
+
+## 🪤 Alat ukur repo sendiri ternyata TIDAK REPRODUCIBLE
+
+Ini temuan terpenting dari sesi ini, dan hampir membuat saya melaporkan hasil
+yang salah. `e2e/measure-hero-contrast.mjs` melaporkan **verdict berbeda pada
+kode yang sama** — build tidak berubah, tiga kali jalan: jumlah sampel glyph
+11.193 / 10.857 / 11.834, dan `light 1280px` datang sebagai **3,36:1 PASS** lalu
+**2,60:1 FAIL**.
+
+Dua sebabnya, keduanya ditutup di `c69d32b`:
+
+1. Band hero memuat `<img>` oversized (`hero-sakura.avif`, `opacity-60`).
+   Sebelum gambar itu ter-decode, yang terukur adalah **gradien telanjang** yang
+   lebih gelap — jadi decode yang lambat terbaca sebagai kontras yang lebih baik.
+2. Hero punya bidang parallax dengan `animation-timeline: view()`, sehingga
+   posisi artwork bergantung pada **kapan** potretnya diambil.
+
+Perbaikannya: `animation: none !important` + tunggu `document.fonts.ready` dan
+`img.decode()`, **keduanya di-`Promise.race` dengan timeout** (satu aset yang
+tidak pernah termuat tidak boleh menggantungkan alatnya). Sesudah itu: **tiga
+jalan berturut-turut identik** (sampel 2.719 / 10.387, angka sama sampai dua
+desimal) ⇒ 6,57 · 10,46 · 10,13 · 13,71, semua PASS.
+
+⚠️ Pelajarannya umum: **alat ukur yang verdictnya berubah pada kode yang sama
+lebih berbahaya daripada tidak punya alat** — ia menghasilkan keputusan yang
+percaya diri dan salah.
 
 ## ⚠️ Yang terlihat berubah
 
