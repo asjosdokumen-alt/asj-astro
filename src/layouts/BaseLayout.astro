@@ -366,8 +366,40 @@ const orgJsonLd = jsonLdScript(
       }
 
       window.__asjReveal = pass;
+      // ── JANGAN PERNAH MENUNGGU TANPA BATAS (diperbaiki 2026-10-14) ────────
+      // Dulu hanya `window.load` yang memanggil `pass()`. Itu KELIRU, dan
+      // salahnya terukur: `js-reveal` sudah dipasang di atas (baris ini), jadi
+      // setiap `[data-reveal]` ber-`opacity: 0` TANPA observer yang bisa
+      // membatalkannya sampai `load` menyala — sementara `load` menunggu
+      // SELURUH subresource.
+      //
+      // Diukur dengan menunda SATU permintaan gambar (`page.route`, 1280px):
+      //
+      //   tunda  load       gulir pada  elemen reveal di layar
+      //     0ms  353ms      804ms       0 dari 3 tersembunyi   ← benar
+      //  6000ms  TIDAK     814ms       3 dari 3 TERSEMBUNYI   ← halaman KOSONG
+      //
+      // Jadi satu aset lambat membuat pengunjung yang menggulir melihat bagian
+      // yang benar-benar kosong (`opacity: 0`, `is-revealed: false`) selama
+      // seluruh sisa waktu `load`. Di jaringan lambat itu bisa belasan detik —
+      // dan itu persis kebalikan dari doktrin di motion.css §9: "konten yang
+      // terbaca selalu mengalahkan konten yang beranimasi".
+      //
+      // `pass()` idempoten (elemen yang sudah bertanda dilewati), jadi
+      // memanggilnya lebih awal aman. `load` TETAP dipanggil: data halaman
+      // (jumlah lowongan, pengumuman) mengganti sebagian DOM, dan node
+      // pengganti itu perlu diambil oleh pass berikutnya. Timer 2,5 detik
+      // adalah jaring terakhir untuk `load` yang tidak pernah menyala.
       if (document.readyState === "complete") pass();
-      else window.addEventListener("load", pass, { passive: true });
+      else {
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", pass, { passive: true, once: true });
+        } else {
+          pass();
+        }
+        window.addEventListener("load", pass, { passive: true });
+        setTimeout(pass, 2500);
+      }
 
     })();
   </script>
