@@ -798,9 +798,10 @@ body {
    on a phone it stacks and reads bottom-anchored, while at `lg` the headline
    sits in the left column (App.tsx `lg:col-span-7`). The darkening follows the
    text — the same shape `LayananSection.astro:32` uses for its own artwork band
-   (vertical on mobile, horizontal at `lg`). Both gradients are transparent over
-   the far side, so the artwork is not crushed, only the side the text sits on is
-   darkened.
+   (vertical on mobile, horizontal at `lg`). Kedua gradien ini DULU `transparent`
+   di sisi jauh; sejak 2026-10-14 keduanya punya LANTAI (lihat §5c-bis) — karena
+   "sisi jauh" itu tidak selalu jauh dari teksnya: di 390px copy tumbuh ke ATAS
+   ke arahnya, dan di `lg` ubin statistik justru duduk di dalamnya.
 
    MEASURED by injecting this candidate at runtime (no rebuild; worst
    glyph-background against white, floor 3.0:1):
@@ -814,7 +815,20 @@ body {
    ONCE §5d's band self-match rule below re-lights its h1. Before that rule the
    h1 inherited §5b's `#1f1d1c` and measured 1.21:1 (1.10:1 at HEAD, no banner)
    — the overlay alone cannot fix a heading whose TEXT was shimmed dark. See the
-   §5d note. */
+   §5d note.
+
+   DIUKUR ULANG 2026-10-14, dan klausa "petal" di atas sudah TIDAK REPRODUCIBLE:
+   header NON-HERO tidak lagi memuat ilustrasi (hanya gradien telanjang — lihat
+   catatan di App.tsx), jadi tidak ada kelopak yang bisa menempel di belakang
+   copy-nya. Terukur di `/loker` dan `/public`, kedua tema, kedua lebar, dengan
+   gradien LAMA disuntikkan untuk angka "sebelum":
+                     sebelum  sesudah
+     390  dark        5.87     8.04
+     390  light       6.54     8.95
+     1280 dark        7.79     8.54
+     1280 light      11.46    12.17
+   ⇒ nol di bawah lantai SEBELUM maupun SESUDAH, dan lantai itu menaikkannya.
+   Angka 3.35:1 di atas berasal dari masa header non-hero masih membawa banner. */
 .header-overlay {
   background-image: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.66) 45%, rgba(0,0,0,0.46) 100%);
 }
