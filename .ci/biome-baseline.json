@@ -1,6 +1,6 @@
 {
-  "total": 2016,
-  "generatedAt": "2026-10-14T10:08:42.058Z",
+  "total": 2014,
+  "generatedAt": "2026-10-14T10:53:18.701Z",
   "byFile": {
     "netlify/functions/contexts/master-data/service.ts": 133,
     "netlify/functions/contexts/documents/service.ts": 90,
@@ -175,7 +175,6 @@
     "scripts/ci/smoke-test.mjs": 2,
     "scripts/ci/verify-env.mjs": 2,
     "src/components/WAPintarModal.tsx": 2,
-    "src/components/admin/MatchmakingModal.test.tsx": 2,
     "src/lib/applyDocs.ts": 2,
     "indexer/src/astroGlob.test.ts": 2,
     "indexer/src/build.ts": 2,
@@ -257,7 +256,7 @@
     "src/lib/berkasCatalog.test.ts": 1
   },
   "byRule": {
-    "lint/style/useTemplate": 740,
+    "lint/style/useTemplate": 738,
     "lint/suspicious/noExplicitAny": 402,
     "lint/style/noNonNullAssertion": 290,
     "lint/complexity/useOptionalChain": 246,
