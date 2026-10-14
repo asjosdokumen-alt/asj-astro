@@ -167,6 +167,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
   return (
     <div
       ref={containerRef}
+      role="none"
       onClick={onBackdropClick}
       class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[250] flex items-center justify-center p-4"
     >

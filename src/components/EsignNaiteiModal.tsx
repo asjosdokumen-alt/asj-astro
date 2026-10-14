@@ -269,6 +269,8 @@ export default function EsignNaiteiModal({ isOpen, onClose, wa, closing = false 
       <div
         class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[300] flex items-center justify-center p-4"
         ref={containerRef}
+        role="none"
+
         onClick={onBackdropClick}
       >
         <div class="glass-panel p-6 md:p-8 rounded-[2rem] w-full max-w-lg relative border border-rose-500/50 max-h-[90vh] u-scroll-area custom-scrollbar">

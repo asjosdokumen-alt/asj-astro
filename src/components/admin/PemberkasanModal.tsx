@@ -502,6 +502,7 @@ export default function PemberkasanModal({
     <div
       class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4"
       ref={containerRef}
+      role="none"
       onClick={onBackdropClick}
     >
       <div class="glass-panel p-6 md:p-8 rounded-[2.5rem] w-full max-w-4xl shadow-[0_0_40px_rgba(0,0,0,0.8)] relative max-h-[90vh] u-scroll-area custom-scrollbar">

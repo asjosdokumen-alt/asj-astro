@@ -371,7 +371,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
   };
 
   return (
-    <div ref={containerRef} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
+    <div ref={containerRef} role="none" class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4" onClick={onBackdropClick}>
       {/* `containerRef` di SHELL, bukan di panel ini. MEASURED 2026-10-08 di
           browser: dengan ref di panel dalam, `useOverlay` menulis
           role/aria-modal/aria-labelledby ke div yang tidak pernah dibaca sweep

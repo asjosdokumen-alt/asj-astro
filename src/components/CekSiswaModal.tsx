@@ -108,7 +108,7 @@ export default function CekSiswaModal({ onClose, closing = false }: Props) {
   };
 
   return (
-    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4" ref={containerRef} onClick={onBackdropClick}>
+    <div class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[260] flex items-center justify-center p-4" ref={containerRef} role="none" onClick={onBackdropClick}>
       <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[80vh] overflow-hidden shadow-2xl">
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700">
           <h3 class="text-lg font-bold text-white">
