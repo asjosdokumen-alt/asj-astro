@@ -577,7 +577,7 @@ export default function MasterFullForm() {
           <input id="mf-gate-pass" type="password" class="input" value={gatePass} placeholder="••••••••"
             onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
-          <button onClick={gateLogin} class="w-full mt-3 min-h-11 bg-sky-600 hover:bg-sky-500 text-white rounded-xl py-2.5 text-sm font-bold">{t("login.btn_masuk")}</button>
+          <button type="button" onClick={gateLogin} class="w-full mt-3 min-h-11 bg-sky-600 hover:bg-sky-500 text-white rounded-xl py-2.5 text-sm font-bold">{t("login.btn_masuk")}</button>
           {gateMsg && <div class="text-rose-400 text-xs text-center mt-2">{gateMsg}</div>}
         </div>
       </div>
@@ -780,7 +780,7 @@ export default function MasterFullForm() {
                 <div class="p-3 rounded-xl mb-3 bg-surface-raised border border-dashed border-line">
                   <div class="flex justify-between items-center mb-2">
                     <span class="text-[11px] font-extrabold text-fg-muted">Pendidikan #{i + 1}</span>
-                    {eduList.length > 1 && <button onClick={() => setEduList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[11px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
+                    {eduList.length > 1 && <button type="button" onClick={() => setEduList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[11px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label" for={`mf-edu-jenjang-${i}`}>{t("master.edu_jenjang")}</label>
@@ -802,14 +802,14 @@ export default function MasterFullForm() {
                   </div>
                 </div>
               ))}
-              {eduList.length < 5 && <button onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.edu_tambah")}</button>}
+              {eduList.length < 5 && <button type="button" onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.edu_tambah")}</button>}
 
               <h2 class="section-title mt-6">{t("form.mf_riwayat_pekerjaan")}</h2>
               {jobList.map((job, i) => (
                 <div class="p-3 rounded-xl mb-3 bg-surface-raised border border-dashed border-line">
                   <div class="flex justify-between items-center mb-2">
                     <span class="text-[11px] font-extrabold text-fg-muted">Pekerjaan #{i + 1}</span>
-                    {jobList.length > 1 && <button onClick={() => setJobList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[11px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
+                    {jobList.length > 1 && <button type="button" onClick={() => setJobList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[11px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label" for={`mf-job-perusahaan-${i}`}>{t("master.kerja_perusahaan")}</label>
@@ -828,7 +828,7 @@ export default function MasterFullForm() {
                   </div>
                 </div>
               ))}
-              {jobList.length < 3 && <button onClick={() => setJobList(l => [...l, { perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'' }])} class="text-sky-400 text-xs font-bold"><Icon name="plus" class="mr-1" />{t("master.kerja_tambah")}</button>}
+              {jobList.length < 3 && <button type="button" onClick={() => setJobList(l => [...l, { perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'' }])} class="text-sky-400 text-xs font-bold"><Icon name="plus" class="mr-1" />{t("master.kerja_tambah")}</button>}
             </div>
           )}
 
@@ -840,7 +840,7 @@ export default function MasterFullForm() {
                 <div class="p-3 rounded-xl mb-3 bg-surface-raised border border-dashed border-line">
                   <div class="flex justify-between items-center mb-2">
                     <span class="text-[11px] font-extrabold text-fg-muted">{t("master.fam_member")} #{i + 1}</span>
-                    {famList.length > 1 && <button onClick={() => setFamList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[11px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
+                    {famList.length > 1 && <button type="button" onClick={() => setFamList(l => l.filter((_, j) => j !== i))} class="text-rose-400 text-[11px] font-bold"><Icon name="trash" class="mr-1" />{t("button.delete")}</button>}
                   </div>
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label" for={`mf-fam-nama-${i}`}>{t("form.mf_nama_keluarga")}</label>
@@ -868,7 +868,7 @@ export default function MasterFullForm() {
                   </div>
                 </div>
               ))}
-              {famList.length < 5 && <button onClick={() => setFamList(l => [...l, { nama:'', hubungan:'', usia:'', pekerjaan:'', pekerjaanManual:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.fam_tambah")}</button>}
+              {famList.length < 5 && <button type="button" onClick={() => setFamList(l => [...l, { nama:'', hubungan:'', usia:'', pekerjaan:'', pekerjaanManual:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.fam_tambah")}</button>}
 
               <h2 class="section-title mt-6">{t("master.darurat_title")}</h2>
               <div class="p-4 rounded-xl bg-surface-raised border border-sky-500/30">
@@ -969,10 +969,10 @@ export default function MasterFullForm() {
 
       {/* Nav Bar */}
       <div class="fixed bottom-0 left-0 w-full py-4 px-5 z-50 flex justify-between gap-4 bg-canvas/95 border-t border-line">
-        {step > 1 && <button onClick={() => changeStep(-1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold bg-surface-raised text-fg-muted"><Icon name="arrow-left" class="mr-1" /> {t("button.back")}</button>}
-        <button onClick={() => submitMaster(true)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold text-white" style={{ background: '#d97706' }}><Icon name="save" class="mr-1" /> Draft</button>
-        {step < 5 && <button onClick={() => changeStep(1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold" style={{ background: '#38bdf8', color: '#020617', boxShadow: '0 5px 15px rgba(56,189,248,.3)' }}>{t("master.next")} <Icon name="arrow-right" class="ml-1" /></button>}
-        {step === 5 && <button onClick={() => submitMaster(false)} disabled={saving} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold text-white disabled:opacity-50" style={{ background: '#10b981', color: '#020617', boxShadow: '0 5px 15px rgba(16,185,129,.3)' }}>{saving ? 'Menyimpan...' : 'Simpan Final'}</button>}
+        {step > 1 && <button type="button" onClick={() => changeStep(-1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold bg-surface-raised text-fg-muted"><Icon name="arrow-left" class="mr-1" /> {t("button.back")}</button>}
+        <button type="button" onClick={() => submitMaster(true)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold text-white" style={{ background: '#d97706' }}><Icon name="save" class="mr-1" /> Draft</button>
+        {step < 5 && <button type="button" onClick={() => changeStep(1)} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold" style={{ background: '#38bdf8', color: '#020617', boxShadow: '0 5px 15px rgba(56,189,248,.3)' }}>{t("master.next")} <Icon name="arrow-right" class="ml-1" /></button>}
+        {step === 5 && <button type="button" onClick={() => submitMaster(false)} disabled={saving} class="flex-1 py-4 rounded-[14px] text-[13px] font-extrabold text-white disabled:opacity-50" style={{ background: '#10b981', color: '#020617', boxShadow: '0 5px 15px rgba(16,185,129,.3)' }}>{saving ? 'Menyimpan...' : 'Simpan Final'}</button>}
       </div>
 
       {/* P3 §4.1 #6 — overlay "Menyinkronkan Data…" (legacy #loading).

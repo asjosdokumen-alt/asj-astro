@@ -528,21 +528,21 @@ export default function ApplyFullForm() {
           `pink-600` → 4.54:1, above the 4.5 floor, measured pixel 5.08:1. */}
       <div class="fixed bottom-0 left-0 w-full bg-[rgba(2,6,23,.95)] backdrop-blur-xl border-t border-slate-800 p-[15px_20px] z-50 flex justify-between gap-4">
         {step > 1 && (
-          <button onClick={() => changeStep(-1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 border-none cursor-pointer">
+          <button type="button" onClick={() => changeStep(-1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 border-none cursor-pointer">
             <Icon name="chevron-left" /> {t("button.back")}
           </button>
         )}
-        <button onClick={saveDraft} disabled={loading}
+        <button type="button" onClick={saveDraft} disabled={loading}
           class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-slate-700 text-white hover:bg-slate-600 transition-colors flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50">
           <Icon name="save" /> {t("apply.btn_draft")}
         </button>
         {step < 3 && (
-          <button onClick={() => changeStep(1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-600 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer">
+          <button type="button" onClick={() => changeStep(1)} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-600 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer">
             {t("apply.btn_next")} <Icon name="chevron-right" />
           </button>
         )}
         {step === 3 && (
-          <button onClick={submitApply} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-600 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+          <button type="button" onClick={submitApply} class="flex-1 h-[55px] rounded-2xl text-[15px] font-extrabold bg-gradient-to-r from-pink-600 to-pink-700 text-white shadow-[0_10px_25px_rgba(236,72,153,.25)] hover:-translate-y-0.5 transition-transform flex items-center justify-center gap-2 border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             <Icon name="paper-plane" /> KIRIM LAMARAN
           </button>
         )}
@@ -570,7 +570,7 @@ export default function ApplyFullForm() {
             <div class="text-[60px] mb-2">✅</div>
             <h2 class="mt-4 text-2xl font-black">{t('apply.success_title')}</h2>
             <p class="mt-2.5 text-sm text-slate-400 leading-[22px]">{t('apply.success_desc')}</p>
-            <button onClick={() => window.location.href = '/'} class="mt-5 w-full h-[50px] rounded-[14px] bg-emerald-500 font-extrabold text-white border-none cursor-pointer">{t('apply.btn_portal')}</button>
+            <button type="button" onClick={() => window.location.href = '/'} class="mt-5 w-full h-[50px] rounded-[14px] bg-emerald-500 font-extrabold text-white border-none cursor-pointer">{t('apply.btn_portal')}</button>
           </div>
         </div>
       )}

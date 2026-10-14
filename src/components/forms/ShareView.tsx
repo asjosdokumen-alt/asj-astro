@@ -220,7 +220,7 @@ export default function ShareView() {
             </div>
           </div>
           <div class="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-between md:justify-end mt-2 md:mt-0">
-            <button
+            <button type="button"
               onClick={() => langStore.set(langStore.get() === 'id' ? 'jp' : 'id')}
               class="min-h-11 min-w-11 justify-center px-2.5 py-1.5 md:px-3 bg-slate-800/80 border border-slate-600/50 rounded-lg text-[11px] md:text-xs font-bold flex items-center gap-1.5 shrink-0"
             >
@@ -378,7 +378,7 @@ export default function ShareView() {
                             ? 'bg-emerald-600/20 hover:bg-emerald-600 border-emerald-500/50 text-emerald-400 hover:text-white'
                             : 'bg-amber-600/20 hover:bg-amber-600 border-amber-500/50 text-amber-400 hover:text-white';
                       return (
-                        <button key={i} onClick={() => openPreview(b.url, b.label + ' - ' + nama)}
+                        <button type="button" key={i} onClick={() => openPreview(b.url, b.label + ' - ' + nama)}
                           class={`flex-1 py-2 md:py-2.5 rounded-lg font-bold text-center transition flex flex-col items-center justify-center gap-1 w-full border text-[11px] md:text-xs ${accent}`}>
                           <Icon name={main ? (b.type === 'CV' ? 'file-pdf' : b.type === 'JFT' ? 'file-pdf' : 'file-alt') : 'file-alt'} class="text-xs md:text-sm opacity-80" />
                           {b.label}
@@ -427,7 +427,7 @@ export default function ShareView() {
                 text, so it owes the same floor. Darkening instead of lightening
                 puts it at 6.04:1 (rose-700 6.29, pink-700 6.04). Measured
                 2026-09-27; same defect class as the emerald→sky CTAs. */}
-            <button onClick={submitSelection} class="px-5 py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-bold text-xs md:text-sm rounded-xl shadow-lg hover:shadow-pink-500/25 transition-shadow flex items-center gap-2">
+            <button type="button" onClick={submitSelection} class="px-5 py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 text-white font-bold text-xs md:text-sm rounded-xl shadow-lg hover:shadow-pink-500/25 transition-shadow flex items-center gap-2">
               <Icon name="whatsapp" class="text-lg" /> {t('share.sel_btn')}
             </button>
           </div>

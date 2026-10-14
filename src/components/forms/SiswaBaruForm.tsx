@@ -336,10 +336,10 @@ export default function SiswaBaruForm() {
     <div class="flex flex-col md:flex-row h-[calc(100dvh-42px)] w-full relative pt-[42px]">
       {/* Mobile Tab */}
       <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50">
-        <button onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
+        <button type="button" onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
           <Icon name="crown" class="mr-2" />{t('siswa.tab_chat')}
         </button>
-        <button onClick={() => setTab('form')} class={tab === 'form' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
+        <button type="button" onClick={() => setTab('form')} class={tab === 'form' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
           <Icon name="file-alt" class="mr-2" />{t('siswa.tab_form')}
         </button>
       </div>
@@ -385,7 +385,7 @@ export default function SiswaBaruForm() {
             onKeyDown={handleKeyDown}
             class="flex-1 bg-slate-800 text-xs text-white px-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 transition-colors"
             placeholder={t('siswa.placeholder_chat')} />
-          <button onClick={handleSend} disabled={sending} aria-label={t('siswa.send')}
+          <button type="button" onClick={handleSend} disabled={sending} aria-label={t('siswa.send')}
             class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50">
             <Icon name="paper-plane" />
           </button>
@@ -412,7 +412,7 @@ export default function SiswaBaruForm() {
                 <p class="text-[11px] text-slate-400">{t('siswa.form_hint')}</p>
               </div>
             </div>
-            <button onClick={handleSubmit} disabled={submitPhase === 'uploading' || submitPhase === 'saving' || submitPhase === 'done'}
+            <button type="button" onClick={handleSubmit} disabled={submitPhase === 'uploading' || submitPhase === 'saving' || submitPhase === 'done'}
               class={`${submitPhase === 'done' ? 'bg-sky-600 hover:bg-sky-500' : 'bg-emerald-600 hover:bg-emerald-500'} min-h-11 text-white text-[11px] md:text-xs font-bold px-5 py-2.5 rounded-lg transition shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center gap-2`}>
               <Icon name="paper-plane" />{submitLabel()}
             </button>

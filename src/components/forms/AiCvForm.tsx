@@ -933,7 +933,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           <input id="ai-gate-pass" type="password" class="input" value={gatePass} placeholder="••••••••"
             onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
-          <button onClick={gateLogin} class="w-full mt-3 min-h-11 bg-amber-600 hover:bg-amber-500 text-white rounded-xl py-2.5 text-sm font-bold">{t("login.btn_masuk")}</button>
+          <button type="button" onClick={gateLogin} class="w-full mt-3 min-h-11 bg-amber-600 hover:bg-amber-500 text-white rounded-xl py-2.5 text-sm font-bold">{t("login.btn_masuk")}</button>
           {gateMsg && <div class="text-rose-400 text-xs text-center mt-2">{gateMsg}</div>}
         </div>
       </div>
@@ -961,10 +961,10 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
     <div class="flex flex-col md:flex-row h-[calc(100dvh-42px)] w-full relative pt-[42px]" style={{ height: '100dvh' }}>
       {/* Mobile Tab */}
       <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50">
-        <button onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
+        <button type="button" onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
           <Icon name="crown" class="mr-2" />{t('form.ai_cv_chat')}
         </button>
-        <button onClick={() => setTab('form')} class={tab === 'form' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
+        <button type="button" onClick={() => setTab('form')} class={tab === 'form' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
           <Icon name="file-alt" class="mr-2" />{t('form.preview_cv')}
         </button>
       </div>
@@ -1020,7 +1020,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
         {showSuggestions && !sending && (
           <div class="px-3 pb-2 flex gap-2 u-scroll-x flex-nowrap scrollbar-hide">
             {SUGGESTIONS.map((s, i) => (
-              <button key={i} onClick={() => handleSend(s)}
+              <button type="button" key={i} onClick={() => handleSend(s)}
                 class="whitespace-nowrap px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs rounded-full transition-colors font-medium border border-slate-700 flex-shrink-0 shadow-sm">
                 {s}
               </button>
@@ -1034,7 +1034,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
             onKeyDown={handleKeyDown}
             class="flex-1 bg-slate-800 text-xs text-white px-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 transition-colors"
             placeholder={t('form.placeholder_chat')} />
-          <button onClick={() => handleSend()} disabled={sending}
+          <button type="button" onClick={() => handleSend()} disabled={sending}
             class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50">
             <Icon name="paper-plane" />
           </button>
@@ -1067,7 +1067,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                   upload was still running. `disabled` is the load-bearing part:
                   the colour and label are for legibility, but only `disabled`
                   prevents the duplicate write. */}
-              <button onClick={saveToDatabase} disabled={savePhase !== 'idle' && savePhase !== 'done'}
+              <button type="button" onClick={saveToDatabase} disabled={savePhase !== 'idle' && savePhase !== 'done'}
                 aria-live="polite"
                 class={`${savePhase === 'done' ? 'bg-sky-600' : 'bg-emerald-600 hover:bg-emerald-500'} ${savePhase !== 'idle' && savePhase !== 'done' ? 'opacity-60 cursor-not-allowed' : ''} text-white text-[11px] md:text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg flex items-center gap-2`}>
                 <Icon spin={savePhase === 'uploading' || savePhase === 'saving'}
@@ -1078,7 +1078,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                       : savePhase === 'done' ? t('ai_cv.btn_saved')
                         : t('button.save_db')}
               </button>
-              <button onClick={() => toggleLang()} class="bg-sky-600 hover:bg-sky-500 text-white text-[11px] md:text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg">
+              <button type="button" onClick={() => toggleLang()} class="bg-sky-600 hover:bg-sky-500 text-white text-[11px] md:text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg">
                 <Icon name="language" class="mr-1" />{lang === 'id' ? 'ID' : 'JP'}
               </button>
             </div>
