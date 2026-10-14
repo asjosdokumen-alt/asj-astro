@@ -19,9 +19,11 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions, data
 
 > ⚠️ **Dua butir yang butuh keputusan owner** — sudah terukur, **belum** dikerjakan:
 >
-> 1. **Kontras eyebrow hero `/`** — `text-pink-300` 11px di atas foto, terukur **3,20:1**
->    (lantai 4,5). Latarnya berluminans ≈0,19, jadi **tidak ada warna teks yang bisa lolos**;
->    obatnya *scrim*, dan itu menyentuh artwork hero.
+> 1. **Kontras eyebrow hero `/` — GAGAL HANYA DI MOBILE.** `text-pink-300 text-eyebrow` 11px/700
+>    di atas artwork. Diukur ulang 2026-10-14 (piksel latar terukur): **390px → 3,08:1 (dark) dan
+>    3,08:1 (light) ⇒ GAGAL** (lantai 4,5); **1440px → 9,16:1 (dark) dan 11,52:1 (light) ⇒ LULUS**.
+>    Latar versi mobile berluminans tinggi, jadi **tidak ada warna teks yang bisa lolos** di sana;
+>    obatnya *scrim*, dan itu menyentuh artwork hero. Bukan temuan tombol amber (§12.5 sudah 0).
 > 2. **Daftar lowongan tanpa JavaScript** — build-nya statis, jadi `/loker` memberi penjelasan +
 >    tautan WhatsApp, bukan daftarnya. Daftar itu di HTML server butuh **SSR** (`output: 'server'`
 >    masih dikomentari di `astro.config.mjs`).
