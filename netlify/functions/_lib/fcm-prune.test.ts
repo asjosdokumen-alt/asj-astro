@@ -28,7 +28,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-type Route = { match: RegExp; reply: (url: string, init: any) => Response };
+type Route = { match: RegExp; reply: (url: string, init: RequestInit) => Response };
 let routes: Route[] = [];
 let deleted: string[] = [];
 
@@ -39,8 +39,10 @@ const json = (body: unknown, status = 200) =>
   });
 
 function installFetch() {
-  vi.stubGlobal('fetch', async (input: any, init: any = {}) => {
-    const url = String(typeof input === 'string' ? input : (input && input.url) || input);
+  vi.stubGlobal('fetch', async (input: unknown, init: RequestInit = {}) => {
+    const url = String(
+      typeof input === 'string' ? input : ((input as { url?: string })?.url ?? input),
+    );
     const method = String(init?.method || 'GET').toUpperCase();
 
     // PostgREST DELETE → catat token yang benar-benar dihapus.
@@ -74,8 +76,8 @@ const oauthOk: Route = {
 function fcmRoute(deadTokens: Set<string>, otherStatus = 0) {
   return {
     match: /fcm\.googleapis\.com/,
-    reply: (_url: string, init: any) => {
-      const body = JSON.parse(init?.body || '{}');
+    reply: (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init?.body || '{}'));
       const token = String(body?.message?.token || '');
       if (otherStatus) return json({ error: { status: 'INTERNAL', message: 'boom' } }, otherStatus);
       if (deadTokens.has(token)) {

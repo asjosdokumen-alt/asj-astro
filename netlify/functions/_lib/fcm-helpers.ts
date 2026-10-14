@@ -13,18 +13,18 @@ import * as fcm from './fcm-server.ts';
  */
 export async function getAdminTokens(): Promise<string[]> {
   try {
-    const rows = (await supabaseJson('GET', 'fcm_tokens', {
+    const rows = await supabaseJson('GET', 'fcm_tokens', {
       query: { select: 'token,wa', limit: 200 },
-    })) as any[];
+    });
     if (!Array.isArray(rows)) return [];
     return rows
-      .filter((t) => {
-        const wa = String(t.wa || '');
+      .filter((r: Record<string, unknown>) => {
+        const wa = String(r.wa || '');
         // Kandidat WA: 628xxxxxxxxxx (12-14 digit)
         // Admin WA: selain format itu
         return !wa || !/^628\d{9,11}$/.test(wa);
       })
-      .map((t) => t.token)
+      .map((r: Record<string, unknown>) => r.token as string)
       .filter(Boolean);
   } catch {
     return [];
@@ -36,11 +36,11 @@ export async function getAdminTokens(): Promise<string[]> {
  */
 export async function getKandidatTokens(wa: string): Promise<string[]> {
   try {
-    const rows = (await supabaseJson('GET', 'fcm_tokens', {
-      query: { select: 'token', wa: 'eq.' + wa, limit: 20 },
-    })) as any[];
+    const rows = await supabaseJson('GET', 'fcm_tokens', {
+      query: { select: 'token', wa: `eq.${wa}`, limit: 20 },
+    });
     if (!Array.isArray(rows)) return [];
-    return rows.map((t) => t.token).filter(Boolean);
+    return rows.map((r: Record<string, unknown>) => r.token as string).filter(Boolean);
   } catch {
     return [];
   }
@@ -110,10 +110,10 @@ export async function pruneDeadTokens(tokens: string[]): Promise<number> {
 
   try {
     await supabaseJson('DELETE', 'fcm_tokens', {
-      query: { token: 'in.(' + confirmed.join(',') + ')' },
+      query: { token: `in.(${confirmed.join(',')})` },
       headers: { Prefer: 'return=minimal' },
     } as Record<string, unknown>);
-    console.info('[FCM] pruned ' + confirmed.length + ' dead token(s)');
+    console.info(`[FCM] pruned ${confirmed.length} dead token(s)`);
     return confirmed.length;
   } catch (e) {
     console.error('[FCM] prune failed:', (e as Error).message);

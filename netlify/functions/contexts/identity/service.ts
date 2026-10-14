@@ -101,7 +101,7 @@ function pinsEqual(a: string, b: string): boolean {
 
 /** Tier 1: `PIN_<NAME>` — `khoci` → `PIN_KHOCI`, `bu sari` → `PIN_BU_SARI`. */
 function personalEnvPins(name: string): string[] {
-  const key = 'PIN_' + name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+  const key = `PIN_${name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_')}`;
   const value = env(key);
   return value ? [value] : [];
 }
@@ -167,7 +167,7 @@ export async function checkAdminPersonal(name: string, pin: string) {
 
 export async function refreshAdminSession(refreshToken: string) {
   const t = session.verifyToken(refreshToken);
-  if (!t || t.kind !== 'refresh' || t.role !== 'admin') {
+  if (t?.kind !== 'refresh' || t?.role !== 'admin') {
     return { success: false, message: 'Refresh token tidak valid.' };
   }
   const newToken = session.signToken({ role: 'admin', name: t.name, kind: 'session' });
@@ -191,7 +191,7 @@ export async function loginKandidat(wa: string, password: string) {
 
 export async function refreshKandidatSession(refreshToken: string) {
   const t = session.verifyToken(refreshToken);
-  if (!t || t.kind !== 'refresh' || t.role !== 'kandidat') {
+  if (t?.kind !== 'refresh' || t?.role !== 'kandidat') {
     return { success: false, message: 'Refresh token tidak valid.' };
   }
   const newToken = session.signToken({ role: 'kandidat', wa: t.wa, kind: 'session' });
@@ -253,13 +253,16 @@ export async function changePassword(wa: string, lama: string, baru: string) {
   const { supabaseJson } = await import('./repository');
   try {
     await supabaseJson('PATCH', 'database_candidate', {
-      query: { no_wa: 'eq.' + wa },
+      query: { no_wa: `eq.${wa}` },
       body: built.body,
       headers: { Prefer: 'return=minimal' },
     });
     return { success: true };
   } catch (e: unknown) {
-    return { success: false, message: 'Gagal mengubah password: ' + ((e as Error).message || 'unknown') };
+    return {
+      success: false,
+      message: `Gagal mengubah password: ${(e as Error).message || 'unknown'}`,
+    };
   }
 }
 
@@ -272,7 +275,7 @@ export function verifyToken(token: string) {
 export function requireRole(sessionToken: string | undefined, role: string) {
   const t = session.verifyToken(sessionToken);
   if (!t || t.role !== role || t.kind === 'refresh') {
-    return { error: { success: false, sessionInvalid: true, message: 'Sesi ' + role + ' tidak valid' } };
+    return { error: { success: false, sessionInvalid: true, message: `Sesi ${role} tidak valid` } };
   }
   return { token: t };
 }
@@ -293,7 +296,10 @@ export function isOwnerOrAdmin(sessionToken: string | undefined, wa: string) {
  * Admins register under their raw handle ('ADMIN'); a kandidat token may only
  * be bound to its own WA. Moved from the legacy _lib/actions-auth dispatcher.
  * Same logic and deps (normalizeWa, session, supabaseJson via repository). */
-export async function registerFcmToken(payload: any[], sessionToken?: string): Promise<{ success: boolean; message?: string }> {
+export async function registerFcmToken(
+  payload: unknown[],
+  sessionToken?: string,
+): Promise<{ success: boolean; message?: string }> {
   const [waStr, token, deviceInfo] = payload;
   const waRaw = String(waStr || '').trim();
   let wa = normalizeWa(waRaw);
@@ -347,11 +353,11 @@ export async function registerFcmToken(payload: any[], sessionToken?: string): P
     // dijawab NOT_FOUND oleh FCM. Token yang masih hidup DIBIARKAN, sehingga
     // beberapa perangkat tetap bisa menerima push sekaligus.
     try {
-      const siblings = (await supabaseJson('GET', 'fcm_tokens', {
-        query: { select: 'token', wa: 'eq.' + wa, limit: 50 },
-      })) as any[];
+      const siblings = await supabaseJson('GET', 'fcm_tokens', {
+        query: { select: 'token', wa: `eq.${wa}`, limit: 50 },
+      });
       const stale = (Array.isArray(siblings) ? siblings : [])
-        .map((r) => r.token)
+        .map((r: Record<string, unknown>) => r.token)
         .filter((t): t is string => Boolean(t) && t !== token);
       if (stale.length > 0) {
         const { pruneDeadTokens } = await import('../../_lib/fcm-helpers');
