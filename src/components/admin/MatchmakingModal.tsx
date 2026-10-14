@@ -199,7 +199,19 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose, clo
         return scoreB - scoreA;
       });
 
-      setResults(filtered.slice(0, 30)); // legacy: batasi 30 agar tidak lag
+      // TANPA batas — keputusan yang sudah tercatat di header berkas ini
+      // ("4. Hasil di-render tanpa batas — legacy menampilkan maksimal 30").
+      //
+      // `slice(0, 30)` sempat kembali ke sini, dan akibatnya BUKAN sekadar
+      // tampilan: `sendBlast` mengirim `results`, jadi "kirim tawaran ke semua"
+      // hanya menawari 30 kandidat teratas menurut skor kelengkapan — sementara
+      // label di bawah melaporkan `results.length`, sehingga layarnya menulis
+      // "Kandidat ditemukan: 30" seolah itu seluruh hasil pencarian. Kandidat
+      // ke-31 dan seterusnya tidak bisa dilihat MAUPUN ditawari, tanpa satu pun
+      // pesan. Daftar masukannya adalah prop `candidates` yang sudah dimuat
+      // induk, jadi panjangnya memang sudah terbatas di sana.
+      // Dikunci `e2e/matchmaking-all-matches.test.tsx` (3 tes, merah di kode lama).
+      setResults(filtered);
       setSearching(false);
       setSearched(true);
     }, 500);

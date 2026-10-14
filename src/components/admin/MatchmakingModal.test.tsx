@@ -28,8 +28,14 @@ vi.mock('../../lib/apiClient', () => {
   return { api, default: api };
 });
 
-// Pass-through copy keys so assertions read the real key names.
-vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
+// Pass-through copy keys so assertions read the real key names — EXCEPT
+// `ui.found_n`, which substitutes `{n}` the way the real dictionary does
+// ("Kandidat ditemukan: {n}"). Without that, the label renders no number at all
+// and the count it reports cannot be asserted; the key itself is kept in the
+// output so every existing `getByText(/ui\.found_n/)` still matches.
+vi.mock('../../store/i18n', () => ({
+  t: (k: string) => (k === 'ui.found_n' ? 'ui.found_n {n}' : k),
+}));
 
 const mkCand = (over: Record<string, unknown>) =>
   ({ wa: '6281', nama: 'A', gender: 'L', usia: '25', tb: '170', bb: '60', pendidikan: 'SMK', tahapan: 'BARU', status: 'AKTIF', pasPhoto: '', jftText: '-', sswText: '-', idLoker: '', ...over });
@@ -111,14 +117,51 @@ describe('MatchmakingModal (A14)', () => {
     expect(screen.getAllByText('JFT').length).toBeGreaterThan(0);
   });
 
-  it('results capped at 30 (legacy render limit)', async () => {
-    const many = Array.from({ length: 40 }, (_, i) => mkCand({ wa: '6281' + String(i).padStart(3, '0'), nama: 'KAND ' + i }));
-    renderOpen(many);
+  // ==========================================
+  // Hasil TIDAK dipotong 30 (2026-10-14)
+  //
+  // Tes ini MENGGANTIKAN `results capped at 30 (legacy render limit)`, yang
+  // menuntut `names.length === 30` — yaitu mengunci bug yang header berkas ini
+  // sendiri catat sebagai SUDAH DIPERBAIKI: "results unlimited (legacy caps at
+  // 30)". Dua versi aturan yang sama, dan yang ditegakkan adalah yang salah.
+  //
+  // `setResults(filtered.slice(0, 30))` bukan sekadar batas tampilan: `sendBlast`
+  // mengirim `results`, jadi "kirim tawaran ke semua" hanya menawari 30 kandidat
+  // teratas menurut skor kelengkapan — tanpa pesan apa pun. Labelnya pun
+  // melaporkan `results.length`, sehingga layar menulis "30" sebagai seluruh
+  // hasil pencarian padahal 40 cocok.
+  // ==========================================
+  /** 40 kandidat yang SEMUANYA cocok (semua aturan lolos dengan `job` default). */
+  const empatPuluhCocok = () =>
+    Array.from({ length: 40 }, (_, i) =>
+      mkCand({ wa: `6281${String(i).padStart(3, '0')}`, nama: `KAND ${i}` }),
+    );
+
+  it('ke-40 kandidat yang cocok dirender — tidak ada batas 30', async () => {
+    renderOpen(empatPuluhCocok());
     fireEvent.click(screen.getByRole('button', { name: /ui\.start_specific_search/ }));
     await waitFor(() => expect(screen.getByText(/ui\.found_n/)).toBeTruthy());
-    // found_n says 40 matches (count of ALL matches), only 30 rows rendered
-    const names = screen.getAllByText(/KAND \d+/);
-    expect(names.length).toBe(30);
+    expect(screen.getAllByText(/KAND \d+/).length).toBe(40);
+  });
+
+  it('label "ditemukan" melaporkan jumlah SEBENARNYA, bukan yang terpotong', async () => {
+    renderOpen(empatPuluhCocok());
+    fireEvent.click(screen.getByRole('button', { name: /ui\.start_specific_search/ }));
+    await waitFor(() => expect(screen.getByText(/ui\.found_n/)).toBeTruthy());
+    // Kode lama: `results.length` = 30 setelah dipotong ⇒ labelnya berbohong.
+    expect(screen.getByText(/ui\.found_n/).textContent).toContain('40');
+  });
+
+  it('blast mengirim SEMUA yang cocok, bukan 30', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderOpen(empatPuluhCocok());
+    fireEvent.click(screen.getByRole('button', { name: /ui\.start_specific_search/ }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /ui\.send_offer_all/ })).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /ui\.send_offer_all/ }));
+    await waitFor(() => expect(mockSecure).toHaveBeenCalledTimes(1));
+    // Inilah kerugian yang tak terlihat: 10 kandidat tidak pernah ditawari.
+    expect(mockSecure.mock.calls[0][1][0].candidates).toHaveLength(40);
+    confirmSpy.mockRestore();
   });
 
   it('sort prioritises completeness (photo + jftText + sswText)', async () => {
