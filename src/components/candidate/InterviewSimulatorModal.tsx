@@ -279,7 +279,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
               </p>
             </div>
           </div>
-          <button
+          <button type="button"
             onClick={onClose}
             aria-label={t('public.close')}
             class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition"
@@ -365,7 +365,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
               aria-label={t('admin.interview_ph')}
               class="w-full p-3 bg-black/60 border border-slate-700 rounded-xl text-white text-sm outline-none focus:border-violet-500 transition resize-none custom-scrollbar disabled:opacity-50"
             />
-            <button
+            <button type="button"
               onClick={selesaikan}
               disabled={!!busy}
               title={t('ui.ai_interview_done_btn')}
@@ -375,7 +375,7 @@ export default function InterviewSimulatorModal({ wa, nama, onClose, closing = f
               <Icon name="check-double" class="text-lg" />
               <span class="text-[7px] font-black leading-none mt-0.5">{t('ui.ai_interview_done_text')}</span>
             </button>
-            <button
+            <button type="button"
               onClick={sendMessage}
               disabled={!!busy}
               aria-label={t('ui.iv_send')}

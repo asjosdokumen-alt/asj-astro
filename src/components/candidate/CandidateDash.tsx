@@ -655,7 +655,7 @@ if (!data) return failed
                   <div class="flex flex-wrap gap-1.5 mb-3">
                     <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider self-center">{t('ui.pilih_loker')}</span>
                     {uniqueLokers.map(code => (
-                      <button onClick={() => setSelectedLoker(selectedLoker === code ? null : code)}
+                      <button type="button" onClick={() => setSelectedLoker(selectedLoker === code ? null : code)}
                         class={`min-h-11 inline-flex items-center justify-center px-3 rounded-full border text-[11px] font-black transition ${selectedLoker === code ? 'bg-emerald-600 text-white border-emerald-400' : 'bg-slate-800 text-slate-300 border-slate-600 hover:border-emerald-500/60'}`}>
                         {code}
                       </button>
@@ -761,7 +761,7 @@ if (!data) return failed
           <div class="bg-red-500/10 border border-red-500/40 rounded-panel p-5 md:p-6 mb-6 md:mb-8 text-left">
             <h3 class="text-accent-red font-bold mb-2 text-lg"><Icon name="exclamation-triangle" class="mr-2" /> {t('candidate.doc_revise_title')}</h3>
             <p class="text-sm text-slate-300 mb-5">{data.revisionNote || t('candidate.doc_revise_desc')}</p>
-            <button
+            <button type="button"
               onClick={() => {
                 const input = document.createElement('input');
                 input.type = 'file';
@@ -870,7 +870,7 @@ if (!data) return failed
                 text-sm/700 normal size (emerald-600 = 3.77, emerald-500 = 2.54);
                 the 700 stops are 5.48 and the hover darkens to the 800s (7.56).
                 Same pair as the install button and the 404 link. */}
-            <button data-testid="cmt-pemberkasan" onClick={() => setShowPemberkasan(true)} class="w-full py-4 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-panel font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
+            <button type="button" data-testid="cmt-pemberkasan" onClick={() => setShowPemberkasan(true)} class="w-full py-4 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-panel font-black shadow-[0_0_20px_rgba(90,141,0,0.4)] hover:-translate-y-1 transition text-sm md:text-base border border-emerald-400/30 text-center">
               <Icon name="folder-open" class="mr-2" />{t('ui.complete_berkas_biodata')}
             </button>
             <p class="text-sm text-emerald-400 mt-3 font-bold text-center"><Icon name="info-circle" class="mr-1" /> {t('ui.berkas_stage_hint')}</p>
@@ -929,10 +929,10 @@ if (!data) return failed
                       pas di ambang, dan jatuh di bawahnya begitu line-height font
                       berubah. Sekarang eksplisit, jadi tidak bergantung pada itu. */}
                   <div class="u-grid-auto u-grid-auto--cards gap-3 mt-5">
-                    <button data-testid="cmt-cvmini" onClick={() => setShowCvMiniModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="user-edit" class="text-accent-sky shrink-0" /> {t('ui.update_cv_mini')}</button>
-                    <button data-testid="cmt-interview" onClick={openInterview} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-violet text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="microphone-alt" class="text-accent-violet shrink-0" /> {t('ui.interview_practice')}</button>
-                    <button data-testid="cmt-esign" onClick={openEsign} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="signature" class="text-accent-red shrink-0" /> {t('ui.esign_naitei')}</button>
-                    <button onClick={openAiCvMaster} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-amber text-slate-200 rounded-control text-sm font-bold transition text-left cursor-pointer"><Icon name="robot" class="text-accent-amber shrink-0" /> {t('ui.ai_cv_assistant')}</button>
+                    <button type="button" data-testid="cmt-cvmini" onClick={() => setShowCvMiniModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="user-edit" class="text-accent-sky shrink-0" /> {t('ui.update_cv_mini')}</button>
+                    <button type="button" data-testid="cmt-interview" onClick={openInterview} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-violet text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="microphone-alt" class="text-accent-violet shrink-0" /> {t('ui.interview_practice')}</button>
+                    <button type="button" data-testid="cmt-esign" onClick={openEsign} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="signature" class="text-accent-red shrink-0" /> {t('ui.esign_naitei')}</button>
+                    <button type="button" onClick={openAiCvMaster} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-amber text-slate-200 rounded-control text-sm font-bold transition text-left cursor-pointer"><Icon name="robot" class="text-accent-amber shrink-0" /> {t('ui.ai_cv_assistant')}</button>
                     <a href="/master" class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-emerald text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="clipboard-list" class="text-accent-emerald shrink-0" /> {t('ui.master_full_form')}</a>
                     {/* ── "Pilih Template CV" WAS HERE AND IS NOT COMING BACK ──
                         Owner ruling 2026-09-25: "template cv itu fitur admin bukan
@@ -947,8 +947,8 @@ if (!data) return failed
                         CV"), which is the read/preview side of the same feature — so
                         removing this button takes away a chooser, not the ability to
                         see a CV. */}
-          <button data-testid="cmt-rirekisho" onClick={() => setShowRirekisho(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="file-alt" class="text-accent-red shrink-0" /> {t('candidate.btn_preview_cv')}</button>
-                    <button data-testid="cmt-password" onClick={() => setShowPasswordModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="key" class="text-accent-sky shrink-0" /> {t('ui.change_password')}</button>
+          <button type="button" data-testid="cmt-rirekisho" onClick={() => setShowRirekisho(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="file-alt" class="text-accent-red shrink-0" /> {t('candidate.btn_preview_cv')}</button>
+                    <button type="button" data-testid="cmt-password" onClick={() => setShowPasswordModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="key" class="text-accent-sky shrink-0" /> {t('ui.change_password')}</button>
                   </div>
         </aside>
       </div>

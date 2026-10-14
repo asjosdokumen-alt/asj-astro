@@ -134,7 +134,7 @@ export default function CvMiniModal({ onClose, prefill, closing = false }: Props
       <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full max-w-md max-h-[85vh] u-scroll-area custom-scrollbar">
         <div class="flex items-center justify-between mb-2">
           <h3 class="text-lg font-bold text-sky-400"><Icon name="user-edit" class="mr-2" />{t('ui.update_cv_mini')}</h3>
-          <button onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
+          <button type="button" onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
         </div>
         <p class="text-xs text-slate-400 mb-5 leading-relaxed">{t('ui.master_update_hint')}</p>
         <div class="space-y-3">
@@ -184,7 +184,7 @@ export default function CvMiniModal({ onClose, prefill, closing = false }: Props
             {photoName && <p class="text-[11px] text-slate-500 mt-1">{photoName}</p>}
           </div>
         </div>
-        <button onClick={handleSubmit} disabled={loading} class="w-full mt-4 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm disabled:opacity-50 transition">
+        <button type="button" onClick={handleSubmit} disabled={loading} class="w-full mt-4 py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm disabled:opacity-50 transition">
           {loading ? t('ui.saving') : t('ui.save_cv_mini')}
         </button>
       </div>

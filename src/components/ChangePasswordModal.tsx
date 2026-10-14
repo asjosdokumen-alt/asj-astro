@@ -68,7 +68,7 @@ export default function ChangePasswordModal({ onClose, closing = false }: Props)
       <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full max-w-sm">
         <div class="flex items-center justify-between mb-5">
           <h3 class="text-lg font-bold text-amber-400"><Icon name="lock" class="mr-2" />{t('changepass.title')}</h3>
-          <button onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
+          <button type="button" onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
         </div>
         <div class="space-y-3">
           <div>
@@ -85,7 +85,7 @@ export default function ChangePasswordModal({ onClose, closing = false }: Props)
           </div>
           <p class="text-[11px] text-slate-500">{t('changepass.hint')}</p>
         </div>
-        <button onClick={handleSubmit} disabled={loading} class="w-full mt-4 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-sm disabled:opacity-50 transition">
+        <button type="button" onClick={handleSubmit} disabled={loading} class="w-full mt-4 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-bold text-sm disabled:opacity-50 transition">
           {loading ? t('changepass.loading') : t('changepass.btn')}
         </button>
       </div>

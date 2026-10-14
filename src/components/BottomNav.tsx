@@ -43,25 +43,25 @@ export default function BottomNav({ show = false }: { show?: boolean }) {
     return (
       <div id="bottom-nav-admin" class="md:hidden fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur border-t border-slate-800 z-[90]">
         <div class="flex justify-around items-center h-11 px-1">
-          <button onClick={() => {
+          <button type="button" onClick={() => {
             const sidebar = document.querySelector('[id*="admin-sidebar"]') as HTMLElement;
             if (sidebar) sidebar.classList.toggle('-translate-x-full');
           }} class="flex flex-col items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.menu")}>
             <Icon name="bars" class="text-xs" />
           </button>
-          <button onClick={() => switchTab('kelola')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.loker")}>
+          <button type="button" onClick={() => switchTab('kelola')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.loker")}>
             <Icon name="briefcase" class="text-xs" />
           </button>
-          <button onClick={() => switchTab('pelamar')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.pelamar")}>
+          <button type="button" onClick={() => switchTab('pelamar')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.pelamar")}>
             <Icon name="users" class="text-xs" />
           </button>
-          <button onClick={() => switchTab('mail')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.mail")}>
+          <button type="button" onClick={() => switchTab('mail')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.mail")}>
             <Icon name="envelope" class="text-xs" />
           </button>
-          <button onClick={() => switchTab('wa')} class="flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400 active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.wa")}>
+          <button type="button" onClick={() => switchTab('wa')} class="flex flex-col items-center justify-center text-slate-400 hover:text-emerald-400 active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.wa")}>
             <Icon name="whatsapp" class="text-xs" />
           </button>
-          <button onClick={() => switchTab('config')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.config")}>
+          <button type="button" onClick={() => switchTab('config')} class="flex flex-col items-center justify-center text-slate-400 hover:text-white active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.config")}>
             <Icon name="cogs" class="text-xs" />
           </button>
         </div>
@@ -81,7 +81,7 @@ export default function BottomNav({ show = false }: { show?: boolean }) {
             <Icon name="id-card" class="text-sm" />
           </div>
         </a>
-        <button onClick={handleLogout} class="flex items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.keluar")}>
+        <button type="button" onClick={handleLogout} class="flex items-center justify-center text-slate-400 hover:text-red-400 active:scale-90 transition w-11 h-11" aria-label={t("bottomnav.keluar")}>
           <Icon name="power-off" class="text-xs" />
         </button>
       </div>

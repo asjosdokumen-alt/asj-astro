@@ -249,7 +249,7 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
   return (
     <div ref={containerRef} role="none" onClick={onBackdropClick} class="fixed inset-0 u-modal-shell bg-black/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
       <div class="glass-panel p-8 rounded-[2rem] w-full max-w-sm shadow-2xl relative">
-        <button onClick={onClose} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
+        <button type="button" onClick={onClose} class="absolute top-5 right-6 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
 
@@ -270,13 +270,13 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
             <div class="px-4 py-3 rounded-2xl bg-emerald-900/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold mb-6 text-center">
               {t('login.pass_hint_reg')}
             </div>
-            <button onClick={handleReg} disabled={loading}
+            <button type="button" onClick={handleReg} disabled={loading}
               class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full font-bold shadow-lg disabled:opacity-50">
               {loading ? t("login.btn_daftar_loading") : t("login.btn_daftar")}
             </button>
             <p class="text-sm text-center mt-5 text-slate-400">
               {t('login.have_account')}{" "}
-              <button onClick={() => onSwitchMode("login")} class="text-emerald-400 underline font-bold">{t('login.btn_masuk')}</button>
+              <button type="button" onClick={() => onSwitchMode("login")} class="text-emerald-400 underline font-bold">{t('login.btn_masuk')}</button>
             </p>
           </div>
         )}
@@ -305,13 +305,13 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
             <input id="lm-log-pass" type="password" value={logPass} onInput={(e) => setLogPass((e.target as HTMLInputElement).value)}
               placeholder={t("login.pass_ph")}
               class="w-full p-3.5 rounded-2xl bg-black/60 border border-slate-600 text-sm text-white mb-6 outline-none focus:border-sky-500" />
-            <button onClick={handleLogin} disabled={loading}
+            <button type="button" onClick={handleLogin} disabled={loading}
               class="w-full py-4 bg-sky-600 hover:bg-sky-500 text-white rounded-full font-bold shadow-lg disabled:opacity-50">
               {loading ? t("login.btn_masuk_loading") : t("login.btn_masuk")}
             </button>
             <p class="text-sm text-center mt-5 text-slate-400">
               {t('login.no_account')}{" "}
-              <button onClick={() => onSwitchMode("daftar")} class="text-sky-400 underline font-bold">{t('login.btn_daftar')}</button>
+              <button type="button" onClick={() => onSwitchMode("daftar")} class="text-sky-400 underline font-bold">{t('login.btn_daftar')}</button>
             </p>
           </div>
         )}
@@ -326,12 +326,12 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
               placeholder={t("admin.pin_master")}
               class="w-full p-4 rounded-2xl bg-black/60 border border-slate-600 text-center text-2xl tracking-widest text-white mb-6 outline-none focus:border-red-500 transition"
               onKeyPress={(e: KeyboardEvent) => { if (e.key === "Enter") handleMaster(); }} />
-            <button onClick={handleMaster} disabled={loading}
+            <button type="button" onClick={handleMaster} disabled={loading}
               class="w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-full font-bold transition shadow-[0_0_15px_rgba(220,38,38,0.5)] text-lg hover:-translate-y-1 disabled:opacity-50">
               {loading ? t("ui.checking") : t("button.verify")}
             </button>
             <p class="text-sm text-center mt-5 text-slate-400">
-              <button onClick={() => { onSwitchMode("login"); setAdminStep(0); setMasterPin(""); }} class="text-sky-400 underline font-bold">
+              <button type="button" onClick={() => { onSwitchMode("login"); setAdminStep(0); setMasterPin(""); }} class="text-sky-400 underline font-bold">
                 {t("header.login")}
               </button>
             </p>
@@ -345,14 +345,14 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
             <h3 class="text-lg font-bold text-white mb-6 tracking-wide">{t("admin.select_account")}</h3>
             <div class="grid grid-cols-2 gap-4">
               {["SACHOU", "AYOK", "KHOLIS", "KHOCI"].map(name => (
-                <button key={name} onClick={() => { setSelectedAdmin(name); setAdminStep(3); }}
+                <button type="button" key={name} onClick={() => { setSelectedAdmin(name); setAdminStep(3); }}
                   class="py-4 bg-white/10 hover:bg-sky-600 border border-white/20 rounded-2xl font-bold text-white transition shadow-md hover:-translate-y-1">
                   {name}
                 </button>
               ))}
             </div>
             <p class="text-sm text-center mt-5 text-slate-400">
-              <button onClick={() => { setAdminStep(1); setMasterPin(""); }} class="text-amber-400 underline font-bold">
+              <button type="button" onClick={() => { setAdminStep(1); setMasterPin(""); }} class="text-amber-400 underline font-bold">
                 {t('login.back')}
               </button>
             </p>
@@ -369,12 +369,12 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
               placeholder={t("admin.pin_personal")}
               class="w-full p-4 rounded-2xl bg-black/60 border border-slate-600 text-center text-2xl tracking-widest text-white mb-6 outline-none focus:border-amber-500 transition"
               onKeyPress={(e: KeyboardEvent) => { if (e.key === "Enter") handlePersonal(); }} />
-            <button onClick={handlePersonal} disabled={loading}
+            <button type="button" onClick={handlePersonal} disabled={loading}
               class="w-full py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-full font-bold transition shadow-[0_0_15px_rgba(217,119,6,0.5)] text-lg hover:-translate-y-1 disabled:opacity-50">
               {loading ? t("ui.checking") : t("button.enter_portal")}
             </button>
             <p class="text-sm text-center mt-5 text-slate-400">
-              <button onClick={() => { setAdminStep(2); setPersonalPin(""); }} class="text-amber-400 underline font-bold">
+              <button type="button" onClick={() => { setAdminStep(2); setPersonalPin(""); }} class="text-amber-400 underline font-bold">
                 {t('login.back')}
               </button>
             </p>

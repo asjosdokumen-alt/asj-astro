@@ -198,7 +198,7 @@ export default function LokerTable() {
           <span class="text-xs font-bold text-slate-300 mr-1 uppercase tracking-widest"><Icon name="paint-brush" /> {t("ui.theme")}</span>
           {/* `min-h-11` = the 44px touch floor (DESIGN.md:582, :691). MEASURED
               2026-09-22: `px-3 py-2 text-xs` resolved to 34px, below it. */}
-          <button onClick={toggleTheme} class="theme-toggle-btn min-h-11 px-3 py-2 text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
+          <button type="button" onClick={toggleTheme} class="theme-toggle-btn min-h-11 px-3 py-2 text-xs font-bold transition-colors shadow-lg flex items-center gap-1.5">
             <Icon name={isDark ? "moon" : "sun"} /> {isDark ? t("ui.dark") : t("ui.light")}
           </button>
         </div>
@@ -262,7 +262,7 @@ export default function LokerTable() {
                  `thead` di atasnya saat isinya tiba. */
               <TableRows rows={6} widths={['h-4 w-14 mx-auto', 'h-5 w-4/5', 'h-4 w-12 mx-auto', 'h-4 w-3/4', 'h-4 w-10 mx-auto']} />
             ) : error ? (
-              <tr><td colSpan={5} class="p-10 text-center text-rose-400 font-bold"><Icon name="exclamation-triangle" class="mr-2" /> {t("public.load_error")} <button onClick={() => fetchJobs()} class="ml-3 min-h-11 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-lg transition"><Icon name="sync-alt" class="mr-1" /> {t("button.retry")}</button></td></tr>
+              <tr><td colSpan={5} class="p-10 text-center text-rose-400 font-bold"><Icon name="exclamation-triangle" class="mr-2" /> {t("public.load_error")} <button type="button" onClick={() => fetchJobs()} class="ml-3 min-h-11 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold shadow-lg transition"><Icon name="sync-alt" class="mr-1" /> {t("button.retry")}</button></td></tr>
             ) : displayed.length === 0 ? (
               <tr><td colSpan={5} class="p-10 text-center text-slate-500 font-bold">{t("public.empty")}</td></tr>
             ) : displayed.map((job, i) => (
@@ -313,14 +313,14 @@ export default function LokerTable() {
                         white) — so white is the pairing the surface was darkened for,
                         and it makes this button match its two siblings (Format on
                         sky-600, Lamar on emerald-600), which are white-on-accent too. */}
-                    <button onClick={() => setSelectedJob(job)} class="min-h-11 px-2 py-1.5 bg-amber-500 hover:bg-amber-400 text-white rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[11px] font-black border border-amber-500/50" title={t("button.detail")}><Icon name="eye" /> <span class="hidden sm:inline">{t("button.detail")}</span></button>
+                    <button type="button" onClick={() => setSelectedJob(job)} class="min-h-11 px-2 py-1.5 bg-amber-500 hover:bg-amber-400 text-white rounded-lg shadow-[0_4px_15px_rgba(245,158,11,0.4)] transition text-[11px] font-black border border-amber-500/50" title={t("button.detail")}><Icon name="eye" /> <span class="hidden sm:inline">{t("button.detail")}</span></button>
                     {job.templateCv && job.templateCv !== "-" && (
                       <a href={job.templateCv} target="_blank" rel="noopener" class="inline-flex items-center justify-center min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg shadow-[0_4px_15px_rgba(2,132,199,0.4)] transition text-[11px] font-bold border border-sky-500/50"><Icon name="download" /> <span class="hidden sm:inline">{t("button.format")}</span></a>
                     )}
                     {jobTutupUntukLamar(job) ? (
-                      <button disabled class="min-h-11 px-2 py-1.5 bg-slate-600 rounded-lg text-white text-[11px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
+                      <button type="button" disabled class="min-h-11 px-2 py-1.5 bg-slate-600 rounded-lg text-white text-[11px] font-bold opacity-50 cursor-not-allowed shadow-inner border border-slate-500">{t("button.closed")}</button>
                     ) : (
-                      <button onClick={() => openForm(job)} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-[0_4px_15px_rgba(5,150,105,0.4)] transition text-[11px] font-bold border border-emerald-500/50"><Icon name="paper-plane" /> <span class="hidden sm:inline">{t("button.apply")}</span></button>
+                      <button type="button" onClick={() => openForm(job)} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-[0_4px_15px_rgba(5,150,105,0.4)] transition text-[11px] font-bold border border-emerald-500/50"><Icon name="paper-plane" /> <span class="hidden sm:inline">{t("button.apply")}</span></button>
                     )}
                   </div>
                 </td>
@@ -332,7 +332,7 @@ export default function LokerTable() {
 
       {filtered.length > limit && (
         <div class="p-5 text-center">
-          <button onClick={() => setLimit(prev => prev + 10)} class="min-h-11 px-6 py-2.5 bg-slate-800 text-white rounded-full text-xs font-bold shadow-lg hover:bg-slate-700 transition">
+          <button type="button" onClick={() => setLimit(prev => prev + 10)} class="min-h-11 px-6 py-2.5 bg-slate-800 text-white rounded-full text-xs font-bold shadow-lg hover:bg-slate-700 transition">
             {t("button.more")} <Icon name="chevron-down" class="ml-2" />
           </button>
         </div>

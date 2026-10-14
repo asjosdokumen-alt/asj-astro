@@ -533,7 +533,7 @@ export default function App(
              which reads as a misaligned control. `gap-2` is unchanged, so the
              two still sit on the same baseline. */}
         <div class="absolute top-4 right-4 z-30 flex items-center gap-2">
-          <button ref={hamburgerRef} onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center bg-black/70 hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
+          <button type="button" ref={hamburgerRef} onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center bg-black/70 hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
             <Icon name={menuOpen ? "times" : "bars"} class="text-lg" />
           </button>
         </div>
@@ -758,7 +758,7 @@ export default function App(
       <nav ref={drawerRef} class={"u-viewport-fixed--right z-drawer w-72 md:w-96 bg-slate-900 border-l border-slate-700 shadow-2xl flex flex-col transition-transform duration-300 transform " + (menuOpen ? "translate-x-0" : "translate-x-full")} aria-label="Primary navigation">
         <div class="flex items-center justify-between p-4 border-b border-slate-700">
           <span class="text-xs font-bold text-slate-500 uppercase tracking-widest"><Icon name="bars" class="mr-2 text-sky-400" /> {t("ui.menu")}</span>
-          <button onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white transition" aria-label="Close"><Icon name="times" class="text-xl" /></button>
+          <button type="button" onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center text-slate-400 hover:text-white transition" aria-label="Close"><Icon name="times" class="text-xl" /></button>
         </div>
         {/* User identity strip — sits above the action list so the drawer
             answers "who am I?" before the buttons do. Hidden when logged
@@ -803,8 +803,8 @@ export default function App(
                 state on the page (2.54:1) — lightening a gradient always cuts
                 white-text contrast, so the hover must darken instead. Measured
                 on the built 404 page, which uses the same pair: 3.71:1 before. */}
-            <button onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>
-            <button onClick={toggleLang} aria-label="Toggle language" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
+            <button type="button" onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>
+            <button type="button" onClick={toggleLang} aria-label="Toggle language" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
           </div>
           {hydrated && !u.isLoggedIn && (<div class="space-y-3">
             {/* ─── `data-nav-login` MOVED HERE FROM THE DELETED SECTION BAR ───
@@ -821,20 +821,20 @@ export default function App(
                 THE GATE MUST OPEN THE DRAWER FIRST: this button is inside
                 `translate-x-full` until the hamburger is clicked, and Playwright
                 refuses to click an element it cannot see. */}
-            <button data-nav-login onClick={openLogin} class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">{t("header.login")}</button>
-            <button onClick={openRegister} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition">{t("header.register")}</button>
-            <button onClick={openAdminLogin} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition"><Icon name="shield-alt" class="mr-2" /> {t("header.admin_login")}</button>
+            <button type="button" data-nav-login onClick={openLogin} class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition">{t("header.login")}</button>
+            <button type="button" onClick={openRegister} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition">{t("header.register")}</button>
+            <button type="button" onClick={openAdminLogin} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition"><Icon name="shield-alt" class="mr-2" /> {t("header.admin_login")}</button>
           </div>)}
           {u.isLoggedIn && u.role === "admin" && (<div class="space-y-3">
             <a href="/admin" class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="cogs" class="mr-2" /> {t("header.admin")}</a>
-            <button onClick={() => { setShowAiCopilot(true); setMenuOpen(false); }} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="robot" class="mr-2" /> {t("ui.ai_copilot")}</button>
+            <button type="button" onClick={() => { setShowAiCopilot(true); setMenuOpen(false); }} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="robot" class="mr-2" /> {t("ui.ai_copilot")}</button>
             <a href="/public" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="globe" class="mr-2" /> {t("header.public")}</a>
-            <button onClick={handleLogout} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="sign-out-alt" class="mr-2" /> {t("header.logout")}</button>
+            <button type="button" onClick={handleLogout} class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="sign-out-alt" class="mr-2" /> {t("header.logout")}</button>
           </div>)}
           {u.isLoggedIn && u.role === "kandidat" && (<div class="space-y-3">
             <a href="/candidate" class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="id-card" class="mr-2" /> {t("header.dashboard")}</a>
             <a href="/public" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="globe" class="mr-2" /> {t("header.public")}</a>
-            <button onClick={handleLogout} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="sign-out-alt" class="mr-2" /> {t("header.logout")}</button>
+            <button type="button" onClick={handleLogout} class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition flex items-center justify-center"><Icon name="sign-out-alt" class="mr-2" /> {t("header.logout")}</button>
           </div>)}
         </div>
       </nav>

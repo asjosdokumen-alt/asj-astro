@@ -58,7 +58,7 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
           <h3 class="text-xl font-bold text-emerald-400">
             <Icon name="whatsapp" class="mr-2" />{t('ui.wa_pintar')}
           </h3>
-          <button onClick={onClose} class="text-slate-400 hover:text-white transition">
+          <button type="button" onClick={onClose} class="text-slate-400 hover:text-white transition">
             <Icon name="times" class="text-2xl" />
           </button>
         </div>
@@ -95,7 +95,7 @@ export default function WAPintarModal({ candidateName, candidateJob, phone, temp
           </div>
 
           {/* Send button */}
-          <button onClick={handleSend}
+          <button type="button" onClick={handleSend}
                   class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg transition text-base mt-2">
             <Icon name="whatsapp" class="mr-2" />{t('ui.wa_open_send')}
           </button>

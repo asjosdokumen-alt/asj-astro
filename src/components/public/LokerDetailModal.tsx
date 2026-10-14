@@ -117,7 +117,7 @@ export default function LokerDetailModal({ job, onClose, closing = false }: Prop
       <div class="bg-slate-900 border border-slate-700 rounded-[2rem] w-full max-w-lg max-h-[85vh] u-scroll-area shadow-2xl custom-scrollbar" role="none" onClick={(e: MouseEvent) => e.stopPropagation()}>
         <div class="sticky top-0 bg-slate-900/95 backdrop-blur-sm border-b border-slate-700 p-4 flex items-center justify-between z-10">
           <span class="text-sky-400 font-mono text-xs font-bold">{job.code}</span>
-          <button onClick={onClose} aria-label={t('ui.close')} class="text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
+          <button type="button" onClick={onClose} aria-label={t('ui.close')} class="text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
         </div>
         <div class="p-5">
           <div class="flex items-start gap-4 mb-6">
@@ -148,7 +148,7 @@ export default function LokerDetailModal({ job, onClose, closing = false }: Prop
           {job.keterangan && job.keterangan !== '-' && <div class="bg-sky-900/15 border border-sky-500/30 rounded-2xl p-5 mb-6"><h4 class="text-xs font-black text-sky-400 uppercase tracking-widest mb-2"><Icon name="info-circle" class="mr-1.5" />{t('ui.detail_keterangan')}</h4><p class="text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap">{job.keterangan}</p></div>}
           <div class="flex flex-col sm:flex-row gap-3">
             {job.templateCv && <a href={job.templateCv} target="_blank" download class="flex-1 px-5 py-3.5 bg-sky-600 hover:bg-sky-500 text-white text-sm font-bold text-center rounded-xl shadow transition"><Icon name="download" class="mr-1.5" />{t('button.format')}</a>}
-            {tutupLamar ? <button disabled class="flex-1 px-5 py-3.5 bg-slate-600 text-white text-sm font-black text-center rounded-xl shadow-inner opacity-60 cursor-not-allowed"><Icon name="door-closed" class="mr-1.5" />{t('button.closed')}</button>
+            {tutupLamar ? <button type="button" disabled class="flex-1 px-5 py-3.5 bg-slate-600 text-white text-sm font-black text-center rounded-xl shadow-inner opacity-60 cursor-not-allowed"><Icon name="door-closed" class="mr-1.5" />{t('button.closed')}</button>
             : <a href={'/apply?job=' + encodeURIComponent(job.code)} class="flex-1 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-black text-center rounded-xl shadow transition"><Icon name="paper-plane" class="mr-1.5" />{t('button.apply_now')}</a>}
             <a href={'https://wa.me/' + WA_NUMBER + '?text=' + encodeURIComponent(waMsg)} target="_blank" class="flex-1 px-5 py-3.5 bg-[#25D366] hover:bg-[#1fbd5b] text-white text-sm font-bold text-center rounded-xl shadow transition"><Icon name="whatsapp" class="mr-1.5" />{t('button.chat_wa')}</a>
           </div>

@@ -131,12 +131,12 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
       <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full max-w-lg max-h-[85vh] overflow-auto shadow-2xl">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-bold text-sky-400"><Icon name="file-alt" class="mr-2" />{t('ui.select_cv_template')}</h3>
-          <button onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
+          <button type="button" onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
         </div>
         {error && <p class="text-red-400 text-sm mb-4">{error}</p>}
         <div class="space-y-3">
           {templates.map((tmpl) => (
-            <button
+            <button type="button"
               key={tmpl.id}
               onClick={() => handleGenerate(tmpl.id)}
               disabled={loading}
@@ -168,7 +168,7 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
             />
           </label>
           {customFile && (
-            <button
+            <button type="button"
               onClick={handleCustomGenerate}
               disabled={generating}
               class="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-white bg-sky-600 rounded-xl hover:bg-sky-500 transition disabled:opacity-60"

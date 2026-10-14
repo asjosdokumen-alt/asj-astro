@@ -354,7 +354,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
               </a>
             )}
             {/* MEASURED 2026-10-02: 24x32 — same pre-6a92f39 shape as the rest. */}
-            <button onClick={onClose}
+            <button type="button" onClick={onClose}
                     class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition">
               <Icon name="times" class="text-xl" />
             </button>
