@@ -468,7 +468,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
           </div>
           <div class="flex gap-1">
             {modes.map((m) => (
-              <button
+              <button type="button"
                 key={m.key}
                 onClick={() => setMode(m.key)}
                 class={
@@ -549,7 +549,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                 class="flex-1 bg-slate-800 text-xs text-white px-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500"
                 placeholder={t("ai.placeholder_admin")}
               />
-              <button
+              <button type="button"
                 onClick={() => handleSend()}
                 disabled={sending}
                 class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl disabled:opacity-50"
@@ -622,7 +622,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
               />
             </div>
             <div class="flex gap-2">
-              <button
+              <button type="button"
                 onClick={handleParse}
                 disabled={busy}
                 class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
@@ -630,7 +630,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                 <Icon name="bolt" class="mr-1" />
                 {t("admin.ai_btn_parse")}
               </button>
-              <button
+              <button type="button"
                 onClick={handleGenModel}
                 disabled={busy}
                 class="flex-1 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
@@ -640,7 +640,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
               </button>
             </div>
             <div class="flex gap-2">
-              <button
+              <button type="button"
                 onClick={handleResults}
                 disabled={busy}
                 class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold rounded-lg disabled:opacity-50"
@@ -648,7 +648,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                 <Icon name="file-alt" class="mr-1 text-sky-400" />
                 {t("admin.ai_results_title")}
               </button>
-              <button
+              <button type="button"
                 onClick={handleUpdateBio}
                 disabled={busy}
                 class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg disabled:opacity-50"
@@ -697,7 +697,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                     {String(lastHasil.hasil?.rekomendasi ?? "")}
                   </p>
                 )}
-                <button
+                <button type="button"
                   onClick={handleUpdateBio}
                   disabled={busy}
                   class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg mt-2 disabled:opacity-50"

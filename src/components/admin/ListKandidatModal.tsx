@@ -188,11 +188,11 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
 
         {/* Action buttons */}
         <div class="flex gap-2 mb-3">
-          <button onClick={copyAllWa}
+          <button type="button" onClick={copyAllWa}
             class="flex-1 min-h-11 inline-flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold text-xs transition">
             <Icon name="copy" class="mr-1" /> Copy WA
           </button>
-          <button onClick={() => setShowUndangPanel(!showUndangPanel)}
+          <button type="button" onClick={() => setShowUndangPanel(!showUndangPanel)}
             class="flex-1 min-h-11 inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-xs transition">
             <Icon name="whatsapp" class="mr-1" /> Undang Grup
           </button>
@@ -207,7 +207,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
             <input type="number" value={interval} onInput={(e) => setInterval_(parseInt((e.target as HTMLInputElement).value) || 5)}
               placeholder={t("admin.ph_jeda_pesan")}
               class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-700 text-sm text-white outline-none focus:border-emerald-500" />
-            <button onClick={sendUndangan} disabled={sending}
+            <button type="button" onClick={sendUndangan} disabled={sending}
               class="w-full min-h-11 inline-flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-bold transition disabled:opacity-50">
               {sending ? 'Mengirim…' : 'Mulai Kirim Undangan'}
             </button>
@@ -229,7 +229,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
                   {/* Padanan legacy 👁 bukaDigitalCV — buka dossier kandidat */}
-                  <button
+                  <button type="button"
                     onClick={() =>
                       window.dispatchEvent(
                         new CustomEvent('showCandidateHistory', { detail: { wa: c.wa, nama: c.nama } })
@@ -244,7 +244,7 @@ export default function ListKandidatModal({ jobCode, isOpen, onClose, closing = 
                     title={t('admin.tt_chat_wa')}>
                     <Icon name="whatsapp" class="text-xs" />
                   </a>
-                  <button onClick={() => removeFromJob(c.wa || '')} disabled={removing === c.wa}
+                  <button type="button" onClick={() => removeFromJob(c.wa || '')} disabled={removing === c.wa}
                     class="min-h-11 px-3 inline-flex items-center justify-center bg-red-900/40 hover:bg-red-600 disabled:opacity-50 text-red-400 hover:text-white rounded text-[11px] font-bold transition"
                     title={t('admin.tt_tandai_gagal')}>
                     {removing === c.wa ? <Icon spin name="spinner" class="text-xs" /> : <Icon name="times" class="text-xs" />} Hapus

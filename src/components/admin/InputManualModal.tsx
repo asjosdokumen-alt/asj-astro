@@ -209,7 +209,7 @@ export default function InputManualModal() {
         <div class="p-6">
           <div class="flex justify-between items-center mb-4 border-b border-sky-900/50 pb-3">
             <h3 class="text-xl font-bold text-sky-400"><Icon name="user-plus" class="mr-2" /> {t("admin.input_manual_title")}</h3>
-            <button onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition"><Icon name="times" class="text-2xl" /></button>
+            <button type="button" onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition"><Icon name="times" class="text-2xl" /></button>
           </div>
           <form onSubmit={handleSubmit} class="space-y-4">
             {/* Kotak "Cari kandidat" DIHAPUS 2026-10-11: input-nya tidak punya

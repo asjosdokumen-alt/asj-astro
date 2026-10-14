@@ -257,7 +257,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose, clo
           The explicit `stopPropagation` is dropped with it: `onBackdropClick`
           already closes only when `e.target === containerRef`. */}
       <div class="glass-panel p-6 rounded-[2rem] w-full max-w-3xl relative border border-violet-500/50 max-h-[90vh] flex flex-col">
-        <button onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
+        <button type="button" onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
 
@@ -322,7 +322,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose, clo
               </label>
             </div>
           </div>
-          <button onClick={runMatchmaking} disabled={searching} class="min-h-11 w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold transition disabled:opacity-50">
+          <button type="button" onClick={runMatchmaking} disabled={searching} class="min-h-11 w-full py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold transition disabled:opacity-50">
             <Icon name="search" class="mr-1" /> {searching ? t('ui.sifting_db') : t('ui.start_specific_search')}
           </button>
         </div>
@@ -367,14 +367,14 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose, clo
                     <div class="flex items-center gap-2">
                       {hasCert(c.jftText) && <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">JFT</span>}
                       {hasCert(c.sswText) && <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/40">SSW</span>}
-                      <button onClick={() => window.open(`https://wa.me/${c.wa}`, '_blank')} class="w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs cursor-pointer">
+                      <button type="button" onClick={() => window.open(`https://wa.me/${c.wa}`, '_blank')} class="w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs cursor-pointer">
                         <Icon name="whatsapp" />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
-              <button onClick={sendBlast} disabled={sending} class="min-h-11 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition mt-4 disabled:opacity-50">
+              <button type="button" onClick={sendBlast} disabled={sending} class="min-h-11 w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition mt-4 disabled:opacity-50">
                 <Icon name="whatsapp" class="mr-1" /> {sending ? t('ui.sending') : t('ui.send_offer_all')}
               </button>
             </>

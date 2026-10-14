@@ -276,15 +276,15 @@ npm run migrate:up</pre>
             <div>
               <textarea value={editValue} onInput={(e) => setEditValue((e.target as HTMLTextAreaElement).value)} rows={6} class="w-full p-2.5 rounded-lg bg-black/60 border border-slate-600 text-white text-xs outline-none focus:border-violet-500 transition font-mono"></textarea>
               <div class="flex gap-2 mt-2">
-                <button onClick={() => handleSaveConfig(c.id)} class="min-h-11 flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition">{t('button.save')}</button>
-                <button onClick={() => setEditingConfig(null)} class="min-h-11 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg transition">{t('button.cancel')}</button>
+                <button type="button" onClick={() => handleSaveConfig(c.id)} class="min-h-11 flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition">{t('button.save')}</button>
+                <button type="button" onClick={() => setEditingConfig(null)} class="min-h-11 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-lg transition">{t('button.cancel')}</button>
               </div>
             </div>
           ) : (
             <div>
               <div class="text-xs text-slate-500 mb-2">{c.options.length} {t('admin.options_suffix')}</div>
               <div class="flex flex-wrap gap-1 mb-2">{c.options.slice(0, 5).map(o => <span key={o} class="px-2 py-0.5 bg-slate-800 border border-slate-700 rounded text-[11px] text-slate-400">{o}</span>)}{c.options.length > 5 && <span class="text-[11px] text-slate-500">+{c.options.length - 5} {t('admin.more_suffix')}</span>}</div>
-              <button onClick={() => { setEditingConfig(c.id); setEditValue(c.options.join('\n')); }} class="min-h-11 w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition border border-slate-700"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
+              <button type="button" onClick={() => { setEditingConfig(c.id); setEditValue(c.options.join('\n')); }} class="min-h-11 w-full py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition border border-slate-700"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
             </div>
           )}
         </div>
@@ -296,7 +296,7 @@ npm run migrate:up</pre>
       <p class="text-xs text-slate-300 mb-3">{t("admin.marquee_hint")} <span class="text-rose-300">{t("admin.announce_clear_hint")}</span></p>
       <div class="flex gap-2">
         <input type="text" value={pengumuman} onInput={(e) => setPengumuman((e.target as HTMLInputElement).value)} placeholder={t("admin.announce_ph")} class="flex-1 bg-slate-800 border border-slate-600 rounded-lg text-sm px-4 py-2.5 text-white outline-none focus:border-rose-500" />
-        <button onClick={handleSavePengumuman} class="min-w-11 min-h-11 bg-rose-600 hover:bg-rose-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition"><Icon name="save" class="mr-1" /> {t('admin.save_and_publish')}</button>
+        <button type="button" onClick={handleSavePengumuman} class="min-w-11 min-h-11 bg-rose-600 hover:bg-rose-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold transition"><Icon name="save" class="mr-1" /> {t('admin.save_and_publish')}</button>
       </div>
     </div>
 

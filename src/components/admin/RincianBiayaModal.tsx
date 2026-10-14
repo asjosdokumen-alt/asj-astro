@@ -461,7 +461,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
           <h3 class="text-xl font-black text-emerald-400">
             <Icon name="list-check" class="mr-2" /> {t('ui.rincian_biaya')}
           </h3>
-          <button onClick={onClose} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition" aria-label={t('ui.close')}>
+          <button type="button" onClick={onClose} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white transition" aria-label={t('ui.close')}>
             <Icon name="times" class="text-2xl" />
           </button>
         </div>
@@ -684,7 +684,7 @@ export default function RincianBiayaModal({ open, initialTotal = '', initialRinc
           </pre>
         </div>
 
-        <button
+        <button type="button"
           onClick={apply}
           disabled={saving}
           class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black transition text-base disabled:opacity-50"

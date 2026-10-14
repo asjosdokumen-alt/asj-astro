@@ -206,13 +206,13 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
               placeholder={t("pelamar.placeholder_search")}
               class="min-h-11 w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-sky-500 transition" />
           </div>
-          <button onClick={() => openInputModal()} class="min-h-11 px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 transition whitespace-nowrap"><Icon name="user-plus" class="mr-1" /> {t('admin.input_manual')}</button>
-          <button onClick={() => toggleSimpleView()} class="min-h-11 px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition whitespace-nowrap">
+          <button type="button" onClick={() => openInputModal()} class="min-h-11 px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 transition whitespace-nowrap"><Icon name="user-plus" class="mr-1" /> {t('admin.input_manual')}</button>
+          <button type="button" onClick={() => toggleSimpleView()} class="min-h-11 px-5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition whitespace-nowrap">
             <Icon name={simpleView ? 'table-list' : 'table-cells-large'} class="mr-1" /> {simpleView ? t('admin.view_full') : t('admin.view_simple')}
           </button>
-          <button onClick={exportCsv} class="min-h-11 px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition whitespace-nowrap"><Icon name="file-csv" class="mr-1" /> {t('admin.export_csv')}</button>
-          <button onClick={exportExcel} class="min-h-11 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition whitespace-nowrap"><Icon name="file-excel" class="mr-1" /> {t('admin.export_excel')}</button>
-          <button onClick={() => openReportModal()} class="min-h-11 px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-bold transition whitespace-nowrap"><Icon name="chart-bar" class="mr-1" /> {t('admin.monthly_report')}</button>
+          <button type="button" onClick={exportCsv} class="min-h-11 px-5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition whitespace-nowrap"><Icon name="file-csv" class="mr-1" /> {t('admin.export_csv')}</button>
+          <button type="button" onClick={exportExcel} class="min-h-11 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold transition whitespace-nowrap"><Icon name="file-excel" class="mr-1" /> {t('admin.export_excel')}</button>
+          <button type="button" onClick={() => openReportModal()} class="min-h-11 px-5 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-bold transition whitespace-nowrap"><Icon name="chart-bar" class="mr-1" /> {t('admin.monthly_report')}</button>
         </div>
       </div>
 
@@ -260,7 +260,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
               </div>
               <div class="flex items-center gap-2">
                 <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/40">{k.tahapan}</span>
-                <button onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} aria-label={t('admin.tt_chat_wa')} title={t('admin.tt_chat_wa')} class="w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs cursor-pointer"><Icon name="whatsapp" /></button>
+                <button type="button" onClick={() => window.open("https://wa.me/" + (k.wa || ""), "_blank")} aria-label={t('admin.tt_chat_wa')} title={t('admin.tt_chat_wa')} class="w-7 h-7 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs cursor-pointer"><Icon name="whatsapp" /></button>
               </div>
             </div>
           ))}
@@ -369,13 +369,13 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
                           `w-[620px]` di kolom memberi ruang itu tanpa membuat
                           sel "Catatan Admin" terdesak. */}
                       <div class="flex flex-wrap justify-center gap-1 max-w-[620px] mx-auto">
-                        <button onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} aria-label={t('admin.tt_riwayat_kandidat')} title={t('admin.tt_riwayat_kandidat')} class="w-11 h-11 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
-                        <button onClick={()=>{setShowCvTemplateSelector(true);}} class="min-h-11 px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[11px] font-bold shadow transition whitespace-nowrap"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
-                        <button onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition whitespace-nowrap"><Icon name="file-alt" class="mr-1" /> CV</button>
-                        <button onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer whitespace-nowrap"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
-                        <button onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="min-h-11 px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer whitespace-nowrap"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
-                        <button onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="min-h-11 px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer whitespace-nowrap"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
-                        <button title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-11 h-11 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
+                        <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("showCandidateHistory", { detail: { wa: k.wa, nama: k.nama, candidate: k } })); }} aria-label={t('admin.tt_riwayat_kandidat')} title={t('admin.tt_riwayat_kandidat')} class="w-11 h-11 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="clock" /></button>
+                        <button type="button" onClick={()=>{setShowCvTemplateSelector(true);}} class="min-h-11 px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-[11px] font-bold shadow transition whitespace-nowrap"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
+                        <button type="button" onClick={()=>{setRirekWa(k.wa);setShowRirek(true);}} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition whitespace-nowrap"><Icon name="file-alt" class="mr-1" /> CV</button>
+                        <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer whitespace-nowrap"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
+                        <button type="button" onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="min-h-11 px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer whitespace-nowrap"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
+                        <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="min-h-11 px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer whitespace-nowrap"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
+                        <button type="button" title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="w-11 h-11 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
                       </div>
                     </td>
                   </tr>
@@ -396,7 +396,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
             `adminPage` saja hanya memperbesar potongan dari daftar yang isinya
             masih 20 baris. */}
         {!exhausted && shown.length < totalAll && (
-          <button onClick={() => { nextPage(); fetchKandidatFromAPI(); }} class="min-h-11 px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition"><Icon name="chevron-down" class="mr-1" /> {t('button.more')}</button>
+          <button type="button" onClick={() => { nextPage(); fetchKandidatFromAPI(); }} class="min-h-11 px-4 py-2 bg-sky-600 text-white rounded-lg text-xs font-bold hover:bg-sky-500 transition"><Icon name="chevron-down" class="mr-1" /> {t('button.more')}</button>
         )}
       </div>
 
@@ -416,7 +416,7 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
       {aiCvWa && (
         <div ref={aiCvOverlay.containerRef} class="fixed inset-0 u-modal-shell z-[150] bg-slate-950">
           <AiCvForm waTarget={aiCvWa} adminMode />
-          <button onClick={() => setAiCvWa('')} title={t('button.close')} aria-label={t('button.close')}
+          <button type="button" onClick={() => setAiCvWa('')} title={t('button.close')} aria-label={t('button.close')}
             class="fixed top-2 right-3 z-[200] w-9 h-9 flex items-center justify-center rounded-full bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer">
             <Icon name="times" />
           </button>

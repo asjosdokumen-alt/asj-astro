@@ -111,7 +111,7 @@ export default function TabWA() {
         <h3 class="text-sm font-bold text-emerald-300 uppercase tracking-widest mb-1"><Icon name="whatsapp" class="text-emerald-400 mr-1" /> {t('ui.invite_class_title')}</h3>
         <p class="text-xs text-slate-300 leading-relaxed">{t('ui.invite_class_wa_desc')}</p>
       </div>
-      <button onClick={() => { window.dispatchEvent(new CustomEvent("openUndanganKelas")); }} class="min-h-11 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold text-center rounded-xl transition hover:-translate-y-0.5 shrink-0 cursor-pointer"><Icon name="whatsapp" class="text-white text-lg mr-1" /> {t('ui.start_invite')}</button>
+      <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("openUndanganKelas")); }} class="min-h-11 px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold text-center rounded-xl transition hover:-translate-y-0.5 shrink-0 cursor-pointer"><Icon name="whatsapp" class="text-white text-lg mr-1" /> {t('ui.start_invite')}</button>
     </div>
 
     <div class="u-grid-auto u-grid-auto--cards gap-6">
@@ -140,8 +140,8 @@ export default function TabWA() {
               <div class="flex items-center justify-between mb-2"><span class="text-emerald-400 font-bold text-sm">{tpl.nama}</span></div>
               <pre class="text-xs text-slate-300 bg-black/40 rounded-lg p-3 mb-3 whitespace-pre-wrap max-h-32 u-scroll-area custom-scrollbar">{tpl.isi}</pre>
               <div class="flex gap-2">
-                <button onClick={() => handleEdit(tpl)} class="min-h-11 flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition"><Icon name="edit" class="mr-1" /> {t('ui.template_edit')}</button>
-                <button onClick={() => handleDelete(tpl.id)} aria-label={t('button.delete')} class="min-w-11 min-h-11 px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition"><Icon name="trash" /></button>
+                <button type="button" onClick={() => handleEdit(tpl)} class="min-h-11 flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition"><Icon name="edit" class="mr-1" /> {t('ui.template_edit')}</button>
+                <button type="button" onClick={() => handleDelete(tpl.id)} aria-label={t('button.delete')} class="min-w-11 min-h-11 px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition"><Icon name="trash" /></button>
               </div>
             </div>
           ))}</div>}

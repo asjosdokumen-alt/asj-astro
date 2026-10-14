@@ -98,7 +98,7 @@ export default function LaporanBulananModal() {
             <h3 class="text-lg font-bold text-white">
               <Icon name="chart-bar" class="mr-2 text-violet-400" /> {t('admin.report_title')}
             </h3>
-            <button
+            <button type="button"
               aria-label={t('ui.close')}
               onClick={onClose}
               class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white text-2xl leading-none"
@@ -166,7 +166,7 @@ export default function LaporanBulananModal() {
               );
             })}
 
-          <button
+          <button type="button"
             onClick={onClose}
             class="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-bold transition text-sm"
           >

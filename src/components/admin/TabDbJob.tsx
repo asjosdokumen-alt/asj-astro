@@ -226,7 +226,7 @@ export default function TabDbJob() {
             {id: 'TERLAMA', l: t('admin.sort_oldest')},
             {id: 'TERBANYAK', l: t('admin.sort_most')},
           ].map(o => (
-            <button key={o.id} onClick={() => setSortType(o.id)}
+            <button type="button" key={o.id} onClick={() => setSortType(o.id)}
               class={'min-h-11 px-4 py-1.5 rounded-full font-bold transition ' + (sortType === o.id ? 'bg-violet-600 text-white ' : 'bg-slate-700 text-slate-300 hover:bg-slate-600')}>
               {o.l}
             </button>
@@ -235,12 +235,12 @@ export default function TabDbJob() {
         {/* Chip filter bidang (kategori) — parity filter-bidang-container */}
         {catOptions.length > 0 && (
           <div class="flex items-center gap-2 u-scroll-x whitespace-nowrap pb-1 custom-scrollbar">
-            <button onClick={() => setFBidang('ALL')}
+            <button type="button" onClick={() => setFBidang('ALL')}
               class={'min-h-11 px-3 py-1 rounded-full font-bold transition text-xs ' + (fBidang === 'ALL' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
               {t('public.all')}
             </button>
             {catOptions.map((kat) => (
-              <button key={kat} onClick={() => setFBidang(kat)}
+              <button type="button" key={kat} onClick={() => setFBidang(kat)}
                 class={'min-h-11 px-3 py-1 rounded-full font-bold transition text-xs ' + (fBidang === kat ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
                 {kat}
               </button>
@@ -250,12 +250,12 @@ export default function TabDbJob() {
         {/* Chip filter tahapan — parity filter-tahapan-container */}
         {tahapOptions.length > 0 && (
           <div class="flex items-center gap-2 u-scroll-x whitespace-nowrap pb-1 custom-scrollbar">
-            <button onClick={() => setFTahapan('ALL')}
+            <button type="button" onClick={() => setFTahapan('ALL')}
               class={'min-h-11 px-3 py-1 rounded-full font-bold transition text-xs ' + (fTahapan === 'ALL' ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
               {t('public.all')}
             </button>
             {tahapOptions.map((thp) => (
-              <button key={thp} onClick={() => setFTahapan(thp)}
+              <button type="button" key={thp} onClick={() => setFTahapan(thp)}
                 class={'min-h-11 px-3 py-1 rounded-full font-bold transition text-xs ' + (fTahapan === thp ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700')}>
                 {thp}
               </button>
@@ -319,10 +319,10 @@ export default function TabDbJob() {
                   </td>
                   <td class="p-4 text-center"><span class={'inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold ' + badgeColor(db.tahapan)}><Icon name="chevron-circle-right" /> {db.tahapan || '-'}</span></td>
                   <td class="p-4 text-center">
-                    <button onClick={() => setEditJob(db)} class="min-h-11 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button>
-                    <button onClick={() => setShareJob(db)} class="min-h-11 inline-flex items-center ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="share-alt" /> Share</button>
-                    <button onClick={() => setMatchJob(db)} class="min-h-11 ml-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="search" /> {t('admin.btn_match')}</button>
-                    <button onClick={async () => { try { const d: any = await api.secure('downloadJobDocs', [db.code]); if(d && d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(t('ui.toast_error_prefix')+(d?.error||''),"error");} } catch(e: unknown) {showToast(t('alert.network')+(e instanceof Error ? e.message : String(e)),"error");} }} class="min-h-11 ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="download" /> Docs</button>
+                    <button type="button" onClick={() => setEditJob(db)} class="min-h-11 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button>
+                    <button type="button" onClick={() => setShareJob(db)} class="min-h-11 inline-flex items-center ml-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="share-alt" /> Share</button>
+                    <button type="button" onClick={() => setMatchJob(db)} class="min-h-11 ml-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="search" /> {t('admin.btn_match')}</button>
+                    <button type="button" onClick={async () => { try { const d: any = await api.secure('downloadJobDocs', [db.code]); if(d && d.zipBase64){const b=atob(d.zipBase64);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);const bl=new Blob([u],{type:"application/zip"});const url=URL.createObjectURL(bl);const a=document.createElement("a");a.href=url;a.download=d.fileName||"Docs_"+db.code+".zip";a.click();URL.revokeObjectURL(url);} else {showToast(t('ui.toast_error_prefix')+(d?.error||''),"error");} } catch(e: unknown) {showToast(t('alert.network')+(e instanceof Error ? e.message : String(e)),"error");} }} class="min-h-11 ml-2 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="download" /> Docs</button>
                   </td>
                 </tr>
               ))}
@@ -340,7 +340,7 @@ export default function TabDbJob() {
       <div class="flex items-center justify-between gap-3 mt-3">
         <p class="text-xs text-slate-500">{filtered.length} job internal</p>
         {limit < filtered.length && (
-          <button onClick={() => setLimit((n) => n + 10)} class="min-h-11 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition"><Icon name="chevron-down" class="mr-1" /> {t('button.more')}</button>
+          <button type="button" onClick={() => setLimit((n) => n + 10)} class="min-h-11 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition"><Icon name="chevron-down" class="mr-1" /> {t('button.more')}</button>
         )}
       </div>
     </div>

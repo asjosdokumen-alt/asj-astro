@@ -214,7 +214,7 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
             <Icon name="edit" class="mr-2 text-red-400" />
             {t('admin.modal_edit_job_title')}
           </h3>
-          <button onClick={onClose} aria-label={t('public.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white p-1">
+          <button type="button" onClick={onClose} aria-label={t('public.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white p-1">
             <Icon name="times" class="text-xl" />
           </button>
         </div>
@@ -387,7 +387,7 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
             </div>
           </div>
 
-          <button
+          <button type="button"
             onClick={handleSave}
             disabled={loading}
             class="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold text-sm disabled:opacity-50 transition"

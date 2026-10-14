@@ -232,7 +232,7 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
             it the only control that closes this modal announces nothing.
             MEASURED 2026-10-08 in a real browser: the accessibility tree gave it
             no name at all. */}
-        <button onClick={onClose} aria-label={t('button.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
+        <button type="button" onClick={onClose} aria-label={t('button.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
 
@@ -250,7 +250,7 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
               the pointer target while leaving the box 24px tall (still failing
               any box-based check). Wrapping the track in a full-height button
               gives a real 44x44 target and leaves the switch looking identical. */}
-          <button onClick={toggleVIP} class="relative inline-flex items-center justify-center w-11 h-11">
+          <button type="button" onClick={toggleVIP} class="relative inline-flex items-center justify-center w-11 h-11">
             <span class={`relative block w-11 h-6 rounded-full transition-colors ${isVIP ? 'bg-amber-500' : 'bg-slate-600'}`}>
               <span class={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isVIP ? 'translate-x-5' : ''}`} />
             </span>
@@ -364,14 +364,14 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
 
         {/* Buttons */}
         <div class="flex gap-2 mt-5 pt-4 border-t border-slate-700/50">
-          <button
+          <button type="button"
             onClick={handleSave}
             disabled={saving}
             class="flex-1 px-4 py-2.5 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
           >
             {saving ? <><Icon spin name="spinner" /> {t("admin.saving")}</> : <><Icon name="save" /> {t("button.save")}</>}
           </button>
-          <button onClick={onClose} class="min-h-11 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition">
+          <button type="button" onClick={onClose} class="min-h-11 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition">
             {t("button.close")}
           </button>
         </div>

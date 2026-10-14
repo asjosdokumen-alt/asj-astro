@@ -170,7 +170,7 @@ export default function AdminShareModal({ job, onClose, onSave, closing = false 
       <div role="none" onClick={(e) => e.stopPropagation()} class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] u-scroll-area custom-scrollbar">
         <div class="p-4 border-b border-slate-700 flex items-center justify-between">
           <h3 class="text-lg font-bold text-emerald-400"><Icon name="share-alt" class="mr-2" />{t('ui.share_modal_title')}</h3>
-          <button onClick={onClose} aria-label={t('public.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
+          <button type="button" onClick={onClose} aria-label={t('public.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white p-1"><Icon name="times" class="text-xl" /></button>
         </div>
         <div class="p-5 space-y-5">
           <p class="text-[11px] font-bold text-slate-400">
@@ -182,7 +182,7 @@ export default function AdminShareModal({ job, onClose, onSave, closing = false 
             <label for="as-share-link" class="text-[11px] font-bold text-sky-400 uppercase mb-1 block">{t('ui.share_link_view')}</label>
             <div class="flex gap-2">
               <input id="as-share-link" value={shareUrl} readonly placeholder={shareUrl ? '' : t('share.link_pending')} onClick={(e) => (e.target as HTMLInputElement).select()} class="flex-1 p-2 rounded-lg bg-black/60 border border-slate-700 text-[11px] text-sky-300 font-mono outline-none" />
-              <button onClick={copyLink} disabled={!shareUrl} class="min-h-11 px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"><Icon name="copy" class="mr-1" />{t('ui.share_copy_link')}</button>
+              <button type="button" onClick={copyLink} disabled={!shareUrl} class="min-h-11 px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-bold transition shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"><Icon name="copy" class="mr-1" />{t('ui.share_copy_link')}</button>
               {shareUrl
                 ? <a href={shareUrl} target="_blank" rel="noopener" class="px-3 py-2 bg-sky-900/60 hover:bg-sky-800 border border-sky-700 text-sky-300 rounded-lg text-xs font-bold shrink-0 whitespace-nowrap transition flex items-center"><Icon name="external-link-alt" class="mr-1" />{t('ui.share_open_view')}</a>
                 : <span class="px-3 py-2 bg-sky-900/30 border border-sky-800 text-sky-500 rounded-lg text-xs font-bold shrink-0 whitespace-nowrap flex items-center"><Icon name="external-link-alt" class="mr-1" />{t('ui.share_open_view')}</span>}
@@ -210,7 +210,7 @@ export default function AdminShareModal({ job, onClose, onSave, closing = false 
               })}
             </div>
             <p class="text-[11px] text-slate-500 mb-2">{t('ui.share_card_hint')}</p>
-            <button onClick={saveDocs} disabled={saving} class="min-h-11 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-bold shadow text-xs disabled:opacity-50 transition">
+            <button type="button" onClick={saveDocs} disabled={saving} class="min-h-11 px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-bold shadow text-xs disabled:opacity-50 transition">
               <Icon name={saving ? 'spinner' : 'save'} spin={saving} class="mr-1" />{t('ui.save_share')}
             </button>
           </div>
@@ -219,7 +219,7 @@ export default function AdminShareModal({ job, onClose, onSave, closing = false 
           <div>
             <label for="as-wa" class="text-[11px] font-bold text-amber-400 uppercase mb-1 block">{t('ui.share_template_label')}</label>
             <textarea id="as-wa" value={waPreview} readOnly rows={9} class="w-full p-3 rounded-lg bg-black/60 border border-slate-700 text-[11px] text-slate-200 font-mono outline-none resize-none" />
-            <button onClick={copyWA} class="min-h-11 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold shadow text-xs transition"><Icon name="whatsapp" class="mr-1" />{t('ui.share_copas_wa')}</button>
+            <button type="button" onClick={copyWA} class="min-h-11 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold shadow text-xs transition"><Icon name="whatsapp" class="mr-1" />{t('ui.share_copas_wa')}</button>
           </div>
         </div>
       </div>

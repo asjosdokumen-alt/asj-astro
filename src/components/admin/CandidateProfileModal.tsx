@@ -381,7 +381,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
       <div class="glass-panel p-6 rounded-[2rem] w-full max-w-2xl max-h-[90vh] u-scroll-area relative">
         {/* Glyph-nya `aria-hidden`, jadi tanpa `aria-label` tombol ini tidak
             punya nama sama sekali di accessibility tree — diukur 2026-10-08. */}
-        <button onClick={onClose} aria-label={t('button.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
+        <button type="button" onClick={onClose} aria-label={t('button.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center absolute top-4 right-5 text-slate-400 hover:text-white z-[100]">
           <Icon name="times" class="text-2xl" />
         </button>
 
@@ -474,7 +474,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
             </div>
 
             {/* 3. Edit Data Cepat */}
-            <button
+            <button type="button"
               onClick={() => {
                 // Row mentah supaya EditCandidateModal (A03) ter-prefill penuh:
                 // gender/usia/tempatLahir/tglLahir/tb/bb/jftText/sswText/catatanInt.
@@ -486,7 +486,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
             </button>
 
             {/* 3b. Pemberkasan & Biodata */}
-            <button
+            <button type="button"
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('openPemberkasan', { detail: { wa: data.wa, nama: data.nama, candidate: data } }));
               }}
@@ -501,25 +501,25 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                 <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">{t('ui.doc_preview_title')}</h3>
                 <div class="flex flex-wrap gap-2">
                   {data.foto && (
-                    <button onClick={() => setPreview({ url: data.foto!, title: t('ui.open_photo') })}
+                    <button type="button" onClick={() => setPreview({ url: data.foto!, title: t('ui.open_photo') })}
                       class="px-3 py-2 bg-slate-700 hover:bg-sky-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
                       <Icon name="camera" class="text-xs" /> {t('ui.open_photo')}
                     </button>
                   )}
                   {data.cvUrl && (
-                    <button onClick={() => setPreview({ url: data.cvUrl!, title: t('ui.open_cv') })}
+                    <button type="button" onClick={() => setPreview({ url: data.cvUrl!, title: t('ui.open_cv') })}
                       class="px-3 py-2 bg-slate-700 hover:bg-sky-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
                       <Icon name="file-alt" class="text-xs" /> {t('ui.open_cv')}
                     </button>
                   )}
                   {data.jftUrl && (
-                    <button onClick={() => setPreview({ url: data.jftUrl!, title: t('ui.open_jft') })}
+                    <button type="button" onClick={() => setPreview({ url: data.jftUrl!, title: t('ui.open_jft') })}
                       class="px-3 py-2 bg-slate-700 hover:bg-sky-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
                       <Icon name="file-pdf" class="text-xs" /> {t('ui.open_jft')}
                     </button>
                   )}
                   {data.sswUrl && (
-                    <button onClick={() => setPreview({ url: data.sswUrl!, title: t('ui.open_ssw') })}
+                    <button type="button" onClick={() => setPreview({ url: data.sswUrl!, title: t('ui.open_ssw') })}
                       class="px-3 py-2 bg-slate-700 hover:bg-sky-600 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
                       <Icon name="file-pdf" class="text-xs" /> {t('ui.open_ssw')}
                     </button>
@@ -551,7 +551,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
             </div>
 
             {/* 5. Download Full Biodata */}
-            <button
+            <button type="button"
               onClick={handleDownloadBiodata}
               class="min-h-11 w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
             >
@@ -575,7 +575,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
             {/* 6. Evaluasi Kandidat (VIP Toggle) */}
             <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
               <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">{t('ui.cand_eval')}</h3>
-              <button
+              <button type="button"
                 onClick={() => setIsVIP(!isVIP)}
                 class={`min-h-11 w-full px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 ${
                   isVIP
@@ -615,7 +615,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
 
             {/* 8. Simpan + Footer */}
             <div class="flex flex-col gap-2 mt-4 pt-4 border-t border-slate-700/50">
-              <button
+              <button type="button"
                 onClick={handleSaveCatatan}
                 disabled={saving}
                 class="min-h-11 w-full px-4 py-2.5 bg-pink-600 hover:bg-pink-500 disabled:opacity-60 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
@@ -631,7 +631,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                 >
                   <Icon name="whatsapp" /> {t('ui.cv_wa')}
                 </a>
-                <button onClick={onClose} class="min-h-11 flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition">
+                <button type="button" onClick={onClose} class="min-h-11 flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-bold transition">
                   {t('ui.close')}
                 </button>
               </div>

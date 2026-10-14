@@ -190,7 +190,7 @@ export default function AdminPanel() {
           button below, has had `lg:hidden` all along; the inconsistency was one
           attribute wide. (The duplicate `inline-flex items-center` in the old
           class list is dropped here too.) */}
-      <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: 30 }} class="min-h-11 sticky top-2 ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-colors duration-200 border border-slate-700 hover:border-red-500 inline-flex items-center gap-1.5 lg:hidden">
+      <button type="button" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ zIndex: 30 }} class="min-h-11 sticky top-2 ml-1 mb-2 px-3 py-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-colors duration-200 border border-slate-700 hover:border-red-500 inline-flex items-center gap-1.5 lg:hidden">
         <Icon name="bars" /> {t("ui.menu")}
       </button>
 
@@ -228,10 +228,10 @@ export default function AdminPanel() {
               around an 18px glyph rendered 24x32 — under WCAG 2.5.8 AA's 24px on
               the width, and the only control that closes the mobile sidebar.
               min-w/min-h put the 44px floor on the button itself. */}
-          <button onClick={() => setSidebarOpen(false)} class="text-slate-400 hover:text-white p-1 min-w-11 min-h-11 inline-flex items-center justify-center transition lg:hidden" aria-label={t("ui.close")}><Icon name="times" class="text-lg" /></button>
+          <button type="button" onClick={() => setSidebarOpen(false)} class="text-slate-400 hover:text-white p-1 min-w-11 min-h-11 inline-flex items-center justify-center transition lg:hidden" aria-label={t("ui.close")}><Icon name="times" class="text-lg" /></button>
         </div>
         {TABS.map((tab) => (
-          <button
+          <button type="button"
             key={tab.id}
             onClick={() => { setActiveTab(tab.id); setSidebarOpen(false); }}
             class={`min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 ${
@@ -245,10 +245,10 @@ export default function AdminPanel() {
           </button>
         ))}
         <div class="flex-1"></div>
-        <button onClick={() => aiCopilot.show({ wa: '', nama: '' })} class="min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 bg-violet-900/50 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/30" title="AI HR Copilot">
+        <button type="button" onClick={() => aiCopilot.show({ wa: '', nama: '' })} class="min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 bg-violet-900/50 text-violet-400 hover:bg-violet-600 hover:text-white border border-violet-500/30" title="AI HR Copilot">
           <Icon name="robot" class="w-5 text-center" /> <span>AI HR</span>
         </button>
-        <button onClick={() => setActiveTab('config')} class={`min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 mt-auto ${activeTab === 'config' ? 'bg-red-600 text-white ' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'}`} aria-label={t('ui.settings')}>
+        <button type="button" onClick={() => setActiveTab('config')} class={`min-h-11 w-full px-3 py-2.5 rounded-lg text-sm font-bold transition text-left flex items-center gap-2 mt-auto ${activeTab === 'config' ? 'bg-red-600 text-white ' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'}`} aria-label={t('ui.settings')}>
           <Icon name="cog" class="w-5 text-center" /> <span>{t('ui.settings')}</span>
         </button>
       </aside>
