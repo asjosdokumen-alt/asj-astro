@@ -264,9 +264,20 @@ async function main() {
   } else if (existsSync(BASELINE_PATH)) {
     const baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
     const regressed = [];
+    const unmeasured = [];
     for (const r of results) {
       const was = baseline.entries?.[r.entry];
-      if (typeof was !== 'number') continue;
+      // A NEW entry point has no baseline number, and `continue`-ing past it was
+      // a HOLE, measured 2026-10-19: `kontak.js` (81.4 KB) was added after the
+      // baseline was recorded and the ratchet never looked at it — a whole
+      // deployed function, invisible to the gate that exists to measure deployed
+      // code. Zero-to-81 KB is infinite growth by the ratchet's own arithmetic,
+      // so it is reported instead of skipped. The fix is one command, but it has
+      // to be a deliberate one: read what the entry bundles first.
+      if (typeof was !== 'number') {
+        unmeasured.push(r.entry);
+        continue;
+      }
       const grew = r.kb - was;
       // BOTH conditions must hold: the relative tolerance alone cries wolf on
       // small entries (see TOLERANCE_FLOOR_KB), the absolute floor alone would
@@ -290,6 +301,15 @@ async function main() {
       failures.push(
         `bundle size regressed beyond ${(TOLERANCE * 100).toFixed(0)}% and ${TOLERANCE_FLOOR_KB} KB:\n      ` +
           regressed.join('\n      '),
+      );
+    }
+    if (unmeasured.length) {
+      failures.push(
+        `new entry point(s) with no baseline number: ${unmeasured.join(', ')}` +
+          '\n      A new function is new deployed code — every request to it pays the parse, and' +
+          '\n      nothing in this ratchet would have noticed. Measure it, then record it:' +
+          '\n        node scripts/ci/bundle-size.mjs --why=<entry>    (what it bundles)' +
+          '\n        node scripts/ci/bundle-size.mjs --update-baseline',
       );
     }
     for (const n of notes) console.log(`  note: ${n}`);

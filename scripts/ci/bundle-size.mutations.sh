@@ -26,6 +26,8 @@
 #       of the two conditions decides — a lone OK-GREEN on P5 would also be
 #       satisfied by a gate that simply ignores the ratchet)
 #   P6  the ratchet baseline is missing                      -> KILL (found by this battery)
+#   P7  a NEW entry point with no baseline number             -> KILL (found 2026-10-19:
+#       `kontak.js` shipped at 81.4 KB and the ratchet skipped it)
 #
 # P2/P5 are the ones most likely to be "fixed" by a future reader who sees only
 # the failure cases. They are deliberate: a declared catch-all is SUPPOSED to be
@@ -133,8 +135,20 @@ trap cleanup EXIT
 
 # ── 2 · Self-heal the harness's own litter, and SAY SO ──────────────────────
 if ! diff -q "$BAK/gate.orig" "$GATE" >/dev/null 2>&1; then
-  echo "NOTE: $GATE was dirty on entry (a previous run left it mutated)."
-  echo "      Restoring the pristine copy from git HEAD before measuring."
+  # NEVER overwrite the working-tree copy without preserving it. Measured
+  # 2026-10-19: this battery was run while an edit to the gate was still
+  # UNCOMMITTED, the restore from `git show HEAD:` replaced it, and the edit
+  # vanished — while the run printed only "NOTE: was dirty on entry", which
+  # reads like routine self-healing. The consequences were silent and wrong in
+  # both directions: the new case (P7) reported SURVIVED against a gate that no
+  # longer contained the branch it was testing, and the developer's work was
+  # gone. Self-healing still has to work in CI, so the dirty copy is kept and
+  # its path printed instead of being discarded.
+  cp "$GATE" "$BAK/gate.dirty"
+  echo "NOTE: $GATE differs from git HEAD (uncommitted edit, or a previous"
+  echo "      aborted run). Saved to $BAK/gate.dirty, then restored from HEAD."
+  echo "      If that copy is YOUR work, commit it and re-run: the cases below"
+  echo "      measure the HEAD version, not the working tree."
   cp "$BAK/gate.orig" "$GATE"
 fi
 sweep() {
@@ -284,6 +298,30 @@ cp "$BAK/baseline.orig" "$BASELINE"
 # what proves the floor — not the percentage — is what let P5 through.
 cp "$NEAR" "$BASELINE"
 check "P5b the same growth fails with the floor removed (proves the floor decides)" kill --tolerance-floor 0
+cp "$BAK/baseline.orig" "$BASELINE"
+
+# ── P7 · a NEW entry point is not invisible ────────────────────────────────
+# Found 2026-10-19 by measuring the commit that carried the baseline itself:
+# `kontak.js` (81.4 KB) was added afterwards and the ratchet `continue`d past it,
+# because a missing key was treated as "nothing to compare". A whole deployed
+# function — every request to it pays the parse — and the gate that exists to
+# measure deployed code never looked. Zero-to-81 KB is infinite growth by the
+# ratchet's own arithmetic, so it is now a failure.
+#
+# The case is built by DELETING one key from a copy of the real baseline, which
+# is exactly the shape the gate sees on the day a new entry lands.
+MISSING=$BAK/fake-baseline-missing.json
+node -e "
+const fs=require('fs');
+const real=JSON.parse(fs.readFileSync('$BASELINE','utf8'));
+const keys=Object.keys(real.entries||{});
+const drop=keys[keys.length-1];
+delete real.entries[drop];
+fs.writeFileSync('$MISSING',JSON.stringify(real));
+console.error('  (P7 drops '+drop+' from the baseline)');
+"
+cp "$MISSING" "$BASELINE"
+check "P7  an entry with no baseline number is caught, not skipped" kill
 cp "$BAK/baseline.orig" "$BASELINE"
 
 # ── P6 · a missing baseline is refused, not silently skipped ────────────────
