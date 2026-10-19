@@ -117,3 +117,87 @@ describe('surface wrapper - AppError rejections carry their HTTP status (regress
     expect(res.statusCode).toBe(404);
   });
 });
+
+/* ── L0 (CDN) — the header must reach the WIRE, not just exist as a constant ──
+ *
+ * `surfaces/public.ts` carried PUBLIC_CACHE_HEADERS since Phase 5 and
+ * `chaos.test.ts` asserted its TEXT — which stayed green while nothing applied
+ * it. Measured 2026-10-19 on production: two identical public reads, both
+ * `Cache-Status: "Netlify Edge"; fwd=miss`, both `Cache-Control: no-cache`.
+ * So these cases assert the RESPONSE OBJECT the platform actually receives.
+ *
+ * The stub action map keeps this a unit test: no Supabase, no catalog.
+ */
+const CACHE_POLICY = {
+  cacheControl: (action: string, sessionToken?: string) =>
+    action === 'getAppData' && !sessionToken ? 'public, s-maxage=60, stale-while-revalidate=86400' : null,
+};
+const cachedHandler = makeSurfaceHandler(
+  {
+    getAppData: async () => ({ success: true, jobs: [] }),
+    failSomething: async () => ({ success: false, message: 'gagal' }),
+  },
+  ['getAppData', 'failSomething'],
+  CACHE_POLICY,
+);
+
+describe('surface wrapper - L0 cache headers reach the response', () => {
+  it('anonymous getAppData is labelled cacheable, with Vary: Origin', async () => {
+    const res = await cachedHandler({ body: JSON.stringify({ action: 'getAppData', payload: ['public'] }) });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['Cache-Control']).toContain('s-maxage=60');
+    expect(res.headers['CDN-Cache-Control']).toContain('s-maxage=60');
+    // corsHeaders echoes an allow-listed Origin; without Vary a shared cache can
+    // serve one origin's ACAO to another and the browser blocks the response.
+    expect(res.headers.Vary).toContain('Origin');
+  });
+
+  it('a session token switches caching OFF, including a token in the query string', async () => {
+    const byBody = await cachedHandler({
+      body: JSON.stringify({ action: 'getAppData', payload: ['public'], sessionToken: 'tok' }),
+    });
+    expect(byBody.headers['Cache-Control']).toBeUndefined();
+
+    // sessionTokenFrom() also reads `q.sessionToken`; a GET must not become
+    // cacheable just because the token travelled in the URL.
+    const byQuery = await cachedHandler({
+      body: JSON.stringify({ action: 'getAppData', payload: ['public'] }),
+      queryStringParameters: { sessionToken: 'tok' },
+    });
+    expect(byQuery.headers['Cache-Control']).toBeUndefined();
+  });
+
+  it('failures are never cached, even when the policy would allow the action', async () => {
+    const res = await cachedHandler({ body: JSON.stringify({ action: 'failSomething', payload: [] }) });
+    expect(res.statusCode).toBe(400);
+    expect(res.headers['Cache-Control']).toBeUndefined();
+  });
+
+  it('a surface without a policy keeps the platform default (no cache header)', async () => {
+    const res = await handler({ body: JSON.stringify({ action: 'definitelyNotAnAction', payload: [] }) });
+    expect(res.headers['Cache-Control']).toBeUndefined();
+  });
+
+  /* END-TO-END WIRING, not the constant again.
+   *
+   * The two cases above prove the WRAPPER applies a policy. They would both stay
+   * green if `get-app-data.js` stopped passing one — which is precisely the
+   * failure this session found (a declared strategy, a green test on its text,
+   * and no header on the wire for months). So this drives the REAL entry point
+   * with a real Request, the way Netlify does: query string in, Response out.
+   *
+   * No Supabase is contacted: without credentials `handleGetAppData` returns the
+   * demo payload, which is enough — the header decision happens in the wrapper. */
+  it('entry point get-app-data: an anonymous GET really carries the cache header', async () => {
+    const { default: entry } = await import('../get-app-data.js');
+    const req = new Request(
+      'https://asjastro.netlify.app/.netlify/functions/get-app-data?action=getAppData&payload=' +
+        encodeURIComponent(JSON.stringify(['public'])),
+      { method: 'GET' },
+    );
+    const res = await (entry as (r: Request) => Promise<Response>)(req);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control') || '').toContain('s-maxage=60');
+    expect(res.headers.get('vary') || '').toContain('Origin');
+  });
+});

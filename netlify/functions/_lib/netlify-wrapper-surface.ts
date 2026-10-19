@@ -111,12 +111,27 @@ export function applyDbOutage(
  *
  * @param actionsMap      One surface's action table, or an array of tables.
  * @param allowedActions  Action names this entry point accepts.
+ * @param policy          Optional L0 (CDN) policy. See SurfaceCachePolicy.
  */
+export interface SurfaceCachePolicy {
+  /**
+   * The `Cache-Control` value this response may be stored with, or `null` for
+   * "do not cache".
+   *
+   * Called for EVERY response, so it must refuse anything that is not safe to
+   * share: a private per-session payload, a write, a failure. The wrapper only
+   * applies it to a 200, and never when the caller supplied a session token —
+   * see the call site.
+   */
+  cacheControl?: (action: string, sessionToken: string | undefined) => string | null;
+}
+
 export function makeSurfaceHandler(
   actionsMap:
     | Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>>
     | Array<Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>>>,
   allowedActions: string[],
+  policy?: SurfaceCachePolicy,
 ) {
   const allowedSet = new Set(allowedActions);
   const maps = Array.isArray(actionsMap) ? actionsMap : [actionsMap];
@@ -222,9 +237,14 @@ export function makeSurfaceHandler(
     };
 
     let out: unknown;
+    // Hoisted out of the call below: the L0 cache policy needs to know whether
+    // this request carried a session, and it must be the SAME value the
+    // dispatcher saw (query string included — `sessionTokenFrom` reads
+    // `q.sessionToken` too, so a token smuggled into a GET is still a token).
+    const sessionToken = sessionTokenFrom(event, body) ?? '';
     try {
       out = await runWithContext(reqContext, () =>
-        handleAction(body.action ?? 'ping', body.payload || body.args, sessionTokenFrom(event, body) ?? '', {
+        handleAction(body.action ?? 'ping', body.payload || body.args, sessionToken, {
           ip: clientIp(event) ?? undefined,
           resolve,
         }),
@@ -256,6 +276,33 @@ export function makeSurfaceHandler(
       backpressureHeaders(baseHeaders, out),
       reqContext.dbOutage === true,
     );
+    // ── L0 (CDN) — the only place a cache header can reach the wire ──────────
+    //
+    // `surfaces/public.ts` declared PUBLIC_CACHE_HEADERS ("s-maxage=60,
+    // stale-while-revalidate=86400") since Phase 5 and NOTHING ever applied
+    // them: `withCacheHeaders()` had no caller, and this wrapper built its
+    // response from corsHeaders/backpressureHeaders only. So every public read
+    // answered Netlify's default `Cache-Control: no-cache`, and the CDN
+    // forwarded each request to Supabase. Measured 2026-10-19 against
+    // production, two identical POSTs: `Cache-Status: "Netlify Edge";
+    // fwd=miss` both times, 112 927 B of PostgREST JSON each.
+    //
+    // ⚠ A cached response must never carry a session's data. Two guards, and
+    // both are load-bearing: the policy refuses when a token was supplied, and
+    // this code applies it to a 200 only. `Vary: Origin` is required because
+    // corsHeaders echoes the caller's Origin when it is allow-listed — without
+    // it a shared cache can hand one origin's ACAO to another and the browser
+    // blocks the response.
+    const cacheControl = sessionToken ? null : (policy?.cacheControl?.(body.action ?? '', undefined) ?? null);
+    if (cacheControl && adjusted.statusCode === 200) {
+      adjusted.headers = {
+        ...adjusted.headers,
+        'Cache-Control': cacheControl,
+        'CDN-Cache-Control': cacheControl,
+        Vary: 'Origin, Accept-Encoding',
+      };
+    }
+
     const response = {
       statusCode: adjusted.statusCode,
       headers: adjusted.headers,

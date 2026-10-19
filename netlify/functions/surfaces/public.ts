@@ -14,6 +14,7 @@
  */
 import * as catalog from '../contexts/catalog';
 import { cache, genKey } from '../_lib/kernel/cache';
+import type { SurfaceCachePolicy } from '../_lib/netlify-wrapper-surface';
 
 /** Cache headers for public surface responses (Phase 5) */
 export const PUBLIC_CACHE_HEADERS: Record<string, string> = {
@@ -24,15 +25,29 @@ export const PUBLIC_CACHE_HEADERS: Record<string, string> = {
 };
 
 /**
- * Wrap a handler result with CDN cache headers.
- * Used by public surface to enable CDN caching.
+ * The L0 policy this surface hands to `makeSurfaceHandler`.
+ *
+ * WHY IT LIVES HERE AND IS APPLIED THERE: a Netlify function handler returns
+ * `{ statusCode, headers, body }` — a plain object — so a helper that builds a
+ * `Response` can never put a header on the wire. The previous
+ * `withCacheHeaders()` did exactly that and had ZERO callers, which is why the
+ * declared strategy above never took effect (measured 2026-10-19: two identical
+ * public reads, both `Cache-Status: fwd=miss`, `Cache-Control: no-cache`).
+ *
+ * `getAppData` is the only anonymous, identical-for-everyone read on this
+ * surface — the hottest path in the system (every visit to `/` and `/loker`
+ * costs a PostgREST round-trip of ~113 KB). Everything else either needs a
+ * session or is a write, and `sessionToken` is checked by the wrapper before
+ * this policy is even consulted.
+ *
+ * ⚠ THE CLIENT MUST USE GET. Netlify's CDN caches GET/HEAD only; a POST
+ * response is never stored however it is labelled. `src/lib/publicData.ts`
+ * therefore issues a GET, and its suite pins that.
  */
-export function withCacheHeaders(data: unknown, extraHeaders?: Record<string, string>): Response {
-  return new Response(JSON.stringify(data), {
-    status: 200,
-    headers: { ...PUBLIC_CACHE_HEADERS, ...extraHeaders },
-  });
-}
+export const PUBLIC_CACHE_POLICY: SurfaceCachePolicy = {
+  cacheControl: (action, sessionToken) =>
+    action === 'getAppData' && !sessionToken ? PUBLIC_CACHE_HEADERS['Cache-Control'] : null,
+};
 
 export const PUBLIC_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   getAppData: async (payload, sessionToken) => {

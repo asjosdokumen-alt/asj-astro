@@ -9,7 +9,7 @@
  */
 import { adapt } from './_lib/netlify-adapter.js';
 import { makeSurfaceHandler } from './_lib/netlify-wrapper-surface.js';
-import { PUBLIC_ACTIONS } from './surfaces/public.js';
+import { PUBLIC_ACTIONS, PUBLIC_CACHE_POLICY } from './surfaces/public.js';
 export default adapt(makeSurfaceHandler(PUBLIC_ACTIONS, [
   'getAppData', 'getMonthlyReport',
-]));
+], PUBLIC_CACHE_POLICY));
