@@ -1342,32 +1342,32 @@ export const translations: Record<Lang, Record<string, string>> = {
   // ── Mitra Kami (slot mitra MoU — model sponsor) ───────────────────────
   // Owner's request 2026-09-27. ASJ is a small LPK without SO status, so the
   // departure is executed by partner LPKs/PTs (SOs) under an MoU. This section
-  // shows WHERE that authority lives, which is the honest answer to "then who
-  // sends me?" — and the one place the network is visible to a prospective
-  // partner.
+  // states WHERE that authority lives, which is the honest answer to "then who
+  // sends me?".
   //
-  // The names WERE slots; the owner supplied the six MoU partners 2026-09-29, so
-  // each now has its own key. `profile.mitra_slot_pending` STAYS: it is the
-  // rendering for a slot with no name yet, and a seventh partner would take it —
-  // a key removed because nothing currently renders it is a key the next slot
-  // has to reinvent.
-  //
-  // The Indonesian value is the partner's own LEGAL NAME, not a translation:
-  // a company called "PT Flora Talent Indonesia" is that name in both languages.
-  // The JP dictionary carries the same string for the same reason a proper noun
-  // is not translated — see that file for the note.
+  // ⚠ THE PARTNER NAMES ARE NO LONGER IN THIS DICTIONARY (2026-10-19). The
+  // owner's order: "mitra kami tolong hide saja soalnya rahasia perusahaan".
+  // Six `profile.mitra_N_name` keys and `profile.mitra_slot_pending` were
+  // deleted, not merely unrendered — this dictionary is bundled into the
+  // browser, so a name left here stays readable in the JS no matter what the
+  // markup does. `src/lib/partners.ts` keeps the roster as the e2e's
+  // "must not be published" list. Restoring any of these keys needs a NEW owner
+  // ruling; the old comment that argued for keeping `slot_pending` for a seventh
+  // slot is superseded by that order, not by an oversight.
   "profile.mitra_title": "Mitra Kami",
-  "profile.mitra_desc": "Keberangkatan ke Jepang dijalankan bersama mitra LPK dan PT (SO) berikut.",
+  "profile.mitra_desc": "Keberangkatan ke Jepang dijalankan bersama mitra LPK dan PT (SO).",
   "profile.mitra_note": "Kami belum berstatus SO, sehingga keberangkatan peserta ke Jepang dilaksanakan oleh mitra LPK dan PT (SO) yang telah menandatangani MoU dengan kami.",
-  "profile.mitra_kind_gloss": "Keterangan: badge di bawah nama adalah STATUS IZIN keberangkatan (SO = Sending Organization, berwenang memberangkatkan), bukan bentuk badan hukum. Nama mitra tetap memakai sebutan yang mereka pakai sendiri, sehingga ada mitra yang berbunyi \"LPK\" namun berizin SO.",
   "profile.mitra_cta_desc": "Ingin menjadi mitra penempatan (MoU) kami? Silakan hubungi kami melalui bagian Kontak di bawah.",
-  "profile.mitra_slot_pending": "Slot belum diisi",
-  "profile.mitra_1_name": "PT Flora Talent Indonesia",
-  "profile.mitra_2_name": "PT Human Mandiri Indonesia",
-  "profile.mitra_3_name": "LPK Japanesia",
-  "profile.mitra_4_name": "PT JIPA",
-  "profile.mitra_5_name": "LPK Jinzai Servis Indonesia",
-  "profile.mitra_6_name": "PT Hibiki Cendekia Mandala",
+  // ── Nama mitra: DIHAPUS 2026-10-19, perintah pemilik ────────────────────
+  // "mitra kami tolong hide saja soalnya rahasia perusahaan". Enam kunci
+  // `profile.mitra_N_name` dan `profile.mitra_slot_pending` dibuang, BUKAN
+  // sekadar tidak dirender: kamus ini ikut ter-bundle ke browser, jadi nama
+  // yang tinggal di sini tetap bisa dibaca siapa pun lewat JS — "disembunyikan"
+  // dari markup saja tidak menyembunyikan apa pun.
+  //
+  // Daftarnya masih ada di `src/lib/partners.ts` (dipakai `e2e:landing` sebagai
+  // daftar "tidak boleh terbit"). Jangan kembalikan kunci-kunci ini tanpa
+  // keputusan pemilik yang baru.
 
   // ── Kata Alumni (testimonial model, added 2026-09-29) ──────────────────
   // The review QUOTES are not here yet — they arrive with the owner's real

@@ -34,8 +34,8 @@
  *
  * ── WHY .tsx AND NOT .astro ────────────────────────────────────────────────
  * It iterates, and iterating inside an `.astro` template breaks the indexer's
- * zero-unresolved invariant — the same reason recorded in CheckList.tsx,
- * PartnerGrid.tsx and ReviewGrid.tsx.
+ * zero-unresolved invariant — the same reason recorded in CheckList.tsx and
+ * ReviewGrid.tsx.
  */
 import type { FaqEntry } from '../../lib/faq';
 

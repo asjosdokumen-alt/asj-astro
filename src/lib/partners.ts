@@ -1,13 +1,27 @@
 /**
- * partners.ts — the MoU partner list for the "Mitra Kami" section.
+ * partners.ts — the MoU partner roster.
  *
- * WHY THIS FILE EXISTS
- * --------------------
+ * ⚠ NOT PUBLISHED SINCE 2026-10-19. This file is no longer imported by any page
+ * — `src/pages/index.astro` stopped rendering `<PartnerGrid>` on the owner's
+ * order: "mitra kami tolong hide saja soalnya rahasia perusahaan. kalau kerja
+ * sama banyak so untuk cari rekan so baru susah soalnya kelihatan di profil
+ * perusahaan sudah banyak rekan so". The roster is a company secret; a visible
+ * list makes it harder to recruit new SO partners, because a prospect can count
+ * how many already exist.
+ *
+ * WHAT THIS FILE IS FOR NOW: it is the list `e2e/test-landing.mjs` reads to
+ * assert that NONE of these names appears in `#mitra`. That is why it is kept
+ * rather than deleted — an absence check with an empty list proves nothing.
+ * Do not import it into a page without a new owner ruling.
+ *
+ * WHY THIS FILE EXISTS (original, 2026-09-27)
+ * -------------------------------------------
  * ASJ is a small LPK WITHOUT SO (Sending Organization) status. Owner ruling
  * 2026-09-27: the site must say so plainly, and must show WHERE the departure
  * authority actually lives — with the partner LPKs and PTs (SOs) that ASJ has
  * signed MoUs with. A page that only apologises for not being an SO leaves the
  * reader with "so who does send me?", and the honest answer is this list.
+ * (That reasoning still stands for the RELATIONSHIP; only the roster is hidden.)
  *
  * ── THE SLOTS ARE NOW FILLED, AND WHERE THE NAMES CAME FROM ─────────────────
  * The section was built 2026-09-27 with six empty slots whose names were to be
@@ -99,8 +113,16 @@ export interface Partner {
    * that is present and blank, so it would render an empty card and read as a
    * rendering bug. `null` is the explicit "not yet known" state the component
    * branches on.
+   *
+   * ⚠ `key` IS GONE (2026-10-19). Each name used to carry an i18n key
+   * (`profile.mitra_N_name`) so the JP page could render the same proper noun.
+   * Those keys were deleted from BOTH dictionaries when the roster was hidden —
+   * the dictionary ships to the browser, so a key left behind keeps the name
+   * readable in the JS. `text` stays because it is the name this list exists to
+   * keep OUT of the page, and `e2e:landing` reads it as the "must not appear"
+   * set. If the grid is ever restored, the keys come back with it.
    */
-  name: null | { key: string; text: string };
+  name: null | { text: string };
   /** Partner category — see PartnerKind. */
   kind: PartnerKind;
   /**
@@ -147,7 +169,7 @@ export interface Partner {
 export const PARTNERS: Partner[] = [
   {
     slot: 1,
-    name: { key: 'profile.mitra_1_name', text: 'PT Flora Talent Indonesia' },
+    name: { text: 'PT Flora Talent Indonesia' },
     // LPK — CORRECT, and the one entry that stays. Its own site declares no
     // P3MI and no SO: "lembaga pelatihan dan penyalur tenaga kerja resmi di
     // bawah YS Talent Japan". No SO licence number appears anywhere on it. This
@@ -158,7 +180,7 @@ export const PARTNERS: Partner[] = [
   },
   {
     slot: 2,
-    name: { key: 'profile.mitra_2_name', text: 'PT Human Mandiri Indonesia' },
+    name: { text: 'PT Human Mandiri Indonesia' },
     // SO — CORRECTED 2026-09-30 from LPK. Its own site: "dengan nama Gunamandiri
     // Paripurna, kami juga telah resmi memperoleh izin P3MI dari pemerintah
     // Indonesia dan menjalankan bisnis penempatan tenaga kerja ke luar negeri."
@@ -174,7 +196,7 @@ export const PARTNERS: Partner[] = [
   },
   {
     slot: 3,
-    name: { key: 'profile.mitra_3_name', text: 'LPK Japanesia' },
+    name: { text: 'LPK Japanesia' },
     // SO — unchanged, now with the citation. Its own site: "ジャパネシア送り出し
     // 機関はインドネシア国内から認定された送出し機関として" ("recognised by the
     // Indonesian government as a sending organisation"). 送出し機関 = SO.
@@ -186,7 +208,7 @@ export const PARTNERS: Partner[] = [
   },
   {
     slot: 4,
-    name: { key: 'profile.mitra_4_name', text: 'PT JIPA' },
+    name: { text: 'PT JIPA' },
     // SO — CORRECTED 2026-09-30 from LPK. Its own site lists "Sending
     // Organization (SO) JIPA P3MI ... PT. Jaya Indonesia Pandu Abhipraya, yang
     // mempunyai izin resmi dari Pemerintah Indonesia". JIPA is the LPK arm (LPK
@@ -198,7 +220,7 @@ export const PARTNERS: Partner[] = [
   },
   {
     slot: 5,
-    name: { key: 'profile.mitra_5_name', text: 'LPK Jinzai Servis Indonesia' },
+    name: { text: 'LPK Jinzai Servis Indonesia' },
     // SO — unchanged. Its own site carries an explicit licence: "送り出し機関
     // 許可番号（SO)： 2/4276/HK.03.01/X/2023" plus OTIT registration IDN000431.
     // The strongest evidence in this list — an actual SO permit number.
@@ -208,7 +230,7 @@ export const PARTNERS: Partner[] = [
   },
   {
     slot: 6,
-    name: { key: 'profile.mitra_6_name', text: 'PT Hibiki Cendekia Mandala' },
+    name: { text: 'PT Hibiki Cendekia Mandala' },
     // SO — CORRECTED 2026-09-30 from LPK. The site's own meta description reads
     // "PT Hibiki Cendekia Mandala adalah P3MI resmi yang menyediakan pelatihan
     // bahasa Jepang dan penempatan kerja legal ke Jepang" — a P3MI placement

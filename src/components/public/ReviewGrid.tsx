@@ -16,10 +16,10 @@
  * ── WHY .tsx AND NOT .astro ────────────────────────────────────────────────
  * It iterates, and iterating inside an `.astro` template breaks the indexer's
  * zero-unresolved invariant — see the long note in IconTileGrid.tsx and the same
- * reasoning in PartnerGrid.tsx.
+ * reasoning in CheckList.tsx.
  *
  * ── WHY THE DRIFT IS ON THE <ul>, NOT THE <li> ─────────────────────────────
- * Same rule as PartnerGrid: a CSS animation on `transform` overrides a
+ * Same rule as CheckList: a CSS animation on `transform` overrides a
  * `transition` on the same property of the SAME element, so the scroll-linked
  * transform must live on the container's children, leaving each card's own
  * hover transform free (motion.css §9d, measured).

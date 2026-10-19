@@ -9,7 +9,6 @@ import SectionTitle from '../components/public/SectionTitle.astro';
 import Card from '../components/public/Card.astro';
 import IconTileGrid from '../components/public/IconTileGrid.tsx';
 import PersonGrid from '../components/public/PersonGrid.tsx';
-import PartnerGrid from '../components/public/PartnerGrid.tsx';
 import ReviewGrid from '../components/public/ReviewGrid.tsx';
 import FaqList from '../components/public/FaqList.tsx';
 import HistoryTimeline from '../components/public/HistoryTimeline.tsx';
@@ -49,7 +48,6 @@ import {
   WHY_JAPAN,
   WHY_JAPAN_TIP,
 } from '../lib/companyProfile';
-import { PARTNERS } from '../lib/partners';
 import { REVIEWS, REVIEW_SOURCE } from '../lib/testimonials';
 import { FAQ } from '../lib/faq';
 import { GALLERY } from '../lib/gallery';
@@ -655,24 +653,30 @@ import { GALLERY } from '../lib/gallery';
             ke jepang secara langsung tapi kami mempunyai banyak rekan MoU lpk
             dan pt so".
 
+         ⚠ THE PARTNER CARDS WERE REMOVED 2026-10-19, AT THE OWNER'S ORDER.
+         Verbatim: "mitra kami tolong hide saja soalnya rahasia perusahaan.
+         kalau kerja sama banyak so untuk cari rekan so baru susah soalnya
+         kelihatan di profil perusahaan sudah banyak rekan so". So the NAMES and
+         LOGOS are gone — that list is a company secret, and publishing it makes
+         it harder to recruit new SO partners (a prospect can see how many
+         already exist).
+
+         WHAT STAYS, AND WHY IT IS NOT A HALF-DELETED SECTION. The two sentences
+         that remain are the ones the section existed to deliver: ASJ is not an
+         SO, departures are run by MoU partners (a legal fact a prospective
+         student must know), and "want to be our partner? contact us" (the CTA
+         that the hidden list was competing with). A reader now learns the
+         relationship without learning the roster. Do NOT reintroduce names
+         without a NEW owner ruling — and note that `src/lib/partners.ts` still
+         holds the list, because the e2e check uses it as the "must not be
+         published" list.
+
          WHY IT SITS LAST, ABOVE CONTACT. The page's argument runs: who we are →
          what we teach → where that leads → who we are (team) → here is the
          network that actually departs you → talk to us. Placing the partners
          immediately before the contact band means the reader who has just
          learned "ASJ is not an SO" is answered before they leave the page, and
          the contact section stays the single final action on the page.
-
-         WHY THE SLOTS WERE EMPTY, AND WHAT CHANGED — see src/lib/partners.ts.
-         The section shipped 2026-09-27 with six empty slots whose names the
-         owner would supply later; the owner supplied them 2026-09-29 and the
-         grid now shows six named partners. The empty branch is NOT dead — it is
-         the state a seventh, not-yet-named slot takes — and the grid still
-         renders the same explicit not-yet-filled copy for it.
-
-         Do NOT add a partner the owner has not named: an invented partner is a
-         false claim about a real company on the page built to earn partners'
-         trust. A name goes in only with the partner's own publication as the
-         basis (partners.ts records where each was read from).
 
          WHY THIS SECTION HAS NO `enter` VALUE THAT COLLIDES WITH THE DRIFT.
          It takes `enter="slide-left"` like its neighbours, so it enters and
@@ -683,15 +687,14 @@ import { GALLERY } from '../lib/gallery';
         titleKey="profile.mitra_title"
         title="Mitra Kami"
         descKey="profile.mitra_desc"
-        desc="Keberangkatan ke Jepang dijalankan bersama mitra LPK dan PT (SO) berikut."
+        desc="Keberangkatan ke Jepang dijalankan bersama mitra LPK dan PT (SO)."
         accent="legal"
         headingId="mitra-title"
       />
-      <!-- The sponsor-model note. It states the relationship in one sentence,
-           above the grid, so a reader who only skims the cards still learns
-           WHAT the cards are — a logo wall with no explanation is the shape
-           this section has to avoid, because it would read as "our clients"
-           rather than "the bodies that send our participants".
+      <!-- The relationship note. It is the whole point of the section now that
+           the roster is hidden: it states, in one sentence, WHAT the MoU
+           partners are and why they matter to a candidate — without naming a
+           single one.
 
            THE TRAILING CLAUSE THAT SAID THE LIST WAS STILL BEING PREPARED WAS
            REMOVED 2026-09-29, when the owner supplied the six partner names. It
@@ -710,22 +713,6 @@ import { GALLERY } from '../lib/gallery';
         class="mt-6 max-w-[70ch] text-body-sm text-fg-muted"
       >
         Kami belum berstatus SO, sehingga keberangkatan peserta ke Jepang dilaksanakan oleh mitra LPK dan PT (SO) yang telah menandatangani MoU dengan kami.
-      </p>
-      <div class="mt-8">
-        <PartnerGrid partners={PARTNERS} />
-      </div>
-      <!-- The badge gloss — ADDED 2026-09-30, at the owner's ruling.
-           The owner spotted that the six MoU partners are mostly SO, not LPK,
-           and the corrected badges left two cards reading "LPK Japanesia" with
-           an "SO" badge beside it — a contradiction on its face. The fix keeps
-           the partner's own name (a name is theirs to state) and explains what
-           the badge ASSERTS: a departure-licence standing, not a legal-entity
-           type. Sits BELOW the grid because it annotates the badges above it. -->
-      <p
-        data-lang="profile.mitra_kind_gloss"
-        class="mt-4 max-w-[70ch] text-caption text-fg-muted"
-      >
-        Keterangan: badge di bawah nama adalah STATUS IZIN keberangkatan (SO = Sending Organization, berwenang memberangkatkan), bukan bentuk badan hukum. Nama mitra tetap memakai sebutan yang mereka pakai sendiri, sehingga ada mitra yang berbunyi "LPK" namun berizin SO.
       </p>
       <p
         data-lang="profile.mitra_cta_desc"

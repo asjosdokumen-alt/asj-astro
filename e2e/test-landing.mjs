@@ -976,25 +976,25 @@ async function run() {
       }
     });
 
-    // ── L9.1 — the MoU partner grid actually names its partners ────────────
+    // ── L9.1 — the MoU partner ROSTER must not be published ────────────────
     //
-    // WHY THIS EXISTS. #mitra shipped 2026-09-27 with six EMPTY slots, so the
-    // only thing worth asserting then was that the section existed. On
-    // 2026-09-29 the owner supplied the six MoU partners and the slots were
-    // filled — at which point "the section renders" stopped describing the
-    // deliverable. A section that is present, visible and empty is exactly the
-    // state the owner asked to be rid of, and every check above passes on it.
+    // THIS CHECK WAS INVERTED 2026-10-19, and the history is the reason it can
+    // be trusted. #mitra shipped 2026-09-27 with six empty slots; on 2026-09-29
+    // the owner supplied six partner names and the slots were filled, so the
+    // check became "the page names EVERY partner the data names". On 2026-10-19
+    // the owner reversed it: "mitra kami tolong hide saja soalnya rahasia
+    // perusahaan. kalau kerja sama banyak so untuk cari rekan so baru susah
+    // soalnya kelihatan di profil perusahaan sudah banyak rekan so". The names
+    // are gone from the page AND from the i18n dictionaries (which ship to the
+    // browser), and this check now fails if any of them reappears in #mitra.
     //
-    // The rule is TWO-WAY, the same shape as the team-grid honest-absence
-    // invariant below: the page must name EVERY partner the data names, and
-    // must render the pending copy for every partner the data leaves unnamed.
-    // Reading only the "is present" side would stay green if a partner's name
-    // silently stopped rendering while its card remained.
-    //
-    // The DATA side is read from the source, not the DOM, for the reason the
-    // team check states: the gate may run against a build older than the working
-    // tree, and "does the data name a partner" is a property of the data.
-    await test(`${width}px /: the partner grid names every MoU partner in the data`, async () => {
+    // The DATA side is still read from the source, for the reason the team check
+    // states: "does the data name a partner" is a property of the data, and the
+    // gate may run against a build older than the working tree. Here that gives
+    // the check its teeth — `partners.ts` is the roster of names that must NOT
+    // be visible, so emptying the data would make the absence check vacuous.
+    // Hence MIN_NAMED below.
+    await test(`${width}px /: #mitra publishes none of the MoU partner names`, async () => {
       const d = await inspect(width);
       const { readFileSync, existsSync } = await import('node:fs');
       const { fileURLToPath } = await import('node:url');
@@ -1052,49 +1052,60 @@ async function run() {
       if (named.length < MIN_NAMED) {
         throw new Error(
           `src/lib/partners.ts names only ${named.length} partner(s) but the owner supplied ` +
-            `${MIN_NAMED} (2026-09-29). A partner leaving the list is an OWNER DECISION, not a ` +
-            `side effect of an edit — if it is intended, lower MIN_NAMED in this file and say ` +
-            `why, because otherwise this check would report a five-partner grid as correct.`,
+            `${MIN_NAMED} (2026-09-29). This check asserts those names are ABSENT from the page, ` +
+            `so an emptied roster would make it pass vacuously — the floor is what keeps the ` +
+            `absence check meaningful. A partner leaving the roster is an OWNER DECISION, not a ` +
+            `side effect of an edit; if it is intended, lower MIN_NAMED and say why.`,
         );
       }
       const section = d.mitraText ?? '';
       if (section.length < 40) {
         throw new Error(
           `#mitra rendered ${section.length} characters of visible text — too little to judge, ` +
-            `so "every partner is named" would pass vacuously. The section did not render.`,
+            `so "no partner is named" would pass vacuously. The section did not render.`,
         );
       }
-      // The rendered card count must equal the data's row count. `data-filled`
-      // is set by PartnerGrid per <li>, so this counts CARDS, not names — a card
-      // whose name silently stopped rendering still counts here and is caught by
-      // the per-name check below instead. Two different failures, two checks.
-      const cards = (d.mitraFilled ?? 0) + (d.mitraEmpty ?? 0);
-      if (cards !== rows.length) {
+      // THE ASSERTION THAT MATTERS NOW: not one partner name may appear.
+      //
+      // This is the exact inverse of the check that stood here from 2026-09-29 to
+      // 2026-10-19. The owner reversed the requirement — the roster is a company
+      // secret, and a visible list makes recruiting new SO partners harder
+      // because a prospect can count how many already exist. Flipping the check
+      // is what makes the reversal enforceable instead of a one-off edit: the
+      // data still holds the names, so a future "let me add the cards back"
+      // fails HERE rather than on a customer's screen.
+      //
+      // It is not a substring-of-the-whole-page scan on purpose: the names must
+      // be absent from #mitra, and `mitraText` is scoped to that section for the
+      // same reason the old check scoped it — a string matched anywhere on the
+      // page would be satisfied by an unrelated mention.
+      const leaked = named.filter((n) => section.includes(n));
+      if (leaked.length) {
         throw new Error(
-          `#mitra rendered ${cards} partner card(s) but the data has ${rows.length} slot(s). ` +
-            `A slot that does not render is a partner a visitor cannot see.`,
+          `${leaked.length} partner name(s) are VISIBLE in #mitra: ` +
+            `${leaked.map((n) => JSON.stringify(n)).join(', ')}. ` +
+            `The owner ordered this list hidden on 2026-10-19 (it is a company ` +
+            `secret). If the list is meant to be public again, that is an OWNER ` +
+            `DECISION — get a new ruling first, then change this check.`,
         );
       }
-      const missing = named.filter((n) => !section.includes(n));
-      if (missing.length) {
-        throw new Error(
-          `${missing.length} partner(s) are named in src/lib/partners.ts but not rendered in ` +
-            `#mitra: ${missing.map((n) => JSON.stringify(n)).join(', ')}. ` +
-            `A named partner that does not appear is the section failing at its one job — a ` +
-            `visitor cannot learn who departs them. (If the name is only cosmetically different, ` +
-            `the i18n value and the data value have drifted apart.)`,
-        );
-      }
-      const pendingRendered = d.lowered.includes('slot belum diisi');
-      const unnamed = rows.filter((r) => /name:\s*null/.test(r)).length;
-      if ((unnamed > 0) !== pendingRendered) {
-        throw new Error(
-          `the partner honest-absence invariant is broken — the data and the page disagree. ` +
-            `DATA: ${rows.length} slot(s), ${unnamed} unnamed. PAGE: ${
-              pendingRendered ? 'prints' : 'does not print'
-            } the slot-pending copy. These must agree (data leaves a slot unnamed ` +
-            `<=> the page prints the pending copy).`,
-        );
+      // The relationship statement must SURVIVE the removal. Deleting the whole
+      // section would satisfy "no names are visible" while losing the one thing
+      // it still owes a candidate ("ASJ is not an SO; MoU partners depart you"),
+      // and every check above would stay green. So the two sentences that remain
+      // are asserted by their i18n keys being rendered, not by their wording —
+      // copy may be re-worded, the promise may not silently disappear.
+      const keep = [
+        ['the "we are not an SO" statement', /belum berstatus SO|SO の認定/],
+        ['the "become an MoU partner" call to action', /mitra penempatan|提携/],
+      ];
+      for (const [what, re] of keep) {
+        if (!re.test(section)) {
+          throw new Error(
+            `#mitra no longer renders ${what}. Hiding the partner NAMES was the ` +
+              `order; deleting the section's remaining sentences was not.`,
+          );
+        }
       }
     });
 

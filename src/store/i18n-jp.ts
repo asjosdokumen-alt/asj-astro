@@ -962,21 +962,15 @@ export const jpTranslations: Record<string, string> = {
   "profile.place_desc": "会社資料に記載された職種と配属先の都道府県です。",
   "profile.place_note": "都道府県名は公式資料に合わせてラテン文字で表記しています。",
   "profile.mitra_title": "提携パートナー",
-  "profile.mitra_desc": "日本への渡航は、以下の提携LPKおよびPT（SO）と共同で行っています。",
+  "profile.mitra_desc": "日本への渡航は、提携LPKおよびPT（SO）と共同で行っています。",
   "profile.mitra_note": "当社はSOの認定を受けていないため、受講者の日本への渡航は、当社とMoUを締結した提携LPKおよびPT（SO）が実施します。",
-  "profile.mitra_kind_gloss": "注記：社名下のバッジは「渡航許可のステータス」です（SO＝送出し機関として渡航を実施する権限）。法人形態（PT／LPK）を示すものではありません。社名は各社が自称する名称をそのまま使っているため、「LPK」と名乗りつつSO許可を持つ提携先もあります。",
   "profile.mitra_cta_desc": "当社との提携（MoU）をご希望の方は、下の「お問い合わせ」よりご連絡ください。",
-  "profile.mitra_slot_pending": "スロット未設定",
-  // 提携先の6社名（オーナーが2026-09-29に提供）。
-  // 社名は固有名詞なので翻訳しない——日本語ページでも登記上の名称をそのまま
-  // 表示する。「PT Flora Talent Indonesia」を別名に置き換えると、提携先が
-  // 自ら公開している名称と食い違い、第三者の社名を書き換えたことになる。
-  "profile.mitra_1_name": "PT Flora Talent Indonesia",
-  "profile.mitra_2_name": "PT Human Mandiri Indonesia",
-  "profile.mitra_3_name": "LPK Japanesia",
-  "profile.mitra_4_name": "PT JIPA",
-  "profile.mitra_5_name": "LPK Jinzai Servis Indonesia",
-  "profile.mitra_6_name": "PT Hibiki Cendekia Mandala",
+  // ── 提携先の社名：2026-10-19 に削除（オーナー指示）────────────────────
+  // 「mitra kami tolong hide saja soalnya rahasia perusahaan」。6社名と
+  // `profile.mitra_slot_pending` を削除。この辞書はブラウザにバンドルされる
+  // ため、マークアップから外すだけでは何も隠れない——JS から読めてしまう。
+  // 名簿自体は `src/lib/partners.ts` に残る（`e2e:landing` が「公開しては
+  // いけない名前」の一覧として読む）。新しいオーナー判断なしに戻さないこと。
 
   // ── 卒業生の声（口コミモデル、2026-09-29追加）──────────────────────────
   // 引用文そのものはまだ入っていない——オーナー提供の実際の口コミとともに入る
