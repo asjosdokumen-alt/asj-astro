@@ -60,6 +60,32 @@ penting untuk prioritas: **Storage, bukan JSON, adalah byte yang dominan**, dan
 itulah sebabnya perbaikan thumbnail poster (bukan pemangkasan payload) yang
 dikerjakan lebih dulu.
 
+## Migrasi aset job ke Cloudinary — SELESAI 2026-10-19
+
+`job_database` menyimpan 66 sel yang masih menunjuk Supabase Storage: 52
+`link_pamflet` + 14 `format_cv`. Semuanya dipindah dengan
+`scripts/egress/migrate-to-cloudinary.mjs`.
+
+| | sebelum | sesudah |
+|---|---|---|
+| sel `job_database` → Storage | 66 | **0** |
+| `pamflet` di payload publik | 52 Storage / 27 Cloudinary | **0 Storage / 79 Cloudinary** |
+| `templateCv` di payload | 14 Storage | **0 Storage / 30 Cloudinary** |
+| Storage request di `/loker` | banner + poster | **banner saja** (110,9 KB) |
+
+**Kualitas tidak berubah** — diperiksa, bukan diasumsikan: satu pamflet
+(`TG633ASJ`, 800×1000) dibandingkan byte-per-byte setelah migrasi — 169.063 B
+di kedua sisi, dan **0 dari 2.400.000 piksel** berbeda. Jadi Cloudinary
+menyimpan aslinya, tidak me-re-encode.
+
+Yang didapat: Cloudinary mengirim `public, no-transform, immutable,
+max-age=2592000` (30 hari), sedangkan objek Storage yang sama dikirim
+`no-cache`. Tampilan kedua dan seterusnya tidak lagi membayar byte-nya —
+termasuk klik "Format" yang mengunduh template xlsx sampai 614 KB.
+
+Log perubahan (jalan pulang, satu baris per sel):
+`deliverables/egress/migration-log-2026-10-19.json`.
+
 ## Sisa yang benar-benar terbuka: dokumen kandidat
 
 Bucket `asj-files` diukur 2026-10-19 (read-only, lewat Storage list API):
@@ -72,11 +98,24 @@ Bucket `asj-files` diukur 2026-10-19 (read-only, lewat Storage list API):
 | `assets/` (brand, sudah tak dipakai HTML) | 11 | 2.358 KB |
 | **total** | **756** | **490 MB** |
 
-Objek terbesar 11,9 MB — dan satu CV tersimpan **tiga kali** dengan nama berbeda
-di `master/ALFIAN_ARTIN_SAPUTRA/`. Semua objek ini dilayani `no-cache`, jadi
-setiap kali admin membuka dossier kandidat, byte-nya dibayar penuh lagi. Inilah
-jalur yang masih bisa menembus kuota, dan ia **tidak** bisa diperbaiki dengan
-resize (isinya PDF/xlsx) — pilihannya migrasi ke Cloudinary (`immutable` 30 hari)
-atau proxy ber-cache. Keduanya keputusan pemilik, bukan perubahan yang boleh
-diam-diam.
+775 sel di tiga tabel masih menunjuk objek `master/` — 420 objek unik,
+**294,6 MB**:
+
+| tabel | sel |
+|---|---|
+| `database_candidate` (pas_photo, file_cv, jft, ssw) | 365 |
+| `master_database_candidate` (+ ktp/kk/ijazah) | 409 |
+| `pemberkasan_checklist` | 12 |
+
+Ini yang benar-benar besar: satu dossier bisa menarik 11,9 MB — dan satu CV
+tersimpan **tiga kali** dengan nama berbeda di `master/ALFIAN_ARTIN_SAPUTRA/`.
+Semua objek ini `no-cache`, jadi setiap kali admin membuka dossier, byte-nya
+dibayar penuh lagi. Tidak bisa diperbaiki dengan resize (isinya PDF/xlsx).
+
+Tapi isinya **PII** (KTP, KK, ijazah, CV, pas foto), jadi perpindahannya
+keputusan pemilik — hari ini objek itu sudah publik di Supabase (URL tak-terka),
+yang berubah adalah pemrosesnya. Perintahnya sudah siap:
+`node scripts/egress/migrate-to-cloudinary.mjs --apply --scope candidates`.
+⚠ Log untuk jalankan itu **jangan di-commit** (berisi id baris + kolom dokumen);
+simpan lokal saja.
 
