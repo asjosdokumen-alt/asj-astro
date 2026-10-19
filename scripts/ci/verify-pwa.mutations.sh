@@ -40,6 +40,9 @@
 #         W1d  VERSION not rewritten at build time
 #         W1e  a remote icon URL in the manifest (the Supabase bug)
 #         W1f  a manifest icon missing on disk
+#         W1g  dist/version.json never published (badge shows "—" for ever)
+#         W1h  version.json disagreeing with the worker (every tab reads stale)
+#         W1i  the worker caching /version.json (always answers "up to date")
 #   W2  controls that MUST stay green — a gate that always fails is worthless:
 #         W2a  the unmodified build passes (baseline control)
 #         W2b  a remote canonical link is NOT mistaken for an icon
@@ -70,6 +73,7 @@ MUTATOR=scripts/ci/pwa-mutate.mjs
 SW=dist/sw.js
 MF=public/manifest.webmanifest
 LAYOUT=src/layouts/BaseLayout.astro
+VJ=dist/version.json
 BAK=.tmp-pwamfut
 fail=0
 results=()
@@ -78,6 +82,13 @@ results=()
 if [ ! -f "$SW" ]; then
   echo "ABORT: $SW not found. This battery mutates BUILD OUTPUT, so it needs a"
   echo "       completed build. Run: npm run build"
+  exit 1
+fi
+# version.json is written by the SAME build step as sw.js; if it is absent the
+# baseline is already red and every W1g/W1h verdict below would be meaningless.
+if [ ! -f "$VJ" ]; then
+  echo "ABORT: $VJ not found. The build step must publish it"
+  echo "       (scripts/build-sw-manifest.mjs). Run: npm run build"
   exit 1
 fi
 if [ ! -f "$MUTATOR" ]; then
@@ -89,11 +100,14 @@ mkdir -p "$BAK"
 cp "$SW" "$BAK/sw.orig"
 cp "$MF" "$BAK/mf.orig"
 cp "$LAYOUT" "$BAK/layout.orig"
+cp "$VJ" "$BAK/version.orig"
 
 restore_all() {
   [ -f "$BAK/sw.orig" ] && cp "$BAK/sw.orig" "$SW"
   [ -f "$BAK/mf.orig" ] && cp "$BAK/mf.orig" "$MF"
   [ -f "$BAK/layout.orig" ] && cp "$BAK/layout.orig" "$LAYOUT"
+  # W1g DELETES this file, so the restore must be able to recreate it.
+  [ -f "$BAK/version.orig" ] && cp "$BAK/version.orig" "$VJ"
 }
 trap restore_all EXIT
 
@@ -175,6 +189,21 @@ mutate_or_die missing-icon
 check "W1f a manifest icon missing on disk is caught" kill
 restore_all
 
+# ── W1g · version.json never published ─────────────────────────────────────
+mutate_or_die version-json-missing
+check 'W1g a missing dist/version.json is caught (badge would show a dash for ever)' kill
+restore_all
+
+# ── W1h · version.json disagreeing with the worker ─────────────────────────
+mutate_or_die version-json-drift
+check 'W1h version.json drifting from the worker VERSION is caught' kill
+restore_all
+
+# ── W1i · the worker caching /version.json ─────────────────────────────────
+mutate_or_die version-cached
+check 'W1i a worker that caches /version.json is caught' kill
+restore_all
+
 # ── W2b · a remote-looking string must NOT trip the icon check ─────────────
 mutate_or_die remote-canonical
 check "W2b a remote canonical link is not mistaken for an icon" equivalent
@@ -194,6 +223,12 @@ if ! diff -q "$BAK/mf.orig" "$MF" >/dev/null; then
 fi
 if ! diff -q "$BAK/layout.orig" "$LAYOUT" >/dev/null; then
   echo "RESTORE FAILED — $LAYOUT is not byte-identical to its backup"
+  fail=1
+fi
+# W1g deletes this file outright, so a "restore" that only copies it back from
+# a stale backup would still leave the gate reading the wrong build.
+if ! diff -q "$BAK/version.orig" "$VJ" >/dev/null; then
+  echo "RESTORE FAILED — $VJ is not byte-identical to its backup"
   fail=1
 fi
 

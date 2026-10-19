@@ -1,0 +1,153 @@
+---
+// VersionBadge.astro — "build mana yang sedang berjalan?" di kaki halaman.
+//
+// KENAPA ADA
+// ----------
+// Service worker sudah memperbarui dirinya sendiri (reg.update() tiap 5 menit,
+// lalu activate → postMessage ASJ_FORCE_RELOAD → reload), jadi situs memang
+// selalu jadi versi terbaru. Tapi seluruh proses itu TAK TERLIHAT: tidak ada
+// satu pun angka di UI yang bisa dipakai untuk menjawab "saya masih di build
+// lama atau bukan?". Tanpa angka itu, "perubahan saya tidak muncul" tidak bisa
+// dibedakan dari bug biasa — dan satu-satunya jalan keluar adalah menebak.
+//
+// DUA ANGKA, SATU SUMBER
+// ----------------------
+// `running` = VERSION milik service worker yang mengontrol tab ini.
+// `latest`  = /version.json yang ditulis build yang sama.
+// Keduanya `asj-astro-<12 hex>` dari hash yang sama, jadi bisa dibandingkan
+// langsung. Beda ⇒ tab ini basi ⇒ tombol "Muat ulang" muncul.
+//
+// DIPASANG DI BaseLayout, BUKAN DI Footer
+// ---------------------------------------
+// Footer hanya dirender 3 dari 11 halaman (`showFooter`), sedangkan halaman
+// yang paling sering dipakai sehari-hari — admin, kandidat, master, ai-cv —
+// justru tidak memakainya. Menaruhnya di footer berarti fitur ini tidak ada
+// persis di tempat ia paling dibutuhkan.
+interface Props {
+  /** BottomNav bersifat `fixed` di mobile; beri ruang agar baris ini tidak tertutup. */
+  padBottom?: boolean;
+}
+
+const { padBottom = false } = Astro.props;
+---
+
+<div class="border-t border-line/20">
+  <div
+    class:list={[
+      'max-w-7xl mx-auto px-4 md:px-6 pt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-caption text-fg-subtle',
+      padBottom ? 'pb-24 md:pb-3' : 'pb-3',
+    ]}
+  >
+    <span data-lang="footer.version_label">Versi</span>
+    <code id="asj-version" class="font-mono" data-version="">—</code>
+    <span aria-hidden="true">·</span>
+    <button
+      id="asj-check-update"
+      type="button"
+      class="min-h-11 px-1 underline decoration-dotted hover:text-fg transition-colors disabled:opacity-50"
+      data-lang="footer.check_update"
+    >Periksa pembaruan</button>
+    <span id="asj-version-status" role="status" aria-live="polite"></span>
+    <button
+      id="asj-version-reload"
+      type="button"
+      class="hidden min-h-11 px-2 font-bold text-accent underline hover:text-fg transition-colors"
+      data-lang="footer.reload"
+    >Muat ulang</button>
+  </div>
+</div>
+
+<script>
+  import { compareVersion, fetchLatestVersion, readRunningVersion, shortVersion } from '../lib/appVersion';
+  import { t } from '../store/i18n';
+
+  type Phase = 'idle' | 'checking' | 'current' | 'stale' | 'unknown';
+
+  const versionEl = document.getElementById('asj-version');
+  const checkBtn = document.getElementById('asj-check-update') as HTMLButtonElement | null;
+  const statusEl = document.getElementById('asj-version-status');
+  const reloadBtn = document.getElementById('asj-version-reload') as HTMLButtonElement | null;
+
+  let phase: Phase = 'idle';
+  let running: string | null = null;
+  let latest: string | null = null;
+
+  function paintVersion() {
+    if (!versionEl) return;
+    // `running` didahulukan: itu build yang asetnya BENAR-BENAR disajikan ke tab
+    // ini. `latest` hanya cadangan saat SW belum aktif (kunjungan pertama).
+    const shown = running ?? latest;
+    versionEl.textContent = shortVersion(shown);
+    versionEl.dataset.version = shown ?? '';
+  }
+
+  function paintStatus() {
+    if (!statusEl) return;
+    const text: Record<Phase, string> = {
+      idle: '',
+      checking: t('footer.checking'),
+      current: t('footer.up_to_date'),
+      stale: t('footer.update_available'),
+      unknown: '',
+    };
+    statusEl.textContent = text[phase];
+    // `unknown` sengaja TIDAK menampilkan apa pun: tanpa service worker kita
+    // tidak mengukur apa-apa, dan "Terbaru" di situ adalah klaim tanpa bukti.
+    reloadBtn?.classList.toggle('hidden', phase !== 'stale');
+    if (reloadBtn) reloadBtn.textContent = t('footer.reload');
+  }
+
+  async function check(announce: boolean) {
+    if (announce) {
+      phase = 'checking';
+      paintStatus();
+    }
+    const [nextRunning, nextLatest] = await Promise.all([readRunningVersion(), fetchLatestVersion()]);
+    running = nextRunning;
+    latest = nextLatest?.version ?? null;
+    paintVersion();
+    phase = compareVersion(running, latest);
+    paintStatus();
+  }
+
+  checkBtn?.addEventListener('click', () => {
+    if (!checkBtn) return;
+    checkBtn.disabled = true;
+    void (async () => {
+      try {
+        // Memaksa sw.js diambil ulang. Kalau ada build baru, SW meng-install →
+        // skipWaiting → activate → postMessage ASJ_FORCE_RELOAD, dan halaman
+        // ini reload sendiri. Kalau tidak ada, pemeriksaan di bawah yang
+        // menjawab — jadi tombol ini tidak pernah jadi tombol mati.
+        const reg = await navigator.serviceWorker?.getRegistration?.();
+        await reg?.update?.();
+        await check(true);
+      } catch {
+        // `update()` gagal (offline) bukan alasan menahan tombol selamanya.
+        await check(true);
+      } finally {
+        // SW baru butuh sepersekian detik untuk activate + memicu reload.
+        // Menahan tombol sebentar mencegah klik ganda yang memicu dua reload.
+        window.setTimeout(() => {
+          if (checkBtn) checkBtn.disabled = false;
+        }, 3000);
+      }
+    })();
+  });
+
+  reloadBtn?.addEventListener('click', () => {
+    window.location.reload();
+  });
+
+  // Teks status dibuat oleh JS, jadi `translateDataLang()` tidak menyentuhnya —
+  // status harus dilukis ulang sendiri saat bahasa berganti.
+  window.addEventListener('asj-lang-change', paintStatus);
+
+  if ('serviceWorker' in navigator) {
+    // Tanpa pengumuman: pemeriksaan latar saat halaman dibuka tidak boleh
+    // berkedip "Memeriksa…" di setiap navigasi.
+    void check(false);
+  } else {
+    paintVersion();
+  }
+</script>

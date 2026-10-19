@@ -162,8 +162,35 @@ if (marked.test(src)) {
 
 writeFileSync(SW, src, 'utf8');
 
+// ─── 6b. Publish the version for the page itself ─────────────────────────────
+//
+// WHY. The service worker knows its own VERSION, but the PAGE had no way to
+// learn it, so nothing in the UI could answer "am I still on an old build?".
+// `VersionBadge.astro` compares the worker's VERSION (asked over a
+// MessageChannel) with this file; different ⇒ the tab is stale and the reload
+// button appears. Both numbers come from the SAME hash above, which is what
+// makes the comparison meaningful rather than decorative.
+//
+// Deliberately NOT precached (the list is already written above) and
+// deliberately bypassed by the fetch handler in `public/sw.js`: a cached copy
+// would always say "up to date" on the tabs that are not.
+//
+// `builtAt` changes every build but is not part of the version hash, so it
+// cannot cause cache churn on its own.
+const VERSION_FILE = join(DIST, 'version.json');
+writeFileSync(
+  VERSION_FILE,
+  `${JSON.stringify(
+    { version: VERSION, builtAt: new Date().toISOString(), assets: assets.length, pages: pages.length },
+    null,
+    2,
+  )}\n`,
+  'utf8',
+);
+
 // ─── 7. Report ───────────────────────────────────────────────────────────────
 console.log(`[sw-manifest] version   : ${VERSION}`);
+console.log(`[sw-manifest] version.json: ${VERSION_FILE}`);
 console.log(`[sw-manifest] precache  : ${precache.length} URLs`);
 console.log(`[sw-manifest]   pages   : ${pages.length}`);
 console.log(`[sw-manifest]   routes  : ${dirRoutes.length} (directory + bare forms)`);

@@ -75,6 +75,48 @@ if (!existsSync(SW_DIST)) {
       `VERSION was rewritten at build time (got "${v[1]}")`,
     );
   }
+
+  // ─── 1b. /version.json — the number the UI shows ─────────────────────────
+  //
+  // VersionBadge.astro compares the worker's VERSION with this file; the whole
+  // feature is worthless if the two disagree, if the file is missing (the badge
+  // would show "—" and never offer a reload), or if the worker CACHES it (a
+  // cached copy always answers "up to date", on exactly the tabs that are not).
+  // None of those three failures is visible from the page: the badge renders,
+  // it just lies. Hence a gate rather than a comment.
+  const VERSION_JSON = 'dist/version.json';
+  if (!existsSync(VERSION_JSON)) {
+    failures.push(
+      `  FAIL ${VERSION_JSON} missing — the build step must publish it (scripts/build-sw-manifest.mjs)`,
+    );
+  } else {
+    let vj = null;
+    try {
+      vj = JSON.parse(readFileSync(VERSION_JSON, 'utf8'));
+      notes.push('  ok   dist/version.json is valid JSON');
+    } catch (e) {
+      failures.push(`  FAIL dist/version.json is not valid JSON: ${e.message}`);
+    }
+    if (vj) {
+      check(typeof vj.version === 'string' && vj.version.length > 0, 'version.json declares a version');
+      if (v && vj.version) {
+        check(
+          vj.version === v[1],
+          `version.json matches the worker's VERSION (${vj.version} vs ${v[1]})`,
+        );
+      }
+      // Live, never precached: it is the ONE thing that must not be stale.
+      const pm = sw.match(/const PRECACHE = \[([\s\S]*?)\r?\n\];/);
+      const precached = pm ? pm[1].includes('/version.json') : false;
+      check(!precached, 'version.json is NOT precached');
+    }
+  }
+
+  check(
+    /if \(url\.pathname === '\/version\.json'\) return;/.test(sw),
+    'sw.js bypasses /version.json (never served from cache)',
+  );
+  check(/'GET_VERSION'/.test(sw), 'sw.js answers GET_VERSION (the badge can read VERSION)');
 }
 
 // ─── 2. Manifest icons resolve locally ───────────────────────────────────────

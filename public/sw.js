@@ -55,9 +55,19 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-// ─── MESSAGE: page-initiated skipWaiting ─────────────────────────────────────
+// ─── MESSAGE: page-initiated skipWaiting + version report ────────────────────
 self.addEventListener('message', (e) => {
   if (e.data?.type === 'SKIP_WAITING') self.skipWaiting();
+
+  // `GET_VERSION` — VersionBadge.astro menanyakan build mana yang MENGONTROL
+  // tab ini. Balasannya lewat port yang dikirim halaman (MessageChannel),
+  // karena `postMessage` satu arah: tanpa port, SW tidak punya jalan pulang.
+  // Yang dijawab adalah VERSION milik worker ini, yaitu build yang asetnya
+  // benar-benar disajikan — bukan versi yang kebetulan ada di server.
+  if (e.data?.type === 'GET_VERSION') {
+    const port = e.ports && e.ports[0];
+    if (port) port.postMessage({ type: 'VERSION', version: VERSION });
+  }
 });
 
 // ─── PUSH: tampilkan notifikasi FCM saat aplikasi TIDAK di depan ─────────────
@@ -145,6 +155,15 @@ self.addEventListener('fetch', (e) => {
 
   // Never cache API traffic — it is authenticated and must be live.
   if (url.pathname.startsWith('/.netlify/') || url.pathname.startsWith('/api/')) return;
+
+  // `/version.json` HARUS selalu dari jaringan. Berkas ini ditulis build dan
+  // dibandingkan dengan VERSION worker untuk menjawab "apakah tab ini basi?".
+  // Kalau disimpan lalu dibaca dari cache, jawabannya selalu "sudah terbaru"
+  // pada tab yang justru memakai build lama — pemeriksaan yang tidak bisa
+  // memberi tahu apa pun lebih buruk daripada tidak ada pemeriksaan.
+  // (Klien yang masih memakai sw.js versi SEBELUM baris ini dilindungi
+  // cache-buster `?t=` di src/lib/appVersion.ts.)
+  if (url.pathname === '/version.json') return;
 
   // Navigation + HTML → network-first, fall back to cache, then to the shell.
   if (req.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {

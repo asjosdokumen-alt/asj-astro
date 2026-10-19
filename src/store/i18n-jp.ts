@@ -1450,6 +1450,14 @@ export const jpTranslations: Record<string, string> = {
     "candidate.form_smp": "4. 中学校卒業証明書（SMP）※PDFスキャン",
     "candidate.form_univ": "6. 大学卒業証明書※PDFスキャン",
     "footer.copyright": "© 2026 PT AMANAH SAKURA JAPAN. ALL RIGHTS RESERVED.",
+    // ビルド版の表示（VersionBadge.astro）。状態テキストは JS が描画するので
+    // data-lang としては現れないが、id 辞書と同じキーを必ず持つこと。
+    "footer.version_label": "バージョン",
+    "footer.check_update": "更新を確認",
+    "footer.checking": "確認中…",
+    "footer.up_to_date": "最新です",
+    "footer.update_available": "新しいバージョンがあります",
+    "footer.reload": "再読み込み",
     // フッターのクイックリンク。id 辞書と同じキーを必ず持つこと。
     "footer.nav_heading": "ナビゲーション",
     "footer.nav_program": "プログラム",

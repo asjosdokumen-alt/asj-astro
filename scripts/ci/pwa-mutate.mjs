@@ -26,6 +26,7 @@ import fs from 'node:fs';
 const SW = 'dist/sw.js';
 const MF = 'public/manifest.webmanifest';
 const LAYOUT = 'src/layouts/BaseLayout.astro';
+const VJ = 'dist/version.json';
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const write = (p, s) => fs.writeFileSync(p, s);
@@ -97,6 +98,47 @@ const cases = {
         '<head>\n    <link rel="canonical" href="https://asj.example.org/" />',
       ),
     ),
+
+  // ── /version.json: the number VersionBadge.astro displays ─────────────────
+  //
+  // Three ways the badge can render perfectly and still LIE. None of them is
+  // visible from the page — that is precisely why each one is a gate case.
+
+  // The build never published the file: the badge shows "—" and the reload
+  // button can never appear, so a stale tab looks identical to a fresh one.
+  'version-json-missing': () => {
+    if (!fs.existsSync(VJ)) {
+      console.error(`MUTATION NO-OP on ${VJ} — the file is already missing.`);
+      process.exit(3);
+    }
+    fs.unlinkSync(VJ);
+  },
+
+  // The file disagrees with the worker. Every tab would read "stale" for ever
+  // and the reload button would never go away.
+  'version-json-drift': () =>
+    mutate(VJ, (s) => {
+      const m = JSON.parse(s);
+      m.version = 'asj-astro-000000000000';
+      return `${JSON.stringify(m, null, 2)}\n`;
+    }),
+
+  // The worker caches /version.json. Cached copies answer "up to date" on
+  // exactly the tabs that are not — the check would be worse than none.
+  //
+  // ⚠ `\r?\n`, not `\n`: this repo is developed on Windows and `dist/sw.js`
+  // ships CRLF, so a bare-`\n` pattern silently matched nothing and the battery
+  // aborted with "MUTATION NO-OP" — the same Windows newline trap
+  // build-sw-manifest.mjs documents.
+  'version-cached': () =>
+    mutate(SW, (s) => {
+      const re = /[ \t]*if \(url\.pathname === '\/version\.json'\) return;\r?\n/;
+      if (!re.test(s)) {
+        console.error('MUTATION NO-OP on sw.js — the /version.json bypass line was not found.');
+        process.exit(3);
+      }
+      return s.replace(re, '');
+    }),
 };
 
 const which = process.argv[2];

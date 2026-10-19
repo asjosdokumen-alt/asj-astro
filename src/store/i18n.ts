@@ -1880,6 +1880,17 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ai.unavailable_title": "Asisten AI sedang tidak tersedia",
     "ai.unavailable_body": "Fitur AI mati sementara — sisa aplikasi tetap berjalan normal. Coba lagi beberapa saat lagi ya!",
     "footer.copyright": "© 2026 PT AMANAH SAKURA JAPAN. ALL RIGHTS RESERVED.",
+  // ── Versi build (VersionBadge.astro) ──────────────────────────────────
+  // Menjawab "saya masih di build lama atau bukan?". Teks status dilukis JS,
+  // jadi kunci ini TIDAK pernah muncul sebagai `data-lang` statis — tetapi
+  // `i18n.keys.test.ts` hanya memeriksa kunci yang terpakai, sehingga kunci
+  // yang hilang di sini baru terasa sebagai teks mentah di layar.
+  "footer.version_label": "Versi",
+  "footer.check_update": "Periksa pembaruan",
+  "footer.checking": "Memeriksa…",
+  "footer.up_to_date": "Terbaru",
+  "footer.update_available": "Versi baru tersedia",
+  "footer.reload": "Muat ulang",
   // ── Footer: navigasi cepat ────────────────────────────────────────────
   // Five links and three column headings that carried NO key at all — the footer
   // switch to Japanese left them in Indonesian. Only `Lowongan Kerja` was caught,

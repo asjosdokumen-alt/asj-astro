@@ -1,5 +1,6 @@
 ---
 import Footer from '../components/Footer.astro';
+import VersionBadge from '../components/VersionBadge.astro';
 import BottomNav from '../components/BottomNav.tsx';
 import Toast from '../components/Toast.tsx';
 import HreflangLinks from '../components/public/HreflangLinks.tsx';
@@ -421,6 +422,12 @@ const orgJsonLd = jsonLdScript(
     <slot />
   
   {showFooter && <Footer />}
+
+  <!-- Versi build + tombol "Periksa pembaruan". Dipasang di layout, bukan di
+       Footer, karena Footer hanya dirender 3 dari 11 halaman sementara halaman
+       yang paling sering dipakai (admin, kandidat, master) justru tanpa footer.
+       Detail alasan: src/components/VersionBadge.astro. -->
+  <VersionBadge padBottom={showBottomNav} />
   <BottomNav client:only="preact" show={showBottomNav} />
 
   <!-- Mounted here, once, so it can never be forgotten on a new page.
