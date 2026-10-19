@@ -48,6 +48,8 @@ const SCOPE = opt('scope', 'all');
 const LIMIT = Number(opt('limit', '0')) || 0;
 /** `--only <substring>` — jalankan pada satu objek tertentu (untuk uji rasa). */
 const ONLY = opt('only', '');
+/** `--revert <logfile>` — kembalikan setiap sel ke URL Storage asalnya. */
+const REVERT = opt('revert', '');
 
 const env = readFileSync('F:/astro/.env', 'utf8');
 const pick = (k) => (env.match(new RegExp(`^${k}=(.*)$`, 'm')) || [])[1]?.trim();
@@ -109,6 +111,43 @@ async function patch(t, pk, id, col, value) {
   if (!r.ok) throw new Error(`patch ${t}.${col} → HTTP ${r.status} ${(await r.text()).slice(0, 160)}`);
   const j = await r.json();
   return Array.isArray(j) ? j.length : 0;
+}
+
+// ── Mode revert: pulihkan dari log (satu baris = satu sel) ───────────────────
+//
+// Ada supaya keputusan memindahkan dokumen kandidat bisa DIBATALKAN tanpa
+// menebak-nebak: setiap baris log menyimpan path Storage asalnya, jadi URL lama
+// direkonstruksi persis (`.../object/public/<bucket>/<path>`) dan ditulis balik.
+// `--apply` tetap wajib; tanpa itu mode ini hanya melaporkan apa yang akan
+// dikembalikan.
+if (REVERT) {
+  const entries = readFileSync(REVERT, 'utf8')
+    .split('\n')
+    .filter((l) => l.trim())
+    .map((l) => JSON.parse(l));
+  console.log(`mode      : ${APPLY ? 'REVERT (menulis ke produksi)' : 'REVERT DRY-RUN'}`);
+  console.log(`log       : ${REVERT} (${entries.length} sel)`);
+  const byTable = {};
+  for (const e of entries) byTable[e.table] = (byTable[e.table] || 0) + 1;
+  console.log('per tabel :', JSON.stringify(byTable));
+  if (!APPLY) {
+    console.log('\nTidak ada yang diubah. Tambahkan --apply untuk mengembalikan.');
+    process.exit(0);
+  }
+  let back = 0;
+  let bad = 0;
+  for (const e of entries) {
+    const old = `${SUPABASE}${STORAGE_MARK}${e.path}`;
+    try {
+      await patch(e.table, e.pk, e.id, e.col, old);
+      back++;
+    } catch (err) {
+      bad++;
+      console.log(`ERR ${e.table}.${e.col} id=${e.id} :: ${String(err.message).slice(0, 120)}`);
+    }
+  }
+  console.log(`\nsel dikembalikan: ${back} · gagal: ${bad}`);
+  process.exit(0);
 }
 
 // ── Fase 1: inventaris ───────────────────────────────────────────────────────
