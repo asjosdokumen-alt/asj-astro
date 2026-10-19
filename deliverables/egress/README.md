@@ -84,7 +84,10 @@ max-age=2592000` (30 hari), sedangkan objek Storage yang sama dikirim
 termasuk klik "Format" yang mengunduh template xlsx sampai 614 KB.
 
 Log perubahan (jalan pulang, satu baris per sel):
-`deliverables/egress/migration-log-2026-10-19.json`.
+`deliverables/egress/migration-log-2026-10-19.json` — hanya baris
+`job_database`. Baris kandidat sengaja **tidak** di-commit (berisi id baris +
+kolom dokumen); simpan salinannya di luar repo kalau migrasi kandidat dijalankan,
+lalu `node scripts/egress/migrate-to-cloudinary.mjs --revert <log> [--apply]`.
 
 ## Sisa yang benar-benar terbuka: dokumen kandidat
 
