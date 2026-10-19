@@ -44,6 +44,40 @@ export const authStore = persistentAtom<AuthState>('asj_auth', DEFAULT_STATE, {
   },
 });
 
+let fcmRefreshDone = false;
+
+/**
+ * Registrasi ulang token FCM saat aplikasi DIBUKA, bukan hanya saat login.
+ *
+ * KENAPA (2026-10-19): `requestNotificationPermission()` hanya dipanggil dari
+ * `loginAsAdmin`/`loginAsKandidat`. Sesi disimpan di localStorage, jadi admin
+ * yang tidak pernah logout TIDAK PERNAH mendaftarkan ulang tokennya. Kalau
+ * langganan push hilang (site data dibersihkan, aplikasi dipasang ulang, token
+ * dirotasi), perangkat itu hilang dari `fcm_tokens` SELAMANYA sampai ia logout.
+ * Itu persis yang terukur: token admin terakhir terdaftar 2026-10-09, padahal
+ * aplikasinya dipakai terus.
+ *
+ * Aman dipanggil di boot karena hanya jalan kalau izin SUDAH `granted` —
+ * `Notification.requestPermission()` di luar gestur pengguna akan diabaikan
+ * (atau memunculkan prompt senyap), jadi kita tidak memancing prompt di sini.
+ * Dijalankan sekali per pemuatan halaman.
+ */
+export function refreshFcmRegistrationOnce(): void {
+  if (fcmRefreshDone) return;
+  fcmRefreshDone = true;
+  const s = authStore.get();
+  if (!s.isLoggedIn || !s.sessionToken) return;
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const id = s.role === 'admin' ? s.name || 'ADMIN' : s.wa;
+  if (!id) return;
+  requestNotificationPermission(id).catch(() => {});
+}
+
+/** Hanya untuk tes: lupakan penanda "sekali per halaman". */
+export function __resetFcmRefreshForTest(): void {
+  fcmRefreshDone = false;
+}
+
 /** Login as admin */
 export function loginAsAdmin(name: string, sessionToken: string, refreshToken?: string) {
   const now = Date.now();

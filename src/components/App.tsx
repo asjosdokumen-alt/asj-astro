@@ -6,7 +6,7 @@
  */
 import { useState, useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
-import { authStore } from '../store/authReactive';
+import { authStore, refreshFcmRegistrationOnce } from '../store/authReactive';
 import { initializeAuthListener, logoutSupabase } from '../store/userStore';
 import { toggleLang, t, translateDataLang, useLang } from '../store/i18n';
 import { bannerStore } from '../store/theme';
@@ -147,6 +147,11 @@ export default function App(
   // Initialize Supabase auth listener once at boot
   useEffect(() => { translateDataLang();
     const cleanup = initializeAuthListener();
+    // Self-heal token FCM: sesi yang dipulihkan dari localStorage tidak pernah
+    // melewati login, jadi tanpa ini perangkat yang kehilangan langganan push
+    // tidak akan pernah mendaftar lagi. Tidak memunculkan prompt: hanya jalan
+    // kalau izin sudah `granted`.
+    refreshFcmRegistrationOnce();
     return cleanup;
   }, []);
 
