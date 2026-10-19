@@ -181,8 +181,12 @@ function entryAllowList(fnName: string): string[] | null {
   } catch {
     return null;
   }
+  // Argumen ketiga (policy L0, 2026-10-19) opsional: `makeSurfaceHandler(ACTIONS,
+  // [...], PUBLIC_CACHE_POLICY)`. Tanpa `(?:,[^)]*)?` di sini, penambahan policy
+  // membuat SELURUH entry point terbaca "bukan entry sempit" — yaitu gate ini
+  // melaporkan rute rusak padahal yang berubah hanya bentuk pemanggilannya.
   const call = src.match(
-    /makeSurfaceHandler\(\s*(?:\[[^\]]*\]|[A-Z0-9_]+_ACTIONS)\s*,\s*\[([\s\S]*?)\]\s*\)/,
+    /makeSurfaceHandler\(\s*(?:\[[^\]]*\]|[A-Z0-9_]+_ACTIONS)\s*,\s*\[([\s\S]*?)\]\s*(?:,[^)]*)?\)/,
   );
   if (!call) return null;
   return call[1]
