@@ -196,13 +196,47 @@ const DIRECT_REF_SOURCES = [
  */
 const REF_RE = /["'`](\/(?:assets|icons)\/[^"'`\s]+\.webp)["'`]/g;
 
+/**
+ * Drop comment-only lines before scanning for references.
+ *
+ * WHY THIS EXISTS — 2026-10-19, and it was a FALSE RED, not a missing file.
+ * `src/components/App.tsx` explains in a doc comment that a retired legacy name
+ * now 404s, and it writes that path inside backticks. `REF_RE` accepts a
+ * backtick as a delimiter, so the PROSE was counted as a live reference:
+ * `sakra_banner.webp` entered `published`, was not on disk, and the gate
+ * reported "PUBLISHED BUT MISSING — this ships a broken image to every
+ * visitor" for a file nothing renders. Two violations, both invented by a
+ * comment.
+ *
+ * This is the same convention `src/lib/vip.test.ts` already documents for its
+ * own hotlink scan ("Komentar kode TIDAK dihitung"), and it is not a relaxation:
+ * a comment cannot request an asset, so it must not be able to add one to
+ * `published`. A REAL reference in live code is untouched — that is the only
+ * thing this check was ever meant to police.
+ *
+ * Deliberately line-based and narrow. Stripping `//` to end-of-line would
+ * truncate every `https://` URL and could hide a genuine reference that shares a
+ * line with one; block comments are removed whole, and a line whose first
+ * non-space characters are `//`, `*`, `/*` or `{/*` is a comment line by
+ * construction in every file in `DIRECT_REF_SOURCES`.
+ */
+function stripCommentLines(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .split('\n')
+    .filter((line) => !/^\s*(?:\/\/|\*|\{?\/\*)/.test(line))
+    .join('\n');
+}
+
 /** Normalise a reference into the same key space as `onDisk` (see above). */
 const refKey = (p) =>
   p.startsWith('/icons/') ? `icons/${p.slice('/icons/'.length)}` : p.replace('/assets/', '');
 
 const directFiles = DIRECT_REF_SOURCES.flatMap((file) => {
   if (!existsSync(file)) return [];
-  return [...readFileSync(file, 'utf8').matchAll(REF_RE)].map((m) => refKey(m[1]));
+  return [...stripCommentLines(readFileSync(file, 'utf8')).matchAll(REF_RE)].map((m) =>
+    refKey(m[1]),
+  );
 });
 
 /**
@@ -379,6 +413,27 @@ const OWNER_APPROVED = new Set([
   'mitra/jipa.webp', // owner's request 2026-09-29 — from jipa.co.id
   'mitra/jinzai.webp', // owner's request 2026-09-29 — from jsi-jinzai.com
   'mitra/hibiki.webp', // owner's request 2026-09-29 — from hibikicendekia.com
+
+  // ── THE TWO THEME BANNERS — recorded 2026-10-19 ──────────────────────────
+  //
+  // These two are rendered by the theme map in `src/components/App.tsx` and had
+  // NO recorded basis, so this gate was red on them. What is recorded here is an
+  // OBSERVATION, not a consent: both files were OPENED AND LOOKED AT on
+  // 2026-10-19, the same standard the entries above were recorded to, and
+  // neither contains a person who could consent or refuse in the §11.2 sense.
+  //
+  //   banner-sakura.webp  800x400  landscape artwork — Mt Fuji, a pagoda, cherry
+  //                                blossom; NO person anywhere in the frame.
+  //   banner-tokyo.webp   900x600  night alley; two figures at the far end,
+  //                                ~40 px tall, no readable face at any size the
+  //                                page renders it.
+  //
+  // ⚠ IF THE OWNER DISAGREES WITH THAT READING, THESE TWO LINES COME OUT AND
+  // THE FILES LEAVE `public/assets/` — they are not to be kept by widening the
+  // rule. Nothing here asserts consent for a person, because no identifiable
+  // person is depicted.
+  'banner-sakura.webp', // no person in frame — seen 2026-10-19
+  'banner-tokyo.webp', // distant figures only, no readable face — seen 2026-10-19
 ]);
 
 /**
