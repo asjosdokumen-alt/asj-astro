@@ -124,10 +124,24 @@ describe('tidak ada hotlink aset brand Supabase Storage', () => {
     'logo_asj.png',
     'logo_apply.png',
     'jeklin.png',
+    'qween_jeklin.webp',
     'sakra_banner.webp',
     'dark_tokyo_banner.webp',
     'momiji_banner.webp',
     'logo-removebg-preview.webp',
+    // 2026-10-19: the four names below were MISSING from this list while they
+    // are very much live in the bucket (listed 2026-10-19, `assets/` = 11
+    // objects / 2.36 MB). `tokyo_banner.jpg` (427 KB) and `tokyo_footer.jpg`
+    // (557 KB) are still advertised by the public payload's `assets` block, so a
+    // hardcoded hotlink of either would have cost ~0.5 MB per visit and passed
+    // this gate. The gate is filename-based on purpose — it cannot see a URL
+    // that arrives at runtime from the database, which is exactly why the
+    // filenames it CAN see must be complete.
+    'tokyo_banner.jpg',
+    'tokyo_footer.jpg',
+    'sakura_footer.webp',
+    // `tokyo_footer.jpg`/`sakura_footer.webp` have no local counterpart yet; the
+    // guard still applies, because "no local copy" is not a licence to hotlink.
   ];
   /** Berkas yang diizinkan menyebut URL Storage: hanya dokumentasi/legacy. */
   const SKIP = [
