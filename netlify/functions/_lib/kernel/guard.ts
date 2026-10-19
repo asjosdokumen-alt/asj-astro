@@ -123,6 +123,35 @@ export const indexLike =
   };
 
 /**
+ * An OBJECT argument, checked field by field.
+ *
+ * WHY THIS EXISTS (2026-10-19)
+ * `simpanTemplateCv` and `hapusTemplateCv` take their input as ONE object
+ * (`{ record }`, `{ rowId }`) instead of positional strings, so every guard
+ * above — each of which checks a positional value — had nothing to say about
+ * them. `verify:validation` reported them as two mutating actions with no edge
+ * validation, and it was right about the FACT: the handlers did check their
+ * fields, but with `String(x ?? '').trim()` inline, mixed into business checks
+ * (is the JSON parseable, does it have an `id`). That shape is invisible to the
+ * gate, so the next unvalidated write would have looked exactly the same.
+ *
+ * The split this encodes is the same one the file already draws: TYPES and
+ * PRESENCE here, business vocabulary in the handler. `record` being a non-empty
+ * bounded string is a type claim; `record` parsing as JSON with an `id` is not.
+ *
+ * `null` is rejected like a missing object, for trap 2 above:
+ * `JSON.stringify([undefined])` puts `[null]` on the wire, so an omitted
+ * argument arrives as null rather than undefined.
+ */
+export const fieldsOf =
+  (label: string, spec: Record<string, Guard>): Guard =>
+  (v) => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) fail(`${label} harus berupa objek`);
+    const obj = v as Record<string, unknown>;
+    for (const [key, guard] of Object.entries(spec)) guard(obj[key]);
+  };
+
+/**
  * An argument accepted for wire compatibility and never read.
  *
  * `rejectForm`'s second slot is legacy's admin display name; the rebuild takes

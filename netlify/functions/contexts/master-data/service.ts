@@ -11,6 +11,7 @@ import { syncBiodataKeMail } from '../applications';
 import { nextCandidateId } from '../../_lib/candidate-helpers';
 import { cacheClear } from '../../_lib/cache';
 import { safeError } from '../../_lib/kernel/errors';
+import { fieldsOf, guardPayload, ignored, text } from '../../_lib/kernel/guard';
 import { resolveFileUrl } from '../../_lib/storage';
 import {
   findMasterByWa, patchMaster, upsertMaster, findCandidateRow,
@@ -928,7 +929,16 @@ export async function handleGetTemplateCvList(_payload: unknown[], sessionToken?
 export async function handleSimpanTemplateCv(payload: unknown[], sessionToken?: string) {
   const denied = requireAdminSession(sessionToken);
   if (denied) return denied;
-  const d = ((payload || [])[0] || {}) as Record<string, unknown>;
+  // Validasi TIPE di tepi, SETELAH guard sesi — bentuk `{record}` diperiksa
+  // `fieldsOf`, bukan `String(...)` inline. `record` dibatasi 64 KB: satu
+  // `fieldMap` template berukuran beberapa KB, jadi batas ini hanya menolak
+  // kiriman yang tidak masuk akal, bukan template besar yang sah. Slot kedua
+  // `ignored` demi klien yang sudah ter-deploy dan masih mengirim argumen ekstra
+  // (lihat trap 1 di kernel/guard.ts).
+  const [d] = guardPayload(payload, [
+    fieldsOf('Template CV', { record: text('Record template', 65536) }),
+    ignored,
+  ]) as [Record<string, unknown>];
   const record = String(d.record ?? '').trim();
   if (!record) return { success: false, error: 'Record template kosong.' };
 
@@ -979,7 +989,13 @@ export async function handleSimpanTemplateCv(payload: unknown[], sessionToken?: 
 export async function handleHapusTemplateCv(payload: unknown[], sessionToken?: string) {
   const denied = requireAdminSession(sessionToken);
   if (denied) return denied;
-  const d = ((payload || [])[0] || {}) as Record<string, unknown>;
+  // Alasan yang sama dengan `handleSimpanTemplateCv` di atas: `rowId` diperiksa
+  // sebagai TIPE di tepi, sedangkan "baris ini ada dan milik config_type ini"
+  // tetap urusan query di bawah.
+  const [d] = guardPayload(payload, [
+    fieldsOf('Hapus template CV', { rowId: text('rowId', 64) }),
+    ignored,
+  ]) as [Record<string, unknown>];
   const rowId = String(d.rowId ?? '').trim();
   if (!rowId) return { success: false, error: 'rowId wajib diisi.' };
   try {
