@@ -34,6 +34,7 @@ set -uo pipefail
 GATE=scripts/ci/verify-e2e-ports.mjs
 TARGET=e2e/measure-riwayat-card.mjs
 TARGET2=e2e/test-public.mjs
+TARGET3=e2e/lib/server.mjs
 fail=0
 declare -a results=()
 
@@ -65,8 +66,13 @@ echo "baseline green: $GATE"
 
 cp "$TARGET" "$BAK/measure-riwayat-card.mjs"
 cp "$TARGET2" "$BAK/test-public.mjs"
+cp "$TARGET3" "$BAK/server.mjs"
 
-restore() { cp "$BAK/measure-riwayat-card.mjs" "$TARGET"; cp "$BAK/test-public.mjs" "$TARGET2"; }
+restore() {
+  cp "$BAK/measure-riwayat-card.mjs" "$TARGET"
+  cp "$BAK/test-public.mjs" "$TARGET2"
+  cp "$BAK/server.mjs" "$TARGET3"
+}
 
 # RULE 7 — assert exactly one match; a mutation that misses must ABORT, not pass
 # quietly as a SURVIVED (which would look like a hole in the gate).
@@ -127,12 +133,22 @@ mut "$TARGET" "const BASE = process.env.BASE_URL || 'http://localhost:4321';" \
 check "B  code default moved to an unbound port" 1
 restore
 
-# C. The default is removed entirely, so the probe can only run from a hand-typed
-#    URL — the precondition that let the wrong port survive review.
-mut "$TARGET2" "const BASE = process.env.BASE_URL || 'http://localhost:4321';" \
-               "const BASE = process.env.BASE_URL;" \
+# C. A default that names a HOST but no PORT. This is what "the fallback was
+#    removed" looks like in practice, and it is the precondition that let the
+#    wrong port survive review: with no port in the default, the effective
+#    address comes from somewhere nobody wrote down.
+#
+#    RETARGETED 2026-10-19. It used to delete the literal on test-public.mjs, and
+#    that anchor stopped matching when the probe moved to `ensureServer()` — the
+#    battery then ABORTED with "MUTATION DID NOT APPLY", which is the documented
+#    decay mode of a mutation (it reports the harness, not the gate, and it is
+#    indistinguishable from a hole until someone re-runs it). The case now uses a
+#    probe that still carries its own literal, so the arm keeps testing what it
+#    says it tests.
+mut "$TARGET" "const BASE = process.env.BASE_URL || 'http://localhost:4321';" \
+              "const BASE = process.env.BASE_URL || 'http://localhost';" \
   || { echo "could not apply mutation C — aborting"; exit 2; }
-check "C  no fallback default at all" 1
+check "C  default names a host but no port" 1
 restore
 
 # D. CONTROL (OK-GREEN) — moving the default to a port the repo DOES bind is a
@@ -151,8 +167,20 @@ mut "$TARGET" 'BASE_URL=http://localhost:4321 node e2e/measure-riwayat-card.mjs'
 check "E  control: comment matches the default on a different host, stays green" 0
 restore
 
+# F. The shared helper OWNS the port for every probe that calls `ensureServer()`,
+#    so moving its default to a port nothing serves is the same defect one level
+#    up: the gate would spawn a server on 4399 while `npm run preview` serves
+#    4321, and every measurement would describe an address nothing else uses.
+#
+#    Added WITH the ensureServer() support (2026-10-19), because a new branch
+#    that no case can fire is a branch that has never been shown to work — the
+#    same reason every other case here exists.
+mut "$TARGET3" "const DEFAULT_PORT = 4321;" "const DEFAULT_PORT = 4399;" \
+  || { echo "could not apply mutation F — aborting"; exit 2; }
+check "F  shared helper defaults to a port the repo does not serve" 1
+restore
+
 echo
-echo "── restore proof ──"
 if ! cmp -s "$BAK/measure-riwayat-card.mjs" "$TARGET"; then
   echo "RESTORE FAILED — $TARGET does not match its pre-run content:"
   git diff --stat -- "$TARGET" | sed 's/^/    /'
@@ -161,6 +189,11 @@ fi
 if ! cmp -s "$BAK/test-public.mjs" "$TARGET2"; then
   echo "RESTORE FAILED — $TARGET2 does not match its pre-run content:"
   git diff --stat -- "$TARGET2" | sed 's/^/    /'
+  fail=1
+fi
+if ! cmp -s "$BAK/server.mjs" "$TARGET3"; then
+  echo "RESTORE FAILED — $TARGET3 does not match its pre-run content:"
+  git diff --stat -- "$TARGET3" | sed 's/^/    /'
   fail=1
 fi
 

@@ -32,11 +32,24 @@
  *   against a running server):
  *     P1  there IS a parseable default. A probe with no default cannot run
  *         without a hand-typed URL, which is how a wrong port survives review.
+ *         TWO SHAPES COUNT, because the repo has two:
+ *           `process.env.BASE_URL || 'http://host:PORT'`   the port is here
+ *           `await ensureServer()`                        the port is in
+ *                                                        e2e/lib/server.mjs
+ *         The second shape was added 2026-10-19. Seven gates used to copy the
+ *         first shape into each file and drift apart; they were consolidated
+ *         into one helper on purpose (see that file's header). A gate that only
+ *         recognised the literal would have failed the consolidation and
+ *         pushed the copies back — enforcing the drift it exists to prevent.
  *     P2  every `BASE_URL=...:<port>` written in a comment names the SAME port as
  *         the effective default. This is the exact `measure-riwayat-card` bug.
  *     P3  the default is a port the repo BINDS somewhere (derived, never typed
  *         here) — otherwise it is reported as UNBOUND with the reason, and
- *         `--strict` turns that into a failure.
+ *         `--strict` turns that into a failure. A probe using `ensureServer()`
+ *         is held to this too: the helper SPAWNS the server, so if its port is
+ *         not the port the rest of the repo serves, the probe is testing a
+ *         different address than `npm run preview` — the same class of defect,
+ *         one level up, and it is a violation rather than a note.
  *
  * WHY THE SERVED SET IS DERIVED
  *   A hand-typed list of "allowed ports" would drift from the servers it
@@ -121,10 +134,37 @@ function probes() {
     .filter((p) => /BASE_URL/.test(p.text));
 }
 
-function declaredPort(text) {
-  // The effective default: `process.env.BASE_URL || 'http://host:PORT'`.
-  const m = /process\.env\.BASE_URL\s*\|\|\s*['"`]https?:\/\/[^:'"`]*:(\d{4,5})/.exec(text);
+/**
+ * The port `e2e/lib/server.mjs` binds, read from that file — never typed here.
+ *
+ * The helper is the single owner of "which local server does this gate talk
+ * to": it spawns `server.cjs` on `DEFAULT_PORT` unless `BASE_URL` is supplied.
+ * Reading the number from the helper keeps the same property the served-set
+ * derivation has — one place states the port, and this gate compares rather
+ * than duplicates. `null` means the helper's shape changed, which is reported
+ * as its own finding instead of silently passing.
+ */
+function sharedServerPort() {
+  const helper = join(E2E, 'lib/server.mjs');
+  if (!existsSync(helper)) return null;
+  const m = /const\s+DEFAULT_PORT\s*=\s*(\d{4,5})/.exec(readFileSync(helper, 'utf8'));
   return m ? m[1] : null;
+}
+
+/**
+ * Where this probe's effective default port comes from.
+ * Returns `{ port, via }` or `null` when no default can be read.
+ */
+function declaredPort(text) {
+  // Shape 1: the literal default, `process.env.BASE_URL || 'http://host:PORT'`.
+  const m = /process\.env\.BASE_URL\s*\|\|\s*['"`]https?:\/\/[^:'"`]*:(\d{4,5})/.exec(text);
+  if (m) return { port: m[1], via: 'literal' };
+  // Shape 2: the shared server helper owns the port.
+  if (/\bensureServer\s*\(/.test(text)) {
+    const port = sharedServerPort();
+    return port ? { port, via: 'e2e/lib/server.mjs' } : { port: null, via: 'e2e/lib/server.mjs' };
+  }
+  return null;
 }
 
 function commentPorts(text) {
@@ -163,31 +203,56 @@ for (const p of all) {
 
   if (LIST) {
     console.log(
-      `${p.file.padEnd(38)} default=${def ?? '(none)'}  comments=[${commented.join(', ')}]`
+      `${p.file.padEnd(38)} default=${def?.port ?? '(none)'}` +
+        `${def ? ` via ${def.via}` : ''}  comments=[${commented.join(', ')}]`
     );
   }
 
   if (def === null) {
     findings.push(
       `${p.file}: reads BASE_URL but has no parseable default ` +
-        `(expected \`process.env.BASE_URL || 'http://host:PORT'\`). ` +
+        `(expected \`process.env.BASE_URL || 'http://host:PORT'\`, or ` +
+        `\`await ensureServer()\` from e2e/lib/server.mjs). ` +
         `Without a default the probe cannot run without a hand-typed URL, ` +
         `which is how a wrong port survives review.`
     );
     continue;
   }
 
-  if (!served.has(def)) {
-    // NOT a violation by itself. Three probes deliberately want a SECOND server
-    // instance; the repo never binds their port, so in practice BASE_URL is
-    // mandatory for them. Report it, do not pretend it is covered.
-    unbound.push({ file: p.file, port: def });
+  if (def.port === null) {
+    // The probe delegates to the helper and the helper no longer states a port.
+    findings.push(
+      `${p.file}: uses ensureServer() but e2e/lib/server.mjs no longer declares ` +
+        `\`const DEFAULT_PORT = <port>\`, so the address it binds cannot be read. ` +
+        `Restore that shape, or teach sharedServerPort() the new one — do not ` +
+        `hard-code the port in this gate, which would be a second copy to drift.`
+    );
+    continue;
+  }
+
+  if (!served.has(def.port)) {
+    if (def.via === 'e2e/lib/server.mjs') {
+      // The helper SPAWNS a server on this port, so "nothing serves it" is
+      // never true here — which makes a disagreement a real defect rather than
+      // the documented second-instance case below.
+      findings.push(
+        `${p.file}: the shared helper (e2e/lib/server.mjs) binds ${def.port}, but the ` +
+          `repo serves ${[...served.keys()].join(', ')}. A gate would then test a ` +
+          `different address than \`npm run preview\` — the measure-riwayat-card defect ` +
+          `with the disagreement moved into the helper.`
+      );
+    } else {
+      // NOT a violation by itself. Three probes deliberately want a SECOND server
+      // instance; the repo never binds their port, so in practice BASE_URL is
+      // mandatory for them. Report it, do not pretend it is covered.
+      unbound.push({ file: p.file, port: def.port });
+    }
   }
 
   for (const c of commented) {
-    if (c !== def) {
+    if (c !== def.port) {
       findings.push(
-        `${p.file}: a comment tells the reader to use port ${c}, but the code defaults to ${def}. ` +
+        `${p.file}: a comment tells the reader to use port ${c}, but the code defaults to ${def.port}. ` +
           `Copying the comment starts a browser against the wrong address — this is the ` +
           `measure-riwayat-card defect (2026-09-18).`
       );
