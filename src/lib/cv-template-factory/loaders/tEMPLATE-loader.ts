@@ -170,7 +170,12 @@ function pickSheet(wb: Workbook, name?: string): Worksheet {
 
 /** `applyFieldMap` dan `applyRiwayatBlock` menulis satu nilai per sel. */
 export async function openWorkbookFromUrl(url: string): Promise<Workbook> {
-  const res = await fetch(url);
+  // Batas waktunya SENDIRI, karena `apiClient` tidak dipakai di sini: URL-nya
+  // objek Cloudinary absolut (`rec.fileUrl`, hasil uploadBerkasToStorage), bukan
+  // endpoint fungsi — jadi timeout 20 s milik apiClient juga tidak ikut. Tanpa
+  // baris ini satu CDN yang menggantung menahan modal "menyiapkan…" selamanya.
+  // Angkanya disamakan dengan timeout apiClient supaya kebijakannya satu.
+  const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
   if (!res.ok) throw new Error(`Berkas template tidak bisa diambil (${res.status}).`);
   return readWorkbook(new Uint8Array(await res.arrayBuffer()));
 }

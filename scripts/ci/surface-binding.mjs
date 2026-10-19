@@ -90,11 +90,27 @@ for (const entry of entries) {
   const src = readFileSync(join(FN, entry), 'utf8');
   if (!src.includes('makeSurfaceHandler')) continue;
 
-  const callRe = /makeSurfaceHandler\(\s*(\[[^\]]*\]|[A-Z0-9_]+_ACTIONS)\s*,\s*\[([\s\S]*?)\]\s*\)/;
+  // The THIRD argument is the CDN cache policy (`PUBLIC_CACHE_POLICY`), added
+  // when the public surface started answering with cache headers. It is parsed,
+  // not tolerated: the previous pattern required `)` right after the allow-list
+  // `]`, so get-app-data.js and public.js stopped parsing and this gate went
+  // RED with "shape changed?" — a verdict about the parser, printed in a job
+  // whose name says the bindings are wrong. That is the failure mode a
+  // shape-checking gate has to survive: it must be updated when the shape
+  // legitimately grows, and it must not be loosened into `[\s\S]*`, which would
+  // swallow the allow-list and then check nothing while staying green.
+  const callRe =
+    /makeSurfaceHandler\(\s*(\[[^\]]*\]|[A-Z0-9_]+_ACTIONS)\s*,\s*\[([\s\S]*?)\]\s*(?:,\s*([A-Za-z0-9_]+)\s*)?\)/;
   const call = src.match(callRe);
   if (!call) {
     parseErrors.push(`${entry}: could not parse makeSurfaceHandler(...) — shape changed?`);
     continue;
+  }
+
+  // A cache policy passed but never imported throws at MODULE LOAD, which is
+  // every request to that function — not a type error anyone sees locally.
+  if (call[3] && !new RegExp(`\\b${call[3]}\\b`).test(src.replace(call[0], ''))) {
+    violations.push(`${entry}: passes ${call[3]} as the cache policy but never imports it`);
   }
 
   const mapExpr = call[1].trim();
@@ -110,11 +126,19 @@ for (const entry of entries) {
   // `const { X } = require(...)` and the ESM `import { X } from ...` that the
   // 2026-09-12 migration to the modern Netlify runtime introduced. Only the
   // binding syntax changed — what this gate checks is identical either way.
+  //
+  // The braces accept OTHER names too (`{ PUBLIC_ACTIONS, PUBLIC_CACHE_POLICY }`).
+  // They did not, and that is the second half of the same breakage as the third
+  // argument above: an entry that legitimately imports its map alongside its
+  // cache policy was reported as "declares PUBLIC_ACTIONS but never imports it",
+  // which is a false accusation of dead wiring. `[^}]*\bNAME\b[^}]*` still pins
+  // the exact identifier, so an import of a DIFFERENT constant does not satisfy
+  // it — the check keeps its teeth.
   const declaredSurfaces = [];
   for (const mapName of mapNames) {
     const reqRe = new RegExp(
-      `const\\s*\\{\\s*${mapName}\\s*\\}\\s*=\\s*require\\(['"]\\./surfaces/([^'"]+)['"]\\)` +
-        `|import\\s*\\{\\s*${mapName}\\s*\\}\\s*from\\s*['"]\\./surfaces/([^'"]+?)(?:\\.js)?['"]`,
+      `const\\s*\\{[^}]*\\b${mapName}\\b[^}]*\\}\\s*=\\s*require\\(['"]\\./surfaces/([^'"]+)['"]\\)` +
+        `|import\\s*\\{[^}]*\\b${mapName}\\b[^}]*\\}\\s*from\\s*['"]\\./surfaces/([^'"]+?)(?:\\.js)?['"]`,
     );
     const rm = src.match(reqRe);
     if (!rm) {

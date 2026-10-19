@@ -140,6 +140,19 @@ const ALLOWED = {
       'Wrapped in try/catch that returns null, which the renderer draws as an ' +
       'empty photo cell rather than failing the export.',
   },
+  'src/lib/cv-template-factory/loaders/tEMPLATE-loader.ts': {
+    max: 1,
+    reason:
+      'GET of the candidate CV TEMPLATE .xlsx as a BLOB. The URL is ' +
+      '`rec.fileUrl` — a Cloudinary absolute URL written by uploadBerkasToStorage ' +
+      '(folder cv-templates), not a function endpoint — so there is nothing for ' +
+      'apiClient to unwrap and no session to attach: the object is public by ' +
+      'design and putting our token on it would be wrong. Same shape as the ' +
+      'rirekisho photo fetch above, except this one checks res.ok itself and now ' +
+      'carries its own 20 s AbortSignal.timeout(), which is the one apiClient ' +
+      'property it was missing. The function call that OBTAINS the URL ' +
+      '(TabConfig.tsx -> uploadBerkasToStorage) goes through apiClient already.',
+  },
 };
 
 /** Recursively collect source files under a directory, excluding tests. */
