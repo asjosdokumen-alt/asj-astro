@@ -76,6 +76,16 @@
 ### Polish
 - [ ] Image optimization via Cloudinary transforms
 - [ ] Analisis bundle — kurangi JS
+      ↳ **Terukur 2026-10-19. Belum ada yang dikurangi, dan itu disengaja.**
+      Pertumbuhan +2,4…+6 KB per entry (total 2.743 → 2.957 KB, 19 → 20 entry)
+      berasal dari SATU berkas bersama: `_lib/db/client.ts` (+244 baris
+      normalisasi tanggal `yyyy-mm-dd`), yang diimpor setiap entry.
+      `ping.js` — satu-satunya entry tanpa impor — **tidak berubah** (1,5 KB),
+      dan itu kontrolnya: pertumbuhannya bukan dari bundler atau konfigurasi.
+      Baseline diperbarui SETELAH diff dibaca, bukan untuk menyembunyikan
+      regresi. Satu lubang ratchet ikut ditutup: entry BARU tanpa angka baseline
+      dulu dilewati `continue`, jadi `kontak.js` (81,4 KB) tidak pernah diukur —
+      sekarang itu kegagalan, bukan lewatan.
 - [ ] Lighthouse audit — target 90+
 - [ ] Error tracking (Sentry/LogRocket) — *ini menyentuh backend bila dipasang di function; lihat
       `docs/BACKEND_TODO.md` #7 untuk sisi observabilitasnya*
@@ -101,11 +111,22 @@
       ekstensi gambar yang **benar-benar direferensikan `dist/`** harus punya
       entri MIME ber-`image/*`. Diverifikasi **merah** saat perbaikan dikembalikan
       (2 dari 4 tes gagal: `.avif` spesifik + cakupan gambar generik).
-- [ ] `e2e/test-hover-contrast.mjs` + baterainya + `e2e/measure-hover-contrast.mjs`
+- [x] ~~`e2e/test-hover-contrast.mjs` + baterainya + `e2e/measure-hover-contrast.mjs`
       masih **belum di-commit** (lihat `git status`); wiring `package.json`,
-      `.github/workflows/ci.yml`, dan `review-manifest.json` juga. Gate-nya
-      **hijau** (diverifikasi 2026-09-28, 132 elemen / 0 temuan), tapi selama belum
-      di-commit ia tidak melindungi apa pun di riwayat.
+      `.github/workflows/ci.yml`, dan `review-manifest.json` juga.~~ →
+      **CATATAN INI BASI; DITUTUP 2026-10-19.** Diukur, bukan diasumsikan:
+      ketiga berkas **tracked** (`git ls-files` mengembalikannya; riwayatnya
+      `8ecb1ec` gate, `523d1f2` baterai, `2593634` revive), `package.json` punya
+      `e2e:hover-contrast`, `ci.yml` memanggilnya (baris 285), dan
+      `review-manifest.json` mencantumkannya dengan `provenBy`
+      `e2e/test-hover-contrast.mutations.sh` — berkas yang ada. Jadi gate-nya
+      memang melindungi riwayat; yang salah cuma catatan ini.
+      ⚠ **Pelajarannya, dan ini yang membuat catatan seperti ini berbahaya:**
+      "belum di-commit" adalah klaim tentang keadaan yang berubah setiap kali
+      ada yang menjalankan `git add`, dan catatan yang ditulis sekali tidak
+      pernah ikut berubah. Sebelum memercayai baris seperti ini, jalankan
+      `git ls-files` untuk berkas yang disebutnya — satu perintah, dan hasilnya
+      mengalahkan ingatan.
 
 ### Diketahui belum selesai (bukan bug, memang belum dibangun)
 - [x] ~~**Daftar Agenda di panel admin masih kosong.**~~ → **SELESAI 2026-09-27**
