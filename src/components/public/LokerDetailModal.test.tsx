@@ -108,6 +108,36 @@ describe('LokerDetailModal (B04)', () => {
     });
   });
 
+  /* EGRESS (2026-10-19): the 80x112 thumbnail must request a RESIZED copy,
+   * while the zoom overlay keeps the original.
+   *
+   * Measured on the live site before this change: one cold desktop visit that
+   * clicked "Muat Lebih Banyak" 5x downloaded 4.9 MB of posters to fill 48px
+   * boxes, 0.56 MB of it from Supabase Storage — which serves these objects
+   * `Cache-Control: no-cache`, so the same bytes are paid again on every visit.
+   *
+   * The pair of assertions matters together: a test that only checked the
+   * thumbnail would pass just as happily if the ZOOM also got the small copy,
+   * i.e. if the poster became unreadable. So both directions are pinned here. */
+  it('thumbnail memakai URL ter-resize, sedang zoom memakai URL asli (egress 2026-10-19)', async () => {
+    const pamflet = 'https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/jobs/J1/PAMFLET.jpg';
+    render(<LokerDetailModal job={baseJob({ pamflet })} onClose={vi.fn()} />);
+
+    const thumb = screen.getByAltText('Pamflet') as HTMLImageElement;
+    expect(thumb.getAttribute('src')).toContain('/storage/v1/render/image/public/');
+    expect(thumb.getAttribute('src')).toContain('width=160');
+    expect(thumb.getAttribute('src')).toContain('height=224');
+
+    fireEvent.click(thumb);
+    await waitFor(() => {
+      expect(document.querySelectorAll('img[alt="Pamflet"]').length).toBe(2);
+    });
+    const zoom = screen.getByRole('dialog', { name: t('ui.alt_pamflet') });
+    const big = zoom.querySelector('img[alt="Pamflet"]') as HTMLImageElement;
+    expect(big).toBeTruthy();
+    expect(big.getAttribute('src')).toBe(pamflet);
+  });
+
   /* Thumbnail pamflet harus berupa KONTROL yang bisa dipakai keyboard.
    *
    * SEBELUM 2026-10-14 ini `<img onClick=…>` — `<img>` tidak bisa di-Tab, jadi

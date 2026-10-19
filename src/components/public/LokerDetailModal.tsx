@@ -15,6 +15,7 @@ import { useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import { jobTutupUntukLamar } from '../../lib/jobPhase';
 import { jobCategoryLabel, jobGenderLabel, jobLocationLabel } from '../../lib/jobDisplay';
+import { thumbUrl } from '../../lib/thumbUrl';
 import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
 import PamfletModal from './PamfletModal';
@@ -123,7 +124,10 @@ export default function LokerDetailModal({ job, onClose, closing = false }: Prop
           <div class="flex items-start gap-4 mb-6">
             {pamfletUrl && (
               <button type="button" class="p-0 bg-transparent border-0 cursor-pointer flex-shrink-0 rounded-xl" title={t('ui.click_zoom')} onClick={() => setZoomOpen(true)}>
-                <img src={pamfletUrl} loading="lazy" decoding="async" class="w-20 h-28 object-cover rounded-xl border border-slate-600 shadow-lg hover:scale-105 transition" alt={t('ui.alt_pamflet')} />
+                {/* Thumbnail 80x112 memakai versi KECIL; `PamfletModal` di bawah
+                    tetap menerima `pamfletUrl` asli — di sana poster penuh memang
+                    yang dimaksud. Lihat src/lib/thumbUrl.ts (egress 2026-10-19). */}
+                <img src={thumbUrl(pamfletUrl, 160, 224)} loading="lazy" decoding="async" class="w-20 h-28 object-cover rounded-xl border border-slate-600 shadow-lg hover:scale-105 transition" alt={t('ui.alt_pamflet')} />
               </button>
             )}
             <div class="flex-1 min-w-0">

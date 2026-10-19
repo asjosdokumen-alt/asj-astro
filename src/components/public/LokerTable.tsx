@@ -53,6 +53,7 @@ import {
   jobTitleLabel,
 } from '../../lib/jobDisplay';
 import { getPublicData } from '../../lib/publicData';
+import { thumbUrl } from '../../lib/thumbUrl';
 import { ErrorBoundary } from '../ErrorBoundary';
 import LokerDetailModal from './LokerDetailModal';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
@@ -272,7 +273,15 @@ export default function LokerTable() {
                   <div class="flex items-start gap-4">
                     {job.pamflet && job.pamflet !== "-" && job.pamflet.length > 5 && (
                       <button type="button" class="hidden sm:block p-0 bg-transparent border-0 cursor-pointer flex-shrink-0 rounded-lg" title={t("ui.click_zoom")} onClick={() => { setPamfletUrl(job.pamflet || ""); setShowPamflet(true); }}>
-                        <img src={job.pamflet} width={48} height={64} loading="lazy" decoding="async" class="w-12 h-16 md:w-12 md:h-16 object-cover rounded-lg border border-slate-600 shadow-md hover:scale-105 transition-transform" alt={t("ui.alt_pamflet")} />
+                        {/* `thumbUrl`, bukan `job.pamflet`: kotak ini 48x64 CSS px,
+                            sedangkan unggahannya ~1200x1600 (~150 KB). Diukur di
+                            situs live 2026-10-19 — satu kunjungan desktop yang
+                            menekan "Muat Lebih Banyak" 5x menarik 4,9 MB poster
+                            untuk mengisi thumbnail 48px. Objek Supabase juga
+                            dilayani `Cache-Control: no-cache`, jadi biayanya
+                            dibayar ULANG tiap kunjungan. Klik = poster penuh
+                            (`setPamfletUrl` di bawah) — di sana ukuran asli benar. */}
+                        <img src={thumbUrl(job.pamflet, 96, 128)} width={48} height={64} loading="lazy" decoding="async" class="w-12 h-16 md:w-12 md:h-16 object-cover rounded-lg border border-slate-600 shadow-md hover:scale-105 transition-transform" alt={t("ui.alt_pamflet")} />
                       </button>
                     )}
                     <div class="flex flex-col pt-1">
