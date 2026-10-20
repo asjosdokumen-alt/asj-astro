@@ -63,6 +63,15 @@ const { padBottom = false } = Astro.props;
 
   type Phase = 'idle' | 'checking' | 'current' | 'stale' | 'unknown';
 
+  // Bentuk interface (bukan generik) — lihat catatan di paintStatus().
+  interface PhaseText {
+    idle: string;
+    checking: string;
+    current: string;
+    stale: string;
+    unknown: string;
+  }
+
   const versionEl = document.getElementById('asj-version');
   const checkBtn = document.getElementById('asj-check-update') as HTMLButtonElement | null;
   const statusEl = document.getElementById('asj-version-status');
@@ -83,7 +92,14 @@ const { padBottom = false } = Astro.props;
 
   function paintStatus() {
     if (!statusEl) return;
-    const text: Record<Phase, string> = {
+    // `PhaseText` adalah interface biasa, BUKAN tipe generik berbentuk Record:
+    // indexer membaca setiap tag bersudut di dalam .astro sebagai komponen
+    // template, sehingga sintaks generik apa pun di berkas ini menghasilkan ref
+    // `template-component` yang menggagalkan gate build.test.ts (aturan repo R3a:
+    // tanpa sintaks generik di .astro — frontmatter, template, MAUPUN komentar;
+    // komentar ini sengaja tidak mengutip bentuk generiknya).
+    // Lima kunci literal menjaga keamanan tipe yang sama seperti mapped type.
+    const text: PhaseText = {
       idle: '',
       checking: t('footer.checking'),
       current: t('footer.up_to_date'),

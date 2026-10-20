@@ -144,6 +144,11 @@ const LIB_GLOBALS = new Set<string>([
   'createImageBitmap',
   'DOMParser', 'XMLHttpRequest', 'Storage', 'NodeList', 'HTMLCollection', 'Document', 'crypto',
   'matchMedia', 'getComputedStyle', 'getSelection', 'scrollTo', 'postMessage', 'queueMicrotask',
+  // MessageChannel / MessageEvent (lib.dom.d.ts) — the tab-to-tab version channel in
+  // src/lib/appVersion.ts:138. Omitted until 2026-10-20, which made that call and the
+  // `MessageEvent` parameter type beside it read as genuine `global-unknown`
+  // (caught by build.test.ts §prodGenuine, the same way createImageBitmap was).
+  'MessageChannel', 'MessageEvent', 'MessagePort',
   // `declare namespace` DOM global (lib.dom.d.ts:37528) — same shape as Intl/Atomics/Reflect
   // above, and the home of CSS.escape. Omitted until 2026-09-17, which made every CSS.* call
   // read as a genuine `global-unknown` (caught by build.test.ts §prodGenuine on the first

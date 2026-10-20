@@ -191,7 +191,32 @@ describe('real-file outlines', () => {
     // regardless of the named block, which is the difference from the #kontak QR
     // case below where names were added to an EXISTING block. `symbols` below
     // moves by the same +2 for the same reason (each contributes one bound name).
-    expect(p.imports).toHaveLength(25); // 6 at design time; +the L2/L3/L4/R2 landing-page imports, +JapanTexture, -1 by the e9317cf redesign, +1 PrincessMascot.astro (2026-09-20), +1 HistoryTimeline.tsx and +1 ContactForm.tsx (2026-09-21), -1 JobMiniList.tsx (2026-09-24, Task 1), -1 PrincessMascot.astro (2026-09-24, Task 3) and -1 SiteNav.astro (2026-09-25), +2 PartnerGrid.tsx and { PARTNERS } (2026-09-27), +2 ReviewGrid.tsx and { REVIEWS, REVIEW_SOURCE } (2026-09-29), +2 FaqList.tsx and { FAQ } (2026-09-29). Adding or removing an IMPORT STATEMENT in this file is what moves this number.
+    // 25 -> 23, 53 -> 52 (2026-10-20, R1a stale-baseline correction). BOTH
+    // counters were already RED at HEAD when this session began — measured, not
+    // derived: a temporary probe calling parseFile directly on this exact
+    // relPath (then deleted, per this file's convention) printed imports 23 and
+    // symbols 52, and `regexImportStatements` — a count of `^import ` lines by a
+    // DIFFERENT method — agreed at 23. Two post-baseline commits edited this
+    // frontmatter and NEITHER ran the indexer suite (`ci.yml` runs only
+    // test:frontend + test:backend), which is how the number rotted:
+    //   `60d8e39` (2026-10-19, feat(mitra): daftar mitra MoU disembunyikan)
+    //     removed TWO statements — `import PartnerGrid from
+    //     '../components/public/PartnerGrid.tsx'` (DEFAULT, one bound name) and
+    //     `import { PARTNERS } from '../lib/partners'` (NAMED, one bound name) —
+    //     so `imports` -2 AND `symbols` -2. The component file left with it
+    //     (PartnerGrid.tsx deleted, the -1 `tsx` attributed in
+    //     discover.test.ts).
+    //   `939b8eb` (2026-10-20, feat(lokasi): peta Google interaktif) added ONE
+    //     bound name — `MAPS_EMBED_URL`, added to the EXISTING companyProfile
+    //     NAMED block — so `imports` +0 and `symbols` +1, the same shape as the
+    //     2026-09-29 FAQ entry two comments above.
+    // Net: imports 25 -> 23 (-2), symbols 53 -> 52 (-2 then +1). The two
+    // counters move by DIFFERENT deltas in the same window, which is exactly
+    // why the entry records both numbers instead of one. Sanity: the measured
+    // 52 ImportBinding names contain neither PARTNERS nor PartnerGrid — the
+    // prose "PARTNERS" inside a comment further down this file is correctly not
+    // a binding.
+    expect(p.imports).toHaveLength(23); // 6 at design time; +the L2/L3/L4/R2 landing-page imports, +JapanTexture, -1 by the e9317cf redesign, +1 PrincessMascot.astro (2026-09-20), +1 HistoryTimeline.tsx and +1 ContactForm.tsx (2026-09-21), -1 JobMiniList.tsx (2026-09-24, Task 1), -1 PrincessMascot.astro (2026-09-24, Task 3) and -1 SiteNav.astro (2026-09-25), +2 PartnerGrid.tsx and { PARTNERS } (2026-09-27), +2 ReviewGrid.tsx and { REVIEWS, REVIEW_SOURCE } (2026-09-29), +2 FaqList.tsx and { FAQ } (2026-09-29), -2 PartnerGrid.tsx and { PARTNERS } removed (2026-10-19, `60d8e39`). Adding or removing an IMPORT STATEMENT in this file is what moves this number.
     // CORRECTION (2026-09-19). This line used to read "one ImportBinding per
     // import", and that was true only while every import in this file was a DEFAULT
     // import. The companyProfile import is named and pulls in 13 bindings, so the
@@ -213,7 +238,12 @@ describe('real-file outlines', () => {
     // the three names predict. That extra symbol is NOT traced, so it is recorded
     // as the measurement rather than explained away: the value here is the
     // indexer's own count, and the assertion is about what the indexer produces.
-    expect(p.symbols).toHaveLength(53); // 17 default bindings + 26 named bindings, now 15 default + 26 named = 41. +1 (2026-09-20) = the PrincessMascot import, a DEFAULT binding, so this moved by 1 and not by the named-binding count. +1 (2026-09-21) = HistoryTimeline (a DEFAULT binding) and +0 more for ContactForm's statement, PLUS `Milestone` added to the existing NAMED companyProfile block (+1) — which is why the two steps together move this by 3 while the statement count moves by 2. -2 (2026-09-24): JobMiniList and PrincessMascot, both DEFAULT bindings, so this drops by exactly 2 alongside the imports count above. +3 (2026-09-24, #kontak QR tiles): CONTACT_INSTAGRAM, CONTACT_TIKTOK and CONTACT_WHATSAPP were added to the existing NAMED companyProfile block — three bound names and NO new import statement, so `imports` stays 20 while `symbols` moves 41 -> 44. MEASURED from the failure message, not derived: "expected [ ...(42) ] to have a length of 41 but got 44". -1 (2026-09-25): the SiteNav.astro import left this file's frontmatter when the owner deleted the band below the hero. It is a DEFAULT import, so this drops by exactly 1 alongside `imports` above — 44 -> 43. MEASURED from the failure message: "expected [ ...(41) ] to have a length of 44 but got 43". +2 (2026-09-27): PartnerGrid (DEFAULT) and PARTNERS (NAMED), as above — 43 -> 45. +3 (2026-09-29): ReviewGrid (DEFAULT) and REVIEWS + REVIEW_SOURCE (NAMED, a new block) — 45 -> 48. +2 (2026-09-29, the FAQ section): FaqList (DEFAULT) and FAQ (NAMED, a new block) — 49 -> 51, matching the +2 on `imports` above (two new statements, one bound name each). +2 (2026-09-30, #kontak opening hours in `b3726ca`): CONTACT_HOURS and CONTACT_HOURS_NOTE, both added to the EXISTING companyProfile NAMED block — two bound names and NO new import statement, so `imports` above correctly stays 25 while this moves 51 -> 53. The same pattern as the 2026-09-24 #kontak QR tiles. `b3726ca` updated `imports`' sibling assertion and ran `lint-ratchet`, but not this suite, which is why the drift sat here until 2026-09-30. MEASURED from the failure message: "expected [ ...(51) ] to have a length of 51 but got 53".
+    // -2 then +1 (2026-10-20, R1a correction, see the `imports` entry above):
+    // `60d8e39` removed PartnerGrid (DEFAULT) and PARTNERS (NAMED) = -2 bound
+    // names, and `939b8eb` added MAPS_EMBED_URL to the existing companyProfile
+    // NAMED block = +1 bound name with NO new import statement. Net 53 -> 52,
+    // measured by probe — not the -2 the two removals alone would predict.
+    expect(p.symbols).toHaveLength(52); // 17 default bindings + 26 named bindings, now 15 default + 26 named = 41. +1 (2026-09-20) = the PrincessMascot import, a DEFAULT binding, so this moved by 1 and not by the named-binding count. +1 (2026-09-21) = HistoryTimeline (a DEFAULT binding) and +0 more for ContactForm's statement, PLUS `Milestone` added to the existing NAMED companyProfile block (+1) — which is why the two steps together move this by 3 while the statement count moves by 2. -2 (2026-09-24): JobMiniList and PrincessMascot, both DEFAULT bindings, so this drops by exactly 2 alongside the imports count above. +3 (2026-09-24, #kontak QR tiles): CONTACT_INSTAGRAM, CONTACT_TIKTOK and CONTACT_WHATSAPP were added to the existing NAMED companyProfile block — three bound names and NO new import statement, so `imports` stays 20 while `symbols` moves 41 -> 44. MEASURED from the failure message, not derived: "expected [ ...(42) ] to have a length of 41 but got 44". -1 (2026-09-25): the SiteNav.astro import left this file's frontmatter when the owner deleted the band below the hero. It is a DEFAULT import, so this drops by exactly 1 alongside `imports` above — 44 -> 43. MEASURED from the failure message: "expected [ ...(41) ] to have a length of 44 but got 43". +2 (2026-09-27): PartnerGrid (DEFAULT) and PARTNERS (NAMED), as above — 43 -> 45. +3 (2026-09-29): ReviewGrid (DEFAULT) and REVIEWS + REVIEW_SOURCE (NAMED, a new block) — 45 -> 48. +2 (2026-09-29, the FAQ section): FaqList (DEFAULT) and FAQ (NAMED, a new block) — 49 -> 51, matching the +2 on `imports` above (two new statements, one bound name each). +2 (2026-09-30, #kontak opening hours in `b3726ca`): CONTACT_HOURS and CONTACT_HOURS_NOTE, both added to the EXISTING companyProfile NAMED block — two bound names and NO new import statement, so `imports` above correctly stays 25 while this moves 51 -> 53. The same pattern as the 2026-09-24 #kontak QR tiles. `b3726ca` updated `imports`' sibling assertion and ran `lint-ratchet`, but not this suite, which is why the drift sat here until 2026-09-30. MEASURED from the failure message: "expected [ ...(51) ] to have a length of 51 but got 53".
     expect(p.symbols.every((s) => s.kind === SymbolKind.ImportBinding)).toBe(true);
     expect(p.imports.every((i) => i.kind === ImportKind.Static)).toBe(true);
   });

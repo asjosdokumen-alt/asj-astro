@@ -52,6 +52,7 @@ import { hostname, userInfo } from 'node:os';
 
 import pg from 'pg';
 import { initDbEnv, describeDbTarget, failNoDbUrl } from './lib/load-env.mjs';
+import { hasConcurrentDdl } from './lib/sql-ddl.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DIR = resolve(HERE, '..', 'migrations');
@@ -127,6 +128,13 @@ function loadMigrations(dir) {
     return { version, file, sql, checksum: sha256(sql), bytes: Buffer.byteLength(sql) };
   });
 }
+
+// The CONCURRENTLY probe and its comment stripper live in scripts/lib/sql-ddl.mjs
+// — a zero-import module so the behaviour can be tested without pulling this
+// file (and `pg`) into the test's module graph. e2e/migrate-concurrently-probe.test.ts
+// pins it: a comment that merely MENTIONS CREATE INDEX CONCURRENTLY must not
+// classify a migration as non-transactional (that exact mistake cost migration
+// 017 its BEGIN/COMMIT wrapper and advisory lock).
 
 /**
  * Supabase's pooler occasionally rejects a valid password transiently, so
@@ -341,7 +349,7 @@ async function main() {
 
     console.log(`  Applying ${pending.length} migration(s):\n`);
     for (const m of pending) {
-      const concurrent = /CONCURRENTLY/i.test(m.sql);
+      const concurrent = hasConcurrentDdl(m.sql);
       const started = Date.now();
 
       if (args.dryRun) {
@@ -366,7 +374,7 @@ async function main() {
             await client.query(
               `INSERT INTO schema_migrations (version, name, checksum, applied_by, execution_ms)
                VALUES ($1,$2,$3,$4,$5)`,
-              [m.version, m.file, m.checksum, who, 0]
+              [m.version, m.file, m.checksum, who, Date.now() - started]
             );
           }
           await client.query('COMMIT');
@@ -419,7 +427,14 @@ function writeReport(file, host, report) {
   console.log(`\n  report written to ${file}`);
 }
 
-main().catch((err) => {
-  console.error('migrate.mjs crashed:', err);
-  process.exit(1);
-});
+// Only run when invoked directly; importing this module (for tests) must not
+// apply migrations or call process.exit. Same shape as scripts/ci/smoke-test.mjs.
+const invokedDirectly =
+  process.argv[1] && import.meta.url === new URL(`file://${process.argv[1].replace(/\\/g, '/')}`).href;
+
+if (invokedDirectly || process.env.MIGRATE_FORCE_MAIN === '1') {
+  main().catch((err) => {
+    console.error('migrate.mjs crashed:', err);
+    process.exit(1);
+  });
+}

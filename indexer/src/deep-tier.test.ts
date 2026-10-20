@@ -389,7 +389,19 @@ const show = true;
     // name would appear here as a third occurrence — and the unresolved-count
     // assertion at the end of this test would be red, which is exactly how the
     // inline version was caught.
-    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'description', 'lang', 'orgJsonLd', 'orgJsonLd', 'showBottomNav', 'showFooter', 'sprite', 'title', 'titleKey']);
+    //
+    // 12 -> 13 (2026-10-20, R1a stale-baseline correction, measured not
+    // derived): `showBottomNav` appears TWICE now. The read through
+    // `<BottomNav client:only="preact" show={showBottomNav} />` (line 431) has
+    // been there since `061eca4` (2026-09-05) and was already counted by the
+    // 2026-09-29 entry above; `5014778` (2026-10-19, feat(version): nomor
+    // build) added `<VersionBadge padBottom={showBottomNav} />` (line 430),
+    // which is the second occurrence. HEAD's list had one entry while the real
+    // file has two, so HEAD was already red when this session started — this
+    // session never touched BaseLayout.astro (`git status` clean for that
+    // path), which is why the correction is attributed to the post-10-19
+    // commit rather than to any edit here.
+    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'description', 'lang', 'orgJsonLd', 'orgJsonLd', 'showBottomNav', 'showBottomNav', 'showFooter', 'sprite', 'title', 'titleKey']);
     for (const o of occs) {
       const ref = r.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
       expect(ref).toBeDefined();

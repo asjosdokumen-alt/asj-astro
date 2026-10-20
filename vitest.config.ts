@@ -174,7 +174,23 @@ export default defineConfig({
             // tanpa DOM sama sekali — jadi memang milik project 'backend'.
             // Tinggal di e2e/ HANYA karena counter beku `indexer` menghitung
             // `src/**` (R15). Tanpa baris ini ia jalan DUA KALI.
-            'e2e/pwa-icons-transparency.test.ts',
+            // Ditambahkan 2026-10-20. Murni menguji helper teks SQL
+            // (scripts/lib/sql-ddl.mjs): tanpa DOM, tanpa pg, tanpa filesystem —
+            // memang milik project 'backend'. Tinggal di e2e/ HANYA karena
+            // counter beku `indexer` menghitung `src/**` (R15). Tanpa baris ini
+            // ia jalan di jsdom dan gagal dengan "Cannot read properties of
+            // undefined (reading 'config')" — yang terlihat seperti bug di tes,
+            // padahal hanya lingkungan yang salah.
+            'e2e/migrate-concurrently-probe.test.ts',
+            // Ditambahkan 2026-10-20 (migration 018). Handler-level, TANPA DOM:
+            // meng-import `_lib/db/master.ts` + `_lib/db/berkas.ts`, membaca
+            // berkas migrasi dari cakram, dan di describe terakhir membuka
+            // koneksi `pg` LANGSUNG ke DB (dilewati kalau kredensial tidak ada).
+            // Tinggal di e2e/ HANYA karena counter beku `indexer` menghitung
+            // `netlify/functions/**/*.ts`. Lihat R13f-bis: menaruhnya di e2e/
+            // TANPA baris ini membuatnya berjalan di jsdom dan dihitung dua
+            // kali — dan `pg` di jsdom memakai jalur browser yang salah.
+            'e2e/master-light-rpc.test.ts',
           ],
         },
       },
