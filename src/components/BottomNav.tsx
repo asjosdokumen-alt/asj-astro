@@ -14,6 +14,7 @@ import { useStore } from '@nanostores/preact';
 import { authStore } from '../store/authReactive';
 import { logoutSupabase } from '../store/userStore';
 import { t, useLang } from '../store/i18n';
+import { navigateTo } from '../lib/navigate';
 import Icon from './ui/Icon';
 
 export default function BottomNav({ show = false }: { show?: boolean }) {
@@ -27,7 +28,7 @@ export default function BottomNav({ show = false }: { show?: boolean }) {
 
   async function handleLogout() {
     await logoutSupabase();
-    window.location.href = '/';
+    navigateTo('/');
   }
 
   if (auth.role === 'admin') {
@@ -36,7 +37,7 @@ export default function BottomNav({ show = false }: { show?: boolean }) {
         window.location.hash = tab;
         window.dispatchEvent(new HashChangeEvent('hashchange'));
       } else {
-        window.location.href = '/admin#' + tab;
+        navigateTo('/admin#' + tab);
       }
     }
 

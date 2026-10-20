@@ -10,6 +10,7 @@ import type { ComponentChildren } from 'preact';
 import Icon from './ui/Icon';
 import { ErrorBoundary } from './ErrorBoundary';
 import { t, useLang } from '../store/i18n';
+import { navigateTo } from '../lib/navigate';
 
 interface Props {
   children: ComponentChildren;
@@ -26,7 +27,7 @@ export default function AuthGuard({ children, requiredRole, redirectTo = '/' }: 
   // Not logged in → redirect
   if (!auth.isLoggedIn) {
     if (typeof window !== 'undefined') {
-      window.location.href = redirectTo;
+      navigateTo(redirectTo);
     }
     return (
       <div class="flex items-center justify-center min-h-screen">
@@ -41,7 +42,7 @@ export default function AuthGuard({ children, requiredRole, redirectTo = '/' }: 
   // Wrong role → redirect
   if (requiredRole && auth.role !== requiredRole) {
     if (typeof window !== 'undefined') {
-      window.location.href = redirectTo;
+      navigateTo(redirectTo);
     }
     return (
       <div class="flex items-center justify-center min-h-screen">

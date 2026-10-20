@@ -11,6 +11,7 @@ import { validateFile } from '../../lib/uploadGuard';
 import { t, useLang } from '../../store/i18n';
 import Icon from '../ui/Icon';
 import { requiredDocsFromJob } from '../../lib/applyDocs';
+import { navigateTo } from '../../lib/navigate';
 import { useOverlay } from '../ui/useOverlay';
 
 interface FormData {
@@ -570,7 +571,7 @@ export default function ApplyFullForm() {
             <div class="text-[60px] mb-2">✅</div>
             <h2 class="mt-4 text-2xl font-black">{t('apply.success_title')}</h2>
             <p class="mt-2.5 text-sm text-slate-400 leading-[22px]">{t('apply.success_desc')}</p>
-            <button type="button" onClick={() => window.location.href = '/'} class="mt-5 w-full h-[50px] rounded-[14px] bg-emerald-500 font-extrabold text-white border-none cursor-pointer">{t('apply.btn_portal')}</button>
+            <button type="button" onClick={() => navigateTo('/')} class="mt-5 w-full h-[50px] rounded-[14px] bg-emerald-500 font-extrabold text-white border-none cursor-pointer">{t('apply.btn_portal')}</button>
           </div>
         </div>
       )}

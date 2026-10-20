@@ -9,6 +9,7 @@ import { authStore } from '../../store/authReactive';
 import { t, toggleLang, useLang } from '../../store/i18n';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import { aiCvAccessRedirect } from '../../lib/vip';
+import { navigateTo } from '../../lib/navigate';
 import { validate, waSchema, kandidatLoginSchema } from '../../lib/schemas';
 
 import type { ChatMessage } from '../../types/api';
@@ -548,7 +549,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           };
         }
         const redirect = aiCvAccessRedirect(flags, wa, a.name);
-        if (redirect) window.location.href = redirect;
+        if (redirect) navigateTo(redirect);
       } catch { /* gagal jaringan → jangan blokir (fallback aman legacy) */ }
     })();
     return () => { alive = false; };

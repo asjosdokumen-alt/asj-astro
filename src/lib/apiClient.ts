@@ -11,6 +11,7 @@ import { authStore, logout } from '../store/authReactive';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { showToast } from '../components/Toast';
 import { getEndpoint } from './apiEndpoint';
+import { navigateTo } from './navigate';
 
 /** SWR-lite cache — sessionStorage with TTL (matching legacy api-client.ts) */
 const READ_CACHE_TTL_MS = 30 * 1000; // 30 seconds freshness
@@ -184,7 +185,7 @@ function sessionInvalidVerdict(onSessionInvalid: 'logout' | 'throw'): never {
   if (onSessionInvalid === 'logout') {
     showToast('Sesi expired. Silakan login kembali.', 'error');
     logout();
-    window.location.href = '/';
+    navigateTo('/');
   }
   throw new Error('Session expired');
 }
@@ -328,7 +329,7 @@ export async function apiClient<T = ApiResponse>(
     if (onSessionInvalid === 'logout') {
       showToast('Sesi tidak valid. Silakan login kembali.', 'error');
       logout();
-      window.location.href = '/';
+      navigateTo('/');
     }
     throw new Error('No valid session');
   }

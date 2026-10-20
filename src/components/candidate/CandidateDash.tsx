@@ -11,6 +11,7 @@ import ChangePasswordModal from '../ChangePasswordModal';
 import CvMiniModal from '../CvMiniModal';
 import InterviewSimulatorModal from './InterviewSimulatorModal';
 import { isVipFlags, ASJ_LOGO_URL } from '../../lib/vip';
+import { navigateTo } from '../../lib/navigate';
 import RirekishoBuilder from '../admin/RirekishoBuilder';
 import EsignNaiteiModal, { allowedTahapanEsign } from '../EsignNaiteiModal';
 import PemberkasanModal from '../admin/PemberkasanModal';
@@ -215,7 +216,7 @@ export default function CandidateDash() {
   async function loadDashboard() {
     try {
       const wa = user.wa || JSON.parse(localStorage.getItem('asj_kandidat_session') || '{}').wa;
-      if (!wa) { window.location.href = '/'; return; }
+      if (!wa) { navigateTo('/'); return; }
       // ── LEWAT apiClient, BUKAN fetch mentah ──────────────────────────────
       // `getAppData` ADA di CACHEABLE_READS. Fetch mentah melewati cache baca
       // 30 s di apiClient, jadi payload yang sama ditarik ulang setiap mount —
@@ -417,7 +418,7 @@ export default function CandidateDash() {
         showToast(t('ui.toast_ai_cv_locked'), 'info');
         return;
       }
-      window.location.href = '/ai-cv';
+      navigateTo('/ai-cv');
     }
 
 if (!data) return failed

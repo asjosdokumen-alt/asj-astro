@@ -16,6 +16,7 @@ import { apiClient } from '../../lib/apiClient';
 import { uploadMany } from '../../lib/cloudinary';
 import { authStore, type AuthState } from '../../store/authReactive';
 import { PEKERJAAN, JURUSAN, pairDisplay } from '../../lib/opsi-form';
+import { navigateTo } from '../../lib/navigate';
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../store/i18n', async () => {
@@ -43,6 +44,16 @@ vi.mock('../../lib/cloudinary', () => ({
   }),
 }));
 vi.mock('../../lib/apiClient', () => ({ apiClient: vi.fn() }));
+vi.mock('../../lib/navigate', () => ({ navigateTo: vi.fn() }));
+
+// Jahitan `navigateTo` WAJIB bersih di setiap tes. Tanpa baris ini, panggilan
+// dari tes sebelumnya terbawa ke tes berikutnya — dan di berkas ini pernah
+// membuat LIMA asersi "TIDAK diarahkan" gagal gara-gara satu redirect yang sah
+// di tes pertama. Urutan tes dulu menutupi kebocoran itu di berkas sebelah,
+// yang justru lebih berbahaya: hijau karena kebetulan.
+beforeEach(() => {
+  vi.mocked(navigateTo).mockClear();
+});
 
 const fetchMock = vi.fn();
 
@@ -706,18 +717,11 @@ describe('AiCvForm — pesan penolakan server (VIP locked)', () => {
 // ==========================================
 describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
   const WA = '081234567890';
-  let realLocation: Location;
-
-  /** jsdom menolak navigasi sungguhan — ganti location dengan stub yang terbaca. */
-  function stubLocation() {
-    realLocation = window.location;
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      writable: true,
-      value: { href: '' },
-    });
-  }
-  const href = () => (window as unknown as { location: { href: string } }).location.href;
+  // Navigasi diuji lewat jahitan `navigateTo` (src/lib/navigate.ts). Dulu describe ini
+  // menipu `window.location` dengan Object.defineProperty — dan itu MELEMPAR di
+  // jsdom 30 karena `location` bersifat [LegacyUnforgeable] (configurable:false),
+  // sehingga 6 tes merah dengan "Cannot redefine property: location".
+  const navigateToMock = vi.mocked(navigateTo);
 
   beforeEach(() => {
     localStorage.clear();
@@ -725,11 +729,9 @@ describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
     vi.mocked(showToast).mockReset();
     vi.mocked(apiClient).mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    stubLocation();
   });
   afterEach(() => {
     cleanup();
-    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
     vi.unstubAllGlobals();
   });
 
@@ -738,8 +740,8 @@ describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
     vi.mocked(apiClient).mockResolvedValue({ candidates: [{ isVIP: false, kelas: '' }] } as any);
     render(<AiCvForm />);
 
-    await waitFor(() => expect(href()).toContain('/master'));
-    expect(href()).toBe('/master?wa=' + encodeURIComponent(KANDIDAT.wa) + '&nama=' + encodeURIComponent(KANDIDAT.name));
+    await waitFor(() => expect(navigateToMock).toHaveBeenCalled());
+    expect(navigateToMock).toHaveBeenCalledWith('/master?wa=' + encodeURIComponent(KANDIDAT.wa) + '&nama=' + encodeURIComponent(KANDIDAT.name));
     expect(apiClient).toHaveBeenCalledWith('getAppData', ['kandidat', KANDIDAT.wa]);
   });
 
@@ -749,7 +751,7 @@ describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
     render(<AiCvForm />);
 
     await waitFor(() => expect(apiClient).toHaveBeenCalledWith('getAppData', ['kandidat', KANDIDAT.wa]));
-    expect(href()).toBe('');
+    expect(navigateToMock).not.toHaveBeenCalled();
   });
 
   it('kandidat VIP (flag server isVIP) → TIDAK diarahkan (boleh masuk)', async () => {
@@ -760,7 +762,7 @@ describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
     render(<AiCvForm />);
 
     await waitFor(() => expect(apiClient).toHaveBeenCalledWith('getAppData', ['kandidat', KANDIDAT.wa]));
-    expect(href()).toBe('');
+    expect(navigateToMock).not.toHaveBeenCalled();
   });
 
   it('catatan dari myData (bentuk lama) juga dibaca sebelum memutuskan', async () => {
@@ -769,7 +771,7 @@ describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
     render(<AiCvForm />);
 
     await waitFor(() => expect(apiClient).toHaveBeenCalledWith('getAppData', ['kandidat', KANDIDAT.wa]));
-    expect(href()).toBe(''); // VIP dari myData → jangan redirect
+    expect(navigateToMock).not.toHaveBeenCalled(); // VIP dari myData → jangan redirect
   });
 
   it('admin (adminMode) → penjaga dilewati sepenuhnya (TANPA getAppData)', async () => {
@@ -779,14 +781,14 @@ describe('AiCvForm — penjaga akses VIP halaman AI CV (§6 gap 2)', () => {
 
     await waitFor(() => expect(apiClient).toHaveBeenCalledWith('getDrafCvMaster', [WA]));
     expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'getAppData')).toBe(false);
-    expect(href()).toBe('');
+    expect(navigateToMock).not.toHaveBeenCalled();
   });
 
   it('tanpa sesi kandidat (guest) → penjaga tidak memanggil API (keputusan final di server)', () => {
     authStore.set({ ...GUEST });
     render(<AiCvForm />);
     expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'getAppData')).toBe(false);
-    expect(href()).toBe('');
+    expect(navigateToMock).not.toHaveBeenCalled();
   });
 });
 

@@ -29,6 +29,7 @@ import { authStore, type AuthState } from '../../store/authReactive';
 // `berkas` tidak menebak key mana yang dibaca (kalau katalognya berubah, tes ini
 // ikut berubah alih-alih diam-diam lolos).
 import { ALL_BERKAS } from '../../lib/berkasCatalog';
+import { navigateTo } from '../../lib/navigate';
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../store/i18n', async () => {
@@ -41,6 +42,16 @@ vi.mock('../../lib/apiClient', () => ({ apiClient: vi.fn(async () => ({ success:
 vi.mock('../../lib/uploadBerkas', () => ({
   uploadBerkasToStorage: vi.fn(async () => 'https://cdn.test/revisi.pdf'),
 }));
+vi.mock('../../lib/navigate', () => ({ navigateTo: vi.fn() }));
+
+// Jahitan `navigateTo` WAJIB bersih di setiap tes — kalau tidak, panggilan dari
+// tes sebelumnya terbaca oleh asersi "TIDAK membuka /ai-cv" di tes berikutnya.
+// Berkas ini dulu hijau hanya karena URUTAN: describe yang pertama mengasersi
+// "tidak dipanggil" sebelum ada yang memanggil. Ubah urutannya dan ia merah.
+// Kebetulan semacam itu bukan hijau.
+beforeEach(() => {
+  vi.mocked(navigateTo).mockClear();
+});
 
 const KANDIDAT: AuthState = {
   role: 'kandidat', name: 'Budi', wa: '081234567890',
@@ -78,12 +89,11 @@ function mockDash(over: Record<string, unknown> = {}) {
   } as never);
 }
 
-let realLocation: Location;
-function stubLocation() {
-  realLocation = window.location;
-  Object.defineProperty(window, 'location', { configurable: true, writable: true, value: { href: '' } });
-}
-const href = () => (window as unknown as { location: { href: string } }).location.href;
+// Navigasi diuji lewat jahitan `navigateTo` (src/lib/navigate.ts). Dulu berkas ini
+// menipu `window.location` dengan Object.defineProperty — dan itu MELEMPAR di
+// jsdom 30 karena `location` bersifat [LegacyUnforgeable] (configurable:false).
+// 6 tes merah dengan "Cannot redefine property: location".
+const navigateToMock = vi.mocked(navigateTo);
 
 async function renderDash(over: Record<string, unknown> = {}) {
   mockDash(over);
@@ -101,11 +111,9 @@ describe('CandidateDash — gerbang AI CV Master (§6 gap 1)', () => {
     apiClientMock.mockResolvedValue({ success: true } as never);
     vi.mocked(showToast).mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    stubLocation();
   });
   afterEach(() => {
     cleanup();
-    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
     vi.unstubAllGlobals();
   });
 
@@ -113,20 +121,20 @@ describe('CandidateDash — gerbang AI CV Master (§6 gap 1)', () => {
     await renderDash({ isVIP: false });
     await fireEvent.click(screen.getByRole('button', { name: 'ui.ai_cv_assistant' }));
     expect(showToast).toHaveBeenCalledWith('ui.toast_ai_cv_locked', 'info');
-    expect(href()).toBe('');
+    expect(navigateToMock).not.toHaveBeenCalled();
   });
 
   it('siswa VIP ([VIP]) → membuka /ai-cv tanpa toast terkunci', async () => {
     await renderDash({ isVIP: true });
     await fireEvent.click(screen.getByRole('button', { name: 'ui.ai_cv_assistant' }));
-    expect(href()).toBe('/ai-cv');
+    expect(navigateToMock).toHaveBeenCalledWith('/ai-cv');
     expect(showToast).not.toHaveBeenCalledWith('ui.toast_ai_cv_locked', 'info');
   });
 
   it('siswa KELAS ([KELAS G], tanpa [VIP]) → gate TERBUKA (isVipCatatan mencakup KELAS)', async () => {
     await renderDash({ kelas: 'G' });
     await fireEvent.click(screen.getByRole('button', { name: 'ui.ai_cv_assistant' }));
-    expect(href()).toBe('/ai-cv');
+    expect(navigateToMock).toHaveBeenCalledWith('/ai-cv');
   });
 });
 
@@ -139,11 +147,9 @@ describe('CandidateDash — lencana VIP + PERFECT ASJ STUDENT (§6 gap 4/5)', ()
     apiClientMock.mockResolvedValue({ success: true } as never);
     vi.mocked(showToast).mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    stubLocation();
   });
   afterEach(() => {
     cleanup();
-    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
     vi.unstubAllGlobals();
   });
 
@@ -222,11 +228,9 @@ describe('CandidateDash — getAppData lewat cache apiClient (§26)', () => {
     apiClientMock.mockResolvedValue({ success: true } as never);
     vi.mocked(showToast).mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    stubLocation();
   });
   afterEach(() => {
     cleanup();
-    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
     vi.unstubAllGlobals();
   });
 
@@ -268,11 +272,9 @@ describe('CandidateDash — unggah revisi lewat apiClient', () => {
     apiClientMock.mockReset();
     vi.mocked(showToast).mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    stubLocation();
   });
   afterEach(() => {
     cleanup();
-    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
     vi.unstubAllGlobals();
   });
 
@@ -406,7 +408,6 @@ describe('CandidateDash — LevelCard benar-benar terpasang', () => {
     apiClientMock.mockResolvedValue({ success: true } as never);
     vi.mocked(showToast).mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    stubLocation();
   });
 
   // WAJIB, dan kesalahannya sempat terjadi: setiap describe lain di berkas ini
@@ -449,7 +450,6 @@ describe('CandidateDash — StepGuide benar-benar terpasang', () => {
     apiClientMock.mockResolvedValue({ success: true } as never);
     vi.mocked(showToast).mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    stubLocation();
   });
 
   // Sama seperti describe di atas: tanpa cleanup, DOM tes sebelumnya tetap
@@ -581,11 +581,9 @@ describe('CandidateDash — pemilih template CV adalah fitur admin, bukan kandid
     apiClientMock.mockResolvedValue({ success: true } as never);
     vi.mocked(showToast).mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    stubLocation();
   });
   afterEach(() => {
     cleanup();
-    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
     vi.unstubAllGlobals();
   });
 
@@ -624,11 +622,9 @@ describe('CandidateDash — kartu dossier sebagai header profil', () => {
     apiClientMock.mockResolvedValue({ success: true } as never);
     vi.mocked(showToast).mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    stubLocation();
   });
   afterEach(() => {
     cleanup();
-    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
     vi.unstubAllGlobals();
   });
 
@@ -763,11 +759,9 @@ describe('CandidateDash — loading skeleton', () => {
     apiClientMock.mockReset();
     vi.mocked(showToast).mockReset();
     vi.stubGlobal('fetch', fetchMock);
-    stubLocation();
   });
   afterEach(() => {
     cleanup();
-    Object.defineProperty(window, 'location', { configurable: true, writable: true, value: realLocation });
     vi.unstubAllGlobals();
   });
 
