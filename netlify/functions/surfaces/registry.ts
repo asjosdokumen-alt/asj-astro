@@ -78,6 +78,14 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   simpanTemplateCv:   () => import('./master').then(m => m.MASTER_ACTIONS),
   hapusTemplateCv:    () => import('./master').then(m => m.MASTER_ACTIONS),
 
+  // ── Sync (2026-10-20) ─────────────────────────────────────────────────────
+  // Store lokal-first: probe murah memutuskan, delta menarik yang berubah,
+  // manifest mendeteksi penghapusan. Admin-only — delta membaca SELURUH isi
+  // tabel, bukan baris satu WA.
+  syncProbe:     () => import('./sync').then(m => m.SYNC_ACTIONS),
+  syncDelta:     () => import('./sync').then(m => m.SYNC_ACTIONS),
+  syncManifest:  () => import('./sync').then(m => m.SYNC_ACTIONS),
+
   // ── Schedule ──────────────────────────────────────────────────────────────
   simpanJadwalBaru:    () => import('./schedule').then(m => m.SCHEDULE_ACTIONS),
   hapusJadwal:         () => import('./schedule').then(m => m.SCHEDULE_ACTIONS),

@@ -52,6 +52,14 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   simpanTemplateCv: '/.netlify/functions/master-data',
   hapusTemplateCv: '/.netlify/functions/master-data',
 
+  // Sync (2026-10-20) — store lokal-first panel admin. `syncProbe` sengaja
+  // punya entry sendiri: ia dipanggil SETIAP kali app dibuka dan jawabannya
+  // hanya beberapa ratus byte, jadi menaruhnya di entry terberat repo
+  // (bridge-links) berarti membayar cold start penuh untuk 210 byte.
+  syncProbe: '/.netlify/functions/sync',
+  syncDelta: '/.netlify/functions/sync',
+  syncManifest: '/.netlify/functions/sync',
+
   // Config
   updateSysConfig: '/.netlify/functions/config',
   getRincianPresets: '/.netlify/functions/config',

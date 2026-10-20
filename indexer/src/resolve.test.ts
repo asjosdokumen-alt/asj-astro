@@ -57,7 +57,11 @@ describe('specifier resolution (full repo)', () => {
     // is therefore never a one-line change, and the number below is the
     // independently MEASURED one (the probe listed the 15 paths and this was
     // the count of that list), not 14 + 1.
-    expect(barrels).toHaveLength(15);
+    // 15 -> 16 (2026-10-20, this session): +1 — netlify/functions/contexts/sync/index.ts,
+    // the delta-sync context for the local-first store. As with contact, a new
+    // context moves every "how many context barrels exist" counter: here,
+    // exportTables.test.ts's identical assertion, and the const-catalog counts.
+    expect(barrels).toHaveLength(16);
     for (const b of barrels) {
       const edges = r.graph.outgoing.get(b.idx) ?? [];
       expect(edges.length).toBeGreaterThan(0);

@@ -311,7 +311,11 @@ describe('real repo — 15 context barrels', () => {
     // assertion in resolve.test.ts both move by one; they are two independent
     // measurements of the same fact, which is why both are updated rather than
     // one being derived from the other.
-    expect(barrels).toHaveLength(15);
+    // 15 -> 16 (2026-10-20, this session): +1 — netlify/functions/contexts/sync/index.ts,
+    // the barrel for the delta-sync context (syncProbe/syncDelta/syncManifest).
+    // It is a NEW context for the local-first store, so this counter and the
+    // same assertion in resolve.test.ts both move by one.
+    expect(barrels).toHaveLength(16);
 
     const failures: string[] = [];
     let checked = 0;
