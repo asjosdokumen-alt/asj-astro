@@ -73,14 +73,23 @@ export const PROJECTIONS = {
   /**
    * Master rows for `attachBerkasBio` — BERKAS_COLUMNS (*_url) + BIO_COLUMNS +
    * the WA matcher. Deliberately narrow: the full row is 169 columns.
+   *
+   * The four `ai_*` JSON-path aliases this projection used to carry
+   * (`ai_gender:ai_data_json->identitas->gender` and three siblings) were
+   * REMOVED 2026-10-20: `master_database_candidate.ai_data_json` is `text`,
+   * so PostgREST answered those with **200 + null** — the values exist (56 of
+   * 234 rows, measured) and the read silently dropped them. They now come from
+   * the `master_light(wa_list text[])` RPC (migration 018), which casts
+   * `::jsonb` inside SQL. See db/master.ts `fetchMasterLightByWa` (RPC first,
+   * this projection as fallback) and e2e/master-light-rpc.test.ts, which pins
+   * the RPC's column set against this list.
    */
   MASTER_LIGHT_COLS: {
     table: 'master_database_candidate',
-    // Kolom identitas + sub-objek `ai_data_json.identitas` (JSON-path PostgREST
-    // dengan alias `ai_*`). Dossier profil hanya punya baris kandidat + `bio`;
-    // tanpa kolom ini ia menampilkan "-" untuk usia/tb/bb/gender yang ADA di
-    // master atau di AI (terukur 226 kandidat, 2026-10-13).
-    columns: 'id,id_kandidat,nama_lengkap,no_wa,kk_url,ijazah_sd_url,ijazah_smp_url,ijazah_sma_url,univ_url,ktp_url,email,tempat_lahir,tgl_lahir,alamat_lengkap,no_coe,exp_pasport,no_paspor,kota_terbit_pasport,tgl_terbit_pasport,keluarga_1_nama,pekerjaan_1_nama_perusahaan,gender,usia,tb,bb,ai_gender:ai_data_json->identitas->gender,ai_umur:ai_data_json->identitas->umur,ai_tb:ai_data_json->identitas->tb,ai_bb:ai_data_json->identitas->bb',
+    // 24 kolom identitas + sub-objek URL berkas. `ai_gender/ai_umur/ai_tb/ai_bb`
+    // TIDAK lagi ada di sini — lihat catatan di atas: empat alias itu datang
+    // dari RPC `master_light`, bukan dari JSON-path PostgREST.
+    columns: 'id,id_kandidat,nama_lengkap,no_wa,kk_url,ijazah_sd_url,ijazah_smp_url,ijazah_sma_url,univ_url,ktp_url,email,tempat_lahir,tgl_lahir,alamat_lengkap,no_coe,exp_pasport,no_paspor,kota_terbit_pasport,tgl_terbit_pasport,keluarga_1_nama,pekerjaan_1_nama_perusahaan,gender,usia,tb,bb',
   },
   /** Mail inbox row — everything `mapForm()` reads. */
   FORM_LIGHT_COLS: {

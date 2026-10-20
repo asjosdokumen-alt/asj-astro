@@ -65,9 +65,15 @@ const BIO_COLUMNS: [string, string[]][] = [
 /**
  * `bio` yang boleh ditambal dari `ai_data_json.identitas`.
  *
- * Nilainya datang dari `MASTER_LIGHT_COLS` lewat JSON-path PostgREST
- * (`ai_gender:ai_data_json->identitas->gender`) — HANYA sub-objek kecil itu,
- * bukan seluruh kolom JSON-nya, supaya proyeksi ringan tetap ringan.
+ * Nilainya datang dari RPC `master_light(wa_list text[])` (migrasi 018), yang
+ * melakukan cast `ai_data_json::jsonb -> 'identitas' ->> '<field>' DI DALAM
+ * SQL — satu-satunya tempat cast itu bisa dilakukan. Proyeksi PostgREST TIDAK
+ * bisa: kolomnya `text`, jadi JSON-path `->` di `select` menjawab **200 dengan
+ * nilai null** (terukur 2026-10-20: 56 dari 234 baris punya `gender`/`umur`),
+ * dan menulis `::jsonb` eksplisit dijawab 400 PGRST100. Sintalarlah: baris
+ * master yang masih kosong lah yang ditambal; kalau RPC tidak ada, `db/master.ts`
+ * jatuh ke proyeksi lama yang kini TANPA empat alias `ai_*` ini — jadi tanpa
+ * RPC patch ini no-op, bukan pembawa null.
  * Terukur 2026-10-13: **21** kandidat punya `gender` HANYA di `ai_data_json`.
  */
 const AI_BIO_FALLBACK: [string, string][] = [
@@ -228,4 +234,4 @@ async function listStorageFolder(prefix: string) {
   }
 }
 
-export { attachBerkasBio, listStorageFolder, BERKAS_COLUMNS };
+export { attachBerkasBio, listStorageFolder, BERKAS_COLUMNS, AI_BIO_FALLBACK };

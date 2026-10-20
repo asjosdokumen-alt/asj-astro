@@ -37,7 +37,7 @@ export async function findMasterByWa(wa: string): Promise<any | null> {
       query: {
         select: allColumns('master_database_candidate'),
         limit: '10',
-        no_wa: 'in.(' + forms.join(',') + ')',
+        no_wa: `in.(${forms.join(',')})`,
       },
     });
   }
@@ -47,7 +47,7 @@ export async function findMasterByWa(wa: string): Promise<any | null> {
 
 export async function patchMaster(id: string, body: Record<string, any>): Promise<void> {
   await supabaseJson('PATCH', 'master_database_candidate', {
-    query: { id: 'eq.' + id },
+    query: { id: `eq.${id}` },
     body,
     headers: { Prefer: 'return=minimal' },
   });

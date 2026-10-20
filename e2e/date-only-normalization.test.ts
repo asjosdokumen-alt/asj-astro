@@ -184,20 +184,24 @@ describe('batas baca — mapCandidate, buildMasterNested, attachBerkasBio', () =
   });
 
   it('attachBerkasBio: bio.tgllahir bersih — sumber baris "Tanggal Lahir" unduhan', async () => {
+    const masterRow = [
+      {
+        id: 1,
+        id_kandidat: 'ASJ00181',
+        no_wa: '6281234567890',
+        tempat_lahir: 'PONOROGO',
+        tgl_lahir: ISO_WIB_MIDNIGHT,
+        tgl_terbit_pasport: '2020-01-01T17:00:00.000Z',
+        exp_pasport: '2030-01-01T17:00:00.000Z',
+      },
+    ];
+    // BARIS master kini dibaca lewat RPC `master_light` DULU (migrasi 018 —
+    // ia yang membuat cast `ai_data_json::jsonb` bisa dilakukan), dan baru
+    // jatuh ke proyeksi PostgREST biasa kalau RPC-nya tidak ada. Mock mengikuti
+    // kontrak itu: jalur utama dilayani RPC, dan GET tetap dilayani supaya
+    // jalur fallback juga tersedia untuk tes yang memicunya.
     h.supabaseJson.mockImplementation(async (_method: string, table: string) => {
-      if (table === 'master_database_candidate') {
-        return [
-          {
-            id: 1,
-            id_kandidat: 'ASJ00181',
-            no_wa: '6281234567890',
-            tempat_lahir: 'PONOROGO',
-            tgl_lahir: ISO_WIB_MIDNIGHT,
-            tgl_terbit_pasport: '2020-01-01T17:00:00.000Z',
-            exp_pasport: '2030-01-01T17:00:00.000Z',
-          },
-        ];
-      }
+      if (table === 'rpc/master_light' || table === 'master_database_candidate') return masterRow;
       return [];
     });
     const out = await attachBerkasBio([{ wa: '6281234567890', nama: 'ADELLIA' }]);

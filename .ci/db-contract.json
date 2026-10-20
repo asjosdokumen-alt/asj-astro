@@ -108,6 +108,11 @@
       "severity": "optional",
       "migration": "netlify/functions/migrations/002_atomic_job_claim.sql",
       "note": "Reaps jobs orphaned by a crashed worker. Absent = jobs can hang in 'running' forever."
+    },
+    "master_light": {
+      "severity": "optional",
+      "migration": "migrations/018_master_light_rpc.sql",
+      "note": "Light master biodata read whose SQL casts ai_data_json::jsonb. Without it the PostgREST fallback still answers, but the four ai_* identity fields come back as 200 + null - the exact silent failure this function was added for (ai_data_json is text; measured 2026-10-20: 56 of 234 rows carry identitas.gender/umur). Deliberately NOT granted to anon: RLS master_own_wa already returns 0 rows for anon and the runtime calls it with the service key."
     }
   }
 }

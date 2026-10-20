@@ -57,7 +57,7 @@ describe('findMasterByWa — tak pernah menarik tabel tanpa filter', () => {
     expect(m.calls).toHaveLength(1);
     expect(m.calls[0].method).toBe('GET');
     expect(m.calls[0].table).toBe('master_database_candidate');
-    expect(String(m.calls[0].query.no_wa)).toBe('in.(' + WA + ')');
+    expect(String(m.calls[0].query.no_wa)).toBe(`in.(${WA})`);
   });
 
   it('fallback: query TETAP ber-filter no_wa (dua bentuk), bukan scan 500 baris', async () => {
@@ -69,8 +69,8 @@ describe('findMasterByWa — tak pernah menarik tabel tanpa filter', () => {
     const fb = m.calls[1];
     expect(fb.method).toBe('GET');
     // Filter WA wajib ada — inilah inti perbaikannya. Bentuk lokal = 0 + 62…
-    const local = '0' + WA.slice(2);
-    expect(String(fb.query.no_wa)).toBe('in.(' + WA + ',' + local + ')');
+    const local = `0${WA.slice(2)}`;
+    expect(String(fb.query.no_wa)).toBe(`in.(${WA},${local})`);
     // Tidak ada satu pun permintaan tanpa filter no_wa.
     for (const c of m.calls) {
       expect(Object.keys(c.query), JSON.stringify(c.query)).toContain('no_wa');
@@ -78,7 +78,7 @@ describe('findMasterByWa — tak pernah menarik tabel tanpa filter', () => {
   });
 
   it('fallback: baris tersimpan bentuk lokal (0…) tetap ketemu lewat query yang sama', async () => {
-    const local = '08' + WA.slice(3); // 628xxxx → 08xxxx (satu digit awal ditahan)
+    const local = `08${WA.slice(3)}`; // 628xxxx → 08xxxx (satu digit awal ditahan)
     m.rows = [masterRow({ no_wa: local })];
     m.failFirst = 1;
     const row = await findMasterByWa(WA);
@@ -93,7 +93,7 @@ describe('findMasterByWa — tak pernah menarik tabel tanpa filter', () => {
     m.failFirst = 1;
     const row = await findMasterByWa(jp);
     expect(row?.no_wa).toBe(jp);
-    expect(String(m.calls[1].query.no_wa)).toBe('in.(' + jp + ')');
+    expect(String(m.calls[1].query.no_wa)).toBe(`in.(${jp})`);
   });
 
   it('kedua jalur gagal → error DITERUSKAN (bukan null yang menyamar sebagai "tidak ada")', async () => {
