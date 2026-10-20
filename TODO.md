@@ -71,6 +71,15 @@
       **Urutan heading, `<main>` tunggal, dan target skip-link sudah ditegakkan
       `e2e:headings` sejak §23/§24** — item (b) di catatan lama sudah tertutup,
       dan catatan itu salah menyebutnya "belum disapu".
+      ⚠ **Cakupan outline diperluas 2026-10-20, dan itu lubang nyata.**
+      Asersi "heading levels do not skip a level" hanya berjalan atas `ROUTES`
+      (tujuh rute form), sementara asersi `h1` dan skip-link di file yang sama
+      berjalan atas `ALL_HEADING_ROUTES` — jadi `/` tidak pernah diukur. Akibatnya
+      terukur: Lighthouse memberi `heading-order` **0** untuk `H2 → H4` di
+      `LayananSection.astro` sementara `e2e:headings` hijau. Loop dipindah ke
+      `ALL_HEADING_ROUTES`, dan mutasi balik ke `h4` membuat gate gagal dengan
+      pesan yang menyebut kedua heading-nya. **Pelajaran:** yang salah bukan
+      aturannya, melainkan CAKUPAN daftar yang di-walk.
 - [ ] Loading skeleton di semua halaman yang memuat data
 
 ### Polish
@@ -86,7 +95,25 @@
       regresi. Satu lubang ratchet ikut ditutup: entry BARU tanpa angka baseline
       dulu dilewati `continue`, jadi `kontak.js` (81,4 KB) tidak pernah diukur —
       sekarang itu kegagalan, bukan lewatan.
-- [ ] Lighthouse audit — target 90+
+- [ ] Lighthouse audit — target 90+ — **DIUKUR 2026-10-20, BELUM 90+ untuk
+      Performance.** `/` (mobile, Lighthouse 12.2.1, harness lokal):
+      **Accessibility 98 → 100**, **SEO 92 → 100**, Best Practices 100,
+      **Performance 65 → 61**. Dua yang naik sudah diperbaiki dan dibuktikan
+      bisa merah: `heading-order` (tiga `h4` di bawah `h2` di
+      `LayananSection.astro`, DAN gate `e2e:headings` yang tidak pernah mengukur
+      rute publik) serta `robots.txt` yang memang tidak ada (`404` di produksi,
+      `200 + index.html` di harness). Angka Performance **bukan angka produksi**:
+      `server.cjs` tidak mengompresi sementara Netlify mengirim brotli (diukur
+      lewat header live), jadi FCP/LCP di laporan ini pesimistis.
+      Dua pengungkit berikutnya, keduanya **belum** dikerjakan:
+      (a) `uses-responsive-images` 249 KiB — banner `/assets/banner-*.webp`
+      belum punya varian `1x/@2x` seperti `/assets/ilustrasi/*`;
+      (b) `admin.DgQMtOQR.css` **185 KB render-blocking di SEMUA halaman** +
+      klien Supabase 213 KB di beranda publik — perlu pemecahan bundel per
+      permukaan, dan itu perubahan arsitektural.
+      Sengaja TIDAK diubah: 7 KiB komentar di script inline `BaseLayout`
+      (komentar itu memuat pengukuran, dan setelah brotli nilainya ~1,5 KiB).
+      Laporan lengkap: `deliverables/gstack/lighthouse-2026-10-20.md`.
 - [ ] Error tracking (Sentry/LogRocket) — *ini menyentuh backend bila dipasang di function; lihat
       `docs/BACKEND_TODO.md` #7 untuk sisi observabilitasnya*
 - [ ] PostHog / analytics perilaku
