@@ -650,8 +650,20 @@ async function run() {
    *   /admin      H1 -> H3 -> H3 -> H2  (a level skipped, and the h2 came last)
    *   /candidate  H3 -> H3 with the SAME text (a child heading at its parent's level)
    * Both sat on the two routes §23 never measured, which is why they are here now.
+   *
+   * ⚠ WIDENED 2026-10-20 from `ROUTES` to `ALL_HEADING_ROUTES`, and that was a real
+   * hole rather than tidying. `ROUTES` is the FORM routes; the landing page is in
+   * `PUBLIC_ROUTES`, so its outline had never been measured — while the h1 and
+   * skip-link assertions a few lines below already ran over both sets. Lighthouse
+   * found the consequence on `/`: `heading-order` = 0 (H2 "Penerimaan Siswa
+   * Angkatan K" followed by an H4 "Tersedia Dana Talang"), one skipped level in a
+   * card that `e2e:headings` reported as green.
+   *
+   * The lesson is the selector's SCOPE, not the rule: a check that walks one list
+   * while its siblings walk two reads as "covered" from the outside. Keep the
+   * three loops on the same list unless there is a stated reason not to.
    */
-  for (const { path, session } of ROUTES) {
+  for (const { path, session } of ALL_HEADING_ROUTES) {
     for (const width of [390, 1280]) {
       const label = `${width}px ${path}`;
 

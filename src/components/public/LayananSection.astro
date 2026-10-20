@@ -47,14 +47,18 @@ const waExam =
            </p>
 
            <div class="bg-emerald-900/20 p-4 rounded-xl border-l-4 border-emerald-500 mb-6">
-               <h4 class="text-emerald-400 font-bold mb-1 text-sm"><Icon name="hand-holding-usd" class="mr-1" /> <span data-lang="landing.class_dana_title">Tersedia Dana Talang</span></h4>
+               <!-- H3, not H4: this card's own title is an H2 (line 42), so an H4 here
+                    skipped a level. Measured by Lighthouse (`heading-order`, 2026-10-20)
+                    and by `e2e:headings` once its outline check was widened from the
+                    form routes to the public ones. -->
+               <h3 class="text-emerald-400 font-bold mb-1 text-sm"><Icon name="hand-holding-usd" class="mr-1" /> <span data-lang="landing.class_dana_title">Tersedia Dana Talang</span></h3>
                <p class="text-sm text-slate-300 leading-relaxed" data-lang="landing.class_dana_desc">Biaya keberangkatan bisa ditalangi <strong>TANPA BUNGA / RIBA</strong>. Cukup jaminan sertifikat/dokumen yang aman & bisa dicek kapan saja di LPK. Uang kembali <em>full</em> jika ada pembatalan sepihak dari Kaisha Jepang (kecuali MCU).</p>
            </div>
 
            <div class="u-grid-auto u-grid-auto--form gap-5 mb-6">
                <!-- Rincian Biaya -->
                <div class="bg-black/30 border border-slate-700/50 p-4 rounded-xl">
-                   <h4 class="text-sky-400 font-bold mb-3 text-sm uppercase tracking-widest"><Icon name="wallet" class="mr-1.5" /> <span data-lang="landing.class_fee_title">Rincian Biaya</span></h4>
+                   <h3 class="text-sky-400 font-bold mb-3 text-sm uppercase tracking-widest"><Icon name="wallet" class="mr-1.5" /> <span data-lang="landing.class_fee_title">Rincian Biaya</span></h3>
                    <ul class="space-y-3 text-sm">
                        <li class="flex gap-2.5">
                            <Icon name="check-circle" class="text-sky-400 mt-0.5 text-sm" />
@@ -75,7 +79,7 @@ const waExam =
 
                <!-- Fasilitas Asrama -->
                <div class="bg-black/30 border border-slate-700/50 p-4 rounded-xl">
-                   <h4 class="text-amber-400 font-bold mb-1 text-sm uppercase tracking-widest"><Icon name="hotel" class="mr-1.5" /> <span data-lang="landing.class_fac_title">Fasilitas Asrama Gratis</span></h4>
+                   <h3 class="text-amber-400 font-bold mb-1 text-sm uppercase tracking-widest"><Icon name="hotel" class="mr-1.5" /> <span data-lang="landing.class_fac_title">Fasilitas Asrama Gratis</span></h3>
                    <p class="text-[11px] text-slate-500 mb-3 italic" data-lang="landing.class_fac_note">*Hanya iuran listrik Rp 30.000/Bln</p>
                    <div class="grid grid-cols-2 gap-y-2 gap-x-1 text-xs text-slate-300">
                        <div class="flex items-center gap-1.5"><Icon name="bed" class="text-amber-400/70 w-3" /> <span data-lang="landing.class_fac_kasur">Kasur</span></div>
@@ -111,7 +115,12 @@ const waExam =
            <!-- Gambar Top -->
            <div class="h-48 md:h-56 relative w-full overflow-hidden">
                 <!-- URL Gambar Bisa Anda Ganti Nanti -->
-                <img src="/assets/banner-tokyo.webp" alt="Visa Jepang" class="w-full h-full object-cover u-zoom">
+                <!-- `loading="lazy"`: measured by Lighthouse 2026-10-20 — both cards in
+                     this row sit below the fold, and the two banners together were
+                     "Potential savings of 91 KiB" under `offscreen-images`. The
+                     container already has a fixed height (`h-48 md:h-56`), so deferring
+                     the fetch cannot shift layout. -->
+                <img src="/assets/banner-tokyo.webp" alt="Visa Jepang" loading="lazy" decoding="async" class="w-full h-full object-cover u-zoom">
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent pointer-events-none"></div>
                 
                 <!-- Judul Overlay -->
@@ -147,7 +156,7 @@ const waExam =
            <!-- Gambar Top -->
            <div class="h-48 md:h-56 relative w-full overflow-hidden">
                 <!-- URL Gambar Bisa Anda Ganti Nanti -->
-                <img src="/assets/banner-momiji.webp" alt="Ujian Jepang" class="w-full h-full object-cover u-zoom">
+                <img src="/assets/banner-momiji.webp" alt="Ujian Jepang" loading="lazy" decoding="async" class="w-full h-full object-cover u-zoom">
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent pointer-events-none"></div>
                 
                 <!-- Judul Overlay -->
