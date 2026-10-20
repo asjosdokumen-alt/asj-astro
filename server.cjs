@@ -53,6 +53,14 @@ const MIME = {
   '.ttf': 'font/ttf',
   '.webmanifest': 'application/manifest+json',
   '.map': 'application/json',
+  // `.txt` was missing until 2026-10-20, which is the SAME defect as `.avif`
+  // (see src/lib/serverMime.test.ts). Nothing in dist/ had that extension, so
+  // nothing measured it — until `public/robots.txt` existed. Without this entry
+  // the harness serves robots.txt as application/octet-stream; Netlify serves it
+  // correctly, so the wrong type would be invisible in production and real in
+  // every place that measures. `src/lib/serverMime.test.ts` now derives this from
+  // dist/ instead of trusting a list.
+  '.txt': 'text/plain; charset=utf-8',
 };
 
 /** Check if a port is available */

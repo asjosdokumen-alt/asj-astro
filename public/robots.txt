@@ -1,0 +1,32 @@
+# robots.txt — ASJ Portal
+#
+# WHY THIS FILE EXISTS AT ALL (2026-10-20). There was none, so `/robots.txt`
+# returned 404 in production (measured against the live host) and Lighthouse's
+# `robots-txt` audit reported 705 errors — it was parsing whatever the host
+# returned in place of a robots file. A 404 here is not cosmetic: crawlers treat
+# it as "no restrictions", which is the opposite of what this site wants for the
+# authenticated areas listed below.
+#
+# NO `Sitemap:` LINE, deliberately. A sitemap directive must name an absolute URL
+# on the canonical host, and this project's host has already moved twice
+# (asjportal → asjastro → boisterous-taiyaki), so a hardcoded origin here would
+# be a stale claim the moment it changed again — and a robots.txt pointing at a
+# dead sitemap is worse than one that says nothing. Add the directive only
+# together with a real `sitemap.xml` generated from the build.
+
+User-agent: *
+Allow: /
+
+# Authenticated / session-dependent surfaces. These render a login gate to an
+# anonymous visitor and real candidate or company data to a signed-in one; none of
+# them has any value in an index.
+Disallow: /admin
+Disallow: /candidate
+Disallow: /master
+Disallow: /apply
+Disallow: /ai-cv
+Disallow: /siswa-baru
+Disallow: /share
+
+# Netlify functions are an API, not pages.
+Disallow: /.netlify/

@@ -118,6 +118,40 @@ describe('server.cjs — MIME map', () => {
     expect(broken, `image extensions falling back to application/octet-stream: ${broken.join(', ')}`).toEqual([]);
   });
 
+  /**
+   * The same defect as `.avif`, found on 2026-10-20 by adding the FIRST `.txt`
+   * file the site ever served. Kept as its own always-on case (like the `.avif`
+   * one above) because the derived check below is skipped when `dist/` is absent,
+   * and because the consequence differs: a browser renders nothing for a
+   * mis-typed image, while a crawler given `application/octet-stream` for
+   * `robots.txt` may reject the file outright — silently, since there is no UI
+   * for it.
+   */
+  it('serves `.txt` as text, so robots.txt is not octet-stream', () => {
+    const map = readMimeMap();
+    expect(map['.txt'] ?? '', '`.txt` is absent from the MIME map').toMatch(/^text\//);
+  });
+
+  /**
+   * `robots.txt` is the one static file whose ABSENCE is invisible: `server.cjs`
+   * answers unknown paths with `index.html` (the SPA fallback), so a missing
+   * robots.txt returns **200 with HTML** rather than 404. That is exactly what
+   * happened — the file did not exist, the live host returned 404, and Lighthouse
+   * reported 705 parse errors from whatever it got instead.
+   *
+   * Asserted on the directive rather than on mere existence, so a file that
+   * exists but is empty, or is HTML by accident, still fails.
+   */
+  it('public/robots.txt exists and starts with a User-agent directive', () => {
+    const file = join(process.cwd(), 'public', 'robots.txt');
+    expect(existsSync(file), 'public/robots.txt is missing — /robots.txt 404s in production').toBe(true);
+    const lines = readFileSync(file, 'utf8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'));
+    expect(lines[0], 'the first directive must be `User-agent: *`').toBe('User-agent: *');
+  });
+
   describe.skipIf(!hasBuild)('against the built dist/', () => {
     it('every extension dist/ actually references has a MIME entry', () => {
       const map = readMimeMap();
