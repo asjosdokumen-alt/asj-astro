@@ -40,6 +40,7 @@
 
 /** One accent role, from the closed list in DESIGN.md §3.2. */
 import type { AccentRole } from './companyProfile';
+import { CONTACT_MAPS_URL } from './companyProfile';
 
 /**
  * Where a review came from. A closed set on purpose: the label under a quote has
@@ -124,8 +125,31 @@ export const REVIEW_SOURCE = {
   count: 7,
   /** When the figures above were last read from the live listing. */
   checkedOn: '2026-09-29',
-  /** The live listing they came from — the read-through for a curious visitor. */
-  href: 'https://www.google.com/maps/place/?q=place_id:ChIJVdybaAKfeS4RzVbekeKOhKE',
+  /**
+   * The live listing they came from — the read-through for a curious visitor.
+   *
+   * ⚠ WAS A DEAD `place_id:` LINK (found 2026-10-20). This used to be a
+   * hardcoded copy of `https://www.google.com/maps/place/?q=place_id:ChIJVdybaAKfeS4RzVbekeKOhKE`
+   * — the same place_id `companyProfile.ts` was measured not to resolve. It is
+   * exactly the third hardcoded copy that `CONTACT_MAPS_URL`'s comment warned
+   * about ("⚠ Keep BOTH call sites on this constant") and it was still missed,
+   * because the warning named two call sites and there were three.
+   *
+   * A reader clicking "Lihat di Google Maps" to CHECK the 5.0 · 7 figures was
+   * landing on Google's empty place card ("Tentang data ini" / "Tambahkan
+   * tempat") — a rating with no way to verify it, which is the shape the block
+   * above exists to avoid. It now points at the same constant as the `#lokasi`
+   * button and the footer GPS icon, so all three can never drift again.
+   *
+   * ⚠ STILL UNVERIFIED (2026-10-20): the coordinate form lands on the real place
+   * but shows no BUSINESS LISTING, so the 5.0 · 7 figures above could not be
+   * confirmed today either — not by this link, and not by `place_id:` in either
+   * the place-card or the embed surface. They are carried forward as measured on
+   * 2026-09-29 and must be re-checked by the owner before being trusted. If the
+   * listing genuinely does not exist, set `rating`/`count` back to `null` and the
+   * block degrades itself — see the `null` branches here and in index.astro.
+   */
+  href: CONTACT_MAPS_URL,
 } as const;
 
 /**
