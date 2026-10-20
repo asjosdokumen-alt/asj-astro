@@ -11,10 +11,34 @@ import { nextCandidateId } from '../../_lib/candidate-helpers';
 
 export async function findMasterByWa(wa: string): Promise<any | null> {
   const want = normalizeWa(wa);
+  if (!want) return null;
   let rows = await fetchMasterByWa([want]);
   if (rows === null) {
+    // Fallback TARGETED lewat index unik `master_database_candidate_no_wa_key`
+    // — pengganti scan `select <169 kolom> limit 500` TANPA filter yang diukur
+    // 1,35 MB/permintaan (2026-10-20, JSON penuh 500 baris). Scan itu juga tidak
+    // punya nilai tutup: 233/234 baris tersimpan kanonik `628…` (sudah ketemu
+    // lewat `eq`), dan satu-satunya penyimpangan (`622342782945`) dinormalisasi
+    // menjadi '' oleh normalizeWa — jadi TIDAK ADA baris yang hanya bisa
+    // ditemukan dengan menarik seluruh tabel.
+    //
+    // Bentuk lokal (`0…`) ikut di daftar `in.(…)`: kalau ada baris yang tersimpan
+    // belum ternormalisasi, keduanya tetap satu query, dan index unik pada no_wa
+    // membatasi hasil maksimal dua baris. `limit` tetap dipasang sebagai pagar
+    // keras: seandainya index unik itu hilang, kerusakan terburuk tetap 10 baris
+    // (±70 KB), bukan 1,35 MB.
+    //
+    // Berbeda dari fetchMasterByWa, kegagalan di sini DITERUSKAN apa adanya —
+    // persis seperti fallback lama. "Database mati" tidak boleh berubah menjadi
+    // "kandidat tidak ditemukan" hanya karena bentuk query-nya berbeda.
+    const local = want.startsWith('628') ? '0' + want.slice(2) : '';
+    const forms = local ? [want, local] : [want];
     rows = await supabaseJson('GET', 'master_database_candidate', {
-      query: { select: allColumns('master_database_candidate'), limit: 500 },
+      query: {
+        select: allColumns('master_database_candidate'),
+        limit: '10',
+        no_wa: 'in.(' + forms.join(',') + ')',
+      },
     });
   }
   const arr = Array.isArray(rows) ? rows : [];
