@@ -801,53 +801,77 @@ export const CONTACT_INSTAGRAM = 'amanah_sakura_japan';
 export const CONTACT_TIKTOK = 'amahsakurajp';
 
 /**
- * The Google Maps link to our PLACE LISTING — the single source for both the
- * `#lokasi` section and the footer's GPS icon.
+ * The Google Maps link to our location — the single source for the `#lokasi`
+ * section's "Buka di Google Maps" button, the footer's GPS icon, and the
+ * JSON-LD `hasMap` in BaseLayout.
  *
- * ── WHY THIS CONSTANT EXISTS (and why the old link was wrong) ───────────────
- * Until 2026-09-29 both call sites hardcoded `https://maps.app.goo.gl/rXZ1YZAtT9JUNn6q6`,
- * whose redirect target was MEASURED this session:
- *   https://www.google.com/maps/@-7.8560331,111.4328680,3a,…/data=!3m4!1e1!3m2!1s…
- * That is a STREET-VIEW PANORAMA (`/maps/@`, `!3m4!1e1`, `!2e0`), not the business
- * listing — so the owner's "link fotonya masih lama" was correct: the button
- * dropped visitors into a stale 360° photo instead of our Maps place card.
+ * ── WHY `place_id:` WAS REMOVED (measured 2026-10-20, headless Chromium) ────
+ * Until today this was `https://www.google.com/maps/place/?q=place_id:${PLACE_ID}`
+ * and `PLACE_ID` was claimed to be the CID of the owner's own Maps URL. It does
+ * not resolve. Measured: that URL redirects to
+ *   https://www.google.com/maps/place//@-7.8646629,111.4454865,14z/…
+ * and the left panel shows Google's EMPTY state — the blue skyline placeholder,
+ * "Tentang data ini" ("About this data"), and "Tambahkan tempat" ("Add a
+ * place"). The coordinates it lands on are Ponorogo TOWN CENTRE, not our
+ * address, so Google fell back to a coarse locality search.
  *
- * The value now is a `place_id:` query, which Google resolves to the CURRENT
- * place card (name, rating, hours, directions) regardless of how the listing is
- * edited later — unlike a short link, which pins whatever it was minted from.
- * `PLACE_ID` is the CID from the owner's own Maps URL (2026-09-29); the coords
- * below are the listing centre, kept as documentation so the id can be re-derived
- * if it ever changes.
+ * The same `place_id:` also breaks the map embed — see `MAPS_EMBED_URL` below.
+ * Both failures have one cause: **there is no Google Maps place listing at this
+ * location**, so a place_id has nothing to resolve to. `PLACE_ID` is kept only
+ * as the value that was tried and measured dead; do NOT reintroduce it without
+ * first re-creating the listing in Google Business Profile.
  *
- * ⚠ Keep BOTH call sites on this constant. The bug this fixes was two hardcoded
- * copies of one URL drifting from the place they were meant to point at.
+ * WHAT THE COORDINATE FORM GIVES (same measurement)
+ *   https://www.google.com/maps/place/?q=-7.8560232,111.433092
+ * lands on the pin at 7°51'21.7"S 111°25'59.1"E and shows the Plus Code
+ * `4CVM+H6W Gandukepuh, Kabupaten Ponorogo, Jawa Timur` — the real place, with
+ * working Rute/Simpan/Bagikan. It does NOT show a business name, because there
+ * is no listing to show. That is the honest maximum until one is created.
  */
 export const PLACE_ID = 'ChIJVdybaAKfeS4RzVbekeKOhKE';
 export const MAPS_LAT = -7.8560232;
 export const MAPS_LNG = 111.433092;
-/** Google's Plus Code for the listing, the human-checkable pin of the same place. */
-export const MAPS_PLUS_CODE = '4CVM+C69';
-export const CONTACT_MAPS_URL = `https://www.google.com/maps/place/?q=place_id:${PLACE_ID}`;
+/** Google's Plus Code for the listing, the human-checkable pin of the same place.
+ *  ⚠ The value here was `4CVM+C69`; Google's own card at these coordinates
+ *  computes `4CVM+H6W` (2026-10-20). This constant is currently unused by any
+ *  component — it is documentation only. Corrected to what Google prints. */
+export const MAPS_PLUS_CODE = '4CVM+H6W';
+export const CONTACT_MAPS_URL = `https://www.google.com/maps/place/?q=${MAPS_LAT},${MAPS_LNG}`;
 
 /**
  * The INTERACTIVE map in `#lokasi` — Google's own keyless embed, not a static
  * picture of one.
  *
- * ── WHY THIS FORM AND NOT THE `<iframe src="…/maps/embed?pb=…">` ───────────
- * Google's "Share → Embed a map" hands you a `/maps/embed?pb=!1m3!…` blob. That
- * blob is an opaque, undocumented serialisation of the viewport the OWNER
- * happened to be looking at; it cannot be reviewed in a diff, cannot be re-aimed
- * without the Maps UI, and silently bakes in whatever zoom and layer were active.
- * Measured 2026-10-20: `…/maps?q=place_id:<id>&z=17&hl=id&output=embed` answers
- * **301 → the same `/maps/embed?pb=…` endpoint**, i.e. Google itself performs the
- * conversion, and the readable form stays legible in review. The redirect costs
- * one hop on a lazy-loaded third-party frame; the diff stays honest.
+ * ── WHY `place_id:` WAS REMOVED (the defect, measured 2026-10-20) ───────────
+ * This used to be `https://www.google.com/maps?q=place_id:${PLACE_ID}&z=17&hl=id&output=embed`
+ * and the comment here claimed that form was measured to work. Only the HTTP hop
+ * was measured; the RENDERED RESULT never was. Measured in headless Chromium,
+ * the resolved frame URL is
+ *   https://www.google.com/maps/embed?origin=mfe&pb=!1m3!2m1!1splace_id:ChIJVdybaAKfeS4RzVbekeKOhKE!6i17!3m1!1sid!5m1!1sid
+ * and it renders a **WHOLE-WORLD MAP**: continents in Indonesian labels, no red
+ * pin, no street detail, and `z=17` silently ignored. That is the screenshot the
+ * owner sent back on 2026-10-20 ("kok gak ada titik tanda lokasi tempatnya").
  *
- * ── WHY `place_id:` AND NOT THE COORDINATES ─────────────────────────────────
- * Same reason `CONTACT_MAPS_URL` uses it: the id survives the owner renaming the
- * listing, moving the pin, or editing hours, and it centres the frame on the
- * business CARD rather than a bare lat/lng. `MAPS_LAT`/`MAPS_LNG` remain the
- * documentation of where that id currently resolves.
+ * Both are lost together, for one cause: Google's keyless `/maps/embed`
+ * endpoint does not resolve a `place_id:` query, so `q=` resolves to nothing and
+ * the frame falls back to its default global viewport. `z` only applies to a
+ * centre that resolved, so it is dropped with it.
+ *
+ * WHAT THE COORDINATE FORM GIVES (same measurement, same viewport)
+ *   https://www.google.com/maps?q=-7.8560232,111.433092&z=17&hl=id&output=embed
+ * resolves to
+ *   https://www.google.com/maps/embed?origin=mfe&pb=!1m3!2m1!1s-7.8560232,111.433092!6i17!3m1!1sid!5m1!1sid
+ * and renders the red pin on **Jl. Kyai Ageng Musakaf / Jl. Kyai Ageng Mirah**,
+ * Ponorogo, at street zoom, centred on load — the LPK's real location. That is
+ * the "auto zoom in ke lokasi" behaviour: the frame arrives already aimed and
+ * pinned, so a visitor only has to drift or pinch from there.
+ *
+ * THE TRADE-OFF, STATED PLAINLY: a lat/lng pin will NOT follow the owner editing
+ * a Google Business listing — it is a fixed point, and if the LPK moves this
+ * constant must be edited by hand. Accepted, because the alternative resolves to
+ * nothing and shows the whole planet. If a Maps listing is ever created, the
+ * place card link can come back — but verify it in a browser first, which is
+ * exactly the step that was skipped here.
  *
  * ── NO API KEY, AND THAT IS NOT AN OVERSIGHT ────────────────────────────────
  * This is the public embed surface, not the Maps JavaScript/Static APIs — the
@@ -856,9 +880,9 @@ export const CONTACT_MAPS_URL = `https://www.google.com/maps/place/?q=place_id:$
  *
  * ⚠ `hl=id` is pinned on purpose. Without it the embed renders its chrome in the
  * visitor's browser language, so a Japanese reader gets Japanese labels while the
- * surrounding page is in Indonesian — or worse, a machine translation of the
- * place card. The page's own language switch does NOT reach inside the iframe, so
- * this is the only place the map's language is decided.
+ * surrounding page is in Indonesian. The page's own language switch does NOT
+ * reach inside the iframe, so this is the only place the map's language is
+ * decided.
  */
 export const MAPS_EMBED_URL =
-  `https://www.google.com/maps?q=place_id:${PLACE_ID}&z=17&hl=id&output=embed`;
+  `https://www.google.com/maps?q=${MAPS_LAT},${MAPS_LNG}&z=17&hl=id&output=embed`;
