@@ -36,6 +36,7 @@ import {
   HISTORY,
   LEGAL_FACTS,
   MISSIONS,
+  MAPS_EMBED_URL,
   PLACEMENTS,
   PROGRAMS,
   PROGRAM_INCLUDES,
@@ -1028,37 +1029,43 @@ import { GALLERY } from '../lib/gallery';
         accent="jobs"
         headingId="lokasi-title"
       />
-      {/* Location banner illustration. Decorative, so `alt=""` + aria-hidden:
-          the section already states the location in its h2 and its address, and
-          the drawing is a skyline band with no unique information in it.
+      {/* The INTERACTIVE map (owner request, 2026-10-20) — this replaces the
+          decorative skyline illustration that used to sit here. Visitors can pan,
+          zoom, switch to satellite and get real driving directions without
+          leaving the page, which is the thing the "Buka di Google Maps" button
+          below could never do: it left the site.
 
-          `aspect-[2/1]` matches the file's 1200x600 exactly, so the ratio is
-          reserved before load and the section does not jump. Rounding is on the
-          wrapper (`rounded-panel overflow-hidden`) so the corners clip the
-          image, rather than relying on the image's own corners.
+          `aspect-[4/3]` on phones / `16/9` above `sm` — the old band was `2/1`,
+          which is a poster ratio; a map at 2:1 is too short to drag in. The
+          wrapper reserves the height, so the section does not jump when the
+          frame arrives, and the rounding lives on the wrapper (`overflow-clip`,
+          NOT `hidden` — see motion.css §22: `hidden` creates a scroll container).
 
-          `loading="lazy"` here — unlike the hero, this band is far below the
-          fold and is never the LCP element. */}
-      <picture class="u-drift-frame block mt-6 aspect-[2/1] overflow-clip rounded-panel border border-line/30">
-        <source
-          type="image/avif"
-          srcset="/assets/ilustrasi/lokasi-banner.avif 1x, /assets/ilustrasi/lokasi-banner@2x.avif 2x"
-        />
-        <source
-          type="image/webp"
-          srcset="/assets/ilustrasi/lokasi-banner.webp 1x, /assets/ilustrasi/lokasi-banner@2x.webp 2x"
-        />
-        <img
-          src="/assets/ilustrasi/lokasi-banner.webp"
-          alt=""
-          aria-hidden="true"
-          width="1200"
-          height="600"
+          `loading="lazy"` despite the owner choosing "langsung tampil": the
+          frame is far below the fold, so lazy loading is indistinguishable from
+          eager loading to a visitor who scrolls to it, and it keeps a
+          third-party ~1 MB off the critical path. Nothing about the map is
+          hidden or gated behind a click — it is simply fetched when it is about
+          to be seen.
+
+          `title` is the frame's ACCESSIBLE NAME and is required: an `<iframe>`
+          with no title is announced as "frame" and nothing else (see the
+          `e2e:aria-names` gate). It is Indonesian, matching the default
+          document language; the page's language switch cannot reach an attribute,
+          which is also why `hl=id` is pinned inside `MAPS_EMBED_URL`.
+
+          `referrerpolicy` is what Google's own embed dialog emits: send the
+          origin for cross-origin navigations, nothing on a downgrade. */}
+      <div class="mt-6 aspect-[4/3] sm:aspect-[16/9] overflow-clip rounded-panel border border-line/30">
+        <iframe
+          src={MAPS_EMBED_URL}
+          title="Peta lokasi LPK Amanah Sakura Japan di Kabupaten Ponorogo"
+          class="block w-full h-full border-0"
           loading="lazy"
-          decoding="async"
-          class="u-drift"
-        />
-      </picture>
+          referrerpolicy="no-referrer-when-downgrade"
+          allowfullscreen
+        ></iframe>
+      </div>
       <div class="u-surface-depth mt-8 bg-surface-raised border border-line rounded-panel p-5 md:p-6 flex flex-col sm:flex-row justify-between items-center gap-5 text-center sm:text-left">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center shrink-0">

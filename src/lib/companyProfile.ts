@@ -670,7 +670,13 @@ export const CONTACT_LOCATION: Fact = {
 
 /** Ponorogo town centre, for the map embed. The address is street-level; a
  *  pin at the regency centre is honest about its precision, whereas inventing
- *  a specific latitude for the office would not be. */
+ *  a specific latitude for the office would not be.
+ *
+ *  ⚠ UNUSED as of 2026-10-20 — kept for the reason above, not wired to anything.
+ *  It was the query for a coarse "Ponorogo, Jawa Timur" pin; `MAPS_EMBED_URL`
+ *  below pins the actual LISTING instead, so a town-centre query would now be a
+ *  second, less precise answer to the same question. Do not wire it back without
+ *  deciding which of the two is the map. */
 export const MAP_EMBED_QUERY = 'Ponorogo, Jawa Timur';
 
 /* ── Contact (pages 5, 8 and 9) ─────────────────────────────────────────── */
@@ -822,3 +828,37 @@ export const MAPS_LNG = 111.433092;
 /** Google's Plus Code for the listing, the human-checkable pin of the same place. */
 export const MAPS_PLUS_CODE = '4CVM+C69';
 export const CONTACT_MAPS_URL = `https://www.google.com/maps/place/?q=place_id:${PLACE_ID}`;
+
+/**
+ * The INTERACTIVE map in `#lokasi` — Google's own keyless embed, not a static
+ * picture of one.
+ *
+ * ── WHY THIS FORM AND NOT THE `<iframe src="…/maps/embed?pb=…">` ───────────
+ * Google's "Share → Embed a map" hands you a `/maps/embed?pb=!1m3!…` blob. That
+ * blob is an opaque, undocumented serialisation of the viewport the OWNER
+ * happened to be looking at; it cannot be reviewed in a diff, cannot be re-aimed
+ * without the Maps UI, and silently bakes in whatever zoom and layer were active.
+ * Measured 2026-10-20: `…/maps?q=place_id:<id>&z=17&hl=id&output=embed` answers
+ * **301 → the same `/maps/embed?pb=…` endpoint**, i.e. Google itself performs the
+ * conversion, and the readable form stays legible in review. The redirect costs
+ * one hop on a lazy-loaded third-party frame; the diff stays honest.
+ *
+ * ── WHY `place_id:` AND NOT THE COORDINATES ─────────────────────────────────
+ * Same reason `CONTACT_MAPS_URL` uses it: the id survives the owner renaming the
+ * listing, moving the pin, or editing hours, and it centres the frame on the
+ * business CARD rather than a bare lat/lng. `MAPS_LAT`/`MAPS_LNG` remain the
+ * documentation of where that id currently resolves.
+ *
+ * ── NO API KEY, AND THAT IS NOT AN OVERSIGHT ────────────────────────────────
+ * This is the public embed surface, not the Maps JavaScript/Static APIs — the
+ * keyless variant is what the "Embed a map" dialog produces. There is nothing to
+ * leak and nothing to rotate.
+ *
+ * ⚠ `hl=id` is pinned on purpose. Without it the embed renders its chrome in the
+ * visitor's browser language, so a Japanese reader gets Japanese labels while the
+ * surrounding page is in Indonesian — or worse, a machine translation of the
+ * place card. The page's own language switch does NOT reach inside the iframe, so
+ * this is the only place the map's language is decided.
+ */
+export const MAPS_EMBED_URL =
+  `https://www.google.com/maps?q=place_id:${PLACE_ID}&z=17&hl=id&output=embed`;

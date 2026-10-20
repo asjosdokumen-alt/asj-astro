@@ -567,7 +567,14 @@ for (const line of ignoreLines) {
  */
 const ILLUSTRATIONS = new Set([
   'ilustrasi/hero-sakura.webp',
-  'ilustrasi/lokasi-banner.webp',
+  // REMOVED 2026-10-20: 'ilustrasi/lokasi-banner.webp'. The `#lokasi` band is now
+  // an interactive Google Maps embed (owner request), so the skyline illustration
+  // is no longer rendered by anything and the entry would have become a dead
+  // approval — the exact case check (a1) exists to report. The four files
+  // (1x/@2x, webp/avif) are still on disk; they are simply unreferenced. If the
+  // embed is ever reverted to a picture, the entry comes back WITH this note, not
+  // as an inheritance of it: the artwork was a generated skyline, so there was no
+  // subject who could consent, and that is why it was allowed here.
   // The three program cards. THEIR ARTWORK CHANGED ON 2026-09-28: the owner
   // replaced the flat-vector scenes (a factory, a skyline, an open book) with
   // generated anime illustrations that DO depict people. The paragraph above
