@@ -29,6 +29,11 @@ const WHITELIST = new Set([
   'GROQ_API_KEY',
   'XAI_API_KEY',
   'SUPABASE_STORAGE_BUCKET',
+  // 2026-10-21 — Storage stays on Supabase after the Neon cutover (Neon has no
+  // Storage), so it needs its own host + key. Unset = fall back to SUPABASE_*,
+  // which keeps a Supabase-only deployment unchanged.
+  'STORAGE_SUPABASE_URL',
+  'STORAGE_SUPABASE_KEY',
   'LOG_DRAIN_TOKEN',
   'CLOUDINARY_URL',
   'NETLIFY_SITE_URL',

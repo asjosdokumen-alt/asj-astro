@@ -80,6 +80,25 @@
   [headers.values]
     Content-Type = "application/manifest+json"
 
+# ─── JWKS: cache panjang (2026-10-21) ───────────────────────────────────────
+#
+# /jwks.json is generated at build time from JWT_PUBLIC_JWK and is fetched by
+# Neon's Data API to verify every token we sign. MEASURED: with Netlify's
+# default `max-age=0, must-revalidate`, every verification that misses Neon's
+# internal cache re-fetches through the edge, and a single failed fetch there
+# surfaces to the caller as `400 {"message":"jwk not found"}` — a misleading
+# error that looks like a bad token rather than an unreachable JWKS. Two bursts
+# of exactly that were observed right after the provider was switched on.
+#
+# One hour is the compromise: enough to keep the fetch path cold, short enough
+# that rotating the key (change JWT_PUBLIC_JWK, rebuild) does not need a manual
+# cache purge. Neon also caches validated tokens, so a stale window here only
+# delays a rotation, it never breaks a live token.
+[[headers]]
+  for = "/jwks.json"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
 # ─── Aset brand (2026-10-14): EGRESS, bukan kecepatan ───────────────────────
 #
 # WHY THIS IS HERE. Aset brand (logo, banner, jeklin, logo-apply) dulu di-hotlink

@@ -24,6 +24,7 @@ import {
   hasBackend,
   supabaseUrl,
 } from "./repository";
+import { storageUrl } from "../../_lib/db/client";
 import { requireRole, isOwnerOrAdmin } from "../identity";
 import { emit } from "../../_lib/kernel/events";
 import { syncFormMailDariUpload } from "../applications";
@@ -246,7 +247,7 @@ export async function handleGetUploadUrls(
           : "/object/upload/sign/" + bucket() + "/" + path;
       urls[key] = {
         signedUrl:
-          supabaseUrl().replace(/\/$/, "") +
+          storageUrl().replace(/\/$/, "") +
           "/storage/v1" +
           (rel.startsWith("/") ? rel : "/" + rel),
         publicUrl: publicUrl(path),

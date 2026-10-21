@@ -19,6 +19,7 @@ import {
   tablesFromSchema,
   toText,
   supabaseUrl,
+  storageUrl,
 } from '../../_lib/db/client';
 import {
   attachApplications,
@@ -384,5 +385,5 @@ export {
   findCandidateByWaFiltered, findCandidates, attachApplications, attachBerkasBio,
   findJobs, mapJob, findAssets, findSettings, findJobByCodeFiltered,
   findCandidatesByJobFiltered, listStorageFolder, BERKAS_COLUMNS,
-  supabaseJson, docTypeOf, docAge, supabaseUrl,
+  supabaseJson, docTypeOf, docAge, supabaseUrl, storageUrl,
 };

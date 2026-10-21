@@ -69,6 +69,10 @@ vi.mock('./repository', () => ({
   docAge: () => 0,
   mapForm: (r: unknown) => r,
   supabaseUrl: () => 'https://x.supabase.co',
+  // Storage host is a SEPARATE env since the Neon cutover (Neon has no Storage),
+  // so `service.ts` reads storageUrl() for every /storage/v1 path. Same value
+  // here: this suite is about the share contract, not about where files live.
+  storageUrl: () => 'https://x.supabase.co',
 }));
 
 import { handleShareData, handleGetAppData } from './service';

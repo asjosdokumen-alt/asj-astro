@@ -27,6 +27,33 @@ function supabaseKey() {
   return env('SUPABASE_SERVICE_ROLE_KEY') || env('SUPABASE_ANON_KEY') || env('SUPABASE_KEY');
 }
 
+/**
+ * Storage host/key — SEPARATE from the database since the Neon cutover.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * Neon has no Storage product. Candidate documents (775 cells, ~295 MB of PII)
+ * stay in Supabase Storage while the database moves to Neon, so the two stop
+ * sharing a host: `SUPABASE_URL` becomes the Neon Data API, and every
+ * `/storage/v1/...` request built from it would 404 — silently, because
+ * uploads are the only callers and nobody exercises them in CI.
+ *
+ * The fallbacks keep a Supabase-only deployment byte-identical: with neither
+ * STORAGE_* variable set, these return exactly what supabaseUrl()/supabaseKey()
+ * returned before.
+ *
+ * ⚠️ Anything that builds a `/storage/v1` path or a public object URL must go
+ * through storageUrl(), not supabaseUrl(). `_lib/storage.ts` also derives the
+ * document host allow-list from it.
+ */
+function storageUrl() {
+  return env('STORAGE_SUPABASE_URL') || supabaseUrl();
+}
+
+function storageKey() {
+  return env('STORAGE_SUPABASE_KEY') || supabaseKey();
+}
+
 /** @returns {boolean} */
 function hasBackend() {
   return !!(supabaseUrl() && supabaseKey());
@@ -574,6 +601,8 @@ function columnsFromSchema(spec: { definitions?: Record<string, { properties?: R
 export {
   supabaseUrl,
   supabaseKey,
+  storageUrl,
+  storageKey,
   hasBackend,
   supabaseJson,
   supabaseUpsert,

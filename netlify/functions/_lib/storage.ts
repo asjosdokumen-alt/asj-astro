@@ -1,4 +1,4 @@
-import { supabaseKey, supabaseUrl } from './db/client';
+import { storageKey, storageUrl } from './db/client';
 import { env } from './env';
 import { request } from './kernel/http';
 // storage.js — helper Supabase Storage (upload base64, hapus varian lama,
@@ -10,8 +10,8 @@ function bucket() {
 
 // Request ke Supabase Storage (di luar /rest/v1).
 async function storageRequest(method: string, pathname: string, opts: { headers?: Record<string, string>; body?: unknown } = {}) {
-  const url = supabaseUrl();
-  const key = supabaseKey();
+  const url = storageUrl();
+  const key = storageKey();
   if (!url || !key) throw new Error('Supabase belum dikonfigurasi');
   // P2 fix: Route through request() for timeout + circuit breaker.
   const res = await request(url.replace(/\/$/, '') + '/storage/v1/' + pathname, {
@@ -34,7 +34,7 @@ async function storageRequest(method: string, pathname: string, opts: { headers?
 }
 
 function publicUrl(path: string) {
-  return supabaseUrl().replace(/\/$/, '') + '/storage/v1/object/public/' + bucket() + '/' + path;
+  return storageUrl().replace(/\/$/, '') + '/storage/v1/object/public/' + bucket() + '/' + path;
 }
 
 // Terima base64 (boleh dengan prefix data:*) → kembalikan Buffer.
@@ -232,7 +232,9 @@ function allowedDocumentHosts(): string[] {
     .filter(Boolean);
   let supabaseHost = '';
   try {
-    supabaseHost = new URL(supabaseUrl()).hostname.toLowerCase();
+    // Storage host, not DB host — they diverge after the Neon cutover, and the
+    // allow-list must follow the host that actually serves the documents.
+    supabaseHost = new URL(storageUrl()).hostname.toLowerCase();
   } catch {
     // SUPABASE_URL unset — defaults still apply.
   }

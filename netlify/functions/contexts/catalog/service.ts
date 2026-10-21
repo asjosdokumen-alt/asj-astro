@@ -181,8 +181,8 @@ export async function handleShareData(jobCode: string) {
     );
     const mapped = rows.map(mapCandidate);
 
-    const { normalizeWa, supabaseUrl } = await import('./repository');
-    const storageBase = supabaseUrl().replace(/\/$/, '');
+    const { normalizeWa, storageUrl } = await import('./repository');
+    const storageBase = storageUrl().replace(/\/$/, '');
     const pubBase = storageBase + '/storage/v1/object/public/asj-files/';
     const waList = mapped.map((c) => normalizeWa(String(c.wa || ''))).filter(Boolean);
     let forms = await findFormsByWaList(waList);
