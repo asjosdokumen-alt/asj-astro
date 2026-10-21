@@ -1,3 +1,6 @@
+import { AI_CV_PATHS } from './aiCvDraft';
+import { getPath, isGood } from './helpers_cv';
+
 /**
  * biodataExport.ts — the "DOWNLOAD FULL BIODATA" artefact, built in one place.
  *
@@ -475,9 +478,60 @@ function masterGroupLines(group: string, value: unknown): string[] {
  * it says so rather than vanishing, so a reader can tell "no documents" from
  * "the exporter forgot documents".
  */
+/**
+ * `buildMasterNested()` (backend) membaca KOLOM master saja. Kandidat yang
+ * mengisi CV-nya lewat **CV AI** menyimpan jawaban wawancara di
+ * `ai_data_json`, dan jalur simpan itu (`_lib/ai/cv.ts`) memang TIDAK menulis
+ * kolom wawancara — jadi `master.wawancara` kosong dan blok WAWANCARA hilang
+ * dari berkas unduhan.
+ *
+ * Keluhan pemilik 2026-10-22: *"download biodata tiap siswa kok hasilnya beda
+ * beda … ada yg masuk ke download dan ada yg gak"* — yang membedakan bukan
+ * kelengkapan isian kandidat, melainkan JALUR mana yang dipakai saat mengisi:
+ * lewat form Master (kolom terisi) atau lewat CV AI (hanya `ai_data_json`).
+ *
+ * Fungsi ini mengisi kekosongan itu dari `AIDATAJSON` yang ikut di respons
+ * `getDrafCvMaster`. Arahnya SATU ARAH — kolom master selalu menang; AI hanya
+ * mengisi yang kosong. Pemetaan ejaannya memakai `AI_CV_PATHS` (satu sumber
+ * yang juga dipakai form), jadi `motivasi_id` milik AI tetap mendarat di
+ * `wawancara.motivasi_ke_jepang` yang dibaca label di berkas ini.
+ */
+export function mergeAiGaps(master: Record<string, unknown>): Record<string, unknown> {
+  let ai: unknown = null;
+  try {
+    const raw = master.AIDATAJSON;
+    if (typeof raw === 'string' && raw.trim() && raw !== '-') ai = JSON.parse(raw);
+  } catch { ai = null; }
+  if (!ai || typeof ai !== 'object' || Array.isArray(ai)) return master;
+
+  // Salin satu tingkat: grup (identitas/wawancara/…) tidak boleh ikut berubah
+  // di objek pemanggil.
+  const out: Record<string, unknown> = { ...master };
+  for (const [group, val] of Object.entries(master)) {
+    if (val && typeof val === 'object' && !Array.isArray(val)) out[group] = { ...(val as Record<string, unknown>) };
+  }
+
+  for (const paths of Object.values(AI_CV_PATHS)) {
+    const target = paths[0];
+    if (isGood(getPath(out, target))) continue;
+    for (const p of paths) {
+      const v = getPath(ai, p);
+      if (!isGood(v)) continue;
+      const segs = target.split('.');
+      let cur: Record<string, unknown> = out;
+      for (let i = 0; i < segs.length - 1; i++) {
+        const next = cur[segs[i]];
+        cur = (next && typeof next === 'object' && !Array.isArray(next) ? next : (cur[segs[i]] = {})) as Record<string, unknown>;
+      }
+      cur[segs[segs.length - 1]] = String(v).trim();
+      break;
+    }
+  }
+  return out;
+}
 export function buildBiodataText(c: BiodataSource): string {
   const bio = c.bio || {};
-  const master = c.master || {};
+  const master = mergeAiGaps(c.master || {});
   /* Rantai cadangan sebuah baris ringkasan, berurutan:
    *   1. nilai di baris kandidat sendiri,
    *   2. salinan di `bio` (peta kecil yang ikut di payload),
@@ -561,7 +615,7 @@ export function buildBiodataText(c: BiodataSource): string {
   // Full master row when the caller fetched it; otherwise the handful of `bio`
   // keys that ride along in the candidate payload. Never both — `bio` IS a
   // subset of master, and printing it twice would be the opposite of "rapi".
-  const masterLines = Object.entries(c.master || {})
+  const masterLines = Object.entries(master)
     .filter(([g]) => !MASTER_SKIP.has(g))
     .flatMap(([g, v]) => masterGroupLines(g, v));
 
