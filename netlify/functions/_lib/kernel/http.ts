@@ -165,7 +165,7 @@ export async function request(
     metrics.increment('dependency.call', { dep, outcome: 'success' });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      void logDependencyCall(dep, actionName, budgetMs, durationMs, 'http_error', res.status);
+      if (!url.includes('/dependency_calls')) void logDependencyCall(dep, actionName, budgetMs, durationMs, 'http_error', res.status);
       throw new HttpError(
         `HTTP ${res.status} ${url}: ${body.slice(0, 200)}`,
         res.status,
@@ -173,7 +173,7 @@ export async function request(
     }
     // Log successful call (only if slow or for sampling)
     if (durationMs > 100 || Math.random() < 0.05) {
-      void logDependencyCall(dep, actionName, budgetMs, durationMs, 'ok');
+      if (!url.includes('/dependency_calls')) void logDependencyCall(dep, actionName, budgetMs, durationMs, 'ok');
     }
     return res;
   } catch (e: unknown) {
@@ -183,10 +183,10 @@ export async function request(
     metrics.increment('dependency.call', { dep, outcome: 'error' });
     if (e instanceof HttpError) throw e;
     if (e instanceof DOMException && e.name === 'AbortError') {
-      void logDependencyCall(dep, actionName, budgetMs, durationMs, 'timeout');
+      if (!url.includes('/dependency_calls')) void logDependencyCall(dep, actionName, budgetMs, durationMs, 'timeout');
       throw new TimeoutError(url, budgetMs);
     }
-    void logDependencyCall(dep, actionName, budgetMs, durationMs, 'network_error');
+    if (!url.includes('/dependency_calls')) void logDependencyCall(dep, actionName, budgetMs, durationMs, 'network_error');
     throw e;
   } finally {
     release?.();
@@ -208,11 +208,30 @@ export async function requestJson<T = unknown>(
 
 // ── Dependency detection ──────────────────────────────────────────────────────
 
-function detectDependency(url: string): string {
+export function detectDependency(url: string): string {
   // P14 fix: Check 'storage' before 'supabase' — Storage URLs are
   // https://<project>.supabase.co/storage/v1/... which contain 'supabase'.
   if (url.includes('/storage/') || url.includes('storage/v1')) return 'storage';
-  if (url.includes('supabase')) return 'postgrest';
+  // ── Two PostgREST hosts (2026-10-21) ──────────────────────────────────────
+  //
+  // The database moved to Neon's Data API, whose host is
+  // <endpoint>.apirest.<region>.aws.neon.tech — it contains neither
+  // 'supabase' nor 'postgrest'. Matching only 'supabase' therefore classified
+  // EVERY Neon query as 'other', and 'other' is not a harmless label:
+  //
+  //   1. `logDependencyCall()` skips only dep === 'postgrest' to break its
+  //      recursion (logging writes to dependency_calls, which is itself a
+  //      PostgREST call). With dep='other' that guard never fired, so every
+  //      Neon query >100 ms logged itself, and each log write (>100 ms too)
+  //      logged again — an unbounded fan-out.
+  //   2. That fan-out consumed the shared 'other' bulkhead slots (max 8), so
+  //      ordinary requests died with "Bulkhead limit reached for other".
+  //   3. The breaker and the admission EWMA for 'postgrest' saw nothing, so
+  //      /health and load shedding were blind to the real database.
+  //
+  // Measured symptom before the fix: admin panel "Gagal memuat data" with a
+  // bulkhead toast, and 13 s responses on a warm function.
+  if (url.includes('supabase') || url.includes('neon.tech')) return 'postgrest';
   if (url.includes('generativelanguage') || url.includes('gemini')) return 'gemini';
   if (url.includes('fonnte') || url.includes('api.fonnte')) return 'fonnte';
   if (url.includes('fcm') || url.includes('fcm.googleapis')) return 'fcm';

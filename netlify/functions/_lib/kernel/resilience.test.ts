@@ -129,3 +129,33 @@ describe('callWithProtection', () => {
     expect(calls).toBe(2);
   });
 });
+
+/**
+ * Dependency classification decides WHICH breaker, WHICH bulkhead pool and
+ * WHETHER the telemetry write recurses. A wrong answer is not cosmetic:
+ * classifying Neon as 'other' made `logDependencyCall()` log every database
+ * call, and each log write is itself a database call — measured 2026-10-21 as
+ * an admin panel stuck on "Gagal memuat data" with a bulkhead error.
+ *
+ * The host changed; these assertions are the tripwire for the next change.
+ */
+describe('detectDependency — PostgREST host recognition', () => {
+  const neon = 'https://ep-bold-sunset-b3zy6wb1.apirest.c-4.ap-southeast-1.aws.neon.tech/neondb/rest/v1/job_database';
+  const supabase = 'https://gdwvffmevwtwnzrapjwy.supabase.co/rest/v1/job_database';
+
+  it('recognises the Neon Data API as postgrest, not "other"', async () => {
+    const { detectDependency } = await import('./http');
+    expect(detectDependency(neon)).toBe('postgrest');
+  });
+
+  it('still recognises Supabase', async () => {
+    const { detectDependency } = await import('./http');
+    expect(detectDependency(supabase)).toBe('postgrest');
+  });
+
+  it('keeps Storage separate from the database on both hosts', async () => {
+    const { detectDependency } = await import('./http');
+    expect(detectDependency('https://gdwvffmevwtwnzrapjwy.supabase.co/storage/v1/object/public/asj-files/a.png')).toBe('storage');
+    expect(detectDependency('https://res.cloudinary.com/ybzzbw9i/image/upload/a.jpg')).toBe('cloudinary');
+  });
+});
