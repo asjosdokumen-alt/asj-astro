@@ -47,8 +47,97 @@ const SERVICE_ROLE_ALLOWLIST = new Set([
 // PostgRLS evaluates RLS policies using the JWT's claims. Our session tokens
 // are custom HMAC tokens, not Supabase JWTs. This helper creates a
 // Supabase-compatible JWT from session claims so RLS can evaluate `wa`.
+//
+// TWO SIGNING MODES (2026-10-21)
+// ------------------------------
+// The same code now has to serve two backends, because they verify tokens in
+// fundamentally different ways:
+//
+//   HS256  (Supabase)  — shared secret in SUPABASE_JWT_SECRET. This is what the
+//                        app has always used and remains the DEFAULT: with
+//                        SUPABASE_JWT_ALG unset, nothing about this file changes
+//                        behaviour, so a Supabase deployment keeps working.
+//
+//   EdDSA  (Neon)      — asymmetric Ed25519. Neon's Data API has NO static JWT
+//                        secret and no `service_role`: it verifies tokens only
+//                        against a JWKS URL. So the private key lives here
+//                        (SUPABASE_JWT_PRIVATE_KEY, base64 PKCS#8 DER) and the
+//                        matching public key is published as /jwks.json.
+//
+// The mode is EXPLICIT (SUPABASE_JWT_ALG), never inferred from which variables
+// happen to be present. Inferring would silently switch a Supabase deployment
+// to EdDSA the moment the Neon keys were staged ahead of cutover — and Supabase
+// would then reject every user token with a 401 that looks like a session bug.
+//
+// `sub` is emitted in both modes. Neon's Data API documents it as required
+// (`auth.user_id()` reads it), and Supabase ignores unknown claims.
+
+const JWT_TTL_SECONDS = 3600; // 1 hour
+
+/** base64url without padding — JWT encoding for both header and payload. */
+function b64url(input: Buffer | string): string {
+  return Buffer.from(input).toString('base64url');
+}
+
+let cachedEdKey: crypto.KeyObject | null | undefined;
+
+/**
+ * Ed25519 private key from env, or null when this deployment signs with HS256.
+ * Cached per process: createPrivateKey() parses DER and is not free, and this
+ * runs on every RLS-scoped request.
+ */
+function edSigningKey(): crypto.KeyObject | null {
+  if (cachedEdKey !== undefined) return cachedEdKey;
+  const raw = env('SUPABASE_JWT_PRIVATE_KEY');
+  if (!raw) {
+    cachedEdKey = null;
+    return cachedEdKey;
+  }
+  try {
+    const der = Buffer.from(raw.replace(/\s+/g, ''), 'base64');
+    cachedEdKey = crypto.createPrivateKey({ key: der, format: 'der', type: 'pkcs8' });
+  } catch {
+    // Fail closed and LOUD: a corrupt key must not silently degrade into
+    // "no token", which would look like an empty database rather than an error.
+    log.error('supabase_jwt.bad_private_key', {
+      impact: 'Cannot sign EdDSA JWTs. Check SUPABASE_JWT_PRIVATE_KEY (base64 PKCS#8 DER).',
+    });
+    cachedEdKey = null;
+  }
+  return cachedEdKey;
+}
 
 function createSupabaseJwt(claims: { role: string; wa?: string; name?: string }): string {
+  const alg = (env('SUPABASE_JWT_ALG') || 'HS256').toUpperCase();
+  const now = Math.floor(Date.now() / 1000);
+  const payloadObj = {
+    ...claims,
+    role: claims.role || 'authenticated',
+    // Neon requires `sub`; the `wa` number is the only stable subject we have.
+    // Admin/service tokens carry no `wa`, so they get a fixed service subject.
+    sub: claims.wa || 'asj-service',
+    iat: now,
+    exp: now + JWT_TTL_SECONDS,
+  };
+
+  if (alg === 'EDDSA') {
+    const key = edSigningKey();
+    if (!key) {
+      log.error('supabase_jwt.no_private_key', {
+        op: claims.role,
+        impact: 'SUPABASE_JWT_ALG=EdDSA but no usable SUPABASE_JWT_PRIVATE_KEY. Token not issued.',
+      });
+      return '';
+    }
+    const kid = env('SUPABASE_JWT_KID');
+    const headerObj: Record<string, string> = { alg: 'EdDSA', typ: 'JWT' };
+    if (kid) headerObj.kid = kid;
+    const signingInput = b64url(JSON.stringify(headerObj)) + '.' + b64url(JSON.stringify(payloadObj));
+    // crypto.sign(null, ...) = Ed25519 (no pre-hash), which is what EdDSA/JWS wants.
+    const sig = crypto.sign(null, Buffer.from(signingInput), key);
+    return signingInput + '.' + b64url(sig);
+  }
+
   const secret = env('SUPABASE_JWT_SECRET');
   if (!secret) {
     // B9 fix: Log at error level so this is visible in production.
@@ -61,14 +150,8 @@ function createSupabaseJwt(claims: { role: string; wa?: string; name?: string })
     return '';
   }
 
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
-  const now = Math.floor(Date.now() / 1000);
-  const payload = Buffer.from(JSON.stringify({
-    ...claims,
-    role: claims.role || 'authenticated',
-    iat: now,
-    exp: now + 3600, // 1 hour expiry
-  })).toString('base64url');
+  const header = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const payload = b64url(JSON.stringify(payloadObj));
 
   const signature = crypto.createHmac('sha256', secret)
     .update(header + '.' + payload)
@@ -110,7 +193,13 @@ function createSupabaseJwt(claims: { role: string; wa?: string; name?: string })
  * Fail-closed: peran yang tidak dikenal TIDAK pernah diteruskan apa adanya.
  */
 function pgRoleFor(sessionRole?: string): string {
-  return sessionRole === 'admin' ? 'service_role' : 'authenticated';
+  if (sessionRole !== 'admin') return 'authenticated';
+  // The admin role name is backend-specific: Supabase ships `service_role`,
+  // Neon has no such role (its Data API has no service role at all), so there
+  // the equivalent is a BYPASSRLS role we created — `asj_service`.
+  // Default stays `service_role` so an unconfigured deployment behaves exactly
+  // as before.
+  return env('SUPABASE_PG_ADMIN_ROLE') || 'service_role';
 }
 
 /**

@@ -34,6 +34,16 @@ const WHITELIST = new Set([
   'NETLIFY_SITE_URL',
   'SESSION_SECRET',
   'SUPABASE_JWT_SECRET',
+  // 2026-10-21 — Neon cutover. Neon's Data API verifies tokens against a JWKS
+  // URL and has no shared secret, so the backend signs EdDSA with this key and
+  // publishes the matching public key at /jwks.json (emitted at build time from
+  // JWT_PUBLIC_JWK). All three are server-only: none may ever carry PUBLIC_.
+  'SUPABASE_JWT_ALG',
+  'SUPABASE_JWT_PRIVATE_KEY',
+  'SUPABASE_JWT_KID',
+  // Postgres role handed to admin sessions. Default `service_role` (Supabase);
+  // `asj_service` on Neon, where no service_role exists.
+  'SUPABASE_PG_ADMIN_ROLE',
   'ASJ_ADMINS',
   'SENTRY_DSN',
   'FIREBASE_SERVICE_ACCOUNT',
