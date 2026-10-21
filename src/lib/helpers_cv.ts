@@ -172,7 +172,18 @@ export function riwayatKeyOf(
     // Satu orang menempuh satu sekolah SEKALI, jadi periode tidak memisahkan apa
     // pun di sini — berbeda dari pekerjaan, di mana dua masa kerja itu nyata.
     const eduName = pick(['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah']);
-    return eduName ? `s:${eduName}` : `t:${pick(['tingkat'])}`;
+    // Fallback: the LEVEL, as a rank — not the raw spelling.
+    //
+    // Measured 2026-10-21 (owner: "kenapa ini kok data dobel dobel terus"):
+    // a nameless row written by the master form holds `SMA/SMK` while the same
+    // row written by the AI form holds `SMK`. Both rank 3, but as raw strings
+    // they were different keys, so `mergeArrRiwayat` kept BOTH and the AI CV
+    // form showed two identical empty rows with the same year. `getTingkatVal`
+    // is the same ranker `sortEduRows` already uses, so "SMK" and "SMA/SMK"
+    // collapse here exactly as they do when the list is sorted.
+    if (eduName) return `s:${eduName}`;
+    const rank = getTingkatVal(e.tingkat);
+    return rank >= 1 && rank <= 5 ? `l:${rank}` : `t:${pick(['tingkat'])}`;
   }
   const name = pick(['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt']);
   const alt = pick(['jabatan', 'jabatan_id']);

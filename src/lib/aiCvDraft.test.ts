@@ -214,6 +214,19 @@ describe('aiCvDraft — parseAiCvRows (tiga seksi repeater)', () => {
     expect(out.pendidikan[0].sekolah_id).toBe('SMAN 1');
   });
 
+  /**
+   * Keluhan pemilik 2026-10-21 ("data dobel dobel terus"): dua baris tanpa nama
+   * sekolah, satu ber-tingkat `SMA/SMK` dari kolom master dan satu `SMK` dari
+   * `ai_data_json`, tampil sebagai DUA baris kosong bertahun sama.
+   */
+  it('baris TANPA nama dengan ejaan jenjang setara tidak digandakan', () => {
+    const out = parseAiCvRows({
+      pendidikan: [{ tingkat: 'SMA/SMK', tahun_masuk: '2023' }],
+      AIDATAJSON: JSON.stringify({ pendidikan: [{ tingkat: 'SMK', tahun_masuk: '2023' }] }),
+    });
+    expect(out.pendidikan).toHaveLength(1);
+  });
+
   it('ejaan kanji dari payload AI form ikut terbaca (nama_sekolah_jp → sekolah_jp)', () => {
     const out = parseAiCvRows({
       AIDATAJSON: JSON.stringify({

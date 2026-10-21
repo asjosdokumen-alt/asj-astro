@@ -32,6 +32,43 @@ const MONTH_ABBR = [
   'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
 ];
 
+/**
+ * Month NAMES → month code.
+ *
+ * Why this exists (measured 2026-10-21, owner report "dropdownnya gak bisa
+ * dipakai"): the AI extraction writes a month name into the year column —
+ * `tahun_masuk: "05 MEI"` — and `splitPeriod` used to hand that string back as
+ * the YEAR half with `month: ''`. `MonthYearField` then could not attach a
+ * chosen month to it (`joinPeriod` refuses to append `-05` to a non-4-digit
+ * year), so every pick snapped straight back to "—". The control was not
+ * broken; it was being fed a value it could not represent.
+ *
+ * Both Indonesian and English spellings are accepted because the extraction
+ * model answers in either, and a candidate may type the month by hand in the
+ * free-text year box.
+ */
+const MONTH_NAMES: Record<string, string> = {
+  JAN: '01', JANUARI: '01', JANUARY: '01',
+  FEB: '02', FEBRUARI: '02', FEBRUARY: '02',
+  MAR: '03', MARET: '03', MARCH: '03',
+  APR: '04', APRIL: '04',
+  MEI: '05', MAY: '05',
+  JUN: '06', JUNI: '06', JUNE: '06',
+  JUL: '07', JULI: '07', JULY: '07',
+  AGU: '08', AGT: '08', AGUSTUS: '08', AUG: '08', AUGUST: '08',
+  SEP: '09', SEPT: '09', SEPTEMBER: '09',
+  OKT: '10', OKTOBER: '10', OCT: '10', OCTOBER: '10',
+  NOV: '11', NOVEMBER: '11',
+  DES: '12', DESEMBER: '12', DEC: '12', DECEMBER: '12',
+};
+
+/**
+ * `05 MEI`, `MEI 2024`, `5 Agustus 2023` — a day and/or month name, optionally
+ * with a year. Anchored, so free text that merely CONTAINS a month name
+ * ("2021 (perkiraan)") is not mistaken for a date.
+ */
+const NAMED_DATE = /^(\d{1,2})?[\s.,/-]*([A-Za-z]{3,10})[\s.,/-]*(\d{4})?$/;
+
 /** Month choices for the picker: `''` plus `01`..`12`. */
 export function monthOptions(): string[] {
   const out: string[] = [''];
@@ -49,25 +86,51 @@ export function monthLabel(code: string): string {
 /**
  * Split a stored period into the two halves the control edits.
  *
- * The three shapes that can come out of the database, and what each becomes:
+ * The shapes that can come out of the database, and what each becomes:
  *
- *   `'2018-02'`  → `{ year: '2018', month: '02' }`   month is real
- *   `'2018'`     → `{ year: '2018', month: ''   }`   year-only, preserved
- *   `'SEKARANG'` → `{ year: 'SEKARANG', month: '' }`  sentinel, passed through
- *   `''`/null    → `{ year: '',       month: ''   }`
+ *   `'2018-02'`      → `{ year: '2018', month: '02' }`   month is real
+ *   `'2018-02-17'`   → `{ year: '2018', month: '02' }`   day is dropped
+ *   `'2018'`         → `{ year: '2018', month: ''   }`   year-only, preserved
+ *   `'SEKARANG'`     → `{ year: 'SEKARANG', month: '' }`  sentinel, passed through
+ *   `'05 MEI 2024'`  → `{ year: '2024', month: '05' }`   month name read
+ *   `'05 MEI'`       → `{ year: '05 MEI', month: '05' }`  no year to attach it to
+ *   `''`/null        → `{ year: '',       month: ''   }`
  *
  * The sentinel is returned in `year` unchanged rather than being normalised
  * away: it is a sibling of a date, not a corrupt one, and the renderer that
  * prints the CV has to see it verbatim to write 現在.
+ *
+ * ⚠ THE RULE THAT MATTERS for the month control: a month is reported whenever
+ * one can be RECOGNISED, even when the year half is unparseable. Reporting
+ * `month: ''` for `'05 MEI'` is what made the dropdown dead — the month select
+ * showed "—" no matter what the candidate picked, because the component had no
+ * month to display and `joinPeriod` will not attach one to a non-year.
+ *
+ * A recognised named date is NORMALISED to `YYYY-MM` (`'05 MEI 2024'` →
+ * `'2024-05'`). That drops the day, which the CV never prints, and it is the
+ * only shape here whose round-trip is not byte-exact — deliberate, because
+ * keeping "05 MEI 2024" in a year column is what produced an unreadable
+ * rirekisho and a dead picker in the first place.
  */
 export function splitPeriod(stored: string | null | undefined): { year: string; month: string } {
   const s = String(stored ?? '').trim();
   if (!s) return { year: '', month: '' };
   if (s === PERIODE_SEKARANG) return { year: PERIODE_SEKARANG, month: '' };
-  const m = s.match(/^(\d{4})[-/](\d{1,2})$/);
+  const m = s.match(/^(\d{4})[-/](\d{1,2})(?:[-/]\d{1,2})?$/);
   if (m) {
     const mm = String(parseInt(m[2], 10)).padStart(2, '0');
     return { year: m[1], month: mm };
+  }
+  const named = NAMED_DATE.exec(s);
+  if (named) {
+    const key = named[2].toUpperCase().replace(/\./g, '');
+    const month = MONTH_NAMES[key];
+    if (month) {
+      // A year is only adopted when the whole string is the date; otherwise the
+      // raw text stays in the year half so nothing the candidate can see is
+      // lost, and `joinPeriod` keeps returning it unchanged.
+      return { year: named[3] || s, month };
+    }
   }
   // Anything else (a bare year, or something the candidate typed by hand) is
   // kept in the year half verbatim. Guessing a month from it, or dropping it,

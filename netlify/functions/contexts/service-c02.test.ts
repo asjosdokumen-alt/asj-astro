@@ -101,6 +101,35 @@ describe('C02 — buildMasterNested (kunci prefill baru)', () => {
     const n = buildMasterNested({ ai_data_json: 'not-json' });
     expect(n.wawancara.lama_di_jepang).toBe('');
   });
+
+  /**
+   * Keluhan pemilik 2026-10-21: "kenapa ini kok data dobel dobel terus".
+   *
+   * Dua baris tanpa NAMA sekolah — satu dari kolom master, satu dari
+   * `ai_data_json` — adalah baris yang sama, tetapi kunci lamanya memakai
+   * ejaan `tingkat` mentah, jadi `SMK` dan `SMA/SMK` tidak pernah bertemu dan
+   * keduanya tampil di form sebagai dua baris kosong bertahun sama.
+   */
+  it('pendidikan tanpa nama: "SMK" dan "SMA/SMK" menyatu jadi SATU baris', () => {
+    const n = buildMasterNested({
+      pendidikan_1_tingkat: 'SMK',
+      pendidikan_1_tahun_masuk: '2023',
+      ai_data_json: JSON.stringify({ pendidikan: [{ tingkat: 'SMA/SMK', tahun_masuk: '2023' }] }),
+    });
+    expect(n.pendidikan).toHaveLength(1);
+  });
+
+  it('pendidikan tanpa nama: jenjang BERBEDA tetap dua baris', () => {
+    // Dedupe tidak boleh menelan baris yang memang berbeda — kalau tidak,
+    // memperbaiki "dobel" akan menghapus riwayat sungguhan.
+    const n = buildMasterNested({
+      pendidikan_1_tingkat: 'SD',
+      pendidikan_1_tahun_masuk: '2014',
+      pendidikan_2_tingkat: 'SMP',
+      pendidikan_2_tahun_masuk: '2020',
+    });
+    expect(n.pendidikan).toHaveLength(2);
+  });
 });
 
 

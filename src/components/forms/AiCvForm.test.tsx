@@ -562,6 +562,95 @@ describe('AiCvForm — mode admin (panel CV AI di tab Pelamar)', () => {
     expect(screen.getByRole('button', { name: 'button.save_db' })).toBeTruthy();
   });
 
+  /**
+   * Laporan pemilik 2026-10-21: "dropdownnya juga gak bisa di pakai" — pada
+   * baris yang tahunnya berisi "05 MEI", memilih bulan langsung kembali ke "—".
+   *
+   * Sebabnya bukan `<select>`-nya: `splitPeriod` mengembalikan "05 MEI" sebagai
+   * TAHUN dengan bulan kosong, jadi `joinPeriod` menolak menempelkan bulan ke
+   * nilai yang bukan tahun 4 digit — `onChange` mengirim nilai yang sama, dan
+   * pilihan pengguna dibuang. Dua lapis yang diuji di sini: parser mengenali
+   * nama bulan, dan kontrol menahan pilihan sampai ada tahun sungguhan.
+   */
+  it('tahun berisi nama bulan ("05 MEI") → pilihan bulan tetap bisa dipakai', async () => {
+    routeApi({
+      getDrafCvMaster: {
+        ...DRAFT,
+        pendidikan: [{ tingkat: 'SMK', nama_sekolah: 'SMK NEGERI 1', tahun_masuk: '05 MEI' }],
+      },
+    });
+    render(<AiCvForm waTarget={WA} adminMode />);
+    await settled();
+
+    const month = document.getElementById('ai-edu-masuk-0-month') as HTMLSelectElement;
+    // Terbaca Mei, bukan "—": inilah yang membuat kontrolnya hidup.
+    expect(month.value).toBe('05');
+
+    fireEvent.change(month, { target: { value: '07' } });
+    expect(month.value).toBe('07');
+
+    // Tahun sungguhan dipilih → keduanya menjadi satu periode yang sah.
+    fireEvent.change(document.getElementById('ai-edu-masuk-0-year') as HTMLSelectElement, { target: { value: '2024' } });
+    expect(month.value).toBe('07');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(true));
+    const call = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'submitDataAsj');
+    if (!call) throw new Error('submitDataAsj tidak pernah dipanggil');
+    const payload = (call[1] ?? [])[0] as { pendidikan: Array<Record<string, string>> };
+    expect(payload.pendidikan[0].tahun_masuk).toBe('2024-07');
+  });
+
+  /**
+   * Berkas yang SUDAH tersimpan dulu tidak menampilkan apa pun di form CV AI —
+   * hanya tulisan "Sudah ada". Sekarang setiap slot yang berisi berkas
+   * menampilkan thumbnail (lewat `thumbUrl`, jadi bukan file aslinya) dan klik
+   * membuka pratinjau di dalam app.
+   */
+  it('berkas tersimpan tampil sebagai thumbnail dan bisa dibuka di app', async () => {
+    routeApi({
+      getDrafCvMaster: {
+        ...DRAFT,
+        uploads: { ktp: 'https://res.cloudinary.com/demo/image/upload/v1/ktp.jpg' },
+      },
+    });
+    render(<AiCvForm waTarget={WA} adminMode />);
+    await settled();
+
+    const thumb = screen.getByRole('button', { name: 'ui.preview: cv.upload_ktp' });
+    const img = thumb.querySelector('img');
+    // `w_96` = thumbnail yang diminta, bukan URL asli file KTP.
+    expect(img?.getAttribute('src')).toContain('w_96');
+    expect(img?.getAttribute('src')).toContain('ktp.jpg');
+
+    fireEvent.click(thumb);
+    const modal = document.querySelector('.u-modal-shell');
+    expect(modal).toBeTruthy();
+    // Pratinjau memakai file ASLI, bukan thumbnail.
+    expect(modal?.querySelector('img')?.getAttribute('src')).toBe('https://res.cloudinary.com/demo/image/upload/v1/ktp.jpg');
+  });
+
+  /**
+   * Permintaan pemilik 2026-10-21: "tiap WA kandidat beda, gimana cara
+   * sharenya?" — admin perlu link yang SUDAH membawa nomor kandidat, supaya
+   * kandidat tidak salah ketik nomornya sendiri di gerbang login.
+   */
+  it('mode admin menyalin link /ai-cv?wa=<nomor> untuk kandidat yang sedang dibuka', async () => {
+    const writeText = vi.fn(async (_text: string) => {});
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    routeApi({ getDrafCvMaster: DRAFT });
+    render(<AiCvForm waTarget={WA} adminMode />);
+    await settled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'ai_cv.share_link' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalled());
+
+    const url = String(writeText.mock.calls[0][0]);
+    expect(url).toContain(`/ai-cv?wa=${WA}`);
+    // Nomor kandidat, bukan nomor admin — `waTarget` yang menang di mode ini.
+    expect(url).not.toContain('undefined');
+  });
+
   it('tanpa props (kandidat) → perilaku lama utuh: gate muncul, TANPA memuat draf', () => {
     render(<AiCvForm />);
     expect(screen.getByText('Verifikasi Akun Kandidat')).toBeTruthy();
@@ -1440,6 +1529,38 @@ describe('AiCvForm — state tombol SIMPAN & guard ekstensi', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
     await waitFor(() => expect(vi.mocked(uploadMany)).toHaveBeenCalled());
+  });
+
+  /**
+   * Permintaan pemilik 2026-10-21: "data yg upload ada thumbnailnya juga dan
+   * bisa di preview langsung di app".
+   *
+   * Sebelumnya hanya slot FOTO yang punya pratinjau, dan hanya setelah draf
+   * dimuat — berkas yang baru dipilih tidak menampilkan apa pun sampai Simpan,
+   * jadi kandidat tidak tahu berkas mana yang sudah masuk.
+   */
+  it('berkas yang baru dipilih langsung punya thumbnail dan bisa dipratinjau di app', async () => {
+    const create = (URL as unknown as { createObjectURL?: unknown }).createObjectURL;
+    (URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => 'blob:mock-ktp');
+    (URL as unknown as { revokeObjectURL: unknown }).revokeObjectURL = vi.fn();
+    try {
+      render(<AiCvForm />);
+      const file = new File(['x'], 'ktp.jpg', { type: 'image/jpeg' });
+      const input = document.getElementById('ai_doc_ktp') as HTMLInputElement;
+      Object.defineProperty(input, 'files', { value: [file] });
+      fireEvent.change(input);
+
+      const thumb = await screen.findByRole('button', { name: 'ui.preview: cv.upload_ktp' });
+      expect(thumb.querySelector('img')?.getAttribute('src')).toBe('blob:mock-ktp');
+
+      fireEvent.click(thumb);
+      // Modal pratinjau yang sama dengan panel admin — bukan tab baru, bukan unduhan.
+      const modal = document.querySelector('.u-modal-shell');
+      expect(modal).toBeTruthy();
+      expect(modal?.querySelector('img')?.getAttribute('src')).toBe('blob:mock-ktp');
+    } finally {
+      (URL as unknown as { createObjectURL: unknown }).createObjectURL = create;
+    }
   });
 });
 

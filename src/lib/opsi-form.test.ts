@@ -11,7 +11,7 @@ import {
   PEKERJAAN, PEKERJAAN_LEGACY, JURUSAN, JURUSAN_SMK, JURUSAN_SMA, JURUSAN_KULIAH,
   KOTA, HUBUNGAN_LEGACY, HUBUNGAN_KELUARGA,
   SENTINEL_LAINNYA, OPSI_KOSONG, OPSI_LAINNYA,
-  withOther, isKnown, selectState, resolveOther, withEmpty,
+  withOther, isKnown, selectState, resolveOther, withEmpty, labelJp,
   valuesOf, GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
   YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, BAHASA_JEPANG, GOLONGAN_DARAH,
 } from './opsi-form';
@@ -46,8 +46,35 @@ describe('opsi-form — paritas nilai legacy', () => {
     }
   });
 
-  it('HUBUNGAN_KELUARGA = legacy + tambahan, legacy di depan', () => {
-    expect(HUBUNGAN_KELUARGA.slice(0, HUBUNGAN_LEGACY.length)).toEqual(HUBUNGAN_LEGACY);
+  it('HUBUNGAN_KELUARGA memuat ketujuh nilai legacy — dan yang berjenis kelamin lebih dulu', () => {
+    const values = HUBUNGAN_KELUARGA.map(([v]) => v);
+    // Paritas DATA: setiap nilai legacy masih ada, tepat sekali. Baris lama
+    // tidak boleh kehilangan opsinya.
+    for (const [v] of HUBUNGAN_LEGACY) {
+      expect(values.filter((x) => x === v)).toHaveLength(1);
+    }
+    // Paritas URUTAN sudah sengaja diubah 2026-10-21: `KAKAK (兄・姉)` tidak
+    // bisa dicetak ke rirekisho tanpa memilih salah satu, jadi versi spesifik
+    // harus muncul lebih dulu — kalau tidak, yang generik tetap jadi pilihan
+    // paling gampang dan pemisahannya tidak pernah terpakai.
+    const firstGendered = values.indexOf('KAKAK LAKI-LAKI');
+    const generic = values.indexOf('KAKAK');
+    expect(firstGendered).toBeGreaterThan(-1);
+    expect(firstGendered).toBeLessThan(generic);
+    expect(values.indexOf('ADIK PEREMPUAN')).toBeLessThan(values.indexOf('ADIK'));
+    expect(values.indexOf('ANAK LAKI-LAKI')).toBeLessThan(values.indexOf('ANAK'));
+  });
+
+  it('setiap hubungan berjenis kelamin memakai kanji yang BERBEDA per jenis kelamin', () => {
+    // Inti keluhan pemilik: "karena beda". Kalau dua entri masih memakai gloss
+    // yang sama, pemisahannya hanya menambah baris tanpa menambah informasi.
+    const jp = (v: string) => labelJp(HUBUNGAN_KELUARGA.find(([x]) => x === v)?.[1] || '');
+    expect(jp('KAKAK LAKI-LAKI')).toBe('兄');
+    expect(jp('KAKAK PEREMPUAN')).toBe('姉');
+    expect(jp('ADIK LAKI-LAKI')).toBe('弟');
+    expect(jp('ADIK PEREMPUAN')).toBe('妹');
+    expect(jp('ANAK LAKI-LAKI')).toBe('息子');
+    expect(jp('ANAK PEREMPUAN')).toBe('娘');
   });
 
   it('JURUSAN menggabungkan SMK + SMA + Kuliah tanpa duplikat', () => {
@@ -239,7 +266,11 @@ describe('opsi-form — integritas daftar gabungan', () => {
     expect(PEKERJAAN).toHaveLength(100);
     expect(JURUSAN).toHaveLength(94);
     expect(HUBUNGAN_LEGACY).toHaveLength(7);
-    expect(HUBUNGAN_KELUARGA).toHaveLength(19);
+    // 7 legacy + 12 hubungan berjenis kelamin (2026-10-21). Angka ini SENGAJA
+    // dihitung ulang, bukan diturunkan dari `HUBUNGAN_LEGACY.length`: yang
+    // dijaga adalah "daftar tidak menyusut", dan penambahan yang lupa
+    // didokumentasikan harus terlihat di sini.
+    expect(HUBUNGAN_KELUARGA).toHaveLength(31);
   });
 
   it('sentinel tidak pernah bocor ke dalam daftar data', () => {

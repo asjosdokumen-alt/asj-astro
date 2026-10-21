@@ -21,6 +21,15 @@ interface Props {
   previewOnly?: boolean;
   /** Exit window (2026-09-28) — see `useOverlayPresence` + `motion.css` §5b. */
   closing?: boolean;
+  /**
+   * MIME type of the file, when the caller knows it.
+   *
+   * Needed for `blob:` URLs: a locally picked file has no extension in its
+   * URL, so `isImage()`/`isPdf()` cannot recognise it and the modal fell
+   * through to "cannot preview" for a file sitting in the browser's memory.
+   * Empty/absent keeps the old URL-sniffing behaviour for remote URLs.
+   */
+  mime?: string;
 }
 
 // Lazy-loaded SheetJS vendor for Excel/CSV rendering.
@@ -150,7 +159,7 @@ async function renderExcelToHtml(url: string): Promise<string | null> {
   }
 }
 
-export default function DocumentPreviewModal({ url, title, onClose, previewOnly, closing = false }: Props) {
+export default function DocumentPreviewModal({ url, title, onClose, previewOnly, closing = false, mime }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [excelHtml, setExcelHtml] = useState<string | null>(null);
@@ -240,7 +249,7 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
   const handleError = () => { setLoading(false); setError(true); };
 
   const renderContent = () => {
-    if (isImage(url)) {
+    if (mime ? mime.startsWith('image/') : isImage(url)) {
       return (
         <div class="flex items-center justify-center h-full overflow-auto">
           <img
@@ -254,12 +263,12 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
       );
     }
 
-    if (isPdf(url)) {
+    if (mime ? mime === 'application/pdf' : isPdf(url)) {
       // Use Google Docs Viewer for better mobile compatibility (from legacy preview.ts)
       return (
         <iframe
           ref={iframeRef}
-          src={getPdfViewerUrl(url)}
+          src={url.startsWith('blob:') ? url : getPdfViewerUrl(url)}
           class="w-full h-full border-0 rounded-lg"
           onLoad={handleLoad}
           onError={handleError}

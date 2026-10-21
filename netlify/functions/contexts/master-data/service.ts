@@ -129,6 +129,41 @@ function cleanKey(s: string): string {
  * di perusahaan yang sama itu nyata.)
  */
 const EDU_PERIOD_KEYS: string[] = [];
+
+/**
+ * Peringkat jenjang dari sebuah label `tingkat` — untuk kunci cadangan saat
+ * baris tidak punya nama sekolah.
+ *
+ * 🔴 Diukur 2026-10-21 (keluhan pemilik: "kenapa ini kok data dobel dobel
+ * terus"). Dua baris tanpa nama sekolah, satu dari kolom master (`SMA/SMK`)
+ * dan satu dari `ai_data_json` (`SMK`), adalah BARIS YANG SAMA — tetapi kunci
+ * lamanya memakai ejaan mentah, jadi `t:smaskmk` ≠ `t:smk` dan dedupe
+ * meloloskannya. Yang terlihat di form: dua baris kosong dengan tahun sama.
+ *
+ * Peringkatnya HARUS sama dengan `TINGKAT_ORDER` di `src/lib/helpers_cv.ts`
+ * (fungsi `getTingkatVal`), karena kunci baca di backend dan kunci merge di
+ * frontend harus menyebut baris yang sama. Salinan fisik ini mengikuti pola
+ * `shared/wa-rules.ts` (dua salinan, satu aturan) — kalau salah satu diubah,
+ * ubah keduanya.
+ */
+const TINGKAT_RANK = ([
+  ['universitas', 4],
+  ['smk', 3], ['sma', 3], ['ma', 3],
+  ['smp', 2], ['mts', 2],
+  ['sd', 1], ['mi', 1],
+  ['d1', 4], ['d2', 4], ['d3', 4], ['d4', 4], ['s1', 4], ['s2', 4],
+  ['lpk', 5],
+] as Array<[string, number]>).sort((a, b) => b[0].length - a[0].length);
+
+function tingkatToken(raw: string): string {
+  const t = String(raw ?? '').toLowerCase().trim();
+  if (!t) return '';
+  for (const [token, rank] of TINGKAT_RANK) {
+    if (new RegExp(`(^|[^a-z])${token}([^a-z]|$)`).test(t)) return `l:${rank}`;
+  }
+  return cleanKey(raw);
+}
+
 /**
  * Identitas satu baris riwayat.
  *
@@ -151,16 +186,21 @@ function riwayatKey(
   nameKeys: string[],
   altKeys: string[],
   periodKeys: string[],
+  altRank?: (raw: string) => string,
 ): string {
-  const pick = (keys: string[]): string => {
+  const pickRaw = (keys: string[]): string => {
     for (const k of keys) {
       const v = e ? e[k] : undefined;
-      if (v !== undefined && v !== null && String(v).trim() !== '') return cleanKey(String(v));
+      if (v !== undefined && v !== null && String(v).trim() !== '') return String(v);
     }
     return '';
   };
+  const pick = (keys: string[]): string => cleanKey(pickRaw(keys));
   const name = pick(nameKeys);
-  const alt = pick(altKeys);
+  // `altRank` menormalkan cadangan (mis. "SMA/SMK" vs "SMK" → peringkat yang
+  // sama). Tanpa itu dua ejaan satu jenjang menghasilkan dua kunci.
+  const altRaw = pickRaw(altKeys);
+  const alt = altRank ? altRank(altRaw) : cleanKey(altRaw);
   // Periode: SATU nilai per slot (dedupe + buang yang kosong). Baris master
   // menulis `masuk` DAN `tahun_masuk` dengan nilai yang sama, jadi menjumlahkan
   // semua kunci menghasilkan "20232023" sementara baris `ai_data_json` hanya
@@ -274,7 +314,7 @@ export function buildMasterNested(row: any): any {
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['tingkat', 'sekolah', 'nama_sekolah', 'jurusan_id', 'jurusan', 'masuk', 'lulus'])),
         aiArrOf('pendidikan'), (e) => riwayatKey(e,
           ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'],
-          EDU_PERIOD_KEYS));
+          EDU_PERIOD_KEYS, tingkatToken));
     })(),
     pekerjaan: (function () {
       const arr: any[] = [];
@@ -393,7 +433,7 @@ function buildAiOverflow(d: any): Record<string, unknown> | null {
  */
 export function pruneAiRiwayat(ai: Record<string, unknown>, d: Record<string, unknown>): Record<string, unknown> {
   const lists: Array<{ key: string; keyOf: (e: Record<string, unknown>) => string }> = [
-    { key: 'pendidikan', keyOf: (e) => riwayatKey(e, ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'], EDU_PERIOD_KEYS) },
+    { key: 'pendidikan', keyOf: (e) => riwayatKey(e, ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'], EDU_PERIOD_KEYS, tingkatToken) },
     { key: 'pekerjaan', keyOf: (e) => riwayatKey(e, ['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt'], ['jabatan', 'jabatan_id'], ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar']) },
     { key: 'keluarga', keyOf: keluargaKey },
   ];
@@ -432,7 +472,7 @@ function mergeAiOverflow(ai: any, overflow: any): any {
   // berlipat.
   if (overflow.pendidikan) setSlot('pendidikan', overflow.pendidikan, (e) => riwayatKey(e,
     ['sekolah', 'sekolah_id', 'nama_sekolah', 'namaSekolah'], ['tingkat'],
-    EDU_PERIOD_KEYS));
+    EDU_PERIOD_KEYS, tingkatToken));
   if (overflow.pekerjaan) setSlot('pekerjaan', overflow.pekerjaan, (e) => riwayatKey(e,
     ['perusahaan', 'perusahaan_id', 'nama_perusahaan', 'namaPt'], ['jabatan', 'jabatan_id'],
     ['masuk', 'tahun_masuk', 'keluar', 'tahun_keluar']));

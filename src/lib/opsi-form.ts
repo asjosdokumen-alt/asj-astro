@@ -448,7 +448,13 @@ export const BANK: Opsi[] = [
  * The pre-C09 Astro form used TitleCase (`Ayah`, `Ibu`, …) — that was a real
  * parity bug: a family row saved from this form could never match the same
  * relationship saved from the legacy form, so the two UIs disagreed on the
- * same person. The seven legacy values are kept byte-identical and FIRST.
+ * same person. The seven legacy values are kept byte-identical.
+ *
+ * ⚠ They are no longer FIRST in the dropdown. `HUBUNGAN_KELUARGA` (bottom of
+ * this block) puts the gendered values ahead of the generic ones, because the
+ * generic `KAKAK`/`ADIK`/`ANAK` are exactly what the owner asked to split —
+ * leaving them at the top would keep them the easiest thing to pick. This
+ * array stays the parity reference for the seven original values.
  *
  * The extra rows below are the same kind of "definite answer" expansion the
  * user asked for (kakek/nenek/paman/bibi/…). They are additive: they never
@@ -463,6 +469,38 @@ export const HUBUNGAN_LEGACY: Opsi[] = [
   ['ANAK', 'ANAK (子)'],
   ['KAKAK', 'KAKAK (兄・姉)'],
   ['ADIK', 'ADIK (弟・妹)'],
+];
+
+/**
+ * Hubungan yang jenis kelaminnya MENGUBAH arti — dipisah atas permintaan
+ * pemilik 2026-10-21: *"kakak laki laki dan perempuan di pisah kan karena
+ * beda, begitu juga adik, anak laki/perempuan"*.
+ *
+ * Kenapa ini bukan sekadar kosmetik: `KAKAK (兄・姉)` mencampur dua kata Jepang
+ * yang berbeda (兄 = kakak laki-laki, 姉 = kakak perempuan) ke dalam SATU nilai.
+ * Rirekisho yang dicetak dari nilai itu tidak bisa memilih salah satunya, jadi
+ * kolom 続柄 di CV kandidat selalu ambigu. Nilai baru di bawah memisahkannya
+ * sehingga kanji yang tercetak sama dengan kenyataannya.
+ *
+ * Nilai lama (`ANAK`, `KAKAK`, `ADIK`, `KEPONAKAN`, `MENANTU`, `IPAR`) TIDAK
+ * dihapus — baris yang sudah tersimpan memakainya, dan menghapusnya akan
+ * membuat `<select>` tidak menemukan opsinya. Yang berubah hanya URUTAN: yang
+ * spesifik tampil lebih dulu supaya pilihan default-nya benar, dan yang generik
+ * turun ke bawah sebagai bentuk lama.
+ */
+export const HUBUNGAN_GENDER: Opsi[] = [
+  ['ANAK LAKI-LAKI', 'ANAK LAKI-LAKI (息子)'],
+  ['ANAK PEREMPUAN', 'ANAK PEREMPUAN (娘)'],
+  ['KAKAK LAKI-LAKI', 'KAKAK LAKI-LAKI (兄)'],
+  ['KAKAK PEREMPUAN', 'KAKAK PEREMPUAN (姉)'],
+  ['ADIK LAKI-LAKI', 'ADIK LAKI-LAKI (弟)'],
+  ['ADIK PEREMPUAN', 'ADIK PEREMPUAN (妹)'],
+  ['KEPONAKAN LAKI-LAKI', 'KEPONAKAN LAKI-LAKI (甥)'],
+  ['KEPONAKAN PEREMPUAN', 'KEPONAKAN PEREMPUAN (姪)'],
+  ['MENANTU LAKI-LAKI', 'MENANTU LAKI-LAKI (婿)'],
+  ['MENANTU PEREMPUAN', 'MENANTU PEREMPUAN (嫁)'],
+  ['IPAR LAKI-LAKI', 'IPAR LAKI-LAKI (義理の兄弟)'],
+  ['IPAR PEREMPUAN', 'IPAR PEREMPUAN (義理の姉妹)'],
 ];
 
 export const HUBUNGAN_TAMBAHAN: Opsi[] = [
@@ -480,7 +518,20 @@ export const HUBUNGAN_TAMBAHAN: Opsi[] = [
   ['KERABAT', 'KERABAT (親戚)'],
 ];
 
-export const HUBUNGAN_KELUARGA: Opsi[] = [...HUBUNGAN_LEGACY, ...HUBUNGAN_TAMBAHAN];
+/**
+ * Daftar yang dipakai `<select>`: yang spesifik (berjenis kelamin) dulu, lalu
+ * nilai generik lama, lalu sisanya.
+ *
+ * Setiap nilai legacy tetap ada TEPAT SEKALI — urutan ini hanya mengubah
+ * tampilan, bukan kosakata yang disimpan. `HUBUNGAN_LEGACY` di atas tetap
+ * menjadi daftar acuan tujuh nilai asli (dipakai tes paritas).
+ */
+export const HUBUNGAN_KELUARGA: Opsi[] = [
+  ...HUBUNGAN_LEGACY.filter(([v]) => ['AYAH', 'IBU', 'SUAMI', 'ISTRI'].includes(v)),
+  ...HUBUNGAN_GENDER,
+  ...HUBUNGAN_LEGACY.filter(([v]) => ['ANAK', 'KAKAK', 'ADIK'].includes(v)),
+  ...HUBUNGAN_TAMBAHAN,
+];
 
 /* ══════════════════════════════════════════════════════════════════════════
    3b. GOLONGAN DARAH — 血液型

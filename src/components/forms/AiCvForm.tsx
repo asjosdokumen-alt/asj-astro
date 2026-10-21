@@ -29,6 +29,30 @@ import {
 import { levelOptions, sortEduRows } from '../../lib/cvRows';
 import { joinPeriod, monthLabel, monthOptions, splitPeriod, yearOptions } from '../../lib/cvPeriod';
 import { useOverlay } from '../ui/useOverlay';
+import DocumentPreviewModal from '../DocumentPreviewModal';
+import { thumbUrl } from '../../lib/thumbUrl';
+
+/**
+ * What the upload row needs to draw a thumbnail and open a preview.
+ *
+ * `url` is a remote URL for a file that is already stored, or a `blob:` URL
+ * for one the candidate just picked (not uploaded yet). `mime` is carried
+ * because a blob URL has no extension — see `DocumentPreviewModal`'s prop.
+ */
+interface DocPreview { url: string; mime: string; name: string; }
+
+/** Best-effort MIME from a stored URL; empty when it cannot be told. */
+const mimeOfUrl = (url: string): string => {
+  if (/\.pdf(\?|#|$)/i.test(url)) return 'application/pdf';
+  if (/\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(url)) return 'image/*';
+  return '';
+};
+
+/** Last path segment, decoded — the label a thumbnail cannot show. */
+const nameOfUrl = (url: string): string => {
+  const last = url.split(/[?#]/)[0].split('/').pop() || '';
+  try { return decodeURIComponent(last); } catch { return last; }
+};
 
 interface CvData {
   nama: string; katakana: string; panggilan: string; panggilan_katakana: string;
@@ -350,7 +374,9 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
   const [cv, setCv] = useState<CvData>(EMPTY_CV);
   const [docs, setDocs] = useState<Record<string, File | null>>({});
   const [docStatus, setDocStatus] = useState<Record<string, string>>({});
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [docPreview, setDocPreview] = useState<Record<string, DocPreview>>({});
+  /** Slot whose document is open in the in-app preview (null = closed). */
+  const [previewDoc, setPreviewDoc] = useState<{ type: string; title: string } | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(true);
   /**
    * The WA whose draft we are showing.
@@ -487,8 +513,20 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           if (v !== undefined && v !== null && String(v).trim() !== '' && String(v).trim() !== '-') seeded[type] = t('cv.doc_exists');
         }
         setDocStatus(prev => ({ ...seeded, ...prev }));
-        const photo = up.photo;
-        if (typeof photo === 'string' && /^https:\/\//.test(photo)) setFotoPreview(prev => prev ?? photo);
+        // Pratinjau untuk berkas yang SUDAH ada (laporan pemilik 2026-10-21:
+        // "data yg upload ada thumbnailnya juga dan bisa di preview langsung di
+        // app"). Dulu hanya `foto` yang punya pratinjau, dan hanya kalau URL-nya
+        // https — KTP/KK/ijazah tidak pernah menampilkan apa pun. `prev` menang
+        // supaya berkas yang baru dipilih di sesi ini tidak tertimpa draf.
+        const previews: Record<string, DocPreview> = {};
+        for (const [type, key] of DOC_UPLOAD_SOURCES) {
+          const v = up[key];
+          if (typeof v !== 'string') continue;
+          const url = v.trim();
+          if (!url || url === '-' || !/^(https?:|blob:)/.test(url)) continue;
+          previews[type] = { url, mime: mimeOfUrl(url), name: nameOfUrl(url) };
+        }
+        setDocPreview(prev => ({ ...previews, ...prev }));
         // hp = WA kandidat; kalau master belum punya no_wa, pakai target supaya
         // payload simpan tetap membawa nomor yang benar. NOTE: sengaja tetap
         // `waTarget`, bukan `draftWa` — pada jalur kandidat `cv.hp` sudah diisi
@@ -554,6 +592,15 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
     })();
     return () => { alive = false; };
   }, [adminMode]);
+
+  /** Latest previews, read by the unmount cleanup without re-subscribing. */
+  const docPreviewRef = useRef<Record<string, DocPreview>>({});
+  useEffect(() => { docPreviewRef.current = docPreview; }, [docPreview]);
+  useEffect(() => () => {
+    for (const p of Object.values(docPreviewRef.current)) {
+      if (p.url.startsWith('blob:')) URL.revokeObjectURL(p.url);
+    }
+  }, []);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -650,9 +697,14 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
     if (!file) return;
     setDocs(prev => ({ ...prev, [type]: file }));
     setDocStatus(prev => ({ ...prev, [type]: file.name }));
-    if (type === 'foto' && file.type.startsWith('image/')) {
-      setFotoPreview(URL.createObjectURL(file));
-    }
+    // Pratinjau LANGSUNG, sebelum Simpan: berkasnya masih di memori browser,
+    // jadi `blob:` adalah satu-satunya URL yang ada. Kalau berkas diganti, URL
+    // lama dicabut supaya blob-nya tidak menahan memori sampai tab ditutup.
+    setDocPreview(prev => {
+      const old = prev[type];
+      if (old?.url.startsWith('blob:')) URL.revokeObjectURL(old.url);
+      return { ...prev, [type]: { url: URL.createObjectURL(file), mime: file.type, name: file.name } };
+    });
   };
 
   /** C03 parity (pola MasterFullForm.gateLogin): login kandidat via loginKandidat. */
@@ -696,6 +748,27 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
    * state value for a glyph name (see `SAVE_ICON_BUSY`).
    */
   const saveDone = savePhase === 'done';
+
+  /**
+   * Link CV AI untuk SATU kandidat (mode admin).
+   *
+   * `/ai-cv` memakai `?wa=` untuk mengisi nomor di gerbang login
+   * (`waFromUrl()` → `gateWa`), jadi admin bisa mengirim link yang berbeda ke
+   * tiap kandidat tanpa menyebut nomor secara manual. Link ini BUKAN token:
+   * kandidat tetap memasukkan passwordnya sendiri, dan backend tetap
+   * memeriksa kepemilikan sesi. Karena itu tidak ada rahasia di URL dan tidak
+   * ada yang perlu kedaluwarsa.
+   */
+  const copyCvLink = () => {
+    const wa = (cv.hp || waTarget || '').trim();
+    if (!wa) { showToast(t('ai_cv.share_link_no_wa'), 'error'); return; }
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${base}/ai-cv?wa=${encodeURIComponent(wa)}`;
+    navigator.clipboard.writeText(url).then(
+      () => showToast(t('ai_cv.share_link_copied'), 'success'),
+      () => showToast(t('ui.toast_copy_text_failed'), 'error'),
+    );
+  };
 
   const saveToDatabase = async () => {
     // AI2/AI3 parity (2026-09-04): legacy ai_form uploads docs to Cloudinary
@@ -1062,6 +1135,13 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               </div>
             </div>
             <div class="flex gap-2">
+              {adminMode && (
+                <button type="button" onClick={copyCvLink} title={t('ai_cv.share_link')}
+                  class="min-h-11 px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold flex items-center gap-1 transition">
+                  <Icon name="share-alt" />
+                  <span class="hidden md:inline">{t('ai_cv.share_link')}</span>
+                </button>
+              )}
               {/* The button carries its own progress. Legacy `saveToDatabase`
                   ran five visible states; the port had none, which let a
                   candidate fire the same submit twice while a large document
@@ -1459,9 +1539,9 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           </Section>
 
           <div class="u-grid-auto u-grid-auto--cards gap-3 mb-3">
-            <UploadRow type="foto" label={t("cv.upload_foto")} icon="fa-camera" color="sky" accept="image/*" status={docStatus['foto']} preview={fotoPreview} onUpload={handleDocUpload} />
-            <UploadRow type="jft" label={t("cv.upload_jft")} icon="fa-file-pdf" color="amber" accept=".pdf" status={docStatus['jft']} onUpload={handleDocUpload} />
-            <UploadRow type="ssw" label={t("cv.upload_ssw")} icon="fa-file-signature" color="emerald" accept=".pdf" status={docStatus['ssw']} onUpload={handleDocUpload} />
+            <UploadRow type="foto" label={t("cv.upload_foto")} icon="fa-camera" color="sky" accept="image/*" status={docStatus['foto']} preview={docPreview.foto} onPreview={() => setPreviewDoc({ type: 'foto', title: t('cv.upload_foto') })} onUpload={handleDocUpload} />
+            <UploadRow type="jft" label={t("cv.upload_jft")} icon="fa-file-pdf" color="amber" accept=".pdf" status={docStatus['jft']} preview={docPreview.jft} onPreview={() => setPreviewDoc({ type: 'jft', title: t('cv.upload_jft') })} onUpload={handleDocUpload} />
+            <UploadRow type="ssw" label={t("cv.upload_ssw")} icon="fa-file-signature" color="emerald" accept=".pdf" status={docStatus['ssw']} preview={docPreview.ssw} onPreview={() => setPreviewDoc({ type: 'ssw', title: t('cv.upload_ssw') })} onUpload={handleDocUpload} />
           </div>
           <div class="u-grid-auto u-grid-auto--cards gap-3">
             {/* PARITY ai_form.html:325-370 — enam dokumen ini (KTP, KK, dan
@@ -1469,15 +1549,23 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                 sempat di-port sebagai `.pdf` saja, jadi scan/foto ijazah tidak
                 bisa diunggah sama sekali. Bug yang sama sudah diperbaiki di CV
                 Master (§4.1 #3) — ini sisa yang terlewat di form AI. */}
-            <UploadRow type="ktp" label={t("cv.upload_ktp")} icon="fa-id-card" color="rose" accept=".pdf,image/*" status={docStatus['ktp']} onUpload={handleDocUpload} />
-            <UploadRow type="kk" label={t("cv.upload_kk")} icon="fa-users" color="orange" accept=".pdf,image/*" status={docStatus['kk']} onUpload={handleDocUpload} />
-            <UploadRow type="ijazahSd" label={t("cv.upload_ijazah_sd")} icon="fa-graduation-cap" color="violet" accept=".pdf,image/*" status={docStatus['ijazahSd']} onUpload={handleDocUpload} />
-            <UploadRow type="ijazahSmp" label={t("cv.upload_ijazah_smp")} icon="fa-graduation-cap" color="sky" accept=".pdf,image/*" status={docStatus['ijazahSmp']} onUpload={handleDocUpload} />
-            <UploadRow type="ijazahSma" label={t("cv.upload_ijazah_sma")} icon="fa-graduation-cap" color="teal" accept=".pdf,image/*" status={docStatus['ijazahSma']} onUpload={handleDocUpload} />
-            <UploadRow type="univ" label={t("cv.upload_ijazah_univ")} icon="fa-university" color="indigo" accept=".pdf,image/*" status={docStatus['univ']} onUpload={handleDocUpload} />
+            <UploadRow type="ktp" label={t("cv.upload_ktp")} icon="fa-id-card" color="rose" accept=".pdf,image/*" status={docStatus['ktp']} preview={docPreview.ktp} onPreview={() => setPreviewDoc({ type: 'ktp', title: t('cv.upload_ktp') })} onUpload={handleDocUpload} />
+            <UploadRow type="kk" label={t("cv.upload_kk")} icon="fa-users" color="orange" accept=".pdf,image/*" status={docStatus['kk']} preview={docPreview.kk} onPreview={() => setPreviewDoc({ type: 'kk', title: t('cv.upload_kk') })} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSd" label={t("cv.upload_ijazah_sd")} icon="fa-graduation-cap" color="violet" accept=".pdf,image/*" status={docStatus['ijazahSd']} preview={docPreview.ijazahSd} onPreview={() => setPreviewDoc({ type: 'ijazahSd', title: t('cv.upload_ijazah_sd') })} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSmp" label={t("cv.upload_ijazah_smp")} icon="fa-graduation-cap" color="sky" accept=".pdf,image/*" status={docStatus['ijazahSmp']} preview={docPreview.ijazahSmp} onPreview={() => setPreviewDoc({ type: 'ijazahSmp', title: t('cv.upload_ijazah_smp') })} onUpload={handleDocUpload} />
+            <UploadRow type="ijazahSma" label={t("cv.upload_ijazah_sma")} icon="fa-graduation-cap" color="teal" accept=".pdf,image/*" status={docStatus['ijazahSma']} preview={docPreview.ijazahSma} onPreview={() => setPreviewDoc({ type: 'ijazahSma', title: t('cv.upload_ijazah_sma') })} onUpload={handleDocUpload} />
+            <UploadRow type="univ" label={t("cv.upload_ijazah_univ")} icon="fa-university" color="indigo" accept=".pdf,image/*" status={docStatus['univ']} preview={docPreview.univ} onPreview={() => setPreviewDoc({ type: 'univ', title: t('cv.upload_ijazah_univ') })} onUpload={handleDocUpload} />
           </div>
         </div>
       </div>
+      {previewDoc && docPreview[previewDoc.type] && (
+        <DocumentPreviewModal
+          url={docPreview[previewDoc.type].url}
+          mime={docPreview[previewDoc.type].mime}
+          title={previewDoc.title}
+          onClose={() => setPreviewDoc(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1574,35 +1662,57 @@ function MonthYearField({ label, id, value, yearLabel, monthLabelText, onChange 
 }) {
   const { year, month } = splitPeriod(value);
   /**
-   * A month picked before a year has no year to attach to, and
-   * `joinPeriod('', '02')` is `''` — so without this the candidate's choice is
-   * silently thrown away and the year they pick a moment later arrives with the
-   * month already forgotten. Remembering it here makes the two controls
-   * order-independent, which matters because "month, then year" is the order
-   * the fields are laid out in.
+   * A month the candidate picked while there is no usable year to attach it
+   * to, and `joinPeriod('', '02')` is `''` — so without this the candidate's
+   * choice is silently thrown away and the year they pick a moment later
+   * arrives with the month already forgotten. Remembering it here makes the
+   * two controls order-independent, which matters because "month, then year"
+   * is the order the fields are laid out in.
    *
-   * It is pending state, not stored state: it never reaches `onChange` until a
-   * year exists, so a half-filled period is never written to the payload.
+   * The held pick is keyed to the value it was made against, so it is pending
+   * state, not stored state: it never reaches `onChange` until a year exists,
+   * so a half-filled period is never written to the payload.
+   *
+   * ⚠ This used to be `useState('')` and only engaged when the year was
+   * EMPTY. A year holding "05 MEI" (the AI extraction writes month names into
+   * the year column) is not empty, so `emit()` called `onChange` with an
+   * unchanged value, cleared the pending month, and the select snapped back to
+   * "—" on every pick — the owner's "dropdownnya gak bisa di pakai". The test
+   * for "usable" is now `isRealYear`, not "truthy".
    */
-  const [pendingMonth, setPendingMonth] = useState('');
-  const liveMonth = month || pendingMonth;
+  // The pick is stored WITH the value it belongs to, so a new stored value
+  // (draft load, AI fill, the other control committing) invalidates it without
+  // an effect. An effect keyed on `value` did this before and was worse: its
+  // first flush landed AFTER a quick pick and wiped the choice — the exact
+  // "snaps back" symptom this whole block exists to remove.
+  const [held, setHeld] = useState<{ v: string; m: string } | null>(null);
+  const liveMonth = held && held.v === value ? held.m : month;
+  const isRealYear = (y: string) => /^\d{4}$/.test(y.trim());
 
-  const emit = (y: string, m: string) => {
-    if (!y) { setPendingMonth(m); return; }   // hold the month until there is a year
-    setPendingMonth('');
-    onChange(joinPeriod(y, m));
+  const emitMonth = (m: string) => {
+    if (!isRealYear(year)) { setHeld({ v: value, m }); return; } // hold it until there is a year
+    setHeld(null);
+    onChange(joinPeriod(year, m));
+  };
+
+  const emitYear = (y: string) => {
+    // Clearing the year clears the period, as the empty option implies.
+    if (!y) { setHeld(null); onChange(''); return; }
+    if (!isRealYear(y)) { setHeld({ v: value, m: liveMonth }); return; }
+    setHeld(null);
+    onChange(joinPeriod(y, liveMonth));
   };
   return (
     <div>
       <span class="block text-[11px] text-[#e2e8f0] mb-0.5">{label}</span>
       <div class="flex gap-1">
         <select id={`${id}-month`} aria-label={monthLabelText}
-          value={liveMonth} onChange={(e) => emit(year, (e.target as HTMLSelectElement).value)}
+          value={liveMonth} onChange={(e) => emitMonth((e.target as HTMLSelectElement).value)}
           class="input-micro flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white">
           {monthOptions().map(m => <option key={m} value={m}>{m ? monthLabel(m) : '\u2014'}</option>)}
         </select>
         <select id={`${id}-year`} aria-label={yearLabel}
-          value={year} onChange={(e) => emit((e.target as HTMLSelectElement).value, liveMonth)}
+          value={year} onChange={(e) => emitYear((e.target as HTMLSelectElement).value)}
           class="input-micro flex-1 min-w-0 bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white">
           {yearOptions(year).map(y => <option key={y} value={y}>{y || '\u2014'}</option>)}
         </select>
@@ -1998,11 +2108,15 @@ function TextAreaPair({ label, groupLabel, helper, idId, idJp, valueId, valueJp,
 }
 
 
-function UploadRow({ type, label, icon, color, accept, status, preview, onUpload }: {
+function UploadRow({ type, label, icon, color, accept, status, preview, onPreview, onUpload }: {
   type: string; label: string; icon: string; color: UploadColor; accept: string; status?: string;
-  preview?: string | null; onUpload?: (type: string, file: File | null) => void;
+  preview?: DocPreview; onPreview?: () => void; onUpload?: (type: string, file: File | null) => void;
 }) {
   const c = UPLOAD_COLORS[color];
+  // A blob URL has no extension, so the MIME the picker reported is the only
+  // way to know an image from a PDF before the file is uploaded.
+  const isImage = !!preview && (preview.mime.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(preview.url));
+  const ext = (preview?.name.split('.').pop() || 'FILE').toUpperCase().slice(0, 4);
   return (
     <div class="bg-slate-900/60 border border-slate-700 p-3 rounded-lg shadow flex items-center gap-3">
       <div class={`w-10 h-10 rounded ${c.tile} flex items-center justify-center text-white text-lg flex-shrink-0`}>
@@ -2021,12 +2135,22 @@ function UploadRow({ type, label, icon, color, accept, status, preview, onUpload
           onChange={(e) => { const f = (e.target as HTMLInputElement).files?.[0] || null; onUpload?.(type, f); }}
           class="w-full min-h-11 text-[11px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-slate-800 file:text-white cursor-pointer" />
       </div>
-      {/* PARITY ai_form.html:299 — legacy benar-benar menampilkan pratinjau foto
-          (`#previewFoto`, h-14 w-12) di kanan baris. Sebelumnya state
-          `fotoPreview` di-set tapi tidak pernah dirender: state mati, dan
-          kandidat tidak pernah tahu fotonya sudah masuk atau belum. */}
+      {/* Thumbnail + pratinjau di dalam app (permintaan pemilik 2026-10-21).
+          PARITY ai_form.html:299 hanya menampilkan pratinjau FOTO; sekarang
+          SETIAP slot yang sudah berisi berkas menampilkan thumbnail (gambar)
+          atau badge jenis berkas (PDF), dan klik membuka modal pratinjau yang
+          sama dengan yang dipakai panel admin — bukan tab baru, bukan unduh.
+          `thumbUrl` meminta ukuran yang benar-benar digambar (Cloudinary/
+          Supabase), jadi thumbnail tidak menarik file aslinya. */}
       {preview && (
-        <img src={preview} alt="" class="h-14 w-12 object-cover rounded border border-slate-600 shadow flex-shrink-0" />
+        <button type="button" onClick={onPreview}
+          title={`${t('ui.preview')}: ${preview.name || label}`}
+          aria-label={`${t('ui.preview')}: ${label}`}
+          class="shrink-0 min-w-11 min-h-11 rounded border border-slate-600 bg-black/40 overflow-hidden flex items-center justify-center hover:border-sky-500 transition">
+          {isImage
+            ? <img src={thumbUrl(preview.url, 96, 96)} alt="" class="h-14 w-12 object-cover" />
+            : <span class="px-2 text-[10px] font-bold text-slate-300">{ext}</span>}
+        </button>
       )}
     </div>
   );

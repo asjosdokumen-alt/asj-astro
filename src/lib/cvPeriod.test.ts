@@ -73,6 +73,41 @@ describe('splitPeriod', () => {
   it('ignores surrounding whitespace', () => {
     expect(splitPeriod('  2018-02  ')).toEqual({ year: '2018', month: '02' });
   });
+
+  /**
+   * Owner report 2026-10-21: "dropdownnya juga gak bisa di pakai" — the month
+   * picker snapped back to "—" every time. The cause was NOT the control: the
+   * AI extraction writes month NAMES into the year column, and the old parser
+   * returned those strings with `month: ''`, so the component had no month to
+   * show and `joinPeriod` refused to attach one to a non-year.
+   */
+  it('reads a month NAME, which is what the AI extraction actually stores', () => {
+    expect(splitPeriod('05 MEI')).toEqual({ year: '05 MEI', month: '05' });
+    expect(splitPeriod('Mei 2024')).toEqual({ year: '2024', month: '05' });
+    expect(splitPeriod('5 Agustus 2023')).toEqual({ year: '2023', month: '08' });
+    // English spellings arrive too — the model answers in whichever language.
+    expect(splitPeriod('October 2022')).toEqual({ year: '2022', month: '10' });
+  });
+
+  it('keeps a month name with no year visible instead of inventing a year', () => {
+    // `joinPeriod` must still return it unchanged: dropping "05 MEI" would
+    // erase a value the candidate can see, and inventing 2024 would be a fact
+    // nobody stated.
+    const { year, month } = splitPeriod('05 MEI');
+    expect(month).toBe('05');
+    expect(joinPeriod(year, month)).toBe('05 MEI');
+  });
+
+  it('drops the DAY of a full date, because the CV prints month and year only', () => {
+    // Without this the year select would hold "2018-02-17" and the month picker
+    // would be dead for exactly the same reason as "05 MEI".
+    expect(splitPeriod('2018-02-17')).toEqual({ year: '2018', month: '02' });
+  });
+
+  it('does not mistake free text containing a month word for a date', () => {
+    expect(splitPeriod('2021 (perkiraan)')).toEqual({ year: '2021 (perkiraan)', month: '' });
+    expect(splitPeriod('lulus Mei?')).toEqual({ year: 'lulus Mei?', month: '' });
+  });
 });
 
 describe('joinPeriod', () => {

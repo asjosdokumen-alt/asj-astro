@@ -932,6 +932,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.doc_preview_title": "Preview Dokumen",
     "ui.preview_unavailable": "Tidak bisa dipratinjau",
     "ui.preview_loading": "Memuat pratinjau...",
+    /* Tombol thumbnail di baris unggahan (/ai-cv): membuka pratinjau berkas
+       yang sudah dipilih ATAU yang sudah tersimpan, di dalam app. */
+    "ui.preview": "Lihat",
     "ui.download_qr": "DOWNLOAD GAMBAR QR",
     "ui.toast_pick_file_first": "Pilih file dulu sebelum upload.",
     "ui.toast_pick_min_one": "Silakan pilih minimal 1 file.",
@@ -1753,6 +1756,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ai_cv.btn_uploading": "Mengunggah dokumen…",
     "ai_cv.btn_saving_db": "Menyimpan data…",
     "ai_cv.btn_saved": "Tersimpan",
+    /* Tombol mode admin: menyalin /ai-cv?wa=<nomor> untuk SATU kandidat. */
+    "ai_cv.share_link": "Salin link CV",
+    "ai_cv.share_link_copied": "Link CV disalin. Kirim ke kandidat lewat WA — dia masuk dengan nomor + password-nya sendiri.",
+    "ai_cv.share_link_no_wa": "Nomor WA kandidat belum ada, jadi link belum bisa dibuat.",
     "ai_cv.manual_hint": "Edit manual aktif — koreksi langsung jika ada yang salah.",
     "ai_cv.bot_greeting": "Halo! Saya Qween Jeklin, HRD ASJ. Saya akan membantu mengisi CV Jepangmu. Silakan ceritakan tentang dirimu!",
     "candidate.badge_gold_title": "Master Profil Lengkap (Gold Crown)",

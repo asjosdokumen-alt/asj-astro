@@ -179,6 +179,40 @@ describe('mergeArrRiwayat + normalisasi di titik gabung (kontrak legacy)', () =>
   });
 });
 
+describe('riwayatKeyOf — identitas baris (satu definisi untuk tiga pembaca)', () => {
+  /**
+   * Keluhan pemilik 2026-10-21: "kenapa ini kok data dobel dobel terus".
+   *
+   * Dua baris TANPA nama sekolah — satu ditulis form master sebagai `SMA/SMK`,
+   * satu oleh form AI sebagai `SMK` — adalah baris yang sama. Kunci lamanya
+   * memakai ejaan mentah, jadi keduanya lolos dedupe dan muncul sebagai dua
+   * baris kosong bertahun sama di form AI CV.
+   */
+  it('pendidikan tanpa nama: ejaan jenjang yang setara menghasilkan kunci SAMA', () => {
+    expect(riwayatKeyOf('pendidikan', { tingkat: 'SMK' }))
+      .toBe(riwayatKeyOf('pendidikan', { tingkat: 'SMA/SMK' }));
+    expect(riwayatKeyOf('pendidikan', { tingkat: 'SD' }))
+      .toBe(riwayatKeyOf('pendidikan', { tingkat: 'MI' }));
+  });
+
+  it('pendidikan tanpa nama: jenjang BERBEDA tetap kunci berbeda', () => {
+    // Kalau semua baris tanpa nama jatuh ke satu kunci, memperbaiki "dobel"
+    // justru menghapus riwayat sungguhan.
+    expect(riwayatKeyOf('pendidikan', { tingkat: 'SD' }))
+      .not.toBe(riwayatKeyOf('pendidikan', { tingkat: 'SMP' }));
+  });
+
+  it('nama sekolah tetap identitas utama, apa pun ejaan jenjangnya', () => {
+    expect(riwayatKeyOf('pendidikan', { tingkat: 'SMK', sekolah: 'SMK NEGERI 1' }))
+      .toBe(riwayatKeyOf('pendidikan', { tingkat: 'SMA/SMK', nama_sekolah: 'SMK Negeri 1' }));
+  });
+
+  it('tingkat yang tidak dikenal tidak digabung paksa', () => {
+    expect(riwayatKeyOf('pendidikan', { tingkat: 'PESANTREN' }))
+      .not.toBe(riwayatKeyOf('pendidikan', { tingkat: 'STM' }));
+  });
+});
+
 describe('getTingkatVal — peringkat jenjang sekolah', () => {
   it('SD → SMP → SMA naik, varian MI/MTs/SMK/MA sederajat', () => {
     expect(getTingkatVal('SD')).toBe(1);
