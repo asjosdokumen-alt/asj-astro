@@ -387,8 +387,8 @@ async function supabaseJson(
     }
     writeBody = resolved.body;
   }
-  try {
-    res = await request(url.replace(/\$/, '') + '/rest/v1/' + pathname + qs, {
+  const send = () =>
+    request(url.replace(/\$/, '') + '/rest/v1/' + pathname + qs, {
       method,
       headers: {
         apikey: key,
@@ -399,6 +399,8 @@ async function supabaseJson(
       body: writeBody ? JSON.stringify(writeBody) : undefined,
       budgetKey: opts.body ? 'postgrest_write' : 'postgrest_read',
     });
+  try {
+    res = await send();
   } catch (e: unknown) {
     // Phase E row 2. An unreachable database used to surface as whatever the
     // caller's catch block produced — usually a code-less message, which
@@ -421,7 +423,36 @@ async function supabaseJson(
     throw e;
   }
   if (!res.ok) {
-    const text = await res.text();
+    let text = await res.text();
+    // ── Neon Data API: transient JWKS miss (2026-10-21) ─────────────────────
+    //
+    // Neon verifies our EdDSA tokens against the JWKS published at /jwks.json,
+    // and it caches those keys for a short time. When that cache expires, the
+    // next call has to refetch; if the refetch loses the race the gateway
+    // answers `400 {"message":"jwk not found"}` even though the token is valid
+    // and the JWKS is reachable (measured: the same request returns 200 a
+    // second later, and a 20-request burst is 20/20 while requests spaced ~10 s
+    // apart fail ~40% — i.e. only the FIRST call after the cache expires is at
+    // risk).
+    //
+    // Retrying once, immediately, is the narrowest fix. It cannot hide a real
+    // authentication failure: a genuinely unknown `kid` fails the retry too and
+    // the caller still sees the original error. Remove this block if Neon ever
+    // reports the condition distinctly (503/429) or fixes the cache.
+    if (res.status === 400 && text.includes('jwk not found')) {
+      await new Promise((r) => setTimeout(r, 150));
+      try {
+        res = await send();
+        if (res.ok) {
+          const retried = await res.text();
+          return retried ? JSON.parse(retried) : null;
+        }
+        text = await res.text();
+      } catch {
+        // Retry failed at the transport level — report the ORIGINAL body, which
+        // is the more informative of the two.
+      }
+    }
     throw new Error(pathname + ' → HTTP ' + res.status + ' ' + text.slice(0, 200));
   }
   const text = await res.text();
