@@ -59,6 +59,27 @@
   [headers.values]
     Cache-Control = "no-cache"
 
+# ─── PWA manifest: MIME type (2026-10-21) ───────────────────────────────────
+#
+# MEASURED ON THE LIVE SITE, not guessed: `GET /manifest.webmanifest` answered
+#
+#   Content-Type: application/octet-stream
+#
+# because Netlify's MIME table has no entry for the `.webmanifest` extension.
+# Chrome still parses it (verified with CDP `Page.getInstallabilityErrors` →
+# empty, i.e. Chrome considers the app installable), but the spec MIME type is
+# `application/manifest+json` and browsers that actually honour it — Firefox,
+# Samsung Internet — treat a non-JSON content type as "no manifest", which
+# degrades the install to a plain home-screen shortcut that opens in a browser
+# tab instead of a standalone app.
+#
+# So this header is not cosmetic: it is the difference between "Install app"
+# and "Add to Home screen" on those browsers.
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+
 # ─── Aset brand (2026-10-14): EGRESS, bukan kecepatan ───────────────────────
 #
 # WHY THIS IS HERE. Aset brand (logo, banner, jeklin, logo-apply) dulu di-hotlink
