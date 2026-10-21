@@ -11,7 +11,7 @@
 //   4. Degradation signals (PostgREST latency, open breaker) raise pressure
 //      even when the instance is idle.
 // ==========================================
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 
 import {
   admit,
@@ -290,5 +290,38 @@ describe('admission — deferral routing (#9)', () => {
 
   it('an unknown action is never deferred (defaults to P1)', () => {
     expect(deferralJobTypeFor('someBrandNewAction')).toBeNull();
+  });
+});
+
+/**
+ * Regression: a latency reading must not outlive its usefulness.
+ *
+ * MEASURED 2026-10-21 after the database moved to Neon. One 13 s response set
+ * `postgrestEwmaMs` above CEIL. Saturation pinned to 1, every action was shed,
+ * and because the EWMA is only refreshed by a completed PostgREST call, no
+ * refresh could ever happen: the instance answered 503 OVERLOADED forever
+ * (reproduced 8/8, ~0.5 s each) until it was recycled.
+ *
+ * The fix is that `latencyPressure()` ignores a reading older than
+ * EWMA_STALE_MS. These assertions fail if that guard is removed.
+ */
+describe('admission — stale latency reading', () => {
+  it('sheds while the EWMA is fresh, then recovers when it goes stale', () => {
+    vi.useFakeTimers();
+    try {
+      observeDependency('postgrest', 10_000); // pins latency pressure to 1
+
+      const shed = admit('getAppData');
+      expect(shed.admitted).toBe(false);
+      expect(shed.reason).toBe('saturated');
+
+      vi.setSystemTime(Date.now() + 31_000);
+
+      const recovered = admit('getAppData');
+      expect(recovered.admitted).toBe(true);
+      release(recovered.tier);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

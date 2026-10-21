@@ -248,6 +248,12 @@ let inflightTotal = 0;
 let postgrestEwmaMs = 0;
 
 /**
+ * When the last observation arrived. Read by `latencyPressure()` to decide
+ * whether the EWMA still describes reality — see the deadlock note there.
+ */
+let postgrestEwmaAt = 0;
+
+/**
  * Latency contributes pressure only above FLOOR. A healthy request at ~40 ms
  * RTT must read as zero pressure, otherwise normal operation would shed.
  * CEIL is set at the point where PostgREST is unambiguously degraded.
@@ -256,6 +262,22 @@ const LATENCY_FLOOR_MS = 400;
 const LATENCY_CEIL_MS = 2_000;
 
 const EWMA_ALPHA = 0.2;
+
+/**
+ * How long a latency reading stays credible without a refresh.
+ *
+ * MEASURED 2026-10-21 (Neon cutover). `postgrestEwmaMs` is updated ONLY by a
+ * completed PostgREST call, and shedding is what stops those calls from
+ * happening. So once the EWMA crossed CEIL — one 13 s response was enough —
+ * saturation pinned to 1, every action was shed, no new observation arrived,
+ * and the instance shed forever. Reproduced: 8/8 requests answered
+ * `503 OVERLOADED` at 0.5 s each, and the only cure was recycling the instance.
+ *
+ * A reading that stopped arriving is not evidence of load; it is evidence of
+ * nothing. After this window the latency term drops to 0, traffic is admitted,
+ * and fresh observations take over again.
+ */
+const EWMA_STALE_MS = 30_000;
 
 /**
  * Record an observed dependency latency. Called by kernel/http.ts on every
@@ -267,9 +289,12 @@ export function observeDependency(dep: string, durationMs: number): void {
   postgrestEwmaMs = postgrestEwmaMs === 0
     ? durationMs
     : postgrestEwmaMs * (1 - EWMA_ALPHA) + durationMs * EWMA_ALPHA;
+  postgrestEwmaAt = Date.now();
 }
 
 function latencyPressure(): number {
+  // No recent measurement ⇒ no latency pressure. See EWMA_STALE_MS.
+  if (!postgrestEwmaAt || Date.now() - postgrestEwmaAt > EWMA_STALE_MS) return 0;
   if (postgrestEwmaMs <= LATENCY_FLOOR_MS) return 0;
   const span = LATENCY_CEIL_MS - LATENCY_FLOOR_MS;
   return Math.min(1, (postgrestEwmaMs - LATENCY_FLOOR_MS) / span);
@@ -412,4 +437,5 @@ export function resetForTests(): void {
   inflightByTier.bulk = 0;
   inflightTotal = 0;
   postgrestEwmaMs = 0;
+  postgrestEwmaAt = 0;
 }
