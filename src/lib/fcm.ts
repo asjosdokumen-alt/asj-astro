@@ -85,8 +85,9 @@ export async function initFCM(): Promise<void> {
     messaging = fb.messaging();
 
     // Capture notifications when app is in foreground
-    const m = messaging as Record<string, unknown>;
-    (m.onMessage as (cb: (payload: Record<string, unknown>) => void) => void)((payload) => {
+    const m2 = messaging as Record<string, unknown>;
+    const onMessageFn = m2.onMessage as (cb: (payload: Record<string, unknown>) => void) => void;
+    onMessageFn.call(m2, (payload: Record<string, unknown>) => {
       console.log('[FCM] Foreground message:', payload);
       const data = (payload.data || {}) as Record<string, string>;
       const notif = (payload.notification || {}) as Record<string, string>;
@@ -145,7 +146,7 @@ export async function requestNotificationPermission(userId: string): Promise<Fcm
     }
 
     const m = messaging as Record<string, unknown>;
-    const getToken = m.getToken as (opts: Record<string, unknown>) => Promise<string>;
+    const getTokenFn = m.getToken as (opts: Record<string, unknown>) => Promise<string>;
 
     // Tanpa subscription yang sudah ada, `vapidKey` WAJIB. Lebih baik berhenti
     // dengan alasan yang jelas daripada membiarkan SDK melempar TypeError dari
@@ -162,7 +163,11 @@ export async function requestNotificationPermission(userId: string): Promise<Fcm
       );
     }
 
-    const token = await getToken(fcmTokenOptions(registration, vapidKey));
+    // KENAPA .call(m, ...): `getToken` diekstrak dari objek messaging,
+    // sehingga `this`-nya hilang. Firebase compat SDK butuh `this._delegate`
+    // di dalam `getToken`. Tanpa .call() terjadi:
+    //   TypeError: Cannot read properties of undefined (reading '_delegate')
+    const token = await getTokenFn.call(m, fcmTokenOptions(registration, vapidKey));
 
     if (token) {
       console.log('[FCM] Token obtained:', token);
