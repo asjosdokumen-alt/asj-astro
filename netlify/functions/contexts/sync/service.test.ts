@@ -180,6 +180,23 @@ describe('syncDelta — batas inklusif & nextSince', () => {
     expect(r.more).toBe(true);
   });
 
+  it('more=true TEPAT saat halaman penuh (>= limit), bukan > limit', async () => {
+    // Repository sudah memotong di SYNC_LIMIT, jadi rows.length tidak pernah
+    // MELEBIHI limit. Dengan `>`, more akan SELALU false — dan klien mengira
+    // delta lengkap padahal ada baris yang belum terkirim.
+    m.rowsSince.mockResolvedValue(
+      Array.from({ length: 200 }, (_, i) => ({ code_job: `J${i}`, updated_at: `w${i}` })),
+    );
+    const r = (await handleSyncDelta(['jobs', 'x'], ADMIN)) as Res;
+    expect(r.more).toBe(true);
+
+    m.rowsSince.mockResolvedValue(
+      Array.from({ length: 199 }, (_, i) => ({ code_job: `J${i}`, updated_at: `w${i}` })),
+    );
+    const r2 = (await handleSyncDelta(['jobs', 'x'], ADMIN)) as Res;
+    expect(r2.more).toBe(false);
+  });
+
   it('baris jobs benar-benar MELEWATI mapJob', async () => {
     m.rowsSince.mockResolvedValue([{ code_job: 'TG1', updated_at: 'w' }]);
     const r = (await handleSyncDelta(['jobs', 'x'], ADMIN)) as Res;

@@ -21,7 +21,7 @@ vi.mock('./authReactive', () => ({
 
 import { allKandidatList, kandidatTotal, fetchAllKandidat } from './adminStore';
 
-const PAGE_SIZE = 200;
+const PAGE_SIZE = 1000;
 
 function jsonResponse(body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -59,14 +59,14 @@ afterEach(() => {
 
 describe('fetchAllKandidat — penjaga in-flight + kesegaran (§26)', () => {
   it('dua panggilan bersamaan berbagi SATU paginasi (penjaga in-flight)', async () => {
-    const f = paginated(300); // 2 halaman: 200 + 100
+    const f = paginated(300); // 1 halaman: 300 < 1000
     vi.stubGlobal('fetch', f);
 
     const [a, b] = await Promise.all([fetchAllKandidat(), fetchAllKandidat()]);
 
-    // Satu pass = 2 permintaan. Tanpa penjaga in-flight, dua pemanggil
-    // bersamaan akan menghasilkan 4.
-    expect(f).toHaveBeenCalledTimes(2);
+    // Satu pass = 1 permintaan. Tanpa penjaga in-flight, dua pemanggil
+    // bersamaan akan menghasilkan 2.
+    expect(f).toHaveBeenCalledTimes(1);
     expect(a).toHaveLength(300);
     expect(b).toEqual(a);
   });

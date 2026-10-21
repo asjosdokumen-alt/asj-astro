@@ -123,8 +123,17 @@ export async function handleSyncDelta(payload: unknown[], sessionToken?: string)
       rows: decorated,
       count: decorated.length,
       nextSince: last?.updated_at || null,
-      // true kalau masih ada baris di server yang belum terkirim.
-      more: rows.length > limit,
+      // 🔴 `more: true` berarti "yang berubah LEBIH BANYAK daripada satu
+      //    halaman", dan klien DILARANG meng-loop halaman.
+      //
+      //    Paging butuh kursor komposit (updated_at, kunci) supaya baris
+      //    ber-watermark SAMA tidak terkirim dua kali — dan migrasi 017 memberi
+      //    226 baris `database_candidate` SATU nilai `updated_at` yang sama.
+      //    Dengan cursor satu kolom, halaman kedua akan mengembalikan halaman
+      //    pertama lagi, selamanya. Karena itu jawaban ini TIDAK dipaginasi:
+      //    yang berubah melebihi limit ditarik PENUH oleh klien (`full()`),
+      //    yang sekaligus menegakkan ulang watermark dari probe.
+      more: rows.length >= limit,
     };
   } catch (e) {
     return { success: false, error: (e as Error).message || 'Delta gagal' };

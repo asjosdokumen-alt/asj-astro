@@ -266,10 +266,16 @@ export async function fetchAllKandidat(opts: { force?: boolean } = {}): Promise<
   if (allKandidatInflight) return allKandidatInflight;
 
   allKandidatInflight = (async () => {
-    const pageSize = 200;
+    // Sebelumnya pageSize = 200 dengan loop sampai 60 halaman (1200 permintaan
+    // teoritis). Server `loadCandidatesUnik` memuat SEMUA kandidat ke memori,
+    // menyaring di JS, lalu memotong per halaman — jadi setiap halaman
+    // membayar biaya query penuh. Dengan pageSize = 1000 satu permintaan
+    // sudah cukup untuk ~226 baris saat ini, dan batas loop 2 adalah jaring
+    // pengaman kalau jumlah melesat.
+    const pageSize = 1000;
     const out: any[] = [];
     try {
-      for (let page = 1; page <= 60; page++) {
+      for (let page = 1; page <= 2; page++) {
         // Jalur apiClient, sama alasannya dengan fetchKandidatFromAPI di atas:
         // batas waktu + token yang di-refresh. Loop ini bisa menembak sampai 60
         // permintaan berurutan, jadi tanpa batas waktu satu permintaan yang

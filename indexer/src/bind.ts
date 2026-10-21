@@ -154,6 +154,10 @@ const LIB_GLOBALS = new Set<string>([
   // read as a genuine `global-unknown` (caught by build.test.ts §prodGenuine on the first
   // caller, e2e/test-headings.mjs).
   'CSS',
+  // IndexedDB (lib.dom.d.ts) — ditambahkan 2026-10-21 bersama src/lib/localStore.ts.
+  // Sebelumnya tidak ada file produksi yang menyentuh IDB, jadi tidak masuk daftar.
+  'indexedDB', 'IDBFactory', 'IDBDatabase', 'IDBTransaction', 'IDBTransactionMode', 'IDBObjectStore',
+  'IDBRequest', 'IDBValidKey', 'IDBCursor', 'IDBKeyRange', 'IDBIndex', 'IDBVersionChangeEvent',
   // Node / CommonJS
   'process', 'Buffer', 'require', 'module', 'exports', '__dirname', '__filename', 'global',
   'setImmediate', 'clearImmediate', 'NodeJS', 'BufferEncoding',
