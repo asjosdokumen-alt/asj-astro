@@ -45,7 +45,7 @@
  * case where the button must still work.
  */
 import { useState, useEffect } from 'preact/hooks';
-import api from '../../lib/apiClient';
+import { adminDataPeek, loadAdminData } from '../../store/adminData';
 import { t, useLang } from '../../store/i18n';
 
 import type { Jadwal } from '../../types/api';
@@ -87,8 +87,10 @@ function waktuKey(j: Jadwal): number {
 
 export default function TabAgenda() {
   useLang();
-  const [jadwal, setJadwal] = useState<Jadwal[]>([]);
-  const [loading, setLoading] = useState(true);
+  /* Cache bersama — lihat `store/adminData`. */
+  const peek0 = adminDataPeek<{ schedules?: Jadwal[] }>();
+  const [jadwal, setJadwal] = useState<Jadwal[]>(peek0?.schedules ?? []);
+  const [loading, setLoading] = useState(!peek0);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -98,7 +100,7 @@ export default function TabAgenda() {
         // `api.secure` is not generic (it always resolves the default
         // `ApiResponse`), so the narrower shape is applied here rather than
         // loosening the caller to `any` the way TabJadwal does.
-        const d = (await api.secure('getAppData', ['admin'])) as AgendaAppData;
+        const d = (await loadAdminData()) as AgendaAppData;
         if (!alive) return;
         if (d?.success) setJadwal(d.schedules || []);
         else setFailed(true);

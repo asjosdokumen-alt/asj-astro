@@ -49,6 +49,8 @@ export default function TabMail() {
      `rejectTarget.nama`, so the HELD value is what gets passed down. */
   const rejectTargetP = useOverlayPresence(rejectTarget);
 
+  /* Mount memakai cache bersama (`store/adminData`) — lihat catatan di
+     `fetchMailFromAPI`. Paksa hanya saat data memang berubah. */
   useEffect(() => { fetchMailFromAPI(); }, []);
 
   const toggleAll = () => {
@@ -74,7 +76,7 @@ export default function TabMail() {
       const d: any = await api.secure(action, [rowIndex]);
       if (d && d.success) {
         showToast(okMsg, 'success');
-        fetchMailFromAPI();
+        fetchMailFromAPI(true);
       } else {
         showToast(String(d?.error || d?.message || 'Gagal'), 'error');
       }
@@ -120,10 +122,10 @@ export default function TabMail() {
       if (d && d.success) {
         showToast(t('ui.toast_mail_deleted_n').replace('{n}', String(d.deleted ?? idxs.length)), 'success');
         setSelected(new Set());
-        await fetchMailFromAPI();
+        await fetchMailFromAPI(true);
       } else {
         showToast(String(d?.error || t('ui.toast_error_prefix')), 'error');
-        await fetchMailFromAPI();
+        await fetchMailFromAPI(true);
       }
     } catch (e) {
       showToast(t('ui.toast_error_prefix') + (e instanceof Error ? e.message : String(e)), 'error');
@@ -146,7 +148,7 @@ export default function TabMail() {
       if (d && d.success) {
         showToast(t('ui.toast_rejected_n').replace('{n}', String(nama || '')), 'success');
         setRejectTarget(null);
-        await fetchMailFromAPI();
+        await fetchMailFromAPI(true);
       } else {
         showToast(String(d?.error || d?.message || 'Gagal'), 'error');
       }
@@ -196,7 +198,7 @@ export default function TabMail() {
             ))}
           </div>
 
-          <button type="button" onClick={() => fetchMailFromAPI()}
+          <button type="button" onClick={() => fetchMailFromAPI(true)}
             class="min-h-11 px-5 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-500 transition">
             <Icon name="sync-alt" class="mr-1" /> {t('admin.refresh_mail')}
           </button>

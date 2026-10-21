@@ -35,6 +35,7 @@ vi.mock('../../lib/apiClient', () => ({
 }));
 
 import TabAgenda from './TabAgenda';
+import { invalidateAdminData } from '../../store/adminData';
 
 const jadwal = (over: Partial<Record<string, string>> = {}) => ({
   id: 'x',
@@ -48,6 +49,8 @@ const jadwal = (over: Partial<Record<string, string>> = {}) => ({
 });
 
 beforeEach(() => {
+  // Cache payload admin hidup di tingkat modul — lihat TabKelola.test.tsx.
+  invalidateAdminData();
   mockSecure.mockReset();
 });
 afterEach(() => {

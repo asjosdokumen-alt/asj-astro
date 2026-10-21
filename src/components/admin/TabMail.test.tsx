@@ -15,6 +15,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/pr
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import TabMail from './TabMail';
 import { mailList, mailFilterStatus } from '../../store/adminStore';
+import { invalidateAdminData } from '../../store/adminData';
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../store/i18n', async () => {
@@ -61,6 +62,7 @@ const ROWS = [
 
 describe('TabMail — baris UPDATE (pembaruan biodata) tidak boleh tak terlihat', () => {
   beforeEach(() => {
+    invalidateAdminData();
     mailFilterStatus.set('MENUNGGU');
     mailList.set(ROWS as never);
     vi.mocked(api.secure).mockResolvedValue({ success: true, formInbox: ROWS } as never);

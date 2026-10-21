@@ -12,6 +12,16 @@ import Icon from '../ui/Icon';
 import { LoadFailed, Status, TableRows } from '../ui/Skeleton';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
+import { adminDataPeek, loadAdminData, invalidateAdminData } from '../../store/adminData';
+
+/**
+ * Berapa baris yang dirender sekaligus (permintaan pemilik 2026-10-22:
+ * *"lowongan publik kok gak di 10 baris saja? … bisa saja pakai buka lebih
+ * banyak"*). Daftar loker admin memang jarang lebih dari beberapa puluh, tapi
+ * merender semuanya sekaligus membuat tabel panjang dan setiap kunjungan tab
+ * membayar seluruh daftar.
+ */
+const LIMIT_INITIAL = 10;
 
 // A15: share config needs dokumenShare/tsk; getAppData('admin') is admin-guarded
 // so the session token must be attached (public fallback has no dokumenShare).
@@ -32,9 +42,13 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function TabKelola() {
   const _lang = useStore(langStore);
-  const [loker, setLoker] = useState<Loker[]>([]);
+  /* Render awal dari cache: kalau admin baru saja membuka tab lain, daftar ini
+     sudah ada di memori dan tab terbuka TANPA skeleton. */
+  const cached0 = adminDataPeek<{ jobs?: Loker[] }>();
+  const [loker, setLoker] = useState<Loker[]>(cached0?.jobs ?? []);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [limit, setLimit] = useState(LIMIT_INITIAL);
+  const [loading, setLoading] = useState(!cached0);
   /** Permintaan GAGAL — beda dari daftar yang memang kosong. */
   const [failed, setFailed] = useState(false);
   const [editJob, setEditJob] = useState<Loker | null>(null);
@@ -45,23 +59,18 @@ export default function TabKelola() {
 
   useEffect(() => { fetchLoker(); }, []);
 
-  async function fetchLoker() {
+  async function fetchLoker(force = false) {
     try {
-      // §26: lewat jalur apiClient, BUKAN fetch mentah, supaya ikut cache baca
-      // 30 s (getAppData ada di CACHEABLE_READS dan TabDbJob sudah memakai
-      // jalur ini ⇒ satu entri cache berkunci token dipakai bersama dua tab).
-      // Sebelumnya tab ini menarik ulang payload 107 KB yang sama setiap mount
-      // (terukur 3x dalam satu pemuatan halaman).
+      // §26 + `store/adminData`: SATU payload untuk enam tab admin. Tab ini
+      // dulu memanggil `getAppData` sendiri setiap mount, jadi berpindah tab
+      // = tarikan 107 KB lagi. Sekarang cache 5 menit dipakai bersama, dan
+      // `force` hanya dipakai setelah aksi yang benar-benar mengubah data.
       //
-      // `onSessionInvalid: 'throw'` mempertahankan perilaku lama tab ini: sesi
-      // yang tidak bisa diverifikasi membuat daftar kosong, BUKAN logout +
-      // redirect global. Cabang sessionInvalid versi lama memang kode mati
-      // (cabang sukses menang duluan) — tapi niatnya lokal, dan itu yang
-      // dipertahankan. Perf bukan alasan untuk mengubah semantik sesi.
-      const d = (await api.secure('getAppData', ['admin'], { onSessionInvalid: 'throw' })) as {
-        success?: boolean; jobs?: Loker[];
-      };
-      if (d && d.success) { setLoker(d.jobs || []); setFailed(false); }
+      // `onSessionInvalid: 'throw'` dipertahankan (ada di `loadAdminData`):
+      // sesi yang tidak bisa diverifikasi membuat daftar kosong, BUKAN logout
+      // + redirect global. Perf bukan alasan untuk mengubah semantik sesi.
+      const d = (await loadAdminData<{ success?: boolean; jobs?: Loker[] }>({ force })) || {};
+      if (d.success) { setLoker(d.jobs || []); setFailed(false); }
     } catch (err) {
       // Dulu hanya `console.error`: daftarnya tetap kosong, dan layar
       // menampilkan "belum ada data" — admin tidak bisa membedakan "memang
@@ -77,6 +86,9 @@ export default function TabKelola() {
     (j.pekerjaan || '').toLowerCase().includes(search.toLowerCase())
   );
 
+  /** Yang benar-benar dirender: 10 pertama, sisanya lewat "buka lebih banyak". */
+  const visible = filtered.slice(0, limit);
+
   const getBadge = (s: string) => STATUS_BADGE[(s || '').toUpperCase()] || STATUS_BADGE.CLOSE;
 
   const toggleStatus = async (code: string, newStatus: string) => {
@@ -87,6 +99,9 @@ export default function TabKelola() {
       };
       if (data.success) {
         setLoker(prev => prev.map(j => j.code === code ? { ...j, status: newStatus } : j));
+        // Status ikut di payload bersama — cache lama akan menampilkannya
+        // sebagai OPEN/CLOSE yang salah di tab lain.
+        invalidateAdminData();
       }
     } catch (e) { console.error(e); }
   };
@@ -95,7 +110,10 @@ export default function TabKelola() {
     if (!confirm('Yakin hapus loker ' + code + '?')) return;
     try {
       const data = (await api.secure('hapusJobData', [code])) as { success?: boolean; error?: string };
-      if (data.success) setLoker(prev => prev.filter(j => j.code !== code));
+      if (data.success) {
+        setLoker(prev => prev.filter(j => j.code !== code));
+        invalidateAdminData();
+      }
     } catch (e) { console.error(e); }
   };
 
@@ -105,7 +123,7 @@ export default function TabKelola() {
         <h2 class="text-red-400 font-bold text-lg"><Icon name="globe" class="mr-2" /> {t('admin.tab_public_job')}</h2>
         <div class="relative w-72">
           <Icon name="search" class="absolute left-3 top-2.5 text-slate-300 text-sm" />
-          <input type="text" value={search} onInput={e => setSearch((e.target as HTMLInputElement).value)} placeholder={t('admin.search_placeholder')} class="min-h-11 w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition" />
+          <input type="text" value={search} onInput={e => { setSearch((e.target as HTMLInputElement).value); setLimit(LIMIT_INITIAL); }} placeholder={t('admin.search_placeholder')} class="min-h-11 w-full pl-9 p-2 rounded-lg bg-black/40 border border-slate-700 text-sm text-white outline-none focus:border-red-500 transition" />
         </div>
       </div>
 
@@ -137,7 +155,7 @@ export default function TabKelola() {
                 failed
                   ? <tr><td colSpan={5} class="p-6"><LoadFailed onRetry={fetchLoker} /></td></tr>
                   : <tr><td colSpan={5} class="p-6 text-center text-slate-500">{t('ui.not_applied_general')}</td></tr>
-              ) : filtered.map(j => (
+              ) : visible.map(j => (
                 <tr key={j.code} class="hover:bg-white/5 transition-colors">
                   <td class="p-4 font-mono text-red-300 font-bold">{j.code}</td>
                   <td class="p-4 font-bold text-white">{j.pekerjaan}</td>
@@ -161,10 +179,18 @@ export default function TabKelola() {
           </table>
         </div>
       )}
-      <p class="text-xs text-slate-500 mt-3">{filtered.length} {t('ui.jobs_suffix')}</p>
+      <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-xs text-slate-500">{filtered.length} {t('ui.jobs_suffix')}</p>
+        {filtered.length > limit && (
+          <button type="button" onClick={() => setLimit(prev => prev + LIMIT_INITIAL)}
+            class="min-h-11 px-6 py-2.5 bg-slate-800 text-white rounded-full text-xs font-bold shadow-lg hover:bg-slate-700 transition">
+            {t('button.more')} <Icon name="chevron-down" class="ml-2" />
+          </button>
+        )}
+      </div>
 
-      {editJobP.present && <AdminJobEditModal job={editJobP.held as EditableJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} closing={editJobP.closing} />}
-      {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} onSave={() => fetchLoker()} closing={shareJobP.closing} />}
+      {editJobP.present && <AdminJobEditModal job={editJobP.held as EditableJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker(true)} closing={editJobP.closing} />}
+      {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} onSave={() => fetchLoker(true)} closing={shareJobP.closing} />}
     </div>
   );
 }

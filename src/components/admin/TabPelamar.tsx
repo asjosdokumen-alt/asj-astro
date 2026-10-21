@@ -22,6 +22,7 @@ import CvTemplateSelector from '../CvTemplateSelector';
 import LaporanBulananModal from './LaporanBulananModal.tsx';
 import WAPintarModal from '../WAPintarModal';
 import api from '../../lib/apiClient';
+import { adminDataPeek, loadAdminData } from '../../store/adminData';
 import { normalizeWaInput } from '../../lib/schemas';
 import {
   buildExcelBuffer,
@@ -92,8 +93,8 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
   });
   useEffect(() => {
     // Templates datang dari getAppData (parity legacy window.ALL_WA_TEMPLATES).
-    api.secure('getAppData', ['admin']).then((d: any) => {
-      if (d && d.success) setWaTemplates(Array.isArray(d.waTemplates) ? d.waTemplates : []);
+    loadAdminData<{ success?: boolean; waTemplates?: unknown[] }>().then((d) => {
+      if (d?.success) setWaTemplates(Array.isArray(d.waTemplates) ? d.waTemplates as never[] : []);
     }).catch(() => { /* non-blokir: modal tetap bisa dipakai manual */ });
   }, []);
   const totalAll = useStore(kandidatTotal);

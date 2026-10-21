@@ -4,6 +4,7 @@
  */
 import { useState, useEffect } from 'preact/hooks';
 import api from '../../lib/apiClient';
+import { adminDataPeek, loadAdminData } from '../../store/adminData';
 import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
 
@@ -12,12 +13,15 @@ import Icon from '../ui/Icon';
 import { Bar, LoadFailed, Status, TableRows } from '../ui/Skeleton';
 
 export default function TabJadwal() {
-  const [jadwal, setJadwal] = useState<Jadwal[]>([]);
-  const [loading, setLoading] = useState(true);
+  /* Render awal dari cache bersama: tab ini tidak perlu skeleton kalau
+     payload admin sudah ada di memori (lihat `store/adminData`). */
+  const peek0 = adminDataPeek<{ schedules?: Jadwal[]; dropdowns?: { tsk?: string[] } }>();
+  const [jadwal, setJadwal] = useState<Jadwal[]>(peek0?.schedules ?? []);
+  const [loading, setLoading] = useState(!peek0);
   /** Permintaan GAGAL — beda dari daftar yang memang kosong. */
   const [failed, setFailed] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [tskList, setTskList] = useState<string[]>([]);
+  const [tskList, setTskList] = useState<string[]>(peek0?.dropdowns?.tsk ?? []);
   const [nama, setNama] = useState('');
   const [loker, setLoker] = useState('');
   const [waktu, setWaktu] = useState('');
@@ -27,9 +31,9 @@ export default function TabJadwal() {
   /** `id` jadwal yang sedang DIEDIT. Kosong = formulir menambah jadwal baru. */
   const [editingId, setEditingId] = useState('');
 
-  async function load() {
+  async function load(force = false) {
     try {
-      const d: any = await api.secure('getAppData', ['admin']);
+      const d: any = await loadAdminData({ force });
       if (d && d.success) { setJadwal(d.schedules || []); setFailed(false); if (d.dropdowns?.tsk) setTskList(d.dropdowns.tsk); }
     } catch (e) {
       // Dulu hanya `console.error`: layar menampilkan "belum ada jadwal".
@@ -52,7 +56,7 @@ export default function TabJadwal() {
         showToast(t('ui.toast_schedule_saved'), 'success');
         setEditingId('');
         setShowForm(false);
-        await load();
+        await load(true);
       } else showToast(t('ui.toast_error_prefix') + ((d && d.error) || ''), 'error');
     } catch (e: unknown) { showToast(t('alert.network') + (e instanceof Error ? e.message : String(e)), 'error'); }
   }
@@ -127,7 +131,7 @@ export default function TabJadwal() {
             <td class='p-4 font-bold text-white'>{j.nama}</td>
             <td class='p-4'><div class='text-white font-bold'>{j.loker || '-'}</div><div class='text-[11px] text-slate-400 mt-1'>{j.waktu || '-'}</div></td>
             <td class='p-4'><div class='text-white'>{j.lokasi || '-'}</div>{j.link && <a href={j.link} target='_blank' class='text-xs text-sky-400 hover:underline'>{t("admin.jadwal_link_zoom")}</a>}</td>
-            <td class='p-4 text-center'><button type="button" onClick={() => { setEditingId(String(j.id)); setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="min-h-11 inline-flex items-center px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button><button type="button" onClick={async () => { if(!confirm(t('ui.confirm_delete_schedule'))) return; try { const d: any = await api.secure('hapusJadwal', [j.id]); if(d && d.success){showToast(t('ui.toast_schedule_deleted'),'success'); await load();} else showToast(t('ui.toast_error_prefix')+(d?.error||''),'error'); } catch(_e){showToast(t('alert.network'),'error');} }} class="min-w-11 min-h-11 inline-flex items-center ml-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="trash" /></button></td>
+            <td class='p-4 text-center'><button type="button" onClick={() => { setEditingId(String(j.id)); setNama(j.nama); setLoker(j.loker || ""); setWaktu(j.waktu || ""); setLokasi(j.lokasi || ""); setTsk(j.tsk || ""); setLink(j.link || ""); setShowForm(true); }} class="min-h-11 inline-flex items-center px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="edit" /> Edit</button><button type="button" onClick={async () => { if(!confirm(t('ui.confirm_delete_schedule'))) return; try { const d: any = await api.secure('hapusJadwal', [j.id]); if(d && d.success){showToast(t('ui.toast_schedule_deleted'),'success'); await load(true);} else showToast(t('ui.toast_error_prefix')+(d?.error||''),'error'); } catch(_e){showToast(t('alert.network'),'error');} }} class="min-w-11 min-h-11 inline-flex items-center ml-2 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded font-bold shadow text-[11px] cursor-pointer"><Icon name="trash" /></button></td>
           </tr>))}
       </tbody>
     </table>

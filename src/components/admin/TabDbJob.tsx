@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useMemo } from 'preact/hooks';
 import api from '../../lib/apiClient';
+import { adminDataPeek, loadAdminData } from '../../store/adminData';
 import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
 import AdminJobEditModal, { type EditableJob } from './AdminJobEditModal';
@@ -109,19 +110,21 @@ const _STATUS_BADGE: Record<string, string> = {
 };
 
 export default function TabDbJob() {
-  const [jobs, setJobs] = useState<DbJob[]>([]);
+  /* Cache bersama — lihat `store/adminData`. */
+  const peek0 = adminDataPeek<{ dbJobs?: DbJob[]; jobs?: DbJob[]; dropdowns?: { kategori?: string[]; tahapan?: string[] } }>();
+  const [jobs, setJobs] = useState<DbJob[]>(peek0?.dbJobs || peek0?.jobs || []);
   const [sortType, setSortType] = useState('TERBARU');
   const [fBidang, setFBidang] = useState('ALL');
   const [fTahapan, setFTahapan] = useState('ALL');
   const [limit, setLimit] = useState(10);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!peek0);
   /** Permintaan GAGAL — beda dari daftar yang memang kosong. */
   const [failed, setFailed] = useState(false);
   // Opsi chip filter dari dropdown config (getAppData admin → dropdowns) —
   // parity renderDbFilters legacy (DROPDOWNS.kategori / DROPDOWNS.tahapan).
-  const [fBidangOpts, setFBidangOpts] = useState<string[]>([]);
-  const [fTahapanOpts, setFTahapanOpts] = useState<string[]>([]);
+  const [fBidangOpts, setFBidangOpts] = useState<string[]>(peek0?.dropdowns?.kategori ?? []);
+  const [fTahapanOpts, setFTahapanOpts] = useState<string[]>(peek0?.dropdowns?.tahapan ?? []);
   const [editJob, setEditJob] = useState<DbJob | null>(null);
   const [shareJob, setShareJob] = useState<DbJob | null>(null);
   const [matchJob, setMatchJob] = useState<DbJob | null>(null);
@@ -139,9 +142,9 @@ export default function TabDbJob() {
   // MatchmakingModal butuh set penuh, bukan hanya halaman pertama (P10).
   useEffect(() => { fetchAllKandidat(); }, []);
 
-  async function fetchLoker() {
+  async function fetchLoker(force = false) {
     try {
-      const d: any = await api.secure('getAppData', ['admin']);
+      const d: any = await loadAdminData({ force });
       if (d && d.success) {
         setFailed(false);
         setJobs(d.dbJobs || d.jobs || []);
@@ -330,8 +333,8 @@ export default function TabDbJob() {
           </table>
         </div>
       )}
-      {editJobP.present && <AdminJobEditModal job={editJobP.held as EditableJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker()} closing={editJobP.closing} />}
-      {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} onSave={() => fetchLoker()} closing={shareJobP.closing} />}
+      {editJobP.present && <AdminJobEditModal job={editJobP.held as EditableJob} onClose={() => setEditJob(null)} onSave={() => fetchLoker(true)} closing={editJobP.closing} />}
+      {shareJobP.present && shareJobP.held && <AdminShareModal job={shareJobP.held} onClose={() => setShareJob(null)} onSave={() => fetchLoker(true)} closing={shareJobP.closing} />}
       {listJobCodeP.present && listJobCodeP.held && <ListKandidatModal jobCode={listJobCodeP.held} isOpen={!!listJobCode} onClose={() => setListJobCode(null)} closing={listJobCodeP.closing} />}
       {matchJobP.present && matchJobP.held && <MatchmakingModal job={matchJobP.held} candidates={allCandidates} isOpen={!!matchJob} onClose={() => setMatchJob(null)} closing={matchJobP.closing} />}
       {/* `limit` semula TIDAK PERNAH bisa berubah (`_setLimit` tidak dipakai),

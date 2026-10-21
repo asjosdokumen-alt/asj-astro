@@ -10,6 +10,7 @@
 import { atom } from 'nanostores';
 import { authStore } from './authReactive';
 import api from '../lib/apiClient';
+import { loadAdminData } from './adminData';
 
 export interface Kandidat {
   id: string;
@@ -335,24 +336,22 @@ export function setMailSearchText(val: string) {
 
 
 
-export async function fetchMailFromAPI() {
+export async function fetchMailFromAPI(force = false) {
   try {
     // `force` — the callers are not all plain reads: TabMail re-fetches right
     // after marking a message read or deleting it, and `getAppData` is a
     // CACHEABLE_READ. Without `force` the refresh that follows the write would be
     // served the PRE-write payload for up to 30 s, so the admin's own action
-    // would look like it did nothing. `force` skips the read and rewrites the
-    // cache, so every other caller gets the new payload too.
+    // would look like it did nothing.
     //
-    // `silent` — this function has never surfaced a toast (it only logged), and
-    // the client's toast is per-call. Leaving it on would invent a new user-visible
-    // failure for a path that deliberately stayed quiet.
-    const data = (await api.secure('getAppData', ['admin'], {
-      force: true,
-      silent: true,
-      onSessionInvalid: 'throw',
-    })) as { success?: boolean; formInbox?: unknown[] };
-    if (data?.success) {
+    // 🔴 `force` TIDAK lagi dipakai saat mount. Dulu `useEffect` di TabMail
+    // memanggil fungsi ini tanpa argumen sementara fungsi ini SELALU memaksa,
+    // jadi setiap kali tab Mail dibuka seluruh payload admin (107 KB) ditarik
+    // ulang — laporan pemilik 2026-10-22: "setiap pindah tab muat ulang
+    // semuanya … boros egress". Sekarang mount memakai cache bersama
+    // `store/adminData`; hanya Refresh dan refresh-setelah-aksi yang memaksa.
+    const data = (await loadAdminData<{ success?: boolean; formInbox?: unknown[] }>({ force })) || {};
+    if (data.success) {
       mailList.set(data.formInbox || []);
     }
   } catch (err) {

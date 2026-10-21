@@ -9,7 +9,7 @@
 //   1. TabKelola membaca lewat api.secure('getAppData', ['admin']).
 //   2. Tidak ada fetch() mentah untuk endpoint itu.
 // ==========================================
-import { render, screen, waitFor, cleanup } from '@testing-library/preact';
+import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const secure = vi.fn();
@@ -29,6 +29,7 @@ vi.mock('../../store/i18n', async () => {
 vi.stubGlobal('fetch', rawFetch);
 
 import TabKelola from './TabKelola';
+import { invalidateAdminData } from '../../store/adminData';
 
 const JOBS = [
   {
@@ -44,6 +45,10 @@ const JOBS = [
 ];
 
 beforeEach(() => {
+  // Cache payload admin hidup di tingkat MODUL: tanpa reset, tes kedua di
+  // berkas ini membaca hasil tes pertama dan `api.secure` tidak pernah
+  // dipanggil — tesnya jadi hijau karena alasan yang salah.
+  invalidateAdminData();
   secure.mockReset();
   rawFetch.mockReset();
   secure.mockResolvedValue({ success: true, jobs: JOBS });
@@ -60,8 +65,13 @@ describe('TabKelola — baca loker lewat cache apiClient (§26)', () => {
     // dan `/admin` (tab default = TabKelola) langsung terlempar ke `/`, yang
     // membuat gate e2e judul halaman (§23) merah. Perf tidak boleh mengubah
     // semantik sesi.
+    //
+    // `objectContaining` (bukan objek persis): panggilan sekarang lewat
+    // `store/adminData`, yang menambahkan `silent` (tab ini tidak pernah
+    // menampilkan toast sendiri) dan kadang `force`. Yang diuji adalah
+    // KEHADIRAN `onSessionInvalid: 'throw'`, bukan tidak adanya kunci lain.
     await waitFor(() =>
-      expect(secure).toHaveBeenCalledWith('getAppData', ['admin'], { onSessionInvalid: 'throw' }),
+      expect(secure).toHaveBeenCalledWith('getAppData', ['admin'], expect.objectContaining({ onSessionInvalid: 'throw' })),
     );
     expect(await screen.findByText('Kaigo')).toBeTruthy();
     expect(screen.getByText('TG1')).toBeTruthy();
@@ -73,4 +83,33 @@ describe('TabKelola — baca loker lewat cache apiClient (§26)', () => {
     await waitFor(() => expect(secure).toHaveBeenCalled());
     expect(rawFetch).not.toHaveBeenCalled();
   });
+
+  /**
+   * Permintaan pemilik 2026-10-22: *"lowongan publik kok gak di 10 baris
+   * saja? … bisa saja pakai buka lebih banyak"*. Daftar loker admin dulu
+   * merender SEMUA baris sekaligus.
+   */
+  it(
+    'merender 10 baris pertama, sisanya lewat "Muat Lebih Banyak"',
+    async () => {
+      const many = Array.from({ length: 25 }, (_, i) => ({
+        code: 'TG' + (i + 1), pekerjaan: 'Job ' + (i + 1), status: 'OPEN',
+        kategori: 'KAIGO', gender: '', lokasi: 'Tokyo', kuota: '1', keterangan: '',
+      }));
+      secure.mockResolvedValue({ success: true, jobs: many });
+
+      render(<TabKelola />);
+      await waitFor(() => expect(screen.getByText('TG1')).toBeTruthy());
+
+      const rows = () => document.querySelectorAll('tbody tr').length;
+      expect(rows()).toBe(10);
+      expect(screen.queryByText('TG11')).toBeNull();
+      expect(screen.getByText('25 ' + (await import('../../store/i18n')).t('ui.jobs_suffix'))).toBeTruthy();
+
+      fireEvent.click(screen.getByRole('button', { name: /Muat Lebih Banyak/ }));
+      expect(rows()).toBe(20);
+      expect(screen.getByText('TG11')).toBeTruthy();
+      expect(screen.queryByText('TG21')).toBeNull();
+    },
+  );
 });
