@@ -93,7 +93,7 @@ describe('TabKelola — baca loker lewat cache apiClient (§26)', () => {
     'merender 10 baris pertama, sisanya lewat "Muat Lebih Banyak"',
     async () => {
       const many = Array.from({ length: 25 }, (_, i) => ({
-        code: 'TG' + (i + 1), pekerjaan: 'Job ' + (i + 1), status: 'OPEN',
+        code: `TG${i + 1}`, pekerjaan: `Job ${i + 1}`, status: 'OPEN',
         kategori: 'KAIGO', gender: '', lokasi: 'Tokyo', kuota: '1', keterangan: '',
       }));
       secure.mockResolvedValue({ success: true, jobs: many });
@@ -104,7 +104,7 @@ describe('TabKelola — baca loker lewat cache apiClient (§26)', () => {
       const rows = () => document.querySelectorAll('tbody tr').length;
       expect(rows()).toBe(10);
       expect(screen.queryByText('TG11')).toBeNull();
-      expect(screen.getByText('25 ' + (await import('../../store/i18n')).t('ui.jobs_suffix'))).toBeTruthy();
+      expect(screen.getByText(`25 ${(await import('../../store/i18n')).t('ui.jobs_suffix')}`)).toBeTruthy();
 
       fireEvent.click(screen.getByRole('button', { name: /Muat Lebih Banyak/ }));
       expect(rows()).toBe(20);

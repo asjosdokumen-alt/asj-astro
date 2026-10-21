@@ -521,7 +521,9 @@ export function mergeAiGaps(master: Record<string, unknown>): Record<string, unk
       let cur: Record<string, unknown> = out;
       for (let i = 0; i < segs.length - 1; i++) {
         const next = cur[segs[i]];
-        cur = (next && typeof next === 'object' && !Array.isArray(next) ? next : (cur[segs[i]] = {})) as Record<string, unknown>;
+        const branch = next && typeof next === 'object' && !Array.isArray(next) ? next : {};
+        cur[segs[i]] = branch;
+        cur = branch as Record<string, unknown>;
       }
       cur[segs[segs.length - 1]] = String(v).trim();
       break;
