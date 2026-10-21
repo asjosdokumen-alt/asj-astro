@@ -1112,6 +1112,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.cth_25_jt": "(Cth: 25 JT)",
     "admin.mail_inbox": "Form Mail Inbox",
     "admin.no_mail_found": "Tidak ada mail ditemukan.",
+    /* Petunjuk di tabel kosong: baris hasil pembaruan biodata berstatus UPDATE,
+       bukan MENUNGGU, jadi tidak muncul di tab default. */
+    "admin.mail_update_hint": "Ada {n} pembaruan biodata/dokumen dari kandidat — buka tab Diperbarui untuk melihatnya.",
     "admin.confirm_reject_application": "Tolak lamaran ini?",
     "admin.tab_config_title": "Pengaturan Sistem (Dropdown)",
     "admin.sys_config_desc": "Kelola pilihan dropdown yang akan muncul di formulir (menggantikan Sheet SYS CONFIG).",
@@ -1122,6 +1125,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.options_suffix": "pilihan",
     "admin.more_suffix": "lainnya",
     "status.waiting": "Menunggu",
+    /* Status baris mail yang SUDAH pernah diputuskan (LULUS/GAGAL) lalu
+       kandidat memperbarui biodata/dokumennya — perlu ditinjau ulang. */
+    "status.updated": "Diperbarui",
     "status.review": "Review",
     "status.pass": "Lulus",
     "status.fail": "Gagal",

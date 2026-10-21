@@ -16,11 +16,12 @@ import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
 import RejectMailModal from './RejectMailModal';
 
-const STATUSES = ['MENUNGGU', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'] as const;
+const STATUSES = ['MENUNGGU', 'UPDATE', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'] as const;
 
 const STATUS_COLORS: Record<string, string> = {
   MENUNGGU: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
   REVIEW: 'bg-sky-500/20 text-sky-400 border-sky-500/40',
+  UPDATE: 'bg-violet-500/20 text-violet-300 border-violet-500/40',
   LULUS: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
   GAGAL: 'bg-red-500/20 text-red-400 border-red-500/40',
 };
@@ -164,7 +165,7 @@ export default function TabMail() {
   });
 
   // Status counts
-  const counts = { MENUNGGU: 0, REVIEW: 0, LULUS: 0, GAGAL: 0 };
+  const counts = { MENUNGGU: 0, UPDATE: 0, REVIEW: 0, LULUS: 0, GAGAL: 0 };
   mail.forEach(m => {
     const s = (m.status || '').toUpperCase();
     if (s in counts) counts[s as keyof typeof counts]++;
@@ -190,7 +191,7 @@ export default function TabMail() {
                     ? 'bg-sky-600 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}>
-                {s === 'SEMUA' ? t('status.all') : s === 'MENUNGGU' ? t('status.waiting') : s === 'REVIEW' ? t('status.review') : s === 'LULUS' ? t('status.pass') : s === 'GAGAL' ? t('status.fail') : s}
+                {s === 'SEMUA' ? t('status.all') : s === 'MENUNGGU' ? t('status.waiting') : s === 'UPDATE' ? t('status.updated') : s === 'REVIEW' ? t('status.review') : s === 'LULUS' ? t('status.pass') : s === 'GAGAL' ? t('status.fail') : s}
               </button>
             ))}
           </div>
@@ -215,7 +216,7 @@ export default function TabMail() {
       <div class="flex items-center gap-2 mb-3">
         <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">{t('table.status')}:</span>
         <span class="text-xs font-bold text-slate-300">
-          {t('status.waiting')}: {counts.MENUNGGU} | {t('status.review')}: {counts.REVIEW} | {t('status.pass')}: {counts.LULUS} | {t('status.fail')}: {counts.GAGAL} | Total: {mail.length}
+          {t('status.waiting')}: {counts.MENUNGGU} | {t('status.updated')}: {counts.UPDATE} | {t('status.review')}: {counts.REVIEW} | {t('status.pass')}: {counts.LULUS} | {t('status.fail')}: {counts.GAGAL} | Total: {mail.length}
         </span>
       </div>
 
@@ -251,7 +252,21 @@ export default function TabMail() {
           <tbody class="divide-y divide-slate-800">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} class="p-6 text-center text-slate-500">{t('admin.no_mail_found')}</td>
+                <td colSpan={9} class="p-6 text-center text-slate-500">
+                  {t('admin.no_mail_found')}
+                  {/* 🔴 Keluhan pemilik 2026-10-22: "update profil Agus Khoci, ada notif,
+                      tapi di mail admin panel gak ada sama sekali." Baris hasil update
+                      berstatus UPDATE (bukan MENUNGGU), jadi di tab default ia TIDAK
+                      terlihat sama sekali. Angka di atas memang menyebutnya, tapi
+                      tabel kosong tetap terbaca sebagai "tidak ada apa-apa" — jadi
+                      beri jalan keluarnya di sini juga. */}
+                  {filterStatus === 'MENUNGGU' && counts.UPDATE > 0 && (
+                    <button type="button" onClick={() => setMailFilterStatus('UPDATE')}
+                      class="mt-2 min-h-11 px-3 py-2 rounded-lg bg-violet-600/20 border border-violet-500/50 text-violet-200 text-[11px] font-bold hover:bg-violet-600/30 transition">
+                      {t('admin.mail_update_hint').replace('{n}', String(counts.UPDATE))}
+                    </button>
+                  )}
+                </td>
               </tr>
             ) : filtered.map((m, i) => (
               <tr key={m.id || i} class="hover:bg-white/5 transition-colors">
@@ -282,6 +297,12 @@ export default function TabMail() {
                   <span class={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLORS[m.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/40'}`}>
                     {m.status || '-'}
                   </span>
+                  {/* `feedback` = aktivitas terakhir dari backend ("[BIODATA] email
+                      diubah · [UPLOAD KTP]"). Tanpa ini admin melihat status UPDATE
+                      tanpa tahu APA yang berubah, dan harus membuka kandidatnya. */}
+                  {m.feedback && (
+                    <div class="text-[10px] text-slate-400 mt-1 max-w-[220px] whitespace-normal text-left">{m.feedback}</div>
+                  )}
                 </td>
                 <td class="p-4 text-center">
                   <button type="button" disabled class="min-h-11 px-2 py-1 bg-slate-700/40 text-slate-500 rounded text-[11px] font-bold shadow cursor-not-allowed" title={t('admin.tt_segera_hadir')}>
