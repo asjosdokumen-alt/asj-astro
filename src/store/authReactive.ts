@@ -47,6 +47,32 @@ export const authStore = persistentAtom<AuthState>('asj_auth', DEFAULT_STATE, {
 let fcmRefreshDone = false;
 
 /**
+ * Registrasi FCM yang TIDAK menelan sebab kegagalannya.
+ *
+ * `requestNotificationPermission()` mengembalikan alasan yang sudah diketik
+ * (`'no-token'`, `'no-sw'`, `'permission-denied'`, …) justru supaya "perangkat
+ * tidak terdaftar" bisa dibedakan dari "tidak ada notifikasi yang dikirim".
+ * Ketiga pemanggil di berkas ini dulu memakai `.catch(() => {})` DAN membuang
+ * nilai kembaliannya, jadi satu-satunya cara mengetahui registrasi gagal adalah
+ * membuka DevTools di perangkat pengguna.
+ *
+ * Terukur 2026-10-21: token terakhir di `fcm_tokens` berasal dari 2026-10-15,
+ * sementara admin memakai aplikasi setiap hari — gejalanya persis "notifikasi
+ * tidak pernah muncul". Penyebabnya `PUBLIC_FIREBASE_VAPID_KEY` kosong, dan
+ * `getToken()` tanpa kunci itu tidak bisa membuat PushSubscription baru. Dengan
+ * log ini, `no-token` langsung menunjuk ke penyebabnya alih-alih menghilang.
+ */
+function registerFcm(userId: string): void {
+  requestNotificationPermission(userId)
+    .then((result) => {
+      if (result !== 'registered') console.warn('[FCM] Registrasi tidak selesai:', result);
+    })
+    .catch((e: unknown) => {
+      console.warn('[FCM] Registrasi gagal:', e instanceof Error ? e.message : String(e));
+    });
+}
+
+/**
  * Registrasi ulang token FCM saat aplikasi DIBUKA, bukan hanya saat login.
  *
  * KENAPA (2026-10-19): `requestNotificationPermission()` hanya dipanggil dari
@@ -70,7 +96,7 @@ export function refreshFcmRegistrationOnce(): void {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   const id = s.role === 'admin' ? s.name || 'ADMIN' : s.wa;
   if (!id) return;
-  requestNotificationPermission(id).catch(() => {});
+  registerFcm(id);
 }
 
 /** Hanya untuk tes: lupakan penanda "sekali per halaman". */
@@ -93,7 +119,7 @@ export function loginAsAdmin(name: string, sessionToken: string, refreshToken?: 
   // Activate FCM push notifications (non-blocking).
   // Admin register FCM under their name (backend: waRaw || 'ADMIN') —
   // sending the JWT leaked the session token into fcm_tokens.wa.
-  requestNotificationPermission(name || 'ADMIN').catch(() => {});
+  registerFcm(name || 'ADMIN');
 }
 
 /** Login as kandidat */
@@ -109,7 +135,7 @@ export function loginAsKandidat(name: string, wa: string, sessionToken: string, 
     lastChecked: now,
   });
   // Activate FCM push notifications (non-blocking)
-  requestNotificationPermission(wa).catch(() => {});
+  registerFcm(wa);
 }
 
 /** Logout — clears everything */
