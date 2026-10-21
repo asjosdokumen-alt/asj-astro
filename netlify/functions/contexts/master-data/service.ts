@@ -260,6 +260,18 @@ export function buildMasterNested(row: any): any {
   let aiParsed: any = null;
   try { const raw = row.ai_data_json; if (typeof raw === 'string' && raw.trim() && raw !== '-') aiParsed = JSON.parse(raw); } catch { aiParsed = null; }
   const aiArrOf = (key: string) => (aiParsed && Array.isArray(aiParsed[key]) ? aiParsed[key] : null);
+  const aiW = aiParsed?.wawancara || {};
+  const vw = (col: string, ...aiKeys: string[]) => {
+    if (col) {
+      const c = v(col);
+      if (c !== '') return c;
+    }
+    for (const k of aiKeys) {
+      const a = aiW[k];
+      if (a !== undefined && a !== null && String(a).trim() !== '') return toText(a);
+    }
+    return '';
+  };
   return {
     identitas: {
       nama_lengkap: v('nama_lengkap'), katakana: v('furigana'), panggilan: v('namapanggilan'),
@@ -283,19 +295,32 @@ export function buildMasterNested(row: any): any {
       riwayat_medis_id: v('riwayat_penyakit'), riwayat_medis_jp: v('riwayat_medis_jp'),
       riwayat_kecelakaan_id: v('riwayat_kecelakaan'), riwayat_kecelakaan_jp: v('riwayat_kecelakaan_jp') },
     wawancara: {
-      keinginan_id: v('keinginan_pribadi'), keinginan_jp: v('keinginan_pribadi_jp'),
-      tujuan_ke_jepang: v('tujuan_ke_jepang'), tujuan_ke_jepang_jp: v('tujuan_ke_jepang_jp'),
-      riwayat_jepang: v('status_eks_jepang'), promosi_id: v('promosi_diri'),
-      promosi_jp: v('promosi_diri_jp'), kelebihan_id: v('kelebihan'), kelebihan_jp: v('kelebihan_jp'),
-      kekurangan_id: v('kekurangan'), kekurangan_jp: v('kekurangan_jp'),
-      hobi_id: v('hobi_dan_keterampilan'), hobi_jp: v('hobi_jp'),
-      keahlian_khusus: v('keahlian_khusus'), keahlian_khusus_jp: v('keahlian_khusus_jp'),
-      motivasi_ke_jepang: v('motivasi_ke_jepang'), motivasi_ke_jepang_jp: v('motivasi_ke_jepang_jp'),
-      alasan_memilih_bidang: v('alasan_memilih_bidang'), alasan_memilih_bidang_jp: v('alasan_memilih_bidang_jp'),
-      rencana_setelah_pulang: v('rencana_setelah_pulang'), rencana_setelah_pulang_jp: v('rencana_setelah_pulang_jp'),
-      rencana_pulang_id: v('rencana_setelah_pulang'), rencana_pulang_jp: v('rencana_setelah_pulang_jp'),
-      gaji_yen: v('harapan_gaji_yen'), tabungan: v('harapan_tabungan'),
-      lama_di_jepang: (aiParsed && aiParsed.wawancara && aiParsed.wawancara.lama_di_jepang !== undefined ? toText(aiParsed.wawancara.lama_di_jepang) : ''),
+      keinginan_id: vw('keinginan_pribadi', 'keinginan_pribadi'),
+      keinginan_jp: vw('keinginan_pribadi_jp', 'keinginan_pribadi_jp'),
+      tujuan_ke_jepang: vw('tujuan_ke_jepang', 'tujuan_ke_jepang'),
+      tujuan_ke_jepang_jp: vw('tujuan_ke_jepang_jp', 'tujuan_ke_jepang_jp'),
+      riwayat_jepang: vw('status_eks_jepang', 'riwayat_jepang'),
+      promosi_id: vw('promosi_diri', 'promosi_id'),
+      promosi_jp: vw('promosi_diri_jp', 'promosi_jp'),
+      kelebihan_id: vw('kelebihan', 'kelebihan_id'),
+      kelebihan_jp: vw('kelebihan_jp', 'kelebihan_jp'),
+      kekurangan_id: vw('kekurangan', 'kekurangan_id'),
+      kekurangan_jp: vw('kekurangan_jp', 'kekurangan_jp'),
+      hobi_id: vw('hobi_dan_keterampilan', 'hobi_id'),
+      hobi_jp: vw('hobi_jp', 'hobi_jp'),
+      keahlian_khusus: vw('keahlian_khusus', 'keahlian_khusus'),
+      keahlian_khusus_jp: vw('keahlian_khusus_jp', 'keahlian_khusus_jp'),
+      motivasi_ke_jepang: vw('motivasi_ke_jepang', 'motivasi_ke_jepang'),
+      motivasi_ke_jepang_jp: vw('motivasi_ke_jepang_jp', 'motivasi_ke_jepang_jp'),
+      alasan_memilih_bidang: vw('alasan_memilih_bidang', 'alasan_memilih_bidang'),
+      alasan_memilih_bidang_jp: vw('alasan_memilih_bidang_jp', 'alasan_memilih_bidang_jp'),
+      rencana_setelah_pulang: vw('rencana_setelah_pulang', 'rencana_setelah_pulang'),
+      rencana_setelah_pulang_jp: vw('rencana_setelah_pulang_jp', 'rencana_setelah_pulang_jp'),
+      rencana_pulang_id: vw('rencana_setelah_pulang', 'rencana_setelah_pulang'),
+      rencana_pulang_jp: vw('rencana_setelah_pulang_jp', 'rencana_setelah_pulang_jp'),
+      gaji_yen: vw('harapan_gaji_yen', 'gaji_yen'),
+      tabungan: vw('harapan_tabungan', 'tabungan'),
+      lama_di_jepang: vw('', 'lama_di_jepang'),
     },
     sertifikasi: { bahasa: v('bahasa'), jft: v('jft'), ssw: v('ssw'),
       bidang: v('bidangssw') || v('bidang'), bahasa_jepang: v('jft'), nilai: v('jft'), lisensi: v('ssw') },

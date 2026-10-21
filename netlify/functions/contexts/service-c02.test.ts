@@ -249,3 +249,46 @@ describe('keluarga ber-nama kanji tidak boleh hilang (2026-10-13)', () => {
     expect(n.keluarga).toHaveLength(1);
   });
 });
+
+describe('buildMasterNested: wawancara dari ai_data_json saat kolom kosong (2026-10-22)', () => {
+  it('mengisi wawancara dari AI ketika kolom master kosong', () => {
+    const n = buildMasterNested({
+      kelebihan: '', motivasi_ke_jepang: '', keinginan_pribadi: '',
+      ai_data_json: JSON.stringify({
+        wawancara: {
+          kelebihan_id: 'Disiplin', kelebihan_jp: 'まじめ',
+          motivasi_ke_jepang: 'Ingin bekerja', motivasi_ke_jepang_jp: '働きたい',
+          keinginan_pribadi: 'Bahagia', keinginan_pribadi_jp: '幸せ',
+          lama_di_jepang: '3',
+        },
+      }),
+    }) as { wawancara: Record<string, unknown> };
+    expect(n.wawancara.kelebihan_id).toBe('Disiplin');
+    expect(n.wawancara.kelebihan_jp).toBe('まじめ');
+    expect(n.wawancara.motivasi_ke_jepang).toBe('Ingin bekerja');
+    expect(n.wawancara.motivasi_ke_jepang_jp).toBe('働きたい');
+    expect(n.wawancara.keinginan_id).toBe('Bahagia');
+    expect(n.wawancara.keinginan_jp).toBe('幸せ');
+    expect(n.wawancara.lama_di_jepang).toBe('3');
+  });
+
+  it('kolom master menang atas AI (satu arah)', () => {
+    const n = buildMasterNested({
+      kelebihan: 'Rajin', motivasi_ke_jepang: 'Semangat',
+      ai_data_json: JSON.stringify({
+        wawancara: { kelebihan_id: 'Disiplin', motivasi_ke_jepang: 'Ingin bekerja' },
+      }),
+    }) as { wawancara: Record<string, unknown> };
+    expect(n.wawancara.kelebihan_id).toBe('Rajin');
+    expect(n.wawancara.motivasi_ke_jepang).toBe('Semangat');
+  });
+
+  it('promosi_diri (kolom) → promosi_id (output) lewat fallback AI', () => {
+    const n = buildMasterNested({
+      promosi_diri: '', promosi_diri_jp: '',
+      ai_data_json: JSON.stringify({ wawancara: { promosi_id: 'Saya tekun', promosi_jp: '私は熱心です' } }),
+    }) as { wawancara: Record<string, unknown> };
+    expect(n.wawancara.promosi_id).toBe('Saya tekun');
+    expect(n.wawancara.promosi_jp).toBe('私は熱心です');
+  });
+});
