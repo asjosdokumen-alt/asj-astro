@@ -10,13 +10,46 @@
 //     count map (multi-job idLoker counted for every code)
 //   - all copy via t() keys in both dicts
 // ==========================================
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, cleanup } from '@testing-library/preact';
 import {
   buildCandidateCountMap,
   filterDbJobs,
   sortDbJobs,
   type DbJob,
 } from './TabDbJob';
+import TabDbJob from './TabDbJob';
+
+// ==========================================
+// Harness render — hanya dipakai blok "kontrak tata letak" di bawah. Uji
+// helper di atas tidak menyentuhnya (vi.mock diangkat ke atas berkas, dan
+// helper-nya murni).
+//
+// ⚠ Fixture ditulis DI DALAM factory, bukan di const modul: `vi.mock` diangkat
+// ke atas blok import, jadi const tingkat-modul belum terinisialisasi saat
+// factory pertama kali dipanggil (TDZ). Pola `vi.hoisted` di
+// `TabPelamar.test.tsx` dipakai di sana karena store-nya perlu dipegang tes.
+// ==========================================
+vi.mock('../../store/adminData', () => {
+  const row = {
+    code: 'TG591ASJ', tsk: 'TSK-A', pekerjaan: 'Kaigo', kategori: 'PERTANIAN',
+    lokasi: 'Ibaraki', tahapan: 'OPEN', statusInt: 'OPEN', createdAt: '',
+  };
+  const payload = { dbJobs: [row], dropdowns: { kategori: ['PERTANIAN'], tahapan: ['OPEN'] } };
+  return { adminDataPeek: () => payload, loadAdminData: async () => ({ success: true, ...payload }) };
+});
+vi.mock('../../store/adminStore', async () => {
+  const { atom } = await import('nanostores');
+  return { allKandidatList: atom([{ idLoker: 'TG591ASJ' }]), fetchAllKandidat: () => {} };
+});
+vi.mock('./AdminJobEditModal', () => ({ default: () => null }));
+vi.mock('./AdminShareModal', () => ({ default: () => null }));
+vi.mock('./MatchmakingModal', () => ({ default: () => null }));
+vi.mock('./ListKandidatModal', () => ({ default: () => null }));
+vi.mock('../../store/i18n', async () => {
+  const { atom } = await import('nanostores');
+  return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id'), toggleLang: vi.fn() };
+});
 
 const job = (p: Partial<DbJob>): DbJob => ({
   code: 'J1',
@@ -117,5 +150,49 @@ describe('TabDbJob DB filter/sort (A18)', () => {
     const jobs = [job({ code: 'J2' }), job({ code: 'J1' })];
     sortDbJobs(jobs, 'TERBARU', {});
     expect(jobs.map((j) => j.code)).toEqual(['J2', 'J1']);
+  });
+});
+
+// ==========================================
+// TESTS: kontrak tata letak yang DIUKUR di browser (2026-10-22)
+//
+// jsdom tidak menerapkan CSS, jadi lebar piksel tidak bisa diperiksa di sini.
+// Yang dijaga adalah MEKANISME yang membuat lebar itu benar; angkanya diukur
+// dengan probe Playwright di 390px/1280px (sweep polish, 34 permukaan):
+//
+//   sebelum  · input cari 182px, placeholder 163px terpotong 25px
+//            · tombol jumlah pelamar 40×40 (lantai 44px)
+//   sesudah  · input cari selebar baris (≥300px), placeholder utuh
+//            · tombol 44×44
+//
+// Kalau kelas di bawah dikembalikan seperti semula, cacatnya kembali — dan
+// tes ini merah lebih dulu daripada laporan pengguna.
+// ==========================================
+describe('TabDbJob — kontrak tata letak (diukur 2026-10-22)', () => {
+  afterEach(() => cleanup());
+
+  it('kotak cari selebar baris di mobile dan tidak bisa diremas flex', () => {
+    const { container } = render(<TabDbJob />);
+    const input = container.querySelector('input[placeholder="db.placeholder_search"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    const wrap = input.parentElement as HTMLElement;
+    // `flex-1` = flex: 1 1 0% ⇒ basis 0 + shrink 1 = kotak diremas sampai
+    // 182px di 390px (dan ~93px di 1280px sebelum `md:shrink-0`).
+    expect(wrap.className).not.toContain('flex-1');
+    expect(wrap.className).toContain('w-full');
+    // 288px hanya di ≥sm; `shrink-0` yang menahan remasan di baris judul.
+    expect(wrap.className).toContain('sm:w-72');
+    expect(wrap.className).toContain('sm:shrink-0');
+  });
+
+  it('tombol jumlah pelamar punya lantai sasaran sentuh 44px', () => {
+    const { container } = render(<TabDbJob />);
+    const btn = [...container.querySelectorAll('button')]
+      .find((b) => (b.textContent || '').trim() === '1');
+    // Gagal di sini = fixture-nya yang salah, bukan kelasnya. Dilempar supaya
+    // pesannya jelas, dan supaya tidak perlu `!` (dilarang lint-ratchet).
+    if (!btn) throw new Error('tombol jumlah pelamar (teks "1") tidak dirender');
+    expect(btn.className).toContain('min-h-11');
+    expect(btn.className).toContain('min-w-11');
   });
 });

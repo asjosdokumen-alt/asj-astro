@@ -207,9 +207,14 @@ export default function TabDbJob() {
 
   return (
     <div>
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
         <h2 class="text-violet-400 font-bold text-lg"><Icon name="server" class="mr-2" /> {t('admin.history_internal')}</h2>
-        <div class="relative w-72">
+        {/* MEASURED 2026-10-22 (390px): `w-72` TANPA `shrink-0` di baris
+            `justify-between` diremas judulnya sampai kotak input tinggal 182px,
+            jadi placeholder "Cari ID, TSK, Pekerjaan..." (163px) terpotong 25px.
+            Di mobile input sekarang mengambil SATU BARIS PENUH (`w-full`) dan
+            baris judul/input ditumpuk (`flex-col`); di ≥sm tetap 288px + shrink-0. */}
+        <div class="relative w-full sm:w-72 sm:shrink-0">
           <Icon name="search" class="absolute left-3 top-2.5 text-slate-300 text-sm" />
           <input
             type="text"
@@ -314,7 +319,11 @@ export default function TabDbJob() {
                         cara membuka daftar pelamar per lowongan adalah mouse. Sekarang
                         `<button>` DI DALAM sel (bukan mengganti `<td>`-nya, yang akan
                         merusak layout tabel) supaya bisa dijangkau keyboard. */}
-                    <button type="button" class="cursor-pointer bg-transparent border-0 p-0 group" onClick={() => setListJobCode(db.code)}>
+                    {/* MEASURED 2026-10-22: tombol ini 40×40 (px-4/py-1.5 + text-lg),
+                        empat piksel di bawah lantai 44px. Lantai dipasang di
+                        TOMBOL-nya, bukan di pil dalam, supaya area tekan yang
+                        diukur sama dengan yang bisa ditekan. */}
+                    <button type="button" class="cursor-pointer bg-transparent border-0 p-0 group min-w-11 min-h-11 inline-flex items-center justify-center" onClick={() => setListJobCode(db.code)}>
                       <div class="inline-block px-4 py-1.5 bg-sky-900/30 group-hover:bg-sky-600 rounded-lg transition-colors">
                         <span class="text-sky-400 group-hover:text-white font-bold text-lg">{countMap[db.code] || 0}</span>
                       </div>
