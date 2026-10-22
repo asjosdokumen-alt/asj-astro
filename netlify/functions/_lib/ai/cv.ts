@@ -441,6 +441,26 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
         }
       }
 
+      /* ── KENALAN DI JEPANG: dulu HILANG saat simpan pertama ────────────────
+         `aiData` hanya memuat 8 seksi terkelola, dan `kenalan_jepang` bukan
+         salah satunya — jadi nilainya dari FORM (`d.kenalan_jepang`, dikirim
+         `AiCvForm`) tidak pernah ikut tersimpan: `aiOut` hanya MEWARISI kenalan
+         milik baris sebelumnya, yang untuk simpan pertama tidak ada.
+         Terukur 2026-10-22: dari 234 baris master, hanya 1 punya kenalan, dan
+         yang satu itu datang dari ingestion — bukan dari CV AI.
+         Digabung, bukan ditimpa: field yang dikosongkan di form tidak boleh
+         menghapus kenalan yang sudah tersimpan. */
+      const kenalanIn = (d as Record<string, unknown>).kenalan_jepang;
+      if (kenalanIn && typeof kenalanIn === 'object' && !Array.isArray(kenalanIn)) {
+        const merged: Record<string, string> = { ...((aiOut.kenalan_jepang as Record<string, string>) || {}) };
+        for (const [k, v] of Object.entries(kenalanIn as Record<string, unknown>)) {
+          if (v === undefined || v === null) continue;
+          const text = String(v).trim();
+          if (text !== '') merged[k] = text;
+        }
+        aiOut.kenalan_jepang = merged;
+      }
+
       const masterBody: any = {
         ai_data_json: JSON.stringify(aiOut),
         ai_updated_at: new Date().toISOString(),
@@ -457,7 +477,9 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
         //
         // Hanya nilai TERISI yang dikembalikan, jadi `Object.assign` di sini
         // tidak pernah mengosongkan kolom yang sudah benar.
-        ...masterColumnsFromAi(aiData),
+        // Masukannya `aiOut` (bukan `aiData`) supaya seksi yang DIPERTAHANKAN
+        // dari baris lama — `kenalan_jepang` — ikut dipetakan ke kolomnya.
+        ...masterColumnsFromAi(aiOut),
       };
       // Kolom slot riwayat. Jalur ini DULU tidak menulisnya sama sekali, jadi
       // sekolah/pekerjaan/keluarga yang dihapus di form tetap hidup di kolom

@@ -636,7 +636,7 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
  *   4. Kolom yang TIDAK ada di kontrak skema tidak boleh disebut di sini;
  *      `writeBodyFor` akan membuangnya dan mencatatnya sebagai drift.
  */
-const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> = {
+export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> = {
   identitas: [
     ['nama_lengkap', 'nama_lengkap'], ['furigana', 'katakana'], ['namapanggilan', 'panggilan'],
     ['panggilan_katakana', 'panggilan_katakana'], ['tempat_lahir', 'tempat_lahir'],
@@ -669,18 +669,41 @@ const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> = {
     ['hobi_dan_keterampilan', 'hobi_id', 'hobi'], ['hobi_jp', 'hobi_jp'],
     ['keahlian_khusus', 'keahlian_id', 'keahlian_khusus'],
     ['keahlian_khusus_jp', 'keahlian_khusus_jp', 'keahlian_jp'],
-    ['alasan_memilih_bidang', 'alasan_id', 'alasan_memilih_bidang'],
+    ['alasan_memilih_bidang', 'alasan_id', 'alasan_memilih_bidang', 'alasan_bidang_id'],
     ['alasan_memilih_bidang_jp', 'alasan_memilih_bidang_jp', 'alasan_bidang_jp'],
-    ['motivasi_ke_jepang', 'moti_id', 'motivasi_ke_jepang'],
+    ['motivasi_ke_jepang', 'moti_id', 'motivasi_ke_jepang', 'motivasi_id'],
     ['motivasi_ke_jepang_jp', 'motivasi_ke_jepang_jp', 'motivasi_jp'],
     ['keinginan_pribadi', 'keinginan_id', 'keinginan_pribadi'],
     ['keinginan_pribadi_jp', 'keinginan_pribadi_jp', 'keinginan_jp'],
-    ['rencana_setelah_pulang', 'pulang_id', 'rencana_setelah_pulang'],
+    ['rencana_setelah_pulang', 'pulang_id', 'rencana_setelah_pulang', 'rencana_pulang_id'],
     ['rencana_setelah_pulang_jp', 'rencana_setelah_pulang_jp', 'rencana_pulang_jp'],
     ['tujuan_ke_jepang', 'tujuan_id', 'tujuan_ke_jepang'],
     ['tujuan_ke_jepang_jp', 'tujuan_ke_jepang_jp'],
     ['harapan_gaji_yen', 'gaji_yen', 'harapan_gaji'],
     ['harapan_tabungan', 'tabungan', 'harapan_tabungan'],
+  ],
+  /* Sertifikasi. `sertifikasi.ssw`/`lisensi` adalah NAMA lisensi SSW — di Form
+     Master konsep itu kolom `bidangssw` (lihat MASTER_COLUMN_MAP: `lisensi` →
+     `bidangssw`), sedangkan `sertifikasi.bidang` SENGAJA tidak dipakai (itu
+     sektor kerja, konsep lain). */
+  sertifikasi: [
+    ['jft', 'jft', 'nilai'],
+    ['bidangssw', 'ssw', 'lisensi'],
+    ['bahasa', 'bahasa', 'bahasa_jepang'],
+  ],
+  /* Kenalan di Jepang. Seksi ini TIDAK dikelola `aiData` (dipertahankan dari
+     baris lama), jadi pemetaannya baru berguna setelah `aiOut` yang dipakai —
+     lihat catatan di `_lib/ai/cv.ts`.
+     ⚠ `pekerjaan`, `usia`, dan `alamat` versi INDONESIA tidak punya kolom —
+     tabel ini hanya punya `_jp`-nya (diperiksa ke `schema.generated.ts`
+     2026-10-22). Nilainya tetap tersimpan di `ai_data_json`; yang hilang hanya
+     jalur kolom. Mencatatnya sebagai celah SKEMA, bukan diam-diam dipetakan ke
+     kolom yang tidak ada (itu akan membatalkan seluruh baris: 400 PGRST204). */
+  kenalan_jepang: [
+    ['kenalan_di_jepang_nama', 'nama_id'], ['kenalan_di_jepang_nama_jp', 'nama_jp'],
+    ['kenalan_di_jepang_hubungan', 'hubungan_id'], ['kenalan_di_jepang_hubungan_jp', 'hubungan_jp'],
+    ['kenalan_di_jepang_pekerjaan_jp', 'pekerjaan_jp'],
+    ['kenalan_di_jepang_alamat_jp', 'alamat_jp'],
   ],
 };
 

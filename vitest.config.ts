@@ -191,6 +191,12 @@ export default defineConfig({
             // TANPA baris ini membuatnya berjalan di jsdom dan dihitung dua
             // kali — dan `pg` di jsdom memakai jalur browser yang salah.
             'e2e/master-light-rpc.test.ts',
+            // Ditambahkan 2026-10-22. Meng-import DUA dunia sekaligus —
+            // `src/lib/aiCvDraft.ts` (frontend) dan `contexts/master-data`
+            // (backend) — jadi memang milik project 'backend'. Tinggal di e2e/
+            // HANYA karena counter beku `indexer`; tanpa baris ini ia jalan DUA
+            // KALI (R13f-bis).
+            'e2e/ai-cv-column-coverage.test.ts',
           ],
         },
       },
