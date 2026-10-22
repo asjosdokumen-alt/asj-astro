@@ -254,9 +254,6 @@ export function buildMasterNested(row: any): any {
   // mencetak `2008-04-04T17:00:00.000Z` — cap waktu `timestamptz` yang sekaligus
   // mundur satu hari dari tanggal yang dimaksud (2008-04-05 WIB).
   const vd = (col: string) => toDateOnly(row[col]);
-  // Golongan darah: `"AB +"` (baris nyata ASJ00171) dirapikan jadi `AB+` supaya
-  // cocok dengan opsi dropdown mana pun — tanpa ini `<select>`-nya tampil kosong.
-  const vg = (col: string) => normalizeBloodType(row[col]);
   let aiParsed: any = null;
   try { const raw = row.ai_data_json; if (typeof raw === 'string' && raw.trim() && raw !== '-') aiParsed = JSON.parse(raw); } catch { aiParsed = null; }
   const aiArrOf = (key: string) => (aiParsed && Array.isArray(aiParsed[key]) ? aiParsed[key] : null);
@@ -274,13 +271,47 @@ export function buildMasterNested(row: any): any {
     }
     return '';
   };
+  /* ── Fisik & medis: LUBANG YANG TERUKUR (2026-10-22) ────────────────────────
+     `vw` di atas hanya menutup blok WAWANCARA. Blok fisik/medis tetap membaca
+     KOLOM saja, padahal kandidat jalur CV AI tidak pernah menulis kolom itu —
+     `_lib/ai/cv.ts` hanya menyimpan `ai_data_json`. Diukur lewat REST atas 56
+     baris ber-`ai_data_json`:
+
+       medis.mata_kiri   kolom kosong 39 · AI punya nilai 23 ⇒ 23 hilang
+       golongan_darah    kolom kosong 32 · AI punya nilai 22 ⇒ 22 hilang
+       fisik.topi        kolom kosong 42 · AI punya nilai  9 ⇒  9 hilang
+
+     Artinya rirekisho/CV-template/biodata kandidat tersebut tercetak dengan
+     mata, golongan darah, dan ukuran kepala KOSONG. Prioritasnya sama dengan
+     `vw`: AI menang, kolom hanya cadangan (keputusan pemilik, `903ceef`).
+
+     ⚠ Blok IDENTITAS sengaja TIDAK ikut: diukur di data yang sama, kolomnya
+     terisi (0 hilang). Menambah fallback di sana hanya menambah jalur yang
+     tidak pernah terbukti perlu. */
+  const aiGroup = (g: string): Record<string, unknown> => {
+    const grp = aiParsed?.[g];
+    return grp && typeof grp === 'object' ? (grp as Record<string, unknown>) : {};
+  };
+  const aiF = aiGroup('fisik');
+  const aiM = aiGroup('medis');
+  const aiI = aiGroup('identitas');
+  const va = (aiObj: Record<string, unknown>, aiKeys: string[], col: string) => {
+    for (const k of aiKeys) {
+      const a = aiObj[k];
+      if (a !== undefined && a !== null && String(a).trim() !== '') return toText(a);
+    }
+    return col ? v(col) : '';
+  };
   return {
     identitas: {
       nama_lengkap: v('nama_lengkap'), katakana: v('furigana'), panggilan: v('namapanggilan'),
       panggilan_katakana: v('panggilan_katakana'), tempat_lahir: v('tempat_lahir'),
       tempat_lahir_jp: v('tempat_lahir_jp'), tgl_lahir: vd('tgl_lahir'), umur: v('usia'),
       gender: v('gender'), agama: v('agama'), agama_jp: v('agama_jp'),
-      golongan_darah: vg('golongan_darah'), status_nikah: v('status_pernikahan'),
+      /* Golongan darah: `"AB +"` (baris nyata ASJ00171) dirapikan jadi `AB+` supaya
+         cocok dengan opsi dropdown mana pun — tanpa ini `<select>`-nya tampil kosong.
+         Normalisasi berlaku untuk nilai dari AI MAUPUN dari kolom. */
+      golongan_darah: normalizeBloodType(va(aiI, ['golongan_darah'], 'golongan_darah')), status_nikah: v('status_pernikahan'),
       status_pernikahan_jp: v('status_pernikahan_jp'), anak: v('jumlah_anak'),
       email: v('email'), alamat: v('alamat_lengkap'), alamat_jp: v('alamat_jp'),
       hp: v('no_wa'), hp_darurat: v('kontak_darurat_wa'), ktp: v('nik'),
@@ -289,13 +320,22 @@ export function buildMasterNested(row: any): any {
       exp_paspor: vd('exp_pasport'), kota_terbit_paspor: v('kota_terbit_pasport'),
       kontak_darurat_nama: v('kontak_darurat_nama'), kontak_darurat_hubungan: v('kontak_darurat_hubungan'),
     },
-    fisik: { tb: v('tb'), bb: v('bb'), topi: v('ukuran_topi'), baju: v('ukuranbaju'),
-      sepatu: v('ukuransepatu'), tangan_dominan: v('tangandominan'), tahan_ac: v('tahan_ac') },
-    medis: { mata_kiri: v('mata_kiri'), mata_kanan: v('mata_kanan'), kacamata: v('kacamata'),
-      buta_warna: v('buta_warna'), tato: v('tato'), tindik: v('tindik'), rokok: v('merokok'),
-      alkohol: v('minum_alkohol'), alergi_id: v('alergi'), alergi_jp: v('alergi_jp'),
-      riwayat_medis_id: v('riwayat_penyakit'), riwayat_medis_jp: v('riwayat_medis_jp'),
-      riwayat_kecelakaan_id: v('riwayat_kecelakaan'), riwayat_kecelakaan_jp: v('riwayat_kecelakaan_jp') },
+    fisik: { tb: va(aiF, ['tb'], 'tb'), bb: va(aiF, ['bb'], 'bb'),
+      topi: va(aiF, ['topi'], 'ukuran_topi'), baju: va(aiF, ['baju'], 'ukuranbaju'),
+      sepatu: va(aiF, ['sepatu'], 'ukuransepatu'),
+      tangan_dominan: va(aiF, ['tangan_dominan'], 'tangandominan'),
+      tahan_ac: va(aiF, ['tahan_ac'], 'tahan_ac') },
+    medis: { mata_kiri: va(aiM, ['mata_kiri'], 'mata_kiri'),
+      mata_kanan: va(aiM, ['mata_kanan'], 'mata_kanan'),
+      kacamata: va(aiM, ['kacamata'], 'kacamata'),
+      buta_warna: va(aiM, ['buta_warna'], 'buta_warna'), tato: va(aiM, ['tato'], 'tato'),
+      tindik: v('tindik'), rokok: va(aiM, ['rokok'], 'merokok'),
+      alkohol: va(aiM, ['alkohol'], 'minum_alkohol'),
+      alergi_id: va(aiM, ['alergi_id', 'alergi'], 'alergi'), alergi_jp: va(aiM, ['alergi_jp'], 'alergi_jp'),
+      riwayat_medis_id: va(aiM, ['riwayat_medis_id', 'riwayat_penyakit'], 'riwayat_penyakit'),
+      riwayat_medis_jp: va(aiM, ['riwayat_medis_jp'], 'riwayat_medis_jp'),
+      riwayat_kecelakaan_id: va(aiM, ['riwayat_kecelakaan_id', 'riwayat_kecelakaan'], 'riwayat_kecelakaan'),
+      riwayat_kecelakaan_jp: va(aiM, ['riwayat_kecelakaan_jp'], 'riwayat_kecelakaan_jp') },
     wawancara: {
       keinginan_id: vw('keinginan_pribadi', 'keinginan_pribadi'),
       keinginan_jp: vw('keinginan_pribadi_jp', 'keinginan_pribadi_jp'),

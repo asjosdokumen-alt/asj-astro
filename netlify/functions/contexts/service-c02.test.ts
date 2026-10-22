@@ -132,6 +132,72 @@ describe('C02 — buildMasterNested (kunci prefill baru)', () => {
   });
 });
 
+// ===========================================================================
+// FISIK & MEDIS DARI CV AI — LUBANG YANG DIUKUR 2026-10-22
+// ===========================================================================
+// Kandidat jalur CV AI hanya menulis `ai_data_json` (`_lib/ai/cv.ts`); kolom
+// master untuk fisik/medis tidak pernah disentuh. `buildMasterNested` membaca
+// KOLOM saja untuk dua blok itu, jadi rirekisho/CV-template/biodata mereka
+// tercetak dengan mata, golongan darah, dan ukuran kepala kosong.
+//
+// Diukur lewat REST atas 56 baris ber-`ai_data_json`:
+//   medis.mata_kiri  kolom kosong 39 · AI punya 23 ⇒ 23 hilang
+//   golongan_darah   kolom kosong 32 · AI punya 22 ⇒ 22 hilang
+//   fisik.topi       kolom kosong 42 · AI punya  9 ⇒  9 hilang
+//
+// Prioritas mengikuti keputusan pemilik (`903ceef`): AI MENANG, kolom cadangan.
+describe('C02 — fisik & medis: nilai CV AI tidak boleh hilang dari berkas', () => {
+  it('kolom kosong + AI terisi ⇒ nilai AI yang dipakai (mata, rokok)', () => {
+    const n = buildMasterNested({
+      mata_kiri: '', merokok: '',
+      ai_data_json: JSON.stringify({ medis: { mata_kiri: '1.0', rokok: 'TIDAK' } }),
+    });
+    expect(n.medis.mata_kiri).toBe('1.0');
+    expect(n.medis.rokok).toBe('TIDAK');
+  });
+
+  it('fisik: ukuran topi/baju/sepatu dari AI saat kolom kosong', () => {
+    const n = buildMasterNested({
+      ai_data_json: JSON.stringify({ fisik: { topi: '58', baju: 'M', sepatu: '26' } }),
+    });
+    expect(n.fisik.topi).toBe('58');
+    expect(n.fisik.baju).toBe('M');
+    expect(n.fisik.sepatu).toBe('26');
+  });
+
+  it('golongan darah dari AI ikut DINORMALKAN ("AB +" → "AB+")', () => {
+    // Tanpa normalisasi, <select> di form tampil kosong walau datanya ada.
+    const n = buildMasterNested({
+      ai_data_json: JSON.stringify({ identitas: { golongan_darah: 'AB +' } }),
+    });
+    expect(n.identitas.golongan_darah).toBe('AB+');
+  });
+
+  it('AI MENANG saat kolom dan AI dua-duanya terisi', () => {
+    const n = buildMasterNested({
+      mata_kiri: '0.5',
+      ai_data_json: JSON.stringify({ medis: { mata_kiri: '1.2' } }),
+    });
+    expect(n.medis.mata_kiri).toBe('1.2');
+  });
+
+  it('kolom tetap dipakai bila AI tidak punya nilainya (tidak ada regresi)', () => {
+    const n = buildMasterNested({
+      mata_kiri: '0.8', ukuran_topi: '57', golongan_darah: 'O',
+      ai_data_json: JSON.stringify({ medis: { mata_kiri: '' }, fisik: {} }),
+    });
+    expect(n.medis.mata_kiri).toBe('0.8');
+    expect(n.fisik.topi).toBe('57');
+    expect(n.identitas.golongan_darah).toBe('O');
+  });
+
+  it('ai_data_json rusak ⇒ tetap kolom, tidak crash', () => {
+    const n = buildMasterNested({ mata_kiri: '0.9', ai_data_json: '{rusak' });
+    expect(n.medis.mata_kiri).toBe('0.9');
+    expect(n.fisik.topi).toBe('');
+  });
+});
+
 
 // ===========================================================================
 // HAPUS BARIS RIWAYAT HARUS BERLAKU
