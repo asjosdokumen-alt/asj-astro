@@ -17,8 +17,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const secure = vi.fn();
+/* Tag sesi dikendalikan tes: `adminData` membandingkan tag saat MENULIS dengan
+   tag saat MEMBACA, jadi ganti akun di tab yang sama harus membatalkan cache. */
+const h = vi.hoisted(() => ({ token: 'tok-A' }));
 vi.mock('../lib/apiClient', () => ({
   default: { secure: (...args: unknown[]) => secure(...args) },
+  tokenTag: () => h.token,
 }));
 
 import { adminDataPeek, invalidateAdminData, loadAdminData } from './adminData';
@@ -29,6 +33,21 @@ describe('adminData — cache payload admin', () => {
   beforeEach(() => {
     invalidateAdminData();
     secure.mockReset();
+    h.token = 'tok-A';
+  });
+
+  it('sesi BERBEDA tidak mewarisi cache — satu tab bisa berganti akun', async () => {
+    secure.mockResolvedValue(PAYLOAD);
+    await loadAdminData();
+    expect(adminDataPeek()).toEqual(PAYLOAD);
+
+    // Akun lain di TAB YANG SAMA. Cache ini hidup di tingkat modul, jadi
+    // pembersihan cache apiClient saat login/logout tidak menyentuhnya.
+    h.token = 'tok-B';
+    expect(adminDataPeek()).toBeNull();
+
+    await loadAdminData(); // ⇒ benar-benar menarik ulang, bukan menyajikan milik A
+    expect(secure).toHaveBeenCalledTimes(2);
   });
 
   it('dua tab yang mount berurutan hanya menarik payload SEKALI', async () => {

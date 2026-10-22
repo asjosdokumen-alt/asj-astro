@@ -27,7 +27,12 @@ const CACHEABLE_READS = new Set([
 // cached kandidat/admin read used to be served to the next user of the same
 // tab. The tag is a short hash OF the token (never the token itself); the
 // whole cache is also dropped on every login/logout flip (subscribe below).
-function tokenTag(): string {
+//
+// DIEPORT 2026-10-22: `store/adminData` punya cache modul sendiri (payload
+// admin 107 KB, TTL 5 menit) dan cache itu TIDAK hidup di sessionStorage,
+// jadi pembersihan di bawah tidak menyentuhnya. Ia memakai tag yang sama
+// supaya satu tab yang berganti akun tidak menyajikan payload akun sebelumnya.
+export function tokenTag(): string {
   try {
     const t = authStore.get().sessionToken;
     if (!t) return 'anon';

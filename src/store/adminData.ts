@@ -28,7 +28,7 @@
  * ⚠ Yang TIDAK di-cache: kegagalan. Kalau permintaan gagal, cache dibiarkan
  * kosong supaya percobaan berikutnya benar-benar mencoba lagi.
  */
-import api from '../lib/apiClient';
+import api, { tokenTag } from '../lib/apiClient';
 
 /** Umur cache. 5 menit: cukup untuk berpindah-pindah tab, cukup pendek untuk
  *  tidak menyajikan data yang basi setelah admin menutup panel sebentar. */
@@ -38,12 +38,19 @@ type Payload = Record<string, unknown>;
 
 let cache: Payload | null = null;
 let cachedAt = 0;
+let cachedTag = '';
 let inflight: Promise<Payload> | null = null;
 
 /** Isi cache yang masih segar, atau `null`. Sinkron — dipakai untuk render awal. */
 export function adminDataPeek<T = Payload>(): T | null {
   if (!cache) return null;
   if (Date.now() - cachedAt > TTL_MS) return null;
+  /* Sesi BERBEDA ⇒ payload ini bukan milik pembaca sekarang. Cache ini hidup
+     di tingkat modul (bukan sessionStorage), jadi pembersihan cache apiClient
+     saat login/logout TIDAK menyentuhnya: satu tab yang berganti akun akan
+     menyajikan daftar kandidat/inbox akun sebelumnya tanpa satu pun permintaan.
+     Tag-nya hash token yang sama dengan yang dipakai apiClient. */
+  if (cachedTag !== tokenTag()) return null;
   return cache as T;
 }
 
@@ -51,6 +58,7 @@ export function adminDataPeek<T = Payload>(): T | null {
 export function invalidateAdminData(): void {
   cache = null;
   cachedAt = 0;
+  cachedTag = '';
 }
 
 /**
@@ -73,6 +81,8 @@ export function loadAdminData<T = Payload>(opts: { force?: boolean } = {}): Prom
       if (payload.success !== false) {
         cache = payload;
         cachedAt = Date.now();
+        // Tag sesi DICATAT saat menulis, dibandingkan saat membaca.
+        cachedTag = tokenTag();
       }
       return payload;
     })
