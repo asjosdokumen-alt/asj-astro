@@ -262,13 +262,15 @@ export function buildMasterNested(row: any): any {
   const aiArrOf = (key: string) => (aiParsed && Array.isArray(aiParsed[key]) ? aiParsed[key] : null);
   const aiW = aiParsed?.wawancara || {};
   const vw = (col: string, ...aiKeys: string[]) => {
-    if (col) {
-      const c = v(col);
-      if (c !== '') return c;
-    }
+    // AI menang: kandidat mengisi lewat CV AI sebagai jalur utama; form Master
+    // hampir tidak pernah lengkap. Jadi bila AI punya nilai, ia menimpa master.
     for (const k of aiKeys) {
       const a = aiW[k];
       if (a !== undefined && a !== null && String(a).trim() !== '') return toText(a);
+    }
+    if (col) {
+      const c = v(col);
+      if (c !== '') return c;
     }
     return '';
   };

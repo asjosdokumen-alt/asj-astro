@@ -491,10 +491,12 @@ function masterGroupLines(group: string, value: unknown): string[] {
  * lewat form Master (kolom terisi) atau lewat CV AI (hanya `ai_data_json`).
  *
  * Fungsi ini mengisi kekosongan itu dari `AIDATAJSON` yang ikut di respons
- * `getDrafCvMaster`. Arahnya SATU ARAH — kolom master selalu menang; AI hanya
- * mengisi yang kosong. Pemetaan ejaannya memakai `AI_CV_PATHS` (satu sumber
- * yang juga dipakai form), jadi `motivasi_id` milik AI tetap mendarat di
- * `wawancara.motivasi_ke_jepang` yang dibaca label di berkas ini.
+ * `getDrafCvMaster`. Arahnya SATU ARAH — **AI menang**; kandidat mengisi lewat
+ * CV AI sebagai jalur utama, jadi bila AI punya nilai ia menimpa master. Kolom
+ * master hanya dipakai sebagai cadangan kalau AI kosong. Pemetaan ejaannya
+ * memakai `AI_CV_PATHS` (satu sumber yang juga dipakai form), jadi `motivasi_id`
+ * milik AI tetap mendarat di `wawancara.motivasi_ke_jepang` yang dibaca label di
+ * berkas ini.
  */
 export function mergeAiGaps(master: Record<string, unknown>): Record<string, unknown> {
   let ai: unknown = null;
@@ -513,21 +515,23 @@ export function mergeAiGaps(master: Record<string, unknown>): Record<string, unk
 
   for (const paths of Object.values(AI_CV_PATHS)) {
     const target = paths[0];
-    if (isGood(getPath(out, target))) continue;
+    // AI menang: kandidat mengisi lewat CV AI sebagai jalur utama; form Master
+    // hampir tidak pernah lengkap. Jadi bila AI punya nilai, ia menimpa master.
+    let aiValue: unknown = null;
     for (const p of paths) {
       const v = getPath(ai, p);
-      if (!isGood(v)) continue;
-      const segs = target.split('.');
-      let cur: Record<string, unknown> = out;
-      for (let i = 0; i < segs.length - 1; i++) {
-        const next = cur[segs[i]];
-        const branch = next && typeof next === 'object' && !Array.isArray(next) ? next : {};
-        cur[segs[i]] = branch;
-        cur = branch as Record<string, unknown>;
-      }
-      cur[segs[segs.length - 1]] = String(v).trim();
-      break;
+      if (isGood(v)) { aiValue = v; break; }
     }
+    if (!isGood(aiValue)) continue;
+    const segs = target.split('.');
+    let cur: Record<string, unknown> = out;
+    for (let i = 0; i < segs.length - 1; i++) {
+      const next = cur[segs[i]];
+      const branch = next && typeof next === 'object' && !Array.isArray(next) ? next : {};
+      cur[segs[i]] = branch;
+      cur = branch as Record<string, unknown>;
+    }
+    cur[segs[segs.length - 1]] = String(aiValue).trim();
   }
   return out;
 }

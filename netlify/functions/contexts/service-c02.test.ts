@@ -272,15 +272,15 @@ describe('buildMasterNested: wawancara dari ai_data_json saat kolom kosong (2026
     expect(n.wawancara.lama_di_jepang).toBe('3');
   });
 
-  it('kolom master menang atas AI (satu arah)', () => {
+  it('AI menang atas kolom master — CV AI adalah jalur utama', () => {
     const n = buildMasterNested({
       kelebihan: 'Rajin', motivasi_ke_jepang: 'Semangat',
       ai_data_json: JSON.stringify({
         wawancara: { kelebihan_id: 'Disiplin', motivasi_ke_jepang: 'Ingin bekerja' },
       }),
     }) as { wawancara: Record<string, unknown> };
-    expect(n.wawancara.kelebihan_id).toBe('Rajin');
-    expect(n.wawancara.motivasi_ke_jepang).toBe('Semangat');
+    expect(n.wawancara.kelebihan_id).toBe('Disiplin');
+    expect(n.wawancara.motivasi_ke_jepang).toBe('Ingin bekerja');
   });
 
   it('promosi_diri (kolom) → promosi_id (output) lewat fallback AI', () => {

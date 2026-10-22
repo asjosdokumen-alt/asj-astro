@@ -59,14 +59,15 @@ describe('biodataExport — jawaban CV AI ikut terunduh', () => {
     expect(text).toContain('LAKI-LAKI');
   });
 
-  it('kolom master MENANG atas AI — koreksi manual tidak ditimpa', () => {
+  it('AI menang atas kolom master — CV AI adalah jalur utama', () => {
     const master = {
       ...MASTER_AI_ONLY,
       wawancara: { ...MASTER_AI_ONLY.wawancara, kelebihan_id: 'HASIL KOREKSI ADMIN' },
     };
     const text = buildBiodataText({ bio: BIO, master });
-    expect(text).toContain('HASIL KOREKSI ADMIN');
-    expect(text).not.toContain('Disiplin dan cepat belajar');
+    // AI punya kelebihan_id, jadi AI yang menang meski master punya nilai lain.
+    expect(text).toContain('Disiplin dan cepat belajar');
+    expect(text).not.toContain('HASIL KOREKSI ADMIN');
   });
 
   it('tanpa AIDATAJSON tetap jalan (tidak crash, tidak mengarang)', () => {
