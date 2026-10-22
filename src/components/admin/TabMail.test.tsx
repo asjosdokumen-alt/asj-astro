@@ -108,4 +108,26 @@ describe('TabMail — baris UPDATE (pembaruan biodata) tidak boleh tak terlihat'
     expect(screen.getByText('SITI AMINAH')).toBeTruthy();
     expect(screen.getByText('BUDI SANTOSO')).toBeTruthy();
   });
+
+  // ==========================================
+  // TEMA TERANG: label tombol ini nyaris tak terbaca.
+  //
+  // DIUKUR 2026-10-22 di DOM (Playwright, `data-theme="light"`, /admin#mail):
+  //   text-violet-200 (#ddd6fe) di atas bg shim #ede9fe = **1,17:1** — teksnya
+  //   praktis hilang, karena `text-violet-200` TIDAK punya padanan tema terang
+  //   sementara `bg-violet-600/20` punya. `text-violet-300` di-shim ke #6d28d9
+  //   ⇒ **5,98:1** terukur (hover 5,12:1).
+  //
+  // Gate kontras (`e2e:contrast`) TIDAK menyapu panel admin, jadi tidak ada
+  // yang menangkapnya; tes ini yang menahan regresinya.
+  // ==========================================
+  it('label tombol pembaruan memakai warna teks yang punya padanan tema terang', async () => {
+    const { container } = render(<TabMail />);
+    await waitFor(() => expect(screen.getByText(/Diperbarui: 1/)).toBeTruthy());
+    const btn = [...container.querySelectorAll('button')]
+      .find((b) => /pembaruan/i.test(b.textContent || ''));
+    if (!btn) throw new Error('tombol "Ada N pembaruan" tidak dirender');
+    expect(btn.className).toContain('text-violet-300');
+    expect(btn.className).not.toContain('text-violet-200');
+  });
 });

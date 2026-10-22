@@ -1255,6 +1255,14 @@ body {
 /* violet */
 :where([data-theme="light"]) :is(.bg-violet-900,.bg-violet-900\/10,.bg-violet-900\/20,.bg-violet-900\/30,.bg-violet-900\/40,.bg-violet-900\/50,.bg-violet-900\/60,.bg-violet-900\/80) { background-color: #f5f3ff; }
 :where([data-theme="light"]) :is(.bg-violet-500\/20,.bg-violet-500\/30,.bg-violet-600\/20) { background-color: #ede9fe; }
+/* `.bg-violet-600/30` = langkah hover tombol "Ada N pembaruan" di TabMail
+   (0fdef09). Satu langkah lebih gelap dari /20 supaya kalau ia muncul sebagai
+   latar DIAM pun ia terbaca sebagai ajakan menekan. ⚠ R20: utility
+   `hover:bg-violet-600/30` tetap TIDAK bisa menang atas aturan unlayered ini,
+   jadi di tema terang tombol itu tidak berubah warna saat hover — yang berubah
+   hanya border (shim border terpisah). Nilainya tetap didaftarkan karena gate
+   `verify:shim` menuntut setiap bg-* ber-alpha punya padanan terang. */
+:where([data-theme="light"]) :is(.bg-violet-600\/30) { background-color: #ddd6fe; }
 :where([data-theme="light"]) :is(.text-violet-300,.text-violet-400,.text-violet-400\/70,.text-violet-300\/80) { color: #6d28d9; }
 :where([data-theme="light"]) :is(.border-violet-500,.border-violet-500\/30,.border-violet-500\/40,.border-violet-500\/50,.border-violet-600) { border-color: #c4b5fd; }
 /* blue */

@@ -263,8 +263,12 @@ export default function TabMail() {
                       tabel kosong tetap terbaca sebagai "tidak ada apa-apa" — jadi
                       beri jalan keluarnya di sini juga. */}
                   {filterStatus === 'MENUNGGU' && counts.UPDATE > 0 && (
+                    /* `text-violet-300`, BUKAN `text-violet-200`: yang 200 tidak punya
+                       padanan tema terang, jadi labelnya #ddd6fe di atas latar #ede9fe
+                       — rasio ~1,06:1, teksnya HILANG. Yang 300 di-shim ke #6d28d9
+                       (≈7,4:1). Diukur 2026-10-22. */
                     <button type="button" onClick={() => setMailFilterStatus('UPDATE')}
-                      class="mt-2 min-h-11 px-3 py-2 rounded-lg bg-violet-600/20 border border-violet-500/50 text-violet-200 text-[11px] font-bold hover:bg-violet-600/30 transition">
+                      class="mt-2 min-h-11 px-3 py-2 rounded-lg bg-violet-600/20 border border-violet-500/50 text-violet-300 text-[11px] font-bold hover:bg-violet-600/30 transition">
                       {t('admin.mail_update_hint').replace('{n}', String(counts.UPDATE))}
                     </button>
                   )}
