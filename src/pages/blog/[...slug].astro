@@ -1,0 +1,180 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+/**
+ * One route for the whole blog cluster.
+ *
+ * `getStaticPaths` derives the URL from the ENTRY ID (the file name), not from
+ * the `slug` key in frontmatter. Two sources for one URL is how a cluster ends
+ * up with a canonical that points at a page nobody renders, so the file name is
+ * the single owner and `slug` in frontmatter is documentation only.
+ *
+ * MEASURED 2026-10-23: the `glob()` loader returns ids that still carry the
+ * collection folder (`blog/panduan-kerja-ke-jepang-2026`), so passing `post.id`
+ * straight into the param produced `/blog/blog/...` in `dist/`. The id is
+ * normalised to its last segment here rather than by widening the route, so a
+ * nested folder added later cannot silently change the public URL.
+ */
+export async function getStaticPaths() {
+  const posts = await getCollection('blog');
+  return posts.map((post) => ({
+    params: { slug: post.id.split('/').pop() },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  showFooter={true}
+>
+  <main id="main-content" class="article-shell">
+    <article class="article">
+      <Content />
+    </article>
+  </main>
+</BaseLayout>
+
+<style is:global>
+  /*
+   * Typography for Markdown-rendered articles.
+   *
+   * WHY NOT `prose`: the repo has no @tailwindcss/typography, so `prose` classes
+   * resolve to nothing and every heading would collapse to body size. These
+   * rules read the SAME tokens as the rest of the site (theme.css), so the
+   * article follows the dark/light switch instead of hard-coding colours.
+   */
+  .article-shell {
+    max-width: 46rem;
+    margin-inline: auto;
+    padding: 3.5rem 1.25rem 6rem;
+  }
+
+  .article {
+    color: var(--color-fg);
+    font-size: 1.0625rem;
+    line-height: 1.75;
+  }
+
+  .article > * + * {
+    margin-top: 1.15em;
+  }
+
+  .article h1 {
+    font-size: clamp(1.9rem, 4vw, 2.6rem);
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.6em;
+  }
+
+  .article h2 {
+    font-size: clamp(1.35rem, 2.6vw, 1.7rem);
+    line-height: 1.25;
+    font-weight: 700;
+    margin-top: 2.4em;
+    padding-top: 1.1em;
+    border-top: 1px solid color-mix(in oklab, var(--color-fg) 12%, transparent);
+  }
+
+  .article h3 {
+    font-size: 1.12rem;
+    font-weight: 700;
+    margin-top: 1.9em;
+  }
+
+  .article p,
+  .article li {
+    color: var(--color-fg);
+  }
+
+  .article a {
+    color: var(--color-accent-sky);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .article strong {
+    font-weight: 700;
+  }
+
+  .article ul,
+  .article ol {
+    padding-left: 1.35em;
+  }
+
+  .article ul {
+    list-style: disc;
+  }
+
+  .article ol {
+    list-style: decimal;
+  }
+
+  .article li + li {
+    margin-top: 0.4em;
+  }
+
+  .article blockquote {
+    border-left: 3px solid var(--color-accent-emerald);
+    background: color-mix(in oklab, var(--color-accent-emerald) 8%, transparent);
+    padding: 0.9em 1.1em;
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
+
+  .article blockquote p {
+    margin: 0;
+  }
+
+  .article blockquote ul {
+    margin-top: 0.5em;
+  }
+
+  .article hr {
+    border: 0;
+    border-top: 1px solid color-mix(in oklab, var(--color-fg) 14%, transparent);
+    margin: 2.5em 0;
+  }
+
+  .article img {
+    width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in oklab, var(--color-fg) 12%, transparent);
+  }
+
+  /* Markdown renders the caption as the <em> paragraph after an image. */
+  .article img + em,
+  .article p > em:only-child {
+    display: block;
+    font-size: 0.875rem;
+    color: var(--color-fg-muted);
+    margin-top: 0.6em;
+  }
+
+  .article table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9375rem;
+    display: block;
+    overflow-x: auto;
+  }
+
+  .article th,
+  .article td {
+    border: 1px solid color-mix(in oklab, var(--color-fg) 14%, transparent);
+    padding: 0.55em 0.7em;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .article th {
+    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+    font-weight: 700;
+  }
+</style>

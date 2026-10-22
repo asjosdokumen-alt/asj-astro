@@ -1,0 +1,123 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://asjastro.netlify.app/blog/cara-daftar-kerja-ke-jepang-2026#article",
+      "headline": "Cara Daftar Kerja ke Jepang 2026: Alur, Dokumen, dan Urutan yang Benar",
+      "description": "Urutan pendaftaran kerja ke Jepang 2026: dokumen yang disiapkan, 6 tahap proses, beda jalur LPK dan SO, serta kesalahan yang membuat pendaftaran diulang.",
+      "image": [
+        "https://asjastro.netlify.app/og/cara-daftar-kerja-ke-jepang-2026.png"
+      ],
+      "datePublished": "2026-10-22",
+      "dateModified": "2026-10-22",
+      "inLanguage": "id-ID",
+      "author": {
+        "@type": "Organization",
+        "name": "PT Amanah Sakura Japan",
+        "url": "https://asjastro.netlify.app/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "ASJ Portal — PT Amanah Sakura Japan",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://asjastro.netlify.app/icons/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://asjastro.netlify.app/blog/cara-daftar-kerja-ke-jepang-2026"
+      },
+      "isPartOf": {
+        "@type": "Article",
+        "@id": "https://asjastro.netlify.app/blog/panduan-kerja-ke-jepang-2026#article",
+        "name": "Kerja ke Jepang 2026: Syarat, Biaya, Gaji & Proses"
+      },
+      "citation": [
+        "https://www.ssw.go.jp/en/about/step/",
+        "https://www.ssw.go.jp/en/about/visa/"
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://asjastro.netlify.app/blog/cara-daftar-kerja-ke-jepang-2026#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Apakah bisa daftar tanpa biaya?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tidak ada pendaftaran yang benar-benar Rp 0. Yang ada dua: biaya ditanggung pemberi kerja (pilihan lowongan lebih sempit), atau ditalangi lalu dipotong dari gaji. Keduanya sah asalkan tertulis jelas. Yang tidak jujur adalah menyebut keduanya \"gratis\"."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah harus sudah bisa bahasa Jepang sebelum mendaftar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tidak untuk pendaftaran kelas — kamu justru mendaftar untuk belajar. Tapi untuk lamaran kerja jalur SSW tipe (i), kamu harus lulus JFT-Basic A2 atau JLPT N4 sebelum bisa diseleksi."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Berapa usia maksimal untuk mendaftar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Berbeda per jalur dan per lembaga. Untuk program ASJ: 18–28 tahun. Jalur SSW di lembaga lain bisa punya rentang berbeda, jadi tanyakan langsung."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah tato kecil tetap menggagalkan?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Banyak perusahaan Jepang menolaknya, dan ketentuan ASJ mensyaratkan tidak bertato. Kalau kamu punya tato, tanyakan sejak awal — sebelum membayar biaya program, bukan setelah."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Kalau ditolak, apakah bisa mendaftar lagi?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Bisa, tapi ketahui dulu penyebabnya. Penolakan karena level bahasa berbeda penanganannya dengan penolakan karena hasil MCU. Mendaftar ulang tanpa memperbaiki penyebabnya hanya mengulang hasil yang sama."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah formulir ini menjamin diterima?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tidak. Pendaftaran membuka proses seleksi, bukan memutuskan hasilnya. Kelulusan bergantung pada uji keterampilan, wawancara, hasil MCU, dan ketersediaan lowongan yang cocok."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://asjastro.netlify.app/blog/cara-daftar-kerja-ke-jepang-2026#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Beranda",
+          "item": "https://asjastro.netlify.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Panduan Kerja ke Jepang 2026",
+          "item": "https://asjastro.netlify.app/blog/panduan-kerja-ke-jepang-2026"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Cara Daftar Kerja ke Jepang 2026",
+          "item": "https://asjastro.netlify.app/blog/cara-daftar-kerja-ke-jepang-2026"
+        }
+      ]
+    }
+  ]
+}

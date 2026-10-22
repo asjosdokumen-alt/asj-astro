@@ -1,0 +1,134 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://asjastro.netlify.app/blog/panduan-kerja-ke-jepang-2026#article",
+      "headline": "Panduan Kerja ke Jepang 2026: Syarat, Biaya, Gaji, dan Prosesnya",
+      "description": "Kerja ke Jepang 2026: rincian biaya, upah per jam, simulasi gaji bersih, timeline 6 tahap, dan 7 tanda agensi tidak resmi. Cek dulu sebelum bayar.",
+      "image": [
+        "https://asjastro.netlify.app/og/panduan-kerja-ke-jepang-2026.png"
+      ],
+      "datePublished": "2026-10-22",
+      "dateModified": "2026-10-22",
+      "inLanguage": "id-ID",
+      "author": {
+        "@type": "Organization",
+        "name": "PT Amanah Sakura Japan",
+        "url": "https://asjastro.netlify.app/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "ASJ Portal — PT Amanah Sakura Japan",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://asjastro.netlify.app/icons/icon-512.png",
+          "width": 512,
+          "height": 512
+        }
+      },
+      "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "https://asjastro.netlify.app/blog/panduan-kerja-ke-jepang-2026"
+      },
+      "about": [
+        { "@type": "Thing", "name": "Kerja ke Jepang" },
+        { "@type": "Thing", "name": "Specified Skilled Worker (SSW)" },
+        { "@type": "Thing", "name": "Pemagangan Jepang" }
+      ],
+      "citation": [
+        "https://www.ssw.go.jp/en/about/visa/",
+        "https://www.ssw.go.jp/en/about/step/",
+        "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/roudoukijun/minimumichiran/index.html"
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://asjastro.netlify.app/blog/panduan-kerja-ke-jepang-2026#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Berapa biaya kerja ke Jepang lewat LPK?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Berkomponen: pelatihan bahasa, asrama, seragam dan modul, ujian, MCU, paspor, visa, tiket, dan biaya jasa lembaga. Contoh konkretnya, biaya program ASJ Rp 6.000.000 dan bisa dicicil. Nominal lembaga lain berbeda, tergantung jalur dan apa yang sudah termasuk. Selalu minta rincian tertulis."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Berapa gaji kerja di Jepang per bulan untuk orang Indonesia?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Dasarnya upah per jam. Rata-rata nasional tertimbang 2026 sekitar ¥1.177/jam (keputusan Dewan Upah Minimum Pusat, Juli 2026). Dengan 173 jam/bulan, gaji kotor dasar sekitar ¥203.621; take-home lebih kecil setelah pajak, asuransi sosial, dan asrama — dalam ilustrasi kami sekitar ¥148.078. Angka per prefektur berbeda, dan di prefektur tujuan ASJ gaji kotor berkisar ¥187.705–193.241."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah bisa kerja ke Jepang tanpa biaya?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tidak ada yang benar-benar Rp 0. Yang ada dua: ditanggung pemberi kerja (pilihan lowongan lebih sempit), atau ditalangi lalu dipotong dari gaji. Keduanya sah asalkan tertulis jelas di kontrak. Yang tidak jujur adalah menyebut keduanya \"gratis\"."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Berapa umur maksimal untuk kerja ke Jepang?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Beda per jalur dan per lembaga, jadi tidak ada satu angka universal. Untuk program ASJ, ketentuannya 18–28 tahun. Jalur SSW di lembaga lain bisa punya rentang berbeda. Tanyakan langsung ketentuan usia untuk jalur yang kamu incar."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah harus bisa bahasa Jepang? Minimal level berapa?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ya. Menurut ISA, SSW tipe (i) mewajibkan lulus uji keterampilan bidang dan JFT-Basic A2 atau JLPT N4 ke atas. Untuk transportasi (taksi/bus) dan perkeretaapian, wajib JLPT N3. Untuk kaigo, ada tambahan Ujian Evaluasi Bahasa Jepang Perawatan Lansia."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Berapa lama proses dari daftar sampai berangkat?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tidak ada angka tunggal. Alurnya enam tahap: pendaftaran, pelatihan (3–6 bulan), ujian, wawancara dan kontrak, dokumen dan COE, lalu visa dan keberangkatan. Menurut ISA, COE saja butuh 1–3 bulan. Totalnya bergantung pada kecepatan bahasa dan ketersediaan lowongan."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah kerja ke Jepang aman dan legal? Bagaimana cek agensinya?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Legal, asalkan lewat jalur resmi. Dasar hukumnya UU No. 18 Tahun 2017 tentang Pelindungan Pekerja Migran Indonesia, dengan kewenangan pada Kementerian Pelindungan Pekerja Migran Indonesia. Cek izin lembaga lewat kanal resmi kementerian, dan waspadai transfer ke rekening pribadi atau janji \"pasti lulus\"."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Apakah pekerja di Jepang bisa membawa keluarga?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tergantung jalur. Menurut ISA, SSW tipe (i) tidak bisa membawa keluarga, dan total masa kerjanya maksimal 5 tahun. SSW tipe (ii) bisa membawa keluarga dan tanpa batas atas masa tinggal. Pemagangan umumnya juga tidak mengizinkan — kalau keluarga prioritas, targetkan SSW tipe (ii)."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://asjastro.netlify.app/blog/panduan-kerja-ke-jepang-2026#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Beranda",
+          "item": "https://asjastro.netlify.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Panduan Kerja ke Jepang 2026",
+          "item": "https://asjastro.netlify.app/blog/panduan-kerja-ke-jepang-2026"
+        }
+      ]
+    }
+  ]
+}
