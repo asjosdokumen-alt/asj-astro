@@ -339,7 +339,7 @@ export const jpTranslations: Record<string, string> = {
     "form.mf_penyakit": "重い病気の既後歴（正直にご記入ください）",
     "form.mf_perusahaan": "会社名",
     "form.mf_ph_alergi": "薬・食品アレルギーがあれば記入してください…",
-    "form.mf_ph_auto_jp": "保存時に自動で日本語に翻訳されます",
+    "form.mf_ph_auto_jp": "保存時に日本語に翻訳されます",
     "form.mf_ph_baju": "S／M／L／XL",
     "form.mf_ph_belum_punya": "お持ちでない場合は空欄にしてください",
     "form.mf_ph_deskripsi": "あれば記入してください…",

@@ -359,7 +359,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     "form.mf_penyakit": "Riwayat Penyakit Berat (Jujur)",
     "form.mf_perusahaan": "Perusahaan",
     "form.mf_ph_alergi": "Deskripsikan alergi obat/makanan jika ada\u2026",
-    "form.mf_ph_auto_jp": "Otomatis diterjemahkan ke Jepang saat disimpan",
+    /* MEASURED 2026-10-22 (390px): versi lama "Otomatis diterjemahkan ke Jepang
+       saat disimpan" = 286px, sedangkan kotak `#mf-tempatLahir` hanya 261px ⇒
+       terpotong 25px. Dipendekkan tanpa kehilangan makna ("otomatis" sudah
+       tersirat oleh "diterjemahkan"). */
+    "form.mf_ph_auto_jp": "Diterjemahkan ke Jepang saat disimpan",
     "form.mf_ph_baju": "S/M/L/XL",
     "form.mf_ph_belum_punya": "Kosongkan jika belum punya",
     "form.mf_ph_deskripsi": "Deskripsikan jika ada\u2026",
