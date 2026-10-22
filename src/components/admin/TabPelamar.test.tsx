@@ -148,3 +148,29 @@ describe('TabPelamar — lencana siswa ASJ (bukan emoji)', () => {
     expect(screen.queryAllByTitle('ui.badge_official')).toHaveLength(0);
   });
 });
+
+// ==========================================
+// TESTS: kontrak tata letak kotak cari (DIUKUR di browser, 2026-10-22)
+//
+// jsdom tidak menerapkan CSS, jadi yang dijaga adalah MEKANISME-nya; angkanya
+// diukur probe Playwright di 390px: input cari tinggal 100px sementara
+// placeholder butuh 189px ⇒ terpotong 89px, hampir separuh teks hilang.
+// Sebabnya `flex-1` (= flex: 1 1 0%) yang membuat kotak ikut satu baris dengan
+// lima tombol. `w-full` membuatnya mengambil satu baris penuh di mobile.
+// ==========================================
+describe('TabPelamar — kotak cari tidak diremas di mobile', () => {
+  beforeEach(() => { h.kandidatStore.set([BASE]); });
+  afterEach(() => cleanup());
+
+  it('wadah input selebar baris di mobile, bukan flex-1', () => {
+    const { container } = render(<TabPelamar />);
+    const input = container.querySelector('input[placeholder="pelamar.placeholder_search"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    const wrap = input.parentElement as HTMLElement;
+    expect(wrap.className).not.toContain('flex-1');
+    expect(wrap.className).toContain('w-full');
+    // Desktop tidak boleh ikut berubah: 256px + tidak bisa diremas.
+    expect(wrap.className).toContain('md:w-64');
+    expect(wrap.className).toContain('md:shrink-0');
+  });
+});

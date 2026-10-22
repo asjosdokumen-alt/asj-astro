@@ -200,8 +200,13 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
               yang juga memuat lima tombol `whitespace-nowrap`, input 256px itu
               diremas sampai ~93px dan placeholder-nya terpotong terbaca
               "Cari Nama, C…". `w-64` saja tidak cukup: ia hanya mengatur
-              basis, shrink-nya tetap 1. `shrink-0` yang menahannya. */}
-          <div class="relative flex-1 md:flex-none md:w-64 md:shrink-0">
+              basis, shrink-nya tetap 1. `shrink-0` yang menahannya.
+              ⚠ MEASURED 2026-10-22 (390px): `flex-1` juga merusak MOBILE —
+              input ikut satu baris dengan tombol sehingga tinggal 100px dan
+              placeholder 189px terpotong 89px (hampir separuh). `flex-1`
+              diganti `w-full`: di mobile input mengambil satu baris penuh,
+              tombol membungkus ke baris berikutnya (`flex-wrap`). */}
+          <div class="relative w-full md:flex-none md:w-64 md:shrink-0">
             <Icon name="search" class="absolute left-3 top-2.5 text-slate-300 text-sm" />
             <input type="text" value={search} onInput={(e) => { setAdminSearch((e.target as HTMLInputElement).value); resetPage(); }}
               placeholder={t("pelamar.placeholder_search")}
