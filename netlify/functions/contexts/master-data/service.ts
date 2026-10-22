@@ -608,6 +608,102 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
   return out;
 }
 
+/**
+ * `ai_data_json` (seksi bersarang) → kolom skalar `master_database_candidate`.
+ *
+ * KENAPA ADA (2026-10-22, keluhan pemilik: *"cv ai dan form master semua menulis
+ * dan sync ke masterdatabase, harusnya datanya sama kok bisa beda"*):
+ *
+ * Ketiga jalur memang menulis ke TABEL yang sama, tapi tidak ke KOLOM yang sama.
+ * Form Master memakai `buildMasterBody` (kolom skalar), sedangkan jalur CV AI
+ * hanya menulis `ai_data_json` + slot riwayat + URL berkas. Tidak ada penerjemah
+ * dari seksi AI ke nama kolom — jadi untuk kandidat yang hanya mengisi CV AI,
+ * kolomnya kosong. Diukur lewat REST atas 56 baris ber-`ai_data_json`:
+ * **687 sel** kosong padahal nilainya ada di JSON (mis. `mata_kiri` 23 baris,
+ * `golongan_darah` 22, `promosi_diri` 24, `agama` 22).
+ *
+ * Konsekuensinya bukan hanya berkas unduhan: setiap pembaca KOLOM (panel admin,
+ * ekspor CSV, kueri SQL, filter) melihat kandidat itu kosong.
+ *
+ * ATURAN:
+ *   1. HANYA nilai terisi yang menghasilkan kunci. Field AI yang kosong tidak
+ *      boleh mengosongkan kolom yang sudah benar (pemanggil menimpa dengan
+ *      `Object.assign`, jadi kunci yang tidak ada = kolom tidak disentuh).
+ *   2. Nilai ditulis apa adanya; tanggal & enum dikoersi TERPUSAT oleh
+ *      `writeBodyFor` (`_lib/db/client.ts`), bukan di sini.
+ *   3. Kunci alternatif dicoba berurutan — CV AI lama dan baru memakai ejaan
+ *      berbeda (`promosi_id` vs `promosi_diri`, `alergi_id` vs `alergi`).
+ *   4. Kolom yang TIDAK ada di kontrak skema tidak boleh disebut di sini;
+ *      `writeBodyFor` akan membuangnya dan mencatatnya sebagai drift.
+ */
+const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> = {
+  identitas: [
+    ['nama_lengkap', 'nama_lengkap'], ['furigana', 'katakana'], ['namapanggilan', 'panggilan'],
+    ['panggilan_katakana', 'panggilan_katakana'], ['tempat_lahir', 'tempat_lahir'],
+    ['tgl_lahir', 'tgl_lahir'], ['usia', 'umur', 'usia'], ['gender', 'gender'],
+    ['agama', 'agama'], ['agama_jp', 'agama_jp'], ['golongan_darah', 'golongan_darah'],
+    ['status_pernikahan', 'status_nikah'], ['status_pernikahan_jp', 'status_nikah_jp'],
+    ['jumlah_anak', 'anak'], ['email', 'email'], ['alamat_lengkap', 'alamat'],
+    ['nik', 'ktp'], ['no_paspor', 'paspor'], ['driver_license', 'sim'],
+    ['status_eks_jepang', 'status_eks_jepang'],
+  ],
+  fisik: [
+    ['tb', 'tb'], ['bb', 'bb'], ['ukuran_topi', 'topi'], ['ukuranbaju', 'baju'],
+    ['ukuransepatu', 'sepatu'], ['tangandominan', 'tangan_dominan'], ['tahan_ac', 'tahan_ac'],
+  ],
+  medis: [
+    ['mata_kiri', 'mata_kiri'], ['mata_kanan', 'mata_kanan'], ['kacamata', 'kacamata'],
+    ['buta_warna', 'buta_warna'], ['tato', 'tato'], ['merokok', 'rokok'],
+    ['minum_alkohol', 'alkohol'], ['alergi', 'alergi_id', 'alergi'],
+    ['alergi_jp', 'alergi_jp'],
+    ['riwayat_penyakit', 'riwayat_medis_id', 'riwayat_penyakit'],
+    ['riwayat_medis_jp', 'riwayat_medis_jp'],
+    ['riwayat_kecelakaan', 'riwayat_kecelakaan_id', 'riwayat_kecelakaan'],
+    ['riwayat_kecelakaan_jp', 'riwayat_kecelakaan_jp'],
+  ],
+  wawancara: [
+    ['promosi_diri', 'promosi_id', 'promosi_diri'],
+    ['promosi_diri_jp', 'promosi_jp'],
+    ['kelebihan', 'kelebihan_id', 'kelebihan'], ['kelebihan_jp', 'kelebihan_jp'],
+    ['kekurangan', 'kekurangan_id', 'kekurangan'], ['kekurangan_jp', 'kekurangan_jp'],
+    ['hobi_dan_keterampilan', 'hobi_id', 'hobi'], ['hobi_jp', 'hobi_jp'],
+    ['keahlian_khusus', 'keahlian_id', 'keahlian_khusus'],
+    ['keahlian_khusus_jp', 'keahlian_khusus_jp', 'keahlian_jp'],
+    ['alasan_memilih_bidang', 'alasan_id', 'alasan_memilih_bidang'],
+    ['alasan_memilih_bidang_jp', 'alasan_memilih_bidang_jp', 'alasan_bidang_jp'],
+    ['motivasi_ke_jepang', 'moti_id', 'motivasi_ke_jepang'],
+    ['motivasi_ke_jepang_jp', 'motivasi_ke_jepang_jp', 'motivasi_jp'],
+    ['keinginan_pribadi', 'keinginan_id', 'keinginan_pribadi'],
+    ['keinginan_pribadi_jp', 'keinginan_pribadi_jp', 'keinginan_jp'],
+    ['rencana_setelah_pulang', 'pulang_id', 'rencana_setelah_pulang'],
+    ['rencana_setelah_pulang_jp', 'rencana_setelah_pulang_jp', 'rencana_pulang_jp'],
+    ['tujuan_ke_jepang', 'tujuan_id', 'tujuan_ke_jepang'],
+    ['tujuan_ke_jepang_jp', 'tujuan_ke_jepang_jp'],
+    ['harapan_gaji_yen', 'gaji_yen', 'harapan_gaji'],
+    ['harapan_tabungan', 'tabungan', 'harapan_tabungan'],
+  ],
+};
+
+export function masterColumnsFromAi(aiData: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!aiData || typeof aiData !== 'object' || Array.isArray(aiData)) return out;
+  const sections = aiData as Record<string, unknown>;
+  for (const [section, fields] of Object.entries(AI_TO_MASTER_COLUMNS)) {
+    const grp = sections[section];
+    if (!grp || typeof grp !== 'object' || Array.isArray(grp)) continue;
+    const g = grp as Record<string, unknown>;
+    for (const [col, ...aiKeys] of fields) {
+      for (const k of aiKeys) {
+        const val = g[k];
+        if (val === undefined || val === null) continue;
+        const text = String(val).trim();
+        if (text !== '') { out[col] = text; break; }
+      }
+    }
+  }
+  return out;
+}
+
 export function buildMasterBody(d: any): Record<string, any> {
   const body: Record<string, any> = {};
   for (const [from, to] of Object.entries(SNAKE_TO_CAMEL)) {

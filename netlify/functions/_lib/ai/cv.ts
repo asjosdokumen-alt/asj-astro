@@ -2,7 +2,7 @@ import { normalizeWa, supabaseJson, APPLY_WA_COLS } from '../db/client.ts';
 import type { FormRawRow } from '../db/row-types';
 import { AI_SUBMISSION_COLS, ESIGNATURE_COLS } from '../db/projections.ts';
 import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
-import { buildMasterNested, buildRiwayatSlots } from '../../contexts/master-data';
+import { buildMasterNested, buildRiwayatSlots, masterColumnsFromAi } from '../../contexts/master-data';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../../contexts/applications';
 import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
 import { findFormsByWa } from '../db/forms.ts';
@@ -444,6 +444,20 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       const masterBody: any = {
         ai_data_json: JSON.stringify(aiOut),
         ai_updated_at: new Date().toISOString(),
+        // Kolom skalar. SEBELUM 2026-10-22 jalur ini hanya menulis `ai_data_json`
+        // + slot riwayat + URL berkas, sementara Form Master menulis kolom lewat
+        // `buildMasterBody`. Dua "header" untuk data yang sama, dan tidak ada
+        // penerjemah dari seksi AI ke nama kolom — jadi kandidat yang hanya
+        // mengisi CV AI punya kolom KOSONG walau datanya ada di JSON.
+        //
+        // Diukur lewat REST atas 56 baris ber-`ai_data_json`: **687 sel** hilang
+        // (mata_kiri 23, golongan_darah 22, promosi_diri 24, agama 22, …), dan
+        // itu bukan cuma soal berkas unduhan — panel admin, ekspor CSV, dan
+        // kueri SQL membaca KOLOM.
+        //
+        // Hanya nilai TERISI yang dikembalikan, jadi `Object.assign` di sini
+        // tidak pernah mengosongkan kolom yang sudah benar.
+        ...masterColumnsFromAi(aiData),
       };
       // Kolom slot riwayat. Jalur ini DULU tidak menulisnya sama sekali, jadi
       // sekolah/pekerjaan/keluarga yang dihapus di form tetap hidup di kolom

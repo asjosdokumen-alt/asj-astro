@@ -14,7 +14,8 @@
 // (skema chat.ts), slot kosong tidak ditulis. Pure builders → DB-free.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { buildMasterBody, buildAiOverflow, mergeAiOverflow, buildMasterNested, buildRiwayatSlots, pruneAiRiwayat } from './master-data';
+import { buildMasterBody, buildAiOverflow, mergeAiOverflow, buildMasterNested, buildRiwayatSlots, pruneAiRiwayat, masterColumnsFromAi } from './master-data';
+import { TABLE_COLUMNS } from '../_lib/db/schema.generated';
 
 describe('C02 — buildMasterBody (payload MasterFullForm → kolom master)', () => {
   it('eksJepang TIDAK ditimpa lamaJepang (kolisi status_eks_jepang)', () => {
@@ -195,6 +196,65 @@ describe('C02 — fisik & medis: nilai CV AI tidak boleh hilang dari berkas', ()
     const n = buildMasterNested({ mata_kiri: '0.9', ai_data_json: '{rusak' });
     expect(n.medis.mata_kiri).toBe('0.9');
     expect(n.fisik.topi).toBe('');
+  });
+});
+
+// ===========================================================================
+// masterColumnsFromAi — seksi AI → KOLOM master (2026-10-22)
+// ===========================================================================
+// Keluhan pemilik: *"cv ai dan form master semua menulis dan sync ke
+// masterdatabase, harusnya datanya sama kok bisa beda"*. Tabelnya sama,
+// KOLOM-nya tidak: Form Master lewat `buildMasterBody`, CV AI hanya
+// `ai_data_json` + slot riwayat + URL. Diukur: 687 sel kosong di 56 baris.
+//
+// Uji tabelnya di sini (murni); jalur tulis yang benar-benar mengirim body ke
+// PostgREST diuji di `e2e/ai-cv-submit.test.ts`.
+describe('C02 — masterColumnsFromAi (seksi AI → kolom master)', () => {
+  it('memetakan ejaan AI ke ejaan KOLOM (bukan sekadar menyalin kunci)', () => {
+    const cols = masterColumnsFromAi({
+      identitas: { katakana: 'ブディ', status_nikah: 'BELUM MENIKAH', anak: '2', ktp: '3577', paspor: 'C123', sim: 'A' },
+      fisik: { topi: '58', baju: 'M', sepatu: '26', tangan_dominan: 'KANAN' },
+      medis: { rokok: 'TIDAK', alkohol: 'TIDAK', riwayat_medis_id: 'ASMA' },
+      wawancara: { promosi_id: 'PEKERJA KERAS', gaji_yen: '180000' },
+    });
+    expect(cols).toEqual({
+      furigana: 'ブディ', status_pernikahan: 'BELUM MENIKAH', jumlah_anak: '2',
+      nik: '3577', no_paspor: 'C123', driver_license: 'A',
+      ukuran_topi: '58', ukuranbaju: 'M', ukuransepatu: '26', tangandominan: 'KANAN',
+      merokok: 'TIDAK', minum_alkohol: 'TIDAK', riwayat_penyakit: 'ASMA',
+      promosi_diri: 'PEKERJA KERAS', harapan_gaji_yen: '180000',
+    });
+  });
+
+  it('kunci alternatif: ejaan CV AI lama tetap terbaca', () => {
+    const cols = masterColumnsFromAi({ medis: { alergi: 'UDANG' }, wawancara: { kelebihan: 'TELITI' } });
+    expect(cols.alergi).toBe('UDANG');
+    expect(cols.kelebihan).toBe('TELITI');
+  });
+
+  it('nilai KOSONG tidak menghasilkan kunci — kolom lama tidak boleh terhapus', () => {
+    const cols = masterColumnsFromAi({ fisik: { topi: '', baju: '   ' }, medis: { mata_kiri: null } });
+    expect(cols).toEqual({});
+  });
+
+  it('seksi yang hilang / bukan objek tidak melempar', () => {
+    expect(masterColumnsFromAi(null)).toEqual({});
+    expect(masterColumnsFromAi('bukan objek')).toEqual({});
+    expect(masterColumnsFromAi({ fisik: [] })).toEqual({});
+    expect(masterColumnsFromAi({})).toEqual({});
+  });
+
+  it('hanya kolom yang ADA di kontrak skema (kalau tidak, PATCH dibatalkan 400)', () => {
+    // `writeBodyFor` membuang kolom asing dan mencatatnya sebagai drift — tapi
+    // satu kunci hantu di body yang sama membatalkan SELURUH baris di PostgREST.
+    const cols = masterColumnsFromAi({
+      identitas: { nama_lengkap: 'A', katakana: 'B', panggilan: 'C', tempat_lahir: 'D', tgl_lahir: '2000-01-01', umur: '25', gender: 'L', agama: 'ISLAM', golongan_darah: 'O', status_nikah: 'X', anak: '1', email: 'a@b.c', alamat: 'E', ktp: 'F', paspor: 'G', sim: 'H', status_eks_jepang: 'I' },
+      fisik: { tb: '1', bb: '2', topi: '3', baju: '4', sepatu: '5', tangan_dominan: '6', tahan_ac: '7' },
+      medis: { mata_kiri: '8', mata_kanan: '9', kacamata: '10', buta_warna: '11', tato: '12', rokok: '13', alkohol: '14', alergi_id: '15', riwayat_medis_id: '16', riwayat_kecelakaan_id: '17' },
+      wawancara: { promosi_id: '18', kelebihan_id: '19', kekurangan_id: '20', hobi_id: '21', keahlian_id: '22', alasan_id: '23', moti_id: '24', keinginan_id: '25', pulang_id: '26', tujuan_id: '27', gaji_yen: '28', tabungan: '29' },
+    });
+    const known = TABLE_COLUMNS.master_database_candidate;
+    expect(Object.keys(cols).filter((c) => !known.includes(c))).toEqual([]);
   });
 });
 

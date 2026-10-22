@@ -65,7 +65,16 @@ vi.mock('../netlify/functions/contexts/identity', () => ({
   verifyToken: vi.fn(() => ({ role: 'admin', wa: '6285700000001' })),
 }));
 
-vi.mock('../netlify/functions/contexts/master-data', () => ({ buildMasterNested: vi.fn(() => ({})) }));
+vi.mock('../netlify/functions/contexts/master-data', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../netlify/functions/contexts/master-data')>();
+  return {
+    ...actual,
+    // `buildMasterNested` dipakai jalur UNDUHAN, bukan jalur simpan — tidak perlu
+    // dijalankan di sini. Sisanya harus ASLI: `masterColumnsFromAi` justru yang
+    // sedang diuji lewat body tulis di bawah.
+    buildMasterNested: vi.fn(() => ({})),
+  };
+});
 
 /**
  * Di produksi kedua helper ini MEMBACA `database_asj_form` lewat `getFormsByWa`
@@ -261,5 +270,100 @@ describe('handleSubmitDataAsj — kolom yang ditulis harus ada di kontrak skema'
     );
     expect(checked.length).toBeGreaterThan(0);
     expect(checked.map((c) => c.table)).toContain('ai_form_submissions');
+  });
+});
+
+/**
+ * Kolom SKALAR, bukan hanya JSON (2026-10-22).
+ *
+ * Keluhan pemilik: *"cv ai dan form master semua menulis dan sync ke
+ * masterdatabase, harusnya datanya sama kok bisa beda"*. Betul — tabelnya sama,
+ * kolomnya tidak. Form Master menulis kolom lewat `buildMasterBody`, jalur CV AI
+ * hanya menulis `ai_data_json` + slot riwayat + URL berkas. Diukur lewat REST
+ * atas 56 baris: 687 sel kosong padahal nilainya ada di JSON.
+ *
+ * Tes ini memeriksa BODY TULIS yang benar-benar dikirim ke PostgREST, bukan
+ * fungsi pemetaannya saja — supaya "pemetaannya benar tapi tidak dipanggil"
+ * tidak bisa lolos.
+ */
+describe('handleSubmitDataAsj — kolom skalar ikut ditulis, bukan hanya ai_data_json', () => {
+  function payloadRich() {
+    return [
+      {
+        context: { wa: '6285700000001', job: 'KAIGO' },
+        identitas: {
+          nama_lengkap: 'BUDI SANTOSO', hp: '6285700000001', gender: 'LAKI-LAKI',
+          katakana: 'ブディ', tempat_lahir: 'MADIUN', tgl_lahir: '2000-01-02',
+          golongan_darah: 'AB +', agama: 'ISLAM', status_nikah: 'BELUM MENIKAH',
+          anak: '0', email: 'budi@example.com', alamat: 'JL. MERDEKA 1',
+          ktp: '3577010101000001',
+        },
+        fisik: { tb: '170', bb: '60', topi: '58', baju: 'M', sepatu: '26' },
+        medis: { mata_kiri: '1.0', mata_kanan: '0.9', rokok: 'TIDAK', tato: 'TIDAK' },
+        wawancara: { promosi_id: 'Saya pekerja keras', gaji_yen: '180000', tabungan: '5000000' },
+      },
+    ];
+  }
+
+  /** Satu-satunya TULISAN ke master_database_candidate pada simpan ini. */
+  function masterWrite() {
+    const writes = rtt.filter(
+      (c) => c.table === 'master_database_candidate' && c.method !== 'GET' && c.body,
+    );
+    expect(writes).toHaveLength(1);
+    return writes[0].body as Record<string, unknown>;
+  }
+
+  it('nilai AI sampai ke KOLOM, dengan ejaan kolom yang benar', async () => {
+    await handleSubmitDataAsj(payloadRich(), 'tok-admin');
+    const body = masterWrite();
+
+    // fisik
+    expect(body.tb).toBe('170');
+    expect(body.ukuran_topi).toBe('58'); // AI: fisik.topi
+    expect(body.ukuranbaju).toBe('M'); // AI: fisik.baju
+    // medis
+    expect(body.mata_kiri).toBe('1.0');
+    expect(body.merokok).toBe('TIDAK'); // AI: medis.rokok
+    // identitas (ejaan kolomnya BERBEDA dari kunci AI)
+    expect(body.furigana).toBe('ブディ'); // AI: identitas.katakana
+    expect(body.tempat_lahir).toBe('MADIUN');
+    expect(body.tgl_lahir).toBe('2000-01-02');
+    expect(body.status_pernikahan).toBe('BELUM MENIKAH'); // AI: status_nikah
+    expect(body.jumlah_anak).toBe('0'); // AI: identitas.anak
+    expect(body.nik).toBe('3577010101000001'); // AI: identitas.ktp
+    // wawancara
+    expect(body.promosi_diri).toBe('Saya pekerja keras'); // AI: promosi_id
+    expect(body.harapan_gaji_yen).toBe('180000'); // AI: gaji_yen
+  });
+
+  it('golongan darah ditulis apa adanya — koersi terjadi di writeBodyFor, bukan di sini', async () => {
+    // `supabaseJson` di-mock, jadi `writeBodyFor` (yang menormalkan "AB +" →
+    // "AB+") tidak ikut jalan. Yang dijaga di sini: pemetaan TIDAK membuang
+    // nilainya. Normalisasinya sendiri diuji di kontrak `_lib/db/client.ts`.
+    await handleSubmitDataAsj(payloadRich(), 'tok-admin');
+    expect(masterWrite().golongan_darah).toBe('AB +');
+  });
+
+  it('field AI yang KOSONG tidak mengosongkan kolom (kunci tidak dikirim)', async () => {
+    const p = payloadRich();
+    p[0].fisik = { tb: '170' } as never;
+    p[0].medis = {} as never;
+    await handleSubmitDataAsj(p, 'tok-admin');
+    const body = masterWrite();
+    expect(body.tb).toBe('170');
+    // Bukan `undefined` yang dikirim — KUNCI-nya tidak ada sama sekali,
+    // supaya PATCH tidak menghapus nilai yang sudah benar di baris lama.
+    expect('ukuran_topi' in body).toBe(false);
+    expect('mata_kiri' in body).toBe(false);
+  });
+
+  it('ai_data_json TETAP ditulis — kolom menambah, bukan menggantikan', async () => {
+    await handleSubmitDataAsj(payloadRich(), 'tok-admin');
+    const body = masterWrite();
+    expect(typeof body.ai_data_json).toBe('string');
+    const parsed = JSON.parse(String(body.ai_data_json)) as Record<string, Record<string, unknown>>;
+    expect(parsed.fisik.topi).toBe('58');
+    expect(parsed.medis.mata_kiri).toBe('1.0');
   });
 });

@@ -15,6 +15,7 @@ export {
   buildBioPatch,
   buildMasterNested,
   buildMasterBody,
+  masterColumnsFromAi,
   MASTER_COLUMN_MISSING,
   buildAiOverflow,
   mergeAiOverflow,
