@@ -50,8 +50,25 @@ export function adminDataPeek<T = Payload>(): T | null {
      saat login/logout TIDAK menyentuhnya: satu tab yang berganti akun akan
      menyajikan daftar kandidat/inbox akun sebelumnya tanpa satu pun permintaan.
      Tag-nya hash token yang sama dengan yang dipakai apiClient. */
-  if (cachedTag !== tokenTag()) return null;
+  if (cachedTag !== currentTag()) return null;
   return cache as T;
+}
+
+/**
+ * Tag sesi, atau `'anon'` kalau sumbernya tidak bisa dibaca.
+ *
+ * ⚠ TIDAK boleh melempar. Kalau ia melempar, `loadAdminData` tidak pernah
+ * selesai dan setiap tab admin tertahan di skeleton — kegagalan yang jauh
+ * lebih mahal daripada melemahkan pemeriksaan tag. `apiClient` sudah
+ * menangkap sendiri; ini lapis kedua untuk kasus modul itu diganti (tes yang
+ * mem-mock `apiClient` tanpa `tokenTag`, mis. `e2e/load-failed-vs-empty`).
+ */
+function currentTag(): string {
+  try {
+    return tokenTag() || 'anon';
+  } catch {
+    return 'anon';
+  }
 }
 
 /** Buang cache. Dipanggil setelah aksi yang mengubah data admin. */
@@ -82,7 +99,7 @@ export function loadAdminData<T = Payload>(opts: { force?: boolean } = {}): Prom
         cache = payload;
         cachedAt = Date.now();
         // Tag sesi DICATAT saat menulis, dibandingkan saat membaca.
-        cachedTag = tokenTag();
+        cachedTag = currentTag();
       }
       return payload;
     })
