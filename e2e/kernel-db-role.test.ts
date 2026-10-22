@@ -35,8 +35,8 @@
  * `exclude` project `frontend` pada `vitest.config.ts`, atau ia berjalan di
  * jsdom dan terhitung dua kali (R13f-bis).
  */
-import { createHmac } from 'node:crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { createHmac, generateKeyPairSync, verify } from 'node:crypto';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { clientFor } from '../netlify/functions/_lib/kernel/db';
 import { signToken } from '../netlify/functions/_lib/session';
 
@@ -137,6 +137,101 @@ describe('kernel/db — peran JWT Supabase untuk klien ber-sesi', () => {
     expect(client.label).toBe('service');
   });
 
+});
+
+/* ═════════════════════════════════════════════════════════════════════════════
+ * EdDSA (jalur Neon) — SAMPAI 2026-10-22 TIDAK ADA TES SAMA SEKALI
+ *
+ * `623030c` menambahkan penandatanganan ganda: HS256 untuk Supabase, EdDSA/
+ * JWKS untuk Neon. Cabang EdDSA-nya tidak pernah dieksekusi satu tes pun —
+ * `grep EdDSA e2e/ netlify/` hanya menemukan kode produksi. Artinya seluruh
+ * cutover Neon bergantung pada kode yang, kalau salah, gagal dengan cara paling
+ * senyap: Neon memverifikasi tanda tangan lewat JWKS, dan tanda tangan yang
+ * tidak cocok muncul sebagai 401 di setiap permintaan ber-RLS — bukan sebagai
+ * tes merah.
+ *
+ * Yang dibuktikan di sini BUKAN "string-nya sama", melainkan bahwa tokennya
+ * benar-benar TERVERIFIKASI oleh kunci publik — persis yang dilakukan Neon.
+ *
+ * ⚠ Kunci dibuat di dalam tes, tidak pernah dari `.env.local`: `env()` jatuh ke
+ * berkas itu kalau process.env kosong, dan tes yang hasilnya bergantung pada
+ * mesin adalah tes yang berbohong (lihat catatan "SENGAJA TIDAK DIUJI" di atas).
+ *
+ * ⚠ `edSigningKey()` menyimpan hasil parse di `cachedEdKey` per PROSES. Karena
+ * itu describe ini WAJIB berjalan sebelum panggilan EdDSA pertama mana pun —
+ * dan ia tidak boleh dipindah ke atas blok HS256: `clientFor()` di blok atas
+ * mengandalkan ALG yang belum diset (default HS256).
+ * ═════════════════════════════════════════════════════════════════════════════ */
+describe('kernel/db — penandatanganan EdDSA (jalur Neon)', () => {
+  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+  const other = generateKeyPairSync('ed25519');
+  const KID = 'e2e-kid-eddsa';
+
+  /** Bagian `header.payload` dan `signature` dari sebuah JWT. */
+  function splitJwt(jwt: string): { signingInput: string; signature: Buffer; header: Record<string, unknown> } {
+    const parts = jwt.split('.');
+    expect(parts).toHaveLength(3);
+    return {
+      signingInput: `${parts[0]}.${parts[1]}`,
+      signature: Buffer.from(parts[2], 'base64url'),
+      header: JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8')) as Record<string, unknown>,
+    };
+  }
+
+  beforeAll(() => {
+    const der = privateKey.export({ type: 'pkcs8', format: 'der' });
+    process.env.SUPABASE_JWT_ALG = 'EdDSA';
+    process.env.SUPABASE_JWT_PRIVATE_KEY = der.toString('base64');
+    process.env.SUPABASE_JWT_KID = KID;
+  });
+
+  afterAll(() => {
+    // Kembalikan ke default supaya berkas lain di proses yang sama tidak
+    // mewarisi ALG ini kalau tesnya dijalankan berurutan dalam satu worker.
+    delete process.env.SUPABASE_JWT_ALG;
+    delete process.env.SUPABASE_JWT_PRIVATE_KEY;
+    delete process.env.SUPABASE_JWT_KID;
+  });
+
+  it('header menyebut alg EdDSA dan membawa kid yang dibaca JWKS', () => {
+    const { header } = splitJwt(clientFor('applications.patchForm', adminToken()).authKey);
+    expect(header.alg).toBe('EdDSA');
+    expect(header.kid).toBe(KID);
+    // `typ` tetap JWT: Neon memeriksanya sebelum apa pun yang lain.
+    expect(header.typ).toBe('JWT');
+  });
+
+  it('tanda tangan TERVERIFIKASI oleh kunci publik — inilah yang dilakukan Neon', () => {
+    const jwt = clientFor('applications.patchForm', adminToken()).authKey;
+    const { signingInput, signature } = splitJwt(jwt);
+    expect(verify(null, Buffer.from(signingInput), publicKey, signature)).toBe(true);
+  });
+
+  it('kontrol negatif: kunci publik LAIN tidak memverifikasi token itu', () => {
+    // Tanpa ini, `verify(...) === true` di atas bisa saja selalu benar.
+    const jwt = clientFor('applications.patchForm', adminToken()).authKey;
+    const { signingInput, signature } = splitJwt(jwt);
+    expect(verify(null, Buffer.from(signingInput), other.publicKey, signature)).toBe(false);
+  });
+
+  it('saat ALG=EdDSA, token TIDAK lagi valid sebagai HS256 (cabang benar-benar berpindah)', () => {
+    // Kalau `createSupabaseJwt` diam-diam jatuh ke HS256, tanda tangannya akan
+    // lolos di sini — dan Neon akan menolak SETIAP permintaan ber-RLS.
+    const jwt = clientFor('applications.patchForm', adminToken()).authKey;
+    expect(signatureValid(jwt, JWT_SECRET)).toBe(false);
+  });
+
+  it('claim tetap dipetakan seperti jalur HS256 (role Postgres nyata, sub dari wa)', () => {
+    const admin = payloadOf(clientFor('applications.patchForm', adminToken()).authKey);
+    expect(admin.role).toBe('service_role');
+    expect(admin.sub).toBe('asj-service');
+    expect(admin.exp as number).toBeGreaterThan(admin.iat as number);
+
+    const kandidat = payloadOf(clientFor('applications.deleteForm', kandidatToken()).authKey);
+    expect(kandidat.role).toBe('authenticated');
+    // Neon butuh `sub`; nomor WA adalah satu-satunya subjek stabil yang ada.
+    expect(kandidat.sub).toBe('628123456789');
+  });
 });
 
 /*
