@@ -61,6 +61,14 @@ const MIME = {
   // every place that measures. `src/lib/serverMime.test.ts` now derives this from
   // dist/ instead of trusting a list.
   '.txt': 'text/plain; charset=utf-8',
+  // `.xml` — kelas cacat yang SAMA lagi (2026-10-22). `dist/sitemap.xml` baru
+  // ada sejak sitemap dibuat (2026-10-21), dan tidak ada yang mengukur ekstensi
+  // itu sampai `src/lib/serverMime.test.ts` menurunkannya dari dist/ — bukan
+  // dari daftar yang ditulis tangan. Tanpa entri ini harness lokal menyajikan
+  // sitemap sebagai application/octet-stream; Netlify menyajikannya benar,
+  // jadi cacatnya tidak terlihat di produksi dan nyata di setiap tempat yang
+  // mengukur. `application/xml` adalah tipe yang diterima Google untuk sitemap.
+  '.xml': 'application/xml; charset=utf-8',
 };
 
 /** Check if a port is available */
