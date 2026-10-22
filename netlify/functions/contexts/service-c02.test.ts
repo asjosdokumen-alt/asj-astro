@@ -146,7 +146,9 @@ describe('C02 — buildMasterNested (kunci prefill baru)', () => {
 //   golongan_darah   kolom kosong 32 · AI punya 22 ⇒ 22 hilang
 //   fisik.topi       kolom kosong 42 · AI punya  9 ⇒  9 hilang
 //
-// Prioritas mengikuti keputusan pemilik (`903ceef`): AI MENANG, kolom cadangan.
+// Prioritas (dikoreksi pemilik 2026-10-22): KOLOM menang, AI hanya mengisi yang
+// kosong. Blok ini menguji arah "AI mengisi kolom kosong"; arah "kolom menang"
+// diuji di bawahnya.
 describe('C02 — fisik & medis: nilai CV AI tidak boleh hilang dari berkas', () => {
   it('kolom kosong + AI terisi ⇒ nilai AI yang dipakai (mata, rokok)', () => {
     const n = buildMasterNested({
@@ -174,12 +176,12 @@ describe('C02 — fisik & medis: nilai CV AI tidak boleh hilang dari berkas', ()
     expect(n.identitas.golongan_darah).toBe('AB+');
   });
 
-  it('AI MENANG saat kolom dan AI dua-duanya terisi', () => {
+  it('KOLOM menang saat kolom dan AI dua-duanya terisi (koreksi manual = mutlak)', () => {
     const n = buildMasterNested({
       mata_kiri: '0.5',
       ai_data_json: JSON.stringify({ medis: { mata_kiri: '1.2' } }),
     });
-    expect(n.medis.mata_kiri).toBe('1.2');
+    expect(n.medis.mata_kiri).toBe('0.5');
   });
 
   it('kolom tetap dipakai bila AI tidak punya nilainya (tidak ada regresi)', () => {
@@ -398,15 +400,34 @@ describe('buildMasterNested: wawancara dari ai_data_json saat kolom kosong (2026
     expect(n.wawancara.lama_di_jepang).toBe('3');
   });
 
-  it('AI menang atas kolom master — CV AI adalah jalur utama', () => {
+  it('KOLOM menang atas AI — koreksi manual adalah kebenaran mutlak', () => {
+    // Dikoreksi pemilik 2026-10-22: *"kolom yang bisa manual itu kebenaran
+    // mutlak; data AI cuma membantu mengisi kolom"*. Versi sebelumnya
+    // (`903ceef`) membalikkannya.
     const n = buildMasterNested({
       kelebihan: 'Rajin', motivasi_ke_jepang: 'Semangat',
       ai_data_json: JSON.stringify({
         wawancara: { kelebihan_id: 'Disiplin', motivasi_ke_jepang: 'Ingin bekerja' },
       }),
     }) as { wawancara: Record<string, unknown> };
-    expect(n.wawancara.kelebihan_id).toBe('Disiplin');
-    expect(n.wawancara.motivasi_ke_jepang).toBe('Ingin bekerja');
+    expect(n.wawancara.kelebihan_id).toBe('Rajin');
+    expect(n.wawancara.motivasi_ke_jepang).toBe('Semangat');
+  });
+
+  it('A BOLEH DIHAPUS: kolom lengkap ⇒ membuang ai_data_json tidak mengubah hasil', () => {
+    // Invarian inti "A = alat bantu, B = kebenaran". JSON di bawah sengaja
+    // berisi nilai BERBEDA; kalau ia masih menimpa kolom, hasilnya berubah.
+    const kolom = { kelebihan: 'Rajin', motivasi_ke_jepang: 'Semangat', mata_kiri: '1.0', tb: '170' };
+    const denganAi = buildMasterNested({
+      ...kolom,
+      ai_data_json: JSON.stringify({
+        wawancara: { kelebihan_id: 'Disiplin', motivasi_ke_jepang: 'Ingin bekerja' },
+        medis: { mata_kiri: '2.0' },
+        fisik: { tb: '180' },
+      }),
+    });
+    const tanpaAi = buildMasterNested({ ...kolom });
+    expect(denganAi).toEqual(tanpaAi);
   });
 
   it('promosi_diri (kolom) → promosi_id (output) lewat fallback AI', () => {

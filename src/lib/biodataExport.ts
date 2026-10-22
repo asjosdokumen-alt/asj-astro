@@ -515,8 +515,17 @@ export function mergeAiGaps(master: Record<string, unknown>): Record<string, unk
 
   for (const paths of Object.values(AI_CV_PATHS)) {
     const target = paths[0];
-    // AI menang: kandidat mengisi lewat CV AI sebagai jalur utama; form Master
-    // hampir tidak pernah lengkap. Jadi bila AI punya nilai, ia menimpa master.
+    /* KOLOM MENANG; AI hanya MENGISI yang kosong (dikoreksi pemilik 2026-10-22).
+     *
+     * Sebelumnya kebalikannya ("AI menang", `903ceef`) dengan alasan kandidat
+     * hampir selalu mengisi lewat CV AI. Alasan itu hilang setelah jalur simpan
+     * CV AI ikut menulis KOLOM (`masterColumnsFromAi`): kolom kini terisi untuk
+     * kedua jalur. Dan pemilik menegaskan arah yang benar: *"kolom yang bisa
+     * manual itu kebenaran mutlak; data AI cuma membantu mengisi kolom"*.
+     * Konsekuensinya `ai_data_json` menjadi BOLEH DIHAPUS: kalau kolomnya sudah
+     * lengkap, membuang JSON tidak mengubah berkas yang dihasilkan.
+     *
+     * Jadi AI tidak boleh menimpa hasil koreksi admin di form Master. */
     let aiValue: unknown = null;
     for (const p of paths) {
       const v = getPath(ai, p);
@@ -531,6 +540,8 @@ export function mergeAiGaps(master: Record<string, unknown>): Record<string, unk
       cur[segs[i]] = branch;
       cur = branch as Record<string, unknown>;
     }
+    // Kolom sudah berisi ⇒ JANGAN disentuh.
+    if (isGood(cur[segs[segs.length - 1]])) continue;
     cur[segs[segs.length - 1]] = String(aiValue).trim();
   }
   return out;

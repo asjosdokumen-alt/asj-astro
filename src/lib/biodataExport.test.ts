@@ -59,15 +59,39 @@ describe('biodataExport — jawaban CV AI ikut terunduh', () => {
     expect(text).toContain('LAKI-LAKI');
   });
 
-  it('AI menang atas kolom master — CV AI adalah jalur utama', () => {
+  it('KOLOM menang atas AI — koreksi manual adalah kebenaran mutlak', () => {
+    // Dikoreksi pemilik 2026-10-22: *"kolom yang bisa manual itu kebenaran
+    // mutlak; data AI cuma membantu mengisi kolom"*. Versi sebelumnya
+    // (`903ceef`) membalikkannya, dengan alasan yang sudah tidak berlaku
+    // setelah jalur simpan CV AI ikut menulis kolom.
     const master = {
       ...MASTER_AI_ONLY,
       wawancara: { ...MASTER_AI_ONLY.wawancara, kelebihan_id: 'HASIL KOREKSI ADMIN' },
     };
     const text = buildBiodataText({ bio: BIO, master });
-    // AI punya kelebihan_id, jadi AI yang menang meski master punya nilai lain.
-    expect(text).toContain('Disiplin dan cepat belajar');
-    expect(text).not.toContain('HASIL KOREKSI ADMIN');
+    expect(text).toContain('HASIL KOREKSI ADMIN');
+    expect(text).not.toContain('Disiplin dan cepat belajar');
+  });
+
+  it('A boleh dihapus: yang sudah ada di kolom tidak berubah karena AIDATAJSON', () => {
+    // Diuji di tingkat `mergeAiGaps` (bukan seluruh dokumen): invariannya
+    // PER FIELD — field yang kolomnya terisi tidak boleh tersentuh AI, dan
+    // field yang kolomnya kosong tetap boleh diisi AI. Dokumen utuh tidak bisa
+    // dipakai untuk ini karena AI mengisi banyak field lain yang memang kosong.
+    const master = {
+      identitas: { nama_lengkap: 'AGUS KHOCI', gender: 'LAKI-LAKI' },
+      wawancara: { kelebihan_id: 'HASIL KOREKSI ADMIN' },
+      AIDATAJSON: JSON.stringify({
+        identitas: { nama_lengkap: 'NAMA DARI AI', gender: 'PEREMPUAN', alamat: 'JL. DARI AI 1' },
+        wawancara: { kelebihan_id: 'DARI AI' },
+      }),
+    };
+    const out = mergeAiGaps(master) as { identitas: Record<string, unknown>; wawancara: Record<string, unknown> };
+    expect(out.identitas.nama_lengkap).toBe('AGUS KHOCI');
+    expect(out.identitas.gender).toBe('LAKI-LAKI');
+    expect(out.wawancara.kelebihan_id).toBe('HASIL KOREKSI ADMIN');
+    // …tapi kolom yang KOSONG tetap dibantu AI.
+    expect(out.identitas.alamat).toBe('JL. DARI AI 1');
   });
 
   it('tanpa AIDATAJSON tetap jalan (tidak crash, tidak mengarang)', () => {

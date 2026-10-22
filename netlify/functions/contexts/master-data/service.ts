@@ -258,16 +258,24 @@ export function buildMasterNested(row: any): any {
   try { const raw = row.ai_data_json; if (typeof raw === 'string' && raw.trim() && raw !== '-') aiParsed = JSON.parse(raw); } catch { aiParsed = null; }
   const aiArrOf = (key: string) => (aiParsed && Array.isArray(aiParsed[key]) ? aiParsed[key] : null);
   const aiW = aiParsed?.wawancara || {};
+  /* KOLOM MENANG; AI hanya MENGISI yang kosong (dikoreksi pemilik 2026-10-22).
+   *
+   * Versi sebelumnya membalikkannya ("AI menang", `903ceef`) dengan alasan
+   * kandidat hampir selalu mengisi lewat CV AI. Alasan itu hilang setelah jalur
+   * simpan CV AI ikut menulis kolom (`masterColumnsFromAi`). Arah yang benar
+   * menurut pemilik: *"kolom yang bisa manual itu kebenaran mutlak; data AI
+   * cuma membantu mengisi kolom"* — jadi AI TIDAK boleh menimpa koreksi admin.
+   *
+   * Konsekuensi yang diinginkan: `ai_data_json` boleh DIHAPUS. Kalau kolomnya
+   * lengkap, membuang JSON tidak mengubah berkas yang dihasilkan. */
   const vw = (col: string, ...aiKeys: string[]) => {
-    // AI menang: kandidat mengisi lewat CV AI sebagai jalur utama; form Master
-    // hampir tidak pernah lengkap. Jadi bila AI punya nilai, ia menimpa master.
-    for (const k of aiKeys) {
-      const a = aiW[k];
-      if (a !== undefined && a !== null && String(a).trim() !== '') return toText(a);
-    }
     if (col) {
       const c = v(col);
       if (c !== '') return c;
+    }
+    for (const k of aiKeys) {
+      const a = aiW[k];
+      if (a !== undefined && a !== null && String(a).trim() !== '') return toText(a);
     }
     return '';
   };
@@ -283,11 +291,16 @@ export function buildMasterNested(row: any): any {
 
      Artinya rirekisho/CV-template/biodata kandidat tersebut tercetak dengan
      mata, golongan darah, dan ukuran kepala KOSONG. Prioritasnya sama dengan
-     `vw`: AI menang, kolom hanya cadangan (keputusan pemilik, `903ceef`).
+     `vw`: KOLOM menang, AI hanya mengisi yang kosong (dikoreksi pemilik
+     2026-10-22 — lihat catatan di `vw`).
 
-     ⚠ Blok IDENTITAS sengaja TIDAK ikut: diukur di data yang sama, kolomnya
-     terisi (0 hilang). Menambah fallback di sana hanya menambah jalur yang
-     tidak pernah terbukti perlu. */
+     ⚠ Klaim lama "identitas 0 hilang" SALAH dan sudah dikoreksi: saat itu hanya
+     `nama_lengkap` yang diperiksa (satu-satunya kolom identitas yang ditulis
+     eksplisit saat INSERT). Pengukuran penuh menemukan 687 sel hilang di 56
+     baris, termasuk `namapanggilan` 25 dan `jumlah_anak` 25 — dan sekarang
+     kolomnya diisi di jalur TULIS (`masterColumnsFromAi`), bukan dibaca dari
+     sini. Blok ini tetap ada sebagai jaring untuk baris LAMA yang kolomnya
+     masih kosong. */
   const aiGroup = (g: string): Record<string, unknown> => {
     const grp = aiParsed?.[g];
     return grp && typeof grp === 'object' ? (grp as Record<string, unknown>) : {};
@@ -296,11 +309,16 @@ export function buildMasterNested(row: any): any {
   const aiM = aiGroup('medis');
   const aiI = aiGroup('identitas');
   const va = (aiObj: Record<string, unknown>, aiKeys: string[], col: string) => {
+    // Kolom dulu — kebenaran mutlak; AI hanya mengisi yang kosong.
+    if (col) {
+      const c = v(col);
+      if (c !== '') return c;
+    }
     for (const k of aiKeys) {
       const a = aiObj[k];
       if (a !== undefined && a !== null && String(a).trim() !== '') return toText(a);
     }
-    return col ? v(col) : '';
+    return '';
   };
   return {
     identitas: {
