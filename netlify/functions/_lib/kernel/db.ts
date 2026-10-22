@@ -132,10 +132,10 @@ function createSupabaseJwt(claims: { role: string; wa?: string; name?: string })
     const kid = env('SUPABASE_JWT_KID');
     const headerObj: Record<string, string> = { alg: 'EdDSA', typ: 'JWT' };
     if (kid) headerObj.kid = kid;
-    const signingInput = b64url(JSON.stringify(headerObj)) + '.' + b64url(JSON.stringify(payloadObj));
+    const signingInput = `${b64url(JSON.stringify(headerObj))}.${b64url(JSON.stringify(payloadObj))}`;
     // crypto.sign(null, ...) = Ed25519 (no pre-hash), which is what EdDSA/JWS wants.
     const sig = crypto.sign(null, Buffer.from(signingInput), key);
-    return signingInput + '.' + b64url(sig);
+    return `${signingInput}.${b64url(sig)}`;
   }
 
   const secret = env('SUPABASE_JWT_SECRET');

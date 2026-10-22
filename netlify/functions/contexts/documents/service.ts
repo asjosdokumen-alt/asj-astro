@@ -244,12 +244,9 @@ export async function handleGetUploadUrls(
       const rel =
         res && res.url
           ? String(res.url)
-          : "/object/upload/sign/" + bucket() + "/" + path;
+          : `/object/upload/sign/${bucket()}/${path}`;
       urls[key] = {
-        signedUrl:
-          storageUrl().replace(/\/$/, "") +
-          "/storage/v1" +
-          (rel.startsWith("/") ? rel : "/" + rel),
+        signedUrl: `${storageUrl().replace(/\/$/, "")}/storage/v1${rel.startsWith("/") ? rel : `/${rel}`}`,
         publicUrl: publicUrl(path),
       };
     }

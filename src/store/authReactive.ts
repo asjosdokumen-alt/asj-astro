@@ -50,26 +50,28 @@ let fcmRefreshDone = false;
  * Registrasi FCM yang TIDAK menelan sebab kegagalannya.
  *
  * `requestNotificationPermission()` mengembalikan alasan yang sudah diketik
- * (`'no-token'`, `'no-sw'`, `'permission-denied'`, …) justru supaya "perangkat
- * tidak terdaftar" bisa dibedakan dari "tidak ada notifikasi yang dikirim".
- * Ketiga pemanggil di berkas ini dulu memakai `.catch(() => {})` DAN membuang
- * nilai kembaliannya, jadi satu-satunya cara mengetahui registrasi gagal adalah
- * membuka DevTools di perangkat pengguna.
+ * (`'no-token'`, `'no-sw'`, `'permission-denied'`, …) DAN mencatat setiap jalur
+ * gagal di `lib/fcm.ts` — termasuk pesan VAPID yang bisa ditindaklanjuti saat
+ * `PUBLIC_FIREBASE_VAPID_KEY` kosong. Ketiga pemanggil di berkas ini dulu
+ * memakai `.catch(() => {})` DAN membuang nilai kembaliannya, jadi satu-satunya
+ * cara mengetahui registrasi gagal adalah membuka DevTools di perangkat
+ * pengguna. Itu yang diperbaiki di sini: hasilnya tidak lagi dibuang.
  *
  * Terukur 2026-10-21: token terakhir di `fcm_tokens` berasal dari 2026-10-15,
  * sementara admin memakai aplikasi setiap hari — gejalanya persis "notifikasi
- * tidak pernah muncul". Penyebabnya `PUBLIC_FIREBASE_VAPID_KEY` kosong, dan
- * `getToken()` tanpa kunci itu tidak bisa membuat PushSubscription baru. Dengan
- * log ini, `no-token` langsung menunjuk ke penyebabnya alih-alih menghilang.
+ * tidak pernah muncul". Penyebabnya `PUBLIC_FIREBASE_VAPID_KEY` kosong.
+ *
+ * ⚠ JANGAN menambah `console.warn` di sini. Versi pertama fix ini melakukannya
+ * (satu untuk `result`, satu di `.catch`) dan itu SALAH dua kali:
+ *   1. `requestNotificationPermission` TIDAK PERNAH menolak — ia menangkap
+ *      sendiri di `lib/fcm.ts` dan mengembalikan `'error'`, jadi `.catch` di
+ *      sini adalah kode mati;
+ *   2. setiap kode hasil sudah dicetak di `lib/fcm.ts` sebagai kalimat, bukan
+ *      kode. Log kembar di pemanggil hanya menambah derau, dan `lint-ratchet`
+ *      menolaknya (`noConsole` di berkas yang tadinya bersih).
  */
 function registerFcm(userId: string): void {
-  requestNotificationPermission(userId)
-    .then((result) => {
-      if (result !== 'registered') console.warn('[FCM] Registrasi tidak selesai:', result);
-    })
-    .catch((e: unknown) => {
-      console.warn('[FCM] Registrasi gagal:', e instanceof Error ? e.message : String(e));
-    });
+  void requestNotificationPermission(userId);
 }
 
 /**
