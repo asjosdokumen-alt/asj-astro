@@ -41,6 +41,21 @@ const MAX_VISIBLE = 4;
 
 /** Show a toast notification. Signature unchanged — ~40 call sites. */
 export function showToast(text: string, type: ToastMessage['type'] = 'info') {
+  // ── Satu kegagalan, satu toast (2026-10-23) ───────────────────────────────
+  //
+  // Berpindah tab di dashboard admin me-mount beberapa view sekaligus, dan tiap
+  // view memulai pembacaan latarnya sendiri. Kalau jaringannya sedang buruk,
+  // SATU gangguan bisa menghasilkan tiga toast merah yang isinya sama persis —
+  // dan karena `MAX_VISIBLE = 4`, toast keempat mendorong keluar pesan yang
+  // mungkin justru berbeda dan lebih penting.
+  //
+  // Dedupe-nya sengaja sesempit mungkin: hanya pesan yang SAMA PERSIS (teks DAN
+  // jenis) yang ditekan, dan hanya selama toast itu masih terlihat. Pesan yang
+  // berbeda, atau jenis yang berbeda untuk teks yang sama (mis. error lalu
+  // sukses setelah retry), tetap tampil — jadi tidak ada informasi yang hilang,
+  // hanya pengulangan yang tidak menambah apa pun.
+  if (toasts.get().some((t) => t.text === text && t.type === type)) return;
+
   const id = ++toastId;
   toasts.set([...toasts.get(), { id, text, type }].slice(-MAX_VISIBLE));
   setTimeout(() => {
