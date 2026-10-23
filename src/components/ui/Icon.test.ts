@@ -5,7 +5,7 @@
  * ---------------
  * `src/icons/sprite.svg` is a *subset* built by `npm run icons`, which has to
  * guess which glyphs are reachable. When it guesses wrong the failure mode is
- * the worst possible one: `<use href="#fas-print">` simply renders nothing.
+ * the worst possible one: `<use href="/icons/sprite.svg#fas-print">` simply renders nothing.
  * No error, no 404, just a blank space where an icon should be. It happened
  * once — RirekishoBuilder writes markup as an HTML string, so its icon was
  * invisible to the scanner.
@@ -71,17 +71,54 @@ describe('icon sprite', () => {
     expect(files.length).toBeGreaterThan(50);
   });
 
-  it('resolves every hand-written <use href="#faX-…"> reference', () => {
+  it('resolves every hand-written <use href="/icons/sprite.svg#faX-…"> reference', () => {
     const dangling: string[] = [];
     for (const file of files) {
       const text = readFileSync(file, 'utf8');
-      // Covers both `href="#fas-x"` and markup escaped inside a JS string,
-      // i.e. `href=\"#fas-x\"`.
-      for (const m of text.matchAll(/href=(?:\\{1,2})?["'`]#(fa[bsrl]-[a-z0-9][a-z0-9-]*)/g)) {
+      // Covers both `href="/icons/sprite.svg#fas-x"` and markup escaped inside a JS string,
+      // i.e. `href=\"/icons/sprite.svg#fas-x\"`.
+      for (const m of text.matchAll(/href=(?:\\{1,2})?["'`](?:\/icons\/sprite\.svg)?#(fa[bsrl]-[a-z0-9][a-z0-9-]*)/g)) {
         if (!ids.has(m[1])) dangling.push(`${m[1]}  (${relative(SRC, file)})`);
       }
     }
     expect(dangling, `run: npm run icons\n${dangling.join('\n')}`).toEqual([]);
+  });
+
+  it('rejects a bare `href="#faX-…"` — the sprite is a separate file now', () => {
+    // The sprite used to be INLINED into every page (`sprite.svg?raw` in
+    // BaseLayout), so a fragment reference resolved inside the same document.
+    // It is now an external file, and a bare fragment resolves against the
+    // CURRENT document — which holds no <symbol> — so the glyph silently
+    // renders as nothing. That is the same invisible failure this file exists
+    // to catch, one layer down: three icons in RirekishoBuilder survived the
+    // move because it builds markup as a STRING, and the resolution test above
+    // tolerates both forms.
+    const bare: string[] = [];
+    for (const file of files) {
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(/href=(?:\\{1,2})?["'`]#(fa[bsrl]-[a-z0-9][a-z0-9-]*)/g)) {
+        bare.push(`${m[1]}  (${relative(SRC, file)})`);
+      }
+    }
+    expect(bare, `prefix it: /icons/sprite.svg#…\n${bare.join('\n')}`).toEqual([]);
+  });
+
+  it('keeps the shipped copy of the sprite identical to the source copy', () => {
+    // `npm run icons` writes the same bytes to src/icons/ and public/icons/.
+    // Only the public one is served, so a hand-edit to either would leave the
+    // app rendering a sprite that does not match its own manifest.
+    //
+    // NOT asserted here: that the root carries no `style="display:none"`. A
+    // first version of this session did assert it, on the strength of a WebKit
+    // probe where a hidden root drew 0/4 glyphs and a plain one drew 4/4. That
+    // A/B was an artefact — the sandbox HTTP proxy had answered ONE of the two
+    // sprite URLs with an HTML page, so the "hidden" variant was never an SVG.
+    // Re-measured with HTTP_PROXY cleared: hidden and plain render identically
+    // in Chromium and WebKit. A test pinning that attribute would have been a
+    // rule about a property that was never true.
+    const srcCopy = readFileSync(join(SRC, 'icons', 'sprite.svg'), 'utf8');
+    const shipped = readFileSync(join(SRC, '..', 'public', 'icons', 'sprite.svg'), 'utf8');
+    expect(shipped).toBe(srcCopy);
   });
 
   it('resolves every static <Icon name="…">', () => {

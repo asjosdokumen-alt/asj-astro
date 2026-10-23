@@ -115,8 +115,26 @@ dirRoutes.sort();
 // ─── 3. Always-on shell routes (directory URLs Netlify serves) ───────────────
 const SHELL = ['/', '/candidate/', '/admin/', '/public/'];
 
+// ─── 3b. Public files every page needs in order to RENDER ────────────────────
+//
+// These live at `dist/` root (copied verbatim from `public/`), so the `_astro`
+// sweep above cannot see them — and until 2026-10-23 nothing else could either.
+//
+// WHY THIS IS LOAD-BEARING. The icon sprite used to be INLINED into every page
+// (`sprite.svg?raw` in BaseLayout), so it was offline-safe for free: it shipped
+// inside the cached HTML. It is now one external file referenced by `<use>`, so
+// a fresh install that goes offline before the sprite was ever fetched through
+// the worker renders every icon as blank — 154 glyphs, no error, no 404 in the
+// UI. The stale-while-revalidate branch would only cache it on a LATER visit,
+// and a first visit happens before the worker controls the page at all.
+//
+// 85 KB once, against ~85 KB inside each of the 14 cached HTML pages before.
+const RENDER_CRITICAL = ['/icons/sprite.svg'].filter((url) => existsSync(join(DIST, url)));
+
 // ─── 4. Dedupe + build final list ────────────────────────────────────────────
-const precache = [...new Set([...SHELL, ...pages, ...dirRoutes, ...assets.map((a) => a.url)])].sort();
+const precache = [
+  ...new Set([...SHELL, ...pages, ...dirRoutes, ...assets.map((a) => a.url), ...RENDER_CRITICAL]),
+].sort();
 
 // ─── 5. Version from content hash of the manifest + asset sizes ──────────────
 const h = createHash('sha256');
@@ -125,6 +143,10 @@ for (const p of pages) h.update(`${p}\n`);
 // dirRoutes are derived from `pages`, but include them so a future change to
 // the derivation cannot ship a different precache under the same version.
 for (const d of dirRoutes) h.update(`${d}\n`);
+// Render-critical files are NOT derived from anything above: a sprite edit that
+// changed no page and no hashed asset would otherwise ship new bytes under the
+// old cache name, and every installed client would keep the old glyphs.
+for (const r of RENDER_CRITICAL) h.update(`${r}:${statSync(join(DIST, r)).size}\n`);
 const VERSION = `asj-astro-${h.digest('hex').slice(0, 12)}`;
 
 const totalBytes = assets.reduce((n, a) => n + a.size, 0);

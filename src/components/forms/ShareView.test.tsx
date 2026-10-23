@@ -183,7 +183,7 @@ describe('ShareView — detail kecil kartu (2026-10-13)', () => {
   it('chip berat memakai ikon timbangan, bukan ikon KTP', async () => {
     render(<ShareView />);
     await waitFor(() => expect(screen.getByText('Budi Santoso')).toBeTruthy());
-    expect(document.querySelector('use[href="#fas-weight-scale"]')).toBeTruthy();
-    expect(document.querySelector('use[href="#fas-id-card"]')).toBeNull();
+    expect(document.querySelector('use[href="/icons/sprite.svg#fas-weight-scale"]')).toBeTruthy();
+    expect(document.querySelector('use[href="/icons/sprite.svg#fas-id-card"]')).toBeNull();
   });
 });

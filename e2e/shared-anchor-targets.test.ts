@@ -26,7 +26,7 @@
  * `href="#…"` harus salah satu dari:
  *   - `#main-content` — satu-satunya anchor yang ADA di setiap halaman
  *     (diperiksa: 11/11 berkas di `src/pages/*.astro` merendernya), atau
- *   - referensi sprite SVG (`#fas-…`), yang bukan navigasi, atau
+ *   - referensi sprite SVG (`/icons/sprite.svg#fas-…`), yang bukan navigasi, atau
  *   - absolut (`/#…`), sehingga halaman mana pun tetap menuju ke sana.
  */
 import { readFileSync } from 'node:fs';
@@ -43,8 +43,8 @@ const SHARED = [
 /** Satu-satunya anchor relatif yang aman: ada di setiap halaman. */
 const UNIVERSAL = new Set(['#main-content']);
 
-/** `<use href="#fas-spinner">` — referensi sprite, bukan tautan. */
-const SPRITE_REF = /^#(fas|fab|far|faso)-/;
+/** `<use href="/icons/sprite.svg#fas-spinner">` — referensi sprite, bukan tautan. */
+const SPRITE_REF = /^(?:\/icons\/sprite\.svg)?#(fas|fab|far|faso)-/;
 
 /**
  * Setiap href yang memuat fragmen: `#x` (relatif) DAN `/#x` (absolut).

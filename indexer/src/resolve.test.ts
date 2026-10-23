@@ -32,11 +32,17 @@ describe('specifier resolution (full repo)', () => {
     expect([...from]).toEqual(['src/lib/fcm.ts']);
   });
 
-  it('resolves ?raw and CSS specifiers to asset nodes', () => {
+  it('resolves ?url and CSS specifiers to asset nodes', () => {
     const g = built().graph;
     const assets = g.edges.filter((e) => typeof e.to === 'string' && e.to.startsWith('asset:'));
-    expect(assets.length).toBeGreaterThanOrEqual(4); // sprite.svg?raw + 3 fontsource css
-    expect(assets.some((e) => e.specifier === '../icons/sprite.svg?raw')).toBe(true);
+    // 2 woff2?url + 3 fontsource css = 5. The `?raw` sprite import left this
+    // repo on 2026-10-23 (the sprite is an external file now, not inlined), so
+    // the assertion moved to `?url` rather than being deleted: both travel the
+    // same resolver line (`specifier.split('?')[0]`).
+    expect(assets.length).toBeGreaterThanOrEqual(4);
+    expect(
+      assets.some((e) => e.specifier === '@fontsource/inter/files/inter-latin-400-normal.woff2?url'),
+    ).toBe(true);
     expect(assets.some((e) => e.specifier === '@fontsource/inter/latin-400.css')).toBe(true);
   });
 

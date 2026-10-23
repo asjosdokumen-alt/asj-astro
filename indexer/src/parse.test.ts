@@ -248,12 +248,20 @@ describe('real-file outlines', () => {
     expect(p.imports.every((i) => i.kind === ImportKind.Static)).toBe(true);
   });
 
-  it('BaseLayout.astro — Props interface + ?raw asset import', () => {
+  it('BaseLayout.astro — Props interface + ?url asset import', () => {
     const p = parseReal('src/layouts/BaseLayout.astro', 'astro');
     expect(p.symbols.find((s) => s.name === 'Props' && s.kind === SymbolKind.Interface)).toBeDefined();
-    const raw = p.imports.find((i) => i.specifier === '../icons/sprite.svg?raw');
-    expect(raw).toBeDefined();
-    expect(raw?.kind).toBe(ImportKind.Static); // default import; the resolver turns it into an Asset edge
+    // This case pinned `../icons/sprite.svg?raw` until 2026-10-23, when the icon
+    // sprite stopped being inlined into every page (BaseLayout no longer imports
+    // it at all). `?url` is the same parse shape — default import with a query
+    // suffix — and is what the layout imports today. The capability under test
+    // is unchanged: resolve.ts strips ANY query with `specifier.split('?')[0]`,
+    // so `?raw` and `?url` travel the same line.
+    const asset = p.imports.find(
+      (i) => i.specifier === '@fontsource/inter/files/inter-latin-400-normal.woff2?url',
+    );
+    expect(asset).toBeDefined();
+    expect(asset?.kind).toBe(ImportKind.Static); // default import; the resolver turns it into an Asset edge
     // template component tags (row 8 astro-markup): every capitalized tag the
     // layout renders, deduped — graph.ts resolves each through these imports.
     expect(p.templateTags).toEqual(expect.arrayContaining(['BottomNav', 'Footer', 'Toast']));

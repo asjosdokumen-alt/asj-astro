@@ -1,8 +1,12 @@
 /**
  * Icon.tsx — SVG sprite icon (Preact)
  *
- * Replaces Font Awesome's webfont + CDN CSS with an inline sprite built by
+ * Replaces Font Awesome's webfont + CDN CSS with a subset sprite built by
  * `npm run icons` (scripts/build-icon-sprite.mjs).
+ *
+ * The sprite lives at `/icons/sprite.svg` and is referenced via `<use>`.
+ * This avoids inlining ~85 KB of SVG markup into every page's HTML,
+ * saving bandwidth and reducing parse time on repeat navigation.
  *
  * SIZING / COLOUR
  * ---------------
@@ -73,7 +77,7 @@ export default function Icon({
     >
       {/* Unknown name: render nothing rather than an invisible <use>, and
           say so in the console — a typo here is otherwise silent. */}
-      {id ? <use href={`#${id}`} /> : null}
+      {id ? <use href={`/icons/sprite.svg#${id}`} /> : null}
     </svg>
   );
 }

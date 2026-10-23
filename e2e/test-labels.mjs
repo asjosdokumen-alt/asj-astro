@@ -171,9 +171,9 @@ const ROUTES = [
 ];
 
 /** The wizard's Next button, located by its sprite glyph rather than its text. */
-const ADVANCE = 'button:has(use[href="#fas-arrow-right"])';
+const ADVANCE = 'button:has(use[href="/icons/sprite.svg#fas-arrow-right"])';
 /** Every "Tambah" button on the screen — one per repeatable row loop. */
-const ADD_ROW = 'button:has(use[href="#fas-plus"])';
+const ADD_ROW = 'button:has(use[href="/icons/sprite.svg#fas-plus"])';
 
 /**
  * Text that means we are looking at a gate, not the form body.

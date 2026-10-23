@@ -4,7 +4,6 @@ import VersionBadge from '../components/VersionBadge.astro';
 import BottomNav from '../components/BottomNav.tsx';
 import Toast from '../components/Toast.tsx';
 import HreflangLinks from '../components/public/HreflangLinks.tsx';
-import sprite from '../icons/sprite.svg?raw';
 import { hreflangAlternates, organizationJsonLd, jsonLdScript, absoluteUrl } from '../lib/siteMeta';
 import {
   CONTACT_ADDRESS,
@@ -16,6 +15,8 @@ import {
   MAPS_LAT,
   MAPS_LNG,
 } from '../lib/companyProfile';
+import inter400Woff2 from '@fontsource/inter/files/inter-latin-400-normal.woff2?url';
+import inter700Woff2 from '@fontsource/inter/files/inter-latin-700-normal.woff2?url';
 import '@fontsource/inter/latin-400.css';
 import '@fontsource/inter/latin-600.css';
 import '@fontsource/inter/latin-700.css';
@@ -234,12 +235,14 @@ const orgJsonLd = jsonLdScript(
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  
-  <!-- Icons: inline SVG sprite (155 glyphs subsetted from Font Awesome).
-       Inlined rather than referenced via <use href="/sprite.svg#id"> because
-       cross-document <use> is unreliable on older iOS Safari / Android
-       WebView, which is a large share of this audience. -->
-  <div id="asj-sprite" aria-hidden="true" style="display:none" set:html={sprite} />
+  <link rel="preload" href={inter400Woff2} as="font" type="font/woff2" crossorigin="anonymous" />
+  <link rel="preload" href={inter700Woff2} as="font" type="font/woff2" crossorigin="anonymous" />
+
+  <!-- Icons: external SVG sprite (154 glyphs subsetted from Font Awesome).
+       Loaded via <use href="/icons/sprite.svg#id"> to avoid inlining ~83 KB
+       of markup into every page. The sprite is also in the SW precache: it is
+       the one render-critical file at dist/ root, which the _astro sweep that
+       builds the precache list cannot see. -->
 
   <!-- Inter is self-hosted via @fontsource (see imports above).
        This replaces a render-blocking Google Fonts stylesheet that loaded
@@ -440,10 +443,10 @@ const orgJsonLd = jsonLdScript(
      which lands early) and cuts the repaint work by 60%. -->
 <body id="asj-body" class="bg-canvas text-fg min-h-screen transition-colors duration-200 flow-root">
   <div id="global-loader" style="display: none !important;">
-    <svg class="asj-icon animate-spin text-5xl text-pink-500 mb-4" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="#fas-spinner" /></svg>
+    <svg class="asj-icon animate-spin text-5xl text-pink-500 mb-4" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="/icons/sprite.svg#fas-spinner" /></svg>
     <h2 class="text-xl font-bold tracking-widest text-slate-200" data-lang="ui.loader_title">MEMUAT ASJ OS V7...</h2>
     <p id="loader-msg" class="text-sm text-slate-500 mt-2 mb-6" data-lang="ui.loader_msg">Mempersiapkan UI Modern</p>
-    <button onclick="document.getElementById(&quot;global-loader&quot;).style.display=&quot;none&quot;" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 border border-red-500 rounded-full text-sm font-bold text-white transition-colors shadow-lg"><svg class="asj-icon mr-1" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="#fas-times" /></svg> <span data-lang="ui.force_close_loading">Tutup Paksa Loading</span></button>
+    <button onclick="document.getElementById(&quot;global-loader&quot;).style.display=&quot;none&quot;" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 border border-red-500 rounded-full text-sm font-bold text-white transition-colors shadow-lg"><svg class="asj-icon mr-1" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="/icons/sprite.svg#fas-times" /></svg> <span data-lang="ui.force_close_loading">Tutup Paksa Loading</span></button>
   </div>
   <div id="sakura-particles" class="fixed inset-0 u-modal-shell overflow-hidden hidden" aria-hidden="true"></div>
   <a href="#main-content" class="skip-link"><span data-lang="ui.skip_to_content">Lewati ke konten utama</span></a>

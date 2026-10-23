@@ -176,7 +176,16 @@ const server = http.createServer((req, res) => {
 
   const ext = path.extname(filePath);
   const contentType = MIME[ext] || 'application/octet-stream';
-  const cacheControl = ext === '.html' ? 'no-cache' : 'public, max-age=31536000, immutable';
+  // The icon sprite is the one file under /icons/ that CHANGES without its name
+  // changing (every `npm run icons` rewrites it), and it is referenced as
+  // `/icons/sprite.svg#id` from the whole app, so the name cannot be versioned.
+  // `immutable` tells the browser never to revalidate, which is wrong for it.
+  // netlify.toml carries the same exception for production, so local preview
+  // and production agree.
+  const cacheControl =
+    ext === '.html' || urlPath === '/icons/sprite.svg'
+      ? 'no-cache'
+      : 'public, max-age=31536000, immutable';
 
   res.writeHead(200, {
     'Content-Type': contentType,

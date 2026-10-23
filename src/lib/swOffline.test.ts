@@ -53,6 +53,24 @@ describe.skipIf(!hasBuild)('built service worker — offline navigation (#18)', 
     expect(pre).toContain('/');
   });
 
+  it('precaches the icon sprite — every page renders through it', () => {
+    // Measured 2026-10-23. The sprite used to be INLINED into every page, so it
+    // was offline-safe for free. It is now `/icons/sprite.svg`, fetched by
+    // `<use href="/icons/sprite.svg#…">` — and a URL at `dist/` root is invisible
+    // to the `_astro` sweep that builds this list. Offline, a fresh install then
+    // rendered every icon blank: no error, no 404, 154 empty squares.
+    //
+    // The two assertions belong together. "Not inlined" alone would be satisfied
+    // by simply deleting the sprite; "precached" alone would be satisfied by
+    // shipping both copies. Only the pair means "renders offline, once".
+    const pre = readPrecache();
+    expect(pre).toContain('/icons/sprite.svg');
+    expect(existsSync(join(DIST, 'icons', 'sprite.svg'))).toBe(true);
+
+    const index = readFileSync(join(DIST, 'index.html'), 'utf8');
+    expect(index).not.toContain('<symbol id="fas-');
+  });
+
   it('every directory route is cached under the URL the browser requests', () => {
     // THE regression this test exists for. A route present only as
     // `/x/index.html` cannot satisfy a navigation to `/x/`.

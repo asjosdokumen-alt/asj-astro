@@ -55,6 +55,7 @@ const brands = require('@fortawesome/free-brands-svg-icons');
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(ROOT, 'src');
 const OUT = join(SRC, 'icons', 'sprite.svg');
+const PUBLIC_OUT = join(ROOT, 'public', 'icons', 'sprite.svg');
 const MAP_OUT = join(SRC, 'icons', 'sprite-map.ts');
 
 /**
@@ -158,8 +159,11 @@ for (const file of walk(SRC)) {
 
   // 5. hand-written <use href="#fas-foo" /> inside HTML strings.
   //    The optional backslashes cover `href=\"#fas-foo\"`, i.e. markup that
-  //    lives inside a JS string literal.
-  for (const m of text.matchAll(/href=(?:\\{1,2})?["'`]#fa[bsrl]-([a-z0-9][a-z0-9-]*)/g)) {
+  //    lives inside a JS string literal. The optional path covers the form
+  //    used since the sprite became an external file:
+  //    `href="/icons/sprite.svg#fas-foo"` — without it, rule 5 stops seeing
+  //    every hand-written reference and the glyphs are silently dropped.
+  for (const m of text.matchAll(/href=(?:\\{1,2})?["'`](?:\/icons\/sprite\.svg)?#fa[bsrl]-([a-z0-9][a-z0-9-]*)/g)) {
     add(m[1]);
   }
 
@@ -220,7 +224,19 @@ for (const [name, count] of [...used].sort((a, b) => b[1] - a[1])) {
   });
 }
 
-/* ── 4. Emit sprite ───────────────────────────────────────────────── */
+/* ── 4. Emit sprite ───────────────────────────────────────────────────
+   The root element carries `style="display:none"`. That is the idiom for an
+   INLINE sprite (hide the sheet, then reference its symbols), and the sprite is
+   no longer inlined — it is referenced as `/icons/sprite.svg#id`.
+
+   KEPT, because it is inert for an external reference and correct if the file
+   is ever inlined again. Measured 2026-10-23 in Chromium and WebKit: a sprite
+   with this attribute and one without it render IDENTICALLY (4/4 glyphs, fill
+   inherited from `currentColor`). An earlier reading that WebKit "inherits
+   display:none into the shadow tree and draws nothing" was a measurement
+   artefact — the sandbox HTTP proxy had answered the sprite request with an
+   HTML page, and only one of the two URLs it poisoned. Nothing ever renders
+   this file as an image, so the attribute has no visible effect either way. */
 const symbols = resolved
   .map(
     (r) =>
@@ -242,6 +258,8 @@ const svg =
 
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, svg, 'utf8');
+mkdirSync(dirname(PUBLIC_OUT), { recursive: true });
+writeFileSync(PUBLIC_OUT, svg, 'utf8');
 
 /* ── 4b. Emit the name -> id manifest ─────────────────────────────────
    Icon.tsx reads this instead of guessing a `fas-` prefix. Without it,
@@ -274,20 +292,22 @@ const bytes = Buffer.byteLength(svg, 'utf8');
 const { gzipSync } = await import('node:zlib');
 const gz = gzipSync(Buffer.from(svg, 'utf8')).length;
 
-console.log(`✓ ${resolved.length} glyphs → src/icons/sprite.svg`);
+console.log(`✓ ${resolved.length} glyphs → src/icons/sprite.svg + public/icons/sprite.svg`);
 console.log(`  raw ${(bytes / 1024).toFixed(1)} KB · gzipped ${(gz / 1024).toFixed(1)} KB`);
 console.log(`  (was ~110 KB CSS + 2 webfonts from cdnjs, render-blocking)`);
 console.log(`✓ name→id manifest → src/icons/sprite-map.ts`);
 
-/* ── 6. Post-check: every hand-written <use href="#faX-…"> must exist ─
+/* ── 6. Post-check: every hand-written <use href="…#faX-…"> must exist ─
    The scan in step 1 is what decides the sprite's contents, so a reference
    it misses produces a silently blank icon. This asserts the other way
-   round: read every #faX-… out of the source and demand a symbol for it. */
+   round: read every #faX-… out of the source and demand a symbol for it.
+   Both the bare fragment and the external-file form are read, because a
+   reference that this regex cannot see is a reference nothing checks. */
 const emitted = new Set(resolved.map((r) => r.id));
 const dangling = new Map(); // id -> first file referencing it
 for (const file of walk(SRC)) {
   const text = readFileSync(file, 'utf8');
-  for (const m of text.matchAll(/href=(?:\\{1,2})?["'`]#(fa[bsrl]-[a-z0-9][a-z0-9-]*)/g)) {
+  for (const m of text.matchAll(/href=(?:\\{1,2})?["'`](?:\/icons\/sprite\.svg)?#(fa[bsrl]-[a-z0-9][a-z0-9-]*)/g)) {
     if (!emitted.has(m[1]) && !dangling.has(m[1])) dangling.set(m[1], file);
   }
 }

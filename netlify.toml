@@ -124,6 +124,29 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# ─── Pengecualian: sprite ikon (2026-10-23) ──────────────────────────────────
+#
+# `sprite.svg` adalah satu-satunya berkas di /icons/ yang BERUBAH tanpa berganti
+# nama: setiap `npm run icons` menulis ulang isinya, dan seluruh aplikasi
+# merujuknya sebagai `/icons/sprite.svg#id` — jadi namanya tidak bisa diberi
+# versi seperti `logo-asj-v2.webp` (aturan di komentar /assets/ di atas).
+#
+# Dengan `immutable` setahun, browser TIDAK menanyakan ulang selama setahun,
+# jadi setelah satu ikon ditambahkan pengguna lama tetap memakai sprite lama.
+# Gejalanya senyap: ikon baru dirender sebagai ruang kosong — tanpa error, tanpa
+# 404 — karena id yang tidak ada di sprite memang tidak menggambar apa pun.
+#
+# `no-cache` = boleh disimpan, wajib revalidasi (304 ±200 B). Untuk berkas 83 KB
+# yang berubah jarang, itu harga yang benar. Service worker tetap menyajikannya
+# dari cache lebih dulu (stale-while-revalidate), jadi tidak ada round-trip di
+# jalur kritis.
+#
+# Aturan yang lebih spesifik menang atas blok `/icons/*` di atas.
+[[headers]]
+  for = "/icons/sprite.svg"
+  [headers.values]
+    Cache-Control = "no-cache"
+
 # ─── Security headers (2026-10-04) ───────────────────────────────────────────
 #
 # These are the headers that are pure wins: none of them can break a working

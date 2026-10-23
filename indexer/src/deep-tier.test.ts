@@ -414,7 +414,12 @@ const show = true;
     // MEASURED, not hand-assembled from the diff: the assertion was temporarily
     // preceded by a `console.log` of `occs.map(o => o.name).sort()`, and the
     // array below is that output verbatim.
-    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'canonical', 'canonical', 'description', 'description', 'description', 'jsonLd', 'jsonLd', 'lang', 'lang', 'noIndex', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'orgJsonLd', 'orgJsonLd', 'showBottomNav', 'showBottomNav', 'showFooter', 'sprite', 'title', 'title', 'title', 'titleKey']);
+    // 27 -> 28 (2026-10-23, MEASURED from the failure diff, not derived):
+    // `sprite` left the list (-1) when the icon sprite stopped being inlined,
+    // and the two font preloads added `inter400Woff2` + `inter700Woff2` (+2).
+    // Net +1. The diff is the indexer's own output for this file; the array
+    // below is that output sorted, not a hand-edit of the previous one.
+    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'canonical', 'canonical', 'description', 'description', 'description', 'inter400Woff2', 'inter700Woff2', 'jsonLd', 'jsonLd', 'lang', 'lang', 'noIndex', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'orgJsonLd', 'orgJsonLd', 'showBottomNav', 'showBottomNav', 'showFooter', 'title', 'title', 'title', 'titleKey']);
     for (const o of occs) {
       const ref = r.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
       expect(ref).toBeDefined();

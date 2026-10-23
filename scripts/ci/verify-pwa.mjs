@@ -184,6 +184,20 @@ if (!existsSync(LAYOUT)) {
   }
 }
 
+// ─── 4. External SVG sprite exists ───────────────────────────────────────────
+check(existsSync('public/icons/sprite.svg'), 'public/icons/sprite.svg exists');
+check(existsSync('dist/icons/sprite.svg'), 'dist/icons/sprite.svg exists');
+
+// …and is PRECACHED. The sprite lives at `dist/` root, which the SW manifest
+// builds from `_astro/` + HTML only, so "the file exists" and "the file is
+// available offline" are two different questions. Before 2026-10-23 the sprite
+// was inlined in every page and the distinction could not exist; now an entry
+// missing from the precache renders 154 blank glyphs offline with no error.
+if (existsSync('dist/sw.js')) {
+  const sw = readFileSync('dist/sw.js', 'utf8');
+  check(sw.includes('"/icons/sprite.svg"'), 'the icon sprite is in the SW precache');
+}
+
 // ─── Report ──────────────────────────────────────────────────────────────────
 console.log('[verify-pwa] checks:');
 for (const n of notes) console.log(n);
