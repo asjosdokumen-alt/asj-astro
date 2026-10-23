@@ -32,12 +32,18 @@ const I18N_JP_TS = join(ROOT, 'src', 'store', 'i18n-jp.ts');
 // shipped missing from one dictionary with this gate still green. A namespace
 // must not be listed before its keys exist — that would arm the gate for the
 // empty set and prove nothing.
+//
+// `loker_static` added 2026-10-23 with LokerStaticTable.tsx: its column headers
+// carry the key in a data structure (`labelKey: 'loker_static.code'`) and bind
+// it as `data-lang={c.labelKey}`. A JSX expression is invisible to `dataLangRe`
+// (which wants a quoted literal), so without this entry those eight keys would
+// be used but unvalidated.
 const NS = [
   'header', 'ui', 'public', 'button', 'form', 'siswa', 'apply', 'master',
   'ai_cv', 'share', 'admin', 'dash', 'candidate', 'option', 'status',
   'login', 'toast', 'error', 'table', 'landing', 'cvmini', 'esign',
   'changepass', 'doc', 'toolbar', 'bottomnav', 'cv', 'ai', 'input', 'db',
-  'pelamar', 'wa', 'footer', 'profile',
+  'pelamar', 'wa', 'footer', 'profile', 'loker_static',
 ].join('|');
 
 /**

@@ -15,6 +15,7 @@
  * on top and replaces the visual if JS is available.
  */
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import LokerStaticTable from './LokerStaticTable';
 
 interface Job {
   code: string;
@@ -53,41 +54,24 @@ if (isSupabaseConfigured()) {
 
 {jobs.length > 0 && (
   <div class="loker-static" data-loker-static>
-    <p class="loker-static-hint">
+    <p class="loker-static-hint" data-lang="loker_static.hint">
       Daftar lowongan aktif (diperbarui saat build). Untuk filter dan detail lengkap, aktifkan JavaScript.
     </p>
     <div class="loker-static-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Kode</th>
-            <th>Pekerjaan</th>
-            <th>Kategori</th>
-            <th>Lokasi</th>
-            <th>Gender</th>
-            <th>Kuota</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {jobs.map((j) => (
-            <tr>
-              <td>{j.code}</td>
-              <td>{j.pekerjaan}</td>
-              <td>{j.kategori}</td>
-              <td>{j.lokasi}</td>
-              <td>{j.gender}</td>
-              <td>{j.kuota}</td>
-              <td>{j.status}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* The rows live in a `.tsx` primitive: the indexer resolves `.astro`
+          template interpolations against the frontmatter scope only, so
+          `{jobs.map((j) => …)}` here produced 7 unresolved refs. See the
+          component's header for the measurement. */}
+      <LokerStaticTable jobs={jobs} />
     </div>
   </div>
 )}
 
-<style>
+{/* `is:global` is required, not lazy: the <table> now comes from a child
+    component, and Astro's scoped styles only reach elements written in THIS
+    file. Every selector below is prefixed by `.loker-static`, which exists only
+    here, so the global block cannot leak. */}
+<style is:global>
   .loker-static {
     margin-bottom: 1rem;
   }

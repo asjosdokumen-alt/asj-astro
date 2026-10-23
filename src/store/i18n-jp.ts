@@ -1911,4 +1911,45 @@ export const jpTranslations: Record<string, string> = {
     "theme.to_dark": "ダークテーマに切り替え",
     "lang.to_jp": "日本語に切り替え",
     "lang.to_id": "インドネシア語に切り替え",
+
+    // ─── クローラー向けにサーバー描画される文言 (2026-10-23) ────────────────
+    // 上の ID 側と同じキー。`aa8fa40` が /apply・/ai-cv・/siswa-baru・
+    // ブログCTA・トップの「記事」セクション・静的求人表をインドネシア語の
+    // 生テキストで出荷したため、日本語利用者にはそのままインドネシア語が
+    // 見えていた。HTML はビルド時に固定されるので `t()` ではなく
+    // `data-lang`（translateDataLang）で切り替える。
+    "ai_cv.intro_h1": "AIで日本向け履歴書を作成",
+    "ai_cv.intro_desc": "AIアシスタント「Qween Jeklin」が、日本の人材紹介会社が受け付ける形式でプロフェッショナルな履歴書を作成します。無料で、所要時間は約5分です。",
+    "ai_cv.intro_step1": "簡単な質問にいくつか答えるだけ",
+    "ai_cv.intro_step2": "AIが日本形式に沿って自動で作成",
+    "ai_cv.intro_step3": "ダウンロード前にプレビュー・編集",
+    "ai_cv.intro_step4": "送付できるPDF形式でダウンロード",
+    "apply.intro_h1": "日本就労の応募フォーム",
+    "apply.intro_desc": "必要事項をすべてご記入ください。1〜2営業日以内に面接と書類確認のためご連絡します。",
+    "apply.intro_step1": "プロフィールを記入し書類をアップロード",
+    "apply.intro_step2": "ASJチームからのWhatsApp連絡をお待ちください",
+    "apply.intro_step3": "面接・健康診断を受ける",
+    "apply.intro_step4": "契約署名・ビザ手続き",
+    "siswa.intro_h1": "ASJ日本語学校の新規入学生募集",
+    "siswa.intro_desc": "集中的な日本語研修プログラムにご登録ください。N5から就労準備まで、寮とビザ支援をご用意しています。",
+    "siswa.intro_step1": "入学申込書を記入しプログラムを選択",
+    "siswa.intro_step2": "入学試験・面接の日程をお待ちください",
+    "siswa.intro_step3": "入学金をお支払いください",
+    "siswa.intro_step4": "クラス日程に沿って研修を開始",
+    "blog.cta_title": "日本で働く準備はできましたか？",
+    "blog.cta_body": "最新の求人を確認するか、ASJのオンラインフォームから直接ご応募ください。",
+    "blog.cta_jobs": "求人を見る",
+    "blog.cta_apply": "オンライン応募",
+    "profile.artikel_title": "記事・ガイド",
+    "profile.artikel_desc": "お申し込み前に、手続きの流れをまとめたガイドをお読みください。",
+    "profile.artikel_guide": "総合ガイド",
+    "profile.artikel_howto": "申込方法",
+    "loker_static.code": "コード",
+    "loker_static.job": "職種",
+    "loker_static.category": "カテゴリ",
+    "loker_static.location": "勤務地",
+    "loker_static.gender": "性別",
+    "loker_static.quota": "募集人数",
+    "loker_static.status": "ステータス",
+    "loker_static.hint": "現在募集中の求人一覧です（ビルド時に更新）。絞り込みと詳細はJavaScriptを有効にするとご利用いただけます。",
 };

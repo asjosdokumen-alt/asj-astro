@@ -2199,6 +2199,50 @@ export const translations: Record<Lang, Record<string, string>> = {
     "theme.to_dark": "Aktifkan tema gelap",
     "lang.to_jp": "Ganti ke bahasa Jepang",
     "lang.to_id": "Ganti ke bahasa Indonesia",
+
+    // ─── Copy server-rendered untuk crawler (2026-10-23) ────────────────────
+    // Halaman /apply, /ai-cv, /siswa-baru, CTA blog, seksi "Artikel" di
+    // beranda, dan tabel lowongan statis diisi `aa8fa40` sebagai teks Indonesia
+    // telanjang. Gate `i18n.keys.test.ts` menangkapnya: pembaca JP melihat
+    // Indonesia dan tidak ada satu pun tombol yang bisa mengubahnya.
+    //
+    // Mekanismenya `data-lang` (bukan `t()`), karena HTML-nya dibekukan saat
+    // build — `t()` akan membakar bahasa build dan toggle JP tidak akan pernah
+    // sampai ke elemen itu.
+    "ai_cv.intro_h1": "Buat CV Kerja Jepang dengan AI",
+    "ai_cv.intro_desc": "AI Assistant Qween Jeklin membantu menyusun CV profesional dalam format yang diterima agensi penempatan kerja Jepang. Gratis dan hanya membutuhkan 5 menit.",
+    "ai_cv.intro_step1": "Jawab beberapa pertanyaan singkat tentang diri Anda",
+    "ai_cv.intro_step2": "AI menyusun CV otomatis sesuai format Jepang",
+    "ai_cv.intro_step3": "Preview & edit langsung sebelum download",
+    "ai_cv.intro_step4": "Download CV dalam format PDF siap kirim",
+    "apply.intro_h1": "Formulir Lamaran Kerja ke Jepang",
+    "apply.intro_desc": "Isi data diri Anda dengan lengkap. Tim kami akan menghubungi dalam 1–2 hari kerja untuk proses wawancara dan verifikasi dokumen.",
+    "apply.intro_step1": "Isi biodata lengkap & upload dokumen",
+    "apply.intro_step2": "Tunggu konfirmasi WhatsApp dari tim ASJ",
+    "apply.intro_step3": "Ikuti wawancara & tes kesehatan",
+    "apply.intro_step4": "Tanda-tangan kontrak & proses visa",
+    "siswa.intro_h1": "Pendaftaran Siswa Baru LPK ASJ",
+    "siswa.intro_desc": "Daftar program pelatihan bahasa Jepang intensif. Kami menyediakan kelas dari N5 hingga persiapan kerja, dengan fasilitas asrama dan bimbingan visa.",
+    "siswa.intro_step1": "Isi formulir pendaftaran & pilih program",
+    "siswa.intro_step2": "Tunggu jadwal tes masuk & wawancara",
+    "siswa.intro_step3": "Lakukan pembayaran biaya pendaftaran",
+    "siswa.intro_step4": "Mulai pelatihan sesuai jadwal kelas",
+    "blog.cta_title": "Siap kerja ke Jepang?",
+    "blog.cta_body": "Cek lowongan terbaru atau daftar langsung melalui form online ASJ.",
+    "blog.cta_jobs": "Lihat Lowongan",
+    "blog.cta_apply": "Daftar Online",
+    "profile.artikel_title": "Artikel & Panduan",
+    "profile.artikel_desc": "Baca panduan lengkap sebelum mendaftar, agar proses Anda lancar.",
+    "profile.artikel_guide": "Panduan Lengkap",
+    "profile.artikel_howto": "Cara Daftar",
+    "loker_static.code": "Kode",
+    "loker_static.job": "Pekerjaan",
+    "loker_static.category": "Kategori",
+    "loker_static.location": "Lokasi",
+    "loker_static.gender": "Gender",
+    "loker_static.quota": "Kuota",
+    "loker_static.status": "Status",
+    "loker_static.hint": "Daftar lowongan aktif (diperbarui saat build). Untuk filter dan detail lengkap, aktifkan JavaScript.",
   },
   jp: {} as Record<string, string>, // P9: lazy-loaded from i18n-jp.ts
 
