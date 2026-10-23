@@ -62,8 +62,12 @@ if (!existsSync(SW_DIST)) {
     const badSep = urls.filter((u) => u.includes(bs));
     check(badSep.length === 0, `no Windows backslash paths in PRECACHE (${badSep.length} found)`);
     check(
-      !urls.some((u) => /\/pdf-parse\.|\/xlsx\./.test(u)),
-      'lazy-only chunks (pdf-parse, xlsx) are NOT precached',
+      // Keep this list IDENTICAL to LAZY_EXCLUDE in scripts/build-sw-manifest.mjs.
+      // `exceljs` was missing from both until 2026-10-23: 918 KB — the largest
+      // file in the build — was precached for every visitor even though only the
+      // admin Excel export imports it.
+      !urls.some((u) => /\/pdf-parse\.|\/xlsx\.|\/exceljs\./.test(u)),
+      'lazy-only chunks (pdf-parse, xlsx, exceljs) are NOT precached',
     );
   }
 

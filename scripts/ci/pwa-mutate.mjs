@@ -87,6 +87,21 @@ const cases = {
       return `${JSON.stringify(m, null, 2)}\n`;
     }),
 
+  // ── the lazy-chunk list ───────────────────────────────────────────────────
+  //
+  // A chunk that is only ever imported on demand sneaks back into the precache.
+  // This is not hypothetical: `exceljs` — 918 KB, the largest file in the build —
+  // was precached for every visitor until 2026-10-23, and the gate could not see
+  // it because its assertion named only `pdf-parse` and `xlsx`. The gate and the
+  // generator carry the same list; this case is what keeps that list honest.
+  'lazy-chunk-precached': () =>
+    mutate(SW, (s) =>
+      s.replace(
+        'const PRECACHE = [',
+        'const PRECACHE = [\n  "/_astro/exceljs.min.DEADBEEF.js",',
+      ),
+    ),
+
   // NOT a defect: a remote URL that is not an icon href. The gate scopes its
   // check to rel=icon/apple-touch-icon and to manifest icons[].src; a canonical
   // link is legitimate and must stay green. A gate that flagged any http://

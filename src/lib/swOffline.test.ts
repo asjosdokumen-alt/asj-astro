@@ -86,11 +86,17 @@ describe.skipIf(!hasBuild)('built service worker — offline navigation (#18)', 
   });
 
   it('lazy heavy chunks stay OUT of the precache', () => {
-    // xlsx (~429 KB) and pdf-parse are loaded on demand; precaching them would
-    // inflate install for code most sessions never run.
+    // xlsx (~429 KB), pdf-parse and exceljs are loaded on demand; precaching
+    // them inflates install for code most sessions never run.
+    //
+    // `exceljs` added 2026-10-23: 918 KB — the single largest file in the build —
+    // was in the precache because the exclusion list named only the other two.
+    // Its only importers are the admin Excel export and the CV template loader,
+    // so a public visitor paid for it at install and never ran it.
     const pre = readPrecache();
     expect(pre.filter((u) => /\/xlsx\./.test(u))).toEqual([]);
     expect(pre.filter((u) => /\/pdf-parse\./.test(u))).toEqual([]);
+    expect(pre.filter((u) => /\/exceljs\./.test(u))).toEqual([]);
   });
 
   it('API traffic is never precached and never intercepted', () => {

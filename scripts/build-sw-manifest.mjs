@@ -36,8 +36,18 @@ import { createHash } from 'node:crypto';
 const DIST = 'dist';
 const SW = join(DIST, 'sw.js');
 
-/** Lazy chunks that must NOT be precached (see header comment). */
-const LAZY_EXCLUDE = [/^pdf-parse\./, /^xlsx\./];
+/**
+ * Lazy chunks that must NOT be precached (see header comment).
+ *
+ * `exceljs` was added 2026-10-23. It is the LARGEST single file in the build —
+ * 918 KB — and the list above only knew about `xlsx` and `pdf-parse`, so every
+ * visitor downloaded it at install whether or not they ever opened the admin
+ * Excel export (its only importers are `admin/TabConfig.tsx` and the CV template
+ * loader). Measured: 101 precache entries / 5.72 MB before, 100 / 4.80 MB after.
+ * The gate in scripts/ci/verify-pwa.mjs carries the same three names, so the two
+ * cannot drift again without one of them going red.
+ */
+const LAZY_EXCLUDE = [/^pdf-parse\./, /^xlsx\./, /^exceljs\./];
 
 /** Assets we never precache, by name pattern. */
 const ASSET_INCLUDE = /\.(js|css|woff2?|svg|webp|png|ico)$/;

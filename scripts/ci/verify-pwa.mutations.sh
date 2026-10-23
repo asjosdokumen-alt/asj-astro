@@ -204,6 +204,14 @@ mutate_or_die version-cached
 check 'W1i a worker that caches /version.json is caught' kill
 restore_all
 
+# ── W1j · a lazy-only chunk back in the precache ───────────────────────────
+# `exceljs` (918 KB, the largest file in the build) was precached for every
+# visitor until 2026-10-23, and the gate could not see it: its assertion named
+# only pdf-parse and xlsx. This case is what proves the widened list works.
+mutate_or_die lazy-chunk-precached
+check 'W1j a lazy-only chunk (exceljs) sneaking into PRECACHE is caught' kill
+restore_all
+
 # ── W2b · a remote-looking string must NOT trip the icon check ─────────────
 mutate_or_die remote-canonical
 check "W2b a remote canonical link is not mistaken for an icon" equivalent
