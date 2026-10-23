@@ -560,6 +560,118 @@ probe              Chromium 4/4 · WebKit 4/4 (HTTP_PROXY dibersihkan)
 Catatan jujur soal suite: run penuh PERTAMA sesi ini merah 6 — 4 di antaranya
 memang perubahan sesi ini (dua angka beku `deep-tier` dan dua tes yang memaku
 `?raw` di `BaseLayout`), sudah diperbaiki dan diukur ulang. Dua sisanya
-(`fcm-prune.test.ts`: DELETE ganda & pembersihan token mati) **lulus 8/8 saat
-dijalankan sendiri**, dan lulus lagi di run penuh terakhir; penyebabnya belum
-terbukti dan tidak saya sebut "environmental" tanpa bukti.
+(`fcm-prune.test.ts`) **lulus 8/8 saat dijalankan sendiri**; penyebabnya
+ditemukan di §16d dan sudah diperbaiki, bukan diberi label "environmental".
+
+---
+
+## 16. Butir P3 yang dikerjakan (2026-10-24)
+
+Tiga dari delapan butir §9 sudah selesai; sisanya sengaja belum, dengan alasan.
+
+### a) Tabel statis `/loker` & `/public` — disembunyikan TERLALU AWAL (butir 8/§9)
+
+Skrip inline di `LokerStaticList.astro` menjalankan
+`document.querySelector('[data-loker-static]').style.display = 'none'` **saat
+parsing**, bukan setelah island-nya hydrate — komentarnya sendiri bilang
+"once the client island hydrates", dan itu tidak pernah benar. Akibatnya:
+kalau fetch island gagal (offline, API mati, error JS), baris hasil render
+server sudah tersembunyi dan halaman menyisakan judul + celah kosong. Fallback
+yang justru dibuat untuk situasi itu dimatikan lebih dulu.
+
+Sekarang: `LokerTable` menandai `<html data-loker-live>` **hanya kalau `jobs`
+tidak kosong** (dan melepasnya saat unmount); CSS di `LokerStaticList.astro`
+yang menyembunyikan. Island gagal ⇒ tabel statis tetap tampil.
+
+Bukti:
+```
+jsdom  LokerTable.test.tsx  4 tes — termasuk "kosong" dan "fetch gagal"
+       mutasi "tandai saat mount" ⇒ 2 tes MERAH (bug lama kembali)
+dist   skrip lama 0 kemunculan di /loker & /public
+       aturan baru ada: html[data-loker-live] .loker-static{display:none}
+Chrome tanpa atribut: block · dengan atribut: none
+       payload ok  ⇒ data-loker-live true   (tabel statis disembunyikan)
+       payload gagal ⇒ data-loker-live false (tabel statis tetap)
+```
+⚠️ Build di mesin ini TIDAK punya akses DB, jadi blok statisnya memang tidak
+pernah dirender ke `dist/` (sudah tercatat di header `LokerStaticTable.test.tsx`).
+Karena itu pembuktian perilaku memakai jsdom + injeksi elemen dengan
+class/atribut yang sama, bukan halaman hasil build.
+
+### b) `notificationclick` membajak tab yang sedang dipakai (butir 6)
+
+Handler lama memfokuskan client pertama yang origin-nya sama lalu
+**menavigasinya** ke tujuan notifikasi. Klik notifikasi saat admin mengisi
+Master Form membuang isian itu — kelas kegagalan yang sama dengan force-reload
+di §8, hanya pemicunya pengguna sendiri.
+
+Sekarang: tab yang path-nya SUDAH sama hanya difokuskan; selain itu tab baru
+dibuka. Tidak ada lagi `client.navigate()`.
+
+Bukti: 3 tes menjalankan `sw.js` di scope SW tiruan (bukan assertion teks).
+Dijalankan atas `git show HEAD:public/sw.js` ⇒ **2 tes MERAH**; atas worker
+sekarang ⇒ 3 hijau.
+
+### c) `public/sitemap.xml` statis dihapus (butir 1)
+
+797 B, isinya `/share/` dan `changefreq` lama; kalah oleh route
+`src/pages/sitemap.xml.ts` di `dist/`, tapi tetap menjadi sumber kebenaran
+kedua yang bisa menang kalau route-nya berubah nama. Dihapus dengan
+`unlinkSync` + `git add` (R9, bukan `git rm`); `public/` diperiksa masih utuh.
+Build berikutnya tetap menghasilkan `dist/sitemap.xml` (1.294 B, 8 `<loc>`) dan
+gate `sitemap-robots-agreement` hijau.
+
+### Yang BELUM dikerjakan, dan kenapa
+
+| Butir §9 | Alasan |
+|---|---|
+| `theme_color` statis `#020617` | manifest adalah JSON statis; varian terang butuh manifest kedua atau `theme-color` meta per-tema — perubahan desain, bukan perbaikan |
+| `orientation: portrait-primary` | mengunci tablet ke portrait; menghapusnya mengubah UX install (keputusan pemilik) |
+| `screenshots` | butuh aset tangkapan layar baru; bukan bug |
+| `badge` berwarna | butuh berkas monokrom baru dari generator ikon |
+| Shortcut `/candidate/` untuk anonim | berakhir di `/` karena auth — perilaku yang benar, bukan bug |
+| Fallback offline 503 polos | peningkatan, bukan cacat |
+
+### d) `fcm-prune.test.ts` merah 2–3 kali HANYA di run penuh (bukan P3, tapi ketemu di sini)
+
+Gejalanya: 3 kasus merah di run penuh, 8/8 hijau saat dijalankan sendiri, dua
+kali berturut-turut. Penyebabnya bukan beban CPU — berkas itu sendiri sudah
+menuliskannya di `beforeEach`:
+
+`fcm-server.test.ts` **memarkir berkas kredensial asli**
+(`netlify/functions/secrets/firebase-service-account.json` → BAK) selama ia
+berjalan, untuk menguji kasus "file tidak ada". `fcm-prune.test.ts` berjalan
+PARALEL, jadi kadang ia membaca dunia tanpa kredensial:
+`sendPushNotification()` → `'failed'` → tidak ada token yang dianggap mati →
+tidak ada yang dihapus. Reset singleton di `beforeEach` hanya menutup sebagian
+jendela.
+
+Perbaikan: berkas itu sekarang **membuat kredensialnya sendiri** — pasangan RSA
+2 048-bit di-generate saat modul dimuat, diberikan lewat
+`FIREBASE_SERVICE_ACCOUNT` (fallback yang SUDAH ada di produksi: file-first,
+lalu env), dan dihapus lagi di `afterEach` supaya tidak terlihat berkas lain di
+worker yang sama. Tidak ada jalur kode baru; kalau berkas asli ada, ia tetap
+menang.
+
+Bukti: berkas kredensial **diparkir** (di-rename) lalu `fcm-prune.test.ts`
+dijalankan sendiri ⇒ **8/8 hijau**. Sebelum perbaikan, kondisi itu persis yang
+membuatnya merah. Berkas dikembalikan dan md5-nya diperiksa sama.
+
+### e) Angka beku indexer: 577 berkas (bukan 576), `unresolvedRefs` tetap 33
+
+`LokerTable.test.tsx` menambah satu `.tsx`. Diukur dengan alat repo
+(`indexer/src/count-indexed.test.ts`, yang mencetak baris siap tempel):
+
+```
+321 ts + 116 tsx + 23 astro + 90 mjs + 6 cjs + 21 js = 577
+```
+
+`count('tsx')` 115 → 116, `files.length` dan `fileCount` 576 → 577, ketiganya
+dari angka yang sama.
+
+`unresolvedRefs` sempat 33 → 36 karena helper baru saya ditulis sebagai
+`function` di dalam callback `describe` — analisis scope indexer tidak
+mengikatnya, jadi tiga call site muncul sebagai `global-unknown`. Diubah ke
+`const` + arrow ⇒ kembali **33**, jadi tidak ada angka beku yang perlu dinaikkan
+untuk itu. (Probe sementara yang dipakai untuk melihat ketiga baris itu sudah
+dihapus; `indexer/src` diperiksa masih utuh.)
