@@ -465,3 +465,101 @@ lint-ratchet       PASSED (2012)
 verify:pwa         26/26
 pwa battery        10 killed / 0 survived / 2 ok-green
 ```
+
+---
+
+## 15. Ronde P3 — sprite ikon keluar dari HTML (2026-10-23, sesi lanjutan)
+
+Sesi ini mulai dari satu temuan yang belum dikerjakan di §6/§14: **sprite 155 glyph
+ditulis ulang ke dalam HTML SETIAP halaman**. Itu 85.680 B × 13 halaman di dalam
+precache, dan semuanya isi yang sama.
+
+### a) Yang berubah
+
+`BaseLayout.astro` tidak lagi `import sprite from '../icons/sprite.svg?raw'` +
+`set:html`. Sprite sekarang satu berkas yang dirujuk
+`<use href="/icons/sprite.svg#id">`, ditulis oleh `npm run icons` ke **dua** tempat
+(`src/icons/sprite.svg` untuk sumber, `public/icons/sprite.svg` untuk yang dikirim).
+
+```
+precache entri        100 -> 101     (+1: sprite)
+precache unik         89 berkas / 2,50 MB
+sprite                84.783 B (24,5 KB gzip) — muncul SEKALI, bukan 13x
+hemat                 12 x 84.783 B = 0,97 MB di payload install
+dist/index.html       0 `<symbol id=` (sebelumnya seluruh sheet)
+```
+
+Dua font preload (`?url` dari `@fontsource/inter`) ditambahkan di `<head>` supaya
+WOFF2 tidak ditemukan terlambat setelah CSS di-parse.
+
+### b) Tiga bug yang ditemukan sambil mengerjakannya
+
+**1. Tiga ikon di `RirekishoBuilder` jadi kosong.** Komponen itu menyusun markup
+sebagai STRING (`<use href="#fas-print">`), dan `href` fragmen sekarang menunjuk
+dokumen yang tidak punya `<symbol>` lagi. Ikon `print`, `file-pdf`, `eye` dirender
+sebagai ruang kosong tanpa error. Gate lama tidak bisa melihatnya: regex-nya
+menerima kedua bentuk. Sekarang ada tes terpisah yang **menolak fragmen telanjang**,
+dan tes itu terbukti MERAH atas sumber HEAD (`git show HEAD:…`) sebelum diperbaiki.
+
+**2. Sprite tidak masuk precache.** Daftar precache dibangun dari `dist/_astro/*` +
+HTML; berkas di `dist/` root tidak terlihat. Sebelum perubahan ini sprite IKUT di
+dalam HTML, jadi offline-nya gratis; sesudahnya, instalasi baru yang langsung
+offline akan menggambar 154 ikon kosong. Ditambahkan `RENDER_CRITICAL` di
+`scripts/build-sw-manifest.mjs` (+ masuk hash VERSION, karena isinya bisa berubah
+tanpa satu pun aset ber-hash berubah), gate di `verify-pwa`, dan tes di
+`swOffline.test.ts`.
+
+**3. `/icons/*` di-cache `immutable` setahun.** Sprite adalah satu-satunya berkas di
+sana yang berubah TANPA berganti nama, dan namanya tidak bisa diberi versi (dirujuk dari
+seluruh aplikasi). Tanpa pengecualian, ikon yang baru ditambahkan akan tampil kosong
+bagi pengguna lama sampai setahun. `netlify.toml` + `server.cjs` sekarang memberi
+`no-cache` khusus untuk berkas ini; SW tetap menyajikannya dari cache lebih dulu.
+
+Glyph turun **155 → 154**: `fas-id-badge` sudah mati — ia hanya ada di artefak
+hasil generate, tidak dirujuk satu berkas pun di `src/`. Regenerasi membuangnya.
+
+### c) Dua pengukuran yang SALAH, dan kenapa
+
+Bagian ini ditulis karena dua kesimpulan pertama sesi ini keliru, dan keduanya
+tampak meyakinkan.
+
+**Ukuran 1 — "WebKit tidak menggambar `<use>` eksternal".** Probe Playwright
+(Chromium 4/4 glyph, WebKit 0/4, layar kosong) terbaca seperti regresi fatal untuk
+pengguna iOS. Ternyata **sandbox punya `HTTP_PROXY`** (`127.0.0.1:23327`), WebKit
+menghormatinya, dan proxy menjawab permintaan `/icons/sprite.svg` dengan **halaman
+HTML** (`content-type: text/html`, 118.583 B = `dist/index.html`). `<use>` yang
+menunjuk HTML memang tidak menggambar apa pun.
+
+Bukti yang membongkarnya: `curl --noproxy '*'` mengembalikan sprite yang benar,
+sementara `response.body()` di WebKit menunjukkan HTML. Dengan
+`HTTP_PROXY= NO_PROXY=localhost,127.0.0.1`, **kedua engine menggambar 4/4** dengan
+warna `currentColor` yang benar.
+
+**Ukuran 2 — "`display:none` di root membuat WebKit buta".** A/B dua
+salinan sprite (dengan/tanpa atribut) lewat proxy menunjukkan 0/4 vs 4/4. Setelah
+proxy dibersihkan: **keduanya 4/4**. Perubahan generator yang dibuat atas dasar ini
+sudah dikembalikan; yang tersisa hanya catatan di `Icon.test.ts` supaya tidak
+diulang.
+
+**Aturan yang lahir dari sini:** probe browser ke `localhost` di mesin ini WAJIB
+membersihkan `HTTP_PROXY`/`HTTPS_PROXY`, dan verdict "tidak dirender" harus
+dibuktikan dengan `response.body()` (tipe + ukuran), bukan hanya screenshot.
+Kegagalan yang terlihat identik dengan bug render bisa berupa HTML yang salah alamat.
+
+### Status
+
+```
+suite              246 files / 2922 tests — PASSED, exit 0
+typecheck:ratchet  PASSED (0)
+lint-ratchet       PASSED (2012)
+verify:pwa         29/29 (3 cek baru: sprite ada, sprite di precache)
+build              13 halaman, exit 0
+probe              Chromium 4/4 · WebKit 4/4 (HTTP_PROXY dibersihkan)
+```
+
+Catatan jujur soal suite: run penuh PERTAMA sesi ini merah 6 — 4 di antaranya
+memang perubahan sesi ini (dua angka beku `deep-tier` dan dua tes yang memaku
+`?raw` di `BaseLayout`), sudah diperbaiki dan diukur ulang. Dua sisanya
+(`fcm-prune.test.ts`: DELETE ganda & pembersihan token mati) **lulus 8/8 saat
+dijalankan sendiri**, dan lulus lagi di run penuh terakhir; penyebabnya belum
+terbukti dan tidak saya sebut "environmental" tanpa bukti.
