@@ -7,27 +7,46 @@
  * terbaca sebagai "kotak hitam" dengan sudut yang tidak membulat. Terukur
  * 2026-10-13 pada berkas lama: sudut (0,0) = rgb(2,6,23), alpha tidak ada.
  *
- * YANG DIPERIKSA: setiap berkas di bawah memuat kanal alfa DAN keempat sudutnya
- * bening (alpha rendah). Sumber kebenarannya `logo-asj.webp`, yang sudutnya
- * memang transparan ⇒ manifest tetap memakai berkas yang sama.
+ * YANG DIPERIKSA: setiap ikon `purpose: any` di manifest memuat kanal alfa DAN
+ * keempat sudutnya bening (alpha rendah). Ikon `maskable` DIBALIK: sudutnya
+ * harus OPAQUE, karena Android memotongnya sendiri dan area di luar safe zone
+ * justru diisi warna ikon — sudut bening di situ menghasilkan cincin gelap.
+ *
+ * ── KENAPA DAFTARNYA DIBACA DARI MANIFEST (2026-10-23) ──────────────────────
+ * Berkas ini dulu memegang daftar hardcoded yang berisi
+ * `icon-maskable-512.png`. Manifest kemudian dipindah ke
+ * `icon-maskable-512-v2.png`, dan daftar itu tidak ikut — jadi gate ini
+ * menguji berkas yang SUDAH TIDAK DIRUJUK siapa pun sementara berkas yang
+ * benar-benar dipakai tidak diuji sama sekali. Membaca manifest membuat drift
+ * itu mustahil: yang diuji selalu yang dikirim.
  *
  * KENAPA DI `e2e/`: `.ts` baru di bawah `src/**` memindahkan counter beku
  * `indexer` (R15). Berkas ini juga murni membaca biner — tanpa DOM — jadi ia
  * milik project `backend` dan WAJIB didaftarkan di `exclude` frontend
  * `vitest.config.ts`, kalau tidak ia jalan DUA KALI (R13f-bis).
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import sharp from 'sharp';
 
-/** Semua ikon yang dirujuk `public/manifest.webmanifest` + `BaseLayout.astro`. */
-const ICONS = [
-  'public/icons/favicon-32.png',
-  'public/icons/icon-192.png',
-  'public/icons/icon-512.png',
-  'public/icons/apple-touch-icon.png',
-  'public/icons/icon-maskable-512.png',
-];
+interface ManifestIcon {
+  src: string;
+  sizes?: string;
+  purpose?: string;
+}
+
+const MANIFEST = JSON.parse(readFileSync('public/manifest.webmanifest', 'utf8')) as {
+  icons?: ManifestIcon[];
+};
+
+const ALL_ICONS: ManifestIcon[] = MANIFEST.icons ?? [];
+/** Path repo untuk sebuah `src` manifest. */
+const fileOf = (src: string) => join('public', src.replace(/^\//, ''));
+const isMaskable = (i: ManifestIcon) => String(i.purpose ?? '').includes('maskable');
+
+const ANY_ICONS = ALL_ICONS.filter((i) => !isMaskable(i));
+const MASKABLE_ICONS = ALL_ICONS.filter(isMaskable);
 
 /** Sudut yang diuji, sebagai pecahan (x, y) dari lebar/tinggi. */
 const CORNERS: Array<[number, number]> = [
@@ -39,44 +58,73 @@ const CORNERS: Array<[number, number]> = [
 
 /** Ambang: sudut harus hampir seluruhnya bening. */
 const CORNER_MAX_ALPHA = 16;
+/** Ambang untuk maskable: sudut harus praktis penuh. */
+const MASKABLE_MIN_ALPHA = 240;
+
+async function corners(file: string): Promise<number[]> {
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({
+    resolveWithObject: true,
+  });
+  const alphaAt = (fx: number, fy: number): number => {
+    const x = fx === 0 ? 0 : info.width - 1;
+    const y = fy === 0 ? 0 : info.height - 1;
+    return data[(y * info.width + x) * 4 + 3];
+  };
+  return CORNERS.map(([fx, fy]) => alphaAt(fx, fy));
+}
 
 describe('ikon PWA — transparansi', () => {
-  it('probe-nya bekerja — daftarnya tidak kosong dan sharp membaca sesuatu', async () => {
-    // Penjaga penjaga: kalau daftar dikosongkan, tes di bawah lulus tanpa arti.
-    expect(ICONS.length).toBeGreaterThan(0);
-    const meta = await sharp(ICONS[0]).metadata();
+  it('probe-nya bekerja — manifest mendeklarasikan ikon `any` DAN `maskable`', async () => {
+    // Penjaga penjaga: kalau manifest kehilangan salah satu kelompok, tes di
+    // bawah lulus tanpa menguji apa pun.
+    expect(ANY_ICONS.length).toBeGreaterThan(0);
+    expect(MASKABLE_ICONS.length).toBeGreaterThan(0);
+    expect(ALL_ICONS.every((i) => existsSync(fileOf(i.src))), 'ada src manifest yang filenya tidak ada').toBe(
+      true,
+    );
+    const meta = await sharp(fileOf(ANY_ICONS[0].src)).metadata();
     expect(meta.width).toBeGreaterThan(0);
   });
 
-  for (const file of ICONS) {
-    it(`${file} punya kanal alfa`, async () => {
+  for (const icon of ANY_ICONS) {
+    const file = fileOf(icon.src);
+
+    it(`${icon.src} punya kanal alfa`, async () => {
       const meta = await sharp(file).metadata();
       // `hasAlpha` false = gambar persegi opaque ⇒ kotak gelap di tab/notifikasi.
       expect(meta.hasAlpha, `${file} tidak punya kanal alfa (channels=${meta.channels})`).toBe(true);
       expect(meta.channels, `${file} bukan RGBA`).toBe(4);
     });
 
-    it(`${file} sudutnya bening`, async () => {
-      const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({
-        resolveWithObject: true,
-      });
-      const alphaAt = (fx: number, fy: number): number => {
-        const x = fx === 0 ? 0 : info.width - 1;
-        const y = fy === 0 ? 0 : info.height - 1;
-        return data[(y * info.width + x) * 4 + 3];
-      };
-      for (const [fx, fy] of CORNERS) {
-        const a = alphaAt(fx, fy);
+    it(`${icon.src} sudutnya bening`, async () => {
+      const alphas = await corners(file);
+      alphas.forEach((a, idx) => {
         expect(
           a,
-          `${file}: sudut (${fx},${fy}) alpha=${a} — sudut harus bening, bukan kotak gelap`,
+          `${file}: sudut (${CORNERS[idx].join(',')}) alpha=${a} — sudut harus bening, bukan kotak gelap`,
         ).toBeLessThanOrEqual(CORNER_MAX_ALPHA);
-      }
+      });
+    });
+  }
+
+  for (const icon of MASKABLE_ICONS) {
+    it(`${icon.src} sudutnya OPAQUE (Android memotongnya sendiri)`, async () => {
+      // Kebalikan dari ikon `any`: area di luar safe zone diisi warna ikon,
+      // bukan dibiarkan transparan. Sudut bening di sini menghasilkan cincin
+      // gelap setelah Android menerapkan mask-nya.
+      const alphas = await corners(fileOf(icon.src));
+      alphas.forEach((a, idx) => {
+        expect(
+          a,
+          `${fileOf(icon.src)}: sudut (${CORNERS[idx].join(',')}) alpha=${a} — ikon maskable harus penuh sampai tepi`,
+        ).toBeGreaterThanOrEqual(MASKABLE_MIN_ALPHA);
+      });
     });
   }
 
   it('PNG-nya bukan PNG palet tanpa tRNS (bentuk cacat yang asli)', () => {
-    for (const f of ICONS) {
+    for (const icon of ANY_ICONS) {
+      const f = fileOf(icon.src);
       const b = readFileSync(f);
       expect(b.slice(1, 4).toString('latin1'), `${f} bukan PNG`).toBe('PNG');
       // colorType ada di byte 25: 3 = palet. Palet BOLEH, asal ada `tRNS`.

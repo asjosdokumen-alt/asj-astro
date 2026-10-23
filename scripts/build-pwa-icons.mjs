@@ -9,9 +9,16 @@
  * Outputs (also checked in, so a deploy never depends on this script running):
  *   public/icons/icon-192.png
  *   public/icons/icon-512.png
- *   public/icons/icon-maskable-512.png
+ *   public/icons/icon-maskable-512-v2.png   ← the name the MANIFEST uses
  *   public/icons/apple-touch-icon.png   (180×180 — referenced by BaseLayout.astro)
  *   public/icons/favicon-32.png
+ *
+ * ⚠ The maskable output is `-v2` because the manifest moved to that name
+ * (2026-10-21) and this script was never updated: running it wrote
+ * `icon-maskable-512.png`, which nothing references, while the file the browser
+ * actually fetches was left untouched. Measured 2026-10-23. The icon gate in
+ * `e2e/pwa-icons-transparency.test.ts` now reads the manifest instead of a
+ * hardcoded list, so a name that drifts again fails there instead of passing.
  *
  * WHY THE EMBLEM IS A LOCAL FILE AND NOT THE SUPABASE URL
  * ------------------------------------------------------
@@ -45,9 +52,23 @@
  * lettering. The maskable variant is therefore inset to SAFE, inside the safe
  * zone, on the theme background.
  *
- * Every output is composited onto #020617 rather than left transparent: that is
- * `theme_color` in the manifest, and iOS renders apple-touch-icon transparency
- * as black, which would put a black disc on a dark-navy launcher.
+ * ── THE CANVAS IS TRANSPARENT FOR `any` AND OPAQUE FOR `maskable` ──────────
+ * (corrected 2026-10-23 — this script painted EVERY icon onto #020617, which is
+ * the exact "black box" defect the icon gate exists to catch, so re-running it
+ * produced gate-failing files.)
+ *
+ *   `any`      — the emblem is a circle, so the canvas around it must be CLEAR.
+ *                A baked #020617 square reads as a dark box in a browser tab, in
+ *                the launcher, and in a notification.
+ *   `maskable` — Android crops it to its own mask and fills the rest with the
+ *                icon's own pixels, so the area outside the safe zone must be
+ *                the theme colour, not transparency (transparency there shows as
+ *                a dark ring after the crop).
+ *
+ * The `apple-touch-icon` is `any` (transparent) like the rest: iOS composites it
+ * onto its own surface, and the emblem's dark navy corners are invisible there.
+ * If a visible black corner is ever reported on iOS, that file is the one to
+ * make opaque — not the whole set.
  *
  * Re-run manually when the emblem changes:  npm run icons:pwa
  */
@@ -58,7 +79,9 @@ import sharp from 'sharp';
 
 const ICON_DIR = 'public/icons';
 const SRC = join(ICON_DIR, 'logo-asj.webp');
-const BG = '#020617'; // manifest theme_color
+const BG = '#020617'; // manifest theme_color — maskable only, see the header
+/** `any` icons: the emblem's circle is the shape, so the canvas is empty. */
+const CLEAR = { r: 0, g: 0, b: 0, alpha: 0 };
 
 /** Fraction of the canvas the emblem occupies. */
 const FULL = 0.96; // standard icons — the emblem's own circle is the shape
@@ -104,16 +127,17 @@ if (!meta.hasAlpha) {
 }
 
 const jobs = [
-  { out: 'icon-192.png', size: 192, scale: FULL },
-  { out: 'icon-512.png', size: 512, scale: FULL },
-  { out: 'icon-maskable-512.png', size: 512, scale: SAFE },
-  { out: 'apple-touch-icon.png', size: 180, scale: FULL },
-  { out: 'favicon-32.png', size: 32, scale: FULL },
+  { out: 'icon-192.png', size: 192, scale: FULL, bg: CLEAR },
+  { out: 'icon-512.png', size: 512, scale: FULL, bg: CLEAR },
+  // Opaque: Android crops this one and fills the rest with its own pixels.
+  { out: 'icon-maskable-512-v2.png', size: 512, scale: SAFE, bg: BG },
+  { out: 'apple-touch-icon.png', size: 180, scale: FULL, bg: CLEAR },
+  { out: 'favicon-32.png', size: 32, scale: FULL, bg: CLEAR },
 ];
 
 console.log(`[pwa-icons] source  : ${SRC} (${meta.width}×${meta.height}, ${meta.format})`);
 let ok = 0;
-for (const { out, size, scale } of jobs) {
+for (const { out, size, scale, bg } of jobs) {
   const inner = Math.round(size * scale);
   const emblem = await sharp(SRC)
     .resize(inner, inner, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
@@ -121,7 +145,7 @@ for (const { out, size, scale } of jobs) {
     .toBuffer();
 
   const dest = join(ICON_DIR, out);
-  await sharp({ create: { width: size, height: size, channels: 4, background: BG } })
+  await sharp({ create: { width: size, height: size, channels: 4, background: bg } })
     .composite([{ input: emblem, gravity: 'center' }])
     .png(PNG_OPTS)
     .toFile(dest);
