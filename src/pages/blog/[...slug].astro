@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { articleJsonLd, jsonLdScript, absoluteUrl } from '../../lib/siteMeta';
 
 /**
  * One route for the whole blog cluster.
@@ -26,12 +27,26 @@ export async function getStaticPaths() {
 
 const { post } = Astro.props;
 const { Content } = await render(post);
+
+const postUrl = absoluteUrl(`/blog/${post.id.split('/').pop()}`);
+const postImage = post.data.image ? absoluteUrl(post.data.image) : null;
+const articleLd = jsonLdScript(
+  articleJsonLd({
+    title: post.data.title,
+    description: post.data.description,
+    url: postUrl ?? '',
+    image: postImage,
+    dateModified: post.data.last_updated,
+  }),
+);
 ---
 
 <BaseLayout
   title={post.data.title}
   description={post.data.description}
   showFooter={true}
+  ogImage={post.data.image}
+  jsonLd={articleLd ?? undefined}
 >
   <main id="main-content" class="article-shell">
     <article class="article">

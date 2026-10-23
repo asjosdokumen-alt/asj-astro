@@ -91,9 +91,15 @@ export interface Props {
    * (correct for crawlers) stops being the only value a JP reader ever sees.
    */
   titleKey?: string;
+  /** Absolute URL (or root-relative path) to an Open Graph image for this page. */
+  ogImage?: string;
+  /** If true, emit `<meta name="robots" content="noindex">` for gated app pages. */
+  noIndex?: boolean;
+  /** Extra JSON-LD payload (already serialised) to inject into `<head>`. */
+  jsonLd?: string;
 }
 
-const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false, titleKey } = Astro.props;
+const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false, titleKey, ogImage, noIndex, jsonLd } = Astro.props;
 
 // ─── Discovery metadata (JSON-LD + hreflang) ─────────────────────────────────
 // ADDED 2026-09-29. MEASURED that day: this site emitted 0 JSON-LD and 0
@@ -108,12 +114,16 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
 // host — this project's host has already moved twice — which is worse than
 // emitting none. So a missing block here is a config state, not a bug.
 //
-// The JP counterpart of `/` is the same route with the language switched in the
-// browser (`data-lang` + translateDataLang), not a separate path, so the
-// alternate points at `/?lang=jp`. That is the parameter the language store
-// reads; see src/store/langStore.ts.
-const alternates = hreflangAlternates({ id: '/', jp: '/?lang=jp' });
-const canonical = absoluteUrl('/');
+// The JP counterpart of each page is the same route with the language switched
+// in the browser (`data-lang` + translateDataLang), not a separate path, so the
+// alternate points at `?lang=jp`. The path is taken from `Astro.url.pathname`
+// so every page gets its own canonical and alternates — the old hard-coded `/`
+// made every page claim the homepage as its canonical, which is a serious SEO
+// defect (fixed 2026-10-23).
+const currentPath = Astro.url.pathname || '/';
+const alternates = hreflangAlternates({ id: currentPath, jp: currentPath + (currentPath.includes('?') ? '&' : '?') + 'lang=jp' });
+const canonical = absoluteUrl(currentPath);
+const ogImageAbsolute = ogImage ? (ogImage.startsWith('http') ? ogImage : absoluteUrl(ogImage.startsWith('/') ? ogImage : '/' + ogImage)) : null;
 const orgJsonLd = jsonLdScript(
   organizationJsonLd({
     name: 'PT Amanah Sakura Japan',
@@ -160,6 +170,22 @@ const orgJsonLd = jsonLdScript(
        cannot rewrite a <title> for a crawler or a shared link preview. -->
   <title>{title}</title>
   <meta name="description" content={description} />
+  {noIndex && <meta name="robots" content="noindex, nofollow" />}
+
+  {/* ─── Open Graph & Twitter Card (added 2026-10-23) ───────────────────────
+       Every public page should carry a share preview. `ogImage` is optional;
+       when absent the tags still emit og:title and og:description so the
+       preview is a text card rather than a broken link. */}
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  {canonical && <meta property="og:url" content={canonical} />}
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content={lang === 'id' ? 'id_ID' : 'ja_JP'} />
+  {ogImageAbsolute && <meta property="og:image" content={ogImageAbsolute} />}
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+  {ogImageAbsolute && <meta name="twitter:image" content={ogImageAbsolute} />}
 
   {/* ─── hreflang + JSON-LD (added 2026-09-29) ──────────────────────────────
        Both render only when PUBLIC_SITE_URL resolves to a real origin; see the
@@ -185,6 +211,9 @@ const orgJsonLd = jsonLdScript(
   <HreflangLinks alternates={alternates} />
   {orgJsonLd && (
     <script type="application/ld+json" set:html={orgJsonLd} />
+  )}
+  {jsonLd && (
+    <script type="application/ld+json" set:html={jsonLd} />
   )}
   <meta name="theme-color" content="#020617" />
   <meta name="mobile-web-app-capable" content="yes" />

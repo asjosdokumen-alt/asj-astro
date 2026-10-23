@@ -170,6 +170,44 @@ export function organizationJsonLd(input: {
 }
 
 /**
+ * `BlogPosting` JSON-LD for an individual article.
+ *
+ * Used by the blog route (`src/pages/blog/[...slug].astro`) to give crawlers
+ * the headline, author, publish date, and featured image of each article.
+ */
+export function articleJsonLd(input: {
+  title: string;
+  description: string;
+  url: string;
+  image?: string | null;
+  datePublished?: string;
+  dateModified?: string;
+  authorName?: string;
+}): Record<string, unknown> | null {
+  if (!input.url) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: input.title,
+    description: input.description,
+    url: input.url,
+    ...(input.image ? { image: input.image } : {}),
+    ...(input.datePublished ? { datePublished: input.datePublished } : {}),
+    ...(input.dateModified ? { dateModified: input.dateModified } : {}),
+    author: {
+      '@type': 'Organization',
+      name: input.authorName || 'PT Amanah Sakura Japan',
+      url: input.url.split('/').slice(0, 3).join('/'),
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'PT Amanah Sakura Japan',
+      url: input.url.split('/').slice(0, 3).join('/'),
+    },
+  };
+}
+
+/**
  * Serialise a JSON-LD object for embedding in a `script` tag.
  *
  * `<` is escaped to `\u003c` so a value containing `</script>` cannot terminate
