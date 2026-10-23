@@ -265,3 +265,118 @@ describe.skipIf(!hasBuild)('built service worker — notifikasi push (#FCM)', ()
     }
   });
 });
+
+// ==========================================
+// TESTS: fallback offline tidak boleh mengembalikan respons hasil REDIRECT
+//
+// BUG YANG DIKUNCI (terukur 2026-10-23, pada worker hasil build)
+//   Precaching sengaja menyimpan DUA bentuk tiap route direktori (`/loker` dan
+//   `/loker/`). Netlify menjawab bentuk tanpa slash dengan 301, `cache.add()`
+//   mengikutinya, dan yang tersimpan di Cache Storage adalah respons dengan
+//   `redirected: true`.
+//
+//   Chromium menolak respons seperti itu untuk sebuah navigation request
+//   (navigation memakai redirectMode "manual"), jadi offline SEMUA tautan tanpa
+//   slash mati dengan `net::ERR_FAILED` — 8 dari 8 route — sementara kembarannya
+//   yang berslash 200. Cabang jaringan sudah menangani kasus ini; cabang cache
+//   tidak.
+//
+// KENAPA TES INI MENJALANKAN worker-nya, bukan membaca teksnya
+//   Assertion struktural (`toContain('hit.redirected')`) akan hijau lagi kalau
+//   blok itu dipindah, dibungkus, atau urutannya ditukar. Yang menentukan
+//   perilaku adalah respons yang benar-benar keluar dari `respondWith()`, jadi
+//   tes ini mengeksekusi `public/sw.js` di dalam scope SW tiruan dan memeriksa
+//   objek yang dikembalikan.
+// ==========================================
+describe('public/sw.js — fallback offline membuang flag redirect', () => {
+  /** Bangun Response yang tampak seperti hasil `cache.add()` atas URL 301. */
+  function redirected(body: string): Response {
+    const res = new Response(body, {
+      status: 200,
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
+    // `redirected` read-only di Response; yang disimpan Cache API adalah respons
+    // yang flag-nya sudah terpasang, jadi itu yang ditiru.
+    Object.defineProperty(res, 'redirected', { value: true, configurable: true });
+    return res;
+  }
+
+  type Handler = (e: unknown) => void;
+
+  /** Jalankan sw.js dengan global SW tiruan; kembalikan listener-nya. */
+  function loadWorker(cacheHit: Response | null): Record<string, Handler> {
+    const listeners: Record<string, Handler> = {};
+    const cache = {
+      match: async () => cacheHit,
+      put: async () => {},
+      keys: async () => [],
+    };
+    const fakeCaches = {
+      open: async () => cache,
+      match: async () => cacheHit,
+      keys: async () => ['asj-test'],
+      delete: async () => true,
+    };
+    const fakeSelf = {
+      addEventListener: (type: string, fn: Handler) => {
+        listeners[type] = fn;
+      },
+      skipWaiting: () => {},
+      clients: {
+        claim: async () => {},
+        matchAll: async () => [],
+        openWindow: async () => {},
+      },
+      registration: { showNotification: async () => {} },
+      location: { origin: 'https://asj.test' },
+    };
+    const src = readFileSync(join(process.cwd(), 'public', 'sw.js'), 'utf8');
+    // Worker ini adalah script klasik; `new Function` memberi kita scope SW
+    // tiruan tanpa DOM maupun Cache Storage sungguhan.
+    new Function('self', 'caches', 'Response', 'fetch', src)(
+      fakeSelf,
+      fakeCaches,
+      Response,
+      // Offline: jaringan selalu gagal, jadi cabang `.catch()` yang diuji.
+      () => Promise.reject(new Error('offline')),
+    );
+    return listeners;
+  }
+
+  async function offlineNavigation(cacheHit: Response | null): Promise<Response> {
+    const listeners = loadWorker(cacheHit);
+    let responded: Promise<Response> | undefined;
+    listeners.fetch({
+      request: { method: 'GET', url: 'https://asj.test/loker', mode: 'navigate' },
+      respondWith: (p: Promise<Response>) => {
+        responded = p;
+      },
+    });
+    expect(responded, 'respondWith tidak dipanggil untuk navigasi').toBeTruthy();
+    if (!responded) throw new Error('respondWith tidak dipanggil untuk navigasi');
+    return await responded;
+  }
+
+  it('halaman yang ter-cache lewat 301 tetap disajikan, tanpa flag redirect', async () => {
+    const cached = redirected('<h1>Lowongan</h1>');
+    const out = await offlineNavigation(cached);
+    // Inti perbaikan: flag inilah yang membuat Chromium membatalkan navigasi.
+    expect(out.redirected).toBe(false);
+    expect(out.status).toBe(200);
+    await expect(out.text()).resolves.toContain('Lowongan');
+  });
+
+  it('respons cache yang BUKAN hasil redirect dikembalikan apa adanya', async () => {
+    const cached = new Response('<h1>Lowongan</h1>', { status: 200 });
+    const out = await offlineNavigation(cached);
+    expect(out.status).toBe(200);
+    expect(out.redirected).toBe(false);
+    await expect(out.text()).resolves.toContain('Lowongan');
+  });
+
+  it('tanpa cache sama sekali tetap ada halaman 503 yang bisa dibaca', async () => {
+    const out = await offlineNavigation(null);
+    expect(out.status).toBe(503);
+    await expect(out.text()).resolves.toContain('offline');
+  });
+});

@@ -202,17 +202,39 @@ self.addEventListener('fetch', (e) => {
         })
         .catch(async () => {
           const cache = await caches.open(VERSION);
-          return (
-            (await cache.match(url.pathname)) ||
-            (await cache.match('/index.html')) ||
-            new Response(
-              '<!doctype html><meta charset="utf-8"><title>Offline</title>' +
-                '<body style="font-family:system-ui;padding:2rem">' +
-                '<h1>Anda sedang offline</h1>' +
-                '<p>Halaman ini belum pernah dibuka, jadi belum tersimpan di perangkat.</p>' +
-                '</body>',
-              { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
-            )
+          // The cached copy needs the SAME treatment the network branch above
+          // gives a fetched one — and for the same reason, measured 2026-10-23.
+          //
+          // The precache deliberately stores both forms of every directory
+          // route (`/loker` and `/loker/`). Netlify answers the bare form with a
+          // 301, `cache.add()` follows it, and what lands in Cache Storage under
+          // `/loker` is a response whose `redirected` flag is set. Handing that
+          // to a navigation is exactly the `net::ERR_FAILED` the branch above
+          // exists to prevent: offline, every bare link in the app died while
+          // its slashed twin worked — 8 of 8 bare routes, 8 of 8 slashed routes,
+          // reproduced against the built worker.
+          //
+          // So: rebuild from the body to clear the flag before returning it.
+          // Same rebuild as the network branch, deliberately not extracted into
+          // a shared helper — that branch is proven in production and its
+          // exact shape is pinned by src/lib/swOffline.test.ts.
+          const hit = (await cache.match(url.pathname)) || (await cache.match('/index.html'));
+          if (hit) {
+            return hit.redirected
+              ? new Response(hit.body, {
+                  status: hit.status,
+                  statusText: hit.statusText,
+                  headers: hit.headers,
+                })
+              : hit;
+          }
+          return new Response(
+            '<!doctype html><meta charset="utf-8"><title>Offline</title>' +
+              '<body style="font-family:system-ui;padding:2rem">' +
+              '<h1>Anda sedang offline</h1>' +
+              '<p>Halaman ini belum pernah dibuka, jadi belum tersimpan di perangkat.</p>' +
+              '</body>',
+            { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
           );
         }),
     );
