@@ -18,7 +18,7 @@
 //   serves — not the source or the manifest generator. If `dist/` is absent the
 //   suite is skipped rather than silently passing (see the guard below).
 // ==========================================
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -402,5 +402,124 @@ describe('public/sw.js — fallback offline membuang flag redirect', () => {
     const out = await offlineNavigation(null);
     expect(out.status).toBe(503);
     await expect(out.text()).resolves.toContain('offline');
+  });
+});
+
+// ==========================================
+// TESTS: notificationclick tidak membajak tab yang sedang dipakai
+//
+// BUG YANG DIKUNCI (ditemukan di review PWA 2026-10-23, §9 butir 6)
+//   Handler lama mengambil client PERTAMA yang origin-nya sama, memfokuskannya,
+//   lalu MENAVIGASI tab itu ke tujuan notifikasi. Jadi notifikasi yang datang
+//   saat admin sedang mengisi Master Form (atau kandidat mengedit CV) membuang
+//   isian itu — kelas kegagalan yang sama dengan force-reload saat deploy,
+//   hanya saja pemicunya klik pengguna sendiri.
+//
+// KENAPA TES INI MENJALANKAN worker-nya
+//   Assertion struktural (`toContain('openWindow')`) hijau untuk kedua versi —
+//   yang lama juga memanggil openWindow, di cabang lain. Yang menentukan adalah
+//   panggilan mana yang BENAR-BENAR terjadi, jadi sw.js dieksekusi dengan
+//   `self.clients` tiruan dan panggilan-panggilan itu diperiksa.
+// ==========================================
+describe('public/sw.js — notificationclick memilih tab, bukan menyerobotnya', () => {
+  type Handler = (e: unknown) => void;
+
+  interface FakeClient {
+    url: string;
+    focus: () => Promise<void>;
+    navigate: (u: string) => Promise<void>;
+  }
+
+  function client(path: string) {
+    return {
+      url: `https://asj.test${path}`,
+      focus: vi.fn(async () => {}),
+      navigate: vi.fn(async () => {}),
+    };
+  }
+
+  /** Jalankan sw.js dengan `self.clients` tiruan; kembalikan listener + jejak.
+   *  `const` + arrow, bukan `function`: deklarasi fungsi di dalam callback
+   *  `describe` tidak terikat oleh analisis scope indexer, jadi tiga call site
+   *  di bawah muncul sebagai `global-unknown` dan menambah angka beku
+   *  `unresolvedRefs` (terukur: 33 -> 36). Bentuk ini terikat. */
+  const loadWorker = (clients: FakeClient[]) => {
+    const listeners: Record<string, Handler> = {};
+    const opened: string[] = [];
+    const fakeSelf = {
+      addEventListener: (type: string, fn: Handler) => {
+        listeners[type] = fn;
+      },
+      skipWaiting: () => {},
+      clients: {
+        claim: async () => {},
+        matchAll: async () => clients,
+        openWindow: async (u: string) => {
+          opened.push(u);
+          return null;
+        },
+      },
+      registration: { showNotification: async () => {} },
+      location: { origin: 'https://asj.test' },
+    };
+    const cache = { match: async () => null, put: async () => {}, keys: async () => [] };
+    const src = readFileSync(join(process.cwd(), 'public', 'sw.js'), 'utf8');
+    new Function('self', 'caches', 'Response', 'fetch', src)(
+      fakeSelf,
+      { open: async () => cache, match: async () => null, keys: async () => [], delete: async () => true },
+      Response,
+      () => Promise.reject(new Error('offline')),
+    );
+    return { listeners, opened };
+  };
+
+  /** Kirim satu klik notifikasi; kembalikan promise waitUntil-nya. */
+  function click(listeners: Record<string, Handler>, data: Record<string, string> | null) {
+    const pending: Promise<unknown>[] = [];
+    const close = vi.fn();
+    listeners.notificationclick({
+      notification: { close, data: data ?? undefined },
+      waitUntil: (p: Promise<unknown>) => {
+        pending.push(p);
+      },
+    });
+    return { done: Promise.all(pending), close };
+  }
+
+  it('tab yang SUDAH di halaman tujuan: fokuskan, tanpa navigasi', async () => {
+    const master = client('/master/');
+    const loker = client('/loker/');
+    const { listeners, opened } = loadWorker([master, loker]);
+
+    const { done } = click(listeners, { url: '/loker/' });
+    await done;
+
+    expect(loker.focus).toHaveBeenCalledTimes(1);
+    expect(loker.navigate).not.toHaveBeenCalled();
+    expect(master.focus).not.toHaveBeenCalled();
+    expect(master.navigate).not.toHaveBeenCalled();
+    expect(opened).toEqual([]);
+  });
+
+  it('tab lain TIDAK dinavigasi — tab baru dibuka', async () => {
+    const master = client('/master/');
+    const { listeners, opened } = loadWorker([master]);
+
+    const { done } = click(listeners, { url: '/loker/J-001' });
+    await done;
+
+    // Inti perbaikan: isian form di /master tidak boleh hilang karena klik notif.
+    expect(master.navigate).not.toHaveBeenCalled();
+    expect(master.focus).not.toHaveBeenCalled();
+    expect(opened).toEqual(['https://asj.test/loker/J-001']);
+  });
+
+  it('payload tanpa url tetap membuka beranda, dan notifikasi ditutup', async () => {
+    const { listeners, opened } = loadWorker([]);
+    const { done, close } = click(listeners, null);
+    await done;
+
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(opened).toEqual(['https://asj.test/']);
   });
 });

@@ -128,16 +128,22 @@ self.addEventListener('notificationclick', (e) => {
   e.waitUntil(
     (async () => {
       const url = new URL(target, self.location.origin).href;
+      const path = new URL(url).pathname;
       const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      // Sudah ada tab aplikasi? fokuskan dan arahkan ke tujuannya, jangan
-      // membuka tab baru — perilaku yang sama dengan notifikasi native.
+
+      // A tab that is ALREADY on the destination: focus it, nothing else to do.
       for (const c of clients) {
-        if (c.url.startsWith(self.location.origin)) {
-          await c.focus();
-          if ('navigate' in c) await c.navigate(url).catch(() => {});
-          return;
-        }
+        if (new URL(c.url).pathname !== path) continue;
+        await c.focus();
+        return;
       }
+
+      // Otherwise open a new tab. This used to focus the first same-origin tab
+      // and NAVIGATE it to the target, which silently threw away whatever that
+      // tab was doing: a notification arriving while an admin fills the Master
+      // Form (or a candidate edits a CV) discarded the form. Same failure class
+      // as the force-reload in §8 of the PWA review, with a user gesture on the
+      // other end. Reusing a tab is only safe when it is already on the page.
       await self.clients.openWindow(url);
     })(),
   );

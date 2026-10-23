@@ -112,6 +112,18 @@ export default function LokerTable() {
 
   useEffect(() => { fetchJobs(); }, []);
 
+  /* Announce "the live table has rows" so `LokerStaticList` can hide its
+     server-rendered copy. The announcement waits for DATA, not for mount:
+     hiding on mount would leave an empty gap while this island fetches, and —
+     worse — would hide the static rows for good if the fetch failed. The
+     attribute is the only channel between the two components; the CSS rule
+     lives in LokerStaticList.astro next to the markup it hides. */
+  useEffect(() => {
+    if (jobs.length === 0) return;
+    document.documentElement.setAttribute('data-loker-live', '');
+    return () => document.documentElement.removeAttribute('data-loker-live');
+  }, [jobs.length]);
+
   async function fetchJobs() {
     setError("");
     setLoading(true);

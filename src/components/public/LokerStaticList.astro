@@ -103,12 +103,20 @@ if (isSupabaseConfigured()) {
   .loker-static tr:nth-child(even) {
     background: color-mix(in oklab, var(--color-fg) 3%, transparent);
   }
-</style>
 
-<script is:inline>
-  /* Hide the static table once the client island hydrates, to avoid duplication */
-  (function () {
-    var el = document.querySelector('[data-loker-static]');
-    if (el) el.style.display = 'none';
-  })();
-</script>
+  /* The live table REPLACES this one — but only once it actually has rows.
+     `LokerTable` sets this attribute after its fetch resolves with data.
+
+     It used to be an inline script right below the markup that did
+     `el.style.display = 'none'` immediately, under a comment claiming it ran
+     "once the client island hydrates". It did not: it ran during parsing, so
+     the table was gone BEFORE the island had fetched anything. If that fetch
+     failed — offline, API down, a JS error in the island — the page kept the
+     heading, the hint and an empty gap, with the server-rendered rows sitting
+     in the DOM but hidden. The comment was the only thing that said otherwise.
+     Hiding on the island's signal means a failed island degrades to the static
+     table instead of to nothing. */
+  html[data-loker-live] .loker-static {
+    display: none;
+  }
+</style>
