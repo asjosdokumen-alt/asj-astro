@@ -396,3 +396,72 @@ verify:pwa         26/26
 bundle:size        pass (3079,1 KB / 21 entry)
 boundary           0 violations
 ```
+
+---
+
+## 14. Ronde P2 — payload install dan set ikon (2026-10-23, malam)
+
+Dua dari tiga P2 dikerjakan; yang ketiga sengaja **tidak** disentuh, alasannya di bawah.
+
+### a) `exceljs` keluar dari precache — 860 KB
+
+`exceljs.min.*.js` adalah berkas terbesar di seluruh build (918 KB) dan ikut
+diprecache, jadi **setiap** pengunjung mengunduhnya saat install — padahal satu-satunya
+pengimpor adalah ekspor Excel admin (`admin/TabConfig.tsx`) dan CV template loader.
+Daftar pengecualian hanya menyebut `pdf-parse` dan `xlsx`; `exceljs` masuk ke build
+belakangan dan daftarnya tidak pernah ditinjau ulang. Daftar basi yang sama hidup di
+`verify-pwa.mjs`, jadi gate tidak bisa melihat hal yang seharusnya ia tangkap.
+
+```
+sebelum   101 entri precache / 5,72 MB
+sesudah   100 entri precache / 4,86 MB      (-860 KB saat install)
+```
+
+Gate-nya sekarang punya kasus mutasi sendiri: `pwa-mutate.mjs` → `lazy-chunk-precached`,
+baterai → `W1j`. Hasil baterai: **10 killed, 0 survived, 2 ok-green** (W2a baseline, W2b kontrol).
+
+### b) Ikon: generator akhirnya menghasilkan berkas yang benar-benar dikirim — 622 KB
+
+Tiga drift, semuanya terukur:
+
+1. Manifest menunjuk `icon-maskable-512-v2.png`; skrip masih menulis
+   `icon-maskable-512.png`. Menjalankannya akan menyegarkan berkas yang tidak dibaca
+   siapa pun dan meninggalkan berkas yang benar-benar diambil browser.
+2. Skrip mengecat **semua** ikon di atas `#020617` — persis cacat "kotak hitam" yang
+   gate ikon ada untuk menangkap, jadi output skripnya sendiri gagal gate. Sekarang:
+   kanvas **bening** untuk `purpose: any` (emblem-nya lingkaran, kotak di sekelilingnya
+   harus kosong) dan tetap **opaque** untuk `maskable` (Android memotongnya dan mengisi
+   sisanya dengan piksel ikon itu sendiri).
+3. Gate memegang daftar hardcoded berisi nama maskable yang **lama**, jadi ia menguji
+   berkas mati sementara berkas yang dipakai tidak diuji. Sekarang ia membaca
+   `public/manifest.webmanifest` dan memisahkan berdasarkan `purpose`.
+
+```
+icon-512.png             385 KB -> 97 KB
+icon-maskable-512-v2.png 326 KB -> 69 KB
+icon-192 / apple-touch / favicon   62 KB -> 39 KB
+total                    827 KB -> 205 KB      (-622 KB)
+```
+
+Palet 8-bit dipakai karena itu **pilihan terukur skrip ini sendiri** (4-bit membanding
+emasnya dan sudah ditolak sebelumnya). Diperiksa ulang dengan crop 3× sebelum diterapkan:
+tidak ada banding yang terlihat.
+
+### c) Force-reload saat deploy — TIDAK diubah
+
+`install` → `skipWaiting()`, `activate` → `claim()` + `ASJ_FORCE_RELOAD` memang me-reload
+tab yang sedang terbuka, dan itu bisa membuang isian form yang belum disimpan. Tapi
+alternatifnya ("tampilkan tombol, jangan reload otomatis") menukar satu masalah dengan
+masalah lain: klien bisa tertahan di build lama tanpa batas. Jalan tengahnya — tunda
+reload kalau ada input kotor — butuh sinyal "kotor" yang andal, dan aplikasi ini belum
+punya. Jadi tidak saya ubah; ini keputusan produk, bukan bug, dan sudah tercatat di §8.
+
+### Status
+
+```
+suite             246 files / 2919 tests — PASSED, exit 0
+typecheck:ratchet  PASSED (0)
+lint-ratchet       PASSED (2012)
+verify:pwa         26/26
+pwa battery        10 killed / 0 survived / 2 ok-green
+```
