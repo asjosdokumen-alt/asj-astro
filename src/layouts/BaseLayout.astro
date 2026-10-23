@@ -121,9 +121,9 @@ const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id
 // made every page claim the homepage as its canonical, which is a serious SEO
 // defect (fixed 2026-10-23).
 const currentPath = Astro.url.pathname || '/';
-const alternates = hreflangAlternates({ id: currentPath, jp: currentPath + (currentPath.includes('?') ? '&' : '?') + 'lang=jp' });
+const alternates = hreflangAlternates({ id: currentPath, jp: `${currentPath}${currentPath.includes('?') ? '&' : '?'}lang=jp` });
 const canonical = absoluteUrl(currentPath);
-const ogImageAbsolute = ogImage ? (ogImage.startsWith('http') ? ogImage : absoluteUrl(ogImage.startsWith('/') ? ogImage : '/' + ogImage)) : null;
+const ogImageAbsolute = ogImage ? (ogImage.startsWith('http') ? ogImage : absoluteUrl(ogImage.startsWith('/') ? ogImage : `/${ogImage}`)) : null;
 const orgJsonLd = jsonLdScript(
   organizationJsonLd({
     name: 'PT Amanah Sakura Japan',
