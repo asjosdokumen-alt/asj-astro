@@ -3,7 +3,7 @@
  *
  * Owns: Storage buckets, berkas, pemberkasan_checklist
  */
-import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText, hasBackend, supabaseUrl } from '../../_lib/db/client';
+import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText, hasBackend, supabaseUrl, storageUrl } from '../../_lib/db/client';
 import { findFormsByWa, findForms, upsertFormRow } from '../../_lib/db/forms';
 import { findCandidateByWaFiltered, findCandidates, findCandidatesByJobFiltered, mapCandidate } from '../../_lib/db/candidates';
 import { fetchMasterByWa } from '../../_lib/db/master';
@@ -68,5 +68,11 @@ export async function fetchAllMasters(waList: string[]): Promise<import("../../_
 
 export {
   normalizeWa, pick, toText, supabaseJson, supabaseUpsert, hasBackend, supabaseUrl,
+  // `storageUrl` is re-exported for the same reason `catalog/repository.ts` does
+  // it: a context's SERVICE must not import `_lib/db/client.ts` directly
+  // (boundary §5.1), and documents/service.ts needs the storage base to build a
+  // signed URL. Measured 2026-10-23: that direct import was the repo's single
+  // boundary violation, and it failed two indexer assertions.
+  storageUrl,
   findFormsByWa, findForms, upsertFormRow, mapCandidate, nextCandidateId, findCandidates,
 };

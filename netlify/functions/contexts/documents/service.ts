@@ -23,8 +23,10 @@ import {
   nextCandidateId,
   hasBackend,
   supabaseUrl,
+  // Imported through the repository, not `_lib/db/client` directly — boundary
+  // §5.1. Same shape `catalog/service.ts` already uses.
+  storageUrl,
 } from "./repository";
-import { storageUrl } from "../../_lib/db/client";
 import { requireRole, isOwnerOrAdmin } from "../identity";
 import { emit } from "../../_lib/kernel/events";
 import { syncFormMailDariUpload } from "../applications";
