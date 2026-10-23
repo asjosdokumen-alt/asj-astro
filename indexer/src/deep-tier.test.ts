@@ -401,7 +401,20 @@ const show = true;
     // session never touched BaseLayout.astro (`git status` clean for that
     // path), which is why the correction is attributed to the post-10-19
     // commit rather than to any edit here.
-    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'description', 'lang', 'orgJsonLd', 'orgJsonLd', 'showBottomNav', 'showBottomNav', 'showFooter', 'sprite', 'title', 'titleKey']);
+    // 13 -> 27 (2026-10-23, R1a stale-baseline correction, MEASURED not derived):
+    // `9a43df5` (fix(seo): dynamic canonical/hreflang, OG tags, Article JSON-LD,
+    // noIndex) rewrote the <head> block of BaseLayout.astro and added the reads
+    // this list was still missing — `canonical` ×2, `description` ×1, `jsonLd`
+    // ×2, `lang` ×1, `noIndex` ×1, `ogImageAbsolute` ×4, `title` ×2. The counter
+    // was never moved with that commit, so HEAD was already red before this
+    // session touched anything (this list is pinned to BaseLayout.astro, and the
+    // session's only edit there was two string literals — `useTemplate` — which
+    // add no identifier read).
+    //
+    // MEASURED, not hand-assembled from the diff: the assertion was temporarily
+    // preceded by a `console.log` of `occs.map(o => o.name).sort()`, and the
+    // array below is that output verbatim.
+    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'canonical', 'canonical', 'description', 'description', 'description', 'jsonLd', 'jsonLd', 'lang', 'lang', 'noIndex', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'orgJsonLd', 'orgJsonLd', 'showBottomNav', 'showBottomNav', 'showFooter', 'sprite', 'title', 'title', 'title', 'titleKey']);
     for (const o of occs) {
       const ref = r.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
       expect(ref).toBeDefined();
