@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getCollection } from 'astro:content';
+import { getCollection, type CollectionEntry } from 'astro:content';
 import { siteOrigin } from '../lib/siteMeta';
 
 /**
@@ -16,7 +16,21 @@ import { siteOrigin } from '../lib/siteMeta';
  *   404 is not a real page.
  */
 export const GET: APIRoute = async () => {
-  const origin = siteOrigin() ?? 'https://asjastro.netlify.app';
+  // The origin now comes from PUBLIC_SITE_URL, or from Netlify's own `URL`
+  // variable when that is unset (see siteOrigin). The literal below is a LAST
+  // resort for a local build with neither set: a sitemap is only useful with
+  // absolute URLs, so emitting one is better than emitting none — but a guessed
+  // host is worth a line in the build log, because every <loc> in the file
+  // would point at a site that may not be this one.
+  const resolved = siteOrigin();
+  if (!resolved) {
+    // biome-ignore lint/suspicious/noConsole: build-time warning is the only signal that this file is naming a host it was not told about
+    console.warn(
+      '[sitemap] no origin (PUBLIC_SITE_URL and Netlify URL are both unset) — ' +
+        'falling back to https://asjastro.netlify.app. Every <loc> will name that host.',
+    );
+  }
+  const origin = resolved ?? 'https://asjastro.netlify.app';
 
   const staticRoutes: { loc: string; lastmod?: string; changefreq: string; priority: string }[] = [
     { loc: '/', changefreq: 'weekly', priority: '1.0' },
@@ -29,7 +43,13 @@ export const GET: APIRoute = async () => {
   ];
 
   const posts = await getCollection('blog');
-  const postRoutes = posts.map((post) => ({
+  // Annotated, not inferred: `getCollection` resolves to `any[]` unless Astro's
+  // generated `.astro/content.d.ts` is part of the type-check program, and an
+  // un-annotated callback then fails the typecheck ratchet with TS7006 (measured
+  // 2026-10-23: the same error is on HEAD, so this is not new debt — it is the
+  // annotation the file always needed to survive a program without the
+  // generated types).
+  const postRoutes = posts.map((post: CollectionEntry<'blog'>) => ({
     loc: `/blog/${post.id.split('/').pop() ?? post.id}`,
     lastmod: post.data.last_updated,
     changefreq: 'monthly',

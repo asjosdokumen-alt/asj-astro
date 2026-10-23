@@ -30,6 +30,9 @@ afterEach(() => {
 describe('siteOrigin', () => {
   it('returns null when PUBLIC_SITE_URL is unset', () => {
     vi.stubEnv('PUBLIC_SITE_URL', '');
+    // `URL` is Netlify's own variable; stubbed empty so this test does not
+    // depend on whether the machine or CI happens to export it.
+    vi.stubEnv('URL', '');
     expect(siteOrigin()).toBeNull();
   });
 
@@ -41,6 +44,36 @@ describe('siteOrigin', () => {
   it('accepts an absolute http origin and strips trailing slashes', () => {
     vi.stubEnv('PUBLIC_SITE_URL', 'https://example.com///');
     expect(siteOrigin()).toBe('https://example.com');
+  });
+
+  // ── Netlify fallback (2026-10-23) ────────────────────────────────────────
+  // Measured: canonical/hreflang/og:url/JSON-LD were absent from every built
+  // page because PUBLIC_SITE_URL was configured nowhere. Netlify exports `URL`
+  // on every build, so production must not depend on a manual variable.
+  it('falls back to Netlify `URL` when PUBLIC_SITE_URL is unset', () => {
+    vi.stubEnv('PUBLIC_SITE_URL', '');
+    vi.stubEnv('URL', 'https://asj.example.netlify.app');
+    expect(siteOrigin()).toBe('https://asj.example.netlify.app');
+  });
+
+  it('PUBLIC_SITE_URL wins over Netlify `URL`', () => {
+    vi.stubEnv('PUBLIC_SITE_URL', 'https://canonical.example');
+    vi.stubEnv('URL', 'https://deploy-preview-12--site.netlify.app');
+    expect(siteOrigin()).toBe('https://canonical.example');
+  });
+
+  it('a MISCONFIGURED PUBLIC_SITE_URL does not silently fall back to `URL`', () => {
+    // A typo must stay a loud failure: falling through here would point every
+    // canonical tag at a different host than the operator intended.
+    vi.stubEnv('PUBLIC_SITE_URL', 'example.com');
+    vi.stubEnv('URL', 'https://asj.example.netlify.app');
+    expect(siteOrigin()).toBeNull();
+  });
+
+  it('rejects a Netlify `URL` that is not an absolute origin', () => {
+    vi.stubEnv('PUBLIC_SITE_URL', '');
+    vi.stubEnv('URL', 'localhost:8888');
+    expect(siteOrigin()).toBeNull();
   });
 });
 

@@ -32,14 +32,25 @@
  */
 
 /**
- * The site's origin, e.g. `https://example.com` — no trailing slash.
+ * Read one build-time environment variable.
  *
- * `null` when unknown, which is the honest state on a machine with no
- * `PUBLIC_SITE_URL` set (every local build and every test). Callers must treat
- * `null` as "emit nothing", never as "use a placeholder".
+ * WHY BOTH `import.meta.env` AND `process.env`: this module is evaluated during
+ * `astro build` (where the value is baked into the HTML) but is ALSO imported by
+ * client components. `import.meta.env` is Vite's; `process.env` is Node's. The
+ * `typeof process` guard is not decoration — in a browser bundle `process` is
+ * not defined at all, and `process.env?.X` throws a ReferenceError on the
+ * `process` lookup itself, before the optional chain can do anything.
  */
-export function siteOrigin(): string | null {
-  const raw = import.meta.env?.PUBLIC_SITE_URL ?? process.env?.PUBLIC_SITE_URL;
+function readEnv(name: string): string | undefined {
+  const fromVite = (import.meta as { env?: Record<string, unknown> }).env?.[name];
+  if (typeof fromVite === 'string') return fromVite;
+  if (typeof process === 'undefined') return undefined;
+  const fromNode = process.env?.[name];
+  return typeof fromNode === 'string' ? fromNode : undefined;
+}
+
+/** Trim, strip trailing slashes, and reject anything that is not an absolute origin. */
+function normalizeOrigin(raw: string | undefined): string | null {
   if (typeof raw !== 'string') return null;
   const trimmed = raw.trim().replace(/\/+$/, '');
   if (trimmed === '') return null;
@@ -48,6 +59,34 @@ export function siteOrigin(): string | null {
   // invalid href, so it is treated as absent.
   if (!/^https?:\/\/[^/\s]+$/i.test(trimmed)) return null;
   return trimmed;
+}
+
+/**
+ * The site's origin, e.g. `https://example.com` — no trailing slash.
+ *
+ * `null` when unknown, which is the honest state on a machine with no
+ * `PUBLIC_SITE_URL` set. Callers must treat `null` as "emit nothing", never as
+ * "use a placeholder".
+ *
+ * ── WHY THERE IS A SECOND SOURCE (2026-10-23) ─────────────────────────────
+ * Measured on the built site: `canonical`, `hreflang`, `og:url`, `og:image` and
+ * every JSON-LD block were ABSENT from all three pages sampled, because
+ * `PUBLIC_SITE_URL` was configured nowhere — not in `netlify.toml`, not in
+ * `.env.example`, not in `.env.local`. The whole SEO batch was inert in the
+ * artifact it shipped.
+ *
+ * Netlify sets `URL` to the site's primary URL on every build, so reading it as
+ * the fallback makes production correct without a manual variable, while a
+ * local build (where neither is set) still emits nothing rather than guessing.
+ *
+ * Precedence is deliberate: an explicitly-set-but-invalid `PUBLIC_SITE_URL`
+ * returns `null` instead of falling through to `URL`, so a typo stays a loud
+ * failure instead of silently pointing canonical tags at a different host.
+ */
+export function siteOrigin(): string | null {
+  const explicit = readEnv('PUBLIC_SITE_URL');
+  if (typeof explicit === 'string' && explicit.trim() !== '') return normalizeOrigin(explicit);
+  return normalizeOrigin(readEnv('URL'));
 }
 
 /**
