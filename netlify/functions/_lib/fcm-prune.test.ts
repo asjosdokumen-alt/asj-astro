@@ -27,6 +27,7 @@
  * Google + FCM send + PostgREST DELETE semuanya lewat satu stub.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { generateKeyPairSync } from 'node:crypto';
 
 type Route = { match: RegExp; reply: (url: string, init: RequestInit) => Response };
 let routes: Route[] = [];
@@ -96,25 +97,56 @@ function fcmRoute(deadTokens: Set<string>, otherStatus = 0) {
   };
 }
 
+/**
+ * Kunci RSA untuk service account milik tes ini. Dibuat saat modul dimuat
+ * (~100 ms sekali) dan tidak disimpan ke mana pun: `getGoogleAuthToken()`
+ * menandatangani JWT dengan kunci ini, lalu `fetch` tiruan yang menjawab.
+ */
+const TEST_PRIVATE_KEY = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({
+  type: 'pkcs8',
+  format: 'pem',
+}) as string;
+
 beforeEach(() => {
   routes = [];
   deleted = [];
   process.env.SUPABASE_URL = 'https://fcm-test.supabase.co';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'fcm-test-key';
+  // Kredensial SENDIRI, dibuat saat file ini dimuat — bukan berkas rahasia di
+  // `netlify/functions/secrets/`.
+  //
+  // KENAPA (terukur 2026-10-24): `fcm-server.test.ts` MEMINDAHKAN berkas
+  // kredensial asli selama ia berjalan untuk menguji kasus "file tidak ada".
+  // `fcm-prune.test.ts` berjalan PARALEL dengan berkas itu, jadi sesekali ia
+  // membaca dunia tanpa kredensial: `sendPushNotification()` mengembalikan
+  // 'failed', tidak ada token yang dianggap mati, dan 3 kasus merah — padahal
+  // hijau saat dijalankan sendiri. Reset singleton di bawah hanya menutup
+  // sebagian jendela; yang menutup sisanya adalah kredensial milik tes ini.
+  //
+  // `FIREBASE_SERVICE_ACCOUNT` adalah fallback yang SUDAH ada di produksi
+  // (file-first, lalu env), jadi tidak ada jalur kode baru: kalau berkas asli
+  // ada, ia tetap menang; kalau sedang diparkir, env ini yang dipakai. Kuncinya
+  // RSA sungguhan karena `getGoogleAuthToken()` benar-benar menandatangani JWT
+  // sebelum `fetch` tiruan menjawab.
+  process.env.FIREBASE_SERVICE_ACCOUNT = JSON.stringify({
+    client_email: 'prune-test@asj.test',
+    project_id: 'prune-test',
+    private_key: TEST_PRIVATE_KEY,
+  });
   installFetch();
   vi.resetModules();
   // `fcm-server` menyimpan service account di singleton modul, dan
   // `fcm-server.test.ts` SEMENTARA MEMINDAHKAN berkas kredensial saat ia
-  // berjalan. Tanpa reset, dua berkas yang berjalan bersamaan bisa saling
-  // menimpa: satu membaca kredensial yang sedang diparkir berkas lain, probe
-  // gagal, dan kasus "menghapus token NOT_FOUND" merah karena ALASAN YANG
-  // SALAH. Ini pernah terjadi (run batch 2-merah, padahal per-berkas hijau).
-  // `__loadServiceAccountForTest({ reset: true })` memaksa muat ulang.
+  // berjalan. `__loadServiceAccountForTest({ reset: true })` memaksa muat ulang
+  // supaya fallback env di atas benar-benar dibaca.
   return import('./fcm-server').then((m) => m.__loadServiceAccountForTest({ reset: true }));
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  // Jangan biarkan kredensial tes ini terlihat berkas lain di worker yang sama:
+  // `fcm-server.test.ts` menguji justru kasus "tidak ada kredensial".
+  delete process.env.FIREBASE_SERVICE_ACCOUNT;
 });
 
 describe('pruneDeadTokens', () => {
