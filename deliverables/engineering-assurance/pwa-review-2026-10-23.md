@@ -319,3 +319,80 @@ terukurnya sudah dicatat di atas supaya re-baseline-nya satu langkah, bukan satu
 pemilik), `exceljs` di precache, berat ikon, force-reload saat deploy, dan daftar P3 di §9.
 
 `git status` bersih; `indexer/validate-report.json` dikembalikan setelah suite menulisnya.
+
+---
+
+## 13. Sesi lanjutan — "tidak ada merah, tidak ada error" (2026-10-23, malam)
+
+Instruksi pemilik: *"saya gak tahu, sesuai rekomendasi dan trend saja; yang penting tidak ada bug,
+tidak ada merah atau error."* Jadi keputusan yang tadinya menunggu owner saya ambil sendiri.
+
+### a) Boundary — satu pelanggaran arsitektur, bukan angka basi
+
+`contexts/documents/service.ts` mengimpor `_lib/db/client.ts` langsung, melanggar §5.1, dan itu
+satu-satunya pelanggaran di repo (`cli violations` → 1 warning). Diperbaiki dengan bentuk yang sudah
+dipakai `catalog`: `storageUrl` di-re-export lewat `documents/repository.ts`. Sekarang
+**"no boundary violations — architecture rules hold"**.
+
+### b) Enam merah → hijau, dengan angka yang DIUKUR
+
+`count-indexed.test.ts` (alat ukur milik repo, bukan tebakan dari diff):
+
+```
+files.length = 576
+  ts = 321   tsx = 115   astro = 23   mjs = 90   cjs = 6   js = 21
+  sum of the six buckets = 576
+```
+
+| Counter | Lama | Baru | Dasar |
+|---|---|---|---|
+| `fileCount` / `files.length` | 565 | **576** | +5 ts, +1 astro (batch SEO) · +2 tsx (LokerStaticTable + suite) · +1 tsx (Toast.test) |
+| `count('ts')` | 316 | **321** | delta per bucket |
+| `count('tsx')` | 111 | **115** | delta per bucket |
+| `count('astro')` | 21 | **23** | `blog/[...slug].astro` + `LokerStaticList.astro` |
+| plafon `symbolCount` | 26.400 | **27.000** | terukur 26.854; konvensi blok itu "measured + margin" |
+| binding `BaseLayout` (deep-tier) | 13 | **27** | `9a43df5` menambah canonical ×2, description, jsonLd ×2, lang, noIndex, ogImageAbsolute ×4, title ×2 |
+
+Daftar binding-nya **tidak disusun dari diff** — assertion-nya sementara didahului `console.log`
+array aslinya, dan daftar di tes adalah output itu apa adanya.
+
+### c) `robots.txt` ↔ `sitemap.xml` — keputusan
+
+- `/apply`, `/ai-cv`, `/siswa-baru` → **dibuka**. Konten server-rendered-nya nyata sekarang, dan
+  itulah alasan `aa8fa40` menulisnya. Tetap di sitemap.
+- `/master` → **tetap diblokir, keluar dari sitemap**. Form entri data kandidat, nol copy unik,
+  maksudnya sama dengan `/apply`.
+- Baris `Sitemap:` **tidak** ditambahkan ke `robots.txt`: berkas itu statis tanpa build step,
+  jadi tidak bisa me-resolve origin seperti `sitemap.xml.ts` (host sudah pindah dua kali).
+  Alasannya ditulis di dalam berkas; sitemap didaftarkan sekali lewat Search Console.
+- Gate baru `e2e/sitemap-robots-agreement.test.ts` (4 tes) membaca `dist/sitemap.xml` +
+  `public/robots.txt` dan menolak URL yang didaftarkan tapi diblokir. **Terbukti merah** pada dist
+  lama (2 gagal, `/master` termasuk) dan hijau setelah build ulang.
+
+### d) Notif merah saat pindah tab — yang bisa dibuktikan dan yang tidak
+
+**Tidak bisa direproduksi.** Dashboard admin butuh sesi, dan `netlify dev` tidak mau start di
+sandbox ini (shim bulk-delete menolak 82 penghapusan `node_modules/.vite`, lalu "Waiting for
+framework port 4321" sampai batas waktu). Jadi saya tidak mengklaim sudah memperbaiki keluhan itu.
+
+**Yang bisa dibuktikan dan diperbaiki:** `showToast()` tidak punya dedupe. Berpindah tab me-mount
+beberapa view sekaligus; satu gangguan jaringan → beberapa toast merah berisi kalimat identik, dan
+`MAX_VISIBLE = 4` mendorong keluar pesan yang berbeda. Sekarang pesan identik (teks **dan** jenis)
+yang masih terlihat tidak ditumpuk — 5 tes mengunci batasnya (teks beda tetap tampil, jenis beda
+tetap tampil, setelah ditutup boleh muncul lagi).
+
+**Dua tersangka yang tersisa**, keduanya toast saat *memuat* (bukan saat pengguna melakukan aksi),
+jadi keduanya bisa muncul sementara halaman tetap jalan:
+`Gagal memuat draf CV` (`src/components/forms/AiCvForm.tsx:537`) dan toast generik `apiClient`.
+Kalau muncul lagi, teks toast-nya akan menunjuk sumbernya dalam satu baris.
+
+### Status akhir
+
+```
+suite           246 files / 2925 tests — PASSED, exit 0
+typecheck:ratchet  PASSED (0)
+lint-ratchet       PASSED (2012)
+verify:pwa         26/26
+bundle:size        pass (3079,1 KB / 21 entry)
+boundary           0 violations
+```
