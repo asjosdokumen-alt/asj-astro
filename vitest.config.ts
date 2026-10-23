@@ -197,6 +197,13 @@ export default defineConfig({
             // HANYA karena counter beku `indexer`; tanpa baris ini ia jalan DUA
             // KALI (R13f-bis).
             'e2e/ai-cv-column-coverage.test.ts',
+            // Ditambahkan 2026-10-23. Murni membaca `dist/sitemap.xml` dan
+            // `public/robots.txt` sebagai teks (node:fs), tanpa DOM — jadi
+            // memang milik project 'backend'. Tinggal di e2e/ HANYA karena
+            // counter beku `indexer` menghitung `src/**`; `.ts` di tier e2e
+            // tidak dihitung (R15). Tanpa baris ini ia jalan DUA KALI
+            // (R13f-bis).
+            'e2e/sitemap-robots-agreement.test.ts',
           ],
         },
       },

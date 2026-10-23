@@ -36,10 +36,17 @@ export const GET: APIRoute = async () => {
     { loc: '/', changefreq: 'weekly', priority: '1.0' },
     { loc: '/loker', changefreq: 'daily', priority: '0.9' },
     { loc: '/public', changefreq: 'daily', priority: '0.9' },
+    // /apply, /ai-cv and /siswa-baru are listed because `aa8fa40` gave each one
+    // server-rendered copy (h1 + description + steps) instead of an empty shell.
+    // They are also NO LONGER disallowed in public/robots.txt — a URL that is
+    // advertised here and blocked there is the one combination Google reports as
+    // "Blocked by robots.txt" and never indexes.
     { loc: '/apply', changefreq: 'weekly', priority: '0.8' },
     { loc: '/siswa-baru', changefreq: 'weekly', priority: '0.8' },
     { loc: '/ai-cv', changefreq: 'weekly', priority: '0.7' },
-    { loc: '/master', changefreq: 'monthly', priority: '0.6' },
+    // /master is deliberately absent: it is the candidate data-entry form, has no
+    // unique copy, and robots.txt still disallows it. Listing it here while
+    // blocking it there was the contradiction this change removes.
   ];
 
   const posts = await getCollection('blog');

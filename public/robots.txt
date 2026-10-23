@@ -11,8 +11,16 @@
 # on the canonical host, and this project's host has already moved twice
 # (asjportal → asjastro → boisterous-taiyaki), so a hardcoded origin here would
 # be a stale claim the moment it changed again — and a robots.txt pointing at a
-# dead sitemap is worse than one that says nothing. Add the directive only
-# together with a real `sitemap.xml` generated from the build.
+# dead sitemap is worse than one that says nothing.
+#
+# `/sitemap.xml` IS generated now (src/pages/sitemap.xml.ts, `aa8fa40`), and its
+# origin comes from PUBLIC_SITE_URL or Netlify's own `URL` — the same resolution
+# this file cannot do, because it is a static asset with no build step. So the
+# sitemap is submitted once from Search Console instead of being named here, and
+# THIS FILE and the sitemap are kept in agreement by hand: every URL the sitemap
+# lists must be allowed below (checked 2026-10-23 — /master was in the sitemap
+# while being disallowed here, which is the one state Google reports as
+# "Blocked by robots.txt" for a URL you asked it to crawl).
 
 User-agent: *
 Allow: /
@@ -22,11 +30,17 @@ Allow: /
 # them has any value in an index.
 Disallow: /admin
 Disallow: /candidate
-Disallow: /master
-Disallow: /apply
-Disallow: /ai-cv
-Disallow: /siswa-baru
 Disallow: /share
+
+# /master is the candidate data-entry form: same intent as /apply, no unique copy,
+# and it stays out of the sitemap for the same reason it is disallowed here.
+Disallow: /master
+
+# /apply, /ai-cv and /siswa-baru are NOT disallowed any more (2026-10-23). `aa8fa40`
+# gave each one server-rendered copy — h1, description, numbered steps — precisely
+# so they stop being empty shells, and the sitemap lists them. Blocking a URL while
+# advertising it in a sitemap is a contradiction Google resolves by ignoring the
+# sitemap entry and reporting it as blocked.
 
 # Netlify functions are an API, not pages.
 Disallow: /.netlify/
