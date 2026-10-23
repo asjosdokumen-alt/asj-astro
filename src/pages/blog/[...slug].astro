@@ -49,9 +49,25 @@ const articleLd = jsonLdScript(
   jsonLd={articleLd ?? undefined}
 >
   <main id="main-content" class="article-shell">
+    <nav aria-label="breadcrumb" class="breadcrumb">
+      <ol>
+        <li><a href="/">Beranda</a></li>
+        <li><a href="/public/">Blog</a></li>
+        <li aria-current="page">{post.data.title}</li>
+      </ol>
+    </nav>
     <article class="article">
       <Content />
     </article>
+
+    <div class="article-cta">
+      <p class="article-cta-title">Siap kerja ke Jepang?</p>
+      <p class="article-cta-body">Cek lowongan terbaru atau daftar langsung melalui form online ASJ.</p>
+      <div class="article-cta-actions">
+        <a href="/public/" class="article-cta-primary">Lihat Lowongan</a>
+        <a href="/apply/" class="article-cta-secondary">Daftar Online</a>
+      </div>
+    </div>
   </main>
 </BaseLayout>
 
@@ -191,5 +207,90 @@ const articleLd = jsonLdScript(
   .article th {
     background: color-mix(in oklab, var(--color-fg) 7%, transparent);
     font-weight: 700;
+  }
+
+  /* ─── Breadcrumb ──────────────────────────────────────────────────────── */
+  .breadcrumb {
+    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+    color: var(--color-fg-muted);
+  }
+  .breadcrumb ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35em;
+    align-items: center;
+  }
+  .breadcrumb li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+  }
+  .breadcrumb li:not(:last-child)::after {
+    content: '/';
+    margin-left: 0.35em;
+    color: color-mix(in oklab, var(--color-fg-muted) 50%, transparent);
+  }
+  .breadcrumb a {
+    color: var(--color-accent-sky);
+    text-decoration: none;
+  }
+  .breadcrumb a:hover {
+    text-decoration: underline;
+  }
+
+  /* ─── Article CTA (bottom of post) ────────────────────────────────────── */
+  .article-cta {
+    margin-top: 3.5rem;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    background: color-mix(in oklab, var(--color-accent-sky) 8%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-accent-sky) 20%, transparent);
+    text-align: center;
+  }
+  .article-cta-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--color-fg);
+    margin: 0 0 0.35em;
+  }
+  .article-cta-body {
+    font-size: 0.95rem;
+    color: var(--color-fg-muted);
+    margin: 0 0 1.1em;
+  }
+  .article-cta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+  }
+  .article-cta-primary,
+  .article-cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.55rem 1.1rem;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+  }
+  .article-cta-primary {
+    background: var(--color-accent-sky);
+    color: var(--color-canvas);
+  }
+  .article-cta-secondary {
+    background: color-mix(in oklab, var(--color-fg) 10%, transparent);
+    color: var(--color-fg);
+    border: 1px solid color-mix(in oklab, var(--color-fg) 15%, transparent);
+  }
+  .article-cta-primary:hover,
+  .article-cta-secondary:hover {
+    opacity: 0.9;
+    text-decoration: none;
   }
 </style>

@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import LayananSection from '../components/public/LayananSection.astro';
 import LokerTable from '../components/public/LokerTable.tsx';
+import LokerStaticList from '../components/public/LokerStaticList.astro';
 import App from '../components/App.tsx';
 import Icon from '../components/ui/Icon';
 // The WhatsApp fallback in the <noscript> below. Same constant the footer and
@@ -71,6 +72,7 @@ import { CONTACT_WHATSAPP } from '../lib/companyProfile';
 
     <!-- Section: Loker (Preact island) -->
     <div id="section-loker" data-public-panel="loker">
+      <LokerStaticList />
       <LokerTable client:only="preact" />
       <!-- The table is a `client:only` island, so it emits NO server HTML — with
            JavaScript off there is nothing here to read. This is the only honest

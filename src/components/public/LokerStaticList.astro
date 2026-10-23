@@ -1,0 +1,130 @@
+---
+/**
+ * LokerStaticList.astro — Server-rendered job listing fallback.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * LokerTable.tsx is a `client:only` island, so with JavaScript disabled the
+ * /loker and /public pages render an empty shell. This component fetches the
+ * same data at BUILD TIME and renders a static HTML table that crawlers and
+ * no-JS visitors can read.
+ *
+ * The static table is styled to match the site tokens; it is NOT interactive
+ * (no filter, no search) — that is what the client island is for. The two
+ * tables should not clash: the static one is plain HTML, the client one hydrates
+ * on top and replaces the visual if JS is available.
+ */
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+
+interface Job {
+  code: string;
+  pekerjaan: string;
+  kategori: string;
+  lokasi: string;
+  gender: string;
+  kuota: string;
+  status: string;
+}
+
+let jobs: Job[] = [];
+
+if (isSupabaseConfigured()) {
+  try {
+    const { data, error } = await supabase
+      .from('job_database')
+      .select('code_job, pekerjaan, kategori, lokasi, gender, kuota, status')
+      .limit(50);
+    if (!error && Array.isArray(data)) {
+      jobs = data.map((r) => ({
+        code: String(r.code_job || ''),
+        pekerjaan: String(r.pekerjaan || ''),
+        kategori: String(r.kategori || ''),
+        lokasi: String(r.lokasi || ''),
+        gender: String(r.gender || ''),
+        kuota: String(r.kuota || ''),
+        status: String(r.status || ''),
+      }));
+    }
+  } catch {
+    /* build-time fetch failure is non-fatal — the client island still works */
+  }
+}
+---
+
+{jobs.length > 0 && (
+  <div class="loker-static" data-loker-static>
+    <p class="loker-static-hint">
+      Daftar lowongan aktif (diperbarui saat build). Untuk filter dan detail lengkap, aktifkan JavaScript.
+    </p>
+    <div class="loker-static-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Kode</th>
+            <th>Pekerjaan</th>
+            <th>Kategori</th>
+            <th>Lokasi</th>
+            <th>Gender</th>
+            <th>Kuota</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {jobs.map((j) => (
+            <tr>
+              <td>{j.code}</td>
+              <td>{j.pekerjaan}</td>
+              <td>{j.kategori}</td>
+              <td>{j.lokasi}</td>
+              <td>{j.gender}</td>
+              <td>{j.kuota}</td>
+              <td>{j.status}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
+<style>
+  .loker-static {
+    margin-bottom: 1rem;
+  }
+  .loker-static-hint {
+    font-size: 0.8rem;
+    color: var(--color-fg-muted);
+    margin-bottom: 0.5rem;
+  }
+  .loker-static-scroll {
+    overflow-x: auto;
+  }
+  .loker-static table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .loker-static th,
+  .loker-static td {
+    border: 1px solid color-mix(in oklab, var(--color-fg) 12%, transparent);
+    padding: 0.5rem 0.6rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .loker-static th {
+    background: color-mix(in oklab, var(--color-fg) 7%, transparent);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .loker-static tr:nth-child(even) {
+    background: color-mix(in oklab, var(--color-fg) 3%, transparent);
+  }
+</style>
+
+<script is:inline>
+  /* Hide the static table once the client island hydrates, to avoid duplication */
+  (function () {
+    var el = document.querySelector('[data-loker-static]');
+    if (el) el.style.display = 'none';
+  })();
+</script>

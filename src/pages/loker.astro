@@ -27,6 +27,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import App from '../components/App.tsx';
 import LokerTable from '../components/public/LokerTable.tsx';
+import LokerStaticList from '../components/public/LokerStaticList.astro';
 import SectionTitle from '../components/public/SectionTitle.astro';
 // The WhatsApp fallback in the <noscript> below — the same constant the footer
 // and `LayananSection` use, so the number never has a second copy.
@@ -55,6 +56,7 @@ import { CONTACT_WHATSAPP } from '../lib/companyProfile';
     </div>
 
     <div class="pb-14">
+      <LokerStaticList />
       <LokerTable client:only="preact" />
       <!-- This page is the main public destination, and its whole point is the
            table below — which is a `client:only` island, so it emits NO server

@@ -800,6 +800,41 @@ import { GALLERY } from '../lib/gallery';
       </p>
     </Section>
 
+    <!-- Section: Artikel & Panduan — ADDED 2026-10-23.
+         Internal link cluster for the SEO pillar content. Two cards surface
+         the blog articles so the homepage passes link equity to /blog/* and
+         visitors discover the guides without leaving the profile flow. -->
+    <Section id="artikel" labelledBy="artikel-title" enter="slide-right">
+      <SectionTitle
+        titleKey="profile.artikel_title"
+        title="Artikel & Panduan"
+        descKey="profile.artikel_desc"
+        desc="Baca panduan lengkap sebelum mendaftar, agar proses Anda lancar."
+        accent="program"
+        headingId="artikel-title"
+      />
+      <div class="mt-6 grid gap-4 md:grid-cols-2">
+        <Card class="flex flex-col gap-2">
+          <span class="text-caption uppercase font-bold text-accent-emerald">Panduan Lengkap</span>
+          <a href="/blog/panduan-kerja-ke-jepang-2026/" class="text-card-title font-bold text-fg hover:underline">
+            Kerja ke Jepang 2026: Syarat, Biaya, Gaji &amp; Proses
+          </a>
+          <p class="text-body-sm text-fg-muted">
+            Rincian biaya, simulasi gaji bersih, timeline 6 tahap, dan 7 tanda agensi tidak resmi.
+          </p>
+        </Card>
+        <Card class="flex flex-col gap-2">
+          <span class="text-caption uppercase font-bold text-accent-sky">Cara Daftar</span>
+          <a href="/blog/cara-daftar-kerja-ke-jepang-2026/" class="text-card-title font-bold text-fg hover:underline">
+            Cara Daftar Kerja ke Jepang 2026: Langkah demi Langkah
+          </a>
+          <p class="text-body-sm text-fg-muted">
+            Panduan praktis dari pilih agensi hingga terbang ke Jepang, plus tips lulus wawancara.
+          </p>
+        </Card>
+      </div>
+    </Section>
+
     <!-- Section: Pertanyaan Umum (FAQ) — ADDED 2026-09-29.
          MEASURED that day: this page had no FAQ while JIPA publishes 6 Q&A and
          the other partners answer cost/schedule questions inline. The five

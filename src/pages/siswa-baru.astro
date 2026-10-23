@@ -10,6 +10,18 @@ import FormToolbar from "../components/forms/FormToolbar";
 
   <FormToolbar client:only="preact" titleKey="toolbar.siswa" />
   <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[42px]">
-    <SiswaBaruForm client:only="preact" />
+    <div class="max-w-3xl mx-auto px-4">
+      <section class="mb-8">
+        <h1 class="text-2xl font-bold text-fg mb-2">Pendaftaran Siswa Baru LPK ASJ</h1>
+        <p class="text-fg-muted leading-relaxed">Daftar program pelatihan bahasa Jepang intensif. Kami menyediakan kelas dari N5 hingga persiapan kerja, dengan fasilitas asrama dan bimbingan visa.</p>
+        <ol class="mt-4 space-y-2 text-sm text-fg-muted list-decimal list-inside">
+          <li>Isi formulir pendaftaran & pilih program</li>
+          <li>Tunggu jadwal tes masuk & wawancara</li>
+          <li>Lakukan pembayaran biaya pendaftaran</li>
+          <li>Mulai pelatihan sesuai jadwal kelas</li>
+        </ol>
+      </section>
+      <SiswaBaruForm client:only="preact" />
+    </div>
   </main>
 </BaseLayout>
