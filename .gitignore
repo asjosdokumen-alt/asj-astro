@@ -197,3 +197,7 @@ coverage/
 # scratch ever needs to live INSIDE the tracked tree instead, it must be added
 # to DENY_DIRS in indexer/src/discover.ts, not just ignored here.
 .downloads/
+
+# Kunci produksi — JANGAN pernah masuk repo (repo ini publik).
+# Berisi PRODUCTION.env dengan token asli. 2026-10-25.
+env-kunci/
