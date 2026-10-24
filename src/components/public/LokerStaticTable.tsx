@@ -26,15 +26,18 @@
  * which is what the rest of the static markup uses.
  */
 
-export interface LokerStaticRow {
-  code: string;
-  pekerjaan: string;
-  kategori: string;
-  lokasi: string;
-  gender: string;
-  kuota: string;
-  status: string;
-}
+import type { PublicJobRow } from '../../lib/publicData';
+
+/**
+ * The row shape is owned by the DATA layer (`parsePublicJobs`), not here.
+ *
+ * It used to be declared in this file. Once the static table stopped querying
+ * PostgREST directly and started reading the function's payload, two copies of
+ * the same seven field names would have been free to drift — and the drift is
+ * invisible: a renamed key renders an empty `<td>`, and nothing in the suite
+ * asserts a cell's TEXT (the component's own tests feed rows in by hand).
+ */
+export type LokerStaticRow = PublicJobRow;
 
 /** Header cells, in render order. One entry, one `<th>`. */
 const COLUMNS: { key: keyof LokerStaticRow; labelKey: string; label: string }[] = [

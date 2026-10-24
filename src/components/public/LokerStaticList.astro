@@ -9,47 +9,34 @@
  * same data at BUILD TIME and renders a static HTML table that crawlers and
  * no-JS visitors can read.
  *
+ * ── WHERE THE DATA COMES FROM NOW (2026-10-24) ─────────────────────────────
+ * It used to query PostgREST directly with the anon key. MEASURED on the live
+ * site that day: the query answers `401 42501 permission denied for table
+ * job_database` (hint: `GRANT SELECT … TO anon`), the failure is caught by
+ * design, and the result was that **neither page had a static table at all** —
+ * `<table` count 0 in the shipped HTML. The fallback existed, was tested, and
+ * had never once rendered in production.
+ *
+ * It now reads the function's public payload through `fetchPublicJobs()`, which
+ * is the same contract the island uses in the browser: no GRANT, no view, no
+ * service-role key in the build, no new public surface. See that function for
+ * the trade-off (a build reads the previous deploy's function code) and for why
+ * a content-type check sits next to the status check.
+ *
  * The static table is styled to match the site tokens; it is NOT interactive
  * (no filter, no search) — that is what the client island is for. The two
  * tables should not clash: the static one is plain HTML, the client one hydrates
  * on top and replaces the visual if JS is available.
  */
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { fetchPublicJobs } from '../../lib/publicData';
+import { siteOrigin } from '../../lib/siteMeta';
 import LokerStaticTable from './LokerStaticTable';
 
-interface Job {
-  code: string;
-  pekerjaan: string;
-  kategori: string;
-  lokasi: string;
-  gender: string;
-  kuota: string;
-  status: string;
-}
+/** Same ceiling the old PostgREST query had — the static table is a snapshot. */
+const STATIC_JOB_LIMIT = 50;
 
-let jobs: Job[] = [];
-
-if (isSupabaseConfigured()) {
-  try {
-    const { data, error } = await supabase
-      .from('job_database')
-      .select('code_job, pekerjaan, kategori, lokasi, gender, kuota, status')
-      .limit(50);
-    if (!error && Array.isArray(data)) {
-      jobs = data.map((r) => ({
-        code: String(r.code_job || ''),
-        pekerjaan: String(r.pekerjaan || ''),
-        kategori: String(r.kategori || ''),
-        lokasi: String(r.lokasi || ''),
-        gender: String(r.gender || ''),
-        kuota: String(r.kuota || ''),
-        status: String(r.status || ''),
-      }));
-    }
-  } catch {
-    /* build-time fetch failure is non-fatal — the client island still works */
-  }
-}
+/** Never throws: an empty list is a valid build (see `fetchPublicJobs`). */
+const jobs = await fetchPublicJobs(siteOrigin(), STATIC_JOB_LIMIT);
 ---
 
 {jobs.length > 0 && (
