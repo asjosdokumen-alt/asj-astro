@@ -78,6 +78,12 @@ function hasClassTag(s: string): boolean {
   return false;
 }
 
+/**
+ * Daftar kelas LPK yang bisa dipilih. SATU tempat untuk menambah/mengganti —
+ * nilai ini yang ditulis sebagai tag `[KELAS x]` di catatan internal.
+ */
+const KELAS_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
+
 function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbackWa: string): CandidateData {
   const catatanInt = String(c.catatanInt || c.catatanInternal || '');
   const catatanExt = String(c.catatanExt || c.catatanExternal || '');
@@ -143,6 +149,12 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
   const [catatanInternal, setCatatanInternal] = useState('');
   const [catatanExternal, setCatatanExternal] = useState('');
   const [isVIP, setIsVIP] = useState(false);
+  /* Kelas LPK — disimpan sebagai tag `[KELAS x]` di catatan internal, sama
+     seperti VIP (`[VIP]`). Server sudah menurunkan `kelas` dari tag itu
+     (`mapCandidate`), jadi tidak ada kolom baru yang perlu ditambah.
+     ⚠️ Daftar ini satu-satunya tempat menambah kelas. Kalau nanti kelasnya
+     bukan A–E, ubah array ini saja. */
+  const [kelas, setKelas] = useState('');
   // B03: preview dokumen inline — parity legacy un()/bukaPreviewDokumen di #modal-cv.
   const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
   /* Exit window (2026-09-28) — see `useOverlayPresence`. */
@@ -167,6 +179,13 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
       setCatatanInternal(mapped.catatanInternal ?? '');
       setCatatanExternal(mapped.catatanExternal ?? '');
       setIsVIP(mapped.isVIP ?? false);
+      // `c.kelas` datang dari server (`mapCandidate`), tapi baris lama/seed bisa
+      // belum punya field itu sementara catatannya sudah bertag — kalau jatuh ke
+      // kosong, tag yang ada akan TERHAPUS saat simpan. Jadi baca tag sebagai
+      // cadangan.
+      const noteKelas =
+        (String(c.catatanInt ?? c.catatanInternal ?? '').match(/\[KELAS\s*([A-Z0-9]+)\]/i) || [])[1] || '';
+      setKelas(String((c.kelas as string) || noteKelas).trim());
     };
     if (seed) {
       apply(seed);
@@ -232,22 +251,22 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
     if (!data || !data.wa) return;
     setSaving(true);
     try {
-      let intNote = catatanInternal.trim();
-      if (isVIP) {
-        // Penjaga tulis case-SENSITIVE: hanya tag kanonikal `[VIP]` yang
-        // dianggap sudah ada, sejalan dengan isVipCatatan (lib/vip.ts). Kalau
-        // di sini case-insensitive, menyalakan toggle pada catatan `[vip]` akan
-        // MENGANGGAP tag sudah ada dan tidak menulis `[VIP]` — sehingga kandidat
-        // lolos lencana/toggle tetapi tetap terkunci dari gerbang AI CV.
-        if (!intNote.includes('[VIP]')) intNote = intNote ? '[VIP] ' + intNote : '[VIP]';
-      } else {
-        // Strip hanya bentuk KANONIKAL: `i` sengaja tidak dipasang supaya catatan
-        // `[vip]` (bukan tag) tidak ikut terhapus dari teks yang admin lihat.
-        intNote = intNote.replace(/\[VIP\]\s*/g, '').trim();
-      }
-      // Tag kelas ([KELAS X] / [X]) TIDAK ditulis ulang otomatis: teksarea
-      // menampilkan catatan mentah (termasuk tag), jadi apa yang admin lihat
-      // adalah apa yang tersimpan — tanpa duplikasi tag diam-diam.
+      // Tag disusun ULANG, bukan ditambal: buang bentuk kanonikal lama, lalu
+      // tulis `[VIP]` dan/atau `[KELAS x]` di depan teks bebas. Urutan tetap
+      // (`[VIP] [KELAS x] …`) supaya catatan tidak "berubah sendiri" tiap kali
+      // disimpan — dan supaya mengganti kelas tidak menumpuk dua tag.
+      //
+      // Case-SENSITIVE pada `[VIP]`, disengaja (lihat lib/vip.ts): catatan
+      // `[vip]` huruf kecil BUKAN tag, jadi ia tetap tinggal di teks bebas dan
+      // tidak dianggap sudah ada.
+      let rest = catatanInternal
+        .replace(/\[KELAS\s*[A-Z0-9]+\]\s*/gi, '')
+        .replace(/\[VIP\]\s*/g, '')
+        .trim();
+      const head: string[] = [];
+      if (isVIP) head.push('[VIP]');
+      if (kelas) head.push(`[KELAS ${kelas}]`);
+      const intNote = [...head, rest].filter(Boolean).join(' ');
       const extNote = catatanExternal.trim();
       // `silent: true` — catch di bawah sudah menampilkan toast, dan ia membaca
       // `e.message` yang kini berisi pesan server (lihat apiClient). Tanpa
@@ -258,7 +277,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
         { onSessionInvalid: 'throw', silent: true },
       )) as { success?: boolean; error?: string };
       if (out && out.success) {
-        const patched = { ...data, catatanInternal: intNote, catatanExternal: extNote, isVIP };
+        const patched = { ...data, catatanInternal: intNote, catatanExternal: extNote, isVIP, kelas, isSiswaASJ: data.isSiswaASJ };
         setData(patched);
         setCatatanInternal(intNote);
         setCatatanExternal(extNote);
@@ -404,7 +423,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 flex-wrap">
                   <h2 class="text-lg font-bold text-white truncate">{data.nama}</h2>
-                  {data.isSiswaASJ ? (
+                  {(data.isSiswaASJ || data.isVIP) ? (
                     <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">{t('ui.cv_siswa_asj')}</span>
                   ) : (
                     <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-500/20 text-slate-400 border border-slate-500/40">{t('ui.cv_eksternal')}</span>
@@ -575,16 +594,40 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
             {/* 6. Evaluasi Kandidat (VIP Toggle) */}
             <div class="mb-4 p-4 bg-slate-800/30 rounded-xl border border-slate-700/30">
               <h3 class="text-xs font-bold text-sky-400 mb-3 uppercase">{t('ui.cand_eval')}</h3>
-              <button type="button"
-                onClick={() => setIsVIP(!isVIP)}
-                class={`min-h-11 w-full px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 ${
-                  isVIP
-                    ? 'bg-amber-600 hover:bg-amber-500 text-white'
-                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-                }`}
-              >
-                {isVIP ? t('ui.cv_vip_on') : t('ui.cv_vip_off')}
-              </button>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <button type="button"
+                  onClick={() => setIsVIP(!isVIP)}
+                  class={`min-h-11 flex-1 px-4 py-2 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2 ${
+                    isVIP
+                      ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                      : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                  }`}
+                >
+                  {isVIP ? t('ui.cv_vip_on') : t('ui.cv_vip_off')}
+                </button>
+
+                {/* Kelas hanya relevan untuk VIP/siswa internal. Disimpan
+                    sebagai tag `[KELAS x]` — lihat handleSaveCatatan. */}
+                {isVIP && (
+                  <label class="flex items-center gap-2 min-h-11 px-3 rounded-lg bg-slate-800/60 border border-slate-700">
+                    <span class="text-[11px] font-bold uppercase text-slate-400">Kelas</span>
+                    <select
+                      value={kelas}
+                      onChange={(e) => setKelas((e.target as HTMLSelectElement).value)}
+                      class="min-h-9 bg-transparent text-sm font-bold text-white outline-none"
+                      aria-label="Kelas LPK"
+                    >
+                      <option value="">—</option>
+                      {KELAS_OPTIONS.map((k) => (
+                        <option key={k} value={k} class="bg-slate-800 text-white">{k}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+              <p class="mt-2 text-[11px] text-slate-500">
+                Kelas ikut tersimpan saat menekan tombol simpan catatan di bawah.
+              </p>
             </div>
 
             {/* 7. Catatan Internal & External */}

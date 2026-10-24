@@ -41,7 +41,19 @@ export function jobStatusKey(raw: unknown): JobStatusKey {
     .toUpperCase();
   if (s.includes('URGENT')) return 'URGENT';
   if (s === '') return 'CLOSE';
-  if (s.includes('CLOSE') || s.includes('TUTUP') || s.includes('SELESAI')) return 'CLOSE';
+  // CANCEL ikut CLOSE: `sys_config.list_status_loker` (satu-satunya daftar
+  // resmi) berisi `✅ OPEN | ⚡ URGENT | ❌ CLOSE | CANCEL`, dan tanpa baris ini
+  // lowongan yang dibatalkan akan tampil sebagai OPEN karena namanya tidak
+  // mengandung kata CLOSE/TUTUP/SELESAI.
+  if (
+    s.includes('CLOSE') ||
+    s.includes('TUTUP') ||
+    s.includes('SELESAI') ||
+    s.includes('CANCEL') ||
+    s.includes('BATAL')
+  ) {
+    return 'CLOSE';
+  }
   return 'OPEN';
 }
 

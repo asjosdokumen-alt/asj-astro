@@ -33,6 +33,10 @@ describe('jobStatusKey — nilai mentah DB → kunci kanonik', () => {
     ['❌ CLOSE', 'CLOSE'],
     ['CLOSE', 'CLOSE'],
     ['SELESAI / CLOSE', 'CLOSE'],
+    // `sys_config.list_status_loker` menawarkan CANCEL — tanpa aturan ini ia
+    // jatuh ke OPEN karena tidak mengandung kata CLOSE.
+    ['CANCEL', 'CLOSE'],
+    ['DIBATALKAN', 'CLOSE'],
     ['PROSES INTERVIEW', 'OPEN'],
     ['PEMBERKASAN', 'OPEN'],
     ['APPROVED', 'OPEN'],
