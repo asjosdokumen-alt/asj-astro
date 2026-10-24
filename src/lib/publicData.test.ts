@@ -216,4 +216,28 @@ describe('fetchPublicJobs', () => {
     }) as unknown as typeof fetch;
     await expect(fetchPublicJobs('https://contoh.test')).resolves.toEqual([]);
   });
+
+  it('200 berisi baris DEMO tetap dianggap FALLBACK, bukan data nyata', async () => {
+    // Diukur 2026-10-24 di situs live: `loadPublicBase()` mulai dari
+    // `demoGetAppData()` dan hanya menimpa `jobs` kalau tabelnya terbaca. Jadi
+    // backend yang tidak bisa menghubungi DB menjawab 200 + 5 lowongan DEMO,
+    // dan halamannya terlihat berisi padahal tidak ada lowongan nyata.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    stubResponse({
+      body: { success: true, jobs: [{ ...JOB, code: 'DEMO-0001' }, { ...JOB, code: 'DEMO-0002' }] },
+    });
+    const rows = await fetchPublicJobs('https://contoh.test');
+    expect(rows).toHaveLength(2);
+    expect(warn.mock.calls[0][0]).toContain('DEMO-');
+  });
+
+  it('campuran DEMO + kode asli TIDAK memicu peringatan fallback', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    stubResponse({
+      body: { jobs: [{ ...JOB, code: 'DEMO-0001' }, { ...JOB, code: 'TG591ASJ' }] },
+    });
+    const rows = await fetchPublicJobs('https://contoh.test');
+    expect(rows).toHaveLength(2);
+    expect(warn).not.toHaveBeenCalled();
+  });
 });

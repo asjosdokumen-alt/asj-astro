@@ -167,7 +167,19 @@ export async function fetchPublicJobs(
       warnBuild(`${publicJobsUrl(origin)} answered "${contentType}" — expected JSON`);
       return [];
     }
-    return parsePublicJobs(await res.json(), limit);
+    const rows = parsePublicJobs(await res.json(), limit);
+    // A 200 with rows is not proof of a working backend. MEASURED 2026-10-24:
+    // the function's `loadPublicBase()` starts from `demoGetAppData()` and only
+    // overwrites `jobs` when it can read the table — so a backend that cannot
+    // reach its database answers 200 with the DEMO dataset, and the page looks
+    // populated while carrying no real vacancy. This warning is the only place
+    // a build can tell the difference without knowing the schema.
+    if (rows.length > 0 && rows.every((row) => /^DEMO-/i.test(row.code))) {
+      warnBuild(
+        `all ${rows.length} rows are DEMO-* placeholders — the function is serving its fallback dataset, not the database`,
+      );
+    }
+    return rows;
   } catch (error) {
     warnBuild(`fetch failed: ${(error as Error)?.message ?? error}`);
     return [];
