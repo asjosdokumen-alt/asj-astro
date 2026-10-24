@@ -81,6 +81,57 @@ describe.skipIf(!hasBuild)('sitemap.xml vs robots.txt', () => {
     expect(origins.size, `origin bercampur: ${[...origins].join(', ')}`).toBe(1);
   });
 
+  it('setiap <loc> adalah URL FINAL — berakhiran slash, dan cocok dengan canonical bila ada', () => {
+    // MEASURED 2026-10-24 di host live: TUJUH dari delapan <loc> menjawab 301.
+    // Sitemap mengirim bentuk tanpa slash (`/loker`), sementara Netlify melayani
+    // `/loker/` dan canonical halaman memakai bentuk berslash. Google mencatatnya
+    // sebagai "Page with redirect", bukan "Indexed" — sitemap yang seluruh isinya
+    // dialihkan adalah cara paling lambat meminta crawl.
+    //
+    // Tiga hal diuji bersamaan:
+    //   1. <loc> berakhiran slash (kecuali root) — inilah bentuk yang dilayani;
+    //   2. berkas halamannya benar-benar ada di dist/ (URL tidak menebak);
+    //   3. KALAU halaman itu punya canonical, nilainya harus sama persis.
+    //
+    // Kenapa (3) kondisional: `siteOrigin()` mengembalikan null kalau tidak ada
+    // PUBLIC_SITE_URL maupun URL Netlify, dan BaseLayout memang TIDAK menebak —
+    // jadi build lokal tanpa env tidak punya <link rel="canonical"> sama sekali
+    // (terukur: 0 di dist/index.html). Di Netlify `URL` selalu ada, jadi di sana
+    // (3) yang menahan; di sini (1) dan (2).
+    const locs = [...readFileSync(SITEMAP, 'utf8').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+    const problems: string[] = [];
+    let compared = 0;
+    for (const loc of locs) {
+      const path = new URL(loc).pathname;
+      if (path !== '/' && !path.endsWith('/')) {
+        problems.push(`${loc} → bukan bentuk yang dilayani (tanpa slash ⇒ 301)`);
+        continue;
+      }
+      const rel = path === '/' ? 'index.html' : join(path, 'index.html');
+      const file = join(ROOT, 'dist', rel);
+      if (!existsSync(file)) {
+        problems.push(`${loc} → tidak ada dist/${rel.replace(/\\/g, '/')}`);
+        continue;
+      }
+      const canon = readFileSync(file, 'utf8').match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+      if (!canon) continue;
+      compared++;
+      if (canon !== loc) problems.push(`${loc} → canonical halaman: ${canon}`);
+    }
+    expect(problems, [
+      'Sitemap mendaftarkan URL yang bukan URL final (atau bukan halaman yang sama).',
+      'Setiap <loc> harus berbentuk berslash dan — bila halaman mendeklarasikannya —',
+      'sama persis dengan canonical-nya, kalau tidak Google melihatnya sebagai redirect.',
+      '',
+      ...problems.map((p) => `  - ${p}`),
+    ].join('\n')).toEqual([]);
+    // Kalau build-nya punya origin, (3) harus benar-benar membandingkan sesuatu.
+    // Angka ini menjaga gate dari keadaan "hijau karena tidak ada yang diperiksa".
+    if (process.env.PUBLIC_SITE_URL || process.env.URL) {
+      expect(compared, 'build punya origin tapi tidak ada canonical yang dibandingkan').toBe(locs.length);
+    }
+  });
+
   it('robots.txt masih mendeklarasikan User-agent dan tidak mengosongkan Allow', () => {
     const text = readFileSync(ROBOTS, 'utf8');
     expect(text).toMatch(/^User-agent:\s*\*/m);

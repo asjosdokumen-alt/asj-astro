@@ -15,8 +15,7 @@ import { siteOrigin } from '../lib/siteMeta';
  *   /admin, /candidate, /share — all require auth and carry `noindex`.
  *   404 is not a real page.
  */
-export const GET: APIRoute = async () => {
-  // The origin now comes from PUBLIC_SITE_URL, or from Netlify's own `URL`
+export const GET: APIRoute = async () => {  // The origin now comes from PUBLIC_SITE_URL, or from Netlify's own `URL`
   // variable when that is unset (see siteOrigin). The literal below is a LAST
   // resort for a local build with neither set: a sitemap is only useful with
   // absolute URLs, so emitting one is better than emitting none — but a guessed
@@ -31,6 +30,20 @@ export const GET: APIRoute = async () => {
     );
   }
   const origin = resolved ?? 'https://asjastro.netlify.app';
+
+  /**
+   * The form Netlify actually SERVES. Every route here is a directory, and the
+   * bare form (`/loker`) answers 301 → `/loker/`.
+   *
+   * MEASURED 2026-10-24 against the live host: all seven non-root `<loc>`
+   * entries redirected, because this file emitted the bare form while the
+   * page's canonical (`Astro.url.pathname`) carries the slash. Search Console
+   * files those as "Page with redirect", not "Indexed" — a sitemap that
+   * advertises URLs which immediately move is the slowest way to ask for a
+   * crawl. Gated by `e2e/sitemap-robots-agreement.test.ts`: every `<loc>` must
+   * equal the canonical of the page it names.
+   */
+  const canonicalPath = (path: string) => (path.endsWith('/') ? path : `${path}/`);
 
   const staticRoutes: { loc: string; lastmod?: string; changefreq: string; priority: string }[] = [
     { loc: '/', changefreq: 'weekly', priority: '1.0' },
@@ -63,7 +76,7 @@ export const GET: APIRoute = async () => {
     priority: '0.8',
   }));
 
-  const all = [...staticRoutes, ...postRoutes];
+  const all = [...staticRoutes, ...postRoutes].map((r) => ({ ...r, loc: canonicalPath(r.loc) }));
 
   const lines = all
     .map(
