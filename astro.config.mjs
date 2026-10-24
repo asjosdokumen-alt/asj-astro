@@ -46,7 +46,12 @@ export default defineConfig({
           // asjastro.netlify.app serves the CURRENT build (its /ai-cv bundle
           // carries `cv.doc_exists`, a key added the same day). Override with
           // FUNCTIONS_PROXY_TARGET.
-          target: process.env.FUNCTIONS_PROXY_TARGET || "https://asjastro.netlify.app",
+          //
+          // 2026-10-24: the site was RENAMED to amanahsakura.netlify.app and the
+          // old host now answers 404 (a rename is not a redirect). `npm run dev`
+          // proxies through here, so a stale value here means the dev server
+          // receives 404 HTML where it expects JSON.
+          target: process.env.FUNCTIONS_PROXY_TARGET || "https://amanahsakura.netlify.app",
           changeOrigin: true,
           secure: false,
         },

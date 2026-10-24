@@ -7,8 +7,9 @@ const dist = path.join(__dirname, 'dist');
 // See server.cjs for the rule: proxy to the site that is DEPLOYING, not merely
 // one that answers. Two hosts have already looked usable while being wrong — one
 // frozen at a 2026-09-24 build, one that now answers 404. Live site since
-// 2026-10-13.
-const PROXY_TARGET = process.env.BACKEND_TARGET || 'https://asjastro.netlify.app';
+// 2026-10-24, after the owner RENAMED the Netlify site (a rename is not a
+// redirect: the old host answers 404 on every path).
+const PROXY_TARGET = process.env.BACKEND_TARGET || 'https://amanahsakura.netlify.app';
 
 function serveFile(res, fp) {
   const ext = path.extname(fp);

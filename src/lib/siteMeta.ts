@@ -82,12 +82,38 @@ function normalizeOrigin(raw: string | undefined): string | null {
  * Precedence is deliberate: an explicitly-set-but-invalid `PUBLIC_SITE_URL`
  * returns `null` instead of falling through to `URL`, so a typo stays a loud
  * failure instead of silently pointing canonical tags at a different host.
+ *
+ * ── WHY `NETLIFY_SITE_URL` IS A THIRD SOURCE (2026-10-24) ──────────────────
+ * The owner keeps the site's URL in `NETLIFY_SITE_URL` (it is in `.env` and
+ * `.env.local`) and does NOT maintain `PUBLIC_SITE_URL` — measured, not assumed.
+ * Without this line that variable is dead weight: local builds resolved to no
+ * origin at all, so they emitted no canonical while production (which has
+ * `URL`) did. Two environments, two different artifacts, from one source tree.
+ *
+ * It stays LAST: `URL` is per-deploy and therefore the only value that is
+ * correct on a deploy preview, and an operator who sets `PUBLIC_SITE_URL`
+ * explicitly must always win.
  */
 export function siteOrigin(): string | null {
   const explicit = readEnv('PUBLIC_SITE_URL');
   if (typeof explicit === 'string' && explicit.trim() !== '') return normalizeOrigin(explicit);
-  return normalizeOrigin(readEnv('URL'));
+  return normalizeOrigin(readEnv('URL')) ?? normalizeOrigin(readEnv('NETLIFY_SITE_URL'));
 }
+
+/**
+ * The host the sitemap names when NO origin can be resolved at all.
+ *
+ * It is a guess, and it is the one place in this repo that guesses — which is
+ * why it lives here, next to the resolution it backs up, instead of inline in
+ * the sitemap. MEASURED 2026-10-24: the owner renamed the Netlify site, and the
+ * old literal in `sitemap.xml.ts` kept naming `asjastro.netlify.app`, a host
+ * that now answers 404. A sitemap full of dead `<loc>` entries is worse than no
+ * sitemap, so the fallback has to move with the site.
+ *
+ * Every rename is one edit here, and the sitemap logs a warning whenever this
+ * value is used (it means the build was told nothing).
+ */
+export const FALLBACK_ORIGIN = 'https://amanahsakura.netlify.app';
 
 /**
  * An absolute URL for a path, or `null` when the origin is unknown.

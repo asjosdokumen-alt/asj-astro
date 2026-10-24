@@ -8,10 +8,10 @@
 # authenticated areas listed below.
 #
 # NO `Sitemap:` LINE, deliberately. A sitemap directive must name an absolute URL
-# on the canonical host, and this project's host has already moved twice
-# (asjportal → asjastro → boisterous-taiyaki), so a hardcoded origin here would
-# be a stale claim the moment it changed again — and a robots.txt pointing at a
-# dead sitemap is worse than one that says nothing.
+# on the canonical host, and this project's host has already moved three times
+# (asjportal → asjastro → boisterous-taiyaki → amanahsakura), so a hardcoded
+# origin here would be a stale claim the moment it changed again — and a
+# robots.txt pointing at a dead sitemap is worse than one that says nothing.
 #
 # `/sitemap.xml` IS generated now (src/pages/sitemap.xml.ts, `aa8fa40`), and its
 # origin comes from PUBLIC_SITE_URL or Netlify's own `URL` — the same resolution

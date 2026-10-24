@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getCollection, type CollectionEntry } from 'astro:content';
-import { siteOrigin } from '../lib/siteMeta';
+import { FALLBACK_ORIGIN, siteOrigin } from '../lib/siteMeta';
 
 /**
  * Sitemap XML — generated at build time from the content collection.
@@ -25,11 +25,11 @@ export const GET: APIRoute = async () => {  // The origin now comes from PUBLIC_
   if (!resolved) {
     // biome-ignore lint/suspicious/noConsole: build-time warning is the only signal that this file is naming a host it was not told about
     console.warn(
-      '[sitemap] no origin (PUBLIC_SITE_URL and Netlify URL are both unset) — ' +
-        'falling back to https://asjastro.netlify.app. Every <loc> will name that host.',
+      '[sitemap] no origin (PUBLIC_SITE_URL, Netlify URL and NETLIFY_SITE_URL are all unset) — ' +
+        `falling back to ${FALLBACK_ORIGIN}. Every <loc> will name that host.`,
     );
   }
-  const origin = resolved ?? 'https://asjastro.netlify.app';
+  const origin = resolved ?? FALLBACK_ORIGIN;
 
   /**
    * The form Netlify actually SERVES. Every route here is a directory, and the

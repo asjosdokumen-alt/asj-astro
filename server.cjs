@@ -32,7 +32,13 @@ const DIST = path.join(__dirname, 'dist');
 // and serves the CURRENT build (its /ai-cv bundle carries `cv.doc_exists`, a key
 // added that day). Override with BACKEND_TARGET when pointing at a preview deploy
 // or a local `netlify dev` (e.g. BACKEND_TARGET=http://127.0.0.1:8888 node server.cjs).
-const TARGET = process.env.BACKEND_TARGET || 'https://asjastro.netlify.app';
+//
+// 2026-10-24, the FOURTH move: the owner RENAMED the Netlify site, so
+// `asjastro.netlify.app` now answers **404 on every path** (measured; a rename is
+// not a redirect). The live site — and therefore the functions this file proxies
+// to — is `amanahsakura.netlify.app`. If this line is ever stale again, the
+// symptom is not a crash: every API call quietly receives a 404 HTML page.
+const TARGET = process.env.BACKEND_TARGET || 'https://amanahsakura.netlify.app';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

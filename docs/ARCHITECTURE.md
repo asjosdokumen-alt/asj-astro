@@ -239,7 +239,7 @@ npx serve dist
 | Resource | URL |
 |----------|-----|
 | **GitHub** | https://github.com/asjosdokumen-alt/asj-astro |
-| **Netlify** | https://asjastro.netlify.app |
+| **Netlify** | https://amanahsakura.netlify.app |
 | **Supabase** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
 
 > Diperbarui 2026-09-26: ketiga URL di atas sebelumnya menunjuk repo/situs/proyek
@@ -265,3 +265,13 @@ npx serve dist
 > terkini** (bundle `/ai-cv`-nya memuat `cv.doc_exists`, kunci yang baru
 > ditambahkan hari itu) — jadi ia benar-benar DEPLOY, bukan sekadar menjawab.
 > Ketiga target proxy dikembalikan ke host itu.
+>
+> Diperbarui lagi **2026-10-24**: pemilik **MENGGANTI NAMA** situs Netlify menjadi
+> `amanahsakura.netlify.app` (bukan pindah host — situs yang sama, diganti nama).
+> Terukur: host baru → 200 dengan build terkini; `asjastro.netlify.app` → **404 di
+> semua jalur**, karena rename bukan redirect. Ketiga target proxy
+> (`astro.config.mjs`, `server.cjs`, `serve.cjs`) dan `NETLIFY_SITE_URL` di
+> `.env`/`.env.local` ikut diperbarui; `siteOrigin()` sekarang juga membaca
+> `NETLIFY_SITE_URL` (sumber ketiga, setelah `PUBLIC_SITE_URL` dan `URL`), sehingga
+> build lokal menghasilkan canonical yang sama dengan produksi. Domain berbayar
+> (`amanahsakura.com`) belum dibeli — sementara ini memakai subdomain Netlify.

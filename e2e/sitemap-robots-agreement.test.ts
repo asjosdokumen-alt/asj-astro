@@ -127,7 +127,7 @@ describe.skipIf(!hasBuild)('sitemap.xml vs robots.txt', () => {
     ].join('\n')).toEqual([]);
     // Kalau build-nya punya origin, (3) harus benar-benar membandingkan sesuatu.
     // Angka ini menjaga gate dari keadaan "hijau karena tidak ada yang diperiksa".
-    if (process.env.PUBLIC_SITE_URL || process.env.URL) {
+    if (process.env.PUBLIC_SITE_URL || process.env.URL || process.env.NETLIFY_SITE_URL) {
       expect(compared, 'build punya origin tapi tidak ada canonical yang dibandingkan').toBe(locs.length);
     }
   });

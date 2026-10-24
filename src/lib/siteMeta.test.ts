@@ -31,8 +31,10 @@ describe('siteOrigin', () => {
   it('returns null when PUBLIC_SITE_URL is unset', () => {
     vi.stubEnv('PUBLIC_SITE_URL', '');
     // `URL` is Netlify's own variable; stubbed empty so this test does not
-    // depend on whether the machine or CI happens to export it.
+    // depend on whether the machine or CI happens to export it. Same for
+    // NETLIFY_SITE_URL, which the owner keeps in `.env`/`.env.local`.
     vi.stubEnv('URL', '');
+    vi.stubEnv('NETLIFY_SITE_URL', '');
     expect(siteOrigin()).toBeNull();
   });
 
@@ -73,7 +75,28 @@ describe('siteOrigin', () => {
   it('rejects a Netlify `URL` that is not an absolute origin', () => {
     vi.stubEnv('PUBLIC_SITE_URL', '');
     vi.stubEnv('URL', 'localhost:8888');
+    vi.stubEnv('NETLIFY_SITE_URL', '');
     expect(siteOrigin()).toBeNull();
+  });
+
+  // ── NETLIFY_SITE_URL (2026-10-24) ────────────────────────────────────────
+  // The owner maintains `NETLIFY_SITE_URL` and NOT `PUBLIC_SITE_URL` (measured:
+  // it is in `.env` and `.env.local`, PUBLIC_SITE_URL is nowhere). Before this,
+  // a local build resolved to no origin and emitted no canonical at all, while
+  // production — which has `URL` — did. Same source tree, two different
+  // artifacts.
+  it('falls back to NETLIFY_SITE_URL when neither PUBLIC_SITE_URL nor `URL` is set', () => {
+    vi.stubEnv('PUBLIC_SITE_URL', '');
+    vi.stubEnv('URL', '');
+    vi.stubEnv('NETLIFY_SITE_URL', 'https://amanahsakura.netlify.app');
+    expect(siteOrigin()).toBe('https://amanahsakura.netlify.app');
+  });
+
+  it('Netlify `URL` wins over NETLIFY_SITE_URL — a deploy preview must not claim the primary host', () => {
+    vi.stubEnv('PUBLIC_SITE_URL', '');
+    vi.stubEnv('URL', 'https://deploy-preview-12--asj.netlify.app');
+    vi.stubEnv('NETLIFY_SITE_URL', 'https://amanahsakura.netlify.app');
+    expect(siteOrigin()).toBe('https://deploy-preview-12--asj.netlify.app');
   });
 });
 
