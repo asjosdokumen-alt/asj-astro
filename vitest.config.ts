@@ -123,6 +123,9 @@ export default defineConfig({
             'e2e/ai-cv-submit.test.ts',
             'e2e/kernel-metrics-histogram.test.ts',
             'e2e/applications-sync-preloaded.test.ts',
+            // 2026-10-25 — tabel keputusan status lowongan: murni tanpa DOM,
+            // jadi milik project 'backend'. Tanpa baris ini ia jalan dua kali.
+            'e2e/job-status.test.ts',
             // Ditambahkan 2026-10-02. Keduanya handler-level TANPA DOM, jadi
             // memang milik project 'backend' — tapi yang membuat ini wajib
             // (bukan sekadar rapi) adalah `candidates-lookup-stub.test.ts`:

@@ -27,6 +27,7 @@
  */
 
 import type { PublicJobRow } from '../../lib/publicData';
+import { jobStatusText } from '../../lib/jobStatus';
 
 /**
  * The row shape is owned by the DATA layer (`parsePublicJobs`), not here.
@@ -68,7 +69,10 @@ export default function LokerStaticTable({ jobs }: { jobs: LokerStaticRow[] }) {
           // unique, so the index is part of the key on purpose.
           <tr key={`${job.code}-${i}`}>
             {COLUMNS.map((c) => (
-              <td key={c.key}>{job[c.key]}</td>
+              // Status tampil KANONIK (OPEN/CLOSE/URGENT), bukan teks mentah
+              // DB. Tanpa ini tabel hasil build menampilkan `❌ CLOSE` di
+              // sebelah `CLOSE` — persis yang dilaporkan pemilik 2026-10-25.
+              <td key={c.key}>{c.key === 'status' ? jobStatusText(job.status) : job[c.key]}</td>
             ))}
           </tr>
         ))}

@@ -59,6 +59,7 @@ import LokerDetailModal from './LokerDetailModal';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 import Icon from '../ui/Icon';
 import { Status, TableRows } from '../ui/Skeleton';
+import { jobStatusKey } from '../../lib/jobStatus';
 
 // NOTE: Shared Job type available at types/api.ts
 // This local interface extends it with public-view specific fields
@@ -141,11 +142,15 @@ export default function LokerTable() {
 
   const filtered = filter === "ALL"
     ? jobs
-    : jobs.filter((j) => (j.status || "").toUpperCase().includes(filter));
+    : jobs.filter((j) => jobStatusKey(j.status) === filter);
 
   const sorted = [...filtered].sort((a, b) => {
-    const aO = (a.status || "").toUpperCase().includes("OPEN") ? 1 : 0;
-    const bO = (b.status || "").toUpperCase().includes("OPEN") ? 1 : 0;
+    // "Terbuka" = apa pun yang BUKAN CLOSE. Dulu hanya yang mengandung teks
+    // OPEN yang dianggap buka, sehingga lowongan berstatus kosong (yang oleh
+    // aturan backend dianggap CLOSE) mengurut sebagai tutup tetapi tetap
+    // muncul di tab ALL — dua aturan berbeda untuk data yang sama.
+    const aO = jobStatusKey(a.status) === "CLOSE" ? 0 : 1;
+    const bO = jobStatusKey(b.status) === "CLOSE" ? 0 : 1;
     if (aO !== bO) return bO - aO;
     const tA = a.createdAt ? new Date(a.createdAt).getTime() : parseInt((a.code || "").replace(/\D/g, "")) || 0;
     const tB = b.createdAt ? new Date(b.createdAt).getTime() : parseInt((b.code || "").replace(/\D/g, "")) || 0;
@@ -155,17 +160,16 @@ export default function LokerTable() {
   const displayed = sorted.slice(0, limit);
 
   function getStatusBadge(status: string) {
-    const s = (status || "").toUpperCase();
-    if (s.includes("OPEN"))
+    // Satu aturan untuk admin & publik — lihat `src/lib/jobStatus.ts`.
+    // Sebelumnya berkas ini punya salinan sendiri, dan nilainya yang tidak
+    // dikenali (mis. `❌ CLOSE`, `PEMBERKASAN`) jatuh ke pill netral yang
+    // menampilkan teks MENTAH ber-emoji di halaman publik.
+    const key = jobStatusKey(status);
+    if (key === "OPEN")
       return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold bg-emerald-600 text-white border-emerald-400/60"><Icon name="door-open" /> {t("status.open")}</span>;
-    if (s.includes("URGENT"))
+    if (key === "URGENT")
       return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold bg-amber-500 text-white border-amber-400/60 animate-pulse"><Icon name="exclamation-triangle" /> {t("status.urgent")}</span>;
-    if (s.includes("CLOSE"))
-      return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold bg-rose-600 text-white border-rose-400/60"><Icon name="door-closed" /> {t("status.close")}</span>;
-    // Unknown status — fall back to a neutral pill that flips with theme so
-    // a stray "DRAFT" or admin-only state doesn't render as bright dark on
-    // a sakura page.
-    return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold bg-slate-800 text-slate-200 border-slate-600 dark-badge"><Icon name="tag" /> {status || "-"}</span>;
+    return <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-bold bg-rose-600 text-white border-rose-400/60"><Icon name="door-closed" /> {t("status.close")}</span>;
   }
 
   function getGenderBadge(gender: string) {
@@ -193,7 +197,7 @@ export default function LokerTable() {
 
   function filterCount(s: string) {
     if (s === "ALL") return jobs.length;
-    return jobs.filter(j => (j.status || "").toUpperCase().includes(s)).length;
+    return jobs.filter(j => jobStatusKey(j.status) === s).length;
   }
 
   const fDefs = [
