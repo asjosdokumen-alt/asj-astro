@@ -89,7 +89,7 @@ export const PROJECTIONS = {
     // 24 kolom identitas + sub-objek URL berkas. `ai_gender/ai_umur/ai_tb/ai_bb`
     // TIDAK lagi ada di sini — lihat catatan di atas: empat alias itu datang
     // dari RPC `master_light`, bukan dari JSON-path PostgREST.
-    columns: 'id,id_kandidat,nama_lengkap,no_wa,kk_url,ijazah_sd_url,ijazah_smp_url,ijazah_sma_url,univ_url,ktp_url,email,tempat_lahir,tgl_lahir,alamat_lengkap,no_coe,exp_pasport,no_paspor,kota_terbit_pasport,tgl_terbit_pasport,keluarga_1_nama,pekerjaan_1_nama_perusahaan,gender,usia,tb,bb',
+    columns: 'id,id_kandidat,nama_lengkap,no_wa,kk_url,ijazah_sd_url,ijazah_smp_url,ijazah_sma_url,univ_url,ktp_url,email,tempat_lahir,tgl_lahir,alamat_lengkap,no_coe,exp_pasport,no_paspor,kota_terbit_pasport,tgl_terbit_pasport,keluarga_1_nama,pekerjaan_1_nama_perusahaan,gender,usia,tb,bb,pas_photo,pendidikan_1_tingkat,pendidikan_2_tingkat,pendidikan_3_tingkat,pendidikan_4_tingkat,pendidikan_5_tingkat',
   },
   /** Mail inbox row — everything `mapForm()` reads. */
   FORM_LIGHT_COLS: {
