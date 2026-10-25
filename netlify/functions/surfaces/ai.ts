@@ -84,4 +84,47 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
     message: 'processUploadDoc has been moved to /ingest function',
   }),
   getJobStatus: async (p: unknown[], s?: string) => handleGetJobStatus(p, s),
+
+  // ── Bank soal wawancara (mensetsu) ────────────────────────────────────────
+  // Menggantikan simulator chat bebas: soal tetap (177 soal, 13 tahap) + isian
+  // tiga lapis per soal. Semua aksi di sini milik satu kandidat, jadi dijaga
+  // `isOwnerOrAdmin` — admin boleh membuka milik siapa pun (untuk mendampingi),
+  // kandidat hanya miliknya sendiri.
+  getBankWawancara: async (p: unknown[], s?: string) => {
+    const { gabungBankDanJawaban } = await import('../_lib/wawancara/bank');
+    const { isOwnerOrAdmin } = await import('../contexts/identity');
+    const wa = String((p && p[0]) || '').trim();
+    if (!isOwnerOrAdmin(s, wa)) return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+    return { success: true, ...(await gabungBankDanJawaban(wa)) };
+  },
+  simpanJawabanWawancara: async (p: unknown[], s?: string) => {
+    const { simpanJawaban } = await import('../_lib/wawancara/bank');
+    const { isOwnerOrAdmin } = await import('../contexts/identity');
+    const wa = String((p && p[0]) || '').trim();
+    if (!isOwnerOrAdmin(s, wa)) return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+    return simpanJawaban(wa, String((p && p[1]) || ''), ((p && p[2]) || {}) as any, 'siswa');
+  },
+  terjemahkanJawabanWawancara: async (p: unknown[], s?: string) => {
+    const { terjemahkanJawaban } = await import('../_lib/wawancara/bank');
+    const { isOwnerOrAdmin } = await import('../contexts/identity');
+    const wa = String((p && p[0]) || '').trim();
+    if (!isOwnerOrAdmin(s, wa)) return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+    return terjemahkanJawaban(wa, String((p && p[1]) || ''), String((p && p[2]) || ''));
+  },
+  getLinkWawancara: async (p: unknown[], s?: string) => {
+    const { linkWawancara } = await import('../_lib/wawancara/bank');
+    const { requireAdmin } = await import('../contexts/identity');
+    // Minting a link embeds a candidate's WA + nama — admin-only, sama seperti
+    // generateAiFormBridge.
+    const guard = requireAdmin(s || '');
+    if (guard.error) return guard.error;
+    const { env } = await import('../_lib/env');
+    // Tanpa env ini link akan menunjuk domain yang salah, dan siswa menerima
+    // tautan mati — lebih baik gagal dengan pesan jelas daripada menebak host.
+    const base = String(env('NETLIFY_SITE_URL') || '').replace(/\/$/, '');
+    if (!base) {
+      return { success: false, message: 'NETLIFY_SITE_URL belum diset di server; link tidak bisa dibuat.' };
+    }
+    return linkWawancara(String((p && p[0]) || ''), String((p && p[1]) || ''), base);
+  },
 };

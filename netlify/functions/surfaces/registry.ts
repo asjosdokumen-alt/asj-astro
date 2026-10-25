@@ -128,6 +128,11 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   selesaikanWawancara:        () => import('./ai').then(m => m.AI_ACTIONS),
   getHasilWawancara:          () => import('./ai').then(m => m.AI_ACTIONS),
   getAdminAiContext:          () => import('./ai').then(m => m.AI_ACTIONS),
+  // Bank soal wawancara (mensetsu) — menggantikan simulator chat bebas.
+  getBankWawancara:           () => import('./ai').then(m => m.AI_ACTIONS),
+  simpanJawabanWawancara:     () => import('./ai').then(m => m.AI_ACTIONS),
+  terjemahkanJawabanWawancara:() => import('./ai').then(m => m.AI_ACTIONS),
+  getLinkWawancara:           () => import('./ai').then(m => m.AI_ACTIONS),
   buildAdminAiCandidateSummary:() => import('./ai').then(m => m.AI_ACTIONS),
   submitDataAsj:              () => import('./ai').then(m => m.AI_ACTIONS),
   simpanDataTtdNaitei:        () => import('./ai').then(m => m.AI_ACTIONS),

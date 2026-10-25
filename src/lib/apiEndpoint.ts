@@ -105,6 +105,14 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   simpanDataTtdNaitei: '/.netlify/functions/ai-chat',
   saveSignature: '/.netlify/functions/ai-chat',
 
+  // Bank soal wawancara (mensetsu). Satu entri `ai-chat` yang sudah ada, BUKAN
+  // fungsi baru: menambah entry function berarti menambah cold start + bobot
+  // bundle yang harus di-baseline ulang di gate bundle:size.
+  getBankWawancara: '/.netlify/functions/ai-chat',
+  simpanJawabanWawancara: '/.netlify/functions/ai-chat',
+  terjemahkanJawabanWawancara: '/.netlify/functions/ai-chat',
+  getLinkWawancara: '/.netlify/functions/ai-chat',
+
   // Ingestion — admin AI Copilot (parse CV/Excel/PDF lalu submitMasterForm).
   // Sebelum 2026-09-12 action ini TIDAK terdaftar di sini, sehingga jatuh ke
   // FALLBACK (catch-all bridge-links) — fitur yang benar-benar dipakai

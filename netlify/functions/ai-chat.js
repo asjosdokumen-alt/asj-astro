@@ -6,7 +6,14 @@
  *          processAiInterview, processUploadDoc,
  *          generateWawancaraModel, simpanHasilWawancara, selesaikanWawancara,
  *          getHasilWawancara, getAdminAiContext, buildAdminAiCandidateSummary,
- *          submitDataAsj, simpanDataTtdNaitei, saveSignature
+ *          submitDataAsj, simpanDataTtdNaitei, saveSignature,
+ *          getBankWawancara, simpanJawabanWawancara,
+ *          terjemahkanJawabanWawancara, getLinkWawancara
+ *
+ * Bank soal wawancara (2026-10-25) sengaja menumpang entry ini, bukan fungsi
+ * baru: satu fungsi tambahan berarti cold start tambahan dan bobot bundle yang
+ * harus di-baseline ulang di gate bundle:size, sementara beban kerjanya sama —
+ * membaca satu tabel + satu panggilan model.
  *
  * AI requests are slow (5-30s) — separate function prevents blocking other surfaces.
  *
@@ -26,4 +33,6 @@ export default adapt(makeSurfaceHandler(AI_ACTIONS, [
   'generateWawancaraModel', 'simpanHasilWawancara', 'selesaikanWawancara',
   'getHasilWawancara', 'getAdminAiContext', 'buildAdminAiCandidateSummary',
   'submitDataAsj', 'simpanDataTtdNaitei', 'saveSignature', 'getJobStatus',
+  'getBankWawancara', 'simpanJawabanWawancara',
+  'terjemahkanJawabanWawancara', 'getLinkWawancara',
 ]));
