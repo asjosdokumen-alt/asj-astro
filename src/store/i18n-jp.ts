@@ -458,6 +458,7 @@ export const jpTranslations: Record<string, string> = {
     "admin.tab_candidate": "応募者データ",
     "admin.btn_ai_hr": "AI\u4EBA\u4E8B",
     "admin.btn_cv_ai": "\u5C65\u6B74\u66F8AI",
+    "admin.btn_wawancara": "面接練習",
     "admin.btn_match": "マッチング",
     "admin.sort": "並べ替え:",
     "admin.sort_newest": "新しい順",

@@ -17,6 +17,7 @@ import {
 import InputManualModal from './InputManualModal.tsx';
 import RirekishoBuilder from './RirekishoBuilder';
 import AiCvForm from '../forms/AiCvForm';
+import MensetsuForm from '../candidate/MensetsuForm';
 import { ASJ_LOGO_URL } from '../../lib/vip';
 import CvTemplateSelector from '../CvTemplateSelector';
 import LaporanBulananModal from './LaporanBulananModal.tsx';
@@ -64,6 +65,8 @@ export default function TabPelamar() {
   // mengizinkan: isOwnerOrAdmin() benar untuk role:'admin' di WA mana pun).
   // Dipakai untuk membetulkan CV kandidat yang salah isi.
   const [aiCvWa, setAiCvWa] = useState('');
+  /** WA kandidat yang panel latihan wawancaranya sedang dibuka. */
+  const [mensetsuWa, setMensetsuWa] = useState('');
 const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
   // B02: WA Pintar — legacy per-row button bukaModalWaPintar(idKandidat) opens
   // the smart-sender modal with template picker (js/08_wa_pintar.js); Astro's
@@ -90,6 +93,13 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
     closeOnEscape: false,
     closeOnBackdrop: false,
     label: t('form.preview_cv'),
+  });
+  const mensetsuOverlay = useOverlay({
+    open: !!mensetsuWa,
+    onClose: () => setMensetsuWa(''),
+    closeOnEscape: false,
+    closeOnBackdrop: false,
+    label: t('admin.btn_wawancara'),
   });
   useEffect(() => {
     // Templates datang dari getAppData (parity legacy window.ALL_WA_TEMPLATES).
@@ -320,7 +330,8 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
                   <button type="button" onClick={() => { setShowCvTemplateSelector(true); }} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1 text-sky-400" /> {t('button.pilih_template_cv')}</button>
                   <button type="button" onClick={() => { setRirekWa(k.wa); setShowRirek(true); }} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-[11px] font-bold shadow transition"><Icon name="file-alt" class="mr-1" /> CV</button>
                   <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("openCandidateEdit", { detail: k })); }} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold shadow transition cursor-pointer"><Icon name="edit" class="mr-1" /> {t('button.edit')}</button>
-                  <button type="button" onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-[11px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
+                  <button type="button" onClick={() => { setMensetsuWa(k.wa); }} title={t('admin.btn_wawancara')} class="min-h-11 px-2 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded text-[11px] font-bold shadow transition cursor-pointer whitespace-nowrap"><Icon name="comment-dots" class="mr-1" /> {t('admin.btn_wawancara')}</button>
+                        <button type="button" onClick={() => { setAiCvWa(k.wa); }} title={t('admin.btn_cv_ai')} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-[11px] font-bold shadow transition cursor-pointer"><Icon name="robot" class="mr-1" /> {t('admin.btn_cv_ai')}</button>
                   <button type="button" onClick={() => { window.dispatchEvent(new CustomEvent("openAdminAiCopilot", { detail: { id: k.id, wa: k.wa, nama: k.nama } })); }} title={t('ui.ai_copilot')} class="min-h-11 flex-1 basis-[calc(50%-0.25rem)] px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-[11px] font-bold shadow transition cursor-pointer"><Icon name="comments" class="mr-1" /> {t('admin.btn_ai_hr')}</button>
                   <button type="button" title={t('ui.send_wa_call')} aria-label={t('ui.send_wa_call')} onClick={() => setWaTarget({ nama: k.nama || k.wa || '', job: k.idLoker || '', phone: normalizeWaInput(k.wa || '') })} class="min-h-11 min-w-11 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow transition cursor-pointer"><Icon name="whatsapp" /></button>
                 </div>
@@ -423,6 +434,19 @@ const [showCvTemplateSelector, setShowCvTemplateSelector] = useState(false);
         <div ref={aiCvOverlay.containerRef} class="fixed inset-0 u-modal-shell z-[150] bg-slate-950">
           <AiCvForm waTarget={aiCvWa} adminMode />
           <button type="button" onClick={() => setAiCvWa('')} title={t('button.close')} aria-label={t('button.close')}
+            class="fixed top-2 right-3 z-[200] w-9 h-9 flex items-center justify-center rounded-full bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer">
+            <Icon name="times" />
+          </button>
+        </div>
+      )}
+      {/* Panel latihan wawancara admin — komponen yang SAMA dengan /wawancara.
+          `adminMode` melewati gerbang password kandidat; backend tetap memeriksa
+          `isOwnerOrAdmin`, jadi admin hanya bisa membuka milik siapa pun yang
+          memang boleh ia lihat. */}
+      {mensetsuWa && (
+        <div ref={mensetsuOverlay.containerRef} class="fixed inset-0 u-modal-shell z-[150] bg-slate-950 overflow-y-auto">
+          <MensetsuForm waTarget={mensetsuWa} adminMode />
+          <button type="button" onClick={() => setMensetsuWa('')} title={t('button.close')} aria-label={t('button.close')}
             class="fixed top-2 right-3 z-[200] w-9 h-9 flex items-center justify-center rounded-full bg-rose-600 hover:bg-rose-500 text-white transition cursor-pointer">
             <Icon name="times" />
           </button>

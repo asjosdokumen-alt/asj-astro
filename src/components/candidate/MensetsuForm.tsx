@@ -59,6 +59,16 @@ interface BankRes {
 interface Props {
   /** WA dari URL (`?wa=`) atau dari panel admin. */
   waTarget?: string;
+  /**
+   * Panel admin: lewati gerbang login.
+   *
+   * Sama seperti `AiCvForm adminMode` — admin sudah punya sesi sendiri, dan
+   * backend memeriksa kepemilikan lewat `isOwnerOrAdmin`, jadi menahan admin di
+   * gerbang password kandidat hanya membuat fitur ini tidak bisa dipakai untuk
+   * mendampingi siswa. Tanpa mode ini, `/wawancara` sebagai admin akan memakai
+   * WA admin sendiri, bukan WA kandidat yang sedang dibuka.
+   */
+  adminMode?: boolean;
 }
 
 type Bidang = 'jp' | 'romaji' | 'arti';
@@ -92,13 +102,18 @@ function pesanSoal(s: Soal) {
   };
 }
 
-export default function MensetsuForm({ waTarget = '' }: Props) {
+export default function MensetsuForm({ waTarget = '', adminMode = false }: Props) {
   const auth = authStore.get();
-  const [loginGate, setLoginGate] = useState(!auth.isLoggedIn);
+  // Admin tidak melewati gerbang password kandidat (lihat catatan `adminMode`).
+  const [loginGate, setLoginGate] = useState(!adminMode && !auth.isLoggedIn);
   const [gateWa, setGateWa] = useState(waFromUrl() || waTarget);
   const [gatePass, setGatePass] = useState('');
   const [gateMsg, setGateMsg] = useState('');
-  const [wa, setWa] = useState(waTarget || (auth.isLoggedIn ? auth.wa || '' : ''));
+  // Admin yang membuka /wawancara?wa=… harus melihat kandidat ITU, bukan dirinya
+  // sendiri — `auth.wa` milik admin. Kandidat biasa tetap memakai sesinya.
+  const [wa, setWa] = useState(
+    waTarget || (auth.role === 'admin' ? waFromUrl() : '') || (auth.isLoggedIn ? auth.wa || '' : ''),
+  );
 
   const [memuat, setMemuat] = useState(false);
   const [galat, setGalat] = useState('');
@@ -174,6 +189,10 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
         silent: true,
       });
       if (d.sessionInvalid) {
+        if (adminMode) {
+          setGalat('Sesi admin tidak valid. Muat ulang halaman lalu masuk lagi.');
+          return;
+        }
         setLoginGate(true);
         setGateMsg('Sesi tidak valid. Silakan masuk lagi.');
         return;
@@ -202,9 +221,10 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
     } finally {
       setMemuat(false);
     }
-    // `pesanSoal` murni (tanpa state), jadi tidak perlu jadi dependensi.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // `pesanSoal` murni (tanpa state). `adminMode` DIPAKAI di dalam (cabang
+    // `sessionInvalid`), jadi ia harus jadi dependensi — tanpa itu callback
+    // menyimpan nilai lama dan admin bisa terlempar ke gerbang password.
+  }, [adminMode]);
 
   useEffect(() => {
     if (!loginGate && wa) void muat(wa);

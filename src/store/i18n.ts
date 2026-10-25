@@ -708,6 +708,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.ai_upload_label": "Upload CV/Excel/PDF — auto parse & update biodata",
     "admin.btn_ai_hr": "AI HR",
     "admin.btn_cv_ai": "CV AI",
+    "admin.btn_wawancara": "Wawancara",
     "admin.btn_match": "Match",
     "admin.sort": "Urutkan:",
     "admin.sort_newest": "Terbaru",
