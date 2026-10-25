@@ -1,0 +1,464 @@
+  target : ep-bold-sunset-b3zy6wb1-pooler.c-4.ap-southeast-1.aws.neon.tech:(default)  db=neondb  user=neondb_owner  mode=direct  password=set
+(node:36620) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+==============================================================================
+0. INFO KONEKSI
+==============================================================================
+database : neondb
+user     : neondb_owner
+host     : ::1:5432
+ukuran DB: 12 MB
+postgres : PostgreSQL 18.6 (fd34222) on aarch64-unknown-linux-gnu
+
+==============================================================================
+1. UKURAN & JUMLAH BARIS TABEL
+==============================================================================
+TABEL                                BARIS      TOTAL       HEAP      INDEX      DEAD
+-------------------------------------------------------------------------------------
+master_database_candidate              234     0.6 MB     0.3 MB     0.1 MB         4
+dependency_calls                     1,619     0.3 MB     0.1 MB     0.1 MB         0
+ai_form_submissions                     44     0.3 MB     0.0 MB     0.1 MB         2
+database_candidate                     226     0.3 MB     0.1 MB     0.1 MB        66
+database_asj_form                       51     0.2 MB     0.0 MB     0.1 MB         8
+job_database                           159     0.1 MB     0.1 MB     0.0 MB        22
+fcm_tokens                              19     0.1 MB     0.0 MB     0.1 MB         9
+sys_config                             160     0.1 MB     0.0 MB     0.0 MB         0
+user_sessions                           53     0.1 MB     0.0 MB     0.0 MB         0
+rate_counters                            7     0.1 MB     0.0 MB     0.0 MB         0
+pemberkasan_checklist                    7     0.0 MB     0.0 MB     0.0 MB         0
+idempotency_keys                        -1     0.0 MB     0.0 MB     0.0 MB         1
+job_queue                               -1     0.0 MB     0.0 MB     0.0 MB         0
+database_schedule                       -1     0.0 MB     0.0 MB     0.0 MB         0
+rincian_presets                         13     0.0 MB     0.0 MB     0.0 MB         0
+database_tugas                          -1     0.0 MB     0.0 MB     0.0 MB         0
+meta_rev                                 1     0.0 MB     0.0 MB     0.0 MB         0
+wa_templates                             2     0.0 MB     0.0 MB     0.0 MB         0
+respon_siswa_baru                        3     0.0 MB     0.0 MB     0.0 MB         0
+database_asj_kontak                     -1     0.0 MB     0.0 MB     0.0 MB         0
+schema_migrations                       16     0.0 MB     0.0 MB     0.0 MB         0
+esignatures                             -1     0.0 MB     0.0 MB     0.0 MB         0
+schedule_reminders                      -1     0.0 MB     0.0 MB     0.0 MB         0
+netlify_logs                            -1     0.0 MB     0.0 MB     0.0 MB         0
+siswa_baru_docs                         -1     0.0 MB     0.0 MB     0.0 MB         0
+data_archive                            -1     0.0 MB     0.0 MB     0.0 MB         0
+
+==============================================================================
+2. JUMLAH BARIS EKSAK (tabel utama)
+==============================================================================
+database_candidate                      226 baris
+master_database_candidate               234 baris
+database_asj_form                        51 baris
+pemberkasan_checklist                     7 baris
+job_database                            159 baris
+database_schedule                         0 baris
+database_tugas                            0 baris
+sys_config                              160 baris
+fcm_tokens                               18 baris
+wa_templates                              2 baris
+
+==============================================================================
+3. SEQ SCAN vs INDEX SCAN (tabel utama)
+==============================================================================
+TABEL                           SEQ SCAN  SEQ TUP READ  IDX SCAN   % INDEX   LAST ANALYZE
+------------------------------------------------------------------------------------------
+master_database_candidate            341        67,847       168     33.0%   Wed Oct 21 2026 22:
+database_candidate                   202        44,302        42     17.2%   Wed Oct 21 2026 22:
+sys_config                           146        23,360         1      0.7%   Tue Oct 20 2026 20:
+job_database                         180        18,984        30     14.3%   Tue Oct 20 2026 20:
+database_asj_form                    127         6,477         0      0.0%   Sat Oct 24 2026 15:
+pemberkasan_checklist                103           721         0      0.0%   tidak pernah
+fcm_tokens                            36           691         0      0.0%   tidak pernah
+wa_templates                          46            92         0      0.0%   tidak pernah
+database_tugas                        46             0         0      0.0%   tidak pernah
+database_schedule                     47             0       453     90.6%   tidak pernah
+
+==============================================================================
+4. INDEX YANG SUDAH ADA (tabel utama)
+==============================================================================
+
+[database_asj_form]
+  database_asj_form_no_wa_code_job_key
+    CREATE UNIQUE INDEX database_asj_form_no_wa_code_job_key ON public.database_asj_form USING btree (no_wa, code_job)
+  database_asj_form_pkey
+    CREATE UNIQUE INDEX database_asj_form_pkey ON public.database_asj_form USING btree (id)
+  idx_asj_form_code_job
+    CREATE INDEX idx_asj_form_code_job ON public.database_asj_form USING btree (code_job)
+  idx_asj_form_timestamp
+    CREATE INDEX idx_asj_form_timestamp ON public.database_asj_form USING btree ("timestamp" DESC)
+  idx_form_updated_at
+    CREATE INDEX idx_form_updated_at ON public.database_asj_form USING btree (updated_at)
+
+[database_candidate]
+  database_candidate_pkey
+    CREATE UNIQUE INDEX database_candidate_pkey ON public.database_candidate USING btree (id)
+  idx_cand_no_wa_uniq
+    CREATE UNIQUE INDEX idx_cand_no_wa_uniq ON public.database_candidate USING btree (no_wa)
+  idx_cand_updated_at
+    CREATE INDEX idx_cand_updated_at ON public.database_candidate USING btree (updated_at DESC)
+  idx_candidate_id_loker
+    CREATE INDEX idx_candidate_id_loker ON public.database_candidate USING btree (id_loker_pilihan)
+  idx_candidate_tahapan
+    CREATE INDEX idx_candidate_tahapan ON public.database_candidate USING btree (tahapan_seleksi)
+  unique_candidate_loker
+    CREATE UNIQUE INDEX unique_candidate_loker ON public.database_candidate USING btree (id_kandidat, id_loker_pilihan)
+
+[database_schedule]
+  database_schedule_id_jadwal_key
+    CREATE UNIQUE INDEX database_schedule_id_jadwal_key ON public.database_schedule USING btree (id_jadwal)
+  database_schedule_pkey
+    CREATE UNIQUE INDEX database_schedule_pkey ON public.database_schedule USING btree (id)
+  idx_schedule_created
+    CREATE INDEX idx_schedule_created ON public.database_schedule USING btree (created_at DESC)
+  idx_schedule_id_jadwal
+    CREATE INDEX idx_schedule_id_jadwal ON public.database_schedule USING btree (id_jadwal)
+  idx_schedule_status_aktif
+    CREATE INDEX idx_schedule_status_aktif ON public.database_schedule USING btree (id) WHERE (status_jadwal = 'AKTIF'::text)
+
+[database_tugas]
+  database_tugas_id_tugas_key
+    CREATE UNIQUE INDEX database_tugas_id_tugas_key ON public.database_tugas USING btree (id_tugas)
+  database_tugas_pkey
+    CREATE UNIQUE INDEX database_tugas_pkey ON public.database_tugas USING btree (id)
+  idx_tugas_created
+    CREATE INDEX idx_tugas_created ON public.database_tugas USING btree (created_at DESC)
+  idx_tugas_id_tugas
+    CREATE INDEX idx_tugas_id_tugas ON public.database_tugas USING btree (id_tugas)
+
+[fcm_tokens]
+  fcm_tokens_pkey
+    CREATE UNIQUE INDEX fcm_tokens_pkey ON public.fcm_tokens USING btree (id)
+  fcm_tokens_token_key
+    CREATE UNIQUE INDEX fcm_tokens_token_key ON public.fcm_tokens USING btree (token)
+  idx_fcm_tokens_last_used
+    CREATE INDEX idx_fcm_tokens_last_used ON public.fcm_tokens USING btree (last_used_at)
+  idx_fcm_tokens_wa
+    CREATE INDEX idx_fcm_tokens_wa ON public.fcm_tokens USING btree (wa)
+
+[job_database]
+  idx_job_updated_at
+    CREATE INDEX idx_job_updated_at ON public.job_database USING btree (updated_at)
+  job_database_pkey
+    CREATE UNIQUE INDEX job_database_pkey ON public.job_database USING btree (code_job)
+
+[master_database_candidate]
+  idx_master_nik
+    CREATE INDEX idx_master_nik ON public.master_database_candidate USING btree (nik)
+  idx_master_updated_at
+    CREATE INDEX idx_master_updated_at ON public.master_database_candidate USING btree (updated_at)
+  master_database_candidate_no_wa_key
+    CREATE UNIQUE INDEX master_database_candidate_no_wa_key ON public.master_database_candidate USING btree (no_wa)
+  master_database_candidate_pkey
+    CREATE UNIQUE INDEX master_database_candidate_pkey ON public.master_database_candidate USING btree (id)
+  uq_master_id_kandidat
+    CREATE UNIQUE INDEX uq_master_id_kandidat ON public.master_database_candidate USING btree (id_kandidat)
+
+[pemberkasan_checklist]
+  idx_pemberkasan_wa_tahap
+    CREATE UNIQUE INDEX idx_pemberkasan_wa_tahap ON public.pemberkasan_checklist USING btree (wa, tahap)
+  pemberkasan_checklist_pkey
+    CREATE UNIQUE INDEX pemberkasan_checklist_pkey ON public.pemberkasan_checklist USING btree (id)
+
+[sys_config]
+  idx_sys_config_type
+    CREATE INDEX idx_sys_config_type ON public.sys_config USING btree (config_type)
+  sys_config_pkey
+    CREATE UNIQUE INDEX sys_config_pkey ON public.sys_config USING btree (id)
+
+[wa_templates]
+  wa_templates_pkey
+    CREATE UNIQUE INDEX wa_templates_pkey ON public.wa_templates USING btree (id)
+
+==============================================================================
+5. STATUS MIGRASI SEBELUMNYA
+==============================================================================
+ADA    idx_asj_form_timestamp       (2026-08-16)
+TIDAK  idx_asj_form_no_wa           (2026-08-16)
+ADA    idx_asj_form_code_job        (2026-08-16)
+ADA    idx_cand_updated_at          (2026-08-16)
+TIDAK  idx_cand_loker_trgm          (2026-08-16)
+TIDAK  idx_berkas_wa                (2026-08-16)
+TIDAK  normalize_wa()               (2026-09-01)
+TIDAK  mv_candidate_current         (2026-09-01)
+
+==============================================================================
+6. CONSTRAINT UNIK ANTI-DUPLIKAT (dirujuk kode)
+==============================================================================
+database_asj_form              database_asj_form_no_wa_code_job_key       UNIQUE (no_wa, code_job)
+database_asj_form              database_asj_form_pkey                     PRIMARY KEY (id)
+database_candidate             database_candidate_pkey                    PRIMARY KEY (id)
+database_candidate             unique_candidate_loker                     UNIQUE (id_kandidat, id_loker_pilihan)
+database_schedule              database_schedule_id_jadwal_key            UNIQUE (id_jadwal)
+database_schedule              database_schedule_pkey                     PRIMARY KEY (id)
+database_tugas                 database_tugas_id_tugas_key                UNIQUE (id_tugas)
+database_tugas                 database_tugas_pkey                        PRIMARY KEY (id)
+fcm_tokens                     fcm_tokens_pkey                            PRIMARY KEY (id)
+fcm_tokens                     fcm_tokens_token_key                       UNIQUE (token)
+job_database                   job_database_pkey                          PRIMARY KEY (code_job)
+master_database_candidate      master_database_candidate_no_wa_key        UNIQUE (no_wa)
+master_database_candidate      master_database_candidate_pkey             PRIMARY KEY (id)
+pemberkasan_checklist          pemberkasan_checklist_pkey                 PRIMARY KEY (id)
+sys_config                     sys_config_pkey                            PRIMARY KEY (id)
+wa_templates                   wa_templates_pkey                          PRIMARY KEY (id)
+
+==============================================================================
+7. LEBAR TABEL (jumlah & jenis kolom)
+==============================================================================
+TABEL                            KOLOM    TEKS    JSON
+master_database_candidate          176     173       0
+database_candidate                  34      30       0
+database_asj_form                   27      22       2
+pemberkasan_checklist               24      20       0
+job_database                        18      16       0
+database_schedule                   14       8       0
+database_tugas                      10       7       0
+fcm_tokens                           6       3       0
+sys_config                           6       3       0
+wa_templates                         5       3       0
+
+Ukuran rata-rata per baris (perkiraan):
+  database_candidate             652 byte/baris
+  master_database_candidate      1,260 byte/baris
+  database_asj_form              482 byte/baris
+
+==============================================================================
+8. DISTRIBUSI FORMAT NOMOR WA (akar masalah normalisasi)
+==============================================================================
+Kolom WA yang TERSEDIA vs yang DITEBAK kode:
+  kode mencoba  : no_wa, wa, whatsapp, telepon, phone, no_hp, telp
+  database_candidate           ada: no_wa
+                               TIDAK ADA: wa, whatsapp, telepon, phone, no_hp, telp
+  master_database_candidate    ada: no_wa
+                               TIDAK ADA: wa, whatsapp, telepon, phone, no_hp, telp
+  database_asj_form            ada: no_wa
+                               TIDAK ADA: wa, whatsapp, telepon, phone, no_hp, telp
+
+[database_candidate.no_wa]
+  total                 : 226
+  kosong/NULL           : 0
+  awalan '0'   (08xx)   : 0
+  awalan '62'  (628xx)  : 226
+  awalan '+62'          : 0
+  awalan '8'   (8xx)    : 0
+  mengandung non-digit  : 0  <- butuh normalisasi
+
+[master_database_candidate.no_wa]
+  total                 : 234
+  kosong/NULL           : 0
+  awalan '0'   (08xx)   : 0
+  awalan '62'  (628xx)  : 234
+  awalan '+62'          : 0
+  awalan '8'   (8xx)    : 0
+  mengandung non-digit  : 0  <- butuh normalisasi
+
+[database_asj_form.no_wa]
+  total                 : 51
+  kosong/NULL           : 0
+  awalan '0'   (08xx)   : 0
+  awalan '62'  (628xx)  : 51
+  awalan '+62'          : 0
+  awalan '8'   (8xx)    : 0
+  mengandung non-digit  : 0  <- butuh normalisasi
+
+==============================================================================
+9. DUPLIKASI BARIS PER WA
+==============================================================================
+database_candidate.no_wa              0 WA duplikat,        0 baris terlibat
+master_database_candidate.no_wa        0 WA duplikat,        0 baris terlibat
+database_asj_form.no_wa               0 WA duplikat,        0 baris terlibat
+
+==============================================================================
+10. id_loker_pilihan — ANTI-POLA CSV DALAM KOLOM
+==============================================================================
+total baris            : 226
+kolom kosong           : 3
+berisi BANYAK job (,)  : 0 (0.0%)
+
+==============================================================================
+11. EXPLAIN ANALYZE — POLA QUERY NYATA APLIKASI
+==============================================================================
+
+--- Q1  Ambil seluruh kandidat (ringan) — inti loadCandidatesUnik ---
+  Seq Scan on database_candidate  (cost=0.00..20.26 rows=226 width=95) (actual time=0.010..0.071 rows=226.00 loops=1)
+  Buffers: shared hit=18
+  Buffers: shared hit=12
+  Planning Time: 0.086 ms
+  Execution Time: 0.098 ms
+
+--- Q2  1 halaman 1000 baris + ORDER BY updated_at ---
+  Limit  (cost=29.10..29.66 rows=226 width=56) (actual time=0.108..0.136 rows=226.00 loops=1)
+  Buffers: shared hit=21
+  ->  Sort  (cost=29.10..29.66 rows=226 width=56) (actual time=0.108..0.118 rows=226.00 loops=1)
+  Sort Key: updated_at DESC
+  Sort Method: quicksort  Memory: 54kB
+  Buffers: shared hit=21
+  ->  Seq Scan on database_candidate  (cost=0.00..20.26 rows=226 width=56) (actual time=0.008..0.062 rows=226.00 loops=1)
+  Buffers: shared hit=18
+  Buffers: shared hit=5
+  Planning Time: 0.079 ms
+  Execution Time: 0.160 ms
+
+--- Q3  Cari kandidat by WA (pola aplikasi: OR 3 kolom) ---
+  Index Scan using idx_cand_no_wa_uniq on database_candidate  (cost=0.14..8.16 rows=1 width=475) (actual time=0.009..0.009 rows=0.00 loops=1)
+  Buffers: shared hit=1
+  Buffers: shared hit=85
+  Planning Time: 0.210 ms
+  Execution Time: 0.031 ms
+
+--- Q4  Cari kandidat per loker (ILIKE wildcard awal) ---
+  Limit  (cost=0.00..20.82 rows=122 width=475) (actual time=0.010..0.080 rows=127.00 loops=1)
+  Buffers: shared hit=18
+  ->  Seq Scan on database_candidate  (cost=0.00..20.82 rows=122 width=475) (actual time=0.010..0.070 rows=127.00 loops=1)
+  Filter: (id_loker_pilihan ~~* '%ASJ%'::text)
+  Rows Removed by Filter: 99
+  Buffers: shared hit=18
+  Buffers: shared hit=2
+  Planning Time: 0.084 ms
+  Execution Time: 0.105 ms
+
+--- Q5  Inbox form, 500 terbaru ---
+  Limit  (cost=4.96..5.08 rows=51 width=75) (actual time=0.047..0.054 rows=51.00 loops=1)
+  Buffers: shared hit=6
+  ->  Sort  (cost=4.96..5.08 rows=51 width=75) (actual time=0.047..0.049 rows=51.00 loops=1)
+  Sort Key: "timestamp" DESC
+  Sort Method: quicksort  Memory: 31kB
+  Buffers: shared hit=6
+  ->  Seq Scan on database_asj_form  (cost=0.00..3.51 rows=51 width=75) (actual time=0.008..0.022 rows=51.00 loops=1)
+  Buffers: shared hit=3
+  Buffers: shared hit=14
+  Planning Time: 0.118 ms
+  Execution Time: 0.073 ms
+
+--- Q6  Master light by WA list (pola aplikasi: OR 3 kolom IN) ---
+  Bitmap Heap Scan on master_database_candidate  (cost=4.16..10.77 rows=2 width=39) (actual time=0.030..0.030 rows=1.00 loops=1)
+  Recheck Cond: (no_wa = ANY ('{6281234567890,6281234567891}'::text[]))
+  Buffers: shared hit=2 dirtied=1
+  ->  Bitmap Index Scan on master_database_candidate_no_wa_key  (cost=0.00..4.16 rows=2 width=0) (actual time=0.009..0.009 rows=1.00 loops=1)
+  Buffers: shared hit=1
+  Buffers: shared hit=3
+  Planning Time: 0.106 ms
+  Execution Time: 0.050 ms
+
+--- Q7  COUNT(*) kandidat — pengganti Prefer: count=exact ---
+  Aggregate  (cost=20.83..20.84 rows=1 width=8) (actual time=0.057..0.057 rows=1.00 loops=1)
+  Buffers: shared hit=18
+  ->  Seq Scan on database_candidate  (cost=0.00..20.26 rows=226 width=0) (actual time=0.012..0.042 rows=226.00 loops=1)
+  Buffers: shared hit=18
+  Planning Time: 0.063 ms
+  Execution Time: 0.085 ms
+
+==============================================================================
+12. QUERY TERPALING LAMBAT (pg_stat_statements)
+==============================================================================
+Ekstensi pg_stat_statements BELUM AKTIF.
+Aktifkan: CREATE EXTENSION pg_stat_statements;
+(di Supabase: Database → Extensions → pg_stat_statements)
+
+==============================================================================
+13. INDEX TIDAK PERNAH DIPAKAI (kandidat di-drop)
+==============================================================================
+user_sessions                idx_sessions_token                             16 kB  0 scan
+rate_counters                idx_rate_counters_window                       16 kB  0 scan
+ai_form_submissions          idx_ai_form_status                             16 kB  0 scan
+database_candidate           idx_candidate_tahapan                          16 kB  0 scan
+ai_form_submissions          idx_ai_form_job                                16 kB  0 scan
+database_asj_form            idx_asj_form_code_job                          16 kB  0 scan
+sys_config                   idx_sys_config_type                            16 kB  0 scan
+master_database_candidate    idx_master_nik                                 16 kB  0 scan
+job_database                 idx_job_updated_at                             16 kB  0 scan
+ai_form_submissions          idx_ai_wa_created                              16 kB  0 scan
+fcm_tokens                   idx_fcm_tokens_wa                              16 kB  0 scan
+database_candidate           idx_candidate_id_loker                         16 kB  0 scan
+database_asj_form            idx_asj_form_timestamp                         16 kB  0 scan
+database_asj_form            idx_form_updated_at                            16 kB  0 scan
+fcm_tokens                   idx_fcm_tokens_last_used                       16 kB  0 scan
+database_schedule            idx_schedule_id_jadwal                     8192 bytes  0 scan
+database_tugas               idx_tugas_id_tugas                         8192 bytes  0 scan
+job_queue                    idx_job_queue_completed                    8192 bytes  0 scan
+netlify_logs                 idx_netlify_logs_ts                        8192 bytes  0 scan
+database_tugas               idx_tugas_created                          8192 bytes  0 scan
+
+==============================================================================
+14. KESEHATAN VACUUM
+==============================================================================
+TABEL                               LIVE     DEAD   % DEAD   LAST AUTOVACUUM
+--------------------------------------------------------------------------------
+database_candidate                   226       66    22.6%   tidak pernah
+job_database                         159       22    12.2%   tidak pernah
+fcm_tokens                            18        9    33.3%   tidak pernah
+database_asj_form                     51        8    13.6%   tidak pernah
+master_database_candidate            234        4     1.7%   Wed Oct 21 2026 22:
+pemberkasan_checklist                  7        0     0.0%   tidak pernah
+sys_config                           160        0     0.0%   tidak pernah
+wa_templates                           2        0     0.0%   tidak pernah
+
+==============================================================================
+15. CACHE HIT RATIO
+==============================================================================
+index/heap cache hit: 96.79%  (hit 21,125, read 701)
+
+==============================================================================
+16. INDEX REDUNDAN (duplikat / prefix-sama)
+==============================================================================
+
+[database_schedule]  IDENTIK
+   database_schedule_id_jadwal_key (UNIQUE)
+   idx_schedule_id_jadwal   <- bisa di-drop (8192 bytes)
+
+[database_schedule]  IDENTIK
+   database_schedule_pkey (UNIQUE)
+   idx_schedule_status_aktif   <- bisa di-drop (8192 bytes)
+
+[database_tugas]  IDENTIK
+   database_tugas_id_tugas_key (UNIQUE)
+   idx_tugas_id_tugas   <- bisa di-drop (8192 bytes)
+
+[dependency_calls]  prefix dari
+   idx_dependency_calls_errors
+   idx_dependency_calls_ts_dep   <- bisa di-drop (16 kB)
+
+[job_queue]  IDENTIK
+   idx_job_queue_completed
+   idx_job_queue_dead   <- bisa di-drop (8192 bytes)
+
+[user_sessions]  IDENTIK
+   idx_sessions_token
+   user_sessions_session_token_key (UNIQUE)   <- bisa di-drop (16 kB)
+
+Total pasang redundan: 6
+
+Tabel di mana INDEX LEBIH BESAR dari datanya:
+  database_asj_form              index    0.1 MB  vs data    0.0 MB
+  ai_form_submissions            index    0.1 MB  vs data    0.0 MB
+  fcm_tokens                     index    0.1 MB  vs data    0.0 MB
+  user_sessions                  index    0.0 MB  vs data    0.0 MB
+  rate_counters                  index    0.0 MB  vs data    0.0 MB
+  idempotency_keys               index    0.0 MB  vs data    0.0 MB
+  sys_config                     index    0.0 MB  vs data    0.0 MB
+  pemberkasan_checklist          index    0.0 MB  vs data    0.0 MB
+  rincian_presets                index    0.0 MB  vs data    0.0 MB
+  respon_siswa_baru              index    0.0 MB  vs data    0.0 MB
+  wa_templates                   index    0.0 MB  vs data    0.0 MB
+  schema_migrations              index    0.0 MB  vs data    0.0 MB
+  meta_rev                       index    0.0 MB  vs data    0.0 MB
+
+==============================================================================
+17. PENGATURAN RELEVAN
+==============================================================================
+shared_buffers               230MB
+work_mem                     4MB
+effective_cache_size         6553MB
+random_page_cost             4
+statement_timeout            0
+max_connections              901
+default_statistics_target    100
+maintenance_work_mem         64MB
+
+Selesai. Tidak ada perubahan yang dilakukan (semua query bersifat baca).
