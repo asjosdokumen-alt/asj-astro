@@ -1,0 +1,1949 @@
+[
+ {
+  "jp": "お名前は？",
+  "romaji": "onamae wa?",
+  "id": "Siapa nama Anda?",
+  "tahap": "Pembuka & Perkenalan Diri",
+  "jawaban": {
+   "jp": "私の名前はリザルです。",
+   "romaji": "watashi no namae wa rizaru desu.",
+   "id": "Nama saya Rizal."
+  }
+ },
+ {
+  "jp": "何歳ですか？おいくつですか？",
+  "romaji": "nansai desuka? oikutsu desuka?",
+  "id": "Berapa usia Anda?",
+  "tahap": "Pembuka & Perkenalan Diri",
+  "jawaban": {
+   "jp": "はい、二十五歳です。",
+   "romaji": "hai, nijuugo sai desu.",
+   "id": "Ya, saya berusia 25 tahun."
+  }
+ },
+ {
+  "jp": "せいねんがっぴはいつですか。",
+  "romaji": "seinen gappi wa itsu desu ka.",
+  "id": "Kapan tanggal lahir Anda?",
+  "tahap": "Pembuka & Perkenalan Diri",
+  "jawaban": {
+   "jp": "せんきゅうひゃくきゅうじゅうねんがつにちです。",
+   "romaji": "sen kyuuhyaku kyuujuu nen gatsu nichi desu.",
+   "id": "Tanggal lahir saya adalah [Bulan] [Tanggal], 19[Tahun]."
+  }
+ },
+ {
+  "jp": "どこから来ましたか？",
+  "romaji": "doko kara kimashita ka?",
+  "id": "Anda berasal dari mana?",
+  "tahap": "Pembuka & Perkenalan Diri",
+  "jawaban": {
+   "jp": "はい、インドネシアのジャワ島、バンドンから来ました。自然が豊かで静かな街です。",
+   "romaji": "hai, indonesia no jawa-tou, bandon kara kimashita. shizen ga yutaka de shizuka na machi desu.",
+   "id": "Ya, saya berasal dari Bandung, Pulau Jawa, Indonesia. Kota yang kaya akan alam dan tenang."
+  }
+ },
+ {
+  "jp": "あなたの街はどこですか。",
+  "romaji": "anatano machi wa dokodesuka?",
+  "id": "Di mana kota asal Anda?",
+  "tahap": "Pembuka & Perkenalan Diri",
+  "jawaban": {
+   "jp": "私の街はインドネシアのジャワ島にあります。",
+   "romaji": "watashi no machi wa indoneshia no jawa-tō ni arimasu.",
+   "id": "Kota asal saya berada di Pulau Jawa, Indonesia."
+  }
+ },
+ {
+  "jp": "あなたの街はどんな街ですか。",
+  "romaji": "anatano machi wa donna machi desuka?",
+  "id": "Seperti apakah kota asal Anda?",
+  "tahap": "Pembuka & Perkenalan Diri",
+  "jawaban": {
+   "jp": "自然が豊かで、人々がとても親切で温かい街です。",
+   "romaji": "shizen ga yutakade, hitobito wa totemo shinsetsu de atatakai machi desu.",
+   "id": "Kota saya kaya akan alam dan orang-orangnya sangat ramah serta hangat."
+  }
+ },
+ {
+  "jp": "インドネシアですきなところはどこですか。",
+  "romaji": "indoneshia de sukina tokoro wa doko desu ka.",
+  "id": "Tempat apa yang paling Anda sukai di Indonesia?",
+  "tahap": "Pembuka & Perkenalan Diri",
+  "jawaban": {
+   "jp": "バリ島がすきです。うみがきれいだし、ひとびとがあたたかいからです。",
+   "romaji": "baritou ga suki desu. umi ga kirei dashi, hitobito ga atatakai kara desu.",
+   "id": "Saya suka Pulau Bali. Karena lautnya indah dan orang-orangnya ramah."
+  }
+ },
+ {
+  "jp": "家からここまで来るのにどのくらいかかりますか？",
+  "romaji": "ie kara koko made kuru no ni dono gurai kakarimasu ka?",
+  "id": "Berapa lama perjalanan dari rumah sampai ke sini?",
+  "tahap": "Pembuka & Perkenalan Diri",
+  "jawaban": {
+   "jp": "家からここまで、バスと電車で約１時間かかります。",
+   "romaji": "ie kara koko made, basu to densha de yaku ichijikan kakarimasu.",
+   "id": "Dari rumah sampai ke sini memakan waktu sekitar 1 jam naik bus dan kereta."
+  }
+ },
+ {
+  "jp": "じこアピールをしてください。",
+  "romaji": "jiko apiiru o shite kudasai.",
+  "id": "Tolong promosikan diri Anda.",
+  "tahap": "Pembuka & Perkenalan Diri",
+  "jawaban": {
+   "jp": "私の長所は責任感が強いことです。約束や時間を必ず守ります。",
+   "romaji": "watashi no chousho wa sekininkan ga tsuyoi koto desu. yakusoku ya jikan o kanarazu mamorimasu.",
+   "id": "Kelebihan saya adalah memiliki rasa tanggung jawab yang kuat. Saya selalu menepati janji dan waktu."
+  }
+ },
+ {
+  "jp": "家族は何人いますか？",
+  "romaji": "kazoku wa nan nin imasuka?",
+  "id": "Ada berapa orang anggota keluarga Anda?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "両親と兄と私の４人家族です。",
+   "romaji": "ryoushin to ani to watashi no yon nin kazoku desu.",
+   "id": "Keluarga saya 4 orang, yaitu orang tua, kakak laki-laki, dan saya."
+  }
+ },
+ {
+  "jp": "あなたはなん番目の子ですか。",
+  "romaji": "anatawa nan ban me no ko desuka?",
+  "id": "Anda anak ke berapa di dalam keluarga?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "私は三人兄弟の真ん中です。",
+   "romaji": "watashi wa sannin kyōdai no mannaka desu.",
+   "id": "Saya adalah anak tengah dari tiga bersaudara."
+  }
+ },
+ {
+  "jp": "きょうだいは何人ですか。",
+  "romaji": "kyoudai wa nan nin desuka.",
+  "id": "Anda berapa bersaudara?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "三人きょうだいで、私は長男です。",
+   "romaji": "sannin kyoudai de, watashi wa chounan desu.",
+   "id": "Saya tiga bersaudara, saya anak laki-laki sulung."
+  }
+ },
+ {
+  "jp": "お父さんはどんな人ですか？",
+  "romaji": "otousan wa donna hito desuka?",
+  "id": "Seperti apakah ayah Anda?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "父はとてもまじめで、仕事熱愛な人です。",
+   "romaji": "chichi wa totemo majimede, shigotonetsui na hito desu.",
+   "id": "Ayah saya adalah orang yang sangat serius dan rajin bekerja."
+  }
+ },
+ {
+  "jp": "お父さんは今何歳ですか？",
+  "romaji": "otousan wa ima nansai desuka?",
+  "id": "Bapak sekarang umur berapa?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "父は今五十歳です。",
+   "romaji": "chichi wa ima gojussai desu.",
+   "id": "Ayah saya sekarang berusia 50 tahun."
+  }
+ },
+ {
+  "jp": "お父さんの仕事は何ですか？",
+  "romaji": "otousan no shigoto wa nandesuka?",
+  "id": "Pekerjaan bapak apa?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "父は農家で働いています。",
+   "romaji": "chichi wa nouka de hataraite imasu.",
+   "id": "Ayah saya bekerja sebagai petani."
+  }
+ },
+ {
+  "jp": "お母さんは今何歳ですか？",
+  "romaji": "okaasan wa ima nansai desuka?",
+  "id": "Ibu sekarang umur berapa?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "母は今四十八歳です。",
+   "romaji": "haha wa ima yonjuuhassai desu.",
+   "id": "Ibu saya sekarang berusia 48 tahun."
+  }
+ },
+ {
+  "jp": "お母さんの仕事は何ですか？",
+  "romaji": "okaasan no shigoto wa nandesuka?",
+  "id": "Pekerjaan ibu apa?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "母は専業主婦で、家事をしながら家族を支えてくれています。",
+   "romaji": "haha wa sengyou shufu de, kaji o shinagara kazoku o sasaete kurete imasu.",
+   "id": "Ibu saya adalah ibu rumah tangga, dan mendukung keluarga sambil mengurus pekerjaan rumah."
+  }
+ },
+ {
+  "jp": "もう結婚していますか？",
+  "romaji": "mou kekkon shite imasuka?",
+  "id": "Apakah Anda sudah menikah?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "いいえ、まだ独身です。両親と兄弟と一緒に暮らしています。",
+   "romaji": "iie, mada dokushin desu. ryoushin to kyoudai to issho ni kurashite imasu.",
+   "id": "Belum, saya masih lajang. Saya tinggal bersama orang tua dan saudara kandung."
+  }
+ },
+ {
+  "jp": "日本から帰ったら、結婚したいですか？彼女いるの？",
+  "romaji": "nihon kara kaetara, kekkon shitai desuka? kanojo iru no?",
+  "id": "Jika pulang dari Jepang, apakah ingin menikah? Apakah punya pacar?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "日本から帰ったら結婚したいですが、今は彼女はいません。",
+   "romaji": "nihon kara kaetara kekkon shitai desuga, ima wa kanojo wa imasen.",
+   "id": "Setelah pulang dari Jepang saya ingin menikah, tapi sekarang belum punya pacar."
+  }
+ },
+ {
+  "jp": "インドネシア人と結婚したい？",
+  "romaji": "indoneshiajin to kekkon shitai?",
+  "id": "Apakah ingin menikah dengan orang Indonesia?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "はい、将来はインドネシア人と結婚したいです。",
+   "romaji": "hai, shourai wa indoneshiajin to kekkon shitai desu.",
+   "id": "Ya, di masa depan saya ingin menikah dengan orang Indonesia."
+  }
+ },
+ {
+  "jp": "恋人、彼氏、彼女はいますか。",
+  "romaji": "koibito / kareshi / kanojo, imasuka?",
+  "id": "Apakah Anda memiliki pacar?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "いいえ、おりません。今は仕事に集中したいと思っています。",
+   "romaji": "iie, orimasen. ima wa shigoto ni shūchū shitai to omotte imasu.",
+   "id": "Tidak, saya tidak punya. Sekarang saya ingin fokus pada pekerjaan."
+  }
+ },
+ {
+  "jp": "日本に行ったら、家族と会えないけど寂しくないですか？",
+  "romaji": "nihon ni ittara, kazoku to aenai kedo sabishikunai desuka?",
+  "id": "Jika pergi ke Jepang, Anda tidak bisa bertemu keluarga, apakah tidak kesepian?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "はい、寂しいですが、家族のために頑張ります。休みに連絡します。",
+   "romaji": "hai, sabishii desu ga, kazoku no tame ni gambarimasu. yasumi ni renraku shimasu.",
+   "id": "Ya, tentu kesepian, tapi saya akan bersemangat demi keluarga. Saya akan menghubungi mereka saat libur."
+  }
+ },
+ {
+  "jp": "日本に行くことを家族は許可してくれましたか？",
+  "romaji": "nihon ni iku koto o kazoku wa kyoka shite kuremashita ka?",
+  "id": "Apakah keluarga telah memberikan izin sampai ... tahun?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "はい、家族とは三年間しっかり働くことで話をしています。",
+   "romaji": "hai, kazoku to wa sannenkan shikkari hataraku koto de hanashi o shite imasu.",
+   "id": "Ya, saya telah berbicara dengan keluarga untuk bekerja dengan sungguh-sungguh selama 3 tahun."
+  }
+ },
+ {
+  "jp": "家族や恋人、奥さんは賛成していますか。",
+  "romaji": "kazoku ya koibito, okusan wa sansei shite imasu ka.",
+  "id": "Apakah keluarga, pacar, atau istri memberikan izin?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "はい、家族全員が私の日本での挑戦を応援し、賛成してくれています。",
+   "romaji": "hai, kazoku zen'in ga watashi no nihon de no chousen o ouen shi, sansei shite kurete imasu.",
+   "id": "Ya, seluruh keluarga mendukung dan menyetujui tantangan saya di Jepang."
+  }
+ },
+ {
+  "jp": "あなたの家族は日本で働くことに賛成しましたか。",
+  "romaji": "anata no kazoku wa nihon de hataraku koto ni sansei shimashita ka?",
+  "id": "Apakah keluarga Anda setuju Anda bekerja di Jepang?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "はい、両親と相談して、私が日本で働くことを応援してくれています。",
+   "romaji": "hai, ryoushin to soudan shite, watashi ga nihon de hataraku koto o ouen shite kurete imasu.",
+   "id": "Ya, saya sudah berdiskusi dengan orang tua, dan mereka mendukung saya bekerja di Jepang."
+  }
+ },
+ {
+  "jp": "もしあなたが日本で働いたら家族は大丈夫ですか？",
+  "romaji": "moshi anata ga nihon de hataraitara kazoku wa daijoubu desu ka?",
+  "id": "Jika kamu pergi bekerja ke Jepang, apakah keluarga tidak masalah?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "はい、家族も応援してくれています。定期的に連絡を取ります。",
+   "romaji": "hai, kazoku mo ouen shite kureteimasu. teikiteki ni renraku o torimasu.",
+   "id": "Ya, keluarga juga mendukung saya. Saya akan rutin menghubungi mereka."
+  }
+ },
+ {
+  "jp": "日本で友達はいますか。",
+  "romaji": "nihon de tomodachi imasuka?",
+  "id": "Apakah Anda punya teman di Jepang?",
+  "tahap": "Keluarga & Latar Belakang",
+  "jawaban": {
+   "jp": "はい、日本語学校の時に知り合った日本人の友人が一人います。",
+   "romaji": "hai, nihongogakkou no toki ni siriatta nihonjin no yuujin ga hitori imasu.",
+   "id": "Ya, saya punya satu teman orang Jepang yang kenal saat di sekolah bahasa Jepang."
+  }
+ },
+ {
+  "jp": "最終の学歴は？",
+  "romaji": "saishuu no gakureki wa?",
+  "id": "Apa pendidikan terakhir Anda?",
+  "tahap": "Pendidikan",
+  "jawaban": {
+   "jp": "はい、高校を卒業しました。",
+   "romaji": "hai, koukou wo sotsugyou shimashita.",
+   "id": "Ya, saya lulusan SMA."
+  }
+ },
+ {
+  "jp": "専門学校で何を勉強しましたか。",
+  "romaji": "senmon gakkou de nani o benkyou shimashita ka.",
+  "id": "Apa yang Anda pelajari di sekolah kejuruan?",
+  "tahap": "Pendidikan",
+  "jawaban": {
+   "jp": "専門学校では、パソコンの操作やビジネスの基礎を勉強しました。",
+   "romaji": "senmon gakkou de wa, pasokon no sousa ya bijinesu no kiso o benkyou shimashita.",
+   "id": "Di sekolah kejuruan, saya belajar pengoperasian komputer dan dasar-dasar bisnis."
+  }
+ },
+ {
+  "jp": "学校の先生はどんな人ですか？",
+  "romaji": "gakkou no sensei wa donna hito desuka?",
+  "id": "Guru di sekolah orang seperti apa?",
+  "tahap": "Pendidikan",
+  "jawaban": {
+   "jp": "先生はとても優しく、私たちがわかるまで丁寧に教えてくれます。",
+   "romaji": "sensei wa totemo yasashiku, watashitachi ga wakaru made teinei ni oshiete kuremasu.",
+   "id": "Guru sangat baik dan mengajar dengan teliti sampai kami mengerti."
+  }
+ },
+ {
+  "jp": "学校は何曜日から何曜日までですか？",
+  "romaji": "gakkou wa nan youbi kara nan youbi made desuka?",
+  "id": "Sekolah dari hari apa sampai hari apa?",
+  "tahap": "Pendidikan",
+  "jawaban": {
+   "jp": "学校は月曜日から土曜日までです。",
+   "romaji": "gakkou wa getsuyoubi kara doyoubi made desu.",
+   "id": "Sekolah dari hari Senin sampai hari Sabtu."
+  }
+ },
+ {
+  "jp": "家から学校までどのくらいかかりますか？",
+  "romaji": "ie kara gakkou made dono gurai kakarimasuka?",
+  "id": "Berapa lama perjalanan dari rumah ke sekolah?",
+  "tahap": "Pendidikan",
+  "jawaban": {
+   "jp": "家から学校まで、自転車で約３０分かかります。",
+   "romaji": "ie kara gakkou made, jitensha de yaku sanjuppun kakarimasuka.",
+   "id": "Dari rumah ke sekolah memakan waktu sekitar 30 menit naik sepeda."
+  }
+ },
+ {
+  "jp": "仕事の経験はありますか。",
+  "romaji": "shigoto no keiken wa arimasu ka",
+  "id": "Apakah Anda memiliki pengalaman kerja?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "はい、工場での勤務経験が二年間あります。",
+   "romaji": "hai, koujou de no kinmu keiken ga ninenkan arimasu.",
+   "id": "Ya, saya memiliki pengalaman kerja di pabrik selama dua tahun."
+  }
+ },
+ {
+  "jp": "あなたの仕事経験を教えてください。",
+  "romaji": "anata no shigoto keiken o oshiete kudasai.",
+  "id": "Tolong ceritakan tentang pengalaman kerja Anda.",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "工場で２年間働き、生産の仕事と品質管理を経験しました。",
+   "romaji": "koujou de ni-nen hataraki, seisan no shigoto to hinshitsu kanri o keiken shimashita.",
+   "id": "Saya bekerja di pabrik selama 2 tahun dan berpengalaman dalam produksi serta kontrol kualitas."
+  }
+ },
+ {
+  "jp": "どんな会社ですか。",
+  "romaji": "donna kaisha desu ka",
+  "id": "Perusahaan seperti apa?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "まじめで明るい雰囲気の会社です。",
+   "romaji": "majime de akarui fun'iki no kaisha desu.",
+   "id": "Perusahaan yang serius dan beratmosfer ceria."
+  }
+ },
+ {
+  "jp": "何を作っていますか。",
+  "romaji": "nani o tsukutte imasu ka",
+  "id": "Apa yang diproduksi?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "自動車の部品を作っています。",
+   "romaji": "jidousha no buhin o tsukutte imasu.",
+   "id": "Memproduksi suku cadang mobil."
+  }
+ },
+ {
+  "jp": "どんな仕事をしましたか。",
+  "romaji": "donna shigoto o shimashita ka",
+  "id": "Pekerjaan seperti apa yang telah Anda lakukan?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "工場で部品の検査や梱包の仕事をしていました。",
+   "romaji": "koujou de buhin no kensa ya konpou no shigoto o shite imashita.",
+   "id": "Saya melakukan pekerjaan pemeriksaan dan pengemasan suku cadang di pabrik."
+  }
+ },
+ {
+  "jp": "どれくらい働いたの？",
+  "romaji": "dorekurai hataraita no?",
+  "id": "Berapa lama Anda bekerja?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "約一年間、製造の仕事で毎日働きました。",
+   "romaji": "yaku ichinenkan, seizou no shigoto de mainichi hatarakimashita.",
+   "id": "Saya bekerja setiap hari di bidang manufaktur selama sekitar satu tahun."
+  }
+ },
+ {
+  "jp": "給料はいくらですか。",
+  "romaji": "kyuuryou wa ikura desu ka",
+  "id": "Berapa gajinya?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "生活費をしっかり管理できる額をいただいていました。",
+   "romaji": "seikatsuhi o shikkari kanri dekiru gaku o itadaite imashita.",
+   "id": "Saya menerima jumlah yang cukup untuk mengelola biaya hidup dengan baik."
+  }
+ },
+ {
+  "jp": "何が一番大変だった？",
+  "romaji": "nani ga ichiban taihen datta?",
+  "id": "Apa yang paling berat/sulit?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "時間が足りない時は大変でしたが、先輩に相談して解決しました。",
+   "romaji": "jikan ga tarinai toki wa taihen deshita ga, senpai ni soudan shite kaiketsu shimashita.",
+   "id": "Saat waktu kurang itu sangat sulit, namun saya berkonsultasi dengan senior dan menyelesaikannya."
+  }
+ },
+ {
+  "jp": "いままでにほんいがいのがいこくではたらいたことがありますか。",
+  "romaji": "ima made nihon igai no gaikoku de hataraita koto ga arimasu ka.",
+  "id": "Apakah Anda pernah bekerja di luar negeri selain Jepang?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "いいえ、ありません。日本が初めての海外での仕事となります。",
+   "romaji": "iie, arimasen. nihon ga hajimete no kaigai de no shigoto to narimasu.",
+   "id": "Tidak, belum pernah. Jepang adalah pekerjaan di luar negeri yang pertama bagi saya."
+  }
+ },
+ {
+  "jp": "アルバイトのしごとをしたことがありますか。",
+  "romaji": "arubaito no shigoto o shita koto ga arimasu ka.",
+  "id": "Apakah Anda pernah melakukan pekerjaan paruh waktu (arubaito)?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "はい、コンビニでアルバイトをしたことがあります。きゃくさまへのたいおうをまなびました。",
+   "romaji": "hai, konbini de arubaito o shita koto ga arimasu. kyakusama e no taiou o manabimashita.",
+   "id": "Ya, saya pernah bekerja paruh waktu di minimarket. Saya belajar cara melayani pelanggan."
+  }
+ },
+ {
+  "jp": "仕事の時、大変なことは何ですか。",
+  "romaji": "shigoto no toki, taihen na koto wa nan desu ka?",
+  "id": "Apa hal yang sulit saat bekerja?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "忙しい時に時間を守って正確に作業することが大変です。",
+   "romaji": "isogashii toki ni jikan o mamotte seikaku ni sagyou suru koto ga taihen desu.",
+   "id": "Hal yang sulit saat bekerja adalah menjaga waktu dan bekerja dengan akurat saat sibuk."
+  }
+ },
+ {
+  "jp": "仕事の時、大切なことは何ですか。",
+  "romaji": "shigoto no toki, taisetsu na koto wa nan desu ka?",
+  "id": "Apa hal yang penting saat bekerja?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "報告、連絡、相談をしっかり行い、チームワークを大切にすることです。",
+   "romaji": "houkoku, renraku, soudan o shikkari okonai, chiimuwaaku o taisetsu ni suru koto desu.",
+   "id": "Hal yang penting adalah melakukan laporan, komunikasi, dan konsultasi dengan baik serta menjaga kerja sama tim."
+  }
+ },
+ {
+  "jp": "仕事の時に間違いや問題が起きたら、どうしますか。",
+  "romaji": "shigoto no toki ni machigai ya mondai ga okitara, dou shimasu ka?",
+  "id": "Apa yang Anda lakukan jika terjadi kesalahan atau masalah saat bekerja?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "すぐ上司や先輩に報告し、指示を仰いでから対応します。",
+   "romaji": "sugu joushi ya senpai ni houkoku shi, shiji o aoide kara taiou shimasu.",
+   "id": "Saya akan segera melapor kepada atasan atau senior, lalu mengambil tindakan setelah mendapat instruksi."
+  }
+ },
+ {
+  "jp": "間違えたことをやったらどうしますか？",
+  "romaji": "machigatta koto o yattara doushimasuka?",
+  "id": "Apa yang akan kamu lakukan jika melakukan kesalahan?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "すぐに先輩や上司に報告し、指示を仰いで直します。",
+   "romaji": "sugu ni senpai ya joushi ni houkoku shi, shiji o aoide naoshimasu.",
+   "id": "Saya akan segera melapor kepada senior atau atasan dan meminta petunjuk untuk memperbaikinya."
+  }
+ },
+ {
+  "jp": "分からないことがあったら、どうしますか。",
+  "romaji": "wakararanai koto ga attara, doushimasuka?",
+  "id": "Jika ada hal yang tidak dimengerti, apa yang akan Anda lakukan?",
+  "tahap": "Pengalaman Kerja",
+  "jawaban": {
+   "jp": "自己判断せず、すぐに先輩や上司に質問して確認します。",
+   "romaji": "jiko handan sezu, sugu ni senpai ya joushi ni shitsumon shite kakunin shimasu.",
+   "id": "Saya tidak akan berasumsi sendiri, melainkan segera bertanya dan memastikan kepada senior atau atasan."
+  }
+ },
+ {
+  "jp": "日本語がわかりますか。",
+  "romaji": "nihongo ga wakarimasu ka",
+  "id": "Apakah Anda mengerti Bahasa Jepang?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "はい、簡単な日常会話ならわかります。",
+   "romaji": "hai, kantan na nichijou kaiwa nara wakarimasu.",
+   "id": "Ya, saya mengerti jika percakapan sehari-hari yang sederhana."
+  }
+ },
+ {
+  "jp": "どうして日本語を勉強しましたか。",
+  "romaji": "doushite nihongo o benkyou shimashita ka.",
+  "id": "Mengapa belajar bahasa Jepang?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "将来日本で働いて、自分のスキルを上げたいからです。",
+   "romaji": "shourai nihon de hataraite, jibun no sukiru o agetai kara desu.",
+   "id": "Karena di masa depan saya ingin bekerja di Jepang dan meningkatkan keterampilan saya."
+  }
+ },
+ {
+  "jp": "どこで勉強しましたか。",
+  "romaji": "doko de benkyou shimashita ka",
+  "id": "Di mana Anda belajar?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "インドネシアのLＰＫで勉強しました。",
+   "romaji": "indoneshia no erupīkei de benkyou shimashita.",
+   "id": "Saya belajar di LPK di Indonesia."
+  }
+ },
+ {
+  "jp": "どのくらい日本語を勉強しますか？",
+  "romaji": "dono gurai nihongo o benkyoushimasuka?",
+  "id": "Berapa lama sudah belajar bahasa Jepang?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "毎日約四時間、センターで日本語を勉強しています。",
+   "romaji": "mainichi yaku yoji kan, senta de nihongo o benkyou shite imasu.",
+   "id": "Setiap hari saya belajar bahasa Jepang sekitar 4 jam di pusat pelatihan."
+  }
+ },
+ {
+  "jp": "教科書は何ですか。",
+  "romaji": "kyoukasho wa nan desu ka",
+  "id": "Buku pelajarannya apa?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "みんなの日本語という教科書を使っています。",
+   "romaji": "minna no nihongo to iu kyoukasho o tsukatte imasu.",
+   "id": "Saya menggunakan buku pelajaran yang bernama Minna no Nihongo."
+  }
+ },
+ {
+  "jp": "今何課まで日本語を勉強していますか？",
+  "romaji": "ima nanka made nihongo o benkyou shite imasuka?",
+  "id": "Sekarang sudah belajar bahasa Jepang sampai bab berapa?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "今、日本語の教科書の第十五課まで勉強しています。",
+   "romaji": "ima, nihongo no kyoukasho no dai juugo ka madeno benkyou shite imasu.",
+   "id": "Sekarang saya sedang belajar sampai bab 15 buku pelajaran bahasa Jepang."
+  }
+ },
+ {
+  "jp": "カタカナ、ひらがな、かんじはよめますか。",
+  "romaji": "katakana, hiragana, kanji wa yomemasu ka.",
+  "id": "Apakah Anda bisa membaca Katakana, Hiragana, dan Kanji?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "はい、ひらがなとカタカナは読めます。漢字は現在も勉強中です。",
+   "romaji": "hai, hiragana to katakana wa yomemasu. kanji wa genzai mo benkyou chuu desu.",
+   "id": "Ya, saya bisa membaca Hiragana dan Katakana. Kanji masih sedang saya pelajari."
+  }
+ },
+ {
+  "jp": "かんじはなんもじぐらいおぼえていますか。",
+  "romaji": "kanji wa nanmoji gurai oboete imasu ka.",
+  "id": "Kira-kira sudah menghafal berapa huruf Kanji?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "はい、いまはさんびゃくじぐらいおぼえています。まいにちすこしずつべんきょうしています。",
+   "romaji": "hai, ima wa sanbyakuji gurai oboete imasu. mainichi sukoshizutsu benkyou shite imasu.",
+   "id": "Ya, sekarang saya sudah menghafal sekitar 300 kanji. Saya belajar sedikit demi sedikit setiap hari."
+  }
+ },
+ {
+  "jp": "日本語についてどう思いますか？",
+  "romaji": "nihongo ni tsuite dou omoimasu ka?",
+  "id": "Bagaimana pendapat Anda tentang bahasa Jepang?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "文法や漢字は難しいですが、とてもおもしろい言語だと思います。",
+   "romaji": "bunpou ya kanji wa muzukashii desu ga, totemo omoshiroi gengo da to omoimasu.",
+   "id": "Tata bahasa dan kanji sulit, tapi saya pikir itu adalah bahasa yang sangat menarik."
+  }
+ },
+ {
+  "jp": "日本語の勉強はどうですか。",
+  "romaji": "nihongo no benkyou wa dou desu ka?",
+  "id": "Bagaimana menurut Anda tentang belajar bahasa Jepang?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "文法や漢字が難しいですが、毎日楽しく勉強しています。",
+   "romaji": "bunpou ya kanji ga muzukashii desu ga, mainichi tanoshiku benkyou shite imasu.",
+   "id": "Tata bahasa dan kanji sulit, tetapi saya menikmatinya dan belajar setiap hari."
+  }
+ },
+ {
+  "jp": "日本語で一番難しいのは何ですか？",
+  "romaji": "nihongo de ichiban muzukashii no wa nandesuka?",
+  "id": "Apa yang paling sulit dalam bahasa Jepang?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "漢字の読み方と書き方を覚えるのが一番難しいです。",
+   "romaji": "kanji no yomikata to kakikata o oboeru no ga ichiban muzukashii desu.",
+   "id": "Yang paling sulit adalah menghafal cara baca dan tulis kanji."
+  }
+ },
+ {
+  "jp": "毎日どうやって日本語を勉強していますか？",
+  "romaji": "mainichi douyatte nihongo o benkyoushite imasuka?",
+  "id": "Bagaimana cara Anda belajar bahasa Jepang setiap hari?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "毎日、日本語のアプリで単語を覚えたり、アニメを見たりしています。",
+   "romaji": "mainichi, nihongo no apuri de tango o oboetari, anime o mitari shiteimasu.",
+   "id": "Setiap hari, saya menghafal kosakata lewat aplikasi bahasa Jepang dan menonton anime."
+  }
+ },
+ {
+  "jp": "どうやって日本語を勉強しましたか。",
+  "romaji": "doyatte nihongo o benkyoshimashita ka?",
+  "id": "Bagaimana cara Anda belajar bahasa Jepang?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "主にインドネシアの日本語学校で文法や会話を学びました。",
+   "romaji": "omoni indoneshia no nihongo gakkou de bunpou ya kaiwa o manabimashita.",
+   "id": "Saya terutama belajar tata bahasa dan percakapan di sekolah bahasa Jepang di Indonesia."
+  }
+ },
+ {
+  "jp": "好きな日本語がありますか？それは何ですか？",
+  "romaji": "suki na nihongo ga arimasuka? sore wa nan desuka?",
+  "id": "Apakah ada bahasa Jepang yang Anda sukai? Apa itu?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "「ありがとうございます」という言葉が好きです。感謝の気持ちを伝えられるからです。",
+   "romaji": "\"arigatou gozaimasu\" to iu kotoba ga suki desu. kansha no kimochi o tsutaerareru kara desu.",
+   "id": "Saya suka kata \"Arigatou gozaimasu\". Karena bisa menyampaikan perasaan terima kasih."
+  }
+ },
+ {
+  "jp": "にほんごですきなことばはなんですか。",
+  "romaji": "nihonngo de sukina kotoba wa nan desu ka.",
+  "id": "Kosakata apa yang paling Anda sukai dalam bahasa Jepang?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "「がんばります」ということばがいちばんすきです。まえむきになれるからです。",
+   "romaji": "\"gambarimasu\" to iu kotoba ga ichiban suki desu. maemuki ni nareru kara desu.",
+   "id": "Saya paling suka kata \"gambarimasu\". Karena membuat saya menjadi positif."
+  }
+ },
+ {
+  "jp": "あなたはJLPTやJFTを持っていますか。",
+  "romaji": "anata wa jlpt ya jft o motte imasu ka.",
+  "id": "Apakah Anda memiliki sertifikat JLPT atau JFT?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "はい、日本語のテストに合格するために、毎日漢字や会話の勉強をしています。",
+   "romaji": "hai, nihongo no tesuto ni goukaku suru tame ni, mainichi kanji ya kaiwa no benkyou o shite imasu.",
+   "id": "Ya, untuk lulus tes bahasa Jepang, setiap hari saya belajar kanji dan percakapan."
+  }
+ },
+ {
+  "jp": "えいごではなせますか。",
+  "romaji": "eigo de hanasemasu ka.",
+  "id": "Apakah Anda bisa berbicara Bahasa Inggris?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "いいえ、えいごははなせません。いまはにほんごのべんきょうにちからをいれています。",
+   "romaji": "iie, eigo wa hanasemasen. ima wa nihongo no benkyou ni chikara o irete imasu.",
+   "id": "Tidak, saya tidak bisa berbicara Bahasa Inggris. Sekarang saya sedang fokus pada belajar Bahasa Jepang."
+  }
+ },
+ {
+  "jp": "日本に行ったら日本語の勉強を続けたいのですか。",
+  "romaji": "nihon ni ittara nihongo no benkyou wo tsuzuketai no desu ka.",
+  "id": "Jika pergi ke Jepang, apakah ingin melanjutkan belajar bahasa Jepang?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "はい、もっと上手に話せるように毎日続けたいです。",
+   "romaji": "hai, motto jouzu ni hanaseru you ni mainichi tsuzuketai desu.",
+   "id": "Ya, saya ingin melanjutkannya setiap hari agar bisa berbicara dengan lebih mahir."
+  }
+ },
+ {
+  "jp": "日本で日本語がうまく話せるようになるために、何をしますか。",
+  "romaji": "nihon de nihongo ga umaku hanaseru you ni naru tame ni, nani o shimasu ka?",
+  "id": "Apa yang akan Anda lakukan agar bisa berbicara bahasa Jepang dengan lancar di Jepang?",
+  "tahap": "Bahasa Jepang & Kualifikasi",
+  "jawaban": {
+   "jp": "毎日積極的に日本人と話して、わからない言葉はすぐ質問します。",
+   "romaji": "mainichi sekkyokuteki ni nihonjin to hanashite, wakaranai kotoba wa sugu shitsumon shimasu.",
+   "id": "Saya akan aktif berbicara dengan orang Jepang setiap hari dan langsung bertanya jika ada kata yang tidak dimengerti."
+  }
+ },
+ {
+  "jp": "長所はなんですか。",
+  "romaji": "chousho wa nan desu ka.",
+  "id": "Kelebihan anda apa?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "私の長所は責任感が強いことです。任された仕事は最後までやり遂げます。",
+   "romaji": "watashi no chousho wa sekininkan ga tsuyoi koto desu. makasareta shigoto wa saigo made yaritogemasu.",
+   "id": "Kelebihan saya adalah memiliki rasa tanggung jawab yang kuat. Pekerjaan yang dipercayakan akan saya selesaikan sampai akhir."
+  }
+ },
+ {
+  "jp": "短所はなんですか。",
+  "romaji": "tansho wa nan desu ka.",
+  "id": "Kekurangan anda apa?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "短所は心配性なところですが、そのため事前にしっかり確認するようにしています。",
+   "romaji": "tansho wa shinpaishou na tokoro desu ga, sono tame jizen ni shikkari kakunin suru you ni shite imasu.",
+   "id": "Kekurangan saya adalah agak khawatiran, tapi karena itu saya selalu memastikan semuanya dengan baik sebelumnya."
+  }
+ },
+ {
+  "jp": "特技や特徴は何ですか。",
+  "romaji": "tokugi ya tokuchou wa nan desu ka.",
+  "id": "Keahlian atau ciri khas anda apa?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "特技は体力仕事やチームワークです。どんな環境でもすぐになじめます。",
+   "romaji": "tokugi wa tairoku shigoto ya chiimuwaaku desu. donna kankyou demo sugu ni najimemasu.",
+   "id": "Keahlian saya adalah pekerjaan fisik dan kerja tim. Saya bisa segera beradaptasi di lingkungan apa pun."
+  }
+ },
+ {
+  "jp": "あなたは友達にどんな人と言われていますか？",
+  "romaji": "anata wa tomodachi ni donna hito to iwaretemasuka?",
+  "id": "Kata teman-teman, Anda orang yang seperti apa?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "友達からは明るくて責任感があると言われます。",
+   "romaji": "tomodachi kara wa akarukute sekininkan ga aru to iwaremasu.",
+   "id": "Teman-teman bilang saya orang yang ceria dan memiliki rasa tanggung jawab."
+  }
+ },
+ {
+  "jp": "あなたは褒められたことがありますか。",
+  "romaji": "anata wa homerareta koto ga arimasu ka?",
+  "id": "Apakah Anda pernah dipuji?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "はい、前職で仕事が早いと褒められたことがあります。",
+   "romaji": "hai, zenshoku de shigoto ga hayai to homerareta koto ga arimasu.",
+   "id": "Ya, saya pernah dipuji di pekerjaan sebelumnya karena bekerja dengan cepat."
+  }
+ },
+ {
+  "jp": "いままでいちばんがんばったことはなんですか。",
+  "romaji": "ima made ichiban ganbatta koto wa nan desu ka.",
+  "id": "Hal apa yang paling Anda usahakan dengan sungguh-sungguh sampai saat ini?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "まいにちのしごととべんきょうをたいせつにし、どちらもさいぜんをつくしたことです。",
+   "romaji": "mainichi no shigoto to benkyou o taisetsu ni shi, dochira mo saizen o tsukushita koto desu.",
+   "id": "Hal yang paling saya sungguh-sungguh adalah menghargai pekerjaan dan belajar setiap hari serta memberikan yang terbaik untuk keduanya."
+  }
+ },
+ {
+  "jp": "前の一番大変なことは何ですか。",
+  "romaji": "mae no ichiban taihen na koto wa nan desu ka?",
+  "id": "Apa hal yang paling sulit di masa lalu?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "前は新しい仕事を覚えるのが大変でしたが、メモを取って克服しました。",
+   "romaji": "mae wa atarashii shigoto o oboeru no ga taihen deshita ga, memo o totte kokufuku shimashita.",
+   "id": "Dulu sulit mempelajari pekerjaan baru, tapi saya mengatasinya dengan membuat catatan."
+  }
+ },
+ {
+  "jp": "さいきんいちばんかなしかったことはなんですか。",
+  "romaji": "saikin ichiban kanashikatta koto wa nan desu ka.",
+  "id": "Hal apa yang paling menyedihkan akhir-akhir ini?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "さいきん、かぞくとなかなかあえなくて、さみしかったことがいちばんかなしかったです。",
+   "romaji": "saikin, kazoku to nakanaka aenakute, samishikatta koto ga ichiban kanashikatta desu.",
+   "id": "Akhir-akhir ini, hal yang paling menyedihkan adalah saya jarang bisa bertemu keluarga dan merasa kesepian."
+  }
+ },
+ {
+  "jp": "好きなことは何ですか。",
+  "romaji": "suki na koto wa nan desu ka.",
+  "id": "Apa hal yang kamu sukai?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "休日に家族や友人と一緒に料理を作って食べることが好きです。",
+   "romaji": "kyujitsu ni kazoku ya yuujin to issho ni ryouri o tsukutte taberu koto ga suki desu.",
+   "id": "Saya suka membuat dan makan masakan bersama keluarga dan teman di hari libur."
+  }
+ },
+ {
+  "jp": "嫌いなことは何ですか。",
+  "romaji": "kirai na koto wa nan desu ka.",
+  "id": "Apa hal yang tidak kamu sukai?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "計画を立てないで行動することは嫌いです。いつも準備をします。",
+   "romaji": "keikaku o tatenai de koudou suru koto wa kirai desu. itsumo junbi o shimasu.",
+   "id": "Saya tidak suka bertindak tanpa rencana. Saya selalu bersiap terlebih dahulu."
+  }
+ },
+ {
+  "jp": "あなたの好きな人はどんな人ですか。",
+  "romaji": "anata no suki na hito wa donna hito desu ka?",
+  "id": "Orang seperti apa yang Anda sukai?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "いつも笑顔で、周りの人を優しく助ける人が好きです。",
+   "romaji": "itsumo egao de, mawari no hito o yasashiku tasukeru hito ga suki desu.",
+   "id": "Saya menyukai orang yang selalu tersenyum dan dengan baik hati membantu sesama."
+  }
+ },
+ {
+  "jp": "あなたにとって嫌いな友達はどんな人ですか。",
+  "romaji": "anata ni totte kirai na tomodachi wa donna hito desu ka?",
+  "id": "Orang seperti apa yang tidak Anda sukai?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "時間を守らない人や、約束を大切にしない人です。",
+   "romaji": "jikan o mamoranai hito ya, yakusoku o taisetsu ni shinai hito desu.",
+   "id": "Orang yang tidak menepati waktu dan tidak menghargai janji."
+  }
+ },
+ {
+  "jp": "嫌いな友達と一緒に仕事をする時、どうしますか。",
+  "romaji": "kirai na tomodachi to issho ni shigoto o suru toki, dou shimasu ka?",
+  "id": "Apa yang akan Anda lakukan jika harus bekerja sama dengan teman yang tidak Anda sukai?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "仕事と割り切って、お互いに協力して仕事をします。",
+   "romaji": "shigoto to warikitte, otagai ni kyouryoku shite shigoto o shimasu.",
+   "id": "Saya akan memisahkannya sebagai pekerjaan dan tetap bekerja sama."
+  }
+ },
+ {
+  "jp": "チームで働くことができますか。",
+  "romaji": "chiimu de hataraku koto ga dekimasuka?",
+  "id": "Apakah Anda bisa bekerja dalam tim?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "はい、チームのメンバーとしっかり連絡を取って協力できます。",
+   "romaji": "hai, chiimu no menbā to sikkari renraku o totte kyōryoku dekimasu.",
+   "id": "Ya, saya bisa bekerja sama dengan berkomunikasi baik dengan anggota tim."
+  }
+ },
+ {
+  "jp": "いちばんそんけいしているひとはだれですか。",
+  "romaji": "ichiban sonkei shite iru hito wa dare desu ka.",
+  "id": "Siapa orang yang paling Anda hormati?",
+  "tahap": "Kelebihan & Kekurangan",
+  "jawaban": {
+   "jp": "りょうしんをいちばんそんけいしています。どんなときもたいせつにそだててくれたからです。",
+   "romaji": "ryoushin o ichiban sonkei shite imasu. donna toki mo taisetsu ni sodatete kureta kara desu.",
+   "id": "Saya paling menghormati orang tua saya. Karena mereka merawat saya dengan baik di situasi apapun."
+  }
+ },
+ {
+  "jp": "日本はどんな国だと思いますか。",
+  "romaji": "nihon wa donna kuni da to omoimasu ka.",
+  "id": "Jepang negara yang bagaimana menurut anda?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "安全できれいな国で、人々のマナーがとても良い国だと思っています。",
+   "romaji": "anzen de kirei na kuni de, hitobito no manaa ga totemo yoi kuni da to omotte imasu.",
+   "id": "Menurut saya negara yang aman dan bersih, serta masyarakatnya memiliki sopan santun yang sangat baik."
+  }
+ },
+ {
+  "jp": "日本について、どんなことを知っていますか。",
+  "romaji": "nihon ni tsuite, donna koto o shitte imasu ka?",
+  "id": "Apa yang Anda ketahui tentang negara Jepang?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "治安が良くて、安全できれいな国だと聞いています。",
+   "romaji": "chian ga yokute, anzen de kirei na kuni da to kiite imasu.",
+   "id": "Saya dengar Jepang adalah negara yang aman, tertib, dan bersih."
+  }
+ },
+ {
+  "jp": "にほんじんについてどうおもいますか。",
+  "romaji": "nihonjin ni tsuite dou omoimasu ka.",
+  "id": "Bagaimana pendapat Anda tentang orang Jepang?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "まじめで、じかんやきそくをきっちりまもるすばらしいかたたちだとおもいます。",
+   "romaji": "majime de, jikan ya kisoku o kicchiri mamoru subarashii katatachi da to omoimasu.",
+   "id": "Menurut saya, mereka adalah orang-orang luar biasa yang serius serta menjaga waktu dan aturan dengan baik."
+  }
+ },
+ {
+  "jp": "にほんのきぎょうのイメージはどうですか。",
+  "romaji": "nihon no kigyou no imeeji wa dou desu ka.",
+  "id": "Bagaimana kesan atau citra Anda tentang perusahaan Jepang?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "皆さんが協力し合い、品質や時間をとても大切にしているイメージです。",
+   "romaji": "minasan ga kyouryoku shiai, hinshitsu ya jikan o totemo taisetsu ni shite iru imeeji desu.",
+   "id": "Kesan saya adalah semua orang saling bekerja sama dan sangat menghargai kualitas serta waktu."
+  }
+ },
+ {
+  "jp": "日本で知っている街はありますか。",
+  "romaji": "nihon de shitte iru machi wa arimasu ka.",
+  "id": "Kota apa yang anda ketahui di Jepang?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "東京や大阪を知っています。いつか行ってみたいです。",
+   "romaji": "toukyou ya oosaka o shitte imasu. itsuka itte mitai desu.",
+   "id": "Saya tahu Tokyo dan Osaka. Suatu hari saya ingin pergi ke sana."
+  }
+ },
+ {
+  "jp": "日本の文化で知ってるものありますか？",
+  "romaji": "nihon no bunka de shitteru mono arimasuka?",
+  "id": "Apakah ada budaya Jepang yang Anda ketahui?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "はい、日本の「いただきます」という感謝の挨拶を知っています。",
+   "romaji": "hai, nihon no \"itadakimasu\" to iu kansha no aisatsu o shitte imasu.",
+   "id": "Ya, saya tahu salam ucapan terima kasih di Jepang yaitu \"itadakimasu\"."
+  }
+ },
+ {
+  "jp": "日本の文化を学びたいですか？",
+  "romaji": "nihon no bunka o manabitai desuka?",
+  "id": "Apakah Anda ingin mempelajari budaya Jepang?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "はい、日本の丁寧なマナーや素晴らしい文化をたくさん学び、生活に役立てたいです。",
+   "romaji": "hai, nihon no teinei na manaa ya subarashii bunka o takusan manabi, seikatsu ni yakudatetai desu.",
+   "id": "Ya, saya ingin mempelajari banyak tata krama yang sopan dan budaya Jepang yang luar biasa untuk berguna dalam kehidupan."
+  }
+ },
+ {
+  "jp": "一番好きな日本文化は何ですか。",
+  "romaji": "ichiban suki na nihon bunka wa nan desu ka?",
+  "id": "Apa budaya Jepang yang paling Anda sukai?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "日本の伝統的なお祭りや、季節の行事が好きです。",
+   "romaji": "nihon no dentouteki na omatsuri ya, kisetsu no gyouji ga suki desu.",
+   "id": "Saya menyukai festival tradisional Jepang dan acara musiman."
+  }
+ },
+ {
+  "jp": "花火大会についてどう思いますか。",
+  "romaji": "hanabi taikai ni tsuite dou omoimasu ka?",
+  "id": "Bagaimana pendapat Anda tentang Festival Kembang Api (Hanabi Taikai)?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "浴衣を着てみんなで楽しむ、とても美しい文化だと思います。",
+   "romaji": "yukata o kite minna de tanoshimu, totemo utsukushii bunka da to omoimasu.",
+   "id": "Saya pikir itu adalah budaya yang sangat indah di mana semua orang menikmati mengenakan yukata."
+  }
+ },
+ {
+  "jp": "にほんのきせつでなにがいちばんすきですか。",
+  "romaji": "nihon no kisetsu de nani ga ichiban suki desu ka.",
+  "id": "Musim apa yang paling Anda sukai di Jepang?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "春が好きです。桜がきれいで、新しい生活が始まる季節だからです。",
+   "romaji": "haru ga suki desu. sakura ga kirei de, atarashii seikatsu ga hajimaru kisetsu dakara desu.",
+   "id": "Saya suka musim semi. Karena bunga sakuranya indah dan merupakan musim dimulainya kehidupan baru."
+  }
+ },
+ {
+  "jp": "あなたが日本へ行く目的は何ですか？",
+  "romaji": "anata ga nihon e iku mokuteki wa nan desu ka?",
+  "id": "Apa tujuan Anda pergi ke Jepang?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "日本の高い技術や仕事の進め方を学び、将来の自分の経験に活かしたいです。",
+   "romaji": "nihon no takai gijutsu ya shigoto no susumekata o manabi, shourai no jibun no keiken ni ikashitai desu.",
+   "id": "Saya ingin mempelajari teknologi tinggi dan cara kerja di Jepang untuk pengalaman masa depan saya."
+  }
+ },
+ {
+  "jp": "働きたいですか。",
+  "romaji": "hatarakitai desu ka.",
+  "id": "Apakah Anda ingin bekerja?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "はい、家族の生活を支えるため、日本でしっかり働きたいです。",
+   "romaji": "hai, kazoku no seikatsu o sasaeru tame, nihon de shikkari hatarakitai desu.",
+   "id": "Ya, saya ingin bekerja dengan giat di Jepang untuk menafkahi keluarga."
+  }
+ },
+ {
+  "jp": "どうして………をやりたいですか？",
+  "romaji": "doushite ... o yaritai desuka?",
+  "id": "Mengapa Anda ingin melakukan ...?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "自分の責任感と真面目さを活かして、会社やお客様の役に立ちたいからです。",
+   "romaji": "jibun no sekininkan to majimesa o ikashite, kaisha ya okyakusama no yaku ni tachitai kara desu.",
+   "id": "Karena saya ingin memanfaatkan rasa tanggung jawab dan keseriusan saya untuk berguna bagi perusahaan dan pelanggan."
+  }
+ },
+ {
+  "jp": "特定技能じゃなくて、実習生は３年間まで大丈夫？",
+  "romaji": "tokutei ginou janakute, jishussei wa sannenkan made daijoubu?",
+  "id": "Bukan Tokutei Ginou, apakah magang sampai 3 tahun tidak apa-apa?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "はい、３年間しっかり技術を学び、経験を積むことができるので問題ありません。",
+   "romaji": "hai, sannenkan shikkari gijutsu o manabi, keiken o tsumu koto ga dekiru node mondai arimasen.",
+   "id": "Ya, tidak masalah karena saya dapat mempelajari keterampilan dengan baik dan menimba pengalaman selama 3 tahun."
+  }
+ },
+ {
+  "jp": "食品製造業、食品加工業について何を知っていますか。",
+  "romaji": "shokuhin seizougyou, shokuhin kakougyou ni tsuite nani o shitte imasu ka.",
+  "id": "Apa yang kamu ketahui tentang industri manufaktur makanan dan pengolahan makanan?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "衛生管理や安全第一で食品を作る大切な仕事だと知っています。",
+   "romaji": "eisei kanri ya anzen daiichi de shokuhin o tsukuru taisetsu na shigoto da to shitte imasu.",
+   "id": "Saya tahu bahwa itu adalah pekerjaan penting membuat makanan dengan manajemen kebersihan dan keselamatan nomor satu."
+  }
+ },
+ {
+  "jp": "飲食料品製造業を知っていますか。",
+  "romaji": "inshokuryouhin seizougyou o shitte imasu ka.",
+  "id": "Apakah Anda tahu mengenai industri manufaktur makanan dan minuman?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "はい、工場で安全に食べ物を作る仕事だと理解しています。",
+   "romaji": "hai, koujou de anzen ni tabemono o tsukuru shigoto da to rikai shite imasu.",
+   "id": "Ya, saya mengpahami bahwa itu adalah pekerjaan membuat makanan secara aman di pabrik."
+  }
+ },
+ {
+  "jp": "どうして飲食料品製造業を選びましたか。",
+  "romaji": "doushite inshokuryouhin seizougyou o erabimashita ka.",
+  "id": "Mengapa memilih industri manufaktur makanan dan minuman?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "安全で美味しい食品を作る仕事に興味があり、日本の技術を学びたいからです。",
+   "romaji": "anzen de oishii shokuhin o tsukuru shigoto ni kyōmi ga ari, nihon no gijutsu o manabitai kara desu.",
+   "id": "Karena saya tertarik membuat makanan yang aman dan enak, serta ingin belajar teknologi Jepang."
+  }
+ },
+ {
+  "jp": "介護の仕事で嬉しかったことを教えてください。",
+  "romaji": "kaigo no shigoto de ureshikatta koto o oshiete kudasai.",
+  "id": "Tolong ceritakan hal yang menyenangkan dari pekerjaan kaigo (perawatan lansia).",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "お年寄りが笑顔で「ありがとう」と言ってくださった時が一番うれしいです。",
+   "romaji": "otoshiyori ga egao de arigatou to itte kudasatta toki ga ichiban ureshii desu.",
+   "id": "Saat para lansia tersenyum dan berkata terima kasih adalah hal yang paling menyenangkan."
+  }
+ },
+ {
+  "jp": "この仕事で一番大変なことは何ですか。",
+  "romaji": "kono shigoto de ichiban taihen na koto wa nan desu ka.",
+  "id": "Apa hal yang paling sulit dalam pekerjaan ini?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "最初は言葉の壁ですが、積極的に会話をして早く覚えたいです。",
+   "romaji": "saisho wa kotoba no kabe desu ga, sekkyokuteki ni kaiwa o shite hayaku oboetai desu.",
+   "id": "Awalnya adalah hambatan bahasa, namun saya ingin aktif berbicara dan cepat menghafalkannya."
+  }
+ },
+ {
+  "jp": "どんなしごとのばしょではたらきたいですか。",
+  "romaji": "donna shigoto no basho de hatarakitai desu ka.",
+  "id": "Ingin bekerja di tempat kerja yang bagaimana?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "スタッフ同士のコミュニケ―ションがよく、安全に働ける職場で働きたいです。",
+   "romaji": "sutaffu doushi no komyunikeeshon ga yoku, anzen ni hatarakeru shokuba de hatarakitai desu.",
+   "id": "Saya ingin bekerja di tempat kerja yang komunikasinya antar stafnya baik dan dapat bekerja dengan aman."
+  }
+ },
+ {
+  "jp": "この会社にどのように貢献しますか。",
+  "romaji": "kono kaisha ni dono you ni kouken shimasu ka?",
+  "id": "Bagaimana cara Anda berkontribusi pada perusahaan ini?",
+  "tahap": "Motivasi ke Jepang",
+  "jawaban": {
+   "jp": "はい、ルールを守り、まじめに働いて会社に貢献します。",
+   "romaji": "hai, ruuru o mamori, majime ni hataraite kaisha ni kouken shimasu.",
+   "id": "Ya, saya akan mematuhi aturan, bekerja dengan serius, dan berkontribusi pada perusahaan."
+  }
+ },
+ {
+  "jp": "日本に行ったらどんな仕事をやりたいですか？",
+  "romaji": "nihon ni ittara donna shigoto o yaritai desuka?",
+  "id": "Pekerjaan seperti apa yang ingin Anda lakukan jika pergi ke Jepang?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "私は農業の仕事を通じて、美味しい野菜や果物を育てる技術を学びたいです。",
+   "romaji": "watashi wa nōgyō no shigoto o tsūjite, oishii yasai ya kudamono o sodateru gijutsu o manabitai desu.",
+   "id": "Saya ingin belajar teknik membudidayakan sayur dan buah yang enak melalui pekerjaan di bidang pertanian."
+  }
+ },
+ {
+  "jp": "日本で何をしたいですか。",
+  "romaji": "nihon de nani o shitai desu ka.",
+  "id": "Apa yang ingin Anda lakukan di Jepang?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "日本の高い技術を学び、将来は自分の国でその経験を生かしたいです。",
+   "romaji": "nihon no takai gijutsu o manabi, shourai wa jibun no kuni de sono keiken o ikashitai desu.",
+   "id": "Saya ingin mempelajari teknologi tinggi Jepang dan kelak memanfaatkannya di negara saya."
+  }
+ },
+ {
+  "jp": "何をしたいですか。",
+  "romaji": "nani o shitai desu ka.",
+  "id": "Apa yang ingin Anda lakukan?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "毎日まじめに仕事を覚えて、会社の役に立ちたいです。",
+   "romaji": "mainichi majime ni shigoto o oboete, kaisha no yaku ni tachitai desu.",
+   "id": "Saya ingin menghafal pekerjaan dengan serius setiap hari dan berguna bagi perusahaan."
+  }
+ },
+ {
+  "jp": "仕事以外に何をしたいですか。",
+  "romaji": "shigoto igai ni nani o shitai desu ka.",
+  "id": "Selain bekerja apa yang ingin kamu lakukan?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "日本の美しい景色を見に行ったり、買い物をしたりしたいです。",
+   "romaji": "nihon no utsukushii keshiki o mi ni ittari, kaimono o shitai desu.",
+   "id": "Saya ingin pergi melihat pemandangan Jepang yang indah dan berbelanja."
+  }
+ },
+ {
+  "jp": "日本に行ったら仕事以外のこともしたいですか。",
+  "romaji": "nihon ni ittara shigoto igai no koto mo shitai desu ka?",
+  "id": "Jika pergi ke Jepang, apakah ingin melakukan hal yang tidak terduga/di luar dugaan?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "はい、日本の古いお寺や神社を見て、歴史や文化を知りたいです。",
+   "romaji": "hai, nihon no furui otera ya jinja o mite, rekishi ya bunka o siritai desu.",
+   "id": "Ya, saya ingin melihat kuil-kuil lama di Jepang dan mengetahui sejarah serta budayanya."
+  }
+ },
+ {
+  "jp": "日本に行ったら最初（まず）どこへ行きたいですか。",
+  "romaji": "nihon ni ittara saisho doko e ikitai desu ka?",
+  "id": "Ke mana Anda ingin pergi saat pertama kali datang ke Jepang?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "まずは日本のきれいな景色を見て、有名な神社に行きたいです。",
+   "romaji": "mazu wa nihon no kirei na keshiki o mite, yūmei na jinja ni ikitaidesu.",
+   "id": "Pertama-tama saya ingin melihat pemandangan indah di Jepang dan pergi ke kuil terkenal."
+  }
+ },
+ {
+  "jp": "日本に行ったらどこへ行きたいですか？",
+  "romaji": "nihon ni ittara doko e ikitai desuka?",
+  "id": "Jika pergi ke Jepang, ingin pergi ke mana?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "はい、富士山に行ってきれいな景色を見たいです。有名な東京タワーにも行ってみたいです。",
+   "romaji": "hai, fujisan ni itte kireina keshiki o mitai desu. yuume na toukyou tawaa ni mo itte mitai desu.",
+   "id": "Ya, saya ingin pergi ke Gunung Fuji untuk melihat pemandangan yang indah. Saya juga ingin mencoba pergi ke Tokyo Tower yang terkenal."
+  }
+ },
+ {
+  "jp": "日本で何年間働きたいですか？",
+  "romaji": "nihon de nannenkan hatarikitai desu ka?",
+  "id": "Berapa tahun Anda ingin bekerja di Jepang?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "技能実習の三年間、しっかり技術を学びたいです。",
+   "romaji": "ginou jissyuu no sannenkan, shikkari gijutsu o manabitai desu.",
+   "id": "Saya ingin belajar keterampilan dengan sungguh-sungguh selama 3 tahun magang keterampilan."
+  }
+ },
+ {
+  "jp": "日本に何年間いたいですか。",
+  "romaji": "nihon ni nannenkan itai desu ka.",
+  "id": "Ingin tinggal di Jepang berapa tahun?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "ビザの許す限り長く日本で働き、技術を学びたいです。",
+   "romaji": "biza no yurusu kagiri nagaku nihon de hataraki, gijutsu o manabitai desu.",
+   "id": "Selama visa mengizinkan, saya ingin bekerja di Jepang dan belajar keterampilan."
+  }
+ },
+ {
+  "jp": "10年間まで寂しくなりませんか、寂しいならどうしますか？",
+  "romaji": "juu nenkan made sabishiku narimasenka, sabishii nara doushimasuka?",
+  "id": "Apakah Anda tidak akan merasa kesepian sampai 10 tahun? Jika merasa kesepian, apa yang akan Anda lakukan?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "時々電話をしたり、日本のドラマを見たりして気分転換します。",
+   "romaji": "tokidoki denwa o shitari, nihon no dorama o mitari shite kibun tenkan shimasu.",
+   "id": "Kadang-kadang saya menelepon atau menonton drama Jepang untuk menyegarkan pikiran."
+  }
+ },
+ {
+  "jp": "5年間でどのくらいお金を貯金したいですか？",
+  "romaji": "go nenkan de dono gurai okane o chokin shitai desu ka?",
+  "id": "Berapa banyak uang yang ingin Anda tabung selama 5 tahun?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "具体的な金額は言えませんが、将来のためにしっかり貯金します。",
+   "romaji": "gutaiteki na kingaku wa iemasen ga, shourai no tame ni shikkari chokin shimasu.",
+   "id": "Saya tidak bisa menyebutkan jumlah pastinya, tapi saya akan menabung dengan baik untuk masa depan."
+  }
+ },
+ {
+  "jp": "何万ぐらいお金がかかりますか？",
+  "romaji": "nan man gurai okane o kakarimasuka?",
+  "id": "Berapa puluhan ribu yen biaya yang dibutuhkan?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "エージェントから聞いておりますので、把握しております。",
+   "romaji": "eejento kara kiite orimasu node, haaku shite orimasu.",
+   "id": "Saya sudah mendengarnya dari agen, jadi saya sudah memahaminya."
+  }
+ },
+ {
+  "jp": "給料はいくら欲しいですか。",
+  "romaji": "kyuuryou wa ikura hoshii desu ka",
+  "id": "Berapa gaji yang Anda inginkan?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "会社の規定の金額で十分です。まずはしっかり仕事を覚えたいです。",
+   "romaji": "kaisha no kitei no kingaku de juubun desu. mazu wa shikkari shigoto ooboetai desu.",
+   "id": "Jumlah sesuai aturan perusahaan sudah cukup. Pertama-tama saya ingin belajar bekerja dengan baik."
+  }
+ },
+ {
+  "jp": "心配なことはありますか。",
+  "romaji": "shinpai na koto wa arimasu ka.",
+  "id": "Apakah ada hal yang anda cemaskan?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "最初は言葉や習慣に不安がありますが、一生懸命勉強して慣れたいと思います。",
+   "romaji": "saisho wa kotoba ya shuukan ni fuan ga arimasu ga, isshoukenmei benkyou shite naretai to omoimasu.",
+   "id": "Awalnya saya cemas soal bahasa dan kebiasaan, tapi saya ingin berusaha belajar dan terbiasa."
+  }
+ },
+ {
+  "jp": "にほんでしごとしたら、ふあんなことはなんですか。",
+  "romaji": "nihon de shigoto shitara, fuan na koto wa nan desu ka.",
+  "id": "Jika bekerja di Jepang, hal apa yang dikhawatirkan?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "はじめはにほんごでのコミュニケーションがすこしふあんです。",
+   "romaji": "hajime wa nihongo de no komyunikeeshon ga sukoshi fuan desu.",
+   "id": "Awalnya saya sedikit khawatir tentang komunikasi dalam bahasa Jepang."
+  }
+ },
+ {
+  "jp": "日本から帰ってから何をやりたいですか？",
+  "romaji": "nihon kara kaete kara nani o yaritai desuka?",
+  "id": "Apa yang ingin Anda lakukan setelah pulang dari Jepang?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "日本で貯めたお金と経験を使って、母国で自分の店を開きたいと考えています。",
+   "romaji": "nihon de tameta okane to keiken o tsukatte, bokoku no jibun no mise o akitai to kangaete imasu.",
+   "id": "Saya berencana menggunakan uang dan pengalaman yang ditabung di Jepang untuk membuka toko sendiri di negara asal."
+  }
+ },
+ {
+  "jp": "将来の夢がありますか？",
+  "romaji": "shourai no yume ga arimasuka?",
+  "id": "Apakah Anda memiliki impian di masa depan?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "はい、将来は自分の家を建てたいという夢があります。",
+   "romaji": "hai, shourai wa jibun no ie wo tatetai to iu yume ga arimasu.",
+   "id": "Ya, impian saya di masa depan adalah ingin membangun rumah sendiri."
+  }
+ },
+ {
+  "jp": "なんで建てたいか？",
+  "romaji": "nande tatetai ka?",
+  "id": "Kenapa ingin membangun (rumah/sesuatu)?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "日本でしっかり貯金して家族のために家を建てたいです。",
+   "romaji": "nihon de shikkari chokin shite kazoku no tame ni ie wo tatetai desu.",
+   "id": "Saya ingin menabung dengan baik di Jepang untuk membangun rumah demi keluarga."
+  }
+ },
+ {
+  "jp": "またじゃ、日本に行って10年間働いて、もう一回日本へ行きたいか？",
+  "romaji": "mata ja, nihon ni itte juu nenkan hataraite, mou ikkai nihon e ikitai ka?",
+  "id": "Jadi nanti, setelah pergi ke Jepang dan bekerja selama 10 tahun, apakah ingin pergi ke Jepang sekali lagi?",
+  "tahap": "Rencana & Target di Jepang",
+  "jawaban": {
+   "jp": "はい、10年働いた後は母国に帰り、日本で培った技術をいかして仕事続けたいです。",
+   "romaji": "hai, juu nen hataraita ato wa bokoku ni kaeri, nihon ni tsukatta gijutsu o ikashite shigoto tsuduketai desu.",
+   "id": "Ya, setelah bekerja 10 tahun saya ingin kembali ke tanah air dan melanjutkan pekerjaan dengan memanfaatkan keahlian yang dipupuk di Jepang."
+  }
+ },
+ {
+  "jp": "あさ、なんじにおきますか。",
+  "romaji": "asa, nanji ni okimasu ka.",
+  "id": "Jam berapa Anda bangun pagi setiap hari?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "まいあさごじにおきます。",
+   "romaji": "maiasa goji ni okimasu.",
+   "id": "Saya bangun jam 5 setiap pagi."
+  }
+ },
+ {
+  "jp": "趣味は何ですか？",
+  "romaji": "shumi wa nan desuka?",
+  "id": "Apa hobi Anda?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "趣味は料理をすることです。休みの日に家族によく作ります。",
+   "romaji": "shumi wa ryouri o suru koto desu. yasumi no hi ni kazoku ni yoku tsukurimasu.",
+   "id": "Hobi saya adalah memasak. Pada hari libur, saya sering memasak untuk keluarga."
+  }
+ },
+ {
+  "jp": "音楽が好きですか。",
+  "romaji": "ongaku ga suki desu ka",
+  "id": "Apakah Anda suka musik?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "はい、音楽を聴くのが好きです。",
+   "romaji": "hai, ongaku wo kiku no ga suki desu.",
+   "id": "Ya, saya suka mendengarkan musik."
+  }
+ },
+ {
+  "jp": "にほんのすきなおんがくはなんですか。",
+  "romaji": "nihon no sukina ongaku wa nan desu ka.",
+  "id": "Lagu Jepang apa yang Anda sukai?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "あかるいおんがくがすきです。よくきいてげんきをもらっています。",
+   "romaji": "akarui ongaku ga suki desu. yoku kiite genki o moratte imasu.",
+   "id": "Saya suka musik yang ceria. Saya sering mendengarkannya untuk mendapat semangat."
+  }
+ },
+ {
+  "jp": "映画が好きですか。",
+  "romaji": "eiga ga suki desu ka",
+  "id": "Apakah Anda suka film?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "はい、映画を見るのが好きです。",
+   "romaji": "hai, eiga wo miru no ga suki desu.",
+   "id": "Ya, saya suka menonton film."
+  }
+ },
+ {
+  "jp": "どんな映画が好きですか。",
+  "romaji": "donna eiga ga suki desu ka",
+  "id": "Film seperti apa yang Anda sukai?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "はい、アクション映画が好きです。",
+   "romaji": "hai, akushon eiga ga suki desu.",
+   "id": "Ya, saya suka film aksi."
+  }
+ },
+ {
+  "jp": "日本のアニメが好きですか。",
+  "romaji": "nihon no anime ga suki desu ka",
+  "id": "Apakah Anda suka anime Jepang?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "はい、日本のドラマやアニメが好きです。",
+   "romaji": "hai, nihon no dorama ya anime ga suki desu.",
+   "id": "Ya, saya suka drama dan anime Jepang."
+  }
+ },
+ {
+  "jp": "にほんのすきなアニメございますか。だれがすきですか。",
+  "romaji": "nihon no sukina anime gozaimasu ka. dare ga suki desu ka.",
+  "id": "Apakah ada anime Jepang yang Anda sukai? Siapa yang Anda sukai?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "ドラえもんがすきです。いつもやさしくて、じむをたすけてくれるからすきです。",
+   "romaji": "doraemon ga suki desu. itsumo yasashikute, jibun o tasukete kureru kara suki desu.",
+   "id": "Saya suka Doraemon. Saya menyukainya karena selalu baik dan menolong."
+  }
+ },
+ {
+  "jp": "すきなせんしゅはだれですか。",
+  "romaji": "sukina senshu wa dare desu ka.",
+  "id": "Atlet apa atau siapa yang Anda sukai?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "サッカーのアルナ・サワト・プレタせんしゅがすきです。きょうてきにがんばっているからです。",
+   "romaji": "sakkaa no aruna sawato pureta senshu ga suki desu. kyouteki ni ganbatte iru kara desu.",
+   "id": "Saya menyukai pemain sepak bola Arhan Pratama. Karena dia berjuang dengan gigih."
+  }
+ },
+ {
+  "jp": "休みの日には何をしたいですか。",
+  "romaji": "yasumi no hi ni wa nani o shitai desu ka.",
+  "id": "Pada hari libur apa yang ingin kamu lakukan?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "部屋の掃除や洗濯をして、次の週の準備をしたいです。",
+   "romaji": "heya no souji ya sentaku o shite, tsugi no shuu no junbi o shitai desu.",
+   "id": "Saya ingin membersihkan kamar, mencuci pakaian, dan bersiap untuk minggu depan."
+  }
+ },
+ {
+  "jp": "休みの時に何をしますか？",
+  "romaji": "yasumi no toki ni nani o shimasuka?",
+  "id": "Apa yang kamu lakukan saat libur?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "休みの時は、友達とサッカーをしたり部屋を掃除したりします。",
+   "romaji": "yasumi no toki wa, tomodachi to sakkaa o shitari heya o souji shitari shimasu.",
+   "id": "Saat libur, saya bermain sepak bola dengan teman atau membersihkan kamar."
+  }
+ },
+ {
+  "jp": "飛行機に乗ったことがありますか？",
+  "romaji": "hikouki ni notta koto ga arimasuka?",
+  "id": "Pernah naik pesawat terbang?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "いいえ、まだ乗ったことがありません。日本に行く時が初めてです。",
+   "romaji": "iie, mada notta koto ga arimasen. nihon ni iku toki ga hajimete desu.",
+   "id": "Belum, saya belum pernah naik. Nanti saat pergi ke Jepang adalah yang pertama."
+  }
+ },
+ {
+  "jp": "じてんしゃにのれますか。",
+  "romaji": "jitensha ni noremasu ka.",
+  "id": "Apakah Anda bisa mengendarai sepeda?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "はい、まいにちじてんしゃでがっこうやかいしゃに通っています。うんてんになれています。",
+   "romaji": "hai, mainichi jitensha de gakkou ya kaisha ni kayotte imasu. unten ni narete imasu.",
+   "id": "Ya, setiap hari saya pergi ke sekolah atau tempat kerja dengan sepeda. Saya sudah terbiasa mengendarainya."
+  }
+ },
+ {
+  "jp": "くるまをうんてんできますか。",
+  "romaji": "kuruma o unten dekimasu ka.",
+  "id": "Apakah Anda bisa mengemudikan mobil?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "いいえ、うんてんめんきょをもっていませんので、くるまはうんてんできません。",
+   "romaji": "iie, unten menkyo o motteimasen node, kuruma wa unten dekimasen.",
+   "id": "Tidak, saya tidak memiliki surat izin mengemudi, jadi saya tidak bisa mengembikan mobil."
+  }
+ },
+ {
+  "jp": "集団生活の経験はありますか。",
+  "romaji": "shuudan seikatsu no keiken wa arimasu ka",
+  "id": "Apakah Anda memiliki pengalaman hidup berkelompok?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "はい、LＰＫの寮で仲間と共同生活をしています。",
+   "romaji": "hai, erupīkei no ryou de nakama to kyoudou seikatsu o shite imasu.",
+   "id": "Ya, saya hidup bersama teman-teman di asrama LPK."
+  }
+ },
+ {
+  "jp": "一緒に住むことができますか。",
+  "romaji": "issho ni sumu koto ga dekimasu ka.",
+  "id": "Apakah bisa tinggal bersama?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "はい、ルールを守って皆さんと仲良く暮らすことができます。",
+   "romaji": "hai, ruuru o mamotte minasan to nakayoku kurasu koto ga dekimasu.",
+   "id": "Ya, saya bisa hidup rukun dengan menjaga aturan bersama semuanya."
+  }
+ },
+ {
+  "jp": "アパートの友達と喧嘩や問題があったら、どうしますか。",
+  "romaji": "apato no tomodachi to kenka ya mondai ga attara doushimasuka?",
+  "id": "Jika terjadi pertengkaran atau masalah dengan teman di apartemen, apa yang akan Anda lakukan?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "冷静に話し合い、お互いの意見を尊重して解決します。",
+   "romaji": "reisei ni hanashiai, otagai no iken o sonchou shite kaiketsu shimasu.",
+   "id": "Saya akan berdiskusi dengan tenang, menghormati pendapat satu sama lain, dan menyelesaikannya."
+  }
+ },
+ {
+  "jp": "どんな料理が作れますか。",
+  "romaji": "donna ryouri ga tsukuremasu ka.",
+  "id": "Masakan apa yang bisa dibuat?",
+  "tahap": "Kehidupan Sehari-hari & Kebiasaan",
+  "jawaban": {
+   "jp": "簡単なインドネシア料理なら作れますが、日本料理も勉強中です。",
+   "romaji": "kantan na indoneshia ryouri nara tsukuremasu ga, nihon ryouri mo benkyou chuu desu.",
+   "id": "Jika masakan Indonesia yang sederhana saya bisa buat, tapi saya juga sedang belajar masakan Jepang."
+  }
+ },
+ {
+  "jp": "体重は？",
+  "romaji": "taijuu wa?",
+  "id": "Berapa berat badan Anda?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "はい、体重は六十キログラムです。",
+   "romaji": "hai, taijuu wa rokujuu kiro-guramu desu.",
+   "id": "Ya, berat badan saya 60 kilogram."
+  }
+ },
+ {
+  "jp": "身長は？",
+  "romaji": "shinchou wa?",
+  "id": "Berapa tinggi badan Anda?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "はい、身長は百七十センチです。",
+   "romaji": "hai, shinchou wa hyaku nanajuu senchi desu.",
+   "id": "Ya, tinggi badan saya 170 sentimeter."
+  }
+ },
+ {
+  "jp": "あなたの血液型は何ですか。",
+  "romaji": "anata no ketsuekigata wa nan desu ka.",
+  "id": "Apa golongan darah Anda?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "私の血液型はO型です。",
+   "romaji": "watashi no ketsuekigata wa o-gata desu.",
+   "id": "Golongan darah saya adalah O."
+  }
+ },
+ {
+  "jp": "毎日運動しますか / 何か運動しますか？",
+  "romaji": "mainichi undou shimasuka / nanika undou shimasuka?",
+  "id": "Apakah Anda berolahraga setiap hari / apakah Anda melakukan olahraga tertentu?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "はい、健康のために毎朝のジョギングと軽い体操をしています。",
+   "romaji": "hai, kenkou no tame ni maiasa no jogingu to karui taisou o shiteimasu.",
+   "id": "Ya, demi kesehatan saya melakukan lari pagi dan senam ringan setiap hari."
+  }
+ },
+ {
+  "jp": "腕立ては何回できますか。",
+  "romaji": "udetate wa nankai dekimasu ka.",
+  "id": "Berapa kali Anda bisa melakukan push-up?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "はい、だいたいさんじゅっかいぐらいできます。まいにちトレーニングをしています。",
+   "romaji": "hai, daitai sanjuk-kai gurai dekimasu. mainichi toreiningu o shite imasu.",
+   "id": "Ya, saya bisa melakukan sekitar 30 kali. Saya melakukan latihan fisik setiap hari."
+  }
+ },
+ {
+  "jp": "ふっきんうんどうはなんかいできますか。",
+  "romaji": "fukkin undou wa nankai dekimasu ka.",
+  "id": "Berapa kali Anda bisa melakukan sit-up?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "はい、よんじゅっかいぐらいできます。たいりょくにはじしんがあります。",
+   "romaji": "hai, yonjuk-kai gurai dekimasu. tairyoku ni wa jishin ga arimasu.",
+   "id": "Ya, saya bisa melakukan sekitar 40 kali. Saya percaya diri dengan stamina fisik saya."
+  }
+ },
+ {
+  "jp": "なんキロはしれますか。",
+  "romaji": "nan kiro hashiremasu ka.",
+  "id": "Berapa kilometer Anda bisa berlari?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "だいたいさんキロぐらいはしれます。けんこうのためにまいにちあるいたりしています。",
+   "romaji": "daitai san kiro gurai hashiremasu. kenkou no tame ni mainichi aruitari shite imasu.",
+   "id": "Saya bisa berlari sekitar 3 kilometer. Untuk kesehatan, saya rutin berjalan kaki setiap hari."
+  }
+ },
+ {
+  "jp": "体力に自信はありますか？",
+  "romaji": "tairyoku ni jishin wa arimasu ka?",
+  "id": "Apakah Anda memiliki tenaga/kekuatan fisik?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "はい、毎日運動をしていて、重い物を持つ仕事も得意です。",
+   "romaji": "hai, mainichi undou o shite ite, omoi mono o motsu shigoto mo tokui desu.",
+   "id": "Ya, saya berolahraga setiap hari dan terbiasa dengan pekerjaan mengangkat barang berat."
+  }
+ },
+ {
+  "jp": "仕事の時、重いものを運ぶことができますか。",
+  "romaji": "shigoto no toki, omoi mono o hakobu koto ga dekimasu ka.",
+  "id": "Saat bekerja, apakah Anda sanggup mengangkat barang-barang berat?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "はい、毎日運動をして体を鍛えているので、重いものも運べます。",
+   "romaji": "hai, mainichi undou o shite karada o kitaete iru node, omoi mono mo hakobemasu.",
+   "id": "Ya, karena saya berolahraga setiap hari untuk melatih tubuh, saya bisa mengangkat barang berat."
+  }
+ },
+ {
+  "jp": "仕事の時は長時間立って働くのは大丈夫ですか。",
+  "romaji": "shigoto no toki wa choujikan tatte hataraku no wa daijoubu desu ka.",
+  "id": "Saat bekerja, apakah Anda tidak masalah berdiri dalam waktu yang lama?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "はい、普段から体力には自信がありますので、長時間立っていても大丈夫です。",
+   "romaji": "hai, fudan kara tairyoku ni wa jishin ga arimasu node, choujikan tatte ite mo daijoubu desu.",
+   "id": "Ya, karena saya percaya diri dengan stamina saya sehari-hari, berdiri lama pun tidak masalah."
+  }
+ },
+ {
+  "jp": "日本は冬の時に寒いです。大丈夫ですか？",
+  "romaji": "nihon wa fuyu no toki ni samui desu. daijoubu desuka?",
+  "id": "Jepang dingin saat musim dingin, apakah tidak apa-apa?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "はい、大丈夫です。防寒着をしっかり準備して仕事に励みます。",
+   "romaji": "hai, daijoubu desu. boukanzagi o shikkari junbi shite shigoto ni hagemimasu.",
+   "id": "Ya, tidak apa-apa. Saya akan menyiapkan pakaian musim dingin dengan baik dan semangat bekerja."
+  }
+ },
+ {
+  "jp": "日本は夏の時に暑いです。大丈夫ですか？",
+  "romaji": "nihon wa natsu no toki ni atsui desu. daijoubu desuka?",
+  "id": "Jepang panas saat musim panas, apakah tidak apa-apa?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "はい、問題ありません。インドネシアも暑いので、暑さには慣れています。",
+   "romaji": "hai, mondai arimasen. indonesia mo atsui node, atsusa ni wa narete imasu.",
+   "id": "Ya, tidak masalah. Indonesia juga panas, jadi saya sudah terbiasa dengan panas."
+  }
+ },
+ {
+  "jp": "むしばはありますか。",
+  "romaji": "mushiba wa arimasu ka.",
+  "id": "Apakah Anda memiliki gigi berlubang?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "いいえ、むしばはありません。まいにちきちょうにはみがきをしています。",
+   "romaji": "iie, mushiba wa arimasen. mainichi kichou ni hamigaki o shite imasu.",
+   "id": "Tidak, saya tidak memiliki gigi berlubang. Saya menyikat gigi dengan rajin setiap hari."
+  }
+ },
+ {
+  "jp": "タバコは吸いますか。",
+  "romaji": "tabako wa suimasu ka.",
+  "id": "Apakah anda merokok?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "いいえ、タバコは一切吸いません。健康管理には気をつけています。",
+   "romaji": "iie, tabako wa issai suimasen. kenkou kanri ni wa ki o tsukete imasu.",
+   "id": "Tidak, saya sama sekali tidak merokok. Saya menjaga kesehatan."
+  }
+ },
+ {
+  "jp": "今日病気になって、明日も仕事があったら、どうしますか。",
+  "romaji": "kyou byouki ni natte, ashita mo shigoto ga attara, doushimasuka?",
+  "id": "Jika hari ini Anda sakit dan besok harus bekerja, apa yang akan Anda lakukan?",
+  "tahap": "Kesehatan & Fisik",
+  "jawaban": {
+   "jp": "すぐに上司に報告し、病院に行って医師の指示に従います。",
+   "romaji": "sugu ni joushi ni houkoku shi, byouin ni itte ishi no shiji ni shitagaimasu.",
+   "id": "Saya akan segera melapor kepada atasan, pergi ke rumah sakit, dan mengikuti instruksi dokter."
+  }
+ },
+ {
+  "jp": "あなたはイスラム教ですか？",
+  "romaji": "anata wa muslim kyo desuka?",
+  "id": "Apakah Anda beragama Islam?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "はい、イスラム教です。信仰を大切にしながら、仕事も頑張ります。",
+   "romaji": "hai, isuramukyou desu. shinkou o taisetsu ni shinagara, shigoto mo gambarimasu.",
+   "id": "Ya, saya beragama Islam. Sambil menghargai keyakinan, saya juga akan bekerja keras."
+  }
+ },
+ {
+  "jp": "毎日お祈りしていますか？",
+  "romaji": "mainichi oinori shite imasuka?",
+  "id": "Apakah Anda berdoa setiap hari?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "はい、毎日お祈りしています。仕事に支障がないように行います。",
+   "romaji": "hai, mainichi oinori shite imasu. shigoto ni shishou ga nai you ni okonaimasu.",
+   "id": "Ya, saya berdoa setiap hari. Saya melaksanakannya agar tidak mengganggu pekerjaan."
+  }
+ },
+ {
+  "jp": "一日何回していますか？",
+  "romaji": "ichinichi nankai shite imasuka?",
+  "id": "Sehari berapa kali melakukannya?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "一日五回です。休憩時間を使って短い時間で行います。",
+   "romaji": "ichinichi gokai desu. kyuukei jikan o tsukatte mijikai jikan de okonaimasu.",
+   "id": "Sehari lima kali. Saya melakukannya dalam waktu singkat menggunakan waktu istirahat."
+  }
+ },
+ {
+  "jp": "断食やりますか？",
+  "romaji": "danjiki yarimasuka?",
+  "id": "Apakah Anda menjalankan puasa?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "はい、ラムダン月の断食をします。体調管理に気をつけます。",
+   "romaji": "hai, ramudan-getsu no danjiki o shimasu. taichou kanri ni ki o tsukemasu.",
+   "id": "Ya, saya menjalankan puasa di bulan Ramadan. Saya akan berhati-hati menjaga kesehatan."
+  }
+ },
+ {
+  "jp": "断食するのは体にとって大丈夫ですか？",
+  "romaji": "danjiki suru no wa karada ni daijoubu desuka?",
+  "id": "Apakah berpuasa itu baik-baik saja bagi kesehatan tubuh?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "はい、毎年経験しているので、体調は問題ありません。",
+   "romaji": "hai, maitoshi keiken shite iru node, taichou wa mondai arimasen.",
+   "id": "Ya, karena saya sudah mengalaminya setiap hari, kondisi tubuh saya tidak masalah."
+  }
+ },
+ {
+  "jp": "仕事の時、断食や礼拝（お祈り）をすることができますか。",
+  "romaji": "shigoto no toki, danjiki ya reihai (oinori) wo suru koto ga dekimasu ka.",
+  "id": "Pada saat bekerja, apakah bisa melakukan puasa dan ibadah (sholat)?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "はい、休憩時間や仕事が終わってから適切に行います。",
+   "romaji": "hai, kyuukei jikan ya shigoto ga owatte kara tekisetsu ni okonaimasu.",
+   "id": "Ya, saya akan melakukannya dengan tepat saat jam istirahat atau setelah pekerjaan selesai."
+  }
+ },
+ {
+  "jp": "豚肉を食べますか？",
+  "romaji": "butaniku o tabemasuka?",
+  "id": "Apakah Anda makan daging babi?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "いいえ、宗教の教えで豚肉は食べません。牛肉や鶏肉を食べます。",
+   "romaji": "iie, shuukyou no oshie de butaniku wa tabemasen. gyuuniku ya toriniku o tabemasu.",
+   "id": "Tidak, karena ajaran agama, saya tidak makan daging babi. Saya makan daging sapi atau ayam."
+  }
+ },
+ {
+  "jp": "どんな料理が好きですか？",
+  "romaji": "donna ryouri ga suki desuka?",
+  "id": "Suka masakan seperti apa?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "インドネシアのナシゴレンが好きです。辛い食べ物が得意です。",
+   "romaji": "indonesia no nashigoren ga suki desu. karai tabemono ga tokui desu.",
+   "id": "Saya suka nasi goreng Indonesia. Saya pandai makan makanan pedas."
+  }
+ },
+ {
+  "jp": "何の料理ですか？",
+  "romaji": "nan no ryouri desu ka?",
+  "id": "Masakan apa itu?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "インドネシアの伝統的なナゴレンや、野菜を炒めた料理を作ります。",
+   "romaji": "indoneshia no dentouteki na nashi goreng ya, yasai o itameta ryouri o tsukurimasu.",
+   "id": "Saya membuat Nasi Goreng tradisional Indonesia dan masakan tumis sayur."
+  }
+ },
+ {
+  "jp": "日本の食べ物を食べたことがありますか？",
+  "romaji": "nihon no tabemono o tabeta koto ga arimasuka?",
+  "id": "Apakah Anda pernah makan makanan Jepang?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "はい、インドネシアの日本料理店でラーメンや寿司を食べたことがあります。とても美味しかったです。",
+   "romaji": "hai, indonesia no nihon ryouriten de raamen ya sushi o tabeta koto ga arimasuka. totemo oishikatta desu.",
+   "id": "Ya, saya pernah makan ramen dan sushi di restoran Jepang di Indonesia. Rasanya sangat enak."
+  }
+ },
+ {
+  "jp": "日本の料理は何が一番食べたいですか？",
+  "romaji": "nihon no ryouri wa nani ga ichiban tabetai desuka?",
+  "id": "Masakan Jepang apa yang paling ingin Anda makan?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "一番食べたい料理は寿司とうどんすきです。本場の味をぜひ味わってみたいです。",
+   "romaji": "ichiban tabetai ryouri wa sushi to udonsuki desu. honba no aji o zehi ajawatte mitai desu.",
+   "id": "Masakan yang paling ingin saya makan adalah sushi dan udonsuki. Saya sangat ingin mencicipi rasa aslinya."
+  }
+ },
+ {
+  "jp": "お酒は飲みますか。",
+  "romaji": "osake wa nomimasu ka.",
+  "id": "Apakah anda minum alkohol?",
+  "tahap": "Ibadah & Makanan",
+  "jawaban": {
+   "jp": "普段はほとんど飲みません。付き合い程度に少し飲むくらいです。",
+   "romaji": "fudan wa hotondo nomimasen. tsukiai teido ni sukoshi nomu kurai desu.",
+   "id": "Biasanya saya hampir tidak pernah minum. Hanya minum sedikit sekadar pergaulan."
+  }
+ },
+ {
+  "jp": "日本で仕事は大変ですから、大丈夫ですか？",
+  "romaji": "nihon de shigoto wa taihen desu kara, daijoubu desuka?",
+  "id": "Pekerjaan di Jepang itu berat/susah, apakah Anda baik-baik saja?",
+  "tahap": "Kerja Shift & Lembur",
+  "jawaban": {
+   "jp": "はい、LＰKで体力トレーニングをして備えていますので大丈夫です。",
+   "romaji": "hai, el-pi-kei de tairyoku toreeningu o shite sonaete imasu node daijoubu desu.",
+   "id": "Ya, saya sudah mempersiapkan diri dengan latihan fisik di LPK, jadi saya baik-baik saja."
+  }
+ },
+ {
+  "jp": "寒い場所での仕事は大丈夫ですか。",
+  "romaji": "samui basho de no shigoto wa daijoubu desu ka.",
+  "id": "Apakah Anda tidak masalah bekerja di tempat yang dingin?",
+  "tahap": "Kerja Shift & Lembur",
+  "jawaban": {
+   "jp": "はい、温かい服を着て準備しますので、寒い場所でも大丈夫です。",
+   "romaji": "hai, atatakai fuku o kite junbi shimasu node, samui basho demo daijoubu desu.",
+   "id": "Ya, saya akan bersiap dengan memakai pakaian hangat, jadi tidak masalah di tempat dingin."
+  }
+ },
+ {
+  "jp": "昼勤は大丈夫ですか？",
+  "romaji": "hirukin wa daijoubu desuka?",
+  "id": "Apakah Anda baik-baik saja dengan kerja siang?",
+  "tahap": "Kerja Shift & Lembur",
+  "jawaban": {
+   "jp": "はい、昼勤も問題ありません。規則正しい生活をして頑張ります。",
+   "romaji": "hai, hirukin mo mondai arimasen. kisokutadashii seikatsu o shite gambarimasu.",
+   "id": "Ya, kerja siang juga tidak masalah. Saya akan hidup teratur dan bekerja keras."
+  }
+ },
+ {
+  "jp": "夜勤は大丈夫ですか？",
+  "romaji": "yakin wa daijoubu desuka?",
+  "id": "Apakah Anda baik-baik saja dengan kerja malam?",
+  "tahap": "Kerja Shift & Lembur",
+  "jawaban": {
+   "jp": "はい、健康管理をしっかり行いますので、夜勤も大丈夫です。",
+   "romaji": "hai, kenkou kanri o shikkari okonaimasu node, yakin mo daijoubu desu.",
+   "id": "Ya, saya akan menjaga kesehatan dengan baik, jadi kerja malam pun tidak masalah."
+  }
+ },
+ {
+  "jp": "やきんはできますか。いっしゅうかんになんかいできますか。",
+  "romaji": "yakin wa dekimasu ka. isshuukan ni nankai dekimasu ka.",
+  "id": "Apakah bisa kerja malam? Dalam seminggu bisa berapa kali kerja malam?",
+  "tahap": "Kerja Shift & Lembur",
+  "jawaban": {
+   "jp": "はい、夜勤もできます。体調に合わせて週に二、三回は大丈夫です。",
+   "romaji": "hai, yakin mo dekimasu. taichou ni awasete shuu ni ni, sankai wa daijoubu desu.",
+   "id": "Ya, kerja malam juga bisa. Sesuai kondisi tubuh, dua atau tiga kali seminggu tidak masalah."
+  }
+ },
+ {
+  "jp": "ざんぎょうはできますか。なんじかんできますか。",
+  "romaji": "zangyou wa dekimasu ka. nanjikan dekimasu ka.",
+  "id": "Apakah Anda bisa lembur? Bisa lembur berapa jam?",
+  "tahap": "Kerja Shift & Lembur",
+  "jawaban": {
+   "jp": "はい、できます。体調管理をしっかりして、必要なときは対応します。",
+   "romaji": "hai, dekimasu. taichou kanri o shikkari shite, hitsuyou na toki wa taiou shimasu.",
+   "id": "Ya, saya bisa. Saya akan menjaga kesehatan dengan baik dan siap menangani saat diperlukan."
+  }
+ },
+ {
+  "jp": "仕事に遅れたら、どうしますか。",
+  "romaji": "shigoto ni okuretara doushimasuka?",
+  "id": "Jika terlambat bekerja, apa yang akan Anda lakukan?",
+  "tahap": "Kerja Shift & Lembur",
+  "jawaban": {
+   "jp": "すぐに会社に電話で連絡し、現在の状況と到着予定時間を伝えます。",
+   "romaji": "sugu ni kaisha ni denwa de renraku shi, genzai no joukyou to touchaku yotei jikan o tsutaemasu.",
+   "id": "Saya akan segera menelepon perusahaan untuk mengabarkan situasi terkini dan perkiraan waktu tiba."
+  }
+ },
+ {
+  "jp": "合格する自信はありますか？",
+  "romaji": "goukaku suru jishin wa arimasu ka?",
+  "id": "Apakah Anda akan lulus di sini?",
+  "tahap": "Penutup & Pertanyaan Balik",
+  "jawaban": {
+   "jp": "はい、毎日しっかり練習してきたので、必ず合格できると思います。",
+   "romaji": "hai, mainichi shikkari renshuu shite kita node, kanarazu goukaku dekiru to omoimasu.",
+   "id": "Ya, karena saya berlatih dengan sungguh-sungguh setiap hari, saya yakin pasti akan lulus."
+  }
+ },
+ {
+  "jp": "大変申し訳ございませんが、アパートは用意していただけませんか。",
+  "romaji": "taihen moushiwake gozaimasen ga, apaato wa youi shite itadakemasen ka.",
+  "id": "Mohon maaf sebelumnya, apakah apartemennya tidak disediakan?",
+  "tahap": "Penutup & Pertanyaan Balik",
+  "jawaban": {
+   "jp": "はい、承知いたしました。自分で探す準備をしております。",
+   "romaji": "hai, shouchi itashimashita. jibun de sagasu junbi o shite orimasu.",
+   "id": "Baik, saya mengerti. Saya sedang bersiap untuk mencarinya sendiri."
+  }
+ },
+ {
+  "jp": "何か質問はありますか。",
+  "romaji": "nanika shitsumon wa arimasu ka.",
+  "id": "Apakah ada pertanyaan?",
+  "tahap": "Penutup & Pertanyaan Balik",
+  "jawaban": {
+   "jp": "はい、一日も早く仕事に慣れるためのコツを教えてください。",
+   "romaji": "hai, ichinichi mo hayaku shigoto ni nareru tame no kotsu o oshiete kudasai.",
+   "id": "Ya, tolong ajarkan saya tips agar bisa terbiasa dengan pekerjaan secepat mungkin."
+  }
+ },
+ {
+  "jp": "ほかの質問はありますか？ほかはありませんか？",
+  "romaji": "hoka no shitsumon wa arimasuka? hoka wa arimasenka?",
+  "id": "Apakah ada pertanyaan lain?",
+  "tahap": "Penutup & Pertanyaan Balik",
+  "jawaban": {
+   "jp": "いいえ、特にありません。しっかりと仕事を頑張ります。",
+   "romaji": "iie, toku ni arimasen. shikkari to shigoto o gambarimasu.",
+   "id": "Tidak, tidak ada khususnya. Saya akan bekerja dengan sungguh-sungguh."
+  }
+ }
+]
