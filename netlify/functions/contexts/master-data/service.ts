@@ -1107,6 +1107,24 @@ export async function handleSimpanBiodataLengkap(payload: any[], sessionToken?: 
         });
       }
     } catch { /* non-fatal */ }
+    // Notifikasi admin + jejak di Mail. Dulu handler ini TIDAK memanggil
+    // `syncBiodataKeMail` sama sekali, jadi biodata yang diubah dari Pusat
+    // Pemberkasan tidak pernah memicu push (laporan pemilik 2026-10-25).
+    try {
+      const labels = Object.keys(master)
+        .filter((k) => k !== 'no_wa' && k !== 'updated_at')
+        .map((k) => MASTER_FIELD_LABEL[k] || k)
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .slice(0, 8);
+      if (labels.length) {
+        await syncBiodataKeMail(
+          wa,
+          String(d.nama || 'KANDIDAT').trim().toUpperCase(),
+          labels,
+          sessionToken,
+        );
+      }
+    } catch { /* non-fatal */ }
     return { success: true };
   } catch (e: any) {
     return { success: false, error: safeError('Gagal menyimpan biodata.', e) };

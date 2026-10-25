@@ -376,7 +376,12 @@ export async function syncBiodataKeMail(
   const want = normWa(wa);
   const rows: FormRow[] = Array.isArray(preloadedRows) ? preloadedRows : await getFormsByWa(wa);
   const mine = rows.filter((r: Record<string, unknown>) => normWa(String(r.no_wa || r.wa || '')) === want);
-  if (!mine.length) return;
+  // ⚠️ JANGAN `return` di sini kalau `mine` kosong. Kandidat yang biodatanya
+  // diperbarui lewat form Master sering TIDAK punya satu pun baris
+  // `database_asj_form` (terukur 2026-10-25: 51 baris form untuk 226 kandidat),
+  // dan dulu fungsi ini berhenti sebelum `notifyAdmins` — sehingga push ke admin
+  // tidak pernah terkirim justru untuk mayoritas kandidat. Yang bergantung pada
+  // `mine` hanyalah PENULISAN jejak ke Mail, bukan notifikasinya.
   for (const r of mine) {
     if (r.id === undefined || r.id === null) continue;
     const isUpdate = mailStatusUntukUpdate(r.status as string) === 'UPDATE';
