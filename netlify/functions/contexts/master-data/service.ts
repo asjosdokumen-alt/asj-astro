@@ -56,7 +56,7 @@ const MASTER_FILE_COLUMNS: Record<string, string> = {
   ktpFile: 'ktp_url', kkFile: 'kk_url', cvFile: 'file_cv',
 };
 
-const MASTER_COLUMN_MAP: Record<string, string> = {
+export const MASTER_COLUMN_MAP: Record<string, string> = {
   nama: 'nama_lengkap', furigana: 'furigana', panggilan: 'namapanggilan',
   panggilanKatakana: 'panggilan_katakana', gender: 'gender', tempatLahir: 'tempat_lahir',
   tglLahir: 'tgl_lahir', usia: 'usia', agama: 'agama', statusNikah: 'status_pernikahan',
@@ -86,13 +86,18 @@ const MASTER_COLUMN_MAP: Record<string, string> = {
   kotaPaspor: 'kota_terbit_pasport', noCoe: 'no_coe',
 };
 
-const JP_TRANSLATE_MAP: Record<string, string> = {
+export const JP_TRANSLATE_MAP: Record<string, string> = {
   promosi: 'promosi_diri_jp', kelebihan: 'kelebihan_jp', kekurangan: 'kekurangan_jp',
   hobi: 'hobi_jp', keahlianKhusus: 'keahlian_khusus_jp', alasanBidang: 'alasan_memilih_bidang_jp',
   motivasiJepang: 'motivasi_ke_jepang_jp', keinginan: 'keinginan_pribadi_jp',
   rencanaPulang: 'rencana_setelah_pulang_jp', tujuanJepang: 'tujuan_ke_jepang_jp',
   penyakit: 'riwayat_medis_jp', alergi: 'alergi_jp', laka: 'riwayat_kecelakaan_jp',
   tempatLahir: 'tempat_lahir_jp', agama: 'agama_jp', alamat: 'alamat_jp',
+  /* Status pernikahan punya kolom kanji (`status_pernikahan_jp`) dan CV cetak
+     membacanya, tetapi jalur Form Master tidak pernah mengisinya — hanya CV AI
+     yang mengirim pasangan JP-nya. Ditambahkan 2026-10-25 supaya kandidat yang
+     mengisi lewat Form Master tidak menghasilkan CV dengan kolom kanji kosong. */
+  statusNikah: 'status_pernikahan_jp',
 };
 
 const SNAKE_TO_CAMEL: Record<string, string> = {
@@ -685,6 +690,13 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
        sama dengan `alergi` di seksi medis. Gate cakupan kolom yang menuntut baris
        ini ada: tanpa ia `identitas.no_coe` dianggap field tanpa tujuan. */
     ['no_coe', 'no_coe'],
+    /* Kontak darurat. `kontak_darurat_wa` dulu sengaja TIDAK dipetakan ("ditulis
+       lewat jalur kontak darurat"), padahal jalur itu tidak ada: `hp_darurat`
+       hanya bertahan di `ai_data_json`. Terukur 2026-10-25: `kontak_darurat_wa`
+       berisi 13 baris, dan tidak satu pun bisa datang dari CV AI. Nama & hubungan
+       ditambahkan bersamaan karena Form Master sudah menanyakan ketiganya. */
+    ['kontak_darurat_wa', 'hp_darurat'], ['kontak_darurat_nama', 'darurat_nama'],
+    ['kontak_darurat_hubungan', 'darurat_hubungan'],
   ],
   fisik: [
     ['tb', 'tb'], ['bb', 'bb'], ['ukuran_topi', 'topi'], ['ukuranbaju', 'baju'],
@@ -741,15 +753,17 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
   /* Kenalan di Jepang. Seksi ini TIDAK dikelola `aiData` (dipertahankan dari
      baris lama), jadi pemetaannya baru berguna setelah `aiOut` yang dipakai —
      lihat catatan di `_lib/ai/cv.ts`.
-     ⚠ `pekerjaan`, `usia`, dan `alamat` versi INDONESIA tidak punya kolom —
-     tabel ini hanya punya `_jp`-nya (diperiksa ke `schema.generated.ts`
-     2026-10-22). Nilainya tetap tersimpan di `ai_data_json`; yang hilang hanya
-     jalur kolom. Mencatatnya sebagai celah SKEMA, bukan diam-diam dipetakan ke
-     kolom yang tidak ada (itu akan membatalkan seluruh baris: 400 PGRST204). */
+     Sejak migrasi 019 tabel ini PUNYA kolom versi Indonesia
+     (`kenalan_di_jepang_pekerjaan/usia/alamat`), jadi ketiganya dipetakan —
+     sebelumnya hanya `_jp`-nya dan nilainya cuma hidup di `ai_data_json`.
+     Gate `e2e/ai-cv-column-coverage.test.ts` menuntut pemindahan ini. */
   kenalan_jepang: [
     ['kenalan_di_jepang_nama', 'nama_id'], ['kenalan_di_jepang_nama_jp', 'nama_jp'],
     ['kenalan_di_jepang_hubungan', 'hubungan_id'], ['kenalan_di_jepang_hubungan_jp', 'hubungan_jp'],
+    ['kenalan_di_jepang_pekerjaan', 'pekerjaan_id'],
     ['kenalan_di_jepang_pekerjaan_jp', 'pekerjaan_jp'],
+    ['kenalan_di_jepang_usia', 'usia'],
+    ['kenalan_di_jepang_alamat', 'alamat_id'],
     ['kenalan_di_jepang_alamat_jp', 'alamat_jp'],
   ],
 };
@@ -795,7 +809,7 @@ export function buildMasterBody(d: any): Record<string, any> {
   return body;
 }
 
-async function autoTranslateToJp(idFields: Record<string, string>, existingJp?: Record<string, string>): Promise<Record<string, string>> {
+export async function autoTranslateToJp(idFields: Record<string, string>, existingJp?: Record<string, string>): Promise<Record<string, string>> {
   const toTranslate: Array<{ key: string; text: string }> = [];
   for (const [key, jpCol] of Object.entries(JP_TRANSLATE_MAP)) {
     const idText = String(idFields[key] || '').trim(); if (!idText) continue;
@@ -1075,17 +1089,28 @@ export const BIO_LENGKAP_MASTER_COLS: ReadonlyArray<readonly [string, string]> =
 // Kolom biodata yang juga dibaca mapCandidate dari database_candidate.
 // Kolom sumber (from) adalah kolom asli master_database_candidate (no_paspor);
 // kolom tujuan (to) adalah kolom database_candidate (no_pasport).
+//
+// ⚠️ SEJAK 2026-10-25 DAFTAR INI BUKAN LAGI SUMBER KEBENARAN. Ia daftar KEEMPAT
+// dari konsep yang sama (tiga lainnya: Form Master, CV AI, edit admin), dan
+// `buildCandSyncPatch` kini mendelegasikan ke `candidateIdentityPatch()` di
+// `_lib/db/identity-sync.ts`. Konstanta ini dipertahankan hanya karena tes A05
+// membacanya sebagai dokumentasi pasangan yang ejaannya berbeda; jangan
+// menambahkannya lagi ke jalur tulis.
 export const BIO_LENGKAP_CAND_SYNC: ReadonlyArray<readonly [string, string]> = [
   ['email', 'email'], ['tempat_lahir', 'tempat_lahir'], ['tgl_lahir', 'tgl_lahir'],
   ['alamat_lengkap', 'alamat_lengkap'], ['no_paspor', 'no_pasport'],
 ] as const;
 
+/**
+ * Body PATCH `database_candidate` dari kolom master.
+ *
+ * Delegasi ke daftar bersama supaya pemberkasan tidak punya salinan sendiri:
+ * salinan tangan adalah persis yang membuat jalur CV AI tertinggal dan CV Mini
+ * menampilkan tinggi/berat kosong. Nama lama dipertahankan karena pemanggil dan
+ * tes A05 memakainya.
+ */
 export function buildCandSyncPatch(master: Record<string, string>): Record<string, string> {
-  const candPatch: Record<string, string> = {};
-  for (const [from, to] of BIO_LENGKAP_CAND_SYNC) {
-    if (master[from]) candPatch[to] = master[from];
-  }
-  return candPatch;
+  return candidateIdentityPatch(master);
 }
 
 /** Pure builder (DB-free testable) — payload datar → patch body master. */

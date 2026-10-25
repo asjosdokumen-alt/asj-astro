@@ -3,7 +3,7 @@ import type { FormRawRow } from '../db/row-types';
 import { candidateIdentityPatch } from '../db/identity-sync';
 import { AI_SUBMISSION_COLS, ESIGNATURE_COLS } from '../db/projections.ts';
 import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
-import { buildMasterNested, buildRiwayatSlots, masterColumnsFromAi } from '../../contexts/master-data';
+import { buildMasterNested, buildRiwayatSlots, masterColumnsFromAi, autoTranslateToJp, JP_TRANSLATE_MAP } from '../../contexts/master-data';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../../contexts/applications';
 import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
 import { findFormsByWa } from '../db/forms.ts';
@@ -494,8 +494,7 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       // baris yang tersisa, tapi jangan sampai pemanggil yang mengirim daftar
       // parsial malah menghapus baris yang masih ada.
       if (d.riwayatLengkap === true) Object.assign(masterBody, buildRiwayatSlots(d, true));
-      if (d.fotoFile) masterBody.pas_photo = d.fotoFile;
-      if (d.kkFile) masterBody.kk_url = d.kkFile;
+      if (d.fotoFile) masterBody.pas_photo = d.fotoFile;      if (d.kkFile) masterBody.kk_url = d.kkFile;
       if (d.ktpFile) masterBody.ktp_url = d.ktpFile;
       if (d.ijazahSdFile) masterBody.ijazah_sd_url = d.ijazahSdFile;
       if (d.ijazahSmpFile) masterBody.ijazah_smp_url = d.ijazahSmpFile;
@@ -503,6 +502,35 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       if (d.univFile) masterBody.univ_url = d.univFile;
       if (d.jftFile) masterBody.jft_url = d.jftFile;
       if (d.sswFile) masterBody.ssw_url = d.sswFile;
+
+      /* ── KANJI YANG HANYA DIISI JALUR FORM MASTER ──────────────────────────
+         `alamat_jp` dan `tempat_lahir_jp` diisi `autoTranslateToJp` di jalur
+         Form Master; jalur CV AI tidak pernah menerjemahkan apa pun, dan
+         `AI_CV_PATHS` juga tidak punya kunci untuk keduanya. Akibatnya kandidat
+         yang mengisi lewat CV AI punya alamat Indonesia yang benar dan kolom
+         kanji yang KOSONG di CV cetak — padahal Form Master mengisinya.
+
+         Dipakai helper yang SAMA dengan Form Master (satu perilaku, satu prompt),
+         dan hanya untuk nilai yang belum punya kanji: helper itu sendiri melewati
+         field yang `existingJp`-nya sudah terisi, jadi CV yang sudah lengkap tidak
+         memicu panggilan AI tambahan. Kegagalan penerjemahan tidak pernah
+         menggagalkan simpan — helper mengembalikan {} dan blok ini tidak menulis
+         apa pun.
+      */
+      try {
+        const existingJp: Record<string, string> = {};
+        for (const jpCol of Object.values(JP_TRANSLATE_MAP)) {
+          const v = m ? m[jpCol] : undefined;
+          if (v !== undefined && v !== null && String(v).trim()) existingJp[jpCol] = String(v);
+        }
+        const terjemahan = await autoTranslateToJp(
+          { alamat: String(identitas.alamat || ''), tempatLahir: String(identitas.tempat_lahir || '') },
+          existingJp,
+        );
+        for (const [fk, jc] of Object.entries(JP_TRANSLATE_MAP)) {
+          if (terjemahan[fk] && !masterBody[jc]) masterBody[jc] = terjemahan[fk];
+        }
+      } catch { /* terjemahan non-fatal */ }
 
       if (m && m.id !== undefined) {
         await supabaseJson('PATCH', 'master_database_candidate', {

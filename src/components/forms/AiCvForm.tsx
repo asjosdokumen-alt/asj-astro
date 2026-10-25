@@ -63,7 +63,9 @@ interface CvData {
      automatically by `resolvePairEdit` — see `aiCvPairs.ts`. */
   gender_jp: string; agama_jp: string; status_jp: string;
   goldar: string; status: string; anak: string; email: string; alamat: string;
-  hp: string; hpdarurat: string; ktp: string; paspor: string; sim: string;
+  hp: string; hpdarurat: string;
+  /** Nama & hubungan kontak darurat — paritas Form Master (2026-10-25). */
+  darurat_nama: string; darurat_hubungan: string; ktp: string; paspor: string; sim: string;
   paspor_status: string; sim_status: string;
   /* Paspor: terbit / berlaku / kota terbit. Form Master sudah menanyakan
      ketiganya; CV AI tidak, jadi kandidat VIP tidak punya jalan mengisinya.
@@ -872,6 +874,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           gender_jp: cv.gender_jp, agama_jp: cv.agama_jp, status_nikah_jp: cv.status_jp,
           golongan_darah: cv.goldar, status_nikah: cv.status, anak: cv.anak,
           email: cv.email, alamat: cv.alamat, hp: cv.hp, hp_darurat: cv.hpdarurat,
+          darurat_nama: cv.darurat_nama, darurat_hubungan: cv.darurat_hubungan,
           ktp: cv.ktp, paspor: cv.paspor, sim: cv.sim,
           // Legacy menyimpan status paspor/SIM di identitas.* (ai_form.ts
           // enableSimPasporConditional). Tanpa ini jawaban "TIDAK ADA" hilang:
@@ -1280,6 +1283,13 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                 touched={touchedFields.has('hp')} onInput={(v) => handleManualEdit('hp', v)} />
               <Field label={t("form.mf_darurat_wa")} id="hpdarurat" value={cv.hpdarurat}
                 touched={touchedFields.has('hpdarurat')} onInput={(v) => handleManualEdit('hpdarurat', v)} />
+              {/* PARITAS (2026-10-25): Form Master menanyakan nama & hubungan
+                  kontak darurat; CV AI hanya nomor WA-nya. Kolom
+                  `kontak_darurat_nama`/`_hubungan` sudah ada dan kosong. */}
+              <Field label={t("master.darurat_nama")} id="darurat_nama" value={cv.darurat_nama}
+                touched={touchedFields.has('darurat_nama')} onInput={(v) => handleManualEdit('darurat_nama', v)} />
+              <Field label={t("master.darurat_hubungan")} id="darurat_hubungan" value={cv.darurat_hubungan}
+                touched={touchedFields.has('darurat_hubungan')} onInput={(v) => handleManualEdit('darurat_hubungan', v)} />
               <Field label={t("form.mf_ktp")} id="ktp" value={cv.ktp} span={2}
                 touched={touchedFields.has('ktp')} onInput={(v) => handleManualEdit('ktp', v)} />
               <StatusNumber label={t("form.mf_no_paspor")} statusLabel={t("form.mf_paspor_status")}

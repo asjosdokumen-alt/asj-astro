@@ -54,17 +54,15 @@ const NO_COLUMN_BY_DESIGN: Record<string, string> = {
   'identitas.sim_status': 'hanya penanda UI (ADA/TIDAK); kolomnya driver_license',
   'identitas.hp': 'WA kandidat; kolomnya no_wa dan itu kunci join — ditulis eksplisit, bukan dari peta',
   'identitas.no_wa': 'idem: kunci join, ditulis eksplisit oleh pemanggil',
-  'identitas.hp_darurat': 'kolom kontak_darurat_wa ditulis lewat jalur kontak darurat',
   'wawancara.lama': 'tidak ada kolom; disimpan sebagai wawancara.lama_di_jepang (buildAiOverflow)',
   'wawancara.lama_di_jepang': 'idem: field overflow dari Form Master, tidak punya kolom',
   'wawancara.riwayat_jepang': 'kolomnya status_eks_jepang, dipetakan dari identitas.status_eks_jepang',
-  // CELAH SKEMA (bukan kelalaian pemetaan): tabel hanya punya versi `_jp` untuk
-  // tiga field ini. Nilainya tetap tersimpan di `ai_data_json`; yang tidak ada
-  // hanyalah jalur kolom. Kalau migrasi menambah kolomnya, pindahkan ketiga
-  // baris ini ke `AI_TO_MASTER_COLUMNS` — tes "allow-list basi" akan menuntut.
-  'kenalan_jepang.pekerjaan_id': 'kolom kenalan_di_jepang_pekerjaan tidak ada (hanya _jp)',
-  'kenalan_jepang.usia': 'kolom kenalan_di_jepang_usia tidak ada; TIDAK dipetakan ke _jp karena usia bukan teks terjemahan',
-  'kenalan_jepang.alamat_id': 'kolom kenalan_di_jepang_alamat tidak ada (hanya _jp)',
+  // TIGA BARIS DI SINI SUDAH DIPINDAHKAN (2026-10-25). Dulu isinya: "kolom
+  // kenalan_di_jepang_pekerjaan/usia/alamat tidak ada". Migrasi 019 MENAMBAH
+  // ketiganya, jadi pemetaannya pindah ke `AI_TO_MASTER_COLUMNS` — persis seperti
+  // yang diminta catatan lama ("kalau migrasi menambah kolomnya, pindahkan").
+  // `identitas.hp_darurat` juga keluar dari daftar ini: `kontak_darurat_wa`
+  // ternyata tidak pernah ditulis jalur mana pun selain dari sini.
 };
 
 describe('CV AI → kolom master: tidak ada field yang diam-diam hilang', () => {

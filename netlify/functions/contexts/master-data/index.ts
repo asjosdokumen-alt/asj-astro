@@ -19,6 +19,10 @@ export {
   buildAiOverflow,
   mergeAiOverflow,
   buildRiwayatSlots,
+  autoTranslateToJp,
+  JP_TRANSLATE_MAP,
+  MASTER_COLUMN_MAP,
+  AI_TO_MASTER_COLUMNS,
   pruneAiRiwayat,
 } from './service';
 // Alias: simpanUpdateMaster maps to handleSubmitMasterForm

@@ -48,6 +48,9 @@ export const AI_CV_FLAT_KEYS = [
      registry has nowhere to write and the CV ships with an empty JP side. */
   'gender_jp', 'agama_jp', 'status_jp',
   'goldar', 'status', 'anak', 'email', 'alamat', 'hp', 'hpdarurat', 'ktp', 'paspor', 'sim',
+  /* Kontak darurat: nama & hubungan. Form Master menanyakan keduanya sejak
+     lama; CV AI hanya menyimpan nomor WA-nya. Ditambahkan 2026-10-25. */
+  'darurat_nama', 'darurat_hubungan',
   'paspor_status', 'sim_status',
   /* Paspor: masa terbit/berlaku/kota terbit. Form Master sudah menanyakan
      ketiganya sejak lama (step 5) dan CV AI tidak — jadi kandidat VIP yang hanya
@@ -95,6 +98,8 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   alamat: ['identitas.alamat'],
   hp: ['identitas.hp', 'identitas.no_wa'],
   hpdarurat: ['identitas.hp_darurat'],
+  darurat_nama: ['identitas.darurat_nama'],
+  darurat_hubungan: ['identitas.darurat_hubungan'],
   ktp: ['identitas.ktp'],
   paspor: ['identitas.paspor'],
   tgl_terbit_paspor: ['identitas.tgl_terbit_paspor'],

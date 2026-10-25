@@ -211,6 +211,10 @@ export default defineConfig({
             // (backend) dan kontrak skema; tidak menyentuh DOM sama sekali.
             // Tanpa baris ini ia jalan DUA KALI (R13f-bis).
             'e2e/identity-sync.test.ts',
+            // Ditambahkan 2026-10-25. Membandingkan peta kolom backend
+            // (`contexts/master-data`) dengan kontrak skema; tanpa DOM.
+            // Tanpa baris ini ia jalan DUA KALI (R13f-bis).
+            'e2e/form-column-parity.test.ts',
           ],
         },
       },
