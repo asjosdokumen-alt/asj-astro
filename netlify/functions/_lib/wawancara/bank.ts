@@ -25,6 +25,7 @@
  */
 import { supabaseJson, normalizeWa } from '../db/client';
 import { fetchMasterByWa } from '../db/master';
+import { isVipCatatan } from '../ai/interview-shared';
 import { geminiGenerate, parseJsonLoose } from '../ai/providers';
 import { AppError, Errors } from '../kernel/errors';
 
@@ -174,7 +175,7 @@ async function ambilKolomCv(wa: string, kolom: string[]): Promise<Record<string,
  * (mis. kandidat mengisi lewat halaman wawancara sebelum CV-nya pernah diisi).
  */
 export async function gabungBankDanJawaban(wa: string) {
-  const [bank, jawaban] = await Promise.all([ambilBank(), ambilJawaban(wa)]);
+  const [bank, jawaban, isVip] = await Promise.all([ambilBank(), ambilJawaban(wa), statusVip(wa)]);
   const kolom = bank.flatMap((s) => [s.kolom_cv, s.kolom_cv_jp]).filter(Boolean) as string[];
   const cv = await ambilKolomCv(wa, kolom);
 
@@ -193,10 +194,39 @@ export async function gabungBankDanJawaban(wa: string) {
 
   return {
     wa: normalizeWa(wa),
+    /**
+     * Status siswa ASJ (`[VIP]` / `[KELAS xx]`). `null` = tidak bisa dipastikan
+     * (query gagal) — pemanggil harus MEMYEMBUNYIKAN lencananya, bukan
+     * menampilkan "bukan VIP", karena lencana yang salah lebih buruk daripada
+     * tidak ada lencana.
+     */
+    isVip,
     jumlah: soal.length,
     tahap: [...new Set(soal.map((s) => s.tahap))],
     soal,
   };
+}
+
+/**
+ * Apakah nomor ini bertanda siswa ASJ?
+ *
+ * INFORMASI, BUKAN GERBANG. Terukur 2026-10-25: 226 kandidat, 90 bertanda
+ * `[VIP]`, 1 `[KELAS …]` — jadi ~135 TIDAK bertanda. Halaman `/wawancara`
+ * sekarang dibagikan lewat tautan WhatsApp ke kandidat, dan mengunci halaman
+ * ini berdasarkan tag akan memutus tautan yang sudah terkirim. Gerbang VIP
+ * yang sebenarnya tetap di dashboard (tombol Latihan Wawancara) dan di
+ * lamaran job MAGANG (`documents/service.ts`).
+ */
+export async function statusVip(wa: string): Promise<boolean | null> {
+  try {
+    const rows = await supabaseJson('GET', 'database_candidate', {
+      query: { select: 'catatan_internal', no_wa: `eq.${normalizeWa(wa)}`, limit: '1' },
+    });
+    if (!Array.isArray(rows) || !rows.length) return false;
+    return isVipCatatan((rows[0] as { catatan_internal?: unknown }).catatan_internal);
+  } catch {
+    return null;
+  }
 }
 
 /**

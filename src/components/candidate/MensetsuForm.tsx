@@ -49,6 +49,8 @@ interface Soal {
 interface BankRes {
   success?: boolean;
   wa?: string;
+  /** Status siswa ASJ. `null`/absen = tidak bisa dipastikan, lencana disembunyikan. */
+  isVip?: boolean | null;
   jumlah?: number;
   tahap?: string[];
   soal?: Soal[];
@@ -118,6 +120,8 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
 
   const [memuat, setMemuat] = useState(false);
   const [galat, setGalat] = useState('');
+  /** Status siswa ASJ dari server. `null` = belum/tidak diketahui. */
+  const [vip, setVip] = useState<boolean | null>(null);
   const [tahap, setTahap] = useState<string[]>([]);
   const [soal, setSoal] = useState<Soal[]>([]);
   const [draft, setDraft] = useState<Draft>({});
@@ -209,6 +213,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
       }
       const daftar = Array.isArray(d.soal) ? d.soal : [];
       setSoal(daftar);
+      setVip(typeof d.isVip === 'boolean' ? d.isVip : null);
       setTahap(Array.isArray(d.tahap) ? d.tahap : []);
       const awal: Draft = {};
       for (const s of daftar) {
@@ -405,6 +410,21 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
         <button type="button" onClick={() => void gateLogin()} class="w-full min-h-11 rounded-lg bg-accent-violet hover:bg-accent-violet/90 text-canvas text-sm font-bold">
           Masuk
         </button>
+        {/* Jalan keluar untuk kandidat yang nomornya BELUM terdaftar. Tanpa ini
+            mereka melihat "Password salah atau akun tidak ditemukan." dan tidak
+            punya tempat menuju — pendaftaran hanya ada di menu atas. Pesan
+            galatnya sendiri sengaja TIDAK dibedakan (anti-enumerasi, S9). */}
+        <p class="mt-3 text-center text-[12px] text-fg-muted">
+          {t('auth.belum_punya_akun')}{' '}
+          <button
+            type="button"
+            data-testid="mensetsu-gate-daftar"
+            onClick={() => window.dispatchEvent(new CustomEvent('asj-kandidat-register'))}
+            class="font-bold text-accent-violet underline hover:no-underline"
+          >
+            {t('header.register')}
+          </button>
+        </p>
       </section>
     );
   }
@@ -454,6 +474,16 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
             <p class="text-[11px] text-fg-muted">
               {tahapSekarang ? `Tahap ${tahapAktif + 1}/${tahap.length} · ${tahapSekarang}` : 'Memuat…'}
             </p>
+            {/* Status siswa ASJ. INFORMASI, bukan gerbang: lihat catatan di
+                `_lib/wawancara/bank.ts` — mengunci halaman ini berdasarkan tag
+                akan memutus tautan yang sudah dikirim ke kandidat non-VIP. */}
+            {vip !== null && (
+              <span
+                class={`mt-1 inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold ${vip ? 'border-accent-emerald text-accent-emerald' : 'border-line text-fg-subtle'}`}
+              >
+                {vip ? t('ui.badge_official') : t('wawancara.belum_vip')}
+              </span>
+            )}
           </div>
           {admin && (
             <button type="button" onClick={() => void salinLink()} class="min-h-9 px-2 py-1 rounded-lg bg-surface-raised hover:bg-surface-sunken text-fg border border-line text-[11px] font-bold">

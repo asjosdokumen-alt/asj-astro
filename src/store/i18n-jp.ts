@@ -1180,6 +1180,8 @@ export const jpTranslations: Record<string, string> = {
     "wawancara.cetak_tahap": "この段階を印刷",
     "wawancara.cetak_semua": "全段階を印刷",
     "wawancara.semua_tahap": "全段階",
+    "wawancara.belum_vip": "VIP未登録",
+    "auth.belum_punya_akun": "アカウントをお持ちでないですか？",
     "toolbar.apply": "応募フォーム",
     "toolbar.master": "CVマスター",
     "toolbar.share": "求人共有",

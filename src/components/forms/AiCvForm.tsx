@@ -1087,6 +1087,20 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
             onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') gateLogin(); }} />
           <button type="button" onClick={gateLogin} class="w-full mt-3 min-h-11 bg-amber-600 hover:bg-amber-500 text-white rounded-xl py-2.5 text-sm font-bold">{t("login.btn_masuk")}</button>
           {gateMsg && <div class="text-rose-400 text-xs text-center mt-2">{gateMsg}</div>}
+          {/* Jalan keluar untuk kandidat yang nomornya BELUM terdaftar — sama
+              seperti gerbang /wawancara. Pesan galatnya tetap tidak dibedakan
+              (anti-enumerasi, S9), jadi tautan inilah satu-satunya petunjuk. */}
+          <p class="mt-3 text-center text-[12px] text-fg-muted">
+            {t('auth.belum_punya_akun')}{' '}
+            <button
+              type="button"
+              data-testid="aicv-gate-daftar"
+              onClick={() => window.dispatchEvent(new CustomEvent('asj-kandidat-register'))}
+              class="font-bold text-amber-400 underline hover:no-underline"
+            >
+              {t('header.register')}
+            </button>
+          </p>
         </div>
       </div>
     );
