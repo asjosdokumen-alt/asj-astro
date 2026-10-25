@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "astro dev --host 0.0.0.0",
+    "dev:8888": "netlify dev --offline --port 8888",
     "build": "astro build && node scripts/build-sw-manifest.mjs && node -e \"const fs=require('fs');const j=process.env.JWT_PUBLIC_JWK;if(!j){console.warn('[jwks] JWT_PUBLIC_JWK not set - /jwks.json not emitted');process.exit(0)}fs.writeFileSync('dist/jwks.json',j)\"",
     "preview": "astro preview --host 0.0.0.0",
     "serve": "node server.cjs",
