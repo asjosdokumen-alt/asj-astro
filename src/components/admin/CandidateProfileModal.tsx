@@ -79,10 +79,17 @@ function hasClassTag(s: string): boolean {
 }
 
 /**
- * Daftar kelas LPK yang bisa dipilih. SATU tempat untuk menambah/mengganti —
- * nilai ini yang ditulis sebagai tag `[KELAS x]` di catatan internal.
+ * Daftar kelas LPK = NOMOR ANGKATAN, bukan tingkat.
+ *
+ * Aturan pemilik (2026-10-25): angkatan 1 = kelas A, angkatan 2 = B, dst.
+ * Sekarang sudah sampai **K**; kelas baru dibuka tiap 3 bulan, jadi Januari
+ * berikutnya jadi **L**. Karena itu daftarnya DIBANGKITKAN A–Z, bukan ditulis
+ * tangan: menambah angkatan tidak boleh menuntut perubahan kode.
+ *
+ * Nilainya ditulis sebagai tag `[KELAS x]` di catatan internal — server
+ * (`mapCandidate`) sudah menurunkan flag `kelas` dari tag itu.
  */
-const KELAS_OPTIONS = ['A', 'B', 'C', 'D', 'E'];
+const KELAS_OPTIONS: string[] = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
 
 function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbackWa: string): CandidateData {
   const catatanInt = String(c.catatanInt || c.catatanInternal || '');
