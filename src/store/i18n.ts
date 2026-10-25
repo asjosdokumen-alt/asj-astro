@@ -1661,6 +1661,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "toolbar.mensetsu": "Latihan Wawancara",
     "wawancara.gate_title": "Verifikasi Akun Kandidat",
     "wawancara.loading_bank": "Memuat bank soal…",
+    "wawancara.pilih_sifat": "Pilih sifat",
     "toolbar.apply": "Form Lamaran",
     "toolbar.master": "CV Master",
     "toolbar.share": "Share Loker",

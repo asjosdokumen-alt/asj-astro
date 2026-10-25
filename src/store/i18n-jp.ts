@@ -1175,6 +1175,7 @@ export const jpTranslations: Record<string, string> = {
     "toolbar.mensetsu": "面接練習",
     "wawancara.gate_title": "受験者アカウントの確認",
     "wawancara.loading_bank": "問題バンクを読み込み中…",
+    "wawancara.pilih_sifat": "性質を選ぶ",
     "toolbar.apply": "応募フォーム",
     "toolbar.master": "CVマスター",
     "toolbar.share": "求人共有",

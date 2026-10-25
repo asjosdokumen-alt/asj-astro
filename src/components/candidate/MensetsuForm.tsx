@@ -27,6 +27,7 @@ import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema } from '../../lib/schemas';
+import { opsiUntukSoal } from '../../lib/mensetsuOpsi';
 import { t } from '../../store/i18n';
 
 interface Soal {
@@ -347,31 +348,31 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
   /* ── render: gate ──────────────────────────────────────────────────────── */
   if (loginGate) {
     return (
-      <section aria-label={t('wawancara.gate_title')} class="max-w-md mx-auto my-8 rounded-card border border-slate-700 bg-slate-900 p-6">
-        <h2 class="text-base font-black text-white mb-1">{t('wawancara.gate_title')}</h2>
-        <p class="text-[12px] text-slate-400 mb-4">
+      <section aria-label={t('wawancara.gate_title')} class="max-w-md mx-auto my-8 rounded-card border border-line bg-surface p-6">
+        <h2 class="text-base font-black text-fg mb-1">{t('wawancara.gate_title')}</h2>
+        <p class="text-[12px] text-fg-muted mb-4">
           Masuk dengan nomor WhatsApp dan password akun Anda untuk membuka latihan wawancara.
         </p>
-        <label for="mensetsu-gate-wa" class="block text-[11px] font-bold text-slate-300 mb-1">Nomor WhatsApp</label>
+        <label for="mensetsu-gate-wa" class="block text-[11px] font-bold text-fg mb-1">Nomor WhatsApp</label>
         <input
           id="mensetsu-gate-wa"
           type="tel"
           value={gateWa}
           onInput={(e) => setGateWa((e.target as HTMLInputElement).value)}
           placeholder="08xxxxxxxxxx"
-          class="w-full mb-3 rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-white"
+          class="w-full mb-3 rounded-lg bg-surface-raised border border-line px-3 py-2 text-sm text-fg"
         />
-        <label for="mensetsu-gate-pass" class="block text-[11px] font-bold text-slate-300 mb-1">Password</label>
+        <label for="mensetsu-gate-pass" class="block text-[11px] font-bold text-fg mb-1">Password</label>
         <input
           id="mensetsu-gate-pass"
           type="password"
           value={gatePass}
           onInput={(e) => setGatePass((e.target as HTMLInputElement).value)}
           onKeyDown={(e) => { if ((e as KeyboardEvent).key === 'Enter') void gateLogin(); }}
-          class="w-full mb-3 rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-white"
+          class="w-full mb-3 rounded-lg bg-surface-raised border border-line px-3 py-2 text-sm text-fg"
         />
         {gateMsg && <p class="text-[12px] text-rose-400 mb-3">{gateMsg}</p>}
-        <button type="button" onClick={() => void gateLogin()} class="w-full min-h-11 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-bold">
+        <button type="button" onClick={() => void gateLogin()} class="w-full min-h-11 rounded-lg bg-accent-violet hover:bg-accent-violet/90 text-canvas text-sm font-bold">
           Masuk
         </button>
       </section>
@@ -384,16 +385,16 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
   return (
     <div class="grid grid-cols-1 lg:grid-cols-[35%_65%] gap-3 items-start">
       {/* ── kiri: AI menanyakan soal ─────────────────────────────────────── */}
-      <section class="rounded-card border border-slate-700 bg-slate-900 flex flex-col lg:sticky lg:top-2 h-[70vh] lg:h-[calc(100vh-120px)]">
-        <header class="px-3 py-2 border-b border-slate-700 flex items-center justify-between">
+      <section class="cetak-sembunyi rounded-card border border-line bg-surface flex flex-col lg:sticky lg:top-2 h-[70vh] lg:h-[calc(100vh-120px)]">
+        <header class="px-3 py-2 border-b border-line flex items-center justify-between">
           <div>
-            <h2 class="text-sm font-black text-white">Qween Jeklin — Latihan Mensetsu</h2>
-            <p class="text-[11px] text-slate-400">
+            <h2 class="text-sm font-black text-fg">Qween Jeklin — Latihan Mensetsu</h2>
+            <p class="text-[11px] text-fg-muted">
               {tahapSekarang ? `Tahap ${tahapAktif + 1}/${tahap.length} · ${tahapSekarang}` : 'Memuat…'}
             </p>
           </div>
           {admin && (
-            <button type="button" onClick={() => void salinLink()} class="min-h-9 px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-[11px] font-bold">
+            <button type="button" onClick={() => void salinLink()} class="min-h-9 px-2 py-1 rounded-lg bg-surface-raised hover:bg-surface-sunken text-fg border border-line text-[11px] font-bold">
               Link siswa
             </button>
           )}
@@ -401,15 +402,15 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
 
         <div ref={chatRef} class="flex-1 overflow-y-auto px-3 py-3 space-y-2">
           {chat.map((m, i) => (
-            <div key={i} class={m.dari === 'ai' ? 'text-[12.5px] text-slate-200 whitespace-pre-wrap rounded-lg bg-slate-800/70 px-3 py-2' : 'text-[12.5px] text-white whitespace-pre-wrap rounded-lg bg-violet-600/30 px-3 py-2 ml-6'}>
+            <div key={i} class={m.dari === 'ai' ? 'text-[12.5px] text-fg whitespace-pre-wrap rounded-lg bg-surface-raised px-3 py-2' : 'text-[12.5px] text-fg whitespace-pre-wrap rounded-lg bg-surface-raised px-3 py-2 ml-6'}>
               {m.teks}
             </div>
           ))}
-          {memuat && <p class="text-[12px] text-slate-400">{t('wawancara.loading_bank')}</p>}
+          {memuat && <p class="text-[12px] text-fg-muted">{t('wawancara.loading_bank')}</p>}
           {galat && <p class="text-[12px] text-rose-400">{galat}</p>}
         </div>
 
-        <footer class="border-t border-slate-700 p-2">
+        <footer class="border-t border-line p-2">
           <textarea
             rows={2}
             value={jawabanChat}
@@ -419,14 +420,14 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
               if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); void kirimChat(); }
             }}
             placeholder="Jawab dalam Bahasa Indonesia… (Enter kirim, Shift+Enter baris baru)"
-            class="w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2 text-sm text-white resize-y"
+            class="w-full rounded-lg bg-surface-raised border border-line px-3 py-2 text-sm text-fg resize-y"
           />
           <div class="flex gap-2 mt-2">
             <button
               type="button"
               onClick={() => void kirimChat()}
               disabled={!jawabanChat.trim() || !soalAktif || sibukBaris(soalAktif?.kode || '') === 'terjemah'}
-              class="flex-1 min-h-11 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-bold"
+              class="flex-1 min-h-11 rounded-lg bg-accent-violet hover:bg-accent-violet/90 disabled:opacity-50 text-canvas text-sm font-bold"
             >
               Kirim & terjemahkan
             </button>
@@ -437,7 +438,7 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
                 if (next < soalTahap.length) { setIdxTanya(next); tanya(soalTahap[next]); }
               }}
               disabled={idxTanya + 1 >= soalTahap.length}
-              class="min-h-11 px-3 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-40 text-white text-[11px] font-bold"
+              class="min-h-11 px-3 rounded-lg bg-surface-raised hover:bg-surface-sunken disabled:opacity-40 text-fg border border-line text-[11px] font-bold"
             >
               Lewati
             </button>
@@ -446,46 +447,81 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
       </section>
 
       {/* ── kanan: seluruh soal tahap aktif ──────────────────────────────── */}
-      <section class="rounded-card border border-slate-700 bg-slate-900">
-        <div class="px-3 py-2 border-b border-slate-700 flex flex-wrap gap-1.5">
+      <section class="rounded-card border border-line bg-surface">
+        <div class="px-3 py-2 border-b border-line flex flex-wrap gap-1.5">
           {tahap.map((t, i) => (
             <button
               key={t}
               type="button"
               onClick={() => mulaiTahap(i, tahap, soal)}
-              class={`min-h-8 px-2 py-1 rounded-md text-[11px] font-bold border ${i === tahapAktif ? 'bg-violet-600 border-violet-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}
+              class={`min-h-8 px-2 py-1 rounded-md text-[11px] font-bold border ${i === tahapAktif ? 'bg-accent-violet border-accent-violet text-canvas' : 'bg-surface-raised border-line text-fg hover:bg-surface-sunken'}`}
             >
               {i + 1}. {t}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => window.print()}
+            class="ml-auto min-h-8 px-2 py-1 rounded-md text-[11px] font-bold border border-line bg-surface-raised text-fg hover:bg-surface-sunken"
+          >
+            Cetak / PDF
+          </button>
         </div>
 
         {soalTahap.length === 0 ? (
-          <p class="p-4 text-[12px] text-slate-400">{memuat ? 'Memuat…' : galat || 'Tidak ada soal pada tahap ini.'}</p>
+          <p class="p-4 text-[12px] text-fg-muted">{memuat ? 'Memuat…' : galat || 'Tidak ada soal pada tahap ini.'}</p>
         ) : (
-          <ul class="divide-y divide-slate-800">
+          <ul class="divide-y divide-line">
             {soalTahap.map((s, i) => {
               const d = draft[s.kode] || { jp: '', romaji: '', arti: '' };
               const status = sibukBaris(s.kode);
               return (
-                <li key={s.kode} class={`p-3 ${i === idxTanya ? 'bg-slate-800/40' : ''}`}>
+                <li key={s.kode} class={`p-3 ${i === idxTanya ? 'bg-surface-raised' : ''}`}>
                   <div class="flex items-start gap-3">
-                    <span class="text-[11px] text-slate-500 w-5 text-right shrink-0">{i + 1}</span>
+                    <span class="text-[11px] text-fg-subtle w-5 text-right shrink-0">{i + 1}</span>
                     <div class="min-w-0 flex-1">
-                      <p class="text-[14px] text-white leading-snug" lang="ja">{s.jp}</p>
-                      <p class="text-[11.5px] text-slate-400">{s.romaji}</p>
-                      <p class="text-[12px] text-slate-300">{s.arti}</p>
+                      <p class="text-[14px] text-fg leading-snug" lang="ja">{s.jp}</p>
+                      <p class="text-[11.5px] text-fg-muted">{s.romaji}</p>
+                      <p class="text-[12px] text-fg">{s.arti}</p>
                       {s.sinkron_cv && (
-                        <p class="mt-1 inline-block text-[10px] font-bold text-emerald-300 border border-emerald-700 rounded px-1.5 py-0.5">
+                        <p class="mt-1 inline-block text-[10px] font-bold text-accent-emerald border border-accent-emerald rounded px-1.5 py-0.5">
                           tersambung CV — {s.kolom_cv}
                         </p>
                       )}
                     </div>
                   </div>
 
+                  {/* Soal sifat (長所/短所/特技): siswa memilih dari daftar materi
+                      LPK, lalu cara baca + artinya terisi. Versi Jepangnya
+                      sengaja TIDAK diisi otomatis — itu bagian yang harus
+                      dilatih, dan tombol "Isi Jepang otomatis" ada untuk itu. */}
+                  {opsiUntukSoal(s.jp) && (
+                    <label class="mt-2 grid grid-cols-[68px_1fr] gap-2 items-center">
+                      <span class="text-[10px] uppercase tracking-wide text-fg-muted">{t('wawancara.pilih_sifat')}</span>
+                      <select
+                        class="w-full rounded-md bg-surface-sunken border border-line px-2 py-1 text-[12.5px] text-fg"
+                        onChange={(e) => {
+                          const el = e.target as HTMLSelectElement;
+                          const opsi = opsiUntukSoal(s.jp) || [];
+                          const o = opsi[Number(el.value)];
+                          if (!o) return;
+                          setDraft((x) => ({
+                            ...x,
+                            [s.kode]: { jp: d.jp, romaji: o.ro, arti: o.arti },
+                          }));
+                        }}
+                      >
+                        <option value="">— pilih dari daftar ({(opsiUntukSoal(s.jp) || []).length} pilihan) —</option>
+                        {(opsiUntukSoal(s.jp) || []).map((o, oi) => (
+                          <option value={oi}>{o.ro} — {o.arti}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+
                   <div class="mt-2 grid gap-1.5">
                     <label class="grid grid-cols-[68px_1fr] gap-2 items-center">
-                      <span class="text-[10px] uppercase tracking-wide text-slate-400">日本語</span>
+                      <span class="text-[10px] uppercase tracking-wide text-fg-muted">日本語</span>
                       <textarea
                         rows={2}
                         lang="ja"
@@ -496,11 +532,11 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
                         }}
                         onBlur={() => void simpanBaris(s.kode, true)}
                         placeholder="tulis jawaban Jepang…"
-                        class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-[13px] text-white"
+                        class="w-full rounded-md bg-surface-sunken border border-line px-2 py-1 text-[13px] text-fg"
                       />
                     </label>
                     <label class="grid grid-cols-[68px_1fr] gap-2 items-center">
-                      <span class="text-[10px] uppercase tracking-wide text-slate-400">Cara baca</span>
+                      <span class="text-[10px] uppercase tracking-wide text-fg-muted">Cara baca</span>
                       <input
                         value={d.romaji}
                         onInput={(e) => {
@@ -509,11 +545,11 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
                         }}
                         onBlur={() => void simpanBaris(s.kode, true)}
                         placeholder="romaji…"
-                        class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-[12.5px] text-white"
+                        class="w-full rounded-md bg-surface-sunken border border-line px-2 py-1 text-[12.5px] text-fg"
                       />
                     </label>
                     <label class="grid grid-cols-[68px_1fr] gap-2 items-center">
-                      <span class="text-[10px] uppercase tracking-wide text-slate-400">Indonesia</span>
+                      <span class="text-[10px] uppercase tracking-wide text-fg-muted">Indonesia</span>
                       <input
                         value={d.arti}
                         onInput={(e) => {
@@ -522,7 +558,7 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
                         }}
                         onBlur={() => void simpanBaris(s.kode, true)}
                         placeholder="arti jawaban…"
-                        class="w-full rounded-md bg-slate-950 border border-slate-700 px-2 py-1 text-[12.5px] text-white"
+                        class="w-full rounded-md bg-surface-sunken border border-line px-2 py-1 text-[12.5px] text-fg"
                       />
                     </label>
                   </div>
@@ -547,7 +583,7 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
                     <button
                       type="button"
                       onClick={() => setContoh((c) => ({ ...c, [s.kode]: !c[s.kode] }))}
-                      class="min-h-9 px-2.5 rounded-md border border-emerald-700 text-emerald-300 text-[11px] font-bold"
+                      class="min-h-9 px-2.5 rounded-md border border-accent-emerald text-accent-emerald text-[11px] font-bold"
                     >
                       {contoh[s.kode] ? 'Sembunyikan contoh' : 'Contoh jawaban'}
                     </button>
@@ -555,7 +591,7 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
                       <button
                         type="button"
                         onClick={() => { setIdxTanya(i); tanya(s); }}
-                        class="min-h-9 px-2.5 rounded-md border border-slate-600 text-slate-300 text-[11px] font-bold"
+                        class="min-h-9 px-2.5 rounded-md border border-line-strong text-fg text-[11px] font-bold"
                       >
                         Tanya ini di chat
                       </button>
@@ -563,9 +599,9 @@ export default function MensetsuForm({ waTarget = '' }: Props) {
                   </div>
 
                   {contoh[s.kode] && (
-                    <div class="mt-2 border-l-2 border-emerald-700 pl-2.5 text-[12.5px] text-emerald-200/90 space-y-1">
+                    <div class="mt-2 border-l-2 border-accent-emerald pl-2.5 text-[12.5px] text-accent-emerald space-y-1">
                       <p lang="ja" class="text-[13.5px]">{s.jawaban_jp}</p>
-                      <p class="text-emerald-200/70">{s.jawaban_romaji}</p>
+                      <p class="text-fg-muted">{s.jawaban_romaji}</p>
                       <p>{s.jawaban_arti}</p>
                     </div>
                   )}

@@ -17,7 +17,7 @@ import MensetsuForm from '../components/candidate/MensetsuForm.tsx';
     <div class="max-w-[1400px] mx-auto px-3">
       <section class="mb-3">
         <h1 class="text-xl md:text-2xl font-bold text-fg mb-1">Latihan Wawancara Jepang (Mensetsu)</h1>
-        <p class="text-fg-muted text-[12.5px] leading-relaxed">
+        <p class="cetak-sembunyi text-fg-muted text-[12.5px] leading-relaxed">
           Bank soal mengikuti alur wawancara sebenarnya — perkenalan, keluarga, pendidikan, pengalaman,
           bahasa Jepang, kelebihan &amp; kekurangan, motivasi, rencana, kehidupan sehari-hari, kesehatan,
           ibadah, kerja shift, sampai penutup. Tulis jawaban Anda dalam Bahasa Indonesia, lalu tekan
@@ -31,3 +31,45 @@ import MensetsuForm from '../components/candidate/MensetsuForm.tsx';
     </div>
   </main>
 </BaseLayout>
+
+<style is:global>
+  /* Cetak / PDF. Tujuan: yang tercetak hanya daftar soal + isian, bukan chat,
+     tombol, atau pengantar — kalau tidak, satu tahap bisa jadi 3-4 halaman
+     yang separuhnya tidak dibaca. Kelas `.cetak-sembunyi` dipasang di panel
+     chat dan di pengantar halaman. */
+  @media print {
+    header,
+    .cetak-sembunyi,
+    button,
+    select {
+      display: none !important;
+    }
+    main {
+      padding: 0 !important;
+    }
+    main > div {
+      max-width: none !important;
+      padding: 0 !important;
+    }
+    section {
+      border: 0 !important;
+      background: #fff !important;
+    }
+    section ul {
+      display: block !important;
+    }
+    section li {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      border-bottom: 1px solid #ccc !important;
+      background: #fff !important;
+    }
+    input,
+    textarea {
+      border: 0 !important;
+      border-bottom: 1px solid #999 !important;
+      background: #fff !important;
+      color: #000 !important;
+    }
+  }
+</style>
