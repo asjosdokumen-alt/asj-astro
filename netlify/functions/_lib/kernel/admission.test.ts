@@ -325,3 +325,52 @@ describe('admission — stale latency reading', () => {
     }
   });
 });
+
+/**
+ * The SAME self-perpetuating failure, one signal over: the BREAKER term never
+ * got the guard the latency term did.
+ *
+ * `saturationFor()` reads `breaker.getState('postgrest')`, and that getter
+ * returned the stored state verbatim. The open → half-open promotion lives in
+ * `breaker.check()`, which runs only AFTER a request has been admitted. So an
+ * open breaker pinned saturation to 1 ⇒ every action was shed (P1 at 0.95, P2
+ * at 0.8) ⇒ no PostgREST call ever ran ⇒ `check()` was never reached ⇒ the
+ * record never expired. The instance shed itself until Netlify recycled it.
+ *
+ * MEASURED 2026-10-25 on production, and this is why the test exists: the
+ * `master-data` function answered `503 OVERLOADED` to `getDrafCvMaster` (P2,
+ * retryAfter 5) and to `getTemplateCvList` (P1, retryAfter 2) — saturation
+ * exactly 1 with zero in-flight and a ~700 ms PostgREST EWMA on every other
+ * instance — while the identical PostgREST query returned 200 in 0.13 s. The
+ * user-visible symptom was the CV AI form refusing to load its draft and
+ * showing "Gagal memuat data Master."
+ */
+describe('admission — stale breaker record', () => {
+  it('stops shedding once the open breaker has served its cooldown', () => {
+    vi.useFakeTimers();
+    try {
+      resetForTests();
+      breaker.reset('postgrest');
+      for (let i = 0; i < 5; i++) breaker.failure('postgrest');
+      expect(breaker.getState('postgrest')).toBe('open');
+
+      // Inside the cooldown the shed is CORRECT — PostgREST really is failing.
+      const shed = admit('getAppData');
+      expect(shed.admitted).toBe(false);
+
+      // After the cooldown a probe is DUE. If this still reads `open`, nothing
+      // is ever admitted, so the probe that would close the breaker can never
+      // happen — the instance is dead until it is recycled.
+      vi.setSystemTime(Date.now() + 16_000);
+      expect(breaker.getState('postgrest')).toBe('half-open');
+
+      const recovered = admit('getAppData');
+      expect(recovered.admitted).toBe(true);
+      release(recovered.tier);
+    } finally {
+      breaker.reset('postgrest');
+      resetForTests();
+      vi.useRealTimers();
+    }
+  });
+});
