@@ -116,6 +116,12 @@ npm run serve             # = node server.cjs → http://localhost:4321
 # Dev server untuk mengedit
 npm run dev               # astro dev, default port 4321
 
+# Server lokal LENGKAP (UI + fungsi Netlify) — ini yang dipakai sehari-hari
+dev.cmd                   # klik dua kali di Explorer -> http://localhost:8888
+npm run dev:8888          # sama, dari terminal
+                          # syarat, jebakan, dan cara memeriksanya:
+                          # docs/LOCAL_SERVER_8888.md
+
 # Build produksi
 npm run build             # astro build + sw-manifest
 ```
