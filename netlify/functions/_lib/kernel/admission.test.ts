@@ -355,14 +355,17 @@ describe('admission — stale breaker record', () => {
       expect(breaker.getState('postgrest')).toBe('open');
 
       // Inside the cooldown the shed is CORRECT — PostgREST really is failing.
+      expect(breaker.blocksTraffic('postgrest')).toBe(true);
       const shed = admit('getAppData');
       expect(shed.admitted).toBe(false);
 
-      // After the cooldown a probe is DUE. If this still reads `open`, nothing
-      // is ever admitted, so the probe that would close the breaker can never
-      // happen — the instance is dead until it is recycled.
+      // After the cooldown a probe is DUE. Stored state stays `open` (that is
+      // what health reports), but it must stop refusing traffic — otherwise
+      // nothing is ever admitted, the probe that would close the breaker can
+      // never run, and the instance is dead until it is recycled.
       vi.setSystemTime(Date.now() + 16_000);
-      expect(breaker.getState('postgrest')).toBe('half-open');
+      expect(breaker.getState('postgrest')).toBe('open');
+      expect(breaker.blocksTraffic('postgrest')).toBe(false);
 
       const recovered = admit('getAppData');
       expect(recovered.admitted).toBe(true);

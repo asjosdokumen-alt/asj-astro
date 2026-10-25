@@ -4,7 +4,7 @@
 // salah map = kandidat dapat model wawancara bidang yang salah.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { normalizeBidang, boundTranscript } from './chat';
+import { normalizeBidang, boundTranscript, AI_FORM_DATA_INSTRUCTION } from './chat';
 
 // Known-word assertions: tests prove non-null by asserting it once (helper),
 // mirroring how the callers treat matched bidang (BIDANG_DEFAULT fallback).
@@ -77,5 +77,45 @@ describe('boundTranscript — transkrip panjang dipotong di TENGAH', () => {
     // Tanpa penanda, model akan menyangka wawancaranya memang sependek itu dan
     // merangkum seolah tidak ada yang hilang.
     expect(out).toContain('dipotong');
+  });
+});
+
+// ==========================================
+// TESTS: prompt — alamat wajib berkode pos.
+//
+// Laporan pemilik 2026-10-25 (screenshot): ia minta "alamat lengkap sesuai model
+// KTP dan kode posnya", dan Qween Jeklin menjawab
+// "DUSUN NGLINGI DESA GANDU KEPUH KECAMATAN SUKOREJO KABUPATEN PONOROGO"
+// — tanpa kode pos. Sebelum ini prompt TIDAK PERNAH menyebut kode pos sama sekali
+// (grep "kode pos" di seluruh src/netlify = 0 hasil), jadi model tidak punya
+// alasan untuk menambahkannya. Ketiga asersi di bawah gagal kalau aturan itu
+// hilang lagi dari prompt.
+// ==========================================
+describe('prompt — alamat wajib berkode pos (format KTP)', () => {
+  it('menyuruh AI menutup alamat dengan kode pos 5 digit', () => {
+    expect(AI_FORM_DATA_INSTRUCTION).toMatch(/KODE POS/i);
+    expect(AI_FORM_DATA_INSTRUCTION).toMatch(/5 digit/i);
+  });
+
+  it('mengizinkan kode pos diisi dari wilayah yang disebut, karena itu data publik', () => {
+    expect(AI_FORM_DATA_INSTRUCTION).toMatch(/desa\/kecamatan\/kabupaten/i);
+    expect(AI_FORM_DATA_INSTRUCTION).toMatch(/data wilayah publik/i);
+  });
+
+  it('tetap melarang mengarang RT/RW dan nomor rumah', () => {
+    expect(AI_FORM_DATA_INSTRUCTION).toMatch(/JANGAN mengarang RT\/RW/i);
+  });
+
+  it('mewajibkan PROVINSI ikut ditulis, bukan berhenti di kabupaten', () => {
+    expect(AI_FORM_DATA_INSTRUCTION).toMatch(/KABUPATEN\/KOTA, PROVINSI/i);
+  });
+
+  it('alamat_jp memakai urutan Jepang dan diawali 〒', () => {
+    expect(AI_FORM_DATA_INSTRUCTION).toContain('〒');
+    expect(AI_FORM_DATA_INSTRUCTION).toMatch(/TERBESAR ke TERKECIL/i);
+  });
+
+  it('aturan anti-mengarang data pribadi tidak ikut hilang', () => {
+    expect(AI_FORM_DATA_INSTRUCTION).toMatch(/JANGAN menebak\/mengarang data yang tidak disebut/i);
   });
 });

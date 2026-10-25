@@ -315,7 +315,7 @@ function latencyPressure(): number {
 function saturationFor(tier: Tier): number {
   const tierRatio = inflightByTier[tier] / CAP[tier];
   const totalRatio = inflightTotal / TOTAL_CAP;
-  const breakerPressure = breaker.getState('postgrest') === 'open' ? 1 : 0;
+  const breakerPressure = breaker.blocksTraffic('postgrest') ? 1 : 0;
   return Math.max(tierRatio, totalRatio, latencyPressure(), breakerPressure);
 }
 

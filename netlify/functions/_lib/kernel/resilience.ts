@@ -248,38 +248,44 @@ class CircuitBreaker {
   }
 
   /**
-   * Effective state — for observability AND for admission pressure.
-   *
-   * `check()` is the ONLY place that promotes `open` → `half-open` after the
-   * cooldown, and `check()` runs only AFTER a request has been admitted. But
-   * `admission.saturationFor()` reads this getter to decide whether to admit at
-   * all, so returning the stored state verbatim is self-perpetuating:
-   *
-   *   open ⇒ saturation 1 ⇒ every action shed (P1 at 0.95, P2 at 0.8) ⇒ no
-   *   PostgREST call ⇒ `check()` never reached ⇒ the record never expires.
-   *
-   * MEASURED 2026-10-25 on production: the `master-data` function answered
-   * `503 OVERLOADED` to `getDrafCvMaster` (P2, retryAfter 5) and to
-   * `getTemplateCvList` (P1, retryAfter 2) — saturation exactly 1 with zero
-   * in-flight and a ~700 ms PostgREST EWMA on every other instance — while the
-   * identical PostgREST query returned 200 in 0.13 s. Only recycling the
-   * instance cured it. The user-visible symptom was the CV AI form refusing to
-   * load its draft ("Gagal memuat data Master.").
-   *
-   * So report the EFFECTIVE state: an `open` record whose cooldown has elapsed
-   * is `half-open` — a probe is due — which drops the pressure term to 0 and
-   * lets the next request reach `check()`, the only place that can close it.
-   * Deliberately NOT mutating: `check()` owns the transition, and writing
-   * `half-open` here would make its own "probe already in flight" branch reject
-   * the very probe this getter just enabled.
+   * STORED state — for observability and health reporting. Unchanged on
+   * purpose: several callers (and tests) use it to ask "has the breaker
+   * tripped?", which is a different question from "should new traffic be
+   * admitted right now?" — see `blocksTraffic()`.
    */
   getState(dep: string): BreakerState {
+    return this.records.get(dep)?.state ?? 'closed';
+  }
+
+  /**
+   * Should NEW traffic be refused because of this dependency, right now?
+   *
+   * WHY THIS EXISTS SEPARATELY FROM `getState()`
+   *   `admission.saturationFor()` used `getState(dep) === 'open'` as its breaker
+   *   pressure term, and that made the instance shed itself forever:
+   *
+   *     open ⇒ saturation 1 ⇒ every action shed (P1 at 0.95, P2 at 0.8) ⇒ no
+   *     PostgREST call ⇒ `check()` — the ONLY place that promotes
+   *     open → half-open after the cooldown — is never reached ⇒ the record
+   *     never expires. Only recycling the instance cured it.
+   *
+   *   MEASURED 2026-10-25 on production: the `master-data` function answered
+   *   `503 OVERLOADED` to `getDrafCvMaster` (P2, retryAfter 5) and to
+   *   `getTemplateCvList` (P1, retryAfter 2) — saturation exactly 1 with zero
+   *   in-flight and a ~700 ms PostgREST EWMA on every other instance — while the
+   *   identical PostgREST query returned 200 in 0.13 s. The user-visible symptom
+   *   was the CV AI form refusing to load its draft ("Gagal memuat data Master.").
+   *
+   *   So an `open` record whose cooldown has ELAPSED must not count as pressure:
+   *   a probe is due, and admitting it is the only way `check()` ever runs.
+   *   Deliberately does NOT mutate — `check()` owns the transition, and writing
+   *   `half-open` here would make its "probe already in flight" branch reject
+   *   the very probe this method just enabled.
+   */
+  blocksTraffic(dep: string): boolean {
     const rec = this.records.get(dep);
-    if (!rec) return 'closed';
-    if (rec.state === 'open' && Date.now() - rec.openedAt >= this.optsFor(dep).coolDownMs) {
-      return 'half-open';
-    }
-    return rec.state;
+    if (rec?.state !== 'open') return false;
+    return Date.now() - rec.openedAt < this.optsFor(dep).coolDownMs;
   }
 
   /**

@@ -184,7 +184,7 @@ async function autoTranslateMissingJp(data: Record<string, any>): Promise<void> 
 // Skema data yang DIISI OTOMATIS ke form ai_form (kunci persis fieldPaths di
 // js/pages/ai_form.js). AI diminta mengembalikan JSON {reply, data} — tanpa ini
 // form tidak pernah terisi (dulu AI cuma balas teks).
-const AI_FORM_DATA_INSTRUCTION =
+export const AI_FORM_DATA_INSTRUCTION =
   '\n\nPENTING — jawab SELALU dalam SATU objek JSON valid (tanpa teks lain, tanpa ```):\n' +
   '{"reply": "<balasan ramah untuk kandidat, dalam bahasa percakapan>", "data": <objek data di bawah>}\n' +
   'data harus berisi SEMUA data kandidat yang diketahui dari SELURUH percakapan, dengan kunci persis:\n' +
@@ -197,6 +197,23 @@ const AI_FORM_DATA_INSTRUCTION =
   '"pendidikan": [{"tingkat","sekolah_id","sekolah_jp","jurusan_id","jurusan_jp","masuk","lulus"}], ' +
   '"pekerjaan": [{"perusahaan_id","perusahaan_jp","jabatan_id","jabatan_jp","masuk","keluar","gaji"}], ' +
   '"keluarga": [{"hubungan_id","hubungan_jp","nama","katakana","umur","pekerjaan_id","pekerjaan_jp","gaji"}]}\n' +
+  // Laporan pemilik 2026-10-25 (screenshot): diminta "alamat lengkap sesuai model
+  // KTP dan kode posnya", Qween Jeklin menjawab "DUSUN NGLINGI DESA GANDU KEPUH
+  // KECAMATAN SUKOREJO KABUPATEN PONOROGO" — tanpa kode pos DAN tanpa provinsi.
+  // Prompt tidak pernah menyebut kode pos sama sekali. Percobaan pertama menaruh
+  // aturan ini di akhir blok instruksi: model (flash-lite) MENGABAIKANNYA dan
+  // menyalin alamat mentah — terukur 2026-10-25 lewat ai-chat lokal. Karena itu
+  // aturannya diletakkan PALING DEPAN, memakai kata "ditulis ULANG", dan memuat
+  // contoh lengkap. Jangan dipindah ke belakang lagi.
+  'ATURAN WAJIB — ALAMAT (paling sering salah, baca sebelum mengisi): field `alamat` HARUS ditulis ULANG ' +
+  '(JANGAN salin mentah ucapan kandidat) dengan format KTP berurutan: JALAN/PERUMAHAN + nomor (atau DUSUN), RT/RW, ' +
+  'DESA/KELURAHAN, KECAMATAN, KABUPATEN/KOTA, PROVINSI, dan DIAKHIRI KODE POS 5 digit. ' +
+  'Contoh: "DUSUN NGLINGI RT 001 RW 002 DESA GANDUKEPUH KECAMATAN SUKOREJO KABUPATEN PONOROGO JAWA TIMUR 63453". ' +
+  'KODE POS WAJIB ADA: kalau kandidat tidak menyebutkannya, ISI SENDIRI dari desa/kecamatan/kabupaten/provinsi yang disebut — ' +
+  'kode pos dan provinsi adalah data wilayah publik, bukan data pribadi — lalu sebutkan di `reply` bahwa kode pos diisi otomatis. ' +
+  'JANGAN mengarang RT/RW, nomor rumah, atau nama dusun yang tidak disebut kandidat. ' +
+  '`alamat_jp` = alamat yang SAMA ditulis urut TERBESAR ke TERKECIL (gaya Jepang) dan SELALU diawali simbol 〒, ' +
+  'mis. "〒63453 東ジャワ州ポノロゴ県スクレジョ郡ガンドゥクプフ村" — bukan alamat yang berada di Jepang.\n' +
   'Aturan data: isi hanya field yang benar-benar diketahui dari percakapan (nilai bukan null, string kosong "" untuk yang belum); ' +
   'gender SELALU dinormalisasi ke "LAKI-LAKI" atau "PEREMPUAN"; ' +
   'JANGAN menebak/mengarang data yang tidak disebut kandidat; sertakan juga data yang sudah ada di DATA KANDIDAT SAAT INI.\n' +
