@@ -1,5 +1,25 @@
 # AI CV Full Page — Side-by-Side: Astro v2 (sekarang) vs Legacy
 
+> ## ⚠️ Dokumen ini adalah potret **2026-09-19**. Sebagian verdict di bawah sudah
+> ## tidak berlaku — baca catatan ini dulu sebelum memakai tabelnya.
+>
+> Yang sudah berubah sesudah tanggal itu (semua diverifikasi kode, bukan ingatan):
+>
+> | Verdict lama | Keadaan sekarang |
+> |---|---|
+> | "Kolom manual **SEMUA `readonly`** — regresi" | **Bisa diedit.** `handleManualEdit` + `touchedFields`; lihat `AiCvForm.test.tsx` "edit manual & seksi dinamis". |
+> | "Pendidikan/Pekerjaan/Keluarga **kosong** — regresi" | **Tiga repeater nyata** (`EDU_MAX`/`JOB_MAX`/`FAM_MAX`), dengan tambah/hapus baris. |
+> | "Status tombol Simpan **tidak ada**" | `savePhase` 5 keadaan + `disabled` (mencegah simpan ganda). |
+> | "Layout 35/65" | Tetap 35/65, **tetapi tab awal sekarang `form`** (manual-first, 2026-10-25). Jeklin punya dua mode: chat / terjemah. |
+> | "Dropdown ID↔JP sebagian" | `PAIRED_FIELDS` + `PairSelect`; satu input di layar, dua kolom di DB. |
+>
+> **Paritas field dengan Form Master** (2026-10-25): enam field yang hanya ada di
+> Master ditambahkan (`tindik`, `no_coe`, tgl terbit / exp / kota paspor,
+> `lisensi2`), dan tiga kolom kontak darurat + tiga kolom kenalan Indonesia
+> dipetakan. Dijaga dua gate: `e2e/ai-cv-column-coverage.test.ts` (setiap field
+> CV AI punya tujuan kolom) dan `e2e/form-column-parity.test.ts` (kolom yang bisa
+> ditulis Master harus bisa ditulis CV AI juga).
+
 > **Dibuat:** 2026-09-19 · **Metode:** baca kode, bukan dokumentasi.
 > - **v2 sekarang:** `src/components/forms/AiCvForm.tsx` (993 baris), `src/pages/ai-cv.astro`
 > - **Legacy:** `F:\Asjpow4v7-main\khoci921\ai_form.html` (393 baris) + `js/pages/ai_form.ts`

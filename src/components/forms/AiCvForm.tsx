@@ -374,6 +374,17 @@ interface AiCvFormProps {
 const SAVE_ICON_BUSY = 'cloud-upload-alt';
 const SAVE_ICON_DONE = 'check';
 
+/**
+ * Nilai pembanding mode Jeklin — KONSTANTA, bukan literal di dalam `name={…}`.
+ *
+ * Alasan yang sama dengan `SAVE_ICON_*` di atas: `build-icon-sprite.mjs`
+ * memanen SETIAP literal string di dalam ekspresi `name={ … }`, jadi
+ * `name={m === 'chat' ? 'comments' : 'language'}` membuat pemindai percaya ada
+ * glyph bernama `chat` — dan `Icon.test.ts` memerah dengan pesan
+ * "run: npm run icons" untuk token yang tidak pernah ada. Terukur 2026-10-25.
+ */
+const MODE_CHAT = 'chat';
+
 export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
   const lang = useLang();
   /* MANUAL-FIRST (keputusan pemilik 2026-10-25): *"cv ai isi manual, cuma ada
@@ -1106,7 +1117,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               class={`flex-1 min-h-9 rounded-lg text-[11px] font-bold border transition-colors ${jeklinMode === m
                 ? 'bg-amber-600/20 text-amber-400 border-amber-500'
                 : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'}`}>
-              <Icon name={m === 'chat' ? 'comments' : 'language'} class="mr-1" />
+              <Icon name={m === MODE_CHAT ? 'comments' : 'language'} class="mr-1" />
               {m === 'chat' ? t('ai_cv.mode_chat') : t('ai_cv.mode_translate')}
             </button>
           ))}
