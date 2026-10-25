@@ -34,6 +34,30 @@ Ketiganya menjalankan hal yang sama. `dev.cmd` menambah dua hal yang tidak ada
 di dua cara lainnya: membersihkan `NODE_OPTIONS` dan mematikan sisa proses di
 port 4321/8888 sebelum mulai.
 
+## Database: lokal memakai Neon (data produksi)
+
+Sejak **2026-10-25** `.env.local` menunjuk database yang sama dengan produksi.
+Sebelumnya ia masih menunjuk proyek Supabase lama, dan akibatnya fitur yang
+tabelnya baru ada di Neon (mis. `wawancara_soal`, migrasi 021) **tidak akan
+pernah muncul di lokal** — seberapa pun kali schema cache di Neon di-refresh,
+karena permintaannya tidak pernah sampai ke Neon.
+
+| Variabel | Menunjuk ke | Kenapa |
+| --- | --- | --- |
+| `SUPABASE_URL` + kunci | Neon | Database utama, sama dengan produksi |
+| `SUPABASE_JWT_ALG` / `_KID` / `_PRIVATE_KEY` | Neon | Neon memverifikasi lewat JWKS, bukan shared secret |
+| `STORAGE_SUPABASE_URL` / `_KEY` | Supabase | **Storage tetap di Supabase**, hanya DB yang pindah |
+| `SUPABASE_JWT_SECRET` | mati | Kalau dihidupkan, kode jatuh ke HS256 dan Neon menolak semua token |
+
+> **Peringatan.** Karena lokal memakai database produksi, jawaban yang Anda
+> simpan saat menguji masuk ke data siswa sungguhan. Kalau perlu menguji sesuatu
+> yang berbahaya, pakai kandidat uji — bukan kandidat asli.
+
+Cadangan `.env.local` sebelum perubahan ada di
+`env-kunci/.env.local.backup-2026-10-25`. Kalau panel admin tiba-tiba
+menampilkan `PGRST205 ... in the schema cache` lagi, periksa dulu host di
+`SUPABASE_URL` — kemungkinan berkas itu kembali ke nilai lama.
+
 ## Dua jebakan yang membuat "kode terbaru" jadi bohong
 
 Keduanya sudah ditangani `dev.cmd`. Kalau menjalankan perintah manual, keduanya
