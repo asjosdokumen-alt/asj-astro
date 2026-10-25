@@ -65,8 +65,13 @@ interface CvData {
   goldar: string; status: string; anak: string; email: string; alamat: string;
   hp: string; hpdarurat: string; ktp: string; paspor: string; sim: string;
   paspor_status: string; sim_status: string;
+  /* Paspor: terbit / berlaku / kota terbit. Form Master sudah menanyakan
+     ketiganya; CV AI tidak, jadi kandidat VIP tidak punya jalan mengisinya.
+     Ditambahkan 2026-10-25 — lihat catatan paritas di `AI_CV_FLAT_KEYS`. */
+  tgl_terbit_paspor: string; exp_paspor: string; kota_paspor: string;
   tb: string; bb: string; tangan: string; sepatu: string; baju: string; topi: string; tahan_ac: string;
   matakanan: string; matakiri: string; kacamata: string; butawarna: string; tato: string;
+  tindik: string;
   rokok: string; alkohol: string;
   alergi_id: string; alergi_jp: string; medis_id: string; medis_jp: string; laka_id: string; laka_jp: string;
   riwayatjepang: string;
@@ -77,6 +82,8 @@ interface CvData {
   keinginan_id: string; keinginan_jp: string; tujuan_id: string; tujuan_jp: string;
   lama: string; gaji_yen: string; tabungan: string;
   bhs_jepang: string; nilai: string; lisensi: string;
+  /** Lisensi SSW kedua — Form Master punya dua slot, CV AI dulu hanya satu. */
+  lisensi2: string; no_coe: string;
   kenalan_nama_id: string; kenalan_nama_jp: string; kenalan_hub_id: string; kenalan_hub_jp: string;
   kenalan_kerja_id: string; kenalan_kerja_jp: string; kenalan_usia: string;
   kenalan_alamat_id: string; kenalan_alamat_jp: string;
@@ -367,7 +374,17 @@ const SAVE_ICON_DONE = 'check';
 
 export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
   const lang = useLang();
-  const [tab, setTab] = useState<'chat' | 'form'>('chat');
+  /* MANUAL-FIRST (keputusan pemilik 2026-10-25): *"cv ai isi manual, cuma ada
+     bantuan ai"*. Dulu tab awal `chat`, jadi kandidat mendarat di kotak obrolan
+     dan form-nya bahkan tidak terlihat di layar ponsel. Sekarang form yang
+     terbuka lebih dulu; Jeklin tetap ada sebagai panel bantuan di sampingnya
+     (desktop) atau satu ketuk di tab (ponsel). */
+  const [tab, setTab] = useState<'chat' | 'form'>('form');
+  /* Dua mode bantuan, sesuai permintaan pemilik: mengobrol, atau menerjemahkan.
+     Mode terjemah TIDAK mengirim teks bebas — ia mengirim satu permintaan tetap
+     yang sudah dikenal server (`chat.ts` mengisi setiap field `_jp` yang kosong
+     dari `_id`), jadi kandidat tidak perlu tahu kalimat ajaibnya. */
+  const [jeklinMode, setJeklinMode] = useState<'chat' | 'translate'>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -862,11 +879,14 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           paspor_status: cv.paspor_status || (cv.paspor ? 'ADA' : ''),
           sim_status: cv.sim_status || (cv.sim ? 'ADA' : ''),
           status_eks_jepang: cv.riwayatjepang,
+          /* Paritas paspor dengan Form Master (2026-10-25). */
+          tgl_terbit_paspor: cv.tgl_terbit_paspor, exp_paspor: cv.exp_paspor, kota_paspor: cv.kota_paspor,
         },
         fisik: { tb: cv.tb, bb: cv.bb, tangan_dominan: cv.tangan, sepatu: cv.sepatu, baju: cv.baju, topi: cv.topi, tahan_ac: cv.tahan_ac },
         medis: {
           mata_kiri: cv.matakiri, mata_kanan: cv.matakanan, kacamata: cv.kacamata,
           buta_warna: cv.butawarna, tato: cv.tato, rokok: cv.rokok, alkohol: cv.alkohol,
+          tindik: cv.tindik,
           alergi_id: cv.alergi_id, alergi_jp: cv.alergi_jp,
           riwayat_medis_id: cv.medis_id, riwayat_medis_jp: cv.medis_jp,
           riwayat_kecelakaan_id: cv.laka_id, riwayat_kecelakaan_jp: cv.laka_jp,
@@ -884,7 +904,13 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           tujuan_ke_jepang: cv.tujuan_id, tujuan_ke_jepang_jp: cv.tujuan_jp,
           riwayat_jepang: cv.riwayatjepang, gaji_yen: cv.gaji_yen, tabungan: cv.tabungan,
         },
-        sertifikasi: { bahasa: cv.bhs_jepang, jft: cv.nilai, ssw: cv.lisensi, bidang: cv.lisensi },
+        /* `no_coe` dan `ssw2` ikut di seksi `sertifikasi` supaya
+           `AI_TO_MASTER_COLUMNS` memetakannya ke kolom `no_coe` / `bidangssw2`
+           seperti field lain di seksi ini (paritas Form Master 2026-10-25). */
+        sertifikasi: {
+          bahasa: cv.bhs_jepang, jft: cv.nilai, ssw: cv.lisensi, bidang: cv.lisensi,
+          ssw2: cv.lisensi2, no_coe: cv.no_coe,
+        },
         /* The three dynamic sections. Rows the candidate never filled in are
            dropped rather than sent as empty objects: this payload is what the
            employer's CV is built from, and a blank row would print as an empty
@@ -1033,12 +1059,13 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
 
   return (
     <div class="flex flex-col md:flex-row h-[calc(100dvh-42px)] w-full relative pt-[42px]" style={{ height: '100dvh' }}>
-      {/* Mobile Tab */}
-      <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50">
-        <button type="button" onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
+      {/* Mobile Tab — `aria-selected` supaya keadaan awal (form, bukan chat)
+          bisa dibaca pembaca layar DAN diuji; kelas saja tidak cukup. */}
+      <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === 'chat'} onClick={() => setTab('chat')} class={tab === 'chat' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
           <Icon name="crown" class="mr-2" />{t('form.ai_cv_chat')}
         </button>
-        <button type="button" onClick={() => setTab('form')} class={tab === 'form' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
+        <button type="button" role="tab" aria-selected={tab === 'form'} onClick={() => setTab('form')} class={tab === 'form' ? 'flex-1 min-h-11 py-3 text-xs font-bold bg-amber-600/20 text-amber-400 border-b-2 border-amber-500' : 'flex-1 min-h-11 py-3 text-xs font-bold text-slate-400'}>
           <Icon name="file-alt" class="mr-2" />{t('form.preview_cv')}
         </button>
       </div>
@@ -1066,6 +1093,22 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           </div>
         )}
 
+        {/* Mode bantuan: mengobrol atau menerjemahkan. Dua tombol, bukan satu
+            dropdown, karena hanya ada dua pilihan dan keduanya sering dipakai
+            bergantian di layar kecil. */}
+        <div class="px-3 pt-2 shrink-0 flex gap-2" role="tablist" aria-label={t('ai.name_jeklin')}>
+          {(['chat', 'translate'] as const).map((m) => (
+            <button type="button" key={m} role="tab" aria-selected={jeklinMode === m}
+              onClick={() => setJeklinMode(m)}
+              class={`flex-1 min-h-9 rounded-lg text-[11px] font-bold border transition-colors ${jeklinMode === m
+                ? 'bg-amber-600/20 text-amber-400 border-amber-500'
+                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'}`}>
+              <Icon name={m === 'chat' ? 'comments' : 'language'} class="mr-1" />
+              {m === 'chat' ? t('ai_cv.mode_chat') : t('ai_cv.mode_translate')}
+            </button>
+          ))}
+        </div>
+
         <div ref={chatRef} class="flex-1 u-scroll-area p-3 space-y-4 pb-16 md:pb-4">
           {messages.map((msg, i) => (
             <div key={i} class={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} fade-in`}>
@@ -1090,8 +1133,9 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           )}
         </div>
 
-        {/* Suggestion Pills */}
-        {showSuggestions && !sending && (
+        {/* Suggestion Pills — hanya di mode chat: di mode terjemah ia akan
+            bersaing dengan satu tombol yang sudah jelas tugasnya. */}
+        {jeklinMode === 'chat' && showSuggestions && !sending && (
           <div class="px-3 pb-2 flex gap-2 u-scroll-x flex-nowrap scrollbar-hide">
             {SUGGESTIONS.map((s, i) => (
               <button type="button" key={i} onClick={() => handleSend(s)}
@@ -1102,17 +1146,28 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
           </div>
         )}
 
-        <div class="p-3 bg-slate-950 border-t border-slate-800 flex gap-2">
-          <input ref={inputRef} type="text" value={input}
-            onInput={(e) => setInput((e.target as HTMLInputElement).value)}
-            onKeyDown={handleKeyDown}
-            class="flex-1 bg-slate-800 text-xs text-white px-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 transition-colors"
-            placeholder={t('form.placeholder_chat')} />
-          <button type="button" onClick={() => handleSend()} disabled={sending}
-            class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50">
-            <Icon name="paper-plane" />
-          </button>
-        </div>
+        {jeklinMode === 'translate' ? (
+          /* Satu tombol, satu tugas. Teksnya sama dengan yang dikirim suggestion
+             pill lama, jadi server tidak perlu tahu mode ini ada. */
+          <div class="p-3 bg-slate-950 border-t border-slate-800">
+            <button type="button" onClick={() => handleSend(t('ai_cv.translate_all'))} disabled={sending}
+              class="w-full min-h-11 bg-amber-600 hover:bg-amber-500 text-white rounded-xl py-2.5 text-xs font-bold disabled:opacity-50">
+              <Icon spin={sending} name="language" class="mr-2" />{t('ai_cv.translate_all')}
+            </button>
+          </div>
+        ) : (
+          <div class="p-3 bg-slate-950 border-t border-slate-800 flex gap-2">
+            <input ref={inputRef} type="text" value={input}
+              onInput={(e) => setInput((e.target as HTMLInputElement).value)}
+              onKeyDown={handleKeyDown}
+              class="flex-1 bg-slate-800 text-xs text-white px-4 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 transition-colors"
+              placeholder={t('form.placeholder_chat')} />
+            <button type="button" onClick={() => handleSend()} disabled={sending}
+              class="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2.5 rounded-xl transition shadow-[0_4px_10px_0_rgba(245,158,11,0.3)] disabled:opacity-50">
+              <Icon name="paper-plane" />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Form Panel */}
@@ -1240,6 +1295,16 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
               <StatusNumber label={t("form.mf_sim")} statusLabel={t("form.mf_sim_status")}
                 status={cv.sim_status} value={cv.sim} statusKey="sim_status" valueKey="sim"
                 ph={t("form.mf_ph_no_sim")} basis="42%" span={2} onChange={handleManualEdit} />
+              {/* PARITAS FORM MASTER (2026-10-25) — tiga kolom paspor yang hanya
+                  ada di sana. Tanpa ini kandidat VIP (yang hanya lewat CV AI)
+                  tidak punya jalan mengisi data pemberkasan, dan kolomnya tetap
+                  kosong di master walau Form Master menanyakannya. */}
+              <Field label={t("form.mf_tgl_terbit")} id="tgl_terbit_paspor" value={cv.tgl_terbit_paspor} type="date"
+                touched={touchedFields.has('tgl_terbit_paspor')} onInput={(v) => handleManualEdit('tgl_terbit_paspor', v)} />
+              <Field label={t("form.mf_exp")} id="exp_paspor" value={cv.exp_paspor} type="date"
+                touched={touchedFields.has('exp_paspor')} onInput={(v) => handleManualEdit('exp_paspor', v)} />
+              <Field label={t("form.mf_kota_paspor")} id="kota_paspor" value={cv.kota_paspor}
+                touched={touchedFields.has('kota_paspor')} onInput={(v) => handleManualEdit('kota_paspor', v)} />
             </div>
           </Section>
 
@@ -1284,6 +1349,12 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                 <div class="col-span-2">
                   <PairSelect label={t("form.mf_tato")} id="tato" value={cv.tato} pairs={YA_TIDAK_PAIRS}
                     touched={touchedFields.has('tato')} onChange={(v) => handlePairEdit('tato', v)} />
+                </div>
+                {/* PARITAS: `tindik` ada di Form Master sejak awal dan tidak ada
+                    di sini, padahal `tato` — satu baris di form cetak — ADA. */}
+                <div class="col-span-2">
+                  <PairSelect label={t("form.mf_tindik")} id="tindik" value={cv.tindik} pairs={YA_TIDAK_PAIRS}
+                    touched={touchedFields.has('tindik')} onChange={(v) => handlePairEdit('tindik', v)} />
                 </div>
                 <PairSelect label={t("form.mf_merokok")} id="rokok" value={cv.rokok} pairs={YA_TIDAK_PAIRS}
                   touched={touchedFields.has('rokok')} onChange={(v) => handlePairEdit('rokok', v)} />
@@ -1342,6 +1413,15 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                   touched={touchedFields.has('nilai')} onInput={(v) => handleManualEdit('nilai', v)} />
                 <Field label={t("cv.field_lisensi_ssw")} id="lisensi" value={cv.lisensi} list="ai_ssw_options"
                   touched={touchedFields.has('lisensi')} onInput={(v) => handleManualEdit('lisensi', v)} />
+                {/* PARITAS: Form Master punya lisensi SSW KEDUA (`lisensi2`) dan
+                    kolom `no_coe`. Keduanya tidak ada di sini, jadi kandidat yang
+                    punya dua bidang SSW kehilangan yang kedua — dan nilai itu
+                    dulu juga tidak punya kolom sama sekali (migrasi 019
+                    menambahkan `bidangssw2`). */}
+                <Field label={t("form.mf_ssw2")} id="lisensi2" value={cv.lisensi2} list="ai_ssw_options"
+                  touched={touchedFields.has('lisensi2')} onInput={(v) => handleManualEdit('lisensi2', v)} />
+                <Field label={t("form.mf_no_coe")} id="no_coe" value={cv.no_coe}
+                  touched={touchedFields.has('no_coe')} onInput={(v) => handleManualEdit('no_coe', v)} />
               </div>
               <datalist id="ai_jft_options">
                 {BAHASA_JEPANG.map(o => <option key={o} value={o} />)}

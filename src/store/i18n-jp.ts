@@ -414,6 +414,8 @@ export const jpTranslations: Record<string, string> = {
     "ai_cv.title": "AI CVフォーム",
     "ai_cv.chat_placeholder": "AIにメッセージを入力...",
     "ai_cv.translate_all": "すべてのID列をJPに翻訳",
+    "ai_cv.mode_chat": "チャット",
+    "ai_cv.mode_translate": "翻訳",
     "share.title": "共有ビュー",
     "share.no_data": "候補者データがありません",
     "admin.monthly_report": "月次レポート",

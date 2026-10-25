@@ -78,6 +78,10 @@ const MASTER_COLUMN_MAP: Record<string, string> = {
   kenalanAlamat: 'kenalan_di_jepang_alamat',
   gajiYen: 'harapan_gaji_yen', tabungan: 'harapan_tabungan', bhsJepang: 'bahasa',
   nilai: 'jft', lisensi: 'bidangssw', ssw: 'ssw', noPaspor: 'no_paspor',
+  // Lisensi SSW KEDUA. Tanpa baris ini Form Master mengumpulkan `lisensi2`,
+  // mengirimnya, lalu `buildMasterBody` tidak punya tujuan — nilainya hilang
+  // tanpa pesan. Kolomnya ada sejak migrasi 019.
+  lisensi2: 'bidangssw2',
   tglTerbitPaspor: 'tgl_terbit_pasport', expPaspor: 'exp_pasport',
   kotaPaspor: 'kota_terbit_pasport', noCoe: 'no_coe',
 };
@@ -665,6 +669,16 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
     ['jumlah_anak', 'anak'], ['email', 'email'], ['alamat_lengkap', 'alamat'],
     ['nik', 'ktp'], ['no_paspor', 'paspor'], ['driver_license', 'sim'],
     ['status_eks_jepang', 'status_eks_jepang'],
+    /* Paritas Form Master (2026-10-25): tiga kolom paspor ini sudah ditanyakan
+       Form Master sejak lama dan CV AI tidak — jadi kandidat VIP tidak punya
+       jalan mengisinya. */
+    ['tgl_terbit_pasport', 'tgl_terbit_paspor'], ['exp_pasport', 'exp_paspor'],
+    ['kota_terbit_pasport', 'kota_paspor'],
+    /* `no_coe` dikirim CV AI di dalam `sertifikasi`, tetapi baris lama (dan
+       ekstraksi AI) menaruhnya di `identitas`. Dua kunci, satu kolom — pola yang
+       sama dengan `alergi` di seksi medis. Gate cakupan kolom yang menuntut baris
+       ini ada: tanpa ia `identitas.no_coe` dianggap field tanpa tujuan. */
+    ['no_coe', 'no_coe'],
   ],
   fisik: [
     ['tb', 'tb'], ['bb', 'bb'], ['ukuran_topi', 'topi'], ['ukuranbaju', 'baju'],
@@ -674,6 +688,9 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
     ['mata_kiri', 'mata_kiri'], ['mata_kanan', 'mata_kanan'], ['kacamata', 'kacamata'],
     ['buta_warna', 'buta_warna'], ['tato', 'tato'], ['merokok', 'rokok'],
     ['minum_alkohol', 'alkohol'], ['alergi', 'alergi_id', 'alergi'],
+    /* `tindik` satu baris dengan `tato` di form cetak; Form Master menanyakan
+       keduanya, CV AI hanya `tato`. Ditambahkan 2026-10-25. */
+    ['tindik', 'tindik'],
     ['alergi_jp', 'alergi_jp'],
     ['riwayat_penyakit', 'riwayat_medis_id', 'riwayat_penyakit'],
     ['riwayat_medis_jp', 'riwayat_medis_jp'],
@@ -709,6 +726,11 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
     ['jft', 'jft', 'nilai'],
     ['bidangssw', 'ssw', 'lisensi'],
     ['bahasa', 'bahasa', 'bahasa_jepang'],
+    /* Dua field yang dulu hanya ada di Form Master. `bidangssw2` baru punya
+       kolom sejak migrasi 019 — sebelumnya lisensi SSW kedua diketik, dikirim,
+       lalu dibuang tanpa pesan. */
+    ['bidangssw2', 'ssw2', 'lisensi2'],
+    ['no_coe', 'no_coe'],
   ],
   /* Kenalan di Jepang. Seksi ini TIDAK dikelola `aiData` (dipertahankan dari
      baris lama), jadi pemetaannya baru berguna setelah `aiOut` yang dipakai —

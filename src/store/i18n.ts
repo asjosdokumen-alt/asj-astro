@@ -447,6 +447,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ai_cv.title": "AI CV Form",
     "ai_cv.chat_placeholder": "Ketik pesan ke AI...",
     "ai_cv.translate_all": "Terjemahkan semua kolom ID ke JP",
+    // Dua mode bantuan Jeklin (2026-10-25). Label pendek karena dipakai sebagai
+    // tombol selebar setengah panel, bukan kalimat.
+    "ai_cv.mode_chat": "Chat",
+    "ai_cv.mode_translate": "Terjemah",
     "share.title": "Share View",
     "share.no_data": "Tidak ada data kandidat",
     "admin.tab_pelamar": "Pelamar",

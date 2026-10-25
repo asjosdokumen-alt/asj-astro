@@ -49,14 +49,26 @@ export const AI_CV_FLAT_KEYS = [
   'gender_jp', 'agama_jp', 'status_jp',
   'goldar', 'status', 'anak', 'email', 'alamat', 'hp', 'hpdarurat', 'ktp', 'paspor', 'sim',
   'paspor_status', 'sim_status',
+  /* Paspor: masa terbit/berlaku/kota terbit. Form Master sudah menanyakan
+     ketiganya sejak lama (step 5) dan CV AI tidak — jadi kandidat VIP yang hanya
+     lewat CV AI tidak punya jalan mengisi data yang dibutuhkan pemberkasan.
+     Ditambahkan 2026-10-25 (paritas form). */
+  'tgl_terbit_paspor', 'exp_paspor', 'kota_paspor',
   'tb', 'bb', 'tangan', 'sepatu', 'baju', 'topi', 'tahan_ac',
   'matakanan', 'matakiri', 'kacamata', 'butawarna', 'tato', 'rokok', 'alkohol',
+  /* `tindik` ada di Form Master (step 2) dan tidak ada di CV AI — padahal ia
+     satu baris dengan `tato`, yang ADA di sini. Ditambahkan 2026-10-25. */
+  'tindik',
   'alergi_id', 'alergi_jp', 'medis_id', 'medis_jp', 'laka_id', 'laka_jp',
   'riwayatjepang', 'promo_id', 'promo_jp', 'lebih_id', 'lebih_jp', 'kurang_id', 'kurang_jp',
   'hobi_id', 'hobi_jp', 'keahlian_id', 'keahlian_jp', 'moti_id', 'moti_jp',
   'alasan_id', 'alasan_jp', 'pulang_id', 'pulang_jp', 'keinginan_id', 'keinginan_jp',
   'tujuan_id', 'tujuan_jp', 'lama', 'gaji_yen', 'tabungan',
   'bhs_jepang', 'nilai', 'lisensi',
+  /* Lisensi SSW KEDUA. Form Master punya dua slot (`lisensi`, `lisensi2`);
+     CV AI hanya satu, jadi kandidat yang punya dua bidang SSW kehilangan yang
+     kedua. Kolomnya baru ada sejak migrasi 019 (`bidangssw2`). */
+  'lisensi2', 'no_coe',
   'kenalan_nama_id', 'kenalan_nama_jp', 'kenalan_hub_id', 'kenalan_hub_jp',
   'kenalan_kerja_id', 'kenalan_kerja_jp', 'kenalan_usia', 'kenalan_alamat_id', 'kenalan_alamat_jp',
 ] as const;
@@ -85,6 +97,9 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   hpdarurat: ['identitas.hp_darurat'],
   ktp: ['identitas.ktp'],
   paspor: ['identitas.paspor'],
+  tgl_terbit_paspor: ['identitas.tgl_terbit_paspor'],
+  exp_paspor: ['identitas.exp_paspor'],
+  kota_paspor: ['identitas.kota_paspor'],
   sim: ['identitas.sim'],
   paspor_status: ['identitas.paspor_status'],
   sim_status: ['identitas.sim_status'],
@@ -105,6 +120,7 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   kacamata: ['medis.kacamata'],
   butawarna: ['medis.buta_warna'],
   tato: ['medis.tato'],
+  tindik: ['medis.tindik'],
   rokok: ['medis.rokok'],
   alkohol: ['medis.alkohol'],
   alergi_id: ['medis.alergi_id', 'medis.alergi'],
@@ -147,6 +163,8 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   bhs_jepang: ['sertifikasi.bahasa', 'sertifikasi.bahasa_jepang'],
   nilai: ['sertifikasi.jft', 'sertifikasi.nilai'],
   lisensi: ['sertifikasi.ssw', 'sertifikasi.lisensi'],
+  lisensi2: ['sertifikasi.ssw2', 'sertifikasi.lisensi2'],
+  no_coe: ['sertifikasi.no_coe', 'identitas.no_coe'],
 
   // 6. Kenalan di Jepang (bilingual)
   kenalan_nama_id: ['kenalan_jepang.nama_id'],

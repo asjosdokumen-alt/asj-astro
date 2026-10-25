@@ -15,6 +15,7 @@ import { showToast } from '../Toast';
 import { apiClient } from '../../lib/apiClient';
 import { uploadMany } from '../../lib/cloudinary';
 import { authStore, type AuthState } from '../../store/authReactive';
+import { t } from '../../store/i18n';
 import { PEKERJAAN, JURUSAN, pairDisplay } from '../../lib/opsi-form';
 import { navigateTo } from '../../lib/navigate';
 
@@ -1627,5 +1628,59 @@ describe('AiCvForm — daftar pilihan pekerjaan & jurusan (2026-10-13)', () => {
     // Memilih jurusan resmi mengisi kolom kanji dari registri (sama seperti jabatan).
     fireEvent.input(jur, { target: { value: 'TEKNIK MESIN' } });
     expect((document.getElementById('ai_edu-jurusan-jp-0') as HTMLInputElement).value).toBe('機械工学');
+  });
+});
+
+/**
+ * MANUAL-FIRST + DUA MODE JEKLIN (keputusan pemilik 2026-10-25)
+ *   *"cv ai isi manual, cuma ada bantuan ai. jeklin saja bisa mode chat atau
+ *   translate kan"*.
+ *
+ * Yang dikunci di sini dua hal yang tidak bisa dilihat dari CSS:
+ *   1. tab awal adalah FORM (dulu `chat`), dan
+ *   2. mode terjemah mengirim PERMINTAAN TETAP, bukan teks yang diketik.
+ * Tanpa (2), "mode terjemah" hanya tombol yang kelihatan berbeda.
+ */
+describe('AiCvForm — manual-first & mode Jeklin (2026-10-25)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    vi.mocked(showToast).mockReset();
+    vi.mocked(apiClient).mockReset();
+    routeApi({});
+  });
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('tab awal adalah form, bukan chat', () => {
+    render(<AiCvForm />);
+    const tabs = screen.getAllByRole('tab');
+    const formTab = tabs.find((el) => el.textContent?.includes(t('form.preview_cv')));
+    const chatTab = tabs.find((el) => el.textContent?.includes(t('form.ai_cv_chat')));
+    if (!formTab || !chatTab) throw new Error('tab mobile tidak ditemukan');
+    expect(formTab.getAttribute('aria-selected')).toBe('true');
+    expect(chatTab.getAttribute('aria-selected')).toBe('false');
+  });
+
+  it('mode terjemah mengirim permintaan terjemahan tetap, bukan teks bebas', async () => {
+    render(<AiCvForm />);
+    const modeButtons = screen.getAllByRole('tab');
+    const translateMode = modeButtons.find((el) => el.textContent?.includes(t('ai_cv.mode_translate')));
+    if (!translateMode) throw new Error('tombol mode terjemah tidak ada');
+    await fireEvent.click(translateMode);
+
+    // Kotak ketik hilang: satu tombol, satu tugas.
+    expect(screen.queryByPlaceholderText(t('form.placeholder_chat'))).toBeNull();
+    await fireEvent.click(screen.getByRole('button', { name: new RegExp(t('ai_cv.translate_all')) }));
+
+    await waitFor(() => {
+      const call = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'processAIChat');
+      if (!call) throw new Error('processAIChat tidak dipanggil');
+      const payload = (call[1] as Array<{ history: Array<{ role: string; content: string }> }>)[0];
+      const last = payload.history[payload.history.length - 1];
+      expect(last.role).toBe('user');
+      expect(last.content).toBe(t('ai_cv.translate_all'));
+    });
   });
 });
