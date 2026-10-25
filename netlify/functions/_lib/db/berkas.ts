@@ -209,6 +209,37 @@ async function attachBerkasBio(candidates: any[]) {
         mRows = [];
       }
     }
+    // RPC `master_light` (migrasi 018) MEMATOK kolomnya di SQL, jadi `pas_photo`
+    // dan `pendidikan_N_tingkat` tidak ikut — akibatnya `bio.foto` dan
+    // `bio.pendidikan_terakhir` selalu kosong walaupun kolomnya ada di tabel
+    // (terukur ASJ00126, 2026-10-25: pas_photo berisi URL, bio.foto '').
+    // Menambah kolom di MASTER_LIGHT_COLS TIDAK menolong karena jalur ini
+    // memakai RPC. Ambil dua kelompok kolom itu lewat satu kueri tambahan untuk
+    // seluruh halaman, lalu gabungkan per WA.
+    if (Array.isArray(mRows) && mRows.length) {
+      try {
+        const extra = await supabaseJson('GET', 'master_database_candidate', {
+          query: {
+            select:
+              'no_wa,pas_photo,pendidikan_1_tingkat,pendidikan_2_tingkat,pendidikan_3_tingkat,pendidikan_4_tingkat,pendidikan_5_tingkat',
+            limit: '500',
+          },
+        });
+        const extraByWa = new Map<string, any>();
+        for (const r of Array.isArray(extra) ? extra : []) {
+          extraByWa.set(normalizeWa(String(pick(r, ['no_wa', 'wa']) || '')), r);
+        }
+        for (const r of mRows) {
+          const ex = extraByWa.get(normalizeWa(String(pick(r, ['no_wa', 'wa']) || '')));
+          if (!ex) continue;
+          for (const col of ['pas_photo', 'pendidikan_1_tingkat', 'pendidikan_2_tingkat', 'pendidikan_3_tingkat', 'pendidikan_4_tingkat', 'pendidikan_5_tingkat']) {
+            if (!r[col] && ex[col]) r[col] = ex[col];
+          }
+        }
+      } catch {
+        /* gagal = foto/jenjang kosong; jangan gagalkan seluruh halaman */
+      }
+    }
     const pByWa = new Map();
     for (const r of Array.isArray(pRows) ? pRows : []) {
       pByWa.set(normalizeWa(String(r.wa || '')), r);
