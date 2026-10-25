@@ -1,34 +1,71 @@
 // ==========================================
 // TESTS: actions-master — kolom master yang TIDAK ada di tabel + penyimpanan
-// overflow ke ai_data_json. Latar: skema master_database_candidate (154 kolom)
-// tidak punya keluarga_N_gaji, keluarga slot 2-5, jurusan slot 1/2/4/5,
-// pekerjaan_3_gaji, kenalan pekerjaan/usia/alamat → menulis kolom itu ke
-// PATCH/POST = HTTP 400 PGRST204 = SELURUH simpan gagal (bug nyata 2026-08-16).
+// overflow ke ai_data_json.
+//
+// LATAR (2026-08-16): skema master_database_candidate waktu itu tidak punya
+// keluarga_N_gaji, keluarga slot 2-5, jurusan slot 1/2/4/5, pekerjaan_3_gaji,
+// kenalan pekerjaan/usia/alamat. Menulis kolom itu = HTTP 400 PGRST204 =
+// SELURUH simpan gagal. Penjaganya dulu bernama MASTER_COLUMN_MISSING: satu
+// daftar tangan berisi kolom yang "tidak ada".
+//
+// KENAPA DAFTAR ITU DIBUANG (2026-10-25): daftar tangan adalah pengganti skema,
+// dan ia BASI. Migrasi 019 MENAMBAH kolom-kolom itu — tetapi daftarnya tetap
+// menghapus nilainya, jadi data yang sudah punya tempat tetap tidak tersimpan.
+// Penggantinya adalah kontrak yang dihasilkan dari database: writeBodyFor()
+// membuang kolom di luar schema.generated.ts dan mencatatnya sebagai drift.
+// Tes di bawah menjaga invarian itu, bukan isi sebuah daftar.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { MASTER_COLUMN_MISSING, buildAiOverflow, mergeAiOverflow } from '../contexts/master-data';
+import { buildAiOverflow, mergeAiOverflow, buildMasterBody } from '../contexts/master-data';
+import { TABLE_COLUMNS } from '../_lib/db/schema.generated';
 
-describe('MASTER_COLUMN_MISSING — kolom yang tidak ada di tabel', () => {
-  it('keluarga_N_gaji & keluarga slot 2-5 masuk daftar', () => {
-    expect(MASTER_COLUMN_MISSING.has('keluarga_1_gaji')).toBe(true);
-    expect(MASTER_COLUMN_MISSING.has('keluarga_2_nama')).toBe(true);
-    expect(MASTER_COLUMN_MISSING.has('keluarga_5_pekerjaan')).toBe(true);
+describe('buildMasterBody — setiap kolom yang ditulis ADA di kontrak', () => {
+  const CONTRACT = new Set(TABLE_COLUMNS.master_database_candidate || []);
+
+  it('kontrol: kontrak master terbaca (bukan himpunan kosong)', () => {
+    // Tanpa ini, kontrak yang gagal dimuat membuat tes berikutnya lolos hampa.
+    expect(CONTRACT.size).toBeGreaterThan(150);
   });
 
-  it('jurusan slot 1/2/4/5 masuk daftar, slot 3 tidak (kolom ada)', () => {
-    expect(MASTER_COLUMN_MISSING.has('pendidikan_1_jurusan_id')).toBe(true);
-    expect(MASTER_COLUMN_MISSING.has('pendidikan_2_jurusan_id')).toBe(true);
-    expect(MASTER_COLUMN_MISSING.has('pendidikan_4_jurusan_id')).toBe(true);
-    expect(MASTER_COLUMN_MISSING.has('pendidikan_5_jurusan_id')).toBe(true);
-    expect(MASTER_COLUMN_MISSING.has('pendidikan_3_jurusan_id')).toBe(false);
+  it('baris slot penuh tidak menghasilkan satu pun kolom di luar kontrak', () => {
+    // Bentuk payload = yang dikirim Form Master setelah resolveOther().
+    const body = buildMasterBody({
+      wa: '6281', nama: 'UJI', riwayatLengkap: true,
+      pendidikan: Array.from({ length: 5 }, (_, i) => ({
+        tingkat: 'SMA', nama_sekolah: `S${i}`, nama_sekolah_jp: `学校${i}`,
+        jurusan: 'IPA', jurusan_jp: '理科', tahun_masuk: '2000', tahun_lulus: '2003',
+      })),
+      pekerjaan: Array.from({ length: 3 }, (_, i) => ({
+        nama_perusahaan: `P${i}`, nama_perusahaan_jp: `会社${i}`,
+        jabatan: 'J', jabatan_jp: '職', tahun_masuk: '2000', tahun_keluar: '2001', gaji: '1',
+      })),
+      keluarga: Array.from({ length: 5 }, (_, i) => ({
+        hubungan: 'AYAH', hubungan_jp: '父', nama: `N${i}`, usia: '50', pekerjaan: 'P', gaji: '1',
+      })),
+    });
+    const outside = Object.keys(body).filter((c) => !CONTRACT.has(c));
+    expect(outside).toEqual([]);
   });
 
-  it('kenalan pekerjaan/usia/alamat masuk daftar; nama/hubungan tidak', () => {
-    expect(MASTER_COLUMN_MISSING.has('kenalan_di_jepang_pekerjaan')).toBe(true);
-    expect(MASTER_COLUMN_MISSING.has('kenalan_di_jepang_usia')).toBe(true);
-    expect(MASTER_COLUMN_MISSING.has('kenalan_di_jepang_alamat')).toBe(true);
-    expect(MASTER_COLUMN_MISSING.has('kenalan_di_jepang_nama')).toBe(false);
-    expect(MASTER_COLUMN_MISSING.has('kenalan_di_jepang_hubungan')).toBe(false);
+  it('kanji tiap baris riwayat punya kolom (dulu dibuang tanpa jejak)', () => {
+    const body = buildMasterBody({
+      pendidikan: [{ tingkat: 'SMA', nama_sekolah: 'SMAN 1', nama_sekolah_jp: '第一高校', jurusan: 'IPA', jurusan_jp: '理科' }],
+      pekerjaan: [{ nama_perusahaan: 'PT A', nama_perusahaan_jp: 'A社', jabatan: 'OP', jabatan_jp: '作業員' }],
+      keluarga: [{ nama: 'BUDI', hubungan: 'AYAH', hubungan_jp: '父' }],
+    });
+    expect(body.pendidikan_1_sekolah_jp).toBe('第一高校');
+    expect(body.pendidikan_1_jurusan_jp).toBe('理科');
+    expect(body.pekerjaan_1_perusahaan_jp).toBe('A社');
+    expect(body.pekerjaan_1_jabatan_jp).toBe('作業員');
+    expect(body.keluarga_1_hubungan_jp).toBe('父');
+  });
+
+  it('slot keluarga 2-5 dan gaji kini tersimpan ke kolom, bukan hanya JSON', () => {
+    const body = buildMasterBody({
+      keluarga: [{ nama: 'A' }, { nama: 'B' }, { nama: 'C' }, { nama: 'D' }, { nama: 'E' }],
+    });
+    expect(body.keluarga_2_nama).toBe('B');
+    expect(body.keluarga_5_nama).toBe('E');
   });
 });
 

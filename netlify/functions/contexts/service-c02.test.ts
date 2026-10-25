@@ -61,10 +61,17 @@ describe('C02 — buildMasterBody (payload MasterFullForm → kolom master)', ()
     expect(body.keluarga_1_usia).toBeUndefined();
   });
 
-  it('kolom yang tidak ada di tabel difilter (keluarga_1_gaji, keluarga_2_nama)', () => {
-    const body = buildMasterBody({ keluarga: [{ nama: 'A', gaji: '5jt' }] });
-    expect(body.keluarga_1_gaji).toBeUndefined();
-    expect(body.keluarga_2_nama).toBeUndefined();
+  /* DIGANTI 2026-10-25. Tes ini dulu mengunci `MASTER_COLUMN_MISSING`: kolom
+     `keluarga_1_gaji` / `keluarga_2_nama` TIDAK BOLEH muncul karena tidak ada di
+     tabel. Migrasi 019 MENAMBAH kolomnya, jadi perilaku yang benar sekarang
+     adalah kebalikannya — nilainya HARUS tersimpan. Penyaringan kolom di luar
+     kontrak pindah ke `writeBodyFor()` (dijaga
+     `actions-master.test.ts` + `e2e/write-body-coercion.test.ts`), karena daftar
+     tangan di lapisan ini terbukti basi: ia membuang data yang sudah punya kolom. */
+  it('gaji & anggota keluarga 2-5 kini punya kolom dan ikut tersimpan', () => {
+    const body = buildMasterBody({ keluarga: [{ nama: 'A', gaji: '5jt' }, { nama: 'B' }] });
+    expect(body.keluarga_1_gaji).toBe('5jt');
+    expect(body.keluarga_2_nama).toBe('B');
   });
 
   it('alias legacy jft_text/ssw_text dipetakan ke nilai/lisensi', () => {

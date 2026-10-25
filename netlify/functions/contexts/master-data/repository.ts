@@ -3,7 +3,7 @@
  *
  * Owns: master_database_candidate
  */
-import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText, toDateOnly, normalizeBloodType, APPLY_WA_COLS } from '../../_lib/db/client';
+import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText, toDateOnly, normalizeBloodType, APPLY_WA_COLS, writeBodyFor } from '../../_lib/db/client';
 import { allColumns } from '../../_lib/db/schema.generated';
 import { findCandidateByWaFiltered, findCandidates } from '../../_lib/db/candidates';
 import { fetchMasterByWa } from '../../_lib/db/master';
@@ -46,15 +46,22 @@ export async function findMasterByWa(wa: string): Promise<any | null> {
 }
 
 export async function patchMaster(id: string, body: Record<string, any>): Promise<void> {
+  // `writeBodyFor` membuang kolom yang tidak ada di kontrak skema dan mencatatnya
+  // sebagai drift. Ia menggantikan `MASTER_COLUMN_MISSING` — daftar tangan yang
+  // sudah basi (migrasi 019 MENAMBAH kolomnya, daftar itu tetap menghapus
+  // nilainya). Menyaring di sini, bukan di pemanggil, berarti SEMUA penulis
+  // master (form, CV AI, edit admin, pemberkasan) memakai satu penjaga.
+  const resolved = writeBodyFor('master_database_candidate', body);
   await supabaseJson('PATCH', 'master_database_candidate', {
     query: { id: `eq.${id}` },
-    body,
+    body: resolved.body,
     headers: { Prefer: 'return=minimal' },
   });
 }
 
 export async function upsertMaster(body: Record<string, any>): Promise<void> {
-  await supabaseUpsert('master_database_candidate', body, ['no_wa'], {
+  const resolved = writeBodyFor('master_database_candidate', body);
+  await supabaseUpsert('master_database_candidate', resolved.body as typeof body, ['no_wa'], {
     headers: { Prefer: 'return=minimal' },
   });
 }

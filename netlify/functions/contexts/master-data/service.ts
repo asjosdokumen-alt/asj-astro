@@ -101,16 +101,17 @@ const SNAKE_TO_CAMEL: Record<string, string> = {
   tgl_pasport: 'tglTerbitPaspor', exp_pasport: 'expPaspor',
 };
 
-const MASTER_COLUMN_MISSING = new Set([
-  'pendidikan_1_jurusan_id', 'pendidikan_2_jurusan_id', 'pendidikan_4_jurusan_id', 'pendidikan_5_jurusan_id',
-  'pekerjaan_2_gaji', 'pekerjaan_3_gaji',
-  'keluarga_1_gaji', 'keluarga_2_gaji', 'keluarga_3_gaji', 'keluarga_4_gaji', 'keluarga_5_gaji',
-  'keluarga_2_hubungan', 'keluarga_2_nama', 'keluarga_2_usia', 'keluarga_2_pekerjaan',
-  'keluarga_3_hubungan', 'keluarga_3_nama', 'keluarga_3_usia', 'keluarga_3_pekerjaan',
-  'keluarga_4_hubungan', 'keluarga_4_nama', 'keluarga_4_usia', 'keluarga_4_pekerjaan',
-  'keluarga_5_hubungan', 'keluarga_5_nama', 'keluarga_5_usia', 'keluarga_5_pekerjaan',
-  'kenalan_di_jepang_pekerjaan', 'kenalan_di_jepang_usia', 'kenalan_di_jepang_alamat',
-]);
+/* DULU: `MASTER_COLUMN_MISSING` — daftar tangan kolom yang "tidak ada di tabel".
+   Daftar itu adalah pengganti skema, dan seperti setiap pengganti skema ia BASI:
+   setelah migrasi 019 kolom-kolomnya ADA, tetapi daftar ini masih MENGHAPUS
+   nilainya di `buildMasterBody` — jadi anggota keluarga ke-2..5 dan jurusan
+   sekolah ke-1/2/4/5 tetap tidak pernah tersimpan, walau kolomnya sudah dibuat.
+   Ia juga tidak pernah menangkap kolom BARU yang salah ejaan.
+
+   Penggantinya bukan daftar lain, melainkan kontrak: `writeBodyFor()`
+   (`_lib/db/client.ts`) sudah membuang setiap kolom yang tidak ada di
+   `schema.generated.ts` dan mencatatnya sebagai drift. Satu sumber kebenaran,
+   dan ia tidak bisa basi karena dihasilkan dari database. Lihat `patchMaster`. */
 
 // --- Helper functions (moved from actions-master.ts) ---
 
@@ -610,19 +611,24 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
   setSlots('pendidikan_', d.pendidikan, 5, [
     ['_tingkat', 'tingkat'],
     ['_nama_sekolah', 'nama_sekolah', 'namaSekolah', 'sekolah'],
+    ['_sekolah_jp', 'nama_sekolah_jp', 'sekolah_jp'],
     ['_jurusan_id', 'jurusan', 'jurusan_id'],
+    ['_jurusan_jp', 'jurusan_jp'],
     ['_tahun_masuk', 'tahun_masuk', 'tahunMasuk', 'masuk'],
     ['_tahun_lulus', 'tahun_lulus', 'tahunLulus', 'lulus'],
   ] as const);
   setSlots('pekerjaan_', d.pekerjaan, 3, [
     ['_nama_perusahaan', 'nama_perusahaan', 'namaPt', 'namaPerusahaan', 'perusahaan'],
+    ['_perusahaan_jp', 'nama_perusahaan_jp', 'perusahaan_jp'],
     ['_jabatan', 'jabatan', 'jabatan_id', 'posisi'],
+    ['_jabatan_jp', 'jabatan_jp'],
     ['_tahun_masuk', 'tahun_masuk', 'tahunMasuk', 'masuk'],
     ['_tahun_keluar', 'tahun_keluar', 'tahunKeluar', 'keluar'],
     ['_gaji', 'gaji', 'pendapatan'],
   ] as const);
   setSlots('keluarga_', d.keluarga, 5, [
     ['_hubungan', 'hubungan', 'hubungan_id'],
+    ['_hubungan_jp', 'hubungan_jp'],
     ['_nama', 'nama'],
     ['_usia', 'usia', 'umur'],
     ['_pekerjaan', 'pekerjaan', 'pekerjaan_id'],
@@ -782,7 +788,10 @@ export function buildMasterBody(d: any): Record<string, any> {
   // Kolom slot riwayat: SATU implementasi, dipakai juga oleh jalur simpan CV AI
   // (`_lib/ai/cv.ts`) — lihat catatan di `buildRiwayatSlots`.
   Object.assign(body, buildRiwayatSlots(d, d.riwayatLengkap === true));
-  for (const col of Object.keys(body)) { if (MASTER_COLUMN_MISSING.has(col)) delete body[col]; }
+  // Tidak ada lagi penyaringan tangan di sini: `patchMaster`/`upsertMaster`
+  // menyerahkan body ke `writeBodyFor()`, yang membuang kolom di luar kontrak
+  // dan mencatatnya sebagai drift. Menyaring dua kali berarti dua daftar yang
+  // bisa berbeda — persis defect yang baru dibuang.
   return body;
 }
 
@@ -1156,7 +1165,7 @@ export async function handleSimpanBiodataLengkap(payload: any[], sessionToken?: 
   }
 }
 
-export { MASTER_COLUMN_MISSING, buildAiOverflow, mergeAiOverflow, findMasterByWa };
+export { buildAiOverflow, mergeAiOverflow, findMasterByWa };
 
 // ---------------------------------------------------------------------------
 // TEMPLATE CV — CRUD `sys_config` (config_type = 'cv_template'), ADMIN SAJA
