@@ -23,6 +23,7 @@
  *   sebaliknya. Baris seperti itu ditandai "tersambung CV".
  */
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
+import { Fragment } from 'preact';
 import { showToast } from '../Toast';
 import { authStore } from '../../store/authReactive';
 import { apiClient, type ApiError } from '../../lib/apiClient';
@@ -123,6 +124,15 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
   const [tahapAktif, setTahapAktif] = useState(0);
   const [sibuk, setSibuk] = useState<Record<string, Bidang | 'terjemah' | 'simpan' | ''>>({});
   const [contoh, setContoh] = useState<Record<string, boolean>>({});
+  /**
+   * Lembar cetak sedang menampilkan SELURUH tahap (1–13), bukan tahap aktif.
+   *
+   * Hanya hidup selama dialog cetak: `cetak()` menyalakannya, menunggu dua
+   * frame supaya browser sempat menata lembar yang jauh lebih panjang, lalu
+   * mengembalikannya. Tanpa jeda itu `window.print()` memotret DOM lama dan
+   * yang tercetak tetap satu tahap.
+   */
+  const [cetakSemua, setCetakSemua] = useState(false);
 
   const [chat, setChat] = useState<Array<{ dari: 'ai' | 'siswa'; teks: string }>>([]);
   const [jawabanChat, setJawabanChat] = useState('');
@@ -402,6 +412,38 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
   /* ── render: utama ─────────────────────────────────────────────────────── */
   const sibukBaris = (kode: string) => sibuk[kode] || '';
 
+  /**
+   * Baris yang ditampilkan lembar cetak.
+   *
+   * Mode satu tahap: soal tahap aktif, bernomor 1..n.
+   * Mode semua tahap: seluruh bank, dikelompokkan per tahap, nomor mulai dari 1
+   * di setiap tahap, dan tiap kelompok diberi judul. `judul` kosong = bukan
+   * awal tahap, jadi tidak ada judul ganda.
+   */
+  const barisTampil = cetakSemua
+    ? tahap.flatMap((nama, ti) => {
+        const daftar = soal.filter((x) => x.tahap === nama);
+        return daftar.map((s, i) => ({ s, nomor: i + 1, judul: i === 0 ? `${ti + 1}. ${nama}` : '' }));
+      })
+    : soalTahap.map((s, i) => ({ s, nomor: i + 1, judul: '' }));
+
+  /**
+   * Cetak, lalu kembalikan tampilan.
+   *
+   * Dua `requestAnimationFrame` BUKAN hiasan: `window.print()` memotret DOM
+   * yang sudah ditata, dan lembar 177 soal butuh satu frame penuh untuk
+   * berubah dari 1 tahap menjadi 13. Satu frame saja masih mencetak versi lama.
+   */
+  const cetak = (semua: boolean) => {
+    setCetakSemua(semua);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.print();
+        setCetakSemua(false);
+      });
+    });
+  };
+
   return (
     <div class="grid grid-cols-1 lg:grid-cols-[35%_65%] gap-3 items-start">
       {/* ── kiri: AI menanyakan soal ─────────────────────────────────────── */}
@@ -484,13 +526,25 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
               {i + 1}. {t}
             </button>
           ))}
-          <button
-            type="button"
-            onClick={() => window.print()}
-            class="ml-auto min-h-8 px-2 py-1 rounded-md text-[11px] font-bold border border-line bg-surface-raised text-fg hover:bg-surface-sunken"
-          >
-            Cetak / PDF
-          </button>
+          <div class="ml-auto flex gap-1.5">
+            <button
+              type="button"
+              data-cetak-aksi="tahap"
+              onClick={() => cetak(false)}
+              class="min-h-8 px-2 py-1 rounded-md text-[11px] font-bold border border-line bg-surface-raised text-fg hover:bg-surface-sunken"
+            >
+              {t('wawancara.cetak_tahap')}
+            </button>
+            <button
+              type="button"
+              data-cetak-aksi="semua"
+              onClick={() => cetak(true)}
+              title={`${tahap.length} tahap, ${soal.length} soal`}
+              class="min-h-8 px-2 py-1 rounded-md text-[11px] font-bold border border-accent-violet text-accent-violet hover:bg-surface-sunken"
+            >
+              {t('wawancara.cetak_semua')}
+            </button>
+          </div>
         </div>
 
         {/* Kepala lembar cetak. Di layar tidak tampil (`cetak-saja`), di kertas
@@ -499,24 +553,34 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
         {tahap.length > 0 && (
           <div class="cetak-saja px-3 pt-3 pb-1">
             <p class="text-[10px] uppercase tracking-wide text-fg-muted">{t('toolbar.mensetsu')}</p>
-            <h2 class="text-[15px] font-black text-fg">{tahapSekarang}</h2>
+            <h2 class="text-[15px] font-black text-fg">
+              {cetakSemua ? t('wawancara.semua_tahap') : tahapSekarang}
+            </h2>
             <p class="text-[11px] text-fg-muted">
-              Tahap {tahapAktif + 1} dari {tahap.length} · {soalTahap.length} soal
+              {cetakSemua
+                ? `${tahap.length} tahap · ${soal.length} soal`
+                : `Tahap ${tahapAktif + 1} dari ${tahap.length} · ${soalTahap.length} soal`}
             </p>
           </div>
         )}
 
-        {soalTahap.length === 0 ? (
+        {barisTampil.length === 0 ? (
           <p class="p-4 text-[12px] text-fg-muted">{memuat ? 'Memuat…' : galat || 'Tidak ada soal pada tahap ini.'}</p>
         ) : (
           <ul class="divide-y divide-line">
-            {soalTahap.map((s, i) => {
+            {barisTampil.map(({ s, nomor, judul }) => {
               const d = draft[s.kode] || { jp: '', romaji: '', arti: '' };
               const status = sibukBaris(s.kode);
               return (
-                <li key={s.kode} class={`p-3 ${i === idxTanya ? 'bg-surface-raised' : ''}`}>
-                  <div class="flex items-start gap-3">
-                    <span class="text-[11px] text-fg-subtle w-5 text-right shrink-0">{i + 1}</span>
+                <Fragment key={s.kode}>
+                  {/* Judul kelompok saat mencetak SEMUA tahap. Di mode satu
+                      tahap `judul` selalu kosong, jadi tidak pernah muncul. */}
+                  {judul && (
+                    <li class="cetak-tahap px-3 pt-4 pb-1 text-[12px] font-black text-fg">{judul}</li>
+                  )}
+                  <li class={`p-3 ${s.kode === soalAktif?.kode ? 'bg-surface-raised' : ''}`}>
+                    <div class="flex items-start gap-3">
+                      <span class="text-[11px] text-fg-subtle w-5 text-right shrink-0">{nomor}</span>
                     <div class="min-w-0 flex-1">
                       <p class="text-[14px] text-fg leading-snug" lang="ja">{s.jp}</p>
                       <p class="text-[11.5px] text-fg-muted">{s.romaji}</p>
@@ -645,10 +709,19 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                     >
                       {contoh[s.kode] ? 'Sembunyikan contoh' : 'Contoh jawaban'}
                     </button>
-                    {i !== idxTanya && (
+                    {s.kode !== soalAktif?.kode && (
                       <button
                         type="button"
-                        onClick={() => { setIdxTanya(i); tanya(s); }}
+                        onClick={() => {
+                          // Saat mencetak SEMUA tahap, soal yang diklik bisa
+                          // berasal dari tahap lain: pindahkan dulu tahapnya,
+                          // kalau tidak `idxTanya` menunjuk soal yang salah.
+                          const ti = tahap.indexOf(s.tahap);
+                          if (ti >= 0 && ti !== tahapAktif) setTahapAktif(ti);
+                          const si = soal.filter((x) => x.tahap === s.tahap).findIndex((x) => x.kode === s.kode);
+                          setIdxTanya(Math.max(0, si));
+                          tanya(s);
+                        }}
                         class="min-h-9 px-2.5 rounded-md border border-line-strong text-fg text-[11px] font-bold"
                       >
                         Tanya ini di chat
@@ -663,7 +736,8 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                       <p>{s.jawaban_arti}</p>
                     </div>
                   )}
-                </li>
+                  </li>
+                </Fragment>
               );
             })}
           </ul>

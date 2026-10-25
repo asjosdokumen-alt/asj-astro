@@ -208,6 +208,19 @@ async function open({ role, path, ready }) {
     },
   });
   const page = await ctx.newPage();
+  /* `window.print` diganti: dialog cetak tidak ada di headless, dan yang perlu
+     diukur justru DOM PADA SAAT print dipanggil — di situlah lembar 13 tahap
+     dibangun, lalu dikembalikan lagi. Tanpa stub ini tidak ada cara melihatnya. */
+  await page.addInitScript(() => {
+    window.__cetak = { calls: 0, tahap: 0, baris: 0, judul: '' };
+    window.print = () => {
+      window.__cetak.calls += 1;
+      window.__cetak.tahap = document.querySelectorAll('[data-cetak] .cetak-tahap').length;
+      window.__cetak.baris = document.querySelectorAll('[data-cetak] ul > li:not(.cetak-tahap)').length;
+      const h = document.querySelector('[data-cetak] .cetak-saja h2');
+      window.__cetak.judul = h ? h.textContent.trim() : '';
+    };
+  });
   await page.route('**/.netlify/functions/**', (route) => {
     let action = '';
     try {
@@ -349,6 +362,61 @@ await test('/admin overlay: print media shows only the question sheet', async ()
     console.log(`     ↳ overlay position on screen: ${overlayFixed}`);
 
     await assertPrintSheet(page, '/admin');
+  } finally {
+    await ctx.close();
+  }
+});
+
+/* ── 3. "Cetak semua tahap" — 13 tahap, satu PDF ──────────────────────────
+   The owner's ask (2026-10-25): "yang tercetak cuma 1 bagian saja, gak bisa
+   semua 1-13 jadi 1 PDF?" The sheet only ever rendered the ACTIVE stage, so
+   the button could not print the rest of the bank no matter what it was
+   labelled. This measures the DOM at the instant print is called — the state
+   is reverted immediately afterwards, so nothing else can observe it. */
+await test('/admin overlay: "Cetak semua tahap" menaruh SELURUH tahap di lembar', async () => {
+  const { ctx, page } = await open({ role: 'admin', path: '/admin#pelamar', ready: 'table tbody tr' });
+
+  try {
+    await page.locator('button[title="Wawancara"]:visible, button[title="面接練習"]:visible').first().click();
+    await page.waitForSelector('[data-cetak] li', { timeout: 20000 });
+
+    const tombolTahap = page.locator('[data-cetak-aksi="tahap"]');
+    const tombolSemua = page.locator('[data-cetak-aksi="semua"]');
+    if ((await tombolTahap.count()) === 0 || (await tombolSemua.count()) === 0) {
+      throw new Error('tombol cetak tidak dirender — panel tidak siap, pemeriksaan di bawah akan kosong');
+    }
+
+    await tombolTahap.click();
+    await page.waitForFunction(() => window.__cetak.calls === 1, { timeout: 5000 });
+    const satu = await page.evaluate(() => ({ ...window.__cetak }));
+
+    await tombolSemua.click();
+    await page.waitForFunction(() => window.__cetak.calls === 2, { timeout: 5000 });
+    const semua = await page.evaluate(() => ({ ...window.__cetak }));
+
+    /* Fixture: 3 soal dalam 2 tahap (2 di tahap 1, 1 di tahap 2). */
+    if (satu.tahap !== 0 || satu.baris !== 2) {
+      throw new Error(
+        `"Cetak tahap ini" mencetak ${satu.baris} baris / ${satu.tahap} judul tahap, ` +
+          'padahal seharusnya hanya 2 soal tahap aktif tanpa judul kelompok',
+      );
+    }
+    if (semua.tahap !== 2 || semua.baris !== 3) {
+      throw new Error(
+        `"Cetak semua tahap" mencetak ${semua.baris} baris / ${semua.tahap} judul tahap, ` +
+          'padahal seharusnya 3 soal dari 2 tahap — sisa bank tidak ikut ke lembar',
+      );
+    }
+    if (!semua.judul) {
+      throw new Error('kepala lembar kosong saat mencetak semua tahap');
+    }
+    console.log(`     ↳ tahap ini: ${satu.baris} baris · semua: ${semua.baris} baris / ${semua.tahap} tahap · "${semua.judul}"`);
+
+    /* Kembali ke tampilan normal: kalau tidak, panel tertinggal menampilkan
+       seluruh bank dan tombol tahap tidak lagi berfungsi seperti semestinya. */
+    await page.waitForFunction(() => document.querySelectorAll('[data-cetak] .cetak-tahap').length === 0, {
+      timeout: 5000,
+    });
   } finally {
     await ctx.close();
   }

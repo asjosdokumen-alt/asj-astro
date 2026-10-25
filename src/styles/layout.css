@@ -445,6 +445,21 @@
     page-break-inside: avoid;
   }
 
+  /* Judul kelompok saat "Cetak semua tahap". `break-after: avoid` menahan
+     judul tetap di halaman yang sama dengan soal pertamanya — tanpa itu satu
+     halaman bisa berakhir dengan judul tahap dan nol soal di bawahnya. */
+  body:has([data-cetak]) [data-cetak] .cetak-tahap {
+    break-after: avoid;
+    page-break-after: avoid;
+    border-top: 1px solid #bbb;
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+  body:has([data-cetak]) [data-cetak] ul > li.cetak-tahap:first-child {
+    border-top: 0;
+    margin-top: 0;
+  }
+
   body:has([data-cetak]) [data-cetak] .cetak-saja { display: block; }
 
   /* The printed answer lines. A blank answer keeps its rule, so the sheet
