@@ -63,6 +63,9 @@ interface CvData {
      automatically by `resolvePairEdit` — see `aiCvPairs.ts`. */
   gender_jp: string; agama_jp: string; status_jp: string;
   goldar: string; status: string; anak: string; email: string; alamat: string;
+  /* Alamat versi Jepang (〒 + urutan terbesar→terkecil). Diisi AI bersama
+     `alamat`; kolomnya sudah dipakai rirekisho/template CV. */
+  alamat_jp: string;
   hp: string; hpdarurat: string;
   /** Nama & hubungan kontak darurat — paritas Form Master (2026-10-25). */
   darurat_nama: string; darurat_hubungan: string; ktp: string; paspor: string; sim: string;
@@ -884,7 +887,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
              kanji column even though the Indonesian half was correct. */
           gender_jp: cv.gender_jp, agama_jp: cv.agama_jp, status_nikah_jp: cv.status_jp,
           golongan_darah: cv.goldar, status_nikah: cv.status, anak: cv.anak,
-          email: cv.email, alamat: cv.alamat, hp: cv.hp, hp_darurat: cv.hpdarurat,
+          email: cv.email, alamat: cv.alamat, alamat_jp: cv.alamat_jp, hp: cv.hp, hp_darurat: cv.hpdarurat,
           darurat_nama: cv.darurat_nama, darurat_hubungan: cv.darurat_hubungan,
           ktp: cv.ktp, paspor: cv.paspor, sim: cv.sim,
           // Legacy menyimpan status paspor/SIM di identitas.* (ai_form.ts
@@ -1290,6 +1293,8 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
                 touched={touchedFields.has('email')} onInput={(v) => handleManualEdit('email', v)} />
               <Field label={t("cv.field_alamat")} id="alamat" value={cv.alamat} span={3} spanMd={3}
                 touched={touchedFields.has('alamat')} onInput={(v) => handleManualEdit('alamat', v)} />
+              <Field label={t("cv.field_alamat_jp")} id="alamat_jp" value={cv.alamat_jp} span={3} spanMd={3} jp
+                touched={touchedFields.has('alamat_jp')} onInput={(v) => handleManualEdit('alamat_jp', v)} />
               <Field label={t("form.mf_kontak")} id="hp" value={cv.hp}
                 touched={touchedFields.has('hp')} onInput={(v) => handleManualEdit('hp', v)} />
               <Field label={t("form.mf_darurat_wa")} id="hpdarurat" value={cv.hpdarurat}

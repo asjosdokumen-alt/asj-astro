@@ -47,7 +47,7 @@ export const AI_CV_FLAT_KEYS = [
      employer reads the kanji. They must be in the flat key list or the pair
      registry has nowhere to write and the CV ships with an empty JP side. */
   'gender_jp', 'agama_jp', 'status_jp',
-  'goldar', 'status', 'anak', 'email', 'alamat', 'hp', 'hpdarurat', 'ktp', 'paspor', 'sim',
+  'goldar', 'status', 'anak', 'email', 'alamat', 'alamat_jp', 'hp', 'hpdarurat', 'ktp', 'paspor', 'sim',
   /* Kontak darurat: nama & hubungan. Form Master menanyakan keduanya sejak
      lama; CV AI hanya menyimpan nomor WA-nya. Ditambahkan 2026-10-25. */
   'darurat_nama', 'darurat_hubungan',
@@ -96,6 +96,11 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   anak: ['identitas.anak'],
   email: ['identitas.email'],
   alamat: ['identitas.alamat'],
+  /* Alamat versi Jepang (〒 + urutan terbesar→terkecil). Kolomnya sudah lama ada
+     (`master_database_candidate.alamat_jp`) dan dipakai Rirekisho/template CV,
+     tetapi CV AI tidak pernah memetakannya — jadi alamat kanji selalu kosong
+     walaupun AI mengembalikannya. Ditambahkan 2026-10-25. */
+  alamat_jp: ['identitas.alamat_jp'],
   hp: ['identitas.hp', 'identitas.no_wa'],
   hpdarurat: ['identitas.hp_darurat'],
   darurat_nama: ['identitas.darurat_nama'],

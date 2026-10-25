@@ -678,6 +678,11 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
     ['agama', 'agama'], ['agama_jp', 'agama_jp'], ['golongan_darah', 'golongan_darah'],
     ['status_pernikahan', 'status_nikah'], ['status_pernikahan_jp', 'status_nikah_jp'],
     ['jumlah_anak', 'anak'], ['email', 'email'], ['alamat_lengkap', 'alamat'],
+    /* Alamat versi Jepang. Kolomnya sudah ada sejak lama dan dibaca rirekisho /
+       template CV, tetapi CV AI tidak pernah memetakannya — jadi alamat kanji
+       selalu kosong walaupun AI mengembalikannya. Ditambahkan 2026-10-25
+       bersama `identitas.alamat_jp` di prompt & `AI_CV_PATHS`. */
+    ['alamat_jp', 'alamat_jp'],
     ['nik', 'ktp'], ['no_paspor', 'paspor'], ['driver_license', 'sim'],
     ['status_eks_jepang', 'status_eks_jepang'],
     /* Paritas Form Master (2026-10-25): tiga kolom paspor ini sudah ditanyakan

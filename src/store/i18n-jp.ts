@@ -1191,6 +1191,7 @@ export const jpTranslations: Record<string, string> = {
     "cv.field_gender": "性別",
     "cv.field_agama": "宗教",
     "cv.field_alamat": "住所",
+    "cv.field_alamat_jp": "住所（漢字・〒）",
     "cv.field_email": "メールアドレス",
     "cv.field_wa": "電話番号",
     "cv.field_status_nikah": "婚姻状況",

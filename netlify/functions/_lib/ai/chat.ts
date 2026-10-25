@@ -188,7 +188,7 @@ export const AI_FORM_DATA_INSTRUCTION =
   '\n\nPENTING — jawab SELALU dalam SATU objek JSON valid (tanpa teks lain, tanpa ```):\n' +
   '{"reply": "<balasan ramah untuk kandidat, dalam bahasa percakapan>", "data": <objek data di bawah>}\n' +
   'data harus berisi SEMUA data kandidat yang diketahui dari SELURUH percakapan, dengan kunci persis:\n' +
-  '{"identitas": {"nama_lengkap","katakana","panggilan","panggilan_katakana","tempat_lahir","tgl_lahir","umur","gender","agama","golongan_darah","status_nikah","anak","email","alamat","hp","hp_darurat","ktp","paspor","sim"}, ' +
+  '{"identitas": {"nama_lengkap","katakana","panggilan","panggilan_katakana","tempat_lahir","tgl_lahir","umur","gender","agama","golongan_darah","status_nikah","anak","email","alamat","alamat_jp","hp","hp_darurat","ktp","paspor","sim"}, ' +
   '"fisik": {"tb","bb","topi","baju","sepatu","tangan_dominan","tahan_ac"}, ' +
   '"medis": {"mata_kiri","mata_kanan","kacamata","buta_warna","tato","rokok","alkohol","alergi_id","alergi_jp","riwayat_medis_id","riwayat_medis_jp","riwayat_kecelakaan_id","riwayat_kecelakaan_jp"}, ' +
   '"sertifikasi": {"bahasa_jepang","nilai","lisensi"}, ' +
@@ -213,7 +213,14 @@ export const AI_FORM_DATA_INSTRUCTION =
   'kode pos dan provinsi adalah data wilayah publik, bukan data pribadi — lalu sebutkan di `reply` bahwa kode pos diisi otomatis. ' +
   'JANGAN mengarang RT/RW, nomor rumah, atau nama dusun yang tidak disebut kandidat. ' +
   '`alamat_jp` = alamat yang SAMA ditulis urut TERBESAR ke TERKECIL (gaya Jepang) dan SELALU diawali simbol 〒, ' +
-  'mis. "〒63453 東ジャワ州ポノロゴ県スクレジョ郡ガンドゥクプフ村" — bukan alamat yang berada di Jepang.\n' +
+  'mis. "〒63453 東ジャワ州ポノロゴ県スクレジョ郡ガンドゥクプフ村" — bukan alamat yang berada di Jepang. ' +
+  'ISI `alamat` DAN `alamat_jp` BERBARENGAN setiap kali alamat ditulis atau diperbaiki — jangan menunggu diminta. ' +
+  // "Perbaiki alamat saya" TANPA menyebut ulang alamatnya harus tetap jalan:
+  // kandidat tidak akan mengulang data yang sudah ada di form. Ambil dari
+  // DATA KANDIDAT SAAT INI, lalu tulis ulang + lengkapi kode pos + alamat_jp.
+  'Kalau kandidat minta "perbaiki/rapikan/lengkapi alamat saya" TANPA menyebut ulang alamatnya, ' +
+  'AMBIL alamat yang ada di DATA KANDIDAT SAAT INI, lalu tulis ulang ke format di atas — ' +
+  'lengkapi kode pos dan provinsi, dan isi juga `alamat_jp`. Jangan membalas "alamat sudah benar" tanpa memperbaikinya.\n' +
   'Aturan data: isi hanya field yang benar-benar diketahui dari percakapan (nilai bukan null, string kosong "" untuk yang belum); ' +
   'gender SELALU dinormalisasi ke "LAKI-LAKI" atau "PEREMPUAN"; ' +
   'JANGAN menebak/mengarang data yang tidak disebut kandidat; sertakan juga data yang sudah ada di DATA KANDIDAT SAAT INI.\n' +

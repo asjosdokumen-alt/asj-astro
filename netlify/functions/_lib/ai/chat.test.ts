@@ -115,6 +115,19 @@ describe('prompt — alamat wajib berkode pos (format KTP)', () => {
     expect(AI_FORM_DATA_INSTRUCTION).toMatch(/TERBESAR ke TERKECIL/i);
   });
 
+  // `alamat_jp` dulu TIDAK ADA di daftar kunci `identitas` pada skema prompt,
+  // jadi model tidak punya tempat menaruhnya dan selalu mengembalikan null —
+  // terukur 2026-10-25 lewat ai-chat lokal. Tanpa kunci ini, aturan 〒 di atas
+  // tidak ada gunanya.
+  it('skema identitas memuat kunci alamat_jp', () => {
+    expect(AI_FORM_DATA_INSTRUCTION).toContain('"alamat","alamat_jp"');
+  });
+
+  it('memperbaiki alamat tanpa menyebut ulang tetap dijalankan', () => {
+    expect(AI_FORM_DATA_INSTRUCTION).toMatch(/TANPA menyebut ulang alamatnya/i);
+    expect(AI_FORM_DATA_INSTRUCTION).toMatch(/DATA KANDIDAT SAAT INI/);
+  });
+
   it('aturan anti-mengarang data pribadi tidak ikut hilang', () => {
     expect(AI_FORM_DATA_INSTRUCTION).toMatch(/JANGAN menebak\/mengarang data yang tidak disebut/i);
   });

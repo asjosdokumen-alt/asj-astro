@@ -1677,6 +1677,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "cv.field_gender": "Gender",
     "cv.field_agama": "Agama",
     "cv.field_alamat": "Alamat Lengkap",
+    "cv.field_alamat_jp": "Alamat (Kanji / 〒)",
     "cv.field_email": "Email Aktif",
     "cv.field_wa": "No WA",
     "cv.field_status_nikah": "Status Nikah",
