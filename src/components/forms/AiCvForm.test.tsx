@@ -1263,8 +1263,21 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     expect(payload.keluarga).toHaveLength(0);
   });
 
-  it('urutan baris pendidikan dipaksa SD → SMP → SMA/SMK, bukan urutan ketik', () => {
+  // Keluhan pemilik 2026-10-25: siswa tidak melihat tombol "+" sehingga riwayat
+  // sekolahnya kosong dan CV-nya salah urutan. Kelima slot harus SUDAH ada,
+  // jenjangnya benar, dan baris yang belum diisi tidak boleh ikut terkirim.
+  it('form dibuka dengan lima baris pendidikan baku berjenjang SD → S1', () => {
     render(<AiCvForm />);
+    const levels = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1'];
+    levels.forEach((lv, i) => {
+      expect((document.getElementById(`ai-edu-tingkat-${i}`) as HTMLSelectElement).value).toBe(lv);
+      expect(document.getElementById(`ai_edu-sekolah-id-${i}`)).not.toBeNull();
+    });
+    // Slotnya sudah penuh (EDU_MAX=5) — tidak perlu tombol "+" untuk pendidikan.
+  });
+
+  it('urutan baris pendidikan dipaksa SD → SMP → SMA/SMK, bukan urutan ketik', () => {
+    render(<AiCvForm seedEdu={false} />);
     // Fill the first row with SMA, then add a second and fill it with SD. The
     // candidate typed the most recent school first — the reported complaint —
     // and the form has to put SD back on top regardless.
@@ -1289,7 +1302,7 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
   // the *node* stays in its slot while the row underneath it changes. These two
   // tests pin the node, which is what reorders incorrectly.
   it('key baris = identitas, bukan indeks: node DOM ikut PINDAH saat baris diurut ulang', () => {
-    render(<AiCvForm />);
+    render(<AiCvForm seedEdu={false} />);
     fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMA NEGERI 1' } });
     fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA/SMK' } });
     fireEvent.click(screen.getAllByText('ai_cv.row_tambah')[0]);
@@ -1336,7 +1349,7 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
   });
 
   it('tingkat di luar daftar (mis. "SMK" bawaan data lama) tetap ikut terurut benar', () => {
-    render(<AiCvForm />);
+    render(<AiCvForm seedEdu={false} />);
 
     // The form's own list spells this "SMA/SMK"; legacy rows carry bare "SMK".
     // Two things have to hold for such a row to survive a round-trip:

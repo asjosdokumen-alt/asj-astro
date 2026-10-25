@@ -108,7 +108,10 @@ function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbac
     gender: c.gender || c.bio?.gender,
     usia: c.usia || c.bio?.usia,
     fisik,
-    pendidikan: c.pendidikan,
+    // Ijazah TERAKHIR (dari slot pendidikan_1..5 di master). `c.pendidikan`
+    // hanya satu nilai dan yang tersimpan justru jenjang terendah — terukur
+    // ASJ00126: "SD" padahal riwayatnya SD/SMP/SMA-SMK. Master menang.
+    pendidikan: c.bio?.pendidikan_terakhir || c.pendidikan,
     tmplahir: c.bio?.tmplahir || c.tempatLahir || c.tmplahir,
     tgllahir: c.bio?.tgllahir || c.tglLahir || c.tgllahir,
     email: c.bio?.email || c.email,
@@ -132,7 +135,10 @@ function mapApiToCandidate(c: Record<string, any>, fallbackNama: string, fallbac
     isVIP: catatanInt.includes('[VIP]'),
     isSiswaASJ: !!c.isSiswaASJ || hasClassTag(catatanInt),
     kelas: c.kelas || '',
-    foto: c.berkas?.foto || c.pasPhoto || c.foto || '',
+    // Foto: `database_candidate.pas_photo` KOSONG untuk kandidat yang fotonya
+    // sudah diunggah — URL-nya hanya ada di master (`bio.foto`). Tanpa cabang
+    // itu, avatar selalu jatuh ke inisial huruf nama (ASJ00126, 2026-10-25).
+    foto: c.berkas?.foto || c.bio?.foto || c.pasPhoto || c.foto || '',
     // B03: surface sertifikat URL — row ter-dekorasi membawa cvUrl/jftUrl/sswUrl
     // (mapCandidate), dossier legacy #modal-cv membuka tombol BUKA CV/JFT/SSW/FOTO.
     cvUrl: c.cvUrl || c.berkas?.cv || c.fileCv || '',

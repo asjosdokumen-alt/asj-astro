@@ -60,6 +60,11 @@ const BIO_COLUMNS: [string, string[]][] = [
   ['usia', ['usia', 'umur']],
   ['tb', ['tb']],
   ['bb', ['bb']],
+  // Foto profil. `database_candidate.pas_photo` KOSONG untuk kandidat yang
+  // fotonya sudah diunggah — URL-nya hanya ada di master. Tanpa baris ini,
+  // `bio` tidak pernah membawa foto sehingga modal admin selalu jatuh ke
+  // inisial huruf nama (terukur ASJ00126, 2026-10-25).
+  ['foto', ['pas_photo', 'pasphoto', 'foto']],
 ];
 
 /**
@@ -88,12 +93,50 @@ const AI_BIO_FALLBACK: [string, string][] = [
  * `ai_data_json` untuk yang masih kosong. Urutannya SAMA dengan `makeV()` di
  * CV — baris (master) menang, AI hanya mengisi yang kosong.
  */
+/**
+ * Peringkat jenjang, dari yang TERENDAH ke TERTINGGI. Dipakai untuk memilih
+ * ijazah terakhir dari slot `pendidikan_1..5_tingkat`; urutan regex penting
+ * (S3 diperiksa sebelum SMA, dst.) karena `break` mengambil yang pertama cocok.
+ */
+const TINGKAT_RANK: [RegExp, number][] = [
+  [/\bS3\b/, 7],
+  [/\bS2\b/, 6],
+  [/\bS1\b|SARJANA|UNIVERSITAS|\bUNIV\b/, 5],
+  [/D3|D4|DIPLOMA/, 4],
+  [/SMA|SMK|SLTA|PAKET\s*C/, 3],
+  [/SMP|MTS|SLTP|PAKET\s*B/, 2],
+  [/\bSD\b|\bMI\b|SEKOLAH DASAR|PAKET\s*A/, 1],
+];
+
+/** Jenjang tertinggi yang terisi, atau '' bila belum ada satu pun. */
+function pendidikanTerakhir(mr: Record<string, unknown>): string {
+  let best = '';
+  let bestRank = 0;
+  for (let i = 1; i <= 5; i++) {
+    const v = toText(pick(mr, [`pendidikan_${i}_tingkat`]));
+    if (!v || v === '-') continue;
+    const u = v.toUpperCase();
+    for (const [re, rank] of TINGKAT_RANK) {
+      if (!re.test(u)) continue;
+      if (rank > bestRank) { bestRank = rank; best = v; }
+      break;
+    }
+  }
+  return best;
+}
+
 export function buildBioFromMaster(mr: Record<string, any>): Record<string, string> {
   const bio: Record<string, string> = {};
   for (const [key, cols] of BIO_COLUMNS) {
     const v = pick(mr, cols);
     bio[key] = v && v !== '-' ? (DATE_BIO_KEYS.has(key) ? toDateOnly(v) : toText(v)) : '';
   }
+  // Ijazah TERAKHIR, bukan yang pertama. `database_candidate.pendidikan` hanya
+  // menyimpan SATU nilai, dan yang tersimpan justru yang TERENDAH — terukur
+  // ASJ00126 (2026-10-25): kolom itu berisi "SD" padahal riwayatnya SD → SMP →
+  // SMA/SMK, sehingga dossier mencetak "SD" untuk lulusan SMA. Slot
+  // `pendidikan_N_tingkat` adalah kebenarannya, jadi turunkan dari situ.
+  bio.pendidikan_terakhir = pendidikanTerakhir(mr);
   for (const [key, aiKey] of AI_BIO_FALLBACK) {
     if (!bio[key]) {
       // Sentinel `-` juga berarti kosong — kalau tidak, nilai AI yang kosong

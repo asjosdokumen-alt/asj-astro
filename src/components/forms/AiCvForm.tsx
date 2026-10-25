@@ -175,6 +175,26 @@ const nextRowId = (): number => ++rowSeq;
 
 /** A fresh, empty row carrying its own stable identity. */
 const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '', sekolah_jp: '', jurusan_id: '', jurusan_jp: '', masuk: '', lulus: '' });
+
+/**
+ * Baris pendidikan BAKU — jenjangnya sudah terisi sejak awal.
+ *
+ * Keluhan pemilik 2026-10-25: siswa tidak melihat tombol "+", jadi riwayat
+ * sekolahnya tidak pernah diisi dan CV-nya salah urutan. Sekarang kelima slot
+ * langsung tersedia dengan jenjang yang benar (sama dengan TINGKAT_OPTIONS),
+ * tanpa perlu menekan apa pun. TIDAK dikunci: tiap baris tetap bisa diubah
+ * jenjangnya, dihapus kalau salah, dan urutannya dinormalkan `sortEduRows`
+ * sehingga CV mencetak SD → SMP → SMA/SMK → D3 → S1.
+ */
+const EDU_SEED_LEVELS = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1'] as const;
+const seedEduRows = (): EduRow[] => EDU_SEED_LEVELS.map((lv) => ({ ...newEduRow(), tingkat: lv }));
+
+/** Daftar masih persis seperti seed (belum disentuh user) — maka draf boleh menimpanya. */
+function eduListUntouched(list: EduRow[]): boolean {
+  if (list.length !== EDU_SEED_LEVELS.length) return false;
+  return list.every((r, i) => r.tingkat === EDU_SEED_LEVELS[i]
+    && !r.sekolah_id && !r.sekolah_jp && !r.jurusan_id && !r.jurusan_jp && !r.masuk && !r.lulus);
+}
 const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '' });
 const newFamRow = (): FamRow => ({ id: nextRowId(), hubungan_id: '', hubungan_jp: '', nama: '', katakana: '', umur: '', pekerjaan_id: '', pekerjaan_jp: '', gaji: '' });
 
@@ -203,7 +223,6 @@ function rowsToState<T extends { id: number }>(rows: AiCvRow[], make: () => T): 
  * tidak mungkin ada baris yang dianggap "kosong" oleh satu sisi dan "berisi"
  * oleh sisi lain.
  */
-const eduRowHasData = (r: EduRow): boolean => Boolean(r.sekolah_id || r.tingkat);
 const jobRowHasData = (r: JobRow): boolean => Boolean(r.perusahaan_id || r.jabatan_id);
 const famRowHasData = (r: FamRow): boolean => Boolean(r.nama || r.hubungan_id);
 
@@ -360,6 +379,12 @@ interface AiCvFormProps {
   waTarget?: string;
   /** Lewati gate login; backend sudah memberi admin akses ke WA mana pun. */
   adminMode?: boolean;
+  /**
+   * Isi baris pendidikan baku (SD/SMP/SMA-SMK/D3/S1) saat form dibuka.
+   * Default `true` — itu perilaku yang dilihat siswa. Tes yang menguji MEKANIKA
+   * pengurutan mematikannya supaya bekerja pada satu baris seperti dulu.
+   */
+  seedEdu?: boolean;
 }
 
 /**
@@ -388,7 +413,7 @@ const SAVE_ICON_DONE = 'check';
  */
 const MODE_CHAT = 'chat';
 
-export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
+export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFormProps = {}) {
   const lang = useLang();
   /* MANUAL-FIRST (keputusan pemilik 2026-10-25): *"cv ai isi manual, cuma ada
      bantuan ai"*. Dulu tab awal `chat`, jadi kandidat mendarat di kotak obrolan
@@ -453,7 +478,7 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
   const [savePhase, setSavePhase] = useState<'idle' | 'extCheck' | 'uploading' | 'saving' | 'done'>('idle');
   /* The three dynamic sections. Seeded with one empty row each so the section
      is usable immediately — legacy showed a row and a "tambah" button too. */
-  const [eduList, setEduList] = useState<EduRow[]>([newEduRow()]);
+  const [eduList, setEduList] = useState<EduRow[]>(() => (seedEdu ? seedEduRows() : [newEduRow()]));
   const [jobList, setJobList] = useState<JobRow[]>([newJobRow()]);
   const [famList, setFamList] = useState<FamRow[]>([newFamRow()]);
   // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`.
@@ -529,7 +554,14 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
         // kandidat sengaja TIDAK memblokir form selama draf dimuat
         // (lihat `loadingDraft`), jadi balasannya bisa tiba setelah baris
         // pertama diketik.
-        setEduList(prev => (prev.some(eduRowHasData) ? prev : sortEduRows(rowsToState(rows.pendidikan, newEduRow))));
+        setEduList(prev => {
+          // Baris baku (jenjang sudah terisi) BUKAN data user — jadi draf tetap
+          // boleh menimpanya. Begitu user mengubah/menghapus apa pun, draf tidak
+          // lagi menimpa (aturan lama: ketikan manusia menang).
+          if (!eduListUntouched(prev)) return prev;
+          const seeded = sortEduRows(rowsToState(rows.pendidikan, newEduRow));
+          return seeded.length ? seeded : prev;
+        });
         setJobList(prev => (prev.some(jobRowHasData) ? prev : rowsToState(rows.pekerjaan, newJobRow)));
         setFamList(prev => (prev.some(famRowHasData) ? prev : rowsToState(rows.keluarga, newFamRow)));
         // 🔴 "Sudah ada" — helper berkas yang SUDAH terunggah (lapor pemilik
@@ -934,7 +966,10 @@ export default function AiCvForm({ waTarget, adminMode }: AiCvFormProps = {}) {
            line in the work history. Unlike CV Master, position is NOT padded —
            there is no legacy rule requiring a fixed row count here. */
         pendidikan: eduList
-          .filter(e => e.sekolah_id || e.tingkat)
+          // Baris baku hanya berisi JENJANG (belum ada sekolah). Ikut terkirim =
+          // CV mencetak lima baris riwayat sekolah kosong. Jadi yang dikirim
+          // hanya baris yang benar-benar diisi — sama seperti pekerjaan/keluarga.
+          .filter(e => e.sekolah_id || e.sekolah_jp || e.jurusan_id || e.jurusan_jp || e.masuk || e.lulus)
           .map(e => ({
             tingkat: e.tingkat, nama_sekolah: e.sekolah_id, nama_sekolah_jp: e.sekolah_jp,
             jurusan: e.jurusan_id, jurusan_jp: e.jurusan_jp,
