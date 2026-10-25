@@ -5,6 +5,8 @@ import api from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { t } from '../../store/i18n';
+import DocumentPreviewModal from '../DocumentPreviewModal';
+import { useOverlayPresence } from '../ui/useOverlayPresence';
 
 interface Props {
   candidate: {
@@ -46,6 +48,24 @@ const GENDER_OPTIONS = ['', 'LAKI-LAKI', 'PEREMPUAN'];
 const PENDIDIKAN_OPTIONS = ['', 'SD', 'SMP', 'SMA', 'SMK', 'MA', 'D1', 'D2', 'D3', 'S1', 'S2', 'S3'];
 const TAHAPAN_OPTIONS = ['', 'Baru', 'Pendaftaran', 'LIST', 'MCU PARPOR', 'Wawancara', 'LULUS'];
 const STATUS_OPTIONS = ['', 'Aktif', 'LULUS', 'GAGAL', 'Non-Aktif'];
+
+/**
+ * Thumbnail hanya bisa dirender untuk gambar. PDF/XLSX dapat ikon jenis berkas
+ * — bukan kotak kosong, karena kotak kosong itulah yang dilaporkan pemilik
+ * ("preview dokumen yg sudah di upload kok gak ada").
+ */
+function isImageUrl(url: string): boolean {
+  return /\.(jpe?g|png|webp|gif|bmp|avif)(\?.*)?$/i.test(url);
+}
+
+/** Label pendek jenis berkas untuk badge thumbnail. */
+function docKindLabel(url: string): string {
+  if (isImageUrl(url)) return 'IMG';
+  if (/\.pdf(\?.*)?$/i.test(url)) return 'PDF';
+  if (/\.(xlsx?|csv)(\?.*)?$/i.test(url)) return 'XLS';
+  if (/\.(docx?|rtf)(\?.*)?$/i.test(url)) return 'DOC';
+  return 'FILE';
+}
 
 /** URL berkas yang sudah ada untuk satu token `jenis`, atau "" kalau belum. */
 function existingDocUrl(c: Props['candidate'], jenis: string): string {
@@ -97,6 +117,11 @@ function computeAge(tglLahir: string): number | null {
 export default function EditCandidateModal({ candidate, isOpen, onClose, closing = false }: Props) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  /* Pratinjau berkas yang SUDAH terunggah. Dulu tidak ada sama sekali: kotak
+     dokumen hanya menampilkan nama + "Sudah ada", sehingga admin harus mengunduh
+     untuk memeriksa isinya (laporan pemilik 2026-10-25). */
+  const [preview, setPreview] = useState<{ url: string; title: string } | null>(null);
+  const previewP = useOverlayPresence(preview);
   const [form, setForm] = useState({
     gender: candidate.gender || '',
     usia: candidate.usia || '',
@@ -344,20 +369,45 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
               <Icon name="file-arrow-up" class="text-sky-400" /> {t("admin.upload_dokumen")}
             </div>
             <div class="grid grid-cols-2 gap-2">
-              {DOC_UPLOADS.map(doc => (
-                <label key={doc.jenis} class="flex items-center gap-2 p-2 bg-slate-800/30 rounded-lg border border-slate-700/50 hover:border-sky-500/50 cursor-pointer transition">
-                  <Icon name="upload" class="text-slate-500 text-xs" />
-                  <span class="text-xs text-slate-400 truncate">{doc.label}</span>
-                  {/* "Sudah ada" — tanpa ini admin tidak tahu berkasnya sudah masuk
-                      dan mengunggah ulang tanpa sadar. Mengunggah ulang MENGGANTI
-                      yang lama: URL ditulis ke kolom yang sama (parity PemberkasanModal). */}
-                  {existingDocUrl(candidate, doc.jenis) && (
-                    <span class="text-[11px] text-emerald-400 font-bold ml-auto shrink-0"><Icon name="check" class="mr-0.5" />{t('cv.doc_exists')}</span>
-                  )}
-                  <input type="file" accept={doc.accept} class="hidden" onChange={e => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleFileUpload(doc.jenis, f); }} />
-                  {uploading === doc.jenis && <Icon spin name="spinner" class="text-sky-400 text-xs ml-auto" />}
-                </label>
-              ))}
+              {DOC_UPLOADS.map(doc => {
+                const url = existingDocUrl(candidate, doc.jenis);
+                const busy = uploading === doc.jenis;
+                return (
+                  <div key={doc.jenis} class="flex items-stretch gap-1.5">
+                    {/* Kotak unggah: satu-satunya jalan ke file picker. */}
+                    <label class="flex items-center gap-2 p-2 min-h-11 flex-1 bg-slate-800/30 rounded-lg border border-slate-700/50 hover:border-sky-500/50 cursor-pointer transition">
+                      <Icon name="upload" class="text-slate-500 text-xs shrink-0" />
+                      <span class="text-xs text-slate-400 truncate">{doc.label}</span>
+                      {/* "Sudah ada" — tanpa ini admin tidak tahu berkasnya sudah masuk
+                          dan mengunggah ulang tanpa sadar. Mengunggah ulang MENGGANTI
+                          yang lama: URL ditulis ke kolom yang sama (parity PemberkasanModal). */}
+                      {url && (
+                        <span class="text-[11px] text-emerald-400 font-bold ml-auto shrink-0"><Icon name="check" class="mr-0.5" />{t('cv.doc_exists')}</span>
+                      )}
+                      <input type="file" accept={doc.accept} class="hidden" onChange={e => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) handleFileUpload(doc.jenis, f); }} />
+                      {busy && <Icon spin name="spinner" class="text-sky-400 text-xs ml-auto" />}
+                    </label>
+
+                    {/* Pratinjau berkas yang sudah ada. Tombol, BUKAN bagian dari
+                        <label>, supaya klik di sini tidak membuka file picker. */}
+                    {url && !busy && (
+                      <button
+                        type="button"
+                        onClick={() => setPreview({ url, title: doc.label })}
+                        class="w-11 shrink-0 rounded-lg border border-slate-700/50 bg-slate-800/30 hover:border-sky-500/60 overflow-hidden flex items-center justify-center transition"
+                        aria-label={`Pratinjau ${doc.label}`}
+                        title={`Pratinjau ${doc.label}`}
+                      >
+                        {isImageUrl(url) ? (
+                          <img src={url} alt="" class="w-full h-full object-cover" loading="lazy" />
+                        ) : (
+                          <span class="text-[10px] font-bold text-sky-300">{docKindLabel(url)}</span>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -376,6 +426,15 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
           </button>
         </div>
       </div>
+
+      {previewP.present && previewP.held && (
+        <DocumentPreviewModal
+          url={previewP.held.url}
+          title={previewP.held.title}
+          onClose={() => setPreview(null)}
+          closing={previewP.closing}
+        />
+      )}
     </div>
   );
 }
