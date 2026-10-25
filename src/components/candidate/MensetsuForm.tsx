@@ -498,7 +498,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
             yang ikut tercetak. */}
         {tahap.length > 0 && (
           <div class="cetak-saja px-3 pt-3 pb-1">
-            <p class="text-[10px] uppercase tracking-wide text-fg-muted">Latihan Wawancara Jepang — Mensetsu</p>
+            <p class="text-[10px] uppercase tracking-wide text-fg-muted">{t('toolbar.mensetsu')}</p>
             <h2 class="text-[15px] font-black text-fg">{tahapSekarang}</h2>
             <p class="text-[11px] text-fg-muted">
               Tahap {tahapAktif + 1} dari {tahap.length} · {soalTahap.length} soal

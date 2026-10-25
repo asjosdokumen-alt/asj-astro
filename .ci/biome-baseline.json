@@ -1,6 +1,6 @@
 {
-  "total": 2011,
-  "generatedAt": "2026-10-25T01:19:23.506Z",
+  "total": 2001,
+  "generatedAt": "2026-10-25T12:36:04.811Z",
   "byFile": {
     "netlify/functions/contexts/master-data/service.ts": 132,
     "netlify/functions/contexts/documents/service.ts": 89,
@@ -64,7 +64,6 @@
     "src/components/admin/TabJadwal.tsx": 10,
     "src/lib/masterPrefill.ts": 10,
     "src/components/admin/EditCandidateModal.tsx": 9,
-    "src/components/candidate/InterviewSimulatorModal.tsx": 9,
     "src/lib/apiClient.ts": 9,
     "netlify/functions/contexts/notifications/wa-single-durability.test.ts": 9,
     "netlify/functions/_lib/characterisation.test.ts": 8,
@@ -207,7 +206,6 @@
     "src/components/admin/AdminShareModal.tsx": 1,
     "src/components/admin/RejectMailModal.test.tsx": 1,
     "src/components/admin/UndanganKelasModal.test.tsx": 1,
-    "src/components/candidate/InterviewSimulatorModal.test.tsx": 1,
     "src/components/forms/ShareView.test.tsx": 1,
     "src/components/public/PamfletModal.test.tsx": 1,
     "src/lib/candidateExport.ts": 1,
@@ -256,14 +254,14 @@
     "src/lib/berkasCatalog.test.ts": 1
   },
   "byRule": {
-    "lint/style/useTemplate": 734,
+    "lint/style/useTemplate": 729,
     "lint/suspicious/noExplicitAny": 400,
     "lint/style/noNonNullAssertion": 290,
-    "lint/complexity/useOptionalChain": 244,
+    "lint/complexity/useOptionalChain": 241,
     "lint/suspicious/noConsole": 61,
-    "lint/correctness/useExhaustiveDependencies": 42,
     "lint/suspicious/noAssignInExpressions": 42,
     "lint/suspicious/useIterableCallbackReturn": 41,
+    "lint/correctness/useExhaustiveDependencies": 40,
     "lint/complexity/useLiteralKeys": 28,
     "lint/complexity/noImportantStyles": 27,
     "lint/style/useNodejsImportProtocol": 22,
