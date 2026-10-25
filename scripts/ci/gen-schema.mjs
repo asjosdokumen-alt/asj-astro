@@ -50,11 +50,12 @@ const TARGET = join(REPO, 'netlify', 'functions', '_lib', 'db', 'schema.generate
 const GENERATED_HEADER = 'AUTO-GENERATED — DO NOT EDIT BY HAND.';
 
 function parseArgs(argv) {
-  const args = { check: false, json: '', stdout: false, timeout: 20000, retries: 3 };
+  const args = { check: false, json: '', stdout: false, timeout: 20000, retries: 3, fromDb: false };
   for (let i = 0; i < argv.length; i++) {
     switch (argv[i]) {
       case '--check': args.check = true; break;
       case '--stdout': args.stdout = true; break;
+      case '--from-db': args.fromDb = true; break;
       case '--json': args.json = argv[++i]; break;
       case '--timeout': args.timeout = Number(argv[++i]); break;
       case '--retries': args.retries = Number(argv[++i]); break;
@@ -117,10 +118,72 @@ async function fetchSchema(base, key, args) {
   throw new Error(lastErr);
 }
 
+/**
+ * Same shape as `fetchSchema`, read from POSTGRES instead of PostgREST.
+ *
+ * WHY THIS EXISTS (measured 2026-10-25)
+ *   On a developer machine `SUPABASE_URL` can point at a DIFFERENT database than
+ *   the one the deployed functions use — this repo's local `.env` still named the
+ *   pre-Neon project while production had already moved. The generator then read
+ *   the old database, found no change, and printed **SCHEMA UNCHANGED** — a green
+ *   verdict about the wrong server. It stayed plausible because the old project
+ *   still holds the same snapshot (234 rows), so only the COLUMN COUNT gave it
+ *   away (176 vs 203 after a migration had landed).
+ *
+ *   `--from-db` reads the direct connection the migration runner already uses
+ *   (`Direct_Connection_DB`), i.e. the database the migrations were applied to.
+ *   That makes "migration applied" and "contract regenerated" talk about the same
+ *   server, which is the property that matters.
+ *
+ *   The emitted file is byte-identical either way: same table set, same column
+ *   order (`ordinal_position` is what PostgREST reports), same header. That is
+ *   deliberate — a contract that depends on which transport generated it would
+ *   turn every laptop/CI difference into a false drift.
+ */
+async function fetchSchemaFromDb(args) {
+  const { default: pg } = await import('pg');
+  const { initDbEnv } = await import('../lib/load-env.mjs');
+  const dbEnv = initDbEnv();
+  if (!dbEnv.url) {
+    throw new Error('no direct database URL (set Direct_Connection_DB or DATABASE_URL)');
+  }
+  const client = new pg.Client({
+    connectionString: dbEnv.url,
+    ssl: { rejectUnauthorized: false },
+    statement_timeout: args.timeout,
+    connectionTimeoutMillis: args.timeout,
+  });
+  await client.connect();
+  try {
+    // `information_schema.columns` has NO `table_type` column (that one lives in
+    // `information_schema.tables`) — asking for it fails the whole query with
+    // `column "table_type" does not exist`, which reads like a broken connection.
+    // Views are wanted here anyway: PostgREST exposes them the same way.
+    const res = await client.query(
+      `SELECT c.table_name, c.column_name
+         FROM information_schema.columns c
+         JOIN information_schema.tables t
+           ON t.table_schema = c.table_schema AND t.table_name = c.table_name
+        WHERE c.table_schema = 'public'
+          AND t.table_type IN ('BASE TABLE', 'VIEW')
+        ORDER BY c.table_name, c.ordinal_position`,
+    );
+    const tables = {};
+    for (const row of res.rows) {
+      (tables[row.table_name] ||= []).push(row.column_name);
+    }
+    if (Object.keys(tables).length === 0) {
+      throw new Error('information_schema exposed zero tables — refusing to write an empty contract');
+    }
+    return tables;
+  } finally {
+    await client.end();
+  }
+}
+
 /** Canonical fingerprint: sorted table names, each with its columns in the
  *  order PostgREST reports them. Column order is part of the contract because
- *  projections are written as ordered strings. */
-function fingerprint(tables) {
+ *  projections are written as ordered strings. */function fingerprint(tables) {
   const canonical = Object.keys(tables)
     .sort()
     .map((t) => `${t}:${tables[t].join(',')}`)
@@ -296,27 +359,32 @@ function render(tables, sha) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log(`Usage: node scripts/ci/gen-schema.mjs [--check] [--stdout] [--json <file>]
+    console.log(`Usage: node scripts/ci/gen-schema.mjs [--check] [--stdout] [--from-db] [--json <file>]
 
-Regenerates netlify/functions/_lib/db/schema.generated.ts from the live database.`);
+Regenerates netlify/functions/_lib/db/schema.generated.ts from the live database.
+
+  (default)   read PostgREST's OpenAPI document (SUPABASE_URL + service key)
+  --from-db   read information_schema over the DIRECT Postgres connection
+              (Direct_Connection_DB) — use when the deployed database and the
+              local SUPABASE_URL are not the same server`);
     return process.exit(0);
   }
 
   applyEnvFiles();
   const base = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-  if (!base) {
+  if (!args.fromDb && !base) {
     console.error('CONFIG ERROR  SUPABASE_URL is not set. Failing closed — nothing was checked.');
     return process.exit(2);
   }
-  if (!key) {
+  if (!args.fromDb && !key) {
     console.error('CONFIG ERROR  SUPABASE_SERVICE_ROLE_KEY is not set (OpenAPI is service-role only).');
     return process.exit(2);
   }
 
   let tables;
   try {
-    tables = await fetchSchema(base, key, args);
+    tables = args.fromDb ? await fetchSchemaFromDb(args) : await fetchSchema(base, key, args);
   } catch (err) {
     console.error(`CONFIG ERROR  could not read the schema: ${err.message}`);
     return process.exit(2);
@@ -349,9 +417,8 @@ Regenerates netlify/functions/_lib/db/schema.generated.ts from the live database
     console.error(`SCHEMA DRIFTED  ${rel}`);
     console.error(`  live digest     : sha256:${sha.slice(0, 12)}`);
     const committed = /Digest\s*:\s*sha256:([0-9a-f]+)/.exec(current);
-    console.error(
-      `  committed digest: ${committed ? 'sha256:' + committed[1].slice(0, 12) : 'absent or unreadable'}`,
-    );
+    const committedDigest = committed ? `sha256:${committed[1].slice(0, 12)}` : 'absent or unreadable';
+    console.error(`  committed digest: ${committedDigest}`);
     console.error('  The database changed and the contract was not regenerated.');
     console.error('  Run `npm run db:schema`, review the diff, and commit it.');
     return process.exit(1);
