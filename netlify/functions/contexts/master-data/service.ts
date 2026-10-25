@@ -4,6 +4,7 @@
  * Other contexts and surfaces import ONLY from index.ts.
  */
 import { findCandidateByWaFiltered, findCandidates } from '../../_lib/db/candidates';
+import { candidateIdentityPatch } from '../../_lib/db/identity-sync';
 import { MASTER_LIGHT_COLS, SYS_CONFIG_COLS } from '../../_lib/db/projections';
 import * as session from '../../_lib/session';
 import { isOwnerOrAdmin } from '../identity';
@@ -987,10 +988,12 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
     try {
       let c = await findCandidateByWaFiltered(wa);
       if (c === undefined) { const candFound = await findCandidates(); const want = nw(wa); c = candFound.rows.find((r) => nw(String(pick(r, APPLY_WA_COLS) || '')) === want) || null; }
-      const candBody: Record<string, any> = { nama_lengkap: nama };
-      for (const [col, dbCol] of [['gender', 'gender'], ['usia', 'usia'], ['tb', 'tb'], ['bb', 'bb'], ['nik', 'nik'], ['email', 'email'], ['tempat_lahir', 'tempat_lahir'], ['tgl_lahir', 'tgl_lahir'], ['alamat_lengkap', 'alamat_lengkap']] as const) {
-        if (body[dbCol] !== undefined) candBody[col] = body[dbCol];
-      }
+      // Satu daftar field, dipakai juga oleh jalur CV AI dan oleh edit admin
+      // (`_lib/db/identity-sync.ts`). Sebelumnya daftar ini ditulis tangan di
+      // sini DAN di `_lib/ai/cv.ts`, dan keduanya sudah berbeda — jalur CV AI
+      // tidak menyalin `tb`/`bb`/`nik`/`email`/`alamat`, sehingga CV Mini
+      // menampilkan tinggi/berat kosong untuk kandidat yang mengisi lewat CV AI.
+      const candBody: Record<string, string> = { nama_lengkap: nama, ...candidateIdentityPatch(body) };
       if (fileUrls.pas_photo) candBody.pas_photo = fileUrls.pas_photo;
       if (fileUrls.jft_url) candBody.jft = fileUrls.jft_url;
       if (fileUrls.ssw_url) candBody.ssw = fileUrls.ssw_url;

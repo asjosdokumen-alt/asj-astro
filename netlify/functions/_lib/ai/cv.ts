@@ -1,5 +1,6 @@
 import { normalizeWa, supabaseJson, APPLY_WA_COLS } from '../db/client.ts';
 import type { FormRawRow } from '../db/row-types';
+import { candidateIdentityPatch } from '../db/identity-sync';
 import { AI_SUBMISSION_COLS, ESIGNATURE_COLS } from '../db/projections.ts';
 import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
 import { buildMasterNested, buildRiwayatSlots, masterColumnsFromAi } from '../../contexts/master-data';
@@ -549,11 +550,19 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
         // `master_database_candidate.ktp_url` above and to
         // `pemberkasan_checklist.ktp_url` just below, and those two columns do
         // exist.
+        // Daftar field identitas TIDAK lagi ditulis di sini. Ia hidup di
+        // `_lib/db/identity-sync.ts` dan dipakai bersama jalur Form Master serta
+        // edit admin — sebelumnya tiga salinan tangan, dan salinan di berkas ini
+        // sudah tertinggal: `tb`, `bb`, `nik`, `email`, `alamat_lengkap` tidak
+        // pernah ikut, sehingga kandidat yang mengisi tinggi/berat lewat CV AI
+        // melihat CV Mini-nya kosong (keluhan pemilik 2026-10-25) padahal
+        // `master_database_candidate.tb` sudah berisi.
+        //
+        // Sumbernya `masterBody` — body yang BARU ditulis ke master — bukan
+        // `identitas`, supaya yang disalin persis nilai yang tersimpan (termasuk
+        // hasil pemetaan `AI_TO_MASTER_COLUMNS`, mis. `fisik.tb`).
+        Object.assign(candBody, candidateIdentityPatch(masterBody));
         if (identitas.nama_lengkap) candBody.nama_lengkap = identitas.nama_lengkap;
-        if (identitas.gender) candBody.gender = identitas.gender;
-        if (identitas.usia) candBody.usia = identitas.usia;
-        if (identitas.tempat_lahir) candBody.tempat_lahir = identitas.tempat_lahir;
-        if (identitas.tgl_lahir) candBody.tgl_lahir = identitas.tgl_lahir;
         if (identitas.hp) candBody.no_wa = wa;
 
         if (Object.keys(candBody).length > 0) {

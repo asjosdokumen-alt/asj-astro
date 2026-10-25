@@ -8,6 +8,8 @@ import { requireAdmin } from '../identity';
 import { emit } from '../../_lib/kernel/events';
 import { safeError } from '../../_lib/kernel/errors';
 import { findCandidateByWa } from '../../_lib/candidate-helpers';
+import { masterIdentityPatch } from '../../_lib/db/identity-sync';
+import { findMasterByWa, patchMaster } from '../master-data';
 import { syncBiodataKeMail } from '../applications';
 import { getCandidatesPage as getCandidatesPageRepo, patchCandidate } from './repository';
 
@@ -126,6 +128,28 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
     if (!row) return { success: false, error: 'Kandidat tidak ditemukan.' };
     const body = buildKandidatSuperPatch(row, data);
     await patchCandidate(row.id, body, updatedAt, sessionToken);
+
+    /* ── TULIS-BALIK KE SUMBER UTAMA ─────────────────────────────────────────
+       Panel admin mengedit baris OPERASIONAL (`database_candidate`). Sumber
+       utama (`master_database_candidate`) tidak pernah ikut — jadi koreksi
+       tinggi/berat/nama/email oleh admin hanya mengubah layar, sementara CV
+       unduhan dan rirekisho tetap memakai nilai lama. Pemilik meminta satu arah
+       saja: apa pun yang diubah di mana pun berakhir di master.
+
+       Best-effort seperti `syncBiodataKeMail` di bawah: kegagalan di sini tidak
+       boleh membatalkan edit yang sudah tersimpan. Yang ditulis hanya field
+       identitas yang MEMANG berubah (`masterIdentityPatch` mengabaikan nilai
+       kosong), jadi status/tahapan yang ikut di payload tidak menyentuh master.
+    */
+    try {
+      const masterBody = masterIdentityPatch(body);
+      if (Object.keys(masterBody).length > 0) {
+        const m = await findMasterByWa(data.wa as string);
+        if (m && m.id !== undefined) {
+          await patchMaster(String(m.id), { ...masterBody, updated_at: new Date().toISOString() });
+        }
+      }
+    } catch { /* sync ke master best-effort */ }
 
     // Emit stage-changed event if status_kandidat was modified
     if (body.status_kandidat && String(body.status_kandidat) !== String(row.status_kandidat || '')) {

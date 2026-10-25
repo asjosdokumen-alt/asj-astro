@@ -207,6 +207,10 @@ export default defineConfig({
             // tidak dihitung (R15). Tanpa baris ini ia jalan DUA KALI
             // (R13f-bis).
             'e2e/sitemap-robots-agreement.test.ts',
+            // Ditambahkan 2026-10-25. Meng-import `netlify/functions/_lib/db/…`
+            // (backend) dan kontrak skema; tidak menyentuh DOM sama sekali.
+            // Tanpa baris ini ia jalan DUA KALI (R13f-bis).
+            'e2e/identity-sync.test.ts',
           ],
         },
       },
