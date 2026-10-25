@@ -441,11 +441,22 @@ async function main() {
   header('16. INDEX REDUNDAN (duplikat / prefix-sama)');
   // Pakai indkey::text (vektor attnum, mis. "2 3") — lebih andal daripada
   // unnest(indkey) yang rusak untuk index berbasis ekspresi.
+  //
+  // 🪤 `indpred` WAJIB ikut dibandingkan (diperbaiki 2026-10-25). Versi lama
+  // hanya membandingkan `indkey`, jadi dua index PARSIAL dengan predikat berbeda
+  // dilaporkan "IDENTIK" — terukur: `idx_schedule_status_aktif`
+  // (`WHERE status_jadwal='AKTIF'`) disebut duplikat dari primary key `(id)`,
+  // `idx_job_queue_completed` (`WHERE status='done'`) duplikat dari yang
+  // `'dead'`. Membuangnya akan menghapus satu-satunya index untuk query itu.
+  // `indexprs` ikut karena index ekspresi bisa punya kunci attnum yang sama
+  // tetapi ekspresi berbeda.
   const red = await q(`
     WITH ix AS (
       SELECT i.indrelid::regclass::text AS tabel,
              c.relname::text AS index,
              i.indkey::text AS kunci,
+             coalesce(i.indpred::text, '') AS pred,
+             coalesce(i.indexprs::text, '') AS exprs,
              i.indisunique AS unik,
              pg_get_indexdef(i.indexrelid) AS def,
              pg_relation_size(i.indexrelid) AS bytes
@@ -466,6 +477,9 @@ async function main() {
      AND (a.kunci = b.kunci
           OR b.kunci LIKE a.kunci || ' %'
           OR a.kunci LIKE b.kunci || ' %')
+     -- Predikat & ekspresi HARUS sama: yang berbeda bukan duplikat.
+     AND a.pred = b.pred
+     AND a.exprs = b.exprs
     ORDER BY a.tabel, a.index`);
   if (!red.length) console.log('Tidak ada index redundan yang terdeteksi.');
   else {
