@@ -1181,6 +1181,8 @@ export const jpTranslations: Record<string, string> = {
     "wawancara.cetak_semua": "全段階を印刷",
     "wawancara.semua_tahap": "全段階",
     "wawancara.belum_vip": "VIP未登録",
+    "wawancara.tutup_judul": "面接練習はまだ公開されていません",
+    "wawancara.tutup_isi": "この機能は現在ASJ内部のみで使用しています。面接練習が必要な場合は管理者にご連絡ください。",
     "auth.belum_punya_akun": "アカウントをお持ちでないですか？",
     "toolbar.apply": "応募フォーム",
     "toolbar.master": "CVマスター",

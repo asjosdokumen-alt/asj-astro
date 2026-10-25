@@ -326,10 +326,16 @@ export async function registerFcmToken(
   if (!wa || !token) return { success: false, message: 'Invalid data' };
 
   try {
-    // Insert/upsert ke tabel fcm_tokens (jika token sama, update last_used_at)
+    // UPSERT, bukan INSERT. `on_conflict` saja TIDAK cukup: PostgREST baru
+    // memperlakukan POST sebagai upsert kalau header `Prefer:
+    // resolution=merge-duplicates` ikut dikirim. Tanpa header itu ini INSERT
+    // biasa, dan login kedua di perangkat yang sama dijawab
+    // `409 {"code":"23505","message":"duplicate key value violates unique
+    // constraint"}` — toast merah yang dilihat pemilik 2026-10-25.
     const { supabaseJson } = await import('./repository');
     await supabaseJson('POST', 'fcm_tokens', {
       query: { on_conflict: 'token' },
+      headers: { Prefer: 'resolution=merge-duplicates' },
       body: {
         wa: wa,
         token: token,

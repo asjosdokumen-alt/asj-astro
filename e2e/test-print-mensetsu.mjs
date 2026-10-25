@@ -324,15 +324,27 @@ async function assertPrintSheet(page, label) {
   await page.emulateMedia({ media: 'screen' });
 }
 
-/* ── 1. The public page ─────────────────────────────────────────────────── */
-await test('/wawancara: print media shows only the question sheet', async () => {
+/* ── 1. Halaman publik: DITUTUP (2026-10-25) ───────────────────────────────
+   Pemilik memutuskan latihan wawancara dipakai internal dulu, jadi `/wawancara`
+   berhenti di kartu pemberitahuan: tidak ada lembar soal, tidak ada gerbang
+   login. Penjaganya yang sebenarnya `requireAdmin` di surfaces/ai.ts — test ini
+   menjaga PERILAKU YANG TERLIHAT, dan kalau kartunya hilang tanpa sengaja
+   (mis. guard dihapus saat fitur dibuka lagi) hasilnya ketahuan di sini. */
+await test('/wawancara: ditutup untuk publik — kartu, bukan lembar soal', async () => {
   const { ctx, page } = await open({
     role: 'kandidat',
     path: '/wawancara?wa=081234567890',
-    ready: '[data-cetak] li',
+    ready: '[data-testid="mensetsu-tutup"]',
   });
   try {
-    await assertPrintSheet(page, '/wawancara');
+    const bentuk = await page.evaluate(() => ({
+      kartu: !!document.querySelector('[data-testid="mensetsu-tutup"]'),
+      lembar: document.querySelectorAll('[data-cetak]').length,
+      gerbang: !!document.querySelector('input[type="password"]'),
+    }));
+    if (!bentuk.kartu) throw new Error('kartu "belum dibuka" tidak muncul');
+    if (bentuk.lembar > 0) throw new Error('lembar soal masih dirender untuk publik');
+    if (bentuk.gerbang) throw new Error('gerbang login masih muncul padahal fiturnya ditutup');
   } finally {
     await ctx.close();
   }

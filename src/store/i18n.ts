@@ -1667,6 +1667,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "wawancara.cetak_semua": "Cetak semua tahap",
     "wawancara.semua_tahap": "Semua tahap",
     "wawancara.belum_vip": "Belum VIP",
+    "wawancara.tutup_judul": "Latihan wawancara belum dibuka",
+    "wawancara.tutup_isi": "Fitur ini sementara hanya dipakai internal ASJ. Kalau Anda perlu berlatih wawancara, hubungi admin.",
     "auth.belum_punya_akun": "Belum punya akun?",
     "toolbar.apply": "Form Lamaran",
     "toolbar.master": "CV Master",

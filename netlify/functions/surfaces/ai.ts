@@ -87,29 +87,37 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
 
   // ── Bank soal wawancara (mensetsu) ────────────────────────────────────────
   // Menggantikan simulator chat bebas: soal tetap (177 soal, 13 tahap) + isian
-  // tiga lapis per soal. Semua aksi di sini milik satu kandidat, jadi dijaga
-  // `isOwnerOrAdmin` — admin boleh membuka milik siapa pun (untuk mendampingi),
-  // kandidat hanya miliknya sendiri.
+  // tiga lapis per soal.
+  //
+  // 🔴 ADMIN-ONLY SEJAK 2026-10-25 (keputusan pemilik: "untuk wawancara mending
+  // kita tolak dulu, biar untuk internal dulu"). Sebelumnya `isOwnerOrAdmin`,
+  // jadi kandidat bisa membuka miliknya sendiri lewat /wawancara. Sekarang
+  // ketiga aksi ini `requireAdmin` — halaman publik hanya menampilkan pemberitahuan,
+  // dan panel admin (TabPelamar, `adminMode`) tetap jalan karena sesinya admin.
+  // Kalau fitur ini dibuka lagi untuk kandidat, kembalikan ke `isOwnerOrAdmin`
+  // BERSAMAAN dengan menghapus kartu "belum dibuka" di MensetsuForm — dua tempat,
+  // karena guard di sini yang sebenarnya menahan, bukan tampilannya.
   getBankWawancara: async (p: unknown[], s?: string) => {
     const { gabungBankDanJawaban } = await import('../_lib/wawancara/bank');
-    const { isOwnerOrAdmin } = await import('../contexts/identity');
+    const { requireAdmin } = await import('../contexts/identity');
+    const guard = requireAdmin(s || '');
+    if (guard.error) return { ...guard.error, message: 'Latihan wawancara sementara hanya untuk admin' };
     const wa = String(p?.[0] ?? '').trim();
-    if (!isOwnerOrAdmin(s, wa)) return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
     return { success: true, ...(await gabungBankDanJawaban(wa)) };
   },
   simpanJawabanWawancara: async (p: unknown[], s?: string) => {
     const { simpanJawaban } = await import('../_lib/wawancara/bank');
-    const { isOwnerOrAdmin } = await import('../contexts/identity');
-    const wa = String(p?.[0] ?? '').trim();
-    if (!isOwnerOrAdmin(s, wa)) return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
-    return simpanJawaban(wa, String(p?.[1] ?? ''), (p?.[2] ?? {}) as Record<string, unknown>, 'siswa');
+    const { requireAdmin } = await import('../contexts/identity');
+    const guard = requireAdmin(s || '');
+    if (guard.error) return { ...guard.error, message: 'Latihan wawancara sementara hanya untuk admin' };
+    return simpanJawaban(String(p?.[0] ?? ''), String(p?.[1] ?? ''), (p?.[2] ?? {}) as Record<string, unknown>, 'siswa');
   },
   terjemahkanJawabanWawancara: async (p: unknown[], s?: string) => {
     const { terjemahkanJawaban } = await import('../_lib/wawancara/bank');
-    const { isOwnerOrAdmin } = await import('../contexts/identity');
-    const wa = String(p?.[0] ?? '').trim();
-    if (!isOwnerOrAdmin(s, wa)) return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
-    return terjemahkanJawaban(wa, String(p?.[1] ?? ''), String(p?.[2] ?? ''));
+    const { requireAdmin } = await import('../contexts/identity');
+    const guard = requireAdmin(s || '');
+    if (guard.error) return { ...guard.error, message: 'Latihan wawancara sementara hanya untuk admin' };
+    return terjemahkanJawaban(String(p?.[0] ?? ''), String(p?.[1] ?? ''), String(p?.[2] ?? ''));
   },
   getLinkWawancara: async (p: unknown[], s?: string) => {
     const { linkWawancara } = await import('../_lib/wawancara/bank');

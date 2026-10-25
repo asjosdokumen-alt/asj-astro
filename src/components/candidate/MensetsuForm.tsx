@@ -380,6 +380,30 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
     }
   };
 
+  /* ── render: ditutup untuk publik ──────────────────────────────────────── */
+  /**
+   * Keputusan pemilik 2026-10-25: "untuk wawancara mending kita tolak dulu,
+   * biar untuk internal dulu". Jadi halaman publik berhenti di kartu ini —
+   * TIDAK ada gerbang login, karena masuk pun tidak akan membuka apa pun.
+   *
+   * Penjaga yang SEBENARNYA ada di server: ketiga aksi wawancara sekarang
+   * `requireAdmin` (surfaces/ai.ts). Kartu ini hanya supaya orang tidak
+   * menebak-nebak; keduanya harus dibuka bersama kalau fitur ini dibuka lagi.
+   * Panel admin tetap jalan — ia memanggil dengan `adminMode`.
+   */
+  if (!adminMode && auth.role !== 'admin') {
+    return (
+      <section
+        aria-label={t('wawancara.tutup_judul')}
+        data-testid="mensetsu-tutup"
+        class="max-w-md mx-auto my-8 rounded-card border border-line bg-surface p-6 text-center"
+      >
+        <h2 class="text-base font-black text-fg mb-2">{t('wawancara.tutup_judul')}</h2>
+        <p class="text-[12.5px] text-fg-muted leading-relaxed">{t('wawancara.tutup_isi')}</p>
+      </section>
+    );
+  }
+
   /* ── render: gate ──────────────────────────────────────────────────────── */
   if (loginGate) {
     return (

@@ -1124,7 +1124,19 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
   }
 
   return (
-    <div class="flex flex-col md:flex-row h-[calc(100dvh-42px)] w-full relative pt-[42px]" style={{ height: '100dvh' }}>
+    /* Tinggi kotak ini mengikuti SIAPA yang memasangnya.
+       - Di halaman `/ai-cv` (`adminMode=false`) halaman sudah menyisakan
+         `--u-toolbar-h` di atasnya, jadi tinggi yang benar adalah
+         `100dvh - toolbar`. Dulu di sini ada `pt-[42px]` + `height:100dvh`:
+         hasilnya jarak mati 42px di dalam kotak DAN halaman tetap bisa
+         digulir 61px karena totalnya melebihi layar.
+       - Di panel admin (`adminMode`) komponen ini hidup di dalam overlay
+         `fixed inset-0`, tidak ada toolbar di atasnya, jadi 100dvh penuh.
+       `42px` yang lama juga BUKAN tinggi toolbar — toolbar 61px. */
+    <div
+      class="flex flex-col md:flex-row w-full relative"
+      style={{ height: adminMode ? '100dvh' : 'calc(100dvh - var(--u-toolbar-h))' }}
+    >
       {/* Mobile Tab — `aria-selected` supaya keadaan awal (form, bukan chat)
           bisa dibaca pembaca layar DAN diuji; kelas saja tidak cukup. */}
       <div class="md:hidden flex w-full bg-slate-900 border-b border-slate-800 z-50" role="tablist">
@@ -1242,7 +1254,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           one here was nested inside the first. Two `main` landmarks on one page
           is invalid; browsers do not merge them and a screen reader cannot tell
           them apart. The class string is unchanged — only the landmark role is. */}
-      <div class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[65%] h-[calc(100vh-42px)] md:h-full u-scroll-area bg-slate-950 p-3 md:p-6`}>
+      <div class={`${tab === 'form' ? 'flex' : 'hidden'} md:flex w-full md:w-[65%] h-full u-scroll-area bg-slate-950 p-3 md:p-6`}>
         <div class="max-w-5xl mx-auto pb-20 w-full">
           <div class="flex justify-between items-center mb-4 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
             <div class="flex items-center gap-3">
