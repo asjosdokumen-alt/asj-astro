@@ -1,4 +1,8 @@
 ---
+// Aturan cetak TIDAK lagi di sini. `MensetsuForm` juga dirender di overlay
+// admin, dan aturan yang hanya menempel di halaman ini tidak ikut ke sana —
+// akibatnya tombol Cetak/PDF dari panel admin mencetak seluruh panel admin
+// beserta chat. Satu sumber aturan: `styles/layout.css` §5b (`[data-cetak]`).
 import BaseLayout from '../layouts/BaseLayout.astro';
 import App from '../components/App.tsx';
 import FormToolbar from '../components/forms/FormToolbar';
@@ -31,45 +35,3 @@ import MensetsuForm from '../components/candidate/MensetsuForm.tsx';
     </div>
   </main>
 </BaseLayout>
-
-<style is:global>
-  /* Cetak / PDF. Tujuan: yang tercetak hanya daftar soal + isian, bukan chat,
-     tombol, atau pengantar — kalau tidak, satu tahap bisa jadi 3-4 halaman
-     yang separuhnya tidak dibaca. Kelas `.cetak-sembunyi` dipasang di panel
-     chat dan di pengantar halaman. */
-  @media print {
-    header,
-    .cetak-sembunyi,
-    button,
-    select {
-      display: none !important;
-    }
-    main {
-      padding: 0 !important;
-    }
-    main > div {
-      max-width: none !important;
-      padding: 0 !important;
-    }
-    section {
-      border: 0 !important;
-      background: #fff !important;
-    }
-    section ul {
-      display: block !important;
-    }
-    section li {
-      break-inside: avoid;
-      page-break-inside: avoid;
-      border-bottom: 1px solid #ccc !important;
-      background: #fff !important;
-    }
-    input,
-    textarea {
-      border: 0 !important;
-      border-bottom: 1px solid #999 !important;
-      background: #fff !important;
-      color: #000 !important;
-    }
-  }
-</style>

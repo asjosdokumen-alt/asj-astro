@@ -291,6 +291,12 @@ jobs:
           # own header records the fixture it needs; nothing else reaches
           # these six modals.
           npm run e2e:test-candidate-modals
+          # What "Cetak / PDF" puts on paper. The sheet is rendered on TWO
+          # routes (the public `/wawancara` page and an admin overlay) and the
+          # print rules used to live in ONE page's stylesheet, so the admin
+          # button printed the whole admin shell. No other gate reads print
+          # media, so nothing here could see it.
+          npm run e2e:print
 
   # ══ Gate 1c · the gates CI *still* skipped ══════════════════════════════════
   # Gate 1b above closed the gap for the functions tree. This job closes the

@@ -467,8 +467,13 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
       </section>
 
       {/* ── kanan: seluruh soal tahap aktif ──────────────────────────────── */}
-      <section class="rounded-card border border-line bg-surface">
-        <div class="px-3 py-2 border-b border-line flex flex-wrap gap-1.5">
+      {/* `data-cetak` = satu-satunya bagian yang boleh tercetak. Aturan
+          cetaknya ada di `styles/layout.css` §5b, BUKAN di halaman: panel ini
+          dipakai di `/wawancara` DAN di overlay admin, dan aturan yang hanya
+          menempel di halaman membuat tombol Cetak/PDF dari admin mencetak
+          seluruh panel admin beserta chat (laporan pemilik 2026-10-25). */}
+      <section data-cetak class="rounded-card border border-line bg-surface">
+        <div class="cetak-sembunyi px-3 py-2 border-b border-line flex flex-wrap gap-1.5">
           {tahap.map((t, i) => (
             <button
               key={t}
@@ -488,6 +493,19 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
           </button>
         </div>
 
+        {/* Kepala lembar cetak. Di layar tidak tampil (`cetak-saja`), di kertas
+            menjadi satu-satunya penanda tahap — halaman admin tidak punya judul
+            yang ikut tercetak. */}
+        {tahap.length > 0 && (
+          <div class="cetak-saja px-3 pt-3 pb-1">
+            <p class="text-[10px] uppercase tracking-wide text-fg-muted">Latihan Wawancara Jepang — Mensetsu</p>
+            <h2 class="text-[15px] font-black text-fg">{tahapSekarang}</h2>
+            <p class="text-[11px] text-fg-muted">
+              Tahap {tahapAktif + 1} dari {tahap.length} · {soalTahap.length} soal
+            </p>
+          </div>
+        )}
+
         {soalTahap.length === 0 ? (
           <p class="p-4 text-[12px] text-fg-muted">{memuat ? 'Memuat…' : galat || 'Tidak ada soal pada tahap ini.'}</p>
         ) : (
@@ -504,11 +522,31 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                       <p class="text-[11.5px] text-fg-muted">{s.romaji}</p>
                       <p class="text-[12px] text-fg">{s.arti}</p>
                       {s.sinkron_cv && (
-                        <p class="mt-1 inline-block text-[10px] font-bold text-accent-emerald border border-accent-emerald rounded px-1.5 py-0.5">
+                        <p class="cetak-sembunyi mt-1 inline-block text-[10px] font-bold text-accent-emerald border border-accent-emerald rounded px-1.5 py-0.5">
                           tersambung CV — {s.kolom_cv}
                         </p>
                       )}
                     </div>
+                  </div>
+
+                  {/* Salinan cetak dari jawaban. Bukan hiasan: `<textarea rows={2}>`
+                      memotong jawaban yang lebih panjang saat dicetak (Chrome
+                      tidak menggulung isi kontrol form di kertas), sedangkan
+                      lembar ini dipakai untuk menghafal — jadi jawabannya harus
+                      utuh. Kolom kosong tetap bergaris supaya bisa ditulis tangan. */}
+                  <div class="cetak-saja mt-1">
+                    <p class="cetak-baris">
+                      <span class="cetak-kunci">日本語</span>
+                      <span class="cetak-nilai" lang="ja">{d.jp}</span>
+                    </p>
+                    <p class="cetak-baris">
+                      <span class="cetak-kunci">Cara baca</span>
+                      <span class="cetak-nilai">{d.romaji}</span>
+                    </p>
+                    <p class="cetak-baris">
+                      <span class="cetak-kunci">Indonesia</span>
+                      <span class="cetak-nilai">{d.arti}</span>
+                    </p>
                   </div>
 
                   {/* Soal sifat (長所/短所/特技): siswa memilih dari daftar materi
@@ -516,7 +554,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                       sengaja TIDAK diisi otomatis — itu bagian yang harus
                       dilatih, dan tombol "Isi Jepang otomatis" ada untuk itu. */}
                   {opsiUntukSoal(s.jp) && (
-                    <label class="mt-2 grid grid-cols-[68px_1fr] gap-2 items-center">
+                    <label class="cetak-sembunyi mt-2 grid grid-cols-[68px_1fr] gap-2 items-center">
                       <span class="text-[10px] uppercase tracking-wide text-fg-muted">{t('wawancara.pilih_sifat')}</span>
                       <select
                         class="w-full rounded-md bg-surface-sunken border border-line px-2 py-1 text-[12.5px] text-fg"
@@ -539,7 +577,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                     </label>
                   )}
 
-                  <div class="mt-2 grid gap-1.5">
+                  <div class="cetak-sembunyi mt-2 grid gap-1.5">
                     <label class="grid grid-cols-[68px_1fr] gap-2 items-center">
                       <span class="text-[10px] uppercase tracking-wide text-fg-muted">日本語</span>
                       <textarea
@@ -583,7 +621,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                     </label>
                   </div>
 
-                  <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <div class="cetak-sembunyi mt-2 flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => void terjemahkan(s.kode)}

@@ -703,8 +703,20 @@
       "note": "The candidate dashboard's six overlays, measured in a real browser against a real build. The dashboard is `client:only` AND needs a session — `loadDashboard()` reads `user.wa` and redirects to `/` without one — so `e2e/test-dialog.mjs`, which drives `/public` and `/`, could never open a single overlay there. Measured before this gate existed: the six modals were reachable by NO gate at all, which is why they shipped with an entry animation and no exit. Reachability comes from a fixture (storageState writing `asj_auth` as a logged-in KANDIDAT carrying a `wa`, plus a locally fulfilled `get-app-data`), and the fixture is what makes the route reachable — every assertion is about the DOM the real components render. Per overlay it asserts TWO things, and the second is what nothing else can see: (a) it opens with a role that resolves to a NON-EMPTY accessible name, and (b) it CLOSES BY ANIMATING — the node survives, `data-closing=\"true\"` is observed, and the scrim is caught strictly between 0 and 1. A check that only required \"the overlay is gone\" passes on an overlay torn down instantly, which is exactly the behaviour the exit exists to replace. Carries a planted role-less shell as a control, so a sweep whose selector silently stopped matching reads as red rather than as clean.",
       "battery": "none",
       "batteryNote": "REGISTERED and REVIVED on 2026-10-11. Like e2e:theme-gradients it was never named in this manifest, so no check enumerated it and nothing noticed it had never run; and it was DEAD in the same way — without a server on 4321 `page.goto` threw `ERR_CONNECTION_REFUSED`, the rejection was unhandled, and the process exited 0, i.e. a crash indistinguishable from a pass. Resurrected with an owned server via `e2e/lib/server.mjs` and an explicit `process.exit(0)`. MEASURED after the fix: 8 checks passed / 0 failed, exit 0, no server pre-started, with 6/6 triggers present and 5 of 6 modals actually exercised (Latihan Wawancara is reported as `not exercised` because its gate refused to open for this fixture — stated in the output rather than counted as a pass). Classified `ci`: it serves `dist/` on localhost and stubs the one endpoint it needs, so it needs no credential, database or network. It has NO mutation battery yet; recorded as a gap."
+    },
+    {
+      "script": "e2e:print",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": null,
+      "runs": [
+        "ci.yml#e2e",
+        "test:e2e"
+      ],
+      "note": "What \"Cetak / PDF\" actually puts on paper, measured in print media in a real browser. The interview sheet (MensetsuForm) is rendered on TWO routes — the public /wawancara page and an admin overlay inside TabPelamar — and its print rules lived in wawancara.astro's <style is:global>, i.e. on ONE of the two. Pressing the button from the admin panel therefore printed the entire admin shell (sidebar, candidate table, chat panel) with the sheet at the bottom; reported by the owner 2026-10-25 with a print preview showing exactly that. No other gate could see it: every one of them reads the SCREEN, and this defect exists only in print media. Per surface it asserts that no visible box survives outside the sheet subtree, that no ancestor of the sheet is position:fixed (Chrome prints a fixed box on page 1 only, so a longer sheet would lose pages), and that the saved answers are on the sheet — a textarea with rows=2 is clipped when printed, which is why the sheet carries a text copy. Carries a planted box OUTSIDE the sheet as a control, measured in screen media because under print media the CSS under test hides anything planted there.",
+      "battery": "none",
+      "batteryNote": "MEASURED 2026-10-25, both directions. Green: 2 checks passed / 0 failed on a real build, sheet 1265px wide, chat panel at display:none. Red, proved by mutating the built CSS (display:none -> display:revert on the hide rule): 0 passed / 2 failed, reporting 104 boxes on /wawancara and 296 on /admin still visible in print (sakura particles, admin chrome). No mutation battery yet; recorded as a gap. Classified ci: it serves dist/ on localhost and stubs the two endpoints it needs, so it needs no credential, database or network."
     }
-  
   ],
   "testBatteries": [
     {

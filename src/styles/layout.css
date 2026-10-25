@@ -344,6 +344,133 @@
 }
 
 
+/* ── 5b. Printable sheet — `[data-cetak]` ────────────────────────────
+   WHY THIS LIVES HERE AND NOT IN A PAGE
+   -------------------------------------
+   `MensetsuForm` is rendered on TWO routes: the public `/wawancara` page
+   and an admin overlay inside `TabPelamar`. The print rules used to sit
+   in `wawancara.astro`'s `<style is:global>`, so they existed on ONE of
+   the two. Pressing "Cetak / PDF" from the admin panel therefore printed
+   the whole admin shell — sidebar, candidate table, and the chat panel —
+   instead of the question sheet (reported by the owner 2026-10-25, with
+   a print preview showing "Qween Jeklin — Latihan Mensetsu" over the
+   admin chrome).
+
+   HOW THE ISOLATION WORKS
+   -----------------------
+   `display: none`, NOT `visibility: hidden`. `RirekishoBuilder` uses the
+   visibility variant, which is fine for a one-page CV; a sheet that runs
+   to several pages would leave the hidden-but-laid-out content occupying
+   space and print BLANK PAGES in front of it.
+
+   Every box is hidden unless it is (a) the sheet, (b) inside the sheet,
+   or (c) an ANCESTOR of the sheet — an ancestor cannot be hidden or its
+   subtree goes with it. `:has()` is what makes (c) expressible in plain
+   CSS; this file already depends on it for the responsive tables (§6)
+   and `motion.css` for the modal scrim.
+
+   The whole block is gated on `body:has([data-cetak])`, so a page with
+   no sheet prints exactly as it did before. Without the guard, printing
+   `/loker` would hide every element on it.
+
+   FIXED ANCESTORS. The admin overlay is `fixed inset-0`. Chrome prints a
+   fixed box on the FIRST page only and clips it there, so a 3-page sheet
+   would lose pages 2-3. Rule 1 flattens every ancestor into static flow
+   instead of naming one class, so the next overlay that hosts this
+   component cannot reintroduce the bug.                                */
+.cetak-saja { display: none; }
+
+@media print {
+  /* NO `!important` ANYWHERE IN THIS BLOCK, ON PURPOSE. `global.css` and
+     `layout.css` are UNLAYERED, so they already outrank every Tailwind
+     utility regardless of specificity (the same cascade fact `motion.css`
+     §9c is built on) — and `lint/complexity/noImportantStyles` charges the
+     ratchet for each one. Against the unlayered rules in this file the
+     selectors below are made specific enough by their `:not()` arguments. */
+  .cetak-sembunyi { display: none; }
+
+  body:has([data-cetak]) { background: #fff; }
+
+  /* 1. Ancestors: kept, but stripped of everything that can push, clip,
+        paint, or pin them to one page. `[data-cetak]` itself does not
+        match (`:has()` needs a DESCENDANT), so the sheet's own rules are
+        untouched. */
+  body:has([data-cetak]) *:has([data-cetak]) {
+    display: block;
+    position: static;
+    inset: auto;
+    width: auto;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    background-image: none;
+    overflow: visible;
+  }
+
+  /* 2. Everything else: gone. An ancestor contains `[data-cetak]`, so
+        `:not(:has([data-cetak]))` can never match one of them. */
+  body:has([data-cetak]) *:not([data-cetak]):not([data-cetak] *):not(:has([data-cetak])) {
+    display: none;
+  }
+
+  /* 3. The sheet. */
+  body:has([data-cetak]) [data-cetak] {
+    position: static;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+    color: #000;
+  }
+
+  /* 4. Paper is white and the app's default theme is dark: without this
+        the sheet prints near-white text on white. */
+  body:has([data-cetak]) [data-cetak] * {
+    color: #000;
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+  }
+
+  body:has([data-cetak]) [data-cetak] li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  body:has([data-cetak]) [data-cetak] .cetak-saja { display: block; }
+
+  /* The printed answer lines. A blank answer keeps its rule, so the sheet
+     can also be filled in by hand. */
+  body:has([data-cetak]) [data-cetak] .cetak-baris {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 6px;
+    align-items: baseline;
+    margin-top: 2px;
+  }
+  body:has([data-cetak]) [data-cetak] .cetak-kunci {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #555;
+  }
+  body:has([data-cetak]) [data-cetak] .cetak-nilai {
+    border-bottom: 1px dotted #999;
+    min-height: 1.35em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+
 /* ── 6. Responsive table: cards below `md`, real table above ────────
    WHY THIS EXISTS
    ---------------
