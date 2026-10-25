@@ -44,6 +44,15 @@ export type Soal = {
 
 export type Jawaban = { jp: string; romaji: string; arti: string; sumber: string };
 
+/** Bentuk baris `wawancara_jawaban` yang benar-benar dibaca. */
+type JawabanRow = {
+  soal_kode?: string | null;
+  jp?: string | null;
+  romaji?: string | null;
+  arti?: string | null;
+  sumber?: string | null;
+};
+
 /** Kolom yang dibaca dari bank. Eksplisit: `select=*` menarik kolom masa depan
  *  yang belum tentu dipahami pemanggil, dan PostgREST menolak nama kolom yang
  *  tidak ada — jadi daftar ini juga berfungsi sebagai kontrak. */
@@ -64,15 +73,48 @@ const PESAN_BELUM_TEREXPOSE =
   'Neon Data API. Buka Neon Console → Data API → Refresh schema cache, lalu coba lagi.';
 
 function belumTerexpose(e: unknown) {
-  return /PGRST205|schema cache|does not exist/i.test(String(e));
+  return /PGRST205|PGRST202|schema cache|does not exist/i.test(String(e));
+}
+
+/**
+ * Satu percobaan ulang saat galatnya "skema belum dikenal".
+ *
+ * TERUKUR 2026-10-25, bukan dugaan: Neon Data API melayani beberapa instance
+ * sekaligus dan cache skemanya TIDAK seragam. Lima permintaan berturut-turut ke
+ * endpoint yang sama menjawab 404, 404, 200, 200, 404. Jadi satu permintaan bisa
+ * gagal hanya karena kebetulan mendarat di instance yang cache-nya belum
+ * disegarkan — dan gejalanya di UI adalah "bank soal kosong" yang tidak bisa
+ * dibedakan dari bank yang memang kosong.
+ *
+ * KENAPA HANYA SEKALI. Percobaan pertama versi ini memakai 8 putaran, dan itu
+ * SALAH: setiap kegagalan dicatat kernel sebagai kegagalan dependency, jadi
+ * delapan putaran pada satu request menutup circuit breaker `postgrest` dan
+ * MEMATIKAN SEMUA aksi lain di instance itu — termasuk CV AI. Terbukti di layar:
+ * "Circuit breaker open for postgrest". Satu putaran menambah satu kesempatan
+ * tanpa menumpuk tekanan.
+ *
+ * Akar masalahnya bukan di kode: satu klik "Refresh schema cache" di Neon
+ * Console membuat semua instance sepakat, dan fungsi ini tidak lagi perlu
+ * mengulang.
+ */
+async function denganRetrySkema<T>(kerja: () => Promise<T>): Promise<T> {
+  try {
+    return await kerja();
+  } catch (e) {
+    if (!belumTerexpose(e)) throw e;
+    await new Promise((r) => setTimeout(r, 200));
+    return kerja();
+  }
 }
 
 /** Seluruh soal aktif, urut sesuai alur wawancara. */
 export async function ambilBank(): Promise<Soal[]> {
   try {
-    const rows = await supabaseJson('GET', 'wawancara_soal', {
-      query: { select: SOAL_COLS, aktif: 'eq.true', order: 'kode.asc', limit: '400' },
-    });
+    const rows = await denganRetrySkema(() =>
+      supabaseJson('GET', 'wawancara_soal', {
+        query: { select: SOAL_COLS, aktif: 'eq.true', order: 'kode.asc', limit: '400' },
+      }),
+    );
     return Array.isArray(rows) ? (rows as Soal[]) : [];
   } catch (e) {
     if (belumTerexpose(e)) throw Errors.serviceUnavailable(PESAN_BELUM_TEREXPOSE);
@@ -85,18 +127,20 @@ export async function ambilJawaban(wa: string): Promise<Record<string, Jawaban>>
   const nw = normalizeWa(wa);
   if (!nw) return {};
   try {
-    const rows = await supabaseJson('GET', 'wawancara_jawaban', {
-      query: { select: 'soal_kode,jp,romaji,arti,sumber', wa: 'eq.' + nw, limit: '400' },
-    });
+    const rows = await denganRetrySkema(() =>
+      supabaseJson('GET', 'wawancara_jawaban', {
+        query: { select: 'soal_kode,jp,romaji,arti,sumber', wa: `eq.${nw}`, limit: '400' },
+      }),
+    );
     const out: Record<string, Jawaban> = {};
-    for (const r of Array.isArray(rows) ? rows : []) {
-      const k = String((r as any).soal_kode || '');
+    for (const r of (Array.isArray(rows) ? rows : []) as JawabanRow[]) {
+      const k = String(r.soal_kode || '');
       if (!k) continue;
       out[k] = {
-        jp: String((r as any).jp || ''),
-        romaji: String((r as any).romaji || ''),
-        arti: String((r as any).arti || ''),
-        sumber: String((r as any).sumber || 'siswa'),
+        jp: String(r.jp || ''),
+        romaji: String(r.romaji || ''),
+        arti: String(r.arti || ''),
+        sumber: String(r.sumber || 'siswa'),
       };
     }
     return out;
@@ -112,7 +156,7 @@ async function ambilKolomCv(wa: string, kolom: string[]): Promise<Record<string,
   const unik = [...new Set(kolom.filter(Boolean))];
   if (!unik.length) return {};
   const rows = await fetchMasterByWa([normalizeWa(wa)]);
-  const row: any = (Array.isArray(rows) ? rows : [])[0];
+  const row = ((Array.isArray(rows) ? rows : []) as Array<Record<string, unknown>>)[0];
   if (!row) return {};
   const out: Record<string, string> = {};
   for (const k of unik) {
@@ -172,7 +216,7 @@ export async function simpanJawaban(
 
   const bank = await ambilBank();
   const soal = bank.find((s) => s.kode === kodeBersih);
-  if (!soal) throw new AppError('VALIDATION_FAILED', { message: 'Soal tidak dikenal: ' + kodeBersih });
+  if (!soal) throw new AppError('VALIDATION_FAILED', { message: `Soal tidak dikenal: ${kodeBersih}` });
 
   const jp = String(val.jp ?? '').trim();
   const romaji = String(val.romaji ?? '').trim();
@@ -186,30 +230,34 @@ export async function simpanJawaban(
     if (soal.kolom_cv_jp) body[soal.kolom_cv_jp] = jp;
     try {
       await supabaseJson('PATCH', 'master_database_candidate', {
-        query: { no_wa: 'eq.' + nw },
+        query: { no_wa: `eq.${nw}` },
         body,
         headers: { Prefer: 'return=minimal' },
       });
     } catch (e) {
-      throw new AppError('VALIDATION_FAILED', { message: 'Gagal menyimpan ke kolom CV (' + soal.kolom_cv + '): ' + String(e).slice(0, 160) });
+      throw new AppError('VALIDATION_FAILED', {
+        message: `Gagal menyimpan ke kolom CV (${soal.kolom_cv}): ${String(e).slice(0, 160)}`,
+      });
     }
   }
 
   // 2) Jawaban tersimpan: romaji selalu di sini; arti/jp sebagai cermin.
   try {
-    await supabaseJson('POST', 'wawancara_jawaban', {
-      query: { on_conflict: 'wa,soal_kode' },
-      body: {
-        wa: nw,
-        soal_kode: kodeBersih,
-        jp,
-        romaji,
-        arti,
-        sumber,
-        updated_at: new Date().toISOString(),
-      },
-      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-    });
+    await denganRetrySkema(() =>
+      supabaseJson('POST', 'wawancara_jawaban', {
+        query: { on_conflict: 'wa,soal_kode' },
+        body: {
+          wa: nw,
+          soal_kode: kodeBersih,
+          jp,
+          romaji,
+          arti,
+          sumber,
+          updated_at: new Date().toISOString(),
+        },
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      }),
+    );
   } catch (e) {
     if (belumTerexpose(e)) throw Errors.serviceUnavailable(PESAN_BELUM_TEREXPOSE);
     throw e;
@@ -257,15 +305,15 @@ Aturan:
 Balas HANYA JSON: {"jp":"...","romaji":"...","arti":"..."}`;
 
   const r = await geminiGenerate(system, [], { bestEffort: true });
-  const text = String((r && (r as any).reply) || '').trim();
-  const parsed: any = parseJsonLoose(text);
+  const text = String(r?.reply || '').trim();
+  const parsed = parseJsonLoose(text) as Record<string, unknown> | null;
   if (!parsed || typeof parsed !== 'object') {
     throw new AppError('VALIDATION_FAILED', { message: 'AI tidak mengembalikan terjemahan yang bisa dibaca. Coba lagi.' });
   }
 
-  const jp = String(parsed.jp || '').trim();
-  const romaji = String(parsed.romaji || '').trim();
-  const artiRapi = String(parsed.arti || arti).trim();
+  const jp = String(parsed.jp ?? '').trim();
+  const romaji = String(parsed.romaji ?? '').trim();
+  const artiRapi = String(parsed.arti ?? arti).trim();
 
   // Validasi: jp wajib huruf Jepang dan tidak boleh mengandung romaji. Tanpa ini
   // model kecil kadang menjawab dengan romaji di field jp, dan hasilnya masuk DB.
@@ -286,5 +334,5 @@ export function linkWawancara(wa: string, nama: string, base: string) {
   const akar = String(base || '').replace(/\/+$/, '');
   const q = new URLSearchParams({ wa: nw });
   if (nama) q.set('nama', String(nama));
-  return { url: akar + '/wawancara?' + q.toString() };
+  return { url: `${akar}/wawancara?${q.toString()}` };
 }

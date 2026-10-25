@@ -1658,6 +1658,9 @@ export const translations: Record<Lang, Record<string, string>> = {
        bukan penghapusan kata dari aplikasi. */
     "toolbar.siswa": "Pendaftaran Siswa",
     "toolbar.ai_cv": "AI CV Chat",
+    "toolbar.mensetsu": "Latihan Wawancara",
+    "wawancara.gate_title": "Verifikasi Akun Kandidat",
+    "wawancara.loading_bank": "Memuat bank soal…",
     "toolbar.apply": "Form Lamaran",
     "toolbar.master": "CV Master",
     "toolbar.share": "Share Loker",
@@ -2181,6 +2184,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "doc.title_public": "Lowongan & Layanan — ASJ Portal",
     "doc.title_apply": "ASJ - Form Lamaran Kerja",
     "doc.title_ai_cv": "ASJ AI - Qween Jeklin",
+    "doc.title_mensetsu": "Latihan Wawancara Jepang — ASJ",
     "doc.title_siswa_baru": "ASJ - Pendaftaran Siswa (AI Assistant)",
     "doc.title_admin": "Panel Admin — ASJ Portal",
     "doc.title_candidate": "Dashboard Kandidat — ASJ Portal",

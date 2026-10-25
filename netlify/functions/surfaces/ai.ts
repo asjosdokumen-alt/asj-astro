@@ -93,23 +93,23 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
   getBankWawancara: async (p: unknown[], s?: string) => {
     const { gabungBankDanJawaban } = await import('../_lib/wawancara/bank');
     const { isOwnerOrAdmin } = await import('../contexts/identity');
-    const wa = String((p && p[0]) || '').trim();
+    const wa = String(p?.[0] ?? '').trim();
     if (!isOwnerOrAdmin(s, wa)) return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
     return { success: true, ...(await gabungBankDanJawaban(wa)) };
   },
   simpanJawabanWawancara: async (p: unknown[], s?: string) => {
     const { simpanJawaban } = await import('../_lib/wawancara/bank');
     const { isOwnerOrAdmin } = await import('../contexts/identity');
-    const wa = String((p && p[0]) || '').trim();
+    const wa = String(p?.[0] ?? '').trim();
     if (!isOwnerOrAdmin(s, wa)) return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
-    return simpanJawaban(wa, String((p && p[1]) || ''), ((p && p[2]) || {}) as any, 'siswa');
+    return simpanJawaban(wa, String(p?.[1] ?? ''), (p?.[2] ?? {}) as Record<string, unknown>, 'siswa');
   },
   terjemahkanJawabanWawancara: async (p: unknown[], s?: string) => {
     const { terjemahkanJawaban } = await import('../_lib/wawancara/bank');
     const { isOwnerOrAdmin } = await import('../contexts/identity');
-    const wa = String((p && p[0]) || '').trim();
+    const wa = String(p?.[0] ?? '').trim();
     if (!isOwnerOrAdmin(s, wa)) return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
-    return terjemahkanJawaban(wa, String((p && p[1]) || ''), String((p && p[2]) || ''));
+    return terjemahkanJawaban(wa, String(p?.[1] ?? ''), String(p?.[2] ?? ''));
   },
   getLinkWawancara: async (p: unknown[], s?: string) => {
     const { linkWawancara } = await import('../_lib/wawancara/bank');
@@ -125,6 +125,6 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
     if (!base) {
       return { success: false, message: 'NETLIFY_SITE_URL belum diset di server; link tidak bisa dibuat.' };
     }
-    return linkWawancara(String((p && p[0]) || ''), String((p && p[1]) || ''), base);
+    return linkWawancara(String(p?.[0] ?? ''), String(p?.[1] ?? ''), base);
   },
 };

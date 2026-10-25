@@ -9,7 +9,6 @@ import { authStore } from '../../store/authReactive';
 import { t, useLang } from '../../store/i18n';
 import ChangePasswordModal from '../ChangePasswordModal';
 import CvMiniModal from '../CvMiniModal';
-import InterviewSimulatorModal from './InterviewSimulatorModal';
 import { isVipFlags, ASJ_LOGO_URL } from '../../lib/vip';
 import { navigateTo } from '../../lib/navigate';
 import RirekishoBuilder from '../admin/RirekishoBuilder';
@@ -183,7 +182,6 @@ export default function CandidateDash() {
   const [showESign, setShowESign] = useState(false);
   const [showPemberkasan, setShowPemberkasan] = useState(false);
   const [showRirekisho, setShowRirekisho] = useState(false);
-  const [showInterview, setShowInterview] = useState(false);
   const [selectedLoker, setSelectedLoker] = useState<string | null>(null);
 
   /* ── Exit animation (2026-09-28) ──────────────────────────────────────
@@ -201,7 +199,6 @@ export default function CandidateDash() {
   const esignModal = useOverlayPresence(showESign);
   const pemberkasanModal = useOverlayPresence(showPemberkasan);
   const rirekishoModal = useOverlayPresence(showRirekisho);
-  const interviewModal = useOverlayPresence(showInterview);
 
   useEffect(() => { loadDashboard(); }, []);
 
@@ -399,7 +396,10 @@ export default function CandidateDash() {
         showToast(t('ui.toast_feature_locked'), 'info');
         return;
       }
-      setShowInterview(true);
+      // 2026-10-25: simulator chat bebas DIGANTI latihan berbasis bank soal.
+      // Halaman /wawancara memakai 177 soal 13 tahap + isian tiga lapis, dan
+      // jawabannya tersambung ke kolom CV (Jiko PR dll).
+      navigateTo('/wawancara');
     }
 
     /**
@@ -971,9 +971,6 @@ if (!data) return failed
 {rirekishoModal.present && <RirekishoBuilder waTarget={user?.wa || data.wa} isOpen={showRirekisho} onClose={() => setShowRirekisho(false)} fotoFallback={data.pasPhoto || undefined} closing={rirekishoModal.closing} />}
       {esignModal.present && <EsignNaiteiModal isOpen={showESign} wa={user?.wa || ""} onClose={() => setShowESign(false)} closing={esignModal.closing} />}
       {pemberkasanModal.present && <PemberkasanModal isOpen={showPemberkasan} onClose={() => setShowPemberkasan(false)} closing={pemberkasanModal.closing} waTarget={user?.wa || ""} namaTarget={user?.name || ""} candidate={data ? { tahapan: data.tahapan, berkas: data.berkas || {}, bio: data.bio || {} } : null} />}
-      {interviewModal.present && data && (
-        <InterviewSimulatorModal wa={user?.wa || data.wa || ''} nama={data.nama} onClose={() => setShowInterview(false)} closing={interviewModal.closing} />
-      )}
     </div>
     </ErrorBoundary>
   );

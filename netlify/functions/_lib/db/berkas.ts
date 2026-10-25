@@ -225,9 +225,9 @@ async function attachBerkasBio(candidates: any[]) {
             limit: '500',
           },
         });
-        const extraByWa = new Map<string, any>();
+        const extraByWa = new Map<string, Record<string, unknown>>();
         for (const r of Array.isArray(extra) ? extra : []) {
-          extraByWa.set(normalizeWa(String(pick(r, ['no_wa', 'wa']) || '')), r);
+          extraByWa.set(normalizeWa(String(pick(r, ['no_wa', 'wa']) || '')), r as Record<string, unknown>);
         }
         for (const r of mRows) {
           const ex = extraByWa.get(normalizeWa(String(pick(r, ['no_wa', 'wa']) || '')));

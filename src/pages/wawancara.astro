@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import App from '../components/App.tsx';
+import FormToolbar from '../components/forms/FormToolbar';
+import MensetsuForm from '../components/candidate/MensetsuForm.tsx';
+---
+
+<BaseLayout
+  title="Latihan Wawancara Jepang (Mensetsu) — ASJ"
+  titleKey="doc.title_mensetsu"
+  description="Latihan mensetsu dengan bank 177 soal dalam 13 tahap: tiap soal punya pertanyaan dan jawaban tiga lapis (bahasa Jepang, cara baca, Bahasa Indonesia). Jawaban Anda tersimpan dan tersambung dengan CV."
+>
+  <App showHeader={false} client:only="preact" />
+
+  <FormToolbar client:only="preact" titleKey="toolbar.mensetsu" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[64px]">
+    <div class="max-w-[1400px] mx-auto px-3">
+      <section class="mb-3">
+        <h1 class="text-xl md:text-2xl font-bold text-fg mb-1">Latihan Wawancara Jepang (Mensetsu)</h1>
+        <p class="text-fg-muted text-[12.5px] leading-relaxed">
+          Bank soal mengikuti alur wawancara sebenarnya — perkenalan, keluarga, pendidikan, pengalaman,
+          bahasa Jepang, kelebihan &amp; kekurangan, motivasi, rencana, kehidupan sehari-hari, kesehatan,
+          ibadah, kerja shift, sampai penutup. Tulis jawaban Anda dalam Bahasa Indonesia, lalu tekan
+          <b> Isi Jepang otomatis</b> untuk melengkapi huruf Jepang dan cara bacanya.
+        </p>
+      </section>
+      <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
+        Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
+      </noscript>
+      <MensetsuForm client:only="preact" />
+    </div>
+  </main>
+</BaseLayout>

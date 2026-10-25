@@ -35,7 +35,7 @@ vi.mock('../db/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../db/client')>();
   return {
     ...actual,
-    supabaseJson: vi.fn(async (method: string, table: string, opts: any = {}) => {
+    supabaseJson: vi.fn(async (method: string, table: string, opts: Record<string, unknown> = {}) => {
       if (m.belumExpose) {
         throw new Error(
           "PGRST205 Could not find the table 'public.wawancara_soal' in the schema cache",
@@ -114,13 +114,14 @@ describe('gabungBankDanJawaban — sinkron CV', () => {
     ];
 
     const hasil = await bank.gabungBankDanJawaban('628111');
-    const jiko = hasil.soal.find((s) => s.kode === 'ms-009')!;
+    const jiko = hasil.soal.find((s) => s.kode === 'ms-009');
+    expect(jiko).toBeDefined();
 
-    expect(jiko.jawabanku.arti).toBe('Saya pekerja keras.');
-    expect(jiko.jawabanku.jp).toBe('私は勤勉です。');
+    expect(jiko?.jawabanku.arti).toBe('Saya pekerja keras.');
+    expect(jiko?.jawabanku.jp).toBe('私は勤勉です。');
     // romaji tidak punya kolom CV, jadi tetap dari jawaban tersimpan.
-    expect(jiko.jawabanku.romaji).toBe('furui');
-    expect(jiko.sinkron_cv).toBe(true);
+    expect(jiko?.jawabanku.romaji).toBe('furui');
+    expect(jiko?.sinkron_cv).toBe(true);
   });
 
   it('CV kosong ⇒ jawaban tersimpan dipakai apa adanya', async () => {
@@ -130,10 +131,11 @@ describe('gabungBankDanJawaban — sinkron CV', () => {
     ];
 
     const hasil = await bank.gabungBankDanJawaban('628111');
-    const jiko = hasil.soal.find((s) => s.kode === 'ms-009')!;
+    const jiko = hasil.soal.find((s) => s.kode === 'ms-009');
+    expect(jiko).toBeDefined();
 
-    expect(jiko.jawabanku.arti).toBe('Saya.');
-    expect(jiko.jawabanku.jp).toBe('私です。');
+    expect(jiko?.jawabanku.arti).toBe('Saya.');
+    expect(jiko?.jawabanku.jp).toBe('私です。');
   });
 
   it('bank kosong tetap mengembalikan bentuk yang bisa dipakai UI', async () => {
@@ -154,21 +156,21 @@ describe('simpanJawaban — kolom CV ikut ditulis', () => {
 
     const patch = m.tulis.find((t) => t.table === 'master_database_candidate');
     expect(patch).toBeDefined();
-    expect(patch!.method).toBe('PATCH');
-    expect(patch!.body).toMatchObject({
+    expect(patch?.method).toBe('PATCH');
+    expect(patch?.body).toMatchObject({
       promosi_diri: 'Saya pekerja keras.',
       promosi_diri_jp: '私は勤勉です。',
     });
 
     const upsert = m.tulis.find((t) => t.table === 'wawancara_jawaban');
     expect(upsert).toBeDefined();
-    expect(upsert!.body).toMatchObject({
+    expect(upsert?.body).toMatchObject({
       wa: '628111',
       soal_kode: 'ms-009',
       romaji: 'watashi wa kinben desu.',
       sumber: 'siswa',
     });
-    expect(upsert!.query).toMatchObject({ on_conflict: 'wa,soal_kode' });
+    expect(upsert?.query).toMatchObject({ on_conflict: 'wa,soal_kode' });
   });
 
   it('soal biasa TIDAK menyentuh master_database_candidate', async () => {
@@ -205,8 +207,8 @@ describe('terjemahkanJawaban — validasi hasil model', () => {
     expect(hasil.jp).toBe('私は料理が好きです。');
 
     const patch = m.tulis.find((t) => t.table === 'master_database_candidate');
-    expect(patch!.body).toMatchObject({ promosi_diri: 'Saya suka memasak.' });
-    expect(m.tulis.find((t) => t.table === 'wawancara_jawaban')!.body).toMatchObject({
+    expect(patch?.body).toMatchObject({ promosi_diri: 'Saya suka memasak.' });
+    expect(m.tulis.find((t) => t.table === 'wawancara_jawaban')?.body).toMatchObject({
       sumber: 'ai',
     });
   });
