@@ -218,6 +218,40 @@ export interface XlsxFormSpec {
   values: Record<string, string>;
   /** URL foto kandidat; kosong = lubang foto dibiarkan kosong. */
   photoUrl?: string;
+  /**
+   * Nama tab sheet di Excel. Tanpa ini tab memakai nama dari berkas contoh —
+   * yaitu nama AGENSI, sama untuk semua kandidat. Pemilik 2026-10-26:
+   * "rename data downloadtan dengan data cv yg gunakan".
+   */
+  sheetName?: string;
+}
+
+/** Nama tab Excel: buang karakter terlarang dan batasi 31 karakter. */
+export function safeSheetName(nama: string): string {
+  const bersih = s(nama)
+    .replace(/[[\]:*?/\\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 31);
+  return bersih || 'CV';
+}
+
+/**
+ * Nama berkas unduhan: `CV_<jenis>_<NAMA>_<ID>.xlsx`.
+ *
+ * Sebelum ini nama berkas hanya memakai nama kandidat, dan ketika
+ * `nama_lengkap` kosong semuanya jatuh ke `kandidat` — dua kandidat berbeda
+ * menghasilkan nama yang SAMA di folder unduhan (laporan pemilik 2026-10-26:
+ * "hasilnya namanya sama semua"). ID kandidat membuatnya unik walau namanya
+ * kembar atau kosong.
+ */
+export function cvFileName(prefix: string, data: { identitas: Record<string, unknown>; raw: Record<string, unknown> }): string {
+  const nama = s(data.identitas.nama_lengkap)
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'kandidat';
+  const id = s(data.raw.idKandidat ?? data.raw.id_kandidat ?? data.raw.IDKANDIDAT)
+    .replace(/[^a-zA-Z0-9]/g, '');
+  return `${prefix}_${nama}${id ? `_${id}` : ''}.xlsx`;
 }
 
 /** Isi template dengan `values`, ganti fotonya kalau ada, kembalikan .xlsx. */
@@ -232,6 +266,19 @@ export async function buildXlsxForm(spec: XlsxFormSpec): Promise<Blob> {
     sheet = setCell(sheet, addr, value);
   }
   zip.file(spec.sheetPath, sheet);
+
+  // Nama tab: satu atribut di `workbook.xml`. Dibiarkan kalau tidak diminta,
+  // supaya template yang belum punya nama kandidat tidak berubah perilakunya.
+  if (spec.sheetName) {
+    const wbFile = zip.file('xl/workbook.xml');
+    if (wbFile) {
+      const wbXml = await wbFile.async('string');
+      zip.file(
+        'xl/workbook.xml',
+        wbXml.replace(/(<sheet\b[^>]*?\bname=")[^"]*(")/, `$1${xmlEscape(safeSheetName(spec.sheetName))}$2`),
+      );
+    }
+  }
 
   const { drawingPath, photoPart, photoRelId, photoBox, photoUrl } = spec;
   if (isGood(photoUrl) && drawingPath && photoPart && photoBox) {

@@ -228,6 +228,10 @@ export default defineConfig({
             // HANYA karena counter beku `indexer` menghitung `src/**`; tanpa
             // baris ini ia jalan DUA KALI (R13f-bis).
             'e2e/rirekisho-firma.test.ts',
+            // Ditambahkan 2026-10-26. Pratinjau CV (`xlsxPreviewHtml`): membaca
+            // workbook hasil render dengan SheetJS, tanpa DOM. Tanpa baris ini
+            // ia jalan DUA KALI (R13f-bis).
+            'e2e/cv-preview.test.ts',
           ],
         },
       },

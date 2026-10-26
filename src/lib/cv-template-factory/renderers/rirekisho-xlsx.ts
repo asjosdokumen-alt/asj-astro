@@ -19,6 +19,7 @@ import {
   buildXlsxForm,
   birthDate,
   currency,
+  cvFileName,
   fitPhoto as fitPhotoIn,
   patchAnchor as patchAnchorIn,
   period,
@@ -198,6 +199,8 @@ export async function buildRirekishoWorkbook(data: CandidateData): Promise<Blob>
     photoBox: PHOTO_BOX,
     values: buildValues(data),
     photoUrl: s(data.uploads.photo),
+    // Tab Excel memakai nama kandidat, bukan nama form dari berkas template.
+    sheetName: s(data.identitas.nama_lengkap),
   });
 }
 
@@ -212,8 +215,7 @@ const template: CvTemplate = {
   async render(data: CandidateData, _context: RenderContext): Promise<RenderResult> {
     try {
       const blob = await buildRirekishoWorkbook(data);
-      const nama = s(data.identitas.nama_lengkap).replace(/[^a-zA-Z0-9]/g, '_') || 'kandidat';
-      return { success: true, mimeType: blob.type, fileName: `CV_Rirekisho_${nama}.xlsx`, blob };
+      return { success: true, mimeType: blob.type, fileName: cvFileName('CV_Rirekisho', data), blob };
     } catch (e: unknown) {
       return { success: false, mimeType: '', fileName: '', error: e instanceof Error ? e.message : 'Excel render error' };
     }

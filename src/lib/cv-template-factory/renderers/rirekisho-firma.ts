@@ -37,6 +37,7 @@ import {
   buildXlsxForm,
   birthDate,
   currency,
+  cvFileName,
   s,
   yearMonth,
   type PhotoBox,
@@ -160,12 +161,25 @@ function tinggalJp(raw: unknown): string {
 }
 
 /**
+ * Pasangan (label, jumlah) untuk kolom kebiasaan — alkohol dan rokok. Form
+ * mencetak `無 Tidak` + `0` untuk yang tidak, `有 Ya` + angka untuk yang ya.
+ */
+function kebiasaan(v: unknown): { label: string; jumlah: string } {
+  const t = s(v).trim();
+  if (!isGood(t) || /^(tidak|no|none|-|無|0)$/i.test(t)) return { label: '無 Tidak', jumlah: '0' };
+  const n = t.replace(/[^\d]/g, '');
+  return { label: '有 Ya', jumlah: n };
+}
+
+/**
  * Peta sel → nilai. Sel yang tidak ada di sini dibiarkan seperti template,
  * termasuk label dan seluruh garis.
  */
 export function buildValues(data: CandidateData): Record<string, string> {
   const id = data.identitas;
   const raw = data.raw as Record<string, unknown>;
+  const minum = kebiasaan(data.medis.alkohol);
+  const rokok = kebiasaan(data.medis.rokok);
   const cells: Record<string, string> = {
     /* ── identitas ──────────────────────────────────────────────────────── */
     D2: s(id.katakana),
@@ -184,8 +198,14 @@ export function buildValues(data: CandidateData): Record<string, string> {
     P7: tidakAda(id.paspor),
     D8: tidakAda(data.medis.riwayat_medis),
     J8: kacamataJp(data.medis.kacamata),
+    H9: s(data.medis.mata_kiri),
+    J9: s(data.medis.mata_kanan),
     K9: tanganJp(data.fisik.tangan_dominan),
     D9: bersih(raw.gaji_diharapkan ?? raw.gaji_diinginkan),
+    M9: minum.label,
+    N9: minum.jumlah,
+    O9: rokok.label,
+    P9: rokok.jumlah,
   };
 
   /* ── pendidikan: 4 baris tetap (11-14) ─────────────────────────────────── */
@@ -257,6 +277,9 @@ export async function buildFirmaWorkbook(data: CandidateData): Promise<Blob> {
     photoBox: PHOTO_BOX,
     values: buildValues(data),
     photoUrl: s(data.uploads.photo),
+    // Tab Excel memakai nama kandidat, bukan "FIRMA ELGA PRATAMA" dari berkas
+    // contoh — kalau tidak, semua CV kandidat punya nama tab yang sama.
+    sheetName: s(data.identitas.nama_lengkap),
   });
 }
 
@@ -271,8 +294,7 @@ const template: CvTemplate = {
   async render(data: CandidateData, _context: RenderContext): Promise<RenderResult> {
     try {
       const blob = await buildFirmaWorkbook(data);
-      const nama = s(data.identitas.nama_lengkap).replace(/[^a-zA-Z0-9]/g, '_') || 'kandidat';
-      return { success: true, mimeType: blob.type, fileName: `CV_Firma_${nama}.xlsx`, blob };
+      return { success: true, mimeType: blob.type, fileName: cvFileName('CV_Firma', data), blob };
     } catch (e: unknown) {
       return { success: false, mimeType: '', fileName: '', error: e instanceof Error ? e.message : 'Excel render error' };
     }

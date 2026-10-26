@@ -1,4 +1,5 @@
 export { cvFactory } from './factory';
+export { xlsxPreviewHtml } from './preview';
 export type { CvTemplate, CandidateData, RenderContext, RenderResult, TemplateType } from './types';
 export { normalizeMasterData } from './data';
 export {

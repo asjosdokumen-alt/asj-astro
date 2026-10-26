@@ -76,7 +76,14 @@ function kandidat(): CandidateData {
       paspor: 'TIDAK',
     },
     fisik: { tb: '170', bb: '60', tangan_dominan: 'KANAN' },
-    medis: { riwayat_medis: 'TIDAK', kacamata: 'TIDAK' },
+    medis: {
+      riwayat_medis: 'TIDAK',
+      kacamata: 'TIDAK',
+      mata_kiri: '1.0',
+      mata_kanan: '0.8',
+      rokok: 'TIDAK',
+      alkohol: 'TIDAK',
+    },
     pendidikan: [
       { tingkat: 'SMP', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMP NEGERI 1 BUNGKAL', jurusan: '' },
       { tingkat: 'SMK', masuk: '2021-07', lulus: '2024-06', sekolah: 'SMK NEGERI 1 SLAHUNG', jurusan: 'TEKNIK OTOMOTIF' },
@@ -92,7 +99,7 @@ function kandidat(): CandidateData {
     wawancara: {},
     kenalan_jepang: { nama_id: '', nama_jp: '' },
     uploads: { photo: '' },
-    raw: {},
+    raw: { idKandidat: 'ASJ00188' },
   } as unknown as CandidateData;
 }
 
@@ -195,5 +202,22 @@ describe('rirekisho-firma · render', () => {
     // Keluarga: 続柄 Jepang, bukan teks mentah database.
     expect(sheet).toContain('父 Ayah');
     expect(sheet).toContain('母 Ibu');
+    // Kolom yang dulu dibiarkan kosong padahal datanya ada di database.
+    expect(sheet).toMatch(/<c r="H9"[^>]*>(?:(?!<\/c>).)*1\.0/s);
+    expect(sheet).toMatch(/<c r="J9"[^>]*>(?:(?!<\/c>).)*0\.8/s);
+    expect(sheet).toMatch(/<c r="M9"[^>]*>(?:(?!<\/c>).)*無 Tidak/s);
+    expect(sheet).toMatch(/<c r="O9"[^>]*>(?:(?!<\/c>).)*無 Tidak/s);
+  });
+
+  it('nama berkas memakai nama + ID kandidat, tab sheet memakai namanya', async () => {
+    const t = (await import('../src/lib/cv-template-factory/renderers/rirekisho-firma')).default;
+    const res = await t.render(kandidat(), { waTarget: 'x', isAdmin: true });
+    expect(res.success).toBe(true);
+    expect(res.fileName).toBe('CV_Firma_BUDI_TRISNANTO_ASJ00188.xlsx');
+    if (!res.blob) throw new Error('render tidak menghasilkan blob');
+    const zip = await loadZip(new Uint8Array(await res.blob.arrayBuffer()));
+    const wb = await part(zip, 'xl/workbook.xml');
+    expect(wb).toContain('name="BUDI TRISNANTO"');
+    expect(wb).not.toContain('FIRMA ELGA PRATAMA');
   });
 });

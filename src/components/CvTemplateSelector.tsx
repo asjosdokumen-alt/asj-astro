@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'preact/hooks';
-import { cvFactory, loadExcelTemplate, loadDocxTemplate, loadPdfTemplate, normalizeMasterData } from '../lib/cv-template-factory';
+import { cvFactory, loadExcelTemplate, loadDocxTemplate, loadPdfTemplate, normalizeMasterData, xlsxPreviewHtml } from '../lib/cv-template-factory';
 import type { CvTemplate, CandidateData } from '../lib/cv-template-factory';
 import apiClient from '../lib/apiClient';
 import { t } from '../store/i18n';
@@ -25,6 +25,20 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [customFile, setCustomFile] = useState<File | null>(null);
+  /**
+   * Pratinjau hasil SEBELUM diunduh.
+   *
+   * Pemilik 2026-10-26: "pilihan template ada preview hasil data nya, jgn
+   * langsung download". Klik template sekarang merender berkasnya di memori,
+   * menampilkan isinya sebagai tabel, dan baru mengunduh setelah tombol Unduh
+   * ditekan — jadi salah isi ketahuan tanpa membuka Excel.
+   */
+  const [preview, setPreview] = useState<{
+    html: string;
+    blob: Blob;
+    fileName: string;
+    title: string;
+  } | null>(null);
   // Daftar yang DITAWARKAN, bukan seluruh yang terdaftar: `listed: false` menandai
   // template yang tetap ada di factory tapi hasilnya bukan CV yang dipakai
   // (dump Field|Value, HTML bernama .docx, dan pratinjau A4 yang menduplikasi
@@ -84,13 +98,16 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
         setError(result.error || 'Gagal generate CV');
         return;
       }
-      downloadBlob(result.blob, result.fileName);
+      // Pratinjau dulu; unduhan terjadi di tombol Unduh, bukan di sini.
+      const html = await xlsxPreviewHtml(result.blob);
+      const tmpl = templates.find((x) => x.id === templateId);
+      setPreview({ html, blob: result.blob, fileName: result.fileName, title: tmpl?.name || '' });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Gagal generate CV');
     } finally {
       setLoading(false);
     }
-  }, [waTarget, isAdmin, onOpenRirekisho, onClose, downloadBlob]);
+  }, [waTarget, isAdmin, onOpenRirekisho, onClose, templates]);
 
   const handleCustomGenerate = useCallback(async () => {
     if (!customFile) return;
@@ -134,12 +151,40 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
           so a click inside the panel cannot reach the close path. The explicit
           guard is one fewer interactive static element for the a11y ratchet to
           carry — `lint-ratchet` failed on exactly that when it was here. */}
-      <div class="bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full max-w-lg max-h-[85vh] overflow-auto shadow-2xl">
+      <div class={`bg-slate-900 border border-slate-700 p-6 rounded-[2rem] w-full ${preview ? 'max-w-6xl' : 'max-w-lg'} max-h-[85vh] overflow-auto shadow-2xl`}>
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-bold text-sky-400"><Icon name="file-alt" class="mr-2" />{t('ui.select_cv_template')}</h3>
           <button type="button" onClick={onClose} aria-label={t('ui.close')} class="min-w-11 min-h-11 inline-flex items-center justify-center text-slate-400 hover:text-white"><Icon name="times" class="text-xl" /></button>
         </div>
         {error && <p class="text-red-400 text-sm mb-4">{error}</p>}
+        {preview ? (
+          <div class="space-y-3">
+            {/* Border/fill template tidak ikut diekspor SheetJS (itu SheetJS Pro);
+                garis di bawah ini hanya supaya sel terbaca sebagai tabel, bukan
+                meniru form. Yang dicetak tetap berkas .xlsx-nya. */}
+            <style>{`.cv-preview table{border-collapse:collapse;width:100%;background:#fff;color:#111;font-size:9px}
+.cv-preview td{border:1px solid #94a3b8;padding:1px 3px;vertical-align:middle;white-space:pre-wrap;line-height:1.15}`}</style>
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-sm font-semibold text-slate-300">
+                {t('ui.preview_cv')} · <span class="text-white">{preview.title}</span>
+              </p>
+              <button type="button" onClick={() => setPreview(null)}
+                class="min-h-11 px-3 rounded-lg border border-slate-600 text-xs font-bold text-slate-200 hover:bg-slate-800">
+                {t('button.back')}
+              </button>
+            </div>
+            <div class="rounded-xl border border-slate-700 bg-white overflow-auto max-h-[58vh]">
+              <div class="cv-preview" dangerouslySetInnerHTML={{ __html: preview.html }} />
+            </div>
+            <button type="button" onClick={() => downloadBlob(preview.blob, preview.fileName)}
+              class="w-full flex flex-wrap items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-white bg-sky-600 rounded-xl hover:bg-sky-500 transition">
+              <Icon name="download" />
+              <span>{t('ui.unduh')}</span>
+              <span class="font-mono text-[11px] font-normal opacity-80">{preview.fileName}</span>
+            </button>
+          </div>
+        ) : (
+        <>
         <div class="space-y-3">
           {templates.map((tmpl) => (
             <button type="button"
@@ -183,6 +228,8 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
             </button>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   );

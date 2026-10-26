@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   loadDocxTemplate: vi.fn(),
   loadPdfTemplate: vi.fn(),
   listTemplates: vi.fn(() => []),
+  previewHtml: vi.fn(),
 }));
 
 vi.mock('../lib/apiClient', () => ({
@@ -22,6 +23,7 @@ vi.mock('../lib/cv-template-factory', () => ({
   loadExcelTemplate: mocks.loadExcelTemplate,
   loadDocxTemplate: mocks.loadDocxTemplate,
   loadPdfTemplate: mocks.loadPdfTemplate,
+  xlsxPreviewHtml: mocks.previewHtml,
 }));
 
 vi.mock('../store/i18n', () => ({ t: (key: string) => key }));
@@ -65,6 +67,81 @@ async function chooseFile(file: File) {
   expect(screen.getByRole('button', { name: 'Generate dengan Template Kustom' })).toBeTruthy();
 }
 
+describe('CvTemplateSelector pratinjau sebelum unduh', () => {
+  const tmpl = {
+    id: 'rirekisho-firma',
+    name: 'Rirekisho Excel (Firma)',
+    type: 'xlsx' as const,
+    description: 'form kedua',
+    category: 'form' as const,
+    icon: 'file-excel',
+    listed: true,
+  };
+
+  beforeEach(() => {
+    mocks.apiCall.mockReset();
+    mocks.normalizeMasterData.mockReset();
+    mocks.renderTemplate.mockReset();
+    mocks.listTemplates.mockReset();
+    mocks.previewHtml.mockReset();
+    mocks.apiCall.mockResolvedValue(draft);
+    mocks.normalizeMasterData.mockReturnValue(normalized);
+    mocks.renderTemplate.mockResolvedValue({
+      success: true,
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      fileName: 'CV_Firma_BUDI_ASJ00188.xlsx',
+      blob: new Blob(['xlsx']),
+    });
+    mocks.previewHtml.mockResolvedValue('<table><tr><td>BUDI TRISNANTO</td></tr></table>');
+    mocks.listTemplates.mockReturnValue([tmpl]);
+    downloads = [];
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloads.push({ href: this.href, download: this.download });
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    clickSpy.mockRestore();
+    vi.restoreAllMocks();
+  });
+
+  it('klik template menampilkan pratinjau, BUKAN mengunduh', async () => {
+    renderSelector();
+    fireEvent.click(screen.getByText('Rirekisho Excel (Firma)'));
+
+    await waitFor(() => expect(document.querySelector('.cv-preview')?.innerHTML).toContain('BUDI TRISNANTO'));
+    // Inti permintaan pemilik: tidak ada unduhan sampai tombolnya ditekan.
+    expect(downloads).toEqual([]);
+    expect(mocks.renderTemplate).toHaveBeenCalledWith('rirekisho-firma', normalized, expect.anything());
+  });
+
+  it('unduhan terjadi setelah tombol Unduh, dengan nama berkas hasil render', async () => {
+    renderSelector();
+    fireEvent.click(screen.getByText('Rirekisho Excel (Firma)'));
+    await waitFor(() => expect(document.querySelector('.cv-preview')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: /ui.unduh/i }));
+
+    await waitFor(() =>
+      expect(downloads).toEqual([{ href: 'blob:test', download: 'CV_Firma_BUDI_ASJ00188.xlsx' }]),
+    );
+  });
+
+  it('tombol Kembali membuang pratinjau dan memunculkan daftar lagi', async () => {
+    renderSelector();
+    fireEvent.click(screen.getByText('Rirekisho Excel (Firma)'));
+    await waitFor(() => expect(document.querySelector('.cv-preview')).toBeTruthy());
+
+    fireEvent.click(screen.getByRole('button', { name: 'button.back' }));
+
+    await waitFor(() => expect(document.querySelector('.cv-preview')).toBeNull());
+    expect(screen.getByText('Rirekisho Excel (Firma)')).toBeTruthy();
+  });
+});
+
 describe('CvTemplateSelector custom template upload', () => {
   beforeEach(() => {
     mocks.apiCall.mockReset();
@@ -74,6 +151,7 @@ describe('CvTemplateSelector custom template upload', () => {
     mocks.loadDocxTemplate.mockReset();
     mocks.loadPdfTemplate.mockReset();
     mocks.listTemplates.mockReset();
+    mocks.previewHtml.mockReset();
     mocks.apiCall.mockResolvedValue(draft);
     mocks.normalizeMasterData.mockReturnValue(normalized);
     mocks.renderTemplate.mockResolvedValue({
