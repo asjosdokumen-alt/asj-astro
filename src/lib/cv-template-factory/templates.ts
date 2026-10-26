@@ -5,6 +5,7 @@ import excelTemplate from './renderers/excel';
 import docxTemplate from './renderers/docx';
 import pdfTemplate from './renderers/pdf';
 import rirekishoXlsxTemplate from './renderers/rirekisho-xlsx';
+import rirekishoFirmaTemplate from './renderers/rirekisho-firma';
 
 const rirekishoA4Template: CvTemplate = {
   id: 'rirekisho-a4',
@@ -13,6 +14,10 @@ const rirekishoA4Template: CvTemplate = {
   description: 'Template CV rirekisho A4 asli yang sudah ada — format tabel Jepang standar',
   category: 'resume',
   icon: 'file-alt',
+  // Tidak ditawarkan lagi: pilihannya hanya membuka pratinjau rirekisho yang
+  // sudah bisa dibuka dari tombol lain (`onOpenRirekisho`), jadi di modal ia
+  // terbaca sebagai template padahal tidak menghasilkan berkas apa pun.
+  listed: false,
   async render(_data: CandidateData, _context: RenderContext): Promise<RenderResult> {
     return {
       success: true,
@@ -31,6 +36,10 @@ cvFactory.register(pdfTemplate);
 // pas-foto anchor of the supplied workbook, kept 1:1). Registered last so the
 // long-standing templates keep their order in `CvTemplateSelector`.
 cvFactory.register(rirekishoXlsxTemplate);
+// Form kedua, dari berkas yang dikirim pemilik 2026-10-26 ("FIRMA ELGA PRATAMA").
+// Layout, merge, dan tinggi barisnya berbeda dari form ASJ, jadi ia template
+// tersendiri — bukan pengganti. Mesin XML-nya sama (`renderers/xlsx-form.ts`).
+cvFactory.register(rirekishoFirmaTemplate);
 
 export { cvFactory };
 

@@ -86,6 +86,9 @@ const template: CvTemplate = {
   description: 'Template Excel dasar untuk CV rirekisho',
   category: 'resume',
   icon: 'file-excel',
+  // Tidak ditawarkan: hasilnya dump `Field | Value`, bukan form rirekisho.
+  // Yang dicetak agensi adalah `rirekisho-xlsx` / `rirekisho-firma`.
+  listed: false,
   async render(data: CandidateData, _context: RenderContext): Promise<RenderResult> {
     try {
       const wb = XLSX.utils.book_new();

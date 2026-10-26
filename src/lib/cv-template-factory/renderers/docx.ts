@@ -12,6 +12,8 @@ const template: CvTemplate = {
   description: 'Template Word dasar untuk CV rirekisho',
   category: 'resume',
   icon: 'file-alt',
+  // Tidak ditawarkan: berkasnya HTML bernama `.html`, bukan .docx.
+  listed: false,
   async render(data: CandidateData, _context: RenderContext): Promise<RenderResult> {
     try {
       const id = data.identitas;

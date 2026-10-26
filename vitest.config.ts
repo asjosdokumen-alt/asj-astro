@@ -223,6 +223,11 @@ export default defineConfig({
             // memindahkan counter beku `indexer`. Tanpa baris ini ia jalan DUA
             // KALI (R13f-bis) — terbukti: lolos di jsdom juga.
             'e2e/wawancara-guard.test.ts',
+            // Ditambahkan 2026-10-26. Template CV "Firma Elga Pratama": membaca
+            // zip template (jszip) + menambal XML, tanpa DOM. Tinggal di e2e/
+            // HANYA karena counter beku `indexer` menghitung `src/**`; tanpa
+            // baris ini ia jalan DUA KALI (R13f-bis).
+            'e2e/rirekisho-firma.test.ts',
           ],
         },
       },

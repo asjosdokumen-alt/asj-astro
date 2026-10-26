@@ -42,5 +42,15 @@ export interface CvTemplate {
   description?: string;
   category: 'resume' | 'form' | 'report' | 'custom';
   icon?: string;
+  /**
+   * Tampil di `CvTemplateSelector`? Default `true`.
+   *
+   * `false` = template tetap terdaftar (bisa dipanggil `cvFactory.render(id)` dan
+   * tetap diuji) tapi TIDAK ditawarkan ke admin. Dipakai 2026-10-26 untuk empat
+   * template lama yang ternyata tidak menghasilkan CV yang dipakai: pilihan di
+   * modal jadi dua form Excel yang benar-benar dicetak, tanpa menghapus kode
+   * yang mungkin masih dirujuk.
+   */
+  listed?: boolean;
   render(data: CandidateData, context: RenderContext): Promise<RenderResult>;
 }

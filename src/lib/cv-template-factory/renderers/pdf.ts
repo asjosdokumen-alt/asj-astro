@@ -12,6 +12,8 @@ const template: CvTemplate = {
   description: 'Template PDF dasar untuk CV rirekisho',
   category: 'resume',
   icon: 'file-pdf',
+  // Tidak ditawarkan: keluarannya teks/HTML, bukan PDF.
+  listed: false,
   async render(data: CandidateData, _context: RenderContext): Promise<RenderResult> {
     try {
       const id = data.identitas;

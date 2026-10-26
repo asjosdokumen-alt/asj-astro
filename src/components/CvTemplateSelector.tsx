@@ -25,7 +25,13 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [customFile, setCustomFile] = useState<File | null>(null);
-  const [templates] = useState<CvTemplate[]>(() => cvFactory.list());
+  // Daftar yang DITAWARKAN, bukan seluruh yang terdaftar: `listed: false` menandai
+  // template yang tetap ada di factory tapi hasilnya bukan CV yang dipakai
+  // (dump Field|Value, HTML bernama .docx, dan pratinjau A4 yang menduplikasi
+  // tombol lain). Pemilik 2026-10-26: "lebih sederhanakan saja".
+  const [templates] = useState<CvTemplate[]>(() =>
+    cvFactory.list().filter((t) => t.listed !== false),
+  );
 
   /**
    * This overlay was the one modal in the admin panel that carried NEITHER
