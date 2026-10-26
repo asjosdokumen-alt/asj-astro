@@ -79,11 +79,21 @@ describe('xlsxPreviewHtml · pratinjau CV', () => {
     expect(html).toMatch(/rowspan="[2-9]"/);
   });
 
+  it('membawa lebar kolom template, bukan lebar otomatis', async () => {
+    // Tanpa <colgroup>, kolom foto menyusut dan alamat panjang tumpah ke kolom
+    // sebelah — terbaca seperti jumlah kolomnya berubah.
+    const html = await previewFirma();
+    expect(html).toContain('<colgroup>');
+    expect(html).toContain('<col style="width:');
+  });
+
   it('memangkas baris kosong: 996 baris template tidak ikut diekspor', async () => {
     const html = await previewFirma();
     const baris = (html.match(/<tr\b/g) ?? []).length;
-    expect(baris).toBeLessThanOrEqual(60);
     expect(baris).toBeGreaterThan(10);
+    // Form Firma berisi 27 baris. Batas tetap 60 menyisakan ~33 baris kosong di
+    // bawahnya, jadi pemangkasan harus mengikuti ISI, bukan angka bulat.
+    expect(baris).toBeLessThanOrEqual(30);
     // 1,2 MB adalah ukuran tanpa pemangkasan; 60 baris jauh di bawahnya.
     expect(html.length).toBeLessThan(400_000);
   });

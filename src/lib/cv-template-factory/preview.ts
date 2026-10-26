@@ -45,11 +45,46 @@ export async function xlsxPreviewHtml(blob: Blob, opts: PreviewOptions = {}): Pr
   if (!ws) return '';
 
   const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-  range.e.r = Math.min(range.e.r, (opts.maxRows ?? 60) - 1);
-  range.e.c = Math.min(range.e.c, (opts.maxCols ?? 26) - 1);
+  // Pangkas ke BARIS TERAKHIR YANG BERISI, bukan ke angka tetap: template ini
+  // menyimpan 996 baris kosong ber-style, dan memotong di 60 menyisakan ~33
+  // baris kosong di bawah form yang isinya 27 baris. Batas `maxRows` tetap ada
+  // sebagai pagar untuk berkas yang benar-benar panjang.
+  let lastRow = 0;
+  let lastCol = 0;
+  for (const addr of Object.keys(ws)) {
+    if (addr.startsWith('!')) continue;
+    const cell = (ws as Record<string, { v?: unknown }>)[addr];
+    if (!cell || cell.v === undefined || cell.v === '') continue;
+    const d = XLSX.utils.decode_cell(addr);
+    if (d.r > lastRow) lastRow = d.r;
+    if (d.c > lastCol) lastCol = d.c;
+  }
+  range.e.r = Math.min(range.e.r, Math.max(lastRow, 10), (opts.maxRows ?? 60) - 1);
+  range.e.c = Math.min(range.e.c, Math.max(lastCol, 15), (opts.maxCols ?? 26) - 1);
   ws['!ref'] = XLSX.utils.encode_range(range);
 
   const html = XLSX.utils.sheet_to_html(ws, { id: 'cv-preview-table' });
   const table = /<table[\s\S]*?<\/table>/.exec(html);
-  return table ? table[0] : '';
+  if (!table) return '';
+
+  /**
+   * Lebar kolom asli ikut dipasang.
+   *
+   * `sheet_to_html` TIDAK mengekspor `<col>` sama sekali, jadi tabelnya memakai
+   * lebar otomatis: kolom foto menyusut dan alamat panjang tumpah ke kolom
+   * sebelah — terbaca seperti "jumlah kolomnya berubah", padahal hanya lebarnya
+   * yang tidak dibawa. Lebar diambil dari `!cols` (yang dibaca SheetJS dari
+   * `<cols>` template).
+   */
+  const cols = (ws['!cols'] ?? []).slice(0, range.e.c + 1);
+  const colgroup = cols.length
+    ? '<colgroup>' +
+      cols.map((c) => {
+        const w = c?.wpx ?? (c?.wch ? Math.round(c.wch * 7) : 0);
+        return w ? `<col style="width:${w}px">` : '<col>';
+      }).join('') +
+      '</colgroup>'
+    : '';
+
+  return table[0].replace(/<table([^>]*)>/, `<table$1>${colgroup}`);
 }

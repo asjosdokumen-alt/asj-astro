@@ -9,7 +9,9 @@ const mocks = vi.hoisted(() => ({
   loadExcelTemplate: vi.fn(),
   loadDocxTemplate: vi.fn(),
   loadPdfTemplate: vi.fn(),
-  listTemplates: vi.fn(() => []),
+  // Diketik sebagai array objek: `vi.fn(() => [])` menyimpulkan `never[]`, dan
+  // `mockReturnValue([tmpl])` di tes pratinjau jadi error tipe.
+  listTemplates: vi.fn((): Array<Record<string, unknown>> => []),
   previewHtml: vi.fn(),
 }));
 
@@ -128,6 +130,18 @@ describe('CvTemplateSelector pratinjau sebelum unduh', () => {
     await waitFor(() =>
       expect(downloads).toEqual([{ href: 'blob:test', download: 'CV_Firma_BUDI_ASJ00188.xlsx' }]),
     );
+  });
+
+  it('tanpa WA kandidat: pesan jujur, dan server tidak dipanggil', async () => {
+    // Dulu tombol "Pilih Template CV" tidak mengirim WA sama sekali, dan server
+    // menjawab `Data Master belum ada ()` — terbaca seolah kandidatnya tidak
+    // punya data. Sekarang permintaannya tidak dikirim dan pesannya menyebut
+    // sebab yang benar.
+    render(<CvTemplateSelector waTarget="" isAdmin onClose={vi.fn()} />);
+    fireEvent.click(screen.getByText('Rirekisho Excel (Firma)'));
+
+    await waitFor(() => expect(screen.getByText(/Kandidat belum dipilih/)).toBeTruthy());
+    expect(mocks.apiCall).not.toHaveBeenCalled();
   });
 
   it('tombol Kembali membuang pratinjau dan memunculkan daftar lagi', async () => {

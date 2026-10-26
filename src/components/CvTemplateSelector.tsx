@@ -84,8 +84,16 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
       onClose();
       return;
     }
-    setLoading(true);
     setError('');
+    // Tanpa WA, server menjawab `Data Master belum ada ()` — pesan yang terlihat
+    // seperti kandidatnya tidak punya data, padahal nomornya yang tidak terkirim.
+    // Penyebab aslinya ada di pemanggil (tombol "Pilih Template CV" dulu tidak
+    // mengisi `rirekWa`); penjagaan ini supaya kalau terulang, pesannya jujur.
+    if (!waTarget.trim()) {
+      setError('Kandidat belum dipilih — buka "Pilih Template CV" dari baris kandidat.');
+      return;
+    }
+    setLoading(true);
     try {
       const d = await apiClient.call<Record<string, unknown>>('getDrafCvMaster', [waTarget]);
       if (!d || (d as Record<string, unknown>).error) {
@@ -162,7 +170,7 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
             {/* Border/fill template tidak ikut diekspor SheetJS (itu SheetJS Pro);
                 garis di bawah ini hanya supaya sel terbaca sebagai tabel, bukan
                 meniru form. Yang dicetak tetap berkas .xlsx-nya. */}
-            <style>{`.cv-preview table{border-collapse:collapse;width:100%;background:#fff;color:#111;font-size:9px}
+            <style>{`.cv-preview table{border-collapse:collapse;table-layout:fixed;background:#fff;color:#111;font-size:9px}
 .cv-preview td{border:1px solid #94a3b8;padding:1px 3px;vertical-align:middle;white-space:pre-wrap;line-height:1.15}`}</style>
             <div class="flex items-center justify-between gap-3">
               <p class="text-sm font-semibold text-slate-300">
