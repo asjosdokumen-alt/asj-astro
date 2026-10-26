@@ -345,6 +345,40 @@ describe('kinki · dari baris BERSARANG `getDrafCvMaster`', () => {
   });
 });
 
+describe('kinki · angka, tanggal, dan kana yang dulu salah', () => {
+  it('periode di bawah setahun ditulis dalam BULAN, bukan dibulatkan jadi 1年', () => {
+    const d = kandidat();
+    d.pekerjaan = [{ jenis: 'MAGANG', masuk: '2023-08', keluar: '2023-12', perusahaan: 'PT A', jabatan: 'MAGANG' }];
+    // Dulu 4 bulan tercetak "1年" — riwayat kerja terbaca jauh lebih panjang.
+    expect(buildValues(d).H26).toBe('4ヶ月');
+  });
+
+  it('tanggal tanpa bulan tidak dikarang menjadi Januari', () => {
+    const d = kandidat();
+    d.pendidikan = [{ tingkat: 'SMK', masuk: '2019', lulus: '2022', sekolah: 'SMKN 1 SLAHUNG', jurusan: 'TSM' }];
+    const c = buildValues(d);
+    expect(c.D19).toBe('2019年'); // dulu "2019年1月"
+    expect(c.H19).toBe('3年');
+  });
+
+  it('専攻 kosong memakai `-`, supaya strip atas tidak mencetak 0', () => {
+    const d = kandidat();
+    d.pendidikan = [{ tingkat: 'SMK', masuk: '2021-07', lulus: '2024-06', sekolah: 'SMKN 1 SLAHUNG' }];
+    // `Q3` di strip atas = `=W19`; sel kosong membuatnya mencetak 0.
+    expect(buildValues(d).W19).toBe('-');
+  });
+
+  it('tanpa baris 日本語学校, tanda `～` tidak menggantung sendirian', () => {
+    expect(buildValues(kandidat()).D22).toBe('');
+  });
+
+  it('カナ: kanji yang bentuknya katakana + bullet dirapikan', () => {
+    const d = kandidat();
+    d.identitas = { ...d.identitas, katakana: '厶ハッマド•二ザル•ヌル' };
+    expect(buildValues(d).E7).toBe('ムハッマド・ニザル・ヌル');
+  });
+});
+
 describe('kinki · render', () => {
   it('menghasilkan .xlsx berisi nilai kandidat dan tab bernama kandidat', async () => {
     const blob = await buildKinkiWorkbook(kandidat());

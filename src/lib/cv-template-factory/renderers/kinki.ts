@@ -174,20 +174,38 @@ function simJp(v: unknown): string {
   return 'あり';
 }
 
-/** `2021-08` → `2021年8月`, bentuk yang dicetak form. */
+/** `2021-08` → `2021年8月`, bentuk yang dicetak form. Tahun saja → `2019年`. */
 function ym(v: unknown): string {
+  const raw = s(v).trim();
+  // `2019` (tanpa bulan) JANGAN dijadikan `2019年1月`: bulan Januari itu
+  // karangan, dan `new Date('2019')` memang menghasilkan 1 Januari.
+  const tahunSaja = /^(\d{4})$/.exec(raw);
+  if (tahunSaja) return `${tahunSaja[1]}年`;
   const p = yearMonth(v);
   return p.y + p.m;
 }
 
-/** 期間 dalam tahun penuh, dibulatkan — `2021-08`..`2024-05` → `3年`. */
-function durasiTahun(masuk: unknown, lulus: unknown): string {
+/**
+ * 期間. Di bawah setahun ditulis dalam BULAN — dulu semuanya dibulatkan ke
+ * `1年`, sehingga pekerjaan 3 bulan tercetak "1年" dan riwayat kerjanya
+ * terbaca jauh lebih panjang daripada kenyataan.
+ */
+function durasi(masuk: unknown, lulus: unknown): string {
   const a = /^(\d{4})[-/](\d{1,2})/.exec(s(masuk));
   const b = /^(\d{4})[-/](\d{1,2})/.exec(s(lulus));
-  if (!a || !b) return '';
-  const bulan = (parseInt(b[1], 10) - parseInt(a[1], 10)) * 12 + (parseInt(b[2], 10) - parseInt(a[2], 10));
-  if (bulan <= 0) return '';
-  return `${Math.max(1, Math.round(bulan / 12))}年`;
+  if (a && b) {
+    const bulan = (parseInt(b[1], 10) - parseInt(a[1], 10)) * 12 + (parseInt(b[2], 10) - parseInt(a[2], 10));
+    if (bulan <= 0) return '';
+    if (bulan < 12) return `${bulan}ヶ月`;
+    return `${Math.round(bulan / 12)}年`;
+  }
+  // Sebagian baris hanya menyimpan TAHUN (`2019`). Tanpa cabang ini kolom 期間
+  // kosong padahal tahunnya lengkap — cukup selisih tahunnya.
+  const ay = /^(\d{4})/.exec(s(masuk));
+  const by = /^(\d{4})/.exec(s(lulus));
+  if (!ay || !by) return '';
+  const tahun = parseInt(by[1], 10) - parseInt(ay[1], 10);
+  return tahun > 0 ? `${tahun}年` : '';
 }
 
 /** 国公私 — dropdown: 国立/公立/私立. */
@@ -267,15 +285,27 @@ const SKILLS: [RegExp, string][] = [
 ];
 
 /**
- * カナ氏名: pemisah ditulis `・` (bukan spasi penuh), dan hiragana diubah ke
- * katakana — kolom ini kolom KANA, dan database memang menyimpan campuran
- * (`ヨン　アリック　ラマダに` untuk ASJ00104). Pergeseran +0x60 berlaku untuk
- * seluruh blok hiragana, jadi `っ`/`ゃ` kecil ikut benar.
+ * カナ氏名: pemisah ditulis `・`, dan hiragana diubah ke katakana — kolom ini
+ * kolom KANA, dan database menyimpan campuran (`ヨン　アリック　ラマダに`).
+ * Pergeseran +0x60 berlaku untuk seluruh blok hiragana, jadi `っ`/`ゃ` kecil
+ * ikut benar.
+ *
+ * Beberapa baris memuat KANJI yang bentuknya sama dengan katakana — hasil
+ * ketik tangan atau OCR: `厶` untuk `ム`, `二` untuk `ニ`, `口` untuk `ロ`,
+ * `力` untuk `カ`, `工` untuk `エ`, `夕` untuk `タ`. Di kolom kana kanji tidak
+ * pernah sah, jadi bentuk itu diluruskan; kanji lain (mis. nama keluarga yang
+ * salah masuk kolom) dibiarkan apa adanya supaya tidak menebak.
  */
+const KANA_FIX: Record<string, string> = {
+  '厶': 'ム', '二': 'ニ', '口': 'ロ', '力': 'カ', '工': 'エ', '夕': 'タ',
+};
+
 function kanaJp(v: unknown): string {
   return s(v)
+    .replace(/[•·･]/g, '・')
     .replace(/[\s\u3000]+/g, '・')
-    .replace(/[\u3041-\u3096]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0x60));
+    .replace(/[\u3041-\u3096]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0x60))
+    .replace(/[厶二口力工夕]/g, (ch) => KANA_FIX[ch] ?? ch);
 }
 
 /** 国籍・出身地: `〒63395 東ジャワ州 マゲタン県 …` → `インドネシア東ジャワ州マゲタン県`. */
@@ -350,25 +380,30 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells.A19 = '高校';
     cells.D19 = ym(sma.masuk ?? sma.tahun_masuk);
     cells.E20 = ym(sma.lulus ?? sma.tahun_lulus);
-    cells.H19 = durasiTahun(sma.masuk ?? sma.tahun_masuk, sma.lulus ?? sma.tahun_lulus);
+    cells.H19 = durasi(sma.masuk ?? sma.tahun_masuk, sma.lulus ?? sma.tahun_lulus);
     cells.J19 = '';
     cells.M19 = kouritsu(sekolah);
     cells.O19 = sekolah;
-    cells.W19 = bersih(sma.jurusan ?? sma.jurusan_id);
+    // Strip atas mencetak `専攻` dengan `=W19`. Sel kosong membuatnya `0`, jadi
+    // kolom ini memakai `-` seperti sel lain yang memang belum ada isinya.
+    cells.W19 = bersih(sma.jurusan ?? sma.jurusan_id) || '-';
   } else {
-    for (const c of ['D19', 'E20', 'H19', 'J19', 'M19', 'O19', 'W19']) cells[c] = '';
+    for (const c of ['D19', 'E20', 'H19', 'J19', 'M19', 'O19']) cells[c] = '';
+    cells.W19 = '-';
   }
   if (idxLpk >= 0) {
     const lpk = edu[idxLpk];
     cells.A21 = '日本語学校';
     cells.D21 = ym(lpk.masuk ?? lpk.tahun_masuk);
     cells.E22 = isGood(s(lpk.lulus ?? lpk.tahun_lulus)) ? ym(lpk.lulus ?? lpk.tahun_lulus) : '今まで';
-    cells.H21 = durasiTahun(lpk.masuk ?? lpk.tahun_masuk, lpk.lulus ?? lpk.tahun_lulus);
+    cells.H21 = durasi(lpk.masuk ?? lpk.tahun_masuk, lpk.lulus ?? lpk.tahun_lulus);
     cells.M21 = kouritsu(bersih(lpk.sekolah ?? lpk.nama_sekolah));
     cells.O21 = bersih(lpk.sekolah ?? lpk.nama_sekolah ?? lpk.sekolah_id);
     cells.W21 = '日本語';
   } else {
-    for (const c of ['A21', 'D21', 'E22', 'H21', 'J21', 'M21', 'O21', 'W21']) cells[c] = '';
+    // `D22` juga dibersihkan: tanpa baris 日本語学校, tanda `～` bawaan template
+    // menggantung sendirian di kolom periode.
+    for (const c of ['A21', 'D21', 'D22', 'E22', 'H21', 'J21', 'M21', 'O21', 'W21']) cells[c] = '';
   }
 
   /* ── pekerjaan: tiga blok x dua baris ──────────────────────────────────── */
@@ -382,7 +417,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`A${top}`] = jenisKerjaJp(p.jenis ?? p.status_kerja);
     cells[`D${top}`] = ym(masuk);
     cells[`E${bottom}`] = ym(keluar);
-    cells[`H${top}`] = durasiTahun(masuk, keluar);
+    cells[`H${top}`] = durasi(masuk, keluar);
     cells[`M${top}`] = '';
     cells[`Q${top}`] = bersih(p.jabatan ?? p.jabatan_id);
     cells[`W${top}`] = manYen(p.gaji ?? p.penghasilan);
