@@ -17,6 +17,7 @@ import {
   PEKERJAAN, JURUSAN, KOTA, HUBUNGAN_KELUARGA, GOLONGAN_DARAH,
   GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
   YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, BAHASA_JEPANG, valuesOf,
+  JENIS_KERJA_PAIRS, TINGGAL_PAIRS,
   SENTINEL_LAINNYA, withOther, withEmpty, selectState, resolveOther,
 } from '../../lib/opsi-form';
 import type { Opsi } from '../../lib/opsi-form';
@@ -29,8 +30,12 @@ import { useOverlay } from '../ui/useOverlay';
    kotak manual — ia bukan bagian dari payload, dan sengaja dipisah supaya
    memilih "Lainnya" lalu kembali ke daftar tidak menghapus teks itu. */
 interface EduRecord { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; jurusanManual: string; alamat: string; }
-interface JobRecord { perusahaan: string; jabatan: string; jabatanManual: string; thnAwal: string; thnAkhir: string; gaji: string; alasan: string; }
-interface FamRecord { nama: string; hubungan: string; usia: string; pekerjaan: string; pekerjaanManual: string; }
+/* `jenis` / `bidang` / `catatan` = 雇用形態 / 業種 / 備考 pada blok 職歴 form CV
+   (KINKI, Firma, JIPA). Ditambahkan 2026-10-27 bersama migrasi 022 — sebelumnya
+   ketiga kolom itu tidak pernah ditanyakan di form mana pun. */
+interface JobRecord { perusahaan: string; jabatan: string; jabatanManual: string; thnAwal: string; thnAkhir: string; gaji: string; alasan: string; jenis: string; bidang: string; catatan: string; }
+/* `tinggal` / `hp` / `gaji` = 同居区分 / 電話 / 月収 pada blok 家族構成. */
+interface FamRecord { nama: string; hubungan: string; usia: string; pekerjaan: string; pekerjaanManual: string; tinggal: string; hp: string; gaji: string; }
 
 interface MasterData {
   nama: string; furigana: string; panggilan: string; panggilanKatakana: string;
@@ -50,6 +55,16 @@ interface MasterData {
   eksJepang: string; noCoe: string; noPaspor: string; tglTerbitPaspor: string;
   expPaspor: string; kotaPaspor: string; bhsJepang: string; nilai: string;
   lisensi: string; lisensiManual: string; lisensi2: string; lisensi2Manual: string;
+  /* ── Migrasi 022: pertanyaan yang sebelumnya tidak ada di form mana pun ────
+     Semuanya dicetak salah satu dari empat form CV; lihat
+     `deliverables/cv-template-sel-kosong-2026-10-26.md`. */
+  visa: string; negaraLain: string; jarakJakarta: string; lamaPenerbangan: string;
+  rencanaSim: string; wilayahSekolah: string;
+  lamaBelajarJp: string; statusBelajarJp: string; babBelajarJp: string;
+  levelJepang: string; bhsInggris: string; bahasaLain: string;
+  sertifikatLain: string; catatanCv: string;
+  tesHitung: string; tesPushup: string; tesSquat: string; tinggalKursus: string;
+  olahraga: string; mbti: string; kenalanStatusTinggal: string;
   [key: string]: string;
 }
 
@@ -98,6 +113,10 @@ const EMPTY: MasterData = {
   motivasiJepang:'', keinginan:'', rencanaPulang:'', tujuanJepang:'', lamaJepang:'', gajiYen:'', tabungan:'',
   eksJepang:'BELUM PERNAH', noCoe:'', noPaspor:'', tglTerbitPaspor:'', expPaspor:'', kotaPaspor:'',
   bhsJepang:'-', nilai:'', lisensi:'', lisensiManual:'', lisensi2:'', lisensi2Manual:'',
+  visa:'', negaraLain:'', jarakJakarta:'', lamaPenerbangan:'', rencanaSim:'', wilayahSekolah:'',
+  lamaBelajarJp:'', statusBelajarJp:'', babBelajarJp:'', levelJepang:'', bhsInggris:'', bahasaLain:'',
+  sertifikatLain:'', catatanCv:'', tesHitung:'', tesPushup:'', tesSquat:'', tinggalKursus:'',
+  olahraga:'', mbti:'', kenalanStatusTinggal:'',
 };
 
 const STEPS = [
@@ -136,8 +155,8 @@ export default function MasterFullForm() {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<MasterData>({ ...EMPTY });
   const [eduList, setEduList] = useState<EduRecord[]>([{ jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'' }]);
-  const [jobList, setJobList] = useState<JobRecord[]>([{ perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'' }]);
-  const [famList, setFamList] = useState<FamRecord[]>([{ nama:'', hubungan:'', usia:'', pekerjaan:'', pekerjaanManual:'' }]);
+  const [jobList, setJobList] = useState<JobRecord[]>([{ perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'', jenis:'', bidang:'', catatan:'' }]);
+  const [famList, setFamList] = useState<FamRecord[]>([{ nama:'', hubungan:'', usia:'', pekerjaan:'', pekerjaanManual:'', tinggal:'', hp:'', gaji:'' }]);
   const [kotaPasporManual, setKotaPasporManual] = useState('');
   const [daruratNama, setDaruratNama] = useState('');
   const [daruratHubungan, setDaruratHubungan] = useState('');
@@ -401,9 +420,13 @@ export default function MasterFullForm() {
         pekerjaan: jobList.filter(j => j.perusahaan).map(j => ({
           nama_perusahaan: j.perusahaan, jabatan: resolveRow(j.jabatan, j.jabatanManual),
           tahun_masuk: j.thnAwal, tahun_keluar: j.thnAkhir, gaji: j.gaji,
+          // 雇用形態 / 業種 / 備考 — kolom pekerjaan_N_* (migrasi 022).
+          jenis: j.jenis, bidang: j.bidang, catatan: j.catatan,
         })),
         keluarga: famList.filter(f => f.nama).map(f => ({
           nama: f.nama, hubungan: f.hubungan, usia: f.usia, pekerjaan: resolveRow(f.pekerjaan, f.pekerjaanManual),
+          // 同居区分 / 電話 / 月収 — kolom keluarga_N_* (migrasi 022).
+          tinggal: f.tinggal, hp: f.hp, gaji: f.gaji,
         })),
         daruratNama, daruratHubungan, daruratWa,
         kenalanNama: kenalan.nama, kenalanHubungan: kenalan.hubungan,
@@ -705,6 +728,12 @@ export default function MasterFullForm() {
 
               <h2 class="section-title mt-6">{t("form.mf_kontak")}</h2>
               <F label={t("form.mf_alamat")} k="alamat" ph={t("form.mf_ph_auto_jp")} rows={2} />
+              {/* Jarak & lama penerbangan ke Jakarta — KINKI mencetaknya di
+                  `O9` (ジャカルタから…㎞ / 飛行機で…時間…分). */}
+              <div class="grid grid-cols-2 gap-3">
+                <F label="Jarak ke Jakarta (km)" k="jarakJakarta" ph="mis. 780" twoCol />
+                <F label="Lama penerbangan" k="lamaPenerbangan" ph="mis. 1 jam 40 menit" twoCol />
+              </div>
               <F label={t("form.mf_email")} k="email" type="email" />
               <div class="grid grid-cols-2 gap-3">
                 <F label={t("form.mf_tb")} k="tb" type="number" twoCol />
@@ -769,6 +798,20 @@ export default function MasterFullForm() {
                 <F label={t("form.mf_gaji_yen")} k="gajiYen" type="number" ph="Misal: 200000" twoCol />
               </div>
               <F label={t("form.mf_tabungan")} k="tabungan" ph={t("form.mf_ph_misal_tabungan")} />
+
+              {/* ── Tes & kebiasaan fisik (migrasi 022) ──────────────────────
+                  Diisi agensi saat seleksi; dicetak KINKI di blok 体力試験 /
+                  計算テスト / 集団生活年数, dan スポーツ di baris kebiasaan. */}
+              <h2 class="section-title mt-6">Tes &amp; Kebiasaan Fisik</h2>
+              <F label="Olahraga (スポーツ)" k="olahraga" ph="mis. Futsal, Jogging" />
+              <div class="grid grid-cols-2 gap-3">
+                <F label="Tes hitung (計算テスト)" k="tesHitung" ph="mis. 85" twoCol />
+                <F label="Lama tinggal di asrama (tahun)" k="tinggalKursus" ph="mis. 2" twoCol />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <F label="Push-up (回)" k="tesPushup" type="number" ph="mis. 30" twoCol />
+                <F label="Squat (回)" k="tesSquat" type="number" ph="mis. 40" twoCol />
+              </div>
             </div>
           )}
 
@@ -803,6 +846,9 @@ export default function MasterFullForm() {
                 </div>
               ))}
               {eduList.length < 5 && <button type="button" onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.edu_tambah")}</button>}
+              {/* 地域 — wilayah sekolah, dicetak KINKI di kolom `J19`. Satu kolom
+                  saja karena form itu hanya mencetak baris SMA/SMK. */}
+              <F label="Wilayah sekolah (SMA/SMK) — 地域" k="wilayahSekolah" ph="mis. Jawa Timur" />
 
               <h2 class="section-title mt-6">{t("form.mf_riwayat_pekerjaan")}</h2>
               {jobList.map((job, i) => (
@@ -825,10 +871,37 @@ export default function MasterFullForm() {
                       <input class="input" id={`mf-job-gaji-${i}`} value={job.gaji} onInput={(e) => { const v = [...jobList]; v[i].gaji = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
                     <div class="mb-3"><label class="label" for={`mf-job-alasan-${i}`}>{t("master.kerja_alasan")}</label>
                       <input class="input" id={`mf-job-alasan-${i}`} value={job.alasan} onInput={(e) => { const v = [...jobList]; v[i].alasan = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
+                    {/* ── 雇用形態 / 業種 / 備考 (migrasi 022) ───────────────── */}
+                    <div class="mb-3"><label class="label" for={`mf-job-jenis-${i}`}>Status kerja (雇用形態)</label>
+                      <select class="input" id={`mf-job-jenis-${i}`} value={job.jenis} onChange={(e) => { const v = [...jobList]; v[i].jenis = (e.target as HTMLSelectElement).value; setJobList(v); }}>
+                        {withEmpty(JENIS_KERJA_PAIRS, job.jenis).map(([val, lab]) => <option value={val}>{lab}</option>)}
+                      </select></div>
+                    <div class="mb-3"><label class="label" for={`mf-job-bidang-${i}`}>Bidang industri (業種)</label>
+                      <input class="input" id={`mf-job-bidang-${i}`} value={job.bidang} onInput={(e) => { const v = [...jobList]; v[i].bidang = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
+                    <div class="mb-3"><label class="label" for={`mf-job-catatan-${i}`}>Catatan kerja (備考)</label>
+                      <input class="input" id={`mf-job-catatan-${i}`} value={job.catatan} onInput={(e) => { const v = [...jobList]; v[i].catatan = (e.target as HTMLInputElement).value; setJobList(v); }} /></div>
                   </div>
                 </div>
               ))}
-              {jobList.length < 3 && <button type="button" onClick={() => setJobList(l => [...l, { perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'' }])} class="text-sky-400 text-xs font-bold"><Icon name="plus" class="mr-1" />{t("master.kerja_tambah")}</button>}
+              {jobList.length < 3 && <button type="button" onClick={() => setJobList(l => [...l, { perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'', jenis:'', bidang:'', catatan:'' }])} class="text-sky-400 text-xs font-bold"><Icon name="plus" class="mr-1" />{t("master.kerja_tambah")}</button>}
+
+              {/* ── Kemampuan bahasa & tipe kepribadian (migrasi 022) ──────────
+                  KINKI mencetak keenamnya: T37 学習期間, T39 学習状況, I4 第…課中,
+                  Q47 性格診断テスト. */}
+              <h2 class="section-title mt-6">Kemampuan Bahasa Jepang</h2>
+              <div class="grid grid-cols-2 gap-3">
+                <F label="Lama belajar Jepang (日本語学習期間)" k="lamaBelajarJp" ph="mis. 6 bulan" twoCol />
+                <F label="Status belajar (学習状況)" k="statusBelajarJp" ph="mis. sedang belajar" twoCol />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <F label="Bab yang sedang dipelajari (第…課)" k="babBelajarJp" ph="mis. 25" twoCol />
+                <F label="Level bahasa Jepang (日本語力)" k="levelJepang" ph="mis. N4レベル" twoCol />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <F label="Level bahasa Inggris (英語)" k="bhsInggris" ph="mis. menengah" twoCol />
+                <F label="Bahasa asing lain (その他)" k="bahasaLain" ph="mis. Mandarin dasar" twoCol />
+              </div>
+              <F label="Tipe MBTI (性格診断テスト)" k="mbti" ph="mis. ISTJ — kosong = disimpulkan otomatis dari teks wawancara" />
             </div>
           )}
 
@@ -865,10 +938,19 @@ export default function MasterFullForm() {
                     <ManualSelect id={`mf-fam-pekerjaan-${i}`} label={t("master.fam_pekerjaan")} list={PEKERJAAN}
                       value={fam.pekerjaan} manual={fam.pekerjaanManual}
                       onChange={(p) => { const v = [...famList]; v[i] = { ...v[i], pekerjaan: p.value, pekerjaanManual: p.manual }; setFamList(v); }} />
+                    {/* ── 同居区分 / 電話 / 月収 (migrasi 022) ──────────────── */}
+                    <div class="mb-3"><label class="label" for={`mf-fam-tinggal-${i}`}>Tinggal serumah? (同居)</label>
+                      <select class="input" id={`mf-fam-tinggal-${i}`} value={fam.tinggal} onChange={(e) => { const v = [...famList]; v[i].tinggal = (e.target as HTMLSelectElement).value; setFamList(v); }}>
+                        {withEmpty(TINGGAL_PAIRS, fam.tinggal).map(([val, lab]) => <option value={val}>{lab}</option>)}
+                      </select></div>
+                    <div class="mb-3"><label class="label" for={`mf-fam-hp-${i}`}>No. HP anggota (電話)</label>
+                      <input class="input" id={`mf-fam-hp-${i}`} value={fam.hp} onInput={(e) => { const v = [...famList]; v[i].hp = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
+                    <div class="mb-3"><label class="label" for={`mf-fam-gaji-${i}`}>Penghasilan / bulan dalam YEN (月収)</label>
+                      <input class="input" id={`mf-fam-gaji-${i}`} value={fam.gaji} onInput={(e) => { const v = [...famList]; v[i].gaji = (e.target as HTMLInputElement).value; setFamList(v); }} /></div>
                   </div>
                 </div>
               ))}
-              {famList.length < 5 && <button type="button" onClick={() => setFamList(l => [...l, { nama:'', hubungan:'', usia:'', pekerjaan:'', pekerjaanManual:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.fam_tambah")}</button>}
+              {famList.length < 5 && <button type="button" onClick={() => setFamList(l => [...l, { nama:'', hubungan:'', usia:'', pekerjaan:'', pekerjaanManual:'', tinggal:'', hp:'', gaji:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.fam_tambah")}</button>}
 
               <h2 class="section-title mt-6">{t("master.darurat_title")}</h2>
               <div class="p-4 rounded-xl bg-surface-raised border border-sky-500/30">
@@ -896,6 +978,8 @@ export default function MasterFullForm() {
                 </div>
                 <div class="mb-3"><label class="label" for={`mf-kenalan-alamat`}>{t("master.kenalan_alamat")}</label>
                   <input class="input" id={`mf-kenalan-alamat`} value={kenalan.alamat} placeholder={t("master.ph_kota_prefektur")} onInput={(e) => setKenalan(k => ({ ...k, alamat: (e.target as HTMLInputElement).value }))} /></div>
+                {/* 在留資格(在留期間) — JIPA `J43` (migrasi 022). */}
+                <F label="Status tinggal kenalan di Jepang (在留資格)" k="kenalanStatusTinggal" ph="mis. 技能実習2号 (2024-2027)" />
               </div>
             </div>
           )}
@@ -935,6 +1019,18 @@ export default function MasterFullForm() {
               </div>
               <SswField label={t("form.mf_lisensi")} k="lisensi" kManual="lisensiManual" labelManual={t("master.ketik_bidang")} />
               <SswField label={t("form.mf_ssw2")} k="lisensi2" kManual="lisensi2Manual" labelManual={t("master.ketik_bidang2")} />
+
+              {/* ── Sertifikat & perjalanan (migrasi 022) ──────────────────────
+                  Dicetak: Form Asli `H42` (他資格) & `A46` (付記), Firma `K33`
+                  (その他事項), JIPA `E54` (ビザ種類). */}
+              <h2 class="section-title mt-6">Sertifikat &amp; Perjalanan</h2>
+              <div class="grid grid-cols-2 gap-3">
+                <F label="Sertifikat lain (他資格)" k="sertifikatLain" ph="mis. 簿記3級, 調理師" twoCol />
+                <F label="Visa Jepang yang pernah dipakai (ビザ種類)" k="visa" ph="mis. 技能実習1号" twoCol />
+              </div>
+              <F label="Negara lain yang pernah dikunjungi (渡航経験)" k="negaraLain" ph="mis. Malaysia 2019, Singapura 2022" />
+              <F label="Rencana ambil SIM (…月取得予定)" k="rencanaSim" ph="mis. 8 atau 2027-08" />
+              <F label="Catatan tambahan untuk CV (付記)" k="catatanCv" ph="dicetak apa adanya di form" rows={2} />
 
               <h2 class="section-title mt-6">{t("master.upload_doc_max")}</h2>
               {[

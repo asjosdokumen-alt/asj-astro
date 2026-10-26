@@ -22,11 +22,12 @@
  *   54-56  訪日経験
  *   58-61  kontak: HP, email, alamat, KTP
  *
- * SEL YANG TIDAK DIISI (tidak ada kolomnya)
- * -----------------------------------------
- * `B5` CODE LOWONGAN, `J5` 希望職種, `E54` ビザ種類, `E56` 在日期間,
- * `B46`-`E51` tanggal perolehan tiap sertifikat, `L60` tanggal pengisian.
- * Semua itu diisi agensi, bukan berasal dari data kandidat.
+ * SEL YANG TIDAK DIISI
+ * --------------------
+ * `B5` CODE LOWONGAN (diisi agensi; kolomnya ada di `database_candidate`, bukan
+ * di baris master), `B46`-`E51` tanggal perolehan tiap sertifikat, dan `L60`
+ * tanggal pengisian. `J5` 希望職種, `E54` ビザ種類 dan `E55` 在日期間 SUDAH
+ * diisi sejak migrasi 022 (`bidangssw`, `visa_jepang`, `lama_di_jepang`).
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { JIPA_BASE64 } from '../templates/jipa.b64';
@@ -246,6 +247,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
     E59: bersih(id.email).replace(/^mailto:/i, ''),
     E60: bersih(id.alamat),
     E61: bersih(id.ktp),
+    /* 希望職種 (J5) — dulu kosong. `bidangssw` adalah sektor kerja yang memang
+       dipilih kandidat; kalau kosong dipakai `bidang`. */
+    J5: bersih(data.sertifikasi.bidang),
+    /* ビザ種類 (E54) dan 在日期間 (E55) — kolom migrasi 022. */
+    E54: bersih(id.visa_jepang),
+    E55: bersih(data.wawancara.lama_di_jepang),
     /* ── 訪日経験 ───────────────────────────────────────────────────────── */
     B54: /^(TIDAK|NO|NONE|-|無|BELUM)$/i.test(bersih(id.status_eks_jepang)) || !isGood(bersih(id.status_eks_jepang))
       ? '無し(TIDAK)'
@@ -322,6 +329,11 @@ export function buildValues(data: CandidateData): Record<string, string> {
     });
   }
   if (isGood(sim)) sertifikat.push({ label: '自動車免許(SIM A)', detail: sim });
+  /* その他資格 — kolom `sertifikat_lain` (migrasi 022). Satu baris untuk semua
+     sertifikat di luar SSW/JLPT/SIM, karena blok form hanya punya 5 baris dan
+     tiga di antaranya sudah dipakai. */
+  const lain = sertifikatAda(data.sertifikasi.sertifikat_lain);
+  if (isGood(lain)) sertifikat.push({ label: 'その他(資格)', detail: lain });
   for (let i = 0; i < CERT_ROWS; i++) {
     const row = CERT_START + i;
     const c = sertifikat[i];

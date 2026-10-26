@@ -309,3 +309,45 @@ describe('rirekisho-xlsx · buildRirekishoWorkbook', () => {
     expect(wb).toContain('name="ANGGUN ARIANI"');
   });
 });
+
+/**
+ * Kolom yang sudah ada tetapi tidak pernah dibaca (2026-10-27).
+ *
+ * `D45:G45` (関係/職業/年齢/住所 kenalan) punya kolomnya sejak migrasi 019 dan
+ * terisi, `keluarga_N_gaji` sudah lama ditulis `buildRiwayatSlots`, dan `ssw`
+ * belum pernah dicetak di form ini. Renderer lama hanya menulis NAMA kenalan.
+ */
+describe('rirekisho-xlsx · kolom yang sudah ada tetapi dulu tidak dibaca', () => {
+  const lengkap = (): CandidateData => {
+    const d = anggun();
+    d.sertifikasi = { ...d.sertifikasi, ssw: '1号 飲食料品製造業', sertifikat_lain: '簿記3級', catatan_cv: 'Bersedia kerja shift' };
+    d.kenalan_jepang = {
+      nama_id: 'TANAKA', nama_jp: 'タナカ', hubungan_id: 'PAMAN', hubungan_jp: 'おじ',
+      pekerjaan_id: 'KARYAWAN', pekerjaan_jp: '会社員', usia: '45',
+      alamat_id: 'TOKYO', alamat_jp: '東京都新宿区',
+    };
+    d.keluarga = [{ ...(d.keluarga[0] as Record<string, unknown>), gaji: '120000' }];
+    return d;
+  };
+
+  it('他資格 memuat SSW dan sertifikat lain', () => {
+    expect(buildValues(lengkap()).H42).toBe('1号 飲食料品製造業 / 簿記3級');
+  });
+
+  it('付記 diisi catatan_cv', () => {
+    expect(buildValues(lengkap()).A46).toBe('Bersedia kerja shift');
+  });
+
+  it('kenalan: hubungan, pekerjaan, usia, alamat ikut tercetak', () => {
+    const c = buildValues(lengkap());
+    expect(c.A45).toBe('タナカ');
+    expect(c.D45).toBe('おじ');
+    expect(c.E45).toBe('会社員');
+    expect(c.F45).toBe('45');
+    expect(c.G45).toBe('東京都新宿区');
+  });
+
+  it('月収 keluarga terisi dari kolom', () => {
+    expect(buildValues(lengkap()).I29).toBe('¥   120000');
+  });
+});

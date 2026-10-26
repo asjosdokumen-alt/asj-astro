@@ -164,6 +164,37 @@ const RULES: Record<MbtiAxis, AxisRule> = {
 const PRIOR: Record<MbtiAxis, string> = { EI: 'I', SN: 'S', TF: 'T', JP: 'J', AT: 'A' };
 
 /**
+ * Tipe MBTI yang TERSIMPAN → bentuk `MbtiResult` yang sama dengan `inferMbti`.
+ *
+ * Sejak migrasi 022 tipenya punya kolom (`mbti`), jadi admin bisa mengoreksi
+ * hasil terkaan tanpa menyentuh teks wawancara. Menerima `INTJ`, `intj`,
+ * `INTJ-A`, atau nama yang sudah jadi (`建築家型（INTJ）`).
+ *
+ * Huruf kelima (`A`/`T`) opsional: tanpa itu dipakai bawaan `PRIOR.AT`, karena
+ * dropdown `U52` hanya punya 自信型/慎重型 dan sel kosong terbaca sebagai form
+ * belum selesai. Mengembalikan `null` kalau tidak ada empat huruf yang sah —
+ * pemanggil lalu jatuh ke `inferMbti`.
+ */
+export function mbtiFromCode(raw: unknown): MbtiResult | null {
+  const t = String(raw ?? '').toUpperCase();
+  const m = /[EI][SN][TF][JP]/.exec(t);
+  if (!m) return null;
+  const code = m[0];
+  const variant = /[EI][SN][TF][JP]-?([AT])\b/.exec(t)?.[1] ?? PRIOR.AT;
+  const axis = {
+    EI: code[0], SN: code[1], TF: code[2], JP: code[3], AT: variant,
+  } as Record<MbtiAxis, string>;
+  const labels = (Object.keys(AXIS_LABELS) as MbtiAxis[]).map((k) =>
+    axis[k] === RULES[k].a ? AXIS_LABELS[k].a : AXIS_LABELS[k].b,
+  );
+  return {
+    code, typeName: TYPE_NAMES[code] ?? code, variant, axis, labels,
+    // Tidak ada bukti teks: tipe ini datang dari kolom, bukan dari kalimat.
+    details: [], sourceChars: 0,
+  };
+}
+
+/**
  * Selisih minimum sebelum bukti boleh MENGALAHKAN bawaan.
  *
  * Satu kata tidak cukup: pada teks kandidat sungguhan (CV Yon) sumbu T/F hanya

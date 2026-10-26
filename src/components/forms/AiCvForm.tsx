@@ -23,7 +23,7 @@ import { PAIRED_FIELDS, resolvePairEdit, jpOf, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PA
 import {
   PEKERJAAN, JURUSAN, HUBUNGAN_KELUARGA, GOLONGAN_DARAH, BAHASA_JEPANG,
   GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
-  YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS,
+  YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, JENIS_KERJA_PAIRS, TINGGAL_PAIRS,
   labelJp, pairDisplay, type Opsi,
 } from '../../lib/opsi-form';
 import { levelOptions, sortEduRows } from '../../lib/cvRows';
@@ -92,6 +92,17 @@ interface CvData {
   kenalan_nama_id: string; kenalan_nama_jp: string; kenalan_hub_id: string; kenalan_hub_jp: string;
   kenalan_kerja_id: string; kenalan_kerja_jp: string; kenalan_usia: string;
   kenalan_alamat_id: string; kenalan_alamat_jp: string;
+  /* ── Migrasi 022 (2026-10-27): pertanyaan yang sebelumnya tidak ada di form
+     mana pun, padahal dicetak salah satu dari empat form CV. Lihat
+     `deliverables/cv-template-sel-kosong-2026-10-26.md`. ─────────────────── */
+  kenalan_status: string;
+  visa: string; negara_lain: string; jarak_jakarta: string; lama_penerbangan: string;
+  rencana_sim: string; wilayah_sekolah: string;
+  tes_hitung: string; tes_pushup: string; tes_squat: string; tinggal_kursus: string; olahraga: string;
+  mbti: string;
+  lama_belajar_jp: string; status_belajar_jp: string; bab_belajar_jp: string;
+  level_jepang: string; bhs_inggris: string; bahasa_lain: string;
+  sertifikat_lain: string; catatan_cv: string;
   [key: string]: string;
 }
 
@@ -149,11 +160,15 @@ interface JobRow {
   id: number;
   perusahaan_id: string; perusahaan_jp: string; jabatan_id: string; jabatan_jp: string;
   masuk: string; keluar: string; gaji: string;
+  /** 雇用形態 / 業種 / 備考 — migrasi 022. */
+  jenis: string; bidang: string; catatan: string;
 }
 interface FamRow {
   id: number;
   hubungan_id: string; hubungan_jp: string; nama: string; katakana: string;
   umur: string; pekerjaan_id: string; pekerjaan_jp: string; gaji: string;
+  /** 同居区分 / 電話 — migrasi 022. */
+  tinggal: string; hp: string;
 }
 
 const EDU_MAX = 5;
@@ -195,8 +210,8 @@ function eduListUntouched(list: EduRow[]): boolean {
   return list.every((r, i) => r.tingkat === EDU_SEED_LEVELS[i]
     && !r.sekolah_id && !r.sekolah_jp && !r.jurusan_id && !r.jurusan_jp && !r.masuk && !r.lulus);
 }
-const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '' });
-const newFamRow = (): FamRow => ({ id: nextRowId(), hubungan_id: '', hubungan_jp: '', nama: '', katakana: '', umur: '', pekerjaan_id: '', pekerjaan_jp: '', gaji: '' });
+const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '', jenis: '', bidang: '', catatan: '' });
+const newFamRow = (): FamRow => ({ id: nextRowId(), hubungan_id: '', hubungan_jp: '', nama: '', katakana: '', umur: '', pekerjaan_id: '', pekerjaan_jp: '', gaji: '', tinggal: '', hp: '' });
 
 /**
  * Baris tersimpan (`parseAiCvRows`) → state repeater.
@@ -930,8 +945,15 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           status_eks_jepang: cv.riwayatjepang,
           /* Paritas paspor dengan Form Master (2026-10-25). */
           tgl_terbit_paspor: cv.tgl_terbit_paspor, exp_paspor: cv.exp_paspor, kota_paspor: cv.kota_paspor,
+          /* Migrasi 022: perjalanan & wilayah sekolah. */
+          visa_jepang: cv.visa, negara_lain: cv.negara_lain,
+          jarak_jakarta_km: cv.jarak_jakarta, lama_penerbangan: cv.lama_penerbangan,
+          rencana_sim_bulan: cv.rencana_sim, wilayah_sekolah: cv.wilayah_sekolah,
         },
-        fisik: { tb: cv.tb, bb: cv.bb, tangan_dominan: cv.tangan, sepatu: cv.sepatu, baju: cv.baju, topi: cv.topi, tahan_ac: cv.tahan_ac },
+        fisik: { tb: cv.tb, bb: cv.bb, tangan_dominan: cv.tangan, sepatu: cv.sepatu, baju: cv.baju, topi: cv.topi, tahan_ac: cv.tahan_ac,
+          /* Migrasi 022: tes & kebiasaan fisik (KINKI 計算テスト/体力試験/スポーツ). */
+          tes_hitung: cv.tes_hitung, tes_pushup: cv.tes_pushup, tes_squat: cv.tes_squat,
+          tinggal_kursus_tahun: cv.tinggal_kursus, olahraga: cv.olahraga },
         medis: {
           mata_kiri: cv.matakiri, mata_kanan: cv.matakanan, kacamata: cv.kacamata,
           buta_warna: cv.butawarna, tato: cv.tato, rokok: cv.rokok, alkohol: cv.alkohol,
@@ -952,6 +974,10 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           keinginan_pribadi: cv.keinginan_id, keinginan_pribadi_jp: cv.keinginan_jp,
           tujuan_ke_jepang: cv.tujuan_id, tujuan_ke_jepang_jp: cv.tujuan_jp,
           riwayat_jepang: cv.riwayatjepang, gaji_yen: cv.gaji_yen, tabungan: cv.tabungan,
+          /* `cv.lama` (Lama di Jepang) DIKETIK di form tetapi tidak pernah ikut
+             terkirim — nilainya hilang setiap simpan. Sekarang dikirim dan
+             mendarat di kolom `lama_di_jepang` (migrasi 022). */
+          lama_di_jepang: cv.lama, mbti: cv.mbti,
         },
         /* `no_coe` dan `ssw2` ikut di seksi `sertifikasi` supaya
            `AI_TO_MASTER_COLUMNS` memetakannya ke kolom `no_coe` / `bidangssw2`
@@ -959,6 +985,11 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
         sertifikasi: {
           bahasa: cv.bhs_jepang, jft: cv.nilai, ssw: cv.lisensi, bidang: cv.lisensi,
           ssw2: cv.lisensi2, no_coe: cv.no_coe,
+          /* Migrasi 022: bahasa & sertifikat tambahan. */
+          lama_belajar_jp: cv.lama_belajar_jp, status_belajar_jp: cv.status_belajar_jp,
+          bab_belajar_jp: cv.bab_belajar_jp, level_bahasa_jepang: cv.level_jepang,
+          level_bahasa_inggris: cv.bhs_inggris, bahasa_lain: cv.bahasa_lain,
+          sertifikat_lain: cv.sertifikat_lain, catatan_cv: cv.catatan_cv,
         },
         /* The three dynamic sections. Rows the candidate never filled in are
            dropped rather than sent as empty objects: this payload is what the
@@ -981,6 +1012,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
             nama_perusahaan: j.perusahaan_id, nama_perusahaan_jp: j.perusahaan_jp,
             jabatan: j.jabatan_id, jabatan_jp: j.jabatan_jp,
             tahun_masuk: j.masuk, tahun_keluar: j.keluar, gaji: j.gaji,
+            /* 雇用形態 / 業種 / 備考 (migrasi 022). */
+            jenis: j.jenis, bidang: j.bidang, catatan: j.catatan,
           })),
         keluarga: famList
           .filter(f => f.nama || f.hubungan_id)
@@ -988,6 +1021,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
             hubungan: f.hubungan_id, hubungan_jp: f.hubungan_jp, nama: f.nama,
             katakana: f.katakana, umur: f.umur,
             pekerjaan: f.pekerjaan_id, pekerjaan_jp: f.pekerjaan_jp, gaji: f.gaji,
+            /* 同居区分 / 電話 (migrasi 022). */
+            tinggal: f.tinggal, hp: f.hp,
           })),
         kenalan_jepang: {
           nama_id: cv.kenalan_nama_id, nama_jp: cv.kenalan_nama_jp,
@@ -995,6 +1030,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           pekerjaan_id: cv.kenalan_kerja_id, pekerjaan_jp: cv.kenalan_kerja_jp,
           usia: cv.kenalan_usia,
           alamat_id: cv.kenalan_alamat_id, alamat_jp: cv.kenalan_alamat_jp,
+          status_tinggal: cv.kenalan_status,
         },
         ...fileUrls,
       };
@@ -1392,6 +1428,21 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 touched={touchedFields.has('exp_paspor')} onInput={(v) => handleManualEdit('exp_paspor', v)} />
               <Field label={t("form.mf_kota_paspor")} id="kota_paspor" value={cv.kota_paspor}
                 touched={touchedFields.has('kota_paspor')} onInput={(v) => handleManualEdit('kota_paspor', v)} />
+              {/* ── Perjalanan & wilayah sekolah (migrasi 022) ───────────────
+                  Dicetak JIPA `E54` (ビザ種類), Firma `L32` (渡航経験), KINKI
+                  `O9` (jarak & lama penerbangan) dan `M4` (…月取得予定). */}
+              <Field label="Visa Jepang (ビザ種類)" id="visa" value={cv.visa} span={2}
+                touched={touchedFields.has('visa')} onInput={(v) => handleManualEdit('visa', v)} />
+              <Field label="Negara lain (渡航経験)" id="negara_lain" value={cv.negara_lain} span={2}
+                touched={touchedFields.has('negara_lain')} onInput={(v) => handleManualEdit('negara_lain', v)} />
+              <Field label="Jarak ke Jakarta (km)" id="jarak_jakarta" value={cv.jarak_jakarta} center
+                touched={touchedFields.has('jarak_jakarta')} onInput={(v) => handleManualEdit('jarak_jakarta', v)} />
+              <Field label="Lama penerbangan" id="lama_penerbangan" value={cv.lama_penerbangan}
+                touched={touchedFields.has('lama_penerbangan')} onInput={(v) => handleManualEdit('lama_penerbangan', v)} />
+              <Field label="Rencana ambil SIM (…月)" id="rencana_sim" value={cv.rencana_sim}
+                touched={touchedFields.has('rencana_sim')} onInput={(v) => handleManualEdit('rencana_sim', v)} />
+              <Field label="Wilayah sekolah SMA/SMK (地域)" id="wilayah_sekolah" value={cv.wilayah_sekolah} span={2}
+                touched={touchedFields.has('wilayah_sekolah')} onInput={(v) => handleManualEdit('wilayah_sekolah', v)} />
             </div>
           </Section>
 
@@ -1417,6 +1468,21 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   <PairSelect label={t("cv.field_tahan_ac")} id="tahan_ac" value={cv.tahan_ac} pairs={YA_TIDAK_PAIRS}
                     touched={touchedFields.has('tahan_ac')} onChange={(v) => handlePairEdit('tahan_ac', v)} />
                 </div>
+                {/* ── Tes & kebiasaan fisik (migrasi 022) ────────────────────
+                    Diisi agensi saat seleksi; dicetak KINKI (体力試験, 計算テスト,
+                    集団生活年数, スポーツ). */}
+                <div class="col-span-3">
+                  <Field label="Olahraga (スポーツ)" id="olahraga" value={cv.olahraga}
+                    touched={touchedFields.has('olahraga')} onInput={(v) => handleManualEdit('olahraga', v)} />
+                </div>
+                <Field label="Tes hitung (計算テスト)" id="tes_hitung" value={cv.tes_hitung} center
+                  touched={touchedFields.has('tes_hitung')} onInput={(v) => handleManualEdit('tes_hitung', v)} />
+                <Field label="Push-up (回)" id="tes_pushup" value={cv.tes_pushup} center
+                  touched={touchedFields.has('tes_pushup')} onInput={(v) => handleManualEdit('tes_pushup', v)} />
+                <Field label="Squat (回)" id="tes_squat" value={cv.tes_squat} center
+                  touched={touchedFields.has('tes_squat')} onInput={(v) => handleManualEdit('tes_squat', v)} />
+                <Field label="Lama di asrama (thn)" id="tinggal_kursus" value={cv.tinggal_kursus} center unit="thn"
+                  touched={touchedFields.has('tinggal_kursus')} onInput={(v) => handleManualEdit('tinggal_kursus', v)} />
               </div>
             </Section>
             <Section title={t("ai_cv.sec_medis")} icon="fa-notes-medical" color="red">
@@ -1483,6 +1549,15 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   <Field label={t("cv.field_target_nabung")} id="tabungan" value={cv.tabungan} center jp
                     touched={touchedFields.has('tabungan')} onInput={(v) => handleManualEdit('tabungan', v)} />
                 </div>
+                {/* ── 性格診断 & 付記 (migrasi 022) ──────────────────────────
+                    KINKI mencetak tipe MBTI di `Q47`/`U48..U52`; kalau kolom ini
+                    kosong, tipe tetap DISIMPULKAN dari teks wawancara seperti
+                    sebelumnya. `catatan_cv` dicetak apa adanya di 付記 (Form
+                    Asli) dan その他事項 (Firma). */}
+                <Field label="Tipe MBTI (性格診断テスト)" id="mbti" value={cv.mbti}
+                  touched={touchedFields.has('mbti')} onInput={(v) => handleManualEdit('mbti', v)} />
+                <Field label="Catatan tambahan CV (付記)" id="catatan_cv" value={cv.catatan_cv} span={2}
+                  touched={touchedFields.has('catatan_cv')} onInput={(v) => handleManualEdit('catatan_cv', v)} />
               </div>
             </div>
           </Section>
@@ -1516,6 +1591,26 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               <datalist id="ai_ssw_options">
                 {SSW_OPTIONS.map(o => <option key={o} value={o} />)}
               </datalist>
+              {/* ── Bahasa & sertifikat tambahan (migrasi 022) ─────────────────
+                  Dicetak KINKI (T37 学習期間, T39 学習状況, I4 第…課中, Q41 英語,
+                  T41 その他外国語, I3 日本語力), Firma (L31 学習期間, D32 日本語能力)
+                  dan JIPA baris 4-5 (その他資格). */}
+              <div class="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700 mb-2">
+                <Field label="Level Jepang (日本語力)" id="level_jepang" value={cv.level_jepang} list="ai_jft_options"
+                  touched={touchedFields.has('level_jepang')} onInput={(v) => handleManualEdit('level_jepang', v)} />
+                <Field label="Lama belajar (学習期間)" id="lama_belajar_jp" value={cv.lama_belajar_jp}
+                  touched={touchedFields.has('lama_belajar_jp')} onInput={(v) => handleManualEdit('lama_belajar_jp', v)} />
+                <Field label="Status belajar (学習状況)" id="status_belajar_jp" value={cv.status_belajar_jp}
+                  touched={touchedFields.has('status_belajar_jp')} onInput={(v) => handleManualEdit('status_belajar_jp', v)} />
+                <Field label="Bab sekarang (第…課)" id="bab_belajar_jp" value={cv.bab_belajar_jp} center
+                  touched={touchedFields.has('bab_belajar_jp')} onInput={(v) => handleManualEdit('bab_belajar_jp', v)} />
+                <Field label="Bahasa Inggris (英語)" id="bhs_inggris" value={cv.bhs_inggris}
+                  touched={touchedFields.has('bhs_inggris')} onInput={(v) => handleManualEdit('bhs_inggris', v)} />
+                <Field label="Bahasa lain (その他)" id="bahasa_lain" value={cv.bahasa_lain}
+                  touched={touchedFields.has('bahasa_lain')} onInput={(v) => handleManualEdit('bahasa_lain', v)} />
+                <Field label="Sertifikat lain (他資格)" id="sertifikat_lain" value={cv.sertifikat_lain} span={3}
+                  touched={touchedFields.has('sertifikat_lain')} onInput={(v) => handleManualEdit('sertifikat_lain', v)} />
+              </div>
               {/* Dynamic rows, capped at the legacy maximum (EDU_MAX). The cap is
                   a property of the printed CV template: a sixth row would be
                   dropped at render time, so the form must not accept one. */}
@@ -1599,6 +1694,15 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                       onChange={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, keluar: v } : r))} />
                     <Field label={t('ai_cv.row_gaji')} id={`job-gaji-${i}`} value={job.gaji}
                       onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, gaji: v } : r))} />
+                    {/* ── 雇用形態 / 業種 / 備考 (migrasi 022) ─────────────── */}
+                    <ComboSelect label="Status kerja (雇用形態)" id={`job-jenis-${i}`} value={job.jenis}
+                      pairs={JENIS_KERJA_PAIRS} placeholder="ketik atau pilih"
+                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))}
+                      onPick={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))} />
+                    <Field label="Bidang industri (業種)" id={`job-bidang-${i}`} value={job.bidang}
+                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, bidang: v } : r))} />
+                    <Field label="Catatan kerja (備考)" id={`job-catatan-${i}`} value={job.catatan}
+                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, catatan: v } : r))} />
                   </div>
                 </RepeaterRow>
               ))}
@@ -1638,6 +1742,13 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                       }))} />
                     <Field label={t('ai_cv.row_gaji')} id={`fam-gaji-${i}`} value={fam.gaji}
                       onInput={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, gaji: v } : r))} />
+                    {/* ── 同居区分 / 電話 (migrasi 022) ────────────────────── */}
+                    <ComboSelect label="Tinggal serumah? (同居)" id={`fam-tinggal-${i}`} value={fam.tinggal}
+                      pairs={TINGGAL_PAIRS} placeholder="ketik atau pilih"
+                      onInput={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, tinggal: v } : r))}
+                      onPick={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, tinggal: v } : r))} />
+                    <Field label="No. HP anggota (電話)" id={`fam-hp-${i}`} value={fam.hp}
+                      onInput={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, hp: v } : r))} />
                   </div>
                 </RepeaterRow>
               ))}
@@ -1693,6 +1804,9 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   touched={touchedFields.has('kenalan_alamat_id')} onInput={(v) => handleManualEdit('kenalan_alamat_id', v)} />
                 <Field label={t("cv.field_kenalan_alamat_jp")} id="kenalan_alamat_jp" value={cv.kenalan_alamat_jp} jp
                   touched={touchedFields.has('kenalan_alamat_jp')} onInput={(v) => handleManualEdit('kenalan_alamat_jp', v)} />
+                {/* 在留資格(在留期間) — JIPA `J43` (migrasi 022). */}
+                <Field label="Status tinggal di Jepang (在留資格)" id="kenalan_status" value={cv.kenalan_status} span={2}
+                  touched={touchedFields.has('kenalan_status')} onInput={(v) => handleManualEdit('kenalan_status', v)} />
               </div>
             </div>
             {/* The occupation suggestion list that stood here is gone. It

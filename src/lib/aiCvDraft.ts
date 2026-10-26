@@ -74,6 +74,17 @@ export const AI_CV_FLAT_KEYS = [
   'lisensi2', 'no_coe',
   'kenalan_nama_id', 'kenalan_nama_jp', 'kenalan_hub_id', 'kenalan_hub_jp',
   'kenalan_kerja_id', 'kenalan_kerja_jp', 'kenalan_usia', 'kenalan_alamat_id', 'kenalan_alamat_jp',
+  'kenalan_status',
+  /* ── Migrasi 022: pertanyaan yang selama ini tidak ada di form mana pun ────
+     Semuanya dicetak salah satu dari empat form CV (lihat
+     `deliverables/cv-template-sel-kosong-2026-10-26.md`). Ditaruh di daftar
+     ini supaya `EMPTY_CV` punya kuncinya dan gate
+     `e2e/ai-cv-column-coverage.test.ts` menuntut tujuan kolomnya. */
+  'visa', 'negara_lain', 'jarak_jakarta', 'lama_penerbangan', 'rencana_sim',
+  'wilayah_sekolah',
+  'lama_belajar_jp', 'status_belajar_jp', 'bab_belajar_jp', 'level_jepang',
+  'bhs_inggris', 'bahasa_lain', 'sertifikat_lain', 'catatan_cv',
+  'tes_hitung', 'tes_pushup', 'tes_squat', 'tinggal_kursus', 'olahraga', 'mbti',
 ] as const;
 
 /** Kunci flat AiCvForm → path bersarang, urut prioritas. */
@@ -186,6 +197,29 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   kenalan_usia: ['kenalan_jepang.usia'],
   kenalan_alamat_id: ['kenalan_jepang.alamat_id'],
   kenalan_alamat_jp: ['kenalan_jepang.alamat_jp'],
+  kenalan_status: ['kenalan_jepang.status_tinggal'],
+
+  /* 7. Perjalanan, pendidikan tambahan, tes (migrasi 022) */
+  visa: ['identitas.visa_jepang'],
+  negara_lain: ['identitas.negara_lain'],
+  jarak_jakarta: ['identitas.jarak_jakarta_km'],
+  lama_penerbangan: ['identitas.lama_penerbangan'],
+  rencana_sim: ['identitas.rencana_sim_bulan'],
+  wilayah_sekolah: ['identitas.wilayah_sekolah'],
+  tes_hitung: ['fisik.tes_hitung'],
+  tes_pushup: ['fisik.tes_pushup'],
+  tes_squat: ['fisik.tes_squat'],
+  tinggal_kursus: ['fisik.tinggal_kursus_tahun'],
+  olahraga: ['fisik.olahraga'],
+  mbti: ['wawancara.mbti'],
+  lama_belajar_jp: ['sertifikasi.lama_belajar_jp'],
+  status_belajar_jp: ['sertifikasi.status_belajar_jp'],
+  bab_belajar_jp: ['sertifikasi.bab_belajar_jp'],
+  level_jepang: ['sertifikasi.level_bahasa_jepang'],
+  bhs_inggris: ['sertifikasi.level_bahasa_inggris'],
+  bahasa_lain: ['sertifikasi.bahasa_lain'],
+  sertifikat_lain: ['sertifikasi.sertifikat_lain'],
+  catatan_cv: ['sertifikasi.catatan_cv'],
 };
 
 /**
@@ -300,6 +334,10 @@ const ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, readonly st
     masuk: ['masuk', 'tahun_masuk', 'tahunMasuk'],
     keluar: ['keluar', 'tahun_keluar', 'tahunKeluar'],
     gaji: ['gaji'],
+    /* Migrasi 022: 雇用形態 / 業種 / 備考 (KINKI, Firma, JIPA). */
+    jenis: ['jenis', 'jenis_pekerjaan', 'status_kerja'],
+    bidang: ['bidang', 'industri'],
+    catatan: ['catatan', 'keterangan'],
   },
   keluarga: {
     hubungan_id: ['hubungan_id', 'hubungan'],
@@ -310,6 +348,9 @@ const ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, readonly st
     pekerjaan_id: ['pekerjaan_id', 'pekerjaan'],
     pekerjaan_jp: ['pekerjaan_jp'],
     gaji: ['gaji'],
+    /* Migrasi 022: 同居区分 / 電話. */
+    tinggal: ['tinggal', 'status_tinggal'],
+    hp: ['hp', 'telepon', 'no_hp'],
   },
 };
 

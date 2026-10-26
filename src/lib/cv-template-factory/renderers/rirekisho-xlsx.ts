@@ -180,11 +180,26 @@ export function buildValues(data: CandidateData): Record<string, string> {
   /* ── certificates ───────────────────────────────────────────────────── */
   cells.C42 = yesNo(data.sertifikasi.jft, s(data.sertifikasi.jft));
   cells.F42 = yesNo(data.sertifikasi.sim ?? data.identitas.sim, s(data.sertifikasi.sim ?? data.identitas.sim));
+  /* 他 LAIN-LAIN (`H42:I42`) — dulu selalu kosong. Isinya sertifikat di luar
+     JLPT & SIM: lisensi SSW, lalu sertifikat lain yang diketik bebas. */
+  const lain = [s(data.sertifikasi.ssw), s(data.sertifikasi.sertifikat_lain)]
+    .map((x) => x.trim())
+    .filter((x) => isGood(x) && !/^(TIDAK|NO|NONE|-|無|BELUM)$/i.test(x));
+  cells.H42 = lain.join(' / ');
+
+  /* ── catatan tambahan (付記) ─────────────────────────────────────────── */
+  cells.A46 = s(data.sertifikasi.catatan_cv);
 
   /* ── relatives in Japan ─────────────────────────────────────────────── */
+  // Empat kolom setelah nama (関係/職業/年齢/住所) punya kolomnya di DB sejak
+  // migrasi 019 dan terisi, tetapi renderer lama hanya menulis namanya.
   const ken = data.kenalan_jepang;
   const hasKin = isGood(ken.nama_id) || isGood(ken.nama_jp);
   cells.A45 = hasKin ? (s(ken.nama_jp) || s(ken.nama_id)) : '無し';
+  cells.D45 = hasKin ? s(ken.hubungan_jp) || s(ken.hubungan_id) : '';
+  cells.E45 = hasKin ? s(ken.pekerjaan_jp) || s(ken.pekerjaan_id) : '';
+  cells.F45 = hasKin ? s(ken.usia) : '';
+  cells.G45 = hasKin ? s(ken.alamat_jp) || s(ken.alamat_id) : '';
 
   return cells;
 }

@@ -31,21 +31,24 @@
  * formulir belum selesai. Teksnya dibaca dari `data.wawancara`, bukan
  * `data.raw` — lihat catatan di `buildValues`.
  *
- * SEL YANG TIDAK PUNYA SUMBER DI DATABASE
- * ----------------------------------------
- * `J19` kota sekolah, `M26` 業種, `Z26` 備考, `Q45` 計算テスト,
- * `X45` 目標貯金, `T37/T39` 学習期間 & 学習状況, `Q41` 英語レベル,
- * `X41` 集団生活年数, `X47` 就業希望年数, `AB51/AB52` 体力試験 — dibiarkan
- * kosong, bukan diisi tebakan.
+ * SEL YANG DULU TIDAK PUNYA SUMBER — SEKARANG PUNYA KOLOM
+ * -------------------------------------------------------
+ * Sampai 2026-10-26 sel-sel ini dibiarkan kosong karena tidak ada kolomnya:
+ * `J19` kota sekolah, `M26` 業種, `Z26` 備考, `Q45` 計算テスト, `X45` 目標貯金,
+ * `T37/T39` 学習期間 & 学習状況, `Q41` 英語レベル, `X41` 集団生活年数,
+ * `X47` 就業希望年数, `AB51/AB52` 体力試験, `O9` jarak & lama penerbangan,
+ * `I4` 第…課中, `M4` …月取得予定. Migrasi 022 menambah kolomnya (lihat
+ * `migrations/022_cv_field_gaps.sql`), jadi sekarang semuanya diisi — dan yang
+ * kosong hanya berarti kandidatnya belum mengisi.
  *
- * `O9` (ジャカルタから…㎞ / 飛行機で…), `I4` (第…課中) dan `M4` (…月取得予定)
- * DIBIARKAN apa adanya dari template: tidak ada kolomnya, dan pemilik lebih suka
- * placeholder yang bisa diisi tangan daripada sel kosong (2026-10-26).
+ * `I3` 日本語力: kolom `level_bahasa_jepang` menang atas tebakan dari teks JFT,
+ * karena teks `N2..N5` tidak mencakup pemegang JFT Basic (`A2`/`B1`) — dulu
+ * mereka tercetak `N5レベル` hanya karena itu bawaan template.
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { KINKI_BASE64 } from '../templates/kinki.b64';
 import { isGood } from '../../helpers_cv';
-import { inferMbti } from '../mbti';
+import { inferMbti, mbtiFromCode } from '../mbti';
 import { buildXlsxForm, cvFileName, excelSerial, kanaJp, s, yearMonth, type PhotoBox } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
@@ -325,10 +328,9 @@ export function buildValues(data: CandidateData): Record<string, string> {
     E7: kanaJp(id.katakana),
     S7: genderJp(id.gender),
     E9: hpLokal(id.hp),
-    // `O9` (ジャカルタから…㎞ / 飛行機で…) SENGAJA tidak ditulis: jarak & lama
-    // penerbangan tidak ada di database, dan menghapusnya membuat kotaknya
-    // kosong sama sekali — pemilik lebih suka teks template tetap ada untuk
-    // diisi tangan.
+    /* `O9` (ジャカルタから…㎞ / 飛行機で…時間…分). Dua kolom baru (migrasi 022)
+       mengisi placeholder `***`; kalau keduanya kosong teks template dibiarkan
+       supaya selnya tidak kosong sama sekali. */
     E10: asalJp(bersih(id.alamat_jp), bersih(id.tempat_lahir_jp)),
     E11: nikahJp(id.status_nikah),
     L11: angka(data.fisik.tb),
@@ -340,17 +342,30 @@ export function buildValues(data: CandidateData): Record<string, string> {
     L14: tanganJp(data.fisik.tangan_dominan),
     E15: adaJp(data.medis.tato),
     L15: mataJp(data.medis.mata_kanan),
-    E16: sportJp(hobi),
+    E16: bersih(data.fisik.olahraga) || sportJp(hobi),
     L16: mataJp(data.medis.mata_kiri),
     E17: hobi,
     L17: adaJp(data.medis.buta_warna),
     M3: simJp(id.sim),
-    // `I4` (第…課中) dan `M4` (…月取得予定) dibiarkan seperti template: tidak
-    // ada kolomnya, dan placeholder-nya lebih berguna daripada sel kosong.
   };
-  // `I3` hanya ditimpa kalau database benar-benar punya levelnya; kalau tidak,
-  // teks template (`N5レベル`) yang dipakai.
-  const levelJp = jepangLevel(data.sertifikasi.jft ?? id.jft);
+  /* Placeholder template yang sekarang bisa diisi dari kolom (migrasi 022):
+     `I4` 第…課中, `M4` …月取得予定, `O9` jarak & lama penerbangan. */
+  const bab = angka(data.sertifikasi.bab_belajar_jp);
+  if (bab) cells.I4 = `第${bab}課中`;
+  const bulanSim = /(\d{1,2})\s*月?$/.exec(bersih(id.rencana_sim_bulan));
+  if (bulanSim) cells.M4 = `${parseInt(bulanSim[1], 10)}月取得予定`;
+  const km = angka(id.jarak_jakarta_km);
+  const terbang = bersih(id.lama_penerbangan);
+  if (km || terbang) {
+    cells.O9 = [
+      km ? `ジャカルタから${km}㎞` : '',
+      terbang ? `飛行機で${terbang}` : '',
+    ].filter(Boolean).join('\n');
+  }
+  /* `I3` 日本語力: kolom `level_bahasa_jepang` menang (bisa dikoreksi admin),
+     lalu tebakan dari teks JFT. Tanpa keduanya, teks template (`N5レベル`)
+     dibiarkan — dan itu memang bisa salah untuk pemegang JFT Basic. */
+  const levelJp = bersih(data.sertifikasi.level_bahasa_jepang) || jepangLevel(data.sertifikasi.jft ?? id.jft);
   if (levelJp) cells.I3 = levelJp;
 
   /* ── pendidikan: baris 19 = SMA/SMK, baris 21 = 日本語学校 ──────────────── */
@@ -365,7 +380,8 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells.D19 = ym(sma.masuk ?? sma.tahun_masuk);
     cells.E20 = ym(sma.lulus ?? sma.tahun_lulus);
     cells.H19 = durasi(sma.masuk ?? sma.tahun_masuk, sma.lulus ?? sma.tahun_lulus);
-    cells.J19 = '';
+    // 地域 — kolom `wilayah_sekolah` (migrasi 022). Dulu selalu dikosongkan.
+    cells.J19 = bersih(id.wilayah_sekolah);
     cells.M19 = kouritsu(sekolah);
     cells.O19 = sekolah;
     // Strip atas mencetak `専攻` dengan `=W19`. Sel kosong membuatnya `0`, jadi
@@ -412,7 +428,8 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`D${top}`] = ym(masuk);
     cells[`E${bottom}`] = ym(keluar);
     cells[`H${top}`] = durasi(masuk, keluar);
-    cells[`M${top}`] = '';
+    // 業種 — kolom `pekerjaan_N_bidang` (migrasi 022). Dulu selalu ''.
+    cells[`M${top}`] = bersih(p.bidang ?? p.industri);
     cells[`Q${top}`] = bersih(p.jabatan ?? p.jabatan_id);
     const gaji = manYen(p.gaji ?? p.penghasilan);
     cells[`W${top}`] = gaji;
@@ -421,7 +438,8 @@ export function buildValues(data: CandidateData): Record<string, string> {
     // baris terpisah. Pemilik menulisnya di baris atas.
     cells[`Y${top}`] = gaji ? '万円' : '';
     cells[`Y${bottom}`] = '';
-    cells[`Z${top}`] = '';
+    // 備考 — kolom `pekerjaan_N_catatan` (migrasi 022).
+    cells[`Z${top}`] = bersih(p.catatan ?? p.keterangan);
   }
   if (!kerja.length) {
     // `年月日` dan `～` bawaan template akan tercetak apa adanya.
@@ -460,8 +478,11 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`C${row}`] = angka(p.usia ?? p.umur);
     cells[`E${row}`] = bersih(p.pekerjaan);
     cells[`J${row}`] = manYen(p.gaji ?? p.penghasilan);
-    cells[`M${row}`] = '■';
-    cells[`O${row}`] = '□';
+    // 同居/別居 — dulu dicetak `■`/`□` tetap (selalu "tinggal bersama").
+    const tinggal = s(p.tinggal ?? p.status_tinggal).toUpperCase();
+    const serumah = !/TIDAK|BEDA|LUAR|PISAH|MANDIRI|INDEPENDEN/.test(tinggal);
+    cells[`M${row}`] = serumah ? '■' : '□';
+    cells[`O${row}`] = serumah ? '□' : '■';
   }
   const darurat = hubunganJp(id.kontak_darurat_hubungan);
   cells.X37 = darurat === 'その他' ? '' : darurat;
@@ -477,6 +498,20 @@ export function buildValues(data: CandidateData): Record<string, string> {
   cells.X43 = '未定';
   cells.X49 = harapanSetelahJp(rencana);
 
+  /* ── kolom tes & rencana (migrasi 022) ─────────────────────────────────── */
+  // 計算テスト / 目標貯金 / 学習期間 / 学習状況 / 英語レベル / その他外国語 /
+  // 集団生活年数 / 就業希望年数 / 体力試験 — dulu seluruhnya dikosongkan.
+  cells.Q45 = bersih(data.fisik.tes_hitung);
+  cells.X45 = angka(data.wawancara.tabungan);
+  cells.T37 = bersih(data.sertifikasi.lama_belajar_jp);
+  cells.T39 = bersih(data.sertifikasi.status_belajar_jp);
+  cells.Q41 = bersih(data.sertifikasi.level_bahasa_inggris);
+  cells.T41 = bersih(data.sertifikasi.bahasa_lain);
+  cells.X41 = bersih(data.fisik.tinggal_kursus_tahun);
+  cells.X47 = bersih(data.wawancara.lamakerja_diharapkan);
+  cells.AB51 = angka(data.fisik.tes_pushup);
+  cells.AB52 = angka(data.fisik.tes_squat);
+
   /* ── kotak PR & kepribadian ────────────────────────────────────────────── */
   cells.U3 = promosi || kelebihan;
   cells.E44 = kelebihan;
@@ -485,9 +520,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
   cells.E48 = rencana;
 
   /* ── MBTI ──────────────────────────────────────────────────────────────── */
-  // Selalu terisi: kalau kandidat belum punya teks, tipenya jatuh ke bawaan
-  // (lihat `mbti.ts`) — sel kosong terbaca sebagai formulir belum selesai.
-  const mbti = inferMbti({
+  // Kolom `mbti` (migrasi 022) menang supaya admin bisa mengoreksi tipe tanpa
+  // mengubah teks wawancara. Kalau kosong, tipenya disimpulkan seperti dulu —
+  // sel kosong terbaca sebagai formulir belum selesai.
+  const mbtiKolom = bersih(data.wawancara.mbti);
+  const mbti = mbtiKolom ? mbtiFromCode(mbtiKolom) : null;
+  const inferred = mbti ?? inferMbti({
     promosi,
     kekurangan,
     kelebihan,
@@ -497,12 +535,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
     hobi,
     keahlian,
   });
-  cells.Q47 = mbti.typeName;
-  cells.U48 = mbti.labels[0];
-  cells.U49 = mbti.labels[1];
-  cells.U50 = mbti.labels[2];
-  cells.U51 = mbti.labels[3];
-  cells.U52 = mbti.labels[4];
+  cells.Q47 = inferred.typeName;
+  cells.U48 = inferred.labels[0];
+  cells.U49 = inferred.labels[1];
+  cells.U50 = inferred.labels[2];
+  cells.U51 = inferred.labels[3];
+  cells.U52 = inferred.labels[4];
 
   return cells;
 }

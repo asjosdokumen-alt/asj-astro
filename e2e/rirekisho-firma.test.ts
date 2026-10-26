@@ -228,3 +228,46 @@ describe('rirekisho-firma · render', () => {
     expect(wb).not.toContain('FIRMA ELGA PRATAMA');
   });
 });
+
+/**
+ * Kolom migrasi 022 → sel Firma (2026-10-27).
+ *
+ * Baris 31-33 dulu hanya terisi kolom pertamanya; `O16/O18/O20` (雇用形態),
+ * `N24:N30` (居住), `O24:O30` (電話) dan `L24:L30` (月収 keluarga) selalu
+ * kosong. `D9` bahkan selalu memakai angka bawaan karena membaca kunci yang
+ * tidak pernah ada.
+ */
+describe('rirekisho-firma · kolom migrasi 022 benar-benar masuk ke sel', () => {
+  const denganKolom = (): CandidateData => {
+    const d = kandidat();
+    d.wawancara = { ...d.wawancara, gaji_yen: '200000' };
+    d.sertifikasi = { ...d.sertifikasi, bahasa: 'N4', lama_belajar_jp: '8 bulan', catatan_cv: 'Siap ditempatkan' };
+    d.identitas = { ...d.identitas, negara_lain: 'Malaysia 2019' };
+    d.pekerjaan = [{ ...(d.pekerjaan[0] as Record<string, unknown>), jenis: 'KARYAWAN TETAP' }];
+    d.keluarga = [{ ...(d.keluarga[0] as Record<string, unknown>), tinggal: 'SERUMAH', hp: '081234567', gaji: '150000' }];
+    return d;
+  };
+
+  it('D9 memakai harapan gaji, bukan angka bawaan 15万円', () => {
+    const c = buildValues(denganKolom());
+    expect(c.D9).toBe('20万円／月');
+    // Tanpa kolom, bawaan template yang dipakai — bukan sel kosong.
+    expect(buildValues(kandidat()).D9).toBe('15万円／月');
+  });
+
+  it('baris 31-33: 日本語能力 / 学習期間 / 渡航経験 / その他事項', () => {
+    const c = buildValues(denganKolom());
+    expect(c.D32).toBe('N4');
+    expect(c.L31).toBe('8 bulan');
+    expect(c.L32).toBe('Malaysia 2019');
+    expect(c.K33).toBe('Siap ditempatkan');
+  });
+
+  it('雇用形態 dan tiga kolom keluarga', () => {
+    const c = buildValues(denganKolom());
+    expect(c.O16).toBe('KARYAWAN TETAP');
+    expect(c.N24).toBe('同居');
+    expect(c.O24).toBe('081234567');
+    expect(c.L24).toBe('150000円');
+  });
+});

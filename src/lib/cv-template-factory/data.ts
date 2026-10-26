@@ -57,6 +57,13 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
       no_coe: v('NOCOE', 'identitas.no_coe'),
       kontak_darurat_nama: v('KONTAKDARURATNAMA', 'identitas.kontak_darurat_nama'),
       kontak_darurat_hubungan: v('KONTAKDARURATHUBUNGAN', 'identitas.kontak_darurat_hubungan'),
+      /* ── Perjalanan & tambahan identitas (migrasi 022) ─────────────────── */
+      visa_jepang: v('VISAJEPANG', 'identitas.visa_jepang'),
+      negara_lain: v('NEGARALAIN', 'identitas.negara_lain'),
+      jarak_jakarta_km: v('JARAKJAKARTA', 'identitas.jarak_jakarta_km'),
+      lama_penerbangan: v('LAMAPENERBANGAN', 'identitas.lama_penerbangan'),
+      rencana_sim_bulan: v('RENCANASIM', 'identitas.rencana_sim_bulan'),
+      wilayah_sekolah: v('WILAYAHSEKOLAH', 'identitas.wilayah_sekolah'),
     },
     fisik: {
       tb: v('TB', 'TINGGI', 'fisik.tb'),
@@ -66,6 +73,12 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
       sepatu: v('UKURANSEPATU', 'fisik.sepatu'),
       tangan_dominan: v('TANGANDOMINAN', 'TANGAN', 'fisik.tangan_dominan'),
       tahan_ac: v('TAHANAC', 'fisik.tahan_ac'),
+      /* ── Tes & kebiasaan fisik (migrasi 022) ───────────────────────────── */
+      tes_hitung: v('TESHITUNG', 'fisik.tes_hitung'),
+      tes_pushup: v('TESPUSHUP', 'fisik.tes_pushup'),
+      tes_squat: v('TESSQUAT', 'fisik.tes_squat'),
+      tinggal_kursus_tahun: v('TINGGALKURSUS', 'fisik.tinggal_kursus_tahun'),
+      olahraga: v('OLAHRAGA', 'fisik.olahraga'),
     },
     medis: {
       mata_kiri: v('MATAKIRI', 'medis.mata_kiri'),
@@ -93,6 +106,15 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
       ssw: v('SSW', 'SSWTEXT', 'sertifikasi.lisensi'),
       lisensi: v('LISENSI', 'sertifikasi.lisensi'),
       bidang: v('BIDANG', 'BIDANGSSW', 'sertifikasi.bidang'),
+      /* ── Bahasa & sertifikat tambahan (migrasi 022) ────────────────────── */
+      lama_belajar_jp: v('LAMABELAJARJP', 'sertifikasi.lama_belajar_jp'),
+      status_belajar_jp: v('STATUSBELAJARJP', 'sertifikasi.status_belajar_jp'),
+      bab_belajar_jp: v('BABBELAJARJP', 'sertifikasi.bab_belajar_jp'),
+      level_bahasa_inggris: v('LEVELINGGRIS', 'sertifikasi.level_bahasa_inggris'),
+      bahasa_lain: v('BAHASALAIN', 'sertifikasi.bahasa_lain'),
+      level_bahasa_jepang: v('LEVELJEPANG', 'sertifikasi.level_bahasa_jepang'),
+      sertifikat_lain: v('SERTIFIKATLAIN', 'sertifikasi.sertifikat_lain'),
+      catatan_cv: v('CATATANCV', 'sertifikasi.catatan_cv'),
     },
     wawancara: {
       tujuan_ke_jepang: v('TUJUANKEJEPANG', 'MOTIVASIKEJEPANG', 'MOTIVASIID', 'wawancara.tujuan_ke_jepang', 'wawancara.motivasi_id'),
@@ -116,6 +138,17 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
       promosi_jp: v('PROMOSIDIRIJP', 'promosi_diri_jp', 'wawancara.promosi_jp'),
       keahlian_khusus: v('KEAHLIANKHUSUS', 'keahlian_khusus', 'wawancara.keahlian_khusus'),
       keahlian_khusus_jp: v('KEAHLIANKHUSUSJP', 'keahlian_khusus_jp', 'wawancara.keahlian_khusus_jp'),
+      /* 在日期間 & MBTI (migrasi 022). `lama_di_jepang` dulu hanya hidup di
+         `ai_data_json`; `mbti` dulu disimpulkan `inferMbti()`. */
+      lama_di_jepang: v('LAMADIJEPANG', 'wawancara.lama_di_jepang'),
+      mbti: v('MBTI', 'wawancara.mbti'),
+      /* Lama KERJA yang diharapkan — KINKI `X47` 就業希望年数. */
+      lamakerja_diharapkan: v('LAMAKERJADIHARAPKAN', 'wawancara.lamakerja_diharapkan'),
+      /* Harapan gaji & tabungan — Firma `D9` (希望収入), KINKI `X45` (目標貯金).
+         Kolomnya sudah lama ada dan terisi (12 & 10 baris) tetapi tidak pernah
+         dipetakan di sini, jadi kedua sel selalu memakai angka bawaan form. */
+      gaji_yen: v('HARAPANGAJIYEN', 'wawancara.gaji_yen'),
+      tabungan: v('HARAPANTABUNGAN', 'wawancara.tabungan'),
     },
     kenalan_jepang: {
       nama_id: v('KENALANNAMAID', 'KENALANDIJEPANGNAMA', 'kenalan_jepang.nama_id'),
@@ -127,6 +160,8 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
       usia: v('KENALANUSIA', 'KENALANDIJEPANGUSIA', 'kenalan_jepang.usia'),
       alamat_id: v('KENALANALAMATID', 'KENALANDIJEPANGALAMAT', 'kenalan_jepang.alamat_id'),
       alamat_jp: v('KENALANALAMATJP', 'kenalan_jepang.alamat_jp'),
+      /* 在留資格(在留期間) — JIPA `J43` (migrasi 022). */
+      status_tinggal: v('KENALANSTATUSTINGGAL', 'kenalan_jepang.status_tinggal'),
     },
     uploads: {
       photo: (uploads && uploads.photo) || (row as Record<string, unknown>).pas_photo || '',

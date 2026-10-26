@@ -28,11 +28,13 @@
  *   • M9/O9 = `無` + `Tidak` untuk yang tidak, `有` + `Ya` untuk yang ya,
  *     dengan N9/P9 = jumlah per hari (0 kalau tidak).
  *
- * SEL YANG SENGAJA TIDAK DIISI
- * ----------------------------
- * Kolom yang tidak ada padanannya di database dibiarkan kosong (pemilik:
- * "biarin kosong"): G31 (jenis sertifikat), K31/L31 (lama & periode belajar),
- * D32/G32/L32 (buku, bab, negara lain), G33/K33 (catatan lain).
+ * SEL YANG DULU KOSONG — SEKARANG DIISI
+ * --------------------------------------
+ * Sampai 2026-10-26 baris 31-33 hanya terisi kolom pertamanya. Migrasi 022
+ * memberi kolom untuk sisanya: `D32` 日本語能力 (`bahasa`/`level_bahasa_jepang`),
+ * `L31` 日本語学習期間 (`lama_belajar_jp`), `L32` 渡航経験 negara lain
+ * (`negara_lain`), `K33` その他事項 (`catatan_cv`). Yang tetap kosong hanya
+ * sel sub-judul `G31`/`G32`/`G33` — di template aslinya pun tidak berteks.
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { RIREKISHO_FIRMA_BASE64 } from '../templates/rirekisho-firma.b64';
@@ -228,7 +230,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
     H9: mata(data.medis.mata_kiri),
     J9: mata(data.medis.mata_kanan),
     K9: bersih(tanganJp(data.fisik.tangan_dominan)),
-    D9: gajiDiharapkan(raw.gaji_diharapkan ?? raw.gaji_diinginkan),
+    /* 希望収入. Dulu membaca `raw.gaji_diharapkan` / `raw.gaji_diinginkan` — dua
+       kunci yang TIDAK PERNAH ada di respons `getDrafCvMaster`, sehingga sel ini
+       selalu jatuh ke bawaan `15万円／月` walaupun `harapan_gaji_yen` terisi. */
+    D9: gajiDiharapkan(data.wawancara.gaji_yen),
     M9: minum.label,
     N9: minum.jumlah,
     O9: rokok.label,
@@ -284,6 +289,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
 
   /* ── sertifikat & kenalan di Jepang (31 & 33) ──────────────────────────── */
   cells.D31 = bersih(data.sertifikasi.jft ?? id.jft ?? raw.jft);
+  /* Baris 31-33: kolom kedua tiap baris (G/H, I/J, K) dulu dibiarkan kosong.
+     Sekarang diisi dari kolom yang memang disediakan untuknya. */
+  cells.D32 = bersih(data.sertifikasi.bahasa) || bersih(data.sertifikasi.level_bahasa_jepang);
+  cells.L31 = bersih(data.sertifikasi.lama_belajar_jp);
+  cells.L32 = bersih(data.identitas.negara_lain);
+  cells.K33 = bersih(data.sertifikasi.catatan_cv);
   const ken = data.kenalan_jepang;
   // `-` adalah tanda "belum ada" di database, bukan nama orang.
   const kenalan = bersih(ken.nama_jp) || bersih(ken.nama_id);

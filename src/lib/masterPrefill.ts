@@ -16,8 +16,8 @@
    manual). Tanpa field ini, TypeScript menolak karena state mengharapkannya
    dan nilai lama yang tidak ada di daftar akan tampak hilang. */
 export interface PrefillEdu { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; jurusanManual: string; alamat: string; }
-export interface PrefillJob { perusahaan: string; jabatan: string; jabatanManual: string; thnAwal: string; thnAkhir: string; gaji: string; alasan: string; }
-export interface PrefillFam { nama: string; hubungan: string; usia: string; pekerjaan: string; pekerjaanManual: string; }
+export interface PrefillJob { perusahaan: string; jabatan: string; jabatanManual: string; thnAwal: string; thnAkhir: string; gaji: string; alasan: string; jenis: string; bidang: string; catatan: string; }
+export interface PrefillFam { nama: string; hubungan: string; usia: string; pekerjaan: string; pekerjaanManual: string; tinggal: string; hp: string; gaji: string; }
 export interface PrefillKenalan { nama: string; usia: string; hubungan: string; pekerjaan: string; alamat: string; }
 
 export interface MasterFormPrefill {
@@ -34,8 +34,8 @@ export interface MasterFormPrefill {
 const s = (v: unknown): string => (v === undefined || v === null ? '' : String(v));
 
 const emptyEdu: PrefillEdu = { jenjang: '', nama: '', thnAwal: '', thnAkhir: '', jurusan: '', jurusanManual: '', alamat: '' };
-const emptyJob: PrefillJob = { perusahaan: '', jabatan: '', jabatanManual: '', thnAwal: '', thnAkhir: '', gaji: '', alasan: '' };
-const emptyFam: PrefillFam = { nama: '', hubungan: '', usia: '', pekerjaan: '', pekerjaanManual: '' };
+const emptyJob: PrefillJob = { perusahaan: '', jabatan: '', jabatanManual: '', thnAwal: '', thnAkhir: '', gaji: '', alasan: '', jenis: '', bidang: '', catatan: '' };
+const emptyFam: PrefillFam = { nama: '', hubungan: '', usia: '', pekerjaan: '', pekerjaanManual: '', tinggal: '', hp: '', gaji: '' };
 
 export function mapMasterNestedToForm(n: any): MasterFormPrefill {
   const id = (n && n.identitas) || {};
@@ -68,6 +68,20 @@ export function mapMasterNestedToForm(n: any): MasterFormPrefill {
     gajiYen: s(ww.gaji_yen), tabungan: s(ww.tabungan),
     bhsJepang: s(st.bahasa || st.bahasa_jepang), nilai: s(st.jft || st.nilai),
     lisensi: s(st.bidang || st.lisensi), lisensi2: s(st.ssw),
+    /* ── Migrasi 022 ──────────────────────────────────────────────────────
+       Tanpa baris-baris ini form terbuka KOSONG untuk field baru, lalu satu
+       tekan "Simpan" menuliskan kosong itu kembali — pola yang sama dengan
+       `keinginan`/`motivasi` di `aiCvDraft.ts`. */
+    visa: s(id.visa_jepang), negaraLain: s(id.negara_lain),
+    jarakJakarta: s(id.jarak_jakarta_km), lamaPenerbangan: s(id.lama_penerbangan),
+    rencanaSim: s(id.rencana_sim_bulan), wilayahSekolah: s(id.wilayah_sekolah),
+    lamaBelajarJp: s(st.lama_belajar_jp), statusBelajarJp: s(st.status_belajar_jp),
+    babBelajarJp: s(st.bab_belajar_jp), levelJepang: s(st.level_bahasa_jepang),
+    bhsInggris: s(st.level_bahasa_inggris), bahasaLain: s(st.bahasa_lain),
+    sertifikatLain: s(st.sertifikat_lain), catatanCv: s(st.catatan_cv),
+    tesHitung: s(fs.tes_hitung), tesPushup: s(fs.tes_pushup), tesSquat: s(fs.tes_squat),
+    tinggalKursus: s(fs.tinggal_kursus_tahun), olahraga: s(fs.olahraga),
+    mbti: s(ww.mbti), kenalanStatusTinggal: s(kj.status_tinggal),
   };
   const eduList: PrefillEdu[] = (Array.isArray(n?.pendidikan) ? n.pendidikan : []).slice(0, 5).map((p: any) => ({
     jenjang: s(p.tingkat), nama: s(p.sekolah || p.nama_sekolah), thnAwal: s(p.tahun_masuk || p.masuk),
@@ -77,9 +91,11 @@ export function mapMasterNestedToForm(n: any): MasterFormPrefill {
     perusahaan: s(j.perusahaan || j.nama_perusahaan), jabatan: s(j.jabatan), jabatanManual: '',
     thnAwal: s(j.tahun_masuk || j.masuk), thnAkhir: s(j.tahun_keluar || j.keluar),
     gaji: s(j.gaji), alasan: '',
+    jenis: s(j.jenis), bidang: s(j.bidang), catatan: s(j.catatan),
   }));
   const famList: PrefillFam[] = (Array.isArray(n?.keluarga) ? n.keluarga : []).slice(0, 5).map((k: any) => ({
     nama: s(k.nama), hubungan: s(k.hubungan), usia: s(k.usia || k.umur), pekerjaan: s(k.pekerjaan), pekerjaanManual: '',
+    tinggal: s(k.tinggal), hp: s(k.hp), gaji: s(k.gaji),
   }));
   return {
     data,

@@ -1,5 +1,14 @@
 # Sel CV yang masih kosong di 4 template — dan kolom yang perlu dibuat
 
+> **STATUS 2026-10-27 — SUDAH DIKERJAKAN.** Migrasi `022_cv_field_gaps.sql` sudah
+> DITERAPKAN ke Neon (41 kolom, semua nullable/additive; ledger 21 → 22 applied), dan
+> `schema.generated.ts` diregenerasi dari DB live (26 → 28 tabel: ikut menangkap
+> `wawancara_soal`/`wawancara_jawaban` dari migrasi 021 yang belum pernah masuk kontrak).
+> Kedua form sudah menanyakan seluruh field baru, keempat renderer sudah membacanya, dan
+> `buildMasterNested` sekarang membaca `keluarga_N_gaji` yang dulu hanya ditulis.
+> Rincian yang **belum** dikerjakan ada di §11. Angka di bawah tetap dipertahankan sebagai
+> catatan ukurannya, bukan sebagai daftar kerja yang belum jalan.
+
 Terukur 2026-10-26 dari 4 renderer (`src/lib/cv-template-factory/renderers/`) + geometri
 template `.xlsx` aslinya (zip/XML probe) + `schema.generated.ts` (203 kolom
 `master_database_candidate`) + `deliverables/db-column-audit.csv` (isi per kolom, 234 baris).
@@ -241,14 +250,14 @@ keluarga), (b) lebih murah — cukup renderer membaca array JSON melebihi 5.
 
 ## 8. Urutan pengerjaan yang disarankan
 
-| Tahap | Isi | Migrasi | Sel yang tertutup |
-|---|---|---|---|
-| **0** | Sambungkan sumber yang sudah ada (§5) + perbaiki `D9` | tidak | 31 |
-| **1** | `pekerjaan_N_jenis`, `_bidang`, `_catatan` + `keluarga_N_tinggal`, `_hp` | 19 kolom | 38 |
-| **2** | Bahasa & tes KINKI (`wilayah_sekolah`, D2–D6, E1–E4, E7) | 11 kolom | 12 |
-| **3** | JIPA: `visa_jepang`, `lama_di_jepang`, `kenalan_..._status_tinggal`, `negara_lain` | 4 kolom | 4 |
-| **4** | `sertifikat_lain` + tanggalnya, `catatan_cv`, `jarak_jakarta_km`, `lama_penerbangan` | 5 kolom | 8 |
-| **5** | Opsional G1–G4 | 4 kolom | (kualitas) |
+| Tahap | Isi | Migrasi | Sel yang tertutup | Status |
+|---|---|---|---|---|
+| **0** | Sambungkan sumber yang sudah ada (§5) + perbaiki `D9` | tidak | 31 | ✅ 2026-10-27 |
+| **1** | `pekerjaan_N_jenis`, `_bidang`, `_catatan` + `keluarga_N_tinggal`, `_hp` | 19 kolom | 38 | ✅ |
+| **2** | Bahasa & tes KINKI (`wilayah_sekolah`, D2–D6, E1–E4, E7) | 11 kolom | 12 | ✅ |
+| **3** | JIPA: `visa_jepang`, `lama_di_jepang`, `kenalan_..._status_tinggal`, `negara_lain` | 4 kolom | 4 | ✅ |
+| **4** | `sertifikat_lain`, `catatan_cv`, `jarak_jakarta_km`, `lama_penerbangan` | 5 kolom | 8 | ✅ (kecuali tanggal sertifikat, §11) |
+| **5** | Opsional G1–G4 | 4 kolom | (kualitas) | ✅ G1, G2, G4 — G3 belum |
 
 31 + 38 + 12 + 4 + 8 = **93** sel. `sertifikat_lain` sendiri tidak menutup sel yang kosong
 hari ini (`H42` sudah bisa diisi `ssw`) — ia menutup **kandidat yang punya sertifikat selain
@@ -258,7 +267,7 @@ Tahap 0 **tidak menyentuh skema** dan sudah menutup sepertiga sel kosong — ker
 
 ---
 
-## 9. Yang sudah dikerjakan di sesi ini (bukan daftar, tapi hasil)
+## 9. Sesi 2026-10-26 — foto JIPA (bukan daftar, tapi hasil)
 
 Foto JIPA diperbaiki (permintaan terpisah di sesi yang sama):
 
@@ -274,7 +283,7 @@ di dalam bingkai `B6:E13`, tidak lagi menutupi halaman. Tes: `e2e/jipa.test.ts` 
 
 ---
 
-## 10. Bukti
+## 10. Bukti sesi 2026-10-26
 
 | Periksa | Hasil |
 |---|---|
@@ -283,3 +292,51 @@ di dalam bingkai `B6:E13`, tidak lagi menutupi halaman. Tes: `e2e/jipa.test.ts` 
 | `tsc --noEmit` | exit 0 |
 | `lint-ratchet` | PASSED — 0 diagnostik baru |
 | suite penuh | 253/257 berkas · 3058/3066 tes — **4 berkas merah, semuanya bukan dari perubahan ini**: `service-reminder-cron` & `admission` (ENOENT `agenda-reminders.ts` / `sweep-queue.ts` — dua berkas itu sudah di-`rename` jadi `.disabled` sebelum sesi ini), `kernel-db-role` (menunggu role `service_role`, DB sekarang `asj_service`), `master-light-rpc` (kontrak kolom RPC) |
+
+---
+
+## 11. Sesi 2026-10-27 — migrasi 022 + kedua form
+
+**Yang berubah**
+
+| Lapisan | Berkas | Isi |
+|---|---|---|
+| Skema | `migrations/022_cv_field_gaps.sql` | 41 kolom `text` nullable + `COMMENT ON COLUMN` untuk 10 di antaranya |
+| Kontrak | `netlify/functions/_lib/db/schema.generated.ts` | diregenerasi dari DB live (`--from-db`), 26 → 28 tabel |
+| Baca | `contexts/master-data/service.ts` → `buildMasterNested` | 41 field baru + `keluarga_N_gaji` (dulu hanya ditulis) + `lamakerjadiharapkan` |
+| Tulis | `MASTER_COLUMN_MAP` (+26), `AI_TO_MASTER_COLUMNS` (+25 baris), `buildRiwayatSlots` (+5 slot) | jalur Form Master **dan** CV AI |
+| Pemetaan CV | `src/lib/cv-template-factory/data.ts` | 30 kunci baru (`gaji_yen`, `tabungan`, `lamakerja`, `visa`, `tes_*`, `mbti`, …) |
+| Form | `MasterFullForm.tsx`, `AiCvForm.tsx`, `masterPrefill.ts`, `aiCvDraft.ts` | pertanyaan baru di step 1/2/3/4/5 dan di seksi Identitas/Fisik/Pendidikan/Jiko/Kenalan |
+| Enum | `src/lib/opsi-form.ts` | `JENIS_KERJA_PAIRS`, `TINGGAL_PAIRS` — satu pemilik, dipakai dua form |
+| Renderer | `rirekisho-xlsx`, `rirekisho-firma`, `kinki`, `jipa` (+ `mbti.ts` → `mbtiFromCode`) | 62 sel kini terisi dari kolom |
+
+**Dua kebocoran yang ikut tertutup** (bukan sel kosong, tapi data hilang senyap):
+`firma D9` membaca `raw.gaji_diharapkan` yang tidak pernah ada (selalu `15万円／月`), dan
+`AiCvForm` mengumpulkan `cv.lama` (Lama di Jepang) tetapi **tidak pernah mengirimnya** —
+nilainya hilang setiap simpan.
+
+**Sengaja TIDAK ditambahkan** (dengan alasan, bukan lupa):
+
+| Yang belum | Alasan |
+|---|---|
+| `sertifikat_lain_tanggal` (JIPA `B46:E51`) | tanggal perolehan tiap sertifikat diisi **agensi** per lamaran, bukan data kandidat — komentar asli `jipa.ts` sudah menyatakan itu |
+| `pekerjaan_4_*` (JIPA baris ke-4) | +8 kolom untuk satu baris yang jarang terpakai; slot 3 menutup mayoritas kandidat |
+| `keluarga_6..8_*` (JIPA 8 baris, Firma 7) | +21 kolom; 5 anggota menutup mayoritas. Opsi lain: baca `riwayat_keluarga_json` untuk baris >5 |
+| `kemampuan_kerja` (13 kotak できる作業) | kotak masih dicentang dari kata di `keahlian_khusus`; pilihan eksplisit = UI multi-select terbesar, nilainya kecil |
+| `B5` CODE LOWONGAN (JIPA) | butuh join `database_candidate.id_loker_pilihan` di `getDrafCvMaster` — bukan kolom, pekerjaan backend tersendiri |
+| `L60` tanggal cetak (JIPA) | bisa diisi `TODAY()` saat render; belum dikerjakan supaya tidak mengubah berkas secara diam-diam |
+
+---
+
+## 12. Bukti sesi 2026-10-27
+
+| Periksa | Hasil |
+|---|---|
+| `migrate.mjs status` | 22 applied · 0 pending · 0 drifted |
+| kolom baru di DB | 41 (diverifikasi lewat `information_schema`) |
+| `tsc --noEmit` | exit 0 |
+| `lint-ratchet` | PASSED (0 diagnostik baru; 6 `useTemplate` sempat muncul lalu diperbaiki dengan template literal) |
+| gate kolom | `ai-cv-column-coverage` 4/4 · `form-column-parity` 5/5 |
+| round-trip | `actions-master.test.ts` 13/13 — payload form → kolom → `buildMasterNested` |
+| renderer | kinki 25/25 · jipa 18/18 · firma 12/12 · asli 27/27 |
+| form | `AiCvForm.test.tsx` 72/72 · `MasterFullForm.test.tsx` · `masterPrefill.test.ts` 7/7 · `i18n.keys` |

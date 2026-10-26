@@ -335,3 +335,43 @@ describe('jipa · render', () => {
     expect(countAll(sheet, /<mergeCell\s/g)).toBe(SOURCE.mergeCells);
   });
 });
+
+/**
+ * Kolom migrasi 022 → sel JIPA (2026-10-27).
+ *
+ * Sebelumnya `J5`, `E54`, `E55`, `L27..L30`, `E33..E40`, `J43` tidak punya
+ * sumber, dan sertifikat di luar SSW/JLPT/SIM tidak punya tempat sama sekali.
+ */
+describe('jipa · kolom migrasi 022 benar-benar masuk ke sel', () => {
+  const denganKolom = (): CandidateData => {
+    const d = kandidat();
+    d.identitas = { ...d.identitas, visa_jepang: '技能実習1号' };
+    d.sertifikasi = { ...d.sertifikasi, bidang: 'FOOD & BEVERAGE', sertifikat_lain: '調理師 (2023)' };
+    d.wawancara = { lama_di_jepang: '3 tahun' };
+    d.pekerjaan = [{ ...(d.pekerjaan[0] as Record<string, unknown>), bidang: '飲食料品製造' }];
+    d.keluarga = [{ ...(d.keluarga[0] as Record<string, unknown>), tinggal: 'MANDIRI' }];
+    d.kenalan_jepang = { ...d.kenalan_jepang, nama_jp: 'タナカ', status_tinggal: '技能実習2号 (2024-2027)' };
+    return d;
+  };
+
+  it('希望職種 / ビザ種類 / 在日期間', () => {
+    const c = buildValues(denganKolom());
+    expect(c.J5).toBe('FOOD & BEVERAGE');
+    expect(c.E54).toBe('技能実習1号');
+    expect(c.E55).toBe('3 tahun');
+  });
+
+  it('業種 per baris kerja dan 同居区分 per anggota keluarga', () => {
+    const c = buildValues(denganKolom());
+    expect(c.L27).toBe('飲食料品製造');
+    expect(c.E33).toBe('独立(t.mandiri)');
+  });
+
+  it('在留資格 kenalan dan その他資格', () => {
+    const c = buildValues(denganKolom());
+    expect(c.J43).toBe('技能実習2号 (2024-2027)');
+    // Fixture sudah punya SSW + JLPT ⇒ その他 jatuh di baris ke-3 (49).
+    expect(c.F49).toBe('その他(資格)');
+    expect(c.I49).toBe('調理師 (2023)');
+  });
+});

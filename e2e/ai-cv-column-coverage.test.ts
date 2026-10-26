@@ -54,8 +54,10 @@ const NO_COLUMN_BY_DESIGN: Record<string, string> = {
   'identitas.sim_status': 'hanya penanda UI (ADA/TIDAK); kolomnya driver_license',
   'identitas.hp': 'WA kandidat; kolomnya no_wa dan itu kunci join — ditulis eksplisit, bukan dari peta',
   'identitas.no_wa': 'idem: kunci join, ditulis eksplisit oleh pemanggil',
-  'wawancara.lama': 'tidak ada kolom; disimpan sebagai wawancara.lama_di_jepang (buildAiOverflow)',
-  'wawancara.lama_di_jepang': 'idem: field overflow dari Form Master, tidak punya kolom',
+  // `wawancara.lama` dan `wawancara.lama_di_jepang` SUDAH DIPINDAHKAN
+  // (2026-10-27). Dulu keduanya di sini dengan alasan "tidak ada kolom";
+  // migrasi 022 memberi kolom `lama_di_jepang`, jadi pemetaannya pindah ke
+  // `AI_TO_MASTER_COLUMNS` — persis pola yang dipakai `kenalan_*` di 019.
   'wawancara.riwayat_jepang': 'kolomnya status_eks_jepang, dipetakan dari identitas.status_eks_jepang',
   // TIGA BARIS DI SINI SUDAH DIPINDAHKAN (2026-10-25). Dulu isinya: "kolom
   // kenalan_di_jepang_pekerjaan/usia/alamat tidak ada". Migrasi 019 MENAMBAH

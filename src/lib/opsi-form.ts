@@ -680,6 +680,32 @@ export const RIWAYAT_JEPANG_PAIRS: Opsi[] = [
 ];
 
 /**
+ * 雇用形態 — status kerja satu baris riwayat pekerjaan (migrasi 022).
+ *
+ * Dipakai DUA form (Master & CV AI) dan DUA renderer (KINKI `A26/A28/A30`,
+ * Firma `O16/O18/O20`), jadi kosakatanya tinggal di sini — bukan diulang di
+ * masing-masing `<select>`. Nilai yang DISIMPAN adalah versi Indonesia;
+ * renderer yang menerjemahkannya ke 正社員/非正社員/… (`jenisKerjaJp`).
+ */
+export const JENIS_KERJA_PAIRS: Opsi[] = [
+  ['KARYAWAN TETAP', 'Karyawan tetap (正社員)'],
+  ['KARYAWAN KONTRAK', 'Kontrak / honorer (非正社員)'],
+  ['PART TIME', 'Part time (アルバイト)'],
+  ['MAGANG', 'Magang / intern (インターン)'],
+  ['USAHA KELUARGA', 'Usaha keluarga (家業)'],
+];
+
+/**
+ * 同居区分 — apakah anggota keluarga tinggal serumah (migrasi 022).
+ * Dicetak Firma `N24:N30` (居住) dan JIPA `E33:E40` (同居区分).
+ */
+export const TINGGAL_PAIRS: Opsi[] = [
+  ['SERUMAH', 'Serumah (同居)'],
+  ['TERPISAH', 'Terpisah (別居)'],
+  ['MANDIRI', 'Mandiri (独立)'],
+];
+
+/**
  * Level bahasa Jepang yang sah — nilai kolom `master_database_candidate.bahasa`.
  *
  * Sama kelasnya dengan daftar di atas: satu kosakata yang muncul di DUA tempat

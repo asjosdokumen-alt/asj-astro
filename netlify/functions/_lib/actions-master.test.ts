@@ -16,7 +16,7 @@
 // Tes di bawah menjaga invarian itu, bukan isi sebuah daftar.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { buildAiOverflow, mergeAiOverflow, buildMasterBody } from '../contexts/master-data';
+import { buildAiOverflow, mergeAiOverflow, buildMasterBody, buildMasterNested } from '../contexts/master-data';
 import { TABLE_COLUMNS } from '../_lib/db/schema.generated';
 
 describe('buildMasterBody — setiap kolom yang ditulis ADA di kontrak', () => {
@@ -155,5 +155,76 @@ describe('mergeAiOverflow — deep-merge ke ai_data_json (newest-wins, isi lama 
       { keluarga: [{ slot: 2, entry: { nama: 'C', hubungan: 'ADIK' } }] },
     );
     expect(out.keluarga).toEqual([{ nama: 'A' }, {}, { nama: 'C', hubungan: 'ADIK' }]);
+  });
+});
+
+/**
+ * Migrasi 022 (2026-10-27): 41 kolom yang menutup sel CV yang dulu tidak punya
+ * sumber. Yang diuji bukan "kolomnya ada", melainkan JALURNYA UTUH:
+ * payload form → kolom → `buildMasterNested` → yang dibaca renderer.
+ *
+ * Tanpa tes ini, satu kunci yang lupa dipetakan di `MASTER_COLUMN_MAP` akan
+ * lolos: field muncul di form, tersimpan ke `ai_data_json`, dan kolomnya tetap
+ * kosong — persis keluhan pemilik 2026-10-22 ("harusnya datanya sama").
+ */
+describe('migrasi 022 — form → kolom → nested', () => {
+  const payload = {
+    visa: '技能実習1号', negaraLain: 'Malaysia 2019', jarakJakarta: '780',
+    lamaPenerbangan: '1 jam 40 menit', rencanaSim: '2027-08', wilayahSekolah: 'Jawa Timur',
+    lamaBelajarJp: '6 bulan', statusBelajarJp: 'sedang belajar', babBelajarJp: '25',
+    levelJepang: 'N4レベル', bhsInggris: 'menengah', bahasaLain: 'Mandarin dasar',
+    sertifikatLain: '簿記3級', catatanCv: 'Siap ditempatkan', tesHitung: '85',
+    tesPushup: '30', tesSquat: '40', tinggalKursus: '2', olahraga: 'Futsal', mbti: 'ENFP',
+    kenalanStatusTinggal: '技能実習2号 (2024-2027)',
+    pekerjaan: [{ nama_perusahaan: 'PT A', jenis: 'KARYAWAN TETAP', bidang: 'Manufaktur', catatan: 'lembur penuh' }],
+    keluarga: [{ nama: 'BUDI', hubungan: 'AYAH', tinggal: 'SERUMAH', hp: '081234567', gaji: '150000' }],
+  };
+
+  it('semua kolom baru ditulis dari payload form', () => {
+    const b = buildMasterBody(payload);
+    expect(b.visa_jepang).toBe('技能実習1号');
+    expect(b.negara_lain).toBe('Malaysia 2019');
+    expect(b.jarak_jakarta_km).toBe('780');
+    expect(b.lama_penerbangan).toBe('1 jam 40 menit');
+    expect(b.rencana_sim_bulan).toBe('2027-08');
+    expect(b.wilayah_sekolah).toBe('Jawa Timur');
+    expect(b.lama_belajar_jp).toBe('6 bulan');
+    expect(b.status_belajar_jp).toBe('sedang belajar');
+    expect(b.bab_belajar_jp).toBe('25');
+    expect(b.level_bahasa_jepang).toBe('N4レベル');
+    expect(b.level_bahasa_inggris).toBe('menengah');
+    expect(b.bahasa_lain).toBe('Mandarin dasar');
+    expect(b.sertifikat_lain).toBe('簿記3級');
+    expect(b.catatan_cv).toBe('Siap ditempatkan');
+    expect(b.tes_hitung).toBe('85');
+    expect(b.tes_pushup).toBe('30');
+    expect(b.tes_squat).toBe('40');
+    expect(b.tinggal_kursus_tahun).toBe('2');
+    expect(b.olahraga).toBe('Futsal');
+    expect(b.mbti).toBe('ENFP');
+    expect(b.kenalan_di_jepang_status_tinggal).toBe('技能実習2号 (2024-2027)');
+    expect(b.pekerjaan_1_jenis).toBe('KARYAWAN TETAP');
+    expect(b.pekerjaan_1_bidang).toBe('Manufaktur');
+    expect(b.pekerjaan_1_catatan).toBe('lembur penuh');
+    expect(b.keluarga_1_tinggal).toBe('SERUMAH');
+    expect(b.keluarga_1_hp).toBe('081234567');
+    expect(b.keluarga_1_gaji).toBe('150000');
+  });
+
+  it('kolomnya dibaca kembali ke bentuk yang dipakai renderer CV', () => {
+    const n = buildMasterNested(buildMasterBody(payload));
+    expect(n.identitas.visa_jepang).toBe('技能実習1号');
+    expect(n.identitas.wilayah_sekolah).toBe('Jawa Timur');
+    expect(n.sertifikasi.lama_belajar_jp).toBe('6 bulan');
+    expect(n.sertifikasi.level_bahasa_inggris).toBe('menengah');
+    expect(n.fisik.tes_pushup).toBe('30');
+    expect(n.wawancara.mbti).toBe('ENFP');
+    expect(n.kenalan_jepang.status_tinggal).toBe('技能実習2号 (2024-2027)');
+    expect(n.pekerjaan[0].jenis).toBe('KARYAWAN TETAP');
+    expect(n.pekerjaan[0].bidang).toBe('Manufaktur');
+    expect(n.keluarga[0].tinggal).toBe('SERUMAH');
+    expect(n.keluarga[0].hp).toBe('081234567');
+    // `keluarga_N_gaji` dulu ditulis tetapi TIDAK PERNAH dibaca.
+    expect(n.keluarga[0].gaji).toBe('150000');
   });
 });

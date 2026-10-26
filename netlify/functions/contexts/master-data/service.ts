@@ -84,6 +84,22 @@ export const MASTER_COLUMN_MAP: Record<string, string> = {
   lisensi2: 'bidangssw2',
   tglTerbitPaspor: 'tgl_terbit_pasport', expPaspor: 'exp_pasport',
   kotaPaspor: 'kota_terbit_pasport', noCoe: 'no_coe',
+  /* ── Migrasi 022: sel CV yang selama ini tidak punya sumber ───────────────
+     Setiap baris di sini adalah pertanyaan yang DITANYAKAN Form Master dan
+     dicetak salah satu dari empat form CV. Tanpa baris ini jawabannya masuk
+     payload lalu dibuang tanpa pesan (`buildMasterBody` hanya menyalin kunci
+     yang ada di peta). */
+  lamaJepang: 'lama_di_jepang',
+  visa: 'visa_jepang', negaraLain: 'negara_lain',
+  jarakJakarta: 'jarak_jakarta_km', lamaPenerbangan: 'lama_penerbangan',
+  rencanaSim: 'rencana_sim_bulan', wilayahSekolah: 'wilayah_sekolah',
+  lamaBelajarJp: 'lama_belajar_jp', statusBelajarJp: 'status_belajar_jp',
+  babBelajarJp: 'bab_belajar_jp', bhsInggris: 'level_bahasa_inggris',
+  bahasaLain: 'bahasa_lain', levelJepang: 'level_bahasa_jepang',
+  sertifikatLain: 'sertifikat_lain', catatanCv: 'catatan_cv',
+  tesHitung: 'tes_hitung', tesPushup: 'tes_pushup', tesSquat: 'tes_squat',
+  tinggalKursus: 'tinggal_kursus_tahun', olahraga: 'olahraga', mbti: 'mbti',
+  kenalanStatusTinggal: 'kenalan_di_jepang_status_tinggal',
 };
 
 export const JP_TRANSLATE_MAP: Record<string, string> = {
@@ -348,12 +364,25 @@ export function buildMasterNested(row: any): any {
       no_coe: v('no_coe'), tgl_terbit_paspor: vd('tgl_terbit_pasport'),
       exp_paspor: vd('exp_pasport'), kota_terbit_paspor: v('kota_terbit_pasport'),
       kontak_darurat_nama: v('kontak_darurat_nama'), kontak_darurat_hubungan: v('kontak_darurat_hubungan'),
+      /* Perjalanan & identitas tambahan (migrasi 022). Dibaca dari KOLOM saja —
+         tidak ada padanan di `ai_data_json` lama, karena field ini baru
+         ditanyakan sejak 2026-10-27. */
+      visa_jepang: v('visa_jepang'), negara_lain: v('negara_lain'),
+      jarak_jakarta_km: v('jarak_jakarta_km'), lama_penerbangan: v('lama_penerbangan'),
+      rencana_sim_bulan: v('rencana_sim_bulan'), wilayah_sekolah: v('wilayah_sekolah'),
     },
     fisik: { tb: va(aiF, ['tb'], 'tb'), bb: va(aiF, ['bb'], 'bb'),
       topi: va(aiF, ['topi'], 'ukuran_topi'), baju: va(aiF, ['baju'], 'ukuranbaju'),
       sepatu: va(aiF, ['sepatu'], 'ukuransepatu'),
       tangan_dominan: va(aiF, ['tangan_dominan'], 'tangandominan'),
-      tahan_ac: va(aiF, ['tahan_ac'], 'tahan_ac') },
+      tahan_ac: va(aiF, ['tahan_ac'], 'tahan_ac'),
+      /* Tes & kebiasaan fisik (migrasi 022) — dipakai form KINKI (計算テスト,
+         体力試験, 集団生活年数, スポーツ). */
+      tes_hitung: va(aiF, ['tes_hitung'], 'tes_hitung'),
+      tes_pushup: va(aiF, ['tes_pushup'], 'tes_pushup'),
+      tes_squat: va(aiF, ['tes_squat'], 'tes_squat'),
+      tinggal_kursus_tahun: va(aiF, ['tinggal_kursus_tahun'], 'tinggal_kursus_tahun'),
+      olahraga: va(aiF, ['olahraga'], 'olahraga') },
     medis: { mata_kiri: va(aiM, ['mata_kiri'], 'mata_kiri'),
       mata_kanan: va(aiM, ['mata_kanan'], 'mata_kanan'),
       kacamata: va(aiM, ['kacamata'], 'kacamata'),
@@ -391,10 +420,24 @@ export function buildMasterNested(row: any): any {
       rencana_pulang_jp: vw('rencana_setelah_pulang_jp', 'rencana_setelah_pulang_jp'),
       gaji_yen: vw('harapan_gaji_yen', 'gaji_yen'),
       tabungan: vw('harapan_tabungan', 'tabungan'),
-      lama_di_jepang: vw('', 'lama_di_jepang'),
+      /* `lama_di_jepang` akhirnya punya kolom (migrasi 022). Sebelumnya hanya
+         hidup di `ai_data_json`, jadi kandidat jalur Form Master tidak punya
+         tempat menyimpannya dan JIPA `E55` (在日期間) selalu kosong.
+         JANGAN dicampur `lamakerjadiharapkan` — itu lama KERJA yang diharapkan. */
+      lama_di_jepang: vw('lama_di_jepang', 'lama_di_jepang'),
+      /* Lama KERJA yang diharapkan (KINKI `X47` 就業希望年数). Kolomnya ada
+         sejak lama (9 baris terisi) tetapi 0 rujukan kode — "yatim" menurut
+         audit 2026-10-25. JANGAN dicampur `lama_di_jepang`. */
+      lamakerja_diharapkan: v('lamakerjadiharapkan'),
+      mbti: v('mbti'),
     },
     sertifikasi: { bahasa: v('bahasa'), jft: v('jft'), ssw: v('ssw'),
-      bidang: v('bidangssw') || v('bidang'), bahasa_jepang: v('jft'), nilai: v('jft'), lisensi: v('ssw') },
+      bidang: v('bidangssw') || v('bidang'), bahasa_jepang: v('jft'), nilai: v('jft'), lisensi: v('ssw'),
+      /* Bahasa & sertifikat tambahan (migrasi 022). */
+      lama_belajar_jp: v('lama_belajar_jp'), status_belajar_jp: v('status_belajar_jp'),
+      bab_belajar_jp: v('bab_belajar_jp'), level_bahasa_inggris: v('level_bahasa_inggris'),
+      bahasa_lain: v('bahasa_lain'), level_bahasa_jepang: v('level_bahasa_jepang'),
+      sertifikat_lain: v('sertifikat_lain'), catatan_cv: v('catatan_cv') },
     pendidikan: (function () {
       const arr: any[] = [];
       for (let i = 1; i <= 5; i++) {
@@ -421,7 +464,10 @@ export function buildMasterNested(row: any): any {
           perusahaan_jp: v('pekerjaan_' + i + '_perusahaan_jp'), jabatan: v('pekerjaan_' + i + '_jabatan'),
           jabatan_jp: v('pekerjaan_' + i + '_jabatan_jp'), masuk: v('pekerjaan_' + i + '_tahun_masuk'),
           tahun_masuk: v('pekerjaan_' + i + '_tahun_masuk'), keluar: v('pekerjaan_' + i + '_tahun_keluar'),
-          tahun_keluar: v('pekerjaan_' + i + '_tahun_keluar'), gaji: v('pekerjaan_' + i + '_gaji') });
+          tahun_keluar: v('pekerjaan_' + i + '_tahun_keluar'), gaji: v('pekerjaan_' + i + '_gaji'),
+          /* Migrasi 022: 雇用形態 / 業種 / 備考 — dicetak KINKI, Firma, JIPA. */
+          jenis: v(`pekerjaan_${i}_jenis`), bidang: v(`pekerjaan_${i}_bidang`),
+          catatan: v(`pekerjaan_${i}_catatan`) });
       }
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['perusahaan', 'nama_perusahaan', 'jabatan', 'masuk', 'keluar'])),
         aiArrOf('pekerjaan'), (e) => riwayatKey(e,
@@ -435,7 +481,12 @@ export function buildMasterNested(row: any): any {
         if (nm === undefined || nm === null) continue;
         arr.push({ nama: toText(nm), umur: v('keluarga_' + i + '_usia'), usia: v('keluarga_' + i + '_usia'),
           hubungan: v('keluarga_' + i + '_hubungan'), hubungan_jp: v('keluarga_' + i + '_hubungan_jp'),
-          pekerjaan: v('keluarga_' + i + '_pekerjaan'), pekerjaan_jp: v('keluarga_' + i + '_pekerjaan_jp') });
+          pekerjaan: v('keluarga_' + i + '_pekerjaan'), pekerjaan_jp: v('keluarga_' + i + '_pekerjaan_jp'),
+          /* `gaji` sudah lama ditulis `buildRiwayatSlots` tetapi TIDAK pernah
+             dibaca di sini — jadi 月収 keluarga kosong di ketiga form yang
+             mencetaknya. Dua kolom lain menyusul di migrasi 022. */
+          gaji: v(`keluarga_${i}_gaji`),
+          tinggal: v(`keluarga_${i}_tinggal`), hp: v(`keluarga_${i}_hp`) });
       }
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['nama', 'hubungan', 'umur', 'usia', 'pekerjaan'])),
         aiArrOf('keluarga'), keluargaKey);
@@ -447,7 +498,9 @@ export function buildMasterNested(row: any): any {
         hubungan_id: src('kenalan_di_jepang_hubungan', 'hubungan_id'), hubungan_jp: src('kenalan_di_jepang_hubungan_jp', 'hubungan_jp'),
         pekerjaan_id: src('kenalan_di_jepang_pekerjaan', 'pekerjaan_id'), pekerjaan_jp: src('kenalan_di_jepang_pekerjaan_jp', 'pekerjaan_jp'),
         usia: src('kenalan_di_jepang_usia', 'usia'), alamat_id: src('kenalan_di_jepang_alamat', 'alamat_id'),
-        alamat_jp: src('kenalan_di_jepang_alamat_jp', 'alamat_jp') };
+        alamat_jp: src('kenalan_di_jepang_alamat_jp', 'alamat_jp'),
+        /* 在留資格(在留期間) — JIPA `J43`. Kolomnya baru ada di migrasi 022. */
+        status_tinggal: src('kenalan_di_jepang_status_tinggal', 'status_tinggal') };
     })(),
     uploads: { photo: row.pas_photo || '', cv: row.file_cv || '', jft: row.jft_url || '',
       ssw: row.ssw_url || '', ktp: row.ktp_url || '', kk: row.kk_url || '',
@@ -630,6 +683,10 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
     ['_tahun_masuk', 'tahun_masuk', 'tahunMasuk', 'masuk'],
     ['_tahun_keluar', 'tahun_keluar', 'tahunKeluar', 'keluar'],
     ['_gaji', 'gaji', 'pendapatan'],
+    /* Migrasi 022: 雇用形態 / 業種 / 備考. */
+    ['_jenis', 'jenis', 'jenis_pekerjaan', 'status_kerja'],
+    ['_bidang', 'bidang', 'industri'],
+    ['_catatan', 'catatan', 'keterangan'],
   ] as const);
   setSlots('keluarga_', d.keluarga, 5, [
     ['_hubungan', 'hubungan', 'hubungan_id'],
@@ -638,6 +695,9 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
     ['_usia', 'usia', 'umur'],
     ['_pekerjaan', 'pekerjaan', 'pekerjaan_id'],
     ['_gaji', 'gaji', 'pendapatan'],
+    /* Migrasi 022: 同居区分 / 電話. */
+    ['_tinggal', 'tinggal', 'status_tinggal'],
+    ['_hp', 'hp', 'telepon', 'no_hp'],
   ] as const);
   return out;
 }
@@ -702,10 +762,21 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
        ditambahkan bersamaan karena Form Master sudah menanyakan ketiganya. */
     ['kontak_darurat_wa', 'hp_darurat'], ['kontak_darurat_nama', 'darurat_nama'],
     ['kontak_darurat_hubungan', 'darurat_hubungan'],
+    /* ── Migrasi 022 ────────────────────────────────────────────────────────
+       Perjalanan, wilayah sekolah, dan rencana SIM. Semuanya dicetak form CV
+       (JIPA ビザ種類/在日期間, Firma 渡航経験, KINKI ジャカルタから…㎞ & …月取得予定)
+       dan sebelumnya tidak punya kolom sama sekali. */
+    ['visa_jepang', 'visa_jepang'], ['negara_lain', 'negara_lain'],
+    ['jarak_jakarta_km', 'jarak_jakarta_km'], ['lama_penerbangan', 'lama_penerbangan'],
+    ['rencana_sim_bulan', 'rencana_sim_bulan'], ['wilayah_sekolah', 'wilayah_sekolah'],
   ],
   fisik: [
     ['tb', 'tb'], ['bb', 'bb'], ['ukuran_topi', 'topi'], ['ukuranbaju', 'baju'],
     ['ukuransepatu', 'sepatu'], ['tangandominan', 'tangan_dominan'], ['tahan_ac', 'tahan_ac'],
+    /* ── Migrasi 022: tes & kebiasaan fisik (KINKI 計算テスト / 体力試験 /
+       集団生活年数 / スポーツ). */
+    ['tes_hitung', 'tes_hitung'], ['tes_pushup', 'tes_pushup'], ['tes_squat', 'tes_squat'],
+    ['tinggal_kursus_tahun', 'tinggal_kursus_tahun'], ['olahraga', 'olahraga'],
   ],
   medis: [
     ['mata_kiri', 'mata_kiri'], ['mata_kanan', 'mata_kanan'], ['kacamata', 'kacamata'],
@@ -740,6 +811,11 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
     ['tujuan_ke_jepang_jp', 'tujuan_ke_jepang_jp'],
     ['harapan_gaji_yen', 'gaji_yen', 'harapan_gaji'],
     ['harapan_tabungan', 'tabungan', 'harapan_tabungan'],
+    /* 在日期間. Dulu terdaftar sebagai "tidak punya kolom"; migrasi 022
+       memberinya kolom, jadi pemetaannya pindah ke sini (aturan yang sama
+       dengan kenalan_* di 019). */
+    ['lama_di_jepang', 'lama', 'lama_di_jepang'],
+    ['mbti', 'mbti'],
   ],
   /* Sertifikasi. `sertifikasi.ssw`/`lisensi` adalah NAMA lisensi SSW — di Form
      Master konsep itu kolom `bidangssw` (lihat MASTER_COLUMN_MAP: `lisensi` →
@@ -754,6 +830,11 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
        lalu dibuang tanpa pesan. */
     ['bidangssw2', 'ssw2', 'lisensi2'],
     ['no_coe', 'no_coe'],
+    /* ── Migrasi 022: bahasa & sertifikat tambahan. */
+    ['lama_belajar_jp', 'lama_belajar_jp'], ['status_belajar_jp', 'status_belajar_jp'],
+    ['bab_belajar_jp', 'bab_belajar_jp'], ['level_bahasa_inggris', 'level_bahasa_inggris'],
+    ['bahasa_lain', 'bahasa_lain'], ['level_bahasa_jepang', 'level_bahasa_jepang'],
+    ['sertifikat_lain', 'sertifikat_lain'], ['catatan_cv', 'catatan_cv'],
   ],
   /* Kenalan di Jepang. Seksi ini TIDAK dikelola `aiData` (dipertahankan dari
      baris lama), jadi pemetaannya baru berguna setelah `aiOut` yang dipakai —
@@ -770,6 +851,8 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
     ['kenalan_di_jepang_usia', 'usia'],
     ['kenalan_di_jepang_alamat', 'alamat_id'],
     ['kenalan_di_jepang_alamat_jp', 'alamat_jp'],
+    /* 在留資格(在留期間) — migrasi 022. */
+    ['kenalan_di_jepang_status_tinggal', 'status_tinggal'],
   ],
 };
 

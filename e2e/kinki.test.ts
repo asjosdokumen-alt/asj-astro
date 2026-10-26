@@ -395,3 +395,68 @@ describe('kinki · render', () => {
     expect(countAll(sheet, /<mergeCell\s/g)).toBe(SOURCE.mergeCells);
   });
 });
+
+/**
+ * Sel yang DULU tidak punya sumber (migrasi 022, 2026-10-27).
+ *
+ * Sebelum ini `J19`, `M26`, `Z26`, `Q45`, `X45`, `T37`, `T39`, `Q41`, `T41`,
+ * `X41`, `X47`, `AB51`, `AB52`, `O9`, `I4`, `M4` selalu kosong karena tidak ada
+ * kolomnya. Tes ini mengunci arah sebaliknya: kalau kolomnya terisi, selnya
+ * WAJIB terisi — tanpa itu, "sudah ada kolom" hanya klaim.
+ */
+describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
+  const denganKolom = (): CandidateData => {
+    const d = kandidat();
+    d.identitas = { ...d.identitas, wilayah_sekolah: 'Jawa Timur', jarak_jakarta_km: '780', lama_penerbangan: '1 jam 40 menit', rencana_sim_bulan: '2027-08' };
+    d.pekerjaan = [{ ...(d.pekerjaan[0] as Record<string, unknown>), jenis: 'KARYAWAN TETAP', bidang: 'Manufaktur', catatan: 'Lembur penuh' }];
+    d.keluarga = [{ ...(d.keluarga[0] as Record<string, unknown>), tinggal: 'TERPISAH', gaji: '2500000' }];
+    d.sertifikasi = { ...d.sertifikasi, lama_belajar_jp: '6 bulan', status_belajar_jp: 'sedang belajar', bab_belajar_jp: '25', level_bahasa_inggris: 'menengah', bahasa_lain: 'Mandarin dasar', level_bahasa_jepang: 'N4レベル' };
+    d.fisik = { ...d.fisik, tes_hitung: '85', tes_pushup: '30', tes_squat: '40', tinggal_kursus_tahun: '2' };
+    d.wawancara = { ...d.wawancara, tabungan: '3000000', lamakerja_diharapkan: '5 tahun', mbti: 'ENFP' };
+    return d;
+  };
+
+  it('identitas, pendidikan, dan placeholder O9/I4/M4', () => {
+    const c = buildValues(denganKolom());
+    expect(c.J19).toBe('Jawa Timur');
+    expect(c.I4).toBe('第25課中');
+    expect(c.M4).toBe('8月取得予定');
+    expect(c.O9).toBe('ジャカルタから780㎞\n飛行機で1 jam 40 menit');
+  });
+
+  it('pekerjaan: 雇用形態 / 業種 / 備考', () => {
+    const c = buildValues(denganKolom());
+    expect(c.A26).toBe('正社員');
+    expect(c.M26).toBe('Manufaktur');
+    expect(c.Z26).toBe('Lembur penuh');
+  });
+
+  it('keluarga: 同居区分 mengikuti kolom, bukan `■` tetap', () => {
+    const c = buildValues(denganKolom());
+    expect(c.M37).toBe('□');
+    expect(c.O37).toBe('■');
+    expect(c.J37).toBe('250'); // 月収 2.500.000 円 → 250 (万円). SATUANNYA YEN, bukan rupiah.
+  });
+
+  it('bahasa, tes, dan angka yang dulu selalu kosong', () => {
+    const c = buildValues(denganKolom());
+    expect(c.I3).toBe('N4レベル'); // kolom menang atas tebakan dari teks JFT
+    expect(c.T37).toBe('6 bulan');
+    expect(c.T39).toBe('sedang belajar');
+    expect(c.Q41).toBe('menengah');
+    expect(c.T41).toBe('Mandarin dasar');
+    expect(c.Q45).toBe('85');
+    expect(c.X41).toBe('2');
+    expect(c.X45).toBe('3000000');
+    expect(c.X47).toBe('5 tahun');
+    expect(c.AB51).toBe('30');
+    expect(c.AB52).toBe('40');
+  });
+
+  it('MBTI dari kolom menang atas tebakan', () => {
+    const c = buildValues(denganKolom());
+    expect(c.Q47).toBe('広報運動家型（ENFP）');
+    expect(c.U48).toBe('【E】外向型');
+    expect(c.U52).toBe('【A】自信型');
+  });
+});
