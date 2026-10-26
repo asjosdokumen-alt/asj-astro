@@ -24,6 +24,8 @@ import {
   PEKERJAAN, JURUSAN, HUBUNGAN_KELUARGA, GOLONGAN_DARAH, BAHASA_JEPANG,
   GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
   YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, JENIS_KERJA_PAIRS, TINGGAL_PAIRS,
+  VISA_JEPANG, STATUS_TINGGAL_JP, LEVEL_BAHASA_JEPANG, STATUS_BELAJAR_JP,
+  LAMA_BELAJAR_JP, LEVEL_INGGRIS, OLAHRAGA, MBTI_TIPE, BULAN_SIM, PROVINSI,
   labelJp, pairDisplay, type Opsi,
 } from '../../lib/opsi-form';
 import { levelOptions, sortEduRows } from '../../lib/cvRows';
@@ -267,7 +269,7 @@ const SUGGESTIONS = [
    DI DALAM field (span absolut di kanan), bukan di label: `170 cm` tetap
    terbaca sebagai angka bersatuan, dan lebar kolom tidak ikut melar.
    Tidak diterjemahkan: legacy pun menampilkannya sama di kedua bahasa. */
-type Unit = 'thn' | 'cm' | 'kg' | 'yen';
+type Unit = 'thn' | 'cm' | 'kg' | 'yen' | 'km';
 
 /* ── Warna aksen per seksi ──────────────────────────────────────────────
    Peta kelas EKSPLISIT. Sebelumnya `text-${color}-400` (template literal):
@@ -1354,15 +1356,22 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 (`resolvePairEdit`), so the printed CV and the payload still
                 carry both values; the owner's rule is "cukup 1 di layar, tetap 2
                 di database untuk rirekisho". */}
+            {/* TATA LETAK: 5 track di `md`. Setiap baris diisi PERSIS 5 track —
+                dulu ada baris berisi 4 (Agama…Anak, Kontak Darurat, Paspor/SIM)
+                sehingga menyisakan lubang, dan label 1-track seperti "Nama
+                Kontak Darurat" terlipat dua baris sehingga kotaknya turun dan
+                tidak sejajar dengan tetangganya (pemilik, 2026-10-27).
+                Sub-judul `col-span-full` memisahkan tiga kelompok supaya mata
+                tahu di mana blok baru mulai. */}
             <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
               <Field label={t("cv.field_nama")} id="nama" value={cv.nama} span={2}
                 touched={touchedFields.has('nama')} onInput={(v) => handleManualEdit('nama', v)} />
               <Field label={t("form.mf_furigana")} id="katakana" value={cv.katakana} span={2} jp
-                touched={touchedFields.has('katakana')} onInput={(v) => handleManualEdit('katakana', v)} />
+                ph="カタカナ" touched={touchedFields.has('katakana')} onInput={(v) => handleManualEdit('katakana', v)} />
               <Field label={t("form.mf_panggilan")} id="panggilan" value={cv.panggilan}
                 touched={touchedFields.has('panggilan')} onInput={(v) => handleManualEdit('panggilan', v)} />
               <Field label={t("form.mf_panggilan_ktk")} id="panggilan_katakana" value={cv.panggilan_katakana} jp
-                touched={touchedFields.has('panggilan_katakana')} onInput={(v) => handleManualEdit('panggilan_katakana', v)} />
+                ph="カタカナ" touched={touchedFields.has('panggilan_katakana')} onInput={(v) => handleManualEdit('panggilan_katakana', v)} />
               <Field label={t("cv.field_tmp_lahir")} id="tmplahir" value={cv.tmplahir}
                 touched={touchedFields.has('tmplahir')} onInput={(v) => handleManualEdit('tmplahir', v)} />
               {/* PARITY ai_form.html:134 — legacy `type="date"` (date picker),
@@ -1386,25 +1395,46 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 onChange={(v) => handlePairEdit('status', v)} />
               <Field label={t("form.mf_anak")} id="anak" value={cv.anak} center
                 touched={touchedFields.has('anak')} onInput={(v) => handleManualEdit('anak', v)} />
+              {/* KTP pindah ke sini (2026-10-27): di baris lama ia menggantung
+                  sendirian bersama kontak darurat, menyisakan 1 track kosong. */}
+              <Field label={t("form.mf_ktp")} id="ktp" value={cv.ktp}
+                ph="16 digit" touched={touchedFields.has('ktp')} onInput={(v) => handleManualEdit('ktp', v)} />
+
+              <div class="col-span-full mt-2 mb-0.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-400/80">
+                Alamat &amp; Kontak
+              </div>
               <Field label={t("form.mf_email")} id="email" value={cv.email} span={2}
                 touched={touchedFields.has('email')} onInput={(v) => handleManualEdit('email', v)} />
               <Field label={t("cv.field_alamat")} id="alamat" value={cv.alamat} span={3} spanMd={3}
+                ph="Jl. / RT-RW / Kec. / Kota / Provinsi"
                 touched={touchedFields.has('alamat')} onInput={(v) => handleManualEdit('alamat', v)} />
               <Field label={t("cv.field_alamat_jp")} id="alamat_jp" value={cv.alamat_jp} span={3} spanMd={3} jp
+                ph="〒651-… 県… 市…" hint="Dicetak apa adanya di form Jepang — tulis dari yang terbesar (prefektur) ke terkecil."
                 touched={touchedFields.has('alamat_jp')} onInput={(v) => handleManualEdit('alamat_jp', v)} />
+              {/* KINKI `O9` mencetak "ジャカルタから…㎞ / 飛行機で…時間…分" —
+                  dua angka ini duduk di sebelah alamat karena sama-sama soal
+                  lokasi asal, bukan soal perjalanan ke Jepang. */}
+              <Field label="Jarak ke Jakarta" id="jarak_jakarta" value={cv.jarak_jakarta} center unit="km"
+                ph="780" hint="Perkiraan dari kota asal."
+                touched={touchedFields.has('jarak_jakarta')} onInput={(v) => handleManualEdit('jarak_jakarta', v)} />
+              <Field label="Lama penerbangan" id="lama_penerbangan" value={cv.lama_penerbangan}
+                ph="1 jam 40 menit"
+                touched={touchedFields.has('lama_penerbangan')} onInput={(v) => handleManualEdit('lama_penerbangan', v)} />
               <Field label={t("form.mf_kontak")} id="hp" value={cv.hp}
-                touched={touchedFields.has('hp')} onInput={(v) => handleManualEdit('hp', v)} />
+                ph="08…" touched={touchedFields.has('hp')} onInput={(v) => handleManualEdit('hp', v)} />
               <Field label={t("form.mf_darurat_wa")} id="hpdarurat" value={cv.hpdarurat}
-                touched={touchedFields.has('hpdarurat')} onInput={(v) => handleManualEdit('hpdarurat', v)} />
+                ph="08…" touched={touchedFields.has('hpdarurat')} onInput={(v) => handleManualEdit('hpdarurat', v)} />
               {/* PARITAS (2026-10-25): Form Master menanyakan nama & hubungan
                   kontak darurat; CV AI hanya nomor WA-nya. Kolom
                   `kontak_darurat_nama`/`_hubungan` sudah ada dan kosong. */}
-              <Field label={t("master.darurat_nama")} id="darurat_nama" value={cv.darurat_nama}
-                touched={touchedFields.has('darurat_nama')} onInput={(v) => handleManualEdit('darurat_nama', v)} />
+              <Field label={t("master.darurat_nama")} id="darurat_nama" value={cv.darurat_nama} span={2}
+                ph="Nama lengkap" touched={touchedFields.has('darurat_nama')} onInput={(v) => handleManualEdit('darurat_nama', v)} />
               <Field label={t("master.darurat_hubungan")} id="darurat_hubungan" value={cv.darurat_hubungan}
-                touched={touchedFields.has('darurat_hubungan')} onInput={(v) => handleManualEdit('darurat_hubungan', v)} />
-              <Field label={t("form.mf_ktp")} id="ktp" value={cv.ktp} span={2}
-                touched={touchedFields.has('ktp')} onInput={(v) => handleManualEdit('ktp', v)} />
+                ph="IBU / KAKAK" touched={touchedFields.has('darurat_hubungan')} onInput={(v) => handleManualEdit('darurat_hubungan', v)} />
+
+              <div class="col-span-full mt-2 mb-0.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-400/80">
+                Dokumen &amp; Perjalanan
+              </div>
               <StatusNumber label={t("form.mf_no_paspor")} statusLabel={t("form.mf_paspor_status")}
                 status={cv.paspor_status} value={cv.paspor} statusKey="paspor_status" valueKey="paspor"
                 ph={t("form.mf_ph_no_paspor")} basis="38%" span={2} onChange={handleManualEdit} />
@@ -1418,6 +1448,11 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               <StatusNumber label={t("form.mf_sim")} statusLabel={t("form.mf_sim_status")}
                 status={cv.sim_status} value={cv.sim} statusKey="sim_status" valueKey="sim"
                 ph={t("form.mf_ph_no_sim")} basis="42%" span={2} onChange={handleManualEdit} />
+              {/* Rencana ambil SIM = 5 track terakhir di baris ini; ia memang
+                  pasangan `SIM` di sebelahnya. Nilainya ANGKA bulan (1–12) —
+                  renderer menambahkan sendiri "…月取得予定". */}
+              <PairSelect label="Rencana ambil SIM (取得予定)" id="rencana_sim" value={cv.rencana_sim} pairs={BULAN_SIM}
+                onChange={(v) => handleManualEdit('rencana_sim', v)} />
               {/* PARITAS FORM MASTER (2026-10-25) — tiga kolom paspor yang hanya
                   ada di sana. Tanpa ini kandidat VIP (yang hanya lewat CV AI)
                   tidak punya jalan mengisi data pemberkasan, dan kolomnya tetap
@@ -1428,21 +1463,15 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 touched={touchedFields.has('exp_paspor')} onInput={(v) => handleManualEdit('exp_paspor', v)} />
               <Field label={t("form.mf_kota_paspor")} id="kota_paspor" value={cv.kota_paspor}
                 touched={touchedFields.has('kota_paspor')} onInput={(v) => handleManualEdit('kota_paspor', v)} />
-              {/* ── Perjalanan & wilayah sekolah (migrasi 022) ───────────────
-                  Dicetak JIPA `E54` (ビザ種類), Firma `L32` (渡航経験), KINKI
-                  `O9` (jarak & lama penerbangan) dan `M4` (…月取得予定). */}
-              <Field label="Visa Jepang (ビザ種類)" id="visa" value={cv.visa} span={2}
-                touched={touchedFields.has('visa')} onInput={(v) => handleManualEdit('visa', v)} />
-              <Field label="Negara lain (渡航経験)" id="negara_lain" value={cv.negara_lain} span={2}
+              {/* ビザ種類 (JIPA `E54`) — dropdown, karena jawabannya berulang dan
+                  salah ketik satu huruf membuat sel form tidak sah. Teks bebas
+                  tetap bisa diketik (ComboSelect) untuk visa di luar daftar. */}
+              <ComboSelect label="Visa Jepang (ビザ種類)" id="visa" value={cv.visa} pairs={VISA_JEPANG}
+                placeholder="ketik atau pilih"
+                onInput={(v) => handleManualEdit('visa', v)} onPick={(v) => handleManualEdit('visa', v)} />
+              <Field label="Negara lain (渡航経験)" id="negara_lain" value={cv.negara_lain}
+                ph="Malaysia 2019"
                 touched={touchedFields.has('negara_lain')} onInput={(v) => handleManualEdit('negara_lain', v)} />
-              <Field label="Jarak ke Jakarta (km)" id="jarak_jakarta" value={cv.jarak_jakarta} center
-                touched={touchedFields.has('jarak_jakarta')} onInput={(v) => handleManualEdit('jarak_jakarta', v)} />
-              <Field label="Lama penerbangan" id="lama_penerbangan" value={cv.lama_penerbangan}
-                touched={touchedFields.has('lama_penerbangan')} onInput={(v) => handleManualEdit('lama_penerbangan', v)} />
-              <Field label="Rencana ambil SIM (…月)" id="rencana_sim" value={cv.rencana_sim}
-                touched={touchedFields.has('rencana_sim')} onInput={(v) => handleManualEdit('rencana_sim', v)} />
-              <Field label="Wilayah sekolah SMA/SMK (地域)" id="wilayah_sekolah" value={cv.wilayah_sekolah} span={2}
-                touched={touchedFields.has('wilayah_sekolah')} onInput={(v) => handleManualEdit('wilayah_sekolah', v)} />
             </div>
           </Section>
 
@@ -1470,19 +1499,23 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 </div>
                 {/* ── Tes & kebiasaan fisik (migrasi 022) ────────────────────
                     Diisi agensi saat seleksi; dicetak KINKI (体力試験, 計算テスト,
-                    集団生活年数, スポーツ). */}
+                    集団生活年数, スポーツ). Olahraga memakai dropdown karena
+                    renderer memetakan nama cabang olahraga ke kanji — teks bebas
+                    yang tidak dikenali berakhir sebagai sel kosong. */}
                 <div class="col-span-3">
-                  <Field label="Olahraga (スポーツ)" id="olahraga" value={cv.olahraga}
-                    touched={touchedFields.has('olahraga')} onInput={(v) => handleManualEdit('olahraga', v)} />
+                  <ComboSelect label="Olahraga (スポーツ)" id="olahraga" value={cv.olahraga} pairs={OLAHRAGA}
+                    placeholder="ketik atau pilih"
+                    onInput={(v) => handleManualEdit('olahraga', v)} onPick={(v) => handleManualEdit('olahraga', v)} />
                 </div>
                 <Field label="Tes hitung (計算テスト)" id="tes_hitung" value={cv.tes_hitung} center
+                  ph="85" hint="Skor apa adanya."
                   touched={touchedFields.has('tes_hitung')} onInput={(v) => handleManualEdit('tes_hitung', v)} />
-                <Field label="Push-up (回)" id="tes_pushup" value={cv.tes_pushup} center
-                  touched={touchedFields.has('tes_pushup')} onInput={(v) => handleManualEdit('tes_pushup', v)} />
-                <Field label="Squat (回)" id="tes_squat" value={cv.tes_squat} center
-                  touched={touchedFields.has('tes_squat')} onInput={(v) => handleManualEdit('tes_squat', v)} />
+                <Field label="Push-up (回)" id="tes_pushup" value={cv.tes_pushup} center type="number"
+                  ph="30" touched={touchedFields.has('tes_pushup')} onInput={(v) => handleManualEdit('tes_pushup', v)} />
+                <Field label="Squat (回)" id="tes_squat" value={cv.tes_squat} center type="number"
+                  ph="40" touched={touchedFields.has('tes_squat')} onInput={(v) => handleManualEdit('tes_squat', v)} />
                 <Field label="Lama di asrama (thn)" id="tinggal_kursus" value={cv.tinggal_kursus} center unit="thn"
-                  touched={touchedFields.has('tinggal_kursus')} onInput={(v) => handleManualEdit('tinggal_kursus', v)} />
+                  ph="2" touched={touchedFields.has('tinggal_kursus')} onInput={(v) => handleManualEdit('tinggal_kursus', v)} />
               </div>
             </Section>
             <Section title={t("ai_cv.sec_medis")} icon="fa-notes-medical" color="red">
@@ -1554,10 +1587,14 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                     kosong, tipe tetap DISIMPULKAN dari teks wawancara seperti
                     sebelumnya. `catatan_cv` dicetak apa adanya di 付記 (Form
                     Asli) dan その他事項 (Firma). */}
-                <Field label="Tipe MBTI (性格診断テスト)" id="mbti" value={cv.mbti}
-                  touched={touchedFields.has('mbti')} onInput={(v) => handleManualEdit('mbti', v)} />
-                <Field label="Catatan tambahan CV (付記)" id="catatan_cv" value={cv.catatan_cv} span={2}
-                  touched={touchedFields.has('catatan_cv')} onInput={(v) => handleManualEdit('catatan_cv', v)} />
+                <PairSelect label="Tipe MBTI (性格診断テスト)" id="mbti" value={cv.mbti} pairs={MBTI_TIPE}
+                  onChange={(v) => handleManualEdit('mbti', v)} />
+                <div class="col-span-2">
+                  <Field label="Catatan tambahan CV (付記)" id="catatan_cv" value={cv.catatan_cv}
+                    ph="mis. Bersedia kerja shift malam"
+                    hint="Dicetak apa adanya di form — kosongkan kalau tidak perlu."
+                    touched={touchedFields.has('catatan_cv')} onInput={(v) => handleManualEdit('catatan_cv', v)} />
+                </div>
               </div>
             </div>
           </Section>
@@ -1594,22 +1631,39 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               {/* ── Bahasa & sertifikat tambahan (migrasi 022) ─────────────────
                   Dicetak KINKI (T37 学習期間, T39 学習状況, I4 第…課中, Q41 英語,
                   T41 その他外国語, I3 日本語力), Firma (L31 学習期間, D32 日本語能力)
-                  dan JIPA baris 4-5 (その他資格). */}
-              <div class="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700 mb-2">
-                <Field label="Level Jepang (日本語力)" id="level_jepang" value={cv.level_jepang} list="ai_jft_options"
-                  touched={touchedFields.has('level_jepang')} onInput={(v) => handleManualEdit('level_jepang', v)} />
-                <Field label="Lama belajar (学習期間)" id="lama_belajar_jp" value={cv.lama_belajar_jp}
-                  touched={touchedFields.has('lama_belajar_jp')} onInput={(v) => handleManualEdit('lama_belajar_jp', v)} />
-                <Field label="Status belajar (学習状況)" id="status_belajar_jp" value={cv.status_belajar_jp}
-                  touched={touchedFields.has('status_belajar_jp')} onInput={(v) => handleManualEdit('status_belajar_jp', v)} />
-                <Field label="Bab sekarang (第…課)" id="bab_belajar_jp" value={cv.bab_belajar_jp} center
+                  dan JIPA baris 4-5 (その他資格). Yang punya daftar jawaban
+                  memakai dropdown — nilai yang tidak ada di daftar membuat sel
+                  form Jepang tidak sah. */}
+              <div class="grid grid-cols-2 md:grid-cols-3 gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700 mb-2">
+                <PairSelect label="Level Jepang (日本語力)" id="level_jepang" value={cv.level_jepang} pairs={LEVEL_BAHASA_JEPANG}
+                  onChange={(v) => handleManualEdit('level_jepang', v)} />
+                <ComboSelect label="Lama belajar (学習期間)" id="lama_belajar_jp" value={cv.lama_belajar_jp} pairs={LAMA_BELAJAR_JP}
+                  placeholder="ketik atau pilih"
+                  onInput={(v) => handleManualEdit('lama_belajar_jp', v)} onPick={(v) => handleManualEdit('lama_belajar_jp', v)} />
+                <PairSelect label="Status belajar (学習状況)" id="status_belajar_jp" value={cv.status_belajar_jp} pairs={STATUS_BELAJAR_JP}
+                  onChange={(v) => handleManualEdit('status_belajar_jp', v)} />
+                <Field label="Bab sekarang (第…課)" id="bab_belajar_jp" value={cv.bab_belajar_jp} center type="number"
+                  ph="25" hint="Angka bab Minna no Nihongo."
                   touched={touchedFields.has('bab_belajar_jp')} onInput={(v) => handleManualEdit('bab_belajar_jp', v)} />
-                <Field label="Bahasa Inggris (英語)" id="bhs_inggris" value={cv.bhs_inggris}
-                  touched={touchedFields.has('bhs_inggris')} onInput={(v) => handleManualEdit('bhs_inggris', v)} />
+                <PairSelect label="Bahasa Inggris (英語)" id="bhs_inggris" value={cv.bhs_inggris} pairs={LEVEL_INGGRIS}
+                  onChange={(v) => handleManualEdit('bhs_inggris', v)} />
                 <Field label="Bahasa lain (その他)" id="bahasa_lain" value={cv.bahasa_lain}
+                  ph="Mandarin dasar"
                   touched={touchedFields.has('bahasa_lain')} onInput={(v) => handleManualEdit('bahasa_lain', v)} />
-                <Field label="Sertifikat lain (他資格)" id="sertifikat_lain" value={cv.sertifikat_lain} span={3}
-                  touched={touchedFields.has('sertifikat_lain')} onInput={(v) => handleManualEdit('sertifikat_lain', v)} />
+                <div class="col-span-2 md:col-span-3">
+                  <Field label="Sertifikat lain (他資格)" id="sertifikat_lain" value={cv.sertifikat_lain}
+                    ph="mis. 簿記3級 (2023), 調理師 (2022)"
+                    hint="Sertifikat di luar JLPT / SSW / SIM. Pisahkan dengan koma."
+                    touched={touchedFields.has('sertifikat_lain')} onInput={(v) => handleManualEdit('sertifikat_lain', v)} />
+                </div>
+                {/* 地域 — KINKI `J19`. Dulu ditaruh di seksi Identitas dan
+                    menggantung sendirian di barisnya sendiri; tempatnya di sini,
+                    bersama riwayat sekolah. */}
+                <div class="col-span-2 md:col-span-3">
+                  <ComboSelect label="Wilayah sekolah SMA/SMK (地域)" id="wilayah_sekolah" value={cv.wilayah_sekolah} pairs={PROVINSI}
+                    placeholder="ketik atau pilih provinsi"
+                    onInput={(v) => handleManualEdit('wilayah_sekolah', v)} onPick={(v) => handleManualEdit('wilayah_sekolah', v)} />
+                </div>
               </div>
               {/* Dynamic rows, capped at the legacy maximum (EDU_MAX). The cap is
                   a property of the printed CV template: a sixth row would be
@@ -1804,9 +1858,13 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   touched={touchedFields.has('kenalan_alamat_id')} onInput={(v) => handleManualEdit('kenalan_alamat_id', v)} />
                 <Field label={t("cv.field_kenalan_alamat_jp")} id="kenalan_alamat_jp" value={cv.kenalan_alamat_jp} jp
                   touched={touchedFields.has('kenalan_alamat_jp')} onInput={(v) => handleManualEdit('kenalan_alamat_jp', v)} />
-                {/* 在留資格(在留期間) — JIPA `J43` (migrasi 022). */}
-                <Field label="Status tinggal di Jepang (在留資格)" id="kenalan_status" value={cv.kenalan_status} span={2}
-                  touched={touchedFields.has('kenalan_status')} onInput={(v) => handleManualEdit('kenalan_status', v)} />
+                {/* 在留資格(在留期間) — JIPA `J43` (migrasi 022). Dropdown karena
+                    isinya berulang; teks bebas tetap bisa diketik. */}
+                <div class="col-span-full">
+                  <ComboSelect label="Status tinggal di Jepang (在留資格)" id="kenalan_status" value={cv.kenalan_status} pairs={STATUS_TINGGAL_JP}
+                    placeholder="ketik atau pilih, mis. 技能実習2号 (2024-2027)"
+                    onInput={(v) => handleManualEdit('kenalan_status', v)} onPick={(v) => handleManualEdit('kenalan_status', v)} />
+                </div>
               </div>
             </div>
             {/* The occupation suggestion list that stood here is gone. It
@@ -2017,9 +2075,13 @@ function MonthYearField({ label, id, value, yearLabel, monthLabelText, onChange 
  * `border-sky-400`; the point is that a human correction must stay visibly
  * distinguishable from an AI guess when the two disagree.
  */
-function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, type, list, onInput, touched }: {
+function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, type, list, ph, hint, onInput, touched }: {
   label: string; id: string; value: string; readonly?: boolean; center?: boolean;
   jp?: boolean; span?: number; spanMd?: number; unit?: Unit; type?: string; list?: string;
+  /** Petunjuk penulisan: contoh isi yang diharapkan (muncul di dalam kotak). */
+  ph?: string;
+  /** Petunjuk tambahan di bawah kotak — untuk aturan yang tidak muat di `ph`. */
+  hint?: string;
   onInput?: (value: string) => void; touched?: boolean;
 }) {
   const spanClass = span === 3 ? 'col-span-3' : span === 2 ? 'col-span-2' : '';
@@ -2030,12 +2092,14 @@ function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, typ
       <label class="block text-[11px] text-[#e2e8f0] mb-0.5" for={domId}>{label}</label>
       <div class="relative">
         <input id={domId} type={type || 'text'} value={value} readonly={readonly} list={list}
+          placeholder={ph || ''}
           onInput={onInput ? (e) => onInput((e.target as HTMLInputElement).value) : undefined}
-          class={`input-micro w-full bg-slate-800 border ${touched ? 'border-sky-400' : 'border-slate-600'} rounded p-1 text-[12px] ${center ? 'text-center' : ''} ${unit ? 'pr-7' : ''} ${jp ? 'text-pink-300 font-bold' : 'text-white'}`} />
+          class={`input-micro w-full bg-slate-800 border ${touched ? 'border-sky-400' : 'border-slate-600'} rounded p-1 text-[12px] placeholder:text-slate-500 placeholder:text-[10px] ${center ? 'text-center' : ''} ${unit ? 'pr-7' : ''} ${jp ? 'text-pink-300 font-bold' : 'text-white'}`} />
         {unit && (
           <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-fg-subtle pointer-events-none">{unit}</span>
         )}
       </div>
+      {hint && <p class="text-[10px] leading-tight text-slate-500 mt-0.5">{hint}</p>}
     </div>
   );
 }

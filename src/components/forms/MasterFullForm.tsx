@@ -17,7 +17,9 @@ import {
   PEKERJAAN, JURUSAN, KOTA, HUBUNGAN_KELUARGA, GOLONGAN_DARAH,
   GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
   YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, BAHASA_JEPANG, valuesOf,
-  JENIS_KERJA_PAIRS, TINGGAL_PAIRS,
+  JENIS_KERJA_PAIRS, TINGGAL_PAIRS, VISA_JEPANG, STATUS_TINGGAL_JP,
+  LEVEL_BAHASA_JEPANG, STATUS_BELAJAR_JP, LAMA_BELAJAR_JP, LEVEL_INGGRIS,
+  OLAHRAGA, MBTI_TIPE, BULAN_SIM, PROVINSI,
   SENTINEL_LAINNYA, withOther, withEmpty, selectState, resolveOther,
 } from '../../lib/opsi-form';
 import type { Opsi } from '../../lib/opsi-form';
@@ -803,7 +805,7 @@ export default function MasterFullForm() {
                   Diisi agensi saat seleksi; dicetak KINKI di blok 体力試験 /
                   計算テスト / 集団生活年数, dan スポーツ di baris kebiasaan. */}
               <h2 class="section-title mt-6">Tes &amp; Kebiasaan Fisik</h2>
-              <F label="Olahraga (スポーツ)" k="olahraga" ph="mis. Futsal, Jogging" />
+              <F label="Olahraga (スポーツ)" k="olahraga" opts={OLAHRAGA} />
               <div class="grid grid-cols-2 gap-3">
                 <F label="Tes hitung (計算テスト)" k="tesHitung" ph="mis. 85" twoCol />
                 <F label="Lama tinggal di asrama (tahun)" k="tinggalKursus" ph="mis. 2" twoCol />
@@ -848,7 +850,7 @@ export default function MasterFullForm() {
               {eduList.length < 5 && <button type="button" onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.edu_tambah")}</button>}
               {/* 地域 — wilayah sekolah, dicetak KINKI di kolom `J19`. Satu kolom
                   saja karena form itu hanya mencetak baris SMA/SMK. */}
-              <F label="Wilayah sekolah (SMA/SMK) — 地域" k="wilayahSekolah" ph="mis. Jawa Timur" />
+              <F label="Wilayah sekolah (SMA/SMK) — 地域" k="wilayahSekolah" opts={PROVINSI} />
 
               <h2 class="section-title mt-6">{t("form.mf_riwayat_pekerjaan")}</h2>
               {jobList.map((job, i) => (
@@ -890,18 +892,18 @@ export default function MasterFullForm() {
                   Q47 性格診断テスト. */}
               <h2 class="section-title mt-6">Kemampuan Bahasa Jepang</h2>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Lama belajar Jepang (日本語学習期間)" k="lamaBelajarJp" ph="mis. 6 bulan" twoCol />
-                <F label="Status belajar (学習状況)" k="statusBelajarJp" ph="mis. sedang belajar" twoCol />
+                <F label="Lama belajar Jepang (日本語学習期間)" k="lamaBelajarJp" opts={LAMA_BELAJAR_JP} twoCol />
+                <F label="Status belajar (学習状況)" k="statusBelajarJp" opts={STATUS_BELAJAR_JP} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Bab yang sedang dipelajari (第…課)" k="babBelajarJp" ph="mis. 25" twoCol />
-                <F label="Level bahasa Jepang (日本語力)" k="levelJepang" ph="mis. N4レベル" twoCol />
+                <F label="Bab yang sedang dipelajari (第…課)" k="babBelajarJp" type="number" ph="mis. 25" twoCol />
+                <F label="Level bahasa Jepang (日本語力)" k="levelJepang" opts={LEVEL_BAHASA_JEPANG} twoCol />
               </div>
               <div class="grid grid-cols-2 gap-3">
-                <F label="Level bahasa Inggris (英語)" k="bhsInggris" ph="mis. menengah" twoCol />
+                <F label="Level bahasa Inggris (英語)" k="bhsInggris" opts={LEVEL_INGGRIS} twoCol />
                 <F label="Bahasa asing lain (その他)" k="bahasaLain" ph="mis. Mandarin dasar" twoCol />
               </div>
-              <F label="Tipe MBTI (性格診断テスト)" k="mbti" ph="mis. ISTJ — kosong = disimpulkan otomatis dari teks wawancara" />
+              <F label="Tipe MBTI (性格診断テスト)" k="mbti" opts={MBTI_TIPE} />
             </div>
           )}
 
@@ -979,7 +981,7 @@ export default function MasterFullForm() {
                 <div class="mb-3"><label class="label" for={`mf-kenalan-alamat`}>{t("master.kenalan_alamat")}</label>
                   <input class="input" id={`mf-kenalan-alamat`} value={kenalan.alamat} placeholder={t("master.ph_kota_prefektur")} onInput={(e) => setKenalan(k => ({ ...k, alamat: (e.target as HTMLInputElement).value }))} /></div>
                 {/* 在留資格(在留期間) — JIPA `J43` (migrasi 022). */}
-                <F label="Status tinggal kenalan di Jepang (在留資格)" k="kenalanStatusTinggal" ph="mis. 技能実習2号 (2024-2027)" />
+                <F label="Status tinggal kenalan di Jepang (在留資格)" k="kenalanStatusTinggal" opts={STATUS_TINGGAL_JP} />
               </div>
             </div>
           )}
@@ -1026,10 +1028,10 @@ export default function MasterFullForm() {
               <h2 class="section-title mt-6">Sertifikat &amp; Perjalanan</h2>
               <div class="grid grid-cols-2 gap-3">
                 <F label="Sertifikat lain (他資格)" k="sertifikatLain" ph="mis. 簿記3級, 調理師" twoCol />
-                <F label="Visa Jepang yang pernah dipakai (ビザ種類)" k="visa" ph="mis. 技能実習1号" twoCol />
+                <F label="Visa Jepang yang pernah dipakai (ビザ種類)" k="visa" opts={VISA_JEPANG} twoCol />
               </div>
               <F label="Negara lain yang pernah dikunjungi (渡航経験)" k="negaraLain" ph="mis. Malaysia 2019, Singapura 2022" />
-              <F label="Rencana ambil SIM (…月取得予定)" k="rencanaSim" ph="mis. 8 atau 2027-08" />
+              <F label="Rencana ambil SIM (…月取得予定)" k="rencanaSim" opts={BULAN_SIM} />
               <F label="Catatan tambahan untuk CV (付記)" k="catatanCv" ph="dicetak apa adanya di form" rows={2} />
 
               <h2 class="section-title mt-6">{t("master.upload_doc_max")}</h2>

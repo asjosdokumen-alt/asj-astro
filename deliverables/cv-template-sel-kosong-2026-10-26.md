@@ -340,3 +340,31 @@ nilainya hilang setiap simpan.
 | round-trip | `actions-master.test.ts` 13/13 — payload form → kolom → `buildMasterNested` |
 | renderer | kinki 25/25 · jipa 18/18 · firma 12/12 · asli 27/27 |
 | form | `AiCvForm.test.tsx` 72/72 · `MasterFullForm.test.tsx` · `masterPrefill.test.ts` 7/7 · `i18n.keys` |
+
+---
+
+## 13. Diukur 2026-10-27: kalau datanya lengkap, berapa sel yang terisi?
+
+Probe sementara (bukan gate, sudah dihapus): satu `CandidateData` dengan SEMUA field
+terisi, lalu 93 sel target dihitung mana yang masih kosong.
+
+```
+asli : 12 sel target, 1 kosong  -> I34
+firma: 28 sel target, 6 kosong  -> L29 L30 N29 N30 O29 O30
+kinki: 30 sel target, 6 kosong  -> Z30 J38 J40 J41 J42 J43
+jipa : 23 sel target, 10 kosong -> B5 B46 B47 B48 B49 B50 L60 E38 E39 E40
+TOTAL: 23 sel kosong dari 93  ⇒ 70 terisi
+```
+
+Ke-23 sisanya, dengan sebabnya:
+
+| Sebab | Sel | Keterangan |
+|---|---:|---|
+| **Slot DB kurang** — keluarga 5 slot vs JIPA 8 / Firma 7 / Asli 6, pekerjaan 3 vs JIPA 4 | 13 | firma `L29:L30 N29:N30 O29:O30` (anggota ke-6,7), asli `I34`, kinki `J42 J43`, jipa `E38:E40` + `L30` (pekerjaan ke-4) |
+| **Tanggal perolehan sertifikat** (JIPA `B46:B50`) | 5 | data agensi per lamaran, sengaja belum dibuat (§11) |
+| **Belum dibuat** — kode lowongan & tanggal cetak (JIPA `B5`, `L60`) | 2 | butuh join / `TODAY()` (§11) |
+| **Datanya memang kosong** | 3 | kinki `J38 J40 J41` = anggota keluarga berpenghasilan 0 (`manYen` sengaja tidak mencetak `0`), `Z30` = 備考 pekerjaan ke-3 yang diisi kosong |
+
+Jadi 70/93 terisi otomatis. Kalau 13 sel slot itu mau ditutup juga, jalannya satu migrasi
+lagi: `keluarga_6..8_*` (21 kolom) + `pekerjaan_4_*` (8 kolom) dan menaikkan batas repeater
+di kedua form (5 → 8 anggota, 3 → 4 pekerjaan).

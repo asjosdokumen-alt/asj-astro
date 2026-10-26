@@ -728,6 +728,113 @@ export const BAHASA_JEPANG: string[] = [
 ];
 
 /* ══════════════════════════════════════════════════════════════════════════
+   3b. Kosakata field CV tambahan (migrasi 022, 2026-10-27)
+
+   Semuanya dipakai DUA form (Master & CV AI) dan dicetak salah satu template
+   CV. Nilai yang disimpan sengaja dipilih yang PERSIS tercetak di form Jepang
+   (`技能実習2号`, `N4レベル`, `学習中`) — renderer menulisnya apa adanya, jadi
+   menerjemahkan di renderer berarti dua kosakata untuk satu field.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/** ビザ種類 — JIPA `E54`. Label memberi terjemahan, nilai tetap istilah form. */
+export const VISA_JEPANG: Opsi[] = [
+  ['技能実習1号', '技能実習1号 (magang tahun 1)'],
+  ['技能実習2号', '技能実習2号 (magang tahun 2–3)'],
+  ['技能実習3号', '技能実習3号 (magang lanjutan)'],
+  ['特定技能1号', '特定技能1号 (SSW)'],
+  ['特定技能2号', '特定技能2号 (SSW lanjutan)'],
+  ['留学', '留学 (pelajar)'],
+  ['短期滞在', '短期滞在 (wisata/kunjungan)'],
+  ['なし', 'なし (belum pernah)'],
+];
+
+/** 在留資格 — status tinggal kenalan di Jepang, JIPA `J43`. */
+export const STATUS_TINGGAL_JP: Opsi[] = [
+  ['技能実習1号', '技能実習1号'],
+  ['技能実習2号', '技能実習2号'],
+  ['技能実習3号', '技能実習3号'],
+  ['特定技能1号', '特定技能1号'],
+  ['特定技能2号', '特定技能2号'],
+  ['留学', '留学'],
+  ['家族滞在', '家族滞在'],
+  ['定住者', '定住者'],
+  ['永住者', '永住者'],
+  ['日本人の配偶者等', '日本人の配偶者等'],
+];
+
+/**
+ * 日本語力 — dropdown KINKI `I3`. Daftarnya HARUS sama dengan opsi di template;
+ * nilai lain membuat selnya tidak sah.
+ */
+export const LEVEL_BAHASA_JEPANG: Opsi[] = [
+  ['N5未習熟', 'N5未習熟 (belum menguasai N5)'],
+  ['N5レベル', 'N5レベル (level N5)'],
+  ['N5合格', 'N5合格 (lulus N5)'],
+  ['N4レベル', 'N4レベル (level N4)'],
+  ['N4合格', 'N4合格 (lulus N4)'],
+  ['N3合格', 'N3合格 (lulus N3)'],
+  ['N2合格', 'N2合格 (lulus N2)'],
+];
+
+/** 学習状況 — KINKI `T39`. */
+export const STATUS_BELAJAR_JP: Opsi[] = [
+  ['未学習', '未学習 (belum belajar)'],
+  ['独学', '独学 (belajar sendiri)'],
+  ['学習中', '学習中 (sedang belajar)'],
+  ['修了', '修了 (selesai kursus)'],
+];
+
+/** 学習期間 — Firma `L31` / KINKI `T37`. Nilai berupa teks bebas yang ringkas. */
+export const LAMA_BELAJAR_JP: Opsi[] = [
+  ['3 bulan', '3 bulan'],
+  ['6 bulan', '6 bulan'],
+  ['1 tahun', '1 tahun'],
+  ['1.5 tahun', '1,5 tahun'],
+  ['2 tahun', '2 tahun'],
+  ['3 tahun', '3 tahun'],
+];
+
+/** 英語レベル — KINKI `Q41`. */
+export const LEVEL_INGGRIS: Opsi[] = [
+  ['PEMULA', 'Pemula (dasar)'],
+  ['MENENGAH', 'Menengah (bisa percakapan)'],
+  ['MAHIR', 'Mahir (aktif kerja)'],
+];
+
+/** スポーツ — KINKI `E16`. Nilai = istilah Jepang yang dicetak. */
+export const OLAHRAGA: Opsi[] = [
+  ['ジョギング', 'Jogging (ジョギング)'],
+  ['ハイキング', 'Hiking (ハイキング)'],
+  ['フットサル', 'Futsal (フットサル)'],
+  ['バドミントン', 'Badminton (バドミントン)'],
+  ['バレーボール', 'Voli (バレーボール)'],
+  ['バスケットボール', 'Basket (バスケットボール)'],
+  ['サッカー', 'Sepak bola (サッカー)'],
+  ['水泳', 'Renang (水泳)'],
+  ['サイクリング', 'Bersepeda (サイクリング)'],
+];
+
+/** 性格診断 — 16 tipe, urutan sama dengan tabel `AF111:AF126` form KINKI. */
+export const MBTI_TIPE: Opsi[] = [
+  ['ISTJ', 'ISTJ 管理者型'], ['ISFJ', 'ISFJ 擁護者型'], ['INFJ', 'INFJ 提唱者型'], ['INTJ', 'INTJ 建築家型'],
+  ['ISTP', 'ISTP 巨匠型'], ['ISFP', 'ISFP 冒険家型'], ['INFP', 'INFP 仲介者型'], ['INTP', 'INTP 論理学者型'],
+  ['ESTP', 'ESTP 起業家型'], ['ESFP', 'ESFP エンターテイナー型'], ['ENFP', 'ENFP 広報運動家型'], ['ENTP', 'ENTP 討論者型'],
+  ['ESTJ', 'ESTJ 幹部型'], ['ESFJ', 'ESFJ 領事官型'], ['ENFJ', 'ENFJ 主人公型'], ['ENTJ', 'ENTJ 指揮官型'],
+];
+
+/** …月取得予定 — KINKI `M4`. Nilainya ANGKA bulan (1–12) karena renderer
+    menambahkan sendiri `月取得予定`. */
+export const BULAN_SIM: Opsi[] = [
+  ['1', '1月 (Januari)'], ['2', '2月 (Februari)'], ['3', '3月 (Maret)'],
+  ['4', '4月 (April)'], ['5', '5月 (Mei)'], ['6', '6月 (Juni)'],
+  ['7', '7月 (Juli)'], ['8', '8月 (Agustus)'], ['9', '9月 (September)'],
+  ['10', '10月 (Oktober)'], ['11', '11月 (November)'], ['12', '12月 (Desember)'],
+];
+
+/* 地域 (KINKI `J19`) memakai `PROVINSI` yang sudah ada di atas — jangan bikin
+   daftar kedua: dua daftar provinsi akan berbeda begitu ada pemekaran. */
+
+/* ══════════════════════════════════════════════════════════════════════════
    4. Sentinel helpers — "Lainnya / ketik manual"
    ══════════════════════════════════════════════════════════════════════════ */
 
