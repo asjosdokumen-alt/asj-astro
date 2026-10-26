@@ -290,6 +290,14 @@ export function coverCrop(
  * Muat foto ke dalam kotak anchor TANPA mengubah rasio, lalu letakkan di
  * tengah. Foto yang bentuknya sama dengan aslinya mengisi penuh; bentuk lain
  * di-letterbox, bukan diregangkan.
+ *
+ * ⚠️ Cabang letterbox-nya TIDAK lagi tercapai dari `buildXlsxForm`: gambar
+ * probe sudah dinormalisasi ke bentuk kotak (`photoToPngBytes` → `coverCrop`),
+ * jadi masukannya selalu sebanding dan hasilnya = kotak itu sendiri. Fungsi ini
+ * kini dipakai untuk MENEMPATKAN anchor; pemotongan rasio terjadi saat gambar
+ * digambar. Tes letterbox di `rirekisho-xlsx.test.ts` masih menjaga matematika
+ * anchor-nya, bukan perilaku render — jangan dibaca sebagai jaminan bahwa foto
+ * tidak akan pernah dipotong.
  */
 export function fitPhoto(naturalW: number, naturalH: number, box: PhotoBox): PhotoFit {
   if (!naturalW || !naturalH) return { ...box, colOff: 0, rowOff: 0 };
