@@ -31,14 +31,25 @@
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { JIPA_BASE64 } from '../templates/jipa.b64';
 import { isGood } from '../../helpers_cv';
-import { buildXlsxForm, cvFileName, kanaJp, s, type PhotoBox } from './xlsx-form';
+import { buildXlsxForm, cvFileName, kanaJp, s } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
 const DRAWING_PATH = 'xl/drawings/drawing1.xml';
 const PHOTO_PART = 'xl/media/image1.png';
 const PHOTO_REL_ID = 'rId1';
-/** Kotak pas foto B6:E13, 1024x1536 px (2:3) seperti berkas aslinya. */
-const PHOTO_BOX: PhotoBox = { cx: 1024 * 9525, cy: 1536 * 9525 };
+/**
+ * Bingkai pas foto = SEL GABUNGAN `B6:E13`, bukan ukuran berkas gambar.
+ *
+ * `ext` di aset masih 9753600 x 14630400 EMU (1024x1536 px = 10,67 x 16 inci):
+ * itu ukuran natural foto kandidat contoh di berkas sumber, dan kalau dipakai
+ * apa adanya foto menutupi hampir seluruh halaman serta tidak masuk bingkai
+ * (pemilik, 2026-10-26: "gak pass bingkai cellnya terlalu gede"). Geometri
+ * selnya 192 x 208 px (2,00 x 2,17 in) — dihitung `cellRangeEmu` saat render,
+ * jadi kalau tinggi baris template diubah, bingkainya ikut.
+ */
+export const PHOTO_RANGE = 'B6:E13';
+/** 2 px tiap sisi supaya garis bingkai sel tetap terlihat di atas foto. */
+export const PHOTO_INSET = 2 * 9525;
 
 const EDU_START = 19;
 const EDU_ROWS = 5;
@@ -329,7 +340,10 @@ export async function buildJipaWorkbook(data: CandidateData): Promise<Blob> {
     drawingPath: DRAWING_PATH,
     photoPart: PHOTO_PART,
     photoRelId: PHOTO_REL_ID,
-    photoBox: PHOTO_BOX,
+    photoRange: PHOTO_RANGE,
+    photoInset: PHOTO_INSET,
+    // Foto duduk 2 px dari sudut sel, sejajar dengan inset kanan/bawah.
+    photoOffset: { colOff: PHOTO_INSET, rowOff: PHOTO_INSET },
     values: buildValues(data),
     photoUrl: s(data.uploads.photo),
     sheetName: s(data.identitas.nama_lengkap),

@@ -16,7 +16,8 @@
  */
 import { describe, it, expect } from 'vitest';
 import { JIPA_BASE64 } from '../src/lib/cv-template-factory/templates/jipa.b64';
-import { buildJipaWorkbook, buildValues } from '../src/lib/cv-template-factory/renderers/jipa';
+import { buildJipaWorkbook, buildValues, PHOTO_RANGE } from '../src/lib/cv-template-factory/renderers/jipa';
+import { cellRangeEmu, coverCrop, patchAnchor } from '../src/lib/cv-template-factory/renderers/xlsx-form';
 import { normalizeMasterData } from '../src/lib/cv-template-factory/data';
 import type { CandidateData } from '../src/lib/cv-template-factory/types';
 
@@ -119,7 +120,7 @@ describe('jipa · geometri template', () => {
     expect(/<dimension ref="([^"]+)"/.exec(sheet)?.[1]).toBe(SOURCE.dimension);
   });
 
-  it('pas foto ada di kotak B6:E13 (rId1, 1024x1536 px)', async () => {
+  it('pas foto di-anchor di B6 (rId1) — sel gabungan B6:E13', async () => {
     const zip = await loadZip(b64ToBytes(JIPA_BASE64));
     const drawing = await part(zip, DRAWING);
 
@@ -128,7 +129,75 @@ describe('jipa · geometri template', () => {
     const block = drawing.slice(drawing.lastIndexOf('<oneCellAnchor', at), drawing.indexOf('</oneCellAnchor>', at));
     expect(block).toContain('<col>1</col>');
     expect(block).toContain('<row>5</row>');
-    expect(block).toMatch(/<ext cx="9753600" cy="14630400"\s*\/>/);
+    /* `ext` di ASET masih 9753600 x 14630400 EMU (1024x1536 px = 10,67 x 16
+       inci) — itu ukuran GAMBAR warisan berkas sumber, bukan ukuran kotak.
+       Renderer menimpanya dengan geometri sel; lihat tes di bawah. */
+  });
+
+  /**
+   * Terukur 2026-10-26: `ext` aset 9753600x14630400 EMU = 10,67 x 16 inci,
+   * sementara sel yang disediakan form hanya 192 x 208 px (2,00 x 2,17 in).
+   * Foto lama karena itu menutupi hampir seluruh halaman dan tidak masuk
+   * bingkai. Kotak yang benar = geometri `B6:E13`, bukan ukuran berkas gambar.
+   */
+  /**
+   * TERUKUR 2026-10-26 — bug yang membuat foto "terlalu gede".
+   *
+   * Drawing template JIPA menyimpan elemen TANPA prefix `xdr:`
+   * (`<oneCellAnchor><from><col>1</col>`), sedangkan `patchAnchor` dulu hanya
+   * mencari `<xdr:ext …>` / `<xdr:oneCellAnchor`. Tidak ada satu pun yang
+   * cocok, jadi fungsi itu mengembalikan XML apa adanya — anchor tidak pernah
+   * ditambal dan foto tetap 1024x1536 px (10,67 x 16 inci), berapa pun
+   * `photoBox` yang diminta. Tes ini menuntut tambalan BENAR-BENAR terjadi.
+   */
+  it('patchAnchor menambal drawing TANPA prefix xdr: (aset JIPA)', async () => {
+    const zip = await loadZip(b64ToBytes(JIPA_BASE64));
+    const drawing = await part(zip, DRAWING);
+    const out = patchAnchor(
+      drawing,
+      { cx: 188 * 9525, cy: 204 * 9525, colOff: 2 * 9525, rowOff: 2 * 9525 },
+      'rId1',
+    );
+
+    expect(out).not.toBe(drawing); // dulu no-op
+    expect(out).toContain('<ext cx="1790700" cy="1943100"/>');
+    expect(out).toContain('<colOff>19050</colOff>');
+    expect(out).toContain('<rowOff>19050</rowOff>');
+    expect(out).not.toContain('9753600');
+    // Prefix yang tidak dideklarasikan akan merusak XML: jangan disisipkan.
+    expect(out).not.toContain('xdr:');
+  });
+
+  it('bingkai pas foto = geometri sel B6:E13 (192x208 px), bukan ukuran gambar', async () => {
+    const zip = await loadZip(b64ToBytes(JIPA_BASE64));
+    const sheet = await part(zip, SHEET);
+
+    expect(PHOTO_RANGE).toBe('B6:E13');
+    expect(cellRangeEmu(sheet, PHOTO_RANGE)).toEqual({ cx: 192 * 9525, cy: 208 * 9525 });
+    // Angka warisan aset TIDAK boleh jadi kotak render.
+    expect(cellRangeEmu(sheet, PHOTO_RANGE)?.cx).not.toBe(9753600);
+  });
+
+  it('foto di-crop, bukan diregangkan, saat rasio foto != rasio bingkai', () => {
+    // Foto 2:3 (1024x1536) ke bingkai 188x204: lebar dipakai penuh, tinggi
+    // dipotong di tengah. Sumber crop HARUS sebanding dengan kotak — itulah
+    // yang membuat `drawImage` tidak meregangkan gambar.
+    const crop = coverCrop(1024, 1536, 188, 204);
+    expect(crop.sx).toBe(0);
+    expect(crop.sw).toBe(1024);
+    expect(crop.sh).toBeCloseTo((204 / 188) * 1024, 5);
+    expect(crop.sy).toBeCloseTo((1536 - crop.sh) / 2, 5);
+    expect(crop.sw / crop.sh).toBeCloseTo(188 / 204, 5);
+    // Kalau diregangkan, tinggi yang dipakai akan 1536 (seluruh foto).
+    expect(crop.sh).toBeLessThan(1536);
+
+    // Foto yang lebih lebar dari bingkai dipotong di KIRI-KANAN, bukan dipaksa muat.
+    const wide = coverCrop(1600, 1200, 188, 204);
+    expect(wide.sy).toBe(0);
+    expect(wide.sh).toBe(1200);
+    expect(wide.sw).toBeLessThan(1600);
+    expect(wide.sx).toBeCloseTo((1600 - wide.sw) / 2, 5);
+    expect(wide.sw / wide.sh).toBeCloseTo(188 / 204, 5);
   });
 
   it('nilai contoh (RIYAN SAPUTRA) tidak ikut jadi template', async () => {

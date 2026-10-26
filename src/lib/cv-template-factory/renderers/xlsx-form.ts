@@ -175,6 +175,118 @@ export interface PhotoFit extends PhotoBox {
 }
 
 /**
+ * Lebar kolom Excel (atribut `width`) → piksel.
+ *
+ * Rumus Excel untuk Calibri 11 (maximum digit width 7 px):
+ *   px = trunc(((256*w + trunc(128/7)) / 256) * 7)
+ *
+ * Diverifikasi terhadap berkas pemilik 2026-10-26: kotak pas foto form KINKI
+ * (`W6:AD17`) terukur 176 x 240 px, dan foto di dalamnya 167 x 225 px — 95 %
+ * kotak, persis seperti berkas aslinya. Model yang salah (w*7+5) memberi 216 px
+ * dan membuat foto itu hanya 77 % kotaknya, jadi rumus ini yang dipakai.
+ */
+export function colPx(width: number): number {
+  return Math.trunc(((256 * width + 18) / 256) * 7);
+}
+
+/** `B6` / `AA62` → nomor kolom 1-based. */
+function colNumber(letters: string): number {
+  let n = 0;
+  for (const ch of letters) n = n * 26 + (ch.charCodeAt(0) - 64);
+  return n;
+}
+
+function attrOf(tag: string, name: string): string | null {
+  const m = new RegExp(`\\b${name}="([^"]*)"`).exec(tag);
+  return m ? m[1] : null;
+}
+
+/**
+ * Ukuran satu rentang sel (mis. `B6:E13`) dalam EMU, dihitung dari geometri
+ * sheet — `<col width>` dan `<row ht>`.
+ *
+ * KENAPA ADA
+ * ----------
+ * Kotak pas foto HARUS berasal dari sel yang disediakan form, bukan dari
+ * ukuran berkas gambar. Template JIPA membawa `ext` warisan 1024x1536 px
+ * (10,67 x 16 inci) karena berkas sumbernya menyimpan foto pada ukuran
+ * naturalnya; memakai angka itu membuat foto menutupi seluruh halaman dan
+ * tidak masuk bingkai sel (pemilik, 2026-10-26: "gak pass bingkai cellnya
+ * terlalu gede").
+ *
+ * `inset` (EMU) menyusutkan kotak dari keempat sisi supaya garis bingkai sel
+ * tetap terlihat; geseran anchor-nya diurus `photoOffset`.
+ */
+export function cellRangeEmu(xml: string, range: string, inset = 0): PhotoBox | null {
+  const m = /^([A-Z]{1,3})(\d+):([A-Z]{1,3})(\d+)$/.exec(range.trim().toUpperCase());
+  if (!m) return null;
+  const c1 = colNumber(m[1]);
+  const r1 = Number(m[2]);
+  const c2 = colNumber(m[3]);
+  const r2 = Number(m[4]);
+  if (!c1 || !c2 || !r1 || !r2 || c2 < c1 || r2 < r1) return null;
+
+  const widths = new Map<number, number>();
+  for (const tag of xml.match(/<col\b[^>]*>/g) ?? []) {
+    const min = Number(attrOf(tag, 'min'));
+    const max = Number(attrOf(tag, 'max'));
+    const w = Number(attrOf(tag, 'width'));
+    if (!min || !max || !Number.isFinite(w)) continue;
+    for (let i = min; i <= max; i++) widths.set(i, w);
+  }
+  const heights = new Map<number, number>();
+  for (const tag of xml.match(/<row\b[^>]*>/g) ?? []) {
+    const r = Number(attrOf(tag, 'r'));
+    if (!r) continue;
+    const ht = Number(attrOf(tag, 'ht'));
+    heights.set(r, Number.isFinite(ht) && ht > 0 ? ht : 0);
+  }
+
+  const fmt = /<sheetFormatPr\b[^>]*>/.exec(xml)?.[0] ?? '';
+  const defW = Number(attrOf(fmt, 'defaultColWidth') ?? attrOf(fmt, 'baseColWidth') ?? 8.43);
+  const defH = Number(attrOf(fmt, 'defaultRowHeight') ?? 15);
+
+  let wPx = 0;
+  for (let i = c1; i <= c2; i++) wPx += colPx(widths.get(i) ?? defW);
+  let hPx = 0;
+  for (let i = r1; i <= r2; i++) {
+    const ht = heights.get(i) || defH;
+    hPx += Math.round((ht * 96) / 72);
+  }
+
+  const pad = Math.round(inset / 9525);
+  return {
+    cx: Math.max(1, wPx - pad * 2) * 9525,
+    cy: Math.max(1, hPx - pad * 2) * 9525,
+  };
+}
+
+/**
+ * Sumber crop untuk MENGISI kotak tanpa mengubah rasio (cover), dipusatkan.
+ *
+ * Sebelum ini foto digambar dengan `drawImage(bmp, 0, 0, w, h)` — yaitu
+ * diregangkan ke rasio kotak. Untuk bingkai yang rasionya mirip foto, bedanya
+ * tak terlihat; untuk JIPA (foto 2:3, bingkai 1,08) wajahnya jadi gepeng.
+ * `fitPhoto` di bawah sudah menghitung letterbox, tetapi hasilnya dibatalkan
+ * oleh peregangan itu — jadi crop-nya dilakukan di sini, dan `fitPhoto` tetap
+ * dipakai untuk menempatkan anchor.
+ */
+export function coverCrop(
+  naturalW: number,
+  naturalH: number,
+  boxW: number,
+  boxH: number,
+): { sx: number; sy: number; sw: number; sh: number } {
+  if (!naturalW || !naturalH || !boxW || !boxH) {
+    return { sx: 0, sy: 0, sw: naturalW, sh: naturalH };
+  }
+  const scale = Math.max(boxW / naturalW, boxH / naturalH);
+  const sw = Math.min(naturalW, boxW / scale);
+  const sh = Math.min(naturalH, boxH / scale);
+  return { sx: (naturalW - sw) / 2, sy: (naturalH - sh) / 2, sw, sh };
+}
+
+/**
  * Muat foto ke dalam kotak anchor TANPA mengubah rasio, lalu letakkan di
  * tengah. Foto yang bentuknya sama dengan aslinya mengisi penuh; bentuk lain
  * di-letterbox, bukan diregangkan.
@@ -192,13 +304,37 @@ export function fitPhoto(naturalW: number, naturalH: number, box: PhotoBox): Pho
   };
 }
 
-/** Tambal satu blok anchor: ukuran + offset. */
+/**
+ * Tambal satu blok anchor: ukuran + offset.
+ *
+ * Prefix `xdr:` dibuat OPSIONAL. Template rirekisho/FIRMA memakai
+ * `<xdr:oneCellAnchor>`, sedangkan template JIPA menyimpan drawing dengan
+ * namespace default sehingga elemennya TANPA prefix (`<oneCellAnchor><from>`).
+ * Versi pertama fungsi ini hanya mengenal bentuk ber-prefix, jadi untuk JIPA
+ * tidak ada satu pun pola yang cocok, XML dikembalikan apa adanya, dan anchor
+ * tidak pernah ditambal — foto tetap 1024x1536 px (10,67 x 16 inci) berapa pun
+ * kotak yang diminta. Terukur 2026-10-26 di `e2e/jipa.test.ts`.
+ *
+ * Prefix aslinya DIPERTAHANKAN saat menulis: menyisipkan `xdr:` ke dokumen
+ * yang tidak mendeklarasikannya menghasilkan XML tidak sah.
+ */
+const P = '(?:xdr:)?';
+
 function patchOneAnchor(block: string, fit: PhotoFit): string {
   return block
-    .replace(/<xdr:ext cx="\d+" cy="\d+"\/>/, `<xdr:ext cx="${fit.cx}" cy="${fit.cy}"/>`)
-    .replace(/(<xdr:from><xdr:col>\d+<\/xdr:col><xdr:colOff>)\d+(<\/xdr:colOff>)/, `$1${fit.colOff}$2`)
-    .replace(/(<xdr:row>\d+<\/xdr:row><xdr:rowOff>)\d+(<\/xdr:rowOff>)/, `$1${fit.rowOff}$2`);
+    .replace(new RegExp(`<(${P})ext cx="\\d+" cy="\\d+"\\s*/>`), (_m, p: string) => `<${p}ext cx="${fit.cx}" cy="${fit.cy}"/>`)
+    .replace(
+      new RegExp(`(<${P}from><${P}col>\\d+</${P}col><${P}colOff>)\\d+(</${P}colOff>)`),
+      `$1${fit.colOff}$2`,
+    )
+    .replace(
+      new RegExp(`(<${P}row>\\d+</${P}row><${P}rowOff>)\\d+(</${P}rowOff>)`),
+      `$1${fit.rowOff}$2`,
+    );
 }
+
+/** Tag anchor yang mungkin dipakai template, dengan atau tanpa prefix. */
+const ANCHOR_TAGS = ['oneCellAnchor', 'twoCellAnchor'] as const;
 
 /**
  * Patch anchor gambar pas foto.
@@ -212,16 +348,18 @@ export function patchAnchor(xml: string, fit: PhotoFit, relId?: string): string 
   if (!relId) return patchOneAnchor(xml, fit);
   const at = xml.indexOf(`r:embed="${relId}"`);
   if (at < 0) return xml;
-  const open = Math.max(
-    xml.lastIndexOf('<xdr:oneCellAnchor', at),
-    xml.lastIndexOf('<xdr:twoCellAnchor', at),
-  );
-  const closes = [
-    xml.indexOf('</xdr:oneCellAnchor>', at),
-    xml.indexOf('</xdr:twoCellAnchor>', at),
-  ].filter((n) => n > 0);
-  if (open < 0 || !closes.length) return xml;
-  const close = Math.min(...closes);
+  let open = -1;
+  for (const tag of ANCHOR_TAGS) {
+    open = Math.max(open, xml.lastIndexOf(`<xdr:${tag}`, at), xml.lastIndexOf(`<${tag}`, at));
+  }
+  if (open < 0) return xml;
+  let close = -1;
+  for (const tag of ANCHOR_TAGS) {
+    for (const c of [xml.indexOf(`</xdr:${tag}>`, at), xml.indexOf(`</${tag}>`, at)]) {
+      if (c > 0 && (close < 0 || c < close)) close = c;
+    }
+  }
+  if (close < 0 || close < open) return xml;
   return xml.slice(0, open) + patchOneAnchor(xml.slice(open, close), fit) + xml.slice(close);
 }
 
@@ -243,7 +381,9 @@ export async function photoToPngBytes(
     canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
-    ctx.drawImage(bmp, 0, 0, w, h);
+    // Cover: isi kotak, buang lebihnya — JANGAN diregangkan ke rasio kotak.
+    const crop = coverCrop(bmp.width, bmp.height, w, h);
+    ctx.drawImage(bmp, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, w, h);
     const out = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
     if (!out) return null;
     return new Uint8Array(await out.arrayBuffer());
@@ -267,6 +407,16 @@ export interface XlsxFormSpec {
   photoRelId?: string;
   /** Kotak pas foto di template (EMU). */
   photoBox?: PhotoBox;
+  /**
+   * Rentang sel yang menjadi bingkai pas foto (mis. `B6:E13`).
+   *
+   * Kalau diisi, kotaknya DIHITUNG dari geometri sheet dan `photoBox`
+   * diabaikan. Ini bentuk yang benar untuk template yang `ext`-nya warisan
+   * ukuran gambar (JIPA): bingkainya sel, bukan berkas foto.
+   */
+  photoRange?: string;
+  /** Susutkan bingkai `photoRange` sekian EMU dari tiap sisi (garis sel tetap terlihat). */
+  photoInset?: number;
   /**
    * Geseran tetap untuk pas foto, di luar pemusatan `fitPhoto`.
    *
@@ -346,7 +496,11 @@ export async function buildXlsxForm(spec: XlsxFormSpec): Promise<Blob> {
     }
   }
 
-  const { drawingPath, photoPart, photoRelId, photoBox, photoOffset, photoUrl } = spec;
+  const { drawingPath, photoPart, photoRelId, photoRange, photoInset, photoOffset, photoUrl } = spec;
+  // Bingkai dari sel menang atas `photoBox`: geometri sheet adalah kebenaran,
+  // ukuran gambar bukan. `sheet` di sini sudah ditambal nilainya, tetapi
+  // `<cols>`/`<row>` tidak pernah ikut berubah.
+  const photoBox = spec.photoBox ?? (photoRange ? cellRangeEmu(sheet, photoRange, photoInset ?? 0) ?? undefined : undefined);
   if (isGood(photoUrl) && photoPart && photoBox) {
     const probe = await photoToPngBytes(s(photoUrl), photoBox).catch(() => null);
     if (probe) {
