@@ -31,12 +31,16 @@
  * formulir belum selesai. Teksnya dibaca dari `data.wawancara`, bukan
  * `data.raw` — lihat catatan di `buildValues`.
  *
- * SEL YANG SENGAJA TIDAK DIISI (tidak ada padanannya di database)
- * ---------------------------------------------------------------
- * `O9` jarak & lama penerbangan, `J19` kota sekolah, `M26` 業種,
- * `Q45` 計算テスト, `X45` 目標貯金, `T37/T39` 学習期間 & 学習状況,
- * `Q41` 英語レベル, `X41` 集団生活年数, `X47` 就業希望年数,
- * `AB51/AB52` 体力試験. Semuanya dibiarkan kosong — bukan diisi tebakan.
+ * SEL YANG TIDAK PUNYA SUMBER DI DATABASE
+ * ----------------------------------------
+ * `J19` kota sekolah, `M26` 業種, `Z26` 備考, `Q45` 計算テスト,
+ * `X45` 目標貯金, `T37/T39` 学習期間 & 学習状況, `Q41` 英語レベル,
+ * `X41` 集団生活年数, `X47` 就業希望年数, `AB51/AB52` 体力試験 — dibiarkan
+ * kosong, bukan diisi tebakan.
+ *
+ * `O9` (ジャカルタから…㎞ / 飛行機で…), `I4` (第…課中) dan `M4` (…月取得予定)
+ * DIBIARKAN apa adanya dari template: tidak ada kolomnya, dan pemilik lebih suka
+ * placeholder yang bisa diisi tangan daripada sel kosong (2026-10-26).
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { KINKI_BASE64 } from '../templates/kinki.b64';
@@ -135,16 +139,16 @@ function adaJp(v: unknown): string {
 }
 
 /**
- * 視力. Form memakai `1.0` untuk mata normal; database menyimpan `NORMAL`.
- * Kosong TIDAK diisi `1.0` — itu klaim tentang mata kandidat, bukan bawaan
- * form seperti pada form Firma.
+ * 視力. Form memakai `1.0` untuk mata normal, dan pemilik selalu mengisinya
+ * begitu ("mata normal itu standart 1,0 sama kayak template kecuali minus dll").
+ * Database yang kosong karena itu memakai `1.0`, bukan sel kosong.
  */
 function mataJp(v: unknown): string {
   const t = bersih(v).toUpperCase();
-  if (!isGood(t)) return '';
+  if (!isGood(t)) return '1.0';
   if (t.includes('NORMAL')) return '1.0';
   const m = /(\d+([.,]\d+)?)/.exec(t);
-  return m ? m[1].replace(',', '.') : '';
+  return m ? m[1].replace(',', '.') : '1.0';
 }
 
 /** 日本語力 — dropdown: N5未習熟/N5レベル/N5合格/N4レベル/N4合格/N3合格/N2合格. */
@@ -345,9 +349,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
     E7: kanaJp(id.katakana),
     S7: genderJp(id.gender),
     E9: hpLokal(id.hp),
-    // Jarak & lama penerbangan tidak ada di database — jangan biarkan `***`
-    // tercetak di CV yang dikirim.
-    O9: '',
+    // `O9` (ジャカルタから…㎞ / 飛行機で…) SENGAJA tidak ditulis: jarak & lama
+    // penerbangan tidak ada di database, dan menghapusnya membuat kotaknya
+    // kosong sama sekali — pemilik lebih suka teks template tetap ada untuk
+    // diisi tangan.
     E10: asalJp(bersih(id.alamat_jp), bersih(id.tempat_lahir_jp)),
     E11: nikahJp(id.status_nikah),
     L11: angka(data.fisik.tb),
@@ -364,11 +369,13 @@ export function buildValues(data: CandidateData): Record<string, string> {
     E17: hobi,
     L17: adaJp(data.medis.buta_warna),
     M3: simJp(id.sim),
-    I3: jepangLevel(data.sertifikasi.jft ?? id.jft),
-    // Placeholder template yang tidak punya sumber data.
-    I4: '',
-    M4: '',
+    // `I4` (第…課中) dan `M4` (…月取得予定) dibiarkan seperti template: tidak
+    // ada kolomnya, dan placeholder-nya lebih berguna daripada sel kosong.
   };
+  // `I3` hanya ditimpa kalau database benar-benar punya levelnya; kalau tidak,
+  // teks template (`N5レベル`) yang dipakai.
+  const levelJp = jepangLevel(data.sertifikasi.jft ?? id.jft);
+  if (levelJp) cells.I3 = levelJp;
 
   /* ── pendidikan: baris 19 = SMA/SMK, baris 21 = 日本語学校 ──────────────── */
   const edu = data.pendidikan as Record<string, unknown>[];
@@ -376,6 +383,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
   const idxLpk = edu.findIndex((p) => /日本語|BAHASA JEPANG/i.test(s(p.tingkat)));
   const sma = (idxSma >= 0 ? edu[idxSma] : edu[edu.length - 1]) ?? {};
   const sekolah = bersih(sma.sekolah ?? sma.nama_sekolah ?? sma.sekolah_id);
+  const jurusan = bersih(sma.jurusan ?? sma.jurusan_id);
   if (isGood(sekolah)) {
     cells.A19 = '高校';
     cells.D19 = ym(sma.masuk ?? sma.tahun_masuk);
@@ -386,25 +394,35 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells.O19 = sekolah;
     // Strip atas mencetak `専攻` dengan `=W19`. Sel kosong membuatnya `0`, jadi
     // kolom ini memakai `-` seperti sel lain yang memang belum ada isinya.
-    cells.W19 = bersih(sma.jurusan ?? sma.jurusan_id) || '-';
+    cells.W19 = jurusan || '-';
   } else {
     for (const c of ['D19', 'E20', 'H19', 'J19', 'M19', 'O19']) cells[c] = '';
     cells.W19 = '-';
   }
+  let sekolahLpk = '';
   if (idxLpk >= 0) {
     const lpk = edu[idxLpk];
+    sekolahLpk = bersih(lpk.sekolah ?? lpk.nama_sekolah ?? lpk.sekolah_id);
     cells.A21 = '日本語学校';
     cells.D21 = ym(lpk.masuk ?? lpk.tahun_masuk);
     cells.E22 = isGood(s(lpk.lulus ?? lpk.tahun_lulus)) ? ym(lpk.lulus ?? lpk.tahun_lulus) : '今まで';
     cells.H21 = durasi(lpk.masuk ?? lpk.tahun_masuk, lpk.lulus ?? lpk.tahun_lulus);
-    cells.M21 = kouritsu(bersih(lpk.sekolah ?? lpk.nama_sekolah));
-    cells.O21 = bersih(lpk.sekolah ?? lpk.nama_sekolah ?? lpk.sekolah_id);
+    cells.M21 = kouritsu(sekolahLpk);
+    cells.O21 = sekolahLpk;
     cells.W21 = '日本語';
   } else {
     // `D22` juga dibersihkan: tanpa baris 日本語学校, tanda `～` bawaan template
     // menggantung sendirian di kolom periode.
     for (const c of ['A21', 'D21', 'D22', 'E22', 'H21', 'J21', 'M21', 'O21', 'W21']) cells[c] = '';
   }
+
+  /* ── 具体的な修学内容: dirangkai dari baris 学歴 yang sudah terisi ───────── */
+  const isiSekolah: string[] = [];
+  if (isGood(sekolah)) {
+    isiSekolah.push(`学校では${jurusan ? `${jurusan}を` : ''}学びました。`);
+  }
+  if (isGood(sekolahLpk)) isiSekolah.push(`現在は${sekolahLpk}で日本語を勉強しています。`);
+  cells.E23 = isiSekolah.join(' ');
 
   /* ── pekerjaan: tiga blok x dua baris ──────────────────────────────────── */
   const kerja = data.pekerjaan as Record<string, unknown>[];
@@ -420,13 +438,31 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`H${top}`] = durasi(masuk, keluar);
     cells[`M${top}`] = '';
     cells[`Q${top}`] = bersih(p.jabatan ?? p.jabatan_id);
-    cells[`W${top}`] = manYen(p.gaji ?? p.penghasilan);
+    const gaji = manYen(p.gaji ?? p.penghasilan);
+    cells[`W${top}`] = gaji;
+    // Label `万円` duduk SEBARIS dengan angkanya (Y26/Y28/Y30). Bawaan template
+    // menaruhnya di baris bawah blok, sehingga `1.8` dan `万円` tercetak di dua
+    // baris terpisah. Pemilik menulisnya di baris atas.
+    cells[`Y${top}`] = gaji ? '万円' : '';
+    cells[`Y${bottom}`] = '';
     cells[`Z${top}`] = '';
   }
   if (!kerja.length) {
     // `年月日` dan `～` bawaan template akan tercetak apa adanya.
     for (const c of ['D26', 'E27', 'D27']) cells[c] = '';
   }
+
+  /* ── 具体的な仕事内容: dirangkai dari blok 職歴 yang terisi ──────────────── */
+  cells.E32 = kerja
+    .slice(0, JOB_BLOCKS)
+    .map((p) => {
+      const pt = bersih(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
+      if (!isGood(pt)) return '';
+      const jb = bersih(p.jabatan ?? p.jabatan_id);
+      return jb ? `${pt}では${jb}として勤務しました。` : `${pt}で勤務しました。`;
+    })
+    .filter(Boolean)
+    .join(' ');
 
   /* ── できる作業 ────────────────────────────────────────────────────────── */
   const boxes = ['A35', 'E34', 'E35', 'J34', 'J35', 'M34', 'M35', 'P34', 'P35', 'S34', 'S35', 'W34'];
