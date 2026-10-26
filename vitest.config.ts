@@ -232,6 +232,11 @@ export default defineConfig({
             // workbook hasil render dengan SheetJS, tanpa DOM. Tanpa baris ini
             // ia jalan DUA KALI (R13f-bis).
             'e2e/cv-preview.test.ts',
+            // Ditambahkan 2026-10-26. Template CV "Form KINKI": membaca zip
+            // template (jszip) + menambal XML, tanpa DOM. Tinggal di e2e/ HANYA
+            // karena counter beku `indexer` menghitung `src/**`; tanpa baris ini
+            // ia jalan DUA KALI (R13f-bis).
+            'e2e/kinki.test.ts',
           ],
         },
       },

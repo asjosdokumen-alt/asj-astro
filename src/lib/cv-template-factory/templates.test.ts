@@ -53,17 +53,25 @@ const mockContext: RenderContext = {
 };
 
 describe('CV Template Factory', () => {
-  it('factory has 6 registered templates', () => {
+  it('factory has 7 registered templates', () => {
     const list = cvFactory.list();
-    expect(list.length).toBe(6);
+    expect(list.length).toBe(7);
   });
 
-  it('only the two real Excel forms are offered in the picker', () => {
+  it('only the three real Excel forms are offered in the picker', () => {
     // Pemilik 2026-10-26: "lebih sederhanakan saja". Empat template lama tetap
     // TERDAFTAR (dan tetap diuji di bawah supaya tidak diam-diam rusak), tapi
-    // tidak lagi ditawarkan: hasilnya bukan CV yang dicetak.
+    // tidak lagi ditawarkan: hasilnya bukan CV yang dicetak. Form KINKI
+    // menyusul di hari yang sama sebagai form ketiga.
     const listed = cvFactory.list().filter((t) => t.listed !== false).map((t) => t.id);
-    expect(listed).toEqual(['rirekisho-xlsx', 'rirekisho-firma']);
+    expect(listed).toEqual(['rirekisho-xlsx', 'rirekisho-firma', 'kinki']);
+  });
+
+  it('includes the KINKI form as the third real xlsx template', () => {
+    const t = cvFactory.get('kinki');
+    expect(t).toBeTruthy();
+    expect(t?.type).toBe('xlsx');
+    expect(t?.category).toBe('form');
   });
 
   it('includes the Firma form as the second real xlsx template', () => {

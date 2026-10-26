@@ -71,8 +71,23 @@ export function setCell(xml: string, addr: string, value: string): string {
   return xml.slice(0, m.index) + cell + xml.slice(m.index + m[0].length);
 }
 
-/* ── format nilai yang dipakai bersama dua form ─────────────────────────────── */
+/**
+ * Tulis ANGKA ke satu sel, pertahankan indeks style sel itu.
+ *
+ * Dipakai untuk sel yang dihitung rumus lain di sebelahnya (form KINKI: `E8`
+ * tanggal lahir → `S8` = `DATEDIF`). Menulisnya sebagai teks membuat rumusnya
+ * `#VALUE!`, jadi nilainya harus `<v>` biasa tanpa `t=`.
+ */
+export function setCellNumber(xml: string, addr: string, value: number): string {
+  const re = new RegExp(`<c r="${addr}"([^>]*?)(?:/>|>[\\s\\S]*?</c>)`);
+  const m = re.exec(xml);
+  if (!m) return xml;
+  const attrs = m[1].replace(/\s+t="[^"]*"/g, '');
+  const cell = `<c r="${addr}"${attrs}><v>${value}</v></c>`;
+  return xml.slice(0, m.index) + cell + xml.slice(m.index + m[0].length);
+}
 
+/* ── format nilai yang dipakai bersama dua form ─────────────────────────────── */
 /**
  * `生年月日` ditampilkan lengkap sampai HARI (`2005年11月2日`), sedangkan kolom
  * 期間 berhenti di bulan. Nilai ditulis sebagai teks, jadi number format sel
@@ -107,6 +122,25 @@ export function yearMonth(v: unknown): { y: string; m: string } {
 export function currency(v: unknown): string {
   const t = s(v).replace(/[^\d]/g, '');
   return t === '' ? '' : `¥   ${t}`;
+}
+
+/**
+ * Tanggal → nomor seri Excel (1899-12-30 = 0), BUKAN teks.
+ *
+ * Form KINKI menghitung umur dengan `DATEDIF(E8,TODAY(),"Y")` di sel sebelah.
+ * Kalau `E8` ditulis sebagai teks, rumus itu menghasilkan `#VALUE!` dan CV
+ * mencetak error di kolom 年齢 — jadi sel tanggal harus tetap bertipe angka
+ * dan membiarkan number format template yang memformatnya.
+ */
+export function excelSerial(v: unknown): number | null {
+  const raw = s(v).trim();
+  if (!isGood(raw)) return null;
+  const m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/.exec(raw);
+  const dt = m
+    ? new Date(Date.UTC(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10)))
+    : new Date(raw);
+  if (Number.isNaN(dt.getTime())) return null;
+  return Math.round((dt.getTime() - Date.UTC(1899, 11, 30)) / 86400000);
 }
 
 /* ── pas foto ──────────────────────────────────────────────────────────────── */
@@ -214,8 +248,18 @@ export interface XlsxFormSpec {
   photoRelId?: string;
   /** Kotak pas foto di template (EMU). */
   photoBox?: PhotoBox;
+  /**
+   * Geseran tetap untuk pas foto, di luar pemusatan `fitPhoto`.
+   *
+   * Form KINKI menaruh fotonya 76200/38100 EMU dari sudut sel, bukan tepat di
+   * sudut. Tanpa ini `fitPhoto` memusatkan foto ke (0,0) dan hasilnya menempel
+   * garis kiri — beda ~2 mm dari berkas pemilik.
+   */
+  photoOffset?: { colOff: number; rowOff: number };
   /** sel → nilai. Sel yang tidak ada di sini dibiarkan seperti template. */
   values: Record<string, string>;
+  /** sel → ANGKA (bukan teks). Untuk sel yang dihitung rumus lain. */
+  numbers?: Record<string, number>;
   /** URL foto kandidat; kosong = lubang foto dibiarkan kosong. */
   photoUrl?: string;
   /**
@@ -265,6 +309,9 @@ export async function buildXlsxForm(spec: XlsxFormSpec): Promise<Blob> {
   for (const [addr, value] of Object.entries(spec.values)) {
     sheet = setCell(sheet, addr, value);
   }
+  for (const [addr, value] of Object.entries(spec.numbers ?? {})) {
+    sheet = setCellNumber(sheet, addr, value);
+  }
   zip.file(spec.sheetPath, sheet);
 
   // Nama tab: satu atribut di `workbook.xml`. Dibiarkan kalau tidak diminta,
@@ -280,7 +327,7 @@ export async function buildXlsxForm(spec: XlsxFormSpec): Promise<Blob> {
     }
   }
 
-  const { drawingPath, photoPart, photoRelId, photoBox, photoUrl } = spec;
+  const { drawingPath, photoPart, photoRelId, photoBox, photoOffset, photoUrl } = spec;
   if (isGood(photoUrl) && photoPart && photoBox) {
     const probe = await photoToPngBytes(s(photoUrl), photoBox).catch(() => null);
     if (probe) {
@@ -288,6 +335,10 @@ export async function buildXlsxForm(spec: XlsxFormSpec): Promise<Blob> {
       const bmp = await createImageBitmap(new Blob([probe], { type: 'image/png' })).catch(() => null);
       if (bmp) {
         const fit = fitPhoto(bmp.width, bmp.height, photoBox);
+        if (photoOffset) {
+          fit.colOff += photoOffset.colOff;
+          fit.rowOff += photoOffset.rowOff;
+        }
         const bytes = await photoToPngBytes(s(photoUrl), fit);
         if (bytes) {
           zip.file(photoPart, bytes);

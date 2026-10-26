@@ -6,6 +6,7 @@ import docxTemplate from './renderers/docx';
 import pdfTemplate from './renderers/pdf';
 import rirekishoXlsxTemplate from './renderers/rirekisho-xlsx';
 import rirekishoFirmaTemplate from './renderers/rirekisho-firma';
+import kinkiTemplate from './renderers/kinki';
 
 const rirekishoA4Template: CvTemplate = {
   id: 'rirekisho-a4',
@@ -40,6 +41,11 @@ cvFactory.register(rirekishoXlsxTemplate);
 // Layout, merge, dan tinggi barisnya berbeda dari form ASJ, jadi ia template
 // tersendiri — bukan pengganti. Mesin XML-nya sama (`renderers/xlsx-form.ts`).
 cvFactory.register(rirekishoFirmaTemplate);
+// Form ketiga, dari `F:/1. MASTER CV MAGANG KINKI.xlsx` (2026-10-26). Ini form
+// klien KINKI: 学歴 dua baris, 職歴 tiga blok, 家族構成 lima baris, ditambah
+// できる作業 dan 性格診断テスト (MBTI). Tipenya TIDAK dibaca dari database —
+// tidak ada kolomnya — melainkan disimpulkan `mbti.ts` dari kalimat kandidat.
+cvFactory.register(kinkiTemplate);
 
 export { cvFactory };
 

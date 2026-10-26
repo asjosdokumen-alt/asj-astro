@@ -1,0 +1,487 @@
+/**
+ * kinki.ts — form CV magang "KINKI" sebagai .xlsx, diisi dari database.
+ *
+ * ASAL BERKAS
+ * -----------
+ * `F:/1. MASTER CV MAGANG KINKI.xlsx` (33,9 MB, 16 sheet). Sheet yang dipakai
+ * hanya `BLANK CV`; lima belas sheet lain berisi CV kandidat LAIN dan dibuang
+ * saat aset dibuat (lihat `templates/kinki.b64.ts`). Form ini yang dipakai
+ * untuk klien KINKI, dan berbeda dari dua form sebelumnya: 学歴 hanya DUA baris,
+ * 職歴 tiga blok, 家族構成 lima baris, ditambah blok できる作業 dan
+ * 性格診断テスト (MBTI).
+ *
+ * PETA SEL
+ * --------
+ *   6-17   identitas (nama, kana, lahir, hp, fisik, kebiasaan)
+ *   19-23  pendidikan: baris 19 = SMA/SMK, baris 21 = 日本語学校
+ *   26-31  tiga blok kerja (2 baris per pekerjaan)
+ *   34-35  できる作業 — 13 kotak centang
+ *   37-41  keluarga + kolom 緊急連絡先 di X37/Z37
+ *   44-48  長所 / 短所 / 志望動機 / 将来の夢
+ *   47-52  MBTI: Q47 nama tipe, U48..U52 lima dropdown
+ *   3      kotak PR di kanan atas
+ *
+ * MBTI
+ * ----
+ * Tidak ada kolomnya di database, dan pemilik menerkanya dari kalimat kandidat
+ * ("kelebihan kekurangan impian dll"). Karena itu tipenya disimpulkan
+ * `inferMbti()` — deterministik dan bisa diuji — bukan dipanggil ke model
+ * bahasa. Kalau kandidat belum punya satu pun teks wawancara, sel MBTI
+ * DIKOSONGKAN berikut rumusnya: `A50 = =Q47` dan `E50 = INDEX/MATCH` akan
+ * mencetak `0` / `#N/A` kalau `Q47` kosong.
+ *
+ * SEL YANG SENGAJA TIDAK DIISI (tidak ada padanannya di database)
+ * ---------------------------------------------------------------
+ * `O9` jarak & lama penerbangan, `J19` kota sekolah, `M26` 業種,
+ * `Q45` 計算テスト, `X45` 目標貯金, `T37/T39` 学習期間 & 学習状況,
+ * `Q41` 英語レベル, `X41` 集団生活年数, `X47` 就業希望年数,
+ * `AB51/AB52` 体力試験. Semuanya dibiarkan kosong — bukan diisi tebakan.
+ */
+import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
+import { KINKI_BASE64 } from '../templates/kinki.b64';
+import { isGood } from '../../helpers_cv';
+import { inferMbti } from '../mbti';
+import { buildXlsxForm, cvFileName, excelSerial, s, yearMonth, type PhotoBox } from './xlsx-form';
+
+const SHEET_PATH = 'xl/worksheets/sheet1.xml';
+const DRAWING_PATH = 'xl/drawings/drawing1.xml';
+/** Placeholder transparan yang dibuat saat aset dikosongkan. */
+const PHOTO_PART = 'xl/media/image2.png';
+const PHOTO_REL_ID = 'rId2';
+
+/** Kotak pas foto, disalin dari berkas pemilik (kolom W baris 6). */
+const PHOTO_BOX: PhotoBox = { cx: 1590675, cy: 2143125 };
+/** Foto pemilik tidak menempel sudut sel: 76200/38100 EMU dari kiri/atas. */
+const PHOTO_OFFSET = { colOff: 76200, rowOff: 38100 };
+
+const JOB_START = 26;
+const JOB_BLOCKS = 3;
+const FAM_START = 37;
+const FAM_ROWS = 5;
+
+const AGAMA_JP: Record<string, string> = {
+  ISLAM: 'イスラム教', KRISTEN: 'キリスト教', KATOLIK: 'カトリック',
+  HINDU: 'ヒンドゥー教', BUDHA: '仏教', BUDDHA: '仏教', KONGHUCU: '儒教',
+};
+
+/** `-` di database berarti "belum ada", bukan tanda minus yang dicetak. */
+function bersih(v: unknown): string {
+  const t = s(v).trim();
+  return isGood(t) ? t : '';
+}
+
+function angka(v: unknown): string {
+  return bersih(v).replace(/[^\d]/g, '');
+}
+
+/** `6281553851057` → `081553851057` (bentuk yang dipakai form). */
+function hpLokal(v: unknown): string {
+  const t = angka(v);
+  if (!t) return '';
+  return t.startsWith('62') ? `0${t.slice(2)}` : t;
+}
+
+function genderJp(v: unknown): string {
+  const t = s(v).toUpperCase();
+  if (t.includes('PEREMPUAN') || t.includes('WANITA')) return '女';
+  if (t.includes('LAKI') || t.includes('PRIA')) return '男';
+  return '';
+}
+
+function nikahJp(v: unknown): string {
+  const t = s(v).toUpperCase();
+  if (!isGood(t)) return '';
+  if (t.includes('BELUM') || t.includes('SINGLE')) return '未婚';
+  if (t.includes('CERAI') || t.includes('DUDA') || t.includes('JANDA')) return '離婚';
+  if (t.includes('MENIKAH') || t.includes('KAWIN')) return '既婚';
+  return '';
+}
+
+/** `B-` → `B`; dropdown form hanya A/B/O/AB/不明. */
+function darahJp(v: unknown): string {
+  const t = s(v).trim().toUpperCase().replace(/型|[+-]/g, '');
+  return /^(A|B|O|AB)$/.test(t) ? t : '不明';
+}
+
+/** 飲酒 — dropdown: 多飲/中飲/小飲/無飲. */
+function minumJp(v: unknown): string {
+  const t = s(v).toUpperCase();
+  if (!isGood(t) || /^(TIDAK|NO|NONE|-|無|0)$/.test(t)) return '無飲';
+  if (t.includes('BANYAK') || t.includes('多')) return '多飲';
+  if (t.includes('SEDANG') || t.includes('中')) return '中飲';
+  return '小飲';
+}
+
+/** 煙草 — dropdown: 喫煙/非喫煙. */
+function rokokJp(v: unknown): string {
+  const t = s(v).toUpperCase();
+  if (!isGood(t) || /^(TIDAK|NO|NONE|-|無|0)$/.test(t)) return '非喫煙';
+  return '喫煙';
+}
+
+function tanganJp(v: unknown): string {
+  const t = s(v).toUpperCase();
+  if (t.includes('KIRI') || t.includes('LEFT')) return '左';
+  if (t.includes('DUA') || t.includes('KEDUA')) return '両手';
+  return '右';
+}
+
+/** 刺青 / 色覚異常 — dropdown: あり/なし. */
+function adaJp(v: unknown): string {
+  const t = s(v).toUpperCase();
+  if (!isGood(t) || /^(TIDAK|NO|NONE|-|無)$/.test(t)) return 'なし';
+  return 'あり';
+}
+
+/**
+ * 視力. Form memakai `1.0` untuk mata normal; database menyimpan `NORMAL`.
+ * Kosong TIDAK diisi `1.0` — itu klaim tentang mata kandidat, bukan bawaan
+ * form seperti pada form Firma.
+ */
+function mataJp(v: unknown): string {
+  const t = bersih(v).toUpperCase();
+  if (!isGood(t)) return '';
+  if (t.includes('NORMAL')) return '1.0';
+  const m = /(\d+([.,]\d+)?)/.exec(t);
+  return m ? m[1].replace(',', '.') : '';
+}
+
+/** 日本語力 — dropdown: N5未習熟/N5レベル/N5合格/N4レベル/N4合格/N3合格/N2合格. */
+function jepangLevel(v: unknown): string {
+  const t = s(v).toUpperCase().replace(/\s/g, '');
+  const m = /N([2-5])/.exec(t);
+  if (!m) return '';
+  const lulus = /合格|LULUS|PASS/.test(t);
+  const level = `N${m[1]}`;
+  if (level === 'N2' || level === 'N3') return lulus ? `${level}合格` : '';
+  return lulus ? `${level}合格` : `${level}レベル`;
+}
+
+/**
+ * 試験合格 — dropdown hanya berisi hasil LULUS (`なし/N5合格/…/N1合格`).
+ * `N5レベル` TIDAK sah di sel ini; nilainya harus `なし`.
+ */
+function lulusJp(v: unknown): string {
+  const level = jepangLevel(v);
+  return level.endsWith('合格') ? level : 'なし';
+}
+
+/** 四輪免許 — dropdown: あり/なし. */
+function simJp(v: unknown): string {
+  const t = bersih(v).toUpperCase();
+  if (!isGood(t) || /^(TIDAK|NO|NONE|-|無|0)$/.test(t)) return 'なし';
+  return 'あり';
+}
+
+/** `2021-08` → `2021年8月`, bentuk yang dicetak form. */
+function ym(v: unknown): string {
+  const p = yearMonth(v);
+  return p.y + p.m;
+}
+
+/** 期間 dalam tahun penuh, dibulatkan — `2021-08`..`2024-05` → `3年`. */
+function durasiTahun(masuk: unknown, lulus: unknown): string {
+  const a = /^(\d{4})[-/](\d{1,2})/.exec(s(masuk));
+  const b = /^(\d{4})[-/](\d{1,2})/.exec(s(lulus));
+  if (!a || !b) return '';
+  const bulan = (parseInt(b[1], 10) - parseInt(a[1], 10)) * 12 + (parseInt(b[2], 10) - parseInt(a[2], 10));
+  if (bulan <= 0) return '';
+  return `${Math.max(1, Math.round(bulan / 12))}年`;
+}
+
+/** 国公私 — dropdown: 国立/公立/私立. */
+function kouritsu(sekolah: string): string {
+  return /^(SMAN|SMKN|SMK\s*NEGERI|SMA\s*NEGERI|NEGERI|MAN)/i.test(sekolah.trim()) ? '国立' : '私立';
+}
+
+/** 雇用形態 — dropdown: アルバイト/正社員/非正社員/インターン/家業. */
+function jenisKerjaJp(v: unknown): string {
+  const t = s(v).toUpperCase();
+  if (!isGood(t)) return '';
+  if (t.includes('INTERN') || t.includes('MAGANG')) return 'インターン';
+  if (t.includes('KELUARGA') || t.includes('USAHA')) return '家業';
+  if (t.includes('TETAP') || t.includes('KARYAWAN')) return '正社員';
+  if (t.includes('ALIH') || t.includes('KONTRAK') || t.includes('HONORER')) return '非正社員';
+  if (t.includes('PART') || t.includes('HARIAN') || t.includes('BANTU')) return 'アルバイト';
+  return '非正社員';
+}
+
+/** 続柄 — huruf Jepang saja, sesuai kolom sempit A. */
+function hubunganJp(v: unknown): string {
+  const t = s(v).toUpperCase();
+  if (!isGood(t)) return '';
+  if (t.includes('AYAH') || t.includes('BAPAK')) return '父';
+  if (t.includes('IBU') || t.includes('MAMA')) return '母';
+  if (t.includes('KAKAK')) return t.includes('PEREMPUAN') ? '姉' : '兄';
+  if (t.includes('ADIK')) return t.includes('PEREMPUAN') ? '妹' : '弟';
+  if (t.includes('ISTRI')) return '妻';
+  if (t.includes('SUAMI')) return '夫';
+  if (t.includes('ANAK')) return '子';
+  return 'その他';
+}
+
+/** 月収 dalam 万円 (form mencetak `2.5` + label `万円` di sel sebelah). */
+function manYen(v: unknown): string {
+  const n = Number(angka(v));
+  if (!Number.isFinite(n) || n <= 0) return '';
+  if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '');
+  if (n < 1000) return String(n);
+  return '';
+}
+
+/** スポーツ — hanya kalau hobi benar-benar menyebut cabang olahraga. */
+const SPORTS: [RegExp, string][] = [
+  [/ジョギング|joging|jogging|\brun\b|lari/i, 'ジョギング'],
+  [/ハイキング|hiking|naik gunung/i, 'ハイキング'],
+  [/フットサル|futsal/i, 'フットサル'],
+  [/バドミントン|badminton|bulu tangkis/i, 'バドミントン'],
+  [/バレー|voli|volley/i, 'バレーボール'],
+  [/バスケ|basket/i, 'バスケットボール'],
+  [/サッカー|sepak|bola/i, 'サッカー'],
+  [/水泳|renang|swim/i, '水泳'],
+  [/サイクリング|sepeda|cycling/i, 'サイクリング'],
+];
+
+function sportJp(hobi: string): string {
+  for (const [re, label] of SPORTS) if (re.test(hobi)) return label;
+  return '';
+}
+
+/**
+ * できる作業: teks bebas `keahlian_khusus` → kotak centang.
+ * Hanya kata yang MUNCUL yang dicentang; sisanya `□`. `自動車運転` butuh SIM,
+ * bukan sekadar niat (lihat `simJp`).
+ */
+const SKILLS: [RegExp, string][] = [
+  [/足場|scaffold/i, 'A35'],
+  [/左官|plester|plaster/i, 'J34'],
+  [/溶接|las\b|welding/i, 'M34'],
+  [/土木|konstruksi|bangunan/i, 'P34'],
+  [/舗装|aspal/i, 'S34'],
+  [/型枠|bekisting/i, 'J35'],
+  [/鉄筋|besi beton/i, 'M35'],
+  [/大工|tukang|kayu|carpenter/i, 'P35'],
+  [/重機|excavator|alat berat/i, 'S35'],
+  [/生コン|beton|cor\b/i, 'E35'],
+];
+
+/** 出身地: `〒63395 東ジャワ州 マゲタン県 …` → `インドネシア東ジャワ州マゲタン県`. */
+function asalJp(alamatJp: string, tempatJp: string): string {
+  // Kode pos di database tidak selalu 7 digit (`〒63395`), jadi jangan
+  // mengasumsikan bentuk `123-4567`.
+  const a = alamatJp.replace(/〒\s*[\d-]+/g, '').replace(/\s+/g, '');
+  if (!isGood(a)) return isGood(tempatJp) ? `インドネシア${tempatJp.replace(/\s+/g, '')}` : 'インドネシア';
+  const ken = a.indexOf('県');
+  const ringkas = ken > 0 ? a.slice(0, ken + 1) : a;
+  return `インドネシア${ringkas}`;
+}
+
+/** 実習満了後の希望 — hanya kalau kalimatnya jelas menyebut tetap bekerja di Jepang. */
+function harapanSetelahJp(rencana: string): string {
+  if (/日本で(も)?(長く)?働きたい|日本で就労|ずっと日本で働/.test(rencana)) return '日本での就労希望';
+  return '';
+}
+
+export function buildValues(data: CandidateData): Record<string, string> {
+  const id = data.identitas;
+  const raw = data.raw as Record<string, unknown>;
+  const hobi = bersih(data.wawancara.hobi_jp) || bersih(data.wawancara.hobi);
+  const keahlian = bersih(raw.keahlian_khusus_jp) || bersih(raw.keahlian_khusus);
+  const rencana = bersih(data.wawancara.rencana_pulang_jp) || bersih(data.wawancara.rencana_pulang);
+
+  const cells: Record<string, string> = {
+    /* ── identitas ──────────────────────────────────────────────────────── */
+    E6: bersih(id.nama_lengkap),
+    S6: bersih(id.panggilan_katakana) || bersih(id.panggilan),
+    // Kana form ditulis dengan titik pemisah, bukan spasi penuh.
+    E7: bersih(id.katakana).replace(/[\s\u3000]+/g, '・'),
+    S7: genderJp(id.gender),
+    E9: hpLokal(id.hp),
+    // Jarak & lama penerbangan tidak ada di database — jangan biarkan `***`
+    // tercetak di CV yang dikirim.
+    O9: '',
+    E10: asalJp(bersih(id.alamat_jp), bersih(id.tempat_lahir_jp)),
+    E11: nikahJp(id.status_nikah),
+    L11: angka(data.fisik.tb),
+    E12: AGAMA_JP[s(id.agama).toUpperCase().trim()] ?? bersih(id.agama),
+    L12: angka(data.fisik.bb),
+    E13: minumJp(data.medis.alkohol),
+    L13: darahJp(id.golongan_darah),
+    E14: rokokJp(data.medis.rokok),
+    L14: tanganJp(data.fisik.tangan_dominan),
+    E15: adaJp(data.medis.tato),
+    L15: mataJp(data.medis.mata_kanan),
+    E16: sportJp(hobi),
+    L16: mataJp(data.medis.mata_kiri),
+    E17: hobi,
+    L17: adaJp(data.medis.buta_warna),
+    M3: simJp(id.sim),
+    I3: jepangLevel(data.sertifikasi.jft ?? id.jft),
+    // Placeholder template yang tidak punya sumber data.
+    I4: '',
+    M4: '',
+  };
+
+  /* ── pendidikan: baris 19 = SMA/SMK, baris 21 = 日本語学校 ──────────────── */
+  const edu = data.pendidikan as Record<string, unknown>[];
+  const idxSma = edu.findIndex((p) => /SMA|SMK|ATAS|KEJURUAN/i.test(s(p.tingkat)));
+  const idxLpk = edu.findIndex((p) => /日本語|BAHASA JEPANG/i.test(s(p.tingkat)));
+  const sma = (idxSma >= 0 ? edu[idxSma] : edu[edu.length - 1]) ?? {};
+  const sekolah = bersih(sma.sekolah ?? sma.nama_sekolah ?? sma.sekolah_id);
+  if (isGood(sekolah)) {
+    cells.A19 = '高校';
+    cells.D19 = ym(sma.masuk ?? sma.tahun_masuk);
+    cells.E20 = ym(sma.lulus ?? sma.tahun_lulus);
+    cells.H19 = durasiTahun(sma.masuk ?? sma.tahun_masuk, sma.lulus ?? sma.tahun_lulus);
+    cells.J19 = '';
+    cells.M19 = kouritsu(sekolah);
+    cells.O19 = sekolah;
+    cells.W19 = bersih(sma.jurusan ?? sma.jurusan_id);
+  } else {
+    for (const c of ['D19', 'E20', 'H19', 'J19', 'M19', 'O19', 'W19']) cells[c] = '';
+  }
+  if (idxLpk >= 0) {
+    const lpk = edu[idxLpk];
+    cells.A21 = '日本語学校';
+    cells.D21 = ym(lpk.masuk ?? lpk.tahun_masuk);
+    cells.E22 = isGood(s(lpk.lulus ?? lpk.tahun_lulus)) ? ym(lpk.lulus ?? lpk.tahun_lulus) : '今まで';
+    cells.H21 = durasiTahun(lpk.masuk ?? lpk.tahun_masuk, lpk.lulus ?? lpk.tahun_lulus);
+    cells.M21 = kouritsu(bersih(lpk.sekolah ?? lpk.nama_sekolah));
+    cells.O21 = bersih(lpk.sekolah ?? lpk.nama_sekolah ?? lpk.sekolah_id);
+    cells.W21 = '日本語';
+  } else {
+    for (const c of ['A21', 'D21', 'E22', 'H21', 'J21', 'M21', 'O21', 'W21']) cells[c] = '';
+  }
+
+  /* ── pekerjaan: tiga blok x dua baris ──────────────────────────────────── */
+  const kerja = data.pekerjaan as Record<string, unknown>[];
+  for (let i = 0; i < JOB_BLOCKS; i++) {
+    const top = JOB_START + i * 2;
+    const bottom = top + 1;
+    const p = kerja[i] ?? {};
+    const masuk = p.masuk ?? p.tahun_masuk;
+    const keluar = p.keluar ?? p.tahun_keluar;
+    cells[`A${top}`] = jenisKerjaJp(p.jenis ?? p.status_kerja);
+    cells[`D${top}`] = ym(masuk);
+    cells[`E${bottom}`] = ym(keluar);
+    cells[`H${top}`] = durasiTahun(masuk, keluar);
+    cells[`M${top}`] = '';
+    cells[`Q${top}`] = bersih(p.jabatan ?? p.jabatan_id);
+    cells[`W${top}`] = manYen(p.gaji ?? p.penghasilan);
+    cells[`Z${top}`] = '';
+  }
+  if (!kerja.length) {
+    // `年月日` dan `～` bawaan template akan tercetak apa adanya.
+    for (const c of ['D26', 'E27', 'D27']) cells[c] = '';
+  }
+
+  /* ── できる作業 ────────────────────────────────────────────────────────── */
+  const boxes = ['A35', 'E34', 'E35', 'J34', 'J35', 'M34', 'M35', 'P34', 'P35', 'S34', 'S35', 'W34'];
+  for (const c of boxes) cells[c] = '□';
+  if (isGood(keahlian)) {
+    for (const [re, cell] of SKILLS) if (re.test(keahlian)) cells[cell] = '■';
+    cells.W34 = '■';
+    cells.X35 = keahlian.slice(0, 18);
+  }
+  if (cells.M3 === 'あり') cells.E34 = '■';
+  cells.AC34 = 'OK';
+
+  /* ── keluarga + 緊急連絡先 ─────────────────────────────────────────────── */
+  const fam = data.keluarga as Record<string, unknown>[];
+  for (let i = 0; i < FAM_ROWS; i++) {
+    const row = FAM_START + i;
+    const p = fam[i] ?? {};
+    cells[`A${row}`] = hubunganJp(p.hubungan);
+    cells[`C${row}`] = angka(p.usia ?? p.umur);
+    cells[`E${row}`] = bersih(p.pekerjaan);
+    cells[`J${row}`] = manYen(p.gaji ?? p.penghasilan);
+    cells[`M${row}`] = '■';
+    cells[`O${row}`] = '□';
+  }
+  const darurat = hubunganJp(id.kontak_darurat_hubungan);
+  cells.X37 = darurat === 'その他' ? '' : darurat;
+  cells.Z37 = hpLokal(id.hp_darurat);
+
+  /* ── wawancara ─────────────────────────────────────────────────────────── */
+  cells.T38 = lulusJp(data.sertifikasi.jft ?? id.jft);
+  cells.Q43 = cells.M3 === 'あり' ? '' : 'なし';
+  const ken = data.kenalan_jepang;
+  cells.X39 = isGood(bersih(ken.nama_jp) || bersih(ken.nama_id))
+    ? bersih(ken.nama_jp) || bersih(ken.nama_id)
+    : '無し';
+  cells.X43 = '未定';
+  cells.X49 = harapanSetelahJp(rencana);
+
+  /* ── kotak PR & kepribadian ────────────────────────────────────────────── */
+  cells.U3 = bersih(raw.promosi_diri_jp) || bersih(data.wawancara.kelebihan_jp);
+  cells.E44 = bersih(data.wawancara.kelebihan_jp) || bersih(data.wawancara.kelebihan);
+  cells.E45 = bersih(data.wawancara.kekurangan_jp) || bersih(data.wawancara.kekurangan);
+  cells.E46 = bersih(data.wawancara.tujuan_ke_jepang_jp) || bersih(data.wawancara.motivasi_ke_jepang_jp);
+  cells.E48 = rencana;
+
+  /* ── MBTI ──────────────────────────────────────────────────────────────── */
+  const mbti = inferMbti(raw);
+  if (mbti) {
+    cells.Q47 = mbti.typeName;
+    cells.U48 = mbti.labels[0];
+    cells.U49 = mbti.labels[1];
+    cells.U50 = mbti.labels[2];
+    cells.U51 = mbti.labels[3];
+    cells.U52 = mbti.labels[4];
+  } else {
+    // `A50 = =Q47` akan mencetak 0 dan `E50` mencetak #N/A kalau Q47 kosong.
+    cells.Q47 = '';
+    cells.U48 = '';
+    cells.U49 = '';
+    cells.U50 = '';
+    cells.U51 = '';
+    cells.U52 = '';
+    cells.A50 = '';
+    cells.E50 = '';
+  }
+
+  return cells;
+}
+
+/** Tanggal lahir harus ANGKA: `S8` menghitung umur dengan `DATEDIF`. */
+export function buildNumbers(data: CandidateData): Record<string, number> {
+  const serial = excelSerial(data.identitas.tgl_lahir);
+  return serial === null ? {} : { E8: serial };
+}
+
+/** Bangun workbook. Diekspor supaya geometrinya bisa diuji. */
+export async function buildKinkiWorkbook(data: CandidateData): Promise<Blob> {
+  return buildXlsxForm({
+    base64: KINKI_BASE64,
+    sheetPath: SHEET_PATH,
+    drawingPath: DRAWING_PATH,
+    photoPart: PHOTO_PART,
+    photoRelId: PHOTO_REL_ID,
+    photoBox: PHOTO_BOX,
+    photoOffset: PHOTO_OFFSET,
+    values: buildValues(data),
+    numbers: buildNumbers(data),
+    photoUrl: s(data.uploads.photo),
+    sheetName: s(data.identitas.nama_lengkap),
+  });
+}
+
+const template: CvTemplate = {
+  id: 'kinki',
+  name: 'Rirekisho Excel (Form KINKI)',
+  type: 'xlsx',
+  description:
+    'Form CV magang klien KINKI sebagai Excel — 学歴 dua baris, 職歴 tiga blok, 家族構成 lima baris, できる作業, dan 性格診断テスト (MBTI) yang disimpulkan dari kalimat kandidat.',
+  category: 'form',
+  icon: 'file-excel',
+  async render(data: CandidateData, _context: RenderContext): Promise<RenderResult> {
+    try {
+      const blob = await buildKinkiWorkbook(data);
+      return { success: true, mimeType: blob.type, fileName: cvFileName(data), blob };
+    } catch (e: unknown) {
+      return { success: false, mimeType: '', fileName: '', error: e instanceof Error ? e.message : 'Excel render error' };
+    }
+  },
+};
+
+export default template;
