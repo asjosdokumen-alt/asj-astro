@@ -103,9 +103,28 @@ export function birthDate(v: unknown): string {
   return `${dt.getFullYear()}年${dt.getMonth() + 1}月${dt.getDate()}日`;
 }
 
-/** Bulan-tahun untuk kolom periode, seperti yang dicetak form. */
+/** `2021-08` → `2021年8月`, bentuk yang dicetak form. */
 export function period(v: unknown): string {
   return isGood(v) ? fmtMonthYearJp(s(v)) : '';
+}
+
+/**
+ * カナ氏名: pemisah `・`, hiragana → katakana, dan kanji yang bentuknya
+ * katakana diluruskan (`厶`→`ム`, `二`→`ニ`, `口`→`ロ`, `力`→`カ`, `工`→`エ`,
+ * `夕`→`タ`). Database menyimpan campuran — mis. `ヨン　アリック　ラマダに`
+ * (ASJ00104) dan `厶ハッマド•二ザル•ヌル` (ASJ00132). Kanji lain dibiarkan
+ * supaya tidak menebak. Dipakai form KINKI dan JIPA.
+ */
+const KANA_FIX: Record<string, string> = {
+  '厶': 'ム', '二': 'ニ', '口': 'ロ', '力': 'カ', '工': 'エ', '夕': 'タ',
+};
+
+export function kanaJp(v: unknown): string {
+  return s(v)
+    .replace(/[•·･]/g, '・')
+    .replace(/[\s\u3000]+/g, '・')
+    .replace(/[\u3041-\u3096]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0x60))
+    .replace(/[厶二口力工夕]/g, (ch) => KANA_FIX[ch] ?? ch);
 }
 
 /** Pisahkan "2012-07" / "2012/7/1" menjadi bagian tahun dan bulan. */

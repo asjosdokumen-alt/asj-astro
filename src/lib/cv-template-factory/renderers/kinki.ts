@@ -46,7 +46,7 @@ import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../
 import { KINKI_BASE64 } from '../templates/kinki.b64';
 import { isGood } from '../../helpers_cv';
 import { inferMbti } from '../mbti';
-import { buildXlsxForm, cvFileName, excelSerial, s, yearMonth, type PhotoBox } from './xlsx-form';
+import { buildXlsxForm, cvFileName, excelSerial, kanaJp, s, yearMonth, type PhotoBox } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
 const DRAWING_PATH = 'xl/drawings/drawing1.xml';
@@ -287,30 +287,6 @@ const SKILLS: [RegExp, string][] = [
   [/重機|excavator|alat berat/i, 'S35'],
   [/生コン|beton|cor\b/i, 'E35'],
 ];
-
-/**
- * カナ氏名: pemisah ditulis `・`, dan hiragana diubah ke katakana — kolom ini
- * kolom KANA, dan database menyimpan campuran (`ヨン　アリック　ラマダに`).
- * Pergeseran +0x60 berlaku untuk seluruh blok hiragana, jadi `っ`/`ゃ` kecil
- * ikut benar.
- *
- * Beberapa baris memuat KANJI yang bentuknya sama dengan katakana — hasil
- * ketik tangan atau OCR: `厶` untuk `ム`, `二` untuk `ニ`, `口` untuk `ロ`,
- * `力` untuk `カ`, `工` untuk `エ`, `夕` untuk `タ`. Di kolom kana kanji tidak
- * pernah sah, jadi bentuk itu diluruskan; kanji lain (mis. nama keluarga yang
- * salah masuk kolom) dibiarkan apa adanya supaya tidak menebak.
- */
-const KANA_FIX: Record<string, string> = {
-  '厶': 'ム', '二': 'ニ', '口': 'ロ', '力': 'カ', '工': 'エ', '夕': 'タ',
-};
-
-function kanaJp(v: unknown): string {
-  return s(v)
-    .replace(/[•·･]/g, '・')
-    .replace(/[\s\u3000]+/g, '・')
-    .replace(/[\u3041-\u3096]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0x60))
-    .replace(/[厶二口力工夕]/g, (ch) => KANA_FIX[ch] ?? ch);
-}
 
 /** 国籍・出身地: `〒63395 東ジャワ州 マゲタン県 …` → `インドネシア東ジャワ州マゲタン県`. */
 function asalJp(alamatJp: string, tempatJp: string): string {

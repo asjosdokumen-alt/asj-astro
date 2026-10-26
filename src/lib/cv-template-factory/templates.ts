@@ -7,6 +7,7 @@ import pdfTemplate from './renderers/pdf';
 import rirekishoXlsxTemplate from './renderers/rirekisho-xlsx';
 import rirekishoFirmaTemplate from './renderers/rirekisho-firma';
 import kinkiTemplate from './renderers/kinki';
+import jipaTemplate from './renderers/jipa';
 
 const rirekishoA4Template: CvTemplate = {
   id: 'rirekisho-a4',
@@ -46,6 +47,10 @@ cvFactory.register(rirekishoFirmaTemplate);
 // できる作業 dan 性格診断テスト (MBTI). Tipenya TIDAK dibaca dari database —
 // tidak ada kolomnya — melainkan disimpulkan `mbti.ts` dari kalimat kandidat.
 cvFactory.register(kinkiTemplate);
+// Form keempat, dari `F:/JIPA2026.xlsx` (2026-10-26). Form 特定技能 — bukan
+// 実習生: ada 資格試験 (SSW/JLPT/JFT/SIM) dan 訪日経験, tanpa できる作業 dan
+// tanpa 性格診断テスト. Mesin XML-nya tetap `renderers/xlsx-form.ts`.
+cvFactory.register(jipaTemplate);
 
 export { cvFactory };
 
