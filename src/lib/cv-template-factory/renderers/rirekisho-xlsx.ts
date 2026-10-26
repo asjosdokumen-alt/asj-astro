@@ -215,7 +215,7 @@ const template: CvTemplate = {
   async render(data: CandidateData, _context: RenderContext): Promise<RenderResult> {
     try {
       const blob = await buildRirekishoWorkbook(data);
-      return { success: true, mimeType: blob.type, fileName: cvFileName('CV_Rirekisho', data), blob };
+      return { success: true, mimeType: blob.type, fileName: cvFileName(data), blob };
     } catch (e: unknown) {
       return { success: false, mimeType: '', fileName: '', error: e instanceof Error ? e.message : 'Excel render error' };
     }

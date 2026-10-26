@@ -77,6 +77,9 @@ describe('xlsxPreviewHtml · pratinjau CV', () => {
     // Judul form D1:P1 = 13 kolom, dan blok pas foto N2:P6 = rowspan 5.
     expect(html).toMatch(/colspan="1[0-9]"/);
     expect(html).toMatch(/rowspan="[2-9]"/);
+    // Warna header ikut: tanpa ini form biru-putih keluar sebagai tabel putih
+    // polos — keluhan pemilik "jelek bener ga nampak sesuai aslinya".
+    expect(html).toMatch(/background:#[0-9A-F]{6}/i);
   });
 
   it('membawa lebar kolom template, bukan lebar otomatis', async () => {
@@ -91,9 +94,9 @@ describe('xlsxPreviewHtml · pratinjau CV', () => {
     const html = await previewFirma();
     const baris = (html.match(/<tr\b/g) ?? []).length;
     expect(baris).toBeGreaterThan(10);
-    // Form Firma berisi 27 baris. Batas tetap 60 menyisakan ~33 baris kosong di
+    // Form Firma berisi 33 baris. Batas tetap 60 menyisakan baris kosong di
     // bawahnya, jadi pemangkasan harus mengikuti ISI, bukan angka bulat.
-    expect(baris).toBeLessThanOrEqual(30);
+    expect(baris).toBeLessThanOrEqual(40);
     // 1,2 MB adalah ukuran tanpa pemangkasan; 60 baris jauh di bawahnya.
     expect(html.length).toBeLessThan(400_000);
   });

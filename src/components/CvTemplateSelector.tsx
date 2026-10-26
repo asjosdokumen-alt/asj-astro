@@ -170,8 +170,8 @@ export default function CvTemplateSelector({ waTarget, isAdmin, onClose, onOpenR
             {/* Border/fill template tidak ikut diekspor SheetJS (itu SheetJS Pro);
                 garis di bawah ini hanya supaya sel terbaca sebagai tabel, bukan
                 meniru form. Yang dicetak tetap berkas .xlsx-nya. */}
-            <style>{`.cv-preview table{border-collapse:collapse;table-layout:fixed;background:#fff;color:#111;font-size:9px}
-.cv-preview td{border:1px solid #94a3b8;padding:1px 3px;vertical-align:middle;white-space:pre-wrap;line-height:1.15}`}</style>
+            <style>{`.cv-preview table{border-collapse:collapse;table-layout:fixed;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif}
+.cv-preview td{overflow:hidden}`}</style>
             <div class="flex items-center justify-between gap-3">
               <p class="text-sm font-semibold text-slate-300">
                 {t('ui.preview_cv')} · <span class="text-white">{preview.title}</span>

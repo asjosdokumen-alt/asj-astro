@@ -91,7 +91,7 @@ describe('CvTemplateSelector pratinjau sebelum unduh', () => {
     mocks.renderTemplate.mockResolvedValue({
       success: true,
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      fileName: 'CV_Firma_BUDI_ASJ00188.xlsx',
+      fileName: 'BUDI_CV.xlsx',
       blob: new Blob(['xlsx']),
     });
     mocks.previewHtml.mockResolvedValue('<table><tr><td>BUDI TRISNANTO</td></tr></table>');
@@ -128,7 +128,7 @@ describe('CvTemplateSelector pratinjau sebelum unduh', () => {
     fireEvent.click(screen.getByRole('button', { name: /ui.unduh/i }));
 
     await waitFor(() =>
-      expect(downloads).toEqual([{ href: 'blob:test', download: 'CV_Firma_BUDI_ASJ00188.xlsx' }]),
+      expect(downloads).toEqual([{ href: 'blob:test', download: 'BUDI_CV.xlsx' }]),
     );
   });
 

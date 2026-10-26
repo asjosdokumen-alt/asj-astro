@@ -30,11 +30,9 @@ const PHOTO = 'xl/media/image3.png';
 /** Geometri berkas asli, terukur 2026-10-26. */
 const SOURCE = {
   colElements: 14,
-  rowElements: 996,
-  mergeCells: 94,
-  cellElements: 25887,
-  photoCx: 1466850,
-  photoCy: 1943100,
+  rowElements: 33,
+  mergeCells: 118,
+  cellElements: 528,
 } as const;
 
 async function loadZip(bytes: Uint8Array | Blob) {
@@ -114,11 +112,14 @@ describe('rirekisho-firma · geometri template', () => {
     expect(countAll(sheet, /<c\s[^>]*?r="[A-Z]+\d+"/g)).toBe(SOURCE.cellElements);
   });
 
-  it('pas foto tetap di anchor aslinya (col13/row1) dengan ukuran asli', async () => {
+  it('pas foto tetap di kotak aslinya (N2:P6, twoCellAnchor rId3)', async () => {
     const zip = await loadZip(b64ToBytes(RIREKISHO_FIRMA_BASE64));
     const drawing = await part(zip, DRAWING);
 
-    expect(drawing).toContain(`<xdr:ext cx="${SOURCE.photoCx}" cy="${SOURCE.photoCy}"/>`);
+    // Anchor foto memakai dua sel (col13..col15 / row1..row5), jadi tidak ada
+    // `<xdr:ext>` untuk ditambal — hanya part gambarnya yang diganti.
+    expect(drawing).toContain('<xdr:twoCellAnchor');
+    expect(drawing).toContain('r:embed="rId3"');
     expect(drawing).toContain('<xdr:from><xdr:col>13</xdr:col>');
     expect(drawing).toContain('<xdr:row>1</xdr:row>');
   });
@@ -202,18 +203,24 @@ describe('rirekisho-firma · render', () => {
     // Keluarga: 続柄 Jepang, bukan teks mentah database.
     expect(sheet).toContain('父 Ayah');
     expect(sheet).toContain('母 Ibu');
-    // Kolom yang dulu dibiarkan kosong padahal datanya ada di database.
-    expect(sheet).toMatch(/<c r="H9"[^>]*>(?:(?!<\/c>).)*1\.0/s);
-    expect(sheet).toMatch(/<c r="J9"[^>]*>(?:(?!<\/c>).)*0\.8/s);
-    expect(sheet).toMatch(/<c r="M9"[^>]*>(?:(?!<\/c>).)*無 Tidak/s);
-    expect(sheet).toMatch(/<c r="O9"[^>]*>(?:(?!<\/c>).)*無 Tidak/s);
+    // Visi memakai koma desimal seperti form (1.0 -> "1,0"), rokok/alkohol
+    // memakai 無 + Tidak (dua baris) dan jumlah 0.
+    expect(sheet).toMatch(/<c r="H9"[^>]*>(?:(?!<\/c>).)*1,0/s);
+    expect(sheet).toMatch(/<c r="J9"[^>]*>(?:(?!<\/c>).)*0,8/s);
+    expect(sheet).toMatch(/<c r="M9"[^>]*>(?:(?!<\/c>).)*無/s);
+    expect(sheet).toMatch(/<c r="O9"[^>]*>(?:(?!<\/c>).)*無/s);
+    // 希望収入 memakai nilai bawaan form saat database tidak punya angkanya.
+    expect(sheet).toMatch(/<c r="D9"[^>]*>(?:(?!<\/c>).)*15万円／月/s);
+    // Kenalan kosong ditulis "無 Tidak Ada", dan tanda "-" dari database TIDAK
+    // boleh tercetak sebagai nama.
+    expect(sheet).toMatch(/<c r="D33"[^>]*>(?:(?!<\/c>).)*無 Tidak Ada/s);
   });
 
   it('nama berkas memakai nama + ID kandidat, tab sheet memakai namanya', async () => {
     const t = (await import('../src/lib/cv-template-factory/renderers/rirekisho-firma')).default;
     const res = await t.render(kandidat(), { waTarget: 'x', isAdmin: true });
     expect(res.success).toBe(true);
-    expect(res.fileName).toBe('CV_Firma_BUDI_TRISNANTO_ASJ00188.xlsx');
+    expect(res.fileName).toBe('BUDI_TRISNANTO_CV.xlsx');
     if (!res.blob) throw new Error('render tidak menghasilkan blob');
     const zip = await loadZip(new Uint8Array(await res.blob.arrayBuffer()));
     const wb = await part(zip, 'xl/workbook.xml');

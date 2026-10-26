@@ -3,32 +3,36 @@
  *
  * ASAL BERKAS
  * -----------
- * Pemilik mengirim satu CV yang sudah terisi (2026-10-26) dan memintanya jadi
- * template pilihan di `CvTemplateSelector`. Berkas itu 1,86 MB karena 98%-nya
- * foto kandidat (image3.png, 1535x2046). Foto itu DIBUANG saat template
- * dikosongkan — bukan hanya soal ukuran, tapi karena itu foto orang lain:
- * template tidak boleh membawa wajah siapa pun. Yang tersisa 57,8 KB berisi
- * label Jepang/Indonesia, 94 merge, lebar 26 kolom, tinggi 996 baris, dan
- * seluruh style aslinya (lihat `templates/rirekisho-firma.b64.ts`).
+ * Pemilik mengirim versi kedua form ini (2026-10-26, `1. FIRMA ELGA PRATAMA_CV.xlsx`,
+ * 2,75 MB) setelah versi pertama dipakai. Bedanya: bagian 家族構成 punya TUJUH
+ * baris (bukan tiga), dan pemilik meminta 職歴 memuat TIGA pekerjaan — blok
+ * ketiga disisipkan saat template dikosongkan (lihat
+ * `templates/rirekisho-firma.b64.ts` dan `blank-firma2.py`).
  *
- * BEDA DENGAN FORM ASJ (`rirekisho-xlsx.ts`)
- * ------------------------------------------
- * Layout-nya lain, jadi peta selnya lain — tapi mesin penulisan XML-nya sama
- * (`xlsx-form.ts`). Dua hal yang khas form ini:
- *   • pas foto ada di anchor col13/row1 (sel N2:P6), part `image3.png`, rel
- *     `rId3`. Drawing-nya punya TIGA gambar (dua ikon kecil), jadi anchor harus
- *     ditambal lewat `relId` — tanpa itu yang tertambal ikon pertama.
- *   • riwayat kerja memakai BLOK DUA BARIS: baris 16-17 = satu pekerjaan
- *     (masuk di 16, keluar di 17), baris 18-19 = pekerjaan kedua.
+ * Foto contoh (2,7 MB, 98% berkas) DIBUANG: itu wajah orang lain, dan template
+ * tidak boleh membawanya. Lubang pas foto tetap di tempatnya dan diisi foto
+ * kandidat saat render.
+ *
+ * TATA LETAK (jangan diubah tanpa menyesuaikan peta sel)
+ *   1-9    identitas          11-14  pendidikan
+ *   16-21  tiga blok kerja    22-30  keluarga (7 baris)
+ *   31-33  sertifikat & catatan
+ *
+ * NILAI BAWAAN YANG DISENGAJA
+ * ---------------------------
+ * Pemilik 2026-10-26: "standar gaji isi sama kayak template saja, mata normal
+ * itu standart 1,0 sama kayak template kecuali minus dll". Jadi:
+ *   • D9 (希望収入) = `15万円／月` kalau database tidak punya angkanya;
+ *   • H9/J9 (visi) = `1,0` (koma desimal, seperti form) kalau kosong — nilai
+ *     dari database tetap dipakai apa adanya (mis. `-0,5`);
+ *   • M9/O9 = `無` + `Tidak` untuk yang tidak, `有` + `Ya` untuk yang ya,
+ *     dengan N9/P9 = jumlah per hari (0 kalau tidak).
  *
  * SEL YANG SENGAJA TIDAK DIISI
  * ----------------------------
- * Form ini punya kolom yang tidak ada padanannya di database, dan mengarang
- * nilainya lebih buruk daripada membiarkannya kosong:
- *   H9/J9 (visi kiri/kanan), M9/N9 (alkohol), O9/P9 (merokok),
- *   G25 (jenis sertifikat), K25/L25 (lama & periode belajar),
- *   D26/G26/L26 (buku, bab, negara lain), G27/K27 (catatan lain).
- * Semuanya diisi tangan saat pendampingan — sama seperti form kertasnya.
+ * Kolom yang tidak ada padanannya di database dibiarkan kosong (pemilik:
+ * "biarin kosong"): G31 (jenis sertifikat), K31/L31 (lama & periode belajar),
+ * D32/G32/L32 (buku, bab, negara lain), G33/K33 (catatan lain).
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { RIREKISHO_FIRMA_BASE64 } from '../templates/rirekisho-firma.b64';
@@ -36,42 +40,39 @@ import { isGood } from '../../helpers_cv';
 import {
   buildXlsxForm,
   birthDate,
-  currency,
   cvFileName,
+  currency,
   s,
   yearMonth,
   type PhotoBox,
 } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
-const DRAWING_PATH = 'xl/drawings/drawing1.xml';
 /** Foto contoh ada di part ini; renderer menimpanya dengan foto kandidat. */
 const PHOTO_PART = 'xl/media/image3.png';
-/** `r:embed` milik foto di drawing1.xml (dua gambar lain: rId1, rId2 = ikon). */
-const PHOTO_REL_ID = 'rId3';
-/** Kotak pas foto dari workbook asli: col13/row1, 1466850 x 1943100 EMU. */
-const PHOTO_BOX: PhotoBox = { cx: 1466850, cy: 1943100 };
+/**
+ * Kanvas foto 600x800 px (3:4, bentuk pas foto), EMU = px x 9525.
+ *
+ * Anchor di template ini `twoCellAnchor` (kotak N2:P6), jadi TIDAK ada
+ * `<xdr:ext>` untuk ditambal — ukuran akhir ditentukan sel. Yang perlu
+ * disiapkan hanya gambarnya, pada bentuk yang sama dengan kotaknya supaya
+ * tidak gepeng.
+ */
+const PHOTO_BOX: PhotoBox = { cx: 600 * 9525, cy: 800 * 9525 };
 
 /** Baris pertama tiap bagian, persis seperti form cetaknya. */
 const EDU_START = 11;
 const EDU_ROWS = 4;
 const JOB_START = 16;
 /** Satu pekerjaan = dua baris (masuk di baris atas, keluar di baris bawah). */
-const JOB_BLOCKS = 2;
-const FAM_START = 22;
-const FAM_ROWS = 3;
+const JOB_BLOCKS = 3;
+const FAM_START = 24;
+const FAM_ROWS = 7;
 
 const AGAMA_JP: Record<string, string> = {
   ISLAM: 'イスラム教', KRISTEN: 'キリスト教', KATOLIK: 'カトリック',
   HINDU: 'ヒンドゥー教', BUDHA: '仏教', BUDDHA: '仏教', KONGHUCU: '儒教',
 };
-
-/** "無 Tidak" untuk yang kosong/negatif — kosakata yang dipakai form ini. */
-function tidakAda(raw: unknown, kosong = '無 Tidak'): string {
-  const t = s(raw).trim();
-  if (!isGood(t) || /^(tidak|no|none|-|無)$/i.test(t)) return kosong;
-  return t;
-}
 
 /**
  * Nilai yang di database ditulis `-` (artinya "belum ada") tidak boleh tercetak
@@ -80,6 +81,13 @@ function tidakAda(raw: unknown, kosong = '無 Tidak'): string {
 function bersih(v: unknown): string {
   const t = s(v);
   return isGood(t) ? t : '';
+}
+
+/** "無\nTidak" untuk yang kosong/negatif — dua baris, persis seperti form. */
+function tidakAda(raw: unknown, kosong = '無\nTidak'): string {
+  const t = s(raw).trim();
+  if (!isGood(t) || /^(tidak|no|none|-|無)$/i.test(t)) return kosong;
+  return t;
 }
 
 function genderJp(raw: unknown): string {
@@ -124,6 +132,24 @@ function kacamataJp(raw: unknown): string {
   return t.includes('TIDAK') ? 'かけない' : s(raw);
 }
 
+/**
+ * Visi: form memakai koma desimal (`1,0`). Nilai dari database dirapikan ke
+ * bentuk itu, dan yang kosong memakai standar form.
+ */
+function mata(raw: unknown): string {
+  const t = bersih(raw).replace('.', ',');
+  return t || '1,0';
+}
+
+/** 希望収入: `15万円／月` — bawaan form kalau database tidak punya angkanya. */
+function gajiDiharapkan(raw: unknown): string {
+  const t = bersih(raw);
+  if (!t) return '15万円／月';
+  const n = Number(t.replace(/[^\d]/g, ''));
+  if (!Number.isFinite(n) || n <= 0) return t;
+  return `${Math.round(n / 10000)}万円／月`;
+}
+
 /** Tingkat sekolah → label 分類 yang dipakai form (`小学生 SD`, …). */
 function levelJp(raw: unknown): string {
   const t = s(raw).toUpperCase();
@@ -161,14 +187,15 @@ function tinggalJp(raw: unknown): string {
 }
 
 /**
- * Pasangan (label, jumlah) untuk kolom kebiasaan — alkohol dan rokok. Form
- * mencetak `無 Tidak` + `0` untuk yang tidak, `有 Ya` + angka untuk yang ya.
+ * Pasangan (label, jumlah) untuk kolom kebiasaan — alkohol dan rokok.
+ * Form mencetak `無 Tidak` + `0` untuk yang tidak, `有 Ya` + angka untuk yang ya
+ * (jumlah batang/gelas per hari).
  */
 function kebiasaan(v: unknown): { label: string; jumlah: string } {
   const t = s(v).trim();
-  if (!isGood(t) || /^(tidak|no|none|-|無|0)$/i.test(t)) return { label: '無 Tidak', jumlah: '0' };
+  if (!isGood(t) || /^(tidak|no|none|-|無|0)$/i.test(t)) return { label: '無\nTidak', jumlah: '0' };
   const n = t.replace(/[^\d]/g, '');
-  return { label: '有 Ya', jumlah: n };
+  return { label: '有\nYa', jumlah: n };
 }
 
 /**
@@ -182,26 +209,26 @@ export function buildValues(data: CandidateData): Record<string, string> {
   const rokok = kebiasaan(data.medis.rokok);
   const cells: Record<string, string> = {
     /* ── identitas ──────────────────────────────────────────────────────── */
-    D2: s(id.katakana),
-    D3: s(id.nama_lengkap),
-    D4: s(id.alamat),
+    D2: bersih(id.katakana),
+    D3: bersih(id.nama_lengkap),
+    D4: bersih(id.alamat),
     D5: birthDate(id.tgl_lahir),
-    I5: s(id.umur),
-    L5: genderJp(id.gender),
-    D6: s(id.hp),
+    I5: bersih(id.umur),
+    L5: bersih(genderJp(id.gender)),
+    D6: bersih(id.hp),
     I6: agamaJp(id.agama),
-    L6: s(data.fisik.tb),
+    L6: bersih(data.fisik.tb),
     D7: darahJp(id.golongan_darah),
     G7: maritalJp(id.status_nikah),
     J7: tidakAda(id.anak),
-    L7: s(data.fisik.bb),
+    L7: bersih(data.fisik.bb),
     P7: tidakAda(id.paspor),
     D8: tidakAda(data.medis.riwayat_medis),
     J8: kacamataJp(data.medis.kacamata),
-    H9: s(data.medis.mata_kiri),
-    J9: s(data.medis.mata_kanan),
-    K9: tanganJp(data.fisik.tangan_dominan),
-    D9: bersih(raw.gaji_diharapkan ?? raw.gaji_diinginkan),
+    H9: mata(data.medis.mata_kiri),
+    J9: mata(data.medis.mata_kanan),
+    K9: bersih(tanganJp(data.fisik.tangan_dominan)),
+    D9: gajiDiharapkan(raw.gaji_diharapkan ?? raw.gaji_diinginkan),
     M9: minum.label,
     N9: minum.jumlah,
     O9: rokok.label,
@@ -223,7 +250,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`O${row}`] = s(p.jurusan ?? p.jurusan_id);
   }
 
-  /* ── pengalaman kerja: 2 blok x 2 baris (16-17, 18-19) ─────────────────── */
+  /* ── pengalaman kerja: 3 blok x 2 baris (16-21) ────────────────────────── */
   for (let i = 0; i < JOB_BLOCKS; i++) {
     const top = JOB_START + i * 2;
     const bottom = top + 1;
@@ -240,7 +267,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`O${top}`] = s(p.jenis ?? p.status_kerja ?? p.jenis_pekerjaan);
   }
 
-  /* ── keluarga: 3 baris (22-24) ─────────────────────────────────────────── */
+  /* ── keluarga: 7 baris (24-30) ─────────────────────────────────────────── */
   for (let i = 0; i < FAM_ROWS; i++) {
     const row = FAM_START + i;
     const p = (data.keluarga[i] || {}) as Record<string, unknown>;
@@ -255,13 +282,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`O${row}`] = s(p.hp ?? p.telepon ?? p.no_hp);
   }
 
-  /* ── sertifikat & kenalan di Jepang ────────────────────────────────────── */
-  // Kolom JFT di database memakai '-' sebagai "tidak ada"; di form cetak tanda
-  // itu terbaca sebagai nilai, jadi dibuang di sini.
-  cells.D25 = bersih(data.sertifikasi.jft ?? id.jft ?? raw.jft);
+  /* ── sertifikat & kenalan di Jepang (31 & 33) ──────────────────────────── */
+  cells.D31 = bersih(data.sertifikasi.jft ?? id.jft ?? raw.jft);
   const ken = data.kenalan_jepang;
-  const kenalan = s(ken.nama_jp) || s(ken.nama_id);
-  cells.D27 = kenalan || '無 Tidak Ada';
+  // `-` adalah tanda "belum ada" di database, bukan nama orang.
+  const kenalan = bersih(ken.nama_jp) || bersih(ken.nama_id);
+  cells.D33 = kenalan || '無 Tidak Ada';
 
   return cells;
 }
@@ -271,9 +297,7 @@ export async function buildFirmaWorkbook(data: CandidateData): Promise<Blob> {
   return buildXlsxForm({
     base64: RIREKISHO_FIRMA_BASE64,
     sheetPath: SHEET_PATH,
-    drawingPath: DRAWING_PATH,
     photoPart: PHOTO_PART,
-    photoRelId: PHOTO_REL_ID,
     photoBox: PHOTO_BOX,
     values: buildValues(data),
     photoUrl: s(data.uploads.photo),
@@ -294,7 +318,7 @@ const template: CvTemplate = {
   async render(data: CandidateData, _context: RenderContext): Promise<RenderResult> {
     try {
       const blob = await buildFirmaWorkbook(data);
-      return { success: true, mimeType: blob.type, fileName: cvFileName('CV_Firma', data), blob };
+      return { success: true, mimeType: blob.type, fileName: cvFileName(data), blob };
     } catch (e: unknown) {
       return { success: false, mimeType: '', fileName: '', error: e instanceof Error ? e.message : 'Excel render error' };
     }

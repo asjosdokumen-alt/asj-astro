@@ -291,14 +291,13 @@ describe('rirekisho-xlsx · buildRirekishoWorkbook', () => {
     expect(drawing).toContain(`<xdr:ext cx="${SOURCE.photoCx}" cy="${SOURCE.photoCy}"/>`);
   });
 
-  it('names the file after the candidate + id, stripped of unsafe characters', async () => {
-    // Nama saja tidak cukup: dua kandidat bisa bernama sama, dan nama kosong
-    // membuat SEMUA unduhan jadi `CV_Rirekisho_kandidat.xlsx` (laporan pemilik
-    // 2026-10-26: "hasilnya namanya sama semua"). ID kandidat yang membuat unik.
+  it('names the file <NAMA KANDIDAT>_CV, tanpa nama template', async () => {
+    // Pemilik 2026-10-26: "penamaan nya namakandidat_CV, jgn digabung dengan
+    // template". Nama kosong jatuh ke KANDIDAT, bukan berkas `_CV.xlsx`.
     const t = (await import('./rirekisho-xlsx')).default;
     const res = await t.render(anggun(), { waTarget: 'x', isAdmin: true });
     expect(res.success).toBe(true);
-    expect(res.fileName).toBe('CV_Rirekisho_ANGGUN_ARIANI_P002.xlsx');
+    expect(res.fileName).toBe('ANGGUN_ARIANI_CV.xlsx');
   });
 
   it('names the sheet tab after the candidate, not the template', async () => {

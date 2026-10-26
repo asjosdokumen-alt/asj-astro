@@ -237,21 +237,21 @@ export function safeSheetName(nama: string): string {
 }
 
 /**
- * Nama berkas unduhan: `CV_<jenis>_<NAMA>_<ID>.xlsx`.
+ * Nama berkas unduhan: `<NAMA KANDIDAT>_CV.xlsx`.
  *
- * Sebelum ini nama berkas hanya memakai nama kandidat, dan ketika
- * `nama_lengkap` kosong semuanya jatuh ke `kandidat` — dua kandidat berbeda
- * menghasilkan nama yang SAMA di folder unduhan (laporan pemilik 2026-10-26:
- * "hasilnya namanya sama semua"). ID kandidat membuatnya unik walau namanya
- * kembar atau kosong.
+ * Pemilik 2026-10-26: "untuk penamaan nya namakandidat_CV, jgn digabung dengan
+ * template — murni hasil generated nya NAMA KANDIDAT_CV". Jadi TIDAK ada
+ * prefix jenis template; yang membedakan dua template adalah isi berkasnya.
+ *
+ * Nama kosong jatuh ke `KANDIDAT` supaya tidak ada berkas bernama `_CV.xlsx`
+ * (dulu semua unduhan tanpa nama menjadi nama yang sama).
  */
-export function cvFileName(prefix: string, data: { identitas: Record<string, unknown>; raw: Record<string, unknown> }): string {
+export function cvFileName(data: { identitas: Record<string, unknown> }): string {
   const nama = s(data.identitas.nama_lengkap)
     .replace(/[^a-zA-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '') || 'kandidat';
-  const id = s(data.raw.idKandidat ?? data.raw.id_kandidat ?? data.raw.IDKANDIDAT)
-    .replace(/[^a-zA-Z0-9]/g, '');
-  return `${prefix}_${nama}${id ? `_${id}` : ''}.xlsx`;
+    .replace(/^_+|_+$/g, '')
+    .toUpperCase() || 'KANDIDAT';
+  return `${nama}_CV.xlsx`;
 }
 
 /** Isi template dengan `values`, ganti fotonya kalau ada, kembalikan .xlsx. */
@@ -281,7 +281,7 @@ export async function buildXlsxForm(spec: XlsxFormSpec): Promise<Blob> {
   }
 
   const { drawingPath, photoPart, photoRelId, photoBox, photoUrl } = spec;
-  if (isGood(photoUrl) && drawingPath && photoPart && photoBox) {
+  if (isGood(photoUrl) && photoPart && photoBox) {
     const probe = await photoToPngBytes(s(photoUrl), photoBox).catch(() => null);
     if (probe) {
       // Fit diturunkan dari ukuran piksel PNG hasil normalisasi.
@@ -291,9 +291,14 @@ export async function buildXlsxForm(spec: XlsxFormSpec): Promise<Blob> {
         const bytes = await photoToPngBytes(s(photoUrl), fit);
         if (bytes) {
           zip.file(photoPart, bytes);
-          const drawFile = zip.file(drawingPath);
-          if (drawFile) {
-            zip.file(drawingPath, patchAnchor(await drawFile.async('string'), fit, photoRelId));
+          // Anchor hanya ditambal kalau template memang punya `<xdr:ext>` milik
+          // foto. Form Firma memakai `twoCellAnchor` (kotak ditentukan dua sel),
+          // jadi tidak ada yang perlu ditambal — gambarnya saja yang diganti.
+          if (drawingPath) {
+            const drawFile = zip.file(drawingPath);
+            if (drawFile) {
+              zip.file(drawingPath, patchAnchor(await drawFile.async('string'), fit, photoRelId));
+            }
           }
         }
       }
