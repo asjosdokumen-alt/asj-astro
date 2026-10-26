@@ -1183,6 +1183,8 @@ export const jpTranslations: Record<string, string> = {
     "wawancara.belum_vip": "VIP未登録",
     "wawancara.tutup_judul": "面接練習はまだ公開されていません",
     "wawancara.tutup_isi": "この機能は現在ASJ内部のみで使用しています。面接練習が必要な場合は管理者にご連絡ください。",
+    "wawancara.khusus_vip_judul": "面接練習はASJ生限定です",
+    "wawancara.khusus_vip_isi": "この機能はASJ生（VIP／LPKクラス）限定です。このアカウントはASJ生として登録されていません。誤りと思われる場合は管理者にご連絡ください。",
     "auth.belum_punya_akun": "アカウントをお持ちでないですか？",
     "toolbar.apply": "応募フォーム",
     "toolbar.master": "CVマスター",

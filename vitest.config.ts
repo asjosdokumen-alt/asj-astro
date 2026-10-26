@@ -215,6 +215,14 @@ export default defineConfig({
             // (`contexts/master-data`) dengan kontrak skema; tanpa DOM.
             // Tanpa baris ini ia jalan DUA KALI (R13f-bis).
             'e2e/form-column-parity.test.ts',
+            // Ditambahkan 2026-10-26. Gerbang server bank soal wawancara
+            // (`surfaces/ai.ts` → `tolakKecualiSiswa`): meng-import surface
+            // backend + memalsukan `contexts/identity` & `_lib/wawancara/bank`.
+            // Tanpa DOM sama sekali. Tinggal di e2e/ HANYA karena `*.test.ts` di
+            // dalam netlify/functions/ ikut dianggap function oleh Netlify dan
+            // memindahkan counter beku `indexer`. Tanpa baris ini ia jalan DUA
+            // KALI (R13f-bis) — terbukti: lolos di jsdom juga.
+            'e2e/wawancara-guard.test.ts',
           ],
         },
       },

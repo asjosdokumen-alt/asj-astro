@@ -211,6 +211,15 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
         setGateMsg('Sesi tidak valid. Silakan masuk lagi.');
         return;
       }
+      /* Bukan siswa ASJ: server sengaja menjawab `success:false` + `isVip:false`
+         TANPA bank soal. Jangan lanjut ke "Bank soal kosong. Hubungi admin." —
+         pesan itu menyalahkan bank, padahal yang kurang adalah status siswa. */
+      if (d.success === false && d.isVip === false) {
+        setVip(false);
+        setSoal([]);
+        setTahap([]);
+        return;
+      }
       const daftar = Array.isArray(d.soal) ? d.soal : [];
       setSoal(daftar);
       setVip(typeof d.isVip === 'boolean' ? d.isVip : null);
@@ -380,30 +389,6 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
     }
   };
 
-  /* ── render: ditutup untuk publik ──────────────────────────────────────── */
-  /**
-   * Keputusan pemilik 2026-10-25: "untuk wawancara mending kita tolak dulu,
-   * biar untuk internal dulu". Jadi halaman publik berhenti di kartu ini —
-   * TIDAK ada gerbang login, karena masuk pun tidak akan membuka apa pun.
-   *
-   * Penjaga yang SEBENARNYA ada di server: ketiga aksi wawancara sekarang
-   * `requireAdmin` (surfaces/ai.ts). Kartu ini hanya supaya orang tidak
-   * menebak-nebak; keduanya harus dibuka bersama kalau fitur ini dibuka lagi.
-   * Panel admin tetap jalan — ia memanggil dengan `adminMode`.
-   */
-  if (!adminMode && auth.role !== 'admin') {
-    return (
-      <section
-        aria-label={t('wawancara.tutup_judul')}
-        data-testid="mensetsu-tutup"
-        class="max-w-md mx-auto my-8 rounded-card border border-line bg-surface p-6 text-center"
-      >
-        <h2 class="text-base font-black text-fg mb-2">{t('wawancara.tutup_judul')}</h2>
-        <p class="text-[12.5px] text-fg-muted leading-relaxed">{t('wawancara.tutup_isi')}</p>
-      </section>
-    );
-  }
-
   /* ── render: gate ──────────────────────────────────────────────────────── */
   if (loginGate) {
     return (
@@ -449,6 +434,42 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
             {t('header.register')}
           </button>
         </p>
+      </section>
+    );
+  }
+
+  /* ── render: khusus siswa ASJ (VIP / KELAS) ────────────────────────────── */
+  /**
+   * Keputusan pemilik 2026-10-26, membalik penutupan 2026-10-25.
+   *
+   * Kronologinya penting supaya tidak ada yang "memperbaiki" ini ke arah lain:
+   * 25 Okt halaman ditutup untuk SEMUA non-admin ("biar untuk internal dulu"),
+   * lalu pemilik menemukan muridnya yang VIP (Budi Trisnanto, ASJ00188) tetap
+   * tidak bisa masuk — karena kartu penutup tidak pernah membaca flag VIP.
+   * "Internal" ternyata berarti SISWA, jadi sekarang:
+   *
+   *   1. belum login        ⇒ gerbang login (blok di atas);
+   *   2. login, bukan siswa ⇒ kartu ini;
+   *   3. login, siswa ASJ   ⇒ bank soal.
+   *
+   * Status siswa dihitung SERVER (`statusVip` di `_lib/wawancara/bank.ts`,
+   * predikat yang sama dengan lencana "Siswa Resmi ASJ"). Sebelum `muat()`
+   * selesai nilainya `null` — JANGAN putuskan apa pun saat belum tahu, kalau
+   * tidak siswa VIP melihat kedipan kartu ini sebelum bank soalnya datang.
+   *
+   * Penjaga SEBENARNYA tetap di server (`surfaces/ai.ts`): `getBankWawancara`
+   * tidak mengirim satu soal pun untuk non-siswa, dan simpan/terjemah menolak.
+   * Kartu ini hanya cermin supaya orang tidak menebak-nebak.
+   */
+  if (!adminMode && auth.role !== 'admin' && vip === false) {
+    return (
+      <section
+        aria-label={t('wawancara.khusus_vip_judul')}
+        data-testid="mensetsu-khusus-vip"
+        class="max-w-md mx-auto my-8 rounded-card border border-line bg-surface p-6 text-center"
+      >
+        <h2 class="text-base font-black text-fg mb-2">{t('wawancara.khusus_vip_judul')}</h2>
+        <p class="text-[12.5px] text-fg-muted leading-relaxed">{t('wawancara.khusus_vip_isi')}</p>
       </section>
     );
   }

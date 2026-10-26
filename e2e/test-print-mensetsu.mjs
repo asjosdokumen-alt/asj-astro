@@ -193,19 +193,23 @@ async function test(name, fn) {
 
 const browser = await chromium.launch({ args: ['--no-proxy-server'] });
 
-/** Open a route with a fabricated session and locally-fulfilled functions. */
-async function open({ role, path, ready }) {
+/** Open a route with a fabricated session and locally-fulfilled functions.
+ *  `anon` = no session at all (the public visitor); `bank` = override the
+ *  `getBankWawancara` body, so one fixture can answer "siswa" or "bukan siswa". */
+async function open({ role, path, ready, anon = false, bank = BANK }) {
   const ctx = await browser.newContext({
     viewport: { width: 1280, height: 900 },
-    storageState: {
-      cookies: [],
-      origins: [
-        {
-          origin: BASE,
-          localStorage: [{ name: 'asj_auth', value: authFor(role) }],
+    storageState: anon
+      ? { cookies: [], origins: [] }
+      : {
+          cookies: [],
+          origins: [
+            {
+              origin: BASE,
+              localStorage: [{ name: 'asj_auth', value: authFor(role) }],
+            },
+          ],
         },
-      ],
-    },
   });
   const page = await ctx.newPage();
   /* `window.print` diganti: dialog cetak tidak ada di headless, dan yang perlu
@@ -229,7 +233,7 @@ async function open({ role, path, ready }) {
       /* a non-JSON body is not one of ours — answer with the benign shape */
     }
     let body = { success: true };
-    if (action === 'getBankWawancara') body = BANK;
+    if (action === 'getBankWawancara') body = bank;
     else if (action === 'getCandidatesPage') {
       body = { success: true, total: 1, candidates: [ADMIN_CANDIDATE] };
     }
@@ -324,27 +328,50 @@ async function assertPrintSheet(page, label) {
   await page.emulateMedia({ media: 'screen' });
 }
 
-/* ── 1. Halaman publik: DITUTUP (2026-10-25) ───────────────────────────────
-   Pemilik memutuskan latihan wawancara dipakai internal dulu, jadi `/wawancara`
-   berhenti di kartu pemberitahuan: tidak ada lembar soal, tidak ada gerbang
-   login. Penjaganya yang sebenarnya `requireAdmin` di surfaces/ai.ts — test ini
-   menjaga PERILAKU YANG TERLIHAT, dan kalau kartunya hilang tanpa sengaja
-   (mis. guard dihapus saat fitur dibuka lagi) hasilnya ketahuan di sini. */
-await test('/wawancara: ditutup untuk publik — kartu, bukan lembar soal', async () => {
+/* ── 1. Halaman publik: SISWA ASJ SAJA (2026-10-26) ────────────────────────
+   25 Okt halaman ditutup untuk semua non-admin; 26 Okt pemilik menemukan murid
+   VIP-nya tetap tidak bisa masuk karena kartu penutup tidak membaca flag siswa.
+   Jadi sekarang publik berhenti di GERBANG LOGIN, dan yang bukan siswa berhenti
+   di kartu "khusus siswa ASJ" — dua-duanya tanpa lembar soal. Test ini menjaga
+   PERILAKU YANG TERLIHAT; penjaganya `tolakKecualiSiswa` di surfaces/ai.ts. */
+await test('/wawancara: publik tanpa sesi — gerbang login, bukan lembar soal', async () => {
   const { ctx, page } = await open({
-    role: 'kandidat',
-    path: '/wawancara?wa=081234567890',
-    ready: '[data-testid="mensetsu-tutup"]',
+    anon: true,
+    path: '/wawancara',
+    ready: 'input[type="password"]',
   });
   try {
     const bentuk = await page.evaluate(() => ({
-      kartu: !!document.querySelector('[data-testid="mensetsu-tutup"]'),
+      gerbang: !!document.querySelector('input[type="password"]'),
+      lembar: document.querySelectorAll('[data-cetak]').length,
+      kartuVip: !!document.querySelector('[data-testid="mensetsu-khusus-vip"]'),
+    }));
+    if (!bentuk.gerbang) throw new Error('gerbang login tidak muncul untuk publik');
+    if (bentuk.lembar > 0) throw new Error('lembar soal dirender untuk publik tanpa sesi');
+    /* Status siswa belum diketahui sebelum login — menampilkan kartu ini di sini
+       berarti menuduh pengunjung sebelum server menjawab. */
+    if (bentuk.kartuVip) throw new Error('kartu "khusus siswa" muncul sebelum login');
+  } finally {
+    await ctx.close();
+  }
+});
+
+await test('/wawancara: kandidat login yang bukan siswa — kartu, bukan lembar soal', async () => {
+  const { ctx, page } = await open({
+    role: 'kandidat',
+    path: '/wawancara?wa=081234567890',
+    ready: '[data-testid="mensetsu-khusus-vip"]',
+    bank: { success: false, isVip: false, message: 'Latihan wawancara khusus siswa ASJ (VIP / Kelas LPK).' },
+  });
+  try {
+    const bentuk = await page.evaluate(() => ({
+      kartuVip: !!document.querySelector('[data-testid="mensetsu-khusus-vip"]'),
       lembar: document.querySelectorAll('[data-cetak]').length,
       gerbang: !!document.querySelector('input[type="password"]'),
     }));
-    if (!bentuk.kartu) throw new Error('kartu "belum dibuka" tidak muncul');
-    if (bentuk.lembar > 0) throw new Error('lembar soal masih dirender untuk publik');
-    if (bentuk.gerbang) throw new Error('gerbang login masih muncul padahal fiturnya ditutup');
+    if (!bentuk.kartuVip) throw new Error('kartu "khusus siswa ASJ" tidak muncul');
+    if (bentuk.lembar > 0) throw new Error('lembar soal masih dirender untuk non-siswa');
+    if (bentuk.gerbang) throw new Error('gerbang login muncul padahal sesinya sudah login');
   } finally {
     await ctx.close();
   }

@@ -20,6 +20,51 @@ import { handleGetJobStatus } from '../_lib/kernel/job-queue';
  */
 const BACKGROUND_ACTIONS = new Set<string>([]);
 
+/**
+ * Penjaga bersama tiga aksi bank soal wawancara (mensetsu).
+ *
+ * RIWAYAT, jangan dibalik tanpa membaca ini:
+ *   • sebelum 2026-10-25 ketiganya `isOwnerOrAdmin` — kandidat mana pun yang
+ *     punya sesi bisa membuka 177 soalnya sendiri;
+ *   • 2026-10-25 pemilik meminta "tolak dulu, biar untuk internal dulu" ⇒
+ *     `requireAdmin`, dan halaman publik berhenti di kartu "belum dibuka";
+ *   • 2026-10-26 pemilik menemukan murid VIP-nya (ASJ00188) tetap tidak bisa
+ *     masuk — kartu penutup itu tidak pernah membaca flag siswa. "Internal"
+ *     ternyata = SISWA, jadi aturannya sekarang:
+ *
+ *       admin  → selalu boleh (panel TabPelamar memanggil dengan `adminMode`);
+ *       kandidat → hanya WA-nya SENDIRI (`isOwnerOrAdmin`) DAN bertanda siswa
+ *                  ASJ (`statusVip`: `[VIP]` atau `[KELAS xx]`).
+ *
+ * Konsekuensi yang diterima pemilik: 136 dari 226 kandidat tidak bertanda siswa,
+ * jadi tautan `/wawancara?wa=…` yang terlanjur dibagikan ke mereka akan berhenti
+ * di kartu "khusus siswa ASJ" — bukan error, tapi juga bukan bank soal.
+ *
+ * `null` = boleh lanjut; selain itu = objek galat siap dikirim ke klien.
+ */
+async function tolakKecualiSiswa(sessionToken: string | undefined, wa: string) {
+  const { isOwnerOrAdmin, requireAdmin } = await import('../contexts/identity');
+  if (!requireAdmin(sessionToken || '').error) return null;
+  if (!isOwnerOrAdmin(sessionToken, wa)) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
+  const { statusVip } = await import('../_lib/wawancara/bank');
+  const vip = await statusVip(wa);
+  // `null` = pemeriksaan gagal (DB tidak terjangkau). Jangan bilang "bukan
+  // siswa": itu menuduh kandidat atas kegagalan kita sendiri.
+  if (vip === null) {
+    return { success: false, message: 'Gagal memeriksa status siswa. Coba lagi sebentar.' };
+  }
+  if (!vip) {
+    return {
+      success: false,
+      isVip: false,
+      message: 'Latihan wawancara khusus siswa ASJ (VIP / Kelas LPK).',
+    };
+  }
+  return null;
+}
+
 export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   processAIChat: async (p: unknown[], s?: string) => {
     const ai = await import('../contexts/ai-orchestration');
@@ -89,35 +134,30 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
   // Menggantikan simulator chat bebas: soal tetap (177 soal, 13 tahap) + isian
   // tiga lapis per soal.
   //
-  // 🔴 ADMIN-ONLY SEJAK 2026-10-25 (keputusan pemilik: "untuk wawancara mending
-  // kita tolak dulu, biar untuk internal dulu"). Sebelumnya `isOwnerOrAdmin`,
-  // jadi kandidat bisa membuka miliknya sendiri lewat /wawancara. Sekarang
-  // ketiga aksi ini `requireAdmin` — halaman publik hanya menampilkan pemberitahuan,
-  // dan panel admin (TabPelamar, `adminMode`) tetap jalan karena sesinya admin.
-  // Kalau fitur ini dibuka lagi untuk kandidat, kembalikan ke `isOwnerOrAdmin`
-  // BERSAMAAN dengan menghapus kartu "belum dibuka" di MensetsuForm — dua tempat,
-  // karena guard di sini yang sebenarnya menahan, bukan tampilannya.
+  // 🔴 SISWA ASJ SAJA SEJAK 2026-10-26 — lihat `tolakKecualiSiswa` di atas untuk
+  // riwayat lengkapnya (25 Okt: admin-only; 26 Okt: dibuka lagi untuk siswa).
+  // Halaman publik menampilkan gerbang login lalu kartu "khusus siswa ASJ";
+  // panel admin (TabPelamar, `adminMode`) tetap jalan karena sesinya admin.
   getBankWawancara: async (p: unknown[], s?: string) => {
-    const { gabungBankDanJawaban } = await import('../_lib/wawancara/bank');
-    const { requireAdmin } = await import('../contexts/identity');
-    const guard = requireAdmin(s || '');
-    if (guard.error) return { ...guard.error, message: 'Latihan wawancara sementara hanya untuk admin' };
     const wa = String(p?.[0] ?? '').trim();
+    const tolak = await tolakKecualiSiswa(s, wa);
+    if (tolak) return tolak;
+    const { gabungBankDanJawaban } = await import('../_lib/wawancara/bank');
     return { success: true, ...(await gabungBankDanJawaban(wa)) };
   },
   simpanJawabanWawancara: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '');
+    const tolak = await tolakKecualiSiswa(s, wa);
+    if (tolak) return tolak;
     const { simpanJawaban } = await import('../_lib/wawancara/bank');
-    const { requireAdmin } = await import('../contexts/identity');
-    const guard = requireAdmin(s || '');
-    if (guard.error) return { ...guard.error, message: 'Latihan wawancara sementara hanya untuk admin' };
-    return simpanJawaban(String(p?.[0] ?? ''), String(p?.[1] ?? ''), (p?.[2] ?? {}) as Record<string, unknown>, 'siswa');
+    return simpanJawaban(wa, String(p?.[1] ?? ''), (p?.[2] ?? {}) as Record<string, unknown>, 'siswa');
   },
   terjemahkanJawabanWawancara: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '');
+    const tolak = await tolakKecualiSiswa(s, wa);
+    if (tolak) return tolak;
     const { terjemahkanJawaban } = await import('../_lib/wawancara/bank');
-    const { requireAdmin } = await import('../contexts/identity');
-    const guard = requireAdmin(s || '');
-    if (guard.error) return { ...guard.error, message: 'Latihan wawancara sementara hanya untuk admin' };
-    return terjemahkanJawaban(String(p?.[0] ?? ''), String(p?.[1] ?? ''), String(p?.[2] ?? ''));
+    return terjemahkanJawaban(wa, String(p?.[1] ?? ''), String(p?.[2] ?? ''));
   },
   getLinkWawancara: async (p: unknown[], s?: string) => {
     const { linkWawancara } = await import('../_lib/wawancara/bank');

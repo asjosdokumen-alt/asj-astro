@@ -210,12 +210,20 @@ export async function gabungBankDanJawaban(wa: string) {
 /**
  * Apakah nomor ini bertanda siswa ASJ?
  *
- * INFORMASI, BUKAN GERBANG. Terukur 2026-10-25: 226 kandidat, 90 bertanda
- * `[VIP]`, 1 `[KELAS …]` — jadi ~135 TIDAK bertanda. Halaman `/wawancara`
- * sekarang dibagikan lewat tautan WhatsApp ke kandidat, dan mengunci halaman
- * ini berdasarkan tag akan memutus tautan yang sudah terkirim. Gerbang VIP
- * yang sebenarnya tetap di dashboard (tombol Latihan Wawancara) dan di
- * lamaran job MAGANG (`documents/service.ts`).
+ * 🔴 SEJAK 2026-10-26 INI GERBANG, bukan lagi sekadar informasi. Sampai
+ * 2026-10-25 fungsi ini hanya dipakai untuk lencana ("Siswa Resmi ASJ") dan
+ * halaman `/wawancara` sengaja TIDAK dikunci tag, karena tautannya dibagikan
+ * lewat WhatsApp dan ~136 dari 226 kandidat tidak bertanda. Pemilik lalu
+ * memutuskan (26 Okt) latihan wawancara dibuka hanya untuk siswa ASJ, setelah
+ * menemukan murid VIP-nya tidak bisa masuk saat halaman ditutup untuk semua
+ * non-admin. Gerbangnya di `surfaces/ai.ts` → `tolakKecualiSiswa`.
+ *
+ * Konsekuensi yang DITERIMA: tautan `/wawancara?wa=…` yang sudah terkirim ke
+ * kandidat tanpa tanda `[VIP]`/`[KELAS]` berhenti di kartu "khusus siswa ASJ".
+ * Kalau itu keliru, yang harus diubah adalah TAG-nya di `catatan_internal`
+ * (atau gerbangnya), bukan fungsi ini.
+ *
+ * `null` = pemeriksaan gagal (DB tidak terjangkau) — BUKAN "bukan siswa".
  */
 export async function statusVip(wa: string): Promise<boolean | null> {
   try {
