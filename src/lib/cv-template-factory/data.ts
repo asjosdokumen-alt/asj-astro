@@ -107,6 +107,15 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
       hobi_jp: v('HOBIJP', 'wawancara.hobi_jp'),
       motivasi_ke_jepang: v('MOTIVASIKEJEPANG', 'MOTIVASIID', 'wawancara.motivasi_ke_jepang', 'wawancara.motivasi_id'),
       motivasi_ke_jepang_jp: v('MOTIVASIKEJEPANGJP', 'MOTIVASIJP', 'wawancara.motivasi_jp'),
+      // 🔴 `getDrafCvMaster` mengembalikan bentuk BERSARANG, dan di bentuk itu
+      // kuncinya bernama `wawancara.promosi_jp` — BUKAN `promosi_diri_jp`
+      // (`buildMasterNested`, service.ts:374). Renderer form KINKI dulu membaca
+      // `raw.promosi_diri_jp`, yang tidak pernah ada, sehingga 性格診断テスト
+      // keluar kosong untuk SEMUA kandidat. Dua baris ini yang menutupnya.
+      promosi: v('PROMOSIDIRI', 'promosi_diri', 'wawancara.promosi_id', 'wawancara.promosi'),
+      promosi_jp: v('PROMOSIDIRIJP', 'promosi_diri_jp', 'wawancara.promosi_jp'),
+      keahlian_khusus: v('KEAHLIANKHUSUS', 'keahlian_khusus', 'wawancara.keahlian_khusus'),
+      keahlian_khusus_jp: v('KEAHLIANKHUSUSJP', 'keahlian_khusus_jp', 'wawancara.keahlian_khusus_jp'),
     },
     kenalan_jepang: {
       nama_id: v('KENALANNAMAID', 'KENALANDIJEPANGNAMA', 'kenalan_jepang.nama_id'),

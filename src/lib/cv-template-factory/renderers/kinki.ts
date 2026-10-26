@@ -26,9 +26,10 @@
  * Tidak ada kolomnya di database, dan pemilik menerkanya dari kalimat kandidat
  * ("kelebihan kekurangan impian dll"). Karena itu tipenya disimpulkan
  * `inferMbti()` — deterministik dan bisa diuji — bukan dipanggil ke model
- * bahasa. Kalau kandidat belum punya satu pun teks wawancara, sel MBTI
- * DIKOSONGKAN berikut rumusnya: `A50 = =Q47` dan `E50 = INDEX/MATCH` akan
- * mencetak `0` / `#N/A` kalau `Q47` kosong.
+ * bahasa. SELALU terisi: pemilik 2026-10-26 memilih tipe yang mungkin meleset
+ * ("seenggak walau gak 90% akurat") daripada sel kosong yang terbaca sebagai
+ * formulir belum selesai. Teksnya dibaca dari `data.wawancara`, bukan
+ * `data.raw` — lihat catatan di `buildValues`.
  *
  * SEL YANG SENGAJA TIDAK DIISI (tidak ada padanannya di database)
  * ---------------------------------------------------------------
@@ -265,7 +266,19 @@ const SKILLS: [RegExp, string][] = [
   [/生コン|beton|cor\b/i, 'E35'],
 ];
 
-/** 出身地: `〒63395 東ジャワ州 マゲタン県 …` → `インドネシア東ジャワ州マゲタン県`. */
+/**
+ * カナ氏名: pemisah ditulis `・` (bukan spasi penuh), dan hiragana diubah ke
+ * katakana — kolom ini kolom KANA, dan database memang menyimpan campuran
+ * (`ヨン　アリック　ラマダに` untuk ASJ00104). Pergeseran +0x60 berlaku untuk
+ * seluruh blok hiragana, jadi `っ`/`ゃ` kecil ikut benar.
+ */
+function kanaJp(v: unknown): string {
+  return s(v)
+    .replace(/[\s\u3000]+/g, '・')
+    .replace(/[\u3041-\u3096]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0x60));
+}
+
+/** 国籍・出身地: `〒63395 東ジャワ州 マゲタン県 …` → `インドネシア東ジャワ州マゲタン県`. */
 function asalJp(alamatJp: string, tempatJp: string): string {
   // Kode pos di database tidak selalu 7 digit (`〒63395`), jadi jangan
   // mengasumsikan bentuk `123-4567`.
@@ -284,17 +297,22 @@ function harapanSetelahJp(rencana: string): string {
 
 export function buildValues(data: CandidateData): Record<string, string> {
   const id = data.identitas;
-  const raw = data.raw as Record<string, unknown>;
   const hobi = bersih(data.wawancara.hobi_jp) || bersih(data.wawancara.hobi);
-  const keahlian = bersih(raw.keahlian_khusus_jp) || bersih(raw.keahlian_khusus);
+  // ⚠️ Semua teks wawancara dibaca dari `data.wawancara`, TIDAK dari `data.raw`:
+  // `getDrafCvMaster` mengembalikan bentuk BERSARANG, jadi `raw.promosi_diri_jp`
+  // tidak pernah ada dan sel PR + MBTI keluar kosong untuk semua kandidat.
+  const keahlian = bersih(data.wawancara.keahlian_khusus_jp) || bersih(data.wawancara.keahlian_khusus);
   const rencana = bersih(data.wawancara.rencana_pulang_jp) || bersih(data.wawancara.rencana_pulang);
+  const promosi = bersih(data.wawancara.promosi_jp) || bersih(data.wawancara.promosi);
+  const kelebihan = bersih(data.wawancara.kelebihan_jp) || bersih(data.wawancara.kelebihan);
+  const kekurangan = bersih(data.wawancara.kekurangan_jp) || bersih(data.wawancara.kekurangan);
+  const tujuan = bersih(data.wawancara.tujuan_ke_jepang_jp) || bersih(data.wawancara.motivasi_ke_jepang_jp);
 
   const cells: Record<string, string> = {
     /* ── identitas ──────────────────────────────────────────────────────── */
     E6: bersih(id.nama_lengkap),
     S6: bersih(id.panggilan_katakana) || bersih(id.panggilan),
-    // Kana form ditulis dengan titik pemisah, bukan spasi penuh.
-    E7: bersih(id.katakana).replace(/[\s\u3000]+/g, '・'),
+    E7: kanaJp(id.katakana),
     S7: genderJp(id.gender),
     E9: hpLokal(id.hp),
     // Jarak & lama penerbangan tidak ada di database — jangan biarkan `***`
@@ -413,32 +431,31 @@ export function buildValues(data: CandidateData): Record<string, string> {
   cells.X49 = harapanSetelahJp(rencana);
 
   /* ── kotak PR & kepribadian ────────────────────────────────────────────── */
-  cells.U3 = bersih(raw.promosi_diri_jp) || bersih(data.wawancara.kelebihan_jp);
-  cells.E44 = bersih(data.wawancara.kelebihan_jp) || bersih(data.wawancara.kelebihan);
-  cells.E45 = bersih(data.wawancara.kekurangan_jp) || bersih(data.wawancara.kekurangan);
-  cells.E46 = bersih(data.wawancara.tujuan_ke_jepang_jp) || bersih(data.wawancara.motivasi_ke_jepang_jp);
+  cells.U3 = promosi || kelebihan;
+  cells.E44 = kelebihan;
+  cells.E45 = kekurangan;
+  cells.E46 = tujuan;
   cells.E48 = rencana;
 
   /* ── MBTI ──────────────────────────────────────────────────────────────── */
-  const mbti = inferMbti(raw);
-  if (mbti) {
-    cells.Q47 = mbti.typeName;
-    cells.U48 = mbti.labels[0];
-    cells.U49 = mbti.labels[1];
-    cells.U50 = mbti.labels[2];
-    cells.U51 = mbti.labels[3];
-    cells.U52 = mbti.labels[4];
-  } else {
-    // `A50 = =Q47` akan mencetak 0 dan `E50` mencetak #N/A kalau Q47 kosong.
-    cells.Q47 = '';
-    cells.U48 = '';
-    cells.U49 = '';
-    cells.U50 = '';
-    cells.U51 = '';
-    cells.U52 = '';
-    cells.A50 = '';
-    cells.E50 = '';
-  }
+  // Selalu terisi: kalau kandidat belum punya teks, tipenya jatuh ke bawaan
+  // (lihat `mbti.ts`) — sel kosong terbaca sebagai formulir belum selesai.
+  const mbti = inferMbti({
+    promosi,
+    kekurangan,
+    kelebihan,
+    tujuan,
+    rencana,
+    motivasi: bersih(data.wawancara.motivasi_ke_jepang_jp) || bersih(data.wawancara.motivasi_ke_jepang),
+    hobi,
+    keahlian,
+  });
+  cells.Q47 = mbti.typeName;
+  cells.U48 = mbti.labels[0];
+  cells.U49 = mbti.labels[1];
+  cells.U50 = mbti.labels[2];
+  cells.U51 = mbti.labels[3];
+  cells.U52 = mbti.labels[4];
 
   return cells;
 }

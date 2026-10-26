@@ -22,6 +22,7 @@ import { describe, it, expect } from 'vitest';
 import { KINKI_BASE64 } from '../src/lib/cv-template-factory/templates/kinki.b64';
 import { buildKinkiWorkbook, buildNumbers, buildValues } from '../src/lib/cv-template-factory/renderers/kinki';
 import { MBTI_MARGIN, TYPE_NAMES, inferMbti } from '../src/lib/cv-template-factory/mbti';
+import { normalizeMasterData } from '../src/lib/cv-template-factory/data';
 import type { CandidateData } from '../src/lib/cv-template-factory/types';
 
 const SHEET = 'xl/worksheets/sheet1.xml';
@@ -82,7 +83,7 @@ function cellText(sheet: string, addr: string, shared: string[]): string | null 
 }
 
 /** Kandidat uji — bentuknya sama dengan yang dikirim `normalizeMasterData`. */
-function kandidat(over: Partial<Record<string, unknown>> = {}): CandidateData {
+function kandidat(): CandidateData {
   return {
     identitas: {
       nama_lengkap: 'BUDI TRISNANTO',
@@ -117,19 +118,20 @@ function kandidat(over: Partial<Record<string, unknown>> = {}): CandidateData {
     ],
     sertifikasi: { jft: 'N5 LULUS' },
     wawancara: {
+      // Bentuk BERSARANG seperti `buildMasterNested` — `promosi_jp`, bukan
+      // `promosi_diri_jp`. Renderer dulu membaca kunci datar dan seluruh sel
+      // PR + MBTI keluar kosong; fixture ini yang menahan regresi itu.
+      promosi_jp: '私は規律正しく、勤勉で、諦めない性格です。',
       kelebihan_jp: 'プレッシャーのかかる状況でも落ち着いて責任を持って作業に対応できます。',
       kekurangan_jp: '私の短所は心配性なところです。分からないことはよく確認します。',
       tujuan_ke_jepang_jp: '家族の生活を支え、両親を笑顔にしたいからです。',
       rencana_setelah_pulang_jp: 'ずっと日本で働きたいと思っています。',
       hobi_jp: 'ジョギング',
+      keahlian_khusus_jp: '整備士、大工',
     },
     kenalan_jepang: { nama_id: '', nama_jp: '' },
     uploads: { photo: '' },
-    raw: {
-      promosi_diri_jp: '私は規律正しく、勤勉で、諦めない性格です。',
-      keahlian_khusus_jp: '整備士、大工',
-      ...over,
-    },
+    raw: {},
   } as unknown as CandidateData;
 }
 
@@ -184,7 +186,7 @@ describe('kinki · peta sel', () => {
     const nums = buildNumbers(kandidat());
     // 2005-11-02 = 38658 hari sejak 1899-12-30.
     expect(nums.E8).toBe(38658);
-    expect(buildNumbers(kandidat({})).E8).toBeTypeOf('number');
+    expect(buildNumbers(kandidat()).E8).toBeTypeOf('number');
   });
 
   it('identitas & kebiasaan memakai kosakata dropdown form', () => {
@@ -266,16 +268,18 @@ describe('kinki · MBTI masuk ke dropdown yang sah', () => {
     expect(Object.keys(TYPE_NAMES)).toHaveLength(16);
   });
 
-  it('tanpa teks wawancara: Q47, A50, dan E50 dikosongkan (bukan 0 / #N/A)', () => {
+  it('tanpa teks wawancara: Q47 TETAP terisi dari bawaan, rumusnya tidak disentuh', () => {
     const data = kandidat();
     data.wawancara = {};
-    data.raw = { promosi_diri_jp: '', keahlian_khusus_jp: '' };
-    expect(inferMbti(data.raw)).toBeNull();
 
     const c = buildValues(data);
-    for (const addr of ['Q47', 'U48', 'U49', 'U50', 'U51', 'U52', 'A50', 'E50']) {
-      expect(c[addr]).toBe('');
-    }
+    // Sel kosong terbaca sebagai formulir belum selesai oleh klien Jepang.
+    expect(c.Q47).toBe('管理者型（ISTJ）');
+    expect(c.U48).toBe('【I】内向型');
+    // `A50 (=Q47)` dan `E50 (INDEX/MATCH)` harus DIBIARKAN: karena Q47 ada,
+    // keduanya menghasilkan nilai — bukan 0 dan bukan #N/A.
+    expect(c.A50).toBeUndefined();
+    expect(c.E50).toBeUndefined();
   });
 
   it('selisih di bawah ambang tidak membalik tipe', () => {
@@ -284,6 +288,60 @@ describe('kinki · MBTI masuk ke dropdown yang sah', () => {
     expect(r?.axis.TF).toBe('T');
     expect(r?.details.find((d) => d.axis === 'TF')?.tied).toBe(true);
     expect(MBTI_MARGIN).toBe(2);
+  });
+});
+
+describe('kinki · dari baris BERSARANG `getDrafCvMaster`', () => {
+  /**
+   * Bentuk yang BENAR-BENAR dikirim server (`buildMasterNested`): teks wawancara
+   * ada di `wawancara.promosi_jp`, bukan di `raw.promosi_diri_jp`. Versi pertama
+   * renderer membaca kunci datar, jadi 性格診断テスト + kotak PR kosong untuk
+   * SEMUA kandidat — dan tidak ada satu pun tes yang menangkapnya karena semua
+   * fixture dibuat dengan bentuk yang salah itu.
+   */
+  it('PR dan MBTI terisi dari `wawancara.promosi_jp`', () => {
+    const row = {
+      identitas: {
+        nama_lengkap: 'BUDI TRISNANTO',
+        katakana: 'ブディ\u3000トリスナント',
+        panggilan: 'BUDI',
+        panggilan_katakana: 'ブディ',
+        gender: 'LAKI-LAKI',
+        tgl_lahir: '2005-11-02',
+        agama: 'ISLAM',
+        golongan_darah: 'O-',
+        status_nikah: 'BELUM MENIKAH',
+        hp: '628999170623',
+        hp_darurat: '6281234567890',
+        kontak_darurat_hubungan: 'AYAH',
+        alamat_jp: '〒63400 東ジャワ州 ポノロゴ県',
+        tempat_lahir_jp: 'ポノロゴ',
+        sim: '',
+      },
+      fisik: { tb: '170', bb: '60', tangan_dominan: 'KANAN' },
+      medis: { mata_kiri: 'NORMAL', mata_kanan: 'NORMAL', rokok: 'TIDAK', alkohol: 'TIDAK', tato: 'TIDAK', buta_warna: 'TIDAK' },
+      wawancara: {
+        promosi_jp: '私は規律正しく、勤勉で、諦めない性格です。',
+        kelebihan_jp: 'プレッシャーのかかる状況でも落ち着いて責任を持って作業に対応できます。',
+        kekurangan_jp: '私の短所は心配性なところです。分からないことはよく確認します。',
+        tujuan_ke_jepang_jp: '家族の生活を支え、両親を笑顔にしたいからです。',
+        rencana_setelah_pulang_jp: 'ずっと日本で働きたいと思っています。',
+        hobi_jp: 'ジョギング',
+        keahlian_khusus_jp: '整備士、大工',
+      },
+      sertifikasi: { jft: 'N5 LULUS' },
+      pendidikan: [{ tingkat: 'SMK', masuk: '2021-07', lulus: '2024-06', sekolah: 'SMKN 1 SLAHUNG', jurusan: 'TEKNIK OTOMOTIF' }],
+      pekerjaan: [],
+      keluarga: [],
+      AIDATAJSON: '',
+    };
+
+    const c = buildValues(normalizeMasterData(row));
+    expect(c.U3).toBe('私は規律正しく、勤勉で、諦めない性格です。');
+    expect(c.Q47).toBe('管理者型（ISTJ）');
+    expect(c.U48).toBe('【I】内向型');
+    expect(c.W34).toBe('■'); // できる作業 dari keahlian_khusus_jp
+    expect(c.O19).toBe('SMKN 1 SLAHUNG');
   });
 });
 

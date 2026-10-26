@@ -21,25 +21,46 @@
  * urutan bawaannya I, S, T, J, A yang dipakai: tipe yang paling sering muncul
  * pada kandidat magang teknis di berkas pemilik. Pilihan itu tercatat di
  * `details[].tied` supaya terlihat bahwa hasilnya berasal dari imbang, bukan
- * dari bukti. Kalau tidak ada satu pun teks, fungsinya mengembalikan `null`:
- * lebih baik sel kosong daripada tipe karangan.
+ * dari bukti. Tanpa teks sama sekali pun tipenya tetap diisi (lihat `inferMbti`),
+ * dan `sourceChars` = 0 menandai bahwa seluruhnya berasal dari bawaan.
  *
  * Keterbatasan yang disengaja: ini penilai kata kunci, bukan psikolog. Kandidat
  * yang menulis "saya orangnya santai" tidak akan terbaca P. Karena itu hasilnya
  * ditulis ke sel yang bisa diedit admin sebelum CV dikirim.
  */
 
-/** Teks yang boleh dipakai sebagai bukti, berurutan dari yang paling kuat. */
-export const MBTI_SOURCES = [
-  'promosi_diri_jp',
-  'kekurangan_jp',
-  'kelebihan_jp',
-  'tujuan_ke_jepang_jp',
-  'rencana_setelah_pulang_jp',
-  'motivasi_ke_jepang_jp',
-  'hobi_jp',
-  'keahlian_khusus_jp',
-] as const;
+/**
+ * Teks yang dipakai sebagai bukti, berurutan dari yang paling kuat.
+ *
+ * NAMANYA SENGAJA NETRAL, bukan nama kolom database. Pemanggillah yang tahu
+ * dari mana asalnya (`data.wawancara.promosi_jp`, `…kekurangan_jp`, dst).
+ * Versi pertama fungsi ini membaca nama kolom datar (`promosi_diri_jp`) dari
+ * `data.raw` — padahal `getDrafCvMaster` mengembalikan bentuk BERSARANG
+ * (`wawancara.promosi_jp`), jadi SEMUA teks terbaca kosong dan 性格診断テスト
+ * keluar kosong untuk setiap kandidat. Tipe di bawah ini yang membuat
+ * kesalahan seperti itu tidak bisa terulang tanpa gagal di typecheck.
+ */
+export interface MbtiInput {
+  promosi?: unknown;
+  kekurangan?: unknown;
+  kelebihan?: unknown;
+  tujuan?: unknown;
+  rencana?: unknown;
+  motivasi?: unknown;
+  hobi?: unknown;
+  keahlian?: unknown;
+}
+
+export const MBTI_FIELDS: (keyof MbtiInput)[] = [
+  'promosi',
+  'kekurangan',
+  'kelebihan',
+  'tujuan',
+  'rencana',
+  'motivasi',
+  'hobi',
+  'keahlian',
+];
 
 /** Nama tipe seperti yang tercetak di tabel `AF111:AF126` form KINKI. */
 export const TYPE_NAMES: Record<string, string> = {
@@ -177,8 +198,8 @@ export interface MbtiResult {
   sourceChars: number;
 }
 
-function textOf(raw: Record<string, unknown>, key: string): string {
-  const v = raw[key];
+function textOf(input: MbtiInput, key: keyof MbtiInput): string {
+  const v = input[key];
   return typeof v === 'string' ? v : '';
 }
 
@@ -200,14 +221,19 @@ function scoreAxis(rule: AxisRule, text: string): { a: number; b: number; hitsA:
 }
 
 /**
- * Simpulkan tipe dari kolom `*_jp`. `null` kalau tidak ada teks sama sekali —
- * pemanggil lalu mengosongkan sel MBTI, bukan menulis tipe bawaan.
+ * Simpulkan tipe dari kalimat kandidat.
+ *
+ * SELALU mengembalikan tipe. Pemilik 2026-10-26: *"seenggak walau gak 90%
+ * akurat yg penting bisa ada isinya"* — sel 性格診断テスト yang kosong terbaca
+ * sebagai formulir belum selesai oleh klien Jepang, sedangkan tipe yang salah
+ * masih bisa dikoreksi admin sebelum CV dikirim. Kalau tidak ada teks sama
+ * sekali, hasilnya murni bawaan dan `sourceChars` = 0 menandai bahwa itu bukan
+ * temuan.
  */
-export function inferMbti(raw: Record<string, unknown>): MbtiResult | null {
-  const text = MBTI_SOURCES.map((k) => textOf(raw, k)).join('\n');
+export function inferMbti(input: MbtiInput): MbtiResult {
+  const text = MBTI_FIELDS.map((k) => textOf(input, k)).join('\n');
   // `-` adalah tanda "belum ada" di database, bukan jawaban wawancara.
   const sourceChars = text.replace(/[\s\-‐–—]/g, '').length;
-  if (sourceChars === 0) return null;
 
   const details: MbtiAxisResult[] = [];
   const axis = {} as Record<MbtiAxis, string>;
