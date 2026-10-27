@@ -5,6 +5,7 @@
  */
 import { requireAdmin } from '../identity';
 import { safeError } from '../../_lib/kernel/errors';
+import { log } from '../../_lib/kernel/log';
 import {
   hasBackend, demo, normalizeWa, pick, toText, mapCandidate, stripRaw,
   loadCandidatesUnik, loadSchedules, loadTugas, loadWaTemplates, loadPublicBase,
@@ -211,6 +212,14 @@ export async function handleShareData(jobCode: string) {
       ]);
       pemberkasanRows = Array.isArray(pRes) ? pRes : [];
       masterRows = Array.isArray(mRes) ? mRes : [];
+      // `catch(() => null)` di atas sengaja tidak menggagalkan seluruh halaman —
+      // tapi tanpa catatan, "berkas kosong" dan "kueri gagal" terlihat SAMA
+      // PERSIS dari layar admin. Itu keluhan yang berulang ("sering kali data
+      // gak masuk, apa emang koneksi"): tidak ada satu pun jejak untuk
+      // membedakannya. Satu baris warn per tabel yang gagal sudah cukup untuk
+      // menjawabnya dari log fungsi, tanpa mengubah perilaku halaman.
+      if (!Array.isArray(pRes)) log.warn('appdata.berkas_query_failed', { table: 'pemberkasan_checklist', waCount: waList.length });
+      if (!Array.isArray(mRes)) log.warn('appdata.master_query_failed', { table: 'master_database_candidate', waCount: waList.length });
     } catch { /* non-fatal */ }
 
     const pByWa = new Map();
