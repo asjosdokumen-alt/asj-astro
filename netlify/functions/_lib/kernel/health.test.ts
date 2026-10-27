@@ -8,9 +8,42 @@
  * dependency has no record. That omission is exactly the regression this file
  * guards, so it is asserted directly rather than inferred.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { buildHealthReport, HEALTH_THRESHOLDS } from '../health';
 import { breaker, DEPENDENCY_CONFIGS, bulkhead } from './resilience';
+
+/**
+ * Jam dan "jaringan" yang bisa dikendalikan, untuk menguji `probePostgrest`.
+ *
+ * Sampai 2026-10-27 probe itu tidak punya satu tes pun: seluruh berkas ini
+ * memakai `includeShared: false`, jadi jalur yang menentukan status endpoint
+ * `/health` tidak pernah dieksekusi. Yang bocor ke produksi karena itu:
+ * `degraded` setiap kali health dipanggil setelah menganggur — sampel pertama
+ * instance dingin membayar jabat tangan TLS (terukur 697 ms; delapan sampel
+ * berurutan 697, 241, 222, 279, 215, 214, 214, 215), dan itulah satu-satunya
+ * sampel yang melewati ambang 800 ms.
+ *
+ * `delays` = lama tiap panggilan PostgREST berturut-turut; `calls` = berapa
+ * panggilan yang benar-benar terjadi (kontrol negatif: yang hangat TIDAK
+ * boleh menambah kueri).
+ */
+const clock = vi.hoisted(() => ({ now: 0, delays: [] as number[], calls: 0 }));
+
+vi.mock('../db/client', () => ({
+  supabaseJson: async () => {
+    clock.calls += 1;
+    clock.now += clock.delays.length ? (clock.delays.shift() as number) : 10;
+  },
+  supabaseUrl: () => 'https://health.test',
+  supabaseKey: () => 'test-key',
+}));
+
+// `probeQueue` memakai jalur mentah (HEAD + Prefer: count=exact), bukan
+// supabaseJson. Tanpa mock ini queue terlihat tidak terbaca dan laporannya
+// `degraded` apa pun hasil probe PostgREST — tesnya jadi tidak membedakan apa pun.
+vi.mock('./http', () => ({
+  request: async () => ({ ok: true, headers: { get: () => '0-0/0' } }),
+}));
 
 const KNOWN_DEPS = Object.keys(DEPENDENCY_CONFIGS).sort();
 
@@ -138,5 +171,58 @@ describe('HEALTH_THRESHOLDS', () => {
     expect(HEALTH_THRESHOLDS.breakerOpenMs).toBe(120_000);
     expect(HEALTH_THRESHOLDS.queueDepth).toBe(100);
     expect(HEALTH_THRESHOLDS.deadLetter).toBe(0);
+  });
+});
+
+describe('probePostgrest — sampel dingin vs sampel hangat', () => {
+  let realNow: typeof Date.now;
+
+  beforeEach(() => {
+    for (const dep of KNOWN_DEPS) breaker.reset(dep);
+    clock.now = 0;
+    clock.delays = [];
+    clock.calls = 0;
+    realNow = Date.now;
+    vi.spyOn(Date, 'now').mockImplementation(() => clock.now);
+  });
+
+  afterEach(() => {
+    vi.spyOn(Date, 'now').mockRestore();
+    Date.now = realNow;
+  });
+
+  it('sampel dingin yang lambat TIDAK sendirian menjadikan laporan degraded', async () => {
+    // 900 ms lalu 40 ms = instance baru hidup, lalu permintaan kedua di
+    // instance yang sama. Inilah yang dialami pengguna, dan dulu angka 900
+    // itulah yang dilaporkan sebagai "PostgREST reachable but slow".
+    clock.delays = [900, 40];
+    const report = await buildHealthReport({ includeShared: true });
+
+    expect(report.shared.postgrest.reachable).toBe(true);
+    expect(report.shared.postgrest.latencyMs).toBe(40);
+    expect(report.shared.postgrest.firstMs).toBe(900);
+    expect(report.status).toBe('ok');
+    expect(report.reasons.join(' ')).not.toContain('slow');
+  });
+
+  it('dua sampel yang sama-sama lambat TETAP degraded — DB lambat tidak dimaafkan', async () => {
+    // Tanpa kasus ini, "ambil sampel kedua" sama saja dengan mematikan alarm.
+    clock.delays = [900, 850];
+    const report = await buildHealthReport({ includeShared: true });
+
+    expect(report.shared.postgrest.latencyMs).toBe(850);
+    expect(report.status).toBe('degraded');
+    expect(report.reasons.join(' ')).toContain('two samples: 900ms then 850ms');
+  });
+
+  it('sampel pertama yang sudah cepat memakai PERSIS satu kueri', async () => {
+    // Kontrol negatif untuk biaya: endpoint health boleh dipanggil tiap menit,
+    // jadi sampel kedua tidak boleh menjadi harga tetap.
+    clock.delays = [40];
+    const report = await buildHealthReport({ includeShared: true });
+
+    expect(report.shared.postgrest.latencyMs).toBe(40);
+    expect(report.shared.postgrest.firstMs).toBeUndefined();
+    expect(clock.calls).toBe(1);
   });
 });

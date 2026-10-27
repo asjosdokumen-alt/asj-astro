@@ -94,7 +94,13 @@ export interface HealthReport {
     metricsPending: boolean;
   };
   shared: {
-    postgrest: DependencyHealth['breaker'] & { reachable: boolean; latencyMs: number | null; error?: string };
+    postgrest: DependencyHealth['breaker'] & {
+      reachable: boolean;
+      latencyMs: number | null;
+      /** Sampel dingin (permintaan pertama instance) yang memicu sampel kedua. */
+      firstMs?: number;
+      error?: string;
+    };
     jobQueue: {
       reachable: boolean;
       /** Jobs in a runnable state — the §7.2 alert is depth > 100. */
@@ -142,6 +148,8 @@ import { DEPENDENCY_CONFIGS } from './kernel/resilience';
 async function probePostgrest(): Promise<{
   reachable: boolean;
   latencyMs: number | null;
+  /** Sample pertama yang lambat, saat sampel kedua diambil. Lihat catatan di bawah. */
+  firstMs?: number;
   error?: string;
 }> {
   // Don't start a probe we cannot finish — an incomplete probe reports a false
@@ -152,7 +160,33 @@ async function probePostgrest(): Promise<{
   const t0 = Date.now();
   try {
     await supabaseJson('GET', 'job_queue', { query: { select: 'id', limit: 0 } });
-    return { reachable: true, latencyMs: Date.now() - t0 };
+    const firstMs = Date.now() - t0;
+
+    /**
+     * DUA SAMPEL, dan hanya kalau sampel pertama lambat.
+     *
+     * Permintaan PERTAMA sebuah instance dingin membayar hal-hal yang tidak
+     * pernah dibayar pengunjung kedua: instance function baru hidup, DNS, dan
+     * jabat tangan TLS ke PostgREST. Terukur 2026-10-27 pada endpoint live —
+     * delapan sampel berurutan: 697, 241, 222, 279, 215, 214, 214, 215 ms.
+     * Ambang di berkas ini 800 ms, jadi satu-satunya sampel yang melewatinya
+     * adalah sampel pertama setelah menganggur, dan hasilnya `degraded`.
+     *
+     * Itu alarm palsu, dan alarm palsu punya satu cara mati: dibaca sekali,
+     * lalu diabaikan selamanya. Yang menentukan pengalaman pengguna bukan
+     * sampel dingin, melainkan permintaan berikutnya di instance yang sama —
+     * jadi itulah yang dilaporkan sebagai `latencyMs`. Biaya sampel dingin
+     * tetap terlihat, di `firstMs`.
+     *
+     * Kalau sampel KEDUA juga lambat, barulah itu masalah nyata (DB memang
+     * lambat), dan `reasons` akan mengatakannya.
+     */
+    if (firstMs < HEALTH_THRESHOLDS.postgrestEwmaWarnMs || remainingMs() <= 1_000) {
+      return { reachable: true, latencyMs: firstMs };
+    }
+    const t1 = Date.now();
+    await supabaseJson('GET', 'job_queue', { query: { select: 'id', limit: 0 } });
+    return { reachable: true, latencyMs: Date.now() - t1, firstMs };
   } catch (e) {
     // The message can carry the PostgREST body, which is safe (no PII), but it
     // is truncated by supabaseJson already. Kept because "HTTP 401" vs
@@ -323,7 +357,11 @@ export async function buildHealthReport(
       pg.latencyMs !== null &&
       pg.latencyMs >= HEALTH_THRESHOLDS.postgrestEwmaWarnMs
     ) {
-      reasons.push(`PostgREST reachable but slow: ${pg.latencyMs}ms`);
+      // `latencyMs` here is the SECOND sample: reaching this branch means both
+      // samples were slow, so it is a real slow DB and not a cold instance.
+      reasons.push(
+        `PostgREST reachable but slow: ${pg.latencyMs}ms (two samples: ${pg.firstMs ?? '?'}ms then ${pg.latencyMs}ms)`,
+      );
       levels.push('warn');
     }
 
