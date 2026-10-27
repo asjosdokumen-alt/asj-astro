@@ -209,14 +209,24 @@ async function attachBerkasBio(candidates: any[]) {
         mRows = [];
       }
     }
-    // RPC `master_light` (migrasi 018) MEMATOK kolomnya di SQL, jadi `pas_photo`
-    // dan `pendidikan_N_tingkat` tidak ikut — akibatnya `bio.foto` dan
-    // `bio.pendidikan_terakhir` selalu kosong walaupun kolomnya ada di tabel
-    // (terukur ASJ00126, 2026-10-25: pas_photo berisi URL, bio.foto '').
-    // Menambah kolom di MASTER_LIGHT_COLS TIDAK menolong karena jalur ini
-    // memakai RPC. Ambil dua kelompok kolom itu lewat satu kueri tambahan untuk
-    // seluruh halaman, lalu gabungkan per WA.
-    if (Array.isArray(mRows) && mRows.length) {
+    // RPC `master_light` MEMAKU daftar kolomnya di SQL, jadi enam kolom CV
+    // (`pas_photo`, `pendidikan_1..5_tingkat`) TIDAK ikut selama migrasi 023
+    // belum jalan — akibatnya `bio.foto` dan `bio.pendidikan_terakhir` kosong
+    // walaupun kolomnya ada di tabel (terukur ASJ00126, 2026-10-25: pas_photo
+    // berisi URL, bio.foto ''). Menambah kolom di MASTER_LIGHT_COLS saja tidak
+    // menolong karena jalur ini memakai RPC.
+    //
+    // Migrasi 023 memperluas RPC-nya, dan tambalan di bawah ini TIDAK dihapus
+    // melainkan dibuat bersyarat: kode ini harus benar untuk DB yang sudah
+    // dimigrasi DAN yang belum (urutan deploy migrasi-dulu tidak selalu bisa
+    // dijamin). Pemeriksanya keberadaan KUNCI, bukan nilainya — `pas_photo`
+    // yang memang null berarti RPC sudah membawanya, dan kueri tambahan
+    // (500 baris, satu roundtrip PostgREST per muat halaman) tidak perlu jalan.
+    const rpcLacksCvFields =
+      Array.isArray(mRows) &&
+      mRows.length > 0 &&
+      !Object.prototype.hasOwnProperty.call(mRows[0] as Record<string, unknown>, 'pas_photo');
+    if (rpcLacksCvFields) {
       try {
         const extra = await supabaseJson('GET', 'master_database_candidate', {
           query: {

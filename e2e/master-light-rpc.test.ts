@@ -29,7 +29,7 @@
  * mjs/cjs/js. Berkas ini TANPA DOM, jadi milik project 'backend' — lihat
  * baris exclude-nya di vitest.config.ts.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import pg from 'pg';
 import { MASTER_LIGHT_COLS } from '../netlify/functions/_lib/db/projections';
@@ -38,7 +38,33 @@ import { buildBioFromMaster, AI_BIO_FALLBACK } from '../netlify/functions/_lib/d
 import { initDbEnv, REPO_ROOT } from '../scripts/lib/load-env.mjs';
 import { stripSqlComments } from '../scripts/lib/sql-ddl.mjs';
 
-const MIGRATION = `${REPO_ROOT}/migrations/018_master_light_rpc.sql`;
+/**
+ * Migrasi TERAKHIR yang mendefinisikan `master_light`, bukan nomor berkas yang
+ * tetap.
+ *
+ * Sampai 2026-10-27 baris ini menunjuk `018` secara harfiah, dan itu membuat
+ * tes ini buta terhadap keadaan sebenarnya: `MASTER_LIGHT_COLS` tumbuh enam
+ * kolom (`pas_photo`, `pendidikan_1..5_tingkat`) sementara `master_light` tetap
+ * mengembalikan 29 — selisihnya muncul sebagai SATU kegagalan kontrak yang
+ * terbaca seperti "kode dan migrasi menyimpang" tanpa menyebut migrasi mana
+ * yang menyimpang. Dengan memilih berkas terakhir yang memuat definisi itu,
+ * migrasi baru otomatis menjadi subjek tesnya.
+ */
+const MIGRATION = (() => {
+  const dir = `${REPO_ROOT}/migrations`;
+  const candidates = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .map((f) => `${dir}/${f}`)
+    // `CREATE [OR REPLACE] FUNCTION`: migrasi 023 harus DROP dulu (menambah
+    // kolom = mengubah tipe hasil, dan `CREATE OR REPLACE` menolak itu), jadi
+    // bentuk tanpa `OR REPLACE` WAJIB ikut dikenali — kalau tidak, pencarian
+    // ini diam-diam kembali ke 018 dan tesnya buta lagi.
+    .filter((p) => /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.master_light\b/i.test(readFileSync(p, 'utf8')));
+  const last = candidates.at(-1);
+  if (!last) throw new Error('tidak ada migrasi yang mendefinisikan public.master_light');
+  return last;
+})();
 
 /**
  * Komentar DIBUANG sebelum teks SQL dianalisis — pakai helper yang sama dengan
@@ -219,7 +245,12 @@ describe.skipIf(!dbUrl)('langsung: master_light mengisi ai_* (butuh DB)', () => 
 
       const rows = await client.query('select * from public.master_light($1::text[])', [[wa]]);
       expect(rows.rows).toHaveLength(1);
-      expect(Object.keys(rows.rows[0])).toHaveLength(29); // 24 kolom + 4 ai_*
+      // Jumlah kolom DITURUNKAN dari proyeksi, bukan ditulis 29: angka harfiah
+      // di sini adalah cara berkas ini dulu menyembunyikan selisih yang justru
+      // dicarinya — 29 dipaku padahal `MASTER_LIGHT_COLS` sudah 31 kolom.
+      expect(Object.keys(rows.rows[0])).toHaveLength(
+        MASTER_LIGHT_COLS.split(',').length + AI_BIO_FALLBACK.length,
+      );
       const mr = rows.rows[0] as Record<string, unknown>;
       expect(String(mr.gender ?? '')).toBe('');
       expect(String(mr.ai_gender ?? '')).not.toBe('');
