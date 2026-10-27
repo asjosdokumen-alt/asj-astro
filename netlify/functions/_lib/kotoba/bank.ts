@@ -16,11 +16,23 @@
  * lapis 2 masih perkiraan tematik. Kalau nanti ada daftar resmi dari bukunya,
  * yang perlu dikoreksi adalah lapis 2 — lapis 3 sudah mengikuti sumber.
  *
- * 864 kata, 21–54 per bab. Seluruh kosakata 新しい言葉 Minna I
- * sebenarnya ±860 kata, jadi cakupan ini praktis penuh untuk Bab 1–25 — TAPI
- * salinan UI tetap menyebut "kosakata pilihan", bukan "lengkap": daftar ini
- * disusun dari sumber daring, bukan difotokopi dari buku, dan tidak ada yang
- * menjamin tidak ada kata yang terlewat.
+ * 864 kata, 21–54 per bab. Itu adalah daftar 新しい言葉 Bab 1–25 apa adanya
+ * dari sumbernya — 864 baris terbaca, 0 terlewat (dihitung ulang dari HTML-nya:
+ * jumlah `vocab-row` = jumlah baris yang diurai).
+ *
+ * TAPI "864" BUKAN "seluruh isi buku", dan selisihnya bukan kata yang terlewat.
+ * Angka 1.000–1.200 yang biasa dikutip untuk Minna I menghitung lingkup yang
+ * lebih luas: kosakata 会話, 参考語彙, angka/tanggal, nama negara, dan ungkapan.
+ * Bukti terukur (2026-10-27): indeks verba buku I di situs yang sama berisi 116
+ * verba; bank ini memuat 108 (93%). Delapan yang tidak ada —
+ * かかります, 飛びます, 始まります, 太ります, 料理します, 旅行します, 紹介します,
+ * 転勤します — dan hanya 紹介 yang muncul di teks pelajaran mana pun (bab 24).
+ * Sisanya tidak muncul di satu pelajaran pun di sumber itu, yang konsisten
+ * dengan statusnya sebagai kata 会話/参考語彙, bukan butir 新しい言葉.
+ *
+ * Karena itu salinan UI tetap menyebut "kosakata pilihan", bukan "lengkap" —
+ * dan kalau nanti ada daftar resmi dari bukunya, lapis inilah yang paling perlu
+ * diperiksa ulang.
  *
  * CARA MEMERIKSA TAMBAHAN (jangan tambah kata tanpa ini)
  * -----------------------------------------------------
