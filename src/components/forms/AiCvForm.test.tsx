@@ -19,6 +19,23 @@ import { t } from '../../store/i18n';
 import { PEKERJAAN, JURUSAN, pairDisplay } from '../../lib/opsi-form';
 import { navigateTo } from '../../lib/navigate';
 
+/**
+ * 15 detik (bawaan) TIDAK cukup untuk berkas ini saat suite penuh berjalan.
+ *
+ * Terukur 2026-10-27 dan sekali lagi di sesi yang sama: `AiCvForm.test.tsx`
+ * 72/72 hijau sendirian (≈6 detik untuk seluruh berkas), tetapi satu tes —
+ * `pilih TIDAK ADA → kolom nomor disembunyikan` — melewati batas 15 detik
+ * ketika 266 berkas berjalan paralel. Yang habis bukan logika tesnya: setiap
+ * kasus di sini me-render seluruh AiCvForm di jsdom (ratusan field), dan
+ * `render()` itu yang mengantre CPU.
+ *
+ * Menaikkan anggarannya di SINI, bukan menggelembungkan timeout global: berkas
+ * lain tetap di 15 detik, jadi tes yang benar-benar menggantung di tempat lain
+ * masih ketahuan. Kalau suatu hari kasus ini butuh >40 detik SENDIRIAN, itu
+ * regresi performa form — bukan alasan menaikkan angka ini lagi.
+ */
+vi.setConfig({ testTimeout: 40_000 });
+
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../store/i18n', async () => {
   const { atom } = await import('nanostores');

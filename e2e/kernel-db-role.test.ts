@@ -47,6 +47,33 @@ const ANON_KEY = 'e2e-anon-key';
 /** Peran yang benar-benar ada sebagai role Postgres di Supabase. */
 const POSTGRES_ROLES = new Set(['anon', 'authenticated', 'service_role']);
 
+/**
+ * ⚠ TIGA VARIABEL DI BAWAH DISEMAT DI TINGKAT MODUL, BUKAN DI `beforeAll`.
+ *
+ * Berkas ini merah SETIAP KALI dijalankan di mesin yang punya `.env.local`,
+ * dan hijau di CI — persis jebakan "hijau/merah tergantung mesin" yang
+ * diperingatkan di catatan penutup berkas ini. Sebabnya terukur 2026-10-27:
+ *
+ *   `.env.local` (Neon) memuat SUPABASE_JWT_ALG=EdDSA,
+ *   SUPABASE_JWT_PRIVATE_KEY=…, SUPABASE_PG_ADMIN_ROLE=asj_service
+ *
+ * `env()` (`_lib/env.ts:219`) mendahulukan `process.env` HANYA kalau nilainya
+ * tidak kosong, lalu JATUH KE `.env.local` untuk kunci yang tidak diset. Blok
+ * HS256 di bawah dulu hanya menyetel SESSION_SECRET/JWT_SECRET/URL/ANON_KEY,
+ * jadi ALG dan PG_ADMIN_ROLE tetap dibaca dari `.env.local` ⇒ deskripsi
+ * "HS256" sebenarnya menandatangani dengan EdDSA, `edSigningKey()` MENG-cache
+ * kunci privat NYATA milik `.env.local` (module-level, `kernel/db.ts:82`),
+ * dan blok EdDSA di bawah lalu tidak bisa lagi memakai kunci buatannya
+ * sendiri. Empat kegagalan, satu sebab.
+ *
+ * Karena itu keduanya disetel eksplisit SEBELUM tes pertama menyentuh
+ * `clientFor()`: berkas ini menguji KONTRAK Supabase, dan kontrak itu tidak
+ * boleh berubah karena berkas `.env.local` di laptop siapa pun. Jalur Neon
+ * (`asj_service`) punya tesnya sendiri di bawah — di situ ia memang subjeknya.
+ */
+process.env.SUPABASE_JWT_ALG = 'HS256';
+process.env.SUPABASE_PG_ADMIN_ROLE = 'service_role';
+
 beforeAll(() => {
   // `env()` membaca process.env lebih dulu, dan pembacaan secret bersifat
   // lazy (di dalam signToken / createSupabaseJwt), jadi menetapkannya di
@@ -90,6 +117,22 @@ describe('kernel/db — peran JWT Supabase untuk klien ber-sesi', () => {
     const client = clientFor('applications.deleteForm', kandidatToken());
     expect(client.label).toBe('user');
     expect(payloadOf(client.authKey).role).toBe('authenticated');
+  });
+
+  it('di Neon peran admin mengikuti SUPABASE_PG_ADMIN_ROLE (asj_service), bukan service_role', () => {
+    // `kernel/db.ts:196-202`: nama role admin memang bergantung backend —
+    // Supabase mengirim `service_role`, Neon memakai role BYPASSRLS buatan
+    // kita (`asj_service`). Sebelum tes ini ada, perilaku itu hanya dijaga
+    // oleh `.env.local` di mesin pemilik: hapus berkas itu dan tes di atas
+    // tetap hijau walau pemetaan Neon-nya salah.
+    const before = process.env.SUPABASE_PG_ADMIN_ROLE;
+    process.env.SUPABASE_PG_ADMIN_ROLE = 'asj_service';
+    try {
+      const role = payloadOf(clientFor('applications.patchForm', adminToken()).authKey).role;
+      expect(role).toBe('asj_service');
+    } finally {
+      process.env.SUPABASE_PG_ADMIN_ROLE = before;
+    }
   });
 
   it('peran yang dipancarkan SELALU role Postgres yang nyata', () => {
