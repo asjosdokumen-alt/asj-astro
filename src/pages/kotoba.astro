@@ -1,0 +1,40 @@
+---
+// Halaman minigame kosakata. Bentuknya sengaja mengikuti /wawancara: satu
+// komponen `client:only`, satu paragraf pengantar, dan satu `<noscript>`.
+//
+// Gerbang "khusus siswa ASJ" TIDAK di sini — ia ada di dalam `KotobaGame`
+// (gerbang login + kartu khusus-siswa) dan, yang menentukan, di server
+// (`getBankKotoba` → `tolakKecualiSiswa`). Menaruh salinan gerbang di berkas
+// ini akan membuat tiga definisi "siswa" yang bisa berbeda diam-diam.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import App from '../components/App.tsx';
+import FormToolbar from '../components/forms/FormToolbar';
+import KotobaGame from '../components/candidate/KotobaGame.tsx';
+---
+
+<BaseLayout
+  title="Latihan Kosakata Jepang — ASJ"
+  titleKey="doc.title_kotoba"
+  description="Latihan hafalan kosakata Jepang untuk siswa ASJ: kuis pilihan ganda, latihan menulis romaji, kartu hafalan, dan kamus 216 kosakata pilihan Minna no Nihongo Bab 1–25 yang bisa dicetak."
+>
+  <App showHeader={false} client:only="preact" />
+
+  <FormToolbar client:only="preact" titleKey="toolbar.kotoba" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
+    <div class="max-w-[1100px] mx-auto px-3">
+      <section class="mb-4">
+        <h1 class="text-xl md:text-2xl font-bold text-fg mb-1">Latihan Kosakata Jepang</h1>
+        <p class="cetak-sembunyi text-fg-muted text-[12.5px] leading-relaxed">
+          Empat cara belajar dari satu bank yang sama: <b>Kuis</b> pilihan ganda berlawanan waktu,
+          <b>Ketik</b> untuk melatih cara baca romaji, <b>Flashcard</b> untuk hafalan cepat, dan
+          <b>Kamus</b> yang bisa dicetak jadi lembar hafalan. Kata yang sering salah muncul lebih
+          sering pada ronde berikutnya.
+        </p>
+      </section>
+      <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
+        Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
+      </noscript>
+      <KotobaGame client:only="preact" />
+    </div>
+  </main>
+</BaseLayout>

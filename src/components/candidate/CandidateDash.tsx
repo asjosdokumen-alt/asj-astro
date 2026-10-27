@@ -421,6 +421,32 @@ export default function CandidateDash() {
       navigateTo('/ai-cv');
     }
 
+    /**
+     * Minigame kosakata (`/kotoba`) — gerbang VIP yang SAMA dengan interview
+     * dan AI CV, karena pemilik memintanya begitu: "sama seperti interview dan
+     * cv ai hanya bisa di akses yg ber tag vip".
+     *
+     * Predikatnya `isVipFlags` (tag `[VIP]` ATAU `[KELAS xx]`, dihitung server),
+     * bukan `data.isVIP` saja: lencana "Siswa Resmi ASJ" sengaja hanya membaca
+     * tag `[VIP]` literal, sedangkan GERBANG fitur selalu membaca keduanya.
+     * Memakai `data.isVIP` di sini akan menutup pintu untuk siswa kelas LPK.
+     *
+     * Seperti dua tombol di atas, ini hanya UX — penjaga sebenarnya ada di
+     * server (`getBankKotoba` → `tolakKecualiSiswa`), yang tidak mengirim satu
+     * kata pun untuk non-siswa.
+     */
+    function openKotoba() {
+      if (!(user?.wa || data?.wa)) {
+        showToast(t('ui.toast_session_invalid_relogin'), 'error');
+        return;
+      }
+      if (!isVipFlags(data)) {
+        showToast(t('ui.toast_feature_locked'), 'info');
+        return;
+      }
+      navigateTo('/kotoba');
+    }
+
 if (!data) return failed
   ? <div class="py-8 max-w-md mx-auto"><LoadFailed onRetry={loadDashboard} /></div>
   : <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
@@ -932,6 +958,7 @@ if (!data) return failed
                   <div class="u-grid-auto u-grid-auto--cards gap-3 mt-5">
                     <button type="button" data-testid="cmt-cvmini" onClick={() => setShowCvMiniModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="user-edit" class="text-accent-sky shrink-0" /> {t('ui.update_cv_mini')}</button>
                     <button type="button" data-testid="cmt-interview" onClick={openInterview} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-violet text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="microphone-alt" class="text-accent-violet shrink-0" /> {t('ui.interview_practice')}</button>
+                    <button type="button" data-testid="cmt-kotoba" onClick={openKotoba} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="language" class="text-accent-sky shrink-0" /> {t('ui.kotoba_practice')}</button>
                     <button type="button" data-testid="cmt-esign" onClick={openEsign} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="signature" class="text-accent-red shrink-0" /> {t('ui.esign_naitei')}</button>
                     <button type="button" onClick={openAiCvMaster} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-amber text-slate-200 rounded-control text-sm font-bold transition text-left cursor-pointer"><Icon name="robot" class="text-accent-amber shrink-0" /> {t('ui.ai_cv_assistant')}</button>
                     <a href="/master" class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-emerald text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="clipboard-list" class="text-accent-emerald shrink-0" /> {t('ui.master_full_form')}</a>

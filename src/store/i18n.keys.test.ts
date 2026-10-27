@@ -43,7 +43,7 @@ const NS = [
   'ai_cv', 'share', 'admin', 'dash', 'candidate', 'option', 'status',
   'login', 'toast', 'error', 'table', 'landing', 'cvmini', 'esign',
   'changepass', 'doc', 'toolbar', 'bottomnav', 'cv', 'ai', 'input', 'db',
-  'pelamar', 'wa', 'footer', 'profile', 'loker_static',
+  'pelamar', 'wa', 'footer', 'profile', 'loker_static', 'kotoba',
 ].join('|');
 
 /**

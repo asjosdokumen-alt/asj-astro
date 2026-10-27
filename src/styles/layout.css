@@ -462,6 +462,17 @@
 
   body:has([data-cetak]) [data-cetak] .cetak-saja { display: block; }
 
+  /* Lembar kamus kotoba (`KotobaGame`). Rule 4 di atas hanya menyetel warna,
+     bukan tinggi: daftar kosakata membawa `max-h-96` + `overflow-auto` supaya
+     enak digulir di layar, dan tanpa rule ini kertas hanya mendapat satu
+     layar pertama dari 216 baris — terlihat seperti "cetaknya kepotong".
+     Unlayered, jadi ia menang atas utility `max-h-96` tanpa `!important`
+     (lihat catatan cascade di atas). */
+  body:has([data-cetak]) [data-cetak] .kotoba-lembar {
+    max-height: none;
+    overflow: visible;
+  }
+
   /* The printed answer lines. A blank answer keeps its rule, so the sheet
      can also be filled in by hand. */
   body:has([data-cetak]) [data-cetak] .cetak-baris {

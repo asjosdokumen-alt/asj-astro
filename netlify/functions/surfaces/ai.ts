@@ -159,6 +159,29 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
     const { terjemahkanJawaban } = await import('../_lib/wawancara/bank');
     return terjemahkanJawaban(wa, String(p?.[1] ?? ''), String(p?.[2] ?? ''));
   },
+  // ── Bank kosakata (kotoba) — minigame hafalan ────────────────────────────
+  // Gerbang SAMA PERSIS dengan bank soal wawancara di atas, dan itu disengaja:
+  // pemilik meminta fitur ini "sama seperti interview dan CV AI, hanya untuk
+  // yang bertag VIP". Satu penjaga berarti satu tempat yang bisa salah, bukan
+  // dua definisi "siswa ASJ" yang bisa berbeda diam-diam.
+  //
+  // Bank kosakata TIDAK dikirim ke non-siswa — bukan cuma disembunyikan di UI.
+  // Isinya materi belajar, bukan rahasia, tapi gerbang yang hanya kosmetik akan
+  // membuat label "khusus siswa" di dasbor jadi klaim kosong.
+  getBankKotoba: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '').trim();
+    const tolak = await tolakKecualiSiswa(s, wa);
+    if (tolak) return tolak;
+    const { BANK_KOTOBA, BAB_KOTOBA, JUMLAH_KOTOBA } = await import('../_lib/kotoba/bank');
+    return {
+      success: true,
+      wa,
+      isVip: true,
+      jumlah: JUMLAH_KOTOBA,
+      bab: BAB_KOTOBA,
+      kosakata: BANK_KOTOBA,
+    };
+  },
   getLinkWawancara: async (p: unknown[], s?: string) => {
     const { linkWawancara } = await import('../_lib/wawancara/bank');
     const { requireAdmin } = await import('../contexts/identity');

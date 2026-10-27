@@ -8,7 +8,8 @@
  *          getHasilWawancara, getAdminAiContext, buildAdminAiCandidateSummary,
  *          submitDataAsj, simpanDataTtdNaitei, saveSignature,
  *          getBankWawancara, simpanJawabanWawancara,
- *          terjemahkanJawabanWawancara, getLinkWawancara
+ *          terjemahkanJawabanWawancara, getLinkWawancara,
+ *          getBankKotoba
  *
  * Bank soal wawancara (2026-10-25) sengaja menumpang entry ini, bukan fungsi
  * baru: satu fungsi tambahan berarti cold start tambahan dan bobot bundle yang
@@ -35,4 +36,5 @@ export default adapt(makeSurfaceHandler(AI_ACTIONS, [
   'submitDataAsj', 'simpanDataTtdNaitei', 'saveSignature', 'getJobStatus',
   'getBankWawancara', 'simpanJawabanWawancara',
   'terjemahkanJawabanWawancara', 'getLinkWawancara',
+  'getBankKotoba',
 ]));

@@ -113,6 +113,12 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   terjemahkanJawabanWawancara: '/.netlify/functions/ai-chat',
   getLinkWawancara: '/.netlify/functions/ai-chat',
 
+  // Bank kosakata (kotoba) — minigame hafalan, menumpang `ai-chat` dengan
+  // alasan yang sama seperti bank soal wawancara di atas. Gerbangnya juga sama
+  // (`tolakKecualiSiswa`), jadi menaruhnya di fungsi lain hanya menambah satu
+  // cold start tanpa memisahkan apa pun.
+  getBankKotoba: '/.netlify/functions/ai-chat',
+
   // Ingestion — admin AI Copilot (parse CV/Excel/PDF lalu submitMasterForm).
   // Sebelum 2026-09-12 action ini TIDAK terdaftar di sini, sehingga jatuh ke
   // FALLBACK (catch-all bridge-links) — fitur yang benar-benar dipakai

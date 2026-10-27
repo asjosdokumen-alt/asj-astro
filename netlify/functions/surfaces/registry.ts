@@ -133,6 +133,8 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   simpanJawabanWawancara:     () => import('./ai').then(m => m.AI_ACTIONS),
   terjemahkanJawabanWawancara:() => import('./ai').then(m => m.AI_ACTIONS),
   getLinkWawancara:           () => import('./ai').then(m => m.AI_ACTIONS),
+  // Bank kosakata (kotoba) — minigame hafalan, gerbang siswa ASJ yang sama.
+  getBankKotoba:              () => import('./ai').then(m => m.AI_ACTIONS),
   buildAdminAiCandidateSummary:() => import('./ai').then(m => m.AI_ACTIONS),
   submitDataAsj:              () => import('./ai').then(m => m.AI_ACTIONS),
   simpanDataTtdNaitei:        () => import('./ai').then(m => m.AI_ACTIONS),
