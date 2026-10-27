@@ -1665,6 +1665,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     "wawancara.pilih_sifat": "Pilih sifat",
     "wawancara.cetak_tahap": "Cetak tahap ini",
     "wawancara.cetak_semua": "Cetak semua tahap",
+    /* ── Suara (Web Speech API) & draft perangkat ───────────────────────────
+       Tiga tombol dengar memakai kunci berbeda supaya labelnya bisa menjelaskan
+       APA yang dibacakan, bukan sekadar "putar". */
+    "wawancara.dengar": "Dengar soal",
+    "wawancara.dengar_lambat": "Lambat",
+    "wawancara.dengar_contoh": "Dengar contoh",
+    "wawancara.dengar_jawaban": "Dengar jawaban saya",
+    "wawancara.suara_tidak_ada": "Perangkat ini belum punya suara Jepang. Aktifkan paket suara Jepang di pengaturan Text-to-Speech HP Anda (Android: Setelan → Sistem → Bahasa & masukan → Output teks-ke-ucapan → pasang data suara Jepang).",
+    "wawancara.draft_dipulihkan": "Ketikan terakhir dipulihkan dari perangkat ini.",
     "wawancara.semua_tahap": "Semua tahap",
     "wawancara.belum_vip": "Belum VIP",
     "wawancara.tutup_judul": "Latihan wawancara belum dibuka",

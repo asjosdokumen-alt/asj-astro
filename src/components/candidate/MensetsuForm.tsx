@@ -29,6 +29,7 @@ import { authStore } from '../../store/authReactive';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema } from '../../lib/schemas';
 import { opsiUntukSoal } from '../../lib/mensetsuOpsi';
+import { ucapkanJepang, LAJU_LAMBAT } from '../../lib/ttsJepang';
 import { t } from '../../store/i18n';
 
 interface Soal {
@@ -76,6 +77,80 @@ interface Props {
 
 type Bidang = 'jp' | 'romaji' | 'arti';
 type Draft = Record<string, Record<Bidang, string>>;
+
+/* ── draft lokal (auto-save perangkat) ──────────────────────────────────────
+ *
+ * KENAPA ADA, PADAHAL SERVER SUDAH MENYIMPAN
+ * ------------------------------------------
+ * `simpanBaris` menulis ke DB saat `onBlur`. Artinya satu-satunya yang bisa
+ * hilang adalah KOLOM YANG SEDANG DIKETIK ketika HP mati, tab ditutup, atau
+ * halaman ter-refresh — dan justru kolom itu yang panjang (jawaban Jiko PR
+ * bisa 4-5 baris).
+ *
+ * ATURAN GABUNG (jangan dibalik tanpa alasan)
+ * -------------------------------------------
+ * Saat memuat, server MENANG kalau kolomnya sudah berisi; draft lokal hanya
+ * MENGISI YANG KOSONG. Kebalikannya (lokal selalu menang) akan menimpa koreksi
+ * yang dilakukan admin di CV untuk soal yang tersambung kolom CV, dan itu
+ * kerusakan yang tidak terlihat sampai siswa membuka halaman ini lagi.
+ *
+ * Kunci per-WA dan berversi, pola yang sama dengan `asj_kotoba_v1:`: draft satu
+ * siswa tidak boleh muncul di perangkat siswa lain yang memakai HP bersama.
+ */
+const KUNCI_DRAFT = 'asj_mensetsu_v1:';
+
+function bacaDraftLokal(wa: string): Draft {
+  try {
+    const raw = localStorage.getItem(KUNCI_DRAFT + wa);
+    if (!raw) return {};
+    const p = JSON.parse(raw) as unknown;
+    if (!p || typeof p !== 'object') return {};
+    const hasil: Draft = {};
+    for (const [kode, nilai] of Object.entries(p as Record<string, unknown>)) {
+      if (!nilai || typeof nilai !== 'object') continue;
+      const v = nilai as Record<string, unknown>;
+      hasil[kode] = {
+        jp: typeof v.jp === 'string' ? v.jp : '',
+        romaji: typeof v.romaji === 'string' ? v.romaji : '',
+        arti: typeof v.arti === 'string' ? v.arti : '',
+      };
+    }
+    return hasil;
+  } catch {
+    /* Mode privat / kuota penuh: fitur ini pelengkap, bukan syarat. */
+    return {};
+  }
+}
+
+function tulisDraftLokal(wa: string, draft: Draft): void {
+  try {
+    localStorage.setItem(KUNCI_DRAFT + wa, JSON.stringify(draft));
+  } catch {
+    /* Sama seperti di atas: gagal menyimpan draft tidak boleh memerahkan form. */
+  }
+}
+
+/**
+ * Gabungkan draft server dengan draft lokal: server menang, lokal mengisi yang
+ * kosong. Mengembalikan juga berapa kolom yang benar-benar dipulihkan, supaya
+ * pemanggil bisa memberi tahu siswa alih-alih diam-diam mengisi teks yang ia
+ * tidak ingat menulisnya.
+ */
+function gabungDraft(server: Draft, lokal: Draft): { draft: Draft; dipulihkan: number } {
+  const hasil: Draft = { ...server };
+  let dipulihkan = 0;
+  for (const [kode, v] of Object.entries(lokal)) {
+    const ada = hasil[kode];
+    if (!ada) continue;
+    const kosongDiServer = !ada.jp.trim() && !ada.romaji.trim() && !ada.arti.trim();
+    const adaIsiLokal = !!(v.jp.trim() || v.romaji.trim() || v.arti.trim());
+    if (kosongDiServer && adaIsiLokal) {
+      hasil[kode] = v;
+      dipulihkan++;
+    }
+  }
+  return { draft: hasil, dipulihkan };
+}
 
 /** `?wa=` pada URL — pola yang sama dengan /ai-cv: bukan token, hanya pengisi
  *  awal. Kandidat tetap memasukkan passwordnya sendiri. */
@@ -128,6 +203,12 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
   const [tahapAktif, setTahapAktif] = useState(0);
   const [sibuk, setSibuk] = useState<Record<string, Bidang | 'terjemah' | 'simpan' | ''>>({});
   const [contoh, setContoh] = useState<Record<string, boolean>>({});
+  /**
+   * Baris mana yang sedang dibacakan mesin suara. Kunci = `<kode>:<bagian>`
+   * (`soal`, `contoh`, `jawab`) — satu kunci per tombol, supaya menekan tombol
+   * pertanyaan tidak ikut menyalakan tombol jawaban di baris yang sama.
+   */
+  const [memutar, setMemutar] = useState<Record<string, boolean>>({});
   /**
    * Lembar cetak sedang menampilkan SELURUH tahap (1–13), bukan tahap aktif.
    *
@@ -232,7 +313,11 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
           arti: s.jawabanku?.arti || '',
         };
       }
-      setDraft(awal);
+      /* Draft perangkat hanya MENGISI kolom yang kosong di server — lihat
+         "ATURAN GABUNG" di kepala berkas. */
+      const { draft: gabungan, dipulihkan } = gabungDraft(awal, bacaDraftLokal(nomor));
+      setDraft(gabungan);
+      if (dipulihkan > 0) showToast(t('wawancara.draft_dipulihkan'), 'info');
       if (!daftar.length) setGalat('Bank soal kosong. Hubungi admin.');
       const daftarTahap = Array.isArray(d.tahap) ? d.tahap : [];
       setTahapAktif(0);
@@ -253,6 +338,42 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
   useEffect(() => {
     if (!loginGate && wa) void muat(wa);
   }, [loginGate, wa, muat]);
+
+  /**
+   * Tulis draft ke perangkat, ditunda 400 ms.
+   *
+   * Tanpa penundaan ini setiap ketikan menulis seluruh draft (177 soal) ke
+   * localStorage — pada HP kelas bawah itu membuat mengetik terasa patah-patah.
+   * 400 ms cukup untuk menyatukan satu kata, dan tetap jauh lebih cepat
+   * daripada risiko kehilangan ketikan.
+   */
+  useEffect(() => {
+    if (!wa) return;
+    if (!Object.keys(draft).length) return;
+    const id = window.setTimeout(() => tulisDraftLokal(wa, draft), 400);
+    return () => window.clearTimeout(id);
+  }, [wa, draft]);
+
+  /**
+   * Bacakan satu potong teks Jepang.
+   *
+   * `ucapkanJepang` mengembalikan `false` saat perangkat tidak punya mesin suara
+   * atau teksnya kosong — di situlah satu-satunya pesan muncul. Tombolnya
+   * sendiri TIDAK disembunyikan saat tidak didukung: tombol yang hilang membuat
+   * siswa mengira fiturnya belum jadi, sedangkan pesan "aktifkan paket suara
+   * Jepang" memberi tahu apa yang harus dilakukan.
+   */
+  const putar = (kunci: string, teks: string, laju?: number) => {
+    const ok = ucapkanJepang(teks, {
+      laju,
+      onSelesai: () => setMemutar((m) => ({ ...m, [kunci]: false })),
+    });
+    if (!ok) {
+      showToast(t('wawancara.suara_tidak_ada'), 'error');
+      return;
+    }
+    setMemutar((m) => ({ ...m, [kunci]: true }));
+  };
 
   /* ── soal tahap aktif ──────────────────────────────────────────────────── */
   const tahapSekarang = tahap[tahapAktif] || '';
@@ -660,6 +781,34 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                       <p class="text-[14px] text-fg leading-snug" lang="ja">{s.jp}</p>
                       <p class="text-[11.5px] text-fg-muted">{s.romaji}</p>
                       <p class="text-[12px] text-fg">{s.arti}</p>
+                      {/* Dengar soal: pertanyaan diucapkan pewawancara, bukan
+                          dibaca siswa. Dua laju karena siswa N5/N4 butuh
+                          kalimat yang lebih pelan sebelum bisa mengikuti
+                          kecepatan normal. */}
+                      <div class="cetak-sembunyi mt-1 flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          data-testid={`dengar-soal-${s.kode}`}
+                          aria-label={t('wawancara.dengar')}
+                          aria-pressed={!!memutar[`${s.kode}:soal`]}
+                          onClick={() => putar(`${s.kode}:soal`, s.jp)}
+                          class="inline-flex items-center gap-1 rounded-md border border-line bg-surface-raised px-2 py-1 text-[11px] font-bold text-fg-muted"
+                        >
+                          <span aria-hidden="true">{memutar[`${s.kode}:soal`] ? '🔉' : '🔊'}</span>
+                          {t('wawancara.dengar')}
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`dengar-soal-lambat-${s.kode}`}
+                          aria-label={t('wawancara.dengar_lambat')}
+                          aria-pressed={!!memutar[`${s.kode}:soal-lambat`]}
+                          onClick={() => putar(`${s.kode}:soal-lambat`, s.jp, LAJU_LAMBAT)}
+                          class="inline-flex items-center gap-1 rounded-md border border-line bg-surface-raised px-2 py-1 text-[11px] font-bold text-fg-muted"
+                        >
+                          <span aria-hidden="true">🐢</span>
+                          {t('wawancara.dengar_lambat')}
+                        </button>
+                      </div>
                       {s.sinkron_cv && (
                         <p class="cetak-sembunyi mt-1 inline-block text-[10px] font-bold text-accent-emerald border border-accent-emerald rounded px-1.5 py-0.5">
                           tersambung CV — {s.kolom_cv}
@@ -758,6 +907,38 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                         class="w-full rounded-md bg-surface-sunken border border-line px-2 py-1 text-[12.5px] text-fg"
                       />
                     </label>
+
+                    {/* Dengar jawaban SENDIRI. Ini bagian yang paling sering
+                        terlewat: siswa bisa membaca jawabannya dengan lancar
+                        di kepala, lalu tersendat saat harus mengucapkannya.
+                        Tombol mati selama kolom Jepang kosong — tidak ada yang
+                        bisa dibacakan. */}
+                    <div class="flex flex-wrap items-center gap-1.5 pl-[76px]">
+                      <button
+                        type="button"
+                        data-testid={`dengar-jawab-${s.kode}`}
+                        aria-label={t('wawancara.dengar_jawaban')}
+                        aria-pressed={!!memutar[`${s.kode}:jawab`]}
+                        disabled={!d.jp.trim()}
+                        onClick={() => putar(`${s.kode}:jawab`, d.jp)}
+                        class="inline-flex items-center gap-1 rounded-md border border-line bg-surface-raised px-2 py-1 text-[11px] font-bold text-fg-muted disabled:opacity-40"
+                      >
+                        <span aria-hidden="true">🗣️</span>
+                        {t('wawancara.dengar_jawaban')}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid={`dengar-jawab-lambat-${s.kode}`}
+                        aria-label={t('wawancara.dengar_lambat')}
+                        aria-pressed={!!memutar[`${s.kode}:jawab-lambat`]}
+                        disabled={!d.jp.trim()}
+                        onClick={() => putar(`${s.kode}:jawab-lambat`, d.jp, LAJU_LAMBAT)}
+                        class="inline-flex items-center gap-1 rounded-md border border-line bg-surface-raised px-2 py-1 text-[11px] font-bold text-fg-muted disabled:opacity-40"
+                      >
+                        <span aria-hidden="true">🐢</span>
+                        {t('wawancara.dengar_lambat')}
+                      </button>
+                    </div>
                   </div>
 
                   <div class="cetak-sembunyi mt-2 flex flex-wrap items-center gap-2">
@@ -809,6 +990,34 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                       <p lang="ja" class="text-[13.5px]">{s.jawaban_jp}</p>
                       <p class="text-fg-muted">{s.jawaban_romaji}</p>
                       <p>{s.jawaban_arti}</p>
+                      {/* Contoh jawaban dibacakan supaya siswa mendengar jeda
+                          dan akusen kalimatnya, bukan hanya tahu artinya. */}
+                      {s.jawaban_jp && (
+                        <div class="cetak-sembunyi flex flex-wrap items-center gap-1.5 pt-0.5">
+                          <button
+                            type="button"
+                            data-testid={`dengar-contoh-${s.kode}`}
+                            aria-label={t('wawancara.dengar_contoh')}
+                            aria-pressed={!!memutar[`${s.kode}:contoh`]}
+                            onClick={() => putar(`${s.kode}:contoh`, String(s.jawaban_jp))}
+                            class="inline-flex items-center gap-1 rounded-md border border-line bg-surface-raised px-2 py-1 text-[11px] font-bold text-fg-muted"
+                          >
+                            <span aria-hidden="true">🔊</span>
+                            {t('wawancara.dengar_contoh')}
+                          </button>
+                          <button
+                            type="button"
+                            data-testid={`dengar-contoh-lambat-${s.kode}`}
+                            aria-label={t('wawancara.dengar_lambat')}
+                            aria-pressed={!!memutar[`${s.kode}:contoh-lambat`]}
+                            onClick={() => putar(`${s.kode}:contoh-lambat`, String(s.jawaban_jp), LAJU_LAMBAT)}
+                            class="inline-flex items-center gap-1 rounded-md border border-line bg-surface-raised px-2 py-1 text-[11px] font-bold text-fg-muted"
+                          >
+                            <span aria-hidden="true">🐢</span>
+                            {t('wawancara.dengar_lambat')}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                   </li>
