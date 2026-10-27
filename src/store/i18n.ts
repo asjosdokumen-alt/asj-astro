@@ -1156,8 +1156,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.tab_loker": "Lowongan Loker",
     "ui.tab_layanan": "Program & Layanan ASJ",
     "landing.class_badge": "Dibuka Kelas Baru",
-    "landing.class_title": "Penerimaan Siswa Angkatan K",
-    "landing.class_subtitle": "Mulai Bulan Oktober 2026",
+    "landing.class_title": "Penerimaan Siswa Angkatan L",
+    "landing.class_subtitle": "Mulai Bulan Januari 2027",
     "landing.class_desc": "Wujudkan mimpimu berkarir di Jepang lewat jalur resmi. Tersedia program Tokutei Ginou (SSW) dan Magang (SO Swasta) dengan kuota eksklusif terbatas 25-30 anak per angkatan agar belajar lebih fokus.",
     "landing.class_dana_title": "Tersedia Dana Talang",
     "landing.class_dana_desc": "Biaya keberangkatan bisa ditalangi TANPA BUNGA / RIBA. Cukup jaminan sertifikat/dokumen yang aman & bisa dicek kapan saja di LPK. Uang kembali full jika ada pembatalan sepihak dari Kaisha Jepang (kecuali MCU).",
@@ -1182,7 +1182,12 @@ export const translations: Record<Lang, Record<string, string>> = {
   "landing.class_fac_cuci": "Cuci",
   "landing.class_fac_motor": "Motor",
   "landing.class_fac_or": "OR",
-  "landing.class_fac_note": "Hanya Biaya Asrama Rp 50.000/Bulan",
+  // Kartu ini berjudul "Fasilitas Asrama GRATIS", jadi catatan kakinya tidak
+  // boleh berbunyi "Biaya Asrama Rp 50.000" — dua pernyataan itu saling
+  // membatalkan, dan yang dibaca pengunjung adalah kamus ini, bukan teks di
+  // LayananSection.astro. Nilai di bawah = iuran listrik, sama dengan teks
+  // statis di komponennya (yang dilihat tanpa JS).
+  "landing.class_fac_note": "Hanya iuran listrik Rp 30.000/Bln",
   "landing.visa_list_1": "Proses Cepat & Terpercaya",
   "landing.visa_list_2": "Legal & Resmi sesuai Prosedur",
   "landing.visa_list_3": "Pendampingan Penuh sampai Berangkat",
