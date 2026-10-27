@@ -242,6 +242,9 @@ export default defineConfig({
             // lewat `globalThis` — tanpa DOM sama sekali, jadi memang milik
             // project 'backend'. Tanpa baris ini ia jalan DUA KALI (R13f-bis).
             'e2e/tts-jepang.test.ts',
+            // Ditambahkan 2026-10-27. Mesin penilaian Mode Simulasi — murni tanpa
+            // DOM, jadi milik project 'backend'. Tanpa baris ini ia jalan DUA KALI.
+            'e2e/simulasi-mensetsu.test.ts',
             // Ditambahkan 2026-10-26. Template CV "Firma Elga Pratama": membaca
             // zip template (jszip) + menambal XML, tanpa DOM. Tinggal di e2e/
             // HANYA karena counter beku `indexer` menghitung `src/**`; tanpa

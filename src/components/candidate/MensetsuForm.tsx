@@ -30,6 +30,7 @@ import { apiClient, type ApiError } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema } from '../../lib/schemas';
 import { opsiUntukSoal } from '../../lib/mensetsuOpsi';
 import { ucapkanJepang, LAJU_LAMBAT } from '../../lib/ttsJepang';
+import SimulasiMensetsu from './SimulasiMensetsu';
 import { t } from '../../store/i18n';
 
 interface Soal {
@@ -209,6 +210,8 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
    * pertanyaan tidak ikut menyalakan tombol jawaban di baris yang sama.
    */
   const [memutar, setMemutar] = useState<Record<string, boolean>>({});
+  /** Tab aktif: 'bank' = menyiapkan naskah, 'simulasi' = latihan berwaktu. */
+  const [mode, setMode] = useState<'bank' | 'simulasi'>('bank');
   /**
    * Lembar cetak sedang menampilkan SELURUH tahap (1–13), bukan tahap aktif.
    *
@@ -631,6 +634,42 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
   };
 
   return (
+    <div>
+      {/* ── Tab mode ──
+          DUA mode, satu halaman. Halaman terpisah berarti gerbang "khusus
+          siswa ASJ" yang ketiga — dan gerbang yang bisa berbeda diam-diam
+          adalah persis yang diperingatkan di kepala `wawancara.astro`.
+          Lembar cetak (`[data-cetak]`) hanya ada di tab Bank Soal, jadi
+          `cetak-sembunyi` di sini cukup: mencetak dari tab Simulasi tidak
+          masuk akal. */}
+      <div class="cetak-sembunyi mb-3 grid grid-cols-2 gap-1.5 rounded-control border border-line bg-surface-sunken p-1">
+        <button
+          type="button"
+          onClick={() => setMode('bank')}
+          aria-pressed={mode === 'bank'}
+          data-testid="tab-bank"
+          class={`min-h-11 rounded-[0.6rem] text-[12px] font-bold transition-colors motion-reduce:transition-none ${
+            mode === 'bank' ? 'bg-surface text-fg shadow-sm' : 'text-fg-muted'
+          }`}
+        >
+          {t('simulasi.tab_bank')}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('simulasi')}
+          aria-pressed={mode === 'simulasi'}
+          data-testid="tab-simulasi"
+          class={`min-h-11 rounded-[0.6rem] text-[12px] font-bold transition-colors motion-reduce:transition-none ${
+            mode === 'simulasi' ? 'bg-surface text-fg shadow-sm' : 'text-fg-muted'
+          }`}
+        >
+          {t('simulasi.tab_simulasi')}
+        </button>
+      </div>
+
+      {mode === 'simulasi' ? (
+        <SimulasiMensetsu soal={soal} draft={draft} onKeBank={() => setMode('bank')} />
+      ) : (
     <div class="grid grid-cols-1 lg:grid-cols-[35%_65%] gap-3 items-start">
       {/* ── kiri: AI menanyakan soal ─────────────────────────────────────── */}
       <section class="cetak-sembunyi rounded-card border border-line bg-surface flex flex-col lg:sticky lg:top-2 h-[70vh] lg:h-[calc(100vh-120px)]">
@@ -1027,6 +1066,8 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
           </ul>
         )}
       </section>
+        </div>
+      )}
     </div>
   );
 }

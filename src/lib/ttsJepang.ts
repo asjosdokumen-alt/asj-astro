@@ -1,5 +1,8 @@
 /**
- * lib/ttsJepang.ts — pengucapan bahasa Jepang lewat Web Speech API.
+ * lib/ttsJepang.ts — Web Speech API untuk bahasa Jepang, dua arah:
+ *   • KELUARAN (`ucapkanJepang`, `speechSynthesis`) — tombol dengar di
+ *     `/wawancara` dan Mode Simulasi;
+ *   • MASUKAN (`buatPendengar`, `SpeechRecognition`) — mikrofon Mode Simulasi.
  *
  * KENAPA ADA MODUL SENDIRI, BUKAN DI DALAM KOMPONEN
  * -------------------------------------------------
@@ -132,4 +135,137 @@ export function ucapkanJepang(
     /* Safari lama melempar kalau `speak()` dipanggil tanpa gestur pengguna. */
     return false;
   }
+}
+
+/* ── masukan suara (SpeechRecognition) ──────────────────────────────────────
+ *
+ * HANYA CHROME/EDGE (Android & desktop) yang punya `SpeechRecognition`.
+ * Safari iOS dan Firefox TIDAK punya — di sana mikrofon tidak akan muncul dan
+ * siswa mengetik. Itu batasan peramban, bukan sesuatu yang bisa ditambal di
+ * sisi kita, jadi pemanggil WAJIB menyediakan jalur ketik sebagai gantinya.
+ *
+ * Pengenalannya juga tidak berjalan luring: Chrome mengirim audio ke layanan
+ * Google. Karena itu modul ini hanya mengembalikan TEKS — tidak ada rekaman
+ * yang disimpan, dan tidak ada audio yang dikirim ke server kita.
+ */
+
+/** Bagian dari `SpeechRecognitionEvent` yang benar-benar dipakai. */
+type HasilSatu = { isFinal: boolean; 0: { transcript: string } };
+type DaftarHasil = { length: number; [index: number]: HasilSatu };
+type PeristiwaHasil = { resultIndex: number; results: DaftarHasil };
+type PeristiwaGalat = { error?: string };
+
+interface PengenalLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  maxAlternatives: number;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: ((e: PeristiwaHasil) => void) | null;
+  onerror: ((e: PeristiwaGalat) => void) | null;
+  onend: (() => void) | null;
+}
+
+type CtorPengenal = new () => PengenalLike;
+
+type GlobalDengar = {
+  SpeechRecognition?: CtorPengenal;
+  webkitSpeechRecognition?: CtorPengenal;
+};
+
+/** Apakah peramban ini bisa mendengar (Chrome/Edge, bukan Safari iOS/Firefox). */
+export function dukunganDengar(): boolean {
+  const g = globalThis as unknown as GlobalDengar;
+  return typeof (g.SpeechRecognition ?? g.webkitSpeechRecognition) === 'function';
+}
+
+export interface Pendengar {
+  /** Mulai mendengar. Aman dipanggil walau sudah berjalan (tidak melempar). */
+  mulai(): void;
+  /** Berhenti dan biarkan transkrip terakhir dipakai. */
+  hentikan(): void;
+  /** Sedang mendengar? */
+  aktif(): boolean;
+}
+
+/**
+ * Buat pendengar Jepang.
+ *
+ * `onTranskrip` dipanggil setiap ada perubahan (termasuk hasil sementara), jadi
+ * kotak teks bisa terisi sambil siswa berbicara. Hasil akhir tetap dikirim
+ * dengan `final: true` supaya pemanggil bisa membedakan "sedang didengar" dari
+ * "sudah selesai".
+ *
+ * `null` = peramban tidak mendukung; pemanggil yang memutuskan menampilkan apa.
+ */
+export function buatPendengar(opsi: {
+  onTranskrip: (teks: string, final: boolean) => void;
+  onSelesai?: () => void;
+  onGalat?: (kode: string) => void;
+}): Pendengar | null {
+  const g = globalThis as unknown as GlobalDengar;
+  const Ctor = g.SpeechRecognition ?? g.webkitSpeechRecognition;
+  if (!Ctor) return null;
+
+  let pengenal: PengenalLike | null = null;
+  let jalan = false;
+  /* Transkrip hasil akhir diakumulasi sendiri: `results` dari peramban berisi
+     SELURUH riwayat sesi, dan membacanya ulang di setiap peristiwa membuat
+     teks yang sama terkirim berkali-kali. */
+  let kumpulan = '';
+
+  const buat = (): PengenalLike => {
+    const p = new Ctor();
+    p.lang = 'ja-JP';
+    p.continuous = true;
+    p.interimResults = true;
+    p.maxAlternatives = 1;
+    p.onresult = (e) => {
+      let sementara = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const hasil = e.results[i];
+        if (!hasil) continue;
+        const teks = hasil[0]?.transcript ?? '';
+        if (hasil.isFinal) kumpulan += teks;
+        else sementara += teks;
+      }
+      opsi.onTranskrip((kumpulan + sementara).trim(), sementara === '');
+    };
+    p.onerror = (e) => {
+      jalan = false;
+      opsi.onGalat?.(String(e?.error ?? 'unknown'));
+    };
+    p.onend = () => {
+      jalan = false;
+      opsi.onSelesai?.();
+    };
+    return p;
+  };
+
+  return {
+    mulai() {
+      if (jalan) return;
+      try {
+        pengenal = buat();
+        kumpulan = '';
+        pengenal.start();
+        jalan = true;
+      } catch {
+        /* `start()` dua kali / izin ditolak: biarkan pemanggil tahu lewat galat. */
+        jalan = false;
+        opsi.onGalat?.('start-gagal');
+      }
+    },
+    hentikan() {
+      try {
+        pengenal?.stop();
+      } catch {
+        /* Sudah berhenti. */
+      }
+      jalan = false;
+    },
+    aktif: () => jalan,
+  };
 }
