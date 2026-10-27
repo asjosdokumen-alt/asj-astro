@@ -2,51 +2,37 @@
  * _lib/kotoba/bank.ts — bank kosakata Minna no Nihongo (Bab 1–25) untuk
  * minigame `/kotoba`.
  *
- * ASAL DATA — tiga lapis, dan bedanya penting
- * -------------------------------------------
- *  1. 216 kata pertama dari minigame mandiri milik pemilik (`GAME.html`),
- *     2026-10-27.
- *  2. 216 kata berikutnya ditambahkan hari yang sama secara TEMATIK (kata benda
- *     Bab 2 ke Bab 2, kata musim ke Bab 12) tanpa daftar buku di tangan.
- *  3. 432 kata terakhir diambil dari daftar kosakata Bab 1–25 di
- *     jp0908.com (sumber daring, 2026-10-27), lalu digabung dan dideduplikasi
- *     terhadap dua lapis di atas.
+ * ASAL DATA — empat lapis, dan bedanya penting
+ * --------------------------------------------
+ *  1. 216 kata dari minigame mandiri milik pemilik (`GAME.html`), 2026-10-27.
+ *  2. 216 kata ditambahkan hari yang sama secara TEMATIK (kata benda Bab 2 ke
+ *     Bab 2, kata musim ke Bab 12) tanpa daftar buku di tangan.
+ *  3. 432 kata dari daftar kosakata Bab 1–25 di jp0908.com, diurai dari HTML
+ *     (kana + kanji + jenis kata + arti Mandarin, diterjemahkan ke Indonesia).
+ *  4. 113 kata dari daftar yang pemilik berikan 2026-10-27
+ *     (`daftar_lengkap_kosakata_minna_no_nihongo_bab_1_25_jlpt_n5.md`,
+ *     disusun setara silabus Nihongo So-matome N5). Lapis inilah yang paling
+ *     mengikat: penempatan babnya dari daftar itu, dan romajinya sudah ada
+ *     sehingga bisa dibandingkan dengan konverter di bawah.
  *
- * Akibatnya: penempatan bab untuk lapis 3 mengikuti daftar buku, sedangkan
- * lapis 2 masih perkiraan tematik. Kalau nanti ada daftar resmi dari bukunya,
- * yang perlu dikoreksi adalah lapis 2 — lapis 3 sudah mengikuti sumber.
+ * Lapis 1–2 penempatan babnya perkiraan tematik; lapis 3 mengikuti daftar
+ * sumbernya; lapis 4 mengikuti daftar pemilik. Kalau nanti ada daftar resmi
+ * dari bukunya, yang perlu dikoreksi lebih dulu adalah lapis 1–2.
  *
- * 864 kata, 21–54 per bab. Itu adalah daftar 新しい言葉 Bab 1–25 apa adanya
- * dari sumbernya — 864 baris terbaca, 0 terlewat (dihitung ulang dari HTML-nya:
- * jumlah `vocab-row` = jumlah baris yang diurai).
+ * 969 kata, 26–52 per bab.
  *
- * TAPI "864" BUKAN "seluruh isi buku", dan selisihnya bukan kata yang terlewat.
- * Angka 1.000–1.200 yang biasa dikutip untuk Minna I menghitung lingkup yang
- * lebih luas: kosakata 会話, 参考語彙, angka/tanggal, nama negara, dan ungkapan.
- * Bukti terukur (2026-10-27): indeks verba buku I di situs yang sama berisi 116
- * verba; bank ini memuat 108 (93%). Delapan yang tidak ada —
- * かかります, 飛びます, 始まります, 太ります, 料理します, 旅行します, 紹介します,
- * 転勤します — dan hanya 紹介 yang muncul di teks pelajaran mana pun (bab 24).
- * Sisanya tidak muncul di satu pelajaran pun di sumber itu, yang konsisten
- * dengan statusnya sebagai kata 会話/参考語彙, bukan butir 新しい言葉.
- *
- * Karena itu salinan UI tetap menyebut "kosakata pilihan", bukan "lengkap" —
- * dan kalau nanti ada daftar resmi dari bukunya, lapis inilah yang paling perlu
- * diperiksa ulang.
- *
- * CARA MEMERIKSA TAMBAHAN (jangan tambah kata tanpa ini)
- * -----------------------------------------------------
- * Setiap baris diperiksa konverter kana→romaji yang ditulis terpisah: cara baca
- * (kolom `h`) diubah ke romaji lalu dibandingkan dengan kolom `r`. Cara itu
- * menangkap tiga salah baca pada lapis 2 sebelum masuk (`宝くじ` sempat tertulis
- * たくじ, `フォーク` butuh digraph ふぉ, satu arti dobel dengan `引きます`), dan
- * memverifikasi seluruh 864 baris setelah penggabungan: 863 cocok persis,
- * satu pengecualian disengaja di bawah.
+ * CARA MEMERIKSA (jangan tambah kata tanpa ini)
+ * ---------------------------------------------
+ * Setiap baris diperiksa konverter kana→romaji: cara baca (kolom `h`) diubah
+ * ke romaji lalu dibandingkan dengan kolom `r`. Pada lapis 3 cara itu menangkap
+ * tiga salah baca sebelum masuk (`宝くじ` sempat tertulis たくじ, `フォーク`
+ * butuh digraph ふぉ, satu arti dobel dengan `引きます`). Pada lapis 4, romaji
+ * daftar pemilik dibandingkan dengan konverter: 113 dari 113 cocok — jadi
+ * tidak ada satu pun yang perlu diperbaiki tangan.
  *
  * Satu pengecualian yang disengaja: `サンドイッチ` ditulis `sandoitchi`
  * (Hepburn baku), bukan `sandoicchi` yang dihasilkan konverter secara
- * harfiah. `normalRomaji()` di `KotobaGame` menyamakan keduanya, jadi siswa
- * yang mengetik versi mana pun dinilai benar.
+ * harfiah. `normalRomaji()` di `KotobaGame` menyamakan keduanya.
  *
  * KENAPA DI SINI, BUKAN DI KLIEN
  * ------------------------------
@@ -58,12 +44,12 @@
  *
  * BENTUK RINGKAS
  * --------------
- * Tabelnya array-of-tuple, bukan array objek. 864 baris objek berarti ~20 KB
+ * Tabelnya array-of-tuple, bukan array objek. 969 baris objek berarti ~23 KB
  * nama kunci berulang (`b:`, `pos:`, `k:` …) yang ikut di-bundle ke entry
  * `ai-chat` dan dibayar setiap cold start. Urutan kolomnya dikunci di
  * `KolomKotoba` di bawah — jangan diubah tanpa mengubah `keKotoba()`.
  *
- * Sebaran per bab: 1:34 2:40 3:35 4:47 5:22 6:38 7:37 8:54 9:44 10:35 11:50 12:41 13:30 14:35 15:27 16:38 17:30 18:33 19:27 20:30 21:32 22:32 23:29 24:21 25:23
+ * Sebaran per bab: 1:37 2:42 3:41 4:52 5:39 6:42 7:38 8:52 9:46 10:40 11:51 12:40 13:39 14:35 15:33 16:40 17:35 18:35 19:32 20:31 21:44 22:37 23:33 24:26 25:29
  */
 
 /** Jenis kata. Nilainya dipakai sebagai kunci filter di klien. */
@@ -121,13 +107,16 @@ const RAW = [
   [1, 'noun', '皆さん', 'みなさん', 'minasan', 'Semua orang'],
   [1, 'noun', '社員', 'しゃいん', 'shain', 'Karyawan (di perusahaan tertentu)'],
   [1, 'other', 'どなた', 'どなた', 'donata', 'Siapa (hormat)'],
-  [1, 'other', '～歳', '～さい', 'sai', '…tahun (umur)'],
+  [1, 'other', '～歳', 'さい', 'sai', '…tahun (umur)'],
   [1, 'other', 'おいくつ', 'おいくつ', 'oikutsu', 'Berapa umur (hormat)'],
   [1, 'other', 'はい', 'はい', 'hai', 'Ya'],
   [1, 'other', 'いいえ', 'いいえ', 'iie', 'Tidak'],
   [1, 'other', '失礼ですが', 'しつれいですが', 'shitsureidesuga', 'Maaf, boleh saya tanya'],
   [1, 'other', 'お名前は？', 'おなまえは？', 'onamaeha', 'Siapa nama Anda?'],
-  [1, 'other', 'こちらは～さんです', 'こちらは～さんです', 'kochirahasandesu', 'Ini Tuan/Nyonya …'],
+  [1, 'other', 'こちらは～さんです', 'こちらはさんです', 'kochirahasandesu', 'Ini Tuan/Nyonya …'],
+  [1, 'noun', '私たち', 'わたしたち', 'watashitachi', 'Kami / kita'],
+  [1, 'other', '～さん', 'さん', 'san', 'Sdr. / Sdri. / Tuan / Nyonya'],
+  [1, 'other', '～ちゃん', 'ちゃん', 'chan', 'Akhiran panggilan anak kecil/akrab'],
   // ── BAB 2
   [2, 'other', 'これ', 'これ', 'kore', 'Ini (dekat pembicara)'],
   [2, 'other', 'それ', 'それ', 'sore', 'Itu (dekat lawan bicara)'],
@@ -169,6 +158,8 @@ const RAW = [
   [2, 'other', '何', 'なん', 'nan', 'Apa'],
   [2, 'other', 'そう', 'そう', 'sou', 'Begitu'],
   [2, 'verb', '違います', 'ちがいます', 'chigaimasu', 'Bukan / berbeda'],
+  [2, 'other', 'どうぞ', 'どうぞ', 'douzo', 'Silakan'],
+  [2, 'other', 'ありがとう', 'ありがとう', 'arigatou', 'Terima kasih'],
   // ── BAB 3
   [3, 'other', 'ここ', 'ここ', 'koko', 'Di sini'],
   [3, 'other', 'どこ', 'どこ', 'doko', 'Di mana'],
@@ -204,7 +195,13 @@ const RAW = [
   [3, 'noun', 'お国', 'おくに', 'okuni', 'Negara Anda (hormat)'],
   [3, 'noun', 'うち', 'うち', 'uchi', 'Rumah (sendiri)'],
   [3, 'other', '何階', 'なんかい', 'nankai', 'Lantai berapa'],
-  [3, 'other', '～階', '～かい', 'kai', '…lantai'],
+  [3, 'other', '～階', 'かい', 'kai', '…lantai'],
+  [3, 'noun', '売り場', 'うりば', 'uriba', 'Tempat penjualan / konter'],
+  [3, 'noun', '地下', 'ちか', 'chika', 'Bawah tanah'],
+  [3, 'other', '～円', 'えん', 'en', '~ Yen'],
+  [3, 'noun', '百', 'ひゃく', 'hyaku', 'Ratus / seratus'],
+  [3, 'noun', '千', 'せん', 'sen', 'Ribu / seribu'],
+  [3, 'noun', '万', 'まん', 'man', 'Puluh ribu / sepuluh ribu'],
   // ── BAB 4
   [4, 'verb', '起きます', 'おきます', 'okimasu', 'Bangun tidur'],
   [4, 'verb', '寝ます', 'ねます', 'nemasu', 'Tidur'],
@@ -215,7 +212,6 @@ const RAW = [
   [4, 'noun', '今', 'いま', 'ima', 'Sekarang'],
   [4, 'noun', '朝', 'あさ', 'asa', 'Pagi'],
   [4, 'noun', '昼', 'ひる', 'hiru', 'Siang'],
-  [4, 'noun', '晩', 'ばん', 'ban', 'Malam'],
   [4, 'noun', '昨日', 'きのう', 'kinou', 'Kemarin'],
   [4, 'noun', '明日', 'あした', 'ashita', 'Besok'],
   [4, 'noun', '毎朝', 'まいあさ', 'maiasa', 'Setiap pagi'],
@@ -236,8 +232,8 @@ const RAW = [
   [4, 'noun', '今年', 'ことし', 'kotoshi', 'Tahun ini'],
   [4, 'noun', '来年', 'らいねん', 'rainen', 'Tahun depan'],
   [4, 'noun', '試験', 'しけん', 'shiken', 'Ujian'],
-  [4, 'other', '～時', '～じ', 'ji', '…jam'],
-  [4, 'other', '～分', '～ふん', 'fun', '…menit'],
+  [4, 'other', '～時', 'じ', 'ji', '…jam'],
+  [4, 'other', '～分', 'ふん', 'fun', '…menit'],
   [4, 'noun', '半', 'はん', 'han', 'Setengah (30 menit)'],
   [4, 'other', '何時', 'なんじ', 'nanji', 'Jam berapa'],
   [4, 'other', '何分', 'なんぷん', 'nanpun', 'Menit berapa'],
@@ -253,6 +249,12 @@ const RAW = [
   [4, 'noun', '土曜日', 'どようび', 'doyoubi', 'Sabtu'],
   [4, 'noun', '日曜日', 'にちようび', 'nichiyoubi', 'Minggu'],
   [4, 'other', '何曜日', 'なんようび', 'nanyoubi', 'Hari apa'],
+  [4, 'noun', '今朝', 'けさ', 'kesa', 'Pagi tadi'],
+  [4, 'noun', '今晩', 'こんばん', 'konban', 'Malam ini'],
+  [4, 'noun', '昼休み', 'ひるやすみ', 'hiruyasumi', 'Istirahat siang'],
+  [4, 'other', '～から', 'から', 'kara', 'Dari ~'],
+  [4, 'other', '～まで', 'まで', 'made', 'Sampai ~'],
+  [4, 'other', '大変ですね', 'たいへんですね', 'taihendesune', 'Berat sekali ya / kasihan ya'],
   // ── BAB 5
   [5, 'verb', '行きます', 'いきます', 'ikimasu', 'Pergi'],
   [5, 'verb', '来ます', 'きます', 'kimasu', 'Datang'],
@@ -276,6 +278,23 @@ const RAW = [
   [5, 'noun', '家族', 'かぞく', 'kazoku', 'Keluarga'],
   [5, 'other', 'いつ', 'いつ', 'itsu', 'Kapan'],
   [5, 'noun', '誕生日', 'たんじょうび', 'tanjoubi', 'Ulang tahun'],
+  [5, 'other', '～月', 'がつ', 'gatsu', 'Bulan ke-~ (Januari-Desember)'],
+  [5, 'noun', '何月', 'なんがつ', 'nangatsu', 'Bulan apa'],
+  [5, 'noun', '一日', 'ついたち', 'tsuitachi', 'Tanggal 1'],
+  [5, 'noun', '二日', 'ふつか', 'futsuka', 'Tanggal 2 / 2 hari'],
+  [5, 'noun', '三日', 'みっか', 'mikka', 'Tanggal 3 / 3 hari'],
+  [5, 'noun', '四日', 'よっか', 'yokka', 'Tanggal 4 / 4 hari'],
+  [5, 'noun', '五日', 'いつか', 'itsuka', 'Tanggal 5 / 5 hari'],
+  [5, 'noun', '六日', 'むいか', 'muika', 'Tanggal 6 / 6 hari'],
+  [5, 'noun', '七日', 'なのか', 'nanoka', 'Tanggal 7 / 7 hari'],
+  [5, 'noun', '八日', 'ようか', 'youka', 'Tanggal 8 / 8 hari'],
+  [5, 'noun', '九日', 'ここのか', 'kokonoka', 'Tanggal 9 / 9 hari'],
+  [5, 'noun', '十日', 'とおか', 'tooka', 'Tanggal 10 / 10 hari'],
+  [5, 'noun', '十四日', 'じゅうよっか', 'juuyokka', 'Tanggal 14 / 14 hari'],
+  [5, 'noun', '二十日', 'はつか', 'hatsuka', 'Tanggal 20 / 20 hari'],
+  [5, 'noun', '二十四日', 'にじゅうよっか', 'nijuuyokka', 'Tanggal 24 / 24 hari'],
+  [5, 'other', '～日', 'にち', 'nichi', 'Tanggal ~ / ~ hari'],
+  [5, 'noun', '何日', 'なんにち', 'nannichi', 'Tanggal berapa / berapa hari'],
   // ── BAB 6
   [6, 'verb', '食べます', 'たべます', 'tabemasu', 'Makan'],
   [6, 'verb', '飲みます', 'のみます', 'nomimasu', 'Minum'],
@@ -315,6 +334,10 @@ const RAW = [
   [6, 'other', '時々', 'ときどき', 'tokidoki', 'Kadang-kadang'],
   [6, 'other', 'それから', 'それから', 'sorekara', 'Setelah itu'],
   [6, 'other', 'いいですね', 'いいですね', 'iidesune', 'Boleh juga'],
+  [6, 'noun', 'ビデオ', 'びでお', 'bideo', 'Video'],
+  [6, 'noun', 'テニス', 'てにす', 'tenisu', 'Tenis'],
+  [6, 'noun', 'サッカー', 'さっかー', 'sakkaa', 'Sepak bola'],
+  [6, 'noun', 'お花見', 'おはなみ', 'ohanami', 'Menikmati bunga sakura'],
   // ── BAB 7
   [7, 'verb', '切ります', 'きります', 'kirimasu', 'Memotong'],
   [7, 'verb', '送ります', 'おくります', 'okurimasu', 'Mengirim'],
@@ -353,6 +376,7 @@ const RAW = [
   [7, 'other', 'もう', 'もう', 'mou', 'Sudah'],
   [7, 'other', 'まだ', 'まだ', 'mada', 'Belum'],
   [7, 'other', 'これから', 'これから', 'korekara', 'Mulai sekarang'],
+  [7, 'noun', 'セロテープ', 'せろてーぷ', 'seroteepu', 'Selotip'],
   // ── BAB 8
   [8, 'adj', '綺麗[な]', 'きれい[な]', 'kirei[na]', 'Cantik / Bersih'],
   [8, 'adj', '静か[な]', 'しずか[な]', 'shizuka[na]', 'Tenang / Sunyi'],
@@ -388,9 +412,6 @@ const RAW = [
   [8, 'noun', '町', 'まち', 'machi', 'Kota'],
   [8, 'noun', '食べ物', 'たべもの', 'tabemono', 'Makanan'],
   [8, 'adj', 'ハンサム', 'はんさむ', 'hansamu', 'Tampan'],
-  [8, 'adj', 'きれい', 'きれい', 'kirei', 'Cantik / bersih'],
-  [8, 'adj', '静か', 'しずか', 'shizuka', 'Tenang'],
-  [8, 'adj', '親切', 'しんせつ', 'shinsetsu', 'Ramah'],
   [8, 'adj', '素敵', 'すてき', 'suteki', 'Menawan'],
   [8, 'adj', 'いい', 'いい', 'ii', 'Baik'],
   [8, 'adj', '悪い', 'わるい', 'warui', 'Buruk'],
@@ -408,6 +429,7 @@ const RAW = [
   [8, 'other', 'お元気ですか', 'おげんきですか', 'ogenkidesuka', 'Apa kabar?'],
   [8, 'other', 'そろそろ', 'そろそろ', 'sorosoro', 'Sudah waktunya'],
   [8, 'other', '失礼します', 'しつれいします', 'shitsureishimasu', 'Permisi (pamit)'],
+  [8, 'noun', 'お仕事', 'おしごと', 'oshigoto', 'Pekerjaan'],
   // ── BAB 9
   [9, 'verb', '分かります', 'わかります', 'wakarimasu', 'Mengerti / Paham'],
   [9, 'verb', 'あります', 'あります', 'arimasu', 'Ada (benda mati)'],
@@ -425,9 +447,6 @@ const RAW = [
   [9, 'noun', '買い物', 'かいもの', 'kaimono', 'Belanja'],
   [9, 'noun', '食事', 'しょくじ', 'shokuji', 'Makan (formal)'],
   [9, 'noun', 'ダンス', 'だんす', 'dansu', 'Tarian'],
-  [9, 'adj', '嫌い', 'きらい', 'kirai', 'Tidak suka'],
-  [9, 'adj', '上手', 'じょうず', 'jouzu', 'Pandai / mahir'],
-  [9, 'adj', '下手', 'へた', 'heta', 'Tidak pandai'],
   [9, 'noun', '飲み物', 'のみもの', 'nomimono', 'Minuman'],
   [9, 'noun', '野球', 'やきゅう', 'yakyuu', 'Bisbol'],
   [9, 'noun', 'クラシック', 'くらしっく', 'kurashikku', 'Musik klasik'],
@@ -453,6 +472,11 @@ const RAW = [
   [9, 'other', 'ごめんなさい', 'ごめんなさい', 'gomennasai', 'Maaf'],
   [9, 'other', '残念ですが', 'ざんねんですが', 'zannendesuga', 'Sayang sekali, tetapi…'],
   [9, 'adj', 'だめ', 'だめ', 'dame', 'Tidak boleh / jelek'],
+  [9, 'noun', '歌舞伎', 'かぶき', 'kabuki', 'Kabuki (teater tradisional jepang)'],
+  [9, 'noun', 'アルバイト', 'あるばいと', 'arubaito', 'Kerja paruh waktu'],
+  [9, 'noun', '夫 / 主人', 'おっと/しゅじん', 'ottoshujin', 'Suami (sendiri)'],
+  [9, 'noun', '妻 / 家内', 'つま/かない', 'tsumakanai', 'Istri (sendiri)'],
+  [9, 'other', 'どうして', 'どうして', 'doushite', 'Mengapa / kenapa'],
   // ── BAB 10
   [10, 'verb', 'います', 'います', 'imasu', 'Ada (makhluk hidup)'],
   [10, 'noun', '上', 'うえ', 'ue', 'Atas'],
@@ -489,6 +513,11 @@ const RAW = [
   [10, 'noun', '近く', 'ちかく', 'chikaku', 'Dekat / sekitar'],
   [10, 'noun', '間', 'あいだ', 'aida', 'Antara'],
   [10, 'other', 'すみませんが', 'すみませんが', 'sumimasenga', 'Permisi (bertanya)'],
+  [10, 'noun', 'パンダ', 'ぱんだ', 'panda', 'Panda'],
+  [10, 'noun', '象', 'ぞう', 'zou', 'Gajah'],
+  [10, 'other', '～屋', 'や', 'ya', 'Toko ~'],
+  [10, 'noun', '乗り場', 'のりば', 'noriba', 'Tempat pemberhentian naik kendaraan'],
+  [10, 'noun', '県', 'けん', 'ken', 'Prefektur'],
   // ── BAB 11
   [11, 'noun', '一つ', 'ひとつ', 'hitotsu', 'Satu buah'],
   [11, 'noun', '二つ', 'ふたつ', 'futatsu', 'Dua buah'],
@@ -506,15 +535,13 @@ const RAW = [
   [11, 'noun', '九つ', 'ここのつ', 'kokonotsu', 'Sembilan buah'],
   [11, 'noun', '十', 'とお', 'too', 'Sepuluh buah'],
   [11, 'other', 'いくつ', 'いくつ', 'ikutsu', 'Berapa buah'],
-  [11, 'other', '〜枚', 'まい', 'mai', '…lembar (kaunter)'],
-  [11, 'other', '〜台', 'だい', 'dai', '…unit mesin (kaunter)'],
-  [11, 'other', '～個', '～こ', 'ko', '…buah (benda kecil)'],
-  [11, 'other', '～本', '～ほん', 'hon', '…batang (benda panjang)'],
-  [11, 'other', '～枚', '～まい', 'mai', '…lembar (benda tipis)'],
-  [11, 'other', '～回', '～かい', 'kai', '…kali (frekuensi)'],
-  [11, 'other', '～台', '～だい', 'dai', '…unit (mesin/kendaraan)'],
-  [11, 'other', '～人', '～にん', 'nin', '…orang (kaunter)'],
-  [11, 'other', '～杯', '～はい', 'hai', '…cangkir / gelas'],
+  [11, 'other', '～枚', 'まい', 'mai', '…lembar (kaunter)'],
+  [11, 'other', '～台', 'だい', 'dai', '…unit mesin (kaunter)'],
+  [11, 'other', '～個', 'こ', 'ko', '…buah (benda kecil)'],
+  [11, 'other', '～本', 'ほん', 'hon', '…batang (benda panjang)'],
+  [11, 'other', '～回', 'かい', 'kai', '…kali (frekuensi)'],
+  [11, 'other', '～人', 'にん', 'nin', '…orang (kaunter)'],
+  [11, 'other', '～杯', 'はい', 'hai', '…cangkir / gelas'],
   [11, 'noun', 'りんご', 'りんご', 'ringo', 'Apel'],
   [11, 'noun', 'みかん', 'みかん', 'mikan', 'Jeruk'],
   [11, 'noun', 'カレー', 'かれー', 'karee', 'Kari'],
@@ -535,11 +562,14 @@ const RAW = [
   [11, 'noun', '妹', 'いもうと', 'imouto', 'Adik perempuan (saya)'],
   [11, 'noun', '妹さん', 'いもうとさん', 'imoutosan', 'Adik perempuan (orang lain)'],
   [11, 'noun', '外国', 'がいこく', 'gaikoku', 'Luar negeri'],
-  [11, 'noun', '～人', '～じん', 'jin', '…orang (kewarganegaraan)'],
+  [11, 'noun', '～人', 'じん', 'jin', '…orang (kewarganegaraan)'],
   [11, 'other', 'お願いします', 'おねがいします', 'onegaishimasu', 'Tolong / mohon'],
   [11, 'other', '全部で', 'ぜんぶで', 'zenbude', 'Seluruhnya'],
   [11, 'noun', 'みんな', 'みんな', 'minna', 'Semua (akrab)'],
-  [11, 'other', '～だけ', '～だけ', 'dake', 'Hanya'],
+  [11, 'other', '～だけ', 'だけ', 'dake', 'Hanya'],
+  [11, 'other', '～か月', 'かげつ', 'kagetsu', '~ bulan (durasi)'],
+  [11, 'other', '～年', 'ねん', 'nen', '~ tahun (durasi)'],
+  [11, 'other', '～ぐらい', 'ぐらい', 'gurai', 'Kira-kira / sekitar ~'],
   // ── BAB 12
   [12, 'adj', '簡単[な]', 'かんたん[な]', 'kantan[na]', 'Mudah / Sederhana'],
   [12, 'adj', '近い', 'ちかい', 'chikai', 'Dekat'],
@@ -561,7 +591,6 @@ const RAW = [
   [12, 'noun', '風', 'かぜ', 'kaze', 'Angin'],
   [12, 'noun', '月', 'つき', 'tsuki', 'Bulan'],
   [12, 'noun', '星', 'ほし', 'hoshi', 'Bintang'],
-  [12, 'adj', '簡単', 'かんたん', 'kantan', 'Sederhana / mudah'],
   [12, 'adj', '甘い', 'あまい', 'amai', 'Manis'],
   [12, 'adj', '辛い', 'からい', 'karai', 'Pedas'],
   [12, 'adj', '重い', 'おもい', 'omoi', 'Berat'],
@@ -613,6 +642,15 @@ const RAW = [
   [13, 'other', '駄目です', 'だめです', 'damedesu', 'Tidak boleh'],
   [13, 'noun', '恋人', 'こいびと', 'koibito', 'Kekasih'],
   [13, 'other', '別々に', 'べつべつに', 'betsubetsuni', 'Terpisah / sendiri-sendiri'],
+  [13, 'noun', 'プール', 'ぷーる', 'puuru', 'Kolam renang'],
+  [13, 'noun', '美術', 'びじゅつ', 'bijutsu', 'Seni rupa'],
+  [13, 'noun', '釣り', 'つり', 'tsuri', 'Memancing'],
+  [13, 'noun', 'スキー', 'すきー', 'sukii', 'Ski es'],
+  [13, 'noun', '会議', 'かいぎ', 'kaigi', 'Rapat'],
+  [13, 'noun', '登録', 'とうろく', 'touroku', 'Pendaftaran'],
+  [13, 'other', '～ごろ', 'ごろ', 'goro', 'Sekitar jam ~'],
+  [13, 'other', 'おなかがいっぱいです', 'おなかがいっぱいです', 'onakagaippaidesu', 'Kenyang'],
+  [13, 'other', 'そうしましょう', 'そうしましょう', 'soushimashou', 'Ayo lakukan seperti itu'],
   // ── BAB 14
   [14, 'verb', '点けます', 'つけます', 'tsukemasu', 'Menyalakan (alat/lampu)'],
   [14, 'verb', '消します', 'けします', 'keshimasu', 'Mematikan / Memadamkan'],
@@ -677,6 +715,12 @@ const RAW = [
   [15, 'noun', '電子辞書', 'でんしじしょ', 'denshijisho', 'Kamus elektronik'],
   [15, 'noun', '経済', 'けいざい', 'keizai', 'Ekonomi'],
   [15, 'noun', '市役所', 'しやくしょ', 'shiyakusho', 'Kantor balai kota'],
+  [15, 'noun', '専門', 'せんもん', 'senmon', 'Bidang keahlian / jurusan'],
+  [15, 'noun', '歯医者', 'はいしゃ', 'haisha', 'Dokter gigi'],
+  [15, 'noun', '床屋', 'とこや', 'tokoya', 'Tempat potong rambut pria'],
+  [15, 'noun', 'プレイガイド', 'ぷれいがいど', 'pureigaido', 'Loket karcis pertunjukan'],
+  [15, 'noun', '独身', 'どくしん', 'dokushin', 'Lajang / belum menikah'],
+  [15, 'verb', '思い出します', 'おもいだします', 'omoidashimasu', 'Teringat kembali'],
   // ── BAB 16
   [16, 'verb', '乗ります', 'のります', 'norimasu', 'Naik kendaraan'],
   [16, 'verb', '降ります', 'おります', 'orimasu', 'Turun kendaraan'],
@@ -716,6 +760,8 @@ const RAW = [
   [16, 'noun', 'サービス', 'さーびす', 'saabisu', 'Layanan'],
   [16, 'noun', 'ジョギング', 'じょぎんぐ', 'jogingu', 'Jogging'],
   [16, 'noun', '緑', 'みどり', 'midori', 'Hijau'],
+  [16, 'verb', '下ろします', 'おろします', 'oroshimasu', 'Menarik (uang dari bank)'],
+  [16, 'other', 'どの～', 'どの', 'dono', '~ yang mana (dari banyak pilihan)'],
   // ── BAB 17
   [17, 'verb', '覚えます', 'おぼえます', 'oboemasu', 'Mengingat / Menghafal'],
   [17, 'verb', '忘れます', 'わすれます', 'wasuremasu', 'Lupa'],
@@ -747,6 +793,11 @@ const RAW = [
   [17, 'other', 'どうしましたか', 'どうしましたか', 'doushimashitaka', 'Ada apa? / Kenapa?'],
   [17, 'other', 'お大事に', 'おだいじに', 'odaijini', 'Semoga lekas sembuh'],
   [17, 'other', 'それはいけませんね', 'それはいけませんね', 'sorehaikemasenne', 'Itu tidak baik ya'],
+  [17, 'adj', '大丈夫[な]', 'だいじょうぶ[な]', 'daijoubuna', 'Tidak apa-apa / aman'],
+  [17, 'noun', '禁煙', 'きんえん', 'kinen', 'Dilarang merokok'],
+  [17, 'noun', '保険証', 'ほけんしょう', 'hokenshou', 'Kartu asuransi kesehatan'],
+  [17, 'other', '～までに', 'までに', 'madeni', 'Paling lambat sebelum ~'],
+  [17, 'other', 'ですから', 'ですから', 'desukara', 'Oleh karena itu'],
   // ── BAB 18
   [18, 'verb', 'できます', 'できます', 'dekimasu', 'Bisa / Mampu'],
   [18, 'verb', '洗います', 'あらいます', 'araimasu', 'Mencuci'],
@@ -781,6 +832,8 @@ const RAW = [
   [18, 'other', '乾杯', 'かんぱい', 'kanpai', 'Bersulang'],
   [18, 'other', '実は', 'じつは', 'jitsuha', 'Sebenarnya'],
   [18, 'other', 'それはおもしろいですね', 'それはおもしろいですね', 'sorehaomoshiroidesune', 'Itu menarik ya'],
+  [18, 'noun', 'お祈り', 'おいのり', 'oinori', 'Doa / salat'],
+  [18, 'other', 'なかなか', 'なかなか', 'nakanaka', 'Susah / tidak mudah (~ negatif)'],
   // ── BAB 19
   [19, 'verb', '登ります', 'のぼります', 'noborimasu', 'Mendaki gunung'],
   [19, 'verb', '泊まります', 'とまります', 'tomarimasu', 'Menginap di hotel'],
@@ -809,6 +862,11 @@ const RAW = [
   [19, 'noun', '北海道', 'ほっかいどう', 'hokkaidou', 'Hokkaido'],
   [19, 'noun', '富士山', 'ふじさん', 'fujisan', 'Gunung Fuji'],
   [19, 'noun', '琵琶湖', 'びわこ', 'biwako', 'Danau Biwa'],
+  [19, 'noun', 'ゴルフ', 'ごるふ', 'gorufu', 'Golf'],
+  [19, 'noun', '日', 'ひ', 'hi', 'Hari / tanggal'],
+  [19, 'noun', 'ダイエット', 'だいえっと', 'daietto', 'Diet'],
+  [19, 'adj', '無理[な]', 'むり[な]', 'murina', 'Mustahil / berlebihan'],
+  [19, 'other', '体にいい', 'からだにいい', 'karadaniii', 'Bagus untuk kesehatan'],
   // ── BAB 20
   [20, 'verb', '要ります', 'いります', 'irimasu', 'Memerlukan / Butuh'],
   [20, 'verb', '調べます', 'しらべます', 'shirabemasu', 'Mengecek / Meneliti'],
@@ -822,7 +880,7 @@ const RAW = [
   [20, 'verb', '電話します', 'でんわします', 'denwashimasu', 'Menelepon'],
   [20, 'noun', '僕', 'ぼく', 'boku', 'Saya (laki-laki)'],
   [20, 'noun', '君', 'きみ', 'kimi', 'Kamu (akrab)'],
-  [20, 'other', '〜君', '〜くん', 'kun', '…kun (akhiran nama laki-laki)'],
+  [20, 'other', '～君', 'くん', 'kun', '…kun (akhiran nama laki-laki)'],
   [20, 'other', 'うん', 'うん', 'un', 'Ya (akrab)'],
   [20, 'other', 'ううん', 'ううん', 'uun', 'Bukan (akrab)'],
   [20, 'noun', 'サラリーマン', 'さらりーまん', 'sarariiman', 'Pegawai kantor'],
@@ -836,10 +894,11 @@ const RAW = [
   [20, 'noun', 'どっち', 'どっち', 'docchi', 'Mana (akrab)'],
   [20, 'noun', 'この間', 'このあいだ', 'konoaida', 'Beberapa waktu lalu'],
   [20, 'other', 'みんなで', 'みんなで', 'minnade', 'Bersama-sama semua'],
-  [20, 'other', '〜けど', '〜けど', 'kedo', 'Tetapi (akrab)'],
+  [20, 'other', '～けど', 'けど', 'kedo', 'Tetapi (akrab)'],
   [20, 'other', 'しょうがない', 'しょうがない', 'shouganai', 'Tidak bisa dihindari'],
   [20, 'other', 'やっぱり', 'やっぱり', 'yappari', 'Ternyata / memang'],
-  [20, 'other', '〜ずつ', '〜ずつ', 'zutsu', '…tiap (per)'],
+  [20, 'other', '～ずつ', 'ずつ', 'zutsu', '…tiap (per)'],
+  [20, 'other', 'よかったら', 'よかったら', 'yokattara', 'Kalau berkenan / tidak keberatan'],
   // ── BAB 21
   [21, 'verb', '思います', 'おもいます', 'omoimasu', 'Berpikir / Mengira'],
   [21, 'verb', '言います', 'いいます', 'iimasu', 'Berkata'],
@@ -868,11 +927,23 @@ const RAW = [
   [21, 'noun', '平和', 'へいわ', 'heiwa', 'Perdamaian'],
   [21, 'noun', '宗教', 'しゅうきょう', 'shuukyou', 'Agama'],
   [21, 'noun', '関係', 'かんけい', 'kankei', 'Hubungan'],
-  [21, 'other', '〜について', '〜について', 'nitsuite', 'Tentang …'],
+  [21, 'other', '～について', 'について', 'nitsuite', 'Tentang …'],
   [21, 'other', '多分', 'たぶん', 'tabun', 'Mungkin'],
   [21, 'other', '本当に', 'ほんとうに', 'hontouni', 'Sungguh'],
   [21, 'other', 'そんなに', 'そんなに', 'sonnani', 'Tidak begitu'],
-  [21, 'other', '〜かどうか', '〜かどうか', 'kadouka', 'Apakah … atau tidak'],
+  [21, 'other', '～かどうか', 'かどうか', 'kadouka', 'Apakah … atau tidak'],
+  [21, 'verb', 'やめます', 'やめます', 'yamemasu', 'Berhenti (bekerja / kebiasaan)'],
+  [21, 'noun', '本当', 'ほんとう', 'hontou', 'Kebenaran / sungguhan'],
+  [21, 'noun', 'うそ', 'うそ', 'uso', 'Kebohongan'],
+  [21, 'noun', '交通', 'こうつう', 'koutsuu', 'Lalu lintas'],
+  [21, 'noun', '放送', 'ほうそう', 'housou', 'Siaran radio/TV'],
+  [21, 'noun', 'アニメ', 'あにめ', 'anime', 'Animasi'],
+  [21, 'noun', 'マンガ', 'まんが', 'manga', 'Komik Jepang'],
+  [21, 'noun', 'デザイン', 'でざいん', 'dezain', 'Desain'],
+  [21, 'noun', '夢', 'ゆめ', 'yume', 'Impian / mimpi tidur'],
+  [21, 'noun', '天才', 'てんさい', 'tensai', 'Jenius'],
+  [21, 'noun', '話', 'はなし', 'hanashi', 'Cerita / pembicaraan'],
+  [21, 'noun', '地球', 'ちきゅう', 'chikyuu', 'Bumi'],
   // ── BAB 22
   [22, 'verb', '着ます', 'きます', 'kimasu', 'Memakai baju atas / kemeja'],
   [22, 'verb', '履きます', 'はきます', 'hakimasu', 'Memakai sepatu / celana'],
@@ -906,6 +977,11 @@ const RAW = [
   [22, 'noun', '韓国料理', 'かんこくりょうり', 'kankokuryouri', 'Masakan Korea'],
   [22, 'noun', 'オリンピック', 'おりんぴっく', 'orinpikku', 'Olimpiade'],
   [22, 'other', '大抵', 'たいてい', 'taitei', 'Biasanya'],
+  [22, 'noun', 'ダイニングキッチン', 'だいにんぐきっちん', 'dainingukicchin', 'Dapur bersatu ruang makan'],
+  [22, 'noun', '和室', 'わしつ', 'washitsu', 'Kamar gaya Jepang (ber-tatami)'],
+  [22, 'noun', '押し入れ', 'おしいれ', 'oshiire', 'Lemari dinding geser khas Jepang'],
+  [22, 'noun', '布団', 'ふとん', 'futon', 'Kasur lipat tradisional Jepang'],
+  [22, 'noun', 'アパート', 'あぱーと', 'apaato', 'Apartemen menengah'],
   // ── BAB 23
   [23, 'verb', '回します', 'まわします', 'mawashimasu', 'Memutar knop'],
   [23, 'verb', '引きます', 'ひきます', 'hikimasu', 'Menarik'],
@@ -935,7 +1011,11 @@ const RAW = [
   [23, 'noun', 'ノック', 'のっく', 'nokku', 'Ketukan (pintu)'],
   [23, 'noun', 'エンジン', 'えんじん', 'enjin', 'Mesin'],
   [23, 'other', 'どうやって', 'どうやって', 'douyatte', 'Bagaimana caranya'],
-  [23, 'other', '〜目', '〜め', 'me', '…ke- (urutan)'],
+  [23, 'other', '～目', 'め', 'me', '…ke- (urutan)'],
+  [23, 'noun', 'お湯', 'おゆ', 'oyu', 'Air mendidih / panas'],
+  [23, 'noun', '音', 'おと', 'oto', 'Suara / bunyi benda'],
+  [23, 'noun', 'サイズ', 'さいず', 'saizu', 'Ukuran'],
+  [23, 'noun', '故障', 'こしょう', 'koshou', 'Kerusakan pada mesin'],
   // ── BAB 24
   [24, 'verb', 'くれます', 'くれます', 'kuremasu', 'Memberi (kepada saya)'],
   [24, 'verb', '連れて行きます', 'つれていきます', 'tsureteikimasu', 'Mengajak pergi'],
@@ -958,6 +1038,11 @@ const RAW = [
   [24, 'other', 'いただきます', 'いただきます', 'itadakimasu', 'Selamat makan'],
   [24, 'noun', '旅行会社', 'りょこうがいしゃ', 'ryokougaisha', 'Biro perjalanan'],
   [24, 'noun', '書類', 'しょるい', 'shorui', 'Dokumen'],
+  [24, 'verb', '紹介します', 'しょうかいします', 'shoukaishimasu', 'Memperkenalkan rekan'],
+  [24, 'noun', 'おじいさん', 'おじいさん', 'ojiisan', 'Kakek (atau lansia pria)'],
+  [24, 'noun', 'おばあさん', 'おばあさん', 'obaasan', 'Nenek (atau lansia wanita)'],
+  [24, 'other', '自分で', 'じぶんで', 'jibunde', 'Dengan diri sendiri (mandiri)'],
+  [24, 'other', 'ほかに', 'ほかに', 'hokani', 'Selain itu'],
   // ── BAB 25
   [25, 'verb', '考えます', 'かんがえます', 'kangaemasu', 'Memikirkan'],
   [25, 'verb', '着きます', 'つきます', 'tsukimasu', 'Tiba di tujuan'],
@@ -982,6 +1067,12 @@ const RAW = [
   [25, 'other', '誰でも', 'だれでも', 'daredemo', 'Siapa saja'],
   [25, 'other', '何でも', 'なんでも', 'nandemo', 'Apa saja'],
   [25, 'other', 'お世話になりました', 'おせわになりました', 'osewaninarimashita', 'Terima kasih atas bantuannya'],
+  [25, 'noun', '大使館', 'たいしかん', 'taishikan', 'Kedutaan besar (KBRI dsb.)'],
+  [25, 'noun', 'グループ', 'ぐるーぷ', 'guruupu', 'Kelompok / grup'],
+  [25, 'noun', '転勤', 'てんきん', 'tenkin', 'Mutasi tugas kantor'],
+  [25, 'noun', 'こと', 'こと', 'koto', 'Hal / persoalan'],
+  [25, 'other', '一杯飲みましょう', 'いっぱいのみましょう', 'ippainomimashou', 'Mari minum segelas'],
+  [25, 'other', 'どうぞお元気で', 'どうぞおげんきで', 'douzoogenkide', 'Jaga kesehatan ya (perpisahan lama)'],
 ] as const satisfies readonly KolomKotoba[];
 
 /** Tuple → objek. Satu-satunya tempat urutan kolom `RAW` diartikan. */
