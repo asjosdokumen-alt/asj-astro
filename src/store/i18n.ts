@@ -1716,7 +1716,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.hasil_ulang": "Kosakata yang perlu diulang",
     "kotoba.ulang_salah": "Ulangi yang salah",
     "kotoba.ronde_baru": "Ronde baru",
-    "kotoba.balik_petunjuk": "klik kartu untuk melihat arti",
+    "kotoba.balik_petunjuk": "klik kartu atau tekan Spasi untuk melihat arti",
     "kotoba.sebelumnya": "Sebelumnya",
     "kotoba.berikutnya": "Berikutnya",
     "kotoba.cari_placeholder": "Cari kanji, romaji, atau arti…",

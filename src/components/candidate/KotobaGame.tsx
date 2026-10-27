@@ -534,6 +534,37 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     setProgres((p) => (p.rekor >= skor ? p : { ...p, rekor: skor }));
   }, [fase, skor]);
 
+  /**
+   * Pintasan papan tombol — 1–4 menjawab, Spasi membalik kartu.
+   *
+   * Versi asli punya keduanya dan teks petunjuknya sudah menyebutkan angka
+   * 1–4; tanpa handler ini petunjuk itu akan berbohong. Abaikan saat fokus ada
+   * di input (mode ketik) supaya mengetik "1" tidak menjawab soal.
+   */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+      if (mode === 'kuis' && benar === null) {
+        const n = Number(e.key);
+        if (n >= 1 && n <= 4) {
+          const opsi = pilihan[n - 1];
+          if (opsi) {
+            e.preventDefault();
+            jawabRef.current(opsi);
+          }
+        }
+        return;
+      }
+      if (mode === 'flashcard' && e.code === 'Space') {
+        e.preventDefault();
+        setBalik((b) => !b);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode, benar, pilihan]);
+
   /** Suara Jepang. Tidak ada autoplay: pemanggilan pertama selalu dari klik. */
   const ucapkan = (teks: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -665,14 +696,16 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   return (
     <div class="max-w-3xl mx-auto">
       {/* ── Kop ── */}
-      <header class="mb-4 flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h2 class="text-base font-black text-fg">{t('kotoba.judul')}</h2>
-          <p class="text-[12px] text-fg-muted">
-            {bank.length} {t('kotoba.kata_tersedia')} · {kataDikuasai} {t('kotoba.kata_dikuasai')} ·{' '}
-            {t('kotoba.rekor')} {progres.rekor}
-          </p>
-        </div>
+      {/* Judul di sini SR-ONLY: halaman sudah punya `h1` "Latihan Kosakata
+          Jepang", dan mengulanginya sebagai `h2` membuat satu layar dibuka
+          dengan kalimat yang sama dua kali. Heading-nya tetap ada supaya
+          outline halaman tidak melompat h1 -> h3 (hasil ronde). */}
+      <header class="mb-4">
+        <h2 class="sr-only">{t('kotoba.judul')}</h2>
+        <p class="text-[12px] text-fg-muted">
+          {bank.length} {t('kotoba.kata_tersedia')} · {kataDikuasai} {t('kotoba.kata_dikuasai')} ·{' '}
+          {t('kotoba.rekor')} {progres.rekor}
+        </p>
       </header>
 
       {/* ── Tab mode ── */}
@@ -746,8 +779,15 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 {/* Hati hanya bisa dibaca sebagai gambar: tanpa `role="img"`
                     + nama, pembaca layar menerima karakter ❤/♡ mentah dan
                     `aria-label` pada <span> biasa diabaikan (biome:
-                    useAriaPropsSupportedByRole). */}
-                <span role="img" aria-label={`${t('kotoba.nyawa')}: ${hp}/${NYAWA_AWAL}`}>
+                    useAriaPropsSupportedByRole). Warnanya accent-red, bukan
+                    warna teks: `❤` tanpa VS16 digambar sebagai GLIF TEKS,
+                    jadi di tema terang ia jadi abu-abu gelap di atas kertas
+                    putih — nyawa terlihat seperti coretan. */}
+                <span
+                  role="img"
+                  aria-label={`${t('kotoba.nyawa')}: ${hp}/${NYAWA_AWAL}`}
+                  class="text-accent-red"
+                >
                   {Array.from({ length: NYAWA_AWAL }, (_, i) => (i < hp ? '❤' : '♡')).join(' ')}
                 </span>
                 <span>
@@ -892,7 +932,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 )}
               </div>
 
-              <p class="mt-2 text-center text-[11px] text-fg-muted">{t('kotoba.petunjuk_papan')}</p>
+              {/* Petunjuk papan tombol hanya di mode kuis — di mode ketik
+                  angka 1–4 adalah isi jawaban, bukan pilihan. */}
+              {mode === 'kuis' && (
+                <p class="mt-2 text-center text-[11px] text-fg-muted">{t('kotoba.petunjuk_papan')}</p>
+              )}
             </>
           ) : (
             /* ── HASIL RONDE ── */

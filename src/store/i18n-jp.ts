@@ -1225,7 +1225,7 @@ export const jpTranslations: Record<string, string> = {
     "kotoba.hasil_ulang": "復習が必要な語彙",
     "kotoba.ulang_salah": "間違えた語を復習",
     "kotoba.ronde_baru": "新しいラウンド",
-    "kotoba.balik_petunjuk": "カードをクリックすると意味が出ます",
+    "kotoba.balik_petunjuk": "カードをクリック、またはスペースキーで意味を表示",
     "kotoba.sebelumnya": "前へ",
     "kotoba.berikutnya": "次へ",
     "kotoba.cari_placeholder": "漢字・ローマ字・意味で検索…",
