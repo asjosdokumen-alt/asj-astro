@@ -1232,6 +1232,7 @@ export const jpTranslations: Record<string, string> = {
     "kotoba.cari_placeholder": "漢字・ローマ字・意味で検索…",
     "kotoba.cari_label": "語彙を検索",
     "kotoba.cetak": "印刷／PDF",
+    "kotoba.tampil_semua": "すべて表示",
     "kotoba.judul_cetak": "語彙リスト（みんなの日本語 第1〜25課・抜粋）",
     "kotoba.memuat": "語彙を読み込み中…",
     "kotoba.coba_lagi": "再試行",

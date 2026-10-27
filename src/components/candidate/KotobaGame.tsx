@@ -81,6 +81,15 @@ type Arah = 'jp-id' | 'id-jp';
 const NYAWA_AWAL = 3;
 /** Batas waktu satu soal kuis. Mode ketik sengaja TANPA batas waktu. */
 const DURASI_SOAL_MS = 9000;
+/**
+ * Jumlah baris kamus yang digambar sekaligus.
+ *
+ * Terukur 2026-10-27 (Playwright, 390x844, 864 kata): seluruh daftar = 636 ms
+ * dan 6 275 node. Di ponsel kelas bawah yang dipakai siswa ASJ itu jadi ~2
+ * detik tanpa tanda apa pun. Pencarian tetap melihat SELURUH bank — angka ini
+ * hanya menentukan berapa baris yang digambar.
+ */
+const BATAS_KAMUS = 120;
 /** Awalan kunci penyimpanan. Naikkan versinya kalau bentuk data berubah. */
 const KUNCI_SIMPAN = 'asj_kotoba_v1:';
 
@@ -294,6 +303,16 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
 
   /* ── kamus ─────────────────────────────────────────────────────────────── */
   const [cari, setCari] = useState('');
+  /**
+   * Kamus menampilkan 120 baris pertama dulu, sisanya lewat tombol.
+   *
+   * Terukur 2026-10-27 (Playwright, 390x844, 864 kata): merender SELURUH daftar
+   * memakan 636 ms dan 6 275 node. Di ponsel kelas bawah yang ASJ pakai, angka
+   * itu jadi ~2 detik menunggu tanpa tanda apa pun. 120 baris cukup untuk
+   * menggulir dan mencari, dan pencarian selalu melihat SELURUH daftar — batas
+   * ini hanya soal berapa yang digambar, bukan berapa yang bisa dicari.
+   */
+  const [tampilSemua, setTampilSemua] = useState(false);
 
   /**
    * Pegangan ke handler jawab TERBARU untuk timer.
@@ -794,6 +813,24 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       )
     : pool;
 
+  /** Yang benar-benar digambar: pencarian selalu penuh, tanpa pencarian dibatasi. */
+  const tampilKamus = kueri || tampilSemua ? hasilCari : hasilCari.slice(0, BATAS_KAMUS);
+
+  /**
+   * Cetak HARUS memuat seluruh daftar, bukan 120 baris yang sedang tampil.
+   *
+   * `tampilSemua` dinyalakan dulu, lalu dua `requestAnimationFrame` — pola yang
+   * sama dengan `MensetsuForm.cetak()`. Satu frame belum cukup: `window.print()`
+   * memotret DOM yang sudah ditata, dan 864 baris butuh satu frame penuh untuk
+   * masuk. Tanpa jeda itu yang tercetak masih daftar yang pendek.
+   */
+  const cetakKamus = () => {
+    setTampilSemua(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => window.print());
+    });
+  };
+
   const modeTab: { id: Mode; label: string }[] = [
     { id: 'kuis', label: t('kotoba.mode_kuis') },
     { id: 'ketik', label: t('kotoba.mode_ketik') },
@@ -1193,7 +1230,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
             />
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={cetakKamus}
               class="min-h-11 px-4 rounded-control border border-line bg-surface-raised text-fg text-[13px] font-bold"
             >
               {t('kotoba.cetak')}
@@ -1212,8 +1249,26 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 {hasilCari.length} {t('kotoba.kata_tersedia')}
               </p>
             </div>
+            {/* Tombol ini DI ATAS daftar, bukan di bawahnya: daftarnya sendiri
+                bisa digulir (`max-h-96`), jadi tombol di bawah akan tersembunyi
+                di balik gulungan dan siswa menyangka 120 baris itu seluruh isi
+                kamus. Angka "120 / 864" menyatakan sebaliknya. */}
+            {!kueri && !tampilSemua && hasilCari.length > BATAS_KAMUS && (
+              <div class="cetak-sembunyi mb-2 flex items-center justify-between gap-2">
+                <p class="text-[11px] text-fg-muted">
+                  {tampilKamus.length} / {hasilCari.length}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setTampilSemua(true)}
+                  class="min-h-11 px-3 rounded-control border border-line bg-surface-raised text-fg text-[12px] font-bold"
+                >
+                  {t('kotoba.tampil_semua')}
+                </button>
+              </div>
+            )}
             <ul class="kotoba-lembar max-h-96 u-scroll-area custom-scrollbar divide-y divide-line">
-              {hasilCari.map((v) => {
+              {tampilKamus.map((v) => {
                 const c = progres.kata[kunciKata(v)];
                 const kuasai = !!c && c.benar >= 3 && c.salah === 0;
                 const lemah = !!c && c.salah > 0;

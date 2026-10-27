@@ -1723,6 +1723,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.cari_placeholder": "Cari kanji, romaji, atau arti…",
     "kotoba.cari_label": "Cari kosakata",
     "kotoba.cetak": "Cetak / PDF",
+    "kotoba.tampil_semua": "Tampilkan semua",
     "kotoba.judul_cetak": "Daftar kosakata pilihan (Minna no Nihongo Bab 1–25)",
     "kotoba.memuat": "Memuat kosakata…",
     "kotoba.coba_lagi": "Coba lagi",
