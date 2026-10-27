@@ -30,9 +30,20 @@ kawan-kawan menjawab 404. Selalu pakai 8888.
 | npm | `npm run dev:8888` | Dari terminal yang sudah di folder repo |
 | Manual | `netlify dev --offline --port 8888` | Kalau mau melihat keluaran apa adanya |
 
-Ketiganya menjalankan hal yang sama. `dev.cmd` menambah dua hal yang tidak ada
-di dua cara lainnya: membersihkan `NODE_OPTIONS` dan mematikan sisa proses di
-port 4321/8888 sebelum mulai.
+Ketiganya menjalankan hal yang sama. `dev.cmd` menambah tiga hal yang tidak ada
+di dua cara lainnya: membersihkan `NODE_OPTIONS`, mematikan sisa proses di
+port 4321/8888 sebelum mulai, dan **menonaktifkan dua fungsi terjadwal** selama
+server hidup (`sweep-queue` tiap 2 menit, `agenda-reminders` tiap 10 menit) lalu
+mengembalikannya saat server berhenti.
+
+Fungsi terjadwal itu dimatikan bukan karena rapi-rapian: keduanya menyentuh
+`job_queue` dan mengirim WhatsApp sungguhan, sedangkan `.env.local` menunjuk
+**database produksi**. Dulu penonaktifannya dilakukan dengan rename manual, dan
+rename manual itulah yang berulang kali tertinggal — dua berkas hilang dari tree,
+`admission.test.ts` dan `service-reminder-cron.test.ts` merah, hanya karena
+seseorang lupa menamainya kembali. Sekarang `dev.cmd` yang melakukannya, jadi
+**jangan rename sendiri lagi**. Kalau menjalankan `npm run dev:8888` atau
+`netlify dev` langsung, rename-nya tetap tugas Anda.
 
 ## Database: lokal memakai Neon (data produksi)
 

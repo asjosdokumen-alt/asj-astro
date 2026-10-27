@@ -41,16 +41,53 @@ echo   Astro dev (sumber + hot reload) ada di baliknya, port 4321.
 echo   Tutup jendela ini untuk mematikan server.
 echo.
 
+rem ===========================================================================
+rem  4. Fungsi TERJADWAL dimatikan selama server lokal hidup
+rem
+rem  `sweep-queue` (tiap 2 menit) dan `agenda-reminders` (tiap 10 menit)
+rem  MENYENTUH job_queue dan mengirim WhatsApp SUNGGUHAN. `.env.local` menunjuk
+rem  database PRODUKSI, jadi membiarkannya hidup di sini berarti laptop ini
+rem  mengerjakan antrean dan mengirim pengingat milik produksi.
+rem
+rem  Dulu ini dikerjakan dengan rename MANUAL, dan rename manual itulah yang
+rem  berulang kali tertinggal sebagai utang: dua berkas hilang dari tree, dua
+rem  suite jadi merah (`admission.test.ts`, `service-reminder-cron.test.ts`)
+rem  hanya karena seseorang lupa menamainya kembali. Sekarang rename-nya
+rem  dilakukan di sini, dan dikembalikan lagi di bawah — termasuk saat server
+rem  dimatikan dengan Ctrl+C, karena `call` di bawah tetap kembali ke skrip ini.
+rem
+rem  `on` dulu: kalau run sebelumnya mati mendadak (jendela ditutup paksa),
+rem  berkasnya tertinggal `.disabled` dan suite jadi merah. Baris ini
+rem  memulihkannya sebelum menonaktifkannya lagi untuk run ini.
+rem ===========================================================================
+call :sched on
+call :sched off
+
 rem  --offline WAJIB di mesin ini: tanpa itu netlify dev memanggil API Netlify
 rem  untuk daftar add-on situs, dan token CLI yang terpasang milik akun lain
 rem  ("Failed retrieving addons for site ...: Not Found"). --offline memakai
 rem  .env / .env.local saja, yang justru sudah lengkap.
 call netlify dev --offline --port 8888
 
+call :sched on
+
 echo.
 echo   Server berhenti (exit %errorlevel%).
 pause
 exit /b %errorlevel%
+
+rem ===========================================================================
+:sched
+rem  %1 = off (rename .ts -> .ts.disabled) | on (kembalikan)
+for %%F in (sweep-queue agenda-reminders) do (
+  if /i "%~1"=="off" (
+    if exist "netlify\functions\%%F.ts" ren "netlify\functions\%%F.ts" "%%F.ts.disabled"
+  ) else (
+    if exist "netlify\functions\%%F.ts.disabled" ren "netlify\functions\%%F.ts.disabled" "%%F.ts"
+  )
+)
+exit /b 0
+
 
 rem ===========================================================================
 :killport
