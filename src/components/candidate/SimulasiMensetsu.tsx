@@ -69,6 +69,8 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
 
   /* ── pengaturan ───────────────────────────────────────────────────────── */
   const [jumlah, setJumlah] = useState(5);
+  /** Mode 'semua soal': seluruh isi cakupan, bukan potongan 5/10/15. */
+  const [semua, setSemua] = useState(false);
   const [cakupan, setCakupan] = useState('semua');
   const [batasDetik, setBatasDetik] = useState(60);
   const [suaraOtomatis, setSuaraOtomatis] = useState(true);
@@ -100,10 +102,15 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
 
   const adaJawabanSiap = soal.some((s) => !!draft[s.kode]?.jp?.trim());
 
+  /** Kumpulan soal untuk cakupan yang sedang dipilih. */
+  const pool = cakupan === 'semua' ? soal : soal.filter((s) => s.tahap === cakupan);
+
   /* ── ronde ────────────────────────────────────────────────────────────── */
   const mulai = () => {
-    const pool = cakupan === 'semua' ? soal : soal.filter((s) => s.tahap === cakupan);
-    const dipilih = pilihSoalAcak(pool, jumlah);
+    /* "Semua" mengambil SELURUH pool, bukan angka 999: `pilihSoalAcak` sudah
+       memotong ke panjang pool, dan menulis 999 di sini akan membuat layar
+       pengaturan berbohong kalau nanti banknya bertambah. */
+    const dipilih = pilihSoalAcak(pool, semua ? pool.length : jumlah);
     if (!dipilih.length) {
       showToast(t('simulasi.tidak_ada_soal'), 'error');
       return;
@@ -235,20 +242,41 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
 
         <div class="mt-4">
           <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('simulasi.jumlah_soal')}</p>
-          <div class="grid grid-cols-3 gap-1.5">
+          <div class="grid grid-cols-4 gap-1.5">
             {PILIHAN_JUMLAH.map((n) => (
               <button
                 key={n}
                 type="button"
-                onClick={() => setJumlah(n)}
-                aria-pressed={jumlah === n}
+                onClick={() => {
+                  setJumlah(n);
+                  setSemua(false);
+                }}
+                aria-pressed={!semua && jumlah === n}
                 class={`min-h-11 rounded-control border text-[12px] font-bold ${
-                  jumlah === n ? 'border-accent-violet bg-accent-violet/10 text-accent-violet' : 'border-line bg-surface-raised text-fg-muted'
+                  !semua && jumlah === n
+                    ? 'border-accent-violet bg-accent-violet/10 text-accent-violet'
+                    : 'border-line bg-surface-raised text-fg-muted'
                 }`}
               >
-                {n} {t('simulasi.soal')}
+                {n}
               </button>
             ))}
+            {/* "Semua" = seluruh isi cakupan. Jumlahnya mengikuti pilihan
+                cakupan di bawah, jadi angkanya ditulis di tombolnya sendiri —
+                tombol "Semua" yang tidak menyebut berapa soal akan
+                mengejutkan siswa di tengah ronde. */}
+            <button
+              type="button"
+              onClick={() => setSemua(true)}
+              aria-pressed={semua}
+              data-testid="simulasi-semua"
+              class={`min-h-11 rounded-control border text-[12px] font-bold ${
+                semua ? 'border-accent-violet bg-accent-violet/10 text-accent-violet' : 'border-line bg-surface-raised text-fg-muted'
+              }`}
+            >
+              {t('simulasi.semua')}
+              <span class="ml-1 text-[10px] font-semibold opacity-70">({pool.length})</span>
+            </button>
           </div>
         </div>
 

@@ -5,7 +5,7 @@ import { authStore } from "../../store/authReactive";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
 import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, sortEdu, riwayatKeyOf } from "../../lib/helpers_cv";
-import { golonganDarahDisplay, statusNikahDisplay } from "../../lib/opsi-form";
+import { golonganDarahDisplay, statusNikahDisplay, HUBUNGAN_KELUARGA } from "../../lib/opsi-form";
 import { useOverlay } from "../ui/useOverlay";
 
 interface Props {
@@ -138,19 +138,68 @@ export function buildJobRows(jobList: Record<string, any>[], v: (...keys: string
   return html;
 }
 
+/**
+ * Penanda "tidak diisi" yang HARUS hilang sebelum dicetak.
+ *
+ * `v()` mengembalikan "-" untuk sel kosong, dan CV AI menyimpan "・" (titik
+ * tengah) sebagai pengganti hubungan yang tidak dipilih. Keduanya bukan isi:
+ * "IBU ・" dan "WIRASWASTA / -" pernah benar-benar tercetak di CV kandidat
+ * (laporan pemilik 2026-10-27). Daftar ini sengaja mencakup varian lebar
+ * penuh dan tanda pisah, karena datanya datang dari formulir yang berbeda.
+ */
+const PENANDA_KOSONG = /^[\s・･\-–—－~〜ー]+$/;
+
+function bersihkanNilai(nilai: string): string {
+  return PENANDA_KOSONG.test(String(nilai ?? '')) ? '' : String(nilai ?? '').trim();
+}
+
+/**
+ * Kanji 続柄 dari hubungan Indonesia ("AYAH" → 父).
+ *
+ * Dipakai HANYA kalau kolom Jepangnya kosong atau berisi penanda. Sumbernya
+ * `HUBUNGAN_KELUARGA` di `lib/opsi-form.ts` — daftar yang sama yang dipakai
+ * formulir — supaya CV tidak punya kamus sendiri yang bisa menyimpang.
+ * Hubungan yang tidak ada di daftar dibiarkan kosong: menebak kanji keluarga
+ * kandidat lebih buruk daripada sel kosong.
+ */
+function kanjiHubungan(hub: string): string {
+  const teks = String(hub ?? '').trim();
+  if (!teks) return '';
+  const bagian = teks.split(/\s+/);
+
+  /* Nilai lama kadang sudah membawa kanjinya sendiri ("AYAH 父親"). Kalau
+     sisanya memang huruf Jepang, itulah jawabannya — tidak perlu kamus. */
+  if (bagian.length > 1) {
+    const sisa = bagian.slice(1).join(' ');
+    if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(sisa)) return sisa;
+    /* Sisa berhuruf Latin berarti ini hubungan LAIN ("TETANGGA JAUH"), bukan
+       "AYAH" yang kebetulan berawalan sama. Menebak di sini akan mencetak
+       kanji yang salah di CV. */
+    return '';
+  }
+
+  const kunci = (bagian[0] ?? '').toUpperCase();
+  if (!kunci) return '';
+  for (const [nilai, label] of HUBUNGAN_KELUARGA) {
+    if (String(nilai).toUpperCase() !== kunci) continue;
+    const m = String(label).match(/[（(]([^）)]+)[）)]/);
+    if (m?.[1]) return m[1];
+  }
+  return '';
+}
+
 export function buildFamRows(famList: Record<string, any>[], v: (...keys: string[]) => string) {
   let html = "";
   for (let i = 1; i <= 6; i++) {
     const p = {...(famList[i-1]||{})};
     if(!isGood(p.umur)&&isGood(p.usia)) p.umur=p.usia;
-    const hub=isGood(p.hubungan)?String(p.hubungan):v("KELUARGA"+i+"HUBUNGANID","KELUARGA"+i+"HUBUNGAN");
-    const hubj=isGood(p.hubungan_jp)?String(p.hubungan_jp):v("KELUARGA"+i+"HUBUNGANJP");
-    const nm=isGood(p.nama)?String(p.nama):v("KELUARGA"+i+"NAMA");
-    const u=isGood(p.umur)?String(p.umur):v("KELUARGA"+i+"USIA","KELUARGA"+i+"UMUR");
-    const pk=isGood(p.pekerjaan)?String(p.pekerjaan):v("KELUARGA"+i+"PEKERJAANID","KELUARGA"+i+"PEKERJAAN");
-    const pkj=isGood(p.pekerjaan_jp)?String(p.pekerjaan_jp):v("KELUARGA"+i+"PEKERJAANJP");
-    const g=isGood(p.gaji)?String(p.gaji):v("KELUARGA"+i+"GAJI");
-    [hub,nm,u,pk,g,hubj,pkj].forEach((_x,idx,a)=>{if(a[idx]==="-")a[idx]="";});
+    const hub=bersihkanNilai(isGood(p.hubungan)?String(p.hubungan):v("KELUARGA"+i+"HUBUNGANID","KELUARGA"+i+"HUBUNGAN"));
+    const nm=bersihkanNilai(isGood(p.nama)?String(p.nama):v("KELUARGA"+i+"NAMA"));
+    const u=bersihkanNilai(isGood(p.umur)?String(p.umur):v("KELUARGA"+i+"USIA","KELUARGA"+i+"UMUR"));
+    const pk=bersihkanNilai(isGood(p.pekerjaan)?String(p.pekerjaan):v("KELUARGA"+i+"PEKERJAANID","KELUARGA"+i+"PEKERJAAN"));
+    const g=bersihkanNilai(isGood(p.gaji)?String(p.gaji):v("KELUARGA"+i+"GAJI"));
+    const hubj=bersihkanNilai(isGood(p.hubungan_jp)?String(p.hubungan_jp):v("KELUARGA"+i+"HUBUNGANJP"))||kanjiHubungan(hub);
+    const pkj=bersihkanNilai(isGood(p.pekerjaan_jp)?String(p.pekerjaan_jp):v("KELUARGA"+i+"PEKERJAANJP"));
     const fh=hubj?escHtml`${hub.toUpperCase()}  ${hubj}`:escVal(hub.toUpperCase());
     const fp=pkj?escHtml`${pk}<br><span style="font-size:8px;font-weight:normal;">${pkj}</span>`:escVal(pk);
     html+=escHtml`<tr><td colspan="2" class="val-center">${fh}</td><td colspan="2" class="val-center">${nm.toUpperCase()}</td><td class="val-center">${u?u+"歳":""}</td><td class="val-center">${fp}</td><td class="val-right pr-1">${g?"¥   "+g:"¥        -"}</td></tr>`;
@@ -246,7 +295,7 @@ export function buildKertasA4(p: Record<string, any>) {
   h+=job;
   // Keluarga
   h+=tr([td(raw("家族構成 SUSUNAN KELUARGA KANDUNG "),"bg-amber val-center",7)]);
-  h+=tr([amber(raw("続柄 URUTAN KELUARGA"),2),amber(raw("名前 NAMA ANGGOTA KELUARGA"),2),amber(raw("年齢 USIA")),amber(raw("職業 PEKERJAAN")),amber(raw("月収/円 GAJI"))]);
+  h+=tr([amber(raw("続柄 HUBUNGAN KELUARGA"),2),amber(raw("名前 NAMA ANGGOTA KELUARGA"),2),amber(raw("年齢 USIA")),amber(raw("職業 PEKERJAAN")),amber(raw("月収/円 GAJI"))]);
   h+=fam;
   h+=tr([td(raw("個人情報 INFORMASI PERSONAL "),"bg-amber val-center",7)]);
   h+=tr([amber(raw("日本へ行く目的&nbsp;&nbsp;&nbsp;TUJUAN KE<br>JEPANG"),3),td(escHtml`${v("wawancara.tujuan_ke_jepang_jp","TUJUANKEJEPANGJP","MOTIVASIKEJEPANGJP","MOTIVASIJP","wawancara.motivasi_jp")}<br>${v("wawancara.tujuan_ke_jepang","TUJUANKEJEPANG","MOTIVASIKEJEPANG","MOTIVASIID","wawancara.motivasi_id")}`,"val-center font-normal",4)]);

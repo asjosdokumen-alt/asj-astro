@@ -48,6 +48,15 @@ const BANK = {
   soal: [soal('W01', 1, 'お名前は何ですか。', 'Siapa nama Anda?'), soal('W02', 2, 'どこから来ましたか。', 'Anda datang dari mana?')],
 };
 
+/** Bank 8 soal — dipakai untuk menguji pilihan "Semua" (di atas batas 5). */
+const BANK_8 = {
+  ...BANK,
+  jumlah: 8,
+  soal: Array.from({ length: 8 }, (_, i) =>
+    soal(`W0${i + 1}`, i + 1, `質問${i + 1}ですか。`, `Pertanyaan ${i + 1}?`),
+  ),
+};
+
 function login() {
   authStore.set({
     role: 'kandidat',
@@ -91,6 +100,28 @@ describe('/wawancara — Mode Simulasi', () => {
        tidak akan pernah ada. */
     await waitFor(() => expect(screen.getByText(/belum mendukung perekaman suara/)).toBeTruthy());
   });
+
+  it('pilihan "Semua" mengambil SELURUH bank, bukan potongan 5/10/15', async () => {
+    apiMock.mockResolvedValue(BANK_8);
+    render(<MensetsuForm />);
+    await waitFor(() => expect(screen.getByTestId('tab-simulasi')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('tab-simulasi'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-mulai')).toBeTruthy());
+
+    /* Bawaan: 5 soal, walau banknya 8. */
+    fireEvent.click(screen.getByTestId('simulasi-mulai'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-soal')).toBeTruthy());
+    expect(screen.getByText('/ 5')).toBeTruthy();
+
+    /* Kembali ke pengaturan lewat layar hasil, pilih "Semua", mulai lagi → 8. */
+    fireEvent.click(screen.getByText('Akhiri simulasi'));
+    await waitFor(() => expect(screen.getByText('Ganti pengaturan')).toBeTruthy());
+    fireEvent.click(screen.getByText('Ganti pengaturan'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-mulai')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('simulasi-semua'));
+    fireEvent.click(screen.getByTestId('simulasi-mulai'));
+    await waitFor(() => expect(screen.getByText('/ 8')).toBeTruthy());
+  }, 20000);
 
   it('ronde berjalan sampai layar hasil, dan nilainya berasal dari mesin penilaian', async () => {
     render(<MensetsuForm />);

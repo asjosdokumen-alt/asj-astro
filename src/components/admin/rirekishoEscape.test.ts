@@ -104,6 +104,47 @@ describe('buildJobRows / buildFamRows — kunci *_id dari CV AI tampil sebagai n
     expect(html).toContain('55歳');
     expect(html).toContain('PETANI');
   });
+
+  /* ── Penanda kosong yang dulu benar-benar tercetak (laporan pemilik
+     2026-10-27: "ibu nya kok modelnya ga sama kek ayah dan kanji nya ga
+     bener"). Dua gejala, satu sebab: nilai placeholder "・" dan "-" ikut
+     dirender sebagai ISI, dan `forEach` pembersih lama hanya mengubah array
+     sementara sehingga tidak pernah berpengaruh ke sel yang dicetak. ── */
+
+  it('keluarga: "・" pada kolom Jepang diganti kanji dari hubungan Indonesia', () => {
+    const html = buildFamRows(
+      [
+        { hubungan: 'AYAH', hubungan_jp: '父親', nama: 'RAPIMAN', umur: '55', pekerjaan: 'WIRASWASTA', pekerjaan_jp: '自営' },
+        { hubungan: 'IBU', hubungan_jp: '・', nama: 'SURIPAH', umur: '54', pekerjaan: 'WIRASWASTA', pekerjaan_jp: '-' },
+      ],
+      makeV({}, {}),
+    );
+    /* Ayah dan ibu harus diperlakukan sama. */
+    expect(html).toContain('AYAH  父親');
+    expect(html).toContain('IBU  母');
+    /* Titik tengah tidak boleh lolos ke lembar cetak. */
+    expect(html).not.toContain('IBU ・');
+    expect(html).not.toContain('・');
+  });
+
+  it('keluarga: pekerjaan Jepang "-" tidak mencetak garis kecil di bawahnya', () => {
+    const html = buildFamRows(
+      [{ hubungan: 'IBU', hubungan_jp: '母', nama: 'SURIPAH', pekerjaan: 'WIRASWASTA', pekerjaan_jp: '-' }],
+      makeV({}, {}),
+    );
+    expect(html).toContain('WIRASWASTA');
+    /* "-" hanya boleh muncul sebagai isi kolom GAJI ("¥        -"). */
+    expect(html).not.toContain('<br><span style="font-size:8px;font-weight:normal;">-</span>');
+  });
+
+  it('keluarga: hubungan yang tidak ada di daftar TIDAK ditebak kanjinya', () => {
+    const html = buildFamRows(
+      [{ hubungan: 'TETANGGA JAUH', hubungan_jp: '', nama: 'X', umur: '40' }],
+      makeV({}, {}),
+    );
+    expect(html).toContain('TETANGGA JAUH');
+    expect(html).not.toContain('TETANGGA JAUH  ');
+  });
 });
 
 describe('RirekishoBuilder — invariant escape (playbook §4.2)', () => {

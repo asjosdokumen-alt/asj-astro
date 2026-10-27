@@ -22,7 +22,17 @@
 
 export type Kesulitan = 'easy' | 'medium' | 'hard';
 export type KesulitanPilih = Kesulitan | 'mixed';
-export type KategoriId = 'kraepelin' | 'kabataku' | 'deret' | 'satuan' | 'logika' | 'cerita';
+export type KategoriId =
+  | 'kraepelin'
+  | 'kabataku'
+  | 'deret'
+  | 'satuan'
+  | 'logika'
+  | 'cerita'
+  | 'gyakusan'
+  | 'sansu'
+  | 'suiri'
+  | 'baai';
 
 /** Satu soal siap tampil. Bentuknya sengaja rata, bukan union per jenis. */
 export interface Soal {
@@ -541,6 +551,296 @@ function buatLogika(diff: Kesulitan): Omit<Soal, 'id' | 'kategori' | 'diff'> {
   };
 }
 
+/* ── 四則逆算 (SPI) — cari angka di dalam kotak ───────────────────────────── */
+
+/**
+ * Bentuk soal yang paling khas di tes seleksi Jepang: hasilnya diketahui, salah
+ * satu angka di dalamnya hilang. Tidak butuh membaca panjang, hanya kecepatan
+ * membalik operasi — karena itu 20 soal dalam 180 detik, bukan 300.
+ */
+function buatGyakusan(diff: Kesulitan): Omit<Soal, 'id' | 'kategori' | 'diff'> {
+  const kotak = '□';
+  let tanya = '';
+  let jawab = 0;
+  let pembahasan = '';
+
+  if (diff === 'easy') {
+    const a = acak(2, 9);
+    const b = acak(2, 9);
+    if (Math.random() < 0.5) {
+      jawab = b;
+      tanya = `${a} × ${kotak} = ${a * b}`;
+      pembahasan = `Kebalikan perkalian: ${a * b} ÷ ${a} = ${b}.`;
+    } else {
+      jawab = b;
+      tanya = `${a} + ${kotak} = ${a + b}`;
+      pembahasan = `Kebalikan penjumlahan: ${a + b} − ${a} = ${b}.`;
+    }
+  } else if (diff === 'medium') {
+    const mode = acak(1, 2);
+    if (mode === 1) {
+      const a = acak(20, 90);
+      const b = acak(5, 19);
+      jawab = a - b;
+      tanya = `${kotak} − ${b} = ${a}`;
+      pembahasan = `${a} + ${b} = ${a + b}. Angka yang dikurangi, jadi tambahkan.`;
+    } else {
+      const b = acak(3, 9);
+      const c = acak(3, 12);
+      jawab = b * c;
+      tanya = `${kotak} ÷ ${b} = ${c}`;
+      pembahasan = `Kebalikan pembagian: ${c} × ${b} = ${b * c}.`;
+    }
+  } else {
+    const mode = acak(1, 2);
+    if (mode === 1) {
+      const a = acak(2, 9);
+      const b = acak(3, 8);
+      const x = acak(3, 12);
+      jawab = x;
+      tanya = `(${kotak} + ${a}) × ${b} = ${(x + a) * b}`;
+      pembahasan = `Bagi dulu dengan ${b}: ${(x + a) * b} ÷ ${b} = ${x + a}. Lalu ${x + a} − ${a} = ${x}.`;
+    } else {
+      const a = acak(3, 9);
+      const b = acak(4, 12);
+      const d = acak(2, 20);
+      jawab = b;
+      tanya = `${a} × ${kotak} − ${d} = ${a * b - d}`;
+      pembahasan = `Tambahkan ${d} dulu: ${a * b - d} + ${d} = ${a * b}. Lalu ${a * b} ÷ ${a} = ${b}.`;
+    }
+  }
+
+  return { tag: '四則逆算 (HITUNG BALIK)', tanya, jawab, satuan: '', input: 'numpad', pembahasan };
+}
+
+/* ── 数的推理 — soal cerita khas tes seleksi ─────────────────────────────── */
+
+/** Pasangan hari kerja yang hasil bersamanya bulat — 1/6 + 1/12 = 1/4 → 4 hari. */
+const PASANGAN_KERJA: [number, number, number][] = [
+  [6, 12, 4],
+  [10, 15, 6],
+  [4, 12, 3],
+  [8, 24, 6],
+  [12, 6, 4],
+  [15, 10, 6],
+  [20, 5, 4],
+  [9, 18, 6],
+];
+
+function buatSansu(diff: Kesulitan): Omit<Soal, 'id' | 'kategori' | 'diff'> {
+  const jenis =
+    diff === 'easy'
+      ? (['profit', 'speed'] as const)
+      : diff === 'medium'
+        ? (['profit', 'speed', 'tsurukame', 'age'] as const)
+        : (['tsurukame', 'age', 'work', 'concentration', 'profit', 'speed'] as const);
+  const mode = pilih(jenis);
+
+  if (mode === 'profit') {
+    const beli = acak(4, 20) * 1000;
+    const persen = pilih([10, 20, 25, 50]);
+    const jual = (beli * (100 + persen)) / 100;
+    return {
+      tag: '損益算 (UNTUNG-RUGI)',
+      tanya: `Barang dibeli ${beli} Yen lalu dijual dengan untung ${persen}%. Berapa harga jualnya?`,
+      jawab: jual,
+      satuan: 'Yen',
+      input: 'pilihan',
+      pilihan: buatPilihan(jual, langkahUntuk(jual)),
+      pembahasan: `Untung = ${beli} × ${persen}% = ${(beli * persen) / 100}. Harga jual = ${beli} + ${(beli * persen) / 100} = ${jual} Yen.`,
+    };
+  }
+
+  if (mode === 'speed') {
+    const v = acak(4, 9) * 10;
+    const t = acak(1, 4);
+    const jarak = v * t;
+    return {
+      tag: '速さ (KECEPATAN)',
+      tanya: `Kendaraan berjalan ${v} km/jam selama ${t} jam. Berapa km jaraknya?`,
+      jawab: jarak,
+      satuan: 'km',
+      input: 'pilihan',
+      pilihan: buatPilihan(jarak, langkahUntuk(jarak)),
+      pembahasan: `Jarak = kecepatan × waktu = ${v} × ${t} = ${jarak} km.`,
+    };
+  }
+
+  if (mode === 'tsurukame') {
+    /* 鶴亀算: dua jenis dengan jumlah kaki berbeda. Kaki ayam 2, kaki kambing 4. */
+    const total = acak(8, 20);
+    const kambing = acak(1, total - 1);
+    const ayam = total - kambing;
+    const kaki = ayam * 2 + kambing * 4;
+    return {
+      tag: '鶴亀算 (DUA JENIS)',
+      tanya: `Di kandang ada ${total} ekor ayam dan kambing. Jumlah kakinya ${kaki}. Berapa ekor kambing?`,
+      jawab: kambing,
+      satuan: 'ekor',
+      input: 'pilihan',
+      pilihan: buatPilihan(kambing, langkahUntuk(kambing)),
+      pembahasan: `Kalau semuanya ayam: ${total} × 2 = ${total * 2} kaki. Selisihnya ${kaki - total * 2}, dan tiap kambing menambah 2 kaki → ${kaki - total * 2} ÷ 2 = ${kambing} kambing.`,
+    };
+  }
+
+  if (mode === 'age') {
+    const anak = acak(5, 20);
+    const kali = acak(2, 4);
+    const selisih = anak * (kali - 1);
+    return {
+      tag: '年齢算 (USIA)',
+      tanya: `Umur ayah ${kali} kali umur anak. Selisih umur mereka ${selisih} tahun. Berapa umur anak?`,
+      jawab: anak,
+      satuan: 'tahun',
+      input: 'pilihan',
+      pilihan: buatPilihan(anak, langkahUntuk(anak)),
+      pembahasan: `Selisih = (${kali} − 1) bagian = ${selisih}. Satu bagian = ${selisih} ÷ ${kali - 1} = ${anak} tahun.`,
+    };
+  }
+
+  if (mode === 'work') {
+    const [a, b, hasil] = pilih(PASANGAN_KERJA);
+    return {
+      tag: '仕事算 (KERJA BERSAMA)',
+      tanya: `Pekerja A menyelesaikan order dalam ${a} hari, pekerja B dalam ${b} hari. Jika bekerja bersama, berapa hari?`,
+      jawab: hasil,
+      satuan: 'hari',
+      input: 'pilihan',
+      pilihan: buatPilihan(hasil, langkahUntuk(hasil)),
+      pembahasan: `Kerja per hari = 1/${a} + 1/${b} = ${a + b}/${a * b}. Waktunya ${a * b} ÷ ${a + b} = ${hasil} hari.`,
+    };
+  }
+
+  const gram = acak(2, 6) * 100;
+  const persen = pilih([5, 10, 20, 25]);
+  const garam = (gram * persen) / 100;
+  return {
+    tag: '濃度 (KADAR LARUTAN)',
+    tanya: `Larutan ${gram} gram berkadar ${persen}% garam. Berapa gram garam di dalamnya?`,
+    jawab: garam,
+    satuan: 'gram',
+    input: 'pilihan',
+    pilihan: buatPilihan(garam, langkahUntuk(garam)),
+    pembahasan: `Garam = ${gram} × ${persen}% = ${garam} gram.`,
+  };
+}
+
+/* ── 判断推理 — himpunan, urutan, dan uang kembar ─────────────────────────── */
+
+function buatSuiri(diff: Kesulitan): Omit<Soal, 'id' | 'kategori' | 'diff'> {
+  const mode = diff === 'easy' ? 'urutan' : diff === 'medium' ? pilih(['urutan', 'himpunan']) : pilih(['himpunan', 'uraian']);
+
+  if (mode === 'urutan') {
+    /* Empat pelari, satu urutan finis yang benar. Soal hanya menanyakan
+       "berapa orang finis sebelum C" — bisa dihitung tanpa gambar, dan tetap
+       menguji hal yang sama: menyusun urutan dari pernyataan. */
+    const nama = kocok(['A', 'B', 'C', 'D']);
+    const target = 'C';
+    const posisi = nama.indexOf(target);
+    return {
+      tag: '順位 (URUTAN)',
+      tanya: `Empat pelari finis dengan urutan ${nama.join(' → ')} (paling kiri tercepat). Berapa pelari yang finis SEBELUM ${target}?`,
+      jawab: posisi,
+      satuan: 'orang',
+      input: 'pilihan',
+      pilihan: buatPilihan(posisi, 1),
+      pembahasan: `${target} berada di posisi ${posisi + 1}, jadi ada ${posisi} pelari yang finis lebih dulu.`,
+    };
+  }
+
+  if (mode === 'himpunan') {
+    /* Dua himpunan beririsan. Angkanya dipilih mundur dari jawaban, supaya
+       "tidak suka keduanya" tidak pernah negatif. */
+    const total = acak(30, 60);
+    const tidak = acak(2, 6);
+    const irisan = acak(2, 6);
+    const sukaA = acak(irisan + 1, 20);
+    const sukaB = total - tidak + irisan - sukaA;
+    const aman = sukaB > irisan && sukaB < total;
+    const b = aman ? sukaB : irisan + 2;
+    const a = aman ? sukaA : total - tidak + irisan - b;
+    return {
+      tag: '集合 (HIMPUNAN)',
+      tanya: `Dari ${total} siswa, ${a} suka matematika, ${b} suka fisika, dan ${irisan} suka keduanya. Berapa siswa yang tidak suka keduanya?`,
+      jawab: total - (a + b - irisan),
+      satuan: 'siswa',
+      input: 'pilihan',
+      pilihan: buatPilihan(total - (a + b - irisan), langkahUntuk(total)),
+      pembahasan: `Yang suka salah satu = ${a} + ${b} − ${irisan} = ${a + b - irisan}. Tidak suka keduanya = ${total} − ${a + b - irisan} = ${total - (a + b - irisan)}.`,
+    };
+  }
+
+  const jumlahKoin = acak(8, 20);
+  const koin500 = acak(1, jumlahKoin - 1);
+  const nilai = (jumlahKoin - koin500) * 100 + koin500 * 500;
+  return {
+    tag: '内訳 (URAIAN UANG)',
+    tanya: `Ada ${jumlahKoin} koin terdiri dari 100 Yen dan 500 Yen, totalnya ${nilai} Yen. Berapa koin 500 Yen?`,
+    jawab: koin500,
+    satuan: 'koin',
+    input: 'pilihan',
+    pilihan: buatPilihan(koin500, langkahUntuk(koin500)),
+    pembahasan: `Kalau semua 100 Yen: ${jumlahKoin * 100} Yen. Selisihnya ${nilai - jumlahKoin * 100}, dan tiap koin 500 menambah 400 → ${nilai - jumlahKoin * 100} ÷ 400 = ${koin500}.`,
+  };
+}
+
+/* ── 場合の数・確率 ─────────────────────────────────────────────────────── */
+
+function faktorial(n: number): number {
+  let h = 1;
+  for (let i = 2; i <= n; i++) h *= i;
+  return h;
+}
+
+function kombinasi(n: number, k: number): number {
+  return faktorial(n) / (faktorial(k) * faktorial(n - k));
+}
+
+function buatBaai(diff: Kesulitan): Omit<Soal, 'id' | 'kategori' | 'diff'> {
+  if (diff === 'easy') {
+    const kaos = acak(2, 5);
+    const celana = acak(2, 4);
+    const sepatu = acak(2, 3);
+    const jawab = kaos * celana * sepatu;
+    return {
+      tag: '場合の数 (ATURAN PERKALIAN)',
+      tanya: `Seseorang punya ${kaos} kaos, ${celana} celana, dan ${sepatu} pasang sepatu. Berapa kombinasi pakaian berbeda?`,
+      jawab,
+      satuan: 'cara',
+      input: 'pilihan',
+      pilihan: buatPilihan(jawab, langkahUntuk(jawab)),
+      pembahasan: `Aturan perkalian: ${kaos} × ${celana} × ${sepatu} = ${jawab} cara.`,
+    };
+  }
+
+  if (diff === 'medium') {
+    const n = acak(3, 5);
+    const jawab = faktorial(n);
+    return {
+      tag: '順列 (URUTAN)',
+      tanya: `${n} orang duduk di ${n} kursi berderet. Berapa susunan duduk yang berbeda?`,
+      jawab,
+      satuan: 'cara',
+      input: 'pilihan',
+      pilihan: buatPilihan(jawab, langkahUntuk(jawab)),
+      pembahasan: `${n}! = ${Array.from({ length: n }, (_, i) => n - i).join(' × ')} = ${jawab} cara.`,
+    };
+  }
+
+  const n = acak(5, 8);
+  const k = acak(2, 4);
+  const jawab = kombinasi(n, k);
+  return {
+    tag: '組み合わせ (KOMBINASI)',
+    tanya: `Dari ${n} orang akan dipilih ${k} orang untuk satu tim. Berapa cara memilihnya?`,
+    jawab,
+    satuan: 'cara',
+    input: 'pilihan',
+    pilihan: buatPilihan(jawab, langkahUntuk(jawab)),
+    pembahasan: `C(${n}, ${k}) = ${n}! ÷ (${k}! × ${n - k}!) = ${jawab} cara. Urutan tidak diperhatikan, jadi ini kombinasi.`,
+  };
+}
+
 /* ── Soal cerita dari bank server ─────────────────────────────────────────── */
 
 function buatCerita(
@@ -597,6 +897,10 @@ export function buatRonde(
     else if (kategori === 'deret') isi = buatDeret(diff);
     else if (kategori === 'satuan') isi = buatSatuan(diff);
     else if (kategori === 'logika') isi = buatLogika(diff);
+    else if (kategori === 'gyakusan') isi = buatGyakusan(diff);
+    else if (kategori === 'sansu') isi = buatSansu(diff);
+    else if (kategori === 'suiri') isi = buatSuiri(diff);
+    else if (kategori === 'baai') isi = buatBaai(diff);
     else isi = buatCerita(diff, bank, dipakai);
 
     if (!isi) break;

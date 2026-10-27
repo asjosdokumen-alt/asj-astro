@@ -89,7 +89,7 @@ describe('getBankMatematika — siswa ASJ saja', () => {
     /* Enam modul, dan tiap modul membawa durasinya sendiri: 15 soal cerita
        dalam 120 detik akan mengukur keberanian menebak, bukan hitungan. */
     const kategori = r.kategori as Array<Record<string, unknown>>;
-    expect(kategori.length).toBe(6);
+    expect(kategori.length).toBe(10);
     const cerita = kategori.find((k) => k.id === 'cerita');
     expect(cerita?.detik).toBeGreaterThan(300);
     for (const k of kategori) {

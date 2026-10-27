@@ -33,7 +33,17 @@ import {
 } from '../src/lib/matematika';
 
 const TINGKAT: Kesulitan[] = ['easy', 'medium', 'hard'];
-const KATEGORI_ANGKA: KategoriId[] = ['kraepelin', 'kabataku', 'deret', 'satuan', 'logika'];
+const KATEGORI_ANGKA: KategoriId[] = [
+  'kraepelin',
+  'kabataku',
+  'deret',
+  'satuan',
+  'logika',
+  'gyakusan',
+  'sansu',
+  'suiri',
+  'baai',
+];
 
 describe('bank soal cerita (server)', () => {
   it('kodenya unik', () => {
@@ -73,8 +83,8 @@ describe('bank soal cerita (server)', () => {
     expect(BANK_CERITA.length).toBeGreaterThanOrEqual(60);
   });
 
-  it('enam modul, dan tiap modul punya durasi yang masuk akal', () => {
-    expect(KATEGORI.length).toBe(6);
+  it('sepuluh modul, dan tiap modul punya durasi yang masuk akal', () => {
+    expect(KATEGORI.length).toBe(10);
     for (const k of KATEGORI) {
       expect(k.soal).toBeGreaterThan(0);
       /* Batas bawah 60 detik: modul 20 soal dalam 30 detik bukan ujian. */
@@ -101,16 +111,18 @@ describe('generator soal (klien)', () => {
   });
 
   it('pilihan ganda selalu berisi 4 angka berbeda dan memuat jawabannya', () => {
+    for (const kategori of ['logika', 'sansu', 'suiri', 'baai'] as KategoriId[]) {
     for (const diff of TINGKAT) {
       for (let i = 0; i < 200; i++) {
-        const [soal] = buatRonde('logika', diff, 1);
+        const [soal] = buatRonde(kategori, diff, 1);
         if (soal?.input !== 'pilihan') continue;
         const opsi = soal.pilihan ?? [];
         expect(opsi.length, `opsi bukan 4: ${soal.tanya}`).toBe(4);
         expect(new Set(opsi).size).toBe(4);
         expect(opsi).toContain(soal.jawab);
-        for (const o of opsi) expect(o).toBeGreaterThan(0);
+        for (const o of opsi) expect(o).toBeGreaterThanOrEqual(0);
       }
+    }
     }
   });
 

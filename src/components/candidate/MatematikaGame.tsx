@@ -639,6 +639,10 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     { id: 'satuan', label: t('matematika.kat_satuan'), ket: t('matematika.kat_satuan_ket') },
     { id: 'logika', label: t('matematika.kat_logika'), ket: t('matematika.kat_logika_ket') },
     { id: 'cerita', label: t('matematika.kat_cerita'), ket: t('matematika.kat_cerita_ket') },
+    { id: 'gyakusan', label: t('matematika.kat_gyakusan'), ket: t('matematika.kat_gyakusan_ket') },
+    { id: 'sansu', label: t('matematika.kat_sansu'), ket: t('matematika.kat_sansu_ket') },
+    { id: 'suiri', label: t('matematika.kat_suiri'), ket: t('matematika.kat_suiri_ket') },
+    { id: 'baai', label: t('matematika.kat_baai'), ket: t('matematika.kat_baai_ket') },
   ];
   const daftarKesulitan: { id: KesulitanPilih; label: string }[] = [
     { id: 'easy', label: t('matematika.diff_easy') },

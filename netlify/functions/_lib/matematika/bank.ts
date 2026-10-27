@@ -57,7 +57,17 @@ export interface SoalCerita {
 }
 
 export interface Kategori {
-  id: 'kraepelin' | 'kabataku' | 'deret' | 'satuan' | 'logika' | 'cerita';
+  id:
+    | 'kraepelin'
+    | 'kabataku'
+    | 'deret'
+    | 'satuan'
+    | 'logika'
+    | 'cerita'
+    | 'gyakusan'
+    | 'sansu'
+    | 'suiri'
+    | 'baai';
   /** Nama Jepang, tampil sebagai aksen di kartu modul. */
   jp: string;
   /** Jumlah soal satu ronde ujian. */
@@ -78,6 +88,13 @@ export const KATEGORI: Kategori[] = [
   { id: 'satuan', jp: '単位換算', soal: 20, detik: 240 },
   { id: 'logika', jp: '判断推理', soal: 15, detik: 300 },
   { id: 'cerita', jp: '現場応用算数', soal: 15, detik: 420 },
+  /* Empat modul bergaya SPI 非言語 — inti tes seleksi Jepang yang sesungguhnya,
+     dan yang paling sering dikeluhkan pemilik 2026-10-27 ("soal psikotesnya ga
+     kayak ujian"). Semua generator, jadi jumlah soalnya tak terbatas. */
+  { id: 'gyakusan', jp: '四則逆算', soal: 20, detik: 180 },
+  { id: 'sansu', jp: '数的推理', soal: 15, detik: 420 },
+  { id: 'suiri', jp: '判断推理', soal: 15, detik: 420 },
+  { id: 'baai', jp: '場合の数・確率', soal: 15, detik: 360 },
 ];
 
 /**
