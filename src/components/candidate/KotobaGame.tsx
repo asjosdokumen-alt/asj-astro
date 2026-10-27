@@ -74,9 +74,10 @@ interface Props {
 type Mode = 'kuis' | 'ketik' | 'flashcard' | 'kamus';
 type Arah = 'jp-id' | 'id-jp';
 
-/** Soal per ronde. Batas ini yang memberi ronde akhir yang jelas. */
-const PANJANG_RONDE = 10;
-/** Nyawa. Habis sebelum ronde selesai = ronde berakhir lebih awal. */
+/**
+ * Nyawa. SATU-SATUNYA cara ronde berakhir: ronde berjalan terus sampai habis,
+ * sama seperti `GAME.html` aslinya. Tidak ada "jumlah soal per ronde".
+ */
 const NYAWA_AWAL = 3;
 /** Batas waktu satu soal kuis. Mode ketik sengaja TANPA batas waktu. */
 const DURASI_SOAL_MS = 9000;
@@ -187,6 +188,11 @@ function normalRomaji(s: string): string {
     .replace(/ti/g, 'chi')
     .replace(/hu/g, 'fu')
     .replace(/zi/g, 'ji')
+    /* `tch` → `cch`: satu-satunya kata di bank yang memakainya adalah
+       サンドイッチ, dan romaji bakunya `sandoitchi` sementara konverter
+       kana menghasilkan `sandoicchi`. Keduanya ejaan yang benar, jadi
+       keduanya disamakan di sini alih-alih memilih satu dan menolak yang lain. */
+    .replace(/tch/g, 'cch')
     .replace(/ou/g, 'o')
     .replace(/oo/g, 'o')
     .replace(/uu/g, 'u')
@@ -239,8 +245,16 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const [arah, setArah] = useState<Arah>('jp-id');
 
   /* ── ronde kuis / ketik ────────────────────────────────────────────────── */
-  const [antrian, setAntrian] = useState<Kotoba[]>([]);
-  const [idx, setIdx] = useState(0);
+  /**
+   * TAK ADA BATAS SOAL. Ronde berjalan sampai nyawa habis — sama seperti
+   * `GAME.html` aslinya, dan itu yang diminta pemilik 2026-10-27 ("gak kek
+   * game html yg asli sampai nyawanya mati"). Versi pertama di portal memakai
+   * 10 soal per ronde; akibatnya permainan berhenti bukan karena siswa salah,
+   * tapi karena daftar soal habis — dan di bank kecil malah berhenti setelah 5.
+   */
+  const [soal, setSoal] = useState<Kotoba | null>(null);
+  /** Nomor soal yang sedang tampil (1-based). Saat hasil, = jumlah soal dijawab. */
+  const [soalKe, setSoalKe] = useState(0);
   const [pilihan, setPilihan] = useState<string[]>([]);
   const [dijawab, setDijawab] = useState<string | null>(null);
   const [benar, setBenar] = useState<boolean | null>(null);
@@ -253,6 +267,26 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const [salahKata, setSalahKata] = useState<Kotoba[]>([]);
   const [fase, setFase] = useState<'tanya' | 'hasil'>('tanya');
   const [sisaWaktu, setSisaWaktu] = useState(100);
+  /**
+   * Kantong kata untuk "ulangi yang salah". `null` = ronde normal (soal
+   * ditarik dari `pool` berbobot). Kalau kantong habis, ia diisi ulang —
+   * jadi mode ulangan pun berjalan sampai nyawa habis, bukan berhenti setelah
+   * semua kata salah tampil sekali.
+   */
+  const [kantong, setKantong] = useState<Kotoba[] | null>(null);
+
+  /**
+   * Suara otomatis. Dulu setiap soal HARUS dipencet 🔊 dulu; pemilik meminta
+   * suara langsung keluar seperti versi HTML aslinya. Pilihannya diingat
+   * (satu peramban, bukan per kandidat — ini preferensi alat, bukan progres).
+   */
+  const [suaraOtomatis, setSuaraOtomatis] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('asj_kotoba_suara') !== '0';
+    } catch {
+      return true;
+    }
+  });
 
   /* ── flashcard ─────────────────────────────────────────────────────────── */
   const [kartuIdx, setKartuIdx] = useState(0);
@@ -381,7 +415,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     return Math.max(1, 1 + Math.min(c.salah, 5) * 3 - Math.min(c.benar, 3));
   };
 
-  const item = fase === 'tanya' ? antrian[idx] : undefined;
+  const item = fase === 'tanya' ? soal : null;
   const teksBenar = item ? teksJawaban(item, arah) : '';
 
   /**
@@ -410,33 +444,55 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     return acak([teksJawaban(v, a), ...salah]);
   };
 
-  const mulaiRonde = (khusus?: readonly Kotoba[]) => {
-    const dasar = khusus?.length ? khusus : pool;
-    const urutan = pilihBerbobot(dasar, Math.min(PANJANG_RONDE, dasar.length), bobot);
-    setAntrian(urutan);
-    setIdx(0);
-    setSkor(0);
-    setHp(NYAWA_AWAL);
-    setKombo(0);
-    setJumlahBenar(0);
-    setSalahKata([]);
+  /**
+   * Satu kata berikutnya, berbobot, dan tidak mengulang kata yang barusan
+   * tampil (kalau pool-nya lebih dari satu kata). Mengulang kata yang sama
+   * dua kali berurutan terasa seperti bug, bukan latihan.
+   */
+  const tarikSoal = (dasar: readonly Kotoba[], kecuali: Kotoba | null): Kotoba | null => {
+    const calon =
+      dasar.length > 1 && kecuali ? dasar.filter((v) => kunciKata(v) !== kunciKata(kecuali)) : dasar;
+    const hasil = pilihBerbobot(calon.length ? calon : dasar, 1, bobot);
+    return hasil[0] || null;
+  };
+
+  /** Pasang satu soal ke layar (atau akhiri ronde kalau tidak ada kata). */
+  const pasangSoal = (kata: Kotoba | null, dasar: readonly Kotoba[], nomor: number) => {
+    setSoal(kata);
+    setSoalKe(kata ? nomor : nomor - 1);
     setDijawab(null);
     setBenar(null);
     setKetikan('');
     setTampilKunci(false);
     setSisaWaktu(100);
-    if (!urutan.length) {
+    if (!kata) {
       setFase('hasil');
       setPilihan([]);
       return;
     }
     setFase('tanya');
-    setPilihan(buatPilihan(urutan[0], dasar, arah));
+    setPilihan(buatPilihan(kata, dasar, arah));
+  };
+
+  const mulaiRonde = (khusus?: readonly Kotoba[]) => {
+    setSkor(0);
+    setHp(NYAWA_AWAL);
+    setKombo(0);
+    setJumlahBenar(0);
+    setSalahKata([]);
+    if (khusus?.length) {
+      const bag = acak(khusus);
+      setKantong(bag);
+      pasangSoal(bag[0] ?? null, khusus, 1);
+      return;
+    }
+    setKantong(null);
+    pasangSoal(tarikSoal(pool, null), pool, 1);
   };
 
   // Ronde dimulai ulang setiap kali bank/filter/arah/mode berubah. Ditulis
   // sebagai efek, bukan dipanggil dari handler, supaya tidak ada jalur di mana
-  // antrian berisi kata dari filter yang sudah tidak berlaku.
+  // soal yang tampil berasal dari filter yang sudah tidak berlaku.
   //
   // SUPPRESS INI DISENGAJA, bukan malas. `mulaiRonde` dibuat ulang setiap
   // render (ia membaca `pool`/`bobot` dari render itu), jadi menambahkannya ke
@@ -464,18 +520,26 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     });
   };
 
-  const lanjut = (hpBaru: number, berikut: number, dasar: readonly Kotoba[]) => {
-    if (hpBaru <= 0 || berikut >= antrian.length) {
+  /**
+   * Soal berikutnya. Ronde hanya berakhir kalau nyawa habis — tidak ada
+   * "daftar soal habis", karena memang tidak ada daftar: kata ditarik satu per
+   * satu dari bank berbobot.
+   */
+  const lanjut = (hpBaru: number) => {
+    if (hpBaru <= 0) {
       setFase('hasil');
       return;
     }
-    setIdx(berikut);
-    setDijawab(null);
-    setBenar(null);
-    setKetikan('');
-    setTampilKunci(false);
-    setSisaWaktu(100);
-    setPilihan(buatPilihan(antrian[berikut], dasar, arah));
+    if (kantong) {
+      const sisa = kantong.slice(1);
+      // Kantong habis = ulangi kumpulan kata salah itu dari awal (diacak
+      // ulang). Mode ulangan pun berjalan sampai nyawa habis.
+      const isi = sisa.length ? sisa : acak(kantong);
+      setKantong(isi);
+      pasangSoal(isi[0] ?? null, kantong, soalKe + 1);
+      return;
+    }
+    pasangSoal(tarikSoal(pool, soal), pool, soalKe + 1);
   };
 
   /** Inti penilaian — dipakai kuis (pilihan) dan ketik (romaji). */
@@ -492,9 +556,8 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     catat(item, tepat);
     // Jeda membaca: cukup lama untuk melihat kunci jawaban, cukup pendek agar
     // tidak terasa menunggu. Efek samping di dalam setTimeout, bukan useEffect,
-    // supaya nilai hp/idx yang dipakai adalah yang baru saja dihitung.
-    const dasar = pool;
-    window.setTimeout(() => lanjut(hpBaru, idx + 1, dasar), tepat ? 750 : 1400);
+    // supaya nilai hp yang dipakai adalah yang baru saja dihitung.
+    window.setTimeout(() => lanjut(hpBaru), tepat ? 750 : 1400);
   };
 
   const jawabSoal = (pilih: string | null) => {
@@ -565,10 +628,16 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     return () => window.removeEventListener('keydown', onKey);
   }, [mode, benar, pilihan]);
 
-  /** Suara Jepang. Tidak ada autoplay: pemanggilan pertama selalu dari klik. */
-  const ucapkan = (teks: string) => {
+  /**
+   * Suara Jepang.
+   *
+   * `diam` = jangan beri toast saat perangkat tidak punya suara. Bunyi otomatis
+   * memanggil ini untuk SETIAP soal, jadi tanpa `diam` satu perangkat tanpa
+   * TTS akan menumpuk puluhan toast yang sama.
+   */
+  const ucapkan = (teks: string, diam = false) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      showToast(t('kotoba.audio_tidak_ada'), 'info');
+      if (!diam) showToast(t('kotoba.audio_tidak_ada'), 'info');
       return;
     }
     window.speechSynthesis.cancel();
@@ -580,6 +649,45 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     u.lang = 'ja-JP';
     u.rate = 0.85;
     window.speechSynthesis.speak(u);
+  };
+
+  /**
+   * Bacakan soal baru otomatis.
+   *
+   * Pemilik 2026-10-27: "suaranya kok harus pencet dulu". Versi aslinya memang
+   * membacakan setiap soal baru; di portal ini sempat dijadikan manual karena
+   * takut diblokir autoplay — padahal `speechSynthesis` tidak tunduk pada
+   * kebijakan autoplay media. Sekarang dibacakan langsung, dan tombol di kop
+   * bisa mematikannya (pilihan diingat).
+   *
+   * Syaratnya arah Jepang→Indonesia: kalau soalnya berbahasa Indonesia,
+   * membacakan cara baca Jepang berarti membocorkan jawabannya.
+   *
+   * `ucapkan` sengaja TIDAK masuk daftar dependensi: ia dibuat ulang setiap
+   * render, dan memasukkannya akan membacakan soal yang sama berulang kali di
+   * setiap render (skor berubah → soal dibacakan lagi). Yang menentukan
+   * pembacaan hanyalah soal yang tampil, fase, arah, dan pilihan pengguna.
+   */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pembacaan dipicu oleh soal/fase/arah, bukan identitas fungsi ucapkan
+  useEffect(() => {
+    if (!suaraOtomatis) return;
+    if (fase !== 'tanya' || !soal) return;
+    if (mode !== 'kuis' && mode !== 'ketik') return;
+    if (arah !== 'jp-id') return;
+    ucapkan(soal.h, true);
+  }, [soal, fase, mode, arah, suaraOtomatis]);
+
+  const alihSuara = () => {
+    const baru = !suaraOtomatis;
+    setSuaraOtomatis(baru);
+    try {
+      localStorage.setItem('asj_kotoba_suara', baru ? '1' : '0');
+    } catch {
+      /* Mode privat: pilihan tidak diingat, tapi tetap berlaku di sesi ini. */
+    }
+    if (!baru && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
   };
 
   const labelPos: Record<JenisKata, string> = {
@@ -700,12 +808,27 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           Jepang", dan mengulanginya sebagai `h2` membuat satu layar dibuka
           dengan kalimat yang sama dua kali. Heading-nya tetap ada supaya
           outline halaman tidak melompat h1 -> h3 (hasil ronde). */}
-      <header class="mb-4">
+      <header class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 class="sr-only">{t('kotoba.judul')}</h2>
         <p class="text-[12px] text-fg-muted">
           {bank.length} {t('kotoba.kata_tersedia')} · {kataDikuasai} {t('kotoba.kata_dikuasai')} ·{' '}
           {t('kotoba.rekor')} {progres.rekor}
         </p>
+        {/* Saklar suara otomatis. Teksnya berubah, bukan cuma ikon: ikon 🔊/🔇
+            saja tidak memberi tahu mana yang sedang aktif. */}
+        <button
+          type="button"
+          onClick={alihSuara}
+          aria-pressed={suaraOtomatis}
+          class={`min-h-11 inline-flex items-center gap-1.5 px-3 rounded-control border text-[12px] font-bold transition-colors motion-reduce:transition-none ${
+            suaraOtomatis
+              ? 'border-accent-sky/60 text-accent-sky bg-accent-sky/10'
+              : 'border-line text-fg-muted bg-surface-raised'
+          }`}
+        >
+          <span aria-hidden="true">{suaraOtomatis ? '🔊' : '🔇'}</span>
+          {t('kotoba.suara_otomatis')}
+        </button>
       </header>
 
       {/* ── Tab mode ── */}
@@ -795,7 +918,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                   {kombo >= 2 && <span class="text-accent-amber font-bold"> · {kombo}×</span>}
                 </span>
                 <span>
-                  {idx + 1}/{antrian.length}
+                  {soalKe}
                 </span>
               </div>
 
@@ -826,7 +949,10 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                     {labelPos[item.pos]}
                   </span>
                 </div>
-                <p class="text-3xl md:text-4xl font-black text-fg leading-tight break-words">
+                <p
+                  data-testid="kotoba-soal"
+                  class="text-3xl md:text-4xl font-black text-fg leading-tight break-words"
+                >
                   {mode === 'ketik' ? item.k : arah === 'jp-id' ? item.k : item.id}
                 </p>
                 <p class="text-[13px] text-fg-muted mt-1">
@@ -944,7 +1070,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
               <h3 class="text-base font-black text-fg text-center mb-1">{t('kotoba.hasil_judul')}</h3>
               <p class="text-center text-[12px] text-fg-muted mb-4">
                 {t('kotoba.hasil_skor')} <strong class="text-fg">{skor}</strong> ·{' '}
-                {t('kotoba.hasil_benar')} {jumlahBenar}/{antrian.length}
+                {t('kotoba.hasil_benar')} {jumlahBenar}/{soalKe}
               </p>
               {salahKata.length > 0 && (
                 <div class="mb-4">

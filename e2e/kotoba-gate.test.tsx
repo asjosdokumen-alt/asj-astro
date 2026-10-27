@@ -46,6 +46,11 @@ const BANK_SISWA = {
 
 const TOLAK_NON_SISWA = { success: false, isVip: false, message: 'khusus siswa ASJ' };
 
+/** Kanji → arti, untuk menemukan tombol jawaban yang BENAR di tes ronde. */
+const ARTI: Record<string, string> = Object.fromEntries(
+  BANK_SISWA.kosakata.map((v) => [v.k, v.id]),
+);
+
 function loginSebagai(role: 'admin' | 'kandidat') {
   authStore.set({
     role,
@@ -128,4 +133,51 @@ describe('/kotoba — siswa ASJ saja', () => {
     expect(document.querySelector('input[type="password"]')).toBeNull();
     await waitFor(() => expect(screen.getByText('Flashcard')).toBeTruthy());
   });
+
+  /* ── Bentuk ronde ──────────────────────────────────────────────────────
+     Pemilik 2026-10-27: "kok cuma 5 ronde ya gak kek game html yg asli
+     sampai nyawanya mati". Dua tes di bawah mengunci KEDUA arah, dan keduanya
+     perlu: kalau hanya "berjalan >10 soal" yang diuji, ronde yang tidak pernah
+     berakhir sama sekali akan lulus. */
+
+  it('ronde TIDAK berhenti setelah 10 soal — berjalan sampai nyawa habis', async () => {
+    loginSebagai('kandidat');
+    render(<KotobaGame />);
+    await waitFor(() => expect(screen.getByTestId('kotoba-soal')).toBeTruthy());
+
+    /* Jawab BENAR dua belas kali — lebih dari batas 10 soal yang dulu dipakai. */
+    for (let i = 0; i < 12; i++) {
+      const kana = screen.getByTestId('kotoba-soal').textContent || '';
+      const arti = ARTI[kana];
+      expect(arti, `soal tak dikenal: ${kana}`).toBeTruthy();
+      const tombol = [...document.querySelectorAll('button')]
+        .filter((b) => b.className.includes('rounded-control border text-left'))
+        .find((b) => b.querySelector('span')?.textContent === arti);
+      expect(tombol, `opsi "${arti}" tidak ada`).toBeTruthy();
+      tombol?.click();
+      /* Jeda 750 ms antar soal (yang benar) — beri ruang lebih. */
+      await new Promise((r) => setTimeout(r, 900));
+    }
+
+    expect(screen.queryByTestId('kotoba-hasil')).toBeNull();
+    expect(screen.getByTestId('kotoba-soal')).toBeTruthy();
+  }, 30000);
+
+  it('ronde BERAKHIR saat nyawa habis — tiga jawaban salah', async () => {
+    loginSebagai('kandidat');
+    render(<KotobaGame />);
+    await waitFor(() => expect(screen.getByTestId('kotoba-soal')).toBeTruthy());
+
+    for (let i = 0; i < 3; i++) {
+      const kana = screen.getByTestId('kotoba-soal').textContent || '';
+      const arti = ARTI[kana];
+      const salah = [...document.querySelectorAll('button')]
+        .filter((b) => b.className.includes('rounded-control border text-left'))
+        .find((b) => b.querySelector('span')?.textContent !== arti);
+      salah?.click();
+      await new Promise((r) => setTimeout(r, 1600));
+    }
+
+    await waitFor(() => expect(screen.getByTestId('kotoba-hasil')).toBeTruthy());
+  }, 30000);
 });

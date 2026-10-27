@@ -1190,6 +1190,7 @@ export const jpTranslations: Record<string, string> = {
     "kotoba.kata_tersedia": "語彙",
     "kotoba.kata_dikuasai": "習得済み",
     "kotoba.rekor": "記録",
+    "kotoba.suara_otomatis": "自動読み上げ",
     "kotoba.mode_kuis": "クイズ",
     "kotoba.mode_ketik": "入力",
     "kotoba.mode_flashcard": "単語カード",

@@ -1681,6 +1681,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.kata_tersedia": "kosakata",
     "kotoba.kata_dikuasai": "dikuasai",
     "kotoba.rekor": "Rekor",
+    "kotoba.suara_otomatis": "Suara otomatis",
     "kotoba.mode_kuis": "Kuis",
     "kotoba.mode_ketik": "Ketik",
     "kotoba.mode_flashcard": "Flashcard",
