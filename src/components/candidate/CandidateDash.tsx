@@ -447,6 +447,31 @@ export default function CandidateDash() {
       navigateTo('/kotoba');
     }
 
+    /**
+     * Simulasi tes matematika & psikotes (`/matematika`) — gerbang VIP yang
+     * SAMA dengan interview, AI CV, dan kosakata.
+     *
+     * Kenapa tombolnya ditaruh di sini dan bukan di menu terpisah: pemilik
+     * meminta fiturnya "di menu dashboard kandidat seperti biasa fitur untuk
+     * yg bertag vip saja" (2026-10-27). Jadi ia ikut barisan aksi sekunder
+     * yang sudah ada, dengan bobot yang sama — bukan CTA baru yang berteriak.
+     *
+     * Seperti tiga tombol di atas, ini hanya UX: penjaga sebenarnya ada di
+     * server (`getBankMatematika` → `tolakKecualiSiswa`), yang tidak mengirim
+     * satu soal cerita pun untuk non-siswa.
+     */
+    function openMatematika() {
+      if (!(user?.wa || data?.wa)) {
+        showToast(t('ui.toast_session_invalid_relogin'), 'error');
+        return;
+      }
+      if (!isVipFlags(data)) {
+        showToast(t('ui.toast_feature_locked'), 'info');
+        return;
+      }
+      navigateTo('/matematika');
+    }
+
 if (!data) return failed
   ? <div class="py-8 max-w-md mx-auto"><LoadFailed onRetry={loadDashboard} /></div>
   : <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
@@ -959,6 +984,7 @@ if (!data) return failed
                     <button type="button" data-testid="cmt-cvmini" onClick={() => setShowCvMiniModal(true)} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="user-edit" class="text-accent-sky shrink-0" /> {t('ui.update_cv_mini')}</button>
                     <button type="button" data-testid="cmt-interview" onClick={openInterview} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-violet text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="microphone-alt" class="text-accent-violet shrink-0" /> {t('ui.interview_practice')}</button>
                     <button type="button" data-testid="cmt-kotoba" onClick={openKotoba} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="language" class="text-accent-sky shrink-0" /> {t('ui.kotoba_practice')}</button>
+                    <button type="button" data-testid="cmt-matematika" onClick={openMatematika} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-violet text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="bolt" class="text-accent-violet shrink-0" /> {t('ui.matematika_practice')}</button>
                     <button type="button" data-testid="cmt-esign" onClick={openEsign} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="signature" class="text-accent-red shrink-0" /> {t('ui.esign_naitei')}</button>
                     <button type="button" onClick={openAiCvMaster} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-amber text-slate-200 rounded-control text-sm font-bold transition text-left cursor-pointer"><Icon name="robot" class="text-accent-amber shrink-0" /> {t('ui.ai_cv_assistant')}</button>
                     <a href="/master" class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-emerald text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="clipboard-list" class="text-accent-emerald shrink-0" /> {t('ui.master_full_form')}</a>

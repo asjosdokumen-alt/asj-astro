@@ -1,0 +1,41 @@
+---
+// Halaman simulasi tes matematika & psikotes. Bentuknya sengaja mengikuti
+// `/kotoba`: satu komponen `client:only`, satu paragraf pengantar, dan satu
+// `<noscript>`.
+//
+// Gerbang "khusus siswa ASJ" TIDAK di sini — ia ada di dalam `MatematikaGame`
+// (gerbang login + kartu khusus-siswa) dan, yang menentukan, di server
+// (`getBankMatematika` → `tolakKecualiSiswa`). Menaruh salinan gerbang di berkas
+// ini akan membuat tiga definisi "siswa" yang bisa berbeda diam-diam.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import App from '../components/App.tsx';
+import FormToolbar from '../components/forms/FormToolbar';
+import MatematikaGame from '../components/candidate/MatematikaGame.tsx';
+---
+
+<BaseLayout
+  title="Simulasi Tes Matematika & Psikotes — ASJ"
+  titleKey="doc.title_matematika"
+  description="Simulasi tes seleksi matematika dan psikotes untuk siswa ASJ: hitung cepat kraepelin, urutan operasi, deret angka, konversi satuan, penalaran, dan soal cerita industri Jepang dengan pembahasan."
+>
+  <App showHeader={false} client:only="preact" />
+
+  <FormToolbar client:only="preact" titleKey="toolbar.matematika" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
+    <div class="max-w-[1100px] mx-auto px-3">
+      <section class="mb-4">
+        <h1 class="text-xl md:text-2xl font-bold text-fg mb-1">Simulasi Tes Matematika &amp; Psikotes</h1>
+        <p class="cetak-sembunyi text-fg-muted text-[12.5px] leading-relaxed">
+          Enam modul dengan bank soal yang sama: <b>hitung cepat</b> ala kraepelin, <b>urutan operasi</b>,
+          <b>deret angka</b>, <b>konversi satuan</b>, <b>penalaran</b>, dan <b>soal cerita pabrik</b>.
+          Pilih <b>Simulasi Ujian</b> untuk berlatih di bawah batas waktu, atau <b>Mode Latihan</b> untuk
+          melihat pembahasan setiap kali jawaban salah. Skor tertinggi tersimpan di perangkat ini.
+        </p>
+      </section>
+      <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
+        Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
+      </noscript>
+      <MatematikaGame client:only="preact" />
+    </div>
+  </main>
+</BaseLayout>

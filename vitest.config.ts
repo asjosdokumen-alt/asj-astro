@@ -228,6 +228,16 @@ export default defineConfig({
             // backend + memalsukan `contexts/identity` & `_lib/wawancara/bank`.
             // Tanpa DOM. Tanpa baris ini ia jalan DUA KALI (R13f-bis).
             'e2e/kotoba-guard.test.ts',
+            // Ditambahkan 2026-10-27. Gerbang server bank soal matematika
+            // (`getBankMatematika` di `surfaces/ai.ts`) — meng-import surface
+            // backend + memalsukan `contexts/identity` & `_lib/wawancara/bank`.
+            // Tanpa DOM. Tanpa baris ini ia jalan DUA KALI (R13f-bis).
+            'e2e/matematika-guard.test.ts',
+            // Ditambahkan 2026-10-27. Kesehatan bank soal + generator: menyentuh
+            // `netlify/functions/_lib/matematika/bank.ts` (backend) DAN
+            // `src/lib/matematika.ts` (frontend), tanpa DOM sama sekali — jadi
+            // memang milik project 'backend'. Tanpa baris ini ia jalan DUA KALI.
+            'e2e/matematika-soal.test.ts',
             // Ditambahkan 2026-10-26. Template CV "Firma Elga Pratama": membaca
             // zip template (jszip) + menambal XML, tanpa DOM. Tinggal di e2e/
             // HANYA karena counter beku `indexer` menghitung `src/**`; tanpa

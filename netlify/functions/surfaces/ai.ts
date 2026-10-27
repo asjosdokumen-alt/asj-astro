@@ -182,6 +182,20 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
       kosakata: BANK_KOTOBA,
     };
   },
+  // ── Bank soal matematika (`/matematika`) — simulasi tes seleksi ───────────
+  // Gerbang SAMA PERSIS dengan bank soal wawancara dan bank kosakata di atas,
+  // dan itu disengaja (satu penjaga = satu tempat yang bisa salah). Yang
+  // dikirim hanya ke siswa ASJ adalah SOAL CERITA + pembahasannya; generator
+  // angka hidup di klien karena soal aritmetika acak tak terbatas tidak punya
+  // nilai rahasia — yang punya nilai adalah 69 soal pabrik dan cara
+  // mengerjakannya.
+  getBankMatematika: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '').trim();
+    const tolak = await tolakKecualiSiswa(s, wa);
+    if (tolak) return tolak;
+    const { ringkasBank } = await import('../_lib/matematika/bank');
+    return { success: true, wa, isVip: true, ...ringkasBank() };
+  },
   getLinkWawancara: async (p: unknown[], s?: string) => {
     const { linkWawancara } = await import('../_lib/wawancara/bank');
     const { requireAdmin } = await import('../contexts/identity');

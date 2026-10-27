@@ -119,6 +119,11 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   // cold start tanpa memisahkan apa pun.
   getBankKotoba: '/.netlify/functions/ai-chat',
 
+  // Bank soal matematika (/matematika) — menumpang `ai-chat` dengan alasan yang
+  // sama seperti dua bank di atas: satu fungsi tambahan berarti satu cold start
+  // tambahan dan bobot bundle yang harus di-baseline ulang di gate bundle:size.
+  getBankMatematika: '/.netlify/functions/ai-chat',
+
   // Ingestion — admin AI Copilot (parse CV/Excel/PDF lalu submitMasterForm).
   // Sebelum 2026-09-12 action ini TIDAK terdaftar di sini, sehingga jatuh ke
   // FALLBACK (catch-all bridge-links) — fitur yang benar-benar dipakai
