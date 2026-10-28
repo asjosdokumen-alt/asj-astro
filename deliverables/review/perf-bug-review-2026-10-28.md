@@ -23,7 +23,7 @@ menyentuh bundle.
 | Temuan baru pass ini | **6** (G1, B13, P1b, P2b, P2c, P7) |
 | Ditutup di sesi yang sama | **3** — G1 (`96d9e25`), B13 (`1630562`), P2c (`8547516`) |
 | **Terbuka pada HEAD** | **7** — B8, P1b, P2b, P4, P5, P6, P7 |
-| Suite uji | **269 berkas / 3 223 tes** pada HEAD — hijau; 3 219 saat `266aa9b` (§6a) |
+| Suite uji | **269 berkas / 3 226 tes** pada HEAD — hijau; 3 219 saat `266aa9b` (§6a) |
 | Yang diukur ulang | island landing **229,5 KB / 74,7 gz** · graf admin **861,3 KB / 317,0 gz** · kamus `i18n` **2 058 entri / 102,0 KB / 34,5 gz** |
 
 ---
@@ -289,10 +289,12 @@ ini**; kuota hapus tidak habis dan `spawnSync` tidak diblokir.
 > "offset mismatch" yang bentuknya persis seperti cacat parser. Tunggu run selesai,
 > atau jalankan berkas itu sendirian setelahnya.
 
-**Run penutup, setelah G1 dan B13 (`96d9e25`, `1630562`):** `269 berkas /
-3 223 tes lulus`, exit 0, 396,90 s. Empat tes tambahan adalah blok B13; jumlah
-berkas tidak bergerak karena tesnya masuk `apiClient.test.ts`, bukan berkas baru
-(§8).
+**Run penutup, setelah G1, B13, dan P2c (`96d9e25`, `1630562`, `8547516`):**
+`269 berkas / 3 226 tes lulus`, exit 0, 391,92 s. Tujuh tes tambahan — 4 blok B13
+di `apiClient.test.ts`, 3 kamus JP di `i18n.test.ts` — dan **jumlah berkas tidak
+bergerak**: keduanya masuk berkas tes yang sudah ada, karena berkas baru di
+`src/**` akan menggeser `files.length` (counter beku 603) tanpa satu baris kode
+produk (§8).
 
 ---
 
