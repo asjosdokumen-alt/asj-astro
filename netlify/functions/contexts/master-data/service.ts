@@ -1045,7 +1045,6 @@ export async function handleGetDrafCvMaster(payload: any[], sessionToken?: strin
 }
 
 export async function handleSubmitMasterForm(payload: any[], sessionToken?: string) {
-  cacheClear();
   const d = (payload && payload[0]) || {};
   const wa = nw(String(d.wa || ''));
   const t = session.verifyToken(sessionToken);
@@ -1084,6 +1083,11 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
 
     const aiOverflow = buildAiOverflow(d);
 
+    // FIRST WRITE. `cacheClear()` used to run as the function's first
+    // statement — before the session check, before `!wa`, before the ownership
+    // guard — so an unauthenticated POST with a junk payload was rejected AND
+    // invalidated the shared cache (public-base + every candidate page).
+    cacheClear();
     if (row && row.id !== undefined) {
       await patchMaster(row.id, body);
     } else {

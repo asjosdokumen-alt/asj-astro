@@ -40,11 +40,15 @@ export async function handleGetDaftarSiswaBaru(_payload: any[], sessionToken?: s
 }
 
 export async function handleSubmitDaftarSiswa(payload: unknown) {
-  cacheClear();
   const d = (payload || {}) as Record<string, any>;
   const nama = String(d.nama || '').trim();
   if (!nama) return { success: false, message: 'Nama wajib diisi.' };
   try {
+    // FIRST WRITE. `cacheClear()` used to be the first statement of the
+    // function — before the `!nama` guard — so an empty payload was rejected
+    // AND wiped the shared cache (public-base + every candidate page). This
+    // handler is public (registration form), so that was a free cache-buster.
+    cacheClear();
     await insertSiswaBaru({
       timestamp: new Date().toISOString(),
       nama_lengkap: nama,

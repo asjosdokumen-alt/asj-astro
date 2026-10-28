@@ -403,7 +403,6 @@ export async function handleCekDataPelamar(
 }
 
 export async function handleSubmitApply(payload: any[], sessionToken?: string) {
-  cacheClear();
   const d = (payload && payload[0]) || {};
   const wa = normalizeWa(String(d.wa || ""));
   const code = String(d.job || "").trim();
@@ -529,12 +528,21 @@ export async function handleSubmitApply(payload: any[], sessionToken?: string) {
             "Lamaran untuk nomor WA ini sudah ada. Silakan login untuk memperbarui lamaran.",
         };
       }
+      // FIRST WRITE — invalidate here, not at the top of the function.
+      // `cacheClear()` used to be the very first statement, before the
+      // `!wa || !code || !d.nama` guard. `submitApply` is public by design
+      // (surfaces/docs.ts), so an anonymous POST of `{}` was rejected AND wiped
+      // the whole in-process cache — public-base plus every candidate page. In a
+      // loop that keeps the cache permanently cold, and every visitor pays the
+      // full PostgREST read the cache exists to avoid.
+      cacheClear();
       await supabaseJson("PATCH", "database_asj_form", {
         query: { id: "eq." + existing.id },
         body,
         headers: { Prefer: "return=minimal" },
       });
     } else {
+      cacheClear();
       await upsertFormRow(body);
     }
 
@@ -650,7 +658,6 @@ export async function handleSimpanKandidatDanUpload(
 ) {
   const guard = requireRole(sessionToken || "", "admin");
   if (guard.error) return guard.error;
-  cacheClear();
   const d = (payload && payload[0]) || {};
   const wa = normalizeWa(String(d.wa || ""));
   if (!d.nama || !wa)
@@ -751,6 +758,11 @@ export async function handleSimpanKandidatDanUpload(
       file_cv: fileUrls.CV || "",
       status: "MENUNGGU",
     };
+    // FIRST WRITE (both branches below) — see the note on handleSubmitApply:
+    // a rejected request (bad WA, missing nama, invalid document URL) must not
+    // invalidate the shared cache, so the clear lives here instead of above the
+    // validation.
+    cacheClear();
     if (existing && existing.id !== undefined) {
       const upd = Object.assign({}, candBody);
       delete upd.id_kandidat;
@@ -821,7 +833,6 @@ export async function handleSimpanBerkasTahapan(
   payload: any[],
   sessionToken?: string,
 ) {
-  cacheClear();
   const d = (payload && payload[0]) || {};
   const t = session.verifyToken(sessionToken);
   if (!t || (t.role !== "admin" && t.role !== "kandidat"))
@@ -895,6 +906,10 @@ export async function handleSimpanBerkasTahapan(
     } catch {
       /* best-effort: varian lama bukan alasan menolak simpan */
     }
+    // FIRST WRITE from here on (syncFormMailDariUpload + the row patches).
+    // `cacheClear()` belongs here, not before the session/`wa`/URL validation
+    // above: a request that is rejected must not invalidate the public cache.
+    cacheClear();
     try {
       await syncFormMailDariUpload(
         wa,
@@ -987,7 +1002,6 @@ export async function handleSimpanRevisiKandidat(
 ) {
   const guard = requireRole(sessionToken || "", "kandidat");
   if (guard.error) return guard.error;
-  cacheClear();
   const wa = String((payload && payload[0]) || "");
   const f = (payload && payload[1]) || {};
   const directUrl = String(f.url || f.fileUrl || "").trim();
@@ -1058,6 +1072,9 @@ export async function handleSimpanRevisiKandidat(
     } catch {
       /* best-effort */
     }
+    // FIRST WRITE from here on (syncFormMailDariUpload + the row patches) —
+    // not before the session/WA/URL validation above.
+    cacheClear();
     try {
       await syncFormMailDariUpload(wa, nama, "CV", url, cvJobCode);
     } catch {

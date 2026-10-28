@@ -69,10 +69,13 @@ describe('handleGetUploadUrls — K3 folder upload kandidat dari sesi', () => {
     expect(url).toContain('kandidat/6285700000001/foto.jpg');
     expect(url).not.toContain('master');
     expect(url).not.toContain('hacker');
-    expect(hapusJenisVarian).toHaveBeenCalledWith(
-      'kandidat/6285700000001',
-      'foto',
-    );
+    // KONTRAK BERUBAH 2026-10-28 — dulu `toHaveBeenCalledWith('kandidat/…',
+    // 'foto')`. Handler ini hanya MENANDATANGANI URL; byte-nya dikirim browser
+    // sesudahnya, dan PUT itu bisa gagal. Menghapus varian lama di sini berarti
+    // dokumen lama hilang sebelum penggantinya ada (kasus nyata: CV.pdf dihapus
+    // lalu unggahannya gagal). Pembersihan pindah ke titik konfirmasi
+    // (`handleSimpanBerkasTahapan`), jadi di sini justru TIDAK boleh menghapus.
+    expect(hapusJenisVarian).not.toHaveBeenCalled();
   });
 
   it('menolak ekstensi di luar allow-list (svg) — tidak menandatangani URL', async () => {

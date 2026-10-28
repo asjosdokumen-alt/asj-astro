@@ -262,6 +262,12 @@ export default defineConfig({
             // Ditambahkan 2026-10-26. Template CV 特定技能 "JIPA": sama seperti dua
             // form di atas — membaca zip template (jszip) + menambal XML, tanpa DOM.
             'e2e/jipa.test.ts',
+            // Ditambahkan 2026-10-28. `cacheClear()` pada permintaan yang
+            // DITOLAK: meng-import tiga handler backend, tanpa DOM. Tinggal di
+            // e2e/ HANYA karena counter beku `indexer` menghitung
+            // `netlify/functions/**/*.ts`; tanpa baris ini ia jalan DUA KALI
+            // (R13f-bis).
+            'e2e/public-cache-invalidation.test.ts',
           ],
         },
       },
