@@ -91,7 +91,7 @@ vi.mock('./repository', async () => {
   };
 });
 
-const { handleHapusFormTerpilih, MAX_BULK_DELETE, syncBiodataKeMail, handleApproveForm, handleReviewForm } = await import('./service');
+const { handleHapusFormTerpilih, MAX_BULK_DELETE, syncBiodataKeMail, syncFormMailDariUpload, handleApproveForm, handleReviewForm } = await import('./service');
 
 beforeEach(() => {
   // id sengaja TIDAK sama dengan index (id mulai 101) supaya tertukar
@@ -310,18 +310,31 @@ describe('handleApproveForm — persetujuan berkas bukan kelulusan tahapan', () 
     expect(patches[0].body.status).toBe('DISETUJUI');
   });
 
-  it('tidak menulis status_kandidat LULUS — untuk baris biodata MAUPUN lamaran', async () => {
-    for (const code of ['', 'TG1ASJ']) {
-      patches.length = 0;
-      candidateWrites.length = 0;
-      forms = [{ id: 55, status: 'MENUNGGU', no_wa: WA, code_job: code, nama_lengkap: 'BUDI' } as never];
+  // ⚠ DULU satu tes yang mengulang dua nilai `code_job`. Sejak penjaga jenis
+  // baris ada (2026-10-29) baris biodata DITOLAK sebelum `patchForm`, jadi
+  // iterasi `''` tidak lagi menguji apa pun — ia lolos karena `patches` kosong,
+  // bukan karena perilakunya benar. Dipecah supaya tiap jenis baris punya
+  // asersi yang bisa GAGAL.
+  it('baris BIODATA ditolak — tidak ada patch, tidak ada tulisan kandidat', async () => {
+    forms = [{ id: 55, status: 'MENUNGGU', no_wa: WA, code_job: '', nama_lengkap: 'BUDI' } as never];
 
-      await handleApproveForm([0], 'admin-ok');
+    const res = (await handleApproveForm([0], 'admin-ok')) as { success?: boolean; error?: string };
 
-      const patchCandidate = candidateWrites.find((w) => w.table === 'database_candidate');
-      expect(patchCandidate?.body.status_kandidat).toBeUndefined();
-      expect(patchCandidate?.body.tahapan_seleksi).toBeUndefined();
-    }
+    expect(res.success).toBe(false);
+    expect(String(res.error)).toContain('biodata');
+    expect(patches).toHaveLength(0);
+    expect(candidateWrites).toHaveLength(0);
+  });
+
+  it('baris LAMARAN disetujui tanpa menulis status_kandidat', async () => {
+    forms = [{ id: 55, status: 'MENUNGGU', no_wa: WA, code_job: 'TG1ASJ', nama_lengkap: 'BUDI' } as never];
+
+    await handleApproveForm([0], 'admin-ok');
+
+    expect(patches[0].body.status).toBe('DISETUJUI');
+    const patchCandidate = candidateWrites.find((w) => w.table === 'database_candidate');
+    expect(patchCandidate?.body.status_kandidat).toBeUndefined();
+    expect(patchCandidate?.body.tahapan_seleksi).toBeUndefined();
   });
 
   it('KONTROL: id_loker_pilihan tetap dicatat saat barisnya lamaran sungguhan', async () => {
@@ -332,6 +345,63 @@ describe('handleApproveForm — persetujuan berkas bukan kelulusan tahapan', () 
     const patchCandidate = candidateWrites.find((w) => w.table === 'database_candidate');
     expect(patchCandidate).toBeDefined();
     expect(patchCandidate?.body.id_loker_pilihan).toBe('TG1ASJ');
+  });
+});
+
+// ==========================================
+// TESTS: unggahan dokumen tidak boleh mengubah JENIS baris
+//
+// BUG YANG DIKUNCI TES INI (2026-10-29, sisa migrasi A1/A2)
+//   `syncBiodataKeMail` sudah memisahkan baris biodata (INFO) dari baris lamaran
+//   (MENUNGGU/UPDATE) lewat `code_job`. Jalur UPLOAD — `syncFormMailDariUpload` —
+//   tidak ikut diperbaiki: ia memanggil `mailStatusUntukUpdate(status)` untuk
+//   semua baris, sehingga mengunggah dokumen pada baris INFO menulis **UPDATE**
+//   (terukur: INFO tidak ada di `MAIL_PENDING_STATUS`, jadi ia TIDAK kembali ke
+//   MENUNGGU) — baris informasi keluar dari keranjang Info — DAN mengisi
+//   `code_job` dari unggahan, yang mengubah baris biodata menjadi baris lamaran
+//   di tempat.
+// ==========================================
+describe('syncFormMailDariUpload — jenis baris tidak berubah karena unggahan', () => {
+  const WA = '628111222333';
+
+  beforeEach(() => {
+    formsByWa = [];
+    upserts.length = 0;
+    patches.length = 0;
+    notified.length = 0;
+  });
+
+  it('baris BIODATA tetap INFO dan code_job-nya tetap kosong', async () => {
+    formsByWa = [
+      { id: 21, no_wa: WA, code_job: '', status: 'INFO', feedback_berkas: '', keterangan: '' } as never,
+    ];
+
+    await syncFormMailDariUpload(WA, 'BUDI', 'PAS_PHOTO', 'https://cdn/x.jpg', 'TG1ASJ');
+
+    expect(patches).toHaveLength(1);
+    expect(patches[0].body.status).toBe('INFO');
+    expect(patches[0].body.code_job).toBe('');
+  });
+
+  it('KONTROL: baris LAMARAN tetap memakai code_job-nya dan menjadi UPDATE', async () => {
+    formsByWa = [
+      { id: 22, no_wa: WA, code_job: 'TG1ASJ', status: 'DISETUJUI', feedback_berkas: '', keterangan: '' } as never,
+    ];
+
+    await syncFormMailDariUpload(WA, 'BUDI', 'PAS_PHOTO', 'https://cdn/x.jpg', 'TG1ASJ');
+
+    expect(patches[0].body.status).toBe('UPDATE');
+    expect(patches[0].body.code_job).toBe('TG1ASJ');
+    expect(String(patches[0].body.feedback_berkas)).toContain('[[PREV:DISETUJUI]]');
+  });
+
+  it('kandidat TANPA baris + unggahan ber-jobcode → baris lamaran MENUNGGU', async () => {
+    formsByWa = [];
+
+    await syncFormMailDariUpload(WA, 'BUDI', 'CV', 'https://cdn/cv.pdf', 'TG1ASJ');
+
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0]).toMatchObject({ no_wa: WA, code_job: 'TG1ASJ', status: 'MENUNGGU' });
   });
 });
 

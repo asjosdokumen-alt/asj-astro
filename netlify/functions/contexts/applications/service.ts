@@ -151,6 +151,21 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
   try {
     const f = await getFormByIndex(rowIndex);
     if (!f) return { success: false, error: 'Form tidak ditemukan.' };
+    // Penjaga JENIS BARIS, bukan hanya jenis status.
+    //
+    // Baris BIODATA (code_job kosong) tidak punya keputusan untuk disetujui —
+    // keputusan pemilik 2026-10-29 (A2): "gak perlu persetujuan admin". UI
+    // menyembunyikan tombolnya lewat `isInfoRow(status)`, tapi status adalah
+    // turunan, bukan penyebab: tab admin yang sudah terbuka SEBELUM barisnya
+    // berubah masih merender tombol Setujui, dan menekannya menulis DISETUJUI
+    // pada baris yang seharusnya INFO. Server tidak boleh bergantung pada UI
+    // yang kebetulan sudah segar.
+    if (status === MAIL_APPROVED_STATUS && !String(f.code_job || '').trim()) {
+      return {
+        success: false,
+        error: 'Baris biodata/dokumen tidak perlu disetujui — tandai sudah dibaca.',
+      };
+    }
     const body: Record<string, unknown> = { status };
     if (reason !== null && reason !== undefined) body.keterangan = reason;
     await patchForm(f.id as number, body, sessionToken);
@@ -519,7 +534,29 @@ export async function syncFormMailDariUpload(
       if (i > 0) docs[chunk.slice(0, i).trim().toUpperCase()] = chunk.slice(i + 1).trim();
     });
     docs[label] = String(url || '');
-    const nextStatus = mailStatusUntukUpdate((existing && existing.status) as string);
+    // Dua jenis baris, dua arti status — aturan yang SAMA dengan
+    // `syncBiodataKeMail` di atas (keputusan pemilik 2026-10-29, A1/A2).
+    //
+    // Sebelum ini jalur UPLOAD hanya punya SATU aturan, jadi mengunggah dokumen
+    // pada baris biodata (code_job kosong, status INFO) menulis
+    // `mailStatusUntukUpdate('INFO')` = **UPDATE** (terukur, bukan MENUNGGU:
+    // INFO tidak ada di `MAIL_PENDING_STATUS`) — baris informasi keluar dari
+    // keranjang Info dan masuk keranjang "perlu ditinjau", tepat keadaan yang A2
+    // hapus. Lebih buruk lagi,
+    // `code_job: existing.code_job || code` MENGISI code_job pada baris biodata,
+    // sehingga barisnya berubah JENIS di tempat — status INFO-nya lalu dibaca
+    // sebagai keputusan lamaran, dan `syncCandidateDariForm` bisa menulis
+    // `status_kandidat` dari unggahan dokumen.
+    //
+    // Jenis baris ditentukan sekali: baris yang SUDAH ada mempertahankan jenisnya,
+    // dan hanya baris BARU yang jenisnya boleh ditentukan oleh `code` unggahan.
+    const hasExistingRow = Boolean(existing && existing.id !== undefined);
+    const isApplicationRow = hasExistingRow
+      ? Boolean(String((existing && existing.code_job) || '').trim())
+      : Boolean(code);
+    const nextStatus = isApplicationRow
+      ? mailStatusUntukUpdate((existing && existing.status) as string)
+      : MAIL_INFO_STATUS;
     const entry =
       (nextStatus === 'UPDATE' && existing && existing.status
         ? '[[PREV:' + String(existing.status).toUpperCase() + ']] ' : '') +
@@ -527,7 +564,9 @@ export async function syncFormMailDariUpload(
     const keterangan = Object.entries(docs).filter(([, v]) => v).map(([k, v]) => k + ':' + v).join(';');
     const body: Record<string, unknown> = {
       timestamp: new Date().toISOString(),
-      code_job: String((existing && existing.code_job) || code || ''),
+      code_job: isApplicationRow
+        ? (hasExistingRow ? String(existing.code_job) : code)
+        : '',
       nama_lengkap: String(nama || (existing && existing.nama_lengkap) || 'KANDIDAT').toUpperCase(),
       no_wa: want,
       keterangan,
