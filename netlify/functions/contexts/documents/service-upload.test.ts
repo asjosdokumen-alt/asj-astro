@@ -141,7 +141,7 @@ describe('handleGetUploadUrls — penandatanganan batch, di bawah batas bulkhead
       // berurutan (inflight selalu 1) tanpa bergantung pada waktu nyata.
       await Promise.resolve();
       inflight -= 1;
-      return { url: '/' + url };
+      return { url: `/${url}` };
     });
 
     const files = ['a', 'b', 'c', 'd', 'e', 'f'].map((k) => ({ key: k, prefix: k, ext: 'pdf' }));

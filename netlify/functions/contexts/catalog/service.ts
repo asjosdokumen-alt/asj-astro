@@ -29,7 +29,7 @@ import { toKandidatView } from '../../_lib/db/candidates';
  * An empty board is honest; a fake one is not. `pengumuman` still explains the
  * cause, and `demo: true` lets a caller tell the two states apart.
  */
-function notFoundPayload(base: Record<string, any>): Record<string, any> {
+function notFoundPayload(base: Record<string, unknown>): Record<string, unknown> {
   return { ...base, jobs: [], demo: true };
 }
 
@@ -47,7 +47,7 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
       const valid = t && t.role === role && (mode !== 'kandidat' || (t.wa || '') === waPayload || waPayload === '');
       if (!valid) {
         const pub0 = await loadPublicBase(mode);
-        if (pub0.notFound) return notFoundPayload(pub0.base as Record<string, any>);
+        if (pub0.notFound) return notFoundPayload(pub0.base as Record<string, unknown>);
         return { success: true, activeTheme: '', sessionInvalid: true, jobs: pub0.jobs, dropdowns: pub0.dropdowns, assets: pub0.assets, pengumuman: pub0.pengumuman };
       }
     }
@@ -60,7 +60,7 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
     }
     const results = await Promise.all([loadPublicBase(mode), ...jobs]);
     const pub = results[0];
-    if (pub.notFound) return notFoundPayload(pub.base as Record<string, any>);
+    if (pub.notFound) return notFoundPayload(pub.base as Record<string, unknown>);
 
     const result: Record<string, any> = {
       success: true, activeTheme: '', sessionInvalid: false,

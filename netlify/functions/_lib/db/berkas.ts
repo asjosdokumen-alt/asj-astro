@@ -90,7 +90,7 @@ const BIO_COLUMNS: [string, string[]][] = [
  * existing documents already live; changing it would orphan them.
  */
 export function masterFolder(nama: unknown): string {
-  return 'master/' + String(nama || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
+  return `master/${String(nama || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_')}`;
 }
 
 /**
@@ -248,10 +248,12 @@ async function attachBerkasBio(candidates: any[]) {
     // dijamin). Pemeriksanya keberadaan KUNCI, bukan nilainya — `pas_photo`
     // yang memang null berarti RPC sudah membawanya, dan kueri tambahan
     // (500 baris, satu roundtrip PostgREST per muat halaman) tidak perlu jalan.
+    // `Object.hasOwn`, not `Object.prototype.hasOwnProperty.call`: the same
+    // test, and it cannot be shadowed by an own `hasOwnProperty` key on the row.
     const rpcLacksCvFields =
       Array.isArray(mRows) &&
       mRows.length > 0 &&
-      !Object.prototype.hasOwnProperty.call(mRows[0] as Record<string, unknown>, 'pas_photo');
+      !Object.hasOwn(mRows[0] as Record<string, unknown>, 'pas_photo');
     if (rpcLacksCvFields) {
       try {
         const extra = await supabaseJson('GET', 'master_database_candidate', {

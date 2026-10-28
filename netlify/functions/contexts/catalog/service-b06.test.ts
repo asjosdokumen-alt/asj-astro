@@ -303,7 +303,7 @@ describe('getAppData — dataset demo tidak boleh menyamar sebagai lowongan nyat
       },
     });
 
-    const out = (await handleGetAppData(['public'])) as Record<string, any>;
+    const out = (await handleGetAppData(['public'])) as Record<string, unknown>;
 
     expect(out.jobs).toEqual([]);
     expect(out.demo).toBe(true);
@@ -321,7 +321,7 @@ describe('getAppData — dataset demo tidak boleh menyamar sebagai lowongan nyat
       notFound: false,
     });
 
-    const out = (await handleGetAppData(['public'])) as Record<string, any>;
+    const out = (await handleGetAppData(['public'])) as Record<string, unknown>;
     expect(out.jobs).toEqual([{ code: 'TG1ASJ' }]);
     expect(out.demo).toBeUndefined();
   });

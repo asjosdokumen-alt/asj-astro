@@ -1,9 +1,9 @@
 {
-  "total": 2001,
-  "generatedAt": "2026-10-25T12:36:04.811Z",
+  "total": 1997,
+  "generatedAt": "2026-10-28T12:50:18.683Z",
   "byFile": {
-    "netlify/functions/contexts/master-data/service.ts": 132,
-    "netlify/functions/contexts/documents/service.ts": 89,
+    "netlify/functions/contexts/master-data/service.ts": 131,
+    "netlify/functions/contexts/documents/service.ts": 86,
     "indexer/src/query.test.ts": 67,
     "indexer/src/deep-tier.test.ts": 65,
     "src/components/admin/RirekishoBuilder.tsx": 62,
@@ -254,7 +254,7 @@
     "src/lib/berkasCatalog.test.ts": 1
   },
   "byRule": {
-    "lint/style/useTemplate": 729,
+    "lint/style/useTemplate": 725,
     "lint/suspicious/noExplicitAny": 400,
     "lint/style/noNonNullAssertion": 290,
     "lint/complexity/useOptionalChain": 241,

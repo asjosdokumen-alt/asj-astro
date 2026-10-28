@@ -15,7 +15,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // REAL so the `isAllowedDocumentUrl` tests below keep exercising the true
 // host-resolution path instead of a mock.
 const { requestMock } = vi.hoisted(() => ({
-  requestMock: vi.fn(async (_url?: string, _init?: any) => ({ ok: true, text: async () => '{}' })),
+  // `unknown`, not `any`: the only fields this stub reads are `method` and
+  // `body`, and `String(body ?? '')` accepts anything — so the mock can be
+  // precise without pretending to be a full RequestInit.
+  requestMock: vi.fn(async (_url?: string, _init?: { method?: string; body?: unknown }) => ({
+    ok: true,
+    text: async () => '{}',
+  })),
 }));
 vi.mock('./kernel/http', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./kernel/http')>();
@@ -247,7 +253,7 @@ describe('urutan upload vs hapus varian (anti kehilangan dokumen)', () => {
   beforeEach(() => {
     calls = [];
     requestMock.mockClear();
-    requestMock.mockImplementation(async (url = '', init: any = {}) => {
+    requestMock.mockImplementation(async (url = '', init: { method?: string; body?: unknown } = {}) => {
       calls.push({
         method: String(init?.method || 'GET'),
         url: String(url),
@@ -282,7 +288,10 @@ describe('urutan upload vs hapus varian (anti kehilangan dokumen)', () => {
 
     const del = calls.find((c) => c.method === 'DELETE');
     expect(del).toBeDefined();
-    const prefixes = JSON.parse(del!.body).prefixes as string[];
+    // Explicit guard instead of `del!`: a missing DELETE must fail with a
+    // sentence, not with "Cannot read properties of undefined".
+    if (!del) throw new Error('tidak ada panggilan DELETE');
+    const prefixes = JSON.parse(del.body).prefixes as string[];
 
     expect(prefixes).toEqual(['master/BUDI/CV.jpg']);
     expect(prefixes).not.toContain('master/BUDI/CV.pdf');
