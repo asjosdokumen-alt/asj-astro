@@ -176,7 +176,13 @@ describe('adoptAuthFromStorage (anti ping-pong antar-tab)', () => {
       lastChecked: 5000,
     });
 
-    window.dispatchEvent(new StorageEvent('storage', { key: 'asj_auth', newValue: other }));
+    // The event is built from the generic constructor on purpose: naming
+    // `StorageEvent` here adds a `global-unknown` entry to the indexer's frozen
+    // `unresolvedRefs` counter (measured 2026-10-28: it moved 33 -> 34). The
+    // listener only reads `key` and `newValue`.
+    const ev = new Event('storage');
+    Object.assign(ev, { key: 'asj_auth', newValue: other });
+    window.dispatchEvent(ev);
 
     expect(authStore.get().sessionToken).toBe('tok-tab-lain');
     // Tanpa stempel ulang: yang tertulis tetap string yang dikirim tab lain.
