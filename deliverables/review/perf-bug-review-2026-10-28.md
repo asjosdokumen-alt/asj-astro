@@ -23,7 +23,7 @@ menyentuh bundle.
 | Temuan baru pass ini | **5** (G1, B13, P1b, P2b, P7) |
 | Ditutup di sesi yang sama | **2** — G1 (`96d9e25`), B13 (`1630562`) |
 | **Terbuka pada HEAD** | **7** — B8, P1b, P2b, P4, P5, P6, P7 |
-| Suite uji | **269 berkas / 3 219 tes** pada `266aa9b` — hijau (§6a) |
+| Suite uji | **269 berkas / 3 223 tes** pada HEAD — hijau; 3 219 saat `266aa9b` (§6a) |
 | Yang diukur ulang | island landing **229,5 KB / 74,7 gz** · graf admin **861,3 KB / 317,0 gz** · kamus `i18n` **2 058 entri / 102,0 KB / 34,5 gz** |
 
 ---
@@ -280,6 +280,11 @@ ini**; kuota hapus tidak habis dan `spawnSync` tidak diblokir.
 > dua kali (indexer lalu compiler), dan suntingan di antaranya muncul sebagai
 > "offset mismatch" yang bentuknya persis seperti cacat parser. Tunggu run selesai,
 > atau jalankan berkas itu sendirian setelahnya.
+
+**Run penutup, setelah G1 dan B13 (`96d9e25`, `1630562`):** `269 berkas /
+3 223 tes lulus`, exit 0, 396,90 s. Empat tes tambahan adalah blok B13; jumlah
+berkas tidak bergerak karena tesnya masuk `apiClient.test.ts`, bukan berkas baru
+(§8).
 
 ---
 
