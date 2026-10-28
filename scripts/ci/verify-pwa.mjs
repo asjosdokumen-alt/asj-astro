@@ -66,8 +66,8 @@ if (!existsSync(SW_DIST)) {
       // `exceljs` was missing from both until 2026-10-23: 918 KB — the largest
       // file in the build — was precached for every visitor even though only the
       // admin Excel export imports it.
-      !urls.some((u) => /\/pdf-parse\.|\/xlsx\.|\/exceljs\./.test(u)),
-      'lazy-only chunks (pdf-parse, xlsx, exceljs) are NOT precached',
+      !urls.some((u) => /\/pdf-parse\.|\/xlsx\.|\/exceljs\.|\/supabase\.|\/i18n-jp\.|\/AdminPanel\./.test(u)),
+      'lazy-only chunks (pdf-parse, xlsx, exceljs, supabase, i18n-jp, AdminPanel) are NOT precached',
     );
   }
 

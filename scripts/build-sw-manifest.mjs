@@ -47,7 +47,27 @@ const SW = join(DIST, 'sw.js');
  * The gate in scripts/ci/verify-pwa.mjs carries the same three names, so the two
  * cannot drift again without one of them going red.
  */
-const LAZY_EXCLUDE = [/^pdf-parse\./, /^xlsx\./, /^exceljs\./];
+const LAZY_EXCLUDE = [
+  /^pdf-parse\./,
+  /^xlsx\./,
+  /^exceljs\./,
+  // 2026-10-29. Three chunks that were being precached for EVERY visitor while
+  // no page loads them on first paint. Measured on this build:
+  //   AdminPanel  491 390 B — referenced by /admin/index.html ONLY
+  //   supabase    217 919 B — referenced by NO html (dynamic import)
+  //   i18n-jp     113 043 B — referenced by NO html (dynamic import)
+  // = ~822 KB of install-time download for a visitor who never opens admin and
+  // never switches to Japanese. It also defeated two fixes shipped the day
+  // before: `de461ca` stopped `getFreshToken` DOWNLOADING the supabase client on
+  // Neon hosts, and `8547516` stopped `i18n-jp` being preloaded eagerly — both
+  // wins were then re-billed to every visitor here, at install time.
+  // ⚠ `/^supabase\./` deliberately does NOT match `supabaseHost.*.js` (the
+  // light host predicate every page needs); the literal dot after "supabase" is
+  // what separates them. Do not loosen it to `/^supabase/`.
+  /^supabase\./,
+  /^i18n-jp\./,
+  /^AdminPanel\./,
+];
 
 /** Assets we never precache, by name pattern. */
 const ASSET_INCLUDE = /\.(js|css|woff2?|svg|webp|png|ico)$/;
