@@ -6,7 +6,7 @@
 // ({ success:false, message } on rejection, kind:'session' on re-issued
 // tokens), not the legacy { sessionInvalid:true } shape.
 // ==========================================
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { refreshAdminSession, refreshKandidatSession, requireRole, requireAdmin, isOwnerOrAdmin } from './service';
 import { signToken, verifyToken } from '../../_lib/session';
 
@@ -61,5 +61,50 @@ describe('refreshAdminSession — pemulihan sesi admin diam-diam', () => {
     expect((await refreshAdminSession(kand)).success).toBe(false);
     expect((await refreshAdminSession('bogus.token')).success).toBe(false);
     expect((await refreshAdminSession('')).success).toBe(false);
+  });
+});
+
+// ==========================================
+// TESTS: login MENERBITKAN token penyegar (B8 / keputusan A3, 2026-10-29)
+//
+// Sampai 2026-10-29 tidak ada satu pun `signToken({ kind: 'refresh' })` di repo:
+// `refreshAdminSession` / `refreshKandidatSession` sudah benar dan sudah diuji
+// di atas, tapi tidak pernah ada token yang bisa ditukar — jadi sesi mati keras
+// 24 jam setelah login dan seluruh jalur penyegaran itu kode mati.
+//
+// Tes di atas memakai token penyegar BUATAN. Yang tidak pernah diuji adalah
+// PENERBITANNYA, dan justru itu yang hilang. Tes ini menutup celah tersebut:
+// login → tukar → sesi baru yang sah.
+// ==========================================
+describe('login menerbitkan token penyegar yang bisa ditukar', () => {
+  const HASH = '$2b$04$gbWzIrJxRD68GKiTXZqxB.k5COp/zdrEhF5RRII9dEBvzLahOwBSS'; // bcrypt('rahasia')
+
+  it('loginKandidat → refreshToken sah → refreshKandidatSession memberi sesi baru', async () => {
+    vi.doMock('./repository', () => ({
+      findCandidateForAuth: async () => ({
+        no_wa: '6281234567890',
+        nama_lengkap: 'BUDI',
+        password_kandidat: HASH,
+      }),
+    }));
+    vi.resetModules();
+    const svc = await import('./service');
+
+    const login = await svc.loginKandidat('6281234567890', 'rahasia');
+    if (!login.success) throw new Error(`login gagal: ${login.message}`);
+    expect(typeof login.refreshToken).toBe('string');
+
+    // Penyegar itu harus BERBEDA dari token sesi dan berjenis `refresh`.
+    const rt = verifyToken(login.refreshToken as string);
+    expect(rt?.kind).toBe('refresh');
+    expect(login.refreshToken).not.toBe(login.token);
+
+    const refreshed = await svc.refreshKandidatSession(login.refreshToken as string);
+    if (!refreshed.success) throw new Error(`refresh gagal: ${refreshed.message}`);
+    const st = verifyToken(refreshed.sessionToken as string);
+    expect(st?.kind).toBe('session');
+    expect(st?.wa).toBe('6281234567890');
+
+    vi.doUnmock('./repository');
   });
 });

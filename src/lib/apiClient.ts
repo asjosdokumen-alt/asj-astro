@@ -174,6 +174,96 @@ function apiError(
 }
 
 /**
+ * `exp` (detik epoch) dari payload token sesi, atau `null` kalau tidak terbaca.
+ *
+ * Token sesi adalah `base64url(payload).hmac` (`_lib/session.ts`), jadi klien
+ * bisa tahu kapan ia kedaluwarsa TANPA bertanya ke server. Itu yang membuat
+ * penyegaran bisa dilakukan SEBELUM permintaan dikirim, bukan sesudah ditolak.
+ */
+function sessionExpiry(token: string): number | null {
+  const body = String(token || '').split('.')[0];
+  if (!body) return null;
+  try {
+    const b64 = body.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    if (typeof atob !== 'function') return null;
+    const payload = JSON.parse(atob(padded)) as { exp?: unknown };
+    return typeof payload?.exp === 'number' ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Segarkan sesi kalau sisa umurnya tinggal sedikit. */
+const REFRESH_MARGIN_S = 60;
+
+/**
+ * Satu penyegaran untuk semua permintaan yang menunggu.
+ *
+ * Tanpa ini, sepuluh permintaan yang berjalan bersamaan saat token hampir habis
+ * akan menembak sepuluh kali `refreshKandidatSession` — dan karena server tidak
+ * menyimpan status, semuanya sah, jadi tidak ada yang menolak; hasilnya hanya
+ * sepuluh token yang saling menimpa.
+ */
+let refreshing: Promise<string | null> | null = null;
+
+/**
+ * Minta token sesi baru dengan token penyegar (7 hari).
+ *
+ * `fetch` langsung, BUKAN `call()`: `call()` memanggil `getFreshToken()` di
+ * awal, jadi menyegarkan lewat jalur itu adalah rekursi. Permintaan ini juga
+ * tidak butuh `Authorization` — buktinya ada di payload.
+ *
+ * @returns token sesi baru, atau `null` kalau tidak ada penyegar / gagal.
+ */
+async function refreshSessionToken(): Promise<string | null> {
+  if (refreshing) return refreshing;
+  const st = authStore.get();
+  if (!st.isLoggedIn || !st.refreshToken) return null;
+  const action = st.role === 'admin' ? 'refreshAdminSession' : 'refreshKandidatSession';
+  refreshing = (async () => {
+    try {
+      const res = await fetch(getEndpoint(action), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, payload: [st.refreshToken], sessionToken: '' }),
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as { success?: boolean; sessionToken?: string };
+      const next = data?.success && data.sessionToken ? data.sessionToken : '';
+      if (!next) return null;
+      authStore.set({ ...authStore.get(), sessionToken: next, lastChecked: Date.now() });
+      return next;
+    } catch {
+      return null;
+    } finally {
+      refreshing = null;
+    }
+  })();
+  return refreshing;
+}
+
+/**
+ * Perpanjang sesi diam-diam (keputusan pemilik A3, 2026-10-29).
+ *
+ * Sampai 2026-10-29 server tidak pernah menerbitkan token penyegar, jadi sesi
+ * mati keras 24 jam setelah login. Sekarang token itu ada, dan di sini ia
+ * dipakai: begitu sisa umur token sesi di bawah satu menit, token baru diminta
+ * SEBELUM permintaan berangkat — pengguna tidak melihat "Sesi expired" sama
+ * sekali selama masih di dalam jendela 7 hari penyegar.
+ *
+ * Kalau penyegaran gagal (penyegar kedaluwarsa, atau server menolak), token lama
+ * dikembalikan apa adanya: jalur gagal tetap sama seperti sebelumnya, dan
+ * `sessionInvalidVerdict()` yang memutuskan logout.
+ */
+async function ensureSessionFresh(token: string): Promise<string> {
+  const exp = sessionExpiry(token);
+  if (exp === null) return token;
+  if (exp - Math.floor(Date.now() / 1000) > REFRESH_MARGIN_S) return token;
+  return (await refreshSessionToken()) || token;
+}
+
+/**
  * Get the freshest session token — checks Supabase first if configured.
  */
 async function getFreshToken(): Promise<string> {
@@ -200,7 +290,7 @@ async function getFreshToken(): Promise<string> {
   // `false` dan chunk 56 KB gzip itu terbuang untuk SETIAP pengguna yang login.
   // Predikatnya diimpor dari `./supabaseHost` (tanpa impor) supaya pemeriksaan
   // ini sendiri tidak menarik modul berat itu.
-  if (isNeonDataApiHost(SUPABASE_URL)) return sessionToken;
+  if (isNeonDataApiHost(SUPABASE_URL)) return ensureSessionFresh(sessionToken);
 
   const { supabase, isSupabaseConfigured } = await import('./supabase');
   if (isSupabaseConfigured()) {
@@ -214,7 +304,7 @@ async function getFreshToken(): Promise<string> {
       }
     } catch { /* fall through */ }
   }
-  return sessionToken;
+  return ensureSessionFresh(sessionToken);
 }
 
 /**

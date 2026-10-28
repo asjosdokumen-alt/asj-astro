@@ -30,6 +30,28 @@ import { env } from '../../_lib/env';
 // S9 fix: satu pesan gagal login (anti-enumerasi nomor WA terdaftar).
 const LOGIN_FAIL_MSG = 'Nomor WA atau password salah.';
 
+/**
+ * Token sesi + token penyegar, diterbitkan BERSAMAAN di setiap login.
+ *
+ * Sampai 2026-10-29 server hanya menerbitkan token sesi, jadi `refreshToken`
+ * di klien selalu kosong dan `refreshAdminSession` / `refreshKandidatSession`
+ * tidak pernah bisa berhasil — sesi mati keras 24 jam setelah login. Pemilik
+ * memilih memperpanjang diam-diam (keputusan A3), jadi yang hilang hanyalah
+ * PENERBITANNYA: verifikasi dan penandatanganan ulang sudah ada dan tidak
+ * berubah.
+ *
+ * Masa berlaku berbeda dan itu disengaja: sesi 24 jam, penyegar 7 hari
+ * (`_lib/session.ts`). Penyegar TIDAK dirotasi saat dipakai — tanpa penyimpanan
+ * status di server, rotasi tanpa deteksi pemakaian ulang hanya menambah jalur
+ * gagal tanpa menambah keamanan. Batas 7 hari tetap berlaku.
+ */
+function issueTokens(role: 'admin' | 'kandidat', ident: { name?: string; wa?: string }) {
+  return {
+    token: session.signToken({ role, ...ident, kind: 'session' }),
+    refreshToken: session.signToken({ role, ...ident, kind: 'refresh' }),
+  };
+}
+
 // ── Admin auth ───────────────────────────────────────────────────────────────
 
 /**
@@ -56,8 +78,8 @@ export function checkAdminMaster(pin: string) {
   if (!pins.includes(pin)) {
     return { success: false, message: 'PIN master salah.' };
   }
-  const token = session.signToken({ role: 'admin', name: 'master', kind: 'session' });
-  return { success: true, token };
+  const tokens = issueTokens('admin', { name: 'master' });
+  return { success: true, token: tokens.token, refreshToken: tokens.refreshToken };
 }
 
 /**
@@ -132,8 +154,8 @@ export async function checkAdminPersonal(name: string, pin: string) {
   // Tiers 1 + 2 — env only, no network.
   for (const candidate of [...personalEnvPins(wanted), ...asjAdminsPins(wanted)]) {
     if (pinsEqual(candidate, given)) {
-      const token = session.signToken({ role: 'admin', name: wanted, kind: 'session' });
-      return { success: true, token, user: wanted };
+      const tokens = issueTokens('admin', { name: wanted });
+      return { success: true, token: tokens.token, refreshToken: tokens.refreshToken, user: wanted };
     }
   }
 
@@ -147,8 +169,8 @@ export async function checkAdminPersonal(name: string, pin: string) {
       const pinMatch = await bcrypt.compare(given, String(admin.pin));
       if (pinMatch) {
         const who = String(admin.name || wanted);
-        const token = session.signToken({ role: 'admin', name: who, kind: 'session' });
-        return { success: true, token, user: who };
+        const tokens = issueTokens('admin', { name: who });
+        return { success: true, token: tokens.token, refreshToken: tokens.refreshToken, user: who };
       }
     }
   } catch {
@@ -185,8 +207,8 @@ export async function loginKandidat(wa: string, password: string) {
   // di-enumerate. Rate limit per-IP sudah ditangani handlers.ts (LOGIN_ACTIONS).
   const ok = storedPass ? await bcrypt.compare(password, storedPass) : false;
   if (!ok) return { success: false, message: LOGIN_FAIL_MSG };
-  const token = session.signToken({ role: 'kandidat', wa: cand.no_wa, kind: 'session' });
-  return { success: true, token, user: 'kandidat', wa: cand.no_wa, name: cand.nama_lengkap };
+  const tokens = issueTokens('kandidat', { wa: cand.no_wa });
+  return { success: true, token: tokens.token, refreshToken: tokens.refreshToken, user: 'kandidat', wa: cand.no_wa, name: cand.nama_lengkap };
 }
 
 export async function refreshKandidatSession(refreshToken: string) {
