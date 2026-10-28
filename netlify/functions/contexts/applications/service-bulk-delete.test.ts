@@ -91,7 +91,7 @@ vi.mock('./repository', async () => {
   };
 });
 
-const { handleHapusFormTerpilih, MAX_BULK_DELETE, syncBiodataKeMail, handleApproveForm } = await import('./service');
+const { handleHapusFormTerpilih, MAX_BULK_DELETE, syncBiodataKeMail, handleApproveForm, handleReviewForm } = await import('./service');
 
 beforeEach(() => {
   // id sengaja TIDAK sama dengan index (id mulai 101) supaya tertukar
@@ -314,5 +314,25 @@ describe('handleApproveForm — persetujuan dokumen bukan kelulusan tahapan', ()
     expect(patchCandidate).toBeDefined();
     expect(patchCandidate?.body.status_kandidat).toBe('LULUS');
     expect(patchCandidate?.body.id_loker_pilihan).toBe('TG1ASJ');
+  });
+});
+
+// ==========================================
+// TESTS: `handleReviewForm` menulis nilai yang SAMA dengan keranjang UI
+//
+// Nilai lama `REVIEW ADMIN` (dengan spasi) tidak cocok dengan keranjang
+// `REVIEW` di TabMail, jadi baris yang sedang ditinjau menghilang dari semua
+// filter. UI sekarang menormalkan nilai lama, tapi penulisnya juga harus
+// berhenti membuat nilai baru yang salah.
+// ==========================================
+describe('handleReviewForm — nilai status sama dengan keranjang UI', () => {
+  it('menulis REVIEW, bukan REVIEW ADMIN', async () => {
+    forms = [{ id: 77, status: 'MENUNGGU', no_wa: '628111222333', code_job: 'TG1ASJ' } as never];
+    patches.length = 0;
+    candidateRow = { id: 3 };
+
+    await handleReviewForm([0], 'admin-ok');
+
+    expect(patches[0].body.status).toBe('REVIEW');
   });
 });

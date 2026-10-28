@@ -131,3 +131,33 @@ describe('TabMail — baris UPDATE (pembaruan biodata) tidak boleh tak terlihat'
     expect(btn.className).not.toContain('text-violet-200');
   });
 });
+
+// ==========================================
+// TESTS: baris "REVIEW ADMIN" tidak boleh hilang dari keranjang Review
+//
+// `handleReviewForm` dulu menulis status `REVIEW ADMIN` (dengan spasi),
+// sementara keranjangnya bernama `REVIEW`. Perbandingan `===` membuat baris yang
+// SEDANG DITINJAU tidak cocok dengan satu pun filter — hanya terlihat kalau
+// admin menebak menekan SEMUA — dan hitungan "Review" selalu 0.
+//
+// Baris lama di database masih menyimpan nilai itu, jadi normalisasinya harus
+// ada di UI: memperbaiki penulisnya saja tidak menyembuhkan data yang sudah ada.
+// ==========================================
+describe('TabMail — status REVIEW ADMIN masuk keranjang Review', () => {
+  beforeEach(() => {
+    invalidateAdminData();
+    mailFilterStatus.set('REVIEW');
+    mailList.set([row({ rowIndex: 0, id: 9, nama: 'RINA WATI', status: 'REVIEW ADMIN' })] as never);
+    vi.mocked(api.secure).mockResolvedValue({ success: true, formInbox: [] } as never);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.mocked(api.secure).mockReset();
+  });
+
+  it('dihitung sebagai Review dan barisnya terlihat di filter Review', async () => {
+    render(<TabMail />);
+    await waitFor(() => expect(screen.getByText(/Review: 1/)).toBeTruthy());
+    expect(screen.getByText('RINA WATI')).toBeTruthy();
+  });
+});

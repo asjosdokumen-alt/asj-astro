@@ -145,12 +145,12 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
 
     // FCM notification
     const waNotify = normWa(String(f.no_wa || f.wa || ''));
-    if (waNotify && (status === 'GAGAL' || status === 'REVIEW ADMIN' || status === 'LULUS')) {
+    if (waNotify && (status === 'GAGAL' || status === 'REVIEW' || status === 'LULUS')) {
       try {
         const jobCode = String(f.code_job || '');
         let title = '', pushBody = '';
         if (status === 'GAGAL') { title = 'Dokumen ' + jobCode + ' perlu revisi'; pushBody = reason || 'Lamaran ditolak.'; }
-        else if (status === 'REVIEW ADMIN') { title = 'Dokumen ' + jobCode + ' sedang direview'; pushBody = 'Admin sedang meninjau dokumen Anda.'; }
+        else if (status === 'REVIEW') { title = 'Dokumen ' + jobCode + ' sedang direview'; pushBody = 'Admin sedang meninjau dokumen Anda.'; }
         else if (status === 'LULUS') { title = 'Lamaran ' + jobCode + ' disetujui! 🎉'; pushBody = 'Selamat! Lamaran Anda telah disetujui.'; }
         if (title) {
           // Phase D follow-up (2026-09-13): was `const { rows: tokens } = …`.
@@ -196,7 +196,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
 export async function handleReviewForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  return handleFormStatus((payload || [])[0] as number, 'REVIEW ADMIN', undefined, sessionToken);
+  return handleFormStatus((payload || [])[0] as number, 'REVIEW', undefined, sessionToken);
 }
 
 export async function handleApproveForm(payload: unknown[], sessionToken?: string) {

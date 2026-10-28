@@ -18,6 +18,27 @@ import RejectMailModal from './RejectMailModal';
 
 const STATUSES = ['MENUNGGU', 'UPDATE', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'] as const;
 
+/**
+ * Status mentah → keranjang yang dikenal UI.
+ *
+ * `handleReviewForm` dulu menulis `REVIEW ADMIN` (dengan spasi), sementara
+ * keranjangnya bernama `REVIEW`. Perbandingan `===` membuat baris yang SEDANG
+ * DITINJAU tidak cocok dengan satu pun filter — hanya terlihat kalau admin
+ * menebak menekan SEMUA — dan hitungan "Review" selalu 0. Kelas bug yang sama
+ * dengan baris UPDATE pada 2026-10-22: notifikasinya datang, barisnya tidak ada.
+ *
+ * Di module scope, bukan di badan komponen: `filtered` memakainya SEBELUM titik
+ * definisi kalau ia ditaruh di sana (`const` tidak di-hoist).
+ *
+ * Normalisasi harus ada di UI, bukan hanya di server, karena baris lama di
+ * database masih menyimpan `REVIEW ADMIN` dan tidak berubah kalau penulisnya
+ * diperbaiki.
+ */
+function bucketOf(raw: unknown): string {
+  const s = String(raw || '').toUpperCase();
+  return s.startsWith('REVIEW') ? 'REVIEW' : s;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   MENUNGGU: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
   REVIEW: 'bg-sky-500/20 text-sky-400 border-sky-500/40',
@@ -158,7 +179,7 @@ export default function TabMail() {
   };
 
   const filtered = mail.filter((m) => {
-    const matchStatus = filterStatus === 'SEMUA' || (m.status || '').toUpperCase() === filterStatus;
+    const matchStatus = filterStatus === 'SEMUA' || bucketOf(m.status) === filterStatus;
     const matchSearch = !searchText ||
       (m.nama || '').toLowerCase().includes(searchText.toLowerCase()) ||
       (m.wa || '').includes(searchText) ||
@@ -169,7 +190,7 @@ export default function TabMail() {
   // Status counts
   const counts = { MENUNGGU: 0, UPDATE: 0, REVIEW: 0, LULUS: 0, GAGAL: 0 };
   mail.forEach(m => {
-    const s = (m.status || '').toUpperCase();
+    const s = bucketOf(m.status);
     if (s in counts) counts[s as keyof typeof counts]++;
   });
 
@@ -300,8 +321,11 @@ export default function TabMail() {
                 <td class="p-4 font-bold text-white text-sm">{m.nama || '-'}</td>
                 <td class="p-4 font-mono text-sky-300 text-xs">{m.wa || '-'}</td>
                 <td class="p-4 text-center">
-                  <span class={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLORS[m.status] || 'bg-slate-500/20 text-slate-400 border-slate-500/40'}`}>
-                    {m.status || '-'}
+                  {/* `bucketOf`, bukan `m.status` mentah: baris lama menyimpan
+                      `REVIEW ADMIN`, yang tidak punya warna dan terbaca sebagai
+                      status asing padahal artinya sama dengan REVIEW. */}
+                  <span class={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLORS[bucketOf(m.status)] || 'bg-slate-500/20 text-slate-400 border-slate-500/40'}`}>
+                    {bucketOf(m.status) || '-'}
                   </span>
                   {/* `feedback` = aktivitas terakhir dari backend ("[BIODATA] email
                       diubah · [UPLOAD KTP]"). Tanpa ini admin melihat status UPDATE
