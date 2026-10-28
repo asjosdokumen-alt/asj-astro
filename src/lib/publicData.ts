@@ -196,6 +196,10 @@ export async function fetchPublicJobs(
     const res = await fetch(publicJobsUrl(origin), {
       method: 'GET',
       headers: { Accept: 'application/json' },
+      // The browser path in this same file has been bounded since 2026-10-24
+      // (`PUBLIC_DATA_TIMEOUT_MS`); this BUILD-TIME reader was not, so a build
+      // could hang on a CDN that never answers. Same bound, same reason.
+      signal: AbortSignal.timeout(PUBLIC_DATA_TIMEOUT_MS),
     });
     if (!res.ok) {
       warnBuild(`${publicJobsUrl(origin)} → HTTP ${res.status}`);

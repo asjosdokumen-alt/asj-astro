@@ -227,6 +227,12 @@ async function refreshSessionToken(): Promise<string | null> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, payload: [st.refreshToken], sessionToken: '' }),
+        // Same hole as P8, in the one path that bypasses `call()`: a stalled
+        // connection here left `refreshing` set forever, and because every
+        // caller awaits `refreshing`, the WHOLE app stopped issuing requests
+        // with no error and no retry. Bounded for the same reason and with the
+        // same number as a normal call.
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       if (!res.ok) return null;
       const data = (await res.json()) as { success?: boolean; sessionToken?: string };

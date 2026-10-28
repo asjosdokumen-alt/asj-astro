@@ -889,10 +889,26 @@ async function main() {
   // RirekishoBuilder emits a standalone printable document and carries its own
   // CSS in a template literal; those classes are defined, just not in the app
   // stylesheet, so the compiler cannot know about them.
+  //
+  // ⚠ TWO passes, and the second one exists because the first is structurally
+  // blind to DESCENDANT selectors. `\.name\s*\{` requires `{` immediately after
+  // the class, so `.cv-preview table{…}` (CvTemplateSelector.tsx:173) never
+  // matched — the gate reported `cv-preview` as a class with no rule and went
+  // RED on 2026-10-29, while the rule was plainly there. The class really was
+  // defined; the SCANNER was wrong. That is the same failure mode as the
+  // `header a, nav a` selector bug (R14 §16): a check whose pattern is narrower
+  // than its name, reporting absence where the thing exists in another form.
   const inlineDefined = new Set();
+  const creditSelectors = (cssText) => {
+    // One rule at a time: the selector list is everything before `{`.
+    for (const rule of cssText.matchAll(/([^{}]+)\{/g)) {
+      for (const c of rule[1].matchAll(/\.([A-Za-z_][\w-]*)/g)) inlineDefined.add(c[1]);
+    }
+  };
   for (const file of files) {
     const src = readFileSync(file, 'utf8');
     for (const mm of src.matchAll(/\.([A-Za-z_][\w-]*)\s*\{/g)) inlineDefined.add(mm[1]);
+    for (const mm of src.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) creditSelectors(mm[1]);
   }
 
   // ── ask the compiler about every token at once ───────────────────────────

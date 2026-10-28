@@ -74,13 +74,17 @@ const CLIENT = 'src/lib/apiClient.ts';
  */
 const ALLOWED = {
   'src/lib/apiClient.ts': {
-    max: 2,
+    max: 3,
     reason:
-      'THE SANCTIONED CLIENT ITSELF. Two calls: the primary endpoint and the ' +
-      'agent fallback. This is the wrapper every other site must route through, ' +
-      'so counting it is the point — see the WRAPPER guard below, which fails if ' +
-      'these call sites disappear (a moved implementation would leave this gate ' +
-      'guarding nothing).',
+      'THE SANCTIONED CLIENT ITSELF. Three calls: the primary endpoint, the ' +
+      'agent fallback, and — since `d0ea082` (2026-10-29) — the silent session ' +
+      'refresh in `refreshSessionToken()`. The refresh deliberately does NOT go ' +
+      'through `call()`, because `call()` calls `getFreshToken()` first and that ' +
+      'is recursion; it carries its own AbortSignal.timeout() for exactly the ' +
+      'reason `call()` does. This entry is also the proof that a per-FILE bound ' +
+      'cannot constrain new calls INSIDE an allowed file: the refresh landed ' +
+      'here and the gate stayed green until the count was compared. See the ' +
+      'follow-up in deliverables/gstack/ for the per-call-site check.',
   },
   'src/lib/uploadBerkas.ts': {
     max: 1,
@@ -101,7 +105,7 @@ const ALLOWED = {
       'apiClient has nothing to add.',
   },
   'src/lib/publicData.ts': {
-    max: 1,
+    max: 2,
     reason:
       'The PUBLIC getAppData payload on the home page, and the one site where ' +
       'routing through apiClient would be wrong rather than merely unnecessary. ' +
@@ -110,7 +114,26 @@ const ALLOWED = {
       'and cache layer on top of a request that must stay anonymous and must be ' +
       'issued exactly once per page load. Measured motivation: the payload is ' +
       '~110 KB (159 jobs) and was being fetched TWICE per load before this file. ' +
-      'Candidate for a dedicated public variant of apiClient, not for apiClient.',
+      'Candidate for a dedicated public variant of apiClient, not for apiClient. ' +
+      'TWO sites since 2026-10-29: `getPublicData()` (browser, bounded since ' +
+      '2026-10-24) and `fetchPublicJobs()` (BUILD-TIME, which had no bound at all ' +
+      'until this session — a build could hang on a CDN that never answers). Both ' +
+      'now carry a signal; the bound moved 1 -> 2 because a second site was ' +
+      'ALREADY THERE and the gate could not see it, not because a new bypass was ' +
+      'tolerated.',
+  },
+  'src/lib/cv-template-factory/renderers/xlsx-form.ts': {
+    max: 1,
+    reason:
+      '`photoToPngBytes()` fetches the candidate PHOTO as a BLOB to rasterise it ' +
+      'into the xlsx drawing. Same shape as rirekisho-xlsx.ts above: a ' +
+      'storage/CDN object rather than a function endpoint, read with .blob() and ' +
+      'not JSON, so apiClient\'s envelope/session handling does not apply. It is ' +
+      'also a CORS fetch of a third-party poster URL, so it cannot be read ' +
+      'cross-origin — the risk is a HANG, not SSRF. It had NO timeout until ' +
+      '2026-10-29, which could stall an export behind a CDN that never answers; ' +
+      'it now carries a 20 s AbortSignal.timeout() and returns null on failure, ' +
+      'which the renderer draws as an empty photo cell.',
   },
   'src/components/forms/ShareView.tsx': {
     max: 1,

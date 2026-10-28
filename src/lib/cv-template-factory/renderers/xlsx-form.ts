@@ -377,7 +377,10 @@ export async function photoToPngBytes(
   fit: PhotoBox,
 ): Promise<Uint8Array<ArrayBuffer> | null> {
   try {
-    const res = await fetch(url, { mode: 'cors' });
+    // A poster URL is a third-party host: unreadable cross-origin, so this is a
+    // HANG risk, not SSRF. Unbounded it stalled the whole export behind a CDN
+    // that never answered — `try/catch` never runs while `fetch` is pending.
+    const res = await fetch(url, { mode: 'cors', signal: AbortSignal.timeout(20_000) });
     if (!res.ok) return null;
     const src = await res.blob();
     const bmp = await createImageBitmap(src);
