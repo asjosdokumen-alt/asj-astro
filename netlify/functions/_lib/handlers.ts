@@ -135,6 +135,39 @@ interface RateLimitCheck {
 // Exported for direct unit coverage of the group→bucket mapping (same rationale
 // as `outcomeStatusCode` in netlify-wrapper-surface.ts). Pure: reads only its
 // arguments.
+/**
+ * Aksi ber-sesi admin yang HANYA membaca — tidak dikenai bucket `adminCrud`.
+ *
+ * KENAPA DAFTAR, BUKAN POLA NAMA
+ *   Sebelum ini setiap aksi admin membayar satu RPC `rate_limit_check` ke
+ *   Postgres, termasuk `getAppData('admin')` yang cuma membaca. Pada dasbor
+ *   admin itu satu round-trip DB tambahan per tab, selain kueri yang sebenarnya
+ *   — dan DB-nya ada di region lain (lihat review P4/P7).
+ *
+ *   Membatasi berdasarkan awalan nama (`get*`/`fetch*`) akan salah dalam dua
+ *   arah: `getUploadUrls` MENANDATANGANI URL (bukan sekadar membaca) dan
+ *   `syncDelta` membaca tapi mengubah state sinkronisasi. Jadi daftarnya
+ *   eksplisit, dan `handlers.test.ts` menjaga setiap nama di sini benar-benar
+ *   ada di `surfaces/registry.ts` — salah ketik tidak boleh membuat sebuah aksi
+ *   diam-diam kehilangan perlindungan.
+ *
+ * ARAH AMAN: default tetap DIBATASI. Aksi baru otomatis kena bucket; hanya
+ * yang terdaftar di sini yang dikecualikan.
+ *
+ * Diekspor untuk penjaga drift itu — bukan bagian dari permukaan publik modul.
+ */
+export const ADMIN_READ_ACTIONS: ReadonlySet<string> = new Set([
+  'getAppData',
+  'getCandidatesPage',
+  'getMasterDataByWa',
+  'getDrafCvMaster',
+  'cekDataPelamar',
+  'getRincianPresets',
+  'getTemplateCvList',
+  'getAdminAiContext',
+  'getAppConfig',
+]);
+
 export function rateLimitChecks(
   action: string,
   meta: RequestMeta,
@@ -177,7 +210,7 @@ export function rateLimitChecks(
   if (PREFILL_ACTIONS.has(action)) {
     return [{ key: `prefill:${ip}`, opts: { limit: 20, windowMs: 60000 } }];
   }
-  if (adminKey) {
+  if (adminKey && !ADMIN_READ_ACTIONS.has(action)) {
     return [{ key: 'adminCrud:' + adminKey, opts: { limit: 120, windowMs: 60000 } }];
   }
   return [];

@@ -3,7 +3,10 @@
 // supaya 1 loker = 1 CV/JFT/SSW/foto (tidak dobel di share view).
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { docTypeOf, rateLimitChecks } from './handlers';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { docTypeOf, rateLimitChecks, ADMIN_READ_ACTIONS } from './handlers';
+import { signToken } from './session';
 
 describe('docTypeOf — pola baru (prefix kapital)', () => {
   it('KK / KTP / CVFILE / PHOTOFILE bertimestamp', () => {
@@ -71,5 +74,43 @@ describe('rateLimitChecks — endpoint anonim termeter', () => {
     const checks = rateLimitChecks('getExistingCandidateJsonByWa', {}, '');
     expect(checks).toHaveLength(1);
     expect(checks[0].key).toBe('prefill:anon');
+  });
+});
+
+// ==========================================
+// TESTS: bucket adminCrud hanya untuk aksi TULIS (P4, disetujui pemilik)
+//
+// Sebelum ini setiap aksi ber-sesi admin membayar satu RPC `rate_limit_check`
+// ke Postgres — termasuk `getAppData('admin')` yang hanya membaca. Pada dasbor
+// admin itu satu round-trip DB tambahan per tab.
+//
+// Arah amannya penting: default tetap DIBATASI. Hanya aksi yang terdaftar di
+// `ADMIN_READ_ACTIONS` yang dikecualikan, dan tes terakhir di bawah menjaga
+// daftar itu tidak salah ketik — nama yang tidak ada di registry akan lolos
+// diam-diam dan membuat pengecualiannya tidak berarti apa-apa.
+// ==========================================
+describe('rateLimitChecks — adminCrud hanya untuk aksi tulis', () => {
+  const ip = '203.0.113.7';
+  const adminToken = signToken({ role: 'admin', name: 'AGUS' });
+
+  it('aksi BACA tidak dikenai bucket adminCrud', () => {
+    for (const action of ['getAppData', 'getCandidatesPage', 'getMasterDataByWa']) {
+      expect(rateLimitChecks(action, { ip }, adminToken)).toHaveLength(0);
+    }
+  });
+
+  it('aksi TULIS tetap dibatasi', () => {
+    for (const action of ['approveForm', 'simpanBiodataLengkap', 'hapusJobData']) {
+      const checks = rateLimitChecks(action, { ip }, adminToken);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].key).toContain('adminCrud:');
+    }
+  });
+
+  it('setiap nama di ADMIN_READ_ACTIONS benar-benar ada di registry', () => {
+    const src = readFileSync(join(process.cwd(), 'netlify', 'functions', 'surfaces', 'registry.ts'), 'utf8');
+    for (const name of ADMIN_READ_ACTIONS) {
+      expect(src.includes(`${name}:`)).toBe(true);
+    }
   });
 });
