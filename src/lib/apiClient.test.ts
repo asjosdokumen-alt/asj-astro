@@ -836,3 +836,60 @@ describe('batas bundle: yang ikut ke landing page', () => {
     expect(src).toContain("import('../lib/supabase')");
   });
 });
+
+/**
+ * B13 — `isSupabaseConfigured()` tidak boleh mengklaim ada server auth di host
+ * yang tidak punya `/auth/v1`.
+ *
+ * Sebelum perbaikan, predikatnya hanya menguji "dua string terisi". Itu cukup
+ * selama `PUBLIC_SUPABASE_URL` menunjuk proyek Supabase, tapi cutover 2026-10-25
+ * memindahkannya ke **Neon Data API**, yang hanya melayani PostgREST. Akibatnya
+ * `getFreshToken()` dan `initializeAuthListener()` tetap membangun klien ke host
+ * yang tidak bisa mengautentikasi siapa pun.
+ *
+ * `vi.importActual` dipakai supaya modul ASLINYA yang dievaluasi (berkas ini
+ * mem-mock `./supabase` untuk tes lain), dan `vi.stubEnv` + `resetModules`
+ * supaya hasilnya tidak bergantung pada `.env.local` mesin yang menjalankan tes.
+ */
+describe('isSupabaseConfigured — host Neon bukan server auth (B13)', () => {
+  async function realModule(url: string, key: string) {
+    vi.resetModules();
+    vi.stubEnv('PUBLIC_SUPABASE_URL', url);
+    vi.stubEnv('PUBLIC_SUPABASE_ANON_KEY', key);
+    return vi.importActual<typeof import('./supabase')>('./supabase');
+  }
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it('mengenali endpoint Data API Neon, dan tidak menuduh host lain', async () => {
+    const real = await realModule('', '');
+    expect(
+      real.isNeonDataApiHost('https://ep-bold-sunset-b3zy6wb1.apirest.c-4.ap-southeast-1.aws.neon.tech/neondb'),
+    ).toBe(true);
+    expect(real.isNeonDataApiHost('https://abcdefghijkl.supabase.co')).toBe(false);
+    expect(real.isNeonDataApiHost('https://auth.contoh-domain.com')).toBe(false);
+    expect(real.isNeonDataApiHost('')).toBe(false);
+    expect(real.isNeonDataApiHost('bukan-url')).toBe(false);
+  });
+
+  it('FALSE ketika URL menunjuk Neon — dua string terisi bukan berarti ada auth', async () => {
+    const real = await realModule(
+      'https://ep-bold-sunset-b3zy6wb1.apirest.c-4.ap-southeast-1.aws.neon.tech/neondb',
+      'jwt-neon-anon',
+    );
+    expect(real.isSupabaseConfigured()).toBe(false);
+  });
+
+  it('TRUE untuk proyek Supabase sungguhan', async () => {
+    const real = await realModule('https://abcdefghijkl.supabase.co', 'anon-key');
+    expect(real.isSupabaseConfigured()).toBe(true);
+  });
+
+  it('FALSE ketika salah satu variabel kosong', async () => {
+    expect((await realModule('https://abcdefghijkl.supabase.co', '')).isSupabaseConfigured()).toBe(false);
+    expect((await realModule('', 'anon-key')).isSupabaseConfigured()).toBe(false);
+  });
+});

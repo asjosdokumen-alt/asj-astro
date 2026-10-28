@@ -21,10 +21,12 @@
  *     (`_lib/db/client.ts:50`), because Neon has no Storage. Uploads do not go
  *     through this client.
  *
- * `isSupabaseConfigured()` therefore answers "are two env strings set", NOT "is
- * there an auth server here" — after the cutover those stopped being the same
- * question. Anything that gates a feature on it is gating on the wrong thing.
- * Tracked as finding B13 in `deliverables/review/perf-bug-review-2026-10-28.md`.
+ * `isSupabaseConfigured()` used to answer "are two env strings set" — which after
+ * the cutover is NOT the same question as "is there an auth server here". It now
+ * also rejects a Neon Data API host, so the four call sites (`getFreshToken`,
+ * `initializeAuthListener`, `logoutSupabase`, the two login helpers) no longer
+ * build a client against a URL that cannot authenticate anyone. Finding B13 in
+ * `deliverables/review/perf-bug-review-2026-10-28.md`.
  *
  * Pattern: singleton module export — import { supabase } from '@/lib/supabase'
  */
@@ -54,12 +56,37 @@ export const supabase: SupabaseClient = createClient(
 );
 
 /**
- * True when both PUBLIC_ env strings are present.
+ * True when `url` is a Neon Data API endpoint — i.e. a host that serves
+ * PostgREST and **no auth server**.
  *
- * ⚠️ This is a CONFIGURATION check, not a capability check. It returns `true`
- * on a Neon endpoint that has no `/auth/v1`, so it must not be used to decide
- * whether Supabase Auth is available — see the module header.
+ * Neon publishes the Data API at `<endpoint>.apirest.<region>.aws.neon.tech/<db>`.
+ * There is no GoTrue behind it, so `<url>/auth/v1/*` cannot answer. This is the
+ * one host shape the code can rule out offline; everything else keeps the
+ * pre-cutover assumption (that a Supabase URL is a Supabase project, including a
+ * custom domain that fronts GoTrue).
+ */
+export function isNeonDataApiHost(url: string): boolean {
+  const raw = String(url || '').trim();
+  if (!raw) return false;
+  let host: string;
+  try {
+    host = new URL(raw).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return host === 'neon.tech' || host.endsWith('.neon.tech');
+}
+
+/**
+ * True when the Supabase client has both a URL and a key **and** that URL can
+ * plausibly serve auth.
+ *
+ * The second half is the fix for B13: after the 2026-10-25 cutover
+ * `PUBLIC_SUPABASE_URL` is a Neon endpoint, so "both strings are set" stopped
+ * meaning "there is an auth server here". Leaving it out made `getFreshToken()`
+ * and `initializeAuthListener()` build a client against a host with no
+ * `/auth/v1` — harmless today only because nothing calls the login helpers.
  */
 export function isSupabaseConfigured(): boolean {
-  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY) && !isNeonDataApiHost(SUPABASE_URL);
 }
