@@ -317,7 +317,14 @@ export default function TabMail() {
                 </td>
                 <td class="p-4 text-center">
                   <div class="flex flex-wrap justify-center gap-1">
-                    <button type="button" onClick={() => act('approveForm', m.rowIndex, 'Lamaran LULUS')} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition">
+                    {/* "Setujui", bukan "Lulus": yang disetujui admin adalah
+                        BERKAS/lamaran ini, bukan kelulusan tahapan seleksi.
+                        Domain event-nya `application.approved`, push-nya
+                        berbunyi "disetujui", dan dashboard kandidat sudah
+                        memakai kosakata persetujuan — tab admin ini yang masih
+                        menulis "Lulus" (dilaporkan pemilik 2026-10-29). Nilai
+                        yang DISIMPAN tetap `LULUS`; ini label, bukan migrasi. */}
+                    <button type="button" onClick={() => act('approveForm', m.rowIndex, 'Lamaran disetujui')} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition">
                       <Icon name="check" class="mr-1" /> {t('button.pass')}
                     </button>
                     <button type="button" onClick={() => act('reviewForm', m.rowIndex, 'Status REVIEW')} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition">

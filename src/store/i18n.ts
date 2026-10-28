@@ -1138,11 +1138,11 @@ export const translations: Record<Lang, Record<string, string>> = {
        kandidat memperbarui biodata/dokumennya — perlu ditinjau ulang. */
     "status.updated": "Diperbarui",
     "status.review": "Review",
-    "status.pass": "Lulus",
+    "status.pass": "Disetujui",
     "status.fail": "Gagal",
     "status.all": "SEMUA",
     "button.view": "Lihat",
-    "button.pass": "Lulus",
+    "button.pass": "Setujui",
     "button.review": "Review",
     "button.reject": "Gagal",
     "button.back_to_portal": "Kembali ke Portal",
