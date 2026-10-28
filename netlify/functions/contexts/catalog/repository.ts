@@ -46,7 +46,7 @@ import { findAssets, findSettings } from '../../_lib/db/misc';
 import { SCHEDULE_MAP_COLS, TASK_MAP_COLS, WA_TEMPLATE_COLS } from '../../_lib/db/projections';
 import { findJobByCodeFiltered } from '../../_lib/db/jobs';
 import { findCandidatesByJobFiltered } from '../../_lib/db/candidates';
-import { listStorageFolder, BERKAS_COLUMNS } from '../../_lib/db/berkas';
+import { listStorageFolder, BERKAS_COLUMNS, masterFolder } from '../../_lib/db/berkas';
 
 const DROPDOWN_MAP: Record<string, string> = {
   list_kategori: 'kategori',
@@ -384,6 +384,6 @@ export {
   findFormsByWaList, findFormsByWa, findFormsLight, findForms, parseDocs,
   findCandidateByWaFiltered, findCandidates, attachApplications, attachBerkasBio,
   findJobs, mapJob, findAssets, findSettings, findJobByCodeFiltered,
-  findCandidatesByJobFiltered, listStorageFolder, BERKAS_COLUMNS,
+  findCandidatesByJobFiltered, listStorageFolder, BERKAS_COLUMNS, masterFolder,
   supabaseJson, docTypeOf, docAge, supabaseUrl, storageUrl,
 };

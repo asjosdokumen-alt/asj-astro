@@ -33,6 +33,7 @@ import { syncFormMailDariUpload } from "../applications";
 import { cacheClear } from "../../_lib/cache";
 import { safeError } from "../../_lib/kernel/errors";
 import { findJobByCodeFiltered, findJobs } from "../../_lib/db/jobs";
+import { masterFolder } from "../../_lib/db/berkas";
 import { isVipCatatan } from "../../_lib/ai/interview-shared";
 import * as session from "../../_lib/session";
 import { isAllowedDocumentUrl, isAllowedUploadExtension, ALLOWED_UPLOAD_EXTENSIONS } from "../../_lib/storage";
@@ -670,7 +671,7 @@ export async function handleSimpanKandidatDanUpload(
     const idKand = existing
       ? String(pick(existing, ["id_kandidat", "id"]) || "")
       : await nextCandidateId();
-    const folder = "master/" + nama.replace(/[^A-Z0-9_-]/g, "_");
+    const folder = masterFolder(nama);
     const uploaded: string[] = [];
     const files = Array.isArray(d.files) ? d.files : [];
     const fileUrls: Record<string, any> = {};
@@ -870,7 +871,7 @@ export async function handleSimpanBerkasTahapan(
     const nama = String(d.nama || "KANDIDAT")
       .trim()
       .toUpperCase();
-    const folder = "master/" + nama.replace(/[^A-Z0-9_-]/g, "_");
+    const folder = masterFolder(nama);
     const ext =
       String(f.name || "file")
         .split(".")
@@ -1036,7 +1037,7 @@ export async function handleSimpanRevisiKandidat(
       row && row.nama_lengkap
         ? String(row.nama_lengkap).toUpperCase()
         : "KANDIDAT";
-    const folder = "master/" + nama.replace(/[^A-Z0-9_-]/g, "_");
+    const folder = masterFolder(nama);
     const ext =
       String(f.name || "file")
         .split(".")

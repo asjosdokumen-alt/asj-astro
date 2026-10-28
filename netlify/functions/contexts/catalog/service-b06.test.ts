@@ -28,6 +28,9 @@ const m = vi.hoisted(() => ({
   findJobsAll: vi.fn(),
   findCandWa: vi.fn(),
   mapCandidate: vi.fn(),
+  // Real implementation, attached below (see `beforeEach`) — `vi.hoisted` runs
+  // before the module graph, so the import has to happen later.
+  masterFolder: (n: unknown) => String(n || ''),
 }));
 
 vi.mock('./repository', () => ({
@@ -63,6 +66,12 @@ vi.mock('./repository', () => ({
   findCandidatesByJobFiltered: m.findCand,
   findJobs: m.findJobsAll,
   listStorageFolder: async () => [],
+  // The REAL rule, not a copy: this mock exists to stub I/O, and a second
+  // implementation of the folder name here is exactly the drift
+  // `e2e/master-folder-parity.test.ts` exists to prevent. Indirection through
+  // `m` so the real function can be injected in `beforeEach` (the factory
+  // captures this object, not its current properties).
+  masterFolder: (n: unknown) => m.masterFolder(n),
   BERKAS_COLUMNS: [],
   supabaseJson: async () => [],
   docTypeOf: (n: string) => String(n || '').replace(/\.[a-z0-9]+$/i, '').toUpperCase(),
@@ -77,12 +86,14 @@ vi.mock('./repository', () => ({
 
 import { handleShareData, handleGetAppData } from './service';
 import { mapCandidate as realMapCandidate } from '../../_lib/db/candidates';
+import { masterFolder as realMasterFolder } from '../../_lib/db/berkas';
 import { signToken } from '../../_lib/session';
 
 // Inject the REAL mapper (see the mock factory above) and reset the WA lookup
 // before every test, so both describes exercise the shipped `mapCandidate`.
 beforeEach(() => {
   m.mapCandidate.mockImplementation(realMapCandidate as never);
+  m.masterFolder = realMasterFolder;
   m.findCandWa.mockReset();
   m.findCandWa.mockResolvedValue(null);
 });

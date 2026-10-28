@@ -268,6 +268,10 @@ export default defineConfig({
             // `netlify/functions/**/*.ts`; tanpa baris ini ia jalan DUA KALI
             // (R13f-bis).
             'e2e/public-cache-invalidation.test.ts',
+            // Ditambahkan 2026-10-28. `masterFolder()` — aturan folder Storage
+            // kandidat, penulis vs pembaca. Tanpa DOM; `.ts` di e2e/ tidak
+            // dihitung counter beku `indexer`. Tanpa baris ini ia jalan DUA KALI.
+            'e2e/master-folder-parity.test.ts',
           ],
         },
       },

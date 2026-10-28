@@ -68,6 +68,32 @@ const BIO_COLUMNS: [string, string[]][] = [
 ];
 
 /**
+ * Folder Storage milik satu kandidat di bucket `asj-files`.
+ *
+ * WHY THIS IS A FUNCTION
+ *   The rule was written out five times, and the WRITER and the READER had
+ *   drifted apart:
+ *
+ *     writers (documents ×3, master-data)  replace(/[^A-Z0-9_-]/g, '_')
+ *     reader  (catalog, share view)        replace(/\s+/g, '_')
+ *
+ *   For any name containing a character outside `[A-Z0-9_ -]` the two disagree:
+ *   `M. RIZKY` is stored under `master/M__RIZKY` and read from
+ *   `master/M._RIZKY`. The reader then lists a folder that does not exist, and
+ *   every document behind it disappears from the viewer — silently, because
+ *   "no files" and "wrong folder" are the same empty array.
+ *
+ *   Indonesian names routinely carry a period, an apostrophe or a comma
+ *   (`M. FAUZI`, `SITI NUR'AINI`), so this is not a theoretical input.
+ *
+ * The writer's rule wins because it is the one that decided where ~300 MB of
+ * existing documents already live; changing it would orphan them.
+ */
+export function masterFolder(nama: unknown): string {
+  return 'master/' + String(nama || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
+}
+
+/**
  * `bio` yang boleh ditambal dari `ai_data_json.identitas`.
  *
  * Nilainya datang dari RPC `master_light(wa_list text[])` (migrasi 018), yang

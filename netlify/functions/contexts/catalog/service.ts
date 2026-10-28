@@ -12,7 +12,7 @@ import {
   findFormsByWaList, findFormsByWa, findFormsLight, findForms, parseDocs,
   findCandidateByWaFiltered, findCandidates, attachApplications, attachBerkasBio,
   findJobByCodeFiltered, findCandidatesByJobFiltered, listStorageFolder,
-  BERKAS_COLUMNS, supabaseJson, docTypeOf, docAge, mapForm,
+  BERKAS_COLUMNS, masterFolder, supabaseJson, docTypeOf, docAge, mapForm,
 } from './repository';
 import { MASTER_LIGHT_COLS, PEMBERKASAN_COLS } from '../../_lib/db/projections';
 import { toKandidatView } from '../../_lib/db/candidates';
@@ -232,18 +232,18 @@ export async function handleShareData(jobCode: string) {
     const showAllDocs = allowedDocTypes.has('ALL');
 
     const folderResults = await Promise.all(mapped.map((c) => {
-      const folder = 'master/' + String(c.nama || '').toUpperCase().replace(/\s+/g, '_') + '/';
+      const folder = masterFolder(c.nama) + '/';
       return listStorageFolder(folder).catch(() => []);
     }));
     const folderNamesMap = new Map<string, string[]>();
     mapped.forEach((c, i) => {
-      const folder = 'master/' + String(c.nama || '').toUpperCase().replace(/\s+/g, '_') + '/';
+      const folder = masterFolder(c.nama) + '/';
       folderNamesMap.set(folder, folderResults[i] || []);
     });
 
     const candidates = [];
     for (const c of mapped) {
-      const folder = 'master/' + String(c.nama || '').toUpperCase().replace(/\s+/g, '_') + '/';
+      const folder = masterFolder(c.nama) + '/';
       const names = folderNamesMap.get(folder) || [];
       const mainBasenames = [c.pasPhoto, c.fileCv, c.jft, c.ssw].map((u) => { try { return decodeURIComponent(String(u || '').split('/').pop() || ''); } catch { return String(u || '').split('/').pop() || ''; } }).filter(Boolean);
       const mainTypes = new Set(['CV', 'JFT', 'SSW', 'PHOTO']);

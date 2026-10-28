@@ -6,6 +6,7 @@
 import { findCandidateByWaFiltered, findCandidates } from '../../_lib/db/candidates';
 import { candidateIdentityPatch } from '../../_lib/db/identity-sync';
 import { MASTER_LIGHT_COLS, SYS_CONFIG_COLS } from '../../_lib/db/projections';
+import { masterFolder } from '../../_lib/db/berkas';
 import * as session from '../../_lib/session';
 import { isOwnerOrAdmin } from '../identity';
 import { syncBiodataKeMail } from '../applications';
@@ -1054,7 +1055,7 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
   try {
     let row = await findMasterByWa(wa);
     const nama = String(d.nama || '').trim().toUpperCase() || 'KANDIDAT';
-    const folder = 'master/' + nama.replace(/[^A-Z0-9_-]/g, '_');
+    const folder = masterFolder(nama);
     const fileUrls: Record<string, any> = {};
     for (const [from, col] of Object.entries(MASTER_FILE_COLUMNS)) {
       if (d[from]) { const prefix = from.replace(/File$/, '').toUpperCase(); const url = await resolveFileUrl(d[from], folder, prefix + '.jpg'); if (url) fileUrls[col] = url; }
