@@ -16,7 +16,7 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions,
 | **Suite uji** | **269 berkas · 3.219 tes · ~409 s** — hijau. (Angka lama di sini: 183/2.221 — basi 20 hari) |
 | **`tsc --noEmit`** | bersih (exit 0, diukur ulang 2026-10-28) |
 | **`verify:md`** | OK — 75 berkas tabel diperiksa |
-| **`lint-ratchet`** | 🔴 **MERAH: 2.009 vs baseline 2.001 (+8)**, sisa gelombang perbaikan 2026-10-28. **Perbaiki sumbernya, jangan `--update-baseline`** — itu akan menghapus juga penurunan 4 diagnostik di dua berkas lain. Rincian: `deliverables/review/perf-bug-review-2026-10-28.md` §G1 |
+| **`lint-ratchet`** | ✅ **PASSED — 1.997 vs baseline 1.997** (2026-10-28). Sebelumnya merah 2.009 vs 2.001; 12 diagnostik baru dibersihkan di sumber, bukan dengan menaikkan baseline |
 | **Halaman publik** | `/` **9,9** · `/public` **10,0** · `/loker` **9,9** · `/404` **10,0** — snapshot 2026-10-07, `deliverables/gstack/public-pages-review-2026-10-07.md` |
 | **Deploy produksi** | **hidup** sejak 7 Okt 2026 ⇒ push `main` = deploy berbayar yang langsung tayang |
 | **Berkas tracked** | 1.170 berkas · ~31 MB (terbesar: `deliverables/` bukti audit, `public/` aset) |
@@ -68,10 +68,12 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions,
 > aset. Aset brand (logo, banner) ada di `public/`, bukan di bucket.
 >
 > ⚠️ **Jangan tertipu oleh `src/lib/supabase.ts`.** Berkas itu masih membuat
-> klien `@supabase/supabase-js` dari URL Neon, dan `isSupabaseConfigured()`
-> mengembalikan `true` — padahal host Neon tidak melayani `/auth/v1`. Semua
-> `supabase.auth.*` di sana mati (temuan **B13**). Auth yang benar-benar dipakai
-> adalah JWT kustom di `netlify/functions/_lib/session.ts`.
+> klien `@supabase/supabase-js` dari URL Neon, padahal host Neon tidak melayani
+> `/auth/v1` — jadi semua `supabase.auth.*` di sana mati. Sejak 2026-10-28
+> `isSupabaseConfigured()` menolak host Neon (`isNeonDataApiHost()`), sehingga
+> keempat pemanggilnya tidak lagi membangun klien ke alamat yang tidak bisa
+> mengautentikasi siapa pun. Auth yang benar-benar dipakai adalah JWT kustom di
+> `netlify/functions/_lib/session.ts`.
 
 > 🔴 **Status deploy — HIDUP LAGI, dan push kini benar-benar tayang.**
 >
@@ -104,7 +106,7 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions,
 |-------|-----------|
 | Framework | Astro 5.x (SSG) + Preact islands (`client:only="preact"`) |
 | State | Nanostores (+ `@nanostores/persistent` untuk auth & tema) |
-| Auth | Fungsi `auth` sendiri: **WA + password → JWT** (`SESSION_SECRET`), kedaluwarsa 24 jam. ⚠️ Jalur `supabase.auth.*` di `store/userStore.ts` **mati** sejak cutover Neon — host `PUBLIC_SUPABASE_URL` tidak punya `/auth/v1` (temuan B13) |
+| Auth | Fungsi `auth` sendiri: **WA + password → JWT** (`SESSION_SECRET`), kedaluwarsa 24 jam. ⚠️ Jalur `supabase.auth.*` di `store/userStore.ts` **mati** sejak cutover Neon — `isSupabaseConfigured()` sekarang menolak host Neon, jadi jalur itu tidak lagi dibangun |
 | Validation | Zod (`src/lib/schemas.ts`) |
 | CSS | Tailwind CSS v4 |
 | Ikon | Sprite SVG sendiri (`npm run icons` → `src/icons/sprite-map.ts`) |

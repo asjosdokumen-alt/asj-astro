@@ -1,7 +1,10 @@
 # Performance & Bug Review — asj-astro
 
-**Revision:** `266aa9b` · 2026-10-28 18:30 · working tree bersih (§7)
+**Revision diukur:** `266aa9b` · 2026-10-28 18:30 · working tree bersih (§7)
 **Menggantikan:** snapshot `0220438` di hari yang sama.
+**Perbaikan sesudah pengukuran:** `b3f9f50` (dokumen ini), `96d9e25` (G1),
+`1630562` (B13). Angka §4 tetap dari artefak `266aa9b` — ketiga commit itu tidak
+menyentuh bundle.
 
 > **Kenapa berkas ini ditulis ulang.** Snapshot pertama mengambil gambar pada
 > `0220438` (2026-10-27 23:08), lalu 14 temuannya diperbaiki antara **17:25–18:23
@@ -18,7 +21,8 @@
 | Temuan pass pertama (`0220438`) | 18 |
 | Ditutup 2026-10-28 | **14** (commit `bb5daa4` … `71537a0`) |
 | Temuan baru pass ini | **5** (G1, B13, P1b, P2b, P7) |
-| **Terbuka pada `266aa9b`** | **9** — G1, B8, B13, P1b, P2b, P4, P5, P6, P7 |
+| Ditutup di sesi yang sama | **2** — G1 (`96d9e25`), B13 (`1630562`) |
+| **Terbuka pada HEAD** | **7** — B8, P1b, P2b, P4, P5, P6, P7 |
 | Suite uji | **269 berkas / 3 219 tes** pada `266aa9b` — hijau (§6a) |
 | Yang diukur ulang | island landing **229,5 KB / 74,7 gz** · graf admin **861,3 KB / 317,0 gz** · kamus `i18n` **2 058 entri / 102,0 KB / 34,5 gz** |
 
@@ -69,43 +73,7 @@ mekanisme yang membuat satu perbaikan memerahkan hal lain.
 
 ---
 
-## 2 — Temuan terbuka pada `266aa9b`
-
-### G1. `lint-ratchet` **MERAH di HEAD** — 2 009 vs baseline 2 001 (+8) *(baru)*
-
-Ini yang pertama, karena R1 melarang memulai pekerjaan di atas baseline merah —
-dan HEAD sekarang merah. Terukur pada `266aa9b`, tree bersih:
-
-```
-baseline : 2001 diagnostics (2026-10-25T12:36:04Z)
-current  : 2009 diagnostics
-```
-
-| Berkas | Perubahan |
-|---|---|
-| `_lib/storage.test.ts` | **0 → 3** (berkas yang di baseline masih bersih) |
-| `contexts/catalog/service.ts` | 27 → 31 |
-| `_lib/db/berkas.ts` | 6 → 8 |
-| `contexts/documents/service-upload.test.ts` | 2 → 3 |
-| `contexts/catalog/service-b06.test.ts` | 1 → 3 |
-| `contexts/master-data/service.ts` | 132 → **131** (turun) |
-| `contexts/documents/service.ts` | 89 → **86** (turun) |
-
-Semua berasal dari gelombang perbaikan 2026-10-28, bukan dari review ini: berkas
-yang naik adalah berkas yang disentuh `c019823`, `349103d`, `4037de9`, `6fcf1bd`
-dan tes B4. Sebagian besar `lint/suspicious/noExplicitAny` (butuh tipe sungguhan),
-sisanya mekanis (`useTemplate`, `noPrototypeBuiltins`, `useOptionalChain`).
-
-**Jangan memperbaikinya dengan `--update-baseline`.** Perintah itu akan
-menghapus juga penurunan 4 diagnostik di dua berkas lain, dan mengubah "debt
-turun" menjadi "debt dibekukan di angka baru" — persis kebiasaan yang membuat
-satu perbaikan memerahkan hal lain. Perbaiki sumbernya, lalu turunkan baseline
-ke angka yang **lebih kecil**.
-
-⚠️ Catatan tambahan dari output yang sama: `lint/suspicious/noPrototypeBuiltins`
-**tidak ada di baseline** — aturan itu baru muncul setelah baseline direkam.
-Artinya kenaikan +8 bukan semuanya kode baru; sebagian bisa jadi versi biome yang
-bergeser. Pisahkan keduanya sebelum menyimpulkan siapa yang berutang.
+## 2 — Temuan terbuka
 
 ### B8. Refresh token tidak pernah diterbitkan — sesi mati keras di 24 jam *(tetap terbuka)*
 
@@ -119,43 +87,6 @@ jam setelah login.
 **Butuh keputusan, bukan tambalan:** menerbitkan token refresh (memperpanjang
 sesi diam-diam) atau menghapus field + kedua handler (menghapus kemampuan).
 Keduanya perubahan perilaku di jalur sesi.
-
-### B13. Klien auth Supabase sekarang menunjuk host yang tidak punya auth *(baru)*
-
-Ini kelas temuan yang hanya muncul kalau riwayat migrasi dibaca.
-
-```ts
-// src/lib/supabase.ts:35
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-export function isSupabaseConfigured() {           // :43
-  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-}
-```
-
-Setelah cutover, `PUBLIC_SUPABASE_URL` = host **Neon**. `isSupabaseConfigured()`
-tetap mengembalikan **`true`** karena ia hanya menguji *dua string ada*, bukan
-*host itu melayani GoTrue*. Setiap `supabase.auth.*` menuju
-`https://ep-…neon.tech/neondb/auth/v1/*`, dan Neon Data API hanya PostgREST —
-tidak ada `/auth/v1`. Jawabannya 404 **[tidak diprobe di sini: tidak ada
-kredensial yang dipakai; yang terbaca dari repo adalah host-nya, bukan
-responsnya]**.
-
-**Dampak hari ini: nol**, dan itu perlu dinyatakan supaya tidak dibaca sebagai
-kebakaran. Pemakainya hanya `loginKandidatSupabase` / `registerKandidatSupabase`
-(`userStore.ts:71,120`), dan **tidak ada komponen yang mengimpornya**. Yang
-benar-benar dipanggil hanya `initializeAuthListener()` (`App.tsx:168`) dan
-`logoutSupabase()` (`BottomNav`); tanpa sesi Supabase di storage, `getSession()`
-mengembalikan `null` tanpa request, jadi listener itu no-op dan logout tetap
-membersihkan state lokal.
-
-**Dampak laten:** orang pertama yang menyambungkan `loginKandidatSupabase` ke
-form akan mendapat 404 yang dilaporkan sebagai `"Login gagal"` — tidak bisa
-dibedakan dari password salah.
-
-**Fix terkecil:** `isSupabaseConfigured()` juga mensyaratkan host berakhiran
-`.supabase.co`; dengan begitu guard-nya benar lagi dan pesannya berubah menjadi
-"Supabase belum dikonfigurasi" alih-alih 404. Alternatif: hapus jalur auth
-Supabase sama sekali (auth aplikasi ini adalah JWT kustom di `_lib/session.ts`).
 
 ### P1b. `xlsx` sudah keluar, tapi chunk admin masih **479 KB dalam satu berkas** *(baru)*
 
@@ -233,11 +164,13 @@ adalah satu baris — tapi site-wide dan butuh plan Pro, jadi ini keputusan owne
 
 ## 3 — Yang sudah ditutup (jangan dibuka lagi tanpa bukti baru)
 
-Semua baris di bawah **diverifikasi ada di `266aa9b`**, bukan hanya diklaim di
+Semua baris di bawah **diverifikasi ada di HEAD**, bukan hanya diklaim di
 pesan commit. Kolom terakhir adalah cara memeriksanya sendiri.
 
 | # | Commit | Yang berubah | Cek cepat |
 |---|---|---|---|
+| **G1 lint-ratchet** | `96d9e25` | 12 diagnostik baru dibersihkan di sumber: `_init?: any` → bentuk eksplisit, `Record<string, any>` → `unknown`, `hasOwnProperty.call` → `Object.hasOwn`, 2 konkatenasi → template literal. Baseline **diturunkan** 2.001 → 1.997 (bukan dinaikkan), jadi penurunan 4 di dua berkas lain ikut terkunci | `node scripts/ci/lint-ratchet.mjs` → PASSED 1.997 |
+| **B13 guard auth** | `1630562` | `isSupabaseConfigured()` = dua string terisi **dan** bukan host Neon Data API; `isNeonDataApiHost()` baru. Domain kustom yang mem-front GoTrue tetap sah | `src/lib/supabase.ts:76-89`; tes blok B13 di `apiClient.test.ts` |
 | B1 breaker | `bb5daa4` | `breaker.success()` pindah ke **setelah** cek status; 5xx/429 = failure, 4xx = netral; `admitted` menandai panggilan yang tidak pernah terjadi | `kernel/http.ts:169-190` |
 | B2 ping-pong tab | `962269b` | handler `storage` mengadopsi identitas dan menulis **byte yang sama**; `lastChecked` tab lain tidak disalin | `authReactive.ts` |
 | B3 cache token | `5011ed2` | cache dikunci ke sesi yang mengisinya (`cachedFor`) | `apiClient.ts:180` |
@@ -363,15 +296,19 @@ ini**; kuota hapus tidak habis dan `spawnSync` tidak diblokir.
 
 ## 8 — Urutan kerja yang disarankan
 
-1. **G1** — hijaukan `lint-ratchet` lebih dulu: **+12 muncul, −4 hilang, net +8**,
-   sebagian mekanis. Sampai ini selesai setiap kegagalan berikutnya ambigu (R1).
-2. **B13** — satu predikat, dan guard yang hari ini berbohong jadi benar.
-3. **P2b** — ~30 KB gzip dari setiap kunjungan anonim; pola lazy-nya sudah ada di
+G1 dan B13 sudah dikerjakan (`96d9e25`, `1630562`). Sisanya, berurutan:
+
+1. **P2b** — ~30 KB gzip dari setiap kunjungan anonim; pola lazy-nya sudah ada di
    `i18n-jp.ts`.
-4. **P1b** — 190 KB gzip dari first paint admin; sembilan `lazy()`.
-5. **P7** — satu baris konfigurasi, tapi butuh keputusan owner (plan + site-wide).
-6. **B8** — keputusan produk: perpanjang sesi, atau hapus kemampuan yang tidak ada.
-7. **P4, P5, P6** — pekerjaan throughput; ukur setelah yang di atas.
+2. **P1b** — 190 KB gzip dari first paint admin; sembilan `lazy()`.
+3. **P7** — satu baris konfigurasi, tapi butuh keputusan owner (plan + site-wide).
+4. **B8** — keputusan produk: perpanjang sesi, atau hapus kemampuan yang tidak ada.
+5. **P4, P5, P6** — pekerjaan throughput; ukur setelah yang di atas.
 
 Setiap item: satu commit, satu tes yang **diamati merah** sebelum perbaikan (R5),
 dan **tanpa push** (R19).
+
+> **Jebakan yang sudah menelan satu korban di sesi ini:** jangan menaruh tes baru
+> di berkas baru. `src/**` dihitung `files.length` (counter beku 603), jadi
+> `src/lib/supabase.test.ts` akan menggeser ratchet tanpa satu baris kode produk
+> pun. Tes B13 karena itu masuk ke `apiClient.test.ts`.

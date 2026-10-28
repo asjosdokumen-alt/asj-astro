@@ -47,10 +47,11 @@
 > (`SUPABASE_JWT_ALG=EdDSA` + `SUPABASE_JWT_PRIVATE_KEY` + `SUPABASE_JWT_KID`),
 > karena Neon tidak punya static JWT secret; mode HS256 tetap ada untuk deploy
 > Supabase. Konsekuensi yang perlu diketahui: `src/lib/supabase.ts` masih
-> membuat klien `@supabase/supabase-js` dari URL Neon, dan
-> `isSupabaseConfigured()` tetap `true` — padahal host itu tidak melayani
-> `/auth/v1`. Jalur `supabase.auth.*` karenanya mati (temuan **B13** di
-> `deliverables/review/perf-bug-review-2026-10-28.md`).
+> membuat klien `@supabase/supabase-js` dari URL Neon, padahal host itu tidak
+> melayani `/auth/v1`. Sejak 2026-10-28 `isSupabaseConfigured()` ikut menolak
+> host Neon (`isNeonDataApiHost()`), jadi keempat pemanggilnya tidak lagi
+> membangun klien ke alamat tanpa server auth — temuan **B13** di
+> `deliverables/review/perf-bug-review-2026-10-28.md`, ditutup `1630562`.
 
 ## Directory Structure
 
