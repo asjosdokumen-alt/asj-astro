@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { cvFactory } from './templates';
 import type { CandidateData, RenderContext } from './types';
 
@@ -131,5 +133,43 @@ describe('CV Template Factory', () => {
     const result = await cvFactory.render('rirekisho-a4', mockData, mockContext);
     expect(result.success).toBe(true);
     expect(result.mimeType).toBe('text/html');
+  });
+});
+
+/**
+ * ANGGARAN BUNDLE — pustaka berat tidak boleh diimpor sebagai VALUE.
+ *
+ * `renderers/excel.ts` dulu `import * as XLSX from 'xlsx'` (488 KB minified /
+ * 159 KB gzip) hanya supaya template yang `listed: false` bisa didaftarkan.
+ * `templates.ts` diimpor `CandidateProfileModal` dan `TabConfig`, jadi setiap
+ * sesi admin mengunduh + mem-parse SheetJS sebelum panelnya bisa tampil —
+ * terukur di artefak build: `AdminPanel.*.js` memuat
+ * `import{utils,write}from"./xlsx.*.js"` STATIS.
+ *
+ * Aturannya: `import type` boleh (hilang saat build), `await import(...)` boleh
+ * (dimuat saat dipakai), `import ... from 'xlsx'` TIDAK.
+ */
+describe('pustaka berat hanya lewat import type / dynamic import', () => {
+  const HEAVY = ['xlsx', 'exceljs', 'mammoth', 'pdf-parse', 'jszip'];
+  const dir = join(process.cwd(), 'src/lib/cv-template-factory');
+
+  function walk(d: string): string[] {
+    return readdirSync(d, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)],
+    );
+  }
+
+  it('tidak ada impor VALUE statis ke pustaka berat', () => {
+    const offenders: string[] = [];
+    for (const file of walk(dir)) {
+      if (!/\.(ts|tsx)$/.test(file) || file.includes('.test.')) continue;
+      const src = readFileSync(file, 'utf8');
+      for (const pkg of HEAVY) {
+        // `import X from 'pkg'` / `import * as X from 'pkg'` tanpa `type`.
+        const staticValue = new RegExp(`^\\s*import\\s+(?!type\\b)[^;]*from\\s+['"]${pkg}['"]`, 'm');
+        if (staticValue.test(src)) offenders.push(`${file} → ${pkg}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });

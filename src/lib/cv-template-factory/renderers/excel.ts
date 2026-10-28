@@ -1,11 +1,18 @@
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
-import * as XLSX from 'xlsx';
+// TYPE-ONLY on purpose. `xlsx` is 488 KB minified / 159 KB gzip, and this
+// renderer is registered but NOT offered (`listed: false` below) — it was the
+// single static edge that pulled SheetJS into the admin bundle, so every admin
+// session downloaded and parsed it before the panel could paint
+// (measured in the built artifact: AdminPanel.*.js had a static
+// `import{utils,write}from"./xlsx.*.js"`). `preview.ts` in this same folder
+// already loads it with `await import(...)`; this file now does too.
+import type * as XLSXNS from 'xlsx';
 
 function s(v: unknown): string {
   return v === undefined || v === null ? '' : String(v);
 }
 
-function buildSheet(data: CandidateData): XLSX.WorkSheet {
+function buildSheet(data: CandidateData): XLSXNS.WorkSheet {
   const ws: XLSX.WorkSheet = {};
   const id = data.identitas;
   const rows: Array<[string | number, string | number]> = [];
@@ -91,6 +98,9 @@ const template: CvTemplate = {
   listed: false,
   async render(data: CandidateData, _context: RenderContext): Promise<RenderResult> {
     try {
+      // Loaded on demand — see the note on the import above. `XLSX` is never
+      // needed to DESCRIBE this template, only to produce the file.
+      const XLSX = await import('xlsx');
       const wb = XLSX.utils.book_new();
       const ws = buildSheet(data);
       XLSX.utils.book_append_sheet(wb, ws, 'CV');
