@@ -148,29 +148,52 @@ export async function request(
   // P16 fix: Move bulkhead acquire inside try block so clearTimeout(timer)
   // runs even if acquireBulkhead or checkBreaker throws.
   let release: (() => void) | null = null;
+  /**
+   * True once BOTH the bulkhead and the breaker admitted this call.
+   *
+   * The catch block must not blame the dependency for a call it never made.
+   * `bulkhead.acquire()` throws when the LOCAL concurrency cap is reached, and
+   * that is a capacity decision, not an upstream failure; counting it as one
+   * makes a burst of legitimate traffic look exactly like a dead database (five
+   * rejections inside the 30 s window opened the `postgrest` breaker for 15 s,
+   * which then refused traffic the bulkhead only meant to queue).
+   */
+  let admitted = false;
   try {
     if (shouldProtect) {
       release = await bulkhead.acquire(dep);
       breaker.check(dep);
+      admitted = true;
     }
 
     const res = await fetch(url, { ...fetchInit, headers, signal });
     const durationMs = Date.now() - startTime;
     clearTimeout(timer);
-    if (shouldProtect) breaker.success(dep);
-    // Feed the admission controller's pressure estimate. Only successful calls
-    // are observed, so the EWMA measures "how slow is a working query" rather
-    // than "how often do we fail" — failure pressure is the breaker's job.
-    observeDependency(dep, durationMs);
-    metrics.increment('dependency.call', { dep, outcome: 'success' });
+    // `breaker.success()` used to sit HERE, before the status was examined, and
+    // the non-2xx branch below then threw into this same catch — so one 4xx was
+    // recorded as a success AND as a failure. Five ordinary 4xx (PGRST204 on a
+    // stale column, 409 on a duplicate key, 404 on an unknown RPC) therefore
+    // tripped the breaker and turned a working database into a 15 s outage.
+    // Success is recorded after the `ok` check; see below.
     if (!res.ok) {
       const body = await res.text().catch(() => '');
+      // 5xx (and 429) = the dependency is unhealthy ⇒ a failure worth tripping
+      // the breaker. 4xx = the dependency answered, and the answer was no:
+      // retrying would fail identically, so it must not move the breaker at all.
+      if (shouldProtect && (res.status >= 500 || res.status === 429)) breaker.failure(dep);
+      metrics.increment('dependency.call', { dep, outcome: 'error' });
       if (!url.includes('/dependency_calls')) void logDependencyCall(dep, actionName, budgetMs, durationMs, 'http_error', res.status);
       throw new HttpError(
         `HTTP ${res.status} ${url}: ${body.slice(0, 200)}`,
         res.status,
       );
     }
+    if (shouldProtect) breaker.success(dep);
+    // Feed the admission controller's pressure estimate. Only successful calls
+    // are observed, so the EWMA measures "how slow is a working query" rather
+    // than "how often do we fail" — failure pressure is the breaker's job.
+    observeDependency(dep, durationMs);
+    metrics.increment('dependency.call', { dep, outcome: 'success' });
     // Log successful call (only if slow or for sampling)
     if (durationMs > 100 || Math.random() < 0.05) {
       if (!url.includes('/dependency_calls')) void logDependencyCall(dep, actionName, budgetMs, durationMs, 'ok');
@@ -179,9 +202,13 @@ export async function request(
   } catch (e: unknown) {
     const durationMs = Date.now() - startTime;
     clearTimeout(timer);
-    if (shouldProtect) breaker.failure(dep);
-    metrics.increment('dependency.call', { dep, outcome: 'error' });
+    // A non-2xx answer was already accounted for in the branch above (breaker +
+    // metrics), so re-throwing here must not count it a second time.
     if (e instanceof HttpError) throw e;
+    // `admitted === false` means bulkhead/breaker refused the call locally —
+    // that is this instance shedding, not the dependency failing.
+    if (shouldProtect && admitted) breaker.failure(dep);
+    metrics.increment('dependency.call', { dep, outcome: 'error' });
     if (e instanceof DOMException && e.name === 'AbortError') {
       if (!url.includes('/dependency_calls')) void logDependencyCall(dep, actionName, budgetMs, durationMs, 'timeout');
       throw new TimeoutError(url, budgetMs);

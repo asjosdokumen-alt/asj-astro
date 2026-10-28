@@ -164,6 +164,73 @@ describe('§6.5 · DB down — writes', () => {
     expect(ctx.dbOutage).toBeUndefined();
   });
 
+  it('a RUN of 4xx must not trip the breaker — only 5xx/timeouts are failures', async () => {
+    routes = [
+      { match: /supabase/, reply: () => new Response('{"message":"bad column"}', { status: 400 }) },
+    ];
+    const { supabaseJson } = await import('./db/client');
+    const { breaker, DEPENDENCY_CONFIGS } = await import('./kernel/resilience');
+
+    const threshold = DEPENDENCY_CONFIGS.postgrest.threshold;
+    for (let i = 0; i < threshold + 2; i++) {
+      await expect(supabaseJson('GET', 'database_schedule')).rejects.toBeTruthy();
+    }
+
+    // `request()` used to call breaker.success() as soon as the socket answered
+    // and then breaker.failure() from its own catch — so each 4xx counted twice
+    // and `threshold` ordinary "no such column" answers opened the breaker for
+    // 15 s. A 4xx is an answer from a working database; it must leave the
+    // breaker exactly where it was.
+    expect(breaker.getState('postgrest')).toBe('closed');
+    // And the evidence is not vacuous: every attempt really did reach the wire.
+    expect(fetchLog.filter((u) => u.includes('supabase')).length).toBeGreaterThanOrEqual(threshold + 2);
+  });
+
+  it('the same number of 5xx DOES trip it — 5xx is the outage signal', async () => {
+    routes = [
+      { match: /supabase/, reply: () => new Response('upstream boom', { status: 503 }) },
+    ];
+    const { supabaseJson } = await import('./db/client');
+    const { breaker, DEPENDENCY_CONFIGS } = await import('./kernel/resilience');
+
+    const threshold = DEPENDENCY_CONFIGS.postgrest.threshold;
+    for (let i = 0; i < threshold; i++) {
+      await expect(supabaseJson('GET', 'database_schedule')).rejects.toBeTruthy();
+    }
+
+    expect(breaker.getState('postgrest')).toBe('open');
+  });
+
+  it('local shedding (bulkhead full) is NOT an upstream failure', async () => {
+    // 8 is the bulkhead's per-dependency cap (resilience.ts, `new Bulkhead(8)`).
+    // Hold every slot with a request that never settles, then make one more call:
+    // it must be refused locally AND must not be charged to the dependency.
+    routes = [
+      {
+        match: /supabase/,
+        reply: () => new Response('[]', { status: 200, headers: { 'content-type': 'application/json' } }),
+      },
+    ];
+    const { breaker, bulkhead, DEPENDENCY_CONFIGS } = await import('./kernel/resilience');
+    const { request } = await import('./kernel/http');
+
+    const held: Array<() => void> = [];
+    for (let i = 0; i < 8; i++) held.push(await bulkhead.acquire('postgrest'));
+    try {
+      // `threshold + 1` refusals, so the count really could have tripped it.
+      for (let i = 0; i < DEPENDENCY_CONFIGS.postgrest.threshold + 1; i++) {
+        await expect(request('https://x.supabase.co/rest/v1/foo')).rejects.toBeTruthy();
+      }
+    } finally {
+      for (const r of held) r();
+    }
+
+    // The bulkhead refusal is this instance protecting itself. Counting it as a
+    // dependency failure is what turned a burst of traffic into a 15 s outage:
+    // 5 local rejections opened the breaker on a perfectly healthy database.
+    expect(breaker.getState('postgrest')).toBe('closed');
+  });
+
   it('the wrapper turns that failure into 503 + Retry-After + no-store', async () => {
     const { applyDbOutage } = await import('./netlify-wrapper-surface');
 
