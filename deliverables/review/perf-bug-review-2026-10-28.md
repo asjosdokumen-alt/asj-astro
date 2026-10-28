@@ -343,3 +343,71 @@ dan **tanpa push** (R19).
 > di berkas baru. `src/**` dihitung `files.length` (counter beku 603), jadi
 > `src/lib/supabase.test.ts` akan menggeser ratchet tanpa satu baris kode produk
 > pun. Tes B13 karena itu masuk ke `apiClient.test.ts`.
+
+---
+
+## 9 — Dari laporan pemilik, 2026-10-29 (bukan dari pass review ini)
+
+Tiga keluhan yang datang sebagai gejala, bukan sebagai temuan. Dua di antaranya
+punya sebab yang tidak terlihat dari gejala yang dilaporkan.
+
+### 9a. "Update biodata → ada notif, tapi Mail kosong" — bukan FCM
+
+`syncBiodataKeMail` menulis jejak ke Mail **hanya** kalau kandidat sudah punya
+baris `database_asj_form`, sementara `notifyAdmins` dipanggil tanpa syarat itu.
+Kode sendiri mencatat 51 baris form untuk 226 kandidat, jadi untuk mayoritas
+kandidat push terkirim dan Mail kosong. Jalur upload sudah benar sejak dulu
+(`syncFormMailDariUpload`: `if (!targets.length) targets = [{}]`).
+
+**Diperbaiki** `fb692d2`: `mine` kosong kini membuat satu baris `[BIODATA]`
+dengan `code_job: ''` — bentuk yang sudah ada di produksi dan sudah dikenali
+`isBiodataRow` di `CandidateDash.tsx`. `upsertFormRow` memakai
+`on_conflict: no_wa,code_job`, jadi berulang kali memanggil tidak menumpuk.
+Push menunjuk `/admin.html#mail` (dan `#mail` memang dibaca `tabFromHash()`).
+
+### 9b. Menyetujui dokumen menandai kandidat "LULUS" — kelulusan yang tidak terjadi
+
+`syncCandidateDariForm(f, 'LULUS')` menulis `status_kandidat = 'LULUS'` pada
+kandidat untuk **setiap** baris yang disetujui, termasuk baris biodata/dokumen
+yang `code_job`-nya kosong. Menyetujui scan paspor karena itu menaikkan tahapan
+seleksi orang yang belum tentu melamar.
+
+**Diperbaiki** `fb692d2`: `status_kandidat` dan `id_loker_pilihan` hanya ditulis
+kalau `code_job` terisi. Salinan field biodata tetap — menyetujui dokumen memang
+menyegarkan data kandidat, dan itu bukan pernyataan lulus.
+
+### 9c. "Lulus" di tab admin — label, bukan model
+Tab Mail adalah tempat **terakhir** yang masih menyebut persetujuan dokumen
+sebagai "Lulus". Event domainnya sudah `application.approved`, push-nya berbunyi
+"disetujui", dan dashboard kandidat sudah memakai kosakata persetujuan.
+
+**Diperbaiki** `f007f6a`: `status.pass` → "Disetujui", `button.pass` → "Setujui",
+toast → "Lamaran disetujui". **Nilai yang disimpan tetap `LULUS`** — mengubah
+enum menyentuh baris yang sudah ada, filter, dan ekspor, jadi itu keputusan
+pemilik: lihat `keputusan-2026-10-29.md` **A1**.
+
+### 9d. Baris yang sedang ditinjau hilang dari kotak masuk — `REVIEW ADMIN` ≠ `REVIEW`
+
+Ditemukan saat menelusuri 9a: kelas bug yang sama, penyebab berbeda.
+`handleReviewForm` menulis status `REVIEW ADMIN` (dengan spasi), keranjangnya
+bernama `REVIEW`, dan perbandingannya `===`. Jadi menekan tombol "Review"
+membuat baris itu **lenyap dari semua filter** kecuali SEMUA, dan hitungan
+"Review" selalu 0.
+
+**Diperbaiki** `fc3ea7c`: penulisnya menulis `REVIEW`, dan UI menormalkan nilai
+lama (`bucketOf()`) untuk hitungan, filter, dan badge — memperbaiki penulis saja
+tidak menyembuhkan baris yang sudah tersimpan.
+
+> Pola yang berulang di tab ini: **baris yang tidak cocok dengan keranjang mana
+> pun akan terlihat seperti "tidak ada apa-apa"**, bukan seperti error. Dua
+> kejadian tercatat (UPDATE pada 2026-10-22, REVIEW ADMIN pada 2026-10-29).
+> Kalau menambah status baru, tambahkan juga keranjangnya — atau normalisasikan
+> seperti `bucketOf()`.
+
+### Keputusan yang menunggu
+
+Hal-hal yang tidak boleh diputuskan sendiri (nilai data, biaya, semantik
+produk) dikumpulkan di **`deliverables/review/keputusan-2026-10-29.md`**, satu
+berkas, dengan pilihan dan rekomendasi per butir. Jangan disebar ke sini:
+review ini mencatat **apa yang salah**, berkas itu mencatat **apa yang harus
+Anda putuskan**.

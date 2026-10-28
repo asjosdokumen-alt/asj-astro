@@ -18,7 +18,7 @@ berkas di sini tidak menggeser ratchet.
 
 | Folder | Isi | Status |
 |---|---|---|
-| `review/` | **Review performa & bug yang dijaga hidup.** Satu berkas, selalu direvisi ke commit terakhir. | ✅ hidup |
+| `review/` | **Review performa & bug yang dijaga hidup**, plus daftar keputusan yang menunggu pemilik. Satu berkas per topik, selalu direvisi ke commit terakhir. | ✅ hidup |
 | `db-neon-migration/` | Rencana + laporan cutover Supabase → Neon (2026-10-20). | snapshot, selesai |
 | `db-audit-2026-10-25.md` | Audit DB hari cutover. | snapshot |
 | `gstack/` | 58 berkas review desain, mockup, screenshot per tanggal (2026-09-27 … 10-12). | snapshot |
@@ -38,4 +38,6 @@ berkas di sini tidak menggeser ratchet.
    sekarang. Perbaiki klaimnya, atau tandai sebagai snapshot — di tabel ini.
 3. **Satu berkas hidup per topik.** Review performa punya satu berkas
    (`review/perf-bug-review-2026-10-28.md`) yang ditulis ulang tiap pass, bukan
-   satu berkas baru per tanggal.
+   satu berkas baru per tanggal. Daftar keputusan pemilik punya satu berkas
+   (`review/keputusan-2026-10-29.md`) yang butirnya dicoret saat diputuskan —
+   bukan satu berkas per keputusan.
