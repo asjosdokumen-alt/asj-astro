@@ -18,7 +18,6 @@
  *   const admin = useStore(isAdmin);
  */
 import { computed } from 'nanostores';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import {
   authStore,
   loginAsAdmin,
@@ -28,6 +27,23 @@ import {
 } from './authReactive';
 import { showToast } from '../components/Toast';
 import { normalizeWaInput } from '../lib/schemas';
+
+/**
+ * Supabase is loaded on demand, NOT at module scope.
+ *
+ * `App.tsx` imports this module, and `App` is the island the landing page
+ * hydrates with `client:load` — so a static import here put the entire Supabase
+ * auth client (213 KB raw / 56 KB gzip, measured in the built island graph) on
+ * the critical path of a page an anonymous visitor only reads. `apiClient.ts`
+ * had the same edge and was fixed the same way; this one was the remaining half
+ * and kept the chunk in the graph after that fix.
+ *
+ * Nothing below needs it to DESCRIBE itself — every call site needs it to do
+ * work, and all of them are already async.
+ */
+async function supabaseModule() {
+  return import('../lib/supabase');
+}
 
 // ─── Computed Atoms (derived from authStore) ──────────
 
@@ -56,6 +72,7 @@ export async function loginKandidatSupabase(
   phone: string,
   password: string
 ): Promise<boolean> {
+  const { supabase, isSupabaseConfigured } = await supabaseModule();
   if (!isSupabaseConfigured()) {
     showToast('Supabase belum dikonfigurasi', 'error');
     return false;
@@ -105,6 +122,7 @@ export async function registerKandidatSupabase(
   phone: string,
   password: string
 ): Promise<boolean> {
+  const { supabase, isSupabaseConfigured } = await supabaseModule();
   if (!isSupabaseConfigured()) {
     showToast('Supabase belum dikonfigurasi', 'error');
     return false;
@@ -146,6 +164,7 @@ export async function registerKandidatSupabase(
  * Logout via Supabase + clear local auth state.
  */
 export async function logoutSupabase(): Promise<void> {
+  const { supabase, isSupabaseConfigured } = await supabaseModule();
   if (isSupabaseConfigured()) {
     try {
       await supabase.auth.signOut();
@@ -182,14 +201,43 @@ let storedUnsubscribe: (() => void) | null = null;
 export function initializeAuthListener(): () => void {
   // P23 fix: Return the real unsubscribe instead of a no-op.
   if (listenerInitialized) return storedUnsubscribe ?? (() => {});
-  if (!isSupabaseConfigured()) {
-    return () => {};
-  }
 
   listenerInitialized = true;
 
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    (event, session) => {
+  /**
+   * The Supabase chunk loads asynchronously (see `supabaseModule`), so the
+   * subscription is attached a tick later than the call. That is invisible to
+   * callers: `onAuthStateChange` emits `INITIAL_SESSION` when it subscribes, so
+   * the session is still restored — it just no longer blocks the first paint of
+   * a page whose visitor may never log in.
+   */
+  let cancelled = false;
+  let detach: (() => void) | null = null;
+
+  const cleanup = () => {
+    cancelled = true;
+    detach?.();
+    detach = null;
+    listenerInitialized = false;
+    storedUnsubscribe = null;
+  };
+  // Stored immediately so a second caller gets the REAL cleanup even while the
+  // chunk is still loading (the P23 guarantee, now covering the async gap).
+  storedUnsubscribe = cleanup;
+
+  void (async () => {
+    const { supabase, isSupabaseConfigured } = await supabaseModule();
+    if (cancelled) return;
+    if (!isSupabaseConfigured()) {
+      // Not configured: nothing to listen to. Reset so a later call can retry
+      // once configuration appears, exactly like the synchronous version.
+      listenerInitialized = false;
+      storedUnsubscribe = null;
+      return;
+    }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
       switch (event) {
         case 'SIGNED_IN':
         case 'TOKEN_REFRESHED': {
@@ -234,14 +282,12 @@ export function initializeAuthListener(): () => void {
     }
   );
 
-  // Return cleanup function — store it so repeated calls get the same one.
-  const unsubscribe = () => {
-    subscription.unsubscribe();
-    listenerInitialized = false;
-    storedUnsubscribe = null;
-  };
-  storedUnsubscribe = unsubscribe;
-  return unsubscribe;
+    // The subscription exists only now — until this line the cleanup is a
+    // no-op, which is correct: there is nothing to unsubscribe yet.
+    detach = () => subscription.unsubscribe();
+  })();
+
+  return cleanup;
 }
 
 // ─── Helpers ──────────────────────────────────────────

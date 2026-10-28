@@ -827,4 +827,12 @@ describe('batas bundle: yang ikut ke landing page', () => {
     expect(src).not.toMatch(/^import\s+AdminAiCopilot\s+from/m);
     expect(src).toContain("import('./admin/AdminAiCopilot')");
   });
+
+  it('userStore tidak mengimpor supabase secara statis', () => {
+    // `App` mengimpor userStore, jadi edge ini mengembalikan 213 KB klien auth
+    // ke grafik kritis landing page walaupun apiClient sudah dinamis.
+    const src = readFileSync('src/store/userStore.ts', 'utf8');
+    expect(src).not.toMatch(/^import\s+\{[^}]*\}\s+from\s+['"]\.\.\/lib\/supabase['"]/m);
+    expect(src).toContain("import('../lib/supabase')");
+  });
 });
