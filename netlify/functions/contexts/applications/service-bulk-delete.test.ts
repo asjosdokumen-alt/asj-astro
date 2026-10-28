@@ -227,7 +227,7 @@ describe('syncBiodataKeMail — jejak Mail punya syarat yang sama dengan push', 
     expect(notified).toHaveLength(1);
   });
 
-  it('kandidat TANPA baris form → satu baris [BIODATA] dibuat, bukan nol', async () => {
+  it('kandidat TANPA baris form → satu baris [BIODATA] berstatus INFO, bukan nol', async () => {
     formsByWa = [];
 
     await syncBiodataKeMail(WA, 'BUDI', ['Nama', 'Alamat']);
@@ -237,7 +237,9 @@ describe('syncBiodataKeMail — jejak Mail punya syarat yang sama dengan push', 
       no_wa: WA,
       code_job: '',
       nama_lengkap: 'BUDI',
-      status: 'MENUNGGU',
+      // INFO, bukan MENUNGGU: pemilik 2026-10-29 — "gak perlu persetujuan
+      // admin, gak perlu menunggu". Baris ini informasi, bukan antrean.
+      status: 'INFO',
     });
     expect(String(upserts[0].feedback_berkas)).toContain('[BIODATA]');
     expect(String(upserts[0].feedback_berkas)).toContain('Nama, Alamat');
@@ -252,35 +254,45 @@ describe('syncBiodataKeMail — jejak Mail punya syarat yang sama dengan push', 
     expect(notified[0][2]).toBe('/admin.html#mail');
   });
 
-  it('kandidat yang sudah punya baris tidak ikut di-upsert (tidak ada baris ganda)', async () => {
-    formsByWa = [{ id: 9, no_wa: WA, status: 'LULUS', feedback_berkas: 'lama' }];
+  it('baris BIODATA yang sudah diputuskan tetap INFO — tidak masuk antrean lagi', async () => {
+    formsByWa = [{ id: 9, no_wa: WA, status: 'MENUNGGU', feedback_berkas: 'lama' }];
 
     await syncBiodataKeMail(WA, 'BUDI', ['Nama']);
 
     expect(upserts).toHaveLength(0);
-    // Status yang sudah LULUS naik jadi UPDATE — perilaku lama, jangan berubah.
+    expect(patches[0].body.status).toBe('INFO');
+    // Tidak ada `[[PREV:…]]`: baris INFO tidak punya status sebelumnya untuk
+    // dikembalikan, jadi penanda itu hanya akan menyesatkan "Tandai dibaca".
+    expect(String(patches[0].body.feedback_berkas)).not.toContain('[[PREV:');
+  });
+
+  it('baris LAMARAN (code_job terisi) tetap jadi UPDATE dengan [[PREV:…]]', async () => {
+    formsByWa = [{ id: 11, no_wa: WA, code_job: 'TG1ASJ', status: 'DISETUJUI', feedback_berkas: 'lama' }];
+
+    await syncBiodataKeMail(WA, 'BUDI', ['Nama']);
+
+    expect(upserts).toHaveLength(0);
     expect(patches[0].body.status).toBe('UPDATE');
-    expect(String(patches[0].body.feedback_berkas)).toContain('[[PREV:LULUS]]');
+    expect(String(patches[0].body.feedback_berkas)).toContain('[[PREV:DISETUJUI]]');
   });
 });
 
 // ==========================================
-// TESTS: menyetujui DOKUMEN tidak boleh menandai kandidat "LULUS"
+// TESTS: menyetujui berkas TIDAK menyatakan lulus
 //
-// Keluhan pemilik 2026-10-29: "update biodata kan gak perlu lulus dari admin;
-// banyak status lulus yang bikin bingung; kalau dokumen itu approve, kalau
-// lulus itu lulus tahapan."
+// Keluhan pemilik 2026-10-29: "lulus hanya untuk admin mengganti tahapan, untuk
+// update dokumen ganti saja di setujui admin".
 //
-// Penyebabnya ada di `syncCandidateDariForm`: menyetujui satu baris Mail
-// menulis `status_kandidat = 'LULUS'` pada kandidat — termasuk untuk baris yang
-// `code_job`-nya KOSONG, yaitu baris biodata/dokumen yang bukan lamaran loker.
-// Akibatnya menyetujui scan paspor menandai orangnya lulus seleksi.
+// `syncCandidateDariForm` dulu menulis `status_kandidat = 'LULUS'` pada kandidat
+// untuk setiap baris yang disetujui — termasuk baris biodata/dokumen yang
+// `code_job`-nya kosong. Menyetujui scan paspor karena itu menandai orangnya
+// lulus seleksi, padahal `status_kandidat` dan `tahapan_seleksi` diubah admin
+// lewat form kandidat (`registry/service.ts`).
 //
-// `database_asj_form` memang menyimpan dua jenis baris (lihat `isBiodataRow` di
-// CandidateDash.tsx): lamaran punya `code_job`, biodata/dokumen tidak. Yang
-// boleh menggerakkan status kandidat hanya yang pertama.
+// Sekarang TIDAK ADA jalur persetujuan Mail yang menyentuh `status_kandidat`,
+// untuk kedua jenis baris.
 // ==========================================
-describe('handleApproveForm — persetujuan dokumen bukan kelulusan tahapan', () => {
+describe('handleApproveForm — persetujuan berkas bukan kelulusan tahapan', () => {
   const WA = '628111222333';
 
   beforeEach(() => {
@@ -290,29 +302,35 @@ describe('handleApproveForm — persetujuan dokumen bukan kelulusan tahapan', ()
     candidateRow = { id: 3, status_kandidat: 'BARU' };
   });
 
-  it('baris BIODATA (code_job kosong) → tidak menulis status_kandidat LULUS', async () => {
-    forms = [{ id: 55, status: 'MENUNGGU', no_wa: WA, code_job: '', nama_lengkap: 'BUDI' } as never];
+  it('menulis DISETUJUI pada baris Mail, bukan LULUS', async () => {
+    forms = [{ id: 55, status: 'MENUNGGU', no_wa: WA, code_job: 'TG1ASJ', nama_lengkap: 'BUDI' } as never];
 
     await handleApproveForm([0], 'admin-ok');
 
-    // Baris Mail-nya tetap disetujui…
-    expect(patches[0].body.status).toBe('LULUS');
-    // …tapi kandidatnya TIDAK ikut dinyatakan lulus.
-    const patchCandidate = candidateWrites.find((w) => w.table === 'database_candidate');
-    if (patchCandidate) {
-      expect(patchCandidate.body.status_kandidat).toBeUndefined();
-      expect(patchCandidate.body.id_loker_pilihan).toBeUndefined();
+    expect(patches[0].body.status).toBe('DISETUJUI');
+  });
+
+  it('tidak menulis status_kandidat LULUS — untuk baris biodata MAUPUN lamaran', async () => {
+    for (const code of ['', 'TG1ASJ']) {
+      patches.length = 0;
+      candidateWrites.length = 0;
+      forms = [{ id: 55, status: 'MENUNGGU', no_wa: WA, code_job: code, nama_lengkap: 'BUDI' } as never];
+
+      await handleApproveForm([0], 'admin-ok');
+
+      const patchCandidate = candidateWrites.find((w) => w.table === 'database_candidate');
+      expect(patchCandidate?.body.status_kandidat).toBeUndefined();
+      expect(patchCandidate?.body.tahapan_seleksi).toBeUndefined();
     }
   });
 
-  it('KONTROL: lamaran sungguhan (code_job terisi) tetap menandai LULUS', async () => {
+  it('KONTROL: id_loker_pilihan tetap dicatat saat barisnya lamaran sungguhan', async () => {
     forms = [{ id: 56, status: 'MENUNGGU', no_wa: WA, code_job: 'TG1ASJ', nama_lengkap: 'BUDI' } as never];
 
     await handleApproveForm([0], 'admin-ok');
 
     const patchCandidate = candidateWrites.find((w) => w.table === 'database_candidate');
     expect(patchCandidate).toBeDefined();
-    expect(patchCandidate?.body.status_kandidat).toBe('LULUS');
     expect(patchCandidate?.body.id_loker_pilihan).toBe('TG1ASJ');
   });
 });

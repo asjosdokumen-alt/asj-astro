@@ -83,8 +83,12 @@ function statusBadgeClass(status: string) {
     return 'bg-amber-900/40 text-amber-400 border-amber-500/30';
   if (s.includes('REVIEW') || s.includes('DIBACA') || s.includes('PROSES'))
     return 'bg-sky-900/40 text-sky-400 border-sky-500/30';
-  if (s.includes('LULUS') || s.includes('APPROVE') || s.includes('LOLOS'))
+  if (s.includes('DISETUJUI') || s.includes('LULUS') || s.includes('APPROVE') || s.includes('LOLOS'))
     return 'bg-emerald-900/40 text-emerald-400 border-emerald-500/30';
+  // INFO = biodata diperbarui; tidak menunggu keputusan, jadi jangan diberi
+  // warna antrean (amber) yang membuat kandidat menunggu sesuatu yang tidak
+  // akan datang. Status ini muncul sejak keputusan pemilik 2026-10-29.
+  if (s === 'INFO') return 'bg-slate-800 text-slate-300 border-slate-600';
   if (s.includes('GAGAL') || s.includes('REJECT') || s.includes('TOLAK'))
     return 'bg-red-900/40 text-red-400 border-red-500/30';
   return 'bg-slate-800 text-slate-300 border-slate-600';
@@ -94,7 +98,7 @@ function statusIcon(status: string) {
   const s = (status || '').toUpperCase();
   if (s.includes('MENUNGGU') || s.includes('BARU') || s.includes('PENDING')) return 'fa-clock';
   if (s.includes('REVIEW') || s.includes('DIBACA') || s.includes('PROSES')) return 'fa-user-check';
-  if (s.includes('LULUS') || s.includes('APPROVE') || s.includes('LOLOS')) return 'fa-check-circle';
+  if (s.includes('DISETUJUI') || s.includes('LULUS') || s.includes('APPROVE') || s.includes('LOLOS')) return 'fa-check-circle';
   if (s.includes('GAGAL') || s.includes('REJECT') || s.includes('TOLAK')) return 'fa-times-circle';
   return 'fa-info-circle';
 }
@@ -146,8 +150,9 @@ function statusText(status: string, biodata = false) {
     return biodata ? t('ui.biodata_menunggu') : t('form.txt_menunggu_review');
   if (s.includes('REVIEW') || s.includes('DIBACA') || s.includes('PROSES'))
     return t('form.txt_review_admin');
-  if (s.includes('LULUS') || s.includes('APPROVE') || s.includes('LOLOS'))
+  if (s.includes('DISETUJUI') || s.includes('LULUS') || s.includes('APPROVE') || s.includes('LOLOS'))
     return biodata ? t('ui.biodata_approved_by_admin') : t('ui.status_approved_by_admin');
+  if (s === 'INFO') return t('ui.biodata_updated');
   if (s.includes('GAGAL') || s.includes('REJECT') || s.includes('TOLAK'))
     return t('form.txt_lamaran_gagal');
   return t('form.txt_diproses');

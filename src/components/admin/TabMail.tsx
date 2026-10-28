@@ -1,7 +1,11 @@
 /**
  * TabMail.tsx — Admin mail inbox tab
  * Source: legacy/index.html page-admin → admin-mail
- * Filters: MENUNGGU, REVIEW, LULUS, GAGAL, SEMUA
+ * Filters: MENUNGGU, UPDATE, REVIEW, DISETUJUI, GAGAL, INFO, SEMUA
+ *
+ * `LULUS` tidak lagi ada di sini: artinya tinggal TAHAPAN seleksi, dan itu
+ * diubah admin lewat form kandidat — bukan dari kotak masuk Mail (keputusan
+ * pemilik 2026-10-29).
  */
 import { useEffect, useState } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
@@ -16,7 +20,26 @@ import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
 import RejectMailModal from './RejectMailModal';
 
-const STATUSES = ['MENUNGGU', 'UPDATE', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'] as const;
+const STATUSES = ['MENUNGGU', 'UPDATE', 'REVIEW', 'DISETUJUI', 'GAGAL', 'INFO', 'SEMUA'] as const;
+
+/**
+ * Label tiap keranjang, sebagai peta — bukan rantai ternary. Rantai sepuluh
+ * cabang adalah tempat di mana status baru lupa ditambahkan.
+ *
+ * `DISETUJUI` memakai `status.pass`, yang isinya sudah "Disetujui". Nilai
+ * `LULUS` sengaja TIDAK dipakai lagi di Mail: keputusan pemilik 2026-10-29 —
+ * "lulus hanya untuk admin mengganti tahapan, untuk update dokumen ganti saja
+ * di setujui admin".
+ */
+const STATUS_LABEL_KEY: Record<string, string> = {
+  MENUNGGU: 'status.waiting',
+  UPDATE: 'status.updated',
+  REVIEW: 'status.review',
+  DISETUJUI: 'status.pass',
+  GAGAL: 'status.fail',
+  INFO: 'status.info',
+  SEMUA: 'status.all',
+};
 
 /**
  * Status mentah → keranjang yang dikenal UI.
@@ -27,6 +50,10 @@ const STATUSES = ['MENUNGGU', 'UPDATE', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'] as 
  * menebak menekan SEMUA — dan hitungan "Review" selalu 0. Kelas bug yang sama
  * dengan baris UPDATE pada 2026-10-22: notifikasinya datang, barisnya tidak ada.
  *
+ * `DIBACA` sengaja masuk keranjang `INFO`: yang membedakan hanya "sudah dilihat",
+ * dan itu ditampilkan di badge barisnya. Memberinya keranjang sendiri akan
+ * menambah satu tombol filter untuk informasi yang sama.
+ *
  * Di module scope, bukan di badan komponen: `filtered` memakainya SEBELUM titik
  * definisi kalau ia ditaruh di sana (`const` tidak di-hoist).
  *
@@ -36,15 +63,25 @@ const STATUSES = ['MENUNGGU', 'UPDATE', 'REVIEW', 'LULUS', 'GAGAL', 'SEMUA'] as 
  */
 function bucketOf(raw: unknown): string {
   const s = String(raw || '').toUpperCase();
-  return s.startsWith('REVIEW') ? 'REVIEW' : s;
+  if (s.startsWith('REVIEW')) return 'REVIEW';
+  if (s === 'DIBACA') return 'INFO';
+  return s;
+}
+
+/** Baris INFORMASI (biodata) — tidak punya tombol Setujui/Tolak. */
+function isInfoRow(raw: unknown): boolean {
+  const s = String(raw || '').toUpperCase();
+  return s === 'INFO' || s === 'DIBACA';
 }
 
 const STATUS_COLORS: Record<string, string> = {
   MENUNGGU: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
   REVIEW: 'bg-sky-500/20 text-sky-400 border-sky-500/40',
   UPDATE: 'bg-violet-500/20 text-violet-300 border-violet-500/40',
-  LULUS: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
+  DISETUJUI: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
   GAGAL: 'bg-red-500/20 text-red-400 border-red-500/40',
+  INFO: 'bg-slate-500/20 text-slate-300 border-slate-500/40',
+  DIBACA: 'bg-slate-600/20 text-slate-400 border-slate-600/40',
 };
 
 export default function TabMail() {
@@ -188,7 +225,7 @@ export default function TabMail() {
   });
 
   // Status counts
-  const counts = { MENUNGGU: 0, UPDATE: 0, REVIEW: 0, LULUS: 0, GAGAL: 0 };
+  const counts = { MENUNGGU: 0, UPDATE: 0, REVIEW: 0, DISETUJUI: 0, GAGAL: 0, INFO: 0 };
   mail.forEach(m => {
     const s = bucketOf(m.status);
     if (s in counts) counts[s as keyof typeof counts]++;
@@ -214,7 +251,7 @@ export default function TabMail() {
                     ? 'bg-sky-600 text-white'
                     : 'text-slate-300 hover:text-white hover:bg-slate-700'
                 }`}>
-                {s === 'SEMUA' ? t('status.all') : s === 'MENUNGGU' ? t('status.waiting') : s === 'UPDATE' ? t('status.updated') : s === 'REVIEW' ? t('status.review') : s === 'LULUS' ? t('status.pass') : s === 'GAGAL' ? t('status.fail') : s}
+                {STATUS_LABEL_KEY[s] ? t(STATUS_LABEL_KEY[s]) : s}
               </button>
             ))}
           </div>
@@ -239,7 +276,7 @@ export default function TabMail() {
       <div class="flex items-center gap-2 mb-3">
         <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">{t('table.status')}:</span>
         <span class="text-xs font-bold text-slate-300">
-          {t('status.waiting')}: {counts.MENUNGGU} | {t('status.updated')}: {counts.UPDATE} | {t('status.review')}: {counts.REVIEW} | {t('status.pass')}: {counts.LULUS} | {t('status.fail')}: {counts.GAGAL} | Total: {mail.length}
+          {t('status.waiting')}: {counts.MENUNGGU} | {t('status.updated')}: {counts.UPDATE} | {t('status.review')}: {counts.REVIEW} | {t('status.pass')}: {counts.DISETUJUI} | {t('status.fail')}: {counts.GAGAL} | {t('status.info')}: {counts.INFO} | Total: {mail.length}
         </span>
       </div>
 
@@ -341,22 +378,41 @@ export default function TabMail() {
                 </td>
                 <td class="p-4 text-center">
                   <div class="flex flex-wrap justify-center gap-1">
-                    {/* "Setujui", bukan "Lulus": yang disetujui admin adalah
-                        BERKAS/lamaran ini, bukan kelulusan tahapan seleksi.
-                        Domain event-nya `application.approved`, push-nya
-                        berbunyi "disetujui", dan dashboard kandidat sudah
-                        memakai kosakata persetujuan — tab admin ini yang masih
-                        menulis "Lulus" (dilaporkan pemilik 2026-10-29). Nilai
-                        yang DISIMPAN tetap `LULUS`; ini label, bukan migrasi. */}
-                    <button type="button" onClick={() => act('approveForm', m.rowIndex, 'Lamaran disetujui')} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition">
-                      <Icon name="check" class="mr-1" /> {t('button.pass')}
-                    </button>
-                    <button type="button" onClick={() => act('reviewForm', m.rowIndex, 'Status REVIEW')} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition">
-                      <Icon name="eye" class="mr-1" /> {t('button.review')}
-                    </button>
-                    <button type="button" onClick={() => setRejectTarget({ rowIndex: m.rowIndex, nama: m.nama })} class="min-h-11 px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[11px] font-bold shadow transition">
-                      <Icon name="times" class="mr-1" /> {t('button.reject')}
-                    </button>
+                    {isInfoRow(m.status) ? (
+                      /* Baris biodata/dokumen INFORMASI: tidak ada yang perlu
+                         disetujui. Pemilik 2026-10-29: "gak perlu persetujuan
+                         admin, gak perlu menunggu". Yang tersedia hanya menandai
+                         bahwa admin sudah melihatnya — itu jawaban atas
+                         pertanyaan "untuk biodata telah dilihat admin gimana". */
+                      <button
+                        type="button"
+                        disabled={String(m.status || '').toUpperCase() === 'DIBACA'}
+                        onClick={() => act('tandaiDibacaForm', m.rowIndex, 'Ditandai sudah dibaca')}
+                        class={`min-h-11 px-2 py-1.5 rounded text-[11px] font-bold shadow transition ${
+                          String(m.status || '').toUpperCase() === 'DIBACA'
+                            ? 'bg-slate-700/40 text-slate-500 cursor-not-allowed'
+                            : 'bg-slate-600 hover:bg-slate-500 text-white'
+                        }`}>
+                        <Icon name="check-double" class="mr-1" /> {t('button.mark_read')}
+                      </button>
+                    ) : (
+                      <>
+                        {/* "Setujui", bukan "Lulus": yang disetujui admin adalah
+                            BERKAS/lamaran ini, bukan kelulusan tahapan seleksi.
+                            Nilai yang DISIMPAN pun sekarang `DISETUJUI`
+                            (keputusan pemilik 2026-10-29); `LULUS` tinggal
+                            arti tahapan dan hanya ditulis dari form kandidat. */}
+                        <button type="button" onClick={() => act('approveForm', m.rowIndex, 'Lamaran disetujui')} class="min-h-11 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[11px] font-bold shadow transition">
+                          <Icon name="check" class="mr-1" /> {t('button.pass')}
+                        </button>
+                        <button type="button" onClick={() => act('reviewForm', m.rowIndex, 'Status REVIEW')} class="min-h-11 px-2 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-[11px] font-bold shadow transition">
+                          <Icon name="eye" class="mr-1" /> {t('button.review')}
+                        </button>
+                        <button type="button" onClick={() => setRejectTarget({ rowIndex: m.rowIndex, nama: m.nama })} class="min-h-11 px-2 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded text-[11px] font-bold shadow transition">
+                          <Icon name="times" class="mr-1" /> {t('button.reject')}
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

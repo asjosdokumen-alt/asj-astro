@@ -572,7 +572,7 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
                       <Icon name="briefcase" class="text-sky-400 text-xs" />
                       <span class="text-white text-sm font-bold">{app.kategori || app.code}</span>
                       <span class={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                        app.status === 'LULUS' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' :
+                        app.status === 'DISETUJUI' || app.status === 'LULUS' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' :
                         app.status === 'Aktif' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40' :
                         'bg-slate-600/50 text-slate-300 border border-slate-600'
                       }`}>{app.status}</span>

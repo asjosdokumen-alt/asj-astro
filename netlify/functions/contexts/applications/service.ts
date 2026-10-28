@@ -29,6 +29,31 @@ import {
 
 const MAIL_PENDING_STATUS = ['MENUNGGU', 'MAIL', 'BARU', 'PENDING'];
 
+/**
+ * Status baris Mail yang berarti "sudah diputuskan admin".
+ *
+ * `DISETUJUI`, bukan `LULUS`. `LULUS` dipakai untuk TAHAPAN seleksi
+ * (`database_candidate.status_kandidat`), dan itulah satu-satunya artinya —
+ * keputusan pemilik 2026-10-29: "lulus hanya untuk admin mengganti tahapan,
+ * untuk update dokumen ganti saja di setujui admin".
+ *
+ * Kosakata ini bukan baru: `migrations/013_biodata_status.sql` sudah memilih
+ * `DISETUJUI` untuk verdict dokumen dan menulis eksplisit "Deliberately NOT
+ * 'LULUS' — the whole defect is one word meaning two things".
+ */
+const MAIL_APPROVED_STATUS = 'DISETUJUI';
+
+/**
+ * Baris biodata/dokumen: INFORMASI, bukan antrean.
+ *
+ * Pemilik 2026-10-29: "ada baris di mail tapi infonya di mail tab, gak perlu
+ * persetujuan admin, gak perlu menunggu". Jadi baris ini tidak pernah masuk
+ * hitungan MENUNGGU dan tidak punya tombol Setujui/Tolak; admin hanya perlu
+ * melihatnya dan bisa menandainya sudah dibaca (`DIBACA`).
+ */
+const MAIL_INFO_STATUS = 'INFO';
+const MAIL_INFO_READ_STATUS = 'DIBACA';
+
 function mailStatusUntukUpdate(currentStatus: string): string {
   const cur = String(currentStatus || '').toUpperCase();
   if (!cur || MAIL_PENDING_STATUS.includes(cur)) return 'MENUNGGU';
@@ -50,7 +75,7 @@ async function syncCandidateDariForm(f: Record<string, unknown>, status: string)
   let lastGenerated: string | null = null;
   if (!wa) return null;
   const row = await findCandidateByWa(wa);
-  if (status === 'LULUS') {
+  if (status === MAIL_APPROVED_STATUS) {
     const now = new Date().toISOString();
     const base: Record<string, unknown> = {
       nama_lengkap: String(f.nama_lengkap || ''),
@@ -64,21 +89,21 @@ async function syncCandidateDariForm(f: Record<string, unknown>, status: string)
       file_cv: f.file_cv || '',
       updated_at: now,
     };
-    // `status_kandidat = LULUS` HANYA untuk lamaran loker sungguhan.
+    // TIDAK ada `status_kandidat` di sini — sama sekali.
     //
-    // `database_asj_form` menyimpan dua jenis baris: lamaran (code_job terisi)
-    // dan biodata/dokumen (code_job kosong — lihat `isBiodataRow` di
-    // CandidateDash.tsx). Sebelum ini keduanya melewati jalur yang sama, jadi
-    // menyetujui scan paspor menulis "LULUS" pada kandidat dan menaikkan
-    // tahapan seleksi yang belum tentu dijalani. Keluhan pemilik 2026-10-29:
-    // "kalau dokumen itu approve, kalau lulus itu lulus tahapan".
+    // Dua alasan, keduanya dari pemilik (2026-10-29):
+    //   1. "lulus hanya untuk admin mengganti tahapan". `status_kandidat` dan
+    //      `tahapan_seleksi` diubah admin lewat form kandidat
+    //      (`registry/service.ts` → `buildKandidatSuperPatch`), bukan lewat
+    //      kotak masuk Mail.
+    //   2. Menyetujui satu baris Mail tidak boleh menjadi pernyataan lulus.
+    //      `database_asj_form` menyimpan dua jenis baris — lamaran (code_job
+    //      terisi) dan biodata/dokumen (code_job kosong, lihat `isBiodataRow`
+    //      di CandidateDash.tsx) — dan keduanya sampai ke fungsi ini.
     //
-    // Salinan field biodata di atas tetap dilakukan: menyetujui dokumen memang
-    // menyegarkan data kandidat, dan itu bukan pernyataan lulus.
-    if (codeJob) {
-      base.status_kandidat = 'LULUS';
-      base.id_loker_pilihan = codeJob;
-    }
+    // Salinan field biodata di atas tetap: menyetujui dokumen memang menyegarkan
+    // data kandidat, dan itu bukan pernyataan lulus.
+    if (codeJob) base.id_loker_pilihan = codeJob;
     if (row && row.id !== undefined) {
       for (const k of Object.keys(base)) if (base[k] === undefined) delete base[k];
       await supabaseJson('PATCH', 'database_candidate', {
@@ -135,7 +160,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
     // Emit domain event for cross-context communication
     const waEvent = normWa(String(f.no_wa || f.wa || ''));
     const jobCodeEvent = String(f.code_job || '');
-    if (status === 'LULUS' && waEvent) {
+    if (status === MAIL_APPROVED_STATUS && waEvent) {
       emit({ type: 'application.approved', wa: waEvent, jobCode: jobCodeEvent, at: new Date().toISOString() });
     } else if (status === 'GAGAL' && waEvent) {
       emit({ type: 'application.rejected', wa: waEvent, jobCode: jobCodeEvent, reason: reason || undefined, at: new Date().toISOString() });
@@ -145,13 +170,13 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
 
     // FCM notification
     const waNotify = normWa(String(f.no_wa || f.wa || ''));
-    if (waNotify && (status === 'GAGAL' || status === 'REVIEW' || status === 'LULUS')) {
+    if (waNotify && (status === 'GAGAL' || status === 'REVIEW' || status === MAIL_APPROVED_STATUS)) {
       try {
         const jobCode = String(f.code_job || '');
         let title = '', pushBody = '';
         if (status === 'GAGAL') { title = 'Dokumen ' + jobCode + ' perlu revisi'; pushBody = reason || 'Lamaran ditolak.'; }
         else if (status === 'REVIEW') { title = 'Dokumen ' + jobCode + ' sedang direview'; pushBody = 'Admin sedang meninjau dokumen Anda.'; }
-        else if (status === 'LULUS') { title = 'Lamaran ' + jobCode + ' disetujui! 🎉'; pushBody = 'Selamat! Lamaran Anda telah disetujui.'; }
+        else if (status === MAIL_APPROVED_STATUS) { title = 'Lamaran ' + jobCode + ' disetujui! 🎉'; pushBody = 'Selamat! Lamaran Anda telah disetujui.'; }
         if (title) {
           // Phase D follow-up (2026-09-13): was `const { rows: tokens } = …`.
           // `supabaseJson()` returns the parsed body directly, so `tokens` was
@@ -202,7 +227,7 @@ export async function handleReviewForm(payload: unknown[], sessionToken?: string
 export async function handleApproveForm(payload: unknown[], sessionToken?: string) {
   const guard = requireAdmin(sessionToken || '');
   if (guard.error) return guard.error;
-  return handleFormStatus((payload || [])[0] as number, 'LULUS', undefined, sessionToken);
+  return handleFormStatus((payload || [])[0] as number, MAIL_APPROVED_STATUS, undefined, sessionToken);
 }
 
 export async function handleRejectForm(payload: unknown[], sessionToken?: string) {
@@ -345,6 +370,16 @@ export async function handleTandaiDibacaForm(payload: unknown[], sessionToken?: 
     const f = await getFormByIndex(idx);
     if (!f) return { success: false, error: 'Form tidak ditemukan.' };
     const fb = String(f.feedback_berkas || '');
+    const cur = String(f.status || '').toUpperCase();
+    // Baris INFORMASI (biodata) tidak punya "status sebelumnya" untuk
+    // dikembalikan — yang dilacak justru apakah admin sudah melihatnya.
+    // Tanpa ini, menekan "Tandai dibaca" pada baris biodata akan mengembalikannya
+    // ke MENUNGGU dan memasukkannya ke antrean yang justru ingin dihindari.
+    if (cur === MAIL_INFO_STATUS) {
+      await patchForm(f.id as number, { status: MAIL_INFO_READ_STATUS, updated_at: new Date().toISOString() }, sessionToken);
+      f.status = MAIL_INFO_READ_STATUS;
+      return { success: true, form: mapForm(f, idx) };
+    }
     const m = fb.match(/\[\[PREV:([^\]]+)\]\]/);
     const prevStatus = m ? m[1].trim() : 'MENUNGGU';
     const newFb = fb.replace(/\[\[PREV:[^\]]+\]\]\s*/, '').trim();
@@ -408,27 +443,38 @@ export async function syncBiodataKeMail(
   const targets: FormRow[] = mine.length ? mine : [{ no_wa: want } as unknown as FormRow];
   for (const r of targets) {
     const hasId = r.id !== undefined && r.id !== null;
-    const isUpdate = mailStatusUntukUpdate(r.status as string) === 'UPDATE';
+    // Dua jenis baris, dua arti status.
+    //
+    //   · Baris LAMARAN (code_job terisi): biodata yang berubah adalah sinyal
+    //     bagi admin, jadi pakai `mailStatusUntukUpdate` — MENUNGGU kalau belum
+    //     diputuskan, UPDATE kalau sudah.
+    //   · Baris BIODATA (code_job kosong): INFORMASI. Pemilik 2026-10-29:
+    //     "gak perlu persetujuan admin, gak perlu menunggu". Menaruhnya di
+    //     MENUNGGU membuat antrean Mail penuh hal yang tidak perlu diputuskan.
+    const isApplicationRow = Boolean(String(r.code_job || '').trim());
+    const nextStatus = isApplicationRow
+      ? mailStatusUntukUpdate(r.status as string)
+      : MAIL_INFO_STATUS;
+    const isUpdate = nextStatus === 'UPDATE';
     const entry =
       (isUpdate ? '[[PREV:' + String(r.status || '').toUpperCase() + ']] ' : '') +
       '[BIODATA] ' + (labels.length ? labels.join(', ') : 'data diperbarui');
     const body: Record<string, unknown> = {
       timestamp: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      status: nextStatus,
       feedback_berkas: appendFeedback(r.feedback_berkas as string, entry),
     };
     if (hasId) {
-      if (isUpdate) body.status = 'UPDATE';
       await patchForm(r.id as number, body, sessionToken);
     } else {
-      // Baris pertama untuk kandidat ini. `MENUNGGU` = belum ada yang meninjau,
-      // sama dengan yang dihasilkan jalur upload untuk baris baru.
+      // Baris pertama untuk kandidat ini. Statusnya ikut aturan di atas: INFO,
+      // karena barisnya biodata — bukan lamaran yang menunggu keputusan.
       await upsertForm({
         ...body,
         no_wa: want,
         code_job: '',
         nama_lengkap: String(nama || 'KANDIDAT').toUpperCase(),
-        status: 'MENUNGGU',
       });
     }
   }

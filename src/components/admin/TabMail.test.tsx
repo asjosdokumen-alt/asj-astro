@@ -26,8 +26,10 @@ vi.mock('../../store/i18n', async () => {
         'status.waiting': 'Menunggu',
         'status.updated': 'Diperbarui',
         'status.review': 'Review',
-        'status.pass': 'Lulus',
+        'status.pass': 'Disetujui',
         'status.fail': 'Gagal',
+        'status.info': 'Info',
+        'button.mark_read': 'Tandai dibaca',
         'status.all': 'SEMUA',
         'admin.no_mail_found': 'Tidak ada mail ditemukan.',
         'admin.mail_update_hint': 'Ada {n} pembaruan biodata/dokumen dari kandidat — buka tab Diperbarui untuk melihatnya.',
@@ -56,7 +58,7 @@ function row(over: Record<string, unknown>) {
 
 const ROWS = [
   row({ rowIndex: 0, id: 1, nama: 'AGUS KHOCI', status: 'UPDATE', feedback: '[BIODATA] email diubah' }),
-  row({ rowIndex: 1, id: 2, nama: 'SITI AMINAH', status: 'LULUS', code: 'TG123' }),
+  row({ rowIndex: 1, id: 2, nama: 'SITI AMINAH', status: 'DISETUJUI', code: 'TG123' }),
   row({ rowIndex: 2, id: 3, nama: 'BUDI SANTOSO', status: 'GAGAL', code: 'TG124' }),
 ];
 
@@ -159,5 +161,56 @@ describe('TabMail — status REVIEW ADMIN masuk keranjang Review', () => {
     render(<TabMail />);
     await waitFor(() => expect(screen.getByText(/Review: 1/)).toBeTruthy());
     expect(screen.getByText('RINA WATI')).toBeTruthy();
+  });
+});
+
+// ==========================================
+// TESTS: baris INFO tidak punya tombol persetujuan
+//
+// Keputusan pemilik 2026-10-29: "ada baris di mail tapi infonya di mail tab,
+// gak perlu persetujuan admin, gak perlu menunggu … biar admin lihat notif dan
+// bisa check siswa mana yang aktif mana yang diperbarui".
+//
+// Baris biodata karena itu berstatus `INFO`: tidak masuk hitungan MENUNGGU, dan
+// tombol Setujui/Review/Tolak diganti satu tombol "Tandai dibaca" (`DIBACA`).
+// Itu jawaban atas pertanyaan pemilik "untuk biodata telah dilihat admin gimana".
+// ==========================================
+describe('TabMail — baris INFO: informasi, bukan antrean', () => {
+  beforeEach(() => {
+    invalidateAdminData();
+    mailFilterStatus.set('INFO');
+    mailList.set([
+      row({ rowIndex: 0, id: 21, nama: 'SITI INFO', status: 'INFO', feedback: '[BIODATA] Nama' }),
+    ] as never);
+    vi.mocked(api.secure).mockResolvedValue({ success: true, formInbox: [] } as never);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.mocked(api.secure).mockReset();
+  });
+
+  it('tidak menawarkan Setujui/Review/Tolak — hanya Tandai dibaca', async () => {
+    render(<TabMail />);
+    await waitFor(() => expect(screen.getByText('SITI INFO')).toBeTruthy());
+
+    // Nama tombol aksi di mock kamus ini adalah KEY-nya (kamus uji hanya
+    // mendefinisikan status.*), jadi yang dicari adalah key mentah itu — bukan
+    // label Indonesia, yang juga dipakai tombol FILTER di atas tabel.
+    expect(screen.queryByRole('button', { name: 'button.pass' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'button.review' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'button.reject' })).toBeNull();
+    expect(screen.getByRole('button', { name: /Tandai dibaca/ })).toBeTruthy();
+  });
+
+  it('DIBACA tetap di keranjang Info, dan tombolnya nonaktif', async () => {
+    mailList.set([
+      row({ rowIndex: 0, id: 22, nama: 'BUDI DIBACA', status: 'DIBACA', feedback: '[BIODATA] Alamat' }),
+    ] as never);
+
+    render(<TabMail />);
+    await waitFor(() => expect(screen.getByText(/Info: 1/)).toBeTruthy());
+    expect(screen.getByText('BUDI DIBACA')).toBeTruthy();
+    const btn = screen.getByRole('button', { name: /Tandai dibaca/ }) as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
   });
 });
