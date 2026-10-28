@@ -8,6 +8,45 @@
 import { describe, it, expect } from 'vitest';
 
 import { check, fail } from './rate-limit';
+import { clientIp } from './kernel/request-helpers';
+
+/**
+ * The IP is the RATE-LIMIT KEY (`netlify-wrapper.ts:88` passes
+ * `ip: clientIp(event)`), so anything a caller can influence here is a caller
+ * choosing its own bucket — i.e. no limit at all.
+ *
+ * `x-forwarded-for` is a LIST that each proxy appends to: the left-most entry is
+ * whatever the CLIENT sent, the right-most is the last hop that actually saw the
+ * connection. Reading `[0]` therefore let a caller send
+ * `X-Forwarded-For: 1.2.3.4` and pick a fresh bucket per request. Netlify also
+ * sets `x-nf-client-connection-ip` from the connection itself, which a client
+ * cannot forge, so that wins when present.
+ */
+describe('clientIp — the rate-limit key must not be client-chosen', () => {
+  it('prefers the connection header Netlify sets over a forged XFF', () => {
+    expect(
+      clientIp({
+        headers: {
+          'x-nf-client-connection-ip': '9.9.9.9',
+          'x-forwarded-for': '1.2.3.4',
+        },
+      }),
+    ).toBe('9.9.9.9');
+  });
+
+  it('takes the LAST XFF hop, not the client-supplied first entry', () => {
+    expect(clientIp({ headers: { 'x-forwarded-for': '1.2.3.4, 203.0.113.7' } })).toBe('203.0.113.7');
+  });
+
+  it('still answers with the only hop when XFF has one entry', () => {
+    expect(clientIp({ headers: { 'x-forwarded-for': '203.0.113.7' } })).toBe('203.0.113.7');
+  });
+
+  it('falls back to client-ip / x-real-ip, and null when nothing is present', () => {
+    expect(clientIp({ headers: { 'client-ip': '198.51.100.2' } })).toBe('198.51.100.2');
+    expect(clientIp({ headers: {} })).toBe(null);
+  });
+});
 
 describe('rate-limit — check()', () => {
   it('first request within limit → ok', () => {

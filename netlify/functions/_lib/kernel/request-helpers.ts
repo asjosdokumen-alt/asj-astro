@@ -71,8 +71,27 @@ export function backpressureHeaders(
 /** Extract client IP from standard proxy/Netlify headers. */
 export function clientIp(event: { headers?: Record<string, string> }): string | null {
   const h = (event && event.headers) || {};
+  // Order matters: this value becomes the RATE-LIMIT KEY
+  // (`netlify-wrapper.ts:88` → `ip: clientIp(event)`), so any header the caller
+  // can set is a caller choosing its own bucket.
+  //
+  // 1. Netlify derives this one from the connection itself. It cannot be forged
+  //    by the request, so it wins whenever it exists.
+  const nf = h['x-nf-client-connection-ip'];
+  if (nf && String(nf).trim()) return String(nf).trim();
+  // 2. `x-forwarded-for` is a LIST that each proxy APPENDS to: the left-most
+  //    entry is whatever the client sent, the right-most is the last hop that
+  //    actually saw the connection. Reading `[0]` (until 2026-10-29) meant
+  //    `X-Forwarded-For: 1.2.3.4` bought a fresh bucket per request — measured
+  //    in `_lib/rate-limit.test.ts`, which fails on the old behaviour.
   const fwd = h['x-forwarded-for'];
-  if (fwd) return String(fwd).split(',')[0].trim();
+  if (fwd) {
+    const hops = String(fwd)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (hops.length) return hops[hops.length - 1];
+  }
   return h['client-ip'] || h['x-real-ip'] || null;
 }
 
