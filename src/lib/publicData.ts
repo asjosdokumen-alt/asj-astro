@@ -36,11 +36,50 @@ export function publicDataUrl(): string {
 
 let inflight: Promise<PublicAppData> | null = null;
 
+/** Upper bound on the public payload read. See `getPublicData()`. */
+const PUBLIC_DATA_TIMEOUT_MS = 8_000;
+
+/**
+ * The public payload, single-flight.
+ *
+ * NEVER REJECTS, and always settles. Two defects are closed here:
+ *
+ *  1. NO TIMEOUT. `inflight` is cleared in `.finally()`, which only runs when
+ *     the promise SETTLES. A request that never settles — a stalled connection,
+ *     a CDN holding the socket open — therefore kept the same promise for the
+ *     lifetime of the page, and every later caller (the marquee, `LokerTable`)
+ *     awaited a request that was never going to answer. One bad connection
+ *     wedged the public data until reload.
+ *  2. NO STATUS CHECK. `res.json()` on an HTML error page throws, and callers
+ *     that only `.then()` got an unhandled rejection plus an empty table. The
+ *     build-time reader in this same file (`fetchPublicJobs`) already checks
+ *     `res.ok` and `content-type` for exactly this reason; the browser path now
+ *     does too.
+ *
+ * A failure resolves as `{ success: false }` — the shape every caller already
+ * handles (`payload.jobs` is undefined → empty list), rather than a rejection
+ * nobody catches.
+ */
 export function getPublicData(): Promise<PublicAppData> {
   if (!inflight) {
-    inflight = fetch(publicDataUrl(), { method: 'GET', headers: { Accept: 'application/json' } })
-      .then((res) => res.json() as Promise<PublicAppData>)
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), PUBLIC_DATA_TIMEOUT_MS);
+    inflight = fetch(publicDataUrl(), {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (res.ok === false) throw new Error(`public data → HTTP ${res.status}`);
+        const contentType = res.headers?.get?.('content-type') ?? '';
+        if (contentType && !contentType.includes('json')) {
+          throw new Error(`public data → bukan JSON (${contentType})`);
+        }
+        return (await res.json()) as PublicAppData;
+      })
+      .catch(() => ({ success: false }) as PublicAppData)
       .finally(() => {
+        clearTimeout(timer);
         inflight = null;
       });
   }

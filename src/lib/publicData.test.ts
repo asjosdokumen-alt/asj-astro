@@ -23,7 +23,12 @@ function stubFetch(payload: unknown = { success: true, jobs: [] }) {
   const calls: Array<{ url: string; init?: RequestInit }> = [];
   const fn = vi.fn(async (url: string, init?: RequestInit) => {
     calls.push({ url, init });
-    return { json: async () => payload } as unknown as Response;
+    return {
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'application/json' }),
+      json: async () => payload,
+    } as unknown as Response;
   });
   globalThis.fetch = fn as unknown as typeof fetch;
   return { fn, calls };
@@ -239,5 +244,80 @@ describe('fetchPublicJobs', () => {
     const rows = await fetchPublicJobs('https://contoh.test');
     expect(rows).toHaveLength(2);
     expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * KETAHANAN transport (2026-10-28).
+ *
+ * `inflight` dibersihkan di `.finally()`, yang hanya jalan kalau promise-nya
+ * SETTLE. Permintaan yang menggantung karena itu menahan promise yang sama
+ * selama umur halaman: marquee dan `LokerTable` sama-sama menunggu request yang
+ * tidak akan pernah menjawab, dan satu koneksi buruk melumpuhkan data publik
+ * sampai reload. Di sisi lain `res.json()` pada halaman error HTML melempar, dan
+ * pemanggil yang hanya memakai `.then()` mendapat unhandled rejection plus tabel
+ * kosong.
+ */
+describe('getPublicData — tidak menggantung dan tidak melempar', () => {
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    vi.useRealTimers();
+  });
+
+  it('status non-2xx diselesaikan sebagai { success:false }, bukan rejection', async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 502,
+      headers: new Headers({ 'content-type': 'text/html' }),
+      json: async () => ({}),
+    })) as unknown as typeof fetch;
+
+    await expect(getPublicData()).resolves.toEqual({ success: false });
+  });
+
+  it('halaman HTML ber-200 (proxy salah host) juga tidak dianggap data', async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      headers: new Headers({ 'content-type': 'text/html' }),
+      json: async () => {
+        throw new SyntaxError('Unexpected token <');
+      },
+    })) as unknown as typeof fetch;
+
+    await expect(getPublicData()).resolves.toEqual({ success: false });
+  });
+
+  it('request yang menggantung dibatalkan setelah timeout, dan panggilan berikutnya TIDAK mewarisi promise mati', async () => {
+    vi.useFakeTimers();
+    let aborted = false;
+    let attempt = 0;
+    globalThis.fetch = vi.fn((_url: string, init?: RequestInit) => {
+      attempt += 1;
+      if (attempt > 1) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => ({ success: true, jobs: [{ code: 'TG1' }] }),
+        } as unknown as Response);
+      }
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          aborted = true;
+          reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+        });
+      });
+    }) as unknown as typeof fetch;
+
+    const hung = getPublicData();
+    await vi.advanceTimersByTimeAsync(8_000);
+    await expect(hung).resolves.toEqual({ success: false });
+    expect(aborted).toBe(true);
+
+    // Promise yang sudah mati tidak boleh tersangkut di `inflight`.
+    const fresh = await getPublicData();
+    expect(fresh.success).toBe(true);
+    expect(attempt).toBe(2);
   });
 });
