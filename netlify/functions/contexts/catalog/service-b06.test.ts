@@ -31,6 +31,7 @@ const m = vi.hoisted(() => ({
   // Real implementation, attached below (see `beforeEach`) — `vi.hoisted` runs
   // before the module graph, so the import has to happen later.
   masterFolder: (n: unknown) => String(n || ''),
+  loadPublicBase: vi.fn(),
 }));
 
 vi.mock('./repository', () => ({
@@ -52,7 +53,7 @@ vi.mock('./repository', () => ({
   loadSchedules: async () => [],
   loadTugas: async () => [],
   loadWaTemplates: async () => [],
-  loadPublicBase: async () => ({ jobs: [], dropdowns: {}, assets: null, pengumuman: '', notFound: false }),
+  loadPublicBase: m.loadPublicBase,
   findFormsByWaList: async () => [],
   findFormsByWa: async () => [],
   findFormsLight: async () => [],
@@ -96,6 +97,14 @@ beforeEach(() => {
   m.masterFolder = realMasterFolder;
   m.findCandWa.mockReset();
   m.findCandWa.mockResolvedValue(null);
+  m.loadPublicBase.mockReset();
+  m.loadPublicBase.mockResolvedValue({
+    jobs: [],
+    dropdowns: {},
+    assets: null,
+    pengumuman: '',
+    notFound: false,
+  });
 });
 
 const JOB_ROW = { code_job: 'TG658', pekerjaan: 'Perawat Jepang', dokumen_share: 'CV,JFT,SSW' };
@@ -268,5 +277,52 @@ describe('kandidat payload — admin memos never leave the server (#10)', () => 
     expect(row.email).toBe('budi@contoh.test');
     expect(row.nik).toBe('3512345678901234');
     expect(row.alamat).toBe('Jl. Mawar 1, Ponorogo');
+  });
+});
+
+// ==========================================
+// Tabel lowongan TIDAK terdeteksi ≠ ada lowongan.
+//
+// `loadPublicBase()` mulai dari `demoGetAppData()` dan hanya menimpa `jobs`
+// kalau tabelnya terbaca. Cabang not-found karena itu menjawab 200 +
+// `success: true` dengan ENAM lowongan DEMO-*: halaman terlihat berisi padahal
+// tidak ada satu pun lowongan nyata, dan satu-satunya petunjuk adalah string
+// `pengumuman` di atas daftar yang tampak sah.
+// ==========================================
+describe('getAppData — dataset demo tidak boleh menyamar sebagai lowongan nyata', () => {
+  const DEMO = [{ code: 'DEMO-0001' }, { code: 'DEMO-0002' }];
+
+  it('notFound: jobs dikosongkan, penyebabnya tetap dijelaskan, dan ditandai demo', async () => {
+    m.loadPublicBase.mockResolvedValue({
+      notFound: true,
+      base: {
+        jobs: DEMO,
+        dropdowns: { kategori: ['Perawat'] },
+        assets: { logo: '/x.png' },
+        pengumuman: '⚠ tabel lowongan belum terdeteksi',
+      },
+    });
+
+    const out = (await handleGetAppData(['public'])) as Record<string, any>;
+
+    expect(out.jobs).toEqual([]);
+    expect(out.demo).toBe(true);
+    // Dropdown/aset TIDAK ikut hilang: itu bukan data lowongan.
+    expect(out.dropdowns).toEqual({ kategori: ['Perawat'] });
+    expect(out.pengumuman).toContain('belum terdeteksi');
+  });
+
+  it('KONTROL: jalur normal tetap mengirim lowongan asli', async () => {
+    m.loadPublicBase.mockResolvedValue({
+      jobs: [{ code: 'TG1ASJ' }],
+      dropdowns: {},
+      assets: null,
+      pengumuman: '',
+      notFound: false,
+    });
+
+    const out = (await handleGetAppData(['public'])) as Record<string, any>;
+    expect(out.jobs).toEqual([{ code: 'TG1ASJ' }]);
+    expect(out.demo).toBeUndefined();
   });
 });

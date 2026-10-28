@@ -17,6 +17,22 @@ import {
 import { MASTER_LIGHT_COLS, PEMBERKASAN_COLS } from '../../_lib/db/projections';
 import { toKandidatView } from '../../_lib/db/candidates';
 
+/**
+ * Payload for "the job table could not be detected".
+ *
+ * `loadPublicBase()` starts from `demoGetAppData()` and only overwrites `jobs`
+ * when it can read the table, so the not-found branch used to answer HTTP 200 +
+ * `success: true` with SIX DEMO-* vacancies. The page looked populated while
+ * carrying no real job, and the only signal was the `pengumuman` string — which
+ * the board renders as a banner above a list that looked genuine.
+ *
+ * An empty board is honest; a fake one is not. `pengumuman` still explains the
+ * cause, and `demo: true` lets a caller tell the two states apart.
+ */
+function notFoundPayload(base: Record<string, any>): Record<string, any> {
+  return { ...base, jobs: [], demo: true };
+}
+
 export async function handleGetAppData(payload: any[], sessionToken?: string) {
   const mode = (payload && payload[0]) || 'public';
   if (!hasBackend()) return demo.demoGetAppData(mode);
@@ -31,7 +47,7 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
       const valid = t && t.role === role && (mode !== 'kandidat' || (t.wa || '') === waPayload || waPayload === '');
       if (!valid) {
         const pub0 = await loadPublicBase(mode);
-        if (pub0.notFound) return pub0.base;
+        if (pub0.notFound) return notFoundPayload(pub0.base);
         return { success: true, activeTheme: '', sessionInvalid: true, jobs: pub0.jobs, dropdowns: pub0.dropdowns, assets: pub0.assets, pengumuman: pub0.pengumuman };
       }
     }
@@ -44,7 +60,7 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
     }
     const results = await Promise.all([loadPublicBase(mode), ...jobs]);
     const pub = results[0];
-    if (pub.notFound) return pub.base;
+    if (pub.notFound) return notFoundPayload(pub.base);
 
     const result: Record<string, any> = {
       success: true, activeTheme: '', sessionInvalid: false,
