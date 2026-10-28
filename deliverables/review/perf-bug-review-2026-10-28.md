@@ -404,6 +404,27 @@ tidak menyembuhkan baris yang sudah tersimpan.
 > Kalau menambah status baru, tambahkan juga keranjangnya — atau normalisasikan
 > seperti `bucketOf()`.
 
+### 9e. Ikon kecil notifikasi = bulatan putih — aturan Android, bukan logo hilang
+
+Dilaporkan dengan screenshot: notifikasi menampilkan bulatan putih kosong di
+sisi kiri. **Logo berwarnanya sudah benar** — `icon: '/icons/icon-192.png'`
+adalah emblem PT Amanah Sakura Japan yang asli (dibuka dan diverifikasi).
+
+Yang salah adalah `badge`, yaitu ikon KECIL di status bar dan sisi kiri. Android
+menggambarnya sebagai **siluet monokrom** — hanya kanal alpha, warna dibuang.
+Yang dikirim `favicon-32.png`: favicon berwarna dengan bidang penuh, jadi seluruh
+bidangnya menjadi putih. Ukurannya juga 32px, sementara Android memakai 24dp
+(≈72px).
+
+**Diperbaiki** `1742257`: `public/icons/badge-torii-96.png` — gerbang torii putih
+96×96 di atas latar tembus pandang, dari glyph `fas-torii-gate` yang sudah ada di
+`sprite.svg` (bukan art baru). Dijaga empat asersi di `swOffline.test.ts` yang
+membaca **sumber** `public/sw.js`, bukan `dist/` yang bisa basi.
+
+> Batas yang perlu diketahui: ikon kecil notifikasi **tidak bisa** berwarna di
+> Android. Kalau ingin logo penuh di sana, satu-satunya jalan adalah membuat
+> siluet resmi dari mark-nya — dan itu keputusan brand, bukan kode.
+
 ### Keputusan yang menunggu
 
 Hal-hal yang tidak boleh diputuskan sendiri (nilai data, biaya, semantik
