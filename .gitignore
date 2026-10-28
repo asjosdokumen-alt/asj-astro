@@ -201,3 +201,19 @@ coverage/
 # Kunci produksi — JANGAN pernah masuk repo (repo ini publik).
 # Berisi PRODUCTION.env dengan token asli. 2026-10-25.
 env-kunci/
+
+# BERKAS ENV YANG SEMPAT TER-TRACK (2026-10-29).
+#
+# `deliverables/db-neon-migration/ENV-BARU-NEON.env` ter-track di repo PUBLIK
+# sampai 2026-10-29. Diperiksa ulang hari itu, seluruh 46 nilai: SETIAP rahasia
+# adalah placeholder bertanda kurung sudut (`<password>`,
+# `<JWT-DARI-NEON-CONSOLE-DATA-API>`, `cloudinary://<key>:<secret>@<cloud>`).
+# TIDAK ADA kredensial yang bocor — rotasi password TIDAK diperlukan.
+# Yang benar-benar terekspos di riwayat: host Neon, username `neondb_owner`,
+# nama bucket, `SUPABASE_URL`, `NETLIFY_SITE_URL`. Itu recon, bukan kredensial.
+# Di-untrack tetap benar (inventaris env 130 baris tidak untuk repo publik).
+# Rewrite riwayat hanya bila nama host dianggap sensitif.
+#
+# Pola `deliverables/**` sengaja TIDAK di-ignore (banyak laporan hidup di sana);
+# yang di-ignore adalah berkas env-nya saja.
+deliverables/db-neon-migration/ENV-BARU-NEON.env
