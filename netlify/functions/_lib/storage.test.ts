@@ -230,3 +230,61 @@ describe('uploadBase64 — gerbang allow-list sebelum storage (S7)', () => {
     expect(requestMock).toHaveBeenCalled();
   });
 });
+
+/**
+ * URUTAN tulis-vs-hapus (2026-10-28).
+ *
+ * Versi lama menghapus lebih dulu, dan korbannya termasuk TUJUAN unggahannya
+ * sendiri (`CV.pdf` dianggap "varian dari CV"). Kalau unggahan kemudian gagal —
+ * offline, tab ditutup, batas ukuran bucket, tanda tangan 120 dtk kedaluwarsa —
+ * dokumen kandidat sudah hilang sementara database masih menunjuk ke sana.
+ * Aturannya: sebuah DELETE tidak boleh mendahului WRITE yang menggantikannya.
+ */
+describe('urutan upload vs hapus varian (anti kehilangan dokumen)', () => {
+  type Call = { method: string; url: string; body: string };
+  let calls: Call[] = [];
+
+  beforeEach(() => {
+    calls = [];
+    requestMock.mockClear();
+    requestMock.mockImplementation(async (url: string, init: any) => {
+      calls.push({
+        method: String(init?.method || 'GET'),
+        url: String(url),
+        body: String(init?.body ?? ''),
+      });
+      if (String(url).includes('object/list')) {
+        // Folder sudah berisi dokumen lama, termasuk nama yang akan ditulis.
+        return {
+          ok: true,
+          text: async () => JSON.stringify([{ name: 'CV.pdf' }, { name: 'CV.jpg' }]),
+        };
+      }
+      return { ok: true, text: async () => '{}' };
+    });
+  });
+
+  it('uploadBase64 menulis DULU, menghapus varian SESUDAH', async () => {
+    await uploadBase64('ZmFrZQ==', 'master/BUDI', 'CV.pdf');
+
+    const writeAt = calls.findIndex((c) => c.method === 'POST' && c.url.includes('/object/asj-files/master/BUDI/CV.pdf'));
+    const listAt = calls.findIndex((c) => c.url.includes('object/list'));
+    const deleteAt = calls.findIndex((c) => c.method === 'DELETE');
+
+    expect(writeAt).toBeGreaterThanOrEqual(0);
+    // Keduanya SESUDAH tulis: kalau tulis gagal, tidak ada yang dihapus.
+    expect(listAt).toBeGreaterThan(writeAt);
+    expect(deleteAt).toBeGreaterThan(writeAt);
+  });
+
+  it('yang dihapus TIDAK termasuk file yang baru saja ditulis', async () => {
+    await uploadBase64('ZmFrZQ==', 'master/BUDI', 'CV.pdf');
+
+    const del = calls.find((c) => c.method === 'DELETE');
+    expect(del).toBeDefined();
+    const prefixes = JSON.parse(del!.body).prefixes as string[];
+
+    expect(prefixes).toEqual(['master/BUDI/CV.jpg']);
+    expect(prefixes).not.toContain('master/BUDI/CV.pdf');
+  });
+});

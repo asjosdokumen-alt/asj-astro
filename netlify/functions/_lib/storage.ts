@@ -164,9 +164,28 @@ function isVarianOf(name: string, stem: string) {
   return n.startsWith(stem + '_');
 }
 
-async function hapusJenisVarian(folder: string, stem: string) {
+/**
+ * Delete every older variant of one document slot, so a slot never ends up with
+ * two files (KTP.jpg + KTP.pdf) and the viewer shows one entry.
+ *
+ * `keepName` is the object that is ABOUT TO BE / HAS JUST BEEN written. It is
+ * never a victim, and that is a correctness rule rather than a nicety:
+ *
+ *   The first version of this function ran BEFORE the upload, and deleted
+ *   `CV.pdf` (the destination itself) as "a variant of CV". If the upload then
+ *   failed — offline, tab closed, bucket size limit, expired 120 s signature —
+ *   the candidate's document was gone while the database still pointed at it.
+ *   A delete must never precede the write that replaces it.
+ *
+ * Callers therefore use it in one of two ways:
+ *   · `uploadBase64` — AFTER the object is stored, keeping the new name;
+ *   · `handleSimpanBerkasTahapan` — after the client CONFIRMS the upload, which
+ *     is the only moment the server knows the bytes really arrived.
+ */
+async function hapusJenisVarian(folder: string, stem: string, keepName?: string) {
   const f = String(folder).replace(/^\/+|\/+$/g, '');
   const stems = [String(stem || '')].concat(stemAliases(stem)).filter(Boolean);
+  const keep = String(keepName || '');
   try {
     const list = await storageRequest('POST', 'object/list/' + bucket(), {
       headers: { 'Content-Type': 'application/json' },
@@ -175,7 +194,7 @@ async function hapusJenisVarian(folder: string, stem: string) {
     const items = Array.isArray(list) ? list : [];
     const victims = items
       .map((o) => (o && o.name ? String(o.name) : ''))
-      .filter((n) => n && stems.some((s) => isVarianOf(n, s)));
+      .filter((n) => n && n !== keep && stems.some((s) => isVarianOf(n, s)));
     if (victims.length) {
       await storageRequest('DELETE', 'object/' + bucket(), {
         headers: { 'Content-Type': 'application/json' },
@@ -197,9 +216,10 @@ async function uploadBase64(data: unknown, folder: string, fileName: string) {
   const buf = b64ToBuffer(data);
   const cleanName = String(fileName).replace(/[^a-zA-Z0-9._-]/g, '_');
   const stem = cleanName.split('.')[0];
-  // FIX anti-duplikat: hapus varian lama (KTP.jpg / KTP.png / alias) dulu.
-  await hapusJenisVarian(folder, stem);
   const path = String(folder).replace(/^\/+|\/+$/g, '') + '/' + cleanName;
+  // WRITE FIRST, delete the superseded variants second. The old order deleted
+  // the destination itself before writing it, so a failed upload destroyed the
+  // document it was meant to replace (see hapusJenisVarian()).
   await storageRequest('POST', 'object/' + bucket() + '/' + path, {
     headers: {
       'Content-Type': mimeFromName(cleanName),
@@ -207,6 +227,7 @@ async function uploadBase64(data: unknown, folder: string, fileName: string) {
     },
     body: buf,
   });
+  await hapusJenisVarian(folder, stem, cleanName);
   return publicUrl(path);
 }
 

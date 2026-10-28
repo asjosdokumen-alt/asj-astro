@@ -203,7 +203,7 @@ export async function handleGetUploadUrls(
     return { success: false, error: "Tidak ada file untuk diupload." };
   const urls: Record<string, any> = {};
   try {
-    const { storageRequest, publicUrl, hapusJenisVarian, bucket } =
+    const { storageRequest, publicUrl, bucket } =
       await import("../../_lib/storage");
     for (const f of files) {
       const key = String(f.key || "").trim();
@@ -234,7 +234,14 @@ export async function handleGetUploadUrls(
         };
       }
       const path = (folder ? folder + "/" : "") + prefix + "." + ext;
-      await hapusJenisVarian(folder, prefix);
+      // NOTHING IS DELETED HERE (2026-10-28). This handler only SIGNS a URL; the
+      // bytes are PUT by the browser afterwards, in a separate request that can
+      // fail (offline, tab closed, bucket size limit, 120 s signature expiry).
+      // `hapusJenisVarian()` used to run at this exact point, so a failed PUT
+      // left the candidate with no document at all while the database still
+      // pointed at the deleted object. The superseded variants are retired at
+      // the CONFIRMATION step instead — `handleSimpanBerkasTahapan`, which is
+      // the first moment the server knows the upload succeeded.
       const res = await storageRequest(
         "POST",
         "object/upload/sign/" + bucket() + "/" + path,
@@ -875,6 +882,19 @@ export async function handleSimpanBerkasTahapan(
       url = (await uploadBase64(f.data, folder, fileName)) ?? "";
       if (!url) return { success: false, error: "Upload gagal." };
     }
+    // CONFIRMATION POINT (2026-10-28). `url` is now a real object — either the
+    // client uploaded to the signed URL and told us, or uploadBase64 just stored
+    // it. Only here is it safe to retire the older variants of this slot; doing
+    // it before the upload (the old `handleGetUploadUrls`) destroyed the
+    // previous document whenever the upload failed.
+    try {
+      const { hapusJenisVarian } = await import("../../_lib/storage");
+      const keep = decodeURIComponent(String(url).split("/").pop() || "");
+      const stem = keep.replace(/\.[^.]+$/, "");
+      if (keep && stem) await hapusJenisVarian(folder, stem, keep);
+    } catch {
+      /* best-effort: varian lama bukan alasan menolak simpan */
+    }
     try {
       await syncFormMailDariUpload(
         wa,
@@ -1027,6 +1047,16 @@ export async function handleSimpanRevisiKandidat(
       const { uploadBase64 } = await import("../../_lib/storage");
       url = (await uploadBase64(f.data, folder, fileName)) ?? "";
       if (!url) return { success: false, error: "Upload gagal." };
+    }
+    // Same confirmation point as handleSimpanBerkasTahapan: the object exists
+    // now, so retiring its older variants cannot lose the document.
+    try {
+      const { hapusJenisVarian } = await import("../../_lib/storage");
+      const keep = decodeURIComponent(String(url).split("/").pop() || "");
+      const stem = keep.replace(/\.[^.]+$/, "");
+      if (keep && stem) await hapusJenisVarian(folder, stem, keep);
+    } catch {
+      /* best-effort */
     }
     try {
       await syncFormMailDariUpload(wa, nama, "CV", url, cvJobCode);
