@@ -525,7 +525,18 @@ async function findTable(candidates: string[], limit = 1) {
       const rows = await supabaseJson('GET', t, {
         query: { select: allColumns(t), limit },
       });
-      if (Array.isArray(rows) && rows.length > 0) return { table: t, rows };
+      if (Array.isArray(rows) && rows.length > 0) {
+        // A page that came back FULL may have been cut at the cap, and every
+        // caller of this helper renders the rows as if they were everything
+        // (the public job board reads JOB_BOARD_LIMIT and sorts in JS). Saying
+        // so in the log is the difference between "the board has 300 jobs" and
+        // "the board shows 300 of N". `limit === 1` is a existence probe, not a
+        // list read — no warning there.
+        if (limit > 1 && rows.length >= limit) {
+          log.warn('read.truncated', { table: t, limit });
+        }
+        return { table: t, rows };
+      }
     } catch {
       /* tabel ada di kontrak tapi tidak bisa dibaca — coba kandidat berikutnya */
     }

@@ -1,6 +1,27 @@
 import { supabaseJson, toText, normalizeWa } from './client';
 import { allColumns } from './schema.generated';
 import { FORM_LIGHT_COLS } from './projections';
+import { log } from '../kernel/log';
+
+/**
+ * The mail inbox is read with a hard cap and NO pagination.
+ *
+ * `rowIndex` in the admin inbox is the POSITION in this array, and the
+ * review/approve/reject/delete handlers receive that index — so the order and
+ * the membership of this list are a wire contract, and switching it to keyset
+ * paging would renumber every row. What is left is to make the truncation
+ * VISIBLE: past the cap, `attachApplications` simply has no row for the missing
+ * forms, and a candidate's applications silently disappear from the admin list
+ * and from their dashboard — the failure reads as "no applications", not "not
+ * loaded".
+ */
+const FORM_READ_LIMIT = 500;
+
+function warnIfTruncated(rows: unknown, what: string): void {
+  if (Array.isArray(rows) && rows.length >= FORM_READ_LIMIT) {
+    log.warn('forms.truncated', { what, limit: FORM_READ_LIMIT });
+  }
+}
 // db/forms.js — repo mail inbox (database_asj_form): mapForm, findForms, query per WA.
 
 // ===== Mail inbox (database_asj_form) =====
@@ -64,8 +85,9 @@ function parseDocs(keterangan: string) {
 // here.
 async function findForms() {
   const rows = await supabaseJson('GET', 'database_asj_form', {
-    query: { select: allColumns('database_asj_form'), order: 'timestamp.desc', limit: 500 },
+    query: { select: allColumns('database_asj_form'), order: 'timestamp.desc', limit: FORM_READ_LIMIT },
   });
+  warnIfTruncated(rows, 'findForms');
   return Array.isArray(rows) ? rows : [];
 }
 
@@ -78,8 +100,9 @@ async function findForms() {
 async function findFormsLight() {
   try {
     const rows = await supabaseJson('GET', 'database_asj_form', {
-      query: { select: FORM_LIGHT_COLS, order: 'timestamp.desc', limit: 500 },
+      query: { select: FORM_LIGHT_COLS, order: 'timestamp.desc', limit: FORM_READ_LIMIT },
     });
+    warnIfTruncated(rows, 'findFormsLight');
     return Array.isArray(rows) ? rows : undefined;
   } catch {
     return undefined;
@@ -177,16 +200,18 @@ async function findFormsByWaList(waList: string[]) {
   const inList = list.join(',');
   try {
     const light = await supabaseJson('GET', 'database_asj_form', {
-      query: { select: FORM_LIGHT_COLS, limit: '500', no_wa: 'in.(' + inList + ')' },
+      query: { select: FORM_LIGHT_COLS, limit: String(FORM_READ_LIMIT), no_wa: 'in.(' + inList + ')' },
     });
+    warnIfTruncated(light, 'findFormsByWaList');
     if (Array.isArray(light)) return light;
   } catch {
     /* proyeksi gagal — coba kolom penuh */
   }
   try {
     const full = await supabaseJson('GET', 'database_asj_form', {
-      query: { select: allColumns('database_asj_form'), limit: '500', no_wa: 'in.(' + inList + ')' },
+      query: { select: allColumns('database_asj_form'), limit: String(FORM_READ_LIMIT), no_wa: 'in.(' + inList + ')' },
     });
+    warnIfTruncated(full, 'findFormsByWaList(full)');
     if (Array.isArray(full)) return full;
   } catch {
     /* jalur berikutnya */

@@ -5,6 +5,7 @@
  * Exports helpers used by other contexts: loadCandidatesUnik, stripRaw
  */
 import { cacheGet, cacheSet } from '../../_lib/cache';
+import { log } from '../../_lib/kernel/log';
 import * as demo from '../../_lib/demo';
 import * as session from '../../_lib/session';
 import {
@@ -62,6 +63,20 @@ const DROPDOWN_MAP: Record<string, string> = {
   broadcast: 'broadcast',
 };
 
+/**
+ * The admin panel reads schedules / tasks / WA templates with a hard cap and no
+ * pagination. Past it, rows vanish from the panel with no marker — the same
+ * class of silent truncation as the mail inbox (see `_lib/db/forms.ts`). Making
+ * it visible is all that can be done without changing what the panel shows.
+ */
+const LIST_READ_LIMIT = 500;
+
+function warnIfCapped(rows: unknown, what: string): void {
+  if (Array.isArray(rows) && rows.length >= LIST_READ_LIMIT) {
+    log.warn('catalog.truncated', { what, limit: LIST_READ_LIMIT });
+  }
+}
+
 function parseConfigList(v: unknown): string[] {
   if (Array.isArray(v)) return v;
   const s = String(v || '').trim();
@@ -81,8 +96,9 @@ function stripRaw(list: Record<string, unknown>[]): Record<string, unknown>[] {
 async function loadSchedules(): Promise<Record<string, unknown>[]> {
   try {
     const rows = await supabaseJson('GET', 'database_schedule', {
-      query: { select: SCHEDULE_MAP_COLS, limit: 500, order: 'created_at.desc' },
+      query: { select: SCHEDULE_MAP_COLS, limit: LIST_READ_LIMIT, order: 'created_at.desc' },
     });
+    warnIfCapped(rows, 'loadSchedules');
     return (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => ({
       idJadwal: toText(r.id_jadwal || r.id || ''),
       namaAgenda: toText(r.nama_agenda || ''),
@@ -99,8 +115,9 @@ async function loadSchedules(): Promise<Record<string, unknown>[]> {
 async function loadTugas(): Promise<Record<string, unknown>[]> {
   try {
     const rows = await supabaseJson('GET', 'database_tugas', {
-      query: { select: TASK_MAP_COLS, limit: 500, order: 'created_at.desc' },
+      query: { select: TASK_MAP_COLS, limit: LIST_READ_LIMIT, order: 'created_at.desc' },
     });
+    warnIfCapped(rows, 'loadTugas');
     return (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => ({
       id: toText(r.id_tugas || r.id || ''),
       task: toText(r.nama_tugas || ''),
@@ -114,8 +131,9 @@ async function loadTugas(): Promise<Record<string, unknown>[]> {
 async function loadWaTemplates(): Promise<Record<string, unknown>[]> {
   try {
     const rows = await supabaseJson('GET', 'wa_templates', {
-      query: { select: WA_TEMPLATE_COLS, limit: 500 },
+      query: { select: WA_TEMPLATE_COLS, limit: LIST_READ_LIMIT },
     });
+    warnIfCapped(rows, 'loadWaTemplates');
     return (Array.isArray(rows) ? rows : []).map((r: Record<string, unknown>) => ({
       id: toText(r.id || ''),
       nama: toText(r.nama || ''),

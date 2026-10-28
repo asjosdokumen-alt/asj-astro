@@ -272,6 +272,10 @@ export default defineConfig({
             // kandidat, penulis vs pembaca. Tanpa DOM; `.ts` di e2e/ tidak
             // dihitung counter beku `indexer`. Tanpa baris ini ia jalan DUA KALI.
             'e2e/master-folder-parity.test.ts',
+            // Ditambahkan 2026-10-28. Batas baca 500 baris (mail inbox) yang
+            // terpotong harus tercatat di log. Tanpa DOM; `.ts` di e2e/ tidak
+            // dihitung counter beku `indexer`. Tanpa baris ini ia jalan DUA KALI.
+            'e2e/read-truncation.test.ts',
           ],
         },
       },
