@@ -15,6 +15,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 type AuthState = { isLoggedIn?: boolean; sessionToken?: string };
 let state: AuthState = { isLoggedIn: false, sessionToken: '' };
 
+/**
+ * Supabase auth, switchable per test.
+ *
+ * The token cache (P7) is only FILLED on the Supabase branch — with Supabase
+ * disabled `getFreshToken()` returns the store token directly and never caches
+ * anything, so a test that leaves this off cannot exercise the cache at all
+ * (measured: the first version of the token-cache test passed on the BUGGY
+ * code for exactly that reason).
+ */
+let sb: { configured: boolean; token: string | null; calls: number } = {
+  configured: false,
+  token: null,
+  calls: 0,
+};
+
 vi.mock('../store/authReactive', () => ({
   authStore: {
     get: () => state,
@@ -24,8 +39,15 @@ vi.mock('../store/authReactive', () => ({
   logout: vi.fn(),
 }));
 vi.mock('./supabase', () => ({
-  supabase: { auth: { getSession: async () => ({ data: { session: null } }) } },
-  isSupabaseConfigured: () => false,
+  supabase: {
+    auth: {
+      getSession: async () => {
+        sb.calls += 1;
+        return { data: { session: sb.token ? { access_token: sb.token } : null } };
+      },
+    },
+  },
+  isSupabaseConfigured: () => sb.configured,
 }));
 vi.mock('../components/Toast', () => ({ showToast: vi.fn() }));
 
@@ -55,6 +77,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   state = { isLoggedIn: false, sessionToken: '' };
+  sb = { configured: false, token: null, calls: 0 };
 });
 
 describe('apiClient cache — session identity keying (PR3)', () => {
@@ -727,5 +750,57 @@ describe('apiClient — opsi `signal`', () => {
       /timed out after/,
     );
     expect(showToast).toHaveBeenCalled();
+  });
+});
+
+/**
+ * Token cache (P7) dulu hanya punya TTL 60 dtk dan tidak terikat ke sesi.
+ * `logout()` mereset store, tapi cache modul tidak menyentuhnya: A logout, B
+ * login di tab yang sama, `isLoggedIn` kembali true — dan sampai satu menit
+ * setiap request dikirim dengan token **A**, di header Authorization DAN di
+ * field sessionToken pada body. Itu perpindahan sesi antar-akun, bukan sekadar
+ * data basi.
+ */
+describe('token cache — tidak menyeberangi pergantian sesi', () => {
+  function lastRequest(): { auth: string; bodyToken: string } {
+    const calls = (fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    const init = calls[calls.length - 1][1] as { headers: Record<string, string>; body: string };
+    return {
+      auth: init.headers.Authorization,
+      bodyToken: (JSON.parse(init.body) as { sessionToken: string }).sessionToken,
+    };
+  }
+
+  it('logout → login akun lain: request memakai token akun BARU', async () => {
+    // Supabase aktif: inilah jalur yang MENGISI cache token.
+    sb = { configured: true, token: 'SUPA-A', calls: 0 };
+    state = { isLoggedIn: true, sessionToken: 'TOKEN-ADMIN-A' };
+    await apiClient('updateKandidatSuper', [{}], { requireAuth: true });
+    expect(lastRequest()).toEqual({
+      auth: 'Bearer SUPA-A',
+      bodyToken: 'SUPA-A',
+    });
+
+    // A logout, lalu B login — di tab yang sama, tanpa reload halaman.
+    state = { isLoggedIn: false, sessionToken: '' };
+    state = { isLoggedIn: true, sessionToken: 'TOKEN-ADMIN-B' };
+    sb.token = 'SUPA-B';
+    await apiClient('updateKandidatSuper', [{}], { requireAuth: true });
+
+    expect(lastRequest()).toEqual({
+      auth: 'Bearer SUPA-B',
+      bodyToken: 'SUPA-B',
+    });
+  });
+
+  it('KONTROL: sesi yang sama tetap memakai cache (tidak ada round-trip tambahan)', async () => {
+    sb = { configured: true, token: 'SUPA-STABLE', calls: 0 };
+    state = { isLoggedIn: true, sessionToken: 'TOKEN-STABLE' };
+    await apiClient('updateKandidatSuper', [{}], { requireAuth: true });
+    await apiClient('updateKandidatSuper', [{}], { requireAuth: true });
+
+    expect(lastRequest().auth).toBe('Bearer SUPA-STABLE');
+    // Cache benar-benar dipakai: getSession hanya sekali untuk dua request.
+    expect(sb.calls).toBe(1);
   });
 });

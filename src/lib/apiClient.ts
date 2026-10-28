@@ -97,6 +97,24 @@ const FALLBACK_ENDPOINT = '/.netlify/functions/bridge-links';
 // P7 fix: Cache Supabase token to avoid extra round trip on every API call.
 let cachedToken: string | null = null;
 let tokenCachedAt = 0;
+/**
+ * The `authStore` token `cachedToken` belongs to.
+ *
+ * WHY THIS EXISTS
+ * ---------------
+ * The 60 s TTL alone outlived the session. `logout()` resets the store, but
+ * nothing here observed that: user A logs out, user B logs in in the same tab
+ * (client-side navigation, no reload), `isLoggedIn` is true again — and for up
+ * to a minute every request is sent with **A's** token, in the `Authorization`
+ * header AND in the `sessionToken` field of the body. That is a session-bleed
+ * between accounts, not just a stale read.
+ *
+ * `invalidateOnIdentityFlip()` below already drops the READ cache on the same
+ * transition; the token cache was the one that was missed. `store/adminData.ts`
+ * solves the same problem with `tokenTag()`; here the raw store token is enough,
+ * because it is only ever compared, never persisted.
+ */
+let cachedFor = '';
 const TOKEN_CACHE_TTL_MS = 60_000; // 60s — shorter than session lifetime
 
 // P6 fix: Track write generation to detect stale-cache race.
@@ -153,21 +171,29 @@ function apiError(
  * Get the freshest session token — checks Supabase first if configured.
  */
 async function getFreshToken(): Promise<string> {
-  // P7 fix: Return cached token if still fresh, avoiding a round trip per request.
   const now = Date.now();
-  if (cachedToken && now - tokenCachedAt < TOKEN_CACHE_TTL_MS) return cachedToken;
+  const sessionToken = authStore.get().sessionToken || '';
+  // P7 fix: Return cached token if still fresh, avoiding a round trip per request.
+  // …but ONLY for the session that filled the cache. Keying on `cachedFor` is
+  // what stops the 60 s window from spanning a logout → login switch; see the
+  // note on `cachedFor`.
+  if (cachedToken && cachedFor === sessionToken && now - tokenCachedAt < TOKEN_CACHE_TTL_MS) {
+    return cachedToken;
+  }
+  cachedToken = null;
 
   if (isSupabaseConfigured()) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.access_token) {
         cachedToken = session.access_token;
+        cachedFor = sessionToken;
         tokenCachedAt = now;
         return cachedToken;
       }
     } catch { /* fall through */ }
   }
-  return authStore.get().sessionToken;
+  return sessionToken;
 }
 
 /**
