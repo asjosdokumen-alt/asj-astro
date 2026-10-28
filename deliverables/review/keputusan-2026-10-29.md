@@ -10,6 +10,30 @@ kalau dipilih**. Nomor di depan untuk dipakai saat menjawab (`A1: pilihan 2`).
 
 ---
 
+## 0a — Keputusan pemilik 2026-10-29 dan hasilnya
+
+| # | Keputusan | Hasil |
+|---|---|---|
+| **A1** | `LULUS` hanya untuk tahapan; berkas = **disetujui** | ✅ `d3698e5` — status Mail `DISETUJUI`, `syncCandidateDariForm` berhenti menulis `status_kandidat` sama sekali, migrasi `025` |
+| **A2** | Baris biodata = info di tab Mail, tanpa persetujuan, tanpa menunggu | ✅ `d3698e5` — status `INFO`, tombol Setujui/Tolak diganti "Tandai dibaca" → `DIBACA` |
+| **A3** | (a) terbitkan token refresh, sesi diperpanjang diam-diam | ✅ `d0ea082` — token penyegar 7 hari diterbitkan di 4 jalur login; klien menyegarkan 60 detik sebelum `exp` |
+| **B1** | Region fungsi → `sin` | ⏭️ **dilewati** — butuh plan Pro; pemilik masih free tier |
+| **B2** | Pecah kamus i18n per rute | ⏭️ **dilewati** — percobaan lazy sebelumnya membuat ganti bahasa rusak dan lambat |
+| **B3** | (1) modul baru `supabaseHost.ts` | ✅ `de461ca` — `getFreshToken` berhenti mengunduh klien 56 gz saat host-nya Neon; counter 603 → 604 dengan atribusi |
+| **C1** | Rate limit diturunkan dari daftar aksi `surfaces/` | ✅ `96e3c7d` — 9 aksi baca dikecualikan; default tetap dibatasi; daftar dijaga tes terhadap `registry.ts` |
+| **C2** | Kandidat: filter/paginasi ke SQL | ⏸️ **ditunda** oleh pemilik — "sebelum 1.000 kandidat, tidak mendesak" |
+| **D1** | Hapus artefak usang | ✅ 241 berkas `.tmp-*` + log (38 MB) dan `test-results/` (29 MB) dihapus; semuanya gitignored dan dapat dibuat ulang |
+| **D2** | Push ke `main` | ⏸️ menunggu pemilik — 12 commit lokal |
+
+**Sisa yang masih butuh jawaban:** hanya **D2** (kapan push). Sisanya sudah
+diputuskan, dikerjakan, atau dilewati dengan alasan yang tercatat.
+
+⚠️ **Satu langkah manual sebelum deploy:** `migrations/025_mail_status_disetujui.sql`
+harus diterapkan ke Neon **sebelum** kode `d3698e5` tayang. Tanpa itu baris lama
+tetap berstatus `LULUS` dan tidak muncul di keranjang mana pun kecuali SEMUA.
+
+---
+
 ## 0 — Sudah dikerjakan hari ini (tanpa perlu keputusan)
 
 | # | Apa | Commit |
