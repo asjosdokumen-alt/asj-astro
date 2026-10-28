@@ -20,8 +20,8 @@ menyentuh bundle.
 |---|---|
 | Temuan pass pertama (`0220438`) | 18 |
 | Ditutup 2026-10-28 | **14** (commit `bb5daa4` … `71537a0`) |
-| Temuan baru pass ini | **5** (G1, B13, P1b, P2b, P7) |
-| Ditutup di sesi yang sama | **2** — G1 (`96d9e25`), B13 (`1630562`) |
+| Temuan baru pass ini | **6** (G1, B13, P1b, P2b, P2c, P7) |
+| Ditutup di sesi yang sama | **3** — G1 (`96d9e25`), B13 (`1630562`), P2c (`8547516`) |
 | **Terbuka pada HEAD** | **7** — B8, P1b, P2b, P4, P5, P6, P7 |
 | Suite uji | **269 berkas / 3 223 tes** pada HEAD — hijau; 3 219 saat `266aa9b` (§6a) |
 | Yang diukur ulang | island landing **229,5 KB / 74,7 gz** · graf admin **861,3 KB / 317,0 gz** · kamus `i18n` **2 058 entri / 102,0 KB / 34,5 gz** |
@@ -171,6 +171,7 @@ pesan commit. Kolom terakhir adalah cara memeriksanya sendiri.
 |---|---|---|---|
 | **G1 lint-ratchet** | `96d9e25` | 12 diagnostik baru dibersihkan di sumber: `_init?: any` → bentuk eksplisit, `Record<string, any>` → `unknown`, `hasOwnProperty.call` → `Object.hasOwn`, 2 konkatenasi → template literal. Baseline **diturunkan** 2.001 → 1.997 (bukan dinaikkan), jadi penurunan 4 di dua berkas lain ikut terkunci | `node scripts/ci/lint-ratchet.mjs` → PASSED 1.997 |
 | **B13 guard auth** | `1630562` | `isSupabaseConfigured()` = dua string terisi **dan** bukan host Neon Data API; `isNeonDataApiHost()` baru. Domain kustom yang mem-front GoTrue tetap sah | `src/lib/supabase.ts:76-89`; tes blok B13 di `apiClient.test.ts` |
+| **P2c preload kamus JP** | `8547516` | `loadJp()` dipanggil di module scope **dan** lewat `preloadJpDict()` di `BaseLayout` — jadi kamus 110,3 KB / 35,6 gz diunduh setiap pengunjung, bukan hanya pembaca JP. Keduanya kini dijaga `langStore.get() === 'jp'`. `ShareView` juga dirutekan lewat `toggleLang()` (satu-satunya tombol bahasa yang melewati `await ensureJpLoaded()`) | `src/store/i18n.ts` (`preloadJpDict`); tes "kamus JP hanya untuk pembaca JP" di `i18n.test.ts` |
 | B1 breaker | `bb5daa4` | `breaker.success()` pindah ke **setelah** cek status; 5xx/429 = failure, 4xx = netral; `admitted` menandai panggilan yang tidak pernah terjadi | `kernel/http.ts:169-190` |
 | B2 ping-pong tab | `962269b` | handler `storage` mengadopsi identitas dan menulis **byte yang sama**; `lastChecked` tab lain tidak disalin | `authReactive.ts` |
 | B3 cache token | `5011ed2` | cache dikunci ke sesi yang mengisinya (`cachedFor`) | `apiClient.ts:180` |
@@ -215,6 +216,13 @@ Chunk `supabase` **tidak ada lagi** di graf. Klaim P2 di dokumen lama (229,5 KB 
 (ia masih ada di `dist/` sebagai chunk lazy 488,1 KB — itu benar).
 
 **Kamus i18n:** 2 058 entri, 102,0 KB / 34,5 gz; 85 key dipakai island landing.
+
+**Kamus JP (`i18n-jp.cO6Oc8Sc.js`):** 110,3 KB / **35,6 gz** — dan sampai
+`8547516` ia diunduh oleh **setiap** pengunjung, bukan hanya pembaca Jepang,
+karena `loadJp()` dipanggil di module scope dan `preloadJpDict()` dipanggil lagi
+dari `BaseLayout`. Graf statis tidak menampakkannya (ia `import()` dinamis), jadi
+angka island 74,7 gz di atas **bukan** seluruh biaya halaman depan: pembaca
+Indonesia membayar 74,7 + 35,6 sebelum perbaikan, 74,7 sesudahnya.
 
 ---
 
@@ -301,14 +309,30 @@ berkas tidak bergerak karena tesnya masuk `apiClient.test.ts`, bukan berkas baru
 
 ## 8 — Urutan kerja yang disarankan
 
-G1 dan B13 sudah dikerjakan (`96d9e25`, `1630562`). Sisanya, berurutan:
+G1, B13, dan P2c sudah dikerjakan (`96d9e25`, `1630562`, `8547516`). Sisanya,
+berurutan — dengan risiko yang dinyatakan lebih dulu, karena dua teratas bukan
+tambalan satu baris:
 
-1. **P2b** — ~30 KB gzip dari setiap kunjungan anonim; pola lazy-nya sudah ada di
-   `i18n-jp.ts`.
-2. **P1b** — 190 KB gzip dari first paint admin; sembilan `lazy()`.
+1. **P1b** — 190 KB gz dari first paint admin. Mekanis (10 `lazy()`), tapi
+   `TAB_VIEWS` di-type `Record<Tab, FunctionComponent>` justru supaya tab tidak
+   bisa hilang, jadi tipenya harus jadi `ComponentType` dan `AdminPanel.test.tsx`
+   perlu `waitFor` karena render tab jadi asinkron. Menyentuh 10 berkas; ukur
+   ulang pada build, jangan percaya perkiraan.
+2. **P2b** — ~30 KB gz dari setiap kunjungan anonim. **Bukan** pemecahan modul
+   biasa: kamus `id` adalah default dan `t()` mengembalikan KEY mentah kalau
+   entri tidak ada, jadi memecahnya per-rute berarti setiap island non-landing
+   harus menunggu kamusnya sebelum render. Butuh keputusan produk (skeleton vs
+   key mentah), bukan hanya refactor.
 3. **P7** — satu baris konfigurasi, tapi butuh keputusan owner (plan + site-wide).
 4. **B8** — keputusan produk: perpanjang sesi, atau hapus kemampuan yang tidak ada.
 5. **P4, P5, P6** — pekerjaan throughput; ukur setelah yang di atas.
+
+Satu kandidat baru yang belum masuk daftar, terukur dari kode: `getFreshToken()`
+di `apiClient.ts` tetap `await import('./supabase')` (212,7 KB / 56 gz) untuk
+setiap pengguna yang login, lalu `isSupabaseConfigured()` menjawab `false` dan
+chunk itu tidak dipakai sama sekali. Memperbaikinya berarti predikat host harus
+pindah ke modul ringan — dan modul baru menggeser `files.length`, jadi ini
+butuh keputusan pemilik dulu.
 
 Setiap item: satu commit, satu tes yang **diamati merah** sebelum perbaikan (R5),
 dan **tanpa push** (R19).
