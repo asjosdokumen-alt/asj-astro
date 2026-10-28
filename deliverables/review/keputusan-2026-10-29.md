@@ -10,6 +10,47 @@ kalau dipilih**. Nomor di depan untuk dipakai saat menjawab (`A1: pilihan 2`).
 
 ---
 
+## 0b — SATU gate merah yang butuh keputusan Anda (E1)
+
+Plafon simbol di `indexer/src/build.test.ts:789` sekarang **terlampaui**:
+
+```
+symbolCount  29 951  >  plafon 29 900   (+51)
+fileCount    604                          (bergerak sah: supabaseHost.ts, disetujui di B3)
+```
+
+Angka ini **tidak boleh saya geser sendiri** — plafonnya milik team-lead, dan
+komentar di berkas itu sendiri menulis "⚠️ PERLU PERSETUJUAN TEAM-LEAD" sejak
+kenaikan sebelumnya. Jadi saya berhenti di sini, bukan menaikkannya diam-diam.
+
+**Asalnya, terukur:** dari 29 808 (tercatat di `266aa9b`) ke 29 951 = **+143**,
+dan **lebih dari separuhnya TES** — sesi ini menambah ~30 tes baru (B13, badge
+notifikasi, semantik status Mail, rate limit, token penyegar). Kode produknya
+sendiri kecil: `supabaseHost.ts` 4 simbol, `apiClient.ts` ~20 (penyegaran sesi),
+`identity/service.ts` ~10 (`issueTokens`), `applications/service.ts` ~8,
+`TabMail.tsx` ~8.
+
+**Pilihan.**
+
+1. **Naikkan plafon ke 30 000** — margin +49, lebih tipis daripada +92
+   sebelumnya, tapi mengikuti konvensi blok itu ("terukur + margin kecil,
+   dibulatkan"). Satu baris + catatan atribusi.
+2. **Pangkas tes** — saya bisa menggabungkan ~10 tes yang granular menjadi 3-4
+   tanpa kehilangan asersi, tapi itu hanya menghemat ~15-20 simbol; **tidak
+   cukup** untuk menutup 51.
+3. **Pangkas kode** — hanya mungkin dengan membuang fitur yang baru saja Anda
+   putuskan (penyegaran sesi atau status Mail). Tidak saya sarankan.
+
+**Rekomendasi: (1).** +143 simbol untuk tiga fitur (sesi diperpanjang, semantik
+status Mail, guard ikon notifikasi) plus ~30 tesnya adalah pertumbuhan yang
+wajar, dan menahannya berarti memilih (3).
+
+**Sampai ini diputuskan, `build.test.ts` merah** — dan R1 repo ini melarang
+pekerjaan dimulai di atas baseline merah. Sisa suite hijau: 269 berkas,
+3 247 lulus, 1 gagal (hanya asersi plafon ini).
+
+---
+
 ## 0a — Keputusan pemilik 2026-10-29 dan hasilnya
 
 | # | Keputusan | Hasil |
