@@ -3,6 +3,7 @@ import { normalizeWa, pick, supabaseJson } from './db/client';
 // auth, job, form). Dipisah dari handlers.js (Fase 1.1b) supaya tidak ada
 // saling-require antar modul action.
 
+import { log } from './kernel/log';
 import { findCandidateByWaFiltered, findCandidates } from './db/candidates';
 
 // Kolom WA yang dikenali di tabel kandidat (urutan prioritas).
@@ -12,7 +13,15 @@ const CAND_WA_COLS = ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp'];
 // Phase 5: Replaced MAX(id)+1 pattern (TOCTOU race) with a Postgres sequence.
 // Sequence: candidate_id_seq (created in 2026-09-01-phase5-async-scale.sql)
 // Fallback: if sequence doesn't exist yet, fall back to the old MAX+1 pattern.
-
+//
+// ⚠️ 2026-10-28: for three weeks the "atomic" path DID NOT EXIST. Migration 006
+// created the sequence only — no function named `nextval` in the exposed schema,
+// and `pg_catalog.nextval` is not reachable as `rpc/nextval` — so every call
+// answered 404 and the `.catch` below swallowed it. Allocation therefore ran on
+// MAX+1 the whole time, i.e. the race this block claims to have removed was
+// still live (recorded symptom: ASJ00226 collided). Migration 024 creates the
+// function; `e2e/master-light-rpc.test.ts` now pins the two together so a
+// missing RPC fails a test instead of silently degrading.
 async function nextCandidateId(): Promise<string> {
   try {
     // Atomic: nextval is safe under concurrent access — no race.
@@ -23,6 +32,15 @@ async function nextCandidateId(): Promise<string> {
       const n = typeof rows === 'number' ? rows : Number(rows);
       if (!isNaN(n) && n > 0) return 'ASJ' + String(n).padStart(5, '0');
     }
+    // Reached only when the RPC is absent or answered something unusable. That
+    // is a DEGRADED state — two concurrent submissions can read the same MAX —
+    // so it must be visible in the log rather than indistinguishable from the
+    // atomic path.
+    log.warn('candidate-id.sequence-unavailable', {
+      rpc: 'rpc/nextval',
+      fallback: 'max+1',
+      hint: 'jalankan migrations/024_candidate_id_nextval_rpc.sql',
+    });
   } catch {
     // Sequence doesn't exist yet — fall back to legacy pattern
   }

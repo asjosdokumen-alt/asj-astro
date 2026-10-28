@@ -276,3 +276,59 @@ describe.skipIf(!dbUrl)('langsung: master_light mengisi ai_* (butuh DB)', () => 
     }
   }, 60000);
 });
+
+/**
+ * KONTRAK `rpc/nextval` — alokasi id kandidat.
+ *
+ * KENAPA DI SINI, DAN KENAPA INI PENTING
+ *   `_lib/candidate-helpers.ts` memanggil `GET /rest/v1/rpc/nextval` dan
+ *   mengklaim alokasi id-nya atomik. Ternyata migrasi 006 hanya membuat
+ *   SEQUENCE-nya; tidak ada fungsi `nextval` di schema yang diekspos PostgREST,
+ *   dan `pg_catalog.nextval` tidak bisa dijangkau sebagai `rpc/nextval`. Setiap
+ *   panggilan dijawab 404, `.catch(() => null)` menelannya, dan alokasi berjalan
+ *   pada `MAX(id_kandidat)+1` — TOCTOU yang justru ingin dihapus sequence itu
+ *   (gejalanya sudah tercatat: ASJ00226 bentrok). Tidak ada satu pun tes yang
+ *   merah, karena fallback-nya hampir selalu berhasil.
+ *
+ *   Yang dikunci di sini adalah pasangan kode↔migrasi: kalau panggilan RPC-nya
+ *   hilang, atau fungsinya tidak pernah dibuat, tes ini merah SEBELUM deploy —
+ *   bukan setelah ada dua kandidat yang mendapat id sama.
+ */
+describe('kontrak: rpc/nextval (alokasi id kandidat)', () => {
+  const dir = `${REPO_ROOT}/migrations`;
+  const defining = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .filter((f) =>
+      /CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\s+public\.nextval\b/i.test(
+        stripSqlComments(readFileSync(`${dir}/${f}`, 'utf8')),
+      ),
+    );
+
+  it('ada migrasi yang mendefinisikan public.nextval', () => {
+    expect(defining.length).toBeGreaterThan(0);
+  });
+
+  it('fungsinya hanya melayani candidate_id_seq (bukan sequence apa pun)', () => {
+    const last = defining.at(-1);
+    expect(last).toBeTruthy();
+    const ddl = stripSqlComments(readFileSync(`${dir}/${last as string}`, 'utf8'));
+
+    expect(ddl).toContain('candidate_id_seq');
+    // Tanpa penolakan eksplisit, `rpc/nextval` yang publik menjadi alat untuk
+    // memajukan sequence tabel LAIN hanya dengan mengirim namanya.
+    expect(ddl).toMatch(/RAISE\s+EXCEPTION/i);
+    expect(ddl).toMatch(/SECURITY\s+DEFINER/i);
+  });
+
+  it('kode memanggil RPC itu untuk sequence yang sama', () => {
+    const src = readFileSync(
+      `${REPO_ROOT}/netlify/functions/_lib/candidate-helpers.ts`,
+      'utf8',
+    );
+    expect(src).toContain("'rpc/nextval'");
+    expect(src).toContain("seqname: 'candidate_id_seq'");
+    // Degradasi ke MAX+1 harus TERLIHAT, bukan senyap.
+    expect(src).toContain('candidate-id.sequence-unavailable');
+  });
+});
