@@ -59,6 +59,14 @@ tahu mana klaim yang sudah benar-benar diuji.
 | [[CICD]] | Build, test, deploy. |
 | [[CI_BATTERY_RUNNER_STATUS]] | Kenapa 4 kali run baterai melaporkan hasil salah. Wajib dibaca sebelum mempercayai output baterai. |
 
+## Review & bukti
+
+| Dokumen | Isi |
+|---|---|
+| `../deliverables/review/perf-bug-review-2026-10-28.md` | **Review performa & bug yang dijaga hidup.** Satu berkas, ditulis ulang ke commit terakhir — bukan satu berkas per tanggal. Temuan terbuka vs tertutup dipisah, tiap angka diukur ulang. |
+| `../deliverables/README.md` | Indeks `deliverables/` — apa yang masih hidup, apa yang snapshot bertanggal. |
+| [[LOCAL_SERVER_8888]] | Server lokal `http://localhost:8888` (`dev.cmd`) — **lokal memakai DB produksi**. Baca sebelum menjalankan tes yang bisa menulis. |
+
 ## Parity dengan legacy
 
 Repo ini adalah **rebuild** dari aplikasi legacy yang masih live. Dokumen-dokumen ini

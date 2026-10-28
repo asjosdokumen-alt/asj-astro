@@ -31,12 +31,26 @@
 | Framework | Astro | SSG/SSR routing, BaseLayout, build engine |
 | Islands | Preact + `client:load` | Interactive UI (forms, modals, toast) |
 | State | Nanostores + persistent | Reactive global state + localStorage sync |
-| Auth | Supabase Auth | Phone + password authentication |
+| Auth | JWT kustom (`_lib/session.ts`) | Sesi WA + password, HMAC, kedaluwarsa 24 jam |
 | Validation | Zod | TypeScript schema validation |
 | API | apiClient.ts (HMAC) | Centralized fetch wrapper with auth injection |
 | PWA | sw.js + manifest | Anti-cache service worker |
 | Build | Vite (Astro built-in) | ESM/TS compilation |
 | Deploy | Netlify | CDN + static hosting |
+| **Data** | **Neon Postgres + Data API (PostgREST)** | `SUPABASE_URL` → `…neon.tech/neondb`, region `ap-southeast-1` |
+| **Storage** | **Supabase Storage** | `STORAGE_SUPABASE_URL` → `…supabase.co` (Neon tidak punya Storage) |
+
+> ⚠️ **Data layer bukan Supabase lagi (cutover 2026-10-25).** Database produksi
+> adalah Neon; yang tersisa dari Supabase hanyalah **Storage**. Nama variabel env
+> sengaja dibiarkan `SUPABASE_*` supaya tidak ada berkas kode yang berubah —
+> lihat `.env.example:68-93`. Tanda tangan JWT ke DB memakai **EdDSA**
+> (`SUPABASE_JWT_ALG=EdDSA` + `SUPABASE_JWT_PRIVATE_KEY` + `SUPABASE_JWT_KID`),
+> karena Neon tidak punya static JWT secret; mode HS256 tetap ada untuk deploy
+> Supabase. Konsekuensi yang perlu diketahui: `src/lib/supabase.ts` masih
+> membuat klien `@supabase/supabase-js` dari URL Neon, dan
+> `isSupabaseConfigured()` tetap `true` — padahal host itu tidak melayani
+> `/auth/v1`. Jalur `supabase.auth.*` karenanya mati (temuan **B13** di
+> `deliverables/review/perf-bug-review-2026-10-28.md`).
 
 ## Directory Structure
 
@@ -240,7 +254,8 @@ npx serve dist
 |----------|-----|
 | **GitHub** | https://github.com/asjosdokumen-alt/asj-astro |
 | **Netlify** | https://amanahsakura.netlify.app |
-| **Supabase** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
+| **Neon (database)** | endpoint `…apirest.c-4.ap-southeast-1.aws.neon.tech/neondb` — dibaca dari `SUPABASE_URL`, **bukan** dari dokumen ini |
+| **Supabase (Storage saja)** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
 
 > Diperbarui 2026-09-26: ketiga URL di atas sebelumnya menunjuk repo/situs/proyek
 > yang sudah tidak dipakai (`khoci280-arch`, `incredible-starship-054a78`,

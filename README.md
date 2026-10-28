@@ -1,21 +1,26 @@
 # ASJ Portal v2
 
-**Astro + Preact + Supabase** — portal rekrutmen kerja ke Jepang (PT Amanah Sakura Japan).
+**Astro + Preact + Neon** — portal rekrutmen kerja ke Jepang (PT Amanah Sakura Japan).
 
-Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions, data di Supabase.
+Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions,
+**database di Neon Postgres** (Data API / PostgREST, region `ap-southeast-1`),
+**file di Supabase Storage**. Nama variabel env tetap `SUPABASE_*` — lihat
+[Data layer](#-data-layer-neon-bukan-supabase) di bawah.
 
 ---
 
-## 📊 Status (terukur 2026-10-08)
+## 📊 Status (terukur 2026-10-28 pada `266aa9b`)
 
 | | |
 |---|---|
-| **Suite uji** | **183 berkas · 2.221 tes · ~323 s.** 3 merah selalu = artefak sandbox (`spawnSync … EBUSY`), **hijau di CI** — jangan "diperbaiki" |
-| **Gate** | `lint-ratchet` PASSED · `review:gate --base=HEAD` **7/7** · `tsc` bersih · `verify:md` OK |
-| **Halaman publik** | `/` **9,9** · `/public` **10,0** · `/loker` **9,9** · `/404` **10,0** — `deliverables/gstack/public-pages-review-2026-10-07.md` |
+| **Suite uji** | **269 berkas · 3.219 tes · ~409 s** — hijau. (Angka lama di sini: 183/2.221 — basi 20 hari) |
+| **`tsc --noEmit`** | bersih (exit 0, diukur ulang 2026-10-28) |
+| **`verify:md`** | OK — 75 berkas tabel diperiksa |
+| **`lint-ratchet`** | 🔴 **MERAH: 2.009 vs baseline 2.001 (+8)**, sisa gelombang perbaikan 2026-10-28. **Perbaiki sumbernya, jangan `--update-baseline`** — itu akan menghapus juga penurunan 4 diagnostik di dua berkas lain. Rincian: `deliverables/review/perf-bug-review-2026-10-28.md` §G1 |
+| **Halaman publik** | `/` **9,9** · `/public` **10,0** · `/loker` **9,9** · `/404` **10,0** — snapshot 2026-10-07, `deliverables/gstack/public-pages-review-2026-10-07.md` |
 | **Deploy produksi** | **hidup** sejak 7 Okt 2026 ⇒ push `main` = deploy berbayar yang langsung tayang |
-| **Berkas tracked** | 950 berkas · ~22 MB (terbesar: `deliverables/` bukti audit, `public/` aset) |
-| **Counter beku** | `files.length = 535` — **hanya team-lead** yang boleh menggesernya |
+| **Berkas tracked** | 1.170 berkas · ~31 MB (terbesar: `deliverables/` bukti audit, `public/` aset) |
+| **Counter beku** | `files.length = 603` · plafon simbol **29.900** (terukur 29.808) — **hanya team-lead** yang boleh menggesernya |
 
 > ⚠️ **Dua butir yang butuh keputusan owner** — sudah terukur, **belum** dikerjakan:
 >
@@ -40,25 +45,33 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions, data
 | Resource | URL |
 |----------|-----|
 | **GitHub** | https://github.com/asjosdokumen-alt/asj-astro |
-| **Live Site** | https://asjastro.netlify.app |
-| **Netlify project** | ⚠ the host has moved three times (away on 2026-09-28, back on 2026-10-13). Open it from the site's own dashboard — `app.netlify.com/projects/asjastro` is the one deploying again; `boisterous-taiyaki-c61202` is retired (404 as of 2026-10-13) |
-| **Supabase (data)** | https://supabase.com/dashboard/project/bimqyugdhiuxcqltjjnt |
-| **Supabase (aset publik)** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
+| **Live Site** | https://amanahsakura.netlify.app |
+| **Netlify project** | ⚠ host sudah berpindah tiga kali dan **diganti nama** pada 2026-10-24. Yang benar hari ini: `amanahsakura.netlify.app` (situs yang sama, nama baru). `asjastro.netlify.app` → **404**, bukan redirect; `boisterous-taiyaki-c61202` → 404 sejak 2026-10-13 |
+| **Neon (database)** | endpoint `…apirest.c-4.ap-southeast-1.aws.neon.tech/neondb` — nilainya ada di env (`SUPABASE_URL`), bukan di dokumen ini |
+| **Supabase (Storage saja)** | https://supabase.com/dashboard/project/gdwvffmevwtwnzrapjwy |
 
-> ⚠️ **Aplikasi ini memakai DUA proyek Supabase**, dan itu tidak kelihatan dari
-> satu tempat:
+> ⚠️ **Database BUKAN Supabase lagi — sudah Neon sejak cutover 2026-10-25.**
+> Yang masih Supabase hanyalah **Storage**.
 >
-> 1. **Data** — `bimqyugdhiuxcqltjjnt`. Inilah yang dibaca dari env
->    (`PUBLIC_SUPABASE_URL` / `SUPABASE_URL`) oleh `src/lib/supabase.ts`, jadi
->    inilah proyek auth + database. Dibuktikan: chunk `supabase` di **kedua**
->    situs live mem-bake ref ini.
-> 2. **Aset publik** — `gdwvffmevwtwnzrapjwy`. Hanya menyimpan bucket
->    `asj-files` (logo, banner, `jeklin.png`). **Di-hardcode di 17 tempat** di
->    `src/` dan `netlify/` — bukan dari env.
+> 1. **Data** — Neon Postgres, diakses lewat Neon Data API (PostgREST) di
+>    `/neondb/rest/v1/`. Variabelnya tetap bernama `SUPABASE_URL` /
+>    `PUBLIC_SUPABASE_URL` **dengan sengaja**, supaya tidak ada berkas kode yang
+>    berubah saat migrasi (lihat `.env.example:68-93`). Tanda tangan JWT ke DB
+>    memakai EdDSA: `SUPABASE_JWT_ALG=EdDSA`, `SUPABASE_JWT_PRIVATE_KEY`,
+>    `SUPABASE_JWT_KID`. `SUPABASE_JWT_SECRET` (HS256) **tidak ada** di produksi
+>    dan tidak diperlukan.
+> 2. **Storage** — `gdwvffmevwtwnzrapjwy` (`STORAGE_SUPABASE_URL`). Bucket
+>    `asj-files` menyimpan dokumen & pamflet kandidat. Neon tidak punya Storage,
+>    jadi `SUPABASE_URL` **tidak boleh** dipakai untuk `/storage/v1` — akan 404.
 >
-> Konsekuensinya: mengganti `PUBLIC_SUPABASE_URL` **tidak** memindahkan aset,
-> dan memindahkan aset berarti menyunting 17 URL hardcoded. Catat ini sebelum
-> migrasi proyek.
+> Konsekuensinya: mengganti `PUBLIC_SUPABASE_URL` memindahkan **database**, bukan
+> aset. Aset brand (logo, banner) ada di `public/`, bukan di bucket.
+>
+> ⚠️ **Jangan tertipu oleh `src/lib/supabase.ts`.** Berkas itu masih membuat
+> klien `@supabase/supabase-js` dari URL Neon, dan `isSupabaseConfigured()`
+> mengembalikan `true` — padahal host Neon tidak melayani `/auth/v1`. Semua
+> `supabase.auth.*` di sana mati (temuan **B13**). Auth yang benar-benar dipakai
+> adalah JWT kustom di `netlify/functions/_lib/session.ts`.
 
 > 🔴 **Status deploy — HIDUP LAGI, dan push kini benar-benar tayang.**
 >
@@ -91,13 +104,13 @@ Situs statis (Astro SSG) dengan pulau Preact, backend di Netlify Functions, data
 |-------|-----------|
 | Framework | Astro 5.x (SSG) + Preact islands (`client:only="preact"`) |
 | State | Nanostores (+ `@nanostores/persistent` untuk auth & tema) |
-| Auth | Fungsi `auth` sendiri: **WA + password → JWT** (`SESSION_SECRET`). Supabase Auth dipakai untuk alur terpisah di `store/userStore.ts` |
+| Auth | Fungsi `auth` sendiri: **WA + password → JWT** (`SESSION_SECRET`), kedaluwarsa 24 jam. ⚠️ Jalur `supabase.auth.*` di `store/userStore.ts` **mati** sejak cutover Neon — host `PUBLIC_SUPABASE_URL` tidak punya `/auth/v1` (temuan B13) |
 | Validation | Zod (`src/lib/schemas.ts`) |
 | CSS | Tailwind CSS v4 |
 | Ikon | Sprite SVG sendiri (`npm run icons` → `src/icons/sprite-map.ts`) |
 | PWA | Service Worker + manifest (`scripts/build-sw-manifest.mjs`) |
 | Backend | Netlify Functions (surface → context → kernel) |
-| Data | Supabase (Postgres + Storage) |
+| Data | **Neon Postgres** (Data API / PostgREST) + **Supabase Storage** untuk berkas |
 | Node | 22 (`.nvmrc`) |
 
 ---
@@ -141,8 +154,9 @@ ke `netlify dev` lokal: `BACKEND_TARGET=http://127.0.0.1:8888 node server.cjs`.
 
 | Kelompok | Variabel |
 |----------|----------|
-| Supabase (klien) | `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` |
-| Supabase (server) | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_DB_URL`, `SUPABASE_STORAGE_BUCKET` |
+| Data (Neon, nama lama dipertahankan) | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_PG_ADMIN_ROLE`, `SUPABASE_JWT_ALG`, `SUPABASE_JWT_PRIVATE_KEY`, `SUPABASE_JWT_KID` |
+| Storage (Supabase) | `STORAGE_SUPABASE_URL`, `STORAGE_SUPABASE_KEY`, `SUPABASE_STORAGE_BUCKET` |
+| Data (klien, hanya untuk build) | `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` |
 | Sesi | `SESSION_SECRET`, `ADMIN_MASTER_PIN`, `PIN_MASTER`, `PIN_SACHOU`, `PIN_AYOK`, `PIN_KHOLIS`, `PIN_KHOCI` |
 | AI | `GEMINI_API_KEY`, `XAI_API_KEY`, `GROQ_API_KEY` |
 | WhatsApp | `FONNTE_TOKEN` |
