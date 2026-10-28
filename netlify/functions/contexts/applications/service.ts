@@ -62,10 +62,23 @@ async function syncCandidateDariForm(f: Record<string, unknown>, status: string)
       jft: f.jft || '',
       ssw: f.ssw || '',
       file_cv: f.file_cv || '',
-      status_kandidat: 'LULUS',
       updated_at: now,
     };
-    if (codeJob) base.id_loker_pilihan = codeJob;
+    // `status_kandidat = LULUS` HANYA untuk lamaran loker sungguhan.
+    //
+    // `database_asj_form` menyimpan dua jenis baris: lamaran (code_job terisi)
+    // dan biodata/dokumen (code_job kosong — lihat `isBiodataRow` di
+    // CandidateDash.tsx). Sebelum ini keduanya melewati jalur yang sama, jadi
+    // menyetujui scan paspor menulis "LULUS" pada kandidat dan menaikkan
+    // tahapan seleksi yang belum tentu dijalani. Keluhan pemilik 2026-10-29:
+    // "kalau dokumen itu approve, kalau lulus itu lulus tahapan".
+    //
+    // Salinan field biodata di atas tetap dilakukan: menyetujui dokumen memang
+    // menyegarkan data kandidat, dan itu bukan pernyataan lulus.
+    if (codeJob) {
+      base.status_kandidat = 'LULUS';
+      base.id_loker_pilihan = codeJob;
+    }
     if (row && row.id !== undefined) {
       for (const k of Object.keys(base)) if (base[k] === undefined) delete base[k];
       await supabaseJson('PATCH', 'database_candidate', {
@@ -382,8 +395,19 @@ export async function syncBiodataKeMail(
   // dan dulu fungsi ini berhenti sebelum `notifyAdmins` — sehingga push ke admin
   // tidak pernah terkirim justru untuk mayoritas kandidat. Yang bergantung pada
   // `mine` hanyalah PENULISAN jejak ke Mail, bukan notifikasinya.
-  for (const r of mine) {
-    if (r.id === undefined || r.id === null) continue;
+  //
+  // 2026-10-29: `mine` kosong kini membuat SATU baris, bukan nol. Sebelumnya
+  // admin menerima push "memperbarui data" lalu membuka Mail dan tidak menemukan
+  // apa pun — untuk mayoritas kandidat. Jalur upload sudah melakukan hal yang
+  // sama (`syncFormMailDariUpload`: `if (!targets.length) targets = [{}]`), jadi
+  // bentuk barisnya bukan hal baru: `database_asj_form` memang menyimpan dua
+  // jenis baris, dan pembedanya `code_job` kosong + penanda `[BIODATA]` di
+  // `feedback_berkas` (lihat `isBiodataRow` di CandidateDash.tsx).
+  // `upsertFormRow` memakai `on_conflict: no_wa,code_job`, jadi pemanggilan
+  // berulang MENGGABUNG ke baris yang sama, bukan menumpuk.
+  const targets: FormRow[] = mine.length ? mine : [{ no_wa: want } as unknown as FormRow];
+  for (const r of targets) {
+    const hasId = r.id !== undefined && r.id !== null;
     const isUpdate = mailStatusUntukUpdate(r.status as string) === 'UPDATE';
     const entry =
       (isUpdate ? '[[PREV:' + String(r.status || '').toUpperCase() + ']] ' : '') +
@@ -393,13 +417,26 @@ export async function syncBiodataKeMail(
       updated_at: new Date().toISOString(),
       feedback_berkas: appendFeedback(r.feedback_berkas as string, entry),
     };
-    if (isUpdate) body.status = 'UPDATE';
-    await patchForm(r.id, body, sessionToken);
+    if (hasId) {
+      if (isUpdate) body.status = 'UPDATE';
+      await patchForm(r.id as number, body, sessionToken);
+    } else {
+      // Baris pertama untuk kandidat ini. `MENUNGGU` = belum ada yang meninjau,
+      // sama dengan yang dihasilkan jalur upload untuk baris baru.
+      await upsertForm({
+        ...body,
+        no_wa: want,
+        code_job: '',
+        nama_lengkap: String(nama || 'KANDIDAT').toUpperCase(),
+        status: 'MENUNGGU',
+      });
+    }
   }
   if (labels && labels.length > 0) {
     try {
       const { notifyAdmins } = await import('../../_lib/fcm-helpers');
-      await notifyAdmins('Biodata Lengkap (CV) Diperbarui', `Kandidat ${nama} (${wa}) memperbarui data: ${labels.join(', ')}.`, '/admin.html');
+      // `#mail`, bukan `/admin.html`: barisnya kini benar-benar ada di Mail.
+      await notifyAdmins('Biodata Lengkap (CV) Diperbarui', `Kandidat ${nama} (${wa}) memperbarui data: ${labels.join(', ')}.`, '/admin.html#mail');
     } catch { /* ignore */ }
   }
 }

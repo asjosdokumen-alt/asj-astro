@@ -25,12 +25,39 @@ const deletedIds: Array<string | number> = [];
 /** Pencatat: berapa kali resolve dipanggil vs delete — untuk bukti urutan fase. */
 const callLog: string[] = [];
 
+/**
+ * Dipakai describe `syncBiodataKeMail` di bawah (ditaruh di berkas ini, bukan
+ * berkas baru: berkas tes baru di `src/**`/`netlify/**` menggeser `files.length`,
+ * counter beku 603).
+ */
+let formsByWa: Record<string, unknown>[] = [];
+const upserts: Record<string, unknown>[] = [];
+const patches: Array<{ id: unknown; body: Record<string, unknown> }> = [];
+const notified: unknown[][] = [];
+
+/** Baris kandidat yang dikembalikan `findCandidateByWa` (null = belum terdaftar). */
+let candidateRow: Record<string, unknown> | null = null;
+/** Pencatat tulis langsung ke `database_candidate` (jalur sync tahapan). */
+const candidateWrites: Array<{ method: string; table: string; body: Record<string, unknown> }> = [];
+
+vi.mock('../../_lib/candidate-helpers', () => ({
+  findCandidateByWa: async () => candidateRow,
+  nextCandidateId: async () => 'ASJ99999',
+}));
+
 vi.mock('../identity', () => ({
   requireAdmin: (token: string) =>
     token === 'admin-ok' ? { ok: true } : { error: { success: false, error: 'sessionInvalid' } },
 }));
 
 vi.mock('../../_lib/cache', () => ({ cacheClear: () => {} }));
+
+vi.mock('../../_lib/fcm-helpers', () => ({
+  notifyAdmins: (...args: unknown[]) => {
+    notified.push(args);
+    return Promise.resolve();
+  },
+}));
 
 vi.mock('./repository', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('./repository');
@@ -48,14 +75,23 @@ vi.mock('./repository', async () => {
       const at = forms.findIndex((f) => f.id === Number(id));
       if (at >= 0) forms.splice(at, 1); // ← pergeseran nyata
     },
-    patchForm: async () => {},
+    patchForm: async (id: unknown, body: Record<string, unknown>) => {
+      patches.push({ id, body });
+    },
+    getFormsByWa: async () => formsByWa,
+    upsertForm: async (body: Record<string, unknown>) => {
+      upserts.push(body);
+    },
     mapForm: (f: unknown) => f,
-    supabaseJson: async () => [],
+    supabaseJson: async (method: string, table: string, init?: { body?: Record<string, unknown> }) => {
+      candidateWrites.push({ method, table, body: (init?.body || {}) as Record<string, unknown> });
+      return [];
+    },
     normalizeWa: (v: unknown) => String(v ?? ''),
   };
 });
 
-const { handleHapusFormTerpilih, MAX_BULK_DELETE } = await import('./service');
+const { handleHapusFormTerpilih, MAX_BULK_DELETE, syncBiodataKeMail, handleApproveForm } = await import('./service');
 
 beforeEach(() => {
   // id sengaja TIDAK sama dengan index (id mulai 101) supaya tertukar
@@ -153,5 +189,130 @@ describe('handleHapusFormTerpilih — idempotensi & input kotor', () => {
   it('payload yang bukan array tidak melempar', async () => {
     const res: any = await handleHapusFormTerpilih([undefined], 'admin-ok');
     expect(res.success).toBe(false);
+  });
+});
+
+// ==========================================
+// TESTS: syncBiodataKeMail — push dan jejak Mail tidak boleh berbeda syarat
+//
+// BUG YANG DIKUNCI TES INI (dilaporkan pemilik 2026-10-29)
+//   "update biodata → ada notif, tapi saya refresh Mail, kosong."
+//   Penyebabnya bukan FCM: `syncBiodataKeMail` menulis jejak ke Mail HANYA kalau
+//   kandidat sudah punya baris `database_asj_form`, sementara `notifyAdmins`
+//   dipanggil tanpa syarat itu. Kode sendiri mencatat 51 baris form untuk 226
+//   kandidat, jadi untuk mayoritas kandidat push terkirim dan Mail kosong.
+//
+//   Jalur upload sudah benar sejak dulu (`syncFormMailDariUpload`:
+//   `if (!targets.length) targets = [{}]`), jadi yang diperbaiki adalah
+//   ASIMETRINYA, bukan aturan barunya.
+// ==========================================
+describe('syncBiodataKeMail — jejak Mail punya syarat yang sama dengan push', () => {
+  const WA = '628111222333';
+
+  beforeEach(() => {
+    formsByWa = [];
+    upserts.length = 0;
+    patches.length = 0;
+    notified.length = 0;
+  });
+
+  it('KONTROL: kandidat yang sudah punya baris → patch, bukan upsert', async () => {
+    formsByWa = [{ id: 7, no_wa: WA, status: 'MENUNGGU', feedback_berkas: '' }];
+
+    await syncBiodataKeMail(WA, 'BUDI', ['Nama']);
+
+    expect(patches).toHaveLength(1);
+    expect(patches[0].id).toBe(7);
+    expect(upserts).toHaveLength(0);
+    expect(notified).toHaveLength(1);
+  });
+
+  it('kandidat TANPA baris form → satu baris [BIODATA] dibuat, bukan nol', async () => {
+    formsByWa = [];
+
+    await syncBiodataKeMail(WA, 'BUDI', ['Nama', 'Alamat']);
+
+    expect(upserts).toHaveLength(1);
+    expect(upserts[0]).toMatchObject({
+      no_wa: WA,
+      code_job: '',
+      nama_lengkap: 'BUDI',
+      status: 'MENUNGGU',
+    });
+    expect(String(upserts[0].feedback_berkas)).toContain('[BIODATA]');
+    expect(String(upserts[0].feedback_berkas)).toContain('Nama, Alamat');
+  });
+
+  it('push menunjuk #mail — barisnya kini benar-benar ada di sana', async () => {
+    formsByWa = [];
+
+    await syncBiodataKeMail(WA, 'BUDI', ['Nama']);
+
+    expect(notified).toHaveLength(1);
+    expect(notified[0][2]).toBe('/admin.html#mail');
+  });
+
+  it('kandidat yang sudah punya baris tidak ikut di-upsert (tidak ada baris ganda)', async () => {
+    formsByWa = [{ id: 9, no_wa: WA, status: 'LULUS', feedback_berkas: 'lama' }];
+
+    await syncBiodataKeMail(WA, 'BUDI', ['Nama']);
+
+    expect(upserts).toHaveLength(0);
+    // Status yang sudah LULUS naik jadi UPDATE — perilaku lama, jangan berubah.
+    expect(patches[0].body.status).toBe('UPDATE');
+    expect(String(patches[0].body.feedback_berkas)).toContain('[[PREV:LULUS]]');
+  });
+});
+
+// ==========================================
+// TESTS: menyetujui DOKUMEN tidak boleh menandai kandidat "LULUS"
+//
+// Keluhan pemilik 2026-10-29: "update biodata kan gak perlu lulus dari admin;
+// banyak status lulus yang bikin bingung; kalau dokumen itu approve, kalau
+// lulus itu lulus tahapan."
+//
+// Penyebabnya ada di `syncCandidateDariForm`: menyetujui satu baris Mail
+// menulis `status_kandidat = 'LULUS'` pada kandidat — termasuk untuk baris yang
+// `code_job`-nya KOSONG, yaitu baris biodata/dokumen yang bukan lamaran loker.
+// Akibatnya menyetujui scan paspor menandai orangnya lulus seleksi.
+//
+// `database_asj_form` memang menyimpan dua jenis baris (lihat `isBiodataRow` di
+// CandidateDash.tsx): lamaran punya `code_job`, biodata/dokumen tidak. Yang
+// boleh menggerakkan status kandidat hanya yang pertama.
+// ==========================================
+describe('handleApproveForm — persetujuan dokumen bukan kelulusan tahapan', () => {
+  const WA = '628111222333';
+
+  beforeEach(() => {
+    forms = [{ id: 55, status: 'MENUNGGU' }];
+    patches.length = 0;
+    candidateWrites.length = 0;
+    candidateRow = { id: 3, status_kandidat: 'BARU' };
+  });
+
+  it('baris BIODATA (code_job kosong) → tidak menulis status_kandidat LULUS', async () => {
+    forms = [{ id: 55, status: 'MENUNGGU', no_wa: WA, code_job: '', nama_lengkap: 'BUDI' } as never];
+
+    await handleApproveForm([0], 'admin-ok');
+
+    // Baris Mail-nya tetap disetujui…
+    expect(patches[0].body.status).toBe('LULUS');
+    // …tapi kandidatnya TIDAK ikut dinyatakan lulus.
+    const patchCandidate = candidateWrites.find((w) => w.table === 'database_candidate');
+    if (patchCandidate) {
+      expect(patchCandidate.body.status_kandidat).toBeUndefined();
+      expect(patchCandidate.body.id_loker_pilihan).toBeUndefined();
+    }
+  });
+
+  it('KONTROL: lamaran sungguhan (code_job terisi) tetap menandai LULUS', async () => {
+    forms = [{ id: 56, status: 'MENUNGGU', no_wa: WA, code_job: 'TG1ASJ', nama_lengkap: 'BUDI' } as never];
+
+    await handleApproveForm([0], 'admin-ok');
+
+    const patchCandidate = candidateWrites.find((w) => w.table === 'database_candidate');
+    expect(patchCandidate).toBeDefined();
+    expect(patchCandidate?.body.status_kandidat).toBe('LULUS');
+    expect(patchCandidate?.body.id_loker_pilihan).toBe('TG1ASJ');
   });
 });
