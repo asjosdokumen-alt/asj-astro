@@ -206,6 +206,12 @@ export async function handleGetUploadUrls(
   try {
     const { storageRequest, publicUrl, bucket } =
       await import("../../_lib/storage");
+    // Two passes, on purpose.
+    //
+    // Pass 1 validates EVERY entry (extension allow-list) and collects the
+    // targets. Validation must still fail the whole request before anything is
+    // signed, exactly as the sequential version did.
+    const targets: Array<{ key: string; path: string }> = [];
     for (const f of files) {
       const key = String(f.key || "").trim();
       if (!key) continue;
@@ -234,32 +240,59 @@ export async function handleGetUploadUrls(
             ".",
         };
       }
-      const path = (folder ? folder + "/" : "") + prefix + "." + ext;
-      // NOTHING IS DELETED HERE (2026-10-28). This handler only SIGNS a URL; the
-      // bytes are PUT by the browser afterwards, in a separate request that can
-      // fail (offline, tab closed, bucket size limit, 120 s signature expiry).
-      // `hapusJenisVarian()` used to run at this exact point, so a failed PUT
-      // left the candidate with no document at all while the database still
-      // pointed at the deleted object. The superseded variants are retired at
-      // the CONFIRMATION step instead — `handleSimpanBerkasTahapan`, which is
-      // the first moment the server knows the upload succeeded.
-      const res = await storageRequest(
-        "POST",
-        "object/upload/sign/" + bucket() + "/" + path,
-        {
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ expiresIn: 120 }),
-        },
+      targets.push({ key, path: (folder ? folder + "/" : "") + prefix + "." + ext });
+    }
+
+    // Pass 2 signs them, four at a time.
+    //
+    // NOTHING IS DELETED HERE (2026-10-28). This handler only SIGNS a URL; the
+    // bytes are PUT by the browser afterwards, in a separate request that can
+    // fail (offline, tab closed, bucket size limit, 120 s signature expiry).
+    // `hapusJenisVarian()` used to run at this exact point, so a failed PUT
+    // left the candidate with no document at all while the database still
+    // pointed at the deleted object. The superseded variants are retired at
+    // the CONFIRMATION step instead — `handleSimpanBerkasTahapan`, which is
+    // the first moment the server knows the upload succeeded.
+    //
+    // Sequential signing cost one storage round-trip per file (~39 ms measured
+    // RTT), so a six-document pemberkasan set spent ~0.25 s doing nothing. Four
+    // at a time is a 2-4x saving and stays well under the `storage` bulkhead
+    // (8 concurrent, kernel/resilience.ts) — going fully parallel would make a
+    // large upload batch trip the bulkhead and fail the WHOLE request with
+    // "Gagal membuat link upload".
+    const SIGN_CONCURRENCY = 4;
+    const signed: Array<{ rel: string; path: string }> = [];
+    for (let i = 0; i < targets.length; i += SIGN_CONCURRENCY) {
+      const chunk = targets.slice(i, i + SIGN_CONCURRENCY);
+      const done = await Promise.all(
+        chunk.map(async (t) => {
+          const res = await storageRequest(
+            "POST",
+            "object/upload/sign/" + bucket() + "/" + t.path,
+            {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ expiresIn: 120 }),
+            },
+          );
+          return {
+            path: t.path,
+            rel:
+              res && res.url
+                ? String(res.url)
+                : `/object/upload/sign/${bucket()}/${t.path}`,
+          };
+        }),
       );
-      const rel =
-        res && res.url
-          ? String(res.url)
-          : `/object/upload/sign/${bucket()}/${path}`;
-      urls[key] = {
+      signed.push(...done);
+    }
+
+    targets.forEach((t, i) => {
+      const { rel, path } = signed[i];
+      urls[t.key] = {
         signedUrl: `${storageUrl().replace(/\/$/, "")}/storage/v1${rel.startsWith("/") ? rel : `/${rel}`}`,
         publicUrl: publicUrl(path),
       };
-    }
+    });
     return { success: true, urls };
   } catch (_e: any) {
     return {

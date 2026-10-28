@@ -32,7 +32,7 @@ vi.mock('../../_lib/storage', async (importOriginal) => {
   return {
     ...actual,
     bucket: () => 'b',
-    storageRequest: async (_method: string, url: string) => ({ url: '/' + url }),
+    storageRequest: vi.fn(async (_method: string, url: string) => ({ url: '/' + url })),
     publicUrl: (p: string) => 'https://cdn.example/' + p,
     hapusJenisVarian: vi.fn(async () => undefined),
     b64ToBuffer: () => Buffer.from(''),
@@ -45,7 +45,7 @@ vi.mock('../../_lib/storage', async (importOriginal) => {
 });
 
 import { handleGetUploadUrls } from './service';
-import { hapusJenisVarian } from '../../_lib/storage';
+import { hapusJenisVarian, storageRequest } from '../../_lib/storage';
 
 describe('handleGetUploadUrls — K3 folder upload kandidat dari sesi', () => {
   beforeEach(() => {
@@ -110,5 +110,51 @@ describe('handleGetUploadUrls — K3 folder upload kandidat dari sesi', () => {
       );
       expect(res.success, `ext ${ext} harus diterima`).toBe(true);
     }
+  });
+});
+
+/**
+ * PENANDATANGANAN BATCH (2026-10-28).
+ *
+ * Versi sebelumnya menandatangani satu per satu, dan SEBELUM perbaikan hapus-
+ * varian tiap berkas juga memicu list+delete — tiga round-trip storage per
+ * berkas, berurutan. Enam dokumen pemberkasan = 18 perjalanan sebelum browser
+ * bisa mengunggah byte pertama.
+ *
+ * Yang dikunci di sini bukan durasinya (itu milik jaringan), melainkan
+ * BENTUKNYA: ada lebih dari satu permintaan yang berjalan bersamaan, dan
+ * jumlahnya tidak melewati bulkhead `storage` (8) — melewatinya akan membuat
+ * seluruh permintaan gagal "Gagal membuat link upload", bukan sekadar lambat.
+ */
+describe('handleGetUploadUrls — penandatanganan batch, di bawah batas bulkhead', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('6 berkas ditandatangani bersamaan (maks 4 sekaligus), semuanya dapat URL', async () => {
+    let inflight = 0;
+    let maxInflight = 0;
+    vi.mocked(storageRequest).mockImplementation(async (_m: string, url: string) => {
+      inflight += 1;
+      maxInflight = Math.max(maxInflight, inflight);
+      // Satu microtask: cukup untuk membuat permintaan yang berurutan terlihat
+      // berurutan (inflight selalu 1) tanpa bergantung pada waktu nyata.
+      await Promise.resolve();
+      inflight -= 1;
+      return { url: '/' + url };
+    });
+
+    const files = ['a', 'b', 'c', 'd', 'e', 'f'].map((k) => ({ key: k, prefix: k, ext: 'pdf' }));
+    const res = (await handleGetUploadUrls([{ files, folder: 'misc' }], 'token-kandidat')) as {
+      success: boolean;
+      urls: Record<string, { signedUrl: string }>;
+    };
+
+    expect(res.success).toBe(true);
+    expect(Object.keys(res.urls).sort()).toEqual(['a', 'b', 'c', 'd', 'e', 'f']);
+    expect(maxInflight).toBeGreaterThan(1);
+    // 4 < 8 (bulkhead storage). Kalau ini naik, batch besar akan gagal total.
+    expect(maxInflight).toBeLessThanOrEqual(4);
+    expect(vi.mocked(storageRequest)).toHaveBeenCalledTimes(6);
   });
 });
