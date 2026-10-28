@@ -109,8 +109,21 @@ self.addEventListener('push', (e) => {
   e.waitUntil(
     self.registration.showNotification(title, {
       body: body,
+      // `icon` = gambar BERWARNA di sisi kanan notifikasi. Ini logo Amanah
+      // Sakura yang asli (192×192), dan memang ini satu-satunya tempat logo
+      // bisa tampil berwarna.
       icon: '/icons/icon-192.png',
-      badge: '/icons/favicon-32.png',
+      // `badge` = ikon KECIL (status bar + sisi kiri notifikasi). Android
+      // menggambarnya sebagai SILUET MONOKROM: hanya kanal alpha yang dipakai,
+      // warnanya dibuang. Karena itu `favicon-32.png` — favicon berwarna
+      // 32×32 dengan bidang penuh — tampil sebagai BULATAN PUTIH KOSONG,
+      // bukan sebagai logo. Dua syarat yang harus dipenuhi berkas ini:
+      //   1. bentuknya siluet di atas latar TEMBUS PANDAI (bukan gambar penuh),
+      //   2. minimal 72×72 (Android memakai 24dp; 32px di-upscale jadi kabur).
+      // `badge-torii-96.png` = gerbang torii putih 96×96, diambil dari
+      // `public/icons/sprite.svg` (`fas-torii-gate`) — bentuk paling terbaca
+      // pada 24dp, dan sejalan dengan emblem di logo.
+      badge: '/icons/badge-torii-96.png',
       // Ikon mana pun yang ditunjuk HARUS ada dan tembus pandang, kalau tidak
       // latar gelapnya terbaca sebagai kotak hitam di notifikasi.
       data: { url: url },

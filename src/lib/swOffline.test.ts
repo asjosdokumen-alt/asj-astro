@@ -523,3 +523,69 @@ describe('public/sw.js — notificationclick memilih tab, bukan menyerobotnya', 
     expect(opened).toEqual(['https://asj.test/']);
   });
 });
+
+// ==========================================
+// TESTS: ikon notifikasi — `badge` harus SILUET dan cukup besar
+//
+// Keluhan pemilik 2026-10-29: "notif bagian atas gak bisa apa pake icon atau
+// logo amanah?" — yang terlihat di HP adalah bulatan putih kosong di sisi kiri.
+//
+// Sebabnya aturan Android, bukan logo yang hilang: `badge` digambar sebagai
+// SILUET MONOKROM (hanya kanal alpha; warnanya dibuang). `favicon-32.png`
+// adalah favicon berwarna dengan bidang penuh, jadi seluruh bidangnya menjadi
+// putih — bulatan kosong. Ukurannya juga 32px, sementara Android memakai 24dp
+// (≈72px) sehingga hasilnya di-upscale dan kabur.
+//
+// `icon` (sisi kanan) tetap logo berwarna dan memang sudah benar.
+//
+// Tes ini membaca SUMBER (`public/sw.js`) dan BERKAS ASET, bukan `dist/`:
+// yang dijaga adalah apa yang akan dibangun, bukan artefak build terakhir.
+// ==========================================
+describe('ikon notifikasi — badge siluet, bukan favicon berwarna', () => {
+  const SRC = join(process.cwd(), 'public', 'sw.js');
+
+  /** Lebar/tinggi + apakah PNG punya kanal transparansi. Tanpa dependensi. */
+  function pngInfo(path: string) {
+    const b = readFileSync(path);
+    const width = b.readUInt32BE(16);
+    const height = b.readUInt32BE(20);
+    const colorType = b[25]; // 4 = gray+alpha, 6 = RGBA, 3 = palette (+tRNS)
+    let hasAlpha = colorType === 4 || colorType === 6;
+    if (colorType === 3) {
+      let o = 8;
+      while (o < b.length) {
+        const len = b.readUInt32BE(o);
+        if (b.slice(o + 4, o + 8).toString('ascii') === 'tRNS') hasAlpha = true;
+        o += 12 + len;
+      }
+    }
+    return { width, height, hasAlpha };
+  }
+
+  it('badge menunjuk berkas yang benar-benar ada', () => {
+    const s = readFileSync(SRC, 'utf8');
+    const m = s.match(/badge:\s*'([^']+)'/);
+    expect(m).toBeTruthy();
+    const rel = String(m?.[1] || '').replace(/^\//, '');
+    expect(existsSync(join(process.cwd(), 'public', rel))).toBe(true);
+  });
+
+  it('badge minimal 72×72 — Android memakai 24dp, bukan 32px', () => {
+    const s = readFileSync(SRC, 'utf8');
+    const rel = String(s.match(/badge:\s*'([^']+)'/)?.[1] || '').replace(/^\//, '');
+    const { width, height } = pngInfo(join(process.cwd(), 'public', rel));
+    expect(width).toBeGreaterThanOrEqual(72);
+    expect(height).toBeGreaterThanOrEqual(72);
+  });
+
+  it('badge punya kanal transparansi — kalau tidak, latarnya jadi kotak gelap', () => {
+    const s = readFileSync(SRC, 'utf8');
+    const rel = String(s.match(/badge:\s*'([^']+)'/)?.[1] || '').replace(/^\//, '');
+    expect(pngInfo(join(process.cwd(), 'public', rel)).hasAlpha).toBe(true);
+  });
+
+  it('badge BUKAN favicon berwarna (itu yang tampil sebagai bulatan putih)', () => {
+    const s = readFileSync(SRC, 'utf8');
+    expect(s).not.toMatch(/badge:\s*'\/icons\/favicon/);
+  });
+});
