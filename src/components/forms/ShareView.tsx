@@ -30,7 +30,7 @@
  *     now follows langStore (localStorage asj_lang, same key as legacy).
  */
 import { useEffect, useState } from 'preact/hooks';
-import { langStore, t, useLang } from '../../store/i18n';
+import { langStore, t, toggleLang, useLang } from '../../store/i18n';
 import { shareDocTypeOf, shareExtraDocLabel } from '../../lib/shareDocs';
 import DocumentPreviewModal from '../DocumentPreviewModal';
 import Icon from '../ui/Icon';
@@ -221,7 +221,11 @@ export default function ShareView() {
           </div>
           <div class="flex items-center gap-2 md:gap-3 w-full md:w-auto justify-between md:justify-end mt-2 md:mt-0">
             <button type="button"
-              onClick={() => langStore.set(langStore.get() === 'id' ? 'jp' : 'id')}
+              // `toggleLang()`, not a direct `langStore.set()`: it awaits the JP
+              // dictionary before switching, so a visitor on a share link who
+              // taps JP never sees the Indonesian fallback flash. This was the
+              // last toggle path that bypassed it (2026-10-28).
+              onClick={() => toggleLang()}
               class="min-h-11 min-w-11 justify-center px-2.5 py-1.5 md:px-3 bg-slate-800/80 border border-slate-600/50 rounded-lg text-[11px] md:text-xs font-bold flex items-center gap-1.5 shrink-0"
             >
               <Icon name="language" class="text-pink-400" />

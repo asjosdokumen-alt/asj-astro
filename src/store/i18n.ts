@@ -2553,16 +2553,30 @@ function onJpReady() {
   applyDocTitle();
 }
 
-/** Preload JP dictionary so language toggle is 0ms instant without network waiting */
+/**
+ * Preload JP dictionary so language toggle is 0ms instant without network waiting.
+ *
+ * ONLY when the persisted language is already JP. It used to run unconditionally
+ * on every boot (here and in `BaseLayout.astro`), which meant every anonymous
+ * Indonesian reader downloaded the 110 KB / 35,6 KB-gzip JP dictionary to sit
+ * unused next to the 34,5 KB-gzip Indonesian one. Measured on the build:
+ * `i18n-jp.cO6Oc8Sc.js` = 110,3 KB raw / 35,6 KB gz.
+ *
+ * A JP reader still pays it — but only they, and still before the first render
+ * that needs it: `langStore.subscribe` fires synchronously with the persisted
+ * value, so `loadJp()` starts before React ever reads a string.
+ */
 export function preloadJpDict(): void {
-  if (typeof window !== 'undefined') {
-    loadJp().then(onJpReady).catch(() => {});
-  }
+  if (typeof window === 'undefined') return;
+  if (langStore.get() !== 'jp') return;
+  loadJp().then(onJpReady).catch(() => {});
 }
 
 if (typeof window !== 'undefined') {
-  // Preload JP dictionary immediately on client boot
-  loadJp().then(onJpReady).catch(() => {});
+  // Same guard as preloadJpDict(): nothing here should pay for a dictionary the
+  // reader cannot use. `langStore.subscribe` below loads it the moment the
+  // language actually becomes `jp`, which covers a switch after boot.
+  if (langStore.get() === 'jp') loadJp().then(onJpReady).catch(() => {});
 
   langStore.subscribe((lang) => {
     if (lang === 'jp' && Object.keys(translations.jp).length === 0) {

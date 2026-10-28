@@ -9,8 +9,8 @@
  * The values asserted here are the REAL production values, copied from a live
  * `getAppData` response, so this test fails if the mapping regresses.
  */
-import { describe, expect, it, beforeEach } from 'vitest';
-import { langStore } from '../store/i18n';
+import { describe, expect, it, beforeEach, beforeAll } from 'vitest';
+import { langStore, ensureJpLoaded } from '../store/i18n';
 import {
   jobCategoryLabel,
   jobGenderLabel,
@@ -27,6 +27,16 @@ const DB_ROW = {
 };
 
 describe('jobDisplay — DB values follow the language toggle', () => {
+  // Precondition, stated instead of assumed: `t()` can only answer in Japanese
+  // once the JP dictionary is installed. In the app that is `toggleLang()`'s
+  // job (it awaits `ensureJpLoaded()` before switching); these tests set
+  // `langStore` directly, so they have to establish it themselves. Before
+  // 2026-10-28 this came for free from an eager `loadJp()` at module import —
+  // which also meant every Indonesian visitor downloaded the JP dictionary.
+  beforeAll(async () => {
+    await ensureJpLoaded();
+  });
+
   beforeEach(() => {
     langStore.set('id');
   });
