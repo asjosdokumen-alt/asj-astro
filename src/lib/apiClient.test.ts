@@ -835,6 +835,26 @@ describe('batas bundle: yang ikut ke landing page', () => {
     expect(src).not.toMatch(/^import\s+\{[^}]*\}\s+from\s+['"]\.\.\/lib\/supabase['"]/m);
     expect(src).toContain("import('../lib/supabase')");
   });
+
+  it('getFreshToken berhenti SEBELUM mengunduh klien saat host-nya Neon', () => {
+    // Sejak cutover, `PUBLIC_SUPABASE_URL` menunjuk Neon Data API yang tidak
+    // punya `/auth/v1`. Tanpa gerbang ini, SETIAP pengguna yang login mengunduh
+    // klien 212,7 KB / 56 gz lalu `isSupabaseConfigured()` menjawab `false` —
+    // chunk terbuang. Yang dipin: gerbangnya harus MENDAHULUI impor dinamis.
+    const src = readFileSync('src/lib/apiClient.ts', 'utf8');
+    const gate = src.indexOf('isNeonDataApiHost(SUPABASE_URL)');
+    const dyn = src.indexOf("await import('./supabase')");
+    expect(gate).toBeGreaterThan(-1);
+    expect(dyn).toBeGreaterThan(-1);
+    expect(gate).toBeLessThan(dyn);
+  });
+
+  it('supabaseHost.ts tidak mengimpor apa pun — kalau tidak, "ringan" cuma klaim', () => {
+    // Seluruh penghematan bergantung pada satu sifat: modul ini bebas impor,
+    // jadi `apiClient` bisa memeriksa host tanpa menarik klien Supabase.
+    const src = readFileSync('src/lib/supabaseHost.ts', 'utf8');
+    expect(src).not.toMatch(/^import\s/m);
+  });
 });
 
 /**

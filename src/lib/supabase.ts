@@ -59,23 +59,13 @@ export const supabase: SupabaseClient = createClient(
  * True when `url` is a Neon Data API endpoint — i.e. a host that serves
  * PostgREST and **no auth server**.
  *
- * Neon publishes the Data API at `<endpoint>.apirest.<region>.aws.neon.tech/<db>`.
- * There is no GoTrue behind it, so `<url>/auth/v1/*` cannot answer. This is the
- * one host shape the code can rule out offline; everything else keeps the
- * pre-cutover assumption (that a Supabase URL is a Supabase project, including a
- * custom domain that fronts GoTrue).
+ * Implementasinya tinggal di `./supabaseHost` (modul tanpa impor) supaya
+ * `apiClient.ts` bisa memakainya untuk memutuskan apakah klien Supabase perlu
+ * diunduh sama sekali — tanpa harus mengimpor modul ini. Diekspor ulang di sini
+ * karena ini permukaan yang selama ini dipakai tes.
  */
-export function isNeonDataApiHost(url: string): boolean {
-  const raw = String(url || '').trim();
-  if (!raw) return false;
-  let host: string;
-  try {
-    host = new URL(raw).hostname.toLowerCase();
-  } catch {
-    return false;
-  }
-  return host === 'neon.tech' || host.endsWith('.neon.tech');
-}
+import { isNeonDataApiHost } from './supabaseHost';
+export { isNeonDataApiHost };
 
 /**
  * True when the Supabase client has both a URL and a key **and** that URL can

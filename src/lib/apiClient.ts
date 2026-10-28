@@ -11,6 +11,13 @@ import { authStore, logout } from '../store/authReactive';
 import { showToast } from '../components/Toast';
 import { getEndpoint } from './apiEndpoint';
 import { navigateTo } from './navigate';
+import { isNeonDataApiHost } from './supabaseHost';
+
+/**
+ * Dibaca sekali di module scope. `PUBLIC_*` di-bake saat build, jadi nilainya
+ * tidak berubah selama satu bundel hidup.
+ */
+const SUPABASE_URL = (import.meta.env.PUBLIC_SUPABASE_URL as string) || '';
 
 /** SWR-lite cache — sessionStorage with TTL (matching legacy api-client.ts) */
 const READ_CACHE_TTL_MS = 30 * 1000; // 30 seconds freshness
@@ -186,6 +193,15 @@ async function getFreshToken(): Promise<string> {
   // auth client (213 KB raw / 56 KB gzip, measured in the built island graph)
   // on the critical path of a page whose first job is to render a hero for an
   // anonymous visitor. Nothing else in this file needs it.
+  //
+  // …dan jangan unduh sama sekali kalau host-nya tidak punya server auth.
+  // Sejak cutover 2026-10-25 `PUBLIC_SUPABASE_URL` menunjuk Neon Data API, yang
+  // tidak melayani `/auth/v1`; `isSupabaseConfigured()` di bawah akan menjawab
+  // `false` dan chunk 56 KB gzip itu terbuang untuk SETIAP pengguna yang login.
+  // Predikatnya diimpor dari `./supabaseHost` (tanpa impor) supaya pemeriksaan
+  // ini sendiri tidak menarik modul berat itu.
+  if (isNeonDataApiHost(SUPABASE_URL)) return sessionToken;
+
   const { supabase, isSupabaseConfigured } = await import('./supabase');
   if (isSupabaseConfigured()) {
     try {
