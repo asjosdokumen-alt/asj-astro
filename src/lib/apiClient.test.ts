@@ -889,6 +889,11 @@ describe('isSupabaseConfigured — host Neon bukan server auth (B13)', () => {
     expect(
       real.isNeonDataApiHost('https://ep-bold-sunset-b3zy6wb1.apirest.c-4.ap-southeast-1.aws.neon.tech/neondb'),
     ).toBe(true);
+    // Neon Auth: domain sama, akhiran sama, TAPI punya server auth. Predikat
+    // yang hanya memeriksa `.neon.tech` akan salah menolak host ini.
+    expect(
+      real.isNeonDataApiHost('https://ep-bold-sunset-b3zy6wb1.neonauth.c-4.ap-southeast-1.aws.neon.tech'),
+    ).toBe(false);
     expect(real.isNeonDataApiHost('https://abcdefghijkl.supabase.co')).toBe(false);
     expect(real.isNeonDataApiHost('https://auth.contoh-domain.com')).toBe(false);
     expect(real.isNeonDataApiHost('')).toBe(false);

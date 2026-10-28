@@ -55,7 +55,7 @@ pekerjaan dimulai di atas baseline merah. Sisa suite hijau: 269 berkas,
 
 | # | Keputusan | Hasil |
 |---|---|---|
-| **A1** | `LULUS` hanya untuk tahapan; berkas = **disetujui** | ✅ `d3698e5` — status Mail `DISETUJUI`, `syncCandidateDariForm` berhenti menulis `status_kandidat` sama sekali, migrasi `025` |
+| **A1** | `LULUS` hanya untuk tahapan; berkas = **disetujui** | ✅ `d3698e5` — status Mail `DISETUJUI`, `syncCandidateDariForm` berhenti menulis `status_kandidat` sama sekali. **Migrasi `025` SUDAH DITERAPKAN ke Neon** 2026-10-29 |
 | **A2** | Baris biodata = info di tab Mail, tanpa persetujuan, tanpa menunggu | ✅ `d3698e5` — status `INFO`, tombol Setujui/Tolak diganti "Tandai dibaca" → `DIBACA` |
 | **A3** | (a) terbitkan token refresh, sesi diperpanjang diam-diam | ✅ `d0ea082` — token penyegar 7 hari diterbitkan di 4 jalur login; klien menyegarkan 60 detik sebelum `exp` |
 | **B1** | Region fungsi → `sin` | ⏭️ **dilewati** — butuh plan Pro; pemilik masih free tier |
@@ -69,9 +69,29 @@ pekerjaan dimulai di atas baseline merah. Sisa suite hijau: 269 berkas,
 **Sisa yang masih butuh jawaban:** hanya **D2** (kapan push). Sisanya sudah
 diputuskan, dikerjakan, atau dilewati dengan alasan yang tercatat.
 
-⚠️ **Satu langkah manual sebelum deploy:** `migrations/025_mail_status_disetujui.sql`
-harus diterapkan ke Neon **sebelum** kode `d3698e5` tayang. Tanpa itu baris lama
-tetap berstatus `LULUS` dan tidak muncul di keranjang mana pun kecuali SEMUA.
+⚠️ ~~**Satu langkah manual sebelum deploy:** `migrations/025_mail_status_disetujui.sql`
+harus diterapkan ke Neon **sebelum** kode `d3698e5` tayang.~~ **SUDAH DIKERJAKAN**
+2026-10-29, dalam satu transaksi dengan verifikasi sebelum COMMIT:
+
+| | sebelum | sesudah |
+|---|---|---|
+| `LULUS` | 26 | **0** |
+| `REVIEW ADMIN` | 1 | **0** |
+| `DISETUJUI` | 0 | **12** |
+| `INFO` | 1 | **15** |
+| `REVIEW` | 0 | **1** |
+| `GAGAL` | 3 | 3 |
+
+14 baris biodata menjadi `INFO` (bukan `DISETUJUI` — itulah kenapa urutan
+pernyataannya penting), 1 baris `REVIEW ADMIN` menjadi `REVIEW`, dan 12 sisanya
+menjadi `DISETUJUI`. Sisa `LULUS`/`REVIEW ADMIN` = 0, jadi kode `d3698e5` sudah
+aman tayang.
+
+**Yang ketahuan saat menjalankannya:** `feedback_berkas` adalah **jsonb**, bukan
+text. Versi pertama migrasi memakai `LIKE`/`regexp_replace` langsung pada kolomnya
+dan gagal dengan `invalid input syntax for type json` — kegagalan yang tidak akan
+pernah muncul di tes, karena tes memakai string. Sekarang dibaca lewat `#>> '{}'`
+dan ditulis kembali lewat `to_jsonb(...)`.
 
 ---
 

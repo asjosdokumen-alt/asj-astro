@@ -21,9 +21,12 @@
  *
  * Neon menerbitkan Data API di `<endpoint>.apirest.<region>.aws.neon.tech/<db>`.
  * Tidak ada GoTrue di belakangnya, jadi `<url>/auth/v1/*` tidak bisa menjawab.
- * Ini satu-satunya bentuk host yang bisa dipastikan offline; sisanya memakai
- * asumsi pra-cutover (URL Supabase = proyek Supabase, termasuk domain kustom
- * yang mem-front GoTrue).
+ *
+ * ⚠️ JANGAN cukup memeriksa akhiran `.neon.tech`. Neon punya host lain di domain
+ * yang sama — `<endpoint>.neonauth.<region>.aws.neon.tech` adalah **Neon Auth**,
+ * yang justru PUNYA server auth. Diverifikasi 2026-10-29 dari
+ * `JWK_URL_PROVIDER` di kredensial Neon: host itu berakhiran `.neon.tech` dan
+ * bukan Data API. Yang membedakan hanya segmen `.apirest.`.
  */
 export function isNeonDataApiHost(url: string): boolean {
   const raw = String(url || '').trim();
@@ -34,5 +37,5 @@ export function isNeonDataApiHost(url: string): boolean {
   } catch {
     return false;
   }
-  return host === 'neon.tech' || host.endsWith('.neon.tech');
+  return host.endsWith('.neon.tech') && host.includes('.apirest.');
 }

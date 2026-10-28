@@ -40,6 +40,14 @@
 --
 --   Kolom `status` TIDAK punya CHECK constraint (diperiksa: tidak ada di
 --   migrations/ mana pun), jadi nilai baru tidak butuh DDL.
+--
+--   ⚠️ `feedback_berkas` adalah **jsonb**, bukan text — diverifikasi langsung ke
+--   database 2026-10-29 (`jsonb_typeof` = 'string' untuk 29 baris, NULL untuk
+--   2). Versi pertama migrasi ini memakai `LIKE`/`regexp_replace` pada kolomnya
+--   dan GAGAL dengan `invalid input syntax for type json`. Karena itu isinya
+--   dibaca lewat `#>> '{}'` (teks dari skalar jsonb) dan ditulis kembali lewat
+--   `to_jsonb(...)`. Jangan diganti ke cast `::text`: hasilnya membawa tanda
+--   kutip pembungkus dan akan tersimpan sebagai string yang dikutip dua kali.
 -- =============================================================================
 
 -- 1) Baris BIODATA menjadi INFORMASI.
@@ -49,10 +57,12 @@
 --    sebelumnya", dan baris INFO tidak punya status sebelumnya.
 UPDATE database_asj_form
    SET status = 'INFO',
-       feedback_berkas = regexp_replace(COALESCE(feedback_berkas, ''), '\[\[PREV:[^\]]+\]\]\s*', '', 'g')
- WHERE (code_job IS NULL OR btrim(code_job) = '')
+       feedback_berkas = to_jsonb(
+         regexp_replace(COALESCE(feedback_berkas #>> '{}', ''), '\[\[PREV:[^\]]+\]\]\s*', '', 'g')
+       )
+ WHERE COALESCE(btrim(code_job), '') = ''
    AND status IN ('MENUNGGU', 'UPDATE', 'LULUS')
-   AND COALESCE(feedback_berkas, '') LIKE '%[BIODATA]%';
+   AND COALESCE(feedback_berkas #>> '{}', '') LIKE '%[BIODATA]%';
 
 -- 2) Nilai lama yang tidak cocok dengan keranjang mana pun.
 --    `handleReviewForm` menulis `REVIEW ADMIN` (dengan spasi) sementara
