@@ -15,7 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // REAL so the `isAllowedDocumentUrl` tests below keep exercising the true
 // host-resolution path instead of a mock.
 const { requestMock } = vi.hoisted(() => ({
-  requestMock: vi.fn(async () => ({ ok: true, text: async () => '{}' })),
+  requestMock: vi.fn(async (_url?: string, _init?: any) => ({ ok: true, text: async () => '{}' })),
 }));
 vi.mock('./kernel/http', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./kernel/http')>();
@@ -247,7 +247,7 @@ describe('urutan upload vs hapus varian (anti kehilangan dokumen)', () => {
   beforeEach(() => {
     calls = [];
     requestMock.mockClear();
-    requestMock.mockImplementation(async (url: string, init: any) => {
+    requestMock.mockImplementation(async (url = '', init: any = {}) => {
       calls.push({
         method: String(init?.method || 'GET'),
         url: String(url),

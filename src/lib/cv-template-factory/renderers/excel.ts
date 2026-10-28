@@ -13,7 +13,7 @@ function s(v: unknown): string {
 }
 
 function buildSheet(data: CandidateData): XLSXNS.WorkSheet {
-  const ws: XLSX.WorkSheet = {};
+  const ws: XLSXNS.WorkSheet = {};
   const id = data.identitas;
   const rows: Array<[string | number, string | number]> = [];
   rows.push(['Field', 'Value']);

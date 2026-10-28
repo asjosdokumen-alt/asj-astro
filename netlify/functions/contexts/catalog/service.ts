@@ -47,7 +47,7 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
       const valid = t && t.role === role && (mode !== 'kandidat' || (t.wa || '') === waPayload || waPayload === '');
       if (!valid) {
         const pub0 = await loadPublicBase(mode);
-        if (pub0.notFound) return notFoundPayload(pub0.base);
+        if (pub0.notFound) return notFoundPayload(pub0.base as Record<string, any>);
         return { success: true, activeTheme: '', sessionInvalid: true, jobs: pub0.jobs, dropdowns: pub0.dropdowns, assets: pub0.assets, pengumuman: pub0.pengumuman };
       }
     }
@@ -60,7 +60,7 @@ export async function handleGetAppData(payload: any[], sessionToken?: string) {
     }
     const results = await Promise.all([loadPublicBase(mode), ...jobs]);
     const pub = results[0];
-    if (pub.notFound) return notFoundPayload(pub.base);
+    if (pub.notFound) return notFoundPayload(pub.base as Record<string, any>);
 
     const result: Record<string, any> = {
       success: true, activeTheme: '', sessionInvalid: false,

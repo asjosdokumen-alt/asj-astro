@@ -171,7 +171,7 @@ describe('§6.5 · DB down — writes', () => {
     const { supabaseJson } = await import('./db/client');
     const { breaker, DEPENDENCY_CONFIGS } = await import('./kernel/resilience');
 
-    const threshold = DEPENDENCY_CONFIGS.postgrest.threshold;
+    const threshold = DEPENDENCY_CONFIGS.postgrest.threshold ?? 5;
     for (let i = 0; i < threshold + 2; i++) {
       await expect(supabaseJson('GET', 'database_schedule')).rejects.toBeTruthy();
     }
@@ -193,7 +193,7 @@ describe('§6.5 · DB down — writes', () => {
     const { supabaseJson } = await import('./db/client');
     const { breaker, DEPENDENCY_CONFIGS } = await import('./kernel/resilience');
 
-    const threshold = DEPENDENCY_CONFIGS.postgrest.threshold;
+    const threshold = DEPENDENCY_CONFIGS.postgrest.threshold ?? 5;
     for (let i = 0; i < threshold; i++) {
       await expect(supabaseJson('GET', 'database_schedule')).rejects.toBeTruthy();
     }
@@ -218,7 +218,7 @@ describe('§6.5 · DB down — writes', () => {
     for (let i = 0; i < 8; i++) held.push(await bulkhead.acquire('postgrest'));
     try {
       // `threshold + 1` refusals, so the count really could have tripped it.
-      for (let i = 0; i < DEPENDENCY_CONFIGS.postgrest.threshold + 1; i++) {
+      for (let i = 0; i < (DEPENDENCY_CONFIGS.postgrest.threshold ?? 5) + 1; i++) {
         await expect(request('https://x.supabase.co/rest/v1/foo')).rejects.toBeTruthy();
       }
     } finally {
