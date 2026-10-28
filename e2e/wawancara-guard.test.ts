@@ -41,9 +41,29 @@ vi.mock('../netlify/functions/contexts/identity', () => ({
       : { error: { success: false, sessionInvalid: true, message: 'Sesi admin tidak valid' } },
   isOwnerOrAdmin: (t: string | undefined, wa: string) =>
     t === 'tok-admin' || (t === 'tok-budi' && wa === BUDI) || (t === 'tok-biasa' && wa === BIASA),
+  // Dipakai handler TULIS (`simpanHasilWawancara` di _lib/ai/chat.ts), yang
+  // mengambil WA dari token — bukan dari payload.
+  requireRole: (t: string, role: string) => {
+    if (t === 'tok-budi') return { token: { role, wa: BUDI } };
+    if (t === 'tok-biasa') return { token: { role, wa: BIASA } };
+    return { error: { success: false, sessionInvalid: true, message: 'Sesi tidak valid' } };
+  },
 }));
 
 vi.mock('../netlify/functions/_lib/wawancara/bank', () => bankMock);
+
+/**
+ * NO DATABASE. This suite runs with `.env.local` present, which points at the
+ * PRODUCTION Neon database — so a handler that reaches PostgREST really writes
+ * there. That is not hypothetical: the first run of the write-gate test below
+ * (against the unfixed handler, to prove it was red) inserted row 97 into
+ * `ai_form_submissions`, and it had to be deleted by hand. Every write path
+ * exercised here must be stubbed, not merely "expected not to run".
+ */
+vi.mock('../netlify/functions/_lib/db/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../netlify/functions/_lib/db/client')>();
+  return { ...actual, supabaseJson: vi.fn(async () => []) };
+});
 
 const { AI_ACTIONS } = await import('../netlify/functions/surfaces/ai');
 
@@ -127,5 +147,48 @@ describe('getBankWawancara — siswa ASJ saja', () => {
     expect(r.success).toBe(false);
     expect(r.isVip).toBeUndefined();
     expect(String(r.message)).toMatch(/Gagal memeriksa status siswa/);
+  });
+});
+
+/**
+ * GERBANG TULIS — `simpanHasilWawancara`.
+ *
+ * Sampai 2026-10-28 aksi ini hanya memeriksa `role === 'kandidat'`. Kandidat
+ * non-VIP karena itu tidak bisa MEMBACA bank soal tetapi tetap bisa MENULIS
+ * hasil wawancara ke `ai_form_submissions` — satu pintu tertinggal terbuka di
+ * gerbang yang menurut komentar `surfaces/ai.ts` sengaja "satu tempat, bukan
+ * dua". Yang diuji di sini adalah penolakannya: pemeriksaan terjadi SEBELUM
+ * satu pun tulisan, dan WA-nya diambil dari sesi (bukan payload), jadi tidak
+ * bisa diarahkan ke nomor siswa lain.
+ */
+describe('simpanHasilWawancara — gerbang yang sama dengan pembacaan', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    bankMock.statusVip.mockImplementation(async (wa: string) => wa === BUDI);
+  });
+
+  it('kandidat non-VIP ditolak dengan isVip:false, tanpa menulis apa pun', async () => {
+    const r = (await AI_ACTIONS.simpanHasilWawancara(
+      [{ hasil: { biodata: { nama: 'Biasa' } } }],
+      'tok-biasa',
+    )) as Record<string, unknown>;
+
+    expect(r.success).toBe(false);
+    expect(r.isVip).toBe(false);
+    expect(String(r.message)).toMatch(/khusus siswa ASJ/);
+    // statusVip dipanggil dengan WA DARI SESI, bukan dari payload.
+    expect(bankMock.statusVip).toHaveBeenCalledWith(BIASA);
+  });
+
+  it('kandidat VIP lolos gerbang (tidak ditolak karena status)', async () => {
+    const r = (await AI_ACTIONS.simpanHasilWawancara(
+      [{ hasil: { biodata: { nama: 'Budi' } } }],
+      'tok-budi',
+    )) as Record<string, unknown>;
+
+    // Aman: `supabaseJson` di-mock di kepala berkas ini, jadi tidak ada tulisan
+    // ke database. Yang dikunci: ia TIDAK ditolak oleh gerbang VIP.
+    expect(r.message ?? '').not.toMatch(/khusus siswa ASJ/);
+    expect(bankMock.statusVip).toHaveBeenCalledWith(BUDI);
   });
 });

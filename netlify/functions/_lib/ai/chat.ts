@@ -872,6 +872,27 @@ async function handleSimpanHasilWawancara(payload: unknown[], sessionToken?: str
   // IDOR fix: hasil wawancara selalu di-scope ke WA dari sesi, bukan payload klien.
   const wa = normalizeWa(String((guard.token && guard.token.wa) || ''));
   if (!wa) return { success: false, error: 'Nomor WA tidak ditemukan.' };
+  // GERBANG VIP — sama dengan gerbang BACA (`tolakKecualiSiswa` di
+  // surfaces/ai.ts, dipakai getBankWawancara/simpanJawaban/terjemahkan).
+  // Sebelum ini hanya `role === 'kandidat'` yang diperiksa, jadi kandidat
+  // non-VIP tidak bisa MEMBACA bank soal tetapi tetap bisa MENULIS hasil
+  // wawancara ke tabel yang sama — satu pintu tertinggal terbuka di gerbang yang
+  // menurut komentar surfaces/ai.ts sengaja "satu tempat, bukan dua".
+  // WA diambil dari sesi (bukan payload), jadi pemeriksaan ini tidak bisa
+  // diarahkan ke nomor orang lain.
+  const { statusVip } = await import('../wawancara/bank');
+  const vip = await statusVip(wa);
+  if (vip === null) {
+    // null = pemeriksaan gagal (DB tidak terjangkau). Jangan menuduh kandidat.
+    return { success: false, message: 'Gagal memeriksa status siswa. Coba lagi sebentar.' };
+  }
+  if (!vip) {
+    return {
+      success: false,
+      isVip: false,
+      message: 'Latihan wawancara khusus siswa ASJ (VIP / Kelas LPK).',
+    };
+  }
   const hasil = d.hasil || {};
   if (!hasil || typeof hasil !== 'object' || Array.isArray(hasil)) {
     return { success: false, error: 'Hasil wawancara kosong/tidak valid.' };
