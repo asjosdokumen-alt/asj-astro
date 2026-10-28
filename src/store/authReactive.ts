@@ -162,13 +162,53 @@ export function refreshSession() {
 
 
 
+/**
+ * Adopt a state written by ANOTHER tab — WITHOUT writing one back.
+ *
+ * WHY THIS IS NOT `refreshSession()`
+ * ----------------------------------
+ * The `storage` listener used to call `refreshSession()`, which stamps
+ * `lastChecked: Date.now()` and therefore writes a DIFFERENT string to
+ * `localStorage`. That write fires the same `storage` event in the other tab,
+ * whose listener stamps its own timestamp, and so on: with two tabs logged in,
+ * the pair write to `localStorage` (and re-render every `authStore` subscriber,
+ * `App.tsx` included) in a loop that only stops when one tab closes. There is no
+ * throttle in the path — each iteration is one synchronous storage write plus a
+ * full notification pass.
+ *
+ * The fix is a property, not a timer: adopting a value must produce the SAME
+ * BYTES the other tab already stored. `JSON.parse` + `authStore.set` does
+ * exactly that (same keys, same order ⇒ identical string), and `localStorage`
+ * only fires `storage` when the value actually changes — so the echo stops after
+ * one hop instead of running forever.
+ *
+ * Only identity-level changes are adopted. A newer `lastChecked` from another
+ * tab is not copied: it carries no information this tab needs, and copying it is
+ * precisely the write that caused the loop.
+ */
+export function adoptAuthFromStorage(raw: string | null): void {
+  if (!raw) return;
+  let next: AuthState;
+  try {
+    next = JSON.parse(raw) as AuthState;
+  } catch {
+    // A corrupt value is not a session. Ignore it rather than logging everyone
+    // out from a handler that cannot report what it saw.
+    return;
+  }
+  if (!next || typeof next !== 'object') return;
+  const cur = authStore.get();
+  if (next.isLoggedIn === cur.isLoggedIn && next.sessionToken === cur.sessionToken) return;
+  authStore.set(next);
+}
+
 /** Listen for cross-tab changes */
 let sessionCheckInterval: ReturnType<typeof setInterval> | null = null;
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (e) => {
-    if (e.key === 'asj_auth') {
-      refreshSession();
-    }
+    // NOT refreshSession() — see adoptAuthFromStorage(). The old call wrote a
+    // fresh timestamp here, and that write is what ping-ponged between tabs.
+    if (e.key === 'asj_auth') adoptAuthFromStorage(e.newValue);
   });
 
   // P20 fix: Store interval ID so it can be cleared on HMR/remount.

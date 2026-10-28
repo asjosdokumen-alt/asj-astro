@@ -15,6 +15,7 @@ vi.mock('../lib/fcm', () => ({ requestNotificationPermission: reg }));
 import {
   authStore,
   refreshFcmRegistrationOnce,
+  adoptAuthFromStorage,
   __resetFcmRefreshForTest,
 } from './authReactive';
 
@@ -82,5 +83,103 @@ describe('refreshFcmRegistrationOnce', () => {
     refreshFcmRegistrationOnce();
     refreshFcmRegistrationOnce();
     expect(reg).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * Dua tab yang login bersamaan dulu menulis `localStorage` tanpa henti: listener
+ * `storage` memanggil `refreshSession()`, yang menstempel `lastChecked` baru —
+ * dan stempel itu memicu event yang sama di tab lain. Invarian yang dikunci di
+ * sini bukan "jumlah tulis kecil", melainkan: **nilai yang diadopsi harus
+ * byte-identik dengan yang sudah ditulis tab lain**, karena `localStorage` hanya
+ * memancarkan event kalau nilainya BERUBAH. Byte-identik ⇒ tidak ada pantulan.
+ */
+describe('adoptAuthFromStorage (anti ping-pong antar-tab)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    setAuth();
+  });
+
+  it('tidak menulis apa pun saat identitas sesi sama — hanya `lastChecked` yang beda', () => {
+    setAuth({ ...ADMIN, lastChecked: 1 });
+    const raw = localStorage.getItem('asj_auth') as string;
+
+    adoptAuthFromStorage(raw);
+
+    // Sama persis ⇒ `localStorage` tidak memancarkan event ⇒ tab lain diam.
+    expect(localStorage.getItem('asj_auth')).toBe(raw);
+  });
+
+  it('mengadopsi sesi tab lain secara byte-identik, jadi tidak memantul balik', () => {
+    setAuth({ ...ADMIN, lastChecked: 1 });
+    const other = JSON.stringify({
+      role: 'kandidat',
+      name: 'Budi',
+      wa: '628123456789',
+      sessionToken: 'tok-tab-lain',
+      refreshToken: '',
+      isLoggedIn: true,
+      lastChecked: 999,
+    });
+
+    adoptAuthFromStorage(other);
+
+    expect(authStore.get().sessionToken).toBe('tok-tab-lain');
+    expect(authStore.get().role).toBe('kandidat');
+    // Byte-identik dengan yang sudah ada di tab lain — bukan hasil stempel ulang.
+    expect(localStorage.getItem('asj_auth')).toBe(other);
+  });
+
+  it('logout dari tab lain ikut teradopsi, dan tetap byte-identik', () => {
+    setAuth({ ...ADMIN, lastChecked: 1 });
+    const loggedOut = JSON.stringify({
+      role: 'guest',
+      name: '',
+      wa: '',
+      sessionToken: '',
+      refreshToken: '',
+      isLoggedIn: false,
+      lastChecked: 0,
+    });
+
+    adoptAuthFromStorage(loggedOut);
+
+    expect(authStore.get().isLoggedIn).toBe(false);
+    expect(localStorage.getItem('asj_auth')).toBe(loggedOut);
+  });
+
+  it('nilai rusak diabaikan, bukan me-logout semua orang', () => {
+    setAuth({ ...ADMIN, lastChecked: 1 });
+    const before = localStorage.getItem('asj_auth');
+
+    adoptAuthFromStorage('{bukan json');
+    adoptAuthFromStorage(null);
+    adoptAuthFromStorage('null');
+
+    expect(authStore.get().isLoggedIn).toBe(true);
+    expect(localStorage.getItem('asj_auth')).toBe(before);
+  });
+
+  it('event `storage` sungguhan tidak menghasilkan tulisan balik', () => {
+    // Ini jalur yang sebenarnya: listener modul, bukan fungsinya langsung.
+    // Kode lama memanggil refreshSession() di sini, yang menstempel timestamp
+    // baru ⇒ nilai di localStorage BERUBAH ⇒ event yang sama terpicu di tab
+    // lain ⇒ dua tab menulis bergantian tanpa henti.
+    setAuth({ ...ADMIN, lastChecked: 1 });
+    const other = JSON.stringify({
+      role: 'admin',
+      name: 'khoci',
+      wa: '',
+      sessionToken: 'tok-tab-lain',
+      refreshToken: '',
+      isLoggedIn: true,
+      lastChecked: 5000,
+    });
+
+    window.dispatchEvent(new StorageEvent('storage', { key: 'asj_auth', newValue: other }));
+
+    expect(authStore.get().sessionToken).toBe('tok-tab-lain');
+    // Tanpa stempel ulang: yang tertulis tetap string yang dikirim tab lain.
+    expect(localStorage.getItem('asj_auth')).toBe(other);
   });
 });
