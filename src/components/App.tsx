@@ -55,7 +55,7 @@ import LoginModal from './LoginModal';
 // CekSiswaModal dipakai saat render (flag showCekSiswa) tetapi impornya hilang
 // → ReferenceError begitu modal dibuka. Jangan hapus baris ini.
 import CekSiswaModal from './CekSiswaModal';
-import AdminAiCopilot from './admin/AdminAiCopilot';
+import type { ComponentType } from 'preact';
 import { showToast } from './Toast';
 import Icon from './ui/Icon';
 import { useOverlayPresence } from './ui/useOverlayPresence';
@@ -134,6 +134,25 @@ export default function App(
      here: it is mounted unconditionally and owns its own presence. */
   const cekSiswaP = useOverlayPresence(showCekSiswa);
   const aiCopilotP = useOverlayPresence(showAiCopilot);
+  /**
+   * Admin AI copilot, loaded only when it is actually opened.
+   *
+   * It used to be a static import. `App` is the island the LANDING page
+   * hydrates with `client:load`, so every anonymous visitor downloaded an
+   * admin-only widget (11.6 KB) they can never open — and it was part of the
+   * 453 KB island graph measured in the built output. The component is only
+   * mounted when `aiCopilotP.present` (an admin clicked the button), which is
+   * exactly the moment the chunk is worth fetching.
+   */
+  const [Copilot, setCopilot] = useState<ComponentType<{ onClose: () => void; closing?: boolean }> | null>(null);
+  useEffect(() => {
+    if (!aiCopilotP.present || Copilot) return;
+    let alive = true;
+    void import('./admin/AdminAiCopilot').then((mod) => {
+      if (alive) setCopilot(() => mod.default);
+    });
+    return () => { alive = false; };
+  }, [aiCopilotP.present, Copilot]);
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => { setHydrated(true); }, []);
   // Hero background is now a CSS gradient (`.hero-gradient` class in global.css)
@@ -844,7 +863,7 @@ export default function App(
         </div>
       </nav>
 
-      {aiCopilotP.present && <AdminAiCopilot onClose={() => setShowAiCopilot(false)} closing={aiCopilotP.closing} />}
+      {aiCopilotP.present && Copilot && <Copilot onClose={() => setShowAiCopilot(false)} closing={aiCopilotP.closing} />}
       {cekSiswaP.present && <CekSiswaModal onClose={() => setShowCekSiswa(false)} closing={cekSiswaP.closing} />}
       {hydrated && <LoginModal mode={modalMode} onClose={closeModal} onSwitchMode={setModalMode} />}
     </ErrorBoundary>

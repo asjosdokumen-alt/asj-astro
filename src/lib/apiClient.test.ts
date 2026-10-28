@@ -11,6 +11,7 @@
 //   3. Cache keys carry a tag OF the token, never the token itself.
 // ==========================================
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 type AuthState = { isLoggedIn?: boolean; sessionToken?: string };
 let state: AuthState = { isLoggedIn: false, sessionToken: '' };
@@ -802,5 +803,28 @@ describe('token cache — tidak menyeberangi pergantian sesi', () => {
     expect(lastRequest().auth).toBe('Bearer SUPA-STABLE');
     // Cache benar-benar dipakai: getSession hanya sekali untuk dua request.
     expect(sb.calls).toBe(1);
+  });
+});
+
+/**
+ * BATAS BUNDLE — `App.tsx` adalah island yang di-hydrate landing page dengan
+ * `client:load`, dan `App` mengimpor modul ini. Jadi setiap impor statis di
+ * sini ikut ke grafik kritis halaman depan.
+ *
+ * Terukur pada artefak build sebelum perbaikan: grafik statis island = 453 KB
+ * mentah, 213 KB di antaranya klien auth Supabase dan 11,6 KB widget admin
+ * (`AdminAiCopilot`) yang tidak bisa dibuka pengunjung anonim.
+ */
+describe('batas bundle: yang ikut ke landing page', () => {
+  it('supabase dimuat dinamis, bukan statis', () => {
+    const src = readFileSync('src/lib/apiClient.ts', 'utf8');
+    expect(src).not.toMatch(/^import\s+\{[^}]*\}\s+from\s+['"]\.\/supabase['"]/m);
+    expect(src).toContain("await import('./supabase')");
+  });
+
+  it('AdminAiCopilot tidak diimpor statis oleh App', () => {
+    const src = readFileSync('src/components/App.tsx', 'utf8');
+    expect(src).not.toMatch(/^import\s+AdminAiCopilot\s+from/m);
+    expect(src).toContain("import('./admin/AdminAiCopilot')");
   });
 });

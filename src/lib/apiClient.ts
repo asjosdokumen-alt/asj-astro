@@ -8,7 +8,6 @@
  * auth requests don't block AI processing, public reads don't contend with writes.
  */
 import { authStore, logout } from '../store/authReactive';
-import { supabase, isSupabaseConfigured } from './supabase';
 import { showToast } from '../components/Toast';
 import { getEndpoint } from './apiEndpoint';
 import { navigateTo } from './navigate';
@@ -182,6 +181,12 @@ async function getFreshToken(): Promise<string> {
   }
   cachedToken = null;
 
+  // Loaded on demand: this module is imported by `App.tsx`, which the landing
+  // page hydrates with `client:load`. A static edge here put the whole Supabase
+  // auth client (213 KB raw / 56 KB gzip, measured in the built island graph)
+  // on the critical path of a page whose first job is to render a hero for an
+  // anonymous visitor. Nothing else in this file needs it.
+  const { supabase, isSupabaseConfigured } = await import('./supabase');
   if (isSupabaseConfigured()) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
