@@ -8,7 +8,7 @@ import FormToolbar from "../components/forms/FormToolbar";
 <BaseLayout title="AI CV Assistant — Buat CV Kerja Jepang" titleKey="doc.title_ai_cv" description="Buat CV kerja ke Jepang dengan AI Assistant Qween Jeklin. Gratis, cepat, dan sesuai format agensi Jepang.">
   <App showHeader={false} client:only="preact" />
 
-  <FormToolbar client:only="preact" titleKey="toolbar.ai_cv" />
+  <FormToolbar client:only="preact" titleKey="toolbar.ai_cv" asHeading={false} />
   <main id="main-content" class="w-full min-h-[50vh] pt-[var(--u-toolbar-h)]">
     {/* Pengantar tetap sempit (mudah dibaca), tapi RUANG KERJANYA tidak ikut
         sempit. Dulu `max-w-3xl` membungkus keduanya, jadi di layar 1440px

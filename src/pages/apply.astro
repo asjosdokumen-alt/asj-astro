@@ -8,7 +8,7 @@ import FormToolbar from "../components/forms/FormToolbar";
 <BaseLayout title="ASJ - Form Lamaran Kerja" titleKey="doc.title_apply" description="Form pendaftaran lamaran kerja ke Jepang melalui LPK ASJ">
   <App showHeader={false} client:only="preact" />
 
-  <FormToolbar client:only="preact" titleKey="toolbar.apply" />
+  <FormToolbar client:only="preact" titleKey="toolbar.apply" asHeading={false} />
   <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
     <div class="max-w-3xl mx-auto px-4">
       <section class="mb-8">

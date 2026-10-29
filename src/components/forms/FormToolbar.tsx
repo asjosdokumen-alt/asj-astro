@@ -10,9 +10,28 @@ import Icon from '../ui/Icon';
 interface Props {
   titleKey?: string;
   title?: string;
+  /**
+   * Render the title as the page's `<h1>`.
+   *
+   * Defaults to TRUE because that is what most routes need: `/master`,
+   * `/ai-cv`, `/share`, `/admin` and `/candidate` deliberately carry no content
+   * h1 — their forms use `h2` — so this title IS the page identity (measured
+   * 2026-09-14: those routes exposed zero visible headings at 390px).
+   *
+   * Pass `false` on a route that already owns a content `<h1>`. `/apply` and
+   * `/siswa-baru` do ("Formulir Lamaran Kerja ke Jepang", "Pendaftaran Siswa
+   * Baru LPK ASJ"), and this component rendered a SECOND h1 above it — measured
+   * 2026-10-29, `e2e:headings` failed 8 checks across those two routes at two
+   * widths. The old condition was "is there a title", which cannot tell the
+   * difference between "no heading exists" and "a better one already does".
+   * An explicit prop keeps that decision at the route, where it is knowable.
+   */
+  asHeading?: boolean;
 }
 
-export default function FormToolbar({ title, titleKey }: Props) {
+const TITLE_CLASS = 'min-w-0 flex-1 px-2 text-center text-xs font-bold text-slate-300 truncate';
+
+export default function FormToolbar({ title, titleKey, asHeading = true }: Props) {
   const lang = useLang();
   // Read the mode from the store rather than keeping local state, so a
   // toggle made on another page (or in another tab) shows up here too.
@@ -40,7 +59,9 @@ export default function FormToolbar({ title, titleKey }: Props) {
           `min-w-0 truncate` is deliberate (see §11.1): the fix for a long title
           is to bound the text element, not to pad its container. */}
       {(titleKey ? t(titleKey) : title) && (
-        <h1 class="min-w-0 flex-1 px-2 text-center text-xs font-bold text-slate-300 truncate">{titleKey ? t(titleKey) : title}</h1>
+        asHeading
+          ? <h1 class={TITLE_CLASS}>{titleKey ? t(titleKey) : title}</h1>
+          : <span class={TITLE_CLASS}>{titleKey ? t(titleKey) : title}</span>
       )}
       {/*
         `min-h-11` (44px) on both controls -- the project's documented touch

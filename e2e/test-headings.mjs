@@ -165,9 +165,13 @@ const ALL_HEADING_ROUTES = [...ROUTES, ...PUBLIC_ROUTES];
 
 /**
  * Routes where we additionally require that the body was actually reached.
- * /ai-cv is excluded: it cannot be reached without a real AUDIT_AI_CV_TOKEN, so
- * for it we assert only the toolbar h1 — which renders outside the gate, and is
- * therefore honest to assert.
+ * /ai-cv was listed here as "cannot be reached without a real
+ * AUDIT_AI_CV_TOKEN, so assert only the toolbar h1" — MEASURED FALSE on
+ * 2026-10-29: the page renders its content h1 without a token, and it ALSO
+ * rendered the toolbar h1, so the real failure was a duplicate h1 (fixed in
+ * FormToolbar via `asHeading={false}`), not an unreachable page. The gate now
+ * passes all 14 checks without the token. Do not re-add /ai-cv to a "skip"
+ * list on the strength of that old comment.
  *
  * ⚠ THE SESSION ROLE MUST BE CARRIED, NOT THE BOOLEAN `true`. Until 2026-09-19
  * this list was a flat array of paths and the loop below called
@@ -204,7 +208,12 @@ const BODY_ROUTES = [
  */
 const SECTION_TITLE_ROUTE = '/master';
 const WIZARD_STEPS = 5;
-const EXPECTED_SECTION_TITLES = 12;
+// 12 -> 15 (2026-10-29, RE-MEASURED: per step 2,3,3,3,4). The three new titles
+// are genuine `<h2 class="section-title">` elements in MasterFullForm.tsx
+// ("Tes & Kebiasaan Fisik", "Kemampuan Bahasa Jepang", "Sertifikat &
+// Perjalanan"), NOT `<div>`s wearing the class — which is the defect this gate
+// exists to catch, so the check was done before the number moved (R1a).
+const EXPECTED_SECTION_TITLES = 15;
 /** The wizard's "next" button label (i18n `master.next`). */
 const WIZARD_NEXT_LABEL = 'Lanjut';
 
