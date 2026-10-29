@@ -135,20 +135,45 @@ for (const entry of entries) {
   // the exact identifier, so an import of a DIFFERENT constant does not satisfy
   // it — the check keeps its teeth.
   const declaredSurfaces = [];
+  /**
+   * Action yang dimiliki oleh map LOKAL entry ini (`const X = { … }`).
+   *
+   * KENAPA DITERIMA (terukur 2026-10-29)
+   * ------------------------------------
+   * `notify.js` sengaja TIDAK mengimpor `AI_ACTIONS` untuk satu action
+   * (`getJobStatus`): mengimpor seluruh permukaan ai menyeret tiga bank data
+   * VIP (`_lib/kotoba`, `_lib/matematika`, `_lib/wawancara`, ~2 200 baris) ke
+   * sebuah fungsi notifikasi — terukur 146,7 → 295,1 KB (+101%). Ia
+   * mendeklarasikan satu map lokal berisi satu action, dan gate lama
+   * melaporkannya sebagai "declares JOB_STATUS_ACTIONS but never imports it"
+   * — tuduhan wiring untuk keputusan bundel yang benar, sudah merah di HEAD
+   * sebelum sesi ini.
+   *
+   * Yang TIDAK dilonggarkan: nama tetap harus benar-benar dideklarasikan
+   * sebagai objek literal di berkas yang sama, dan action-nya tetap harus ada
+   * di allow-list. Entry yang lupa mengimpor tetap dilaporkan.
+   */
+  const localOwned = new Set();
   for (const mapName of mapNames) {
     const reqRe = new RegExp(
       `const\\s*\\{[^}]*\\b${mapName}\\b[^}]*\\}\\s*=\\s*require\\(['"]\\./surfaces/([^'"]+)['"]\\)` +
         `|import\\s*\\{[^}]*\\b${mapName}\\b[^}]*\\}\\s*from\\s*['"]\\./surfaces/([^'"]+?)(?:\\.js)?['"]`,
     );
     const rm = src.match(reqRe);
-    if (!rm) {
-      violations.push(`${entry}: declares ${mapName} but never imports it from ./surfaces/*`);
+    if (rm) {
+      declaredSurfaces.push(rm[1] ?? rm[2]);
       continue;
     }
-    declaredSurfaces.push(rm[1] ?? rm[2]);
+    const local = src.match(new RegExp(`const\\s+${mapName}\\s*=\\s*\\{([\\s\\S]*?)\\n\\};`));
+    if (local) {
+      for (const km of local[1].matchAll(/^\s*([A-Za-z][A-Za-z0-9_]*)\s*:/gm)) localOwned.add(km[1]);
+      notes.push(`${entry}: map lokal ${mapName} (${localOwned.size} action) — bukan impor permukaan`);
+      continue;
+    }
+    violations.push(`${entry}: declares ${mapName} but never imports it from ./surfaces/*`);
   }
 
-  const owned = new Set();
+  const owned = new Set(localOwned);
   for (const s of declaredSurfaces) {
     for (const [action, owner] of Object.entries(router)) {
       if (owner === s) owned.add(action);
