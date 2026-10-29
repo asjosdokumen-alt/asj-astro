@@ -292,6 +292,18 @@ export async function refreshKandidatSession(refreshToken: string) {
   }
   const revoked = await revokedRefreshError(t);
   if (revoked) return revoked;
+  // A deleted candidate must not keep a 7-day refresh token alive. Only an
+  // explicit `false` rejects: `null` means the query failed, and logging every
+  // candidate out during a DB blip is a worse outage than the one this closes.
+  const wa = normalizeWa(t.wa || '');
+  const stillThere = wa ? await repo.candidateExistsForRefresh(wa) : null;
+  if (stillThere === false) {
+    return {
+      success: false,
+      sessionInvalid: true,
+      message: 'Akun tidak ditemukan. Silakan daftar ulang.',
+    };
+  }
   const newToken = session.signToken({ role: 'kandidat', wa: t.wa, kind: 'session' });
   return { success: true, sessionToken: newToken, wa: t.wa };
 }

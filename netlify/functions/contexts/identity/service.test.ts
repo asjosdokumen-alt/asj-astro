@@ -16,7 +16,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * runs. Everything NOT overridden below comes from the real module, so the
  * existing login/refresh tests keep their real behaviour.
  */
-const revoked = vi.hoisted(() => ({ subjects: new Map<string, number>() }));
+const revoked = vi.hoisted(() => ({
+  subjects: new Map<string, number>(),
+  /** WA whose candidate row no longer exists. */
+  candidateMissing: new Set<string>(),
+  /** Simulates an unreachable DB: every lookup answers "unknown". */
+  dbDown: false,
+}));
 
 vi.mock('./repository', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('./repository');
@@ -27,6 +33,8 @@ vi.mock('./repository', async () => {
       revoked.subjects.set(subject, Math.floor(Date.now() / 1000));
       return true;
     },
+    candidateExistsForRefresh: async (wa: string) =>
+      revoked.dbDown ? null : !revoked.candidateMissing.has(wa),
   };
 });
 
@@ -41,7 +49,11 @@ import {
 } from './service';
 import { signToken, verifyToken } from '../../_lib/session';
 
-beforeEach(() => revoked.subjects.clear());
+beforeEach(() => {
+  revoked.subjects.clear();
+  revoked.candidateMissing.clear();
+  revoked.dbDown = false;
+});
 
 describe('refreshKandidatSession — pemulihan sesi kandidat diam-diam', () => {
   it('refresh token kandidat yang sah → sessionToken baru + wa', async () => {
@@ -124,6 +136,7 @@ describe('login menerbitkan token penyegar yang bisa ditukar', () => {
       // "repo.getSessionRevokedAt is not a function", not as a failed assertion.
       getSessionRevokedAt: async () => null,
       revokeSessionSubject: async () => true,
+      candidateExistsForRefresh: async () => true,
     }));
     vi.resetModules();
     const svc = await import('./service');
@@ -214,5 +227,43 @@ describe('pencabutan sesi — kill switch yang benar-benar mematikan', () => {
   it('revokeSession menolak token yang tidak bisa diverifikasi', async () => {
     expect((await revokeSession('bogus.token', '')).success).toBe(false);
     expect(revoked.subjects.size).toBe(0);
+  });
+});
+
+// ==========================================
+// TESTS: kandidat yang DIHAPUS tidak boleh tetap punya sesi
+//
+// Sebelum ini `refreshKandidatSession` hanya menandatangani ulang dari payload:
+// tidak ada satu pun pembacaan DB. Kandidat yang barisnya dihapus tetap bisa
+// menukar token penyegar sampai 7 hari. Pencabutan (026) tidak menutup ini —
+// penghapusan tidak menaikkan epoch siapa pun.
+//
+// TAPI penolakan hanya boleh terjadi pada `false` yang EKSPLISIT. `null` berarti
+// kueri gagal; memaksa logout seluruh kandidat saat DB goyang adalah gangguan
+// yang lebih besar daripada yang ditutup di sini.
+// ==========================================
+describe('refresh kandidat — baris yang sudah tidak ada', () => {
+  const WA = '6281234567890';
+
+  it('DITOLAK bila kandidatnya sudah tidak ada', async () => {
+    const rt = signToken({ role: 'kandidat', wa: WA, kind: 'refresh' });
+    revoked.candidateMissing.add(WA);
+
+    const res = await refreshKandidatSession(rt);
+
+    expect(res.success).toBe(false);
+    expect((res as { sessionInvalid?: boolean }).sessionInvalid).toBe(true);
+  });
+
+  it('KONTROL: DB tidak bisa dihubungi TIDAK mematikan sesi (fail-open)', async () => {
+    const rt = signToken({ role: 'kandidat', wa: WA, kind: 'refresh' });
+    revoked.dbDown = true;
+
+    expect((await refreshKandidatSession(rt)).success).toBe(true);
+  });
+
+  it('KONTROL: kandidat yang masih ada tetap bisa menyegarkan', async () => {
+    const rt = signToken({ role: 'kandidat', wa: WA, kind: 'refresh' });
+    expect((await refreshKandidatSession(rt)).success).toBe(true);
   });
 });

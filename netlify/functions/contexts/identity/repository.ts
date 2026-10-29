@@ -157,4 +157,28 @@ export async function revokeSessionSubject(subject: string): Promise<boolean> {
   }
 }
 
+/**
+ * Does this candidate row still exist?
+ *
+ * TRI-STATE ON PURPOSE — `true` exists, `false` the query SUCCEEDED and found
+ * nothing, `null` the query itself failed (table missing, DB unreachable,
+ * unexpected shape).
+ *
+ * The caller may only reject on `false`. A deleted candidate must not keep a
+ * 7-day refresh token alive, but a database blip must not log every candidate
+ * out of the site — `findCandidateForRefresh` cannot express that difference
+ * because it swallows errors into `null` and `null` already means "not found".
+ */
+export async function candidateExistsForRefresh(wa: string): Promise<boolean | null> {
+  try {
+    const rows = await supabaseJson('GET', 'database_candidate', {
+      query: { select: 'no_wa', limit: '1', no_wa: `eq.${wa}` },
+    });
+    if (!Array.isArray(rows)) return null;
+    return rows.length > 0;
+  } catch {
+    return null;
+  }
+}
+
 export { supabaseJson };
