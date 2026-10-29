@@ -113,7 +113,13 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   const dasarRef = useRef('');
   const pendengarRef = useRef<Pendengar | null>(null);
   const perekamRef = useRef<Perekam | null>(null);
-  const kirimRef = useRef<() => void>(() => {});
+  /** Sedang mengunggah rekaman? Ref, bukan state: dipakai di dalam callback
+   *  timer yang closure-nya bisa basi. */
+  const memprosesRef = useRef(false);
+  const kirimRef = useRef<(teks?: string) => void>(() => {});
+  /** Sama alasannya dengan `kirimRef`: efek "waktu habis" tidak boleh
+   *  bergantung pada identitas fungsi yang dibuat ulang tiap render. */
+  const selesaikanRef = useRef<() => Promise<string>>(async () => '');
 
   const daftarTahap = ringkasTahap(soal);
   const bisaDengar = dukunganDengar();
@@ -178,19 +184,27 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     if (suaraOtomatis) ucapkanJepang(ronde[next]?.jp ?? '');
   };
 
-  const kirim = () => {
+  /**
+   * Kirim jawaban soal aktif.
+   *
+   * `teksKirim` dipakai saat transkrip belum sempat masuk state: waktu habis
+   * ketika rekaman masih diproses. Tanpa parameter ini, jalur "waktu habis"
+   * mengirim string kosong dan jawaban yang baru saja diucapkan hilang.
+   */
+  const kirim = (teksKirim?: string) => {
     if (layar !== 'main' || !soalAktif) return;
     hentikanMikrofon();
+    const teks = String(teksKirim ?? transkrip);
     const acuan = acuanUntuk(soalAktif);
     const detik = Math.max(1, Math.round((Date.now() - mulaiRef.current) / 1000));
     const nilai = nilaiJawaban({
-      transkrip,
+      transkrip: teks,
       acuan: acuan.teks,
       acuanDari: acuan.dari === 'bank' ? 'bank' : 'siswa',
       detikTerpakai: detik,
       batasDetik,
     });
-    setHasil((h) => [...h, { soal: soalAktif, transkrip, nilai, detik }]);
+    setHasil((h) => [...h, { soal: soalAktif, transkrip: teks, nilai, detik }]);
     lanjut();
   };
   kirimRef.current = kirim;
@@ -206,8 +220,19 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   useEffect(() => {
     if (layar !== 'main' || sisaWaktu > 0) return;
     /* Waktu habis = kirim apa adanya. Jawaban kosong tetap dinilai nol dan
-       dicatat "lewat waktu" — itu informasi yang berguna, bukan kegagalan UI. */
-    kirimRef.current();
+       dicatat "lewat waktu" — itu informasi yang berguna, bukan kegagalan UI.
+
+       TAPI kalau mikrofon masih merekam, transkripnya belum ada sama sekali:
+       transkripsi baru terjadi setelah rekaman berhenti. Menutup soal di sini
+       membuang seluruh jawaban, jadi rekaman diselesaikan dulu. */
+    if (!perekamRef.current?.aktif()) {
+      kirimRef.current();
+      return;
+    }
+    void (async () => {
+      const teks = await selesaikanRef.current();
+      kirimRef.current(teks);
+    })();
   }, [sisaWaktu, layar]);
 
   /* ── mikrofon ─────────────────────────────────────────────────────────── */
@@ -233,15 +258,18 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
 
   /** Jalur rekam: MediaRecorder → server men-transkripsi. */
   const mulaiRekam = async () => {
-    if (!perekamRef.current) {
-      perekamRef.current = buatPerekamAudio({
-        maksDetik: 45,
-        onBatasWaktu: () => {
-          showToast(t('simulasi.rekam_batas'), 'info');
-          void selesaikanRekaman();
-        },
-      });
-    }
+    // Batas rekaman mengikuti SISA WAKTU soal, bukan angka tetap: dengan batas
+    // 45 dtk sementara soal hanya 30 dtk, recorder memotong jawaban di tengah
+    // kalimat — dan dulu hasilnya dibuang oleh timer soal. `+5` hanya jaring
+    // pengaman supaya recorder tidak pernah berhenti LEBIH DULU daripada
+    // timer soal (dua jalur berhenti bersamaan = balapan yang tidak perlu).
+    perekamRef.current = buatPerekamAudio({
+      maksDetik: Math.max(5, Math.min(90, sisaWaktu + 5)),
+      onBatasWaktu: () => {
+        showToast(t('simulasi.rekam_batas'), 'info');
+        void selesaikanRekaman();
+      },
+    });
     const p = perekamRef.current;
     if (!p) {
       showToast(t('simulasi.mikrofon_tidak_ada'), 'info');
@@ -259,16 +287,28 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     }
   };
 
-  const selesaikanRekaman = async () => {
+  /**
+   * Hentikan rekaman dan ubah menjadi teks.
+   *
+   * @returns transkrip yang baru didapat ('' kalau gagal/kosong) — pemanggil
+   *          "waktu habis" memakainya untuk mengirim jawaban yang belum sempat
+   *          masuk state.
+   */
+  const selesaikanRekaman = async (): Promise<string> => {
     const p = perekamRef.current;
-    if (!p) return;
+    if (!p) return '';
+    // Satu rekaman = satu unggahan. Timer dan klik pengguna bisa tiba di
+    // milidetik yang sama, dan `hentikan()` kini idempoten — tanpa penjaga
+    // ini keduanya akan menunggu blob yang SAMA lalu mengirimnya dua kali.
+    if (memprosesRef.current) return '';
+    memprosesRef.current = true;
     setMerekam(false);
     setMemproses(true);
     try {
       const hasilRekam = await p.hentikan();
       if (!hasilRekam) {
         showToast(t('simulasi.rekam_gagal'), 'error');
-        return;
+        return '';
       }
       const data = await blobKeBase64(hasilRekam.blob);
       const r = await apiClient<{ success?: boolean; teks?: string; error?: string }>(
@@ -278,20 +318,25 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
       );
       if (r?.success === false) {
         showToast(r.error || t('simulasi.rekam_gagal'), 'error');
-        return;
+        return '';
       }
       const teks = String(r?.teks || '').trim();
       if (teks) {
         setTranskrip((prev) => (prev ? `${prev} ${teks}`.trim() : teks));
-      } else {
-        showToast(t('simulasi.rekam_kosong'), 'info');
+        return teks;
       }
+      showToast(t('simulasi.rekam_kosong'), 'info');
+      return '';
     } catch (e) {
       showToast((e as ApiError)?.message || t('simulasi.rekam_gagal'), 'error');
+      return '';
     } finally {
+      memprosesRef.current = false;
       setMemproses(false);
     }
   };
+
+  selesaikanRef.current = selesaikanRekaman;
 
   const alihMikrofon = async () => {
     if (merekam) {
@@ -641,7 +686,7 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
         <div class="mt-2 grid grid-cols-[1fr_auto] gap-2">
           <button
             type="button"
-            onClick={kirim}
+            onClick={() => kirim()}
             data-testid="simulasi-kirim"
             class="min-h-11 rounded-control bg-accent-violet text-canvas text-[12.5px] font-extrabold"
           >
@@ -649,7 +694,7 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
           </button>
           <button
             type="button"
-            onClick={kirim}
+            onClick={() => kirim()}
             class="min-h-11 rounded-control border border-line bg-surface-raised px-3 text-[11.5px] font-bold text-fg-muted"
           >
             {t('simulasi.lewati')}

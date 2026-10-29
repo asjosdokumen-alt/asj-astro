@@ -420,22 +420,25 @@ export async function geminiTranskripsiJepang(audio: { mime: string; data: strin
   const key = env('GEMINI_API_KEY');
   if (!key) throw Errors.aiUnavailable('Asisten AI belum dikonfigurasi di server. Hubungi admin ya!');
   breaker.check(BREAKER_GEMINI);
-  const body = {
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          {
-            text:
-              'Transkripsikan ucapan bahasa Jepang pada audio ini APA ADANYA, dalam huruf Jepang ' +
-              '(kanji/kana). Jangan menerjemahkan, jangan menambah kalimat, jangan menjelaskan. ' +
-              'Balas HANYA teks transkripnya. Kalau tidak ada ucapan yang jelas, balas string kosong.',
-          },
-          { inline_data: { mime_type: audio.mime, data: audio.data } },
-        ],
-      },
-    ],
-  };
+  // `fetchGemini` dipakai ULANG, bukan disalin: satu situs `fetch` per provider
+  // adalah yang dijaga `verify:io` (allow-list `max: 2` untuk berkas ini), dan
+  // salinan kedua akan lolos hanya dengan menaikkan batas itu — persis cara
+  // sebuah gerbang berhenti berarti. `contents`-nya generik, jadi audio cukup
+  // dikirim sebagai part `inline_data`.
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        {
+          text:
+            'Transkripsikan ucapan bahasa Jepang pada audio ini APA ADANYA, dalam huruf Jepang ' +
+            '(kanji/kana). Jangan menerjemahkan, jangan menambah kalimat, jangan menjelaskan. ' +
+            'Balas HANYA teks transkripnya. Kalau tidak ada ucapan yang jelas, balas string kosong.',
+        },
+        { inline_data: { mime_type: audio.mime, data: audio.data } },
+      ],
+    },
+  ];
   const started = Date.now();
   try {
     const text = await hedgedInvoke(
@@ -445,25 +448,7 @@ export async function geminiTranskripsiJepang(audio: { mime: string; data: strin
         chainBudgetMs: CHAT_CHAIN_BUDGET_MS,
         hedgeAfterMs: CHAT_HEDGE_AFTER_MS,
       },
-      async (model, signal, budgetMs) => {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-            body: JSON.stringify(body),
-            signal: AbortSignal.any([signal, AbortSignal.timeout(budgetMs)]),
-          },
-        );
-        if (!res.ok) {
-          throw new Error(`Gemini HTTP ${res.status} ${(await res.text()).slice(0, 120)}`);
-        }
-        const j = await res.json();
-        const parts = j?.candidates?.[0]?.content?.parts;
-        return Array.isArray(parts)
-          ? parts.map((p: { text?: unknown }) => (typeof p?.text === 'string' ? p.text : '')).join('').trim()
-          : '';
-      },
+      (model, signal, budgetMs) => fetchGemini(model, key, contents, budgetMs, signal),
     );
     breaker.success(BREAKER_GEMINI);
     recordAiCall('gemini', started, 'success');

@@ -1737,3 +1737,57 @@ describe('AiCvForm — manual-first & mode Jeklin (2026-10-25)', () => {
     expect(calls.some((c) => c.action === 'processAIChat')).toBe(false);
   });
 });
+
+// ==========================================
+// 2026-10-29 — "sering gak sync alamatnya".
+//
+// Simpan CV hanya mengisi `alamat_jp` yang KOSONG, jadi alamat kanji yang sudah
+// pernah dibuat tidak pernah diperbaiki setelah alamat Indonesianya berubah.
+// Tombol "Sinkronkan dari alamat" mengirim satu field dengan `timpa: true`.
+// ==========================================
+describe('AiCvForm — sinkron alamat Jepang', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    vi.mocked(showToast).mockReset();
+    vi.mocked(apiClient).mockReset();
+  });
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('mengirim { identitas: { alamat } } + timpa, lalu mengisi alamat_jp', async () => {
+    const calls: Array<{ action: string; payload: unknown }> = [];
+    vi.mocked(apiClient).mockImplementation((async (action: string, args: unknown) => {
+      calls.push({ action, payload: args });
+      if (action === 'terjemahkanKolomCv') {
+        return { success: true, jumlah: 1, sisa: 0, data: { identitas: { alamat_jp: '〒63453 ポノロゴ' } } };
+      }
+      return { success: true };
+    }) as never);
+
+    render(<AiCvForm />);
+
+    const alamat = document.querySelector('#ai_alamat') as HTMLInputElement | null;
+    if (!alamat) throw new Error('field alamat tidak ada');
+    await fireEvent.input(alamat, { target: { value: 'PONOROGO JAWA TIMUR 63453' } });
+
+    const tombol = screen.getByTestId('aksi-alamat_jp');
+    await fireEvent.click(tombol);
+
+    await waitFor(() => {
+      const call = calls.find((c) => c.action === 'terjemahkanKolomCv');
+      if (!call) throw new Error('terjemahkanKolomCv tidak dipanggil');
+      const p = (call.payload as Array<Record<string, unknown>>)[0];
+      // HANYA alamat yang dikirim: `timpa` pada formulir penuh akan menimpa
+      // kolom Jepang yang sudah dikoreksi tangan.
+      expect(p.timpa).toBe(true);
+      expect(p.data).toEqual({ identitas: { alamat: 'PONOROGO JAWA TIMUR 63453' } });
+    });
+
+    await waitFor(() => {
+      const jp = document.querySelector('#ai_alamat_jp') as HTMLInputElement | null;
+      expect(jp?.value).toBe('〒63453 ポノロゴ');
+    });
+  });
+});

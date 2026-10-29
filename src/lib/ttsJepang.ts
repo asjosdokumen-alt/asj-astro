@@ -429,14 +429,22 @@ export function buatPerekamAudio(opsi: {
       return null;
     },
     hentikan() {
-      if (!rekaman || !jalan) return Promise.resolve(null);
+      // IDEMPOTEN, dan itu bukan kemewahan: `maksDetik` memanggil `stop()`
+      // sendiri lalu memberi tahu komponen, yang memanggil `hentikan()` lagi.
+      // Versi pertama memeriksa `jalan` (masih true saat itu, karena `onstop`
+      // belum menyala), memanggil `stop()` untuk kedua kalinya — yang MELEMPAR
+      // pada recorder yang sudah nonaktif — lalu mengembalikan `null`. Hasilnya
+      // rekaman 45 detik dibuang dan pengguna melihat "rekaman tidak bisa
+      // diproses". Sekarang satu rekaman = satu promise, dan pemanggil kedua
+      // menunggu promise yang sama.
+      const p = selesai;
+      if (!p) return Promise.resolve(null);
       try {
-        rekaman.stop();
+        rekaman?.stop();
       } catch {
-        bersihkan();
-        return Promise.resolve(null);
+        /* Sudah berhenti (atau belum pernah mulai) — `onstop` tetap menyala. */
       }
-      return selesai ?? Promise.resolve(null);
+      return p;
     },
     buang() {
       potongan = [];

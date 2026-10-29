@@ -496,6 +496,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
    * would overwrite the first with an identical payload.
    */
   const [savePhase, setSavePhase] = useState<'idle' | 'extCheck' | 'uploading' | 'saving' | 'done'>('idle');
+  /** Tombol "Sinkronkan dari alamat" sedang menunggu server. */
+  const [sinkronBusy, setSinkronBusy] = useState(false);
   /* The three dynamic sections. Seeded with one empty row each so the section
      is usable immediately — legacy showed a row and a "tambah" button too. */
   const [eduList, setEduList] = useState<EduRow[]>(() => (seedEdu ? seedEduRows() : [newEduRow()]));
@@ -919,6 +921,43 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       () => showToast(t('ai_cv.share_link_copied'), 'success'),
       () => showToast(t('ui.toast_copy_text_failed'), 'error'),
     );
+  };
+
+  /**
+   * "Sinkronkan dari alamat" — buat ulang `alamat_jp` dari `alamat`.
+   *
+   * Simpan CV hanya mengisi alamat Jepang yang KOSONG, jadi alamat yang sudah
+   * pernah dibuat lalu alamat Indonesianya diperbaiki akan tetap tidak cocok
+   * selamanya. Tombol ini mengirim satu field saja dengan `timpa: true`, jadi
+   * yang ditimpa hanya alamat — bukan kolom Jepang lain yang mungkin sudah
+   * dikoreksi tangan.
+   */
+  const sinkronAlamat = async () => {
+    const alamat = cv.alamat.trim();
+    if (!alamat) {
+      showToast('Isi dulu Alamat Lengkap-nya.', 'error');
+      return;
+    }
+    if (sinkronBusy) return;
+    setSinkronBusy(true);
+    try {
+      const r = await apiClient<{ success?: boolean; data?: unknown; error?: string }>(
+        'terjemahkanKolomCv',
+        [{ data: { identitas: { alamat } }, timpa: true }],
+        { onSessionInvalid: 'throw', silent: true },
+      );
+      const jp = r?.success !== false && r?.data ? mapAiCvDraft(r.data).alamat_jp : '';
+      if (jp) {
+        setCv(prev => ({ ...prev, alamat_jp: jp }));
+        showToast('Alamat Jepang disinkronkan.', 'success');
+      } else {
+        showToast(r?.error || 'Alamat Jepang belum bisa dibuat. Coba lagi.', 'error');
+      }
+    } catch (e) {
+      showToast((e as ApiError).message || 'Gagal menyinkronkan alamat.', 'error');
+    } finally {
+      setSinkronBusy(false);
+    }
   };
 
   const saveToDatabase = async () => {
@@ -1504,6 +1543,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 touched={touchedFields.has('alamat')} onInput={(v) => handleManualEdit('alamat', v)} />
               <Field label={t("cv.field_alamat_jp")} id="alamat_jp" value={cv.alamat_jp} span={3} spanMd={3} jp
                 ph="〒651-… 県… 市…" hint="Dicetak apa adanya di form Jepang — tulis dari yang terbesar (prefektur) ke terkecil."
+                action={{ label: 'Sinkronkan dari alamat', onClick: () => void sinkronAlamat(), busy: sinkronBusy }}
                 touched={touchedFields.has('alamat_jp')} onInput={(v) => handleManualEdit('alamat_jp', v)} />
               {/* KINKI `O9` mencetak "ジャカルタから…㎞ / 飛行機で…時間…分" —
                   dua angka ini duduk di sebelah alamat karena sama-sama soal
@@ -2169,13 +2209,21 @@ function MonthYearField({ label, id, value, yearLabel, monthLabelText, onChange 
  * `border-sky-400`; the point is that a human correction must stay visibly
  * distinguishable from an AI guess when the two disagree.
  */
-function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, type, list, ph, hint, onInput, touched }: {
+function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, type, list, ph, hint, onInput, touched, action }: {
   label: string; id: string; value: string; readonly?: boolean; center?: boolean;
   jp?: boolean; span?: number; spanMd?: number; unit?: Unit; type?: string; list?: string;
   /** Petunjuk penulisan: contoh isi yang diharapkan (muncul di dalam kotak). */
   ph?: string;
   /** Petunjuk tambahan di bawah kotak — untuk aturan yang tidak muat di `ph`. */
   hint?: string;
+  /**
+   * Aksi kecil di kanan baris petunjuk (mis. "Sinkronkan dari alamat").
+   *
+   * Diletakkan di baris petunjuk, BUKAN di dalam kotak: `Field` ini dipakai
+   * ratusan kali, dan tombol yang mengambang di atas input akan menutupi
+   * nilai yang sedang dibaca.
+   */
+  action?: { label: string; onClick: () => void; busy?: boolean };
   onInput?: (value: string) => void; touched?: boolean;
 }) {
   const spanClass = span === 3 ? 'col-span-3' : span === 2 ? 'col-span-2' : '';
@@ -2193,7 +2241,18 @@ function Field({ label, id, value, readonly, center, jp, span, spanMd, unit, typ
           <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-fg-subtle pointer-events-none">{unit}</span>
         )}
       </div>
-      {hint && <p class="text-[10px] leading-tight text-slate-500 mt-0.5">{hint}</p>}
+      {(hint || action) && (
+        <div class="mt-0.5 flex items-start gap-2">
+          {hint && <p class="text-[10px] leading-tight text-slate-500">{hint}</p>}
+          {action && (
+            <button type="button" onClick={action.onClick} disabled={action.busy}
+              data-testid={`aksi-${id}`}
+              class="ml-auto shrink-0 whitespace-nowrap text-[10px] font-bold text-sky-400 hover:text-sky-300 disabled:opacity-50">
+              {action.busy ? 'Menyinkronkan…' : action.label}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

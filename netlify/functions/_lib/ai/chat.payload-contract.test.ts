@@ -324,3 +324,62 @@ describe('terjemahkanKolomCv — semua kolom, termasuk baris & katakana', () => 
     expect(res.jumlah).toBe(0);
   });
 });
+
+// ==========================================
+// 2026-10-29 — `timpa` dan batas per panggilan.
+//
+// "Sering gak sync alamatnya": simpan CV hanya mengisi alamat Jepang yang
+// KOSONG, jadi alamat kanji yang sudah pernah dibuat tidak pernah diperbaiki
+// setelah alamat Indonesianya berubah. Tombol "Sinkronkan" mengirim satu field
+// dengan `timpa: true`; tanpa penjagaan, `timpa` pada formulir penuh akan
+// menimpa kolom Jepang yang sudah dikoreksi tangan.
+// ==========================================
+describe('kumpulkanTugasTerjemah — timpa & batas', () => {
+  it('tanpa timpa: field yang sudah berisi dilewati', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      identitas: { alamat: 'PONOROGO', alamat_jp: '〒63453 ポノロゴ' },
+    });
+    expect(tugas.map((x) => x.path.join('.'))).not.toContain('identitas.alamat_jp');
+  });
+
+  it('dengan timpa: field yang sudah berisi IKUT dibuat ulang', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      identitas: { alamat: 'PONOROGO JAWA TIMUR', alamat_jp: '〒63453 ポノロゴ' },
+    }, Number.POSITIVE_INFINITY, true);
+    expect(tugas.map((x) => x.path.join('.'))).toContain('identitas.alamat_jp');
+  });
+
+  it('nilai yang tidak wajar (>600 karakter) tidak pernah masuk prompt', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      identitas: { alamat: 'A'.repeat(5000) },
+    });
+    expect(tugas).toHaveLength(0);
+  });
+});
+
+describe('terjemahkanKolomCv — batas per panggilan', () => {
+  beforeEach(() => {
+    geminiMock.mockReset();
+  });
+
+  it('lebih dari 40 kolom kosong → satu panggilan 40 tugas, `sisa` melaporkan sisanya', async () => {
+    const { handleTerjemahkanKolomCv } = await import('./chat');
+    // 45 baris keluarga tanpa kolom Jepang = 90 tugas (hubungan + katakana).
+    const keluarga = Array.from({ length: 45 }, (_, i) => ({
+      nama: `NAMA${i}`,
+      hubungan_id: 'IBU',
+      pekerjaan: 'PETANI',
+    }));
+    geminiMock.mockResolvedValue({ reply: JSON.stringify({}) });
+
+    const res = (await handleTerjemahkanKolomCv([{ data: { keluarga } }], 'tok-admin')) as {
+      success?: boolean; jumlah?: number; sisa?: number;
+    };
+
+    const prompt = String(geminiMock.mock.calls[0]?.[0] ?? '');
+    // 40 baris tugas bernomor 1..40 — bukan 90.
+    expect(prompt).toContain('40. ');
+    expect(prompt).not.toContain('41. ');
+    expect(res.sisa).toBeGreaterThan(0);
+  });
+});

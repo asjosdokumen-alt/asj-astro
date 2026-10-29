@@ -155,3 +155,85 @@ describe('/wawancara — Mode Simulasi', () => {
     expect(soalPertama).toBeTruthy();
   }, 20000);
 });
+
+// ==========================================
+// 2026-10-29 — jalur REKAM, bukan SpeechRecognition.
+//
+// Laporan pemilik: "rekam suara gak bisa baik dari hp maupun dari destop".
+// jsdom tidak punya SpeechRecognition DAN tidak punya MediaRecorder, jadi
+// seluruh jalur mikrofon dulu tidak pernah tersentuh tes. Di sini keduanya
+// dipalsukan untuk memaku sambungannya: tekan Rekam → berhenti → server
+// men-transkripsi → teks masuk ke kotak jawaban.
+// ==========================================
+describe('/wawancara — rekam suara (MediaRecorder)', () => {
+  class FakeMR {
+    static isTypeSupported(m: string) {
+      return m.startsWith('audio/webm');
+    }
+    mimeType = 'audio/webm';
+    ondataavailable: ((e: { data: Blob }) => void) | null = null;
+    onstop: (() => void) | null = null;
+    private state: 'inactive' | 'recording' = 'inactive';
+    start() {
+      this.state = 'recording';
+    }
+    stop() {
+      if (this.state !== 'recording') throw new Error('InvalidStateError');
+      this.state = 'inactive';
+      this.ondataavailable?.({ data: new Blob([new Uint8Array([1, 2, 3])], { type: 'audio/webm' }) });
+      this.onstop?.();
+    }
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    apiMock.mockReset();
+    apiMock.mockImplementation(async (action: string) => {
+      if (action === 'transkripsikanSuara') return { success: true, teks: '私はブディと申します。' };
+      return BANK;
+    });
+    login();
+    vi.stubGlobal('MediaRecorder', FakeMR);
+    vi.stubGlobal('isSecureContext', true);
+    Object.defineProperty(globalThis.navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) },
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.unstubAllGlobals();
+    // @ts-expect-error — jsdom tidak punya mediaDevices sama sekali.
+    delete globalThis.navigator.mediaDevices;
+  });
+
+  it('rekam → berhenti → transkrip server masuk ke kotak jawaban', async () => {
+    render(<MensetsuForm />);
+    await waitFor(() => expect(screen.getByTestId('tab-simulasi')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('tab-simulasi'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-mulai')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('simulasi-mulai'));
+
+    const mic = await screen.findByTestId('simulasi-mikrofon');
+    fireEvent.click(mic);
+    // Tombolnya berubah menjadi "Stop rekam" hanya setelah izin diberikan.
+    await waitFor(() => expect(mic.getAttribute('aria-pressed')).toBe('true'));
+
+    fireEvent.click(mic);
+
+    await waitFor(() => {
+      const call = apiMock.mock.calls.find((c) => c[0] === 'transkripsikanSuara');
+      if (!call) throw new Error('transkripsikanSuara tidak dipanggil');
+      const p = (call[1] as Array<{ mime: string; data: string }>)[0];
+      expect(p.mime).toContain('audio/webm');
+      expect(p.data.length).toBeGreaterThan(0);
+    });
+
+    await waitFor(() => {
+      const kotak = screen.getByTestId('simulasi-transkrip') as HTMLTextAreaElement;
+      expect(kotak.value).toBe('私はブディと申します。');
+    });
+  });
+});

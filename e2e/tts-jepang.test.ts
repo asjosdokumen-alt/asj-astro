@@ -236,8 +236,18 @@ function fakeMediaRecorder(hasil: { ok: boolean }) {
     mimeType = 'audio/webm';
     ondataavailable: ((e: { data: Blob }) => void) | null = null;
     onstop: (() => void) | null = null;
-    start() {}
+    /** Sama seperti MediaRecorder sungguhan: `stop()` kedua MELEMPAR. */
+    private state: 'inactive' | 'recording' = 'inactive';
+    start() {
+      this.state = 'recording';
+    }
     stop() {
+      if (this.state !== 'recording') {
+        const e = new Error('InvalidStateError') as Error & { name: string };
+        e.name = 'InvalidStateError';
+        throw e;
+      }
+      this.state = 'inactive';
       this.ondataavailable?.({ data: new Blob([new Uint8Array([1, 2, 3])], { type: 'audio/webm' }) });
       this.onstop?.();
     }
@@ -329,6 +339,62 @@ describe('rekam suara — kontrak jalur cadangan', () => {
     expect(p.aktif()).toBe(true);
     const hasil = await p.hentikan();
     expect(hasil?.mime).toContain('audio/webm');
+    expect(hasil?.blob.size).toBeGreaterThan(0);
+  });
+});
+
+// ==========================================
+// 2026-10-29 — auto-stop 45 detik TIDAK boleh membuang rekaman.
+//
+// `maksDetik` memanggil `stop()` sendiri, lalu memberi tahu komponen, yang
+// memanggil `hentikan()`. Versi pertama memanggil `stop()` untuk kedua kalinya,
+// yang MELEMPAR pada recorder nonaktif, lalu mengembalikan `null` — rekaman
+// terpanjang yang justru paling butuh ditranskripsi dibuang, dengan pesan
+// "rekaman tidak bisa diproses".
+// ==========================================
+describe('rekam suara — auto-stop dan pemanggilan ganda', () => {
+  afterEach(() => {
+    const g = globalThis as G;
+    delete g.MediaRecorder;
+    delete g.navigator;
+    delete g.isSecureContext;
+  });
+
+  function pasang() {
+    const g = globalThis as G;
+    g.MediaRecorder = fakeMediaRecorder({ ok: true });
+    g.isSecureContext = true;
+    g.navigator = {
+      mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) },
+    };
+  }
+
+  it('hentikan() dipanggil dua kali → satu rekaman, bukan null', async () => {
+    pasang();
+    const p = buatPerekamAudio();
+    if (!p) throw new Error('perekam tidak dibuat');
+    await p.mulai();
+    const a = p.hentikan();
+    const b = p.hentikan();
+    const [ra, rb] = await Promise.all([a, b]);
+    expect(ra?.blob.size).toBeGreaterThan(0);
+    expect(rb?.blob.size).toBe(ra?.blob.size);
+  });
+
+  it('batas waktu: stop() oleh timer + hentikan() dari komponen → blob tetap ada', async () => {
+    pasang();
+    let padaBatas: (() => void) | undefined;
+    const p = buatPerekamAudio({ maksDetik: 1, onBatasWaktu: () => padaBatas?.() });
+    if (!p) throw new Error('perekam tidak dibuat');
+    await p.mulai();
+
+    // Tiru timer: recorder berhenti lebih dulu, komponen menyusul.
+    const dihentikan = p.hentikan();
+    padaBatas = () => { void p.hentikan(); };
+    padaBatas();
+
+    const hasil = await dihentikan;
+    expect(hasil, 'rekaman yang dihentikan timer tidak boleh hilang').toBeTruthy();
     expect(hasil?.blob.size).toBeGreaterThan(0);
   });
 });

@@ -158,27 +158,57 @@ export interface TugasTerjemah {
 }
 
 /**
+ * Panjang maksimum satu nilai yang layak diterjemahkan (karakter).
+ *
+ * Kolom CV yang wajar — alamat, motivasi, riwayat — jauh di bawah ini. Nilai
+ * yang lebih panjang berarti kiriman klien yang tidak wajar (atau data rusak),
+ * dan meneruskannya hanya membengkakkan prompt yang dibayar per token.
+ */
+const MAKS_TEKS_TERJEMAH = 600;
+
+/**
+ * Jumlah field per satu panggilan "Terjemahkan semua kolom".
+ *
+ * Satu formulir penuh bisa punya 40+ kolom kosong ditambah tiga repeater; satu
+ * prompt sebesar itu tidak lebih lambat secara linear, tapi ia menembus
+ * anggaran rantai dan gagal SELURUHNYA — bukan sebagian. Dengan batas ini
+ * setiap panggilan selesai, dan `sisa` memberi tahu klien bahwa masih ada.
+ */
+const MAKS_TUGAS_SEKALI = 40;
+
+/**
  * Kumpulkan SEMUA field yang belum punya pasangan Jepang.
  *
  * Dipakai dua jalur: auto-terjemahan satu giliran chat (dibatasi `batas`) dan
- * aksi eksplisit "Terjemahkan semua kolom" (tanpa batas). Satu fungsi, karena
- * dua daftar pasangan yang berbeda adalah persis bagaimana `katakana` dan baris
- * repeater tertinggal dari fitur ini.
+ * aksi eksplisit "Terjemahkan semua kolom" (batas lebih longgar). Satu fungsi,
+ * karena dua daftar pasangan yang berbeda adalah persis bagaimana `katakana`
+ * dan baris repeater tertinggal dari fitur ini.
+ *
+ * `timpa` = sertakan juga field yang SUDAH berisi, dipakai tombol "Sinkronkan"
+ * pada alamat: alamat kanji yang sudah ada tapi tidak lagi cocok dengan alamat
+ * Indonesia-nya tidak akan pernah diperbaiki oleh aturan "hanya yang kosong".
  */
-export function kumpulkanTugasTerjemah(data: Record<string, unknown>, batas = Number.POSITIVE_INFINITY): TugasTerjemah[] {
+export function kumpulkanTugasTerjemah(
+  data: Record<string, unknown>,
+  batas = Number.POSITIVE_INFINITY,
+  timpa = false,
+): TugasTerjemah[] {
   const tugas: TugasTerjemah[] = [];
   const tambah = (teks: string, path: string[], jenis: 'jp' | 'kata') => {
     if (tugas.length >= batas) return;
-    tugas.push({ index: tugas.length, teks, path, jenis });
+    const t = String(teks ?? '').trim();
+    if (!t || t.length > MAKS_TEKS_TERJEMAH) return;
+    tugas.push({ index: tugas.length, teks: t, path, jenis });
   };
+  const kosong = (path: string[]) => timpa || !getNested(data, path).trim();
   for (const pair of AI_ID_JP_PAIRS) {
     const idVal = getNested(data, pair.idPath).trim();
-    if (!idVal || getNested(data, pair.jpPath).trim()) continue;
+    if (!idVal || !kosong(pair.jpPath)) continue;
     tambah(idVal, pair.jpPath, 'jp');
   }
   for (const pair of AI_KATAKANA_PAIRS) {
     const idVal = getNested(data, pair.idPath).trim();
-    if (!idVal || getNested(data, pair.jpPath).trim()) continue;
+    if (!idVal || !kosong(pair.jpPath)) continue;
     tambah(idVal, pair.jpPath, 'kata');
   }
   for (const afp of ARRAY_FIELD_PAIRS) {
@@ -190,11 +220,11 @@ export function kumpulkanTugasTerjemah(data: Record<string, unknown>, batas = Nu
       const row = arr[i] || {};
       const idVal = String(row[afp.idKey] || '').trim();
       const jpVal = String(row[afp.jpKey] || '').trim();
-      if (idVal && !jpVal) tambah(idVal, [afp.type, String(i), afp.jpKey], afp.jenis ?? 'jp');
+      if (idVal && (timpa || !jpVal)) tambah(idVal, [afp.type, String(i), afp.jpKey], afp.jenis ?? 'jp');
       // Nama anggota keluarga → katakana, terpisah dari kolom hubungan/pekerjaan.
       if (afp.type === 'keluarga') {
         const nama = String(row.nama || '').trim();
-        if (nama && !String(row.katakana || '').trim()) {
+        if (nama && (timpa || !String(row.katakana || '').trim())) {
           tambah(nama, [afp.type, String(i), 'katakana'], 'kata');
         }
       }
@@ -450,7 +480,12 @@ export async function handleTerjemahkanKolomCv(payload: unknown, sessionToken?: 
 
   const p = unwrapPayloadArgs(payload);
   const data = (p.data && typeof p.data === 'object' ? p.data : {}) as Record<string, unknown>;
-  const tugas = kumpulkanTugasTerjemah(data);
+  // `timpa` hanya masuk akal untuk kiriman SEMPIT (mis. satu alamat). Klien
+  // yang mengirim seluruh formulir dengan `timpa: true` akan menimpa kolom
+  // Jepang yang sudah dikoreksi tangan — jadi batasnya tetap ada.
+  const timpa = p.timpa === true;
+  const semua = kumpulkanTugasTerjemah(data, Number.POSITIVE_INFINITY, timpa);
+  const tugas = semua.slice(0, MAKS_TUGAS_SEKALI);
   if (!tugas.length) {
     return { success: true, data, jumlah: 0, sisa: 0, pesan: 'Semua kolom sudah berbahasa Jepang.' };
   }
@@ -480,7 +515,11 @@ export async function handleTerjemahkanKolomCv(payload: unknown, sessionToken?: 
       };
     }
     const { jumlah } = terapkanHasilTerjemah(data, tugas, parsed);
-    return { success: true, data, jumlah, sisa: tugas.length - jumlah };
+    // `sisa` = yang BELUM terisi di SELURUH data, bukan hanya yang dikirim
+    // kali ini: satu kiriman dibatasi `MAKS_TUGAS_SEKALI`, dan klien memakai
+    // angka ini untuk menawarkan "tekan lagi".
+    const sisa = semua.length - jumlah;
+    return { success: true, data, jumlah, sisa };
   } catch (e) {
     const f = aiFailure(e, 'Gagal menerjemahkan kolom. Coba lagi sebentar.');
     return {
