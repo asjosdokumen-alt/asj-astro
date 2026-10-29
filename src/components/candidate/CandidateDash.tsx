@@ -144,17 +144,30 @@ function isBiodataRow(r: Riwayat) {
  * benar; sampai kolom itu diproyeksikan ke sini, penanda baris dipakai agar
  * dashboard berhenti mengklaim hal yang belum terjadi.
  */
-function statusText(status: string, biodata = false) {
+export function statusText(status: string, biodata = false) {
   const s = (status || '').toUpperCase();
   if (s.includes('MENUNGGU') || s.includes('BARU') || s.includes('PENDING'))
     return biodata ? t('ui.biodata_menunggu') : t('form.txt_menunggu_review');
-  if (s.includes('REVIEW') || s.includes('DIBACA') || s.includes('PROSES'))
+  // `DIBACA` FIRST, and deliberately before REVIEW.
+  //
+  // "Tandai dibaca" is the ONLY action available on a biodata row (A2), so
+  // after the admin uses it this branch decided the candidate's text — and
+  // `DIBACA` sat inside the REVIEW test, so the row flipped from "Biodata
+  // diperbarui" to "Review Admin": a waiting state that never resolves, caused
+  // by the one action the admin has. Measured 2026-10-29.
+  if (s === 'DIBACA')
+    return biodata ? t('ui.biodata_read_by_admin') : t('form.txt_review_admin');
+  if (s.includes('REVIEW') || s.includes('PROSES'))
     return t('form.txt_review_admin');
   if (s.includes('DISETUJUI') || s.includes('LULUS') || s.includes('APPROVE') || s.includes('LOLOS'))
     return biodata ? t('ui.biodata_approved_by_admin') : t('ui.status_approved_by_admin');
   if (s === 'INFO') return t('ui.biodata_updated');
+  // A rejected DOCUMENT is not a rejected APPLICATION. 2 rows carry
+  // `GAGAL` with `code_job` empty (measured 2026-10-29: DISETUJUI=3, GAGAL=2,
+  // INFO=15), and they were telling the candidate their job application failed
+  // when a passport scan had been rejected.
   if (s.includes('GAGAL') || s.includes('REJECT') || s.includes('TOLAK'))
-    return t('form.txt_lamaran_gagal');
+    return biodata ? t('ui.biodata_revisi') : t('form.txt_lamaran_gagal');
   return t('form.txt_diproses');
 }
 

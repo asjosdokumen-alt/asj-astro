@@ -689,6 +689,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.biodata_updated": "Biodata diperbarui",
     "ui.biodata_revisi": "Berkas perlu revisi",
     "ui.biodata_menunggu": "Berkas menunggu review admin",
+    "ui.biodata_read_by_admin": "Sudah dilihat admin",
     "ui.biodata_belum": "Berkas belum dikirim",
     "ui.biodata_label": "Berkas",
     "ui.no_app_yet_general": "Anda belum pernah melamar lowongan. Lamaran muncul di sini setelah Anda mengirim form.",

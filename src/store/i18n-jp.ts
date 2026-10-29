@@ -726,6 +726,7 @@ export const jpTranslations: Record<string, string> = {
     "ui.biodata_updated": "プロフィールが更新されました",
     "ui.biodata_revisi": "書類の修正が必要です",
     "ui.biodata_menunggu": "書類は管理者の確認待ちです",
+    "ui.biodata_read_by_admin": "管理者が確認済みです",
     "ui.biodata_belum": "書類は未提出です",
     "ui.biodata_label": "書類",
     "ui.no_app_yet_general": "まだ応募していません。応募フォームを送信するとここに表示されます。",

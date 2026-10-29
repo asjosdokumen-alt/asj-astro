@@ -21,7 +21,7 @@
 // ==========================================
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import CandidateDash from './CandidateDash';
+import CandidateDash, { statusText } from './CandidateDash';
 import { apiClient } from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { authStore, type AuthState } from '../../store/authReactive';
@@ -821,5 +821,46 @@ describe('CandidateDash — loading skeleton', () => {
     expect(sk.textContent).toBe('ui.loading');
     // Dekorasi tidak dibacakan: dua kolom + setiap Bar.
     expect(sk.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(1);
+  });
+});
+
+// ==========================================
+// TESTS: statusText — kosakata BIODATA vs LAMARAN
+//
+// Keluhan yang dikunci (2026-10-29): 5 baris biodata berstatus di luar keranjang
+// INFO (terukur DISETUJUI=3, GAGAL=2). Datanya sah — itu keputusan admin — tapi
+// teksnya berbicara sebagai LAMARAN, jadi kandidat yang scan paspornya ditolak
+// membaca "Lamaran Gagal". Dan `DIBACA` dulu duduk di cabang REVIEW, sehingga
+// satu-satunya aksi admin pada baris biodata ("Tandai dibaca") mengubah teks
+// kandidat menjadi "Review Admin" — keadaan menunggu yang tidak pernah selesai.
+//
+// ⚠ `../../store/i18n` di-mock di berkas ini menjadi `t: (k) => k`, jadi string
+// yang dibandingkan di bawah ADALAH KEY-nya. Itu justru yang benar di sini:
+// kontraknya "baris ini memilih key yang mana". Membandingkan teks Indonesia
+// akan menguji kamus, bukan komponen — dan `t()` mengembalikan key apa adanya
+// kalau entri hilang, jadi tes teks bisa lolos justru saat key-nya tidak ada.
+// ==========================================
+describe('statusText — kosakata biodata tidak meminjam kosakata lamaran', () => {
+  it('DIBACA pada baris biodata = sudah dilihat, BUKAN review', () => {
+    expect(statusText('DIBACA', true)).toBe('ui.biodata_read_by_admin');
+    expect(statusText('DIBACA', true)).not.toBe('form.txt_review_admin');
+  });
+
+  it('GAGAL pada baris biodata = berkas perlu revisi, BUKAN lamaran gagal', () => {
+    expect(statusText('GAGAL', true)).toBe('ui.biodata_revisi');
+    expect(statusText('GAGAL', true)).not.toBe('form.txt_lamaran_gagal');
+  });
+
+  it('KONTROL: baris lamaran tetap memakai kosakata lamaran', () => {
+    expect(statusText('DIBACA', false)).toBe('form.txt_review_admin');
+    expect(statusText('GAGAL', false)).toBe('form.txt_lamaran_gagal');
+  });
+
+  it('setiap status kanonik memilih satu key, tidak kosong', () => {
+    for (const s of ['MENUNGGU', 'REVIEW', 'UPDATE', 'DISETUJUI', 'GAGAL', 'INFO', 'DIBACA']) {
+      for (const biodata of [true, false]) {
+        expect(statusText(s, biodata).length).toBeGreaterThan(2);
+      }
+    }
   });
 });
