@@ -14,13 +14,14 @@
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { RIREKISHO_XLSX_BASE64 } from '../templates/rirekisho-xlsx.b64';
-import { isGood } from '../../helpers_cv';
+import { isGood, kanjiHubunganDari, rapikanKanjiHubungan } from '../../helpers_cv';
 import {
   buildXlsxForm,
   birthDate,
   currency,
   cvFileName,
   fitPhoto as fitPhotoIn,
+  negatif,
   patchAnchor as patchAnchorIn,
   period,
   s,
@@ -33,8 +34,22 @@ const SHEET_PATH = 'xl/worksheets/sheet1.xml';
 const DRAWING_PATH = 'xl/drawings/drawing1.xml';
 const PHOTO_PART = 'xl/media/image1.png';
 
-/** The pas-foto anchor, copied from the source workbook: col 0, row 3, 3.00in x 3.86in. */
-const PHOTO_BOX: PhotoBox = { cx: 2743200, cy: 3533775 };
+/**
+ * Bingkai pas foto = SEL GABUNGAN `A4:C14`, bukan angka warisan.
+ *
+ * Sampai 2026-10-29 kotaknya dipatok `3.00 x 3.86 in` (288 x 371 px) dari berkas
+ * sumber, sedangkan bingkai selnya terukur **255 x 377 px** — jadi foto 33 px
+ * LEBIH LEBAR dari bingkainya dan menutupi garis kanan kotak. Geometri sheet
+ * adalah kebenaran (sama seperti form JIPA), jadi kotaknya diturunkan dari sel.
+ *
+ * `PHOTO_BOX` di bawah adalah angka hasil perhitungan itu (255x377 px dikurangi
+ * inset 2 px tiap sisi) dan dipakai `fitPhoto()` — tes memakunya supaya
+ * `photoRange` dan `fitPhoto` tidak bisa menyimpang.
+ */
+const PHOTO_RANGE = 'A4:C14';
+/** 2 px tiap sisi supaya garis bingkai sel tetap terlihat di atas foto. */
+const PHOTO_INSET = 2 * 9525;
+const PHOTO_BOX: PhotoBox = { cx: 251 * 9525, cy: 373 * 9525 };
 
 /** How many rows each list section of the form provides. */
 const EDU_ROWS = 3;
@@ -54,17 +69,23 @@ export function patchAnchor(xml: string, fit: PhotoFit): string {
 
 /* ── value formatting, mirroring the vocabulary the printed form uses ───────── */
 
-/** The form writes "TIDAK　（無）" for a negative/absent yes-no field. */
-function yesNo(raw: unknown, yesLabel?: string): string {
-  const t = s(raw).trim();
-  if (!isGood(t) || /^(tidak|no|none|-|無)$/i.test(t)) return 'TIDAK\u3000（無）';
-  return yesLabel ? yesLabel : t;
+/**
+ * Sel 有/無: HANYA dua nilai yang sah di dropdown form ini.
+ *
+ * Sebelumnya sel ini menyalin nilai mentah apa adanya, jadi `H12` (旅券の有無)
+ * mencetak NOMOR PASPOR dan `H11` mencetak `BELUM PERNAH` — dua-duanya tidak
+ * berarti "ada/tidak ada", dan tidak ada satu pun yang ada di daftar dropdown.
+ */
+function adaLabel(raw: unknown): string {
+  return negatif(raw) ? 'TIDAK\u3000（無）' : 'ADA\u3000（有）';
 }
 
 function genderLabel(raw: unknown): string {
   const t = s(raw).toUpperCase();
+  // Ejaan HARUS sama dengan daftar dropdown `J4:K4` di template: `LAKI LAKI`
+  // (spasi), bukan `LAKI-LAKI`. Nilai berstrip tidak ada di daftar itu.
   if (t.includes('PEREMPUAN') || t.includes('WANITA')) return 'PEREMPUAN (女)';
-  if (t.includes('LAKI') || t.includes('PRIA')) return 'LAKI-LAKI (男)';
+  if (t.includes('LAKI') || t.includes('PRIA')) return 'LAKI LAKI (男)';
   return s(raw);
 }
 
@@ -76,9 +97,15 @@ function maritalLabel(raw: unknown): string {
   return s(raw);
 }
 
+/**
+ * Agama — ejaan Jepang mengikuti daftar `J10:N10` di template.
+ *
+ * `キリスト教`/`ヒンドゥー教` (bentuk yang dipakai dua renderer lain) TIDAK ada
+ * di daftar ini; yang tercetak di form adalah `キリスト` dan `ヒンドゥー`.
+ */
 const AGAMA_JP: Record<string, string> = {
-  ISLAM: 'イスラム', KRISTEN: 'キリスト教', KATOLIK: 'カトリック',
-  HINDU: 'ヒンドゥー教', BUDHA: '仏教', BUDDHA: '仏教', KONGHUCU: '儒教',
+  ISLAM: 'イスラム', KRISTEN: 'キリスト', KATOLIK: 'カトリック',
+  HINDU: 'ヒンドゥー', BUDHA: '仏教', BUDDHA: '仏教', KONGHUCU: '儒教',
 };
 
 function agamaLabel(raw: unknown): string {
@@ -93,6 +120,29 @@ function handLabel(raw: unknown): string {
   if (t.includes('KANAN') || t.includes('RIGHT')) return 'KANAN  (右)';
   if (t.includes('KIRI') || t.includes('LEFT')) return 'KIRI  (左)';
   return s(raw);
+}
+
+/**
+ * 続柄 — bentuk yang dicetak form ini: `INDONESIA  KANJI` ("AYAH  父").
+ *
+ * Sampai 2026-10-29 sel ini diisi `p.hubungan` apa adanya, jadi kolom 続柄 —
+ * satu-satunya kolom Jepang di blok keluarga — berisi huruf Latin, dan nilainya
+ * tidak ada di daftar dropdown `K29:Z29` milik template. Kanji diambil dari
+ * `hubungan_jp` kalau terisi, kalau tidak dari kamus bersama `helpers_cv`
+ * (daftar yang sama dengan rirekisho HTML).
+ */
+function hubunganLabel(hubungan: unknown, hubunganJp: unknown): string {
+  const teks = s(hubungan).replace(/\s+/g, ' ').trim();
+  const jepangDiTeks = (teks.match(/[\u3040-\u30ff\u4e00-\u9fff]+/g) ?? []).join('');
+  const indo = teks
+    .replace(/[\u3040-\u30ff\u4e00-\u9fff]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
+  const kanji = kanjiHubunganDari(teks, hubunganJp) || rapikanKanjiHubungan(jepangDiTeks);
+  if (!kanji) return indo;
+  if (!indo) return kanji;
+  return `${indo}  ${kanji}`;
 }
 
 /**
@@ -117,12 +167,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
     D10: birthDate(id.tgl_lahir),
     H10: agamaLabel(id.agama),
     D12: s(id.tempat_lahir),
-    H11: yesNo(id.status_eks_jepang, s(id.status_eks_jepang)),
-    H12: yesNo(id.paspor, s(id.paspor)),
+    H11: adaLabel(id.status_eks_jepang),
+    H12: adaLabel(id.paspor),
     D13: 'インドネシア',
     H13: handLabel(data.fisik.tangan_dominan),
     E14: s(id.hp),
-    H14: yesNo(data.medis.riwayat_medis, s(data.medis.riwayat_medis)),
+    H14: adaLabel(data.medis.riwayat_medis),
     /* ── address ────────────────────────────────────────────────────────── */
     A16: s(id.alamat),
     A17: s(id.alamat_jp),
@@ -163,9 +213,9 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const row = 29 + i;
     const p = (data.keluarga[i] || {}) as Record<string, unknown>;
     const usia = s(p.usia ?? p.umur).replace(/\D/g, '');
-    cells[`A${row}`] = s(p.hubungan);
+    cells[`A${row}`] = hubunganLabel(p.hubungan, p.hubungan_jp);
     cells[`D${row}`] = s(p.nama);
-    cells[`F${row}`] = usia ? `${usia}歳` : '歳';
+    cells[`F${row}`] = usia ? `${usia}歳` : '';
     cells[`G${row}`] = s(p.pekerjaan);
     cells[`I${row}`] = currency(p.gaji ?? p.penghasilan);
   }
@@ -178,8 +228,9 @@ export function buildValues(data: CandidateData): Record<string, string> {
   cells.D40 = s(data.wawancara.hobi_jp) || s(data.wawancara.hobi);
 
   /* ── certificates ───────────────────────────────────────────────────── */
-  cells.C42 = yesNo(data.sertifikasi.jft, s(data.sertifikasi.jft));
-  cells.F42 = yesNo(data.sertifikasi.sim ?? data.identitas.sim, s(data.sertifikasi.sim ?? data.identitas.sim));
+  const jftTeks = s(data.sertifikasi.jft).trim();
+  cells.C42 = negatif(jftTeks) ? 'TIDAK\u3000（無）' : jftTeks;
+  cells.F42 = adaLabel(data.sertifikasi.sim ?? data.identitas.sim);
   /* 他 LAIN-LAIN (`H42:I42`) — dulu selalu kosong. Isinya sertifikat di luar
      JLPT & SIM: lisensi SSW, lalu sertifikat lain yang diketik bebas. */
   const lain = [s(data.sertifikasi.ssw), s(data.sertifikasi.sertifikat_lain)]
@@ -211,7 +262,8 @@ export async function buildRirekishoWorkbook(data: CandidateData): Promise<Blob>
     sheetPath: SHEET_PATH,
     drawingPath: DRAWING_PATH,
     photoPart: PHOTO_PART,
-    photoBox: PHOTO_BOX,
+    photoRange: PHOTO_RANGE,
+    photoInset: PHOTO_INSET,
     values: buildValues(data),
     photoUrl: s(data.uploads.photo),
     // Tab Excel memakai nama kandidat, bukan nama form dari berkas template.

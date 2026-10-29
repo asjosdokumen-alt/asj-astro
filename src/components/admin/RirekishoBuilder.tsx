@@ -4,8 +4,8 @@ import { useStore } from "@nanostores/preact";
 import { authStore } from "../../store/authReactive";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
-import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, getTingkatVal, sortRiwayatKronologis, riwayatKeyOf } from "../../lib/helpers_cv";
-import { golonganDarahDisplay, statusNikahDisplay, HUBUNGAN_KELUARGA } from "../../lib/opsi-form";
+import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, getTingkatVal, sortRiwayatKronologis, riwayatKeyOf, kanjiHubungan, rapikanKanjiHubungan } from "../../lib/helpers_cv";
+import { golonganDarahDisplay, statusNikahDisplay } from "../../lib/opsi-form";
 import { useOverlay } from "../ui/useOverlay";
 
 interface Props {
@@ -163,91 +163,6 @@ const PENANDA_KOSONG = /^[\s・･\-–—－~〜ー]+$/;
 
 function bersihkanNilai(nilai: string): string {
   return PENANDA_KOSONG.test(String(nilai ?? '')) ? '' : String(nilai ?? '').trim();
-}
-
-/**
- * Kanji 続柄 dari hubungan Indonesia ("AYAH" → 父).
- *
- * Dipakai HANYA kalau kolom Jepangnya kosong atau berisi penanda. Sumbernya
- * `HUBUNGAN_KELUARGA` di `lib/opsi-form.ts` — daftar yang sama yang dipakai
- * formulir — supaya CV tidak punya kamus sendiri yang bisa menyimpang.
- * Hubungan yang tidak ada di daftar dibiarkan kosong: menebak kanji keluarga
- * kandidat lebih buruk daripada sel kosong.
- */
-function kanjiHubungan(hub: string): string {
-  const teks = String(hub ?? '').trim();
-  if (!teks) return '';
-  const bagian = teks.split(/\s+/);
-
-  /* Nilai lama kadang sudah membawa kanjinya sendiri ("AYAH 父親"). Kalau
-     sisanya memang huruf Jepang, itulah jawabannya — tidak perlu kamus. */
-  if (bagian.length > 1) {
-    const sisa = bagian.slice(1).join(' ');
-    if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(sisa)) return rapikanKanjiHubungan(sisa);
-    /* Sisa berhuruf Latin berarti ini hubungan LAIN ("TETANGGA JAUH"), bukan
-       "AYAH" yang kebetulan berawalan sama. Menebak di sini akan mencetak
-       kanji yang salah di CV. */
-    return '';
-  }
-
-  const kunci = (bagian[0] ?? '').toUpperCase();
-  if (!kunci) return '';
-  for (const [nilai, label] of HUBUNGAN_KELUARGA) {
-    if (String(nilai).toUpperCase() !== kunci) continue;
-    const m = String(label).match(/[（(]([^）)]+)[）)]/);
-    if (m?.[1]) return rapikanKanjiHubungan(m[1]);
-  }
-  return '';
-}
-
-/**
- * 続柄 yang sah di rirekisho Jepang — satu kata, tanpa お/ご dan tanpa さん.
- *
- * KENAPA (laporan pemilik 2026-10-29): "kanji nya ga sesuai kek ayah harus nya
- * chichi saja". Kolom 続柄 di rirekisho berisi 父, bukan 「お父さん」 dan bukan
- * 「AYAH 父」. Nilai Jepang datang dari dua sumber yang sama-sama bisa meleset:
- * AI (sering menulis bentuk sopan お父さん/父さん) dan kandidat sendiri.
- */
-const KANJI_HUBUNGAN: Array<[RegExp, string]> = [
-  // URUTAN PENTING: yang lebih spesifik lebih dulu. `義父` dan `祖父`
-  // mengandung `父`, jadi keduanya HARUS diperiksa sebelum aturan `父`.
-  [/曾祖父|ひいおじい/, '曾祖父'],
-  [/曾祖母|ひいおばあ/, '曾祖母'],
-  [/義父|ぎふ/, '義父'],
-  [/義母|ぎぼ/, '義母'],
-  [/祖父|おじい(さん|ちゃん)?|grandfather/i, '祖父'],
-  [/祖母|おばあ(さん|ちゃん)?|grandmother/i, '祖母'],
-  [/父|お父さん|パパ|ちち/i, '父'],
-  [/母|お母さん|ママ|はは/i, '母'],
-  [/兄|お兄さん|にいさん/i, '兄'],
-  [/姉|お姉さん|ねえさん/i, '姉'],
-  [/弟|おとうと/i, '弟'],
-  [/妹|いもうと/i, '妹'],
-  [/夫|旦那|おっと/i, '夫'],
-  [/妻|奥さん|つま/i, '妻'],
-  [/息子|むすこ/i, '息子'],
-  [/娘|むすめ/i, '娘'],
-  [/子|お子さん|子供/i, '子'],
-  [/伯父|叔父|おじさん/i, '叔父'],
-  [/伯母|叔母|おばさん/i, '叔母'],
-  [/従兄弟|いとこ/i, '従兄弟'],
-  [/甥|おいご/i, '甥'],
-  [/姪|めいご/i, '姪'],
-];
-
-/**
- * Rapikan nilai 続柄 Jepang menjadi SATU kata baku.
- *
- * Mengembalikan '' kalau tidak ada yang cocok — pemanggil lalu memakai nilai
- * Indonesia apa adanya, bukan kanji karangan.
- */
-export function rapikanKanjiHubungan(nilai: string): string {
-  const s = String(nilai ?? '').trim();
-  if (!s) return '';
-  for (const [re, kanji] of KANJI_HUBUNGAN) {
-    if (re.test(s)) return kanji;
-  }
-  return '';
 }
 
 export function buildFamRows(famList: Record<string, any>[], v: (...keys: string[]) => string) {

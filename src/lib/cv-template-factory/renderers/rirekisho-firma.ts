@@ -44,6 +44,8 @@ import {
   birthDate,
   cvFileName,
   currency,
+  durasiJp,
+  negatif,
   s,
   yearMonth,
   type PhotoBox,
@@ -87,9 +89,7 @@ function bersih(v: unknown): string {
 
 /** "無\nTidak" untuk yang kosong/negatif — dua baris, persis seperti form. */
 function tidakAda(raw: unknown, kosong = '無\nTidak'): string {
-  const t = s(raw).trim();
-  if (!isGood(t) || /^(tidak|no|none|-|無)$/i.test(t)) return kosong;
-  return t;
+  return negatif(raw) ? kosong : s(raw).trim();
 }
 
 function genderJp(raw: unknown): string {
@@ -129,9 +129,7 @@ function tanganJp(raw: unknown): string {
 }
 
 function kacamataJp(raw: unknown): string {
-  const t = s(raw).toUpperCase();
-  if (!isGood(t) || /^(tidak|no|none|-)$/i.test(t)) return 'かけない';
-  return t.includes('TIDAK') ? 'かけない' : s(raw);
+  return negatif(raw) ? 'かけない' : s(raw);
 }
 
 /**
@@ -194,9 +192,8 @@ function tinggalJp(raw: unknown): string {
  * (jumlah batang/gelas per hari).
  */
 function kebiasaan(v: unknown): { label: string; jumlah: string } {
-  const t = s(v).trim();
-  if (!isGood(t) || /^(tidak|no|none|-|無|0)$/i.test(t)) return { label: '無\nTidak', jumlah: '0' };
-  const n = t.replace(/[^\d]/g, '');
+  if (negatif(v)) return { label: '無\nTidak', jumlah: '0' };
+  const n = s(v).replace(/[^\d]/g, '');
   return { label: '有\nYa', jumlah: n };
 }
 
@@ -288,11 +285,14 @@ export function buildValues(data: CandidateData): Record<string, string> {
   }
 
   /* ── sertifikat & kenalan di Jepang (31 & 33) ──────────────────────────── */
-  cells.D31 = bersih(data.sertifikasi.jft ?? id.jft ?? raw.jft);
+  // `??` tidak pernah jatuh ke cadangan: `data.sertifikasi.jft` SELALU ada
+  // (string kosong kalau tidak diisi), jadi rantainya harus `||` pada nilai
+  // yang sudah dibersihkan.
+  cells.D31 = bersih(data.sertifikasi.jft) || bersih(id.jft) || bersih(raw.jft);
   /* Baris 31-33: kolom kedua tiap baris (G/H, I/J, K) dulu dibiarkan kosong.
      Sekarang diisi dari kolom yang memang disediakan untuknya. */
   cells.D32 = bersih(data.sertifikasi.bahasa) || bersih(data.sertifikasi.level_bahasa_jepang);
-  cells.L31 = bersih(data.sertifikasi.lama_belajar_jp);
+  cells.L31 = durasiJp(data.sertifikasi.lama_belajar_jp);
   cells.L32 = bersih(data.identitas.negara_lain);
   cells.K33 = bersih(data.sertifikasi.catatan_cv);
   const ken = data.kenalan_jepang;

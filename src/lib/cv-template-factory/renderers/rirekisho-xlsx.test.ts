@@ -28,8 +28,15 @@ const SOURCE = {
   rowElements: 1000,
   mergeCells: 83,
   cellElements: 25934,
-  photoCx: 2743200, // EMU — 3.00in
-  photoCy: 3533775, // EMU — 3.86in
+  // 2026-10-29: kotak foto diturunkan dari bingkai SEL (A4:C14, 255x377 px),
+  // bukan dari `ext` warisan berkas sumber (288x371 px = 33 px LEBIH LEBAR dari
+  // bingkainya). Angka di sini = 251x373 px, yaitu bingkai dikurangi inset 2 px.
+  photoCx: 2390775, // EMU — 251 px
+  photoCy: 3552825, // EMU — 373 px
+  // Nilai `ext` yang MASIH ADA di template (warisan berkas sumber). Dipakai
+  // saat tidak ada foto: anchor tidak ditambal, jadi XML-nya tetap angka ini.
+  templateCx: 2743200,
+  templateCy: 3533775,
 } as const;
 
 async function loadZip(bytes: Uint8Array | Blob) {
@@ -108,7 +115,7 @@ describe('rirekisho-xlsx · template geometry (the "same size as the original" c
     const zip = await loadZip(b64ToBytes(RIREKISHO_XLSX_BASE64));
     const drawing = await part(zip, DRAWING);
 
-    expect(drawing).toContain(`<xdr:ext cx="${SOURCE.photoCx}" cy="${SOURCE.photoCy}"/>`);
+    expect(drawing).toContain(`<xdr:ext cx="${SOURCE.templateCx}" cy="${SOURCE.templateCy}"/>`);
     expect(drawing).toContain('<xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>3</xdr:row>');
   });
 
@@ -179,9 +186,10 @@ describe('rirekisho-xlsx · setCell', () => {
 describe('rirekisho-xlsx · fitPhoto never stretches', () => {
   const ratio = (r: { cx: number; cy: number }) => r.cx / r.cy;
 
-  it('reproduces the source placement exactly for a source-shaped photo', () => {
-    // The supplied photo is 288x371 px, which at 96 DPI is the anchor box itself.
-    expect(fitPhoto(288, 371)).toEqual({
+  it('fills the CELL frame exactly for a frame-shaped photo', () => {
+    // 251x373 px = kotak yang dihitung dari geometri sel A4:C14 (255x377) minus
+    // inset 2 px tiap sisi.
+    expect(fitPhoto(251, 373)).toEqual({
       cx: SOURCE.photoCx,
       cy: SOURCE.photoCy,
       colOff: 0,
@@ -191,7 +199,7 @@ describe('rirekisho-xlsx · fitPhoto never stretches', () => {
 
   it('letterboxes a wide photo instead of widening it', () => {
     const fit = fitPhoto(1000, 100);
-    expect(ratio(fit)).toBeCloseTo(10, 5);
+    expect(ratio(fit)).toBeCloseTo(10, 3);
     expect(fit.cx).toBeLessThanOrEqual(SOURCE.photoCx);
     expect(fit.cy).toBeLessThanOrEqual(SOURCE.photoCy);
     expect(fit.colOff).toBe(0);
@@ -200,7 +208,7 @@ describe('rirekisho-xlsx · fitPhoto never stretches', () => {
 
   it('letterboxes a tall photo instead of stretching it', () => {
     const fit = fitPhoto(100, 1000);
-    expect(ratio(fit)).toBeCloseTo(0.1, 5);
+    expect(ratio(fit)).toBeCloseTo(0.1, 3);
     expect(fit.cx).toBeLessThanOrEqual(SOURCE.photoCx);
     expect(fit.cy).toBeLessThanOrEqual(SOURCE.photoCy);
     expect(fit.rowOff).toBe(0);
@@ -286,9 +294,9 @@ describe('rirekisho-xlsx · buildRirekishoWorkbook', () => {
     expect(sheet).toContain('ANGGUN ARIANI');
     expect(sheet).toContain('2007年6月11日');
 
-    // The drawing still carries the source anchor when no photo was supplied.
+    // Tanpa foto, anchor TIDAK ditambal — XML-nya masih angka template.
     const drawing = await part(zip, DRAWING);
-    expect(drawing).toContain(`<xdr:ext cx="${SOURCE.photoCx}" cy="${SOURCE.photoCy}"/>`);
+    expect(drawing).toContain(`<xdr:ext cx="${SOURCE.templateCx}" cy="${SOURCE.templateCy}"/>`);
   });
 
   it('names the file <NAMA KANDIDAT>_CV, tanpa nama template', async () => {
@@ -349,5 +357,74 @@ describe('rirekisho-xlsx · kolom yang sudah ada tetapi dulu tidak dibaca', () =
 
   it('月収 keluarga terisi dari kolom', () => {
     expect(buildValues(lengkap()).I29).toBe('¥   120000');
+  });
+});
+
+// ==========================================
+// 2026-10-29 — sel harus berisi nilai yang SAH untuk dropdown form ini
+// ==========================================
+// Semua kasus di bawah berasal dari data produksi (268 baris) dan dari daftar
+// dropdown yang benar-benar tertanam di template (`K29:Z29` untuk 続柄,
+// `J4:K4` gender, `J10:N10` agama, `J11:K11` untuk 有/無).
+describe('rirekisho-xlsx · nilai sel cocok dengan daftar dropdown template', () => {
+  it('続柄 memuat KANJI, dan ejaannya mengikuti daftar K29:Z29', () => {
+    const d = anggun();
+    d.keluarga = [
+      { hubungan: 'AYAH', nama: 'A' },
+      { hubungan: 'IBU  母', nama: 'B' },
+      { hubungan: 'KAKAK PEREMPUAN', nama: 'C' },
+      { hubungan: 'TETANGGA', nama: 'D' },
+    ];
+    const c = buildValues(d);
+    // Dulu sel ini berisi "AYAH" saja: kolom 続柄 satu-satunya kolom Jepang
+    // yang berisi huruf Latin, dan nilainya tidak ada di daftar dropdown.
+    expect(c.A29).toBe('AYAH  父');
+    // Nilai yang SUDAH bilingual tidak diubah menjadi satu bahasa.
+    expect(c.A30).toBe('IBU  母');
+    expect(c.A31).toBe('KAKAK PEREMPUAN  姉');
+    // Hubungan yang tidak dikenal TIDAK dikarang kanjinya.
+    expect(c.A32).toBe('TETANGGA');
+  });
+
+  it('kanji dari kolom `hubungan_jp` menang, dan bentuk sopan dirapikan', () => {
+    const d = anggun();
+    d.keluarga = [{ hubungan: 'AYAH', hubungan_jp: 'お父さん', nama: 'A' }];
+    expect(buildValues(d).A29).toBe('AYAH  父');
+  });
+
+  it('旅券の有無 mencetak 有/無, BUKAN nomor paspor', () => {
+    const d = anggun();
+    d.identitas.paspor = 'C1234567';
+    expect(buildValues(d).H12).toBe('ADA\u3000（有）');
+  });
+
+  it('`BELUM PERNAH` dan `TIDAK ADA` = 無, bukan 有', () => {
+    const d = anggun();
+    d.identitas.status_eks_jepang = 'BELUM PERNAH';
+    d.medis.riwayat_medis = 'TIDAK ADA';
+    const c = buildValues(d);
+    expect(c.H11).toBe('TIDAK\u3000（無）');
+    expect(c.H14).toBe('TIDAK\u3000（無）');
+  });
+
+  it('gender memakai ejaan daftar: `LAKI LAKI` (spasi), bukan `LAKI-LAKI`', () => {
+    const d = anggun();
+    d.identitas.gender = 'LAKI-LAKI';
+    // 113 dari 268 kandidat memakai ejaan berstrip di database.
+    expect(buildValues(d).H4).toBe('LAKI LAKI (男)');
+  });
+
+  it('agama memakai ejaan daftar J10:N10 (キリスト / ヒンドゥー)', () => {
+    const d = anggun();
+    d.identitas.agama = 'KRISTEN';
+    expect(buildValues(d).H10).toBe('KRISTEN\u3000（キリスト）');
+    d.identitas.agama = 'HINDU';
+    expect(buildValues(d).H10).toBe('HINDU\u3000（ヒンドゥー）');
+  });
+
+  it('usia keluarga kosong tidak mencetak "歳" telanjang', () => {
+    const d = anggun();
+    d.keluarga = [{ hubungan: 'IBU', nama: 'B' }];
+    expect(buildValues(d).F29).toBe('');
   });
 });

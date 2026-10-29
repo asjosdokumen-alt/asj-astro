@@ -258,7 +258,7 @@ describe('rirekisho-firma · kolom migrasi 022 benar-benar masuk ke sel', () => 
   it('baris 31-33: 日本語能力 / 学習期間 / 渡航経験 / その他事項', () => {
     const c = buildValues(denganKolom());
     expect(c.D32).toBe('N4');
-    expect(c.L31).toBe('8 bulan');
+    expect(c.L31).toBe('8ヶ月'); // durasiJp: 学習期間 dicetak dalam bahasa Jepang
     expect(c.L32).toBe('Malaysia 2019');
     expect(c.K33).toBe('Siap ditempatkan');
   });
@@ -269,5 +269,35 @@ describe('rirekisho-firma · kolom migrasi 022 benar-benar masuk ke sel', () => 
     expect(c.N24).toBe('同居');
     expect(c.O24).toBe('081234567');
     expect(c.L24).toBe('150000円');
+  });
+});
+
+// ==========================================
+// 2026-10-29 — `TIDAK ADA` bukan "ADA"
+// ==========================================
+// Keempat renderer dulu memakai daftar negatif pendek `^(tidak|no|none|-|無)$`.
+// Nilai yang lebih panjang lolos dan dibaca sebagai KEPEMILIKAN — di form ini
+// artinya "punya kacamata", "minum alkohol", "merokok".
+describe('rirekisho-firma · penanda negatif panjang', () => {
+  it('`TIDAK ADA` di kacamata = かけない, bukan nama merek', () => {
+    const d = kandidat();
+    d.medis = { ...d.medis, kacamata: 'TIDAK ADA' };
+    expect(buildValues(d).J8).toBe('かけない');
+  });
+
+  it('`TIDAK PUNYA` di alkohol/rokok = 無 + 0', () => {
+    const d = kandidat();
+    d.medis = { ...d.medis, alkohol: 'TIDAK PUNYA', rokok: 'TIDAK ADA' };
+    const c = buildValues(d);
+    expect(c.M9).toBe('無\nTidak');
+    expect(c.N9).toBe('0');
+    expect(c.O9).toBe('無\nTidak');
+    expect(c.P9).toBe('0');
+  });
+
+  it('paspor `TIDAK ADA` = 無 Tidak, bukan nomor', () => {
+    const d = kandidat();
+    d.identitas = { ...d.identitas, paspor: 'TIDAK ADA' };
+    expect(buildValues(d).P7).toBe('無\nTidak');
   });
 });

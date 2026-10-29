@@ -441,7 +441,7 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
   it('bahasa, tes, dan angka yang dulu selalu kosong', () => {
     const c = buildValues(denganKolom());
     expect(c.I3).toBe('N4レベル'); // kolom menang atas tebakan dari teks JFT
-    expect(c.T37).toBe('6 bulan');
+    expect(c.T37).toBe('6ヶ月'); // durasiJp: teks Indonesia → bentuk Jepang
     expect(c.T39).toBe('sedang belajar');
     expect(c.Q41).toBe('menengah');
     expect(c.T41).toBe('Mandarin dasar');
@@ -458,5 +458,81 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
     expect(c.Q47).toBe('広報運動家型（ENFP）');
     expect(c.U48).toBe('【E】外向型');
     expect(c.U52).toBe('【A】自信型');
+  });
+});
+
+// ==========================================
+// 2026-10-29 — nilai WARISAN template tidak boleh tercetak sebagai data kandidat
+// ==========================================
+// Berkas asal adalah CV kandidat lain yang dikosongkan; pengosongan itu
+// melewatkan sel BERANGKA. Sel yang lolos lalu tercetak di CV setiap kandidat.
+describe('kinki · sisa data kandidat contoh di template', () => {
+  it('tanpa tanggal lahir, E8 dibersihkan — bukan menyisakan 38876', () => {
+    // 38876 = 2006-06-14, tanggal lahir kandidat contoh. `S8` menghitung umur
+    // dengan DATEDIF(E8,…), jadi sel warisan ini mencetak UMUR ORANG LAIN.
+    const d = kandidat();
+    (d.identitas as Record<string, unknown>).tgl_lahir = '';
+    const c = buildValues(d);
+    expect(c.E8).toBe('');
+    expect(buildNumbers(d)).toEqual({});
+  });
+
+  it('tanpa level & tanpa JFT, I3 dibersihkan — bukan `N5レベル`', () => {
+    // 243 dari 268 kandidat tidak punya kolom `jft`. Membiarkan teks template
+    // berarti mereka mengaku level N5 di formulir resmi.
+    const d = kandidat();
+    d.sertifikasi = {};
+    expect(buildValues(d).I3).toBe('');
+  });
+
+  it('label 学歴 mengikuti jenjang barisnya, bukan selalu `高校`', () => {
+    const d = kandidat();
+    // Hanya SD: dulu renderer mengambil baris TERAKHIR (SD) lalu menulis
+    // "高校: SDN …" — klaim jenjang yang tidak pernah ditempuh.
+    d.pendidikan = [{ tingkat: 'SD', masuk: '2012-07', lulus: '2018-06', sekolah: 'SDN 1 BUNGKAL' }];
+    const c = buildValues(d);
+    expect(c.A19).toBe('');
+    expect(c.O19).toBe('SDN 1 BUNGKAL');
+
+    // SMA/SMK tetap 高校 (bentuk yang dominan di database: `SMA/SMK`).
+    d.pendidikan = [{ tingkat: 'SMA/SMK', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMKN 1 SLAHUNG' }];
+    expect(buildValues(d).A19).toBe('高校');
+  });
+
+  it('sekolah NEGERI = 公立, bukan 国立', () => {
+    // 国立 = didirikan negara (東京大学). SDN/SMPN/SMAN didirikan pemerintah
+    // daerah, jadi istilah Jepangnya 公立 — dan dropdown form memuat keduanya,
+    // sehingga tidak ada yang menolak nilai yang salah.
+    const d = kandidat();
+    d.pendidikan = [{ tingkat: 'SMA', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMAN 1 SLAHUNG' }];
+    expect(buildValues(d).M19).toBe('公立');
+    d.pendidikan = [{ tingkat: 'SMA', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMA MUHAMMADIYAH' }];
+    expect(buildValues(d).M19).toBe('私立');
+  });
+
+  it('SIM `TIDAK PUNYA` tidak dianggap punya SIM', () => {
+    const d = kandidat();
+    (d.identitas as Record<string, unknown>).sim = 'TIDAK PUNYA';
+    expect(buildValues(d).M3).toBe('なし');
+  });
+});
+
+// ==========================================
+// 2026-10-29 — kolom 学習期間 dan 修学内容 pada data produksi
+// ==========================================
+describe('kinki · bahasa kolom Jepang', () => {
+  it('学習期間 `6 bulan` → `6ヶ月`', () => {
+    const d = kandidat();
+    d.sertifikasi = { ...d.sertifikasi, lama_belajar_jp: '6 bulan' };
+    expect(buildValues(d).T37).toBe('6ヶ月');
+  });
+
+  it('修学内容 tanpa jurusan memakai nama sekolah, bukan "学校では学びました。"', () => {
+    const d = kandidat();
+    d.pendidikan = [{ tingkat: 'SMA', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMK NEGERI 1 SLAHUNG' }];
+    expect(buildValues(d).E23).toBe('SMK NEGERI 1 SLAHUNGで学びました。');
+    // Dengan jurusan, kalimatnya tetap seperti semula.
+    d.pendidikan = [{ tingkat: 'SMA', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMKN 1', jurusan: 'TEKNIK OTOMOTIF' }];
+    expect(buildValues(d).E23).toBe('学校ではTEKNIK OTOMOTIFを学びました。');
   });
 });

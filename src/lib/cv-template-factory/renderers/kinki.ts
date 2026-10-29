@@ -49,7 +49,7 @@ import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../
 import { KINKI_BASE64 } from '../templates/kinki.b64';
 import { isGood } from '../../helpers_cv';
 import { inferMbti, mbtiFromCode } from '../mbti';
-import { buildXlsxForm, cvFileName, excelSerial, kanaJp, s, yearMonth, type PhotoBox } from './xlsx-form';
+import { buildXlsxForm, cvFileName, durasiJp, excelSerial, kanaJp, negatif, s, yearMonth, type PhotoBox } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
 const DRAWING_PATH = 'xl/drawings/drawing1.xml';
@@ -114,7 +114,7 @@ function darahJp(v: unknown): string {
 /** 飲酒 — dropdown: 多飲/中飲/小飲/無飲. */
 function minumJp(v: unknown): string {
   const t = s(v).toUpperCase();
-  if (!isGood(t) || /^(TIDAK|NO|NONE|-|無|0)$/.test(t)) return '無飲';
+  if (negatif(v)) return '無飲';
   if (t.includes('BANYAK') || t.includes('多')) return '多飲';
   if (t.includes('SEDANG') || t.includes('中')) return '中飲';
   return '小飲';
@@ -122,8 +122,7 @@ function minumJp(v: unknown): string {
 
 /** 煙草 — dropdown: 喫煙/非喫煙. */
 function rokokJp(v: unknown): string {
-  const t = s(v).toUpperCase();
-  if (!isGood(t) || /^(TIDAK|NO|NONE|-|無|0)$/.test(t)) return '非喫煙';
+  if (negatif(v)) return '非喫煙';
   return '喫煙';
 }
 
@@ -136,8 +135,7 @@ function tanganJp(v: unknown): string {
 
 /** 刺青 / 色覚異常 — dropdown: あり/なし. */
 function adaJp(v: unknown): string {
-  const t = s(v).toUpperCase();
-  if (!isGood(t) || /^(TIDAK|NO|NONE|-|無)$/.test(t)) return 'なし';
+  if (negatif(v)) return 'なし';
   return 'あり';
 }
 
@@ -176,8 +174,7 @@ function lulusJp(v: unknown): string {
 
 /** 四輪免許 — dropdown: あり/なし. */
 function simJp(v: unknown): string {
-  const t = bersih(v).toUpperCase();
-  if (!isGood(t) || /^(TIDAK|NO|NONE|-|無|0)$/.test(t)) return 'なし';
+  if (negatif(v)) return 'なし';
   return 'あり';
 }
 
@@ -215,9 +212,32 @@ function durasi(masuk: unknown, lulus: unknown): string {
   return tahun > 0 ? `${tahun}年` : '';
 }
 
-/** 国公私 — dropdown: 国立/公立/私立. */
+/**
+ * 国公私 — dropdown: 国立/公立/私立.
+ *
+ * Sekolah NEGERI = **公立**, bukan 国立: 国立 dipakai untuk lembaga yang
+ * didirikan negara (mis. 東京大学), sedangkan SDN/SMPN/SMAN didirikan pemerintah
+ * daerah. Sampai 2026-10-29 renderer ini menulis 国立 untuk semua sekolah
+ * negeri — salah istilah, dan dropdown form memuat keduanya sehingga tidak ada
+ * yang menolaknya.
+ */
 function kouritsu(sekolah: string): string {
-  return /^(SMAN|SMKN|SMK\s*NEGERI|SMA\s*NEGERI|NEGERI|MAN)/i.test(sekolah.trim()) ? '国立' : '私立';
+  return /^(SDN|SMPN|SMAN|SMKN|MIN|MTSN|MAN|SMK\s*NEGERI|SMA\s*NEGERI|NEGERI|SEKOLAH\s*NEGERI)/i.test(sekolah.trim()) ? '公立' : '私立';
+}
+
+/**
+ * 分類 学歴 untuk baris 19 — dropdown `A19/A21`: 高校/専門/大学/日本語学校.
+ *
+ * `''` untuk jenjang yang TIDAK ada di daftar (SD/SMP). Mencetak
+ * "高校: SDN …" untuk lulusan SD adalah klaim yang salah, dan itulah yang
+ * terjadi sebelum 2026-10-29 saat baris SMA tidak ditemukan.
+ */
+function jenjangKinki(tingkat: string): string {
+  const t = tingkat.toUpperCase();
+  if (/SMA|SMK|ATAS|KEJURUAN/.test(t)) return '高校';
+  if (/UNIVERSITAS|^S[12]\b|SARJANA/.test(t)) return '大学';
+  if (/^D[234]|DIPLOMA/.test(t)) return '専門';
+  return '';
 }
 
 /** 雇用形態 — dropdown: アルバイト/正社員/非正社員/インターン/家業. */
@@ -323,6 +343,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
 
   const cells: Record<string, string> = {
     /* ── identitas ──────────────────────────────────────────────────────── */
+    /* `E8` di template MASIH memuat tanggal lahir kandidat contoh (serial
+       38876 = 2006-06-14). Kalau kandidat tidak punya tanggal lahir, sel itu
+       tidak pernah ditulis dan `S8` (DATEDIF) mencetak umur ORANG LAIN.
+       Menulis '' menghapus nilai warisan itu; `buildNumbers` mengisinya kembali
+       kalau tanggalnya ada. */
+    ...(excelSerial(id.tgl_lahir) === null ? { E8: '' } : {}),
     E6: bersih(id.nama_lengkap),
     S6: bersih(id.panggilan_katakana) || bersih(id.panggilan),
     E7: kanaJp(id.katakana),
@@ -363,20 +389,30 @@ export function buildValues(data: CandidateData): Record<string, string> {
     ].filter(Boolean).join('\n');
   }
   /* `I3` 日本語力: kolom `level_bahasa_jepang` menang (bisa dikoreksi admin),
-     lalu tebakan dari teks JFT. Tanpa keduanya, teks template (`N5レベル`)
-     dibiarkan — dan itu memang bisa salah untuk pemegang JFT Basic. */
+     lalu tebakan dari teks JFT.
+     Tanpa keduanya sel ini DIBERSIHKAN (2026-10-29). Dulu teks template
+     `N5レベル` dibiarkan, dan itu berarti **243 dari 268** kandidat — yang
+     kolom `jft`-nya kosong — tercetak mengaku level N5 di formulir resmi.
+     Sel kosong lebih jujur daripada klaim kemampuan yang tidak pernah diisi. */
   const levelJp = bersih(data.sertifikasi.level_bahasa_jepang) || jepangLevel(data.sertifikasi.jft ?? id.jft);
-  if (levelJp) cells.I3 = levelJp;
+  cells.I3 = levelJp;
 
   /* ── pendidikan: baris 19 = SMA/SMK, baris 21 = 日本語学校 ──────────────── */
   const edu = data.pendidikan as Record<string, unknown>[];
   const idxSma = edu.findIndex((p) => /SMA|SMK|ATAS|KEJURUAN/i.test(s(p.tingkat)));
   const idxLpk = edu.findIndex((p) => /日本語|BAHASA JEPANG/i.test(s(p.tingkat)));
-  const sma = (idxSma >= 0 ? edu[idxSma] : edu[edu.length - 1]) ?? {};
+  /* Cadangan: baris TERTINGGI non-LPK, bukan `edu[edu.length - 1]` buta.
+     Daftar pendidikan sudah kronologis, jadi baris terakhir non-LPK adalah
+     jenjang tertinggi — dan labelnya mengikuti jenjang itu, bukan `高校`
+     yang dipatok. Dulu kandidat yang hanya punya SD tercetak sebagai
+     "高校: SDN …". */
+  const nonLpk = edu.filter((_, i) => i !== idxLpk);
+  const sma = (idxSma >= 0 ? edu[idxSma] : nonLpk[nonLpk.length - 1]) ?? {};
+  const jenjang = idxSma >= 0 ? '高校' : jenjangKinki(s(sma.tingkat));
   const sekolah = bersih(sma.sekolah ?? sma.nama_sekolah ?? sma.sekolah_id);
   const jurusan = bersih(sma.jurusan ?? sma.jurusan_id);
   if (isGood(sekolah)) {
-    cells.A19 = '高校';
+    cells.A19 = jenjang;
     cells.D19 = ym(sma.masuk ?? sma.tahun_masuk);
     cells.E20 = ym(sma.lulus ?? sma.tahun_lulus);
     cells.H19 = durasi(sma.masuk ?? sma.tahun_masuk, sma.lulus ?? sma.tahun_lulus);
@@ -410,8 +446,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
 
   /* ── 具体的な修学内容: dirangkai dari baris 学歴 yang sudah terisi ───────── */
   const isiSekolah: string[] = [];
+  // Tanpa jurusan, versi lama berbunyi "学校では学びました。" — kalimat tanpa isi
+  // yang tetap tercetak di kolom 具体的な修学内容 (terukur pada ASJ00041).
   if (isGood(sekolah)) {
-    isiSekolah.push(`学校では${jurusan ? `${jurusan}を` : ''}学びました。`);
+    isiSekolah.push(jurusan ? `学校では${jurusan}を学びました。` : `${sekolah}で学びました。`);
   }
   if (isGood(sekolahLpk)) isiSekolah.push(`現在は${sekolahLpk}で日本語を勉強しています。`);
   cells.E23 = isiSekolah.join(' ');
@@ -503,7 +541,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
   // 集団生活年数 / 就業希望年数 / 体力試験 — dulu seluruhnya dikosongkan.
   cells.Q45 = bersih(data.fisik.tes_hitung);
   cells.X45 = angka(data.wawancara.tabungan);
-  cells.T37 = bersih(data.sertifikasi.lama_belajar_jp);
+  cells.T37 = durasiJp(data.sertifikasi.lama_belajar_jp);
   cells.T39 = bersih(data.sertifikasi.status_belajar_jp);
   cells.Q41 = bersih(data.sertifikasi.level_bahasa_inggris);
   cells.T41 = bersih(data.sertifikasi.bahasa_lain);

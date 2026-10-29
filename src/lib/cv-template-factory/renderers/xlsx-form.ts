@@ -45,6 +45,29 @@ export function xmlEscape(v: string): string {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * Penanda "tidak punya / belum pernah" di database.
+ *
+ * Nilainya TIDAK seragam, dan daftar pendek `^(tidak|no|none|-|無)$` yang dulu
+ * dipakai keempat renderer membaca kebalikannya:
+ *
+ *   `TIDAK ADA`    → tidak cocok → dianggap ADA  (9 baris riwayat penyakit,
+ *                                                2 baris SIM)
+ *   `BELUM PERNAH` → tidak cocok → dianggap ADA  (21 baris 訪日経験, yaitu
+ *                                                kandidat yang BELUM ke Jepang
+ *                                                tercetak "あり(ADA)")
+ *   `TIDAK PUNYA`  → tidak cocok → dianggap ADA
+ *
+ * Karena itu penilaiannya dipusatkan di sini, bukan diulang di tiap renderer.
+ */
+const NEGATIF_RE = /^(tidak(\s+(ada|punya|pernah|memiliki))?|belum(\s+pernah)?|no|none|nihil|-|無|0)$/i;
+
+/** `true` = tidak ada / belum pernah / kosong. */
+export function negatif(v: unknown): boolean {
+  const t = s(v).trim();
+  return !isGood(t) || NEGATIF_RE.test(t);
+}
+
 export function base64ToBytes(b64: string): Uint8Array {
   const bin = atob(b64);
   const out = new Uint8Array(bin.length);
@@ -106,6 +129,39 @@ export function birthDate(v: unknown): string {
 /** `2021-08` → `2021年8月`, bentuk yang dicetak form. */
 export function period(v: unknown): string {
   return isGood(v) ? fmtMonthYearJp(s(v)) : '';
+}
+
+/**
+ * Durasi teks bebas Indonesia → bentuk Jepang (`6 bulan` → `6ヶ月`).
+ *
+ * Kolom 学習期間 / 在日期間 diisi kandidat sebagai teks bebas, lalu dicetak
+ * APA ADANYA ke formulir Jepang. Terukur pada data produksi (ASJ00041):
+ * `6 bulan` muncul di 日本語学習期間 (Firma `L31` & KINKI `T37`) dan `10 tahun`
+ * di 在日期間 (JIPA `E55`) — dua kolom Jepang berisi bahasa Indonesia.
+ *
+ * Konversinya DETERMINISTIK, bukan terjemahan mesin: hanya satuan yang dikenal
+ * yang diubah, dan teks lain dikembalikan apa adanya supaya tidak dirusak.
+ */
+export function durasiJp(v: unknown): string {
+  const t = s(v).trim();
+  if (!isGood(t)) return '';
+  // Sudah berhuruf Jepang (mis. `6ヶ月`, `10年`) — jangan disentuh.
+  if (/[年月週日]/.test(t)) return t;
+  const ambil = (satuan: string): number => {
+    const m = new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(?:${satuan})`, 'i').exec(t);
+    return m?.[1] ? Number(m[1].replace(',', '.')) : 0;
+  };
+  const tahun = ambil('tahun|thn|tahunnya');
+  const bulan = ambil('bulan|bln');
+  const minggu = ambil('minggu|pekan|week');
+  const hari = ambil('hari|day');
+  if (!tahun && !bulan && !minggu && !hari) return t;
+  return (
+    (tahun ? `${tahun}年` : '') +
+    (bulan ? `${bulan}ヶ月` : '') +
+    (minggu ? `${minggu}週間` : '') +
+    (hari ? `${hari}日` : '')
+  );
 }
 
 /**

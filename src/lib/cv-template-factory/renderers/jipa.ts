@@ -32,7 +32,7 @@
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { JIPA_BASE64 } from '../templates/jipa.b64';
 import { isGood } from '../../helpers_cv';
-import { buildXlsxForm, cvFileName, kanaJp, s } from './xlsx-form';
+import { buildXlsxForm, cvFileName, durasiJp, kanaJp, negatif, s } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
 const DRAWING_PATH = 'xl/drawings/drawing1.xml';
@@ -66,23 +66,46 @@ const CERT_ROWS = 5;
 
 const AGAMA: Record<string, string> = {
   ISLAM: 'イスラム教', KRISTEN: 'プロテスタント教', KATOLIK: 'カトリック教',
-  HINDU: 'ヒンズー教', BUDHA: '仏教', BUDDHA: '仏教', KONGHUCU: '仏教',
+  HINDU: 'ヒンズー教', BUDHA: '仏教', BUDDHA: '仏教',
 };
 
-/** `父(AYAH)`, `母(IBU)`, … — sama untuk B33 dan B34:B39 kecuali 祖父母. */
+/**
+ * `父(AYAH)`, `母(IBU)`, … — nilai yang sah di dropdown 続柄.
+ *
+ * Daftarnya BERBEDA per baris, dan itu bukan detail: `B33` memuat
+ * `本人(DIRI SENDIRI)` serta `祖父(KAKEK)`/`祖母(NENEK)` huruf besar, sedangkan
+ * `B34:B39` menulis `祖父(kakek)`/`祖母(nenek)` huruf kecil. Satu peta untuk
+ * semua baris membuat nilai kakek/nenek tidak ada di daftar barisnya sendiri.
+ * `B40` hanya memuat orang tua & saudara — hubungan lain tetap dicetak apa
+ * adanya supaya namanya tidak kehilangan keterangan.
+ */
 const HUBUNGAN: [RegExp, string][] = [
-  [/AYAH|BAPAK/i, '父(AYAH)'],
-  [/^IBU|MAMA|MOTHER/i, '母(IBU)'],
-  [/ISTRI/i, '妻(ISTRI)'],
-  [/SUAMI/i, '夫(SUAMI)'],
+  // URUTAN PENTING: 祖父/祖母 mengandung 父/母, jadi diperiksa lebih dulu.
   [/KAKEK|祖父/i, '祖父(KAKEK)'],
   [/NENEK|祖母/i, '祖母(NENEK)'],
+  [/AYAH|BAPAK|^父$/i, '父(AYAH)'],
+  [/^IBU|MAMA|MOTHER|^母$/i, '母(IBU)'],
+  [/ISTRI|^妻$/i, '妻(ISTRI)'],
+  [/SUAMI|^夫$/i, '夫(SUAMI)'],
+  [/DIRI\s*SENDIRI|SENDIRI|本人/i, '本人(DIRI SENDIRI)'],
   [/KAKAK.*PEREMPUAN|KAKAK.*WANITA/i, '姉(KAKAK PEREMPUAN)'],
   [/KAKAK/i, '兄（KAKAK LAKI-LAKI)'],
   [/ADIK.*PEREMPUAN|ADIK.*WANITA/i, '妹(ADIK PEREMPUAN)'],
   [/ADIK/i, '弟(ADIK LAKI-LAKI)'],
-  [/ANAK|CHILD/i, '子供(ANAK)'],
+  [/ANAK|CHILD|^子$/i, '子供(ANAK)'],
 ];
+
+/** 続柄 untuk satu baris; baris 34-39 memakai ejaan huruf kecil di template. */
+function hubunganJipa(v: unknown, i: number): string {
+  const t = s(v).toUpperCase().replace(/\s+/g, ' ').trim();
+  if (!isGood(t)) return '';
+  const label = HUBUNGAN.find(([re]) => re.test(t))?.[1] ?? '';
+  if (i >= 1 && i <= 6) {
+    if (label === '祖父(KAKEK)') return '祖父(kakek)';
+    if (label === '祖母(NENEK)') return '祖母(nenek)';
+  }
+  return label;
+}
 
 function bersih(v: unknown): string {
   const t = s(v).trim();
@@ -141,24 +164,20 @@ function mataJp(v: unknown): string {
 }
 
 function rokokJp(v: unknown): string {
-  const t = s(v).toUpperCase();
-  return !isGood(t) || /^(TIDAK|NO|NONE|-|無|0)$/.test(t) ? 'しない(TIDAK)' : 'する(MEROKOK)';
+  return negatif(v) ? 'しない(TIDAK)' : 'する(MEROKOK)';
 }
 
 function minumJp(v: unknown): string {
-  const t = s(v).toUpperCase();
-  return !isGood(t) || /^(TIDAK|NO|NONE|-|無|0)$/.test(t) ? '飲まない(TIDAK MINUM)' : '飲む(MINUM)';
+  return negatif(v) ? '飲まない(TIDAK MINUM)' : '飲む(MINUM)';
 }
 
 /** ある(ADA) / 無い(TIDAK) — dipakai 入れ墨 dan アレルギー. */
 function adaJp(v: unknown): string {
-  const t = s(v).toUpperCase();
-  return !isGood(t) || /^(TIDAK|NO|NONE|-|無)$/.test(t) ? '無い(TIDAK)' : 'ある(ADA)';
+  return negatif(v) ? '無い(TIDAK)' : 'ある(ADA)';
 }
 
 function butaWarnaJp(v: unknown): string {
-  const t = s(v).toUpperCase();
-  return !isGood(t) || /^(TIDAK|NO|NONE|-|無)$/.test(t) ? '正常（NORMAL)' : bersih(v);
+  return negatif(v) ? '正常（NORMAL)' : bersih(v);
 }
 
 /** 同居 / 別居 / 独立. */
@@ -166,7 +185,7 @@ function tinggalJp(v: unknown): string {
   const t = s(v).toUpperCase();
   if (!isGood(t)) return '同居(t.l bersama)';
   if (t.includes('MANDIRI') || t.includes('INDEPENDEN')) return '独立(t.mandiri)';
-  if (t.includes('TIDAK') || t.includes('BEDA') || t.includes('LUAR') || t.includes('PISAH')) return '別居(t.l pisah)';
+  if (t.includes('TIDAK') || t.includes('BEDA') || t.includes('LUAR') || t.includes('PISAH')) return '別居(t pisah)';
   return '同居(t.l bersama)';
 }
 
@@ -181,9 +200,16 @@ function tingkatJp(v: unknown): string {
   return '';
 }
 
-/** 国公私 — nama sekolah negeri → 国立, selain itu 私立 (sama seperti form KINKI). */
+/**
+ * 国公私 — sekolah NEGERI = 公立, bukan 国立.
+ *
+ * 国立 berarti sekolah/kampus yang didirikan NEGARA (mis. 東京大学); SDN/SMPN/
+ * SMAN didirikan pemerintah daerah, jadi istilah Jepangnya 公立. Dropdown form
+ * KINKI memuat keduanya, dan sampai 2026-10-29 renderer menulis 国立 untuk semua
+ * sekolah negeri — salah istilah di dokumen resmi.
+ */
 function kouritsu(sekolah: string): string {
-  return /^(SDN|SMPN|SMAN|SMKN|MIN|MTSN|MAN|NEGERI|SEKOLAH\s*NEGERI)/i.test(sekolah.trim()) ? '国立' : '私立';
+  return /^(SDN|SMPN|SMAN|SMKN|MIN|MTSN|MAN|(SD|SMP|SMA|SMK)\s*NEGERI|NEGERI|SEKOLAH\s*NEGERI)/i.test(sekolah.trim()) ? '公立' : '私立';
 }
 
 /**
@@ -192,9 +218,7 @@ function kouritsu(sekolah: string): string {
  * untuk kandidat yang belum punya sertifikatnya.
  */
 function sertifikatAda(v: unknown): string {
-  const t = bersih(v);
-  if (!t) return '';
-  return /^(TIDAK|NO|NONE|-|無|BELUM)$/i.test(t) ? '' : t;
+  return negatif(v) ? '' : bersih(v);
 }
 
 /**
@@ -237,7 +261,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     B16: rokokJp(data.medis.rokok),
     F16: adaJp(data.medis.tato),
     H16: adaJp(data.medis.alergi),
-    I16: /^(TIDAK|NO|NONE|-|無)$/i.test(bersih(data.medis.alergi)) || !isGood(bersih(data.medis.alergi))
+    I16: negatif(data.medis.alergi)
       ? '無い(TIDAK)'
       : bersih(data.medis.alergi_jp) || bersih(data.medis.alergi),
     J16: minumJp(data.medis.alkohol),
@@ -252,11 +276,9 @@ export function buildValues(data: CandidateData): Record<string, string> {
     J5: bersih(data.sertifikasi.bidang),
     /* ビザ種類 (E54) dan 在日期間 (E55) — kolom migrasi 022. */
     E54: bersih(id.visa_jepang),
-    E55: bersih(data.wawancara.lama_di_jepang),
+    E55: durasiJp(data.wawancara.lama_di_jepang),
     /* ── 訪日経験 ───────────────────────────────────────────────────────── */
-    B54: /^(TIDAK|NO|NONE|-|無|BELUM)$/i.test(bersih(id.status_eks_jepang)) || !isGood(bersih(id.status_eks_jepang))
-      ? '無し(TIDAK)'
-      : 'あり(ADA)',
+    B54: negatif(id.status_eks_jepang) ? '無し(TIDAK)' : 'あり(ADA)',
   };
 
   /* ── pendidikan: 5 baris ────────────────────────────────────────────────── */
@@ -297,7 +319,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const row = FAM_START + i;
     const p = (data.keluarga[i] || {}) as Record<string, unknown>;
     const hub = s(p.hubungan).toUpperCase();
-    cells[`B${row}`] = isGood(hub) ? (HUBUNGAN.find(([re]) => re.test(hub))?.[1] ?? '') : '';
+    cells[`B${row}`] = hubunganJipa(p.hubungan, i);
     cells[`E${row}`] = isGood(hub) ? tinggalJp(p.tinggal ?? p.status_tinggal) : '';
     cells[`G${row}`] = bersih(p.nama);
     cells[`J${row}`] = angka(p.usia ?? p.umur) ? `${angka(p.usia ?? p.umur)}歳` : '';

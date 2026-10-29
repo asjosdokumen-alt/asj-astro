@@ -328,7 +328,10 @@ describe('RirekishoBuilder (A10)', () => {
 // tahun), `buildJobRows` TIDAK mengurutkan sama sekali, dan kolom 続柄
 // mencetak "AYAH  父" — dua bahasa di satu kolom Jepang.
 // ==========================================
-import { buildEduRows, buildJobRows, buildFamRows, rapikanKanjiHubungan } from './RirekishoBuilder';
+import { buildEduRows, buildJobRows, buildFamRows } from './RirekishoBuilder';
+// Kamus 続柄 pindah ke helpers_cv (2026-10-29) supaya form .xlsx memakai daftar
+// yang sama; komponen hanya memakainya.
+import { rapikanKanjiHubungan } from '../../lib/helpers_cv';
 
 /** `v()` kosong: semua nilai datang dari baris, bukan dari kolom master. */
 const vKosong = () => '-';

@@ -358,7 +358,7 @@ describe('jipa · kolom migrasi 022 benar-benar masuk ke sel', () => {
     const c = buildValues(denganKolom());
     expect(c.J5).toBe('FOOD & BEVERAGE');
     expect(c.E54).toBe('技能実習1号');
-    expect(c.E55).toBe('3 tahun');
+    expect(c.E55).toBe('3年'); // durasiJp: 在日期間 dicetak dalam bahasa Jepang
   });
 
   it('業種 per baris kerja dan 同居区分 per anggota keluarga', () => {
@@ -373,5 +373,75 @@ describe('jipa · kolom migrasi 022 benar-benar masuk ke sel', () => {
     // Fixture sudah punya SSW + JLPT ⇒ その他 jatuh di baris ke-3 (49).
     expect(c.F49).toBe('その他(資格)');
     expect(c.I49).toBe('調理師 (2023)');
+  });
+});
+
+// ==========================================
+// 2026-10-29 — nilai sel HARUS ada di daftar dropdown template
+// ==========================================
+// Berkas template menyimpan 16 dropdown; nilainya harus PERSIS sama. Tiga
+// kasus di bawah berasal dari data produksi dan dari daftar itu sendiri.
+describe('jipa · nilai yang sah di dropdown form', () => {
+  it('別居 memakai ejaan template `別居(t pisah)` — bukan `別居(t.l pisah)`', () => {
+    // Daftar E33:E40 berisi `同居(t.l bersama),別居(t pisah),独立(t.mandiri)`.
+    // Renderer menulis `別居(t.l pisah)` (menyalin bentuk 同居), jadi nilainya
+    // tidak ada di daftar baris itu sendiri.
+    const d = kandidat();
+    d.keluarga[0] = { ...d.keluarga[0], tinggal: 'TIDAK SERUMAH' };
+    expect(buildValues(d).E33).toBe('別居(t pisah)');
+  });
+
+  it('`BELUM PERNAH` di 訪日経験 = 無し, BUKAN あり', () => {
+    // 21 baris produksi berisi `BELUM PERNAH`; daftar negatif pendek dulu
+    // membacanya sebagai "ADA", sehingga kandidat yang belum pernah ke Jepang
+    // tercetak あり(ADA) di formulir resmi.
+    const d = kandidat();
+    (d.identitas as Record<string, unknown>).status_eks_jepang = 'BELUM PERNAH';
+    expect(buildValues(d).B54).toBe('無し(TIDAK)');
+  });
+
+  it('祖父/祖母 memakai ejaan huruf kecil di B34:B39, huruf besar di B33', () => {
+    const d = kandidat();
+    d.keluarga = [
+      { hubungan: 'KAKEK', nama: 'A', usia: '70' },
+      { hubungan: 'NENEK', nama: 'B', usia: '68' },
+    ];
+    const c = buildValues(d);
+    expect(c.B33).toBe('祖父(KAKEK)');
+    expect(c.B34).toBe('祖母(nenek)');
+  });
+
+  it('SIM `TIDAK ADA` tidak dianggap punya SIM', () => {
+    // Daftar negatif pendek membaca `TIDAK ADA` sebagai kepemilikan, sehingga
+    // baris 資格試験 memuat 自動車免許 untuk kandidat yang tidak punya SIM.
+    const d = kandidat();
+    (d.identitas as Record<string, unknown>).sim = 'TIDAK ADA';
+    expect(Object.values(buildValues(d))).not.toContain('自動車免許(SIM A)');
+  });
+
+  it('agama yang tidak ada di dropdown tidak dicetak sebagai agama lain', () => {
+    // KONGHUCU dulu dipetakan ke 仏教: agama yang SALAH di dokumen resmi.
+    const d = kandidat();
+    (d.identitas as Record<string, unknown>).agama = 'KONGHUCU';
+    expect(buildValues(d).L11).toBe('');
+  });
+});
+
+// ==========================================
+// 2026-10-29 — dua kolom Jepang yang berisi bahasa Indonesia / salah istilah
+// ==========================================
+describe('jipa · bahasa kolom Jepang', () => {
+  it('在日期間 `10 tahun` → `10年` (dulu tercetak apa adanya)', () => {
+    const d = kandidat();
+    (d.wawancara as Record<string, unknown>).lama_di_jepang = '10 tahun';
+    expect(buildValues(d).E55).toBe('10年');
+  });
+
+  it('`SD NEGERI …` = 公立 — bukan 私立', () => {
+    // Regex lama hanya mengenal bentuk singkat `SDN`/`SMKN`. Data produksi
+    // menulis "SD NEGERI BUNGKAL", sehingga sekolah NEGERI tercetak 私立.
+    const d = kandidat();
+    d.pendidikan = [{ tingkat: 'SD', masuk: '2008-07', lulus: '2014-06', sekolah: 'SD NEGERI BUNGKAL' }];
+    expect(buildValues(d).G19).toBe('公立 SD NEGERI BUNGKAL 小学校');
   });
 });
