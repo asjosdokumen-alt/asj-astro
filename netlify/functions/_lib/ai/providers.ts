@@ -1,4 +1,5 @@
 import { env } from '../env.ts';
+import { request } from '../kernel/http';
 import { breaker } from '../kernel/resilience';
 import { AppError, Errors } from '../kernel/errors';
 import { clampBudget, MIN_SLICE_MS } from '../kernel/deadline';
@@ -85,6 +86,9 @@ const TRANSLATE_CHAIN_BUDGET_MS = 3000;
 // pertama — lihat catatan panjang di `geminiGenerate`.
 const BREAKER_GEMINI = 'gemini';
 const BREAKER_TRANSLATE = 'gemini-translate';
+/** Groq Cloud — provider cadangan; breaker sendiri supaya kegagalannya tidak
+ *  mematikan Gemini (dan sebaliknya). */
+const BREAKER_GROQ = 'groq';
 // Parse dokumen dipisah karena KEGAGALANNYA BERBEDA ARTI, bukan karena
 // providernya berbeda. Berkas yang terlalu besar untuk dibaca model, hasil scan
 // yang tidak terbaca, atau blokir filter keamanan semuanya menghasilkan
@@ -462,8 +466,104 @@ export async function geminiTranskripsiJepang(audio: { mime: string; data: strin
 
 
 // ---------------------------------------------------------------------------
+// Groq Cloud — provider cadangan yang BENAR-BENAR hidup
+// ---------------------------------------------------------------------------
+// KENAPA ADA (2026-10-29)
+// -----------------------
+// Pemilik bertanya "kalau kuota habis bukannya backnya grok ada ya, gak jalan
+// kah?" — jawabannya: TIDAK, dan sebabnya bukan kode. Dua kunci xAI yang
+// tersedia sama-sama menjawab **403 permission-denied "your team doesn't have
+// any credits"**, untuk SEMUA model (grok-3-mini, grok-3, grok-4-fast). Jadi
+// seluruh rantai cadangan mati total: begitu kuota Gemini habis, tidak ada
+// yang menjawab.
+//
+// Groq Cloud (bukan xAI) adalah provider yang berbeda dan kuncinya bekerja.
+// API-nya OpenAI-compatible, dan model termurahnya menjawab sangat cepat:
+// terukur 2026-10-29 dari mesin ini, `openai/gpt-oss-20b` menyelesaikan
+// terjemahan JSON dua kolom dalam **525 ms** dan balasan chat Indonesia dalam
+// **928 ms** — lebih cepat daripada Grok dan jauh lebih murah daripada
+// gemini-3.5-flash, sesuai permintaan pemilik ("pilih yg paling murah").
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+/** Model termurah yang bisa mengikuti instruksi + JSON. Bukan `allam` (Arab). */
+const GROQ_MODEL = 'openai/gpt-oss-20b';
+
+/** Kunci Groq: pemilik menyimpannya sebagai `GROQCLOUD_API_KEY`. */
+function groqKey(): string {
+  return env('GROQ_API_KEY') || env('GROQCLOUD_API_KEY');
+}
+
+async function fetchGroq(
+  key: string,
+  systemPrompt: string,
+  history: Array<{ role?: string; content?: unknown }>,
+  budgetMs: number,
+) {
+  breaker.check(BREAKER_GROQ);
+  const messages: Array<{ role: string; content: string }> = [{ role: 'system', content: systemPrompt }];
+  for (const h of Array.isArray(history) ? history : []) {
+    const role = h?.role === 'assistant' ? 'assistant' : 'user';
+    if (h?.content) messages.push({ role, content: String(h.content) });
+  }
+  try {
+    // Lewat kernel/http.ts, BUKAN fetch mentah: gerbang `verify:io` membatasi
+    // jumlah situs fetch mentah di berkas ini (2: Gemini & xAI) supaya setiap
+    // panggilan keluar dibatasi deadline. `request()` tetap memberi timeout +
+    // traceparent, jadi Groq tidak perlu menambah pengecualian di gerbang itu.
+    const res = await request(GROQ_URL, {
+      budgetMs,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages,
+        // ⚠️ BUKAN angka sembarang: gpt-oss memakai token "reasoning" sebelum
+        // menulis jawaban, jadi anggaran kecil menghabiskan kuota SEBELUM satu
+        // kata pun keluar. Terukur: `max_tokens: 120` menghasilkan balasan
+        // KOSONG (semua token habis untuk reasoning), sedangkan 2048 menjawab
+        // penuh. Jangan turunkan tanpa mengukur ulang.
+        max_tokens: 2048,
+        temperature: 0.6,
+      }),
+    });
+    if (!res.ok) {
+      breaker.failure(BREAKER_GROQ);
+      throw new Error(`Groq HTTP ${res.status} ${(await res.text()).slice(0, 120)}`);
+    }
+    breaker.success(BREAKER_GROQ);
+    const j = await res.json();
+    return j?.choices?.[0]?.message?.content || '';
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('Groq HTTP')) throw e;
+    breaker.failure(BREAKER_GROQ);
+    throw e;
+  }
+}
+
+async function groqGenerate(
+  systemPrompt: string,
+  history: Array<{ role?: string; content?: unknown }>,
+  budgetMs: number,
+) {
+  const key = groqKey();
+  if (!key) return null;
+  try {
+    const text = await fetchGroq(key, systemPrompt, history, budgetMs);
+    if (text) return { reply: text };
+  } catch { /* fallback berikutnya */ }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Grok (xAI) — fallback when all Gemini models fail
 // API is OpenAI-compatible: https://api.x.ai/v1/chat/completions
+//
+// ⚠️ SEJAK 2026-10-29 PROVIDER INI TIDAK BISA DIPAKAI: kedua kunci xAI yang
+// ada menjawab 403 "no credits" untuk semua model. Ia dipertahankan sebagai
+// urutan TERAKHIR supaya langsung hidup kalau kreditnya diisi, tetapi jangan
+// diandalkan — yang menjawab adalah Groq Cloud di atas.
 // ---------------------------------------------------------------------------
 async function fetchGrok(
   key: string,
@@ -511,7 +611,9 @@ async function grokGenerate(
   history: Array<{ role?: string; content?: unknown }>,
   budgetMs: number = AI_BUDGETS.grokMs,
 ) {
-  const key = env('XAI_API_KEY');
+  // Pemilik menyimpan kuncinya sebagai `GROK_API_KEY`; nama lama `XAI_API_KEY`
+  // tetap dibaca lebih dulu supaya deployment yang sudah ada tidak berubah.
+  const key = env('XAI_API_KEY') || env('GROK_API_KEY');
   if (!key) return null;
   try {
     const text = await fetchGrok(key, systemPrompt, history, budgetMs);
@@ -670,12 +772,23 @@ async function geminiGenerate(
   if (opts.bestEffort) throw Errors.aiUnavailable(undefined, 5, geminiError);
 
   const elapsed = Date.now() - started;
-  const grokBudget = clampBudget(AI_BUDGETS.grokMs);
-  if (shouldTryGrok(elapsed, grokBudget)) {
-    const grokResult = await grokGenerate(systemPrompt, history, grokBudget);
-    if (grokResult) {
-      recordAiCall('grok', started, 'success');
-      return grokResult;
+  const fallbackBudget = clampBudget(AI_BUDGETS.grokMs);
+  if (shouldTryGrok(elapsed, fallbackBudget)) {
+    // URUTAN: Groq Cloud dulu (hidup, ~0,5-0,9 dtk, termurah), baru xAI Grok
+    // (sejak 2026-10-29 selalu 403 "no credits" — lihat catatan di atas).
+    // Keduanya berbagi satu jendela; Grok hanya mendapat SISA jendela itu.
+    const groqResult = await groqGenerate(systemPrompt, history, fallbackBudget);
+    if (groqResult) {
+      recordAiCall('groq', started, 'success');
+      return groqResult;
+    }
+    const sisa = TOTAL_AI_BUDGET_MS - (Date.now() - started);
+    if (sisa > MIN_SLICE_MS) {
+      const grokResult = await grokGenerate(systemPrompt, history, Math.min(fallbackBudget, sisa));
+      if (grokResult) {
+        recordAiCall('grok', started, 'success');
+        return grokResult;
+      }
     }
   }
   throw Errors.aiUnavailable(undefined, 5, geminiError);
