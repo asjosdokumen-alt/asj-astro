@@ -12,6 +12,11 @@
 const SURFACE_ENDPOINTS: Record<string, string> = {
   // Auth
   checkAdminMaster: '/.netlify/functions/auth',
+  // Added 2026-10-29 with session revocation: `logout` used to be a no-op that
+  // nobody called, so it was never mapped and fell through to `bridge-links`
+  // (the ~1.5 MB catch-all). The client now calls it on every logout to kill the
+  // refresh token, and it belongs on the narrow auth surface like its siblings.
+  logout: '/.netlify/functions/auth',
   checkAdminPersonal: '/.netlify/functions/auth',
   refreshAdminSession: '/.netlify/functions/auth',
   loginKandidat: '/.netlify/functions/auth',

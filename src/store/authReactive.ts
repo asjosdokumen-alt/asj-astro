@@ -9,6 +9,7 @@
  */
 import { persistentAtom } from '@nanostores/persistent';
 import { requestNotificationPermission } from '../lib/fcm';
+import { getEndpoint } from '../lib/apiEndpoint';
 
 export type UserRole = 'guest' | 'admin' | 'kandidat';
 
@@ -140,8 +141,43 @@ export function loginAsKandidat(name: string, wa: string, sessionToken: string, 
   registerFcm(wa);
 }
 
+/**
+ * Fire-and-forget POST to the `logout` action, which bumps the subject's
+ * revocation epoch server-side (migration 026).
+ *
+ * RAW `fetch`, not `apiClient`: `call()` asks `getFreshToken()` for a token
+ * first, and `getFreshToken()` is itself what calls `logout()` when a session is
+ * dead — routing this through it would recurse. Same reason
+ * `refreshSessionToken()` bypasses `call()`.
+ *
+ * Every failure is swallowed on purpose. The local session is cleared either
+ * way, and the server bump is a best-effort kill switch, not a precondition: a
+ * logout that blocks on the network is worse than one that occasionally fails.
+ * `keepalive` lets the request survive the navigation that follows.
+ */
+function revokeServerSession(sessionToken: string, refreshToken: string) {
+  if (typeof fetch !== 'function') return;
+  try {
+    void fetch(getEndpoint('logout'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'logout', payload: [refreshToken], sessionToken }),
+      signal: AbortSignal.timeout(5_000),
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* runtime without AbortSignal.timeout — skip the bump, keep the logout */
+  }
+}
+
 /** Logout — clears everything */
 export function logout() {
+  const state = authStore.get();
+  // Kill the refresh token BEFORE it leaves the store. Without this, `logout`
+  // was purely local: a stolen refresh token stayed valid for its full 7 days
+  // (measured 2026-10-29). The refresh token is sent as well because the session
+  // token is usually already expired by the time a client logs out.
+  if (state.isLoggedIn) void revokeServerSession(state.sessionToken, state.refreshToken);
   authStore.set(DEFAULT_STATE);
 }
 
