@@ -552,6 +552,13 @@ body {
 :where([data-theme="light"]) .bg-slate-600\/50 {
   background-color: #b4aeb180;
 }
+/* `bg-slate-600/20` — chip status DIBACA di TabMail (pasangan `text-slate-400`,
+   yang §5b balik ke gelap). Kelas ini tidak ada di shim sama sekali, jadi
+   chip-nya tetap gelap sementara teksnya ikut jadi gelap — persis kelas cacat
+   yang dijaga gate ini. Warnanya mengikuti saudaranya `bg-slate-500/20`. */
+:where([data-theme="light"]) .bg-slate-600\/20 {
+  background-color: #b4aeb133;
+}
 :where([data-theme="light"]) .hover\:bg-slate-600:hover {
   background-color: #dcd5d6;
 }
@@ -1224,7 +1231,7 @@ body {
 :where([data-theme="light"]) :is(.border-rose-400\/60,.border-rose-500,.border-rose-500\/30,.border-rose-500\/40,.border-rose-500\/50,.border-rose-500\/60,.border-rose-600) { border-color: #fda4af; }
 /* red */
 :where([data-theme="light"]) :is(.bg-red-900,.bg-red-900\/10,.bg-red-900\/15,.bg-red-900\/20,.bg-red-900\/25,.bg-red-900\/30,.bg-red-900\/40,.bg-red-900\/50,.bg-red-900\/60,.bg-red-900\/70,.bg-red-900\/80) { background-color: #fef2f2; }
-:where([data-theme="light"]) :is(.bg-red-500\/20,.bg-red-500\/30,.bg-red-600\/20) { background-color: #fee2e2; }
+:where([data-theme="light"]) :is(.bg-red-500\/10,.bg-red-500\/20,.bg-red-500\/30,.bg-red-600\/20) { background-color: #fee2e2; }
 :where([data-theme="light"]) :is(.text-red-300,.text-red-400,.text-red-400\/70,.text-red-300\/80) { color: #b91c1c; }
 :where([data-theme="light"]) :is(.border-red-400\/60,.border-red-500,.border-red-500\/30,.border-red-500\/40,.border-red-500\/50,.border-red-600) { border-color: #fca5a5; }
 /* pink */

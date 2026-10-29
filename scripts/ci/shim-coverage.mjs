@@ -71,7 +71,6 @@ const ALLOWED = {
   /* ── measured to pass in light theme, so no shim entry is warranted ── */
   'bg-amber-500/10': { max: 1, reason: 'Jadwal panel, /candidate (CandidateDash.tsx:607). MEASURED 2026-10-03 light 4.61:1, dark 9.69:1 — a 10% tint sits within ~2% of the page colour, so leaving it unshimmed is correct, not an oversight.' },
   'bg-sky-500/10': { max: 1, reason: 'Status-Lamaran panel, /candidate (CandidateDash.tsx:641). MEASURED 2026-10-03 light 5.35:1, dark 7.72:1.' },
-  'bg-red-500/10': { max: 1, reason: 'Revision banner, /candidate (CandidateDash.tsx:772). MEASURED 2026-10-03 light 5.58:1, dark 6.27:1.' },
   'bg-rose-950/30': { max: 1, reason: '"Upload locked" block, PemberkasanModal.tsx:530, reached by a candidate whose tahapan matches neither RE_T1 nor RE_T2. MEASURED 2026-10-03 light 5.75:1, dark 10.95:1. Arithmetic said 2.87 — the palette is authored in oklab and a naive sRGB blend misreads it, which is why this entry cites a measurement.' },
 
   /* ── not a text surface at all, so contrast is not a property it can fail ── */
@@ -85,7 +84,7 @@ const ALLOWED = {
   'bg-amber-500/90': { max: 1, reason: '"Unsaved" pill, MasterFullForm.tsx:630, paired with text-[#3b2503] — a raw hex, so the INK is unshimmed too and the pair is self-consistent in both themes (~7.1:1 by stop arithmetic on amber-500 at 90%). Shimming only the surface would break it.' },
 
   /* ── exempt by policy, not by measurement ── */
-  'bg-slate-700/40': { max: 1, reason: 'Disabled button (TabMail.tsx:249, `disabled` + cursor-not-allowed). e2e/test-contrast.mjs:68 states disabled states are NOT measured, and WCAG 1.4.3 exempts inactive controls. Measured 2.69:1, which is expected and allowed for a disabled control.' },
+  'bg-slate-700/40': { max: 3, reason: 'Disabled buttons ONLY (TabMail.tsx:249, :375 literal `disabled`, :393 `disabled={status === DIBACA}`), all with cursor-not-allowed. e2e/test-contrast.mjs:68 states disabled states are NOT measured, and WCAG 1.4.3 exempts inactive controls. Measured 2.69:1, which is expected and allowed for a disabled control. Bound raised 1 -> 3 on 2026-10-29 after the two “Mark read / View” cells were added; the reason is unchanged because the SHAPE is unchanged.' },
 };
 
 /* ── self-tests: a gate whose instrument is broken reports a clean tree ────── */
