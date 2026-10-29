@@ -104,6 +104,18 @@ const ALLOWED = {
       'AbortController of its own, and a retry loop. Not a Netlify function, so ' +
       'apiClient has nothing to add.',
   },
+  'src/store/authReactive.ts': {
+    max: 1,
+    reason:
+      'The server-side logout bump (2026-10-29, migration 026). Raw `fetch` ' +
+      'because routing it through apiClient would recurse: `call()` asks ' +
+      '`getFreshToken()` for a token first, and `getFreshToken()` is what calls ' +
+      '`logout()` when a session is dead. Same reason `refreshSessionToken()` ' +
+      'bypasses `call()`. The call carries its own 5 s AbortSignal.timeout(), is ' +
+      '`keepalive` so it survives the redirect that follows, and swallows every ' +
+      'failure — the local session is cleared regardless, so a failed bump must ' +
+      'not block the user from leaving.',
+  },
   'src/lib/publicData.ts': {
     max: 2,
     reason:
@@ -192,7 +204,8 @@ function collect(dir) {
 }
 
 /**
- * Count real `fetch(` call sites, skipping comment lines.
+ * Count real `fetch(` call sites, skipping comment lines, and record whether
+ * each one carries a `signal`.
  *
  * The comment-skip is NOT cosmetic. io-boundary.mjs had a guard that used
  * `.includes('fetch(')`, which the file's OWN COMMENTS satisfied — renaming the
@@ -200,18 +213,59 @@ function collect(dir) {
  * Their mutation battery caught it (S3 SURVIVED). The same trap applies here:
  * this file's header prose mentions `fetch(` on many lines, so any check that
  * does not skip comments would pass by quoting itself.
+ *
+ * WHY `hasSignal` EXISTS (2026-10-29)
+ *   The per-FILE count could not see a new call inside an already-allowed file.
+ *   `refreshSessionToken` landed in apiClient.ts NINE DAYS after this gate
+ *   existed, added a third `fetch` with no timeout, and the gate stayed green
+ *   until the count happened to be compared. The bound is the property that
+ *   matters (a stall must not park a tab forever), so it is now asserted per
+ *   call site, not per file. A per-file allow-list can only ever say "this file
+ *   may call fetch"; it cannot say "this call is bounded".
  */
 function isComment(trimmed) {
   return trimmed.startsWith('*') || trimmed.startsWith('//') || trimmed.startsWith('/*');
 }
 
+/** The full `fetch(...)` call text, by balancing parentheses from the `(`. */
+function callText(src, openIdx) {
+  let depth = 0;
+  for (let i = openIdx; i < src.length; i++) {
+    if (src[i] === '(') depth++;
+    else if (src[i] === ')') {
+      depth--;
+      if (depth === 0) return src.slice(openIdx, i + 1);
+    }
+  }
+  return src.slice(openIdx);
+}
+
 function countFetchSites(src) {
   const hits = [];
-  src.split(/\r?\n/).forEach((line, i) => {
-    const trimmed = line.trim();
-    if (isComment(trimmed)) return;
-    if (/(?<![\w.$])fetch\s*\(/.test(line)) hits.push(i + 1);
-  });
+  // Scan the WHOLE source, not line-by-line with recomputed offsets: the repo
+  // checks out with CRLF (core.autocrlf=true), so "sum of preceding line
+  // lengths + 1" drifts by one per line and the call text was being read from
+  // the wrong place — which made every bounded call look unbounded.
+  const re = /(?<![\w.$])fetch\s*\(/g;
+  // `for` rather than `while ((m = re.exec(src)))`: an assignment in a condition
+  // trips noAssignInExpressions, and the `continue` below (comment lines) would
+  // skip a hand-written re-exec at the end of the body — the loop would spin on
+  // the same match forever. In a `for`, `continue` still runs the update.
+  for (let m = re.exec(src); m; m = re.exec(src)) {
+    const lineStart = src.lastIndexOf('\n', m.index) + 1;
+    const nl = src.indexOf('\n', m.index);
+    const lineText = src.slice(lineStart, nl === -1 ? src.length : nl).trim();
+    if (isComment(lineText)) continue;
+    const openIdx = m.index + m[0].length - 1; // at the '('
+    const text = callText(src, openIdx);
+    let line = 1;
+    for (let i = 0; i < m.index; i++) if (src[i] === '\n') line++;
+    // `signal:` for an inline option, `signal)` for a shared options helper
+    // (`opts(controller.signal)`) — apiClient builds its options once and
+    // reuses them for the primary call and the 404 fallback, so requiring the
+    // literal `signal:` there would flag two correctly-bounded calls.
+    hits.push({ line, hasSignal: /\bsignal\s*[:,)]/.test(text) });
+  }
   return hits;
 }
 
@@ -229,7 +283,11 @@ if (process.argv.includes('--list')) {
   for (const [rel, hits] of [...found].sort()) {
     const allow = ALLOWED[rel];
     console.log(`  ${rel}`);
-    console.log(`    lines: ${hits.join(', ')}`);
+    console.log(`    lines: ${hits.map((h) => h.line).join(', ')}`);
+    console.log(
+      `    bounded: ${hits.filter((h) => h.hasSignal).length}/${hits.length}` +
+        (hits.some((h) => !h.hasSignal) ? '  ← UNBOUNDED' : ''),
+    );
     console.log(`    ${allow ? `ALLOWED — ${allow.reason}` : '>>> NOT ALLOWED (gate will fail)'}`);
     console.log('');
   }
@@ -242,14 +300,25 @@ const violations = [];
 
 for (const [rel, hits] of found) {
   const allow = ALLOWED[rel];
+  const lines = hits.map((h) => h.line).join(', ');
   if (!allow) {
     violations.push(
-      `${rel} — ${hits.length} raw fetch() at line(s) ${hits.join(', ')} — NOT in allow-list`,
+      `${rel} — ${hits.length} raw fetch() at line(s) ${lines} — NOT in allow-list`,
     );
   } else if (hits.length > allow.max) {
     violations.push(
       `${rel} — ${hits.length} raw fetch() but allow-list permits ${allow.max} — ` +
         `a NEW bypass was added. Route it through apiClient, or raise the bound with a reason.`,
+    );
+  }
+  // The property, asserted where the mistake happens: every call must be able
+  // to give up. A per-file bound cannot express this — see the note above.
+  for (const h of hits) {
+    if (h.hasSignal) continue;
+    violations.push(
+      `${rel}:${h.line} — fetch() has NO \`signal\` — an unbounded request can hang ` +
+        `with no error and no way out. Add AbortSignal.timeout(...) (or an ` +
+        `AbortController), not a new allow-list entry.`,
     );
   }
 }

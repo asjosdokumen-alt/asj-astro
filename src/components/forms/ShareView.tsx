@@ -139,7 +139,12 @@ export default function ShareView() {
     if (!code) { setError(t('share.err_msg')); setLoading(false); return; }
     setLoading(true);
     setError('');
-    fetch('/.netlify/functions/share-data?job=' + encodeURIComponent(code))
+    // Bounded: without a timer a stalled function left `loading` true forever,
+    // so a public share page sat on its spinner with no error and no retry.
+    // On timeout the existing `.catch` shows the error state (2026-10-29).
+    fetch('/.netlify/functions/share-data?job=' + encodeURIComponent(code), {
+      signal: AbortSignal.timeout(20_000),
+    })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok || data.error) throw new Error(data.error || 'Access Denied');

@@ -119,7 +119,11 @@ async function renderExcelToHtml(url: string): Promise<string | null> {
     const XLSX = await loadXlsx();
     if (!XLSX) return null;
 
-    const res = await fetch(url);
+    // Bounded: this is a storage/CDN blob, and without a timer a stalled host
+    // left the preview modal spinning forever — the `try/catch` never runs
+    // while `fetch` is pending. On timeout it returns null, which the modal
+    // already renders as "no preview" (2026-10-29, `verify:fetch-boundary`).
+    const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
     if (!res.ok) return null;
     
     const buf = await res.arrayBuffer();

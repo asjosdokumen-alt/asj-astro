@@ -19,6 +19,9 @@
 #   S3  the real apiClient call renamed           -> "client no longer calls fetch"
 #   S4  an allow-listed path renamed/removed      -> "exists check" catches the
 #                                                    silent coverage shrink
+#   S5  a bounded call loses its `signal`          -> "NO signal" catches the
+#                                                    class the per-file count
+#                                                    was blind to for 9 days
 #
 # S2 targets an allow-listed file ON PURPOSE. Every entry in ALLOWED sits exactly
 # at its `max`, so the bound is the only thing between today's tree and a seventh
@@ -55,8 +58,8 @@ RM_RETRY_LIB="$(dirname "${BASH_SOURCE[0]}")/lib/rm-retry.sh"
 
 GATE=scripts/ci/fetch-boundary.mjs
 SRC=src
-CLIENT="$SRC/lib/apiClient.ts"                  # the sanctioned client, allow-listed max 2
-PUBLICDATA="$SRC/lib/publicData.ts"            # allow-listed max 1 — the bound test
+CLIENT="$SRC/lib/apiClient.ts"                  # the sanctioned client, allow-listed max 3
+PUBLICDATA="$SRC/lib/publicData.ts"            # allow-listed max 2 — the bound test
 BAK=.tmp-fbmut
 fail=0
 results=()
@@ -164,11 +167,26 @@ check "S1  new file with a raw fetch() (not in allow-list)" kill
 rm_retry "$F_RAW"
 
 # ── S2 · one extra fetch() in an allow-listed file ─────────────────────────
-# publicData.ts is allowed exactly 1 site and currently has exactly 1, so this
-# takes it to 2 and must cross the bound.
-printf '\nconst __fbmutExtra = fetch("/.netlify/functions/health");\n' >> "$PUBLICDATA"
+# publicData.ts is allowed exactly 2 sites and currently has exactly 2, so this
+# takes it to 3 and must cross the bound.
+#
+# The added call carries a `signal` ON PURPOSE: without it this mutation would
+# also trip the unbounded check (S5), and a KILL would not tell us which rule
+# fired. Isolating one rule per mutation is what makes a SURVIVED result mean
+# something.
+printf '\nconst __fbmutExtra = fetch("/.netlify/functions/health", { signal: AbortSignal.timeout(1) });\n' >> "$PUBLICDATA"
 check "S2  allow-listed file pushed past its max bound" kill
 cp "$BAK/publicdata" "$PUBLICDATA"
+
+# ── S5 · a bounded call loses its bound ────────────────────────────────────
+# THE REGRESSION THAT MOTIVATED THE REWRITE. Until 2026-10-29 this gate counted
+# calls per FILE, so `refreshSessionToken` could add a third `fetch` with no
+# timeout inside the already-allowed apiClient.ts and stay green for nine days.
+# The property that matters is "this call can give up", so it is asserted per
+# call site; this mutation proves the assertion is live.
+mut "$CLIENT" 'signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),' ''
+check "S5  a call loses its signal (the 9-day hole)" kill
+cp "$BAK/client" "$CLIENT"
 
 # ── S3 · the client implementation moved ───────────────────────────────────
 # The comments that would satisfy an `includes('fetch(')` check are left intact
