@@ -14,7 +14,7 @@
 // ==========================================
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import DocumentPreviewModal, { isDriveFolder } from './DocumentPreviewModal';
+import DocumentPreviewModal, { driveFileId, drivePreviewUrl, isDriveFolder } from './DocumentPreviewModal';
 
 vi.mock('../store/i18n', () => ({ t: (k: string) => k }));
 
@@ -36,6 +36,51 @@ describe('DocumentPreviewModal (B03)', () => {
   it('isDriveFolder: link folder Google Drive terdeteksi', () => {
     expect(isDriveFolder('https://drive.google.com/drive/folders/1AbC')).toBe(true);
     expect(isDriveFolder('https://drive.google.com/file/d/1AbC/view')).toBe(false);
+  });
+
+  // ==========================================
+  // 2026-10-29 — "pratinjau kelas L tidak bisa semua"
+  //
+  // Berkas kandidat lama TIDAK disimpan di Storage: terukur di produksi,
+  // 34 dari 51 `ktp_url` berbentuk `https://drive.google.com/open?id=…`.
+  // Tautan itu tidak berakhiran ekstensi, jadi `isImage`/`isPdf`/`isExcel`
+  // semuanya meleset dan modal berhenti di "tidak bisa dipratinjau" — padahal
+  // berkasnya ada. Drive punya endpoint embed (`/preview`) yang bisa di-iframe.
+  // ==========================================
+  it('drive file (open?id=…) → id diekstrak, URL embed /preview', () => {
+    const url = 'https://drive.google.com/open?id=1AbCdEfGhIjKlMnOpQrStUvWxYz01234';
+    expect(driveFileId(url)).toBe('1AbCdEfGhIjKlMnOpQrStUvWxYz01234');
+    expect(drivePreviewUrl(url)).toBe(
+      'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz01234/preview',
+    );
+    // Bentuk lain yang juga ada di data lama.
+    expect(driveFileId('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz01234/view')).toBe(
+      '1AbCdEfGhIjKlMnOpQrStUvWxYz01234',
+    );
+    expect(driveFileId('https://drive.google.com/uc?export=download&id=1AbCdEfGhIjKlMnOpQrStUvWxYz01234')).toBe(
+      '1AbCdEfGhIjKlMnOpQrStUvWxYz01234',
+    );
+    // Folder BUKAN berkas — ia ditangani fallback tab baru.
+    expect(driveFileId('https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUvWxYz01234')).toBe('');
+  });
+
+  it('drive file → iframe ke /preview, bukan pesan "tidak bisa dipratinjau"', () => {
+    renderAt('https://drive.google.com/open?id=1AbCdEfGhIjKlMnOpQrStUvWxYz01234');
+    const frame = document.querySelector('iframe') as HTMLIFrameElement;
+    expect(frame, 'drive file harus dipratinjau lewat embed').toBeTruthy();
+    expect(frame.src).toContain('drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrStUvWxYz01234/preview');
+    expect(screen.queryByText(/ui\.preview_unavailable/)).toBeNull();
+  });
+
+  // Cloudinary menyimpan DOKUMEN juga: unggahan PDF mendarat di
+  // `/image/upload/…/ktp.pdf`. `includes('res.cloudinary.com')` dulu
+  // mengklasifikasikannya sebagai gambar, `<img src="…pdf">` gagal, dan
+  // berkasnya dilaporkan "gagal dimuat". Ekstensi dokumen harus menang.
+  it('PDF di Cloudinary BUKAN gambar (tidak dirender sebagai <img>)', () => {
+    renderAt('https://res.cloudinary.com/ybzzbw9i/image/upload/v1/ktp_abc.pdf');
+    expect(screen.queryByRole('img')).toBeNull();
+    const frame = document.querySelector('iframe') as HTMLIFrameElement;
+    expect(frame?.src).toContain('docs.google.com/gview');
   });
 
   it('drive folder → buka tab baru + tutup modal (parity bukaPreviewDokumen)', () => {

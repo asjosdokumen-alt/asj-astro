@@ -5,7 +5,7 @@ import api from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { uploadToCloudinary } from '../../lib/cloudinary';
 import { t } from '../../store/i18n';
-import DocumentPreviewModal from '../DocumentPreviewModal';
+import DocumentPreviewModal, { driveFileId, isDriveFolder } from '../DocumentPreviewModal';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 
 interface Props {
@@ -60,6 +60,9 @@ function isImageUrl(url: string): boolean {
 
 /** Label pendek jenis berkas untuk badge thumbnail. */
 function docKindLabel(url: string): string {
+  // Berkas kandidat lama hidup di Google Drive (`…/open?id=…`), tanpa ekstensi
+  // — badge "FILE" menyembunyikan fakta bahwa berkasnya ada dan bisa dibuka.
+  if (isDriveFolder(url) || driveFileId(url)) return 'DRIVE';
   if (isImageUrl(url)) return 'IMG';
   if (/\.pdf(\?.*)?$/i.test(url)) return 'PDF';
   if (/\.(xlsx?|csv)(\?.*)?$/i.test(url)) return 'XLS';

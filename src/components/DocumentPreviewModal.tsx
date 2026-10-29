@@ -73,8 +73,18 @@ async function loadXlsx(): Promise<typeof import('xlsx') | null> {
 }
 
 // Check if URL is an image (including Cloudinary URLs)
+//
+// ⚠ Cloudinary hosts DOCUMENTS too, not just images: an unsigned upload of a
+// PDF lands on `/image/upload/…/ktp.pdf`, and the old `includes('res.cloudinary.com')`
+// arm therefore classified it as an image. The modal then rendered `<img
+// src="…pdf">`, which cannot load, and the file was reported as "preview
+// failed" — one of the ways "pratinjau tidak bisa semua" happened. A document
+// extension always wins over the host heuristic.
+const DOC_EXT_RE = /\.(pdf|docx?|xlsx?|xlsm|pptx?|odt|ods|odp|csv|txt)([?#].*)?$/i;
+
 function isImage(url: string): boolean {
   const lower = url.toLowerCase();
+  if (DOC_EXT_RE.test(lower)) return false;
   return (
     /\.(jpeg|jpg|gif|png|webp|bmp|svg)([?#].*)?$/i.test(lower) ||
     lower.includes('pas_photo') ||
@@ -111,6 +121,42 @@ const DRIVE_FOLDER_RE = /drive\.google\.com\/drive\/folders/i;
 
 export function isDriveFolder(url: string): boolean {
   return DRIVE_FOLDER_RE.test(String(url || ''));
+}
+
+/**
+ * Berkas Google Drive (BUKAN folder) → id berkasnya.
+ *
+ * KENAPA INI ADA (terukur 2026-10-29)
+ * -----------------------------------
+ * Berkas kandidat lama tersimpan sebagai tautan Drive, bukan objek Storage:
+ * di `master_database_candidate`, **34 dari 51** `ktp_url` berbentuk
+ * `https://drive.google.com/open?id=…`. Tautan itu tidak berakhiran ekstensi
+ * apa pun, jadi `isImage`/`isPdf`/`isExcel` semuanya meleset dan modal berhenti
+ * di "tidak bisa dipratinjau" — laporan pemilik: "pratinjau kelas L tidak bisa
+ * semua". Drive punya endpoint embed sendiri; tidak perlu mengunduh.
+ *
+ * Bentuk yang dikenali: `/file/d/<id>/view`, `/open?id=<id>`, `/uc?id=<id>`.
+ */
+const DRIVE_FILE_RES = [
+  /drive\.google\.com\/file\/d\/([A-Za-z0-9_-]{10,})/i,
+  /drive\.google\.com\/open\?(?:[^#]*&)?id=([A-Za-z0-9_-]{10,})/i,
+  /drive\.google\.com\/uc\?(?:[^#]*&)?id=([A-Za-z0-9_-]{10,})/i,
+];
+
+export function driveFileId(url: string): string {
+  const s = String(url || '');
+  if (isDriveFolder(s)) return '';
+  for (const re of DRIVE_FILE_RES) {
+    const m = s.match(re);
+    if (m?.[1]) return m[1];
+  }
+  return '';
+}
+
+/** URL embed Drive — `/preview`, bukan `/view`: yang pertama bisa di-iframe. */
+export function drivePreviewUrl(url: string): string {
+  const id = driveFileId(url);
+  return id ? `https://drive.google.com/file/d/${id}/preview` : '';
 }
 
 // Client-side Excel/CSV rendering via SheetJS
@@ -253,6 +299,24 @@ export default function DocumentPreviewModal({ url, title, onClose, previewOnly,
   const handleError = () => { setLoading(false); setError(true); };
 
   const renderContent = () => {
+    // Drive file → embed endpoint. Diperiksa PALING AWAL: tautannya tidak
+    // berakhiran ekstensi, jadi semua pemeriksaan berbasis ekstensi di bawah
+    // ini pasti meleset (lihat catatan `driveFileId`).
+    const driveEmbed = drivePreviewUrl(url);
+    if (driveEmbed) {
+      return (
+        <iframe
+          ref={iframeRef}
+          src={driveEmbed}
+          class="w-full h-full border-0 rounded-lg"
+          onLoad={handleLoad}
+          onError={handleError}
+          title={title}
+          allow="autoplay"
+        />
+      );
+    }
+
     if (mime ? mime.startsWith('image/') : isImage(url)) {
       return (
         <div class="flex items-center justify-center h-full overflow-auto">
