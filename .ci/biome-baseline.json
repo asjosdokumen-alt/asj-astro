@@ -1,13 +1,13 @@
 {
-  "total": 1997,
-  "generatedAt": "2026-10-28T12:50:18.683Z",
+  "total": 1994,
+  "generatedAt": "2026-10-29T10:19:03.578Z",
   "byFile": {
     "netlify/functions/contexts/master-data/service.ts": 131,
     "netlify/functions/contexts/documents/service.ts": 86,
     "indexer/src/query.test.ts": 67,
     "indexer/src/deep-tier.test.ts": 65,
     "src/components/admin/RirekishoBuilder.tsx": 62,
-    "netlify/functions/_lib/ai/chat.ts": 52,
+    "netlify/functions/_lib/ai/chat.ts": 49,
     "indexer/src/cli.ts": 40,
     "netlify/functions/_lib/ai/cv.ts": 36,
     "netlify/functions/contexts/scheduling/service.ts": 34,
@@ -254,11 +254,11 @@
     "src/lib/berkasCatalog.test.ts": 1
   },
   "byRule": {
-    "lint/style/useTemplate": 725,
-    "lint/suspicious/noExplicitAny": 400,
+    "lint/style/useTemplate": 722,
+    "lint/suspicious/noExplicitAny": 401,
     "lint/style/noNonNullAssertion": 290,
-    "lint/complexity/useOptionalChain": 241,
-    "lint/suspicious/noConsole": 61,
+    "lint/complexity/useOptionalChain": 239,
+    "lint/suspicious/noConsole": 62,
     "lint/suspicious/noAssignInExpressions": 42,
     "lint/suspicious/useIterableCallbackReturn": 41,
     "lint/correctness/useExhaustiveDependencies": 40,
