@@ -356,6 +356,24 @@ function render(tables, sha) {
   return lines.join('\n');
 }
 
+/**
+ * Is this a Neon Data API host?
+ *
+ * WHY THE `.apirest.` SEGMENT AND NOT JUST `.neon.tech`: Neon also publishes
+ * `<endpoint>.neonauth.<region>.aws.neon.tech` (Neon Auth), which shares the
+ * suffix but HAS an auth server. Only the `apirest` segment is the PostgREST-
+ * compatible Data API. Same predicate as `src/lib/supabaseHost.ts`, restated
+ * here because this script is ESM and cannot import a .ts module.
+ */
+function isNeonDataApiHost(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.includes('.apirest.') && host.endsWith('.neon.tech');
+  } catch {
+    return false;
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -366,13 +384,37 @@ Regenerates netlify/functions/_lib/db/schema.generated.ts from the live database
   (default)   read PostgREST's OpenAPI document (SUPABASE_URL + service key)
   --from-db   read information_schema over the DIRECT Postgres connection
               (Direct_Connection_DB) — use when the deployed database and the
-              local SUPABASE_URL are not the same server`);
+              local SUPABASE_URL are not the same server
+
+  Neon Data API hosts switch to --from-db AUTOMATICALLY: measured 2026-10-29,
+  the OpenAPI root there answers HTTP 404 PGRST205 ("Could not find the table
+  'public.'"), so the default path was not checking anything — it exited 2 with
+  a message that reads like a broken connection. The switch needs
+  Direct_Connection_DB; without it the error now names that variable instead of
+  forwarding a PostgREST parse error.`);
     return process.exit(0);
   }
 
   applyEnvFiles();
   const base = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+  // ── Neon Data API: the OpenAPI path cannot work, so do not pretend to try ──
+  if (!args.fromDb && base && isNeonDataApiHost(base)) {
+    const { initDbEnv } = await import('../lib/load-env.mjs');
+    const dbEnv = initDbEnv();
+    if (!dbEnv.url) {
+      console.error(
+        'CONFIG ERROR  this is a Neon Data API host, whose OpenAPI root does not serve a schema ' +
+          '(HTTP 404 PGRST205). Set Direct_Connection_DB to read information_schema instead. ' +
+          'Failing closed — nothing was checked.',
+      );
+      return process.exit(2);
+    }
+    console.log('note: Neon Data API host — reading information_schema over Direct_Connection_DB (as --from-db)');
+    args.fromDb = true;
+  }
+
   if (!args.fromDb && !base) {
     console.error('CONFIG ERROR  SUPABASE_URL is not set. Failing closed — nothing was checked.');
     return process.exit(2);
