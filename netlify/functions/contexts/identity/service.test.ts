@@ -6,9 +6,42 @@
 // ({ success:false, message } on rejection, kind:'session' on re-issued
 // tokens), not the legacy { sessionInvalid:true } shape.
 // ==========================================
-import { describe, it, expect, vi } from 'vitest';
-import { refreshAdminSession, refreshKandidatSession, requireRole, requireAdmin, isOwnerOrAdmin } from './service';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+/**
+ * Revocation state, controlled by the tests.
+ *
+ * `vi.hoisted` because `vi.mock` is hoisted above every import: a plain
+ * top-level `const` would still be in its temporal dead zone when the factory
+ * runs. Everything NOT overridden below comes from the real module, so the
+ * existing login/refresh tests keep their real behaviour.
+ */
+const revoked = vi.hoisted(() => ({ subjects: new Map<string, number>() }));
+
+vi.mock('./repository', async () => {
+  const actual = await vi.importActual<Record<string, unknown>>('./repository');
+  return {
+    ...actual,
+    getSessionRevokedAt: async (subject: string) => revoked.subjects.get(subject) ?? null,
+    revokeSessionSubject: async (subject: string) => {
+      revoked.subjects.set(subject, Math.floor(Date.now() / 1000));
+      return true;
+    },
+  };
+});
+
+import {
+  refreshAdminSession,
+  refreshKandidatSession,
+  revokeSession,
+  isRevoked,
+  requireRole,
+  requireAdmin,
+  isOwnerOrAdmin,
+} from './service';
 import { signToken, verifyToken } from '../../_lib/session';
+
+beforeEach(() => revoked.subjects.clear());
 
 describe('refreshKandidatSession — pemulihan sesi kandidat diam-diam', () => {
   it('refresh token kandidat yang sah → sessionToken baru + wa', async () => {
@@ -86,6 +119,11 @@ describe('login menerbitkan token penyegar yang bisa ditukar', () => {
         nama_lengkap: 'BUDI',
         password_kandidat: HASH,
       }),
+      // `doMock` replaces the WHOLE module, so every function the code under
+      // test calls has to be present — a missing one surfaces as
+      // "repo.getSessionRevokedAt is not a function", not as a failed assertion.
+      getSessionRevokedAt: async () => null,
+      revokeSessionSubject: async () => true,
     }));
     vi.resetModules();
     const svc = await import('./service');
@@ -106,5 +144,75 @@ describe('login menerbitkan token penyegar yang bisa ditukar', () => {
     expect(st?.wa).toBe('6281234567890');
 
     vi.doUnmock('./repository');
+  });
+});
+
+// ==========================================
+// TESTS: pencabutan sesi (migrasi 026, 2026-10-29)
+//
+// SEBELUM INI tidak ada kill switch sama sekali: `logout` menjawab
+// `{success:true}` dan tidak melakukan apa pun, dan ganti password tidak
+// menyentuh token yang sudah terbit. Karena refresh diperpanjang DIAM-DIAM
+// 60 detik sebelum kedaluwarsa, satu token penyegar yang dicuri berlaku penuh
+// 7 hari tanpa satu pun sinyal ke pemiliknya.
+//
+// Aturannya satu baris: token ditolak bila `iat < revoked_at`. Yang diuji di
+// sini adalah PERILAKU (refresh ditolak / diterima), bukan hanya predikatnya.
+// ==========================================
+describe('pencabutan sesi — kill switch yang benar-benar mematikan', () => {
+  const WA = '6281234567890';
+  const nowSec = () => Math.floor(Date.now() / 1000);
+
+  it('isRevoked: hanya yang LEBIH TUA; cap waktu sama tetap hidup', () => {
+    expect(isRevoked(100, null)).toBe(false); // belum pernah dicabut
+    expect(isRevoked(99, 100)).toBe(true); // terbit sebelum pencabutan
+    expect(isRevoked(100, 100)).toBe(false); // login ulang di detik yang sama
+    expect(isRevoked(101, 100)).toBe(false); // terbit sesudahnya
+    // Tanpa `iat` = usia tidak diketahui ⇒ diperlakukan sebagai yang tertua,
+    // supaya token lama tidak selamat dari kill switch.
+    expect(isRevoked(undefined, 100)).toBe(true);
+  });
+
+  it('KONTROL: token penyegar yang sah tetap bisa ditukar', async () => {
+    const rt = signToken({ role: 'kandidat', wa: WA, kind: 'refresh' });
+    const res = await refreshKandidatSession(rt);
+    expect(res.success).toBe(true);
+  });
+
+  it('refresh kandidat DITOLAK setelah subjeknya dicabut', async () => {
+    const rt = signToken({ role: 'kandidat', wa: WA, kind: 'refresh' });
+    // +1 detik: `iat` beresolusi detik, jadi pencabutan harus benar-benar
+    // SETELAH token terbit agar tesnya menguji pertidaksamaan, bukan waktu.
+    revoked.subjects.set(`kandidat:${WA}`, nowSec() + 1);
+
+    const res = await refreshKandidatSession(rt);
+
+    expect(res.success).toBe(false);
+    expect((res as { sessionInvalid?: boolean }).sessionInvalid).toBe(true);
+  });
+
+  it('refresh admin DITOLAK setelah subjeknya dicabut', async () => {
+    const rt = signToken({ role: 'admin', name: 'AGUS', kind: 'refresh' });
+    revoked.subjects.set('admin:AGUS', nowSec() + 1);
+
+    expect((await refreshAdminSession(rt)).success).toBe(false);
+  });
+
+  it('pencabutan SATU subjek tidak menyentuh subjek lain', async () => {
+    revoked.subjects.set('kandidat:6289999999999', nowSec() + 1);
+    const rt = signToken({ role: 'kandidat', wa: WA, kind: 'refresh' });
+    expect((await refreshKandidatSession(rt)).success).toBe(true);
+  });
+
+  it('revokeSession memakai subjek dari token TERTANDATANGAN, bukan argumen', async () => {
+    const rt = signToken({ role: 'kandidat', wa: WA, kind: 'refresh' });
+    const res = await revokeSession(undefined, rt);
+    expect(res.success).toBe(true);
+    expect(revoked.subjects.has(`kandidat:${WA}`)).toBe(true);
+  });
+
+  it('revokeSession menolak token yang tidak bisa diverifikasi', async () => {
+    expect((await revokeSession('bogus.token', '')).success).toBe(false);
+    expect(revoked.subjects.size).toBe(0);
   });
 });

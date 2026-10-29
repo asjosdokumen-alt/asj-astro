@@ -27,10 +27,15 @@ describe('session — signToken + verifyToken', () => {
   const nowSec = () => Math.floor(Date.now() / 1000);
 
   function expectRoundtrip(payload: SessionPayload) {
-    const result = verifyToken(signToken(payload)) as SessionPayload & { exp: number };
+    const result = verifyToken(signToken(payload)) as SessionPayload & { exp: number; iat: number };
     expect(typeof result.exp).toBe('number');
     expect(result.exp).toBeGreaterThan(nowSec());
-    const { exp, ...rest } = result;
+    // `iat` is injected unconditionally since 2026-10-29 (revocation compares
+    // it against `session_revocations.revoked_at`). Strip BOTH injected claims
+    // before comparing, or every roundtrip test fails on a field the caller
+    // never supplied.
+    expect(typeof result.iat).toBe('number');
+    const { exp, iat, ...rest } = result;
     expect(rest).toEqual(payload);
     return exp;
   }

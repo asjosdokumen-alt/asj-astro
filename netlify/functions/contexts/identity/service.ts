@@ -52,6 +52,78 @@ function issueTokens(role: 'admin' | 'kandidat', ident: { name?: string; wa?: st
   };
 }
 
+// ── Session revocation (migration 026) ──────────────────────────────────────
+//
+// Tokens carry no server state, so before 2026-10-29 a stolen refresh token was
+// valid for its full 7 days with NO kill switch: `logout` returned
+// `{success:true}` and did nothing, and a password change left every issued
+// token alive. `session_revocations` stores one epoch per SUBJECT and a token is
+// refused when `iat < revoked_at`.
+//
+// The subject is derived from the SIGNED payload only — never from a request
+// field — so a caller cannot choose whose session it kills.
+
+/** `admin:<name>` / `kandidat:<wa>` from a verified payload, or null. */
+function subjectOf(t: session.SessionPayload): string | null {
+  if (t.role === 'admin') {
+    const name = String(t.name || '').trim();
+    return name ? `admin:${name}` : null;
+  }
+  if (t.role === 'kandidat') {
+    const wa = normalizeWa(t.wa || '');
+    return wa ? `kandidat:${wa}` : null;
+  }
+  return null;
+}
+
+/**
+ * Is this token older than its subject's revocation epoch?
+ *
+ * STRICTLY `<`, not `<=`: a user who logs out and signs back in within the same
+ * second must keep the NEW token. The price is a sub-second window in which a
+ * token minted in the same second as the revocation survives — cheaper than
+ * silently killing a fresh login 24 h later.
+ *
+ * A token with no `iat` reads as 0, i.e. older than any epoch, so tokens minted
+ * before this field existed die on the first revocation. Exported because it is
+ * the whole rule in one line and deserves its own test.
+ */
+export function isRevoked(iat: number | undefined, revokedAt: number | null): boolean {
+  if (revokedAt === null) return false;
+  return Number(iat || 0) < revokedAt;
+}
+
+/** Reject a refresh whose subject has been revoked. */
+async function revokedRefreshError(t: session.SessionPayload) {
+  const subject = subjectOf(t);
+  if (!subject) return null;
+  const revokedAt = await repo.getSessionRevokedAt(subject);
+  if (!isRevoked(t.iat, revokedAt)) return null;
+  return {
+    success: false as const,
+    sessionInvalid: true,
+    message: 'Sesi sudah diakhiri. Silakan masuk lagi.',
+  };
+}
+
+/**
+ * End a session server-side.
+ *
+ * Accepts the refresh token as a fallback because the session token is usually
+ * ALREADY expired by the time a client gets round to logging out (24 h vs 7 d);
+ * `verifyToken` refuses an expired token, so without the fallback the one
+ * credential that still matters would be the one we could not revoke.
+ */
+export async function revokeSession(sessionToken?: string, refreshToken?: string) {
+  const t = session.verifyToken(sessionToken) || session.verifyToken(refreshToken);
+  const subject = t ? subjectOf(t) : null;
+  if (!subject) return { success: false, message: 'Sesi tidak valid.' };
+  const ok = await repo.revokeSessionSubject(subject);
+  // Never answer `{success:true}` for a write that did not land — a logout that
+  // silently failed is precisely the bug this exists to remove.
+  return ok ? { success: true } : { success: false, message: 'Gagal mengakhiri sesi.' };
+}
+
 // ── Admin auth ───────────────────────────────────────────────────────────────
 
 /**
@@ -192,6 +264,8 @@ export async function refreshAdminSession(refreshToken: string) {
   if (t?.kind !== 'refresh' || t?.role !== 'admin') {
     return { success: false, message: 'Refresh token tidak valid.' };
   }
+  const revoked = await revokedRefreshError(t);
+  if (revoked) return revoked;
   const newToken = session.signToken({ role: 'admin', name: t.name, kind: 'session' });
   return { success: true, sessionToken: newToken };
 }
@@ -216,6 +290,8 @@ export async function refreshKandidatSession(refreshToken: string) {
   if (t?.kind !== 'refresh' || t?.role !== 'kandidat') {
     return { success: false, message: 'Refresh token tidak valid.' };
   }
+  const revoked = await revokedRefreshError(t);
+  if (revoked) return revoked;
   const newToken = session.signToken({ role: 'kandidat', wa: t.wa, kind: 'session' });
   return { success: true, sessionToken: newToken, wa: t.wa };
 }
@@ -279,6 +355,12 @@ export async function changePassword(wa: string, lama: string, baru: string) {
       body: built.body,
       headers: { Prefer: 'return=minimal' },
     });
+    // A password change MUST kill the tokens issued under the old password —
+    // otherwise a stolen refresh token survives the one action a victim takes.
+    // Best-effort by design: the password IS changed, so a failed bump must not
+    // turn a successful change into an error the user cannot fix by retrying.
+    // (The reader fails open, so a missing migration does not break login.)
+    await repo.revokeSessionSubject(`kandidat:${normalizeWa(wa)}`);
     return { success: true };
   } catch (e: unknown) {
     return {

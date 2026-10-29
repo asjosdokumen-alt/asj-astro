@@ -2,8 +2,8 @@
  * db/schema.generated.ts — AUTO-GENERATED — DO NOT EDIT BY HAND.
  *
  * Source  : PostgREST OpenAPI document of the live database
- * Digest  : sha256:c3c958d3d6339eb114ccf540983e2da2d64500e880f2cbb6ef2f415b3934cac3
- * Tables  : 28
+ * Digest  : sha256:54db0beda1f345b1a7a454b179cea9481a505c0e50529f339bcfe0dc8fe0ce72
+ * Tables  : 29
  *
  * Regenerate : npm run db:schema
  * Verify     : npm run verify:schema   (pre-deploy; needs SUPABASE_URL +
@@ -17,7 +17,7 @@
  */
 
 /** sha256 over `table:col,col,…` for every table, sorted by table name. */
-export const SCHEMA_FINGERPRINT = 'sha256:c3c958d3d6339eb114ccf540983e2da2d64500e880f2cbb6ef2f415b3934cac3' as const;
+export const SCHEMA_FINGERPRINT = 'sha256:54db0beda1f345b1a7a454b179cea9481a505c0e50529f339bcfe0dc8fe0ce72' as const;
 
 /**
  * The contract, one line per table: `<table>:<col>,<col>,…`.
@@ -50,6 +50,7 @@ respon_siswa_baru:id,timestamp,nama_lengkap,alamat_email,jenis_kelamin,alamat_le
 rincian_presets:id,kategori,item,created_at
 schedule_reminders:id,created_at,schedule_id,nama_agenda,target_admin,sent_at,status
 schema_migrations:version,name,checksum,applied_at,applied_by,execution_ms
+session_revocations:subject,revoked_at
 siswa_baru_docs:id,created_at,wa_siswa,nama_lengkap,ktp_url,kk_url,ijazah_url,submitted_via
 sys_config:id,config_type,config_value,deskripsi,is_active,created_at
 user_sessions:id,session_token,mode,identifier,created_at,expires_at,last_active,ip_address
@@ -92,6 +93,7 @@ export type TableName =
   | "rincian_presets"
   | "schedule_reminders"
   | "schema_migrations"
+  | "session_revocations"
   | "siswa_baru_docs"
   | "sys_config"
   | "user_sessions"

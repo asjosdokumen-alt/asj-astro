@@ -101,4 +101,60 @@ export async function findCandidateForRefresh(wa: string): Promise<CandidateAuth
   }
 }
 
+// ── Session revocation (migration 026) ──────────────────────────────────────
+//
+// `subject` is `admin:<name>` or `kandidat:<wa>`, ALWAYS derived from a signed
+// token payload — never from a request field. The table holds one row per
+// subject; a token is refused when its `iat` is strictly older than
+// `revoked_at`.
+
+/**
+ * The revocation epoch for a subject, in seconds, or null when it has none.
+ *
+ * Returns null on ANY failure — table missing (migration not applied yet), DB
+ * down, malformed timestamp. That is fail-OPEN and it is deliberate: the
+ * failure mode we can survive is "revocation does not work yet"; the one we
+ * cannot is "every refresh on the site 500s during a DB blip". The migration is
+ * applied before the code ships (repo rule), so the null path is a safety net,
+ * not the normal path.
+ */
+export async function getSessionRevokedAt(subject: string): Promise<number | null> {
+  try {
+    const rows = await supabaseJson('GET', 'session_revocations', {
+      query: { select: 'revoked_at', subject: `eq.${subject}`, limit: '1' },
+    });
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    const raw = (rows[0] as { revoked_at?: string }).revoked_at;
+    const ms = Date.parse(String(raw || ''));
+    return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Bump the revocation epoch for a subject, killing every token issued earlier.
+ *
+ * UPSERT for the same reason `registerFcmToken` is one: `on_conflict` alone is
+ * not enough — PostgREST treats POST as an insert unless
+ * `Prefer: resolution=merge-duplicates` is also sent, and a second logout for
+ * the same subject would then answer 409 (23505) instead of updating.
+ *
+ * @returns true when the write landed. Callers must NOT report success on
+ *          false: a logout that silently failed is the bug this table exists
+ *          to remove.
+ */
+export async function revokeSessionSubject(subject: string): Promise<boolean> {
+  try {
+    await supabaseJson('POST', 'session_revocations', {
+      query: { on_conflict: 'subject' },
+      headers: { Prefer: 'resolution=merge-duplicates' },
+      body: { subject, revoked_at: new Date().toISOString() },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export { supabaseJson };

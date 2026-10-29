@@ -15,6 +15,7 @@ export {
   registerKandidat,
   changePassword,
   registerFcmToken,
+  revokeSession,
   verifyToken,
   requireRole,
   requireAdmin,

@@ -6,7 +6,7 @@ import { env } from './env';
 // ditandatangani dengan secret dari env; semua aksi admin/kandidat
 // memvalidasinya kembali. Tidak ada penyimpanan status server-side.
 
-export interface SessionPayload { role?: string; wa?: string; name?: string; kind?: string; exp?: number }
+export interface SessionPayload { role?: string; wa?: string; name?: string; kind?: string; exp?: number; iat?: number }
 
 /** Memoized secret — computed once per process lifetime. */
 let _secret: string | null = null;
@@ -52,6 +52,15 @@ function secret(): string {
 function signToken(payload: SessionPayload): string {
   // S2 fix: Add expiry if not already set (24 hours for session tokens)
   const tokenPayload = { ...payload };
+  // `iat` is ALWAYS stamped, for both kinds, and is what makes revocation
+  // possible: `session_revocations` stores a per-subject epoch and a token is
+  // refused when `iat < revoked_at` (`contexts/identity/service.ts`). A token
+  // minted before this field existed has no `iat`, which reads as 0 — i.e. it
+  // is treated as older than any revocation, so it dies on the first bump.
+  // That is the correct default: "unknown age" must not outlive a kill switch.
+  if (typeof tokenPayload.iat !== 'number') {
+    tokenPayload.iat = Math.floor(Date.now() / 1000);
+  }
   if (!tokenPayload.exp && tokenPayload.kind !== 'refresh') {
     // Session tokens expire in 24 hours
     tokenPayload.exp = Math.floor(Date.now() / 1000) + 24 * 60 * 60;

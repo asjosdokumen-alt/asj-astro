@@ -73,5 +73,11 @@ export const AUTH_ACTIONS: Record<string, (payload: unknown[], sessionToken?: st
 
   registerFcmToken: (payload, sessionToken) => identity.registerFcmToken(payload, sessionToken),
 
-  logout: async () => ({ success: true }),
+  // Was `async () => ({ success: true })` — a no-op. A stolen refresh token then
+  // stayed valid for its full 7 days with no way to kill it (2026-10-29).
+  // `payload[0]` is the refresh token: the session token is usually already
+  // expired by the time a client logs out, and an expired token cannot be
+  // verified, so the refresh token is the credential that still matters.
+  logout: async (payload, sessionToken) =>
+    identity.revokeSession(sessionToken, (payload?.[0] as string) || undefined),
 };
