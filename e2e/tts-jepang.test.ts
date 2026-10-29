@@ -210,3 +210,125 @@ describe('ucapkanJepang', () => {
     expect(ucapkanJepang('おはよう')).toBe(false);
   });
 });
+
+/* ==========================================================================
+ * 2026-10-29 — jalur REKAM (MediaRecorder), pengganti SpeechRecognition.
+ *
+ * Laporan pemilik: "rekam suara gak bisa baik dari hp maupun dari destop".
+ * Penyebab yang paling mungkin bukan izin (dua perangkat sekaligus), melainkan
+ * `service-not-allowed` — layanan suara peramban tidak tersedia — yang dulu
+ * ditampilkan sebagai "Izin mikrofon ditolak". Jalur rekam tidak memakai
+ * layanan itu sama sekali.
+ *
+ * Yang diuji di sini adalah KONTRAK MODUL, bukan audionya: alasan gagal harus
+ * DIBEDAKAN (izin vs perangkat tidak ada vs dipakai aplikasi lain), karena
+ * pesan yang salah membuat pemilik mencari izin yang tidak pernah diminta.
+ * ========================================================================== */
+import { dukunganRekam, buatPerekamAudio } from '../src/lib/ttsJepang';
+
+type G = Record<string, unknown>;
+
+function fakeMediaRecorder(hasil: { ok: boolean }) {
+  return class FakeMR {
+    static isTypeSupported(m: string) {
+      return m.startsWith('audio/webm');
+    }
+    mimeType = 'audio/webm';
+    ondataavailable: ((e: { data: Blob }) => void) | null = null;
+    onstop: (() => void) | null = null;
+    start() {}
+    stop() {
+      this.ondataavailable?.({ data: new Blob([new Uint8Array([1, 2, 3])], { type: 'audio/webm' }) });
+      this.onstop?.();
+    }
+    get ok() {
+      return hasil.ok;
+    }
+  };
+}
+
+describe('rekam suara — kontrak jalur cadangan', () => {
+  afterEach(() => {
+    const g = globalThis as G;
+    delete g.MediaRecorder;
+    delete g.navigator;
+    delete g.isSecureContext;
+  });
+
+  it('tanpa MediaRecorder → dukunganRekam false dan buatPerekamAudio null', () => {
+    const g = globalThis as G;
+    delete g.MediaRecorder;
+    expect(dukunganRekam()).toBe(false);
+    expect(buatPerekamAudio()).toBeNull();
+  });
+
+  it('izin ditolak (NotAllowedError) → alasan "ditolak", bukan pesan umum', async () => {
+    const g = globalThis as G;
+    g.MediaRecorder = fakeMediaRecorder({ ok: true });
+    g.isSecureContext = true;
+    g.navigator = {
+      mediaDevices: {
+        getUserMedia: async () => {
+          const e = new Error('denied') as Error & { name: string };
+          e.name = 'NotAllowedError';
+          throw e;
+        },
+      },
+    };
+    const p = buatPerekamAudio();
+    if (!p) throw new Error('perekam tidak dibuat');
+    await expect(p.mulai()).resolves.toBe('ditolak');
+    expect(p.aktif()).toBe(false);
+  });
+
+  it('mikrofon tidak ada / sedang dipakai → alasan dibedakan', async () => {
+    const g = globalThis as G;
+    g.MediaRecorder = fakeMediaRecorder({ ok: true });
+    g.isSecureContext = true;
+    const pasang = (name: string) => {
+      g.navigator = {
+        mediaDevices: {
+          getUserMedia: async () => {
+            const e = new Error(name) as Error & { name: string };
+            e.name = name;
+            throw e;
+          },
+        },
+      };
+    };
+    pasang('NotFoundError');
+    const p1 = buatPerekamAudio();
+    if (!p1) throw new Error('perekam tidak dibuat');
+    await expect(p1.mulai()).resolves.toBe('tidak-ada');
+    pasang('NotReadableError');
+    const p2 = buatPerekamAudio();
+    if (!p2) throw new Error('perekam tidak dibuat');
+    await expect(p2.mulai()).resolves.toBe('dipakai');
+  });
+
+  it('konteks tidak aman (http) → "tidak-aman" tanpa meminta izin', async () => {
+    const g = globalThis as G;
+    g.MediaRecorder = fakeMediaRecorder({ ok: true });
+    g.isSecureContext = false;
+    g.navigator = { mediaDevices: { getUserMedia: async () => { throw new Error('should not be called'); } } };
+    const p = buatPerekamAudio();
+    if (!p) throw new Error('perekam tidak dibuat');
+    await expect(p.mulai()).resolves.toBe('tidak-aman');
+  });
+
+  it('berhasil mulai → aktif, dan hentikan mengembalikan blob + mime', async () => {
+    const g = globalThis as G;
+    g.MediaRecorder = fakeMediaRecorder({ ok: true });
+    g.isSecureContext = true;
+    g.navigator = {
+      mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) },
+    };
+    const p = buatPerekamAudio();
+    if (!p) throw new Error('perekam tidak dibuat');
+    await expect(p.mulai()).resolves.toBeNull();
+    expect(p.aktif()).toBe(true);
+    const hasil = await p.hentikan();
+    expect(hasil?.mime).toContain('audio/webm');
+    expect(hasil?.blob.size).toBeGreaterThan(0);
+  });
+});

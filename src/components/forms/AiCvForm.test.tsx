@@ -1693,7 +1693,23 @@ describe('AiCvForm — manual-first & mode Jeklin (2026-10-25)', () => {
     expect(chatTab.getAttribute('aria-selected')).toBe('false');
   });
 
-  it('mode terjemah mengirim permintaan terjemahan tetap, bukan teks bebas', async () => {
+  // 2026-10-29 — kontrak BARU. Tombol mode terjemah dulu mengirim kalimat
+  // "Terjemahkan semua kolom …" ke `processAIChat`, jadi kelengkapannya
+  // bergantung pada model: baris pendidikan/pekerjaan/keluarga dan `katakana`
+  // tidak pernah ikut. Sekarang ia memanggil aksi deterministik
+  // `terjemahkanKolomCv` dengan data BERSARANG (kontrak yang dibaca server),
+  // dan TIDAK mengirim pesan chat.
+  it('mode terjemah memanggil terjemahkanKolomCv dengan data bersarang, bukan pesan chat', async () => {
+    const { apiClient } = await import('../../lib/apiClient');
+    const calls: Array<{ action: string; payload: unknown }> = [];
+    vi.mocked(apiClient).mockImplementation((async (action: string, args: unknown) => {
+      calls.push({ action, payload: args });
+      if (action === 'terjemahkanKolomCv') {
+        return { success: true, jumlah: 1, sisa: 0, data: { identitas: { alamat_jp: '〒63453 ポノロゴ' } } };
+      }
+      return { success: true };
+    }) as never);
+
     render(<AiCvForm />);
     const modeButtons = screen.getAllByRole('tab');
     const translateMode = modeButtons.find((el) => el.textContent?.includes(t('ai_cv.mode_translate')));
@@ -1702,15 +1718,22 @@ describe('AiCvForm — manual-first & mode Jeklin (2026-10-25)', () => {
 
     // Kotak ketik hilang: satu tombol, satu tugas.
     expect(screen.queryByPlaceholderText(t('form.placeholder_chat'))).toBeNull();
+    // Isi satu kolom supaya payload punya bukti bentuk (state kosong = `{}`).
+    const alamat = document.querySelector('#ai_alamat') as HTMLInputElement | null;
+    if (!alamat) throw new Error('field alamat tidak ada');
+    await fireEvent.input(alamat, { target: { value: 'PONOROGO JAWA TIMUR' } });
+
     await fireEvent.click(screen.getByRole('button', { name: new RegExp(t('ai_cv.translate_all')) }));
 
     await waitFor(() => {
-      const call = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'processAIChat');
-      if (!call) throw new Error('processAIChat tidak dipanggil');
-      const payload = (call[1] as Array<{ history: Array<{ role: string; content: string }> }>)[0];
-      const last = payload.history[payload.history.length - 1];
-      expect(last.role).toBe('user');
-      expect(last.content).toBe(t('ai_cv.translate_all'));
+      const call = calls.find((c) => c.action === 'terjemahkanKolomCv');
+      if (!call) throw new Error('terjemahkanKolomCv tidak dipanggil');
+      // Kontrak payload: `[{ data }]` — bentuk BERSARANG, karena server membaca
+      // `identitas.alamat`, bukan `alamat`.
+      const p = (call.payload as Array<{ data?: { identitas?: Record<string, string> } }>)[0];
+      expect(p.data?.identitas?.alamat).toBe('PONOROGO JAWA TIMUR');
     });
+    // Tidak ada satu pun giliran chat yang dikirim.
+    expect(calls.some((c) => c.action === 'processAIChat')).toBe(false);
   });
 });

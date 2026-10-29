@@ -204,8 +204,7 @@ export function buatPendengar(opsi: {
   onTranskrip: (teks: string, final: boolean) => void;
   onSelesai?: () => void;
   onGalat?: (kode: string) => void;
-}): Pendengar | null {
-  const g = globalThis as unknown as GlobalDengar;
+}): Pendengar | null {  const g = globalThis as unknown as GlobalDengar;
   const Ctor = g.SpeechRecognition ?? g.webkitSpeechRecognition;
   if (!Ctor) return null;
 
@@ -265,6 +264,186 @@ export function buatPendengar(opsi: {
         /* Sudah berhenti. */
       }
       jalan = false;
+    },
+    aktif: () => jalan,
+  };
+}
+
+/* ── rekaman suara (MediaRecorder) ─────────────────────────────────────────
+ *
+ * JALUR CADANGAN, dan sekarang jalur UTAMA di perangkat yang tidak punya
+ * `SpeechRecognition` (Safari iOS, Firefox) atau yang layanan suara
+ * perambannya tidak tersedia (`service-not-allowed`).
+ *
+ * Bedanya dengan `buatPendengar`: modul ini TIDAK mengubah suara menjadi teks.
+ * Ia hanya merekam; transkripsinya dikerjakan server (`transkripsikanSuara`),
+ * jadi tidak ada ketergantungan pada layanan suara peramban — dan tidak ada
+ * audio yang dikirim ke pihak ketiga selain penyedia model yang sudah dipakai
+ * seluruh fitur AI di aplikasi ini.
+ *
+ * Sengaja TANPA impor apa pun: berkas ini diuji di lingkungan `node`
+ * (`e2e/tts-jepang.test.ts`), dan `navigator`/`MediaRecorder` hanya disentuh di
+ * dalam fungsi yang dipanggil peramban.
+ */
+
+/** Alasan mikrofon tidak bisa dipakai — dipetakan ke pesan di komponen. */
+export type GalatRekam = 'tidak-aman' | 'tidak-didukung' | 'ditolak' | 'tidak-ada' | 'dipakai' | 'lain';
+
+export interface HasilRekam {
+  blob: Blob;
+  mime: string;
+}
+
+export interface Perekam {
+  /**
+   * Minta izin + mulai merekam.
+   * @returns `null` kalau rekaman berjalan; selain itu ALASAN gagalnya.
+   *          (Bukan `throw`: alasan gagal adalah nilai yang ditampilkan ke
+   *          pengguna, bukan kondisi luar biasa.)
+   */
+  mulai(): Promise<GalatRekam | null>;
+  /** Berhenti dan kembalikan rekaman (null kalau tidak ada data). */
+  hentikan(): Promise<HasilRekam | null>;
+  /** Berhenti dan buang rekaman (mis. soal dilewati). */
+  buang(): void;
+  aktif(): boolean;
+}
+
+/** Bagian dari MediaStream yang dipakai. Sengaja STRUKTURAL: menyebut nama
+ *  tipe DOM di berkas ini membuat indexer mencatatnya sebagai referensi yang
+ *  tidak bisa diselesaikan (lihat assertion `prodGenuine` di
+ *  indexer/src/build.test.ts). */
+type AliranAudio = { getTracks(): Array<{ stop(): void }> };
+
+type GlobalRekam = {
+  MediaRecorder?: typeof MediaRecorder;
+  navigator?: { mediaDevices?: { getUserMedia?: (c: { audio: boolean }) => Promise<unknown> } };
+  isSecureContext?: boolean;
+};
+
+/**
+ * Apakah perangkat ini PUNYA jalur rekam sama sekali (tanpa soal izin).
+ *
+ * Konteks tidak aman (http) sengaja TIDAK diperiksa di sini: `getUserMedia`
+ * memang tidak ada di sana, tetapi menyatukannya dengan "tidak didukung" akan
+ * memberi pesan yang salah — pengguna http perlu tahu bahwa masalahnya HTTPS,
+ * bukan perangkatnya. `mulai()` yang memutuskan, dan mengembalikan
+ * `'tidak-aman'`.
+ */
+export function dukunganRekam(): boolean {
+  const g = globalThis as unknown as GlobalRekam;
+  if (typeof g.MediaRecorder !== 'function') return false;
+  return typeof g.navigator?.mediaDevices?.getUserMedia === 'function';
+}
+
+function petakanGalat(e: unknown): GalatRekam {
+  const nama = String((e as { name?: string })?.name || '');
+  if (nama === 'NotAllowedError' || nama === 'SecurityError' || nama === 'PermissionDeniedError') return 'ditolak';
+  if (nama === 'NotFoundError' || nama === 'DevicesNotFoundError' || nama === 'OverconstrainedError') return 'tidak-ada';
+  if (nama === 'NotReadableError' || nama === 'TrackStartError' || nama === 'AbortError') return 'dipakai';
+  return 'lain';
+}
+
+/** MIME yang benar-benar didukung peramban ini (Safari memilih mp4). */
+function pilihMime(): string {
+  const g = globalThis as unknown as GlobalRekam;
+  const calon = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+  const MR = g.MediaRecorder;
+  if (!MR || typeof MR.isTypeSupported !== 'function') return '';
+  return calon.find((m) => MR.isTypeSupported(m)) || '';
+}
+
+/**
+ * Buat perekam. `null` = perangkat tidak mendukung MediaRecorder.
+ *
+ * `maksDetik` menghentikan rekaman sendiri: satu jawaban mensetsu tidak pernah
+ * 45 detik, dan rekaman yang lebih panjang hanya menambah waktu transkripsi
+ * (audio 45 dtk ≈ 400 KB, cukup jauh di bawah batas unggah fungsi).
+ */
+export function buatPerekamAudio(opsi: {
+  maksDetik?: number;
+  onBatasWaktu?: () => void;
+} = {}): Perekam | null {
+  const g = globalThis as unknown as GlobalRekam;
+  if (!dukunganRekam()) return null;
+  const MR = g.MediaRecorder as typeof MediaRecorder;
+
+  let stream: AliranAudio | null = null;
+  let rekaman: MediaRecorder | null = null;
+  let potongan: BlobPart[] = [];
+  let mime = '';
+  let jalan = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let selesai: Promise<HasilRekam | null> | null = null;
+  let resolveSelesai: ((v: HasilRekam | null) => void) | null = null;
+
+  const bersihkan = () => {
+    if (timer) clearTimeout(timer);
+    timer = undefined;
+    for (const track of stream?.getTracks() ?? []) track.stop();
+    stream = null;
+    rekaman = null;
+    jalan = false;
+  };
+
+  return {
+    async mulai() {
+      if (jalan) return null;
+      if (g.isSecureContext === false) return 'tidak-aman';
+      const ambil = g.navigator?.mediaDevices?.getUserMedia;
+      if (typeof ambil !== 'function') return 'tidak-didukung';
+      let s: AliranAudio;
+      try {
+        s = (await ambil({ audio: true })) as AliranAudio;
+      } catch (e) {
+        return petakanGalat(e);
+      }
+      stream = s;
+      mime = pilihMime();
+      try {
+        rekaman = mime ? new MR(s as never, { mimeType: mime }) : new MR(s as never);
+      } catch {
+        bersihkan();
+        return 'tidak-didukung';
+      }
+      mime = rekaman.mimeType || mime || 'audio/webm';
+      potongan = [];
+      selesai = new Promise<HasilRekam | null>((resolve) => { resolveSelesai = resolve; });
+      rekaman.ondataavailable = (e: BlobEvent) => {
+        if (e.data && e.data.size > 0) potongan.push(e.data);
+      };
+      rekaman.onstop = () => {
+        const blob = potongan.length ? new Blob(potongan, { type: mime }) : null;
+        potongan = [];
+        bersihkan();
+        resolveSelesai?.(blob ? { blob, mime } : null);
+        resolveSelesai = null;
+      };
+      rekaman.start();
+      jalan = true;
+      const batas = opsi.maksDetik ?? 45;
+      timer = setTimeout(() => {
+        try { rekaman?.stop(); } catch { /* sudah berhenti */ }
+        opsi.onBatasWaktu?.();
+      }, batas * 1000);
+      return null;
+    },
+    hentikan() {
+      if (!rekaman || !jalan) return Promise.resolve(null);
+      try {
+        rekaman.stop();
+      } catch {
+        bersihkan();
+        return Promise.resolve(null);
+      }
+      return selesai ?? Promise.resolve(null);
+    },
+    buang() {
+      potongan = [];
+      try { rekaman?.stop(); } catch { /* sudah berhenti */ }
+      bersihkan();
+      resolveSelesai?.(null);
+      resolveSelesai = null;
     },
     aktif: () => jalan,
   };

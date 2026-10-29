@@ -116,6 +116,10 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   getBankWawancara: '/.netlify/functions/ai-chat',
   simpanJawabanWawancara: '/.netlify/functions/ai-chat',
   terjemahkanJawabanWawancara: '/.netlify/functions/ai-chat',
+  // "Terjemahkan semua kolom" CV AI — menumpang `ai-chat` karena alasannya
+  // sama dengan bank soal di atas: fungsi baru = cold start + bobot bundle.
+  terjemahkanKolomCv: '/.netlify/functions/ai-chat',
+  transkripsikanSuara: '/.netlify/functions/ai-chat',
   getLinkWawancara: '/.netlify/functions/ai-chat',
 
   // Bank kosakata (kotoba) — minigame hafalan, menumpang `ai-chat` dengan

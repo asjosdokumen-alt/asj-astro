@@ -156,6 +156,13 @@ for (const entry of entries) {
   }
 
   const allowed = call[2]
+    // Komentar di dalam array allow-list bukan action. Tanpa baris ini, sebuah
+    // komentar penjelas di atas action baru terbaca sebagai satu token
+    // (`// … 'namaAction'`) dan gate melaporkan "allow-lists '// …' but its
+    // maps do not own it (not in router at all)" — tuduhan wiring untuk kode
+    // yang benar. Terukur 2026-10-29 saat menambah `terjemahkanKolomCv` dan
+    // `transkripsikanSuara` di ai-chat.js.
+    .replace(/\/\/[^\n]*/g, '')
     .split(',')
     .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
     .filter(Boolean);

@@ -248,6 +248,161 @@ export function mergeAiDraft(base: unknown, ai: unknown): Record<string, unknown
   return out;
 }
 
+/**
+ * Ejaan BERSARANG untuk baris repeater — sisi KANAN `ROW_KEYS`, dibalik.
+ *
+ * Dipakai `buildAiCvNested` (flat → bersarang) dan `applyAiCvRows` (balasan AI
+ * → flat). Nilainya adalah ejaan yang dibaca `_lib/ai/chat.ts`
+ * (`buildRingkasData`, `autoTranslateMissingJp.arrayFieldPairs`) DAN
+ * `buildMasterNested` — bukan ejaan payload `AiCvForm` (`sekolah_id`).
+ * `hubungan_id`/`pekerjaan` (bukan `hubungan`/`pekerjaan_id`) adalah pengecualian
+ * yang diwarisi dari `buildMasterNested`; mengubahnya di sini membuat
+ * auto-terjemahan server tidak menemukan pasangannya.
+ */
+const NESTED_ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, string>> = {
+  pendidikan: {
+    tingkat: 'tingkat',
+    sekolah_id: 'sekolah',
+    sekolah_jp: 'sekolah_jp',
+    jurusan_id: 'jurusan_id',
+    jurusan_jp: 'jurusan_jp',
+    masuk: 'masuk',
+    lulus: 'lulus',
+  },
+  pekerjaan: {
+    perusahaan_id: 'perusahaan',
+    perusahaan_jp: 'perusahaan_jp',
+    jabatan_id: 'jabatan',
+    jabatan_jp: 'jabatan_jp',
+    masuk: 'masuk',
+    keluar: 'keluar',
+    gaji: 'gaji',
+    jenis: 'jenis',
+    bidang: 'bidang',
+    catatan: 'catatan',
+  },
+  keluarga: {
+    hubungan_id: 'hubungan_id',
+    hubungan_jp: 'hubungan_jp',
+    nama: 'nama',
+    katakana: 'katakana',
+    umur: 'umur',
+    pekerjaan_id: 'pekerjaan',
+    pekerjaan_jp: 'pekerjaan_jp',
+    gaji: 'gaji',
+    tinggal: 'tinggal',
+    hp: 'hp',
+  },
+};
+
+/**
+ * State FLAT `AiCvForm` → bentuk BERSARANG yang dibaca server AI.
+ *
+ * KENAPA INI ADA (terukur 2026-10-29)
+ * -----------------------------------
+ * `handleSend` mengirim `currentData: cv` — state FLAT (`cv.alamat`,
+ * `cv.lebih_id`). Kontrak server (`buildRingkasData`, `autoTranslateMissingJp`)
+ * membaca BERSARANG (`identitas.alamat`, `wawancara.kelebihan_id`). Akibatnya,
+ * pada SETIAP giliran chat:
+ *
+ *   • blok "DATA KANDIDAT SAAT INI" kosong ⇒ Jeklin menanyakan ulang data yang
+ *     sudah terisi;
+ *   • auto-terjemahan server menemukan NOL pasangan `_id`/`_jp` ⇒ kolom Jepang
+ *     tidak pernah terisi otomatis, termasuk `alamat_jp`;
+ *   • baris pendidikan/pekerjaan/keluarga bahkan tidak ikut terkirim.
+ *
+ * `chat.payload-contract.test.ts` tidak bisa melihatnya: ia memanggil handler
+ * dengan `currentData` BERSARANG yang ia susun sendiri, jadi kontraknya hijau
+ * sementara klien sebenarnya mengirim bentuk lain.
+ *
+ * Hanya path PERTAMA tiap kunci flat yang ditulis (`paths[0]` = ejaan yang kita
+ * pakai sendiri); path warisan tetap dibaca, tapi menuliskan keduanya berarti
+ * mengirim nilai yang sama dua kali dengan nama berbeda.
+ */
+export function buildAiCvNested(
+  cv: Record<string, string>,
+  rows?: Partial<Record<(typeof RIWAYAT_TIPE)[number], readonly object[]>>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [flat, paths] of Object.entries(AI_CV_PATHS)) {
+    const v = cv[flat];
+    if (!isGood(v)) continue;
+    const path = paths[0];
+    if (!path) continue;
+    const segs = path.split('.');
+    let cur = out;
+    for (let i = 0; i < segs.length - 1; i++) {
+      const key = segs[i] ?? '';
+      if (!key) break;
+      if (!cur[key] || typeof cur[key] !== 'object') cur[key] = {};
+      cur = cur[key] as Record<string, unknown>;
+    }
+    const leaf = segs[segs.length - 1];
+    if (leaf) cur[leaf] = String(v).trim();
+  }
+  for (const tipe of RIWAYAT_TIPE) {
+    const list = rows?.[tipe];
+    if (!Array.isArray(list) || !list.length) continue;
+    const map = NESTED_ROW_KEYS[tipe];
+    const mapped = list
+      .map((raw) => {
+        const row = raw as Record<string, unknown>;
+        const entry: Record<string, string> = {};
+        for (const [flat, nested] of Object.entries(map)) {
+          const v = row[flat];
+          if (isGood(v)) entry[nested] = String(v).trim();
+        }
+        return entry;
+      })
+      .filter((entry) => Object.keys(entry).length > 0);
+    if (mapped.length) out[tipe] = mapped;
+  }
+  return out;
+}
+
+/**
+ * Tempelkan balasan AI (`data.data` BERSARANG) ke baris repeater yang SUDAH ADA.
+ *
+ * Baris hanya diubah kalau sisi ID-nya cocok dengan baris pada indeks yang sama
+ * — atau kalau barisnya masih kosong. Tanpa penjagaan itu, model yang
+ * mengembalikan daftar lebih pendek/berbeda urutan akan menempelkan nama
+ * sekolah orang lain ke riwayat kandidat.
+ *
+ * Hanya kunci `*_jp` dan `katakana` yang diambil: sisi Indonesia milik form.
+ */
+export function applyAiCvRows<T extends object>(
+  tipe: (typeof RIWAYAT_TIPE)[number],
+  current: T[],
+  patch: unknown,
+): T[] {
+  if (!Array.isArray(patch) || !patch.length) return current;
+  const map = NESTED_ROW_KEYS[tipe];
+  const idKey = tipe === 'pendidikan' ? 'sekolah_id' : tipe === 'pekerjaan' ? 'perusahaan_id' : 'nama';
+  const idNested = map[idKey] ?? idKey;
+  return current.map((raw, i) => {
+    const entry = patch[i];
+    if (!entry || typeof entry !== 'object') return raw;
+    const e = entry as Record<string, unknown>;
+    const row = raw as Record<string, unknown>;
+    const patchId = String(e[idNested] ?? '').trim();
+    const rowId = String(row[idKey] ?? '').trim();
+    if (patchId && rowId && patchId !== rowId) return raw;
+    const next: Record<string, unknown> = { ...row };
+    let changed = false;
+    for (const [flat, nested] of Object.entries(map)) {
+      if (flat === idKey) continue;
+      if (!flat.endsWith('_jp') && flat !== 'katakana') continue;
+      const v = e[nested];
+      if (!isGood(v)) continue;
+      const s = String(v).trim();
+      if (next[flat] === s) continue;
+      next[flat] = s;
+      changed = true;
+    }
+    return changed ? (next as T) : raw;
+  });
+}
+
 /** Bentuk bersarang (draf master + ai_data_json) → state flat AiCvForm. */
 export function mapAiCvDraft(draft: unknown): Record<string, string> {
   const out: Record<string, string> = {};

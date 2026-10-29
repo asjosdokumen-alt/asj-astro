@@ -36,5 +36,9 @@ export default adapt(makeSurfaceHandler(AI_ACTIONS, [
   'submitDataAsj', 'simpanDataTtdNaitei', 'saveSignature', 'getJobStatus',
   'getBankWawancara', 'simpanJawabanWawancara',
   'terjemahkanJawabanWawancara', 'getLinkWawancara',
+  // Deterministic "Terjemahkan semua kolom" — see surfaces/ai.ts.
+  'terjemahkanKolomCv',
+  // Rekaman suara Mode Simulasi → teks (tanpa SpeechRecognition).
+  'transkripsikanSuara',
   'getBankKotoba', 'getBankMatematika',
 ]));

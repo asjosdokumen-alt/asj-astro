@@ -8,7 +8,16 @@
 // cakupan lengkap + pembacaan multi-path itu.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { AI_CV_FLAT_KEYS, AI_CV_PATHS, mapAiCvDraft, mergeAiDraft, parseAiCvDraft, parseAiCvRows } from './aiCvDraft';
+import {
+  AI_CV_FLAT_KEYS,
+  AI_CV_PATHS,
+  applyAiCvRows,
+  buildAiCvNested,
+  mapAiCvDraft,
+  mergeAiDraft,
+  parseAiCvDraft,
+  parseAiCvRows,
+} from './aiCvDraft';
 
 describe('aiCvDraft — cakupan peta', () => {
   it('setiap kunci flat punya minimal satu path (kunci tak terpetakan = kolom selalu kosong)', () => {
@@ -248,5 +257,82 @@ describe('aiCvDraft — parseAiCvRows (tiga seksi repeater)', () => {
   it('baris tanpa satu pun kunci yang dikenal dibuang (tidak ada baris hantu)', () => {
     const out = parseAiCvRows({ pendidikan: [{}, { tingkat: 'SMP' }] });
     expect(out.pendidikan).toEqual([{ tingkat: 'SMP' }]);
+  });
+});
+
+// ==========================================
+// 2026-10-29 — state FLAT → bentuk BERSARANG untuk server AI.
+//
+// Root cause "terjemahkan semua kolom banyak yg ga berhasil": `handleSend`
+// mengirim state FLAT (`cv.alamat`), sedangkan `buildRingkasData` dan
+// `autoTranslateMissingJp` membaca BERSARANG (`identitas.alamat`). Akibatnya
+// blok konteks kosong DAN auto-terjemahan menemukan nol pasangan — tanpa satu
+// pun galat, sehingga tidak ada tes lama yang bisa melihatnya.
+// ==========================================
+describe('aiCvDraft — buildAiCvNested (flat → bersarang)', () => {
+  it('kolom tunggal mendarat di path BERSARANG yang dibaca server', () => {
+    const out = buildAiCvNested({
+      alamat: 'DUSUN NGLINGI RT 001 RW 002 DESA GANDUKEPUH PONOROGO 63453',
+      lebih_id: 'Disiplin',
+      promo_id: 'Rajin',
+      gender: 'LAKI-LAKI',
+    }) as Record<string, Record<string, string>>;
+    expect(out.identitas?.alamat).toContain('GANDUKEPUH');
+    expect(out.wawancara?.kelebihan_id).toBe('Disiplin');
+    expect(out.wawancara?.promosi_id).toBe('Rajin');
+    expect(out.identitas?.gender).toBe('LAKI-LAKI');
+    // Nilai kosong / sentinel tidak boleh membuat kunci hantu.
+    expect(out.identitas && 'paspor' in out.identitas).toBeFalsy();
+  });
+
+  it('memakai path PERTAMA saja (ejaan yang kita tulis), bukan semua alias', () => {
+    const out = buildAiCvNested({ moti_id: 'Belajar budaya' }) as Record<string, Record<string, string>>;
+    expect(out.wawancara?.motivasi_ke_jepang).toBe('Belajar budaya');
+    // `motivasi_id` adalah path warisan; menulis keduanya = nilai ganda.
+    expect(out.wawancara && 'motivasi_id' in out.wawancara).toBeFalsy();
+  });
+
+  it('tiga repeater ikut terkirim dengan ejaan yang dibaca buildMasterNested', () => {
+    const out = buildAiCvNested({}, {
+      pendidikan: [{ id: 'r1', tingkat: 'SMA', sekolah_id: 'SMAN 1', sekolah_jp: 'スマン1', masuk: '', lulus: '2024' }],
+      pekerjaan: [{ id: 'r2', perusahaan_id: 'PT ABC', jabatan_id: 'Operator' }],
+      keluarga: [{ id: 'r3', nama: 'SITI', hubungan_id: 'IBU', pekerjaan_id: 'PETANI' }],
+    }) as Record<string, Array<Record<string, string>>>;
+    expect(out.pendidikan?.[0]).toEqual({ tingkat: 'SMA', sekolah: 'SMAN 1', sekolah_jp: 'スマン1', lulus: '2024' });
+    expect(out.pekerjaan?.[0]).toEqual({ perusahaan: 'PT ABC', jabatan: 'Operator' });
+    // Keluarga memakai `hubungan_id`/`pekerjaan` — ejaan `buildMasterNested`.
+    expect(out.keluarga?.[0]).toEqual({ nama: 'SITI', hubungan_id: 'IBU', pekerjaan: 'PETANI' });
+  });
+});
+
+describe('aiCvDraft — applyAiCvRows (balasan AI → baris repeater)', () => {
+  const baris = [
+    { id: 'r1', sekolah_id: 'SMAN 1', sekolah_jp: '', jurusan_id: 'IPA', jurusan_jp: '' },
+    { id: 'r2', sekolah_id: 'SMPN 2', sekolah_jp: '', jurusan_id: '', jurusan_jp: '' },
+  ];
+
+  it('mengisi kolom Jepang pada baris yang cocok', () => {
+    const out = applyAiCvRows('pendidikan', baris, [
+      { sekolah: 'SMAN 1', sekolah_jp: 'スマン1', jurusan_jp: '理科' },
+    ]);
+    expect(out[0].sekolah_jp).toBe('スマン1');
+    expect(out[0].jurusan_jp).toBe('理科');
+    expect(out[1].sekolah_jp).toBe('');
+  });
+
+  it('TIDAK menempel ke baris lain saat urutan/isi berbeda', () => {
+    // Model mengembalikan satu baris untuk SMPN 2 di indeks 0 — tanpa penjagaan
+    // ID, nama sekolah orang lain akan menempel ke baris pertama.
+    const out = applyAiCvRows('pendidikan', baris, [{ sekolah: 'SMPN 2', sekolah_jp: 'スンプン2' }]);
+    expect(out[0].sekolah_jp).toBe('');
+    expect(out[1].sekolah_jp).toBe('');
+  });
+
+  it('hanya kunci Jepang/katakana yang diambil (sisi Indonesia milik form)', () => {
+    const fam = [{ id: 'f1', nama: 'SITI', hubungan_id: 'IBU', hubungan_jp: '', katakana: '' }];
+    const out = applyAiCvRows('keluarga', fam, [{ nama: 'SITI', hubungan_jp: '母', katakana: 'スィティ', hubungan_id: 'AYAH' }]);
+    expect(out[0].hubungan_jp).toBe('母');
+    expect(out[0].katakana).toBe('スィティ');
+    expect(out[0].hubungan_id).toBe('IBU');
   });
 });

@@ -50,8 +50,10 @@ vi.mock('../../contexts/identity', () => ({
 import { handleProcessAIChat, handleProcessSiswaAIChat } from './chat';
 
 /** currentData minimal yang PASTI muncul di ringkasan system prompt.
- *  Sengaja tanpa field ber-akhiran `_id` yang punya pasangan `_jp`: kalau ada,
- *  autoTranslateMissingJp ikut memanggil model dan indeks panggilan bergeser. */
+ *  Sejak 2026-10-29 `nama_lengkap` juga memicu tugas KATAKANA
+ *  (`identitas.nama_lengkap` → `identitas.katakana`), jadi satu giliran chat
+ *  memanggil model DUA kali: terjemahan lebih dulu, lalu balasan. Tes di bawah
+ *  karena itu memilih panggilan balasan berdasarkan isinya, bukan indeks. */
 const CURRENT = { identitas: { nama_lengkap: 'BUDI' }, fisik: { tb: '170' } };
 const HISTORY = [
   { role: 'user', content: 'nama saya Budi' },
@@ -76,8 +78,11 @@ describe('processAIChat — kontrak payload (array dari apiClient, objek dari le
     it(`${label} → history DAN currentData sampai ke model`, async () => {
       const res = (await handleProcessAIChat(payload, 'tok-admin')) as { reply?: string; data?: unknown };
 
-      expect(geminiMock).toHaveBeenCalledTimes(1);
-      const [system, history] = geminiMock.mock.calls[0] as [string, unknown];
+      // Giliran ini memanggil model dua kali (terjemahan latar + balasan);
+      // yang diuji adalah panggilan BALASAN.
+      const replyCall = geminiMock.mock.calls.find((c) => !String(c[0]).includes('Terjemahkan'));
+      expect(replyCall, 'balasan chat harus memanggil model').toBeTruthy();
+      const [system, history] = replyCall as [string, unknown];
 
       // 1. currentData benar-benar membangun blok konteks CV.
       expect(system).toContain('DATA KANDIDAT SAAT INI');
@@ -153,5 +158,169 @@ describe('processAIChat — auto-terjemahan adalah panggilan best-effort', () =>
     // berhak atas breaker utama dan provider cadangan.
     const reply = geminiMock.mock.calls.find((c) => !String(c[0]).includes('Terjemahkan'));
     expect(reply?.[2]).toBeUndefined();
+  });
+});
+
+// ==========================================
+// 2026-10-29 — kelengkapan auto-terjemahan.
+//
+// Laporan pemilik: "terjemahkan semua kolom banyak yg ga berhasil kayah nama
+// keluarga katakana pekerjaan dan lain lain". Tiga sebab, semuanya diukur di
+// sini:
+//   1. `katakana` (nama orang) tidak ada di daftar pasangan mana pun;
+//   2. baris pendidikan/pekerjaan/keluarga diterjemahkan lalu DIBUANG, karena
+//      penggabungan balik hanya mengenal pasangan skalar;
+//   3. `identitas.gender_jp` juga tidak punya pasangan.
+// ==========================================
+import { kumpulkanTugasTerjemah, terapkanHasilTerjemah } from './chat';
+
+describe('auto-terjemahan — cakupan tugas', () => {
+  it('nama orang jadi tugas KATAKANA, bukan terjemahan biasa', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      identitas: { nama_lengkap: 'BUDI SANTO', panggilan: 'BUDI' },
+    });
+    const kata = tugas.filter((x) => x.jenis === 'kata').map((x) => x.path.join('.'));
+    expect(kata).toEqual(['identitas.katakana', 'identitas.panggilan_katakana']);
+  });
+
+  it('baris keluarga ikut: hubungan, pekerjaan, DAN katakana nama', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      keluarga: [{ nama: 'SITI', hubungan_id: 'IBU', pekerjaan: 'PETANI' }],
+    });
+    const path = tugas.map((x) => `${x.path.join('.')}:${x.jenis}`);
+    expect(path).toContain('keluarga.0.hubungan_jp:jp');
+    expect(path).toContain('keluarga.0.pekerjaan_jp:jp');
+    expect(path).toContain('keluarga.0.katakana:kata');
+  });
+
+  it('yang sudah terisi tidak ditugaskan ulang; gender punya pasangan', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      identitas: { alamat: 'PONOROGO', alamat_jp: '〒63453 ポノロゴ', gender: 'LAKI-LAKI' },
+    });
+    const path = tugas.map((x) => x.path.join('.'));
+    expect(path).not.toContain('identitas.alamat_jp');
+    expect(path).toContain('identitas.gender_jp');
+  });
+
+  it('batas dipatuhi (giliran chat tidak boleh menunggu 40 kolom)', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      medis: { alergi_id: 'A', riwayat_medis_id: 'B', riwayat_kecelakaan_id: 'C' },
+      wawancara: { hobi_id: 'D', kelebihan_id: 'E', kekurangan_id: 'F' },
+    }, 2);
+    expect(tugas).toHaveLength(2);
+  });
+});
+
+describe('auto-terjemahan — hasil yang tidak layak DIBUANG, bukan ditulis', () => {
+  const data: Record<string, unknown> = {};
+  const tugas = kumpulkanTugasTerjemah({
+    identitas: { alamat: 'PONOROGO', nama_lengkap: 'BUDI' },
+  });
+
+  it('field _jp berisi huruf latin ditolak', () => {
+    data.identitas = { alamat: 'PONOROGO' };
+    const { jumlah } = terapkanHasilTerjemah(data, tugas, { 0: 'Ponorogo city' });
+    expect(jumlah).toBe(0);
+    expect((data.identitas as Record<string, string>).alamat_jp).toBeUndefined();
+  });
+
+  it('field katakana menolak kanji (nama orang harus kana)', () => {
+    const d: Record<string, unknown> = { identitas: { nama_lengkap: 'BUDI' } };
+    const t2 = kumpulkanTugasTerjemah(d);
+    const idx = t2.findIndex((x) => x.path.join('.') === 'identitas.katakana');
+    const { jumlah } = terapkanHasilTerjemah(d, t2, { [String(idx)]: '武士' });
+    expect(jumlah).toBe(0);
+    expect((d.identitas as Record<string, string>).katakana).toBeUndefined();
+  });
+
+  it('nilai Jepang yang sah ditulis ke path yang benar', () => {
+    const d: Record<string, unknown> = { identitas: { nama_lengkap: 'BUDI' } };
+    const t2 = kumpulkanTugasTerjemah(d);
+    const idx = t2.findIndex((x) => x.path.join('.') === 'identitas.katakana');
+    const { jumlah } = terapkanHasilTerjemah(d, t2, { [String(idx)]: 'ブディ' });
+    expect(jumlah).toBe(1);
+    expect((d.identitas as Record<string, string>).katakana).toBe('ブディ');
+  });
+});
+
+// ==========================================
+// 2026-10-29 — hasil terjemahan BARIS tidak boleh dibuang.
+//
+// `autoTranslateMissingJp` sudah lama menerjemahkan baris pendidikan/pekerjaan/
+// keluarga, tetapi penggabungan balik hanya menyalin pasangan SKALAR. Jadi
+// hasilnya dihitung, dibayar, lalu hilang — dan klien tidak pernah menerimanya.
+// Tes ini memaku bahwa baris ikut dikembalikan, termasuk saat model tidak
+// mengembalikan array sama sekali.
+// ==========================================
+describe('processAIChat — terjemahan baris ikut dikembalikan', () => {
+  beforeEach(() => {
+    geminiMock.mockReset();
+  });
+
+  it('keluarga[].hubungan_jp sampai ke klien walau model tidak mengirim array', async () => {
+    geminiMock.mockImplementation(async (prompt: string) => {
+      if (String(prompt).includes('Terjemahkan')) return { reply: JSON.stringify({ '0': '母' }) };
+      return { reply: AI_JSON };
+    });
+
+    const res = (await handleProcessAIChat(
+      [{ history: HISTORY, currentData: { keluarga: [{ hubungan_id: 'IBU' }] } }],
+      'tok-admin',
+    )) as { data?: { keluarga?: Array<Record<string, string>> } };
+
+    expect(res.data?.keluarga?.[0]?.hubungan_jp).toBe('母');
+  });
+});
+
+// ==========================================
+// 2026-10-29 — aksi "Terjemahkan semua kolom" (deterministik).
+//
+// Dulu tombolnya mengirim kalimat ke `processAIChat`; kelengkapannya bergantung
+// pada model. Aksi ini membangun daftar tugas dari DATA, jadi yang kosong
+// diisi tanpa bergantung pada niat model — dan baris/katakana ikut.
+// ==========================================
+describe('terjemahkanKolomCv — semua kolom, termasuk baris & katakana', () => {
+  beforeEach(() => {
+    geminiMock.mockReset();
+  });
+
+  it('mengisi katakana + baris keluarga, dan TIDAK menimpa yang sudah ada', async () => {
+    const { handleTerjemahkanKolomCv } = await import('./chat');
+    // Urutan tugas: pasangan skalar → katakana → baris.
+    geminiMock.mockResolvedValue({
+      reply: JSON.stringify({ '0': 'ブディ', '1': '母', '2': '農業' }),
+    });
+
+    const res = (await handleTerjemahkanKolomCv(
+      [{
+        data: {
+          identitas: { nama_lengkap: 'BUDI', katakana: '' },
+          keluarga: [{ hubungan_id: 'IBU', pekerjaan: 'PETANI', hubungan_jp: '', pekerjaan_jp: '' }],
+        },
+      }],
+      'tok-admin',
+    )) as { success?: boolean; jumlah?: number; data?: Record<string, unknown> };
+
+    expect(res.success).toBe(true);
+    const identitas = res.data?.identitas as Record<string, string>;
+    const keluarga = ((res.data?.keluarga as Array<Record<string, string>>) ?? [])[0] as Record<string, string>;
+    expect(identitas.katakana).toBe('ブディ');
+    expect(keluarga.hubungan_jp).toBe('母');
+    expect(keluarga.pekerjaan_jp).toBe('農業');
+    // Sisi Indonesia tidak disentuh.
+    expect(keluarga.pekerjaan).toBe('PETANI');
+    expect(res.jumlah).toBe(3);
+  });
+
+  it('tidak memanggil model sama sekali kalau tidak ada yang kosong', async () => {
+    const { handleTerjemahkanKolomCv } = await import('./chat');
+    const res = (await handleTerjemahkanKolomCv(
+      [{ data: { identitas: { alamat: 'PONOROGO', alamat_jp: '〒63453 ポノロゴ' } } }],
+      'tok-admin',
+    )) as { success?: boolean; jumlah?: number };
+
+    expect(geminiMock).not.toHaveBeenCalled();
+    expect(res.success).toBe(true);
+    expect(res.jumlah).toBe(0);
   });
 });

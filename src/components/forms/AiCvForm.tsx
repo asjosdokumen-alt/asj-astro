@@ -18,7 +18,7 @@ import AiUnavailableBanner from '../ui/AiUnavailableBanner';
 import { mapAiCvDraft } from '../../lib/aiCvDraft';
 import { uploadMany, type UploadCollectionError } from '../../lib/cloudinary';
 import { AI_FILE_COLUMNS } from '../../lib/documentColumns';
-import { AI_CV_FLAT_KEYS, parseAiCvDraft, parseAiCvRows, type AiCvRow } from '../../lib/aiCvDraft';
+import { AI_CV_FLAT_KEYS, applyAiCvRows, buildAiCvNested, parseAiCvDraft, parseAiCvRows, type AiCvRow } from '../../lib/aiCvDraft';
 import { PAIRED_FIELDS, resolvePairEdit, jpOf, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS } from '../../lib/aiCvPairs';
 import {
   PEKERJAAN, JURUSAN, HUBUNGAN_KELUARGA, GOLONGAN_DARAH, BAHASA_JEPANG,
@@ -255,10 +255,13 @@ const famRowHasData = (r: FamRow): boolean => Boolean(r.nama || r.hubungan_id);
 
 /** Balasan `loginKandidat` (surfaces/auth.ts → identity.loginKandidat). */
 
+/** Kalimat pill yang menjalankan aksi DETERMINISTIK `terjemahkanKolomCv`. */
+const SARAN_TERJEMAH_SEMUA = 'Terjemahkan semua kolom ke JP';
+
 const SUGGESTIONS = [
   'Perkenalkan diriku',
   'Isi data pendidikan',
-  'Terjemahkan semua kolom ke JP',
+  SARAN_TERJEMAH_SEMUA,
   'Lengkapi data keluarga',
   'Isi pengalaman kerja',
   'Lengkapi data wawancara',
@@ -693,6 +696,55 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
     setMessages(prev => [...prev, { role: 'assistant', text, time: now() }]);
   };
 
+  /**
+   * "Terjemahkan semua kolom" — aksi deterministik, BUKAN pesan chat.
+   *
+   * Sebelum 2026-10-29 tombol ini mengirim kalimat ke `processAIChat`, jadi
+   * hasilnya bergantung pada model yang harus mengembalikan SELURUH objek data
+   * dalam satu balasan. Yang tidak pernah ikut: baris pendidikan/pekerjaan/
+   * keluarga (klien hanya memetakan kolom tunggal) dan semua kolom `katakana`
+   * (tidak ada di daftar pasangan server). Server sekarang membangun daftar
+   * tugas dari DATA — yang kosong diisi, yang sudah terisi tidak disentuh.
+   */
+  const terjemahkanSemua = async () => {
+    if (sending) return;
+    setMessages(prev => [...prev, { role: 'user', text: t('ai_cv.translate_all'), time: now() }]);
+    setSending(true);
+    setShowSuggestions(false);
+    try {
+      const data = buildAiCvNested(cv, { pendidikan: eduList, pekerjaan: jobList, keluarga: famList });
+      const res = await apiClient<{
+        success?: boolean; data?: unknown; jumlah?: number; sisa?: number; error?: string; pesan?: string;
+      }>('terjemahkanKolomCv', [{ data }], { onSessionInvalid: 'throw', silent: true });
+      if (res.success === false) {
+        addBot(res.error || 'Gagal menerjemahkan kolom. Coba lagi.');
+        return;
+      }
+      const patch = res.data ? mapAiCvDraft(res.data) : {};
+      if (Object.keys(patch).length > 0) setCv(prev => ({ ...prev, ...patch }));
+      if (res.data) {
+        const rowsPatch = res.data as Record<string, unknown>;
+        setEduList(l => applyAiCvRows('pendidikan', l, rowsPatch.pendidikan));
+        setJobList(l => applyAiCvRows('pekerjaan', l, rowsPatch.pekerjaan));
+        setFamList(l => applyAiCvRows('keluarga', l, rowsPatch.keluarga));
+      }
+      const n = Number(res.jumlah || 0);
+      const sisa = Number(res.sisa || 0);
+      addBot(
+        n === 0
+          ? (res.pesan || 'Semua kolom sudah berbahasa Jepang.')
+          : `Selesai — ${n} kolom Jepang terisi.${
+              sisa > 0 ? ` ${sisa} kolom belum berhasil; tekan lagi untuk mencoba sisanya.` : ''
+            }`,
+      );
+      if (n > 0) showToast(t('toast.saved'), 'success');
+    } catch (e) {
+      addBot((e as ApiError).message || 'Gagal menerjemahkan kolom. Coba lagi.');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleSend = async (text?: string) => {
     const msg = (text || input).trim();
     if (!msg || sending) return;
@@ -716,10 +768,17 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       // fetch masih pending), dan `code` server yang terbawa di ApiError.
       //
       // `currentData` — bukan `cvData`. Handler membangun blok "DATA KANDIDAT
-      // SAAT INI" dari `p.currentData`; kunci lain diabaikan diam-diam.
+      // SAAT INI" dari `p.currentData`, dan `buildRingkasData` /
+      // `autoTranslateMissingJp` membacanya BERSARANG (`identitas.alamat`).
+      // Sampai 2026-10-29 yang dikirim adalah state FLAT (`cv`), sehingga blok
+      // konteksnya kosong dan auto-terjemahan server menemukan nol pasangan —
+      // tanpa satu pun galat. `buildAiCvNested` menerjemahkan flat → bersarang
+      // dan ikut membawa tiga repeater, yang sebelumnya tidak terkirim sama
+      // sekali.
+      const currentData = buildAiCvNested(cv, { pendidikan: eduList, pekerjaan: jobList, keluarga: famList });
       const data = await apiClient<ProcessAIChatRes>(
         'processAIChat',
-        [{ history: trimmedHistory, currentData: cv }],
+        [{ history: trimmedHistory, currentData }],
         { onSessionInvalid: 'throw', silent: true },
       );
       setAiDown(null);
@@ -738,6 +797,16 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       if (Object.keys(patch).length > 0) {
         setCv(prev => ({ ...prev, ...patch }));
         showToast(t('toast.saved'), 'success');
+      }
+      // Repeater: `mapAiCvDraft` hanya memetakan kolom TUNGGAL, jadi kolom
+      // Jepang milik pendidikan/pekerjaan/keluarga dibuang di situ. Tanpa
+      // langkah ini "Terjemahkan semua kolom" melaporkan sukses sementara
+      // 学校名/会社名/続柄 tetap kosong — laporan pemilik 2026-10-29.
+      if (data.data) {
+        const rowsPatch = data.data as Record<string, unknown>;
+        setEduList(l => applyAiCvRows('pendidikan', l, rowsPatch.pendidikan));
+        setJobList(l => applyAiCvRows('pekerjaan', l, rowsPatch.pekerjaan));
+        setFamList(l => applyAiCvRows('keluarga', l, rowsPatch.keluarga));
       }
       if (data.suggestions && data.suggestions.length > 0) {
         setTimeout(() => setShowSuggestions(true), 500) /* SUGGESTION_DELAY_MS */;
@@ -916,6 +985,30 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
         return;
       }
       setSavePhase('saving');
+      /* ── Alamat Jepang: JAMINAN saat simpan, bukan harapan ────────────────
+         Prompt sudah menyuruh model mengisi `alamat` DAN `alamat_jp` berbarengan,
+         tapi model tidak selalu menaatinya: terukur 2026-10-29 di produksi,
+         **34 dari 120** kandidat punya alamat Indonesia tanpa `alamat_jp`
+         (dan 207 dari 268 tanpa furigana). Kalau kolomnya kosong, isi di sini
+         lewat aksi terjemahan yang sama dengan tombol "Terjemahkan semua
+         kolom" — satu panggilan kecil, best-effort: kegagalan TIDAK menahan
+         simpan, karena alamat Indonesia-nya tetap tersimpan. */
+      let alamatJp = cv.alamat_jp;
+      if (cv.alamat.trim() && !alamatJp.trim()) {
+        try {
+          const r = await apiClient<{ success?: boolean; data?: unknown }>(
+            'terjemahkanKolomCv',
+            [{ data: { identitas: { alamat: cv.alamat } } }],
+            { onSessionInvalid: 'throw', silent: true },
+          );
+          const patch = r?.success !== false && r?.data ? mapAiCvDraft(r.data) : {};
+          const jp = patch.alamat_jp;
+          if (jp) {
+            alamatJp = jp;
+            setCv(prev => ({ ...prev, alamat_jp: jp }));
+          }
+        } catch { /* best-effort — alamat Indonesia tetap tersimpan */ }
+      }
       const payload = {
         context: { wa: cv.hp },
         /* Daftar pendidikan/pekerjaan/keluarga di bawah ini adalah DAFTAR
@@ -936,7 +1029,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
              kanji column even though the Indonesian half was correct. */
           gender_jp: cv.gender_jp, agama_jp: cv.agama_jp, status_nikah_jp: cv.status_jp,
           golongan_darah: cv.goldar, status_nikah: cv.status, anak: cv.anak,
-          email: cv.email, alamat: cv.alamat, alamat_jp: cv.alamat_jp, hp: cv.hp, hp_darurat: cv.hpdarurat,
+          email: cv.email, alamat: cv.alamat, alamat_jp: alamatJp, hp: cv.hp, hp_darurat: cv.hpdarurat,
           darurat_nama: cv.darurat_nama, darurat_hubungan: cv.darurat_hubungan,
           ktp: cv.ktp, paspor: cv.paspor, sim: cv.sim,
           // Legacy menyimpan status paspor/SIM di identitas.* (ai_form.ts
@@ -1254,7 +1347,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
         {jeklinMode === 'chat' && showSuggestions && !sending && (
           <div class="px-3 pb-2 flex gap-2 u-scroll-x flex-nowrap scrollbar-hide">
             {SUGGESTIONS.map((s, i) => (
-              <button type="button" key={i} onClick={() => handleSend(s)}
+              <button type="button" key={i}
+                onClick={() => void (s === SARAN_TERJEMAH_SEMUA ? terjemahkanSemua() : handleSend(s))}
                 class="whitespace-nowrap px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs rounded-full transition-colors font-medium border border-slate-700 flex-shrink-0 shadow-sm">
                 {s}
               </button>
@@ -1266,7 +1360,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           /* Satu tombol, satu tugas. Teksnya sama dengan yang dikirim suggestion
              pill lama, jadi server tidak perlu tahu mode ini ada. */
           <div class="p-3 bg-slate-950 border-t border-slate-800">
-            <button type="button" onClick={() => handleSend(t('ai_cv.translate_all'))} disabled={sending}
+            <button type="button" onClick={() => void terjemahkanSemua()} disabled={sending}
               class="w-full min-h-11 bg-amber-600 hover:bg-amber-500 text-white rounded-xl py-2.5 text-xs font-bold disabled:opacity-50">
               <Icon spin={sending} name="language" class="mr-2" />{t('ai_cv.translate_all')}
             </button>

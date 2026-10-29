@@ -97,8 +97,11 @@ describe('/wawancara — Mode Simulasi', () => {
     fireEvent.click(screen.getByTestId('tab-simulasi'));
 
     /* Peringatan peramban HARUS muncul supaya siswa tidak menunggu tombol yang
-       tidak akan pernah ada. */
-    await waitFor(() => expect(screen.getByText(/belum mendukung perekaman suara/)).toBeTruthy());
+       tidak akan pernah ada. Sejak 2026-10-29 kalimatnya tidak lagi menyebut
+       "hanya Chrome/Edge": jalur rekam (MediaRecorder + transkripsi server)
+       bekerja juga di Safari/Firefox, jadi yang perlu dikatakan adalah
+       "perangkat ini tidak bisa merekam". */
+    await waitFor(() => expect(screen.getByText(/tidak bisa merekam suara/)).toBeTruthy());
   });
 
   it('pilihan "Semua" mengambil SELURUH bank, bukan potongan 5/10/15', async () => {

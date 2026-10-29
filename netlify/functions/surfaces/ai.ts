@@ -70,6 +70,23 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
     const ai = await import('../contexts/ai-orchestration');
     return ai.handleProcessAIChat(p, s);
   },
+  // "Terjemahkan semua kolom ke JP" — aksi DETERMINISTIK, bukan pesan chat.
+  //
+  // Dulu tombol itu mengirim kalimat ke `processAIChat`, jadi kelengkapannya
+  // bergantung pada model: baris pendidikan/pekerjaan/keluarga dan `katakana`
+  // tidak pernah ikut karena penggabungan balik di klien hanya mengenal kolom
+  // tunggal. Gerbang VIP-nya SAMA dengan flow=master (satu fungsi), karena
+  // aksi ini juga membakar kuota Gemini.
+  terjemahkanKolomCv: async (p: unknown[], s?: string) => {
+    const { handleTerjemahkanKolomCv } = await import('../_lib/ai/chat');
+    return handleTerjemahkanKolomCv(p, s);
+  },
+  // Rekaman suara Mode Simulasi → teks Jepang. Jalur cadangan yang TIDAK
+  // bergantung pada `SpeechRecognition` peramban; gerbangnya sama (VIP).
+  transkripsikanSuara: async (p: unknown[], s?: string) => {
+    const { handleTranskripsikanSuara } = await import('../_lib/ai/chat');
+    return handleTranskripsikanSuara(p, s);
+  },
   // PUBLIC BY DESIGN — the `/siswa-baru` registration chat has no session. The
   // client posts it with `requireAuth: false` (SiswaBaruForm.test.tsx:104,
   // "pendaftaran siswa baru publik, tanpa sesi") and the handler itself takes no

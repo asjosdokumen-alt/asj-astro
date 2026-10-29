@@ -86,12 +86,33 @@ const AI_ID_JP_PAIRS: Array<{
   { idPath: ['identitas', 'agama'], jpPath: ['identitas', 'agama_jp'] },
   { idPath: ['identitas', 'status_nikah'], jpPath: ['identitas', 'status_nikah_jp'] },
   { idPath: ['identitas', 'alamat'], jpPath: ['identitas', 'alamat_jp'] },
-  // kenalan_jepang
-  { idPath: ['kenalan_jepang', 'nama_id'], jpPath: ['kenalan_jepang', 'nama_jp'] },
+  /* GENDER: kolom `gender_jp` ada di form DAN dicetak rirekisho, tetapi tidak
+     pernah masuk daftar ini — jadi kandidat yang gender-nya diisi AI (bukan
+     dipilih dari dropdown) mendapat rirekisho dengan sisi kanji kosong. */
+  { idPath: ['identitas', 'gender'], jpPath: ['identitas', 'gender_jp'] },
+  // kenalan_jepang — `nama_id` TIDAK di sini: nama orang ditangani
+  // AI_KATAKANA_PAIRS (lihat alasannya di sana).
   { idPath: ['kenalan_jepang', 'hubungan_id'], jpPath: ['kenalan_jepang', 'hubungan_jp'] },
   { idPath: ['kenalan_jepang', 'pekerjaan_id'], jpPath: ['kenalan_jepang', 'pekerjaan_jp'] },
   { idPath: ['kenalan_jepang', 'alamat_id'], jpPath: ['kenalan_jepang', 'alamat_jp'] },
-];;
+];
+
+/**
+ * Pasangan di dalam baris repeater (pendidikan/pekerjaan/keluarga).
+ *
+ * Kunci di sini adalah ejaan BERSARANG yang dibaca `buildMasterNested` —
+ * `sekolah`/`perusahaan`/`jabatan`, dan `hubungan_id`/`pekerjaan` untuk
+ * keluarga. `buildAiCvNested` (klien) menulis ejaan yang sama; kalau salah
+ * satunya berubah, pasangan ini berhenti cocok tanpa error.
+ */
+const ARRAY_FIELD_PAIRS: Array<{ type: string; idKey: string; jpKey: string; jenis?: 'kata' }> = [
+  { type: 'pendidikan', idKey: 'sekolah', jpKey: 'sekolah_jp' },
+  { type: 'pendidikan', idKey: 'jurusan_id', jpKey: 'jurusan_jp' },
+  { type: 'pekerjaan', idKey: 'perusahaan', jpKey: 'perusahaan_jp' },
+  { type: 'pekerjaan', idKey: 'jabatan', jpKey: 'jabatan_jp' },
+  { type: 'keluarga', idKey: 'hubungan_id', jpKey: 'hubungan_jp' },
+  { type: 'keluarga', idKey: 'pekerjaan', jpKey: 'pekerjaan_jp' },
+];
 function getNested(obj: any, path: string[]): string {
   let cur = obj;
   for (const k of path) {
@@ -110,39 +131,164 @@ function setNested(obj: any, path: string[], val: string): void {
   cur[path[path.length - 1]] = val;
 }
 
-async function autoTranslateMissingJp(data: Record<string, any>): Promise<void> {
-  const NL = String.fromCharCode(10);
-  const pairs: Array<{ index: number; idText: string; jpPath: string[] }> = [];
-  for (let i = 0; i < AI_ID_JP_PAIRS.length; i++) {
-    const pair = AI_ID_JP_PAIRS[i];
+/**
+ * Nama orang → KATAKANA. Bukan terjemahan: ブディ・サントソ adalah cara menulis
+ * nama Indonesia di berkas Jepang, dan model penerjemah biasa mengembalikan
+ * kanji atau huruf latin kalau tidak diminta secara eksplisit.
+ *
+ * Sebelum 2026-10-29 daftar ini tidak ada sama sekali, sehingga `katakana`,
+ * `panggilan_katakana`, dan `katakana` tiap anggota keluarga TIDAK PERNAH
+ * terisi otomatis — laporan pemilik: "terjemahkan semua kolom banyak yg ga
+ * berhasil kayah nama keluarga katakana".
+ */
+const AI_KATAKANA_PAIRS: Array<{ idPath: string[]; jpPath: string[] }> = [
+  { idPath: ['identitas', 'nama_lengkap'], jpPath: ['identitas', 'katakana'] },
+  { idPath: ['identitas', 'panggilan'], jpPath: ['identitas', 'panggilan_katakana'] },
+  // Nama kenalan juga nama orang — pasangan `nama_id`→`nama_jp` di daftar
+  // terjemahan sengaja TIDAK dipakai untuk orang; lihat catatan di atas.
+  { idPath: ['kenalan_jepang', 'nama_id'], jpPath: ['kenalan_jepang', 'nama_jp'] },
+];
+
+/** Satu tugas terjemahan. `kata` = nama orang (hasil wajib katakana). */
+export interface TugasTerjemah {
+  index: number;
+  teks: string;
+  path: string[];
+  jenis: 'jp' | 'kata';
+}
+
+/**
+ * Kumpulkan SEMUA field yang belum punya pasangan Jepang.
+ *
+ * Dipakai dua jalur: auto-terjemahan satu giliran chat (dibatasi `batas`) dan
+ * aksi eksplisit "Terjemahkan semua kolom" (tanpa batas). Satu fungsi, karena
+ * dua daftar pasangan yang berbeda adalah persis bagaimana `katakana` dan baris
+ * repeater tertinggal dari fitur ini.
+ */
+export function kumpulkanTugasTerjemah(data: Record<string, unknown>, batas = Number.POSITIVE_INFINITY): TugasTerjemah[] {
+  const tugas: TugasTerjemah[] = [];
+  const tambah = (teks: string, path: string[], jenis: 'jp' | 'kata') => {
+    if (tugas.length >= batas) return;
+    tugas.push({ index: tugas.length, teks, path, jenis });
+  };
+  for (const pair of AI_ID_JP_PAIRS) {
     const idVal = getNested(data, pair.idPath).trim();
-    const jpVal = getNested(data, pair.jpPath).trim();
-    if (idVal && !jpVal) {
-      pairs.push({ index: pairs.length, idText: idVal, jpPath: pair.jpPath });
-    }
+    if (!idVal || getNested(data, pair.jpPath).trim()) continue;
+    tambah(idVal, pair.jpPath, 'jp');
   }
-  const arrayFieldPairs: Array<{ type: string; idKey: string; jpKey: string }> = [
-    { type: 'pendidikan', idKey: 'sekolah', jpKey: 'sekolah_jp' },
-    { type: 'pendidikan', idKey: 'jurusan_id', jpKey: 'jurusan_jp' },
-    { type: 'pekerjaan', idKey: 'perusahaan', jpKey: 'perusahaan_jp' },
-    { type: 'pekerjaan', idKey: 'jabatan', jpKey: 'jabatan_jp' },
-    { type: 'keluarga', idKey: 'hubungan_id', jpKey: 'hubungan_jp' },
-    { type: 'keluarga', idKey: 'pekerjaan', jpKey: 'pekerjaan_jp' },
-  ];
-  for (const afp of arrayFieldPairs) {
-    const arr = Array.isArray(data[afp.type]) ? data[afp.type] : [];
+  for (const pair of AI_KATAKANA_PAIRS) {
+    const idVal = getNested(data, pair.idPath).trim();
+    if (!idVal || getNested(data, pair.jpPath).trim()) continue;
+    tambah(idVal, pair.jpPath, 'kata');
+  }
+  for (const afp of ARRAY_FIELD_PAIRS) {
+    const raw = data[afp.type];
+    const arr: Array<Record<string, unknown>> = Array.isArray(raw)
+      ? (raw as Array<Record<string, unknown>>)
+      : [];
     for (let i = 0; i < arr.length; i++) {
-      const idVal = String((arr[i] && arr[i][afp.idKey]) || '').trim();
-      const jpVal = String((arr[i] && arr[i][afp.jpKey]) || '').trim();
-      if (idVal && !jpVal) {
-        pairs.push({ index: pairs.length, idText: idVal, jpPath: [afp.type, String(i), afp.jpKey] });
+      const row = arr[i] || {};
+      const idVal = String(row[afp.idKey] || '').trim();
+      const jpVal = String(row[afp.jpKey] || '').trim();
+      if (idVal && !jpVal) tambah(idVal, [afp.type, String(i), afp.jpKey], afp.jenis ?? 'jp');
+      // Nama anggota keluarga → katakana, terpisah dari kolom hubungan/pekerjaan.
+      if (afp.type === 'keluarga') {
+        const nama = String(row.nama || '').trim();
+        if (nama && !String(row.katakana || '').trim()) {
+          tambah(nama, [afp.type, String(i), 'katakana'], 'kata');
+        }
       }
     }
   }
-  if (pairs.length === 0) return;
-  console.log('[autoTranslate] Translating ' + pairs.length + ' fields: ' + pairs.map(p => p.jpPath.join('.')).join(', '));
-  const lines = pairs.map((p) => p.index + 1 + '. ' + p.idText).join(NL);
-  const prompt = 'Terjemahkan Bahasa Indonesia ke Bahasa Jepang untuk CV kerja.' + NL + 'Kembalikan JSON: ' + String.fromCharCode(123) + '"0":"jp0","1":"jp1",...' + String.fromCharCode(125) + ' tanpa teks lain.' + NL + NL + lines;
+  return tugas;
+}
+
+/**
+ * Tulis hasil terjemahan ke `data`. Mengembalikan jumlah field yang terisi.
+ *
+ * Hasil yang TIDAK mengandung huruf yang diminta DIBUANG, bukan ditulis: field
+ * `_jp` yang berisi huruf latin akan tercetak apa adanya di rirekisho, dan
+ * "sudah diterjemahkan" yang salah lebih mahal daripada kolom yang masih
+ * kosong (bisa diulang, dan terlihat).
+ */
+export function terapkanHasilTerjemah(
+  data: Record<string, unknown>,
+  tugas: TugasTerjemah[],
+  hasil: Record<string, unknown>,
+): { jumlah: number; terisi: string[] } {
+  let jumlah = 0;
+  const terisi: string[] = [];
+  const byIndex = new Map(tugas.map((t) => [t.index, t]));
+  for (const key of Object.keys(hasil)) {
+    const idx = Number(key);
+    if (!Number.isInteger(idx) || idx < 0) continue;
+    const teks = String(hasil[key] ?? '').trim();
+    if (!teks) continue;
+    const t = byIndex.get(idx);
+    if (!t) continue;
+    const jepang = /[\u3040-\u30ff\u4e00-\u9fff]/.test(teks);
+    const katakana = /[\u30a0-\u30ff]/.test(teks);
+    if (t.jenis === 'kata' ? !katakana : !jepang) continue;
+    setNested(data, t.path, teks);
+    jumlah++;
+    terisi.push(t.path.join('.'));
+  }
+  return { jumlah, terisi };
+}
+
+/**
+ * Gabungkan hasil auto-terjemahan (`dari` = currentData) ke balasan model.
+ *
+ * Hanya nilai yang MASIH KOSONG di `ke` yang diisi: model yang sudah mengirim
+ * terjemahannya sendiri tidak boleh ditimpa oleh panggilan latar.
+ */
+function gabungTerjemahan(dari: Record<string, unknown>, ke: Record<string, unknown>): void {
+  const salin = (path: string[]) => {
+    const v = getNested(dari, path);
+    if (v && !getNested(ke, path)) setNested(ke, path, v);
+  };
+  for (const pair of AI_ID_JP_PAIRS) salin(pair.jpPath);
+  for (const pair of AI_KATAKANA_PAIRS) salin(pair.jpPath);
+
+  const baris = (tipe: string): [any[], any[]] => {
+    const asal = Array.isArray(dari[tipe]) ? dari[tipe] : [];
+    const tujuan = Array.isArray(ke[tipe]) ? ke[tipe] : [];
+    return [asal, tujuan];
+  };
+  const salinKolom = (tipe: string, kolom: string) => {
+    const [asal, tujuan] = baris(tipe);
+    if (!asal.length) return;
+    // Model tidak mengembalikan baris sama sekali: kirim utuh baris dari form
+    // supaya klien masih bisa menempelkan kolom Jepangnya per indeks.
+    if (!tujuan.length) {
+      ke[tipe] = asal;
+      return;
+    }
+    for (let i = 0; i < Math.min(asal.length, tujuan.length); i++) {
+      const v = String(asal[i]?.[kolom] ?? '').trim();
+      if (!v || String(tujuan[i]?.[kolom] ?? '').trim()) continue;
+      tujuan[i] = { ...(tujuan[i] || {}), [kolom]: v };
+    }
+    ke[tipe] = tujuan;
+  };
+  for (const afp of ARRAY_FIELD_PAIRS) salinKolom(afp.type, afp.jpKey);
+  salinKolom('keluarga', 'katakana');
+}
+
+async function autoTranslateMissingJp(data: Record<string, unknown>, batas = 16): Promise<void> {
+  const NL = String.fromCharCode(10);
+  const tugas = kumpulkanTugasTerjemah(data, batas);
+  if (tugas.length === 0) return;
+  console.log(`[autoTranslate] Translating ${tugas.length} fields: ${tugas.map((t) => t.path.join('.')).join(', ')}`);
+  const lines = tugas
+    .map((t) => `${t.index + 1}. ${t.jenis === 'kata' ? '[KATAKANA] ' : '[JP] '}${t.teks}`)
+    .join(NL);
+  const prompt =
+    'Terjemahkan Bahasa Indonesia ke Bahasa Jepang untuk CV kerja.' + NL +
+    'Tiap baris punya penanda:' + NL +
+    '- [JP] = terjemahkan ke bahasa Jepang (kanji/kana wajar untuk CV).' + NL +
+    '- [KATAKANA] = nama ORANG; tulis ulang dalam KATAKANA (bukan kanji, bukan huruf latin).' + NL +
+    'Kembalikan JSON: ' + String.fromCharCode(123) + '"0":"hasil0","1":"hasil1",...' + String.fromCharCode(125) + ' tanpa teks lain.' + NL + NL + lines;
   try {
     // `bestEffort: true` — WAJIB, dan bukan sekadar penanda kosmetik:
     //
@@ -164,10 +310,8 @@ async function autoTranslateMissingJp(data: Record<string, any>): Promise<void> 
     if (!text) { console.log('[autoTranslate] Empty response from Gemini'); return; }
     const parsed = parseJsonLoose(text);
     if (!parsed || typeof parsed !== 'object') return;
-    for (let i = 0; i < pairs.length; i++) {
-      const jp = String(parsed[String(i)] || '').trim();
-      if (jp) setNested(data, pairs[i].jpPath, jp);
-    }
+    const { jumlah } = terapkanHasilTerjemah(data, tugas, parsed as Record<string, unknown>);
+    console.log(`[autoTranslate] Filled ${jumlah}/${tugas.length} fields`);
   } catch (e) {
     console.error('[autoTranslateMissingJp] error:', (e as { message?: string })?.message || e);
   }
@@ -232,6 +376,180 @@ export const AI_FORM_DATA_INSTRUCTION =
   'Contoh: kelebihan_id = \"Disiplin\" → kelebihan_jp = \"建局がある\". ' +
   'Untuk array (pendidikan, pekerjaan, keluarga): terjemahkan SEMUA baris.\n';
 
+/**
+ * Gerbang VIP AI CV Master — SATU definisi untuk dua pintu masuk.
+ *
+ * `handleProcessAIChat` (flow=master) dan `handleTerjemahkanKolomCv` sama-sama
+ * membakar kuota Gemini atas nama kandidat, jadi keduanya harus memakai aturan
+ * yang sama persis. Dua salinan berarti satu di antaranya akan tertinggal saat
+ * aturannya berubah — persis yang terjadi pada daftar pasangan terjemahan.
+ *
+ * `null` = boleh lanjut. Selain itu objek galat siap dikirim ke klien.
+ */
+async function tolakKecualiAiCvMaster(
+  sessionToken: string | undefined,
+  t: { role?: string; wa?: string },
+) {
+  const guard = requireRole(sessionToken as string, 'admin');
+  if (!guard.error) return null;
+  // H5 fix: source WA from the verified session claim (t.wa), never from
+  // client-supplied currentData — a non-VIP could otherwise impersonate a
+  // VIP number to open flow=master and burn Gemini quota.
+  const wa = normalizeWa(String(t.wa || ''));
+  if (!wa) return null;
+  let lookupError = false;
+  let catatan = '';
+  try {
+    // `findCandidateByWaOrNull` juga mencatat saat lookup-nya TIDAK BISA
+    // JALAN (skema bergeser) — dulu keadaan itu tidak terbedakan dari
+    // "catatan kandidat memang kosong", sehingga gate VIP gagal-terbuka
+    // tanpa jejak.
+    const cand = await findCandidateByWaOrNull(wa);
+    if (cand) {
+      catatan = String(cand.catatan_internal || cand.catatan_int || cand.catatan_admin || '');
+    } else {
+      // Fallback: kandidat yang CV-nya cuma ada di master_database_candidate.
+      const m = await findMasterByWa(wa);
+      catatan = m
+        ? String(m.catatan_internal || m.catatan_int || m.catatan || m.catatan_admin || '')
+        : '';
+    }
+  } catch (_e) {
+    // Error lookup → jangan blokir (fail-open, sama seperti guard frontend).
+    lookupError = true;
+  }
+  if (!lookupError && !isVipCatatan(catatan)) {
+    return {
+      success: false,
+      error:
+        'Fitur AI CV Master eksklusif untuk Siswa ASJ (VIP / Kelas LPK). Hubungi Admin untuk akses.',
+    };
+  }
+  return null;
+}
+
+/**
+ * Terjemahkan SEMUA kolom CV yang belum punya pasangan Jepang — sekali jalan.
+ *
+ * KENAPA AKSI TERSENDIRI, BUKAN LEWAT CHAT
+ * ----------------------------------------
+ * "Terjemahkan semua kolom ke JP" dulu dikirim sebagai pesan chat, jadi
+ * hasilnya bergantung pada model yang sedang menjawab: ia harus mengembalikan
+ * SELURUH objek data, dan penggabungan balik di klien hanya mengenal kolom
+ * tunggal. Baris repeater dan `katakana` tidak pernah ikut. Di sini daftar
+ * tugasnya DIBANGUN DARI DATA, bukan dari niat model — yang kosong diisi, yang
+ * sudah terisi tidak disentuh, dan hasilnya bisa diuji tanpa memanggil model.
+ */
+export async function handleTerjemahkanKolomCv(payload: unknown, sessionToken?: string) {
+  const t = session.verifyToken(sessionToken);
+  if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
+  const tolak = await tolakKecualiAiCvMaster(sessionToken, t);
+  if (tolak) return tolak;
+
+  const p = unwrapPayloadArgs(payload);
+  const data = (p.data && typeof p.data === 'object' ? p.data : {}) as Record<string, unknown>;
+  const tugas = kumpulkanTugasTerjemah(data);
+  if (!tugas.length) {
+    return { success: true, data, jumlah: 0, sisa: 0, pesan: 'Semua kolom sudah berbahasa Jepang.' };
+  }
+  const NL = String.fromCharCode(10);
+  const lines = tugas
+    .map((x) => `${x.index + 1}. ${x.jenis === 'kata' ? '[KATAKANA] ' : '[JP] '}${x.teks}`)
+    .join(NL);
+  const prompt =
+    'Terjemahkan Bahasa Indonesia ke Bahasa Jepang untuk CV kerja.' + NL +
+    'Tiap baris punya penanda:' + NL +
+    '- [JP] = terjemahkan ke bahasa Jepang (kanji/kana wajar untuk CV).' + NL +
+    '- [KATAKANA] = nama ORANG; tulis ulang dalam KATAKANA (bukan kanji, bukan huruf latin).' + NL +
+    'Kembalikan JSON: ' + String.fromCharCode(123) + '"0":"hasil0","1":"hasil1",...' + String.fromCharCode(125) + ' tanpa teks lain.' + NL + NL + lines;
+  try {
+    // Interaktif: pengguna sedang menunggu jawaban ini, jadi ia memakai rantai
+    // normal (hedge + Grok), bukan anggaran best-effort 3 dtk.
+    const r = await geminiGenerate(prompt, []);
+    const text = String(r?.reply || '').trim();
+    const parsed = text ? (parseJsonLoose(text) as Record<string, unknown> | null) : null;
+    if (!parsed || typeof parsed !== 'object') {
+      return {
+        success: false,
+        error: 'AI tidak mengembalikan terjemahan yang bisa dibaca. Coba lagi.',
+        data: {},
+        jumlah: 0,
+        sisa: tugas.length,
+      };
+    }
+    const { jumlah } = terapkanHasilTerjemah(data, tugas, parsed);
+    return { success: true, data, jumlah, sisa: tugas.length - jumlah };
+  } catch (e) {
+    const f = aiFailure(e, 'Gagal menerjemahkan kolom. Coba lagi sebentar.');
+    return {
+      success: false,
+      error: f.error,
+      ...(f.code ? { code: f.code, retryAfter: f.retryAfter } : {}),
+      data: {},
+      jumlah: 0,
+      sisa: tugas.length,
+    };
+  }
+}
+
+/**
+ * Rekaman suara → teks Jepang (mikrofon Mode Simulasi).
+ *
+ * KENAPA BUKAN `SpeechRecognition` SAJA
+ * -------------------------------------
+ * `SpeechRecognition` hanya ada di Chrome/Edge, dan di Chrome ia memanggil
+ * layanan suara Google di luar kendali kita. Di perangkat yang layanan itu
+ * tidak tersedia, `start()` menjawab `service-not-allowed` — dan kode lama
+ * menampilkan "Izin mikrofon ditolak" untuk kode itu, menuduh pengguna menolak
+ * izin yang tidak pernah diminta. Pemilik melaporkan mikrofon mati di HP DAN
+ * desktop (2026-10-29); dua perangkat sekaligus jauh lebih cocok dengan
+ * layanan yang tidak tersedia daripada dua kali menolak izin.
+ *
+ * Audio direkam di perangkat (MediaRecorder) lalu ditranskripsikan di sini.
+ * Tidak ada berkas yang disimpan: `data` hanya hidup selama satu permintaan.
+ */
+const MAKS_AUDIO_BASE64 = 6_000_000; // ≈ 4,5 MB biner
+
+export async function handleTranskripsikanSuara(payload: unknown, sessionToken?: string) {
+  const t = session.verifyToken(sessionToken);
+  if (!t || (t.role !== 'admin' && t.role !== 'kandidat')) {
+    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+  }
+  const tolak = await tolakKecualiAiCvMaster(sessionToken, t);
+  if (tolak) return tolak;
+
+  const p = unwrapPayloadArgs(payload);
+  const mime = String(p.mime || '').trim().toLowerCase();
+  const data = String(p.data || '').trim();
+  if (!mime.startsWith('audio/')) {
+    return { success: false, error: 'Format rekaman tidak dikenal. Coba rekam lagi.' };
+  }
+  if (!data) return { success: false, error: 'Rekaman kosong. Coba rekam lagi.' };
+  if (data.length > MAKS_AUDIO_BASE64) {
+    return { success: false, error: 'Rekaman terlalu panjang. Rekam maksimal 45 detik.' };
+  }
+  try {
+    const { geminiTranskripsiJepang } = await import('./providers');
+    const teks = String(await geminiTranskripsiJepang({ mime, data }) || '').trim();
+    if (!teks) {
+      return {
+        success: false,
+        error: 'Tidak ada ucapan Jepang yang terdengar. Coba rekam lagi atau ketik jawaban.',
+      };
+    }
+    return { success: true, teks };
+  } catch (e) {
+    const f = aiFailure(e, 'Gagal memproses rekaman. Coba lagi atau ketik jawaban.');
+    return {
+      success: false,
+      error: f.error,
+      ...(f.code ? { code: f.code, retryAfter: f.retryAfter } : {}),
+    };
+  }
+}
+
 async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
   // H4 FIX: require valid session for ALL flows — prevents free Gemini quota burn.
   const t = session.verifyToken(sessionToken);
@@ -248,44 +566,8 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
   // kandidat ber-tag VIP/KELAS. Keputusan FINAL di server — jangan mengandalkan
   // guard frontend saja (bisa di-bypass dengan memanggil action langsung).
   if (flow === 'master') {
-    const guard = requireRole(sessionToken as string, 'admin');
-    const isAdmin = !guard.error;
-    if (!isAdmin) {
-      // H5 fix: source WA from the verified session claim (t.wa), never from
-      // client-supplied currentData — a non-VIP could otherwise impersonate a
-      // VIP number to open flow=master and burn Gemini quota.
-      const wa = normalizeWa(String(t.wa || ''));
-      if (wa) {
-        let lookupError = false;
-        let catatan = '';
-        try {
-          // `findCandidateByWaOrNull` juga mencatat saat lookup-nya TIDAK BISA
-          // JALAN (skema bergeser) — dulu keadaan itu tidak terbedakan dari
-          // "catatan kandidat memang kosong", sehingga gate VIP gagal-terbuka
-          // tanpa jejak.
-          const cand = await findCandidateByWaOrNull(wa);
-          if (cand) {
-            catatan = String(cand.catatan_internal || cand.catatan_int || cand.catatan_admin || '');
-          } else {
-            // Fallback: kandidat yang CV-nya cuma ada di master_database_candidate.
-            const m = await findMasterByWa(wa);
-            catatan = m
-              ? String(m.catatan_internal || m.catatan_int || m.catatan || m.catatan_admin || '')
-              : '';
-          }
-        } catch (_e) {
-          // Error lookup → jangan blokir (fail-open, sama seperti guard frontend).
-          lookupError = true;
-        }
-        if (!lookupError && !isVipCatatan(catatan)) {
-          return {
-            success: false,
-            error:
-              'Fitur AI CV Master eksklusif untuk Siswa ASJ (VIP / Kelas LPK). Hubungi Admin untuk akses.',
-          };
-        }
-      }
-    }
+    const tolak = await tolakKecualiAiCvMaster(sessionToken, t);
+    if (tolak) return tolak;
   }
   // Riwayat di-cap di SERVER, bukan hanya di klien. Frontend (AiCvForm,
   // AdminAiCopilot, SiswaBaruForm) memang sudah mengirim `.slice(-20)`, tapi itu
@@ -346,13 +628,15 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
           await translation;
           // Merge translated JP fields from p.currentData back into aiData
           // so the frontend receives the translated values.
+          //
+          // Tiga kelompok, dan ketiganya HARUS ikut. Sebelum 2026-10-29 hanya
+          // pasangan skalar yang digabung, sehingga hasil terjemahan untuk
+          // baris pendidikan/pekerjaan/keluarga DIHITUNG lalu DIBUANG — model
+          // tetap membayarnya, dan klien tidak pernah menerimanya. Itu sebabnya
+          // "Terjemahkan semua kolom" melaporkan sukses sementara 学校名,
+          // 会社名, 続柄, dan nama keluarga dalam katakana tetap kosong.
           if (aiData) {
-            for (const pair of AI_ID_JP_PAIRS) {
-              const jpVal = getNested(currentData, pair.jpPath);
-              if (jpVal && !getNested(aiData, pair.jpPath)) {
-                setNested(aiData, pair.jpPath, jpVal);
-              }
-            }
+            gabungTerjemahan(currentData, aiData);
           }
           return {
             // `success: true` disengaja: `handlers.ts` mencatat

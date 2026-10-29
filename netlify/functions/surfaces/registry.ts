@@ -133,6 +133,10 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   simpanJawabanWawancara:     () => import('./ai').then(m => m.AI_ACTIONS),
   terjemahkanJawabanWawancara:() => import('./ai').then(m => m.AI_ACTIONS),
   getLinkWawancara:           () => import('./ai').then(m => m.AI_ACTIONS),
+  // "Terjemahkan semua kolom" CV AI — aksi deterministik (bukan pesan chat).
+  terjemahkanKolomCv:         () => import('./ai').then(m => m.AI_ACTIONS),
+  // Rekaman suara Mode Simulasi → teks Jepang (tanpa SpeechRecognition).
+  transkripsikanSuara:        () => import('./ai').then(m => m.AI_ACTIONS),
   // Bank kosakata (kotoba) — minigame hafalan, gerbang siswa ASJ yang sama.
   getBankKotoba:              () => import('./ai').then(m => m.AI_ACTIONS),
   // Bank soal matematika — gerbang siswa ASJ yang sama.

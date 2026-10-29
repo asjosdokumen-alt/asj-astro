@@ -190,6 +190,12 @@ function entryAllowList(fnName: string): string[] | null {
   );
   if (!call) return null;
   return call[1]
+    // Komentar DI DALAM array allow-list bukan action. Tanpa baris ini, sebuah
+    // komentar penjelas di atas action baru membuat entri itu terbaca sebagai
+    // "// … 'namaAction'" — dan gate melaporkan rute yang sebenarnya benar
+    // sebagai 404. Terukur 2026-10-29 saat menambah `terjemahkanKolomCv` dan
+    // `transkripsikanSuara`.
+    .replace(/\/\/[^\n]*/g, '')
     .split(',')
     .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
     .filter(Boolean);

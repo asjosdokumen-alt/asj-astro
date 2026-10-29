@@ -600,6 +600,14 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
 
   /* ── render: utama ─────────────────────────────────────────────────────── */
   const sibukBaris = (kode: string) => sibuk[kode] || '';
+  /**
+   * Sedang menerjemahkan jawaban soal aktif.
+   *
+   * Tanpa indikator ini tombolnya hanya memudar (`disabled:opacity-50`) dan
+   * chat tidak bergerak selama 2-5 dtk — terbaca sebagai "dipencet gak keluar
+   * terjemahnya" (laporan pemilik 2026-10-29), padahal permintaannya berjalan.
+   */
+  const menerjemah = Boolean(soalAktif) && sibukBaris(soalAktif?.kode || '') === 'terjemah';
 
   /**
    * Baris yang ditampilkan lembar cetak.
@@ -704,6 +712,12 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
             </div>
           ))}
           {memuat && <p class="text-[12px] text-fg-muted">{t('wawancara.loading_bank')}</p>}
+          {menerjemah && (
+            <div class="flex items-center gap-2 rounded-lg bg-surface-raised px-3 py-2 text-[12px] text-fg-muted" data-testid="wawancara-menerjemah">
+              <span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-accent-violet border-t-transparent motion-reduce:animate-none" aria-hidden="true" />
+              Menerjemahkan ke Jepang… (biasanya 2–5 detik)
+            </div>
+          )}
           {galat && <p class="text-[12px] text-rose-400">{galat}</p>}
         </div>
 
@@ -723,10 +737,10 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
             <button
               type="button"
               onClick={() => void kirimChat()}
-              disabled={!jawabanChat.trim() || !soalAktif || sibukBaris(soalAktif?.kode || '') === 'terjemah'}
+              disabled={!jawabanChat.trim() || !soalAktif || menerjemah}
               class="flex-1 min-h-11 rounded-lg bg-accent-violet hover:bg-accent-violet/90 disabled:opacity-50 text-canvas text-sm font-bold"
             >
-              Kirim & terjemahkan
+              {menerjemah ? 'Menerjemahkan…' : 'Kirim & terjemahkan'}
             </button>
             <button
               type="button"

@@ -394,6 +394,89 @@ async function fetchGemini(
 }
 
 // ---------------------------------------------------------------------------
+// Transkripsi audio (inline) — dipakai mikrofon Mode Simulasi
+// ---------------------------------------------------------------------------
+//
+// KENAPA INI ADA (terukur 2026-10-29)
+// -----------------------------------
+// Mikrofon Mode Simulasi bergantung pada `SpeechRecognition` — API yang HANYA
+// ada di Chrome/Edge dan, di Chrome, memakai layanan suara Google di luar
+// kendali kita. Di perangkat yang layanan itu tidak tersedia, `start()`
+// menjawab `service-not-allowed`; kode lama menerjemahkan kode itu menjadi
+// "Izin mikrofon ditolak", sehingga pemilik melihat pesan izin padahal
+// mikrofonnya tidak pernah diminta. Laporan: "rekam suara gak bisa baik dari
+// hp maupun dari destop".
+//
+// Jalur ini merekam audio di perangkat (MediaRecorder) lalu mengirimkannya ke
+// Gemini sebagai `inline_data` — tidak ada berkas yang disimpan di Storage, dan
+// tidak ada ketergantungan pada layanan suara peramban.
+//
+// Terukur 2026-10-29 lewat probe langsung ke ketiga model dengan WAV 0,5 dtk:
+// semuanya menjawab 200 dan mengembalikan teks Jepang (3,3-7,2 dtk). Batas
+// 20 MB per permintaan jauh di atas kebutuhan: 45 dtk opus ≈ 400 KB.
+const AUDIO_MODEL_TIMEOUT_MS = 9000;
+
+export async function geminiTranskripsiJepang(audio: { mime: string; data: string }): Promise<string> {
+  const key = env('GEMINI_API_KEY');
+  if (!key) throw Errors.aiUnavailable('Asisten AI belum dikonfigurasi di server. Hubungi admin ya!');
+  breaker.check(BREAKER_GEMINI);
+  const body = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text:
+              'Transkripsikan ucapan bahasa Jepang pada audio ini APA ADANYA, dalam huruf Jepang ' +
+              '(kanji/kana). Jangan menerjemahkan, jangan menambah kalimat, jangan menjelaskan. ' +
+              'Balas HANYA teks transkripnya. Kalau tidak ada ucapan yang jelas, balas string kosong.',
+          },
+          { inline_data: { mime_type: audio.mime, data: audio.data } },
+        ],
+      },
+    ],
+  };
+  const started = Date.now();
+  try {
+    const text = await hedgedInvoke(
+      MODELS,
+      {
+        modelBudgetMs: AUDIO_MODEL_TIMEOUT_MS,
+        chainBudgetMs: CHAT_CHAIN_BUDGET_MS,
+        hedgeAfterMs: CHAT_HEDGE_AFTER_MS,
+      },
+      async (model, signal, budgetMs) => {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+            body: JSON.stringify(body),
+            signal: AbortSignal.any([signal, AbortSignal.timeout(budgetMs)]),
+          },
+        );
+        if (!res.ok) {
+          throw new Error(`Gemini HTTP ${res.status} ${(await res.text()).slice(0, 120)}`);
+        }
+        const j = await res.json();
+        const parts = j?.candidates?.[0]?.content?.parts;
+        return Array.isArray(parts)
+          ? parts.map((p: { text?: unknown }) => (typeof p?.text === 'string' ? p.text : '')).join('').trim()
+          : '';
+      },
+    );
+    breaker.success(BREAKER_GEMINI);
+    recordAiCall('gemini', started, 'success');
+    return text;
+  } catch (e) {
+    breaker.failure(BREAKER_GEMINI);
+    recordAiCall('gemini', started, 'error');
+    throw e;
+  }
+}
+
+
+// ---------------------------------------------------------------------------
 // Grok (xAI) — fallback when all Gemini models fail
 // API is OpenAI-compatible: https://api.x.ai/v1/chat/completions
 // ---------------------------------------------------------------------------

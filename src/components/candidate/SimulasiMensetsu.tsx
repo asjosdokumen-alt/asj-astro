@@ -31,7 +31,16 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import { showToast } from '../Toast';
-import { ucapkanJepang, dukunganDengar, buatPendengar, type Pendengar } from '../../lib/ttsJepang';
+import { apiClient, type ApiError } from '../../lib/apiClient';
+import {
+  ucapkanJepang,
+  dukunganDengar,
+  buatPendengar,
+  dukunganRekam,
+  buatPerekamAudio,
+  type Pendengar,
+  type Perekam,
+} from '../../lib/ttsJepang';
 import {
   nilaiJawaban,
   pilihSoalAcak,
@@ -64,6 +73,19 @@ interface BarisHasil {
 const PILIHAN_JUMLAH = [5, 10, 15];
 const PILIHAN_WAKTU = [30, 60, 90];
 
+/** Blob rekaman → base64 tanpa prefiks data-URL (yang dikirim ke server). */
+function blobKeBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const s = String(fr.result || '');
+      resolve(s.slice(s.indexOf(',') + 1));
+    };
+    fr.onerror = () => reject(new Error('rekaman tidak bisa dibaca'));
+    fr.readAsDataURL(blob);
+  });
+}
+
 export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   const [layar, setLayar] = useState<Layar>('atur');
 
@@ -80,16 +102,22 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   const [idx, setIdx] = useState(0);
   const [transkrip, setTranskrip] = useState('');
   const [mendengar, setMendengar] = useState(false);
+  /** Sedang merekam lewat MediaRecorder (jalur tanpa SpeechRecognition). */
+  const [merekam, setMerekam] = useState(false);
+  /** Rekaman sedang diubah menjadi teks di server. */
+  const [memproses, setMemproses] = useState(false);
   const [sisaWaktu, setSisaWaktu] = useState(60);
   const [hasil, setHasil] = useState<BarisHasil[]>([]);
 
   const mulaiRef = useRef(0);
   const dasarRef = useRef('');
   const pendengarRef = useRef<Pendengar | null>(null);
+  const perekamRef = useRef<Perekam | null>(null);
   const kirimRef = useRef<() => void>(() => {});
 
   const daftarTahap = ringkasTahap(soal);
   const bisaDengar = dukunganDengar();
+  const bisaRekam = dukunganRekam();
   const soalAktif = ronde[idx];
 
   /* Acuan penilaian: jawaban Jepang milik siswa lebih dulu, contoh bank kalau
@@ -187,11 +215,95 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     pendengarRef.current?.hentikan();
     pendengarRef.current = null;
     setMendengar(false);
+    perekamRef.current?.buang();
+    setMerekam(false);
   };
 
-  const alihMikrofon = () => {
+  /** Pesan untuk tiap alasan mikrofon gagal — jangan satukan, penyebabnya beda. */
+  const pesanGalatRekam = (kode: string): string => {
+    switch (kode) {
+      case 'tidak-aman': return t('simulasi.mikrofon_tidak_aman');
+      case 'tidak-didukung': return t('simulasi.mikrofon_tidak_ada');
+      case 'ditolak': return t('simulasi.mikrofon_ditolak');
+      case 'tidak-ada': return t('simulasi.mikrofon_tidak_ada_perangkat');
+      case 'dipakai': return t('simulasi.mikrofon_dipakai');
+      default: return t('simulasi.mikrofon_galat');
+    }
+  };
+
+  /** Jalur rekam: MediaRecorder → server men-transkripsi. */
+  const mulaiRekam = async () => {
+    if (!perekamRef.current) {
+      perekamRef.current = buatPerekamAudio({
+        maksDetik: 45,
+        onBatasWaktu: () => {
+          showToast(t('simulasi.rekam_batas'), 'info');
+          void selesaikanRekaman();
+        },
+      });
+    }
+    const p = perekamRef.current;
+    if (!p) {
+      showToast(t('simulasi.mikrofon_tidak_ada'), 'info');
+      return;
+    }
+    try {
+      const kode = await p.mulai();
+      if (kode) {
+        showToast(pesanGalatRekam(kode), 'error');
+        return;
+      }
+      setMerekam(true);
+    } catch {
+      showToast(t('simulasi.mikrofon_galat'), 'error');
+    }
+  };
+
+  const selesaikanRekaman = async () => {
+    const p = perekamRef.current;
+    if (!p) return;
+    setMerekam(false);
+    setMemproses(true);
+    try {
+      const hasilRekam = await p.hentikan();
+      if (!hasilRekam) {
+        showToast(t('simulasi.rekam_gagal'), 'error');
+        return;
+      }
+      const data = await blobKeBase64(hasilRekam.blob);
+      const r = await apiClient<{ success?: boolean; teks?: string; error?: string }>(
+        'transkripsikanSuara',
+        [{ mime: hasilRekam.mime, data }],
+        { onSessionInvalid: 'throw', silent: true },
+      );
+      if (r?.success === false) {
+        showToast(r.error || t('simulasi.rekam_gagal'), 'error');
+        return;
+      }
+      const teks = String(r?.teks || '').trim();
+      if (teks) {
+        setTranskrip((prev) => (prev ? `${prev} ${teks}`.trim() : teks));
+      } else {
+        showToast(t('simulasi.rekam_kosong'), 'info');
+      }
+    } catch (e) {
+      showToast((e as ApiError)?.message || t('simulasi.rekam_gagal'), 'error');
+    } finally {
+      setMemproses(false);
+    }
+  };
+
+  const alihMikrofon = async () => {
+    if (merekam) {
+      await selesaikanRekaman();
+      return;
+    }
     if (mendengar) {
       hentikanMikrofon();
+      return;
+    }
+    if (!bisaDengar) {
+      await mulaiRekam();
       return;
     }
     const p = buatPendengar({
@@ -202,16 +314,22 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
       onSelesai: () => setMendengar(false),
       onGalat: (kode) => {
         setMendengar(false);
-        showToast(
-          kode === 'not-allowed' || kode === 'service-not-allowed'
-            ? t('simulasi.mikrofon_ditolak')
-            : t('simulasi.mikrofon_galat'),
-          'error',
-        );
+        /* `service-not-allowed` BUKAN "izin ditolak": itu layanan suara
+           peramban yang tidak tersedia. Dulu keduanya memakai pesan izin, jadi
+           pemilik mencari izin mikrofon yang sebenarnya tidak pernah diminta.
+           Di sini keduanya jatuh ke jalur rekam, yang tidak butuh layanan itu. */
+        const fatal = kode === 'not-allowed' || kode === 'service-not-allowed'
+          || kode === 'network' || kode === 'audio-capture';
+        if (fatal) {
+          showToast(t('simulasi.mikrofon_layanan'), 'info');
+          void mulaiRekam();
+          return;
+        }
+        showToast(t('simulasi.mikrofon_galat'), 'error');
       },
     });
     if (!p) {
-      showToast(t('simulasi.mikrofon_tidak_ada'), 'info');
+      await mulaiRekam();
       return;
     }
     /* Suara pertanyaan dimatikan dulu: mikrofon yang mendengar TTS akan
@@ -222,7 +340,10 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     setMendengar(true);
   };
 
-  useEffect(() => () => pendengarRef.current?.hentikan(), []);
+  useEffect(() => () => {
+    pendengarRef.current?.hentikan();
+    perekamRef.current?.buang();
+  }, []);
 
   /* ── layar: pengaturan ────────────────────────────────────────────────── */
   if (layar === 'atur') {
@@ -327,7 +448,7 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
           {t('simulasi.suara_otomatis')}
         </label>
 
-        {!bisaDengar && (
+        {!bisaDengar && !bisaRekam && (
           <p class="mt-3 rounded-control border border-line bg-surface-sunken p-3 text-[11.5px] leading-relaxed text-fg-muted">
             {t('simulasi.mikrofon_tidak_ada')}
           </p>
@@ -490,15 +611,22 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
           <span class="text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('simulasi.jawaban')}</span>
           <button
             type="button"
-            onClick={alihMikrofon}
-            aria-pressed={mendengar}
+            onClick={() => void alihMikrofon()}
+            aria-pressed={mendengar || merekam}
+            disabled={memproses}
             data-testid="simulasi-mikrofon"
-            class={`inline-flex min-h-11 items-center gap-1.5 rounded-control border px-3 text-[11.5px] font-bold ${
-              mendengar ? 'border-accent-red bg-accent-red/10 text-accent-red' : 'border-line bg-surface-raised text-fg-muted'
+            class={`inline-flex min-h-11 items-center gap-1.5 rounded-control border px-3 text-[11.5px] font-bold disabled:opacity-60 ${
+              mendengar || merekam ? 'border-accent-red bg-accent-red/10 text-accent-red' : 'border-line bg-surface-raised text-fg-muted'
             }`}
           >
-            <span aria-hidden="true">{mendengar ? '⏹' : '🎙'}</span>
-            {mendengar ? t('simulasi.berhenti_dengar') : t('simulasi.mulai_dengar')}
+            <span aria-hidden="true">{memproses ? '⏳' : mendengar || merekam ? '⏹' : '🎙'}</span>
+            {memproses
+              ? t('simulasi.rekam_proses')
+              : mendengar
+                ? t('simulasi.berhenti_dengar')
+                : merekam
+                  ? t('simulasi.berhenti_dengar')
+                  : t('simulasi.mulai_dengar')}
           </button>
         </div>
         <textarea

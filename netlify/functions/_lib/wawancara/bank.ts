@@ -342,7 +342,17 @@ Aturan:
 
 Balas HANYA JSON: {"jp":"...","romaji":"...","arti":"..."}`;
 
-  const r = await geminiGenerate(system, [], { bestEffort: true });
+  // INTERAKTIF — jangan `bestEffort`.
+  //
+  // `bestEffort: true` memakai anggaran rantai 3 dtk TANPA hedge (lihat
+  // `providers.ts`), dan penanda itu ditujukan untuk pekerjaan LATAR yang tidak
+  // ditunggu siapa pun. Di sini pengguna menekan "Kirim & terjemahkan" dan
+  // menunggu hasilnya: model yang butuh 3,2 dtk membuat rantainya habis
+  // (`DEADLINE_EXCEEDED`) sebelum model kedua sempat dicoba — gejalanya persis
+  // "dipencet gak keluar terjemahnya, tapi kalau dicoba lagi keluar (lama)".
+  // Rantai normal (4 dtk/model, hedge 1,5 dtk) menyelesaikan kasus itu dalam
+  // ~1,5-2 dtk dan tetap muat di deadline permintaan 12 dtk.
+  const r = await geminiGenerate(system, []);
   const text = String(r?.reply || '').trim();
   const parsed = parseJsonLoose(text) as Record<string, unknown> | null;
   if (!parsed || typeof parsed !== 'object') {
