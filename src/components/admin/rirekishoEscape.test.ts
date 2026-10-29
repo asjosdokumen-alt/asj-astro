@@ -99,7 +99,10 @@ describe('buildJobRows / buildFamRows — kunci *_id dari CV AI tampil sebagai n
       [{ hubungan: 'AYAH', nama: 'BUDI', umur: '55', pekerjaan: 'PETANI' }],
       makeV({}, {}),
     );
-    expect(html).toContain('AYAH');
+    // 2026-10-29: kolom 続柄 berisi KANJI saja — permintaan pemilik
+    // ("ayah harus nya chichi saja"). Huruf Latin tidak dicetak di sana.
+    expect(html).toContain('>父<');
+    expect(html).not.toContain('AYAH');
     expect(html).toContain('BUDI');
     expect(html).toContain('55歳');
     expect(html).toContain('PETANI');
@@ -119,9 +122,12 @@ describe('buildJobRows / buildFamRows — kunci *_id dari CV AI tampil sebagai n
       ],
       makeV({}, {}),
     );
-    /* Ayah dan ibu harus diperlakukan sama. */
-    expect(html).toContain('AYAH  父親');
-    expect(html).toContain('IBU  母');
+    /* Ayah dan ibu harus diperlakukan sama, dan 父親/母 dari AI dirapikan ke
+       SATU kata baku (父 / 母) — kolom 続柄 bukan tempat dua bahasa. */
+    expect(html).toContain('>父<');
+    expect(html).toContain('>母<');
+    expect(html).not.toContain('AYAH');
+    expect(html).not.toContain('父親');
     /* Titik tengah tidak boleh lolos ke lembar cetak. */
     expect(html).not.toContain('IBU ・');
     expect(html).not.toContain('・');

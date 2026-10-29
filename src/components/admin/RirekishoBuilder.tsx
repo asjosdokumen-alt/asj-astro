@@ -4,7 +4,7 @@ import { useStore } from "@nanostores/preact";
 import { authStore } from "../../store/authReactive";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
-import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, sortEdu, riwayatKeyOf } from "../../lib/helpers_cv";
+import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, getTingkatVal, sortRiwayatKronologis, riwayatKeyOf } from "../../lib/helpers_cv";
 import { golonganDarahDisplay, statusNikahDisplay, HUBUNGAN_KELUARGA } from "../../lib/opsi-form";
 import { useOverlay } from "../ui/useOverlay";
 
@@ -89,11 +89,17 @@ const keyOf = {
 };
 export function buildEduRows(eduList: Record<string, any>[], v: (...keys: string[]) => string) {
   let html = "";
-  // Baku order SD → SMP → SMA … (legacy 10b_cv_builders.buildEduRows parity).
-  // Sorting by LEVEL is not the same as reverse-chronological: a candidate may
-  // have entered a later school earlier (SMA then SMP), and level is what the
-  // rirekisho's school column is read in.
-  const sorted = sortEdu(eduList || []);
+  // KRONOLOGIS (paling lama dulu), seperti 学歴 di rirekisho Jepang.
+  //
+  // Sampai 2026-10-29 di sini dipakai `sortEdu` — urutan JENJANG (SD → SMA).
+  // Untuk data yang konsisten hasilnya sama, tetapi rirekisho membaca TAHUN:
+  // kandidat yang masuk SMK setelah SMA, atau D3 setelah S1, tercetak
+  // terbalik. Laporan pemilik: "riwayat sekolah gak urut". Tanggal mulai yang
+  // sama tetap dipecah per jenjang, supaya dua sekolah satu tahun tidak
+  // bertukar tempat secara acak.
+  const sorted = sortRiwayatKronologis(eduList || [], {
+    tiebreak: (a, b) => getTingkatVal(a.tingkat) - getTingkatVal(b.tingkat),
+  });
   for (let i = 1; i <= 5; i++) {
     const p = {...(sorted[i-1]||{})};
     if(!isGood(p.masuk)&&isGood(p.tahun_masuk)) p.masuk=p.tahun_masuk;
@@ -116,8 +122,14 @@ export function buildEduRows(eduList: Record<string, any>[], v: (...keys: string
 }
 export function buildJobRows(jobList: Record<string, any>[], v: (...keys: string[]) => string) {
   let html = "";
+  // KRONOLOGIS (paling lama dulu). Sampai 2026-10-29 fungsi ini TIDAK
+  // mengurutkan sama sekali: riwayat kerja tercetak sesuai urutan isi
+  // formulir, jadi pekerjaan 2018 bisa muncul di atas pekerjaan 2010 —
+  // laporan pemilik "riwayat kerja gak auto urut sesuai tahun dan bulan
+  // kerjanya".
+  const sorted = sortRiwayatKronologis(jobList || []);
   for (let i = 1; i <= 3; i++) {
-    const p = {...(jobList[i-1]||{})};
+    const p = {...(sorted[i-1]||{})};
     if(!isGood(p.masuk)&&isGood(p.tahun_masuk)) p.masuk=p.tahun_masuk;
     if(!isGood(p.keluar)&&isGood(p.tahun_keluar)) p.keluar=p.tahun_keluar;
     if(!isGood(p.perusahaan)&&isGood(p.nama_perusahaan)) p.perusahaan=p.nama_perusahaan;
@@ -171,7 +183,7 @@ function kanjiHubungan(hub: string): string {
      sisanya memang huruf Jepang, itulah jawabannya — tidak perlu kamus. */
   if (bagian.length > 1) {
     const sisa = bagian.slice(1).join(' ');
-    if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(sisa)) return sisa;
+    if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(sisa)) return rapikanKanjiHubungan(sisa);
     /* Sisa berhuruf Latin berarti ini hubungan LAIN ("TETANGGA JAUH"), bukan
        "AYAH" yang kebetulan berawalan sama. Menebak di sini akan mencetak
        kanji yang salah di CV. */
@@ -183,7 +195,57 @@ function kanjiHubungan(hub: string): string {
   for (const [nilai, label] of HUBUNGAN_KELUARGA) {
     if (String(nilai).toUpperCase() !== kunci) continue;
     const m = String(label).match(/[（(]([^）)]+)[）)]/);
-    if (m?.[1]) return m[1];
+    if (m?.[1]) return rapikanKanjiHubungan(m[1]);
+  }
+  return '';
+}
+
+/**
+ * 続柄 yang sah di rirekisho Jepang — satu kata, tanpa お/ご dan tanpa さん.
+ *
+ * KENAPA (laporan pemilik 2026-10-29): "kanji nya ga sesuai kek ayah harus nya
+ * chichi saja". Kolom 続柄 di rirekisho berisi 父, bukan 「お父さん」 dan bukan
+ * 「AYAH 父」. Nilai Jepang datang dari dua sumber yang sama-sama bisa meleset:
+ * AI (sering menulis bentuk sopan お父さん/父さん) dan kandidat sendiri.
+ */
+const KANJI_HUBUNGAN: Array<[RegExp, string]> = [
+  // URUTAN PENTING: yang lebih spesifik lebih dulu. `義父` dan `祖父`
+  // mengandung `父`, jadi keduanya HARUS diperiksa sebelum aturan `父`.
+  [/曾祖父|ひいおじい/, '曾祖父'],
+  [/曾祖母|ひいおばあ/, '曾祖母'],
+  [/義父|ぎふ/, '義父'],
+  [/義母|ぎぼ/, '義母'],
+  [/祖父|おじい(さん|ちゃん)?|grandfather/i, '祖父'],
+  [/祖母|おばあ(さん|ちゃん)?|grandmother/i, '祖母'],
+  [/父|お父さん|パパ|ちち/i, '父'],
+  [/母|お母さん|ママ|はは/i, '母'],
+  [/兄|お兄さん|にいさん/i, '兄'],
+  [/姉|お姉さん|ねえさん/i, '姉'],
+  [/弟|おとうと/i, '弟'],
+  [/妹|いもうと/i, '妹'],
+  [/夫|旦那|おっと/i, '夫'],
+  [/妻|奥さん|つま/i, '妻'],
+  [/息子|むすこ/i, '息子'],
+  [/娘|むすめ/i, '娘'],
+  [/子|お子さん|子供/i, '子'],
+  [/伯父|叔父|おじさん/i, '叔父'],
+  [/伯母|叔母|おばさん/i, '叔母'],
+  [/従兄弟|いとこ/i, '従兄弟'],
+  [/甥|おいご/i, '甥'],
+  [/姪|めいご/i, '姪'],
+];
+
+/**
+ * Rapikan nilai 続柄 Jepang menjadi SATU kata baku.
+ *
+ * Mengembalikan '' kalau tidak ada yang cocok — pemanggil lalu memakai nilai
+ * Indonesia apa adanya, bukan kanji karangan.
+ */
+export function rapikanKanjiHubungan(nilai: string): string {
+  const s = String(nilai ?? '').trim();
+  if (!s) return '';
+  for (const [re, kanji] of KANJI_HUBUNGAN) {
+    if (re.test(s)) return kanji;
   }
   return '';
 }
@@ -198,9 +260,16 @@ export function buildFamRows(famList: Record<string, any>[], v: (...keys: string
     const u=bersihkanNilai(isGood(p.umur)?String(p.umur):v("KELUARGA"+i+"USIA","KELUARGA"+i+"UMUR"));
     const pk=bersihkanNilai(isGood(p.pekerjaan)?String(p.pekerjaan):v("KELUARGA"+i+"PEKERJAANID","KELUARGA"+i+"PEKERJAAN"));
     const g=bersihkanNilai(isGood(p.gaji)?String(p.gaji):v("KELUARGA"+i+"GAJI"));
-    const hubj=bersihkanNilai(isGood(p.hubungan_jp)?String(p.hubungan_jp):v("KELUARGA"+i+"HUBUNGANJP"))||kanjiHubungan(hub);
+    const hubj=rapikanKanjiHubungan(
+      bersihkanNilai(isGood(p.hubungan_jp)?String(p.hubungan_jp):v("KELUARGA"+i+"HUBUNGANJP")),
+    )||kanjiHubungan(hub);
     const pkj=bersihkanNilai(isGood(p.pekerjaan_jp)?String(p.pekerjaan_jp):v("KELUARGA"+i+"PEKERJAANJP"));
-    const fh=hubj?escHtml`${hub.toUpperCase()}  ${hubj}`:escVal(hub.toUpperCase());
+    /* Kolom 続柄 berisi KANJI saja. Sampai 2026-10-29 sel ini mencetak
+       "AYAH  父" — dua bahasa di satu kolom Jepang, dan pemilik menyebutnya
+       sebagai kanji yang tidak sesuai ("ayah harus nya chichi saja").
+       Nilai Indonesia hanya dipakai kalau kanjinya memang tidak diketahui;
+       sel kosong lebih buruk daripada teks yang bisa dibaca staf. */
+    const fh = hubj ? escVal(hubj) : escVal(hub.toUpperCase());
     const fp=pkj?escHtml`${pk}<br><span style="font-size:8px;font-weight:normal;">${pkj}</span>`:escVal(pk);
     html+=escHtml`<tr><td colspan="2" class="val-center">${fh}</td><td colspan="2" class="val-center">${nm.toUpperCase()}</td><td class="val-center">${u?u+"歳":""}</td><td class="val-center">${fp}</td><td class="val-right pr-1">${g?"¥   "+g:"¥        -"}</td></tr>`;
   }

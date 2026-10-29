@@ -188,7 +188,10 @@ describe('RirekishoBuilder (A10)', () => {
       <RirekishoBuilder waTarget="6281234567890" isOpen={true} onClose={() => {}} />,
     );
     await waitFor(() => expect(container.innerHTML).toContain('実習生経歴書'));
-    expect(container.innerHTML).toContain('AYAH');
+    // 2026-10-29: kolom 続柄 berisi KANJI saja. Sampai sesi itu sel ini
+    // mencetak "AYAH  父" — dua bahasa di satu kolom Jepang, dan pemilik
+    // menyebutnya kanji yang tidak sesuai ("ayah harus nya chichi saja").
+    expect(container.innerHTML).toContain('>父<');
     expect(container.innerHTML).toContain('BUDI SANTOSO');
     expect(container.innerHTML).toContain('PETANI');
   });
@@ -311,5 +314,72 @@ describe('RirekishoBuilder (A10)', () => {
     );
     expect(container.innerHTML).toBe('');
     expect(mockDraft).not.toHaveBeenCalled();
+  });
+});
+
+// ==========================================
+// 2026-10-29 — rirekisho harus terbaca seperti rirekisho Jepang.
+//
+// Tiga laporan pemilik, semuanya soal URUTAN dan BAHASA KOLOM:
+//   "riwayat sekolah gak urut, riwayat kerja gak auto urut sesuai tahun dan
+//    bulan kerjanya … kanji nya ga sesuai kek ayah harus nya chichi saja"
+//
+// Penyebabnya terukur di kode: `buildEduRows` mengurutkan per JENJANG (bukan
+// tahun), `buildJobRows` TIDAK mengurutkan sama sekali, dan kolom 続柄
+// mencetak "AYAH  父" — dua bahasa di satu kolom Jepang.
+// ==========================================
+import { buildEduRows, buildJobRows, buildFamRows, rapikanKanjiHubungan } from './RirekishoBuilder';
+
+/** `v()` kosong: semua nilai datang dari baris, bukan dari kolom master. */
+const vKosong = () => '-';
+
+describe('rirekisho — urutan dan bahasa kolom', () => {
+  it('学歴 kronologis, bukan per jenjang (SMK setelah SMA tetap di bawah)', () => {
+    const html = buildEduRows([
+      { tingkat: 'SMK', sekolah: 'SMKN 2', masuk: '2016-07', lulus: '2019-06' },
+      { tingkat: 'SMA', sekolah: 'SMAN 1', masuk: '2008-07', lulus: '2011-06' },
+      { tingkat: 'SMP', sekolah: 'SMPN 3', masuk: '2005-07', lulus: '2008-06' },
+    ], vKosong);
+    const urut = ['SMPN 3', 'SMAN 1', 'SMKN 2'].map((s) => html.indexOf(s));
+    expect(urut.every((i) => i >= 0)).toBe(true);
+    expect(urut, 'SMP → SMA → SMK').toEqual([...urut].sort((a, b) => a - b));
+  });
+
+  it('職歴 diurutkan tahun + BULAN, bukan urutan formulir', () => {
+    const html = buildJobRows([
+      { perusahaan: 'PT C', masuk: '2018-07', keluar: '2020-01' },
+      { perusahaan: 'PT A', masuk: '2010-04', keluar: '2012-03' },
+      { perusahaan: 'PT B', masuk: '2014-11', keluar: '2016-05' },
+    ], vKosong);
+    const urut = ['PT A', 'PT B', 'PT C'].map((s) => html.indexOf(s));
+    expect(urut.every((i) => i >= 0)).toBe(true);
+    expect(urut).toEqual([...urut].sort((a, b) => a - b));
+  });
+
+  it('bulan ikut menentukan: 2014-04 sebelum 2014-11', () => {
+    const html = buildJobRows([
+      { perusahaan: 'NOV', masuk: '2014-11' },
+      { perusahaan: 'APR', masuk: '2014-04' },
+    ], vKosong);
+    expect(html.indexOf('APR')).toBeLessThan(html.indexOf('NOV'));
+  });
+
+  it('続柄 mencetak kanji saja — bukan "AYAH  父"', () => {
+    const html = buildFamRows([
+      { hubungan: 'AYAH', hubungan_jp: 'お父さん', nama: 'BUDI', umur: '50', pekerjaan: 'PETANI' },
+    ], vKosong);
+    expect(html).toContain('>父<');
+    expect(html, 'kolom 続柄 tidak boleh memuat huruf Latin').not.toContain('AYAH');
+  });
+
+  it('rapikanKanjiHubungan: bentuk sopan & majemuk → satu kata baku', () => {
+    expect(rapikanKanjiHubungan('お父さん')).toBe('父');
+    expect(rapikanKanjiHubungan('父さん')).toBe('父');
+    expect(rapikanKanjiHubungan('お母さん')).toBe('母');
+    expect(rapikanKanjiHubungan('祖父')).toBe('祖父');
+    expect(rapikanKanjiHubungan('義父')).toBe('義父');
+    expect(rapikanKanjiHubungan('兄')).toBe('兄');
+    // Tidak dikenal → kosong, jangan mengarang kanji.
+    expect(rapikanKanjiHubungan('TETANGGA')).toBe('');
   });
 });

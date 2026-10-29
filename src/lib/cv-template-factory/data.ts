@@ -1,5 +1,5 @@
 ﻿import type { CandidateData } from './types';
-import { getPath, makeV, mergeArrRiwayat, normalizeRiwayatFor, sortEdu, riwayatKeyOf } from '../helpers_cv';
+import { getPath, makeV, mergeArrRiwayat, normalizeRiwayatFor, getTingkatVal, sortRiwayatKronologis, riwayatKeyOf } from '../helpers_cv';
 
 const KEYOF: Record<string, (e: Record<string, unknown>) => string> = {
   pendidikan: (e) => riwayatKeyOf('pendidikan', e),
@@ -17,11 +17,20 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
   const v = makeV(row, ai);
   const getArr = (key: string) => mergeArrRiwayat(getPath(row, key), getPath(ai, key), KEYOF[key], normalizeRiwayatFor(key));
 
-  // Education is sorted here, at the single place both the array is merged, so
-  // every renderer (excel/pdf/docx) inherits the baku SD → SMP → SMA order
-  // instead of each one re-deriving it. pekerjaan/keluarga keep source order.
-  const pendidikan = sortEdu(getArr('pendidikan'));
-  const pekerjaan = getArr('pekerjaan');
+  // KRONOLOGIS (paling lama dulu) di sini, di satu tempat kedua array digabung,
+  // supaya setiap renderer (excel/pdf/docx/rirekisho) mewarisinya.
+  //
+  // SEBELUM 2026-10-29: pendidikan diurutkan per JENJANG (SD → SMA) dan
+  // pekerjaan TIDAK diurutkan sama sekali. Untuk data yang konsisten keduanya
+  // kebetulan sama, tetapi rirekisho Jepang membaca TAHUN, bukan jenjang —
+  // kandidat yang masuk SMK setelah SMA tercetak terbalik. Laporan pemilik:
+  // "riwayat sekolah gak urut, riwayat kerja gak auto urut sesuai tahun dan
+  // bulan kerjanya".
+  const pendidikan = sortRiwayatKronologis(getArr('pendidikan'), {
+    // Tanggal mulai sama (jarang): jenjang yang lebih rendah dulu.
+    tiebreak: (a, b) => getTingkatVal(a.tingkat) - getTingkatVal(b.tingkat),
+  });
+  const pekerjaan = sortRiwayatKronologis(getArr('pekerjaan'));
   const keluarga = getArr('keluarga');
 
   const uploads = row.uploads as Record<string, unknown> | undefined;

@@ -338,6 +338,93 @@ export function sortEdu<T extends Record<string, unknown>>(list: T[]): T[] {
   return sortByTingkat(list);
 }
 
+/**
+ * (tahun × 100 + bulan) dari satu nilai periode, atau `null` bila tidak ada.
+ *
+ * Menerima "2020", "2020-04", "2020/4", "04/2020" TIDAK didukung (bulan dulu
+ * ambigu dengan tahun) dan "April 2020" lewat `Date`. Bulan 0/13+ dianggap
+ * "tahun saja" — rirekisho mencetak `2020年` lebih baik daripada `2020年0月`.
+ */
+export function periodeKey(v: unknown): number | null {
+  const s = String(v ?? '').trim();
+  if (!s || s === '-') return null;
+  // Bentuk numerik yang kita tulis sendiri: `2020`, `2020-04`, `2020/4`,
+  // `2020-04-15`. DIBACA SEBELUM `Date`, karena `new Date('2020-04')` memakai
+  // UTC dan bisa memundurkan bulan satu langkah di zona waktu negatif.
+  const m = s.match(/^(\d{4})(?:[-/.](\d{1,2}))?(?:[-/.]\d{1,2})?$/);
+  if (m) {
+    const y = parseInt(m[1] ?? '0', 10);
+    let mo = m[2] ? parseInt(m[2], 10) : 0;
+    if (!Number.isFinite(mo) || mo < 0 || mo > 12) mo = 0;
+    return y * 100 + mo;
+  }
+  // Bentuk lain ("April 2020", "2020年4月") — serahkan ke Date, lalu ke
+  // pencocokan longgar sebagai jaring terakhir.
+  const dt = new Date(s);
+  if (!Number.isNaN(dt.getTime())) return dt.getFullYear() * 100 + (dt.getMonth() + 1);
+  const longgar = s.match(/(\d{4})\D{0,3}(\d{1,2})?/);
+  if (longgar) {
+    let mo = longgar[2] ? parseInt(longgar[2], 10) : 0;
+    if (!Number.isFinite(mo) || mo < 0 || mo > 12) mo = 0;
+    return parseInt(longgar[1] ?? '0', 10) * 100 + mo;
+  }
+  return null;
+}
+
+/**
+ * Urutkan riwayat secara KRONOLOGIS (paling lama dulu) — urutan yang dipakai
+ * rirekisho Jepang untuk 学歴 dan 職歴.
+ *
+ * KENAPA BUKAN `sortEdu`
+ * ---------------------
+ * `sortEdu` mengurutkan berdasarkan JENJANG (SD → SMP → SMA). Untuk data yang
+ * konsisten keduanya sama, tetapi rirekisho Jepang tidak membaca jenjang: ia
+ * membaca tahun. Kandidat yang masuk SMK setelah SMA, atau D3 setelah S1,
+ * akan tercetak terbalik oleh urutan jenjang — laporan pemilik 2026-10-29:
+ * "riwayat sekolah gak urut, riwayat kerja gak auto urut sesuai tahun dan
+ * bulan kerjanya".
+ *
+ * `pekerjaan` sebelumnya TIDAK diurutkan sama sekali (urutan sumber), jadi
+ * riwayat kerja tercetak sesuai urutan isi formulir.
+ *
+ * Entri tanpa tanggal masuk ditaruh di BELAKANG dan mempertahankan urutan
+ * aslinya: baris tanpa tahun bukan riwayat, dan menaruhnya di atas akan
+ * mendorong riwayat sungguhan ke bawah.
+ */
+export function sortRiwayatKronologis<T extends Record<string, unknown>>(
+  list: T[],
+  opsi: {
+    mulai?: string[];
+    selesai?: string[];
+    /** Tie-break untuk tanggal mulai yang sama (mis. jenjang sekolah). */
+    tiebreak?: (a: T, b: T) => number;
+  } = {},
+): T[] {
+  const mulai = opsi.mulai ?? ['masuk', 'tahun_masuk', 'tahunMasuk'];
+  const selesai = opsi.selesai ?? ['keluar', 'tahun_keluar', 'tahunKeluar', 'lulus', 'tahun_lulus', 'tahunLulus'];
+  const ambil = (e: T, keys: string[]): number | null => {
+    for (const k of keys) {
+      const n = periodeKey(e?.[k]);
+      if (n !== null) return n;
+    }
+    return null;
+  };
+  return (list || [])
+    .map((e, i) => ({ e, i, m: ambil(e, mulai), s: ambil(e, selesai) }))
+    .sort((a, b) => {
+      // Tanpa tanggal mulai → paling akhir, urutan asli dipertahankan.
+      if (a.m === null && b.m === null) return a.i - b.i;
+      if (a.m === null) return 1;
+      if (b.m === null) return -1;
+      if (a.m !== b.m) return a.m - b.m;
+      if (a.s !== null && b.s !== null && a.s !== b.s) return a.s - b.s;
+      const tb = opsi.tiebreak?.(a.e, b.e) ?? 0;
+      if (tb !== 0) return tb;
+      return a.i - b.i;
+    })
+    .map((x) => x.e);
+}
+
 /** Escape HTML to prevent XSS */
 export function esc(str: string): string {
   return String(str)

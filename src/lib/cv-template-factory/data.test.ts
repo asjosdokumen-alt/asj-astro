@@ -159,17 +159,24 @@ describe('normalizeMasterData', () => {
     expect(data.pendidikan[0].sekolah).toBe('SMAN 1');
   });
 
-  it('pekerjaan & keluarga mempertahankan urutan sumber (tidak ikut terurut)', () => {
+  // 2026-10-29 — PERILAKU BERUBAH atas permintaan pemilik: "riwayat kerja gak
+  // auto urut sesuai tahun dan bulan kerjanya". Rirekisho Jepang membaca TAHUN,
+  // bukan urutan isi formulir. `keluarga` tetap apa adanya: susunan keluarga
+  // bukan riwayat.
+  it('pekerjaan diurutkan kronologis (tahun + bulan), keluarga tidak', () => {
     const row = {
       AIDATAJSON: JSON.stringify({
         pekerjaan: [
-          { perusahaan: 'PT C', masuk: '2018' },
-          { perusahaan: 'PT A', masuk: '2010' },
+          { perusahaan: 'PT C', masuk: '2018-07' },
+          { perusahaan: 'PT A', masuk: '2010-04' },
+          { perusahaan: 'PT B', masuk: '2014-11' },
         ],
+        keluarga: [{ nama: 'B', hubungan_id: 'IBU' }, { nama: 'A', hubungan_id: 'AYAH' }],
       }),
     };
     const data = normalizeMasterData(row);
-    expect(data.pekerjaan.map((p) => p.perusahaan)).toEqual(['PT C', 'PT A']);
+    expect(data.pekerjaan.map((p) => p.perusahaan)).toEqual(['PT A', 'PT B', 'PT C']);
+    expect(data.keluarga.map((k) => k.nama)).toEqual(['B', 'A']);
   });
 
   // ------------------------------------------------------------------

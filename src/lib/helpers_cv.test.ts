@@ -20,6 +20,8 @@ import {
   normalizeRiwayatFor,
   getTingkatVal,
   sortByTingkat,
+  periodeKey,
+  sortRiwayatKronologis,
   sortByYear,
   sortEdu,
 } from './helpers_cv';
@@ -413,5 +415,56 @@ describe('riwayatKeyOf — identitas baris riwayat (dedupe nyata, 2026-10-12)', 
     const stint2 = { perusahaan: 'PT A', masuk: '2010', keluar: '2012' };
     expect(riwayatKeyOf('pekerjaan', master)).not.toBe(riwayatKeyOf('pekerjaan', stint2));
     expect(mergeArrRiwayat([master], [ai, stint2], (e) => riwayatKeyOf('pekerjaan', e), normalizeRiwayatFor('pekerjaan'))).toHaveLength(2);
+  });
+});
+
+// ==========================================
+// 2026-10-29 — sortRiwayatKronologis (urutan rirekisho Jepang).
+//
+// Ditambahkan karena `sortEdu` mengurutkan per JENJANG dan `pekerjaan` tidak
+// diurutkan sama sekali; keduanya menghasilkan 学歴/職歴 yang terbalik untuk
+// data yang sah (mis. SMK setelah SMA). Lihat RirekishoBuilder.test.tsx untuk
+// laporan pemilik yang memicunya.
+// ==========================================
+describe('periodeKey / sortRiwayatKronologis', () => {
+  it('periodeKey membaca tahun, tahun-bulan, dan teks tanggal', () => {
+    expect(periodeKey('2020')).toBe(202000);
+    expect(periodeKey('2020-04')).toBe(202004);
+    expect(periodeKey('2020/4')).toBe(202004);
+    expect(periodeKey('April 2020')).toBe(202004);
+    // Bulan di luar 1-12 → "tahun saja", bukan 2020年0月 di CV.
+    expect(periodeKey('2020-00')).toBe(202000);
+    expect(periodeKey('2020-13')).toBe(202000);
+    expect(periodeKey('')).toBeNull();
+    expect(periodeKey('-')).toBeNull();
+  });
+
+  it('urut menaik berdasarkan tahun DAN bulan', () => {
+    const out = sortRiwayatKronologis([
+      { n: 'C', masuk: '2018-07' },
+      { n: 'A', masuk: '2010-04' },
+      { n: 'B', masuk: '2014-11' },
+      { n: 'B2', masuk: '2014-04' },
+    ]);
+    expect(out.map((x) => x.n)).toEqual(['A', 'B2', 'B', 'C']);
+  });
+
+  it('tanpa tanggal masuk → paling akhir, urutan asli dipertahankan', () => {
+    const out = sortRiwayatKronologis([
+      { n: 'X' },
+      { n: 'A', masuk: '2010' },
+      { n: 'Y' },
+    ]);
+    expect(out.map((x) => x.n)).toEqual(['A', 'X', 'Y']);
+  });
+
+  it('tanggal mulai sama → selesai lebih dulu, lalu tiebreak', () => {
+    const out = sortRiwayatKronologis(
+      [
+        { n: 'B', masuk: '2010-04', lulus: '2013-03' },
+        { n: 'A', masuk: '2010-04', lulus: '2012-03' },
+      ],
+    );
+    expect(out.map((x) => x.n)).toEqual(['A', 'B']);
   });
 });
