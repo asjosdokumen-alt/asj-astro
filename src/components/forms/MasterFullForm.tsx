@@ -392,6 +392,13 @@ export default function MasterFullForm() {
       const resolveRow = resolveOther;
       const payload: Record<string, unknown> = {
         ...data,
+        /* Form ini mengirim SELURUH field-nya (dan 5 slot pendidikan, lihat di
+           bawah), jadi server boleh mengosongkan kolom yang dikirim kosong.
+           Tanpa flag ini menghapus isi sebuah kotak tidak pernah berlaku:
+           `buildMasterNested` membaca KOLOM lebih dulu, jadi nilai lama muncul
+           lagi begitu form dibuka ulang (keluhan pemilik 2026-10-30). */
+        formLengkap: true,
+        riwayatLengkap: true,
         lisensi: resolveSsw(data.lisensi, data.lisensiManual),
         lisensi2: resolveSsw(data.lisensi2, data.lisensi2Manual),
         // Kota terbit paspor juga pasangan select+manual (lihat ManualSelect di

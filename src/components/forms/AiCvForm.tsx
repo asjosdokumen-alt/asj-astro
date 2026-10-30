@@ -207,12 +207,6 @@ const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '',
 const EDU_SEED_LEVELS = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1'] as const;
 const seedEduRows = (): EduRow[] => EDU_SEED_LEVELS.map((lv) => ({ ...newEduRow(), tingkat: lv }));
 
-/** Daftar masih persis seperti seed (belum disentuh user) — maka draf boleh menimpanya. */
-function eduListUntouched(list: EduRow[]): boolean {
-  if (list.length !== EDU_SEED_LEVELS.length) return false;
-  return list.every((r, i) => r.tingkat === EDU_SEED_LEVELS[i]
-    && !r.sekolah_id && !r.sekolah_jp && !r.jurusan_id && !r.jurusan_jp && !r.masuk && !r.lulus);
-}
 const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '', jenis: '', bidang: '', catatan: '' });
 const newFamRow = (): FamRow => ({ id: nextRowId(), hubungan_id: '', hubungan_jp: '', nama: '', katakana: '', umur: '', pekerjaan_id: '', pekerjaan_jp: '', gaji: '', tinggal: '', hp: '' });
 
@@ -231,18 +225,6 @@ function rowsToState<T extends { id: number }>(rows: AiCvRow[], make: () => T): 
   if (!rows.length) return [make()];
   return rows.map((row) => Object.assign(make(), row) as T);
 }
-
-/**
- * Apakah baris ini sudah diisi manusia?
- *
- * Predikatnya SENGAJA sama dengan filter di payload simpan
- * (`pendidikan` → `e.sekolah_id || e.tingkat`, dst). Baris yang akan IKUT
- * terkirim adalah baris yang sama yang memblokir pengisian dari draf — jadi
- * tidak mungkin ada baris yang dianggap "kosong" oleh satu sisi dan "berisi"
- * oleh sisi lain.
- */
-const jobRowHasData = (r: JobRow): boolean => Boolean(r.perusahaan_id || r.jabatan_id);
-const famRowHasData = (r: FamRow): boolean => Boolean(r.nama || r.hubungan_id);
 
 /** School levels — legacy `TINGKAT_OPTIONS`, and the canonical order. */
 
@@ -502,6 +484,38 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
   const [eduList, setEduList] = useState<EduRow[]>(() => (seedEdu ? seedEduRows() : [newEduRow()]));
   const [jobList, setJobList] = useState<JobRow[]>([newJobRow()]);
   const [famList, setFamList] = useState<FamRow[]>([newFamRow()]);
+  /**
+   * Apakah ada perubahan yang BELUM dikirim ke server?
+   *
+   * KENAPA (2026-10-30, keluhan pemilik *"sudah tersimpan saya keluar pencet
+   * rekhisou kok gak hilang"*): `savePhase` bertahan di `'done'` setelah simpan
+   * berhasil, jadi tombolnya tetap berbunyi "Tersimpan" walaupun kandidat sudah
+   * menghapus separuh isinya. Layar menyatakan tersimpan, server tidak pernah
+   * menerima editnya, dan CV cetak memakai nilai lama.
+   *
+   * SENGAJA flag eksplisit, bukan sidik jari isi form: pemuat draf dan
+   * `getAppData` juga menulis `cv` di latar belakang, dan perbandingan berbasis
+   * isi akan menandai form "kotor" hanya karena balasan server tiba setelah
+   * tombol diklik. Yang boleh menyalakan flag ini hanya aksi user — lihat
+   * `markDirty` dan `editEdu`/`editJob`/`editFam`.
+   */
+  const [dirty, setDirty] = useState(false);
+  const markDirty = () => setDirty(true);
+  /**
+   * Pernahkah user menyentuh seksi repeater ini?
+   *
+   * Ref, bukan state: nilainya hanya dibaca oleh efek pemuat draf, dan
+   * menaikkannya ke state akan me-render ulang seluruh form pada setiap
+   * ketikan. Ketiga penulis di bawah adalah SATU-SATUNYA jalan masuk bagi aksi
+   * user — pemuat draf memakai `setEduList`/`setJobList`/`setFamList` langsung,
+   * jadi draf tidak bisa menandai dirinya sendiri sebagai "sudah diedit".
+   */
+  const eduEdited = useRef(false);
+  const jobEdited = useRef(false);
+  const famEdited = useRef(false);
+  const editEdu = (fn: (prev: EduRow[]) => EduRow[]) => { eduEdited.current = true; markDirty(); setEduList(fn); };
+  const editJob = (fn: (prev: JobRow[]) => JobRow[]) => { jobEdited.current = true; markDirty(); setJobList(fn); };
+  const editFam = (fn: (prev: FamRow[]) => FamRow[]) => { famEdited.current = true; markDirty(); setFamList(fn); };
   // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`.
   const [aiDown, setAiDown] = useState<string | null>(null);
   // C03 (2026-09-05): login gate pola MasterFullForm — backend minta sesi untuk
@@ -571,20 +585,24 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
         // membacanya dari balasan yang sama), lalu "Simpan" menuliskan kembali
         // array kosong itu ke `ai_data_json`.
         const rows = parseAiCvRows(res);
-        // Draf tidak pernah menimpa apa yang sudah diketik manusia: jalur
-        // kandidat sengaja TIDAK memblokir form selama draf dimuat
-        // (lihat `loadingDraft`), jadi balasannya bisa tiba setelah baris
-        // pertama diketik.
-        setEduList(prev => {
-          // Baris baku (jenjang sudah terisi) BUKAN data user — jadi draf tetap
-          // boleh menimpanya. Begitu user mengubah/menghapus apa pun, draf tidak
-          // lagi menimpa (aturan lama: ketikan manusia menang).
-          if (!eduListUntouched(prev)) return prev;
+        /* Draf tidak pernah menimpa apa yang sudah disentuh manusia: jalur
+           kandidat sengaja TIDAK memblokir form selama draf dimuat
+           (lihat `loadingDraft`), jadi balasannya bisa tiba setelah baris
+           pertama diketik.
+
+           GUARDNYA ADALAH "PERNAH DISENTUH", BUKAN "SEKARANG BERISI"
+           (diperbaiki 2026-10-30). Versi lama memakai `eduListUntouched` dan
+           `jobRowHasData`: begitu kandidat MENGOSONGKAN sebuah baris, baris itu
+           terlihat seperti baris baku yang belum disentuh — lalu draf yang
+           datang terlambat mengisinya kembali dengan nilai server. Itu persis
+           "sudah saya hapus, kok balik lagi" di layar, sebelum tombol Simpan
+           sempat ditekan. Ref hanya bisa dinyalakan oleh aksi user. */
+        if (!eduEdited.current) {
           const seeded = sortEduRows(rowsToState(rows.pendidikan, newEduRow));
-          return seeded.length ? seeded : prev;
-        });
-        setJobList(prev => (prev.some(jobRowHasData) ? prev : rowsToState(rows.pekerjaan, newJobRow)));
-        setFamList(prev => (prev.some(famRowHasData) ? prev : rowsToState(rows.keluarga, newFamRow)));
+          if (seeded.length) setEduList(seeded);
+        }
+        if (!jobEdited.current) setJobList(rowsToState(rows.pekerjaan, newJobRow));
+        if (!famEdited.current) setFamList(rowsToState(rows.keluarga, newFamRow));
         // 🔴 "Sudah ada" — helper berkas yang SUDAH terunggah (lapor pemilik
         // 2026-10-12: "bukannya auto filled helper bagi yg sudah upload ya?").
         // `docStatus` dulu HANYA diisi di `handleDocUpload`, jadi berkas yang
@@ -725,9 +743,9 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       if (Object.keys(patch).length > 0) setCv(prev => ({ ...prev, ...patch }));
       if (res.data) {
         const rowsPatch = res.data as Record<string, unknown>;
-        setEduList(l => applyAiCvRows('pendidikan', l, rowsPatch.pendidikan));
-        setJobList(l => applyAiCvRows('pekerjaan', l, rowsPatch.pekerjaan));
-        setFamList(l => applyAiCvRows('keluarga', l, rowsPatch.keluarga));
+        editEdu(l => applyAiCvRows('pendidikan', l, rowsPatch.pendidikan));
+        editJob(l => applyAiCvRows('pekerjaan', l, rowsPatch.pekerjaan));
+        editFam(l => applyAiCvRows('keluarga', l, rowsPatch.keluarga));
       }
       const n = Number(res.jumlah || 0);
       const sisa = Number(res.sisa || 0);
@@ -805,9 +823,9 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       // 学校名/会社名/続柄 tetap kosong — laporan pemilik 2026-10-29.
       if (data.data) {
         const rowsPatch = data.data as Record<string, unknown>;
-        setEduList(l => applyAiCvRows('pendidikan', l, rowsPatch.pendidikan));
-        setJobList(l => applyAiCvRows('pekerjaan', l, rowsPatch.pekerjaan));
-        setFamList(l => applyAiCvRows('keluarga', l, rowsPatch.keluarga));
+        editEdu(l => applyAiCvRows('pendidikan', l, rowsPatch.pendidikan));
+        editJob(l => applyAiCvRows('pekerjaan', l, rowsPatch.pekerjaan));
+        editFam(l => applyAiCvRows('keluarga', l, rowsPatch.keluarga));
       }
       if (data.suggestions && data.suggestions.length > 0) {
         setTimeout(() => setShowSuggestions(true), 500) /* SUGGESTION_DELAY_MS */;
@@ -847,6 +865,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
 
   const handleDocUpload = (type: string, file: File | null) => {
     if (!file) return;
+    markDirty();
     setDocs(prev => ({ ...prev, [type]: file }));
     setDocStatus(prev => ({ ...prev, [type]: file.name }));
     // Pratinjau LANGSUNG, sebelum Simpan: berkasnya masih di memori browser,
@@ -895,11 +914,16 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
   };
 
   /**
-   * Whether the last save finished. Kept as a plain boolean rather than inlined
-   * into the icon expression so the sprite scanner cannot mistake the `'done'`
-   * state value for a glyph name (see `SAVE_ICON_BUSY`).
+   * Whether the last save still describes the form on screen. Kept as a plain
+   * boolean rather than inlined into the icon expression so the sprite scanner
+   * cannot mistake the `'done'` state value for a glyph name (see
+   * `SAVE_ICON_BUSY`).
+   *
+   * `!dirty` is the load-bearing half: after a save the phase stays `'done'`,
+   * so without the flag the button would keep claiming "Tersimpan" over edits
+   * the server never received.
    */
-  const saveDone = savePhase === 'done';
+  const saveDone = savePhase === 'done' && !dirty;
 
   /**
    * Link CV AI untuk SATU kandidat (mode admin).
@@ -1056,6 +1080,12 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
            sebuah sekolah tidak pernah berlaku: kolom `pendidikan_N_*` yang lama
            tetap tinggal dan barisnya muncul lagi saat CV dibaca. */
         riwayatLengkap: true,
+        /* Seluruh field form dikirim di bawah ini, termasuk yang dikosongkan
+           kandidat. Tanpa flag ini server hanya MENAMBAH kolom (aturan lama:
+           jangan hapus, karena ekstraksi AI bisa parsial) — sehingga field yang
+           dihapus di sini hidup lagi di CV cetak dan saat form dibuka ulang,
+           karena pembaca master memprioritaskan KOLOM. */
+        formLengkap: true,
         identitas: {
           nama_lengkap: cv.nama, katakana: cv.katakana, panggilan: cv.panggilan,
           panggilan_katakana: cv.panggilan_katakana, tempat_lahir: cv.tmplahir,
@@ -1170,6 +1200,10 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       const data2 = await apiClient('submitDataAsj', [payload]);
       if (data2.success) {
         setSavePhase('done');
+        // Isi form PADA SAAT KLIK yang dikirim. Kalau kandidat mengetik selama
+        // unggahan, handler-nya menyalakan `dirty` lagi dan tombol langsung
+        // kembali ke "Simpan".
+        setDirty(false);
         showToast(t('toast.saved'), 'success');
         // Legacy left the button green and let the candidate see the result;
         // returning to idle immediately would make a second submit one click
@@ -1187,7 +1221,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
     }
   };
 
-  const updateCv = (field: string, value: string) => setCv(prev => ({ ...prev, [field]: value }));
+  const updateCv = (field: string, value: string) => { markDirty(); setCv(prev => ({ ...prev, [field]: value })); };
 
   /**
    * The only writer for a hand edit on the CV.
@@ -1206,6 +1240,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
    * paired identity field half-empty in the port.
    */
   const handleManualEdit = (field: string, value: string) => {
+    markDirty();
     setCv(prev => ({ ...prev, ...resolvePairEdit(field, value) }));
     setTouchedFields(prev => (prev.has(field) ? prev : new Set(prev).add(field)));
   };
@@ -1216,6 +1251,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
    * visibly attributable as one correction rather than two.
    */
   const handlePairEdit = (field: string, value: string) => {
+    markDirty();
     setCv(prev => ({ ...prev, ...resolvePairEdit(field, value) }));
     setTouchedFields(prev => {
       const next = new Set(prev).add(field);
@@ -1234,6 +1270,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
    * employer checks against documents.
    */
   const handleTglLahir = (value: string) => {
+    markDirty();
     setCv(prev => ({ ...prev, tgllahir: value, umur: ageFromIso(value) || prev.umur }));
     setTouchedFields(prev => (prev.has('tgllahir') ? prev : new Set(prev).add('tgllahir')));
   };
@@ -1453,13 +1490,13 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   prevents the duplicate write. */}
               <button type="button" onClick={saveToDatabase} disabled={savePhase !== 'idle' && savePhase !== 'done'}
                 aria-live="polite"
-                class={`${savePhase === 'done' ? 'bg-sky-600' : 'bg-emerald-600 hover:bg-emerald-500'} ${savePhase !== 'idle' && savePhase !== 'done' ? 'opacity-60 cursor-not-allowed' : ''} text-white text-[11px] md:text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg flex items-center gap-2`}>
+                class={`${saveDone ? 'bg-sky-600' : 'bg-emerald-600 hover:bg-emerald-500'} ${savePhase !== 'idle' && savePhase !== 'done' ? 'opacity-60 cursor-not-allowed' : ''} text-white text-[11px] md:text-xs font-bold px-4 py-2 rounded-lg transition shadow-lg flex items-center gap-2`}>
                 <Icon spin={savePhase === 'uploading' || savePhase === 'saving'}
                   name={saveDone ? SAVE_ICON_DONE : SAVE_ICON_BUSY} />
                 {savePhase === 'extCheck' ? t('ai_cv.btn_saving')
                   : savePhase === 'uploading' ? t('ai_cv.btn_uploading')
                     : savePhase === 'saving' ? t('ai_cv.btn_saving_db')
-                      : savePhase === 'done' ? t('ai_cv.btn_saved')
+                      : saveDone ? t('ai_cv.btn_saved')
                         : t('button.save_db')}
               </button>
               <button type="button" onClick={() => toggleLang()} class="bg-sky-600 hover:bg-sky-500 text-white text-[11px] md:text-xs font-bold px-3 py-2 rounded-lg transition shadow-lg">
@@ -1840,18 +1877,18 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               {eduList.map((edu, i) => (
                 <RepeaterRow key={edu.id} index={i} label={t('ai_cv.row_pendidikan')}
                   removable={eduList.length > 1}
-                  onRemove={() => setEduList(l => l.filter((_, j) => j !== i))}>
+                  onRemove={() => editEdu(l => l.filter((_, j) => j !== i))}>
                   <div class="grid grid-cols-2 gap-2">
                     <RowSelect label={t('ai_cv.row_tingkat')} id={`ai-edu-tingkat-${i}`} value={edu.tingkat}
                       options={levelOptions(edu.tingkat)}
-                      onChange={(v) => setEduList(l => sortEduRows(l.map((r, j) => j === i ? { ...r, tingkat: v } : r)))} />
+                      onChange={(v) => editEdu(l => sortEduRows(l.map((r, j) => j === i ? { ...r, tingkat: v } : r)))} />
                     <MonthYearField label={t('ai_cv.row_masuk')} id={`ai-edu-masuk-${i}`} value={edu.masuk}
                       yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
-                      onChange={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, masuk: v } : r))} />
+                      onChange={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, masuk: v } : r))} />
                     <Field label={t('ai_cv.row_sekolah')} id={`edu-sekolah-id-${i}`} value={edu.sekolah_id}
-                      onInput={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, sekolah_id: v } : r))} />
+                      onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, sekolah_id: v } : r))} />
                     <Field label={t('ai_cv.row_sekolah_jp')} id={`edu-sekolah-jp-${i}`} value={edu.sekolah_jp} jp
-                      onInput={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, sekolah_jp: v } : r))} />
+                      onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, sekolah_jp: v } : r))} />
                     {/* Jurusan memakai daftar resmi yang SAMA dengan CV Master
                         (MasterFullForm -> ManualSelect list JURUSAN), supaya kandidat
                         tidak mengetik bebas di satu form dan memilih di form lain —
@@ -1862,8 +1899,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                         jadi satu daftar tetap terbaca untuk SMK ke atas. */}
                     <ComboSelect label={t('ai_cv.row_jurusan')} id={`edu-jurusan-id-${i}`} value={edu.jurusan_id}
                       pairs={JURUSAN} placeholder={t('ai_cv.combo_hint')}
-                      onInput={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, jurusan_id: v } : r))}
-                      onPick={(v) => setEduList(l => l.map((r, j) => {
+                      onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, jurusan_id: v } : r))}
+                      onPick={(v) => editEdu(l => l.map((r, j) => {
                         if (j !== i) return r;
                         // Sama seperti jabatan: entri daftar mengisi kolom kanji,
                         // teks bebas membiarkan apa yang sudah ada (jangan dihapus).
@@ -1871,15 +1908,15 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                         return { ...r, jurusan_jp: jp || r.jurusan_jp };
                       }))} />
                     <Field label={t('ai_cv.row_jurusan_jp')} id={`edu-jurusan-jp-${i}`} value={edu.jurusan_jp} jp
-                      onInput={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, jurusan_jp: v } : r))} />
+                      onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, jurusan_jp: v } : r))} />
                     <MonthYearField label={t('ai_cv.row_lulus')} id={`ai-edu-lulus-${i}`} value={edu.lulus}
                       yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
-                      onChange={(v) => setEduList(l => l.map((r, j) => j === i ? { ...r, lulus: v } : r))} />
+                      onChange={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, lulus: v } : r))} />
                   </div>
                 </RepeaterRow>
               ))}
               {eduList.length < EDU_MAX && (
-                <button type="button" onClick={() => setEduList(l => [...l, newEduRow()])}
+                <button type="button" onClick={() => editEdu(l => [...l, newEduRow()])}
                   class="inline-flex items-center min-h-11 text-sky-400 text-[11px] font-bold mb-1">
                   <Icon name="plus" class="mr-1" />{t('ai_cv.row_tambah')}
                 </button>
@@ -1889,16 +1926,16 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               {jobList.map((job, i) => (
                 <RepeaterRow key={job.id} index={i} label={t('ai_cv.row_pekerjaan')}
                   removable={jobList.length > 1}
-                  onRemove={() => setJobList(l => l.filter((_, j) => j !== i))}>
+                  onRemove={() => editJob(l => l.filter((_, j) => j !== i))}>
                   <div class="grid grid-cols-2 gap-2">
                     <Field label={t('ai_cv.row_perusahaan')} id={`job-perusahaan-id-${i}`} value={job.perusahaan_id}
-                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, perusahaan_id: v } : r))} />
+                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, perusahaan_id: v } : r))} />
                     <Field label={t('ai_cv.row_perusahaan_jp')} id={`job-perusahaan-jp-${i}`} value={job.perusahaan_jp} jp
-                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, perusahaan_jp: v } : r))} />
+                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, perusahaan_jp: v } : r))} />
                     <ComboSelect label={t('ai_cv.row_jabatan')} id={`job-jabatan-id-${i}`} value={job.jabatan_id}
                       pairs={PEKERJAAN} placeholder={t('ai_cv.combo_hint')}
-                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, jabatan_id: v } : r))}
-                      onPick={(v) => setJobList(l => l.map((r, j) => {
+                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jabatan_id: v } : r))}
+                      onPick={(v) => editJob(l => l.map((r, j) => {
                         if (j !== i) return r;
                         const jp = v ? jpOf(PEKERJAAN, v) : '';
                         // A hit fills the kanji from the registry; free text
@@ -1908,29 +1945,29 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                         return { ...r, jabatan_jp: jp || r.jabatan_jp };
                       }))} />
                     <Field label={t('ai_cv.row_jabatan_jp')} id={`job-jabatan-jp-${i}`} value={job.jabatan_jp} jp
-                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, jabatan_jp: v } : r))} />
+                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jabatan_jp: v } : r))} />
                     <MonthYearField label={t('ai_cv.row_masuk')} id={`ai-job-masuk-${i}`} value={job.masuk}
                       yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
-                      onChange={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, masuk: v } : r))} />
+                      onChange={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, masuk: v } : r))} />
                     <MonthYearField label={t('ai_cv.row_keluar')} id={`ai-job-keluar-${i}`} value={job.keluar}
                       yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
-                      onChange={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, keluar: v } : r))} />
+                      onChange={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, keluar: v } : r))} />
                     <Field label={t('ai_cv.row_gaji')} id={`job-gaji-${i}`} value={job.gaji}
-                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, gaji: v } : r))} />
+                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, gaji: v } : r))} />
                     {/* ── 雇用形態 / 業種 / 備考 (migrasi 022) ─────────────── */}
                     <ComboSelect label="Status kerja (雇用形態)" id={`job-jenis-${i}`} value={job.jenis}
                       pairs={JENIS_KERJA_PAIRS} placeholder="ketik atau pilih"
-                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))}
-                      onPick={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))} />
+                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))}
+                      onPick={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))} />
                     <Field label="Bidang industri (業種)" id={`job-bidang-${i}`} value={job.bidang}
-                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, bidang: v } : r))} />
+                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, bidang: v } : r))} />
                     <Field label="Catatan kerja (備考)" id={`job-catatan-${i}`} value={job.catatan}
-                      onInput={(v) => setJobList(l => l.map((r, j) => j === i ? { ...r, catatan: v } : r))} />
+                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, catatan: v } : r))} />
                   </div>
                 </RepeaterRow>
               ))}
               {jobList.length < JOB_MAX && (
-                <button type="button" onClick={() => setJobList(l => [...l, newJobRow()])}
+                <button type="button" onClick={() => editJob(l => [...l, newJobRow()])}
                   class="inline-flex items-center min-h-11 text-sky-400 text-[11px] font-bold mb-1">
                   <Icon name="plus" class="mr-1" />{t('ai_cv.row_tambah')}
                 </button>
@@ -1940,43 +1977,43 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               {famList.map((fam, i) => (
                 <RepeaterRow key={fam.id} index={i} label={t('ai_cv.row_keluarga')}
                   removable={famList.length > 1}
-                  onRemove={() => setFamList(l => l.filter((_, j) => j !== i))}>
+                  onRemove={() => editFam(l => l.filter((_, j) => j !== i))}>
                   <div class="grid grid-cols-2 gap-2">
                     <PairSelect label={t('ai_cv.row_hubungan')} id={`fam-hubungan-${i}`} value={fam.hubungan_id}
                       pairs={HUBUNGAN_KELUARGA}
-                      onChange={(v) => setFamList(l => l.map((r, j) => {
+                      onChange={(v) => editFam(l => l.map((r, j) => {
                         if (j !== i) return r;
                         const jp = jpOf(HUBUNGAN_KELUARGA, v);
                         return { ...r, hubungan_id: v, hubungan_jp: jp || r.hubungan_jp };
                       }))} />
                     <Field label={t('ai_cv.row_nama')} id={`fam-nama-${i}`} value={fam.nama}
-                      onInput={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, nama: v } : r))} />
+                      onInput={(v) => editFam(l => l.map((r, j) => j === i ? { ...r, nama: v } : r))} />
                     <Field label={t('ai_cv.row_katakana')} id={`fam-katakana-${i}`} value={fam.katakana} jp
-                      onInput={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, katakana: v } : r))} />
+                      onInput={(v) => editFam(l => l.map((r, j) => j === i ? { ...r, katakana: v } : r))} />
                     <Field label={t('form.mf_usia')} id={`fam-umur-${i}`} value={fam.umur} unit="thn"
-                      onInput={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, umur: v } : r))} />
+                      onInput={(v) => editFam(l => l.map((r, j) => j === i ? { ...r, umur: v } : r))} />
                     <ComboSelect label={t('ai_cv.row_pekerjaan')} id={`fam-pekerjaan-id-${i}`} value={fam.pekerjaan_id}
                       pairs={PEKERJAAN} placeholder={t('ai_cv.combo_hint')}
-                      onInput={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, pekerjaan_id: v } : r))}
-                      onPick={(v) => setFamList(l => l.map((r, j) => {
+                      onInput={(v) => editFam(l => l.map((r, j) => j === i ? { ...r, pekerjaan_id: v } : r))}
+                      onPick={(v) => editFam(l => l.map((r, j) => {
                         if (j !== i) return r;
                         const jp = v ? jpOf(PEKERJAAN, v) : '';
                         return { ...r, pekerjaan_jp: jp || r.pekerjaan_jp };
                       }))} />
                     <Field label={t('ai_cv.row_gaji')} id={`fam-gaji-${i}`} value={fam.gaji}
-                      onInput={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, gaji: v } : r))} />
+                      onInput={(v) => editFam(l => l.map((r, j) => j === i ? { ...r, gaji: v } : r))} />
                     {/* ── 同居区分 / 電話 (migrasi 022) ────────────────────── */}
                     <ComboSelect label="Tinggal serumah? (同居)" id={`fam-tinggal-${i}`} value={fam.tinggal}
                       pairs={TINGGAL_PAIRS} placeholder="ketik atau pilih"
-                      onInput={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, tinggal: v } : r))}
-                      onPick={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, tinggal: v } : r))} />
+                      onInput={(v) => editFam(l => l.map((r, j) => j === i ? { ...r, tinggal: v } : r))}
+                      onPick={(v) => editFam(l => l.map((r, j) => j === i ? { ...r, tinggal: v } : r))} />
                     <Field label="No. HP anggota (電話)" id={`fam-hp-${i}`} value={fam.hp}
-                      onInput={(v) => setFamList(l => l.map((r, j) => j === i ? { ...r, hp: v } : r))} />
+                      onInput={(v) => editFam(l => l.map((r, j) => j === i ? { ...r, hp: v } : r))} />
                   </div>
                 </RepeaterRow>
               ))}
               {famList.length < FAM_MAX && (
-                <button type="button" onClick={() => setFamList(l => [...l, newFamRow()])}
+                <button type="button" onClick={() => editFam(l => [...l, newFamRow()])}
                   class="inline-flex items-center min-h-11 text-sky-400 text-[11px] font-bold mb-1">
                   <Icon name="plus" class="mr-1" />{t('ai_cv.row_tambah')}
                 </button>

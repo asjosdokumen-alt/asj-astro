@@ -358,6 +358,53 @@ describe('handleSubmitDataAsj — kolom skalar ikut ditulis, bukan hanya ai_data
     expect('mata_kiri' in body).toBe(false);
   });
 
+  /**
+   * Kebalikan dari tes di atas, dan itu SENGAJA: dua pemanggil yang berbeda.
+   *
+   * `formLengkap` hanya dikirim form CV AI / Form Master, yang memuat SELURUH
+   * field. Di sana kunci yang hadir tapi kosong berarti kandidat
+   * mengosongkannya, dan kolomnya HARUS ikut kosong — `buildMasterNested`
+   * membaca kolom lebih dulu, jadi kolom yang tidak pernah dikosongkan membuat
+   * field yang dihapus hidup lagi di CV cetak dan saat form dibuka ulang
+   * (keluhan pemilik 2026-10-30: "kok gak hilang").
+   */
+  it('formLengkap: kunci yang HADIR tapi kosong mengosongkan kolomnya', async () => {
+    const p = payloadRich();
+    (p[0] as Record<string, unknown>).formLengkap = true;
+    p[0].fisik = { tb: '170', topi: '', baju: '' } as never;
+    await handleSubmitDataAsj(p, 'tok-admin');
+    const body = masterWrite();
+    expect(body.tb).toBe('170');
+    expect(body.ukuran_topi).toBe('');
+    expect(body.ukuranbaju).toBe('');
+  });
+
+  it('formLengkap tetap TIDAK menyentuh kunci yang tidak dikirim sama sekali', async () => {
+    const p = payloadRich();
+    (p[0] as Record<string, unknown>).formLengkap = true;
+    p[0].medis = {} as never;
+    await handleSubmitDataAsj(p, 'tok-admin');
+    const body = masterWrite();
+    // Form parsial (mis. ekstraksi AI) tidak boleh menghapus apa pun — flag ini
+    // membedakan "dikosongkan user" dari "tidak ikut terkirim".
+    expect('mata_kiri' in body).toBe(false);
+    expect('merokok' in body).toBe(false);
+  });
+
+  it('baris pendidikan yang dihapus mengosongkan slot kolomnya', async () => {
+    // Separuh KEDUA dari "hapus tidak berlaku": kolom slot `pendidikan_N_*`
+    // yang tidak pernah dikosongkan akan digabungkan kembali dengan
+    // `ai_data_json` saat MEMBACA, jadi baris yang dihapus muncul lagi di CV.
+    const p = payloadRich();
+    (p[0] as Record<string, unknown>).riwayatLengkap = true;
+    (p[0] as Record<string, unknown>).pendidikan = [{ tingkat: 'SD', nama_sekolah: 'SDN 1' }];
+    await handleSubmitDataAsj(p, 'tok-admin');
+    const body = masterWrite();
+    expect(body.pendidikan_1_nama_sekolah).toBe('SDN 1');
+    expect(body.pendidikan_2_nama_sekolah).toBe('');
+    expect(body.pendidikan_5_nama_sekolah).toBe('');
+  });
+
   it('ai_data_json TETAP ditulis — kolom menambah, bukan menggantikan', async () => {
     await handleSubmitDataAsj(payloadRich(), 'tok-admin');
     const body = masterWrite();

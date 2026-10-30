@@ -480,7 +480,14 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
         // tidak pernah mengosongkan kolom yang sudah benar.
         // Masukannya `aiOut` (bukan `aiData`) supaya seksi yang DIPERTAHANKAN
         // dari baris lama — `kenalan_jepang` — ikut dipetakan ke kolomnya.
-        ...masterColumnsFromAi(aiOut),
+        //
+        // `formLengkap` (2026-10-30): form CV AI mengirim SELURUH field, jadi
+        // kunci yang kosong berarti kandidat MENGOSONGKANNYA. Tanpa flag itu
+        // `masterColumnsFromAi` hanya menambah (aturan lama: jangan hapus karena
+        // ekstraksi AI bisa parsial), dan kolom yang tidak pernah dikosongkan
+        // membuat `buildMasterNested` — yang membaca KOLOM lebih dulu —
+        // menghidupkan lagi field yang sudah dihapus kandidat.
+        ...masterColumnsFromAi(aiOut, d.formLengkap === true),
       };
       // Kolom slot riwayat. Jalur ini DULU tidak menulisnya sama sekali, jadi
       // sekolah/pekerjaan/keluarga yang dihapus di form tetap hidup di kolom

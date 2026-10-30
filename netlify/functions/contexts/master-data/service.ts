@@ -730,6 +730,10 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
  *      berbeda (`promosi_id` vs `promosi_diri`, `alergi_id` vs `alergi`).
  *   4. Kolom yang TIDAK ada di kontrak skema tidak boleh disebut di sini;
  *      `writeBodyFor` akan membuangnya dan mencatatnya sebagai drift.
+ *   5. `lengkap` = payload ini adalah SELURUH form, jadi kunci yang HADIR tapi
+ *      kosong berarti user MENGOSONGKANNYA dan kolomnya harus ikut dikosongkan.
+ *      Tanpa flag ini aturan 1 berlaku apa adanya (pemanggil parsial, mis.
+ *      ekstraksi AI, tidak boleh menghapus apa pun). Lihat `clearable` di bawah.
  */
 export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> = {
   identitas: [
@@ -857,7 +861,29 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
   ],
 };
 
-export function masterColumnsFromAi(aiData: unknown): Record<string, string> {
+/**
+ * `ai_data_json` (seksi bersarang) → kolom skalar `master_database_candidate`.
+ *
+ * @param lengkap Payload ini memuat SELURUH form (bukan kutipan parsial), jadi
+ *   kunci yang hadir tapi kosong berarti user menghapusnya.
+ *
+ * KENAPA `lengkap` ADA (2026-10-30, keluhan pemilik: *"sudah tersimpan saya
+ * keluar pencet rekhisou kok gak hilang"* dan *"balik ke cv ai terisi lagi"*):
+ *
+ * Aturan 1 di bawah benar untuk pemanggil PARSIAL (ekstraksi AI yang hanya
+ * menemukan separuh dokumen), tetapi form CV AI mengirim SEMUA field-nya —
+ * termasuk yang baru saja dikosongkan kandidat. Karena `buildMasterNested`
+ * membaca KOLOM lebih dulu (kolom = kebenaran mutlak), kolom yang tidak pernah
+ * dikosongkan membuat field yang dihapus hidup lagi di layar, di CV cetak, dan
+ * saat form dibuka ulang. Terukur pada `master_database_candidate.id = 127`
+ * (2026-10-30 09:49 UTC): `ai_data_json` sudah bersih, kolomnya masih berisi.
+ *
+ * Jadi flag ini bukan pelonggaran aturan 1 — ia MEMBEDAKAN dua pemanggil yang
+ * selama ini diperlakukan sama. Yang tidak mengirim flag tetap tidak menghapus
+ * apa pun; itu yang diuji `e2e/ai-cv-submit.test.ts` ("field AI yang KOSONG
+ * tidak mengosongkan kolom").
+ */
+export function masterColumnsFromAi(aiData: unknown, lengkap = false): Record<string, string> {
   const out: Record<string, string> = {};
   if (!aiData || typeof aiData !== 'object' || Array.isArray(aiData)) return out;
   const sections = aiData as Record<string, unknown>;
@@ -866,12 +892,22 @@ export function masterColumnsFromAi(aiData: unknown): Record<string, string> {
     if (!grp || typeof grp !== 'object' || Array.isArray(grp)) continue;
     const g = grp as Record<string, unknown>;
     for (const [col, ...aiKeys] of fields) {
+      let filled = false;
+      let present = false;
       for (const k of aiKeys) {
+        if (!Object.hasOwn(g, k) || g[k] === undefined) continue;
+        present = true;
         const val = g[k];
-        if (val === undefined || val === null) continue;
+        if (val === null) continue;
         const text = String(val).trim();
-        if (text !== '') { out[col] = text; break; }
+        if (text !== '') { out[col] = text; filled = true; break; }
       }
+      // Hadir tapi kosong + form lengkap ⇒ user mengosongkannya. Hanya kunci
+      // yang BENAR-BENAR ada di payload yang boleh menghasilkan `''`; kunci yang
+      // tidak dikirim sama sekali tetap tidak menyentuh kolom (aturan 1).
+      // `!(col in out)`: satu kolom bisa punya dua sumber (`no_coe` ada di
+      // identitas DAN sertifikasi) — nilai terisi tidak boleh ditimpa kosong.
+      if (!filled && present && lengkap && !(col in out)) out[col] = '';
     }
   }
   return out;
@@ -879,6 +915,14 @@ export function masterColumnsFromAi(aiData: unknown): Record<string, string> {
 
 export function buildMasterBody(d: any): Record<string, any> {
   const body: Record<string, any> = {};
+  /* `formLengkap` = payload ini adalah SELURUH form (Form Master mengirim semua
+     field-nya). Hanya kalau itu benar, field yang hadir tapi kosong boleh
+     mengosongkan kolomnya — kalau tidak, menghapus isi sebuah kotak di form
+     tidak pernah berlaku: `buildMasterNested` membaca KOLOM lebih dulu, jadi
+     nilai lama hidup lagi begitu form dibuka ulang. Keluhan pemilik 2026-10-30
+     ("dihapus, kok balik lagi") adalah persis ini. Pemanggil parsial
+     (`AdminAiCopilot`) tidak mengirim flag ⇒ perilakunya tidak berubah. */
+  const lengkap = d.formLengkap === true;
   for (const [from, to] of Object.entries(SNAKE_TO_CAMEL)) {
     if (d[from] !== undefined && d[from] !== null && d[from] !== '' && d[to] === undefined) d[to] = d[from];
   }
@@ -887,6 +931,7 @@ export function buildMasterBody(d: any): Record<string, any> {
   }
   for (const [from, col] of Object.entries(MASTER_COLUMN_MAP)) {
     if (d[from] !== undefined && d[from] !== null && d[from] !== '') body[col] = String(d[from]);
+    else if (lengkap && Object.hasOwn(d, from)) body[col] = '';
   }
   // Kolom slot riwayat: SATU implementasi, dipakai juga oleh jalur simpan CV AI
   // (`_lib/ai/cv.ts`) — lihat catatan di `buildRiwayatSlots`.

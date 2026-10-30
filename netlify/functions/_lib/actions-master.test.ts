@@ -67,6 +67,25 @@ describe('buildMasterBody — setiap kolom yang ditulis ADA di kontrak', () => {
     expect(body.keluarga_2_nama).toBe('B');
     expect(body.keluarga_5_nama).toBe('E');
   });
+
+  /* ── Menghapus isi sebuah kotak harus BENAR-BENAR menghapus ────────────────
+     Pemilik 2026-10-30: *"dihapus, kok balik lagi"*. `buildMasterNested`
+     membaca KOLOM lebih dulu, jadi selama `buildMasterBody` melewati nilai
+     kosong, field yang dikosongkan di form hidup lagi begitu form dibuka ulang
+     dan di CV cetak. `formLengkap` adalah pernyataan pemanggil bahwa payload
+     memuat SELURUH form — hanya kalau itu benar, kosong berarti dihapus. */
+  it('formLengkap: field yang dikirim KOSONG mengosongkan kolomnya', () => {
+    const body = buildMasterBody({ nama: 'BUDI', tb: '', bb: '', formLengkap: true });
+    expect(body.nama_lengkap).toBe('BUDI');
+    expect(body.tb).toBe('');
+    expect(body.bb).toBe('');
+  });
+
+  it('tanpa formLengkap, field kosong TIDAK menyentuh kolom (pemanggil parsial)', () => {
+    const body = buildMasterBody({ nama: 'BUDI', tb: '' });
+    expect(body.nama_lengkap).toBe('BUDI');
+    expect('tb' in body).toBe(false);
+  });
 });
 
 describe('buildAiOverflow — nilai form yang kolomnya tidak ada di tabel', () => {

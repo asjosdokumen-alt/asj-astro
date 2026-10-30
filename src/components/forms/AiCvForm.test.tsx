@@ -1128,6 +1128,61 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     expect(payload.identitas.status_nikah_jp).toBe('既婚');
   });
 
+  it('payload simpan menyatakan form LENGKAP — supaya field yang dikosongkan ikut terhapus', async () => {
+    // Tanpa dua flag ini server hanya MENAMBAH kolom, dan karena pembaca master
+    // memprioritaskan kolom, field yang dihapus kandidat hidup lagi di CV cetak
+    // (keluhan pemilik 2026-10-30: "kok gak hilang", "balik ke cv ai terisi
+    // lagi"). Flag-nya kontrak wire, jadi diuji di sini.
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+
+    const payload = savedPayload() as unknown as Record<string, unknown>;
+    expect(payload.formLengkap).toBe(true);
+    expect(payload.riwayatLengkap).toBe(true);
+  });
+
+  it('setelah simpan, mengedit field mengembalikan tombol ke "Simpan"', async () => {
+    // `savePhase` bertahan 'done' setelah simpan berhasil. Tanpa membandingkan
+    // isi form, tombolnya tetap berbunyi "Tersimpan" di atas edit yang belum
+    // pernah dikirim — persis yang membuat pemilik mengira perubahannya hilang.
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console
+    await waitFor(() => expect(screen.getByRole('button', { name: 'ai_cv.btn_saved' })).toBeTruthy());
+
+    fireEvent.input(document.getElementById('ai_nama') as HTMLInputElement, { target: { value: 'BUDI SANTOSO' } });
+
+    expect(screen.getByRole('button', { name: 'button.save_db' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'ai_cv.btn_saved' })).toBeNull();
+  });
+
+  it('baris yang disentuh lalu dikosongkan TIDAK diisi ulang oleh draf yang terlambat', async () => {
+    // Guard lama berbasis ISI (`eduListUntouched`): baris baku yang dikosongkan
+    // user terlihat sama dengan baris baku yang belum disentuh, jadi draf yang
+    // tiba belakangan mengisinya kembali. Guard sekarang berbasis "pernah
+    // disentuh", yang hanya bisa dinyalakan aksi user.
+    let resolveDraft: (v: unknown) => void = () => {};
+    vi.mocked(apiClient).mockImplementation(((action: string) => {
+      if (action === 'getDrafCvMaster') return new Promise((r) => { resolveDraft = r; });
+      return Promise.resolve({ success: true });
+    }) as never);
+    render(<AiCvForm />);
+
+    const sekolah = document.getElementById('ai_edu-sekolah-id-3') as HTMLInputElement;
+    fireEvent.input(sekolah, { target: { value: 'SMK SEMENTARA' } });
+    fireEvent.input(sekolah, { target: { value: '' } });
+
+    resolveDraft({ success: true, pendidikan: [{ tingkat: 'SMA/SMK', nama_sekolah: 'SMK DARI SERVER' }] });
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'getDrafCvMaster')).toBe(true));
+    // Satu tick supaya `.then` milik efek sempat jalan.
+    await waitFor(() => expect(screen.queryByDisplayValue('SMK DARI SERVER')).toBeNull());
+    expect(screen.queryByDisplayValue('SMK DARI SERVER')).toBeNull();
+  });
+
   /**
    * The owner's report, verbatim: *"ada ayah indo ayah jp padahal di tab
    * dropdownnya sudah ada pilihan dual bahasa jadi bikin noise saja, cukup 1
