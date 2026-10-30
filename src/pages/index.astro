@@ -781,12 +781,15 @@ import { GALLERY } from '../lib/gallery';
          review to make the grid look finished.
 
          THE ONE REAL NUMBER IS THE LISTING'S, NOT OURS. `REVIEW_SOURCE` carries
-         the Google rating (5.00) and review count (7), read from the live listing
-         on 2026-09-29. That is fine because it cites the platform's own public
-         figure rather than a claim we make up; §8's ban is on invented totals of
-         CANDIDATES / DEPARTURES / PARTNERS, not on citing a platform's own score.
-         The aggregate links to the live listing so a sceptical reader can check
-         it — a rating with no way to verify it is the shape to avoid. -->
+         the Google rating (4.8) and review count (20), re-read from the live
+         listing on 2026-10-31 — the earlier 5.0 / 7 was a snapshot from
+         2026-09-29 and had gone stale. That is fine because it cites the
+         platform's own public figure rather than a claim we make up; §8's ban is
+         on invented totals of CANDIDATES / DEPARTURES / PARTNERS, not on citing
+         a platform's own score. The aggregate links to the live listing so a
+         sceptical reader can check it — a rating with no way to verify it is the
+         shape to avoid. `checkedOn` is part of the data for that reason: a
+         rating is a measurement with a date, not a constant. -->
     <Section id="testimoni" labelledBy="testimoni-title" class="section-alt border border-line/30 rounded-panel" enter="rise">
       <SectionTitle
         titleKey="profile.review_title"
@@ -800,10 +803,24 @@ import { GALLERY } from '../lib/gallery';
            links out to the live listing. Renders even while the grid is empty:
            the rating is about the LISTING, and the listing already has reviews —
            hiding it until our own cards are filled would understate a fact that
-           is already public. -->
+           is already public.
+
+           WHY ONE STAR AND A NUMBER, NOT FIVE STARS. This used to be a literal
+           `★★★★★` beside a 4.8 — the page drew a perfect score next to a number
+           saying it was not. Drawing the fraction properly (4 solid + a 20%-pale
+           fifth) was implemented and MEASURED at the real 16.7px size: 20% of one
+           glyph is ~3px, and at that size all of 25/40/55/70% pale render
+           identically to five solid stars. A graphic that cannot be told apart
+           from the wrong claim must not be the thing making the claim.
+
+           So the number carries the precision and the star is a single glanceable
+           cue — which is also exactly how the source presents it: Google's own
+           place card reads "4.8 ★ (20)". `Stars` (ReviewGrid.tsx) still draws the
+           five-glyph row on the review CARDS, where a per-review rating is a
+           whole number and the row is therefore exact. -->
       <div class="u-surface-depth mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-card border border-line/40 bg-surface px-5 py-4">
         <span class="flex items-center gap-2">
-          <span class="flex gap-0.5 text-accent-amber text-card-title" aria-hidden="true">★★★★★</span>
+          <Icon name="star" class="text-accent-amber text-card-title" />
           <span class="text-card-title font-black text-fg">{REVIEW_SOURCE.rating.toFixed(1)}</span>
         </span>
         <span class="flex items-baseline gap-1 text-body-sm text-fg-muted">
@@ -1123,7 +1140,14 @@ import { GALLERY } from '../lib/gallery';
           which is also why `hl=id` is pinned inside `MAPS_EMBED_URL`.
 
           `referrerpolicy` is what Google's own embed dialog emits: send the
-          origin for cross-origin navigations, nothing on a downgrade. */}
+          origin for cross-origin navigations, nothing on a downgrade.
+
+          SINCE 2026-10-31 the frame resolves to the LISTING, not to a bare
+          coordinate: `MAPS_EMBED_URL` queries the place by name, so the card in
+          the corner carries the business name, the address, and Google's live
+          "4.8 ★ (20)". That card is the verification surface for the rating
+          `#testimoni` prints — see REVIEW_SOURCE in src/lib/testimonials.ts.
+          The coordinate form is kept in that file's comments as the fallback. */}
       <div class="mt-6 aspect-[4/3] sm:aspect-[16/9] overflow-clip rounded-panel border border-line/30">
         <iframe
           src={MAPS_EMBED_URL}

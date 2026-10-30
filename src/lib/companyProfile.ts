@@ -851,8 +851,31 @@ export const CONTACT_TIKTOK = 'amahsakurajp';
  * section's "Buka di Google Maps" button, the footer's GPS icon, and the
  * JSON-LD `hasMap` in BaseLayout.
  *
+ * ── 2026-10-31: THE LISTING EXISTS, AND THE SEARCH-BY-NAME FORM FINDS IT ────
+ * The 2026-10-20 note below concluded "there is no Google Maps place listing at
+ * this location". That conclusion was WRONG, and the owner disproved it by
+ * sending the listing URL:
+ *   https://www.google.com/maps/place/PT%2FLPK+AMANAH+SAKURA+JAPAN(+sekolah+bahasa+jepang+ponorogo)/
+ * What was true on 2026-10-20 is narrower: the `place_id:` we had does not
+ * resolve, and the COORDINATE form shows a bare pin with no business card. The
+ * listing itself was there — Google simply has no way to reach it from a
+ * coordinate, and our stored `place_id` was never its id.
+ *
+ * MEASURED TODAY in headless Chromium, the two forms side by side, same
+ * viewport, both inside an iframe (the embed refuses a top-level load):
+ *   q=<lat>,<lng>            -> red pin, NO name, NO rating, no place card
+ *   q=<listing name>         -> place card: name, full address, "4.8 ★ (20)",
+ *                               and a working "Buka di Maps" button
+ * The name form is therefore what this constant uses. It is also the more
+ * durable one: if the office moves, the owner edits the listing and the link
+ * follows, where a lat/lng pin would have to be edited here by hand.
+ *
+ * `MAPS_PLACE_QUERY` is the query string, kept separate so the link and the
+ * embed cannot drift apart — they must resolve to the same place, and the
+ * embed is what a visitor compares the rating against.
+ *
  * ── WHY `place_id:` WAS REMOVED (measured 2026-10-20, headless Chromium) ────
- * Until today this was `https://www.google.com/maps/place/?q=place_id:${PLACE_ID}`
+ * Until then this was `https://www.google.com/maps/place/?q=place_id:${PLACE_ID}`
  * and `PLACE_ID` was claimed to be the CID of the owner's own Maps URL. It does
  * not resolve. Measured: that URL redirects to
  *   https://www.google.com/maps/place//@-7.8646629,111.4454865,14z/…
@@ -862,27 +885,40 @@ export const CONTACT_TIKTOK = 'amahsakurajp';
  * address, so Google fell back to a coarse locality search.
  *
  * The same `place_id:` also breaks the map embed — see `MAPS_EMBED_URL` below.
- * Both failures have one cause: **there is no Google Maps place listing at this
- * location**, so a place_id has nothing to resolve to. `PLACE_ID` is kept only
- * as the value that was tried and measured dead; do NOT reintroduce it without
- * first re-creating the listing in Google Business Profile.
+ * `PLACE_ID` is kept only as the value that was tried and measured dead; it is
+ * NOT this listing's id. Do not reintroduce it.
  *
- * WHAT THE COORDINATE FORM GIVES (same measurement)
+ * WHAT THE COORDINATE FORM GIVES (measured 2026-10-20, still true 2026-10-31)
  *   https://www.google.com/maps/place/?q=-7.8560232,111.433092
  * lands on the pin at 7°51'21.7"S 111°25'59.1"E and shows the Plus Code
  * `4CVM+H6W Gandukepuh, Kabupaten Ponorogo, Jawa Timur` — the real place, with
- * working Rute/Simpan/Bagikan. It does NOT show a business name, because there
- * is no listing to show. That is the honest maximum until one is created.
+ * working Rute/Simpan/Bagikan, but NO business name and NO rating. Kept as
+ * documentation of the fallback, not used by any link.
  */
 export const PLACE_ID = 'ChIJVdybaAKfeS4RzVbekeKOhKE';
 export const MAPS_LAT = -7.8560232;
 export const MAPS_LNG = 111.433092;
-/** Google's Plus Code for the listing, the human-checkable pin of the same place.
- *  ⚠ The value here was `4CVM+C69`; Google's own card at these coordinates
- *  computes `4CVM+H6W` (2026-10-20). This constant is currently unused by any
- *  component — it is documentation only. Corrected to what Google prints. */
-export const MAPS_PLUS_CODE = '4CVM+H6W';
-export const CONTACT_MAPS_URL = `https://www.google.com/maps/place/?q=${MAPS_LAT},${MAPS_LNG}`;
+/**
+ * The listing's searchable name — the query both map surfaces resolve against.
+ *
+ * MEASURED 2026-10-31: `PT/LPK AMANAH SAKURA JAPAN Ponorogo` resolves to the
+ * place card. The legal-style prefix and the parenthetical on the listing's own
+ * name are both dropped here on purpose: the parenthetical contains a `(`/`)`
+ * pair that survives URL-encoding but makes the query brittle, and the shorter
+ * form already resolves to the same card (verified in the embed screenshot).
+ * If Google ever returns an ambiguous match, lengthen this toward the listing's
+ * exact name rather than switching back to coordinates.
+ */
+export const MAPS_PLACE_QUERY = 'PT/LPK AMANAH SAKURA JAPAN Ponorogo';
+/** Google's Plus Code as its own place card prints it for this listing —
+ *  `4CVM+C69` (measured 2026-10-31). ⚠ The value here used to be `4CVM+H6W`,
+ *  which is the code computed from our stored COORDINATES (2026-10-20); the
+ *  listing's pin sits a little away from them, so the two codes differ. The
+ *  listing's own card wins. This constant is unused by any component — it is
+ *  documentation only. */
+export const MAPS_PLUS_CODE = '4CVM+C69';
+export const CONTACT_MAPS_URL =
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(MAPS_PLACE_QUERY)}`;
 
 /**
  * The INTERACTIVE map in `#lokasi` — Google's own keyless embed, not a static
@@ -903,21 +939,37 @@ export const CONTACT_MAPS_URL = `https://www.google.com/maps/place/?q=${MAPS_LAT
  * the frame falls back to its default global viewport. `z` only applies to a
  * centre that resolved, so it is dropped with it.
  *
- * WHAT THE COORDINATE FORM GIVES (same measurement, same viewport)
+ * ── 2026-10-31: SWITCHED TO THE NAME QUERY, AND THE PIN GREW A PLACE CARD ───
+ * The coordinate form below still works, and it is still the right fallback.
+ * But the owner supplied the listing URL, and the name query resolves to the
+ * LISTING rather than to a point on the map. Measured today, same viewport,
+ * both inside an iframe:
+ *
+ *   q=-7.8560232,111.433092  -> red pin on the right street, NO name, NO rating
+ *   q=PT/LPK AMANAH SAKURA JAPAN Ponorogo
+ *                            -> place card: "PT/LPK AMANAH SAKURA JAPAN(
+ *                               sekolah bahasa jepang ponorogo)", the full
+ *                               address, "4.8 ★ (20)", and "Buka di Maps"
+ *
+ * The second is strictly more informative and is what ships now. It also means
+ * the rating shown on the page is Google's own live number rendered by Google —
+ * `REVIEW_SOURCE` in testimonials.ts carries a dated copy for no-JS readers,
+ * and the embed is the surface a visitor can check it against.
+ *
+ * WHAT THE COORDINATE FORM GIVES (measured 2026-10-20, re-confirmed 2026-10-31)
  *   https://www.google.com/maps?q=-7.8560232,111.433092&z=17&hl=id&output=embed
  * resolves to
  *   https://www.google.com/maps/embed?origin=mfe&pb=!1m3!2m1!1s-7.8560232,111.433092!6i17!3m1!1sid!5m1!1sid
  * and renders the red pin on **Jl. Kyai Ageng Musakaf / Jl. Kyai Ageng Mirah**,
- * Ponorogo, at street zoom, centred on load — the LPK's real location. That is
- * the "auto zoom in ke lokasi" behaviour: the frame arrives already aimed and
- * pinned, so a visitor only has to drift or pinch from there.
+ * Ponorogo, at street zoom, centred on load. Keep this in mind as the fallback:
+ * if the listing is ever renamed, the name query can start resolving to nothing
+ * or to the wrong place, and this form still lands on the right street.
  *
- * THE TRADE-OFF, STATED PLAINLY: a lat/lng pin will NOT follow the owner editing
- * a Google Business listing — it is a fixed point, and if the LPK moves this
- * constant must be edited by hand. Accepted, because the alternative resolves to
- * nothing and shows the whole planet. If a Maps listing is ever created, the
- * place card link can come back — but verify it in a browser first, which is
- * exactly the step that was skipped here.
+ * THE TRADE-OFF, STATED PLAINLY: the name query depends on the LISTING staying
+ * findable under that name, which is a thing Google can change without us. The
+ * coordinate form depends on nothing but itself, and shows no business card.
+ * Name now, coordinates as the documented fallback — and re-measure in a browser
+ * before switching either way, which is the step that was skipped in September.
  *
  * ── NO API KEY, AND THAT IS NOT AN OVERSIGHT ────────────────────────────────
  * This is the public embed surface, not the Maps JavaScript/Static APIs — the
@@ -931,4 +983,4 @@ export const CONTACT_MAPS_URL = `https://www.google.com/maps/place/?q=${MAPS_LAT
  * decided.
  */
 export const MAPS_EMBED_URL =
-  `https://www.google.com/maps?q=${MAPS_LAT},${MAPS_LNG}&z=17&hl=id&output=embed`;
+  `https://www.google.com/maps?q=${encodeURIComponent(MAPS_PLACE_QUERY)}&z=17&hl=id&output=embed`;

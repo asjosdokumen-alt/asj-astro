@@ -109,7 +109,27 @@ export const REVIEW_TOTAL = REVIEWS.length;
 
 /**
  * The aggregate shown above the grid: the rating and review count from our own
- * Google listing, MEASURED 2026-09-29 from the public listing (5.00 · 7 ulasan).
+ * Google listing.
+ *
+ * ── VERIFIED 2026-10-31, AND THE PREVIOUS FIGURES WERE STALE ────────────────
+ * Carried 5.00 · 7 since 2026-09-29, then sat under a "STILL UNVERIFIED" warning
+ * from 2026-10-20 because no listing could be found to check them against.
+ * The owner supplied the listing URL on 2026-10-31 and the listing card now
+ * renders it: **4.8 · 20 ulasan**. So the old pair was not merely unverified, it
+ * was wrong — the count had nearly tripled and the average had moved.
+ *
+ * HOW IT WAS READ (no API key, no scraping): Google's keyless embed, queried by
+ * the listing's NAME, renders the place card with the live average and count —
+ * `https://www.google.com/maps?q=PT%2FLPK+AMANAH+SAKURA+JAPAN+Ponorogo&output=embed`
+ * inside an iframe. That card is what `MAPS_EMBED_URL` now shows on the page, so
+ * a visitor can check these numbers against the same surface we read them from.
+ *
+ * WHY THE FIGURES ARE STILL COPIED HERE AT ALL, given they drift: the section
+ * needs a headline number that a no-JS reader and a crawler can see, and an
+ * iframe cannot supply that. `checkedOn` is the honesty valve — it dates the
+ * copy. Refresh it whenever the listing is re-read, and if the listing ever
+ * disappears set `rating`/`count` back to `null`: the null branches in
+ * index.astro and below degrade the block instead of printing a stale claim.
  *
  * WHY A SEPARATE OBJECT, NOT FIELDS ON EACH REVIEW. These numbers belong to the
  * LISTING, not to any one review, and they change on Google's side without us
@@ -120,11 +140,11 @@ export const REVIEW_TOTAL = REVIEWS.length;
 export const REVIEW_SOURCE = {
   label: 'Google Maps',
   /** Average rating on the listing, or `null` if not re-checked recently. */
-  rating: 5.0,
+  rating: 4.8,
   /** Number of reviews on the listing, or `null`. */
-  count: 7,
+  count: 20,
   /** When the figures above were last read from the live listing. */
-  checkedOn: '2026-09-29',
+  checkedOn: '2026-10-31',
   /**
    * The live listing they came from — the read-through for a curious visitor.
    *
@@ -135,18 +155,14 @@ export const REVIEW_SOURCE = {
    * about ("⚠ Keep BOTH call sites on this constant") and it was still missed,
    * because the warning named two call sites and there were three.
    *
-   * A reader clicking "Lihat di Google Maps" to CHECK the 5.0 · 7 figures was
-   * landing on Google's empty place card ("Tentang data ini" / "Tambahkan
-   * tempat") — a rating with no way to verify it, which is the shape the block
-   * above exists to avoid. It now points at the same constant as the `#lokasi`
-   * button and the footer GPS icon, so all three can never drift again.
+   * RESOLVED 2026-10-31, and the old warning is now obsolete: `CONTACT_MAPS_URL`
+   * searches the listing BY NAME, which does resolve, so this link opens the
+   * real place card — the same card the embed shows, with the same 4.8 · 20 on
+   * it. That is what makes the figures above checkable: a reader can arrive at
+   * the number from the number's own source. Still one constant, still three
+   * call sites (`#lokasi`, footer GPS, this link).
    *
-   * ⚠ STILL UNVERIFIED (2026-10-20): the coordinate form lands on the real place
-   * but shows no BUSINESS LISTING, so the 5.0 · 7 figures above could not be
-   * confirmed today either — not by this link, and not by `place_id:` in either
-   * the place-card or the embed surface. They are carried forward as measured on
-   * 2026-09-29 and must be re-checked by the owner before being trusted. If the
-   * listing genuinely does not exist, set `rating`/`count` back to `null` and the
+   * If the listing ever disappears, set `rating`/`count` back to `null` and the
    * block degrades itself — see the `null` branches here and in index.astro.
    */
   href: CONTACT_MAPS_URL,

@@ -298,6 +298,34 @@ Empat prefektur: **Miyazaki · Okayama · Nagano · Kagoshima.**
 > jumlah perusahaan mitra. Jangan menuliskan “50+ perusahaan Jepang” di halaman publik
 > sebelum pemilik menunjuk sumbernya.
 
+### 8b. Listing Google Maps dan ulasan — diperiksa 2026-10-31
+
+Pemilik mengirim URL listing pada 2026-10-31:
+
+```
+https://www.google.com/maps/place/PT%2FLPK+AMANAH+SAKURA+JAPAN(+sekolah+bahasa+jepang+ponorogo)/
+```
+
+**Kesimpulan 2026-10-20 ("tidak ada listing di lokasi ini") SALAH.** Yang benar:
+`place_id` yang kita simpan bukan id listing itu, dan bentuk koordinat memang tidak
+bisa menampilkan kartu bisnis. Listing-nya ada.
+
+| Yang diukur 2026-10-31 (embed tanpa kunci API, di dalam iframe) | Hasil |
+|---|---|
+| `q=<lat>,<lng>` | pin merah, TANPA nama, TANPA rating |
+| `q=PT/LPK AMANAH SAKURA JAPAN Ponorogo` | kartu tempat: nama, alamat lengkap, **4.8 ★ (20)**, tombol Buka di Maps |
+
+Angka yang dipublikasi (`REVIEW_SOURCE` di `src/lib/testimonials.ts`): **4.8 · 20
+ulasan**, `checkedOn: 2026-10-31`. Angka sebelumnya (5.00 · 7, diukur 2026-09-29)
+BASI — bukan cuma belum terverifikasi. Kalau listing dibaca ulang, perbarui
+`rating`/`count`/`checkedOn`; kalau listingnya hilang, set `null` (blok itu punya
+cabang `null`).
+
+**Kutipan ulasan tetap KOSONG dan itu disengaja.** Enam slot di `REVIEWS` masih
+`quote: null`; mengarang testimoni dilarang (aturan yang sama dengan larangan
+mengarang mitra). Untuk mengisinya, pemilik harus menyerahkan teks ulasan
+VERBATIM + nama peninjau + bintang — bukan diringkas dari tangkapan layar.
+
 ---
 
 ## 9. Keuntungan bekerja di Jepang

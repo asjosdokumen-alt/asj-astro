@@ -34,16 +34,69 @@ export interface Props {
 /** The label a slot shows while its quote is unknown, keyed so it localises. */
 const REVIEW_PENDING_KEY = 'profile.review_slot_pending';
 
-/** Filled stars for a rating, empty ones up to five. `null` renders no stars. */
-function Stars({ rating }: { rating: number | null }) {
-  if (rating === null) return null;
-  const filled = Math.max(0, Math.min(5, Math.round(rating)));
+/**
+ * One star filled to `fill` (0–1) of its own width.
+ *
+ * ── WHY THE FILL IS A GRADIENT AND NOT A CLIPPED BOX ────────────────────────
+ * This used to round, so a 4.8 rating drew FIVE solid stars — the markup claimed
+ * a perfect score the listing does not have. A rating is a measurement, and
+ * rounding it UP is the one direction that flatters us; rounding down to 4 would
+ * be just as wrong in the other direction. So the fraction is drawn.
+ *
+ * The first attempt wrapped the glyph in an `overflow: hidden` box 80% wide.
+ * Measured in Chromium that produced a star with its right arm sliced FLAT —
+ * which does not read as "4.8 out of 5", it reads as a broken glyph. Painting a
+ * two-stop gradient and clipping it to the text keeps the star's silhouette
+ * intact and puts the split where the rating says it is.
+ *
+ * ⚠ `currentColor` cannot be used inside the gradient: `bg-clip-text` requires
+ * `color: transparent` on the same element, so `currentColor` resolves to
+ * transparent and the star vanishes. The token is named explicitly instead.
+ */
+function Star({ fill }: { fill: number }) {
+  if (fill >= 1) return <span>★</span>;
+  const pct = Math.round(fill * 100);
+  // 0% — a full stop rather than a gradient at 0%, which some engines render as
+  // a hairline sliver of colour at the glyph's left edge.
+  if (pct <= 0) return <span class="opacity-25">★</span>;
   return (
-    <span class="flex gap-0.5 text-accent-amber" aria-hidden="true">
+    <span
+      class="bg-clip-text text-transparent"
+      style={{
+        backgroundImage:
+          `linear-gradient(90deg, var(--color-accent-amber) ${pct}%, ` +
+          `color-mix(in oklab, var(--color-accent-amber) 25%, transparent) ${pct}%)`,
+      }}
+    >
+      ★
+    </span>
+  );
+}
+
+/**
+ * Five stars for a rating — filled, fractionally filled, then empty. `null`
+ * renders no stars (an unfilled review slot has no rating to show).
+ *
+ * Used by the CARDS, where a per-review rating is a whole number and this row is
+ * therefore exact. The aggregate strip on the landing page deliberately does NOT
+ * use it: it shows one star and the number instead, because a five-glyph row at
+ * 16.7px cannot express a 4.8 (see the note in index.astro — measured, the
+ * fraction is ~3px and reads as five solid stars).
+ */
+function Stars({ rating, class: className }: { rating: number | null; class?: string }) {
+  if (rating === null) return null;
+  const clamped = Math.max(0, Math.min(5, rating));
+  const whole = Math.floor(clamped);
+  // Snap to one decimal so float noise (4.8 - 4 = 0.7999999) cannot produce a
+  // 79.99999% clip.
+  const fraction = Math.round((clamped - whole) * 10) / 10;
+  return (
+    <span
+      class={['flex gap-0.5 text-accent-amber', className ?? ''].filter(Boolean).join(' ')}
+      aria-hidden="true"
+    >
       {Array.from({ length: 5 }, (_, i) => (
-        <span key={i} class={i < filled ? 'opacity-100' : 'opacity-25'}>
-          ★
-        </span>
+        <Star key={i} fill={i < whole ? 1 : i === whole ? fraction : 0} />
       ))}
     </span>
   );
