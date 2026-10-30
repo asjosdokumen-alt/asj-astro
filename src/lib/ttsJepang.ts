@@ -390,11 +390,20 @@ export function buatPerekamAudio(opsi: {
     async mulai() {
       if (jalan) return null;
       if (g.isSecureContext === false) return 'tidak-aman';
-      const ambil = g.navigator?.mediaDevices?.getUserMedia;
-      if (typeof ambil !== 'function') return 'tidak-didukung';
+      /* 🔴 JANGAN memisahkan `getUserMedia` dari objeknya.
+         Versi sebelumnya menulis `const ambil = navigator.mediaDevices.getUserMedia`
+         lalu `await ambil({audio:true})`. Metode itu butuh `this` = MediaDevices,
+         jadi panggilan terpisah MELEMPAR di Chromium — terukur 2026-10-30 di
+         Chromium 130: `TypeError: Failed to execute 'getUserMedia' on
+         'MediaDevices': Illegal invocation`. `petakanGalat` memetakannya ke
+         'lain', sehingga pemilik hanya melihat pesan generik dan MIKROFON TIDAK
+         PERNAH MULAI MEREKAM — keluhan "masih gak bisa rekam suara". Dipanggil
+         sebagai properti (`md.getUserMedia(...)`) supaya `this` tetap benar. */
+      const md = g.navigator?.mediaDevices;
+      if (!md || typeof md.getUserMedia !== 'function') return 'tidak-didukung';
       let s: AliranAudio;
       try {
-        s = (await ambil({ audio: true })) as AliranAudio;
+        s = (await md.getUserMedia({ audio: true })) as AliranAudio;
       } catch (e) {
         return petakanGalat(e);
       }

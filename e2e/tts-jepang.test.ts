@@ -326,6 +326,35 @@ describe('rekam suara — kontrak jalur cadangan', () => {
     await expect(p.mulai()).resolves.toBe('tidak-aman');
   });
 
+  it('getUserMedia dipanggil sebagai METODE — `this` tidak boleh hilang', async () => {
+    /* Terukur 2026-10-30 di Chromium: `const f = navigator.mediaDevices.getUserMedia;
+       await f({audio:true})` melempar
+         TypeError: Failed to execute 'getUserMedia' on 'MediaDevices': Illegal invocation
+       Kode lama memisahkan metode itu dari objeknya, jadi setiap rekaman gagal
+       dengan alasan 'lain' (pesan generik) dan mikrofon TIDAK PERNAH menyala —
+       keluhan pemilik "masih gak bisa rekam suara". Stub di bawah meniru
+       perilaku Chromium: ia menolak kalau `this` bukan objeknya sendiri. */
+    const g = globalThis as G;
+    g.MediaRecorder = fakeMediaRecorder({ ok: true });
+    g.isSecureContext = true;
+    const mediaDevices = {
+      async getUserMedia(this: unknown) {
+        if (this !== mediaDevices) {
+          const e = new Error('Illegal invocation') as Error & { name: string };
+          e.name = 'TypeError';
+          throw e;
+        }
+        return { getTracks: () => [{ stop() {} }] };
+      },
+    };
+    g.navigator = { mediaDevices };
+    const p = buatPerekamAudio();
+    if (!p) throw new Error('perekam tidak dibuat');
+    await expect(p.mulai()).resolves.toBeNull();
+    expect(p.aktif()).toBe(true);
+    p.buang();
+  });
+
   it('berhasil mulai → aktif, dan hentikan mengembalikan blob + mime', async () => {
     const g = globalThis as G;
     g.MediaRecorder = fakeMediaRecorder({ ok: true });

@@ -150,8 +150,17 @@
 # ─── Security headers (2026-10-04) ───────────────────────────────────────────
 #
 # These are the headers that are pure wins: none of them can break a working
-# page. Measured before adding — the app uses no getUserMedia / mediaDevices /
-# geolocation anywhere under src/, so denying those APIs costs nothing.
+# page. Measured before adding — the app used no getUserMedia / mediaDevices /
+# geolocation anywhere under src/, so denying those APIs cost nothing.
+#
+# ⚠️ CORRECTION 2026-10-30: that measurement expired. `src/lib/ttsJepang.ts`
+# records audio for the mensetsu simulation (`/wawancara` → SimulasiMensetsu),
+# so `microphone=()` blocked `getUserMedia` in EVERY browser — the feature could
+# never work no matter what the code did (measured: NotAllowedError on
+# localhost:8888 with the header present, permission granted). The microphone is
+# now allowed for the SAME ORIGIN only (`(self)`); camera and geolocation stay
+# denied. If a future feature needs one of those, change it here deliberately —
+# do not drop the header.
 #
 # A Content-Security-Policy is deliberately ABSENT. Astro inlines boot scripts
 # and styles, so a CSP written without collecting violations on the real build
@@ -161,7 +170,7 @@
 #   X-Content-Type-Options     stops a mis-served upload being sniffed as HTML/JS
 #   X-Frame-Options            this site is never legitimately framed
 #   Referrer-Policy            job codes ride in URLs; don't leak them cross-origin
-#   Permissions-Policy         camera/mic/geolocation are unused — deny them
+#   Permissions-Policy         camera/geolocation denied; microphone = self (mensetsu)
 #   Strict-Transport-Security  HTTPS-only, and the site is HTTPS-only anyway
 [[headers]]
   for = "/*"
@@ -169,7 +178,7 @@
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "SAMEORIGIN"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Permissions-Policy = "camera=(), microphone=(self), geolocation=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
 
 # ─── REMOVED 2026-10-03: the `/candidate` → `/index.html` rewrite ────────────
