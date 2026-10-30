@@ -31,7 +31,7 @@
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { JIPA_BASE64 } from '../templates/jipa.b64';
-import { isGood } from '../../helpers_cv';
+import { isGood, kouritsuSekolah, tingkatSekolahJp } from '../../helpers_cv';
 import { buildXlsxForm, cvFileName, durasiJp, kanaJp, negatif, s } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
@@ -189,28 +189,7 @@ function tinggalJp(v: unknown): string {
   return '同居(t.l bersama)';
 }
 
-/** Tingkat sekolah → akhiran yang dipakai form (`… 小学校`). */
-function tingkatJp(v: unknown): string {
-  const t = s(v).toUpperCase();
-  if (/^SD|DASAR/.test(t)) return '小学校';
-  if (/^SMP|PERTAMA|MTS/.test(t)) return '中学校';
-  if (/^SMK|KEJURUAN/.test(t)) return '専門学校';
-  if (/^SMA|ATAS|^MA\b|MADRASAH ALIYAH/.test(t)) return '高校';
-  if (/UNIVERSITAS|^S1|SARJANA/.test(t)) return '大学';
-  return '';
-}
-
-/**
- * 国公私 — sekolah NEGERI = 公立, bukan 国立.
- *
- * 国立 berarti sekolah/kampus yang didirikan NEGARA (mis. 東京大学); SDN/SMPN/
- * SMAN didirikan pemerintah daerah, jadi istilah Jepangnya 公立. Dropdown form
- * KINKI memuat keduanya, dan sampai 2026-10-29 renderer menulis 国立 untuk semua
- * sekolah negeri — salah istilah di dokumen resmi.
- */
-function kouritsu(sekolah: string): string {
-  return /^(SDN|SMPN|SMAN|SMKN|MIN|MTSN|MAN|(SD|SMP|SMA|SMK)\s*NEGERI|NEGERI|SEKOLAH\s*NEGERI)/i.test(sekolah.trim()) ? '公立' : '私立';
-}
+/* (tingkatSekolahJp/kouritsuSekolah sekarang di helpers_cv — satu sumber untuk semua renderer.) */
 
 /**
  * Nilai sertifikat yang berarti "tidak ada" (`TIDAK`, `無`, `-`) JANGAN dicetak
@@ -294,7 +273,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`E${row}`] = lulus.y ? `${lulus.y}年` : '';
     cells[`F${row}`] = lulus.m ? `${lulus.m.padStart(2, '0')}月` : '';
     cells[`G${row}`] = isGood(sekolah)
-      ? [kouritsu(sekolah), sekolah, tingkatJp(p.tingkat)].filter(Boolean).join(' ')
+      ? [kouritsuSekolah(sekolah), sekolah, tingkatSekolahJp(p.tingkat)].filter(Boolean).join(' ')
       : '';
     cells[`K${row}`] = bersih(p.jurusan ?? p.jurusan_id);
   }

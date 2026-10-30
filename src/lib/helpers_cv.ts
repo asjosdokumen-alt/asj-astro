@@ -536,3 +536,74 @@ export function esc(str: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 }
+
+/* ── label sekolah untuk form Jepang (KINKI / JIPA / rirekisho) ─────────────
+ *
+ * Sebelum 2026-10-30 tiap renderer menyalin logika ini sendiri-sendiri, dan
+ * ketiganya berbeda diam-diam: `kouritsu()` ada dua kali (kinki.ts + jipa.ts),
+ * `tingkatJp()` hanya di jipa.ts, dan `jenjangKinki()` hanya di kinki.ts.
+ * Akibatnya satu jenjang bisa tercetak benar di satu form dan kosong di form
+ * lain — persis keluhan pemilik "masih banyak yang kosong dari template".
+ * Sekarang satu sumber, diuji langsung di `helpers_cv.test.ts`.
+ */
+
+/**
+ * Baris pendidikan yang merupakan LPK / kursus bahasa Jepang.
+ *
+ * `LPK` adalah nilai dropdown sejak 2026-10-30 (sebelumnya kandidat mengetik
+ * "BAHASA JEPANG" di kolom tingkat). Keduanya harus dikenali: kalau tidak,
+ * baris LPK dianggap sekolah biasa — di KINKI ia bahkan terpilih sebagai
+ * baris 高校 dan blok 日本語学校 dibiarkan kosong.
+ */
+export function isLpkTingkat(tingkat: unknown): boolean {
+  const t = String(tingkat ?? '').trim().toUpperCase();
+  if (!t) return false;
+  return /^LPK\b/.test(t) || t.includes('日本語') || t.includes('BAHASA JEPANG') || t.includes('KURSUS');
+}
+
+/**
+ * 国公私 — sekolah NEGERI = 公立, bukan 国立.
+ *
+ * 国立 dipakai untuk lembaga yang didirikan negara (mis. 東京大学); SDN/SMPN/
+ * SMAN didirikan pemerintah daerah, jadi istilahnya 公立. Dropdown form memuat
+ * 国立/公立/私立, jadi nilai yang salah tidak ditolak siapa pun — karena itu
+ * pemeriksaannya ada di sini.
+ */
+export function kouritsuSekolah(sekolah: unknown): string {
+  const s = String(sekolah ?? '').trim();
+  if (!s) return '';
+  return /^(SDN|SMPN|SMAN|SMKN|MIN|MTSN|MAN|(SD|SMP|SMA|SMK)\s*NEGERI|NEGERI|SEKOLAH\s*NEGERI)/i.test(s)
+    || /\bNEGERI\b/i.test(s)
+    ? '公立'
+    : '私立';
+}
+
+/** Jenjang sekolah dalam istilah Jepang, untuk kolom bebas (JIPA `G`). */
+export function tingkatSekolahJp(tingkat: unknown): string {
+  const t = String(tingkat ?? '').trim().toUpperCase();
+  if (!t) return '';
+  if (isLpkTingkat(t)) return '日本語学校';
+  if (/^SD|DASAR/.test(t)) return '小学校';
+  if (/^SMP|PERTAMA|MTS/.test(t)) return '中学校';
+  if (/^SMK|KEJURUAN/.test(t)) return '専門学校';
+  if (/^SMA|ATAS|^MA\b|MADRASAH ALIYAH/.test(t)) return '高校';
+  if (/UNIVERSITAS|^S[12]\b|SARJANA|DIPLOMA|^D[234]/.test(t)) return '大学';
+  return '';
+}
+
+/**
+ * 分類 学歴 untuk dropdown KINKI (`A19/A21`): 高校 / 専門 / 大学 / 日本語学校.
+ *
+ * `''` untuk jenjang yang TIDAK ada di daftar (SD/SMP): mencetak "高校: SDN …"
+ * untuk lulusan SD adalah klaim yang salah. Sel kosong lebih jujur — dan
+ * dropdown-nya memang tidak punya pilihan untuk itu.
+ */
+export function jenjangKinkiJp(tingkat: unknown): string {
+  const t = String(tingkat ?? '').trim().toUpperCase();
+  if (!t) return '';
+  if (isLpkTingkat(t)) return '日本語学校';
+  if (/SMA|SMK|ATAS|KEJURUAN/.test(t)) return '高校';
+  if (/UNIVERSITAS|^S[12]\b|SARJANA/.test(t)) return '大学';
+  if (/^D[234]|DIPLOMA/.test(t)) return '専門';
+  return '';
+}

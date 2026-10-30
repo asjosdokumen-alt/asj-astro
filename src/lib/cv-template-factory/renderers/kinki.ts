@@ -47,7 +47,7 @@
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { KINKI_BASE64 } from '../templates/kinki.b64';
-import { isGood } from '../../helpers_cv';
+import { isGood, isLpkTingkat, kouritsuSekolah, jenjangKinkiJp, sortEdu } from '../../helpers_cv';
 import { inferMbti, mbtiFromCode } from '../mbti';
 import { buildXlsxForm, cvFileName, durasiJp, excelSerial, kanaJp, negatif, s, yearMonth, type PhotoBox } from './xlsx-form';
 
@@ -212,33 +212,6 @@ function durasi(masuk: unknown, lulus: unknown): string {
   return tahun > 0 ? `${tahun}年` : '';
 }
 
-/**
- * 国公私 — dropdown: 国立/公立/私立.
- *
- * Sekolah NEGERI = **公立**, bukan 国立: 国立 dipakai untuk lembaga yang
- * didirikan negara (mis. 東京大学), sedangkan SDN/SMPN/SMAN didirikan pemerintah
- * daerah. Sampai 2026-10-29 renderer ini menulis 国立 untuk semua sekolah
- * negeri — salah istilah, dan dropdown form memuat keduanya sehingga tidak ada
- * yang menolaknya.
- */
-function kouritsu(sekolah: string): string {
-  return /^(SDN|SMPN|SMAN|SMKN|MIN|MTSN|MAN|SMK\s*NEGERI|SMA\s*NEGERI|NEGERI|SEKOLAH\s*NEGERI)/i.test(sekolah.trim()) ? '公立' : '私立';
-}
-
-/**
- * 分類 学歴 untuk baris 19 — dropdown `A19/A21`: 高校/専門/大学/日本語学校.
- *
- * `''` untuk jenjang yang TIDAK ada di daftar (SD/SMP). Mencetak
- * "高校: SDN …" untuk lulusan SD adalah klaim yang salah, dan itulah yang
- * terjadi sebelum 2026-10-29 saat baris SMA tidak ditemukan.
- */
-function jenjangKinki(tingkat: string): string {
-  const t = tingkat.toUpperCase();
-  if (/SMA|SMK|ATAS|KEJURUAN/.test(t)) return '高校';
-  if (/UNIVERSITAS|^S[12]\b|SARJANA/.test(t)) return '大学';
-  if (/^D[234]|DIPLOMA/.test(t)) return '専門';
-  return '';
-}
 
 /**
  * 雇用形態 — dropdown: 正社員/契約社員/アルバイト/インターン/家業/自営業/公務員/無職.
@@ -410,18 +383,21 @@ export function buildValues(data: CandidateData): Record<string, string> {
   const levelJp = bersih(data.sertifikasi.level_bahasa_jepang) || jepangLevel(data.sertifikasi.jft ?? id.jft);
   cells.I3 = levelJp;
 
-  /* ── pendidikan: baris 19 = SMA/SMK, baris 21 = 日本語学校 ──────────────── */
-  const edu = data.pendidikan as Record<string, unknown>[];
-  const idxSma = edu.findIndex((p) => /SMA|SMK|ATAS|KEJURUAN/i.test(s(p.tingkat)));
-  const idxLpk = edu.findIndex((p) => /日本語|BAHASA JEPANG/i.test(s(p.tingkat)));
-  /* Cadangan: baris TERTINGGI non-LPK, bukan `edu[edu.length - 1]` buta.
-     Daftar pendidikan sudah kronologis, jadi baris terakhir non-LPK adalah
-     jenjang tertinggi — dan labelnya mengikuti jenjang itu, bukan `高校`
-     yang dipatok. Dulu kandidat yang hanya punya SD tercetak sebagai
-     "高校: SDN …". */
-  const nonLpk = edu.filter((_, i) => i !== idxLpk);
-  const sma = (idxSma >= 0 ? edu[idxSma] : nonLpk[nonLpk.length - 1]) ?? {};
-  const jenjang = idxSma >= 0 ? '高校' : jenjangKinki(s(sma.tingkat));
+  /* ── pendidikan: baris 19 = PENDIDIKAN TERAKHIR, baris 21 = 日本語学校 ────
+     Baris 19 memakai jenjang TERTINGGI yang terisi (bukan selalu SMA/SMK):
+     lulusan S1 yang mencetak “高校: SMAN 1” di formulir resmi adalah klaim
+     yang salah, dan itu yang terjadi sampai 2026-10-30. Baris kosong di
+     ekor daftar (slot 5 yang tidak dipakai) dilewati, karena dulu baris
+     terakhir yang KOSONG membuat seluruh blok 学歴 dibersihkan. */
+  // Diurutkan menurut JENJANG dulu: "pendidikan terakhir" hanya benar kalau
+  // daftarnya memang naik. Baris dari Form Master mengikuti urutan slot, dan
+  // slot bisa diisi tidak berurutan.
+  const edu = sortEdu((data.pendidikan || []) as Record<string, unknown>[]);
+  const idxLpk = edu.findIndex((p) => isLpkTingkat(p.tingkat));
+  const nonLpk = edu.filter((p, i) => i !== idxLpk
+    && isGood(bersih(s(p.sekolah ?? p.nama_sekolah ?? p.sekolah_id))));
+  const sma = nonLpk[nonLpk.length - 1] ?? {};
+  const jenjang = jenjangKinkiJp(s(sma.tingkat));
   const sekolah = bersih(sma.sekolah ?? sma.nama_sekolah ?? sma.sekolah_id);
   const jurusan = bersih(sma.jurusan ?? sma.jurusan_id);
   if (isGood(sekolah)) {
@@ -431,7 +407,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells.H19 = durasi(sma.masuk ?? sma.tahun_masuk, sma.lulus ?? sma.tahun_lulus);
     // 地域 — kolom `wilayah_sekolah` (migrasi 022). Dulu selalu dikosongkan.
     cells.J19 = bersih(id.wilayah_sekolah);
-    cells.M19 = kouritsu(sekolah);
+    cells.M19 = kouritsuSekolah(sekolah);
     cells.O19 = sekolah;
     // Strip atas mencetak `専攻` dengan `=W19`. Sel kosong membuatnya `0`, jadi
     // kolom ini memakai `-` seperti sel lain yang memang belum ada isinya.
@@ -448,7 +424,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells.D21 = ym(lpk.masuk ?? lpk.tahun_masuk);
     cells.E22 = isGood(s(lpk.lulus ?? lpk.tahun_lulus)) ? ym(lpk.lulus ?? lpk.tahun_lulus) : '今まで';
     cells.H21 = durasi(lpk.masuk ?? lpk.tahun_masuk, lpk.lulus ?? lpk.tahun_lulus);
-    cells.M21 = kouritsu(sekolahLpk);
+    cells.M21 = kouritsuSekolah(sekolahLpk);
     cells.O21 = sekolahLpk;
     cells.W21 = '日本語';
   } else {

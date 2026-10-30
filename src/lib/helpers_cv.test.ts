@@ -18,6 +18,10 @@ import {
   esc,
   normalisasiRiwayat,
   normalizeRiwayatFor,
+  isLpkTingkat,
+  kouritsuSekolah,
+  tingkatSekolahJp,
+  jenjangKinkiJp,
   getTingkatVal,
   sortByTingkat,
   periodeKey,
@@ -466,5 +470,54 @@ describe('periodeKey / sortRiwayatKronologis', () => {
       ],
     );
     expect(out.map((x) => x.n)).toEqual(['A', 'B']);
+  });
+});
+
+/* ── label sekolah untuk form Jepang ─────────────────────────────────────────
+   Pemilik 2026-10-30: *"masih banyak yg kosong dari template … riwayat sekolah
+   kan harus pendidikan terakhir sama LPK dan kayak negri swasta nya gak dipilih
+   dari dropdown padahal ada"*. Dua sebab terukur:
+     1. baris LPK dikenali dari teks tingkat ('BAHASA JEPANG'); setelah `LPK`
+        menjadi nilai dropdown, baris itu TIDAK lagi dikenali sebagai LPK —
+        di KINKI ia terpilih sebagai baris 高校 dan blok 日本語学校 dibiarkan
+        kosong;
+     2. 国公私 hanya ditebak dari awalan nama sekolah, sehingga sekolah negeri
+        yang namanya tidak berawalan SDN/SMPN/SMAN (mis. MADRASAH ALIYAH
+        NEGERI) tercetak 私立. */
+describe('label sekolah Jepang — LPK, 国公私, dan jenjang', () => {
+  it('isLpkTingkat mengenali LPK (dropdown baru) DAN ejaan lama', () => {
+    expect(isLpkTingkat('LPK')).toBe(true);
+    expect(isLpkTingkat('LPK AMANAH SAKURA')).toBe(true);
+    expect(isLpkTingkat('BAHASA JEPANG')).toBe(true);
+    expect(isLpkTingkat('KURSUS')).toBe(true);
+    expect(isLpkTingkat('SMA/SMK')).toBe(false);
+    expect(isLpkTingkat('S1')).toBe(false);
+    expect(isLpkTingkat('')).toBe(false);
+  });
+
+  it('kouritsuSekolah: negeri = 公立 (bukan 国立), sisanya 私立', () => {
+    expect(kouritsuSekolah('SDN 1 MADIUN')).toBe('公立');
+    expect(kouritsuSekolah('SMA NEGERI 1')).toBe('公立');
+    expect(kouritsuSekolah('MADRASAH ALIYAH NEGERI 2')).toBe('公立');
+    expect(kouritsuSekolah('SMK AMANAH SAKURA JAPAN')).toBe('私立');
+    expect(kouritsuSekolah('')).toBe('');
+  });
+
+  it('tingkatSekolahJp (JIPA): LPK = 日本語学校', () => {
+    expect(tingkatSekolahJp('LPK')).toBe('日本語学校');
+    expect(tingkatSekolahJp('SD')).toBe('小学校');
+    expect(tingkatSekolahJp('SMK')).toBe('専門学校');
+    expect(tingkatSekolahJp('SMA/SMK')).toBe('高校');
+    expect(tingkatSekolahJp('S1')).toBe('大学');
+    expect(tingkatSekolahJp('')).toBe('');
+  });
+
+  it('jenjangKinkiJp (KINKI A19/A21): LPK = 日本語学校, SMK = 高校', () => {
+    expect(jenjangKinkiJp('LPK')).toBe('日本語学校');
+    expect(jenjangKinkiJp('SMK')).toBe('高校');
+    expect(jenjangKinkiJp('S1')).toBe('大学');
+    expect(jenjangKinkiJp('D3')).toBe('専門');
+    // SD/SMP tidak ada di dropdown → kosong, bukan diklaim 高校.
+    expect(jenjangKinkiJp('SMP')).toBe('');
   });
 });
