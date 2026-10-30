@@ -390,10 +390,11 @@ ikut harus diperbarui:
 | `PEKERJAAN_PERTANIAN`| 19      | (internal)       | petani/peternak per komoditas (2026-10-30)  |
 | `PEKERJAAN_TAMBAHAN` | 71      | (internal)       | pekerjaan Indonesia yang belum ada          |
 | `PEKERJAAN`          | **115** | `MasterFullForm`, `AiCvForm` | 25 + 19 + 71, nilai unik 115/115 |
+| `JURUSAN_LPK`        | 2       | (internal)       | bahasa Jepang LPK (2026-10-30)              |
 | `JURUSAN_SMK`        | 53      | (internal)       | termasuk `TEKNIK KOMPUTER & JARINGAN (TKJ)` |
 | `JURUSAN_SMA`        | 6       | (internal)       | termasuk `IPA (MIPA)`                       |
 | `JURUSAN_KULIAH`     | 35      | (internal)       | program kuliah                              |
-| `JURUSAN`            | **94**  | `MasterFullForm` | 53 + 6 + 35, nilai unik 94/94               |
+| `JURUSAN`            | **96**  | `MasterFullForm`, `AiCvForm` | 2 + 53 + 6 + 35, nilai unik 96/96 |
 | `HUBUNGAN_LEGACY`    | 7       | (internal)       | **UPPERCASE** sesuai legacy                 |
 | `HUBUNGAN_TAMBAHAN`  | 12      | (internal)       | kakek/nenek/paman/bibi/…                    |
 | `HUBUNGAN_KELUARGA`  | **31**  | `MasterFullForm` | 7 + 12 berjenis kelamin + 12 tambahan       |
