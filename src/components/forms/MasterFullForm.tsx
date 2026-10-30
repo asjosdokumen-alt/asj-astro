@@ -19,7 +19,7 @@ import {
   YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, BAHASA_JEPANG, valuesOf,
   JENIS_KERJA_PAIRS, TINGGAL_PAIRS, VISA_JEPANG, STATUS_TINGGAL_JP,
   LEVEL_BAHASA_JEPANG, STATUS_BELAJAR_JP, LAMA_BELAJAR_JP, LEVEL_INGGRIS,
-  OLAHRAGA, MBTI_TIPE, BULAN_SIM, PROVINSI,
+  OLAHRAGA, MBTI_TIPE, BULAN_SIM, PROVINSI, SSW_BIDANG,
   SENTINEL_LAINNYA, withOther, withEmpty, selectState, resolveOther,
 } from '../../lib/opsi-form';
 import type { Opsi } from '../../lib/opsi-form';
@@ -71,29 +71,17 @@ interface MasterData {
 }
 
 /* ── Bidang SSW (Tokutei Ginou) ──────────────────────────────────────────
-   PARITY: legacy master_full.ts `SSW_LIST` — 16 bidang resmi di Indonesia.
+   PARITY: legacy master_full.ts `SSW_LIST` — 16 bidang resmi, ditambah
+   `LIVESTOCK` (畜産) dan tiga bidang yang dibuka 2024–2025.
    Value = nama Inggris (inilah yang DISIMPAN ke DB), label = nama + kanji.
    Sebelumnya form ini memakai daftar kode `AA…AU` yang salah: kandidat bisa
    menyimpan nilai yang bukan bidang SSW mana pun, dan nilai itu tidak akan
-   pernah cocok dengan data legacy. */
-const SSW_OPTIONS: Array<[string, string]> = [
-  ['KAIGO', 'KAIGO (介護)'],
-  ['BUILDING CLEANING', 'BUILDING CLEANING (ビルクリーニング)'],
-  ['FOUNDRY & PLASTIC', 'FOUNDRY & PLASTIC (素形材産業)'],
-  ['INDUSTRIAL MACHINERY', 'INDUSTRIAL MACHINERY (産業機械製造業)'],
-  ['ELECTRIC & ELECTRONIC', 'ELECTRIC & ELECTRONIC (電気・電子情報)'],
-  ['CONSTRUCTION', 'CONSTRUCTION (建設)'],
-  ['SHIPBUILDING', 'SHIPBUILDING (造船・舶用工業)'],
-  ['AUTOMOBILE REPAIR', 'AUTOMOBILE REPAIR (自動車整備)'],
-  ['AVIATION', 'AVIATION (航空)'],
-  ['ACCOMMODATION', 'ACCOMMODATION (宿泊)'],
-  ['AGRICULTURE', 'AGRICULTURE (農業)'],
-  ['FISHERY', 'FISHERY (漁業)'],
-  ['FOOD & BEVERAGE', 'FOOD & BEVERAGE (飲食料品製造業)'],
-  ['RESTAURANT', 'RESTAURANT (外食業)'],
-  ['FORESTRY', 'FORESTRY (林業)'],
-  ['WOOD INDUSTRY', 'WOOD INDUSTRY (木材産業)'],
-];
+   pernah cocok dengan data legacy.
+
+   ⚠ Daftarnya TIDAK lagi dideklarasikan di sini (2026-10-30): `SSW_BIDANG` di
+   `lib/opsi-form.ts` adalah pemiliknya, dan CV AI memakai daftar yang sama.
+   Dua salinan sebelumnya sudah berbeda — yang di CV AI tanpa label kanji. */
+const SSW_OPTIONS = SSW_BIDANG;
 
 /** Sentinel "ketik manual" — legacy memakai `__LAINNYA__`, BUKAN 'Lainnya'. */
 const SSW_SENTINEL = '__LAINNYA__';

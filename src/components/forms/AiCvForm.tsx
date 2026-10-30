@@ -26,6 +26,7 @@ import {
   YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, JENIS_KERJA_PAIRS, TINGGAL_PAIRS,
   VISA_JEPANG, STATUS_TINGGAL_JP, LEVEL_BAHASA_JEPANG, STATUS_BELAJAR_JP,
   LAMA_BELAJAR_JP, LEVEL_INGGRIS, OLAHRAGA, MBTI_TIPE, BULAN_SIM, PROVINSI,
+  SSW_BIDANG, UJIAN_JP,
   labelJp, pairDisplay, type Opsi,
 } from '../../lib/opsi-form';
 import { levelOptions, sortEduRows } from '../../lib/cvRows';
@@ -333,12 +334,10 @@ const DOC_UPLOAD_SOURCES: [string, string][] = [
   ['ijazahSma', 'ijazahSma'],
   ['univ', 'univ'],
 ];
-const SSW_OPTIONS = [
-  'KAIGO', 'BUILDING CLEANING', 'FOUNDRY & PLASTIC', 'INDUSTRIAL MACHINERY',
-  'ELECTRIC & ELECTRONIC', 'CONSTRUCTION', 'SHIPBUILDING', 'AUTOMOBILE REPAIR',
-  'AVIATION', 'ACCOMMODATION', 'AGRICULTURE', 'FISHERY', 'FOOD & BEVERAGE',
-  'RESTAURANT', 'FORESTRY', 'WOOD INDUSTRY',
-];
+/* Daftar bidang SSW TIDAK lagi dideklarasikan di sini: `SSW_BIDANG` di
+   `lib/opsi-form.ts` sekarang pemiliknya, dan form CV Master memakai daftar
+   yang sama. Sebelumnya ada dua salinan — yang di sini tanpa label kanji — dan
+   menambah satu bidang berarti dua suntingan. */
 
 /* Enum fields (gender, agama, goldar, …) no longer keep their option lists here.
    They are `<PairSelect>`s over the registry in `lib/aiCvPairs.ts`, which is the
@@ -1569,24 +1568,22 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               <div class="col-span-full mt-2 mb-0.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-400/80">
                 Dokumen &amp; Perjalanan
               </div>
+              {/* ── Kelompok PASPOR ─────────────────────────────────────────
+                  Pemilik 2026-10-30: *"mana yg tgl terbit paspor tempat
+                  penerbitan sim visa gak jelas bikin binggung yg isi"*.
+
+                  Sebelum ini tiga tanggal + satu kota berdiri tanpa judul,
+                  tepat DI BAWAH kotak SIM, dan labelnya hanya "Tgl Terbit" /
+                  "Tgl Expired" / "Kota Penerbitan" — tidak ada satu pun yang
+                  menyebut paspor. Wajar kalau terbaca sebagai tanggal SIM.
+                  Sekarang tiap dokumen punya judulnya sendiri, dan labelnya
+                  menyebut dokumennya secara eksplisit. */}
+              <div class="col-span-full mt-1 mb-0 text-[10px] font-bold uppercase tracking-wide text-slate-300">
+                {t("ai_cv.group_paspor")}
+              </div>
               <StatusNumber label={t("form.mf_no_paspor")} statusLabel={t("form.mf_paspor_status")}
                 status={cv.paspor_status} value={cv.paspor} statusKey="paspor_status" valueKey="paspor"
                 ph={t("form.mf_ph_no_paspor")} basis="38%" span={2} onChange={handleManualEdit} />
-              {/* `span={2}` matches the sibling StatusNumber above (`paspor`).
-                  MEASURED (2026-09-25): without it this field occupied ONE of the
-                  `md:grid-cols-5` tracks — 73.7px at 768 and 140.25px at 1280 —
-                  and the status `<select>` refuses to shrink below its widest
-                  option ("TIDAK ADA (無)", min-content 117px), which squeezed the
-                  number input to 10px and 19.3px. Two tracks gives 155.4/288.5px,
-                  i.e. the same box `paspor` already has. */}
-              <StatusNumber label={t("form.mf_sim")} statusLabel={t("form.mf_sim_status")}
-                status={cv.sim_status} value={cv.sim} statusKey="sim_status" valueKey="sim"
-                ph={t("form.mf_ph_no_sim")} basis="42%" span={2} onChange={handleManualEdit} />
-              {/* Rencana ambil SIM = 5 track terakhir di baris ini; ia memang
-                  pasangan `SIM` di sebelahnya. Nilainya ANGKA bulan (1–12) —
-                  renderer menambahkan sendiri "…月取得予定". */}
-              <PairSelect label="Rencana ambil SIM (取得予定)" id="rencana_sim" value={cv.rencana_sim} pairs={BULAN_SIM}
-                onChange={(v) => handleManualEdit('rencana_sim', v)} />
               {/* PARITAS FORM MASTER (2026-10-25) — tiga kolom paspor yang hanya
                   ada di sana. Tanpa ini kandidat VIP (yang hanya lewat CV AI)
                   tidak punya jalan mengisi data pemberkasan, dan kolomnya tetap
@@ -1596,15 +1593,47 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               <Field label={t("form.mf_exp")} id="exp_paspor" value={cv.exp_paspor} type="date"
                 touched={touchedFields.has('exp_paspor')} onInput={(v) => handleManualEdit('exp_paspor', v)} />
               <Field label={t("form.mf_kota_paspor")} id="kota_paspor" value={cv.kota_paspor}
+                ph="mis. SURABAYA"
                 touched={touchedFields.has('kota_paspor')} onInput={(v) => handleManualEdit('kota_paspor', v)} />
+
+              {/* ── Kelompok SIM ────────────────────────────────────────────
+                  Hanya status + nomor/kelas + rencana pengambilan. Tanggal
+                  terbit/expired TIDAK ditanyakan di sini karena kolomnya tidak
+                  ada di database; yang dicetak form Jepang adalah kelas SIM
+                  dan bulan rencana ambil (…月取得予定). */}
+              <div class="col-span-full mt-1 mb-0 text-[10px] font-bold uppercase tracking-wide text-slate-300">
+                {t("ai_cv.group_sim")}
+              </div>
+              {/* `span={2}` matches the sibling StatusNumber above (`paspor`).
+                  MEASURED (2026-09-25): without it this field occupied ONE of the
+                  `md:grid-cols-5` tracks — 73.7px at 768 and 140.25px at 1280 —
+                  and the status `<select>` refuses to shrink below its widest
+                  option ("TIDAK ADA (無)", min-content 117px), which squeezed the
+                  number input to 10px and 19.3px. Two tracks gives 155.4/288.5px,
+                  i.e. the same box `paspor` already has.
+                  `spanMd={3}` + rencana `2` = PERSIS 5 track di md, sesuai aturan
+                  tata letak seksi ini (tidak ada baris berlubang). */}
+              <StatusNumber label={t("form.mf_sim")} statusLabel={t("form.mf_sim_status")}
+                status={cv.sim_status} value={cv.sim} statusKey="sim_status" valueKey="sim"
+                ph={t("form.mf_ph_no_sim")} basis="42%" span={2} spanMd={3} onChange={handleManualEdit} />
+              {/* Rencana ambil SIM berdampingan dengan kotak SIM-nya, bukan di
+                  baris lain: nilainya ANGKA bulan (1–12) — renderer menambahkan
+                  sendiri "…月取得予定". */}
+              <PairSelect label="Rencana ambil SIM (取得予定)" id="rencana_sim" value={cv.rencana_sim} pairs={BULAN_SIM}
+                span={2} onChange={(v) => handleManualEdit('rencana_sim', v)} />
+
+              {/* ── Kelompok VISA & RIWAYAT ───────────────────────────────── */}
+              <div class="col-span-full mt-1 mb-0 text-[10px] font-bold uppercase tracking-wide text-slate-300">
+                {t("ai_cv.group_visa")}
+              </div>
               {/* ビザ種類 (JIPA `E54`) — dropdown, karena jawabannya berulang dan
                   salah ketik satu huruf membuat sel form tidak sah. Teks bebas
                   tetap bisa diketik (ComboSelect) untuk visa di luar daftar. */}
               <ComboSelect label="Visa Jepang (ビザ種類)" id="visa" value={cv.visa} pairs={VISA_JEPANG}
-                placeholder="ketik atau pilih"
+                placeholder="ketik atau pilih" span={2} spanMd={3}
                 onInput={(v) => handleManualEdit('visa', v)} onPick={(v) => handleManualEdit('visa', v)} />
               <Field label="Negara lain (渡航経験)" id="negara_lain" value={cv.negara_lain}
-                ph="Malaysia 2019"
+                ph="Malaysia 2019" span={2} spanMd={2}
                 touched={touchedFields.has('negara_lain')} onInput={(v) => handleManualEdit('negara_lain', v)} />
             </div>
           </Section>
@@ -1744,23 +1773,29 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   touched={touchedFields.has('bhs_jepang')} onInput={(v) => handleManualEdit('bhs_jepang', v)} />
                 <Field label={t("cv.field_nilai_jp")} id="nilai" value={cv.nilai}
                   touched={touchedFields.has('nilai')} onInput={(v) => handleManualEdit('nilai', v)} />
-                <Field label={t("cv.field_lisensi_ssw")} id="lisensi" value={cv.lisensi} list="ai_ssw_options"
-                  touched={touchedFields.has('lisensi')} onInput={(v) => handleManualEdit('lisensi', v)} />
+                {/* Lisensi SSW = daftar TERTUTUP (20 bidang resmi). Dulu ia
+                    `<input list=…>` dengan `<datalist>`: di ponsel datalist
+                    hanya menampilkan beberapa baris sekaligus dan tidak bisa
+                    dicari, sehingga pemilik melaporkan "ssw ternak juga gak
+                    ada" padahal daftarnya ada di belakang. ComboSelect memberi
+                    satu kotak yang bisa DIKETIK maupun DIPILIH, dan daftarnya
+                    difilter saat mengetik — termasuk "ternak"/"畜産". */}
+                <ComboSelect label={t("cv.field_lisensi_ssw")} id="lisensi" value={cv.lisensi} pairs={SSW_BIDANG}
+                  placeholder="ketik atau pilih"
+                  onInput={(v) => handleManualEdit('lisensi', v)} onPick={(v) => handleManualEdit('lisensi', v)} />
                 {/* PARITAS: Form Master punya lisensi SSW KEDUA (`lisensi2`) dan
                     kolom `no_coe`. Keduanya tidak ada di sini, jadi kandidat yang
                     punya dua bidang SSW kehilangan yang kedua — dan nilai itu
                     dulu juga tidak punya kolom sama sekali (migrasi 019
                     menambahkan `bidangssw2`). */}
-                <Field label={t("form.mf_ssw2")} id="lisensi2" value={cv.lisensi2} list="ai_ssw_options"
-                  touched={touchedFields.has('lisensi2')} onInput={(v) => handleManualEdit('lisensi2', v)} />
+                <ComboSelect label={t("form.mf_ssw2")} id="lisensi2" value={cv.lisensi2} pairs={SSW_BIDANG}
+                  placeholder="ketik atau pilih"
+                  onInput={(v) => handleManualEdit('lisensi2', v)} onPick={(v) => handleManualEdit('lisensi2', v)} />
                 <Field label={t("form.mf_no_coe")} id="no_coe" value={cv.no_coe}
                   touched={touchedFields.has('no_coe')} onInput={(v) => handleManualEdit('no_coe', v)} />
               </div>
               <datalist id="ai_jft_options">
                 {BAHASA_JEPANG.map(o => <option key={o} value={o} />)}
-              </datalist>
-              <datalist id="ai_ssw_options">
-                {SSW_OPTIONS.map(o => <option key={o} value={o} />)}
               </datalist>
               {/* ── Bahasa & sertifikat tambahan (migrasi 022) ─────────────────
                   Dicetak KINKI (T37 学習期間, T39 学習状況, I4 第…課中, Q41 英語,
@@ -1784,12 +1819,12 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 <Field label="Bahasa lain (その他)" id="bahasa_lain" value={cv.bahasa_lain}
                   ph="Mandarin dasar"
                   touched={touchedFields.has('bahasa_lain')} onInput={(v) => handleManualEdit('bahasa_lain', v)} />
-                <div class="col-span-2 md:col-span-3">
-                  <Field label="Sertifikat lain (他資格)" id="sertifikat_lain" value={cv.sertifikat_lain}
-                    ph="mis. 簿記3級 (2023), 調理師 (2022)"
-                    hint="Sertifikat di luar JLPT / SSW / SIM. Pisahkan dengan koma."
-                    touched={touchedFields.has('sertifikat_lain')} onInput={(v) => handleManualEdit('sertifikat_lain', v)} />
-                </div>
+                {/* Dulu satu kotak teks "Sertifikat lain (他資格)" dengan
+                    contoh "JLPT / JFT (2023)". Sekarang baris terstruktur:
+                    ujian dari daftar + bulan/tahun lulus, ditambah kotak untuk
+                    sertifikat yang tidak ada di daftar. Lihat `UjianRepeater`. */}
+                <UjianRepeater value={cv.sertifikat_lain}
+                  onChange={(v) => handleManualEdit('sertifikat_lain', v)} />
                 {/* 地域 — KINKI `J19`. Dulu ditaruh di seksi Identitas dan
                     menggantung sendirian di barisnya sendiri; tempatnya di sini,
                     bersama riwayat sekolah. */}
@@ -2454,10 +2489,20 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
           onInput={(e) => {
             const text = (e.target as HTMLInputElement).value;
             onInput(text);
-            // An exact hit resolves the pair immediately; anything else marks the
-            // JP half manual by reporting no match.
+            // An exact hit resolves the pair immediately (it fills the kanji
+            // column from the registry). A MISS must NOT report anything.
+            //
+            // ⚠ This used to call `onPick('')` on every non-matching keystroke.
+            // That is a no-op for `jabatan` (whose onPick only writes the JP
+            // column), but it is destructive for every field whose onInput and
+            // onPick write the SAME key — `visa`, `olahraga`, `job.jenis`,
+            // `fam.tinggal`, `lama_belajar_jp`. There, each keystroke set the
+            // field to the typed text and then immediately cleared it back to
+            // '', so the box could not be typed into at all: the owner's
+            // "ketik atau pilih" field that only accepted a pick. Measured
+            // 2026-10-30 — see the ComboSelect test in AiCvForm.test.tsx.
             const hit = pairs.find(([v]) => v === text.trim());
-            onPick(hit ? hit[0] : '');
+            if (hit) onPick(hit[0]);
             setQuery(text);
             setOpen(true); setActive(-1);
           }}
@@ -2497,6 +2542,161 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
   );
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   UJIAN & TANGGAL LULUS (JFT / JLPT / SSW / …)
+   ══════════════════════════════════════════════════════════════════════════
+
+   Pemilik 2026-10-30: *"tolong masukkan dropdown semua prometric ujian yg bisa
+   di indo id-jp nya beserta kasih tgl lulus nya tahun bulan lulus jft ssw
+   dsb"*.
+
+   Kenapa baris terstruktur, bukan satu kotak teks: tanggal lulus adalah data
+   yang dibaca sisi Jepang (資格の合格年月), dan teks bebas "JFT lulus 2024"
+   tidak bisa diurutkan, disaring, atau dicetak ke kolom tanggal. `UJIAN_JP`
+   (`lib/opsi-form.ts`) memuat ujian yang memang punya pusat uji di Indonesia —
+   JFT-Basic dan seluruh 技能測定試験 SSW lewat CBT Prometric, JLPT lewat ujian
+   kertas — ditambah bidang SSW yang diturunkan dari `SSW_BIDANG`, jadi menambah
+   satu bidang di sana langsung menambah ujiannya di sini.
+
+   Penyimpanan: `master_database_candidate.sertifikat_lain` (他資格). Kolom ini
+   sudah dicetak JIPA/Firma/rirekisho, jadi tidak perlu migrasi baru — tetapi
+   ia hanya teks, sehingga baris ujian ditulis dalam format yang bisa dibaca
+   BALIK oleh form ini:
+
+       JFT-BASIC（国際交流基金日本語基礎テスト） — lulus 2024-03 (nilai 120)
+       簿記3級 (2023)                        ← baris lain dipertahankan apa adanya
+
+   Baris yang tidak cocok pola itu TIDAK dihapus: ia masuk kotak "sertifikat
+   lain" di bawah dan disusun ulang sesudah baris ujian. Itu penting karena
+   kolom yang sama sudah dipakai sebelum fitur ini ada. */
+
+interface UjianRow { id: number; nama: string; lulus: string; nilai: string }
+
+const newUjianRow = (): UjianRow => ({ id: nextRowId(), nama: '', lulus: '', nilai: '' });
+
+const UJIAN_MAX = 6;
+
+/** Satu baris ujian → satu baris teks yang tercetak di CV. */
+function ujianLine(r: UjianRow): string {
+  const exam = UJIAN_JP.find(([v]) => v === r.nama);
+  const nama = exam ? pairDisplay(exam[0], exam[1]) : r.nama.trim();
+  if (!nama) return '';
+  const lulus = r.lulus ? ` — lulus ${r.lulus}` : '';
+  const nilai = r.nilai.trim() ? ` (nilai ${r.nilai.trim()})` : '';
+  return `${nama}${lulus}${nilai}`;
+}
+
+/** Balik dari teks tersimpan ke baris. Baris asing dikembalikan di `sisa`. */
+const UJIAN_RE = /^(.+?)\s+—\s+lulus\s+(\d{4})-(\d{2})(?:\s+\(nilai\s+([^)]*)\))?\s*$/;
+
+function parseUjian(text: string): { rows: UjianRow[]; sisa: string } {
+  const rows: UjianRow[] = [];
+  const sisa: string[] = [];
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = UJIAN_RE.exec(line);
+    if (!m) { sisa.push(line); continue; }
+    const display = m[1].trim();
+    const hit = UJIAN_JP.find(([v, l]) => pairDisplay(v, l) === display);
+    rows.push({ id: nextRowId(), nama: hit ? hit[0] : display, lulus: `${m[2]}-${m[3]}`, nilai: m[4] ?? '' });
+  }
+  return { rows, sisa: sisa.join('\n') };
+}
+
+function composeUjian(rows: UjianRow[], sisa: string): string {
+  const lines = rows.map(ujianLine).filter(Boolean);
+  if (sisa.trim()) lines.push(sisa.trim());
+  return lines.join('\n');
+}
+
+/**
+ * Repeater ujian. Nilainya SATU string (`sertifikat_lain`), jadi komponen ini
+ * menyimpan baris hasil uraian dan menulis ulang seluruh string pada tiap
+ * perubahan. `last` mencegah efek di bawah menimpa baris yang sedang diketik:
+ * efek hanya jalan kalau `value` berubah dari LUAR (draf dimuat, AI mengisi),
+ * bukan karena tulisan komponen ini sendiri.
+ */
+function UjianRepeater({ value, onChange }: { value: string; onChange: (text: string) => void }) {
+  const [rows, setRows] = useState<UjianRow[]>(() => {
+    const p = parseUjian(value);
+    return p.rows.length ? p.rows : [newUjianRow()];
+  });
+  const [sisa, setSisa] = useState(() => parseUjian(value).sisa);
+  const last = useRef(value);
+
+  useEffect(() => {
+    if (value === last.current) return;
+    const p = parseUjian(value);
+    setRows(p.rows.length ? p.rows : [newUjianRow()]);
+    setSisa(p.sisa);
+    last.current = value;
+  }, [value]);
+
+  const commit = (next: UjianRow[], nextSisa: string) => {
+    setRows(next);
+    setSisa(nextSisa);
+    const text = composeUjian(next, nextSisa);
+    last.current = text;
+    onChange(text);
+  };
+  const patch = (i: number, part: Partial<UjianRow>) =>
+    commit(rows.map((r, j) => (j === i ? { ...r, ...part } : r)), sisa);
+
+  return (
+    <div class="col-span-2 md:col-span-3">
+      <div class="text-[11px] text-[#e2e8f0] mb-1">
+        Ujian &amp; tanggal lulus (資格・合格年月)
+      </div>
+      <div class="text-[10px] text-slate-400 mb-1.5">
+        JFT-Basic dan ujian keterampilan SSW dilaksanakan CBT Prometric di Indonesia; JLPT ujian kertas.
+        Pilih ujiannya, lalu isi bulan &amp; tahun lulus.
+      </div>
+      {rows.map((r, i) => (
+        <RepeaterRow key={r.id} index={i} label="Ujian"
+          removable={rows.length > 1}
+          onRemove={() => commit(rows.filter((_, j) => j !== i), sisa)}>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="col-span-2">
+              <ComboSelect label="Jenis ujian" id={`ujian-nama-${i}`} value={r.nama} pairs={UJIAN_JP}
+                placeholder="ketik atau pilih (mis. JFT, JLPT N4, SSW)"
+                onInput={(v) => patch(i, { nama: v })} onPick={(v) => patch(i, { nama: v })} />
+            </div>
+            <MonthYearField label="Lulus (合格)" id={`ai-ujian-lulus-${i}`} value={r.lulus}
+              yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
+              onChange={(v) => patch(i, { lulus: v })} />
+            <Field label="Nilai / skor" id={`ujian-nilai-${i}`} value={r.nilai}
+              ph="mis. 120/180"
+              onInput={(v) => patch(i, { nilai: v })} />
+          </div>
+        </RepeaterRow>
+      ))}
+      {rows.length < UJIAN_MAX && (
+        /* Label sendiri, BUKAN `ai_cv.row_tambah`: seksi ini dirender SEBELUM
+           seksi pendidikan, jadi tombol berlabel sama akan menjadi elemen
+           pertama yang dicari tes form (`getAllByText('ai_cv.row_tambah')[0]`)
+           dan tes itu lalu menambah baris UJIAN, bukan baris sekolah. */
+        <button type="button" onClick={() => commit([...rows, newUjianRow()], sisa)}
+          class="inline-flex items-center min-h-11 text-sky-400 text-[11px] font-bold mb-1">
+          <Icon name="plus" class="mr-1" />{t('ai_cv.row_tambah_ujian')}
+        </button>
+      )}
+      <div class="mt-1">
+        <label class="block text-[11px] text-[#e2e8f0] mb-0.5" for="ai_sertifikat_lain_sisa">
+          Sertifikat lain di luar daftar (他資格)
+        </label>
+        <p class="text-[11px] text-fg-subtle leading-tight mb-1">
+          Satu sertifikat per baris. Teks di sini disimpan bersama baris ujian di atas — tidak ada yang hilang.
+        </p>
+        <textarea id="ai_sertifikat_lain_sisa" rows={2} value={sisa}
+          onInput={(e) => commit(rows, (e.target as HTMLTextAreaElement).value)}
+          class="input-micro w-full bg-slate-800 border border-slate-600 rounded p-1 text-[12px] text-white resize-y"
+          placeholder="mis. 簿記3級 (2023), 調理師 (2022)" />
+      </div>
+    </div>
+  );
+}
+
 /*
  * There used to be a `JpField` here — a free-text input for the kanji half of a
  * paired column (gender/agama/status/kenalan relation/kenalan occupation).
@@ -2526,14 +2726,19 @@ function ComboSelect({ label, id, value, pairs, placeholder, onInput, onPick, sp
  * ("—"), nomor tidak pernah dihapus diam-diam, dan `TIDAK ADA` hanya
  * mengosongkan nomor bila kandidat/admin memang memilihnya.
  */
-function StatusNumber({ label, statusLabel, status, value, statusKey, valueKey, ph, basis, span, onChange }: {
+function StatusNumber({ label, statusLabel, status, value, statusKey, valueKey, ph, basis, span, spanMd, onChange }: {
   label: string; statusLabel: string; status: string; value: string;
-  statusKey: string; valueKey: string; ph: string; basis: string; span?: number;
+  statusKey: string; valueKey: string; ph: string; basis: string; span?: number; spanMd?: number;
   onChange: (field: string, value: string) => void;
 }) {
   // Status tersimpan menang; kalau belum ada, turunkan dari ada/tidaknya nomor.
   const shown = status || (value ? 'ADA' : '');
   const numberHidden = shown === 'TIDAK ADA';
+  // `span` untuk grid 2 kolom di ponsel, `spanMd` untuk grid 5 kolom di md.
+  // Dipisah karena `col-span-3` TANPA prefiks akan memaksa kolom ketiga di
+  // grid 2 kolom — yaitu baris yang melebar keluar layar di ponsel.
+  const spanClass = span === 2 ? 'col-span-2' : '';
+  const mdSpanClass = spanMd === 3 ? 'md:col-span-3' : spanMd === 2 ? 'md:col-span-2' : '';
   // Dibangun per-render, bukan di module scope: t() membaca langStore saat
   // dipanggil, jadi array module-level akan membeku di bahasa saat import.
   const options = [
@@ -2542,7 +2747,7 @@ function StatusNumber({ label, statusLabel, status, value, statusKey, valueKey, 
     { value: 'TIDAK ADA', label: t('form.mf_status_tidak_ada') },
   ];
   return (
-    <div class={span === 2 ? 'col-span-2' : ''}>
+    <div class={`${spanClass} ${mdSpanClass}`}>
       <label class="block text-[11px] text-[#e2e8f0] mb-0.5" for={`ai_${statusKey}`}>{label}</label>
       <div class="flex gap-1">
         <select id={`ai_${statusKey}`} value={shown} aria-label={statusLabel}

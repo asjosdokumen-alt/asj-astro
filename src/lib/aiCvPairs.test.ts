@@ -171,10 +171,15 @@ describe('aiCvPairs — lookups', () => {
 describe('aiCvPairs — PEKERJAAN, the shared occupation list', () => {
   it('offers every occupation, with a Japanese gloss on each', () => {
     // The owner's report was "jenis pekerjaan ... kok dikit". The list is not
-    // short (100 rows); what was missing was any test that the whole set is
-    // reachable. A truncated or half-glossed entry would print a CV with an
-    // occupation in Indonesian only, which the employer cannot read.
-    expect(PEKERJAAN.length).toBe(100);
+    // short (115 rows since 2026-10-30; 100 before the petani/peternak split);
+    // what was missing was any test that the whole set is reachable. A
+    // truncated or half-glossed entry would print a CV with an occupation in
+    // Indonesian only, which the employer cannot read.
+    //
+    // A FLOOR, not an equality: the failure this guards is the list SHRINKING
+    // (a cap, a dropped block). Pinning the exact number made every legitimate
+    // addition fail a test whose name says nothing about counts.
+    expect(PEKERJAAN.length).toBeGreaterThanOrEqual(100);
     for (const [id, label] of PEKERJAAN) {
       expect(String(id).trim(), 'occupation value empty').not.toBe('');
       // Every row must actually carry kanji, not just a Latin label — this is

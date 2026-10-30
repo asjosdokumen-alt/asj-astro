@@ -8,8 +8,9 @@
 // ==========================================
 import { describe, it, expect } from 'vitest';
 import {
-  PEKERJAAN, PEKERJAAN_LEGACY, JURUSAN, JURUSAN_SMK, JURUSAN_SMA, JURUSAN_KULIAH,
-  KOTA, HUBUNGAN_LEGACY, HUBUNGAN_KELUARGA,
+  PEKERJAAN, PEKERJAAN_LEGACY, PEKERJAAN_UTAMA, JURUSAN, JURUSAN_SMK, JURUSAN_SMA, JURUSAN_KULIAH,
+  KOTA, HUBUNGAN_LEGACY, HUBUNGAN_KELUARGA, SSW_BIDANG, UJIAN_JP, UJIAN_SSW,
+  JENIS_KERJA_PAIRS,
   SENTINEL_LAINNYA, OPSI_KOSONG, OPSI_LAINNYA,
   withOther, isKnown, selectState, resolveOther, withEmpty, labelJp,
   valuesOf, GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
@@ -27,11 +28,40 @@ describe('opsi-form — paritas nilai legacy', () => {
     expect(PEKERJAAN_LEGACY[24]).toEqual(['BELUM BEKERJA', 'BELUM BEKERJA (無職)']);
   });
 
-  it('PEKERJAAN = legacy + tambahan, dan legacy tetap di depan', () => {
+  it('PEKERJAAN = yang sering dipakai di depan, lalu SELURUH nilai legacy, lalu sisanya', () => {
     expect(PEKERJAAN.length).toBeGreaterThan(PEKERJAAN_LEGACY.length);
-    // Legacy harus mendahului tambahan: kandidat yang pekerjaannya sudah ada
-    // di daftar lama melihat pilihannya di posisi yang sama seperti dulu.
-    expect(PEKERJAAN.slice(0, PEKERJAAN_LEGACY.length)).toEqual(PEKERJAAN_LEGACY);
+    // Kontraknya berubah 2026-10-30 atas permintaan pemilik ("dropdown
+    // pekerjaannya ga lengkap … karyawan swasta juga gak ada"). Urutan tampil
+    // sekarang dimulai dari pekerjaan yang paling sering dikirim ASJ, BUKAN
+    // dari daftar legacy — `KARYAWAN SWASTA` tadinya duduk di urutan ke-11 dan
+    // terbaca "tidak ada" di layar ponsel.
+    //
+    // Yang TIDAK boleh berubah adalah nilainya: setiap nilai legacy harus tetap
+    // ada tepat sekali, karena baris tersimpan memakainya. Itu yang diuji di
+    // bawah — bukan urutannya, yang murni tampilan.
+    for (const [v, label] of PEKERJAAN_LEGACY) {
+      const hits = PEKERJAAN.filter(([x]) => x === v);
+      expect(hits, `nilai legacy hilang/duplikat: ${v}`).toHaveLength(1);
+      expect(hits[0][1]).toBe(label);
+    }
+    expect(PEKERJAAN.slice(0, PEKERJAAN_UTAMA.length).map(([v]) => v)).toEqual(PEKERJAAN_UTAMA);
+  });
+
+  it('setiap nilai PEKERJAAN_UTAMA benar-benar ada di daftar (tidak ada yang hilang diam-diam)', () => {
+    // `PEKERJAAN` menyaring nilai yang tidak ditemukan, jadi salah ketik di
+    // `PEKERJAAN_UTAMA` hanya akan MEMENDEKKAN bagian depan daftar tanpa error.
+    // Tes ini yang membuatnya kelihatan.
+    const values = new Set(PEKERJAAN.map(([v]) => v));
+    for (const v of PEKERJAAN_UTAMA) expect(values.has(v), `tidak ada di PEKERJAAN: ${v}`).toBe(true);
+  });
+
+  it('petani & peternak dipisah per komoditas — bukan satu entri "PETANI / PERKEBUNAN"', () => {
+    const values = new Set(PEKERJAAN.map(([v]) => v));
+    for (const v of ['PETANI', 'PETERNAK', 'PETERNAK SAPI PERAH', 'PETERNAK AYAM PETELUR']) {
+      expect(values.has(v), `pekerjaan ternak tidak ada: ${v}`).toBe(true);
+    }
+    // Nilai lama tetap ada supaya baris tersimpan tidak kehilangan opsinya.
+    expect(values.has('PETANI / PERKEBUNAN')).toBe(true);
   });
 
   it('HUBUNGAN_LEGACY memakai UPPERCASE 7 nilai legacy — BUKAN TitleCase', () => {
@@ -263,7 +293,13 @@ describe('opsi-form — integritas daftar gabungan', () => {
     // Angka-angka ini juga dipakai di docs/UI_DESIGN_REVIEW.md §9. Kalau
     // salah satu berubah, dokumennya ikut perlu diperbarui.
     expect(PEKERJAAN_LEGACY).toHaveLength(25);
-    expect(PEKERJAAN).toHaveLength(100);
+    // 115 = 100 sebelum 2026-10-30, +19 entri pertanian/peternakan per komoditas
+    // (`PEKERJAAN_PERTANIAN`), −7 yang dipindahkan dari `PEKERJAAN_TAMBAHAN` ke
+    // kelompok itu (tidak diduplikasi), +3 baru (teh, penebang kayu, jamur).
+    // Angka ini SENGAJA ditulis, bukan diturunkan dari panjang tiap blok: yang
+    // dijaga adalah "daftar tidak menyusut", dan penambahan yang lupa
+    // didokumentasikan harus terlihat di sini.
+    expect(PEKERJAAN).toHaveLength(115);
     expect(JURUSAN).toHaveLength(94);
     expect(HUBUNGAN_LEGACY).toHaveLength(7);
     // 7 legacy + 12 hubungan berjenis kelamin (2026-10-21). Angka ini SENGAJA
@@ -346,6 +382,64 @@ describe('opsi-form — daftar enum BERSAMA (AI CV + CV Master)', () => {
         expect(v, `${name}: nilai punya spasi tepi`).toBe(v.trim());
         expect(label.trim(), `${name}: label punya spasi tepi`).toBe(label);
       }
+    }
+  });
+});
+
+// ==========================================
+// TESTS: bidang SSW & ujian (2026-10-30)
+//
+// Permintaan pemilik: "ssw ternak juga gak ada" dan "masukkan dropdown semua
+// prometric ujian yg bisa di indo id-jp nya beserta kasih tgl lulus nya".
+// Dua hal yang harus dijaga di sini: 16 nilai legacy TIDAK berubah (baris
+// `bidangssw` lama harus tetap cocok), dan daftar ujian SSW DITURUNKAN dari
+// daftar bidang — bukan disalin — supaya menambah satu bidang tidak
+// meninggalkan ujiannya.
+// ==========================================
+describe('opsi-form — bidang SSW & ujian', () => {
+  it('SSW_BIDANG memuat 16 bidang legacy byte-identik + ternak & bidang baru', () => {
+    const values = SSW_BIDANG.map(([v]) => v);
+    // Enam belas nilai asli, urutannya tidak diubah.
+    expect(values.slice(0, 10)).toEqual([
+      'KAIGO', 'BUILDING CLEANING', 'FOUNDRY & PLASTIC', 'INDUSTRIAL MACHINERY',
+      'ELECTRIC & ELECTRONIC', 'CONSTRUCTION', 'SHIPBUILDING', 'AUTOMOBILE REPAIR',
+      'AVIATION', 'ACCOMMODATION',
+    ]);
+    expect(values).toContain('AGRICULTURE');
+    expect(values).toContain('LIVESTOCK'); // 畜産 — "ssw ternak"
+    expect(values).toContain('AUTOMOBILE TRANSPORT');
+    expect(values).toContain('RAILWAY');
+    expect(values).toContain('RESOURCE CIRCULATION');
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  it('label LIVESTOCK menyebut 畜産 supaya tidak tertukar dengan 耕種', () => {
+    const livestock = SSW_BIDANG.find(([v]) => v === 'LIVESTOCK');
+    const agriculture = SSW_BIDANG.find(([v]) => v === 'AGRICULTURE');
+    expect(livestock?.[1]).toContain('畜産');
+    expect(agriculture?.[1]).toContain('耕種');
+  });
+
+  it('UJIAN_SSW diturunkan dari SSW_BIDANG — satu ujian per bidang', () => {
+    expect(UJIAN_SSW).toHaveLength(SSW_BIDANG.length);
+    expect(UJIAN_SSW.map(([v]) => v)).toContain('SSW LIVESTOCK');
+    expect(UJIAN_JP.map(([v]) => v)).toContain('JFT-BASIC A2');
+    expect(UJIAN_JP.map(([v]) => v)).toContain('JLPT N4');
+    // Kode ujian SSW diberi awalan supaya tidak bertabrakan dengan nilai
+    // `SSW_BIDANG` (`KAIGO` vs `SSW KAIGO`) di payload yang sama.
+    expect(UJIAN_JP.map(([v]) => v)).not.toContain('KAIGO');
+    expect(new Set(UJIAN_JP.map(([v]) => v)).size).toBe(UJIAN_JP.length);
+  });
+
+  it('JENIS_KERJA_PAIRS mencakup status kerja di luar karyawan tetap', () => {
+    // "status kerja cuma dikit" — pemilik 2026-10-30.
+    const values = JENIS_KERJA_PAIRS.map(([v]) => v);
+    for (const v of ['KARYAWAN HARIAN', 'WIRAUSAHA', 'FREELANCE', 'PNS / ASN', 'TNI / POLRI', 'BELUM BEKERJA']) {
+      expect(values, `status kerja tidak ada: ${v}`).toContain(v);
+    }
+    // Nilai lama tidak boleh hilang: baris `pekerjaan_*_jenis` memakainya.
+    for (const v of ['KARYAWAN TETAP', 'KARYAWAN KONTRAK', 'PART TIME', 'MAGANG', 'USAHA KELUARGA']) {
+      expect(values).toContain(v);
     }
   });
 });

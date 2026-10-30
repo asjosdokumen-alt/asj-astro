@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import MasterFullForm from "./MasterFullForm";
 import { showToast } from "../Toast";
-import { SENTINEL_LAINNYA, valuesOf, GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS, YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS } from "../../lib/opsi-form";
+import { SENTINEL_LAINNYA, valuesOf, GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS, YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, SSW_BIDANG } from "../../lib/opsi-form";
 import { authStore, type AuthState } from "../../store/authReactive";
 import { uploadMany } from "../../lib/cloudinary";
 import { t } from "../../store/i18n";
@@ -387,7 +387,7 @@ describe("MasterFullForm — paritas data legacy", () => {
     expect(rows.filter((r) => r === "2").length).toBe(7);
   });
 
-  it("select SSW memakai 16 bidang resmi + sentinel __LAINNYA__ (BUKAN kode AA…AU)", async () => {
+  it("select SSW memakai seluruh bidang resmi + sentinel __LAINNYA__ (BUKAN kode AA…AU)", async () => {
     const { container } = await openStep(4);
     const ssw = [...container.querySelectorAll("select")].filter((s) =>
       [...(s as HTMLSelectElement).options].some((o) => o.value === "KAIGO"),
@@ -395,9 +395,13 @@ describe("MasterFullForm — paritas data legacy", () => {
     expect(ssw.length).toBe(2); // lisensi + lisensi2
     for (const sel of ssw) {
       const values = [...sel.options].map((o) => o.value);
-      expect(values.length).toBe(18); // kosong + 16 bidang + sentinel
+      // DITURUNKAN dari daftarnya, bukan angka beku: menambah satu bidang SSW
+      // (mis. `LIVESTOCK` 2026-10-30) tidak boleh memerahkan tes ini — yang
+      // diuji adalah "kosong + setiap bidang + sentinel", bukan "18".
+      expect(values.length).toBe(SSW_BIDANG.length + 2);
       expect(values).toContain("KAIGO");
       expect(values).toContain("WOOD INDUSTRY");
+      expect(values).toContain("LIVESTOCK"); // 畜産 — "ssw ternak"
       expect(values).toContain("__LAINNYA__");
       // Kode dari daftar yang salah harus benar-benar hilang.
       expect(values).not.toContain("AA");
@@ -617,7 +621,7 @@ describe("MasterFullForm — C09 dropdown (jurusan/pekerjaan/kota/hubungan)", ()
 
   it("step 5: kota terbit paspor memakai daftar kota, dan terkirim apa adanya", async () => {
     const { container } = await openStep(4);
-    const sel = selectWith(container, "SURABAYA", "Kota Penerbitan");
+    const sel = selectWith(container, "SURABAYA", "Kota penerbitan paspor");
     const values = [...sel.options].map((o) => o.value);
     expect(values).toContain("JAKARTA");
     expect(values).toContain("MAKASSAR");
@@ -653,7 +657,7 @@ describe("MasterFullForm — C09 dropdown (jurusan/pekerjaan/kota/hubungan)", ()
     expect(screen.queryByRole("button", { name: "Simpan Final" })).toBeTruthy();
 
     // Nilai lama harus TERLIHAT (select parkir di sentinel + kotak manual).
-    const kota = selectWith(container, "JAKARTA", "Kota Penerbitan");
+    const kota = selectWith(container, "JAKARTA", "Kota penerbitan paspor");
     expect(kota.value).toBe(SENTINEL_LAINNYA);
 
     await fireEvent.click(screen.getByRole("button", { name: "Simpan Final" }));

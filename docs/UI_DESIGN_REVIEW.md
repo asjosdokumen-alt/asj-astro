@@ -387,25 +387,27 @@ ikut harus diperbarui:
 | Ekspor               | Isi     | Dipakai oleh     | Catatan                                     |
 | -------------------- | ------- | ---------------- | ------------------------------------------- |
 | `PEKERJAAN_LEGACY`   | 25      | (internal)       | **byte-identik** dengan legacy; dijaga tes  |
-| `PEKERJAAN_TAMBAHAN` | 75      | (internal)       | pekerjaan Indonesia yang belum ada          |
-| `PEKERJAAN`          | **100** | `MasterFullForm` | 25 + 75, nilai unik 100/100                 |
+| `PEKERJAAN_PERTANIAN`| 19      | (internal)       | petani/peternak per komoditas (2026-10-30)  |
+| `PEKERJAAN_TAMBAHAN` | 71      | (internal)       | pekerjaan Indonesia yang belum ada          |
+| `PEKERJAAN`          | **115** | `MasterFullForm`, `AiCvForm` | 25 + 19 + 71, nilai unik 115/115 |
 | `JURUSAN_SMK`        | 53      | (internal)       | termasuk `TEKNIK KOMPUTER & JARINGAN (TKJ)` |
 | `JURUSAN_SMA`        | 6       | (internal)       | termasuk `IPA (MIPA)`                       |
 | `JURUSAN_KULIAH`     | 35      | (internal)       | program kuliah                              |
 | `JURUSAN`            | **94**  | `MasterFullForm` | 53 + 6 + 35, nilai unik 94/94               |
 | `HUBUNGAN_LEGACY`    | 7       | (internal)       | **UPPERCASE** sesuai legacy                 |
 | `HUBUNGAN_TAMBAHAN`  | 12      | (internal)       | kakek/nenek/paman/bibi/…                    |
-| `HUBUNGAN_KELUARGA`  | **19**  | `MasterFullForm` | 7 + 12                                      |
+| `HUBUNGAN_KELUARGA`  | **31**  | `MasterFullForm` | 7 + 12 berjenis kelamin + 12 tambahan       |
 | `KOTA`               | 38      | `MasterFullForm` | dipakai `kotaPaspor`                        |
+| `SSW_BIDANG`         | 20      | `MasterFullForm`, `AiCvForm` | 16 legacy + `LIVESTOCK` + 3 bidang 2024–2025 |
+| `UJIAN_JP`           | 31      | `AiCvForm`       | 11 ujian bahasa + 20 ujian SSW (diturunkan) |
 | `PROVINSI`           | 38      | **belum ada**    | lihat catatan di bawah                      |
 | `SIM`                | 12      | **belum ada**    | lihat catatan di bawah                      |
 | `BANK`               | 17      | **belum ada**    | lihat catatan di bawah                      |
 
 > Kolom "dipakai oleh" sengaja hanya menyebut **import yang sebenarnya**.  
-> `AiCvForm.tsx` / `RirekishoBuilder.tsx` / `i18n.ts` memang memuat kata  
-> `PEKERJAAN`/`JURUSAN`/`KOTA`, tapi itu nama field form, teks label, dan kunci  
-> i18n — **bukan** daftar dari `opsi-form.ts`. Satu-satunya konsumen daftar ini  
-> hari ini adalah `MasterFullForm.tsx`.
+> `AiCvForm.tsx` mengimpor `PEKERJAAN` (jabatan/keluarga/kenalan), `SSW_BIDANG`
+> (lisensi SSW 1 & 2) dan `UJIAN_JP` (baris ujian + tanggal lulus) sejak
+> 2026-10-30; selebihnya daftar ini tetap milik `MasterFullForm.tsx`.
 
 ⚠️ **Koreksi (2026-09-14):** versi sebelumnya tabel ini menulis `JURUSAN_SMK` "~54"  
 (sebenarnya **53**) dan menyebut `PROVINSI`/`KOTA`/`SIM`/`BANK` seolah semuanya  

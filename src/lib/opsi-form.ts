@@ -76,6 +76,48 @@ export const PEKERJAAN_LEGACY: Opsi[] = [
 ];
 
 /**
+ * Pertanian & peternakan — dipisah per komoditas (permintaan pemilik
+ * 2026-10-30: *"untuk yg ternak tolong di pisah petani/ternak bikin 1 1 job
+ * spesifik yg lengkap"*).
+ *
+ * Kenapa dipisah dan bukan satu entri `PETANI / PERKEBUNAN`: satu nilai itu
+ * mencampur empat bidang kerja yang berbeda ke dalam satu sel CV, sehingga
+ *   - matchmaking tidak bisa menghitung berapa kandidat yang benar-benar
+ *     pernah bekerja di kandang (畜産) versus di sawah (耕種),
+ *   - sisi Jepang salah membaca pengalaman: 農業 di form SSW punya dua
+ *     kategori uji yang terpisah — 耕種農業 dan 畜産農業 — dan seorang
+ *     peternak sapi tidak boleh tercetak sebagai "petani".
+ *
+ * `PETANI / PERKEBUNAN` yang lama TIDAK dihapus (baris tersimpan memakainya);
+ * ia hanya turun ke bawah daftar sebagai bentuk lama, dan `PEKERJAAN` tetap
+ * memuat semua nilai lamanya tepat sekali.
+ */
+export const PEKERJAAN_PERTANIAN: Opsi[] = [
+  // ── Tanaman (耕種) ──
+  ['PETANI', 'PETANI (農家)'],
+  ['PETANI PADI / SAWAH', 'PETANI PADI / SAWAH (稲作農家)'],
+  ['PETANI SAYUR', 'PETANI SAYUR (野菜農家)'],
+  ['PETANI BUAH', 'PETANI BUAH (果樹農家)'],
+  ['PEKEBUN SAWIT', 'PEKEBUN SAWIT (オイルパーム農園)'],
+  ['PEKEBUN KOPI / KAKAO', 'PEKEBUN KOPI / KAKAO (コーヒー・カカオ農園)'],
+  ['PEKEBUN KARET', 'PEKEBUN KARET (ゴム農園)'],
+  ['BURUH TANI', 'BURUH TANI (農業労働者)'],
+  ['TUKANG KEBUN', 'TUKANG KEBUN (庭師)'],
+  // ── Ternak (畜産) ──
+  ['PETERNAK', 'PETERNAK (畜産農家)'],
+  ['PETERNAK SAPI POTONG', 'PETERNAK SAPI POTONG (肉牛農家)'],
+  ['PETERNAK SAPI PERAH', 'PETERNAK SAPI PERAH (乳牛農家)'],
+  ['PETERNAK AYAM PEDAGING', 'PETERNAK AYAM PEDAGING / BROILER (養鶏・ブロイラー)'],
+  ['PETERNAK AYAM PETELUR', 'PETERNAK AYAM PETELUR (採卵養鶏)'],
+  ['PETERNAK KAMBING / DOMBA', 'PETERNAK KAMBING / DOMBA (山羊・羊農家)'],
+  ['PETERNAK BABI', 'PETERNAK BABI (養豚農家)'],
+  ['PETUGAS KANDANG / FEEDLOT', 'PETUGAS KANDANG / FEEDLOT (畜舎作業員)'],
+  // ── Perairan ──
+  ['BUDIDAYA IKAN', 'BUDIDAYA IKAN (養殖業)'],
+  ['NELAYAN / ABK KAPAL', 'NELAYAN / ABK KAPAL (漁船員)'],
+];
+
+/**
  * Additional occupations common in Indonesia, grouped roughly by sector.
  * Chosen so that the jobs actually advertised by ASJ (manufacturing, food,
  * care, construction, agriculture, hospitality, logistics, retail, services)
@@ -108,12 +150,12 @@ export const PEKERJAAN_TAMBAHAN: Opsi[] = [
   ['BARISTA / BARTENDER', 'BARISTA / BARTENDER (バリスタ・バーテンダー)'],
   ['PENGOLAH MAKANAN', 'PENGOLAH MAKANAN (食品加工)'],
   // ── Pertanian, perikanan, kehutanan ──
-  ['BURUH TANI', 'BURUH TANI (農業労働者)'],
-  ['PETANI SAYUR', 'PETANI SAYUR (野菜農家)'],
-  ['PEKEBUN SAWIT', 'PEKEBUN SAWIT (オイルパーム農園)'],
-  ['PETERNAK', 'PETERNAK (畜産農家)'],
-  ['BUDIDAYA IKAN', 'BUDIDAYA IKAN (養殖業)'],
-  ['NELAYAN / ABK KAPAL', 'NELAYAN / ABK KAPAL (漁船員)'],
+  // Entri per komoditas (petani/peternak) pindah ke `PEKERJAAN_PERTANIAN` di
+  // atas 2026-10-30 — jangan diduplikasi di sini, `PEKERJAAN` akan menolaknya
+  // (dua `<option>` dengan value sama) dan modul ini melempar saat load.
+  ['PEKEBUN TEH', 'PEKEBUN TEH (茶農園)'],
+  ['PENEBANG KAYU / LOGGING', 'PENEBANG KAYU / LOGGING (林業作業員)'],
+  ['PEMBUDIDAYA JAMUR', 'PEMBUDIDAYA JAMUR (きのこ栽培)'],
   // ── Kesehatan & perawatan ──
   ['PERAWAT LANSIA / CAREGIVER', 'PERAWAT LANSIA / CAREGIVER (介護士)'],
   ['BIDAN', 'BIDAN (助産師)'],
@@ -150,7 +192,6 @@ export const PEKERJAAN_TAMBAHAN: Opsi[] = [
   ['TEKNISI JARINGAN', 'TEKNISI JARINGAN (ネットワーク技術者)'],
   // ── Keamanan & kebersihan ──
   ['PETUGAS KEBERSIHAN', 'PETUGAS KEBERSIHAN (清掃員)'],
-  ['TUKANG KEBUN', 'TUKANG KEBUN (庭師)'],
   ['PENJAGA MALAM', 'PENJAGA MALAM (夜間警備)'],
   ['PEMADAM KEBAKARAN', 'PEMADAM KEBAKARAN (消防士)'],
   // ── Pendidikan & sosial ──
@@ -172,8 +213,80 @@ export const PEKERJAAN_TAMBAHAN: Opsi[] = [
   ['TIDAK BEKERJA', 'TIDAK BEKERJA (無職)'],
 ];
 
-/** Full occupation list: legacy first (never reorder those), then additions. */
-export const PEKERJAAN: Opsi[] = [...PEKERJAAN_LEGACY, ...PEKERJAAN_TAMBAHAN];
+/**
+ * Urutan tampil daftar pekerjaan — BUKAN urutan penyimpanan.
+ *
+ * Pemilik 2026-10-30: *"dropdown pekerjaannya ga lengkap … karyawan swasta juga
+ * gak ada"*. Nilainya sebenarnya ada (`PEKERJAAN_LEGACY` nomor 11), tapi ia
+ * duduk di urutan ke-11 dari ~120 baris sehingga di layar ponsel terbaca
+ * "tidak ada". Urutan lama juga menaruh `PETANI / PERKEBUNAN` di depan dan
+ * `PETERNAK` jauh di bawah, padahal keduanya bidang yang paling sering dikirim
+ * ASJ.
+ *
+ * Jadi 20 pekerjaan yang paling sering dipakai dinaikkan ke depan. Ini murni
+ * tampilan: nilai yang DISIMPAN tidak berubah satu pun, dan setiap nilai lama
+ * tetap ada tepat sekali di daftar (lihat `PEKERJAAN` di bawah).
+ */
+export const PEKERJAAN_UTAMA: string[] = [
+  'OPERATOR PRODUKSI',
+  'KARYAWAN SWASTA',
+  'PETANI',
+  'PETERNAK',
+  'BURUH PABRIK',
+  'OPERATOR MESIN',
+  'ADMIN / STAFF ADMIN',
+  'KASIR',
+  'KOKI / CHEF',
+  'PELAYAN / WAITER',
+  'CLEANING SERVICE',
+  'SATPAM / SECURITY',
+  'SOPIR / DRIVER',
+  'STAFF GUDANG',
+  'PACKING / PENGEMASAN',
+  'PERAWAT LANSIA / CAREGIVER',
+  'TUKANG BANGUNAN',
+  'WELDER / LAS',
+  'MEKANIK',
+  'TEKNISI',
+];
+
+/** Semua entri mentah, sebelum diurutkan untuk ditampilkan. */
+const PEKERJAAN_POOL: Opsi[] = [
+  ...PEKERJAAN_LEGACY,
+  ...PEKERJAAN_PERTANIAN,
+  ...PEKERJAAN_TAMBAHAN,
+];
+
+const PEKERJAAN_BY_VALUE = new Map<string, Opsi>(
+  PEKERJAAN_POOL.map((row) => [row[0], row]),
+);
+
+/**
+ * Full occupation list: the common ones first, then every legacy value (never
+ * dropped — stored rows depend on them), then the rest.
+ *
+ * `uniqOpsi` is what makes the three blocks safe to overlap: `PETANI`,
+ * `PETERNAK`, `BURUH TANI` and friends are listed in `PEKERJAAN_PERTANIAN` AND
+ * named in `PEKERJAAN_UTAMA`, and a duplicated `<option value>` makes the
+ * browser pick one of the two silently. `opsi-form.test.ts` pins that every
+ * `PEKERJAAN_UTAMA` value really resolves, so a typo cannot quietly shorten
+ * the front of the list.
+ */
+export const PEKERJAAN: Opsi[] = uniqOpsi([
+  ...PEKERJAAN_UTAMA.map((v) => PEKERJAAN_BY_VALUE.get(v)).filter((r): r is Opsi => Boolean(r)),
+  ...PEKERJAAN_POOL,
+]);
+
+function uniqOpsi(list: Opsi[]): Opsi[] {
+  const seen = new Set<string>();
+  const out: Opsi[] = [];
+  for (const row of list) {
+    if (seen.has(row[0])) continue;
+    seen.add(row[0]);
+    out.push(row);
+  }
+  return out;
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    2. JURUSAN — school / university major
@@ -689,10 +802,18 @@ export const RIWAYAT_JEPANG_PAIRS: Opsi[] = [
  */
 export const JENIS_KERJA_PAIRS: Opsi[] = [
   ['KARYAWAN TETAP', 'Karyawan tetap (正社員)'],
-  ['KARYAWAN KONTRAK', 'Kontrak / honorer (非正社員)'],
-  ['PART TIME', 'Part time (アルバイト)'],
+  ['KARYAWAN KONTRAK', 'Kontrak / honorer (契約社員)'],
+  ['KARYAWAN HARIAN', 'Harian / lepas (日雇い)'],
+  ['PART TIME', 'Part time (アルバイト・パート)'],
   ['MAGANG', 'Magang / intern (インターン)'],
+  ['MAGANG JEPANG', 'Magang Jepang / eks peserta (技能実習生)'],
   ['USAHA KELUARGA', 'Usaha keluarga (家業)'],
+  ['WIRAUSAHA', 'Wirausaha / pemilik usaha (自営業)'],
+  ['FREELANCE', 'Freelance (フリーランス)'],
+  ['PNS / ASN', 'PNS / ASN (公務員)'],
+  ['TNI / POLRI', 'TNI / Polri (自衛隊・警察)'],
+  ['PENSIUNAN', 'Pensiunan (退職者)'],
+  ['BELUM BEKERJA', 'Belum pernah bekerja (無職)'],
 ];
 
 /**
@@ -704,6 +825,103 @@ export const TINGGAL_PAIRS: Opsi[] = [
   ['TERPISAH', 'Terpisah (別居)'],
   ['MANDIRI', 'Mandiri (独立)'],
 ];
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3d. BIDANG SSW (特定技能) — SATU daftar untuk DUA form
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * 16 bidang resmi + tiga bidang yang dibuka 2024–2025, dipakai `<select>` CV
+ * Master DAN datalist CV AI.
+ *
+ * Kenapa pindah ke sini: daftar ini dulu HIDUP DUA KALI — `SSW_OPTIONS` di
+ * `MasterFullForm.tsx` (dengan label kanji) dan `SSW_OPTIONS` di
+ * `AiCvForm.tsx` (string polos). Dua salinan yang sama sudah tidak sama:
+ * yang di CV AI ketinggalan tanpa label kanji, dan menambah satu bidang berarti
+ * dua suntingan.
+ *
+ * `LIVESTOCK` (畜産) ditambahkan 2026-10-30 atas permintaan pemilik — *"ssw
+ * ternak juga gak ada"*. Di skema resmi 農業 memang satu bidang dengan dua
+ * kategori kerja (耕種農業 / 畜産農業) dan dua uji terpisah, jadi kandidat
+ * peternak tidak boleh hanya bisa memilih "AGRICULTURE".
+ *
+ * Nilai (kolom 1) adalah yang DISIMPAN ke `master_database_candidate.bidangssw`;
+ * 16 nilai lama byte-identik dengan legacy, jadi baris lama tetap cocok.
+ */
+export const SSW_BIDANG: Opsi[] = [
+  ['KAIGO', 'KAIGO (介護)'],
+  ['BUILDING CLEANING', 'BUILDING CLEANING (ビルクリーニング)'],
+  ['FOUNDRY & PLASTIC', 'FOUNDRY & PLASTIC (素形材産業)'],
+  ['INDUSTRIAL MACHINERY', 'INDUSTRIAL MACHINERY (産業機械製造業)'],
+  ['ELECTRIC & ELECTRONIC', 'ELECTRIC & ELECTRONIC (電気・電子情報)'],
+  ['CONSTRUCTION', 'CONSTRUCTION (建設)'],
+  ['SHIPBUILDING', 'SHIPBUILDING (造船・舶用工業)'],
+  ['AUTOMOBILE REPAIR', 'AUTOMOBILE REPAIR (自動車整備)'],
+  ['AVIATION', 'AVIATION (航空)'],
+  ['ACCOMMODATION', 'ACCOMMODATION (宿泊)'],
+  ['AGRICULTURE', 'AGRICULTURE (農業・耕種 / pertanian)'],
+  ['LIVESTOCK', 'LIVESTOCK (農業・畜産 / peternakan)'],
+  ['FISHERY', 'FISHERY (漁業)'],
+  ['FOOD & BEVERAGE', 'FOOD & BEVERAGE (飲食料品製造業)'],
+  ['RESTAURANT', 'RESTAURANT (外食業)'],
+  ['FORESTRY', 'FORESTRY (林業)'],
+  ['WOOD INDUSTRY', 'WOOD INDUSTRY (木材産業)'],
+  ['AUTOMOBILE TRANSPORT', 'AUTOMOBILE TRANSPORT (自動車運送業)'],
+  ['RAILWAY', 'RAILWAY (鉄道)'],
+  ['RESOURCE CIRCULATION', 'RESOURCE CIRCULATION (資源循環)'],
+];
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3e. UJIAN & SERTIFIKAT JEPANG — ujian yang bisa diambil dari Indonesia
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Ujian bahasa & keterampilan yang punya pusat uji di Indonesia (Jakarta,
+ * Surabaya, Medan, Makassar, …) — permintaan pemilik 2026-10-30: *"masukkan
+ * dropdown semua prometric ujian yg bisa di indo id-jp nya beserta kasih tgl
+ * lulus nya"*.
+ *
+ * Catatan yang menentukan isi daftar ini: **JFT-Basic dan seluruh 技能測定試験
+ * (SSW) diselenggarakan CBT lewat Prometric** di Indonesia, sedangkan JLPT
+ * tetap ujian kertas. Karena itu keduanya digabung dalam satu daftar "ujian
+ * yang bisa diambil di Indonesia" — yang membedakan hanya penyelenggaranya,
+ * dan itu urusan pendaftaran, bukan urusan CV.
+ *
+ * NILAI (kolom 1) adalah kode stabil yang disimpan; labelnya yang dibaca
+ * kandidat dan yang tercetak di CV (lewat `pairDisplay`).
+ */
+export const UJIAN_BAHASA: Opsi[] = [
+  // Nilai = kode yang DISIMPAN dan yang tercetak (`pairDisplay` menyusun
+  // `nilai（kanji）`), jadi bagian yang informatif — "A2", "N4" — ada di nilai,
+  // bukan di label. Labelnya kanji murni supaya tidak tercetak dua kali.
+  ['JFT-BASIC A2', '国際交流基金日本語基礎テスト'],
+  ['JLPT N1', '日本語能力試験 N1'],
+  ['JLPT N2', '日本語能力試験 N2'],
+  ['JLPT N3', '日本語能力試験 N3'],
+  ['JLPT N4', '日本語能力試験 N4'],
+  ['JLPT N5', '日本語能力試験 N5'],
+  ['BJT', 'ビジネス日本語能力テスト'],
+  ['JICWELS KAIGO', '介護日本語評価試験'],
+  ['EPA KAIGO', 'EPA 介護福祉士候補者'],
+  ['EPA KANGO', 'EPA 看護師候補者'],
+  ['SKILL TEST 3KYU', '技能検定3級（技能実習修了試験）'],
+];
+
+/**
+ * Ujian keterampilan SSW, diturunkan dari `SSW_BIDANG` — bukan diketik ulang.
+ *
+ * Kalau daftar ini disalin manual, menambah satu bidang di atas akan
+ * meninggalkan ujiannya di sini, dan kandidat yang lulus uji bidang itu tidak
+ * bisa memilihnya. Kode nilai diberi awalan `SSW ` supaya tidak bertabrakan
+ * dengan `KAIGO` di `SSW_BIDANG` saat keduanya muncul di satu payload.
+ */
+export const UJIAN_SSW: Opsi[] = SSW_BIDANG.map(([v, l]) => [
+  `SSW ${v}`,
+  `SSW 技能測定試験 — ${l}`,
+]);
+
+/** Semua ujian dalam satu daftar: bahasa dulu, lalu keterampilan SSW. */
+export const UJIAN_JP: Opsi[] = [...UJIAN_BAHASA, ...UJIAN_SSW];
 
 /**
  * Level bahasa Jepang yang sah — nilai kolom `master_database_candidate.bahasa`.

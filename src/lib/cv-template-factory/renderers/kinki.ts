@@ -240,15 +240,28 @@ function jenjangKinki(tingkat: string): string {
   return '';
 }
 
-/** 雇用形態 — dropdown: アルバイト/正社員/非正社員/インターン/家業. */
+/**
+ * 雇用形態 — dropdown: 正社員/契約社員/アルバイト/インターン/家業/自営業/公務員/無職.
+ *
+ * Urutan cabang = urutan KEKHUSUSAN, bukan urutan daftar di form. Dua entri
+ * yang ditambahkan 2026-10-30 membuktikan kenapa: `KARYAWAN HARIAN` memuat kata
+ * "KARYAWAN" dan dulu tercetak 正社員 (pegawai tetap) — kebalikan dari
+ * kenyataannya; `WIRAUSAHA` memuat "USAHA" dan tercetak 家業 (usaha keluarga).
+ * Karena itu yang spesifik diperiksa lebih dulu, dan pencocokan `KARYAWAN`
+ * baru dipakai kalau tidak ada penanda lain.
+ */
 function jenisKerjaJp(v: unknown): string {
   const t = s(v).toUpperCase();
   if (!isGood(t)) return '';
+  if (t.includes('BELUM') || t.includes('TIDAK BEKERJA') || t.includes('PENSIUN')) return '無職';
+  if (t.includes('PNS') || t.includes('ASN') || t.includes('TNI') || t.includes('POLRI')) return '公務員';
+  if (t.includes('FREELANCE') || t.includes('WIRAUSAHA') || t.includes('PEMILIK USAHA')) return '自営業';
+  if (t.includes('JEPANG')) return '技能実習生';
   if (t.includes('INTERN') || t.includes('MAGANG')) return 'インターン';
   if (t.includes('KELUARGA') || t.includes('USAHA')) return '家業';
+  if (t.includes('HARIAN') || t.includes('LEPAS') || t.includes('PART') || t.includes('ALBAITO')) return 'アルバイト';
+  if (t.includes('KONTRAK') || t.includes('HONORER') || t.includes('ALIH')) return '契約社員';
   if (t.includes('TETAP') || t.includes('KARYAWAN')) return '正社員';
-  if (t.includes('ALIH') || t.includes('KONTRAK') || t.includes('HONORER')) return '非正社員';
-  if (t.includes('PART') || t.includes('HARIAN') || t.includes('BANTU')) return 'アルバイト';
   return '非正社員';
 }
 

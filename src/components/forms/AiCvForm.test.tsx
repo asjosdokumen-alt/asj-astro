@@ -941,13 +941,14 @@ describe('AiCvForm — datalist wiring (no orphan datalists)', () => {
     // to single quotes or a template literal), both lists go empty and the two
     // assertions below would pass vacuously.
     //
-    // The bound is 1, not 2, and it is deliberately loose. What it has to prove
-    // is that the scan is not silently blind; pinning it to the current count
-    // (JFT + SSW) would make this test fail whenever a field is legitimately
-    // migrated off a datalist — as the occupation fields were, to ComboSelect —
-    // and that failure says nothing about datalist wiring.
-    expect(defined.length).toBeGreaterThan(1);
-    expect(referenced.length).toBeGreaterThan(1);
+    // The bound is >0, not a pinned count. What it has to prove is that the
+    // scan is not silently blind; pinning it to the current number would make
+    // this test fail whenever a field is legitimately migrated off a datalist —
+    // as the occupation fields were (ComboSelect) and as the SSW licence fields
+    // were on 2026-10-30 — and that failure says nothing about datalist wiring.
+    // What is left is JFT, which is genuinely free text with a suggestion list.
+    expect(defined.length).toBeGreaterThan(0);
+    expect(referenced.length).toBeGreaterThan(0);
   });
 
   it('every referenced datalist is defined', () => {
@@ -1444,7 +1445,7 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
   // The assertion is EQUALITY against the registry length, not `>= 50`: any
   // cap (slice(0, 50), slice(0, 80), slice(0, 99)) reintroduces the defect and
   // must fail this test, so a partial count would leave the door open.
-  it('dropdown jabatan menampilkan SELURUH 100 opsi tanpa query — tidak ada cap tersembunyi', () => {
+  it('dropdown jabatan menampilkan SELURUH opsi tanpa query — tidak ada cap tersembunyi', () => {
     render(<AiCvForm />);
     fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
 
@@ -1789,5 +1790,153 @@ describe('AiCvForm — sinkron alamat Jepang', () => {
       const jp = document.querySelector('#ai_alamat_jp') as HTMLInputElement | null;
       expect(jp?.value).toBe('〒63453 ポノロゴ');
     });
+  });
+});
+
+// ==========================================
+// 2026-10-30 — empat keluhan pemilik pada CV AI, semuanya di satu layar:
+//
+//  1. "mana yg tgl terbit paspor tempat penerbitan sim visa gak jelas" —
+//     tiga tanggal berdiri tanpa judul tepat di bawah kotak SIM.
+//  2. "dropdown pekerjaannya ga lengkap … karyawan swasta juga gak ada" —
+//     daftar 120 baris tanpa pencarian yang jelas.
+//  3. "ssw ternak juga gak ada" — datalist SSW tidak bisa dicari.
+//  4. "status kerja cuma dikit dan harus milih gak bisa ketik manual" —
+//     ini BUG, bukan keluhan selera: lihat tes ComboSelect di bawah.
+//
+// Nomor 4 adalah yang paling penting di berkas ini. `ComboSelect` memanggil
+// `onPick('')` pada SETIAP ketikan yang tidak persis sama dengan satu entri.
+// Untuk field yang `onInput` dan `onPick`-nya menulis KUNCI YANG SAMA
+// (`visa`, `olahraga`, `job.jenis`, `fam.tinggal`, `lama_belajar_jp`), itu
+// berarti: ketik "K" → tersimpan "K" → langsung dihapus jadi "" oleh onPick.
+// Kotaknya kembali kosong, dan satu-satunya jalan mengisi adalah memilih dari
+// daftar — persis yang dilaporkan.
+// ==========================================
+describe('AiCvForm — dokumen, status kerja, SSW & ujian (2026-10-30)', () => {
+  const WA = '081234567890';
+
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    vi.mocked(showToast).mockReset();
+    vi.mocked(apiClient).mockReset();
+    vi.mocked(apiClient).mockImplementation((async () => ({ success: true })) as never);
+  });
+  afterEach(() => cleanup());
+
+  it('setiap kelompok dokumen punya judulnya sendiri, dan label tanggal menyebut "paspor"', () => {
+    render(<AiCvForm />);
+    // `t()` di berkas tes ini DIMOCK menjadi pengembalian kunci (lihat
+    // `vi.mock('../../store/i18n')` di atas), jadi DOM hanya membuktikan bahwa
+    // kelompok & kuncinya DIPAKAI. Redaksi kalimatnya diuji dari kamus di bawah.
+    const teks = document.body.textContent || '';
+    // Judul kelompok — inilah yang hilang sebelumnya, sehingga "Tgl Terbit"
+    // terbaca sebagai tanggal SIM.
+    expect(teks).toContain('ai_cv.group_paspor');
+    expect(teks).toContain('ai_cv.group_sim');
+    expect(teks).toContain('ai_cv.group_visa');
+
+    const labels = [...document.querySelectorAll('label')].map((l) => (l.textContent || '').trim());
+    for (const key of ['form.mf_tgl_terbit', 'form.mf_exp', 'form.mf_kota_paspor']) {
+      expect(labels, `label ${key} tidak dipakai di form`).toContain(key);
+    }
+
+    // Dan redaksi kamusnya benar-benar menyebut dokumennya — inilah yang
+    // membuat orang yang mengisi tahu tanggal itu milik paspor, bukan SIM.
+    const dict = readFileSync('src/store/i18n.ts', 'utf8');
+    for (const key of ['form.mf_tgl_terbit', 'form.mf_exp', 'form.mf_kota_paspor']) {
+      const m = new RegExp(`"${key}":\\s*"([^"]+)"`).exec(dict);
+      if (!m) throw new Error(`kunci ${key} tidak ada di kamus`);
+      expect(m[1].toLowerCase(), `redaksi ${key} tidak menyebut paspor`).toContain('paspor');
+    }
+  });
+
+  it('ComboSelect menerima teks bebas — status kerja bisa DIKETIK, bukan hanya dipilih', () => {
+    render(<AiCvForm />);
+    const jenis = document.getElementById('ai_job-jenis-0') as HTMLInputElement;
+    if (!jenis) throw new Error('field status kerja tidak ada');
+
+    // Teks yang TIDAK ada di JENIS_KERJA_PAIRS. Sebelum perbaikan, onPick('')
+    // menghapusnya pada ketikan yang sama sehingga `value` kembali ''.
+    fireEvent.input(jenis, { target: { value: 'KARYAWAN SWASTA KONTRAK' } });
+    expect(jenis.value).toBe('KARYAWAN SWASTA KONTRAK');
+
+    // Dan tetap bertahan setelah render berikutnya (state, bukan DOM saja).
+    fireEvent.input(jenis, { target: { value: 'KARYAWAN SWASTA KONTRAK BAGIAN GUDANG' } });
+    expect(jenis.value).toBe('KARYAWAN SWASTA KONTRAK BAGIAN GUDANG');
+  });
+
+  it('visa juga bisa diketik bebas — bukan hanya nilai dari daftar', () => {
+    render(<AiCvForm />);
+    const visa = document.getElementById('ai_visa') as HTMLInputElement;
+    if (!visa) throw new Error('field visa tidak ada');
+    fireEvent.input(visa, { target: { value: '特定活動（EPA）' } });
+    expect(visa.value).toBe('特定活動（EPA）');
+  });
+
+  it('lisensi SSW bisa dicari dengan kata Indonesia dan memuat LIVESTOCK (ternak)', () => {
+    render(<AiCvForm />);
+    const lisensi = document.getElementById('ai_lisensi') as HTMLInputElement;
+    if (!lisensi) throw new Error('field lisensi SSW tidak ada');
+
+    // Daftar penuh memuat bidang ternak.
+    fireEvent.focus(lisensi);
+    const penuh = document.getElementById('ai_lisensi-list');
+    if (!penuh) throw new Error('daftar SSW tidak terbuka saat focus');
+    expect(penuh.textContent).toContain('LIVESTOCK');
+
+    // Dan "ternak" benar-benar MENYARING ke bidang itu — kandidat tidak perlu
+    // tahu istilah Inggrisnya.
+    fireEvent.input(lisensi, { target: { value: 'ternak' } });
+    const saring = document.getElementById('ai_lisensi-list');
+    if (!saring) throw new Error('daftar SSW tertutup saat mengetik');
+    const baris = [...saring.querySelectorAll('li')].map((li) => (li.textContent || ''));
+    expect(baris.some((b) => b.includes('LIVESTOCK'))).toBe(true);
+    expect(baris.some((b) => b.includes('KAIGO'))).toBe(false);
+  });
+
+  it('ujian: pilih JFT-Basic + bulan/tahun lulus → tersimpan sebagai 他資格', async () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+
+    const nama = document.getElementById('ai_ujian-nama-0') as HTMLInputElement;
+    if (!nama) throw new Error('field ujian tidak ada');
+    fireEvent.focus(nama);
+    const daftar = document.getElementById('ai_ujian-nama-0-list');
+    if (!daftar) throw new Error('daftar ujian tidak terbuka');
+    const jft = [...daftar.querySelectorAll('li')].find((li) => (li.textContent || '').includes('JFT-BASIC'));
+    if (!jft) throw new Error('JFT-Basic tidak ada di daftar ujian');
+    fireEvent.mouseDown(jft);
+
+    // Bulan dulu, lalu tahun: urutan yang dipakai kandidat di layar.
+    fireEvent.change(document.getElementById('ai-ujian-lulus-0-month') as HTMLSelectElement, { target: { value: '03' } });
+    fireEvent.change(document.getElementById('ai-ujian-lulus-0-year') as HTMLSelectElement, { target: { value: '2024' } });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(true));
+
+    const call = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'submitDataAsj');
+    if (!call) throw new Error('submitDataAsj tidak terpanggil');
+    const payload = (call[1] as unknown[])[0] as { sertifikasi: { sertifikat_lain: string } };
+    expect(payload.sertifikasi.sertifikat_lain).toContain('JFT-BASIC');
+    expect(payload.sertifikasi.sertifikat_lain).toContain('2024-03');
+  });
+
+  it('sertifikat lama yang tidak berpola ujian TIDAK dihapus saat form disimpan', async () => {
+    render(<AiCvForm />);
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+
+    // Teks bebas lama (sebelum fitur ini ada) masuk kotak "sertifikat lain".
+    const sisa = document.getElementById('ai_sertifikat_lain_sisa') as HTMLTextAreaElement;
+    if (!sisa) throw new Error('kotak sertifikat lain tidak ada');
+    fireEvent.input(sisa, { target: { value: '簿記3級 (2023)' } });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(true));
+
+    const call = vi.mocked(apiClient).mock.calls.find((c) => c[0] === 'submitDataAsj');
+    if (!call) throw new Error('submitDataAsj tidak terpanggil');
+    const payload = (call[1] as unknown[])[0] as { sertifikasi: { sertifikat_lain: string } };
+    expect(payload.sertifikasi.sertifikat_lain).toBe('簿記3級 (2023)');
   });
 });
