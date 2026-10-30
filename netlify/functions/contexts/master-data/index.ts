@@ -20,6 +20,7 @@ export {
   mergeAiOverflow,
   buildRiwayatSlots,
   autoTranslateToJp,
+  hanyaFieldBerubah,
   JP_TRANSLATE_MAP,
   MASTER_COLUMN_MAP,
   AI_TO_MASTER_COLUMNS,

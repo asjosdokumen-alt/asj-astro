@@ -943,6 +943,45 @@ export function buildMasterBody(d: any): Record<string, any> {
   return body;
 }
 
+/**
+ * Field Indonesia yang BERUBAH dibanding baris tersimpan — masukan
+ * `autoTranslateToJp`.
+ *
+ * Dipisah sebagai fungsi murni supaya aturan "jangan bakar kuota untuk teks
+ * yang sama" bisa diuji tanpa memanggil handler simpan. Baris baru (`row`
+ * null) mengembalikan semua field terisi: penerjemahan pertama memang perlu.
+ */
+export function hanyaFieldBerubah(
+  d: Record<string, unknown>,
+  row: Record<string, unknown> | null,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const key of Object.keys(JP_TRANSLATE_MAP)) {
+    const teks = String(d[key] ?? '').trim();
+    if (!teks) continue;
+    const col = MASTER_COLUMN_MAP[key];
+    const lama = row && col ? String(row[col] ?? '').trim() : '';
+    if (row && teks === lama) continue;
+    out[key] = teks;
+  }
+  return out;
+}
+
+/**
+ * Terjemahkan field Indonesia → Jepang untuk kolom `*_jp`.
+ *
+ * DUA penjaga kuota/akurasi (2026-10-30, keluhan pemilik: *"kadang ai ngaco
+ * dan sering tidak tersedia … bikin kuota cepet abis"*):
+ *
+ *   1. PEMANGGIL hanya menyerahkan field yang BERUBAH (lihat `hanyaBerubah` di
+ *      handler simpan). Sebelumnya setiap "Simpan" mengirim ulang semua field
+ *      yang kolom Jepangnya masih kosong — kandidat yang menekan Simpan lima
+ *      kali membakar lima panggilan model untuk teks yang sama.
+ *   2. HASIL yang tidak mengandung satu pun karakter Jepang DIBUANG. Model
+ *      kadang mengembalikan teks Indonesia apa adanya (atau penjelasan
+ *      berbahasa Inggris); dulu teks itu ditulis ke kolom `*_jp` dan tercetak
+ *      di CV sebagai "terjemahan".
+ */
 export async function autoTranslateToJp(idFields: Record<string, string>, existingJp?: Record<string, string>): Promise<Record<string, string>> {
   const toTranslate: Array<{ key: string; text: string }> = [];
   for (const [key, jpCol] of Object.entries(JP_TRANSLATE_MAP)) {
@@ -962,7 +1001,13 @@ export async function autoTranslateToJp(idFields: Record<string, string>, existi
     const parsed = parseJsonLoose(text);
     if (!parsed || typeof parsed !== 'object') return {};
     const result: Record<string, string> = {};
-    for (let i = 0; i < toTranslate.length; i++) { const t = String(parsed[String(i)] || '').trim(); if (t) result[toTranslate[i].key] = t; }
+    for (let i = 0; i < toTranslate.length; i++) {
+      const t = String(parsed[String(i)] || '').trim();
+      // Hiragana, katakana, kanji, atau half-width katakana. Teks Latin saja
+      // berarti model tidak menerjemahkan — lebih baik kolom tetap kosong
+      // daripada CV mencetak kalimat Indonesia di kolom Jepang.
+      if (t && /[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]/.test(t)) result[toTranslate[i].key] = t;
+    }
     return result;
   } catch { return {}; }
 }
@@ -1115,7 +1160,13 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
     try {
       const existingJp: Record<string, string> = {};
       if (row) { for (const [_fk, jc] of Object.entries(JP_TRANSLATE_MAP)) { const v = row[jc]; if (v !== undefined && v !== null && String(v).trim()) existingJp[jc] = String(v); } }
-      jpTranslations = await autoTranslateToJp(d, existingJp);
+      /* HANYA field yang BERUBAH. Tanpa saringan ini setiap "Simpan" mengirim
+         ulang semua field yang kolom Jepangnya masih kosong, dan kandidat yang
+         menekan Simpan berkali-kali membakar satu panggilan model per tekan
+         untuk teks yang sama (keluhan pemilik: kuota cepat habis, AI sering
+         tidak tersedia). Baris baru (`row` null) tetap diterjemahkan semua. */
+      const berubah = hanyaFieldBerubah(d, row);
+      jpTranslations = await autoTranslateToJp(berubah, existingJp);
       for (const [fk, jc] of Object.entries(JP_TRANSLATE_MAP)) { if (jpTranslations[fk]) body[jc] = jpTranslations[fk]; }
     } catch { /* non-fatal */ }
 

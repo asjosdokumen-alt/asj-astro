@@ -16,7 +16,7 @@
 // Tes di bawah menjaga invarian itu, bukan isi sebuah daftar.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { buildAiOverflow, mergeAiOverflow, buildMasterBody, buildMasterNested } from '../contexts/master-data';
+import { buildAiOverflow, mergeAiOverflow, buildMasterBody, buildMasterNested, hanyaFieldBerubah } from '../contexts/master-data';
 import { TABLE_COLUMNS } from '../_lib/db/schema.generated';
 
 describe('buildMasterBody — setiap kolom yang ditulis ADA di kontrak', () => {
@@ -85,6 +85,39 @@ describe('buildMasterBody — setiap kolom yang ditulis ADA di kontrak', () => {
     const body = buildMasterBody({ nama: 'BUDI', tb: '' });
     expect(body.nama_lengkap).toBe('BUDI');
     expect('tb' in body).toBe(false);
+  });
+});
+
+/* ── Kuota AI: jangan menerjemahkan teks yang tidak berubah ──────────────────
+   Pemilik 2026-10-30: *"kadang ai ngaco dan sering tidak tersedia … bikin
+   kuota cepet abis"*. Penyebab terbesarnya bukan fitur yang jarang dipakai,
+   melainkan panggilan terjemahan yang ikut berjalan pada SETIAP simpan selama
+   kolom `*_jp` masih kosong — teks yang sama, satu panggilan model per tekan
+   Simpan. `hanyaFieldBerubah` adalah saringannya. */
+describe('hanyaFieldBerubah — terjemahkan hanya yang berubah', () => {
+  it('baris baru: semua field terisi ikut (penerjemahan pertama memang perlu)', () => {
+    const out = hanyaFieldBerubah({ promosi: 'Saya pekerja keras', hobi: 'Membaca' }, null);
+    expect(out).toEqual({ promosi: 'Saya pekerja keras', hobi: 'Membaca' });
+  });
+
+  it('nilai yang SAMA dengan baris tersimpan tidak ikut (tidak bakar kuota)', () => {
+    const out = hanyaFieldBerubah(
+      { promosi: 'Saya pekerja keras', hobi: 'Membaca' },
+      { promosi_diri: 'Saya pekerja keras', hobi_dan_keterampilan: 'Membaca' },
+    );
+    expect(out).toEqual({});
+  });
+
+  it('hanya field yang BERUBAH yang ikut', () => {
+    const out = hanyaFieldBerubah(
+      { promosi: 'Saya pekerja keras', hobi: 'Bersepeda' },
+      { promosi_diri: 'Saya pekerja keras', hobi_dan_keterampilan: 'Membaca' },
+    );
+    expect(out).toEqual({ hobi: 'Bersepeda' });
+  });
+
+  it('field kosong tidak pernah ikut', () => {
+    expect(hanyaFieldBerubah({ promosi: '   ', hobi: '' }, null)).toEqual({});
   });
 });
 

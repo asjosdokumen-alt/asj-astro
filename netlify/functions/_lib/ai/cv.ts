@@ -404,9 +404,20 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
     const existingRows = await supabaseJson('GET', 'ai_form_submissions', {
       query: { select: AI_SUBMISSION_COLS, wa: 'eq.' + wa, limit: '10' },
     });
-    const existing = (Array.isArray(existingRows) ? existingRows : []).find(
-      (r) => normalizeWa(String(r.wa || '')) === wa && String(r.submitted_via || '') === 'ai_form',
-    );
+    /* Ambil baris TERBARU, bukan yang pertama kebetulan muncul. Terukur
+       2026-10-30: satu WA punya DUA baris `ai_form`/`AI_MASTER` (id 1 dan 2).
+       `.find()` menulis ke baris pertama, sehingga baris terbaru tetap berisi
+       snapshot lama selamanya — dan pembaca yang mengurutkan `updated_at`
+       melihat data basi walaupun simpan berhasil. `updated_at` bisa kosong di
+       baris lama, jadi `id` menjadi penentu kedua. */
+    const existing = (Array.isArray(existingRows) ? existingRows : [])
+      .filter((r) => normalizeWa(String(r.wa || '')) === wa && String(r.submitted_via || '') === 'ai_form')
+      .sort((a, b) => {
+        const ta = Date.parse(String(a.updated_at || a.ai_updated_at || '')) || 0;
+        const tb = Date.parse(String(b.updated_at || b.ai_updated_at || '')) || 0;
+        if (tb !== ta) return tb - ta;
+        return Number(b.id || 0) - Number(a.id || 0);
+      })[0];
     if (existing && existing.id !== undefined) {
       await supabaseJson('PATCH', 'ai_form_submissions', {
         query: { id: 'eq.' + existing.id },
@@ -530,10 +541,19 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
           const v = m ? m[jpCol] : undefined;
           if (v !== undefined && v !== null && String(v).trim()) existingJp[jpCol] = String(v);
         }
-        const terjemahan = await autoTranslateToJp(
-          { alamat: String(identitas.alamat || ''), tempatLahir: String(identitas.tempat_lahir || '') },
-          existingJp,
-        );
+        /* HANYA alamat/tempat lahir yang BERUBAH (2026-10-30). Sebelumnya
+           setiap Simpan CV AI memanggil model selama kolom `alamat_jp` masih
+           kosong — teks yang sama, satu panggilan per tekan Simpan. Itu
+           pemborosan kuota terbesar di jalur ini, dan kuota habis = chat
+           menjawab "AI tidak tersedia" (keluhan pemilik). */
+        const perlu: Record<string, string> = {};
+        const alamat = String(identitas.alamat || '').trim();
+        const lahir = String(identitas.tempat_lahir || '').trim();
+        if (alamat && (!m || alamat !== String(m.alamat_lengkap || '').trim())) perlu.alamat = alamat;
+        if (lahir && (!m || lahir !== String(m.tempat_lahir || '').trim())) perlu.tempatLahir = lahir;
+        const terjemahan = Object.keys(perlu).length
+          ? await autoTranslateToJp(perlu, existingJp)
+          : {};
         for (const [fk, jc] of Object.entries(JP_TRANSLATE_MAP)) {
           if (terjemahan[fk] && !masterBody[jc]) masterBody[jc] = terjemahan[fk];
         }
