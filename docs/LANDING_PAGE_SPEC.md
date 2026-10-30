@@ -14,6 +14,17 @@
 > **Revisi 2.** Setelah company profile resmi masuk, dokumen ini berubah dari
 > “rancangan dengan 10 lubang data” menjadi **spesifikasi berisi**. Sebelas section
 > sekarang punya isi nyata; tinggal 7 item yang menunggu pemilik (§9).
+>
+> **Revisi 3 — 2026-10-30 (koreksi cakupan penempatan).** Semua tempat di dokumen
+> ini yang menulis **“5 bidang”** dan **“4 prefektur”** sebagai isi hero (S1) atau
+> sebagai ringkasan R4 sudah **USANG**. Pemilik menyatakan keduanya adalah jejak
+> saat berdiri; cakupan sekarang adalah **seluruh bidang** dan **seluruh 47
+> prefektur** lewat LPK mitra. Alasan lengkap ada di
+> `docs/COMPANY_PROFILE_DATA.md` §8; yang berubah di kode: `HERO_STATS` di
+> `src/components/App.tsx` dan `PLACEMENTS` di `src/lib/companyProfile.ts`.
+> Baris-baris lama di bawah **sengaja tidak dihapus** — dokumen ini merekam
+> keputusan tanggal 19 September; revisi ini yang menyatakan mana yang tidak
+> berlaku lagi.
 
 ---
 

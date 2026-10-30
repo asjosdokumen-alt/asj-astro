@@ -835,7 +835,11 @@ export const jpTranslations: Record<string, string> = {
   "profile.hero_chip_penempatan": "就職支援",
   "profile.stat_since": "設立",
   "profile.stat_sectors": "職種",
+  // 2026-10-30: 創業時の「5職種」ではなく全分野。数字ではなく語で示す
+  // （提携LPK経由で分野は限定されないため、上限の数字を出すと嘘になる）。
+  "profile.stat_sectors_value": "全分野",
   "profile.stat_prefectures": "都道府県",
+  "profile.stat_prefectures_value": "47",
   "profile.cta_title": "日本への一歩を、始めませんか。",
   "profile.cta_sub": "募集中の求人をご覧いただくか、本日応募者登録ができます。",
   "profile.cta_secondary": "応募者登録",
@@ -947,6 +951,10 @@ export const jpTranslations: Record<string, string> = {
   "profile.fac_uniform_body": "機関の制服、教材、辞書。",
   "profile.fac_exam_title": "JFT・SSW試験",
   "profile.fac_exam_body": "各1回の受験料がプログラム費用に含まれます。",
+  "profile.place_sectors": "配属分野",
+  "profile.place_sectors_all": "全分野 — 特定技能・技能実習",
+  "profile.place_prefectures": "配属先の都道府県",
+  "profile.place_prefectures_all": "日本全国 47 都道府県",
   "profile.place_food": "食品加工",
   "profile.place_farm": "農業",
   "profile.place_livestock": "畜産",
@@ -961,10 +969,13 @@ export const jpTranslations: Record<string, string> = {
 
   // ── 配属先（R4、13・14ページ） ────────────────────────────────────────
   // モックアップはこの枠を「体験談」で埋めていたが、会社案内に体験談は
-  // 一切ない。代わりに確認可能な事実——日付入りの面接バナーから読み取った
-  // 4つの県——を掲載する。
+  // 一切ない。代わりに確認可能な事実を掲載する。
+  // 2026-10-30 オーナー訂正：配属は「5職種・4県」ではなく全分野・全国。
+  // 日付入り面接バナーの4県は「実績の証拠」であって「範囲の上限」ではない、
+  // という区別を desc で明示する。
   "profile.place_title": "配属先",
-  "profile.place_desc": "会社資料に記載された職種と配属先の都道府県です。",
+  "profile.place_desc": "提携LPKを通じて全分野・日本全国47都道府県に対応しています。",
+  "profile.place_evidence_title": "記録に残る配属実績",
   "profile.place_note": "都道府県名は公式資料に合わせてラテン文字で表記しています。",
   "profile.mitra_title": "提携パートナー",
   "profile.mitra_desc": "日本への渡航は、提携LPKおよびPT（SO）と共同で行っています。",

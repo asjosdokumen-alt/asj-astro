@@ -261,6 +261,39 @@ mockup desain mana pun**, dan ia menggantikan kebutuhan testimoni karangan.
 
 Empat prefektur: **Miyazaki · Okayama · Nagano · Kagoshima.**
 
+> ### ⚠ KOREKSI PEMILIK — 2026-10-30: tabel di atas adalah JEJAK, bukan CAKUPAN
+>
+> Verbatim: *"ada informasi usang yaitu 5 bidang penempatan itu pas awal berdiri.
+> kita mah semua bidang penempatan dan sluruh prefektur di jepang kan kerjasama
+> sama mitra so nya ada banyak."*
+>
+> Artinya dua angka yang dipublikasi sampai hari itu — **5 bidang** dan **4
+> prefektur** — adalah jejak kaki saat berdiri, bukan batas perusahaan. Yang
+> benar untuk dipublikasi: **seluruh bidang penempatan** (特定技能 + 技能実習,
+> terbuka karena penempatan berjalan lewat LPK mitra) dan **seluruh 47 prefektur
+> di Jepang**.
+>
+> Konsekuensi yang sudah diterapkan di kode:
+>
+> - Hero: `Semua` bidang (kata, bukan angka — angka apa pun akan menjadi plafon
+>   yang tidak pernah diklaim pemilik) dan `47` prefektur. Keduanya tinggal di
+>   kamus (`profile.stat_sectors_value`, `profile.stat_prefectures_value`),
+>   karena island `App.tsx` tidak boleh menarik seluruh `companyProfile.ts` ke
+>   bundle hanya untuk satu angka, dan berkas `.ts` baru akan menggeser counter
+>   beku `indexer`. Angka `47` karena itu muncul sebagai SALINAN di empat tempat
+>   dan `companyProfile.test.ts` memeriksa semuanya sama.
+> - `PLACEMENT_COVERAGE` dan `PLACEMENTS` (`src/lib/companyProfile.ts`) dipisah
+>   jadi DUA daftar: yang pertama cakupan (seluruh bidang, 47 prefektur), yang
+>   kedua tabel di atas sebagai **bukti aktivitas**. Satu daftar gabungan sempat
+>   dirender dan terbaca sebagai kontradiksi ("Seluruh 47 prefektur" tepat di
+>   atas "Kagoshima"), jadi pemisahan itu bukan kosmetik.
+> - **Jangan** mengembalikan "5 bidang" / "4 prefektur" sebagai angka cakupan
+>   hanya karena dokumen perusahaan mencetaknya. Dokumen ini merekam keadaan saat
+>   diterbitkan; pemilik adalah otoritas atas keadaan sekarang.
+>
+> Yang TETAP berlaku: batas klaim di bawah. Cakupan "seluruh prefektur" bukan
+> izin menulis jumlah mitra, jumlah kandidat, atau jumlah keberangkatan.
+
 > **Batas klaim.** Dokumen ini tidak memuat jumlah kandidat, jumlah keberangkatan, atau
 > jumlah perusahaan mitra. Jangan menuliskan “50+ perusahaan Jepang” di halaman publik
 > sebelum pemilik menunjuk sumbernya.
@@ -443,8 +476,14 @@ Enam item tersisa. Selebihnya sudah terverifikasi di atas.
 > **Aturan lama K-10 tidak berlaku lagi; jangan dihidupkan kembali tanpa perintah baru.**
 
 **Satu hal yang tidak perlu ditanyakan lagi:** angka yang sudah ada di dokumen resmi.
-Harga **6 juta**, bidang **5 jenis**, prefektur **4**, alur **6 langkah**, persyaratan
-**8 butir**, cakupan **4 item** — semuanya terverifikasi dan boleh langsung dipakai.
+Harga **6 juta**, alur **6 langkah**, persyaratan **8 butir**, cakupan **4 item** —
+semuanya terverifikasi dan boleh langsung dipakai.
+
+**Dua angka DIKELUARKAN dari daftar itu pada 2026-10-30** — bidang dan prefektur.
+Keduanya dulu tertulis di sini sebagai "5 jenis" dan "4", tetapi pemilik menyatakan
+itu jejak awal berdiri, bukan cakupan sekarang (§8). Angka yang berlaku untuk
+halaman publik: **semua bidang** dan **47 prefektur**. Kalau ada yang bertanya
+"kenapa bukan 5 dan 4 seperti di dokumen", jawabannya ada di §8, bukan di sini.
 
 ---
 

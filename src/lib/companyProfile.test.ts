@@ -29,6 +29,7 @@ import {
   LEGAL_FACTS,
   MISSIONS,
   PLACEMENTS,
+  PLACEMENT_COVERAGE,
   PLACEMENT_PREFECTURES,
   PROGRAMS,
   PROGRAM_INCLUDES,
@@ -40,7 +41,8 @@ import {
   type Fact,
   type Text,
 } from './companyProfile';
-
+import { translations } from '../store/i18n';
+import { jpTranslations } from '../store/i18n-jp';
 /** Every `Text` in the module, flattened, so the key rules can be checked once. */
 function allTexts(): Text[] {
   const groups: Text[][] = [
@@ -53,7 +55,7 @@ function allTexts(): Text[] {
   const tiles = [...WHY_JAPAN, ...PROGRAMS, ...FACILITIES];
   for (const tile of tiles) groups.push([tile.title, tile.body]);
   for (const step of FLOW_STEPS) groups.push([step.title, step.body]);
-  for (const fact of [...LEGAL_FACTS, ...PLACEMENTS]) groups.push([fact.label]);
+  for (const fact of [...LEGAL_FACTS, ...PLACEMENT_COVERAGE, ...PLACEMENTS]) groups.push([fact.label]);
   return groups.flat();
 }
 
@@ -270,14 +272,50 @@ describe('companyProfile — counts that must match the document', () => {
     expect(FACILITIES).toHaveLength(6); // pages 11-15 plus the price inclusions
   });
 
-  it('derives the prefecture list from the placements it belongs to', () => {
-    // The hero stat and this list must not be able to disagree.
+  it('states coverage (all fields, 47 prefectures) and keeps the banner areas as evidence', () => {
+    // CORRECTED 2026-10-30. This test used to say "the hero stat and this list
+    // must not be able to disagree", because the hero's number WAS
+    // PLACEMENT_PREFECTURES.length. The owner corrected the coverage — all
+    // fields, all prefectures through partner LPKs — so those two claims are now
+    // separate and are asserted separately.
+    //
+    // `p.value` is a `Text` (a prefecture is a NAME, so it translates), so join
+    // its `.text`. Joining the objects yields "[object Object]" and every
+    // contains-check below would fail at once, which looks like a data problem
+    // rather than a shape change.
+    const rows = [...PLACEMENT_COVERAGE, ...PLACEMENTS];
+    const joined = rows.map((p) => (typeof p.value === 'string' ? p.value : p.value.text)).join(' ');
+
+    // 1. COVERAGE. 47 is Japan's own count (1 都 + 1 道 + 2 府 + 43 県), not a
+    //    company figure — that is why it may be published at all.
+    expect(joined).toContain('Seluruh bidang');
+    expect(joined).toContain('Seluruh 47 prefektur');
+
+    // 2. EVIDENCE. The four areas with dated mensetsu banners stay, and each is
+    //    still named — they were never wrong, only presented as the total.
     expect(PLACEMENT_PREFECTURES).toHaveLength(4);
-    // `p.value` became a `Text` (a prefecture name is a NAME, so it translates),
-    // so join its `.text`. Joining the objects yields "[object Object]" and the
-    // contains-check below would then fail on every prefecture at once, which
-    // looks like a data problem rather than a shape change.
-    const joined = PLACEMENTS.map((p) => (typeof p.value === 'string' ? p.value : p.value.text)).join(' ');
     for (const pref of PLACEMENT_PREFECTURES) expect(joined).toContain(pref);
+
+    // 2b. THE SPLIT IS THE FIX, so it is asserted: coverage and evidence are two
+    //     separate lists, and neither is empty. A future "tidy-up" that merges
+    //     them back into one `dl` reintroduces the contradiction the owner
+    //     reported (measured on screen 2026-10-30).
+    expect(PLACEMENT_COVERAGE).toHaveLength(2);
+    expect(PLACEMENTS).toHaveLength(3);
+
+    // 3. EVERY COPY OF THE NUMERAL AGREES. It is typed in four places — the
+    //    coverage row's literal, its ID and JP dictionary entries, and the hero
+    //    tile's `profile.stat_prefectures_value` — because a dictionary string
+    //    cannot interpolate a constant at runtime and a shared constant would
+    //    have cost a new module. Checked copies, not a second source: a
+    //    translator who edits one to "43" turns this red.
+    for (const dict of [translations.id, jpTranslations]) {
+      expect(dict['profile.place_prefectures_all']).toContain('47');
+      expect(dict['profile.stat_prefectures_value']).toBe('47');
+    }
+    // And the sectors figure is a WORD in both languages — a digit there would
+    // re-create the ceiling the owner just removed.
+    expect(translations.id['profile.stat_sectors_value']).toBe('Semua');
+    expect(jpTranslations['profile.stat_sectors_value']).toBe('全分野');
   });
 });

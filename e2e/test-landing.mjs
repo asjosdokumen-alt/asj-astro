@@ -293,9 +293,15 @@ const HERO_ID_NOTE =
  * file exists to avoid. Each pair below was read out of COMPANY_PROFILE_DATA.md:
  *
  *   2023  'Akta pendirian 15 Agustus 2023' (h. 6)
- *   5     'Bidang Tokutei Ginou: Perawat Lansia · Pengolahan Makanan · Restoran ·
- *          Pertanian · Peternakan' — exactly five (h. 3)
- *   4     'Empat prefektur: Miyazaki · Okayama · Nagano · Kagoshima' (h. 13-14)
+ *   Semua 'Koreksi pemilik 2026-10-30: 5 bidang itu jejak awal berdiri, sekarang
+ *          seluruh bidang lewat LPK mitra' (COMPANY_PROFILE_DATA.md §8)
+ *   47    'Seluruh prefektur di Jepang — 1 都 + 1 道 + 2 府 + 43 県' (ibid.)
+ *
+ * TWO OF THESE CHANGED ON 2026-10-30, and the direction of the change is the
+ * point: the expected values are still copied from the DOCUMENT, and the
+ * document itself now records the owner's correction. An implementation that
+ * quietly printed "47" while the document still said four would still fail
+ * here — which is what this pairing is for.
  *
  * The LABEL is what locates the tile, and the label itself comes from i18n
  * (`profile.stat_*`), so a tile cannot pass this rule by carrying the right digit
@@ -304,8 +310,8 @@ const HERO_ID_NOTE =
  */
 const HERO_STATS_EXPECTED = [
   { value: '2023', label: 'Berdiri sejak', source: 'COMPANY_PROFILE_DATA.md h. 6 (akta pendirian 15 Agustus 2023)' },
-  { value: '5', label: 'Bidang penempatan', source: 'COMPANY_PROFILE_DATA.md h. 3 (lima bidang Tokutei Ginou)' },
-  { value: '4', label: 'Prefektur di Jepang', source: 'COMPANY_PROFILE_DATA.md h. 13-14 (empat prefektur)' },
+  { value: 'Semua', label: 'Bidang penempatan', source: 'COMPANY_PROFILE_DATA.md §8 (koreksi pemilik 2026-10-30: seluruh bidang)' },
+  { value: '47', label: 'Prefektur di Jepang', source: 'COMPANY_PROFILE_DATA.md §8 (seluruh 47 prefektur, bukan empat)' },
 ];
 
 /**

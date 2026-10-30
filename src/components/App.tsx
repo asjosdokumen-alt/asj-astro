@@ -78,17 +78,34 @@ type ModalMode = 'closed' | 'login' | 'daftar';
  * departures and 50+ partners. NONE of those numbers appears anywhere in the
  * official company profile, and a fabricated statistic on a company page is a
  * legal claim, not decoration (docs/COMPANY_PROFILE_DATA.md §12, §13). These
- * three ARE documented: the deed is dated 15 August 2023 (page 6), and the
- * profile lists five placement sectors (page 3) and four destination prefectures
- * — Miyazaki, Okayama, Nagano, Kagoshima (pages 13-14).
+ * three ARE documented: the deed is dated 15 August 2023 (page 6).
  *
- * When the owner supplies the real counts, a fourth tile is added here and the
- * grid already accommodates it (`lg:grid-cols-1` stacks any number).
+ * CORRECTED 2026-10-30 — "5 BIDANG" AND "4 PREFEKTUR" WERE THE FOUNDING
+ * FOOTPRINT, NOT THE CURRENT ONE. Owner, verbatim: "5 bidang penempatan itu
+ * pas awal berdiri. kita mah semua bidang penempatan dan seluruh prefektur di
+ * jepang kan kerjasama sama mitra so nya ada banyak." The document's five
+ * sectors (page 3) and four dated interview banners (pages 13-14) are still
+ * true as EVIDENCE; presenting them as the total was the error, and it
+ * understated the company on the one strip a partner reads first.
+ *
+ *   - sectors  : "Semua" — a word, because the honest count is not a number.
+ *                The company places through partner LPKs, so the field list is
+ *                open-ended (SSW + magang), and any digit here would be a
+ *                ceiling the owner never claimed.
+ *   - prefectures: "47", Japan's own count (1 都 + 1 道 + 2 府 + 43 県).
+ *
+ * BOTH VALUES COME FROM THE DICTIONARY (`*_value`), not from this array, and
+ * that is deliberate: the same two strings are printed again in the Penempatan
+ * section, and `companyProfile.test.ts` asserts every copy carries the same
+ * digits. A constant exported from here would have needed a new module (a new
+ * `.ts` file moves the indexer's frozen counters) or a `companyProfile.ts`
+ * import (which would pull the whole company profile into this island's
+ * bundle). Two checked dictionary entries are the cheap, honest middle.
  */
-const HERO_STATS: ReadonlyArray<{ value: string; labelKey: string }> = [
+const HERO_STATS: ReadonlyArray<{ value?: string; valueKey?: string; labelKey: string }> = [
   { value: '2023', labelKey: 'profile.stat_since' },
-  { value: '5', labelKey: 'profile.stat_sectors' },
-  { value: '4', labelKey: 'profile.stat_prefectures' },
+  { valueKey: 'profile.stat_sectors_value', labelKey: 'profile.stat_sectors' },
+  { valueKey: 'profile.stat_prefectures_value', labelKey: 'profile.stat_prefectures' },
 ];
 
 export default function App(
@@ -674,7 +691,7 @@ export default function App(
             <div class="lg:col-span-5 grid gap-3 sm:grid-cols-3">
               {HERO_STATS.map((stat) => (
                 <div key={stat.labelKey} class="rounded-card bg-white/10 border border-white/15 backdrop-blur-sm px-5 py-4 flex sm:block items-center justify-between gap-3 hover:bg-white/15 transition-colors">
-                  <div class="text-section font-black text-pink-300 leading-none">{stat.value}</div>
+                  <div class="text-section font-black text-pink-300 leading-none">{stat.valueKey ? t(stat.valueKey) : stat.value}</div>
                   <div class="text-caption text-slate-200 mt-0 sm:mt-2">{t(stat.labelKey)}</div>
                 </div>
               ))}

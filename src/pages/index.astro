@@ -38,6 +38,7 @@ import {
   MISSIONS,
   MAPS_EMBED_URL,
   PLACEMENTS,
+  PLACEMENT_COVERAGE,
   PROGRAMS,
   PROGRAM_INCLUDES,
   PROGRAM_PAYMENT,
@@ -390,14 +391,22 @@ import { GALLERY } from '../lib/gallery';
     <!-- Section: Penempatan Kami (R4, pages 13 and 14).
          WHY THIS REPLACES TESTIMONIALS. The mockup put quotes in this slot; the
          company profile contains none. It does contain something more useful —
-         four prefectures with dated interview banners behind them — so the slot
-         shows provable evidence instead of invented praise.
+         dated interview banners — so the slot shows provable evidence instead of
+         invented praise.
 
-         The list comes from PLACEMENTS, and the UI does not restate the
-         prefecture NAMES anywhere: it renders the `value` columns as written, so
-         adding a fifth placement is a one-line edit to companyProfile.ts and there
-         is no second copy of the list to forget. (The hero's count is derived from
-         the same module via PLACEMENT_PREFECTURES.) -->
+         CORRECTED 2026-10-30. This section used to present the document's four
+         prefectures as the company's COVERAGE. The owner corrected that: five
+         sectors was the founding footprint, and placement now reaches every
+         field and all 47 prefectures through partner LPKs. The section therefore
+         renders TWO lists — PLACEMENT_COVERAGE, then PLACEMENTS under the
+         heading `profile.place_evidence_title` — because a single list put
+         "Seluruh 47 prefektur" directly above "Kagoshima" and read as a
+         contradiction (measured on screen the same day).
+
+         The list comes from PLACEMENT_COVERAGE / PLACEMENTS, and the UI does
+         not restate the prefecture NAMES anywhere: it renders the `value`
+         columns as written, so adding a placement is a one-line edit to
+         companyProfile.ts and there is no second copy of the list to forget. -->
     <!-- Section: Lowongan Ringkas (R2) WAS HERE and is deliberately gone.
          Owner ruling 2026-09-24: `/` is a company profile for MoU/business
          partners, not a job board, so a vacancy teaser does not belong on it.
@@ -411,7 +420,7 @@ import { GALLERY } from '../lib/gallery';
         titleKey="profile.place_title"
         title="Penempatan Kami"
         descKey="profile.place_desc"
-        desc="Bidang dan prefektur tujuan yang tercatat pada dokumen perusahaan."
+        desc="Melalui jejaring mitra LPK, kami menempatkan ke seluruh bidang dan seluruh 47 prefektur di Jepang."
         accent="identity"
         headingId="penempatan-title"
       />
@@ -422,9 +431,11 @@ import { GALLERY } from '../lib/gallery';
           wrapper so the corners clip the image.
 
           DECORATIVE, so `alt=""` + `aria-hidden`. The section already names the
-          four prefectures in its FactList and states what it is in its h2; the
-          band carries no information those two do not, which is the same test
-          the `#lokasi` note applies to its own skyline.
+          coverage and the evidence rows in its FactList and states what it is in
+          its h2; the band carries no information those two do not, which is the
+          same test the `#lokasi` note applies to its own skyline. (Since
+          2026-10-30 the artwork is a map of Japan, which is now the more
+          accurate illustration of the claim: all 47 prefectures, not four.)
 
           ARTWORK REPLACED 2026-09-28. This slot used to hold a photograph of Mt
           Fuji across a lake, chosen because it was exactly 3:2 and contained no
@@ -463,6 +474,15 @@ import { GALLERY } from '../lib/gallery';
         />
       </picture>
       <div class="mt-8">
+        {/* Two lists, not one. The first answers "do you place in my field and
+            my prefecture"; the second is evidence with dates behind it. They
+            were a single `dl` for part of 2026-10-30 and it read as a
+            contradiction on screen ("Seluruh 47 prefektur" immediately above
+            "Kagoshima"), so the heading between them is load-bearing. */}
+        <FactList facts={PLACEMENT_COVERAGE} accent="identity" />
+        <h3 data-lang="profile.place_evidence_title" class="mt-8 mb-3 text-body-sm font-bold text-fg">
+          Jejak penempatan tercatat
+        </h3>
         <FactList facts={PLACEMENTS} accent="identity" />
       </div>
       <p data-lang="profile.place_note" class="mt-6 max-w-[70ch] text-body-sm text-fg-muted">

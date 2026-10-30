@@ -1213,14 +1213,25 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.hero_chip_ssw": "SSW",
   "profile.hero_chip_magang": "Magang",
   "profile.hero_chip_penempatan": "Penempatan",
-  // The three hero stats are the ones the company profile actually proves:
-  // founded 2023 (deed 15 Aug 2023), five placement sectors and four destination
-  // prefectures (pages 3, 13 and 14). The counts a mockup showed — 500+
-  // candidates, 200+ departures, 50+ partners — are NOT in the document and are
-  // deliberately absent; see docs/COMPANY_PROFILE_DATA.md §13.
+  // The three hero stats. Founded 2023 is from the deed (15 Aug 2023). The other
+  // two were "5 sectors" and "4 prefectures" until 2026-10-30, when the owner
+  // corrected both: five was the FOUNDING footprint, and placement now covers
+  // every field and all 47 prefectures through partner LPKs. `_value` holds the
+  // sectors figure as a WORD, because the honest count is not a digit; the
+  // prefecture figure is Japan's own count (1 都 + 1 道 + 2 府 + 43 県).
+  //
+  // BOTH `_value` ENTRIES ARE COPIES OF STRINGS PRINTED ELSEWHERE — the same
+  // two figures appear in the Penempatan rows. `companyProfile.test.ts` asserts
+  // the copies agree, so editing one to "43" turns the gate red instead of
+  // leaving the hero and the table disagreeing.
+  // The counts a mockup showed — 500+ candidates, 200+ departures, 50+ partners
+  // — are NOT in the document and are deliberately absent;
+  // see docs/COMPANY_PROFILE_DATA.md §13.
   "profile.stat_since": "Berdiri sejak",
   "profile.stat_sectors": "Bidang penempatan",
+  "profile.stat_sectors_value": "Semua",
   "profile.stat_prefectures": "Prefektur di Jepang",
+  "profile.stat_prefectures_value": "47",
   "profile.cta_title": "Siap memulai perjalanan ke Jepang?",
   "profile.cta_sub": "Lihat lowongan yang tersedia atau daftar sebagai pelamar hari ini.",
   "profile.cta_secondary": "Daftar Pelamar",
@@ -1342,6 +1353,13 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.fac_uniform_body": "Seragam lembaga serta modul pembelajaran dan kamus.",
   "profile.fac_exam_title": "Ujian JFT & SSW",
   "profile.fac_exam_body": "Masing-masing satu kali ujian, termasuk dalam biaya program.",
+  "profile.place_sectors": "Bidang penempatan",
+  "profile.place_sectors_all": "Seluruh bidang — Tokutei Ginou dan magang",
+  "profile.place_prefectures": "Prefektur tujuan",
+  // The numeral is a CHECKED COPY of `profile.stat_prefectures_value` (the hero
+  // tile's entry) — a dictionary string cannot interpolate a constant, and
+  // `companyProfile.test.ts` asserts both copies carry the same digits.
+  "profile.place_prefectures_all": "Seluruh 47 prefektur di Jepang",
   "profile.place_food": "Pengolahan Makanan",
   "profile.place_farm": "Pertanian",
   "profile.place_livestock": "Peternakan",
@@ -1349,6 +1367,11 @@ export const translations: Record<Lang, Record<string, string>> = {
   // until 2026-09-27 — see the `Fact.value` note in companyProfile.ts. A
   // prefecture is a name, so it localises; the middle dot separates two
   // prefectures and is the same glyph in both languages.
+  //
+  // 2026-10-30: these three rows are now EVIDENCE, not the whole list — the
+  // section opens with the coverage rows above. The comment that used to sit
+  // here said the list was "what the profile contains", which was the framing
+  // the owner corrected.
   "profile.place_food_area": "Miyazaki · Okayama",
   "profile.place_farm_area": "Miyazaki · Nagano",
   "profile.place_livestock_area": "Kagoshima",
@@ -1359,11 +1382,21 @@ export const translations: Record<Lang, Record<string, string>> = {
   // ── Penempatan Kami (R4, halaman 13 & 14) ─────────────────────────────
   // The mockup filled this slot with TESTIMONIALS. The company profile
   // contains none, so it shows what it DOES contain and can be checked:
-  // four prefectures read off the dated interview banners. Replacing
-  // invented quotes with provable evidence is the trade the spec asks for
-  // (docs/LANDING_PAGE_SPEC.md §4).
+  // the dated interview banners. Replacing invented quotes with provable
+  // evidence is the trade the spec asks for (docs/LANDING_PAGE_SPEC.md §4).
+  //
+  // CORRECTED 2026-10-30: the desc used to say "bidang dan prefektur yang
+  // tercatat pada dokumen perusahaan", which presented the DOCUMENT'S four
+  // prefectures as the company's coverage. The owner corrected the coverage
+  // (all fields, all 47 prefectures, through partner LPKs), so the desc now
+  // states the coverage first and names the rows below as evidence.
   "profile.place_title": "Penempatan Kami",
-  "profile.place_desc": "Bidang dan prefektur tujuan yang tercatat pada dokumen perusahaan.",
+  "profile.place_desc": "Melalui jejaring mitra LPK, kami menempatkan ke seluruh bidang dan seluruh 47 prefektur di Jepang.",
+  // Heading between the coverage list and the evidence list. Load-bearing:
+  // without it the two lists read as one contradicting table (see the note in
+  // companyProfile.ts). "Jejak" is the owner's own framing — recorded placements,
+  // not the boundary of what the company can do.
+  "profile.place_evidence_title": "Jejak penempatan tercatat",
   "profile.place_note": "Nama prefektur ditulis dalam huruf Latin, sesuai dokumen resmi.",
 
   // ── Mitra Kami (slot mitra MoU — model sponsor) ───────────────────────

@@ -504,13 +504,51 @@ export const FACILITIES: Tile[] = [
 ];
 
 /* ── Placement (pages 13 and 14) ────────────────────────────────────────────
-   Four prefectures, read off the dated interview banners. This is the trust slot
-   the mockup filled with testimonials the document does not contain.
+   THIS LIST USED TO BE FOUR PREFECTURES AND NOTHING ELSE. Corrected
+   2026-10-30 — owner, verbatim: "5 bidang penempatan itu pas awal berdiri.
+   kita mah semua bidang penempatan dan seluruh prefektur di jepang kan
+   kerjasama sama mitra so nya ada banyak."
+
+   The section now renders TWO lists, and the split is the whole point:
+
+     PLACEMENT_COVERAGE — all fields, all 47 prefectures. The answer a partner
+                          is looking for ("do you place in my field / my
+                          prefecture?").
+     PLACEMENTS         — the three sectors with dated mensetsu banners behind
+                          them. Still TRUE and still worth showing; what was
+                          wrong was presenting them as the total. They are
+                          proof of activity, not a boundary.
+
+   They are two exports rather than one list with a divider row because the
+   previous single-list version DID read as a contradiction when rendered
+   (measured 2026-10-30: "Seluruh 47 prefektur" directly above "Kagoshima"),
+   and a description cannot fix a list that argues with itself. The heading
+   between them is `profile.place_evidence_title`.
 
    The values carry keys since 2026-09-27: a prefecture is a NAME, so it is not
    invariant across languages. The kanji is the form a Japanese reader needs —
    a romanised "Kagoshima" in an otherwise-Japanese page is the defect this
    file's own `value` rule used to forbid, while permitting it in practice. */
+export const PLACEMENT_COVERAGE: Fact[] = [
+  {
+    label: { key: 'profile.place_sectors', text: 'Bidang penempatan' },
+    value: { key: 'profile.place_sectors_all', text: 'Seluruh bidang — Tokutei Ginou dan magang' },
+  },
+  {
+    label: { key: 'profile.place_prefectures', text: 'Prefektur tujuan' },
+    // The numeral is typed here, and typed again in the hero tile's dictionary
+    // entry (`profile.stat_prefectures_value`) and in the JP dictionary. That
+    // duplication is guarded rather than avoided: `companyProfile.test.ts`
+    // asserts every copy carries the same digits, and a shared constant would
+    // have cost a new `.ts` file (which moves the indexer's frozen counters) or
+    // a `companyProfile.ts` import from the hero island (bundle weight).
+    value: {
+      key: 'profile.place_prefectures_all',
+      text: 'Seluruh 47 prefektur di Jepang',
+    },
+  },
+];
+
 export const PLACEMENTS: Fact[] = [
   {
     label: { key: 'profile.place_food', text: 'Pengolahan Makanan' },
@@ -527,12 +565,20 @@ export const PLACEMENTS: Fact[] = [
 ];
 
 /**
- * Counted from PLACEMENTS, not typed — the hero stat and this list cannot drift.
+ * The four prefectures the DOCUMENTED placements name — the evidence list.
  *
- * Kept in the ROMANISED form on purpose: this array is the counting source and
- * is also read by the hero stat and by tests. The localised display strings live
- * in the dictionary under `profile.place_area_*`, so the two representations
- * cannot disagree about how many prefectures there are.
+ * WAS THE HERO STAT'S SOURCE UNTIL 2026-10-30. The hero now prints
+ * `PREFECTURES_IN_JAPAN` (47) because the owner corrected the coverage: the
+ * company places to every prefecture through partner LPKs, and these four were
+ * only the ones with dated interview banners. Keeping this array as the
+ * "counted" source of a 47 claim would have been a category error — the list
+ * answers "where is there proof", not "where do we place".
+ *
+ * It is still the counting source for its own set, and the test uses it to
+ * assert every named prefecture appears in a rendered row. Kept in the
+ * ROMANISED form on purpose: it is compared against `PLACEMENTS` values, while
+ * the localised display strings live in the dictionary under
+ * `profile.place_*_area`.
  */
 export const PLACEMENT_PREFECTURES = ['Miyazaki', 'Okayama', 'Nagano', 'Kagoshima'] as const;
 
