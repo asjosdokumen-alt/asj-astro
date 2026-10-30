@@ -569,7 +569,12 @@ export function isLpkTingkat(tingkat: unknown): boolean {
  * 国立/公立/私立, jadi nilai yang salah tidak ditolak siapa pun — karena itu
  * pemeriksaannya ada di sini.
  */
-export function kouritsuSekolah(sekolah: unknown): string {
+export function kouritsuSekolah(sekolah: unknown, status?: unknown): string {
+  /* Pilihan EKSPLISIT menang atas tebakan (migrasi 027). Kandidat bisa
+     mengoreksi sekolah negeri yang namanya tidak berawalan SDN/SMPN/SMAN. */
+  const st = String(status ?? '').trim().toUpperCase();
+  if (st.startsWith('NEGERI')) return '公立';
+  if (st.startsWith('SWASTA')) return '私立';
   const s = String(sekolah ?? '').trim();
   if (!s) return '';
   return /^(SDN|SMPN|SMAN|SMKN|MIN|MTSN|MAN|(SD|SMP|SMA|SMK)\s*NEGERI|NEGERI|SEKOLAH\s*NEGERI)/i.test(s)

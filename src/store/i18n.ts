@@ -1996,6 +1996,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ai_cv.row_tingkat": "Tingkat",
     "ai_cv.row_sekolah": "Nama Sekolah (ID)",
     "ai_cv.row_sekolah_jp": "Nama Sekolah (JP)",
+    "ai_cv.row_status_sekolah": "Status Sekolah",
     "ai_cv.row_jurusan": "Jurusan (ID)",
     "ai_cv.row_jurusan_jp": "Jurusan (JP)",
     "ai_cv.row_perusahaan": "Perusahaan (ID)",

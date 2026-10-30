@@ -320,10 +320,10 @@ export async function buildFirmaWorkbook(data: CandidateData): Promise<Blob> {
 
 const template: CvTemplate = {
   id: 'rirekisho-firma',
-  name: 'Rirekisho Excel (Firma Elga Pratama)',
+  name: 'Rirekisho Excel (Standar)',
   type: 'xlsx',
   description:
-    'Form 履歴書 versi Firma Elga Pratama sebagai Excel — layout, merge, dan pas foto persis berkas aslinya; isinya diambil dari database.',
+    'Form 履歴書 versi standar agensi sebagai Excel — layout, merge, dan pas foto persis berkas aslinya; isinya diambil dari database. Nama di judul sengaja tidak memakai nama klien: pemilik 2026-10-30 meminta label yang netral (nama klien terasa seperti nama orang di daftar pilihan).',
   category: 'form',
   icon: 'file-excel',
   async render(data: CandidateData, _context: RenderContext): Promise<RenderResult> {

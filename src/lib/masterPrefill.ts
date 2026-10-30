@@ -15,7 +15,7 @@
    (→ select) atau tidak (→ select parkir di `__LAINNYA__` + teks di kotak
    manual). Tanpa field ini, TypeScript menolak karena state mengharapkannya
    dan nilai lama yang tidak ada di daftar akan tampak hilang. */
-export interface PrefillEdu { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; jurusanManual: string; alamat: string; }
+export interface PrefillEdu { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; jurusanManual: string; alamat: string; status: string; }
 export interface PrefillJob { perusahaan: string; jabatan: string; jabatanManual: string; thnAwal: string; thnAkhir: string; gaji: string; alasan: string; jenis: string; bidang: string; catatan: string; }
 export interface PrefillFam { nama: string; hubungan: string; usia: string; pekerjaan: string; pekerjaanManual: string; tinggal: string; hp: string; gaji: string; }
 export interface PrefillKenalan { nama: string; usia: string; hubungan: string; pekerjaan: string; alamat: string; }
@@ -33,7 +33,7 @@ export interface MasterFormPrefill {
 
 const s = (v: unknown): string => (v === undefined || v === null ? '' : String(v));
 
-const emptyEdu: PrefillEdu = { jenjang: '', nama: '', thnAwal: '', thnAkhir: '', jurusan: '', jurusanManual: '', alamat: '' };
+const emptyEdu: PrefillEdu = { jenjang: '', nama: '', thnAwal: '', thnAkhir: '', jurusan: '', jurusanManual: '', alamat: '', status: '' };
 const emptyJob: PrefillJob = { perusahaan: '', jabatan: '', jabatanManual: '', thnAwal: '', thnAkhir: '', gaji: '', alasan: '', jenis: '', bidang: '', catatan: '' };
 const emptyFam: PrefillFam = { nama: '', hubungan: '', usia: '', pekerjaan: '', pekerjaanManual: '', tinggal: '', hp: '', gaji: '' };
 
@@ -86,6 +86,7 @@ export function mapMasterNestedToForm(n: any): MasterFormPrefill {
   const eduList: PrefillEdu[] = (Array.isArray(n?.pendidikan) ? n.pendidikan : []).slice(0, 5).map((p: any) => ({
     jenjang: s(p.tingkat), nama: s(p.sekolah || p.nama_sekolah), thnAwal: s(p.tahun_masuk || p.masuk),
     thnAkhir: s(p.tahun_lulus || p.lulus), jurusan: s(p.jurusan || p.jurusan_id), jurusanManual: '', alamat: '',
+    status: s(p.status_sekolah),
   }));
   const jobList: PrefillJob[] = (Array.isArray(n?.pekerjaan) ? n.pekerjaan : []).slice(0, 3).map((j: any) => ({
     perusahaan: s(j.perusahaan || j.nama_perusahaan), jabatan: s(j.jabatan), jabatanManual: '',

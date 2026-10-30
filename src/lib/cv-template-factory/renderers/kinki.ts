@@ -407,7 +407,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells.H19 = durasi(sma.masuk ?? sma.tahun_masuk, sma.lulus ?? sma.tahun_lulus);
     // 地域 — kolom `wilayah_sekolah` (migrasi 022). Dulu selalu dikosongkan.
     cells.J19 = bersih(id.wilayah_sekolah);
-    cells.M19 = kouritsuSekolah(sekolah);
+    cells.M19 = kouritsuSekolah(sekolah, sma.status_sekolah);
     cells.O19 = sekolah;
     // Strip atas mencetak `専攻` dengan `=W19`. Sel kosong membuatnya `0`, jadi
     // kolom ini memakai `-` seperti sel lain yang memang belum ada isinya.
@@ -424,7 +424,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells.D21 = ym(lpk.masuk ?? lpk.tahun_masuk);
     cells.E22 = isGood(s(lpk.lulus ?? lpk.tahun_lulus)) ? ym(lpk.lulus ?? lpk.tahun_lulus) : '今まで';
     cells.H21 = durasi(lpk.masuk ?? lpk.tahun_masuk, lpk.lulus ?? lpk.tahun_lulus);
-    cells.M21 = kouritsuSekolah(sekolahLpk);
+    cells.M21 = kouritsuSekolah(sekolahLpk, lpk.status_sekolah);
     cells.O21 = sekolahLpk;
     cells.W21 = '日本語';
   } else {

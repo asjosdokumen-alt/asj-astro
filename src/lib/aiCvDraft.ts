@@ -268,6 +268,8 @@ const NESTED_ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, stri
     jurusan_jp: 'jurusan_jp',
     masuk: 'masuk',
     lulus: 'lulus',
+    // 国公私 eksplisit (migrasi 027).
+    status_sekolah: 'status_sekolah',
   },
   pekerjaan: {
     perusahaan_id: 'perusahaan',

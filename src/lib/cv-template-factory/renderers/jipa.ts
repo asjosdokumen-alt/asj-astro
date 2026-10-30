@@ -273,7 +273,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     cells[`E${row}`] = lulus.y ? `${lulus.y}年` : '';
     cells[`F${row}`] = lulus.m ? `${lulus.m.padStart(2, '0')}月` : '';
     cells[`G${row}`] = isGood(sekolah)
-      ? [kouritsuSekolah(sekolah), sekolah, tingkatSekolahJp(p.tingkat)].filter(Boolean).join(' ')
+      ? [kouritsuSekolah(sekolah, p.status_sekolah), sekolah, tingkatSekolahJp(p.tingkat)].filter(Boolean).join(' ')
       : '';
     cells[`K${row}`] = bersih(p.jurusan ?? p.jurusan_id);
   }

@@ -10,6 +10,7 @@ import { t, toggleLang, useLang } from '../../store/i18n';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import { aiCvAccessRedirect } from '../../lib/vip';
 import { navigateTo } from '../../lib/navigate';
+import { kouritsuSekolah } from '../../lib/helpers_cv';
 import { validate, waSchema, kandidatLoginSchema } from '../../lib/schemas';
 
 import type { ChatMessage } from '../../types/api';
@@ -158,6 +159,8 @@ interface EduRow {
   id: number;
   tingkat: string; sekolah_id: string; sekolah_jp: string;
   jurusan_id: string; jurusan_jp: string; masuk: string; lulus: string;
+  /** NEGERI | SWASTA — 国公私 di form Jepang (migrasi 027). */
+  status_sekolah: string;
 }
 interface JobRow {
   id: number;
@@ -192,7 +195,7 @@ let rowSeq = 0;
 const nextRowId = (): number => ++rowSeq;
 
 /** A fresh, empty row carrying its own stable identity. */
-const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '', sekolah_jp: '', jurusan_id: '', jurusan_jp: '', masuk: '', lulus: '' });
+const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '', sekolah_jp: '', jurusan_id: '', jurusan_jp: '', masuk: '', lulus: '', status_sekolah: '' });
 
 /**
  * Baris pendidikan BAKU — jenjangnya sudah terisi sejak awal.
@@ -1886,9 +1889,15 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                       yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
                       onChange={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, masuk: v } : r))} />
                     <Field label={t('ai_cv.row_sekolah')} id={`edu-sekolah-id-${i}`} value={edu.sekolah_id}
-                      onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, sekolah_id: v } : r))} />
+                      onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, sekolah_id: v, status_sekolah: r.status_sekolah || (v.trim() ? (kouritsuSekolah(v) === '公立' ? 'NEGERI' : 'SWASTA') : '') } : r))} />
                     <Field label={t('ai_cv.row_sekolah_jp')} id={`edu-sekolah-jp-${i}`} value={edu.sekolah_jp} jp
                       onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, sekolah_jp: v } : r))} />
+                    {/* 国公私 — dicetak 公立/私立 di form Jepang. Terisi otomatis
+                        dari nama sekolah, dan tetap bisa dikoreksi (sekolah negeri
+                        yang namanya tidak berawalan SDN/SMPN/SMAN). */}
+                    <RowSelect label={t('ai_cv.row_status_sekolah')} id={`ai-edu-status-${i}`}
+                      value={edu.status_sekolah || ''} options={['', 'NEGERI', 'SWASTA']}
+                      onChange={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, status_sekolah: v } : r))} />
                     {/* Jurusan memakai daftar resmi yang SAMA dengan CV Master
                         (MasterFullForm -> ManualSelect list JURUSAN), supaya kandidat
                         tidak mengetik bebas di satu form dan memilih di form lain —

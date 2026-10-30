@@ -31,7 +31,7 @@ import { useOverlay } from '../ui/useOverlay';
    memilih "Lainnya"). `*Manual` hanya menampung teks yang sedang diketik di
    kotak manual — ia bukan bagian dari payload, dan sengaja dipisah supaya
    memilih "Lainnya" lalu kembali ke daftar tidak menghapus teks itu. */
-interface EduRecord { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; jurusanManual: string; alamat: string; }
+interface EduRecord { jenjang: string; nama: string; thnAwal: string; thnAkhir: string; jurusan: string; jurusanManual: string; alamat: string; /** NEGERI|SWASTA — 国公私 (migrasi 027). */ status: string; }
 /* `jenis` / `bidang` / `catatan` = 雇用形態 / 業種 / 備考 pada blok 職歴 form CV
    (KINKI, Firma, JIPA). Ditambahkan 2026-10-27 bersama migrasi 022 — sebelumnya
    ketiga kolom itu tidak pernah ditanyakan di form mana pun. */
@@ -144,7 +144,7 @@ export default function MasterFullForm() {
   useLang();
   const [step, setStep] = useState(1);
   const [data, setData] = useState<MasterData>({ ...EMPTY });
-  const [eduList, setEduList] = useState<EduRecord[]>([{ jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'' }]);
+  const [eduList, setEduList] = useState<EduRecord[]>([{ jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'', status:'' }]);
   const [jobList, setJobList] = useState<JobRecord[]>([{ perusahaan:'', jabatan:'', jabatanManual:'', thnAwal:'', thnAkhir:'', gaji:'', alasan:'', jenis:'', bidang:'', catatan:'' }]);
   const [famList, setFamList] = useState<FamRecord[]>([{ nama:'', hubungan:'', usia:'', pekerjaan:'', pekerjaanManual:'', tinggal:'', hp:'', gaji:'' }]);
   const [kotaPasporManual, setKotaPasporManual] = useState('');
@@ -411,7 +411,7 @@ export default function MasterFullForm() {
         pendidikan: Array.from({ length: 5 }, (_, i) => {
           const e = eduList[i];
           return e && e.jenjang
-            ? { tingkat: e.jenjang, nama_sekolah: e.nama, tahun_masuk: e.thnAwal, tahun_lulus: e.thnAkhir, jurusan: resolveRow(e.jurusan, e.jurusanManual) }
+            ? { tingkat: e.jenjang, nama_sekolah: e.nama, tahun_masuk: e.thnAwal, tahun_lulus: e.thnAkhir, jurusan: resolveRow(e.jurusan, e.jurusanManual), status_sekolah: e.status }
             : {};
         }),
         pekerjaan: jobList.filter(j => j.perusahaan).map(j => ({
@@ -825,10 +825,14 @@ export default function MasterFullForm() {
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label" for={`mf-edu-jenjang-${i}`}>{t("master.edu_jenjang")}</label>
                       <select class="input" id={`mf-edu-jenjang-${i}`} value={edu.jenjang} onChange={(e) => { const v = [...eduList]; v[i].jenjang = (e.target as HTMLSelectElement).value; setEduList(v); }}>
-                        <option value="">{t("form.mf_pilih")}</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA/SMK">{t("master.edu_sma")}</option><option value="D3">D3</option><option value="S1">S1</option><option value="S2">S2</option>
+                        <option value="">{t("form.mf_pilih")}</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA/SMK">{t("master.edu_sma")}</option><option value="D3">D3</option><option value="S1">S1</option><option value="S2">S2</option><option value="LPK">LPK</option>
                       </select>
                     </div>
                     <div class="mb-3"><label class="label" for={`mf-edu-nama-${i}`}>{t("master.edu_sekolah")}</label>
+                    <div class="mb-3"><label class="label" for={`mf-edu-status-${i}`}>Status sekolah (国公私)</label>
+                      <select class="input" id={`mf-edu-status-${i}`} value={edu.status} onChange={(e) => { const v = [...eduList]; v[i].status = (e.target as HTMLSelectElement).value; setEduList(v); }}>
+                        <option value="">{t("form.mf_pilih")}</option><option value="NEGERI">Negeri (公立)</option><option value="SWASTA">Swasta (私立)</option>
+                      </select></div>
                       <input class="input" id={`mf-edu-nama-${i}`} value={edu.nama} onInput={(e) => { const v = [...eduList]; v[i].nama = (e.target as HTMLInputElement).value; setEduList(v); }} /></div>
                     <div class="mb-3"><label class="label" for={`mf-edu-thn-awal-${i}`}>{t("master.edu_tahun_awal")}</label>
                       <input class="input" id={`mf-edu-thn-awal-${i}`} type="number" value={edu.thnAwal} onInput={(e) => { const v = [...eduList]; v[i].thnAwal = (e.target as HTMLInputElement).value; setEduList(v); }} /></div>
@@ -842,7 +846,7 @@ export default function MasterFullForm() {
                   </div>
                 </div>
               ))}
-              {eduList.length < 5 && <button type="button" onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.edu_tambah")}</button>}
+              {eduList.length < 5 && <button type="button" onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'', status:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.edu_tambah")}</button>}
               {/* 地域 — wilayah sekolah, dicetak KINKI di kolom `J19`. Satu kolom
                   saja karena form itu hanya mencetak baris SMA/SMK. */}
               <F label="Wilayah sekolah (SMA/SMK) — 地域" k="wilayahSekolah" opts={PROVINSI} />

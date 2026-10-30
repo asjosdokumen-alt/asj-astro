@@ -1489,6 +1489,7 @@ export const jpTranslations: Record<string, string> = {
     "ai_cv.row_tingkat": "学校区分",
     "ai_cv.row_sekolah": "学校名（ID）",
     "ai_cv.row_sekolah_jp": "学校名（JP）",
+    "ai_cv.row_status_sekolah": "国公私",
     "ai_cv.row_jurusan": "専攻（ID）",
     "ai_cv.row_jurusan_jp": "専攻（JP）",
     "ai_cv.row_perusahaan": "会社名（ID）",

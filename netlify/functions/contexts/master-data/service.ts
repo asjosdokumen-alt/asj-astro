@@ -449,7 +449,8 @@ export function buildMasterNested(row: any): any {
           jurusan_id: v('pendidikan_' + i + '_jurusan_id'), jurusan: v('pendidikan_' + i + '_jurusan_id'),
           jurusan_jp: v('pendidikan_' + i + '_jurusan_jp'), masuk: v('pendidikan_' + i + '_tahun_masuk'),
           tahun_masuk: v('pendidikan_' + i + '_tahun_masuk'), lulus: v('pendidikan_' + i + '_tahun_lulus'),
-          tahun_lulus: v('pendidikan_' + i + '_tahun_lulus') });
+          tahun_lulus: v('pendidikan_' + i + '_tahun_lulus'),
+          status_sekolah: v(`pendidikan_${i}_status_sekolah`) });
       }
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['tingkat', 'sekolah', 'nama_sekolah', 'jurusan_id', 'jurusan', 'masuk', 'lulus'])),
         aiArrOf('pendidikan'), (e) => riwayatKey(e,
@@ -669,6 +670,8 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
   };
   setSlots('pendidikan_', d.pendidikan, 5, [
     ['_tingkat', 'tingkat'],
+    // 国公私 eksplisit (migrasi 027). Kosong = renderer menebak dari nama.
+    ['_status_sekolah', 'status_sekolah', 'negeri_swasta'],
     ['_nama_sekolah', 'nama_sekolah', 'namaSekolah', 'sekolah'],
     ['_sekolah_jp', 'nama_sekolah_jp', 'sekolah_jp'],
     ['_jurusan_id', 'jurusan', 'jurusan_id'],

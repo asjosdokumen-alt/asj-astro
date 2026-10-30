@@ -55,7 +55,9 @@ describe('mapMasterNestedToForm — prefill MasterFullForm dari getDrafCvMaster'
 
   it('memetakan array riwayat (pendidikan/pekerjaan/keluarga)', () => {
     const p = mapMasterNestedToForm(NESTED);
-    expect(p.eduList).toEqual([{ jenjang: 'SMA', nama: 'SMAN 1', thnAwal: '2005', thnAkhir: '2008', jurusan: 'IPA', jurusanManual: '', alamat: '' }]);
+    // Kolom status = 国公私 (migrasi 027). Kosong di sini karena fixture tidak
+    // mengisinya; renderer lalu menebak dari nama sekolah.
+    expect(p.eduList).toEqual([{ jenjang: 'SMA', nama: 'SMAN 1', thnAwal: '2005', thnAkhir: '2008', jurusan: 'IPA', jurusanManual: '', alamat: '', status: '' }]);
     expect(p.jobList[0]).toEqual({ perusahaan: 'PT X', jabatan: 'STAFF', jabatanManual: '', thnAwal: '2010', thnAkhir: '2015', gaji: '3jt', alasan: '', jenis: '', bidang: '', catatan: '' });
     expect(p.famList[0]).toEqual({ nama: 'SITI', hubungan: 'ISTRI', usia: '30', pekerjaan: 'IRT', pekerjaanManual: '', tinggal: '', hp: '', gaji: '' });
   });
