@@ -16,6 +16,20 @@ rem  "Failed to load function ... trash operation". Dari terminal biasa variabel
 rem  ini kosong, jadi baris ini tidak berpengaruh apa-apa di sana.
 set "NODE_OPTIONS="
 
+rem -- 1b. Proxy lingkungan ---------------------------------------------------
+rem  WorkBuddy/agent mengekspor HTTP_PROXY yang menunjuk proxy lokal. netlify dev
+rem  lalu memeriksa kesiapan framework lewat 127.0.0.1:4321 LEWAT PROXY itu,
+rem  menerima 502, dan menunggu selamanya ("Waiting for framework port 4321")
+rem  tanpa pernah membuka 8888. Dikosongkan di sini supaya localhost tidak pernah
+rem  dirutekan lewat proxy. Dari terminal biasa variabel ini kosong, jadi baris
+rem  ini tidak berpengaruh apa-apa di sana.
+set "HTTP_PROXY="
+set "HTTPS_PROXY="
+set "http_proxy="
+set "https_proxy="
+set "NO_PROXY=localhost,127.0.0.1,::1"
+set "no_proxy=localhost,127.0.0.1,::1"
+
 rem -- 2. Port yang masih dipegang proses lama --------------------------------
 rem  Kalau 4321 masih dipegang `astro dev` sisa sesi sebelumnya, netlify dev
 rem  TIDAK error: ia mem-proxy 8888 ke server BASI itu, jadi yang terbuka kode

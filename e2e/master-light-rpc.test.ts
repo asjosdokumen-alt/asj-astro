@@ -232,16 +232,19 @@ describe.skipIf(!dbUrl)('langsung: master_light mengisi ai_* (butuh DB)', () => 
     const client = new pg.Client({ connectionString: dbUrl });
     await client.connect();
     try {
-      // Cari baris yang KOLOM gender-nya kosong TAPI ai-nya ada — kasus persis
-      // yang dulu tampil "-" di dossier profil.
-      const target = await client.query(
-        `select no_wa from master_database_candidate
-         where coalesce(gender, '') = ''
-           and coalesce(ai_data_json::jsonb -> 'identitas' ->> 'gender', '') <> ''
-         limit 1`,
+      /* Baris uji DIBUAT SENDIRI di dalam transaksi, lalu di-ROLLBACK.
+         Versi sebelumnya mencari baris produksi yang kolom gender-nya kosong
+         sementara ai_data_json berisi — dan setelah backfill 2026-10-30 baris
+         seperti itu TIDAK ADA LAGI, jadi tesnya gagal bukan karena RPC-nya
+         rusak melainkan karena datanya sudah benar. Tes tidak boleh bergantung
+         pada kerusakan data; ia yang harus menyiapkan keadaannya. */
+      await client.query('BEGIN');
+      const wa = '6200000000001';
+      await client.query(
+        "insert into master_database_candidate (no_wa, nama_lengkap, gender, ai_data_json, id_kandidat) " +
+          "values ($1, 'FIXTURE MASTER LIGHT', '', $2::jsonb, 'FIXTURE-ML')",
+        [wa, JSON.stringify({ identitas: { gender: 'PEREMPUAN' } })],
       );
-      expect(target.rows.length, 'harus ada baris uji dengan master gender kosong').toBeGreaterThan(0);
-      const wa: string = target.rows[0].no_wa;
 
       const rows = await client.query('select * from public.master_light($1::text[])', [[wa]]);
       expect(rows.rows).toHaveLength(1);
@@ -259,6 +262,7 @@ describe.skipIf(!dbUrl)('langsung: master_light mengisi ai_* (butuh DB)', () => 
       const bio = buildBioFromMaster(mr);
       expect(bio.gender).not.toBe('');
     } finally {
+      try { await client.query('ROLLBACK'); } catch { /* sudah tidak di transaksi */ }
       await client.end();
     }
   }, 60000);
