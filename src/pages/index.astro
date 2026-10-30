@@ -853,8 +853,17 @@ import { GALLERY } from '../lib/gallery';
     <!-- Section: Artikel & Panduan — ADDED 2026-10-23.
          Internal link cluster for the SEO pillar content. Two cards surface
          the blog articles so the homepage passes link equity to /blog/* and
-         visitors discover the guides without leaving the profile flow. -->
-    <Section id="artikel" labelledBy="artikel-title" enter="slide-right">
+         visitors discover the guides without leaving the profile flow.
+
+         `enter="focus"` since 2026-10-31, not the `slide-right` it shipped with.
+         `#artikel` was inserted BETWEEN `#testimoni` and `#faq`, and `#faq` is
+         itself `slide-right` — so the section arrived with the same entrance as
+         its neighbour below, which the adjacent-no-repeat rule in
+         src/lib/sectionMotion.ts forbids. `focus` differs from both neighbours
+         (`rise` above, `slide-right` below), and it also reads better here: an
+         article card is something you settle your attention onto, not something
+         that sweeps in. -->
+    <Section id="artikel" labelledBy="artikel-title" enter="focus">
       <SectionTitle
         titleKey="profile.artikel_title"
         title="Artikel & Panduan"

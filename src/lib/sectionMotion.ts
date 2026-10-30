@@ -123,6 +123,17 @@ export const SECTION_MOTION: readonly SectionMotion[] = [
   // section enters like `lokasi` far below; that is legal because non-adjacent
   // repetition is fine, and `mitra`/`kontak` sit between them.
   { id: 'testimoni', label: 'Kata Alumni', enter: 'rise' },
+  // ADDED 2026-10-31. `#artikel` ("Artikel & Panduan") was added to the page on
+  // 2026-10-23 by `aa8fa40` but never got a row here, so the landing gate went
+  // red on it — correctly, since this table is the oracle and a section without
+  // a row is a section whose entrance nothing checks. It sits between
+  // `testimoni` and `faq` in document order.
+  //
+  // `focus`, NOT the `slide-right` the markup shipped with: `faq` below is
+  // already `slide-right`, so keeping it would repeat an adjacent entrance —
+  // the rule this table exists to enforce. `focus` differs from `rise` above
+  // and from `slide-right` below.
+  { id: 'artikel', label: 'Artikel & Panduan', enter: 'focus' },
   // ADDED 2026-09-29. Sits between the social-proof section and the contact form
   // on purpose: a reader who is not yet convinced by other people's experience is
   // the one with a question, and the answer sits directly above the way to ask

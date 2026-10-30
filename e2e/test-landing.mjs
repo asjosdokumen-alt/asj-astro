@@ -777,6 +777,31 @@ async function inspectLanding(width) {
             return el ? el.querySelectorAll('li[data-filled="false"]').length : 0;
           })(),
           /**
+           * The aggregate strip's rating and count, read as the READER sees them.
+           *
+           * ADDED 2026-10-31, after a real drift was found and fixed: the strip
+           * carried a hardcoded `★★★★★` beside a rating of 4.8, so the page drew
+           * a perfect score next to a number saying it was not. The stars came
+           * from someone's keyboard and the number came from `REVIEW_SOURCE`, and
+           * nothing compared the two — which is why it survived.
+           *
+           * `reviewAggregateStars` counts the star GLYPHS actually in the strip.
+           * Zero is the correct value now (one sprite icon + the number, matching
+           * how Google's own place card presents "4.8 ★ (20)"); a non-zero count
+           * means someone reintroduced a literal row, and the check below fails
+           * on it rather than trusting a comment.
+           */
+          reviewAggregateNumber: (() => {
+            const el = byId.get('testimoni');
+            const span = el ? el.querySelector('span.flex.items-center.gap-2') : null;
+            return span ? (span.textContent || '').trim() : '';
+          })(),
+          reviewAggregateStars: (() => {
+            const el = byId.get('testimoni');
+            const span = el ? el.querySelector('span.flex.items-center.gap-2') : null;
+            return span ? ((span.textContent || '').match(/★/g) || []).length : -1;
+          })(),
+          /**
            * The FAQ section's visible text and row count, scoped to #faq.
            *
            * ADDED 2026-09-29 with the section. Scoped by id for the same reason
@@ -1172,6 +1197,52 @@ async function run() {
             `judge, so the section did not render.`,
         );
       }
+      // ── THE AGGREGATE MUST PRINT THE DATA'S OWN NUMBER ────────────────────
+      // ADDED 2026-10-31 with the star fix. The strip used to hold a literal
+      // `★★★★★` while the number beside it came from `REVIEW_SOURCE`, and no
+      // check compared the two — so the page drew a perfect score next to a 4.8
+      // and nothing noticed. This compares the RENDERED text against the SOURCE
+      // FILE, the same anti-tautology shape as the partner gate above: the
+      // expected value is read from disk, not from the page being judged.
+      const srcStart = src.indexOf('export const REVIEW_SOURCE');
+      if (srcStart < 0) {
+        throw new Error(
+          'could not find `export const REVIEW_SOURCE` in testimonials.ts — this check ' +
+            'cannot be judged, and a silent skip here would let the rating drift again.',
+        );
+      }
+      const sourceBlock = src.slice(srcStart, src.indexOf('} as const', srcStart));
+      const ratingMatch = sourceBlock.match(/rating:\s*([\d.]+)/);
+      const countMatch = sourceBlock.match(/count:\s*(\d+)/);
+      if (!ratingMatch || !countMatch) {
+        throw new Error(
+          `parsed no rating/count out of REVIEW_SOURCE (got ${JSON.stringify(sourceBlock.slice(0, 120))}) — ` +
+            'the parse is broken, so this check would pass vacuously.',
+        );
+      }
+      const expectedRating = Number(ratingMatch[1]).toFixed(1);
+      const expectedCount = countMatch[1];
+      const aggregate = d.reviewAggregateNumber ?? '';
+      if (!aggregate.includes(expectedRating)) {
+        throw new Error(
+          `the aggregate strip reads "${aggregate}" but REVIEW_SOURCE says ${expectedRating}. ` +
+            'The number a visitor sees must be the number the data holds.',
+        );
+      }
+      if (!(d.reviewText ?? '').includes(`${expectedCount} ulasan`)) {
+        throw new Error(
+          `#testimoni never prints "${expectedCount} ulasan" — the review count in ` +
+            'REVIEW_SOURCE is not reaching the page.',
+        );
+      }
+      if ((d.reviewAggregateStars ?? 0) > 0) {
+        throw new Error(
+          `the aggregate strip renders ${d.reviewAggregateStars} literal star glyph(s). ` +
+            `That is how a hardcoded ★★★★★ ended up beside a ${expectedRating}: ` +
+            'use the sprite icon + the number, as the source listing does.',
+        );
+      }
+
       const cards = (d.reviewFilled ?? 0) + (d.reviewEmpty ?? 0);
       if (cards !== rows.length) {
         throw new Error(
