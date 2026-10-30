@@ -32,17 +32,6 @@ import { useOverlay } from "../ui/useOverlay";
 
 const JEKLIN_IMG = '/assets/jeklin.webp';
 
-/**
- * Batas ukuran berkas untuk parse dokumen biodata, dalam MB.
- *
- * HARUS ≤ batas server. Server memakai 4 MiB (`netlify/functions/_lib/ai/classify.ts`)
- * karena berkas dikirim sebagai base64 DI DALAM body JSON, dan batas body
- * Netlify Functions adalah 6 MB — 8 MiB menjadi ~10,7 MiB dan ditolak platform
- * sebelum handler jalan. Memeriksa di sini mengubah "kegagalan jaringan" menjadi
- * pesan yang benar, tanpa membaca berkasnya lebih dulu.
- */
-const PARSE_MAX_MB = 4;
-
 interface ChatMsg {
   role: "assistant" | "user";
   text: string;
@@ -99,7 +88,6 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [mode, setMode] = useState<"chat" | "parse" | "results">("chat");
-  const [parseFile, setParseFile] = useState<File | null>(null);
   const [parseStatus, setParseStatus] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parseWa, setParseWa] = useState(candidateWa || "");
@@ -204,86 +192,6 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
-    }
-  };
-
-  /** Two-step legacy parse: parseDokumenBiodata - then submitMasterForm. */
-  const handleParse = async () => {
-    // Penjaga yang SAMA dengan tombol-tombol lain. Dulu hanya `parsing` yang
-    // diperiksa di sini, sedangkan semua tombol memakai `busy` — jadi selama
-    // parse berjalan `busy` masih false, tombolnya tetap aktif, dan admin bisa
-    // menembak panggilan AI kedua (dua kali kuota untuk satu niat). Komentar di
-    // deklarasi `busy` sudah menyebut niat ini; implementasinya yang belum ikut.
-    if (busy || parsing) return;
-    if (!parseFile) {
-      showToast(t("ai.pick_file_first"), "error");
-      return;
-    }
-    setParseStatus(t("ai.status_parsing").replace("{name}", parseFile.name));
-    setBusy(true);
-    setParsing(true);
-    try {
-      const reader = new FileReader();
-      const b64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(String(reader.result || "").split(",")[1] || "");
-        reader.onerror = () => reject(new Error(t("ai.read_file_failed")));
-        reader.readAsDataURL(parseFile);
-      });
-      const res = await apiCall("parseDokumenBiodata", [
-        {
-          candidateId: candidateId || undefined,
-          wa: parseWa || undefined,
-          file: {
-            name: parseFile.name,
-            mimeType: parseFile.type || "application/octet-stream",
-            data: b64,
-          },
-        },
-      ]);
-      const wa = String((res as Record<string, unknown>).wa || parseWa || "");
-      if (!wa) throw new Error(t("ai.fill_wa_first"));
-      // Step 2 (legacy parse.ts): persist extracted biodata to the master.
-      const data = (res as Record<string, unknown>).data as Record<string, unknown> | undefined;
-      if (!data || typeof data !== "object") {
-        throw new Error(
-          String((res as Record<string, unknown>).error || t("admin.ai_parse_failed")),
-        );
-      }
-      await apiCall("submitMasterForm", [{ wa, ...data }]);
-      const riwayat = ((res as Record<string, unknown>).riwayat || {}) as Record<string, number>;
-      const nama = String((res as Record<string, unknown>).namaSekarang || wa);
-      addMsg(
-        "📄 **" +
-          t("ai.parse_ok_title") +
-          ":** " +
-          parseFile.name +
-          "\n👤 " +
-          t("admin.ai_candidate_label") +
-          nama +
-          "\n📊 " +
-          String((res as Record<string, unknown>).fieldCount ?? 0) +
-          " " +
-          t("admin.ai_field_biodata") +
-          " · 🎓 " +
-          String(riwayat.pendidikan ?? 0) +
-          " · 💼 " +
-          String(riwayat.pekerjaan ?? 0) +
-          " · 👨‍👩‍👧‍👦 " +
-          String(riwayat.keluarga ?? 0) +
-          "\n✅ " +
-          t("ai.biodata_updated"),
-        "assistant",
-      );
-      showToast(t("ai.parse_success") + " — " + nama + " (" + parseFile.name + ")", "success");
-      setParseWa(wa);
-      refreshCandidates();
-      setParseStatus("");
-    } catch (e) {
-      reportError(e);
-      setParseStatus("");
-    } finally {
-      setParsing(false);
-      setBusy(false);
     }
   };
 
@@ -562,49 +470,6 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
 
         {mode === "parse" && (
           <div class="flex-1 u-scroll-area p-4 space-y-3">
-            <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-3">
-              <label
-                htmlFor="ai-admin-file"
-                class="block text-[11px] font-bold text-slate-400 mb-1"
-              >
-                {t("admin.ai_upload_label")}
-              </label>
-              <input
-                id="ai-admin-file"
-                type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,image/*"
-                onChange={(e) => {
-                  const f = (e.target as HTMLInputElement).files?.[0];
-                  if (!f) return;
-                  // Ditolak SEBELUM berkas dibaca ke memori. Server memakai batas
-                  // 4 MiB (`_lib/ai/classify.ts`) karena berkas dikirim sebagai
-                  // base64 DI DALAM body JSON: 8 MiB menjadi ~10,7 MiB, di atas
-                  // batas body 6 MB Netlify Functions. Tanpa pemeriksaan di sini,
-                  // berkas sebesar itu gagal dengan error jaringan generik —
-                  // platform menolaknya sebelum handler jalan, jadi pesan server
-                  // yang sebenarnya ("File terlalu besar") tidak pernah tampil.
-                  // Angka ini harus ≤ batas server; kalau server berubah, ini ikut.
-                  if (f.size > PARSE_MAX_MB * 1024 * 1024) {
-                    showToast(
-                      t("ui.toast_file_too_big")
-                        .replace("{nama}", f.name)
-                        .replace("{mb}", String(PARSE_MAX_MB)),
-                      "error",
-                    );
-                    setParseFile(null);
-                    return;
-                  }
-                  setParseFile(f);
-                }}
-                class="w-full text-[11px] text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-amber-600 file:text-white file:text-[11px] file:font-bold"
-              />
-              {parseFile && (
-                <p class="text-[11px] text-emerald-400 mt-1">
-                  <Icon name="check" class="mr-0.5" />
-                  {parseFile.name}
-                </p>
-              )}
-            </div>
             <div class="grid grid-cols-2 gap-2">
               <input
                 type="tel"
@@ -622,14 +487,6 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
               />
             </div>
             <div class="flex gap-2">
-              <button type="button"
-                onClick={handleParse}
-                disabled={busy}
-                class="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
-              >
-                <Icon name="bolt" class="mr-1" />
-                {t("admin.ai_btn_parse")}
-              </button>
               <button type="button"
                 onClick={handleGenModel}
                 disabled={busy}

@@ -1635,7 +1635,7 @@ export const jpTranslations: Record<string, string> = {
     "ai.unavailable_body": "AI機能が一時的に停止しています。その他の機能は通常どおりご利用いただけます。しばらくしてからもう一度お試しください。",
 "ui.ai_copilot": "AI\u4eba\u4e8b\u30b3\u30d1\u30a4\u30ed\u30c3\u30c8",
 "admin.ai_tab_chat": "\u30c1\u30e3\u30c3\u30c8",
-"admin.ai_tab_parse": "\u30d1\u30fc\u30b9",
+"admin.ai_tab_parse": "\u30c4\u30fc\u30eb",
 "admin.ai_tab_results": "\u7d50\u679c",
 "admin.ai_upload_label": "CV/Excel/PDF\u3092\u30a2\u30c3\u30d7\u30ed\u30fc\u30c9 \u2014 \u81ea\u52d5\u89e3\u6790\u3057\u3066\u30d0\u30a4\u30aa\u30c7\u30fc\u30bf\u3092\u66f4\u65b0",
 "admin.ai_btn_parse": "\u89e3\u6790\u3057\u3066\u66f4\u65b0",

@@ -704,7 +704,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.ai_field_biodata": "field biodata",
     "admin.ai_results_title": "Hasil Wawancara",
     "admin.ai_tab_chat": "Chat",
-    "admin.ai_tab_parse": "Parse",
+    "admin.ai_tab_parse": "Alat",
     "admin.ai_tab_results": "Hasil",
     "admin.ai_updated_label": "Diperbarui: ",
     "admin.ai_upload_label": "Upload CV/Excel/PDF — auto parse & update biodata",

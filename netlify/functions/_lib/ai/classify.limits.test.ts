@@ -14,6 +14,7 @@
 // menaikkan batasnya lagi tanpa memeriksa aritmetika ini, tesnya memerah.
 // ==========================================
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { PARSE_MAX_BYTES, PLATFORM_BODY_LIMIT_BYTES } from './classify';
 
 /** Panjang base64 untuk n byte — rumus yang sama dengan Buffer.toString('base64'). */
@@ -41,5 +42,15 @@ describe('batas unggah parse dokumen — bisa dieksekusi, bukan hanya diumumkan'
 
   it('regresi: 8 MiB TIDAK muat — batas lama memang tidak pernah bisa dieksekusi', () => {
     expect(base64Length(8 * 1024 * 1024)).toBeGreaterThan(PLATFORM_BODY_LIMIT_BYTES);
+  });
+
+  it('parse dokumen TIDAK menyentuh provider model (kuota)', () => {
+    /* Pemilik 2026-10-30: *"hapus saja parse ai bikin kuota cepet abis"*.
+       Handler-nya sengaja dipertahankan sebagai penolakan (klien lama masih
+       memanggil aksi ini), jadi yang dijaga bukan "berkasnya hilang" melainkan
+       "tidak ada jalur ke model". Kalau suatu hari panggilan provider
+       dikembalikan ke sini, tes ini merah sebelum kuota terbakar lagi. */
+    const src = readFileSync(new URL('./classify.ts', import.meta.url), 'utf8');
+    expect(src).not.toMatch(/geminiParseFile|geminiGenerate|grokGenerate|askGemini/);
   });
 });

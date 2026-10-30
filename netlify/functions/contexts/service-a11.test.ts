@@ -22,6 +22,10 @@
 // surface now calls the real sync handler (no {status:'accepted'} enqueue
 // response), and its admin guard rejects anon/wrong-role/refresh tokens
 // before any DB/network read.
+//
+// ⚠ 2026-10-30: the parse itself was REMOVED (owner: "hapus saja parse ai bikin
+// kuota cepet abis"). The guard contract below still holds; what changed is
+// that a valid admin now gets AI_PARSE_REMOVED instead of an extraction.
 // ==========================================
 import { describe, it, expect } from 'vitest';
 import { signToken } from '../_lib/session';
@@ -65,25 +69,26 @@ describe('A11 — parseDokumenBiodata (Admin AI copilot upload): real handler vi
     expect(r.sessionInvalid).toBe(true);
   });
 
-  it('admin session → guard lolos, validasi file dijalankan (sync, bukan 202/jobId)', async () => {
+  /* 2026-10-30: parse AI DIHAPUS (kuota). Dua tes validasi berkas yang lama
+     ("File belum dipilih", "Format tidak didukung") sudah tidak berlaku karena
+     handler berhenti SEBELUM menyentuh berkas. Yang dijaga sekarang: admin
+     lolos gerbang, lalu ditolak dengan kode yang bisa dibaca klien — dan tidak
+     ada satu pun jalur ke model (lihat `classify.limits.test.ts`). */
+  it('admin session → guard lolos, aksi menjawab "dihapus" (sync, bukan 202/jobId)', async () => {
     const adminTok = signToken({ role: 'admin', name: 'Kepala', kind: 'session' });
-    // No file at all: handler responds synchronously with its file validation
-    // error — NOT an {status:'accepted', jobId} enqueue response.
     const r = await asRec(INGEST_ACTIONS.parseDokumenBiodata([{}], adminTok));
     expect(r.status).toBeUndefined();
     expect(r.success).toBe(false);
-    expect(String(r.error || '')).toContain('File belum dipilih');
+    expect(r.code).toBe('AI_PARSE_REMOVED');
+    expect(String(r.error || '')).toContain('sudah dihapus');
   });
 
-  it('admin session + format tidak didukung → error format (parity mime guard)', async () => {
+  it('admin + berkas PDF yang SAH pun tidak diproses (kuota tidak terbakar)', async () => {
     const adminTok = signToken({ role: 'admin', name: 'Kepala', kind: 'session' });
-    const r = await asRec(
-      INGEST_ACTIONS.parseDokumenBiodata(
-        [{ file: { name: 'cv.xyz', mimeType: 'application/x-foo', data: 'aGVsbG8=' } }],
-        adminTok,
-      ),
-    );
+    const r = await asRec(INGEST_ACTIONS.parseDokumenBiodata(FILE_PAYLOAD, adminTok));
     expect(r.success).toBe(false);
-    expect(String(r.error || '')).toContain('Format tidak didukung');
+    expect(r.code).toBe('AI_PARSE_REMOVED');
+    // Tidak ada hasil ekstraksi yang bisa dipakai klien untuk submitMasterForm.
+    expect(r.data).toBeUndefined();
   });
 });

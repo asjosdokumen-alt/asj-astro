@@ -7,7 +7,9 @@
 //   - raw fetch without session token (every action now goes through
 //     api.secure so the Bearer token reaches the surface guard)
 //   - parse is two-step (parseDokumenBiodata → submitMasterForm) — the old
-//     modal showed a success toast and discarded the parsed data
+//     modal showed a success toast and discarded the parsed data.
+//     ⚠ 2026-10-30: the AI parse itself was REMOVED (quota), so those five
+//     tests are gone; the tab is now "Alat" and holds Model/Hasil/Update Bio.
 //   - copy via t() (no hard-coded chrome labels)
 // ==========================================
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/preact';
@@ -58,7 +60,7 @@ class FakeFileReader {
 }
 
 function openParseTab() {
-  fireEvent.click(screen.getByRole('button', { name: 'Parse' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Alat' }));
 }
 
 function openChatTab() {
@@ -103,7 +105,9 @@ describe('AdminAiCopilot (A11)', () => {
     render(<AdminAiCopilot onClose={() => {}} />);
     expect(screen.getByText('AI HR Copilot')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Chat' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Parse' })).toBeTruthy();
+    // Tab 'Parse' -> 'Alat' (2026-10-30): parse AI dihapus, isinya tinggal
+    // Buat Model / Hasil Wawancara / Update Biodata.
+    expect(screen.getByRole('button', { name: 'Alat' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Hasil' })).toBeTruthy();
     // Welcome bubble was the FIRST regression: state existed but never rendered.
     expect(screen.getByText(/Halo Admin! Saya Jeklin, asisten AI\./)).toBeTruthy();
@@ -201,134 +205,6 @@ describe('AdminAiCopilot (A11)', () => {
     resolveFirst({ success: true, hasil: null, wa: '6281234567890' });
     await waitFor(() => expect(mockSecure).toHaveBeenCalledTimes(1));
     expect(mockSecure).toHaveBeenCalledTimes(1);
-  });
-
-  it('parse tab: no file → toast ai.pick_file_first, no API call', async () => {
-    render(<AdminAiCopilot onClose={() => {}} />);
-    openParseTab();
-    fireEvent.click(screen.getByRole('button', { name: 'Parse & Update' }));
-    await waitFor(() =>
-      expect(vi.mocked(showToast)).toHaveBeenCalledWith(
-        'Pilih file CV terlebih dahulu.',
-        'error',
-      ),
-    );
-    expect(mockSecure).not.toHaveBeenCalled();
-  });
-
-  it('berkas > batas ditolak SEBELUM dibaca, dan pesannya menyebut nama + angkanya', async () => {
-    vi.stubGlobal('FileReader', FakeFileReader);
-    render(<AdminAiCopilot onClose={() => {}} />);
-    openParseTab();
-
-    // 4 MiB + 1 byte: satu byte di atas batas server. Berkas 8 MB tidak pernah
-    // sampai ke handler sama sekali — base64-nya ~10,7 MiB, di atas batas body
-    // 6 MB platform — jadi tanpa pemeriksaan di sini admin hanya melihat
-    // kegagalan jaringan generik.
-    const tooBig = new File(['x'], 'scan-besar.pdf', { type: 'application/pdf' });
-    Object.defineProperty(tooBig, 'size', { value: 4 * 1024 * 1024 + 1 });
-    fireEvent.change(screen.getByLabelText('Upload CV/Excel/PDF — auto parse & update biodata'), {
-      target: { files: [tooBig] },
-    });
-
-    await waitFor(() =>
-      expect(vi.mocked(showToast)).toHaveBeenCalledWith(
-        // Nama berkas DAN angkanya ikut tersubstitusi — pesannya menjelaskan
-        // kenapa (base64 melewati limit server), bukan sekadar "gagal".
-        expect.stringContaining('scan-besar.pdf terlalu besar (maks 4 MB)'),
-        'error',
-      ),
-    );
-    // Berkasnya tidak tersimpan, jadi menekan Parse tidak mengirim apa pun.
-    expect(screen.queryByText('scan-besar.pdf')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Parse & Update' }));
-    expect(mockSecure).not.toHaveBeenCalled();
-  });
-
-  it('berkas tepat DI batas tetap diterima', async () => {
-    vi.stubGlobal('FileReader', FakeFileReader);
-    render(<AdminAiCopilot onClose={() => {}} />);
-    openParseTab();
-
-    const atLimit = new File(['x'], 'pas-batas.pdf', { type: 'application/pdf' });
-    Object.defineProperty(atLimit, 'size', { value: 4 * 1024 * 1024 });
-    fireEvent.change(screen.getByLabelText('Upload CV/Excel/PDF — auto parse & update biodata'), {
-      target: { files: [atLimit] },
-    });
-
-    // Batasnya inklusif: 4 MiB diterima, 4 MiB + 1 byte tidak. Pin titik itu
-    // supaya penjaganya tidak diam-diam menggeser batas yang diumumkan.
-    await waitFor(() => expect(screen.getByText('pas-batas.pdf')).toBeTruthy());
-    expect(vi.mocked(showToast)).not.toHaveBeenCalled();
-  });
-
-  it('parse is TWO-STEP: parseDokumenBiodata → submitMasterForm, success + refresh', async () => {
-    vi.stubGlobal('FileReader', FakeFileReader);
-    const changed = vi.fn();
-    window.addEventListener('candidates-changed', changed);
-    mockSecure
-      .mockResolvedValueOnce({
-        success: true,
-        wa: '6281234567890',
-        namaSekarang: 'TES',
-        fieldCount: 2,
-        fileName: 'cv.pdf',
-        data: { nama: 'TES', gender: 'PEREMPUAN' },
-        riwayat: { pendidikan: 1, pekerjaan: 0, keluarga: 0 },
-      })
-      .mockResolvedValueOnce({ success: true });
-    render(<AdminAiCopilot candidateWa="6281234567890" onClose={() => {}} />);
-    openParseTab();
-    const file = new File(['aGVsbG8='], 'cv.pdf', { type: 'application/pdf' });
-    fireEvent.change(screen.getByLabelText('Upload CV/Excel/PDF — auto parse & update biodata'), {
-      target: { files: [file] },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Parse & Update' }));
-    await waitFor(() => expect(mockSecure).toHaveBeenCalledTimes(2));
-    expect(mockSecure.mock.calls[0][0]).toBe('parseDokumenBiodata');
-    expect(mockSecure.mock.calls[0][1][0].wa).toBe('6281234567890');
-    expect(mockSecure.mock.calls[0][1][0].file).toMatchObject({ name: 'cv.pdf' });
-    // Step 2 persists extracted biodata to the master (legacy parse.ts).
-    expect(mockSecure.mock.calls[1][0]).toBe('submitMasterForm');
-    expect(mockSecure.mock.calls[1][1][0]).toMatchObject({
-      wa: '6281234567890',
-      nama: 'TES',
-      gender: 'PEREMPUAN',
-    });
-    await waitFor(() =>
-      expect(vi.mocked(showToast)).toHaveBeenCalledWith(
-        expect.stringContaining('File CV berhasil diparsing!'),
-        'success',
-      ),
-    );
-    await waitFor(() => expect(changed).toHaveBeenCalled());
-    // In-chat success summary visible after switching back to chat.
-    openChatTab();
-    await waitFor(() => expect(bubbleWith('Parse berhasil:').length).toBeGreaterThan(0));
-    vi.unstubAllGlobals();
-    window.removeEventListener('candidates-changed', changed);
-  });
-
-  it('parse server error → warning bubble, no submitMasterForm step', async () => {
-    mockSecure.mockResolvedValueOnce({
-      success: false,
-      error: 'AI tidak bisa mengekstrak data dari file ini.',
-    });
-    vi.stubGlobal('FileReader', FakeFileReader);
-    render(<AdminAiCopilot candidateWa="6281234567890" onClose={() => {}} />);
-    openParseTab();
-    const file = new File(['aGVsbG8='], 'bad.pdf', { type: 'application/pdf' });
-    fireEvent.change(screen.getByLabelText('Upload CV/Excel/PDF — auto parse & update biodata'), {
-      target: { files: [file] },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Parse & Update' }));
-    await waitFor(() => expect(mockSecure).toHaveBeenCalledTimes(1));
-    expect(mockSecure.mock.calls[0][0]).toBe('parseDokumenBiodata');
-    openChatTab();
-    await waitFor(() =>
-      expect(bubbleWith('⚠️ AI tidak bisa mengekstrak data dari file ini.').length).toBeGreaterThan(0),
-    );
-    vi.unstubAllGlobals();
   });
 
   it('generate model: no WA/id → toast ai.fill_wa_first; with WA → generateWawancaraModel', async () => {
