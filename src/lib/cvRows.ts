@@ -27,8 +27,21 @@
 
 import { getTingkatVal } from './helpers_cv';
 
-/** School levels, in the canonical order the printed CV uses. */
-export const TINGKAT_OPTIONS = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2'] as const;
+/**
+ * School levels, in the canonical order the printed CV uses.
+ *
+ * `LPK` sits LAST on purpose: `getTingkatVal` ranks it 5 (after S2), because an
+ * LPK course is the most recent thing a candidate attended — a row printed
+ * above SMA would read as a fabricated history. The list and the ranker are
+ * asserted against each other in `cvRows.test.ts`, so moving one without the
+ * other fails a test instead of silently reordering somebody's CV.
+ *
+ * It was MISSING until 2026-10-30 (owner: *"tingkat gak ada"*). The ranker had
+ * always known the word, so an LPK row saved through the Form Master printed
+ * correctly while the same row in CV AI could only be saved with an empty
+ * level — which is what made the education block look broken.
+ */
+export const TINGKAT_OPTIONS = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'LPK'] as const;
 
 /** A school level that is not in `TINGKAT_OPTIONS` still has to be selectable. */
 export function levelOptions(current: string): string[] {

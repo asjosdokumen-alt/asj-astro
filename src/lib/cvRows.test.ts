@@ -14,8 +14,16 @@ import { TINGKAT_OPTIONS, levelOptions, rankTingkat, sortEduRows } from './cvRow
  */
 
 describe('TINGKAT_OPTIONS', () => {
-  it('is in canonical order SD → SMP → SMA/SMK → D3 → S1 → S2', () => {
-    expect([...TINGKAT_OPTIONS]).toEqual(['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2']);
+  it('is in canonical order SD → SMP → SMA/SMK → D3 → S1 → S2 → LPK', () => {
+    expect([...TINGKAT_OPTIONS]).toEqual(['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'LPK']);
+  });
+
+  it('offers LPK — the level ASJ candidates actually attend', () => {
+    // Owner report 2026-10-30: "tingkat gak ada". The ranker already knew the
+    // word, so the CV printed LPK correctly while the form could not select it —
+    // an LPK row could only be saved with an EMPTY level.
+    expect(levelOptions('')).toContain('LPK');
+    expect(levelOptions('LPK').filter(v => v === 'LPK')).toHaveLength(1);
   });
 
   it('ascends under the ranker the printed CV uses', () => {
@@ -29,13 +37,13 @@ describe('TINGKAT_OPTIONS', () => {
 
 describe('levelOptions', () => {
   it('leads with the blank option and keeps the canonical order', () => {
-    expect(levelOptions('')).toEqual(['', 'SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2']);
+    expect(levelOptions('')).toEqual(['', 'SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'LPK']);
   });
 
   it('keeps an off-list stored value selectable instead of dropping it', () => {
     // Legacy rows carry bare "SMK". Without this the <select> would snap to its
     // first option and saving an old CV would rewrite the level.
-    expect(levelOptions('SMK')).toEqual(['', 'SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'SMK']);
+    expect(levelOptions('SMK')).toEqual(['', 'SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'LPK', 'SMK']);
     expect(levelOptions('SMA NEGERI 1')).toContain('SMA NEGERI 1');
   });
 

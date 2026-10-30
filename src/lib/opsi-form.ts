@@ -293,6 +293,21 @@ function uniqOpsi(list: Opsi[]): Opsi[] {
    ══════════════════════════════════════════════════════════════════════════ */
 
 /**
+ * LPK / language-course majors.
+ *
+ * ASJ's own candidates come through an LPK, so the one major that actually
+ * describes them — a Japanese-language course — had no entry at all. The owner
+ * typed it by hand (2026-10-30: *"jurusan bahasa jepang tolong tambah"*) and
+ * the free text landed as `bahasa JEPANG`, a different spelling in every row.
+ * Same reason `JURUSAN` exists at all: one list, one spelling, so the printed
+ * CV and the form cannot drift.
+ */
+export const JURUSAN_LPK: Opsi[] = [
+  ['BAHASA JEPANG', 'BAHASA JEPANG (日本語コース)'],
+  ['BAHASA JEPANG (PERSIAPAN KERJA / SSW)', 'BAHASA JEPANG — PERSIAPAN KERJA・特定技能 (日本語・SSW)'],
+];
+
+/**
  * SMK majors, grouped by the official Indonesian "bidang keahlian" families.
  * Names follow the Kemendikbud spektrum keahlian SMK so the same major is
  * spelled the same way in every candidate's CV. Values keep the common
@@ -416,16 +431,17 @@ export const JURUSAN_KULIAH: Opsi[] = [
 ];
 
 /**
- * Every major, in the order a candidate would actually meet them:
- * SMK first (the overwhelming majority of ASJ applicants), then SMA, then
- * university. The education row labels each entry with its level so the list
- * stays readable when flattened into one `<select>`.
+ * Every major, in the order a candidate would actually meet them: the LPK
+ * Japanese course first (it is the shortest list and the one ASJ candidates
+ * look for), then SMK, then SMA, then university. The education row labels each
+ * entry with its level so the list stays readable when flattened into one
+ * `<select>`.
  *
  * NOTE: values inside `JURUSAN_SMK`/`JURUSAN_SMA`/`JURUSAN_KULIAH` are already
  * unique across the three groups, so flattening cannot create a duplicate
  * `<option value>`. `JURUSAN` keeps that property — see the assertion below.
  */
-export const JURUSAN: Opsi[] = [...JURUSAN_SMK, ...JURUSAN_SMA, ...JURUSAN_KULIAH];
+export const JURUSAN: Opsi[] = [...JURUSAN_LPK, ...JURUSAN_SMK, ...JURUSAN_SMA, ...JURUSAN_KULIAH];
 
 /* ══════════════════════════════════════════════════════════════════════════
    3. LISTS for other fields whose answer is a finite, known set

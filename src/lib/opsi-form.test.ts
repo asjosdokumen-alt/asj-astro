@@ -8,7 +8,7 @@
 // ==========================================
 import { describe, it, expect } from 'vitest';
 import {
-  PEKERJAAN, PEKERJAAN_LEGACY, PEKERJAAN_UTAMA, JURUSAN, JURUSAN_SMK, JURUSAN_SMA, JURUSAN_KULIAH,
+  PEKERJAAN, PEKERJAAN_LEGACY, PEKERJAAN_UTAMA, JURUSAN, JURUSAN_LPK, JURUSAN_SMK, JURUSAN_SMA, JURUSAN_KULIAH,
   KOTA, HUBUNGAN_LEGACY, HUBUNGAN_KELUARGA, SSW_BIDANG, UJIAN_JP, UJIAN_SSW,
   JENIS_KERJA_PAIRS,
   SENTINEL_LAINNYA, OPSI_KOSONG, OPSI_LAINNYA,
@@ -107,8 +107,8 @@ describe('opsi-form — paritas nilai legacy', () => {
     expect(jp('ANAK PEREMPUAN')).toBe('娘');
   });
 
-  it('JURUSAN menggabungkan SMK + SMA + Kuliah tanpa duplikat', () => {
-    expect(JURUSAN).toEqual([...JURUSAN_SMK, ...JURUSAN_SMA, ...JURUSAN_KULIAH]);
+  it('JURUSAN menggabungkan LPK + SMK + SMA + Kuliah tanpa duplikat', () => {
+    expect(JURUSAN).toEqual([...JURUSAN_LPK, ...JURUSAN_SMK, ...JURUSAN_SMA, ...JURUSAN_KULIAH]);
     const values = JURUSAN.map(([v]) => v);
     expect(new Set(values).size).toBe(values.length);
     // Ketiga jenjang benar-benar terisi — kalau salah satu kosong, "tambah
@@ -116,6 +116,18 @@ describe('opsi-form — paritas nilai legacy', () => {
     expect(JURUSAN_SMK.length).toBeGreaterThan(10);
     expect(JURUSAN_SMA.length).toBeGreaterThan(2);
     expect(JURUSAN_KULIAH.length).toBeGreaterThan(10);
+  });
+
+  it('jurusan bahasa Jepang ada — LPK adalah asal sebagian besar kandidat', () => {
+    // Pemilik 2026-10-30: "dropdown ... jurusan bahasa jepang tolong tambah".
+    // Sebelum ini satu-satunya cara mengisi jurusan LPK adalah mengetik bebas,
+    // dan hasilnya berbeda ejaan di tiap baris ("bahasa JEPANG", "LPK bahasa
+    // Jepang", …) — persis drift yang daftar ini ada untuk mencegah.
+    const values = JURUSAN.map(([v]) => v);
+    expect(values).toContain('BAHASA JEPANG');
+    // Label kanji ikut, karena `ComboSelect` mengisi kolom JP dari entri daftar.
+    expect(JURUSAN_LPK[0][1]).toContain('日本語');
+    expect(JURUSAN_LPK.length).toBeGreaterThanOrEqual(2);
   });
 
   it('PEKERJAAN dan KOTA tidak punya nilai duplikat', () => {
@@ -300,7 +312,9 @@ describe('opsi-form — integritas daftar gabungan', () => {
     // dijaga adalah "daftar tidak menyusut", dan penambahan yang lupa
     // didokumentasikan harus terlihat di sini.
     expect(PEKERJAAN).toHaveLength(115);
-    expect(JURUSAN).toHaveLength(94);
+    // 94 -> 96 (2026-10-30): dua jurusan LPK (bahasa Jepang), diminta pemilik
+    // supaya kandidat tidak mengetik jurusannya sendiri dengan ejaan berbeda.
+    expect(JURUSAN).toHaveLength(96);
     expect(HUBUNGAN_LEGACY).toHaveLength(7);
     // 7 legacy + 12 hubungan berjenis kelamin (2026-10-21). Angka ini SENGAJA
     // dihitung ulang, bukan diturunkan dari `HUBUNGAN_LEGACY.length`: yang
