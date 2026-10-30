@@ -22,6 +22,8 @@ import {
   kouritsuSekolah,
   tingkatSekolahJp,
   jenjangKinkiJp,
+  sortRiwayatKronologis,
+  getTingkatVal,
   getTingkatVal,
   sortByTingkat,
   periodeKey,
@@ -519,5 +521,29 @@ describe('label sekolah Jepang — LPK, 国公私, dan jenjang', () => {
     expect(jenjangKinkiJp('D3')).toBe('専門');
     // SD/SMP tidak ada di dropdown → kosong, bukan diklaim 高校.
     expect(jenjangKinkiJp('SMP')).toBe('');
+  });
+});
+
+describe('sortRiwayatKronologis — baris tanpa tahun tetap terurut jenjang', () => {
+  /* Terukur 2026-10-30 pada master id 40: baris pendidikan tersimpan
+     SMK → SMP → SMA/SMK dan TIDAK punya tahun sama sekali. Form resmi Jepang
+     mencetaknya persis dalam urutan itu (SMP di bawah SMK). Penyebabnya:
+     cabang "dua-duanya tanpa tanggal" langsung memakai urutan asli dan tidak
+     pernah memanggil tie-break. */
+  it('tanpa tahun: tie-break jenjang dipakai (SD → SMP → SMA)', () => {
+    const list = [
+      { tingkat: 'SMK', sekolah: 'A' },
+      { tingkat: 'SMP', sekolah: 'B' },
+      { tingkat: 'SMA/SMK', sekolah: 'C' },
+    ];
+    const out = sortRiwayatKronologis(list, {
+      tiebreak: (a, b) => getTingkatVal(a.tingkat) - getTingkatVal(b.tingkat),
+    });
+    expect(out.map((r) => r.tingkat)).toEqual(['SMP', 'SMK', 'SMA/SMK']);
+  });
+
+  it('tanpa tie-break, urutan asli dipertahankan (pekerjaan tidak diacak)', () => {
+    const list = [{ perusahaan: 'A' }, { perusahaan: 'B' }];
+    expect(sortRiwayatKronologis(list).map((r) => r.perusahaan)).toEqual(['A', 'B']);
   });
 });

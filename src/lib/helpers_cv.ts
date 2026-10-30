@@ -413,8 +413,17 @@ export function sortRiwayatKronologis<T extends Record<string, unknown>>(
   return (list || [])
     .map((e, i) => ({ e, i, m: ambil(e, mulai), s: ambil(e, selesai) }))
     .sort((a, b) => {
-      // Tanpa tanggal mulai → paling akhir, urutan asli dipertahankan.
-      if (a.m === null && b.m === null) return a.i - b.i;
+      // Tanpa tanggal mulai → tie-break dulu, lalu urutan asli.
+      //
+      // Sebelum 2026-10-30 cabang ini LANGSUNG `a.i - b.i`, sehingga tie-break
+      // jenjang tidak pernah dipakai untuk baris tanpa tahun — dan itu justru
+      // kasus yang paling sering: kandidat mengisi sekolahnya tanpa tahun.
+      // Terukur pada master id 40: urutan tercetak SMK → SMP → SMA/SMK di form
+      // resmi. Sekarang baris tanpa tahun tetap naik SD → SMP → SMA.
+      if (a.m === null && b.m === null) {
+        const tb0 = opsi.tiebreak?.(a.e, b.e) ?? 0;
+        return tb0 !== 0 ? tb0 : a.i - b.i;
+      }
       if (a.m === null) return 1;
       if (b.m === null) return -1;
       if (a.m !== b.m) return a.m - b.m;
