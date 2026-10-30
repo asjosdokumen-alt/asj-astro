@@ -1291,14 +1291,21 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     expect(document.getElementById('ai-edu-masuk-0')).toBeNull();
   });
 
-  it('baris pendidikan bisa ditambah sampai batas legacy (5) lalu berhenti', () => {
+  it('baris pendidikan berhenti di enam slot — jumlah yang dicetak template', () => {
     render(<AiCvForm />);
-    const addBtn = () => screen.getAllByText('ai_cv.row_tambah')[0];
-    for (let i = 1; i < 5; i++) fireEvent.click(addBtn());
-    expect(document.getElementById('ai_edu-sekolah-id-4')).toBeTruthy();
-    // EDU_MAX is a property of the printed template — a sixth row would be
-    // dropped at render time, so the form must not accept one.
-    expect(document.getElementById('ai_edu-sekolah-id-5')).toBeNull();
+    // Migrasi 028 menaikkan EDU_MAX 5 -> 6 dan seed-nya ikut menjadi SD..LPK,
+    // jadi form terbuka dengan SEMUA slot terpakai dan seksi pendidikan tidak
+    // lagi menawarkan "+". Tombol "+" pertama di halaman karena itu milik
+    // Pekerjaan, bukan pendidikan.
+    expect(document.getElementById('ai_edu-sekolah-id-5')).toBeTruthy();
+    expect(document.getElementById('ai_edu-sekolah-id-6')).toBeNull();
+
+    fireEvent.click(screen.getAllByText('ai_cv.row_tambah')[0]);
+    // Klik itu menambah baris PEKERJAAN; pendidikan tetap enam. Kalau EDU_MAX
+    // suatu saat naik tanpa seed/tiang cetak ikut naik, baris ke-7 muncul di
+    // sini dan tes ini gagal — itulah gunanya.
+    expect(document.getElementById('ai_job-perusahaan-id-1')).toBeTruthy();
+    expect(document.getElementById('ai_edu-sekolah-id-6')).toBeNull();
   });
 
   it('pekerjaan dibatasi 3 baris dan keluarga 5, seperti legacy', () => {
@@ -1309,7 +1316,7 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     const src = readFileSync('src/components/forms/AiCvForm.tsx', 'utf8');
     expect(src).toContain('const JOB_MAX = 3;');
     expect(src).toContain('const FAM_MAX = 5;');
-    expect(src).toContain('const EDU_MAX = 5;');
+    expect(src).toContain('const EDU_MAX = 6;');
   });
 
   it('baris dinamis ikut terkirim di payload saat terisi', async () => {
@@ -1339,14 +1346,14 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
   // Keluhan pemilik 2026-10-25: siswa tidak melihat tombol "+" sehingga riwayat
   // sekolahnya kosong dan CV-nya salah urutan. Kelima slot harus SUDAH ada,
   // jenjangnya benar, dan baris yang belum diisi tidak boleh ikut terkirim.
-  it('form dibuka dengan lima baris pendidikan baku berjenjang SD → S1', () => {
+  it('form dibuka dengan enam baris pendidikan baku berjenjang SD → LPK', () => {
     render(<AiCvForm />);
-    const levels = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1'];
+    const levels = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'LPK'];
     levels.forEach((lv, i) => {
       expect((document.getElementById(`ai-edu-tingkat-${i}`) as HTMLSelectElement).value).toBe(lv);
       expect(document.getElementById(`ai_edu-sekolah-id-${i}`)).not.toBeNull();
     });
-    // Slotnya sudah penuh (EDU_MAX=5) — tidak perlu tombol "+" untuk pendidikan.
+    // Slotnya sudah penuh (EDU_MAX=6) — tidak perlu tombol "+" untuk pendidikan.
   });
 
   it('urutan baris pendidikan dipaksa SD → SMP → SMA/SMK, bukan urutan ketik', () => {

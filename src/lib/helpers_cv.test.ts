@@ -24,10 +24,8 @@ import {
   jenjangKinkiJp,
   sortRiwayatKronologis,
   getTingkatVal,
-  getTingkatVal,
   sortByTingkat,
   periodeKey,
-  sortRiwayatKronologis,
   sortByYear,
   sortEdu,
 } from './helpers_cv';

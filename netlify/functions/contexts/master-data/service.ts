@@ -441,7 +441,9 @@ export function buildMasterNested(row: any): any {
       sertifikat_lain: v('sertifikat_lain'), catatan_cv: v('catatan_cv') },
     pendidikan: (function () {
       const arr: any[] = [];
-      for (let i = 1; i <= 5; i++) {
+      // Migrasi 028: slot ke-6 (LPK). Seed form memuat 6 baris — tanpa ini
+      // baris ke-6 disimpan (kolom ada) tetapi tidak pernah DIBACA.
+      for (let i = 1; i <= 6; i++) {
         const tingkat = row['pendidikan_' + i + '_tingkat'];
         if (tingkat === undefined || tingkat === null) continue;
         arr.push({ tingkat: toText(tingkat), sekolah: v('pendidikan_' + i + '_nama_sekolah'),
@@ -668,7 +670,7 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
       if (lengkap) for (const [suffix] of defs) { const col = prefix + (i + 1) + suffix; if (!(col in vals)) out[col] = ''; }
     }
   };
-  setSlots('pendidikan_', d.pendidikan, 5, [
+  setSlots('pendidikan_', d.pendidikan, 6, [
     ['_tingkat', 'tingkat'],
     // 国公私 eksplisit (migrasi 027). Kosong = renderer menebak dari nama.
     ['_status_sekolah', 'status_sekolah', 'negeri_swasta'],
@@ -1082,7 +1084,7 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
       NO_COE: v('no_coe'), PAS_PHOTO: v('pas_photo'), JFT_URL: v('jft_url'),
       SSW_URL: v('ssw_url'), FILE_CV: v('file_cv'),
     };
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 6; i++) {
       out['PENDIDIKAN_' + i + '_TINGKAT'] = v('pendidikan_' + i + '_tingkat');
       out['PENDIDIKAN_' + i + '_NAMA_SEKOLAH'] = v('pendidikan_' + i + '_nama_sekolah');
       out['PENDIDIKAN_' + i + '_JURUSAN'] = v('pendidikan_' + i + '_jurusan_id');

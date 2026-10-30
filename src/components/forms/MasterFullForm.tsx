@@ -846,7 +846,7 @@ export default function MasterFullForm() {
                   </div>
                 </div>
               ))}
-              {eduList.length < 5 && <button type="button" onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'', status:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.edu_tambah")}</button>}
+              {eduList.length < 6 && <button type="button" onClick={() => setEduList(l => [...l, { jenjang:'', nama:'', thnAwal:'', thnAkhir:'', jurusan:'', jurusanManual:'', alamat:'', status:'' }])} class="text-sky-400 text-xs font-bold mb-6"><Icon name="plus" class="mr-1" />{t("master.edu_tambah")}</button>}
               {/* 地域 — wilayah sekolah, dicetak KINKI di kolom `J19`. Satu kolom
                   saja karena form itu hanya mencetak baris SMA/SMK. */}
               <F label="Wilayah sekolah (SMA/SMK) — 地域" k="wilayahSekolah" opts={PROVINSI} />

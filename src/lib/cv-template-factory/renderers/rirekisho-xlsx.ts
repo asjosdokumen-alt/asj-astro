@@ -14,7 +14,7 @@
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { RIREKISHO_XLSX_BASE64 } from '../templates/rirekisho-xlsx.b64';
-import { isGood, kanjiHubunganDari, rapikanKanjiHubungan } from '../../helpers_cv';
+import { isGood, kanjiHubunganDari, rapikanKanjiHubungan, batasiRiwayatSekolah } from '../../helpers_cv';
 import {
   buildXlsxForm,
   birthDate,
@@ -179,9 +179,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
   };
 
   /* ── education (fixed row count — the rest stay empty, never trimmed) ───── */
+  const eduRows = batasiRiwayatSekolah((data.pendidikan || []) as Record<string, unknown>[], EDU_ROWS);
   for (let i = 0; i < EDU_ROWS; i++) {
     const row = 20 + i;
-    const p = (data.pendidikan[i] || {}) as Record<string, unknown>;
+    const p = eduRows[i] || {};
     const masuk = p.masuk ?? p.tahun_masuk;
     const lulus = p.lulus ?? p.tahun_lulus;
     const sekolah = p.sekolah ?? p.nama_sekolah ?? p.sekolah_id;

@@ -38,7 +38,7 @@
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { RIREKISHO_FIRMA_BASE64 } from '../templates/rirekisho-firma.b64';
-import { isGood } from '../../helpers_cv';
+import { isGood, batasiRiwayatSekolah } from '../../helpers_cv';
 import {
   buildXlsxForm,
   birthDate,
@@ -238,9 +238,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
   };
 
   /* ── pendidikan: 4 baris tetap (11-14) ─────────────────────────────────── */
+  const eduRows = batasiRiwayatSekolah((data.pendidikan || []) as Record<string, unknown>[], EDU_ROWS);
   for (let i = 0; i < EDU_ROWS; i++) {
     const row = EDU_START + i;
-    const p = (data.pendidikan[i] || {}) as Record<string, unknown>;
+    const p = eduRows[i] || {};
     const masuk = yearMonth(p.masuk ?? p.tahun_masuk);
     const lulus = yearMonth(p.lulus ?? p.tahun_lulus);
     cells[`D${row}`] = masuk.y;

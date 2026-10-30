@@ -621,3 +621,24 @@ export function jenjangKinkiJp(tingkat: unknown): string {
   if (/^D[234]|DIPLOMA/.test(t)) return '専門';
   return '';
 }
+
+/**
+ * Potong daftar pendidikan supaya muat di baris fisik template.
+ *
+ * Template Excel punya jumlah baris 学歴 yang tetap (JIPA 5, Firma 4, rirekisho
+ * 3). Sejak migrasi 028 daftar bisa berisi 6, jadi satu baris harus dikorbankan
+ * — dan aturannya SENGAJA bukan "buang yang terakhir": baris LPK (日本語学校)
+ * tidak pernah dibuang, karena justru itu yang dicari agensi, dan yang
+ * dikorbankan adalah jenjang TERENDAH (SD, lalu SMP). Urutan baris yang tersisa
+ * dipertahankan persis.
+ */
+export function batasiRiwayatSekolah<T extends Record<string, unknown>>(rows: T[], cap: number): T[] {
+  if (!Array.isArray(rows) || rows.length <= cap) return rows || [];
+  let buang = rows.length - cap;
+  const out: T[] = [];
+  for (const r of rows) {
+    if (buang > 0 && !isLpkTingkat(r.tingkat)) { buang--; continue; }
+    out.push(r);
+  }
+  return out;
+}

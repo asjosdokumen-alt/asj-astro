@@ -177,7 +177,7 @@ interface FamRow {
   tinggal: string; hp: string;
 }
 
-const EDU_MAX = 5;
+const EDU_MAX = 6; // migrasi 028: slot ke-6 supaya LPK muat tanpa menghapus jenjang lain
 const JOB_MAX = 3;
 const FAM_MAX = 5;
 
@@ -207,7 +207,7 @@ const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '',
  * jenjangnya, dihapus kalau salah, dan urutannya dinormalkan `sortEduRows`
  * sehingga CV mencetak SD → SMP → SMA/SMK → D3 → S1.
  */
-const EDU_SEED_LEVELS = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1'] as const;
+const EDU_SEED_LEVELS = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'LPK'] as const;
 const seedEduRows = (): EduRow[] => EDU_SEED_LEVELS.map((lv) => ({ ...newEduRow(), tingkat: lv }));
 
 const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '', jenis: '', bidang: '', catatan: '' });

@@ -31,7 +31,7 @@
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { JIPA_BASE64 } from '../templates/jipa.b64';
-import { isGood, kouritsuSekolah, tingkatSekolahJp } from '../../helpers_cv';
+import { isGood, kouritsuSekolah, tingkatSekolahJp, batasiRiwayatSekolah } from '../../helpers_cv';
 import { buildXlsxForm, cvFileName, durasiJp, kanaJp, negatif, s } from './xlsx-form';
 
 const SHEET_PATH = 'xl/worksheets/sheet1.xml';
@@ -260,10 +260,12 @@ export function buildValues(data: CandidateData): Record<string, string> {
     B54: negatif(id.status_eks_jepang) ? '無し(TIDAK)' : 'あり(ADA)',
   };
 
-  /* ── pendidikan: 5 baris ────────────────────────────────────────────────── */
+  /* ── pendidikan: 5 baris (migrasi 028: daftar bisa 6 — `batasiRiwayatSekolah`
+     membuang jenjang terendah, tidak pernah LPK) ───────────────────────────── */
+  const eduRows = batasiRiwayatSekolah((data.pendidikan || []) as Record<string, unknown>[], EDU_ROWS);
   for (let i = 0; i < EDU_ROWS; i++) {
     const row = EDU_START + i;
-    const p = (data.pendidikan[i] || {}) as Record<string, unknown>;
+    const p = eduRows[i] || {};
     const masuk = ym(p.masuk ?? p.tahun_masuk);
     const lulus = ym(p.lulus ?? p.tahun_lulus);
     const sekolah = bersih(p.sekolah ?? p.nama_sekolah ?? p.sekolah_id);
