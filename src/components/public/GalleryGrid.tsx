@@ -48,6 +48,13 @@ export default function GalleryGrid({ items, class: className }: Props) {
       {items.map((item, index) => (
         <li key={item.src} class="group rounded-card overflow-hidden border border-line bg-surface">
           <div class="aspect-[4/3] overflow-hidden bg-surface-raised">
+            {/* `u-alive` (motion.css §9h): the photograph breathes on its
+                own — a slow Ken Burns zoom/pan on the individual `scale`/
+                `translate` properties, which COMPOSE with the `u-zoom`
+                hover's `transform` instead of overriding it (§9d rule 3 is
+                why these must stay two different properties). The negative
+                `--alive-delay` desyncs each tile's cycle, so the grid never
+                pulses in phase. */}
             <img
               src={item.src}
               alt={item.alt}
@@ -55,7 +62,8 @@ export default function GalleryGrid({ items, class: className }: Props) {
               height={item.height}
               loading={index < 3 ? 'eager' : 'lazy'}
               decoding="async"
-              class="h-full w-full object-cover u-zoom"
+              class="h-full w-full object-cover u-zoom u-alive"
+              style={`--alive-delay:${(index * -1.9).toFixed(1)}s`}
             />
           </div>
           <p data-lang={item.captionKey} class="px-4 py-3 text-body-sm text-fg-muted">

@@ -96,11 +96,19 @@ export interface Props {
   ogImage?: string;
   /** If true, emit `<meta name="robots" content="noindex">` for gated app pages. */
   noIndex?: boolean;
+  /**
+   * Render the scroll-progress bar (motion.css §9i): a 3px gradient pinned
+   * to the top edge that fills as the page scrolls, driven by the document
+   * scroll timeline — no JavaScript, reversible for free. Opt-in per page:
+   * the landing page turns it on; short app routes gain nothing from it.
+   * Decorative, so it is `aria-hidden` and carries no text.
+   */
+  scrollProgress?: boolean;
   /** Extra JSON-LD payload (already serialised) to inject into `<head>`. */
   jsonLd?: string;
 }
 
-const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false, titleKey, ogImage, noIndex, jsonLd } = Astro.props;
+const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false, titleKey, ogImage, noIndex, scrollProgress = false, jsonLd } = Astro.props;
 
 // ─── Discovery metadata (JSON-LD + hreflang) ─────────────────────────────────
 // ADDED 2026-09-29. MEASURED that day: this site emitted 0 JSON-LD and 0
@@ -450,6 +458,7 @@ const orgJsonLd = jsonLdScript(
   </div>
   <div id="sakura-particles" class="fixed inset-0 u-modal-shell overflow-hidden hidden" aria-hidden="true"></div>
   <a href="#main-content" class="skip-link"><span data-lang="ui.skip_to_content">Lewati ke konten utama</span></a>
+  {scrollProgress && <div class="u-scroll-progress" aria-hidden="true" />}
   
     <slot />
   

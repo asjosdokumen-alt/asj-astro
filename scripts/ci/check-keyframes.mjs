@@ -94,6 +94,12 @@ const OUR_PREFIXES = [
   // than leaving a known hole next to the new family.
   "hero-",
   "scroll-",
+  // Added 2026-10-30 with motion.css §9h/§9i — the idle "alive" breath on
+  // landing photographs and the scroll-progress bar. Same reasoning as the
+  // entries above: the names are ours, so a typo must fail HERE rather
+  // than freeze an image mid-frame while the stylesheet looks correct.
+  "alive-",
+  "progress-",
   // Tailwind-generated, from the `--animate-*` tokens in theme.css. They are
   // declared by Tailwind at build time rather than by hand, but they resolve the
   // same way and a typo in `animate-slide-in` is just as silent.

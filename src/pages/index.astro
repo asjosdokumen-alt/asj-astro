@@ -71,7 +71,10 @@ import { GALLERY } from '../lib/gallery';
    CheckList exists at all: four of these blocks were inline maps before it did. */
 ---
 
-<BaseLayout title="PT Amanah Sakura Japan — Job Portal" titleKey="doc.title_home" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true}>
+<!-- `scrollProgress` renders the thin gradient reading-progress bar at the
+     top edge (motion.css §9i, driven by the document scroll timeline) —
+     the landing page is the one route long enough for it to mean anything. -->
+<BaseLayout title="PT Amanah Sakura Japan — Job Portal" titleKey="doc.title_home" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true} scrollProgress={true}>
   <!-- `hero` turns the header band into the landing page's hero. It also moves
        the page's single h1 into the hero, so the company name in the header
        steps down to a div — see the note in App.tsx. Every OTHER route mounts
@@ -587,15 +590,25 @@ import { GALLERY } from '../lib/gallery';
                `src/lib/gallery.ts` already argues this in prose: these are the
                company's own staff and participants, photographing their own
                office. What had to change was the claim, not the picture. -->
-          <img
-            src="/assets/fasilitas-gedung.webp"
-            alt="Peserta dan staf LPK Amanah Sakura Japan berfoto bersama di depan kantor, mengenakan seragam batik lembaga."
-            width="1000"
-            height="666"
-            loading="lazy"
-            decoding="async"
-            class="w-full rounded-card border border-line object-cover"
-          />
+          <!-- The breathing frame: `u-alive` (motion.css §9h) zooms the photo
+               ~6% on a loop, so the image must sit inside its own clipped
+               frame — without it the zoom would spill 6% past the card edge
+               over the prose column. `overflow-clip`, not `hidden`: the
+               distinction is load-bearing elsewhere (§9d) and `clip` is the
+               accurate tool here too. The border and rounding move ONTO the
+               frame so the corners stay crisp while the photo moves. -->
+          <div class="overflow-clip rounded-card border border-line">
+            <img
+              src="/assets/fasilitas-gedung.webp"
+              alt="Peserta dan staf LPK Amanah Sakura Japan berfoto bersama di depan kantor, mengenakan seragam batik lembaga."
+              width="1000"
+              height="666"
+              loading="lazy"
+              decoding="async"
+              class="w-full object-cover u-alive"
+              style="--alive-delay:-4.2s"
+            />
+          </div>
           <figcaption data-lang="profile.about_caption" class="mt-3 text-caption text-fg-muted">
             Peserta dan staf di kantor LPK Amanah Sakura Japan — Ponorogo, Jawa Timur
           </figcaption>

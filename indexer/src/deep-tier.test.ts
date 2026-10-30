@@ -419,7 +419,14 @@ const show = true;
     // and the two font preloads added `inter400Woff2` + `inter700Woff2` (+2).
     // Net +1. The diff is the indexer's own output for this file; the array
     // below is that output sorted, not a hand-edit of the previous one.
-    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'canonical', 'canonical', 'description', 'description', 'description', 'inter400Woff2', 'inter700Woff2', 'jsonLd', 'jsonLd', 'lang', 'lang', 'noIndex', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'orgJsonLd', 'orgJsonLd', 'showBottomNav', 'showBottomNav', 'showFooter', 'title', 'title', 'title', 'titleKey']);
+    // 28 -> 29 (2026-10-30, MEASURED from the failure diff, not derived):
+    // `scrollProgress` (+1) — motion.css §9i's reading-progress bar is opt-in
+    // per page, so BaseLayout gained the prop and reads it once in the body
+    // (`{scrollProgress && <div class="u-scroll-progress" />}`). The prop's
+    // default in the destructuring is a binding, not a read, so it does not
+    // appear a second time. The array below is the indexer's own output for
+    // this file, sorted — not a hand-edit of the previous one.
+    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'canonical', 'canonical', 'description', 'description', 'description', 'inter400Woff2', 'inter700Woff2', 'jsonLd', 'jsonLd', 'lang', 'lang', 'noIndex', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'orgJsonLd', 'orgJsonLd', 'scrollProgress', 'showBottomNav', 'showBottomNav', 'showFooter', 'title', 'title', 'title', 'titleKey']);
     for (const o of occs) {
       const ref = r.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
       expect(ref).toBeDefined();

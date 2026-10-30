@@ -1305,9 +1305,22 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
      screen each plane slides DOWN inside it, so it travels less than the
      band does. The DIFFERENCE IN TRAVEL between the two planes is the
      depth cue — see the note above on why the opposite direction is not
-     the principle. */
-  from { transform: translate3d(0, calc(var(--parallax) * -1), 0); }
-  to   { transform: translate3d(0, var(--parallax), 0); }
+     the principle.
+
+     2026-10-30 — the keyframes gained TWO variable-driven channels,
+     `--hero-zoom-*` and `--hero-fade-*`, both defaulting to the no-op
+     value (1). Only `.hero-art` sets them (below): the artwork slowly
+     ZOOMS IN and DIMS as the band scrolls away — the modern hero-exit
+     the owner asked for ("transisi scroll dibikin lebih wah"). The haze
+     keeps the defaults, so its behaviour is unchanged.
+
+     Why the fade target is 0.5 and not lower: the headline's contrast is
+     carried by `.header-overlay`, not by the artwork's own darkness, so
+     dimming the art can never break the measured glyph contrast
+     (e2e/measure-hero-contrast.mjs reads the scrim stack, which sits
+     ABOVE this layer in paint order and is untouched). */
+  from { transform: translate3d(0, calc(var(--parallax) * -1), 0) scale(var(--hero-zoom-from, 1)); opacity: var(--hero-fade-from, 1); }
+  to   { transform: translate3d(0, var(--parallax), 0) scale(var(--hero-zoom-to, 1)); opacity: var(--hero-fade-to, 1); }
 }
 
 @supports (animation-timeline: view()) {
@@ -1322,9 +1335,16 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
       animation-range: cover 0% cover 100%;
     }
 
-    /* FAR plane: the raster. Travels least. */
+    /* FAR plane: the raster. Travels least — and now also ZOOMS and DIMS
+       as the band leaves the screen (see the keyframes above). Zoom
+       1→1.09 stays well inside the plane's 116% over-size, so no edge can
+       be exposed; fade 1→0.5 multiplies the img's own opacity-60 down to
+       ~0.3 at the moment the band exits, which reads as the scene
+       receding rather than the page ending. */
     .hero-art {
       --parallax: 4%;
+      --hero-zoom-to: 1.09;
+      --hero-fade-to: 0.5;
     }
 
     /* NEAR plane: the atmosphere. Travels most, and the other way. */
@@ -1473,21 +1493,32 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
    VARIETY comes from `--scroll-drift` being signed and scaled per kind
    below, not from more keyframe sets — a keyframed direction cannot be
    reversed by a data attribute, a variable can. */
+/* 2026-10-30 — each keyframe gained a SCALE channel on top of the
+   translate, so a band breathes in size as well as position while it is
+   on screen ("transisinya dibikin lebih wah"). The scale is small
+   (±1.8% for a band, ±1.2% for a card) and peaks at the 45% mid-frame,
+   i.e. exactly when the element sits in the reading zone; the translate
+   values — the thing `e2e/test-scroll-motion.mjs` measures — are
+   UNCHANGED, so the 60px travel ceiling and the reversibility assertion
+   still measure the same numbers. */
 @keyframes scroll-drift-y {
-  from { transform: translate3d(0, calc(var(--scroll-drift) * -1), 0); }
-  to   { transform: translate3d(0, var(--scroll-drift), 0); }
+  from { transform: translate3d(0, calc(var(--scroll-drift) * -1), 0) scale(0.982); }
+  45%  { transform: translate3d(0, calc(var(--scroll-drift) * -0.1), 0) scale(1); }
+  to   { transform: translate3d(0, var(--scroll-drift), 0) scale(1.008); }
 }
 
 /* The item variant. Same shape, its own travel token, so a section can
    tune its cards without touching the band's motion. */
 @keyframes scroll-drift-item {
-  from { transform: translate3d(0, calc(var(--scroll-drift-item) * -1), 0); }
-  to   { transform: translate3d(0, var(--scroll-drift-item), 0); }
+  from { transform: translate3d(0, calc(var(--scroll-drift-item) * -1), 0) scale(0.988); }
+  45%  { transform: translate3d(0, calc(var(--scroll-drift-item) * -0.1), 0) scale(1); }
+  to   { transform: translate3d(0, var(--scroll-drift-item), 0) scale(1.004); }
 }
 
 @keyframes scroll-tilt-y {
-  from { transform: translate3d(0, calc(var(--scroll-drift) * -1), 0) rotate(calc(var(--scroll-tilt) * -1)); }
-  to   { transform: translate3d(0, var(--scroll-drift), 0) rotate(var(--scroll-tilt)); }
+  from { transform: translate3d(0, calc(var(--scroll-drift) * -1), 0) rotate(calc(var(--scroll-tilt) * -1)) scale(0.982); }
+  45%  { transform: translate3d(0, calc(var(--scroll-drift) * -0.1), 0) rotate(0deg) scale(1); }
+  to   { transform: translate3d(0, var(--scroll-drift), 0) rotate(var(--scroll-tilt)) scale(1.008); }
 }
 
 /* ── THE MOVE. Everything is inside the gate. ─────────────────────── */
@@ -1688,6 +1719,205 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
    for the same call on the border). Nothing to disable here; the block is
    noted so a future reader does not "fix" the omission by adding a rule that
    would remove the only remaining hover cue on a static card. */
+
+
+/* ══════════════════════════════════════════════════════════════════
+   9h. ALIVE IMAGES — photographs breathe on their own, with no pointer
+       and no scroll needed
+   ══════════════════════════════════════════════════════════════════
+
+   OWNER'S REQUEST, verbatim, because it is the spec:
+     "setiap animasi gambar di kasih motion bergerak biar kelihatan kek
+      hidup."
+
+   §9d/§9e move images WITH the scroll and §9c moves them UNDER THE
+   POINTER. Between those two triggers a photograph sits perfectly still,
+   which is the "not alive" the request names. This block is the third
+   trigger: TIME. A `.u-alive` image slowly zooms and pans in a loop —
+   the Ken Burns read — so every large photograph on the landing page is
+   always moving, gently, even when the visitor does nothing.
+
+   ── WHY IT ANIMATES `scale`/`translate` AND NOT `transform` ────────
+   §9d rule 3 is the measured constraint: a CSS ANIMATION on `transform`
+   OVERRIDES a TRANSITION on the same property of the same element, so an
+   alive-animation written on `transform` would silently kill the §9c
+   `.u-zoom` hover on every gallery tile and service banner — the exact
+   defect that section was built to avoid.
+
+   The individual transform properties (Transforms Level 2) are the way
+   out: `translate`, `rotate` and `scale` are SEPARATE properties that
+   COMPOSE with `transform` (they multiply before it), so an animation on
+   `scale` and a hover transition on `transform` both apply at once. The
+   tile breathes AND zooms under the pointer, and neither mechanism knows
+   the other exists. Support is gated with `@supports (scale: 1)` —
+   Chrome 104+, Safari 14.1+, Firefox 72+; everywhere else the photograph
+   is simply still, which is the pre-existing behaviour.
+
+   ── WHY IT IS TIME-BASED AND INFINITE, AND WHY THAT IS SAFE HERE ────
+   §9's warning about infinite animations is about `will-change` and
+   compositor MEMORY, not about time loops per se. Two properties make
+   this loop cheap: `scale`/`translate` are compositor-only (no layout,
+   no paint), and the animation is one SLOW ease (14s) rather than a fast
+   ticker. `will-change` is still NOT set — a permanent promotion for
+   every photograph is the anti-pattern this file's header warns about;
+   the browser promotes a running transform animation on its own.
+
+   The loop runs BETWEEN TWO VISIBLE FRAMES (scale 1 ↔ ~1.06), so the
+   §9 trap cannot occur: no frame hides the content, and a browser that
+   drops or clamps the animation leaves a perfectly normal photograph.
+
+   ── THE FRAMES ─────────────────────────────────────────────────────
+   `alternate` rather than a 0%/100% loop: a loop SNAPS back to its
+   start, which reads as a glitch on a photograph; alternate breathes
+   back and forth with no seam. The pan (`--alive-x`/`--alive-y`) is a
+   share of the image box, under 1%, so it can never expose an edge on
+   any image that fills its frame — every call site is `object-cover`
+   inside a clipped box.
+
+   PER-IMAGE DESYNC is by `--alive-delay`, set inline at the call site
+   (negative values start the loop mid-cycle, so nine gallery tiles never
+   breathe in phase — in-phase breathing across a grid reads as the whole
+   page pulsing). The delay is a custom property, not a ninth class.
+
+   ── WHAT MUST NOT CARRY THIS CLASS ─────────────────────────────────
+   1. QR CODES (the #kontak tiles). A QR is a machine-readable
+      instruction, not a photograph; a breathing scale makes a scanner
+      re-acquire the code on every pass. They stay still on purpose.
+   2. The BRAND MARK (header/footer logo). A logo that drifts reads as a
+      rendering fault, not as life.
+   3. Anything already scroll-animated with the `animation` shorthand
+      (`.u-drift`, `.hero-layer`): `animation` is ONE list-valued
+      property, so this class's shorthand would REPLACE theirs wholesale
+      (same specificity, later in the file). Those images already move;
+      they do not need a second driver.
+
+   REDUCED MOTION: the animation is REMOVED, not shortened — and here
+   the removal is harmless by construction, because both frames are
+   visible (see above). The reset needs no `!important`: equal
+   specificity to the gated rule and later in the file (§9's reasoning).
+   ------------------------------------------------------------------ */
+
+:root {
+  /* Peak zoom of the breathing cycle. 1.06 is large enough to read as
+     "alive" on a still glance and small enough that no one mistakes it
+     for a layout shift. */
+  --alive-scale: 1.06;
+  /* One full breath, rest to peak. 14s is slow enough to be felt rather
+     than noticed; under ~8s a photograph reads as restless. */
+  --alive-dur: 14s;
+}
+
+/* The keyframes for the alive-breath. Both frames are VISIBLE — that is
+   the safety property the header note describes. */
+@keyframes alive-breathe {
+  from {
+    scale: 1;
+    translate: 0 0;
+  }
+  to {
+    scale: var(--alive-scale);
+    translate: var(--alive-x, 0.6%) var(--alive-y, -0.8%);
+  }
+}
+
+@supports (scale: 1) {
+  @media (prefers-reduced-motion: no-preference) {
+    .u-alive {
+      animation: alive-breathe var(--alive-dur) ease-in-out var(--alive-delay, 0s) infinite alternate;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-alive {
+    animation: none;
+    scale: none;
+    translate: none;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   9i. SCROLL PROGRESS — the thin gradient bar under the top edge
+   ══════════════════════════════════════════════════════════════════
+
+   Part of the same owner request as §9h: "mouse scroll ke bawah atas
+   nya transisi nya di bikin lebih wah kek trend trend website terbaru."
+   The trend's most recognisable single element is the reading-progress
+   bar — a 3px gradient pinned to the top edge that fills left-to-right
+   as the page scrolls, and EMPTIES again on the way back up. It gives
+   every scroll gesture a visible answer even between sections, which is
+   exactly the "terus jalan selama scroll" quality the owner keeps
+   asking for.
+
+   Driven by `animation-timeline: scroll()` — the document scroll
+   timeline, the root-scroller variant of the `view()` primitive §9d/§9f
+   use. Progress is derived from POSITION, so it is reversible for free
+   and costs no JavaScript and no scroll listener.
+
+   THE REST STATE IS EMPTY, and that is the degradation story: the base
+   rule sets `transform: scaleX(0)`, so a browser with no scroll-timeline
+   support, and a visitor under reduced motion, simply never see the bar
+   — there is no half-filled stuck state to reset. The reduced-motion
+   block below is belt-and-braces, the same pattern §9e/§9f keep.
+
+   Geometry and colour live here, NOT in Tailwind classes, because the
+   gradient is built from the theme's accent tokens and motion.css is
+   UNLAYERED — an unlayered rule beats a layered utility (R20's lesson),
+   so a `bg-gradient-to-r` class would silently lose to any unlayered
+   background on the element. One class, one source of truth.
+
+   z-index: the theme's sticky tier (50) — above page content, below the
+   scrim (95) and drawer (100), so opening the menu never has the bar
+   painting over it. Rendered only where the page opts in (the landing
+   layout prop); nothing here forces it onto other routes.
+   ------------------------------------------------------------------ */
+
+.u-scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: var(--z-index-sticky);
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--color-accent) 0%,
+    var(--color-accent-sky) 55%,
+    var(--color-accent-amber) 100%
+  );
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
+
+/* The keyframes for the progress fill. */
+@keyframes progress-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .u-scroll-progress {
+      animation: progress-grow linear both;
+      /* `auto` after the shorthand, and the timeline last — the same
+         three-declaration ordering §9d records, because the shorthand
+         resets both. `scroll()` is the document timeline: no argument
+         means the nearest ancestor scroller, which for this element is
+         the root scroller. */
+      animation-duration: auto;
+      animation-timeline: scroll();
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-scroll-progress {
+    animation: none;
+    transform: scaleX(0);
+  }
+}
 
 
 /* ══════════════════════════════════════════════════════════════════
