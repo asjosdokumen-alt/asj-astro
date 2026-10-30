@@ -112,12 +112,30 @@ export function candidateIdentityPatch(master: Record<string, unknown>): Record<
  * sampai ke sumber utama (dan berkas CV/rirekisho tetap memakai angka lama).
  *
  * `pendidikan` tidak dibalik — lihat aturan 3 di header.
+ *
+ * @param sebelum Baris `database_candidate` SEBELUM diedit. Kalau diberikan,
+ *   field yang dikirim KOSONG dianggap dihapus admin — dan kolom master ikut
+ *   dikosongkan. Syaratnya nilai lama di baris kandidat memang ADA: kalau dari
+ *   awal kosong, master mungkin satu-satunya sumber (baris legacy yang hanya
+ *   pernah diisi lewat CV AI), dan mengosongkannya akan menghapus data.
+ *   Tanpa `sebelum`, perilakunya sama seperti dulu (hanya menambah) — pemanggil
+ *   yang tidak punya baris lama tidak boleh menghapus apa pun.
  */
-export function masterIdentityPatch(candidate: Record<string, unknown>): Record<string, string> {
+export function masterIdentityPatch(
+  candidate: Record<string, unknown>,
+  sebelum?: Record<string, unknown>,
+): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [masterCol, candCol] of MASTER_TO_CANDIDATE_IDENTITY) {
     const v = usable(candidate[candCol]);
-    if (v === null) continue;
+    if (v === null) {
+      /* Dikosongkan admin. Hanya dihapus kalau baris kandidat MEMANG punya
+         nilai sebelumnya — lihat catatan `sebelum`. */
+      if (sebelum && Object.hasOwn(candidate, candCol) && usable(sebelum[candCol]) !== null) {
+        out[masterCol] = '';
+      }
+      continue;
+    }
     // Master menyimpan nama dalam huruf besar di semua jalur lain
     // (`handleSubmitMasterForm`: `String(d.nama).trim().toUpperCase()`). Satu
     // ejaan saja, kalau tidak nama yang diedit admin akan berbeda bentuk dari

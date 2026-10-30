@@ -121,6 +121,9 @@ describe('CvMiniModal (A09)', () => {
     expect(payload.nama).toBe('KANDIDAT A');
     expect(payload.gender).toBe('LAKI-LAKI');
     expect(payload.usia).toBe('25');
+    // Form ini memuat SEMUA field-nya, jadi server boleh mengosongkan yang
+    // dikirim kosong (tinggi/berat yang dihapus tidak boleh hidup lagi di CV).
+    expect((payload as Record<string, unknown>).formLengkap).toBe(true);
     expect(payload.pendidikan).toBeUndefined();
     expect(payload.photo).toBeUndefined();
     expect(payload.photoFile).toBeUndefined();

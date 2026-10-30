@@ -111,4 +111,39 @@ describe('masterIdentityPatch — baris operasional → master', () => {
     const back = masterIdentityPatch(fromMaster);
     expect(back).toMatchObject({ tb: '170', bb: '60', no_paspor: 'C1', email: 'a@b.c' });
   });
+
+  /* ── Menghapus lewat modal edit admin ──────────────────────────────────────
+     Sebelum 2026-10-30 `masterIdentityPatch` mengabaikan SEMUA nilai kosong,
+     jadi admin yang menghapus tinggi/berat hanya mengubah layar: kolom master
+     tetap berisi, dan CV cetak + form CV AI memakai nilai lama. Sekarang
+     penghapusan diteruskan — TAPI hanya kalau nilai lama di baris kandidat
+     memang ada (lihat tes kedua). */
+  it('field yang DIKOSONGKAN admin menghapus kolom master (kalau sebelumnya ada)', () => {
+    const sebelum = { tb: '170', bb: '60', email: 'a@b.c' };
+    const p = masterIdentityPatch({ tb: '', bb: '', email: '' }, sebelum);
+    expect(p.tb).toBe('');
+    expect(p.bb).toBe('');
+    expect(p.email).toBe('');
+  });
+
+  it('field yang MEMANG sudah kosong tidak menghapus master (baris legacy)', () => {
+    // `database_candidate` bisa kosong sementara master berisi (baris lama yang
+    // hanya pernah diisi lewat CV AI). Mengosongkan di sini = menghapus data
+    // yang tidak pernah dilihat admin.
+    const p = masterIdentityPatch({ tb: '', bb: '' }, { tb: '', bb: '' });
+    expect('tb' in p).toBe(false);
+    expect('bb' in p).toBe(false);
+  });
+
+  it('tanpa baris lama, perilaku lama dipertahankan (tidak menghapus apa pun)', () => {
+    const p = masterIdentityPatch({ tb: '', bb: '' });
+    expect('tb' in p).toBe(false);
+    expect('bb' in p).toBe(false);
+  });
+
+  it('field yang TIDAK dikirim tidak disentuh walau ada yang dikosongkan', () => {
+    const p = masterIdentityPatch({ tb: '' }, { tb: '170', email: 'a@b.c' });
+    expect(p.tb).toBe('');
+    expect('email' in p).toBe(false);
+  });
 });

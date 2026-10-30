@@ -138,11 +138,13 @@ export async function handleUpdateKandidatSuper(payload: unknown[], sessionToken
 
        Best-effort seperti `syncBiodataKeMail` di bawah: kegagalan di sini tidak
        boleh membatalkan edit yang sudah tersimpan. Yang ditulis hanya field
-       identitas yang MEMANG berubah (`masterIdentityPatch` mengabaikan nilai
-       kosong), jadi status/tahapan yang ikut di payload tidak menyentuh master.
+       identitas yang MEMANG berubah, jadi status/tahapan yang ikut di payload
+       tidak menyentuh master. Sejak 2026-10-30 field yang DIKOSONGKAN admin
+       ikut menghapus kolom master (`row` = nilai sebelum edit) — tanpa itu
+       "hapus" hanya berlaku di layar, dan CV tetap mencetak nilai lama.
     */
     try {
-      const masterBody = masterIdentityPatch(body);
+      const masterBody = masterIdentityPatch(body, row);
       if (Object.keys(masterBody).length > 0) {
         const m = await findMasterByWa(data.wa as string);
         if (m && m.id !== undefined) {

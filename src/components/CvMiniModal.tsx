@@ -99,7 +99,7 @@ export default function CvMiniModal({ onClose, prefill, closing = false }: Props
     if (!user.wa) { showToast(t('error.session_expired'), 'error'); return; }
     setLoading(true);
     try {
-      const payload: Record<string, string> = {
+      const payload: Record<string, string | boolean> = {
         wa: user.wa,
         nama: prefill?.nama || user.name || '',
         gender,
@@ -108,6 +108,13 @@ export default function CvMiniModal({ onClose, prefill, closing = false }: Props
         bb: digitsOnly(bb),
         jft_text: jftText.trim(),
         ssw_text: sswText.trim(),
+        /* Form ini mengirim SEMUA field yang ia miliki, jadi yang kosong berarti
+           dihapus kandidat. Tanpa flag ini server hanya menambah kolom, dan
+           `buildMasterNested` membaca kolom lebih dulu ⇒ tinggi/berat yang
+           dikosongkan di sini hidup lagi di CV dan saat form dibuka ulang
+           (kelas bug yang sama dengan CV AI, 2026-10-30). Field yang TIDAK
+           dikirim (alamat, agama, …) tetap tidak disentuh. */
+        formLengkap: true,
       };
       // '-' = belum memilih: jangan kirim supaya nilai lama tidak ditimpa '-'.
       if (pendidikan && pendidikan !== '-') payload.pendidikan = pendidikan;
