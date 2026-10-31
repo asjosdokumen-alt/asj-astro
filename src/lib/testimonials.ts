@@ -137,12 +137,36 @@ export const REVIEW_TOTAL = REVIEWS.length;
  * one-line edit and makes it obvious when they were last checked — a rating
  * copied into six cards would be six things to get wrong.
  */
+
+/**
+ * WHY `rating`/`count` ARE CAST TO `number | null` AND NOT PINNED BY `as const`.
+ *
+ * This object shipped with `as const`, which pinned `rating` to the literal type
+ * `4.8`. The comments above and below then promised, twice, that setting
+ * `rating: null` would degrade the block — but that assignment did not even
+ * TYPE-CHECK, and `index.astro` called `rating.toFixed(1)` unguarded, so the
+ * documented escape hatch was a crash waiting for the first person to use it.
+ * A doc comment that describes a path the types forbid is worse than no comment:
+ * it is a promise nobody can keep.
+ *
+ * ⚠ WHY A PER-FIELD CAST AND NOT A NAMED INTERFACE (measured 2026-10-31). The
+ * obvious fix is `export interface ReviewAggregate { … }` plus an annotation, and
+ * it was written that way first — then the indexer's symbol envelope went from
+ * 30,807 to 30,814, because an interface's five members are five symbols. The
+ * ceiling is a budget, and spending seven of it on a type that says "this field
+ * may be null" is a bad trade. The casts cost ZERO symbols and say the same thing
+ * at the exact two fields that need it.
+ *
+ * ⚠ AND NOT NAMED `ReviewSource`: that name is already the closed union of
+ * platform labels above (`Review.source`), so an interface of that name would
+ * have silently narrowed this object to `'Google Maps' | 'Instagram' | …`.
+ */
 export const REVIEW_SOURCE = {
   label: 'Google Maps',
   /** Average rating on the listing, or `null` if not re-checked recently. */
-  rating: 4.8,
+  rating: 4.8 as number | null,
   /** Number of reviews on the listing, or `null`. */
-  count: 20,
+  count: 20 as number | null,
   /** When the figures above were last read from the live listing. */
   checkedOn: '2026-10-31',
   /**
@@ -166,7 +190,7 @@ export const REVIEW_SOURCE = {
    * block degrades itself — see the `null` branches here and in index.astro.
    */
   href: CONTACT_MAPS_URL,
-} as const;
+};
 
 /**
  * The accent role for the section. `exam` (amber) — the same role the headings

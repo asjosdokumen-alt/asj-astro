@@ -819,15 +819,33 @@ import { GALLERY } from '../lib/gallery';
            five-glyph row on the review CARDS, where a per-review rating is a
            whole number and the row is therefore exact. -->
       <div class="u-surface-depth mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-card border border-line/40 bg-surface px-5 py-4">
-        <span class="flex items-center gap-2">
-          <Icon name="star" class="text-accent-amber text-card-title" />
-          <span class="text-card-title font-black text-fg">{REVIEW_SOURCE.rating.toFixed(1)}</span>
-        </span>
-        <span class="flex items-baseline gap-1 text-body-sm text-fg-muted">
-          <span data-lang="profile.review_count_from">dari</span>
-          <span class="font-bold text-fg">{REVIEW_SOURCE.count}</span>
-          <span data-lang="profile.review_count_of">ulasan di Google Maps</span>
-        </span>
+        {
+          /* THE AGGREGATE'S HONESTY VALVE. `rating`/`count` are nullable on
+             purpose (see testimonials.ts): if the listing is ever re-read and the
+             numbers cannot be confirmed, they go back to `null` and the strip must
+             STOP printing them rather than keep showing a claim nobody checked.
+             The ternary is what narrows `number | null` before `.toFixed()` —
+             `null.toFixed()` is a CRASH, not a wrong number. Written inline rather
+             than as a frontmatter const because index.astro's frontmatter is
+             imports-only, and an indexer counter pins that. */
+          REVIEW_SOURCE.rating !== null && (
+            <span class="flex items-center gap-2">
+              <Icon name="star" class="text-accent-amber text-card-title" />
+              <span class="text-card-title font-black text-fg">
+                {REVIEW_SOURCE.rating.toFixed(1)}
+              </span>
+            </span>
+          )
+        }
+        {
+          REVIEW_SOURCE.rating !== null && REVIEW_SOURCE.count !== null && (
+            <span class="flex items-baseline gap-1 text-body-sm text-fg-muted">
+              <span data-lang="profile.review_count_from">dari</span>
+              <span class="font-bold text-fg">{REVIEW_SOURCE.count}</span>
+              <span data-lang="profile.review_count_of">ulasan di Google Maps</span>
+            </span>
+          )
+        }
         <a
           href={REVIEW_SOURCE.href}
           target="_blank"

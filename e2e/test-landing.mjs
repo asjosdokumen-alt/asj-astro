@@ -1211,34 +1211,58 @@ async function run() {
             'cannot be judged, and a silent skip here would let the rating drift again.',
         );
       }
-      const sourceBlock = src.slice(srcStart, src.indexOf('} as const', srcStart));
-      const ratingMatch = sourceBlock.match(/rating:\s*([\d.]+)/);
-      const countMatch = sourceBlock.match(/count:\s*(\d+)/);
-      if (!ratingMatch || !countMatch) {
+      // The object ends with `href: CONTACT_MAPS_URL,` then a line holding only `};`.
+      // (It used to end with `} as const`, which is why this anchor moved on
+      // 2026-10-31 — the annotation replaced `as const` so `null` could type-check.)
+      const endIdx = src.indexOf('\n};', srcStart);
+      const sourceBlock = src.slice(srcStart, endIdx > 0 ? endIdx : srcStart + 2000);
+      // `null` is a LEGAL value here, not a parse failure: testimonials.ts documents
+      // that the figures go back to `null` when the listing cannot be re-read, and
+      // the page is supposed to degrade rather than print a stale claim. So the
+      // match accepts both, and the branch below checks the RIGHT thing for each.
+      const ratingRaw = sourceBlock.match(/rating:\s*([\d.]+|null)/);
+      const countRaw = sourceBlock.match(/count:\s*(\d+|null)/);
+      if (!ratingRaw || !countRaw) {
         throw new Error(
           `parsed no rating/count out of REVIEW_SOURCE (got ${JSON.stringify(sourceBlock.slice(0, 120))}) — ` +
             'the parse is broken, so this check would pass vacuously.',
         );
       }
-      const expectedRating = Number(ratingMatch[1]).toFixed(1);
-      const expectedCount = countMatch[1];
       const aggregate = d.reviewAggregateNumber ?? '';
-      if (!aggregate.includes(expectedRating)) {
-        throw new Error(
-          `the aggregate strip reads "${aggregate}" but REVIEW_SOURCE says ${expectedRating}. ` +
-            'The number a visitor sees must be the number the data holds.',
-        );
-      }
-      if (!(d.reviewText ?? '').includes(`${expectedCount} ulasan`)) {
-        throw new Error(
-          `#testimoni never prints "${expectedCount} ulasan" — the review count in ` +
-            'REVIEW_SOURCE is not reaching the page.',
-        );
+      if (ratingRaw[1] === 'null') {
+        // Degraded state: the strip must print NO rating. A digit here means a
+        // stale claim survived the data going null.
+        if (/\d/.test(aggregate)) {
+          throw new Error(
+            `REVIEW_SOURCE.rating is null but the aggregate strip still prints "${aggregate}". ` +
+              'A rating nobody re-read must not be shown.',
+          );
+        }
+      } else {
+        const expectedRating = Number(ratingRaw[1]).toFixed(1);
+        if (!aggregate.includes(expectedRating)) {
+          throw new Error(
+            `the aggregate strip reads "${aggregate}" but REVIEW_SOURCE says ${expectedRating}. ` +
+              'The number a visitor sees must be the number the data holds.',
+          );
+        }
+        if (countRaw[1] === 'null') {
+          throw new Error(
+            'REVIEW_SOURCE has a rating but a null count — the strip would print ' +
+              '"dari (nothing) ulasan". Set both or neither.',
+          );
+        }
+        if (!(d.reviewText ?? '').includes(`${countRaw[1]} ulasan`)) {
+          throw new Error(
+            `#testimoni never prints "${countRaw[1]} ulasan" — the review count in ` +
+              'REVIEW_SOURCE is not reaching the page.',
+          );
+        }
       }
       if ((d.reviewAggregateStars ?? 0) > 0) {
         throw new Error(
           `the aggregate strip renders ${d.reviewAggregateStars} literal star glyph(s). ` +
-            `That is how a hardcoded ★★★★★ ended up beside a ${expectedRating}: ` +
+            `That is how a hardcoded ★★★★★ ended up beside a ${ratingRaw[1]}: ` +
             'use the sprite icon + the number, as the source listing does.',
         );
       }
