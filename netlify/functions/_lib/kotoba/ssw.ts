@@ -524,7 +524,7 @@ const GAISHOKU = [
   ['kerja', 'noun', '配膳', 'はいぜん', 'haizen', 'Menyajikan ke meja'],
   ['kerja', 'noun', '下膳', 'げぜん', 'gezen', 'Mengangkat piring kotor'],
   ['kerja', 'noun', '盛り付け', 'もりつけ', 'moritsuke', 'Menata di piring'],
-  ['kerja', 'noun', '注文伺い', 'ちゅうもんうかがい', 'chuumonukagai', 'Menerima pesanan'],
+  ['kerja', 'noun', '注文取り', 'ちゅうもんとり', 'chuumontori', 'Menerima pesanan'],
   // aman
   ['aman', 'noun', '食中毒', 'しょくちゅうどく', 'shokuchuudoku', 'Keracunan makanan'],
   ['aman', 'noun', '異物混入', 'いぶつこんにゅう', 'ibutsukonnyuu', 'Benda asing di makanan'],
