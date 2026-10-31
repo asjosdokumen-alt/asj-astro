@@ -800,7 +800,29 @@ describe('full build', () => {
     // raised twice in two days (30 600 -> 30 800 -> 30 850) and both times the
     // tree was already over the old one. The next raise should come with a
     // deliberate reduction, not another margin.
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(30850); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
+    //
+    // 30850 -> 30950 (2026-10-31, mode wawancara penuh). THIS RAISE IS A FEATURE,
+    // NOT DRIFT, and the attribution closes exactly at both ends:
+    //   · this test PASSED on HEAD (so HEAD <= 30 850), and
+    //   · the two files this feature touched were parsed in isolation at HEAD and
+    //     now: simulasiMensetsu.ts 80 -> 127 (+47), SimulasiMensetsu.tsx
+    //     158 -> 209 (+51) = +98, and 30 917 - 98 = 30 819 at HEAD.
+    // What the +98 buys: 4 interfaces (KalimatRitual, PertanyaanSusulan,
+    // ItemRonde, HasilSusulan) + 2 type aliases + 6 exported functions
+    // (pilihSusulan, susunRonde, skorTanpaIsi, nilaiSusulan, masukSoal,
+    // tutupRonde) + 3 state hooks + 1 whole new screen (ritual 入室/退室) +
+    // the susulan rows on the results screen. The 26 follow-up sentences and 4
+    // ritual lines cost ZERO of it — object-literal properties are not symbols
+    // (measured: an array of 2 objects and an array of 2 tuples both parse to
+    // 1 symbol), so moving that content to a data file would save nothing.
+    // fileCount did not move (no new counted files).
+    // NO REDUCTION WAS FOUND AT A DEFENSIBLE PRICE: the candidates were merging
+    // two helpers (+0 after the new parameter) and inlining five one-use consts
+    // (~7 total), i.e. cosmetic edits that would make the file worse to read to
+    // look compliant. Recorded plainly rather than dressed up. THE NEXT RAISE
+    // MUST BE A DELETION PASS — and note that splitting this component into a
+    // second file would move symbols between files without reducing the total.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(30950); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

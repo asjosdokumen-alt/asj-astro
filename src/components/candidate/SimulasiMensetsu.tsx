@@ -42,14 +42,25 @@ import {
   type Perekam,
 } from '../../lib/ttsJepang';
 import {
+  AMBANG_GRADE,
   nilaiJawaban,
+  nilaiSusulan,
   pilihSoalAcak,
   ringkasTahap,
+  susunRonde,
+  RITUAL_MASUK,
+  RITUAL_KELUAR,
   type HasilNilai,
+  type ItemRonde,
+  type ModeLatihan,
+  type PertanyaanSusulan,
   type SoalSimulasi,
 } from '../../lib/simulasiMensetsu';
 
-type Layar = 'atur' | 'main' | 'hasil';
+type Layar = 'atur' | 'ritual' | 'main' | 'hasil';
+
+/** Fase ritual: masuk ruangan sebelum soal pertama, keluar sesudah soal terakhir. */
+type FaseRitual = 'masuk' | 'keluar';
 
 interface DraftMap {
   [kode: string]: { jp: string; romaji: string; arti: string };
@@ -65,6 +76,8 @@ interface Props {
 
 interface BarisHasil {
   soal: SoalSimulasi;
+  /** `null` = pertanyaan utama; terisi = susulan (深掘り) atas soal itu. */
+  susulan: PertanyaanSusulan | null;
   transkrip: string;
   nilai: HasilNilai;
   detik: number;
@@ -72,6 +85,27 @@ interface BarisHasil {
 
 const PILIHAN_JUMLAH = [5, 10, 15];
 const PILIHAN_WAKTU = [30, 60, 90];
+
+/**
+ * Tiga cara latihan. Urutannya dari paling mudah ke paling mirip wawancara.
+ *
+ * KENAPA LABELNYA DIPISAH DARI `t(...)` DI JSX
+ * -------------------------------------------
+ * Kunci i18n yang ditulis sebagai literal di dalam cabang `?:` tidak bisa
+ * diverifikasi oleh tes kunci — ia hanya salah ketik yang muncul sebagai teks
+ * mentah di layar. Tabel ini membuat daftar kuncinya terbaca di satu tempat.
+ */
+const MODE_URUT: readonly ModeLatihan[] = ['latihan', 'mensetsu', 'penuh'];
+const LABEL_MODE: Record<ModeLatihan, string> = {
+  latihan: 'simulasi.mode_latihan',
+  mensetsu: 'simulasi.mode_mensetsu',
+  penuh: 'simulasi.mode_penuh',
+};
+const KET_MODE: Record<ModeLatihan, string> = {
+  latihan: 'simulasi.mode_latihan_ket',
+  mensetsu: 'simulasi.mode_mensetsu_ket',
+  penuh: 'simulasi.mode_penuh_ket',
+};
 
 /** Blob rekaman → base64 tanpa prefiks data-URL (yang dikirim ke server). */
 function blobKeBase64(blob: Blob): Promise<string> {
@@ -113,13 +147,19 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
    * bahasa di atas A2 akan melatih hal yang tidak diminta, lalu membuat siswa
    * gagal pada ukuran yang bukan ukuran wawancara.
    */
-  const [mode, setMode] = useState<'latihan' | 'mensetsu'>('latihan');
-  /** Berapa kali teks soal dibuka di mode mensetsu. Dihitung, bukan disembunyikan. */
+  const [mode, setMode] = useState<ModeLatihan>('latihan');
+  /** Berapa kali teks soal dibuka di mode mensetsu/penuh. Dihitung, bukan disembunyikan. */
   const [terbuka, setTerbuka] = useState(0);
   const [teksTampil, setTeksTampil] = useState(true);
 
+  /* ── ritual (hanya mode penuh) ─────────────────────────────────────────── */
+  const [ritualFase, setRitualFase] = useState<FaseRitual>('masuk');
+  /** Indeks kalimat yang sudah dicentang. Penilaian DIRI — tidak masuk nilai. */
+  const [centangMasuk, setCentangMasuk] = useState<number[]>([]);
+  const [centangKeluar, setCentangKeluar] = useState<number[]>([]);
+
   /* ── ronde ────────────────────────────────────────────────────────────── */
-  const [ronde, setRonde] = useState<SoalSimulasi[]>([]);
+  const [ronde, setRonde] = useState<ItemRonde[]>([]);
   const [idx, setIdx] = useState(0);
   const [transkrip, setTranskrip] = useState('');
   const [mendengar, setMendengar] = useState(false);
@@ -145,7 +185,17 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   const daftarTahap = ringkasTahap(soal);
   const bisaDengar = dukunganDengar();
   const bisaRekam = dukunganRekam();
-  const soalAktif = ronde[idx];
+
+  /* Satu langkah ronde bisa berupa pertanyaan utama ATAU susulan atasnya.
+     `itemAktif` adalah sumbernya; `soalAktif` tetap dipakai untuk acuan dan
+     tahap, karena susulan menempel pada soal yang sama. */
+  const itemAktif = ronde[idx];
+  const soalAktif = itemAktif?.soal;
+  const susulanAktif = itemAktif?.susulan ?? null;
+  /** Yang diucapkan pewawancara pada langkah ini — pertanyaan atau susulan. */
+  const teksTanya = susulanAktif ? susulanAktif.jp : (soalAktif?.jp ?? '');
+  /** Mode penuh = dua langkah per soal (tanya + susulan). */
+  const faktorRonde = mode === 'penuh' ? 2 : 1;
 
   /* Acuan penilaian: jawaban Jepang milik siswa lebih dulu, contoh bank kalau
      belum ada. `bank` sengaja ditandai di layar hasil — menilai siswa terhadap
@@ -161,6 +211,30 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   const pool = cakupan === 'semua' ? soal : soal.filter((s) => s.tahap === cakupan);
 
   /* ── ronde ────────────────────────────────────────────────────────────── */
+  /**
+   * Mulai satu langkah ronde: layar main, timer, dan soal diucapkan.
+   *
+   * Dipisah dari `mulai()` karena mode penuh menyisipkan layar ritual di antara
+   * "pengaturan" dan "soal pertama" — dan ritual itu tidak boleh menghabiskan
+   * jatah waktu soal pertama.
+   */
+  const masukSoal = (daftar: ItemRonde[], i: number) => {
+    setLayar('main');
+    setIdx(i);
+    setTranskrip('');
+    setSisaWaktu(batasDetik);
+    mulaiRef.current = Date.now();
+    const item = daftar[i];
+    const teks = item?.susulan ? item.susulan.jp : (item?.soal.jp ?? '');
+    /* Di mode mensetsu DAN penuh suara WAJIB, bukan opsional: tanpa suara tidak
+       ada pertanyaan sama sekali. Kalau perangkat tidak punya suara Jepang,
+       menampilkan teks adalah satu-satunya cara mode ini tetap terpakai — jadi
+       teksnya dibuka, bukan dibiarkan kosong dan membuat siswa menebak. */
+    const perluSuara = mode !== 'latihan' || suaraOtomatis;
+    const bersuara = perluSuara ? ucapkanJepang(teks) : false;
+    setTeksTampil(mode === 'latihan' ? true : !bersuara);
+  };
+
   const mulai = () => {
     /* "Semua" mengambil SELURUH pool, bukan angka 999: `pilihSoalAcak` sudah
        memotong ke panjang pool, dan menulis 999 di sini akan membuat layar
@@ -170,21 +244,20 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
       showToast(t('simulasi.tidak_ada_soal'), 'error');
       return;
     }
-    setRonde(dipilih);
-    setIdx(0);
+    const urutan = susunRonde(dipilih, mode);
+    setRonde(urutan);
     setHasil([]);
-    setTranskrip('');
-    setSisaWaktu(batasDetik);
-    setLayar('main');
-    mulaiRef.current = Date.now();
     setTerbuka(0);
-    /* Di mode mensetsu suara WAJIB, bukan opsional: tanpa suara tidak ada
-       pertanyaan sama sekali. Kalau perangkat tidak punya suara Jepang,
-       menampilkan teks adalah satu-satunya cara mode ini tetap terpakai —
-       jadi teksnya dibuka, bukan dibiarkan kosong dan membuat siswa menebak. */
-    const perluSuara = mode === 'mensetsu' || suaraOtomatis;
-    const bersuara = perluSuara ? ucapkanJepang(dipilih[0]?.jp ?? '') : false;
-    setTeksTampil(mode === 'mensetsu' ? !bersuara : true);
+    setCentangMasuk([]);
+    setCentangKeluar([]);
+    if (mode === 'penuh') {
+      /* Ritual masuk DULU. Wawancara tidak dimulai saat pertanyaan pertama
+         dibaca — ia dimulai saat pintu dibuka. */
+      setRitualFase('masuk');
+      setLayar('ritual');
+      return;
+    }
+    masukSoal(urutan, 0);
   };
 
   const selesai = () => {
@@ -193,7 +266,21 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   };
 
   /**
-   * Pindah ke soal berikutnya, atau tutup ronde.
+   * Tutup ronde. Di mode penuh wawancara belum selesai sampai siswa keluar
+   * ruangan, jadi ritual keluar dulu — baru layar hasil.
+   */
+  const tutupRonde = () => {
+    hentikanMikrofon();
+    if (mode === 'penuh') {
+      setRitualFase('keluar');
+      setLayar('ritual');
+      return;
+    }
+    setLayar('hasil');
+  };
+
+  /**
+   * Pindah ke langkah berikutnya, atau tutup ronde.
    *
    * Sengaja TIDAK memakai updater `setIdx((i) => …)`: efek samping di dalam
    * updater (memulai timer, memutar suara) dijalankan dua kali oleh React di
@@ -202,16 +289,10 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   const lanjut = () => {
     const next = idx + 1;
     if (next >= ronde.length) {
-      selesai();
+      tutupRonde();
       return;
     }
-    setTranskrip('');
-    setSisaWaktu(batasDetik);
-    setIdx(next);
-    mulaiRef.current = Date.now();
-    const perluSuara = mode === 'mensetsu' || suaraOtomatis;
-    const bersuara = perluSuara ? ucapkanJepang(ronde[next]?.jp ?? '') : false;
-    setTeksTampil(mode === 'mensetsu' ? !bersuara : true);
+    masukSoal(ronde, next);
   };
 
   /**
@@ -225,8 +306,27 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     if (layar !== 'main' || !soalAktif) return;
     hentikanMikrofon();
     const teks = String(teksKirim ?? transkrip);
-    const acuan = acuanUntuk(soalAktif);
     const detik = Math.max(1, Math.round((Date.now() - mulaiRef.current) / 1000));
+
+    /* Susulan tidak punya naskah: tidak ada kalimat yang bisa dibandingkan,
+       jadi isi dilewati dan hanya tiga aspek lain yang dinilai. `nilaiSusulan`
+       mengembalikan skor 0–100 yang TIDAK dipotong di 70 — angka itu bukan
+       nilai akhir, ia hanya muncul di bagian susulan layar hasil. */
+    if (susulanAktif) {
+      const s = nilaiSusulan({ transkrip: teks, detikTerpakai: detik, batasDetik });
+      const nilai: HasilNilai = {
+        total: s.skor,
+        grade: s.skor >= AMBANG_GRADE.A ? 'A' : s.skor >= AMBANG_GRADE.B ? 'B' : s.skor >= AMBANG_GRADE.C ? 'C' : 'D',
+        aspek: s.aspek,
+        catatan: s.catatan,
+        acuan: 'tidak-ada',
+      };
+      setHasil((h) => [...h, { soal: soalAktif, susulan: susulanAktif, transkrip: teks, nilai, detik }]);
+      lanjut();
+      return;
+    }
+
+    const acuan = acuanUntuk(soalAktif);
     const nilai = nilaiJawaban({
       transkrip: teks,
       acuan: acuan.teks,
@@ -234,7 +334,7 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
       detikTerpakai: detik,
       batasDetik,
     });
-    setHasil((h) => [...h, { soal: soalAktif, transkrip: teks, nilai, detik }]);
+    setHasil((h) => [...h, { soal: soalAktif, susulan: null, transkrip: teks, nilai, detik }]);
     lanjut();
   };
   kirimRef.current = kirim;
@@ -438,25 +538,31 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
 
         <div class="mt-4">
           <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('simulasi.mode')}</p>
-          <div class="grid grid-cols-2 gap-1.5">
-            {(['latihan', 'mensetsu'] as const).map((m) => (
+          <div class="grid grid-cols-3 gap-1.5">
+            {MODE_URUT.map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
                 aria-pressed={mode === m}
                 data-testid={`simulasi-mode-${m}`}
-                class={`min-h-11 rounded-control border text-[12px] font-bold ${
+                class={`min-h-11 rounded-control border px-1 text-[11.5px] font-bold leading-tight ${
                   mode === m ? 'border-accent-violet bg-accent-violet/10 text-accent-violet' : 'border-line bg-surface-raised text-fg-muted'
                 }`}
               >
-                {m === 'latihan' ? t('simulasi.mode_latihan') : t('simulasi.mode_mensetsu')}
+                {t(LABEL_MODE[m])}
               </button>
             ))}
           </div>
           <p class="mt-1.5 text-[11px] leading-relaxed text-fg-muted" data-testid="simulasi-mode-ket">
-            {mode === 'mensetsu' ? t('simulasi.mode_mensetsu_ket') : t('simulasi.mode_latihan_ket')}
+            {t(KET_MODE[mode])}
           </p>
+          {mode === 'penuh' && (
+            <p class="mt-1 text-[11px] font-bold text-accent-violet" data-testid="simulasi-mode-penuh-jumlah">
+              {(semua ? pool.length : Math.min(jumlah, pool.length)) * faktorRonde} {t('simulasi.soal')} ·{' '}
+              {t('simulasi.mode_penuh_rinci')}
+            </p>
+          )}
         </div>
 
         <div class="mt-4">
@@ -494,7 +600,7 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
               }`}
             >
               {t('simulasi.semua')}
-              <span class="ml-1 text-[10px] font-semibold opacity-70">({pool.length})</span>
+              <span class="ml-1 text-[10px] font-semibold opacity-70">({pool.length * faktorRonde})</span>
             </button>
           </div>
         </div>
@@ -536,15 +642,24 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
           </div>
         </div>
 
-        <label class="mt-3 flex items-center gap-2 text-[12px] font-bold text-fg">
-          <input
-            type="checkbox"
-            checked={suaraOtomatis}
-            onChange={(e) => setSuaraOtomatis((e.target as HTMLInputElement).checked)}
-            class="h-4 w-4"
-          />
-          {t('simulasi.suara_otomatis')}
-        </label>
+        {/* Centang ini HANYA berlaku di mode latihan. Di mensetsu/penuh suara
+            wajib — soal tidak punya teks untuk dibaca — jadi kotak centang yang
+            bisa dimatikan akan menjadi janji yang tidak ditepati. */}
+        {mode === 'latihan' ? (
+          <label class="mt-3 flex items-center gap-2 text-[12px] font-bold text-fg">
+            <input
+              type="checkbox"
+              checked={suaraOtomatis}
+              onChange={(e) => setSuaraOtomatis((e.target as HTMLInputElement).checked)}
+              class="h-4 w-4"
+            />
+            {t('simulasi.suara_otomatis')}
+          </label>
+        ) : (
+          <p class="mt-3 text-[11px] leading-relaxed text-fg-muted" data-testid="simulasi-suara-wajib">
+            {t('simulasi.suara_wajib')}
+          </p>
+        )}
 
         {!bisaDengar && !bisaRekam && (
           <p class="mt-3 rounded-control border border-line bg-surface-sunken p-3 text-[11.5px] leading-relaxed text-fg-muted">
@@ -564,10 +679,91 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     );
   }
 
+  /* ── layar: ritual masuk / keluar (hanya mode penuh) ───────────────────── */
+  if (layar === 'ritual') {
+    const daftar = ritualFase === 'masuk' ? RITUAL_MASUK : RITUAL_KELUAR;
+    const centang = ritualFase === 'masuk' ? centangMasuk : centangKeluar;
+    const setCentang = ritualFase === 'masuk' ? setCentangMasuk : setCentangKeluar;
+    const alih = (i: number) => setCentang((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]));
+    return (
+      <div class="space-y-3">
+        <div class="rounded-card border border-line bg-surface p-4">
+          <p class="text-[10px] font-bold uppercase tracking-wider text-accent-violet">{t('simulasi.ritual_judul')}</p>
+          <h2 class="mt-1 text-[15px] font-black text-fg" data-testid="simulasi-ritual-judul">
+            {ritualFase === 'masuk' ? t('simulasi.ritual_masuk') : t('simulasi.ritual_keluar')}
+          </h2>
+          <p class="mt-1 text-[12px] leading-relaxed text-fg-muted">
+            {ritualFase === 'masuk' ? t('simulasi.ritual_masuk_ket') : t('simulasi.ritual_keluar_ket')}
+          </p>
+        </div>
+
+        <ol class="space-y-2">
+          {daftar.map((k, i) => (
+            <li
+              key={k.jp}
+              class="rounded-card border border-line bg-surface p-3"
+              data-testid={`simulasi-ritual-${ritualFase}-${i}`}
+            >
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-[15px] font-bold leading-snug text-fg" lang="ja">
+                    {k.jp}
+                  </p>
+                  <p class="text-[11px] text-fg-muted">{k.romaji}</p>
+                  <p class="mt-0.5 text-[12px] text-fg">{k.arti}</p>
+                  <p class="mt-0.5 text-[11px] leading-relaxed text-fg-muted">{k.kapan}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => ucapkanJepang(k.jp)}
+                  aria-label={t('wawancara.dengar')}
+                  class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-line bg-surface-raised text-[13px]"
+                >
+                  <span aria-hidden="true">🔊</span>
+                </button>
+              </div>
+              <label class="mt-2 flex items-center gap-2 text-[11.5px] font-bold text-fg">
+                <input type="checkbox" checked={centang.includes(i)} onChange={() => alih(i)} class="h-4 w-4" />
+                {t('simulasi.ritual_centang')}
+              </label>
+            </li>
+          ))}
+        </ol>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (ritualFase === 'masuk') {
+              masukSoal(ronde, 0);
+              return;
+            }
+            selesai();
+          }}
+          data-testid="simulasi-ritual-lanjut"
+          class="min-h-12 w-full rounded-control bg-accent-violet text-canvas text-sm font-extrabold"
+        >
+          {ritualFase === 'masuk' ? t('simulasi.ritual_mulai') : t('simulasi.lihat_hasil')}
+        </button>
+        <p class="text-center text-[10.5px] leading-relaxed text-fg-muted">
+          {centang.length}/{daftar.length} · {t('simulasi.ritual_ket')}
+        </p>
+      </div>
+    );
+  }
+
   /* ── layar: hasil ─────────────────────────────────────────────────────── */
   if (layar === 'hasil') {
-    const rata = hasil.length ? Math.round(hasil.reduce((a, b) => a + b.nilai.total, 0) / hasil.length) : 0;
-    const grade = rata >= 85 ? 'A' : rata >= 70 ? 'B' : rata >= 55 ? 'C' : 'D';
+    /* Rata-rata HANYA dari pertanyaan utama. Susulan tidak punya naskah, jadi
+       skornya tidak sebanding: mencampurnya ke rata-rata akan membuat jawaban
+       hafalan yang bagus terlihat lebih buruk hanya karena susulannya sulit.
+       Keduanya dilaporkan terpisah — lihat `nilaiSusulan`. */
+    const utama = hasil.filter((h) => !h.susulan);
+    const susulan = hasil.filter((h) => h.susulan);
+    const rata = utama.length ? Math.round(utama.reduce((a, b) => a + b.nilai.total, 0) / utama.length) : 0;
+    const rataSusulan = susulan.length ? Math.round(susulan.reduce((a, b) => a + b.nilai.total, 0) / susulan.length) : 0;
+    const ritualDicentang = centangMasuk.length + centangKeluar.length;
+    const ritualTotal = RITUAL_MASUK.length + RITUAL_KELUAR.length;
+    const grade = rata >= AMBANG_GRADE.A ? 'A' : rata >= AMBANG_GRADE.B ? 'B' : rata >= AMBANG_GRADE.C ? 'C' : 'D';
     const warna: Record<string, string> = {
       A: 'border-accent-emerald bg-accent-emerald/10 text-accent-emerald',
       B: 'border-accent-sky bg-accent-sky/10 text-accent-sky',
@@ -580,26 +776,56 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
           <div class={`mb-2 inline-block rounded-control border-2 px-4 py-1 text-2xl font-black ${warna[grade] ?? ''}`}>{grade}</div>
           <h2 class="text-[15px] font-black text-fg">{t('simulasi.hasil_judul')}</h2>
           <p class="mt-1 text-[12px] text-fg-muted">
-            {t('simulasi.skor_total')}: <b class="text-fg">{rata}</b> / 100 · {hasil.length} {t('simulasi.soal')}
+            {t('simulasi.skor_total')}: <b class="text-fg">{rata}</b> / 100 · {utama.length} {t('simulasi.soal')}
           </p>
-          {/* Diukur hanya di mode mensetsu: di mode latihan teksnya memang
-              selalu terbuka, jadi angka 0 di sana bukan pujian. */}
-          {mode === 'mensetsu' && (
+          {/* Diukur di setiap mode yang menyembunyikan teks: di mode latihan
+              teksnya memang selalu terbuka, jadi angka 0 di sana bukan pujian. */}
+          {mode !== 'latihan' && (
             <p class="mt-1 text-[11.5px] text-fg-muted" data-testid="simulasi-hasil-terbuka">
               {t('simulasi.hasil_terbuka')}: <b class="text-fg">{terbuka}</b>
             </p>
+          )}
+          {mode === 'penuh' && (
+            <div class="mt-2 space-y-1 border-t border-line pt-2 text-[11.5px] text-fg-muted" data-testid="simulasi-hasil-penuh">
+              <p>
+                {t('simulasi.hasil_susulan')}: <b class="text-fg">{susulan.length}</b> · {t('simulasi.hasil_susulan_rata')}:{' '}
+                <b class="text-fg">{rataSusulan}</b>/100
+              </p>
+              <p>
+                {t('simulasi.hasil_ritual')}: <b class="text-fg">{ritualDicentang}</b>/{ritualTotal}
+              </p>
+            </div>
           )}
         </div>
 
         <div class="space-y-2">
           {hasil.map((h, i) => (
-            <div key={`${h.soal.kode}-${i}`} class="rounded-card border border-line bg-surface p-3">
+            <div
+              key={`${h.soal.kode}-${i}`}
+              data-jenis={h.susulan ? 'susulan' : 'utama'}
+              class="rounded-card border border-line bg-surface p-3"
+            >
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
-                  <p class="text-[10px] font-bold uppercase text-fg-muted">{h.soal.tahap}</p>
-                  <p class="text-[13px] font-bold text-fg" lang="ja">
-                    {h.soal.jp}
+                  <p class="text-[10px] font-bold uppercase text-fg-muted">
+                    {h.soal.tahap}
+                    {h.susulan && (
+                      <span class="ml-1 rounded bg-accent-violet/10 px-1 py-0.5 text-[9px] text-accent-violet">
+                        {t('simulasi.susulan_badge')}
+                      </span>
+                    )}
                   </p>
+                  <p class="text-[13px] font-bold text-fg" lang="ja">
+                    {h.susulan ? h.susulan.jp : h.soal.jp}
+                  </p>
+                  {/* Susulan selalu dibaca sebagai lanjutan dari pertanyaan
+                      sebelumnya — tanpa pertanyaannya di sini, laporan ini
+                      terbaca seperti daftar soal yang tidak berhubungan. */}
+                  {h.susulan && (
+                    <p class="mt-0.5 text-[10.5px] leading-snug text-fg-muted" lang="ja">
+                      ↳ {h.soal.jp}
+                    </p>
+                  )}
                 </div>
                 <span class={`shrink-0 rounded-control border px-2 py-0.5 text-[12px] font-black ${warna[h.nilai.grade] ?? ''}`}>
                   {h.nilai.total}
@@ -628,7 +854,13 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
               )}
 
               <p class="mt-1 text-[10px] font-bold text-fg-muted">
-                {h.nilai.acuan === 'siswa' ? t('simulasi.acuan_siswa') : h.nilai.acuan === 'bank' ? t('simulasi.acuan_bank') : t('simulasi.acuan_tidak_ada')}
+                {h.susulan
+                  ? t('simulasi.susulan_tanpa_acuan')
+                  : h.nilai.acuan === 'siswa'
+                    ? t('simulasi.acuan_siswa')
+                    : h.nilai.acuan === 'bank'
+                      ? t('simulasi.acuan_bank')
+                      : t('simulasi.acuan_tidak_ada')}
               </p>
 
               <ul class="mt-1 space-y-0.5 text-[11.5px] text-fg-muted">
@@ -664,7 +896,13 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   }
 
   /* ── layar: main ──────────────────────────────────────────────────────── */
-  const acuanAktif = soalAktif ? acuanUntuk(soalAktif) : { teks: '', dari: 'tidak-ada' as const };
+  /* Acuan hanya berlaku untuk pertanyaan utama. Susulan tidak punya naskah —
+     menampilkan "Acuan: jawaban Anda sendiri" di sana akan mengklaim siswa
+     dinilai terhadap kalimat yang tidak menjawab pertanyaan itu. */
+  const acuanAktif =
+    soalAktif && !susulanAktif ? acuanUntuk(soalAktif) : { teks: '', dari: 'tidak-ada' as const };
+  const romajiTanya = susulanAktif ? susulanAktif.romaji : (soalAktif?.romaji ?? '');
+  const artiTanya = susulanAktif ? susulanAktif.arti : (soalAktif?.arti ?? '');
   return (
     <div class="space-y-3">
       <div class="flex items-center justify-between gap-2 rounded-card border border-line bg-surface p-3">
@@ -689,36 +927,55 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
       </div>
 
       <div class="rounded-card border border-line bg-surface p-4">
-        <p class="text-[10px] font-bold uppercase tracking-wider text-fg-muted">{soalAktif?.tahap}</p>
+        <p class="text-[10px] font-bold uppercase tracking-wider text-fg-muted">
+          {soalAktif?.tahap}
+          {susulanAktif && (
+            <span
+              class="ml-1 rounded bg-accent-violet/10 px-1 py-0.5 text-[9px] text-accent-violet"
+              data-testid="simulasi-susulan-badge"
+            >
+              {t('simulasi.susulan_badge')}
+            </span>
+          )}
+        </p>
 
-        {mode === 'mensetsu' && !teksTampil ? (
+        {mode !== 'latihan' && !teksTampil ? (
           <div
             class="mt-2 rounded-control border border-dashed border-line bg-surface-sunken px-3 py-5 text-center"
             data-testid="simulasi-mendengarkan"
           >
             <p class="text-[12.5px] font-bold text-fg-muted">{t('simulasi.mendengarkan')}</p>
-            <p class="mt-1 text-[11px] leading-relaxed text-fg-muted">{t('simulasi.mendengarkan_ket')}</p>
+            <p class="mt-1 text-[11px] leading-relaxed text-fg-muted">
+              {susulanAktif ? t('simulasi.susulan_ket') : t('simulasi.mendengarkan_ket')}
+            </p>
           </div>
         ) : (
           <>
             <p class="mt-1 text-[16px] font-bold leading-snug text-fg" lang="ja" data-testid="simulasi-soal">
-              {soalAktif?.jp}
+              {teksTanya}
             </p>
-            <p class="text-[11.5px] text-fg-muted">{soalAktif?.romaji}</p>
-            <p class="text-[12px] text-fg">{soalAktif?.arti}</p>
+            <p class="text-[11.5px] text-fg-muted">{romajiTanya}</p>
+            <p class="text-[12px] text-fg">{artiTanya}</p>
+            {/* Saat susulan, pertanyaan asalnya ikut ditampilkan sebagai
+                konteks — susulan tanpa pertanyaannya tidak bisa dipahami. */}
+            {susulanAktif && (
+              <p class="mt-1 border-t border-line pt-1 text-[11px] leading-snug text-fg-muted" lang="ja">
+                ↳ {soalAktif?.jp}
+              </p>
+            )}
           </>
         )}
 
         <div class="mt-2 flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            onClick={() => ucapkanJepang(soalAktif?.jp ?? '')}
+            onClick={() => ucapkanJepang(teksTanya)}
             class="inline-flex min-h-11 items-center gap-1 rounded-md border border-line bg-surface-raised px-2.5 text-[11px] font-bold text-fg-muted"
           >
             <span aria-hidden="true">🔊</span>
             {t('wawancara.dengar')}
           </button>
-          {mode === 'mensetsu' && !teksTampil && (
+          {mode !== 'latihan' && !teksTampil && (
             <button
               type="button"
               onClick={() => {
@@ -788,7 +1045,7 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
         </div>
       </div>
 
-      <button type="button" onClick={selesai} class="min-h-11 w-full text-[11px] font-bold text-fg-muted">
+      <button type="button" onClick={tutupRonde} class="min-h-11 w-full text-[11px] font-bold text-fg-muted">
         {t('simulasi.akhiri')}
       </button>
     </div>

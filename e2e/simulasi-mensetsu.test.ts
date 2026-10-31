@@ -17,6 +17,7 @@
  * tidak jalan dua kali.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   BOBOT,
   BATAS_TANPA_ACUAN,
@@ -27,6 +28,15 @@ import {
   nilaiJawaban,
   pilihSoalAcak,
   ringkasTahap,
+  pilihSusulan,
+  susunRonde,
+  skorTanpaIsi,
+  nilaiSusulan,
+  SUSULAN_PER_TAHAP,
+  SUSULAN_UMUM,
+  RITUAL_MASUK,
+  RITUAL_KELUAR,
+  type SoalSimulasi,
 } from '../src/lib/simulasiMensetsu';
 
 describe('normalisasi & bigram', () => {
@@ -204,5 +214,135 @@ describe('ringkasTahap', () => {
       { tahap: 'Pembuka', jumlah: 2 },
       { tahap: 'Keluarga', jumlah: 1 },
     ]);
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODE WAWANCARA PENUH
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function soalUji(kode: string, tahap: string): SoalSimulasi {
+  return {
+    kode,
+    tahap,
+    jp: 'お名前は何ですか。',
+    romaji: 'onamae wa nan desu ka.',
+    arti: 'Siapa nama Anda?',
+    jawaban_jp: '私の名前はブディです。',
+    jawaban_arti: 'Nama saya Budi.',
+  };
+}
+
+describe('susulan (深掘り)', () => {
+  it('setiap tahap yang ADA DI BANK punya susulan sendiri, bukan jatuh ke daftar umum', () => {
+    /* Ini gerbang yang sebenarnya: menambah tahap ke bank soal tanpa menambah
+       susulan akan membuat mode penuh bertanya "もう少し詳しく" untuk tahap yang
+       punya pertanyaan khusus — dan tidak ada tes lain yang bisa melihatnya,
+       karena `pilihSusulan` dengan benar mengembalikan daftar umum. */
+    const sql = readFileSync(new URL('../migrations/021_wawancara_bank.sql', import.meta.url), 'utf8');
+    const tahap = [...new Set([...sql.matchAll(/^ {2}\('ms-\d+', '([^']+)'/gm)].map((m) => m[1]))];
+    /* Kalau pembacaannya rusak, daftarnya kosong dan tes di bawah akan hijau
+       tanpa mengukur apa pun — jadi panjangnya dikunci lebih dulu. */
+    expect(tahap.length).toBe(13);
+    expect(tahap.filter((t) => !SUSULAN_PER_TAHAP[t])).toEqual([]);
+  });
+
+  it('tahap tak dikenal memakai daftar umum, bukan kosong', () => {
+    const s = pilihSusulan('Tahap Yang Tidak Ada', undefined, () => 0);
+    expect(SUSULAN_UMUM).toContainEqual(s);
+  });
+
+  it('tidak memilih susulan yang sudah dipakai selama masih ada pilihan lain', () => {
+    const dipakai = new Set<string>();
+    const a = pilihSusulan('Ibadah & Makanan', dipakai, () => 0);
+    dipakai.add(a.jp);
+    const b = pilihSusulan('Ibadah & Makanan', dipakai, () => 0);
+    expect(b.jp).not.toBe(a.jp);
+  });
+
+  it('daftar susulan habis: mengulang, bukan mengembalikan undefined', () => {
+    const semua = SUSULAN_PER_TAHAP['Ibadah & Makanan'] ?? [];
+    const dipakai = new Set(semua.map((p) => p.jp));
+    const s = pilihSusulan('Ibadah & Makanan', dipakai, () => 0.99);
+    expect(typeof s.jp).toBe('string');
+    expect(s.jp.length).toBeGreaterThan(0);
+  });
+});
+
+describe('susunRonde', () => {
+  const dipilih = [soalUji('W01', 'Ibadah & Makanan'), soalUji('W02', 'Ibadah & Makanan')];
+
+  it('latihan & mensetsu: satu langkah per soal, tanpa susulan', () => {
+    for (const mode of ['latihan', 'mensetsu'] as const) {
+      const r = susunRonde(dipilih, mode);
+      expect(r).toHaveLength(2);
+      expect(r.every((x) => x.susulan === null)).toBe(true);
+    }
+  });
+
+  it('penuh: tiap soal diikuti tepat satu susulan, berurutan', () => {
+    const r = susunRonde(dipilih, 'penuh', () => 0);
+    expect(r).toHaveLength(4);
+    expect(r.map((x) => (x.susulan ? 'S' : 'Q')).join('')).toBe('QSQS');
+    /* Susulan menempel pada soal yang barusan dijawab, bukan soal berikutnya. */
+    expect(r[1]?.soal.kode).toBe('W01');
+    expect(r[3]?.soal.kode).toBe('W02');
+  });
+
+  it('penuh: dua soal satu tahap tidak mendapat susulan yang sama', () => {
+    const r = susunRonde(dipilih, 'penuh', () => 0);
+    expect(r[1]?.susulan?.jp).not.toBe(r[3]?.susulan?.jp);
+  });
+});
+
+describe('nilaiSusulan', () => {
+  const SEMPURNA = '私の名前はブディです。よろしくお願いします。';
+
+  it('jawaban sempurna dapat 100 — potongan 70 milik nilai akhir TIDAK bocor ke sini', () => {
+    /* Inilah alasan `skorTanpaIsi` ada. `nilaiJawaban` memotong nilai tanpa
+       acuan di 70 karena angka itu dipakai sebagai nilai akhir sebuah soal;
+       skor susulan bukan nilai akhir, jadi memotongnya akan melaporkan 70 untuk
+       jawaban yang sebenarnya sempurna. Dua angka itu diuji berdampingan supaya
+       perbedaannya terlihat, bukan diasumsikan. */
+    const mentah = nilaiJawaban({ transkrip: SEMPURNA, acuan: '', detikTerpakai: 5, batasDetik: 60 });
+    expect(mentah.total).toBe(BATAS_TANPA_ACUAN);
+    expect(nilaiSusulan({ transkrip: SEMPURNA, detikTerpakai: 5, batasDetik: 60 }).skor).toBe(100);
+  });
+
+  it('tidak membawa catatan "tanpa acuan" — di susulan itu by design, bukan temuan', () => {
+    const h = nilaiSusulan({ transkrip: SEMPURNA, detikTerpakai: 5, batasDetik: 60 });
+    expect(h.catatan.map((c) => c.kode)).not.toContain('tanpa_acuan');
+  });
+
+  it('lewat batas waktu tetap kehilangan porsi waktu', () => {
+    const cepat = nilaiSusulan({ transkrip: SEMPURNA, detikTerpakai: 5, batasDetik: 60 });
+    const telat = nilaiSusulan({ transkrip: SEMPURNA, detikTerpakai: 61, batasDetik: 60 });
+    expect(telat.skor).toBeLessThan(cepat.skor);
+    expect(telat.catatan.map((c) => c.kode)).toContain('lewat_waktu');
+  });
+
+  it('skorTanpaIsi tidak pernah melewati 100 walau aspeknya di atas bobot', () => {
+    expect(skorTanpaIsi({ kecocokan: null, kelancaran: 99, waktu: 99, sopan: 99 })).toBe(100);
+    expect(skorTanpaIsi({ kecocokan: null, kelancaran: 0, waktu: 0, sopan: 0 })).toBe(0);
+  });
+});
+
+describe('ritual 入室 / 退室', () => {
+  it('empat kalimat, semuanya punya romaji, arti, dan keterangan kapan', () => {
+    const semua = [...RITUAL_MASUK, ...RITUAL_KELUAR];
+    expect(semua).toHaveLength(4);
+    for (const k of semua) {
+      expect(k.jp.trim().length).toBeGreaterThan(0);
+      expect(k.romaji.trim().length).toBeGreaterThan(0);
+      expect(k.arti.trim().length).toBeGreaterThan(0);
+      expect(k.kapan.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('kalimat masuk dan keluar tidak saling tertukar', () => {
+    const masuk = RITUAL_MASUK.map((k) => k.jp).join('');
+    const keluar = RITUAL_KELUAR.map((k) => k.jp).join('');
+    expect(masuk).toContain('よろしくお願いいたします');
+    expect(keluar).toContain('ありがとうございました');
   });
 });

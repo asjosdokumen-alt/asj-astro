@@ -236,6 +236,131 @@ describe('/wawancara — Mode Simulasi', () => {
 });
 
 // ==========================================
+// 2026-10-31 — MODE WAWANCARA PENUH ("persis wawancara")
+//
+// Permintaan pemilik: "bikin mode khusus ... yg kek persis wawancara".
+//
+// Yang diuji di sini adalah ALURNYA, bukan kalimatnya — kalimat ritual dan
+// susulan diuji di `e2e/simulasi-mensetsu.test.ts`. Tiga hal yang tidak akan
+// terlihat dari tes mana pun kalau tidak ditulis di sini:
+//
+//   1. ritual masuk muncul SEBELUM soal pertama, dan ritual keluar SESUDAH
+//      soal terakhir (urutan ini yang membuatnya terasa seperti wawancara);
+//   2. susulan benar-benar MENGGANTIKAN soal berikutnya — bukan muncul sebagai
+//      teks tambahan di kartu yang sama;
+//   3. rata-rata di layar hasil hanya dari pertanyaan utama, sedangkan susulan
+//      dilaporkan terpisah (mencampurnya akan membuat nilai turun karena soal
+//      yang memang tidak ada naskahnya).
+// ==========================================
+describe('/wawancara — mode wawancara penuh', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    apiMock.mockReset();
+    apiMock.mockResolvedValue(BANK);
+    login();
+
+    /* Mode penuh menyembunyikan teks soal, dan komponen dengan BENAR membuka
+       teksnya kalau perangkat tidak punya suara Jepang. Tanpa stub ini tes di
+       bawah mengukur jalur cadangan, bukan jalur wawancara. */
+    class UttStub {
+      lang = '';
+      rate = 1;
+      pitch = 1;
+      voice: unknown = null;
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      text: string;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+    vi.stubGlobal('SpeechSynthesisUtterance', UttStub);
+    vi.stubGlobal('speechSynthesis', { cancel() {}, speak() {}, getVoices: () => [] });
+  });
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    vi.unstubAllGlobals();
+  });
+
+  it('ritual masuk → tiap soal diikuti susulan → ritual keluar → hasil', async () => {
+    render(<MensetsuForm />);
+    await waitFor(() => expect(screen.getByTestId('tab-simulasi')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('tab-simulasi'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-mulai')).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId('simulasi-mode-penuh'));
+    /* Bank 2 soal → 4 langkah. Angkanya ditampilkan SEBELUM mulai, supaya
+       siswa tidak kaget di tengah ronde. */
+    expect(screen.getByTestId('simulasi-mode-penuh-jumlah').textContent).toContain('4');
+
+    fireEvent.click(screen.getByTestId('simulasi-mulai'));
+
+    /* 1. Ritual masuk — bukan soal. */
+    await waitFor(() => expect(screen.getByTestId('simulasi-ritual-judul')).toBeTruthy());
+    expect(screen.getByTestId('simulasi-ritual-judul').textContent).toBe('Masuk ruangan (入室)');
+    expect(screen.queryByTestId('simulasi-transkrip')).toBeNull();
+    for (const i of [0, 1]) {
+      const kotak = screen
+        .getByTestId(`simulasi-ritual-masuk-${i}`)
+        .querySelector('input[type="checkbox"]') as HTMLInputElement;
+      fireEvent.click(kotak);
+    }
+    fireEvent.click(screen.getByTestId('simulasi-ritual-lanjut'));
+
+    /* 2. Soal pertama: teks TERSEMBUNYI. */
+    await waitFor(() => expect(screen.getByTestId('simulasi-mendengarkan')).toBeTruthy());
+    expect(screen.queryByTestId('simulasi-soal')).toBeNull();
+    expect(screen.queryByTestId('simulasi-susulan-badge')).toBeNull();
+    fireEvent.click(screen.getByTestId('simulasi-lihat-teks'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-soal')).toBeTruthy());
+
+    const jawab = async (teks: string) => {
+      const kotak = screen.getByTestId('simulasi-transkrip') as HTMLTextAreaElement;
+      kotak.value = teks;
+      fireEvent.input(kotak);
+      fireEvent.click(screen.getByTestId('simulasi-kirim'));
+    };
+
+    await jawab('私の名前はブディと申します。');
+
+    /* 3. Langkah kedua BUKAN soal kedua — ia susulan atas soal pertama. */
+    await waitFor(() => expect(screen.getByTestId('simulasi-susulan-badge')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('simulasi-lihat-teks'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-soal')).toBeTruthy());
+    await jawab('はい、がんばります。');
+
+    /* 4. Langkah ketiga kembali ke pertanyaan utama — tanpa badge susulan. */
+    await waitFor(() => expect(screen.getByTestId('simulasi-mendengarkan')).toBeTruthy());
+    expect(screen.queryByTestId('simulasi-susulan-badge')).toBeNull();
+    fireEvent.click(screen.getByTestId('simulasi-lihat-teks'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-soal')).toBeTruthy());
+    await jawab('私の名前はブディと申します。');
+
+    /* 5. Susulan soal kedua, lalu ritual keluar. */
+    await waitFor(() => expect(screen.getByTestId('simulasi-susulan-badge')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('simulasi-lihat-teks'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-soal')).toBeTruthy());
+    await jawab('はい、がんばります。');
+
+    await waitFor(() => expect(screen.getByTestId('simulasi-ritual-judul')).toBeTruthy());
+    expect(screen.getByTestId('simulasi-ritual-judul').textContent).toBe('Keluar ruangan (退室)');
+    fireEvent.click(screen.getByTestId('simulasi-ritual-lanjut'));
+
+    /* 6. Hasil: susulan terpisah dari nilai utama, ritual tercatat. */
+    await waitFor(() => expect(screen.getByTestId('simulasi-hasil-penuh')).toBeTruthy());
+    const ringkas = screen.getByTestId('simulasi-hasil-penuh').textContent ?? '';
+    expect(ringkas).toContain('Pertanyaan susulan: 2');
+    expect(ringkas).toContain('Ritual dicentang: 2/4');
+    expect(document.querySelectorAll('[data-jenis="utama"]').length).toBe(2);
+    expect(document.querySelectorAll('[data-jenis="susulan"]').length).toBe(2);
+    /* Empat langkah, empat kali teks dibuka — dan itu terlihat, bukan gratis. */
+    expect(screen.getByTestId('simulasi-hasil-terbuka').textContent).toContain(': 4');
+  }, 30000);
+});
+
+// ==========================================
 // 2026-10-29 — jalur REKAM, bukan SpeechRecognition.
 //
 // Laporan pemilik: "rekam suara gak bisa baik dari hp maupun dari destop".
