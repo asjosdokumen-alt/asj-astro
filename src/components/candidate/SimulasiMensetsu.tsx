@@ -96,6 +96,27 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   const [cakupan, setCakupan] = useState('semua');
   const [batasDetik, setBatasDetik] = useState(60);
   const [suaraOtomatis, setSuaraOtomatis] = useState(true);
+  /**
+   * 'latihan' = soal terlihat (perilaku lama). 'mensetsu' = soal HANYA diucapkan.
+   *
+   * KENAPA INI YANG MENAIKKAN KESULITAN, BUKAN SOAL YANG LEBIH SULIT
+   * ---------------------------------------------------------------
+   * Ambang bahasa untuk 特定技能1号 adalah A2 (JFT-Basic), dan JFT-Basic TIDAK
+   * punya bagian berbicara — empat seksinya semua pilihan ganda. Jadi siswa
+   * bisa lulus tes resminya tanpa pernah mengucapkan satu kalimat Jepang.
+   * Yang tidak diuji di tes itulah yang diuji di mensetsu: mendengar pertanyaan
+   * yang tidak bisa dibaca ulang, lalu menjawab dengan suara.
+   *
+   * Selama teks soal selalu terlihat, mode ini mengukur MEMBACA, bukan
+   * mendengar — dan siswa bisa menjawab dengan mata tanpa telinga. Karena itu
+   * teksnya disembunyikan, bukan soalnya dibuat lebih susah: menaikkan level
+   * bahasa di atas A2 akan melatih hal yang tidak diminta, lalu membuat siswa
+   * gagal pada ukuran yang bukan ukuran wawancara.
+   */
+  const [mode, setMode] = useState<'latihan' | 'mensetsu'>('latihan');
+  /** Berapa kali teks soal dibuka di mode mensetsu. Dihitung, bukan disembunyikan. */
+  const [terbuka, setTerbuka] = useState(0);
+  const [teksTampil, setTeksTampil] = useState(true);
 
   /* ── ronde ────────────────────────────────────────────────────────────── */
   const [ronde, setRonde] = useState<SoalSimulasi[]>([]);
@@ -156,7 +177,14 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     setSisaWaktu(batasDetik);
     setLayar('main');
     mulaiRef.current = Date.now();
-    if (suaraOtomatis) ucapkanJepang(dipilih[0]?.jp ?? '');
+    setTerbuka(0);
+    /* Di mode mensetsu suara WAJIB, bukan opsional: tanpa suara tidak ada
+       pertanyaan sama sekali. Kalau perangkat tidak punya suara Jepang,
+       menampilkan teks adalah satu-satunya cara mode ini tetap terpakai —
+       jadi teksnya dibuka, bukan dibiarkan kosong dan membuat siswa menebak. */
+    const perluSuara = mode === 'mensetsu' || suaraOtomatis;
+    const bersuara = perluSuara ? ucapkanJepang(dipilih[0]?.jp ?? '') : false;
+    setTeksTampil(mode === 'mensetsu' ? !bersuara : true);
   };
 
   const selesai = () => {
@@ -181,7 +209,9 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     setSisaWaktu(batasDetik);
     setIdx(next);
     mulaiRef.current = Date.now();
-    if (suaraOtomatis) ucapkanJepang(ronde[next]?.jp ?? '');
+    const perluSuara = mode === 'mensetsu' || suaraOtomatis;
+    const bersuara = perluSuara ? ucapkanJepang(ronde[next]?.jp ?? '') : false;
+    setTeksTampil(mode === 'mensetsu' ? !bersuara : true);
   };
 
   /**
@@ -407,6 +437,29 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
         )}
 
         <div class="mt-4">
+          <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('simulasi.mode')}</p>
+          <div class="grid grid-cols-2 gap-1.5">
+            {(['latihan', 'mensetsu'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                aria-pressed={mode === m}
+                data-testid={`simulasi-mode-${m}`}
+                class={`min-h-11 rounded-control border text-[12px] font-bold ${
+                  mode === m ? 'border-accent-violet bg-accent-violet/10 text-accent-violet' : 'border-line bg-surface-raised text-fg-muted'
+                }`}
+              >
+                {m === 'latihan' ? t('simulasi.mode_latihan') : t('simulasi.mode_mensetsu')}
+              </button>
+            ))}
+          </div>
+          <p class="mt-1.5 text-[11px] leading-relaxed text-fg-muted" data-testid="simulasi-mode-ket">
+            {mode === 'mensetsu' ? t('simulasi.mode_mensetsu_ket') : t('simulasi.mode_latihan_ket')}
+          </p>
+        </div>
+
+        <div class="mt-4">
           <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('simulasi.jumlah_soal')}</p>
           <div class="grid grid-cols-4 gap-1.5">
             {PILIHAN_JUMLAH.map((n) => (
@@ -529,6 +582,13 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
           <p class="mt-1 text-[12px] text-fg-muted">
             {t('simulasi.skor_total')}: <b class="text-fg">{rata}</b> / 100 · {hasil.length} {t('simulasi.soal')}
           </p>
+          {/* Diukur hanya di mode mensetsu: di mode latihan teksnya memang
+              selalu terbuka, jadi angka 0 di sana bukan pujian. */}
+          {mode === 'mensetsu' && (
+            <p class="mt-1 text-[11.5px] text-fg-muted" data-testid="simulasi-hasil-terbuka">
+              {t('simulasi.hasil_terbuka')}: <b class="text-fg">{terbuka}</b>
+            </p>
+          )}
         </div>
 
         <div class="space-y-2">
@@ -630,11 +690,24 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
 
       <div class="rounded-card border border-line bg-surface p-4">
         <p class="text-[10px] font-bold uppercase tracking-wider text-fg-muted">{soalAktif?.tahap}</p>
-        <p class="mt-1 text-[16px] font-bold leading-snug text-fg" lang="ja" data-testid="simulasi-soal">
-          {soalAktif?.jp}
-        </p>
-        <p class="text-[11.5px] text-fg-muted">{soalAktif?.romaji}</p>
-        <p class="text-[12px] text-fg">{soalAktif?.arti}</p>
+
+        {mode === 'mensetsu' && !teksTampil ? (
+          <div
+            class="mt-2 rounded-control border border-dashed border-line bg-surface-sunken px-3 py-5 text-center"
+            data-testid="simulasi-mendengarkan"
+          >
+            <p class="text-[12.5px] font-bold text-fg-muted">{t('simulasi.mendengarkan')}</p>
+            <p class="mt-1 text-[11px] leading-relaxed text-fg-muted">{t('simulasi.mendengarkan_ket')}</p>
+          </div>
+        ) : (
+          <>
+            <p class="mt-1 text-[16px] font-bold leading-snug text-fg" lang="ja" data-testid="simulasi-soal">
+              {soalAktif?.jp}
+            </p>
+            <p class="text-[11.5px] text-fg-muted">{soalAktif?.romaji}</p>
+            <p class="text-[12px] text-fg">{soalAktif?.arti}</p>
+          </>
+        )}
 
         <div class="mt-2 flex flex-wrap items-center gap-1.5">
           <button
@@ -645,6 +718,19 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
             <span aria-hidden="true">🔊</span>
             {t('wawancara.dengar')}
           </button>
+          {mode === 'mensetsu' && !teksTampil && (
+            <button
+              type="button"
+              onClick={() => {
+                setTeksTampil(true);
+                setTerbuka((n) => n + 1);
+              }}
+              data-testid="simulasi-lihat-teks"
+              class="inline-flex min-h-11 items-center rounded-md border border-line bg-surface-raised px-2.5 text-[11px] font-bold text-fg-muted"
+            >
+              {t('simulasi.lihat_teks')}
+            </button>
+          )}
           <span class="text-[10.5px] text-fg-muted">
             {acuanAktif.dari === 'siswa' ? t('simulasi.acuan_siswa') : acuanAktif.dari === 'bank' ? t('simulasi.acuan_bank') : t('simulasi.acuan_tidak_ada')}
           </span>

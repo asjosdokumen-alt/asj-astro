@@ -154,6 +154,85 @@ describe('/wawancara — Mode Simulasi', () => {
     expect(skor.some((n) => n >= 60)).toBe(true);
     expect(soalPertama).toBeTruthy();
   }, 20000);
+
+  /* ── mode mensetsu: soal hanya diucapkan ──────────────────────────────────
+     Ini yang menaikkan kesulitan TANPA menaikkan level bahasa (ambang resmi
+     特定技能1号 adalah A2, dan JFT-Basic tidak punya bagian berbicara — jadi
+     "mendengar lalu menjawab" adalah satu-satunya hal yang benar-benar diuji
+     wawancara tetapi tidak diuji tes).
+
+     Tiga arah diuji, karena "teks soal tidak ada" juga benar kalau komponennya
+     rusak dan tidak merender apa pun:
+       • mode latihan (bawaan) → teks soal HARUS ada (kontrol negatif);
+       • mode mensetsu          → teks soal TIDAK ada, panel dengar ada;
+       • setelah "Buka teks"    → teks muncul DAN terhitung di layar hasil. */
+  it('mode mensetsu menyembunyikan teks soal, dan menghitung berapa kali dibuka', async () => {
+    const g = globalThis as unknown as Record<string, unknown>;
+    const asliSynth = g.speechSynthesis;
+    const asliUtt = g.SpeechSynthesisUtterance;
+
+    /* jsdom tidak punya mesin suara. Tanpa stub ini `ucapkanJepang` mengembalikan
+       false, dan komponen dengan BENAR membuka teksnya — perangkat tanpa suara
+       Jepang tidak boleh diberi layar kosong. Tes ini akan mengukur jalur
+       cadangan itu, bukan jalur mensetsu, dan tetap hijau. */
+    class UttStub {
+      lang = '';
+      rate = 1;
+      pitch = 1;
+      voice: unknown = null;
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      text: string;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+    g.SpeechSynthesisUtterance = UttStub;
+    g.speechSynthesis = { cancel() {}, speak() {}, getVoices: () => [] };
+
+    try {
+      render(<MensetsuForm />);
+      await waitFor(() => expect(screen.getByTestId('tab-simulasi')).toBeTruthy());
+      fireEvent.click(screen.getByTestId('tab-simulasi'));
+      await waitFor(() => expect(screen.getByTestId('simulasi-mulai')).toBeTruthy());
+
+      /* KONTROL NEGATIF — mode bawaan masih memperlihatkan soal. Kalau baris
+         ini merah, "teks tersembunyi" di bawah tidak membuktikan apa-apa. */
+      expect(screen.getByTestId('simulasi-mode-latihan').getAttribute('aria-pressed')).toBe('true');
+      fireEvent.click(screen.getByTestId('simulasi-mode-mensetsu'));
+      expect(screen.getByTestId('simulasi-mode-mensetsu').getAttribute('aria-pressed')).toBe('true');
+
+      fireEvent.click(screen.getByTestId('simulasi-mulai'));
+      await waitFor(() => expect(screen.getByTestId('simulasi-mendengarkan')).toBeTruthy());
+      expect(screen.queryByTestId('simulasi-soal')).toBeNull();
+
+      /* Membuka teks = satu kejadian yang dihitung, bukan jalan pintas gratis. */
+      fireEvent.click(screen.getByTestId('simulasi-lihat-teks'));
+      await waitFor(() => expect(screen.getByTestId('simulasi-soal')).toBeTruthy());
+      expect(screen.queryByTestId('simulasi-lihat-teks')).toBeNull();
+
+      for (let i = 0; i < 2; i++) {
+        const kotak = screen.getByTestId('simulasi-transkrip') as HTMLTextAreaElement;
+        kotak.value = '私の名前はブディと申します。';
+        fireEvent.input(kotak);
+        fireEvent.click(screen.getByTestId('simulasi-kirim'));
+        if (i === 0) {
+          /* Soal kedua juga hanya didengar — teksnya tertutup lagi. */
+          await waitFor(() => expect(screen.getByTestId('simulasi-mendengarkan')).toBeTruthy());
+          fireEvent.click(screen.getByTestId('simulasi-lihat-teks'));
+          await waitFor(() => expect(screen.getByTestId('simulasi-soal')).toBeTruthy());
+        }
+      }
+
+      await waitFor(() => expect(screen.getByTestId('simulasi-hasil-terbuka')).toBeTruthy());
+      /* Dua soal, dua kali buka teks. Angka ini yang membuat "boleh buka teks"
+         jujur: jalan pintasnya ada, tapi tidak gratis. */
+      expect(screen.getByTestId('simulasi-hasil-terbuka').textContent).toContain(': 2');
+    } finally {
+      g.speechSynthesis = asliSynth;
+      g.SpeechSynthesisUtterance = asliUtt;
+    }
+  }, 20000);
 });
 
 // ==========================================
