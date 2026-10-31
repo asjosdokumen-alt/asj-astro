@@ -139,6 +139,8 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   transkripsikanSuara:        () => import('./ai').then(m => m.AI_ACTIONS),
   // Bank kosakata (kotoba) — minigame hafalan, gerbang siswa ASJ yang sama.
   getBankKotoba:              () => import('./ai').then(m => m.AI_ACTIONS),
+  // Bank kosakata 16 bidang kerja (SSW) — gerbang siswa ASJ yang sama.
+  getBankSsw:                 () => import('./ai').then(m => m.AI_ACTIONS),
   // Bank soal matematika — gerbang siswa ASJ yang sama.
   getBankMatematika:          () => import('./ai').then(m => m.AI_ACTIONS),
   buildAdminAiCandidateSummary:() => import('./ai').then(m => m.AI_ACTIONS),

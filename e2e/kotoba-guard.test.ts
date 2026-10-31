@@ -104,3 +104,69 @@ describe('getBankKotoba — siswa ASJ saja', () => {
     expect(String(r.message)).toMatch(/Gagal memeriksa status siswa/);
   });
 });
+
+/**
+ * Bank BIDANG KERJA (SSW) — penjaga yang sama, endpoint terpisah.
+ *
+ * KENAPA TES INI ADA, padahal `getBankKotoba` sudah diuji di atas: penjaga yang
+ * dipakai bersama hanya aman kalau SETIAP endpoint yang memakainya diuji.
+ * Kalau `getBankSsw` ditambahkan tanpa tes, seseorang bisa menyalin aksinya dan
+ * lupa memanggil `tolakKecualiSiswa` — dan 382 kata bidang mengalir ke kandidat
+ * biasa tanpa satu gate pun berbunyi. Persis lubang yang ditutup tes di atas
+ * untuk bank buku.
+ */
+describe('getBankSsw — siswa ASJ saja', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    bankMock.statusVip.mockImplementation(async (wa: string) => wa === SISWA);
+  });
+
+  it('tanpa sesi: ditolak, dan tidak ada satu bidang pun terkirim', async () => {
+    const r = (await AI_ACTIONS.getBankSsw([SISWA], undefined)) as Record<string, unknown>;
+    expect(r.success).toBe(false);
+    expect(r.sessionInvalid).toBe(true);
+    expect(r.bidang).toBeUndefined();
+  });
+
+  it('kandidat bukan siswa: ditolak dengan isVip:false, tanpa data bidang', async () => {
+    const r = (await AI_ACTIONS.getBankSsw([BIASA], 'tok-biasa')) as Record<string, unknown>;
+    expect(r.success).toBe(false);
+    expect(r.isVip).toBe(false);
+    expect(r.sessionInvalid).toBeUndefined();
+    expect(r.bidang).toBeUndefined();
+  });
+
+  it('kandidat siswa: 16 bidang terkirim, tiap bidang berisi kata', async () => {
+    const r = (await AI_ACTIONS.getBankSsw([SISWA], 'tok-siswa')) as Record<string, unknown>;
+    expect(r.success).toBe(true);
+    expect(r.isVip).toBe(true);
+    const bidang = r.bidang as Array<Record<string, unknown>>;
+    expect(bidang.length).toBe(16);
+    /* Bukan sekadar "ada 16 entri": tiap bidang harus benar-benar berisi, kalau
+       tidak gerbangnya lulus hanya karena mengirim kerangka kosong. */
+    for (const b of bidang) {
+      const kata = b.kata as Array<Record<string, unknown>>;
+      expect(Array.isArray(kata)).toBe(true);
+      expect(kata.length).toBeGreaterThan(14);
+      expect(typeof b.id).toBe('string');
+      expect(typeof b.namaJp).toBe('string');
+      for (const f of ['b', 'pos', 'k', 'h', 'r', 'id']) expect(kata[0]).toHaveProperty(f);
+    }
+    expect(typeof r.jumlah).toBe('number');
+    expect(r.jumlah).toBe(bidang.reduce((n, b) => n + (b.kata as unknown[]).length, 0));
+  });
+
+  it('kandidat tidak bisa membuka WA orang lain, walau dia sendiri siswa', async () => {
+    const r = (await AI_ACTIONS.getBankSsw([BIASA], 'tok-siswa')) as Record<string, unknown>;
+    expect(r.success).toBe(false);
+    expect(r.sessionInvalid).toBe(true);
+  });
+
+  it('pemeriksaan status gagal (DB mati) tidak menuduh kandidat "bukan siswa"', async () => {
+    bankMock.statusVip.mockResolvedValue(null);
+    const r = (await AI_ACTIONS.getBankSsw([SISWA], 'tok-siswa')) as Record<string, unknown>;
+    expect(r.success).toBe(false);
+    expect(r.isVip).toBeUndefined();
+    expect(String(r.message)).toMatch(/Gagal memeriksa status siswa/);
+  });
+});

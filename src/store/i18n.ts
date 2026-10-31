@@ -1825,6 +1825,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.filter_bab": "Pilih bab",
     "kotoba.semua_bab": "Semua bab",
     "kotoba.bab": "Bab",
+    /* Sumber latihan: bank buku (Minna no Nihongo 1–50) atau 16 bidang kerja
+       SSW. Dua tombol, bukan satu daftar gabungan — lihat catatan `Sumber` di
+       KotobaGame. */
+    "kotoba.sumber_label": "Pilih sumber latihan",
+    "kotoba.sumber_minna": "Buku (Bab 1–50)",
+    "kotoba.sumber_ssw": "Bidang Kerja (SSW)",
+    "kotoba.filter_bidang": "Pilih bidang kerja",
+    "kotoba.ssw_memuat": "Memuat kosakata bidang…",
+    "kotoba.ssw_kosong": "Kosakata bidang ini belum tersedia.",
     "kotoba.filter_jenis": "Pilih jenis kata",
     "kotoba.semua_jenis": "Semua jenis",
     "kotoba.pos_verb": "Kata kerja",
@@ -1860,7 +1869,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.cari_label": "Cari kosakata",
     "kotoba.cetak": "Cetak / PDF",
     "kotoba.tampil_semua": "Tampilkan semua",
-    "kotoba.judul_cetak": "Daftar kosakata pilihan (Minna no Nihongo Bab 1–25)",
+    "kotoba.judul_cetak": "Daftar kosakata pilihan (Minna no Nihongo Bab 1–50)",
+    "kotoba.judul_cetak_ssw": "Daftar kosakata bidang kerja (SSW)",
     "kotoba.memuat": "Memuat kosakata…",
     "kotoba.coba_lagi": "Coba lagi",
     "kotoba.galat_muat": "Gagal memuat kosakata. Periksa koneksi lalu coba lagi.",

@@ -1,5 +1,6 @@
 /**
- * KotobaGame.tsx — minigame hafalan kosakata Jepang (Minna no Nihongo Bab 1–25).
+ * KotobaGame.tsx — minigame hafalan kosakata Jepang (Minna no Nihongo Bab 1–50
+ * dan 16 bidang kerja 特定技能).
  *
  * ASAL
  * ----
@@ -63,6 +64,38 @@ interface BankRes {
   message?: string;
   sessionInvalid?: boolean;
 }
+
+/**
+ * Satu bidang kerja SSW — bentuknya sama dengan `BidangSsw` di
+ * `_lib/kotoba/ssw.ts`. Kata di dalamnya memakai `b: 0`, penanda "bukan bab
+ * buku" (lihat catatan di berkas itu).
+ */
+interface BidangSsw {
+  id: string;
+  nama: string;
+  namaJp: string;
+  ringkas: string;
+  kata: Kotoba[];
+}
+
+/**
+ * Balasan `getBankSsw`. Bentuknya sengaja DITURUNKAN dari `BankRes`, bukan
+ * ditulis ulang: tujuh anggota yang sama (success, isVip, jumlah, error,
+ * message, sessionInvalid) tidak perlu dideklarasikan dua kali — dan tiap
+ * anggota interface di repo ini dihitung sebagai satu simbol oleh indexer,
+ * yang punya plafon beku sendiri.
+ */
+type SswRes = BankRes & { bidang?: BidangSsw[] };
+
+/**
+ * Dua sumber kata, dan sengaja hanya dua.
+ *
+ * Buku dan bidang kerja tidak digabung dalam satu daftar: siswa yang sedang
+ * menghafal bab 32 tidak ingin pengecoh jawabannya diambil dari istilah las
+ * kapal, dan sebaliknya. Pemisahan ini juga yang membuat "kamus" bisa dicetak
+ * per bidang — lembar hafalan untuk satu jenis pekerjaan.
+ */
+type Sumber = 'minna' | 'ssw';
 
 interface Props {
   /** WA dari URL (`?wa=`) atau dari panel admin. */
@@ -253,6 +286,18 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const [posFilter, setPosFilter] = useState('all');
   const [arah, setArah] = useState<Arah>('jp-id');
 
+  /* ── sumber: buku atau bidang kerja ─────────────────────────────────────── */
+  const [sumber, setSumber] = useState<Sumber>('minna');
+  /**
+   * Bank SSW dimuat MALAS, saat tabnya pertama kali dibuka. 382 kata bidang
+   * tidak ada gunanya bagi siswa yang hanya memakai bank buku, dan memuatnya
+   * di awal berarti setiap pembukaan `/kotoba` membayar dua permintaan.
+   */
+  const [bidangList, setBidangList] = useState<BidangSsw[]>([]);
+  const [bidangId, setBidangId] = useState('');
+  const [sswMemuat, setSswMemuat] = useState(false);
+  const [sswGalat, setSswGalat] = useState('');
+
   /* ── ronde kuis / ketik ────────────────────────────────────────────────── */
   /**
    * TAK ADA BATAS SOAL. Ronde berjalan sampai nyawa habis — sama seperti
@@ -383,6 +428,59 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     muatRef.current(wa);
   }, [wa, loginGate]);
 
+  /**
+   * Pegangan ke `muatSsw` versi terbaru — alasannya sama dengan `muatRef`:
+   * fungsi ini dibuat ulang setiap render, jadi memasukkannya ke daftar
+   * dependensi akan menghasilkan satu permintaan per render.
+   */
+  const sswRef = useRef<(nomor: string) => void>(() => {});
+
+  /* ── muat bank bidang kerja (SSW) ──────────────────────────────────────── */
+  const muatSsw = async (nomor: string) => {
+    if (!nomor || sswMemuat) return;
+    setSswMemuat(true);
+    setSswGalat('');
+    try {
+      const d = await apiClient<SswRes>('getBankSsw', [nomor], {
+        onSessionInvalid: 'throw',
+        silent: true,
+      });
+      if (d.sessionInvalid) {
+        if (adminMode) {
+          setSswGalat(t('kotoba.galat_sesi_admin'));
+          return;
+        }
+        setLoginGate(true);
+        setGateMsg(t('kotoba.galat_sesi'));
+        return;
+      }
+      /* Bukan siswa: server menjawab tanpa satu kata pun. Sama seperti bank
+         buku — jangan lanjut ke "bidang kosong", itu menyalahkan data. */
+      if (d.success === false && d.isVip === false) {
+        setVip(false);
+        setBidangList([]);
+        return;
+      }
+      const daftar = Array.isArray(d.bidang) ? d.bidang : [];
+      setBidangList(daftar);
+      if (!bidangId && daftar.length) setBidangId(daftar[0].id);
+      if (!daftar.length) setSswGalat(t('kotoba.ssw_kosong'));
+    } catch (e) {
+      const err = e as ApiError;
+      setSswGalat(err?.message || t('kotoba.galat_muat'));
+    } finally {
+      setSswMemuat(false);
+    }
+  };
+  sswRef.current = muatSsw;
+
+  useEffect(() => {
+    if (sumber !== 'ssw') return;
+    if (loginGate || !wa) return;
+    if (bidangList.length) return;
+    sswRef.current(wa);
+  }, [sumber, wa, loginGate, bidangList.length]);
+
   // Progres per kandidat: dibaca saat WA diketahui, ditulis setiap berubah.
   useEffect(() => {
     if (!wa) return;
@@ -424,9 +522,26 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   };
 
   /* ── turunan ───────────────────────────────────────────────────────────── */
-  const pool = bank.filter(
-    (v) => (babFilter === 'all' || v.b === Number(babFilter)) && (posFilter === 'all' || v.pos === posFilter),
+  /**
+   * Bidang yang sedang dibuka. `undefined` = SSW dipilih tapi banknya belum
+   * tiba; itu bukan keadaan kosong yang perlu dimarahi, cukup ditunggu.
+   */
+  const bidangAktif = bidangList.find((b) => b.id === bidangId);
+  const kataBidang = bidangAktif?.kata ?? [];
+
+  /**
+   * Satu `pool`, dua sumber. Filter bab hanya berlaku untuk bank buku: kata
+   * bidang tidak punya bab, dan menampilkan "Semua bab" di sana akan menjadi
+   * kontrol yang tidak mengubah apa pun.
+   */
+  const pool = (sumber === 'ssw' ? kataBidang : bank).filter((v) =>
+    sumber === 'ssw'
+      ? posFilter === 'all' || v.pos === posFilter
+      : (babFilter === 'all' || v.b === Number(babFilter)) && (posFilter === 'all' || v.pos === posFilter),
   );
+
+  /** Sumber pengecoh: bidang yang sedang dibuka, atau seluruh bank buku. */
+  const sumberKata = sumber === 'ssw' ? kataBidang : bank;
 
   const bobot = (v: Kotoba): number => {
     const c = progres.kata[kunciKata(v)];
@@ -449,7 +564,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const buatPilihan = (v: Kotoba, dasar: readonly Kotoba[], a: Arah): string[] => {
     const pakai = new Set<string>([teksJawaban(v, a)]);
     const salah: string[] = [];
-    const lapis = [dasar.filter((x) => x.b === v.b), dasar.filter((x) => x.pos === v.pos), dasar, bank];
+    const lapis = [dasar.filter((x) => x.b === v.b), dasar.filter((x) => x.pos === v.pos), dasar, sumberKata];
     for (const sumber of lapis) {
       for (const kandidat of acak(sumber)) {
         if (salah.length >= 3) break;
@@ -519,13 +634,13 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   // me-reset ronde, sehingga tidak ada soal yang pernah bisa dijawab. Yang
   // benar-benar menentukan isi ronde adalah tujuh nilai di bawah, dan ketujuhnya
   // ada di daftar.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mulaiRonde dibuat ulang tiap render; filter/arah di daftar adalah masukan sebenarnya
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mulaiRonde dibuat ulang tiap render; filter/arah/sumber di daftar adalah masukan sebenarnya
   useEffect(() => {
-    if (!bank.length) return;
+    if (!bank.length && !kataBidang.length) return;
     if (mode !== 'kuis' && mode !== 'ketik') return;
     if (loginGate || vip === false) return;
     mulaiRonde();
-  }, [bank, babFilter, posFilter, arah, mode, loginGate, vip]);
+  }, [bank, babFilter, posFilter, arah, mode, loginGate, vip, sumber, bidangId, kataBidang.length]);
 
   /** Catat satu jawaban ke progres (dipakai pembobotan ronde berikutnya). */
   const catat = (v: Kotoba, tepat: boolean) => {
@@ -848,8 +963,8 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       <header class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 class="sr-only">{t('kotoba.judul')}</h2>
         <p class="text-[12px] text-fg-muted">
-          {bank.length} {t('kotoba.kata_tersedia')} · {kataDikuasai} {t('kotoba.kata_dikuasai')} ·{' '}
-          {t('kotoba.rekor')} {progres.rekor}
+          {sumber === 'ssw' ? kataBidang.length : bank.length} {t('kotoba.kata_tersedia')} ·{' '}
+          {kataDikuasai} {t('kotoba.kata_dikuasai')} · {t('kotoba.rekor')} {progres.rekor}
         </p>
         {/* Saklar suara otomatis. Teksnya berubah, bukan cuma ikon: ikon 🔊/🔇
             saja tidak memberi tahu mana yang sedang aktif. */}
@@ -887,21 +1002,59 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
         ))}
       </div>
 
+      {/* ── Sumber: buku atau bidang kerja ──
+          Dua tombol, bukan satu daftar gabungan. `aria-pressed` dipakai karena
+          ini pilihan keadaan, bukan navigasi — pembaca layar harus bisa
+          membacakan mana yang sedang aktif tanpa melihat warnanya. */}
+      <fieldset class="flex gap-1.5 p-1 rounded-control bg-surface-sunken border border-line mb-2">
+        <legend class="sr-only">{t('kotoba.sumber_label')}</legend>
+        {(['minna', 'ssw'] as Sumber[]).map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSumber(s)}
+            aria-pressed={sumber === s}
+            class={`flex-1 min-h-11 px-2 rounded-[0.6rem] text-[12px] font-bold transition-colors motion-reduce:transition-none ${
+              sumber === s
+                ? 'bg-accent-emerald text-canvas'
+                : 'text-fg-muted hover:text-fg hover:bg-surface-raised'
+            }`}
+          >
+            {s === 'minna' ? t('kotoba.sumber_minna') : t('kotoba.sumber_ssw')}
+          </button>
+        ))}
+      </fieldset>
+
       {/* ── Filter ── */}
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-        <select
-          aria-label={t('kotoba.filter_bab')}
-          value={babFilter}
-          onChange={(e) => setBabFilter((e.target as HTMLSelectElement).value)}
-          class="min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
-        >
-          <option value="all">{t('kotoba.semua_bab')}</option>
-          {daftarBab.map((b) => (
-            <option key={b} value={String(b)}>
-              {t('kotoba.bab')} {b}
-            </option>
-          ))}
-        </select>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+        {sumber === 'ssw' ? (
+          <select
+            aria-label={t('kotoba.filter_bidang')}
+            value={bidangId}
+            onChange={(e) => setBidangId((e.target as HTMLSelectElement).value)}
+            class="min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
+          >
+            {bidangList.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.nama}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <select
+            aria-label={t('kotoba.filter_bab')}
+            value={babFilter}
+            onChange={(e) => setBabFilter((e.target as HTMLSelectElement).value)}
+            class="min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
+          >
+            <option value="all">{t('kotoba.semua_bab')}</option>
+            {daftarBab.map((b) => (
+              <option key={b} value={String(b)}>
+                {t('kotoba.bab')} {b}
+              </option>
+            ))}
+          </select>
+        )}
         <select
           aria-label={t('kotoba.filter_jenis')}
           value={posFilter}
@@ -925,7 +1078,37 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
         </select>
       </div>
 
-      {!pool.length && (
+      {/* Keterangan bidang: nama resmi Jepang + satu kalimat isi pekerjaan.
+          Tanpa ini, "Pengolahan Makanan" dan "Restoran" terlihat sama saja
+          bagi siswa yang belum pernah membaca daftar bidang. */}
+      {sumber === 'ssw' && bidangAktif && (
+        <p class="text-[11.5px] text-fg-muted mb-3">
+          <b class="text-fg">{bidangAktif.namaJp}</b> · {bidangAktif.ringkas}
+        </p>
+      )}
+      {sumber === 'ssw' && sswMemuat && (
+        <p class="text-[12px] text-fg-muted mb-3">{t('kotoba.ssw_memuat')}</p>
+      )}
+      {sumber === 'ssw' && sswGalat && (
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <p class="text-[12px] text-accent-red">{sswGalat}</p>
+          {/* Tanpa tombol ini, kegagalan muat berarti tab SSW kosong selamanya:
+              efek pemuat hanya jalan saat `bidangList.length` berubah, dan
+              kegagalan tidak mengubahnya. */}
+          <button
+            type="button"
+            onClick={() => void muatSsw(wa)}
+            class="min-h-11 px-3 rounded-control border border-line bg-surface-raised text-fg text-[12px] font-bold"
+          >
+            {t('kotoba.coba_lagi')}
+          </button>
+        </div>
+      )}
+
+      {/* "Kosong" hanya kalau memang kosong — saat bidang SSW masih dimuat,
+          pesan "tidak ada kosakata untuk filter ini" akan menyalahkan filter
+          padahal yang belum selesai adalah permintaannya. */}
+      {!pool.length && !(sumber === 'ssw' && (sswMemuat || !bidangId)) && (
         <p class="text-center text-sm text-fg-muted py-6">{t('kotoba.kosong')}</p>
       )}
 
@@ -1243,10 +1426,14 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
               kontrol yang tidak berguna di kertas. */}
           <div data-cetak class="rounded-control">
             <div class="hidden print:block mb-2">
-              <p class="text-sm font-bold text-fg">{t('kotoba.judul_cetak')}</p>
+              <p class="text-sm font-bold text-fg">
+                {sumber === 'ssw' ? t('kotoba.judul_cetak_ssw') : t('kotoba.judul_cetak')}
+              </p>
               <p class="text-[11px] text-fg-muted">
-                {t('kotoba.bab')} {babFilter === 'all' ? t('kotoba.semua_bab') : babFilter} ·{' '}
-                {hasilCari.length} {t('kotoba.kata_tersedia')}
+                {sumber === 'ssw'
+                  ? `${bidangAktif?.nama ?? ''} (${bidangAktif?.namaJp ?? ''})`
+                  : `${t('kotoba.bab')} ${babFilter === 'all' ? t('kotoba.semua_bab') : babFilter}`}{' '}
+                · {hasilCari.length} {t('kotoba.kata_tersedia')}
               </p>
             </div>
             {/* Tombol ini DI ATAS daftar, bukan di bawahnya: daftarnya sendiri
@@ -1277,7 +1464,8 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                     <span class="min-w-0">
                       <span class="block text-[15px] font-bold text-fg break-words">{v.k}</span>
                       <span class="block text-[11px] text-fg-muted">
-                        {v.h} ({v.r}) · {t('kotoba.bab')} {v.b} · {labelPos[v.pos]}
+                        {v.h} ({v.r}) ·{' '}
+                        {sumber === 'ssw' ? labelPos[v.pos] : `${t('kotoba.bab')} ${v.b} · ${labelPos[v.pos]}`}
                       </span>
                     </span>
                     <span class="flex items-center gap-2 shrink-0">

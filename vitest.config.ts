@@ -276,6 +276,10 @@ export default defineConfig({
             // terpotong harus tercatat di log. Tanpa DOM; `.ts` di e2e/ tidak
             // dihitung counter beku `indexer`. Tanpa baris ini ia jalan DUA KALI.
             'e2e/read-truncation.test.ts',
+            // Ditambahkan 2026-10-31. Isi bank kosakata (Bab 1–50 + 16 bidang
+            // SSW): murni data + konverter kana, tanpa DOM. Tanpa baris ini ia
+            // jalan di jsdom dan dihitung DUA KALI.
+            'e2e/kotoba-bank.test.ts',
           ],
         },
       },

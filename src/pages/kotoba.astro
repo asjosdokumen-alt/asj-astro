@@ -15,7 +15,7 @@ import KotobaGame from '../components/candidate/KotobaGame.tsx';
 <BaseLayout
   title="Latihan Kosakata Jepang — ASJ"
   titleKey="doc.title_kotoba"
-  description="Latihan hafalan kosakata Jepang untuk siswa ASJ: kuis pilihan ganda, latihan menulis romaji, kartu hafalan, dan kamus kosakata pilihan Minna no Nihongo Bab 1–25 yang bisa dicetak."
+  description="Latihan hafalan kosakata Jepang untuk siswa ASJ: kuis pilihan ganda, latihan menulis romaji, kartu hafalan, dan kamus kosakata Minna no Nihongo Bab 1–50 plus 16 bidang kerja 特定技能 (kaigo, pembersihan gedung, pengolahan makanan, konstruksi, dan lainnya) yang bisa dicetak."
 >
   <App showHeader={false} client:only="preact" />
 
@@ -28,7 +28,10 @@ import KotobaGame from '../components/candidate/KotobaGame.tsx';
           Empat cara belajar dari satu bank yang sama: <b>Kuis</b> pilihan ganda berlawanan waktu,
           <b>Ketik</b> untuk melatih cara baca romaji, <b>Flashcard</b> untuk hafalan cepat, dan
           <b>Kamus</b> yang bisa dicetak jadi lembar hafalan. Kata yang sering salah muncul lebih
-          sering pada ronde berikutnya.
+          sering pada ronde berikutnya. Pilih sumbernya di atas: <b>Buku</b> (Minna no Nihongo
+          Bab 1–50) atau <b>Bidang Kerja</b> — 16 bidang 特定技能, dari kaigo dan pembersihan gedung
+          sampai pengolahan makanan, konstruksi, dan galangan kapal. Tiap bidang punya kuis, ketik,
+          flashcard, dan kamus sendiri.
         </p>
       </section>
       <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">

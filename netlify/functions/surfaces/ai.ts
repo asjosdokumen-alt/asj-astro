@@ -199,6 +199,31 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
       kosakata: BANK_KOTOBA,
     };
   },
+  // ── Bank kosakata bidang kerja (SSW) — modul latihan per bidang ──────────
+  // Dipisah dari `getBankKotoba` karena dua alasan yang keduanya praktis:
+  //   • ukuran — 320 kata bidang tidak perlu ikut terkirim ke siswa yang cuma
+  //     ingin menghafal bab buku, dan sebaliknya;
+  //   • umur data — kata bidang berubah saat bidangnya berubah, sedangkan bank
+  //     buku berubah saat silabusnya berubah. Satu endpoint untuk keduanya
+  //     berarti setiap perubahan kecil menggeser dua hal sekaligus.
+  //
+  // Penjaganya TETAP `tolakKecualiSiswa`, bukan penjaga kedua: siswa ASJ yang
+  // sama, tag yang sama. `bidang` diambil dari daftar tertutup di `ssw.ts` —
+  // argumen dari klien TIDAK dipakai untuk memilih data, jadi tidak ada jalur
+  // "kirim id sembarang" ke data lain.
+  getBankSsw: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '').trim();
+    const tolak = await tolakKecualiSiswa(s, wa);
+    if (tolak) return tolak;
+    const { BIDANG_SSW, JUMLAH_SSW } = await import('../_lib/kotoba/ssw');
+    return {
+      success: true,
+      wa,
+      isVip: true,
+      jumlah: JUMLAH_SSW,
+      bidang: BIDANG_SSW,
+    };
+  },
   // ── Bank soal matematika (`/matematika`) — simulasi tes seleksi ───────────
   // Gerbang SAMA PERSIS dengan bank soal wawancara dan bank kosakata di atas,
   // dan itu disengaja (satu penjaga = satu tempat yang bisa salah). Yang

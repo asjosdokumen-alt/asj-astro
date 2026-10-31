@@ -1,9 +1,9 @@
 /**
- * _lib/kotoba/bank.ts — bank kosakata Minna no Nihongo (Bab 1–25) untuk
+ * _lib/kotoba/bank.ts — bank kosakata Minna no Nihongo (Bab 1–50) untuk
  * minigame `/kotoba`.
  *
- * ASAL DATA — empat lapis, dan bedanya penting
- * --------------------------------------------
+ * ASAL DATA — lima lapis, dan bedanya penting
+ * -------------------------------------------
  *  1. 216 kata dari minigame mandiri milik pemilik (`GAME.html`), 2026-10-27.
  *  2. 216 kata ditambahkan hari yang sama secara TEMATIK (kata benda Bab 2 ke
  *     Bab 2, kata musim ke Bab 12) tanpa daftar buku di tangan.
@@ -14,12 +14,35 @@
  *     disusun setara silabus Nihongo So-matome N5). Lapis inilah yang paling
  *     mengikat: penempatan babnya dari daftar itu, dan romajinya sudah ada
  *     sehingga bisa dibandingkan dengan konverter di bawah.
+ *  5. 480 kata Bab 26–50 (2026-10-31) — disusun dari silabus Minna no Nihongo
+ *     II: tiap bab diberi kata yang mendukung pola kalimat bab itu (26 んです,
+ *     27 bentuk potensial, 30 てあります, 33 命令形/禁止形, 41 いただきます,
+ *     49 尊敬語, 50 謙譲語, dst.). BUKAN salinan daftar kata resmi buku —
+ *     tidak ada daftar itu di tangan. Kalau nanti ada, lapis ini yang pertama
+ *     perlu dikoreksi, sama seperti lapis 1–2.
  *
  * Lapis 1–2 penempatan babnya perkiraan tematik; lapis 3 mengikuti daftar
- * sumbernya; lapis 4 mengikuti daftar pemilik. Kalau nanti ada daftar resmi
- * dari bukunya, yang perlu dikoreksi lebih dulu adalah lapis 1–2.
+ * sumbernya; lapis 4 mengikuti daftar pemilik; lapis 5 mengikuti tema tata
+ * bahasa babnya. Kalau nanti ada daftar resmi dari bukunya, yang perlu
+ * dikoreksi lebih dulu adalah lapis 1–2 dan lapis 5.
  *
- * 969 kata, 26–52 per bab.
+ * 1449 kata, 15–52 per bab.
+ *
+ * CATATAN PENTING TENTANG BAB 26–50
+ * ---------------------------------
+ * Banyak kata yang "seharusnya" muncul di bab 26–50 ternyata SUDAH ada di bab
+ * 1–25, karena lapis 2 menempatkannya secara tematik lebih awal (病気 di bab
+ * 17, 写真 di bab 18, 電車 di bab 5, 甘い di bab 8). Kata itu TIDAK dipindahkan:
+ * memindahkan bab akan mengubah letak kata yang sudah dihafal siswa, dan
+ * `kunciKata()` menyimpan progres per kanji+cara baca sehingga pemindahan
+ * diam-diam memindahkan riwayat hafalan. Karena itu blok "TAMBAHAN bab 26–50"
+ * di akhir array berisi kata yang benar-benar belum ada, bukan daftar buku.
+ *
+ * KOSAKATA BIDANG KERJA (SSW)
+ * ---------------------------
+ * Tidak di berkas ini. 16 bidang 特定技能 punya bank sendiri di `./ssw.ts`,
+ * dengan penjaga dan endpoint sendiri (`getBankSsw`), supaya menambah satu
+ * bidang tidak menyentuh bank buku dan sebaliknya.
  *
  * CARA MEMERIKSA (jangan tambah kata tanpa ini)
  * ---------------------------------------------
@@ -30,9 +53,12 @@
  * daftar pemilik dibandingkan dengan konverter: 113 dari 113 cocok — jadi
  * tidak ada satu pun yang perlu diperbaiki tangan.
  *
- * Satu pengecualian yang disengaja: `サンドイッチ` ditulis `sandoitchi`
- * (Hepburn baku), bukan `sandoicchi` yang dihasilkan konverter secara
- * harfiah. `normalRomaji()` di `KotobaGame` menyamakan keduanya.
+ * Sejak 2026-10-31 pemeriksaan itu bukan lagi skrip sekali pakai: ia hidup di
+ * `e2e/kotoba-bank.test.ts`, dijalankan setiap suite, dan gagal kalau satu
+ * baris saja tidak cocok. Dua pengecualian yang disengaja didaftarkan di sana:
+ * `サンドイッチ` (sandoitchi, Hepburn baku) dan `パーティー` (paateii, てぃ
+ * ditulis tei). `normalRomaji()` di `KotobaGame` menyamakan bentuk-bentuk itu
+ * saat siswa mengetik.
  *
  * KENAPA DI SINI, BUKAN DI KLIEN
  * ------------------------------
@@ -44,12 +70,12 @@
  *
  * BENTUK RINGKAS
  * --------------
- * Tabelnya array-of-tuple, bukan array objek. 969 baris objek berarti ~23 KB
+ * Tabelnya array-of-tuple, bukan array objek. 1449 baris objek berarti ~35 KB
  * nama kunci berulang (`b:`, `pos:`, `k:` …) yang ikut di-bundle ke entry
  * `ai-chat` dan dibayar setiap cold start. Urutan kolomnya dikunci di
  * `KolomKotoba` di bawah — jangan diubah tanpa mengubah `keKotoba()`.
  *
- * Sebaran per bab: 1:37 2:42 3:41 4:52 5:39 6:42 7:38 8:52 9:46 10:40 11:51 12:40 13:39 14:35 15:33 16:40 17:35 18:35 19:32 20:31 21:44 22:37 23:33 24:26 25:29
+ * Sebaran per bab: 1:37 2:42 3:41 4:52 5:39 6:42 7:38 8:52 9:46 10:40 11:51 12:40 13:39 14:35 15:33 16:40 17:35 18:35 19:32 20:31 21:44 22:37 23:33 24:26 25:29 26:20 27:19 28:21 29:21 30:15 31:20 32:19 33:18 34:17 35:21 36:16 37:19 38:20 39:20 40:18 41:16 42:21 43:19 44:21 45:20 46:21 47:22 48:18 49:20 50:18
  */
 
 /** Jenis kata. Nilainya dipakai sebagai kunci filter di klien. */
@@ -57,7 +83,7 @@ export type JenisKata = 'verb' | 'adj' | 'noun' | 'other';
 
 /** Satu kosakata dalam bentuk yang dikirim ke klien. */
 export interface Kotoba {
-  /** Bab Minna no Nihongo (1–25). */
+  /** Bab Minna no Nihongo (1–50). */
   b: number;
   pos: JenisKata;
   /** Tulisan kanji/katakana/hiragana seperti tertulis di buku. */
@@ -1073,6 +1099,518 @@ const RAW = [
   [25, 'noun', 'こと', 'こと', 'koto', 'Hal / persoalan'],
   [25, 'other', '一杯飲みましょう', 'いっぱいのみましょう', 'ippainomimashou', 'Mari minum segelas'],
   [25, 'other', 'どうぞお元気で', 'どうぞおげんきで', 'douzoogenkide', 'Jaga kesehatan ya (perpisahan lama)'],
+  // ── BAB 26
+  [26, 'noun', '残業', 'ざんぎょう', 'zangyou', 'Lembur'],
+  [26, 'noun', '具合', 'ぐあい', 'guai', 'Kondisi (kesehatan)'],
+  [26, 'noun', '検査', 'けんさ', 'kensa', 'Pemeriksaan (medis)'],
+  [26, 'adj', '大丈夫', 'だいじょうぶ', 'daijoubu', 'Tidak apa-apa'],
+  [26, 'adj', '無理', 'むり', 'muri', 'Tidak mungkin / di luar kemampuan'],
+  [26, 'adj', '痛い', 'いたい', 'itai', 'Nyeri / sakit'],
+  [26, 'adj', '辛い', 'つらい', 'tsurai', 'Berat / menyiksa'],
+  [26, 'verb', '我慢します', 'がまんします', 'gamanshimasu', 'Menahan diri'],
+  [26, 'verb', '続けます', 'つづけます', 'tsuzukemasu', 'Melanjutkan'],
+  [26, 'verb', '諦めます', 'あきらめます', 'akiramemasu', 'Menyerah'],
+  [26, 'other', 'どうしたんですか', 'どうしたんですか', 'doushitandesuka', 'Ada apa? / Kenapa?'],
+  // ── BAB 27
+  [27, 'verb', '描きます', 'かきます', 'kakimasu', 'Menggambar'],
+  [27, 'verb', '踊ります', 'おどります', 'odorimasu', 'Menari'],
+  [27, 'verb', '泳げます', 'およげます', 'oyogemasu', 'Bisa berenang'],
+  [27, 'noun', '楽器', 'がっき', 'gakki', 'Alat musik'],
+  [27, 'noun', '特技', 'とくぎ', 'tokugi', 'Keahlian khusus'],
+  [27, 'adj', '上手', 'じょうず', 'jouzu', 'Pandai'],
+  [27, 'adj', '下手', 'へた', 'heta', 'Tidak pandai'],
+  [27, 'adj', '得意', 'とくい', 'tokui', 'Unggul / menguasai'],
+  [27, 'adj', '苦手', 'にがて', 'nigate', 'Lemah / tidak suka'],
+  // ── BAB 28
+  [28, 'verb', '料理します', 'りょうりします', 'ryourishimasu', 'Memasak'],
+  [28, 'noun', '化粧', 'けしょう', 'keshou', 'Makeup'],
+  [28, 'verb', '着替えます', 'きがえます', 'kigaemasu', 'Berganti pakaian'],
+  [28, 'verb', '慣れます', 'なれます', 'naremasu', 'Terbiasa'],
+  [28, 'verb', '遅刻します', 'ちこくします', 'chikokushimasu', 'Terlambat datang'],
+  [28, 'verb', '間に合います', 'まにあいます', 'maniaimasu', 'Tepat waktu / cukup'],
+  [28, 'noun', '忘れ物', 'わすれもの', 'wasuremono', 'Barang tertinggal'],
+  // ── BAB 29
+  [29, 'verb', '壊します', 'こわします', 'kowashimasu', 'Merusak'],
+  [29, 'verb', '汚します', 'よごします', 'yogoshimasu', 'Mengotori'],
+  [29, 'verb', 'なくします', 'なくします', 'nakushimasu', 'Menghilangkan'],
+  [29, 'noun', '財布', 'さいふ', 'saifu', 'Dompet'],
+  [29, 'noun', '携帯', 'けいたい', 'keitai', 'Ponsel'],
+  [29, 'verb', '片付けます', 'かたづけます', 'katadzukemasu', 'Merapikan'],
+  [29, 'noun', '修理', 'しゅうり', 'shuuri', 'Perbaikan'],
+  [29, 'noun', '予約', 'よやく', 'yoyaku', 'Reservasi'],
+  [29, 'verb', '連絡します', 'れんらくします', 'renrakushimasu', 'Menghubungi'],
+  [29, 'other', '先に', 'さきに', 'sakini', 'Lebih dulu'],
+  [29, 'other', 'それまでに', 'それまでに', 'soremadeni', 'Sebelum itu'],
+  [29, 'other', '忘れないでください', 'わすれないでください', 'wasurenaidekudasai', 'Tolong jangan lupa'],
+  [29, 'verb', '注意します', 'ちゅういします', 'chuuishimasu', 'Memperhatikan / mengingatkan'],
+  // ── BAB 30
+  [30, 'verb', '貼ります', 'はります', 'harimasu', 'Menempel'],
+  [30, 'verb', '飾ります', 'かざります', 'kazarimasu', 'Menghias'],
+  [30, 'verb', '並べます', 'ならべます', 'narabemasu', 'Menata'],
+  [30, 'verb', '植えます', 'うえます', 'uemasu', 'Menanam'],
+  [30, 'noun', '壁', 'かべ', 'kabe', 'Dinding'],
+  [30, 'noun', '引き出し', 'ひきだし', 'hikidashi', 'Laci'],
+  [30, 'noun', '電子レンジ', 'でんしれんじ', 'denshirenji', 'Microwave'],
+  [30, 'noun', 'ポスター', 'ぽすたー', 'posutaa', 'Poster'],
+  [30, 'noun', 'カレンダー', 'かれんだー', 'karendaa', 'Kalender'],
+  [30, 'noun', '予定', 'よてい', 'yotei', 'Rencana'],
+  [30, 'noun', '掲示板', 'けいじばん', 'keijiban', 'Papan pengumuman'],
+  [30, 'noun', 'カーテン', 'かーてん', 'kaaten', 'Tirai'],
+  [30, 'noun', '花瓶', 'かびん', 'kabin', 'Vas bunga'],
+  [30, 'noun', '人形', 'にんぎょう', 'ningyou', 'Boneka'],
+  [30, 'other', 'しまってあります', 'しまってあります', 'shimattearimasu', 'Tersimpan (dalam keadaan tersimpan)'],
+  // ── BAB 31
+  [31, 'verb', '引っ越します', 'ひっこします', 'hikkoshimasu', 'Pindah rumah'],
+  [31, 'noun', '目標', 'もくひょう', 'mokuhyou', 'Target'],
+  [31, 'verb', '決めます', 'きめます', 'kimemasu', 'Memutuskan'],
+  [31, 'verb', '就職します', 'しゅうしょくします', 'shuushokushimasu', 'Mendapat pekerjaan'],
+  [31, 'verb', '貯金します', 'ちょきんします', 'chokinshimasu', 'Menabung'],
+  [31, 'noun', '免許', 'めんきょ', 'menkyo', 'SIM / lisensi'],
+  [31, 'noun', '先輩', 'せんぱい', 'senpai', 'Senior'],
+  [31, 'noun', '後輩', 'こうはい', 'kouhai', 'Junior'],
+  [31, 'noun', '同僚', 'どうりょう', 'douryou', 'Rekan kerja'],
+  [31, 'verb', '転職します', 'てんしょくします', 'tenshokushimasu', 'Pindah kerja'],
+  [31, 'verb', '決心します', 'けっしんします', 'kesshinshimasu', 'Bertekad'],
+  // ── BAB 32
+  [32, 'verb', '晴れます', 'はれます', 'haremasu', 'Cerah'],
+  [32, 'verb', '曇ります', 'くもります', 'kumorimasu', 'Mendung'],
+  [32, 'noun', '空', 'そら', 'sora', 'Langit'],
+  [32, 'noun', '太陽', 'たいよう', 'taiyou', 'Matahari'],
+  [32, 'noun', '天気予報', 'てんきよほう', 'tenkiyohou', 'Prakiraan cuaca'],
+  [32, 'noun', '気温', 'きおん', 'kion', 'Suhu udara'],
+  [32, 'noun', '梅雨', 'つゆ', 'tsuyu', 'Musim hujan'],
+  [32, 'noun', '湿度', 'しつど', 'shitsudo', 'Kelembapan'],
+  [32, 'noun', '湖', 'みずうみ', 'mizuumi', 'Danau'],
+  // ── BAB 33
+  [33, 'other', '止まれ', 'とまれ', 'tomare', 'Berhenti!'],
+  [33, 'other', '進め', 'すすめ', 'susume', 'Maju!'],
+  [33, 'other', '触るな', 'さわるな', 'sawaruna', 'Jangan sentuh'],
+  [33, 'adj', '危険', 'きけん', 'kiken', 'Berbahaya'],
+  [33, 'adj', '安全', 'あんぜん', 'anzen', 'Aman'],
+  [33, 'noun', '注意', 'ちゅうい', 'chuui', 'Perhatian'],
+  [33, 'noun', '禁止', 'きんし', 'kinshi', 'Larangan'],
+  [33, 'noun', '立入禁止', 'たちいりきんし', 'tachiirikinshi', 'Dilarang masuk'],
+  [33, 'noun', '非常口', 'ひじょうぐち', 'hijouguchi', 'Pintu darurat'],
+  [33, 'noun', '消防署', 'しょうぼうしょ', 'shoubousho', 'Kantor pemadam kebakaran'],
+  [33, 'noun', '警察', 'けいさつ', 'keisatsu', 'Polisi'],
+  [33, 'noun', '救急車', 'きゅうきゅうしゃ', 'kyuukyuusha', 'Ambulans'],
+  [33, 'noun', '標識', 'ひょうしき', 'hyoushiki', 'Rambu-rambu'],
+  [33, 'noun', '横断歩道', 'おうだんほどう', 'oudanhodou', 'Zebra cross'],
+  [33, 'noun', '踏切', 'ふみきり', 'fumikiri', 'Perlintasan kereta'],
+  [33, 'noun', '矢印', 'やじるし', 'yajirushi', 'Tanda panah'],
+  [33, 'noun', '意味', 'いみ', 'imi', 'Arti'],
+  [33, 'other', '書いてあります', 'かいてあります', 'kaitearimasu', 'Tertulis (dalam keadaan tertulis)'],
+  // ── BAB 34
+  [34, 'noun', '説明書', 'せつめいしょ', 'setsumeisho', 'Buku petunjuk'],
+  [34, 'noun', '指示', 'しじ', 'shiji', 'Instruksi'],
+  [34, 'noun', '順番', 'じゅんばん', 'junban', 'Urutan'],
+  [34, 'noun', '手順', 'てじゅん', 'tejun', 'Prosedur'],
+  [34, 'noun', '線', 'せん', 'sen', 'Garis'],
+  [34, 'verb', '折ります', 'おります', 'orimasu', 'Melipat'],
+  [34, 'verb', '混ぜます', 'まぜます', 'mazemasu', 'Mencampur'],
+  [34, 'verb', '運びます', 'はこびます', 'hakobimasu', 'Mengangkut'],
+  [34, 'noun', '重さ', 'おもさ', 'omosa', 'Berat'],
+  [34, 'noun', '長さ', 'ながさ', 'nagasa', 'Panjang'],
+  [34, 'noun', '大きさ', 'おおきさ', 'ookisa', 'Ukuran besar'],
+  [34, 'noun', '形', 'かたち', 'katachi', 'Bentuk'],
+  [34, 'noun', '色', 'いろ', 'iro', 'Warna'],
+  [34, 'noun', '味', 'あじ', 'aji', 'Rasa'],
+  [34, 'noun', 'におい', 'におい', 'nioi', 'Bau'],
+  [34, 'adj', '順調', 'じゅんちょう', 'junchou', 'Lancar'],
+  [34, 'verb', '合わせます', 'あわせます', 'awasemasu', 'Menyesuaikan / mencocokkan'],
+  // ── BAB 35
+  [35, 'verb', '踏みます', 'ふみます', 'fumimasu', 'Menginjak'],
+  [35, 'noun', 'ボタン', 'ぼたん', 'botan', 'Tombol'],
+  [35, 'noun', 'レバー', 'ればー', 'rebaa', 'Tuas'],
+  [35, 'noun', 'ハンドル', 'はんどる', 'handoru', 'Setir'],
+  [35, 'noun', 'ブレーキ', 'ぶれーき', 'bureeki', 'Rem'],
+  [35, 'noun', 'アクセル', 'あくせる', 'akuseru', 'Pedal gas'],
+  [35, 'noun', '機械', 'きかい', 'kikai', 'Mesin'],
+  [35, 'noun', '道具', 'どうぐ', 'dougu', 'Alat'],
+  [35, 'noun', '電源', 'でんげん', 'dengen', 'Sumber listrik'],
+  [35, 'noun', '充電', 'じゅうでん', 'juuden', 'Pengisian daya'],
+  [35, 'verb', '止まります', 'とまります', 'tomarimasu', 'Berhenti'],
+  [35, 'verb', '故障します', 'こしょうします', 'koshoushimasu', 'Rusak (mesin)'],
+  [35, 'other', '気を付けて', 'きをつけて', 'kiotsukete', 'Hati-hati'],
+  // ── BAB 36
+  [36, 'verb', '遅れます', 'おくれます', 'okuremasu', 'Terlambat'],
+  [36, 'verb', '見えます', 'みえます', 'miemasu', 'Terlihat'],
+  [36, 'verb', '聞こえます', 'きこえます', 'kikoemasu', 'Terdengar'],
+  [36, 'noun', '声', 'こえ', 'koe', 'Suara (orang)'],
+  [36, 'verb', '見物します', 'けんぶつします', 'kenbutsushimasu', 'Melihat-lihat'],
+  [36, 'noun', '観光', 'かんこう', 'kankou', 'Wisata'],
+  [36, 'verb', '迷います', 'まよいます', 'mayoimasu', 'Tersesat'],
+  [36, 'noun', '近道', 'ちかみち', 'chikamichi', 'Jalan pintas'],
+  [36, 'noun', '遠回り', 'とおまわり', 'toomawari', 'Memutar jauh'],
+  [36, 'noun', '通り', 'とおり', 'toori', 'Jalan'],
+  [36, 'noun', '向こう', 'むこう', 'mukou', 'Seberang'],
+  [36, 'noun', '曲がり角', 'まがりかど', 'magarikado', 'Tikungan'],
+  [36, 'other', 'まっすぐ', 'まっすぐ', 'massugu', 'Lurus'],
+  [36, 'noun', '地元', 'じもと', 'jimoto', 'Daerah sendiri'],
+  [36, 'noun', '案内所', 'あんないじょ', 'annaijo', 'Pusat informasi'],
+  [36, 'noun', '側', 'そば', 'soba', 'Sisi / dekat'],
+  // ── BAB 37
+  [37, 'verb', '褒めます', 'ほめます', 'homemasu', 'Memuji'],
+  [37, 'verb', '叱ります', 'しかります', 'shikarimasu', 'Memarahi'],
+  [37, 'verb', '頼みます', 'たのみます', 'tanomimasu', 'Meminta tolong'],
+  [37, 'verb', '断ります', 'ことわります', 'kotowarimasu', 'Menolak'],
+  [37, 'verb', '招待します', 'しょうたいします', 'shoutaishimasu', 'Mengundang'],
+  [37, 'verb', '盗みます', 'ぬすみます', 'nusumimasu', 'Mencuri'],
+  [37, 'noun', '泥棒', 'どろぼう', 'dorobou', 'Pencuri'],
+  [37, 'noun', '犯人', 'はんにん', 'hannin', 'Pelaku'],
+  [37, 'noun', '被害', 'ひがい', 'higai', 'Kerugian / korban'],
+  [37, 'noun', '上司', 'じょうし', 'joushi', 'Atasan'],
+  [37, 'noun', '部下', 'ぶか', 'buka', 'Bawahan'],
+  [37, 'noun', '客', 'きゃく', 'kyaku', 'Tamu / pelanggan'],
+  [37, 'adj', '恥ずかしい', 'はずかしい', 'hazukashii', 'Malu'],
+  [37, 'verb', '腹が立ちます', 'はらがたちます', 'haragatachimasu', 'Marah / kesal'],
+  [37, 'verb', '驚きます', 'おどろきます', 'odorokimasu', 'Terkejut'],
+  [37, 'verb', '殴ります', 'なぐります', 'nagurimasu', 'Memukul'],
+  [37, 'verb', '踏まれます', 'ふまれます', 'fumaremasu', 'Terinjak'],
+  [37, 'verb', '壊されます', 'こわされます', 'kowasaremasu', 'Dirusak (oleh orang lain)'],
+  [37, 'verb', '信用します', 'しんようします', 'shinyoushimasu', 'Mempercayai'],
+  // ── BAB 38
+  [38, 'verb', '走ります', 'はしります', 'hashirimasu', 'Berlari'],
+  [38, 'noun', '工作', 'こうさく', 'kousaku', 'Kerajinan tangan'],
+  [38, 'noun', '折り紙', 'おりがみ', 'origami', 'Origami'],
+  [38, 'noun', '作品', 'さくひん', 'sakuhin', 'Karya'],
+  [38, 'noun', '展覧会', 'てんらんかい', 'tenrankai', 'Pameran'],
+  [38, 'noun', '目的', 'もくてき', 'mokuteki', 'Tujuan'],
+  [38, 'noun', '理由', 'りゆう', 'riyuu', 'Alasan'],
+  [38, 'noun', '方法', 'ほうほう', 'houhou', 'Cara / metode'],
+  [38, 'adj', '大切', 'たいせつ', 'taisetsu', 'Penting'],
+  [38, 'adj', '必要', 'ひつよう', 'hitsuyou', 'Perlu'],
+  [38, 'adj', '簡単', 'かんたん', 'kantan', 'Mudah'],
+  [38, 'adj', '珍しい', 'めずらしい', 'mezurashii', 'Langka'],
+  [38, 'adj', '素晴らしい', 'すばらしい', 'subarashii', 'Hebat'],
+  [38, 'verb', '苦労します', 'くろうします', 'kuroushimasu', 'Bersusah payah'],
+  // ── BAB 39
+  [39, 'verb', '安心します', 'あんしんします', 'anshinshimasu', 'Merasa lega'],
+  [39, 'adj', '残念', 'ざんねん', 'zannen', 'Sayang sekali'],
+  [39, 'adj', '嬉しい', 'うれしい', 'ureshii', 'Senang'],
+  [39, 'adj', '悲しい', 'かなしい', 'kanashii', 'Sedih'],
+  [39, 'adj', '怖い', 'こわい', 'kowai', 'Takut'],
+  [39, 'other', 'したがって', 'したがって', 'shitagatte', 'Oleh karena itu'],
+  [39, 'other', 'つまり', 'つまり', 'tsumari', 'Dengan kata lain'],
+  [39, 'other', '例えば', 'たとえば', 'tatoeba', 'Misalnya'],
+  [39, 'other', 'もちろん', 'もちろん', 'mochiron', 'Tentu saja'],
+  [39, 'other', 'やはり', 'やはり', 'yahari', 'Ternyata / seperti dugaan'],
+  [39, 'noun', '気分', 'きぶん', 'kibun', 'Perasaan / mood'],
+  [39, 'verb', '泣きます', 'なきます', 'nakimasu', 'Menangis'],
+  [39, 'verb', '笑います', 'わらいます', 'waraimasu', 'Tertawa'],
+  [39, 'verb', '怒ります', 'おこります', 'okorimasu', 'Marah'],
+  // ── BAB 40
+  [40, 'verb', '確かめます', 'たしかめます', 'tashikamemasu', 'Memastikan'],
+  [40, 'noun', '質問', 'しつもん', 'shitsumon', 'Pertanyaan'],
+  [40, 'noun', '答え', 'こたえ', 'kotae', 'Jawaban'],
+  [40, 'noun', '相談', 'そうだん', 'soudan', 'Konsultasi'],
+  [40, 'noun', '出席', 'しゅっせき', 'shusseki', 'Kehadiran'],
+  [40, 'noun', '欠席', 'けっせき', 'kesseki', 'Ketidakhadiran'],
+  [40, 'noun', '都合', 'つごう', 'tsugou', 'Kondisi / kesesuaian'],
+  [40, 'verb', '参加します', 'さんかします', 'sankashimasu', 'Berpartisipasi'],
+  [40, 'verb', '申し込みます', 'もうしこみます', 'moushikomimasu', 'Mendaftar'],
+  [40, 'noun', '締め切り', 'しめきり', 'shimekiri', 'Batas waktu'],
+  [40, 'noun', '確認', 'かくにん', 'kakunin', 'Konfirmasi'],
+  [40, 'noun', '折り返し', 'おりかえし', 'orikaeshi', 'Panggilan balik'],
+  [40, 'noun', '留守', 'るす', 'rusu', 'Tidak di rumah'],
+  [40, 'noun', '伝言', 'でんごん', 'dengon', 'Pesan titipan'],
+  [40, 'verb', '空きます', 'あきます', 'akimasu', 'Kosong / lowong'],
+  [40, 'verb', '埋まります', 'うまります', 'umarimasu', 'Terisi penuh'],
+  [40, 'noun', '変更', 'へんこう', 'henkou', 'Perubahan'],
+  [40, 'noun', '延期', 'えんき', 'enki', 'Penundaan'],
+  // ── BAB 41
+  [41, 'verb', '祝います', 'いわいます', 'iwaimasu', 'Mengucapkan selamat'],
+  [41, 'verb', '見舞います', 'みまいます', 'mimaimasu', 'Menjenguk'],
+  [41, 'verb', '助けます', 'たすけます', 'tasukemasu', 'Menolong'],
+  [41, 'noun', '世話', 'せわ', 'sewa', 'Perawatan / urusan'],
+  [41, 'noun', 'お礼', 'おれい', 'orei', 'Ucapan terima kasih'],
+  [41, 'noun', '記念', 'きねん', 'kinen', 'Kenang-kenangan'],
+  [41, 'verb', '引き受けます', 'ひきうけます', 'hikiukemasu', 'Menerima tugas'],
+  [41, 'verb', '任せます', 'まかせます', 'makasemasu', 'Mempercayakan'],
+  [41, 'verb', '遠慮します', 'えんりょします', 'enryoshimasu', 'Sungkan / menahan diri'],
+  [41, 'verb', '甘えます', 'あまえます', 'amaemasu', 'Manja'],
+  [41, 'verb', '感謝します', 'かんしゃします', 'kanshashimasu', 'Bersyukur'],
+  [41, 'noun', 'お返し', 'おかえし', 'okaeshi', 'Balasan (hadiah)'],
+  [41, 'verb', '気が付きます', 'きがつきます', 'kigatsukimasu', 'Menyadari'],
+  [41, 'verb', '招きます', 'まねきます', 'manekimasu', 'Mengundang (ke rumah)'],
+  [41, 'verb', 'もてなします', 'もてなします', 'motenashimasu', 'Menjamu'],
+  [41, 'verb', '喜びます', 'よろこびます', 'yorokobimasu', 'Bergembira'],
+  // ── BAB 42
+  [42, 'noun', '治療', 'ちりょう', 'chiryou', 'Pengobatan'],
+  [42, 'noun', '手術', 'しゅじゅつ', 'shujutsu', 'Operasi'],
+  [42, 'noun', '睡眠', 'すいみん', 'suimin', 'Tidur'],
+  [42, 'noun', '習慣', 'しゅうかん', 'shuukan', 'Kebiasaan'],
+  [42, 'noun', '努力', 'どりょく', 'doryoku', 'Usaha'],
+  [42, 'noun', '練習', 'れんしゅう', 'renshuu', 'Latihan'],
+  [42, 'noun', '訓練', 'くんれん', 'kunren', 'Pelatihan'],
+  [42, 'verb', '合格します', 'ごうかくします', 'goukakushimasu', 'Lulus ujian'],
+  [42, 'verb', '失敗します', 'しっぱいします', 'shippaishimasu', 'Gagal'],
+  [42, 'verb', '成功します', 'せいこうします', 'seikoushimasu', 'Berhasil'],
+  [42, 'verb', '挑戦します', 'ちょうせんします', 'chousenshimasu', 'Mencoba / menantang'],
+  [42, 'noun', '体重', 'たいじゅう', 'taijuu', 'Berat badan'],
+  [42, 'noun', '血圧', 'けつあつ', 'ketsuatsu', 'Tekanan darah'],
+  [42, 'noun', '体力', 'たいりょく', 'tairyoku', 'Stamina'],
+  // ── BAB 43
+  [43, 'noun', '様子', 'ようす', 'yousu', 'Keadaan / penampakan'],
+  [43, 'noun', '感じ', 'かんじ', 'kanji', 'Kesan'],
+  [43, 'noun', '雰囲気', 'ふんいき', 'funiki', 'Suasana'],
+  [43, 'noun', '見た目', 'みため', 'mitame', 'Penampilan'],
+  [43, 'noun', '表情', 'ひょうじょう', 'hyoujou', 'Ekspresi'],
+  [43, 'noun', '顔色', 'かおいろ', 'kaoiro', 'Raut wajah'],
+  [43, 'adj', '元気', 'げんき', 'genki', 'Sehat / bersemangat'],
+  [43, 'noun', '楽しみ', 'たのしみ', 'tanoshimi', 'Hal yang dinanti'],
+  [43, 'noun', '期待', 'きたい', 'kitai', 'Harapan'],
+  [43, 'noun', '予感', 'よかん', 'yokan', 'Firasat'],
+  [43, 'noun', '噂', 'うわさ', 'uwasa', 'Gosip / kabar'],
+  [43, 'noun', '情報', 'じょうほう', 'jouhou', 'Informasi'],
+  [43, 'noun', '記事', 'きじ', 'kiji', 'Artikel'],
+  [43, 'noun', '香り', 'かおり', 'kaori', 'Aroma'],
+  [43, 'adj', '静か', 'しずか', 'shizuka', 'Tenang'],
+  [43, 'adj', '賑やか', 'にぎやか', 'nigiyaka', 'Ramai'],
+  [43, 'adj', '汚い', 'きたない', 'kitanai', 'Kotor'],
+  [43, 'adj', '清潔', 'せいけつ', 'seiketsu', 'Bersih'],
+  [43, 'adj', '立派', 'りっぱ', 'rippa', 'Megah / bagus'],
+  // ── BAB 44
+  [44, 'adj', '塩辛い', 'しおからい', 'shiokarai', 'Asin'],
+  [44, 'adj', '苦い', 'にがい', 'nigai', 'Pahit'],
+  [44, 'adj', '酸っぱい', 'すっぱい', 'suppai', 'Asam'],
+  [44, 'adj', '薄い', 'うすい', 'usui', 'Tipis / hambar'],
+  [44, 'adj', '濃い', 'こい', 'koi', 'Kental / pekat'],
+  [44, 'adj', '硬い', 'かたい', 'katai', 'Keras'],
+  [44, 'adj', '柔らかい', 'やわらかい', 'yawarakai', 'Lembut'],
+  [44, 'adj', '太い', 'ふとい', 'futoi', 'Tebal / besar'],
+  [44, 'adj', '細い', 'ほそい', 'hosoi', 'Tipis / kecil'],
+  [44, 'adj', '深い', 'ふかい', 'fukai', 'Dalam'],
+  [44, 'adj', '浅い', 'あさい', 'asai', 'Dangkal'],
+  [44, 'adj', '使いやすい', 'つかいやすい', 'tsukaiyasui', 'Mudah dipakai'],
+  [44, 'adj', '読みにくい', 'よみにくい', 'yominikui', 'Sulit dibaca'],
+  [44, 'verb', '大きすぎます', 'おおきすぎます', 'ookisugimasu', 'Terlalu besar'],
+  [44, 'verb', '高すぎます', 'たかすぎます', 'takasugimasu', 'Terlalu mahal / tinggi'],
+  // ── BAB 45
+  [45, 'noun', '場合', 'ばあい', 'baai', 'Kasus / kondisi'],
+  [45, 'noun', '状況', 'じょうきょう', 'joukyou', 'Situasi'],
+  [45, 'noun', '原因', 'げんいん', 'genin', 'Penyebab'],
+  [45, 'noun', '結果', 'けっか', 'kekka', 'Hasil'],
+  [45, 'noun', '対策', 'たいさく', 'taisaku', 'Penanggulangan'],
+  [45, 'noun', '対応', 'たいおう', 'taiou', 'Penanganan'],
+  [45, 'noun', '処理', 'しょり', 'shori', 'Pemrosesan'],
+  [45, 'noun', '報告', 'ほうこく', 'houkoku', 'Laporan'],
+  [45, 'noun', '責任', 'せきにん', 'sekinin', 'Tanggung jawab'],
+  [45, 'noun', '担当', 'たんとう', 'tantou', 'Penanggung jawab'],
+  [45, 'adj', '緊急', 'きんきゅう', 'kinkyuu', 'Darurat'],
+  [45, 'noun', '応急処置', 'おうきゅうしょち', 'oukyuushochi', 'Pertolongan pertama'],
+  [45, 'noun', '避難', 'ひなん', 'hinan', 'Evakuasi'],
+  [45, 'verb', '通報します', 'つうほうします', 'tsuuhoushimasu', 'Melaporkan (darurat)'],
+  [45, 'verb', '中止します', 'ちゅうしします', 'chuushishimasu', 'Membatalkan / menghentikan'],
+  [45, 'noun', '連絡先', 'れんらくさき', 'renrakusaki', 'Kontak yang bisa dihubungi'],
+  [45, 'noun', '保険', 'ほけん', 'hoken', 'Asuransi'],
+  [45, 'verb', '提出します', 'ていしゅつします', 'teishutsushimasu', 'Menyerahkan (dokumen)'],
+  [45, 'noun', '期限', 'きげん', 'kigen', 'Tenggat'],
+  [45, 'noun', '安全確認', 'あんぜんかくにん', 'anzenkakunin', 'Pemeriksaan keselamatan'],
+  // ── BAB 46
+  [46, 'noun', 'ところ', 'ところ', 'tokoro', 'Saat / tempat'],
+  [46, 'noun', '途中', 'とちゅう', 'tochuu', 'Di tengah jalan'],
+  [46, 'noun', '最中', 'さいちゅう', 'saichuu', 'Sedang berlangsung'],
+  [46, 'other', '今にも', 'いまにも', 'imanimo', 'Sebentar lagi'],
+  [46, 'other', 'ちょうど', 'ちょうど', 'choudo', 'Tepat / kebetulan'],
+  [46, 'other', 'やっと', 'やっと', 'yatto', 'Akhirnya'],
+  [46, 'other', 'すでに', 'すでに', 'sudeni', 'Sudah'],
+  [46, 'other', 'そのうち', 'そのうち', 'sonouchi', 'Nanti'],
+  [46, 'verb', '始まります', 'はじまります', 'hajimarimasu', 'Dimulai'],
+  [46, 'verb', '続きます', 'つづきます', 'tsuzukimasu', 'Berlanjut'],
+  [46, 'noun', '出発', 'しゅっぱつ', 'shuppatsu', 'Keberangkatan'],
+  [46, 'noun', '到着', 'とうちゃく', 'touchaku', 'Kedatangan'],
+  [46, 'other', '予定通り', 'よていどおり', 'yoteidoori', 'Sesuai rencana'],
+  [46, 'noun', '準備中', 'じゅんびちゅう', 'junbichuu', 'Sedang disiapkan'],
+  [46, 'noun', '営業中', 'えいぎょうちゅう', 'eigyouchuu', 'Sedang buka'],
+  // ── BAB 47
+  [47, 'other', 'によると', 'によると', 'niyoruto', 'Menurut'],
+  [47, 'noun', '発表', 'はっぴょう', 'happyou', 'Pengumuman'],
+  [47, 'noun', '記者', 'きしゃ', 'kisha', 'Wartawan'],
+  [47, 'noun', '番組', 'ばんぐみ', 'bangumi', 'Program (TV)'],
+  [47, 'noun', '視聴者', 'しちょうしゃ', 'shichousha', 'Pemirsa'],
+  [47, 'noun', '読者', 'どくしゃ', 'dokusha', 'Pembaca'],
+  [47, 'noun', '感想', 'かんそう', 'kansou', 'Kesan'],
+  [47, 'noun', '批判', 'ひはん', 'hihan', 'Kritik'],
+  [47, 'noun', '賛成', 'さんせい', 'sansei', 'Setuju'],
+  [47, 'noun', '反対', 'はんたい', 'hantai', 'Menolak / berlawanan'],
+  [47, 'noun', '実際', 'じっさい', 'jissai', 'Kenyataan'],
+  [47, 'other', '確か', 'たしか', 'tashika', 'Kalau tidak salah'],
+  [47, 'noun', '嘘', 'うそ', 'uso', 'Bohong'],
+  [47, 'noun', '秘密', 'ひみつ', 'himitsu', 'Rahasia'],
+  [47, 'noun', '予想', 'よそう', 'yosou', 'Perkiraan'],
+  [47, 'verb', '的中します', 'てきちゅうします', 'tekichuushimasu', 'Tepat (tebakan)'],
+  // ── BAB 48
+  [48, 'noun', '親', 'おや', 'oya', 'Orang tua'],
+  [48, 'noun', '息子', 'むすこ', 'musuko', 'Anak laki-laki'],
+  [48, 'noun', '娘', 'むすめ', 'musume', 'Anak perempuan'],
+  [48, 'noun', '親戚', 'しんせき', 'shinseki', 'Kerabat'],
+  [48, 'verb', '育てます', 'そだてます', 'sodatemasu', 'Membesarkan'],
+  [48, 'adj', '自由', 'じゆう', 'jiyuu', 'Bebas'],
+  [48, 'noun', '規則', 'きそく', 'kisoku', 'Aturan'],
+  [48, 'adj', '厳しい', 'きびしい', 'kibishii', 'Ketat'],
+  [48, 'noun', '義務', 'ぎむ', 'gimu', 'Kewajiban'],
+  [48, 'noun', '権利', 'けんり', 'kenri', 'Hak'],
+  [48, 'verb', '反省します', 'はんせいします', 'hanseishimasu', 'Merenungkan kesalahan'],
+  [48, 'verb', '謝ります', 'あやまります', 'ayamarimasu', 'Meminta maaf'],
+  [48, 'verb', '許します', 'ゆるします', 'yurushimasu', 'Memaafkan'],
+  [48, 'noun', 'しつけ', 'しつけ', 'shitsuke', 'Disiplin / didikan'],
+  [48, 'noun', '成長', 'せいちょう', 'seichou', 'Pertumbuhan'],
+  [48, 'adj', '我儘', 'わがまま', 'wagamama', 'Egois'],
+  [48, 'adj', '真面目', 'まじめ', 'majime', 'Serius / rajin'],
+  [48, 'adj', '優しい', 'やさしい', 'yasashii', 'Baik hati / lembut'],
+  // ── BAB 49
+  [49, 'verb', 'いらっしゃいます', 'いらっしゃいます', 'irasshaimasu', 'Datang / ada (hormat)'],
+  [49, 'verb', 'おっしゃいます', 'おっしゃいます', 'osshaimasu', 'Berkata (hormat)'],
+  [49, 'verb', '召し上がります', 'めしあがります', 'meshiagarimasu', 'Makan / minum (hormat)'],
+  [49, 'verb', 'ご覧になります', 'ごらんになります', 'goranninarimasu', 'Melihat (hormat)'],
+  [49, 'other', 'ご存じです', 'ごぞんじです', 'gozonjidesu', 'Tahu (hormat)'],
+  [49, 'verb', 'なさいます', 'なさいます', 'nasaimasu', 'Melakukan (hormat)'],
+  [49, 'verb', 'くださいます', 'くださいます', 'kudasaimasu', 'Memberi (hormat)'],
+  [49, 'verb', 'お休みになります', 'おやすみになります', 'oyasumininarimasu', 'Tidur (hormat)'],
+  [49, 'noun', '目上', 'めうえ', 'meue', 'Orang yang lebih tinggi'],
+  [49, 'noun', '敬語', 'けいご', 'keigo', 'Bahasa hormat'],
+  [49, 'noun', '尊敬語', 'そんけいご', 'sonkeigo', 'Sonkeigo (bahasa hormat)'],
+  [49, 'noun', '謙譲語', 'けんじょうご', 'kenjougo', 'Kenjougo (bahasa merendah)'],
+  [49, 'noun', '丁寧語', 'ていねいご', 'teineigo', 'Teineigo (bahasa sopan)'],
+  [49, 'noun', 'お客様', 'おきゃくさま', 'okyakusama', 'Tamu (hormat)'],
+  [49, 'noun', '応接室', 'おうせつしつ', 'ousetsushitsu', 'Ruang tamu'],
+  [49, 'noun', '訪問', 'ほうもん', 'houmon', 'Kunjungan'],
+  [49, 'noun', '挨拶', 'あいさつ', 'aisatsu', 'Salam'],
+  [49, 'other', 'お待ちください', 'おまちください', 'omachikudasai', 'Mohon tunggu'],
+  [49, 'verb', 'ご案内します', 'ごあんないします', 'goannaishimasu', 'Saya akan memandu'],
+  [49, 'noun', '目下', 'めした', 'meshita', 'Orang yang lebih muda / rendah'],
+  // ── BAB 50
+  [50, 'verb', '参ります', 'まいります', 'mairimasu', 'Datang / pergi (rendah hati)'],
+  [50, 'verb', '申します', 'もうします', 'moushimasu', 'Bernama / berkata (rendah hati)'],
+  [50, 'verb', '伺います', 'うかがいます', 'ukagaimasu', 'Berkunjung / bertanya (rendah hati)'],
+  [50, 'verb', '拝見します', 'はいけんします', 'haikenshimasu', 'Melihat (rendah hati)'],
+  [50, 'verb', '存じます', 'ぞんじます', 'zonjimasu', 'Tahu (rendah hati)'],
+  [50, 'verb', 'いたします', 'いたします', 'itashimasu', 'Melakukan (rendah hati)'],
+  [50, 'verb', 'おります', 'おります', 'orimasu', 'Ada (rendah hati)'],
+  [50, 'verb', 'ございます', 'ございます', 'gozaimasu', 'Ada (sopan)'],
+  [50, 'other', '承知しました', 'しょうちしました', 'shouchishimashita', 'Baik, dimengerti'],
+  [50, 'other', 'かしこまりました', 'かしこまりました', 'kashikomarimashita', 'Baik (sangat sopan)'],
+  [50, 'other', '恐れ入ります', 'おそれいります', 'osoreirimasu', 'Maaf / sungguh-sungguh'],
+  [50, 'other', 'お先に失礼します', 'おさきにしつれいします', 'osakinishitsureishimasu', 'Permisi duluan'],
+  [50, 'other', 'お世話になっております', 'おせわになっております', 'osewaninatteorimasu', 'Terima kasih atas bantuannya'],
+  [50, 'other', 'よろしくお願いいたします', 'よろしくおねがいいたします', 'yoroshikuonegaiitashimasu', 'Mohon bantuannya'],
+  [50, 'other', '恐縮です', 'きょうしゅくです', 'kyoushukudesu', 'Sungguh tidak enak'],
+  [50, 'noun', '弊社', 'へいしゃ', 'heisha', 'Perusahaan kami'],
+  [50, 'noun', '貴社', 'きしゃ', 'kisha', 'Perusahaan Anda'],
+  [50, 'verb', '連絡いたします', 'れんらくいたします', 'renrakuitashimasu', 'Akan menghubungi (rendah hati)'],
+  // ── TAMBAHAN bab 26–50
+  // Banyak kata "alami" untuk bab-bab ini ternyata SUDAH ada di bab 1–25
+  // (lapis 2 menempatkannya secara tematik lebih awal: 病気 di bab 17, 写真 di
+  // bab 18, 電車 di bab 5). Kata yang sudah ada TIDAK dipindahkan — memindahkan
+  // bab akan mengubah letak kata yang sudah dihafal siswa. Yang di bawah ini
+  // adalah kata yang benar-benar belum ada, dipilih supaya tiap bab 26–50
+  // punya cukup kata untuk satu ronde utuh.
+  [26, 'noun', '症状', 'しょうじょう', 'shoujou', 'Gejala'],
+  [26, 'noun', '診察', 'しんさつ', 'shinsatsu', 'Pemeriksaan dokter'],
+  [26, 'noun', '注射', 'ちゅうしゃ', 'chuusha', 'Suntikan'],
+  [26, 'noun', '点滴', 'てんてき', 'tenteki', 'Infus'],
+  [26, 'noun', '嘔吐', 'おうと', 'outo', 'Muntah'],
+  [26, 'noun', '下痢', 'げり', 'geri', 'Diare'],
+  [26, 'noun', '食欲', 'しょくよく', 'shokuyoku', 'Nafsu makan'],
+  [26, 'noun', '体温', 'たいおん', 'taion', 'Suhu tubuh'],
+  [26, 'noun', '診断書', 'しんだんしょ', 'shindansho', 'Surat keterangan dokter'],
+  [27, 'noun', 'ドラム', 'どらむ', 'doramu', 'Drum'],
+  [27, 'noun', 'バイオリン', 'ばいおりん', 'baiorin', 'Biola'],
+  [27, 'noun', '合唱', 'がっしょう', 'gasshou', 'Paduan suara'],
+  [27, 'noun', '発表会', 'はっぴょうかい', 'happyoukai', 'Pentas'],
+  [27, 'noun', '舞台', 'ぶたい', 'butai', 'Panggung'],
+  [27, 'noun', '観客', 'かんきゃく', 'kankyaku', 'Penonton'],
+  [27, 'noun', '拍手', 'はくしゅ', 'hakushu', 'Tepuk tangan'],
+  [27, 'noun', '才能', 'さいのう', 'sainou', 'Bakat'],
+  [27, 'verb', '上達します', 'じょうたつします', 'joutatsushimasu', 'Makin mahir'],
+  [27, 'noun', '自信', 'じしん', 'jishin', 'Percaya diri'],
+  [28, 'noun', '食器洗い', 'しょっきあらい', 'shokkiarai', 'Mencuci piring'],
+  [28, 'verb', '干します', 'ほします', 'hoshimasu', 'Menjemur'],
+  [28, 'verb', '畳みます', 'たたみます', 'tatamimasu', 'Melipat (pakaian)'],
+  [28, 'verb', '磨きます', 'みがきます', 'migakimasu', 'Menggosok / menyikat'],
+  [28, 'verb', '沸かします', 'わかします', 'wakashimasu', 'Mendidihkan'],
+  [28, 'verb', '炊きます', 'たきます', 'takimasu', 'Menanak (nasi)'],
+  [28, 'verb', '焼きます', 'やきます', 'yakimasu', 'Memanggang'],
+  [28, 'verb', '炒めます', 'いためます', 'itamemasu', 'Menumis'],
+  [28, 'noun', '味噌汁', 'みそしる', 'misoshiru', 'Sup miso'],
+  [28, 'noun', '弁当', 'べんとう', 'bentou', 'Bekal'],
+  [28, 'noun', '朝食', 'ちょうしょく', 'choushoku', 'Sarapan'],
+  [28, 'noun', '夕食', 'ゆうしょく', 'yuushoku', 'Makan malam'],
+  [28, 'noun', '一人暮らし', 'ひとりぐらし', 'hitorigurashi', 'Hidup sendiri'],
+  [28, 'noun', '家事', 'かじ', 'kaji', 'Pekerjaan rumah'],
+  [29, 'noun', '落とし物', 'おとしもの', 'otoshimono', 'Barang hilang'],
+  [29, 'noun', '交番', 'こうばん', 'kouban', 'Pos polisi'],
+  [29, 'noun', '届け出', 'とどけで', 'todokede', 'Laporan (ke kantor)'],
+  [29, 'noun', '紛失', 'ふんしつ', 'funshitsu', 'Kehilangan'],
+  [29, 'noun', '弁償', 'べんしょう', 'benshou', 'Ganti rugi'],
+  [29, 'verb', '破れます', 'やぶれます', 'yaburemasu', 'Robek'],
+  [29, 'verb', '割れます', 'われます', 'waremasu', 'Pecah'],
+  [29, 'noun', '充電器', 'じゅうでんき', 'juudenki', 'Pengisi daya'],
+  [31, 'noun', '進路', 'しんろ', 'shinro', 'Jalur karier'],
+  [31, 'noun', '面接', 'めんせつ', 'mensetsu', 'Wawancara kerja'],
+  [31, 'noun', '履歴書', 'りれきしょ', 'rirekisho', 'CV / riwayat hidup'],
+  [31, 'verb', '応募します', 'おうぼします', 'ouboshimasu', 'Melamar'],
+  [31, 'noun', '採用', 'さいよう', 'saiyou', 'Penerimaan kerja'],
+  [31, 'noun', '内定', 'ないてい', 'naitei', 'Tawaran kerja resmi'],
+  [31, 'noun', '契約', 'けいやく', 'keiyaku', 'Kontrak'],
+  [31, 'noun', '正社員', 'せいしゃいん', 'seishain', 'Karyawan tetap'],
+  [31, 'verb', '退職します', 'たいしょくします', 'taishokushimasu', 'Mengundurkan diri'],
+  [32, 'noun', '雲', 'くも', 'kumo', 'Awan'],
+  [32, 'noun', '嵐', 'あらし', 'arashi', 'Badai'],
+  [32, 'noun', '雷', 'かみなり', 'kaminari', 'Petir'],
+  [32, 'noun', '虹', 'にじ', 'niji', 'Pelangi'],
+  [32, 'noun', '霧', 'きり', 'kiri', 'Kabut'],
+  [32, 'noun', '洪水', 'こうずい', 'kouzui', 'Banjir'],
+  [32, 'noun', '気候', 'きこう', 'kikou', 'Iklim'],
+  [32, 'noun', '温度', 'おんど', 'ondo', 'Temperatur'],
+  [32, 'noun', '暑さ', 'あつさ', 'atsusa', 'Panas (cuaca)'],
+  [32, 'noun', '寒さ', 'さむさ', 'samusa', 'Dingin (cuaca)'],
+  [35, 'noun', 'ドライバー', 'どらいばー', 'doraibaa', 'Obeng'],
+  [35, 'noun', 'ペンチ', 'ぺんち', 'penchi', 'Tang'],
+  [35, 'noun', 'スパナ', 'すぱな', 'supana', 'Kunci pas'],
+  [35, 'noun', 'ネジ', 'ねじ', 'neji', 'Sekrup'],
+  [35, 'noun', '電圧', 'でんあつ', 'denatsu', 'Tegangan listrik'],
+  [35, 'noun', '漏電', 'ろうでん', 'rouden', 'Arus bocor'],
+  [35, 'noun', '感電', 'かんでん', 'kanden', 'Kesetrum'],
+  [35, 'noun', '火花', 'ひばな', 'hibana', 'Percikan api'],
+  [38, 'noun', '刺繍', 'ししゅう', 'shishuu', 'Sulaman'],
+  [38, 'noun', '陶芸', 'とうげい', 'tougei', 'Keramik'],
+  [38, 'noun', '彫刻', 'ちょうこく', 'choukoku', 'Ukiran / pahatan'],
+  [38, 'noun', '編み物', 'あみもの', 'amimono', 'Rajutan'],
+  [38, 'noun', '入賞', 'にゅうしょう', 'nyuushou', 'Memenangkan hadiah'],
+  [38, 'noun', '審査', 'しんさ', 'shinsa', 'Penjurian'],
+  [39, 'verb', '落ち込みます', 'おちこみます', 'ochikomimasu', 'Murung'],
+  [39, 'verb', '緊張します', 'きんちょうします', 'kinchoushimasu', 'Gugup'],
+  [39, 'verb', '感動します', 'かんどうします', 'kandoushimasu', 'Terharu'],
+  [39, 'verb', 'がっかりします', 'がっかりします', 'gakkarishimasu', 'Kecewa'],
+  [39, 'verb', 'ほっとします', 'ほっとします', 'hottoshimasu', 'Merasa lega'],
+  [39, 'verb', 'いらいらします', 'いらいらします', 'irairashimasu', 'Jengkel'],
+  [42, 'noun', '栄養', 'えいよう', 'eiyou', 'Gizi'],
+  [42, 'noun', '糖分', 'とうぶん', 'toubun', 'Gula'],
+  [42, 'noun', '塩分', 'えんぶん', 'enbun', 'Garam'],
+  [42, 'noun', '水分', 'すいぶん', 'suibun', 'Cairan'],
+  [42, 'noun', '筋トレ', 'きんとれ', 'kintore', 'Latihan otot'],
+  [42, 'noun', 'ストレッチ', 'すとれっち', 'sutoretchi', 'Peregangan'],
+  [42, 'noun', '通院', 'つういん', 'tsuuin', 'Berobat jalan'],
+  [44, 'adj', 'ぬるい', 'ぬるい', 'nurui', 'Hangat kuku'],
+  [44, 'adj', 'ざらざら', 'ざらざら', 'zarazara', 'Kasar'],
+  [44, 'adj', 'つるつる', 'つるつる', 'tsurutsuru', 'Licin'],
+  [44, 'adj', 'べたべた', 'べたべた', 'betabeta', 'Lengket'],
+  [44, 'adj', 'きつい', 'きつい', 'kitsui', 'Ketat / sempit'],
+  [44, 'adj', 'ゆるい', 'ゆるい', 'yurui', 'Longgar'],
+  [46, 'noun', '直前', 'ちょくぜん', 'chokuzen', 'Tepat sebelum'],
+  [46, 'noun', '直後', 'ちょくご', 'chokugo', 'Tepat sesudah'],
+  [46, 'noun', '当時', 'とうじ', 'touji', 'Saat itu'],
+  [46, 'noun', '現在', 'げんざい', 'genzai', 'Saat ini'],
+  [46, 'noun', '過去', 'かこ', 'kako', 'Masa lalu'],
+  [46, 'noun', '未来', 'みらい', 'mirai', 'Masa depan'],
+  [47, 'noun', '報道', 'ほうどう', 'houdou', 'Pemberitaan'],
+  [47, 'noun', '記者会見', 'きしゃかいけん', 'kishakaiken', 'Konferensi pers'],
+  [47, 'noun', '世論', 'よろん', 'yoron', 'Opini publik'],
+  [47, 'noun', '根拠', 'こんきょ', 'konkyo', 'Dasar / bukti'],
+  [47, 'noun', '証拠', 'しょうこ', 'shouko', 'Bukti'],
+  [47, 'verb', '疑います', 'うたがいます', 'utagaimasu', 'Meragukan'],
 ] as const satisfies readonly KolomKotoba[];
 
 /** Tuple → objek. Satu-satunya tempat urutan kolom `RAW` diartikan. */
@@ -1092,7 +1630,7 @@ export const BANK_KOTOBA: readonly Kotoba[] = RAW.map(keKotoba);
 /**
  * Daftar bab yang benar-benar punya isi.
  *
- * Diturunkan dari data, bukan ditulis `1..25`: kalau suatu saat sebuah bab
+ * Diturunkan dari data, bukan ditulis `1..50`: kalau suatu saat sebuah bab
  * dikosongkan, pemilih bab tidak boleh tetap menawarkannya dan menjawab
  * "tidak ada kata".
  */
