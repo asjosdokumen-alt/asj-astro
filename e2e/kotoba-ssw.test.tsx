@@ -59,10 +59,10 @@ const BANK_SSW = {
       namaJp: '介護',
       ringkas: 'Membantu lansia mandi, makan, dan berpindah posisi.',
       kata: [
-        { b: 0, pos: 'noun', k: '車椅子', h: 'くるまいす', r: 'kurumaisu', id: 'Kursi roda' },
-        { b: 0, pos: 'noun', k: 'おむつ', h: 'おむつ', r: 'omutsu', id: 'Popok' },
-        { b: 0, pos: 'noun', k: '転倒', h: 'てんとう', r: 'tentou', id: 'Terjatuh' },
-        { b: 0, pos: 'verb', k: '見守ります', h: 'みまもります', r: 'mimamorimasu', id: 'Mengawasi' },
+        { b: 0, cat: 'alat', pos: 'noun', k: '車椅子', h: 'くるまいす', r: 'kurumaisu', id: 'Kursi roda' },
+        { b: 0, cat: 'alat', pos: 'noun', k: 'おむつ', h: 'おむつ', r: 'omutsu', id: 'Popok' },
+        { b: 0, cat: 'aman', pos: 'noun', k: '転倒', h: 'てんとう', r: 'tentou', id: 'Terjatuh' },
+        { b: 0, cat: 'kerja', pos: 'verb', k: '見守ります', h: 'みまもります', r: 'mimamorimasu', id: 'Mengawasi' },
       ],
     },
     {
@@ -71,10 +71,10 @@ const BANK_SSW = {
       namaJp: '飲食料品製造業',
       ringkas: 'Mengolah, memanaskan, dan mengemas produk makanan.',
       kata: [
-        { b: 0, pos: 'noun', k: '食材', h: 'しょくざい', r: 'shokuzai', id: 'Bahan makanan' },
-        { b: 0, pos: 'noun', k: '加熱', h: 'かねつ', r: 'kanetsu', id: 'Pemanasan' },
-        { b: 0, pos: 'noun', k: '冷凍', h: 'れいとう', r: 'reitou', id: 'Pembekuan' },
-        { b: 0, pos: 'noun', k: '検品', h: 'けんぴん', r: 'kenpin', id: 'Inspeksi produk' },
+        { b: 0, cat: 'alat', pos: 'noun', k: '食材', h: 'しょくざい', r: 'shokuzai', id: 'Bahan makanan' },
+        { b: 0, cat: 'aman', pos: 'noun', k: '加熱', h: 'かねつ', r: 'kanetsu', id: 'Pemanasan' },
+        { b: 0, cat: 'alat', pos: 'noun', k: '冷凍', h: 'れいとう', r: 'reitou', id: 'Pembekuan' },
+        { b: 0, cat: 'mutu', pos: 'noun', k: '検品', h: 'けんぴん', r: 'kenpin', id: 'Inspeksi produk' },
       ],
     },
   ],
@@ -104,7 +104,12 @@ function loginSebagaiSiswa() {
  * dipakai.
  */
 function pilihBidang(id: string) {
-  const sel = screen.getByLabelText('Pilih bidang kerja') as HTMLSelectElement;
+  pilihOpsi('Pilih bidang kerja', id);
+}
+
+/** Sama seperti `pilihBidang`, untuk dropdown kategori kerja. */
+function pilihOpsi(label: string, id: string) {
+  const sel = screen.getByLabelText(label) as HTMLSelectElement;
   sel.value = id;
   sel.dispatchEvent(new Event('change', { bubbles: true }));
 }
@@ -172,6 +177,24 @@ describe('/kotoba — modul latihan per bidang SSW', () => {
     await waitFor(() => expect(screen.getByText('食材')).toBeTruthy());
     expect(screen.getByText('Bahan makanan')).toBeTruthy();
     expect(screen.queryByText('車椅子')).toBeNull();
+  });
+
+  it('filter kategori menyaring kata, bukan sekadar mengganti label', async () => {
+    loginSebagaiSiswa();
+    render(<KotobaGame />);
+    await waitFor(() => expect(screen.getByText('Flashcard')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('Bidang Kerja (SSW)'));
+    await waitFor(() => expect(screen.getByLabelText('Pilih kategori kerja')).toBeTruthy());
+    fireEvent.click(screen.getByText('Kamus'));
+    await waitFor(() => expect(screen.getByText('車椅子')).toBeTruthy());
+
+    /* Kategori "aman" hanya berisi 転倒 di bank uji ini. Kalau filternya tidak
+       bekerja, daftar tetap memuat 車椅子 dan tes ini merah. */
+    pilihOpsi('Pilih kategori kerja', 'aman');
+    await waitFor(() => expect(screen.getByText('転倒')).toBeTruthy());
+    expect(screen.queryByText('車椅子')).toBeNull();
+    expect(screen.queryByText('おむつ')).toBeNull();
   });
 
   it('kembali ke tab buku memakai bank buku lagi, tanpa memanggil SSW dua kali', async () => {

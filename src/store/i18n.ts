@@ -1832,6 +1832,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.sumber_minna": "Buku (Bab 1–50)",
     "kotoba.sumber_ssw": "Bidang Kerja (SSW)",
     "kotoba.filter_bidang": "Pilih bidang kerja",
+    "kotoba.filter_kategori": "Pilih kategori kerja",
+    "kotoba.semua_kategori": "Semua kategori",
+    /* Lima kategori kerja SSW. Urutannya mengikuti alur belajar di lapangan:
+       alat dulu, lalu tindakan, lalu keselamatan, mutu, dan dokumen. */
+    "kotoba.cat_alat": "Alat & bahan",
+    "kotoba.cat_kerja": "Tindakan kerja",
+    "kotoba.cat_aman": "Keselamatan & higiene",
+    "kotoba.cat_mutu": "Mutu & pengelolaan",
+    "kotoba.cat_kantor": "Dokumen & komunikasi",
     "kotoba.ssw_memuat": "Memuat kosakata bidang…",
     "kotoba.ssw_kosong": "Kosakata bidang ini belum tersedia.",
     "kotoba.filter_jenis": "Pilih jenis kata",

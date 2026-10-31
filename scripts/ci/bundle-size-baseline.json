@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-10-31T12:45:00.000Z",
-  "totalKb": 3519.3,
+  "updatedAt": "2026-10-31T15:20:00.000Z",
+  "totalKb": 3659.6,
   "count": 21,
   "entries": {
-    "ai-chat.js": 375.9,
+    "ai-chat.js": 446,
     "auth.js": 174.9,
-    "bridge-links.js": 935.6,
+    "bridge-links.js": 1005.8,
     "candidates.js": 100.5,
     "config.js": 86.2,
     "diagnostics.js": 89.1,

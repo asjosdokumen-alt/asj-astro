@@ -43,9 +43,17 @@ import { showToast } from '../Toast';
 
 type JenisKata = 'verb' | 'adj' | 'noun' | 'other';
 
+/**
+ * Kategori kata bidang kerja (SSW). Kosakata buku tidak punya kategori, jadi
+ * kolom ini opsional — dan filter kategori hanya muncul saat sumbernya SSW.
+ */
+type Kategori = 'alat' | 'kerja' | 'aman' | 'mutu' | 'kantor';
+
 /** Satu kosakata — bentuknya sama dengan `Kotoba` di `_lib/kotoba/bank.ts`. */
 interface Kotoba {
   b: number;
+  /** Hanya ada pada kata bidang SSW (lihat `ssw.ts`). */
+  cat?: Kategori;
   pos: JenisKata;
   k: string;
   h: string;
@@ -295,6 +303,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
    */
   const [bidangList, setBidangList] = useState<BidangSsw[]>([]);
   const [bidangId, setBidangId] = useState('');
+  const [catFilter, setCatFilter] = useState('all');
   const [sswMemuat, setSswMemuat] = useState(false);
   const [sswGalat, setSswGalat] = useState('');
 
@@ -536,7 +545,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
    */
   const pool = (sumber === 'ssw' ? kataBidang : bank).filter((v) =>
     sumber === 'ssw'
-      ? posFilter === 'all' || v.pos === posFilter
+      ? (catFilter === 'all' || v.cat === catFilter) && (posFilter === 'all' || v.pos === posFilter)
       : (babFilter === 'all' || v.b === Number(babFilter)) && (posFilter === 'all' || v.pos === posFilter),
   );
 
@@ -640,7 +649,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     if (mode !== 'kuis' && mode !== 'ketik') return;
     if (loginGate || vip === false) return;
     mulaiRonde();
-  }, [bank, babFilter, posFilter, arah, mode, loginGate, vip, sumber, bidangId, kataBidang.length]);
+  }, [bank, babFilter, posFilter, arah, mode, loginGate, vip, sumber, bidangId, catFilter, kataBidang.length]);
 
   /** Catat satu jawaban ke progres (dipakai pembobotan ronde berikutnya). */
   const catat = (v: Kotoba, tepat: boolean) => {
@@ -829,6 +838,14 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     adj: t('kotoba.pos_adj'),
     noun: t('kotoba.pos_noun'),
     other: t('kotoba.pos_other'),
+  };
+
+  const labelKategori: Record<Kategori, string> = {
+    alat: t('kotoba.cat_alat'),
+    kerja: t('kotoba.cat_kerja'),
+    aman: t('kotoba.cat_aman'),
+    mutu: t('kotoba.cat_mutu'),
+    kantor: t('kotoba.cat_kantor'),
   };
 
   /* ── render: gerbang login ─────────────────────────────────────────────── */
@@ -1053,6 +1070,21 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 {t('kotoba.bab')} {b}
               </option>
             ))}
+          </select>
+        )}
+        {sumber === 'ssw' && (
+          <select
+            aria-label={t('kotoba.filter_kategori')}
+            value={catFilter}
+            onChange={(e) => setCatFilter((e.target as HTMLSelectElement).value)}
+            class="min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
+          >
+            <option value="all">{t('kotoba.semua_kategori')}</option>
+            <option value="alat">{t('kotoba.cat_alat')}</option>
+            <option value="kerja">{t('kotoba.cat_kerja')}</option>
+            <option value="aman">{t('kotoba.cat_aman')}</option>
+            <option value="mutu">{t('kotoba.cat_mutu')}</option>
+            <option value="kantor">{t('kotoba.cat_kantor')}</option>
           </select>
         )}
         <select
@@ -1431,7 +1463,9 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
               </p>
               <p class="text-[11px] text-fg-muted">
                 {sumber === 'ssw'
-                  ? `${bidangAktif?.nama ?? ''} (${bidangAktif?.namaJp ?? ''})`
+                  ? `${bidangAktif?.nama ?? ''} (${bidangAktif?.namaJp ?? ''})${
+                      catFilter === 'all' ? '' : ` · ${labelKategori[catFilter as Kategori]}`
+                    }`
                   : `${t('kotoba.bab')} ${babFilter === 'all' ? t('kotoba.semua_bab') : babFilter}`}{' '}
                 · {hasilCari.length} {t('kotoba.kata_tersedia')}
               </p>

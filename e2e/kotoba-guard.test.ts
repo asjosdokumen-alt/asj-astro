@@ -150,7 +150,7 @@ describe('getBankSsw — siswa ASJ saja', () => {
       expect(kata.length).toBeGreaterThan(14);
       expect(typeof b.id).toBe('string');
       expect(typeof b.namaJp).toBe('string');
-      for (const f of ['b', 'pos', 'k', 'h', 'r', 'id']) expect(kata[0]).toHaveProperty(f);
+      for (const f of ['b', 'cat', 'pos', 'k', 'h', 'r', 'id']) expect(kata[0]).toHaveProperty(f);
     }
     expect(typeof r.jumlah).toBe('number');
     expect(r.jumlah).toBe(bidang.reduce((n, b) => n + (b.kata as unknown[]).length, 0));

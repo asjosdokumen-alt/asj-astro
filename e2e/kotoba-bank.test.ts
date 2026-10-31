@@ -202,10 +202,12 @@ describe('bank kosakata buku — Minna no Nihongo Bab 1–50', () => {
 });
 
 describe('bank kosakata bidang kerja — 16 bidang SSW', () => {
-  it('berisi 16 bidang, id unik, dan 382 kata', () => {
+  it('berisi 16 bidang, id unik, dan 1 061 kata', () => {
     expect(BIDANG_SSW.length).toBe(16);
     expect(new Set(BIDANG_SSW.map((b) => b.id)).size).toBe(16);
-    expect(JUMLAH_SSW).toBe(382);
+    /* Angka eksplisit, sama alasannya dengan bank buku: perluasan 2026-10-31
+       (24 -> 63–71 kata per bidang) harus bisa dibuktikan, bukan diklaim. */
+    expect(JUMLAH_SSW).toBe(1061);
     const jumlah = BIDANG_SSW.reduce((n, b) => n + b.kata.length, 0);
     expect(jumlah).toBe(JUMLAH_SSW);
   });
@@ -219,13 +221,41 @@ describe('bank kosakata bidang kerja — 16 bidang SSW', () => {
     expect(kosong.map((b) => b.id)).toEqual([]);
   });
 
-  it('tiap bidang punya minimal 15 kata, termasuk kata kerja dan kata benda', () => {
+  it('tiap bidang punya minimal 50 kata, termasuk kata kerja dan kata benda', () => {
     const laporan = BIDANG_SSW.map((b) => {
       const kerja = b.kata.filter((v) => v.pos === 'verb').length;
       const benda = b.kata.filter((v) => v.pos === 'noun').length;
       return { id: b.id, n: b.kata.length, kerja, benda };
-    }).filter((x) => x.n < 15 || x.kerja < 1 || x.benda < 1);
+    }).filter((x) => x.n < 50 || x.kerja < 8 || x.benda < 20);
+    /* 50, bukan 15: 15 kata cukup untuk satu ronde, tapi tidak cukup untuk
+       belajar satu bidang. Batas 8 kata kerja menahan bidang yang isinya cuma
+       daftar alat. */
     expect(laporan).toEqual([]);
+  });
+
+  it('tiap bidang mengisi kelima kategori, dan kategori "kerja" berisi kata kerja', () => {
+    const KATEGORI = ['alat', 'kerja', 'aman', 'mutu', 'kantor'];
+    const laporan: string[] = [];
+    for (const b of BIDANG_SSW) {
+      const per = new Map<string, number>();
+      for (const v of b.kata) per.set(v.cat, (per.get(v.cat) ?? 0) + 1);
+      for (const c of KATEGORI) {
+        const n = per.get(c) ?? 0;
+        /* 8 per kategori: cukup untuk satu ronde utuh (3 nyawa) tanpa
+           mengulang kata yang sama dua kali. */
+        if (n < 8) laporan.push(`${b.id}/${c}=${n}`);
+      }
+      const kerjaVerb = b.kata.filter((v) => v.cat === 'kerja' && v.pos === 'verb').length;
+      if (kerjaVerb < 8) laporan.push(`${b.id}/kerja-verb=${kerjaVerb}`);
+    }
+    expect(laporan).toEqual([]);
+  });
+
+  it('kategori hanya dari lima nilai yang dikenal klien', () => {
+    const asing = BIDANG_SSW.flatMap((b) =>
+      b.kata.filter((v) => !['alat', 'kerja', 'aman', 'mutu', 'kantor'].includes(v.cat)).map((v) => `${b.id}/${v.k}`),
+    );
+    expect(asing).toEqual([]);
   });
 
   it('tidak ada kunci kanji+cara baca ganda di dalam satu bidang', () => {

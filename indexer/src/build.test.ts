@@ -838,7 +838,16 @@ describe('full build', () => {
     // testimonials.ts di atas). Sisa +77 bersifat STRUKTURAL: satu dataset baru
     // (16 bidang) plus satu mode UI baru. Tidak ada yang bisa dihapus tanpa
     // menghapus fiturnya. Kalau angka ini naik lagi, ukur dua ujung dulu.
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(30995); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
+    // 30995 -> 31003 (2026-10-31, bank bidang SSW diperluas 382 -> 1 061 kata).
+    // ATRIBUSI DIUKUR DI DUA UJUNG: pohon ini pada commit 900e773 (sebelum
+    // perluasan) = 30 995; setelah perluasan = 31 003, jadi +8. Perluasan
+    // DATANYA sendiri tidak menambah satu simbol pun — 1 061 baris tuple bukan
+    // simbol (diukur: `ssw.ts` 37 -> 39, dan dua itu bukan data: anggota `cat`
+    // pada `KotobaSsw` + tipe `KategoriSsw`). Sisanya dari UI: `KotobaGame`
+    // 467 -> 479 — tipe `Kategori`, satu state filter, satu peta label, dan
+    // callback JSX untuk dropdown kategori. fileCount TIDAK bergerak (605):
+    // tidak ada berkas baru, hanya isi.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(31003); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 
