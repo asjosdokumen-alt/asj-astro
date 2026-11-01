@@ -25,8 +25,19 @@ const CAND_WA_COLS = ['no_wa', 'wa', 'whatsapp', 'telepon', 'phone', 'no_hp'];
 async function nextCandidateId(): Promise<string> {
   try {
     // Atomic: nextval is safe under concurrent access — no race.
-    const rows = await supabaseJson('GET', 'rpc/nextval', {
-      query: { seqname: 'candidate_id_seq' },
+    //
+    // ⚠ POST, BUKAN GET (terukur 2026-11-01). Dengan fungsi 024 SUDAH terpasang,
+    //   `GET /rest/v1/rpc/nextval?seqname=…` dijawab 405:
+    //     {"code":"25006","message":"cannot execute nextval() in a read-only
+    //      transaction"}
+    //   PostgREST membungkus GET dalam transaksi READ ONLY, dan `nextval()`
+    //   dilarang di sana. Jadi selama panggilannya GET, alokasi tetap jatuh ke
+    //   MAX+1 walaupun fungsinya ada — dan log hanya menampilkan
+    //   `sequence-unavailable` tanpa sebab. POST adalah bentuk yang benar untuk
+    //   fungsi VOLATILE; `writeBodyFor` tidak menyentuh path `rpc/*`, jadi
+    //   `seqname` tidak ikut dibuang oleh kontrak kolom.
+    const rows = await supabaseJson('POST', 'rpc/nextval', {
+      body: { seqname: 'candidate_id_seq' },
     }).catch(() => null);
     if (rows != null) {
       const n = typeof rows === 'number' ? rows : Number(rows);

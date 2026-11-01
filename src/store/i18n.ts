@@ -1716,6 +1716,31 @@ export const translations: Record<Lang, Record<string, string>> = {
     "wawancara.dengar_jawaban": "Dengar jawaban saya",
     "wawancara.suara_tidak_ada": "Perangkat ini belum punya suara Jepang. Aktifkan paket suara Jepang di pengaturan Text-to-Speech HP Anda (Android: Setelan → Sistem → Bahasa & masukan → Output teks-ke-ucapan → pasang data suara Jepang).",
     "wawancara.draft_dipulihkan": "Ketikan terakhir dipulihkan dari perangkat ini.",
+    /* ── Label & tombol yang dulu hardcoded Indonesia ────────────────────────
+       Halaman ini punya kamus Jepang, tetapi 16 label di bawah ditulis langsung
+       di JSX, jadi siswa Jepang melihat halaman setengah Indonesia: gerbang
+       login, placeholder chat, judul kolom, dan tombol simpan/terjemah.
+       Gate `i18n.keys.test.ts` TIDAK bisa menangkapnya — ia hanya memeriksa
+       kunci yang benar-benar dipakai `t()`, dan string hardcoded tidak pernah
+       menjadi kunci. Ditemukan 2026-11-01 saat audit modul wawancara. */
+    "wawancara.gate_wa": "Nomor WhatsApp",
+    "wawancara.gate_pass": "Password",
+    "wawancara.gate_isi": "Masuk dengan nomor WhatsApp dan password akun Anda untuk membuka latihan wawancara.",
+    "wawancara.chat_placeholder": "Jawab dalam Bahasa Indonesia… (Enter kirim, Shift+Enter baris baru)",
+    "wawancara.kolom_baca": "Cara baca",
+    "wawancara.kolom_indo": "Indonesia",
+    "wawancara.link_siswa": "Link siswa",
+    "wawancara.menerjemah_lama": "Menerjemahkan ke Jepang… (biasanya 2–5 detik)",
+    "wawancara.menerjemahkan": "Menerjemahkan…",
+    "wawancara.kirim_terjemahkan": "Kirim & terjemahkan",
+    "wawancara.isi_jepang": "Isi Jepang otomatis",
+    "wawancara.menyimpan": "Menyimpan…",
+    "wawancara.simpan": "Simpan",
+    "wawancara.sembunyikan_contoh": "Sembunyikan contoh",
+    "wawancara.contoh_jawaban": "Contoh jawaban",
+    "wawancara.tanya_chat": "Tanya ini di chat",
+    "wawancara.tersimpan": "Tersimpan.",
+    "wawancara.gagal_simpan": "Gagal menyimpan.",
     /* ── Mode Simulasi wawancara ────────────────────────────────────────────
        Tab di halaman /wawancara: Bank Soal (menyiapkan naskah) dan Simulasi
        (diacak + berwaktu + dinilai). */

@@ -31,7 +31,7 @@ import { validate, kandidatLoginSchema } from '../../lib/schemas';
 import { opsiUntukSoal } from '../../lib/mensetsuOpsi';
 import { ucapkanJepang, LAJU_LAMBAT } from '../../lib/ttsJepang';
 import SimulasiMensetsu from './SimulasiMensetsu';
-import { t } from '../../store/i18n';
+import { t, useLang } from '../../store/i18n';
 
 interface Soal {
   kode: string;
@@ -182,6 +182,16 @@ function pesanSoal(s: Soal) {
 }
 
 export default function MensetsuForm({ waTarget = '', adminMode = false }: Props) {
+  /* Berlangganan bahasa — WAJIB, bukan hiasan.
+   *
+   * Kamus Jepang adalah chunk lazy yang mendarat SETELAH island ini pertama
+   * kali dirender. Tanpa `useLang()`, island tidak pernah dirender ulang saat
+   * chunk itu tiba, jadi pembaca Jepang yang datang kembali melihat halaman ini
+   * utuh dalam Bahasa Indonesia sementara header Astro di atasnya sudah Jepang
+   * (terukur 2026-11-01 di localhost:8888, `asj_lang = "jp"`). Menekan tombol
+   * bahasa menyembunyikannya — toggle mengubah `langStore`, yang merender ulang
+   * semua island. Lihat catatan panjang di `useLang()`. */
+  useLang();
   const auth = authStore.get();
   // Admin tidak melewati gerbang password kandidat (lihat catatan `adminMode`).
   const [loginGate, setLoginGate] = useState(!adminMode && !auth.isLoggedIn);
@@ -411,9 +421,9 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
     setSibuk((s) => ({ ...s, [kode]: 'simpan' }));
     try {
       await apiClient('simpanJawabanWawancara', [wa, kode, d], { onSessionInvalid: 'throw' });
-      if (!senyap) showToast('Tersimpan.', 'success');
+      if (!senyap) showToast(t('wawancara.tersimpan'), 'success');
     } catch (e) {
-      showToast((e as ApiError).message || 'Gagal menyimpan.', 'error');
+      showToast((e as ApiError).message || t('wawancara.gagal_simpan'), 'error');
     } finally {
       setSibuk((s) => ({ ...s, [kode]: '' }));
     }
@@ -519,9 +529,9 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
       <section aria-label={t('wawancara.gate_title')} class="max-w-md mx-auto my-8 rounded-card border border-line bg-surface p-6">
         <h2 class="text-base font-black text-fg mb-1">{t('wawancara.gate_title')}</h2>
         <p class="text-[12px] text-fg-muted mb-4">
-          Masuk dengan nomor WhatsApp dan password akun Anda untuk membuka latihan wawancara.
+          {t('wawancara.gate_isi')}
         </p>
-        <label for="mensetsu-gate-wa" class="block text-[11px] font-bold text-fg mb-1">Nomor WhatsApp</label>
+        <label for="mensetsu-gate-wa" class="block text-[11px] font-bold text-fg mb-1">{t('wawancara.gate_wa')}</label>
         <input
           id="mensetsu-gate-wa"
           type="tel"
@@ -530,7 +540,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
           placeholder="08xxxxxxxxxx"
           class="w-full mb-3 rounded-lg bg-surface-raised border border-line px-3 py-2 text-sm text-fg"
         />
-        <label for="mensetsu-gate-pass" class="block text-[11px] font-bold text-fg mb-1">Password</label>
+        <label for="mensetsu-gate-pass" class="block text-[11px] font-bold text-fg mb-1">{t('wawancara.gate_pass')}</label>
         <input
           id="mensetsu-gate-pass"
           type="password"
@@ -700,7 +710,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
           </div>
           {admin && (
             <button type="button" onClick={() => void salinLink()} class="min-h-9 px-2 py-1 rounded-lg bg-surface-raised hover:bg-surface-sunken text-fg border border-line text-[11px] font-bold">
-              Link siswa
+              {t('wawancara.link_siswa')}
             </button>
           )}
         </header>
@@ -715,7 +725,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
           {menerjemah && (
             <div class="flex items-center gap-2 rounded-lg bg-surface-raised px-3 py-2 text-[12px] text-fg-muted" data-testid="wawancara-menerjemah">
               <span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-accent-violet border-t-transparent motion-reduce:animate-none" aria-hidden="true" />
-              Menerjemahkan ke Jepang… (biasanya 2–5 detik)
+              {t('wawancara.menerjemah_lama')}
             </div>
           )}
           {galat && <p class="text-[12px] text-rose-400">{galat}</p>}
@@ -730,7 +740,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
               const ev = e as KeyboardEvent;
               if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); void kirimChat(); }
             }}
-            placeholder="Jawab dalam Bahasa Indonesia… (Enter kirim, Shift+Enter baris baru)"
+            placeholder={t('wawancara.chat_placeholder')}
             class="w-full rounded-lg bg-surface-raised border border-line px-3 py-2 text-sm text-fg resize-y"
           />
           <div class="flex gap-2 mt-2">
@@ -740,7 +750,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
               disabled={!jawabanChat.trim() || !soalAktif || menerjemah}
               class="flex-1 min-h-11 rounded-lg bg-accent-violet hover:bg-accent-violet/90 disabled:opacity-50 text-canvas text-sm font-bold"
             >
-              {menerjemah ? 'Menerjemahkan…' : 'Kirim & terjemahkan'}
+              {menerjemah ? t('wawancara.menerjemahkan') : t('wawancara.kirim_terjemahkan')}
             </button>
             <button
               type="button"
@@ -881,11 +891,11 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                       <span class="cetak-nilai" lang="ja">{d.jp}</span>
                     </p>
                     <p class="cetak-baris">
-                      <span class="cetak-kunci">Cara baca</span>
+                      <span class="cetak-kunci">{t('wawancara.kolom_baca')}</span>
                       <span class="cetak-nilai">{d.romaji}</span>
                     </p>
                     <p class="cetak-baris">
-                      <span class="cetak-kunci">Indonesia</span>
+                      <span class="cetak-kunci">{t('wawancara.kolom_indo')}</span>
                       <span class="cetak-nilai">{d.arti}</span>
                     </p>
                   </div>
@@ -935,7 +945,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                       />
                     </label>
                     <label class="grid grid-cols-[68px_1fr] gap-2 items-center">
-                      <span class="text-[10px] uppercase tracking-wide text-fg-muted">Cara baca</span>
+                      <span class="text-[10px] uppercase tracking-wide text-fg-muted">{t('wawancara.kolom_baca')}</span>
                       <input
                         value={d.romaji}
                         onInput={(e) => {
@@ -948,7 +958,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                       />
                     </label>
                     <label class="grid grid-cols-[68px_1fr] gap-2 items-center">
-                      <span class="text-[10px] uppercase tracking-wide text-fg-muted">Indonesia</span>
+                      <span class="text-[10px] uppercase tracking-wide text-fg-muted">{t('wawancara.kolom_indo')}</span>
                       <input
                         value={d.arti}
                         onInput={(e) => {
@@ -1001,7 +1011,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                       disabled={status === 'terjemah' || !d.arti.trim()}
                       class="min-h-9 px-2.5 rounded-md bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white text-[11px] font-bold"
                     >
-                      {status === 'terjemah' ? 'Menerjemahkan…' : 'Isi Jepang otomatis'}
+                      {status === 'terjemah' ? t('wawancara.menerjemahkan') : t('wawancara.isi_jepang')}
                     </button>
                     <button
                       type="button"
@@ -1009,14 +1019,14 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                       disabled={status === 'simpan'}
                       class="min-h-9 px-2.5 rounded-md bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-[11px] font-bold"
                     >
-                      {status === 'simpan' ? 'Menyimpan…' : 'Simpan'}
+                      {status === 'simpan' ? t('wawancara.menyimpan') : t('wawancara.simpan')}
                     </button>
                     <button
                       type="button"
                       onClick={() => setContoh((c) => ({ ...c, [s.kode]: !c[s.kode] }))}
                       class="min-h-9 px-2.5 rounded-md border border-accent-emerald text-accent-emerald text-[11px] font-bold"
                     >
-                      {contoh[s.kode] ? 'Sembunyikan contoh' : 'Contoh jawaban'}
+                      {contoh[s.kode] ? t('wawancara.sembunyikan_contoh') : t('wawancara.contoh_jawaban')}
                     </button>
                     {s.kode !== soalAktif?.kode && (
                       <button
@@ -1033,7 +1043,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                         }}
                         class="min-h-9 px-2.5 rounded-md border border-line-strong text-fg text-[11px] font-bold"
                       >
-                        Tanya ini di chat
+                        {t('wawancara.tanya_chat')}
                       </button>
                     )}
                   </div>

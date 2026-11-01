@@ -335,4 +335,29 @@ describe('kontrak: rpc/nextval (alokasi id kandidat)', () => {
     // Degradasi ke MAX+1 harus TERLIHAT, bukan senyap.
     expect(src).toContain('candidate-id.sequence-unavailable');
   });
+
+  /* ── POST, bukan GET ──────────────────────────────────────────────────────
+   *
+   * TERUKUR 2026-11-01 lewat Neon Data API dengan fungsi yang SUDAH ada:
+   *
+   *   GET  /rest/v1/rpc/nextval?seqname=… → 405
+   *        {"code":"25006","message":"cannot execute nextval() in a read-only
+   *         transaction"}
+   *
+   * PostgREST membungkus GET dalam transaksi READ ONLY, dan `nextval()` tidak
+   * boleh jalan di sana. Jadi selama pemanggilnya GET, fungsi 024 secanggih apa
+   * pun tetap tidak menghasilkan id — alokasi terus jatuh ke MAX+1, dan yang
+   * terlihat di log hanya `candidate-id.sequence-unavailable` tanpa sebab yang
+   * jelas. POST tidak dibungkus read-only; ia memang bentuk yang benar untuk
+   * fungsi VOLATILE.
+   *
+   * Dikunci di sini supaya "GET karena lebih ringkas" tidak kembali. */
+  it('memanggil rpc/nextval dengan POST (GET dijawab 405 read-only)', () => {
+    const src = readFileSync(
+      `${REPO_ROOT}/netlify/functions/_lib/candidate-helpers.ts`,
+      'utf8',
+    );
+    expect(src).toMatch(/supabaseJson\(\s*'POST',\s*'rpc\/nextval'/);
+    expect(src).not.toMatch(/supabaseJson\(\s*'GET',\s*'rpc\/nextval'/);
+  });
 });

@@ -136,4 +136,56 @@ describe('/wawancara — siswa ASJ saja', () => {
     await waitFor(() => expect(document.querySelector('[data-cetak]')).toBeTruthy());
     expect(screen.queryByTestId('mensetsu-khusus-vip')).toBeNull();
   });
+
+  /* ── COLD LOAD DENGAN BAHASA JEPANG ────────────────────────────────────────
+   *
+   * TERUKUR 2026-11-01 di server lokal (`localhost:8888`, `asj_lang = "jp"`):
+   * `document.documentElement.lang` = `ja`, header Astro sudah Jepang
+   * ("ポータル / 面接練習"), tetapi SELURUH isi island ini tetap Indonesia —
+   * "Verifikasi Akun Kandidat", "Nomor WhatsApp", "Password".
+   *
+   * Sebabnya persis kelas yang sudah didokumentasikan di `useLang()`: kamus JP
+   * adalah chunk lazy yang tiba SETELAH island pertama kali dirender, dan island
+   * yang tidak berlangganan `jpReady` tidak pernah dirender ulang saat chunk itu
+   * mendarat. Menekan tombol bahasa menyembunyikannya (toggle mengubah
+   * `langStore`, yang merender ulang semua island) — jadi tes interaktif hijau
+   * pada halaman yang salah untuk pembaca Jepang yang datang kembali.
+   *
+   * Tes ini menirukan urutan yang sebenarnya: render dulu (kamus belum ada),
+   * lalu kamus tiba. Tanpa `useLang()`, teks Jepangnya tidak pernah muncul.
+   */
+  it('cold load bahasa Jepang: label gerbang ikut Jepang setelah kamus JP tiba', async () => {
+    const { langStore, ensureJpLoaded, translations } = await import('../src/store/i18n');
+    const jpSebelumnya = translations.jp;
+    /* `beforeEach` membersihkan localStorage, TIDAK membersihkan `authStore` —
+       tes sebelumnya meninggalkan sesi kandidat, dan tanpa baris ini yang
+       dirender adalah lembar soal, bukan gerbang. */
+    authStore.set({
+      role: '',
+      name: '',
+      wa: '',
+      sessionToken: '',
+      refreshToken: '',
+      isLoggedIn: false,
+      lastChecked: 0,
+    });
+    langStore.set('jp');
+
+    try {
+      render(<MensetsuForm />);
+
+      /* Keadaan awal yang jujur: kamus belum ada, jadi Indonesia itu wajar. */
+      expect(screen.getByText('Verifikasi Akun Kandidat')).toBeTruthy();
+
+      await ensureJpLoaded(); // chunk lazy mendarat + `jpReady` naik
+
+      await waitFor(() => expect(screen.getByText('受験者アカウントの確認')).toBeTruthy());
+      /* Label kolom ikut, bukan hanya judul: dulu keempatnya hardcoded. */
+      expect(screen.getByText('WhatsApp番号')).toBeTruthy();
+      expect(screen.getByText('パスワード')).toBeTruthy();
+    } finally {
+      langStore.set('id');
+      translations.jp = jpSebelumnya;
+    }
+  });
 });
