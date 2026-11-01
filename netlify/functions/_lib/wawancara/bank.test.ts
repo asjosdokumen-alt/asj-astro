@@ -186,6 +186,41 @@ describe('simpanJawaban — kolom CV ikut ditulis', () => {
     );
     expect(m.tulis).toHaveLength(0);
   });
+
+  /* ── kolom CV TIDAK boleh dikosongkan oleh simpanan parsial ────────────────
+   *
+   * Aturan repo ini (lihat MEMORY.md): menghapus isi field = MENULIS '', dan
+   * itu hanya boleh terjadi dari form yang memang punya niat menghapus
+   * (`formLengkap: true`). `simpanJawaban` dipanggil dari `onBlur` SETIAP kolom
+   * di `/wawancara` — jadi menyimpan baris yang kolom Indonesianya kebetulan
+   * kosong tidak boleh ikut menghapus Jiko PR di CV kandidat.
+   *
+   * Terukur: sebelum perbaikan, `body.promosi_diri = ''` ikut terkirim dan
+   * PATCH-nya menghapus jawaban CV yang sudah ada. */
+  it('arti kosong TIDAK mengosongkan kolom CV (hanya jp yang ditulis)', async () => {
+    await bank.simpanJawaban('628111', 'ms-009', {
+      jp: '私は勤勉です。',
+      romaji: 'watashi wa kinben desu.',
+      arti: '   ',
+    });
+
+    const patch = m.tulis.find((t) => t.table === 'master_database_candidate');
+    expect(patch).toBeDefined();
+    expect(patch?.body).not.toHaveProperty('promosi_diri');
+    expect(patch?.body).toMatchObject({ promosi_diri_jp: '私は勤勉です。' });
+
+    // Jawaban tetap tersimpan apa adanya — yang dilewati hanya kolom CV.
+    expect(m.tulis.find((t) => t.table === 'wawancara_jawaban')?.body).toMatchObject({ arti: '' });
+  });
+
+  it('jp dan arti sama-sama kosong ⇒ master_database_candidate tidak disentuh', async () => {
+    await bank.simpanJawaban('628111', 'ms-009', { jp: '', romaji: 'romaji saja', arti: '' });
+
+    expect(m.tulis.some((t) => t.table === 'master_database_candidate')).toBe(false);
+    expect(m.tulis.find((t) => t.table === 'wawancara_jawaban')?.body).toMatchObject({
+      romaji: 'romaji saja',
+    });
+  });
 });
 
 describe('ambilBank — tabel belum ter-expose', () => {

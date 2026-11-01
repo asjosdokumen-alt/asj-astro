@@ -1786,6 +1786,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "simulasi.acuan_tidak_ada": "Belum ada acuan — isi penilaian dilewati",
     "simulasi.hasil_judul": "Hasil simulasi",
     "simulasi.skor_total": "Nilai rata-rata",
+    /* Dilewati = soal yang tidak dijawab DAN tidak dinilai (tombol "Lewati").
+       Dibedakan dari jawaban kosong supaya rata-rata tidak mencampur keduanya. */
+    "simulasi.dilewati": "Soal dilewati",
     "simulasi.aspek_kecocokan": "Kecocokan isi",
     "simulasi.aspek_kelancaran": "Kelancaran",
     "simulasi.aspek_waktu": "Ketepatan waktu",

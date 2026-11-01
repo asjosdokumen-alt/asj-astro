@@ -137,8 +137,37 @@ export function ucapkanJepang(
   }
 }
 
-/* ── masukan suara (SpeechRecognition) ──────────────────────────────────────
+/**
+ * Hentikan kalimat yang sedang dibacakan.
  *
+ * KENAPA PERLU, PADAHAL `ucapkanJepang` SUDAH `cancel()`
+ * -----------------------------------------------------
+ * `cancel()` di dalam `ucapkanJepang` hanya membersihkan suara SEBELUM suara
+ * berikutnya — ia tidak menolong saat yang dibutuhkan adalah berhenti tanpa
+ * memulai kalimat baru. Dua tempat membutuhkannya:
+ *
+ *   1. Mode Simulasi: siswa menekan mikrofon sementara pertanyaan masih
+ *      dibacakan. Tanpa ini `SpeechRecognition`/rekaman ikut menangkap suara
+ *      TTS, dan pertanyaannya masuk ke kotak jawaban sebagai "ucapan siswa" —
+ *      lalu dinilai sebagai jawaban. Itu bukan nilai jelek, itu nilai palsu.
+ *   2. Halaman ditinggalkan saat kalimat masih berjalan.
+ *
+ * @returns `true` kalau ada mesin suara yang menerima perintah; `false` kalau
+ *          perangkat tidak punya mesin suara atau perintahnya ditolak. Sama
+ *          seperti `ucapkanJepang`: tidak pernah melempar.
+ */
+export function hentikanSuara(): boolean {
+  const synth = globalSuara().speechSynthesis;
+  if (!synth) return false;
+  try {
+    synth.cancel();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* ── masukan suara (SpeechRecognition) ──────────────────────────────────────
  * HANYA CHROME/EDGE (Android & desktop) yang punya `SpeechRecognition`.
  * Safari iOS dan Firefox TIDAK punya — di sana mikrofon tidak akan muncul dan
  * siswa mengetik. Itu batasan peramban, bukan sesuatu yang bisa ditambal di

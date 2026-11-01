@@ -25,6 +25,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   pilihSuaraJepang,
   ucapkanJepang,
+  hentikanSuara,
   dukunganSuara,
   LAJU_NORMAL,
   LAJU_LAMBAT,
@@ -208,6 +209,59 @@ describe('ucapkanJepang', () => {
       }
     };
     expect(ucapkanJepang('おはよう')).toBe(false);
+  });
+});
+
+/* ==========================================================================
+ * 2026-11-01 — `hentikanSuara`: satu kalimat yang diucapkan komponen, dan
+ * satu-satunya cara MENGhentikannya.
+ *
+ * KENAPA ADA
+ * ----------
+ * `SimulasiMensetsu.alihMikrofon` sudah lama menulis komentar "Suara pertanyaan
+ * dimatikan dulu: mikrofon yang mendengar TTS akan menyalin pertanyaannya
+ * sendiri sebagai jawaban." — tetapi tidak ada satu baris pun yang mematikan
+ * apa pun. Modul ini tidak punya fungsi cancel, jadi komentarnya menjelaskan
+ * perilaku yang tidak pernah berjalan (kelas R16: penjaga yang tidak bisa
+ * gagal). Akibatnya siswa yang menekan mikrofon sementara pertanyaan masih
+ * dibacakan akan melihat pertanyaannya masuk ke kotak jawaban sebagai
+ * "ucapannya sendiri" — dan dinilai sebagai jawaban.
+ * ========================================================================== */
+describe('hentikanSuara', () => {
+  it('memanggil cancel() pada mesin suara', () => {
+    const { log } = pasangSuara([{ name: 'Kyoko', lang: 'ja-JP' }]);
+    ucapkanJepang('おはよう');
+    log.length = 0;
+
+    expect(hentikanSuara()).toBe(true);
+    expect(log).toEqual(['cancel']);
+  });
+
+  it('false (bukan melempar) saat perangkat tidak punya mesin suara', () => {
+    expect(hentikanSuara()).toBe(false);
+  });
+
+  it('mesin suara yang melempar saat cancel tidak menjatuhkan komponen', () => {
+    g.speechSynthesis = {
+      speak: () => {},
+      cancel: () => {
+        throw new Error('boom');
+      },
+      getVoices: () => [],
+    };
+    g.SpeechSynthesisUtterance = class {
+      text = '';
+      lang = '';
+      rate = 1;
+      pitch = 1;
+      voice = null;
+      onend = null;
+      onerror = null;
+      constructor(t: string) {
+        this.text = t;
+      }
+    };
+    expect(hentikanSuara()).toBe(false);
   });
 });
 

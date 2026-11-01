@@ -262,20 +262,37 @@ export async function simpanJawaban(
 
   // 1) Kolom CV lebih dulu: kalau ini gagal, jangan simpan salinan yang
   //    membuat dua sumber berbeda pendapat.
+  //
+  //    ⚠ KOLOM KOSONG TIDAK DITULIS. Ini bukan optimasi, ini penjaga data:
+  //    fungsi ini dipanggil dari `onBlur` SETIAP kolom di `/wawancara`, jadi
+  //    baris yang kolom Indonesianya kebetulan kosong (siswa baru mengetik
+  //    huruf Jepangnya, atau menekan "Isi Jepang otomatis" lebih dulu) akan
+  //    mengirim `arti: ''` — dan sebelum 2026-11-01 itu berarti
+  //    `promosi_diri = ''`, yaitu Jiko PR yang sudah diisi di CV AI terhapus
+  //    oleh penyimpanan yang tidak berniat menghapus apa pun.
+  //
+  //    Aturan repo ini sudah menyebutkannya untuk form lain: menghapus isi
+  //    field = MENULIS '', dan itu hanya boleh dari form yang memang punya
+  //    niat menghapus (`formLengkap: true`). Di sini niat itu tidak ada —
+  //    tidak ada tombol "hapus jawaban" — jadi jalur hapus memang tidak
+  //    seharusnya lewat sini. Kalau nanti dibutuhkan, tambahkan aksi eksplisit
+  //    (mis. `hapusJawabanWawancara`), bukan dengan mengosongkan kolom.
   if (soal.kolom_cv) {
     const body: Record<string, string> = {};
-    body[soal.kolom_cv] = arti;
-    if (soal.kolom_cv_jp) body[soal.kolom_cv_jp] = jp;
-    try {
-      await supabaseJson('PATCH', 'master_database_candidate', {
-        query: { no_wa: `eq.${nw}` },
-        body,
-        headers: { Prefer: 'return=minimal' },
-      });
-    } catch (e) {
-      throw new AppError('VALIDATION_FAILED', {
-        message: `Gagal menyimpan ke kolom CV (${soal.kolom_cv}): ${String(e).slice(0, 160)}`,
-      });
+    if (arti) body[soal.kolom_cv] = arti;
+    if (soal.kolom_cv_jp && jp) body[soal.kolom_cv_jp] = jp;
+    if (Object.keys(body).length) {
+      try {
+        await supabaseJson('PATCH', 'master_database_candidate', {
+          query: { no_wa: `eq.${nw}` },
+          body,
+          headers: { Prefer: 'return=minimal' },
+        });
+      } catch (e) {
+        throw new AppError('VALIDATION_FAILED', {
+          message: `Gagal menyimpan ke kolom CV (${soal.kolom_cv}): ${String(e).slice(0, 160)}`,
+        });
+      }
     }
   }
 

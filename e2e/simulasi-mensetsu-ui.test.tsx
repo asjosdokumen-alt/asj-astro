@@ -126,6 +126,41 @@ describe('/wawancara — Mode Simulasi', () => {
     await waitFor(() => expect(screen.getByText('/ 8')).toBeTruthy());
   }, 20000);
 
+  /* ── "Lewati" harus BERBEDA dari "Kirim" ──────────────────────────────────
+   *
+   * Terukur sebelum 2026-11-01: kedua tombol memanggil `kirim()` yang sama,
+   * jadi menekan "Lewati" MENGIRIM jawaban yang sedang diketik — dan menekan
+   * "Kirim" pada kotak kosong sama dengan melewati. Dua tombol, satu perilaku,
+   * dua label berbeda: siswa tidak bisa memilih, dan tidak ada cara melewati
+   * soal tanpa nilainya tercatat nol.
+   *
+   * Yang diuji: melewati TIDAK membuat baris nilai, dan jumlahnya dilaporkan
+   * terpisah di layar hasil (kalau tidak, "2 soal" untuk ronde 2 soal yang
+   * dilewati semua terbaca seperti sistem yang kehilangan data). */
+  it('"Lewati" melewati soal tanpa mencatat nilai nol, dan dilaporkan terpisah', async () => {
+    render(<MensetsuForm />);
+    await waitFor(() => expect(screen.getByTestId('tab-simulasi')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('tab-simulasi'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-mulai')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('simulasi-mulai'));
+
+    await waitFor(() => expect(screen.getByTestId('simulasi-lewati')).toBeTruthy());
+    /* Isi kotak dulu: kalau "Lewati" masih memanggil kirim(), isian ini akan
+       terkirim dan muncul sebagai baris nilai. */
+    const kotak = screen.getByTestId('simulasi-transkrip') as HTMLTextAreaElement;
+    kotak.value = '私の名前はブディと申します。';
+    fireEvent.input(kotak);
+    fireEvent.click(screen.getByTestId('simulasi-lewati'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-lewati')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('simulasi-lewati'));
+
+    await waitFor(() => expect(screen.getByText('Hasil simulasi')).toBeTruthy());
+    const lewat = screen.getByTestId('simulasi-hasil-dilewati');
+    expect(lewat.textContent).toContain('2');
+    // Tidak ada satu pun kartu nilai: tidak ada jawaban yang dinilai.
+    expect(document.querySelectorAll('[data-jenis]').length).toBe(0);
+  }, 20000);
+
   it('ronde berjalan sampai layar hasil, dan nilainya berasal dari mesin penilaian', async () => {
     render(<MensetsuForm />);
     await waitFor(() => expect(screen.getByTestId('tab-simulasi')).toBeTruthy());
@@ -411,6 +446,50 @@ describe('/wawancara — rekam suara (MediaRecorder)', () => {
     vi.unstubAllGlobals();
     // @ts-expect-error — jsdom tidak punya mediaDevices sama sekali.
     delete globalThis.navigator.mediaDevices;
+  });
+
+  it('mikrofon mematikan suara pertanyaan lebih dulu (kalau tidak, TTS masuk ke jawaban)', async () => {
+    /* KENAPA TES INI ADA: `alihMikrofon` sudah lama BERKOMENTAR bahwa suara
+       pertanyaan dimatikan sebelum merekam, tetapi tidak ada kode yang
+       melakukannya — modul suara bahkan tidak punya fungsi cancel. Yang
+       terukur di perangkat: pertanyaan yang masih dibacakan ikut tertangkap
+       mikrofon, masuk ke kotak jawaban, dan dinilai sebagai jawaban siswa. */
+    const g = globalThis as unknown as Record<string, unknown>;
+    const asliSynth = g.speechSynthesis;
+    const asliUtt = g.SpeechSynthesisUtterance;
+    const cancel = vi.fn();
+    class UttStub {
+      lang = '';
+      rate = 1;
+      pitch = 1;
+      voice: unknown = null;
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      text: string;
+      constructor(text: string) {
+        this.text = text;
+      }
+    }
+    g.SpeechSynthesisUtterance = UttStub;
+    g.speechSynthesis = { cancel, speak: () => {}, getVoices: () => [] };
+
+    try {
+      render(<MensetsuForm />);
+      await waitFor(() => expect(screen.getByTestId('tab-simulasi')).toBeTruthy());
+      fireEvent.click(screen.getByTestId('tab-simulasi'));
+      await waitFor(() => expect(screen.getByTestId('simulasi-mulai')).toBeTruthy());
+      fireEvent.click(screen.getByTestId('simulasi-mulai'));
+
+      const mic = await screen.findByTestId('simulasi-mikrofon');
+      cancel.mockClear();
+      fireEvent.click(mic);
+      await waitFor(() => expect(mic.getAttribute('aria-pressed')).toBe('true'));
+
+      expect(cancel).toHaveBeenCalled();
+    } finally {
+      g.speechSynthesis = asliSynth;
+      g.SpeechSynthesisUtterance = asliUtt;
+    }
   });
 
   it('rekam → berhenti → transkrip server masuk ke kotak jawaban', async () => {

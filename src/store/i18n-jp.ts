@@ -1265,6 +1265,7 @@ export const jpTranslations: Record<string, string> = {
     "simulasi.acuan_tidak_ada": "基準なし — 内容評価は行いません",
     "simulasi.hasil_judul": "シミュレーション結果",
     "simulasi.skor_total": "平均点",
+    "simulasi.dilewati": "スキップした質問",
     "simulasi.aspek_kecocokan": "内容の一致",
     "simulasi.aspek_kelancaran": "流暢さ",
     "simulasi.aspek_waktu": "時間の守り方",

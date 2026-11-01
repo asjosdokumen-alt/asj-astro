@@ -34,6 +34,7 @@ import { showToast } from '../Toast';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import {
   ucapkanJepang,
+  hentikanSuara,
   dukunganDengar,
   buatPendengar,
   dukunganRekam,
@@ -169,6 +170,17 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   const [memproses, setMemproses] = useState(false);
   const [sisaWaktu, setSisaWaktu] = useState(60);
   const [hasil, setHasil] = useState<BarisHasil[]>([]);
+  /**
+   * Berapa soal yang DILEWATI (tombol "Lewati"), bukan dijawab kosong.
+   *
+   * KENAPA DIPISAH DARI `hasil`: melewati berarti tidak ada jawaban yang bisa
+   * dinilai, jadi tidak ada baris nilai — kalau dipaksa jadi nilai 0, rata-rata
+   * siswa tercampur dengan angka yang bukan hasil ucapannya. Tetapi
+   * menghilangkannya dari layar hasil membuat "2 soal" untuk ronde yang
+   * dilewati semua terbaca seperti data yang hilang, jadi jumlahnya dilaporkan
+   * sendiri.
+   */
+  const [dilewati, setDilewati] = useState(0);
 
   const mulaiRef = useRef(0);
   const dasarRef = useRef('');
@@ -247,6 +259,7 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     const urutan = susunRonde(dipilih, mode);
     setRonde(urutan);
     setHasil([]);
+    setDilewati(0);
     setTerbuka(0);
     setCentangMasuk([]);
     setCentangKeluar([]);
@@ -338,6 +351,27 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     lanjut();
   };
   kirimRef.current = kirim;
+
+  /**
+   * Lewati soal ini tanpa menilai.
+   *
+   * KENAPA BUKAN `kirim()` KOSONG — itu yang dipakai sampai 2026-11-01, dan
+   * akibatnya dua tombol di layar berperilaku persis sama: "Lewati" mengirim
+   * jawaban yang sedang diketik, dan "Kirim" pada kotak kosong sama dengan
+   * melewati. Dua label berbeda untuk satu perilaku berarti siswa tidak bisa
+   * memilih mana pun dengan sadar.
+   *
+   * Yang TIDAK dilakukan: mencatat nilai 0. Melewati bukan menjawab salah, dan
+   * rata-rata yang mencampur keduanya membuat angka di layar hasil bukan lagi
+   * gambaran ucapannya. Jumlah soal yang dilewati dilaporkan terpisah.
+   */
+  const lewati = () => {
+    if (layar !== 'main' || !soalAktif) return;
+    hentikanMikrofon();
+    setTranskrip('');
+    setDilewati((n) => n + 1);
+    lanjut();
+  };
 
   /* Timer. Efek "waktu habis" dipisah supaya tidak ada efek samping di dalam
      updater setState (React memanggilnya dua kali di StrictMode). */
@@ -477,6 +511,15 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
       hentikanMikrofon();
       return;
     }
+    /* Suara pertanyaan dimatikan dulu: mikrofon yang mendengar TTS akan
+       menyalin pertanyaannya sendiri sebagai jawaban.
+
+       ⚠ 2026-11-01 — kalimat di atas dulu hanya KOMENTAR: tidak ada satu baris
+       pun yang mematikan suara, dan `ttsJepang` bahkan tidak punya fungsi
+       cancel. Terukur di perangkat: pertanyaan yang masih dibacakan masuk ke
+       kotak jawaban sebagai "ucapan siswa", lalu dinilai sebagai jawaban.
+       `hentikanSuara()` adalah baris yang membuat komentar ini benar. */
+    hentikanSuara();
     if (!bisaDengar) {
       await mulaiRekam();
       return;
@@ -507,8 +550,7 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
       await mulaiRekam();
       return;
     }
-    /* Suara pertanyaan dimatikan dulu: mikrofon yang mendengar TTS akan
-       menyalin pertanyaannya sendiri sebagai jawaban. */
+    /* Suara sudah dimatikan di atas (sebelum cabang mana pun). */
     pendengarRef.current = p;
     dasarRef.current = transkrip.trim();
     p.mulai();
@@ -778,6 +820,14 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
           <p class="mt-1 text-[12px] text-fg-muted">
             {t('simulasi.skor_total')}: <b class="text-fg">{rata}</b> / 100 · {utama.length} {t('simulasi.soal')}
           </p>
+          {/* Dilewati dilaporkan SENDIRI, bukan sebagai nilai 0: lihat catatan
+              di `lewati()`. Tanpa baris ini, ronde yang dilewati semua tampil
+              sebagai "0 soal" — terbaca seperti data yang hilang. */}
+          {dilewati > 0 && (
+            <p class="mt-1 text-[11.5px] text-fg-muted" data-testid="simulasi-hasil-dilewati">
+              {t('simulasi.dilewati')}: <b class="text-fg">{dilewati}</b>
+            </p>
+          )}
           {/* Diukur di setiap mode yang menyembunyikan teks: di mode latihan
               teksnya memang selalu terbuka, jadi angka 0 di sana bukan pujian. */}
           {mode !== 'latihan' && (
@@ -1037,7 +1087,8 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
           </button>
           <button
             type="button"
-            onClick={() => kirim()}
+            onClick={lewati}
+            data-testid="simulasi-lewati"
             class="min-h-11 rounded-control border border-line bg-surface-raised px-3 text-[11.5px] font-bold text-fg-muted"
           >
             {t('simulasi.lewati')}
