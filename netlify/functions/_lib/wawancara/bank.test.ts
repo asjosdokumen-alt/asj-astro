@@ -221,6 +221,25 @@ describe('simpanJawaban — kolom CV ikut ditulis', () => {
       romaji: 'romaji saja',
     });
   });
+
+  /* ── BATAS PANJANG ────────────────────────────────────────────────────────
+   *
+   * `terjemahkanJawaban` membatasi INPUT 600 karakter, tetapi `simpanJawaban`
+   * — aksi yang dipanggil langsung dari klien — tidak membatasi apa pun, dan
+   * untuk 8 soal ber-`kolom_cv` nilainya masuk ke kolom CV (text tanpa batas).
+   * Body request dibatasi platform (~6 MB), jadi "tidak ada batas" berarti
+   * "sampai 6 MB masuk ke CV kandidat". */
+  it('nilai kepanjangan ditolak sebelum menulis apa pun', async () => {
+    await expect(
+      bank.simpanJawaban('628111', 'ms-009', { jp: 'あ'.repeat(2001), romaji: 'x', arti: 'x' }),
+    ).rejects.toThrow(/terlalu panjang/i);
+    expect(m.tulis).toHaveLength(0);
+  });
+
+  it('2000 karakter masih diterima (batasnya inklusif)', async () => {
+    await bank.simpanJawaban('628111', 'ms-009', { jp: 'あ'.repeat(2000), romaji: 'x', arti: 'x' });
+    expect(m.tulis.some((t) => t.table === 'wawancara_jawaban')).toBe(true);
+  });
 });
 
 describe('ambilBank — tabel belum ter-expose', () => {

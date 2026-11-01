@@ -132,6 +132,23 @@ function tulisDraftLokal(wa: string, draft: Draft): void {
 }
 
 /**
+ * Sidik jari satu baris jawaban — dipakai untuk tahu apakah isinya BERUBAH.
+ *
+ * KENAPA PERLU. Ketiga kolom memanggil `simpanBaris` dari `onBlur`, tanpa syarat.
+ * Menjelajahi bank (klik baris, tab antar kolom, gulir lalu keluar) menghasilkan
+ * satu PATCH + satu upsert per blur walau tidak ada satu huruf pun yang berubah:
+ * ~6 permintaan tulis per baris, ~1000 untuk 177 baris. Efeknya bukan hanya
+ * biaya — `updated_at` jadi tidak lagi berarti "kapan siswa terakhir mengubah",
+ * dan setiap baris yang tersentuh menulis ulang kolom CV-nya sendiri.
+ *
+ * Nilainya di-trim karena server juga men-trim (`simpanJawaban`); tanpa itu
+ * satu spasi di ujung kolom membuat barisnya terlihat "berubah" selamanya.
+ */
+function sidikJawaban(d: { jp: string; romaji: string; arti: string }): string {
+  return JSON.stringify({ jp: d.jp.trim(), romaji: d.romaji.trim(), arti: d.arti.trim() });
+}
+
+/**
  * Gabungkan draft server dengan draft lokal: server menang, lokal mengisi yang
  * kosong. Mengembalikan juga berapa kolom yang benar-benar dipulihkan, supaya
  * pemanggil bisa memberi tahu siswa alih-alih diam-diam mengisi teks yang ia
@@ -236,6 +253,8 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
   const [jawabanChat, setJawabanChat] = useState('');
   const [idxTanya, setIdxTanya] = useState(0);
   const chatRef = useRef<HTMLDivElement | null>(null);
+  /** Sidik jawaban yang SUDAH ada di server, per kode soal (lihat `sidikJawaban`). */
+  const tersimpanRef = useRef<Record<string, string>>({});
 
   const admin = auth.role === 'admin';
 
@@ -326,6 +345,12 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
           arti: s.jawabanku?.arti || '',
         };
       }
+      /* Patokan "sudah tersimpan" = isi SERVER, bukan hasil gabung dengan draft
+         perangkat: nilai yang hanya ada di perangkat memang belum pernah masuk
+         DB, jadi blur pertama pada baris itu HARUS menulis. */
+      tersimpanRef.current = Object.fromEntries(
+        Object.entries(awal).map(([k, v]) => [k, sidikJawaban(v)]),
+      );
       /* Draft perangkat hanya MENGISI kolom yang kosong di server — lihat
          "ATURAN GABUNG" di kepala berkas. */
       const { draft: gabungan, dipulihkan } = gabungDraft(awal, bacaDraftLokal(nomor));
@@ -418,9 +443,14 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
   const simpanBaris = async (kode: string, senyap = false) => {
     const d = draft[kode];
     if (!d) return;
+    /* Tidak ada yang berubah sejak simpanan terakhir ⇒ jangan menulis.
+       Lihat `sidikJawaban` untuk alasannya (blur tanpa syarat × 3 kolom). */
+    const sidik = sidikJawaban(d);
+    if (tersimpanRef.current[kode] === sidik) return;
     setSibuk((s) => ({ ...s, [kode]: 'simpan' }));
     try {
       await apiClient('simpanJawabanWawancara', [wa, kode, d], { onSessionInvalid: 'throw' });
+      tersimpanRef.current[kode] = sidik;
       if (!senyap) showToast(t('wawancara.tersimpan'), 'success');
     } catch (e) {
       showToast((e as ApiError).message || t('wawancara.gagal_simpan'), 'error');
@@ -447,6 +477,9 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
       const romaji = String(r.romaji || '');
       const artiRapi = String(r.arti || arti);
       setDraft((d) => ({ ...d, [kode]: { jp, romaji, arti: artiRapi } }));
+      /* Server baru saja menyimpan ketiganya — catat supaya blur berikutnya
+         tidak mengirim ulang isi yang sama. */
+      tersimpanRef.current[kode] = sidikJawaban({ jp, romaji, arti: artiRapi });
       if (dariChat) {
         setChat((c) => [
           ...c,
@@ -475,6 +508,32 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
 
     // Terjemahkan memakai teks yang baru saja ditulis (state belum tentu segar).
     setSibuk((s) => ({ ...s, [kode]: 'terjemah' }));
+
+    /* ── SIMPAN DULU, BARU TERJEMAHKAN ───────────────────────────────────────
+     *
+     * Sampai 2026-11-01 satu-satunya penulisan ke DB terjadi DI DALAM
+     * `terjemahkanJawabanWawancara`. Artinya jawaban yang baru diketik hilang
+     * dari DB kalau model kehabisan waktu (deadline 12 dtk, rantai 4 dtk/model)
+     * — yang tersisa hanya draft `localStorage` di perangkat itu, dan draft itu
+     * tidak ikut kalau siswa pindah HP. Di layar kejadiannya tidak terlihat
+     * seperti kehilangan: pesannya sudah tampil di chat.
+     *
+     * Sekarang teks Indonesianya disimpan lebih dulu (`jp` kosong — dan kolom
+     * CV tidak ikut dikosongkan, lihat `simpanJawaban`). Kalau terjemahan
+     * gagal, jawabannya tetap ada dan tinggal diisi Jepangnya nanti. */
+    try {
+      await apiClient(
+        'simpanJawabanWawancara',
+        [wa, kode, { jp: '', romaji: '', arti: teks }],
+        { onSessionInvalid: 'throw' },
+      );
+      tersimpanRef.current[kode] = sidikJawaban({ jp: '', romaji: '', arti: teks });
+    } catch (e) {
+      showToast((e as ApiError).message || t('wawancara.gagal_simpan'), 'error');
+      setSibuk((s) => ({ ...s, [kode]: '' }));
+      return;
+    }
+
     try {
       const r = await apiClient<{ jp?: string; romaji?: string; arti?: string }>(
         'terjemahkanJawabanWawancara',
@@ -485,6 +544,11 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
         ...d,
         [kode]: { jp: String(r.jp || ''), romaji: String(r.romaji || ''), arti: String(r.arti || teks) },
       }));
+      tersimpanRef.current[kode] = sidikJawaban({
+        jp: String(r.jp || ''),
+        romaji: String(r.romaji || ''),
+        arti: String(r.arti || teks),
+      });
       setChat((c) => [
         ...c,
         { dari: 'ai', teks: `${String(r.jp || '')}\n(${String(r.romaji || '')})\n\nSudah tersimpan.` },
@@ -500,7 +564,10 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
         ]);
       }
     } catch (e) {
-      showToast((e as ApiError).message || 'Gagal menerjemahkan.', 'error');
+      /* Di jalur ini jawaban Indonesia SUDAH tersimpan (lihat blok simpan di
+         atas), jadi pesannya harus mengatakan itu — kalimat "gagal" saja
+         membuat siswa mengetik ulang jawaban yang sebenarnya aman. */
+      showToast((e as ApiError).message || t('wawancara.gagal_terjemah_saja'), 'error');
     } finally {
       setSibuk((s) => ({ ...s, [kode]: '' }));
     }
@@ -940,7 +1007,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                           setDraft((x) => ({ ...x, [s.kode]: { ...d, jp: v } }));
                         }}
                         onBlur={() => void simpanBaris(s.kode, true)}
-                        placeholder="tulis jawaban Jepang…"
+                        placeholder={t('wawancara.ph_jp')}
                         class="w-full rounded-md bg-surface-sunken border border-line px-2 py-1 text-[13px] text-fg"
                       />
                     </label>
@@ -953,7 +1020,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                           setDraft((x) => ({ ...x, [s.kode]: { ...d, romaji: v } }));
                         }}
                         onBlur={() => void simpanBaris(s.kode, true)}
-                        placeholder="romaji…"
+                        placeholder={t('wawancara.ph_romaji')}
                         class="w-full rounded-md bg-surface-sunken border border-line px-2 py-1 text-[12.5px] text-fg"
                       />
                     </label>
@@ -966,7 +1033,7 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
                           setDraft((x) => ({ ...x, [s.kode]: { ...d, arti: v } }));
                         }}
                         onBlur={() => void simpanBaris(s.kode, true)}
-                        placeholder="arti jawaban…"
+                        placeholder={t('wawancara.ph_arti')}
                         class="w-full rounded-md bg-surface-sunken border border-line px-2 py-1 text-[12.5px] text-fg"
                       />
                     </label>

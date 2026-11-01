@@ -175,4 +175,44 @@ describe('/wawancara — suara & draft perangkat', () => {
 
     await waitFor(() => expect(tombol.disabled).toBe(false));
   });
+
+  /* ── MENULIS HANYA KALAU BERUBAH ──────────────────────────────────────────
+   *
+   * Ketiga kolom memanggil `simpanBaris` dari `onBlur` tanpa syarat, dan satu
+   * simpanan = satu PATCH ke `master_database_candidate` (untuk 8 soal
+   * ber-kolom CV) + satu upsert ke `wawancara_jawaban`. Menjelajahi bank berarti
+   * ~6 permintaan tulis per baris yang dibuka, ~1000 untuk 177 baris — dan
+   * `updated_at` berhenti berarti "kapan siswa terakhir mengubah".
+   *
+   * 🪤 KENAPA LEWAT TOMBOL "Simpan", BUKAN `fireEvent.blur`: jsdom tidak
+   * mengantarkan event `blur` ke handler Preact di sini — dibuktikan dengan
+   * mematikan pemeriksa sidik lalu menjalankan ulang: pemanggilan tetap nol,
+   * artinya yang gagal bukan pemeriksanya, melainkan event-nya tidak pernah
+   * sampai. Tes "blur tidak menulis apa pun" karena itu HIJAU TANPA MENGUKUR
+   * APA PUN (kelas R16). Tombol "Simpan" memakai `simpanBaris` yang sama —
+   * jalur kode yang diuji identik, pemicunya saja yang bisa dipercaya di jsdom. */
+  it('menekan Simpan dua kali tanpa mengubah apa pun hanya menulis sekali', async () => {
+    apiMock.mockResolvedValue(
+      bank({ jp: '私の名前はブディです。', romaji: 'watashi no namae wa budi desu.', arti: 'Nama saya Budi.' }),
+    );
+    render(<MensetsuForm />);
+
+    const arti = (await screen.findByPlaceholderText('arti jawaban…')) as HTMLInputElement;
+    await waitFor(() => expect(arti.value).toBe('Nama saya Budi.'));
+
+    apiMock.mockClear();
+    /* Ubah → Simpan: satu tulisan. */
+    arti.value = 'Nama saya Budi, dari Malang.';
+    fireEvent.input(arti);
+    await new Promise((r) => setTimeout(r, 0));
+    fireEvent.click(screen.getAllByText('Simpan')[0] as Element);
+    await waitFor(() =>
+      expect(apiMock.mock.calls.filter((c) => c[0] === 'simpanJawabanWawancara')).toHaveLength(1),
+    );
+
+    /* Simpan lagi tanpa perubahan: tidak ada tulisan kedua. */
+    fireEvent.click(screen.getAllByText('Simpan')[0] as Element);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(apiMock.mock.calls.filter((c) => c[0] === 'simpanJawabanWawancara')).toHaveLength(1);
+  });
 });

@@ -95,10 +95,37 @@ export const BATAS_TANPA_ACUAN = 70;
 export const AMBANG_GRADE = { A: 85, B: 70, C: 55 } as const;
 
 /**
- * Pengisi suara yang paling sering muncul saat siswa gugup. Dihitung sebagai
- * pengulangan, bukan kesalahan isi — karena itu ia menyerang aspek kelancaran.
+ * Pengisi suara yang TIDAK ambigu — dihitung di mana pun ia muncul.
+ *
+ * `えーと` didahulukan dari `えー` supaya satu ucapan tidak dihitung dua kali
+ * (alternasi regex memilih yang paling kiri lebih dulu).
  */
-const FILLER = /(えーと|えっと|えー|あのー|あのう|あの|んー|そのー|まあ|なんか)/g;
+const FILLER_PASTI = /(えーと|えっと|あのー|あのう|んー|そのー|えー)/g;
+
+/**
+ * Pengisi suara yang JUGA kata biasa: あの (itu), まあ (yah), なんか (sesuatu).
+ *
+ * KENAPA HARUS BERDIRI SENDIRI. `normalisasi()` membuang tanda baca, jadi
+ * `あの、` (gagap) dan `あの日` (hari itu) menjadi string yang sama — dan versi
+ * lama menghitung keduanya. Untuk modul yang menilai, menghukum jawaban yang
+ * BENAR lebih merusak daripada melewatkan satu filler: siswa mengejar selisih
+ * yang tidak ada dan tidak punya cara tahu sebabnya. Jadi filler ambigu hanya
+ * dihitung kalau diapit tanda baca/spasi atau berada di awal/akhir kalimat.
+ *
+ * Arah kesalahannya disengaja: lebih baik melewatkan "あの" yang diucapkan
+ * tanpa jeda (tidak dihukum) daripada menghukum "あの日".
+ */
+const FILLER_AMBIGU =
+  /(?:^|[\s、。，,.!?！？「」『』…])(あの|まあ|なんか)(?=$|[\s、。，,.!?！？「」『』…])/g;
+
+export function hitungFiller(teks: string): number {
+  /* NFKC tanpa membuang tanda baca: batas kata itulah yang membedakan filler
+     dari kata biasa, jadi tanda bacanya harus masih ada saat dicocokkan. */
+  const t = String(teks ?? '').normalize('NFKC');
+  const pasti = (t.match(FILLER_PASTI) ?? []).length;
+  const ambigu = (t.match(FILLER_AMBIGU) ?? []).length;
+  return pasti + ambigu;
+}
 
 /**
  * Normalisasi sebelum dibandingkan: NFKC (menyatukan huruf lebar/half-width),
@@ -141,11 +168,6 @@ export function rasioKecocokan(transkrip: string, acuan: string): number {
   let sama = 0;
   for (const g of a) if (t.has(g)) sama++;
   return sama / a.size;
-}
-
-export function hitungFiller(teks: string): number {
-  const m = normalisasi(teks).match(FILLER);
-  return m ? m.length : 0;
 }
 
 /**

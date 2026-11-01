@@ -1741,6 +1741,13 @@ export const translations: Record<Lang, Record<string, string>> = {
     "wawancara.tanya_chat": "Tanya ini di chat",
     "wawancara.tersimpan": "Tersimpan.",
     "wawancara.gagal_simpan": "Gagal menyimpan.",
+    "wawancara.gagal_terjemah_saja": "Gagal menerjemahkan. Jawaban Bahasa Indonesianya sudah tersimpan — coba \"Isi Jepang otomatis\" lagi nanti.",
+    /* Placeholder tiga kolom jawaban. Nilai `id`-nya SENGAJA sama persis dengan
+       teks yang dulu hardcoded: tes memilih kolom lewat placeholder, dan
+       mengubah teks Indonesia berarti memecahkan tes tanpa memperbaiki apa pun. */
+    "wawancara.ph_jp": "tulis jawaban Jepang…",
+    "wawancara.ph_romaji": "romaji…",
+    "wawancara.ph_arti": "arti jawaban…",
     /* ── Mode Simulasi wawancara ────────────────────────────────────────────
        Tab di halaman /wawancara: Bank Soal (menyiapkan naskah) dan Simulasi
        (diacak + berwaktu + dinilai). */

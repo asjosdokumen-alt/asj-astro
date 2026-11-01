@@ -238,6 +238,23 @@ export async function statusVip(wa: string): Promise<boolean | null> {
 }
 
 /**
+ * Batas panjang satu field jawaban.
+ *
+ * KENAPA ADA. `terjemahkanJawaban` sudah membatasi INPUT-nya 600 karakter, tapi
+ * `simpanJawaban` — aksi yang dipanggil LANGSUNG dari klien lewat
+ * `simpanJawabanWawancara` — tidak membatasi apa pun. Untuk 8 soal ber-
+ * `kolom_cv`, nilainya masuk ke kolom CV (`text`, tanpa batas) di
+ * `master_database_candidate`. Body request dibatasi platform (~6 MB), jadi
+ * "tanpa batas" berarti "sampai 6 MB masuk ke CV kandidat" — dan CV itu yang
+ * dicetak ke 履歴書 serta dikirim ke perusahaan.
+ *
+ * 2000 karakter ≈ 10x jawaban wawancara terpanjang yang wajar; cukup longgar
+ * untuk tidak pernah menyentuh siswa sungguhan, cukup ketat untuk menolak
+ * kiriman yang bukan jawaban.
+ */
+const BATAS_FIELD = 2000;
+
+/**
  * Simpan satu jawaban. Kalau soal dipetakan ke kolom CV, kolom CV ikut ditulis
  * — itu yang membuat perubahan terlihat di CV AI.
  */
@@ -259,6 +276,18 @@ export async function simpanJawaban(
   const jp = String(val.jp ?? '').trim();
   const romaji = String(val.romaji ?? '').trim();
   const arti = String(val.arti ?? '').trim();
+
+  for (const [nama, isi] of [
+    ['jp', jp],
+    ['romaji', romaji],
+    ['arti', arti],
+  ] as const) {
+    if (isi.length > BATAS_FIELD) {
+      throw new AppError('VALIDATION_FAILED', {
+        message: `Jawaban terlalu panjang (${nama}: ${isi.length} karakter, maks ${BATAS_FIELD}).`,
+      });
+    }
+  }
 
   // 1) Kolom CV lebih dulu: kalau ini gagal, jangan simpan salinan yang
   //    membuat dua sumber berbeda pendapat.

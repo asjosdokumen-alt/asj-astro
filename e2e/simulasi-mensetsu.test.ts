@@ -91,6 +91,30 @@ describe('hitungFiller', () => {
     expect(hitungFiller('えーと、あのー、私の名前は')).toBe(2);
     expect(hitungFiller('私の名前はブディです')).toBe(0);
   });
+
+  /* ── KATA BIASA YANG KEBETULAN MEMUAT FILLER ──────────────────────────────
+   *
+   * `あの` (itu), `まあ` (yah), dan `なんか` (sesuatu) adalah kata biasa yang
+   * JUGA dipakai sebagai pengisi suara. Versi lama menghitungnya di mana pun ia
+   * muncul, dan karena `normalisasi()` membuang tanda baca lebih dulu, `あの、`
+   * dan `あの日` menjadi string yang sama — "あの日" (hari itu) dihukum sebagai
+   * gagap. Untuk modul yang menilai, hukuman pada jawaban yang BENAR lebih
+   * merusak daripada melewatkan satu filler: siswa mengejar selisih yang tidak
+   * ada, dan tidak ada cara ia tahu mengapa nilainya turun.
+   *
+   * Aturannya sekarang: filler ambigu hanya dihitung kalau ia BERDIRI SENDIRI
+   * (diapit tanda baca, spasi, atau awal/akhir kalimat). */
+  it('kata biasa yang memuat あの/まあ/なんか TIDAK dihitung', () => {
+    expect(hitungFiller('あの日は雨でした')).toBe(0);
+    expect(hitungFiller('まあまあです')).toBe(0);
+    expect(hitungFiller('なんか食べたいです')).toBe(0);
+  });
+
+  it('tapi filler yang berdiri sendiri tetap dihitung', () => {
+    expect(hitungFiller('あの、私の名前は')).toBe(1);
+    expect(hitungFiller('まあ、いいです')).toBe(1);
+    expect(hitungFiller('なんか、疲れました')).toBe(1);
+  });
 });
 
 describe('nilaiJawaban', () => {
