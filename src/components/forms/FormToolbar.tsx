@@ -1,15 +1,33 @@
 /**
  * FormToolbar.tsx — Reusable toolbar for standalone form pages
- * Includes: Back to Portal + Theme toggle + Language toggle
+ * Includes: Back control + Theme toggle + Language toggle
  */
 import { useStore } from '@nanostores/preact';
 import { toggleLang, t, useLang } from '../../store/i18n';
 import { themeStore, toggleTheme } from '../../store/theme';
+import { authStore } from '../../store/authReactive';
 import Icon from '../ui/Icon';
 
 interface Props {
   titleKey?: string;
   title?: string;
+  /**
+   * Ke mana tombol kembali menunjuk.
+   *
+   * `'portal'` (default) — selalu ke `/`, perilaku lama. Itu yang benar untuk
+   * halaman yang memang milik portal: `/admin`, `/apply`, `/master`, `/share`.
+   *
+   * `'dashboard'` — untuk `/ai-cv` dan `/wawancara`, dua halaman yang dibuka
+   * DARI dashboard kandidat. Pemilik 2026-11-01: "kandidat dari cv ai dan
+   * wawancara kembali ke portal, gak ada kembali ke dashboard. Kalau di admin
+   * kan enak ada tombol ×-nya langsung balik panel admin."
+   *
+   * Yang menentukan tetap status sesi, bukan prop itu sendiri: kandidat yang
+   * login kembali ke `/candidate`, tamu dan admin tetap ke `/`. Tanpa syarat
+   * itu, tombol "Dashboard" akan muncul untuk orang yang belum punya dashboard
+   * — dan `/candidate` hanya akan memantulkannya ke halaman login.
+   */
+  backTo?: 'portal' | 'dashboard';
   /**
    * Render the title as the page's `<h1>`.
    *
@@ -31,11 +49,24 @@ interface Props {
 
 const TITLE_CLASS = 'min-w-0 flex-1 px-2 text-center text-xs font-bold text-slate-300 truncate';
 
-export default function FormToolbar({ title, titleKey, asHeading = true }: Props) {
+export default function FormToolbar({ title, titleKey, asHeading = true, backTo = 'portal' }: Props) {
   const lang = useLang();
   // Read the mode from the store rather than keeping local state, so a
   // toggle made on another page (or in another tab) shows up here too.
   const isDark = useStore(themeStore) !== "light";
+
+  /**
+   * Tujuan tombol kembali.
+   *
+   * `useStore` (bukan `authStore.get()`) supaya labelnya ikut berubah saat
+   * kandidat login DI HALAMAN INI: `/ai-cv` dan `/wawancara` punya gerbang
+   * login sendiri, jadi pada paint pertama store masih kosong dan tombolnya
+   * "Portal". Setelah login, ia harus berubah jadi "Dashboard" tanpa reload.
+   */
+  const auth = useStore(authStore);
+  const keDashboard = backTo === 'dashboard' && auth.isLoggedIn && auth.role === 'kandidat';
+  const hrefKembali = keDashboard ? '/candidate' : '/';
+  const labelKembali = keDashboard ? t('header.dashboard') : t('button.portal');
 
   return (
     <div class="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between px-3 py-2 bg-black/70 backdrop-blur-sm border-b border-white/10">
@@ -47,8 +78,8 @@ export default function FormToolbar({ title, titleKey, asHeading = true }: Props
           24px on the height and well under the project's 44px floor
           (DESIGN.md:582, :691). `min-h-11 min-w-11` puts the floor on the anchor
           itself, which is what receives the tap. */}
-      <a href="/" aria-label={t('button.portal')} class="min-h-11 min-w-11 flex items-center justify-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/80 text-white text-xs font-bold rounded-full border border-white/20 transition-[background-color,transform] hover:scale-105">
-        <Icon name="arrow-left" /> <span class="hidden sm:inline">{t('button.portal')}</span>
+      <a href={hrefKembali} aria-label={labelKembali} class="min-h-11 min-w-11 flex items-center justify-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/80 text-white text-xs font-bold rounded-full border border-white/20 transition-[background-color,transform] hover:scale-105">
+        <Icon name="arrow-left" /> <span class="hidden sm:inline">{labelKembali}</span>
       </a>
       {/* The page title IS the page's h1 — not a decorative <span>. Four form
           routes (/apply, /master, /ai-cv, /siswa-baru) rendered NO h1 at all,

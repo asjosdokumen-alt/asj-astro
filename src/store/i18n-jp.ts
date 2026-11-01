@@ -2216,12 +2216,6 @@ export const jpTranslations: Record<string, string> = {
     // 生テキストで出荷したため、日本語利用者にはそのままインドネシア語が
     // 見えていた。HTML はビルド時に固定されるので `t()` ではなく
     // `data-lang`（translateDataLang）で切り替える。
-    "ai_cv.intro_h1": "AIで日本向け履歴書を作成",
-    "ai_cv.intro_desc": "AIアシスタント「Qween Jeklin」が、日本の人材紹介会社が受け付ける形式でプロフェッショナルな履歴書を作成します。無料で、所要時間は約5分です。",
-    "ai_cv.intro_step1": "簡単な質問にいくつか答えるだけ",
-    "ai_cv.intro_step2": "AIが日本形式に沿って自動で作成",
-    "ai_cv.intro_step3": "ダウンロード前にプレビュー・編集",
-    "ai_cv.intro_step4": "送付できるPDF形式でダウンロード",
     "apply.intro_h1": "日本就労の応募フォーム",
     "apply.intro_desc": "必要事項をすべてご記入ください。1〜2営業日以内に面接と書類確認のためご連絡します。",
     "apply.intro_step1": "プロフィールを記入し書類をアップロード",

@@ -106,6 +106,11 @@ const ROUTES = [
   { path: '/siswa-baru', session: 'kandidat' },
   { path: '/share', session: 'kandidat' },
   { path: '/ai-cv', session: null },
+  // Ditambahkan 2026-11-01. Rute ini punya toolbar DAN h1 sendiri, dan karena
+  // tidak terdaftar di sini, duplikat h1-nya (toolbar + judul halaman) tidak
+  // pernah berbunyi — terukur di browser: dua h1. Diperbaiki dengan
+  // `asHeading={false}` di `wawancara.astro`; didaftarkan supaya tidak kembali.
+  { path: '/wawancara', session: null },
   { path: '/admin', session: 'admin' },
   { path: '/candidate', session: 'kandidat' },
 ];

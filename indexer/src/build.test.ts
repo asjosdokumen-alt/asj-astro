@@ -851,7 +851,14 @@ describe('full build', () => {
     // yang dulu mencetak "Bab 0"), `resetFilter` (jalan keluar dari kombinasi
     // filter kosong), dan dua callback JSX. Diukur di dua ujung pada pohon yang
     // sama: 31 003 sebelum polish, 31 007 sesudah. Tidak ada berkas baru.
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(31007); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
+    // 31007 -> 31014 (2026-11-01, tombol kembali + hapus pengantar /ai-cv).
+    // +7 diukur di total, dua ujung. Rincian per berkas (parseFile):
+    // FormToolbar 32 -> 38 (prop `backTo`, `auth`, `keDashboard`, `hrefKembali`,
+    // `labelKembali`), ai-cv.astro 11 -> 7 (blok pengantar dihapus — template
+    // `h1`/`p`/`ol`/`li` ikut hilang). Angka per berkas tidak dijumlahkan ke +7
+    // karena buildIndex menghitung template Astro berbeda dari parseFile;
+    // yang dijaga gate ini adalah TOTALNYA, dan totalnya diukur dua ujung.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(31014); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

@@ -16,7 +16,14 @@ import MensetsuForm from '../components/candidate/MensetsuForm.tsx';
 >
   <App showHeader={false} client:only="preact" />
 
-  <FormToolbar client:only="preact" titleKey="toolbar.mensetsu" />
+  {/* `asHeading={false}`: halaman ini SUDAH punya h1 sendiri ("Latihan
+      Wawancara Jepang (Mensetsu)"). Dibiarkan default, toolbar menambah h1
+      kedua — terukur 2026-11-01: dua h1 di rute ini. `/wawancara` tidak masuk
+      daftar `e2e:headings`, jadi duplikatnya tidak pernah berbunyi.
+
+      `backTo="dashboard"`: kandidat kembali ke dasbornya, bukan ke portal.
+      Sama seperti `/ai-cv` — lihat catatan di `FormToolbar`. */}
+  <FormToolbar client:only="preact" titleKey="toolbar.mensetsu" asHeading={false} backTo="dashboard" />
   <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[64px]">
     <div class="max-w-[1400px] mx-auto px-3">
       <section class="mb-3">

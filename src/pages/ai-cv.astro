@@ -8,23 +8,22 @@ import FormToolbar from "../components/forms/FormToolbar";
 <BaseLayout title="AI CV Assistant — Buat CV Kerja Jepang" titleKey="doc.title_ai_cv" description="Buat CV kerja ke Jepang dengan AI Assistant Qween Jeklin. Gratis, cepat, dan sesuai format agensi Jepang.">
   <App showHeader={false} client:only="preact" />
 
-  <FormToolbar client:only="preact" titleKey="toolbar.ai_cv" asHeading={false} />
+  {/*
+    H1 HALAMAN ADA DI TOOLBAR (`asHeading` dibiarkan default: true).
+
+    Dulu halaman ini punya blok pengantar sendiri — judul "Buat CV Kerja Jepang
+    dengan AI", satu paragraf, dan empat langkah bernomor. Pemilik 2026-11-01:
+    "tolong hilangkan tulisan atas ini, bikin habis ruang saja". Blok itu
+    dihapus; karena `<h1>`-nya ikut hilang, identitas halaman dipindahkan ke
+    toolbar — bukan dibiarkan kosong. `e2e:headings` menuntut tepat satu h1 per
+    rute, jadi menghapus blok tanpa memindahkan h1 akan membuat rute ini nol h1.
+
+    `backTo="dashboard"`: kandidat yang membuka halaman ini kembali ke
+    dasbornya, bukan ke portal (lihat catatan di FormToolbar).
+  */}
+  <FormToolbar client:only="preact" titleKey="toolbar.ai_cv" backTo="dashboard" />
   <main id="main-content" class="w-full min-h-[50vh] pt-[var(--u-toolbar-h)]">
-    {/* Pengantar tetap sempit (mudah dibaca), tapi RUANG KERJANYA tidak ikut
-        sempit. Dulu `max-w-3xl` membungkus keduanya, jadi di layar 1440px
-        seluruh panel CV hanya selebar 768px — kolom isian jadi sempit dan
-        "Preview CV" terdesak. Sekarang hanya pengantar yang dibatasi. */}
     <div class="max-w-3xl mx-auto px-4">
-      <section class="mb-8">
-        <h1 class="text-2xl font-bold text-fg mb-2" data-lang="ai_cv.intro_h1">Buat CV Kerja Jepang dengan AI</h1>
-        <p class="text-fg-muted leading-relaxed" data-lang="ai_cv.intro_desc">AI Assistant Qween Jeklin membantu menyusun CV profesional dalam format yang diterima agensi penempatan kerja Jepang. Gratis dan hanya membutuhkan 5 menit.</p>
-        <ol class="mt-4 space-y-2 text-sm text-fg-muted list-decimal list-inside">
-          <li data-lang="ai_cv.intro_step1">Jawab beberapa pertanyaan singkat tentang diri Anda</li>
-          <li data-lang="ai_cv.intro_step2">AI menyusun CV otomatis sesuai format Jepang</li>
-          <li data-lang="ai_cv.intro_step3">Preview & edit langsung sebelum download</li>
-          <li data-lang="ai_cv.intro_step4">Download CV dalam format PDF siap kirim</li>
-        </ol>
-      </section>
       <noscript data-lang="doc.needs_js" class="block mb-4 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.</noscript>
     </div>
     <AiCvForm client:only="preact" />

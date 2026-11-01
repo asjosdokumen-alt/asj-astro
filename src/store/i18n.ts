@@ -2555,12 +2555,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Mekanismenya `data-lang` (bukan `t()`), karena HTML-nya dibekukan saat
     // build — `t()` akan membakar bahasa build dan toggle JP tidak akan pernah
     // sampai ke elemen itu.
-    "ai_cv.intro_h1": "Buat CV Kerja Jepang dengan AI",
-    "ai_cv.intro_desc": "AI Assistant Qween Jeklin membantu menyusun CV profesional dalam format yang diterima agensi penempatan kerja Jepang. Gratis dan hanya membutuhkan 5 menit.",
-    "ai_cv.intro_step1": "Jawab beberapa pertanyaan singkat tentang diri Anda",
-    "ai_cv.intro_step2": "AI menyusun CV otomatis sesuai format Jepang",
-    "ai_cv.intro_step3": "Preview & edit langsung sebelum download",
-    "ai_cv.intro_step4": "Download CV dalam format PDF siap kirim",
     "apply.intro_h1": "Formulir Lamaran Kerja ke Jepang",
     "apply.intro_desc": "Isi data diri Anda dengan lengkap. Tim kami akan menghubungi dalam 1–2 hari kerja untuk proses wawancara dan verifikasi dokumen.",
     "apply.intro_step1": "Isi biodata lengkap & upload dokumen",
