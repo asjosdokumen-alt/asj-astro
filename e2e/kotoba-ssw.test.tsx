@@ -21,7 +21,7 @@
  * berkas di `e2e/` tidak dihitung (R13f-bis), dan `.tsx` di sini masuk proyek
  * `frontend` (jsdom) tanpa perlu didaftarkan di `exclude`.
  */
-import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/preact';
+import { render, screen, cleanup, waitFor, fireEvent, within } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import KotobaGame from '../src/components/candidate/KotobaGame';
 import { authStore } from '../src/store/authReactive';
@@ -195,6 +195,47 @@ describe('/kotoba — modul latihan per bidang SSW', () => {
     await waitFor(() => expect(screen.getByText('転倒')).toBeTruthy());
     expect(screen.queryByText('車椅子')).toBeNull();
     expect(screen.queryByText('おむつ')).toBeNull();
+  });
+
+  it('kartu soal tidak mencetak "Bab 0" — kata bidang memakai kategorinya', async () => {
+    loginSebagaiSiswa();
+    render(<KotobaGame />);
+    await waitFor(() => expect(screen.getByText('Flashcard')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('Bidang Kerja (SSW)'));
+    await waitFor(() => expect(screen.getByLabelText('Pilih bidang kerja')).toBeTruthy());
+
+    /* Kartu soal, BUKAN seluruh halaman: `<option>` di dropdown kategori juga
+       berisi teks "Alat & bahan", jadi kueri halaman-lebar akan lulus tanpa
+       badge-nya pernah benar (diukur: mutasi `labelAsal` jadi "Bab N" tetap
+       hijau saat kuerinya tidak dibatasi). */
+    /* Kategorinya TIDAK bisa dipatok: soal pertama ditarik acak dari empat kata
+       bidang uji ini, jadi badge-nya bisa "Alat & bahan" atau kategori lain.
+       Yang dikunci adalah bentuknya — salah satu dari lima label kategori, dan
+       tidak pernah "Bab 0". */
+    await waitFor(() => {
+      const kartu = screen.getByTestId('kotoba-kartu');
+      expect(within(kartu).queryByText(/Bab 0/)).toBeNull();
+      expect(
+        within(kartu).getAllByText(
+          /^(Alat & bahan|Tindakan kerja|Keselamatan & higiene|Mutu & pengelolaan|Dokumen & komunikasi)$/,
+        ).length,
+      ).toBeGreaterThan(0);
+    });
+  });
+
+  it('jumlah kata di kop mengikuti filter, bukan seluruh isi bidang', async () => {
+    loginSebagaiSiswa();
+    render(<KotobaGame />);
+    await waitFor(() => expect(screen.getByText('Flashcard')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('Bidang Kerja (SSW)'));
+    await waitFor(() => expect(screen.getByLabelText('Pilih kategori kerja')).toBeTruthy());
+    /* Bidang kaigo di bank uji ini berisi 4 kata; kategori "aman" hanya 1. */
+    expect(screen.getByText(/4 kosakata/)).toBeTruthy();
+
+    pilihOpsi('Pilih kategori kerja', 'aman');
+    await waitFor(() => expect(screen.getByText(/1 kosakata/)).toBeTruthy());
   });
 
   it('kembali ke tab buku memakai bank buku lagi, tanpa memanggil SSW dua kali', async () => {

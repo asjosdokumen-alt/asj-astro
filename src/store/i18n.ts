@@ -1853,6 +1853,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.arah_jp_id": "Jepang → Indonesia",
     "kotoba.arah_id_jp": "Indonesia → Jepang",
     "kotoba.kosong": "Tidak ada kosakata untuk filter ini.",
+    "kotoba.reset_filter": "Hapus semua filter",
     "kotoba.nyawa": "Nyawa",
     "kotoba.skor": "Skor",
     "kotoba.sisa_waktu": "Sisa waktu",

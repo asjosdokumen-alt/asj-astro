@@ -1322,6 +1322,7 @@ export const jpTranslations: Record<string, string> = {
     "kotoba.arah_jp_id": "日本語 → インドネシア語",
     "kotoba.arah_id_jp": "インドネシア語 → 日本語",
     "kotoba.kosong": "この条件に合う語彙がありません。",
+    "kotoba.reset_filter": "絞り込みを解除",
     "kotoba.nyawa": "残りライフ",
     "kotoba.skor": "スコア",
     "kotoba.sisa_waktu": "残り時間",

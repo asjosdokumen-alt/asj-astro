@@ -618,6 +618,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   };
 
   const mulaiRonde = (khusus?: readonly Kotoba[]) => {
+    /* Jangan pernah memulai ronde tanpa kata. Tanpa penjaga ini, memilih tab
+       SSW sebelum banknya tiba (atau kombinasi filter yang mustahil) langsung
+       memanggil `pasangSoal(null)` → layar "Ronde selesai · 0/0", yang terbaca
+       sebagai "rondemu gagal" padahal belum ada satu soal pun. */
+    if (!khusus?.length && !pool.length) return;
     setSkor(0);
     setHp(NYAWA_AWAL);
     setKombo(0);
@@ -848,6 +853,23 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     kantor: t('kotoba.cat_kantor'),
   };
 
+  /** Kembalikan semua filter ke "semua" — jalan keluar dari kombinasi kosong. */
+  const resetFilter = () => {
+    setBabFilter('all');
+    setPosFilter('all');
+    setCatFilter('all');
+  };
+
+  /**
+   * Label kecil di kartu soal/kartu hafalan.
+   *
+   * Kata bidang tidak punya bab, jadi `b`-nya 0 — dan badge yang mencetak
+   * "Bab 0" adalah bug yang terlihat siswa, bukan detail internal. Di mode SSW
+   * badge itu menampilkan kategorinya, yang justru informasi yang dicari.
+   */
+  const labelAsal = (v: Kotoba): string =>
+    sumber === 'ssw' ? (v.cat ? labelKategori[v.cat] : 'SSW') : `${t('kotoba.bab')} ${v.b}`;
+
   /* ── render: gerbang login ─────────────────────────────────────────────── */
   if (loginGate) {
     return (
@@ -933,7 +955,19 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   }
 
   const kartu = pool.length ? pool[kartuIdx % pool.length] : undefined;
-  const kataDikuasai = Object.values(progres.kata).filter((c) => c.benar >= 3 && c.salah === 0).length;
+  /**
+   * "Dikuasai" dihitung pada `pool`, bukan seluruh progres.
+   *
+   * Sebelumnya ia menjumlahkan SELURUH riwayat peramban. Begitu bank bidang
+   * berisi 1 061 kata, angka itu berhenti berarti apa pun: siswa melihat
+   * "63 kata · 180 dikuasai" di satu bidang — angka yang mustahil dan membuat
+   * kop halaman berbohong. Yang relevan adalah berapa kata DI FILTER INI yang
+   * sudah dikuasai.
+   */
+  const kataDikuasai = pool.filter((v) => {
+    const c = progres.kata[kunciKata(v)];
+    return !!c && c.benar >= 3 && c.salah === 0;
+  }).length;
   const kueri = cari.trim().toLowerCase();
   const hasilCari = kueri
     ? pool.filter(
@@ -980,7 +1014,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       <header class="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 class="sr-only">{t('kotoba.judul')}</h2>
         <p class="text-[12px] text-fg-muted">
-          {sumber === 'ssw' ? kataBidang.length : bank.length} {t('kotoba.kata_tersedia')} ·{' '}
+          {pool.length} {t('kotoba.kata_tersedia')} ·{' '}
           {kataDikuasai} {t('kotoba.kata_dikuasai')} · {t('kotoba.rekor')} {progres.rekor}
         </p>
         {/* Saklar suara otomatis. Teksnya berubah, bukan cuma ikon: ikon 🔊/🔇
@@ -1042,8 +1076,16 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
         ))}
       </fieldset>
 
-      {/* ── Filter ── */}
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+      {/* ── Filter ──
+          Mode buku: 3 kontrol dalam 3 kolom. Mode SSW: 4 kontrol, jadi gridnya
+          dipaksa 2 kolom di semua lebar — dengan 3 kolom, dropdown keempat
+          jatuh sendirian di baris kedua dan menyisakan dua sel kosong (terukur
+          di 1180 px: tiga select di y=382, satu di y=434). */}
+      <div
+        class={`grid grid-cols-2 ${
+          sumber === 'ssw' ? '' : 'sm:grid-cols-3'
+        } gap-2 mb-2`}
+      >
         {sumber === 'ssw' ? (
           <select
             aria-label={t('kotoba.filter_bidang')}
@@ -1103,7 +1145,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           aria-label={t('kotoba.filter_arah')}
           value={arah}
           onChange={(e) => setArah((e.target as HTMLSelectElement).value as Arah)}
-          class="col-span-2 sm:col-span-1 min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
+          /* Di mode SSW ada EMPAT dropdown; `col-span-2` yang dipakai mode buku
+             akan menyisakan lubang satu sel di baris kedua pada layar ponsel. */
+          class={`${
+            sumber === 'ssw' ? '' : 'col-span-2 sm:col-span-1'
+          } min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg`}
         >
           <option value="jp-id">{t('kotoba.arah_jp_id')}</option>
           <option value="id-jp">{t('kotoba.arah_id_jp')}</option>
@@ -1141,12 +1187,25 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           pesan "tidak ada kosakata untuk filter ini" akan menyalahkan filter
           padahal yang belum selesai adalah permintaannya. */}
       {!pool.length && !(sumber === 'ssw' && (sswMemuat || !bidangId)) && (
-        <p class="text-center text-sm text-fg-muted py-6">{t('kotoba.kosong')}</p>
+        <div class="text-center py-6">
+          <p class="text-sm text-fg-muted mb-3">{t('kotoba.kosong')}</p>
+          {/* Kombinasi filter yang mustahil (mis. kategori "mutu" + jenis
+              "kata kerja" — kategori itu isinya kata benda) dulu berakhir di
+              jalan buntu: pesannya benar, tapi tidak ada cara keluar selain
+              menebak dropdown mana yang harus diubah. */}
+          <button
+            type="button"
+            onClick={resetFilter}
+            class="min-h-11 px-4 rounded-control border border-line bg-surface-raised text-fg text-[12px] font-bold"
+          >
+            {t('kotoba.reset_filter')}
+          </button>
+        </div>
       )}
 
       {/* ── KUIS / KETIK ── */}
       {pool.length > 0 && (mode === 'kuis' || mode === 'ketik') && (
-        <section class="rounded-card border border-line bg-surface p-4 md:p-5">
+        <section data-testid="kotoba-kartu" class="rounded-card border border-line bg-surface p-4 md:p-5">
           {fase === 'tanya' && item ? (
             <>
               {/* HUD */}
@@ -1195,7 +1254,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
               <div class="text-center py-5">
                 <div class="flex justify-center gap-1.5 mb-2">
                   <span class="px-2 py-0.5 rounded-pill bg-accent-sky/15 text-accent-sky text-[10px] font-bold">
-                    {t('kotoba.bab')} {item.b}
+                    {labelAsal(item)}
                   </span>
                   <span class="px-2 py-0.5 rounded-pill bg-accent-amber/15 text-accent-amber text-[10px] font-bold">
                     {labelPos[item.pos]}
@@ -1316,7 +1375,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 <p class="mt-2 text-center text-[11px] text-fg-muted">{t('kotoba.petunjuk_papan')}</p>
               )}
             </>
-          ) : (
+          ) : fase === 'hasil' ? (
             /* ── HASIL RONDE ── */
             <div data-testid="kotoba-hasil">
               <h3 class="text-base font-black text-fg text-center mb-1">{t('kotoba.hasil_judul')}</h3>
@@ -1371,6 +1430,12 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 </button>
               </div>
             </div>
+          ) : (
+            /* Ronde belum punya soal — satu frame saat bank bidang baru tiba.
+               Dulu cabang ini menampilkan kartu "Ronde selesai · 0/0", yang
+               terbaca sebagai "ronde gagal" padahal tidak ada satu soal pun
+               yang ditanyakan. */
+            <p class="text-center text-sm text-fg-muted py-6">{t('kotoba.memuat')}</p>
           )}
         </section>
       )}
@@ -1385,7 +1450,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           >
             <span class="flex justify-center gap-1.5 mb-3">
               <span class="px-2 py-0.5 rounded-pill bg-accent-sky/15 text-accent-sky text-[10px] font-bold">
-                {t('kotoba.bab')} {kartu.b} · {(kartuIdx % pool.length) + 1}/{pool.length}
+                {labelAsal(kartu)} · {(kartuIdx % pool.length) + 1}/{pool.length}
               </span>
               <span class="px-2 py-0.5 rounded-pill bg-accent-amber/15 text-accent-amber text-[10px] font-bold">
                 {labelPos[kartu.pos]}
@@ -1499,7 +1564,13 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                       <span class="block text-[15px] font-bold text-fg break-words">{v.k}</span>
                       <span class="block text-[11px] text-fg-muted">
                         {v.h} ({v.r}) ·{' '}
-                        {sumber === 'ssw' ? labelPos[v.pos] : `${t('kotoba.bab')} ${v.b} · ${labelPos[v.pos]}`}
+                        {sumber === 'ssw'
+                          ? /* Kategori, bukan jenis kata: di mode bidang,
+                               "Kata benda" tidak memberi tahu apa pun —
+                               "Alat & bahan" yang menunjukkan bagian mana
+                               yang sedang dilatih. */
+                            (v.cat ? labelKategori[v.cat] : labelPos[v.pos])
+                          : `${t('kotoba.bab')} ${v.b} · ${labelPos[v.pos]}`}
                       </span>
                     </span>
                     <span class="flex items-center gap-2 shrink-0">
