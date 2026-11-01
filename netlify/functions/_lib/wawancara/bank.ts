@@ -28,6 +28,7 @@ import { fetchMasterByWa } from '../db/master';
 import { isVipCatatan } from '../ai/interview-shared';
 import { geminiGenerate, parseJsonLoose } from '../ai/providers';
 import { AppError, Errors } from '../kernel/errors';
+import { log } from '../kernel/log';
 
 export type Soal = {
   kode: string;
@@ -108,15 +109,63 @@ async function denganRetrySkema<T>(kerja: () => Promise<T>): Promise<T> {
   }
 }
 
+/**
+ * Batas atas jumlah soal yang dibaca sekali jalan.
+ *
+ * 177 sekarang. Angka ini BUKAN target: ia harus jauh di atas isi bank supaya
+ * penambahan soal oleh admin tidak pernah terpotong diam-diam. Kalau suatu hari
+ * bank benar-benar menyentuh batas ini, `wawancara.bank-terpotong` muncul di log
+ * — dan itu tanda untuk menaikkannya lagi, bukan tanda banknya salah.
+ */
+const BATAS_BANK = 500;
+
+/**
+ * Cache bank soal, 5 menit.
+ *
+ * KENAPA. Satu muat halaman `/wawancara` membaca bank; `simpanJawaban` dan
+ * `terjemahkanJawaban` membacanya LAGI hanya untuk mencari satu soal. Isi bank
+ * berubah hanya saat admin menyuntingnya lewat SQL/console — tidak ada jalur
+ * tulis di kode — jadi membacanya berulang setiap simpanan adalah biaya tanpa
+ * manfaat. 5 menit cukup pendek untuk menyunting soal tanpa menunggu deploy,
+ * cukup panjang untuk menghapus puluhan pembacaan per sesi siswa.
+ *
+ * Cache ini per-instance fungsi. Beberapa instance boleh punya salinan berbeda
+ * sampai TTL habis; yang penting tidak ada instance yang menyajikan bank yang
+ * lebih tua dari 5 menit.
+ */
+const TTL_BANK_MS = 5 * 60_000;
+let cacheBank: { pada: number; rows: Soal[] } | null = null;
+
+/**
+ * Buang cache bank.
+ *
+ * Dipakai tes (state modul bocor antar berkas) dan akan dipakai editor bank
+ * kalau nanti admin bisa menyunting soal dari aplikasi: setelah menulis,
+ * panggil ini supaya instance ini langsung melihat perubahannya.
+ */
+export function lupakanBankSoal(): void {
+  cacheBank = null;
+}
+
 /** Seluruh soal aktif, urut sesuai alur wawancara. */
 export async function ambilBank(): Promise<Soal[]> {
+  if (cacheBank && Date.now() - cacheBank.pada < TTL_BANK_MS) return cacheBank.rows;
   try {
     const rows = await denganRetrySkema(() =>
       supabaseJson('GET', 'wawancara_soal', {
-        query: { select: SOAL_COLS, aktif: 'eq.true', order: 'kode.asc', limit: '400' },
+        // `limit` dinaikkan 400 -> 500: bank sekarang 177, tetapi batas yang
+        // terlalu dekat memotong TANPA SUARA kalau admin menambah soal.
+        query: { select: SOAL_COLS, aktif: 'eq.true', order: 'kode.asc', limit: String(BATAS_BANK) },
       }),
     );
-    return Array.isArray(rows) ? (rows as Soal[]) : [];
+    const daftar = Array.isArray(rows) ? (rows as Soal[]) : [];
+    if (daftar.length >= BATAS_BANK) {
+      /* Terpotong = siswa kehilangan soal tanpa satu pun galat. Ini harus
+         kelihatan di log, bukan jadi misteri "kok soalnya kurang". */
+      log.warn('wawancara.bank-terpotong', { limit: BATAS_BANK, terbaca: daftar.length });
+    }
+    cacheBank = { pada: Date.now(), rows: daftar };
+    return daftar;
   } catch (e) {
     if (belumTerexpose(e)) throw Errors.serviceUnavailable(PESAN_BELUM_TEREXPOSE);
     throw e;
@@ -384,9 +433,10 @@ Aturan:
   ditulis katakana.
 - Field "jp" HANYA huruf Jepang dan tanda baca Jepang — tanpa huruf latin.
 - "romaji" huruf kecil, tanpa huruf Jepang.
-- "arti" = jawaban Indonesia yang sudah dirapikan (tanpa mengubah makna).
+- JANGAN mengembalikan teks Indonesia. Yang disimpan sebagai jawaban Indonesia
+  adalah kalimat kandidat sendiri, bukan versi yang kamu rapikan.
 
-Balas HANYA JSON: {"jp":"...","romaji":"...","arti":"..."}`;
+Balas HANYA JSON: {"jp":"...","romaji":"..."}`;
 
   // INTERAKTIF — jangan `bestEffort`.
   //
@@ -407,7 +457,14 @@ Balas HANYA JSON: {"jp":"...","romaji":"...","arti":"..."}`;
 
   const jp = String(parsed.jp ?? '').trim();
   const romaji = String(parsed.romaji ?? '').trim();
-  const artiRapi = String(parsed.arti ?? arti).trim();
+  /* `arti` = TEKS SISWA, bukan `parsed.arti`.
+   *
+   * Ini kolom yang masuk ke CV untuk 8 soal ber-`kolom_cv`. Memakai keluaran
+   * model berarti kalimat kandidat bisa berubah makna di CV-nya sendiri, dan
+   * teks yang ia ketik (data) menentukan isi kolom lewat perantara model —
+   * permukaan prompt-injection yang tidak memberi manfaat apa pun: model tetap
+   * dipakai untuk bagian yang tidak bisa dikerjakan siswa, yaitu `jp`+`romaji`. */
+  const artiSiswa = arti;
 
   // Validasi: jp wajib huruf Jepang dan tidak boleh mengandung romaji. Tanpa ini
   // model kecil kadang menjawab dengan romaji di field jp, dan hasilnya masuk DB.
@@ -418,8 +475,8 @@ Balas HANYA JSON: {"jp":"...","romaji":"...","arti":"..."}`;
     throw new AppError('VALIDATION_FAILED', { message: 'Hasil AI masih memuat huruf latin. Coba lagi.' });
   }
 
-  await simpanJawaban(wa, soal.kode, { jp, romaji, arti: artiRapi }, 'ai');
-  return { success: true, kode: soal.kode, jp, romaji, arti: artiRapi };
+  await simpanJawaban(wa, soal.kode, { jp, romaji, arti: artiSiswa }, 'ai');
+  return { success: true, kode: soal.kode, jp, romaji, arti: artiSiswa };
 }
 
 /** Link yang bisa dikirim ke siswa untuk mengisi sendiri. */

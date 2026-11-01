@@ -870,7 +870,13 @@ describe('full build', () => {
     // sesi yang sama (31 027 diukur sesudahnya) — gate indexer tidak dijalankan
     // ulang setelah commit itu, hanya sebelum. Margin +8 mengikuti konvensi blok
     // ini (terukur, dibulatkan ke atas).
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(31050); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
+    // 31050 -> 31064 (2026-11-01, usulan audit bank soal). +14 diukur di dua
+    // ujung pada pohon yang sama: 31 042 sesudah commit 9a28edd, 31 056 sesudah
+    // blok ini. Rinciannya di `_lib/wawancara/bank.ts`: `BATAS_BANK`,
+    // `TTL_BANK_MS`, `cacheBank`, `lupakanBankSoal`, `artiSiswa` (lima binding),
+    // sisanya parameter/anggota objek yang ikut dihitung parser. Tidak ada
+    // berkas baru yang masuk includePath.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(31064); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

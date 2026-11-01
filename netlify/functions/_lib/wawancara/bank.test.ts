@@ -27,6 +27,10 @@ const m = vi.hoisted(() => ({
   belumExpose: false,
   /** Catatan panggilan tulis: [method, table, body]. */
   tulis: [] as Array<{ method: string; table: string; body: unknown; query: unknown }>,
+  /** Berapa kali bank soal DIBACA (untuk menguji cache). */
+  bacaBank: 0,
+  /** Query GET terakhir per tabel — untuk memeriksa `limit`/`aktif`. */
+  bacaQuery: {} as Record<string, Record<string, unknown>>,
   /** Balasan model untuk terjemahan. */
   aiReply: '',
 }));
@@ -42,7 +46,11 @@ vi.mock('../db/client', async (importOriginal) => {
         );
       }
       if (method === 'GET') {
-        if (table === 'wawancara_soal') return m.soal;
+        m.bacaQuery[table] = (opts.query || {}) as Record<string, unknown>;
+        if (table === 'wawancara_soal') {
+          m.bacaBank++;
+          return m.soal;
+        }
         if (table === 'wawancara_jawaban') return m.jawaban;
         return [];
       }
@@ -103,7 +111,12 @@ beforeEach(() => {
   m.master = [];
   m.belumExpose = false;
   m.tulis = [];
+  m.bacaBank = 0;
+  m.bacaQuery = {};
   m.aiReply = '';
+  /* Cache bank adalah state MODUL: tanpa dibersihkan, tes pertama yang mengisi
+     cache akan menentukan isi bank untuk semua tes berikutnya. */
+  bank.lupakanBankSoal();
 });
 
 describe('gabungBankDanJawaban — sinkron CV', () => {
@@ -249,6 +262,45 @@ describe('ambilBank — tabel belum ter-expose', () => {
   });
 });
 
+/* ── CACHE BANK ────────────────────────────────────────────────────────────
+ *
+ * Satu muat halaman `/wawancara` membaca bank soal; `simpanJawaban` dan
+ * `terjemahkanJawaban` membacanya LAGI untuk mencari soal. Bank berubah hanya
+ * saat admin menyuntingnya lewat SQL/console — tidak ada jalur tulis di kode —
+ * jadi membacanya berulang pada setiap simpanan adalah biaya tanpa manfaat.
+ */
+describe('ambilBank — cache 5 menit', () => {
+  it('dua permintaan berurutan hanya membaca bank sekali', async () => {
+    await bank.ambilBank();
+    await bank.ambilBank();
+    expect(m.bacaBank).toBe(1);
+  });
+
+  it('kedaluwarsa setelah TTL, bukan selamanya', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-11-01T00:00:00Z'));
+      await bank.ambilBank();
+      vi.setSystemTime(new Date('2026-11-01T00:04:00Z'));
+      await bank.ambilBank();
+      expect(m.bacaBank).toBe(1);
+
+      vi.setSystemTime(new Date('2026-11-01T00:06:00Z'));
+      await bank.ambilBank();
+      expect(m.bacaBank).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('membaca hanya soal aktif, dengan batas yang tidak memotong bank sekarang', async () => {
+    await bank.ambilBank();
+    /* `aktif` sudah lama ada di query tanpa satu pun tes yang menjaganya —
+       mematikannya akan mengirim soal yang sengaja disembunyikan admin. */
+    expect(m.bacaQuery.wawancara_soal).toMatchObject({ aktif: 'eq.true', limit: '500' });
+  });
+});
+
 describe('terjemahkanJawaban — validasi hasil model', () => {
   it('menyimpan hasil terjemahan yang sah', async () => {
     m.aiReply = JSON.stringify({
@@ -261,9 +313,35 @@ describe('terjemahkanJawaban — validasi hasil model', () => {
     expect(hasil.jp).toBe('私は料理が好きです。');
 
     const patch = m.tulis.find((t) => t.table === 'master_database_candidate');
-    expect(patch?.body).toMatchObject({ promosi_diri: 'Saya suka memasak.' });
+    /* `arti` = teks SISWA, bukan keluaran model — lihat tes di bawah. */
+    expect(patch?.body).toMatchObject({ promosi_diri: 'saya suka memasak' });
     expect(m.tulis.find((t) => t.table === 'wawancara_jawaban')?.body).toMatchObject({
       sumber: 'ai',
+    });
+  });
+
+  /* ── TEKS SISWA TIDAK BOLEH DITIMPA MODEL ────────────────────────────────
+   *
+   * `arti` adalah jawaban kandidat dalam Bahasa Indonesia, dan untuk 8 soal
+   * ber-`kolom_cv` ia langsung menjadi isi CV (Jiko PR, kelebihan, …). Versi
+   * lama memakai `parsed.arti` dari model, sehingga:
+   *   • kalimat siswa bisa DIUBAH MAKNANYA oleh model kecil, lalu tersimpan
+   *     sebagai jawaban resmi di CV;
+   *   • teks siswa masuk ke prompt sebagai data, tetapi keluarannya yang
+   *     menentukan isi kolom — permukaan prompt-injection yang tidak perlu.
+   * Model tetap dipakai untuk `jp` + `romaji`; itu bagian yang memang tidak
+   * bisa dikerjakan siswa sendiri. */
+  it('arti disimpan dari teks siswa, bukan dari keluaran model', async () => {
+    m.aiReply = JSON.stringify({
+      jp: '私は料理が好きです。',
+      romaji: 'watashi wa ryouri ga suki desu.',
+      arti: 'Saya SANGAT suka memasak dan bekerja di restoran.',
+    });
+
+    const hasil = await bank.terjemahkanJawaban('628111', 'ms-009', 'saya suka memasak');
+    expect(hasil.arti).toBe('saya suka memasak');
+    expect(m.tulis.find((t) => t.table === 'master_database_candidate')?.body).toMatchObject({
+      promosi_diri: 'saya suka memasak',
     });
   });
 
