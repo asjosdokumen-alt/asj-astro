@@ -366,8 +366,10 @@ describe('terjemahkanJawaban — validasi hasil model', () => {
 });
 
 describe('linkWawancara', () => {
-  it('membentuk URL dengan wa ternormalisasi', () => {
+  it('membentuk URL dengan wa ternormalisasi, memakai bentuk kanonik /wawancara/', () => {
     const { url } = bank.linkWawancara('0812-3456-789', 'Budi', 'https://contoh.test/');
-    expect(url).toBe('https://contoh.test/wawancara?wa=628123456789&nama=Budi');
+    /* Garis miring di akhir mengikuti bentuk yang dituju Netlify (301 dari
+       `/wawancara`), supaya tautan yang dibagikan tidak membayar lompatan. */
+    expect(url).toBe('https://contoh.test/wawancara/?wa=628123456789&nama=Budi');
   });
 });

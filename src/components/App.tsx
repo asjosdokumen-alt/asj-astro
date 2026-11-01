@@ -451,7 +451,8 @@ export default function App(
               height={582}
               loading="eager"
               decoding="async"
-              class="w-full h-full object-cover opacity-60"
+              class="w-full h-full object-cover opacity-60 u-alive"
+              style="--alive-dur:13s;--alive-scale-from:1.03;--alive-scale:1.1;--alive-x0:-1.1%;--alive-y0:0.7%;--alive-x:1.2%;--alive-y:-0.9%"
             />
           </picture>
         )}
@@ -486,6 +487,132 @@ export default function App(
              `pointer-events-none` for the same reason the artwork and the
              overlay carry it: it covers the whole band and must never
              intercept a click meant for the CTA. */}
+        {hero && (
+          <div class="u-hero-fx" aria-hidden="true">
+            <div
+              class="u-sheen-bar"
+              style="--fx-dur:9.5s;--fx-delay:-2.5s;--fx-sheen:rgb(253 164 175 / 0.14)"
+            />
+            <svg
+              class="w-full h-full"
+              viewBox="0 0 1600 582"
+              preserveAspectRatio="xMidYMid slice"
+              aria-hidden="true"
+              focusable="false"
+            >
+              <ellipse
+                class="u-fx-petal"
+                cx="190"
+                cy="68"
+                rx="11"
+                ry="6.5"
+                fill="#fda4af"
+                style="--fx-dur:7.4s;--fx-delay:-0.8s;--fx-mid-x:95px;--fx-mid-y:150px;--fx-end-x:210px;--fx-end-y:330px;--fx-alpha:0.85"
+              />
+              <ellipse
+                class="u-fx-petal"
+                cx="340"
+                cy="42"
+                rx="9.5"
+                ry="5.5"
+                fill="#fecdd3"
+                style="--fx-dur:8.6s;--fx-delay:-3.4s;--fx-mid-x:120px;--fx-mid-y:170px;--fx-end-x:260px;--fx-end-y:360px;--fx-alpha:0.8"
+              />
+              <ellipse
+                class="u-fx-petal"
+                cx="540"
+                cy="58"
+                rx="8.5"
+                ry="5"
+                fill="#fb7185"
+                style="--fx-dur:9.2s;--fx-delay:-5.9s;--fx-mid-x:85px;--fx-mid-y:165px;--fx-end-x:185px;--fx-end-y:345px;--fx-alpha:0.75"
+              />
+              <ellipse
+                class="u-fx-petal"
+                cx="880"
+                cy="52"
+                rx="9"
+                ry="5"
+                fill="#fecdd3"
+                style="--fx-dur:8.1s;--fx-delay:-2.1s;--fx-mid-x:-70px;--fx-mid-y:145px;--fx-end-x:-155px;--fx-end-y:320px;--fx-alpha:0.78"
+              />
+              <ellipse
+                class="u-fx-petal"
+                cx="1210"
+                cy="74"
+                rx="10.5"
+                ry="6"
+                fill="#fda4af"
+                style="--fx-dur:7.8s;--fx-delay:-4.7s;--fx-mid-x:-90px;--fx-mid-y:160px;--fx-end-x:-190px;--fx-end-y:340px;--fx-alpha:0.85"
+              />
+              <ellipse
+                class="u-fx-petal"
+                cx="1450"
+                cy="88"
+                rx="11"
+                ry="6"
+                fill="#fecdd3"
+                style="--fx-dur:8.9s;--fx-delay:-6.5s;--fx-mid-x:-110px;--fx-mid-y:155px;--fx-end-x:-230px;--fx-end-y:335px;--fx-alpha:0.82"
+              />
+              <circle
+                class="u-fx-orb"
+                cx="1235"
+                cy="275"
+                r="24"
+                fill="#fde68a"
+                style="--fx-dur:5.4s;--fx-delay:-1.2s;--fx-dx:14px;--fx-dy:-18px;--fx-alpha-min:0.18;--fx-alpha-max:0.46"
+              />
+              <circle
+                class="u-fx-orb"
+                cx="740"
+                cy="220"
+                r="16"
+                fill="#fda4af"
+                style="--fx-dur:6.2s;--fx-delay:-3.8s;--fx-dx:-16px;--fx-dy:-14px;--fx-alpha-min:0.15;--fx-alpha-max:0.42"
+              />
+              <circle
+                class="u-fx-orb"
+                cx="1090"
+                cy="185"
+                r="13"
+                fill="#fbcfe8"
+                style="--fx-dur:4.9s;--fx-delay:-2.6s;--fx-dx:12px;--fx-dy:-16px;--fx-alpha-min:0.2;--fx-alpha-max:0.5"
+              />
+              <circle
+                class="u-fx-sparkle"
+                cx="645"
+                cy="118"
+                r="3.2"
+                fill="#fff1f2"
+                style="--fx-dur:2.7s;--fx-delay:-0.5s"
+              />
+              <circle
+                class="u-fx-sparkle"
+                cx="815"
+                cy="96"
+                r="2.8"
+                fill="#fef3c7"
+                style="--fx-dur:3.3s;--fx-delay:-1.9s"
+              />
+              <circle
+                class="u-fx-sparkle"
+                cx="1165"
+                cy="132"
+                r="3.4"
+                fill="#fef08a"
+                style="--fx-dur:2.9s;--fx-delay:-2.4s"
+              />
+              <circle
+                class="u-fx-sparkle"
+                cx="1330"
+                cy="168"
+                r="2.8"
+                fill="#ffe4e6"
+                style="--fx-dur:3.5s;--fx-delay:-1.1s"
+              />
+            </svg>
+          </div>
+        )}
         {hero && <div class="hero-haze hero-layer pointer-events-none" aria-hidden="true" />}
 
         {/* Non-hero header artwork — RESTORED 2026-09-25 (owner item 3).

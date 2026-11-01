@@ -41,20 +41,17 @@ export default function GalleryGrid({ items, class: className }: Props) {
   const grid = ['grid gap-4 sm:grid-cols-2 lg:grid-cols-3', className ?? ''].filter(Boolean).join(' ');
 
   return (
-    // `data-scroll-item` — see §9f. The grid drifts; each tile keeps its
-    // `.u-zoom` hover on the image underneath, which is why the attribute is
-    // on the <ul> and not on the <li>.
+    // `data-scroll-item` — see §9f. The grid drifts with scroll; the real
+    // photographs inside stay completely static (no idle `.u-alive`, no hover
+    // `.u-zoom`), per owner ruling that only non-photo illustrations carry
+    // moving animations on the landing page.
     <ul class={grid} data-scroll-item>
       {items.map((item, index) => (
-        <li key={item.src} class="group rounded-card overflow-hidden border border-line bg-surface">
+        <li key={item.src} class="rounded-card overflow-hidden border border-line bg-surface">
           <div class="aspect-[4/3] overflow-hidden bg-surface-raised">
-            {/* `u-alive` (motion.css §9h): the photograph breathes on its
-                own — a slow Ken Burns zoom/pan on the individual `scale`/
-                `translate` properties, which COMPOSE with the `u-zoom`
-                hover's `transform` instead of overriding it (§9d rule 3 is
-                why these must stay two different properties). The negative
-                `--alive-delay` desyncs each tile's cycle, so the grid never
-                pulses in phase. */}
+            {/* Real photographs stay static on purpose — continuous `.u-alive`
+                and ambient motion overlays belong exclusively to non-photo
+                illustrations on `/`. */}
             <img
               src={item.src}
               alt={item.alt}
@@ -62,8 +59,7 @@ export default function GalleryGrid({ items, class: className }: Props) {
               height={item.height}
               loading={index < 3 ? 'eager' : 'lazy'}
               decoding="async"
-              class="h-full w-full object-cover u-zoom u-alive"
-              style={`--alive-delay:${(index * -1.9).toFixed(1)}s`}
+              class="h-full w-full object-cover"
             />
           </div>
           <p data-lang={item.captionKey} class="px-4 py-3 text-body-sm text-fg-muted">

@@ -485,5 +485,9 @@ export function linkWawancara(wa: string, nama: string, base: string) {
   const akar = String(base || '').replace(/\/+$/, '');
   const q = new URLSearchParams({ wa: nw });
   if (nama) q.set('nama', String(nama));
-  return { url: `${akar}/wawancara?${q.toString()}` };
+  /* Garis miring di akhir = bentuk KANONIK di Netlify: `/wawancara` dijawab
+     301 ke `/wawancara/`. Query ikut pada 301 itu, jadi tautan tanpa garis
+     miring tidak mati — hanya membuat setiap siswa membayar satu lompatan.
+     Terukur 2026-11-01 di produksi: `Location: /wawancara/?wa=…&nama=…`. */
+  return { url: `${akar}/wawancara/?${q.toString()}` };
 }

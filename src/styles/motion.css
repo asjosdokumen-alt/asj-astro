@@ -1119,10 +1119,14 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
   }
 }
 
-.u-drift-frame > img {
+.u-drift-frame > img,
+.u-drift-media {
   /* Positioned and over-sized so the drift can never expose an edge.
      `height: 114%` resolves against the frame, whose height is definite
-     because `aspect-ratio` plus a definite width determines it. */
+     because `aspect-ratio` plus a definite width determines it.
+     `.u-drift-media` lets a `<picture>` wrapper take the scroll-linked
+     `.u-drift` transform while its child `<img>` runs `.u-alive` on
+     `scale`/`translate` — two elements, no `animation` shorthand clash. */
   position: absolute;
   left: 0;
   right: 0;
@@ -1798,25 +1802,27 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
    ------------------------------------------------------------------ */
 
 :root {
-  /* Peak zoom of the breathing cycle. 1.06 is large enough to read as
-     "alive" on a still glance and small enough that no one mistakes it
-     for a layout shift. */
-  --alive-scale: 1.06;
-  /* One full breath, rest to peak. 14s is slow enough to be felt rather
-     than noticed; under ~8s a photograph reads as restless. */
-  --alive-dur: 14s;
+  /* Resting and peak zoom of the breathing cycle on non-photo illustrations.
+     Starting at 1.03 reserves a 1.5% overhang on all four edges at frame 0,
+     so bidirectional panning (`--alive-x0`/`--alive-y0` -> `--alive-x`/`--alive-y`)
+     never exposes a frame edge while making the motion visibly alive. */
+  --alive-scale-from: 1.03;
+  --alive-scale: 1.095;
+  /* One full breath, rest to peak. ~10s reads as genuinely moving on cards
+     and banners without feeling restless; real photographs opt out entirely. */
+  --alive-dur: 10s;
 }
 
 /* The keyframes for the alive-breath. Both frames are VISIBLE — that is
    the safety property the header note describes. */
 @keyframes alive-breathe {
   from {
-    scale: 1;
-    translate: 0 0;
+    scale: var(--alive-scale-from, 1.03);
+    translate: var(--alive-x0, -0.9%) var(--alive-y0, 0.7%);
   }
   to {
     scale: var(--alive-scale);
-    translate: var(--alive-x, 0.6%) var(--alive-y, -0.8%);
+    translate: var(--alive-x, 1.1%) var(--alive-y, -1%);
   }
 }
 
@@ -1833,6 +1839,251 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
     animation: none;
     scale: none;
     translate: none;
+  }
+}
+
+/* ── ILLUSTRATION AMBIENT LAYERS (non-photo artwork overlays) ─────────
+   Owner ruling: non-photo illustrations on `/` (Hero, Layanan banners,
+   Program cards, Process step cards, Japan placement map) come alive with
+   continuous motion + ambient animated layers (sakura petals, momiji leaves,
+   twilight bokeh, light sheen, pulsing Japan map beacons), while real
+   photographs (`#galeri`, `#tentang`), QR codes, and brand logos stay still.
+
+   Every rule below animates ONLY `transform` and `opacity` (compositor-safe),
+   uses `overflow: clip` with its separate `@supports not (overflow: clip)`
+   fallback so `view()` scroll timelines on ancestor bands are never pinned,
+   and degrades cleanly under `prefers-reduced-motion: reduce` with no
+   `!important`. */
+
+.u-illus-frame {
+  position: relative;
+  overflow: clip;
+}
+
+@supports not (overflow: clip) {
+  .u-illus-frame {
+    overflow: hidden;
+  }
+}
+
+.u-illus-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: clip;
+}
+
+@supports not (overflow: clip) {
+  .u-illus-fx {
+    overflow: hidden;
+  }
+}
+
+.u-hero-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: clip;
+}
+
+@supports not (overflow: clip) {
+  .u-hero-fx {
+    overflow: hidden;
+  }
+}
+
+.u-sheen-bar {
+  position: absolute;
+  top: -20%;
+  left: 0;
+  width: 42%;
+  height: 140%;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--fx-sheen, rgb(255 255 255 / 0.18)) 50%,
+    transparent 100%
+  );
+  transform: translate3d(-150%, 0, 0) skewX(-22deg);
+}
+
+.u-fx-petal {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.u-fx-orb {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.u-fx-sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.u-fx-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.u-fx-travel {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.u-fx-plane {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+
+@keyframes alive-sheen {
+  0%,
+  12% {
+    transform: translate3d(-150%, 0, 0) skewX(-22deg);
+    opacity: 0;
+  }
+  32% {
+    opacity: 0.9;
+  }
+  58%,
+  100% {
+    transform: translate3d(330%, 0, 0) skewX(-22deg);
+    opacity: 0;
+  }
+}
+
+@keyframes alive-petal {
+  0% {
+    transform: translate3d(0, -14px, 0) rotate(0deg) scale(0.85);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--fx-alpha, 0.85);
+  }
+  50% {
+    transform: translate3d(var(--fx-mid-x, 26px), var(--fx-mid-y, 55px), 0) rotate(165deg) scale(1);
+    opacity: var(--fx-alpha, 0.85);
+  }
+  85% {
+    opacity: var(--fx-alpha, 0.8);
+  }
+  100% {
+    transform: translate3d(var(--fx-end-x, -18px), var(--fx-end-y, 120px), 0) rotate(330deg) scale(0.88);
+    opacity: 0;
+  }
+}
+
+@keyframes alive-float {
+  from {
+    transform: translate3d(0, 0, 0) scale(0.94);
+    opacity: var(--fx-alpha-min, 0.35);
+  }
+  to {
+    transform: translate3d(var(--fx-dx, 10px), var(--fx-dy, -14px), 0) scale(1.1);
+    opacity: var(--fx-alpha-max, 0.8);
+  }
+}
+
+@keyframes alive-twinkle {
+  from {
+    transform: scale(0.62) rotate(0deg);
+    opacity: 0.2;
+  }
+  to {
+    transform: scale(1.25) rotate(25deg);
+    opacity: 0.95;
+  }
+}
+
+@keyframes alive-pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.92;
+  }
+  75% {
+    opacity: 0.28;
+  }
+  100% {
+    transform: scale(2.75);
+    opacity: 0;
+  }
+}
+
+@keyframes alive-travel {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.75);
+    opacity: 0;
+  }
+  15%,
+  82% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate3d(var(--fx-tx, 140px), var(--fx-ty, -110px), 0) scale(1.05);
+    opacity: 0;
+  }
+}
+
+@keyframes alive-plane {
+  0% {
+    transform: translate3d(-36px, 22px, 0) scale(0.88);
+    opacity: 0;
+  }
+  18%,
+  80% {
+    opacity: 0.92;
+  }
+  100% {
+    transform: translate3d(96px, -44px, 0) scale(1.06);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .u-sheen-bar {
+    animation: alive-sheen var(--fx-dur, 7.5s) ease-in-out var(--fx-delay, 0s) infinite;
+  }
+  .u-fx-petal {
+    animation: alive-petal var(--fx-dur, 6.8s) linear var(--fx-delay, 0s) infinite;
+  }
+  .u-fx-orb {
+    animation: alive-float var(--fx-dur, 4.6s) ease-in-out var(--fx-delay, 0s) infinite alternate;
+  }
+  .u-fx-sparkle {
+    animation: alive-twinkle var(--fx-dur, 2.8s) ease-in-out var(--fx-delay, 0s) infinite alternate;
+  }
+  .u-fx-pulse {
+    animation: alive-pulse var(--fx-dur, 2.8s) ease-out var(--fx-delay, 0s) infinite;
+  }
+  .u-fx-travel {
+    animation: alive-travel var(--fx-dur, 4.2s) ease-in-out var(--fx-delay, 0s) infinite;
+  }
+  .u-fx-plane {
+    animation: alive-plane var(--fx-dur, 5.6s) ease-in-out var(--fx-delay, 0s) infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-sheen-bar,
+  .u-fx-petal,
+  .u-fx-orb,
+  .u-fx-sparkle,
+  .u-fx-pulse,
+  .u-fx-travel,
+  .u-fx-plane {
+    animation: none;
+    transform: none;
   }
 }
 

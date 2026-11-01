@@ -581,7 +581,11 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
       return;
     }
     const base = typeof window !== 'undefined' ? window.location.origin : '';
-    const url = `${base}/wawancara?wa=${encodeURIComponent(nomor)}&nama=${encodeURIComponent(namaFromUrl())}`;
+    /* Garis miring di akhir BUKAN selera: Netlify menjawab `/wawancara` dengan
+       301 ke `/wawancara/` (pretty URLs), dan setiap tautan yang dibagikan ke
+       siswa membayar satu lompatan itu. Query tetap ikut pada 301 — jadi ini
+       bukan tautan mati, hanya satu perjalanan bolak-balik yang tidak perlu. */
+    const url = `${base}/wawancara/?wa=${encodeURIComponent(nomor)}&nama=${encodeURIComponent(namaFromUrl())}`;
     try {
       await navigator.clipboard.writeText(url);
       showToast('Link disalin. Kirim ke siswa — dia tetap memasukkan passwordnya sendiri.', 'success');
