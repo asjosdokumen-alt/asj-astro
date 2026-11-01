@@ -47,4 +47,33 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.nextval(TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.nextval(TEXT) TO anon, authenticated, service_role;
+
+-- GRANT HANYA KE ROLE YANG BENAR-BENAR ADA.
+--
+-- Versi pertama baris ini berbunyi `GRANT … TO anon, authenticated,
+-- service_role;` — tiga nama role Supabase. Database produksi repo ini adalah
+-- **Neon**, yang tidak punya `anon` maupun `service_role` (role-nya: anonymous,
+-- authenticated, asj_service). Akibatnya migrasi ini GAGAL di baris terakhir
+-- dengan `role "anon" does not exist` — dan karena gagal, ia tidak pernah
+-- tercatat di `schema_migrations`, sehingga `migrate up` berhenti di sini dan
+-- 025–029 ikut tertahan. Terukur 2026-11-01: `public.nextval(text)` TIDAK ADA
+-- di DB produksi, dan `candidate_id_seq.last_value` masih NULL — artinya
+-- alokasi id kandidat berjalan di jalur fallback MAX+1 (race yang justru ingin
+-- dihapus migrasi ini) sejak Phase 5.
+--
+-- Karena itu daftar role diberikan sebagai KANDIDAT dan disaring dengan
+-- `pg_roles`: Supabase → anon/authenticated/service_role, Neon → anonymous/
+-- authenticated/asj_service. Satu berkas untuk dua host, tanpa `IF` di luar SQL
+-- yang tidak bisa dijalankan PostgREST.
+DO $$
+DECLARE
+  r text;
+BEGIN
+  FOREACH r IN ARRAY ARRAY['anon', 'anonymous', 'authenticated', 'service_role', 'asj_service']
+  LOOP
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = r) THEN
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.nextval(TEXT) TO %I', r);
+    END IF;
+  END LOOP;
+END
+$$;
