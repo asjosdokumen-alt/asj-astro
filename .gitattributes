@@ -70,3 +70,6 @@ scripts/ci/headings-pairs-*.json text eol=lf
 # dan tetap merusak clone Windows berikutnya, jadi yang diperbaiki adalah
 # line ending-nya.
 migrations/*.sql text eol=lf
+# Berkas hasil `npm run db:schema` ditulis skrip dengan LF; tanpa aturan ini
+# setiap regenerasi memunculkan "modified" yang isinya IDENTIK.
+netlify/functions/_lib/db/schema.generated.ts text eol=lf
