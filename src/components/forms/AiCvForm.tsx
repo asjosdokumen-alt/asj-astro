@@ -1881,13 +1881,25 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 <RepeaterRow key={edu.id} index={i} label={t('ai_cv.row_pendidikan')}
                   removable={eduList.length > 1}
                   onRemove={() => editEdu(l => l.filter((_, j) => j !== i))}>
-                  <div class="grid grid-cols-2 gap-2">
-                    <RowSelect label={t('ai_cv.row_tingkat')} id={`ai-edu-tingkat-${i}`} value={edu.tingkat}
-                      options={levelOptions(edu.tingkat)}
-                      onChange={(v) => editEdu(l => sortEduRows(l.map((r, j) => j === i ? { ...r, tingkat: v } : r)))} />
+                  {/* SUSUNAN 2026-11-02 — HP dulu.
+                      `grid-cols-2` tanpa breakpoint memaksa dua kolom di layar
+                      360px, dan tiap `MonthYearField` sendiri sudah berisi DUA
+                      <select> (bulan + tahun) — jadi satu sel bisa memuat dua
+                      kontrol selebar ~75px. Itu keluhan "dijejalkan".
+                      Sekarang: satu kolom di HP (tiap kontrol selebar layar),
+                      dua kolom hanya dari `sm` ke atas.
+                      Urutan juga diubah: PERIODE lebih dulu, karena rirekisho
+                      membaca kronologi dan itu yang ingin dicek siswa. */}
+                  <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <MonthYearField label={t('ai_cv.row_masuk')} id={`ai-edu-masuk-${i}`} value={edu.masuk}
                       yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
                       onChange={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, masuk: v } : r))} />
+                    <MonthYearField label={t('ai_cv.row_lulus')} id={`ai-edu-lulus-${i}`} value={edu.lulus}
+                      yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
+                      onChange={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, lulus: v } : r))} />
+                    <RowSelect label={t('ai_cv.row_tingkat')} id={`ai-edu-tingkat-${i}`} value={edu.tingkat}
+                      options={levelOptions(edu.tingkat)}
+                      onChange={(v) => editEdu(l => sortEduRows(l.map((r, j) => j === i ? { ...r, tingkat: v } : r)))} />
                     <Field label={t('ai_cv.row_sekolah')} id={`edu-sekolah-id-${i}`} value={edu.sekolah_id}
                       onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, sekolah_id: v, status_sekolah: r.status_sekolah || (v.trim() ? (kouritsuSekolah(v) === '公立' ? 'NEGERI' : 'SWASTA') : '') } : r))} />
                     <Field label={t('ai_cv.row_sekolah_jp')} id={`edu-sekolah-jp-${i}`} value={edu.sekolah_jp} jp
@@ -1918,9 +1930,6 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                       }))} />
                     <Field label={t('ai_cv.row_jurusan_jp')} id={`edu-jurusan-jp-${i}`} value={edu.jurusan_jp} jp
                       onInput={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, jurusan_jp: v } : r))} />
-                    <MonthYearField label={t('ai_cv.row_lulus')} id={`ai-edu-lulus-${i}`} value={edu.lulus}
-                      yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
-                      onChange={(v) => editEdu(l => l.map((r, j) => j === i ? { ...r, lulus: v } : r))} />
                   </div>
                 </RepeaterRow>
               ))}
@@ -1936,7 +1945,22 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 <RepeaterRow key={job.id} index={i} label={t('ai_cv.row_pekerjaan')}
                   removable={jobList.length > 1}
                   onRemove={() => editJob(l => l.filter((_, j) => j !== i))}>
-                  <div class="grid grid-cols-2 gap-2">
+                  {/* SUSUNAN 2026-11-02 — HP dulu, periode di paling atas.
+                      `grid-cols-2` tanpa breakpoint memaksa dua kolom di layar
+                      360px; dengan `MonthYearField` yang berisi dua <select>,
+                      satu sel jadi ~75px per kontrol. Sekarang satu kolom di HP,
+                      dua kolom dari `sm` ke atas.
+                      Periode ditaruh PERTAMA karena rirekisho membaca kronologi
+                      — itu yang paling sering salah dan paling ingin dicek.
+                      Tiga kolom jarang dipakai (雇用形態/業種/備考) dilipat ke
+                      <details> supaya tidak menjejalkan 10 kolom per pekerjaan. */}
+                  <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <MonthYearField label={t('ai_cv.row_masuk')} id={`ai-job-masuk-${i}`} value={job.masuk}
+                      yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
+                      onChange={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, masuk: v } : r))} />
+                    <MonthYearField label={t('ai_cv.row_keluar')} id={`ai-job-keluar-${i}`} value={job.keluar}
+                      yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
+                      onChange={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, keluar: v } : r))} />
                     <Field label={t('ai_cv.row_perusahaan')} id={`job-perusahaan-id-${i}`} value={job.perusahaan_id}
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, perusahaan_id: v } : r))} />
                     <Field label={t('ai_cv.row_perusahaan_jp')} id={`job-perusahaan-jp-${i}`} value={job.perusahaan_jp} jp
@@ -1955,23 +1979,29 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                       }))} />
                     <Field label={t('ai_cv.row_jabatan_jp')} id={`job-jabatan-jp-${i}`} value={job.jabatan_jp} jp
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jabatan_jp: v } : r))} />
-                    <MonthYearField label={t('ai_cv.row_masuk')} id={`ai-job-masuk-${i}`} value={job.masuk}
-                      yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
-                      onChange={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, masuk: v } : r))} />
-                    <MonthYearField label={t('ai_cv.row_keluar')} id={`ai-job-keluar-${i}`} value={job.keluar}
-                      yearLabel={t('cv.field_year')} monthLabelText={t('cv.field_month')}
-                      onChange={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, keluar: v } : r))} />
                     <Field label={t('ai_cv.row_gaji')} id={`job-gaji-${i}`} value={job.gaji}
                       onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, gaji: v } : r))} />
-                    {/* ── 雇用形態 / 業種 / 備考 (migrasi 022) ─────────────── */}
-                    <ComboSelect label="Status kerja (雇用形態)" id={`job-jenis-${i}`} value={job.jenis}
-                      pairs={JENIS_KERJA_PAIRS} placeholder="ketik atau pilih"
-                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))}
-                      onPick={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))} />
-                    <Field label="Bidang industri (業種)" id={`job-bidang-${i}`} value={job.bidang}
-                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, bidang: v } : r))} />
-                    <Field label="Catatan kerja (備考)" id={`job-catatan-${i}`} value={job.catatan}
-                      onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, catatan: v } : r))} />
+                    {/* ── 雇用形態 / 業種 / 備考 (migrasi 022) — dilipat ─────
+                        Ketiganya TIDAK dicetak di CV Mini dan hanya dipakai tiga
+                        form Jepang (KINKI/Firma/JIPA). Menampilkannya selalu
+                        membuat satu pekerjaan jadi 10 kolom; dilipat, siswa
+                        melihat 7 yang benar-benar penting dulu. ID tetap sama
+                        (`job-jenis-*` dst.) supaya tidak ada yang putus. */}
+                    <details class="sm:col-span-2 rounded border border-slate-700/70 bg-slate-900/30 px-2 py-1.5">
+                      <summary class="cursor-pointer text-[11px] font-bold text-fg-muted">
+                        Detail opsional — status kerja, bidang industri, catatan
+                      </summary>
+                      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mt-2">
+                        <ComboSelect label="Status kerja (雇用形態)" id={`job-jenis-${i}`} value={job.jenis}
+                          pairs={JENIS_KERJA_PAIRS} placeholder="ketik atau pilih"
+                          onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))}
+                          onPick={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, jenis: v } : r))} />
+                        <Field label="Bidang industri (業種)" id={`job-bidang-${i}`} value={job.bidang}
+                          onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, bidang: v } : r))} />
+                        <Field label="Catatan kerja (備考)" id={`job-catatan-${i}`} value={job.catatan}
+                          onInput={(v) => editJob(l => l.map((r, j) => j === i ? { ...r, catatan: v } : r))} />
+                      </div>
+                    </details>
                   </div>
                 </RepeaterRow>
               ))}
@@ -1987,7 +2017,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 <RepeaterRow key={fam.id} index={i} label={t('ai_cv.row_keluarga')}
                   removable={famList.length > 1}
                   onRemove={() => editFam(l => l.filter((_, j) => j !== i))}>
-                  <div class="grid grid-cols-2 gap-2">
+                  <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <PairSelect label={t('ai_cv.row_hubungan')} id={`fam-hubungan-${i}`} value={fam.hubungan_id}
                       pairs={HUBUNGAN_KELUARGA}
                       onChange={(v) => editFam(l => l.map((r, j) => {

@@ -1319,6 +1319,42 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     expect(src).toContain('const EDU_MAX = 6;');
   });
 
+  /* Keluhan pemilik 2026-11-02: form CV "dijejalkan" dan harus nyaman di HP.
+     Dua sifat yang dikunci di sini:
+       1. PERIODE lebih dulu di DOM — rirekisho membaca kronologi, jadi itu yang
+          pertama dicek siswa. Kalau urutan kolom dikembalikan ke perusahaan-dulu,
+          tes ini gagal.
+       2. Kolom jarang (雇用形態/業種/備考) ada di dalam <details> TERTUTUP, jadi
+          satu pekerjaan menampilkan 7 kolom, bukan 10. ID-nya tetap sama supaya
+          payload tidak putus — karena itu yang diperiksa adalah `open`, bukan
+          keberadaan elemen. */
+  it('riwayat kerja: periode di urutan pertama, kolom jarang dilipat', () => {
+    render(<AiCvForm />);
+    // `MonthYearField` memakai id apa adanya (`ai-job-masuk-0` + `-month`),
+    // sedangkan `Field` menambahkan prefiks `ai_`. Dua ejaan ini memang beda.
+    const masuk = document.getElementById('ai-job-masuk-0-month');
+    const perusahaan = document.getElementById('ai_job-perusahaan-id-0');
+    if (!masuk || !perusahaan) {
+      throw new Error(`kolom pekerjaan tidak lengkap (masuk=${!!masuk} perusahaan=${!!perusahaan})`);
+    }
+
+    // 1. periode mendahului perusahaan
+    expect(masuk.compareDocumentPosition(perusahaan) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // 2. kolom jarang berada di <details> yang TERTUTUP
+    const jenis = document.getElementById('ai_job-jenis-0');
+    if (!jenis) throw new Error('status kerja hilang — payload akan kehilangan 雇用形態');
+    const details = jenis.closest('details');
+    expect(details).toBeTruthy();
+    expect(details?.hasAttribute('open')).toBe(false);
+
+    // 3. dan tidak ada grid dua-kolom tanpa breakpoint yang memaksa di HP
+    const src = readFileSync('src/components/forms/AiCvForm.tsx', 'utf8');
+    const jobBlock = src.slice(src.indexOf("sec_pekerjaan"), src.indexOf("sec_keluarga"));
+    expect(jobBlock).toContain('grid-cols-1 gap-2 sm:grid-cols-2');
+    expect(jobBlock).not.toContain('"grid grid-cols-2 gap-2"');
+  });
+
   it('baris dinamis ikut terkirim di payload saat terisi', async () => {
     render(<AiCvForm />);
     // `saveToDatabase` refuses to run without a WA (it is the payload's
