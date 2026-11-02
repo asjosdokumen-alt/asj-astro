@@ -32,6 +32,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { attachApplications } from './candidates';
+import { normalizePekerjaan, pekerjaanDariSlot } from './pekerjaan';
 
 /** A candidate row as the caller would supply it (WA is the join key). */
 const cand = (wa: string, extra: Record<string, unknown> = {}) => ({
@@ -135,5 +136,82 @@ describe('attachApplications', () => {
   it('returns the candidate list unchanged when forms is not an array', () => {
     const cands = [cand('628111')];
     expect(attachApplications(cands, undefined as unknown as [])).toBe(cands);
+  });
+});
+
+// ==========================================
+// `_lib/db/pekerjaan` — satu-satunya aturan normalisasi riwayat kerja.
+//
+// Sejak migrasi 032 riwayat kerja hidup di `candidate_pekerjaan`, bukan lagi di
+// kolom `pekerjaan_1..3`. Empat salinan lama (kolom, `ai_data_json.pekerjaan[]`,
+// `database_candidate`, `riwayat_pekerjaan_json`) menghasilkan 70 entri tapi
+// hanya 65 unik, dengan `masuk` dan `tahun_masuk` saling bertentangan di dalam
+// SATU objek. Tes di bawah mengunci aturan yang menggantikannya.
+// ==========================================
+describe('pekerjaan — normalisasi sebelum menyentuh tabel', () => {
+  it('membuang baris tanpa nama perusahaan (kolomnya NOT NULL + CHECK)', () => {
+    const out = normalizePekerjaan([
+      { perusahaan: 'PT A', masuk: '2020' },
+      { perusahaan: '   ', masuk: '2021' },
+      { perusahaan: '-', masuk: '2022' },
+      { nama_perusahaan: '' },
+      null,
+      'bukan objek',
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.perusahaan).toBe('PT A');
+  });
+
+  it('mendedupe dengan kunci yang SAMA dengan UNIQUE INDEX di DB', () => {
+    // Beda huruf besar dan spasi ganda tetap satu baris — kalau tidak, DB yang
+    // menolak dan seluruh penyimpanan gagal.
+    const out = normalizePekerjaan([
+      { perusahaan: 'PT LAMDA UTAMA KONSULT', masuk: '2025-05' },
+      { perusahaan: '  pt lamda utama   konsult ', masuk: '2025-05' },
+      { perusahaan: 'PT LAMDA UTAMA KONSULT', masuk: '2024-07' },
+    ]);
+    expect(out).toHaveLength(2);
+    expect(out.map((p) => p.tahun_masuk)).toEqual(['2024-07', '2025-05']);
+  });
+
+  it('`masuk` menang atas `tahun_masuk` yang bertentangan', () => {
+    // Terukur pada ASJ00095: masuk=2024-07 tapi tahun_masuk=2025-05 dalam satu
+    // objek. `sortRiwayatKronologis` membaca `masuk` lebih dulu, jadi memilih
+    // yang lain akan membuat urutan cetak berbeda dari yang tersimpan.
+    const out = normalizePekerjaan([{ perusahaan: 'PT X', masuk: '2024-07', tahun_masuk: '2025-05' }]);
+    expect(out[0]?.tahun_masuk).toBe('2024-07');
+  });
+
+  it('mengurutkan kronologis, yang tanpa tahun di akhir', () => {
+    const out = normalizePekerjaan([
+      { perusahaan: 'TERBARU', masuk: '2021' },
+      { perusahaan: 'TANPA TAHUN' },
+      { perusahaan: 'LAMA', masuk: 'Juli 2015' },
+      { perusahaan: 'TENGAH', masuk: '2018-09' },
+    ]);
+    expect(out.map((p) => p.perusahaan)).toEqual(['LAMA', 'TENGAH', 'TERBARU', 'TANPA TAHUN']);
+  });
+
+  it('TIDAK memotong daftar di 3 — batas kolom bukan batas data', () => {
+    // Data nyata: ASJ00184 punya 8 pekerjaan, ASJ00132 punya 5. Dulu lima di
+    // antaranya hilang saat simpan karena hanya 3 kolom slot yang ditulis.
+    const banyak = Array.from({ length: 8 }, (_, i) => ({ perusahaan: `PT ${i}`, masuk: String(2000 + i) }));
+    expect(normalizePekerjaan(banyak)).toHaveLength(8);
+  });
+
+  it('pekerjaanDariSlot membaca kolom 1..3 dengan ejaan kolom', () => {
+    const out = pekerjaanDariSlot({
+      pekerjaan_1_nama_perusahaan: 'PT A', pekerjaan_1_tahun_masuk: '2019', pekerjaan_1_jabatan: 'Operator',
+      pekerjaan_2_nama_perusahaan: 'PT B', pekerjaan_2_tahun_masuk: '2021',
+      pekerjaan_3_nama_perusahaan: '', pekerjaan_3_tahun_masuk: '2022',
+    });
+    expect(out.map((p) => p.perusahaan)).toEqual(['PT A', 'PT B']);
+    expect(out[0]?.jabatan).toBe('Operator');
+    expect(out[0]?.tahun_keluar).toBeNull();
+  });
+
+  it('idempoten: masukan yang sama menghasilkan keluaran yang sama', () => {
+    const src = [{ perusahaan: 'PT B', masuk: '2020' }, { perusahaan: 'PT A', masuk: '2018' }];
+    expect(normalizePekerjaan(normalizePekerjaan(src))).toEqual(normalizePekerjaan(src));
   });
 });

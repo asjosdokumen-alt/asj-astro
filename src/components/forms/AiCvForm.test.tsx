@@ -1308,13 +1308,18 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     expect(document.getElementById('ai_edu-sekolah-id-6')).toBeNull();
   });
 
-  it('pekerjaan dibatasi 3 baris dan keluarga 5, seperti legacy', () => {
+  /* Sejak `candidate_pekerjaan` (migrasi 032) riwayat kerja tidak lagi dibatasi
+     kolom `pekerjaan_1..3`, jadi batas 3 berhenti menjadi batas DATA. Angka
+     dinaikkan ke 8 supaya kandidat bisa menyimpan lebih banyak — data nyata
+     sudah ada yang 8 (ASJ00184) dan dulu 5 di antaranya terpotong saat simpan.
+     Pendidikan tetap 6 (slot cetak) dan keluarga 5. */
+  it('batas baris: pekerjaan 8 (data tak dibatasi kolom), pendidikan 6, keluarga 5', () => {
     render(<AiCvForm />);
     expect(document.getElementById('ai_job-perusahaan-id-0')).toBeTruthy();
     expect(document.getElementById('ai_fam-nama-0')).toBeTruthy();
     // The caps differ per section, so asserting one does not prove the others.
     const src = readFileSync('src/components/forms/AiCvForm.tsx', 'utf8');
-    expect(src).toContain('const JOB_MAX = 3;');
+    expect(src).toContain('const JOB_MAX = 8;');
     expect(src).toContain('const FAM_MAX = 5;');
     expect(src).toContain('const EDU_MAX = 6;');
   });

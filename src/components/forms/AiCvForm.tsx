@@ -178,7 +178,14 @@ interface FamRow {
 }
 
 const EDU_MAX = 6; // migrasi 028: slot ke-6 supaya LPK muat tanpa menghapus jenjang lain
-const JOB_MAX = 3;
+/* Batas ini dulu 3, mengikuti jumlah kolom `pekerjaan_1..3`. Sejak
+   `candidate_pekerjaan` (migrasi 032) riwayat kerja TIDAK lagi dibatasi kolom,
+   jadi 3 bukan batas data — hanya batas cetak: rirekisho punya 3–4 baris.
+   Menaikkannya ke 8 membuat kandidat bisa MENYIMPAN lebih banyak (data nyata
+   sudah ada yang 8: ASJ00184), sementara template tetap mencetak sebanyak
+   barisnya. Form yang memuat draf lama juga tidak lagi memotong: `rowsToState`
+   memetakan semua baris, dan `__pekerjaanLengkap` mengirim daftar utuh. */
+const JOB_MAX = 8;
 const FAM_MAX = 5;
 
 /**

@@ -7,6 +7,7 @@ import { normalizeWa, pick, supabaseJson, supabaseUpsert, toText, toDateOnly, no
 import { allColumns } from '../../_lib/db/schema.generated';
 import { findCandidateByWaFiltered, findCandidates } from '../../_lib/db/candidates';
 import { fetchMasterByWa } from '../../_lib/db/master';
+import { syncPekerjaan } from '../../_lib/db/pekerjaan';
 import { nextCandidateId } from '../../_lib/candidate-helpers';
 
 export async function findMasterByWa(wa: string): Promise<any | null> {
@@ -45,7 +46,27 @@ export async function findMasterByWa(wa: string): Promise<any | null> {
   return arr.find((r) => normalizeWa(String(r.no_wa || '')) === want) || null;
 }
 
-export async function patchMaster(id: string, body: Record<string, any>): Promise<void> {
+/** id_kandidat untuk tabel anak: dari body kalau ada, kalau tidak dari baris. */
+async function idKandidatUntuk(id: string, body: Record<string, unknown>): Promise<string> {
+  const dariBody = String(body.id_kandidat ?? '').trim();
+  if (dariBody) return dariBody;
+  const rows = await supabaseJson('GET', 'master_database_candidate', {
+    query: { select: 'id_kandidat', id: `eq.${id}`, limit: '1' },
+  });
+  const row = Array.isArray(rows) ? rows[0] : null;
+  return String(row?.id_kandidat ?? '').trim();
+}
+
+/**
+ * @param pekerjaan Daftar riwayat kerja LENGKAP dari form (boleh lebih dari 3).
+ *   `undefined`/`null` = pemanggil tidak punya daftar; tabel anak lalu diturunkan
+ *   dari kolom slot, dan `syncPekerjaan` menolak menyusutkan daftar yang ada.
+ */
+export async function patchMaster(
+  id: string,
+  body: Record<string, any>,
+  pekerjaan?: unknown[] | null,
+): Promise<void> {
   // `writeBodyFor` membuang kolom yang tidak ada di kontrak skema dan mencatatnya
   // sebagai drift. Ia menggantikan `MASTER_COLUMN_MISSING` — daftar tangan yang
   // sudah basi (migrasi 019 MENAMBAH kolomnya, daftar itu tetap menghapus
@@ -57,13 +78,27 @@ export async function patchMaster(id: string, body: Record<string, any>): Promis
     body: resolved.body,
     headers: { Prefer: 'return=minimal' },
   });
+  // Tabel anak ikut disinkronkan di SINI, bukan di tiap handler: sembilan titik
+  // panggil menulis master, dan satu yang lupa akan membuat riwayat kerja
+  // berbeda antara rirekisho dan form — persis kelas bug yang sedang dihapus.
+  const idKandidat = await idKandidatUntuk(id, body);
+  const eksplisit = Array.isArray(pekerjaan) ? { __pekerjaanLengkap: pekerjaan } : body;
+  await syncPekerjaan(idKandidat, eksplisit, Array.isArray(pekerjaan));
 }
 
-export async function upsertMaster(body: Record<string, any>): Promise<void> {
+export async function upsertMaster(
+  body: Record<string, any>,
+  pekerjaan?: unknown[] | null,
+): Promise<void> {
   const resolved = writeBodyFor('master_database_candidate', body);
   await supabaseUpsert('master_database_candidate', resolved.body as typeof body, ['no_wa'], {
     headers: { Prefer: 'return=minimal' },
   });
+  const idKandidat = String(body.id_kandidat ?? '').trim();
+  if (idKandidat) {
+    const eksplisit = Array.isArray(pekerjaan) ? { __pekerjaanLengkap: pekerjaan } : body;
+    await syncPekerjaan(idKandidat, eksplisit, Array.isArray(pekerjaan));
+  }
 }
 
 export async function findCandidateRow(wa: string): Promise<any | null> {

@@ -3,7 +3,8 @@ import type { FormRawRow } from '../db/row-types';
 import { candidateIdentityPatch } from '../db/identity-sync';
 import { AI_SUBMISSION_COLS, ESIGNATURE_COLS } from '../db/projections.ts';
 import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
-import { buildMasterNested, buildRiwayatSlots, masterColumnsFromAi, autoTranslateToJp, JP_TRANSLATE_MAP } from '../../contexts/master-data';
+import { buildMasterNested, buildRiwayatSlots, masterColumnsFromAi, autoTranslateToJp, JP_TRANSLATE_MAP, patchMaster } from '../../contexts/master-data';
+import { fetchCandidatePekerjaan } from '../db/pekerjaan';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../../contexts/applications';
 import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
 import { findFormsByWa } from '../db/forms.ts';
@@ -245,7 +246,17 @@ async function findAdminAiCandidateContext(
       : await findCandidateByWaOrNull(String(d.wa || ''));
     if (cand) row = await findMasterByWa(String(cand.no_wa || ''));
   }
-  return row ? buildMasterNested(row) : null;
+  if (!row) return null;
+  /* Lampirkan riwayat kerja dari tabel anak — sumber tunggal sejak 2026-11-03.
+     Tanpa ini konteks AI membaca kolom slot (maksimum 3) dan pekerjaan ke-4+
+     tidak pernah terlihat oleh model. */
+  const idKandidat = String(row.id_kandidat || '').trim();
+  if (idKandidat) {
+    try {
+      row.candidate_pekerjaan = await fetchCandidatePekerjaan(idKandidat);
+    } catch { /* jaring: kolom slot tetap dipakai */ }
+  }
+  return buildMasterNested(row);
 }
 
 async function handleGetAdminAiContext(payload: unknown[], sessionToken?: string) {
@@ -560,20 +571,21 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       } catch { /* terjemahan non-fatal */ }
 
       if (m && m.id !== undefined) {
-        await supabaseJson('PATCH', 'master_database_candidate', {
-          query: { id: 'eq.' + m.id },
-          body: masterBody,
-          headers: { Prefer: 'return=minimal' },
-        });
+        /* Lewat `patchMaster`, bukan PATCH mentah: (1) `writeBodyFor` menyaring
+           kolom di luar kontrak — PATCH mentah dijawab 400/PGRST204 dan
+           MEMBUANG SELURUH tulisan kalau satu kunci saja asing; (2) tabel anak
+           `candidate_pekerjaan` ikut disinkronkan, jadi riwayat kerja tidak
+           lagi hanya tersimpan di kolom slot. */
+        await patchMaster(m.id, masterBody, d.riwayatLengkap === true ? d.pekerjaan : null);
       } else {
         const { nextCandidateId } = await import('../candidate-helpers.ts');
-        const { supabaseUpsert } = await import('../db/client.ts');
+        const { upsertMaster } = await import('../../contexts/master-data');
         masterBody.no_wa = wa;
         masterBody.nama_lengkap = nama;
         masterBody.id_kandidat = await nextCandidateId();
-        await supabaseUpsert('master_database_candidate', masterBody, ['no_wa'], {
-          headers: { Prefer: 'return=minimal' },
-        });
+        /* Sama seperti cabang PATCH: lewat `upsertMaster` supaya kolom disaring
+           dan `candidate_pekerjaan` ikut terisi saat kandidat baru dibuat. */
+        await upsertMaster(masterBody, d.riwayatLengkap === true ? d.pekerjaan : null);
       }
 
       // Sinkronisasi ke database_candidate untuk panel utama (pas_photo dsb) DAN

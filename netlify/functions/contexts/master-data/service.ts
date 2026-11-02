@@ -15,6 +15,8 @@ import { cacheClear } from '../../_lib/cache';
 import { safeError } from '../../_lib/kernel/errors';
 import { fieldsOf, guardPayload, ignored, text } from '../../_lib/kernel/guard';
 import { resolveFileUrl } from '../../_lib/storage';
+import { fetchCandidatePekerjaan } from '../../_lib/db/pekerjaan';
+import { log } from '../../_lib/kernel/log';
 import {
   findMasterByWa, patchMaster, upsertMaster, findCandidateRow,
   normalizeWa as nw, pick, supabaseJson,
@@ -460,6 +462,23 @@ export function buildMasterNested(row: any): any {
           EDU_PERIOD_KEYS, tingkatToken));
     })(),
     pekerjaan: (function () {
+      /* SUMBER TUNGGAL (2026-11-03): kalau baris ini membawa `candidate_pekerjaan`
+         (dilampirkan `handleGetDrafCvMaster` / `_lib/ai/cv.ts` lewat
+         `fetchCandidatePekerjaan`), pakai itu APA ADANYA — sudah urut, sudah
+         didedupe, dan tidak dibatasi 3. Kolom slot + `ai_data_json` di bawah
+         hanya jaring untuk pemanggil yang belum melampirkan tabel anak (mis.
+         pembacaan ringan yang tidak butuh riwayat). */
+      const anak = row.candidate_pekerjaan;
+      if (Array.isArray(anak) && anak.length) {
+        return anak.map((r: Record<string, unknown>) => ({
+          perusahaan: toText(r.perusahaan), nama_perusahaan: toText(r.perusahaan),
+          perusahaan_jp: r.perusahaan_jp ?? '', jabatan: r.jabatan ?? '',
+          jabatan_jp: r.jabatan_jp ?? '', masuk: r.tahun_masuk ?? '',
+          tahun_masuk: r.tahun_masuk ?? '', keluar: r.tahun_keluar ?? '',
+          tahun_keluar: r.tahun_keluar ?? '', gaji: r.gaji ?? '',
+          jenis: r.jenis ?? '', bidang: r.bidang ?? '', catatan: r.catatan ?? '',
+        }));
+      }
       const arr: any[] = [];
       for (let i = 1; i <= 3; i++) {
         const nm = row['pekerjaan_' + i + '_nama_perusahaan'];
@@ -941,6 +960,13 @@ export function buildMasterBody(d: any): Record<string, any> {
   // Kolom slot riwayat: SATU implementasi, dipakai juga oleh jalur simpan CV AI
   // (`_lib/ai/cv.ts`) — lihat catatan di `buildRiwayatSlots`.
   Object.assign(body, buildRiwayatSlots(d, d.riwayatLengkap === true));
+  /* Daftar riwayat kerja yang LENGKAP TIDAK ikut di body: `buildMasterBody`
+     hanya boleh menghasilkan kolom yang ada di kontrak (dijaga
+     `actions-master.test.ts`). Ia diteruskan sebagai argumen terpisah ke
+     `patchMaster`/`upsertMaster` oleh pemanggil yang memang punya daftarnya
+     (`handleSubmitMasterForm`, `_lib/ai/cv.ts`). Kolom slot hanya 3 baris,
+     sedangkan `candidate_pekerjaan` tidak dibatasi — tanpa daftar terpisah,
+     kandidat dengan 5 pekerjaan kehilangan 2 di antaranya saat menyimpan. */
   // Tidak ada lagi penyaringan tangan di sini: `patchMaster`/`upsertMaster`
   // menyerahkan body ke `writeBodyFor()`, yang membuang kolom di luar kontrak
   // dan mencatatnya sebagai drift. Menyaring dua kali berarti dua daftar yang
@@ -1134,6 +1160,19 @@ export async function handleGetDrafCvMaster(payload: any[], sessionToken?: strin
       } catch { /* non-fatal */ }
       return { error: 'Data Master belum ada' + (nama ? ' untuk ' + nama : '') + ' (' + wa + '). Isi Form Master dulu.' };
     }
+    /* Lampirkan riwayat kerja dari tabel anak SEBELUM membentuk objek bersarang.
+       Tanpa ini `buildMasterNested` jatuh ke kolom slot (maksimum 3 baris) dan
+       form CV AI menyembunyikan pekerjaan ke-4 dan seterusnya — padahal barisnya
+       ADA di `candidate_pekerjaan`. */
+    const idKandidat = String(row.id_kandidat || '').trim();
+    if (idKandidat) {
+      try {
+        row.candidate_pekerjaan = await fetchCandidatePekerjaan(idKandidat);
+      } catch (err) {
+        // Jangan gagalkan pemuatan draf: kolom slot masih jadi jaring.
+        log.warn('draf.pekerjaan-fetch-failed', { idKandidat, err: String(err) });
+      }
+    }
     const nested = buildMasterNested(row);
     // Owner or admin already passed the pre-fetch gate — full draft only.
     return Object.assign(nested, { AIDATAJSON: row.ai_data_json || '', id_kandidat: row.id_kandidat || row.id || '' });
@@ -1190,11 +1229,15 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
     // guard — so an unauthenticated POST with a junk payload was rejected AND
     // invalidated the shared cache (public-base + every candidate page).
     cacheClear();
+    // Daftar riwayat kerja yang LENGKAP diteruskan terpisah: kolom slot hanya
+    // menampung 3 baris, `candidate_pekerjaan` tidak dibatasi. Gerbangnya sama
+    // dengan `buildRiwayatSlots` — pemanggil parsial tidak boleh memangkas.
+    const daftarPekerjaan = d.riwayatLengkap === true ? d.pekerjaan : null;
     if (row && row.id !== undefined) {
-      await patchMaster(row.id, body);
+      await patchMaster(row.id, body, daftarPekerjaan);
     } else {
       body.id_kandidat = await nextCandidateId();
-      await upsertMaster(body);
+      await upsertMaster(body, daftarPekerjaan);
     }
 
     try {

@@ -337,12 +337,18 @@ describe('handleSubmitDataAsj — kolom skalar ikut ditulis, bukan hanya ai_data
     expect(body.harapan_gaji_yen).toBe('180000'); // AI: gaji_yen
   });
 
-  it('golongan darah ditulis apa adanya — koersi terjadi di writeBodyFor, bukan di sini', async () => {
-    // `supabaseJson` di-mock, jadi `writeBodyFor` (yang menormalkan "AB +" →
-    // "AB+") tidak ikut jalan. Yang dijaga di sini: pemetaan TIDAK membuang
-    // nilainya. Normalisasinya sendiri diuji di kontrak `_lib/db/client.ts`.
+  it('golongan darah TIDAK dibuang, dan dikoersi writeBodyFor (2026-11-03)', async () => {
+    /* Dulu jalur ini mem-PATCH `master_database_candidate` secara MENTAH, jadi
+       `writeBodyFor` tidak jalan dan nilainya tersimpan apa adanya ("AB +").
+       Sejak 2026-11-03 jalur ini lewat `patchMaster` — bukan untuk koersi, tapi
+       karena PATCH mentah menolak SELURUH tulisan (400/PGRST204) begitu ada satu
+       kunci di luar kontrak, dan karena tabel anak `candidate_pekerjaan` harus
+       ikut tersinkron.
+       Akibatnya koersi sekarang memang terjadi di sini. Yang tetap dijaga:
+       nilainya TIDAK dibuang. Normalisasi itu sendiri diuji di kontrak
+       `_lib/db/client.ts`. */
     await handleSubmitDataAsj(payloadRich(), 'tok-admin');
-    expect(masterWrite().golongan_darah).toBe('AB +');
+    expect(masterWrite().golongan_darah).toBe('AB+');
   });
 
   it('field AI yang KOSONG tidak mengosongkan kolom (kunci tidak dikirim)', async () => {
