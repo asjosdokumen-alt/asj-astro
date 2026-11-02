@@ -14,6 +14,7 @@
 // in full in the DB.
 // ==========================================
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
 
 vi.mock('../db/client', () => ({
   supabaseJson: vi.fn(),
@@ -140,5 +141,59 @@ describe('failJob — last_error dipotong 300 karakter saat tulis', () => {
     expect(body.status).toBe('failed');
     expect(body.last_error.length).toBe(300);
     expect(body.last_error).not.toContain('SECRET-TAIL');
+  });
+});
+
+// ==========================================
+// PENJAGA: claim_next_job() tidak boleh punya rujukan kolom yang ambigu.
+//
+// Terukur 2026-11-02 di Neon: `POST /rest/v1/rpc/claim_next_job` menjawab
+// 400 / 42702 `column reference "id" is ambiguous`, dan itu berlaku sejak 009
+// (2026-10-12) tanpa ada yang menyadarinya — `claimJob()` menangkap error-nya
+// dan mengembalikan `null`, jadi "antrean rusak" tampak persis seperti
+// "antrean kosong". Antrean memang kosong saat itu, jadi kerusakannya laten.
+//
+// Sebabnya `RETURNS TABLE (...)` mendeklarasikan parameter KELUAR bernama `id`,
+// `status`, `attempts`, dst., sehingga `WHERE id = (...)` dan
+// `attempts = attempts + 1` di badan fungsi menunjuk kolom tabel DAN variabel
+// keluar sekaligus.
+//
+// Tes ini memeriksa migrasi TERAKHIR yang mendefinisikan fungsi itu, bukan
+// berkas tertentu — kalau nanti ada migrasi yang menimpanya lagi, yang diperiksa
+// ikut berganti.
+// ==========================================
+describe('migrasi claim_next_job — rujukan kolom harus berkualifikasi', () => {
+  const migDir = 'migrations';
+  const files = readdirSync(migDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
+
+  const definisi = files.filter((f) =>
+    readFileSync(`${migDir}/${f}`, 'utf8').includes('FUNCTION claim_next_job'),
+  );
+  const terakhir = definisi[definisi.length - 1];
+
+  it('ada migrasi yang mendefinisikan claim_next_job', () => {
+    expect(terakhir).toBeTruthy();
+  });
+
+  it('badan fungsi tidak memakai `id`/`attempts` tanpa kualifikasi', () => {
+    const sql = readFileSync(`${migDir}/${terakhir}`, 'utf8');
+    const badan = sql.slice(sql.indexOf('$$'), sql.lastIndexOf('$$'));
+
+    // Pola yang PERSIS menyebabkan 42702. Kalau salah satunya kembali, tes merah.
+    expect(badan).not.toMatch(/WHERE\s+id\s*=/);
+    expect(badan).not.toMatch(/attempts\s*=\s*attempts\s*\+/);
+
+    // Dan kualifikasinya memang ada.
+    expect(badan).toMatch(/WHERE\s+jq\.id\s*=/);
+    expect(badan).toMatch(/attempts\s*=\s*jq\.attempts\s*\+/);
+  });
+
+  it('nama kolom keluaran tidak berubah — kontrak balasan RPC dipakai job-queue.ts', () => {
+    const sql = readFileSync(`${migDir}/${terakhir}`, 'utf8');
+    for (const kol of ['id UUID', 'type TEXT', 'payload JSONB', 'idempotency_key TEXT', 'attempts INT']) {
+      expect(sql).toContain(kol);
+    }
   });
 });
