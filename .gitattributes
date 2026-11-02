@@ -55,3 +55,18 @@
 # would surface as "mutation did not apply" rather than as a silent SURVIVED — but
 # it would still break the battery on any fresh Windows clone.
 scripts/ci/headings-pairs-*.json text eol=lf
+
+# ── Migrasi SQL ──────────────────────────────────────────────────────────────
+#
+# `scripts/migrate.mjs` menyimpan sha256 ISI BERKAS ke `schema_migrations` dan
+# menganggap checksum yang berbeda sebagai DRIFT — lalu MENOLAK menjalankan
+# migrasi apa pun sampai dibereskan. Dengan `core.autocrlf=true`, working tree di
+# Windows berisi CRLF sementara blob di repo berisi LF, jadi setiap checkout
+# membuat SEMUA migrasi yang sudah diterapkan terlihat "drifted".
+#
+# Terukur 2026-11-03: checksum ledger 031/032/033 cocok PERSIS dengan versi LF
+# berkasnya, dan berbeda dengan versi CRLF. Isinya tidak pernah berubah — hanya
+# line ending. Memperbaiki ledger (baseline --only) akan menyembunyikan gejala
+# dan tetap merusak clone Windows berikutnya, jadi yang diperbaiki adalah
+# line ending-nya.
+migrations/*.sql text eol=lf
