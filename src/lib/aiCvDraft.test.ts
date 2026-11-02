@@ -303,6 +303,42 @@ describe('aiCvDraft — buildAiCvNested (flat → bersarang)', () => {
     // Keluarga memakai `hubungan_id`/`pekerjaan` — ejaan `buildMasterNested`.
     expect(out.keluarga?.[0]).toEqual({ nama: 'SITI', hubungan_id: 'IBU', pekerjaan: 'PETANI' });
   });
+
+  /* Keluhan pemilik 2026-11-02: *"selalu urutkan riwayat kerja sesuai tahun awal
+     sampai terbaru … saat masuk ke template atau rirekisho berantakan
+     kronologinya"*. Renderer sudah mengurutkan; yang TERSIMPAN masih urutan ketik.
+     Tes ini mengunci urutan simpan, bukan urutan tampil. */
+  it('pekerjaan diurutkan KRONOLOGIS saat disimpan (bukan urutan ketik)', () => {
+    const out = buildAiCvNested({}, {
+      pekerjaan: [
+        { id: 'r1', perusahaan_id: 'PT TERBARU', masuk: '2021' },
+        { id: 'r2', perusahaan_id: 'PT LAMA', masuk: '2015-04' },
+        { id: 'r3', perusahaan_id: 'PT TENGAH', masuk: '2018-09' },
+      ],
+    }) as Record<string, Array<Record<string, string>>>;
+    expect(out.pekerjaan?.map((p) => p.perusahaan)).toEqual(['PT LAMA', 'PT TENGAH', 'PT TERBARU']);
+  });
+
+  it('pendidikan diurutkan kronologis, dan jenjang memutus tahun yang sama', () => {
+    const out = buildAiCvNested({}, {
+      pendidikan: [
+        { id: 'r1', tingkat: 'SMK', sekolah_id: 'SMK 1', masuk: '2018' },
+        { id: 'r2', tingkat: 'SD', sekolah_id: 'SD 1', masuk: '2006' },
+        { id: 'r3', tingkat: 'SMP', sekolah_id: 'SMP 1', masuk: '2012' },
+      ],
+    }) as Record<string, Array<Record<string, string>>>;
+    expect(out.pendidikan?.map((p) => p.tingkat)).toEqual(['SD', 'SMP', 'SMK']);
+  });
+
+  it('keluarga TIDAK diurutkan — urutannya konvensi 続柄, bukan tahun', () => {
+    const out = buildAiCvNested({}, {
+      keluarga: [
+        { id: 'r1', nama: 'BAPAK', hubungan_id: 'AYAH' },
+        { id: 'r2', nama: 'IBU', hubungan_id: 'IBU' },
+      ],
+    }) as Record<string, Array<Record<string, string>>>;
+    expect(out.keluarga?.map((k) => k.nama)).toEqual(['BAPAK', 'IBU']);
+  });
 });
 
 describe('aiCvDraft — applyAiCvRows (balasan AI → baris repeater)', () => {

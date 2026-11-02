@@ -32,7 +32,7 @@
  * Sengaja TIDAK mengubah kunci payload: itu kontrak dengan backend yang sudah
  * menyimpan data produksi. Hanya sisi BACA yang dibuat toleran.
  */
-import { getPath, isGood, mergeArrRiwayat, normalizeRiwayatFor, riwayatKeyOf } from './helpers_cv';
+import { getPath, isGood, mergeArrRiwayat, normalizeRiwayatFor, riwayatKeyOf, sortRiwayatKronologis, getTingkatVal } from './helpers_cv';
 
 /**
  * Daftar lengkap kunci flat AiCvForm — SATU sumber kebenaran. AiCvForm
@@ -357,7 +357,31 @@ export function buildAiCvNested(
         return entry;
       })
       .filter((entry) => Object.keys(entry).length > 0);
-    if (mapped.length) out[tipe] = mapped;
+    if (!mapped.length) continue;
+    /* KRONOLOGIS saat DISIMPAN (2026-11-02).
+     *
+     * Keluhan pemilik: *"selalu urutkan riwayat kerja sesuai tahun awal sampai
+     * terbaru … jadi saat masuk ke template atau rirekisho berantakan
+     * kronologinya"*. Renderer memang sudah mengurutkan (`sortRiwayatKronologis`
+     * di `cv-template-factory/data.ts` dan `RirekishoBuilder`), tetapi URUTAN
+     * YANG TERSIMPAN tetap urutan ketik siswa — sehingga form yang sedang diisi
+     * menampilkan 2021, 2019, 2017 dan terlihat "tidak pernah diurutkan".
+     *
+     * Mengurutkan di sini (satu-satunya tempat payload riwayat dibangun) membuat
+     * kolom `pekerjaan_1..3` / `pendidikan_1..6` tersimpan kronologis, jadi form,
+     * pratinjau, dan rirekisho membaca urutan yang SAMA.
+     *
+     * `keluarga` TIDAK diurutkan: urutannya konvensi 続柄, bukan tahun.
+     */
+    const sorted =
+      tipe === 'keluarga'
+        ? mapped
+        : sortRiwayatKronologis(mapped, {
+            ...(tipe === 'pendidikan'
+              ? { tiebreak: (a, b) => getTingkatVal(a.tingkat) - getTingkatVal(b.tingkat) }
+              : {}),
+          });
+    out[tipe] = sorted;
   }
   return out;
 }
