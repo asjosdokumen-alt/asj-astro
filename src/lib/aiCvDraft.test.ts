@@ -163,11 +163,21 @@ describe('aiCvDraft — mergeAiDraft (AI di atas master)', () => {
     expect(nested(merged, 'identitas').sim).toBe('A');
   });
 
-  it('array AI yang tidak kosong menimpa; array kosong tidak menghapus', () => {
+  /* 2026-11-03: presedensi array DIBALIK, sama seperti skalar. Dulu array AI
+     selalu menimpa, sehingga riwayat pendidikan/pekerjaan kembali ke versi lama
+     — terukur 5 dari 12 kandidat punya jumlah baris JSON berbeda dari tabel
+     anaknya. */
+  it('array master menang; array AI hanya mengisi kalau master kosong', () => {
     const merged = mergeAiDraft({ pendidikan: [{ tingkat: 'SMA' }] }, { pendidikan: [] });
     expect(list(merged, 'pendidikan')).toEqual([{ tingkat: 'SMA' }]);
+
     const merged2 = mergeAiDraft({ pendidikan: [{ tingkat: 'SMA' }] }, { pendidikan: [{ tingkat: 'SMP' }] });
-    expect(list(merged2, 'pendidikan')).toEqual([{ tingkat: 'SMP' }]);
+    expect(list(merged2, 'pendidikan')).toEqual([{ tingkat: 'SMA' }]); // master menang
+
+    // Master belum punya baris sama sekali ⇒ AI boleh mengisi (jalur kandidat
+    // yang riwayatnya hanya pernah masuk lewat ekstraksi AI).
+    const merged3 = mergeAiDraft({ pendidikan: [] }, { pendidikan: [{ tingkat: 'SMP' }] });
+    expect(list(merged3, 'pendidikan')).toEqual([{ tingkat: 'SMP' }]);
   });
 
   it('base null/undefined tetap menghasilkan objek', () => {

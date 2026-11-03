@@ -235,7 +235,15 @@ export function mergeAiDraft(base: unknown, ai: unknown): Record<string, unknown
   for (const [k, v] of Object.entries(ai as Record<string, unknown>)) {
     const cur = out[k];
     if (Array.isArray(v)) {
-      if (v.length) out[k] = v;
+      /* ARRAY MASTER MENANG (2026-11-03). Sebelumnya array AI selalu menimpa
+         selama tidak kosong — kelas bug yang sama dengan skalar di atas, dan
+         akibatnya riwayat pendidikan/pekerjaan bisa kembali ke versi lama:
+         terukur 5 dari 12 kandidat punya jumlah baris JSON berbeda dari tabel
+         anaknya, dan 38 kandidat punya array `pekerjaan` di JSON sementara hanya
+         17 punya kolom `pekerjaan_*`.
+         AI mengisi HANYA kalau master tidak punya baris sama sekali. */
+      const curArr = Array.isArray(cur) ? cur : [];
+      if (v.length && curArr.length === 0) out[k] = v;
       continue;
     }
     if (v && typeof v === 'object') {
