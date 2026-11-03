@@ -1514,6 +1514,7 @@ export const jpTranslations: Record<string, string> = {
     "matematika.ganti_modul": "モジュール変更",
     "matematika.suara": "音",
     "ui.kotoba_practice": "語彙練習",
+    "ui.arcade_practice": "日本語アーケード（現場・作文）",
     "ui.matematika_practice": "数学・適性検査",
     "auth.belum_punya_akun": "アカウントをお持ちでないですか？",
     "toolbar.apply": "応募フォーム",

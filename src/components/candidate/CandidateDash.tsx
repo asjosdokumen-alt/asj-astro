@@ -490,6 +490,27 @@ export default function CandidateDash() {
       navigateTo('/matematika');
     }
 
+    /**
+     * Arcade refleks (`/arcade`) — Genba Order Rush + Kotoba Combo Builder.
+     *
+     * Gerbangnya SAMA dengan tiga tombol di atas (WA + VIP). Penjaganya di
+     * halaman itu masih KLIEN (`LoginGate`) karena seluruh kata arcade ada di
+     * bundel — jadi tombol ini hanya UX, bukan penjaga. Ditambahkan 2026-11-04
+     * setelah pemilik bertanya "menu game baru arcade-nya di mana?": halamannya
+     * sudah ada dan ter-deploy, tetapi TIDAK ADA tautan ke sana dari mana pun.
+     */
+    function openArcade() {
+      if (!(user?.wa || data?.wa)) {
+        showToast(t('ui.toast_session_invalid_relogin'), 'error');
+        return;
+      }
+      if (!isVipFlags(data)) {
+        showToast(t('ui.toast_feature_locked'), 'info');
+        return;
+      }
+      navigateTo('/arcade');
+    }
+
 if (!data) return failed
   ? <div class="py-8 max-w-md mx-auto"><LoadFailed onRetry={loadDashboard} /></div>
   : <div class="text-center py-12"><p class="text-slate-400">{t('ui.toast_data_not_found')}</p><a href="/" class="mt-4 inline-block px-6 py-3 bg-emerald-600 text-white rounded-full font-bold">{t('button.back')}</a></div>;
@@ -1003,6 +1024,7 @@ if (!data) return failed
                     <button type="button" data-testid="cmt-interview" onClick={openInterview} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-violet text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="microphone-alt" class="text-accent-violet shrink-0" /> {t('ui.interview_practice')}</button>
                     <button type="button" data-testid="cmt-kotoba" onClick={openKotoba} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-sky text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="language" class="text-accent-sky shrink-0" /> {t('ui.kotoba_practice')}</button>
                     <button type="button" data-testid="cmt-matematika" onClick={openMatematika} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-violet text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="bolt" class="text-accent-violet shrink-0" /> {t('ui.matematika_practice')}</button>
+                    <button type="button" data-testid="cmt-arcade" onClick={openArcade} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-amber text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="rocket" class="text-accent-amber shrink-0" /> {t('ui.arcade_practice')}</button>
                     <button type="button" data-testid="cmt-esign" onClick={openEsign} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-red text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="signature" class="text-accent-red shrink-0" /> {t('ui.esign_naitei')}</button>
                     <button type="button" onClick={openAiCvMaster} class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-amber text-slate-200 rounded-control text-sm font-bold transition text-left cursor-pointer"><Icon name="robot" class="text-accent-amber shrink-0" /> {t('ui.ai_cv_assistant')}</button>
                     <a href="/master" class="w-full flex items-center gap-2.5 px-4 py-3 min-h-11 bg-surface-raised border border-line-strong hover:border-accent-emerald text-slate-200 rounded-control text-sm font-bold transition text-left"><Icon name="clipboard-list" class="text-accent-emerald shrink-0" /> {t('ui.master_full_form')}</a>

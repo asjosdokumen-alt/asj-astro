@@ -864,3 +864,48 @@ describe('statusText — kosakata biodata tidak meminjam kosakata lamaran', () =
     }
   });
 });
+
+// ==========================================
+// Menu Arcade (`/arcade`).
+//
+// Pemilik 2026-11-04: *"menu game baru arcade-nya di mana?"* — halamannya sudah
+// dibangun dan ter-deploy, tetapi TIDAK ADA tautan ke sana dari mana pun. Tes ini
+// menjaga agar tautannya tidak hilang lagi, dan agar gerbang VIP-nya sama dengan
+// tombol Matematika/Kosakata di sebelahnya.
+// ==========================================
+describe('CandidateDash — menu Arcade', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    fetchMock.mockReset();
+    apiClientMock.mockReset();
+    vi.mocked(showToast).mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it('siswa VIP: tombol arcade ada dan mengarah ke /arcade', async () => {
+    mockDash({ isVIP: true });
+    render(<CandidateDash />);
+
+    const btn = await screen.findByTestId('cmt-arcade');
+    expect(btn).toBeTruthy();
+    btn.click();
+    expect(navigateToMock).toHaveBeenCalledWith('/arcade');
+  });
+
+  it('bukan siswa: tombol arcade TIDAK membuka /arcade', async () => {
+    mockDash({ isVIP: false });
+    render(<CandidateDash />);
+
+    const btn = await screen.findByTestId('cmt-arcade');
+    btn.click();
+    /* Gerbang yang sama dengan Matematika/Kosakata: toast "terkunci", bukan
+       navigasi. Tanpa tes ini, tombol bisa saja membuka halaman untuk semua
+       orang dan tidak ada yang tahu. */
+    expect(navigateToMock).not.toHaveBeenCalledWith('/arcade');
+  });
+});

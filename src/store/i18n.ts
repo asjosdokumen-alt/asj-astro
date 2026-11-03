@@ -2065,6 +2065,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "matematika.ganti_modul": "Ganti modul",
     "matematika.suara": "Suara",
     "ui.kotoba_practice": "Latihan Kosakata",
+    "ui.arcade_practice": "Arcade Jepang (Genba & Combo)",
     "ui.matematika_practice": "Tes Matematika & Psikotes",
     "auth.belum_punya_akun": "Belum punya akun?",
     "toolbar.apply": "Form Lamaran",
