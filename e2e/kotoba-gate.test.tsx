@@ -180,6 +180,39 @@ describe('/kotoba — siswa ASJ saja', () => {
 
     await waitFor(() => expect(screen.getByTestId('kotoba-hasil')).toBeTruthy());
   }, 30000);
+
+  /* Mode kilat: waktu habis = salah.
+     Bar `sisaWaktu` sudah ada di layar sejak dulu tetapi TIDAK PERNAH bergerak —
+     ia hanya direset 100 di setiap soal, jadi menggambar sesuatu yang tidak
+     benar. Tes ini mengunci bahwa ia benar-benar menghabiskan waktu dan bahwa
+     kehabisan waktu MEMAKAN nyawa, bukan diam saja. */
+  it('mode kilat memperpendek batas waktu (4 s), bukan menambah timer kedua', async () => {
+    loginSebagai('kandidat');
+    render(<KotobaGame />);
+    await waitFor(() => expect(screen.getByTestId('kotoba-soal')).toBeTruthy());
+
+    const cariTombol = () =>
+      [...document.querySelectorAll('button')].find((b) => (b.textContent || '').includes('Kilat'));
+    const nilaiBar = () => Number(document.querySelector('[aria-valuenow]')?.getAttribute('aria-valuenow'));
+
+    /* UKUR LAJU, bukan sekadar "ada yang berubah". Timer bawaan 9 detik; kilat
+       4 detik. Setelah 1,2 detik: normal ~87, kilat ~70. Ambang 80 memisahkan
+       keduanya dengan jarak yang cukup jauh sehingga tidak flaky.
+       Percobaan pertama saya hanya menunggu layar hasil muncul — tes itu LOLOS
+       walau timer sengaja dimatikan, jadi ia tidak mengukur apa pun. */
+    const sebelum = nilaiBar();
+    expect(sebelum).toBeGreaterThan(80);
+
+    cariTombol()?.click();
+    await waitFor(() => {
+      const kini = cariTombol();
+      expect(kini?.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    await new Promise((r) => setTimeout(r, 1200));
+    const sesudah = nilaiBar();
+    expect(sesudah, `bar ${sebelum} -> ${sesudah}; kilat tidak memperpendek waktu`).toBeLessThan(80);
+  }, 30000);
 });
 
 // ==========================================

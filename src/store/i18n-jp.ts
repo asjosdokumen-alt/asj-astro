@@ -1326,6 +1326,7 @@ export const jpTranslations: Record<string, string> = {
     "kotoba.fokus_lemah": "苦手",
     "kotoba.fokus_tempo": "復習期限",
     "kotoba.streak_hari": "日連続",
+    "kotoba.kilat": "スピード",
     "kotoba.hanya_lemah": "苦手な語を復習",
     "kotoba.bab_dari": "開始の課",
     "kotoba.bab_sampai": "終了の課",

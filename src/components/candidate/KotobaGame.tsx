@@ -122,6 +122,8 @@ type Arah = 'jp-id' | 'id-jp';
 const NYAWA_AWAL = 3;
 /** Batas waktu satu soal kuis. Mode ketik sengaja TANPA batas waktu. */
 const DURASI_SOAL_MS = 9000;
+/** Batas waktu mode kilat: 4 detik — cukup untuk mengingat, tidak untuk menebak. */
+const DURASI_KILAT_MS = 4000;
 /**
  * Jumlah baris kamus yang digambar sekaligus.
  *
@@ -432,6 +434,17 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const [salahKata, setSalahKata] = useState<Kotoba[]>([]);
   const [fase, setFase] = useState<'tanya' | 'hasil'>('tanya');
   const [sisaWaktu, setSisaWaktu] = useState(100);
+  /**
+   * Mode KILAT: tiap soal punya batas waktu, habis = dihitung salah.
+   *
+   * KENAPA: bar waktu (`sisaWaktu`) sudah ada di layar sejak dulu tetapi TIDAK
+   * PERNAH bergerak — hanya direset 100 di setiap soal. Jadi selama ini ia
+   * menggambar sesuatu yang tidak benar. Daripada dihapus, ia dijadikan mode:
+   * tekanan waktu yang ringan membuat latihan terasa seperti permainan, dan
+   * memaksa RETRIEVAL CEPAT — bukan mengenali jawaban sambil melihat pilihan
+   * selama sepuluh detik.
+   */
+  const [kilat, setKilat] = useState(false);
   /**
    * Kantong kata untuk "ulangi yang salah". `null` = ronde normal (soal
    * ditarik dari `pool` berbobot). Kalau kantong habis, ia diisi ulang —
@@ -842,7 +855,10 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const terapkan = (tepat: boolean) => {
     if (!item || benar !== null) return;
     const hpBaru = tepat ? hp : hp - 1;
-    const poin = (mode === 'ketik' ? 15 : 10) + kombo * 2;
+    /* Bonus kecepatan hanya di mode kilat: menjawab cepat saat waktunya tak
+       terbatas tidak layak diberi nilai lebih. */
+    const bonus = tepat && kilat ? Math.round(sisaWaktu / 10) : 0;
+    const poin = (mode === 'ketik' ? 15 : 10) + kombo * 2 + bonus;
     setBenar(tepat);
     setHp(hpBaru);
     setSkor(tepat ? skor + poin : skor);
@@ -855,6 +871,8 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     // supaya nilai hp yang dipakai adalah yang baru saja dihitung.
     window.setTimeout(() => lanjut(hpBaru), tepat ? 750 : 1400);
   };
+
+
 
   const jawabSoal = (pilih: string | null) => {
     if (!item || benar !== null) return;
@@ -871,12 +889,19 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
 
   // Batas waktu — hanya mode kuis. Mode ketik sengaja tanpa batas: yang dilatih
   // di sana adalah mengingat ejaan, dan stopwatch membuat orang menebak.
+  //
+  // KILAT memperpendek batas ini (9 s -> 4 s). Percobaan pertama saya menambah
+  // interval KEDUA untuk mode ini, padahal efek ini sudah menghitung mundur —
+  // dua interval menulis `sisaWaktu` yang sama dan angkanya jadi tidak masuk
+  // akal (terukur 87 alih-alih 100 atau 52). Yang benar: SATU timer, durasinya
+  // yang berbeda.
   useEffect(() => {
     if (mode !== 'kuis' || fase !== 'tanya' || benar !== null || !item) return;
+    const durasi = kilat ? DURASI_KILAT_MS : DURASI_SOAL_MS;
     const mulai = Date.now();
     const id = window.setInterval(() => {
       const lewat = Date.now() - mulai;
-      const s = Math.max(0, 100 - (lewat / DURASI_SOAL_MS) * 100);
+      const s = Math.max(0, 100 - (lewat / durasi) * 100);
       setSisaWaktu(s);
       if (s <= 0) {
         window.clearInterval(id);
@@ -884,7 +909,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       }
     }, 100);
     return () => window.clearInterval(id);
-  }, [mode, fase, benar, item]);
+  }, [mode, fase, benar, item, kilat]);
 
   // Rekor diperbarui saat ronde berakhir — di satu tempat, bukan di setiap
   // penambahan skor (kalau tidak, "rekor" berubah di tengah ronde).
@@ -1309,6 +1334,17 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
             </button>
           ))}
         </fieldset>
+        {/* Mode kilat: batas waktu per soal. */}
+        <button
+          type="button"
+          onClick={() => setKilat((x) => !x)}
+          aria-pressed={kilat}
+          class={`min-h-11 rounded-control border px-3 text-[12px] font-bold ${
+            kilat ? 'border-accent-amber bg-accent-amber/10 text-accent-amber' : 'border-line bg-surface-raised text-fg-muted'
+          }`}
+        >
+          ⚡ {t('kotoba.kilat')}
+        </button>
         {sumber === 'ssw' && (
           <select
             aria-label={t('kotoba.filter_kategori')}
