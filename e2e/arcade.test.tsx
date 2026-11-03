@@ -20,6 +20,20 @@ import { render, screen, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import ArcadeGame from '../src/components/candidate/ArcadeGame';
 import { COMBO_SOAL } from '../src/lib/arcade';
+import { authStore } from '../src/store/authReactive';
+
+/** `/arcade` bergerbang login; tes perilaku game harus masuk dulu. */
+function loginSebagaiSiswa() {
+  authStore.set({
+    role: 'kandidat',
+    name: 'Budi',
+    wa: '081234567890',
+    sessionToken: 'uji-kandidat',
+    refreshToken: '',
+    isLoggedIn: true,
+    lastChecked: Date.now(),
+  });
+}
 
 const tombol = (): HTMLButtonElement[] => [...document.querySelectorAll('button')] as HTMLButtonElement[];
 const cariTombol = (teks: string): HTMLButtonElement | undefined =>
@@ -28,9 +42,31 @@ const cariTombol = (teks: string): HTMLButtonElement | undefined =>
 const perintahTeks = (): string =>
   document.querySelector('[data-testid="arcade-perintah"]')?.textContent?.trim() ?? '';
 
+describe('arcade — gerbang login', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('belum login: formulir masuk tampil, TIDAK ada permainan', () => {
+    authStore.set({
+      role: 'kandidat', name: '', wa: '', sessionToken: '', refreshToken: '',
+      isLoggedIn: false, lastChecked: 0,
+    });
+    render(<ArcadeGame />);
+
+    /* Dua arah sekaligus: formulir ADA, dan tombol "Mulai Shift" TIDAK ADA.
+       Menguji salah satu saja akan lolos untuk gerbang yang tidak memasang apa
+       pun (formulir hilang) atau yang tidak menutup apa pun (permainan tetap
+       tampil). */
+    expect(document.querySelector('input[type="password"]')).toBeTruthy();
+    expect(cariTombol('Mulai Shift')).toBeUndefined();
+  });
+});
+
 describe('arcade — Genba Order Rush', () => {
   beforeEach(() => {
     localStorage.clear();
+    loginSebagaiSiswa();
   });
   afterEach(() => {
     cleanup();
@@ -98,6 +134,9 @@ describe('arcade — Genba Order Rush', () => {
 });
 
 describe('arcade — Kotoba Combo Builder', () => {
+  beforeEach(() => {
+    loginSebagaiSiswa();
+  });
   afterEach(() => {
     cleanup();
   });
@@ -120,6 +159,48 @@ describe('arcade — Kotoba Combo Builder', () => {
       expect(rel).toContain(pertama);
     });
   });
+
+  it('kartu pertama bernilai x2 — kombo yang dipakai adalah SETELAH kenaikan', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Combo Kalimat')?.click();
+    await waitFor(() => expect(screen.getByTestId('arcade-target')).toBeTruthy());
+
+    const pertama = COMBO_SOAL[0].urutan[0].jp;
+    tombol().find((b) => (b.textContent || '').trim() === pertama)?.click();
+
+    /* Sebelum diperbaiki, ketukan pertama dinilai dengan kombo LAMA (x1) ⇒ 50,
+       padahal layar sudah menampilkan x2. Angka di layar dan skor yang masuk
+       harus sama. */
+    await waitFor(() => expect(document.body.textContent || '').toContain('¥ 100'));
+  });
+
+  /* Penjaga `langkah >= urutan.length` — dan apa yang SEBENARNYA dicegahnya.
+     Klaim awal saya ("soal bisa melompat dua kali") TIDAK terbukti: setelah
+     urutan habis, `kartuBenar` selalu false, jadi ketukan masuk ke cabang salah
+     dan tidak pernah memanggil `muatSoal`. Yang benar-benar terjadi adalah
+     ketukan nyasar selama jeda 1,6 detik MERESET kombo ke x1 dan memunculkan
+     umpan balik "salah" padahal kalimatnya sudah selesai — itulah yang diukur
+     tes ini. */
+  it('setelah kalimat selesai, ketukan nyasar tidak mereset kombo', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Combo Kalimat')?.click();
+    await waitFor(() => expect(screen.getByTestId('arcade-target')).toBeTruthy());
+
+    for (const k of COMBO_SOAL[0].urutan) {
+      tombol().find((b) => (b.textContent || '').trim() === k.jp)?.click();
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    /* Lima kartu benar ⇒ kombo x6 (mulai dari x1 lalu naik tiap ketukan). */
+    const komboSelesai = (document.body.textContent || '').match(/x(\d+)/)?.[1];
+    expect(komboSelesai).toBe('6');
+
+    /* Ketuk kartu jebakan yang masih tersisa, selagi jeda 1,6 detik berjalan. */
+    const sisa = COMBO_SOAL[0].jebakan[0].jp;
+    tombol().find((b) => (b.textContent || '').trim() === sisa)?.click();
+
+    await new Promise((r) => setTimeout(r, 60));
+    expect((document.body.textContent || '').match(/x(\d+)/)?.[1], 'kombo tereset oleh ketukan nyasar').toBe('6');
+  }, 15000);
 
   it('kartu jebakan memberi umpan balik dan kombo kembali ke x1', async () => {
     render(<ArcadeGame />);

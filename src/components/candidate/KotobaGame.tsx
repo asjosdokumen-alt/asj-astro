@@ -465,6 +465,10 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const [jumlahBenar, setJumlahBenar] = useState(0);
   const [salahKata, setSalahKata] = useState<Kotoba[]>([]);
   const [fase, setFase] = useState<'tanya' | 'hasil'>('tanya');
+  /* Cermin `fase` untuk pembacaan di dalam setTimeout: closure `terapkan`
+     menangkap nilai saat jawaban diberikan, bukan saat jedanya berakhir. */
+  const faseRef = useRef<'tanya' | 'hasil'>('tanya');
+  faseRef.current = fase;
   const [sisaWaktu, setSisaWaktu] = useState(100);
   /**
    * Mode KILAT: tiap soal punya batas waktu, habis = dihitung salah.
@@ -880,6 +884,13 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
    * satu dari bank berbobot.
    */
   const lanjut = (hpBaru: number) => {
+    /* RONDE SUDAH BERAKHIR — jangan pasang soal lagi.
+       `lanjut` dijadwalkan lewat setTimeout setelah setiap jawaban (750 ms kalau
+       benar, 1 400 ms kalau salah). Di Bom Sakura, sumbu 60 detik bisa habis
+       SEBELUM jeda itu selesai; tanpa penjaga ini soal berikutnya tetap dipasang
+       di bawah layar hasil, dan saat siswa menekan "main lagi" keadaannya sudah
+       tidak bersih. */
+    if (faseRef.current !== 'tanya') return;
     if (hpBaru <= 0) {
       setFase('hasil');
       return;

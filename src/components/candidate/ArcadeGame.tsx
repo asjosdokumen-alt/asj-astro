@@ -18,6 +18,8 @@
  */
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
+import { authStore } from '../../store/authReactive';
+import LoginGate from '../ui/LoginGate';
 import { bunyi, ucap } from '../../lib/tts';
 import {
   COMBO_SOAL,
@@ -58,6 +60,11 @@ function simpanLemah(n: CatatanLemah[]): void {
 }
 
 export default function ArcadeGame() {
+  /* Gerbang login — sama seperti /kotoba, /matematika, dan /wawancara.
+     BATASNYA JUJUR: ini gerbang KLIEN. Seluruh kata arcade ada di bundel, jadi
+     ia menghentikan akses sambil lalu, bukan penyerang; data yang benar-benar
+     perlu dijaga harus ditolak di server (lihat `getBankKotoba`). */
+  const [masuk, setMasuk] = useState(() => !!authStore.get().isLoggedIn);
   const [tab, setTab] = useState<'genba' | 'combo'>('genba');
   const [lemah, setLemah] = useState<CatatanLemah[]>(() => bacaLemah());
 
@@ -182,14 +189,25 @@ export default function ArcadeGame() {
   }, []);
 
   const ketuk = (k: Kartu, indeks: number) => {
+    /* KALIMAT SUDAH SELESAI — abaikan ketukan berikutnya.
+       Tanpa penjaga ini, selama jeda 1,6 detik sebelum soal berganti kartu
+       masih bisa diketuk, dan ketukan pada kartu pertama soal LAMA ikut
+       memanggil `muatSoal(soalIdx + 1)` lagi — soal bisa melompat dua kali. */
+    if (langkah >= soal.urutan.length) return;
+
     if (kartuBenar(soal, langkah, k)) {
       bunyi(true);
       ucap(k.jp, 1);
       const l = langkah + 1;
+      /* Kombo yang DIPAKAI adalah kombo setelah kenaikan: kartu pertama sebuah
+         kalimat bernilai x2, bukan x1. Sebelumnya `setSkorCombo` membaca
+         `kombo` lama sehingga ketukan pertama selalu dinilai seolah tidak ada
+         rangkaian — dan angka di layar (x2) tidak cocok dengan skor yang masuk. */
+      const komboBaru = kombo + 1;
       setLangkah(l);
       setTray((tr) => [...tr, k.jp]);
-      setKombo((c) => c + 1);
-      setSkorCombo((n) => n + 50 * kombo);
+      setKombo(komboBaru);
+      setSkorCombo((n) => n + 50 * komboBaru);
       setKartu((ks) => ks.filter((_, i) => i !== indeks));
       if (l === soal.urutan.length) {
         setBalas(t('arcade.sempurna'));
@@ -208,6 +226,10 @@ export default function ArcadeGame() {
     setLemah([]);
     simpanLemah([]);
   };
+
+  if (!masuk) {
+    return <LoginGate onSuccess={() => setMasuk(true)} />;
+  }
 
   return (
     <div class="max-w-md mx-auto">
