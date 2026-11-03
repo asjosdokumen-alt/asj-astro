@@ -174,6 +174,32 @@ export function jatuhTempo(c: Catatan | undefined, sekarang: number): boolean {
 interface Progres {
   rekor: number;
   kata: Record<string, Catatan>;
+  /** Rangkaian hari berturut-turut bermain (kebiasaan, bukan skor). */
+  streak?: { hari: string; jumlah: number };
+}
+
+/** Tanggal lokal `YYYY-MM-DD` — bukan `toISOString()` yang memakai UTC. */
+export function tanggalLokal(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * Hitung streak setelah bermain hari ini.
+ *
+ * `kemarin` diterima sebagai parameter supaya bisa diuji tanpa memalsukan jam
+ * sistem. Aturannya: hari yang sama tidak menambah; hari setelah hari terakhir
+ * menambah satu; selain itu (bolong) kembali ke 1.
+ */
+export function hitungStreak(
+  sebelumnya: { hari: string; jumlah: number } | undefined,
+  hariIni: string,
+  kemarin: string,
+): { hari: string; jumlah: number } {
+  if (!sebelumnya?.hari) return { hari: hariIni, jumlah: 1 };
+  if (sebelumnya.hari === hariIni) return sebelumnya;
+  if (sebelumnya.hari === kemarin) return { hari: hariIni, jumlah: sebelumnya.jumlah + 1 };
+  return { hari: hariIni, jumlah: 1 };
 }
 
 /** Kunci unik satu kata. `k`+`h` — dua entri bisa berbagi kanji atau kana,
@@ -190,6 +216,7 @@ function bacaProgres(wa: string): Progres {
     return {
       rekor: typeof p.rekor === 'number' ? p.rekor : 0,
       kata: p.kata && typeof p.kata === 'object' ? (p.kata as Record<string, Catatan>) : {},
+      streak: p.streak && typeof p.streak === 'object' ? p.streak : undefined,
     };
   } catch {
     return { rekor: 0, kata: {} };
@@ -566,9 +593,14 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   }, [sumber, wa, loginGate, bidangList.length]);
 
   // Progres per kandidat: dibaca saat WA diketahui, ditulis setiap berubah.
+  // Streak dihitung DI SINI (sekali per pemuatan, bukan per jawaban): bermain
+  // hari ini = hari ini dihitung, dan efek penulis di bawah yang menyimpannya.
   useEffect(() => {
     if (!wa) return;
-    setProgres(bacaProgres(wa));
+    const p = bacaProgres(wa);
+    const kini = new Date();
+    const kemarin = new Date(kini.getTime() - 86_400_000);
+    setProgres({ ...p, streak: hitungStreak(p.streak, tanggalLokal(kini), tanggalLokal(kemarin)) });
   }, [wa]);
   useEffect(() => {
     if (!wa) return;
@@ -1133,6 +1165,9 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
         <p class="text-[12px] text-fg-muted">
           {pool.length} {t('kotoba.kata_tersedia')} ·{' '}
           {kataDikuasai} {t('kotoba.kata_dikuasai')} · {t('kotoba.rekor')} {progres.rekor}
+          {progres.streak && progres.streak.jumlah > 1 ? (
+            <> · 🔥 {progres.streak.jumlah} {t('kotoba.streak_hari')}</>
+          ) : null}
         </p>
         {/* Saklar suara otomatis. Teksnya berubah, bukan cuma ikon: ikon 🔊/🔇
             saja tidak memberi tahu mana yang sedang aktif. */}

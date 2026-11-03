@@ -22,7 +22,7 @@
  */
 import { render, screen, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import KotobaGame, { dalamRentangBab, jatuhTempo, JARAK_HARI } from '../src/components/candidate/KotobaGame';
+import KotobaGame, { dalamRentangBab, jatuhTempo, JARAK_HARI, hitungStreak, tanggalLokal } from '../src/components/candidate/KotobaGame';
 import { authStore } from '../src/store/authReactive';
 
 /* `vi.hoisted` wajib: `vi.mock` diangkat ke atas `const`. */
@@ -265,5 +265,41 @@ describe('kotoba — jatuh tempo (Leitner)', () => {
     expect(JARAK_HARI.length).toBe(5);
     expect(jatuhTempo({ salah: 0, benar: 0, kotak: 99, terakhir: kini - 16 * HARI }, kini)).toBe(true);
     expect(jatuhTempo({ salah: 0, benar: 0, kotak: 0, terakhir: kini }, kini)).toBe(false);
+  });
+});
+
+// ==========================================
+// Streak harian — penggerak kebiasaan, bukan skor. Diuji sebagai fungsi murni
+// supaya aturan "bolong = kembali ke 1" tidak bisa berubah tanpa ketahuan.
+// ==========================================
+describe('kotoba — streak harian', () => {
+  it('pertama kali bermain → 1', () => {
+    expect(hitungStreak(undefined, '2026-11-03', '2026-11-02')).toEqual({ hari: '2026-11-03', jumlah: 1 });
+  });
+
+  it('hari yang sama TIDAK menambah', () => {
+    const s = { hari: '2026-11-03', jumlah: 4 };
+    expect(hitungStreak(s, '2026-11-03', '2026-11-02')).toEqual(s);
+  });
+
+  it('berturut-turut menambah satu', () => {
+    expect(hitungStreak({ hari: '2026-11-02', jumlah: 4 }, '2026-11-03', '2026-11-02')).toEqual({
+      hari: '2026-11-03',
+      jumlah: 5,
+    });
+  });
+
+  it('bolong sehari → kembali ke 1, bukan melanjutkan', () => {
+    // Ini yang membedakan streak dari "total hari bermain".
+    expect(hitungStreak({ hari: '2026-11-01', jumlah: 9 }, '2026-11-03', '2026-11-02')).toEqual({
+      hari: '2026-11-03',
+      jumlah: 1,
+    });
+  });
+
+  it('tanggalLokal memakai waktu LOKAL, bukan UTC', () => {
+    // 1 Januari 00:30 lokal: `toISOString()` bisa saja masih 31 Desember.
+    const d = new Date(2026, 0, 1, 0, 30);
+    expect(tanggalLokal(d)).toBe('2026-01-01');
   });
 });
