@@ -22,7 +22,7 @@
  */
 import { render, screen, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import KotobaGame from '../src/components/candidate/KotobaGame';
+import KotobaGame, { dalamRentangBab } from '../src/components/candidate/KotobaGame';
 import { authStore } from '../src/store/authReactive';
 
 /* `vi.hoisted` wajib: `vi.mock` diangkat ke atas `const`. */
@@ -180,4 +180,49 @@ describe('/kotoba — siswa ASJ saja', () => {
 
     await waitFor(() => expect(screen.getByTestId('kotoba-hasil')).toBeTruthy());
   }, 30000);
+});
+
+// ==========================================
+// Rentang bab — "bab 1 sampai 10", bukan satu bab.
+//
+// Pemilik 2026-11-03: *"bank kotoba kanji tolong bikin pilihannya secara
+// universal bisa milih kek milih bab 1- bab 10, milih bab 1-25 begitu?"*.
+// Dulu filternya satu <select> per bab, jadi memilih "1 sampai 10" berarti
+// bermain sepuluh kali. Aturannya diuji di sini sebagai fungsi murni: tanpa
+// render, tanpa bank, jadi angkanya tidak bisa lolos karena kebetulan.
+// ==========================================
+describe('kotoba — rentang bab', () => {
+  it('dua batas kosong = semua bab', () => {
+    for (const b of [0, 1, 25, 50]) expect(dalamRentangBab(b, '', '')).toBe(true);
+  });
+
+  it('bab 1 sampai 10 memuat 1..10 dan menolak 11', () => {
+    for (let b = 1; b <= 10; b++) expect(dalamRentangBab(b, '1', '10')).toBe(true);
+    expect(dalamRentangBab(11, '1', '10')).toBe(false);
+    expect(dalamRentangBab(0, '1', '10')).toBe(false);
+  });
+
+  it('bab 1 sampai 25', () => {
+    expect(dalamRentangBab(1, '1', '25')).toBe(true);
+    expect(dalamRentangBab(25, '1', '25')).toBe(true);
+    expect(dalamRentangBab(26, '1', '25')).toBe(false);
+  });
+
+  it('batas yang DIBALIK dibaca sebagai rentang yang sama, bukan kosong', () => {
+    // Menukar dua kotak itu kekeliruan wajar; menjawab "0 kata" membuat siswa
+    // mengira banknya rusak. Rentang 25→10 dibaca sebagai 10..25.
+    expect(dalamRentangBab(5, '25', '10')).toBe(false);
+    expect(dalamRentangBab(10, '25', '10')).toBe(true);
+    expect(dalamRentangBab(17, '25', '10')).toBe(true);
+    expect(dalamRentangBab(25, '25', '10')).toBe(true);
+    expect(dalamRentangBab(9, '25', '10')).toBe(false);
+    expect(dalamRentangBab(26, '25', '10')).toBe(false);
+  });
+
+  it('satu batas saja tetap bekerja', () => {
+    expect(dalamRentangBab(3, '3', '')).toBe(true);
+    expect(dalamRentangBab(2, '3', '')).toBe(false);
+    expect(dalamRentangBab(3, '', '3')).toBe(true);
+    expect(dalamRentangBab(4, '', '3')).toBe(false);
+  });
 });

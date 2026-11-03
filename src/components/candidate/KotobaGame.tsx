@@ -266,6 +266,23 @@ function teksJawaban(v: Kotoba, arah: Arah): string {
   return arah === 'jp-id' ? v.id : `${v.k} 【${v.h}】`;
 }
 
+/**
+ * Apakah bab `b` masuk rentang `dari`..`sampai`.
+ *
+ * Fungsi MURNI dan diekspor supaya aturannya bisa diuji tanpa merender
+ * permainan. `''` berarti "tanpa batas" di sisi itu, jadi `('', '')` = semua bab.
+ *
+ * Batas yang DIBALIK (dari 25, sampai 10) dibaca sebagai 10..25: menukar dua
+ * kotak adalah kekeliruan yang wajar, dan menjawab "0 kata" hanya membuat siswa
+ * mengira banknya kosong.
+ */
+export function dalamRentangBab(b: number, dari: string, sampai: string): boolean {
+  const lo = dari === '' ? -Infinity : Number(dari);
+  const hi = sampai === '' ? Infinity : Number(sampai);
+  if (!Number.isFinite(lo) && !Number.isFinite(hi)) return true;
+  return b >= Math.min(lo, hi) && b <= Math.max(lo, hi);
+}
+
 export default function KotobaGame({ waTarget = '', adminMode = false }: Props) {
   useLang(); // langganan bahasa: tanpa ini `t()` tidak dirender ulang saat toggle
   const auth = authStore.get();
@@ -290,7 +307,20 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
 
   /* ── filter & mode ─────────────────────────────────────────────────────── */
   const [mode, setMode] = useState<Mode>('kuis');
-  const [babFilter, setBabFilter] = useState('all');
+  /**
+   * Rentang bab, bukan satu bab.
+   *
+   * Pemilik 2026-11-03: *"bank kotoba kanji tolong bikin pilihannya secara
+   * universal bisa milih kek milih bab 1- bab 10, milih bab 1-25 begitu?"*.
+   * Satu `<select>` "Bab 1..50" memaksa siswa menghafal per bab, padahal ujian
+   * JFT/SSW mencampur banyak bab dan siswa biasanya ingin "bab 1 sampai 10".
+   * Dua kotak (dari–sampai) menutup SEMUA rentang tanpa daftar preset yang
+   * harus ditambah tiap kali jumlah bab berubah.
+   *
+   * String kosong = tanpa batas di sisi itu (`''`..`''` = semua bab).
+   */
+  const [babDari, setBabDari] = useState('');
+  const [babSampai, setBabSampai] = useState('');
   const [posFilter, setPosFilter] = useState('all');
   const [arah, setArah] = useState<Arah>('jp-id');
 
@@ -543,10 +573,26 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
    * bidang tidak punya bab, dan menampilkan "Semua bab" di sana akan menjadi
    * kontrol yang tidak mengubah apa pun.
    */
+  /* Rentang bab. Batas dibalik (dari 25 sampai 10) TIDAK ditolak — dibaca
+     sebagai 10..25, karena membalik dua kotak adalah kekeliruan yang wajar dan
+     menampilkan "0 kata" hanya akan membingungkan. Aturannya ada di
+     `dalamRentangBab` (fungsi murni, diuji langsung). */
+
+  /** Label rentang untuk kepala daftar: "1–10", "1+", "–10", atau "semua". */
+  const labelRentangBab = (): string => {
+    if (!babDari && !babSampai) return t('kotoba.semua_bab');
+    if (babDari && babSampai) {
+      const d = Math.min(Number(babDari), Number(babSampai));
+      const s = Math.max(Number(babDari), Number(babSampai));
+      return `${d}–${s}`;
+    }
+    return babDari ? `${babDari}+` : `–${babSampai}`;
+  };
+
   const pool = (sumber === 'ssw' ? kataBidang : bank).filter((v) =>
     sumber === 'ssw'
       ? (catFilter === 'all' || v.cat === catFilter) && (posFilter === 'all' || v.pos === posFilter)
-      : (babFilter === 'all' || v.b === Number(babFilter)) && (posFilter === 'all' || v.pos === posFilter),
+      : dalamRentangBab(v.b, babDari, babSampai) && (posFilter === 'all' || v.pos === posFilter),
   );
 
   /** Sumber pengecoh: bidang yang sedang dibuka, atau seluruh bank buku. */
@@ -654,7 +700,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     if (mode !== 'kuis' && mode !== 'ketik') return;
     if (loginGate || vip === false) return;
     mulaiRonde();
-  }, [bank, babFilter, posFilter, arah, mode, loginGate, vip, sumber, bidangId, catFilter, kataBidang.length]);
+  }, [bank, babDari, babSampai, posFilter, arah, mode, loginGate, vip, sumber, bidangId, catFilter, kataBidang.length]);
 
   /** Catat satu jawaban ke progres (dipakai pembobotan ronde berikutnya). */
   const catat = (v: Kotoba, tepat: boolean) => {
@@ -855,7 +901,8 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
 
   /** Kembalikan semua filter ke "semua" — jalan keluar dari kombinasi kosong. */
   const resetFilter = () => {
-    setBabFilter('all');
+    setBabDari('');
+    setBabSampai('');
     setPosFilter('all');
     setCatFilter('all');
   };
@@ -1100,19 +1147,39 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
             ))}
           </select>
         ) : (
-          <select
-            aria-label={t('kotoba.filter_bab')}
-            value={babFilter}
-            onChange={(e) => setBabFilter((e.target as HTMLSelectElement).value)}
-            class="min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
-          >
-            <option value="all">{t('kotoba.semua_bab')}</option>
-            {daftarBab.map((b) => (
-              <option key={b} value={String(b)}>
-                {t('kotoba.bab')} {b}
-              </option>
-            ))}
-          </select>
+          /* Dua kotak = SEMUA rentang, tanpa daftar preset yang harus ditambah
+             setiap kali jumlah bab berubah. `aria-label` menyebut perannya
+             (dari/sampai), bukan sekadar "filter bab", karena dua kotak dengan
+             label sama tidak bisa dibedakan pembaca layar. */
+          <div class="flex items-center gap-1">
+            <select
+              aria-label={`${t('kotoba.filter_bab')} — ${t('kotoba.bab_dari')}`}
+              value={babDari}
+              onChange={(e) => setBabDari((e.target as HTMLSelectElement).value)}
+              class="min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
+            >
+              <option value="">{t('kotoba.semua_bab')}</option>
+              {daftarBab.map((b) => (
+                <option key={b} value={String(b)}>
+                  {t('kotoba.bab')} {b}
+                </option>
+              ))}
+            </select>
+            <span class="text-[12px] text-fg-muted" aria-hidden="true">–</span>
+            <select
+              aria-label={`${t('kotoba.filter_bab')} — ${t('kotoba.bab_sampai')}`}
+              value={babSampai}
+              onChange={(e) => setBabSampai((e.target as HTMLSelectElement).value)}
+              class="min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
+            >
+              <option value="">{t('kotoba.semua_bab')}</option>
+              {daftarBab.map((b) => (
+                <option key={b} value={String(b)}>
+                  {t('kotoba.bab')} {b}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
         {sumber === 'ssw' && (
           <select
@@ -1531,7 +1598,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                   ? `${bidangAktif?.nama ?? ''} (${bidangAktif?.namaJp ?? ''})${
                       catFilter === 'all' ? '' : ` · ${labelKategori[catFilter as Kategori]}`
                     }`
-                  : `${t('kotoba.bab')} ${babFilter === 'all' ? t('kotoba.semua_bab') : babFilter}`}{' '}
+                  : `${t('kotoba.bab')} ${labelRentangBab()}`}{' '}
                 · {hasilCari.length} {t('kotoba.kata_tersedia')}
               </p>
             </div>

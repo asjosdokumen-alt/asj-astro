@@ -1862,6 +1862,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.mode_kamus": "Kamus",
     "kotoba.filter_bab": "Pilih bab",
     "kotoba.semua_bab": "Semua bab",
+    /* Dua kotak rentang bab: "dari" dan "sampai". Dipakai sebagai bagian
+       aria-label, supaya dua <select> bersebelahan bisa dibedakan pembaca layar. */
+    "kotoba.bab_dari": "dari bab",
+    "kotoba.bab_sampai": "sampai bab",
     "kotoba.bab": "Bab",
     /* Sumber latihan: bank buku (Minna no Nihongo 1–50) atau 16 bidang kerja
        SSW. Dua tombol, bukan satu daftar gabungan — lihat catatan `Sumber` di
