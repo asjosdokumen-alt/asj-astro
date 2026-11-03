@@ -373,7 +373,7 @@ export default function MasterFullForm() {
       // parsed it as action=ping -> no-op pong (false-success toast).
       let fileUrls: Record<string, string>;
       try {
-        fileUrls = await uploadMany(files, MASTER_FILE_COLUMNS);
+        fileUrls = await uploadMany(files, MASTER_FILE_COLUMNS, undefined, { nama: data.nama });
       } catch (ue) {
         const ue2 = ue as UploadCollectionError;
         showToast('Gagal upload ' + (fileNames[ue2.key] || ue2.key) + ': ' + ue2.message, 'error');

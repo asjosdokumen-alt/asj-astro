@@ -1050,7 +1050,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       let fileUrls: Record<string, string>;
       setSavePhase('uploading');
       try {
-        fileUrls = await uploadMany(docs, AI_FILE_COLUMNS);
+        fileUrls = await uploadMany(docs, AI_FILE_COLUMNS, undefined, { nama: cv.nama });
       } catch (ue) {
         const ue2 = ue as UploadCollectionError;
         setSavePhase('idle');

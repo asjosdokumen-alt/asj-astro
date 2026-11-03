@@ -280,7 +280,7 @@ export default function SiswaBaruForm() {
     try {
       // Legacy: upload ktp/kk/ijazah → Cloudinary first, then send the URLs.
       failedStage = 'upload';
-      const urls = await uploadMany(docs, SISWA_FILE_COLUMNS);
+      const urls = await uploadMany(docs, SISWA_FILE_COLUMNS, undefined, { nama: biodata.nama });
       failedStage = 'save';
       setSubmitPhase('saving');
       const payload = { ...toSnakePayload(biodata), ktp: urls.ktp || null, kk: urls.kk || null, ijazah: urls.ijazah || null };

@@ -7,7 +7,7 @@
 // files, stop at first error with the original message + failing file key.
 // ==========================================
 import { describe, it, expect, vi } from "vitest";
-import { uploadMany, UploadCollectionError } from "./cloudinary";
+import { buatPublicId, uploadMany, UploadCollectionError } from "./cloudinary";
 
 const f1 = new File(["a"], "photo.jpg", { type: "image/jpeg" });
 const f2 = new File(["b"], "jft.pdf", { type: "application/pdf" });
@@ -48,3 +48,38 @@ describe("uploadMany (loops Master/AiCv/Siswa → satu helper)", () => {
   });
 });
 
+
+// ==========================================
+// Penamaan berkas (pemilik 2026-11-03): *"rapikan penamaan file nya sehingga
+// jelas. contoh agus khoci_ktp"*. Menimpa TIDAK mungkin — Cloudinary menolak
+// `overwrite` untuk unggahan unsigned ("Cannot set overwrite to true in unsigned
+// presets"), dan unggahan kedua dengan public_id sama mengembalikan aset LAMA.
+// Keputusan pemilik: unggah ulang = URL baru. Karena itu ada akhiran waktu.
+// ==========================================
+describe("buatPublicId — nama berkas yang bisa dibaca", () => {
+  it("menggabungkan nama + jenis + waktu", () => {
+    expect(buatPublicId("Agus Khoci", "ktp", 1700000000000)).toBe("agus_khoci_ktp_1700000000000");
+  });
+
+  it("spasi, tanda baca, dan huruf besar tidak bocor ke nama", () => {
+    expect(buatPublicId("1. ALFIAN ARTIN SAPUTRA", "cv", 5)).toBe("1_alfian_artin_saputra_cv_5");
+  });
+
+  it("waktu berbeda ⇒ public_id berbeda (unggah ulang dapat URL baru)", () => {
+    // Inilah inti keputusan pemilik: berkas baru tidak boleh memakai URL lama.
+    expect(buatPublicId("Budi", "jft", 1)).not.toBe(buatPublicId("Budi", "jft", 2));
+  });
+
+  it("nama kosong tetap menghasilkan id yang sah", () => {
+    expect(buatPublicId("", "", 9)).toBe("kandidat_berkas_9");
+  });
+});
+
+describe("uploadMany — uploader yang di-inject tetap dipanggil (file) saja", () => {
+  it("tanda tangan uploader tidak berubah karena penamaan", async () => {
+    const upload = vi.fn(async (f: File) => `https://c/${f.name}`);
+    await uploadMany({ ktp: f1 }, { ktp: "ktpFile" }, upload, { nama: "Agus Khoci" });
+    expect(upload).toHaveBeenCalledWith(f1);
+    expect(upload).toHaveBeenCalledTimes(1);
+  });
+});

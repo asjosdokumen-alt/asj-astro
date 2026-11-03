@@ -12,12 +12,44 @@ export function cloudinaryEndpoint(): string {
 }
 
 /**
+ * Nama berkas yang bisa dibaca manusia: `<nama>_<jenis>_<waktu>`.
+ *
+ * KENAPA (pemilik 2026-11-03): *"rapikan penamaan file nya sehingga jelas.
+ * contoh agus khoci_ktp … jadi ketika upload file yg sama bisa menimpa file yg
+ * lama"*. Menimpa TIDAK mungkin di jalur unsigned — Cloudinary menolak
+ * `overwrite` untuk unggahan unsigned ("Cannot set overwrite to true in
+ * unsigned presets", terlihat di dashboard), dan unggahan kedua dengan
+ * public_id sama dijawab 200 dengan aset LAMA. Jadi keputusan pemilik:
+ * **unggah ulang = URL baru**.
+ *
+ * Karena itu ada akhiran waktu: setiap unggahan menghasilkan public_id unik,
+ * sehingga URL-nya berganti dan yang lama tidak pernah dipakai lagi. Tanpa
+ * akhiran waktu, unggahan kedua akan "berhasil" tetapi mengembalikan berkas
+ * lama — persis kegagalan senyap yang harus dihindari.
+ */
+export function buatPublicId(nama: string, jenis: string, waktu = Date.now()): string {
+  const slug = (s: string) =>
+    String(s || '')
+      .normalize('NFKD')
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .toLowerCase();
+  const n = slug(nama) || 'kandidat';
+  const j = slug(jenis) || 'berkas';
+  return `${n}_${j}_${waktu}`;
+}
+
+/**
  * Upload file ke Cloudinary (unsigned, retry 3x dengan backoff).
  * Returns secure_url (HTTPS).
+ *
+ * `publicId` (opsional) menentukan nama berkas di Cloudinary. Tanpa itu
+ * Cloudinary mengarang dari nama berkas unggahan — terukur menghasilkan
+ * `nama_TG630ASJcv_dpgghx.xlsx` yang tidak bisa dibaca maupun diurutkan.
  */
 export async function uploadToCloudinary(
   file: File,
-  opts?: { uploadPreset?: string; endpoint?: string },
+  opts?: { uploadPreset?: string; endpoint?: string; publicId?: string },
   maxRetries = 3
 ): Promise<string> {
   if (!file) throw new Error('Tidak ada file untuk diupload ke Cloudinary.');
@@ -30,6 +62,7 @@ export async function uploadToCloudinary(
     const fd = new FormData();
     fd.append('file', file);
     fd.append('upload_preset', preset);
+    if (opts?.publicId) fd.append('public_id', opts.publicId);
 
     const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timeoutId = controller ? setTimeout(() => controller.abort(), 30000) : null;
@@ -111,14 +144,23 @@ export class UploadCollectionError extends Error {
 export async function uploadMany(
   files: Record<string, File | null | undefined>,
   map: Record<string, string>,
-  upload: (file: File) => Promise<string> = uploadToCloudinary
+  upload: (file: File) => Promise<string> = uploadToCloudinary,
+  opsi?: { nama?: string }
 ): Promise<Record<string, string>> {
   const urls: Record<string, string> = {};
   for (const [stateKey, payloadKey] of Object.entries(map)) {
     const file = files[stateKey];
     if (!file) continue;
+    /* `public_id` hanya dipasang pada uploader BAWAAN. Uploader yang di-inject
+       (tes, atau pemanggil lain) tetap dipanggil `(file)` saja — kontraknya
+       sudah dipakai di banyak tempat dan tidak perlu ikut berubah hanya karena
+       penamaan. */
+    const pakaiDefault = upload === uploadToCloudinary && opsi?.nama;
+    const fn = pakaiDefault
+      ? (f: File) => uploadToCloudinary(f, { publicId: buatPublicId(String(opsi?.nama), stateKey) })
+      : upload;
     try {
-      urls[payloadKey] = await upload(file);
+      urls[payloadKey] = await fn(file);
     } catch (e: any) {
       throw new UploadCollectionError(stateKey, (e && e.message) || String(e));
     }
