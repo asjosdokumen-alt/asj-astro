@@ -1321,6 +1321,7 @@ export const jpTranslations: Record<string, string> = {
     "kotoba.mode_kamus": "辞書",
     "kotoba.filter_bab": "課を選ぶ",
     "kotoba.semua_bab": "全課",
+    "kotoba.hanya_lemah": "苦手な語を復習",
     "kotoba.bab_dari": "開始の課",
     "kotoba.bab_sampai": "終了の課",
     "kotoba.bab": "第",

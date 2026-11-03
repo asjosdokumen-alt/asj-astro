@@ -322,6 +322,19 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const [babDari, setBabDari] = useState('');
   const [babSampai, setBabSampai] = useState('');
   const [posFilter, setPosFilter] = useState('all');
+  /**
+   * Hanya kata yang masih LEMAH.
+   *
+   * Progres per kata sudah lama disimpan (`benar`/`salah`) tetapi hanya dipakai
+   * untuk pembobotan ronde berikutnya — siswa tidak punya cara MENGULANG kata
+   * yang paling sering salah. Padahal itu inti belajar kosakata: retrieval
+   * practice pada kata yang belum stabil, bukan mengulang seluruh bab.
+   *
+   * Ambangnya `salah > benar`: kata yang salahnya masih lebih banyak daripada
+   * benarnya. Kata yang baru sekali salah lalu dua kali benar tidak ikut, supaya
+   * daftarnya menyusut dan bisa habis.
+   */
+  const [hanyaLemah, setHanyaLemah] = useState(false);
   const [arah, setArah] = useState<Arah>('jp-id');
 
   /* ── sumber: buku atau bidang kerja ─────────────────────────────────────── */
@@ -589,11 +602,18 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     return babDari ? `${babDari}+` : `–${babSampai}`;
   };
 
-  const pool = (sumber === 'ssw' ? kataBidang : bank).filter((v) =>
-    sumber === 'ssw'
+  /** Kata yang salahnya masih lebih banyak daripada benarnya. */
+  const kataLemah = (v: Kotoba): boolean => {
+    const c = progres.kata[kunciKata(v)];
+    return !!c && c.salah > 0 && c.salah > c.benar;
+  };
+
+  const pool = (sumber === 'ssw' ? kataBidang : bank).filter((v) => {
+    if (hanyaLemah && !kataLemah(v)) return false;
+    return sumber === 'ssw'
       ? (catFilter === 'all' || v.cat === catFilter) && (posFilter === 'all' || v.pos === posFilter)
-      : dalamRentangBab(v.b, babDari, babSampai) && (posFilter === 'all' || v.pos === posFilter),
-  );
+      : dalamRentangBab(v.b, babDari, babSampai) && (posFilter === 'all' || v.pos === posFilter);
+  });
 
   /** Sumber pengecoh: bidang yang sedang dibuka, atau seluruh bank buku. */
   const sumberKata = sumber === 'ssw' ? kataBidang : bank;
@@ -700,7 +720,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     if (mode !== 'kuis' && mode !== 'ketik') return;
     if (loginGate || vip === false) return;
     mulaiRonde();
-  }, [bank, babDari, babSampai, posFilter, arah, mode, loginGate, vip, sumber, bidangId, catFilter, kataBidang.length]);
+  // `progres` SENGAJA tidak ada di daftar: ia berubah setiap jawaban, dan
+  // memasukkannya membuat efek ini me-reset ronde tepat setelah siswa menjawab —
+  // ronde tidak akan pernah selesai. Yang menentukan isi ronde adalah filter,
+  // dan `hanyaLemah` ikut karena mengubahnya memang harus memulai ronde baru.
+  }, [bank, babDari, babSampai, posFilter, arah, mode, loginGate, vip, sumber, bidangId, catFilter, kataBidang.length, hanyaLemah]);
 
   /** Catat satu jawaban ke progres (dipakai pembobotan ronde berikutnya). */
   const catat = (v: Kotoba, tepat: boolean) => {
@@ -1181,6 +1205,17 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
             </select>
           </div>
         )}
+        {/* Ulangi yang lemah — memakai progres yang sudah tersimpan. */}
+        <button
+          type="button"
+          onClick={() => setHanyaLemah((x) => !x)}
+          aria-pressed={hanyaLemah}
+          class={`min-h-11 rounded-control border px-3 text-[12px] font-bold ${
+            hanyaLemah ? 'border-accent-red bg-accent-red/10 text-accent-red' : 'border-line bg-surface-raised text-fg-muted'
+          }`}
+        >
+          {t('kotoba.hanya_lemah')}
+        </button>
         {sumber === 'ssw' && (
           <select
             aria-label={t('kotoba.filter_kategori')}

@@ -1864,6 +1864,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.semua_bab": "Semua bab",
     /* Dua kotak rentang bab: "dari" dan "sampai". Dipakai sebagai bagian
        aria-label, supaya dua <select> bersebelahan bisa dibedakan pembaca layar. */
+    "kotoba.hanya_lemah": "Ulangi yang lemah",
     "kotoba.bab_dari": "dari bab",
     "kotoba.bab_sampai": "sampai bab",
     "kotoba.bab": "Bab",
