@@ -907,7 +907,12 @@ describe('full build', () => {
     // satu effect hitung mundur), `KotobaGame.tsx` (`dalamRentangBab` diekspor,
     // `labelRentangBab`, dua state rentang). fileCount TIDAK bergerak (606):
     // tidak ada berkas baru, hanya isi.
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(31244); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
+    // 31244 -> 31249 (2026-11-03, sinkronisasi wawancara dua arah). +5 DIUKUR DI
+    // DUA UJUNG pada pohon yang sama: 31 244 sesudah batch UI, 31 249 sesudah
+    // `_lib/wawancara/bank.ts` (binding `tertulisKeCv`, `hasil`, plus komentar
+    // yang menggantikan klaim "CV menang"). fileCount tetap 606: migrasi 036
+    // adalah .sql di `migrations/`, di luar includePath.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(31249); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

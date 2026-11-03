@@ -33,6 +33,8 @@ const m = vi.hoisted(() => ({
   bacaQuery: {} as Record<string, Record<string, unknown>>,
   /** Balasan model untuk terjemahan. */
   aiReply: '',
+  /** Baris yang dikembalikan PATCH master. `null` = tidak ada baris cocok. */
+  patchRows: null as unknown,
 }));
 
 vi.mock('../db/client', async (importOriginal) => {
@@ -55,6 +57,7 @@ vi.mock('../db/client', async (importOriginal) => {
         return [];
       }
       m.tulis.push({ method, table, body: opts.body, query: opts.query });
+      if (method === 'PATCH' && table === 'master_database_candidate') return m.patchRows;
       return null;
     }),
   };
@@ -184,6 +187,30 @@ describe('simpanJawaban — kolom CV ikut ditulis', () => {
       sumber: 'siswa',
     });
     expect(upsert?.query).toMatchObject({ on_conflict: 'wa,soal_kode' });
+  });
+
+  /* Pemilik 2026-11-03: *"bila edit wawancara cv ai berubah bila edit cv ai
+     wawancara ikut berubah kan tertaut bukan menangin salah 1"*.
+     Arah wawancara -> CV bergantung pada PATCH yang benar-benar mengenai baris.
+     PATCH yang tidak menemukan baris dijawab 204 TANPA galat, jadi dengan
+     `return=minimal` kode lama melaporkan `sinkron_cv: true` untuk perubahan
+     yang tidak pernah terjadi — kandidat mengira CV-nya sudah terisi. */
+  it('sinkron_cv jujur: PATCH tanpa baris master TIDAK dilaporkan tersinkron', async () => {
+    m.patchRows = []; // tidak ada baris cocok, dan bukan galat
+    const r1 = await bank.simpanJawaban('628111', 'ms-009', {
+      jp: '私は勤勉です。', romaji: 'watashi wa kinben desu.', arti: 'Saya pekerja keras.',
+    });
+    expect(r1.sinkron_cv).toBe(false);
+    // Jawabannya TETAP tersimpan — hanya klaim sinkronisasinya yang jujur.
+    expect(m.tulis.some((t) => t.table === 'wawancara_jawaban')).toBe(true);
+
+    m.patchRows = [{ id: 1 }]; // baris master ada
+    const r2 = await bank.simpanJawaban('628111', 'ms-009', {
+      jp: '私は勤勉です。', romaji: 'watashi wa kinben desu.', arti: 'Saya pekerja keras.',
+    });
+    expect(r2.sinkron_cv).toBe(true);
+
+    m.patchRows = null;
   });
 
   it('soal biasa TIDAK menyentuh master_database_candidate', async () => {

@@ -219,9 +219,17 @@ async function ambilKolomCv(wa: string, kolom: string[]): Promise<Record<string,
 /**
  * Gabungkan bank + jawaban kandidat + kolom CV menjadi bentuk yang dipakai UI.
  *
- * Untuk soal ber-`kolom_cv`, nilai CV MENANG atas jawaban tersimpan: itulah
- * inti sinkronisasinya. Kalau CV kosong, jawaban tersimpan dipakai apa adanya
- * (mis. kandidat mengisi lewat halaman wawancara sebelum CV-nya pernah diisi).
+ * Untuk soal ber-`kolom_cv`, KOLOM CV ADALAH SATU-SATUNYA PENYIMPANAN. Bukan
+ * "CV menang atas jawaban" — tidak ada dua nilai yang bersaing, karena
+ * `simpanJawaban` menulis ke kolom itu juga. Jadi:
+ *
+ *   edit di CV AI      -> kolom berubah      -> halaman ini membacanya
+ *   edit di wawancara  -> kolom berubah      -> form CV membacanya
+ *
+ * `wawancara_jawaban.arti` hanya CERMIN untuk soal yang tidak punya kolom, dan
+ * jaring kalau kolomnya kosong (kandidat menjawab sebelum CV-nya pernah diisi).
+ * Kalau kolom berisi, cermin diabaikan — bukan karena menang, tetapi karena
+ * kolom itulah datanya.
  */
 export async function gabungBankDanJawaban(wa: string) {
   const [bank, jawaban, isVip] = await Promise.all([ambilBank(), ambilJawaban(wa), statusVip(wa)]);
@@ -355,17 +363,27 @@ export async function simpanJawaban(
   //    tidak ada tombol "hapus jawaban" — jadi jalur hapus memang tidak
   //    seharusnya lewat sini. Kalau nanti dibutuhkan, tambahkan aksi eksplisit
   //    (mis. `hapusJawabanWawancara`), bukan dengan mengosongkan kolom.
+  let tertulisKeCv = false;
   if (soal.kolom_cv) {
     const body: Record<string, string> = {};
     if (arti) body[soal.kolom_cv] = arti;
     if (soal.kolom_cv_jp && jp) body[soal.kolom_cv_jp] = jp;
     if (Object.keys(body).length) {
       try {
-        await supabaseJson('PATCH', 'master_database_candidate', {
+        /* `return=representation`, bukan `return=minimal`.
+           PATCH yang tidak menemukan baris dijawab 204 — TANPA galat. Dengan
+           `minimal` kita tidak bisa membedakan "kolom CV diperbarui" dari
+           "kandidat ini belum punya baris master", lalu melaporkan
+           `sinkron_cv: true` untuk perubahan yang tidak pernah terjadi. Itu
+           persis bentuk "edit di wawancara, CV tidak berubah" yang dikeluhkan
+           pemilik 2026-11-03. Balasan kosong = tidak ada baris = jangan klaim
+           tersinkron. */
+        const hasil = await supabaseJson('PATCH', 'master_database_candidate', {
           query: { no_wa: `eq.${nw}` },
           body,
-          headers: { Prefer: 'return=minimal' },
+          headers: { Prefer: 'return=representation' },
         });
+        tertulisKeCv = Array.isArray(hasil) ? hasil.length > 0 : Boolean(hasil);
       } catch (e) {
         throw new AppError('VALIDATION_FAILED', {
           message: `Gagal menyimpan ke kolom CV (${soal.kolom_cv}): ${String(e).slice(0, 160)}`,
@@ -396,7 +414,11 @@ export async function simpanJawaban(
     throw e;
   }
 
-  return { success: true, kode: kodeBersih, sinkron_cv: Boolean(soal.kolom_cv) };
+  /* `sinkron_cv` melaporkan APA YANG TERJADI, bukan apa yang seharusnya:
+     true hanya kalau kolom CV benar-benar diperbarui. Kalau kandidat belum punya
+     baris master, jawabannya tetap tersimpan di sini dan halaman ini
+     menampilkannya, tetapi CV belum menerimanya — dan itu harus terlihat. */
+  return { success: true, kode: kodeBersih, sinkron_cv: tertulisKeCv };
 }
 
 /**
