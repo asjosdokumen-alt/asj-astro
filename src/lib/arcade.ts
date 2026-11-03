@@ -36,8 +36,12 @@ export interface WarnaGenba {
 export const GENBA_WARNA: readonly WarnaGenba[] = [
   { id: 'akai', jp: 'あかい', romaji: 'akai', id_: 'Merah', kelas: 'bg-red-600 border-red-400' },
   { id: 'aoi', jp: 'あおい', romaji: 'aoi', id_: 'Biru', kelas: 'bg-blue-600 border-blue-400' },
-  { id: 'kiiroi', jp: 'きいろい', romaji: 'kiiroi', id_: 'Kuning', kelas: 'bg-amber-500 border-amber-300' },
-  { id: 'shiroi', jp: 'しろい', romaji: 'shiroi', id_: 'Putih', kelas: 'bg-slate-200 border-white' },
+  /* `text-slate-900` WAJIB pada dua warna terang ini. Teks di dalam kotak
+     mewarisi `text-fg`, yang berwarna TERANG di tema gelap — di atas latar
+     kuning/putih hasilnya nyaris tak terbaca. Ditemukan saat review UI
+     2026-11-04 (kelas cacat yang sama dengan yang dijaga `shim-coverage`). */
+  { id: 'kiiroi', jp: 'きいろい', romaji: 'kiiroi', id_: 'Kuning', kelas: 'bg-amber-500 border-amber-300 text-slate-900' },
+  { id: 'shiroi', jp: 'しろい', romaji: 'shiroi', id_: 'Putih', kelas: 'bg-slate-200 border-white text-slate-900' },
 ];
 
 export interface BarangGenba {

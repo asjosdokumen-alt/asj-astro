@@ -64,7 +64,13 @@ export default function ArcadeGame() {
      BATASNYA JUJUR: ini gerbang KLIEN. Seluruh kata arcade ada di bundel, jadi
      ia menghentikan akses sambil lalu, bukan penyerang; data yang benar-benar
      perlu dijaga harus ditolak di server (lihat `getBankKotoba`). */
-  const [masuk, setMasuk] = useState(() => !!authStore.get().isLoggedIn);
+  /* Admin tidak digerbang: di `/kotoba` dan `/matematika` admin boleh memeriksa
+     permainan tanpa login kandidat, dan `/arcade` harus sama — kalau tidak,
+     satu-satunya orang yang perlu MEMERIKSA game justru yang tertahan. */
+  const [masuk, setMasuk] = useState(() => {
+    const a = authStore.get();
+    return !!a.isLoggedIn && (a.role === 'admin' || a.role === 'kandidat');
+  });
   const [tab, setTab] = useState<'genba' | 'combo'>('genba');
   const [lemah, setLemah] = useState<CatatanLemah[]>(() => bacaLemah());
 
@@ -87,6 +93,15 @@ export default function ArcadeGame() {
   const [pesan, setPesan] = useState('');
   const [choukai, setChoukai] = useState(false);
   const [fase, setFase] = useState<'idle' | 'main' | 'selesai'>('idle');
+  /**
+   * Sedang menunggu perintah berikutnya setelah satu kesalahan.
+   *
+   * Tanpa penanda ini, `fase` tetap 'main' dan `dipilih` tetap terpasang selama
+   * jeda 1,1 detik — sehingga ketukan kedua pada rak yang salah MENGHABISKAN
+   * NYAWA LAGI, dan ketukan pada rak yang benar memberi poin setelah permainan
+   * sudah menyatakan salah. Ditemukan saat review 2026-11-04.
+   */
+  const [menunggu, setMenunggu] = useState(false);
 
   /** Perintah berikutnya. `ronde` dipakai sebagai kunci timer. */
   const berikut = () => {
@@ -95,12 +110,14 @@ export default function ArcadeGame() {
     setPilihan(buatPilihan(p));
     setDipilih(null);
     setPesan('');
+    setMenunggu(false);
     ucap(p.jp, skor >= 500 ? 1.05 : 0.9);
   };
 
   const mulai = () => {
     setNyawa(NYAWA_AWAL);
     setSkor(0);
+    setMenunggu(false);
     setFase('main');
     berikut();
   };
@@ -124,6 +141,7 @@ export default function ArcadeGame() {
       setFase('selesai');
       return;
     }
+    setMenunggu(true);
     window.setTimeout(() => {
       if (sisaNyawa > 0) berikut();
     }, 1100);
@@ -131,7 +149,7 @@ export default function ArcadeGame() {
   gagalRef.current = gagal;
 
   const taruh = (zonaId: string) => {
-    if (!perintah || !dipilih || fase !== 'main') return;
+    if (!perintah || !dipilih || fase !== 'main' || menunggu) return;
     if (cekGenba(perintah, dipilih, zonaId)) {
       bunyi(true);
       setSkor((n) => n + 100);
@@ -274,7 +292,10 @@ export default function ArcadeGame() {
                 🔊 {t('arcade.ulangi')}
               </button>
             </div>
-            <p class="text-base font-bold text-fg" data-testid="arcade-perintah">
+            {/* `break-words`: perintah bisa panjang (`しろい はこ を ひだり の はこ に
+                おいてください`) dan pada layar 320 px teks ini pernah melebar
+                keluar kartu, bukan membungkus. */}
+            <p class="text-base font-bold text-fg break-words" data-testid="arcade-perintah">
               {perintah ? (choukai ? '🔊 ？？？' : perintah.jp) : t('arcade.mulai_hint')}
             </p>
             {perintah && !choukai && <p class="mt-0.5 text-[11px] italic text-fg-muted">{perintah.romaji}</p>}
@@ -295,22 +316,26 @@ export default function ArcadeGame() {
           )}
 
           <div class="mb-2 grid grid-cols-2 gap-2">
-            {(['ue', 'shita', 'hidari', 'migi'] as const).map((z, i) => {
-              const info = [
-                ['⬆️', 'うえ の たな', 'Rak Atas'],
-                ['⬇️', 'した の たな', 'Rak Bawah'],
-                ['⬅️', 'ひだり の はこ', 'Kotak Kiri'],
-                ['➡️', 'みぎ の はこ', 'Kotak Kanan'],
-              ][i];
+            {/* Satu array, bukan dua yang dipasangkan lewat INDEKS.
+                Versi sebelumnya memetakan `['ue','shita','hidari','migi']` lalu
+                mengambil label dari array terpisah dengan `[i]` — mengurutkan
+                ulang salah satunya membuat tombol "Rak Atas" menaruh barang ke
+                みぎ tanpa satu pun error. Ditemukan saat review UI 2026-11-04. */}
+            {([
+              { id: 'ue', ikon: '⬆️', jp: 'うえ の たな', label: 'Rak Atas' },
+              { id: 'shita', ikon: '⬇️', jp: 'した の たな', label: 'Rak Bawah' },
+              { id: 'hidari', ikon: '⬅️', jp: 'ひだり の はこ', label: 'Kotak Kiri' },
+              { id: 'migi', ikon: '➡️', jp: 'みぎ の はこ', label: 'Kotak Kanan' },
+            ] as const).map((z) => {
               return (
                 <button
-                  key={z}
+                  key={z.id}
                   type="button"
-                  onClick={() => taruh(z)}
+                  onClick={() => taruh(z.id)}
                   class="min-h-16 rounded-card border-2 border-dashed border-line bg-surface-sunken p-2 text-center"
                 >
-                  <span class="block text-[11px] text-fg-muted">{info[0]} {info[1]}</span>
-                  <span class="block text-sm font-bold text-fg">{info[2]}</span>
+                  <span class="block text-[11px] text-fg-muted break-words">{z.ikon} {z.jp}</span>
+                  <span class="block text-sm font-bold text-fg">{z.label}</span>
                 </button>
               );
             })}
@@ -368,7 +393,7 @@ export default function ArcadeGame() {
                 key={`${k.jp}-${i}`}
                 type="button"
                 onClick={() => ketuk(k, i)}
-                class={`min-h-12 rounded-control border-2 px-1 text-sm font-bold ${
+                class={`min-h-12 rounded-control border-2 px-1 text-sm font-bold break-words ${
                   k.jenis === 'particle'
                     ? 'border-amber-300 bg-amber-400 text-slate-900'
                     : k.jenis === 'verb'

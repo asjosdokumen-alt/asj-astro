@@ -1213,7 +1213,25 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
    * kop halaman berbohong. Yang relevan adalah berapa kata DI FILTER INI yang
    * sudah dikuasai.
    */
-  const kataDikuasai = pool.filter((v) => {
+  /**
+   * Kata yang dikuasai dihitung dari SELURUH sumber, bukan dari `pool`.
+   *
+   * `pool` sudah tersaring sumber + rentang bab + fokus, jadi memakainya membuat
+   * angka ini (dan gelar yang diturunkan darinya) BERUBAH hanya karena siswa
+   * berpindah tampilan — memilih "N5" atau "Bab 1–5" seolah mengurangi apa yang
+   * sudah dikuasai. Ditemukan saat review 2026-11-04.
+   *
+   * Digabung dan di-dedupe lewat `kunciKata`: satu kata bisa muncul di bank buku
+   * dan di bank N5, dan itu tetap satu kata.
+   */
+  const semuaKata = (() => {
+    const peta = new Map<string, Kotoba>();
+    for (const v of [...bank, ...bankN5, ...kataBidang]) {
+      if (!peta.has(kunciKata(v))) peta.set(kunciKata(v), v);
+    }
+    return [...peta.values()];
+  })();
+  const kataDikuasai = semuaKata.filter((v) => {
     const c = progres.kata[kunciKata(v)];
     return !!c && c.benar >= 3 && c.salah === 0;
   }).length;
@@ -1296,7 +1314,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
             type="button"
             onClick={() => setMode(m.id)}
             aria-pressed={mode === m.id}
-            class={`flex-1 min-h-11 px-2 rounded-[0.6rem] text-[12px] font-bold transition-colors motion-reduce:transition-none ${
+            class={`flex-1 min-w-[30%] min-h-11 px-2 py-1 rounded-[0.6rem] text-[11px] leading-tight font-bold whitespace-normal break-words transition-colors motion-reduce:transition-none ${
               mode === m.id
                 ? 'bg-accent-violet text-canvas'
                 : 'text-fg-muted hover:text-fg hover:bg-surface-raised'
@@ -1311,7 +1329,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           Tiga tombol, bukan satu daftar gabungan. `aria-pressed` dipakai karena
           ini pilihan keadaan, bukan navigasi — pembaca layar harus bisa
           membacakan mana yang sedang aktif tanpa melihat warnanya. */}
-      <fieldset class="flex gap-1.5 p-1 rounded-control bg-surface-sunken border border-line mb-2">
+      {/* `flex-wrap` + `min-w-[30%]`: sejak sumbernya menjadi TIGA, label
+          "Bidang Kerja (SSW)" tidak lagi muat sepertiga lebar layar 320 px —
+          tanpa pembungkusan ia meluber keluar tombol. Ditemukan saat review UI
+          2026-11-04. */}
+      <fieldset class="flex flex-wrap gap-1.5 p-1 rounded-control bg-surface-sunken border border-line mb-2">
         <legend class="sr-only">{t('kotoba.sumber_label')}</legend>
         {(['minna', 'ssw', 'n5'] as Sumber[]).map((s) => (
           <button

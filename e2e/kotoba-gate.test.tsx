@@ -388,3 +388,55 @@ describe('kotoba — gelar', () => {
     expect(GELAR[GELAR.length - 1].min).toBe(0);
   });
 });
+
+// ==========================================
+// "Kata dikuasai" harus GLOBAL, bukan mengikuti filter.
+//
+// Ditemukan saat review 2026-11-04: angka ini dulu dihitung dari `pool` yang
+// sudah tersaring, sehingga memilih sumber/rentang bab membuat seolah siswa
+// LUPA kata yang sudah dikuasai — dan gelar yang diturunkan darinya ikut
+// turun tanpa alasan.
+// ==========================================
+describe('kotoba — kata dikuasai tidak ikut filter', () => {
+  const WA = '081234567890';
+  const bacaJumlah = () => {
+    const m = (document.body.textContent || '').match(/(\d+)\s+dikuasai/);
+    return m ? Number(m[1]) : NaN;
+  };
+
+  beforeEach(() => {
+    localStorage.clear();
+    /* Mock API wajib dipasang ulang di sini: blok describe ini berada di luar
+       `beforeEach` milik tes gerbang, jadi tanpanya komponen merender layar
+       galat dan bukan permainan. */
+    apiMock.mockReset();
+    apiMock.mockResolvedValue(BANK_SISWA);
+    /* Kelima kata di bank tiruan ditandai dikuasai (benar >= 3, salah 0). */
+    const kata: Record<string, { salah: number; benar: number }> = {};
+    for (const k of ['私|わたし', '学生|がくせい', '先生|せんせい', '医者|いしゃ', '病院|びょういん']) {
+      kata[k] = { salah: 0, benar: 3 };
+    }
+    localStorage.setItem(`asj_kotoba_v1:${WA}`, JSON.stringify({ rekor: 0, kata }));
+    loginSebagai('kandidat');
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('berpindah sumber ke N5 (yang kosong) tidak mengurangi jumlah yang dikuasai', async () => {
+    render(<KotobaGame />);
+    await waitFor(() => expect(screen.getByTestId('kotoba-soal')).toBeTruthy());
+    await waitFor(() => expect(bacaJumlah()).toBe(5));
+
+    /* Sumber N5 kosong di bank tiruan ini ⇒ `pool` menjadi nol kata. Dengan
+       perhitungan lama (dari `pool`), angka "dikuasai" ikut jatuh ke 0 — seolah
+       siswa lupa semua yang sudah dikuasai hanya karena berpindah tab. */
+    const tabN5 = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === 'N5');
+    expect(tabN5, 'tombol sumber N5 tidak ada').toBeTruthy();
+    tabN5?.click();
+
+    await new Promise((r) => setTimeout(r, 150));
+    expect(bacaJumlah(), 'angka ikut turun karena berpindah sumber').toBe(5);
+  }, 20000);
+});

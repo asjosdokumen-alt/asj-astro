@@ -103,6 +103,53 @@ describe('arcade — Genba Order Rush', () => {
     await waitFor(() => expect(perintahTeks()).not.toBe(awal), { timeout: 14000 });
   }, 20000);
 
+  /* REGRESI: ketukan kedua setelah gagal TIDAK boleh memakan nyawa lagi.
+     Dulu `fase` tetap 'main' dan `dipilih` tetap terpasang selama jeda 1,1 detik,
+     jadi mengetuk rak salah dua kali menghabiskan dua nyawa sekaligus. */
+  it('salah dua kali cepat hanya menghabiskan SATU nyawa', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Mulai Shift')?.click();
+    await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
+
+    const awal = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+    expect(awal).toBeTruthy();
+    const [, warna, barang, zona] = awal as RegExpMatchArray;
+
+    const kartu = cariTombol(`${warna}${barang}`);
+    kartu?.click();
+    await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
+
+    /* Rak yang SALAH. Pemetaan ini WAJIB eksplisit: label di layar berbahasa
+       Indonesia sedangkan `zona` berbahasa Jepang, jadi menebak dengan
+       `includes()` selalu "tidak cocok" dan bisa memilih rak yang justru BENAR —
+       tesnya lalu lolos atau gagal karena undian, bukan karena perilaku. */
+    const ZONA_KE_LABEL: Record<string, string> = {
+      'うえ の たな': 'Rak Atas',
+      'した の たな': 'Rak Bawah',
+      'ひだり の はこ': 'Kotak Kiri',
+      'みぎ の はこ': 'Kotak Kanan',
+    };
+    const labelBenar = ZONA_KE_LABEL[zona];
+    expect(labelBenar, `zona tak dikenal: ${zona}`).toBeTruthy();
+    const salah = ['Rak Atas', 'Rak Bawah', 'Kotak Kiri', 'Kotak Kanan'].find((z) => z !== labelBenar);
+    const rakSalah = cariTombol(salah ?? 'Rak Atas');
+    expect(rakSalah).toBeTruthy();
+    rakSalah?.click();
+    /* Beri satu frame supaya state ter-commit — MENIRU manusia yang mengetuk dua
+       kali berjarak ~100 ms. Dua klik dalam tick yang sama sama-sama membaca
+       `nyawa` lama, jadi hasilnya 2 pada kedua versi dan tesnya tidak mengukur
+       apa pun. */
+    await new Promise((r) => setTimeout(r, 60));
+    rakSalah?.click();
+
+    /* Jeda TETAP, bukan `waitFor`: `waitFor` berhenti begitu kondisinya benar,
+       dan kondisinya sudah benar (2 helm) SEBELUM ketukan kedua diproses — jadi
+       ia tidak pernah melihat kerusakan yang dicari. */
+    await new Promise((r) => setTimeout(r, 150));
+    const helm = (document.body.textContent || '').match(/⛑️/g) || [];
+    expect(helm.length, 'ketukan kedua memakan nyawa lagi').toBe(2);
+  }, 15000);
+
   it('memilih barang lalu rak yang BENAR memajukan perintah', async () => {
     render(<ArcadeGame />);
     cariTombol('Mulai Shift')?.click();
