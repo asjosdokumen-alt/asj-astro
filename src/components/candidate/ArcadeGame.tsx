@@ -270,10 +270,13 @@ export default function ArcadeGame() {
 
       {tab === 'genba' ? (
         <section aria-label={t('arcade.tab_genba')}>
-          <div class="mb-2 flex items-center justify-between text-[12px] text-fg-muted">
-            <label class="flex items-center gap-1.5">
+          {/* `flex-wrap` + jarak: pada 320 px label Choukai yang panjang menempel
+              ke "¥ 0" tanpa celah (terukur di browser 2026-11-04). Tiga item di
+              satu baris tidak muat, jadi barisnya harus boleh patah. */}
+          <div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-fg-muted">
+            <label class="flex items-center gap-1.5 min-w-0">
               <input type="checkbox" checked={choukai} onChange={(e) => setChoukai((e.target as HTMLInputElement).checked)} />
-              {t('arcade.choukai')}
+              <span class="break-words">{t('arcade.choukai')}</span>
             </label>
             <span class="font-bold text-fg">¥ {skor}</span>
             <span role="img" aria-label={`${t('arcade.nyawa')}: ${Math.max(0, nyawa)}`}>
