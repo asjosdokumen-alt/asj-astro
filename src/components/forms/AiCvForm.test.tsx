@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import AiCvForm from './AiCvForm';
+import AiCvForm, { parseUjian } from './AiCvForm';
 import { showToast } from '../Toast';
 import { apiClient } from '../../lib/apiClient';
 import { uploadMany } from '../../lib/cloudinary';
@@ -936,19 +936,20 @@ describe('AiCvForm — datalist wiring (no orphan datalists)', () => {
   const referenced = [...src.matchAll(/list="([a-z0-9_]+)"/g)].map((m) => m[1]).sort();
   const defined = [...src.matchAll(/<datalist id="([a-z0-9_]+)"/g)].map((m) => m[1]).sort();
 
-  it('the probe itself works — both scans found something', () => {
-    // Guards the guard: if the regexes stop matching (e.g. the source switches
-    // to single quotes or a template literal), both lists go empty and the two
-    // assertions below would pass vacuously.
-    //
-    // The bound is >0, not a pinned count. What it has to prove is that the
-    // scan is not silently blind; pinning it to the current number would make
-    // this test fail whenever a field is legitimately migrated off a datalist —
-    // as the occupation fields were (ComboSelect) and as the SSW licence fields
-    // were on 2026-10-30 — and that failure says nothing about datalist wiring.
-    // What is left is JFT, which is genuinely free text with a suggestion list.
-    expect(defined.length).toBeGreaterThan(0);
-    expect(referenced.length).toBeGreaterThan(0);
+  it('tidak ada <datalist> tersisa — JFT kini DITURUNKAN dari repeater ujian', () => {
+    /* Keadaan ini SENGAJA, bukan kebetulan. `ai_jft_options` adalah datalist
+       terakhir: ia menempel pada kotak "Bhs Jepang" yang dihapus 2026-11-03
+       karena kembar dengan baris ujian (pemilik: *"ini kok kembar kembar sih
+       bikin 1 saja tapi yg lengkap"*). Kolom 日本語能力/点数 sekarang diturunkan
+       `deriveSertifikasi` dari baris ujian, jadi tidak ada lagi kotak bebas yang
+       butuh saran ejaan.
+
+       Dua tes simetri di bawah tetap menjaga: kalau suatu saat datalist
+       diperkenalkan lagi, ia harus dirujuk dan didefinisikan — tidak boleh
+       yatim. Tes ini hanya mencatat bahwa saat ini himpunannya kosong, supaya
+       kembalinya datalist terjadi secara sadar, bukan tanpa disadari. */
+    expect(defined).toEqual([]);
+    expect(referenced).toEqual([]);
   });
 
   it('every referenced datalist is defined', () => {
@@ -1023,6 +1024,13 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
       gender: string; gender_jp: string;
       agama: string; agama_jp: string;
       status_nikah: string; status_nikah_jp: string;
+    };
+    /* Kolom `bahasa` (日本語能力) dan `jft` (点数) TIDAK punya kotak sendiri lagi
+       sejak 2026-11-03 — keduanya diturunkan dari baris ujian. Ia tetap harus
+       ada di wire karena template membacanya. */
+    sertifikasi: {
+      bahasa: string; jft: string; ssw: string; bidang: string;
+      sertifikat_lain: string;
     };
     // The kenalan block is where the owner's "ayah indo / ayah jp" report
     // landed: the relation and the occupation each have an ID column and a
@@ -1382,6 +1390,42 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     // Untouched family row is filtered out rather than sent as an empty object,
     // which would print as a blank line on the CV.
     expect(payload.keluarga).toHaveLength(0);
+  });
+
+  // Keluhan pemilik 2026-11-03: *"ini kok kembar kembar sih bikin 1 saja tapi
+  // yg lengkap"*. "Bhs Jepang" dan "Nilai" dihapus dari form; keduanya kini
+  // DITURUNKAN dari baris ujian, sementara kolom `bahasa`/`jft` tetap ditulis
+  // karena template membacanya. Tes ini mengunci keduanya sekaligus: tidak ada
+  // lagi kotak kembar, DAN kolomnya tetap terisi.
+  it('ujian bahasa mengisi kolom 日本語能力 + 点数 — satu tempat isi, dua kolom terisi', async () => {
+    render(<AiCvForm />);
+    // Kotak kembar itu harus BENAR-BENAR hilang, bukan sekadar disembunyikan.
+    expect(document.getElementById('ai_bhs_jepang')).toBeNull();
+    expect(document.getElementById('ai_nilai')).toBeNull();
+
+    fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
+    fireEvent.input(document.getElementById('ai_ujian-nama-0') as HTMLInputElement, { target: { value: 'JFT-BASIC A2' } });
+    fireEvent.input(document.getElementById('ai_ujian-nilai-0') as HTMLInputElement, { target: { value: '120/180' } });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() => expect(vi.mocked(apiClient).mock.calls.some(c => c[0] === 'submitDataAsj')).toBe(true));
+    const payload = savedPayload();
+
+    expect(payload.sertifikasi.bahasa).toBe('JFT-BASIC A2');
+    expect(payload.sertifikasi.jft).toBe('120/180');
+    // Bidang SSW tetap terpisah: itu 在留資格, bukan ujian.
+    expect(payload.sertifikasi.ssw).toBe(payload.sertifikasi.bidang);
+  });
+
+  it('ujian TANPA tanggal tetap dikenali saat form dibuka ulang', () => {
+    // `ujianLine` hanya menulis "— lulus YYYY-MM" kalau tanggalnya ada, jadi
+    // ujian tanpa tanggal menghasilkan baris telanjang. Dulu baris itu jatuh ke
+    // kotak 他資格 dan ujiannya hilang dari repeater.
+    const text = 'JFT-BASIC A2';
+    const p = parseUjian(text);
+    expect(p.rows).toHaveLength(1);
+    expect(p.rows[0].nama).toBe('JFT-BASIC A2');
+    expect(p.sisa).toBe('');
   });
 
   // Keluhan pemilik 2026-10-25: siswa tidak melihat tombol "+" sehingga riwayat

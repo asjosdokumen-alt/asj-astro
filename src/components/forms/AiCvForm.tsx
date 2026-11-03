@@ -22,12 +22,12 @@ import { AI_FILE_COLUMNS } from '../../lib/documentColumns';
 import { AI_CV_FLAT_KEYS, applyAiCvRows, buildAiCvNested, parseAiCvDraft, parseAiCvRows, type AiCvRow } from '../../lib/aiCvDraft';
 import { PAIRED_FIELDS, resolvePairEdit, jpOf, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS } from '../../lib/aiCvPairs';
 import {
-  PEKERJAAN, JURUSAN, HUBUNGAN_KELUARGA, GOLONGAN_DARAH, BAHASA_JEPANG,
+  PEKERJAAN, JURUSAN, HUBUNGAN_KELUARGA, GOLONGAN_DARAH,
   GENDER_PAIRS, AGAMA_PAIRS, STATUS_NIKAH_PAIRS, TANGAN_PAIRS,
   YA_TIDAK_PAIRS, RIWAYAT_JEPANG_PAIRS, JENIS_KERJA_PAIRS, TINGGAL_PAIRS,
   VISA_JEPANG, STATUS_TINGGAL_JP, LEVEL_BAHASA_JEPANG, STATUS_BELAJAR_JP,
   LAMA_BELAJAR_JP, LEVEL_INGGRIS, OLAHRAGA, MBTI_TIPE, BULAN_SIM, PROVINSI,
-  SSW_BIDANG, UJIAN_JP,
+  SSW_BIDANG, UJIAN_JP, UJIAN_BAHASA,
   labelJp, pairDisplay, type Opsi,
 } from '../../lib/opsi-form';
 import { levelOptions, sortEduRows } from '../../lib/cvRows';
@@ -1081,6 +1081,10 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           }
         } catch { /* best-effort — alamat Indonesia tetap tersimpan */ }
       }
+      /* Diturunkan SEKALI di sini, bukan dihitung ulang di dalam objek payload:
+         `sertifikat_lain` adalah satu string yang diurai jadi baris, dan
+         mengurainya dua kali di tempat berbeda membuka celah dua hasil berbeda. */
+      const turunanSertifikasi = deriveSertifikasi(cv.sertifikat_lain);
       const payload = {
         context: { wa: cv.hp },
         /* Daftar pendidikan/pekerjaan/keluarga di bawah ini adalah DAFTAR
@@ -1156,7 +1160,13 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
            `AI_TO_MASTER_COLUMNS` memetakannya ke kolom `no_coe` / `bidangssw2`
            seperti field lain di seksi ini (paritas Form Master 2026-10-25). */
         sertifikasi: {
-          bahasa: cv.bhs_jepang, jft: cv.nilai, ssw: cv.lisensi, bidang: cv.lisensi,
+          /* `bahasa` (日本語能力) dan `jft` (点数) DITURUNKAN dari baris ujian —
+             satu tempat isi, dua kolom tetap terisi. Kalau tidak ada ujian
+             bahasa di repeater, nilai lama dipakai apa adanya supaya tidak
+             terhapus (lihat `deriveSertifikasi`). */
+          bahasa: turunanSertifikasi.bahasa || cv.bhs_jepang,
+          jft: turunanSertifikasi.nilai || cv.nilai,
+          ssw: cv.lisensi, bidang: cv.lisensi,
           ssw2: cv.lisensi2, no_coe: cv.no_coe,
           /* Migrasi 022: bahasa & sertifikat tambahan. */
           lama_belajar_jp: cv.lama_belajar_jp, status_belajar_jp: cv.status_belajar_jp,
@@ -1811,15 +1821,19 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
 
           <div class="u-grid-auto u-grid-auto--cards gap-3 mb-3">
             <Section title={t("ai_cv.sec_pendidikan")} icon="fa-graduation-cap" color="emerald">
+              {/* DULU seksi ini meminta hal yang SAMA dua kali: "Bhs Jepang" +
+                  "Nilai" di sini, lalu "Jenis ujian" + "Nilai/skor" di repeater
+                  Ujian di bawah. Pemilik 2026-11-03: *"ini kok kembar kembar sih
+                  bikin 1 saja tapi yg lengkap"* — dan dia benar: dua kotak untuk
+                  satu fakta berarti dua kesempatan mengisi BEDA, sementara
+                  template membaca KOLOM, jadi yang menang adalah yang terakhir
+                  ditulis, bukan yang benar.
+                  Sekarang SATU tempat mengisi: repeater Ujian. Kolom `bahasa`
+                  (日本語能力) dan `jft` (点数) tetap ada dan tetap ditulis —
+                  nilainya DITURUNKAN saat menyimpan (`deriveSertifikasi`).
+                  Yang tersisa di sini memang data LAIN: bidang 在留資格 SSW,
+                  bukan ujian, jadi tidak digabung. */}
               <div class="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700 mb-2">
-                {/* These keep `list=` for suggestion but are now editable, so the
-                    datalist finally does what it was meant to: the AI's value is
-                    corrected against the official JFT/SSW spellings instead of
-                    being locked in with a typo. */}
-                <Field label={t("cv.field_bhs_jepang")} id="bhs_jepang" value={cv.bhs_jepang} list="ai_jft_options"
-                  touched={touchedFields.has('bhs_jepang')} onInput={(v) => handleManualEdit('bhs_jepang', v)} />
-                <Field label={t("cv.field_nilai_jp")} id="nilai" value={cv.nilai}
-                  touched={touchedFields.has('nilai')} onInput={(v) => handleManualEdit('nilai', v)} />
                 {/* Lisensi SSW = daftar TERTUTUP (20 bidang resmi). Dulu ia
                     `<input list=…>` dengan `<datalist>`: di ponsel datalist
                     hanya menampilkan beberapa baris sekaligus dan tidak bisa
@@ -1841,9 +1855,6 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 <Field label={t("form.mf_no_coe")} id="no_coe" value={cv.no_coe}
                   touched={touchedFields.has('no_coe')} onInput={(v) => handleManualEdit('no_coe', v)} />
               </div>
-              <datalist id="ai_jft_options">
-                {BAHASA_JEPANG.map(o => <option key={o} value={o} />)}
-              </datalist>
               {/* ── Bahasa & sertifikat tambahan (migrasi 022) ─────────────────
                   Dicetak KINKI (T37 学習期間, T39 学習状況, I4 第…課中, Q41 英語,
                   T41 その他外国語, I3 日本語力), Firma (L31 学習期間, D32 日本語能力)
@@ -1872,6 +1883,10 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                     sertifikat yang tidak ada di daftar. Lihat `UjianRepeater`. */}
                 <UjianRepeater value={cv.sertifikat_lain}
                   onChange={(v) => handleManualEdit('sertifikat_lain', v)} />
+                {/* Umpan balik: kolom 日本語能力 / 点数 tidak lagi diketik, jadi
+                    kandidat harus BISA MELIHAT apa yang akan tercetak. Tanpa ini
+                    penggabungan terasa seperti data hilang. */}
+                <TurunanSertifikasi text={cv.sertifikat_lain} />
                 {/* 地域 — KINKI `J19`. Dulu ditaruh di seksi Identitas dan
                     menggantung sendirian di barisnya sendiri; tempatnya di sini,
                     bersama riwayat sekolah. */}
@@ -2672,14 +2687,31 @@ function ujianLine(r: UjianRow): string {
 /** Balik dari teks tersimpan ke baris. Baris asing dikembalikan di `sisa`. */
 const UJIAN_RE = /^(.+?)\s+—\s+lulus\s+(\d{4})-(\d{2})(?:\s+\(nilai\s+([^)]*)\))?\s*$/;
 
-function parseUjian(text: string): { rows: UjianRow[]; sisa: string } {
+export function parseUjian(text: string): { rows: UjianRow[]; sisa: string } {
   const rows: UjianRow[] = [];
   const sisa: string[] = [];
   for (const raw of String(text || '').split(/\r?\n/)) {
     const line = raw.trim();
     if (!line) continue;
     const m = UJIAN_RE.exec(line);
-    if (!m) { sisa.push(line); continue; }
+    if (!m) {
+      /* Baris TANPA tanggal. `ujianLine` hanya menambahkan "— lulus YYYY-MM"
+         kalau tanggalnya ada, jadi ujian yang sudah dipilih tetapi tanggalnya
+         belum diisi menghasilkan baris telanjang, dengan atau tanpa akhiran
+         "(nilai …)". Dulu baris itu jatuh ke `sisa` dan barisnya HILANG saat
+         form dibuka ulang — ujian yang sudah dipilih berubah jadi teks bebas di
+         kotak 他資格, dan kolom 日本語能力/点数 tidak pernah terisi.
+         Sekarang nama ujian yang dikenal dikenali kembali sebagai baris. */
+      const akhiranNilai = /\s*\(nilai\s+([^)]*)\)\s*$/.exec(line);
+      const tanpaNilai = akhiranNilai ? line.slice(0, akhiranNilai.index).trim() : line;
+      const telanjang = UJIAN_JP.find(([v, l]) => pairDisplay(v, l) === tanpaNilai || v === tanpaNilai);
+      if (telanjang) {
+        rows.push({ id: nextRowId(), nama: telanjang[0], lulus: '', nilai: (akhiranNilai?.[1] ?? '').trim() });
+        continue;
+      }
+      sisa.push(line);
+      continue;
+    }
     const display = m[1].trim();
     const hit = UJIAN_JP.find(([v, l]) => pairDisplay(v, l) === display);
     rows.push({ id: nextRowId(), nama: hit ? hit[0] : display, lulus: `${m[2]}-${m[3]}`, nilai: m[4] ?? '' });
@@ -2691,6 +2723,34 @@ function composeUjian(rows: UjianRow[], sisa: string): string {
   const lines = rows.map(ujianLine).filter(Boolean);
   if (sisa.trim()) lines.push(sisa.trim());
   return lines.join('\n');
+}
+
+/**
+ * Turunkan kolom `bahasa` (日本語能力) dan `jft` (点数) dari baris ujian.
+ *
+ * KENAPA ADA
+ *   Form ini dulu meminta hal yang SAMA dua kali: "Bhs Jepang" + "Nilai" di
+ *   baris atas, lalu "Jenis ujian: JFT-BASIC A2" + "Nilai/skor" di repeater
+ *   Ujian. Keluhan pemilik 2026-11-03: *"ini kok kembar kembar sih bikin 1 saja
+ *   tapi yg lengkap"*. Dua kotak untuk satu fakta juga berarti dua kesempatan
+ *   mengisi berbeda — dan template membaca KOLOM, jadi yang menang adalah yang
+ *   terakhir ditulis, bukan yang benar.
+ *
+ *   Sekarang satu tempat mengisi: repeater ujian. Kolom `bahasa`/`jft` tetap
+ *   ADA dan tetap ditulis (template membacanya), tetapi nilainya DITURUNKAN —
+ *   bukan diketik lagi.
+ *
+ * KAPAN TIDAK MENURUNKAN
+ *   Kalau tidak ada baris ujian bahasa (mis. kandidat hanya punya ujian SSW),
+ *   hasilnya kosong dan pemanggil memakai nilai lama apa adanya. Menurunkan
+ *   kosong lalu menimpanya akan MENGHAPUS data yang sudah benar.
+ */
+function deriveSertifikasi(text: string): { bahasa: string; nilai: string } {
+  const { rows } = parseUjian(text);
+  const bahasaSah = new Set(UJIAN_BAHASA.map(([v]) => v));
+  const hit = rows.find((r) => bahasaSah.has(r.nama));
+  if (!hit) return { bahasa: '', nilai: '' };
+  return { bahasa: hit.nama.trim(), nilai: hit.nilai.trim() };
 }
 
 /**
@@ -2777,6 +2837,26 @@ function UjianRepeater({ value, onChange }: { value: string; onChange: (text: st
           placeholder="mis. 簿記3級 (2023), 調理師 (2022)" />
       </div>
     </div>
+  );
+}
+
+/**
+ * Umpan balik untuk kolom yang kini DITURUNKAN (日本語能力 / 点数).
+ *
+ * Tanpa ini penggabungan terasa seperti data hilang: dua kotak yang dulu terlihat
+ * sekarang lenyap dari layar, padahal kolomnya masih dicetak di CV. Komponen ini
+ * menunjukkan nilai yang akan masuk ke sana, dan menghilang sendiri kalau tidak
+ * ada ujian bahasa di daftar (supaya tidak mencetak baris kosong).
+ */
+function TurunanSertifikasi({ text }: { text: string }) {
+  const d = deriveSertifikasi(text);
+  if (!d.bahasa) return null;
+  return (
+    <p class="text-[11px] text-fg-subtle leading-tight mt-1">
+      Otomatis mengisi kolom CV — 日本語能力: <b class="text-sky-300">{d.bahasa}</b>
+      {d.nilai ? <> · 点数: <b class="text-sky-300">{d.nilai}</b></> : null}
+      {' '}— tidak perlu diketik dua kali.
+    </p>
   );
 }
 
