@@ -22,7 +22,7 @@
  */
 import { render, screen, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import KotobaGame, { dalamRentangBab } from '../src/components/candidate/KotobaGame';
+import KotobaGame, { dalamRentangBab, jatuhTempo, JARAK_HARI } from '../src/components/candidate/KotobaGame';
 import { authStore } from '../src/store/authReactive';
 
 /* `vi.hoisted` wajib: `vi.mock` diangkat ke atas `const`. */
@@ -224,5 +224,46 @@ describe('kotoba — rentang bab', () => {
     expect(dalamRentangBab(2, '3', '')).toBe(false);
     expect(dalamRentangBab(3, '', '3')).toBe(true);
     expect(dalamRentangBab(4, '', '3')).toBe(false);
+  });
+});
+
+// ==========================================
+// Spaced repetition (Leitner). Pemilik 2026-11-03: *"lanjut sesuai rekom"*.
+//
+// Sebelum ini progres hanya menyimpan benar/salah TANPA waktu, jadi tidak ada
+// cara tahu kata mana yang jatuh tempo — siswa hanya bisa mengulang satu bab
+// penuh. Jadwal diuji sebagai fungsi murni supaya ambangnya tidak bisa bergeser
+// diam-diam.
+// ==========================================
+describe('kotoba — jatuh tempo (Leitner)', () => {
+  const HARI = 86_400_000;
+  const kini = 1_800_000_000_000;
+
+  it('kata yang BELUM pernah dijawab bukan "jatuh tempo"', () => {
+    // Kalau ini true, filter "jatuh tempo" akan menampilkan seluruh bank dan
+    // artinya hilang.
+    expect(jatuhTempo(undefined, kini)).toBe(false);
+  });
+
+  it('kotak 1: besok sudah jatuh tempo, hari ini belum', () => {
+    expect(jatuhTempo({ salah: 0, benar: 1, kotak: 1, terakhir: kini }, kini)).toBe(false);
+    expect(jatuhTempo({ salah: 0, benar: 1, kotak: 1, terakhir: kini - HARI }, kini)).toBe(true);
+  });
+
+  it('kotak 5 baru jatuh tempo setelah 16 hari', () => {
+    expect(jatuhTempo({ salah: 0, benar: 5, kotak: 5, terakhir: kini - 15 * HARI }, kini)).toBe(false);
+    expect(jatuhTempo({ salah: 0, benar: 5, kotak: 5, terakhir: kini - 16 * HARI }, kini)).toBe(true);
+  });
+
+  it('catatan LAMA tanpa kotak/terakhir diperlakukan sebagai kotak 1 yang jatuh tempo', () => {
+    // Progres sebelum perubahan ini tidak punya field baru; membuangnya berarti
+    // menghapus riwayat yang masih berharga.
+    expect(jatuhTempo({ salah: 2, benar: 1 }, kini)).toBe(true);
+  });
+
+  it('kotak di luar rentang dijepit, bukan membuat indeks meleset', () => {
+    expect(JARAK_HARI.length).toBe(5);
+    expect(jatuhTempo({ salah: 0, benar: 0, kotak: 99, terakhir: kini - 16 * HARI }, kini)).toBe(true);
+    expect(jatuhTempo({ salah: 0, benar: 0, kotak: 0, terakhir: kini }, kini)).toBe(false);
   });
 });

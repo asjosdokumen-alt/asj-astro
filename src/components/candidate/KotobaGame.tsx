@@ -138,6 +138,38 @@ const KUNCI_SIMPAN = 'asj_kotoba_v1:';
 interface Catatan {
   salah: number;
   benar: number;
+  /**
+   * Kapan kata ini terakhir dijawab (epoch ms) dan kotak Leitner-nya (1..5).
+   *
+   * KENAPA DITAMBAHKAN (2026-11-03): tanpa waktu, progres hanya bisa dipakai
+   * untuk PEMBOBOTAN — tidak ada cara tahu kata mana yang "jatuh tempo" hari
+   * ini. Padahal mengulang tepat sebelum lupa (spaced repetition) jauh lebih
+   * efisien daripada mengulang satu bab penuh.
+   *
+   * Keduanya OPSIONAL: catatan lama (sebelum perubahan ini) tidak punya field
+   * ini, dan diperlakukan sebagai kotak 1 yang jatuh tempo sekarang — bukan
+   * dibuang, karena `salah`/`benar`-nya masih berharga.
+   */
+  terakhir?: number;
+  kotak?: number;
+}
+
+/**
+ * Jarak ulang per kotak Leitner, dalam hari.
+ *
+ * Kotak 1 = baru/sering salah (besok lagi), kotak 5 = sudah stabil (16 hari).
+ * Angka ini sengaja sederhana dan bisa dibaca manusia; SM-2 penuh (dengan
+ * faktor kemudahan per kata) butuh lebih banyak state daripada yang bisa
+ * dipertanggungjawabkan untuk 1.440 kata di localStorage.
+ */
+export const JARAK_HARI = [1, 2, 4, 8, 16];
+
+/** Jatuh tempo? `true` hanya kalau kata itu SUDAH pernah dijawab. */
+export function jatuhTempo(c: Catatan | undefined, sekarang: number): boolean {
+  if (!c) return false; // belum pernah dilihat = baru, bukan jatuh tempo
+  const kotak = Math.min(Math.max(c.kotak ?? 1, 1), JARAK_HARI.length);
+  const sejak = c.terakhir ?? 0;
+  return sekarang - sejak >= JARAK_HARI[kotak - 1] * 86_400_000;
 }
 interface Progres {
   rekor: number;
@@ -334,7 +366,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
    * benarnya. Kata yang baru sekali salah lalu dua kali benar tidak ikut, supaya
    * daftarnya menyusut dan bisa habis.
    */
-  const [hanyaLemah, setHanyaLemah] = useState(false);
+  const [fokus, setFokus] = useState<'semua' | 'lemah' | 'tempo'>('semua');
   const [arah, setArah] = useState<Arah>('jp-id');
 
   /* ── sumber: buku atau bidang kerja ─────────────────────────────────────── */
@@ -608,8 +640,10 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     return !!c && c.salah > 0 && c.salah > c.benar;
   };
 
+  const sekarang = Date.now();
   const pool = (sumber === 'ssw' ? kataBidang : bank).filter((v) => {
-    if (hanyaLemah && !kataLemah(v)) return false;
+    if (fokus === 'lemah' && !kataLemah(v)) return false;
+    if (fokus === 'tempo' && !jatuhTempo(progres.kata[kunciKata(v)], sekarang)) return false;
     return sumber === 'ssw'
       ? (catFilter === 'all' || v.cat === catFilter) && (posFilter === 'all' || v.pos === posFilter)
       : dalamRentangBab(v.b, babDari, babSampai) && (posFilter === 'all' || v.pos === posFilter);
@@ -723,17 +757,29 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   // `progres` SENGAJA tidak ada di daftar: ia berubah setiap jawaban, dan
   // memasukkannya membuat efek ini me-reset ronde tepat setelah siswa menjawab —
   // ronde tidak akan pernah selesai. Yang menentukan isi ronde adalah filter,
-  // dan `hanyaLemah` ikut karena mengubahnya memang harus memulai ronde baru.
-  }, [bank, babDari, babSampai, posFilter, arah, mode, loginGate, vip, sumber, bidangId, catFilter, kataBidang.length, hanyaLemah]);
+  // dan `fokus` ikut karena mengubahnya memang harus memulai ronde baru.
+  }, [bank, babDari, babSampai, posFilter, arah, mode, loginGate, vip, sumber, bidangId, catFilter, kataBidang.length, fokus]);
 
   /** Catat satu jawaban ke progres (dipakai pembobotan ronde berikutnya). */
   const catat = (v: Kotoba, tepat: boolean) => {
     const kunci = kunciKata(v);
     setProgres((p) => {
       const c = p.kata[kunci] || { salah: 0, benar: 0 };
+      /* Leitner: benar menaikkan kotak (maks 5), salah menjatuhkannya ke 1.
+         `terakhir` dicatat untuk SEMUA jawaban — dari situ "jatuh tempo"
+         dihitung. Tanpa ini SRS tidak punya titik acuan waktu. */
+      const kotak = tepat ? Math.min((c.kotak ?? 1) + 1, JARAK_HARI.length) : 1;
       return {
         ...p,
-        kata: { ...p.kata, [kunci]: tepat ? { ...c, benar: c.benar + 1 } : { ...c, salah: c.salah + 1 } },
+        kata: {
+          ...p.kata,
+          [kunci]: {
+            ...c,
+            ...(tepat ? { benar: c.benar + 1 } : { salah: c.salah + 1 }),
+            kotak,
+            terakhir: Date.now(),
+          },
+        },
       };
     });
   };
@@ -1205,17 +1251,29 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
             </select>
           </div>
         )}
-        {/* Ulangi yang lemah — memakai progres yang sudah tersimpan. */}
-        <button
-          type="button"
-          onClick={() => setHanyaLemah((x) => !x)}
-          aria-pressed={hanyaLemah}
-          class={`min-h-11 rounded-control border px-3 text-[12px] font-bold ${
-            hanyaLemah ? 'border-accent-red bg-accent-red/10 text-accent-red' : 'border-line bg-surface-raised text-fg-muted'
-          }`}
-        >
-          {t('kotoba.hanya_lemah')}
-        </button>
+        {/* Fokus lingkup. Tiga pilihan, bukan dua tombol terpisah: "lemah" dan
+            "jatuh tempo" saling meniadakan, jadi dua toggle independen akan
+            membingungkan (dua-duanya menyala = irisan yang hampir selalu kosong). */}
+        <fieldset class="flex items-center gap-1 border-0 p-0 m-0">
+          <legend class="sr-only">{t('kotoba.fokus_label')}</legend>
+          {([
+            ['semua', t('kotoba.fokus_semua')],
+            ['lemah', t('kotoba.fokus_lemah')],
+            ['tempo', t('kotoba.fokus_tempo')],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFokus(id)}
+              aria-pressed={fokus === id}
+              class={`min-h-11 rounded-control border px-3 text-[12px] font-bold ${
+                fokus === id ? 'border-accent-violet bg-accent-violet/10 text-accent-violet' : 'border-line bg-surface-raised text-fg-muted'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </fieldset>
         {sumber === 'ssw' && (
           <select
             aria-label={t('kotoba.filter_kategori')}
