@@ -617,6 +617,31 @@ export async function handleSubmitApply(payload: any[], sessionToken?: string) {
               body: candPatch,
               headers: { Prefer: "return=minimal" },
             });
+            /* MASTER IKUT DITULIS (2026-11-03). Sebelumnya blok ini hanya
+               menulis `database_candidate`, sementara blok sesudahnya menulis
+               master dari `d.extraFiles` — BUKAN dari `candPatch`. Akibatnya
+               pas_photo/jft/ssw/file_cv masuk ke salinan saja.
+               Dulu itu hanya membuat dua tabel berbeda; sekarang lebih buruk:
+               trigger `trg_cermin_master_ke_candidate` mencerminkan master ke
+               salinan, jadi nilai yang baru ditulis ke salinan akan TERTIMPA
+               kembali oleh nilai master yang lebih lama. Nama kolom master
+               berbeda untuk dua di antaranya (`jft`→`jft_url`,
+               `ssw`→`ssw_url`). */
+            const mRow = await findMasterByWa(wa);
+            if (mRow && mRow.id !== undefined) {
+              const masterPatch: Record<string, string> = {};
+              if (candPatch.pas_photo) masterPatch.pas_photo = candPatch.pas_photo;
+              if (candPatch.jft) masterPatch.jft_url = candPatch.jft;
+              if (candPatch.ssw) masterPatch.ssw_url = candPatch.ssw;
+              if (candPatch.file_cv) masterPatch.file_cv = candPatch.file_cv;
+              if (Object.keys(masterPatch).length) {
+                await supabaseJson("PATCH", "master_database_candidate", {
+                  query: { id: `eq.${mRow.id}` },
+                  body: masterPatch,
+                  headers: { Prefer: "return=minimal" },
+                });
+              }
+            }
           }
         }
       } catch {
