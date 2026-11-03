@@ -1,0 +1,44 @@
+---
+// Halaman arcade: dua game refleks untuk siswa ASJ.
+//
+// Bentuknya mengikuti /kotoba dan /matematika: satu komponen `client:only`,
+// satu paragraf pengantar, satu `<noscript>`.
+//
+// Gerbang "khusus siswa" TIDAK disalin di sini. Berbeda dengan /kotoba, game ini
+// tidak memuat bank dari server — datanya kecil dan ada di bundel (`lib/arcade`),
+// jadi tidak ada panggilan API yang perlu dijaga. Kalau nanti skor dikirim ke
+// server, gerbangnya harus ikut di server, bukan di halaman ini.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import App from '../components/App.tsx';
+import FormToolbar from '../components/forms/FormToolbar';
+import ArcadeGame from '../components/candidate/ArcadeGame.tsx';
+---
+
+<BaseLayout
+  title="Arcade Latihan Jepang — ASJ"
+  titleKey="doc.title_arcade"
+  description="Dua latihan refleks bahasa Jepang untuk siswa ASJ: Genba Order Rush (mendengar perintah kerja lalu menaruh barang di lokasi yang benar) dan Kotoba Combo Builder (menyusun kalimat dengan partikel yang tepat). Tanpa berkas audio, jalan offline."
+>
+  <App showHeader={false} client:only="preact" />
+
+  <FormToolbar client:only="preact" titleKey="toolbar.arcade" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
+    <div class="max-w-[1100px] mx-auto px-3">
+      <section class="mb-4">
+        <h1 class="text-xl md:text-2xl font-bold text-fg mb-1">Arcade Latihan Jepang</h1>
+        <p class="cetak-sembunyi text-fg-muted text-[12.5px] leading-relaxed">
+          Dua latihan refleks, bukan hafalan daftar kata. <b>Genba Order Rush</b>: senior
+          memberi perintah kerja dalam bahasa Jepang (dengan suara), dan kamu menaruh barang
+          yang benar di rak yang benar sebelum waktunya habis — melatih <i>choukai</i> dan
+          pemahaman posisi. <b>Kotoba Combo Builder</b>: susun kalimat dari kartu kata, dengan
+          partikel yang tepat (は・が・を・に・で・へ・と); salah partikel memutus kombo.
+          Kata dan pola yang membuatmu salah dicatat di bawah sebagai bahan ulangan.
+        </p>
+      </section>
+      <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
+        Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
+      </noscript>
+      <ArcadeGame client:only="preact" />
+    </div>
+  </main>
+</BaseLayout>
