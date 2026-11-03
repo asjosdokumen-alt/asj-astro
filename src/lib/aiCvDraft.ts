@@ -243,7 +243,21 @@ export function mergeAiDraft(base: unknown, ai: unknown): Record<string, unknown
       out[k] = mergeAiDraft(curObj, v);
       continue;
     }
-    if (isGood(v)) out[k] = v;
+    /* KOLOM MENANG; AI hanya MENGISI yang kosong (2026-11-03).
+     *
+     * Sebelumnya baris ini `if (isGood(v)) out[k] = v;` — nilai AI menimpa
+     * kolom setiap kali tidak kosong. Itu berlawanan dengan aturan SERVER
+     * (`buildMasterNested`: "KOLOM MENANG; AI hanya mengisi yang kosong",
+     * dikoreksi pemilik 2026-10-22), dan akibatnya terlihat persis seperti
+     * keluhan pemilik: profil menampilkan alamat dari KOLOM (lengkap dengan kode
+     * pos), CV AI menampilkan alamat dari `ai_data_json` yang lama (tanpa kode
+     * pos) — lalu MENYIMPANNYA kembali ke kolom. Jadi tiap kali CV AI dibuka
+     * dan disimpan, data yang benar tergeser oleh teks AI yang lebih tua.
+     * Terukur: 45 dari 58 baris berbeda antara kolom dan JSON.
+     *
+     * Kunci yang HANYA ada di AI (`promosi_id`, `alergi_id`, …) tetap masuk,
+     * karena `cur` undefined = kosong. */
+    if (isGood(v) && !isGood(cur)) out[k] = v;
   }
   return out;
 }

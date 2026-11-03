@@ -120,14 +120,39 @@ describe('aiCvDraft — mergeAiDraft (AI di atas master)', () => {
     return v;
   };
 
-  it('menggabungkan dalam-dalam dan AI menang', () => {
+  /* 2026-11-03: presedensi DIBALIK. Dulu tes ini bernama "… dan AI menang" dan
+     mengunci nilai AI menimpa kolom. Itu berlawanan dengan aturan server
+     ("KOLOM MENANG; AI hanya mengisi yang kosong") dan itulah yang membuat
+     profil dan CV AI menampilkan alamat berbeda — CV AI memuat versi
+     `ai_data_json` yang lebih tua, lalu menyimpannya kembali ke kolom. */
+  it('menggabungkan dalam-dalam dan KOLOM MASTER menang', () => {
     const merged = mergeAiDraft(
       { identitas: { nama_lengkap: 'BUDI', ktp: '3512' }, medis: { rokok: 'Tidak' } },
       { identitas: { nama_lengkap: 'BUDI SANTOSO' } },
     );
-    expect(nested(merged, 'identitas').nama_lengkap).toBe('BUDI SANTOSO');
-    expect(nested(merged, 'identitas').ktp).toBe('3512'); // kunci master tetap ada
+    expect(nested(merged, 'identitas').nama_lengkap).toBe('BUDI'); // kolom menang
+    expect(nested(merged, 'identitas').ktp).toBe('3512');
     expect(nested(merged, 'medis').rokok).toBe('Tidak');
+  });
+
+  it('AI tetap MENGISI kunci yang belum ada di kolom', () => {
+    // Inilah alasan merge ini ada: kunci khusus AI (promosi_id, alergi_id, …)
+    // tidak punya kolom di master, jadi harus tetap terbaca.
+    const merged = mergeAiDraft({ identitas: { nama: 'BUDI' } }, { wawancara: { promosi_id: 'Saya pekerja keras.' } });
+    expect(nested(merged, 'wawancara').promosi_id).toBe('Saya pekerja keras.');
+    expect(nested(merged, 'identitas').nama).toBe('BUDI');
+  });
+
+  it('alamat: kode pos dari kolom TIDAK hilang oleh versi AI yang lebih tua', () => {
+    /* Kasus nyata (terukur 45 dari 58 baris berbeda). Kolom menyimpan alamat
+       lengkap ber-kode pos; ai_data_json menyimpan hasil ekstraksi lama tanpa
+       kode pos. Sebelum perbaikan, membuka CV AI lalu menyimpan menulis versi
+       JSON kembali ke kolom — kode posnya hilang permanen. */
+    const merged = mergeAiDraft(
+      { identitas: { alamat: 'RT 001 RW 001, DESA KETANDAN, KEC. DAGANGAN, KAB. MADIUN, PROV. JAWA TIMUR 63172' } },
+      { identitas: { alamat: 'DESA,KETANDAN RT01 RW01 .KEC,DAGANGAN .KAB,MADIUN .JAWA TIMUR' } },
+    );
+    expect(nested(merged, 'identitas').alamat).toContain('63172');
   });
 
   it('nilai AI kosong TIDAK menimpa nilai master yang terisi', () => {

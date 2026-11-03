@@ -574,7 +574,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
 
   // P2 (2026-09-14): mode admin memuat draf CV kandidat lebih dulu.
   // `getDrafCvMaster` mengembalikan bentuk bersarang + `AIDATAJSON` mentah;
-  // `parseAiCvDraft` mem-parse, deep-merge (AI menang), lalu memetakan ke kunci
+  // `parseAiCvDraft` mem-parse, deep-merge (KOLOM menang, AI hanya mengisi yang
+  // kosong — disamakan dengan aturan server 2026-11-03), lalu memetakan ke kunci
   // flat. Tanpa langkah ini admin melihat form KOSONG dan menekan Simpan —
   // yang akan menghapus CV kandidat, persis kebalikan dari yang diminta.
   useEffect(() => {
