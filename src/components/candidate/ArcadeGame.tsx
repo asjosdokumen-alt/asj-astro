@@ -23,6 +23,7 @@ import LoginGate from '../ui/LoginGate';
 import { bunyi, ucap } from '../../lib/tts';
 import {
   COMBO_SOAL,
+  GENBA_ZONA,
   buatPerintah,
   buatPilihan,
   cekGenba,
@@ -189,11 +190,24 @@ export default function ArcadeGame() {
   const [kombo, setKombo] = useState(1);
   const [balas, setBalas] = useState('');
   const [skorCombo, setSkorCombo] = useState(0);
+  /**
+   * Tingkat kesulitan Combo.
+   *
+   * `normal` mewarnai kartu menurut jenis kata (partikel kuning, benda biru,
+   * kerja merah) — dan itu ternyata MEMBERI JAWABAN: siswa bisa memilih kartu
+   * kuning berikutnya tanpa tahu partikel mana yang benar. `sulit` menghapus
+   * warna itu, jadi partikel harus ditentukan dari tata bahasa.
+   */
+  const [level, setLevel] = useState<'normal' | 'sulit' | 'hell'>('normal');
 
-  const soal = COMBO_SOAL[soalIdx % COMBO_SOAL.length];
+  /* Hell memakai kalimat PANJANG (dua klausa) yang terpisah dari daftar biasa,
+     supaya level mudah tidak ikut kebanjiran kalimat 10–13 kartu. */
+  const daftarCombo = level === 'hell' ? COMBO_SOAL.filter((x) => x.hell) : COMBO_SOAL.filter((x) => !x.hell);
+  const soal = daftarCombo[soalIdx % daftarCombo.length];
 
   const muatSoal = (idx: number) => {
-    const s = COMBO_SOAL[idx % COMBO_SOAL.length];
+    const daftar = level === 'hell' ? COMBO_SOAL.filter((x) => x.hell) : COMBO_SOAL.filter((x) => !x.hell);
+    const s = daftar[idx % daftar.length];
     setSoalIdx(idx);
     setLangkah(0);
     setTray([]);
@@ -201,10 +215,10 @@ export default function ArcadeGame() {
     setBalas('');
   };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: hanya untuk soal pertama; muatSoal dibuat ulang tiap render sehingga memasukkannya ke daftar akan mengulang tanpa henti
+  // biome-ignore lint/correctness/useExhaustiveDependencies: muat ulang hanya saat LEVEL berganti; muatSoal dibuat ulang tiap render sehingga memasukkannya ke daftar akan mengulang tanpa henti
   useEffect(() => {
     muatSoal(0);
-  }, []);
+  }, [level]);
 
   const ketuk = (k: Kartu, indeks: number) => {
     /* KALIMAT SUDAH SELESAI — abaikan ketukan berikutnya.
@@ -324,21 +338,16 @@ export default function ArcadeGame() {
                 mengambil label dari array terpisah dengan `[i]` — mengurutkan
                 ulang salah satunya membuat tombol "Rak Atas" menaruh barang ke
                 みぎ tanpa satu pun error. Ditemukan saat review UI 2026-11-04. */}
-            {([
-              { id: 'ue', ikon: '⬆️', jp: 'うえ の たな', label: 'Rak Atas' },
-              { id: 'shita', ikon: '⬇️', jp: 'した の たな', label: 'Rak Bawah' },
-              { id: 'hidari', ikon: '⬅️', jp: 'ひだり の はこ', label: 'Kotak Kiri' },
-              { id: 'migi', ikon: '➡️', jp: 'みぎ の はこ', label: 'Kotak Kanan' },
-            ] as const).map((z) => {
+            {GENBA_ZONA.map((z) => {
               return (
                 <button
                   key={z.id}
                   type="button"
                   onClick={() => taruh(z.id)}
-                  class="min-h-16 rounded-card border-2 border-dashed border-line bg-surface-sunken p-2 text-center"
+                  class="min-h-14 rounded-card border-2 border-dashed border-line bg-surface-sunken px-1 py-1.5 text-center"
                 >
                   <span class="block text-[11px] text-fg-muted break-words">{z.ikon} {z.jp}</span>
-                  <span class="block text-sm font-bold text-fg">{z.label}</span>
+                  <span class="block text-sm font-bold text-fg">{z.id_}</span>
                 </button>
               );
             })}
@@ -369,6 +378,16 @@ export default function ArcadeGame() {
           <div class="mb-2 flex items-center justify-between text-[12px]">
             <span class="rounded-control border border-line bg-surface-raised px-2 py-1 font-bold text-fg-muted">🔥 x{kombo}</span>
             <span class="rounded-control border border-line bg-surface-sunken px-2 py-1 text-fg-muted">{soal.bab}</span>
+            <button
+              type="button"
+              onClick={() => setLevel((l) => (l === 'normal' ? 'sulit' : l === 'sulit' ? 'hell' : 'normal'))}
+              aria-pressed={level !== 'normal'}
+              class={`min-h-9 rounded-control border px-2 py-1 font-bold ${
+                level !== 'normal' ? 'border-accent-red bg-accent-red/10 text-accent-red' : 'border-line bg-surface-raised text-fg-muted'
+              }`}
+            >
+              {level === 'hell' ? t('arcade.level_hell') : level === 'sulit' ? t('arcade.level_sulit') : t('arcade.level_normal')}
+            </button>
             <span class="font-bold text-fg">¥ {skorCombo}</span>
           </div>
 
@@ -397,11 +416,13 @@ export default function ArcadeGame() {
                 type="button"
                 onClick={() => ketuk(k, i)}
                 class={`min-h-12 rounded-control border-2 px-1 text-sm font-bold break-words ${
-                  k.jenis === 'particle'
-                    ? 'border-amber-300 bg-amber-400 text-slate-900'
-                    : k.jenis === 'verb'
-                      ? 'border-rose-400 bg-rose-600 text-white'
-                      : 'border-blue-400 bg-blue-600 text-white'
+                  level !== 'normal'
+                    ? 'border-line bg-surface-raised text-fg'
+                    : k.jenis === 'particle'
+                      ? 'border-amber-300 bg-amber-400 text-slate-900'
+                      : k.jenis === 'verb'
+                        ? 'border-rose-400 bg-rose-600 text-white'
+                        : 'border-blue-400 bg-blue-600 text-white'
                 }`}
               >
                 {k.jp}

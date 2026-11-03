@@ -19,7 +19,7 @@
 import { render, screen, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import ArcadeGame from '../src/components/candidate/ArcadeGame';
-import { COMBO_SOAL } from '../src/lib/arcade';
+import { COMBO_SOAL, GENBA_ZONA } from '../src/lib/arcade';
 import { authStore } from '../src/store/authReactive';
 
 /** `/arcade` bergerbang login; tes perilaku game harus masuk dulu. */
@@ -72,7 +72,7 @@ describe('arcade — Genba Order Rush', () => {
     cleanup();
   });
 
-  it('perintah memakai pola yang benar dan meja berisi 6 barang + 4 rak', async () => {
+  it('perintah memakai pola yang benar dan meja berisi 6 barang + 8 rak', async () => {
     render(<ArcadeGame />);
     cariTombol('Mulai Shift')?.click();
 
@@ -123,15 +123,11 @@ describe('arcade — Genba Order Rush', () => {
        Indonesia sedangkan `zona` berbahasa Jepang, jadi menebak dengan
        `includes()` selalu "tidak cocok" dan bisa memilih rak yang justru BENAR —
        tesnya lalu lolos atau gagal karena undian, bukan karena perilaku. */
-    const ZONA_KE_LABEL: Record<string, string> = {
-      'うえ の たな': 'Rak Atas',
-      'した の たな': 'Rak Bawah',
-      'ひだり の はこ': 'Kotak Kiri',
-      'みぎ の はこ': 'Kotak Kanan',
-    };
-    const labelBenar = ZONA_KE_LABEL[zona];
+    /* Pemetaan diambil dari DATA, bukan disalin: jumlah rak sudah bertambah dari
+       4 menjadi 8, dan daftar yang ditulis tangan akan diam-diam salah. */
+    const labelBenar = GENBA_ZONA.find((z) => z.jp === zona)?.id_;
     expect(labelBenar, `zona tak dikenal: ${zona}`).toBeTruthy();
-    const salah = ['Rak Atas', 'Rak Bawah', 'Kotak Kiri', 'Kotak Kanan'].find((z) => z !== labelBenar);
+    const salah = GENBA_ZONA.map((z) => z.id_).find((z) => z !== labelBenar);
     const rakSalah = cariTombol(salah ?? 'Rak Atas');
     expect(rakSalah).toBeTruthy();
     rakSalah?.click();
@@ -252,6 +248,49 @@ describe('arcade — Kotoba Combo Builder', () => {
     await new Promise((r) => setTimeout(r, 60));
     expect((document.body.textContent || '').match(/x(\d+)/)?.[1], 'kombo tereset oleh ketukan nyasar').toBe('6');
   }, 15000);
+
+  /* Level Sulit menghapus WARNA jenis kata — dan warna itulah yang selama ini
+     memberi jawaban: kartu partikel kuning membuat siswa bisa memilih "kuning
+     berikutnya" tanpa tahu partikel mana yang benar. */
+  it('level Sulit menghapus warna petunjuk jenis kata', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Combo Kalimat')?.click();
+    await waitFor(() => expect(screen.getByTestId('arcade-target')).toBeTruthy());
+
+    const kartuPartikel = () =>
+      tombol().find((b) => (b.textContent || '').trim() === 'で' || (b.textContent || '').trim() === 'を');
+    expect(kartuPartikel(), 'kartu partikel tidak ada').toBeTruthy();
+    expect(kartuPartikel()?.className, 'normal seharusnya berwarna').toContain('amber');
+
+    const toggle = tombol().find((b) => (b.textContent || '').trim() === 'Normal');
+    expect(toggle, 'tombol level tidak ada').toBeTruthy();
+    toggle?.click();
+
+    await waitFor(() => expect(kartuPartikel()?.className).not.toContain('amber'));
+  });
+
+  /* Level Hell memakai kalimat PANJANG (dua klausa) yang terpisah dari daftar
+     biasa — supaya level mudah tidak ikut kebanjiran kalimat 10–13 kartu. */
+  it('level Hell memakai kalimat panjang, bukan kalimat pendek', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Combo Kalimat')?.click();
+    await waitFor(() => expect(screen.getByTestId('arcade-target')).toBeTruthy());
+
+    /* normal -> sulit -> hell */
+    for (let i = 0; i < 2; i++) {
+      const t = tombol().find((b) => ['Normal', 'Sulit'].includes((b.textContent || '').trim()));
+      expect(t, 'tombol level tidak ada').toBeTruthy();
+      t?.click();
+      await new Promise((r) => setTimeout(r, 80));
+    }
+
+    const panjang = COMBO_SOAL.filter((x) => x.hell).map((x) => x.indo);
+    expect(panjang.length).toBeGreaterThan(0);
+    await waitFor(() => {
+      const teks = screen.getByTestId('arcade-target').textContent || '';
+      expect(panjang.some((p) => teks.includes(p))).toBe(true);
+    });
+  });
 
   it('kartu jebakan memberi umpan balik dan kombo kembali ke x1', async () => {
     render(<ArcadeGame />);
