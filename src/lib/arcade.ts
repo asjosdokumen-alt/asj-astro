@@ -40,7 +40,11 @@ export const GENBA_WARNA: readonly WarnaGenba[] = [
      mewarisi `text-fg`, yang berwarna TERANG di tema gelap — di atas latar
      kuning/putih hasilnya nyaris tak terbaca. Ditemukan saat review UI
      2026-11-04 (kelas cacat yang sama dengan yang dijaga `shim-coverage`). */
-  { id: 'kiiroi', jp: 'きいろい', romaji: 'kiiroi', id_: 'Kuning', kelas: 'bg-amber-500 border-amber-300 text-slate-900' },
+  /* きいろい memakai teks PUTIH, bukan gelap: latar amber-nya dipetakan tema
+     menjadi rgb(180, 83, 9) — cukup gelap sehingga teks gelap hanya mencapai
+     3,55:1 (di bawah AA 4,5:1). Teks putih memberi ~5,0:1. Diukur di browser
+     pada kedua tema, 2026-11-04. */
+  { id: 'kiiroi', jp: 'きいろい', romaji: 'kiiroi', id_: 'Kuning', kelas: 'bg-amber-500 border-amber-300 text-white' },
   { id: 'shiroi', jp: 'しろい', romaji: 'shiroi', id_: 'Putih', kelas: 'bg-slate-200 border-white text-slate-900' },
 ];
 
