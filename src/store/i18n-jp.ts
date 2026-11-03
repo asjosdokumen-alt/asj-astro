@@ -524,7 +524,7 @@ export const jpTranslations: Record<string, string> = {
     "form.cv_edit_hint": "CV編集のヒント",
     "form.placeholder_chat": "メッセージを入力...",
     // Jiko-PR のヒント文（legacy i18n jp/form.js:240-258 をそのまま移植）
-    "form.ai_promosi_helper": "自分の性格や習慣、企業にアピールしたい点を簡潔に書いてください。",
+    "form.ai_promosi_helper": "自分の性格や習慣、企業にアピールしたい点を簡潔に書いてください。この欄は面接モジュールの自己PRの質問と同一です。",
     "form.ai_kelebihan_helper": "長所を具体例とともに書いてください。",
     "form.ai_kekurangan_helper": "短所とその改善策を一緒に書いてください。",
     "form.ai_keahlian_helper": "例：溶接、機械操作、運転免許など（なければ空欄）。",

@@ -526,7 +526,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Petunjuk di bawah label field Jiko-PR (legacy i18n id/form.js:242-260).
     // Disalin apa adanya: teks inilah yang benar-benar tampil di legacy
     // (atribut data-lang menimpa teks inline di HTML-nya).
-    "form.ai_promosi_helper": "Tuliskan kepribadian, kebiasaan, dan hal yang ingin Anda tonjolkan ke perusahaan Jepang secara singkat.",
+    "form.ai_promosi_helper": "Tuliskan kepribadian, kebiasaan, dan hal yang ingin Anda tonjolkan ke perusahaan Jepang secara singkat. Kolom ini SATU dengan soal 自己PR di modul Wawancara — menjawab di sana langsung mengisi kolom ini, dan sebaliknya.",
     "form.ai_kelebihan_helper": "Tuliskan kelebihan Anda beserta contoh nyatanya.",
     "form.ai_kekurangan_helper": "Tuliskan kekurangan Anda beserta cara memperbaikinya.",
     "form.ai_keahlian_helper": "Contoh: mengelas, mengoperasikan mesin, SIM (kosongkan jika tidak ada).",
