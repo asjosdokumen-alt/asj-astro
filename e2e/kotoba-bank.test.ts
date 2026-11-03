@@ -36,6 +36,7 @@
 import { describe, it, expect } from 'vitest';
 import { BANK_KOTOBA, BAB_KOTOBA, JUMLAH_KOTOBA } from '../netlify/functions/_lib/kotoba/bank';
 import { BIDANG_SSW, JUMLAH_SSW } from '../netlify/functions/_lib/kotoba/ssw';
+import { N5_KATA, JUMLAH_N5 } from '../netlify/functions/_lib/kotoba/n5';
 
 /**
  * Konverter kana → romaji, ditulis mengikuti konvensi bank ini:
@@ -325,5 +326,56 @@ describe('bank kosakata bidang kerja — 16 bidang SSW', () => {
   it('semua kata bidang bertanda b:0 — bukan bab buku', () => {
     const salah = BIDANG_SSW.flatMap((b) => b.kata.filter((v) => v.b !== 0).map((v) => `${b.id}/${v.k}`));
     expect(salah).toEqual([]);
+  });
+});
+
+// ==========================================
+// Bank N5 tambahan (174 kata dari "KANJI N5 LENGKAP.xlsx").
+//
+// Berkas sumbernya TIDAK punya arti Indonesia dan memuat beberapa cacat
+// (kanji rusak, bacaan salah, duplikat bentuk kamus/ます). Yang diuji di sini
+// adalah hasil KURASINYA — bukan isi berkas aslinya.
+// ==========================================
+describe('bank N5 tambahan', () => {
+  it('berisi 174 kata', () => {
+    /* Angka eksplisit: 197 kandidat mentah -> 174 setelah 1 kanji rusak, 12
+       duplikat bentuk kamus/ます, dan 11 pasangan kanji-kamus/bacaan-ます yang
+       tidak konsisten dibuang. Kalau kata ditambah, ubah angkanya. */
+    expect(JUMLAH_N5).toBe(174);
+    expect(N5_KATA.length).toBe(JUMLAH_N5);
+  });
+
+  it('tidak ada kanji+bacaan ganda', () => {
+    const seen = new Set<string>();
+    const ganda: string[] = [];
+    for (const v of N5_KATA) {
+      const kunci = `${v.k}|${v.h}`;
+      if (seen.has(kunci)) ganda.push(v.k);
+      seen.add(kunci);
+    }
+    expect(ganda).toEqual([]);
+  });
+
+  it('setiap entri lengkap dan bertanda b:0 (bukan bab buku)', () => {
+    const cacat = N5_KATA.filter((v) => !v.k.trim() || !v.h.trim() || !v.r.trim() || !v.id.trim() || v.b !== 0);
+    expect(cacat.map((v) => v.k)).toEqual([]);
+  });
+
+  it('bacaan hanya kana, dan arti TIDAK mengandung aksara Jepang', () => {
+    /* Dua kelas cacat yang benar-benar muncul di sumber: bacaan berisi kanji
+       (`辞書/じいしょ` sempat lolos), dan arti yang masih menyisakan furigana. */
+    const kana = /^[ぁ-んァ-ヶー]+$/;
+    const jepang = /[\u3041-\u309f\u30a1-\u30fa\u4e00-\u9fff]/;
+    const salah = N5_KATA.filter((v) => !kana.test(v.h) || jepang.test(v.id));
+    expect(salah.map((v) => `${v.k}/${v.h} → ${v.id}`)).toEqual([]);
+  });
+
+  it('setiap romaji cocok dengan cara bacanya', () => {
+    expect(romajiSalah(N5_KATA)).toEqual([]);
+  });
+
+  it('jenis kata hanya dari empat nilai yang dikenal klien', () => {
+    const asing = N5_KATA.filter((v) => !['verb', 'adj', 'noun', 'other'].includes(v.pos));
+    expect(asing.map((v) => v.k)).toEqual([]);
   });
 });

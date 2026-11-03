@@ -190,6 +190,11 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
     const tolak = await tolakKecualiSiswa(s, wa);
     if (tolak) return tolak;
     const { BANK_KOTOBA, BAB_KOTOBA, JUMLAH_KOTOBA } = await import('../_lib/kotoba/bank');
+    /* N5 ikut di respons ini, bukan endpoint sendiri: gerbangnya SAMA
+       (`tolakKecualiSiswa`), dan 174 kata hanya menambah ~15 KB pada permintaan
+       yang toh sudah mengambil 1 440 kata. Endpoint ketiga berarti salinan
+       ketiga dari logika sesi/VIP yang sama. */
+    const { N5_KATA, JUMLAH_N5 } = await import('../_lib/kotoba/n5');
     return {
       success: true,
       wa,
@@ -197,6 +202,8 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
       jumlah: JUMLAH_KOTOBA,
       bab: BAB_KOTOBA,
       kosakata: BANK_KOTOBA,
+      n5: N5_KATA,
+      jumlahN5: JUMLAH_N5,
     };
   },
   // ── Bank kosakata bidang kerja (SSW) — modul latihan per bidang ──────────

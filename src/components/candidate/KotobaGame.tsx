@@ -68,6 +68,8 @@ interface BankRes {
   jumlah?: number;
   bab?: number[];
   kosakata?: Kotoba[];
+  n5?: Kotoba[];
+  jumlahN5?: number;
   error?: string;
   message?: string;
   sessionInvalid?: boolean;
@@ -103,7 +105,7 @@ type SswRes = BankRes & { bidang?: BidangSsw[] };
  * kapal, dan sebaliknya. Pemisahan ini juga yang membuat "kamus" bisa dicetak
  * per bidang — lembar hafalan untuk satu jenis pekerjaan.
  */
-type Sumber = 'minna' | 'ssw';
+type Sumber = 'minna' | 'ssw' | 'n5';
 
 interface Props {
   /** WA dari URL (`?wa=`) atau dari panel admin. */
@@ -391,6 +393,8 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   /** `null` = belum/tidak diketahui. Jangan putuskan apa pun saat masih null. */
   const [vip, setVip] = useState<boolean | null>(null);
   const [bank, setBank] = useState<Kotoba[]>([]);
+  /** 174 kata N5 tambahan — dikirim bersama bank buku, gerbang yang sama. */
+  const [bankN5, setBankN5] = useState<Kotoba[]>([]);
   const [daftarBab, setDaftarBab] = useState<number[]>([]);
   const [progres, setProgres] = useState<Progres>({ rekor: 0, kata: {} });
 
@@ -570,6 +574,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       }
       const daftar = Array.isArray(d.kosakata) ? d.kosakata : [];
       setBank(daftar);
+      setBankN5(Array.isArray(d.n5) ? d.n5 : []);
       setVip(typeof d.isVip === 'boolean' ? d.isVip : null);
       setDaftarBab(Array.isArray(d.bab) ? d.bab : []);
       if (!daftar.length) setGalat(t('kotoba.bank_kosong'));
@@ -722,16 +727,20 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   };
 
   const sekarang = Date.now();
-  const pool = (sumber === 'ssw' ? kataBidang : bank).filter((v) => {
+  const dasar = sumber === 'ssw' ? kataBidang : sumber === 'n5' ? bankN5 : bank;
+  const pool = dasar.filter((v) => {
     if (fokus === 'lemah' && !kataLemah(v)) return false;
     if (fokus === 'tempo' && !jatuhTempo(progres.kata[kunciKata(v)], sekarang)) return false;
-    return sumber === 'ssw'
-      ? (catFilter === 'all' || v.cat === catFilter) && (posFilter === 'all' || v.pos === posFilter)
-      : dalamRentangBab(v.b, babDari, babSampai) && (posFilter === 'all' || v.pos === posFilter);
+    if (sumber === 'ssw')
+      return (catFilter === 'all' || v.cat === catFilter) && (posFilter === 'all' || v.pos === posFilter);
+    /* N5 tidak punya bab buku (`b = 0`), jadi filter bab DILEWATI — kalau tidak,
+       rentang 1..50 akan menyaringnya habis dan daftarnya tampak kosong. */
+    if (sumber === 'n5') return posFilter === 'all' || v.pos === posFilter;
+    return dalamRentangBab(v.b, babDari, babSampai) && (posFilter === 'all' || v.pos === posFilter);
   });
 
   /** Sumber pengecoh: bidang yang sedang dibuka, atau seluruh bank buku. */
-  const sumberKata = sumber === 'ssw' ? kataBidang : bank;
+  const sumberKata = sumber === 'ssw' ? kataBidang : sumber === 'n5' ? bankN5 : bank;
 
   const bobot = (v: Kotoba): number => {
     const c = progres.kata[kunciKata(v)];
@@ -831,7 +840,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   // ada di daftar.
   // biome-ignore lint/correctness/useExhaustiveDependencies: mulaiRonde dibuat ulang tiap render; filter/arah/sumber di daftar adalah masukan sebenarnya
   useEffect(() => {
-    if (!bank.length && !kataBidang.length) return;
+    if (!bank.length && !kataBidang.length && !bankN5.length) return;
     if (mode !== 'kuis' && mode !== 'ketik' && mode !== 'bom') return;
     if (loginGate || vip === false) return;
     mulaiRonde();
@@ -839,7 +848,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   // memasukkannya membuat efek ini me-reset ronde tepat setelah siswa menjawab —
   // ronde tidak akan pernah selesai. Yang menentukan isi ronde adalah filter,
   // dan `fokus` ikut karena mengubahnya memang harus memulai ronde baru.
-  }, [bank, babDari, babSampai, posFilter, arah, mode, loginGate, vip, sumber, bidangId, catFilter, kataBidang.length, fokus]);
+  }, [bank, babDari, babSampai, posFilter, arah, mode, loginGate, vip, sumber, bidangId, catFilter, kataBidang.length, bankN5.length, fokus]);
 
   /** Catat satu jawaban ke progres (dipakai pembobotan ronde berikutnya). */
   const catat = (v: Kotoba, tepat: boolean) => {
@@ -1288,12 +1297,12 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       </div>
 
       {/* ── Sumber: buku atau bidang kerja ──
-          Dua tombol, bukan satu daftar gabungan. `aria-pressed` dipakai karena
+          Tiga tombol, bukan satu daftar gabungan. `aria-pressed` dipakai karena
           ini pilihan keadaan, bukan navigasi — pembaca layar harus bisa
           membacakan mana yang sedang aktif tanpa melihat warnanya. */}
       <fieldset class="flex gap-1.5 p-1 rounded-control bg-surface-sunken border border-line mb-2">
         <legend class="sr-only">{t('kotoba.sumber_label')}</legend>
-        {(['minna', 'ssw'] as Sumber[]).map((s) => (
+        {(['minna', 'ssw', 'n5'] as Sumber[]).map((s) => (
           <button
             key={s}
             type="button"
@@ -1305,7 +1314,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 : 'text-fg-muted hover:text-fg hover:bg-surface-raised'
             }`}
           >
-            {s === 'minna' ? t('kotoba.sumber_minna') : t('kotoba.sumber_ssw')}
+            {s === 'minna' ? t('kotoba.sumber_minna') : s === 'ssw' ? t('kotoba.sumber_ssw') : t('kotoba.sumber_n5')}
           </button>
         ))}
       </fieldset>

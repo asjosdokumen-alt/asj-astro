@@ -1897,6 +1897,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.gelar_senpai": "Senpai Rajin",
     "kotoba.gelar_master": "Master Kotoba",
     "kotoba.gelar_siap": "Siap Berangkat Jepang",
+    "kotoba.sumber_n5": "N5",
     "kotoba.hanya_lemah": "Ulangi yang lemah",
     "kotoba.bab_dari": "dari bab",
     "kotoba.bab_sampai": "sampai bab",

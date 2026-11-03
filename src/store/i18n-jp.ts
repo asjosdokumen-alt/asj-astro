@@ -1354,6 +1354,7 @@ export const jpTranslations: Record<string, string> = {
     "kotoba.gelar_senpai": "努力のセンパイ",
     "kotoba.gelar_master": "単語マスター",
     "kotoba.gelar_siap": "日本へ出発準備OK",
+    "kotoba.sumber_n5": "N5",
     "kotoba.hanya_lemah": "苦手な語を復習",
     "kotoba.bab_dari": "開始の課",
     "kotoba.bab_sampai": "終了の課",
