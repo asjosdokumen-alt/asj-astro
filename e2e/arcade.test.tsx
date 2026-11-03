@@ -175,8 +175,12 @@ describe('arcade — Genba Order Rush', () => {
     expect(rak, `rak "${zona}" tidak ada`).toBeTruthy();
     rak?.click();
 
-    /* Perintah berganti — bukan pesan salah. */
-    await waitFor(() => expect(perintahTeks()).not.toBe(awal));
+    /* Bukti jawaban benar adalah SKOR, bukan "perintahnya berubah".
+       Versi pertama memeriksa teks perintah berganti — dan itu RAPUH: perintah
+       dirakit acak, jadi undian bisa menghasilkan kalimat yang sama persis dan
+       tesnya merah padahal perilakunya benar (terukur: gagal sekali di suite
+       penuh, lolos 3/3 sendirian). Skor tidak bisa kebetulan. */
+    await waitFor(() => expect(document.body.textContent || '').toContain('¥ 100'));
   });
 });
 
