@@ -241,17 +241,17 @@ describe('bank kosakata buku — Minna no Nihongo Bab 1–50', () => {
 });
 
 describe('bank kosakata bidang kerja — 16 bidang SSW', () => {
-  it('berisi 16 bidang, id unik, dan 1 859 kata', () => {
+  it('berisi 16 bidang, id unik, dan 2 024 kata', () => {
     expect(BIDANG_SSW.length).toBe(16);
     expect(new Set(BIDANG_SSW.map((b) => b.id)).size).toBe(16);
     /* Angka eksplisit, sama alasannya dengan bank buku: perluasan harus bisa
        dibuktikan, bukan diklaim.
-       1 061 -> 1 859 (2026-11-03): +798 kata untuk bidang `inshokuhin`, diekstrak
-       dari 5 PDF Kotoba/kanji materi LPK ASJ (7.PENGOLAHAN MAKANAN, bab 1–5).
+       1 061 -> 1 859 -> 2 024 (2026-11-03): +798 `inshokuhin` (5 PDF, bab 1–5)
+       dan +165 `kuriiningu` (5 PDF, dua format) dari materi LPK ASJ.
        Bacaan dan artinya dari materi itu sendiri; 51 entri yang urainya rusak
        dibuang. Bidang lain belum disentuh — angkanya akan naik lagi kalau
        materi bidang lain diekstrak dengan cara yang sama. */
-    expect(JUMLAH_SSW).toBe(1859);
+    expect(JUMLAH_SSW).toBe(2024);
     const jumlah = BIDANG_SSW.reduce((n, b) => n + b.kata.length, 0);
     expect(jumlah).toBe(JUMLAH_SSW);
   });
