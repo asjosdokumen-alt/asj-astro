@@ -51,6 +51,22 @@ describe('arcade — Genba Order Rush', () => {
     expect(cariTombol('Kotak Kanan')).toBeTruthy();
   });
 
+  /* REGRESI: kehabisan waktu dengan nyawa masih tersisa dulu MENGAKIBATKAN
+     LAYAR MACET — sumbu 0, perintah tidak berganti, tidak ada yang bisa
+     diketuk. Versi pertama saya hanya mengurangi nyawa di dalam efek timer
+     tanpa memanggil jalur `gagal()`, sehingga perintah berikutnya tidak pernah
+     dipasang. */
+  it('kehabisan waktu memajukan perintah (tidak mengunci layar)', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Mulai Shift')?.click();
+    await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
+    const awal = perintahTeks();
+
+    /* Batas waktu 8 detik; beri ruang untuk jeda 1,1 detik sebelum perintah
+       berikutnya dipasang. */
+    await waitFor(() => expect(perintahTeks()).not.toBe(awal), { timeout: 14000 });
+  }, 20000);
+
   it('memilih barang lalu rak yang BENAR memajukan perintah', async () => {
     render(<ArcadeGame />);
     cariTombol('Mulai Shift')?.click();

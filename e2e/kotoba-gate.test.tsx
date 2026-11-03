@@ -22,7 +22,7 @@
  */
 import { render, screen, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import KotobaGame, { dalamRentangBab, jatuhTempo, JARAK_HARI, hitungStreak, tanggalLokal } from '../src/components/candidate/KotobaGame';
+import KotobaGame, { dalamRentangBab, jatuhTempo, JARAK_HARI, hitungStreak, tanggalLokal, gelarDari, GELAR } from '../src/components/candidate/KotobaGame';
 import { authStore } from '../src/store/authReactive';
 
 /* `vi.hoisted` wajib: `vi.mock` diangkat ke atas `const`. */
@@ -362,5 +362,29 @@ describe('kotoba — streak harian', () => {
     // 1 Januari 00:30 lokal: `toISOString()` bisa saja masih 31 Desember.
     const d = new Date(2026, 0, 1, 0, 30);
     expect(tanggalLokal(d)).toBe('2026-01-01');
+  });
+});
+
+// ==========================================
+// Gelar siswa. Diukur dari KATA YANG DIKUASAI, bukan skor ronde: skor bisa
+// dinaikkan dengan mengulang bab yang sama, sedangkan "dikuasai" hanya bertambah
+// kalau sebuah kata benar tiga kali tanpa salah.
+// ==========================================
+describe('kotoba — gelar', () => {
+  it('tangga gelar naik tepat di ambangnya, tidak melompat', () => {
+    expect(gelarDari(0)).toBe('kotoba.gelar_kohai');
+    expect(gelarDari(49)).toBe('kotoba.gelar_kohai');
+    expect(gelarDari(50)).toBe('kotoba.gelar_senpai');
+    expect(gelarDari(149)).toBe('kotoba.gelar_senpai');
+    expect(gelarDari(150)).toBe('kotoba.gelar_master');
+    expect(gelarDari(399)).toBe('kotoba.gelar_master');
+    expect(gelarDari(400)).toBe('kotoba.gelar_siap');
+  });
+
+  it('ambangnya menurun, dan yang terendah 0 — tidak ada celah', () => {
+    /* Kalau daftar tidak terurut menurun, `gelarDari` akan mengembalikan gelar
+       yang salah untuk sebagian angka tanpa error apa pun. */
+    for (let i = 1; i < GELAR.length; i++) expect(GELAR[i].min).toBeLessThan(GELAR[i - 1].min);
+    expect(GELAR[GELAR.length - 1].min).toBe(0);
   });
 });

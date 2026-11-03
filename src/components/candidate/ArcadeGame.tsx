@@ -16,7 +16,7 @@
  *   • Kalimat disusun dengan partikel yang benar (を untuk objek, に untuk
  *     tujuan, で untuk tempat aksi) — bukan sekadar kata ditempel.
  */
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import { bunyi, ucap } from '../../lib/tts';
 import {
@@ -98,6 +98,10 @@ export default function ArcadeGame() {
     berikut();
   };
 
+  /* `gagal` dibuat ulang tiap render; efek timer menyimpannya di ref supaya
+     memasukkannya ke daftar dependensi tidak me-restart hitungan setiap render. */
+  const gagalRef = useRef<(alasan: string) => void>(() => {});
+
   /** Satu kali salah: nyawa berkurang, catatan disimpan, perintah berganti. */
   const gagal = (alasan: string) => {
     if (!perintah) return;
@@ -117,6 +121,7 @@ export default function ArcadeGame() {
       if (sisaNyawa > 0) berikut();
     }, 1100);
   };
+  gagalRef.current = gagal;
 
   const taruh = (zonaId: string) => {
     if (!perintah || !dipilih || fase !== 'main') return;
@@ -141,13 +146,11 @@ export default function ArcadeGame() {
       setSisa(s);
       if (s <= 0) {
         window.clearInterval(id);
-        setNyawa((n) => {
-          const baru = n - 1;
-          if (baru <= 0) setFase('selesai');
-          return baru;
-        });
-        setPesan(t('arcade.waktu_habis'));
-        bunyi(false);
+        /* Lewat `gagal()` — BUKAN penurunan nyawa sendiri. Versi pertama saya
+           hanya mengurangi nyawa di sini, tanpa memanggil perintah berikutnya,
+           sehingga siswa yang kehabisan waktu dengan nyawa masih tersisa
+           terkurung di layar yang sama dengan sumbu 0 dan tidak bisa apa-apa. */
+        gagalRef.current(t('arcade.waktu_habis'));
       }
     }, 100);
     return () => window.clearInterval(id);

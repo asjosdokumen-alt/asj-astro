@@ -950,7 +950,10 @@ describe('full build', () => {
     // 31682 -> 31686 (2026-11-04, arcade). +4 DIUKUR DI DUA UJUNG setelah
     // `tts.ts` memakai bentuk struktural untuk `speak` (nama tipe
     // `SpeechSynthesisUtterance` ditolak indexer sebagai referensi tak terikat).
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(31686); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
+    // 31686 -> 31691 (2026-11-04, gelar + perbaikan arcade). +5 DIUKUR DI DUA
+    // UJUNG: 31 686 sesudah arcade, 31 691 sesudah `GELAR`/`gelarDari` dan
+    // `gagalRef`.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(31691); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

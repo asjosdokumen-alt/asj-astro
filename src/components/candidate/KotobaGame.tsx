@@ -168,6 +168,32 @@ interface Catatan {
  */
 export const JARAK_HARI = [1, 2, 4, 8, 16];
 
+/**
+ * Gelar siswa dari jumlah kata yang DIKUASAI (bukan skor ronde).
+ *
+ * KENAPA dari kata dikuasai, bukan skor: skor bisa dinaikkan dengan mengulang
+ * bab yang sama terus-menerus, sedangkan `kataDikuasai` hanya bertambah kalau
+ * sebuah kata benar tiga kali tanpa salah. Gelar jadi mengukur CAKUPAN, bukan
+ * ketekunan menekan tombol.
+ *
+ * Ambangnya sengaja lebar di atas: 400 kata berarti sekitar seperempat bank
+ * buku, dan itu sudah cukup untuk menyebut seseorang siap berangkat.
+ */
+export const GELAR: readonly { min: number; key: string }[] = [
+  { min: 400, key: 'kotoba.gelar_siap' },
+  { min: 150, key: 'kotoba.gelar_master' },
+  { min: 50, key: 'kotoba.gelar_senpai' },
+  { min: 0, key: 'kotoba.gelar_kohai' },
+];
+
+/** Kunci i18n gelar untuk `n` kata yang dikuasai. */
+export function gelarDari(n: number): string {
+  for (const g of GELAR) {
+    if (n >= g.min) return g.key;
+  }
+  return 'kotoba.gelar_kohai';
+}
+
 /** Jatuh tempo? `true` hanya kalau kata itu SUDAH pernah dijawab. */
 export function jatuhTempo(c: Catatan | undefined, sekarang: number): boolean {
   if (!c) return false; // belum pernah dilihat = baru, bukan jatuh tempo
@@ -1219,7 +1245,8 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
         <h2 class="sr-only">{t('kotoba.judul')}</h2>
         <p class="text-[12px] text-fg-muted">
           {pool.length} {t('kotoba.kata_tersedia')} ·{' '}
-          {kataDikuasai} {t('kotoba.kata_dikuasai')} · {t('kotoba.rekor')} {progres.rekor}
+          {kataDikuasai} {t('kotoba.kata_dikuasai')} · {t('kotoba.rekor')} {progres.rekor} ·{' '}
+          <b class="text-accent-violet">{t(gelarDari(kataDikuasai))}</b>
           {progres.streak && progres.streak.jumlah > 1 ? (
             <> · 🔥 {progres.streak.jumlah} {t('kotoba.streak_hari')}</>
           ) : null}
