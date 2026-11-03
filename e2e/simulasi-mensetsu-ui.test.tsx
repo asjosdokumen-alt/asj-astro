@@ -519,4 +519,32 @@ describe('/wawancara — rekam suara (MediaRecorder)', () => {
       expect(kotak.value).toBe('私はブディと申します。');
     });
   });
+
+  /* Keluhan pemilik 2026-11-03: *"wawancara rekam kok sering mati sendiri gak
+     bisa kah per click matiinnya?"*.
+     Klik-untuk-berhenti SUDAH bekerja (dibuktikan tes di atas), tetapi batas
+     waktunya tidak pernah terlihat: perekam berhenti sendiri di `sisaWaktu + 5`
+     dan pesannya menyebut "45 detik" — angka yang tidak sama dengan batas
+     sebenarnya. Sekarang tombolnya membawa hitungan mundur, jadi berhenti
+     otomatis menjadi terduga dan klik-untuk-berhenti terlihat. */
+  it('tombol membawa hitungan mundur selama merekam', async () => {
+    render(<MensetsuForm />);
+    await waitFor(() => expect(screen.getByTestId('tab-simulasi')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('tab-simulasi'));
+    await waitFor(() => expect(screen.getByTestId('simulasi-mulai')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('simulasi-mulai'));
+
+    const mic = await screen.findByTestId('simulasi-mikrofon');
+    // Sebelum merekam: label "Rekam suara", belum ada angka detik.
+    const labelAwal = mic.textContent ?? '';
+    expect(labelAwal).not.toMatch(/\d+s/);
+
+    fireEvent.click(mic);
+    await waitFor(() => expect(mic.getAttribute('aria-pressed')).toBe('true'));
+    // Sesudah merekam: label berubah (jadi "Stop rekam") DAN membawa sisa detik.
+    // Tidak dipatok ke teks Indonesia: kamus bisa berubah, yang dijaga di sini
+    // adalah bentuknya — ada angka detik, dan labelnya bukan label mulai.
+    expect(mic.textContent).toMatch(/\d+s/);
+    expect(mic.textContent).not.toBe(labelAwal);
+  });
 });

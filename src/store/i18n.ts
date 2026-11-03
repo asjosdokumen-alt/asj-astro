@@ -1801,7 +1801,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "simulasi.rekam_proses": "Mengubah rekaman…",
     "simulasi.rekam_gagal": "Rekaman tidak bisa diproses. Coba rekam lagi atau ketik jawaban.",
     "simulasi.rekam_kosong": "Tidak ada ucapan Jepang yang terdengar. Coba rekam lagi.",
-    "simulasi.rekam_batas": "Rekaman dihentikan otomatis pada 45 detik.",
+    /* Tanpa angka: batas rekaman mengikuti sisa waktu soal, jadi angka mati
+       "45 detik" di sini PASTI salah pada sebagian soal. Komponen menambahkan
+       batas sebenarnya di belakangnya. */
+    "simulasi.rekam_batas": "Rekaman dihentikan otomatis karena batas waktu soal",
     "simulasi.mulai": "Mulai simulasi",
     "simulasi.tidak_ada_soal": "Tidak ada soal pada cakupan itu.",
     "simulasi.nomor": "Soal",

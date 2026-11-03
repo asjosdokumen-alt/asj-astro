@@ -168,6 +168,20 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
   const [merekam, setMerekam] = useState(false);
   /** Rekaman sedang diubah menjadi teks di server. */
   const [memproses, setMemproses] = useState(false);
+  /**
+   * Sisa detik rekaman, dihitung mundur supaya berhenti-otomatis TIDAK menjadi
+   * kejutan.
+   *
+   * Keluhan pemilik 2026-11-03: *"wawancara rekam kok sering mati sendiri gak
+   * bisa kah per click matiinnya?"*. Tombol berhentinya sudah ada dan sudah
+   * berlabel "Stop rekam", tetapi batas waktunya tidak pernah terlihat: perekam
+   * berhenti sendiri di `sisaWaktu + 5` dan yang muncul hanya pesan yang
+   * menyebut "45 detik" — angka yang TIDAK sama dengan batas sebenarnya.
+   * Sekarang hitungannya tampil di tombol, jadi siswa tahu (a) sedang merekam,
+   * (b) bisa menghentikannya kapan saja dengan klik, dan (c) kapan ia akan
+   * berhenti sendiri.
+   */
+  const [sisaRekam, setSisaRekam] = useState(0);
   const [sisaWaktu, setSisaWaktu] = useState(60);
   const [hasil, setHasil] = useState<BarisHasil[]>([]);
   /**
@@ -399,6 +413,18 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     })();
   }, [sisaWaktu, layar]);
 
+  /* Hitung mundur rekaman. Interval hanya hidup SELAMA merekam — satu timer
+     per rekaman, dibersihkan saat berhenti, jadi tidak ada timer yatim yang
+     terus berdetak setelah soal selesai. */
+  useEffect(() => {
+    if (!merekam) {
+      setSisaRekam(0);
+      return;
+    }
+    const id = window.setInterval(() => setSisaRekam((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => window.clearInterval(id);
+  }, [merekam]);
+
   /* ── mikrofon ─────────────────────────────────────────────────────────── */
   const hentikanMikrofon = () => {
     pendengarRef.current?.hentikan();
@@ -427,10 +453,14 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
     // kalimat — dan dulu hasilnya dibuang oleh timer soal. `+5` hanya jaring
     // pengaman supaya recorder tidak pernah berhenti LEBIH DULU daripada
     // timer soal (dua jalur berhenti bersamaan = balapan yang tidak perlu).
+    const batasDetikRekam = Math.max(5, Math.min(90, sisaWaktu + 5));
     perekamRef.current = buatPerekamAudio({
-      maksDetik: Math.max(5, Math.min(90, sisaWaktu + 5)),
+      maksDetik: batasDetikRekam,
       onBatasWaktu: () => {
-        showToast(t('simulasi.rekam_batas'), 'info');
+        /* Pesan memakai ANGKA SEBENARNYA. Sebelumnya teks kamus menyebut
+           "45 detik" tanpa peduli batas yang dipasang, jadi siswa yang berhenti
+           di detik ke-12 membaca angka 45 dan tidak percaya pada pesannya. */
+        showToast(`${t('simulasi.rekam_batas')} (${batasDetikRekam} dtk)`, 'info');
         void selesaikanRekaman();
       },
     });
@@ -445,6 +475,7 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
         showToast(pesanGalatRekam(kode), 'error');
         return;
       }
+      setSisaRekam(batasDetikRekam);
       setMerekam(true);
     } catch {
       showToast(t('simulasi.mikrofon_galat'), 'error');
@@ -1063,7 +1094,10 @@ export default function SimulasiMensetsu({ soal, draft, onKeBank }: Props) {
               : mendengar
                 ? t('simulasi.berhenti_dengar')
                 : merekam
-                  ? t('simulasi.berhenti_dengar')
+                  /* Hitungan mundur di tombol: siswa melihat bahwa rekaman
+                     SEDANG jalan, bahwa klik akan menghentikannya, dan berapa
+                     detik lagi ia berhenti sendiri. */
+                  ? `${t('simulasi.berhenti_dengar')} · ${sisaRekam}s`
                   : t('simulasi.mulai_dengar')}
           </button>
         </div>
