@@ -186,6 +186,34 @@ describe('/kotoba — siswa ASJ saja', () => {
      ia hanya direset 100 di setiap soal, jadi menggambar sesuatu yang tidak
      benar. Tes ini mengunci bahwa ia benar-benar menghabiskan waktu dan bahwa
      kehabisan waktu MEMAKAN nyawa, bukan diam saja. */
+  /* Bom Sakura: satu hitungan untuk SELURUH ronde, bukan per soal.
+     Yang diuji adalah angka pada sumbunya benar-benar turun — bukan sekadar
+     "layar hasil muncul", karena tes semacam itu lolos walau timernya mati
+     (kesalahan yang sudah sekali saya buat di mode kilat). */
+  it('Bom Sakura: sumbu 60 detik berjalan dan berkurang', async () => {
+    loginSebagai('kandidat');
+    render(<KotobaGame />);
+    await waitFor(() => expect(screen.getByTestId('kotoba-soal')).toBeTruthy());
+
+    const tab = [...document.querySelectorAll('button')].find((b) =>
+      (b.textContent || '').includes('Bom Sakura'),
+    );
+    expect(tab, 'tab Bom Sakura tidak ada').toBeTruthy();
+    tab?.click();
+
+    const bacaSumbu = () => {
+      const el = document.querySelector('[role="timer"]');
+      const m = (el?.textContent || '').match(/(\d+)\s*d/);
+      return m ? Number(m[1]) : NaN;
+    };
+    await waitFor(() => expect(Number.isNaN(bacaSumbu())).toBe(false));
+    const awal = bacaSumbu();
+    expect(awal).toBeGreaterThan(50);
+
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(bacaSumbu(), 'sumbu tidak berkurang').toBeLessThan(awal);
+  }, 30000);
+
   it('mode kilat memperpendek batas waktu (4 s), bukan menambah timer kedua', async () => {
     loginSebagai('kandidat');
     render(<KotobaGame />);

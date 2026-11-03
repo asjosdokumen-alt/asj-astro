@@ -1870,6 +1870,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.fokus_tempo": "Jatuh tempo",
     "kotoba.streak_hari": "hari berturut-turut",
     "kotoba.kilat": "Kilat",
+    "kotoba.mode_bom": "Bom Sakura",
+    "kotoba.detik": "d",
     "kotoba.hanya_lemah": "Ulangi yang lemah",
     "kotoba.bab_dari": "dari bab",
     "kotoba.bab_sampai": "sampai bab",

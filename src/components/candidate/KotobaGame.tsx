@@ -112,7 +112,7 @@ interface Props {
   adminMode?: boolean;
 }
 
-type Mode = 'kuis' | 'ketik' | 'flashcard' | 'kamus';
+type Mode = 'kuis' | 'ketik' | 'flashcard' | 'kamus' | 'bom';
 type Arah = 'jp-id' | 'id-jp';
 
 /**
@@ -124,6 +124,8 @@ const NYAWA_AWAL = 3;
 const DURASI_SOAL_MS = 9000;
 /** Batas waktu mode kilat: 4 detik — cukup untuk mengingat, tidak untuk menebak. */
 const DURASI_KILAT_MS = 4000;
+/** Panjang satu ronde Bom Sakura. */
+const DURASI_BOM_DETIK = 60;
 /**
  * Jumlah baris kamus yang digambar sekaligus.
  *
@@ -445,6 +447,14 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
    * selama sepuluh detik.
    */
   const [kilat, setKilat] = useState(false);
+  /**
+   * BOM SAKURA — satu ronde 60 detik, bukan per soal.
+   *
+   * Beda dengan Kilat (batas per soal): di sini yang habis adalah RONDE-nya, jadi
+   * siswa mengejar berapa banyak kata yang bisa dijawab benar sebelum sumbu
+   * habis. Itu yang membuatnya bisa diadu antar siswa, bukan sekadar latihan.
+   */
+  const [sisaBom, setSisaBom] = useState(DURASI_BOM_DETIK);
   /**
    * Kantong kata untuk "ulangi yang salah". `null` = ronde normal (soal
    * ditarik dari `pool` berbobot). Kalau kantong habis, ia diisi ulang —
@@ -796,7 +806,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   // biome-ignore lint/correctness/useExhaustiveDependencies: mulaiRonde dibuat ulang tiap render; filter/arah/sumber di daftar adalah masukan sebenarnya
   useEffect(() => {
     if (!bank.length && !kataBidang.length) return;
-    if (mode !== 'kuis' && mode !== 'ketik') return;
+    if (mode !== 'kuis' && mode !== 'ketik' && mode !== 'bom') return;
     if (loginGate || vip === false) return;
     mulaiRonde();
   // `progres` SENGAJA tidak ada di daftar: ia berubah setiap jawaban, dan
@@ -910,6 +920,25 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     }, 100);
     return () => window.clearInterval(id);
   }, [mode, fase, benar, item, kilat]);
+
+  /* Sumbu Bom Sakura: satu hitungan untuk SELURUH ronde. Berbeda dari batas
+     waktu per soal di atas — di sini yang dikejar adalah berapa banyak kata
+     yang bisa dijawab sebelum waktunya habis. */
+  useEffect(() => {
+    if (mode !== 'bom' || fase !== 'tanya') return;
+    setSisaBom(DURASI_BOM_DETIK);
+    const mulai = Date.now();
+    const id = window.setInterval(() => {
+      const lewat = Math.floor((Date.now() - mulai) / 1000);
+      const sisa = Math.max(0, DURASI_BOM_DETIK - lewat);
+      setSisaBom(sisa);
+      if (sisa <= 0) {
+        window.clearInterval(id);
+        setFase('hasil');
+      }
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [mode, fase]);
 
   // Rekor diperbarui saat ronde berakhir — di satu tempat, bukan di setiap
   // penambahan skor (kalau tidak, "rekor" berubah di tengah ronde).
@@ -1176,6 +1205,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     { id: 'ketik', label: t('kotoba.mode_ketik') },
     { id: 'flashcard', label: t('kotoba.mode_flashcard') },
     { id: 'kamus', label: t('kotoba.mode_kamus') },
+    { id: 'bom', label: `💣 ${t('kotoba.mode_bom')}` },
   ];
 
   return (
@@ -1435,7 +1465,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       )}
 
       {/* ── KUIS / KETIK ── */}
-      {pool.length > 0 && (mode === 'kuis' || mode === 'ketik') && (
+      {pool.length > 0 && (mode === 'kuis' || mode === 'ketik' || mode === 'bom') && (
         <section data-testid="kotoba-kartu" class="rounded-card border border-line bg-surface p-4 md:p-5">
           {fase === 'tanya' && item ? (
             <>
@@ -1464,6 +1494,22 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 </span>
               </div>
 
+              {/* Sumbu Bom Sakura — satu hitungan untuk seluruh ronde. Angkanya
+                  ditulis besar dan berubah warna di 10 detik terakhir, supaya
+                  siswa merasakan desakan tanpa harus membaca bar tipis. */}
+              {mode === 'bom' && (
+                <div
+                  class={`mb-3 flex items-center justify-between rounded-control px-3 py-2 font-bold ${
+                    sisaBom <= 10 ? 'bg-accent-red/15 text-accent-red' : 'bg-surface-sunken text-fg'
+                  }`}
+                  role="timer"
+                  aria-live="off"
+                  aria-label={`${t('kotoba.mode_bom')} — ${sisaBom} ${t('kotoba.detik')}`}
+                >
+                  <span>💣 {t('kotoba.mode_bom')}</span>
+                  <span class="tabular-nums text-lg">{sisaBom}{t('kotoba.detik')}</span>
+                </div>
+              )}
               {/* Batas waktu — hanya kuis */}
               {mode === 'kuis' && (
                 <div
