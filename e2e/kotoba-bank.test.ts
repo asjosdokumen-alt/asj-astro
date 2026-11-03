@@ -159,9 +159,48 @@ describe('bank kosakata buku — Minna no Nihongo Bab 1–50', () => {
        bisa dibuktikan, bukan diklaim. Kalau kata ditambah, ubah angkanya —
        jangan longgarkan ke `toBeGreaterThan`, karena tes yang selalu benar
        tidak menjaga apa pun. */
-    expect(JUMLAH_KOTOBA).toBe(1449);
-    expect(BANK_KOTOBA.length).toBe(1449);
+    /* 1449 -> 1440 (2026-11-03): 19 kata sifat-な membawa anotasi `[な]` di
+       kolom tulisan/bacaan/romaji (mode ketik jadi meminta siswa mengetik
+       tanda kurung), dan setelah anotasi itu dilepas terlihat 8 kata yang
+       terdaftar DUA KALI (bab awal + tambahan bab 26-50). Duplikatnya dibuang
+       dari bab yang lebih akhir; `kunciKata()` memakai kanji+bacaan, jadi
+       salinan kedua berbagi kunci progres yang sama. 1449 - 1 (賑やか) - 8 = 1440. */
+    expect(JUMLAH_KOTOBA).toBe(1440);
+    expect(BANK_KOTOBA.length).toBe(1440);
     expect([...BAB_KOTOBA]).toEqual(Array.from({ length: 50 }, (_, i) => i + 1));
+  });
+
+  /* Cacat 2026-11-03: 19 kata sifat-な menyimpan anotasi tata bahasa `[な]` di
+     kolom TULISAN, BACAAN, dan ROMAJI — jadi kartu menampilkan "綺麗[な]" dan
+     mode ketik menuntut siswa mengetik tanda kurung. Anotasi itu juga
+     MENYEMBUNYIKAN 8 duplikat: kata yang sama terdaftar di bab awal DAN di
+     tambahan bab 26–50, dan karena `kunciKata()` memakai kanji+bacaan, kedua
+     salinan berbagi kunci progres yang sama. */
+  it('tidak ada anotasi tata bahasa yang bocor ke kolom tulisan/bacaan/romaji', () => {
+    const bocor = BANK_KOTOBA
+      .filter((v) => /[[\]()（）]/.test(v.k) || /[[\]()（）]/.test(v.h) || /[[\]()（）]/.test(v.r))
+      .map((v) => `${v.k} / ${v.h} / ${v.r}`);
+    expect(bocor, 'tanda kurung di kolom yang dicetak atau diketik').toEqual([]);
+  });
+
+  it('tidak ada kata terdaftar dua kali (kanji + bacaan sama)', () => {
+    const terlihat = new Map<string, string>();
+    const ganda: string[] = [];
+    for (const v of BANK_KOTOBA) {
+      const kunci = `${v.k}|${v.h}`;
+      if (terlihat.has(kunci)) ganda.push(`${v.k} (${v.h}) — bab ${terlihat.get(kunci)} & ${v.b}`);
+      else terlihat.set(kunci, String(v.b));
+    }
+    expect(ganda, 'kata ganda berbagi kunci progres, jadi ronde bisa menanyakannya dua kali').toEqual([]);
+  });
+
+  it('kata sifat-な dibaca dan ditulis tanpa anotasi', () => {
+    // Spot-check yang dulu rusak; kalau anotasi kembali, ini yang pertama merah.
+    const cari = (kanji: string) => BANK_KOTOBA.find((v) => v.k === kanji);
+    expect(cari('綺麗')).toMatchObject({ h: 'きれい', r: 'kirei' });
+    expect(cari('大丈夫')).toMatchObject({ h: 'だいじょうぶ', r: 'daijoubu' });
+    expect(cari('無理')).toMatchObject({ h: 'むり', r: 'muri' });
+    expect(cari('不便')).toMatchObject({ h: 'ふべん', r: 'fuben' });
   });
 
   it('tiap bab 26–50 punya cukup kata untuk satu ronde utuh', () => {

@@ -26,7 +26,7 @@
  * bahasa babnya. Kalau nanti ada daftar resmi dari bukunya, yang perlu
  * dikoreksi lebih dulu adalah lapis 1–2 dan lapis 5.
  *
- * 1449 kata, 15–52 per bab.
+ * 1440 kata, 15–52 per bab.
  *
  * CATATAN PENTING TENTANG BAB 26–50
  * ---------------------------------
@@ -70,7 +70,7 @@
  *
  * BENTUK RINGKAS
  * --------------
- * Tabelnya array-of-tuple, bukan array objek. 1449 baris objek berarti ~35 KB
+ * Tabelnya array-of-tuple, bukan array objek. 1440 baris objek berarti ~35 KB
  * nama kunci berulang (`b:`, `pos:`, `k:` …) yang ikut di-bundle ke entry
  * `ai-chat` dan dibayar setiap cold start. Urutan kolomnya dikunci di
  * `KolomKotoba` di bawah — jangan diubah tanpa mengubah `keKotoba()`.
@@ -404,12 +404,12 @@ const RAW = [
   [7, 'other', 'これから', 'これから', 'korekara', 'Mulai sekarang'],
   [7, 'noun', 'セロテープ', 'せろてーぷ', 'seroteepu', 'Selotip'],
   // ── BAB 8
-  [8, 'adj', '綺麗[な]', 'きれい[な]', 'kirei[na]', 'Cantik / Bersih'],
-  [8, 'adj', '静か[な]', 'しずか[な]', 'shizuka[na]', 'Tenang / Sunyi'],
-  [8, 'adj', '賑やか[な]', 'にぎやか[な]', 'nigiyaka[na]', 'Ramai'],
-  [8, 'adj', '有名[な]', 'ゆうめい[な]', 'yuumei[na]', 'Terkenal'],
-  [8, 'adj', '親切[な]', 'しんせつ[な]', 'shinsetsu[na]', 'Ramah / Baik'],
-  [8, 'adj', '便利[な]', 'べんり[な]', 'benri[na]', 'Praktis'],
+  [8, 'adj', '綺麗', 'きれい', 'kirei', 'Cantik / Bersih'],
+  [8, 'adj', '静か', 'しずか', 'shizuka', 'Tenang / Sunyi'],
+  [8, 'adj', '賑やか', 'にぎやか', 'nigiyaka', 'Ramai'],
+  [8, 'adj', '有名', 'ゆうめい', 'yuumei', 'Terkenal'],
+  [8, 'adj', '親切', 'しんせつ', 'shinsetsu', 'Ramah / Baik'],
+  [8, 'adj', '便利', 'べんり', 'benri', 'Praktis'],
   [8, 'adj', '新しい', 'あたらしい', 'atarashii', 'Baru'],
   [8, 'adj', '古い', 'ふるい', 'furui', 'Lama / Kuno'],
   [8, 'adj', '暑い', 'あつい', 'atsui', 'Panas (cuaca)'],
@@ -417,9 +417,9 @@ const RAW = [
   [8, 'adj', '冷たい', 'つめたい', 'tsumetai', 'Dingin (benda)'],
   [8, 'adj', '難しい', 'むずかしい', 'muzukashii', 'Sukar / Sulit'],
   [8, 'adj', '易しい', 'やさしい', 'yasashii', 'Mudah / Gampang'],
-  [8, 'adj', '元気[な]', 'げんき[な]', 'genki[na]', 'Sehat / bersemangat'],
-  [8, 'adj', '暇[な]', 'ひま[な]', 'hima[na]', 'Senggang'],
-  [8, 'adj', '丈夫[な]', 'じょうぶ[な]', 'joubu[na]', 'Kokoh / kuat'],
+  [8, 'adj', '元気', 'げんき', 'genki', 'Sehat / bersemangat'],
+  [8, 'adj', '暇', 'ひま', 'hima', 'Senggang'],
+  [8, 'adj', '丈夫', 'じょうぶ', 'joubu', 'Kokoh / kuat'],
   [8, 'adj', '大きい', 'おおきい', 'ookii', 'Besar'],
   [8, 'adj', '小さい', 'ちいさい', 'chiisai', 'Kecil'],
   [8, 'adj', '高い', 'たかい', 'takai', 'Tinggi / mahal'],
@@ -459,10 +459,10 @@ const RAW = [
   // ── BAB 9
   [9, 'verb', '分かります', 'わかります', 'wakarimasu', 'Mengerti / Paham'],
   [9, 'verb', 'あります', 'あります', 'arimasu', 'Ada (benda mati)'],
-  [9, 'adj', '好き[な]', 'すき[な]', 'suki[na]', 'Suka'],
-  [9, 'adj', '嫌い[な]', 'きらい[な]', 'kirai[na]', 'Benci / Tidak suka'],
-  [9, 'adj', '上手[な]', 'じょうず[な]', 'jouzu[na]', 'Pandai / Mahir'],
-  [9, 'adj', '下手[な]', 'へた[な]', 'heta[na]', 'Kurang mahir'],
+  [9, 'adj', '好き', 'すき', 'suki', 'Suka'],
+  [9, 'adj', '嫌い', 'きらい', 'kirai', 'Benci / Tidak suka'],
+  [9, 'adj', '上手', 'じょうず', 'jouzu', 'Pandai / Mahir'],
+  [9, 'adj', '下手', 'へた', 'heta', 'Kurang mahir'],
   [9, 'noun', '料理', 'りょうり', 'ryouri', 'Masakan'],
   [9, 'noun', '時間', 'じかん', 'jikan', 'Waktu'],
   [9, 'noun', '用事', 'ようじ', 'youji', 'Urusan kerjaan'],
@@ -597,7 +597,7 @@ const RAW = [
   [11, 'other', '～年', 'ねん', 'nen', '~ tahun (durasi)'],
   [11, 'other', '～ぐらい', 'ぐらい', 'gurai', 'Kira-kira / sekitar ~'],
   // ── BAB 12
-  [12, 'adj', '簡単[な]', 'かんたん[な]', 'kantan[na]', 'Mudah / Sederhana'],
+  [12, 'adj', '簡単', 'かんたん', 'kantan', 'Mudah / Sederhana'],
   [12, 'adj', '近い', 'ちかい', 'chikai', 'Dekat'],
   [12, 'adj', '遠い', 'とおい', 'tooi', 'Jauh'],
   [12, 'adj', '速い', 'はやい', 'hayai', 'Cepat'],
@@ -797,7 +797,7 @@ const RAW = [
   [17, 'verb', '脱ぎます', 'ぬぎます', 'nugimasu', 'Membuka pakaian / sepatu'],
   [17, 'verb', '心配します', 'しんぱいします', 'shinpaishimasu', 'Khawatir'],
   [17, 'adj', '危ない', 'あぶない', 'abunai', 'Berbahaya'],
-  [17, 'adj', '大切[な]', 'たいせつ[な]', 'taisetsu[na]', 'Penting / Berharga'],
+  [17, 'adj', '大切', 'たいせつ', 'taisetsu', 'Penting / Berharga'],
   [17, 'noun', '健康', 'けんこう', 'kenkou', 'Kesehatan'],
   [17, 'noun', '病気', 'びょうき', 'byouki', 'Penyakit'],
   [17, 'noun', '熱', 'ねつ', 'netsu', 'Demam'],
@@ -819,7 +819,7 @@ const RAW = [
   [17, 'other', 'どうしましたか', 'どうしましたか', 'doushimashitaka', 'Ada apa? / Kenapa?'],
   [17, 'other', 'お大事に', 'おだいじに', 'odaijini', 'Semoga lekas sembuh'],
   [17, 'other', 'それはいけませんね', 'それはいけませんね', 'sorehaikemasenne', 'Itu tidak baik ya'],
-  [17, 'adj', '大丈夫[な]', 'だいじょうぶ[な]', 'daijoubuna', 'Tidak apa-apa / aman'],
+  [17, 'adj', '大丈夫', 'だいじょうぶ', 'daijoubu', 'Tidak apa-apa / aman'],
   [17, 'noun', '禁煙', 'きんえん', 'kinen', 'Dilarang merokok'],
   [17, 'noun', '保険証', 'ほけんしょう', 'hokenshou', 'Kartu asuransi kesehatan'],
   [17, 'other', '～までに', 'までに', 'madeni', 'Paling lambat sebelum ~'],
@@ -891,7 +891,7 @@ const RAW = [
   [19, 'noun', 'ゴルフ', 'ごるふ', 'gorufu', 'Golf'],
   [19, 'noun', '日', 'ひ', 'hi', 'Hari / tanggal'],
   [19, 'noun', 'ダイエット', 'だいえっと', 'daietto', 'Diet'],
-  [19, 'adj', '無理[な]', 'むり[な]', 'murina', 'Mustahil / berlebihan'],
+  [19, 'adj', '無理', 'むり', 'muri', 'Mustahil / berlebihan'],
   [19, 'other', '体にいい', 'からだにいい', 'karadaniii', 'Bagus untuk kesehatan'],
   // ── BAB 20
   [20, 'verb', '要ります', 'いります', 'irimasu', 'Memerlukan / Butuh'],
@@ -932,13 +932,13 @@ const RAW = [
   [21, 'verb', '勝ちます', 'かちます', 'kachimasu', 'Menang'],
   [21, 'verb', '負けます', 'まけます', 'makemasu', 'Kalah'],
   [21, 'verb', '役に立ちます', 'やくにたちます', 'yakunitachimasu', 'Berguna / Bermanfaat'],
-  [21, 'adj', '無駄[な]', 'むだ[な]', 'muda[na]', 'Sia-sia / Percuma'],
+  [21, 'adj', '無駄', 'むだ', 'muda', 'Sia-sia / Percuma'],
   [21, 'noun', '意見', 'いけん', 'iken', 'Pendapat'],
   [21, 'noun', '経験', 'けいけん', 'keiken', 'Pengalaman'],
   [21, 'noun', '約束', 'やくそく', 'yakusoku', 'Janji'],
   [21, 'noun', '将来', 'しょうらい', 'shourai', 'Masa depan'],
   [21, 'verb', '無くなります', 'なくなります', 'nakunarimasu', 'Habis / tidak ada lagi'],
-  [21, 'adj', '不便[な]', 'ふべん[な]', 'fubenna', 'Tidak praktis'],
+  [21, 'adj', '不便', 'ふべん', 'fuben', 'Tidak praktis'],
   [21, 'noun', '同じ', 'おなじ', 'onaji', 'Sama'],
   [21, 'adj', 'すごい', 'すごい', 'sugoi', 'Hebat'],
   [21, 'noun', '首相', 'しゅしょう', 'shushou', 'Perdana menteri'],
@@ -1060,7 +1060,7 @@ const RAW = [
   [24, 'noun', 'ホームステイ', 'ほーむすてい', 'hoomusutei', 'Homestay'],
   [24, 'noun', '自己紹介', 'じこしょうかい', 'jikoshoukai', 'Perkenalan diri'],
   [24, 'noun', '研究室', 'けんきゅうしつ', 'kenkyuushitsu', 'Ruang penelitian'],
-  [24, 'other', '御馳走様[でした]', 'ごちそうさま[でした]', 'gochisousamadeshita', 'Terima kasih atas hidangannya'],
+  [24, 'other', '御馳走様でした', 'ごちそうさまでした', 'gochisousamadeshita', 'Terima kasih atas hidangannya'],
   [24, 'other', 'いただきます', 'いただきます', 'itadakimasu', 'Selamat makan'],
   [24, 'noun', '旅行会社', 'りょこうがいしゃ', 'ryokougaisha', 'Biro perjalanan'],
   [24, 'noun', '書類', 'しょるい', 'shorui', 'Dokumen'],
@@ -1103,8 +1103,6 @@ const RAW = [
   [26, 'noun', '残業', 'ざんぎょう', 'zangyou', 'Lembur'],
   [26, 'noun', '具合', 'ぐあい', 'guai', 'Kondisi (kesehatan)'],
   [26, 'noun', '検査', 'けんさ', 'kensa', 'Pemeriksaan (medis)'],
-  [26, 'adj', '大丈夫', 'だいじょうぶ', 'daijoubu', 'Tidak apa-apa'],
-  [26, 'adj', '無理', 'むり', 'muri', 'Tidak mungkin / di luar kemampuan'],
   [26, 'adj', '痛い', 'いたい', 'itai', 'Nyeri / sakit'],
   [26, 'adj', '辛い', 'つらい', 'tsurai', 'Berat / menyiksa'],
   [26, 'verb', '我慢します', 'がまんします', 'gamanshimasu', 'Menahan diri'],
@@ -1117,8 +1115,6 @@ const RAW = [
   [27, 'verb', '泳げます', 'およげます', 'oyogemasu', 'Bisa berenang'],
   [27, 'noun', '楽器', 'がっき', 'gakki', 'Alat musik'],
   [27, 'noun', '特技', 'とくぎ', 'tokugi', 'Keahlian khusus'],
-  [27, 'adj', '上手', 'じょうず', 'jouzu', 'Pandai'],
-  [27, 'adj', '下手', 'へた', 'heta', 'Tidak pandai'],
   [27, 'adj', '得意', 'とくい', 'tokui', 'Unggul / menguasai'],
   [27, 'adj', '苦手', 'にがて', 'nigate', 'Lemah / tidak suka'],
   // ── BAB 28
@@ -1278,9 +1274,7 @@ const RAW = [
   [38, 'noun', '目的', 'もくてき', 'mokuteki', 'Tujuan'],
   [38, 'noun', '理由', 'りゆう', 'riyuu', 'Alasan'],
   [38, 'noun', '方法', 'ほうほう', 'houhou', 'Cara / metode'],
-  [38, 'adj', '大切', 'たいせつ', 'taisetsu', 'Penting'],
   [38, 'adj', '必要', 'ひつよう', 'hitsuyou', 'Perlu'],
-  [38, 'adj', '簡単', 'かんたん', 'kantan', 'Mudah'],
   [38, 'adj', '珍しい', 'めずらしい', 'mezurashii', 'Langka'],
   [38, 'adj', '素晴らしい', 'すばらしい', 'subarashii', 'Hebat'],
   [38, 'verb', '苦労します', 'くろうします', 'kuroushimasu', 'Bersusah payah'],
@@ -1357,7 +1351,6 @@ const RAW = [
   [43, 'noun', '見た目', 'みため', 'mitame', 'Penampilan'],
   [43, 'noun', '表情', 'ひょうじょう', 'hyoujou', 'Ekspresi'],
   [43, 'noun', '顔色', 'かおいろ', 'kaoiro', 'Raut wajah'],
-  [43, 'adj', '元気', 'げんき', 'genki', 'Sehat / bersemangat'],
   [43, 'noun', '楽しみ', 'たのしみ', 'tanoshimi', 'Hal yang dinanti'],
   [43, 'noun', '期待', 'きたい', 'kitai', 'Harapan'],
   [43, 'noun', '予感', 'よかん', 'yokan', 'Firasat'],
@@ -1365,8 +1358,6 @@ const RAW = [
   [43, 'noun', '情報', 'じょうほう', 'jouhou', 'Informasi'],
   [43, 'noun', '記事', 'きじ', 'kiji', 'Artikel'],
   [43, 'noun', '香り', 'かおり', 'kaori', 'Aroma'],
-  [43, 'adj', '静か', 'しずか', 'shizuka', 'Tenang'],
-  [43, 'adj', '賑やか', 'にぎやか', 'nigiyaka', 'Ramai'],
   [43, 'adj', '汚い', 'きたない', 'kitanai', 'Kotor'],
   [43, 'adj', '清潔', 'せいけつ', 'seiketsu', 'Bersih'],
   [43, 'adj', '立派', 'りっぱ', 'rippa', 'Megah / bagus'],
