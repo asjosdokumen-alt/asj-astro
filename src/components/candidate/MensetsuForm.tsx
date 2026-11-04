@@ -634,7 +634,10 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
             type="button"
             data-testid="mensetsu-gate-daftar"
             onClick={() => window.dispatchEvent(new CustomEvent('asj-kandidat-register'))}
-            class="font-bold text-accent-violet underline hover:no-underline"
+            /* Sama dengan gerbang /ai-cv: teks 12 px di dalam <p> menghasilkan
+               sasaran sentuh 70×18 px. `min-h-11` + `-my-3` menaikkannya ke 44 px
+               tanpa menggeser tinggi baris. */
+            class="inline-flex items-center justify-center min-h-11 px-2 -my-3 align-middle font-bold text-accent-violet underline hover:no-underline"
           >
             {t('header.register')}
           </button>

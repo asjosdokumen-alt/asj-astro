@@ -1341,7 +1341,11 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
               type="button"
               data-testid="aicv-gate-daftar"
               onClick={() => window.dispatchEvent(new CustomEvent('asj-kandidat-register'))}
-              class="font-bold text-amber-400 underline hover:no-underline"
+              /* Sasaran sentuh ≥44 px (lantai gate `responsive-sweep`). Tombol ini
+                 dulu 70×18 px karena hanya teks bergaris bawah di dalam <p> 12 px —
+                 lolos secara visual, gagal di jari. `min-h-11` + `-my-3` memberi
+                 kotak 44 px tanpa menggeser tinggi baris paragrafnya. */
+              class="inline-flex items-center justify-center min-h-11 px-2 -my-3 align-middle font-bold text-amber-400 underline hover:no-underline"
             >
               {t('header.register')}
             </button>
