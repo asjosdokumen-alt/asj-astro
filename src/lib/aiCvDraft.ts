@@ -67,6 +67,9 @@ export const AI_CV_FLAT_KEYS = [
   'hobi_id', 'hobi_jp', 'keahlian_id', 'keahlian_jp', 'moti_id', 'moti_jp',
   'alasan_id', 'alasan_jp', 'pulang_id', 'pulang_jp', 'keinginan_id', 'keinginan_jp',
   'tujuan_id', 'tujuan_jp', 'lama', 'gaji_yen', 'tabungan',
+  /* Migrasi 044. `EMPTY_CV` dibangun dari daftar ini, jadi tanpa empat kunci
+     ini field-nya tidak ada di state form sama sekali. */
+  'kelompok_tinggal', 'bisa_memasak', 'penghasilan', 'restu_keluarga',
   'bhs_jepang', 'nilai', 'lisensi',
   /* Lisensi SSW KEDUA. Form Master punya dua slot (`lisensi`, `lisensi2`);
      CV AI hanya satu, jadi kandidat yang punya dua bidang SSW kehilangan yang
@@ -155,6 +158,10 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   promo_id: ['wawancara.promosi_id'],
   promo_jp: ['wawancara.promosi_jp'],
   lebih_id: ['wawancara.kelebihan_id'],
+  kelompok_tinggal: ['wawancara.kelompok_tinggal'],
+  bisa_memasak: ['wawancara.bisa_memasak'],
+  penghasilan: ['wawancara.penghasilan'],
+  restu_keluarga: ['wawancara.restu_keluarga'],
   lebih_jp: ['wawancara.kelebihan_jp'],
   kurang_id: ['wawancara.kekurangan_id'],
   kurang_jp: ['wawancara.kekurangan_jp'],

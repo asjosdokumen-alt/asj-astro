@@ -446,3 +446,51 @@ describe('buildMasterNested: wawancara dari ai_data_json saat kolom kosong (2026
     expect(n.wawancara.promosi_jp).toBe('私は熱心です');
   });
 });
+
+// ==========================================
+// migrasi 044 — jalur CV AI
+//
+// `masterColumnsFromAi` hanya menulis kolom yang PUNYA BARIS di
+// `AI_TO_MASTER_COLUMNS`. Field yang tampil di form tetapi tidak terdaftar di
+// sana akan terlihat bisa diisi, tersimpan tanpa error, dan tetap kosong di
+// database — diam di dua arah, karena kolomnya pun tidak pernah dikosongkan.
+// ==========================================
+describe('masterColumnsFromAi — empat kolom migrasi 044', () => {
+  const isi = {
+    wawancara: {
+      kelompok_tinggal: 'YA',
+      bisa_memasak: 'TIDAK',
+      penghasilan: '3.000.000',
+      restu_keluarga: 'YA',
+    },
+  };
+
+  it('menulis keempatnya ke kolom yang benar', () => {
+    const out = masterColumnsFromAi(isi, true);
+    expect(out.kelompok_tinggal).toBe('YA');
+    expect(out.bisa_memasak).toBe('TIDAK');
+    expect(out.penghasilan).toBe('3.000.000');
+    expect(out.restu_keluarga).toBe('YA');
+  });
+
+  it('form lengkap + field dikosongkan ⇒ kolomnya dikosongkan', () => {
+    /* Kebalikannya juga harus berlaku: kalau kandidat MENGHAPUS isinya di CV
+       AI, kolomnya harus ikut kosong — bukan hidup lagi saat form dibuka. */
+    const out = masterColumnsFromAi(
+      { wawancara: { kelompok_tinggal: '', bisa_memasak: '', penghasilan: '', restu_keluarga: '' } },
+      true,
+    );
+    expect(out.kelompok_tinggal).toBe('');
+    expect(out.bisa_memasak).toBe('');
+    expect(out.penghasilan).toBe('');
+    expect(out.restu_keluarga).toBe('');
+  });
+
+  it('field TIDAK dikirim ⇒ kolom tidak disentuh', () => {
+    /* Jalur parsial (mis. AdminAiCopilot) tidak boleh menghapus jawaban yang
+       sudah ada hanya karena ia tidak mengirim field itu. */
+    const out = masterColumnsFromAi({ wawancara: { kelebihan_id: 'TEKUN' } }, false);
+    expect('kelompok_tinggal' in out).toBe(false);
+    expect('restu_keluarga' in out).toBe(false);
+  });
+});

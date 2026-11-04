@@ -857,6 +857,15 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
        memberinya kolom, jadi pemetaannya pindah ke sini (aturan yang sama
        dengan kenalan_* di 019). */
     ['lama_di_jepang', 'lama', 'lama_di_jepang'],
+    /* Migrasi 044. WAJIB terdaftar di sini: `masterColumnsFromAi` hanya menulis
+       kolom yang punya baris di blok ini, jadi tanpa empat baris ini field-nya
+       TAMPIL di CV AI tetapi nilainya tidak pernah tersimpan — dan karena
+       `present` juga dihitung dari daftar ini, kolomnya pun tidak pernah
+       dikosongkan. Diam di dua arah. */
+    ['kelompok_tinggal', 'kelompok_tinggal'],
+    ['bisa_memasak', 'bisa_memasak'],
+    ['penghasilan', 'penghasilan'],
+    ['restu_keluarga', 'restu_keluarga'],
     ['mbti', 'mbti'],
   ],
   /* Sertifikasi. `sertifikasi.ssw`/`lisensi` adalah NAMA lisensi SSW — di Form

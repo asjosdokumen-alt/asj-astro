@@ -90,6 +90,8 @@ interface CvData {
   alasan_id: string; alasan_jp: string; pulang_id: string; pulang_jp: string;
   keinginan_id: string; keinginan_jp: string; tujuan_id: string; tujuan_jp: string;
   lama: string; gaji_yen: string; tabungan: string;
+  /** Migrasi 044 — dipakai template `rirekisho-detail`. */
+  kelompok_tinggal: string; bisa_memasak: string; penghasilan: string; restu_keluarga: string;
   bhs_jepang: string; nilai: string; lisensi: string;
   /** Lisensi SSW kedua — Form Master punya dua slot, CV AI dulu hanya satu. */
   lisensi2: string; no_coe: string;
@@ -1162,6 +1164,12 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           keinginan_pribadi: cv.keinginan_id, keinginan_pribadi_jp: cv.keinginan_jp,
           tujuan_ke_jepang: cv.tujuan_id, tujuan_ke_jepang_jp: cv.tujuan_jp,
           riwayat_jepang: cv.riwayatjepang, gaji_yen: cv.gaji_yen, tabungan: cv.tabungan,
+          /* Migrasi 044. Ikut dikirim supaya nilai yang tampil di form ini
+             benar-benar tersimpan: `masterColumnsFromAi` hanya menulis kolom
+             yang punya baris di `AI_TO_MASTER_COLUMNS`, dan `present` juga
+             dihitung dari situ. Tanpa pengiriman ini field-nya hanya hiasan. */
+          kelompok_tinggal: cv.kelompok_tinggal, bisa_memasak: cv.bisa_memasak,
+          penghasilan: cv.penghasilan, restu_keluarga: cv.restu_keluarga,
           /* `cv.lama` (Lama di Jepang) DIKETIK di form tetapi tidak pernah ikut
              terkirim — nilainya hilang setiap simpan. Sekarang dikirim dan
              mendarat di kolom `lama_di_jepang` (migrasi 022). */
@@ -1812,6 +1820,23 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                     touched={touchedFields.has('gaji_yen')} onInput={(v) => handleManualEdit('gaji_yen', v)} />
                   <Field label={t("cv.field_target_nabung")} id="tabungan" value={cv.tabungan} center jp
                     touched={touchedFields.has('tabungan')} onInput={(v) => handleManualEdit('tabungan', v)} />
+                </div>
+
+                {/* ── Empat jawaban wawancara (migrasi 044) ──────────────────
+                    Sama dengan Master form: tiga ya/tidak memakai dropdown,
+                    bukan kotak teks bebas, karena nilainya dicetak ke CV
+                    berbahasa Jepang (有/無, 賛成/反対). */}
+                <div class="grid grid-cols-2 gap-2">
+                  <PairSelect label={t("form.mf_kelompok_tinggal")} id="kelompok_tinggal" value={cv.kelompok_tinggal} pairs={YA_TIDAK_PAIRS}
+                    onChange={(v) => handleManualEdit('kelompok_tinggal', v)} />
+                  <PairSelect label={t("form.mf_bisa_memasak")} id="bisa_memasak" value={cv.bisa_memasak} pairs={YA_TIDAK_PAIRS}
+                    onChange={(v) => handleManualEdit('bisa_memasak', v)} />
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <Field label={t("form.mf_penghasilan")} id="penghasilan" value={cv.penghasilan}
+                    touched={touchedFields.has('penghasilan')} onInput={(v) => handleManualEdit('penghasilan', v)} />
+                  <PairSelect label={t("form.mf_restu_keluarga")} id="restu_keluarga" value={cv.restu_keluarga} pairs={YA_TIDAK_PAIRS}
+                    onChange={(v) => handleManualEdit('restu_keluarga', v)} />
                 </div>
                 {/* ── 性格診断 & 付記 (migrasi 022) ──────────────────────────
                     KINKI mencetak tipe MBTI di `Q47`/`U48..U52`; kalau kolom ini
