@@ -25,6 +25,7 @@ export {
   MASTER_COLUMN_MAP,
   AI_TO_MASTER_COLUMNS,
   pruneAiRiwayat,
+  syncAiFromMasterPatch,
 } from './service';
 // Alias: simpanUpdateMaster maps to handleSubmitMasterForm
 export { handleSubmitMasterForm as handleSimpanUpdateMaster } from './service';

@@ -44,6 +44,16 @@
 /** Jenjang yang boleh masuk `database_candidate.pendidikan`. */
 export const PENDIDIKAN_LEVELS: ReadonlySet<string> = new Set(['SD', 'SMP', 'SMA', 'SMK', 'MA', 'D3', 'S1']);
 
+const PENDIDIKAN_RANK: Record<string, number> = {
+  SD: 1,
+  SMP: 2,
+  SMA: 3,
+  SMK: 3,
+  MA: 3,
+  D3: 4,
+  S1: 5,
+};
+
 /** `[kolom master, kolom kandidat]` — identitas yang WAJIB sama di dua tabel. */
 export const MASTER_TO_CANDIDATE_IDENTITY: ReadonlyArray<readonly [string, string]> = [
   ['nama_lengkap', 'nama_lengkap'],
@@ -61,6 +71,7 @@ export const MASTER_TO_CANDIDATE_IDENTITY: ReadonlyArray<readonly [string, strin
   // "diperbaiki" orang lain menjadi salah satu ejaan dan diam-diam berhenti
   // menyalin.
   ['no_paspor', 'no_pasport'],
+  ['jft', 'nilai_jft_text'],
 ] as const;
 
 /** Berkas: `[kolom master, kolom kandidat]`. */
@@ -92,13 +103,27 @@ export function candidateIdentityPatch(master: Record<string, unknown>): Record<
     const v = usable(master[from]);
     if (v !== null) out[to] = v;
   }
+  const sswVal = usable(master.bidangssw) ?? usable(master.ssw);
+  if (sswVal !== null) out.bidang_ssw_text = sswVal;
   for (const [from, to] of MASTER_TO_CANDIDATE_FILES) {
     const v = usable(master[from]);
     if (v !== null) out[to] = v;
   }
-  const jenjang = usable(master.pendidikan_1_tingkat);
-  if (jenjang !== null && PENDIDIKAN_LEVELS.has(jenjang.toUpperCase())) {
-    out.pendidikan = jenjang.toUpperCase();
+  let bestJenjang: string | null = null;
+  let bestRank = 0;
+  for (let i = 1; i <= 6; i++) {
+    const raw = usable(master[`pendidikan_${i}_tingkat`]);
+    if (raw === null) continue;
+    const upper = raw.toUpperCase();
+    if (!PENDIDIKAN_LEVELS.has(upper)) continue;
+    const rank = PENDIDIKAN_RANK[upper] ?? 1;
+    if (rank >= bestRank) {
+      bestRank = rank;
+      bestJenjang = upper;
+    }
+  }
+  if (bestJenjang !== null) {
+    out.pendidikan = bestJenjang;
   }
   return out;
 }
@@ -141,6 +166,18 @@ export function masterIdentityPatch(
     // ejaan saja, kalau tidak nama yang diedit admin akan berbeda bentuk dari
     // nama yang diisi kandidat.
     out[masterCol] = candCol === 'nama_lengkap' ? v.toUpperCase() : v;
+  }
+  const sswVal = usable(candidate.bidang_ssw_text);
+  if (sswVal !== null) {
+    out.ssw = sswVal;
+    out.bidangssw = sswVal;
+  } else if (
+    sebelum &&
+    Object.hasOwn(candidate, 'bidang_ssw_text') &&
+    usable(sebelum.bidang_ssw_text) !== null
+  ) {
+    out.ssw = '';
+    out.bidangssw = '';
   }
   // HANYA dua kolom berkas yang artinya sama di dua tabel (URL Cloudinary).
   // `database_candidate.jft`/`ssw` bisa berisi TEKS sertifikasi, sedangkan

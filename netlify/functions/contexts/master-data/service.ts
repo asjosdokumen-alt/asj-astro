@@ -265,7 +265,7 @@ function keluargaKey(e: Record<string, unknown>): string {
 }
 
 function mergeRiwayatArrays(columns: any[], aiArr: any[] | null, keyFn: (e: any) => string): any[] {
-  const seen = new Set(); const out: any[] = [];
+  const seen = new Map<string, Record<string, unknown>>(); const out: any[] = [];
   const lists: any[] = ([] as any[]).concat(Array.isArray(columns) ? columns : [], Array.isArray(aiArr) ? aiArr : []);
   for (const e of lists) {
     if (!e || typeof e !== 'object') continue;
@@ -274,7 +274,23 @@ function mergeRiwayatArrays(columns: any[], aiArr: any[] | null, keyFn: (e: any)
     // tidak sah". Menjatuhkannya membuang data nyata: terukur 2026-10-13, 8
     // anggota keluarga ber-nama kanji hilang dari 5 kandidat. Dedupe hanya
     // dijalankan bila kuncinya benar-benar ada.
-    if (k) { if (seen.has(k)) continue; seen.add(k); }
+    if (k) {
+      const existing = seen.get(k);
+      if (existing) {
+        for (const [field, val] of Object.entries(e)) {
+          if (val === undefined || val === null || String(val).trim() === '' || String(val).trim() === '-') continue;
+          const cur = existing[field];
+          if (cur === undefined || cur === null || String(cur).trim() === '' || String(cur).trim() === '-') {
+            existing[field] = val;
+          }
+        }
+        continue;
+      }
+      const copy = { ...e };
+      seen.set(k, copy);
+      out.push(copy);
+      continue;
+    }
     out.push(e);
   }
   return out;
@@ -343,6 +359,7 @@ export function buildMasterNested(row: any): any {
   const aiF = aiGroup('fisik');
   const aiM = aiGroup('medis');
   const aiI = aiGroup('identitas');
+  const aiS = aiGroup('sertifikasi');
   const va = (aiObj: Record<string, unknown>, aiKeys: string[], col: string) => {
     // Kolom dulu — kebenaran mutlak; AI hanya mengisi yang kosong.
     if (col) {
@@ -365,13 +382,13 @@ export function buildMasterNested(row: any): any {
          cocok dengan opsi dropdown mana pun — tanpa ini `<select>`-nya tampil kosong.
          Normalisasi berlaku untuk nilai dari AI MAUPUN dari kolom. */
       golongan_darah: normalizeBloodType(va(aiI, ['golongan_darah'], 'golongan_darah')), status_nikah: v('status_pernikahan'),
-      status_pernikahan_jp: v('status_pernikahan_jp'), anak: v('jumlah_anak'),
+      status_pernikahan_jp: va(aiI, ['status_nikah_jp', 'status_pernikahan_jp'], 'status_pernikahan_jp'), status_nikah_jp: va(aiI, ['status_nikah_jp', 'status_pernikahan_jp'], 'status_pernikahan_jp'), anak: v('jumlah_anak'),
       email: v('email'), alamat: v('alamat_lengkap'), alamat_jp: v('alamat_jp'),
       hp: v('no_wa'), hp_darurat: v('kontak_darurat_wa'), ktp: v('nik'),
-      paspor: v('no_paspor'), sim: v('driver_license'), status_eks_jepang: v('status_eks_jepang'),
+      paspor: v('no_paspor'), paspor_status: va(aiI, ['paspor_status'], ''), sim: v('driver_license'), sim_status: va(aiI, ['sim_status'], ''), gender_jp: va(aiI, ['gender_jp'], ''), status_eks_jepang: v('status_eks_jepang'),
       no_coe: v('no_coe'), tgl_terbit_paspor: vd('tgl_terbit_pasport'),
-      exp_paspor: vd('exp_pasport'), kota_terbit_paspor: v('kota_terbit_pasport'),
-      kontak_darurat_nama: v('kontak_darurat_nama'), kontak_darurat_hubungan: v('kontak_darurat_hubungan'),
+      exp_paspor: vd('exp_pasport'), kota_terbit_paspor: va(aiI, ['kota_paspor', 'kota_terbit_paspor'], 'kota_terbit_pasport'), kota_paspor: va(aiI, ['kota_paspor', 'kota_terbit_paspor'], 'kota_terbit_pasport'),
+      kontak_darurat_nama: va(aiI, ['darurat_nama', 'kontak_darurat_nama'], 'kontak_darurat_nama'), darurat_nama: va(aiI, ['darurat_nama', 'kontak_darurat_nama'], 'kontak_darurat_nama'), kontak_darurat_hubungan: va(aiI, ['darurat_hubungan', 'kontak_darurat_hubungan'], 'kontak_darurat_hubungan'), darurat_hubungan: va(aiI, ['darurat_hubungan', 'kontak_darurat_hubungan'], 'kontak_darurat_hubungan'),
       /* Perjalanan & identitas tambahan (migrasi 022). Dibaca dari KOLOM saja —
          tidak ada padanan di `ai_data_json` lama, karena field ini baru
          ditanyakan sejak 2026-10-27. */
@@ -447,8 +464,8 @@ export function buildMasterNested(row: any): any {
       lamakerja_diharapkan: v('lamakerjadiharapkan'),
       mbti: v('mbti'),
     },
-    sertifikasi: { bahasa: v('bahasa'), jft: v('jft'), ssw: v('ssw'),
-      bidang: v('bidangssw') || v('bidang'), bahasa_jepang: v('jft'), nilai: v('jft'), lisensi: v('ssw'),
+    sertifikasi: { bahasa: va(aiS, ['bahasa', 'bahasa_jepang'], 'bahasa'), jft: va(aiS, ['jft', 'nilai'], 'jft'), ssw: v('bidangssw') || v('ssw') || va(aiS, ['ssw', 'lisensi'], ''),
+      bidang: v('bidangssw') || v('bidang') || v('ssw') || va(aiS, ['ssw', 'lisensi', 'bidang'], ''), bahasa_jepang: v('jft') || v('bahasa') || va(aiS, ['jft', 'bahasa_jepang'], ''), nilai: va(aiS, ['nilai', 'jft'], 'jft'), lisensi: v('bidangssw') || v('ssw') || va(aiS, ['lisensi', 'ssw'], ''), ssw2: v('bidangssw2') || va(aiS, ['ssw2', 'lisensi2', 'bidangssw2'], ''), lisensi2: v('bidangssw2') || va(aiS, ['lisensi2', 'ssw2', 'bidangssw2'], ''), bidangssw2: v('bidangssw2') || va(aiS, ['bidangssw2', 'ssw2', 'lisensi2'], ''), no_coe: va(aiS, ['no_coe'], 'no_coe'),
       /* Bahasa & sertifikat tambahan (migrasi 022). */
       lama_belajar_jp: v('lama_belajar_jp'), status_belajar_jp: v('status_belajar_jp'),
       bab_belajar_jp: v('bab_belajar_jp'), level_bahasa_inggris: v('level_bahasa_inggris'),
@@ -665,6 +682,26 @@ function mergeAiOverflow(ai: any, overflow: any): any {
   return ai;
 }
 
+export function syncAiFromMasterPatch(aiRaw: unknown, masterPatch: Record<string, unknown>): string | null {
+  if (typeof aiRaw !== 'string' || !aiRaw.trim() || aiRaw.trim() === '-') return null;
+  let ai: Record<string, unknown> | null = null;
+  try { const parsed = JSON.parse(aiRaw); if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ai = parsed; } catch { return null; }
+  if (!ai) return null;
+  const before = JSON.stringify(ai);
+  for (const [section, fields] of Object.entries(AI_TO_MASTER_COLUMNS)) {
+    const grp = ai[section] as Record<string, unknown> | undefined;
+    if (!grp || typeof grp !== 'object' || Array.isArray(grp)) continue;
+    for (const [col, ...aiKeys] of fields) {
+      if (!Object.hasOwn(masterPatch, col) || masterPatch[col] === undefined) continue;
+      const val = masterPatch[col] === null ? '' : String(masterPatch[col]).trim();
+      grp[aiKeys[0]] = val;
+      for (const k of aiKeys.slice(1)) { if (Object.hasOwn(grp, k)) grp[k] = val; }
+    }
+  }
+  const after = JSON.stringify(ai);
+  return before !== after ? after : null;
+}
+
 /**
  * Kolom slot riwayat (`pendidikan_*` / `pekerjaan_*` / `keluarga_*`) dari daftar baris.
  *
@@ -875,6 +912,7 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
   sertifikasi: [
     ['jft', 'jft', 'nilai'],
     ['bidangssw', 'ssw', 'lisensi'],
+    ['ssw', 'ssw', 'lisensi'],
     ['bahasa', 'bahasa', 'bahasa_jepang'],
     /* Dua field yang dulu hanya ada di Form Master. `bidangssw2` baru punya
        kolom sejak migrasi 019 — sebelumnya lisensi SSW kedua diketik, dikirim,
@@ -982,6 +1020,8 @@ export function buildMasterBody(d: any): Record<string, any> {
   // Kolom slot riwayat: SATU implementasi, dipakai juga oleh jalur simpan CV AI
   // (`_lib/ai/cv.ts`) — lihat catatan di `buildRiwayatSlots`.
   Object.assign(body, buildRiwayatSlots(d, d.riwayatLengkap === true));
+  if (body.bidangssw !== undefined && body.ssw === undefined) body.ssw = body.bidangssw;
+  if (body.ssw !== undefined && body.bidangssw === undefined) body.bidangssw = body.ssw;
   /* Daftar riwayat kerja yang LENGKAP TIDAK ikut di body: `buildMasterBody`
      hanya boleh menghasilkan kolom yang ada di kontrak (dijaga
      `actions-master.test.ts`). Ia diteruskan sebagai argumen terpisah ke
@@ -1152,7 +1192,7 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
       out['KELUARGA_' + i + '_NAMA'] = v('keluarga_' + i + '_nama');
       out['KELUARGA_' + i + '_USIA'] = v('keluarga_' + i + '_usia');
       out['KELUARGA_' + i + '_PEKERJAAN'] = v('keluarga_' + i + '_pekerjaan');
-      out['KELUARGA_' + i + '_PENDAPATAN'] = '';
+      out['KELUARGA_' + i + '_PENDAPATAN'] = v(`keluarga_${i}_gaji`);
     }
     return out;
   } catch (e: any) { return { error: safeError('Gagal memuat data Master.', e) }; }
@@ -1220,7 +1260,7 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
     const body: Record<string, any> = { no_wa: wa, updated_at: new Date().toISOString(), ...buildMasterBody(d) };
     body.nama_lengkap = nama;
     Object.assign(body, fileUrls);
-    if (pendidikanStr) body.pendidikan_1_tingkat = pendidikanStr;
+    if (pendidikanStr && (!row || (!row.pendidikan_1_nama_sekolah && !row.pendidikan_2_tingkat))) body.pendidikan_1_tingkat = pendidikanStr;
 
     let jpTranslations: Record<string, string> = {};
     try {
@@ -1267,7 +1307,7 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
       // `lengkap` juga memicu tulis walau overflow kosong: menghapus SEMUA baris
       // tidak menghasilkan overflow apa pun, dan justru itulah yang harus
       // tersimpan (pemangkasan).
-      if (aiOverflow || lengkap) {
+      if (aiOverflow || lengkap || row?.ai_data_json) {
         let aiBase: any = null;
         if (row && row.ai_data_json) { try { const parsed = JSON.parse(row.ai_data_json); if (parsed && typeof parsed === 'object') aiBase = parsed; } catch { aiBase = null; } }
         // Snapshot SEBELUM mutasi: `mergeAiOverflow` mengubah `aiBase` di tempat
@@ -1276,7 +1316,8 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
         const before = aiBase ? JSON.stringify(aiBase) : null;
         let aiNew = mergeAiOverflow(aiBase, aiOverflow || {});
         if (lengkap) aiNew = pruneAiRiwayat(aiNew, d);
-        const after = JSON.stringify(aiNew);
+        const syncedScalar = syncAiFromMasterPatch(JSON.stringify(aiNew), body);
+        const after = syncedScalar !== null ? syncedScalar : JSON.stringify(aiNew);
         if (before !== after && (before !== null || Object.keys(aiNew).length)) {
           const aiPatch = { ai_data_json: after, ai_updated_at: new Date().toISOString() };
           if (row && row.id !== undefined) { await patchMaster(row.id, aiPatch); }
@@ -1298,6 +1339,7 @@ export async function handleSubmitMasterForm(payload: any[], sessionToken?: stri
       // tidak menyalin `tb`/`bb`/`nik`/`email`/`alamat`, sehingga CV Mini
       // menampilkan tinggi/berat kosong untuk kandidat yang mengisi lewat CV AI.
       const candBody: Record<string, string> = { nama_lengkap: nama, ...candidateIdentityPatch(body) };
+      if (pendidikanStr) candBody.pendidikan = pendidikanStr.toUpperCase();
       if (fileUrls.pas_photo) candBody.pas_photo = fileUrls.pas_photo;
       if (fileUrls.jft_url) candBody.jft = fileUrls.jft_url;
       if (fileUrls.ssw_url) candBody.ssw = fileUrls.ssw_url;
@@ -1404,7 +1446,8 @@ export async function handleSimpanBiodataLengkap(payload: any[], sessionToken?: 
   try {
     const now = new Date().toISOString();
     const row = await findMasterByWa(wa);
-    const body = Object.assign({ no_wa: wa, updated_at: now }, master);
+    const body = Object.assign({ no_wa: wa, updated_at: now }, master) as Record<string, unknown>;
+    if (row?.ai_data_json) { const syncedAi = syncAiFromMasterPatch(row.ai_data_json, master); if (syncedAi !== null) { body.ai_data_json = syncedAi; body.ai_updated_at = now; } }
     if (row && row.id !== undefined) {
       await patchMaster(row.id, body);
     } else {

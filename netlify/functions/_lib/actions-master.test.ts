@@ -16,7 +16,7 @@
 // Tes di bawah menjaga invarian itu, bukan isi sebuah daftar.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { buildAiOverflow, mergeAiOverflow, buildMasterBody, buildMasterNested, hanyaFieldBerubah } from '../contexts/master-data';
+import { buildAiOverflow, mergeAiOverflow, buildMasterBody, buildMasterNested, hanyaFieldBerubah, syncAiFromMasterPatch } from '../contexts/master-data';
 import { TABLE_COLUMNS } from '../_lib/db/schema.generated';
 
 describe('buildMasterBody — setiap kolom yang ditulis ADA di kontrak', () => {
@@ -278,5 +278,46 @@ describe('migrasi 022 — form → kolom → nested', () => {
     expect(n.keluarga[0].hp).toBe('081234567');
     // `keluarga_N_gaji` dulu ditulis tetapi TIDAK PERNAH dibaca.
     expect(n.keluarga[0].gaji).toBe('150000');
+  });
+});
+
+// Form Master menulis KOLOM; CV AI dan rirekisho membaca `ai_data_json`.
+// Tanpa cermin ini, nilai yang baru diperbaiki lewat Form Master tetap tampil
+// LAMA di layar CV AI sampai ada yang menyimpan ulang lewat jalur AI.
+describe('syncAiFromMasterPatch — kolom skalar tercermin ke ai_data_json', () => {
+  const AI = JSON.stringify({
+    identitas: { kota_paspor: 'Jakarta', no_coe: 'COE-1' },
+    sertifikasi: { jft: 'N4', nilai: 'N4', no_coe: 'COE-1' },
+  });
+
+  it('menyalin kolom yang HADIR ke seksi AI-nya, termasuk alias yang sudah ada', () => {
+    const out = syncAiFromMasterPatch(AI, { jft: 'N3' });
+    expect(out).not.toBeNull();
+    const parsed = JSON.parse(out as string);
+    expect(parsed.sertifikasi.jft).toBe('N3');
+    // `nilai` = alias JFT; ditulis hanya karena kuncinya SUDAH ada.
+    expect(parsed.sertifikasi.nilai).toBe('N3');
+  });
+
+  it('kolom yang TIDAK dikirim tidak dikosongkan (patch parsial)', () => {
+    const out = syncAiFromMasterPatch(AI, { kota_terbit_pasport: 'Bandung' });
+    const parsed = JSON.parse(out as string);
+    expect(parsed.identitas.kota_paspor).toBe('Bandung');
+    expect(parsed.sertifikasi.jft).toBe('N4');
+  });
+
+  it('nilai kosong MENGOSONGKAN — form lengkap berarti field dihapus', () => {
+    const out = syncAiFromMasterPatch(AI, { jft: '' });
+    expect(JSON.parse(out as string).sertifikasi.jft).toBe('');
+  });
+
+  it('tidak menulis apa pun bila tidak ada yang berubah', () => {
+    expect(syncAiFromMasterPatch(AI, { jft: 'N4' })).toBeNull();
+  });
+
+  it('AI kosong atau rusak bukan alasan menulis', () => {
+    expect(syncAiFromMasterPatch('', { jft: 'N3' })).toBeNull();
+    expect(syncAiFromMasterPatch('-', { jft: 'N3' })).toBeNull();
+    expect(syncAiFromMasterPatch('{rusak', { jft: 'N3' })).toBeNull();
   });
 });
