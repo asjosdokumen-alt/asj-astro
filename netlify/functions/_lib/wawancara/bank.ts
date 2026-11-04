@@ -318,6 +318,76 @@ export async function statusVip(wa: string): Promise<boolean | null> {
  */
 const BATAS_FIELD = 2000;
 
+/* ── Soal perkenalan → kolom CV ─────────────────────────────────────────────
+   Tujuh soal pertama (`ms-001`..`ms-007`) tidak punya `kolom_cv` karena
+   jawabannya KALIMAT, bukan nilai: "Nama saya Agus Susilo. Mohon bantuan."
+   Menyalinnya mentah ke `nama_lengkap` akan mencetak satu kalimat penuh di CV.
+
+   Karena itu nilainya DIEKSTRAK, dan hanya kalau kolomnya masih KOSONG.
+   Kalimat bebas tidak boleh menimpa nama/kota yang sudah dikoreksi tangan —
+   aturan "KOLOM MENANG" yang sama dengan `buildMasterNested`. Kalau nanti
+   pemilik ingin ini menimpa, jalurnya harus field khusus (satu nilai, bukan
+   kalimat), bukan menaikkan kepercayaan pada teks bebas.
+
+   `ms-006`/`ms-007` (deskripsi kota & tempat favorit) sengaja tidak dipetakan:
+   tidak ada kolom CV yang meminta paragraf. */
+const BULAN_ID: Record<string, string> = {
+  januari: '01', februari: '02', maret: '03', april: '04', mei: '05', juni: '06',
+  juli: '07', agustus: '08', september: '09', oktober: '10', november: '11', desember: '12',
+};
+
+export function namaDariKalimat(arti: string): string {
+  /* WAJIB berpola. Tanpa ini "Saya berasal dari Ponorogo" akan menghasilkan
+     "BERASAL DARI PONOROGO" sebagai nama — persis kelas bug yang membuat CV
+     mencetak kalimat di kolom nama. */
+  const asli = String(arti || '').replace(/\s+/g, ' ').trim();
+  const m =
+    /^(?:nama\s+(?:saya|aku)\s*(?:adalah|ialah)?\s*[:：]?\s*|(?:saya|aku)\s+bernama\s+)(.+)$/i.exec(asli);
+  if (!m) return '';
+  let s = m[1];
+  s = s.replace(/\s*(mohon\s+bantuan|senang\s+berkenalan|terima\s+kasih|mohon\s+dibantu).*$/i, '');
+  s = s.replace(/[.,;:!?。]+$/g, '').trim();
+  if (!s || /\d/.test(s) || s.split(' ').length > 6) return '';
+  return s.toUpperCase();
+}
+
+export function usiaDariKalimat(arti: string): string {
+  const m = /(\d{1,3})/.exec(String(arti || ''));
+  if (!m) return '';
+  const n = Number(m[1]);
+  return n > 5 && n < 100 ? String(n) : '';
+}
+
+export function tanggalDariKalimat(arti: string): string {
+  const m = /(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/.exec(String(arti || ''));
+  if (!m) return '';
+  const bln = BULAN_ID[m[2].toLowerCase()];
+  const hari = Number(m[1]);
+  if (!bln || hari < 1 || hari > 31) return '';
+  return `${m[3]}-${bln}-${String(hari).padStart(2, '0')}`;
+}
+
+export function kotaDariKalimat(arti: string): string {
+  let s = String(arti || '').replace(/\s+/g, ' ').trim();
+  s = s.replace(
+    /^(saya\s+berasal\s+dari|saya\s+dari|kota\s+asal\s+saya\s+(adalah|ialah)?|kota\s+saya\s+(adalah|ialah)?|asal\s+saya)\s*/i,
+    '',
+  );
+  s = s.split(',')[0].trim();
+  s = s.replace(/[.,;:!?。]+$/g, '').trim();
+  if (!s || s.split(' ').length > 3) return '';
+  return s.toUpperCase();
+}
+
+const SOAL_TURUNAN: Record<string, { kolom: string; ambil: (arti: string) => string }> = {
+  'ms-001': { kolom: 'nama_lengkap', ambil: namaDariKalimat },
+  'ms-002': { kolom: 'usia', ambil: usiaDariKalimat },
+  'ms-003': { kolom: 'tgl_lahir', ambil: tanggalDariKalimat },
+  'ms-004': { kolom: 'tempat_lahir', ambil: kotaDariKalimat },
+  'ms-005': { kolom: 'tempat_lahir', ambil: kotaDariKalimat },
+};
+
+
 /**
  * Simpan satu jawaban. Kalau soal dipetakan ke kolom CV, kolom CV ikut ditulis
  * — itu yang membuat perubahan terlihat di CV AI.
@@ -395,6 +465,36 @@ export async function simpanJawaban(
         throw new AppError('VALIDATION_FAILED', {
           message: `Gagal menyimpan ke kolom CV (${soal.kolom_cv}): ${String(e).slice(0, 160)}`,
         });
+      }
+    }
+  }
+
+  /* 1b) Soal perkenalan: ekstrak nilainya ke kolom CV yang sesuai.
+     Hanya kolom yang masih KOSONG yang diisi (lihat catatan SOAL_TURUNAN).
+     Satu GET + satu PATCH, dan hanya untuk lima kode ini — bukan di setiap
+     onBlur kolom. */
+  const turunan = SOAL_TURUNAN[kodeBersih];
+  if (turunan && arti) {
+    const nilai = turunan.ambil(arti);
+    if (nilai) {
+      try {
+        const baris = await supabaseJson('GET', 'master_database_candidate', {
+          query: { select: `id,${turunan.kolom}`, no_wa: `eq.${nw}`, limit: 1 },
+        });
+        const row = Array.isArray(baris) ? baris[0] : null;
+        const sekarang = row ? String((row as Record<string, unknown>)[turunan.kolom] ?? '').trim() : '';
+        if (row && (row as Record<string, unknown>).id !== undefined && !sekarang) {
+          await supabaseJson('PATCH', 'master_database_candidate', {
+            query: { id: `eq.${(row as Record<string, unknown>).id}` },
+            body: { [turunan.kolom]: nilai },
+            headers: { Prefer: 'return=minimal' },
+          });
+          tertulisKeCv = true;
+        }
+      } catch {
+        /* Non-fatal: jawaban tetap tersimpan di `wawancara_jawaban`. Kolom CV
+           yang gagal diisi bisa diisi ulang lewat form; kehilangan jawaban
+           lebih mahal daripada kehilangan satu kolom turunan. */
       }
     }
   }

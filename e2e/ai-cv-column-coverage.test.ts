@@ -26,8 +26,8 @@
  * ia berjalan di jsdom dan terhitung dua kali (R13f-bis).
  */
 import { describe, it, expect } from 'vitest';
-import { AI_CV_PATHS } from '../src/lib/aiCvDraft';
-import { AI_TO_MASTER_COLUMNS, JP_TRANSLATE_MAP } from '../netlify/functions/contexts/master-data/service';
+import { AI_CV_PATHS, mergeAiDraft } from '../src/lib/aiCvDraft';
+import { AI_TO_MASTER_COLUMNS, JP_TRANSLATE_MAP, buildMasterNested } from '../netlify/functions/contexts/master-data/service';
 import { TABLE_COLUMNS } from '../netlify/functions/_lib/db/schema.generated';
 
 /** Semua path `seksi.kunci` yang punya tujuan kolom di `masterColumnsFromAi`. */
@@ -138,5 +138,30 @@ describe('kolom JP otomatis harus bisa dilihat di form', () => {
       (col) => !aiKeysFor(col).some((k) => lastSegment.has(k)),
     );
     expect(missing).toEqual([]);
+  });
+});
+
+/**
+ * "Edit di mana pun, yang terbaru menang."
+ *
+ * Kolom master adalah satu-satunya sumber. `ai_data_json` adalah salinan yang
+ * bisa BASI (jalur wawancara & edit admin menulis kolom tanpa memperbarui
+ * JSON). Kalau salinan itu menang, gejalanya persis yang dilaporkan pemilik:
+ * sudah edit, rirekisho tetap mencetak nilai lama — dan setiap simpan
+ * mengembalikan nilai basi itu ke kolom.
+ *
+ * Tes ini mengunci aturannya: kolom menang, JSON hanya mengisi yang kosong.
+ */
+describe('ai_data_json basi tidak boleh menimpa kolom', () => {
+  it('nilai kolom menang atas JSON yang lebih tua', () => {
+    const nested = buildMasterNested({ promosi_diri: 'HASIL EDIT TERBARU' });
+    const merged = mergeAiDraft(nested, { wawancara: { promosi_id: 'NILAI LAMA' } });
+    expect((merged.wawancara as Record<string, unknown>).promosi_id).toBe('HASIL EDIT TERBARU');
+  });
+
+  it('JSON tetap mengisi kunci yang TIDAK punya kolom', () => {
+    const nested = buildMasterNested({ promosi_diri: '' });
+    const merged = mergeAiDraft(nested, { wawancara: { promosi_id: 'HANYA DI JSON' } });
+    expect((merged.wawancara as Record<string, unknown>).promosi_id).toBe('HANYA DI JSON');
   });
 });

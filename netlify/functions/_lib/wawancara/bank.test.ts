@@ -53,6 +53,7 @@ vi.mock('../db/client', async (importOriginal) => {
           m.bacaBank++;
           return m.soal;
         }
+        if (table === 'master_database_candidate') return m.master;
         if (table === 'wawancara_jawaban') return m.jawaban;
         return [];
       }
@@ -398,5 +399,57 @@ describe('linkWawancara', () => {
     /* Garis miring di akhir mengikuti bentuk yang dituju Netlify (301 dari
        `/wawancara`), supaya tautan yang dibagikan tidak membayar lompatan. */
     expect(url).toBe('https://contoh.test/wawancara/?wa=628123456789&nama=Budi');
+  });
+});
+
+/* ── Soal perkenalan → kolom CV (2026-11-05) ────────────────────────────────
+ * Tujuh soal pertama tidak punya `kolom_cv` karena jawabannya kalimat. Nilainya
+ * DIEKSTRAK, dan hanya mengisi kolom yang masih kosong — kalimat bebas tidak
+ * boleh menimpa nama yang sudah dikoreksi tangan.
+ */
+describe('soal perkenalan mengisi kolom identitas', () => {
+  beforeEach(() => {
+    m.tulis.length = 0;
+    m.master = [];
+  });
+
+  it('nama: kalimat sopan dipangkas jadi nama, bukan kalimat', () => {
+    expect(bank.namaDariKalimat('Nama saya Agus Susilo. Mohon bantuan.')).toBe('AGUS SUSILO');
+    expect(bank.namaDariKalimat('Saya bernama Agustina Mega Safitri.')).toBe('AGUSTINA MEGA SAFITRI');
+  });
+
+  it('nama: kalimat yang BUKAN perkenalan tidak menghasilkan apa pun', () => {
+    expect(bank.namaDariKalimat('Saya berasal dari Ponorogo.')).toBe('');
+    expect(bank.namaDariKalimat('Tanaka.')).toBe('');
+  });
+
+  it('usia & tanggal lahir diekstrak dari kalimat', () => {
+    expect(bank.usiaDariKalimat('Usia saya 36 tahun.')).toBe('36');
+    expect(bank.usiaDariKalimat('Saya berusia 21 tahun.')).toBe('21');
+    expect(bank.usiaDariKalimat('Tanggal 5 Oktober.')).toBe(''); // 5 bukan usia wajar
+    expect(bank.tanggalDariKalimat('Tanggal 4 Agustus 2005.')).toBe('2005-08-04');
+    expect(bank.tanggalDariKalimat('Tanggal 5 Oktober.')).toBe(''); // tahun tidak ada
+  });
+
+  it('kota: hanya nama kota, bukan kalimat lengkap', () => {
+    expect(bank.kotaDariKalimat('Saya berasal dari Ponorogo, Provinsi Jawa Timur.')).toBe('PONOROGO');
+    expect(bank.kotaDariKalimat('Kota asal saya adalah Ngawi.')).toBe('NGAWI');
+  });
+
+  it('simpan ms-001 mengisi nama_lengkap saat kolom masih kosong', async () => {
+    m.master = [{ id: 7, nama_lengkap: '' }];
+    await bank.simpanJawaban('628111', 'ms-001', { arti: 'Nama saya Agus Susilo. Mohon bantuan.' });
+    const patch = m.tulis.find(
+      (t) => t.table === 'master_database_candidate' && t.method === 'PATCH',
+    );
+    expect(patch?.body).toMatchObject({ nama_lengkap: 'AGUS SUSILO' });
+  });
+
+  it('TIDAK menimpa nama yang sudah ada (kolom menang)', async () => {
+    m.master = [{ id: 7, nama_lengkap: 'AGUS SUSILO' }];
+    await bank.simpanJawaban('628111', 'ms-001', { arti: 'Nama saya Agus Susilo. Mohon bantuan.' });
+    expect(
+      m.tulis.some((t) => t.table === 'master_database_candidate' && t.method === 'PATCH'),
+    ).toBe(false);
   });
 });
