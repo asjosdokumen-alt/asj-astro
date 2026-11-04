@@ -49,9 +49,16 @@ function aiColumns(): Set<string> {
  * Kolom yang hanya ditulis Form Master. Setiap entri WAJIB punya alasan —
  * daftar ini tempat keputusan dicatat, bukan tempat menyembunyikan kelalaian.
  */
-const MASTER_ONLY: Record<string, string> = {
-  ssw: 'alias legacy: payload lama mengirim `ssw` langsung. Form memakai `lisensi` → bidangssw. Dua kolom untuk satu konsep — kandidat konsolidasi, bukan field form.',
-};
+/* KOSONG sejak 2026-11-04. Satu-satunya entri lama adalah `ssw` dengan alasan
+   "alias legacy: payload lama mengirim `ssw` langsung, form memakai `lisensi` →
+   bidangssw; dua kolom untuk satu konsep".
+
+   Alasan itu tidak berlaku lagi: `AI_TO_MASTER_COLUMNS.sertifikasi` sekarang
+   memetakan `ssw`/`lisensi` ke kolom `ssw` JUGA, dan `buildMasterBody`
+   mencerminkan `bidangssw` → `ssw`. Jadi kolom itu ditulis kedua jalur, dan
+   tes "daftar pengecualian tidak basi" di bawah memang menuntut entri itu
+   dihapus — membiarkannya berarti daftar ini menyimpan kebohongan. */
+const MASTER_ONLY: Record<string, string> = {};
 
 /**
  * Kolom yang hanya ditulis CV AI.
