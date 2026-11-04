@@ -293,6 +293,21 @@ describe('rirekisho-detail · pendidikan (3 baris), pekerjaan (2 baris), keluarg
     expect(v.B28).toBe('現在に至る');
   });
 
+  it('nama keluarga memakai katakana bila sudah diterjemahkan', () => {
+    const v = buildValues(
+      kandidat({
+        keluarga: [
+          { nama: 'SOIRIN', katakana: 'ソイリン', hubungan: '父' },
+          { nama: 'INDAH', katakana: '', hubungan: '母' },
+          { nama: 'BUDI', katakana: '-', hubungan: '兄' },
+        ],
+      }),
+    );
+    expect(v.A32).toBe('ソイリン'); // sudah diterjemahkan
+    expect(v.A33).toBe('INDAH');    // belum -> jatuh ke nama Latin
+    expect(v.A34).toBe('BUDI');     // '-' bukan terjemahan -> jatuh ke nama Latin
+  });
+
   it('keluarga mengisi A/D/E/F dan TIDAK menyentuh kolom I', () => {
     const v = buildValues(
       kandidat({

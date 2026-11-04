@@ -275,7 +275,9 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const row = FAM_START + i;
     const p = (data.keluarga[i] || {}) as Record<string, unknown>;
     cells[`A${row}`] = hubunganJp(p.hubungan);
-    cells[`C${row}`] = s(p.nama);
+    /* 氏名: katakana bila sudah diterjemahkan (kolom sejak migrasi 046). */
+    const ktKeluarga = s(p.katakana);
+    cells[`C${row}`] = /[ぁ-ヿ一-龯]/.test(ktKeluarga) ? ktKeluarga : s(p.nama);
     cells[`G${row}`] = s(p.usia ?? p.umur).replace(/\D/g, '');
     cells[`I${row}`] = s(p.pekerjaan);
     cells[`L${row}`] = s(p.gaji ?? p.penghasilan).replace(/[^\d]/g, '')

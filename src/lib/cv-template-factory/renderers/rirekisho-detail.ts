@@ -406,7 +406,14 @@ export function buildValues(data: CandidateData): Record<string, string> {
   for (let i = 0; i < FAM_ROWS; i++) {
     const row = FAM_START + i;
     const p = (data.keluarga[i] || {}) as Record<string, unknown>;
-    cells[`A${row}`] = kapital(p.nama);
+    /* 氏名: utamakan KATAKANA. Nama orang Jepang ditulis kana, dan tombol
+       Terjemahkan sudah menghasilkan `keluarga[i].katakana` — tetapi sebelum
+       migrasi 046 nilainya tidak punya kolom, jadi selalu hilang dan sel ini
+       mencetak nama Latin. Jatuh ke `nama` bila terjemahannya belum ada, dan
+       hanya bila isinya benar-benar huruf Jepang (jangan cetak "-" atau teks
+       Latin yang nyasar). */
+    const kt = bersih(p.katakana);
+    cells[`A${row}`] = /[ぁ-ヿ一-龯]/.test(kt) ? kt : kapital(p.nama);
     /* 続柄 ditulis KANJI (父/母/兄/…). Database menyimpannya dalam bahasa
        Indonesia (`AYAH`, `KAKAK LAKI-LAKI`), dan form cetak berbahasa Jepang. */
     cells[`D${row}`] = hubunganJp(p);

@@ -532,7 +532,8 @@ export function buildMasterNested(row: any): any {
       for (let i = 1; i <= 5; i++) {
         const nm = row['keluarga_' + i + '_nama'];
         if (nm === undefined || nm === null) continue;
-        arr.push({ nama: toText(nm), umur: v('keluarga_' + i + '_usia'), usia: v('keluarga_' + i + '_usia'),
+        arr.push({ nama: toText(nm), katakana: v('keluarga_' + i + '_katakana'),
+          umur: v('keluarga_' + i + '_usia'), usia: v('keluarga_' + i + '_usia'),
           hubungan: v('keluarga_' + i + '_hubungan'), hubungan_jp: v('keluarga_' + i + '_hubungan_jp'),
           pekerjaan: v('keluarga_' + i + '_pekerjaan'), pekerjaan_jp: v('keluarga_' + i + '_pekerjaan_jp'),
           /* `gaji` sudah lama ditulis `buildRiwayatSlots` tetapi TIDAK pernah
@@ -767,6 +768,9 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
     ['_hubungan', 'hubungan', 'hubungan_id'],
     ['_hubungan_jp', 'hubungan_jp'],
     ['_nama', 'nama'],
+    /* 氏名 versi katakana. Sebelum migrasi 046 kolomnya tidak ada, jadi hasil
+       terjemahan nama anggota keluarga dibuang saat simpan. */
+    ['_katakana', 'katakana'],
     ['_usia', 'usia', 'umur'],
     ['_pekerjaan', 'pekerjaan', 'pekerjaan_id'],
     ['_gaji', 'gaji', 'pendapatan'],

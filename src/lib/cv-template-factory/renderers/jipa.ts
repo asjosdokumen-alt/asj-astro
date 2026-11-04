@@ -302,7 +302,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const hub = s(p.hubungan).toUpperCase();
     cells[`B${row}`] = hubunganJipa(p.hubungan, i);
     cells[`E${row}`] = isGood(hub) ? tinggalJp(p.tinggal ?? p.status_tinggal) : '';
-    cells[`G${row}`] = bersih(p.nama);
+    /* 氏名: katakana bila sudah diterjemahkan (kolom sejak migrasi 046),
+       jatuh ke nama Latin bila belum. */
+    const ktKeluarga = bersih(p.katakana);
+    cells[`G${row}`] = /[ぁ-ヿ一-龯]/.test(ktKeluarga) ? ktKeluarga : bersih(p.nama);
     cells[`J${row}`] = angka(p.usia ?? p.umur) ? `${angka(p.usia ?? p.umur)}歳` : '';
     cells[`K${row}`] = pekerjaanJp(p.pekerjaan, i);
   }
