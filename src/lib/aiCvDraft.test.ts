@@ -13,6 +13,7 @@ import {
   AI_CV_PATHS,
   applyAiCvRows,
   buildAiCvNested,
+  isiYangKosongSaja,
   mapAiCvDraft,
   mergeAiDraft,
   parseAiCvDraft,
@@ -428,5 +429,33 @@ describe('tempat_lahir_jp — bolak-balik lengkap', () => {
   it('tidak menciptakan kunci saat nilainya kosong', () => {
     const nested = buildAiCvNested({ tmplahir_jp: '' });
     expect(nested.identitas).toBeUndefined();
+  });
+});
+
+// AI mengisi, bukan menimpa. Sebelum 2026-11-05 klien memakai
+// `{...prev, ...patch}`: satu balasan chat mengganti SEMUA field yang
+// dikembalikan model, termasuk yang sudah diketik/dikoreksi kandidat — lalu
+// tersimpan ke DB saat tekan Simpan.
+describe('hasil AI hanya mengisi yang kosong', () => {
+  it('tidak menimpa nilai yang sudah ada', () => {
+    const out = isiYangKosongSaja(
+      { nama: 'AGUS SUSILO', tmplahir: '' },
+      { nama: 'NAMA LAIN', tmplahir: 'PONOROGO' },
+    );
+    expect(out.nama).toBe('AGUS SUSILO');
+    expect(out.tmplahir).toBe('PONOROGO');
+  });
+
+  it('mengisi field yang kosong/spasi saja', () => {
+    const out = isiYangKosongSaja({ a: '', b: '   ' }, { a: '1', b: '2' });
+    expect(out).toEqual({ a: '1', b: '2' });
+  });
+
+  it('baris repeater: JP yang sudah dikoreksi tangan tidak ditimpa', () => {
+    const rows = [{ id: 'r1', sekolah_id: 'SMK PEMKAB', sekolah_jp: '県立工業高校' }];
+    const out = applyAiCvRows('pendidikan', rows, [
+      { sekolah: 'SMK PEMKAB', sekolah_jp: 'スミック・プムカブ' },
+    ]);
+    expect(out[0].sekolah_jp).toBe('県立工業高校');
   });
 });

@@ -458,11 +458,37 @@ export function applyAiCvRows<T extends object>(
       if (!isGood(v)) continue;
       const s = String(v).trim();
       if (next[flat] === s) continue;
+      /* Isi yang sudah ada TIDAK ditimpa (aturan "kolom menang" yang sama
+         dengan skalar di atas). Sebelumnya baris ini menimpa, jadi koreksi
+         tangan pada 学校名/会社名 hilang begitu chat dijalankan lagi. */
+      if (String(next[flat] ?? '').trim()) continue;
       next[flat] = s;
       changed = true;
     }
     return changed ? (next as T) : raw;
   });
+}
+
+/**
+ * Gabungkan hasil AI ke state form TANPA menimpa isi yang sudah ada.
+ *
+ * Aturan yang sama dengan server (`buildMasterNested`, `mergeAiDraft`):
+ * KOLOM MENANG — AI hanya mengisi yang kosong. Sebelum ini klien memakai
+ * `{...prev, ...patch}`, jadi setiap balasan chat MENIMPA apa pun yang sudah
+ * diketik kandidat; kalau model salah, data yang benar ikut hilang dan
+ * tersimpan ke DB saat tekan Simpan. Terukur 2026-11-05 sebagai bagian dari
+ * keluhan "sudah edit, eh datanya beda".
+ */
+export function isiYangKosongSaja<T extends object>(
+  sekarang: T,
+  patch: Record<string, string>,
+): T {
+  const out = { ...sekarang } as Record<string, unknown>;
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined || v === null) continue;
+    if (!String(out[k] ?? '').trim()) out[k] = v;
+  }
+  return out as T;
 }
 
 /** Bentuk bersarang (draf master + ai_data_json) → state flat AiCvForm. */

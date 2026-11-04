@@ -19,7 +19,7 @@ import AiUnavailableBanner from '../ui/AiUnavailableBanner';
 import { mapAiCvDraft } from '../../lib/aiCvDraft';
 import { uploadMany, type UploadCollectionError } from '../../lib/cloudinary';
 import { AI_FILE_COLUMNS } from '../../lib/documentColumns';
-import { AI_CV_FLAT_KEYS, applyAiCvRows, buildAiCvNested, parseAiCvDraft, parseAiCvRows, type AiCvRow } from '../../lib/aiCvDraft';
+import { AI_CV_FLAT_KEYS, applyAiCvRows, buildAiCvNested, isiYangKosongSaja, parseAiCvDraft, parseAiCvRows, type AiCvRow } from '../../lib/aiCvDraft';
 import { PAIRED_FIELDS, resolvePairEdit, jpOf, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS } from '../../lib/aiCvPairs';
 import {
   PEKERJAAN, JURUSAN, HUBUNGAN_KELUARGA, GOLONGAN_DARAH,
@@ -763,7 +763,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
         return;
       }
       const patch = res.data ? mapAiCvDraft(res.data) : {};
-      if (Object.keys(patch).length > 0) setCv(prev => ({ ...prev, ...patch }));
+      if (Object.keys(patch).length > 0) setCv(prev => isiYangKosongSaja(prev, patch));
       if (res.data) {
         const rowsPatch = res.data as Record<string, unknown>;
         editEdu(l => applyAiCvRows('pendidikan', l, rowsPatch.pendidikan));
@@ -837,7 +837,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       // tidak dirender siapa pun, jadi tidak ada satu kolom pun yang terisi.
       const patch = data.data ? mapAiCvDraft(data.data) : {};
       if (Object.keys(patch).length > 0) {
-        setCv(prev => ({ ...prev, ...patch }));
+        setCv(prev => isiYangKosongSaja(prev, patch));
         showToast(t('toast.saved'), 'success');
       }
       // Repeater: `mapAiCvDraft` hanya memetakan kolom TUNGGAL, jadi kolom
