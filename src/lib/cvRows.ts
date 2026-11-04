@@ -41,7 +41,17 @@ import { getTingkatVal } from './helpers_cv';
  * correctly while the same row in CV AI could only be saved with an empty
  * level — which is what made the education block look broken.
  */
-export const TINGKAT_OPTIONS = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'LPK'] as const;
+/* SMA dan SMK DIPISAH (2026-11-04). Pemilik: *"kadang gak tahu detail SMA atau
+   SMK kandidatnya"* — dan data lama membuktikannya: 65 kandidat tersimpan
+   sebagai `SMA/SMK`, satu nilai gabungan yang tidak menyimpan jenis sekolahnya.
+   `MA` ditambahkan karena madrasah aliyah ada di data; `D4` karena diploma 4
+   tidak bisa diwakili D3 maupun S1.
+   Nilai lama `SMA/SMK` TETAP bisa dipilih: `levelOptions` menambahkan nilai
+   yang sedang tersimpan ke daftar, jadi baris lama tidak kehilangan jenjangnya
+   saat dibuka. */
+export const TINGKAT_OPTIONS = [
+  'SD', 'SMP', 'SMA', 'SMK', 'MA', 'D3', 'D4', 'S1', 'S2', 'LPK',
+] as const;
 
 /** A school level that is not in `TINGKAT_OPTIONS` still has to be selectable. */
 export function levelOptions(current: string): string[] {

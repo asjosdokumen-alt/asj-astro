@@ -146,6 +146,14 @@ export function normalizeMasterData(row: Record<string, unknown>): CandidateData
       promosi: v('PROMOSIDIRI', 'promosi_diri', 'wawancara.promosi_id', 'wawancara.promosi'),
       promosi_jp: v('PROMOSIDIRIJP', 'promosi_diri_jp', 'wawancara.promosi_jp'),
       keahlian_khusus: v('KEAHLIANKHUSUS', 'keahlian_khusus', 'wawancara.keahlian_khusus'),
+      /* Empat kolom yang ditambahkan migrasi 044 untuk template
+         `rirekisho-detail`: 集団生活経験, 料理, 個人収入, 家族の賛否. Ditulis
+         tanpa alias huruf besar karena kolomnya baru dan belum pernah punya
+         ejaan lain di data lama. */
+      kelompok_tinggal: v('kelompok_tinggal', 'wawancara.kelompok_tinggal'),
+      bisa_memasak: v('bisa_memasak', 'wawancara.bisa_memasak'),
+      penghasilan: v('penghasilan', 'wawancara.penghasilan'),
+      restu_keluarga: v('restu_keluarga', 'wawancara.restu_keluarga'),
       keahlian_khusus_jp: v('KEAHLIANKHUSUSJP', 'keahlian_khusus_jp', 'wawancara.keahlian_khusus_jp'),
       /* 在日期間 & MBTI (migrasi 022). `lama_di_jepang` dulu hanya hidup di
          `ai_data_json`; `mbti` dulu disimpulkan `inferMbti()`. */

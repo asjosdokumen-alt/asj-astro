@@ -34,11 +34,11 @@ export default function TabConfig() {
     { id: 'tahapan_db', label: 'Tahapan Internal DB', options: ['Persiapan', 'Dokumen', 'MCU', 'Wawancara', 'Keberangkatan'] },
     { id: 'bidang_kerja', label: 'Bidang Pekerjaan', options: ['Manufaktur', 'Pertanian', 'Perikanan', 'Konstruksi', 'Perawatan Lansia', 'Logistik', 'F&B', 'Perhotelan'] },
     { id: 'lokasi_penempatan', label: 'Lokasi Penempatan', options: ['Tokyo', 'Osaka', 'Nagoya', 'Fukuoka', 'Sapporo', 'Sendai', 'Yokohama'] },
-    { id: 'pendidikan', label: 'Pendidikan', options: ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2'] },
+    { id: 'pendidikan', label: 'Pendidikan', options: ['SD', 'SMP', 'SMA', 'SMK', 'MA', 'D3', 'D4', 'S1', 'S2', 'LPK'] },
     { id: 'status_lamaran', label: 'Status Lamaran', options: ['Baru', 'Review', 'Diterima', 'Ditolak', 'On Hold'] },
     { id: 'tahapan_progres', label: 'Tahapan Progres', options: ['Pendaftaran', 'Seleksi', 'Dokumen', 'MCU', 'Wawancara', 'Keberangkatan'] },
     { id: 'gender', label: 'Gender', options: ['Laki-laki', 'Perempuan'] },
-    { id: 'jenjang_pendidikan', label: 'Jenjang Pendidikan', options: ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2'] },
+    { id: 'jenjang_pendidikan', label: 'Jenjang Pendidikan', options: ['SD', 'SMP', 'SMA', 'SMK', 'MA', 'D3', 'D4', 'S1', 'S2', 'LPK'] },
   ]);
   const [loading, setLoading] = useState(true);
   const [pengumuman, setPengumuman] = useState('');

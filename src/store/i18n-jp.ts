@@ -2132,6 +2132,8 @@ export const jpTranslations: Record<string, string> = {
     "master.section_medis": "健康記録",
     "master.edu_jenjang": "学歴",
     "master.edu_sma": "高校",
+    "master.edu_smk": "高等専門学校",
+    "master.edu_ma": "マドラサ・アリヤ",
     "master.edu_sekolah": "学校名",
     "master.edu_tahun_awal": "開始年",
     "master.edu_tahun_akhir": "終了年",

@@ -309,11 +309,46 @@ describe('rirekisho-detail · pendidikan (3 baris), pekerjaan (2 baris), keluarg
     /* `I32` = 在日親戚 untuk baris pertama — `無` kalau tidak ada kenalan di
        Jepang, seperti berkas contoh. */
     expect(v.I32).toBe('無');
-    /* `I33` berisi PERTANYAAN 「日本へ行く事に家族は」 di template aslinya, dan
-       `I34` jawabannya. Renderer tidak boleh menimpanya. */
-    for (const sel of ['I33', 'I34', 'I35', 'I36']) {
+    /* `I33` berisi PERTANYAAN 「日本へ行く事に家族は」 di template aslinya —
+       renderer tidak boleh menimpanya. `I34` jawabannya, jadi DITULIS (kosong
+       kalau kolom `restu_keluarga` belum diisi). */
+    expect(v.I33, 'I33 berisi pertanyaan template').toBeUndefined();
+    expect(v.I34).toBe('');
+    for (const sel of ['I35', 'I36']) {
       expect(v[sel], `${sel} tidak boleh ditulis`).toBeUndefined();
     }
+  });
+
+  /* Empat sel yang dulu kosong karena kolomnya belum ada (migrasi 044). */
+  it('集団生活経験, 料理, 個人収入, 家族の賛否 terisi dari kolomnya', () => {
+    const v = buildValues(
+      kandidat({
+        wawancara: {
+          kelompok_tinggal: 'YA',
+          bisa_memasak: 'YA',
+          penghasilan: '3 juta',
+          restu_keluarga: 'YA',
+        },
+      }),
+    );
+    expect(v.D15).toBe('有');
+    expect(v.F15).toBe('有');
+    expect(v.D17).toBe('3 JUTA');
+    expect(v.I34).toBe('賛成');
+  });
+
+  it('jawaban 反対 ikut tercetak, bukan disembunyikan sebagai 無', () => {
+    /* Keluarga yang MENOLAK adalah informasi penting bagi pengajar; menyamakannya
+       dengan 無 akan menghilangkan alasan kenapa kandidat ini berisiko. */
+    const v = buildValues(kandidat({ wawancara: { restu_keluarga: 'TIDAK' } }));
+    expect(v.I34).toBe('反対');
+  });
+
+  it('kolom baru kosong: sel tetap kosong, tidak dikarang', () => {
+    const v = buildValues(kosong());
+    expect(v.F15).toBe('');
+    expect(v.D17).toBe('');
+    expect(v.I34).toBe('');
   });
 
   it('keluarga berhenti di 5 baris — baris 37 tidak ditulis', () => {

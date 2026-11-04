@@ -14,8 +14,11 @@ import { TINGKAT_OPTIONS, levelOptions, rankTingkat, sortEduRows } from './cvRow
  */
 
 describe('TINGKAT_OPTIONS', () => {
-  it('is in canonical order SD → SMP → SMA/SMK → D3 → S1 → S2 → LPK', () => {
-    expect([...TINGKAT_OPTIONS]).toEqual(['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'LPK']);
+  it('is in canonical order SD → SMP → SMA → SMK → MA → D3 → D4 → S1 → S2 → LPK', () => {
+    /* SMA dan SMK DIPISAH 2026-11-04. Sebelumnya satu nilai `SMA/SMK` menyimpan
+       65 kandidat, jadi jenis sekolahnya tidak bisa dibaca dari data. Urutannya
+       mengikuti jenjang: SD, SMP, lalu SMA/SMK/MA sejajar, lalu diploma, sarjana. */
+    expect([...TINGKAT_OPTIONS]).toEqual(['SD', 'SMP', 'SMA', 'SMK', 'MA', 'D3', 'D4', 'S1', 'S2', 'LPK']);
   });
 
   it('offers LPK — the level ASJ candidates actually attend', () => {
@@ -37,13 +40,18 @@ describe('TINGKAT_OPTIONS', () => {
 
 describe('levelOptions', () => {
   it('leads with the blank option and keeps the canonical order', () => {
-    expect(levelOptions('')).toEqual(['', 'SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'LPK']);
+    expect(levelOptions('')).toEqual(['', 'SD', 'SMP', 'SMA', 'SMK', 'MA', 'D3', 'D4', 'S1', 'S2', 'LPK']);
   });
 
   it('keeps an off-list stored value selectable instead of dropping it', () => {
-    // Legacy rows carry bare "SMK". Without this the <select> would snap to its
-    // first option and saving an old CV would rewrite the level.
-    expect(levelOptions('SMK')).toEqual(['', 'SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'S2', 'LPK', 'SMK']);
+    // `SMK` sekarang SUDAH ada di daftar, jadi ia tidak ditambahkan lagi di
+    // ujung — dan tidak boleh muncul dua kali.
+    expect(levelOptions('SMK')).toEqual(['', 'SD', 'SMP', 'SMA', 'SMK', 'MA', 'D3', 'D4', 'S1', 'S2', 'LPK']);
+    /* Nilai gabungan lama `SMA/SMK` masih tersimpan di 65 baris. Ia TIDAK ada
+       di daftar baru, jadi harus tetap muncul sebagai opsi tersendiri —
+       kalau tidak, <select> akan melompat ke opsi pertama dan menyimpan ulang
+       CV lama berarti MENULIS ULANG jenjangnya jadi `SD`. */
+    expect(levelOptions('SMA/SMK')).toContain('SMA/SMK');
     expect(levelOptions('SMA NEGERI 1')).toContain('SMA NEGERI 1');
   });
 

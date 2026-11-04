@@ -557,8 +557,8 @@ describe("MasterFullForm — C09 dropdown (jurusan/pekerjaan/kota/hubungan)", ()
     const sel = selectWith(container, "TEKNIK KOMPUTER & JARINGAN (TKJ)", "Jurusan");
     await pick(sel, "TEKNIK KOMPUTER & JARINGAN (TKJ)");
     // Isi jenjang supaya barisnya ikut terkirim (legacy: baris tanpa jenjang = {}).
-    const jenjang = selectWith(container, "SMA/SMK", "Jenjang");
-    await pick(jenjang, "SMA/SMK");
+    const jenjang = selectWith(container, "SMA", "Jenjang");
+    await pick(jenjang, "SMA");
 
     await submitFromStep5();
 
@@ -580,8 +580,8 @@ describe("MasterFullForm — C09 dropdown (jurusan/pekerjaan/kota/hubungan)", ()
     expect(manual).toBeTruthy();
     await fireEvent.input(manual, { target: { value: "TEKNIK OTOMOTIF KAPAL" } });
 
-    const jenjang = selectWith(container, "SMA/SMK", "Jenjang");
-    await pick(jenjang, "SMA/SMK");
+    const jenjang = selectWith(container, "SMA", "Jenjang");
+    await pick(jenjang, "SMA");
 
     await submitFromStep5();
 

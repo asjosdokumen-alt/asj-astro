@@ -1375,7 +1375,7 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     // anything — otherwise this test would pass by asserting nothing.
     fireEvent.input(document.getElementById('ai_hp') as HTMLInputElement, { target: { value: WA } });
     fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMA NEGERI 1' } });
-    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA/SMK' } });
+    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA' } });
     fireEvent.input(document.getElementById('ai_job-perusahaan-id-0') as HTMLInputElement, { target: { value: 'PT TEST' } });
 
     await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
@@ -1384,7 +1384,7 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
 
     expect(payload.pendidikan).toHaveLength(1);
     expect(payload.pendidikan[0].nama_sekolah).toBe('SMA NEGERI 1');
-    expect(payload.pendidikan[0].tingkat).toBe('SMA/SMK');
+    expect(payload.pendidikan[0].tingkat).toBe('SMA');
     expect(payload.pekerjaan).toHaveLength(1);
     expect(payload.pekerjaan[0].nama_perusahaan).toBe('PT TEST');
     // Untouched family row is filtered out rather than sent as an empty object,
@@ -1433,7 +1433,7 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
   // jenjangnya benar, dan baris yang belum diisi tidak boleh ikut terkirim.
   it('form dibuka dengan enam baris pendidikan baku berjenjang SD → LPK', () => {
     render(<AiCvForm />);
-    const levels = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'LPK'];
+    const levels = ['SD', 'SMP', 'SMA', 'D3', 'S1', 'LPK'];
     levels.forEach((lv, i) => {
       expect((document.getElementById(`ai-edu-tingkat-${i}`) as HTMLSelectElement).value).toBe(lv);
       expect(document.getElementById(`ai_edu-sekolah-id-${i}`)).not.toBeNull();
@@ -1441,13 +1441,13 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     // Slotnya sudah penuh (EDU_MAX=6) — tidak perlu tombol "+" untuk pendidikan.
   });
 
-  it('urutan baris pendidikan dipaksa SD → SMP → SMA/SMK, bukan urutan ketik', () => {
+  it('urutan baris pendidikan dipaksa SD → SMP → SMA, bukan urutan ketik', () => {
     render(<AiCvForm seedEdu={false} />);
     // Fill the first row with SMA, then add a second and fill it with SD. The
     // candidate typed the most recent school first — the reported complaint —
     // and the form has to put SD back on top regardless.
     fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMA NEGERI 1' } });
-    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA/SMK' } });
+    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA' } });
 
     fireEvent.click(screen.getAllByText('ai_cv.row_tambah')[0]);
     fireEvent.input(document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement, { target: { value: 'SD NEGERI 2' } });
@@ -1458,7 +1458,7 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     expect((document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement).value).toBe('SD NEGERI 2');
     expect((document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement).value).toBe('SD');
     expect((document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement).value).toBe('SMA NEGERI 1');
-    expect((document.getElementById('ai-edu-tingkat-1') as HTMLSelectElement).value).toBe('SMA/SMK');
+    expect((document.getElementById('ai-edu-tingkat-1') as HTMLSelectElement).value).toBe('SMA');
   });
 
   // The two tests above assert VALUES by slot, and a fully controlled input
@@ -1469,7 +1469,7 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
   it('key baris = identitas, bukan indeks: node DOM ikut PINDAH saat baris diurut ulang', () => {
     render(<AiCvForm seedEdu={false} />);
     fireEvent.input(document.getElementById('ai_edu-sekolah-id-0') as HTMLInputElement, { target: { value: 'SMA NEGERI 1' } });
-    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA/SMK' } });
+    fireEvent.change(document.getElementById('ai-edu-tingkat-0') as HTMLSelectElement, { target: { value: 'SMA' } });
     fireEvent.click(screen.getAllByText('ai_cv.row_tambah')[0]);
     fireEvent.input(document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement, { target: { value: 'SD NEGERI 2' } });
 
@@ -1477,7 +1477,7 @@ describe('AiCvForm — edit manual & seksi dinamis', () => {
     const sdNode = document.getElementById('ai_edu-sekolah-id-1') as HTMLInputElement;
     expect(sdNode.value).toBe('SD NEGERI 2');
 
-    // Changing the level triggers `sortEduRows`; SD outranks SMA/SMK and the
+    // Changing the level triggers `sortEduRows`; SD outranks SMA and the
     // two rows swap.
     fireEvent.change(document.getElementById('ai-edu-tingkat-1') as HTMLSelectElement, { target: { value: 'SD' } });
 

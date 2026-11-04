@@ -825,7 +825,7 @@ export default function MasterFullForm() {
                   <div class="grid grid-cols-2 gap-3">
                     <div class="mb-3"><label class="label" for={`mf-edu-jenjang-${i}`}>{t("master.edu_jenjang")}</label>
                       <select class="input" id={`mf-edu-jenjang-${i}`} value={edu.jenjang} onChange={(e) => { const v = [...eduList]; v[i].jenjang = (e.target as HTMLSelectElement).value; setEduList(v); }}>
-                        <option value="">{t("form.mf_pilih")}</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA/SMK">{t("master.edu_sma")}</option><option value="D3">D3</option><option value="S1">S1</option><option value="S2">S2</option><option value="LPK">LPK</option>
+                        <option value="">{t("form.mf_pilih")}</option><option value="SD">SD</option><option value="SMP">SMP</option><option value="SMA">{t("master.edu_sma")}</option><option value="SMK">{t("master.edu_smk")}</option><option value="MA">{t("master.edu_ma")}</option><option value="D3">D3</option><option value="D4">D4</option><option value="S1">S1</option><option value="S2">S2</option><option value="LPK">LPK</option>
                       </select>
                     </div>
                     <div class="mb-3"><label class="label" for={`mf-edu-nama-${i}`}>{t("master.edu_sekolah")}</label>

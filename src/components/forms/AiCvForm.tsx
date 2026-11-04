@@ -214,7 +214,17 @@ const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '',
  * jenjangnya, dihapus kalau salah, dan urutannya dinormalkan `sortEduRows`
  * sehingga CV mencetak SD → SMP → SMA/SMK → D3 → S1.
  */
-const EDU_SEED_LEVELS = ['SD', 'SMP', 'SMA/SMK', 'D3', 'S1', 'LPK'] as const;
+/* SMA dan SMK DIPISAH (2026-11-04). Pemilik: *"kadang gak tahu detail SMA atau
+   SMK kandidatnya"* — dan data lama membuktikannya: `SMA/SMK` menyimpan 65
+   kandidat dalam satu nilai gabungan, jadi jenis sekolahnya tidak bisa dibaca.
+   `MA` ditambahkan karena madrasah aliyah juga ada di data. Nilai lama
+   `SMA/SMK` sengaja tetap diterima saat membaca (lihat `tingkatJp`). */
+/* Baris AWAL yang sudah disediakan: TETAP ENAM, sama dengan `EDU_MAX` dan
+   dengan jumlah baris yang dicetak template. Yang berubah hanya pilihannya —
+   SMA dan SMK kini dua opsi terpisah (`TINGKAT_OPTIONS` di `lib/cvRows.ts`),
+   jadi baris ke-3 memakai `SMA` sebagai bawaan dan siswa SMK memilih `SMK`
+   sendiri. Menambah baris ketujuh di sini akan melanggar `EDU_MAX`. */
+const EDU_SEED_LEVELS = ['SD', 'SMP', 'SMA', 'D3', 'S1', 'LPK'] as const;
 const seedEduRows = (): EduRow[] => EDU_SEED_LEVELS.map((lv) => ({ ...newEduRow(), tingkat: lv }));
 
 const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '', jenis: '', bidang: '', catatan: '' });

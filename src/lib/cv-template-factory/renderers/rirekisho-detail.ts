@@ -181,6 +181,14 @@ function tahunBulanAkhir(v: unknown): string {
 function tingkatJp(v: unknown): string {
   const t = bersih(v).toUpperCase();
   if (!t) return '';
+  /* Nilai yang SUDAH Jepang dikembalikan apa adanya dalam bentuk baku.
+     Database sempat menyimpan `小学校`/`中学校`/`高校` (diperbaiki migrasi 044,
+     tapi data lama bisa muncul lagi lewat impor), dan tanpa cabang ini `高校`
+     tercetak `高校` sedangkan form memakai `高等学校`. */
+  if (/小学校/.test(t)) return '小学校';
+  if (/中学校/.test(t)) return '中学校';
+  if (/高校|高等/.test(t)) return '高等学校';
+  if (/大学/.test(t)) return '大学';
   if (/^SD|DASAR|^MI\b/.test(t)) return '小学校';
   if (/^SMP|PERTAMA|^MTS/.test(t)) return '中学校';
   if (/^SMA|^SMK|ATAS|^MA\b|ALIYAH|KEJURUAN/.test(t)) return '高等学校';
@@ -203,6 +211,20 @@ function hubunganJp(p: Record<string, unknown>): string {
   const id = bersih(p.hubungan);
   if (id && kanji.test(id)) return id;
   return kanjiHubunganDari(id, jp);
+}
+
+/**
+ * 家族の賛否: `賛成` / `反対`.
+ *
+ * Bukan 有/無 — template menanyakan 「日本へ行く事に家族は」 dan berkas contoh
+ * menjawab `賛成`. Jawaban `反対` adalah informasi yang justru penting bagi
+ * pengajar, jadi ia harus tercetak, bukan disembunyikan sebagai `無`.
+ */
+function setujuJp(v: unknown): string {
+  const t = bersih(v);
+  if (!t) return '';
+  if (/TIDAK|BELUM|MENOLAK|反対|NO\b/i.test(t)) return '反対';
+  return '賛成';
 }
 
 /** Golongan darah: form menulis `B+型`, bukan `B+`. */
@@ -311,15 +333,20 @@ export function buildValues(data: CandidateData): Record<string, string> {
   /* 集団生活経験 = pernah tinggal bersama di asrama/kursus. Diturunkan dari
      `tinggal_kursus_tahun` (angka tahun), bukan dari kolom 有/無 yang tidak ada.
      Kosong kalau kolomnya kosong — bukan ditebak. */
+  /* 集団生活経験: kolom khusus (migrasi 044) lebih dulu; kalau kosong, turun ke
+     `tinggal_kursus_tahun` yang sudah dipakai sebelum kolomnya ada. */
   {
+    const eksplisit = adaTidak(wwn.kelompok_tinggal);
     const th = bersih(fisik.tinggal_kursus_tahun).replace(/[^\d]/g, '');
-    cells.D15 = th === '' ? '' : Number(th) > 0 ? '有' : '無';
+    cells.D15 = eksplisit || (th === '' ? '' : Number(th) > 0 ? '有' : '無');
   }
   cells.J15 = adaTidak(medis.riwayat_medis);
-  /* 料理: tidak ada kolom database untuk "bisa memasak". Ditulis KOSONG secara
-     eksplisit (bukan dibiarkan tidak ada di peta) supaya kalau suatu saat
-     template membawa nilai bawaan, nilai itu ikut dibersihkan. */
-  cells.F15 = '';
+  /* 料理 — kolom `bisa_memasak` (migrasi 044). Sebelum kolom itu ada, sel ini
+     sengaja dibiarkan kosong. */
+  cells.F15 = adaTidak(wwn.bisa_memasak);
+  /* 個人収入 — `D17` adalah satu-satunya sel bebas di baris itu; template
+     aslinya tidak punya tempat jawaban (`E17` sudah label berikutnya). */
+  cells.D17 = kapital(wwn.penghasilan);
   cells.D16 = golDarah(id.golongan_darah);
   cells.F16 = kapital(wwn.motivasi_ke_jepang) || kapital(wwn.tujuan_ke_jepang);
   cells.F17 = kapital(wwn.tabungan);
@@ -397,6 +424,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const nama = bersih(ken.nama_jp) || bersih(ken.nama_id);
     cells.I32 = nama ? kapital(nama) : '無';
   }
+  /* 家族の賛否 — jawaban pertanyaan di `I33`. Kolom `restu_keluarga`
+     (migrasi 044). Sebelum kolom itu ada, sel ini dibiarkan kosong karena
+     menulis `賛成` berarti mengarang persetujuan keluarga. */
+  cells.I34 = setujuJp(wwn.restu_keluarga);
 
   /* ── catatan (38-40) ──────────────────────────────────────────────────── */
   cells.A40 = kapital(data.sertifikasi.catatan_cv);
