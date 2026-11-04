@@ -68,6 +68,17 @@ const AI_ONLY: Record<string, string> = {
   kenalan_di_jepang_hubungan_jp: 'idem',
   kenalan_di_jepang_pekerjaan_jp: 'idem',
   kenalan_di_jepang_alamat_jp: 'idem',
+  /* Migrasi 047. Keputusan pemilik 2026-11-05: DB harus punya pasangan Jepang
+     untuk SEMUA field teks, supaya template bisa memilih sisi mana yang dicetak
+     (kanji saja / ID-JP / ID saja). Pasangan ini diisi tombol Terjemahkan dan
+     CV AI — tidak punya input sendiri di Form Master, dan itu disengaja:
+     kandidat mengetik versi Indonesia, mesin yang mengisi versi Jepang. */
+  bahasa_lain_jp: 'pasangan Jepang; diisi Terjemahkan/AI, tanpa input form',
+  catatan_cv_jp: 'idem',
+  kontak_darurat_nama_jp: 'idem (katakana nama kontak darurat)',
+  level_bahasa_inggris_jp: 'idem',
+  level_bahasa_jepang_jp: 'idem',
+  sertifikat_lain_jp: 'idem',
 };
 
 describe('paritas kolom Form Master ↔ CV AI', () => {

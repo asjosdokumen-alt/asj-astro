@@ -388,7 +388,7 @@ export function buildMasterNested(row: any): any {
       paspor: v('no_paspor'), paspor_status: va(aiI, ['paspor_status'], ''), sim: v('driver_license'), sim_status: va(aiI, ['sim_status'], ''), gender_jp: va(aiI, ['gender_jp'], ''), status_eks_jepang: v('status_eks_jepang'),
       no_coe: v('no_coe'), tgl_terbit_paspor: vd('tgl_terbit_pasport'),
       exp_paspor: vd('exp_pasport'), kota_terbit_paspor: va(aiI, ['kota_paspor', 'kota_terbit_paspor'], 'kota_terbit_pasport'), kota_paspor: va(aiI, ['kota_paspor', 'kota_terbit_paspor'], 'kota_terbit_pasport'),
-      kontak_darurat_nama: va(aiI, ['darurat_nama', 'kontak_darurat_nama'], 'kontak_darurat_nama'), darurat_nama: va(aiI, ['darurat_nama', 'kontak_darurat_nama'], 'kontak_darurat_nama'), kontak_darurat_hubungan: va(aiI, ['darurat_hubungan', 'kontak_darurat_hubungan'], 'kontak_darurat_hubungan'), darurat_hubungan: va(aiI, ['darurat_hubungan', 'kontak_darurat_hubungan'], 'kontak_darurat_hubungan'),
+      kontak_darurat_nama: va(aiI, ['darurat_nama', 'kontak_darurat_nama'], 'kontak_darurat_nama'), darurat_nama: va(aiI, ['darurat_nama', 'kontak_darurat_nama'], 'kontak_darurat_nama'), kontak_darurat_nama_jp: v('kontak_darurat_nama_jp'), kontak_darurat_hubungan: va(aiI, ['darurat_hubungan', 'kontak_darurat_hubungan'], 'kontak_darurat_hubungan'), darurat_hubungan: va(aiI, ['darurat_hubungan', 'kontak_darurat_hubungan'], 'kontak_darurat_hubungan'),
       /* Perjalanan & identitas tambahan (migrasi 022). Dibaca dari KOLOM saja —
          tidak ada padanan di `ai_data_json` lama, karena field ini baru
          ditanyakan sejak 2026-10-27. */
@@ -470,7 +470,11 @@ export function buildMasterNested(row: any): any {
       lama_belajar_jp: v('lama_belajar_jp'), status_belajar_jp: v('status_belajar_jp'),
       bab_belajar_jp: v('bab_belajar_jp'), level_bahasa_inggris: v('level_bahasa_inggris'),
       bahasa_lain: v('bahasa_lain'), level_bahasa_jepang: v('level_bahasa_jepang'),
-      sertifikat_lain: v('sertifikat_lain'), catatan_cv: v('catatan_cv') },
+      sertifikat_lain: v('sertifikat_lain'), catatan_cv: v('catatan_cv'),
+      /* Migrasi 047: pasangan Jepang. Template memilih sisi mana yang dicetak. */
+      bahasa_lain_jp: v('bahasa_lain_jp'), level_bahasa_jepang_jp: v('level_bahasa_jepang_jp'),
+      level_bahasa_inggris_jp: v('level_bahasa_inggris_jp'),
+      sertifikat_lain_jp: v('sertifikat_lain_jp'), catatan_cv_jp: v('catatan_cv_jp') },
     pendidikan: (function () {
       const arr: any[] = [];
       // Migrasi 028: slot ke-6 (LPK). Seed form memuat 6 baris — tanpa ini
@@ -520,7 +524,10 @@ export function buildMasterNested(row: any): any {
           tahun_keluar: v('pekerjaan_' + i + '_tahun_keluar'), gaji: v('pekerjaan_' + i + '_gaji'),
           /* Migrasi 022: 雇用形態 / 業種 / 備考 — dicetak KINKI, Firma, JIPA. */
           jenis: v(`pekerjaan_${i}_jenis`), bidang: v(`pekerjaan_${i}_bidang`),
-          catatan: v(`pekerjaan_${i}_catatan`) });
+          catatan: v(`pekerjaan_${i}_catatan`),
+          /* Migrasi 047: pasangan Jepang untuk 雇用形態 / 業種 / 備考. */
+          jenis_jp: v(`pekerjaan_${i}_jenis_jp`), bidang_jp: v(`pekerjaan_${i}_bidang_jp`),
+          catatan_jp: v(`pekerjaan_${i}_catatan_jp`) });
       }
       return mergeRiwayatArrays(arr.filter((e) => entryHasAny(e, ['perusahaan', 'nama_perusahaan', 'jabatan', 'masuk', 'keluar'])),
         aiArrOf('pekerjaan'), (e) => riwayatKey(e,
@@ -532,7 +539,7 @@ export function buildMasterNested(row: any): any {
       for (let i = 1; i <= 5; i++) {
         const nm = row['keluarga_' + i + '_nama'];
         if (nm === undefined || nm === null) continue;
-        arr.push({ nama: toText(nm), katakana: v('keluarga_' + i + '_katakana'),
+        arr.push({ nama: toText(nm), katakana: v(`keluarga_${i}_katakana`),
           umur: v('keluarga_' + i + '_usia'), usia: v('keluarga_' + i + '_usia'),
           hubungan: v('keluarga_' + i + '_hubungan'), hubungan_jp: v('keluarga_' + i + '_hubungan_jp'),
           pekerjaan: v('keluarga_' + i + '_pekerjaan'), pekerjaan_jp: v('keluarga_' + i + '_pekerjaan_jp'),
@@ -761,8 +768,11 @@ export function buildRiwayatSlots(d: Record<string, unknown>, lengkap: boolean):
     ['_gaji', 'gaji', 'pendapatan'],
     /* Migrasi 022: 雇用形態 / 業種 / 備考. */
     ['_jenis', 'jenis', 'jenis_pekerjaan', 'status_kerja'],
+    ['_jenis_jp', 'jenis_jp'],
     ['_bidang', 'bidang', 'industri'],
+    ['_bidang_jp', 'bidang_jp'],
     ['_catatan', 'catatan', 'keterangan'],
+    ['_catatan_jp', 'catatan_jp'],
   ] as const);
   setSlots('keluarga_', d.keluarga, 5, [
     ['_hubungan', 'hubungan', 'hubungan_id'],
@@ -849,6 +859,8 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
        berisi 13 baris, dan tidak satu pun bisa datang dari CV AI. Nama & hubungan
        ditambahkan bersamaan karena Form Master sudah menanyakan ketiganya. */
     ['kontak_darurat_wa', 'hp_darurat'], ['kontak_darurat_nama', 'darurat_nama'],
+    /* Migrasi 047: nama kontak darurat versi katakana. */
+    ['kontak_darurat_nama_jp', 'kontak_darurat_nama_jp'],
     ['kontak_darurat_hubungan', 'darurat_hubungan'],
     /* ── Migrasi 022 ────────────────────────────────────────────────────────
        Perjalanan, wilayah sekolah, dan rencana SIM. Semuanya dicetak form CV
@@ -933,6 +945,10 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
     ['bab_belajar_jp', 'bab_belajar_jp'], ['level_bahasa_inggris', 'level_bahasa_inggris'],
     ['bahasa_lain', 'bahasa_lain'], ['level_bahasa_jepang', 'level_bahasa_jepang'],
     ['sertifikat_lain', 'sertifikat_lain'], ['catatan_cv', 'catatan_cv'],
+    /* Migrasi 047: pasangan Jepang untuk field teks di seksi ini. */
+    ['bahasa_lain_jp', 'bahasa_lain_jp'], ['level_bahasa_jepang_jp', 'level_bahasa_jepang_jp'],
+    ['level_bahasa_inggris_jp', 'level_bahasa_inggris_jp'],
+    ['sertifikat_lain_jp', 'sertifikat_lain_jp'], ['catatan_cv_jp', 'catatan_cv_jp'],
   ],
   /* Kenalan di Jepang. Seksi ini TIDAK dikelola `aiData` (dipertahankan dari
      baris lama), jadi pemetaannya baru berguna setelah `aiOut` yang dipakai —

@@ -95,6 +95,13 @@ const AI_ID_JP_PAIRS: Array<{
   { idPath: ['kenalan_jepang', 'hubungan_id'], jpPath: ['kenalan_jepang', 'hubungan_jp'] },
   { idPath: ['kenalan_jepang', 'pekerjaan_id'], jpPath: ['kenalan_jepang', 'pekerjaan_jp'] },
   { idPath: ['kenalan_jepang', 'alamat_id'], jpPath: ['kenalan_jepang', 'alamat_jp'] },
+  /* Migrasi 047: field teks yang sekarang punya kolom Jepang. Tanpa baris ini
+     kolomnya ada tetapi tombol Terjemahkan tidak pernah mengisinya. */
+  { idPath: ['sertifikasi', 'bahasa_lain'], jpPath: ['sertifikasi', 'bahasa_lain_jp'] },
+  { idPath: ['sertifikasi', 'level_bahasa_jepang'], jpPath: ['sertifikasi', 'level_bahasa_jepang_jp'] },
+  { idPath: ['sertifikasi', 'level_bahasa_inggris'], jpPath: ['sertifikasi', 'level_bahasa_inggris_jp'] },
+  { idPath: ['sertifikasi', 'sertifikat_lain'], jpPath: ['sertifikasi', 'sertifikat_lain_jp'] },
+  { idPath: ['sertifikasi', 'catatan_cv'], jpPath: ['sertifikasi', 'catatan_cv_jp'] },
 ];
 
 /**
@@ -112,6 +119,10 @@ const ARRAY_FIELD_PAIRS: Array<{ type: string; idKey: string; jpKey: string; jen
   { type: 'pekerjaan', idKey: 'jabatan', jpKey: 'jabatan_jp' },
   { type: 'keluarga', idKey: 'hubungan_id', jpKey: 'hubungan_jp' },
   { type: 'keluarga', idKey: 'pekerjaan', jpKey: 'pekerjaan_jp' },
+  /* Migrasi 047: 雇用形態 / 業種 / 備考. */
+  { type: 'pekerjaan', idKey: 'jenis', jpKey: 'jenis_jp' },
+  { type: 'pekerjaan', idKey: 'bidang', jpKey: 'bidang_jp' },
+  { type: 'pekerjaan', idKey: 'catatan', jpKey: 'catatan_jp' },
 ];
 function getNested(obj: any, path: string[]): string {
   let cur = obj;
@@ -144,6 +155,8 @@ function setNested(obj: any, path: string[], val: string): void {
 const AI_KATAKANA_PAIRS: Array<{ idPath: string[]; jpPath: string[] }> = [
   { idPath: ['identitas', 'nama_lengkap'], jpPath: ['identitas', 'katakana'] },
   { idPath: ['identitas', 'panggilan'], jpPath: ['identitas', 'panggilan_katakana'] },
+  /* Migrasi 047: nama kontak darurat juga nama orang. */
+  { idPath: ['identitas', 'darurat_nama'], jpPath: ['identitas', 'kontak_darurat_nama_jp'] },
   // Nama kenalan juga nama orang — pasangan `nama_id`→`nama_jp` di daftar
   // terjemahan sengaja TIDAK dipakai untuk orang; lihat catatan di atas.
   { idPath: ['kenalan_jepang', 'nama_id'], jpPath: ['kenalan_jepang', 'nama_jp'] },

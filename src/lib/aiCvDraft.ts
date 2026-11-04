@@ -87,6 +87,9 @@ export const AI_CV_FLAT_KEYS = [
   'wilayah_sekolah',
   'lama_belajar_jp', 'status_belajar_jp', 'bab_belajar_jp', 'level_jepang',
   'bhs_inggris', 'bahasa_lain', 'sertifikat_lain', 'catatan_cv',
+  /* Migrasi 047: pasangan Jepang dari field teks di atas. */
+  'level_jepang_jp', 'bhs_inggris_jp', 'bahasa_lain_jp', 'sertifikat_lain_jp', 'catatan_cv_jp',
+  'darurat_nama_jp',
   'tes_hitung', 'tes_pushup', 'tes_squat', 'tinggal_kursus', 'olahraga', 'mbti',
 ] as const;
 
@@ -234,6 +237,13 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   bahasa_lain: ['sertifikasi.bahasa_lain'],
   sertifikat_lain: ['sertifikasi.sertifikat_lain'],
   catatan_cv: ['sertifikasi.catatan_cv'],
+  /* Migrasi 047. */
+  level_jepang_jp: ['sertifikasi.level_bahasa_jepang_jp'],
+  bhs_inggris_jp: ['sertifikasi.level_bahasa_inggris_jp'],
+  bahasa_lain_jp: ['sertifikasi.bahasa_lain_jp'],
+  sertifikat_lain_jp: ['sertifikasi.sertifikat_lain_jp'],
+  catatan_cv_jp: ['sertifikasi.catatan_cv_jp'],
+  darurat_nama_jp: ['identitas.kontak_darurat_nama_jp'],
 };
 
 /**
@@ -316,8 +326,12 @@ const NESTED_ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, stri
     keluar: 'keluar',
     gaji: 'gaji',
     jenis: 'jenis',
+    /* Migrasi 047: pasangan Jepang 雇用形態 / 業種 / 備考. */
+    jenis_jp: 'jenis_jp',
     bidang: 'bidang',
+    bidang_jp: 'bidang_jp',
     catatan: 'catatan',
+    catatan_jp: 'catatan_jp',
   },
   keluarga: {
     hubungan_id: 'hubungan_id',

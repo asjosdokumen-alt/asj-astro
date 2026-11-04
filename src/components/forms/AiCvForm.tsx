@@ -109,6 +109,10 @@ interface CvData {
   lama_belajar_jp: string; status_belajar_jp: string; bab_belajar_jp: string;
   level_jepang: string; bhs_inggris: string; bahasa_lain: string;
   sertifikat_lain: string; catatan_cv: string;
+  /* Migrasi 047: pasangan Jepang. Diisi tombol Terjemahkan / AI, bukan diketik
+     manual — template memilih sisi mana yang dicetak. */
+  level_jepang_jp: string; bhs_inggris_jp: string; bahasa_lain_jp: string;
+  sertifikat_lain_jp: string; catatan_cv_jp: string; darurat_nama_jp: string;
   [key: string]: string;
 }
 
@@ -167,6 +171,7 @@ interface EduRow {
 interface JobRow {
   id: number;
   perusahaan_id: string; perusahaan_jp: string; jabatan_id: string; jabatan_jp: string;
+  jenis_jp: string; bidang_jp: string; catatan_jp: string;
   masuk: string; keluar: string; gaji: string;
   /** 雇用形態 / 業種 / 備考 — migrasi 022. */
   jenis: string; bidang: string; catatan: string;
@@ -229,7 +234,7 @@ const newEduRow = (): EduRow => ({ id: nextRowId(), tingkat: '', sekolah_id: '',
 const EDU_SEED_LEVELS = ['SD', 'SMP', 'SMA', 'D3', 'S1', 'LPK'] as const;
 const seedEduRows = (): EduRow[] => EDU_SEED_LEVELS.map((lv) => ({ ...newEduRow(), tingkat: lv }));
 
-const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '', jenis: '', bidang: '', catatan: '' });
+const newJobRow = (): JobRow => ({ id: nextRowId(), perusahaan_id: '', perusahaan_jp: '', jabatan_id: '', jabatan_jp: '', masuk: '', keluar: '', gaji: '', jenis: '', bidang: '', catatan: '', jenis_jp: '', bidang_jp: '', catatan_jp: '' });
 const newFamRow = (): FamRow => ({ id: nextRowId(), hubungan_id: '', hubungan_jp: '', nama: '', katakana: '', umur: '', pekerjaan_id: '', pekerjaan_jp: '', gaji: '', tinggal: '', hp: '' });
 
 /**
@@ -1130,6 +1135,7 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           golongan_darah: cv.goldar, status_nikah: cv.status, anak: cv.anak,
           email: cv.email, alamat: cv.alamat, alamat_jp: alamatJp, hp: cv.hp, hp_darurat: cv.hpdarurat,
           darurat_nama: cv.darurat_nama, darurat_hubungan: cv.darurat_hubungan,
+          darurat_nama_jp: cv.darurat_nama_jp,
           ktp: cv.ktp, paspor: cv.paspor, sim: cv.sim,
           // Legacy menyimpan status paspor/SIM di identitas.* (ai_form.ts
           // enableSimPasporConditional). Tanpa ini jawaban "TIDAK ADA" hilang:
@@ -1196,6 +1202,12 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           bab_belajar_jp: cv.bab_belajar_jp, level_bahasa_jepang: cv.level_jepang,
           level_bahasa_inggris: cv.bhs_inggris, bahasa_lain: cv.bahasa_lain,
           sertifikat_lain: cv.sertifikat_lain, catatan_cv: cv.catatan_cv,
+          /* Migrasi 047: pasangan Jepang, diisi Terjemahkan/AI. */
+          level_bahasa_jepang_jp: cv.level_jepang_jp,
+          level_bahasa_inggris_jp: cv.bhs_inggris_jp,
+          bahasa_lain_jp: cv.bahasa_lain_jp,
+          sertifikat_lain_jp: cv.sertifikat_lain_jp,
+          catatan_cv_jp: cv.catatan_cv_jp,
         },
         /* The three dynamic sections. Rows the candidate never filled in are
            dropped rather than sent as empty objects: this payload is what the
@@ -1220,6 +1232,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
             tahun_masuk: j.masuk, tahun_keluar: j.keluar, gaji: j.gaji,
             /* 雇用形態 / 業種 / 備考 (migrasi 022). */
             jenis: j.jenis, bidang: j.bidang, catatan: j.catatan,
+            /* Migrasi 047: pasangan Jepang (diisi Terjemahkan/AI). */
+            jenis_jp: j.jenis_jp, bidang_jp: j.bidang_jp, catatan_jp: j.catatan_jp,
           })),
         keluarga: famList
           .filter(f => f.nama || f.hubungan_id)

@@ -4,7 +4,7 @@
 // salah map = kandidat dapat model wawancara bidang yang salah.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { normalizeBidang, boundTranscript, AI_FORM_DATA_INSTRUCTION } from './chat';
+import { normalizeBidang, boundTranscript, AI_FORM_DATA_INSTRUCTION, kumpulkanTugasTerjemah } from './chat';
 
 // Known-word assertions: tests prove non-null by asserting it once (helper),
 // mirroring how the callers treat matched bidang (BIDANG_DEFAULT fallback).
@@ -130,5 +130,37 @@ describe('prompt — alamat wajib berkode pos (format KTP)', () => {
 
   it('aturan anti-mengarang data pribadi tidak ikut hilang', () => {
     expect(AI_FORM_DATA_INSTRUCTION).toMatch(/JANGAN menebak\/mengarang data yang tidak disebut/i);
+  });
+});
+
+// Migrasi 047 menambah kolom `_jp` untuk field teks. Kolom yang ada tetapi
+// tidak terdaftar di daftar tugas = kolom yang tidak pernah terisi, dan tidak
+// ada satu pun galat. Tes ini mengunci bahwa tombol Terjemahkan benar-benar
+// membuat tugas untuk keenam field baru + tiga kolom baris pekerjaan.
+describe('migrasi 047 — field teks punya tugas terjemahan', () => {
+  it('membuat tugas untuk skalar dan baris pekerjaan', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      identitas: { darurat_nama: 'SITI' },
+      sertifikasi: {
+        bahasa_lain: 'Mandarin',
+        level_bahasa_jepang: 'N4',
+        level_bahasa_inggris: 'menengah',
+        sertifikat_lain: 'JFT-Basic',
+        catatan_cv: 'Siap ditempatkan',
+      },
+      pekerjaan: [{ jenis: 'KARYAWAN TETAP', bidang: 'Manufaktur', catatan: 'lembur penuh' }],
+    });
+    const paths = tugas.map((t) => t.path.join('.'));
+    expect(paths).toContain('sertifikasi.bahasa_lain_jp');
+    expect(paths).toContain('sertifikasi.level_bahasa_jepang_jp');
+    expect(paths).toContain('sertifikasi.level_bahasa_inggris_jp');
+    expect(paths).toContain('sertifikasi.sertifikat_lain_jp');
+    expect(paths).toContain('sertifikasi.catatan_cv_jp');
+    expect(paths).toContain('pekerjaan.0.jenis_jp');
+    expect(paths).toContain('pekerjaan.0.bidang_jp');
+    expect(paths).toContain('pekerjaan.0.catatan_jp');
+    // Nama kontak darurat = nama orang → katakana, bukan terjemahan biasa.
+    const katakana = tugas.find((t) => t.path.join('.') === 'identitas.kontak_darurat_nama_jp');
+    expect(katakana?.jenis).toBe('kata');
   });
 });
