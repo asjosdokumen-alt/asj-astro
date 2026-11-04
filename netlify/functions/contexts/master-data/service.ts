@@ -47,6 +47,8 @@ const MASTER_FIELD_LABEL: Record<string, string> = {
   kenalan_di_jepang_pekerjaan: 'kenalan di Jepang', kenalan_di_jepang_usia: 'kenalan di Jepang',
   kenalan_di_jepang_alamat: 'alamat kenalan di Jepang',
   harapan_gaji_yen: 'harapan gaji', harapan_tabungan: 'harapan tabungan',
+  kelompok_tinggal: 'pengalaman hidup berkelompok', bisa_memasak: 'bisa memasak',
+  penghasilan: 'penghasilan sekarang', restu_keluarga: 'restu keluarga',
   bahasa: 'bahasa Jepang', jft: 'JFT', bidangssw: 'SSW', ssw: 'SSW',
   tgl_terbit_pasport: 'tgl terbit paspor', exp_pasport: 'masa berlaku paspor',
   kota_terbit_pasport: 'kota terbit paspor',
@@ -73,6 +75,9 @@ export const MASTER_COLUMN_MAP: Record<string, string> = {
   kekurangan: 'kekurangan', keahlianKhusus: 'keahlian_khusus',
   hobi: 'hobi_dan_keterampilan', alasanBidang: 'alasan_memilih_bidang',
   motivasiJepang: 'motivasi_ke_jepang', keinginan: 'keinginan_pribadi',
+  /* Migrasi 044. Kunci kiri = nama field di MasterFullForm, kanan = kolom. */
+  kelompokTinggal: 'kelompok_tinggal', bisaMemasak: 'bisa_memasak',
+  penghasilan: 'penghasilan', restuKeluarga: 'restu_keluarga',
   rencanaPulang: 'rencana_setelah_pulang', tujuanJepang: 'tujuan_ke_jepang',
   eksJepang: 'status_eks_jepang', daruratNama: 'kontak_darurat_nama',
   daruratHubungan: 'kontak_darurat_hubungan', daruratWa: 'kontak_darurat_wa',
@@ -423,6 +428,14 @@ export function buildMasterNested(row: any): any {
       rencana_pulang_jp: vw('rencana_setelah_pulang_jp', 'rencana_setelah_pulang_jp'),
       gaji_yen: vw('harapan_gaji_yen', 'gaji_yen'),
       tabungan: vw('harapan_tabungan', 'tabungan'),
+      /* Empat kolom migrasi 044 — jawaban wawancara yang dipakai template
+         `rirekisho-detail`. Tanpa baris di sini, `getDrafCvMaster` tidak
+         mengembalikannya, sehingga Master form selalu tampil kosong walau
+         kolomnya terisi. */
+      kelompok_tinggal: vw('kelompok_tinggal', 'kelompok_tinggal'),
+      bisa_memasak: vw('bisa_memasak', 'bisa_memasak'),
+      penghasilan: vw('penghasilan', 'penghasilan'),
+      restu_keluarga: vw('restu_keluarga', 'restu_keluarga'),
       /* `lama_di_jepang` akhirnya punya kolom (migrasi 022). Sebelumnya hanya
          hidup di `ai_data_json`, jadi kandidat jalur Form Master tidak punya
          tempat menyimpannya dan JIPA `E55` (在日期間) selalu kosong.

@@ -53,6 +53,8 @@ interface MasterData {
   promosi: string; kelebihan: string; kekurangan: string; keahlianKhusus: string;
   hobi: string; alasanBidang: string; motivasiJepang: string; keinginan: string;
   rencanaPulang: string; tujuanJepang: string; lamaJepang: string; gajiYen: string; tabungan: string;
+  /* Migrasi 044 — dipakai template `rirekisho-detail`. */
+  kelompokTinggal: string; bisaMemasak: string; penghasilan: string; restuKeluarga: string;
   /* Sertifikasi */
   eksJepang: string; noCoe: string; noPaspor: string; tglTerbitPaspor: string;
   expPaspor: string; kotaPaspor: string; bhsJepang: string; nilai: string;
@@ -101,6 +103,7 @@ const EMPTY: MasterData = {
   merokok:'TIDAK', alkohol:'TIDAK', penyakit:'', alergi:'', laka:'',
   promosi:'', kelebihan:'', kekurangan:'', keahlianKhusus:'', hobi:'', alasanBidang:'',
   motivasiJepang:'', keinginan:'', rencanaPulang:'', tujuanJepang:'', lamaJepang:'', gajiYen:'', tabungan:'',
+  kelompokTinggal:'', bisaMemasak:'', penghasilan:'', restuKeluarga:'',
   eksJepang:'BELUM PERNAH', noCoe:'', noPaspor:'', tglTerbitPaspor:'', expPaspor:'', kotaPaspor:'',
   bhsJepang:'-', nilai:'', lisensi:'', lisensiManual:'', lisensi2:'', lisensi2Manual:'',
   visa:'', negaraLain:'', jarakJakarta:'', lamaPenerbangan:'', rencanaSim:'', wilayahSekolah:'',
@@ -795,6 +798,18 @@ export default function MasterFullForm() {
                 <F label={t("form.mf_gaji_yen")} k="gajiYen" type="number" ph="Misal: 200000" twoCol />
               </div>
               <F label={t("form.mf_tabungan")} k="tabungan" ph={t("form.mf_ph_misal_tabungan")} />
+
+              {/* ── Empat jawaban wawancara yang dipakai template
+                  `rirekisho-detail` (migrasi 044). Tiga di antaranya ya/tidak,
+                  jadi memakai dropdown yang sama dengan 喫煙/飲酒 — bukan kotak
+                  teks bebas, karena isinya akan tercetak apa adanya ke CV
+                  berbahasa Jepang dan "iya"/"yes"/"Y" tidak bisa dipetakan. */}
+              <div class="grid grid-cols-2 gap-3">
+                <F label={t("form.mf_kelompok_tinggal")} k="kelompokTinggal" opts={valuesOf(YA_TIDAK_PAIRS)} twoCol />
+                <F label={t("form.mf_bisa_memasak")} k="bisaMemasak" opts={valuesOf(YA_TIDAK_PAIRS)} twoCol />
+              </div>
+              <F label={t("form.mf_penghasilan")} k="penghasilan" ph={t("form.mf_ph_penghasilan")} />
+              <F label={t("form.mf_restu_keluarga")} k="restuKeluarga" opts={valuesOf(YA_TIDAK_PAIRS)} />
 
               {/* ── Tes & kebiasaan fisik (migrasi 022) ──────────────────────
                   Diisi agensi saat seleksi; dicetak KINKI di blok 体力試験 /

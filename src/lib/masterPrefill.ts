@@ -61,6 +61,10 @@ export function mapMasterNestedToForm(n: any): MasterFormPrefill {
     merokok: s(md.rokok), alkohol: s(md.alkohol),
     alergi: s(md.alergi_id), penyakit: s(md.riwayat_medis_id), laka: s(md.riwayat_kecelakaan_id),
     promosi: s(ww.promosi_id), kelebihan: s(ww.kelebihan_id), kekurangan: s(ww.kekurangan_id),
+    /* Migrasi 044 — tanpa baris ini Master form terbuka kosong untuk keempat
+       field itu walau kolomnya sudah terisi. */
+    kelompokTinggal: s(ww.kelompok_tinggal), bisaMemasak: s(ww.bisa_memasak),
+    penghasilan: s(ww.penghasilan), restuKeluarga: s(ww.restu_keluarga),
     keahlianKhusus: s(ww.keahlian_khusus), hobi: s(ww.hobi_id),
     alasanBidang: s(ww.alasan_memilih_bidang), motivasiJepang: s(ww.motivasi_ke_jepang),
     keinginan: s(ww.keinginan_pribadi), rencanaPulang: s(ww.rencana_setelah_pulang),

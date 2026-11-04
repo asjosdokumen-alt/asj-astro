@@ -107,3 +107,21 @@ describe('findMasterByWa — tak pernah menarik tabel tanpa filter', () => {
     expect(m.calls).toHaveLength(0);
   });
 });
+
+// ==========================================
+// MASTER_COLUMN_MAP harus memuat empat kolom migrasi 044
+//
+// Ini mata rantai TULIS. `submitMasterForm` membangun baris dengan
+// mengiterasi map ini; field yang tidak ada di sini diterima dari form lalu
+// DIBUANG tanpa suara — Master form tampak menyimpan, tetapi kolomnya tetap
+// kosong dan CV-nya tetap berlubang.
+// ==========================================
+describe('MASTER_COLUMN_MAP — kolom migrasi 044', () => {
+  it('memetakan keempat field form ke kolom yang benar', async () => {
+    const { MASTER_COLUMN_MAP } = await import('./service');
+    expect(MASTER_COLUMN_MAP.kelompokTinggal).toBe('kelompok_tinggal');
+    expect(MASTER_COLUMN_MAP.bisaMemasak).toBe('bisa_memasak');
+    expect(MASTER_COLUMN_MAP.penghasilan).toBe('penghasilan');
+    expect(MASTER_COLUMN_MAP.restuKeluarga).toBe('restu_keluarga');
+  });
+});

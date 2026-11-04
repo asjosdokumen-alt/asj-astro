@@ -95,3 +95,39 @@ describe('mapMasterNestedToForm — prefill MasterFullForm dari getDrafCvMaster'
     expect(p.famList).toHaveLength(5);
   });
 });
+
+// ==========================================
+// SINKRONISASI empat kolom migrasi 044
+//
+// Rantainya panjang dan setiap mata rantai bisa putus TANPA error:
+//   jawaban wawancara → kolom `kelompok_tinggal` → buildMasterNested →
+//   mapMasterNestedToForm → field `kelompokTinggal` di Master form → MASTER_COLUMN_MAP
+// Kalau satu mata rantai lupa diperbarui, formnya cuma tampil kosong dan
+// menyimpan kosong — persis keluhan "isinya tidak sinkron".
+// ==========================================
+describe('masterPrefill — empat kolom migrasi 044', () => {
+  const nested = {
+    wawancara: {
+      kelompok_tinggal: 'YA',
+      bisa_memasak: 'TIDAK',
+      penghasilan: '3.000.000',
+      restu_keluarga: 'YA',
+    },
+  };
+
+  it('keempatnya muncul di form dengan nama field yang dipakai MasterFullForm', () => {
+    const d = mapMasterNestedToForm(nested).data as Record<string, string>;
+    expect(d.kelompokTinggal).toBe('YA');
+    expect(d.bisaMemasak).toBe('TIDAK');
+    expect(d.penghasilan).toBe('3.000.000');
+    expect(d.restuKeluarga).toBe('YA');
+  });
+
+  it('kosong tetap kosong, bukan "undefined"', () => {
+    const d = mapMasterNestedToForm({ wawancara: {} }).data as Record<string, string>;
+    expect(d.kelompokTinggal).toBe('');
+    expect(d.bisaMemasak).toBe('');
+    expect(d.penghasilan).toBe('');
+    expect(d.restuKeluarga).toBe('');
+  });
+});
