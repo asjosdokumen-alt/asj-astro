@@ -284,11 +284,18 @@ export async function gabungBankDanJawaban(wa: string) {
  */
 export async function statusVip(wa: string): Promise<boolean | null> {
   try {
+    /* `kelas` ikut di-SELECT sejak migrasi 042. Tanpa ini, 117 siswa yang
+       kelasnya ditulis ke KOLOM (bukan ke tag `[KELAS xx]`) akan DITOLAK dari
+       latihan kosakata/arcade/AI-CV — gerbangnya membaca catatan saja, jadi
+       kolomnya tidak pernah terlihat. Dua-duanya dibaca (OR), supaya 39
+       kandidat yang hanya punya tag tetap lolos. */
     const rows = await supabaseJson('GET', 'database_candidate', {
-      query: { select: 'catatan_internal', no_wa: `eq.${normalizeWa(wa)}`, limit: '1' },
+      query: { select: 'catatan_internal,kelas', no_wa: `eq.${normalizeWa(wa)}`, limit: '1' },
     });
     if (!Array.isArray(rows) || !rows.length) return false;
-    return isVipCatatan((rows[0] as { catatan_internal?: unknown }).catatan_internal);
+    const baris = rows[0] as { catatan_internal?: unknown; kelas?: unknown };
+    if (isVipCatatan(baris.catatan_internal)) return true;
+    return String(baris.kelas ?? '').trim() !== '';
   } catch {
     return null;
   }

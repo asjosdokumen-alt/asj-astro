@@ -245,6 +245,36 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
     const { ringkasBank } = await import('../_lib/matematika/bank');
     return { success: true, wa, isVip: true, ...ringkasBank() };
   },
+  // ── Papan peringkat game ─────────────────────────────────────────────────
+  // Pemilik 2026-11-04: *"game yg bisa ada leaderboardnya … kasih di menu admin
+  // supaya bisa check langsung"*.
+  //
+  // Gerbangnya `tolakKecualiSiswa` — sama dengan bank kosakata. `wa` diambil
+  // dari argumen dan diverifikasi sesi, jadi siswa tidak bisa mengirim skor atas
+  // nama orang lain; `nama`/`kelas` malah diambil ulang dari DB di dalam
+  // `simpanSkor` (lihat komentarnya).
+  simpanSkorGame: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '').trim();
+    const tolak = await tolakKecualiSiswa(s, wa);
+    if (tolak) return tolak;
+    const { simpanSkor } = await import('../_lib/game/leaderboard');
+    return simpanSkor({ wa, game: p?.[1], skor: p?.[2], detail: p?.[3] });
+  },
+  // ADMIN saja. Papan peringkat memuat NAMA siswa satu angkatan; siswa lain
+  // tidak perlu melihatnya, dan gerbang admin di sini konsisten dengan
+  // `getLinkWawancara` di atas.
+  getPapanSkor: async (p: unknown[], s?: string) => {
+    const { requireAdmin } = await import('../contexts/identity');
+    const guard = requireAdmin(s || '');
+    if (guard.error) return guard.error;
+    const { ringkasPapan, papanPeringkat } = await import('../_lib/game/leaderboard');
+    const game = p?.[0];
+    const limit = p?.[1];
+    /* Tanpa `game` → ringkasan ketiga papan (yang dipakai tab admin sekaligus).
+       Dengan `game` → satu papan penuh, untuk daftar yang lebih panjang. */
+    if (game === undefined || game === null || game === '') return ringkasPapan(Number(limit) || 10);
+    return papanPeringkat(game, Number(limit) || 50);
+  },
   getLinkWawancara: async (p: unknown[], s?: string) => {
     const { linkWawancara } = await import('../_lib/wawancara/bank');
     const { requireAdmin } = await import('../contexts/identity');

@@ -19,11 +19,16 @@ function mapCandidate(row: Record<string, unknown>) {
   ).replace(/\D/g, '');
   const idKandidat = toText(pick(row, ['id_kandidat', 'id', 'kandidat_id', 'uid']));
   const catatanInt = toText(pick(row, ['catatan_internal', 'catatan_int']));
+  /* KELAS: kolom lebih dulu, tag `[KELAS xx]` sebagai cadangan.
+     Sejak migrasi 042 kelas punya kolom sendiri. Tag lama TETAP dibaca supaya
+     39 kandidat yang hanya punya tag tidak kehilangan kelasnya saat migrasi
+     berjalan — dan supaya gerbang VIP tidak tertutup untuk mereka. */
+  const kelasKolom = toText(pick(row, ['kelas'])).trim().toUpperCase();
   // Single source of truth for ASJ student status — legacy semantics
   // (js/admin_modal/cv.ts): a class tag is [KELAS XX] or a bare [TAG];
   // [VIP] is NOT a class (it has its own toggle), so a VIP-only note does
   // not mark the candidate as an ASJ student.
-  let catatanHasClassTag = false;
+  let catatanHasClassTag = kelasKolom !== '';
   {
     const tagRe = /\[(?:KELAS\s*)?([A-Z0-9]+)\]/gi;
     let tagM: RegExpExecArray | null;
@@ -53,7 +58,7 @@ function mapCandidate(row: Record<string, unknown>) {
   const vipSource = catatanInt || catatanAdmin;
   const isVIP = vipSource.includes('[VIP]');
   const kelasMatch = /\[KELAS\s*([A-Z0-9]+)\]/i.exec(vipSource);
-  const kelas = kelasMatch ? kelasMatch[1] : '';
+  const kelas = kelasKolom || (kelasMatch ? kelasMatch[1] : '');
   const tb = toText(pick(row, ['tb']));
   const bb = toText(pick(row, ['bb']));
   const tempatLahir = toText(pick(row, ['tempat_lahir', 'tempatLahir']));

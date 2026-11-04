@@ -32,6 +32,7 @@
  */
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { authStore } from '../../store/authReactive';
+import { bolehKirim, kirimSkor } from '../../lib/skorGame';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema } from '../../lib/schemas';
 import { t, useLang } from '../../store/i18n';
@@ -415,6 +416,12 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     const skor = benar * 50;
     setDurasi(Math.max(1, Math.round((Date.now() - mulaiRef.current) / 1000)));
     const grade = akurasi >= AMBANG.s ? 'S' : akurasi >= AMBANG.a ? 'A' : akurasi >= AMBANG.b ? 'B' : 'C';
+    /* Papan peringkat. Dikirim sekali per ronde; `bolehKirim` menjaga render
+       ganda tidak mengirim dua kali. Kegagalan diabaikan — rekor lokal sudah
+       ditulis di bawah dan itu yang dilihat siswa. */
+    if (skor > 0 && bolehKirim(`matematika:${skor}:${total}`)) {
+      void kirimSkor('matematika', skor, { akurasi, benar, total, grade });
+    }
     if (skor > rekor.skor) {
       const baru = { skor, grade, main: rekor.main + 1 };
       setRekor(baru);

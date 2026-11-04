@@ -19,6 +19,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import { authStore } from '../../store/authReactive';
+import { bolehKirim, kirimSkor } from '../../lib/skorGame';
 import LoginGate from '../ui/LoginGate';
 import { bunyi, ucap } from '../../lib/tts';
 import {
@@ -219,6 +220,31 @@ export default function ArcadeGame() {
   useEffect(() => {
     muatSoal(0);
   }, [level]);
+
+  /* ── Papan peringkat: Genba ────────────────────────────────────────────────
+     Genba punya akhir yang jelas (tiga kesalahan), jadi skornya dikirim tepat
+     saat ronde selesai. `bolehKirim` menjaga agar satu ronde tidak terkirim dua
+     kali bila efek ini berjalan ulang. */
+  useEffect(() => {
+    if (fase !== 'selesai' || skor <= 0) return;
+    if (!bolehKirim(`genba:${skor}`)) return;
+    void kirimSkor('genba', skor, {});
+  }, [fase, skor]);
+
+  /* ── Papan peringkat: Combo ────────────────────────────────────────────────
+     Combo TIDAK punya akhir ronde — ia berjalan selama pemain mau. Mengirim di
+     setiap kalimat selesai berarti puluhan permintaan per menit, jadi dipakai
+     JEDA 5 detik: skor dikirim setelah permainan berhenti berubah selama itu.
+     Efek ini dibersihkan setiap `skorCombo` berubah, sehingga hitungannya
+     selalu mulai lagi dan hanya kiriman TERAKHIR yang benar-benar lolos. */
+  useEffect(() => {
+    if (skorCombo <= 0) return;
+    const id = window.setTimeout(() => {
+      if (!bolehKirim(`combo:${skorCombo}`)) return;
+      void kirimSkor('combo', skorCombo, {});
+    }, 5000);
+    return () => window.clearTimeout(id);
+  }, [skorCombo]);
 
   const ketuk = (k: Kartu, indeks: number) => {
     /* KALIMAT SUDAH SELESAI — abaikan ketukan berikutnya.

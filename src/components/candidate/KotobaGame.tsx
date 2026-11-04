@@ -36,6 +36,7 @@
  */
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { authStore } from '../../store/authReactive';
+import { bolehKirim, kirimSkor } from '../../lib/skorGame';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema } from '../../lib/schemas';
 import { t, useLang } from '../../store/i18n';
@@ -991,6 +992,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   useEffect(() => {
     if (fase !== 'hasil') return;
     setProgres((p) => (p.rekor >= skor ? p : { ...p, rekor: skor }));
+    /* Kirim ke papan peringkat. Penjaga `bolehKirim` mencegah ronde yang sama
+       terkirim dua kali bila efek ini berjalan ulang (render ganda); kuncinya
+       memuat skornya, jadi dua ronde dengan skor berbeda tetap terkirim
+       keduanya. Kegagalan diabaikan — skor lokal sudah tersimpan lebih dulu. */
+    if (skor > 0 && bolehKirim(`kotoba:${skor}`)) void kirimSkor('kotoba', skor, {});
   }, [fase, skor]);
 
   /**

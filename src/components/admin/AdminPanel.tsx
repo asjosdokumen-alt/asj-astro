@@ -20,6 +20,7 @@ import TabMail from './TabMail.tsx';
 import TabJadwal from './TabJadwal.tsx';
 import TabAgenda from './TabAgenda.tsx';
 import TabTugas from './TabTugas.tsx';
+import TabPapanSkor from './TabPapanSkor.tsx';
 import TabWA from './TabWA.tsx';
 import PemberkasanModal from "./PemberkasanModal";
 import UndanganKelasModal from "./UndanganKelasModal";
@@ -74,6 +75,9 @@ const TABS = [
      next to `jadwal`. */
   { id: 'agenda',  icon: 'fa-calendar-check', labelKey: 'admin.tab_agenda' },
   { id: 'tugas',   icon: 'fa-tasks',          labelKey: 'admin.tab_tugas' },
+  /* Papan peringkat game (2026-11-04). Ditaruh paling akhir, bukan di tengah,
+     supaya posisi tujuh entri lama tidak bergeser. */
+  { id: 'skor',    icon: 'fa-medal',          labelKey: 'admin.tab_papan_skor' },
 ] as const;
 
 /**
@@ -303,6 +307,7 @@ const TAB_VIEWS: Record<Tab, FunctionComponent> = {
   wa:      () => <TabWA />,
   agenda:  () => <TabAgenda />,
   tugas:   () => <TabTugas />,
+  skor:    () => <TabPapanSkor />,
   config:  () => <TabConfig />,
 };
 

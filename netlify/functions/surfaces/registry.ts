@@ -143,6 +143,9 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   getBankSsw:                 () => import('./ai').then(m => m.AI_ACTIONS),
   // Bank soal matematika — gerbang siswa ASJ yang sama.
   getBankMatematika:          () => import('./ai').then(m => m.AI_ACTIONS),
+  // Papan peringkat game — simpan skor (siswa) & baca papan (admin).
+  simpanSkorGame:             () => import('./ai').then(m => m.AI_ACTIONS),
+  getPapanSkor:               () => import('./ai').then(m => m.AI_ACTIONS),
   buildAdminAiCandidateSummary:() => import('./ai').then(m => m.AI_ACTIONS),
   submitDataAsj:              () => import('./ai').then(m => m.AI_ACTIONS),
   simpanDataTtdNaitei:        () => import('./ai').then(m => m.AI_ACTIONS),

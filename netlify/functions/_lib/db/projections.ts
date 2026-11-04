@@ -58,12 +58,12 @@ export const PROJECTIONS = {
    */
   CAND_LIGHT_COLS: {
     table: 'database_candidate',
-    columns: 'id,id_kandidat,nama_lengkap,no_wa,gender,usia,nilai_jft_text,status_kandidat,id_loker_pilihan,tahapan_seleksi,updated_at,created_at,tanggal_daftar',
+    columns: 'id,id_kandidat,nama_lengkap,no_wa,gender,usia,nilai_jft_text,status_kandidat,id_loker_pilihan,tahapan_seleksi,updated_at,created_at,tanggal_daftar,kelas',
   },
   /** Everything `mapCandidate()` reads. */
   CAND_MAP_COLS: {
     table: 'database_candidate',
-    columns: 'id,id_kandidat,nama_lengkap,nik,gender,usia,tb,bb,pendidikan,no_wa,id_loker_pilihan,tahapan_seleksi,status_kandidat,tanggal_daftar,catatan_admin,pas_photo,folder_url,jft,ssw,file_cv,password_kandidat,no_pasport,email,tempat_lahir,tgl_lahir,alamat_lengkap,catatan_internal,catatan_external,nilai_jft_text,bidang_ssw_text,created_at,updated_at,password_diubah',
+    columns: 'id,id_kandidat,nama_lengkap,nik,gender,usia,tb,bb,pendidikan,no_wa,id_loker_pilihan,tahapan_seleksi,status_kandidat,tanggal_daftar,catatan_admin,pas_photo,folder_url,jft,ssw,file_cv,password_kandidat,no_pasport,email,tempat_lahir,tgl_lahir,alamat_lengkap,catatan_internal,catatan_external,nilai_jft_text,bidang_ssw_text,created_at,updated_at,password_diubah,kelas',
   },
   /** Login / refresh: the four columns auth actually reads. */
   CAND_AUTH_COLS: {

@@ -31,7 +31,7 @@
  * arrays. No mocking, because there is nothing to mock.
  */
 import { describe, it, expect } from 'vitest';
-import { attachApplications } from './candidates';
+import { attachApplications, mapCandidate } from './candidates';
 import { normalizePekerjaan, pekerjaanDariSlot } from './pekerjaan';
 
 /** A candidate row as the caller would supply it (WA is the join key). */
@@ -213,5 +213,65 @@ describe('pekerjaan — normalisasi sebelum menyentuh tabel', () => {
   it('idempoten: masukan yang sama menghasilkan keluaran yang sama', () => {
     const src = [{ perusahaan: 'PT B', masuk: '2020' }, { perusahaan: 'PT A', masuk: '2018' }];
     expect(normalizePekerjaan(normalizePekerjaan(src))).toEqual(normalizePekerjaan(src));
+  });
+});
+
+// ==========================================
+// KELAS: kolom vs tag `[KELAS xx]`
+//
+// Sampai migrasi 042 kelas hanya hidup sebagai teks di `catatan_internal`, dan
+// 117 siswa diisi kelasnya lewat KOLOM baru. Dua hal bisa salah tanpa error:
+//
+//   • kolomnya tidak dibaca  -> siswa kehilangan kelas DAN gerbang VIP-nya
+//     tertutup (statusVip dulu hanya membaca catatan);
+//   • tag berhenti dibaca    -> 39 kandidat lama kehilangan kelasnya.
+//
+// Keduanya harus benar SEKALIGUS, jadi keduanya diuji.
+// ==========================================
+describe('mapCandidate — kelas dari kolom, tag sebagai cadangan', () => {
+  const dasar = { id_kandidat: 'K-1', nama_lengkap: 'BUDI', no_wa: '081234567890' };
+
+  it('kolom `kelas` terbaca walau catatan kosong', () => {
+    const c = mapCandidate({ ...dasar, kelas: 'K', catatan_internal: '' });
+    expect(c.kelas).toBe('K');
+    /* isSiswaASJ dihitung dari kelas juga — tanpa ini lencana "Siswa Resmi ASJ"
+       hilang untuk 117 siswa yang kelasnya hanya ada di kolom. */
+    expect(c.isSiswaASJ).toBe(true);
+  });
+
+  it('tag `[KELAS G]` tetap terbaca saat kolom kosong', () => {
+    const c = mapCandidate({ ...dasar, kelas: null, catatan_internal: '[KELAS G] siap' });
+    expect(c.kelas).toBe('G');
+    expect(c.isSiswaASJ).toBe(true);
+  });
+
+  it('KOLOM menang atas tag yang berbeda', () => {
+    /* Kalau tag menang, memindahkan siswa ke kelas lain lewat kolom tidak akan
+       berpengaruh apa pun selama tag lamanya masih ada — dan tidak ada yang
+       menyadarinya sampai siswa itu mengeluh kelasnya salah. */
+    const c = mapCandidate({ ...dasar, kelas: 'B', catatan_internal: '[KELAS G]' });
+    expect(c.kelas).toBe('B');
+  });
+
+  it('kode kelas dinormalkan ke huruf besar dan dirapikan spasinya', () => {
+    const c = mapCandidate({ ...dasar, kelas: '  k ', catatan_internal: '' });
+    expect(c.kelas).toBe('K');
+  });
+
+  it('tanpa kolom dan tanpa tag kurung: kelas kosong, bukan siswa ASJ', () => {
+    const c = mapCandidate({ ...dasar, kelas: null, catatan_internal: 'sudah mcu, berkas lengkap' });
+    expect(c.kelas).toBe('');
+    expect(c.isSiswaASJ).toBe(false);
+  });
+
+  it('CATATAN: tag kurung NON-KELAS tetap dihitung sebagai siswa ASJ', () => {
+    /* Ini perilaku LAMA yang dipertahankan, bukan yang saya inginkan: komentar
+       di `mapCandidate` menyebut "a class tag is [KELAS XX] or a bare [TAG]",
+       jadi `[MCU]` pun membuat `isSiswaASJ` true. Tes ini mengunci keadaan itu
+       supaya tidak berubah diam-diam — kalau nanti dilonggarkan/diperketat,
+       perubahan itu harus disengaja. */
+    const c = mapCandidate({ ...dasar, kelas: null, catatan_internal: '[MCU] sudah' });
+    expect(c.kelas).toBe('');
+    expect(c.isSiswaASJ).toBe(true);
   });
 });
