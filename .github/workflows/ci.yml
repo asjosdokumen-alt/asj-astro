@@ -297,6 +297,12 @@ jobs:
           # button printed the whole admin shell. No other gate reads print
           # media, so nothing here could see it.
           npm run e2e:print
+          # Every page at six widths: overflow, overlap, and touch targets under
+          # 44 px. Written 2026-10-11 but never wired, so it caught nothing — and
+          # on 2026-11-04 it found a "Daftar Akun" button at 70x18 px on /ai-cv
+          # that had survived every other gate. A tool nobody runs is a claim,
+          # not a gate.
+          npm run e2e:responsive
 
   # ══ Gate 1c · the gates CI *still* skipped ══════════════════════════════════
   # Gate 1b above closed the gap for the functions tree. This job closes the

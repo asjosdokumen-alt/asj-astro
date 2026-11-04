@@ -705,6 +705,18 @@
       "batteryNote": "REGISTERED and REVIVED on 2026-10-11. Like e2e:theme-gradients it was never named in this manifest, so no check enumerated it and nothing noticed it had never run; and it was DEAD in the same way — without a server on 4321 `page.goto` threw `ERR_CONNECTION_REFUSED`, the rejection was unhandled, and the process exited 0, i.e. a crash indistinguishable from a pass. Resurrected with an owned server via `e2e/lib/server.mjs` and an explicit `process.exit(0)`. MEASURED after the fix: 8 checks passed / 0 failed, exit 0, no server pre-started, with 6/6 triggers present and 5 of 6 modals actually exercised (Latihan Wawancara is reported as `not exercised` because its gate refused to open for this fixture — stated in the output rather than counted as a pass). Classified `ci`: it serves `dist/` on localhost and stubs the one endpoint it needs, so it needs no credential, database or network. It has NO mutation battery yet; recorded as a gap."
     },
     {
+      "script": "e2e:responsive",
+      "tier": 0,
+      "blocking": true,
+      "provenBy": null,
+      "runs": [
+        "ci.yml#e2e"
+      ],
+      "note": "Every page at six widths (320/360/390/768/1280/1440): an element that overflows the viewport, two elements whose rectangles overlap on BOTH axes, or a touch target under 44x44 px. Written 2026-10-11 and NEVER WIRED — no npm script, no workflow, no manifest entry — so for 24 days it was a tool nobody ran. Wired 2026-11-04 after it immediately found a real defect the other 20+ gates structurally cannot see: the \"Daftar Akun\" button in the /ai-cv login gate measured 70x18 px at EVERY width from 320 to 1440 (a 12 px text button inside a <p>), because every other gate reads semantics (names, contrast, labels) and none reads the SIZE of the clickable box. Measured on the built artefact: 115 passed / 6 failed before, 121 passed / 0 failed after. Carries a positive control (a planted defect on a live page that the sweep MUST report) so \"0 defects\" cannot be produced by a sweep that silently measured nothing — R25 in the repo's rules, and the reason a dead gate here reads exactly like a clean one.",
+      "battery": "none",
+      "batteryNote": "No mutation battery yet; recorded as a gap. The gate has a built-in positive control (planted defect) that fails loudly if the sweep stops measuring, which is the failure mode that killed the two gates registered on 2026-10-11. Classified `ci`: it serves `dist/` on localhost and stubs every `/.netlify/functions/**` call, so it needs no credential, database or network. Runtime measured 2026-11-04 on this machine: ~3.5 minutes for 121 checks, hence the 8-minute timeout in the npm script."
+    },
+    {
       "script": "e2e:print",
       "tier": 0,
       "blocking": true,
