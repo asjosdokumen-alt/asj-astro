@@ -8,6 +8,7 @@ import rirekishoXlsxTemplate from './renderers/rirekisho-xlsx';
 import rirekishoFirmaTemplate from './renderers/rirekisho-firma';
 import kinkiTemplate from './renderers/kinki';
 import jipaTemplate from './renderers/jipa';
+import rirekishoDetailTemplate from './renderers/rirekisho-detail';
 
 const rirekishoA4Template: CvTemplate = {
   id: 'rirekisho-a4',
@@ -51,6 +52,12 @@ cvFactory.register(kinkiTemplate);
 // 実習生: ada 資格試験 (SSW/JLPT/JFT/SIM) dan 訪日経験, tanpa できる作業 dan
 // tanpa 性格診断テスト. Mesin XML-nya tetap `renderers/xlsx-form.ts`.
 cvFactory.register(jipaTemplate);
+// Form kelima, dari `F:/template/*_CV.xlsx` (2026-11-04). Pemilik menyebutnya
+// "template baru"; dua berkas yang dikirim ternyata layout YANG SAMA (80 merge
+// identik) — jadi satu template, dua contoh isian. Beda dengan form ASJ: pas
+// foto di I2:J9 dan blok personalia jauh lebih lengkap (視力, 長所/短所,
+// 志望動機, 貯金額目標, 帰国後の仕事).
+cvFactory.register(rirekishoDetailTemplate);
 
 export { cvFactory };
 
