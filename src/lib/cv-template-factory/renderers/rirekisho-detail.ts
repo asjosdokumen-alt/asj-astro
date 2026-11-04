@@ -75,7 +75,7 @@
  */
 import type { CvTemplate, CandidateData, RenderContext, RenderResult } from '../types';
 import { RIREKISHO_DETAIL_BASE64 } from '../templates/rirekisho-detail.b64';
-import { isGood, batasiRiwayatSekolah, kanjiHubunganDari } from '../../helpers_cv';
+import { isGood, batasiRiwayatSekolah, isLpkTingkat, kanjiHubunganDari } from '../../helpers_cv';
 import {
   buildXlsxForm,
   birthDate,
@@ -334,7 +334,17 @@ export function buildValues(data: CandidateData): Record<string, string> {
   }
 
   /* ── pendidikan (21-25): 3 baris ──────────────────────────────────────── */
-  const edu = batasiRiwayatSekolah((data.pendidikan || []) as Record<string, unknown>[], EDU_ROWS);
+  /* LPK TIDAK masuk 学歴 di form ini.
+     Pemilik 2026-11-04: *"cukup sd smp smk … lpk gak perlu di masukkan"*.
+     Dua berkas contohnya memang hanya memuat SD/SMP/SMK. `batasiRiwayatSekolah`
+     justru MELINDUNGI entri LPK (dipakai form lain), jadi penyaringannya
+     dilakukan SEBELUM fungsi itu — kalau sesudah, LPK tetap ikut dan mendorong
+     SD keluar dari 3 baris yang tersedia. */
+  const semuaEdu = (data.pendidikan || []) as Record<string, unknown>[];
+  const edu = batasiRiwayatSekolah(
+    semuaEdu.filter((p) => !isLpkTingkat(p.tingkat)),
+    EDU_ROWS,
+  );
   for (let i = 0; i < EDU_ROWS; i++) {
     const row = EDU_START + i;
     const p = edu[i] || {};

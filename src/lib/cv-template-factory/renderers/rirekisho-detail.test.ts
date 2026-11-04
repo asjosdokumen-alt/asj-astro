@@ -227,6 +227,26 @@ describe('rirekisho-detail · pendidikan (3 baris), pekerjaan (2 baris), keluarg
     expect(v.A26).toBeUndefined();
   });
 
+  it('LPK TIDAK masuk 学歴, sehingga SD/SMP/SMK tetap tampil', () => {
+    /* Pemilik 2026-11-04: "cukup sd smp smk … lpk gak perlu di masukkan".
+       Kalau LPK ikut, ia mendorong SD keluar dari 3 baris — dan itulah yang
+       terjadi sebelum penyaringan ini ada. */
+    const v = buildValues(
+      kandidat({
+        pendidikan: [
+          { masuk: '2012', lulus: '2018', sekolah: 'SDN MANGGE 3', tingkat: 'SD' },
+          { masuk: '2018', lulus: '2021', sekolah: 'SMPN 2 BARAT', tingkat: 'SMP' },
+          { masuk: '2021', lulus: '2024', sekolah: 'SMKN 2 JIWAN', tingkat: 'SMK', jurusan: 'TSM' },
+          { masuk: '2024', lulus: '2026', sekolah: 'LPK AMANAH SAKURA JAPAN', tingkat: 'LPK' },
+        ],
+      }),
+    );
+    expect(v.C23).toBe('SDN MANGGE 3');
+    expect(v.C24).toBe('SMPN 2 BARAT');
+    expect(v.C25).toBe('SMKN 2 JIWAN');
+    expect(Object.values(v)).not.toContain('LPK AMANAH SAKURA JAPAN');
+  });
+
   it('lebih dari 3 riwayat: yang TERTUA dibuang, bukan yang terbaru', () => {
     /* `batasiRiwayatSekolah` membuang entri non-LPK paling tua supaya CV
        memuat pendidikan terakhir. Kalau arahnya terbalik, CV siswa SMK akan
