@@ -1464,6 +1464,20 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           )}
         </div>
 
+        {/* Tautan ke /wawancara. Dilaporkan pemilik 2026-11-04: "helper terlink
+            ke wawancaranya hilang". Memang tidak ada — yang tersisa hanya pill
+            saran yang mengirim pesan chat, bukan jalan ke halaman wawancara.
+            Taruh di sini, bukan di header: halaman ini dipakai kandidat yang
+            sedang mengisi CV, dan wawancara adalah langkah berikutnya. */}
+        {jeklinMode === 'chat' && (
+          <div class="px-3 pb-1">
+            <a href="/wawancara"
+              class="inline-flex items-center min-h-11 px-2 text-[11px] font-bold text-sky-400 underline hover:no-underline">
+              {t('admin.btn_wawancara')}
+            </a>
+          </div>
+        )}
+
         {/* Suggestion Pills — hanya di mode chat: di mode terjemah ia akan
             bersaing dengan satu tombol yang sudah jelas tugasnya. */}
         {jeklinMode === 'chat' && showSuggestions && !sending && (
