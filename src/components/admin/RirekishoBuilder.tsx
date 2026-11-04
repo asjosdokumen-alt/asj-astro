@@ -4,7 +4,7 @@ import { useStore } from "@nanostores/preact";
 import { authStore } from "../../store/authReactive";
 import { t } from "../../store/i18n";
 import apiClient from "../../lib/apiClient";
-import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, getTingkatVal, sortRiwayatKronologis, riwayatKeyOf, kanjiHubungan, rapikanKanjiHubungan } from "../../lib/helpers_cv";
+import { getPath, isGood, makeV, fmtMonthYearJp, mergeArrRiwayat, esc, normalizeRiwayatFor, getTingkatVal, sortRiwayatKronologis, riwayatKeyOf, kanjiHubungan, rapikanKanjiHubungan, gajiDwibahasa } from "../../lib/helpers_cv";
 import { golonganDarahDisplay, statusNikahDisplay } from "../../lib/opsi-form";
 import { useOverlay } from "../ui/useOverlay";
 
@@ -145,7 +145,14 @@ export function buildJobRows(jobList: Record<string, any>[], v: (...keys: string
     const kf=(k.toUpperCase().includes("SEKARANG")||k.toUpperCase().includes("IMA"))?"現在に至る":fmtMonthYearJp(k);
     const fpt=ptj?escHtml`${pt}<br><span style="font-size:8px;font-weight:normal;">${ptj}</span>`:escVal(pt);
     const fker=kerj?escHtml`${ker}<br><span style="font-size:8px;font-weight:normal;">${kerj}</span>`:escVal(ker);
-    html+=escHtml`<tr><td class="val-center border-r-none">${fmtMonthYearJp(m)}</td><td class="val-center border-lr-none">${m||k?"-":""}</td><td class="val-center border-l-none">${kf}</td><td colspan="2" class="val-center">${fpt}</td><td class="val-center">${fker}</td><td class="val-right pr-1">${gaji?"¥   "+gaji:"¥        -"}</td></tr>`;
+    /* 月収 DWIBAHASA. Pemilik 2026-11-05: layar ini PREVIEW untuk kandidat,
+       bukan template cetak — jadi rupiah dan yen ditampilkan bersama, bukan
+       dikonversi diam-diam. Lihat `gajiDwibahasa` di helpers_cv. */
+    const gj=gajiDwibahasa(gaji);
+    const fg=gj.utama&&gj.kedua
+      ?escHtml`${gj.utama}<br><span style="font-size:8px;font-weight:normal;">${gj.kedua}</span>`
+      :escVal(gj.utama||gj.kedua);
+    html+=escHtml`<tr><td class="val-center border-r-none">${fmtMonthYearJp(m)}</td><td class="val-center border-lr-none">${m||k?"-":""}</td><td class="val-center border-l-none">${kf}</td><td colspan="2" class="val-center">${fpt}</td><td class="val-center">${fker}</td><td class="val-right pr-1">${fg||"¥        -"}</td></tr>`;
   }
   return html;
 }
@@ -179,6 +186,17 @@ export function buildFamRows(famList: Record<string, any>[], v: (...keys: string
       bersihkanNilai(isGood(p.hubungan_jp)?String(p.hubungan_jp):v("KELUARGA"+i+"HUBUNGANJP")),
     )||kanjiHubungan(hub);
     const pkj=bersihkanNilai(isGood(p.pekerjaan_jp)?String(p.pekerjaan_jp):v("KELUARGA"+i+"PEKERJAANJP"));
+    /* 氏名: katakana di baris kedua, pola yang sama dengan 学校名/会社名 di
+       atas. Sebelum 2026-11-05 sel ini hanya mencetak nama Latin, padahal
+       kolom `keluarga_N_katakana` sudah ada sejak migrasi 046. */
+    const nmj=bersihkanNilai(isGood(p.katakana)?String(p.katakana):v("KELUARGA"+i+"KATAKANA"));
+    const fn=nmj
+      ?escHtml`${nm.toUpperCase()}<br><span style="font-size:8px;font-weight:normal;">${nmj}</span>`
+      :escVal(nm.toUpperCase());
+    const gjF=gajiDwibahasa(g);
+    const fgF=gjF.utama&&gjF.kedua
+      ?escHtml`${gjF.utama}<br><span style="font-size:8px;font-weight:normal;">${gjF.kedua}</span>`
+      :escVal(gjF.utama||gjF.kedua);
     /* Kolom 続柄 berisi KANJI saja. Sampai 2026-10-29 sel ini mencetak
        "AYAH  父" — dua bahasa di satu kolom Jepang, dan pemilik menyebutnya
        sebagai kanji yang tidak sesuai ("ayah harus nya chichi saja").
@@ -186,7 +204,7 @@ export function buildFamRows(famList: Record<string, any>[], v: (...keys: string
        sel kosong lebih buruk daripada teks yang bisa dibaca staf. */
     const fh = hubj ? escVal(hubj) : escVal(hub.toUpperCase());
     const fp=pkj?escHtml`${pk}<br><span style="font-size:8px;font-weight:normal;">${pkj}</span>`:escVal(pk);
-    html+=escHtml`<tr><td colspan="2" class="val-center">${fh}</td><td colspan="2" class="val-center">${nm.toUpperCase()}</td><td class="val-center">${u?u+"歳":""}</td><td class="val-center">${fp}</td><td class="val-right pr-1">${g?"¥   "+g:"¥        -"}</td></tr>`;
+    html+=escHtml`<tr><td colspan="2" class="val-center">${fh}</td><td colspan="2" class="val-center">${fn}</td><td class="val-center">${u?u+"歳":""}</td><td class="val-center">${fp}</td><td class="val-right pr-1">${fgF||"¥        -"}</td></tr>`;
   }
   return html;
 }

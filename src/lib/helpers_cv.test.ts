@@ -13,6 +13,8 @@ import {
   isGood,
   makeV,
   fmtMonthYearJp,
+  fmtGajiYen,
+  gajiDwibahasa,
   mergeArrRiwayat,
   riwayatKeyOf,
   esc,
@@ -543,5 +545,63 @@ describe('sortRiwayatKronologis — baris tanpa tahun tetap terurut jenjang', ()
   it('tanpa tie-break, urutan asli dipertahankan (pekerjaan tidak diacak)', () => {
     const list = [{ perusahaan: 'A' }, { perusahaan: 'B' }];
     expect(sortRiwayatKronologis(list).map((r) => r.perusahaan)).toEqual(['A', 'B']);
+  });
+});
+
+// 2026-11-05 — dua cacat yang terlihat di cetakan pemilik:
+//   1. satu kolom CV memuat "2021年1月" DAN "05 MEI 2025", karena tanggal yang
+//      diketik bebas tidak dikenali `new Date()` lalu dikembalikan apa adanya;
+//   2. kolom 月収 mencetak "¥ 2.000.000" untuk gaji Rp 2.000.000 — simbol yen
+//      ditempel ke angka rupiah, 110x dari nilai sebenarnya.
+describe('fmtMonthYearJp — tanggal ketik bebas', () => {
+  it('mengenali nama bulan Indonesia', () => {
+    expect(fmtMonthYearJp('05 MEI 2025')).toBe('2025年5月');
+    expect(fmtMonthYearJp('18 OKTOBER 2025')).toBe('2025年10月');
+    expect(fmtMonthYearJp('Agustus 2005')).toBe('2005年8月');
+  });
+
+  it('bentuk baku tetap seperti sebelumnya', () => {
+    expect(fmtMonthYearJp('2021-01')).toBe('2021年1月');
+    expect(fmtMonthYearJp('2021')).toBe('2021年');
+    expect(fmtMonthYearJp('')).toBe('');
+  });
+});
+
+describe('fmtGajiYen — satu tempat untuk kolom 月収', () => {
+  it('rupiah dikonversi, bukan ditempeli ¥', () => {
+    expect(fmtGajiYen('Rp 2.500.000')).toBe('¥ 22.727');
+    expect(fmtGajiYen('2.000.000')).toBe('¥ 18.182');
+    expect(fmtGajiYen('1jt')).toBe('¥ 9.091');
+  });
+
+  it('yen dibiarkan apa adanya', () => {
+    expect(fmtGajiYen('¥10.000')).toBe('¥ 10.000');
+    expect(fmtGajiYen('15000円')).toBe('¥ 15.000');
+  });
+
+  it('mata uang lain dan kosong tidak diubah', () => {
+    expect(fmtGajiYen('RMB 1.750')).toBe('RMB 1.750');
+    expect(fmtGajiYen('-')).toBe('');
+    expect(fmtGajiYen('')).toBe('');
+  });
+});
+
+// Preview di aplikasi menampilkan ID DAN JP berdampingan (keputusan pemilik
+// 2026-11-05: layar ini untuk kandidat memeriksa kedua bahasa, bukan template
+// cetak). Jadi gaji pun ditampilkan dua-duanya, bukan dikonversi diam-diam.
+describe('gajiDwibahasa — preview dua bahasa', () => {
+  it('rupiah → rupiah + yen', () => {
+    expect(gajiDwibahasa('Rp 2.000.000')).toEqual({ utama: 'Rp 2.000.000', kedua: '¥ 18.182' });
+    expect(gajiDwibahasa('2.000.000')).toEqual({ utama: 'Rp 2.000.000', kedua: '¥ 18.182' });
+  });
+
+  it('yen → yen + rupiah', () => {
+    expect(gajiDwibahasa('¥10.000')).toEqual({ utama: '¥ 10.000', kedua: 'Rp 1.100.000' });
+    expect(gajiDwibahasa('15000円')).toEqual({ utama: '¥ 15.000', kedua: 'Rp 1.650.000' });
+  });
+
+  it('mata uang lain & kosong', () => {
+    expect(gajiDwibahasa('RMB 1.750')).toEqual({ utama: 'RMB 1.750', kedua: '' });
+    expect(gajiDwibahasa('-')).toEqual({ utama: '', kedua: '' });
   });
 });

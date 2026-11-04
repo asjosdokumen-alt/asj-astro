@@ -1215,6 +1215,9 @@ export async function handleGetMasterDataByWa(payload: any[], sessionToken?: str
     for (let i = 1; i <= 5; i++) {
       out['KELUARGA_' + i + '_HUBUNGAN'] = v('keluarga_' + i + '_hubungan');
       out['KELUARGA_' + i + '_NAMA'] = v('keluarga_' + i + '_nama');
+      /* Migrasi 046: katakana nama keluarga. Tanpa baris ini jalur cetak yang
+         memakai peta flat tidak punya sumber untuk baris kedua 氏名. */
+      out[`KELUARGA_${i}_KATAKANA`] = v(`keluarga_${i}_katakana`);
       out['KELUARGA_' + i + '_USIA'] = v('keluarga_' + i + '_usia');
       out['KELUARGA_' + i + '_PEKERJAAN'] = v('keluarga_' + i + '_pekerjaan');
       out['KELUARGA_' + i + '_PENDAPATAN'] = v(`keluarga_${i}_gaji`);

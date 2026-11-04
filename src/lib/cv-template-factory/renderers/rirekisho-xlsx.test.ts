@@ -356,7 +356,11 @@ describe('rirekisho-xlsx · kolom yang sudah ada tetapi dulu tidak dibaca', () =
   });
 
   it('月収 keluarga terisi dari kolom', () => {
-    expect(buildValues(lengkap()).I29).toBe('¥   120000');
+    /* 2026-11-05: format berubah SENGAJA. Dulu `¥   120000` (digit mentah
+       ditempeli ¥); sekarang satu formatter (`fmtGajiYen`) memisahkan ribuan
+       dan mengonversi rupiah — angka 120000 di sini sudah bernilai yen, jadi
+       tampil apa adanya. Lihat helpers_cv.test.ts untuk aturan konversinya. */
+    expect(buildValues(lengkap()).I29).toBe('¥ 120.000');
   });
 });
 

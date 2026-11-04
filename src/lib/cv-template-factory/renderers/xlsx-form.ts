@@ -28,7 +28,7 @@
  * Sel tanpa data tetap `<c r=".." s=".."/>` — style-nya, jadi border dan fill
  * bagian form itu, ikut bertahan. Form tidak pernah "menyusut".
  */
-import { fmtMonthYearJp, isGood } from '../../helpers_cv';
+import { fmtMonthYearJp, isGood, fmtGajiYen } from '../../helpers_cv';
 
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -194,9 +194,15 @@ export function yearMonth(v: unknown): { y: string; m: string } {
   return { y: `${dt.getFullYear()}年`, m: `${dt.getMonth() + 1}月` };
 }
 
+/**
+ * Kolom 月収. SATU implementasi dengan jalur cetak admin (`fmtGajiYen`), supaya
+ * template dan cetakan tidak berbeda pendapat soal mata uang.
+ *
+ * Sebelum 2026-11-05 fungsi ini hanya menempelkan `¥` ke digit apa pun, jadi
+ * gaji "Rp 2.000.000" tercetak "¥ 2000000" — 110x nilai sebenarnya.
+ */
 export function currency(v: unknown): string {
-  const t = s(v).replace(/[^\d]/g, '');
-  return t === '' ? '' : `¥   ${t}`;
+  return fmtGajiYen(v);
 }
 
 /**

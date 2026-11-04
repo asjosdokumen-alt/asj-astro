@@ -78,15 +78,115 @@ export function makeV(d: Record<string, unknown>, ai: Record<string, unknown>) {
 }
 
 /** Format year+month in Japanese style: 2012年7月 */
+/** Nama bulan Indonesia → nomor. Dipakai `fmtMonthYearJp` dan parser tanggal. */
+const BULAN_ID: Record<string, number> = {
+  januari: 1, februari: 2, maret: 3, april: 4, mei: 5, juni: 6,
+  juli: 7, agustus: 8, september: 9, oktober: 10, november: 11, desember: 12,
+};
+
 export function fmtMonthYearJp(str: string): string {
   if (!str || str === "-") return "";
   const s = String(str).trim();
   if (/^\d{4}$/.test(s)) return s + "年";
   const m = s.match(/^(\d{4})[-/](\d{1,2})/);
   if (m) return m[1] + "年" + parseInt(m[2], 10) + "月";
+  /* Tanggal yang DIKETIK BEBAS ("05 MEI 2025", "18 OKTOBER 2025") dulu jatuh
+     ke `new Date()` — yang tidak mengenal nama bulan Indonesia — lalu
+     dikembalikan APA ADANYA. Akibatnya satu kolom CV memuat dua gaya:
+     "2021年1月" dan "05 MEI 2025". Terukur 2026-11-05. */
+  const bebas = /(?:(\d{1,2})\s+)?([A-Za-z]+)\s+(\d{4})/.exec(s);
+  if (bebas) {
+    const bln = BULAN_ID[bebas[2].toLowerCase()];
+    if (bln) return `${bebas[3]}年${bln}月`;
+  }
   const dt = new Date(s);
   if (isNaN(dt.getTime())) return s;
   return dt.getFullYear() + "年" + (dt.getMonth() + 1) + "月";
+}
+
+/**
+ * Kurs rupiah → yen yang dipakai saat mencetak gaji.
+ *
+ * SENGAJA konstanta, bukan panggilan API: CV yang dicetak hari ini dan besok
+ * tidak boleh berbeda karena kurs bergerak, dan angka di CV harus bisa
+ * dipertanggungjawabkan. Ubah nilainya di sini bila kurs berubah, dan catat
+ * tanggalnya di komentar.
+ *
+ * Diperbarui: 2026-11-05 (≈ ¥1 = Rp 110).
+ */
+export const IDR_PER_JPY = 110;
+
+/** Angka dari teks bebas: "2.000.000", "Rp 2.000.000", "1jt", "15000円". */
+function angkaDariTeks(raw: string): number {
+  const t = raw.toLowerCase();
+  const juta = /(\d+(?:[.,]\d+)?)\s*(jt|juta)/.exec(t);
+  if (juta) return Math.round(Number(juta[1].replace(',', '.')) * 1_000_000);
+  const ribu = /(\d+(?:[.,]\d+)?)\s*(rb|ribu|k)\b/.exec(t);
+  if (ribu) return Math.round(Number(ribu[1].replace(',', '.')) * 1_000);
+  const digit = t.replace(/[^\d]/g, '');
+  return digit ? Number(digit) : 0;
+}
+
+/**
+ * Gaji → `¥ 123.929`. Satu tempat untuk SEMUA kolom 月収.
+ *
+ * MASALAH YANG DIKUNCI (2026-11-05): kolom 月収 mencetak `¥` di depan angka
+ * rupiah apa adanya — "¥ 2.000.000" untuk gaji Rp 2.000.000, yaitu 110x dari
+ * nilai sebenarnya. Data di DB juga campur: "Rp 2.500.000", "1jt", "¥10.000",
+ * "15000円", bahkan "RMB 1.750".
+ *
+ * Aturannya eksplisit, bukan tebak-tebakan:
+ *   • ada penanda yen (¥ / 円 / yen / jpy)      → pakai apa adanya
+ *   • ada penanda rupiah (Rp / IDR)            → konversi
+ *   • ada penanda lain (RMB/CNY/元)            → biarkan, bukan mata uang kita
+ *   • tanpa penanda, angka ≥ 1.000.000         → rupiah (gaji yen sebulan
+ *     sebesar itu tidak masuk akal untuk kandidat)
+ *   • tanpa penanda, angka < 1.000.000         → sudah yen
+ */
+export function fmtGajiYen(raw: unknown): string {
+  const t = String(raw ?? '').trim();
+  if (!t || t === '-' || t === '—') return '';
+  const lower = t.toLowerCase();
+  const fmt = (n: number) => `¥ ${n.toLocaleString('id-ID')}`;
+  if (/[¥円]|yen|jpy/.test(lower)) {
+    const n = angkaDariTeks(t);
+    return n ? fmt(n) : t;
+  }
+  if (/rmb|cny|元/.test(lower)) return t;
+  const n = angkaDariTeks(t);
+  if (!n) return t;
+  if (/rp|idr/.test(lower)) return fmt(Math.round(n / IDR_PER_JPY));
+  if (n >= 1_000_000) return fmt(Math.round(n / IDR_PER_JPY));
+  return fmt(n);
+}
+
+/**
+ * Gaji versi DWIBAHASA untuk PREVIEW di aplikasi (bukan template cetak).
+ *
+ * Pemilik 2026-11-05: layar rirekisho di aplikasi memang menampilkan Indonesia
+ * DAN Jepang berdampingan supaya kandidat bisa memeriksa keduanya; template
+ * cetak yang memilih satu sisi. Karena itu di sini rupiah TIDAK diganti yen —
+ * keduanya ditampilkan, dengan konversi memakai kurs yang sama.
+ *
+ * Mengembalikan dua bagian terpisah (bukan HTML) supaya pemanggil yang
+ * meng-escape; nilai yang tidak bisa dibaca dikembalikan apa adanya.
+ */
+export function gajiDwibahasa(raw: unknown): { utama: string; kedua: string } {
+  const t = String(raw ?? '').trim();
+  if (!t || t === '-' || t === '—') return { utama: '', kedua: '' };
+  const lower = t.toLowerCase();
+  const rp = (n: number) => `Rp ${n.toLocaleString('id-ID')}`;
+  const yen = (n: number) => `¥ ${n.toLocaleString('id-ID')}`;
+  if (/rmb|cny|元/.test(lower)) return { utama: t, kedua: '' };
+  const n = angkaDariTeks(t);
+  if (!n) return { utama: t, kedua: '' };
+  if (/[¥円]|yen|jpy/.test(lower)) {
+    return { utama: yen(n), kedua: rp(Math.round(n * IDR_PER_JPY)) };
+  }
+  if (/rp|idr/.test(lower) || n >= 1_000_000) {
+    return { utama: rp(n), kedua: yen(Math.round(n / IDR_PER_JPY)) };
+  }
+  return { utama: yen(n), kedua: '' };
 }
 
 /** Normalize source to array (handles string JSON, null, undefined) */
