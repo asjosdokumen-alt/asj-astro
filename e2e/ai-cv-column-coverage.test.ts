@@ -27,7 +27,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { AI_CV_PATHS } from '../src/lib/aiCvDraft';
-import { AI_TO_MASTER_COLUMNS } from '../netlify/functions/contexts/master-data/service';
+import { AI_TO_MASTER_COLUMNS, JP_TRANSLATE_MAP } from '../netlify/functions/contexts/master-data/service';
 import { TABLE_COLUMNS } from '../netlify/functions/_lib/db/schema.generated';
 
 /** Semua path `seksi.kunci` yang punya tujuan kolom di `masterColumnsFromAi`. */
@@ -99,5 +99,44 @@ describe('CV AI → kolom master: tidak ada field yang diam-diam hilang', () => 
     const covered = coveredPaths();
     const stale = Object.keys(NO_COLUMN_BY_DESIGN).filter((p) => covered.has(p));
     expect(stale).toEqual([]);
+  });
+});
+
+/**
+ * Kolom JP yang diisi OTOMATIS saat simpan harus punya kunci di form.
+ *
+ * `JP_TRANSLATE_MAP` adalah daftar kolom yang ditulis `autoTranslateToJp` di
+ * jalur simpan. Kalau salah satunya tidak punya kunci di `AI_CV_PATHS`, nilai
+ * itu ditulis ke kolom tetapi TIDAK PERNAH dirender dan TIDAK PERNAH ikut
+ * payload — jadi koreksi tangan mustahil, dan nilai yang salah bertahan
+ * selamanya karena helper menganggap "sudah ada" sebagai selesai.
+ *
+ * Terukur 2026-11-04: `tempat_lahir_jp` ditulis otomatis, tetapi tidak ada di
+ * peta form. Satu baris berisi "Jepang" (kata Indonesia di kolom kanji) dan
+ * tidak ada satu layar pun yang bisa memperbaikinya — rirekisho terus
+ * mencetaknya. Gate ini menangkap kelas bug itu untuk kolom berikutnya.
+ */
+describe('kolom JP otomatis harus bisa dilihat di form', () => {
+  const lastSegment = new Set(
+    Object.values(AI_CV_PATHS)
+      .flat()
+      .map((p) => p.split('.').pop() || ''),
+  );
+
+  /** Kunci AI yang menulis kolom ini, menurut peta tulis. */
+  function aiKeysFor(col: string): string[] {
+    for (const rows of Object.values(AI_TO_MASTER_COLUMNS)) {
+      for (const row of rows) {
+        if (row[0] === col) return row.slice(1) as string[];
+      }
+    }
+    return [col];
+  }
+
+  it('setiap kolom JP_TRANSLATE_MAP punya kunci di AI_CV_PATHS', () => {
+    const missing = Object.values(JP_TRANSLATE_MAP).filter(
+      (col) => !aiKeysFor(col).some((k) => lastSegment.has(k)),
+    );
+    expect(missing).toEqual([]);
   });
 });
