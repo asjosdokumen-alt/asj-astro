@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import { authStore } from '../../store/authReactive';
 import { bolehKirim, kirimSkor } from '../../lib/skorGame';
+import ArcadeIkon from '../ui/ArcadeIkon';
 import LoginGate from '../ui/LoginGate';
 import { bunyi, ucap } from '../../lib/tts';
 import {
@@ -104,6 +105,15 @@ export default function ArcadeGame() {
    * sudah menyatakan salah. Ditemukan saat review 2026-11-04.
    */
   const [menunggu, setMenunggu] = useState(false);
+  /**
+   * Sinyal visual singkat untuk jawaban benar/salah.
+   *
+   * Tanpa ini, benar dan salah hanya dibedakan suara dan teks — di kelas ramai
+   * atau HP yang diset senyap keduanya tidak terasa, dan siswa baru sadar salah
+   * setelah nyawanya berkurang. Dikosongkan lagi setelah 350 ms supaya kelas
+   * animasinya tidak menempel dan bisa dipicu ulang pada jawaban berikutnya.
+   */
+  const [animasi, setAnimasi] = useState<'' | 'benar' | 'salah'>('');
 
   /** Perintah berikutnya. `ronde` dipakai sebagai kunci timer. */
   const berikut = () => {
@@ -132,6 +142,8 @@ export default function ArcadeGame() {
   const gagal = (alasan: string) => {
     if (!perintah) return;
     bunyi(false);
+    setAnimasi('salah');
+    window.setTimeout(() => setAnimasi(''), 350);
     const sisaNyawa = nyawa - 1;
     setNyawa(sisaNyawa);
     setPesan(alasan);
@@ -154,6 +166,8 @@ export default function ArcadeGame() {
     if (!perintah || !dipilih || fase !== 'main' || menunggu) return;
     if (cekGenba(perintah, dipilih, zonaId)) {
       bunyi(true);
+      setAnimasi('benar');
+      window.setTimeout(() => setAnimasi(''), 350);
       setSkor((n) => n + 100);
       berikut();
     } else {
@@ -324,7 +338,11 @@ export default function ArcadeGame() {
             </span>
           </div>
 
-          <div class="mb-2 rounded-card border border-line bg-surface-sunken p-3">
+          <div
+            class={`mb-2 rounded-card border border-line bg-surface-sunken p-3 ${
+              animasi === 'salah' ? 'animasi-getar' : animasi === 'benar' ? 'animasi-pop' : ''
+            }`}
+          >
             <div class="mb-1 flex items-center justify-between">
               <span class="text-[11px] font-bold text-fg-muted">{t('arcade.perintah_senpai')}</span>
               <button
@@ -370,10 +388,15 @@ export default function ArcadeGame() {
                   key={z.id}
                   type="button"
                   onClick={() => taruh(z.id)}
-                  class="min-h-14 rounded-card border-2 border-dashed border-line bg-surface-sunken px-1 py-1.5 text-center"
+                  class="group flex min-h-16 items-center gap-2 rounded-card border-2 border-dashed border-line bg-surface-sunken px-2 py-1.5 text-left transition active:scale-[0.97] motion-reduce:transition-none"
                 >
-                  <span class="block text-[11px] text-fg-muted break-words">{z.ikon} {z.jp}</span>
-                  <span class="block text-sm font-bold text-fg">{z.id_}</span>
+                  {/* Ikon arah/lokasi menggantikan emoji: bentuknya sama di
+                      semua perangkat dan warnanya ikut teks. */}
+                  <ArcadeIkon jenis="zona" nama={z.id} ukuran={22} kelas="shrink-0 text-accent-violet" />
+                  <span class="min-w-0">
+                    <span class="block text-[10px] text-fg-muted break-words">{z.jp}</span>
+                    <span class="block text-[13px] font-bold leading-tight text-fg">{z.id_}</span>
+                  </span>
                 </button>
               );
             })}
@@ -389,12 +412,20 @@ export default function ArcadeGame() {
                   ucap(`${p.warna.jp} ${p.barang.jp}`, 1);
                 }}
                 aria-pressed={dipilih === p.kunci}
-                class={`min-h-16 rounded-control border-2 p-1 text-center ${p.warna.kelas} ${
-                  dipilih === p.kunci ? 'ring-4 ring-white' : ''
+                /* Barang terpilih DIANGKAT (naik 2 px + bayangan + cincin),
+                   bukan hanya diberi garis: di layar HP 320 px, garis 4 px di
+                   tepi kartu berwarna nyaris tak terlihat, sedangkan bayangan
+                   dan perubahan tinggi langsung terbaca. */
+                class={`flex min-h-[68px] flex-col items-center justify-center gap-0.5 rounded-control border-2 px-1 py-1.5 text-center shadow-sm transition duration-150 motion-reduce:transition-none ${
+                  p.warna.kelas
+                } ${
+                  dipilih === p.kunci
+                    ? '-translate-y-0.5 shadow-lg ring-4 ring-white'
+                    : 'active:scale-[0.96]'
                 }`}
               >
-                <span class="block text-xl">{p.barang.ikon}</span>
-                <span class="block text-[11px] font-bold">{p.warna.jp}{p.barang.jp}</span>
+                <ArcadeIkon jenis="barang" nama={p.barang.id} ukuran={26} kelas="shrink-0" />
+                <span class="block text-[11px] font-bold leading-tight">{p.warna.jp}{p.barang.jp}</span>
               </button>
             ))}
           </div>

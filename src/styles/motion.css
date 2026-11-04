@@ -2203,3 +2203,49 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
     animation: none !important;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Umpan balik game (/arcade, /kotoba)
+   ══════════════════════════════════════════════════════════════════════════
+
+   Sebelum ini jawaban benar dan salah hanya dibedakan oleh SUARA dan teks.
+   Di kelas yang ramai (atau HP yang diset senyap), keduanya tidak terasa —
+   siswa baru tahu salah setelah nyawanya berkurang. Dua animasi pendek ini
+   memberi sinyal visual tanpa menambah satu elemen pun ke tata letak.
+
+   Sengaja SINGKAT (0,3 detik): animasi yang lebih panjang terasa seperti
+   menunggu, dan di game berwaktu itu justru mengganggu.
+
+   `prefers-reduced-motion` mematikan keduanya — bukan mempercepat, karena
+   getaran 0,01 ms tetap memicu reflow di sebagian mesin. */
+
+@keyframes game-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.035); }
+  100% { transform: scale(1); }
+}
+
+@keyframes game-getar {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-5px); }
+  55%      { transform: translateX(5px); }
+  80%      { transform: translateX(-3px); }
+}
+
+.animasi-pop {
+  animation: game-pop 0.3s ease-out;
+}
+
+.animasi-getar {
+  animation: game-getar 0.32s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Tanpa `!important`: aturannya berada SESUDAH aturan dasar dengan
+     spesifisitas yang sama, jadi ia menang tanpa perlu memaksa. Gerbang
+     `lint-ratchet` menghitung setiap `!important` baru sebagai utang. */
+  .animasi-pop,
+  .animasi-getar {
+    animation: none;
+  }
+}

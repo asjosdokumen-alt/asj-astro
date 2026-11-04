@@ -55,7 +55,6 @@ export interface BarangGenba {
   jp: string;
   romaji: string;
   id_: string;
-  ikon: string;
 }
 
 /**
@@ -67,22 +66,22 @@ export interface BarangGenba {
  * = 768 variasi perintah.
  */
 export const GENBA_BARANG: readonly BarangGenba[] = [
-  { id: 'hako', jp: 'はこ', romaji: 'hako', id_: 'Kotak', ikon: '📦' },
-  { id: 'kagi', jp: 'かぎ', romaji: 'kagi', id_: 'Kunci', ikon: '🔑' },
-  { id: 'hasami', jp: 'はさみ', romaji: 'hasami', id_: 'Gunting', ikon: '✂️' },
-  { id: 'kutsu', jp: 'くつ', romaji: 'kutsu', id_: 'Sepatu', ikon: '👟' },
-  { id: 'kaban', jp: 'かばん', romaji: 'kaban', id_: 'Tas', ikon: '🎒' },
-  { id: 'kasa', jp: 'かさ', romaji: 'kasa', id_: 'Payung', ikon: '☂️' },
-  { id: 'tokei', jp: 'とけい', romaji: 'tokei', id_: 'Jam', ikon: '⌚' },
-  { id: 'hon', jp: 'ほん', romaji: 'hon', id_: 'Buku', ikon: '📕' },
-  { id: 'nooto', jp: 'ノート', romaji: 'nooto', id_: 'Buku catatan', ikon: '📓' },
-  { id: 'pen', jp: 'ペン', romaji: 'pen', id_: 'Pulpen', ikon: '🖊️' },
-  { id: 'koppu', jp: 'コップ', romaji: 'koppu', id_: 'Gelas', ikon: '🥤' },
-  { id: 'sara', jp: 'さら', romaji: 'sara', id_: 'Piring', ikon: '🍽️' },
-  { id: 'taoru', jp: 'タオル', romaji: 'taoru', id_: 'Handuk', ikon: '🧺' },
-  { id: 'boushi', jp: 'ぼうし', romaji: 'boushi', id_: 'Topi', ikon: '🧢' },
-  { id: 'saifu', jp: 'さいふ', romaji: 'saifu', id_: 'Dompet', ikon: '👛' },
-  { id: 'megane', jp: 'めがね', romaji: 'megane', id_: 'Kacamata', ikon: '👓' },
+  { id: 'hako', jp: 'はこ', romaji: 'hako', id_: 'Kotak' },
+  { id: 'kagi', jp: 'かぎ', romaji: 'kagi', id_: 'Kunci' },
+  { id: 'hasami', jp: 'はさみ', romaji: 'hasami', id_: 'Gunting' },
+  { id: 'kutsu', jp: 'くつ', romaji: 'kutsu', id_: 'Sepatu' },
+  { id: 'kaban', jp: 'かばん', romaji: 'kaban', id_: 'Tas' },
+  { id: 'kasa', jp: 'かさ', romaji: 'kasa', id_: 'Payung' },
+  { id: 'tokei', jp: 'とけい', romaji: 'tokei', id_: 'Jam' },
+  { id: 'hon', jp: 'ほん', romaji: 'hon', id_: 'Buku' },
+  { id: 'nooto', jp: 'ノート', romaji: 'nooto', id_: 'Buku catatan' },
+  { id: 'pen', jp: 'ペン', romaji: 'pen', id_: 'Pulpen' },
+  { id: 'koppu', jp: 'コップ', romaji: 'koppu', id_: 'Gelas' },
+  { id: 'sara', jp: 'さら', romaji: 'sara', id_: 'Piring' },
+  { id: 'taoru', jp: 'タオル', romaji: 'taoru', id_: 'Handuk' },
+  { id: 'boushi', jp: 'ぼうし', romaji: 'boushi', id_: 'Topi' },
+  { id: 'saifu', jp: 'さいふ', romaji: 'saifu', id_: 'Dompet' },
+  { id: 'megane', jp: 'めがね', romaji: 'megane', id_: 'Kacamata' },
 ];
 
 export interface ZonaGenba {
@@ -90,22 +89,20 @@ export interface ZonaGenba {
   jp: string;
   romaji: string;
   id_: string;
-  /** Ikon arah/lokasi — ditampilkan di tombol rak. */
-  ikon: string;
 }
 
 export const GENBA_ZONA: readonly ZonaGenba[] = [
-  { id: 'ue', jp: 'うえ の たな', romaji: 'ue no tana', id_: 'Rak Atas', ikon: '⬆️' },
-  { id: 'shita', jp: 'した の たな', romaji: 'shita no tana', id_: 'Rak Bawah', ikon: '⬇️' },
-  { id: 'hidari', jp: 'ひだり の はこ', romaji: 'hidari no hako', id_: 'Kotak Kiri', ikon: '⬅️' },
-  { id: 'migi', jp: 'みぎ の はこ', romaji: 'migi no hako', id_: 'Kotak Kanan', ikon: '➡️' },
-  { id: 'tsukue', jp: 'つくえ の うえ', romaji: 'tsukue no ue', id_: 'Atas Meja', ikon: '🪑' },
-  { id: 'isu', jp: 'いす の した', romaji: 'isu no shita', id_: 'Bawah Kursi', ikon: '🪑' },
-  { id: 'doa', jp: 'ドア の ちかく', romaji: 'doa no chikaku', id_: 'Dekat Pintu', ikon: '🚪' },
-  { id: 'mado', jp: 'まど の そば', romaji: 'mado no soba', id_: 'Dekat Jendela', ikon: '🪟' },
-  { id: 'kaban', jp: 'かばん の なか', romaji: 'kaban no naka', id_: 'Dalam Tas', ikon: '🎒' },
-  { id: 'hiki', jp: 'ひきだし の なか', romaji: 'hikidashi no naka', id_: 'Dalam Laci', ikon: '🗄️' },
-  { id: 'yuka', jp: 'ゆか の うえ', romaji: 'yuka no ue', id_: 'Di Lantai', ikon: '⬜' },
+  { id: 'ue', jp: 'うえ の たな', romaji: 'ue no tana', id_: 'Rak Atas' },
+  { id: 'shita', jp: 'した の たな', romaji: 'shita no tana', id_: 'Rak Bawah' },
+  { id: 'hidari', jp: 'ひだり の はこ', romaji: 'hidari no hako', id_: 'Kotak Kiri' },
+  { id: 'migi', jp: 'みぎ の はこ', romaji: 'migi no hako', id_: 'Kotak Kanan' },
+  { id: 'tsukue', jp: 'つくえ の うえ', romaji: 'tsukue no ue', id_: 'Atas Meja' },
+  { id: 'isu', jp: 'いす の した', romaji: 'isu no shita', id_: 'Bawah Kursi' },
+  { id: 'doa', jp: 'ドア の ちかく', romaji: 'doa no chikaku', id_: 'Dekat Pintu' },
+  { id: 'mado', jp: 'まど の そば', romaji: 'mado no soba', id_: 'Dekat Jendela' },
+  { id: 'kaban', jp: 'かばん の なか', romaji: 'kaban no naka', id_: 'Dalam Tas' },
+  { id: 'hiki', jp: 'ひきだし の なか', romaji: 'hikidashi no naka', id_: 'Dalam Laci' },
+  { id: 'yuka', jp: 'ゆか の うえ', romaji: 'yuka no ue', id_: 'Di Lantai' },
 ];
 
 export interface Perintah {
