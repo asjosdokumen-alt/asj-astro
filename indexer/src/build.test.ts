@@ -975,7 +975,20 @@ describe('full build', () => {
     // 3 tes render penuh. DIUKUR di dua ujung: 32 072 sesudah berkas pertama
     // dibuat, 32 099 sesudah perbaikan format dari perbandingan dengan
     // berkas pemilik.
-    expect(r.stats.symbolCount).toBeLessThanOrEqual(32188); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
+    // 32185 -> 32304 (2026-11-04, upgrade arcade + kotoba + papan skor). +119
+    // DIUKUR DI DUA UJUNG: 32 185 sebelum sesi ini, 32 304 sesudah 9 ikon SVG
+    // baru di `arcadeIkon.ts`, `ambilPapanGame`/`BarisPapanGame` di `skorGame.ts`,
+    // 19 kunci i18n baru, filter kelas + ringkasan detail di `TabPapanSkor.tsx`,
+    // serta upgrade visual/kombo/papan skor di `ArcadeGame.tsx` & `KotobaGame.tsx`.
+    // 32304 -> 32367 -> 32374 (2026-11-04): angka 32 304 di atas TIDAK PERNAH
+    // TERUKUR — sesi itu habis kuota tepat setelah edit terakhirnya, dan
+    // pengukurannya diambil sebelum edit itu masuk. Diukur ulang di pohon ini
+    // (`cli.js stats`, 2026-11-04 22:53): 32 340 simbol · 624 berkas.
+    // Selisihnya bukan drift parser: `fileCount` hanya bergerak karena berkas
+    // BARU (arcadeIkon.ts dkk), dan 7 simbol terakhir berasal dari tes
+    // `syncAiFromMasterPatch` yang ditambahkan ke `actions-master.test.ts`.
+    // Margin +34 mengikuti konvensi blok ini.
+    expect(r.stats.symbolCount).toBeLessThanOrEqual(32374); // 30600 -> 30800 (2026-10-30, TERUKUR 30 766 di pohon ini). ATRIBUSI DIUKUR DI DUA UJUNG, bukan ditebak: buildIndex() dijalankan pada HEAD yang SAMA tanpa perubahan sesi ini (stash) = 30 747, jadi +147 SUDAH ada sebelum sesi ini (batch rirekisho 2026-10-29 malam + commit CV AI pagi 2a711da/1ea90a8, yang suite penuhnya tidak dijalankan), dan +19 sisanya dari berkas sesi ini (AiCvForm.tsx: flag dirty + ref repeater; master-data/service.ts: cabang lengkap; opsi-form.ts: JURUSAN_LPK). fileCount tidak bergerak (tidak ada berkas baru yang dihitung) => pertumbuhan kode, bukan perubahan parser. Margin +34 mengikuti konvensi blok ini (terukur + kecil, dibulatkan ke atas). PERINGATAN: 30 600 sebelumnya terukur 30 529, jadi ratchet ini sudah di batas sebelum batch berikutnya - UKUR dulu, jangan turunkan dari selisih.
     expect(r.stats.symbolCount).toBe(r.symbols.length);
   });
 

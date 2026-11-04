@@ -341,7 +341,7 @@ describe('bank N5 tambahan', () => {
     /* Angka eksplisit: 197 kandidat mentah -> 174 setelah 1 kanji rusak, 12
        duplikat bentuk kamus/ます, dan 11 pasangan kanji-kamus/bacaan-ます yang
        tidak konsisten dibuang. Kalau kata ditambah, ubah angkanya. */
-    expect(JUMLAH_N5).toBe(174);
+    expect(JUMLAH_N5).toBe(250);
     expect(N5_KATA.length).toBe(JUMLAH_N5);
   });
 

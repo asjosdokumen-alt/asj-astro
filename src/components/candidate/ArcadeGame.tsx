@@ -11,7 +11,7 @@
  * YANG DIPERTAHANKAN DARI DESAIN
  *   • 2-tap (pilih barang → ketuk rak), bukan drag-and-drop: drag bentrok
  *     dengan scroll dan pull-to-refresh di HP.
- *   • Perintah dirakit acak dari 4 warna × 4 barang × 4 lokasi = 128 variasi.
+ *   • Perintah dirakit acak dari 6 warna × 24 barang × 12 lokasi = 1 728 variasi.
  *   • Mode Choukai (teks disembunyikan) untuk melatih mendengar.
  *   • Kalimat disusun dengan partikel yang benar (を untuk objek, に untuk
  *     tujuan, で untuk tempat aksi) — bukan sekadar kata ditempel.
@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { t } from '../../store/i18n';
 import { authStore } from '../../store/authReactive';
-import { bolehKirim, kirimSkor } from '../../lib/skorGame';
+import { ambilPapanGame, bolehKirim, kirimSkor, waSiswa, type BarisPapanGame } from '../../lib/skorGame';
 import ArcadeIkon from '../ui/ArcadeIkon';
 import LoginGate from '../ui/LoginGate';
 import { bunyi, ucap } from '../../lib/tts';
@@ -39,6 +39,8 @@ import {
 const NYAWA_AWAL = 3;
 const DURASI_GENBA_MS = 8000;
 const KUNCI_LEMAH = 'asj_arcade_lemah';
+const KUNCI_REKOR_GENBA = 'asj_arcade_rekor_genba';
+const KUNCI_REKOR_COMBO = 'asj_arcade_rekor_combo';
 
 interface CatatanLemah {
   judul: string;
@@ -62,6 +64,23 @@ function simpanLemah(n: CatatanLemah[]): void {
   }
 }
 
+function bacaRekor(kunci: string): number {
+  try {
+    const n = Number(localStorage.getItem(kunci) || '0');
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function simpanRekor(kunci: string, nilai: number): void {
+  try {
+    localStorage.setItem(kunci, String(nilai));
+  } catch {
+    /* mode privat */
+  }
+}
+
 export default function ArcadeGame() {
   /* Gerbang login — sama seperti /kotoba, /matematika, dan /wawancara.
      BATASNYA JUJUR: ini gerbang KLIEN. Seluruh kata arcade ada di bundel, jadi
@@ -76,6 +95,14 @@ export default function ArcadeGame() {
   });
   const [tab, setTab] = useState<'genba' | 'combo'>('genba');
   const [lemah, setLemah] = useState<CatatanLemah[]>(() => bacaLemah());
+  const [rekorGenba, setRekorGenba] = useState<number>(() => bacaRekor(KUNCI_REKOR_GENBA));
+  const [rekorCombo, setRekorCombo] = useState<number>(() => bacaRekor(KUNCI_REKOR_COMBO));
+  const [papanBuka, setPapanBuka] = useState(false);
+  const [papan, setPapan] = useState<BarisPapanGame[]>([]);
+
+  const muatPapan = (jenis: 'genba' | 'combo') => {
+    void ambilPapanGame(jenis, 10).then(setPapan);
+  };
 
   const catatLemah = (judul: string, detail: string) => {
     setLemah((prev) => {
@@ -92,6 +119,9 @@ export default function ArcadeGame() {
   const [dipilih, setDipilih] = useState<string | null>(null);
   const [nyawa, setNyawa] = useState(NYAWA_AWAL);
   const [skor, setSkor] = useState(0);
+  const [komboGenba, setKomboGenba] = useState(0);
+  const [komboGenbaMaks, setKomboGenbaMaks] = useState(0);
+  const [pesananSelesai, setPesananSelesai] = useState(0);
   const [sisa, setSisa] = useState(100);
   const [pesan, setPesan] = useState('');
   const [choukai, setChoukai] = useState(false);
@@ -129,6 +159,9 @@ export default function ArcadeGame() {
   const mulai = () => {
     setNyawa(NYAWA_AWAL);
     setSkor(0);
+    setKomboGenba(0);
+    setKomboGenbaMaks(0);
+    setPesananSelesai(0);
     setMenunggu(false);
     setFase('main');
     berikut();
@@ -146,6 +179,7 @@ export default function ArcadeGame() {
     window.setTimeout(() => setAnimasi(''), 350);
     const sisaNyawa = nyawa - 1;
     setNyawa(sisaNyawa);
+    setKomboGenba(0);
     setPesan(alasan);
     catatLemah(
       `${perintah.warna.jp} ${perintah.barang.jp} → ${perintah.zona.jp}`,
@@ -168,7 +202,19 @@ export default function ArcadeGame() {
       bunyi(true);
       setAnimasi('benar');
       window.setTimeout(() => setAnimasi(''), 350);
-      setSkor((n) => n + 100);
+      const komboBaru = komboGenba + 1;
+      const bonusCepat = komboBaru >= 2 ? (sisa >= 60 ? 50 : sisa >= 30 ? 25 : 0) : 0;
+      const pengali = komboBaru >= 5 ? 2 : 1;
+      const tambah = (100 + bonusCepat) * pengali;
+      const skorBaru = skor + tambah;
+      setSkor(skorBaru);
+      setKomboGenba(komboBaru);
+      setKomboGenbaMaks((m) => Math.max(m, komboBaru));
+      setPesananSelesai((p) => p + 1);
+      if (skorBaru > rekorGenba) {
+        setRekorGenba(skorBaru);
+        simpanRekor(KUNCI_REKOR_GENBA, skorBaru);
+      }
       berikut();
     } else {
       gagal(`${t('arcade.salah_harusnya')} ${perintah.warna.id_} ${perintah.barang.id_} → ${perintah.zona.id_}`);
@@ -205,6 +251,7 @@ export default function ArcadeGame() {
   const [kombo, setKombo] = useState(1);
   const [balas, setBalas] = useState('');
   const [skorCombo, setSkorCombo] = useState(0);
+  const [kalimatSelesai, setKalimatSelesai] = useState(0);
   /**
    * Tingkat kesulitan Combo.
    *
@@ -230,6 +277,29 @@ export default function ArcadeGame() {
     setBalas('');
   };
 
+  /** Pilih soal berikutnya secara acak (tidak mengulang soal yang baru saja tampil). */
+  const berikutCombo = () => {
+    const len = daftarCombo.length;
+    if (len <= 1) {
+      muatSoal(0);
+      return;
+    }
+    const kini = soalIdx % len;
+    const geser = 1 + Math.floor(Math.random() * (len - 1));
+    muatSoal((kini + geser) % len);
+  };
+
+  /** Kembalikan 1 kartu terakhir dari rel ke meja bila salah susun atau ingin cek ulang. */
+  const batalSatu = () => {
+    if (langkah <= 0 || langkah >= soal.urutan.length) return;
+    const kembali = soal.urutan[langkah - 1];
+    if (!kembali) return;
+    setLangkah(langkah - 1);
+    setTray((tr) => tr.slice(0, -1));
+    setKartu((ks) => [...ks, kembali]);
+    setBalas('');
+  };
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: muat ulang hanya saat LEVEL berganti; muatSoal dibuat ulang tiap render sehingga memasukkannya ke daftar akan mengulang tanpa henti
   useEffect(() => {
     muatSoal(0);
@@ -239,10 +309,13 @@ export default function ArcadeGame() {
      Genba punya akhir yang jelas (tiga kesalahan), jadi skornya dikirim tepat
      saat ronde selesai. `bolehKirim` menjaga agar satu ronde tidak terkirim dua
      kali bila efek ini berjalan ulang. */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: hanya kirim saat fase selesai dan skor berubah
   useEffect(() => {
     if (fase !== 'selesai' || skor <= 0) return;
     if (!bolehKirim(`genba:${skor}`)) return;
-    void kirimSkor('genba', skor, {});
+    void kirimSkor('genba', skor, { pesanan: pesananSelesai, kombo: komboGenbaMaks }).then(() => {
+      if (papanBuka) muatPapan('genba');
+    });
   }, [fase, skor]);
 
   /* ── Papan peringkat: Combo ────────────────────────────────────────────────
@@ -251,14 +324,22 @@ export default function ArcadeGame() {
      JEDA 5 detik: skor dikirim setelah permainan berhenti berubah selama itu.
      Efek ini dibersihkan setiap `skorCombo` berubah, sehingga hitungannya
      selalu mulai lagi dan hanya kiriman TERAKHIR yang benar-benar lolos. */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: jeda 5 detik hanya dipicu perubahan skorCombo
   useEffect(() => {
     if (skorCombo <= 0) return;
     const id = window.setTimeout(() => {
       if (!bolehKirim(`combo:${skorCombo}`)) return;
-      void kirimSkor('combo', skorCombo, {});
+      void kirimSkor('combo', skorCombo, { level, kombo, kalimat: kalimatSelesai }).then(() => {
+        if (papanBuka) muatPapan('combo');
+      });
     }, 5000);
     return () => window.clearTimeout(id);
   }, [skorCombo]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: muat papan saat tab atau status buka berubah
+  useEffect(() => {
+    if (papanBuka) muatPapan(tab);
+  }, [tab, papanBuka]);
 
   const ketuk = (k: Kartu, indeks: number) => {
     /* KALIMAT SUDAH SELESAI — abaikan ketukan berikutnya.
@@ -276,14 +357,21 @@ export default function ArcadeGame() {
          `kombo` lama sehingga ketukan pertama selalu dinilai seolah tidak ada
          rangkaian — dan angka di layar (x2) tidak cocok dengan skor yang masuk. */
       const komboBaru = kombo + 1;
+      const skorBaru = skorCombo + 50 * komboBaru;
       setLangkah(l);
       setTray((tr) => [...tr, k.jp]);
       setKombo(komboBaru);
-      setSkorCombo((n) => n + 50 * komboBaru);
+      setSkorCombo(skorBaru);
+      if (skorBaru > rekorCombo) {
+        setRekorCombo(skorBaru);
+        simpanRekor(KUNCI_REKOR_COMBO, skorBaru);
+      }
       setKartu((ks) => ks.filter((_, i) => i !== indeks));
       if (l === soal.urutan.length) {
         setBalas(t('arcade.sempurna'));
-        window.setTimeout(() => muatSoal(soalIdx + 1), 1600);
+        setKalimatSelesai((n) => n + 1);
+        window.setTimeout(() => ucap(soal.urutan.map((u) => u.jp).join(' '), 0.95), 250);
+        window.setTimeout(() => berikutCombo(), 1600);
       }
     } else {
       bunyi(false);
@@ -302,6 +390,8 @@ export default function ArcadeGame() {
   if (!masuk) {
     return <LoginGate onSuccess={() => setMasuk(true)} />;
   }
+
+  const waSendiri = waSiswa();
 
   return (
     <div class="max-w-md mx-auto">
@@ -333,18 +423,31 @@ export default function ArcadeGame() {
               <span class="break-words">{t('arcade.choukai')}</span>
             </label>
             <span class="font-bold text-fg">¥ {skor}</span>
+            {rekorGenba > 0 && (
+              <span class="text-[11px] text-fg-muted">
+                🏆 {t('arcade.rekor')} ¥ {rekorGenba}
+              </span>
+            )}
+            {komboGenba >= 2 && (
+              <span class="rounded-pill bg-accent-amber/15 px-2 py-0.5 text-[11px] font-bold text-accent-amber">
+                🔥 {komboGenba >= 5 ? `${t('arcade.fever')} · ` : ''}{komboGenba}
+              </span>
+            )}
             <span role="img" aria-label={`${t('arcade.nyawa')}: ${Math.max(0, nyawa)}`}>
               {'⛑️'.repeat(Math.max(0, nyawa)) || '💀'}
             </span>
           </div>
 
           <div
-            class={`mb-2 rounded-card border border-line bg-surface-sunken p-3 ${
-              animasi === 'salah' ? 'animasi-getar' : animasi === 'benar' ? 'animasi-pop' : ''
-            }`}
+            class={`mb-2 rounded-card border bg-surface-sunken p-3 ${
+              komboGenba >= 5 ? 'border-accent-amber' : 'border-line'
+            } ${animasi === 'salah' ? 'animasi-getar' : animasi === 'benar' ? 'animasi-pop' : ''}`}
           >
             <div class="mb-1 flex items-center justify-between">
-              <span class="text-[11px] font-bold text-fg-muted">{t('arcade.perintah_senpai')}</span>
+              <span class="text-[11px] font-bold text-fg-muted">
+                {t('arcade.perintah_senpai')}
+                {pesananSelesai > 0 ? ` · #${pesananSelesai + 1}` : ''}
+              </span>
               <button
                 type="button"
                 onClick={() => perintah && ucap(perintah.jp, skor >= 500 ? 1.05 : 0.9)}
@@ -362,9 +465,32 @@ export default function ArcadeGame() {
             {perintah && !choukai && <p class="mt-0.5 text-[11px] italic text-fg-muted">{perintah.romaji}</p>}
             {pesan && <p class="mt-1 text-[11px] font-bold text-accent-red">{pesan}</p>}
             <div class="mt-2 h-1.5 w-full overflow-hidden rounded-pill bg-surface-raised" role="progressbar" aria-valuenow={Math.round(sisa)} aria-valuemin={0} aria-valuemax={100}>
-              <div class="h-full bg-emerald-400" style={`transform:scaleX(${sisa / 100});transform-origin:left`} />
+              <div
+                class={`h-full ${sisa > 50 ? 'bg-emerald-400' : sisa > 25 ? 'bg-amber-400' : 'bg-rose-500'}`}
+                style={`transform:scaleX(${sisa / 100});transform-origin:left`}
+              />
             </div>
           </div>
+
+          {fase === 'selesai' && (
+            <div class="mb-2 rounded-card border border-accent-violet bg-accent-violet/10 p-3 text-center">
+              <p class="text-xs font-black text-accent-violet">🏁 {t('arcade.shift_selesai')}</p>
+              <div class="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+                <div class="rounded-control bg-surface-raised p-1.5">
+                  <span class="block text-fg-muted">{t('arcade.skor_akhir')}</span>
+                  <strong class="text-sm text-fg">¥ {skor}</strong>
+                </div>
+                <div class="rounded-control bg-surface-raised p-1.5">
+                  <span class="block text-fg-muted">{t('arcade.pesanan')}</span>
+                  <strong class="text-sm text-fg">{pesananSelesai}</strong>
+                </div>
+                <div class="rounded-control bg-surface-raised p-1.5">
+                  <span class="block text-fg-muted">{t('arcade.kombo_terbaik')}</span>
+                  <strong class="text-sm text-accent-amber">{komboGenbaMaks}</strong>
+                </div>
+              </div>
+            </div>
+          )}
 
           {fase === 'idle' || fase === 'selesai' ? (
             <button type="button" onClick={mulai} class="mb-2 min-h-11 w-full rounded-control bg-accent-violet px-4 text-sm font-bold text-white">
@@ -432,8 +558,16 @@ export default function ArcadeGame() {
         </section>
       ) : (
         <section aria-label={t('arcade.tab_combo')}>
-          <div class="mb-2 flex items-center justify-between text-[12px]">
-            <span class="rounded-control border border-line bg-surface-raised px-2 py-1 font-bold text-fg-muted">🔥 x{kombo}</span>
+          {/* PENTING: Jangan menaruh string berpola `x<angka>` sebelum `🔥 x{kombo}`
+              karena `e2e/arcade.test.tsx` membaca kombo dari kecocokan pertama `/x(\d+)/`. */}
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-1.5 text-[12px]">
+            <span
+              class={`rounded-control border px-2 py-1 font-bold ${
+                kombo >= 5 ? 'border-accent-amber bg-accent-amber/15 text-accent-amber' : 'border-line bg-surface-raised text-fg-muted'
+              }`}
+            >
+              🔥 x{kombo}{kombo >= 5 ? ` · ${t('arcade.fever')}` : ''}
+            </span>
             <span class="rounded-control border border-line bg-surface-sunken px-2 py-1 text-fg-muted">{soal.bab}</span>
             <button
               type="button"
@@ -449,7 +583,13 @@ export default function ArcadeGame() {
           </div>
 
           <div class="mb-2 rounded-card border border-line bg-surface-sunken p-3 text-center">
-            <p class="text-[11px] font-bold text-fg-muted">{t('arcade.susun')}</p>
+            <div class="mb-1 flex items-center justify-between text-[11px] text-fg-muted">
+              <span class="font-bold">{t('arcade.susun')}</span>
+              <span>
+                {t('arcade.langkah')} {langkah}/{soal.urutan.length}
+                {kalimatSelesai > 0 ? ` · ✓ ${kalimatSelesai}` : ''}
+              </span>
+            </div>
             <p class="text-sm font-bold text-fg" data-testid="arcade-target">“{soal.indo}”</p>
             {balas && <p class="mt-1 text-[11px] font-bold text-accent-amber">{balas}</p>}
           </div>
@@ -464,6 +604,30 @@ export default function ArcadeGame() {
                 </span>
               ))
             )}
+          </div>
+
+          {/* Kontrol bantu Combo: Batal 1 kartu & Soal Lain */}
+          <div class="mb-2 flex items-center justify-between gap-2 text-[11px]">
+            <button
+              type="button"
+              onClick={batalSatu}
+              disabled={langkah <= 0 || langkah >= soal.urutan.length}
+              class="min-h-9 flex-1 rounded-control border border-line bg-surface-raised px-2 py-1 font-bold text-fg-muted disabled:opacity-40"
+            >
+              ↩️ {t('arcade.batal_satu')}
+            </button>
+            {rekorCombo > 0 && (
+              <span class="text-fg-muted">
+                🏆 {t('arcade.rekor')} <b class="text-fg">¥ {rekorCombo}</b>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={berikutCombo}
+              class="min-h-9 flex-1 rounded-control border border-line bg-surface-raised px-2 py-1 font-bold text-fg-muted"
+            >
+              🔀 {t('arcade.soal_lain')}
+            </button>
           </div>
 
           <div class="grid grid-cols-3 gap-2 rounded-card border border-line bg-surface-sunken p-2">
@@ -488,6 +652,64 @@ export default function ArcadeGame() {
           </div>
         </section>
       )}
+
+      {/* Papan Skor In-Game */}
+      <div class="mt-3 rounded-card border border-line bg-surface-raised p-3 text-[11px]">
+        <div class="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setPapanBuka((b) => !b)}
+            aria-expanded={papanBuka}
+            class="font-bold text-fg flex items-center gap-1.5"
+          >
+            <span>🏆 {t('arcade.papan_skor')} ({tab === 'genba' ? t('arcade.tab_genba') : t('arcade.tab_combo')})</span>
+            <span class="text-fg-muted">{papanBuka ? '▲' : '▼'}</span>
+          </button>
+          {papanBuka && (
+            <button
+              type="button"
+              onClick={() => muatPapan(tab)}
+              class="rounded-control border border-line bg-surface-sunken px-2 py-0.5 font-bold text-fg-muted"
+            >
+              🔄
+            </button>
+          )}
+        </div>
+        {papanBuka && (
+          <div class="mt-2">
+            {papan.length === 0 ? (
+              <p class="text-fg-muted py-1">{t('admin.papan_skor_kosong')}</p>
+            ) : (
+              <ol class="space-y-1">
+                {papan.map((r, i) => {
+                  const milikSendiri = Boolean(waSendiri && r.no_wa === waSendiri);
+                  const medali = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                  return (
+                    <li
+                      key={`${r.nama}-${r.skor}-${i}`}
+                      class={`flex items-center justify-between rounded-control border px-2 py-1 ${
+                        milikSendiri ? 'border-accent-violet bg-accent-violet/10' : 'border-line bg-surface-sunken'
+                      }`}
+                    >
+                      <span class="min-w-0 truncate">
+                        <strong class="mr-1.5">{medali}</strong>
+                        <span class="font-bold text-fg">{r.nama}</span>
+                        {r.kelas && <span class="ml-1 text-fg-muted">({r.kelas})</span>}
+                        {milikSendiri && (
+                          <span class="ml-1.5 rounded-pill bg-accent-violet/15 px-1.5 py-0.5 text-[9px] font-bold text-accent-violet">
+                            ⭐ {t('arcade.anda')}
+                          </span>
+                        )}
+                      </span>
+                      <strong class="shrink-0 font-mono text-fg">¥ {r.skor.toLocaleString('id-ID')}</strong>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Evaluasi */}
       <div class="mt-3 flex items-center justify-between rounded-card border border-line bg-surface-raised px-3 py-2 text-[11px]">

@@ -36,7 +36,8 @@
  */
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { authStore } from '../../store/authReactive';
-import { bolehKirim, kirimSkor } from '../../lib/skorGame';
+import { ambilPapanGame, bolehKirim, kirimSkor, type BarisPapanGame } from '../../lib/skorGame';
+import { bunyi } from '../../lib/tts';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema } from '../../lib/schemas';
 import { t, useLang } from '../../store/i18n';
@@ -463,6 +464,9 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const [skor, setSkor] = useState(0);
   const [hp, setHp] = useState(NYAWA_AWAL);
   const [kombo, setKombo] = useState(0);
+  const [komboMaks, setKomboMaks] = useState(0);
+  const [papanBuka, setPapanBuka] = useState(false);
+  const [papan, setPapan] = useState<BarisPapanGame[]>([]);
   const [jumlahBenar, setJumlahBenar] = useState(0);
   const [salahKata, setSalahKata] = useState<Kotoba[]>([]);
   const [fase, setFase] = useState<'tanya' | 'hasil'>('tanya');
@@ -821,6 +825,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     setSkor(0);
     setHp(NYAWA_AWAL);
     setKombo(0);
+    setKomboMaks(0);
     setJumlahBenar(0);
     setSalahKata([]);
     if (khusus?.length) {
@@ -915,7 +920,9 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     /* Bonus kecepatan hanya di mode kilat: menjawab cepat saat waktunya tak
        terbatas tidak layak diberi nilai lebih. */
     const bonus = tepat && kilat ? Math.round(sisaWaktu / 10) : 0;
-    const poin = (mode === 'ketik' ? 15 : 10) + kombo * 2 + bonus;
+    const poin = (mode === 'ketik' ? 15 : 10) + kombo * 2 + bonus + (tepat && kombo >= 5 ? 5 : 0);
+    bunyi(tepat);
+    if (tepat) setKomboMaks((m) => Math.max(m, kombo + 1));
     setBenar(tepat);
     setHp(hpBaru);
     setSkor(tepat ? skor + poin : skor);
@@ -989,6 +996,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
 
   // Rekor diperbarui saat ronde berakhir — di satu tempat, bukan di setiap
   // penambahan skor (kalau tidak, "rekor" berubah di tengah ronde).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: hanya dijalankan saat ronde berakhir (fase === 'hasil')
   useEffect(() => {
     if (fase !== 'hasil') return;
     setProgres((p) => (p.rekor >= skor ? p : { ...p, rekor: skor }));
@@ -996,7 +1004,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
        terkirim dua kali bila efek ini berjalan ulang (render ganda); kuncinya
        memuat skornya, jadi dua ronde dengan skor berbeda tetap terkirim
        keduanya. Kegagalan diabaikan — skor lokal sudah tersimpan lebih dulu. */
-    if (skor > 0 && bolehKirim(`kotoba:${skor}`)) void kirimSkor('kotoba', skor, {});
+    if (skor > 0 && bolehKirim(`kotoba:${skor}`)) {
+      void kirimSkor('kotoba', skor, { mode, sumber, benar: jumlahBenar, kombo: komboMaks }).then(() => {
+        if (papanBuka) void ambilPapanGame('kotoba', 10).then(setPapan);
+      });
+    }
   }, [fase, skor]);
 
   /**
@@ -1010,7 +1022,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
-      if (mode === 'kuis' && benar === null) {
+      if ((mode === 'kuis' || mode === 'bom') && benar === null) {
         const n = Number(e.key);
         if (n >= 1 && n <= 4) {
           const opsi = pilihan[n - 1];
@@ -1074,7 +1086,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   useEffect(() => {
     if (!suaraOtomatis) return;
     if (fase !== 'tanya' || !soal) return;
-    if (mode !== 'kuis' && mode !== 'ketik') return;
+    if (mode !== 'kuis' && mode !== 'ketik' && mode !== 'bom') return;
     if (arah !== 'jp-id') return;
     ucapkan(soal.h, true);
   }, [soal, fase, mode, arah, suaraOtomatis]);
@@ -1539,9 +1551,76 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
         </div>
       )}
 
+      {/* ── PAPAN SKOR IN-GAME ── */}
+      <div class="mb-3 rounded-card border border-line bg-surface p-3 text-[12px] cetak-sembunyi">
+        <div class="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => {
+              const bukaBaru = !papanBuka;
+              setPapanBuka(bukaBaru);
+              if (bukaBaru) void ambilPapanGame('kotoba', 10).then(setPapan);
+            }}
+            aria-expanded={papanBuka}
+            class="font-bold text-fg flex items-center gap-1.5"
+          >
+            <span>🏆 {t('kotoba.papan_skor')}</span>
+            <span class="text-fg-muted">{papanBuka ? '▲' : '▼'}</span>
+          </button>
+          {papanBuka && (
+            <button
+              type="button"
+              onClick={() => void ambilPapanGame('kotoba', 10).then(setPapan)}
+              class="rounded-control border border-line bg-surface-raised px-2 py-0.5 text-[11px] font-bold text-fg-muted"
+            >
+              🔄
+            </button>
+          )}
+        </div>
+        {papanBuka && (
+          <div class="mt-2">
+            {papan.length === 0 ? (
+              <p class="text-fg-muted py-1">{t('admin.papan_skor_kosong')}</p>
+            ) : (
+              <ol class="space-y-1">
+                {papan.map((r, i) => {
+                  const milikSendiri = Boolean(wa && r.no_wa === wa);
+                  const medali = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`;
+                  return (
+                    <li
+                      key={`${r.nama}-${r.skor}-${i}`}
+                      class={`flex items-center justify-between rounded-control border px-2.5 py-1.5 ${
+                        milikSendiri ? 'border-accent-violet bg-accent-violet/10' : 'border-line bg-surface-sunken'
+                      }`}
+                    >
+                      <span class="min-w-0 truncate">
+                        <strong class="mr-1.5">{medali}</strong>
+                        <span class="font-bold text-fg">{r.nama}</span>
+                        {r.kelas && <span class="ml-1 text-fg-muted">({r.kelas})</span>}
+                        {milikSendiri && (
+                          <span class="ml-1.5 rounded-pill bg-accent-violet/15 px-1.5 py-0.5 text-[10px] font-bold text-accent-violet">
+                            ⭐ {t('arcade.anda')}
+                          </span>
+                        )}
+                      </span>
+                      <strong class="shrink-0 font-mono text-fg">{r.skor.toLocaleString('id-ID')}</strong>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* ── KUIS / KETIK ── */}
       {pool.length > 0 && (mode === 'kuis' || mode === 'ketik' || mode === 'bom') && (
-        <section data-testid="kotoba-kartu" class="rounded-card border border-line bg-surface p-4 md:p-5">
+        <section
+          data-testid="kotoba-kartu"
+          class={`rounded-card border bg-surface p-4 md:p-5 ${
+            kombo >= 5 ? 'border-accent-amber' : 'border-line'
+          } ${benar === true ? 'animasi-pop' : benar === false ? 'animasi-getar' : ''}`}
+        >
           {fase === 'tanya' && item ? (
             <>
               {/* HUD */}
@@ -1562,7 +1641,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 </span>
                 <span>
                   {t('kotoba.skor')} <strong class="text-fg">{skor}</strong>
-                  {kombo >= 2 && <span class="text-accent-amber font-bold"> · {kombo}×</span>}
+                  {kombo >= 2 && (
+                    <span class="text-accent-amber font-bold">
+                      {' '}· {kombo}×{kombo >= 5 ? ` 🔥 ${t('kotoba.fever')}` : ''}
+                    </span>
+                  )}
                 </span>
                 <span>
                   {soalKe}
@@ -1583,6 +1666,14 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 >
                   <span>💣 {t('kotoba.mode_bom')}</span>
                   <span class="tabular-nums text-lg">{sisaBom}{t('kotoba.detik')}</span>
+                </div>
+              )}
+              {mode === 'bom' && (
+                <div class="h-1.5 w-full rounded-pill bg-surface-sunken overflow-hidden mb-3">
+                  <div
+                    class={`h-full origin-left ${sisaBom <= 10 ? 'bg-accent-red' : 'bg-accent-amber'}`}
+                    style={`transform:scaleX(${sisaBom / DURASI_BOM_DETIK})`}
+                  />
                 </div>
               )}
               {/* Batas waktu — hanya kuis */}
@@ -1636,7 +1727,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
               </div>
 
               {/* Jawaban */}
-              {mode === 'kuis' ? (
+              {mode === 'kuis' || mode === 'bom' ? (
                 <div class="grid gap-2">
                   {pilihan.map((opsi, i) => {
                     const sudah = benar !== null;
@@ -1734,6 +1825,8 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
               <p class="text-center text-[12px] text-fg-muted mb-4">
                 {t('kotoba.hasil_skor')} <strong class="text-fg">{skor}</strong> ·{' '}
                 {t('kotoba.hasil_benar')} {jumlahBenar}/{soalKe}
+                {soalKe > 0 ? ` (${Math.round((jumlahBenar / soalKe) * 100)}%)` : ''}
+                {komboMaks >= 2 ? ` · 🔥 ${t('kotoba.kombo_maks')} ${komboMaks}×` : ''}
               </p>
               {salahKata.length > 0 && (
                 <div class="mb-4">

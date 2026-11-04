@@ -1,5 +1,5 @@
 /**
- * skorGame.ts — kirim skor game ke papan peringkat.
+ * skorGame.ts — kirim & muat skor game ke/dari papan peringkat.
  *
  * KENAPA DIPISAH
  *   Ketiga game (kotoba, arcade, matematika) sama-sama perlu mengirim skor, dan
@@ -29,6 +29,16 @@ import { authStore } from '../store/authReactive';
  * dimenangkan pemain Combo.
  */
 export type GameSkor = 'kotoba' | 'genba' | 'combo' | 'matematika';
+
+/** Satu baris papan skor yang diterima klien. */
+export interface BarisPapanGame {
+  no_wa: string;
+  nama: string;
+  kelas: string;
+  skor: number;
+  detail?: Record<string, unknown>;
+  dibuat_pada?: string;
+}
 
 /** Nomor WA siswa yang sedang masuk, atau '' bila tidak ada. */
 export function waSiswa(): string {
@@ -65,6 +75,24 @@ export async function kirimSkor(
     return typeof r.terbaik === 'number' ? r.terbaik : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Ambil 10 besar papan peringkat satu game untuk ditampilkan langsung di dalam
+ * halaman game (`/arcade` dan `/kotoba`). Tidak pernah melempar error.
+ */
+export async function ambilPapanGame(game: GameSkor, limit = 10): Promise<BarisPapanGame[]> {
+  const wa = waSiswa();
+  try {
+    const r = await apiClient<{ success?: boolean; peringkat?: BarisPapanGame[] }>(
+      'getPapanSkor',
+      [game, limit, wa],
+      { onSessionInvalid: 'throw', silent: true },
+    );
+    return Array.isArray(r?.peringkat) ? r.peringkat : [];
+  } catch {
+    return [];
   }
 }
 

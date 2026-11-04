@@ -30,7 +30,7 @@
 /** Satu ikon = daftar `d` untuk `<path>`. */
 export type Ikon = readonly string[];
 
-/** Benda yang bisa "ditaruh" (16). */
+/** Benda yang bisa "ditaruh" (24). */
 export const IKON_BARANG: Readonly<Record<string, Ikon>> = {
   hako: ['M3 7l9-4 9 4v10l-9 4-9-4z', 'M3 7l9 4 9-4', 'M12 11v10'],
   kagi: ['M8 12a4 4 0 100-8 4 4 0 000 8z', 'M11 11l9 9', 'M17 17l2-2', 'M20 20l2-2'],
@@ -48,10 +48,18 @@ export const IKON_BARANG: Readonly<Record<string, Ikon>> = {
   boushi: ['M4 15a8 8 0 0116 0z', 'M2 15h20v2H2z'],
   saifu: ['M4 6h16v13H4z', 'M4 10h16', 'M16 14h3'],
   megane: ['M7 17a3 3 0 100-6 3 3 0 000 6z', 'M17 17a3 3 0 100-6 3 3 0 000 6z', 'M10 14h4', 'M4 13L3 9', 'M20 13l1-4'],
+  tebukuro: ['M7 11V5a1.5 1.5 0 013 0v5', 'M10 9V4a1.5 1.5 0 013 0v5', 'M13 9V5a1.5 1.5 0 013 0v5', 'M16 10V7a1.5 1.5 0 013 0v7a6 6 0 01-6 6H9a4 4 0 01-4-4v-4a1.5 1.5 0 013 0v1'],
+  herumetto: ['M4 14a8 8 0 0116 0H4z', 'M2 14h20v3H2z', 'M12 6v4'],
+  bento: ['M3 6h18v12H3z', 'M12 6v12', 'M3 12h9', 'M15 9h3', 'M15 15h3'],
+  jisho: ['M5 3h14v18H5z', 'M8 3v18', 'M11 8h5', 'M11 12h5', 'M11 16h3'],
+  kamera: ['M3 8h4l2-2h6l2 2h4v11H3z', 'M12 16a3.5 3.5 0 100-7 3.5 3.5 0 000 7z'],
+  denchi: ['M7 6h10v14H7z', 'M10 3h4v3h-4z', 'M12 10l-2 3h4l-2 3'],
+  fukuro: ['M5 8h14l-1 12H6z', 'M9 8V6a3 3 0 016 0v2', 'M9 13h6'],
+  chizu: ['M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z', 'M9 4v14', 'M15 6v14'],
 };
 
 /**
- * Lokasi tujuan (11).
+ * Lokasi tujuan (12).
  *
  * `kaban` di sini adalah "dalam tas" — id-nya sama dengan benda `kaban` karena
  * keduanya memang tas. Dipisah per peta supaya tidak saling menimpa.
@@ -68,6 +76,7 @@ export const IKON_ZONA: Readonly<Record<string, Ikon>> = {
   kaban: ['M5 9h14l-1 11H6z', 'M9 9V6a3 3 0 016 0v3'],
   hiki: ['M4 4h16v16H4z', 'M4 10h16', 'M4 15h16', 'M10 7h4', 'M10 12.5h4'],
   yuka: ['M3 15h18', 'M3 19h18', 'M7 15v4', 'M12 15v4', 'M17 15v4'],
+  reizouko: ['M5 3h14v18H5z', 'M5 10h14', 'M8 6v2', 'M8 13v4'],
 };
 
 /** Semua id yang punya ikon — dipakai tes untuk mendeteksi yang lupa. */

@@ -207,6 +207,12 @@ describe('/kotoba — siswa ASJ saja', () => {
       return m ? Number(m[1]) : NaN;
     };
     await waitFor(() => expect(Number.isNaN(bacaSumbu())).toBe(false));
+    /* REGRESI: Bom Sakura harus merender 4 tombol pilihan ganda, BUKAN input ketik romaji. */
+    const opsi = [...document.querySelectorAll('button')].filter((b) =>
+      b.className.includes('rounded-control border text-left'),
+    );
+    expect(opsi.length).toBe(4);
+    expect(document.querySelector('#kotoba-ketik')).toBeNull();
     const awal = bacaSumbu();
     expect(awal).toBeGreaterThan(50);
 

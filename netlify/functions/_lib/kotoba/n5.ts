@@ -1,5 +1,6 @@
 /**
- * kotoba/n5.ts — 174 kata N5 tambahan dari materi "KANJI N5 LENGKAP.xlsx".
+ * kotoba/n5.ts — 250 kata N5 & kehidupan kerja di Jepang (dari materi
+ * "KANJI N5 LENGKAP.xlsx" + kosakata esensial kehidupan/genba N5).
  *
  * ASAL DAN BATASNYA
  * -----------------
@@ -17,9 +18,10 @@
  *     (mis. `掛かる/かかります`). Itu akan mengajari bacaan yang keliru, jadi
  *     dibuang alih-alih ditebak bentuk ます-nya (死ぬ→死にます tidak beraturan).
  *
- * Hasil akhir: 174 entri. ARTINYA SAYA TULIS SENDIRI (Bahasa Indonesia) — berkas
- * sumber tidak memuat arti sama sekali. Romaji diturunkan dari kana dengan
- * konverter yang sama seperti bank lain, jadi ejaannya konsisten.
+ * Hasil kurasi awal: 174 entri, lalu diperluas menjadi 250 entri (+76 kata
+ * keseharian di Jepang, belanja, administrasi kota, keselamatan bencana, dan
+ * budaya kerja報連相). Semua romaji diturunkan dari kana dengan konverter yang
+ * sama seperti bank lain, jadi ejaannya 100% konsisten.
  *
  * Yang TIDAK diklaim: ini bukan daftar resmi N5, dan bukan pengganti buku. Ia
  * mengisi celah kata yang belum ada di bank buku, bukan menggantikannya.
@@ -213,6 +215,83 @@ const KOLOM: readonly KolomN5[] = [
   ['学校を出ます', 'がっこうをでます', 'gakkouodemasu', 'Lulus sekolah', 'verb'],
   ['再婚します', 'さいこんします', 'saikonshimasu', 'Menikah lagi', 'verb'],
   ['仕事やめます', 'しごとやめます', 'shigotoyamemasu', 'Berhenti kerja', 'verb'],
+  /* ── Tambahan 76 kata keseharian Jepang, belanja, fasilitas & Genba ─────── */
+  ['安全靴', 'あんぜんぐつ', 'anzengutsu', 'Sepatu keselamatan kerja', 'noun'],
+  ['作業服', 'さぎょうふく', 'sagyoufuku', 'Pakaian seragam kerja', 'noun'],
+  ['名札', 'なふだ', 'nafuda', 'Kartu nama dada', 'noun'],
+  ['休憩室', 'きゅうけいしつ', 'kyuukeishitsu', 'Ruang istirahat', 'noun'],
+  ['更衣室', 'こういしつ', 'kouishitsu', 'Ruang ganti pakaian', 'noun'],
+  ['非常口', 'ひじょうぐち', 'hijouguchi', 'Pintu darurat', 'noun'],
+  ['消火器', 'しょうかき', 'shoukaki', 'Alat pemadam api', 'noun'],
+  ['救急箱', 'きゅうきゅうばこ', 'kyuukyuubako', 'Kotak P3K', 'noun'],
+  ['体温計', 'たいおんけい', 'taionkei', 'Termometer suhu badan', 'noun'],
+  ['風邪薬', 'かぜぐすり', 'kazegusuri', 'Obat masuk angin dan flu', 'noun'],
+  ['目薬', 'めぐすり', 'megusuri', 'Obat tetes mata', 'noun'],
+  ['絆創膏', 'ばんそうこう', 'bansoukou', 'Plester penutup luka', 'noun'],
+  ['マスク', 'ますく', 'masuku', 'Masker penutup mulut', 'noun'],
+  ['アルコール消毒', 'あるこーるしょうどく', 'arukoorushoudoku', 'Disinfektan alkohol', 'noun'],
+  ['手洗い', 'てあらい', 'tearai', 'Cuci tangan', 'noun'],
+  ['うがい', 'うがい', 'ugai', 'Berkumur tenggorokan', 'noun'],
+  ['早退', 'そうたい', 'soutai', 'Pulang kerja lebih awal', 'noun'],
+  ['遅刻', 'ちこく', 'chikoku', 'Datang terlambat', 'noun'],
+  ['欠勤', 'けっきん', 'kekkin', 'Tidak masuk kerja', 'noun'],
+  ['有給休暇', 'ゆうきゅうきゅうか', 'yuukyuukyuuka', 'Cuti tahunan berbayar', 'noun'],
+  ['夜勤', 'やきん', 'yakin', 'Giliran kerja malam', 'noun'],
+  ['日勤', 'にっきん', 'nikkin', 'Giliran kerja siang', 'noun'],
+  ['交代制', 'こうたいせい', 'koutaisei', 'Sistem kerja bergilir', 'noun'],
+  ['タイムカード', 'たいむかーど', 'taimukaado', 'Kartu absensi jam kerja', 'noun'],
+  ['給料日', 'きゅうりょうび', 'kyuuryoubi', 'Tanggal gajian', 'noun'],
+  ['明細書', 'めいさいしょ', 'meisaisho', 'Slip rincian gaji', 'noun'],
+  ['通帳', 'つうちょう', 'tsuuchou', 'Buku tabungan bank', 'noun'],
+  ['印鑑', 'いんかん', 'inkan', 'Stempel nama pribadi', 'noun'],
+  ['在留カード', 'ざいりゅうかーど', 'zairyuukaado', 'Kartu izin tinggal di Jepang', 'noun'],
+  ['住民票', 'じゅうみんひょう', 'juuminhyou', 'Surat keterangan domisili', 'noun'],
+  ['健康保険証', 'けんこうほけんしょう', 'kenkouhokenshou', 'Kartu asuransi kesehatan', 'noun'],
+  ['市役所', 'しやくしょ', 'shiyakusho', 'Kantor balai kota', 'noun'],
+  ['郵便局', 'ゆうびんきょく', 'yuubinkyoku', 'Kantor pos', 'noun'],
+  ['交番', 'こうばん', 'kouban', 'Pos polisi lingkungan', 'noun'],
+  ['コンビニ', 'こんびに', 'konbini', 'Toko serba ada 24 jam', 'noun'],
+  ['ドラッグストア', 'どらっぐすとあ', 'doraggusutoa', 'Toko obat dan kebutuhan harian', 'noun'],
+  ['百円ショップ', 'ひゃくえんしょっぷ', 'hyakuenshoppu', 'Toko serba seratus yen', 'noun'],
+  ['コインランドリー', 'こいんらんどりー', 'koinrandorii', 'Tempat cuci pakaian koin', 'noun'],
+  ['ゴミ袋', 'ごみぶくろ', 'gomibukuro', 'Kantong plastik sampah', 'noun'],
+  ['燃えるゴミ', 'もえるごみ', 'moerugomi', 'Sampah mudah terbakar', 'noun'],
+  ['燃えないゴミ', 'もえないごみ', 'moenaigomi', 'Sampah tidak mudah terbakar', 'noun'],
+  ['資源ゴミ', 'しげんごみ', 'shigengomi', 'Sampah yang bisa didaur ulang', 'noun'],
+  ['分別します', 'ぶんべつします', 'bunbetsushimasu', 'Memilah sampah sesuai jenis', 'verb'],
+  ['節約します', 'せつやくします', 'setsuyakushimasu', 'Menghemat pengeluaran', 'verb'],
+  ['貯金します', 'ちょきんします', 'chokinshimasu', 'Menabung uang', 'verb'],
+  ['送金します', 'そうきんします', 'soukinshimasu', 'Mengirim uang ke kampung', 'verb'],
+  ['振込', 'ふりこみ', 'furikomi', 'Transfer rekening bank', 'noun'],
+  ['領収書', 'りょうしゅうしょ', 'ryoushuusho', 'Bukti kuitansi pembayaran', 'noun'],
+  ['ポイントカード', 'ぽいんとかーど', 'pointokaado', 'Kartu pengumpul poin belanja', 'noun'],
+  ['レジ袋', 'れじぶくろ', 'rejibukuro', 'Kantong belanja kasir', 'noun'],
+  ['半額', 'はんがく', 'hangaku', 'Potongan setengah harga', 'noun'],
+  ['割引', 'わりびき', 'waribiki', 'Potongan harga diskon', 'noun'],
+  ['税込', 'ぜいこみ', 'zeikomi', 'Harga sudah termasuk pajak', 'noun'],
+  ['税抜', 'ぜいぬき', 'zeinuki', 'Harga belum termasuk pajak', 'noun'],
+  ['賞味期限', 'しょうみきげん', 'shoumikigen', 'Batas tanggal rasa terbaik', 'noun'],
+  ['消費期限', 'しょうひきげん', 'shouhikigen', 'Batas tanggal aman konsumsi', 'noun'],
+  ['電子レンジ', 'でんしれんじ', 'denshirenji', 'Oven pemanas microwave', 'noun'],
+  ['炊飯器', 'すいはんき', 'suihanki', 'Alat penanak nasi listrik', 'noun'],
+  ['掃除機', 'そうじき', 'soujiki', 'Mesin penyedot debu', 'noun'],
+  ['洗濯機', 'せんたくき', 'sentakuki', 'Mesin pencuci pakaian', 'noun'],
+  ['扇風機', 'せんぷうき', 'senpuuki', 'Kipas angin listrik', 'noun'],
+  ['暖房', 'だんぼう', 'danbou', 'Pengatur pemanas ruangan', 'noun'],
+  ['冷房', 'れいぼう', 'reibou', 'Pengatur pendingin ruangan', 'noun'],
+  ['充電器', 'じゅうでんき', 'juudenki', 'Alat pengisi daya baterai', 'noun'],
+  ['延長コード', 'えんちょうこーど', 'enchoukoodo', 'Kabel sambungan listrik', 'noun'],
+  ['懐中電灯', 'かいちゅうでんとう', 'kaichuudentou', 'Lampu senter darurat', 'noun'],
+  ['防災袋', 'ぼうさいぶくろ', 'bousaibukuro', 'Tas perlengkapan siaga bencana', 'noun'],
+  ['避難場所', 'ひなんばしょ', 'hinanbasho', 'Lokasi tempat mengungsi', 'noun'],
+  ['地震', 'じしん', 'jishin', 'Bencana gempa bumi', 'noun'],
+  ['台風', 'たいふう', 'taifuu', 'Badai angin topan', 'noun'],
+  ['警報', 'けいほう', 'keihou', 'Peringatan bahaya cuaca', 'noun'],
+  ['確認します', 'かくにんします', 'kakuninshimasu', 'Memeriksa dan memastikan', 'verb'],
+  ['報告します', 'ほうこくします', 'houkokushimasu', 'Melaporkan hasil kerja', 'verb'],
+  ['連絡します', 'れんらくします', 'renrakushimasu', 'Memberi kabar informasi', 'verb'],
+  ['相談します', 'そうだんします', 'soudanshimasu', 'Berdiskusi meminta saran', 'verb'],
+  ['挨拶します', 'あいさつします', 'aisatsushimasu', 'Menyapa dan memberi salam', 'verb'],
 ];
 
 export const N5_KATA: readonly KotobaN5[] = KOLOM.map(([k, h, r, id, pos]) => ({ b: 0 as const, k, h, r, id, pos }));

@@ -9,11 +9,6 @@
  *   Sebelum ini skor hanya hidup di `localStorage` tiap perangkat, jadi pengajar
  *   tidak punya cara melihat siapa yang benar-benar berlatih.
  *
- * KENAPA ADMIN SAJA
- *   Isinya NAMA siswa satu angkatan. Itu bukan rahasia, tapi juga bukan sesuatu
- *   yang perlu dibuka ke semua siswa dari satu panggilan API — gerbangnya ada di
- *   server (`getPapanSkor` memakai `requireAdmin`), bukan hanya di tab ini.
- *
  * SATU PERMINTAAN UNTUK EMPAT PAPAN
  *   `getPapanSkor` tanpa argumen mengembalikan keempatnya sekaligus. Empat
  *   permintaan terpisah akan membuat tab ini butuh empat status memuat, empat
@@ -29,6 +24,7 @@ interface Baris {
   nama: string;
   kelas: string;
   skor: number;
+  detail?: Record<string, unknown>;
   dibuat_pada: string;
 }
 
@@ -48,9 +44,23 @@ const PAPAN: { id: GameId; labelKey: string; ikon: string }[] = [
 
 const MEDALI = ['🥇', '🥈', '🥉'];
 
+function ringkasDetail(d?: Record<string, unknown>): string {
+  if (!d || typeof d !== 'object') return '';
+  const bagian: string[] = [];
+  if (typeof d.mode === 'string' && d.mode) bagian.push(d.mode);
+  if (typeof d.level === 'string' && d.level) bagian.push(d.level);
+  if (typeof d.sumber === 'string' && d.sumber) bagian.push(d.sumber);
+  if (typeof d.benar === 'number') bagian.push(`✓${d.benar}`);
+  if (typeof d.pesanan === 'number') bagian.push(`📦${d.pesanan}`);
+  if (typeof d.kalimat === 'number') bagian.push(`🃏${d.kalimat}`);
+  if (typeof d.kombo === 'number' && d.kombo > 1) bagian.push(`🔥x${d.kombo}`);
+  return bagian.join(' · ');
+}
+
 export default function TabPapanSkor() {
   useLang();
   const [papan, setPapan] = useState<Record<string, Baris[]> | null>(null);
+  const [filterKelas, setFilterKelas] = useState('');
   const [memuat, setMemuat] = useState(true);
   const [galat, setGalat] = useState('');
 
@@ -58,7 +68,7 @@ export default function TabPapanSkor() {
     setMemuat(true);
     setGalat('');
     try {
-      const d = await api.secure('getPapanSkor', [], { silent: true });
+      const d = await api.secure('getPapanSkor', [undefined, 25], { silent: true });
       const hasil = (d as { papan?: Record<string, Baris[]> })?.papan;
       if (!hasil) {
         /* Jangan diamkan: respons tanpa `papan` berarti bentuknya berubah, dan
@@ -81,19 +91,45 @@ export default function TabPapanSkor() {
     void muat();
   }, [muat]);
 
+  const daftarKelas = Array.from(
+    new Set(
+      Object.values(papan || {})
+        .flat()
+        .map((r) => (r.kelas || '').trim())
+        .filter(Boolean),
+    ),
+  ).sort();
+
   return (
     <div>
       <div class="flex flex-wrap justify-between items-center gap-2 border-b border-pink-900/50 pb-4 mb-4">
         <h2 class="text-pink-400 font-bold text-lg">
           <Icon name="tasks" class="mr-2" /> {t('admin.tab_papan_skor')}
         </h2>
-        <button
-          type="button"
-          onClick={() => void muat()}
-          class="min-h-11 rounded-control border border-line bg-surface-raised px-3 text-[12px] font-bold text-fg-muted"
-        >
-          {memuat ? t('admin.papan_skor_muat') : t('admin.papan_skor_segarkan')}
-        </button>
+        <div class="flex items-center gap-2">
+          {daftarKelas.length > 0 && (
+            <select
+              value={filterKelas}
+              onChange={(e) => setFilterKelas((e.currentTarget as HTMLSelectElement).value)}
+              aria-label={t('admin.papan_skor_semua_kelas')}
+              class="min-h-11 rounded-control border border-line bg-surface-raised px-2.5 text-[12px] font-bold text-fg"
+            >
+              <option value="">{t('admin.papan_skor_semua_kelas')}</option>
+              {daftarKelas.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={() => void muat()}
+            class="min-h-11 rounded-control border border-line bg-surface-raised px-3 text-[12px] font-bold text-fg-muted hover:text-fg"
+          >
+            {memuat ? t('admin.papan_skor_muat') : t('admin.papan_skor_segarkan')}
+          </button>
+        </div>
       </div>
 
       <p class="mb-4 text-[12px] text-fg-muted">{t('admin.papan_skor_ket')}</p>
@@ -106,39 +142,70 @@ export default function TabPapanSkor() {
 
       <div class="grid gap-4 md:grid-cols-2">
         {PAPAN.map((g) => {
-          const baris = papan?.[g.id] || [];
+          const semuaBaris = papan?.[g.id] || [];
+          const baris = filterKelas ? semuaBaris.filter((r) => r.kelas === filterKelas) : semuaBaris;
+          const tertinggi = baris[0]?.skor ?? 0;
           return (
             <section key={g.id} class="rounded-card border border-line bg-surface-raised p-3" data-testid={`papan-${g.id}`}>
-              <h3 class="mb-2 flex items-center justify-between text-sm font-bold text-fg">
+              <h3 class="mb-2.5 flex items-center justify-between gap-2 border-b border-line pb-2 text-sm font-bold text-fg">
                 <span>
                   <span aria-hidden="true">{g.ikon}</span> {t(g.labelKey)}
                 </span>
-                <span class="text-[11px] font-normal text-fg-muted">
-                  {baris.length} {t('admin.papan_skor_peserta')}
+                <span class="flex items-center gap-2 text-[11px] font-normal text-fg-muted">
+                  {tertinggi > 0 && (
+                    <span class="rounded border border-accent-amber/40 bg-accent-amber/15 px-1.5 py-0.5 font-bold text-accent-amber tabular-nums">
+                      👑 {t('admin.papan_skor_tertinggi')}: {tertinggi}
+                    </span>
+                  )}
+                  <span>
+                    {baris.length} {t('admin.papan_skor_peserta')}
+                  </span>
                 </span>
               </h3>
 
               {baris.length === 0 ? (
-                <p class="py-3 text-center text-[12px] text-fg-muted">{t('admin.papan_skor_kosong')}</p>
+                <p class="py-4 text-center text-[12px] text-fg-muted">{t('admin.papan_skor_kosong')}</p>
               ) : (
-                <ol class="space-y-1">
-                  {baris.map((r, i) => (
-                    <li
-                      key={`${r.no_wa}-${i}`}
-                      class="flex items-center gap-2 rounded-control bg-surface-sunken px-2 py-1.5 text-[12px]"
-                    >
-                      <span class="w-6 shrink-0 text-center font-bold text-fg-muted" aria-hidden="true">
-                        {MEDALI[i] || i + 1}
-                      </span>
-                      <span class="min-w-0 flex-1 truncate font-bold text-fg">{r.nama || r.no_wa}</span>
-                      {r.kelas && (
-                        <span class="shrink-0 rounded border border-line px-1 text-[10px] text-fg-muted">
-                          {r.kelas}
+                <ol class="space-y-1.5">
+                  {baris.map((r, i) => {
+                    const info = ringkasDetail(r.detail);
+                    const tgl = r.dibuat_pada ? r.dibuat_pada.slice(5, 10).replace('-', '/') : '';
+                    const isTop3 = i < 3;
+                    return (
+                      <li
+                        key={`${r.no_wa}-${i}`}
+                        class={`flex items-center gap-2 rounded-control border px-2.5 py-1.5 text-[12px] ${
+                          i === 0
+                            ? 'border-accent-amber/40 bg-accent-amber/15'
+                            : isTop3
+                              ? 'border-accent-violet/30 bg-accent-violet/10'
+                              : 'border-transparent bg-surface-sunken'
+                        }`}
+                      >
+                        <span class="w-6 shrink-0 text-center font-bold text-fg-muted" aria-hidden="true">
+                          {MEDALI[i] || i + 1}
                         </span>
-                      )}
-                      <span class="shrink-0 tabular-nums font-bold text-accent-violet">{r.skor}</span>
-                    </li>
-                  ))}
+                        <div class="min-w-0 flex-1">
+                          <div class="flex items-center gap-1.5">
+                            <span class="truncate font-bold text-fg">{r.nama || r.no_wa}</span>
+                            {r.kelas && (
+                              <span class="shrink-0 rounded border border-line bg-surface-raised px-1 text-[10px] font-bold text-fg-muted">
+                                {r.kelas}
+                              </span>
+                            )}
+                          </div>
+                          {(info || tgl) && (
+                            <div class="truncate text-[10px] text-fg-muted">
+                              {info}
+                              {info && tgl ? ' · ' : ''}
+                              {tgl}
+                            </div>
+                          )}
+                        </div>
+                        <span class="shrink-0 tabular-nums text-sm font-black text-accent-violet">{r.skor}</span>
+                      </li>
+                    );
+                  })}
                 </ol>
               )}
             </section>

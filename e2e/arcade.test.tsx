@@ -307,4 +307,18 @@ describe('arcade — Kotoba Combo Builder', () => {
     await waitFor(() => expect(document.body.textContent || '').toContain('x1'));
     expect(document.body.textContent || '').not.toContain('x2');
   });
+
+  it('tombol Batal 1 mengembalikan kartu terakhir dari rel ke meja', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Combo Kalimat')?.click();
+    await waitFor(() => expect(screen.getByTestId('arcade-target')).toBeTruthy());
+
+    const pertama = COMBO_SOAL[0].urutan[0].jp;
+    tombol().find((b) => (b.textContent || '').trim() === pertama)?.click();
+    await waitFor(() => expect(document.body.textContent || '').toContain('Langkah 1/'));
+
+    cariTombol('Batal 1')?.click();
+    await waitFor(() => expect(document.body.textContent || '').toContain('Langkah 0/'));
+    expect(tombol().some((b) => (b.textContent || '').trim() === pertama)).toBe(true);
+  });
 });

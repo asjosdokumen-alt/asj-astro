@@ -191,7 +191,7 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
     if (tolak) return tolak;
     const { BANK_KOTOBA, BAB_KOTOBA, JUMLAH_KOTOBA } = await import('../_lib/kotoba/bank');
     /* N5 ikut di respons ini, bukan endpoint sendiri: gerbangnya SAMA
-       (`tolakKecualiSiswa`), dan 174 kata hanya menambah ~15 KB pada permintaan
+       (`tolakKecualiSiswa`), dan 250 kata hanya menambah ~20 KB pada permintaan
        yang toh sudah mengambil 1 440 kata. Endpoint ketiga berarti salinan
        ketiga dari logika sesi/VIP yang sama. */
     const { N5_KATA, JUMLAH_N5 } = await import('../_lib/kotoba/n5');
@@ -260,20 +260,44 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
     const { simpanSkor } = await import('../_lib/game/leaderboard');
     return simpanSkor({ wa, game: p?.[1], skor: p?.[2], detail: p?.[3] });
   },
-  // ADMIN saja. Papan peringkat memuat NAMA siswa satu angkatan; siswa lain
-  // tidak perlu melihatnya, dan gerbang admin di sini konsisten dengan
-  // `getLinkWawancara` di atas.
+  // ADMIN atau SISWA VIP. Untuk pemanggil siswa, `no_wa` peserta lain disamarkan
+  // (`***`) agar privasi nomor telepon terjaga, sementara baris milik sendiri
+  // tetap bisa ditandai di papan peringkat dalam game (`/arcade` & `/kotoba`).
   getPapanSkor: async (p: unknown[], s?: string) => {
     const { requireAdmin } = await import('../contexts/identity');
     const guard = requireAdmin(s || '');
-    if (guard.error) return guard.error;
+    const wa = String(p?.[2] ?? '').trim();
+    if (guard.error) {
+      const tolak = await tolakKecualiSiswa(s, wa);
+      if (tolak) return guard.error;
+    }
     const { ringkasPapan, papanPeringkat } = await import('../_lib/game/leaderboard');
     const game = p?.[0];
     const limit = p?.[1];
-    /* Tanpa `game` → ringkasan ketiga papan (yang dipakai tab admin sekaligus).
-       Dengan `game` → satu papan penuh, untuk daftar yang lebih panjang. */
-    if (game === undefined || game === null || game === '') return ringkasPapan(Number(limit) || 10);
-    return papanPeringkat(game, Number(limit) || 50);
+    /* Tanpa `game` → ringkasan keempat papan (yang dipakai tab admin sekaligus).
+       Dengan `game` → satu papan penuh, untuk daftar per game. */
+    const res =
+      game === undefined || game === null || game === ''
+        ? await ringkasPapan(Number(limit) || 10)
+        : await papanPeringkat(game, Number(limit) || 50);
+    if (guard.error && res.success) {
+      const { normalizeWa } = await import('../_lib/db/client');
+      const waSaya = normalizeWa(wa);
+      const saring = (daftar: unknown) =>
+        Array.isArray(daftar)
+          ? daftar.map((r: Record<string, unknown>) => ({
+              ...r,
+              no_wa: normalizeWa(String(r.no_wa ?? '')) === waSaya ? waSaya : '***',
+            }))
+          : daftar;
+      if (Array.isArray(res.peringkat)) res.peringkat = saring(res.peringkat);
+      if (res.papan && typeof res.papan === 'object') {
+        for (const [k, v] of Object.entries(res.papan as Record<string, unknown>)) {
+          (res.papan as Record<string, unknown>)[k] = saring(v);
+        }
+      }
+    }
+    return res;
   },
   getLinkWawancara: async (p: unknown[], s?: string) => {
     const { linkWawancara } = await import('../_lib/wawancara/bank');
