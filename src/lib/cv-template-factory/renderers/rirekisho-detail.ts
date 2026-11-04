@@ -157,6 +157,20 @@ function tahunBulan(v: unknown): string {
 }
 
 /**
+ * Kolom 終了年 pada 職歴: `2025/11`, atau `現在に至る` bila masih bekerja.
+ *
+ * Tanpa cabang ini, pekerjaan yang belum berakhir menghasilkan sel KOSONG —
+ * `new Date('SEKARANG')` adalah NaN, jadi `tahunBulan` mengembalikan string
+ * kosong dan CV terlihat seperti orang yang berhenti kerja tanpa tanggal.
+ * Form ASJ (`rirekisho-xlsx`) sudah menangani ini; template ini belum.
+ */
+function tahunBulanAkhir(v: unknown): string {
+  const t = bersih(v);
+  if (t && /SEKARANG|SEKARANG|NOW|IMA|SAAT INI|MASIH/i.test(t)) return '現在に至る';
+  return tahunBulan(t);
+}
+
+/**
  * Jenjang sekolah dalam kosakata template ini.
  *
  * `tingkatSekolahJp` di helpers_cv memetakan SMK → 専門学校 dan SMA → 高校,
@@ -344,7 +358,7 @@ export function buildValues(data: CandidateData): Record<string, string> {
     const p = (data.pekerjaan[i] || {}) as Record<string, unknown>;
     // 職歴 memakai `2025/05`, bukan 年月.
     cells[`A${row}`] = tahunBulan(p.masuk ?? p.tahun_masuk);
-    cells[`B${row}`] = tahunBulan(p.keluar ?? p.tahun_keluar);
+    cells[`B${row}`] = tahunBulanAkhir(p.keluar ?? p.tahun_keluar);
     cells[`C${row}`] = kapital(p.perusahaan ?? p.nama_perusahaan ?? p.perusahaan_id);
     /* G27:J27 satu kolom lebar berjudul 職歴 (isi pekerjaannya), bukan jabatan.
        Contoh: `Pemilahan dan penataan barang`, `PKL MEKANIK`. */

@@ -261,6 +261,18 @@ describe('rirekisho-detail · pendidikan (3 baris), pekerjaan (2 baris), keluarg
     expect(v.C30).toBeUndefined(); // baris 30 = judul 家族
   });
 
+  it('pekerjaan yang masih berjalan ditulis 現在に至る, bukan kosong', () => {
+    /* Tanpa cabang ini `new Date('SEKARANG')` = NaN dan selnya kosong, sehingga
+       CV terbaca seperti orang yang berhenti kerja tanpa tanggal. */
+    const v = buildValues(
+      kandidat({
+        pekerjaan: [{ masuk: '2025-05', keluar: 'SEKARANG', perusahaan: 'PABRIK' }],
+      }),
+    );
+    expect(v.A28).toBe('2025/05');
+    expect(v.B28).toBe('現在に至る');
+  });
+
   it('keluarga mengisi A/D/E/F dan TIDAK menyentuh kolom I', () => {
     const v = buildValues(
       kandidat({
