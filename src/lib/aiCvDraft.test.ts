@@ -407,3 +407,26 @@ describe('aiCvDraft — applyAiCvRows (balasan AI → baris repeater)', () => {
     expect(out[0].hubungan_id).toBe('IBU');
   });
 });
+
+// 出身地 kanji pernah HILANG di dua arah sekaligus: `tempat_lahir_jp` tidak ada
+// di AI_CV_PATHS (hasil terjemahan server dibuang) dan tidak dikirim saat simpan
+// (kolomnya tidak pernah ditulis). Akibatnya satu baris berisi "Jepang" — kata
+// Indonesia di kolom kanji — dan tidak ada layar yang bisa mengoreksinya.
+describe('tempat_lahir_jp — bolak-balik lengkap', () => {
+  it('terdaftar di daftar kunci flat (kalau tidak, state form tidak punya tempatnya)', () => {
+    expect(AI_CV_FLAT_KEYS).toContain('tmplahir_jp');
+  });
+
+  it('dibaca dari balasan AI dan dikirim balik dengan path yang sama', () => {
+    const flat = mapAiCvDraft({ identitas: { tempat_lahir_jp: 'ポノロゴ' } });
+    expect(flat.tmplahir_jp).toBe('ポノロゴ');
+
+    const nested = buildAiCvNested({ ...flat });
+    expect((nested.identitas as Record<string, unknown>).tempat_lahir_jp).toBe('ポノロゴ');
+  });
+
+  it('tidak menciptakan kunci saat nilainya kosong', () => {
+    const nested = buildAiCvNested({ tmplahir_jp: '' });
+    expect(nested.identitas).toBeUndefined();
+  });
+});

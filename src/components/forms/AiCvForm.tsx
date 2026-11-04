@@ -60,7 +60,7 @@ const nameOfUrl = (url: string): string => {
 
 interface CvData {
   nama: string; katakana: string; panggilan: string; panggilan_katakana: string;
-  tmplahir: string; tgllahir: string; umur: string; gender: string; agama: string;
+  tmplahir: string; tmplahir_jp: string; tgllahir: string; umur: string; gender: string; agama: string;
   /* JP halves of the paired identity columns. Legacy kept these as separate
      columns too (`identitas.gender_jp` / `agama_jp` / `status_nikah_jp`) because
      the employer reads the kanji, not the Indonesian. They are filled
@@ -1116,6 +1116,10 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
         identitas: {
           nama_lengkap: cv.nama, katakana: cv.katakana, panggilan: cv.panggilan,
           panggilan_katakana: cv.panggilan_katakana, tempat_lahir: cv.tmplahir,
+          /* 出身地 kanji. Tanpa baris ini nilai hasil terjemahan hanya hidup di
+             state dan tidak pernah mendarat di kolom — rirekisho tetap mencetak
+             nilai lama (atau kata Indonesia, seperti "Jepang"). */
+          tempat_lahir_jp: cv.tmplahir_jp,
           tgl_lahir: cv.tgllahir, umur: cv.umur, gender: cv.gender, agama: cv.agama,
           /* The kanji halves of the paired columns. `PairSelect` fills them from
              the registry, but they are separate columns on the printed CV and the
@@ -1586,6 +1590,11 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 ph="カタカナ" touched={touchedFields.has('panggilan_katakana')} onInput={(v) => handleManualEdit('panggilan_katakana', v)} />
               <Field label={t("cv.field_tmp_lahir")} id="tmplahir" value={cv.tmplahir}
                 touched={touchedFields.has('tmplahir')} onInput={(v) => handleManualEdit('tmplahir', v)} />
+              {/* 出身地 kanji — pasangan dari kolom di atas. Dulu tidak dirender,
+                  jadi nilai yang salah (mis. "Jepang") mustahil dikoreksi dari
+                  layar ini sementara rirekisho tetap mencetaknya. */}
+              <Field label={t("cv.field_tmp_lahir")} id="tmplahir_jp" value={cv.tmplahir_jp} jp
+                ph="ポノロゴ" touched={touchedFields.has('tmplahir_jp')} onInput={(v) => handleManualEdit('tmplahir_jp', v)} />
               {/* PARITY ai_form.html:134 — legacy `type="date"` (date picker),
                   bukan teks bebas. Editing it recomputes `umur` so the CV cannot
                   show an age that contradicts its own birth date. */}

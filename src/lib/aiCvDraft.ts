@@ -41,7 +41,7 @@ import { getPath, isGood, mergeArrRiwayat, normalizeRiwayatFor, riwayatKeyOf, so
  * terisi saat admin memuat CV kandidat).
  */
 export const AI_CV_FLAT_KEYS = [
-  'nama', 'katakana', 'panggilan', 'panggilan_katakana', 'tmplahir', 'tgllahir', 'umur', 'gender', 'agama',
+  'nama', 'katakana', 'panggilan', 'panggilan_katakana', 'tmplahir', 'tmplahir_jp', 'tgllahir', 'umur', 'gender', 'agama',
   /* JP halves of the paired identity columns. Legacy stored these as separate
      columns (`identitas.gender_jp`, `agama_jp`, `status_nikah_jp`) because the
      employer reads the kanji. They must be in the flat key list or the pair
@@ -98,6 +98,13 @@ export const AI_CV_PATHS: Record<string, string[]> = {
   panggilan: ['identitas.panggilan'],
   panggilan_katakana: ['identitas.panggilan_katakana'],
   tmplahir: ['identitas.tempat_lahir'],
+  /* 出身地 versi Jepang. Kolomnya dicetak rirekisho dan diisi `autoTranslateToJp`
+     saat simpan — tetapi TIDAK ada di peta ini, jadi nilainya tidak pernah masuk
+     state form: tidak bisa dilihat, tidak bisa dikoreksi, dan tidak ikut terkirim
+     saat simpan. Terukur 2026-11-04: satu kandidat punya `tempat_lahir_jp` =
+     "Jepang" (kata Indonesia di kolom kanji) dan tidak ada satu layar pun yang
+     bisa memperbaikinya. */
+  tmplahir_jp: ['identitas.tempat_lahir_jp'],
   tgllahir: ['identitas.tgl_lahir'],
   umur: ['identitas.umur', 'identitas.usia'],
   gender: ['identitas.gender'],

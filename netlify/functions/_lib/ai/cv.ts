@@ -547,10 +547,24 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
          apa pun.
       */
       try {
+        /* Nilai `_jp` yang TIDAK mengandung satu pun huruf Jepang diperlakukan
+           sebagai KOSONG. Terukur 2026-11-04: satu baris berisi "Jepang" di
+           `tempat_lahir_jp` — kata Indonesia di kolom kanji, tercetak apa adanya
+           di rirekisho. Helper di bawah menganggap field yang sudah berisi
+           sebagai "selesai", jadi nilai salah itu TIDAK PERNAH diperbaiki;
+           kandidat juga tidak bisa mengoreksinya karena kolomnya tidak dirender.
+           Aturan yang sama dengan `terapkanHasilTerjemah`. */
+        const jepang = (v: unknown) =>
+          /[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]/.test(String(v ?? ''));
         const existingJp: Record<string, string> = {};
         for (const jpCol of Object.values(JP_TRANSLATE_MAP)) {
           const v = m ? m[jpCol] : undefined;
-          if (v !== undefined && v !== null && String(v).trim()) existingJp[jpCol] = String(v);
+          if (v !== undefined && v !== null && String(v).trim() && jepang(v)) existingJp[jpCol] = String(v);
+        }
+        /* Buang nilai `_jp` tak sah yang datang dari payload, supaya tidak
+           menang atas terjemahan baru di bawah. */
+        for (const jpCol of Object.values(JP_TRANSLATE_MAP)) {
+          if (masterBody[jpCol] !== undefined && !jepang(masterBody[jpCol])) delete masterBody[jpCol];
         }
         /* HANYA alamat/tempat lahir yang BERUBAH (2026-10-30). Sebelumnya
            setiap Simpan CV AI memanggil model selama kolom `alamat_jp` masih
@@ -560,8 +574,11 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
         const perlu: Record<string, string> = {};
         const alamat = String(identitas.alamat || '').trim();
         const lahir = String(identitas.tempat_lahir || '').trim();
-        if (alamat && (!m || alamat !== String(m.alamat_lengkap || '').trim())) perlu.alamat = alamat;
-        if (lahir && (!m || lahir !== String(m.tempat_lahir || '').trim())) perlu.tempatLahir = lahir;
+        /* `|| !jepang(...)`: nilai kanji yang ADA tetapi tak sah ikut diterjemahkan
+           ulang — kalau tidak, "Jepang" bertahan selamanya karena teks Indonesianya
+           tidak berubah. */
+        if (alamat && (!m || alamat !== String(m.alamat_lengkap || '').trim() || !jepang(m?.alamat_jp))) perlu.alamat = alamat;
+        if (lahir && (!m || lahir !== String(m.tempat_lahir || '').trim() || !jepang(m?.tempat_lahir_jp))) perlu.tempatLahir = lahir;
         const terjemahan = Object.keys(perlu).length
           ? await autoTranslateToJp(perlu, existingJp)
           : {};

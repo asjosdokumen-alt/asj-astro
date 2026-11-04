@@ -813,6 +813,11 @@ export const AI_TO_MASTER_COLUMNS: Record<string, Array<[string, ...string[]]>> 
   identitas: [
     ['nama_lengkap', 'nama_lengkap'], ['furigana', 'katakana'], ['namapanggilan', 'panggilan'],
     ['panggilan_katakana', 'panggilan_katakana'], ['tempat_lahir', 'tempat_lahir'],
+    /* 出身地 kanji. Dulu HANYA ditulis `autoTranslateToJp`; CV AI tidak punya
+       kunci untuknya, jadi koreksi tangan dari form tidak pernah tersimpan.
+       Sekarang kolom ini bisa ditulis kedua jalur — dan `_lib/ai/cv.ts` membuang
+       nilai tanpa huruf Jepang sebelum menulis, supaya "Jepang" tidak lolos. */
+    ['tempat_lahir_jp', 'tempat_lahir_jp'],
     ['tgl_lahir', 'tgl_lahir'], ['usia', 'umur', 'usia'], ['gender', 'gender'],
     ['agama', 'agama'], ['agama_jp', 'agama_jp'], ['golongan_darah', 'golongan_darah'],
     ['status_pernikahan', 'status_nikah'], ['status_pernikahan_jp', 'status_nikah_jp'],
