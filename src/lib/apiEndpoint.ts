@@ -137,6 +137,11 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   // sama seperti dua bank di atas: satu fungsi tambahan berarti satu cold start
   // tambahan dan bobot bundle yang harus di-baseline ulang di gate bundle:size.
   getBankMatematika: '/.netlify/functions/ai-chat',
+  /* Papan peringkat game (2026-11-04). Tanpa dua baris ini keduanya jatuh ke
+     catch-all `bridge-links` dan mengulang lewat 404 — fiturnya tetap jalan,
+     jadi tidak ada yang menyadari. Gerbangnya di `action-registry.test.ts`. */
+  simpanSkorGame: '/.netlify/functions/ai-chat',
+  getPapanSkor: '/.netlify/functions/ai-chat',
 
   // Ingestion — admin AI Copilot (parse CV/Excel/PDF lalu submitMasterForm).
   // Sebelum 2026-09-12 action ini TIDAK terdaftar di sini, sehingga jatuh ke
