@@ -384,7 +384,7 @@ async function autoTranslateMissingJp(data: Record<string, unknown>, batas = 16)
 export const AI_FORM_DATA_INSTRUCTION =
   '\n\nPENTING — jawab SELALU dalam SATU objek JSON valid (tanpa teks lain, tanpa ```):\n' +
   '{"reply": "<balasan ramah untuk kandidat, dalam bahasa percakapan>", "data": <objek data di bawah>}\n' +
-  'data harus berisi SEMUA data kandidat yang diketahui dari SELURUH percakapan, dengan kunci persis:\n' +
+  'data berisi HANYA field yang BARU diisi atau BERUBAH pada giliran ini (delta), dengan kunci persis:\n' +
   '{"identitas": {"nama_lengkap","katakana","panggilan","panggilan_katakana","tempat_lahir","tgl_lahir","umur","gender","agama","golongan_darah","status_nikah","anak","email","alamat","alamat_jp","hp","hp_darurat","ktp","paspor","sim"}, ' +
   '"fisik": {"tb","bb","topi","baju","sepatu","tangan_dominan","tahan_ac"}, ' +
   '"medis": {"mata_kiri","mata_kanan","kacamata","buta_warna","tato","rokok","alkohol","alergi_id","alergi_jp","riwayat_medis_id","riwayat_medis_jp","riwayat_kecelakaan_id","riwayat_kecelakaan_jp"}, ' +
@@ -420,7 +420,17 @@ export const AI_FORM_DATA_INSTRUCTION =
   'lengkapi kode pos dan provinsi, dan isi juga `alamat_jp`. Jangan membalas "alamat sudah benar" tanpa memperbaikinya.\n' +
   'Aturan data: isi hanya field yang benar-benar diketahui dari percakapan (nilai bukan null, string kosong "" untuk yang belum); ' +
   'gender SELALU dinormalisasi ke "LAKI-LAKI" atau "PEREMPUAN"; ' +
-  'JANGAN menebak/mengarang data yang tidak disebut kandidat; sertakan juga data yang sudah ada di DATA KANDIDAT SAAT INI.\n' +
+  'JANGAN menebak/mengarang data yang tidak disebut kandidat; ' +
+  // 2026-11-05 — DULU di sini tertulis "sertakan juga data yang sudah ada di
+  // DATA KANDIDAT SAAT INI". Itu perintah untuk MENULIS ULANG SELURUH CV pada
+  // setiap balasan: output token terbesar di seluruh sistem, dan hampir semua
+  // isinya sudah diketahui klien (form mengirim `currentData`, lalu menggabung
+  // dengan aturan "hanya isi yang kosong"). Sekarang kebalikannya yang diminta:
+  // kirim delta, jangan ulang. Data yang tidak disebut TIDAK hilang — klien
+  // mempertahankan nilai yang sudah ada, dan simpan menulis dari state form.
+  'JANGAN mengulang field yang sudah ada di DATA KANDIDAT SAAT INI dan tidak berubah — ' +
+  'cukup kirim field yang baru atau berubah pada giliran ini. ' +
+  'Mengulang seluruh data membuang kuota dan memperlambat jawaban.\n' +
   'Aturan bahasa field: field berakhiran "_id" = Bahasa Indonesia, field berakhiran "_jp" = Bahasa Jepang. ' +
   'Contoh: kelebihan_id = \"Disiplin\" (ID), kelebihan_jp = \"基準がある\" (JP). ' +
   'PROMOSI, KEBERHASILAN, KELEBIHAN, KEKURANGAN, HOBI, KEAHLIAN, MOTIVASI, ALASAN BIDANG, RENCANA PULANG: ' +

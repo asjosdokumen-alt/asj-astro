@@ -202,3 +202,27 @@ describe('saringan terjemah — teks Indonesia di kolom _jp dianggap KOSONG', ()
     expect(tugas).toHaveLength(0);
   });
 });
+
+/* ── Kontrak data: DELTA, bukan seluruh CV (2026-11-05) ─────────────────────
+ * Instruksi lama berbunyi "data harus berisi SEMUA data kandidat" DAN
+ * "sertakan juga data yang sudah ada di DATA KANDIDAT SAAT INI". Itu perintah
+ * menulis ulang seluruh CV pada setiap balasan — output token terbesar di
+ * sistem, padahal klien sudah punya datanya dan menggabung dengan aturan
+ * "hanya isi yang kosong". Yang diminta sekarang: kirim yang berubah saja.
+ */
+describe('kontrak data chat — delta, bukan seluruh CV', () => {
+  it('melarang mengulang data yang tidak berubah', () => {
+    expect(AI_FORM_DATA_INSTRUCTION).toContain('JANGAN mengulang field');
+  });
+
+  it('tidak lagi memerintahkan mengirim SEMUA data', () => {
+    expect(AI_FORM_DATA_INSTRUCTION).not.toContain('SEMUA data kandidat');
+    expect(AI_FORM_DATA_INSTRUCTION).not.toContain('sertakan juga data yang sudah ada');
+  });
+
+  it('skema kunci tetap lengkap — model masih tahu nama field yang sah', () => {
+    for (const k of ['identitas', 'fisik', 'medis', 'pendidikan', 'pekerjaan', 'keluarga']) {
+      expect(AI_FORM_DATA_INSTRUCTION).toContain(k);
+    }
+  });
+});

@@ -497,6 +497,14 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
       const masterBody: any = {
         ai_data_json: JSON.stringify(aiOut),
         ai_updated_at: new Date().toISOString(),
+        // `updated_at` WAJIB ikut. Terukur 2026-11-05: 11 baris punya
+        // `ai_updated_at` hari ini tetapi `updated_at`-nya masih 25 Oktober —
+        // jalur ini menulis JSON tanpa menyentuh penanda "terakhir diubah".
+        // Akibatnya setiap konsumen yang mengurutkan/menyaring dengan
+        // `updated_at` (watermark sync, daftar "baru diubah", backup inkremental)
+        // TIDAK MELIHAT simpan dari CV AI sama sekali. Form Master menulisnya;
+        // jalur ini tidak — dan perbedaan itulah yang memutus rantai sync.
+        updated_at: new Date().toISOString(),
         // Kolom skalar. SEBELUM 2026-10-22 jalur ini hanya menulis `ai_data_json`
         // + slot riwayat + URL berkas, sementara Form Master menulis kolom lewat
         // `buildMasterBody`. Dua "header" untuk data yang sama, dan tidak ada

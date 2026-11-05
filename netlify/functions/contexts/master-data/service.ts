@@ -308,7 +308,7 @@ function mergeRiwayatArrays(columns: any[], aiArr: any[] | null, keyFn: (e: any)
  * Dipasang di sisi BACA, bukan hanya saat menulis, karena data lama sudah
  * telanjur begitu dan tidak boleh menunggu migrasi data selesai.
  */
-function rapikanNestedJp<T extends Record<string, any>>(nested: T): T {
+function rapikanNestedJp<T extends Record<string, unknown>>(nested: T): T {
   rapikanBarisJpArray(nested.pendidikan);
   rapikanBarisJpArray(nested.pekerjaan);
   rapikanBarisJpArray(nested.keluarga);
