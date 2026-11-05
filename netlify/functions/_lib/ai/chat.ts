@@ -654,17 +654,17 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
       : '') +
     AI_FORM_DATA_INSTRUCTION;
   try {
-    // Terjemahan field _jp dan balasan chat TIDAK saling bergantung: prompt
-    // terjemahan dibangun dari `currentData`, bukan dari jawaban model. Menjalankan
-    // keduanya berurutan berarti menjumlahkan latensinya — di jalur terburuk
-    // 4 dtk (chat) + 4 dtk (terjemahan) = 8 dtk dari deadline 12 dtk — padahal
-    // keduanya bisa tumpang tindih. Sekarang dijalankan paralel.
-    //
-    // autoTranslateMissingJp sudah menangkap error-nya sendiri (dan tidak
-    // memanggil provider sama sekali kalau tidak ada field _jp yang kosong).
-    // `catch` di sini hanya jaring supaya promise yang tidak sempat di-await —
-    // saat balasan chat kosong — tidak menjadi unhandled rejection.
-    const translation = autoTranslateMissingJp(currentData).catch(() => {});
+    /* Terjemahan `_jp` TIDAK lagi dijalankan paralel di setiap giliran.
+       Sebelum 2026-11-05 satu pesan chat = DUA permintaan model, dan yang kedua
+       hasilnya sering DIBUANG: `gabungTerjemahan` hanya dipanggil kalau model
+       mengembalikan `data`, jadi giliran obrolan biasa ("halo", "lanjut") tetap
+       membayar satu terjemahan penuh (hingga 16 field) tanpa satu pun nilai
+       yang pernah sampai ke klien. Dengan 63 kolom `_jp` yang sebagian besar
+       kosong, syaratnya hampir selalu terpenuhi — jadi hampir SETIAP giliran
+       membayar dua kali.
+       Sekarang: chat dulu, lalu terjemahan hanya bila giliran itu memang
+       membawa data. Biayanya satu round-trip tambahan pada giliran yang
+       menambah data — ditukar dengan separuh permintaan model. */
     const r = await geminiGenerate(system, history);
     const text = String(r && r.reply ? r.reply : '').trim();
     if (text) {
@@ -672,12 +672,12 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
         const parsed = parseJsonLoose(text);
         if (parsed && typeof parsed === 'object' && parsed.reply) {
           const aiData = parsed.data && typeof parsed.data === 'object' ? parsed.data : undefined;
-          // Auto-translate: isi field _jp yang kosong dari field _id
-          // Run on p.currentData (full form data from DB+AI) — not just aiData,
-          // because AI often returns only _id without _jp for some fields.
-          // autoTranslateMissingJp only calls Gemini for fields where _id exists
-          // but _jp is empty, so no duplicate translations.
-          await translation;
+          // Auto-translate: isi field _jp yang kosong dari field _id.
+          // Dijalankan di sini — SETELAH terbukti ada `data` — supaya giliran
+          // obrolan yang tidak menambah data tidak membayar panggilan model
+          // kedua. `autoTranslateMissingJp` sendiri tidak memanggil provider
+          // kalau tidak ada pasangan _id→_jp yang kosong.
+          //
           // Merge translated JP fields from p.currentData back into aiData
           // so the frontend receives the translated values.
           //
@@ -688,6 +688,7 @@ async function handleProcessAIChat(payload: unknown, sessionToken?: string) {
           // "Terjemahkan semua kolom" melaporkan sukses sementara 学校名,
           // 会社名, 続柄, dan nama keluarga dalam katakana tetap kosong.
           if (aiData) {
+            await autoTranslateMissingJp(currentData).catch(() => {});
             gabungTerjemahan(currentData, aiData);
           }
           return {

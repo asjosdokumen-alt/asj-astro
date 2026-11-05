@@ -125,7 +125,28 @@ const BREAKER_PARSE = 'gemini-parse';
 // belum menjawab, model berikutnya ditembakkan sebagai hedge. Yang pertama
 // berhasil menang, dan semua percobaan lain yang masih jalan DIBATALKAN —
 // jadi yang kalah berhenti memegang socket dan berhenti membakar kuota.
-const CHAT_HEDGE_AFTER_MS = 1500;
+// 2026-11-05: 1500 → 2400 dtk. Jendela 1,5 dtk terlalu sempit untuk prompt
+// chat yang sebenarnya (persona + ringkasan data + instruksi JSON ±3,4 KB +
+// riwayat sampai 20 giliran), jadi hedge ikut tertembak pada jawaban yang cuma
+// sedikit lambat — dan setiap hedge adalah permintaan KEDUA dengan prompt yang
+// SAMA PERSIS. Yang kalah memang dibatalkan, tetapi input token-nya sudah
+// terkirim; itulah pengganda biaya yang tidak terlihat di UI. Dengan 2,4 dtk
+// hedge kembali menjadi jaring untuk kasus benar-benar lambat, bukan jalur
+// normal. Sisa anggaran rantai (4 dtk) masih cukup untuk model kedua.
+const CHAT_HEDGE_AFTER_MS = 2400;
+
+/**
+ * Jeda untuk hedge KEDUA dan seterusnya.
+ *
+ * Hedge pertama sengaja longgar (2,4 dtk) supaya jawaban normal tidak pernah
+ * menggandakan permintaan. Tapi kalau model pertama memang tidak menjawab,
+ * menunggu 2,4 dtk lagi untuk model ketiga berarti hanya DUA percobaan yang
+ * muat di anggaran rantai 4 dtk — model terakhir tidak pernah dicoba sama
+ * sekali. Jeda menyusut setelah percobaan pertama, jadi rantai tetap sampai
+ * ketiga model (2,4 + 0,8 = 3,2 dtk) tanpa mengorbankan penghematan di jalur
+ * normal.
+ */
+const HEDGE_RAMP_MS = 800;
 
 // Parse jauh lebih lambat, jadi hedge-nya juga harus jauh lebih longgar: kalau
 // tidak, setiap parse dokumen menembak ketiga model (3x kuota untuk satu
@@ -240,10 +261,14 @@ async function hedgedInvoke(
       // menunggu kegagalan, bukan waktu.
       if (opts.hedgeAfterMs === undefined) return;
       if (hedgeTimer || settled || launched >= models.length) return;
+      // Percobaan pertama menunggu jendela penuh; sesudahnya jeda menyusut
+      // (lihat HEDGE_RAMP_MS) supaya model terakhir tetap sempat dicoba di
+      // dalam anggaran rantai.
+      const delay = launched <= 1 ? opts.hedgeAfterMs : Math.min(opts.hedgeAfterMs, HEDGE_RAMP_MS);
       hedgeTimer = setTimeout(() => {
         hedgeTimer = undefined;
         launch(true);
-      }, opts.hedgeAfterMs);
+      }, delay);
     };
 
     const onFailure = (e: unknown) => {

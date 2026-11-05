@@ -383,3 +383,47 @@ describe('terjemahkanKolomCv — batas per panggilan', () => {
     expect(res.sisa).toBeGreaterThan(0);
   });
 });
+
+/**
+ * Biaya per giliran chat (2026-11-05).
+ *
+ * Sebelum ini `autoTranslateMissingJp` dijalankan PARALEL pada SETIAP giliran,
+ * termasuk giliran obrolan yang tidak menambah data — dan hasilnya dibuang,
+ * karena `gabungTerjemahan` hanya dipanggil kalau model mengembalikan `data`.
+ * Dengan 63 kolom `_jp` yang sebagian besar kosong, syarat "ada pasangan
+ * _id→_jp yang kosong" hampir selalu terpenuhi, jadi hampir setiap pesan
+ * membayar DUA permintaan model. Itu penyebab kuota AI cepat habis walau
+ * pemakainya satu orang.
+ */
+describe('processAIChat — terjemahan hanya dibayar saat giliran itu menambah data', () => {
+  const hitungTerjemahan = () =>
+    geminiMock.mock.calls.filter((c) => String(c[0]).includes('Terjemahkan')).length;
+
+  beforeEach(() => {
+    geminiMock.mockReset();
+  });
+
+  it('balasan tanpa `data` → TIDAK ada panggilan terjemahan', async () => {
+    geminiMock.mockResolvedValue({ reply: JSON.stringify({ reply: 'Halo Budi!' }) });
+    const res = (await handleProcessAIChat([{ history: HISTORY, currentData: CURRENT }], 'tok-admin')) as {
+      data?: unknown;
+    };
+    expect(geminiMock).toHaveBeenCalledTimes(1);
+    expect(hitungTerjemahan()).toBe(0);
+    expect(res.data).toEqual({});
+  });
+
+  it('balasan dengan `data` → terjemahan tetap dijalankan dan digabung', async () => {
+    geminiMock.mockImplementation(async (system: string) =>
+      String(system).includes('Terjemahkan')
+        ? { reply: JSON.stringify({ '0': 'ブディ' }) }
+        : { reply: AI_JSON },
+    );
+    const res = (await handleProcessAIChat([{ history: HISTORY, currentData: CURRENT }], 'tok-admin')) as {
+      data?: Record<string, unknown>;
+    };
+    expect(hitungTerjemahan()).toBe(1);
+    // Hasil terjemahan benar-benar sampai ke klien, bukan cuma dihitung.
+    expect(JSON.stringify(res.data)).toContain('ブディ');
+  });
+});
