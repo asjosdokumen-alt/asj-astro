@@ -32,7 +32,13 @@ export type KategoriId =
   | 'gyakusan'
   | 'sansu'
   | 'suiri'
-  | 'baai';
+  | 'baai'
+  /* Ditambahkan 2026-11-05: tiga dimensi psikotes yang sebelumnya TIDAK ada —
+     ketelitian, analogi verbal, dan silogisme. Tanpa ketiganya, "psikotes" di
+     halaman ini hanya berisi hitung cepat dan deret angka. */
+  | 'ketelitian'
+  | 'verbal'
+  | 'silogisme';
 
 /** Satu soal siap tampil. Bentuknya sengaja rata, bukan union per jenis. */
 export interface Soal {
@@ -50,6 +56,16 @@ export interface Soal {
   input: 'numpad' | 'pilihan';
   /** Hanya untuk `input: 'pilihan'` — 4 opsi, sudah diacak. */
   pilihan?: number[];
+  /**
+   * Opsi sebagai TEKS (analogi & silogisme). Bila ada, `pilihan` berisi
+   * INDEKS 1..n dalam urutan tampil dan `jawab` adalah indeks jawaban benar.
+   *
+   * KENAPA INDEKS, BUKAN STRING: jalur jawaban, riwayat, dan perbandingan
+   * sudah memakai angka (`parseFloat`). Mengubahnya menjadi string berarti
+   * menyentuh tiga tempat sekaligus dan membuka celah jawaban "benar" yang
+   * tidak cocok. Indeks menjaga satu jalur, dan teksnya hanya untuk tampilan.
+   */
+  opsiTeks?: string[];
   /** Aturan kraepelin: tulis angka satuan saja. Menyalakan petunjuk khusus. */
   kraepelin?: boolean;
 }
@@ -846,6 +862,263 @@ function buatBaai(diff: Kesulitan): Omit<Soal, 'id' | 'kategori' | 'diff'> {
 
 /* ── Soal cerita dari bank server ─────────────────────────────────────────── */
 
+/* ── Ketelitian (hitung beda) ─────────────────────────────────────────────── */
+
+/**
+ * Dua baris angka; hitung berapa posisi yang BERBEDA.
+ *
+ * Ini jenis soal yang paling sering muncul di psikotes kerja Indonesia
+ * ("ketelitian & kecepatan") dan sama sekali tidak ada di versi sebelumnya.
+ * Yang diukur bukan aritmetika, melainkan membandingkan dua deret tanpa
+ * kehilangan posisi — kemampuan yang benar-benar dipakai memeriksa label,
+ * nomor part, dan lembar kerja.
+ */
+function buatKetelitian(diff: Kesulitan): Omit<Soal, 'id' | 'kategori' | 'diff'> {
+  const panjang = diff === 'easy' ? 8 : diff === 'medium' ? 10 : 12;
+  const beda = diff === 'easy' ? 1 : diff === 'medium' ? 2 : acak(2, 4);
+  const a = Array.from({ length: panjang }, () => acak(0, 9));
+  const b = [...a];
+  const posisi = kocok([...a.keys()]).slice(0, beda);
+  for (const p of posisi) {
+    let d = acak(0, 9);
+    while (d === b[p]) d = acak(0, 9);
+    b[p] = d;
+  }
+  const urut = [...posisi].sort((x, y) => x - y);
+  return {
+    tag: 'KETELITIAN — HITUNG BEDA',
+    /* `\n` dirender oleh `whitespace-pre-line` di layar dan di daftar evaluasi.
+       Dua deret yang menempel jadi satu baris membuat soal ini mustahil
+       dibaca — dan itu satu-satunya alasan soalnya ada. */
+    tanya: `A: ${a.join(' ')}\nB: ${b.join(' ')}\nBerapa angka yang berbeda?`,
+    jawab: beda,
+    satuan: '',
+    input: 'numpad',
+    pembahasan: `Posisi yang berbeda: ${urut.map((i) => i + 1).join(', ')} → ${beda} angka.`,
+  };
+}
+
+/* ── Verbal: analogi & silogisme ──────────────────────────────────────────── */
+
+interface Analogi {
+  atas: string;
+  bawah: string;
+  benar: string;
+  salah: [string, string, string];
+  diff: Kesulitan;
+}
+
+/**
+ * Bank analogi. Ditulis sebagai DATA, bukan diacak dari kamus: hubungan
+ * "alat : sasaran" atau "sebab : akibat" tidak bisa dihasilkan otomatis tanpa
+ * menghasilkan soal yang punya dua jawaban benar.
+ */
+const ANALOGI: readonly Analogi[] = [
+  { atas: 'PANAS', bawah: 'API', benar: 'ES', salah: ['HUJAN', 'ANGIN', 'MATAHARI'], diff: 'easy' },
+  { atas: 'PENA', bawah: 'TINTA', benar: 'GRAFIT', salah: ['KAYU', 'KERTAS', 'PENGHAPUS'], diff: 'medium' },
+  { atas: 'GUNTING', bawah: 'MEMOTONG', benar: 'MEMUKUL', salah: ['MEMBUAT', 'MENARIK', 'MENGANGKAT'], diff: 'easy' },
+  { atas: 'MESIN', bawah: 'BENSIN', benar: 'MAKANAN', salah: ['AIR', 'UDARA', 'OBAT'], diff: 'easy' },
+  { atas: 'JAM', bawah: 'WAKTU', benar: 'SUHU', salah: ['PANAS', 'CUACA', 'BADAN'], diff: 'medium' },
+  { atas: 'KEPALA', bawah: 'HELM', benar: 'SARUNG TANGAN', salah: ['SEPATU', 'KACAMATA', 'JAM'], diff: 'easy' },
+  { atas: 'PEKERJA', bawah: 'PABRIK', benar: 'SAWAH', salah: ['CANGKUL', 'PADI', 'DESA'], diff: 'medium' },
+  { atas: 'CEPAT', bawah: 'LAMBAT', benar: 'RENDAH', salah: ['BESAR', 'PANJANG', 'BERAT'], diff: 'easy' },
+  { atas: 'AIR', bawah: 'HAUS', benar: 'LAPAR', salah: ['KENYANG', 'NASI', 'MAKAN'], diff: 'easy' },
+  { atas: 'BUKU', bawah: 'MEMBACA', benar: 'MENDENGAR', salah: ['MELIHAT', 'MENARI', 'BERNYANYI'], diff: 'easy' },
+  { atas: 'GELAP', bawah: 'LAMPU', benar: 'SABUN', salah: ['AIR', 'SAPU', 'BERSIH'], diff: 'medium' },
+  { atas: 'PELUKIS', bawah: 'KUAS', benar: 'PENA', salah: ['KERTAS', 'BUKU', 'TINTA'], diff: 'medium' },
+  { atas: 'KAMERA', bawah: 'FOTO', benar: 'REKAMAN', salah: ['SUARA', 'LAGU', 'RADIO'], diff: 'hard' },
+  { atas: 'SOPIR', bawah: 'MOBIL', benar: 'PESAWAT', salah: ['BANDARA', 'SAYAP', 'KAPTEN'], diff: 'easy' },
+  { atas: 'TELINGA', bawah: 'MENDENGAR', benar: 'MELIHAT', salah: ['BERKEDIP', 'WARNA', 'KACA'], diff: 'easy' },
+  { atas: 'PISAU', bawah: 'TAJAM', benar: 'BULAT', salah: ['KECIL', 'KARET', 'MAIN'], diff: 'medium' },
+  { atas: 'BERAT', bawah: 'TIMBANGAN', benar: 'PENGGARIS', salah: ['METER', 'KAIN', 'TINGGI'], diff: 'hard' },
+  { atas: 'HUJAN', bawah: 'BASAH', benar: 'PANAS', salah: ['TERANG', 'ASAP', 'MERAH'], diff: 'easy' },
+  { atas: 'PABRIK', bawah: 'BARANG', benar: 'TANAMAN', salah: ['PADI', 'TANAH', 'PETANI'], diff: 'medium' },
+  { atas: 'DIAM', bawah: 'BICARA', benar: 'BANGUN', salah: ['MALAM', 'KASUR', 'LELAH'], diff: 'hard' },
+  { atas: 'MAHAL', bawah: 'MURAH', benar: 'GEMUK', salah: ['TINGGI', 'BERAT', 'KECIL'], diff: 'easy' },
+  { atas: 'CANGKUL', bawah: 'TANAH', benar: 'KAIN', salah: ['BENANG', 'TANGAN', 'BAJU'], diff: 'medium' },
+];
+
+/**
+ * Satu soal analogi. Opsi dikocok; `jawab` adalah INDEKS 1..4 dari opsi benar.
+ * `dipakai` mencegah satu analogi muncul dua kali dalam ronde campuran.
+ */
+function buatVerbal(
+  diff: Kesulitan,
+  dipakai: Set<string>,
+): Omit<Soal, 'id' | 'kategori' | 'diff'> | null {
+  const cocok = ANALOGI.map((a, i) => ({ a, i })).filter(({ a, i }) => a.diff === diff && !dipakai.has(`v${i}`));
+  const kandidat = cocok.length
+    ? cocok
+    : ANALOGI.map((a, i) => ({ a, i })).filter(({ i }) => !dipakai.has(`v${i}`));
+  if (!kandidat.length) return null;
+  const { a, i } = pilih(kandidat);
+  dipakai.add(`v${i}`);
+  const opsi = kocok([a.benar, ...a.salah]);
+  const jawab = opsi.indexOf(a.benar) + 1;
+  return {
+    tag: 'VERBAL — ANALOGI',
+    tanya: `${a.atas} : ${a.bawah} = ? : ?`,
+    jawab,
+    satuan: '',
+    input: 'pilihan',
+    pilihan: opsi.map((_, n) => n + 1),
+    opsiTeks: opsi,
+    pembahasan: `Hubungannya ${a.atas.toLowerCase()} : ${a.bawah.toLowerCase()}. Pasangan yang setara: ${a.benar}.`,
+  };
+}
+
+interface Silogisme {
+  premis: string;
+  benar: string;
+  salah: [string, string, string];
+  diff: Kesulitan;
+}
+
+/**
+ * Bank silogisme dengan bentuk yang SUDAH diperiksa validitasnya.
+ *
+ * Sengaja tidak dihasilkan otomatis: satu bentuk yang salah (mis. menyimpulkan
+ * "sebagian A adalah C" dari "semua A adalah B, sebagian B adalah C") akan
+ * mengajari penalaran yang keliru — dan itu lebih buruk daripada tidak ada
+ * soal sama sekali.
+ */
+const SILOGISME: readonly Silogisme[] = [
+  {
+    premis: 'Semua pekerja magang adalah karyawan. Semua karyawan mendapat gaji.',
+    benar: 'Semua pekerja magang mendapat gaji.',
+    salah: ['Semua yang mendapat gaji adalah pekerja magang.', 'Sebagian karyawan bukan pekerja magang.', 'Tidak ada karyawan yang mendapat gaji.'],
+    diff: 'easy',
+  },
+  {
+    premis: 'Semua siswa kelas A memakai seragam. Sebagian siswa kelas A memakai topi.',
+    benar: 'Sebagian yang memakai seragam memakai topi.',
+    salah: ['Semua yang memakai topi adalah siswa kelas A.', 'Tidak ada siswa kelas A yang memakai topi.', 'Semua siswa kelas A memakai topi.'],
+    diff: 'medium',
+  },
+  {
+    premis: 'Tidak ada mesin yang berkarat. Semua pompa adalah mesin.',
+    benar: 'Tidak ada pompa yang berkarat.',
+    salah: ['Sebagian pompa berkarat.', 'Semua yang berkarat adalah pompa.', 'Sebagian mesin adalah pompa berkarat.'],
+    diff: 'easy',
+  },
+  {
+    premis: 'Semua dokter adalah sarjana. Sebagian sarjana adalah perempuan.',
+    benar: 'Tidak dapat disimpulkan apakah ada dokter perempuan.',
+    salah: ['Semua dokter adalah perempuan.', 'Tidak ada dokter yang perempuan.', 'Sebagian dokter pasti perempuan.'],
+    diff: 'hard',
+  },
+  {
+    premis: 'Semua helm adalah alat pelindung. Tidak ada alat pelindung yang mudah pecah.',
+    benar: 'Tidak ada helm yang mudah pecah.',
+    salah: ['Semua yang mudah pecah adalah helm.', 'Sebagian helm mudah pecah.', 'Semua alat pelindung adalah helm.'],
+    diff: 'medium',
+  },
+  {
+    premis: 'Sebagian kotak berwarna merah. Semua yang berwarna merah mudah terlihat.',
+    benar: 'Sebagian kotak mudah terlihat.',
+    salah: ['Semua kotak mudah terlihat.', 'Tidak ada kotak yang mudah terlihat.', 'Semua yang mudah terlihat adalah kotak.'],
+    diff: 'medium',
+  },
+  {
+    premis: 'Semua teknisi memakai helm. Semua supervisor memakai helm.',
+    benar: 'Tidak dapat disimpulkan hubungan antara teknisi dan supervisor.',
+    salah: ['Semua teknisi adalah supervisor.', 'Tidak ada supervisor yang teknisi.', 'Sebagian teknisi pasti supervisor.'],
+    diff: 'hard',
+  },
+  {
+    premis: 'Semua barang impor melewati bea cukai. Sebagian barang impor berasal dari Jepang.',
+    benar: 'Sebagian barang dari Jepang melewati bea cukai.',
+    salah: ['Semua barang dari Jepang adalah barang impor.', 'Semua barang yang melewati bea cukai berasal dari Jepang.', 'Tidak ada barang Jepang yang melewati bea cukai.'],
+    diff: 'hard',
+  },
+  {
+    premis: 'Tidak ada karyawan tetap yang terlambat hari ini. Budi terlambat hari ini.',
+    benar: 'Budi bukan karyawan tetap.',
+    salah: ['Budi karyawan tetap.', 'Semua yang terlambat adalah karyawan tetap.', 'Tidak dapat disimpulkan.'],
+    diff: 'medium',
+  },
+  {
+    premis: 'Semua ruang produksi bersuhu dingin. Ruang kantor tidak bersuhu dingin.',
+    benar: 'Ruang kantor bukan ruang produksi.',
+    salah: ['Ruang kantor adalah ruang produksi.', 'Semua ruang dingin adalah ruang produksi.', 'Sebagian ruang produksi adalah ruang kantor.'],
+    diff: 'easy',
+  },
+];
+
+function buatSilogisme(
+  diff: Kesulitan,
+  dipakai: Set<string>,
+): Omit<Soal, 'id' | 'kategori' | 'diff'> | null {
+  const cocok = SILOGISME.map((s, i) => ({ s, i })).filter(({ s, i }) => s.diff === diff && !dipakai.has(`s${i}`));
+  const kandidat = cocok.length
+    ? cocok
+    : SILOGISME.map((s, i) => ({ s, i })).filter(({ i }) => !dipakai.has(`s${i}`));
+  if (!kandidat.length) return null;
+  const { s, i } = pilih(kandidat);
+  dipakai.add(`s${i}`);
+  const opsi = kocok([s.benar, ...s.salah]);
+  const jawab = opsi.indexOf(s.benar) + 1;
+  return {
+    tag: 'VERBAL — SILOGISME',
+    tanya: `${s.premis}\nKesimpulan yang PASTI benar?`,
+    jawab,
+    satuan: '',
+    input: 'pilihan',
+    pilihan: opsi.map((_, n) => n + 1),
+    opsiTeks: opsi,
+    pembahasan: `Yang pasti benar: ${s.benar}`,
+  };
+}
+
+/* ── Dimensi psikotes ─────────────────────────────────────────────────────── */
+
+/**
+ * Dimensi yang diukur, untuk profil di layar hasil.
+ *
+ * KENAPA DIPETAKAN, BUKAN SATU DIMENSI PER KATEGORI: 13 bar di layar hasil
+ * tidak terbaca sebagai "profil"; yang dibaca orang adalah 4–5 kemampuan.
+ * Kategori tetap disimpan untuk rincian, dimensi untuk gambaran besarnya.
+ */
+export type DimensiPsiko = 'kecepatan' | 'ketelitian' | 'penalaran' | 'verbal' | 'aplikasi';
+
+export const DIMENSI_KATEGORI: Readonly<Record<KategoriId, DimensiPsiko>> = {
+  kraepelin: 'kecepatan',
+  kabataku: 'kecepatan',
+  ketelitian: 'ketelitian',
+  satuan: 'ketelitian',
+  deret: 'penalaran',
+  logika: 'penalaran',
+  gyakusan: 'penalaran',
+  sansu: 'penalaran',
+  suiri: 'penalaran',
+  baai: 'penalaran',
+  verbal: 'verbal',
+  silogisme: 'verbal',
+  cerita: 'aplikasi',
+};
+
+export interface RekapDimensi {
+  dimensi: DimensiPsiko;
+  benar: number;
+  total: number;
+}
+
+/** Rekap benar/total per DIMENSI, urut tetap (kecepatan → aplikasi). */
+export function rekapPerDimensi(
+  jawaban: readonly { kategori: KategoriId; benar: boolean }[],
+): RekapDimensi[] {
+  const urutan: DimensiPsiko[] = ['kecepatan', 'ketelitian', 'penalaran', 'verbal', 'aplikasi'];
+  const peta = new Map<DimensiPsiko, RekapDimensi>();
+  for (const j of jawaban) {
+    const d = DIMENSI_KATEGORI[j.kategori];
+    const kini = peta.get(d) ?? { dimensi: d, benar: 0, total: 0 };
+    kini.total += 1;
+    if (j.benar) kini.benar += 1;
+    peta.set(d, kini);
+  }
+  return urutan.filter((d) => peta.has(d)).map((d) => peta.get(d) as RekapDimensi);
+}
+
 function buatCerita(
   diff: Kesulitan,
   bank: SoalCeritaBank[],
@@ -897,6 +1170,9 @@ function isiSoal(
   if (kategori === 'sansu') return buatSansu(diff);
   if (kategori === 'suiri') return buatSuiri(diff);
   if (kategori === 'baai') return buatBaai(diff);
+  if (kategori === 'ketelitian') return buatKetelitian(diff);
+  if (kategori === 'verbal') return buatVerbal(diff, dipakai);
+  if (kategori === 'silogisme') return buatSilogisme(diff, dipakai);
   return buatCerita(diff, bank, dipakai);
 }
 
@@ -932,6 +1208,7 @@ export function buatRonde(
 const KATEGORI_SIMULASI: readonly KategoriId[] = [
   'kraepelin',
   'kabataku',
+  'ketelitian',
   'deret',
   'gyakusan',
   'logika',
@@ -939,6 +1216,8 @@ const KATEGORI_SIMULASI: readonly KategoriId[] = [
   'sansu',
   'suiri',
   'baai',
+  'verbal',
+  'silogisme',
 ];
 
 /**
@@ -1021,6 +1300,22 @@ export function jawabanBenar(masukan: string, kunci: number): boolean {
 /** Format jawaban untuk ditampilkan di daftar evaluasi. */
 export function tampilAngka(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100).replace('.', ',');
+}
+
+/**
+ * Label jawaban untuk riwayat/evaluasi.
+ *
+ * Untuk soal ber-opsi TEKS, `jawabUser` berisi indeks (mis. "2") — menampilkan
+ * angka itu di daftar salah akan menyembunyikan apa yang sebenarnya dipilih.
+ * Fungsi ini memetakan kembali ke teksnya; untuk soal angka ia sama dengan
+ * `tampilAngka`.
+ */
+export function labelJawaban(soal: Soal, nilai: number | string): string {
+  const n = Number(nilai);
+  if (soal.opsiTeks && Number.isInteger(n) && n >= 1 && n <= soal.opsiTeks.length) {
+    return soal.opsiTeks[n - 1] as string;
+  }
+  return Number.isFinite(n) ? tampilAngka(n) : String(nilai);
 }
 
 export interface RekapKategori {

@@ -183,6 +183,57 @@ describe('/matematika — siswa ASJ saja', () => {
     await waitFor(() => expect(screen.getByText('/ 20')).toBeTruthy());
   }, 20000);
 
+  /* Dimensi psikotes baru memakai opsi TEKS, bukan angka. Tes ini menjaga
+     jalur render-nya: kalau `opsiTeks` diabaikan, layar akan menampilkan empat
+     tombol "1 2 3 4" tanpa teks — dan siswa tidak bisa menjawab apa pun. */
+  it('soal verbal menampilkan 4 opsi TEKS dan bisa dijawab', async () => {
+    loginSebagai('kandidat');
+    render(<MatematikaGame />);
+    await waitFor(() => expect(screen.getByText('Verbal (analogi)')).toBeTruthy());
+    fireEvent.click(tombol('Verbal (analogi)'));
+    fireEvent.click(tombol('Mulai tes'));
+
+    await waitFor(() => expect(document.body.textContent || '').toContain('VERBAL — ANALOGI'));
+    const opsi = [...document.querySelectorAll('button')].filter((b) =>
+      /^\d\./.test((b.textContent || '').trim()),
+    );
+    expect(opsi.length, 'opsi teks tidak dirender').toBe(4);
+    fireEvent.click(opsi[0] as HTMLButtonElement);
+
+    /* Ujian melanjutkan otomatis setelah 420 ms; nomor soal menjadi 02. */
+    await waitFor(() => expect(screen.getByText('02')).toBeTruthy(), { timeout: 4000 });
+  }, 20000);
+
+  /* Simulasi campuran adalah inti "psikotes" yang baru: 20 soal berganti jenis.
+     Tes ini menjalankannya sampai hasil dan menuntut PROFIL per dimensi muncul.
+     Tanpa ini, profil bisa hilang karena satu kondisi yang salah dan tidak ada
+     yang menangkapnya — hasilnya tetap tampak wajar (hanya skor). */
+  it('simulasi campuran selesai dan menampilkan profil psikotes', async () => {
+    loginSebagai('kandidat');
+    render(<MatematikaGame />);
+    await waitFor(() => expect(screen.getByText('Simulasi Seleksi')).toBeTruthy());
+    fireEvent.click(tombol('Simulasi Seleksi'));
+    fireEvent.click(tombol('Mulai tes'));
+    await waitFor(() => expect(screen.getByText('/ 20')).toBeTruthy());
+
+    for (let i = 0; i < 20; i++) {
+      const opsi = document.querySelector('[data-opsi]:not([disabled])');
+      if (opsi) {
+        fireEvent.click(opsi as HTMLButtonElement);
+      } else {
+        fireEvent.click(tombol('1'));
+        await waitFor(() => expect(tombol('Kirim jawaban').disabled).toBe(false));
+        fireEvent.click(tombol('Kirim jawaban'));
+      }
+      /* Ujian melanjutkan otomatis setelah 420 ms. */
+      await new Promise((r) => setTimeout(r, 650));
+    }
+
+    await waitFor(() => expect(screen.getByText('Profil psikotes')).toBeTruthy(), { timeout: 8000 });
+    expect(screen.getByText('Kecepatan hitung')).toBeTruthy();
+    expect(screen.getByText('Ketelitian')).toBeTruthy();
+  }, 60000);
+
   it('admin: tanpa gerbang login (dipakai panel admin)', async () => {
     loginSebagai('admin');
 

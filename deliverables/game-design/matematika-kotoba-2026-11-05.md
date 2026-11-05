@@ -83,13 +83,74 @@ dinaikkan kapan saja, jadi tidak ada target yang habis dalam satu duduk.
 
 ---
 
-## 3. Verifikasi
+## 3. Psikotes — tiga dimensi baru dan profil
+
+Keluhan lanjutan pemilik: "untuk test psikologinya gimana, tidak ada upgrade
+kah? mengikuti test psikologi online kan sudah banyak."
+
+Auditnya: dari 10 kategori, **semuanya** numerik atau logika angka. Tidak ada
+satu pun yang mengukur **ketelitian**, **kemampuan verbal**, atau **penalaran
+silogistik** — padahal ketiganya bagian tetap psikotes kerja. Dan hasilnya
+hanya satu angka, bukan profil.
+
+### 3.1 Tiga kategori baru
+
+| Kategori | Bentuk | Yang diukur | Tingkat |
+|---|---|---|---|
+| **Ketelitian** | Dua baris angka (8/10/12 digit); hitung posisi yang berbeda | Membandingkan deret tanpa kehilangan posisi — kerja periksa label/nomor part | 1 · 2 · 2–4 beda |
+| **Verbal (analogi)** | `PANAS : API = ? : ?` dengan 4 opsi teks | Hubungan kata (alat:sasaran, sebab:akibat, lawan kata) | bank 22 pasangan |
+| **Silogisme** | Dua premis; pilih kesimpulan yang PASTI benar | Validitas penalaran, bukan kesan benar | bank 10 bentuk |
+
+Bank analogi dan silogisme **ditulis sebagai data, bukan diacak**. Satu bentuk
+silogisme yang salah (mis. menyimpulkan "sebagian A adalah C" dari "semua A
+adalah B, sebagian B adalah C") akan mengajari penalaran yang keliru — lebih
+buruk daripada tidak ada soal.
+
+### 3.2 Opsi teks tanpa mengganti jalur jawaban
+
+Soal angka memakai `pilihan: number[]` dan `jawab: number`. Untuk soal verbal,
+`pilihan` tetap angka — kali ini **indeks 1..4** — dan teksnya ada di
+`opsiTeks`. Dengan begitu jalur jawaban, riwayat, dan perbandingan tidak
+berubah; hanya tampilan yang membaca teks. `labelJawaban()` memetakan indeks
+kembali ke teks di daftar evaluasi, supaya "jawaban Anda: 2" tidak muncul
+untuk soal yang opsinya kalimat.
+
+### 3.3 Profil, bukan satu angka
+
+`DIMENSI_KATEGORI` memetakan 13 kategori ke **5 dimensi**:
+
+| Dimensi | Kategori |
+|---|---|
+| Kecepatan hitung | kraepelin, kabataku |
+| Ketelitian | ketelitian, satuan |
+| Penalaran | deret, logika, gyakusan, sansu, suiri, baai |
+| Verbal | verbal, silogisme |
+| Aplikasi kerja | cerita |
+
+Layar hasil menampilkan bar per dimensi (hijau ≥80%, kuning ≥50%, merah di
+bawah), lalu rincian per kategori di dalam `<details>`. Ini yang membuat
+hasilnya terbaca seperti **psikotes**, bukan sekadar skor: "verbal 2/4" adalah
+kalimat yang bisa ditindaklanjuti, "akurasi 62%" bukan.
+
+### 3.4 Yang belum ada (dan butuh lebih dari generator)
+
+- **Spasial/figural** (rotasi, cermin, jaring kubus) — butuh render gambar di
+  dalam soal; model `Soal` sekarang hanya teks. Ini pekerjaan UI, bukan data.
+- **Memori kerja** (ingat deret lalu ulangi) — butuh fase tampil → sembunyi →
+  jawab, yang tidak dimiliki alur satu-layar sekarang.
+- **Norma** (persentil dibanding populasi) — butuh data agregat nyata dari
+  papan skor, bukan ambang karangan.
+
+---
+
+## 4. Verifikasi
 
 | Gerbang | Hasil |
 |---|---|
-| `vitest --project=frontend` | 136 berkas · **1.778 tes lulus** |
-| `vitest --project=backend` | 127 berkas · **1.678 tes lulus** |
-| `e2e/matematika-soal.test.ts` | 22 tes (campuran: variasi jenis, tidak berurutan sama, kurva easy→hard, rekap) |
+| `vitest --project=frontend` | 136 berkas · **1.780 tes lulus** |
+| `vitest --project=backend` | 127 berkas · **1.683 tes lulus** |
+| `e2e/matematika-soal.test.ts` | 27 tes (campuran, ketelitian, verbal/silogisme, dimensi, rekap) |
+| `e2e/matematika-gate.test.tsx` | 9 tes (termasuk opsi teks dan profil psikotes sampai selesai) |
 | `e2e/arcade.test.tsx` | 19 tes (termasuk rak 4→6 saat kombo, kembali 4 setelah salah) |
 | `e2e/kotoba-gate.test.tsx` | 31 tes (termasuk misi harian: ganti hari, tidak menghukum salah) |
 | `tsc --noEmit` | 0 error |

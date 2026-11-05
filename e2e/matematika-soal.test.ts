@@ -27,11 +27,15 @@ import { BANK_CERITA, KATEGORI } from '../netlify/functions/_lib/matematika/bank
 import {
   buatRonde,
   buatRondeCampur,
+  DIMENSI_KATEGORI,
   jawabanBenar,
+  labelJawaban,
+  rekapPerDimensi,
   rekapPerKategori,
   tampilAngka,
   type KategoriId,
   type Kesulitan,
+  type Soal,
 } from '../src/lib/matematika';
 
 const TINGKAT: Kesulitan[] = ['easy', 'medium', 'hard'];
@@ -45,6 +49,10 @@ const KATEGORI_ANGKA: KategoriId[] = [
   'sansu',
   'suiri',
   'baai',
+  /* Tiga dimensi psikotes yang ditambahkan 2026-11-05. */
+  'ketelitian',
+  'verbal',
+  'silogisme',
 ];
 
 describe('bank soal cerita (server)', () => {
@@ -256,5 +264,77 @@ describe('rekap per kategori', () => {
     /* Kalau kosong menghasilkan baris "0/0", kartu rekap muncul di hasil modul
        tunggal yang tidak dijawab sama sekali — dan itu terbaca seperti bug. */
     expect(rekapPerKategori([])).toEqual([]);
+  });
+});
+
+describe('psikotes — ketelitian, verbal, silogisme', () => {
+  it('ketelitian: jawaban = jumlah posisi yang benar-benar berbeda', () => {
+    for (const diff of TINGKAT) {
+      for (let i = 0; i < 80; i++) {
+        const [s] = buatRonde('ketelitian', diff, 1);
+        if (!s) continue;
+        const [barisA, barisB] = s.tanya.split('\n');
+        const a = (barisA ?? '').replace('A: ', '').trim().split(' ').map(Number);
+        const b = (barisB ?? '').replace('B: ', '').trim().split(' ').map(Number);
+        expect(a.length).toBe(b.length);
+        const beda = a.filter((n, j) => n !== b[j]).length;
+        expect(s.jawab, `soal: ${s.tanya}`).toBe(beda);
+        expect(beda).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it('verbal & silogisme: 4 opsi teks unik, indeks jawaban menunjuk teks yang benar', () => {
+    for (const kategori of ['verbal', 'silogisme'] as KategoriId[]) {
+      for (const diff of TINGKAT) {
+        for (let i = 0; i < 60; i++) {
+          const [s] = buatRonde(kategori, diff, 1);
+          expect(s, `${kategori}/${diff} kosong`).toBeTruthy();
+          if (!s) continue;
+          expect(s.input).toBe('pilihan');
+          expect(s.opsiTeks?.length).toBe(4);
+          expect(new Set(s.opsiTeks).size).toBe(4);
+          expect(s.pilihan).toEqual([1, 2, 3, 4]);
+          expect(s.jawab).toBeGreaterThanOrEqual(1);
+          expect(s.jawab).toBeLessThanOrEqual(4);
+          expect(s.opsiTeks?.[s.jawab - 1]).toBeTruthy();
+        }
+      }
+    }
+  });
+
+  it('labelJawaban memetakan indeks ke teks, dan angka tetap angka', () => {
+    const soalTeks = { opsiTeks: ['A', 'B', 'C', 'D'] } as unknown as Soal;
+    expect(labelJawaban(soalTeks, 3)).toBe('C');
+    expect(labelJawaban(soalTeks, '1')).toBe('A');
+    const soalAngka = {} as unknown as Soal;
+    expect(labelJawaban(soalAngka, 2.5)).toBe('2,5');
+  });
+
+  it('setiap kategori punya dimensi, dan rekap dimensi urut tetap', () => {
+    const semua: KategoriId[] = [
+      'kraepelin', 'kabataku', 'ketelitian', 'satuan', 'deret', 'logika',
+      'gyakusan', 'sansu', 'suiri', 'baai', 'verbal', 'silogisme', 'cerita',
+    ];
+    for (const k of semua) expect(DIMENSI_KATEGORI[k], `${k} tanpa dimensi`).toBeTruthy();
+    const r = rekapPerDimensi([
+      { kategori: 'verbal', benar: true },
+      { kategori: 'kraepelin', benar: true },
+      { kategori: 'kraepelin', benar: false },
+    ]);
+    expect(r).toEqual([
+      { dimensi: 'kecepatan', benar: 1, total: 2 },
+      { dimensi: 'verbal', benar: 1, total: 1 },
+    ]);
+  });
+
+  it('simulasi campuran mencakup minimal 4 dimensi dan selalu memuat verbal + ketelitian', () => {
+    for (let n = 0; n < 10; n++) {
+      const ronde = buatRondeCampur(20, BANK_CERITA);
+      const dim = new Set(ronde.map((s) => DIMENSI_KATEGORI[s.kategori]));
+      expect(dim.size, [...dim].join(',')).toBeGreaterThanOrEqual(4);
+      expect(ronde.some((s) => s.kategori === 'verbal' || s.kategori === 'silogisme')).toBe(true);
+      expect(ronde.some((s) => s.kategori === 'ketelitian')).toBe(true);
+    }
   });
 });

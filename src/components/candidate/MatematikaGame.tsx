@@ -41,6 +41,8 @@ import {
   buatRonde,
   buatRondeCampur,
   jawabanBenar,
+  labelJawaban,
+  rekapPerDimensi,
   rekapPerKategori,
   tampilAngka,
   type BankMatematikaRes,
@@ -390,7 +392,15 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
   /* Simulasi campuran memakai 20 soal / 300 detik — angka yang sama dengan
      modul terpanjang, karena isinya berganti jenis dan butuh waktu berpindah. */
   const jumlahSoal = campur ? 20 : kategoriAktif?.soal ?? 20;
-  const batasDetik = campur ? 300 : kategoriAktif?.detik ?? 120;
+  /* Durasi bawaan per kategori yang tidak dikirim bank. Soal verbal butuh
+     membaca 4 kalimat; 120 detik untuk 20 soal (6 dtk/soal) terlalu kejam. */
+  const DETIK_BAWAAN: Partial<Record<KategoriId, number>> = {
+    ketelitian: 180,
+    verbal: 240,
+    silogisme: 240,
+  };
+  const detikKategori = kategori === 'campur' ? undefined : DETIK_BAWAAN[kategori];
+  const batasDetik = campur ? 300 : kategoriAktif?.detik ?? detikKategori ?? 120;
 
   const mulai = () => {
     const daftar =
@@ -651,6 +661,15 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     c: 'border-accent-red bg-accent-red/10 text-accent-red',
   };
 
+  /* Metadata untuk kategori yang tidak dikirim bank (baru, atau belum ada di
+     bank server). Tanpa ini kartunya tampil kosong di baris atas — tanpa label
+     Jepang dan tanpa jumlah soal — dan terbaca seperti modul yang rusak. */
+  const META_LOKAL: Partial<Record<KategoriId, { jp: string; soal: number; detik: number }>> = {
+    ketelitian: { jp: '注意力', soal: 20, detik: 180 },
+    verbal: { jp: '言語', soal: 20, detik: 240 },
+    silogisme: { jp: '論理', soal: 20, detik: 240 },
+  };
+
   const kartuKategori: { id: KategoriId | 'campur'; label: string; ket: string }[] = [
     /* Simulasi campuran ditaruh PERTAMA: ia jawaban langsung atas keluhan
        "semua repetitif, cuma beda angka". Modul tunggal tetap ada untuk
@@ -661,6 +680,11 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     { id: 'deret', label: t('matematika.kat_deret'), ket: t('matematika.kat_deret_ket') },
     { id: 'satuan', label: t('matematika.kat_satuan'), ket: t('matematika.kat_satuan_ket') },
     { id: 'logika', label: t('matematika.kat_logika'), ket: t('matematika.kat_logika_ket') },
+    /* Tiga dimensi psikotes yang sebelumnya tidak ada. Ditaruh berurutan
+       supaya terbaca sebagai satu blok "psikotes", bukan tersebar. */
+    { id: 'ketelitian', label: t('matematika.kat_ketelitian'), ket: t('matematika.kat_ketelitian_ket') },
+    { id: 'verbal', label: t('matematika.kat_verbal'), ket: t('matematika.kat_verbal_ket') },
+    { id: 'silogisme', label: t('matematika.kat_silogisme'), ket: t('matematika.kat_silogisme_ket') },
     { id: 'cerita', label: t('matematika.kat_cerita'), ket: t('matematika.kat_cerita_ket') },
     { id: 'gyakusan', label: t('matematika.kat_gyakusan'), ket: t('matematika.kat_gyakusan_ket') },
     { id: 'sansu', label: t('matematika.kat_sansu'), ket: t('matematika.kat_sansu_ket') },
@@ -685,6 +709,16 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
   const rekapKategori = rekapPerKategori(riwayat.map((r) => ({ kategori: r.soal.kategori, benar: r.benar }))).map(
     (r) => ({ ...r, label: kartuKategori.find((k) => k.id === r.kategori)?.label ?? r.kategori }),
   );
+  /* Profil per DIMENSI — gambaran besar yang dibaca seperti hasil psikotes.
+     Kategori tetap ada di rincian, tetapi 13 bar tidak terbaca sebagai profil. */
+  const rekapDimensi = rekapPerDimensi(riwayat.map((r) => ({ kategori: r.soal.kategori, benar: r.benar })));
+  const labelDimensi = (d: string): string => {
+    if (d === 'kecepatan') return t('matematika.dim_kecepatan');
+    if (d === 'ketelitian') return t('matematika.dim_ketelitian');
+    if (d === 'penalaran') return t('matematika.dim_penalaran');
+    if (d === 'verbal') return t('matematika.dim_verbal');
+    return t('matematika.dim_aplikasi');
+  };
 
   const fmtWaktu = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
@@ -712,7 +746,9 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
             <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('matematika.pilih_modul')}</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {kartuKategori.map((k) => {
-                const meta = (kategoriBank ?? []).find((m) => m.id === k.id);
+                const meta =
+                  (kategoriBank ?? []).find((m) => m.id === k.id) ??
+                  (k.id === 'campur' ? undefined : META_LOKAL[k.id]);
                 const aktif = kategori === k.id;
                 return (
                   <button
@@ -852,7 +888,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                 </span>
               )}
             </div>
-            <div class="overflow-x-auto p-1 text-xl font-extrabold leading-snug text-fg sm:text-2xl">{soalAktif.tanya}</div>
+            <div class="overflow-x-auto whitespace-pre-line p-1 text-xl font-extrabold leading-snug text-fg sm:text-2xl">{soalAktif.tanya}</div>
             {terakhirBenar !== null && (
               <div class={`mt-2 text-xs font-black ${terakhirBenar ? 'text-accent-emerald' : 'text-accent-red'}`}>
                 {terakhirBenar ? t('matematika.benar') : t('matematika.salah')}
@@ -861,19 +897,41 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
           </div>
 
           {soalAktif.input === 'pilihan' ? (
-            <div class="grid grid-cols-2 gap-2">
-              {(soalAktif.pilihan ?? []).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  disabled={terjawab}
-                  onClick={() => jawab(String(p))}
-                  class="min-h-12 rounded-control border-2 border-line bg-surface-raised px-3 text-sm font-extrabold text-fg hover:border-accent-sky disabled:opacity-60"
-                >
-                  {tampilAngka(p)} {soalAktif.satuan}
-                </button>
-              ))}
-            </div>
+            soalAktif.opsiTeks ? (
+              /* Opsi TEKS (analogi/silogisme): satu kolom, karena kalimat
+                 kesimpulan tidak muat dua kolom di 390 px. Nomornya tetap
+                 ditampilkan supaya bisa dirujuk saat membahas. */
+              <div class="grid grid-cols-1 gap-2">
+                {soalAktif.opsiTeks.map((teks, i) => (
+                  <button
+                    key={teks}
+                    type="button"
+                    data-opsi={i + 1}
+                    disabled={terjawab}
+                    onClick={() => jawab(String(i + 1))}
+                    class="min-h-12 rounded-control border-2 border-line bg-surface-raised px-3 py-2 text-left text-[12px] font-semibold leading-snug text-fg hover:border-accent-sky disabled:opacity-60"
+                  >
+                    <span class="mr-1.5 font-black text-accent-sky">{i + 1}.</span>
+                    {teks}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div class="grid grid-cols-2 gap-2">
+                {(soalAktif.pilihan ?? []).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    data-opsi={p}
+                    disabled={terjawab}
+                    onClick={() => jawab(String(p))}
+                    class="min-h-12 rounded-control border-2 border-line bg-surface-raised px-3 text-sm font-extrabold text-fg hover:border-accent-sky disabled:opacity-60"
+                  >
+                    {tampilAngka(p)} {soalAktif.satuan}
+                  </button>
+                ))}
+              </div>
+            )
           ) : (
             <div class="space-y-2">
               <div class="flex items-center justify-between rounded-card border border-line bg-surface px-4 py-2.5">
@@ -1001,29 +1059,54 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
             </div>
           </div>
 
-          {rekapKategori.length > 1 && (
+          {rekapDimensi.length > 1 && (
             <div class="rounded-card border border-line bg-surface p-3.5">
-              <h3 class="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">
-                {t('matematika.rekap_kategori')}
-              </h3>
-              <ul class="space-y-1.5">
-                {rekapKategori.map((r) => {
-                  const persen = Math.round((r.benar / r.total) * 100);
+              <div class="mb-2 flex flex-wrap items-center justify-between gap-1">
+                <h3 class="text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">
+                  {t('matematika.profil_psiko')}
+                </h3>
+                <span class="text-[10px] text-fg-subtle">{t('matematika.profil_ket')}</span>
+              </div>
+              <ul class="space-y-2">
+                {rekapDimensi.map((d) => {
+                  const persen = Math.round((d.benar / d.total) * 100);
                   const warna =
                     persen >= 80 ? 'bg-accent-emerald' : persen >= 50 ? 'bg-accent-amber' : 'bg-accent-red';
                   return (
-                    <li key={r.kategori} class="flex items-center gap-2 text-[11px]">
-                      <span class="w-28 shrink-0 truncate font-bold text-fg">{r.label}</span>
-                      <span class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-sunken">
+                    <li key={d.dimensi}>
+                      <div class="mb-0.5 flex items-baseline justify-between gap-2 text-[11px]">
+                        <span class="font-bold text-fg">{labelDimensi(d.dimensi)}</span>
+                        <span class="font-mono text-fg-muted">
+                          {d.benar}/{d.total} · {persen}%
+                        </span>
+                      </div>
+                      <span class="block h-2 w-full overflow-hidden rounded-pill bg-surface-sunken">
                         <span class={`block h-full rounded-pill ${warna}`} style={`width:${persen}%`} />
-                      </span>
-                      <span class="w-10 shrink-0 text-right font-mono text-fg-muted">
-                        {r.benar}/{r.total}
                       </span>
                     </li>
                   );
                 })}
               </ul>
+              {rekapKategori.length > 1 && (
+                <details class="mt-2.5 border-t border-line pt-2">
+                  <summary class="cursor-pointer text-[11px] font-bold text-accent-sky">
+                    {t('matematika.rekap_kategori')}
+                  </summary>
+                  <ul class="mt-1.5 space-y-1">
+                    {rekapKategori.map((r) => {
+                      const persen = Math.round((r.benar / r.total) * 100);
+                      return (
+                        <li key={r.kategori} class="flex items-center justify-between gap-2 text-[11px]">
+                          <span class="min-w-0 truncate text-fg-muted">{r.label}</span>
+                          <span class="shrink-0 font-mono text-fg">
+                            {r.benar}/{r.total} · {persen}%
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </details>
+              )}
             </div>
           )}
 
@@ -1046,15 +1129,17 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                       <span class="text-[10px] uppercase text-accent-red">{r.soal.tag}</span>
                       <span class="text-accent-red">{t('matematika.salah')}</span>
                     </div>
-                    <div class="text-[12px] font-bold text-fg">{r.soal.tanya}</div>
+                    <div class="whitespace-pre-line text-[12px] font-bold text-fg">{r.soal.tanya}</div>
                     <div class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                       <span class="text-fg-muted">
-                        {t('matematika.jawaban_anda')}: <strong class="text-accent-red">{r.jawabUser}</strong>
+                        {t('matematika.jawaban_anda')}:{' '}
+                        <strong class="text-accent-red">{labelJawaban(r.soal, r.jawabUser)}</strong>
                       </span>
                       <span class="text-accent-emerald">
                         {t('matematika.kunci')}:{' '}
                         <strong>
-                          {tampilAngka(r.soal.jawab)} {r.soal.satuan}
+                          {labelJawaban(r.soal, r.soal.jawab)}
+                          {r.soal.opsiTeks ? '' : ` ${r.soal.satuan}`}
                         </strong>
                       </span>
                     </div>
