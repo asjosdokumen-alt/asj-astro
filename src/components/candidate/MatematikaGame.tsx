@@ -46,6 +46,8 @@ import {
   rekapPerKategori,
   tampilAngka,
   type BankMatematikaRes,
+  type BentukFigur,
+  type Figur,
   type KategoriId,
   type KesulitanPilih,
   type Soal,
@@ -153,6 +155,75 @@ function cariAudioContext(): PembuatKonteks | null {
   return w.AudioContext ?? w.webkitAudioContext ?? null;
 }
 
+/* ── Figur (spasial) ──────────────────────────────────────────────────────── */
+
+/**
+ * Path tiap bentuk di dalam kotak 100×100.
+ *
+ * Semua bentuk digambar dengan satu `<path>` supaya transformasi (rotasi +
+ * cermin) bisa diterapkan ke SATU grup — kalau tiap bentuk memakai elemen
+ * berbeda (rect/polygon/line), transform-nya harus ditulis ulang per elemen dan
+ * salah satunya pasti ketinggalan.
+ */
+function pathFigur(bentuk: BentukFigur): string | null {
+  if (bentuk === 'kotak') return 'M22 22 H78 V78 H22 Z';
+  if (bentuk === 'segitiga') return 'M50 16 L86 80 H14 Z';
+  if (bentuk === 'L') return 'M28 18 H44 V64 H78 V80 H28 Z';
+  if (bentuk === 'pisau') return 'M18 62 L58 22 H80 V40 L40 80 H18 Z';
+  if (bentuk === 'bendera') return 'M32 14 V86 M32 18 H78 L60 34 L78 50 H32';
+  if (bentuk === 'garis') return 'M20 50 H80';
+  return null; // titik digambar sebagai <circle>
+}
+
+/**
+ * Render satu gambar figural.
+ *
+ * `sel` > 1 dipakai soal deret: tiga gambar berjajar dalam satu SVG, masing-
+ * masing digeser 100 px. `aria-hidden` selalu true — pembaca layar tidak bisa
+ * mendeskripsikan rotasi; teks pertanyaannya yang menjadi konteks.
+ */
+function FigurSvg({
+  gambar,
+  sel = 1,
+  ukuran = 96,
+  kelas = '',
+}: {
+  gambar: readonly Figur[];
+  sel?: number;
+  ukuran?: number;
+  kelas?: string;
+}) {
+  return (
+    <svg
+      viewBox={`0 0 ${sel * 100} 100`}
+      width={ukuran * sel}
+      height={ukuran}
+      class={kelas}
+      aria-hidden="true"
+      focusable="false"
+    >
+      {gambar.map((f, i) => {
+        const d = pathFigur(f.bentuk);
+        return (
+          <g
+            key={i}
+            transform={`translate(${(f.x ?? 0) * 100} 0) rotate(${f.putar} 50 50)${
+              f.cermin ? ' translate(100 0) scale(-1 1)' : ''
+            }`}
+            fill={f.isi ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            stroke-width={f.isi ? 0 : 6}
+            stroke-linejoin="round"
+            stroke-linecap="round"
+          >
+            {d ? <path d={d} /> : <circle cx="50" cy="50" r="10" fill="currentColor" />}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 export default function MatematikaGame({ waTarget = '', adminMode = false }: Props) {
   useLang();
   const auth = authStore.get();
@@ -205,6 +276,8 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
   });
 
   const mulaiRef = useRef(0);
+  /** Root game — dipakai untuk menggulir ke soal pertama setelah "Mulai tes". */
+  const rootRef = useRef<HTMLDivElement>(null);
   const selesaiRef = useRef<() => void>(() => {});
   const muatRef = useRef<(nomor: string) => void>(() => {});
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -425,6 +498,14 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     setGalat('');
     setLayar('main');
     bunyi('tap');
+    /* Lobi panjang (15 kartu) membuat "Mulai tes" berada jauh di bawah. Tanpa
+       ini, layar soal pertama muncul pada posisi gulir yang sama — siswa melihat
+       bagian tengah soal, bukan pertanyaannya. `scroll-mt` di root menyisakan
+       ruang untuk toolbar yang menempel. */
+    window.setTimeout(() => {
+      const el = rootRef.current;
+      if (el && typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'start', behavior: 'auto' });
+    }, 0);
   };
 
   const selesai = () => {
@@ -668,6 +749,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     ketelitian: { jp: '注意力', soal: 20, detik: 180 },
     verbal: { jp: '言語', soal: 20, detik: 240 },
     silogisme: { jp: '論理', soal: 20, detik: 240 },
+    figural: { jp: '空間', soal: 20, detik: 240 },
   };
 
   const kartuKategori: { id: KategoriId | 'campur'; label: string; ket: string }[] = [
@@ -685,6 +767,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     { id: 'ketelitian', label: t('matematika.kat_ketelitian'), ket: t('matematika.kat_ketelitian_ket') },
     { id: 'verbal', label: t('matematika.kat_verbal'), ket: t('matematika.kat_verbal_ket') },
     { id: 'silogisme', label: t('matematika.kat_silogisme'), ket: t('matematika.kat_silogisme_ket') },
+    { id: 'figural', label: t('matematika.kat_figural'), ket: t('matematika.kat_figural_ket') },
     { id: 'cerita', label: t('matematika.kat_cerita'), ket: t('matematika.kat_cerita_ket') },
     { id: 'gyakusan', label: t('matematika.kat_gyakusan'), ket: t('matematika.kat_gyakusan_ket') },
     { id: 'sansu', label: t('matematika.kat_sansu'), ket: t('matematika.kat_sansu_ket') },
@@ -717,13 +800,14 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     if (d === 'ketelitian') return t('matematika.dim_ketelitian');
     if (d === 'penalaran') return t('matematika.dim_penalaran');
     if (d === 'verbal') return t('matematika.dim_verbal');
+    if (d === 'spasial') return t('matematika.dim_spasial');
     return t('matematika.dim_aplikasi');
   };
 
   const fmtWaktu = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   return (
-    <div class="max-w-2xl mx-auto">
+    <div ref={rootRef} class="max-w-2xl mx-auto scroll-mt-[var(--u-toolbar-h)]">
       <canvas ref={canvasRef} class="fixed inset-0 pointer-events-none z-50 w-full h-full" />
 
       {/* ── LOBI ── */}
@@ -888,6 +972,15 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                 </span>
               )}
             </div>
+            {soalAktif.gambar && (
+              <div class="mb-3 flex justify-center rounded-card border border-line bg-surface-sunken p-2 text-fg">
+                <FigurSvg
+                  gambar={soalAktif.gambar}
+                  sel={soalAktif.gambarSel ?? 1}
+                  ukuran={(soalAktif.gambarSel ?? 1) > 1 ? 72 : 110}
+                />
+              </div>
+            )}
             <div class="overflow-x-auto whitespace-pre-line p-1 text-xl font-extrabold leading-snug text-fg sm:text-2xl">{soalAktif.tanya}</div>
             {terakhirBenar !== null && (
               <div class={`mt-2 text-xs font-black ${terakhirBenar ? 'text-accent-emerald' : 'text-accent-red'}`}>
@@ -897,7 +990,26 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
           </div>
 
           {soalAktif.input === 'pilihan' ? (
-            soalAktif.opsiTeks ? (
+            soalAktif.opsiGambar ? (
+              /* Opsi GAMBAR (figural): 2×2, tiap kartu satu SVG. Nomor tidak
+                 ditampilkan — yang dipilih adalah gambarnya, dan nomor urut
+                 hanya akan mengalihkan perhatian dari bentuk. */
+              <div class="grid grid-cols-2 gap-2">
+                {soalAktif.opsiGambar.map((g, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    data-opsi={i + 1}
+                    aria-label={`Opsi ${i + 1}`}
+                    disabled={terjawab}
+                    onClick={() => jawab(String(i + 1))}
+                    class="flex min-h-24 items-center justify-center rounded-control border-2 border-line bg-surface-raised p-2 text-fg hover:border-accent-sky disabled:opacity-60"
+                  >
+                    <FigurSvg gambar={g} ukuran={76} />
+                  </button>
+                ))}
+              </div>
+            ) : soalAktif.opsiTeks ? (
               /* Opsi TEKS (analogi/silogisme): satu kolom, karena kalimat
                  kesimpulan tidak muat dua kolom di 390 px. Nomornya tetap
                  ditampilkan supaya bisa dirujuk saat membahas. */

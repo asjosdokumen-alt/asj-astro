@@ -234,6 +234,23 @@ describe('/matematika — siswa ASJ saja', () => {
     expect(screen.getByText('Ketelitian')).toBeTruthy();
   }, 60000);
 
+  /* Figural adalah satu-satunya soal yang JAWABANNYA gambar. Kalau `gambar`
+     atau `opsiGambar` diabaikan, layar menampilkan pertanyaan tanpa satu pun
+     bentuk — dan tidak ada yang bisa dijawab. */
+  it('soal figural menampilkan gambar soal dan 4 opsi gambar', async () => {
+    loginSebagai('kandidat');
+    render(<MatematikaGame />);
+    await waitFor(() => expect(screen.getByText('Figural (spasial)')).toBeTruthy());
+    fireEvent.click(tombol('Figural (spasial)'));
+    fireEvent.click(tombol('Mulai tes'));
+
+    await waitFor(() => expect(document.body.textContent || '').toContain('FIGURAL'));
+    expect(document.querySelectorAll('[data-opsi] svg'), 'opsi gambar tidak dirender').toHaveLength(4);
+    fireEvent.click(document.querySelector('[data-opsi]') as HTMLButtonElement);
+
+    await waitFor(() => expect(screen.getByText('02')).toBeTruthy(), { timeout: 4000 });
+  }, 20000);
+
   it('admin: tanpa gerbang login (dipakai panel admin)', async () => {
     loginSebagai('admin');
 

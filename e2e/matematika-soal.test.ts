@@ -27,12 +27,16 @@ import { BANK_CERITA, KATEGORI } from '../netlify/functions/_lib/matematika/bank
 import {
   buatRonde,
   buatRondeCampur,
+  cerminGambar,
   DIMENSI_KATEGORI,
   jawabanBenar,
+  kunciGambar,
   labelJawaban,
+  putarGambar,
   rekapPerDimensi,
   rekapPerKategori,
   tampilAngka,
+  type Gambar,
   type KategoriId,
   type Kesulitan,
   type Soal,
@@ -53,6 +57,7 @@ const KATEGORI_ANGKA: KategoriId[] = [
   'ketelitian',
   'verbal',
   'silogisme',
+  'figural',
 ];
 
 describe('bank soal cerita (server)', () => {
@@ -336,5 +341,56 @@ describe('psikotes — ketelitian, verbal, silogisme', () => {
       expect(ronde.some((s) => s.kategori === 'verbal' || s.kategori === 'silogisme')).toBe(true);
       expect(ronde.some((s) => s.kategori === 'ketelitian')).toBe(true);
     }
+  });
+});
+
+describe('figural — rotasi, cermin, deret', () => {
+  it('selalu ada 4 opsi gambar yang BERBEDA', () => {
+    for (const diff of TINGKAT) {
+      for (let i = 0; i < 120; i++) {
+        const [s] = buatRonde('figural', diff, 1);
+        expect(s, `${diff} tidak menghasilkan soal`).toBeTruthy();
+        if (!s) continue;
+        expect(s.gambar?.length, 'gambar soal kosong').toBeGreaterThan(0);
+        expect(s.opsiGambar?.length, 'opsi gambar bukan 4').toBe(4);
+        /* Inti soal figural: dua opsi kembar = dua jawaban benar. */
+        const kunci = new Set((s.opsiGambar ?? []).map((g) => kunciGambar(g)));
+        expect(kunci.size, `opsi kembar: ${s.tanya}`).toBe(4);
+        expect(s.pilihan).toEqual([1, 2, 3, 4]);
+        expect(s.jawab).toBeGreaterThanOrEqual(1);
+        expect(s.jawab).toBeLessThanOrEqual(4);
+      }
+    }
+  });
+
+  it('opsi "benar" memang hasil transformasi yang diminta', () => {
+    for (const diff of TINGKAT) {
+      for (let i = 0; i < 80; i++) {
+        const [s] = buatRonde('figural', diff, 1);
+        if (!s?.gambar || !s.opsiGambar || !s.figurMeta) continue;
+        const benar = s.opsiGambar[s.jawab - 1];
+        expect(benar, 'indeks jawaban menunjuk opsi kosong').toBeTruthy();
+        if (!benar) continue;
+        if (s.figurMeta.mode === 'putar') {
+          expect(kunciGambar(benar)).toBe(kunciGambar(putarGambar(s.gambar, s.figurMeta.derajat)));
+        } else if (s.figurMeta.mode === 'cermin') {
+          expect(kunciGambar(benar)).toBe(kunciGambar(cerminGambar(s.gambar)));
+        } else {
+          /* Deret: tiga sel 0° → 90° → 180°, jawabannya 270°. */
+          expect(s.gambarSel).toBe(3);
+          expect(s.gambar).toHaveLength(3);
+          expect(s.gambar[2]?.putar).toBe(180);
+          expect(kunciGambar(benar)).toBe(kunciGambar(putarGambar([s.gambar[0]], 270)));
+        }
+      }
+    }
+  });
+
+  it('rotasi 4×90° dan cermin 2× kembali ke asal', () => {
+    const g: Gambar = [{ bentuk: 'L', putar: 0, isi: true }];
+    expect(kunciGambar(putarGambar(g, 360))).toBe(kunciGambar(g));
+    expect(kunciGambar(putarGambar(putarGambar(g, 90), 270))).toBe(kunciGambar(g));
+    expect(kunciGambar(cerminGambar(cerminGambar(g)))).toBe(kunciGambar(g));
+    expect(kunciGambar(putarGambar(g, 450))).toBe(kunciGambar(putarGambar(g, 90)));
   });
 });

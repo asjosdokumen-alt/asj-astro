@@ -38,7 +38,8 @@ export type KategoriId =
      halaman ini hanya berisi hitung cepat dan deret angka. */
   | 'ketelitian'
   | 'verbal'
-  | 'silogisme';
+  | 'silogisme'
+  | 'figural';
 
 /** Satu soal siap tampil. Bentuknya sengaja rata, bukan union per jenis. */
 export interface Soal {
@@ -66,9 +67,76 @@ export interface Soal {
    * tidak cocok. Indeks menjaga satu jalur, dan teksnya hanya untuk tampilan.
    */
   opsiTeks?: string[];
+  /**
+   * Gambar soal (spasial/figural). Bila ada, dirender sebagai SVG di atas
+   * pertanyaan; `gambarSel` menentukan berapa sel horizontal (untuk deret).
+   */
+  gambar?: readonly Figur[];
+  /** Opsi GAMBAR; `pilihan` berisi indeks 1..n seperti `opsiTeks`. */
+  opsiGambar?: readonly (readonly Figur[])[];
+  /** Jumlah sel horizontal gambar soal (default 1). */
+  gambarSel?: number;
+  /**
+   * Metadata figur — dipakai tes untuk membuktikan bahwa opsi "benar" memang
+   * hasil transformasi yang diminta, bukan sekadar salah satu opsi.
+   */
+  figurMeta?: { mode: 'putar' | 'cermin' | 'deret'; derajat: number };
   /** Aturan kraepelin: tulis angka satuan saja. Menyalakan petunjuk khusus. */
   kraepelin?: boolean;
 }
+
+/* ── Figur (spasial) ──────────────────────────────────────────────────────── */
+
+export type BentukFigur = 'kotak' | 'segitiga' | 'L' | 'bendera' | 'pisau' | 'titik' | 'garis';
+
+/**
+ * Satu potongan gambar. Rotasi hanya kelipatan 90° dan `cermin` hanya dipakai
+ * pada rotasi 0 — dua batasan itu yang membuat `putarGambar`/`cerminGambar`
+ * bisa diuji sebagai fungsi murni tanpa urutan transform yang ambigu.
+ */
+export interface Figur {
+  bentuk: BentukFigur;
+  /** Rotasi searah jarum jam, derajat: 0/90/180/270. */
+  putar: number;
+  cermin?: boolean;
+  /** Sel horizontal (0-based) untuk gambar deret. */
+  x?: number;
+  /** `true` = bidang diisi; `false` = garis saja. */
+  isi?: boolean;
+}
+
+export type Gambar = readonly Figur[];
+
+/** Putar seluruh potongan searah jarum jam. */
+export function putarGambar(g: Gambar, derajat: number): Gambar {
+  const d = ((Math.round(derajat / 90) * 90) % 360 + 360) % 360;
+  return g.map((f) => ({ ...f, putar: (f.putar + d) % 360 }));
+}
+
+/** Cermin vertikal (tukar kiri-kanan). */
+export function cerminGambar(g: Gambar): Gambar {
+  return g.map((f) => ({ ...f, cermin: !f.cermin }));
+}
+
+/**
+ * Kunci gambar untuk membandingkan dua gambar.
+ *
+ * Dipakai generator untuk MENJAMIN empat opsi berbeda: pada bangun simetris,
+ * "cermin" bisa sama persis dengan rotasi 180°, dan dua opsi identik membuat
+ * soal punya dua jawaban benar.
+ */
+export function kunciGambar(g: Gambar): string {
+  return g
+    .map((f) => `${f.bentuk}:${f.putar}:${f.cermin ? 1 : 0}:${f.isi ? 1 : 0}:${f.x ?? 0}`)
+    .join('|');
+}
+
+/** Bentuk dasar yang ASIMETRIS — rotasi dan cerminnya tidak pernah kembar. */
+const BENTUK_DASAR: readonly Gambar[] = [
+  [{ bentuk: 'L', putar: 0, isi: true }],
+  [{ bentuk: 'pisau', putar: 0, isi: true }],
+  [{ bentuk: 'bendera', putar: 0, isi: false }],
+];
 
 /** Satu baris bank cerita seperti yang dikirim server. */
 export interface SoalCeritaBank {
@@ -1079,7 +1147,7 @@ function buatSilogisme(
  * tidak terbaca sebagai "profil"; yang dibaca orang adalah 4–5 kemampuan.
  * Kategori tetap disimpan untuk rincian, dimensi untuk gambaran besarnya.
  */
-export type DimensiPsiko = 'kecepatan' | 'ketelitian' | 'penalaran' | 'verbal' | 'aplikasi';
+export type DimensiPsiko = 'kecepatan' | 'ketelitian' | 'penalaran' | 'verbal' | 'spasial' | 'aplikasi';
 
 export const DIMENSI_KATEGORI: Readonly<Record<KategoriId, DimensiPsiko>> = {
   kraepelin: 'kecepatan',
@@ -1094,6 +1162,7 @@ export const DIMENSI_KATEGORI: Readonly<Record<KategoriId, DimensiPsiko>> = {
   baai: 'penalaran',
   verbal: 'verbal',
   silogisme: 'verbal',
+  figural: 'spasial',
   cerita: 'aplikasi',
 };
 
@@ -1107,7 +1176,7 @@ export interface RekapDimensi {
 export function rekapPerDimensi(
   jawaban: readonly { kategori: KategoriId; benar: boolean }[],
 ): RekapDimensi[] {
-  const urutan: DimensiPsiko[] = ['kecepatan', 'ketelitian', 'penalaran', 'verbal', 'aplikasi'];
+  const urutan: DimensiPsiko[] = ['kecepatan', 'ketelitian', 'penalaran', 'verbal', 'spasial', 'aplikasi'];
   const peta = new Map<DimensiPsiko, RekapDimensi>();
   for (const j of jawaban) {
     const d = DIMENSI_KATEGORI[j.kategori];
@@ -1117,6 +1186,140 @@ export function rekapPerDimensi(
     peta.set(d, kini);
   }
   return urutan.filter((d) => peta.has(d)).map((d) => peta.get(d) as RekapDimensi);
+}
+
+/** Empat gambar unik; `null` bila kandidat tidak cukup (bangun simetris). */
+function opsiGambarUnik(benar: Gambar, kandidat: readonly Gambar[]): Gambar[] | null {
+  const hasil: Gambar[] = [benar];
+  const kunci = new Set([kunciGambar(benar)]);
+  for (const k of kandidat) {
+    if (hasil.length >= 4) break;
+    const kk = kunciGambar(k);
+    if (kunci.has(kk)) continue;
+    kunci.add(kk);
+    hasil.push(k);
+  }
+  return hasil.length === 4 ? kocok(hasil) : null;
+}
+
+/**
+ * Soal figural: rotasi, pencerminan, dan deret gambar.
+ *
+ * KENAPA HANYA TIGA BENTUK DASAR: rotasi dan cermin hanya bisa dibedakan pada
+ * bangun ASIMETRIS. Kotak dan segitiga sama sisi akan menghasilkan empat opsi
+ * yang kembar (cermin segitiga = segitiga itu sendiri), dan soal seperti itu
+ * punya lebih dari satu jawaban benar. Tiga bentuk di `BENTUK_DASAR` dipilih
+ * karena tidak punya simetri lipat maupun simetri putar.
+ *
+ * Opsi selalu diperiksa unik lewat `kunciGambar`; kalau tidak cukup, bentuk
+ * dasar lain dicoba. Kegagalan itu tidak dilempar ke layar — soal tetap
+ * dihasilkan dari bentuk pertama yang pasti chiral.
+ */
+function buatFigural(diff: Kesulitan): Omit<Soal, 'id' | 'kategori' | 'diff'> {
+  const mode =
+    diff === 'easy'
+      ? pilih(['putar', 'cermin'] as const)
+      : diff === 'medium'
+        ? pilih(['putar', 'cermin', 'putar'] as const)
+        : pilih(['deret', 'putar', 'cermin'] as const);
+  const derajat = diff === 'easy' ? pilih([90, 180]) : pilih([90, 180, 270]);
+
+  for (const dasar of kocok([...BENTUK_DASAR])) {
+    if (mode === 'cermin') {
+      const benar = cerminGambar(dasar);
+      const opsi = opsiGambarUnik(benar, [
+        dasar,
+        putarGambar(dasar, 90),
+        putarGambar(dasar, 270),
+        putarGambar(dasar, 180),
+      ]);
+      if (!opsi) continue;
+      return {
+        tag: 'FIGURAL — PENCERMINAN',
+        tanya: 'Manakah hasil pencerminan gambar ini (cermin vertikal)?',
+        jawab: opsi.findIndex((g) => kunciGambar(g) === kunciGambar(benar)) + 1,
+        satuan: '',
+        input: 'pilihan',
+        pilihan: opsi.map((_, i) => i + 1),
+        opsiGambar: opsi,
+        gambar: dasar,
+        figurMeta: { mode: 'cermin', derajat: 0 },
+        pembahasan: 'Pencerminan menukar kiri dan kanan. Bentuknya tidak diputar, hanya dibalik.',
+      };
+    }
+
+    if (mode === 'putar') {
+      const benar = putarGambar(dasar, derajat);
+      const opsi = opsiGambarUnik(benar, [
+        putarGambar(dasar, (derajat + 90) % 360),
+        putarGambar(dasar, (derajat + 180) % 360),
+        putarGambar(dasar, (derajat + 270) % 360),
+        cerminGambar(dasar),
+      ]);
+      if (!opsi) continue;
+      return {
+        tag: 'FIGURAL — ROTASI',
+        tanya: `Manakah hasil memutar gambar ini ${derajat}° searah jarum jam?`,
+        jawab: opsi.findIndex((g) => kunciGambar(g) === kunciGambar(benar)) + 1,
+        satuan: '',
+        input: 'pilihan',
+        pilihan: opsi.map((_, i) => i + 1),
+        opsiGambar: opsi,
+        gambar: dasar,
+        figurMeta: { mode: 'putar', derajat },
+        pembahasan: `Putar ${derajat}° searah jarum jam: bagian atas berpindah ke ${
+          derajat === 90 ? 'kanan' : derajat === 180 ? 'bawah' : 'kiri'
+        }.`,
+      };
+    }
+
+    /* Deret: tiga gambar pertama 0° → 90° → 180°, jawabannya 270°. */
+    const stem: Gambar = [
+      { ...dasar[0], x: 0 },
+      { ...putarGambar(dasar, 90)[0], x: 1 },
+      { ...putarGambar(dasar, 180)[0], x: 2 },
+    ];
+    const benar = putarGambar(dasar, 270);
+    const opsi = opsiGambarUnik(benar, [
+      dasar,
+      putarGambar(dasar, 90),
+      putarGambar(dasar, 180),
+      cerminGambar(dasar),
+    ]);
+    if (!opsi) continue;
+    return {
+      tag: 'FIGURAL — DERET',
+      tanya: 'Perhatikan pola putarannya. Gambar keempat adalah?',
+      jawab: opsi.findIndex((g) => kunciGambar(g) === kunciGambar(benar)) + 1,
+      satuan: '',
+      input: 'pilihan',
+      pilihan: opsi.map((_, i) => i + 1),
+      opsiGambar: opsi,
+      gambar: stem,
+      gambarSel: 3,
+      figurMeta: { mode: 'deret', derajat: 270 },
+      pembahasan: 'Setiap langkah diputar 90° searah jarum jam: 0°, 90°, 180°, lalu 270°.',
+    };
+  }
+
+  /* Jaring pengaman: tidak pernah tercapai dengan tiga bentuk chiral, tetapi
+     fungsi yang bisa mengembalikan `undefined` akan membuat `buatRonde`
+     berhenti di tengah tanpa pesan. */
+  const dasar = BENTUK_DASAR[0] as Gambar;
+  const benar = putarGambar(dasar, 90);
+  const opsi = [benar, dasar, putarGambar(dasar, 180), putarGambar(dasar, 270)];
+  return {
+    tag: 'FIGURAL — ROTASI',
+    tanya: 'Manakah hasil memutar gambar ini 90° searah jarum jam?',
+    jawab: opsi.findIndex((g) => kunciGambar(g) === kunciGambar(benar)) + 1,
+    satuan: '',
+    input: 'pilihan',
+    pilihan: opsi.map((_, i) => i + 1),
+    opsiGambar: opsi,
+    gambar: dasar,
+    figurMeta: { mode: 'putar', derajat: 90 },
+    pembahasan: 'Putar 90° searah jarum jam: bagian atas berpindah ke kanan.',
+  };
 }
 
 function buatCerita(
@@ -1173,6 +1376,7 @@ function isiSoal(
   if (kategori === 'ketelitian') return buatKetelitian(diff);
   if (kategori === 'verbal') return buatVerbal(diff, dipakai);
   if (kategori === 'silogisme') return buatSilogisme(diff, dipakai);
+  if (kategori === 'figural') return buatFigural(diff);
   return buatCerita(diff, bank, dipakai);
 }
 
@@ -1218,6 +1422,7 @@ const KATEGORI_SIMULASI: readonly KategoriId[] = [
   'baai',
   'verbal',
   'silogisme',
+  'figural',
 ];
 
 /**
@@ -1312,6 +1517,9 @@ export function tampilAngka(n: number): string {
  */
 export function labelJawaban(soal: Soal, nilai: number | string): string {
   const n = Number(nilai);
+  if (soal.opsiGambar) {
+    return Number.isInteger(n) && n >= 1 ? `#${n}` : String(nilai);
+  }
   if (soal.opsiTeks && Number.isInteger(n) && n >= 1 && n <= soal.opsiTeks.length) {
     return soal.opsiTeks[n - 1] as string;
   }

@@ -12,7 +12,7 @@ Perubahan arcade sendiri ada di `arcade-systems-2026-11-05.md`.
 
 | Keluhan | Penyebab yang ditemukan di kode | Perbaikan |
 |---|---|---|
-| "Semua repetitif, cuma beda angka" | `buatRonde` membuat **20 soal SATU kategori**. Pilih kraepelin → 20 penjumlahan berturut-turut | **Simulasi Seleksi**: satu ronde 20 soal **campuran** 9–10 jenis, tidak ada jenis yang sama dua kali berturut-turut |
+| "Semua repetitif, cuma beda angka" | `buatRonde` membuat **20 soal SATU kategori**. Pilih kraepelin → 20 penjumlahan berturut-turut | **Simulasi Seleksi**: satu ronde 20 soal **campuran** 13 jenis (14 dengan soal cerita), tidak ada jenis yang sama dua kali berturut-turut |
 | "Psikotesnya rendah, tidak sesuai ekspektasi" | Tidak ada kesulitan yang menanjak: `easy`/`medium`/`hard` dipilih rata, dan `deret` easy **selalu** pola +n (`acak(1,1)`) | Kurva di dalam ronde: sepertiga awal easy, tengah medium, akhir hard. `deret` easy kini 2 pola (tambah tetap / dikali tetap) |
 | "Membosankan" | Hasil hanya satu angka akurasi; tidak ada laporan APA yang lemah | **Rekap per jenis** di layar hasil: bar benar/total per kategori (hijau ≥80%, kuning ≥50%, merah di bawah) |
 
@@ -83,30 +83,61 @@ dinaikkan kapan saja, jadi tidak ada target yang habis dalam satu duduk.
 
 ---
 
-## 3. Psikotes — tiga dimensi baru dan profil
+## 3. Psikotes — empat dimensi baru dan profil
 
 Keluhan lanjutan pemilik: "untuk test psikologinya gimana, tidak ada upgrade
-kah? mengikuti test psikologi online kan sudah banyak."
+kah? mengikuti test psikologi online kan sudah banyak." Lalu, setelah tiga
+dimensi pertama: "spasial/figural ya tolong, karena ini yang paling sering
+muncul saat tes magang."
 
 Auditnya: dari 10 kategori, **semuanya** numerik atau logika angka. Tidak ada
-satu pun yang mengukur **ketelitian**, **kemampuan verbal**, atau **penalaran
-silogistik** — padahal ketiganya bagian tetap psikotes kerja. Dan hasilnya
-hanya satu angka, bukan profil.
+satu pun yang mengukur **ketelitian**, **kemampuan verbal**, **penalaran
+silogistik**, atau **spasial** — padahal keempatnya bagian tetap psikotes kerja.
+Dan hasilnya hanya satu angka, bukan profil.
 
-### 3.1 Tiga kategori baru
+### 3.1 Empat kategori baru
 
 | Kategori | Bentuk | Yang diukur | Tingkat |
 |---|---|---|---|
 | **Ketelitian** | Dua baris angka (8/10/12 digit); hitung posisi yang berbeda | Membandingkan deret tanpa kehilangan posisi — kerja periksa label/nomor part | 1 · 2 · 2–4 beda |
 | **Verbal (analogi)** | `PANAS : API = ? : ?` dengan 4 opsi teks | Hubungan kata (alat:sasaran, sebab:akibat, lawan kata) | bank 22 pasangan |
 | **Silogisme** | Dua premis; pilih kesimpulan yang PASTI benar | Validitas penalaran, bukan kesan benar | bank 10 bentuk |
+| **Figural (spasial)** | Rotasi 90/180/270°, pencerminan vertikal, deret 3 gambar | Rotasi mental dan pencerminan — inti tes figural magang | 3 bentuk dasar |
 
 Bank analogi dan silogisme **ditulis sebagai data, bukan diacak**. Satu bentuk
 silogisme yang salah (mis. menyimpulkan "sebagian A adalah C" dari "semua A
 adalah B, sebagian B adalah C") akan mengajari penalaran yang keliru — lebih
 buruk daripada tidak ada soal.
 
-### 3.2 Opsi teks tanpa mengganti jalur jawaban
+### 3.2 Figural: gambar sebagai data, bukan berkas gambar
+
+Soal figural disimpan sebagai **data**, bukan PNG/SVG jadi:
+
+```ts
+{ bentuk: 'L' | 'pisau' | 'bendera' | …, putar: 0|90|180|270, cermin?: boolean, x?: number, isi?: boolean }
+```
+
+Satu komponen `FigurSvg` merendernya menjadi `<path>` di dalam kotak 100×100,
+dengan transform `rotate` + `translate/scale` untuk cermin. Akibatnya:
+
+- **0 KB aset baru**, tetap jalan offline, dan warnanya ikut tema
+  (`currentColor`) — persis alasan yang sama dengan ikon arcade.
+- Rotasi/pencerminan dihitung sebagai fungsi murni (`putarGambar`,
+  `cerminGambar`), jadi bisa diuji tanpa merender.
+- Deret gambar memakai satu SVG berisi tiga sel (`x: 0,1,2`), bukan tiga
+  komponen terpisah.
+
+**Hanya tiga bentuk dasar, dan itu disengaja.** Rotasi dan cermin hanya bisa
+dibedakan pada bangun **asimetris**: cermin segitiga sama sisi = segitiga itu
+sendiri, dan cermin kotak = kotak. Kalau opsi kembar, soal punya dua jawaban
+benar. Generator memeriksa keunikan lewat `kunciGambar` dan mencoba bentuk lain
+bila perlu — kegagalan itu tidak pernah sampai ke layar.
+
+`figurMeta` menyimpan mode dan derajat, sehingga tes bisa membuktikan opsi
+"benar" memang hasil transformasi yang diminta — bukan sekadar salah satu dari
+empat opsi.
+
+### 3.3 Opsi teks tanpa mengganti jalur jawaban
 
 Soal angka memakai `pilihan: number[]` dan `jawab: number`. Untuk soal verbal,
 `pilihan` tetap angka — kali ini **indeks 1..4** — dan teksnya ada di
@@ -115,9 +146,9 @@ berubah; hanya tampilan yang membaca teks. `labelJawaban()` memetakan indeks
 kembali ke teks di daftar evaluasi, supaya "jawaban Anda: 2" tidak muncul
 untuk soal yang opsinya kalimat.
 
-### 3.3 Profil, bukan satu angka
+### 3.4 Profil, bukan satu angka
 
-`DIMENSI_KATEGORI` memetakan 13 kategori ke **5 dimensi**:
+`DIMENSI_KATEGORI` memetakan 14 kategori ke **6 dimensi**:
 
 | Dimensi | Kategori |
 |---|---|
@@ -125,6 +156,7 @@ untuk soal yang opsinya kalimat.
 | Ketelitian | ketelitian, satuan |
 | Penalaran | deret, logika, gyakusan, sansu, suiri, baai |
 | Verbal | verbal, silogisme |
+| Spasial | figural |
 | Aplikasi kerja | cerita |
 
 Layar hasil menampilkan bar per dimensi (hijau ≥80%, kuning ≥50%, merah di
@@ -132,10 +164,11 @@ bawah), lalu rincian per kategori di dalam `<details>`. Ini yang membuat
 hasilnya terbaca seperti **psikotes**, bukan sekadar skor: "verbal 2/4" adalah
 kalimat yang bisa ditindaklanjuti, "akurasi 62%" bukan.
 
-### 3.4 Yang belum ada (dan butuh lebih dari generator)
+### 3.5 Yang belum ada (dan butuh lebih dari generator)
 
-- **Spasial/figural** (rotasi, cermin, jaring kubus) — butuh render gambar di
-  dalam soal; model `Soal` sekarang hanya teks. Ini pekerjaan UI, bukan data.
+- **Jaring kubus & lipatan kertas** — bentuk figural yang lebih sulit; butuh
+  model 3D sederhana atau bank gambar statis. Rotasi/cermin/deret sudah ada,
+  ketiganya yang paling sering muncul di tes magang.
 - **Memori kerja** (ingat deret lalu ulangi) — butuh fase tampil → sembunyi →
   jawab, yang tidak dimiliki alur satu-layar sekarang.
 - **Norma** (persentil dibanding populasi) — butuh data agregat nyata dari
@@ -147,10 +180,10 @@ kalimat yang bisa ditindaklanjuti, "akurasi 62%" bukan.
 
 | Gerbang | Hasil |
 |---|---|
-| `vitest --project=frontend` | 136 berkas · **1.780 tes lulus** |
-| `vitest --project=backend` | 127 berkas · **1.683 tes lulus** |
-| `e2e/matematika-soal.test.ts` | 27 tes (campuran, ketelitian, verbal/silogisme, dimensi, rekap) |
-| `e2e/matematika-gate.test.tsx` | 9 tes (termasuk opsi teks dan profil psikotes sampai selesai) |
+| `vitest --project=frontend` | 136 berkas · **1.781 tes lulus** |
+| `vitest --project=backend` | 127 berkas · **1.686 tes lulus** |
+| `e2e/matematika-soal.test.ts` | 30 tes (campuran, ketelitian, verbal/silogisme, figural, dimensi) |
+| `e2e/matematika-gate.test.tsx` | 10 tes (opsi teks, opsi gambar, profil sampai selesai) |
 | `e2e/arcade.test.tsx` | 19 tes (termasuk rak 4→6 saat kombo, kembali 4 setelah salah) |
 | `e2e/kotoba-gate.test.tsx` | 31 tes (termasuk misi harian: ganti hari, tidak menghukum salah) |
 | `tsc --noEmit` | 0 error |

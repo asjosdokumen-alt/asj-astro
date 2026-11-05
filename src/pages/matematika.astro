@@ -22,18 +22,31 @@ import MatematikaGame from '../components/candidate/MatematikaGame.tsx';
 
   <FormToolbar client:only="preact" titleKey="toolbar.matematika" backTo="dashboard" />
   <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
-    <div class="max-w-[1100px] mx-auto px-3">
-      <section class="mb-4">
-        <h1 class="text-xl md:text-2xl font-bold text-fg mb-1">Simulasi Tes Matematika &amp; Psikotes</h1>
-        <p class="cetak-sembunyi text-fg-muted text-[12.5px] leading-relaxed">
-          Sepuluh modul dengan bank soal yang sama: <b>hitung cepat</b> ala kraepelin, <b>urutan operasi</b>,
-          <b>deret angka</b>, <b>konversi satuan</b>, <b>penalaran</b>, <b>soal cerita pabrik</b>, ditambah empat
-          modul bergaya tes seleksi Jepang (SPI 非言語): <b>hitung balik</b> (四則逆算), <b>penalaran angka</b>
-          (数的推理: untung-rugi, kecepatan, dua jenis kaki, usia, kerja bersama, kadar larutan),
-          <b>penalaran logis</b> (判断推理: himpunan, urutan, uraian koin), dan <b>kombinasi</b> (場合の数).
-          Pilih <b>Simulasi Ujian</b> untuk berlatih di bawah batas waktu, atau <b>Mode Latihan</b> untuk
-          melihat pembahasan setiap kali jawaban salah. Skor tertinggi tersimpan di perangkat ini.
+    <div class="max-w-2xl mx-auto px-3">
+      {/* Pengantar dipersingkat 2026-11-06: delapan baris teks di atas membuat
+          soal pertama jatuh di bawah lipatan pada 390×844. Teks lengkapnya
+          tetap ada di <details>, dan kolom disamakan dengan lebar permainan. */}
+      <section class="mb-3">
+        <h1 class="text-lg font-bold text-fg mb-1">Simulasi Tes Matematika &amp; Psikotes</h1>
+        <p class="cetak-sembunyi text-fg-muted text-[12px] leading-snug">
+          Latihan soal seleksi: hitung cepat, deret, penalaran, <b>verbal</b>, <b>ketelitian</b>, dan
+          <b>figural</b> — plus simulasi campuran 20 soal yang makin sulit di akhir.
         </p>
+        <details class="cetak-sembunyi mt-1.5 text-[11px] text-fg-muted">
+          <summary class="cursor-pointer font-bold text-accent-sky">Detail modul</summary>
+          <p class="mt-1 leading-relaxed">
+            Tiga belas modul dengan bank soal yang sama: <b>hitung cepat</b> ala kraepelin,
+            <b>urutan operasi</b>, <b>deret angka</b>, <b>konversi satuan</b>, <b>penalaran</b>,
+            <b>soal cerita pabrik</b>, empat modul bergaya tes seleksi Jepang (SPI 非言語):
+            <b>hitung balik</b> (四則逆算), <b>penalaran angka</b> (数的推理: untung-rugi, kecepatan,
+            dua jenis kaki, usia, kerja bersama, kadar larutan), <b>penalaran logis</b>
+            (判断推理: himpunan, urutan, uraian koin), dan <b>kombinasi</b> (場合の数) — ditambah
+            tiga dimensi psikotes: <b>ketelitian</b> (hitung beda dua deret), <b>verbal</b>
+            (analogi &amp; silogisme), dan <b>figural</b> (rotasi, pencerminan, deret gambar).
+            Pilih <b>Simulasi Ujian</b> untuk berlatih di bawah batas waktu, atau <b>Mode Latihan</b>
+            untuk melihat pembahasan setiap kali jawaban salah. Skor tertinggi tersimpan di perangkat ini.
+          </p>
+        </details>
       </section>
       <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
         Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
