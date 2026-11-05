@@ -210,6 +210,34 @@ interface Progres {
   kata: Record<string, Catatan>;
   /** Rangkaian hari berturut-turut bermain (kebiasaan, bukan skor). */
   streak?: { hari: string; jumlah: number };
+  /**
+   * Misi harian: berapa kata BENAR hari ini.
+   *
+   * Kenapa disimpan per tanggal, bukan sekadar angka yang di-reset saat
+   * halaman dibuka: siswa sering membuka-tutup latihan di sela kelas, dan
+   * hitungan yang kembali ke nol setiap muat ulang membuat misi ini mustahil
+   * diselesaikan — lebih buruk daripada tidak ada misi sama sekali.
+   */
+  harian?: { tanggal: string; benar: number };
+}
+
+/** Target misi harian. 20 kata benar ≈ 2–3 menit — satu jeda kelas. */
+export const MISI_HARIAN = 20;
+
+/**
+ * Tambah hitungan misi harian, dengan pergantian hari.
+ *
+ * `hariIni` diterima sebagai parameter supaya bisa diuji tanpa memalsukan jam
+ * sistem — pola yang sama dengan `hitungStreak`.
+ */
+export function hitungHarian(
+  sebelumnya: { tanggal: string; benar: number } | undefined,
+  hariIni: string,
+  tambah: number,
+): { tanggal: string; benar: number } {
+  const n = Math.max(0, Math.floor(tambah));
+  if (!sebelumnya || sebelumnya.tanggal !== hariIni) return { tanggal: hariIni, benar: n };
+  return { tanggal: hariIni, benar: Math.max(0, sebelumnya.benar + n) };
 }
 
 /** Tanggal lokal `YYYY-MM-DD` — bukan `toISOString()` yang memakai UTC. */
@@ -251,6 +279,13 @@ function bacaProgres(wa: string): Progres {
       rekor: typeof p.rekor === 'number' ? p.rekor : 0,
       kata: p.kata && typeof p.kata === 'object' ? (p.kata as Record<string, Catatan>) : {},
       streak: p.streak && typeof p.streak === 'object' ? p.streak : undefined,
+      harian:
+        p.harian &&
+        typeof p.harian === 'object' &&
+        typeof p.harian.tanggal === 'string' &&
+        typeof p.harian.benar === 'number'
+          ? p.harian
+          : undefined,
     };
   } catch {
     return { rekor: 0, kata: {} };
@@ -871,6 +906,10 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       const kotak = tepat ? Math.min((c.kotak ?? 1) + 1, JARAK_HARI.length) : 1;
       return {
         ...p,
+        /* Misi harian hanya menghitung jawaban BENAR. Salah tidak mengurangi:
+           misi ini mengukur latihan yang dilakukan, bukan menghukum kesalahan —
+           hukuman sudah ada di Leitner (kotak turun ke 1). */
+        harian: hitungHarian(p.harian, tanggalLokal(new Date()), tepat ? 1 : 0),
         kata: {
           ...p.kata,
           [kunci]: {
@@ -1253,6 +1292,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
     const c = progres.kata[kunciKata(v)];
     return !!c && c.benar >= 3 && c.salah === 0;
   }).length;
+  /* Misi harian. Tanggal dibandingkan, bukan sekadar dibaca: entri kemarin
+     tidak boleh tampil sebagai "18/20" hari ini. */
+  const hariIni = tanggalLokal(new Date());
+  const harianBenar = progres.harian?.tanggal === hariIni ? progres.harian.benar : 0;
+  const misiSelesai = harianBenar >= MISI_HARIAN;
   const kueri = cari.trim().toLowerCase();
   const hasilCari = kueri
     ? pool.filter(
@@ -1323,6 +1367,26 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           {t('kotoba.suara_otomatis')}
         </button>
       </header>
+
+      {/* ── Misi harian ──
+          Streak menjawab "sudah berapa hari"; misi ini menjawab "hari ini sudah
+          berapa". Tanpa angka harian, latihan terasa tanpa ujung: skor bisa
+          dinaikkan kapan saja, jadi tidak ada alasan untuk mulai HARI INI. */}
+      <div class="mb-3 rounded-control border border-line bg-surface-raised px-3 py-2">
+        <div class="flex items-center justify-between gap-2 text-[11px]">
+          <span class="font-bold text-fg-muted">🎯 {t('kotoba.misi_harian')}</span>
+          <span class={misiSelesai ? 'font-bold text-accent-emerald' : 'font-bold text-fg'}>
+            {Math.min(harianBenar, MISI_HARIAN)}/{MISI_HARIAN}
+            {misiSelesai ? ' ✓' : ''}
+          </span>
+        </div>
+        <div class="mt-1 h-1.5 w-full overflow-hidden rounded-pill bg-surface-sunken">
+          <div
+            class={`h-full rounded-pill ${misiSelesai ? 'bg-accent-emerald' : 'bg-accent-violet'}`}
+            style={`width:${Math.min(100, (harianBenar / MISI_HARIAN) * 100)}%`}
+          />
+        </div>
+      </div>
 
       {/* ── Tab mode ── */}
       <div class="flex gap-1.5 p-1 rounded-control bg-surface-sunken border border-line mb-3">

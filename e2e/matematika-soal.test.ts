@@ -26,7 +26,9 @@ import { describe, it, expect } from 'vitest';
 import { BANK_CERITA, KATEGORI } from '../netlify/functions/_lib/matematika/bank';
 import {
   buatRonde,
+  buatRondeCampur,
   jawabanBenar,
+  rekapPerKategori,
   tampilAngka,
   type KategoriId,
   type Kesulitan,
@@ -169,5 +171,90 @@ describe('generator soal (klien)', () => {
     expect(tampilAngka(7)).toBe('7');
     expect(tampilAngka(2.5)).toBe('2,5');
     expect(tampilAngka(1455)).toBe('1455');
+  });
+});
+
+describe('simulasi seleksi (ronde campuran)', () => {
+  it('berisi banyak JENIS soal, bukan satu jenis dengan angka berbeda', () => {
+    const ronde = buatRondeCampur(20, BANK_CERITA);
+    expect(ronde).toHaveLength(20);
+    /* Inti keluhan "repetitif": 20 soal satu kategori. Di sini minimal enam
+       kategori berbeda harus muncul dalam satu ronde. */
+    const jenis = new Set(ronde.map((s) => s.kategori));
+    expect(jenis.size, `hanya ${jenis.size} jenis: ${[...jenis].join(', ')}`).toBeGreaterThanOrEqual(6);
+  });
+
+  it('tidak pernah dua soal kategori sama berturut-turut', () => {
+    for (let n = 0; n < 30; n++) {
+      const ronde = buatRondeCampur(20, BANK_CERITA);
+      for (let i = 1; i < ronde.length; i++) {
+        expect(ronde[i]?.kategori, `ronde ${n}, soal ${i}`).not.toBe(ronde[i - 1]?.kategori);
+      }
+    }
+  });
+
+  it('kesulitannya menanjak: easy di awal, hard di akhir', () => {
+    for (let n = 0; n < 20; n++) {
+      const ronde = buatRondeCampur(20, BANK_CERITA);
+      expect(ronde[0]?.diff).toBe('easy');
+      expect(ronde[19]?.diff).toBe('hard');
+      /* Tidak boleh ada soal hard di sepertiga pertama, atau easy di akhir. */
+      for (let i = 0; i < 6; i++) expect(ronde[i]?.diff, `soal ${i}`).toBe('easy');
+      for (let i = 14; i < 20; i++) expect(ronde[i]?.diff, `soal ${i}`).toBe('hard');
+    }
+  });
+
+  it('setiap soal tetap bisa dijawab dengan jawabannya sendiri', () => {
+    for (let n = 0; n < 20; n++) {
+      for (const soal of buatRondeCampur(20, BANK_CERITA)) {
+        expect(Number.isFinite(soal.jawab), `${soal.kategori}: jawab bukan angka`).toBe(true);
+        expect(soal.pembahasan.length).toBeGreaterThan(5);
+        expect(jawabanBenar(String(soal.jawab), soal.jawab)).toBe(true);
+        if (soal.input === 'pilihan') {
+          expect(soal.pilihan?.length).toBe(4);
+          expect(new Set(soal.pilihan).size).toBe(4);
+          expect(soal.pilihan).toContain(soal.jawab);
+        }
+      }
+    }
+  });
+
+  it('bank kosong tetap menghasilkan simulasi (tanpa soal cerita)', () => {
+    const ronde = buatRondeCampur(12, []);
+    expect(ronde).toHaveLength(12);
+    expect(ronde.some((s) => s.kategori === 'cerita')).toBe(false);
+  });
+
+  it('deret easy memakai lebih dari satu pola — bukan hanya "tambah tetap"', () => {
+    /* Regresi: `easy` dulu `acak(1,1)`, jadi 20 soal pertama selalu berpola
+       +n. Yang diuji adalah VARIASI pembahasan, bukan angka. */
+    const awal = new Set<string>();
+    for (let i = 0; i < 120; i++) {
+      const [soal] = buatRonde('deret', 'easy', 1);
+      if (soal) awal.add(soal.pembahasan.slice(0, 10));
+    }
+    expect(awal.size, `pola easy: ${[...awal].join(' | ')}`).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('rekap per kategori', () => {
+  it('menghitung benar/total per jenis, terbanyak lebih dulu', () => {
+    const r = rekapPerKategori([
+      { kategori: 'deret', benar: true },
+      { kategori: 'deret', benar: false },
+      { kategori: 'kraepelin', benar: true },
+      { kategori: 'kraepelin', benar: true },
+      { kategori: 'kraepelin', benar: true },
+    ]);
+    expect(r).toEqual([
+      { kategori: 'kraepelin', benar: 3, total: 3 },
+      { kategori: 'deret', benar: 1, total: 2 },
+    ]);
+  });
+
+  it('daftar kosong menghasilkan rekap kosong, bukan satu baris nol', () => {
+    /* Kalau kosong menghasilkan baris "0/0", kartu rekap muncul di hasil modul
+       tunggal yang tidak dijawab sama sekali — dan itu terbaca seperti bug. */
+    expect(rekapPerKategori([])).toEqual([]);
   });
 });

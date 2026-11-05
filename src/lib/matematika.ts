@@ -274,7 +274,10 @@ function buatKabataku(diff: Kesulitan): Omit<Soal, 'id' | 'kategori' | 'diff'> {
 /* ── Deret angka ──────────────────────────────────────────────────────────── */
 
 function buatDeret(diff: Kesulitan): Omit<Soal, 'id' | 'kategori' | 'diff'> {
-  const pola = diff === 'easy' ? acak(1, 1) : diff === 'medium' ? acak(1, 3) : acak(2, 5);
+  /* Versi sebelumnya `easy` SELALU pola 1 (tambah tetap) — persis keluhan
+     "cuma beda angka". Dua pola di easy sudah cukup untuk membuat soal
+     berikutnya terasa lain tanpa menaikkan kesulitan. */
+  const pola = diff === 'easy' ? pilih([1, 3]) : diff === 'medium' ? acak(1, 4) : acak(2, 5);
   const baris: number[] = [];
   let jawab = 0;
   let pembahasan = '';
@@ -872,6 +875,32 @@ function buatCerita(
 const URUTAN: Kesulitan[] = ['easy', 'medium', 'hard'];
 
 /**
+ * Satu soal untuk satu kategori.
+ *
+ * Diekstrak supaya `buatRonde` dan `buatRondeCampur` memakai JALUR YANG SAMA.
+ * Sebelumnya rantai if/else ini hanya ada di `buatRonde`; menambah kategori
+ * baru di satu tempat dan lupa di tempat lain menghasilkan ronde campuran yang
+ * diam-diam kehilangan satu jenis soal.
+ */
+function isiSoal(
+  kategori: KategoriId,
+  diff: Kesulitan,
+  bank: SoalCeritaBank[],
+  dipakai: Set<string>,
+): Omit<Soal, 'id' | 'kategori' | 'diff'> | null {
+  if (kategori === 'kraepelin') return buatKraepelin(diff);
+  if (kategori === 'kabataku') return buatKabataku(diff);
+  if (kategori === 'deret') return buatDeret(diff);
+  if (kategori === 'satuan') return buatSatuan(diff);
+  if (kategori === 'logika') return buatLogika(diff);
+  if (kategori === 'gyakusan') return buatGyakusan(diff);
+  if (kategori === 'sansu') return buatSansu(diff);
+  if (kategori === 'suiri') return buatSuiri(diff);
+  if (kategori === 'baai') return buatBaai(diff);
+  return buatCerita(diff, bank, dipakai);
+}
+
+/**
  * Bentuk satu ronde. `kesulitan = 'mixed'` mengacak tingkat PER SOAL — sama
  * seperti versi HTML aslinya.
  *
@@ -890,21 +919,85 @@ export function buatRonde(
 
   for (let i = 0; i < jumlah; i++) {
     const diff = tingkat();
-    let isi: Omit<Soal, 'id' | 'kategori' | 'diff'> | null = null;
-
-    if (kategori === 'kraepelin') isi = buatKraepelin(diff);
-    else if (kategori === 'kabataku') isi = buatKabataku(diff);
-    else if (kategori === 'deret') isi = buatDeret(diff);
-    else if (kategori === 'satuan') isi = buatSatuan(diff);
-    else if (kategori === 'logika') isi = buatLogika(diff);
-    else if (kategori === 'gyakusan') isi = buatGyakusan(diff);
-    else if (kategori === 'sansu') isi = buatSansu(diff);
-    else if (kategori === 'suiri') isi = buatSuiri(diff);
-    else if (kategori === 'baai') isi = buatBaai(diff);
-    else isi = buatCerita(diff, bank, dipakai);
+    const isi = isiSoal(kategori, diff, bank, dipakai);
 
     if (!isi) break;
     hasil.push({ ...isi, id: `${kategori}-${i}-${Math.random().toString(36).slice(2, 7)}`, kategori, diff });
+  }
+
+  return hasil;
+}
+
+/** Kategori yang ikut simulasi campuran. `cerita` menyusul bila bank tersedia. */
+const KATEGORI_SIMULASI: readonly KategoriId[] = [
+  'kraepelin',
+  'kabataku',
+  'deret',
+  'gyakusan',
+  'logika',
+  'satuan',
+  'sansu',
+  'suiri',
+  'baai',
+];
+
+/**
+ * Simulasi seleksi: SATU ronde berisi banyak JENIS soal, bukan 20 soal satu
+ * jenis dengan angka berbeda.
+ *
+ * KENAPA ADA
+ * ----------
+ * Keluhan pemilik 2026-11-05: "semua repetitif banget, cuma beda angka doang".
+ * Itu memang bentuk `buatRonde`: satu kategori × 20 soal, jadi kraepelin
+ * berturut-turut dua puluh kali. Di tes seleksi yang sebenarnya, jenis soalnya
+ * BERGANTIAN — dan kemampuan yang diukur adalah berpindah pola pikir, bukan
+ * menekan tombol yang sama.
+ *
+ * TIGA ATURAN
+ * -----------
+ *   1. Tidak ada kategori yang sama dua kali berturut-turut (tas dikocok, lalu
+ *      dipakai sampai habis).
+ *   2. Kesulitan menanjak: sepertiga awal easy, sepertiga tengah medium,
+ *      sepertiga akhir hard. Jadi ronde punya "bentuk", bukan rata.
+ *   3. Bank cerita ikut bila tersedia; kalau habis, kategori lain menggantikan
+ *      alih-alih menghentikan ronde di tengah.
+ */
+export function buatRondeCampur(jumlah = 20, bank: SoalCeritaBank[] = []): Soal[] {
+  const hasil: Soal[] = [];
+  const dipakai = new Set<string>();
+  const inti: KategoriId[] = bank.length ? [...KATEGORI_SIMULASI, 'cerita'] : [...KATEGORI_SIMULASI];
+  let tas: KategoriId[] = [];
+  let terakhir: KategoriId | null = null;
+
+  for (let i = 0; i < jumlah; i++) {
+    const porsi = i / Math.max(1, jumlah);
+    const diff: Kesulitan = porsi < 1 / 3 ? 'easy' : porsi < 2 / 3 ? 'medium' : 'hard';
+
+    if (!tas.length) {
+      tas = kocok([...inti]);
+      /* Batas tas: kalau kategori pertama sama dengan soal sebelumnya, tukar
+         dengan yang kedua. Tanpa ini, dua soal terakhir tas lama dan pertama
+         tas baru bisa sama — dan aturan "tidak dua kali berturut" bocor. */
+      if (terakhir && tas[0] === terakhir && tas.length > 1) {
+        const a = tas[0] as KategoriId;
+        tas[0] = tas[1] as KategoriId;
+        tas[1] = a;
+      }
+    }
+
+    let kategori = tas.shift() as KategoriId;
+    let isi = isiSoal(kategori, diff, bank, dipakai);
+    /* Cerita bisa habis (bank 69 soal, ronde 20 — tetapi `dipakai` dibagi
+       dengan sisa ronde). Ganti kategori, jangan berhenti. */
+    let coba = 0;
+    while (!isi && tas.length && coba < inti.length) {
+      kategori = tas.shift() as KategoriId;
+      isi = isiSoal(kategori, diff, bank, dipakai);
+      coba++;
+    }
+    if (!isi) break;
+    terakhir = kategori;
+    hasil.push({ ...isi, id: `campur-${i}-${Math.random().toString(36).slice(2, 7)}`, kategori, diff });
   }
 
   return hasil;
@@ -928,4 +1021,34 @@ export function jawabanBenar(masukan: string, kunci: number): boolean {
 /** Format jawaban untuk ditampilkan di daftar evaluasi. */
 export function tampilAngka(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100).replace('.', ',');
+}
+
+export interface RekapKategori {
+  kategori: KategoriId;
+  benar: number;
+  total: number;
+}
+
+/**
+ * Rekap benar/total per jenis soal.
+ *
+ * KENAPA DI SINI, BUKAN DI KOMPONEN
+ * ---------------------------------
+ * Pada simulasi campuran, inilah satu-satunya bagian hasil yang memberi tahu
+ * APA yang masih lemah ("deret 2/3") alih-alih sekadar "akurasi 70%". Logikanya
+ * mudah salah dalam satu hal yang tidak terlihat di layar: soal yang tidak
+ * dijawab (riwayat kosong) tidak boleh dihitung sebagai salah, dan urutannya
+ * harus stabil. Dua hal itu diuji tanpa merender apa pun.
+ */
+export function rekapPerKategori(
+  jawaban: readonly { kategori: KategoriId; benar: boolean }[],
+): RekapKategori[] {
+  const peta = new Map<KategoriId, RekapKategori>();
+  for (const j of jawaban) {
+    const kini = peta.get(j.kategori) ?? { kategori: j.kategori, benar: 0, total: 0 };
+    kini.total += 1;
+    if (j.benar) kini.benar += 1;
+    peta.set(j.kategori, kini);
+  }
+  return [...peta.values()].sort((a, b) => b.total - a.total || a.kategori.localeCompare(b.kategori));
 }

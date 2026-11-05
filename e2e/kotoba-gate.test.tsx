@@ -22,7 +22,7 @@
  */
 import { render, screen, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import KotobaGame, { dalamRentangBab, jatuhTempo, JARAK_HARI, hitungStreak, tanggalLokal, gelarDari, GELAR } from '../src/components/candidate/KotobaGame';
+import KotobaGame, { dalamRentangBab, jatuhTempo, JARAK_HARI, hitungStreak, hitungHarian, MISI_HARIAN, tanggalLokal, gelarDari, GELAR } from '../src/components/candidate/KotobaGame';
 import { authStore } from '../src/store/authReactive';
 
 /* `vi.hoisted` wajib: `vi.mock` diangkat ke atas `const`. */
@@ -368,6 +368,40 @@ describe('kotoba — streak harian', () => {
     // 1 Januari 00:30 lokal: `toISOString()` bisa saja masih 31 Desember.
     const d = new Date(2026, 0, 1, 0, 30);
     expect(tanggalLokal(d)).toBe('2026-01-01');
+  });
+});
+
+// ==========================================
+// Misi harian — "hari ini sudah berapa", pelengkap streak ("sudah berapa
+// hari"). Diuji sebagai fungsi murni: pergantian hari dan sifat tidak-hukum
+// adalah dua hal yang tidak terlihat sampai siswa membuka latihan besoknya.
+// ==========================================
+describe('kotoba — misi harian', () => {
+  it('pertama kali hari ini → sebanyak tambahannya', () => {
+    expect(hitungHarian(undefined, '2026-11-05', 1)).toEqual({ tanggal: '2026-11-05', benar: 1 });
+  });
+
+  it('hari yang sama menumpuk', () => {
+    expect(hitungHarian({ tanggal: '2026-11-05', benar: 4 }, '2026-11-05', 1)).toEqual({
+      tanggal: '2026-11-05',
+      benar: 5,
+    });
+  });
+
+  it('berganti hari → mulai dari nol, bukan melanjutkan', () => {
+    expect(hitungHarian({ tanggal: '2026-11-04', benar: 19 }, '2026-11-05', 1)).toEqual({
+      tanggal: '2026-11-05',
+      benar: 1,
+    });
+  });
+
+  it('jawaban salah (tambah 0) tidak mengurangi hitungan', () => {
+    expect(hitungHarian({ tanggal: '2026-11-05', benar: 7 }, '2026-11-05', 0).benar).toBe(7);
+  });
+
+  it('target cukup untuk satu jeda kelas, bukan maraton', () => {
+    expect(MISI_HARIAN).toBeGreaterThanOrEqual(10);
+    expect(MISI_HARIAN).toBeLessThanOrEqual(50);
   });
 });
 

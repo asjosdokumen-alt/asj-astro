@@ -64,7 +64,7 @@ import {
   pilihanShift,
   poinGenba,
   skorShift,
-  zonaShift,
+  zonaAdaptif,
   type Kartu,
   type LevelCombo,
   type NilaiShift,
@@ -332,13 +332,20 @@ export default function ArcadeGame() {
 
   const aturanAktif = mode === 'drill' ? SHIFT_GENBA.magang : aturan;
 
-  /** Perintah berikutnya. `urutanKe` menentukan gelombang (waktu & jumlah barang). */
-  const pasang = (modeNow: 'shift' | 'drill', urutanKe: number, p?: Perintah) => {
+  /**
+   * Pasang perintah berikutnya.
+   *
+   * `kombo` ikut dikirim karena jumlah rak MENGIKUTI performa
+   * (`zonaAdaptif`): empat jawaban benar berturut menambah dua rak, dan salah
+   * mengembalikannya. Tanpa parameter ini, `pasang` membaca `kombo` dari state
+   * yang belum tentu sudah ter-commit pada tick yang sama.
+   */
+  const pasang = (modeNow: 'shift' | 'drill', urutanKe: number, kombo: number, p?: Perintah) => {
     const a = modeNow === 'drill' ? SHIFT_GENBA.magang : aturan;
     const cmd = p ?? (modeNow === 'drill' ? antrianRef.current.shift() : undefined) ?? buatPerintah();
     setPerintah(cmd);
     setPilihan(buatPilihan(cmd, Math.random, pilihanShift(a, urutanKe)));
-    setZona(buatZona(cmd, zonaShift(a, urutanKe)));
+    setZona(buatZona(cmd, zonaAdaptif(a, urutanKe, kombo)));
     setDipilih(null);
     setSisa(100);
     setPesan('');
@@ -393,7 +400,7 @@ export default function ArcadeGame() {
     setHasil(null);
     setPoinTerbang(null);
     setFase('main');
-    pasang(modeNow, 0);
+    pasang(modeNow, 0, 0);
   };
 
   /* `gagal` dibuat ulang tiap render; efek timer menyimpannya di ref supaya
@@ -476,7 +483,7 @@ export default function ArcadeGame() {
          percobaan. Kalau dihitung dari percobaan, tiga kesalahan berturut-turut
          menaikkan gelombang dan pemain yang sedang kalah justru dihukum dengan
          waktu lebih pendek — spiral yang tidak diinginkan. */
-      pasang(mode, pesananSelesai);
+      pasang(mode, pesananSelesai, 0);
     }, 1100);
   };
   gagalRef.current = gagal;
@@ -506,7 +513,7 @@ export default function ArcadeGame() {
         selesaikan(true, skorFinal, benarBaru, salahGenba, sisaTotalBaru, komboMaksBaru, modeNow);
       } else {
         setSkor(skorBaru);
-        pasang(modeNow, benarBaru);
+        pasang(modeNow, benarBaru, komboBaru);
       }
     } else {
       gagal(
@@ -758,6 +765,11 @@ export default function ArcadeGame() {
   const waSendiri = waSiswa();
   const gelombang = gelombangShift(aturanAktif, pesananSelesai) + 1;
   const progresShift = target > 0 ? Math.min(100, (pesananSelesai / target) * 100) : 0;
+  /* Jumlah rak mengikuti performa (lihat `zonaAdaptif`), jadi tata letaknya
+     harus ikut: 4 rak = 2 kolom, 6 = 3 kolom, 8 = 4 kolom. Ketiganya tetap DUA
+     baris, sehingga tinggi area main tidak bertambah saat rak bertambah. */
+  const kolomZona = zona.length >= 7 ? 4 : zona.length >= 5 ? 3 : 2;
+  const rapatZona = kolomZona === 4;
   const warnaNilai =
     hasil?.nilai === 'S'
       ? 'border-accent-amber text-accent-amber'
@@ -1006,8 +1018,14 @@ export default function ArcadeGame() {
               </p>
 
               {/* ── Rak ─────────────────────────────────────────────────── */}
-              <p class="mb-1 text-[9px] font-bold uppercase tracking-wide text-fg-muted">{t('arcade.rak')}</p>
-              <div class="mb-2 grid grid-cols-2 gap-2">
+              <p class="mb-1 text-[9px] font-bold uppercase tracking-wide text-fg-muted">
+                {t('arcade.rak')} · {zona.length}
+              </p>
+              <div
+                class={`mb-2 grid gap-1.5 ${
+                  kolomZona === 4 ? 'grid-cols-4' : kolomZona === 3 ? 'grid-cols-3' : 'grid-cols-2'
+                }`}
+              >
                 {/* Satu array, bukan dua yang dipasangkan lewat INDEKS.
                     Versi sebelumnya memetakan `['ue','shita','hidari','migi']` lalu
                     mengambil label dari array terpisah dengan `[i]` — mengurutkan
@@ -1022,7 +1040,11 @@ export default function ArcadeGame() {
                       type="button"
                       data-zona={z.id}
                       onClick={() => taruh(z.id)}
-                      class={`group flex min-h-[58px] items-center gap-2 rounded-card border-2 border-dashed px-2 py-1.5 text-left transition active:scale-[0.97] motion-reduce:transition-none ${
+                      class={`group flex min-h-[54px] rounded-card border-2 border-dashed transition active:scale-[0.97] motion-reduce:transition-none ${
+                        rapatZona
+                          ? 'flex-col items-center justify-center gap-0.5 px-1 py-1 text-center'
+                          : 'items-center gap-2 px-2 py-1.5 text-left'
+                      } ${
                         kunci && menunggu
                           ? 'border-accent-emerald bg-accent-emerald/10'
                           : sorotSalah
@@ -1032,10 +1054,21 @@ export default function ArcadeGame() {
                     >
                       {/* Ikon arah/lokasi menggantikan emoji: bentuknya sama di
                           semua perangkat dan warnanya ikut teks. */}
-                      <ArcadeIkon jenis="zona" nama={z.id} ukuran={22} kelas="shrink-0 text-accent-violet" />
+                      <ArcadeIkon
+                        jenis="zona"
+                        nama={z.id}
+                        ukuran={rapatZona ? 18 : 22}
+                        kelas="shrink-0 text-accent-violet"
+                      />
                       <span class="min-w-0">
-                        <span class="block text-[10px] text-fg-muted break-words">{z.jp}</span>
-                        <span class="block text-[13px] font-bold leading-tight text-fg">{z.id_}</span>
+                        {/* Pada 4 kolom, label Jepang disembunyikan: 85 px tidak
+                            cukup untuk dua baris teks, dan perintahnya sendiri
+                            sudah Jepang — yang diuji di sini adalah memilih rak,
+                            bukan membaca ulang namanya. */}
+                        {!rapatZona && <span class="block text-[10px] text-fg-muted break-words">{z.jp}</span>}
+                        <span class={`block font-bold leading-tight text-fg ${rapatZona ? 'text-[10px]' : 'text-[13px]'}`}>
+                          {z.id_}
+                        </span>
                       </span>
                     </button>
                   );
@@ -1044,7 +1077,7 @@ export default function ArcadeGame() {
 
               {/* ── Meja kerja ──────────────────────────────────────────── */}
               <p class="mb-1 text-[9px] font-bold uppercase tracking-wide text-fg-muted">{t('arcade.meja')}</p>
-              <div class="grid grid-cols-3 gap-2 rounded-card border border-line bg-surface-sunken p-2">
+              <div class="grid grid-cols-3 gap-1.5 rounded-card border border-line bg-surface-sunken p-1.5">
                 {pilihan.map((p) => (
                   <button
                     key={p.kunci}
@@ -1058,7 +1091,7 @@ export default function ArcadeGame() {
                        bukan hanya diberi garis: di layar HP 320 px, garis 4 px di
                        tepi kartu berwarna nyaris tak terlihat, sedangkan bayangan
                        dan perubahan tinggi langsung terbaca. */
-                    class={`flex min-h-[62px] flex-col items-center justify-center gap-0.5 rounded-control border-2 px-1 py-1 text-center shadow-sm transition duration-150 motion-reduce:transition-none ${
+                    class={`flex min-h-[56px] flex-col items-center justify-center gap-0.5 rounded-control border-2 px-1 py-1 text-center shadow-sm transition duration-150 motion-reduce:transition-none ${
                       p.warna.kelas
                     } ${dipilih === p.kunci ? '-translate-y-0.5 shadow-lg ring-4 ring-white' : 'active:scale-[0.96]'}`}
                   >

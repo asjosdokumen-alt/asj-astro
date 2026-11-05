@@ -39,7 +39,9 @@ import { validate, kandidatLoginSchema } from '../../lib/schemas';
 import { t, useLang } from '../../store/i18n';
 import {
   buatRonde,
+  buatRondeCampur,
   jawabanBenar,
+  rekapPerKategori,
   tampilAngka,
   type BankMatematikaRes,
   type KategoriId,
@@ -172,7 +174,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
   const [rekor, setRekor] = useState<Rekor>({ skor: 0, grade: '', main: 0 });
 
   /* ── pilihan lobi ─────────────────────────────────────────────────────── */
-  const [kategori, setKategori] = useState<KategoriId>('kraepelin');
+  const [kategori, setKategori] = useState<KategoriId | 'campur'>('kraepelin');
   const [kesulitan, setKesulitan] = useState<KesulitanPilih>('easy');
   const [format, setFormat] = useState<Format>('ujian');
 
@@ -383,12 +385,18 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
   };
 
   /* ── alur ronde ───────────────────────────────────────────────────────── */
+  const campur = kategori === 'campur';
   const kategoriAktif = (kategoriBank ?? []).find((k) => k.id === kategori);
-  const jumlahSoal = kategoriAktif?.soal ?? 20;
-  const batasDetik = kategoriAktif?.detik ?? 120;
+  /* Simulasi campuran memakai 20 soal / 300 detik — angka yang sama dengan
+     modul terpanjang, karena isinya berganti jenis dan butuh waktu berpindah. */
+  const jumlahSoal = campur ? 20 : kategoriAktif?.soal ?? 20;
+  const batasDetik = campur ? 300 : kategoriAktif?.detik ?? 120;
 
   const mulai = () => {
-    const daftar = buatRonde(kategori, kesulitan, jumlahSoal, bankCerita || []);
+    const daftar =
+      kategori === 'campur'
+        ? buatRondeCampur(jumlahSoal, bankCerita || [])
+        : buatRonde(kategori, kesulitan, jumlahSoal, bankCerita || []);
     if (!daftar.length) {
       setGalat(t('matematika.bank_kosong'));
       return;
@@ -424,7 +432,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
        ganda tidak mengirim dua kali. Kegagalan diabaikan — rekor lokal sudah
        ditulis di bawah dan itu yang dilihat siswa. */
     if (skor > 0 && bolehKirim(`matematika:${skor}:${total}`)) {
-      void kirimSkor('matematika', skor, { akurasi, benar, total, grade });
+      void kirimSkor('matematika', skor, { akurasi, benar, total, grade, campur });
     }
     if (skor > rekor.skor) {
       const baru = { skor, grade, main: rekor.main + 1 };
@@ -643,7 +651,11 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     c: 'border-accent-red bg-accent-red/10 text-accent-red',
   };
 
-  const kartuKategori: { id: KategoriId; label: string; ket: string }[] = [
+  const kartuKategori: { id: KategoriId | 'campur'; label: string; ket: string }[] = [
+    /* Simulasi campuran ditaruh PERTAMA: ia jawaban langsung atas keluhan
+       "semua repetitif, cuma beda angka". Modul tunggal tetap ada untuk
+       latihan terarah. */
+    { id: 'campur', label: t('matematika.kat_campur'), ket: t('matematika.kat_campur_ket') },
     { id: 'kraepelin', label: t('matematika.kat_kraepelin'), ket: t('matematika.kat_kraepelin_ket') },
     { id: 'kabataku', label: t('matematika.kat_kabataku'), ket: t('matematika.kat_kabataku_ket') },
     { id: 'deret', label: t('matematika.kat_deret'), ket: t('matematika.kat_deret_ket') },
@@ -661,6 +673,18 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     { id: 'hard', label: t('matematika.diff_hard') },
     { id: 'mixed', label: t('matematika.diff_mixed') },
   ];
+
+  /**
+   * Rekap per jenis soal — hanya berguna pada simulasi campuran, tetapi
+   * dihitung untuk semua mode (satu jenis = satu baris, tidak ditampilkan).
+   *
+   * Inilah yang membuat hasilnya terasa seperti TES, bukan skor: "deret 2/3,
+   * kraepelin 4/4" memberi tahu APA yang masih lemah, sedangkan satu angka
+   * akurasi hanya memberi tahu bahwa ada yang lemah.
+   */
+  const rekapKategori = rekapPerKategori(riwayat.map((r) => ({ kategori: r.soal.kategori, benar: r.benar }))).map(
+    (r) => ({ ...r, label: kartuKategori.find((k) => k.id === r.kategori)?.label ?? r.kategori }),
+  );
 
   const fmtWaktu = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
@@ -701,11 +725,19 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                     }`}
                   >
                     <div class="flex items-center justify-between gap-2">
-                      <span class="text-[11px] font-bold text-accent-sky">{meta?.jp ?? ''}</span>
-                      {meta && (
+                      <span class="text-[11px] font-bold text-accent-sky">
+                        {k.id === 'campur' ? t('matematika.kat_campur_jp') : (meta?.jp ?? '')}
+                      </span>
+                      {k.id === 'campur' ? (
                         <span class="text-[10px] font-semibold text-fg-muted">
-                          {meta.soal} {t('matematika.soal')} · {meta.detik} {t('matematika.detik')}
+                          20 {t('matematika.soal')} · 300 {t('matematika.detik')}
                         </span>
+                      ) : (
+                        meta && (
+                          <span class="text-[10px] font-semibold text-fg-muted">
+                            {meta.soal} {t('matematika.soal')} · {meta.detik} {t('matematika.detik')}
+                          </span>
+                        )
                       )}
                     </div>
                     <div class="mt-1 text-[13px] font-extrabold text-fg">{k.label}</div>
@@ -716,26 +748,31 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
             </div>
           </div>
 
-          <div>
-            <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('matematika.pilih_kesulitan')}</p>
-            <div class="grid grid-cols-4 gap-1.5">
-              {daftarKesulitan.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => setKesulitan(d.id)}
-                  aria-pressed={kesulitan === d.id}
-                  class={`min-h-11 rounded-control border text-[11px] font-bold transition-colors motion-reduce:transition-none ${
-                    kesulitan === d.id
-                      ? 'border-accent-emerald bg-accent-emerald/10 text-accent-emerald'
-                      : 'border-line bg-surface-raised text-fg-muted'
-                  }`}
-                >
-                  {d.label}
-                </button>
-              ))}
+          {/* Simulasi campuran memakai kurva sendiri (easy → medium → hard),
+              jadi pemilih kesulitan DISEMBUNYIKAN — menampilkannya berarti
+              menawarkan tombol yang tidak mengubah apa pun. */}
+          {!campur && (
+            <div>
+              <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('matematika.pilih_kesulitan')}</p>
+              <div class="grid grid-cols-4 gap-1.5">
+                {daftarKesulitan.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setKesulitan(d.id)}
+                    aria-pressed={kesulitan === d.id}
+                    class={`min-h-11 rounded-control border text-[11px] font-bold transition-colors motion-reduce:transition-none ${
+                      kesulitan === d.id
+                        ? 'border-accent-emerald bg-accent-emerald/10 text-accent-emerald'
+                        : 'border-line bg-surface-raised text-fg-muted'
+                    }`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('matematika.pilih_format')}</p>
@@ -963,6 +1000,32 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
               </span>
             </div>
           </div>
+
+          {rekapKategori.length > 1 && (
+            <div class="rounded-card border border-line bg-surface p-3.5">
+              <h3 class="mb-2 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">
+                {t('matematika.rekap_kategori')}
+              </h3>
+              <ul class="space-y-1.5">
+                {rekapKategori.map((r) => {
+                  const persen = Math.round((r.benar / r.total) * 100);
+                  const warna =
+                    persen >= 80 ? 'bg-accent-emerald' : persen >= 50 ? 'bg-accent-amber' : 'bg-accent-red';
+                  return (
+                    <li key={r.kategori} class="flex items-center gap-2 text-[11px]">
+                      <span class="w-28 shrink-0 truncate font-bold text-fg">{r.label}</span>
+                      <span class="h-1.5 min-w-0 flex-1 overflow-hidden rounded-pill bg-surface-sunken">
+                        <span class={`block h-full rounded-pill ${warna}`} style={`width:${persen}%`} />
+                      </span>
+                      <span class="w-10 shrink-0 text-right font-mono text-fg-muted">
+                        {r.benar}/{r.total}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
 
           <div class="rounded-card border border-line bg-surface p-3.5">
             <div class="mb-2 flex items-center justify-between">

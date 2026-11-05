@@ -167,6 +167,22 @@ describe('/matematika — siswa ASJ saja', () => {
     expect(screen.getByText('Benar / total')).toBeTruthy();
   }, 20000);
 
+  it('Simulasi Seleksi memulai ronde CAMPURAN 20 soal', async () => {
+    loginSebagai('kandidat');
+    render(<MatematikaGame />);
+    await waitFor(() => expect(screen.getByText('Simulasi Seleksi')).toBeTruthy());
+
+    /* Kartu modul campuran memakai angka sendiri (20 / 300), bukan angka
+       kraepelin dari bank — kalau salah, yang tampil "3 soal · 90 detik". */
+    expect(screen.getByText('20 soal · 300 detik')).toBeTruthy();
+
+    fireEvent.click(tombol('Simulasi Seleksi'));
+    fireEvent.click(tombol('Mulai tes'));
+
+    /* Ronde campuran selalu 20 soal, berapa pun isi bank kategori. */
+    await waitFor(() => expect(screen.getByText('/ 20')).toBeTruthy());
+  }, 20000);
+
   it('admin: tanpa gerbang login (dipakai panel admin)', async () => {
     loginSebagai('admin');
 

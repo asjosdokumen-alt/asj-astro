@@ -47,6 +47,16 @@ const perintahTeks = (): string =>
 const rakTampil = (): string[] =>
   [...document.querySelectorAll('[data-zona]')].map((el) => el.getAttribute('data-zona') || '');
 
+/**
+ * Tombol rak berdasarkan ID.
+ *
+ * JANGAN mencari rak lewat teks Jepangnya: pada 8 rak (mode rapat) label Jepang
+ * disembunyikan supaya kartunya muat, sehingga `cariTombol(zona)` tidak
+ * menemukan apa pun — dan tesnya gagal pada undian, bukan pada perilaku.
+ */
+const rakId = (id: string): HTMLButtonElement | null =>
+  document.querySelector(`[data-zona="${id}"]`) as HTMLButtonElement | null;
+
 describe('arcade — gerbang login', () => {
   afterEach(() => {
     cleanup();
@@ -184,7 +194,8 @@ describe('arcade — Genba Order Rush', () => {
        tes bisa, dan itulah yang membuat tes ini merah saat pertama ditulis. */
     await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
 
-    const rak = cariTombol(zona);
+    const idRak = GENBA_ZONA.find((z) => z.jp === zona)?.id ?? '';
+    const rak = rakId(idRak);
     expect(rak, `rak "${zona}" tidak ada`).toBeTruthy();
     rak?.click();
 
@@ -223,7 +234,8 @@ describe('arcade — Genba Order Rush', () => {
       expect(kartu, `pesanan ${n}: ${warna}${barang} tidak ada di meja`).toBeTruthy();
       kartu?.click();
       await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
-      const rak = cariTombol(zona);
+      const idRak = GENBA_ZONA.find((z) => z.jp === zona)?.id ?? '';
+      const rak = rakId(idRak);
       expect(rak, `pesanan ${n}: rak "${zona}" tidak ada`).toBeTruthy();
       rak?.click();
       if (n < total) {
@@ -262,6 +274,42 @@ describe('arcade — Genba Order Rush', () => {
     const rakBenar = cariTombol(GENBA_ZONA.find((z) => z.id === idBenar)?.id_ ?? 'Rak Atas');
     await waitFor(() => expect(rakBenar?.className).toContain('border-accent-emerald'));
   }, 15000);
+
+  /* Keluhan pemilik 2026-11-05: "cuma 4 pilihan tempat, bukannya jadi gampang?"
+     Empat adalah DASAR, bukan atap. Tes ini mengunci perilaku yang menjawabnya:
+     empat jawaban benar berturut menambah rak, dan satu kesalahan
+     mengembalikannya. */
+  it('rak bertambah saat kombo panas dan kembali setelah salah', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Mulai Shift')?.click();
+    await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
+    expect(rakTampil()).toHaveLength(4);
+
+    for (let n = 1; n <= 4; n++) {
+      const m = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+      expect(m, `pesanan ${n} tak terbaca`).toBeTruthy();
+      const [, warna, barang, zona] = m as RegExpMatchArray;
+      cariTombol(`${warna}${barang}`)?.click();
+      await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
+      const idRak = GENBA_ZONA.find((z) => z.jp === zona)?.id ?? '';
+      rakId(idRak)?.click();
+      if (n < 4) await waitFor(() => expect(document.body.textContent || '').toContain(`Pesanan ${n}/12`));
+    }
+
+    await waitFor(() => expect(rakTampil()).toHaveLength(6));
+
+    /* Satu kesalahan → kombo 0 → pesanan berikutnya kembali ke 4 rak. */
+    const m = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+    expect(m).toBeTruthy();
+    const [, warna, barang, zona] = m as RegExpMatchArray;
+    const idBenar = GENBA_ZONA.find((z) => z.jp === zona)?.id;
+    const idSalah = rakTampil().find((id) => id !== idBenar);
+    cariTombol(`${warna}${barang}`)?.click();
+    await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
+    cariTombol(GENBA_ZONA.find((z) => z.id === idSalah)?.id_ ?? 'Rak Atas')?.click();
+
+    await waitFor(() => expect(rakTampil()).toHaveLength(4), { timeout: 5000 });
+  }, 30000);
 
   /* "Latih yang salah" adalah alasan catatan itu ada. Tanpa tes ini, tombolnya
      bisa tampil dan tidak melakukan apa pun — dan tidak ada yang menangkapnya,

@@ -259,6 +259,8 @@ export interface AturanShift {
   pilihan: readonly number[];
   /** Jumlah rak yang DITAMPILKAN per gelombang (bukan seluruh 12). */
   zona: readonly number[];
+  /** Plafon rak saat pemain sedang panas (lihat `zonaAdaptif`). */
+  zonaMaks: number;
   /** Pengali skor akhir — kerja yang lebih sulit dibayar lebih. */
   pengali: number;
 }
@@ -285,9 +287,9 @@ export interface AturanShift {
  * mengukur ketelitian mata, bukan pemahaman.
  */
 export const SHIFT_GENBA: Readonly<Record<TingkatGenba, AturanShift>> = {
-  magang: { id: 'magang', pesanan: 8, nyawa: 4, durasi: [9000, 8000], pilihan: [4, 6], zona: [4, 4], pengali: 1 },
-  reguler: { id: 'reguler', pesanan: 12, nyawa: 3, durasi: [8000, 7000, 6000], pilihan: [6, 6, 9], zona: [4, 4, 6], pengali: 1 },
-  veteran: { id: 'veteran', pesanan: 12, nyawa: 2, durasi: [6000, 5000, 4500], pilihan: [9, 9, 9], zona: [6, 6, 6], pengali: 1.5 },
+  magang: { id: 'magang', pesanan: 8, nyawa: 4, durasi: [9000, 8000], pilihan: [4, 6], zona: [4, 4], zonaMaks: 6, pengali: 1 },
+  reguler: { id: 'reguler', pesanan: 12, nyawa: 3, durasi: [8000, 7000, 6000], pilihan: [6, 6, 9], zona: [4, 4, 6], zonaMaks: 8, pengali: 1 },
+  veteran: { id: 'veteran', pesanan: 12, nyawa: 2, durasi: [6000, 5000, 4500], pilihan: [9, 9, 9], zona: [6, 6, 6], zonaMaks: 8, pengali: 1.5 },
 };
 
 /** Gelombang untuk pesanan ke-`n` (0-based). Satu gelombang = 4 pesanan. */
@@ -306,6 +308,28 @@ export function pilihanShift(aturan: AturanShift, n: number): number {
 
 export function zonaShift(aturan: AturanShift, n: number): number {
   return aturan.zona[gelombangShift(aturan, n)] ?? 4;
+}
+
+/**
+ * Jumlah rak yang mengikuti performa — bukan angka tetap per gelombang.
+ *
+ * Keluhan yang menjawab ini (pemilik, 2026-11-05): "cuma 4 pilihan tempat,
+ * bukannya jadi gampang?" Empat rak memang beban pemindaian yang wajar, tetapi
+ * jumlahnya tidak boleh TETAP: pemain yang sudah empat kali benar berturut-turut
+ * tidak belajar apa-apa lagi dari empat rak.
+ *
+ * Aturannya sengaja bisa dibaca dari layar: setiap 4 jawaban benar berturut
+ * menambah 2 rak, dan SALAH mengembalikannya (kombo kembali 0). Jadi angka ini
+ * naik-turun mengikuti pemain, bukan mengikuti gelombang.
+ *
+ * Plafon 8 BUKAN angka sembarang: 8 rak digambar 4 kolom × 2 baris, tinggi yang
+ * sama dengan 4 rak 2 kolom — area main tetap muat satu layar 390×844. Di atas
+ * 8, grid akan menambah baris dan mendorong meja kerja ke bawah lipatan lagi.
+ */
+export function zonaAdaptif(aturan: AturanShift, urutanKe: number, kombo: number): number {
+  const dasar = zonaShift(aturan, urutanKe);
+  const bonus = kombo >= 8 ? 4 : kombo >= 4 ? 2 : 0;
+  return Math.min(aturan.zonaMaks, dasar + bonus);
 }
 
 /**

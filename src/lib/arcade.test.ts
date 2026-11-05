@@ -22,6 +22,7 @@ import {
   durasiShift,
   pilihanShift,
   zonaShift,
+  zonaAdaptif,
   buatZona,
   poinGenba,
   nilaiShift,
@@ -285,6 +286,23 @@ describe('arcade — struktur shift Genba', () => {
     expect(pilihanShift(a, 11)).toBe(9);
     expect(zonaShift(a, 0)).toBe(4);
     expect(zonaShift(a, 11)).toBe(6);
+  });
+
+  it('jumlah rak MENGIKUTI kombo — bukan angka tetap 4', () => {
+    const r = SHIFT_GENBA.reguler;
+    expect(zonaAdaptif(r, 0, 0)).toBe(4);
+    expect(zonaAdaptif(r, 0, 3)).toBe(4);
+    expect(zonaAdaptif(r, 0, 4)).toBe(6);
+    expect(zonaAdaptif(r, 0, 7)).toBe(6);
+    expect(zonaAdaptif(r, 0, 8)).toBe(8);
+    /* Plafon: 8, bukan 10. Di atas 8 grid menambah baris dan meja kerja
+       terdorong ke bawah lipatan lagi. */
+    expect(zonaAdaptif(r, 0, 20)).toBe(8);
+    expect(zonaAdaptif(SHIFT_GENBA.magang, 0, 20)).toBe(6);
+    expect(zonaAdaptif(SHIFT_GENBA.veteran, 0, 0)).toBe(6);
+    expect(zonaAdaptif(SHIFT_GENBA.veteran, 0, 4)).toBe(8);
+    /* Gelombang lanjut menaikkan DASAR-nya juga: 6 di gelombang 3. */
+    expect(zonaAdaptif(r, 11, 0)).toBe(6);
   });
 
   it('rak yang ditampilkan: tepat sejumlah gelombang, unik, dan memuat jawaban', () => {

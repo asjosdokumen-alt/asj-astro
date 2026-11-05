@@ -109,14 +109,16 @@ kombo dan bonus, bukan hukuman yang mengeluarkan pemain dari latihan.
 |---|---|---|
 | Rak dan meja tampil sebelum mulai; diketuk = tidak terjadi apa-apa | Playfield hanya dirender saat bermain; idle = hub tingkat + CTA | Layar yang bisa diketuk tanpa hasil terbaca sebagai game rusak |
 | HUD satu baris berisi 5 hal (skor, rekor, kombo, nyawa, checkbox) | Skor besar + progres shift + nyawa; pengaturan pindah ke hub | Mata perlu urutan: sisa waktu → perintah → rak → barang |
-| 12 rak (6 baris) | 4–6 rak per gelombang (subset) | Terukur di 390×844: meja kerja kini berakhir ~780 px, seluruh area main masuk satu layar |
+| 12 rak (6 baris) | 4–8 rak, **mengikuti kombo**: +2 tiap 4 jawaban benar, kembali saat salah | Terukur di 390×844: 8 rak digambar 4 kolom × 2 baris — tinggi yang sama dengan 4 rak 2 kolom, jadi area main tetap satu layar |
+| Jumlah rak tetap per gelombang | 4 (dasar) → 6 (kombo 4) → 8 (kombo 8), plafon 8 | Menjawab "cuma 4 pilihan tempat, bukannya jadi gampang?": angka naik-turun mengikuti pemain, bukan tetap |
 | Salah = satu baris teks 1,1 dtk | Rak yang benar disorot hijau, yang diketuk merah + getar + animasi | Koreksi harus **terlihat**, bukan dibaca sambil mengingat |
 | "Shift selesai" hanya saat mati | Kartu hasil: nilai, akurasi, kombo, bonus, bintang, rekor, dua CTA | Memberi akhir yang terasa seperti akhir |
 | Catatan salah = pajangan | Tombol "Latih yang salah" (≤8 item, entri lama tanpa ID dilewati) | Menutup loop belajar: salah → dicatat → dilatih → hilang dari catatan |
 | Paragraf pengantar 6 baris + h1 besar | 2 baris + `<details>` "Detail latihan"; kolom disamakan `max-w-md` | Pengantar lama mendorong area main ke bawah lipatan |
 | `t()` tanpa langganan bahasa | `useLang()` | Ganti bahasa saat halaman terbuka dulu tidak mengganti satu label pun |
 
-Bukti visual: `deliverables/game-design/shots/` (idle, main, hasil, combo; 390
+Bukti visual: `deliverables/game-design/shots/` (idle, main 4 rak, main 8 rak,
+hasil, combo; 390
 dark + 1280 light).
 
 ---
