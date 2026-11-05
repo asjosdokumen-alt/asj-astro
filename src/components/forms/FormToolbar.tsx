@@ -79,7 +79,16 @@ export default function FormToolbar({ title, titleKey, asHeading = true, backTo 
           (DESIGN.md:582, :691). `min-h-11 min-w-11` puts the floor on the anchor
           itself, which is what receives the tap. */}
       <a href={hrefKembali} aria-label={labelKembali} class="min-h-11 min-w-11 flex items-center justify-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/80 text-white text-xs font-bold rounded-full border border-white/20 transition-[background-color,transform] hover:scale-105">
-        <Icon name="arrow-left" /> <span class="hidden sm:inline">{labelKembali}</span>
+        <Icon name="arrow-left" />
+        {/* Label tampil mulai 360px (2026-11-05). Dulu `hidden sm:inline`, jadi
+            di SEMUA layar HP tombol kembali hanya panah tanpa teks — pemilik
+            melaporkannya sebagai "tidak ada tombol kembali ke dashboard"
+            padahal tombolnya ada. Di 320px (iPhone SE lama) label tetap
+            disembunyikan: sapuan responsif mengukur judul "CV Master" terpotong
+            4px saat label ikut tampil di lebar itu, dan judul yang terpotong
+            lebih buruk daripada panah yang berdiri sendiri. Label tema/bahasa di
+            kanan TETAP tanpa teks di HP: ikonnya sudah menyatakan keadaan. */}
+        <span class="hidden min-[360px]:inline whitespace-nowrap">{labelKembali}</span>
       </a>
       {/* The page title IS the page's h1 — not a decorative <span>. Four form
           routes (/apply, /master, /ai-cv, /siswa-baru) rendered NO h1 at all,
