@@ -16,6 +16,8 @@ vi.mock("../../store/i18n", async () => {
 });
 vi.mock("../../lib/cloudinary", () => ({
   uploadToCloudinary: vi.fn(async (f: File) => "https://cloud.test/" + (f && f.name || "doc")),
+  buatPublicId: (nama: string, jenis: string) =>
+    `${String(nama).toLowerCase().replace(/\s+/g, '_')}_${jenis}_1780000000000`,
 }));
 
 vi.mock("../../lib/apiClient", () => ({ apiClient: vi.fn(), api: {}, default: {} }));

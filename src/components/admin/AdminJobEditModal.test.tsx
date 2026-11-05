@@ -41,6 +41,8 @@ vi.mock('../../lib/apiClient', () => {
 
 vi.mock('../../lib/cloudinary', () => ({
   uploadToCloudinary: (...args: unknown[]) => mockUpload(...args),
+  buatPublicId: (nama: string, jenis: string) =>
+    `${String(nama).toLowerCase().replace(/\s+/g, '_')}_${jenis}_1780000000000`,
 }));
 
 vi.mock('../../store/i18n', () => ({ t: (k: string) => k }));
