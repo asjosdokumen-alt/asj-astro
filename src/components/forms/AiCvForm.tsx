@@ -780,11 +780,16 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       addBot(
         n === 0
           ? (res.pesan || 'Semua kolom sudah berbahasa Jepang.')
-          : `Selesai — ${n} kolom Jepang terisi.${
+          : `Selesai — ${n} kolom Jepang terisi. Tekan Simpan untuk menyimpan ke database.${
               sisa > 0 ? ` ${sisa} kolom belum berhasil; tekan lagi untuk mencoba sisanya.` : ''
             }`,
       );
-      if (n > 0) showToast(t('toast.saved'), 'success');
+      /* Toast-nya DULU `toast.saved` ("Data berhasil disimpan!") padahal yang
+         terjadi baru mengisi FORM — database belum disentuh. Pemilik membacanya
+         sebagai "sudah tersimpan" lalu kehilangan hasilnya saat halaman ditutup
+         (keluhan 2026-11-04: "harusnya keisi juga di DB"). Sekarang pesannya
+         menyebut langkah berikutnya. */
+      if (n > 0) showToast(t('ai_cv.translate_filled'), 'success');
     } catch (e) {
       addBot((e as ApiError).message || 'Gagal menerjemahkan kolom. Coba lagi.');
     } finally {

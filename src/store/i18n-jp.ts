@@ -501,6 +501,7 @@ export const jpTranslations: Record<string, string> = {
     "toast.session_invalid": "セッションが無効です。再ログインしてください。",
     "toast.network_error": "サーバーに接続できませんでした。",
     "toast.saved": "データが正常に保存されました！",
+    "ai_cv.translate_filled": "フォームに入力しました — 「保存」を押すとデータベースに保存されます。",
     "toast.submitted": "データが正常に送信されました！",
     "toast.deleted": "データが削除されました。",
     "toast.login_success": "ログイン成功！",

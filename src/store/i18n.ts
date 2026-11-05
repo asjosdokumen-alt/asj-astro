@@ -1047,6 +1047,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "toast.session_invalid": "Sesi tidak valid. Silakan login kembali.",
     "toast.network_error": "Gagal terhubung ke server.",
     "toast.saved": "Data berhasil disimpan!",
+    "ai_cv.translate_filled": "Terisi di form — tekan Simpan untuk menyimpan ke database.",
     "toast.submitted": "Data berhasil dikirim!",
     "toast.deleted": "Data berhasil dihapus.",
     "toast.login_success": "Login berhasil!",
