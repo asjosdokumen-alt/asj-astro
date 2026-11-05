@@ -79,7 +79,34 @@ export function ucap(teks: string, rate = 0.9): void {
  * Sekarang: satu konteks untuk seluruh halaman, dibuka pada gerakan pertama
  * pengguna (syarat iOS), dan tidak pernah ditutup.
  */
-type KonteksAudio = AudioContext;
+/**
+ * Bentuk AudioContext yang kita pakai, ditulis STRUKTURAL.
+ *
+ * Bukan `type KonteksAudio = AudioContext`: indexer repo ini menandai nama
+ * global telanjang sebagai referensi yang tidak bisa diikat, dan gerbang
+ * `idx:gate` menolaknya (`src/lib/tts.ts:82 AudioContext`). Alasan yang sama
+ * dengan `SpeechSynthesisUtterance` di `ucap()` — lihat catatan di sana.
+ */
+interface KonteksAudio {
+  state: string;
+  currentTime: number;
+  destination: unknown;
+  resume(): Promise<void> | void;
+  createOscillator(): {
+    type: string;
+    frequency: { setValueAtTime(v: number, t: number): void };
+    connect(n: unknown): void;
+    start(t: number): void;
+    stop(t: number): void;
+  };
+  createGain(): {
+    gain: {
+      setValueAtTime(v: number, t: number): void;
+      exponentialRampToValueAtTime(v: number, t: number): void;
+    };
+    connect(n: unknown): void;
+  };
+}
 
 let audioCtx: KonteksAudio | null = null;
 let pembukaTerpasang = false;
@@ -133,7 +160,9 @@ export function siapkanAudio(): void {
     }
   }
   if (audioCtx && audioCtx.state === 'suspended') {
-    void audioCtx.resume().catch(() => {});
+    // `resume()` boleh mengembalikan void (implementasi lama) atau Promise.
+    // Dibungkus Promise.resolve supaya `.catch` tetap sah untuk keduanya.
+    void Promise.resolve(audioCtx.resume()).catch(() => {});
   }
 }
 
