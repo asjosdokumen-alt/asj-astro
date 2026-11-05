@@ -5,7 +5,7 @@
 // pemeriksa urutan. Kalau ini benar, komponennya hanya soal tampilan; kalau ini
 // salah, layar akan terlihat normal sambil mengajari tata bahasa yang keliru.
 // ==========================================
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   GENBA_BARANG,
   GENBA_WARNA,
@@ -121,5 +121,86 @@ describe('arcade — Combo Kalimat', () => {
   it('melewati akhir urutan tidak pernah dianggap benar', () => {
     const s = COMBO_SOAL[0];
     expect(kartuBenar(s, s.urutan.length, s.urutan[0])).toBe(false);
+  });
+});
+
+/* ── Audio game di iOS (2026-11-05) ─────────────────────────────────────────
+ * Keluhan pemilik: "suara di game rush tidak keluar di iPhone, di Android
+ * normal". Penyebabnya bukan volume, tapi tiga aturan iOS yang tidak ada di
+ * Android:
+ *   1. AudioContext baru lahir `suspended`; tanpa `resume()` ia diam.
+ *   2. Safari membatasi jumlah AudioContext — versi lama membuat SATU per
+ *      jawaban lalu menutupnya 400 ms kemudian, jadi konteks berikutnya gagal.
+ *   3. Sakelar senyap iPhone membisukan Web Audio kecuali sesi audionya
+ *      `playback` (Safari 16.4+).
+ */
+class KonteksPalsu {
+  static dibuat = 0;
+  static terakhir: KonteksPalsu | null = null;
+  state = 'suspended';
+  currentTime = 0;
+  destination = {};
+  resume = vi.fn(async () => { this.state = 'running'; });
+  close = vi.fn(async () => {});
+  constructor() { KonteksPalsu.dibuat++; KonteksPalsu.terakhir = this; }
+  createOscillator() {
+    return {
+      type: 'sine',
+      frequency: { setValueAtTime: vi.fn() },
+      connect: vi.fn(),
+      start: vi.fn(),
+      stop: vi.fn(),
+    };
+  }
+  createGain() {
+    return {
+      gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+      connect: vi.fn(),
+    };
+  }
+}
+
+describe('bunyi() — satu AudioContext untuk seluruh halaman', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    KonteksPalsu.dibuat = 0;
+    KonteksPalsu.terakhir = null;
+    (window as unknown as { AudioContext?: unknown }).AudioContext = KonteksPalsu;
+    delete (navigator as unknown as { audioSession?: unknown }).audioSession;
+  });
+
+  it('tiga jawaban berturut-turut memakai SATU konteks, bukan tiga', async () => {
+    const { bunyi } = await import('./tts');
+    bunyi(true);
+    bunyi(false);
+    bunyi(true);
+    expect(KonteksPalsu.dibuat).toBe(1);
+  });
+
+  it('konteks TIDAK ditutup setelah berbunyi (dulu ditutup 400 ms)', async () => {
+    vi.useFakeTimers();
+    try {
+      const { bunyi } = await import('./tts');
+      bunyi(true);
+      vi.advanceTimersByTime(1000);
+      expect(KonteksPalsu.terakhir?.close).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('konteks suspended di-resume sebelum berbunyi', async () => {
+    const { bunyi } = await import('./tts');
+    bunyi(true);
+    expect(KonteksPalsu.terakhir?.state).toBe('running');
+    expect(KonteksPalsu.terakhir?.resume).toHaveBeenCalled();
+  });
+
+  it('sesi audio dinyatakan playback supaya sakelar senyap iPhone tidak membisukan', async () => {
+    const nav = navigator as unknown as { audioSession?: { type?: string } };
+    nav.audioSession = { type: 'ambient' };
+    const { siapkanAudio } = await import('./tts');
+    siapkanAudio();
+    expect(nav.audioSession.type).toBe('playback');
   });
 });

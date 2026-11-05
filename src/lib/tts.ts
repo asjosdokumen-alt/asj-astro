@@ -30,7 +30,17 @@ export function adaSuaraJepang(): boolean {
 export function ucap(teks: string, rate = 0.9): void {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
   try {
-    window.speechSynthesis.cancel();
+    const synth = window.speechSynthesis as unknown as {
+      cancel(): void;
+      resume?(): void;
+      speak(x: unknown): void;
+      speaking?: boolean;
+    };
+    // iOS menjeda antrean saat aplikasi sempat ke latar (PWA sering begini).
+    // Tanpa `resume()`, `speak()` berikutnya masuk antrean yang tidak pernah
+    // dijalankan — gejalanya "tidak ada suara sama sekali" sampai app ditutup.
+    if (typeof synth.resume === 'function') synth.resume();
+    synth.cancel();
     /* Konstruktor diambil dari `window`, bukan sebagai nama global telanjang:
        indexer repo ini menandai `new SpeechSynthesisUtterance(...)` sebagai
        referensi yang tidak bisa diikat, dan gerbang build menolaknya. */
@@ -45,11 +55,104 @@ export function ucap(teks: string, rate = 0.9): void {
     /* `speak` dipanggil lewat bentuk struktural: menyebut tipe
        `SpeechSynthesisUtterance` di sini pun masih terbaca indexer sebagai
        referensi yang tidak terikat. */
-    (window.speechSynthesis as unknown as { speak(x: unknown): void }).speak(u);
+    synth.speak(u);
   } catch {
     /* Suara gagal bukan alasan menghentikan latihan. */
   }
 }
+
+/* ── AudioContext bersama ──────────────────────────────────────────────────
+ *
+ * KENAPA SATU, DAN KENAPA TIDAK DITUTUP (2026-11-05, keluhan pemilik:
+ * "suara di game rush tidak keluar di iPhone, di Android normal").
+ *
+ * Versi lama membuat `new AudioContext()` untuk SETIAP jawaban lalu menutupnya
+ * 400 ms kemudian. Di iOS itu tiga kali salah:
+ *   1. Konteks baru lahir dalam keadaan `suspended`. Tanpa `resume()`, osilator
+ *      dijadwalkan tetapi tidak berbunyi — Android memaafkan ini, iOS tidak.
+ *   2. Safari membatasi jumlah AudioContext per halaman. Membuat-tutup terus
+ *      menerus membuat konteks berikutnya gagal tanpa pesan.
+ *   3. Sakelar senyap iPhone membisukan Web Audio, kecuali sesi audionya
+ *      dinyatakan `playback` (Safari 16.4+). Android tidak punya sakelar itu,
+ *      jadi bug ini hanya muncul di iPhone.
+ *
+ * Sekarang: satu konteks untuk seluruh halaman, dibuka pada gerakan pertama
+ * pengguna (syarat iOS), dan tidak pernah ditutup.
+ */
+type KonteksAudio = AudioContext;
+
+let audioCtx: KonteksAudio | null = null;
+let pembukaTerpasang = false;
+
+function cariAudioContext(): (new () => KonteksAudio) | undefined {
+  const w = window as unknown as {
+    AudioContext?: new () => KonteksAudio;
+    webkitAudioContext?: new () => KonteksAudio;
+  };
+  return w.AudioContext || w.webkitAudioContext;
+}
+
+/**
+ * Nyatakan sesi audio sebagai `playback` (Safari 16.4+ / iOS 17+).
+ *
+ * Tanpa ini, Web Audio DAN `speechSynthesis` ikut dibisukan sakelar senyap
+ * iPhone — sedangkan Android tidak punya sakelar itu. Itu sebabnya bug yang
+ * sama tidak pernah terlihat di Android.
+ *
+ * Dipisah dari `siapkanAudio` supaya komponen yang punya AudioContext sendiri
+ * (MatematikaGame) tetap bisa memakainya tanpa membuat konteks kedua.
+ */
+export function aktifkanSesiAudio(): void {
+  if (typeof navigator === 'undefined') return;
+  try {
+    const nav = navigator as unknown as { audioSession?: { type?: string } };
+    if (nav.audioSession && nav.audioSession.type !== 'playback') {
+      nav.audioSession.type = 'playback';
+    }
+  } catch {
+    /* bukan iOS — tidak ada yang perlu diatur */
+  }
+}
+
+/**
+ * Siapkan audio. Aman dipanggil berkali-kali.
+ *
+ * Wajib dipanggil dari GERAKAN PENGGUNA minimal sekali (lihat
+ * `pasangPembukaAudio`) — iOS menolak membuka audio di luar gestur.
+ */
+export function siapkanAudio(): void {
+  if (typeof window === 'undefined') return;
+  aktifkanSesiAudio();
+  if (!audioCtx) {
+    const Ctx = cariAudioContext();
+    if (!Ctx) return;
+    try {
+      audioCtx = new Ctx();
+    } catch {
+      return;
+    }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    void audioCtx.resume().catch(() => {});
+  }
+}
+
+/**
+ * Pasang pembuka audio pada gerakan pertama (ketuk, sentuh, atau tombol).
+ *
+ * Dipanggil otomatis saat modul dimuat, jadi setiap halaman yang memakai
+ * `bunyi()`/`ucap()` ikut terbuka tanpa perlu mengubah komponen game.
+ */
+export function pasangPembukaAudio(): void {
+  if (typeof window === 'undefined' || pembukaTerpasang) return;
+  pembukaTerpasang = true;
+  const buka = () => siapkanAudio();
+  for (const ev of ['pointerdown', 'touchstart', 'keydown'] as const) {
+    window.addEventListener(ev, buka, { once: true, capture: true, passive: true });
+  }
+}
+
+pasangPembukaAudio();
 
 /**
  * Efek suara tanpa berkas: satu osilator pendek.
@@ -59,11 +162,10 @@ export function ucap(teks: string, rate = 0.9): void {
  */
 export function bunyi(ok: boolean): void {
   if (typeof window === 'undefined') return;
-  const AC = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext });
-  const Ctx = AC.AudioContext || AC.webkitAudioContext;
-  if (!Ctx) return;
+  siapkanAudio();
+  const ctx = audioCtx;
+  if (!ctx) return;
   try {
-    const ctx = new Ctx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
@@ -86,9 +188,9 @@ export function bunyi(ok: boolean): void {
       osc.start(now);
       osc.stop(now + 0.26);
     }
-    // Tutup konteks setelah selesai: satu AudioContext per jawaban akan
-    // menumpuk sampai browser menolak membuat yang baru.
-    window.setTimeout(() => ctx.close().catch(() => {}), 400);
+    // Konteks TIDAK ditutup. Satu konteks dipakai ulang sepanjang halaman;
+    // menutupnya memaksa konteks baru pada jawaban berikutnya, dan Safari iOS
+    // membatasi jumlahnya — persis penyebab suara menghilang di tengah game.
   } catch {
     /* Tanpa audio tetap bisa bermain. */
   }

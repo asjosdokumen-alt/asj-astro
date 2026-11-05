@@ -34,6 +34,7 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import { authStore } from '../../store/authReactive';
 import { bolehKirim, kirimSkor } from '../../lib/skorGame';
 import { apiClient, type ApiError } from '../../lib/apiClient';
+import { aktifkanSesiAudio } from '../../lib/tts';
 import { validate, kandidatLoginSchema } from '../../lib/schemas';
 import { t, useLang } from '../../store/i18n';
 import {
@@ -289,6 +290,9 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
   const audioRef = useRef<KonteksAudio | null>(null);
   const bunyi = (jenis: 'tap' | 'benar' | 'salah' | 'lulus') => {
     if (!suara) return;
+    // Sesi `playback` — tanpa ini sakelar senyap iPhone membisukan Web Audio
+    // walau konteksnya sudah berjalan. Android tidak punya sakelar itu.
+    aktifkanSesiAudio();
     try {
       if (!audioRef.current) {
         const Ctx = cariAudioContext();
