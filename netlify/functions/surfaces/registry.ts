@@ -138,11 +138,11 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   // Rekaman suara Mode Simulasi → teks Jepang (tanpa SpeechRecognition).
   transkripsikanSuara:        () => import('./ai').then(m => m.AI_ACTIONS),
   // Bank kosakata (kotoba) — minigame hafalan, gerbang siswa ASJ yang sama.
-  getBankKotoba:              () => import('./ai').then(m => m.AI_ACTIONS),
+  getBankKotoba:              () => import('./kotoba').then(m => m.KOTOBA_ACTIONS),
   // Bank kosakata 16 bidang kerja (SSW) — gerbang siswa ASJ yang sama.
-  getBankSsw:                 () => import('./ai').then(m => m.AI_ACTIONS),
+  getBankSsw:              () => import('./kotoba').then(m => m.KOTOBA_ACTIONS),
   // Bank soal matematika — gerbang siswa ASJ yang sama.
-  getBankMatematika:          () => import('./ai').then(m => m.AI_ACTIONS),
+  getBankMatematika:              () => import('./kotoba').then(m => m.KOTOBA_ACTIONS),
   // Papan peringkat game — simpan skor (siswa) & baca papan (admin).
   simpanSkorGame:             () => import('./ai').then(m => m.AI_ACTIONS),
   getPapanSkor:               () => import('./ai').then(m => m.AI_ACTIONS),

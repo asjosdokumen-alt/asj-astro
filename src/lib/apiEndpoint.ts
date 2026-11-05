@@ -126,17 +126,17 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   // alasan yang sama seperti bank soal wawancara di atas. Gerbangnya juga sama
   // (`tolakKecualiSiswa`), jadi menaruhnya di fungsi lain hanya menambah satu
   // cold start tanpa memisahkan apa pun.
-  getBankKotoba: '/.netlify/functions/ai-chat',
+  getBankKotoba: '/.netlify/functions/kotoba',
 
   // Bank kosakata bidang kerja (SSW) — 16 bidang 特定技能. Menumpang `ai-chat`
   // dengan alasan yang sama: penjaganya sama, dan fungsi terpisah hanya
   // menambah satu cold start tanpa memisahkan apa pun.
-  getBankSsw: '/.netlify/functions/ai-chat',
+  getBankSsw: '/.netlify/functions/kotoba',
 
   // Bank soal matematika (/matematika) — menumpang `ai-chat` dengan alasan yang
   // sama seperti dua bank di atas: satu fungsi tambahan berarti satu cold start
   // tambahan dan bobot bundle yang harus di-baseline ulang di gate bundle:size.
-  getBankMatematika: '/.netlify/functions/ai-chat',
+  getBankMatematika: '/.netlify/functions/kotoba',
   /* Papan peringkat game (2026-11-04). Tanpa dua baris ini keduanya jatuh ke
      catch-all `bridge-links` dan mengulang lewat 404 — fiturnya tetap jalan,
      jadi tidak ada yang menyadari. Gerbangnya di `action-registry.test.ts`. */

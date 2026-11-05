@@ -9,7 +9,6 @@
  *          submitDataAsj, simpanDataTtdNaitei, saveSignature,
  *          getBankWawancara, simpanJawabanWawancara,
  *          terjemahkanJawabanWawancara, getLinkWawancara,
- *          getBankKotoba, getBankMatematika, getBankSsw
  *
  * Bank soal wawancara (2026-10-25) sengaja menumpang entry ini, bukan fungsi
  * baru: satu fungsi tambahan berarti cold start tambahan dan bobot bundle yang
@@ -40,10 +39,6 @@ export default adapt(makeSurfaceHandler(AI_ACTIONS, [
   'terjemahkanKolomCv',
   // Rekaman suara Mode Simulasi → teks (tanpa SpeechRecognition).
   'transkripsikanSuara',
-  'getBankKotoba', 'getBankMatematika',
-  // Bank kosakata bidang kerja (SSW) — 16 bidang 特定技能. Entry yang sama:
-  // penjaganya sama, dan fungsi terpisah hanya menambah satu cold start.
-  'getBankSsw',
   // Papan peringkat game (2026-11-04). Entry yang sama dengan bank kosakata:
   // gerbangnya sama-sama membaca sesi + status siswa/admin, dan fungsi
   // terpisah hanya menambah satu cold start.

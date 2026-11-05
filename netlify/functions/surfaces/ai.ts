@@ -8,6 +8,7 @@
  * Netlify synchronous limit is 60 s; see kernel/deadline.ts.)
  */
 import { handleGetJobStatus } from '../_lib/kernel/job-queue';
+import { tolakKecualiSiswa } from '../_lib/siswa-gate';
 
 /**
  * A16 parity (2026-09-05): processAiInterview used to be enqueued as an
@@ -42,28 +43,8 @@ const BACKGROUND_ACTIONS = new Set<string>([]);
  *
  * `null` = boleh lanjut; selain itu = objek galat siap dikirim ke klien.
  */
-async function tolakKecualiSiswa(sessionToken: string | undefined, wa: string) {
-  const { isOwnerOrAdmin, requireAdmin } = await import('../contexts/identity');
-  if (!requireAdmin(sessionToken || '').error) return null;
-  if (!isOwnerOrAdmin(sessionToken, wa)) {
-    return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
-  }
-  const { statusVip } = await import('../_lib/wawancara/bank');
-  const vip = await statusVip(wa);
-  // `null` = pemeriksaan gagal (DB tidak terjangkau). Jangan bilang "bukan
-  // siswa": itu menuduh kandidat atas kegagalan kita sendiri.
-  if (vip === null) {
-    return { success: false, message: 'Gagal memeriksa status siswa. Coba lagi sebentar.' };
-  }
-  if (!vip) {
-    return {
-      success: false,
-      isVip: false,
-      message: 'Latihan wawancara khusus siswa ASJ (VIP / Kelas LPK).',
-    };
-  }
-  return null;
-}
+/* Penjaganya pindah ke `_lib/siswa-gate.ts` (2026-11-05) supaya bank
+   soal bisa punya entry sendiri tanpa menyeret seluruh AI_ACTIONS. */
 
 export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   processAIChat: async (p: unknown[], s?: string) => {
@@ -182,69 +163,6 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
   // yang bertag VIP". Satu penjaga berarti satu tempat yang bisa salah, bukan
   // dua definisi "siswa ASJ" yang bisa berbeda diam-diam.
   //
-  // Bank kosakata TIDAK dikirim ke non-siswa — bukan cuma disembunyikan di UI.
-  // Isinya materi belajar, bukan rahasia, tapi gerbang yang hanya kosmetik akan
-  // membuat label "khusus siswa" di dasbor jadi klaim kosong.
-  getBankKotoba: async (p: unknown[], s?: string) => {
-    const wa = String(p?.[0] ?? '').trim();
-    const tolak = await tolakKecualiSiswa(s, wa);
-    if (tolak) return tolak;
-    const { BANK_KOTOBA, BAB_KOTOBA, JUMLAH_KOTOBA } = await import('../_lib/kotoba/bank');
-    /* N5 ikut di respons ini, bukan endpoint sendiri: gerbangnya SAMA
-       (`tolakKecualiSiswa`), dan 250 kata hanya menambah ~20 KB pada permintaan
-       yang toh sudah mengambil 1 440 kata. Endpoint ketiga berarti salinan
-       ketiga dari logika sesi/VIP yang sama. */
-    const { N5_KATA, JUMLAH_N5 } = await import('../_lib/kotoba/n5');
-    return {
-      success: true,
-      wa,
-      isVip: true,
-      jumlah: JUMLAH_KOTOBA,
-      bab: BAB_KOTOBA,
-      kosakata: BANK_KOTOBA,
-      n5: N5_KATA,
-      jumlahN5: JUMLAH_N5,
-    };
-  },
-  // ── Bank kosakata bidang kerja (SSW) — modul latihan per bidang ──────────
-  // Dipisah dari `getBankKotoba` karena dua alasan yang keduanya praktis:
-  //   • ukuran — 320 kata bidang tidak perlu ikut terkirim ke siswa yang cuma
-  //     ingin menghafal bab buku, dan sebaliknya;
-  //   • umur data — kata bidang berubah saat bidangnya berubah, sedangkan bank
-  //     buku berubah saat silabusnya berubah. Satu endpoint untuk keduanya
-  //     berarti setiap perubahan kecil menggeser dua hal sekaligus.
-  //
-  // Penjaganya TETAP `tolakKecualiSiswa`, bukan penjaga kedua: siswa ASJ yang
-  // sama, tag yang sama. `bidang` diambil dari daftar tertutup di `ssw.ts` —
-  // argumen dari klien TIDAK dipakai untuk memilih data, jadi tidak ada jalur
-  // "kirim id sembarang" ke data lain.
-  getBankSsw: async (p: unknown[], s?: string) => {
-    const wa = String(p?.[0] ?? '').trim();
-    const tolak = await tolakKecualiSiswa(s, wa);
-    if (tolak) return tolak;
-    const { BIDANG_SSW, JUMLAH_SSW } = await import('../_lib/kotoba/ssw');
-    return {
-      success: true,
-      wa,
-      isVip: true,
-      jumlah: JUMLAH_SSW,
-      bidang: BIDANG_SSW,
-    };
-  },
-  // ── Bank soal matematika (`/matematika`) — simulasi tes seleksi ───────────
-  // Gerbang SAMA PERSIS dengan bank soal wawancara dan bank kosakata di atas,
-  // dan itu disengaja (satu penjaga = satu tempat yang bisa salah). Yang
-  // dikirim hanya ke siswa ASJ adalah SOAL CERITA + pembahasannya; generator
-  // angka hidup di klien karena soal aritmetika acak tak terbatas tidak punya
-  // nilai rahasia — yang punya nilai adalah 69 soal pabrik dan cara
-  // mengerjakannya.
-  getBankMatematika: async (p: unknown[], s?: string) => {
-    const wa = String(p?.[0] ?? '').trim();
-    const tolak = await tolakKecualiSiswa(s, wa);
-    if (tolak) return tolak;
-    const { ringkasBank } = await import('../_lib/matematika/bank');
-    return { success: true, wa, isVip: true, ...ringkasBank() };
-  },
   // ── Papan peringkat game ─────────────────────────────────────────────────
   // Pemilik 2026-11-04: *"game yg bisa ada leaderboardnya … kasih di menu admin
   // supaya bisa check langsung"*.

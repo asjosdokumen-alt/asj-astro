@@ -44,7 +44,8 @@ vi.mock('../netlify/functions/contexts/identity', () => ({
 
 vi.mock('../netlify/functions/_lib/wawancara/bank', () => bankMock);
 
-const { AI_ACTIONS } = await import('../netlify/functions/surfaces/ai');
+// Bank matematika pindah ke surface sendiri 2026-11-05 (lihat kotoba-guard).
+const { KOTOBA_ACTIONS: AI_ACTIONS } = await import('../netlify/functions/surfaces/kotoba');
 
 describe('getBankMatematika — siswa ASJ saja', () => {
   beforeEach(() => {

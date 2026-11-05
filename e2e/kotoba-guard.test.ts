@@ -43,7 +43,9 @@ vi.mock('../netlify/functions/contexts/identity', () => ({
 
 vi.mock('../netlify/functions/_lib/wawancara/bank', () => bankMock);
 
-const { AI_ACTIONS } = await import('../netlify/functions/surfaces/ai');
+// Bank soal pindah ke surface sendiri 2026-11-05 (ai-chat.js 603,5 → 243 KB).
+// Gerbangnya tetap sama; yang berubah hanya modul yang mengekspornya.
+const { KOTOBA_ACTIONS: AI_ACTIONS } = await import('../netlify/functions/surfaces/kotoba');
 
 describe('getBankKotoba — siswa ASJ saja', () => {
   beforeEach(() => {
