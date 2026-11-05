@@ -16,6 +16,7 @@ import { safeError } from '../../_lib/kernel/errors';
 import { fieldsOf, guardPayload, ignored, text } from '../../_lib/kernel/guard';
 import { resolveFileUrl } from '../../_lib/storage';
 import { fetchCandidatePekerjaan } from '../../_lib/db/pekerjaan';
+import { rapikanBarisJpArray } from '../../_lib/jp-text';
 import { log } from '../../_lib/kernel/log';
 import {
   findMasterByWa, patchMaster, upsertMaster, findCandidateRow,
@@ -296,6 +297,24 @@ function mergeRiwayatArrays(columns: any[], aiArr: any[] | null, keyFn: (e: any)
   return out;
 }
 
+/**
+ * Penjaga baca untuk kolom `_jp` di baris riwayat.
+ *
+ * `ai_data_json` bisa berisi teks INDONESIA di kunci `_jp` (terukur 2026-11-05:
+ * `nama_sekolah_jp: "amanah sakura japan"` dengan `nama_sekolah: ""`). Tanpa
+ * penjaga ini form menampilkan nama sekolah di kotak "Nama Sekolah (JP)" dan
+ * kotak "(ID)" kosong — dan CV mencetak kata Indonesia di kolom kanji.
+ *
+ * Dipasang di sisi BACA, bukan hanya saat menulis, karena data lama sudah
+ * telanjur begitu dan tidak boleh menunggu migrasi data selesai.
+ */
+function rapikanNestedJp<T extends Record<string, any>>(nested: T): T {
+  rapikanBarisJpArray(nested.pendidikan);
+  rapikanBarisJpArray(nested.pekerjaan);
+  rapikanBarisJpArray(nested.keluarga);
+  return nested;
+}
+
 export function buildMasterNested(row: any): any {
   const v = (col: string, fallback = '') => {
     const x = row[col]; return x !== undefined && x !== null && x !== '' ? toText(x) : fallback !== undefined ? fallback : '';
@@ -372,7 +391,7 @@ export function buildMasterNested(row: any): any {
     }
     return '';
   };
-  return {
+  return rapikanNestedJp({
     identitas: {
       nama_lengkap: v('nama_lengkap'), katakana: v('furigana'), panggilan: v('namapanggilan'),
       panggilan_katakana: v('panggilan_katakana'), tempat_lahir: v('tempat_lahir'),
@@ -568,7 +587,7 @@ export function buildMasterNested(row: any): any {
       ijazahSd: row.ijazah_sd_url || '', ijazahSmp: row.ijazah_smp_url || '',
       ijazahSma: row.ijazah_sma_url || '', univ: row.univ_url || '',
       sim: row.driver_license_url || row.sim_url || '', cert: row.cert_url || '' },
-  };
+  });
 }
 
 function buildAiOverflow(d: any): Record<string, unknown> | null {

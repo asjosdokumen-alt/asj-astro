@@ -164,3 +164,41 @@ describe('migrasi 047 — field teks punya tugas terjemahan', () => {
     expect(katakana?.jenis).toBe('kata');
   });
 });
+
+/* ── Kolom `_jp` yang berisi teks INDONESIA (2026-11-05) ─────────────────────
+ * Terukur pada kandidat REIHAN: `ai_data_json.pendidikan[0]` berisi
+ * `nama_sekolah: ""` dan `nama_sekolah_jp: "amanah sakura japan"`. Pemeriksa
+ * lama hanya bertanya "kosong atau tidak", jadi kolom itu dianggap SELESAI:
+ * tombol Terjemahkan melewatinya selamanya dan CV mencetak kata Indonesia di
+ * kolom kanji. Aturannya sekarang: yang dianggap terisi adalah yang mengandung
+ * huruf Jepang.
+ */
+describe('saringan terjemah — teks Indonesia di kolom _jp dianggap KOSONG', () => {
+  it('kolom _jp berisi huruf latin tetap masuk daftar tugas', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      identitas: { nama_lengkap: 'REIHAN OKTA', katakana: 'reihan okta' },
+    });
+    expect(tugas.map((t) => t.path.join('.'))).toContain('identitas.katakana');
+  });
+
+  it('kolom _jp yang SUDAH berhuruf Jepang tidak dikirim ulang', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      identitas: { nama_lengkap: 'REIHAN OKTA', katakana: 'レイハン・オクタ' },
+    });
+    expect(tugas).toHaveLength(0);
+  });
+
+  it('baris riwayat: sekolah_jp berisi teks Indonesia ikut diterjemahkan', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      pendidikan: [{ sekolah: 'SMK MUHAMMADIYAH 1 METRO', sekolah_jp: 'smk muhamadiyah 1 metro' }],
+    });
+    expect(tugas.map((t) => t.path.join('.'))).toContain('pendidikan.0.sekolah_jp');
+  });
+
+  it('baris riwayat: yang sudah kanji dilewati', () => {
+    const tugas = kumpulkanTugasTerjemah({
+      pendidikan: [{ sekolah: 'SMK MUHAMMADIYAH 1 METRO', sekolah_jp: 'ムハンマディヤ第1職業高等学校' }],
+    });
+    expect(tugas).toHaveLength(0);
+  });
+});

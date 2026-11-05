@@ -5,6 +5,7 @@ import { AI_SUBMISSION_COLS, ESIGNATURE_COLS } from '../db/projections.ts';
 import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
 import { buildMasterNested, buildRiwayatSlots, masterColumnsFromAi, autoTranslateToJp, JP_TRANSLATE_MAP, patchMaster } from '../../contexts/master-data';
 import { fetchCandidatePekerjaan } from '../db/pekerjaan';
+import { rapikanBarisJpArray } from '../jp-text';
 import { syncBiodataKeMail, syncFormMailDariUpload } from '../../contexts/applications';
 import { fetchMasterByWa as dbFetchMasterByWa } from '../db/master.ts';
 import { findFormsByWa } from '../db/forms.ts';
@@ -369,6 +370,15 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
     } catch (_e) {
       /* biarkan helper membaca sendiri */
     }
+    /* Baris riwayat: nilai `_jp` yang bukan huruf Jepang dipindahkan ke sisi
+       Indonesia-nya (hanya bila sisi itu kosong). Tanpa ini, model yang
+       mengembalikan `nama_sekolah_jp: "amanah sakura japan"` membuat kolom
+       Indonesia kosong selamanya, dan CV mencetak kata Indonesia di 学歴.
+       Dijalankan SEBELUM `aiData` dan `buildRiwayatSlots`, jadi JSON dan kolom
+       slot menerima nilai yang sudah benar. */
+    rapikanBarisJpArray(d.pendidikan);
+    rapikanBarisJpArray(d.pekerjaan);
+    rapikanBarisJpArray(d.keluarga);
     const aiData = {
       identitas: d.identitas || {},
       fisik: d.fisik || {},

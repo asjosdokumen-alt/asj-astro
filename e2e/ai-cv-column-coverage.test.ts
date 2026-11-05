@@ -165,3 +165,56 @@ describe('ai_data_json basi tidak boleh menimpa kolom', () => {
     expect((merged.wawancara as Record<string, unknown>).promosi_id).toBe('HANYA DI JSON');
   });
 });
+
+/**
+ * Nilai Indonesia di kunci `_jp` (terukur 2026-11-05, kandidat REIHAN).
+ *
+ * `ai_data_json.pendidikan[0]` berisi `nama_sekolah: ""` +
+ * `nama_sekolah_jp: "amanah sakura japan"`. Karena `buildMasterNested` membaca
+ * kolom dulu lalu jatuh ke JSON, form menampilkan nama sekolah di kotak
+ * "Nama Sekolah (JP)" dan kotak "(ID)" KOSONG — lalu CV mencetak kata Indonesia
+ * di 学歴. Penjaganya ada di sisi baca supaya data lama ikut benar tanpa
+ * menunggu migrasi.
+ */
+describe('baris riwayat: teks Indonesia di kunci _jp dipindahkan ke sisi ID', () => {
+  it('nama_sekolah_jp berisi teks Indonesia → pindah ke sekolah/nama_sekolah', () => {
+    const nested = buildMasterNested({
+      pendidikan_1_tingkat: 'SD',
+      ai_data_json: JSON.stringify({
+        pendidikan: [{ tingkat: 'SD', nama_sekolah: '', nama_sekolah_jp: 'amanah sakura japan' }],
+      }),
+    });
+    const baris = (nested.pendidikan as Record<string, unknown>[])[0];
+    expect(baris.sekolah).toBe('amanah sakura japan');
+    expect(baris.nama_sekolah).toBe('amanah sakura japan');
+    // Kolom Jepang dibersihkan — kosong lebih baik daripada teks Indonesia.
+    expect(String(baris.sekolah_jp || '')).toBe('');
+    expect(baris.nama_sekolah_jp).toBeUndefined();
+  });
+
+  it('nilai yang SUDAH kanji tidak disentuh', () => {
+    const nested = buildMasterNested({
+      pendidikan_1_tingkat: 'SD',
+      ai_data_json: JSON.stringify({
+        pendidikan: [{ tingkat: 'SD', nama_sekolah: 'SDN 2 SEMANDING', nama_sekolah_jp: 'セマンディング第2国立小学校' }],
+      }),
+    });
+    // Dua baris bisa terbentuk: baris kolom (kosong) dan baris JSON (berisi).
+    // Yang penting nilainya TIDAK hilang dan tidak berpindah sisi.
+    const semua = nested.pendidikan as Record<string, unknown>[];
+    expect(semua.some((r) => r.nama_sekolah_jp === 'セマンディング第2国立小学校')).toBe(true);
+  });
+
+  it('nilai Indonesia TIDAK menimpa sisi ID yang sudah terisi', () => {
+    const nested = buildMasterNested({
+      pendidikan_1_tingkat: 'SD',
+      pendidikan_1_nama_sekolah: 'SDN 2 SEMANDING',
+      ai_data_json: JSON.stringify({
+        pendidikan: [{ tingkat: 'SD', nama_sekolah: '', nama_sekolah_jp: 'amanah sakura japan' }],
+      }),
+    });
+    const baris = (nested.pendidikan as Record<string, unknown>[])[0];
+    expect(baris.nama_sekolah).toBe('SDN 2 SEMANDING');
+    expect(String(baris.sekolah_jp || '')).toBe('');
+  });
+});

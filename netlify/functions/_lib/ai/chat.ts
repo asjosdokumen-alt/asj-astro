@@ -12,6 +12,7 @@ import {
 import { geminiGenerate, parseJsonLoose } from './providers';
 import { isVipCatatan, unwrapPayloadArgs, lastHistory, sanitizePromptField } from './interview-shared';
 import { AppError, safeError } from '../kernel/errors';
+import { adaHurufJepang } from '../jp-text';
 
 /**
  * Turn an AI-layer failure into the outcome the client sees.
@@ -213,7 +214,16 @@ export function kumpulkanTugasTerjemah(
     if (!t || t.length > MAKS_TEKS_TERJEMAH) return;
     tugas.push({ index: tugas.length, teks: t, path, jenis });
   };
-  const kosong = (path: string[]) => timpa || !getNested(data, path).trim();
+  /**
+   * "Sudah terisi" = mengandung huruf Jepang, BUKAN sekadar tidak kosong.
+   *
+   * Sebelum 2026-11-05 pemeriksanya hanya `.trim() !== ''`. Akibatnya kolom
+   * `_jp` yang berisi teks INDONESIA (mis. `nama_sekolah_jp: "amanah sakura
+   * japan"`) dianggap selesai — jadi tombol Terjemahkan MELEWATINYA selamanya,
+   * dan CV mencetak kata Indonesia di kolom kanji. Sekarang nilai tanpa huruf
+   * Jepang dianggap kosong: ia diterjemahkan ulang dari sisi Indonesia-nya.
+   */
+  const kosong = (path: string[]) => timpa || !adaHurufJepang(getNested(data, path));
   for (const pair of AI_ID_JP_PAIRS) {
     const idVal = getNested(data, pair.idPath).trim();
     if (!idVal || !kosong(pair.jpPath)) continue;
@@ -233,11 +243,11 @@ export function kumpulkanTugasTerjemah(
       const row = arr[i] || {};
       const idVal = String(row[afp.idKey] || '').trim();
       const jpVal = String(row[afp.jpKey] || '').trim();
-      if (idVal && (timpa || !jpVal)) tambah(idVal, [afp.type, String(i), afp.jpKey], afp.jenis ?? 'jp');
+      if (idVal && (timpa || !adaHurufJepang(jpVal))) tambah(idVal, [afp.type, String(i), afp.jpKey], afp.jenis ?? 'jp');
       // Nama anggota keluarga → katakana, terpisah dari kolom hubungan/pekerjaan.
       if (afp.type === 'keluarga') {
         const nama = String(row.nama || '').trim();
-        if (nama && (timpa || !String(row.katakana || '').trim())) {
+        if (nama && (timpa || !adaHurufJepang(String(row.katakana || '').trim()))) {
           tambah(nama, [afp.type, String(i), 'katakana'], 'kata');
         }
       }
