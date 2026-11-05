@@ -92,7 +92,8 @@
     "verify:env:budget": "node scripts/ci/verify-env.mjs --profile production --budget",
     "verify:settings-limit": "vitest run netlify/functions/_lib/db/settings-limit.test.ts",
     "verify:workflows": "node scripts/ci/verify-workflows.mjs",
-    "e2e:scroll-motion": "node scripts/ci/with-timeout.mjs 5 -- node e2e/test-scroll-motion.mjs"
+    "e2e:scroll-motion": "node scripts/ci/with-timeout.mjs 5 -- node e2e/test-scroll-motion.mjs",
+    "load:smoke": "node scripts/load/smoke.mjs"
   },
   "dependencies": {
     "@astrojs/netlify": "^6.6.5",
