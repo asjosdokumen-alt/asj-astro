@@ -7,7 +7,7 @@
 // files, stop at first error with the original message + failing file key.
 // ==========================================
 import { describe, it, expect, vi } from "vitest";
-import { buatPublicId, uploadMany, UploadCollectionError } from "./cloudinary";
+import { buatPublicId, kompresGambar, uploadMany, UploadCollectionError } from "./cloudinary";
 
 const f1 = new File(["a"], "photo.jpg", { type: "image/jpeg" });
 const f2 = new File(["b"], "jft.pdf", { type: "application/pdf" });
@@ -81,5 +81,40 @@ describe("uploadMany — uploader yang di-inject tetap dipanggil (file) saja", (
     await uploadMany({ ktp: f1 }, { ktp: "ktpFile" }, upload, { nama: "Agus Khoci" });
     expect(upload).toHaveBeenCalledWith(f1);
     expect(upload).toHaveBeenCalledTimes(1);
+  });
+});
+
+/* ── Kompresi foto sebelum unggah (2026-11-05) ──────────────────────────────
+ * Tidak ada jalur unggah yang mengecilkan foto: kamera HP 3–8 MB naik apa
+ * adanya. Di jaringan seluler itu puluhan detik per unggahan. Kompresi dipasang
+ * di SATU titik (`uploadToCloudinary`), jadi tes ini menjaga tiga janji:
+ * berkas non-gambar tidak disentuh, gambar kecil tidak disentuh, dan kegagalan
+ * kompresi TIDAK PERNAH menggagalkan unggahan.
+ */
+describe("kompresGambar — hanya foto besar, dan tidak boleh pernah gagal", () => {
+  const berkas = (nama: string, tipe: string, ukuran: number) =>
+    new File([new Uint8Array(ukuran)], nama, { type: tipe });
+
+  it("dokumen non-gambar dilewati apa adanya", async () => {
+    const pdf = berkas("ktp.pdf", "application/pdf", 900_000);
+    expect(await kompresGambar(pdf)).toBe(pdf);
+  });
+
+  it("PNG dilewati (bisa punya transparansi)", async () => {
+    const png = berkas("logo.png", "image/png", 900_000);
+    expect(await kompresGambar(png)).toBe(png);
+  });
+
+  it("foto kecil dilewati — tidak ada gunanya mengecilkan 200 KB", async () => {
+    const kecil = berkas("foto.jpg", "image/jpeg", 200_000);
+    expect(await kompresGambar(kecil)).toBe(kecil);
+  });
+
+  it("foto besar tanpa canvas/createImageBitmap → berkas asli, bukan error", async () => {
+    // jsdom tidak menyediakan keduanya; ini justru menguji jalur fallback yang
+    // dipakai browser lama.
+    const besar = berkas("foto.jpg", "image/jpeg", 3_000_000);
+    const hasil = await kompresGambar(besar);
+    expect(hasil).toBe(besar);
   });
 });

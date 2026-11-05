@@ -18,7 +18,7 @@ import { useState, useEffect } from 'preact/hooks';
 import { useStore } from '@nanostores/preact';
 import { showToast } from '../Toast';
 import { t, langStore } from '../../store/i18n';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadToCloudinary, buatPublicId } from '../../lib/cloudinary';
 import { api } from '../../lib/apiClient';
 import { authStore } from '../../store/authReactive';
 import Icon from '../ui/Icon';
@@ -104,11 +104,15 @@ export default function TabTambah() {
       let templateCv = '-';
       let pamflet = '-';
       if (templateFile) {
-        const url = await uploadToCloudinary(templateFile);
+        const url = await uploadToCloudinary(templateFile, {
+          publicId: buatPublicId('loker', 'template'),
+        });
         if (url) templateCv = url;
       }
       if (pamfletFile) {
-        const url = await uploadToCloudinary(pamfletFile);
+        const url = await uploadToCloudinary(pamfletFile, {
+          publicId: buatPublicId('loker', 'pamflet'),
+        });
         if (url) pamflet = url;
       }
       const arrLok = lokasi.slice();

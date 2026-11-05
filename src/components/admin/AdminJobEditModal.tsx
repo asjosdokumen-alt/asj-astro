@@ -34,7 +34,7 @@ import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 import { api } from '../../lib/apiClient';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadToCloudinary, buatPublicId } from '../../lib/cloudinary';
 import { showToast } from '../Toast';
 import RincianBiayaModal, { parseRincianState, rincianSummary } from './RincianBiayaModal';
 
@@ -148,11 +148,15 @@ export default function AdminJobEditModal({ job, onClose, onSave, closing = fals
       let templateCv = '-';
       let pamflet = '-';
       if (templateFile) {
-        const url = await uploadToCloudinary(templateFile);
+        const url = await uploadToCloudinary(templateFile, {
+          publicId: buatPublicId(job.code || 'loker', 'template'),
+        });
         if (url) templateCv = url;
       }
       if (pamfletFile) {
-        const url = await uploadToCloudinary(pamfletFile);
+        const url = await uploadToCloudinary(pamfletFile, {
+          publicId: buatPublicId(job.code || 'loker', 'pamflet'),
+        });
         if (url) pamflet = url;
       }
       const payload = {

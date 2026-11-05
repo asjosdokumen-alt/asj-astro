@@ -103,8 +103,7 @@ asj-astro/
 │   │   ├── supabase.ts          # Supabase client singleton
 │   │   ├── apiClient.ts         # HMAC fetch wrapper
 │   │   ├── schemas.ts           # Zod validation schemas
-│   │   ├── fileUtils.ts         # File validation + compression
-│   │   └── useDraft.ts          # Auto-save hook
+│   │   └── cloudinary.ts        # Unggah ke Cloudinary + kompresi foto
 │   ├── layouts/
 │   │   └── BaseLayout.astro     # HTML shell + SW registration
 │   ├── pages/                   # 11 routes

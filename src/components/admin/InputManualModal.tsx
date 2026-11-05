@@ -13,7 +13,7 @@ import { useOverlay } from '../ui/useOverlay';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
 import { showToast } from '../Toast';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadToCloudinary, buatPublicId } from '../../lib/cloudinary';
 
 // Props: no longer needed — reads from store directly
 // Kept minimal for backward compat
@@ -115,7 +115,9 @@ export default function InputManualModal() {
       ];
       for (const d of mainDocs) {
         if (d.file) {
-          const url = await uploadToCloudinary(d.file);
+          const url = await uploadToCloudinary(d.file, {
+            publicId: buatPublicId(nama || 'kandidat', d.label),
+          });
           if (!url) throw new Error('Cloudinary tidak mengembalikan URL.');
           files.push({ label: d.label, name: d.file.name, url });
         }
@@ -153,7 +155,9 @@ export default function InputManualModal() {
       for (const d of extraDocs) {
         if (!d.file) continue;
         try {
-          const url = await uploadToCloudinary(d.file);
+          const url = await uploadToCloudinary(d.file, {
+            publicId: buatPublicId(namaUpper, d.type),
+          });
           if (!url) continue;
           // `silent: true` — catch di bawah menyebut JENIS dokumen yang gagal
           // ("Gagal upload <jenis>."), konteks yang tidak mungkin diketahui

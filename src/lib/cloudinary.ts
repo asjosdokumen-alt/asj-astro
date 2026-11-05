@@ -47,12 +47,64 @@ export function buatPublicId(nama: string, jenis: string, waktu = Date.now()): s
  * Cloudinary mengarang dari nama berkas unggahan — terukur menghasilkan
  * `nama_TG630ASJcv_dpgghx.xlsx` yang tidak bisa dibaca maupun diurutkan.
  */
+/**
+ * Perkecil foto SEBELUM diunggah.
+ *
+ * KENAPA (2026-11-05): tidak ada satu pun jalur unggah yang mengecilkan foto.
+ * Foto kamera HP 3–8 MB naik apa adanya, jadi di jaringan seluler kandidat —
+ * audiens utama portal ini — satu unggah bisa puluhan detik, dan Cloudinary
+ * menyimpan byte yang tidak pernah dipakai: CV hanya butuh wajah, bukan 4000 px.
+ *
+ * Batasnya sengaja konservatif supaya tidak merusak apa pun:
+ *   • hanya JPEG/HEIC/WebP (PNG bisa punya transparansi, SVG bukan raster, GIF
+ *     bisa beranimasi — ketiganya dilewati);
+ *   • hanya berkas > 500 KB (foto kecil tidak perlu diutak-atik);
+ *   • sisi terpanjang maksimal 1600 px, kualitas 0.82 — masih tajam untuk cetak
+ *     CV ukuran passport;
+ *   • kalau hasilnya TIDAK lebih kecil, atau canvas gagal (browser lama, HEIC
+ *     yang tidak bisa didekode), berkas ASLI yang dipakai. Kompresi tidak boleh
+ *     pernah menggagalkan unggahan.
+ */
+const MAKS_SISI_PIKSEL = 1600;
+const AMBANG_KOMPRES_BYTE = 500 * 1024;
+
+export async function kompresGambar(file: File): Promise<File> {
+  try {
+    if (!file || !String(file.type).startsWith('image/')) return file;
+    if (/png|svg|gif/i.test(file.type)) return file;
+    if (file.size <= AMBANG_KOMPRES_BYTE) return file;
+    if (typeof document === 'undefined' || typeof createImageBitmap !== 'function') return file;
+
+    const bitmap = await createImageBitmap(file);
+    const skala = Math.min(1, MAKS_SISI_PIKSEL / Math.max(bitmap.width, bitmap.height));
+    const lebar = Math.max(1, Math.round(bitmap.width * skala));
+    const tinggi = Math.max(1, Math.round(bitmap.height * skala));
+    const kanvas = document.createElement('canvas');
+    kanvas.width = lebar;
+    kanvas.height = tinggi;
+    const ctx = kanvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, lebar, tinggi);
+    const blob = await new Promise<Blob | null>((selesai) => kanvas.toBlob(selesai, 'image/jpeg', 0.82));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, {
+      type: 'image/jpeg',
+      lastModified: file.lastModified,
+    });
+  } catch {
+    return file;
+  }
+}
+
 export async function uploadToCloudinary(
   file: File,
   opts?: { uploadPreset?: string; endpoint?: string; publicId?: string },
   maxRetries = 3
 ): Promise<string> {
   if (!file) throw new Error('Tidak ada file untuk diupload ke Cloudinary.');
+  // Setiap unggahan gambar lewat sini, jadi satu titik ini mengecilkan foto
+  // untuk SEMUA jalur (CV Mini, CV AI, pemberkasan, lamaran, admin).
+  file = await kompresGambar(file);
   const preset = opts?.uploadPreset || CLOUDINARY_UPLOAD_PRESET;
   const endpoint = opts?.endpoint || cloudinaryEndpoint();
 

@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'preact/hooks';
 import { showToast } from '../Toast';
 import { apiClient } from '../../lib/apiClient';
 import { validate, registerSchema, emailSchema } from '../../lib/schemas';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadToCloudinary, buatPublicId } from '../../lib/cloudinary';
 import { validateFile } from '../../lib/uploadGuard';
 import { t, useLang } from '../../store/i18n';
 import Icon from '../ui/Icon';
@@ -278,7 +278,9 @@ export default function ApplyFullForm() {
       for (const [key, u] of Object.entries(uploads)) {
         if (!u.file) continue;
         showToast('Mengunggah ' + key.toUpperCase() + '...', 'info');
-        const url = await uploadToCloudinary(u.file);
+        const url = await uploadToCloudinary(u.file, {
+          publicId: buatPublicId(form.nama || 'pelamar', key),
+        });
         if (key.indexOf('extra_') === 0) {
           extraFiles.push({ name: key.slice(6), url });
         } else {

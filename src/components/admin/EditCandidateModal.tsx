@@ -3,7 +3,7 @@ import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
 import api from '../../lib/apiClient';
 import { showToast } from '../Toast';
-import { uploadToCloudinary } from '../../lib/cloudinary';
+import { uploadToCloudinary, buatPublicId } from '../../lib/cloudinary';
 import { t } from '../../store/i18n';
 import DocumentPreviewModal, { driveFileId, isDriveFolder } from '../DocumentPreviewModal';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
@@ -234,7 +234,9 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
   const handleFileUpload = async (jenis: string, file: File) => {
     setUploading(jenis);
     try {
-      const url = await uploadToCloudinary(file);
+      const url = await uploadToCloudinary(file, {
+        publicId: buatPublicId(String(candidate.nama || 'kandidat'), jenis),
+      });
       if (!url) throw new Error('Cloudinary tidak mengembalikan URL.');
       const data = (await api.secure('simpanBerkasTahapan', [{
         wa: candidate.wa,
