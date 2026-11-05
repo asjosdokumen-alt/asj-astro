@@ -204,3 +204,36 @@ describe('bunyi() — satu AudioContext untuk seluruh halaman', () => {
     expect(nav.audioSession.type).toBe('playback');
   });
 });
+
+/* ── Cakupan bab 1–50 (2026-11-05) ─────────────────────────────────────────
+ * Pemilik: "permainan sudah mantap tapi takut kena soal yang itu-itu saja".
+ * Bank lama 47 soal hanya menyentuh bab 4–35. Blok baru menambah 2 soal per
+ * bab 1–50 + 10 Hell, dan tes ini menjaga agar tidak ada bab yang hilang lagi
+ * saat bank dirapikan.
+ */
+describe('arcade — cakupan bank soal', () => {
+  it('setiap bab 1–50 punya minimal satu soal', () => {
+    const bab = new Set<number>();
+    for (const s of COMBO_SOAL) {
+      const m = s.bab.match(/Bab\s+(\d+)/);
+      if (m) bab.add(Number(m[1]));
+    }
+    const hilang: number[] = [];
+    for (let i = 1; i <= 50; i++) if (!bab.has(i)) hilang.push(i);
+    expect(hilang).toEqual([]);
+  });
+
+  it('tidak ada kalimat Indonesia yang kembar', () => {
+    const indo = COMBO_SOAL.map((s) => s.indo);
+    expect(new Set(indo).size).toBe(indo.length);
+  });
+
+  it('tidak ada kartu kembar di dalam satu kalimat', () => {
+    // Kartu dinilai berdasarkan teksnya (`kartuBenar` membandingkan `jp`), jadi
+    // dua kartu berteks sama membuat posisi kedua menerima kartu yang salah.
+    for (const s of COMBO_SOAL) {
+      const jp = s.urutan.map((k) => k.jp);
+      expect(new Set(jp).size, `${s.indo}: kartu kembar`).toBe(jp.length);
+    }
+  });
+});
