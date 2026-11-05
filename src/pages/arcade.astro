@@ -23,17 +23,29 @@ import ArcadeGame from '../components/candidate/ArcadeGame.tsx';
 
   <FormToolbar client:only="preact" titleKey="toolbar.arcade" backTo="dashboard" />
   <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
-    <div class="max-w-[1100px] mx-auto px-3">
-      <section class="mb-4">
-        <h1 class="text-xl md:text-2xl font-bold text-fg mb-1">Arcade Latihan Jepang</h1>
-        <p class="cetak-sembunyi text-fg-muted text-[12.5px] leading-relaxed">
-          Dua latihan refleks, bukan hafalan daftar kata. <b>Genba Order Rush</b>: senior
-          memberi perintah kerja dalam bahasa Jepang (dengan suara), dan kamu menaruh barang
-          yang benar di rak yang benar sebelum waktunya habis — melatih <i>choukai</i> dan
-          pemahaman posisi. <b>Kotoba Combo Builder</b>: susun kalimat dari kartu kata, dengan
-          partikel yang tepat (は・が・を・に・で・へ・と); salah partikel memutus kombo.
-          Kata dan pola yang membuatmu salah dicatat di bawah sebagai bahan ulangan.
+    <div class="max-w-md mx-auto px-3">
+      {/* Kolom halaman disamakan dengan lebar permainan (max-w-md), dan paragraf
+          pengantar dipersingkat. Terukur 2026-11-05 di 390×844: pengantar lama
+          enam baris + h1 mendorong meja kerja ke BAWAH LIPATAN, sehingga pemain
+          harus menggulir di tengah ronde yang waktunya 8 detik. Teks lengkapnya
+          tetap ada, di dalam <details>. */}
+      <section class="mb-3">
+        <h1 class="text-lg font-bold text-fg mb-1">Arcade Latihan Jepang</h1>
+        <p class="cetak-sembunyi text-fg-muted text-[12px] leading-snug">
+          Dua latihan refleks: <b>Genba Order Rush</b> (dengar perintah, taruh barang) dan
+          <b>Kotoba Combo Builder</b> (susun kalimat).
         </p>
+        <details class="cetak-sembunyi mt-1.5 text-[11px] text-fg-muted">
+          <summary class="cursor-pointer font-bold text-accent-sky">Detail latihan</summary>
+          <p class="mt-1 leading-relaxed">
+            Keduanya bukan hafalan daftar kata. <b>Genba Order Rush</b> melatih <i>choukai</i> dan
+            pemahaman posisi: senior memberi perintah kerja dalam bahasa Jepang (dengan suara), dan
+            kamu menaruh barang yang benar di rak yang benar sebelum waktunya habis.
+            <b>Kotoba Combo Builder</b> melatih susunan partikel (は・が・を・に・で・へ・と); salah
+            partikel memutus kombo. Kata dan pola yang membuatmu salah dicatat di bawah sebagai bahan
+            ulangan.
+          </p>
+        </details>
       </section>
       <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
         Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.

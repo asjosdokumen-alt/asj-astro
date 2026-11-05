@@ -133,16 +133,13 @@ export interface PilihanGenba {
 const pilih = <T>(arr: readonly T[], rng: () => number): T => arr[Math.floor(rng() * arr.length) % arr.length];
 
 /**
- * Rakit satu perintah acak.
+ * Rakit kalimat dari tiga potongan yang SUDAH pasti.
  *
- * Urutan kalimatnya tetap: `[warna] [barang] を [lokasi] に おいてください`.
- * Partikel `を` menandai objek, `に` menandai tujuan penempatan — keduanya
- * dipakai benar, bukan sekadar ditempel.
+ * Dipakai dua jalur: `buatPerintah` (undian) dan `perintahDari` (latihan ulang
+ * dari catatan salah). Kalau perakitan kalimat ditulis dua kali, satu perbaikan
+ * partikel bisa masuk ke satu jalur saja — dan latihan justru yang ketinggalan.
  */
-export function buatPerintah(rng: () => number = Math.random): Perintah {
-  const warna = pilih(GENBA_WARNA, rng);
-  const barang = pilih(GENBA_BARANG, rng);
-  const zona = pilih(GENBA_ZONA, rng);
+function rakitPerintah(warna: WarnaGenba, barang: BarangGenba, zona: ZonaGenba): Perintah {
   return {
     warna,
     barang,
@@ -153,25 +150,63 @@ export function buatPerintah(rng: () => number = Math.random): Perintah {
 }
 
 /**
- * Enam pilihan untuk meja kerja: SATU yang benar + lima pengecoh unik, lalu diacak.
+ * Rakit satu perintah acak.
+ *
+ * Urutan kalimatnya tetap: `[warna] [barang] を [lokasi] に おいてください`.
+ * Partikel `を` menandai objek, `に` menandai tujuan penempatan — keduanya
+ * dipakai benar, bukan sekadar ditempel.
+ */
+export function buatPerintah(rng: () => number = Math.random): Perintah {
+  return rakitPerintah(pilih(GENBA_WARNA, rng), pilih(GENBA_BARANG, rng), pilih(GENBA_ZONA, rng));
+}
+
+/**
+ * Perintah dari ID yang sudah diketahui — untuk mode "latih yang salah".
+ *
+ * Mengembalikan `null` bila salah satu ID tidak dikenal. Itu bukan keanehan
+ * teoretis: catatan salah dari versi sebelum ini hanya menyimpan teks, dan
+ * entri lama harus DILEWATI, bukan membuat seluruh latihan gagal.
+ */
+export function perintahDari(warnaId: string, barangId: string, zonaId: string): Perintah | null {
+  const warna = GENBA_WARNA.find((w) => w.id === warnaId);
+  const barang = GENBA_BARANG.find((b) => b.id === barangId);
+  const zona = GENBA_ZONA.find((z) => z.id === zonaId);
+  if (!warna || !barang || !zona) return null;
+  return rakitPerintah(warna, barang, zona);
+}
+
+/**
+ * Pilihan untuk meja kerja: SATU yang benar + pengecoh unik, lalu diacak.
  *
  * `kunci` sengaja `warna_barang` — bukan indeks — supaya pilihan yang benar
  * tetap bisa dikenali setelah daftarnya diacak.
  *
+ * `jumlah` default 6 karena itu yang dipakai level Normal. Ia bisa naik per
+ * gelombang (lihat `pilihanShift`) supaya beban kerja ikut bertambah, bukan
+ * hanya waktunya yang memendek.
+ *
  * PERBAIKAN BUG: versi lama menaruh barang yang benar di `hasil[0]` lalu hanya
- * melakukan `.push()` untuk 5 pengecoh tanpa mengacak `hasil`, sehingga barang
+ * melakukan `.push()` untuk pengecoh tanpa mengacak `hasil`, sehingga barang
  * yang benar SELALU berada di pojok kiri atas meja kerja. Sekarang `hasil`
  * dikocok memakai Fisher–Yates dengan `rng` yang sama.
  */
-export function buatPilihan(perintah: Perintah, rng: () => number = Math.random): PilihanGenba[] {
+export function buatPilihan(
+  perintah: Perintah,
+  rng: () => number = Math.random,
+  jumlah = 6,
+): PilihanGenba[] {
   const kunciBenar = `${perintah.warna.id}_${perintah.barang.id}`;
   const hasil: PilihanGenba[] = [{ kunci: kunciBenar, warna: perintah.warna, barang: perintah.barang }];
   const dipakai = new Set([kunciBenar]);
+  /* Tidak mungkin meminta lebih banyak pilihan daripada kombinasi yang ada
+     (6 × 24 = 144). Batas ini menjaga pemanggil yang salah dari loop panjang,
+     bukan dari hasil yang salah. */
+  const target = Math.min(Math.max(2, Math.round(jumlah)), GENBA_WARNA.length * GENBA_BARANG.length);
 
   /* Batas percobaan: dengan 6×24 = 144 kombinasi, enam pilihan selalu bisa
      dicapai; batas ini hanya menjaga loop tidak berputar selamanya kalau
      daftar sumbernya suatu saat dipersempit. */
-  for (let n = 0; n < 200 && hasil.length < 6; n++) {
+  for (let n = 0; n < 400 && hasil.length < target; n++) {
     const warna = pilih(GENBA_WARNA, rng);
     const barang = pilih(GENBA_BARANG, rng);
     const kunci = `${warna.id}_${barang.id}`;
@@ -189,6 +224,190 @@ export function buatPilihan(perintah: Perintah, rng: () => number = Math.random)
 /** Benar hanya kalau barang DAN zona sama-sama tepat. */
 export function cekGenba(perintah: Perintah, kunciBarang: string, zonaId: string): boolean {
   return kunciBarang === `${perintah.warna.id}_${perintah.barang.id}` && zonaId === perintah.zona.id;
+}
+
+/* ── SHIFT: struktur, ekonomi, dan nilai ─────────────────────────────────────
+ *
+ * KENAPA ADA
+ * ----------
+ * Versi pertama berjalan TERUS sampai tiga kesalahan, jadi satu-satunya akhir
+ * yang mungkin adalah kalah. Itu bukan permainan, itu latihan yang diberi
+ * nyawa: pemain tidak pernah "selesai", tidak pernah tahu seberapa baik ia,
+ * dan tidak punya alasan untuk mengulang selain mengejar angka.
+ *
+ * Shift memberi tiga hal yang hilang itu: TUJUAN (12 pesanan), PENILAIAN
+ * (S/A/B/C), dan PEMBAYARAN (bonus + pengali tingkat). Semuanya dihitung di
+ * sini, bukan di komponen, supaya bisa diuji tanpa render.
+ */
+
+/**
+ * Tingkat kesulitan. TIDAK ada kunci-membuka: ini alat latihan, dan menahan
+ * siswa di level mudah sampai ia "lulus" membuat yang paling butuh latihan
+ * justru yang paling lama menunggu. Yang diberikan adalah bintang sebagai
+ * ukuran, bukan gerbang.
+ */
+export type TingkatGenba = 'magang' | 'reguler' | 'veteran';
+
+export interface AturanShift {
+  id: TingkatGenba;
+  /** Pesanan yang harus diselesaikan untuk MENANG. */
+  pesanan: number;
+  nyawa: number;
+  /** Batas waktu per gelombang (4 pesanan), dalam ms. */
+  durasi: readonly number[];
+  /** Jumlah barang di meja per gelombang. */
+  pilihan: readonly number[];
+  /** Jumlah rak yang DITAMPILKAN per gelombang (bukan seluruh 12). */
+  zona: readonly number[];
+  /** Pengali skor akhir — kerja yang lebih sulit dibayar lebih. */
+  pengali: number;
+}
+
+/**
+ * Tiga tingkat, dan angkanya dipilih supaya tiap tingkat punya kurva sendiri,
+ * bukan satu kurva yang dipercepat:
+ *
+ *   magang  — 8 pesanan, 4 nyawa, 9 dtk → 8 dtk, 4 → 6 barang, 4 rak.
+ *             Untuk hari pertama: waktu cukup untuk MENDENGAR dua kali.
+ *   reguler — 12 pesanan, 3 nyawa, 8 → 7 → 6 dtk, 6 → 6 → 9 barang,
+ *             4 → 4 → 6 rak. Kurva acuan; gelombang 3 sengaja menaikkan
+ *             jumlah barang DAN rak sambil memendekkan waktu, karena di lantai
+ *             kerja ketiganya terjadi bersamaan.
+ *   veteran — 12 pesanan, 2 nyawa, 6 → 5 → 4,5 dtk, 9 barang, 6 rak. Untuk
+ *             yang sudah hafal; satu kesalahan menghabiskan separuh nyawa.
+ *
+ * KENAPA RAK DI-SUBSET (bukan seluruh 12)
+ * --------------------------------------
+ * Versi pertama menggambar KEDUA BELAS rak sekaligus. Di layar 390×844 itu
+ * enam baris rak, dan meja kerja terdorong ke bawah lipatan — pemain harus
+ * menggulir di tengah permainan berwaktu 8 detik. Empat rak juga beban
+ * pemindaian yang wajar untuk satu perintah; dua belas membuat permainan
+ * mengukur ketelitian mata, bukan pemahaman.
+ */
+export const SHIFT_GENBA: Readonly<Record<TingkatGenba, AturanShift>> = {
+  magang: { id: 'magang', pesanan: 8, nyawa: 4, durasi: [9000, 8000], pilihan: [4, 6], zona: [4, 4], pengali: 1 },
+  reguler: { id: 'reguler', pesanan: 12, nyawa: 3, durasi: [8000, 7000, 6000], pilihan: [6, 6, 9], zona: [4, 4, 6], pengali: 1 },
+  veteran: { id: 'veteran', pesanan: 12, nyawa: 2, durasi: [6000, 5000, 4500], pilihan: [9, 9, 9], zona: [6, 6, 6], pengali: 1.5 },
+};
+
+/** Gelombang untuk pesanan ke-`n` (0-based). Satu gelombang = 4 pesanan. */
+export function gelombangShift(aturan: AturanShift, n: number): number {
+  const i = Math.floor(Math.max(0, n) / 4);
+  return Math.min(i, aturan.durasi.length - 1);
+}
+
+export function durasiShift(aturan: AturanShift, n: number): number {
+  return aturan.durasi[gelombangShift(aturan, n)] ?? 8000;
+}
+
+export function pilihanShift(aturan: AturanShift, n: number): number {
+  return aturan.pilihan[gelombangShift(aturan, n)] ?? 6;
+}
+
+export function zonaShift(aturan: AturanShift, n: number): number {
+  return aturan.zona[gelombangShift(aturan, n)] ?? 4;
+}
+
+/**
+ * Rak yang ditampilkan: SATU yang benar + pengecoh unik, lalu diacak.
+ *
+ * Sama seperti `buatPilihan`, jawaban benar tidak boleh selalu di posisi yang
+ * sama — pemain akan menghafal posisi, bukan membaca perintah.
+ */
+export function buatZona(perintah: Perintah, jumlah = 4, rng: () => number = Math.random): ZonaGenba[] {
+  const target = Math.min(Math.max(2, Math.round(jumlah)), GENBA_ZONA.length);
+  const hasil: ZonaGenba[] = [perintah.zona];
+  const dipakai = new Set([perintah.zona.id]);
+  for (let n = 0; n < 200 && hasil.length < target; n++) {
+    const z = pilih(GENBA_ZONA, rng);
+    if (dipakai.has(z.id)) continue;
+    dipakai.add(z.id);
+    hasil.push(z);
+  }
+  for (let i = hasil.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [hasil[i], hasil[j]] = [hasil[j], hasil[i]];
+  }
+  return hasil;
+}
+
+export interface PoinGenba {
+  /** Poin yang ditambahkan ke skor. */
+  tambah: number;
+  /** Bagian yang berasal dari kecepatan (0–50). */
+  bonusCepat: number;
+  pengali: number;
+}
+
+/**
+ * Poin satu pesanan benar.
+ *
+ * Dulu bonus kecepatan HANYA diberikan mulai kombo kedua, jadi jawaban cepat
+ * pertama bernilai 100 sementara yang kedua 150 — pemain membacanya sebagai
+ * bug, dan memang tidak ada alasan desain untuk itu. Sekarang bonus berlaku
+ * setiap jawaban; yang bertingkat adalah PENGALINYA.
+ *
+ *   dasar        100
+ *   cepat        round(50 × sisa waktu)   → 0–50
+ *   kombo ≥ 5    ×2
+ *   kombo ≥ 10   ×3   (batas, supaya skor tumbuh linear)
+ */
+export function poinGenba(sisaPersen: number, kombo: number): PoinGenba {
+  const sisa = Math.min(100, Math.max(0, sisaPersen));
+  const bonusCepat = Math.round((sisa / 100) * 50);
+  const pengali = kombo >= 10 ? 3 : kombo >= 5 ? 2 : 1;
+  return { tambah: (100 + bonusCepat) * pengali, bonusCepat, pengali };
+}
+
+export type NilaiShift = 'S' | 'A' | 'B' | 'C' | 'D';
+
+export interface RingkasShift {
+  /** `true` bila semua pesanan selesai; `false` bila nyawa habis. */
+  selesai: boolean;
+  benar: number;
+  salah: number;
+  /** Rata-rata sisa waktu saat menjawab benar, 0–100. */
+  sisaRata: number;
+}
+
+/**
+ * Nilai akhir shift.
+ *
+ * S menuntut DUA hal sekaligus — tanpa salah DAN cepat. Kalau hanya "tanpa
+ * salah", pemain bisa menunggu sampai sumbu hampir habis dan tetap dapat S;
+ * kalau hanya "cepat", menebak menjadi strategi yang menang.
+ */
+export function nilaiShift(r: RingkasShift): NilaiShift {
+  if (!r.selesai) return 'D';
+  const percobaan = r.benar + r.salah;
+  const akurasi = percobaan > 0 ? r.benar / percobaan : 0;
+  if (akurasi >= 1 && r.sisaRata >= 50) return 'S';
+  if (akurasi >= 0.9 && r.sisaRata >= 30) return 'A';
+  if (akurasi >= 0.75) return 'B';
+  return 'C';
+}
+
+/** Bintang per tingkat: S=3, A=2, B=1, C/D=0. Total maksimum 9. */
+export function bintangShift(nilai: NilaiShift): number {
+  if (nilai === 'S') return 3;
+  if (nilai === 'A') return 2;
+  if (nilai === 'B') return 1;
+  return 0;
+}
+
+/** Bonus menyelesaikan shift — sebanding dengan panjang shift, bukan nyawa. */
+export function bonusShift(aturan: AturanShift): number {
+  return 100 * aturan.pesanan;
+}
+
+/**
+ * Skor yang dicatat: bonus + pengali tingkat HANYA bila shift selesai.
+ * Kehabisan nyawa berarti pulang lebih awal — tidak ada bonus, tidak ada
+ * pengali.
+ */
+export function skorShift(skor: number, aturan: AturanShift, selesai: boolean): number {
+  if (!selesai) return skor;
+  return Math.round((skor + bonusShift(aturan)) * aturan.pengali);
 }
 
 /* ── GAME 2: rangkai kalimat ─────────────────────────────────────────────── */
@@ -2186,4 +2405,45 @@ export function kocokKartu(soal: SoalCombo, rng: () => number = Math.random): Ka
 export function kartuBenar(soal: SoalCombo, langkah: number, kartu: Kartu): boolean {
   const harap = soal.urutan[langkah];
   return !!harap && harap.jp === kartu.jp;
+}
+
+/* ── Combo: batas waktu, batas kombo, bonus kalimat ─────────────────────────
+ *
+ * KENAPA ADA
+ * ----------
+ * Combo tidak punya akhir dan tidak punya tekanan waktu: pemain bisa berhenti
+ * kapan saja, dan karena pengali naik tanpa batas, skornya tumbuh KUADRATIK
+ * terhadap jumlah kartu yang pernah diketuk. Papan peringkatnya karena itu
+ * mengukur kesabaran, bukan kemampuan. Tiga angka di bawah menutup ketiganya:
+ * batas waktu (ada taruhannya), batas pengali (skornya linear), dan bonus
+ * kalimat (yang dinilai adalah menyelesaikan, bukan mengetuk).
+ */
+
+export type LevelCombo = 'normal' | 'sulit' | 'hell';
+
+/** Pengali kombo berhenti di sini. Sebelumnya tak terbatas. */
+export const KOMBO_MAKS = 10;
+
+/**
+ * Batas waktu satu kalimat.
+ *
+ * 4 detik untuk membaca target + 3 detik per kartu. Kalimat 5 kartu = 19 dtk,
+ * 13 kartu (hell) = 43 dtk. Angkanya sengaja longgar untuk pembelajar: yang
+ * dikejar bukan kecepatan juru ketik, melainkan partikel yang benar.
+ */
+export function batasKalimat(soal: SoalCombo): number {
+  return (4 + 3 * soal.urutan.length) * 1000;
+}
+
+/**
+ * Bonus menyelesaikan kalimat: dasar menurut level + sisa waktu.
+ * `normal` 100, `sulit` 200, `hell` 300; sisa waktu menyumbang sampai 100 lagi.
+ */
+export function bonusKalimat(soal: SoalCombo, sisaPersen: number, level: LevelCombo): number {
+  const dasar = level === 'hell' ? 300 : level === 'sulit' ? 200 : 100;
+  const sisa = Math.min(100, Math.max(0, sisaPersen));
+  /* Skala dibuat dari panjang kalimat supaya kalimat 13 kartu tidak dihargai
+     sama dengan kalimat 5 kartu hanya karena sisa waktunya penuh. */
+  const cepat = Math.round((sisa / 100) * 100 * (soal.urutan.length / 5));
+  return dasar + cepat;
 }

@@ -11,11 +11,26 @@ import {
   GENBA_WARNA,
   GENBA_ZONA,
   COMBO_SOAL,
+  SHIFT_GENBA,
   buatPerintah,
   buatPilihan,
   cekGenba,
   kocokKartu,
   kartuBenar,
+  perintahDari,
+  gelombangShift,
+  durasiShift,
+  pilihanShift,
+  zonaShift,
+  buatZona,
+  poinGenba,
+  nilaiShift,
+  bintangShift,
+  bonusShift,
+  skorShift,
+  KOMBO_MAKS,
+  batasKalimat,
+  bonusKalimat,
 } from './arcade';
 
 /** RNG deterministik: urutan yang sama setiap kali, supaya tes tidak undian. */
@@ -235,5 +250,160 @@ describe('arcade — cakupan bank soal', () => {
       const jp = s.urutan.map((k) => k.jp);
       expect(new Set(jp).size, `${s.indo}: kartu kembar`).toBe(jp.length);
     }
+  });
+});
+
+describe('arcade — struktur shift Genba', () => {
+  it('tiga tingkat, dan tiap tingkat punya kurva sendiri', () => {
+    /* Yang dijaga: setiap tingkat WAJIB memendekkan waktu antar gelombang dan
+       tidak pernah menambah nyawa seiring naiknya tingkat. Tanpa invarian ini,
+       "veteran" bisa jadi lebih mudah daripada "reguler" tanpa satu pun error. */
+    const tingkat = Object.values(SHIFT_GENBA);
+    expect(tingkat).toHaveLength(3);
+    for (const a of tingkat) {
+      expect(a.durasi.length).toBe(a.pilihan.length);
+      expect(a.durasi.length).toBe(a.zona.length);
+      expect(a.durasi[a.durasi.length - 1]).toBeLessThan(a.durasi[0]);
+      for (let i = 1; i < a.durasi.length; i++) expect(a.durasi[i]).toBeLessThan(a.durasi[i - 1]);
+      expect(a.pesanan % 4).toBe(0); // tiap gelombang tepat 4 pesanan
+    }
+    expect(SHIFT_GENBA.veteran.nyawa).toBeLessThan(SHIFT_GENBA.reguler.nyawa);
+    expect(SHIFT_GENBA.veteran.pengali).toBeGreaterThan(SHIFT_GENBA.reguler.pengali);
+  });
+
+  it('gelombang berganti tiap 4 pesanan dan berhenti di gelombang terakhir', () => {
+    const a = SHIFT_GENBA.reguler;
+    const gelombang = Array.from({ length: a.pesanan }, (_, i) => gelombangShift(a, i));
+    expect(gelombang).toEqual([0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2]);
+    /* Pesanan ke-99 tidak boleh menghasilkan `undefined` — timer tanpa angka
+       berarti `NaN`, dan `NaN <= 0` selalu false: sumbu tidak pernah habis. */
+    expect(durasiShift(a, 99)).toBe(a.durasi[a.durasi.length - 1]);
+    expect(pilihanShift(a, 99)).toBe(a.pilihan[a.pilihan.length - 1]);
+    expect(durasiShift(a, 0)).toBe(8000);
+    expect(durasiShift(a, 11)).toBe(6000);
+    expect(pilihanShift(a, 0)).toBe(6);
+    expect(pilihanShift(a, 11)).toBe(9);
+    expect(zonaShift(a, 0)).toBe(4);
+    expect(zonaShift(a, 11)).toBe(6);
+  });
+
+  it('rak yang ditampilkan: tepat sejumlah gelombang, unik, dan memuat jawaban', () => {
+    const p = buatPerintah(rngDari([0.1, 0.2, 0.3]));
+    for (const n of [4, 6]) {
+      const rak = buatZona(p, n, rngDari([0.05, 0.3, 0.6, 0.9, 0.15, 0.45]));
+      expect(rak).toHaveLength(n);
+      expect(new Set(rak.map((z) => z.id)).size).toBe(n);
+      expect(rak.some((z) => z.id === p.zona.id)).toBe(true);
+    }
+    /* Jawaban benar tidak boleh selalu di indeks 0 — pemain akan menghafal
+       posisi, bukan membaca perintah. */
+    const posisi = [0.1, 0.4, 0.7, 0.9].map((s) =>
+      buatZona(p, 4, rngDari([s, (s + 0.3) % 1, (s + 0.6) % 1, (s + 0.1) % 1])).findIndex(
+        (z) => z.id === p.zona.id,
+      ),
+    );
+    expect(new Set(posisi).size).toBeGreaterThan(1);
+    /* Jumlah di luar jangkauan dijepit, bukan menghasilkan array kosong. */
+    expect(buatZona(p, 1).length).toBe(2);
+    expect(buatZona(p, 99).length).toBe(GENBA_ZONA.length);
+  });
+
+  it('perintahDari merakit kalimat yang sama dan menolak ID asing', () => {
+    const p = perintahDari('akai', 'hako', 'ue');
+    expect(p?.jp).toBe('あかい はこ を うえ の たな に おいてください');
+    /* Entri catatan lama tidak punya ID sama sekali; `perintahDari` harus
+       mengembalikan null supaya pemanggil melewatinya, bukan melempar. */
+    expect(perintahDari('', '', '')).toBeNull();
+    expect(perintahDari('akai', 'hako', 'bukan-zona')).toBeNull();
+  });
+
+  it('buatPilihan menghormati jumlah yang diminta, tetap unik dan memuat jawaban', () => {
+    const p = buatPerintah(rngDari([0.1, 0.2, 0.3]));
+    const kunci = `${p.warna.id}_${p.barang.id}`;
+    /* RNG di sini harus BENAR-BENAR beragam: `rngDari` memutar daftar pendek,
+       dan dengan daftar sependek itu kombinasi warna×barang yang unik habis
+       sebelum sembilan pilihan — kegagalannya akan terbaca seperti bug
+       `buatPilihan`, padahal fixture-nya yang miskin. */
+    const rngLcg = (biji: number) => {
+      let s = biji >>> 0;
+      return () => {
+        s = (s * 1664525 + 1013904223) >>> 0;
+        return s / 4294967296;
+      };
+    };
+    for (const n of [4, 6, 9]) {
+      const opsi = buatPilihan(p, rngLcg(7 + n), n);
+      expect(opsi).toHaveLength(n);
+      expect(new Set(opsi.map((o) => o.kunci)).size).toBe(n);
+      expect(opsi.some((o) => o.kunci === kunci)).toBe(true);
+    }
+  });
+
+  it('poin: bonus kecepatan berlaku sejak jawaban PERTAMA, pengali bertingkat', () => {
+    /* Regresi yang dijaga: dulu `bonusCepat` hanya diberikan bila kombo >= 2,
+       sehingga jawaban cepat pertama bernilai 100 dan kedua 150. */
+    expect(poinGenba(100, 1)).toEqual({ tambah: 150, bonusCepat: 50, pengali: 1 });
+    expect(poinGenba(0, 1)).toEqual({ tambah: 100, bonusCepat: 0, pengali: 1 });
+    expect(poinGenba(100, 4).tambah).toBe(150); // belum fever
+    expect(poinGenba(100, 5)).toEqual({ tambah: 300, bonusCepat: 50, pengali: 2 });
+    expect(poinGenba(100, 9).pengali).toBe(2);
+    expect(poinGenba(100, 10)).toEqual({ tambah: 450, bonusCepat: 50, pengali: 3 });
+    /* Batas: kombo 50 tidak boleh memberi ×5. Skor harus tumbuh linear. */
+    expect(poinGenba(100, 50).pengali).toBe(3);
+    /* Nilai di luar 0–100 (timer yang dihitung ulang) tidak boleh melewati 50. */
+    expect(poinGenba(140, 1).bonusCepat).toBe(50);
+    expect(poinGenba(-20, 1).bonusCepat).toBe(0);
+  });
+
+  it('nilai shift menuntut selesai, akurasi, DAN kecepatan', () => {
+    expect(nilaiShift({ selesai: false, benar: 11, salah: 1, sisaRata: 90 })).toBe('D');
+    expect(nilaiShift({ selesai: true, benar: 12, salah: 0, sisaRata: 60 })).toBe('S');
+    /* Sempurna tapi lambat BUKAN S: menunggu sumbu habis tidak boleh menang. */
+    expect(nilaiShift({ selesai: true, benar: 12, salah: 0, sisaRata: 20 })).toBe('B');
+    expect(nilaiShift({ selesai: true, benar: 11, salah: 1, sisaRata: 40 })).toBe('A');
+    expect(nilaiShift({ selesai: true, benar: 9, salah: 3, sisaRata: 20 })).toBe('B');
+    expect(nilaiShift({ selesai: true, benar: 6, salah: 6, sisaRata: 20 })).toBe('C');
+    expect(bintangShift('S')).toBe(3);
+    expect(bintangShift('A')).toBe(2);
+    expect(bintangShift('B')).toBe(1);
+    expect(bintangShift('C')).toBe(0);
+    expect(bintangShift('D')).toBe(0);
+  });
+
+  it('skor shift: bonus dan pengali tingkat hanya bila selesai', () => {
+    const reguler = SHIFT_GENBA.reguler;
+    const veteran = SHIFT_GENBA.veteran;
+    expect(bonusShift(reguler)).toBe(1200);
+    expect(skorShift(3000, reguler, true)).toBe(4200);
+    expect(skorShift(3000, reguler, false)).toBe(3000);
+    /* Level lebih sulit harus membayar lebih — kalau tidak, papan peringkat
+       bersama selalu dimenangkan pemain level termudah. */
+    expect(skorShift(3000, veteran, true)).toBe(Math.round((3000 + 1200) * 1.5));
+  });
+});
+
+describe('arcade — ekonomi Combo Kalimat', () => {
+  it('batas waktu tumbuh bersama panjang kalimat', () => {
+    const pendek = COMBO_SOAL.find((s) => s.urutan.length === 5);
+    const panjang = COMBO_SOAL.find((s) => s.urutan.length >= 10);
+    expect(pendek).toBeTruthy();
+    expect(panjang).toBeTruthy();
+    if (!pendek || !panjang) return;
+    expect(batasKalimat(pendek)).toBe((4 + 15) * 1000);
+    expect(batasKalimat(panjang)).toBeGreaterThan(batasKalimat(pendek));
+  });
+
+  it('bonus kalimat: level lebih sulit dan sisa waktu menaikkan bayaran', () => {
+    const s = COMBO_SOAL[0];
+    expect(bonusKalimat(s, 100, 'normal')).toBeGreaterThan(bonusKalimat(s, 0, 'normal'));
+    expect(bonusKalimat(s, 50, 'sulit')).toBeGreaterThan(bonusKalimat(s, 50, 'normal'));
+    expect(bonusKalimat(s, 50, 'hell')).toBeGreaterThan(bonusKalimat(s, 50, 'sulit'));
+    /* Sisa waktu di luar 0–100 tidak boleh menghasilkan bonus negatif. */
+    expect(bonusKalimat(s, -50, 'normal')).toBeGreaterThanOrEqual(100);
+    expect(bonusKalimat(s, 500, 'normal')).toBe(bonusKalimat(s, 100, 'normal'));
+  });
+
+  it('pengali kombo berhenti di batas, bukan tumbuh tanpa akhir', () => {
+    expect(KOMBO_MAKS).toBe(10);
   });
 });

@@ -19,8 +19,9 @@
 import { render, screen, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import ArcadeGame from '../src/components/candidate/ArcadeGame';
-import { COMBO_SOAL, GENBA_ZONA } from '../src/lib/arcade';
+import { COMBO_SOAL, GENBA_ZONA, SHIFT_GENBA } from '../src/lib/arcade';
 import { authStore } from '../src/store/authReactive';
+import { langStore } from '../src/store/i18n';
 
 /** `/arcade` bergerbang login; tes perilaku game harus masuk dulu. */
 function loginSebagaiSiswa() {
@@ -41,6 +42,10 @@ const cariTombol = (teks: string): HTMLButtonElement | undefined =>
 
 const perintahTeks = (): string =>
   document.querySelector('[data-testid="arcade-perintah"]')?.textContent?.trim() ?? '';
+
+/** ID rak yang SEDANG ditampilkan (subset 4–6, bukan seluruh 12). */
+const rakTampil = (): string[] =>
+  [...document.querySelectorAll('[data-zona]')].map((el) => el.getAttribute('data-zona') || '');
 
 describe('arcade — gerbang login', () => {
   afterEach(() => {
@@ -82,9 +87,16 @@ describe('arcade — Genba Order Rush', () => {
        dari yang diuji — kalau `を`/`に` hilang, siswa belajar kalimat yang salah. */
     expect(perintahTeks()).toMatch(/^\S+ \S+ を .+ に おいてください$/);
 
-    /* 4 rak + 6 barang = 10 tombol di area permainan, ditambah 2 tab. */
-    expect(cariTombol('Rak Atas')).toBeTruthy();
-    expect(cariTombol('Kotak Kanan')).toBeTruthy();
+    /* Sejak 2026-11-05 rak yang digambar adalah SUBSET (4 pada gelombang 1),
+       bukan kedua belas rak: di layar 390 px dua belas rak mendorong meja kerja
+       ke bawah lipatan. Yang perlu dibuktikan: jumlahnya sesuai aturan, dan rak
+       yang benar ADA di antaranya. */
+    const rak = rakTampil();
+    expect(rak).toHaveLength(4);
+    const zonaPerintah = perintahTeks().match(/を (.+?) に おいてください$/)?.[1] ?? '';
+    const idBenar = GENBA_ZONA.find((z) => z.jp === zonaPerintah)?.id;
+    expect(idBenar, `zona tak dikenal: ${zonaPerintah}`).toBeTruthy();
+    expect(rak).toContain(idBenar);
   });
 
   /* REGRESI: kehabisan waktu dengan nyawa masih tersisa dulu MENGAKIBATKAN
@@ -122,14 +134,19 @@ describe('arcade — Genba Order Rush', () => {
     /* Rak yang SALAH. Pemetaan ini WAJIB eksplisit: label di layar berbahasa
        Indonesia sedangkan `zona` berbahasa Jepang, jadi menebak dengan
        `includes()` selalu "tidak cocok" dan bisa memilih rak yang justru BENAR —
-       tesnya lalu lolos atau gagal karena undian, bukan karena perilaku. */
-    /* Pemetaan diambil dari DATA, bukan disalin: jumlah rak sudah bertambah dari
-       4 menjadi 8, dan daftar yang ditulis tangan akan diam-diam salah. */
-    const labelBenar = GENBA_ZONA.find((z) => z.jp === zona)?.id_;
-    expect(labelBenar, `zona tak dikenal: ${zona}`).toBeTruthy();
-    const salah = GENBA_ZONA.map((z) => z.id_).find((z) => z !== labelBenar);
-    const rakSalah = cariTombol(salah ?? 'Rak Atas');
-    expect(rakSalah).toBeTruthy();
+       tesnya lalu lolos atau gagal karena undian, bukan karena perilaku.
+
+       Sejak rak di-SUBSET, pilihan salah harus diambil dari rak yang benar-benar
+       dirender. Menulis daftar tangan (atau memakai seluruh GENBA_ZONA) membuat
+       tes mengetuk tombol yang tidak ada, dan `undefined?.click()` lolos tanpa
+       menguji apa pun. */
+    const idBenar = GENBA_ZONA.find((z) => z.jp === zona)?.id;
+    expect(idBenar, `zona tak dikenal: ${zona}`).toBeTruthy();
+    const idSalah = rakTampil().find((id) => id !== idBenar);
+    expect(idSalah, 'tidak ada rak salah di layar').toBeTruthy();
+    const labelSalah = GENBA_ZONA.find((z) => z.id === idSalah)?.id_;
+    const rakSalah = cariTombol(labelSalah ?? 'Rak Atas');
+    expect(rakSalah, `rak salah "${labelSalah}" tidak ada`).toBeTruthy();
     rakSalah?.click();
     /* Beri satu frame supaya state ter-commit — MENIRU manusia yang mengetuk dua
        kali berjarak ~100 ms. Dua klik dalam tick yang sama sama-sama membaca
@@ -175,8 +192,158 @@ describe('arcade — Genba Order Rush', () => {
        Versi pertama memeriksa teks perintah berganti — dan itu RAPUH: perintah
        dirakit acak, jadi undian bisa menghasilkan kalimat yang sama persis dan
        tesnya merah padahal perilakunya benar (terukur: gagal sekali di suite
-       penuh, lolos 3/3 sendirian). Skor tidak bisa kebetulan. */
-    await waitFor(() => expect(document.body.textContent || '').toContain('¥ 100'));
+       penuh, lolos 3/3 sendirian). Skor tidak bisa kebetulan.
+
+       Angka pastinya TIDAK dikunci: sejak 2026-11-05 bonus kecepatan berlaku
+       pada jawaban PERTAMA juga (0–50), jadi hasilnya 100–150. Mengunci ¥100
+       membuat tes ini merah setiap kali ekonomi skornya diubah, padahal yang
+       perlu dibuktikan adalah skornya NAIK. */
+    await waitFor(() => {
+      const angka = Number((document.body.textContent || '').match(/¥\s*(\d+)/)?.[1] ?? '0');
+      expect(angka).toBeGreaterThanOrEqual(100);
+    });
+  });
+
+  /* REGRESI 2026-11-05: versi pertama berjalan terus sampai tiga kesalahan,
+     jadi satu-satunya akhir yang mungkin adalah KALAH. Tes ini menuntut akhir
+     yang MENANG — 12 pesanan benar harus menghasilkan kartu hasil dengan nilai
+     dan bintang. Kalau `target` salah, atau `selesaikan` tidak pernah dipanggil,
+     shift berjalan selamanya dan tes ini kehabisan waktu. */
+  it('12 pesanan selesai mengakhiri shift dengan nilai dan bintang', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Mulai Shift')?.click();
+    await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
+
+    const total = SHIFT_GENBA.reguler.pesanan;
+    for (let n = 1; n <= total; n++) {
+      const m = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+      expect(m, `pesanan ${n} tak terbaca: ${perintahTeks()}`).toBeTruthy();
+      const [, warna, barang, zona] = m as RegExpMatchArray;
+      const kartu = cariTombol(`${warna}${barang}`);
+      expect(kartu, `pesanan ${n}: ${warna}${barang} tidak ada di meja`).toBeTruthy();
+      kartu?.click();
+      await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
+      const rak = cariTombol(zona);
+      expect(rak, `pesanan ${n}: rak "${zona}" tidak ada`).toBeTruthy();
+      rak?.click();
+      if (n < total) {
+        await waitFor(() => expect(document.body.textContent || '').toContain(`Pesanan ${n}/${total}`));
+      }
+    }
+
+    /* Kartu hasil, bukan layar permainan. `Nilai shift` hanya ada di kartu itu. */
+    await waitFor(() => expect(document.body.textContent || '').toContain('Nilai shift'));
+    const teks = document.body.textContent || '';
+    expect(teks).toContain(`${total}/${total}`);
+    expect(teks).toContain('Bonus shift');
+    /* Bintang S/A/B/C: minimal satu bintang terisi untuk shift tanpa salah. */
+    expect(teks).toContain('★');
+  }, 40000);
+
+  /* Koreksi yang bisa DILIHAT: dulu satu-satunya umpan balik salah adalah satu
+     baris teks. Sekarang rak yang benar ikut disorot, jadi siswa melihat
+     tujuan yang seharusnya — bukan hanya membaca kalimatnya. */
+  it('jawaban salah menyorot rak yang seharusnya', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Mulai Shift')?.click();
+    await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
+
+    const m = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+    expect(m).toBeTruthy();
+    const [, warna, barang, zona] = m as RegExpMatchArray;
+    cariTombol(`${warna}${barang}`)?.click();
+    await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
+
+    const idBenar = GENBA_ZONA.find((z) => z.jp === zona)?.id;
+    const idSalah = rakTampil().find((id) => id !== idBenar);
+    const labelSalah = GENBA_ZONA.find((z) => z.id === idSalah)?.id_;
+    cariTombol(labelSalah ?? 'Rak Atas')?.click();
+
+    const rakBenar = cariTombol(GENBA_ZONA.find((z) => z.id === idBenar)?.id_ ?? 'Rak Atas');
+    await waitFor(() => expect(rakBenar?.className).toContain('border-accent-emerald'));
+  }, 15000);
+
+  /* "Latih yang salah" adalah alasan catatan itu ada. Tanpa tes ini, tombolnya
+     bisa tampil dan tidak melakukan apa pun — dan tidak ada yang menangkapnya,
+     karena catatan salah tetap terlihat benar. */
+  it('tiga kesalahan membuka latihan ulang dari catatan', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Mulai Shift')?.click();
+    await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
+
+    for (let n = 0; n < 3; n++) {
+      const m = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+      expect(m, `kesalahan ${n + 1}: perintah tak terbaca`).toBeTruthy();
+      const [, warna, barang, zona] = m as RegExpMatchArray;
+      const idBenar = GENBA_ZONA.find((z) => z.jp === zona)?.id;
+      const idSalah = rakTampil().find((id) => id !== idBenar);
+      cariTombol(`${warna}${barang}`)?.click();
+      await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
+      cariTombol(GENBA_ZONA.find((z) => z.id === idSalah)?.id_ ?? 'Rak Atas')?.click();
+      /* Jeda tetap: setelah kesalahan ada jeda 1,1 dtk sebelum perintah baru,
+         dan `waitFor` akan lolos terlalu cepat pada pohon yang belum berubah. */
+      await new Promise((r) => setTimeout(r, 1400));
+    }
+
+    await waitFor(() => expect(document.body.textContent || '').toContain('Nilai shift'));
+    const latih = cariTombol('Latih yang salah');
+    expect(latih, 'tombol latih tidak ada di kartu hasil').toBeTruthy();
+    expect(latih?.disabled, 'latih harus aktif setelah ada catatan salah').toBe(false);
+    latih?.click();
+
+    /* Kembali ke playfield, dan label HUD menyatakan mode latihan. */
+    await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
+    expect(document.body.textContent || '').toContain('Latih yang salah');
+    expect(rakTampil()).toHaveLength(4);
+  }, 30000);
+});
+
+describe('arcade — hub dan tingkat', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    loginSebagaiSiswa();
+  });
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('tutorial tampil sekali, lalu tidak muncul lagi setelah dimengerti', async () => {
+    render(<ArcadeGame />);
+    expect(document.body.textContent || '').toContain('Cara kerja');
+    cariTombol('Mengerti')?.click();
+    /* Preact menaruh pembaruan state di microtask: membaca DOM tepat setelah
+       klik masih melihat pohon LAMA. `waitFor`, bukan `expect` langsung —
+       kegagalan pertama tes ini persis karena itu. */
+    await waitFor(() => expect(document.body.textContent || '').not.toContain('Cara kerja'));
+
+    /* Render ulang = kunjungan berikutnya. Kalau penanda tidak tersimpan,
+       tutorial akan muncul lagi dan tes ini menangkapnya. */
+    cleanup();
+    render(<ArcadeGame />);
+    expect(document.body.textContent || '').not.toContain('Cara kerja');
+  });
+
+  it('tingkat Magang menurunkan jumlah pesanan shift menjadi 8', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Magang')?.click();
+    await waitFor(() => expect(document.body.textContent || '').toContain('8 Pesanan'));
+    /* Baris bintang ikut tampil — kosong (☆) pada perangkat yang belum pernah
+       menyelesaikan shift, dan itu keadaan yang benar. */
+    expect(document.body.textContent || '').toContain('☆☆☆');
+  });
+
+  /* `t()` membaca store lewat `.get()`, dan nanostores tidak memberi tahu
+     Preact lewat `get()`. Tanpa `useLang()` di komponen, label tetap bahasa
+     lama sampai ada render lain — bug yang tidak terlihat sampai seseorang
+     benar-benar mengganti bahasa di halaman ini. */
+  it('mengganti bahasa saat halaman terbuka ikut mengganti label', async () => {
+    langStore.set('id');
+    render(<ArcadeGame />);
+    expect(document.body.textContent || '').toContain('Genba Rush');
+
+    langStore.set('jp');
+    await waitFor(() => expect(document.body.textContent || '').toContain('現場ラッシュ'));
+    langStore.set('id');
   });
 });
 
