@@ -31,7 +31,7 @@
  *   • TabConfig.tsx         — template CV
  *   • CandidateDash.tsx     — kandidat mengunggah revisi
  */
-import { uploadToCloudinary } from './cloudinary';
+import { uploadToCloudinary, buatPublicId } from './cloudinary';
 
 export interface UploadBerkasOptions {
   /** Kunci unik dokumen — dipakai sebagai prefix nama file di storage. */
@@ -66,7 +66,11 @@ export async function uploadBerkasToStorage(
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const url = await uploadToCloudinary(file, undefined, 1);
+      // `public_id` berakhiran waktu — lihat `buatPublicId`. Tanpa ini nama
+      // berkas menjadi public_id, dan mengunggah ulang dokumen dengan nama sama
+      // (mis. `ktp.jpg` difoto ulang) mengembalikan URL aset LAMA dengan HTTP
+      // 200: berkas baru "berhasil" tetapi yang tersimpan tetap yang lama.
+      const url = await uploadToCloudinary(file, { publicId: buatPublicId('kandidat', key) }, 1);
       if (!url) throw new Error('Cloudinary tidak mengembalikan URL.');
       return url;
     } catch (e) {

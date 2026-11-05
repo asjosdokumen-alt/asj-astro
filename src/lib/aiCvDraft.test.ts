@@ -459,3 +459,38 @@ describe('hasil AI hanya mengisi yang kosong', () => {
     expect(out[0].sekolah_jp).toBe('県立工業高校');
   });
 });
+
+// 国公私 (Status Sekolah) punya tiga jalur dan dulu hanya SATU yang terpasang:
+// `NESTED_ROW_KEYS` (tulis ke bersarang) ada, `ROW_KEYS` (baca balik ke form)
+// tidak, dan payload simpan `AiCvForm` juga tidak mengirimnya. Akibatnya
+// dropdown selalu kembali ke "—" setelah simpan, dan renderer menebak 公立/私立
+// dari nama sekolah — persis yang dilaporkan pemilik 2026-11-05.
+describe('status_sekolah — tiga jalur harus sepakat', () => {
+  it('dibaca balik dari bentuk bersarang ke baris form', () => {
+    const rows = parseAiCvRows({
+      pendidikan: [{ tingkat: 'SMK', nama_sekolah: 'SMKN 1 JENANGAN', status_sekolah: 'NEGERI' }],
+    });
+    expect(rows.pendidikan[0]?.status_sekolah).toBe('NEGERI');
+  });
+
+  it('dikirim balik ke bentuk bersarang saat simpan', () => {
+    const nested = buildAiCvNested({}, {
+      pendidikan: [
+        {
+          id: 'r1', tingkat: 'LPK', sekolah_id: 'LPK AMANAH SAKURA', sekolah_jp: '',
+          jurusan_id: 'BAHASA JEPANG', jurusan_jp: '', masuk: '', lulus: '',
+          status_sekolah: 'SWASTA',
+        },
+      ],
+    });
+    const arr = nested.pendidikan as Record<string, unknown>[];
+    expect(arr[0].status_sekolah).toBe('SWASTA');
+  });
+
+  it('ejaan lama negeri_swasta tetap terbaca', () => {
+    const rows = parseAiCvRows({
+      pendidikan: [{ tingkat: 'SMA', nama_sekolah: 'SMAN 1', negeri_swasta: 'NEGERI' }],
+    });
+    expect(rows.pendidikan[0]?.status_sekolah).toBe('NEGERI');
+  });
+});

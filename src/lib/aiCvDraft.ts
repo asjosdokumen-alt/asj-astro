@@ -582,6 +582,11 @@ const ROW_KEYS: Record<(typeof RIWAYAT_TIPE)[number], Record<string, readonly st
     jurusan_jp: ['jurusan_jp'],
     masuk: ['masuk', 'tahun_masuk', 'tahunMasuk'],
     lulus: ['lulus', 'tahun_lulus', 'tahunLulus'],
+    // 国公私 (migrasi 027). SEBELUM 2026-11-05 kunci ini hanya ada di
+    // NESTED_ROW_KEYS — jadi nilainya ditulis ke bersarang tetapi TIDAK PERNAH
+    // dibaca balik ke form: dropdown "Status Sekolah" selalu tampil "—" setelah
+    // simpan, walau kolomnya terisi. Dua peta itu harus sepakat.
+    status_sekolah: ['status_sekolah', 'negeri_swasta'],
   },
   pekerjaan: {
     perusahaan_id: ['perusahaan_id', 'perusahaan', 'nama_perusahaan', 'namaPerusahaan', 'namaPt'],

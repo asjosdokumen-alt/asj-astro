@@ -16,6 +16,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/pr
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import CvMiniModal, { PENDIDIKAN_OPTIONS } from './CvMiniModal';
 import { showToast } from './Toast';
+import { t } from '../store/i18n';
 
 const { mockSecure, mockUpload } = vi.hoisted(() => ({
   mockSecure: vi.fn(),
@@ -30,6 +31,9 @@ vi.mock('../lib/apiClient', () => ({
 
 vi.mock('../lib/cloudinary', () => ({
   uploadToCloudinary: (...args: unknown[]) => mockUpload(...args),
+  // Stub deterministik: yang diuji adalah BAHWA publicId dikirim dan memuat
+  // jenisnya, bukan algoritma penamaannya (itu punya suite sendiri).
+  buatPublicId: (nama: string, jenis: string) => `${String(nama).toLowerCase().replace(/\s+/g, '_')}_${jenis}_1780000000000`,
 }));
 
 vi.mock('../store/authReactive', () => {
@@ -146,10 +150,34 @@ describe('CvMiniModal (A09)', () => {
     fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [file] } });
     submit();
     await waitFor(() => expect(mockSecure).toHaveBeenCalledTimes(1));
-    expect(mockUpload).toHaveBeenCalledWith(file);
+    /* `publicId` WAJIB dikirim. Tanpa itu Cloudinary memakai NAMA BERKAS
+       sebagai id, dan unggahan kedua dengan nama sama dijawab 200 dengan aset
+       LAMA (preset unsigned tidak boleh menimpa) — foto baru "berhasil" tetapi
+       yang tampil tetap yang lama. Itu keluhan pemilik 2026-11-05. */
+    expect(mockUpload).toHaveBeenCalledWith(file, {
+      publicId: expect.stringContaining('pasphoto'),
+    });
+    expect(mockUpload.mock.calls[0][1]).toMatchObject({
+      publicId: expect.stringMatching(/_pasphoto_\d+$/),
+    });
     const payload = (mockSecure.mock.calls[0][1] as [Record<string, string>])[0];
     expect(payload.photoFile).toBe('https://res.cloudinary.com/asj/pas-foto.jpg');
     expect(payload.photo).toBeUndefined();
+  });
+
+  it('unggah foto GAGAL → toast + tidak menyimpan (dulu senyap)', async () => {
+    mockUpload.mockRejectedValueOnce(new Error('Upload Cloudinary gagal (HTTP 400)'));
+    render(<CvMiniModal onClose={() => {}} />);
+    const file = new File(['x'], 'foto.jpg', { type: 'image/jpeg' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [file] } });
+    submit();
+    await waitFor(() => expect(showToast).toHaveBeenCalled());
+    // Dibandingkan dengan hasil `t()`, bukan teks literal: suite ini tidak
+    // boleh gagal hanya karena locale default berubah.
+    expect(showToast).toHaveBeenCalledWith(t('toast.upload_failed'), 'error');
+    // Menyimpan tanpa foto membuat kandidat mengira fotonya tersimpan.
+    expect(mockSecure).not.toHaveBeenCalled();
   });
 
   it('server menolak → pesan asli server tampil (data.message)', async () => {

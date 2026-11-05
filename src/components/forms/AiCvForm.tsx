@@ -1218,11 +1218,16 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
           // Baris baku hanya berisi JENJANG (belum ada sekolah). Ikut terkirim =
           // CV mencetak lima baris riwayat sekolah kosong. Jadi yang dikirim
           // hanya baris yang benar-benar diisi — sama seperti pekerjaan/keluarga.
-          .filter(e => e.sekolah_id || e.sekolah_jp || e.jurusan_id || e.jurusan_jp || e.masuk || e.lulus)
+          .filter(e => e.sekolah_id || e.sekolah_jp || e.jurusan_id || e.jurusan_jp || e.masuk || e.lulus || e.status_sekolah)
           .map(e => ({
             tingkat: e.tingkat, nama_sekolah: e.sekolah_id, nama_sekolah_jp: e.sekolah_jp,
             jurusan: e.jurusan_id, jurusan_jp: e.jurusan_jp,
             tahun_masuk: e.masuk, tahun_lulus: e.lulus,
+            /* 国公私 eksplisit. Tanpa kunci ini dropdown-nya hanya hidup di
+               state: `setSlots` menulis `pendidikan_N_status_sekolah` HANYA
+               kalau nilainya dikirim, jadi pilihan kandidat hilang saat simpan
+               dan renderer kembali menebak dari nama sekolah. */
+            status_sekolah: e.status_sekolah,
           })),
         pekerjaan: jobList
           .filter(j => j.perusahaan_id || j.jabatan_id)

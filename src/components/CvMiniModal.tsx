@@ -27,7 +27,7 @@ import { useStore } from '@nanostores/preact';
 import { authStore } from '../store/authReactive';
 import { showToast } from './Toast';
 import { t } from '../store/i18n';
-import { uploadToCloudinary } from '../lib/cloudinary';
+import { uploadToCloudinary, buatPublicId } from '../lib/cloudinary';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
 import { api } from '../lib/apiClient';
@@ -118,7 +118,25 @@ export default function CvMiniModal({ onClose, prefill, closing = false }: Props
       };
       // '-' = belum memilih: jangan kirim supaya nilai lama tidak ditimpa '-'.
       if (pendidikan && pendidikan !== '-') payload.pendidikan = pendidikan;
-      if (photo) payload.photoFile = await uploadToCloudinary(photo);
+      // `publicId` WAJIB. Tanpa itu Cloudinary memakai NAMA BERKAS sebagai
+      // public_id, dan unggahan kedua dengan nama sama (kamera/WhatsApp sering
+      // memakai nama identik) dijawab 200 dengan aset LAMA — preset unsigned
+      // tidak boleh menimpa. Gejalanya persis yang dilaporkan pemilik
+      // 2026-11-05: "foto sudah diunggah, foto profil tidak berubah".
+      // `buatPublicId` menambahkan akhiran waktu ⇒ setiap unggah = URL baru.
+      if (photo) {
+        try {
+          payload.photoFile = await uploadToCloudinary(photo, {
+            publicId: buatPublicId(prefill?.nama || user.name || 'kandidat', 'pasphoto'),
+          });
+        } catch {
+          // Jangan lanjut tanpa foto. Sebelum ini galat unggah hanya masuk
+          // console.warn, modal tetap terbuka tanpa pesan — kandidat melihat
+          // nama berkas di bawah input dan menyimpulkan "sudah terunggah".
+          showToast(t('toast.upload_failed'), 'error');
+          return;
+        }
+      }
       const data = await api.secure('simpanUpdateMaster', [payload]);
       if (data.success) {
         showToast(t('ui.toast_cvmini_updated'), 'success');
