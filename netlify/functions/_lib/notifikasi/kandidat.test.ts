@@ -18,10 +18,9 @@ import {
   JENIS_NOTIFIKASI,
   daftarNotifikasi,
   jenisNotifikasiSah,
-  kirimNotifikasi,
-  kirimNotifikasiBanyak,
   tandaiDibaca,
-} from './kandidat';
+} from './kotak-masuk';
+import { kirimNotifikasi, kirimNotifikasiBanyak } from './kandidat';
 
 describe('jenis notifikasi', () => {
   it('tepat empat jenis yang dipakai aplikasi', () => {

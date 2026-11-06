@@ -6,7 +6,7 @@
  */
 import { enqueue, handleGetJobStatus } from '../_lib/kernel/job-queue';
 import { log } from '../_lib/kernel/log';
-import { requireAdmin } from '../contexts/identity';
+import { requireAdmin, isOwnerOrAdmin } from '../contexts/identity';
 
 export const NOTIFY_ACTIONS: Record<string, (payload: unknown[], sessionToken?: string) => Promise<unknown>> = {
   simpanWaTemplate: async (p: unknown[], s?: string) => {
@@ -43,31 +43,28 @@ export const NOTIFY_ACTIONS: Record<string, (payload: unknown[], sessionToken?: 
   // ditolak.
   getNotifikasiKandidat: async (p: unknown[], s?: string) => {
     const wa = String(p?.[0] ?? '').trim();
-    const { isOwnerOrAdmin } = await import('../contexts/identity');
     if (!isOwnerOrAdmin(s, wa)) {
       return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
     }
-    const { daftarNotifikasi } = await import('../_lib/notifikasi/kandidat');
+    const { daftarNotifikasi } = await import('../_lib/notifikasi/kotak-masuk');
     return daftarNotifikasi(wa, Number(p?.[1]) || 50);
   },
 
   tandaiNotifikasiDibaca: async (p: unknown[], s?: string) => {
     const wa = String(p?.[0] ?? '').trim();
-    const { isOwnerOrAdmin } = await import('../contexts/identity');
     if (!isOwnerOrAdmin(s, wa)) {
       return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
     }
-    const { tandaiDibaca } = await import('../_lib/notifikasi/kandidat');
+    const { tandaiDibaca } = await import('../_lib/notifikasi/kotak-masuk');
     return tandaiDibaca(wa, p?.[1]);
   },
 
   tandaiSemuaNotifikasiDibaca: async (p: unknown[], s?: string) => {
     const wa = String(p?.[0] ?? '').trim();
-    const { isOwnerOrAdmin } = await import('../contexts/identity');
     if (!isOwnerOrAdmin(s, wa)) {
       return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
     }
-    const { tandaiDibaca } = await import('../_lib/notifikasi/kandidat');
+    const { tandaiDibaca } = await import('../_lib/notifikasi/kotak-masuk');
     return tandaiDibaca(wa);
   },
 
@@ -83,8 +80,18 @@ export const NOTIFY_ACTIONS: Record<string, (payload: unknown[], sessionToken?: 
   getStatusNotifikasiAdmin: async (_p: unknown[], s?: string) => {
     const guard = requireAdmin(s || '');
     if (guard.error) return guard.error;
-    const { getAdminTokens } = await import('../_lib/fcm-helpers');
-    const tokens = await getAdminTokens();
-    return { success: true, perangkat: tokens.length };
+    /* MENGHITUNG perangkat tidak butuh kemampuan MENGIRIM.
+       Dulu action ini memanggil `getAdminTokens()` dari `_lib/fcm-helpers`, yang
+       menyeret `fcm-server` ke entry `notify.js`. Query dan aturannya sama
+       (`_lib/fcm-token-rules.ts`), tanpa dependensi pengiriman. */
+    const { supabaseJson } = await import('../_lib/db/client');
+    const { isAdminWa } = await import('../_lib/fcm-token-rules');
+    const rows = await supabaseJson('GET', 'fcm_tokens', {
+      query: { select: 'token,wa', limit: 200 },
+    });
+    const perangkat = Array.isArray(rows)
+      ? rows.filter((r: Record<string, unknown>) => isAdminWa(r.wa) && r.token).length
+      : 0;
+    return { success: true, perangkat };
   },
 };

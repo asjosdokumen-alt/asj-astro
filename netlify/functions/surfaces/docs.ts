@@ -23,7 +23,9 @@ export const DOCS_ACTIONS: Record<string, (payload: unknown[], sessionToken?: st
   simpanKandidatDanUpload: (payload, sessionToken) => documents.handleSimpanKandidatDanUpload(payload, sessionToken),
   simpanBerkasTahapan: (payload, sessionToken) => documents.handleSimpanBerkasTahapan(payload, sessionToken),
   simpanRevisiKandidat: (payload, sessionToken) => documents.handleSimpanRevisiKandidat(payload, sessionToken),
-  downloadJobDocs: (payload, sessionToken) => documents.handleDownloadJobDocs(payload, sessionToken),
+  // `downloadJobDocs` PINDAH ke `surfaces/job-docs.ts` (entry sendiri, 2026-11-06).
+  // Satu baris di sini cukup menarik `contexts/documents/download.ts` + `archiver`
+  // (~70 KB) ke `files.js`, yang melayani setiap unggahan kandidat.
   // No handler in the rebuild yet — keep stubs (legacy-only names / pending
   // share-token gate):
   isJobRequiresCv: async () => NOT_IMPL,

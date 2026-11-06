@@ -194,7 +194,7 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   simpanKandidatDanUpload: '/.netlify/functions/files',
   simpanBerkasTahapan: '/.netlify/functions/files',
   simpanRevisiKandidat: '/.netlify/functions/files',
-  downloadJobDocs: '/.netlify/functions/files',
+  downloadJobDocs: '/.netlify/functions/job-docs',
 };
 
 const FALLBACK = '/.netlify/functions/bridge-links';

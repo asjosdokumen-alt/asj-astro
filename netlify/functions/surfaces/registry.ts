@@ -206,7 +206,9 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   simpanKandidatDanUpload:      () => import('./docs').then(m => m.DOCS_ACTIONS),
   simpanBerkasTahapan:          () => import('./docs').then(m => m.DOCS_ACTIONS),
   simpanRevisiKandidat:         () => import('./docs').then(m => m.DOCS_ACTIONS),
-  downloadJobDocs:              () => import('./docs').then(m => m.DOCS_ACTIONS),
+  // ZIP dokumen per loker — entry SEMPIT sendiri, supaya `archiver` tidak
+  // ikut ke `files.js` (2026-11-06).
+  downloadJobDocs:              () => import('./job-docs').then(m => m.JOB_DOCS_ACTIONS),
 };
 
 // ── Cached surface modules (loaded once per process lifetime) ────────────────

@@ -5,7 +5,10 @@
  * Handles: shareData, submitFormPelamar, cekDataPelamar, getUploadUrls,
  *          isJobRequiresCv, submitApply, getExistingCandidateJsonByWa,
  *          simpanBiodataLengkap, simpanKandidatDanUpload,
- *          simpanBerkasTahapan, simpanRevisiKandidat, downloadJobDocs
+ *          simpanBerkasTahapan, simpanRevisiKandidat
+ *
+ * `downloadJobDocs` DIPINDAH ke `job-docs.js` (2026-11-06): action itu memakai
+ * `archiver`, dan satu action ZIP tidak boleh membebani setiap unggahan.
  */
 import { adapt } from './_lib/netlify-adapter.js';
 import { makeSurfaceHandler } from './_lib/netlify-wrapper-surface.js';
@@ -18,5 +21,5 @@ export default adapt(makeSurfaceHandler([DOCS_ACTIONS, MASTER_ACTIONS], [
   'shareData', 'submitFormPelamar', 'cekDataPelamar', 'getUploadUrls',
   'isJobRequiresCv', 'submitApply', 'getExistingCandidateJsonByWa',
   'simpanBiodataLengkap', 'simpanKandidatDanUpload',
-  'simpanBerkasTahapan', 'simpanRevisiKandidat', 'downloadJobDocs',
+  'simpanBerkasTahapan', 'simpanRevisiKandidat',
 ]));

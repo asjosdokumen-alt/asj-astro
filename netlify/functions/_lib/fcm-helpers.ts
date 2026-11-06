@@ -1,5 +1,6 @@
 import { supabaseJson } from './db/client.ts';
 import * as fcm from './fcm-server.ts';
+import { isAdminWa } from './fcm-token-rules.ts';
 
 // ===========================================================================
 // fcm-helpers.ts — Shared helper untuk notifikasi FCM push
@@ -18,12 +19,7 @@ export async function getAdminTokens(): Promise<string[]> {
     });
     if (!Array.isArray(rows)) return [];
     return rows
-      .filter((r: Record<string, unknown>) => {
-        const wa = String(r.wa || '');
-        // Kandidat WA: 628xxxxxxxxxx (12-14 digit)
-        // Admin WA: selain format itu
-        return !wa || !/^628\d{9,11}$/.test(wa);
-      })
+      .filter((r: Record<string, unknown>) => isAdminWa(r.wa))
       .map((r: Record<string, unknown>) => r.token as string)
       .filter(Boolean);
   } catch {
