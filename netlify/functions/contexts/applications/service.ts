@@ -166,12 +166,24 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
       };
     }
     const body: Record<string, unknown> = { status };
+    /* Teks penolakan yang BENAR-BENAR dibaca kandidat.
+       Dua jenis baris, dua kalimat — sama seperti `statusText` di dasbor:
+       baris LAMARAN (`code_job` terisi) ditolak lamarannya, baris
+       BIODATA/DOKUMEN (code_job kosong) ditolak berkasnya. Dulu keduanya
+       memakai 'Lamaran ditolak', jadi kandidat yang scan KTP-nya buram membaca
+       "Lamaran ditolak" — terukur pada baris 507 (AGUS KHOCI) 2026-11-07. */
+    const barisLamaran = Boolean(String(f.code_job || '').trim());
+    const alasanEfektif =
+      status === 'GAGAL'
+        ? String(reason ?? '').trim() || (barisLamaran ? 'Lamaran ditolak' : 'Berkas perlu diperbaiki')
+        : String(reason ?? '').trim();
     // Alasan penolakan punya KOLOMNYA SENDIRI sejak migrasi 049.
     //
     // Dulu baris ini menulis `keterangan`, dan `keterangan` juga menyimpan
     // daftar dokumen (`KTP:https://…;KK:…`). PATCH biasa berarti menolak satu
     // baris MENGHAPUS seluruh daftar dokumennya — terukur pada baris 558.
-    if (reason !== null && reason !== undefined) body.alasan_tolak = reason;
+    if (status === 'GAGAL') body.alasan_tolak = alasanEfektif;
+    else if (reason !== null && reason !== undefined) body.alasan_tolak = reason;
     // Disetujui = alasan lama tidak berlaku lagi. Dikosongkan, bukan dibiarkan,
     // supaya kandidat tidak membaca alasan penolakan pada baris yang sudah lolos.
     if (status === MAIL_APPROVED_STATUS) body.alasan_tolak = '';
@@ -185,7 +197,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
     if (status === MAIL_APPROVED_STATUS && waEvent) {
       emit({ type: 'application.approved', wa: waEvent, jobCode: jobCodeEvent, at: new Date().toISOString() });
     } else if (status === 'GAGAL' && waEvent) {
-      emit({ type: 'application.rejected', wa: waEvent, jobCode: jobCodeEvent, reason: reason || undefined, at: new Date().toISOString() });
+      emit({ type: 'application.rejected', wa: waEvent, jobCode: jobCodeEvent, reason: alasanEfektif || undefined, at: new Date().toISOString() });
     } else if (waEvent) {
       emit({ type: 'application.submitted', wa: waEvent, jobCode: jobCodeEvent, at: new Date().toISOString() });
     }
@@ -208,7 +220,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
             // Baris biodata tidak punya kode loker — "Dokumen  perlu revisi"
             // (dua spasi) terbaca seperti pesan yang rusak.
             judul: jobCode ? `Dokumen ${jobCode} perlu revisi` : 'Berkas perlu revisi',
-            isi: reason || 'Lamaran ditolak.',
+            isi: alasanEfektif,
             url: '/candidate',
           });
         } else if (status === 'REVIEW') {
@@ -284,7 +296,9 @@ export async function handleRejectForm(payload: unknown[], sessionToken?: string
     // Blank is LEGAL: an empty reason falls back to 'Lamaran ditolak' below.
     optionalTextOrEmpty('Alasan', 1000),
   ]) as [number | string, unknown, string | null | undefined];
-  return handleFormStatus(idx as number, 'GAGAL', (reason || 'Lamaran ditolak') as string, sessionToken);
+  // Blank is LEGAL: `handleFormStatus` memilih default sesuai JENIS baris
+  // ('Lamaran ditolak' untuk lamaran, 'Berkas perlu diperbaiki' untuk dokumen).
+  return handleFormStatus(idx as number, 'GAGAL', reason ?? undefined, sessionToken);
 }
 
 export async function handleDeleteForm(payload: unknown[], sessionToken?: string) {

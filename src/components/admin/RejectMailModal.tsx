@@ -52,9 +52,10 @@ export default function RejectMailModal({ candidateName, onCancel, onConfirm, cl
     setBusy(true);
     try {
       // Alasan kosong dikirim apa adanya (''), BUKAN diisi teks karangan di
-      // sini: backend memakai fallback 'Lamaran ditolak' sendiri
-      // (`handleRejectForm`), jadi kandidat tidak pernah melihat pesan kosong
-      // dan UI tidak menciptakan alasan yang tidak ditulis admin.
+      // sini: backend yang memilih default sesuai JENIS barisnya —
+      // 'Lamaran ditolak' untuk lamaran, 'Berkas perlu diperbaiki' untuk baris
+      // dokumen (`handleFormStatus`). Jadi kandidat tidak pernah melihat pesan
+      // kosong, dan UI tidak menciptakan alasan yang tidak ditulis admin.
       await onConfirm(reason.trim());
     } catch {
       // Induk yang menampilkan toast error; di sini cukup jangan biarkan

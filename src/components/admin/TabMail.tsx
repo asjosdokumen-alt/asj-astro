@@ -196,7 +196,8 @@ export default function TabMail() {
    * Sebelum ini alasan **hardcoded** `'Lamaran GAGAL'`, padahal backend sudah
    * menerimanya sebagai argumen ke-3 (`handleRejectForm`) dan UI legacy
    * menjanjikan teks itu muncul di Dashboard Kandidat. Alasan kosong sengaja
-   * dibiarkan lewat apa adanya — backend memakai fallback 'Lamaran ditolak'.
+   * dibiarkan lewat apa adanya — backend memilih default sesuai jenis baris
+   * ('Lamaran ditolak' untuk lamaran, 'Berkas perlu diperbaiki' untuk dokumen).
    */
   const confirmReject = async (reason: string) => {
     if (!rejectTarget) return;
