@@ -143,6 +143,14 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   getBankSsw:              () => import('./kotoba').then(m => m.KOTOBA_ACTIONS),
   // Bank soal matematika — gerbang siswa ASJ yang sama.
   getBankMatematika:              () => import('./kotoba').then(m => m.KOTOBA_ACTIONS),
+  // ── Tes mandiri (2026-11-06) ──────────────────────────────────────────────
+  // MBTI & Tes Mata Pra-MCU. Gerbang `tolakKecualiSiswa` untuk siswa,
+  // `requireAdmin` untuk sakelar & daftar hasil. Surface sendiri karena isinya
+  // MENULIS satu baris yang tidak boleh ditulis dua kali — bukan latihan.
+  getStatusTes:               () => import('./tes').then(m => m.TES_ACTIONS),
+  simpanHasilTes:             () => import('./tes').then(m => m.TES_ACTIONS),
+  getHasilTesAdmin:           () => import('./tes').then(m => m.TES_ACTIONS),
+  setTesAktif:                () => import('./tes').then(m => m.TES_ACTIONS),
   // Papan peringkat game — simpan skor (siswa) & baca papan (admin).
   simpanSkorGame:             () => import('./ai').then(m => m.AI_ACTIONS),
   getPapanSkor:               () => import('./ai').then(m => m.AI_ACTIONS),

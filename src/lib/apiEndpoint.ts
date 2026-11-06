@@ -137,6 +137,15 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   // sama seperti dua bank di atas: satu fungsi tambahan berarti satu cold start
   // tambahan dan bobot bundle yang harus di-baseline ulang di gate bundle:size.
   getBankMatematika: '/.netlify/functions/kotoba',
+  /* Tes mandiri siswa (2026-11-06): MBTI & Tes Mata Pra-MCU. Menumpang entry
+     `kotoba` — entry itu sudah memuat surface latihan siswa, dan tes ini
+     beban kerjanya sama (satu query pendek). Fungsi baru = cold start baru +
+     baseline bundle baru untuk empat action yang tidak pernah dipanggil
+     bersamaan dengan chat. */
+  getStatusTes: '/.netlify/functions/kotoba',
+  simpanHasilTes: '/.netlify/functions/kotoba',
+  getHasilTesAdmin: '/.netlify/functions/kotoba',
+  setTesAktif: '/.netlify/functions/kotoba',
   /* Papan peringkat game (2026-11-04). Tanpa dua baris ini keduanya jatuh ke
      catch-all `bridge-links` dan mengulang lewat 404 — fiturnya tetap jalan,
      jadi tidak ada yang menyadari. Gerbangnya di `action-registry.test.ts`. */
