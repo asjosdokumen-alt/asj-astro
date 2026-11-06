@@ -54,7 +54,18 @@ const PENDIDIKAN_OPTIONS = ['', 'SD', 'SMP', 'SMA', 'SMK', 'MA', 'D1', 'D2', 'D3
    `Baru` (30 baris) dan `Pendaftaran` (51 baris) masuk ke database padahal
    bukan tahap resmi. `LULUS` bahkan bukan tahap sama sekali — itu status. */
 const TAHAPAN_OPTIONS = ['', ...TAHAPAN_STEPS];
-const STATUS_OPTIONS = ['', 'Aktif', 'LULUS', 'GAGAL', 'Non-Aktif'];
+/* Status kandidat — HARUS memuat setiap nilai yang benar-benar ditulis sistem:
+     BARU       → `contexts/identity/service.ts` saat pendaftaran
+     GAGAL      → `contexts/applications/service.ts` & `contexts/jobs/service.ts`
+     Aktif      → nilai sehari-hari (dulu juga ditulis manual dari modal ini)
+     LULUS      → keputusan admin
+     Non-Aktif  → keputusan admin
+   `BARU` dulu TIDAK ada di daftar ini, padahal pendaftaran menulisnya: baris
+   kandidat baru tampil sebagai "- Pilih -" di modal. Daftar yang tidak memuat
+   nilai yang ditulis kode sendiri adalah cara paling halus untuk kehilangan
+   data — `opsiDenganNilaiSaatIni` di bawah menahannya, tapi daftarnya tetap
+   harus jujur. */
+const STATUS_OPTIONS = ['', 'BARU', 'Aktif', 'LULUS', 'GAGAL', 'Non-Aktif'];
 
 /**
  * Thumbnail hanya bisa dirender untuk gambar. PDF/XLSX dapat ikon jenis berkas
