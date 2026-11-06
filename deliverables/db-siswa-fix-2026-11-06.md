@@ -237,3 +237,5 @@ dibuatkan.
 - **Satu baris sheet bergeser kolom**: di sheet `kelas j`, baris 36 (NATASYA PRIENDITA
   NURAZIZAH) memakai urutan kolom sheet K (email di kolom 16, alamat di kolom 22).
   Alamat sudah ditulis dari kolom 22, bukan dari kolom 16.
+- **10 baris di luar kelas H/I/J/K** punya tanggal lahir tetapi tidak punya NIK,
+  sehingga tidak ada sumber pembanding — tidak bisa dipastikan bergeser atau tidak.
