@@ -97,30 +97,51 @@ Tes baru: 15 di `src/lib/tahapanPipeline.test.ts` (termasuk regresi `MENSETSU` �
 3 dan `TTD KONTRAK` → 7) + 2 di `EditCandidateModal.test.tsx` (nilai tak dikenal
 tidak hilang saat modal dirender).
 
-## Yang masih merah (bukan dari perubahan ini)
+## Gerbang bundle: dua yang merah sudah hijau
 
-`npm run bundle:size` gagal karena dua hal yang **sudah ada sejak fitur kotak
-masuk kandidat** (commit `54fe1cb`/`3e3b2f4`/`5d84342`), terukur:
+`npm run bundle:size` gagal sebelum pekerjaan ini karena dua hal yang berasal
+dari fitur kotak masuk kandidat (`54fe1cb` / `3e3b2f4` / `5d84342`). Keduanya
+selesai di sesi ini — **tanpa menaikkan plafon**.
 
-| Entry | Sekarang | Baseline | Batas |
+| Entry | Sebelum | Sesudah | Batas |
 |---|---|---|---|
-| `files.js` | **600,1 KB** | 599,8 KB | plafon keras **600 KB** |
-| `notify.js` | **127,4 KB** | 91,7 KB | ratchet +5% / +8 KB |
+| `files.js` | 600,1 KB **OVER** | **193,4 KB** | plafon keras 600 KB |
+| `notify.js` | 127,4 KB (+39%) | **96,8 KB** (+5,6%, dalam toleransi) | ratchet +5% / +8 KB |
+| `job-docs.js` | (belum ada) | 492,2 KB | plafon keras 600 KB |
 
-- `files.js` melewati plafon **0,1 KB** karena plumbing notifikasi (kolom
-  `alasan_tolak` di proyeksi + pemetaan). Menariknya bukan dari kotak masuk itu
-  sendiri: `contexts/applications/service.ts` **tidak** ada di graf `files.js`.
-- `notify.js` naik karena 4 action baru + helper notifikasi. Percobaan
-  memindahkan `getStatusNotifikasiAdmin` agar tidak menarik `fcm-helpers` tidak
-  menurunkan ukuran (malah +1,3 KB) — jadi penyebabnya bukan itu, dan perubahan
-  itu dibatalkan.
+### Apa yang sebenarnya terjadi
 
-**Dua pilihan, keduanya butuh keputusan pemilik** — saya tidak menaikkan plafon
-sendiri:
+**1. Satu action ZIP membebani setiap unggahan.** `surfaces/docs.ts` mengimpor
+`* as documents`, dan satu baris `documents.handleDownloadJobDocs` cukup untuk
+menarik `archiver` + rantai `readable-stream` / `compress-commons` / `zip-stream`
+(~70 KB) ke `files.js`. Action itu sekarang punya entry sendiri (`job-docs.js` +
+`surfaces/job-docs.ts`) dengan impor SEMPIT: satu modul, satu handler.
 
-1. **Pecah `files.js`**: pindahkan `downloadJobDocs` (archiver/zip) ke entry
-   sendiri. `archiver` + rantai `readable-stream` adalah ~70 KB dari entry ini;
-   setelah dipisah, `files.js` turun jauh di bawah plafon dan `notify.js` bisa
-   di-re-baseline dengan alasan tercatat.
-2. **Re-baseline `notify.js`** (pertumbuhan nyata: 4 action baru) dan shave
-   `files.js` 0,2 KB dari kode mati — perlu penelusuran lebih dalam.
+**2. Impor dinamis membatalkan tree-shaking.** Empat action kotak masuk memanggil
+`await import(...)` ke konteks identity di dalam badan handler. esbuild tidak
+bisa memangkas impor dinamis, jadi **seluruh** konteks identity ikut — termasuk
+`bcryptjs` (19 KB) dan repository-nya. Terukur per modul: `bcryptjs` 19 KB +
+`identity/service` 5 KB + `identity/repository` 2 KB = **26 KB dari 36 KB**
+pertumbuhan. Impor statis di puncak berkas memulihkan tree-shaking.
+
+**3. Sisi baca tidak butuh tumpukan kirim.** `_lib/notifikasi/kandidat.ts` dipecah
+menjadi `kotak-masuk.ts` (validasi, tulis, daftar, tandai dibaca — DB saja) dan
+`kandidat.ts` (tulis LALU kirim push). `notify.js` hanya memakai yang pertama.
+Aturan `isAdminWa` pindah ke `_lib/fcm-token-rules.ts` supaya
+`getStatusNotifikasiAdmin` bisa menghitung perangkat tanpa menarik `fcm-server`.
+
+### Bukti, bukan dugaan
+
+- `node scripts/ci/bundle-size.mjs --why=<entry>` dipakai untuk melihat modul
+  terberat per entry.
+- Pertumbuhan `notify.js` diatribusikan dengan membangun dua versi (dengan dan
+  tanpa empat action) lalu membandingkan `metafile.inputs` per berkas.
+- Percobaan pertama (memindahkan `getAdminTokens`) **tidak** menurunkan ukuran;
+  penyebab sebenarnya impor dinamis. Percobaan yang gagal itu dibatalkan, bukan
+  ditinggalkan sebagai "perbaikan".
+
+### Yang perlu diingat
+
+`job-docs.js` 492 KB masih di bawah plafon, tapi ia menanggung seluruh rantai ZIP.
+Kalau nanti ada action lain yang butuh `archiver`, tambahkan ke entry yang sama —
+jangan dikembalikan ke `files.js`.
