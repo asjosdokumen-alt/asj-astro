@@ -57,17 +57,36 @@ saat halaman dibuka. Tiga keadaan ditangani terpisah: `granted`, `denied`
 | Preferensi per jenis notifikasi | Pada skala satu LPK, semua jenis relevan. Menambah 4 sakelar berarti 4 jalur uji baru untuk manfaat yang belum terbukti dibutuhkan. |
 | Quiet hours / jam tenang | Reminder H-0 justru harus berbunyi saat mendekati jamnya. |
 | Retensi otomatis (hapus > 90 hari) | Tabel baru; ukur dulu berapa yang menumpuk dalam sebulan sebelum menambah cron. |
-| Push untuk admin | **Masih terbuka.** `fcm_tokens` berisi 18 token, semuanya bernomor kandidat — tidak ada satu pun perangkat admin yang mendaftar. Itu masalah operasional (admin perlu menekan izin di perangkatnya), bukan kode; panel admin belum punya tombol pemicunya. |
+| Push untuk admin | **Sudah dibangun** (lihat §3b). Yang tersisa hanya tindakan manusia: admin membuka Pengaturan dan menekan "Aktifkan notifikasi" di perangkatnya. |
+
+## 3b. Notifikasi perangkat admin
+
+Terukur 2026-11-06: `fcm_tokens` berisi 18 baris dan **semuanya** bernomor
+kandidat — push "Lamaran Baru!" tidak pernah sampai ke siapa pun. Kode
+pengirimannya benar; yang tidak ada adalah satu langkah izin yang hanya bisa
+dilakukan manusia.
+
+Sekarang ada kartu **"Notifikasi perangkat ini"** di tab Pengaturan:
+
+- tombol **Aktifkan notifikasi** (gestur pengguna, bukan prompt otomatis);
+- **jumlah perangkat admin terdaftar** — supaya "izin diberikan" tidak
+  disalahartikan sebagai "token terdaftar";
+- keadaan `denied` memberi tahu cara membuka blokir lewat pengaturan situs;
+- bila izin sudah ada tapi 0 perangkat, tombolnya berubah menjadi
+  **"Daftarkan perangkat ini"**.
+
+Sisa langkahnya operasional: admin membuka Pengaturan di perangkatnya dan
+menekan tombol itu sekali.
 
 ## 4. Verifikasi
 
 | Gate | Hasil |
 |---|---|
 | `tsc --noEmit` | 0 error |
-| frontend | 139 berkas / 1 817 tes |
+| frontend | 140 berkas / 1 822 tes |
 | backend | 129 berkas / 1 706 tes |
 | indexer | 15 berkas / 199 tes |
-| `verify:binding` | 106 action / 18 surface, 0 orphan |
+| `verify:binding` | 107 action / 18 surface, 0 orphan |
 | `verify:schema` | IN SYNC · 35 tabel |
 | `verify:rls` | OK |
 | `verify:entries` · `verify:md` · `verify:validation` | pass |
