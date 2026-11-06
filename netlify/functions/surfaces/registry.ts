@@ -113,6 +113,11 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   hapusWaTemplate:    () => import('./notify').then(m => m.NOTIFY_ACTIONS),
   kirimSatuPesanFonnte:() => import('./notify').then(m => m.NOTIFY_ACTIONS),
   kirimTawaranMassal: () => import('./notify').then(m => m.NOTIFY_ACTIONS),
+  // Kotak masuk kandidat (2026-11-06) — gerbang `isOwnerOrAdmin`, bukan
+  // `tolakKecualiSiswa` (lihat surfaces/notify.ts).
+  getNotifikasiKandidat:        () => import('./notify').then(m => m.NOTIFY_ACTIONS),
+  tandaiNotifikasiDibaca:       () => import('./notify').then(m => m.NOTIFY_ACTIONS),
+  tandaiSemuaNotifikasiDibaca:  () => import('./notify').then(m => m.NOTIFY_ACTIONS),
 
   // ── AI ────────────────────────────────────────────────────────────────────
   processAIChat:              () => import('./ai').then(m => m.AI_ACTIONS),

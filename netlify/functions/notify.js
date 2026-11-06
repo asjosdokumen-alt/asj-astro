@@ -27,4 +27,5 @@ const JOB_STATUS_ACTIONS = {
 
 export default adapt(makeSurfaceHandler([NOTIFY_ACTIONS, JOB_STATUS_ACTIONS], [
   'simpanWaTemplate', 'hapusWaTemplate', 'kirimSatuPesanFonnte', 'kirimTawaranMassal', 'getJobStatus',
+  'getNotifikasiKandidat', 'tandaiNotifikasiDibaca', 'tandaiSemuaNotifikasiDibaca',
 ]));

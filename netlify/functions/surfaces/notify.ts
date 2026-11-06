@@ -34,4 +34,40 @@ export const NOTIFY_ACTIONS: Record<string, (payload: unknown[], sessionToken?: 
     return { success: true, status: 'accepted', jobId, message: 'Pengiriman massal sedang diproses. Gunakan getJobStatus untuk mengecek.' };
   },
   getJobStatus: async (p: unknown[], s?: string) => handleGetJobStatus(p, s),
+
+  // ── Kotak masuk kandidat (2026-11-06) ─────────────────────────────────────
+  // Gerbangnya `isOwnerOrAdmin`, BUKAN `tolakKecualiSiswa`: kotak masuk ini
+  // milik SEMUA kandidat, sementara `tolakKecualiSiswa` menuntut status siswa
+  // ASJ (VIP / kelas LPK). Memakai penjaga itu di sini akan menyembunyikan
+  // pemberitahuan dari kandidat biasa — termasuk pemberitahuan bahwa berkasnya
+  // ditolak.
+  getNotifikasiKandidat: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '').trim();
+    const { isOwnerOrAdmin } = await import('../contexts/identity');
+    if (!isOwnerOrAdmin(s, wa)) {
+      return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+    }
+    const { daftarNotifikasi } = await import('../_lib/notifikasi/kandidat');
+    return daftarNotifikasi(wa, Number(p?.[1]) || 50);
+  },
+
+  tandaiNotifikasiDibaca: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '').trim();
+    const { isOwnerOrAdmin } = await import('../contexts/identity');
+    if (!isOwnerOrAdmin(s, wa)) {
+      return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+    }
+    const { tandaiDibaca } = await import('../_lib/notifikasi/kandidat');
+    return tandaiDibaca(wa, p?.[1]);
+  },
+
+  tandaiSemuaNotifikasiDibaca: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '').trim();
+    const { isOwnerOrAdmin } = await import('../contexts/identity');
+    if (!isOwnerOrAdmin(s, wa)) {
+      return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+    }
+    const { tandaiDibaca } = await import('../_lib/notifikasi/kandidat');
+    return tandaiDibaca(wa);
+  },
 };

@@ -93,6 +93,11 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   kirimSatuPesanFonnte: '/.netlify/functions/notify',
   kirimTawaranMassal: '/.netlify/functions/notify',
   getJobStatus: '/.netlify/functions/notify',
+  /* Kotak masuk kandidat (2026-11-06) — entry `notify`, bukan `ai-chat`:
+     action-nya membaca/menandai satu tabel kecil dan tidak menyentuh model. */
+  getNotifikasiKandidat: '/.netlify/functions/notify',
+  tandaiNotifikasiDibaca: '/.netlify/functions/notify',
+  tandaiSemuaNotifikasiDibaca: '/.netlify/functions/notify',
 
   // AI
   processAIChat: '/.netlify/functions/ai-chat',
