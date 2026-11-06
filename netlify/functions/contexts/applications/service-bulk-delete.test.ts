@@ -59,6 +59,27 @@ vi.mock('../../_lib/fcm-helpers', () => ({
   },
 }));
 
+/* GERBANG: unit test ini TIDAK boleh menulis apa pun ke database.
+ *
+ * `handleApproveForm`/`handleReviewForm` memanggil `await import('../../_lib/
+ * notifikasi/kandidat')` di dalam `handleFormStatus`. Impor itu TIDAK ikut
+ * ter-mock oleh mock di atas (yang hanya mengganti `notifyAdmins`), sehingga
+ * setiap run menulis baris `notifikasi_kandidat` SUNGGUHAN — dan `.env.local`
+ * menunjuk database PRODUKSI.
+ *
+ * Terukur 2026-11-07: satu run berkas ini menambah 4 baris (30 -> 34), termasuk
+ * "Berkas perlu revisi" untuk kandidat asli AGUS KHOCI (6282130442661, tag
+ * [VIP]). Push-nya tidak terkirim (mock `fcm-helpers` tidak punya
+ * `getKandidatTokens`, jadi `kirimPush` gagal dan ditelan), tetapi barisnya
+ * tertulis dan mengotori kotak masuk orang sungguhan.
+ *
+ * Karena itu modul notifikasi di-mock habis di sini: unit test tidak boleh
+ * melakukan I/O. */
+vi.mock('../../_lib/notifikasi/kandidat', () => ({
+  kirimNotifikasi: async () => ({ success: true }),
+  kirimNotifikasiBanyak: async () => ({ success: true, jumlah: 0 }),
+}));
+
 vi.mock('./repository', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('./repository');
   return {

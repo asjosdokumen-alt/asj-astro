@@ -27,7 +27,7 @@
 // Every rejection below happens BEFORE any DB/network call, so this suite runs
 // without env or a database.
 // ==========================================
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { signToken } from '../_lib/session';
 import { AppError } from '../_lib/kernel/errors';
 import { guardPayload, text, optionalText, optionalTextOrEmpty, requireAtLeastOne } from '../_lib/kernel/guard';
@@ -39,6 +39,25 @@ import {
   handleTandaiGagalJob,
 } from './jobs/service';
 import { handleRejectForm } from './applications/service';
+
+/* GERBANG: berkas ini menguji VALIDASI, bukan database — dan tanpa mock ia
+ * menulis ke database PRODUKSI (`.env.local` menunjuk Neon).
+ *
+ * Terukur 2026-11-07: tes "an empty reason is legal" memanggil
+ * `handleRejectForm([3, '', ''])` dengan token admin yang SAH. `getFormByIndex`
+ * membaca baris ke-4 (urut `timestamp.desc`) dari database sungguhan dan
+ * `handleFormStatus` menjalankannya sampai selesai: baris itu di-PATCH menjadi
+ * GAGAL dan satu notifikasi dikirim. Selama berjalan, baris yang kena kebetulan
+ * SUDAH GAGAL — jadi hitungan status tidak berubah dan kerusakannya tidak
+ * terlihat; yang bertambah hanya baris `notifikasi_kandidat` (satu per run).
+ *
+ * `getFormByIndex` dibuat kosong: `handleFormStatus` berhenti di
+ * "Form tidak ditemukan." SEBELUM patch dan SEBELUM notifikasi, dan tesnya
+ * tetap menguji hal yang benar (kegagalannya bukan VALIDATION_FAILED). */
+vi.mock('./applications/repository', async () => {
+  const actual = await vi.importActual<Record<string, unknown>>('./applications/repository');
+  return { ...actual, getFormByIndex: async () => null };
+});
 
 const admin = signToken({ role: 'admin', name: 'TESTADMIN' });
 const kandidat = signToken({ role: 'kandidat', wa: '6281111111111' });
