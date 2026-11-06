@@ -245,3 +245,71 @@ Gerbang yang mencegah ini terulang **belum ada**. Yang bisa menangkapnya:
 `supabaseJson` yang melempar bila `NODE_ENV === 'test'` dan URL-nya bukan
 localhost — tapi itu menyentuh seluruh suite sekaligus dan perlu diukur
 dampaknya. Dicatat sebagai utang, bukan dikerjakan diam-diam.
+
+## 8. Kotak masuk: klik & hapus (2026-11-07)
+
+Laporan pemilik setelah mencoba dasbor AGUS KHOCI di server lokal: *"pesannya
+gak bisa di pencet dan gak bisa di delete"*. Dua-duanya benar.
+
+### 8a. Kenapa tidak bisa diklik
+
+Semua pemberitahuan menunjuk `/candidate` — **halaman yang sedang dibuka**.
+`navigateTo('/candidate')` hanya memuat ulang dasbor, jadi secara visual tidak
+terjadi apa pun.
+
+Sekarang server menulis anchor, dan dasbor punya bagiannya:
+
+| Kejadian | URL | Bagian |
+|---|---|---|
+| Dokumen ditolak | `/candidate#revisi` | banner revisi (dengan tombol unggah) |
+| Dokumen direview / disetujui | `/candidate#riwayat` | kartu "Status Lamaran Terkini" |
+| Pengingat jadwal | `/candidate#jadwal` | kartu "Jadwalmu" |
+
+Ketiga bagian diberi `id` + `scroll-mt-24` supaya tidak tertutup header.
+Komponen juga **tidak** berpindah kalau tujuannya halaman ini tanpa anchor, dan
+menampilkan chevron bila baris punya tujuan — sebelumnya baris yang tidak
+membawa ke mana-mana terlihat sama persis dengan teks biasa.
+
+### 8b. Kenapa tidak bisa dihapus
+
+Karena action-nya **tidak pernah ada**. Yang dibangun sebelumnya hanya "tandai
+dibaca", dan itu bukan penghapusan.
+
+| Bagian | Isi |
+|---|---|
+| `_lib/notifikasi/kotak-masuk.ts` | `hapusNotifikasi(wa, id?)` — `no_wa` selalu disaring; tanpa `id` = hapus semua yang SUDAH dibaca |
+| surface `notify.ts` | action `hapusNotifikasi`, gerbang `isOwnerOrAdmin` |
+| UI | tombol hapus per baris + "Bersihkan" untuk yang sudah dibaca |
+
+Hapus bersifat optimistis **tapi dikembalikan** kalau server menolak: baris yang
+hilang dari layar padahal masih ada di server lebih buruk daripada gagal
+menghapus. Rollback + toast, diuji.
+
+Dua tombol bersaudara (buka | hapus), bukan tombol bersarang — `<button>` di
+dalam `<button>` tidak sah dan membuat pembaca layar mengumumkan satu kontrol
+saja.
+
+### 8c. Verifikasi
+
+frontend **141 berkas / 1 848 tes** (+5 tes UI) · backend 129 / 1 707 (+1 tes
+backend) · binding **108** action / 18 surface · build 19 halaman · bundle pass.
+
+## 9. Pagar: suite tes tidak boleh menulis ke database non-lokal
+
+Utang dari §7 sudah dikerjakan.
+
+- `_lib/db/test-guard.ts` mencatat setiap operasi **NON-GET** ke host
+  non-loopback saat berjalan di vitest. Hanya non-GET: membaca tidak merusak.
+- `test-guard.setup.ts` dipasang sebagai `setupFiles` project backend dan
+  memerahkan berkas tesnya di `afterAll`.
+- `afterAll`, bukan `throw` di titik tulis: banyak pemanggil menelan error tulis
+  (`kirimNotifikasi` mengembalikan `{success:false}`), jadi lemparan di sana
+  akan hilang diam-diam.
+
+**Pagar ini langsung menemukan pelanggar KETIGA** yang tidak diketahui:
+`e2e/applications-sync-preloaded.test.ts` mem-mock `getFormsByWa` dan
+`patchForm` tetapi tidak `upsertForm` — 2 operasi tulis per run.
+
+Bukti pagar bekerja: suite itu merah dengan pesan
+`Suite ini MENULIS ke database non-lokal (2 operasi)` sebelum diperbaiki, hijau
+sesudahnya. Suite backend penuh: 129 berkas / 1 707 tes, **nol pelanggaran**.
