@@ -106,3 +106,68 @@ dibaca, PATCH satu (mengembalikan 1 baris), PATCH semua (1 baris), sisa 0, dan
 - Di iPhone, push baru hidup setelah aplikasi dipasang ke Layar Utama — instruksi
   itu muncul di kotak masuk, bukan disembunyikan.
 - Notifikasi lama tidak dihapus otomatis; lihat tabel "yang sengaja tidak dibangun".
+
+## 6. Tindak lanjut 2026-11-07: banner revisi & teks penolakan
+
+### 6a. Banner "berkas perlu revisi" sebelumnya TIDAK PERNAH muncul
+
+`needRevision` dibaca dari `result.kandidatData` — objek yang tidak pernah
+dikirim backend. Akibatnya banner di dasbor (beserta tombol unggah di dalamnya)
+mati total, walaupun admin sudah menolak berkas dan mengisi alasannya.
+
+Tiga tes lama tetap hijau karena fixture-nya mengisi `kandidatData.needRevision`
+— jalur yang di produksi tidak ada. Itu contoh gerbang yang hijau karena
+mengukur hal yang salah.
+
+Sekarang nilainya **diturunkan dari baris riwayat berstatus GAGAL**, dan
+aturannya self-healing: `mailStatusUntukUpdate('GAGAL')` mengembalikan `UPDATE`
+(`contexts/applications/service.ts:56`), jadi begitu kandidat mengunggah ulang,
+baris itu berhenti GAGAL dan banner hilang sendiri.
+
+- Baris **dokumen** (`code_job` kosong) selalu dihitung — penolakannya tidak
+  terikat loker mana pun.
+- Baris **lamaran** hanya dihitung bila lokernya loker yang sedang aktif,
+  supaya penolakan lama pada loker yang sudah ditinggalkan tidak menghantui
+  dasbor.
+
+### 6b. Satu kalimat penolakan untuk dua hal yang berbeda
+
+Baris lamaran dan baris dokumen melewati jalur tolak yang sama, dan keduanya
+memakai default `'Lamaran ditolak'`. Kandidat yang scan KTP-nya buram membaca
+"Lamaran ditolak" — terukur pada baris 507 (AGUS KHOCI, `code_job` kosong).
+
+Default sekarang dipilih di `handleFormStatus` (tempat jenis baris diketahui):
+
+| Jenis baris | Teks default |
+|---|---|
+| lamaran (`code_job` terisi) | `Lamaran ditolak` |
+| dokumen (`code_job` kosong) | `Berkas perlu diperbaiki` |
+
+Satu nilai dipakai tiga pembaca — kolom `alasan_tolak`, isi push, dan event
+`application.rejected` — jadi tidak bisa berbeda.
+
+Data: baris 507 diperbaiki ke `Berkas perlu diperbaiki`. Itu satu-satunya baris
+dokumen yang membawa teks default lama; alasan yang benar-benar ditulis admin
+tidak disentuh.
+
+### 6c. Retensi: DIUKUR, belum perlu
+
+| Ukuran | Nilai (2026-11-07) |
+|---|---|
+| Baris `notifikasi_kandidat` | **21** |
+| Belum dibaca | 21 |
+| Rentang | 2026-11-05 (satu hari) |
+
+Isinya nyata, bukan data uji: 13 `lamaran` ("Lamaran TG1ASJ disetujui") dan
+8 `dokumen` ("Berkas perlu revisi"). Artinya kotak masuk sudah dipakai
+end-to-end di produksi.
+
+Dengan 21 baris, cron penghapus >90 hari **belum layak dibuat** — tidak ada
+volume yang perlu dikendalikan, dan cron yang menebak jadwal lebih berisiko
+daripada masalahnya. Ukur ulang setelah sebulan pemakaian.
+
+### 6d. Verifikasi
+
+`tsc` 0 · frontend **141 berkas / 1 843 tes** (+4 tes banner) · backend
+129/1 706 · indexer 653 berkas · `bundle:size` pass · lint & typecheck ratchet
+pass · build 19 halaman.
