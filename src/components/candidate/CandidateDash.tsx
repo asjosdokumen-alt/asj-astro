@@ -22,6 +22,7 @@ import { apiClient } from '../../lib/apiClient';
 import { ALL_BERKAS, hasBerkasUrl } from '../../lib/berkasCatalog';
 import { computeCvMiniProgress, computeCvMasterProgress, computeOverallProgress } from '../../lib/profileProgress';
 import LevelCard from './LevelCard';
+import KotakMasuk from './KotakMasuk';
 import StepGuide from './StepGuide';
 import AsjDossierCard from './AsjDossierCard';
 import CandidateSkeleton from './CandidateSkeleton';
@@ -32,7 +33,7 @@ import { ErrorBoundary } from '../ErrorBoundary';
 // memisahkan baris LAMARAN dari baris BIODATA/DOKUMEN (lihat isBiodataRow):
 // baris biodata membawa penanda '[BIODATA] …' / '[UPLOAD <LABEL>]' dan
 // code_job kosong, jadi ia tidak boleh memakai kosakata verifikasi lamaran.
-type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; feedback?: string; };
+type Riwayat = { jobCode: string; tahapan: string; status: string; tanggal: string; kategori?: string; feedback?: string; alasan?: string; };
 type CandidateData = {
   nama: string; wa: string; job: string; tahapan: string; status: string;
   isVIP: boolean; isSiswaASJ?: boolean; kelas?: string; idKandidat?: string;
@@ -305,6 +306,10 @@ export default function CandidateDash() {
             // Pembeda lamaran vs biodata. Tanpa ini baris biodata tampil
             // sebagai "Telah disetujui admin" padahal tidak ada lamaran.
             feedback: a.feedback || a.feedback_berkas || '',
+            // Alasan penolakan (kolom sendiri sejak migrasi 049). Dulu hanya
+            // admin yang melihatnya; kandidat membaca "Berkas perlu revisi"
+            // tanpa tahu apa yang harus diperbaiki.
+            alasan: a.alasan || '',
           })),
           jadwal: (result.mySchedules || legacyD.jadwal || []).map((s: any) => ({
             id: s.id || '', nama: s.agenda || s.nama || '', waktu: s.waktu || '',
@@ -703,6 +708,12 @@ if (!data) return failed
           />
         </LevelCard>
 
+        {/* ── Kotak masuk kandidat (2026-11-06) ──
+            Ditaruh SEBELUM jadwal dan riwayat: kalau ada pemberitahuan baru
+            (berkas ditolak, jadwal mendekat), itu hal pertama yang perlu
+            dibaca. Push hanya kanal; ini sumber kebenarannya. */}
+        <KotakMasuk wa={data.wa || user?.wa || ''} />
+
         {/* ── Jadwal Panel ── */}
         {data.jadwal.length > 0 && (
           <div class="mb-6 md:mb-8 bg-amber-500/10 border border-amber-500/40 p-5 md:p-6 rounded-panel text-left relative overflow-hidden">
@@ -791,6 +802,15 @@ if (!data) return failed
                             <Icon name={statusIcon(r.status)} class="mt-0.5 flex-shrink-0" /> {statusText(r.status, isBiodataRow(r))}
                           </span>
                         </div>
+                        {/* Alasan penolakan — hanya pada baris GAGAL, dan hanya
+                            kalau admin mengisinya. Sebelum migrasi 049 nilai ini
+                            menumpang `keterangan` (yang juga menyimpan URL
+                            dokumen), jadi tidak pernah bisa dikirim ke kandidat. */}
+                        {r.alasan && /GAGAL|TOLAK|REJECT/.test(String(r.status).toUpperCase()) && (
+                          <p class="mt-2 rounded-lg border border-rose-500/40 bg-rose-500/10 px-2.5 py-1.5 text-[11.5px] leading-snug text-rose-200">
+                            <b>{t('ui.alasan_tolak')}:</b> {r.alasan}
+                          </p>
+                        )}
                         {/* Tahapan pipeline */}
                         <div class="mt-3">
                           <div class="flex items-center justify-between mb-1.5">

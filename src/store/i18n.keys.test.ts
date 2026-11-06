@@ -47,6 +47,8 @@ const NS = [
   // `tes` (2026-11-06) — MBTI & Tes Mata Pra-MCU. Tanpa entri ini, seluruh
   // `t('tes.…')` di dua halaman tes dan tab admin tidak divalidasi sama sekali.
   'tes',
+  // `notif` (2026-11-06) — kotak masuk kandidat di dasbor.
+  'notif',
 ].join('|');
 
 /**

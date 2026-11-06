@@ -1584,6 +1584,23 @@ export const jpTranslations: Record<string, string> = {
     "tes.admin_kolom_tanggal": "日付",
     "tes.admin_galat_muat": "テスト設定と結果を読み込めませんでした。",
     "tes.admin_galat_simpan": "テスト設定を保存できませんでした。",
+
+    /* ── Kotak masuk kandidat (2026-11-06) ─────────────────────────────── */
+    "notif.judul": "受信箱",
+    "notif.belum": "未読",
+    "notif.tandai_semua": "すべて既読にする",
+    "notif.kosong": "お知らせはまだありません。書類や予定のお知らせがここに表示されます。",
+    "notif.lihat_semua": "すべて見る",
+    "notif.ringkas": "折りたたむ",
+    "notif.memuat": "読み込み中…",
+    "notif.galat": "お知らせを読み込めませんでした。ページを再読み込みしてください。",
+    "notif.aktifkan": "通知を有効にする",
+    "notif.aktif": "この端末で通知が有効です。",
+    "notif.ditolak": "このサイトの通知がブロックされています。ブラウザのサイト設定で許可してください。",
+    "notif.tidak_didukung": "このブラウザは通知に対応していません。受信箱はここで読めます。",
+    "notif.ios_install": "iPhone/iPad：共有メニューから「ホーム画面に追加」を選び、そのアイコンから開くと通知を有効にできます。",
+    "notif.izin_ket": "通知を有効にすると、書類の確認や予定が近いことをすぐに受け取れます。",
+    "ui.alasan_tolak": "理由",
     /* ── 数学・適性検査 (/matematika) ── */
     "toolbar.matematika": "数学テスト",
     "matematika.gate_title": "受験者アカウントの確認",

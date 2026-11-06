@@ -2135,6 +2135,23 @@ export const translations: Record<Lang, Record<string, string>> = {
     "tes.admin_kolom_tanggal": "Tanggal",
     "tes.admin_galat_muat": "Gagal memuat pengaturan & hasil tes.",
     "tes.admin_galat_simpan": "Gagal menyimpan pengaturan tes.",
+
+    /* ── Kotak masuk kandidat (2026-11-06) ─────────────────────────────── */
+    "notif.judul": "Kotak masuk",
+    "notif.belum": "belum dibaca",
+    "notif.tandai_semua": "Tandai semua dibaca",
+    "notif.kosong": "Belum ada pemberitahuan. Kabar tentang berkas dan jadwal akan muncul di sini.",
+    "notif.lihat_semua": "Lihat semua",
+    "notif.ringkas": "Ringkas",
+    "notif.memuat": "Memuat…",
+    "notif.galat": "Gagal memuat pemberitahuan. Coba muat ulang halaman.",
+    "notif.aktifkan": "Aktifkan notifikasi",
+    "notif.aktif": "Notifikasi aktif di perangkat ini.",
+    "notif.ditolak": "Notifikasi diblokir untuk situs ini. Buka pengaturan situs di browser untuk mengizinkannya lagi.",
+    "notif.tidak_didukung": "Browser ini belum mendukung notifikasi. Kotak masuk tetap bisa dibaca di sini.",
+    "notif.ios_install": "Di iPhone/iPad: buka menu Bagikan, pilih “Tambah ke Layar Utama”, lalu buka aplikasinya dari ikon tersebut untuk mengaktifkan notifikasi.",
+    "notif.izin_ket": "Aktifkan notifikasi supaya kamu langsung tahu saat berkas direview atau jadwal mendekat.",
+    "ui.alasan_tolak": "Alasan",
     /* ── Simulasi tes matematika (/matematika) ──────────────────────────────
        Gerbang & keadaan sama dengan /kotoba: kuncinya sengaja dipisah supaya
        mengubah kalimat satu halaman tidak menggeser halaman lain. */
