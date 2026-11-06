@@ -21,6 +21,7 @@ import TabJadwal from './TabJadwal.tsx';
 import TabAgenda from './TabAgenda.tsx';
 import TabTugas from './TabTugas.tsx';
 import TabPapanSkor from './TabPapanSkor.tsx';
+import TabTes from './TabTes.tsx';
 import TabWA from './TabWA.tsx';
 import PemberkasanModal from "./PemberkasanModal";
 import UndanganKelasModal from "./UndanganKelasModal";
@@ -78,6 +79,9 @@ const TABS = [
   /* Papan peringkat game (2026-11-04). Ditaruh paling akhir, bukan di tengah,
      supaya posisi tujuh entri lama tidak bergeser. */
   { id: 'skor',    icon: 'fa-medal',          labelKey: 'admin.tab_papan_skor' },
+  /* Sakelar & hasil dua tes mandiri (2026-11-06). Sama seperti `skor`: paling
+     akhir, supaya posisi entri lama tidak bergeser. */
+  { id: 'tes',     icon: 'fa-clipboard-check', labelKey: 'admin.tab_tes' },
 ] as const;
 
 /**
@@ -308,6 +312,7 @@ const TAB_VIEWS: Record<Tab, FunctionComponent> = {
   agenda:  () => <TabAgenda />,
   tugas:   () => <TabTugas />,
   skor:    () => <TabPapanSkor />,
+  tes:     () => <TabTes />,
   config:  () => <TabConfig />,
 };
 
