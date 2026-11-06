@@ -2,8 +2,8 @@
  * db/schema.generated.ts — AUTO-GENERATED — DO NOT EDIT BY HAND.
  *
  * Source  : PostgREST OpenAPI document of the live database
- * Digest  : sha256:f3c59ff96695ce43f2b2c51ab3b4a1d6bb0b7fe8735dcfcc0583b98f97d448cb
- * Tables  : 33
+ * Digest  : sha256:3905867d0b54a1e32e206f9ff79d500747cddd1cda32bbfceb652a62a17bc991
+ * Tables  : 34
  *
  * Regenerate : npm run db:schema
  * Verify     : npm run verify:schema   (pre-deploy; needs SUPABASE_URL +
@@ -17,7 +17,7 @@
  */
 
 /** sha256 over `table:col,col,…` for every table, sorted by table name. */
-export const SCHEMA_FINGERPRINT = 'sha256:f3c59ff96695ce43f2b2c51ab3b4a1d6bb0b7fe8735dcfcc0583b98f97d448cb' as const;
+export const SCHEMA_FINGERPRINT = 'sha256:3905867d0b54a1e32e206f9ff79d500747cddd1cda32bbfceb652a62a17bc991' as const;
 
 /**
  * The contract, one line per table: `<table>:<col>,<col>,…`.
@@ -31,6 +31,7 @@ const SCHEMA_LINES = `
 _backup_alamat_20261029:id_kandidat,alamat_lengkap,alamat_jp,taken_at
 _backup_hubungan_20261029:id_kandidat,keluarga_1_hubungan_jp,keluarga_2_hubungan_jp,keluarga_3_hubungan_jp,keluarga_4_hubungan_jp,keluarga_5_hubungan_jp,taken_at
 ai_form_submissions:id,created_at,updated_at,wa,nama_lengkap,mode,job_code,bidang,status,ai_data_json,ai_updated_at,photo_url,jft_url,ssw_url,submitted_via,submitted_by
+candidate_assessments:id,no_wa,nama,kelas,jenis,ringkasan,hasil,dibuat_pada
 candidate_pekerjaan:id,id_kandidat,urutan,perusahaan,perusahaan_jp,jabatan,jabatan_jp,tahun_masuk,tahun_keluar,gaji,jenis,bidang,catatan,created_at,updated_at
 data_archive:id,source_sheet,archived_at,row_data
 database_asj_form:id,timestamp,code_job,kategory,nama_lengkap,no_wa,gender,usia,tb,bb,pas_photo,jft,ssw,file_cv,folder_name,folder_id,folder_url,status,email,tempat_lahir,tgl_lahir,alamat_lengkap,created_at,updated_at,keterangan,ai_data_json,feedback_berkas
@@ -78,6 +79,7 @@ export type TableName =
   | "_backup_alamat_20261029"
   | "_backup_hubungan_20261029"
   | "ai_form_submissions"
+  | "candidate_assessments"
   | "candidate_pekerjaan"
   | "data_archive"
   | "database_asj_form"
