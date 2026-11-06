@@ -48,8 +48,13 @@ export function initEventHandlers(): void {
       at: event.at,
     });
 
-    // Future: send FCM push notification to admin
-    // await notifyAdmins('Lamaran Baru', `Pelamar ${event.wa.slice(-4)} mendaftar ke ${event.jobCode}`, '/admin.html');
+    // JANGAN kirim notifikasi admin dari sini.
+    //
+    // "Lamaran Baru!" SUDAH dikirim dari jalur unggah
+    // (`contexts/documents/service.ts`), dan barisnya juga masuk Mail lewat
+    // `syncFormMailDariUpload`. Versi yang dulu dikomentari di sini akan
+    // menggandakan notifikasi untuk satu lamaran yang sama kalau diaktifkan —
+    // dan URL-nya masih `/admin.html`, rute yang tidak ada di build Astro.
   });
 
   // ── Application approved ─────────────────────────────────────────────────
@@ -124,7 +129,8 @@ export function initEventHandlers(): void {
       at: event.at,
     });
 
-    // Future: send FCM reminder to admin
-    // await notifyAdmins('Pengingat', `Tugas ${event.tugasId} sudah jatuh tempo.`, '/admin.html');
+    // Belum ada pengingat push untuk tugas yang jatuh tempo. Kalau nanti
+    // ditambahkan, tulis URL-nya sebagai `/admin#tugas` — bukan
+    // `/admin.html`, yang tidak ada di build Astro.
   });
 }
