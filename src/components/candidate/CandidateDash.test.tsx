@@ -290,12 +290,21 @@ describe('CandidateDash — unggah revisi lewat apiClient', () => {
         success: true,
         candidates: [row()],
         kandidatData: {
-          needRevision: true,
-          revisionNote: 'Foto kurang jelas',
           cvMiniProgress: 0,
           cvMasterProgress: 0,
         },
-        kandidatRiwayat: [],
+        /* Banner revisi DITURUNKAN DARI RIWAYAT (2026-11-07). Fixture ini dulu
+           memakai `kandidatData.needRevision` — jalur yang tidak pernah ada di
+           server, jadi tesnya hijau untuk banner yang di produksi tidak pernah
+           muncul. Sekarang bentuknya sama dengan payload sungguhan. */
+        kandidatRiwayat: [
+          {
+            code: 'JOB-1',
+            status: 'GAGAL',
+            timestamp: '2026-11-06T10:00:00Z',
+            alasan: 'Foto kurang jelas',
+          },
+        ],
         mySchedules: [],
       } as never;
     }) as never);
@@ -907,5 +916,86 @@ describe('CandidateDash — menu Arcade', () => {
        navigasi. Tanpa tes ini, tombol bisa saja membuka halaman untuk semua
        orang dan tidak ada yang tahu. */
     expect(navigateToMock).not.toHaveBeenCalledWith('/arcade');
+  });
+});
+
+// ==========================================
+// TESTS: banner revisi berkas (2026-11-07)
+//
+// `needRevision` dulu dibaca dari `result.kandidatData` — objek yang TIDAK
+// PERNAH dikirim backend. Akibatnya banner "berkas perlu revisi" tidak pernah
+// muncul, dan tombol unggah di dalamnya tidak pernah bisa dijangkau, walaupun
+// admin sudah menolak berkas kandidat dan mengisi alasannya.
+//
+// Sekarang nilainya diturunkan dari baris riwayat berstatus GAGAL. Empat arah
+// diuji: muncul saat relevan, alasan ikut tampil, tidak muncul saat bersih, dan
+// tidak muncul untuk penolakan loker yang sudah ditinggalkan.
+// ==========================================
+describe('CandidateDash — banner revisi berkas', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    fetchMock.mockReset();
+    apiClientMock.mockReset();
+    vi.mocked(showToast).mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  /** Satu baris riwayat; default = lamaran loker aktif yang ditolak. */
+  function riwayat(over: Record<string, unknown> = {}) {
+    return {
+      code: 'JOB-1',
+      status: 'GAGAL',
+      timestamp: '2026-11-06T10:00:00Z',
+      alasan: 'KTP buram, mohon foto ulang',
+      ...over,
+    };
+  }
+
+  function mockRiwayat(daftar: unknown[], rowOver: Record<string, unknown> = {}) {
+    apiClientMock.mockResolvedValue({
+      success: true,
+      candidates: [row(rowOver)],
+      kandidatData: {},
+      kandidatRiwayat: daftar,
+      mySchedules: [],
+    } as never);
+  }
+
+  it('muncul saat berkas lamaran ditolak, beserta alasannya', async () => {
+    mockRiwayat([riwayat()]);
+    render(<CandidateDash />);
+    await waitFor(() => expect(screen.getByText('candidate.doc_revise_title')).toBeTruthy());
+    // Alasan dari `alasan_tolak` (migrasi 049) harus terbaca kandidat — di
+    // banner maupun di baris riwayat.
+    expect(screen.getAllByText(/KTP buram/).length).toBeGreaterThan(0);
+  });
+
+  it('TIDAK muncul saat semua baris sudah diputuskan', async () => {
+    mockRiwayat([riwayat({ status: 'DISETUJUI', alasan: '' })]);
+    render(<CandidateDash />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'ui.ai_cv_assistant' })).toBeTruthy());
+    expect(screen.queryByText('candidate.doc_revise_title')).toBeNull();
+  });
+
+  it('TIDAK muncul untuk penolakan pada loker yang sudah ditinggalkan', async () => {
+    // Kandidat sekarang di JOB-1; penolakan lama di JOB-9 bukan urusan dasbor.
+    mockRiwayat([riwayat({ code: 'JOB-9' })]);
+    render(<CandidateDash />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'ui.ai_cv_assistant' })).toBeTruthy());
+    expect(screen.queryByText('candidate.doc_revise_title')).toBeNull();
+  });
+
+  it('tetap muncul untuk baris DOKUMEN (tanpa kode loker)', async () => {
+    // Unggahan dokumen memakai code_job kosong; penolakannya tidak terikat
+    // loker mana pun, jadi selalu relevan.
+    mockRiwayat([riwayat({ code: '', alasan: 'Pas foto tidak berlatar merah' })]);
+    render(<CandidateDash />);
+    await waitFor(() => expect(screen.getByText('candidate.doc_revise_title')).toBeTruthy());
+    expect(screen.getAllByText(/Pas foto tidak berlatar merah/).length).toBeGreaterThan(0);
   });
 });

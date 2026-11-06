@@ -273,6 +273,38 @@ export default function CandidateDash() {
           label: def.label,
           done: hasBerkasUrl(berkasMap[def.key]),
         }));
+        const riwayat: Riwayat[] = (result.kandidatRiwayat || legacyD.riwayat || []).map((a: any) => ({
+          jobCode: a.code || a.jobCode || '-', tahapan: a.tahapan || '-',
+          status: a.status || '-', tanggal: a.timestamp || a.tanggal || '',
+          kategori: a.kategori || '', cv: a.cv || '',
+          // Pembeda lamaran vs biodata. Tanpa ini baris biodata tampil
+          // sebagai "Telah disetujui admin" padahal tidak ada lamaran.
+          feedback: a.feedback || a.feedback_berkas || '',
+          // Alasan penolakan (kolom sendiri sejak migrasi 049). Dulu hanya
+          // admin yang melihatnya; kandidat membaca "Berkas perlu revisi"
+          // tanpa tahu apa yang harus diperbaiki.
+          alasan: a.alasan || '',
+        }));
+        /* ── BANNER REVISI: DITURUNKAN DARI RIWAYAT, BUKAN DARI `kandidatData` ──
+           Dulu `needRevision` dibaca dari `legacyD` (`result.kandidatData`), dan
+           backend TIDAK PERNAH mengirim objek itu — jadi bannernya tidak pernah
+           muncul, walau berkas kandidat ditolak. Tombol unggah di dalamnya pun
+           tidak pernah bisa dijangkau.
+           Sekarang diturunkan dari baris riwayat yang berstatus GAGAL. Aturannya
+           self-healing: `mailStatusUntukUpdate('GAGAL')` mengembalikan `UPDATE`
+           (`contexts/applications/service.ts:56`), jadi begitu kandidat
+           mengunggah ulang, baris itu berhenti GAGAL dan banner hilang sendiri.
+           Baris ber-`jobCode` '-' adalah unggahan dokumen (bukan lamaran loker)
+           — selalu relevan. Baris lamaran hanya dihitung bila lokernya loker yang
+           sedang aktif, supaya penolakan lama pada loker yang sudah ditinggalkan
+           tidak menghantui dasbor. */
+        const jobAktif = String(row?.idLoker || legacyD.job || '').trim();
+        const perluRevisi = riwayat.find((r) => {
+          if (!/GAGAL|TOLAK|REJECT/i.test(String(r.status))) return false;
+          const kode = String(r.jobCode || '').trim();
+          if (!kode || kode === '-') return true;
+          return !jobAktif || kode === jobAktif;
+        });
         setData({
           nama: row?.nama || legacyD.nama || user.name || 'Kandidat', wa,
           job: row?.idLoker || legacyD.job || '-', tahapan: row?.tahapan || legacyD.tahapan || '-',
@@ -303,18 +335,7 @@ export default function CandidateDash() {
           // kompatibilitas bila suatu saat backend mengirimnya lagi.
           cvMiniProgress: legacyD.cvMiniProgress ?? computeCvMiniProgress(row),
           cvMasterProgress: legacyD.cvMasterProgress ?? computeCvMasterProgress(row?.bio),
-          riwayat: (result.kandidatRiwayat || legacyD.riwayat || []).map((a: any) => ({
-            jobCode: a.code || a.jobCode || '-', tahapan: a.tahapan || '-',
-            status: a.status || '-', tanggal: a.timestamp || a.tanggal || '',
-            kategori: a.kategori || '', cv: a.cv || '',
-            // Pembeda lamaran vs biodata. Tanpa ini baris biodata tampil
-            // sebagai "Telah disetujui admin" padahal tidak ada lamaran.
-            feedback: a.feedback || a.feedback_berkas || '',
-            // Alasan penolakan (kolom sendiri sejak migrasi 049). Dulu hanya
-            // admin yang melihatnya; kandidat membaca "Berkas perlu revisi"
-            // tanpa tahu apa yang harus diperbaiki.
-            alasan: a.alasan || '',
-          })),
+          riwayat,
           jadwal: (result.mySchedules || legacyD.jadwal || []).map((s: any) => ({
             id: s.id || '', nama: s.agenda || s.nama || '', waktu: s.waktu || '',
             lokasi: s.lokasi || '', link: s.link || '',
@@ -385,7 +406,10 @@ export default function CandidateDash() {
           tb: String(row?.tb || ''),
           bb: String(row?.bb || ''),
           pendidikan: String(row?.pendidikan || ''),
-          needRevision: !!legacyD.needRevision, revisionNote: legacyD.revisionNote || '',
+          // Diturunkan dari `riwayat` di atas — lihat catatan panjang sebelum
+          // `setData`. `legacyD` tidak pernah berisi kedua nilai ini.
+          needRevision: Boolean(perluRevisi),
+          revisionNote: perluRevisi?.alasan || '',
           applications: row?.applications || legacyD.applications || [],
         });
       }
