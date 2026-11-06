@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest';
 import {
   JENIS_NOTIFIKASI,
   daftarNotifikasi,
+  hapusNotifikasi,
   jenisNotifikasiSah,
   tandaiDibaca,
 } from './kotak-masuk';
@@ -78,5 +79,21 @@ describe('daftar & tandai', () => {
 
   it('tandai tanpa WA tidak menyentuh DB', async () => {
     expect(await tandaiDibaca('')).toEqual({ success: false, jumlah: 0 });
+  });
+});
+
+/**
+ * `hapusNotifikasi` — penolakan di depan, sebelum menyentuh DB.
+ *
+ * Yang dijaga: tanpa WA, fungsi ini tidak boleh mengirim DELETE apa pun.
+ * Filter `no_wa` adalah satu-satunya yang mencegah satu siswa menghapus baris
+ * siswa lain; kalau WA kosong lolos, query-nya menjadi `no_wa=eq.` yang tidak
+ * cocok dengan apa pun (aman) — tapi lebih baik ditolak eksplisit daripada
+ * bergantung pada kebetulan itu.
+ */
+describe('hapusNotifikasi', () => {
+  it('menolak WA kosong tanpa menyentuh DB', async () => {
+    await expect(hapusNotifikasi('', 1)).resolves.toEqual({ success: false, jumlah: 0 });
+    await expect(hapusNotifikasi('   ', 1)).resolves.toEqual({ success: false, jumlah: 0 });
   });
 });

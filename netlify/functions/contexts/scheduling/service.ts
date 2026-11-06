@@ -244,7 +244,8 @@ export async function handleCheckAndSendAgendaReminders(
           jenis: 'jadwal',
           judul: title,
           isi: body,
-          url: '/candidate',
+          // Mendarat di kartu jadwal, bukan di puncak dasbor.
+          url: '/candidate#jadwal',
         });
         if (r.success) sent++;
         else errors++;

@@ -2151,6 +2151,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     "notif.tidak_didukung": "Browser ini belum mendukung notifikasi. Kotak masuk tetap bisa dibaca di sini.",
     "notif.ios_install": "Di iPhone/iPad: buka menu Bagikan, pilih “Tambah ke Layar Utama”, lalu buka aplikasinya dari ikon tersebut untuk mengaktifkan notifikasi.",
     "notif.izin_ket": "Aktifkan notifikasi supaya kamu langsung tahu saat berkas direview atau jadwal mendekat.",
+    "notif.hapus": "Hapus",
+    "notif.bersihkan": "Bersihkan",
+    "notif.galat_hapus": "Gagal menghapus pemberitahuan. Coba lagi.",
+    "notif.ke": "Buka",
     "ui.alasan_tolak": "Alasan",
 
     /* ── Notifikasi perangkat admin (2026-11-06) ───────────────────────── */

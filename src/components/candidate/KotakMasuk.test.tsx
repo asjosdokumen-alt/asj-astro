@@ -13,6 +13,7 @@ import { api } from '../../lib/apiClient';
 vi.mock('../../lib/apiClient', () => ({ api: { secure: vi.fn() } }));
 vi.mock('../../lib/fcm', () => ({ requestNotificationPermission: vi.fn() }));
 vi.mock('../../lib/navigate', () => ({ navigateTo: vi.fn() }));
+vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../../store/i18n', async () => {
   const { atom } = await import('nanostores');
   return { t: (k: string) => k, langStore: atom<'id' | 'jp'>('id'), toggleLang: vi.fn(), useLang: () => 'id' };
@@ -81,5 +82,100 @@ describe('KotakMasuk', () => {
     vi.mocked(api.secure).mockResolvedValue({ success: false, sessionInvalid: true });
     render(<KotakMasuk wa="6281234567890" />);
     await waitFor(() => expect(screen.getByText('notif.galat')).toBeTruthy());
+  });
+});
+
+// ==========================================
+// TESTS: klik & hapus (2026-11-07)
+//
+// Laporan pemilik: "pesannya gak bisa di pencet dan gak bisa di delete".
+// Dua-duanya benar: semua pemberitahuan menunjuk `/candidate` (halaman yang
+// sedang dibuka) sehingga klik tidak membawa ke mana-mana, dan tidak ada
+// tombol hapus sama sekali.
+// ==========================================
+describe('KotakMasuk — membuka & menghapus', () => {
+  it('menandai dibaca lalu membuka anchor tujuannya', async () => {
+    const { navigateTo } = await import('../../lib/navigate');
+    vi.mocked(api.secure).mockResolvedValue({
+      success: true,
+      notifikasi: [{ ...BARIS[0], url: '/candidate#revisi' }],
+      belumDibaca: 1,
+    });
+    render(<KotakMasuk wa="6281234567890" />);
+    await waitFor(() => expect(screen.getByText('Berkas perlu revisi')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('Berkas perlu revisi'));
+    await waitFor(() => expect(vi.mocked(navigateTo)).toHaveBeenCalledWith('/candidate#revisi'));
+    expect(vi.mocked(api.secure)).toHaveBeenCalledWith(
+      'tandaiNotifikasiDibaca',
+      ['6281234567890', 1],
+      expect.anything(),
+    );
+  });
+
+  it('TIDAK memuat ulang halaman kalau tujuannya halaman ini juga', async () => {
+    const { navigateTo } = await import('../../lib/navigate');
+    vi.mocked(navigateTo).mockClear();
+    // jsdom: pathname = '/'. Tujuan yang sama persis = tidak ada gunanya pindah.
+    vi.mocked(api.secure).mockResolvedValue({
+      success: true,
+      notifikasi: [{ ...BARIS[0], url: '/' }],
+      belumDibaca: 1,
+    });
+    render(<KotakMasuk wa="6281234567890" />);
+    await waitFor(() => expect(screen.getByText('Berkas perlu revisi')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('Berkas perlu revisi'));
+    await waitFor(() => expect(vi.mocked(api.secure)).toHaveBeenCalled());
+    expect(vi.mocked(navigateTo)).not.toHaveBeenCalled();
+  });
+
+  it('menghapus satu pemberitahuan', async () => {
+    vi.mocked(api.secure).mockResolvedValue({ success: true, notifikasi: BARIS, belumDibaca: 2 });
+    render(<KotakMasuk wa="6281234567890" />);
+    await waitFor(() => expect(screen.getByText('Berkas perlu revisi')).toBeTruthy());
+
+    fireEvent.click(screen.getByLabelText('notif.hapus: Berkas perlu revisi'));
+    await waitFor(() => expect(screen.queryByText('Berkas perlu revisi')).toBeNull());
+    // Yang lain tidak ikut terhapus.
+    expect(screen.getByText('MCU 7 hari lagi')).toBeTruthy();
+    expect(vi.mocked(api.secure)).toHaveBeenCalledWith(
+      'hapusNotifikasi',
+      ['6281234567890', 1],
+      expect.anything(),
+    );
+  });
+
+  it('mengembalikan baris kalau server menolak menghapus', async () => {
+    const { showToast } = await import('../Toast');
+    vi.mocked(api.secure)
+      .mockResolvedValueOnce({ success: true, notifikasi: BARIS, belumDibaca: 2 })
+      .mockResolvedValueOnce({ success: false });
+    render(<KotakMasuk wa="6281234567890" />);
+    await waitFor(() => expect(screen.getByText('Berkas perlu revisi')).toBeTruthy());
+
+    fireEvent.click(screen.getByLabelText('notif.hapus: Berkas perlu revisi'));
+    await waitFor(() => expect(vi.mocked(showToast)).toHaveBeenCalledWith('notif.galat_hapus', 'error'));
+    // Baris yang gagal dihapus TIDAK boleh hilang dari layar.
+    expect(screen.getByText('Berkas perlu revisi')).toBeTruthy();
+  });
+
+  it('"Bersihkan" hanya menghapus yang sudah dibaca', async () => {
+    vi.mocked(api.secure).mockResolvedValue({
+      success: true,
+      notifikasi: [{ ...BARIS[0], dibaca_pada: '2026-11-06T11:00:00.000Z' }, BARIS[1]],
+      belumDibaca: 1,
+    });
+    render(<KotakMasuk wa="6281234567890" />);
+    await waitFor(() => expect(screen.getByText('notif.bersihkan')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('notif.bersihkan'));
+    await waitFor(() => expect(screen.queryByText('Berkas perlu revisi')).toBeNull());
+    expect(screen.getByText('MCU 7 hari lagi')).toBeTruthy();
+    expect(vi.mocked(api.secure)).toHaveBeenCalledWith(
+      'hapusNotifikasi',
+      ['6281234567890'],
+      expect.anything(),
+    );
   });
 });

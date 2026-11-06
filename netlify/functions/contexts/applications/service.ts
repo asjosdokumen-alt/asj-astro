@@ -221,7 +221,10 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
             // (dua spasi) terbaca seperti pesan yang rusak.
             judul: jobCode ? `Dokumen ${jobCode} perlu revisi` : 'Berkas perlu revisi',
             isi: alasanEfektif,
-            url: '/candidate',
+            // Menunjuk BAGIAN yang perlu ditindaklanjuti, bukan hanya halaman
+            // dasbor: kotak masuk yang membawa ke halaman yang sama terasa
+            // seperti tombol mati (laporan pemilik 2026-11-07).
+            url: '/candidate#revisi',
           });
         } else if (status === 'REVIEW') {
           await kirimNotifikasi({
@@ -229,7 +232,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
             jenis: 'dokumen',
             judul: jobCode ? `Dokumen ${jobCode} sedang direview` : 'Berkas sedang direview',
             isi: 'Admin sedang meninjau dokumen Anda.',
-            url: '/candidate',
+            url: '/candidate#riwayat',
           });
         } else {
           await kirimNotifikasi({
@@ -237,7 +240,7 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
             jenis: 'lamaran',
             judul: jobCode ? `Lamaran ${jobCode} disetujui` : 'Berkas disetujui admin',
             isi: 'Selamat! Lamaran Anda telah disetujui.',
-            url: '/candidate',
+            url: '/candidate#riwayat',
           });
         }
       } catch { /* notifikasi tidak boleh membatalkan keputusan admin */ }

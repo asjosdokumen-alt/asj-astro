@@ -98,6 +98,7 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   getNotifikasiKandidat: '/.netlify/functions/notify',
   tandaiNotifikasiDibaca: '/.netlify/functions/notify',
   tandaiSemuaNotifikasiDibaca: '/.netlify/functions/notify',
+  hapusNotifikasi: '/.netlify/functions/notify',
   getStatusNotifikasiAdmin: '/.netlify/functions/notify',
 
   // AI

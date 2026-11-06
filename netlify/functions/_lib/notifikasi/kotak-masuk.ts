@@ -193,6 +193,37 @@ export async function daftarNotifikasi(
 }
 
 /**
+ * Hapus satu baris. Tanpa `id`, yang dihapus adalah semua baris yang SUDAH
+ * DIBACA — "bersihkan kotak masuk" tanpa menyentuh yang belum dibaca.
+ *
+ * `no_wa` selalu ikut disaring (sama seperti `tandaiDibaca`): satu siswa tidak
+ * bisa menghapus baris milik siswa lain walaupun tahu id-nya.
+ */
+export async function hapusNotifikasi(
+  waMentah: string,
+  id?: unknown,
+): Promise<{ success: boolean; jumlah: number }> {
+  const wa = normalizeWa(String(waMentah ?? ''));
+  if (!wa) return { success: false, jumlah: 0 };
+  const query: Record<string, string> = { no_wa: `eq.${wa}` };
+  const n = Number(id);
+  if (Number.isFinite(n) && n > 0) query.id = `eq.${Math.trunc(n)}`;
+  else query.dibaca_pada = 'not.is.null';
+  try {
+    const rows = await supabaseJson('DELETE', 'notifikasi_kandidat', {
+      query,
+      // `representation` supaya jumlah yang benar-benar terhapus bisa
+      // dilaporkan; UI memakainya untuk mengoreksi daftar kalau angkanya
+      // berbeda dari yang dihapus optimistis.
+      headers: { Prefer: 'return=representation' },
+    });
+    return { success: true, jumlah: Array.isArray(rows) ? rows.length : 0 };
+  } catch {
+    return { success: false, jumlah: 0 };
+  }
+}
+
+/**
  * Tandai satu baris (atau SEMUA) sudah dibaca.
  * `id` disaring bersama `no_wa`, jadi satu siswa tidak bisa menandai baris
  * milik siswa lain walaupun tahu id-nya.

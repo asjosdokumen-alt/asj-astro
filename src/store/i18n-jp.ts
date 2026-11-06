@@ -1600,6 +1600,10 @@ export const jpTranslations: Record<string, string> = {
     "notif.tidak_didukung": "このブラウザは通知に対応していません。受信箱はここで読めます。",
     "notif.ios_install": "iPhone/iPad：共有メニューから「ホーム画面に追加」を選び、そのアイコンから開くと通知を有効にできます。",
     "notif.izin_ket": "通知を有効にすると、書類の確認や予定が近いことをすぐに受け取れます。",
+    "notif.hapus": "削除",
+    "notif.bersihkan": "整理",
+    "notif.galat_hapus": "お知らせを削除できませんでした。もう一度お試しください。",
+    "notif.ke": "開く",
     "ui.alasan_tolak": "理由",
 
     /* ── Notifikasi perangkat admin (2026-11-06) ───────────────────────── */

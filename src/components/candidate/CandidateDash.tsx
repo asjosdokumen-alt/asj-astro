@@ -744,7 +744,7 @@ if (!data) return failed
 
         {/* ── Jadwal Panel ── */}
         {data.jadwal.length > 0 && (
-          <div class="mb-6 md:mb-8 bg-amber-500/10 border border-amber-500/40 p-5 md:p-6 rounded-panel text-left relative overflow-hidden">
+          <div id="jadwal" class="mb-6 md:mb-8 scroll-mt-24 bg-amber-500/10 border border-amber-500/40 p-5 md:p-6 rounded-panel text-left relative overflow-hidden">
             <div class="absolute -right-4 -top-4 text-amber-500/10 text-7xl"><Icon name="calendar-alt" /></div>
             {/* `animate-pulse` REMOVED 2026-09-30 (§1.2 rejects kinetic type, and
                 §6.5 keeps motion out of anything that carries meaning). Three
@@ -778,7 +778,7 @@ if (!data) return failed
             other consumer. */}
 
         {/* ── Status Lamaran Terkini (with tahapan pipeline) ── */}
-        <div class="mb-6 md:mb-8 bg-sky-500/10 border border-sky-500/30 p-5 md:p-6 rounded-panel relative overflow-hidden text-left">
+        <div id="riwayat" class="mb-6 md:mb-8 scroll-mt-24 bg-sky-500/10 border border-sky-500/30 p-5 md:p-6 rounded-panel relative overflow-hidden text-left">
           <div class="absolute -right-6 -top-10 text-sky-500/10 text-[10rem]"><Icon name="rocket" /></div>
           <div class="relative z-10">
             <h2 class="text-xl font-black text-accent-sky mb-2"><Icon name="bolt" class="mr-2 text-accent-amber" /> {t('ui.app_status_latest')}</h2>
@@ -924,7 +924,7 @@ if (!data) return failed
           </div>
         </div>
         {data.needRevision && (
-          <div class="bg-red-500/10 border border-red-500/40 rounded-panel p-5 md:p-6 mb-6 md:mb-8 text-left">
+          <div id="revisi" class="scroll-mt-24 bg-red-500/10 border border-red-500/40 rounded-panel p-5 md:p-6 mb-6 md:mb-8 text-left">
             <h3 class="text-accent-red font-bold mb-2 text-lg"><Icon name="exclamation-triangle" class="mr-2" /> {t('candidate.doc_revise_title')}</h3>
             <p class="text-sm text-slate-300 mb-5">{data.revisionNote || t('candidate.doc_revise_desc')}</p>
             <button type="button"

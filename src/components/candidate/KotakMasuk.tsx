@@ -26,6 +26,7 @@ import { api } from '../../lib/apiClient';
 import { requestNotificationPermission } from '../../lib/fcm';
 import { navigateTo } from '../../lib/navigate';
 import { t } from '../../store/i18n';
+import { showToast } from '../Toast';
 import Icon from '../ui/Icon';
 
 interface Baris {
@@ -140,7 +141,57 @@ export default function KotakMasuk({ wa }: { wa: string }) {
         /* optimistis: kalau gagal, badge akan terkoreksi saat muat ulang */
       }
     }
-    if (b.url) navigateTo(b.url);
+    /* Hanya pindah kalau tujuannya BUKAN halaman ini tanpa anchor. Dulu semua
+       pemberitahuan menunjuk `/candidate`, jadi menekannya memuat ulang dasbor
+       yang sedang dibuka — terasa seperti tombol mati (laporan pemilik
+       2026-11-07). Sekarang server menulis anchor (`#revisi`, `#jadwal`,
+       `#riwayat`) sehingga klik benar-benar mendarat di bagian yang dimaksud. */
+    if (b.url) {
+      let sama = false;
+      try {
+        sama = b.url === window.location.pathname;
+      } catch {
+        sama = false;
+      }
+      if (!sama) navigateTo(b.url);
+    }
+  };
+
+  /** Hapus satu baris. Optimistis, tapi DIKEMBALIKAN kalau server menolak. */
+  const hapusSatu = async (b: Baris) => {
+    const sebelum = daftar;
+    const belumSebelum = belum;
+    setDaftar((d) => d.filter((x) => x.id !== b.id));
+    if (!b.dibaca_pada) setBelum((n) => Math.max(0, n - 1));
+    try {
+      const d = (await api.secure('hapusNotifikasi', [wa, b.id], { silent: true })) as {
+        success?: boolean;
+      };
+      if (d?.success === false) throw new Error('ditolak');
+    } catch {
+      /* Baris yang hilang dari layar padahal masih ada di server lebih buruk
+         daripada gagal menghapus: kembalikan apa adanya lalu beri tahu. */
+      setDaftar(sebelum);
+      setBelum(belumSebelum);
+      showToast(t('notif.galat_hapus'), 'error');
+    }
+  };
+
+  /** Hapus SEMUA yang sudah dibaca. Yang belum dibaca tidak disentuh. */
+  const bersihkan = async () => {
+    const sisa = daftar.filter((x) => !x.dibaca_pada);
+    if (sisa.length === daftar.length) return;
+    const sebelum = daftar;
+    setDaftar(sisa);
+    try {
+      const d = (await api.secure('hapusNotifikasi', [wa], { silent: true })) as {
+        success?: boolean;
+      };
+      if (d?.success === false) throw new Error('ditolak');
+    } catch {
+      setDaftar(sebelum);
+      showToast(t('notif.galat_hapus'), 'error');
+    }
   };
 
   const tandaiSemua = async () => {
@@ -166,6 +217,8 @@ export default function KotakMasuk({ wa }: { wa: string }) {
   };
 
   const tampil = terbuka ? daftar : daftar.slice(0, TAMPIL_RINGKAS);
+  /** Tombol "Bersihkan" hanya muncul kalau memang ada yang bisa dibersihkan. */
+  const adaDibaca = daftar.some((x) => x.dibaca_pada);
 
   /* Petunjuk pemasangan hanya relevan di iOS yang belum dipasang: di sana
      `Notification` bahkan tidak ada sampai web app masuk Layar Utama. */
@@ -218,15 +271,26 @@ export default function KotakMasuk({ wa }: { wa: string }) {
             </span>
           )}
         </h2>
-        {belum > 0 && (
-          <button
-            type="button"
-            onClick={() => void tandaiSemua()}
-            class="min-h-9 rounded-control border border-line px-2.5 text-[11px] font-bold text-fg-muted hover:text-fg"
-          >
-            {t('notif.tandai_semua')}
-          </button>
-        )}
+        <div class="flex flex-wrap items-center justify-end gap-1.5">
+          {adaDibaca && (
+            <button
+              type="button"
+              onClick={() => void bersihkan()}
+              class="min-h-9 rounded-control border border-line px-2.5 text-[11px] font-bold text-fg-muted hover:border-accent-red/50 hover:text-accent-red"
+            >
+              {t('notif.bersihkan')}
+            </button>
+          )}
+          {belum > 0 && (
+            <button
+              type="button"
+              onClick={() => void tandaiSemua()}
+              class="min-h-9 rounded-control border border-line px-2.5 text-[11px] font-bold text-fg-muted hover:text-fg"
+            >
+              {t('notif.tandai_semua')}
+            </button>
+          )}
+        </div>
       </div>
 
       {daftar.length === 0 ? (
@@ -236,11 +300,13 @@ export default function KotakMasuk({ wa }: { wa: string }) {
           {tampil.map((b) => {
             const belumDibaca = !b.dibaca_pada;
             return (
-              <li key={b.id}>
+              /* DUA tombol, bukan satu: membuka dan menghapus adalah tindakan
+                 yang berbeda, dan tombol bersarang tidak sah di HTML. */
+              <li key={b.id} class="flex items-stretch gap-1">
                 <button
                   type="button"
                   onClick={() => void tandaiSatu(b)}
-                  class={`w-full rounded-control border px-3 py-2 text-left transition ${
+                  class={`min-w-0 flex-1 rounded-control border px-3 py-2 text-left transition ${
                     belumDibaca
                       ? 'border-accent-sky/40 bg-accent-sky/10 hover:border-accent-sky'
                       : 'border-transparent bg-surface-sunken hover:border-line'
@@ -257,7 +323,20 @@ export default function KotakMasuk({ wa }: { wa: string }) {
                       </span>
                       {b.isi && <span class="mt-0.5 block text-[11.5px] leading-snug text-fg-muted">{b.isi}</span>}
                     </span>
+                    {/* Penanda bahwa baris ini membawa ke suatu tempat. Tanpa
+                        ini, baris yang tujuannya halaman yang sama terlihat
+                        persis seperti teks biasa. */}
+                    {b.url && <Icon name="chevron-right" class="mt-0.5 shrink-0 text-fg-subtle" />}
                   </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void hapusSatu(b)}
+                  aria-label={`${t('notif.hapus')}: ${b.judul}`}
+                  title={t('notif.hapus')}
+                  class="shrink-0 rounded-control border border-line px-2 text-fg-muted transition hover:border-accent-red/50 hover:text-accent-red"
+                >
+                  <Icon name="trash" />
                 </button>
               </li>
             );

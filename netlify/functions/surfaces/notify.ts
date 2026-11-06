@@ -69,6 +69,22 @@ export const NOTIFY_ACTIONS: Record<string, (payload: unknown[], sessionToken?: 
   },
 
   /**
+   * Hapus satu pemberitahuan (atau semua yang sudah dibaca bila `id` kosong).
+   *
+   * Gerbangnya sama dengan dua action di atas: pemilik baris atau admin.
+   * Tanpa ini kotak masuk hanya bisa bertambah — kandidat tidak punya cara
+   * membersihkan pemberitahuan lama, dan "tandai dibaca" bukan penghapusan.
+   */
+  hapusNotifikasi: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '').trim();
+    if (!isOwnerOrAdmin(s, wa)) {
+      return { success: false, sessionInvalid: true, message: 'Sesi tidak valid' };
+    }
+    const { hapusNotifikasi } = await import('../_lib/notifikasi/kotak-masuk');
+    return hapusNotifikasi(wa, p?.[1]);
+  },
+
+  /**
    * Berapa perangkat ADMIN yang terdaftar untuk push.
    *
    * KENAPA ADA: tombol "Aktifkan notifikasi" di panel bisa menjawab "izin
