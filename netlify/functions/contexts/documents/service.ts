@@ -678,7 +678,7 @@ export async function handleSubmitApply(payload: any[], sessionToken?: string) {
       notifyAdmins(
         "Lamaran Baru!",
         `${d.nama || "Kandidat"} baru saja melamar posisi ${code}.`,
-        "/admin.html",
+        "/admin",
       );
     } catch {
       /* non-fatal */
@@ -1041,7 +1041,7 @@ export async function handleSimpanBerkasTahapan(
       notifyAdmins(
         "Berkas Baru!",
         `${nama || "Kandidat"} mengunggah ${jenis || "dokumen"}.`,
-        "/admin.html",
+        "/admin",
       );
     } catch {
       /* non-fatal */

@@ -571,9 +571,9 @@ function toText(v: unknown) {
 }
 
 // Normalisasi nomor WA Indonesia: "0821..." -> "62821...", "+62821..." -> "62821...".
-// Status asli di DB campur: "✅ OPEN", "❌ CLOSE", "SELESAI / CLOSE",
-// "PENCARIAN KANDIDAT", "PEMBERKASAN", "APPROVED", "" — yang berarti masih
-// rekrutmen hanya yang eksplisit tertutup; sisanya dianggap OPEN.
+// Status di DB dulu campur ("✅ OPEN", "❌ CLOSE", "SELESAI / CLOSE", …).
+// Sejak 2026-11-07 varian CLOSE sudah dinormalkan; normalisasi ini tetap
+// dipertahankan untuk nilai yang masuk lewat impor dan untuk OPEN/URGENT.
 /** @param {unknown} v @returns {'OPEN'|'CLOSE'|'URGENT'} */
 function normalizeStatus(v: unknown) {
   const s = toText(v).toUpperCase();

@@ -44,8 +44,9 @@ type Loker = {
 /**
  * Warna pill TIDAK lagi ditentukan di sini — lihat `src/lib/jobStatus.ts`.
  * Dulu ada peta lokal yang mencocokkan nilai MENTAH secara persis, sehingga
- * `❌ CLOSE` (151 baris warisan) tidak cocok dengan kunci `CLOSE` dan tampil
- * sebagai teks mentah ber-emoji di samping baris yang `CLOSE` polos.
+ * `❌ CLOSE` tidak cocok dengan kunci `CLOSE` dan tampil sebagai teks mentah
+ * ber-emoji di samping baris yang `CLOSE` polos. Nilai itu sudah dinormalkan
+ * di database (2026-11-07); pemetaan di `jobStatus.ts` tetap dipakai.
  */
 type StatusFilter = 'ALL' | JobStatusKey;
 

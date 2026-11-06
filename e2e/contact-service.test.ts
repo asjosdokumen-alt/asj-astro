@@ -118,7 +118,9 @@ describe('contact service — happy path', () => {
     expect(notify.notifyAdmins).toHaveBeenCalledWith(
       'Pesan Kontak Baru',
       expect.stringContaining('Budi Santoso'),
-      '/admin.html',
+      // `/admin` (src/pages/admin.astro). `/admin.html` adalah berkas legacy
+      // yang tidak ada di build Astro — push-nya mendarat di 404.
+      '/admin',
     );
   });
 });

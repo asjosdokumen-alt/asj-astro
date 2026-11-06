@@ -534,8 +534,10 @@ export async function syncBiodataKeMail(
   if (labels && labels.length > 0) {
     try {
       const { notifyAdmins } = await import('../../_lib/fcm-helpers');
-      // `#mail`, bukan `/admin.html`: barisnya kini benar-benar ada di Mail.
-      await notifyAdmins('Biodata Lengkap (CV) Diperbarui', `Kandidat ${nama} (${wa}) memperbarui data: ${labels.join(', ')}.`, '/admin.html#mail');
+      // Rute yang BENAR adalah `/admin` (src/pages/admin.astro) dengan hash tab.
+      // `/admin.html` adalah berkas legacy yang tidak ada lagi di build Astro —
+      // setiap push admin mendarat di 404 (terukur 2026-11-07).
+      await notifyAdmins('Biodata Lengkap (CV) Diperbarui', `Kandidat ${nama} (${wa}) memperbarui data: ${labels.join(', ')}.`, '/admin#mail');
     } catch { /* ignore */ }
   }
 }
@@ -626,7 +628,7 @@ export async function syncFormMailDariUpload(
     if (label && targets.length > 0) {
       try {
         const { notifyAdmins } = await import('../../_lib/fcm-helpers');
-        await notifyAdmins('Dokumen Baru Diupload', `${nama} (${want}) mengupload ${label}. Silakan review di Mail.`, '/admin.html#mail');
+        await notifyAdmins('Dokumen Baru Diupload', `${nama} (${want}) mengupload ${label}. Silakan review di Mail.`, '/admin#mail');
       } catch { /* ignore */ }
     }
   }

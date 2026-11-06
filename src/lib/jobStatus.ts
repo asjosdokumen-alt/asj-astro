@@ -11,6 +11,11 @@
  * yang terlihat tetap `❌ CLOSE` — persis yang dilaporkan pemilik: "kok ada yang
  * beda penulisan close-nya".
  *
+ * CATATAN 2026-11-07: 151 baris `❌ CLOSE` + 1 `SELESAI / CLOSE` sudah
+ * DINORMALKAN menjadi `CLOSE` di database. Normalisasi di bawah TETAP ada —
+ * bukan untuk sisa data lama, melainkan untuk nilai yang masih bisa masuk lewat
+ * impor spreadsheet dan untuk `OPEN`/`URGENT` yang ditulis tombol admin.
+ *
  * ── HUBUNGAN DENGAN BACKEND ────────────────────────────────────────────────
  * Aturan yang sama sudah ada di backend: `normalizeStatus()` di
  * `netlify/functions/_lib/db/client.ts`. Berkas ini adalah SALINAN untuk
@@ -20,12 +25,15 @@
  * memaku tabel kasusnya.
  *
  * ── YANG DITULIS BALIK KE DATABASE ─────────────────────────────────────────
- * Tombol admin menulis nilai KANONIK (`OPEN` / `CLOSE`), bukan emoji. Itu
- * sebabnya baris yang pernah ditekan berubah jadi `CLOSE` polos sementara
- * 151 baris warisan masih `❌ CLOSE`. Data lama TIDAK dimigrasikan otomatis:
- * `PROSES INTERVIEW`, `PEMBERKASAN`, `APPROVED` adalah tahap pipeline yang
- * nyata (lihat `database_candidate.status_kandidat`), jadi memaksanya jadi
- * OPEN/CLOSE akan menghapus informasi.
+ * Tombol admin menulis nilai KANONIK (`OPEN` / `CLOSE`), bukan emoji.
+ *
+ * 2026-11-07: 151 baris `❌ CLOSE` + 1 `SELESAI / CLOSE` sudah dimigrasikan
+ * menjadi `CLOSE`. Sebelumnya baris-baris itu sengaja DIBIARKAN karena
+ * `PROSES INTERVIEW` / `PEMBERKASAN` / `APPROVED` adalah tahap pipeline nyata
+ * yang akan hilang bila dipaksa jadi OPEN/CLOSE. Diukur hari ini: nilai-nilai
+ * itu SUDAH TIDAK ADA lagi di `job_database.status` (tersisa `CLOSE` 157 dan
+ * kosong 2), jadi dua varian emoji itu bisa dinormalkan tanpa kehilangan apa
+ * pun. Status KOSONG tetap tidak diisi: kosong berarti "belum diset".
  */
 
 export type JobStatusKey = 'OPEN' | 'CLOSE' | 'URGENT';

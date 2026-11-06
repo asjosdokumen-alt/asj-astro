@@ -266,13 +266,16 @@ describe('syncBiodataKeMail — jejak Mail punya syarat yang sama dengan push', 
     expect(String(upserts[0].feedback_berkas)).toContain('Nama, Alamat');
   });
 
-  it('push menunjuk #mail — barisnya kini benar-benar ada di sana', async () => {
+  it('push menunjuk tab Mail di rute yang BENAR', async () => {
     formsByWa = [];
 
     await syncBiodataKeMail(WA, 'BUDI', ['Nama']);
 
     expect(notified).toHaveLength(1);
-    expect(notified[0][2]).toBe('/admin.html#mail');
+    /* `/admin`, bukan `/admin.html`: halaman admin sekarang `src/pages/admin.astro`,
+       dan `admin.html` adalah berkas legacy yang tidak ada di build Astro —
+       setiap push mendarat di 404 (diperbaiki 2026-11-07). */
+    expect(notified[0][2]).toBe('/admin#mail');
   });
 
   it('baris BIODATA yang sudah diputuskan tetap INFO — tidak masuk antrean lagi', async () => {

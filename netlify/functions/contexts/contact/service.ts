@@ -156,7 +156,8 @@ export async function handleKirimPesanKontak(payload: unknown[]) {
     await notifyAdmins(
       'Pesan Kontak Baru',
       `${nama} (${wa}): ${subjek}`,
-      '/admin.html',
+      // `/admin` (src/pages/admin.astro), bukan `/admin.html` yang tidak ada.
+      '/admin',
     );
   } catch (e) {
     log.warn('contact.notify-failed', { err: String(e) });
