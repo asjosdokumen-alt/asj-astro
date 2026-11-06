@@ -145,3 +145,73 @@ Aturan `isAdminWa` pindah ke `_lib/fcm-token-rules.ts` supaya
 `job-docs.js` 492 KB masih di bawah plafon, tapi ia menanggung seluruh rantai ZIP.
 Kalau nanti ada action lain yang butuh `archiver`, tambahkan ke entry yang sama —
 jangan dikembalikan ke `files.js`.
+
+## 8. Normalisasi DB 2026-11-07: status & tahap lama
+
+Kode sudah memakai kosakata kanonik, tetapi datanya belum. Diukur, lalu
+dinormalkan dalam satu transaksi.
+
+### 8a. `status_kandidat`
+
+| Nilai lama | Jumlah | Jadi | Alasan |
+|---|---|---|---|
+| `Pending` | 45 | `Aktif` | **semuanya sudah punya `id_loker_pilihan`** (32 juga punya kelas) — tahap "baru daftar" sudah lewat |
+| `LIST` | 1 | `Aktif` | ini **tahap**, bukan status; tahapnya sudah tersimpan di `tahapan_seleksi` |
+| `MCU PARPOR` | 1 | `Aktif` | sama — tahap yang salah masuk kolom status |
+| `Gagal` | 7 | `GAGAL` | varian huruf (dikerjakan lebih awal hari ini) |
+
+Sesudah: `Aktif` 203 · `LULUS` 36 · `GAGAL` 21 · `BARU` 1 — semuanya nilai yang
+ditulis sistem atau dipilih admin.
+
+`BARU` **dipertahankan** karena `contexts/identity/service.ts` menulisnya saat
+pendaftaran. Yang salah bukan nilainya, melainkan daftar dropdown yang tidak
+memuatnya — sudah ditambahkan ke `STATUS_OPTIONS`.
+
+### 8b. `tahapan_seleksi`
+
+| Nilai lama | Jumlah | Jadi |
+|---|---|---|
+| `Pendaftaran` | 51 | `LIST` |
+| `Baru` | 30 | `LIST` |
+| `Seleksi Berkas` | 2 | `LIST` |
+
+Sesudah: `LIST` 175 · kosong 85 · `MCU PARPOR` 1.
+
+**85 baris kosong sengaja TIDAK diisi.** Kosong berarti "belum pernah diisi",
+dan UI sudah memperlakukannya sebagai awal pipeline. Menulis `LIST` ke 85 baris
+akan menciptakan data yang tidak pernah dicatat siapa pun.
+
+`updated_at` **tidak disentuh**: normalisasi bukan aktivitas bisnis, dan
+membumpnya akan mengacaukan urutan "terakhir aktif" di panel admin.
+
+## 9. Uji server lokal 8888 — 2026-11-07
+
+Dijalankan dengan `netlify dev --offline --port 8888`, dua fungsi terjadwal
+(`sweep-queue`, `agenda-reminders`) dinonaktifkan lebih dulu dan dipulihkan
+sesudahnya — keduanya mengirim WhatsApp sungguhan ke DB produksi.
+
+`job-docs` muncul di `.netlify/functions-serve` bersama 22 entry lain.
+
+| Action | Hasil |
+|---|---|
+| `kotoba/getStatusTes` | HTTP 400 · Sesi tidak valid (gerbang siswa) |
+| `kotoba/simpanHasilTes` | HTTP 400 · Sesi tidak valid |
+| `kotoba/getHasilTesAdmin` | HTTP 400 · Sesi admin tidak valid |
+| `kotoba/setTesAktif` | HTTP 400 · Sesi admin tidak valid |
+| `notify/getNotifikasiKandidat` | HTTP 400 · Sesi tidak valid |
+| `notify/tandaiNotifikasiDibaca` | HTTP 400 · Sesi tidak valid |
+| `notify/tandaiSemuaNotifikasiDibaca` | HTTP 400 · Sesi tidak valid |
+| `notify/getStatusNotifikasiAdmin` | HTTP 400 · Sesi admin tidak valid |
+| `mail/rejectForm` | HTTP 400 · Sesi admin tidak valid |
+| **`job-docs/downloadJobDocs`** | HTTP 400 · Sesi admin tidak valid — **ditangani entry baru** |
+| **`files/downloadJobDocs`** | **HTTP 404 · not handled by this surface** — bukti sudah pindah |
+| `get-app-data/getAppData` | HTTP 200 · kunci `[success,activeTheme,sessionInvalid,jobs,dropdowns,assets,pengumuman]` |
+
+**12/12 lulus.** Kriteria "ditangani" bukan tebakan: satu-satunya pembeda adalah
+pesan 404 `Action '<x>' not handled by this surface` yang hanya muncul untuk
+action yang tidak terdaftar di entry itu. 400 karena sesi justru **bukti**
+action-nya ada dan gerbangnya jalan.
+
+Dua koreksi yang muncul dari pengujian ini: nama action admin adalah
+`getHasilTesAdmin` (bukan `getHasilTes`), dan `getStatusTes` memang menuntut sesi
+siswa — dua "kegagalan" pertama adalah salah probe, bukan bug.

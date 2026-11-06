@@ -150,24 +150,98 @@ Data: baris 507 diperbaiki ke `Berkas perlu diperbaiki`. Itu satu-satunya baris
 dokumen yang membawa teks default lama; alasan yang benar-benar ditulis admin
 tidak disentuh.
 
-### 6c. Retensi: DIUKUR, belum perlu
+### 6c. Retensi: DIUKUR, dan angkanya SALAH — koreksi
 
-| Ukuran | Nilai (2026-11-07) |
+Klaim sebelumnya di laporan ini ("21 baris, isinya nyata, kotak masuk sudah
+dipakai end-to-end") **salah**. Semua baris itu artefak **tes**, bukan aktivitas
+kandidat.
+
+| Ukuran | Nilai |
 |---|---|
-| Baris `notifikasi_kandidat` | **21** |
-| Belum dibaca | 21 |
-| Rentang | 2026-11-05 (satu hari) |
+| Baris saat pertama diukur | 21 (sedang bertambah saat diukur) |
+| Setelah diusut | **35**, dari 5 ledakan waktu: 13:53 · 16:20 · 16:33 · 22:58 · 23:13 UTC |
+| Setelah dibersihkan | **0** |
 
-Isinya nyata, bukan data uji: 13 `lamaran` ("Lamaran TG1ASJ disetujui") dan
-8 `dokumen` ("Berkas perlu revisi"). Artinya kotak masuk sudah dipakai
-end-to-end di produksi.
+Pola waktunya yang membongkar: tidak ada satu pun baris di luar lima menit
+tersebut, dan tidak ada yang berjarak manusiawi. Isinya pun berulang persis
+("Lamaran TG1ASJ disetujui" ×banyak untuk satu WA).
 
-Dengan 21 baris, cron penghapus >90 hari **belum layak dibuat** — tidak ada
-volume yang perlu dikendalikan, dan cron yang menebak jadwal lebih berisiko
-daripada masalahnya. Ukur ulang setelah sebulan pemakaian.
+Penyebabnya ada di §7. Setelah diperbaiki, suite backend penuh (129 berkas /
+1 706 tes) dan frontend (141 / 1 843) tidak menambah satu baris pun.
+
+**Retensi tetap belum perlu** — tapi sekarang alasannya berbeda: bukan karena
+volumenya wajar, melainkan karena **belum ada satu pun pemberitahuan nyata**
+yang tercatat. Ukur ulang setelah kotak masuk dipakai sungguhan.
 
 ### 6d. Verifikasi
 
 `tsc` 0 · frontend **141 berkas / 1 843 tes** (+4 tes banner) · backend
 129/1 706 · indexer 653 berkas · `bundle:size` pass · lint & typecheck ratchet
 pass · build 19 halaman.
+
+## 7. Temuan 2026-11-07: suite tes menulis ke database PRODUKSI
+
+`.env.local` menunjuk Neon (produksi), dan **dua suite** memanggil jalur tulis
+sungguhan tanpa mock yang memadai.
+
+### 7a. `service-bulk-delete.test.ts` — +4 baris per run
+
+`handleApproveForm` / `handleReviewForm` memanggil
+`await import('../../_lib/notifikasi/kandidat')` di dalam `handleFormStatus`.
+Mock yang ada hanya mengganti `_lib/fcm-helpers`, jadi `kirimNotifikasi`
+menulis baris `notifikasi_kandidat` **sungguhan**.
+
+Terukur: satu run berkas itu menambah 4 baris (30 → 34).
+
+### 7b. `service-input-validation.test.ts` — +1 baris per run, dan menyentuh baris nyata
+
+Berkas ini **tidak punya mock sama sekali**. Tes "an empty reason is legal"
+memanggil:
+
+```ts
+handleRejectForm([3, '', ''], admin)   // `admin` = signToken({ role: 'admin' })
+```
+
+Token itu SAH, jadi `handleFormStatus` berjalan penuh: `getFormByIndex(3)`
+membaca baris ke-4 (`order: timestamp.desc`) dari database sungguhan, lalu
+baris itu di-PATCH menjadi `GAGAL` dan satu notifikasi dikirim.
+
+Kerusakannya **tersembunyi**: baris yang kena kebetulan sudah `GAGAL`, jadi
+hitungan status tidak berubah dan tidak ada yang curiga. Yang bertambah hanya
+baris notifikasi — satu per run.
+
+### 7c. Dampak
+
+| Hal | Nilai |
+|---|---|
+| Baris `notifikasi_kandidat` dari tes | **35** (5 ledakan waktu) |
+| Nomor fixture `628111222333` | 27 baris — nomor ini **tidak ada** di `database_candidate` |
+| Kandidat ASLI terdampak | **AGUS KHOCI** (`6282130442661`, tag `[VIP]`) — 8 baris |
+| Push ke perangkat | **tidak terkirim** — mock `fcm-helpers` tidak punya `getKandidatTokens`, `kirimPush` gagal lalu ditelan |
+
+Push tidak terkirim hanya karena kebetulan mock-nya tidak lengkap. Kalau mock
+itu suatu hari dilengkapi, tes yang sama akan mengirim notifikasi ke ponsel
+orang sungguhan.
+
+### 7d. Perbaikan
+
+- `service-bulk-delete.test.ts`: modul `_lib/notifikasi/kandidat` di-mock habis.
+- `service-input-validation.test.ts`: `getFormByIndex` dibuat mengembalikan
+  `null`, sehingga `handleFormStatus` berhenti di "Form tidak ditemukan."
+  **sebelum** patch dan **sebelum** notifikasi.
+- 35 baris artefak dihapus dari produksi.
+
+Bukti sesudah perbaikan — dijalankan berurutan, hitungan tidak bergerak:
+
+| Langkah | Baris |
+|---|---|
+| Sebelum | 0 |
+| Suite backend penuh (129 berkas / 1 706 tes) | **0** |
+| Suite frontend penuh (141 berkas / 1 843 tes) | **0** |
+
+### 7e. Yang belum ditutup
+
+Gerbang yang mencegah ini terulang **belum ada**. Yang bisa menangkapnya:
+`supabaseJson` yang melempar bila `NODE_ENV === 'test'` dan URL-nya bukan
+localhost — tapi itu menyentuh seluruh suite sekaligus dan perlu diukur
+dampaknya. Dicatat sebagai utang, bukan dikerjakan diam-diam.
