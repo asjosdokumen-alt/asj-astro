@@ -1601,6 +1601,19 @@ export const jpTranslations: Record<string, string> = {
     "notif.ios_install": "iPhone/iPad：共有メニューから「ホーム画面に追加」を選び、そのアイコンから開くと通知を有効にできます。",
     "notif.izin_ket": "通知を有効にすると、書類の確認や予定が近いことをすぐに受け取れます。",
     "ui.alasan_tolak": "理由",
+
+    /* ── Notifikasi perangkat admin (2026-11-06) ───────────────────────── */
+    "notif.admin_judul": "この端末の通知",
+    "notif.admin_ket": "有効にすると、新しい応募・書類のアップロード・プロフィール更新をこの管理画面で受け取れます。",
+    "notif.admin_perangkat": "台の端末を登録済み",
+    "notif.admin_belum": "管理者の端末がまだ登録されていません。通知は届きません。",
+    "notif.admin_aktifkan": "通知を有効にする",
+    "notif.admin_daftarkan": "この端末を登録する",
+    "notif.admin_aktif": "この端末で通知が有効です。",
+    "notif.admin_ditolak": "このサイトの通知がブロックされています。ブラウザのサイト設定で許可してください。",
+    "notif.admin_tidak_didukung": "このブラウザは通知に対応していません。",
+    "notif.admin_sw": "Service Worker がまだ有効ではありません。ページを再読み込みしてもう一度お試しください。",
+    "notif.admin_gagal": "端末の登録に失敗しました。しばらくしてからもう一度お試しください。",
     /* ── 数学・適性検査 (/matematika) ── */
     "toolbar.matematika": "数学テスト",
     "matematika.gate_title": "受験者アカウントの確認",

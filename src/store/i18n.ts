@@ -2152,6 +2152,19 @@ export const translations: Record<Lang, Record<string, string>> = {
     "notif.ios_install": "Di iPhone/iPad: buka menu Bagikan, pilih “Tambah ke Layar Utama”, lalu buka aplikasinya dari ikon tersebut untuk mengaktifkan notifikasi.",
     "notif.izin_ket": "Aktifkan notifikasi supaya kamu langsung tahu saat berkas direview atau jadwal mendekat.",
     "ui.alasan_tolak": "Alasan",
+
+    /* ── Notifikasi perangkat admin (2026-11-06) ───────────────────────── */
+    "notif.admin_judul": "Notifikasi perangkat ini",
+    "notif.admin_ket": "Aktifkan agar panel ini menerima pemberitahuan saat ada lamaran baru, berkas diunggah, atau biodata diperbarui.",
+    "notif.admin_perangkat": "perangkat terdaftar",
+    "notif.admin_belum": "Belum ada perangkat admin yang terdaftar — pemberitahuan tidak akan sampai.",
+    "notif.admin_aktifkan": "Aktifkan notifikasi",
+    "notif.admin_daftarkan": "Daftarkan perangkat ini",
+    "notif.admin_aktif": "Notifikasi aktif di perangkat ini.",
+    "notif.admin_ditolak": "Notifikasi diblokir untuk situs ini. Buka pengaturan situs di browser untuk mengizinkannya lagi.",
+    "notif.admin_tidak_didukung": "Browser ini tidak mendukung notifikasi.",
+    "notif.admin_sw": "Service worker belum aktif. Muat ulang halaman lalu coba lagi.",
+    "notif.admin_gagal": "Pendaftaran perangkat gagal. Coba lagi sebentar.",
     /* ── Simulasi tes matematika (/matematika) ──────────────────────────────
        Gerbang & keadaan sama dengan /kotoba: kuncinya sengaja dipisah supaya
        mengubah kalimat satu halaman tidak menggeser halaman lain. */

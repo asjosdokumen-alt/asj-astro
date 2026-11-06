@@ -118,6 +118,8 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   getNotifikasiKandidat:        () => import('./notify').then(m => m.NOTIFY_ACTIONS),
   tandaiNotifikasiDibaca:       () => import('./notify').then(m => m.NOTIFY_ACTIONS),
   tandaiSemuaNotifikasiDibaca:  () => import('./notify').then(m => m.NOTIFY_ACTIONS),
+  // Berapa perangkat admin yang terdaftar untuk push (admin-only).
+  getStatusNotifikasiAdmin:     () => import('./notify').then(m => m.NOTIFY_ACTIONS),
 
   // ── AI ────────────────────────────────────────────────────────────────────
   processAIChat:              () => import('./ai').then(m => m.AI_ACTIONS),

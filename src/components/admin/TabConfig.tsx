@@ -15,6 +15,7 @@ import { normalizeMasterData } from '../../lib/cv-template-factory/data';
 import { analyzeFromExample, detectRiwayatBlock, readWorkbook } from '../../lib/cv-template-factory/loaders/tEMPLATE-loader';
 import { encodeTemplateRecord, decodeTemplateRecord, templateIdFromName, type CvTemplateRecord } from '../../lib/cv-template-factory/templates';
 import { uploadBerkasToStorage } from '../../lib/uploadBerkas';
+import KartuNotifikasiAdmin from './KartuNotifikasiAdmin';
 
 /** Baris dari `getTemplateCvList` — `record` masih JSON mentah. */
 type TemplateRow = { rowId: string; record: string; nama: string; aktif: boolean };
@@ -257,6 +258,10 @@ export default function TabConfig() {
   return (<div>
     <h2 class="text-white font-bold mb-6 border-b border-slate-700 pb-3 text-lg"><Icon name="cogs" class="mr-2 text-slate-300" /> {t('admin.tab_config_title')}</h2>
     <p class="text-sm text-slate-300 mb-6">{t('admin.sys_config_desc')}</p>
+
+    {/* Notifikasi perangkat admin — satu langkah izin yang hanya bisa
+        dilakukan manusia, dan tanpanya semua push ke admin tidak sampai. */}
+    <KartuNotifikasiAdmin />
 
     <div class="bg-black/40 border border-slate-600/40 p-5 rounded-xl mb-6">
       <h3 class="text-sm font-bold text-slate-300 mb-2 uppercase tracking-wider"><Icon name="database" class="mr-1" /> {t('admin.db_migration_auto')}</h3>

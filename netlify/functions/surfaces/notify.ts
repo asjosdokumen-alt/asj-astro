@@ -70,4 +70,21 @@ export const NOTIFY_ACTIONS: Record<string, (payload: unknown[], sessionToken?: 
     const { tandaiDibaca } = await import('../_lib/notifikasi/kandidat');
     return tandaiDibaca(wa);
   },
+
+  /**
+   * Berapa perangkat ADMIN yang terdaftar untuk push.
+   *
+   * KENAPA ADA: tombol "Aktifkan notifikasi" di panel bisa menjawab "izin
+   * diberikan" padahal tokennya tidak pernah sampai ke server (VAPID kosong,
+   * service worker belum aktif, dsb). Tanpa angka ini, admin mengira
+   * notifikasinya hidup padahal tidak ada satu perangkat pun yang terdaftar —
+   * terukur 2026-11-06: 18 token, nol di antaranya milik admin.
+   */
+  getStatusNotifikasiAdmin: async (_p: unknown[], s?: string) => {
+    const guard = requireAdmin(s || '');
+    if (guard.error) return guard.error;
+    const { getAdminTokens } = await import('../_lib/fcm-helpers');
+    const tokens = await getAdminTokens();
+    return { success: true, perangkat: tokens.length };
+  },
 };
