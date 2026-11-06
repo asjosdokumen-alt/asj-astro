@@ -16,15 +16,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const getFormsByWa = vi.fn(async (..._a: unknown[]) => [] as Record<string, unknown>[]);
 const patchForm = vi.fn(async (..._a: unknown[]) => {});
+/* `upsertForm` JUGA menulis: ia dipakai saat baris mail belum ada. Tanpa mock
+   ini, suite menulis baris `database_asj_form` SUNGGUHAN — `.env.local` menunjuk
+   produksi. Ditemukan oleh pagar `_lib/db/test-guard.ts` (2026-11-07), bukan
+   oleh tes mana pun. */
+const upsertForm = vi.fn(async (..._a: unknown[]) => ({}));
 
 // `service.ts` juga mengambil `normalizeWa` dari modul yang sama — biarkan
-// implementasi aslinya dipakai, dan hanya ganti dua fungsi yang kita hitung.
+// implementasi aslinya dipakai, dan hanya ganti fungsi yang kita hitung.
 vi.mock('../netlify/functions/contexts/applications/repository', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../netlify/functions/contexts/applications/repository')>();
   return {
     ...actual,
     getFormsByWa: (...a: unknown[]) => getFormsByWa(...a),
     patchForm: (...a: unknown[]) => patchForm(...a),
+    upsertForm: (...a: unknown[]) => upsertForm(...a),
   };
 });
 

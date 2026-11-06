@@ -293,6 +293,11 @@ export default defineConfig({
           testTimeout: 15000,
           environment: 'node',
           pool: 'threads',
+          /* PAGAR: gagalkan berkas tes yang MENULIS ke database non-lokal.
+             `.env.local` menunjuk Neon PRODUKSI; dua suite pernah menulis 35
+             baris `notifikasi_kandidat` ke sana tanpa jejak (2026-11-07).
+             Lihat `netlify/functions/_lib/db/test-guard.ts`. */
+          setupFiles: ['./netlify/functions/_lib/db/test-guard.setup.ts'],
           // e2e/*.test.ts ditambahkan 2026-09-11: share-data.test.ts DIPINDAH
           // keluar dari netlify/functions/ (Netlify menganggap *.test.ts di
           // sana sebagai deployable function → bundling gagal karena `vitest`

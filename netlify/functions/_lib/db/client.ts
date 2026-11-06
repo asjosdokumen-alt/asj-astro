@@ -4,6 +4,7 @@ import { request, HttpError, TimeoutError } from '../kernel/http.ts';
 import { AppError } from '../kernel/errors';
 import { asyncLocalStorage, log } from '../kernel/log';
 import { allColumns, columnsOf } from './schema.generated';
+import { catatTulisDb, dalamTes, urlLokal } from './test-guard';
 // db/client.js — klien REST Supabase (PostgREST) + normalisasi data.
 // perilaku TIDAK berubah.
 
@@ -356,6 +357,15 @@ async function supabaseJson(
   const overrideAuthKey = opts.overrideAuthKey;
   const key = overrideKey || supabaseKey();
   if (!url || !key) throw new Error('SUPABASE_URL / key belum dikonfigurasi');
+
+  /* PAGAR TES: setiap TULIS ke database non-lokal saat berjalan di vitest
+     dicatat, lalu `test-guard.setup.ts` memerahkan berkas tesnya di `afterAll`.
+     Tanpa ini, suite yang lupa mem-mock jalur tulis menulis ke PRODUKSI tanpa
+     jejak — terukur 2026-11-07: 35 baris `notifikasi_kandidat`, termasuk untuk
+     kandidat asli. Hanya NON-GET: membaca tidak merusak. */
+  if (method !== 'GET' && dalamTes() && !urlLokal(url)) {
+    catatTulisDb(method, pathname, url);
+  }
 
   // P13 fix: Don't duplicate breaker/bulkhead here — request() already
   // applies them for all PostgREST calls (reads AND writes). Acquiring
