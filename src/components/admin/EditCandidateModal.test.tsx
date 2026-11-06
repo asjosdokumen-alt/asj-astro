@@ -267,4 +267,43 @@ describe('EditCandidateModal — label/control wiring', () => {
     // field would still be associated, and still be wrong.
     expect((document.getElementById('ec-tgl-lahir') as HTMLInputElement).type).toBe('date');
   });
+
+  /* ── Nilai yang tidak ada di daftar opsi TIDAK BOLEH hilang ──────────────
+     `status_kandidat` di DB berisi nilai di luar daftar kanonik: `Gagal` (7
+     baris), `Pending` (45), `BARU` (1), `LIST` (1), `MCU PARPOR` (1) — terukur
+     2026-11-06. `<select value="Gagal">` yang opsinya tidak memuat `Gagal`
+     jatuh ke opsi pertama, jadi membuka modal ini lalu menyimpannya MENGHAPUS
+     status kandidat tanpa admin memintanya. */
+  it('mempertahankan status yang tidak ada di daftar opsi', () => {
+    const { container } = render(
+      <EditCandidateModal
+        candidate={{ ...mockCandidate, status: 'Gagal' }}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    // Dicari di dalam kontainer render ini, bukan `document`: modal dari tes
+    // sebelumnya masih ada di DOM pada sebagian jalur, dan `getElementById`
+    // akan mengembalikan yang PERTAMA — yaitu modal lama berstatus `Aktif`.
+    const select = container.querySelector('#ec-status') as HTMLSelectElement;
+    expect(select.value).toBe('Gagal');
+    expect([...select.options].map((o) => o.value)).toContain('Gagal');
+  });
+
+  it('mempertahankan tahap warisan yang tidak ada di daftar kanonik', () => {
+    // `Pendaftaran` (51 baris) dan `Baru` (30) berasal dari dropdown hardcoded
+    // yang sudah dibuang; keduanya harus tetap bisa dipilih apa adanya.
+    const { container } = render(
+      <EditCandidateModal
+        candidate={{ ...mockCandidate, tahapan: 'Pendaftaran' }}
+        isOpen={true}
+        onClose={() => {}}
+      />
+    );
+    const select = container.querySelector('#ec-tahapan') as HTMLSelectElement;
+    expect(select.value).toBe('Pendaftaran');
+    expect([...select.options].map((o) => o.value)).toContain('Pendaftaran');
+    // Tahap kanonik tetap tersedia supaya admin bisa memindahkannya.
+    expect([...select.options].map((o) => o.value)).toContain('MENSETSU');
+  });
 });

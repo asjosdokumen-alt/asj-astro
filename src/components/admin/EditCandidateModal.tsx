@@ -7,6 +7,7 @@ import { uploadToCloudinary, buatPublicId } from '../../lib/cloudinary';
 import { t } from '../../store/i18n';
 import DocumentPreviewModal, { driveFileId, isDriveFolder } from '../DocumentPreviewModal';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
+import { TAHAPAN_STEPS, opsiDenganNilaiSaatIni } from '../../lib/tahapanPipeline';
 
 interface Props {
   candidate: {
@@ -46,7 +47,13 @@ interface Props {
 
 const GENDER_OPTIONS = ['', 'LAKI-LAKI', 'PEREMPUAN'];
 const PENDIDIKAN_OPTIONS = ['', 'SD', 'SMP', 'SMA', 'SMK', 'MA', 'D1', 'D2', 'D3', 'S1', 'S2', 'S3'];
-const TAHAPAN_OPTIONS = ['', 'Baru', 'Pendaftaran', 'LIST', 'MCU PARPOR', 'Wawancara', 'LULUS'];
+/* Tahap memakai daftar KANONIK dari `lib/tahapanPipeline.ts` — sumber yang sama
+   dengan dasbor kandidat. Di sini dulu ada daftar SENDIRI:
+   `Baru · Pendaftaran · LIST · MCU PARPOR · Wawancara · LULUS`, yang hanya 2
+   dari 7 nilainya cocok dengan `sys_config.list_tahapan`. Itu sebabnya nilai
+   `Baru` (30 baris) dan `Pendaftaran` (51 baris) masuk ke database padahal
+   bukan tahap resmi. `LULUS` bahkan bukan tahap sama sekali — itu status. */
+const TAHAPAN_OPTIONS = ['', ...TAHAPAN_STEPS];
 const STATUS_OPTIONS = ['', 'Aktif', 'LULUS', 'GAGAL', 'Non-Aktif'];
 
 /**
@@ -352,13 +359,20 @@ export default function EditCandidateModal({ candidate, isOpen, onClose, closing
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-tahapan">{t("admin.edit_tahapan")}</label>
               <select id="ec-tahapan" value={form.tahapan} onChange={e => setField('tahapan', (e.target as HTMLSelectElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
-                {TAHAPAN_OPTIONS.map(t => <option key={t} value={t}>{t || '- Pilih -'}</option>)}
+                {/* `opsiDenganNilaiSaatIni` menyisipkan nilai yang tersimpan
+                    tapi tidak ada di daftar (mis. `Pendaftaran`, `Baru`).
+                    Tanpa itu, `<select>` jatuh ke opsi pertama dan menyimpan
+                    formulir MENGHAPUS tahap kandidat tanpa admin memintanya. */}
+                {opsiDenganNilaiSaatIni(TAHAPAN_OPTIONS, form.tahapan).map(opt => <option key={opt} value={opt}>{opt || '- Pilih -'}</option>)}
               </select>
             </div>
             <div>
               <label class="text-[11px] text-slate-500 uppercase font-bold" for="ec-status">{t("admin.edit_status")}</label>
               <select id="ec-status" value={form.status} onChange={e => setField('status', (e.target as HTMLSelectElement).value)} class="min-h-11 w-full p-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-white outline-none focus:border-sky-500">
-                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s || '- Pilih -'}</option>)}
+                {/* Sama seperti tahapan: `Gagal` (7 baris), `Pending` (45),
+                    `BARU` (1) tidak ada di daftar kanonik, dan dulu hilang
+                    begitu modal ini disimpan. */}
+                {opsiDenganNilaiSaatIni(STATUS_OPTIONS, form.status).map(opt => <option key={opt} value={opt}>{opt || '- Pilih -'}</option>)}
               </select>
             </div>
           </div>

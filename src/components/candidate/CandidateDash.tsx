@@ -21,6 +21,13 @@ import { useOverlayPresence } from '../ui/useOverlayPresence';
 import { apiClient } from '../../lib/apiClient';
 import { ALL_BERKAS, hasBerkasUrl } from '../../lib/berkasCatalog';
 import { computeCvMiniProgress, computeCvMasterProgress, computeOverallProgress } from '../../lib/profileProgress';
+import {
+  TAHAPAN_STEPS,
+  tahapanLabel,
+  tahapanLabelDari,
+  tahapanProgress,
+  tahapanStepIndex,
+} from '../../lib/tahapanPipeline';
 import LevelCard from './LevelCard';
 import KotakMasuk from './KotakMasuk';
 import StepGuide from './StepGuide';
@@ -172,15 +179,12 @@ export function statusText(status: string, biodata = false) {
   return t('form.txt_diproses');
 }
 
-// Tahapan pipeline steps
-const TAHAPAN_STEPS = ['PENDAFTARAN', 'CHECK KAIWA', 'MENDAN', 'LOLOS USER', 'MCU', 'PEMBERKASAN', 'NAITEI', 'COE', 'VISA', 'FLIGHT'];
-function tahapanStepIndex(tahapan: string) {
-  const t = (tahapan || '').toUpperCase();
-  for (let i = 0; i < TAHAPAN_STEPS.length; i++) {
-    if (t.includes(TAHAPAN_STEPS[i])) return i;
-  }
-  return 0;
-}
+/* Urutan tahap pindah ke `lib/tahapanPipeline.ts` (2026-11-06).
+   Di sini dulu ada daftar KETIGA yang tidak cocok dengan `sys_config.list_tahapan`
+   maupun dengan nilai warisan di `database_candidate.tahapan_seleksi`. Karena
+   `MENSETSU` dan `TTD KONTRAK` tidak ada di daftar itu, kandidat yang sedang
+   diwawancara melihat "PENDAFTARAN" dan bilah kemajuannya mundur ke 10%.
+   Daftar kanonik, alias nilai lama, dan label tampilan sekarang satu tempat. */
 
 function CrownBadge({ progress }: { progress: number }) {
   if (progress >= 100) return <span class="text-lg" title={t("candidate.badge_gold_title")}>👑</span>;
@@ -587,7 +591,7 @@ if (!data) return failed
         nama={data.nama}
         idKandidat={data.idKandidat}
         status={data.status}
-        tahapan={data.tahapan}
+        tahapan={tahapanLabelDari(data.tahapan)}
         wa={data.wa}
         pasPhoto={data.pasPhoto}
         gender={data.gender}
@@ -640,7 +644,7 @@ if (!data) return failed
             {t('dash.welcome')} {data.nama}
           </span>
           <span class="block text-xs text-fg-muted mt-1">
-            {[data.job, data.tahapan].filter(Boolean).join(' · ') || t('dash.greeting_subtitle_empty')}
+            {[data.job, tahapanLabelDari(data.tahapan)].filter(Boolean).join(' · ') || t('dash.greeting_subtitle_empty')}
           </span>
         </h2>
 
@@ -789,8 +793,14 @@ if (!data) return failed
                   {sortedRiwayat.length === 0 ? (
                     <p class="text-slate-500 text-sm text-center py-4">{selectedLoker ? t('ui.no_app_for_loker') : t('ui.no_app_yet_general')}</p>
                   ) : sortedRiwayat.map((r, i) => {
-                    const stepIdx = tahapanStepIndex(r.tahapan || r.status);
-                    const progressPct = Math.round(((stepIdx + 1) / TAHAPAN_STEPS.length) * 100);
+                    /* Tahap diambil dari `r.tahapan` SAJA. Dulu ada
+                       `|| r.status` — dan `r.status` adalah status MAIL
+                       (`MENUNGGU`/`GAGAL`/…), bukan tahap seleksi. Untuk 85
+                       baris yang tahapnya kosong, nilai mail itu yang dipakai
+                       sebagai "tahap", lalu dicocokkan ke daftar tahap dan
+                       gagal, sehingga semuanya tampil "PENDAFTARAN". */
+                    const stepIdx = tahapanStepIndex(r.tahapan);
+                    const progressPct = tahapanProgress(r.tahapan);
                     return (
                       <div key={i} class="u-cv-auto u-cv-auto--card flex flex-col p-4 rounded-2xl border border-slate-700/50 bg-black/60 hover:bg-black/80 transition-colors mb-3 overflow-hidden">
                         <div class="flex flex-col sm:flex-row justify-between sm:items-start gap-3 mb-1">
@@ -815,7 +825,7 @@ if (!data) return failed
                         <div class="mt-3">
                           <div class="flex items-center justify-between mb-1.5">
                             <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider"><Icon name="route" class="mr-1 text-sky-400" /> {t('form.txt_tahapan_saat_ini')}</span>
-                            <span class="text-[11px] font-black text-emerald-400"><Icon name="map-pin" /> {TAHAPAN_STEPS[stepIdx] || r.tahapan}</span>
+                            <span class="text-[11px] font-black text-emerald-400"><Icon name="map-pin" /> {tahapanLabelDari(r.tahapan)}</span>
                           </div>
                           {/* `role="progressbar"` + nama yang bisa dibaca.
                               Sebelumnya bar ini hanya sebuah div: lebar dan
@@ -838,7 +848,7 @@ if (!data) return failed
                             aria-valuenow={progressPct}
                             aria-valuemin={0}
                             aria-valuemax={100}
-                            aria-label={`${r.jobCode} — ${TAHAPAN_STEPS[stepIdx] || r.tahapan}`}
+                            aria-label={`${r.jobCode} — ${tahapanLabelDari(r.tahapan)}`}
                           >
                             {/* `scaleX`, NOT `width`. P7 (§3.7) allows only
                                 `opacity` and `transform`; a `transition-[width]`
@@ -877,7 +887,7 @@ if (!data) return failed
                               {TAHAPAN_STEPS.map((nm, si) => {
                                 const done = si < stepIdx;
                                 const active = si === stepIdx;
-                                return <span key={si} class={`flex items-center gap-1 text-[11px] font-bold whitespace-nowrap ${done ? 'text-emerald-400' : active ? 'text-amber-400' : 'text-slate-500'}`}><Icon name={done ? 'check-circle' : 'circle'} class="flex-shrink-0" /> {nm}</span>;
+                                return <span key={si} class={`flex items-center gap-1 text-[11px] font-bold whitespace-nowrap ${done ? 'text-emerald-400' : active ? 'text-amber-400' : 'text-slate-500'}`}><Icon name={done ? 'check-circle' : 'circle'} class="flex-shrink-0" /> {tahapanLabel(nm)}</span>;
                               })}
                             </div>
                           )}
