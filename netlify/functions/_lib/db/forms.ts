@@ -45,6 +45,10 @@ function mapForm(row: Record<string, any>, i: number) {
     ssw: row.ssw || '',
     cv: row.file_cv || '',
     keterangan: toText(row.keterangan),
+    // Alasan penolakan — kolom SENDIRI sejak migrasi 049. Dulu `keterangan`
+    // dipakai untuk dua hal sekaligus, sehingga menolak satu baris menghapus
+    // daftar dokumennya (lihat kepala migrasi 049).
+    alasan: toText(row.alasan_tolak),
     // Aktivitas terakhir kandidat (status UPDATE): "[BIODATA] email diubah · [UPLOAD KTP]".
     feedback: toText(row.feedback_berkas),
     // Dokumen tambahan dari keterangan "NAMA:URL;NAMA2:URL2;..." — dipakai

@@ -94,7 +94,10 @@ export const PROJECTIONS = {
   /** Mail inbox row — everything `mapForm()` reads. */
   FORM_LIGHT_COLS: {
     table: 'database_asj_form',
-    columns: 'id,timestamp,code_job,kategory,nama_lengkap,no_wa,status,folder_url,pas_photo,jft,ssw,file_cv,keterangan,feedback_berkas,created_at,updated_at',
+    // `alasan_tolak` (migrasi 049) ikut diproyeksikan karena `mapForm` membacanya
+    // dan `attachApplications` mengirimkannya ke kandidat. Kolom yang ada di
+    // tabel tapi tidak di-SELECT = perilaku yang tidak pernah jalan.
+    columns: 'id,timestamp,code_job,kategory,nama_lengkap,no_wa,status,folder_url,pas_photo,jft,ssw,file_cv,keterangan,alasan_tolak,feedback_berkas,created_at,updated_at',
   },
   /** Everything `mapJob()` reads. */
   JOB_MAP_COLS: {

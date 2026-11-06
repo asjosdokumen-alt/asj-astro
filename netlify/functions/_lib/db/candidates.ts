@@ -409,6 +409,10 @@ function attachApplications(candidates: Record<string, any>[], forms: Record<str
       // untuk baris biodata — mengklaim ada LAMARAN yang diterima padahal admin
       // hanya menyetujui BERKAS. Dikirim apa adanya; frontend yang memutuskan.
       feedback: toText(f.feedback_berkas || ''),
+      // Alasan penolakan (kolom sendiri sejak migrasi 049). Hanya terisi pada
+      // baris GAGAL; inilah satu-satunya hal yang memberi tahu kandidat APA
+      // yang harus diperbaiki — sebelumnya hanya admin yang melihatnya.
+      alasan: toText(f.alasan_tolak || ''),
     });
   }
   for (const c of candidates) {

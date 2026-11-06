@@ -15,7 +15,6 @@ import { mapCandidate } from '../../_lib/db/candidates';
 import { findCandidateByWa, nextCandidateId } from '../../_lib/candidate-helpers';
 import { stripRaw } from '../catalog';
 import { cacheClear } from '../../_lib/cache';
-import * as fcm from '../../_lib/fcm-server';
 import {
   getFormByIndex,
   getFormsByWa,
@@ -167,7 +166,15 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
       };
     }
     const body: Record<string, unknown> = { status };
-    if (reason !== null && reason !== undefined) body.keterangan = reason;
+    // Alasan penolakan punya KOLOMNYA SENDIRI sejak migrasi 049.
+    //
+    // Dulu baris ini menulis `keterangan`, dan `keterangan` juga menyimpan
+    // daftar dokumen (`KTP:https://…;KK:…`). PATCH biasa berarti menolak satu
+    // baris MENGHAPUS seluruh daftar dokumennya — terukur pada baris 558.
+    if (reason !== null && reason !== undefined) body.alasan_tolak = reason;
+    // Disetujui = alasan lama tidak berlaku lagi. Dikosongkan, bukan dibiarkan,
+    // supaya kandidat tidak membaca alasan penolakan pada baris yang sudah lolos.
+    if (status === MAIL_APPROVED_STATUS) body.alasan_tolak = '';
     await patchForm(f.id as number, body, sessionToken);
     let generatedPassword: string | null = null;
     try { generatedPassword = await syncCandidateDariForm(f, status); } catch (_e) { /* best-effort */ }
@@ -183,37 +190,51 @@ async function handleFormStatus(rowIndex: number, status: string, reason?: strin
       emit({ type: 'application.submitted', wa: waEvent, jobCode: jobCodeEvent, at: new Date().toISOString() });
     }
 
-    // FCM notification
+    // Notifikasi kandidat — SATU baris kotak masuk + satu push.
+    //
+    // Dulu blok ini hanya mengirim push. Konsekuensinya: siswa yang menolak izin
+    // notifikasi (atau di iOS yang belum memasang aplikasi ke Layar Utama)
+    // TIDAK PERNAH tahu lamarannya ditolak — satu-satunya salinan informasi itu
+    // hilang. Sekarang barisnya ditulis lebih dulu, push menyusul.
     const waNotify = normWa(String(f.no_wa || f.wa || ''));
     if (waNotify && (status === 'GAGAL' || status === 'REVIEW' || status === MAIL_APPROVED_STATUS)) {
       try {
         const jobCode = String(f.code_job || '');
-        let title = '', pushBody = '';
-        if (status === 'GAGAL') { title = 'Dokumen ' + jobCode + ' perlu revisi'; pushBody = reason || 'Lamaran ditolak.'; }
-        else if (status === 'REVIEW') { title = 'Dokumen ' + jobCode + ' sedang direview'; pushBody = 'Admin sedang meninjau dokumen Anda.'; }
-        else if (status === MAIL_APPROVED_STATUS) { title = 'Lamaran ' + jobCode + ' disetujui! 🎉'; pushBody = 'Selamat! Lamaran Anda telah disetujui.'; }
-        if (title) {
-          // Phase D follow-up (2026-09-13): was `const { rows: tokens } = …`.
-          // `supabaseJson()` returns the parsed body directly, so `tokens` was
-          // always undefined and this push was never sent — candidates were
-          // never told their application was approved, rejected or under review.
-          // BEHAVIOUR CHANGE: fixing it starts delivering those pushes to the
-          // devices registered in `fcm_tokens`. Guarded by
-          // contexts/scheduling/repository.test.ts.
-          const tokens = await supabaseJson('GET', 'fcm_tokens', {
-            query: { select: 'token', wa: 'eq.' + waNotify, limit: 10 },
+        const { kirimNotifikasi } = await import('../../_lib/notifikasi/kandidat');
+        if (status === 'GAGAL') {
+          await kirimNotifikasi({
+            wa: waNotify,
+            jenis: 'dokumen',
+            // Baris biodata tidak punya kode loker — "Dokumen  perlu revisi"
+            // (dua spasi) terbaca seperti pesan yang rusak.
+            judul: jobCode ? `Dokumen ${jobCode} perlu revisi` : 'Berkas perlu revisi',
+            isi: reason || 'Lamaran ditolak.',
+            url: '/candidate',
           });
-          if (Array.isArray(tokens) && tokens.length > 0) {
-            const tokenList = tokens.map((t: Record<string, unknown>) => t.token as string).filter(Boolean);
-            if (tokenList.length > 0) await fcm.sendMulticast(tokenList, title, pushBody, '/');
-          }
+        } else if (status === 'REVIEW') {
+          await kirimNotifikasi({
+            wa: waNotify,
+            jenis: 'dokumen',
+            judul: jobCode ? `Dokumen ${jobCode} sedang direview` : 'Berkas sedang direview',
+            isi: 'Admin sedang meninjau dokumen Anda.',
+            url: '/candidate',
+          });
+        } else {
+          await kirimNotifikasi({
+            wa: waNotify,
+            jenis: 'lamaran',
+            judul: jobCode ? `Lamaran ${jobCode} disetujui` : 'Berkas disetujui admin',
+            isi: 'Selamat! Lamaran Anda telah disetujui.',
+            url: '/candidate',
+          });
         }
-      } catch { /* FCM is best-effort */ }
+      } catch { /* notifikasi tidak boleh membatalkan keputusan admin */ }
     }
 
     // PATCH-IN-PLACE: return updated form + candidate
     f.status = status;
-    if (reason !== null && reason !== undefined) f.keterangan = reason;
+    if (reason !== null && reason !== undefined) f.alasan_tolak = reason;
+    if (status === MAIL_APPROVED_STATUS) f.alasan_tolak = '';
     let candidate = null;
     const wa = normWa(String(f.no_wa || f.wa || ''));
     if (wa) {

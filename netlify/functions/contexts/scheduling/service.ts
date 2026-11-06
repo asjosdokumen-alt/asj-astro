@@ -4,7 +4,6 @@
  * Other contexts and surfaces import ONLY from index.ts.
  */
 import { requireRole } from '../identity';
-import * as fcm from '../../_lib/fcm-server';
 import { log } from '../../_lib/kernel/log';
 import { safeError } from '../../_lib/kernel/errors';
 import { normalizeWa } from '../../shared/wa-rules';
@@ -19,7 +18,6 @@ import {
   deleteTaskById,
   getActiveSchedules,
   markReminderSent,
-  getFcmTokensForWaList,
   toText,
 } from './repository';
 
@@ -227,35 +225,32 @@ export async function handleCheckAndSendAgendaReminders(
       { key: 'h0', field: 'reminder_sent', minMs: 0, maxMs: 60 * 60000, label: 'mulai' },
     ];
 
+    /**
+     * Kirim satu pengingat ke seluruh daftar kandidat.
+     *
+     * 2026-11-06: sekarang menulis BARIS kotak masuk dulu, lalu push — lewat
+     * `kirimNotifikasiBanyak`. Sebelumnya hanya push, sehingga kandidat yang
+     * tidak memberi izin notifikasi tidak pernah tahu jadwalnya sudah dekat;
+     * satu-satunya salinan informasi itu ada di push yang tidak pernah tampil.
+     *
+     * Fallback token per-WA yang lama tidak diperlukan lagi: fungsi itu memang
+     * melakukan query token per WA, dan sekarang itu satu-satunya jalur.
+     */
     const sendToWaList = async (waList: string[], title: string, body: string) => {
       if (waList.length === 0) return;
-      let allTokens = await getFcmTokensForWaList(waList);
-      if (allTokens.length === 0) {
-        // Fallback: per-WA query
-        for (const wa of waList) {
-          try {
-            const { supabaseJson } = await import('./repository');
-            // Phase D follow-up (2026-09-13): was `{ rows: tokens }` — the
-            // helper returns the array itself, so the fallback never resolved
-            // a token either. Third instance of the same defect.
-            const tokens = await supabaseJson('GET', 'fcm_tokens', {
-              query: { select: 'token', wa: 'eq.' + wa, limit: 5 },
-            });
-            if (Array.isArray(tokens) && tokens.length > 0) {
-              const tokenList = tokens.map((t: any) => t.token).filter(Boolean);
-              if (tokenList.length > 0) {
-                await fcm.sendMulticast(tokenList, title, body, '/');
-                sent++;
-              }
-            }
-          } catch { errors++; }
-        }
-        return;
-      }
       try {
-        await fcm.sendMulticast(allTokens, title, body, '/');
-        sent++;
-      } catch { errors++; }
+        const { kirimNotifikasiBanyak } = await import('../../_lib/notifikasi/kandidat');
+        const r = await kirimNotifikasiBanyak(waList, {
+          jenis: 'jadwal',
+          judul: title,
+          isi: body,
+          url: '/candidate',
+        });
+        if (r.success) sent++;
+        else errors++;
+      } catch {
+        errors++;
+      }
     };
 
     for (const s of schedules) {
