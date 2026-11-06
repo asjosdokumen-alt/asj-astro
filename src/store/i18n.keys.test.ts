@@ -44,6 +44,9 @@ const NS = [
   'login', 'toast', 'error', 'table', 'landing', 'cvmini', 'esign',
   'changepass', 'doc', 'toolbar', 'bottomnav', 'cv', 'ai', 'input', 'db',
   'pelamar', 'wa', 'footer', 'profile', 'loker_static', 'kotoba', 'matematika', 'simulasi',
+  // `tes` (2026-11-06) — MBTI & Tes Mata Pra-MCU. Tanpa entri ini, seluruh
+  // `t('tes.…')` di dua halaman tes dan tab admin tidak divalidasi sama sekali.
+  'tes',
 ].join('|');
 
 /**

@@ -1,0 +1,36 @@
+---
+// Tes Mata Pra-MCU (`/tes-mata`): Ishihara + Landolt C.
+//
+// Gerbangnya ada di dalam `MataTest` dan di server (`getStatusTes` /
+// `simpanHasilTes`). Halaman ini hanya cangkang, sama seperti `/matematika`.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import App from '../components/App.tsx';
+import FormToolbar from '../components/forms/FormToolbar';
+import MataTest from '../components/candidate/tes/MataTest.tsx';
+---
+
+<BaseLayout
+  title="Tes Mata Pra-MCU — ASJ"
+  titleKey="doc.title_tes_mata"
+  description="Pemeriksaan mata mandiri untuk siswa ASJ: saringan buta warna Ishihara dan ketajaman visus Cincin Landolt sesuai standar MCU Jepang."
+  noIndex
+>
+  <App showHeader={false} client:only="preact" />
+
+  <FormToolbar client:only="preact" titleKey="toolbar.tes_mata" backTo="dashboard" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
+    <div class="max-w-2xl mx-auto px-3">
+      <section class="mb-3">
+        <h1 class="text-lg font-bold text-fg mb-1">Tes Mata Pra-MCU</h1>
+        <p class="text-fg-muted text-[12px] leading-snug">
+          Saringan buta warna (Ishihara) dan ketajaman mata (Cincin Landolt) — untuk mengetahui
+          kesiapan sebelum MCU resmi.
+        </p>
+      </section>
+      <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
+        Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
+      </noscript>
+      <MataTest client:only="preact" />
+    </div>
+  </main>
+</BaseLayout>

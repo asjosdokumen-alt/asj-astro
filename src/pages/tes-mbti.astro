@@ -1,0 +1,41 @@
+---
+// Tes MBTI mandiri (`/tes-mbti`).
+//
+// Bentuk halaman sengaja mengikuti `/matematika` dan `/kotoba`: satu komponen
+// `client:only`, satu pengantar singkat, dan satu `<noscript>`.
+//
+// Gerbangnya TIDAK di sini. Ia ada di dalam `MbtiTest` (login → khusus siswa →
+// belum dibuka) dan, yang menentukan, di server (`getStatusTes` /
+// `simpanHasilTes` → `tolakKecualiSiswa` + `bacaSakelar`). Menaruh salinan
+// gerbang di berkas ini akan membuat definisi "siswa" yang keempat.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import App from '../components/App.tsx';
+import FormToolbar from '../components/forms/FormToolbar';
+import MbtiTest from '../components/candidate/tes/MbtiTest.tsx';
+---
+
+<BaseLayout
+  title="Tes MBTI — ASJ"
+  titleKey="doc.title_tes_mbti"
+  description="Tes kepribadian 40 soal untuk siswa ASJ: mengetahui tipe MBTI, bidang kerja Jepang yang cocok, dan saran menghadapi mensetsu."
+  noIndex
+>
+  <App showHeader={false} client:only="preact" />
+
+  <FormToolbar client:only="preact" titleKey="toolbar.tes_mbti" backTo="dashboard" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
+    <div class="max-w-2xl mx-auto px-3">
+      <section class="mb-3">
+        <h1 class="text-lg font-bold text-fg mb-1">Tes MBTI</h1>
+        <p class="text-fg-muted text-[12px] leading-snug">
+          40 soal, sekitar 10 menit. Hasilnya dipakai untuk melihat bidang kerja Jepang yang paling
+          cocok dan bahan latihan mensetsu.
+        </p>
+      </section>
+      <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
+        Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
+      </noscript>
+      <MbtiTest client:only="preact" />
+    </div>
+  </main>
+</BaseLayout>
