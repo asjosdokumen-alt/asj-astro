@@ -36,14 +36,18 @@ predikat yang sama — bukan menebak string `ADMIN`.
 | Bukti | 2 tes: 4 baris → hapus 1 (`id=in.(…)`); 2 baris → tidak menghapus apa pun. |
 | Data sekarang | `KHOCI` tepat 3 (di batas), kandidat lain 1–2. Tidak ada yang perlu dibersihkan. |
 
-## 2. Tab Mail: 7 keranjang untuk 2 jenis baris — SEBAGIAN
+## 2. Tab Mail: dua daftar terpisah — SELESAI
 
 | | |
 |---|---|
 | Bukti | `database_asj_form` 16 baris, **semua biodata** (`code_job` kosong), nol lamaran — sementara 221 kandidat punya `id_loker_pilihan` |
 | Dampak | Keluhan asli pemilik: *"binggung banyak tap nya pipeline nya gimana"*. Filter `MENUNGGU`/`REVIEW`/`DISETUJUI`/`GAGAL` hanya berarti untuk baris **lamaran**; untuk baris **biodata** semuanya berakhir di `INFO`/`DIBACA`. |
-| Sudah dikerjakan | Angka jumlah per keranjang menempel di chip (keranjang kosong kelihatan kosong tanpa diklik), dan paragraf padat "Menunggu: 0 · Diperbarui: 0 · …" diganti satu kalimat yang menjelaskan mana yang butuh keputusan. |
-| **Sisa** | Memisahkan **dua daftar** (Lamaran vs Biodata) alih-alih satu tabel dengan tujuh chip. Itu perubahan struktur, bukan label — belum dikerjakan. |
+| **Dikerjakan** | Dua daftar dengan pemilih sendiri: **Lamaran** (MENUNGGU · UPDATE · REVIEW · DISETUJUI · GAGAL · SEMUA) dan **Biodata** (INFO · GAGAL · SEMUA). Tiap daftar membawa angkanya sendiri, kolom loker disembunyikan di Biodata, dan badge status biodata memakai nilai MENTAH supaya `INFO` vs `DIBACA` terlihat. |
+
+**Bug yang ikut tertutup:** aksi per baris dulu dipilih lewat `isInfoRow(status)`.
+Baris **dokumen yang ditolak** berstatus `GAGAL`, jadi ia menampilkan tombol
+Setujui/Review/Tolak — dan server menjawab *"Baris biodata/dokumen tidak perlu
+disetujui"*. Sekarang jenis baris ditentukan oleh `code_job`, bukan status.
 
 ## 3. Admin tidak punya feed notifikasi terpadu
 

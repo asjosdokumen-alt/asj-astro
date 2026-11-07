@@ -1,7 +1,10 @@
 /**
  * TabMail.tsx — Admin mail inbox tab
  * Source: legacy/index.html page-admin → admin-mail
- * Filters: MENUNGGU, UPDATE, REVIEW, DISETUJUI, GAGAL, INFO, SEMUA
+ *
+ * DUA DAFTAR, bukan tujuh filter untuk semua:
+ *   LAMARAN → MENUNGGU · UPDATE · REVIEW · DISETUJUI · GAGAL · SEMUA
+ *   BIODATA → INFO · GAGAL · SEMUA
  *
  * `LULUS` tidak lagi ada di sini: artinya tinggal TAHAPAN seleksi, dan itu
  * diubah admin lewat form kandidat — bukan dari kotak masuk Mail (keputusan
@@ -20,7 +23,45 @@ import { useOverlayPresence } from '../ui/useOverlayPresence';
 import api from '../../lib/apiClient';
 import RejectMailModal from './RejectMailModal';
 
-const STATUSES = ['MENUNGGU', 'UPDATE', 'REVIEW', 'DISETUJUI', 'GAGAL', 'INFO', 'SEMUA'] as const;
+/**
+ * DUA JENIS BARIS, DUA DAFTAR.
+ *
+ * `database_asj_form` menyimpan dua hal yang berbeda di satu tabel:
+ *   • LAMARAN  — `code_job` terisi; punya keputusan (Setujui/Review/Tolak).
+ *   • BIODATA  — `code_job` KOSONG; hanya perlu ditandai terbaca.
+ *
+ * Sebelum ini keduanya tampil di satu tabel dengan tujuh chip yang sama, dan
+ * chip `MENUNGGU`/`REVIEW`/`DISETUJUI`/`GAGAL` praktis tidak pernah berlaku
+ * untuk baris biodata — sementara baris biodata mengisi hampir seluruh daftar.
+ * Keluhan pemilik: "binggung banyak tap nya".
+ *
+ * ⚠ `isLamaran` membaca KODE, bukan STATUS. Dulu aksi per baris dipilih lewat
+ * `isInfoRow(status)`, sehingga baris DOKUMEN yang ditolak (status GAGAL)
+ * menampilkan tombol Setujui — dan server menolaknya dengan "Baris
+ * biodata/dokumen tidak perlu disetujui". Jenis baris ditentukan sekali oleh
+ * `code_job`, bukan oleh status yang bisa berubah.
+ */
+type Jenis = 'lamaran' | 'biodata';
+
+/** Keranjang yang masuk akal untuk tiap daftar — bukan tujuh untuk keduanya. */
+const BUCKETS: Record<Jenis, readonly string[]> = {
+  lamaran: ['MENUNGGU', 'UPDATE', 'REVIEW', 'DISETUJUI', 'GAGAL', 'SEMUA'],
+  biodata: ['INFO', 'GAGAL', 'SEMUA'],
+};
+
+/** Keranjang default saat daftar dibuka: yang paling mungkin berisi pekerjaan. */
+const BUCKET_DEFAULT: Record<Jenis, string> = { lamaran: 'MENUNGGU', biodata: 'INFO' };
+
+/**
+ * Baris LAMARAN = punya kode loker. `mapForm` memetakan `code` dari `code_job`,
+ * jadi baris biodata bernilai KOSONG di produksi. Sentinel `BIODATA` pernah
+ * dipakai sebagai label tampilan (dan masih dipakai fixture tes), jadi ia
+ * dikecualikan juga — kalau tidak, baris biodata akan masuk daftar lamaran.
+ */
+function isLamaran(m: { code?: unknown }): boolean {
+  const kode = String(m.code || '').trim().toUpperCase();
+  return kode !== '' && kode !== 'BIODATA';
+}
 
 /**
  * Label tiap keranjang, sebagai peta — bukan rantai ternary. Rantai sepuluh
@@ -68,10 +109,17 @@ function bucketOf(raw: unknown): string {
   return s;
 }
 
-/** Baris INFORMASI (biodata) — tidak punya tombol Setujui/Tolak. */
-function isInfoRow(raw: unknown): boolean {
+/**
+ * Label badge status.
+ *
+ * Biodata memakai status MENTAH: `bucketOf` melipat `DIBACA` menjadi `INFO`,
+ * sehingga "sudah dilihat" dan "belum dilihat" tampil identik — padahal itulah
+ * satu-satunya hal yang membedakan dua baris biodata. Lamaran tetap memakai
+ * `bucketOf` untuk menormalkan `REVIEW ADMIN` lama.
+ */
+function labelStatus(raw: unknown, jenis: Jenis): string {
   const s = String(raw || '').toUpperCase();
-  return s === 'INFO' || s === 'DIBACA';
+  return jenis === 'biodata' ? s : bucketOf(raw);
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -89,6 +137,10 @@ export default function TabMail() {
   const filterStatus = useStore(mailFilterStatus);
   const searchText = useStore(mailSearchText);
   const mail = useStore(mailList);
+  /* Daftar mana yang sedang dibuka. State lokal, bukan store: pilihan ini
+     adalah sudut pandang sesi, bukan preferensi yang perlu bertahan setelah
+     admin menutup panel. */
+  const [jenis, setJenis] = useState<Jenis>('lamaran');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   /**
    * Baris yang sedang ditolak (#12). `null` = modal tertutup.
@@ -216,8 +268,23 @@ export default function TabMail() {
     }
   };
 
+  /* Filter yang berlaku untuk daftar ini. Kalau store menyimpan keranjang yang
+     tidak ada di daftar ini (mis. `MENUNGGU` saat pindah ke Biodata), jangan
+     diam-diam menampilkan daftar kosong: jatuh ke keranjang default daftar itu
+     sampai admin memilih chip lain. */
+  const buckets = BUCKETS[jenis];
+  const filterAktif = buckets.includes(filterStatus) ? filterStatus : BUCKET_DEFAULT[jenis];
+
+  const gantiJenis = (j: Jenis) => {
+    if (j === jenis) return;
+    setJenis(j);
+    setSelected(new Set());
+    setMailFilterStatus(BUCKET_DEFAULT[j]);
+  };
+
   const filtered = mail.filter((m) => {
-    const matchStatus = filterStatus === 'SEMUA' || bucketOf(m.status) === filterStatus;
+    if (isLamaran(m) !== (jenis === 'lamaran')) return false;
+    const matchStatus = filterAktif === 'SEMUA' || bucketOf(m.status) === filterAktif;
     const matchSearch = !searchText ||
       (m.nama || '').toLowerCase().includes(searchText.toLowerCase()) ||
       (m.wa || '').includes(searchText) ||
@@ -225,12 +292,14 @@ export default function TabMail() {
     return matchStatus && matchSearch;
   });
 
-  // Status counts
-  const counts = { MENUNGGU: 0, UPDATE: 0, REVIEW: 0, DISETUJUI: 0, GAGAL: 0, INFO: 0 };
-  mail.forEach(m => {
-    const s = bucketOf(m.status);
-    if (s in counts) counts[s as keyof typeof counts]++;
-  });
+  /* Jumlah per keranjang, dihitung di dalam daftar yang sedang dibuka — angka
+     yang mencampur dua daftar akan menjanjikan baris yang tidak ada di layar. */
+  const jumlahKeranjang = (b: string): number => {
+    const sejenis = mail.filter((m) => isLamaran(m) === (jenis === 'lamaran'));
+    return b === 'SEMUA' ? sejenis.length : sejenis.filter((m) => bucketOf(m.status) === b).length;
+  };
+  const jumlahLamaran = mail.filter((m) => isLamaran(m)).length;
+  const jumlahBiodata = mail.length - jumlahLamaran;
 
   return (
     <div class="bg-slate-900 rounded-xl border border-sky-900/50 p-4 u-scroll-x">
@@ -243,17 +312,31 @@ export default function TabMail() {
             placeholder={t("admin.search_mail")}
             class="min-h-11 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:border-sky-500 outline-none w-52" />
 
-          {/* Keranjang + JUMLAHNYA.
-              Dulu hanya tujuh tombol tanpa angka, jadi admin harus membuka
-              satu per satu untuk tahu mana yang berisi pekerjaan — keluhan
-              pemilik 2026-11-07: "binggung banyak tap nya". Angka membuat
-              keranjang yang kosong kelihatan kosong tanpa diklik. */}
+          {/* DAFTAR MANA: Lamaran (punya keputusan) atau Biodata (cukup ditandai).
+              Netral (slate) untuk pilihan daftar, biru untuk keranjang di
+              bawahnya — supaya dua tingkat pilihan itu tidak tertukar. */}
+          <fieldset class="flex rounded-lg border border-slate-700 overflow-hidden m-0 p-0 min-w-0">
+            <legend class="sr-only">{t('admin.mail_kind')}</legend>
+            {(['lamaran', 'biodata'] as const).map((j) => {
+              const aktif = jenis === j;
+              const n = j === 'lamaran' ? jumlahLamaran : jumlahBiodata;
+              return (
+                <button type="button" key={j} onClick={() => gantiJenis(j)} aria-pressed={aktif}
+                  class={`min-h-11 px-3 py-2 text-xs font-bold transition ${
+                    aktif ? 'bg-slate-700 text-white' : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
+                  }`}>
+                  {t(j === 'lamaran' ? 'admin.mail_kind_lamaran' : 'admin.mail_kind_biodata')}
+                  <span class={`ml-1.5 tabular-nums ${aktif ? 'text-slate-300' : 'text-slate-500'}`}>{n}</span>
+                </button>
+              );
+            })}
+          </fieldset>
+
+          {/* Keranjang + JUMLAHNYA, khusus daftar yang sedang dibuka. */}
           <div class="flex flex-wrap items-center gap-1.5">
-            {STATUSES.map((s) => {
-              const jumlah = s === 'SEMUA'
-                ? mail.length
-                : mail.filter((m) => bucketOf(m.status) === s).length;
-              const aktif = filterStatus === s;
+            {buckets.map((s) => {
+              const jumlah = jumlahKeranjang(s);
+              const aktif = filterAktif === s;
               return (
                 <button type="button" key={s} onClick={() => setMailFilterStatus(s)}
                   aria-pressed={aktif}
@@ -314,8 +397,14 @@ export default function TabMail() {
                 </label>
               </th>
               <th scope="col" class="p-4">{t('table.upload_date')}</th>
-              <th scope="col" class="p-4">{t('table.job_code')}</th>
-              <th scope="col" class="p-4">{t('admin.kategori_bidang')}</th>
+              {/* Kolom loker hanya berarti untuk lamaran; baris biodata tidak
+                  punya loker, jadi dua kolom kosong hanya menambah lebar. */}
+              {jenis === 'lamaran' && (
+                <>
+                  <th scope="col" class="p-4">{t('table.job_code')}</th>
+                  <th scope="col" class="p-4">{t('admin.kategori_bidang')}</th>
+                </>
+              )}
               <th scope="col" class="p-4">{t('table.full_name')}</th>
               <th scope="col" class="p-4">{t('ui.wa')}</th>
               <th scope="col" class="p-4 text-center">{t('table.status')}</th>
@@ -326,7 +415,7 @@ export default function TabMail() {
           <tbody class="divide-y divide-slate-800">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} class="p-6 text-center text-slate-500">
+                <td colSpan={jenis === 'lamaran' ? 9 : 7} class="p-6 text-center text-slate-500">
                   {t('admin.no_mail_found')}
                   {/* 🔴 Keluhan pemilik 2026-10-22: "update profil Agus Khoci, ada notif,
                       tapi di mail admin panel gak ada sama sekali." Baris hasil update
@@ -334,14 +423,14 @@ export default function TabMail() {
                       terlihat sama sekali. Angka di atas memang menyebutnya, tapi
                       tabel kosong tetap terbaca sebagai "tidak ada apa-apa" — jadi
                       beri jalan keluarnya di sini juga. */}
-                  {filterStatus === 'MENUNGGU' && counts.UPDATE > 0 && (
+                  {filterAktif === 'MENUNGGU' && jumlahKeranjang('UPDATE') > 0 && (
                     /* `text-violet-300`, BUKAN `text-violet-200`: yang 200 tidak punya
                        padanan tema terang, jadi labelnya #ddd6fe di atas latar #ede9fe
                        — rasio ~1,06:1, teksnya HILANG. Yang 300 di-shim ke #6d28d9
                        (≈7,4:1). Diukur 2026-10-22. */
                     <button type="button" onClick={() => setMailFilterStatus('UPDATE')}
                       class="mt-2 min-h-11 px-3 py-2 rounded-lg bg-violet-600/20 border border-violet-500/50 text-violet-300 text-[11px] font-bold hover:bg-violet-600/30 transition">
-                      {t('admin.mail_update_hint').replace('{n}', String(counts.UPDATE))}
+                      {t('admin.mail_update_hint').replace('{n}', String(jumlahKeranjang('UPDATE')))}
                     </button>
                   )}
                 </td>
@@ -361,22 +450,24 @@ export default function TabMail() {
                     onChange={() => toggleOne(String(m.id ?? m.wa ?? m.nama ?? ''))} />
                 </td>
                 <td class="p-4 text-xs text-slate-400">{m.timestamp || '-'}</td>
-                {/* Kode job dari `mapForm` bernama `code` (`row.code_job`).
-                    Baris TANPA kode job bukan lamaran loker melainkan baris
-                    biodata/dokumen — `database_asj_form` menyimpan keduanya di
-                    satu tabel (lihat `isBiodataRow`). Dulu baris itu berlabel
-                    sentinel "UMUM"; sentinel itu sudah dibuang, jadi labelnya
-                    sekarang kata yang sebenarnya: BIODATA. */}
-                <td class="p-4"><span class="font-mono text-sky-300 text-xs">{m.code || 'BIODATA'}</span></td>
-                <td class="p-4 text-xs text-slate-400">{m.kategori || '-'}</td>
+                {jenis === 'lamaran' && (
+                  <>
+                    {/* Kode job dari `mapForm` bernama `code` (`row.code_job`).
+                        Baris tanpa kode job adalah baris biodata/dokumen, dan
+                        sekarang punya daftarnya sendiri — tidak lagi muncul di
+                        sini, jadi tidak perlu label pengganti. */}
+                    <td class="p-4"><span class="font-mono text-sky-300 text-xs">{m.code || '-'}</span></td>
+                    <td class="p-4 text-xs text-slate-400">{m.kategori || '-'}</td>
+                  </>
+                )}
                 <td class="p-4 font-bold text-white text-sm">{m.nama || '-'}</td>
                 <td class="p-4 font-mono text-sky-300 text-xs">{m.wa || '-'}</td>
                 <td class="p-4 text-center">
                   {/* `bucketOf`, bukan `m.status` mentah: baris lama menyimpan
                       `REVIEW ADMIN`, yang tidak punya warna dan terbaca sebagai
                       status asing padahal artinya sama dengan REVIEW. */}
-                  <span class={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLORS[bucketOf(m.status)] || 'bg-slate-500/20 text-slate-400 border-slate-500/40'}`}>
-                    {bucketOf(m.status) || '-'}
+                  <span class={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${STATUS_COLORS[labelStatus(m.status, jenis)] || 'bg-slate-500/20 text-slate-400 border-slate-500/40'}`}>
+                    {labelStatus(m.status, jenis) || '-'}
                   </span>
                   {/* `feedback` = aktivitas terakhir dari backend ("[BIODATA] email
                       diubah · [UPLOAD KTP]"). Tanpa ini admin melihat status UPDATE
@@ -392,7 +483,12 @@ export default function TabMail() {
                 </td>
                 <td class="p-4 text-center">
                   <div class="flex flex-wrap justify-center gap-1">
-                    {isInfoRow(m.status) ? (
+                    {/* Aksi ditentukan oleh JENIS BARIS, bukan statusnya.
+                        Sebelumnya `isInfoRow(m.status)`: baris DOKUMEN yang
+                        ditolak berstatus GAGAL, jadi ia menampilkan tombol
+                        Setujui — dan server menolaknya dengan "Baris
+                        biodata/dokumen tidak perlu disetujui". */}
+                    {!isLamaran(m) ? (
                       /* Baris biodata/dokumen INFORMASI: tidak ada yang perlu
                          disetujui. Pemilik 2026-10-29: "gak perlu persetujuan
                          admin, gak perlu menunggu". Yang tersedia hanya menandai
