@@ -15,8 +15,17 @@
  *   3. Penolakan di depan (WA kosong, jenis asing) terjadi SEBELUM menyentuh DB.
  */
 import { readFileSync, readdirSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
-import { TES_SAH, bacaSakelar, jenisTesSah, setAktif, simpanHasil } from './tes';
+import { describe, expect, it, vi } from 'vitest';
+import { TES_SAH, bacaSakelar, jenisTesSah, setAktif, simpanHasil, tipeSakelar } from './tes';
+
+/* `supabaseJson` di-stub supaya satu kasus bisa memeriksa QUERY yang dikirim,
+   bukan hanya hasilnya. Tanpa ini, bug "sakelar iq menyala tetapi terbaca
+   mati" tidak bisa dibuktikan dari tes: nilainya tetap `false` baik karena
+   query-nya kurang satu tipe maupun karena DB-nya memang kosong. */
+vi.mock('../db/client', async (importOriginal) => {
+  const asli = await importOriginal<typeof import('../db/client')>();
+  return { ...asli, supabaseJson: vi.fn() };
+});
 
 describe('jenis tes', () => {
   it('tepat tiga jenis yang dipakai aplikasi', () => {
@@ -70,6 +79,32 @@ describe('gagal-tertutup', () => {
   it('sakelar dibaca nonaktif saat DB tidak terbaca', async () => {
     const s = await bacaSakelar();
     expect(s).toEqual({ mbti: false, mata: false, iq: false });
+  });
+
+  /* ── Regresi 2026-11-07 ───────────────────────────────────────────────────
+   * Pemilik menyalakan sakelar Asesmen Penalaran, panel menampilkan toggle
+   * menyala, tetapi halaman menjawab "belum dibuka". Sebabnya: query
+   * `config_type=in.(tes_mbti,tes_mata)` ditulis harfiah, jadi baris `tes_iq`
+   * tidak pernah diambil — dan `bacaSakelar` selalu menjawab `iq:false`.
+   * Dua kasus di bawah mengunci dua sisi bug itu: daftar tipenya lengkap, DAN
+   * baris 'on' untuk jenis mana pun benar-benar menyalakan jenis itu. */
+  it('setiap jenis tes punya baris sakelar yang dibaca', () => {
+    const tipe = tipeSakelar();
+    expect(tipe).toHaveLength(TES_SAH.length);
+    expect([...tipe].sort()).toEqual(['tes_iq', 'tes_mata', 'tes_mbti']);
+  });
+
+  it('sakelar iq yang menyala di DB terbaca menyala (bukan selalu mati)', async () => {
+    const { supabaseJson } = await import('../db/client');
+    vi.mocked(supabaseJson).mockResolvedValueOnce([
+      { config_type: 'tes_iq', config_value: 'on', is_active: true },
+    ]);
+    const s = await bacaSakelar();
+    expect(s.iq).toBe(true);
+
+    /* Dan query-nya memang meminta tes_iq — bukan hanya hasilnya kebetulan. */
+    const query = vi.mocked(supabaseJson).mock.calls.at(-1)?.[2]?.query;
+    expect(String(query?.config_type)).toContain('tes_iq');
   });
 
   it('simpanHasil menolak dengan `nonaktif` saat sakelar tidak terbaca', async () => {

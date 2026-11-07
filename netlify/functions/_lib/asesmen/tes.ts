@@ -48,14 +48,29 @@ export interface StatusTes {
   hasil: Partial<Record<JenisTes, { ringkasan: string; hasil: unknown; dibuat_pada: string }>>;
 }
 
+/**
+ * Daftar `config_type` yang dibaca `bacaSakelar`, diturunkan dari CONFIG_TYPE.
+ * Diekspor supaya tes bisa memastikan SETIAP jenis punya sakelar — bukan hanya
+ * dua yang kebetulan diingat saat baris query ditulis.
+ */
+export function tipeSakelar(): string[] {
+  return Object.values(CONFIG_TYPE);
+}
+
 /** Baca sakelar admin. Gagal baca = nonaktif (lihat komentar di atas). */
 export async function bacaSakelar(): Promise<Record<JenisTes, boolean>> {
   const mati = { mbti: false, mata: false, iq: false };
   try {
+    /* Daftar `config_type` DITURUNKAN dari CONFIG_TYPE, tidak ditulis ulang.
+       Sebelumnya baris ini menyebut dua tipe secara harfiah; menambah jenis
+       ketiga ke CONFIG_TYPE lalu lupa menambahkannya di sini membuat sakelar
+       yang sudah ON di database SELALU terbaca mati — dan gejalanya persis
+       "belum dibuka" padahal panel admin menampilkan toggle menyala. */
+    const tipe = tipeSakelar().join(',');
     const rows = await supabaseJson('GET', 'sys_config', {
       query: {
         select: 'config_type,config_value,is_active',
-        config_type: `in.(${CONFIG_TYPE.mbti},${CONFIG_TYPE.mata})`,
+        config_type: `in.(${tipe})`,
         limit: '20',
       },
     });
