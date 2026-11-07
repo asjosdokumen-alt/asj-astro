@@ -5,7 +5,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { docTypeOf, rateLimitChecks, ADMIN_READ_ACTIONS } from './handlers';
+import { docTypeOf } from '../contexts/catalog';
+import { rateLimitChecks, ADMIN_READ_ACTIONS } from './handlers';
 import { signToken } from './session';
 
 describe('docTypeOf — pola baru (prefix kapital)', () => {

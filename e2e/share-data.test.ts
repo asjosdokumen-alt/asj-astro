@@ -12,6 +12,12 @@
 //
 // This test pins the fix: the function file imports _lib/handlers and delegates
 // with the ?job query param (same contract as the previous generation build).
+//
+// IMPOR HANYA PESAN GENERIK (2026-11-07): `handleShareData` sekarang diimpor
+// LANGSUNG dari `contexts/catalog` — re-export lewat `_lib/handlers` membuat
+// SETIAP entry point ikut menarik catalog (bcryptjs + demo). Yang masih datang
+// dari `_lib/handlers` cuma `GENERIC_ERROR_MESSAGE`, jadi mock di bawah memisah
+// keduanya: handler-nya dari catalog, pesannya dari handlers.
 // Pure handler-level test, no DB/network.
 //
 // CARA MEMUAT HANDLER (diubah 2026-09-12): dulu file ini mengevaluasi sumber
@@ -43,18 +49,21 @@ import { GENERIC_ERROR_MESSAGE } from '../netlify/functions/_lib/kernel/errors';
 const { mockHandle } = vi.hoisted(() => ({ mockHandle: vi.fn() }));
 
 // vi.mock is hoisted above the imports, so the entry below resolves against the
-// mock. The factory re-reads GENERIC_ERROR_MESSAGE from its OWNER
+// mocks. The handlers factory re-reads GENERIC_ERROR_MESSAGE from its OWNER
 // (kernel/errors) instead of hard-coding a second copy of the wording — one
 // message, one owner, as before.
 vi.mock('../netlify/functions/_lib/handlers.js', async () => {
   const errors = await import('../netlify/functions/_lib/kernel/errors');
   return {
-    handleShareData: mockHandle,
     handleAction: vi.fn(),
     NOT_IMPLEMENTED: vi.fn(),
     GENERIC_ERROR_MESSAGE: errors.GENERIC_ERROR_MESSAGE,
   };
 });
+
+vi.mock('../netlify/functions/contexts/catalog/index.js', () => ({
+  handleShareData: mockHandle,
+}));
 
 import shareDataHandler from '../netlify/functions/share-data.js';
 

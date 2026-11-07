@@ -22,7 +22,12 @@
 // PR4 (playbook §3.3 "never leak") + satu pemilik pesan generik:
 // GENERIC_ERROR_MESSAGE di kernel/errors.ts, diekspor via _lib/handlers.
 import { adapt } from './_lib/netlify-adapter.js';
-import { handleShareData, GENERIC_ERROR_MESSAGE } from './_lib/handlers.js';
+import { GENERIC_ERROR_MESSAGE } from './_lib/handlers.js';
+// `handleShareData` diimpor LANGSUNG dari konteksnya, bukan lewat
+// `_lib/handlers`. Re-export lewat handlers membuat setiap entry point ikut
+// menarik `contexts/catalog` (bcryptjs + demo); hanya endpoint inilah yang
+// benar-benar memakainya.
+import { handleShareData } from './contexts/catalog/index.js';
 
 async function handler(event) {
   const p = (event.queryStringParameters) || {};

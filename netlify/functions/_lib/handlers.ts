@@ -1,6 +1,5 @@
 import * as session from './session';
 import * as rateLimit from './kernel/rate-limit';
-import { handleShareData, docTypeOf } from '../contexts/catalog';
 import { toErrorResponse, GENERIC_ERROR_MESSAGE } from './kernel/errors';
 import { log, asyncLocalStorage } from './kernel/log';
 import { metrics } from './kernel/metrics';
@@ -413,4 +412,11 @@ function isMutatingAction(action: string): boolean {
 export { handleAction, NOT_IMPLEMENTED };
 // GENERIC_ERROR_MESSAGE re-exported so the raw CJS endpoints (share-data.js,
 // ingest.js) consume the one owned generic string without a deep import.
-export { handleShareData, docTypeOf, GENERIC_ERROR_MESSAGE };
+//
+// CATALOG IS NOT RE-EXPORTED HERE. `handleShareData` used to be, which made
+// `contexts/catalog` a dependency of THIS module — and this module is imported
+// by every entry point. That single re-export pulled bcryptjs (via
+// `catalog/service` → `identity`) and `_lib/demo` (via `catalog/repository`)
+// into functions that never serve a share link. The only consumer was
+// `share-data.js`, which now imports the handler directly.
+export { GENERIC_ERROR_MESSAGE };
