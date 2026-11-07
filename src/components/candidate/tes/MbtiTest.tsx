@@ -268,7 +268,17 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
             <fieldset key={s.id} class="rounded-control border border-line bg-surface-sunken p-3">
               <legend class="px-1 text-[11px] font-bold text-fg-muted">{halaman * PER_HALAMAN + i + 1} / {SOAL_MBTI.length}</legend>
               <p class="mb-3 text-[13px] font-semibold leading-snug text-fg">{s.teks}</p>
-              <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-5">
+              {/* Skala 5 titik: SATU baris, bukan lima tombol bertumpuk.
+                  Sebelumnya di HP satu halaman berisi 25 tombol dan harus
+                  digulir jauh di tengah menjawab — dan jawaban yang salah
+                  pencet di daftar panjang adalah kesalahan data, bukan
+                  kesalahan siswa. Kutubnya ditulis di atas supaya angka 1–5
+                  punya arti tanpa harus menghafal. */}
+              <div class="mb-1 flex justify-between gap-2 text-[10px] font-bold text-fg-muted">
+                <span>← {t('tes.mbti_skala_0')}</span>
+                <span>{t('tes.mbti_skala_4')} →</span>
+              </div>
+              <div class="grid grid-cols-5 gap-1.5">
                 {SKALA.map((o) => {
                   const aktif = dipilih === o.nilai;
                   return (
@@ -276,14 +286,16 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
                       key={o.nilai}
                       type="button"
                       aria-pressed={aktif}
+                      aria-label={t(o.kunci)}
                       onClick={() => pilih(s.id, o.nilai)}
-                      class={`min-h-11 rounded-control border px-2 text-[11.5px] font-bold transition ${
+                      class={`min-h-11 rounded-control border px-1 text-[11.5px] font-bold transition ${
                         aktif
                           ? 'border-accent-sky bg-accent-sky text-canvas'
                           : 'border-line bg-surface text-fg-muted hover:border-accent-sky hover:text-fg'
                       }`}
                     >
-                      {t(o.kunci)}
+                      <span class="sm:hidden">{o.nilai + 3}</span>
+                      <span class="hidden sm:inline">{t(o.kunci)}</span>
                     </button>
                   );
                 })}
