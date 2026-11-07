@@ -21,19 +21,24 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { apiClient, type ApiError } from '../../../lib/apiClient';
 import { t } from '../../../store/i18n';
 import {
+  ARAH_ASTIG,
   PLATE_ISHIHARA,
+  TINGKAT_KONTRAS,
   TINGKAT_VISUS,
   evaluasiIshihara,
+  simpulkanAstig,
+  simpulkanKontras,
   simpulkanVisus,
   ukuranLandolt,
   type ArahLandolt,
+  type HasilAstig,
   type HasilIshihara,
   type JawabanPlate,
 } from '../../../lib/tesSeleksi';
 import { gambarPlate } from '../../../lib/ishiharaCanvas';
 import { IsiTes, useGerbangTes, type HasilTersimpan } from './GerbangTes';
 
-type Fase = 'intro' | 'ishihara' | 'kalibrasi' | 'landolt' | 'hasil';
+type Fase = 'intro' | 'ishihara' | 'kalibrasi' | 'landolt' | 'kontras' | 'astig' | 'hasil';
 type Mata = 'KANAN' | 'KIRI';
 
 const DETIK_PLATE = 5;
@@ -46,6 +51,9 @@ const ROTASI: Record<ArahLandolt, number> = { KANAN: 0, BAWAH: 90, KIRI: 180, AT
 interface HasilMata {
   ishihara: { skor: number; total: number; status: string; label: string };
   visus: { kanan: number; kiri: number };
+  /** Opsional: hasil lama (sebelum 2026-11-08) tidak punya dua blok ini. */
+  kontras?: { kanan: number; kiri: number; terendah: number; label: string };
+  astig?: HasilAstig;
 }
 
 function angkaVisus(v: number): string {
@@ -96,6 +104,36 @@ function KartuHasil({ hasil, baru, catatan }: { hasil: HasilMata; baru: boolean;
           </div>
           <p class="mt-2 text-[11.5px] leading-relaxed text-fg-muted">{v.catatan}</p>
         </section>
+
+        {hasil.kontras && (
+          <section class="rounded-card border border-line bg-surface p-4">
+            <h3 class="mb-2 text-[12px] font-bold uppercase tracking-wide text-fg-muted">
+              {t('tes.mata_kontras')}
+            </h3>
+            <p class="text-2xl font-black text-accent-sky">
+              {Math.round(hasil.kontras.terendah * 100)}%
+            </p>
+            <p class="mt-1 text-[11.5px] leading-relaxed text-fg-muted">{hasil.kontras.label}</p>
+          </section>
+        )}
+
+        {hasil.astig && (
+          <section class="rounded-card border border-line bg-surface p-4">
+            <h3 class="mb-2 text-[12px] font-bold uppercase tracking-wide text-fg-muted">
+              {t('tes.mata_astig')}
+            </h3>
+            <p
+              class={`inline-block rounded-control px-2.5 py-1 text-[12px] font-bold ${
+                hasil.astig.indikasi
+                  ? 'border border-accent-amber/40 bg-accent-amber/10 text-accent-amber'
+                  : 'border border-accent-emerald/40 bg-accent-emerald/10 text-accent-emerald'
+              }`}
+            >
+              {hasil.astig.indikasi ? t('tes.mata_astig_perlu') : t('tes.mata_astig_normal')}
+            </p>
+            <p class="mt-2 text-[11.5px] leading-relaxed text-fg-muted">{hasil.astig.catatan}</p>
+          </section>
+        )}
       </div>
 
       <p class="rounded-control border border-line bg-surface-sunken px-3 py-2 text-[11.5px] leading-relaxed text-fg-muted">
@@ -129,6 +167,16 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
   const [benarLevel, setBenarLevel] = useState(0);
   const [arah, setArah] = useState<ArahLandolt>('KANAN');
   const [visus, setVisus] = useState({ kanan: 0, kiri: 0 });
+
+  /* Kontras: skor = kontras TERENDAH yang masih terbaca, per mata. */
+  const [kontrasMata, setKontrasMata] = useState<Mata>('KANAN');
+  const [kontrasIdx, setKontrasIdx] = useState(0);
+  const [kontrasSkor, setKontrasSkor] = useState({ kanan: 0, kiri: 0 });
+  const [arahKontras, setArahKontras] = useState<ArahLandolt>('KANAN');
+
+  /* Astigmatisme: arah garis yang tampak paling tebal; '' = semua sama. */
+  const [astigMata, setAstigMata] = useState<Mata>('KANAN');
+  const [astigPilih, setAstigPilih] = useState({ kanan: '', kiri: '' });
 
   const [hasil, setHasil] = useState<HasilMata | null>(null);
   const [menyimpan, setMenyimpan] = useState(false);
@@ -179,12 +227,23 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
   /* ── Landolt ──────────────────────────────────────────────────────────── */
   const acakArah = () => setArah(ARAH[Math.floor(Math.random() * ARAH.length)]);
 
-  const simpanHasil = async (v: { kanan: number; kiri: number }) => {
+  const simpanHasil = async (
+    v: { kanan: number; kiri: number },
+    k: { kanan: number; kiri: number },
+    a: { kanan: string; kiri: string },
+  ) => {
     const ish: HasilIshihara = evaluasiIshihara(jawaban);
+    const kontras = simpulkanKontras(k.kanan, k.kiri);
+    const astig = simpulkanAstig(a.kanan, a.kiri);
     const payload: HasilMata = {
       ishihara: { skor: ish.skor, total: ish.total, status: ish.status, label: ish.label },
       visus: v,
+      kontras: { kanan: k.kanan, kiri: k.kiri, terendah: kontras.terendah, label: kontras.label },
+      astig,
     };
+    const ringkas = `${ish.label} · OD ${v.kanan} / OS ${v.kiri} · kontras ${Math.round(
+      kontras.terendah * 100,
+    )}%${astig.indikasi ? ' · astig: perlu cek' : ''}`;
     setMenyimpan(true);
     setGalat('');
     try {
@@ -194,7 +253,7 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
       if (gerbang.uji) {
         setCatatanCv(t('tes.uji_tidak_disimpan'));
         gerbang.tandaiSelesai({
-          ringkasan: `${ish.label} · OD ${v.kanan} / OS ${v.kiri}`,
+          ringkasan: ringkas,
           hasil: payload as unknown as Record<string, unknown>,
           dibuat_pada: new Date().toISOString(),
         });
@@ -221,7 +280,7 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
       }
       if (d.cv?.dilewati?.length) setCatatanCv(t('tes.cv_manual_mata'));
       const tersimpan: HasilTersimpan = {
-        ringkasan: `${ish.label} · OD ${v.kanan} / OS ${v.kiri}`,
+        ringkasan: ringkas,
         hasil: payload as unknown as Record<string, unknown>,
         dibuat_pada: new Date().toISOString(),
       };
@@ -247,8 +306,12 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
     }
     const akhir = { kanan: visus.kanan, kiri: visusBaru };
     setVisus(akhir);
-    setFase('hasil');
-    void simpanHasil(akhir);
+    /* Lanjut ke KONTRAS, bukan langsung ke hasil. Dua saringan tambahan ini
+       yang membuat tes setara lima pemeriksaan ZEISS (tanpa Amsler). */
+    setKontrasMata('KANAN');
+    setKontrasIdx(0);
+    setArahKontras(ARAH[Math.floor(Math.random() * ARAH.length)]);
+    setFase('kontras');
   };
 
   const jawabLandolt = (pilihan: ArahLandolt) => {
@@ -279,6 +342,45 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
 
   const pxPerMm = lebarKtp / LEBAR_KTP_MM;
   const ukuran = ukuranLandolt(TINGKAT_VISUS[level], jarak, pxPerMm);
+
+  /**
+   * Kontras: satu percobaan per tingkat, berhenti pada tingkat pertama yang
+   * salah. Skor = tingkat TERAKHIR yang benar — bukan rata-rata, karena yang
+   * diukur adalah batas, bukan ketepatan.
+   */
+  const jawabKontras = (pilih: ArahLandolt) => {
+    const tepat = pilih === arahKontras;
+    const skorBaru = tepat ? TINGKAT_KONTRAS[kontrasIdx] : kontrasIdx > 0 ? TINGKAT_KONTRAS[kontrasIdx - 1] : 0;
+    const kunciMata = kontrasMata === 'KANAN' ? 'kanan' : 'kiri';
+    const nilai = { ...kontrasSkor, [kunciMata]: skorBaru };
+
+    if (!tepat || kontrasIdx + 1 >= TINGKAT_KONTRAS.length) {
+      setKontrasSkor(nilai);
+      if (kontrasMata === 'KANAN') {
+        setKontrasMata('KIRI');
+        setKontrasIdx(0);
+        setArahKontras(ARAH[Math.floor(Math.random() * ARAH.length)]);
+        return;
+      }
+      setAstigMata('KANAN');
+      setFase('astig');
+      return;
+    }
+    setKontrasSkor(nilai);
+    setKontrasIdx((i) => i + 1);
+    setArahKontras(ARAH[Math.floor(Math.random() * ARAH.length)]);
+  };
+
+  const jawabAstig = (arah: string) => {
+    const baru = { ...astigPilih, [astigMata === 'KANAN' ? 'kanan' : 'kiri']: arah };
+    setAstigPilih(baru);
+    if (astigMata === 'KANAN') {
+      setAstigMata('KIRI');
+      return;
+    }
+    setFase('hasil');
+    void simpanHasil(visus, kontrasSkor, baru);
+  };
 
   /* ── INTRO ────────────────────────────────────────────────────────────── */
   if (fase === 'intro') {
@@ -538,6 +640,139 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
     );
   }
 
+  /* ── KONTRAS ──────────────────────────────────────────────────────────── */
+  if (fase === 'kontras') {
+    const nilai = TINGKAT_KONTRAS[kontrasIdx];
+    const abu = Math.round(255 * (1 - nilai));
+    const uk = ukuranLandolt(1.0, jarak, pxPerMm);
+    const d = uk.diameterPx;
+    const tebal = uk.tebalPx;
+    const keliling = Math.PI * Math.max(0.01, d - tebal);
+    const kotak = Math.max(56, Math.ceil(d + 32));
+    return (
+      <div class="flex flex-col items-center rounded-card border border-line bg-surface p-4 sm:p-6">
+        <div class="mb-2 w-full rounded-control bg-surface-sunken p-2.5 text-[11.5px] font-bold text-fg">
+          <div class="flex flex-wrap items-center justify-between gap-1">
+            <span>{kontrasMata === 'KANAN' ? t('tes.mata_tutup_kiri') : t('tes.mata_tutup_kanan')}</span>
+            <span class="text-accent-sky">
+              {t('tes.mata_tahap_kontras')} {kontrasIdx + 1}/{TINGKAT_KONTRAS.length} · {jarak * 100} cm
+            </span>
+          </div>
+        </div>
+        <p class="mb-2 text-center text-[11.5px] leading-snug text-fg-muted">{t('tes.mata_kontras_ket')}</p>
+
+        <div
+          class="my-2 flex items-center justify-center rounded-card border border-line bg-white"
+          style={{ width: `${kotak}px`, height: `${kotak}px` }}
+        >
+          <svg width={d} height={d} viewBox={`0 0 ${d} ${d}`} role="img" aria-label={t('tes.mata_cincin_alt')}>
+            <circle
+              cx={d / 2}
+              cy={d / 2}
+              r={Math.max(0.2, (d - tebal) / 2)}
+              fill="none"
+              stroke={`rgb(${abu},${abu},${abu})`}
+              stroke-width={tebal}
+              stroke-dasharray={`${Math.max(0.1, keliling - uk.celahPx)} ${uk.celahPx}`}
+              transform={`rotate(${ROTASI[arahKontras]} ${d / 2} ${d / 2})`}
+            />
+          </svg>
+        </div>
+
+        <p class="mb-2 text-[11px] text-fg-muted">{t('tes.mata_pilih_arah')}</p>
+        <div class="grid w-56 grid-cols-3 gap-2">
+          <div />
+          <button type="button" onClick={() => jawabKontras('ATAS')} class="min-h-11 rounded-control bg-slate-900 text-[11px] font-bold text-white">
+            ▲ {t('tes.mata_atas')}
+          </button>
+          <div />
+          <button type="button" onClick={() => jawabKontras('KIRI')} class="min-h-11 rounded-control bg-slate-900 text-[11px] font-bold text-white">
+            ◀ {t('tes.mata_kiri_arah')}
+          </button>
+          <div class="flex items-center justify-center text-[11px] font-bold text-fg-muted">
+            {Math.round(nilai * 100)}%
+          </div>
+          <button type="button" onClick={() => jawabKontras('KANAN')} class="min-h-11 rounded-control bg-slate-900 text-[11px] font-bold text-white">
+            {t('tes.mata_kanan_arah')} ▶
+          </button>
+          <div />
+          <button type="button" onClick={() => jawabKontras('BAWAH')} class="min-h-11 rounded-control bg-slate-900 text-[11px] font-bold text-white">
+            ▼ {t('tes.mata_bawah')}
+          </button>
+          <div />
+        </div>
+        <button
+          type="button"
+          onClick={() => jawabKontras('ATAS')}
+          class="mt-3 min-h-11 w-full rounded-control border border-line text-[11.5px] font-bold text-fg-muted"
+        >
+          {t('tes.mata_tidak_yakin')}
+        </button>
+      </div>
+    );
+  }
+
+  /* ── ASTIGMATISME ─────────────────────────────────────────────────────── */
+  if (fase === 'astig') {
+    const pilihan: { nilai: string; label: string }[] = [
+      { nilai: '0', label: t('tes.mata_astig_12') },
+      { nilai: '30', label: t('tes.mata_astig_1') },
+      { nilai: '60', label: t('tes.mata_astig_2') },
+      { nilai: '90', label: t('tes.mata_astig_3') },
+      { nilai: '120', label: t('tes.mata_astig_4') },
+      { nilai: '150', label: t('tes.mata_astig_5') },
+    ];
+    return (
+      <div class="space-y-3 rounded-card border border-line bg-surface p-4 sm:p-6">
+        <div class="rounded-control bg-surface-sunken p-2.5 text-[11.5px] font-bold text-fg">
+          {astigMata === 'KANAN' ? t('tes.mata_tutup_kiri') : t('tes.mata_tutup_kanan')} ·{' '}
+          <span class="text-accent-sky">{t('tes.mata_tahap_astig')}</span>
+        </div>
+        <p class="text-[12px] leading-relaxed text-fg-muted">{t('tes.mata_astig_ket')}</p>
+
+        <div class="mx-auto w-full max-w-[260px] rounded-card border border-line bg-white p-2">
+          <svg viewBox="0 0 240 240" class="h-auto w-full" role="img" aria-label={t('tes.mata_astig_alt')}>
+            {ARAH_ASTIG.map((deg) => (
+              <line
+                key={deg}
+                x1="120"
+                y1="14"
+                x2="120"
+                y2="226"
+                stroke="#0f172a"
+                stroke-width="7"
+                stroke-linecap="round"
+                transform={`rotate(${deg} 120 120)`}
+              />
+            ))}
+            <circle cx="120" cy="120" r="4" fill="#0f172a" />
+          </svg>
+        </div>
+
+        <p class="text-[11.5px] font-bold text-fg">{t('tes.mata_astig_tanya')}</p>
+        <div class="grid grid-cols-2 gap-2">
+          {pilihan.map((p) => (
+            <button
+              key={p.nilai}
+              type="button"
+              onClick={() => jawabAstig(p.nilai)}
+              class="min-h-11 rounded-control border border-line bg-surface-raised px-2 text-[11.5px] font-bold text-fg hover:border-accent-sky"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => jawabAstig('')}
+          class="min-h-11 w-full rounded-control border border-accent-emerald/50 bg-accent-emerald/10 px-3 text-[12px] font-bold text-fg"
+        >
+          {t('tes.mata_astig_sama')}
+        </button>
+      </div>
+    );
+  }
+
   /* ── HASIL (menunggu simpan) ──────────────────────────────────────────── */
   return (
     <div class="mx-auto my-8 max-w-md text-center">
@@ -550,7 +785,7 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
           </p>
           <button
             type="button"
-            onClick={() => void simpanHasil(visus)}
+            onClick={() => void simpanHasil(visus, kontrasSkor, astigPilih)}
             class="min-h-11 rounded-control bg-accent-sky px-5 text-sm font-bold text-canvas"
           >
             {t('tes.coba_lagi')}

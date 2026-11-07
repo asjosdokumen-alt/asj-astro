@@ -160,7 +160,7 @@ const HASIL_MAKS_BYTE = 16 * 1024;
  * Yang dicegah adalah nilai mustahil (visus 99, skor 999) yang akan merusak
  * tampilan admin.
  */
-function periksaHasil(jenis: JenisTes, hasil: unknown): { ok: true; nilai: Record<string, unknown> } | { ok: false; pesan: string } {
+export function periksaHasil(jenis: JenisTes, hasil: unknown): { ok: true; nilai: Record<string, unknown> } | { ok: false; pesan: string } {
   if (!hasil || typeof hasil !== 'object' || Array.isArray(hasil)) {
     return { ok: false, pesan: 'Hasil tes kosong.' };
   }
@@ -193,10 +193,28 @@ function periksaHasil(jenis: JenisTes, hasil: unknown): { ok: true; nilai: Recor
   if (!angka(visus.kanan, 0, 2) || !angka(visus.kiri, 0, 2)) {
     return { ok: false, pesan: 'Nilai visus tidak sah.' };
   }
+  /* Dua saringan tambahan (2026-11-08). OPSIONAL: hasil yang tersimpan sebelum
+     fitur ini ada tetap sah dan tetap bisa dibaca. Kalau ada, bentuknya
+     diperiksa — angka kontras di luar 0–1 atau arah astig yang bukan string
+     akan merusak tampilan admin. */
+  const kontras = h.kontras as Record<string, unknown> | undefined;
+  if (kontras !== undefined) {
+    if (!kontras || typeof kontras !== 'object') return { ok: false, pesan: 'Nilai kontras tidak sah.' };
+    if (!angka(kontras.kanan, 0, 1) || !angka(kontras.kiri, 0, 1)) {
+      return { ok: false, pesan: 'Nilai kontras tidak sah.' };
+    }
+  }
+  const astig = h.astig as Record<string, unknown> | undefined;
+  if (astig !== undefined) {
+    if (!astig || typeof astig !== 'object') return { ok: false, pesan: 'Nilai astigmatisme tidak sah.' };
+    if (typeof astig.kanan !== 'string' || typeof astig.kiri !== 'string') {
+      return { ok: false, pesan: 'Nilai astigmatisme tidak sah.' };
+    }
+  }
   return { ok: true, nilai: h };
 }
 
-function ringkas(jenis: JenisTes, h: Record<string, unknown>): string {
+export function ringkas(jenis: JenisTes, h: Record<string, unknown>): string {
   if (jenis === 'mbti') {
     const p = (h.persentase || {}) as Record<string, unknown>;
     const tipe = String(h.tipe ?? '');
@@ -208,9 +226,13 @@ function ringkas(jenis: JenisTes, h: Record<string, unknown>): string {
   }
   const ish = (h.ishihara || {}) as Record<string, unknown>;
   const v = (h.visus || {}) as Record<string, unknown>;
+  const k = (h.kontras || {}) as Record<string, unknown>;
+  const a = (h.astig || {}) as Record<string, unknown>;
+  const kontras = typeof k.terendah === 'number' ? ` · kontras ${Math.round(k.terendah * 100)}%` : '';
+  const astig = a.indikasi === true ? ' · astig: perlu cek' : '';
   return `${String(ish.status ?? '').slice(0, 60)} · OD ${Number(v.kanan ?? 0).toFixed(1)} / OS ${Number(
     v.kiri ?? 0,
-  ).toFixed(1)}`;
+  ).toFixed(1)}${kontras}${astig}`;
 }
 
 /**

@@ -521,3 +521,62 @@ export function simpulkanVisus(kanan: number, kiri: number): HasilVisus {
         : 'Di bawah 0,7 — disarankan periksa optik dan kacamata sebelum MCU.';
   return { kanan, kiri, lolos, catatan };
 }
+
+/* ── Kontras & astigmatisme (saringan, bukan diagnosis) ────────────────────
+ *
+ * DUA BATAS YANG HARUS TETAP TERTULIS DI UI
+ * ------------------------------------------
+ *   1. Layar HP tidak bisa mengunci luminansi. Kontras yang dirender adalah
+ *      kontras RELATIF terhadap latar putih halaman, bukan angka cd/m². Jadi
+ *      hasilnya hanya bisa dibaca sebagai "peka / kurang peka", tidak sebagai
+ *      angka klinis.
+ *   2. Kipas astigmatisme hanya menandai "perlu diperiksa". Ia tidak mengukur
+ *      silinder maupun axis — itu butuh refraktometer.
+ */
+
+/** Ambang kontras yang diuji, dari paling jelas ke paling samar. */
+export const TINGKAT_KONTRAS = [1, 0.5, 0.25, 0.12, 0.06] as const;
+
+/**
+ * Skor = kontras TERENDAH yang masih terbaca benar. `0` berarti gagal bahkan
+ * pada 6% — ditulis sebagai 0, bukan "tidak ada", supaya tidak terbaca seperti
+ * kesalahan pengisian.
+ */
+export function simpulkanKontras(kanan: number, kiri: number): { terendah: number; label: string } {
+  const terendah = Math.min(Number(kanan) || 0, Number(kiri) || 0);
+  const label =
+    terendah <= 0.06
+      ? 'Sangat peka (masih terbaca pada kontras 6%)'
+      : terendah <= 0.12
+        ? 'Peka (terbaca sampai kontras 12%)'
+        : terendah <= 0.25
+          ? 'Cukup (terbaca sampai kontras 25%)'
+          : terendah <= 0.5
+            ? 'Kurang peka (berhenti di kontras 50%)'
+            : 'Perlu diperiksa (hanya terbaca pada kontras penuh)';
+  return { terendah, label };
+}
+
+/** Arah garis pada kipas astigmatisme, dalam derajat jam. */
+export const ARAH_ASTIG = [0, 30, 60, 90, 120, 150] as const;
+
+export interface HasilAstig {
+  /** Arah yang dipilih, atau '' bila semua garis tampak sama. */
+  kanan: string;
+  kiri: string;
+  /** true bila ADA mata yang melaporkan garis menonjol. */
+  indikasi: boolean;
+  catatan: string;
+}
+
+export function simpulkanAstig(kanan: string, kiri: string): HasilAstig {
+  const ada = Boolean(kanan) || Boolean(kiri);
+  return {
+    kanan: kanan || '',
+    kiri: kiri || '',
+    indikasi: ada,
+    catatan: ada
+      ? 'Ada arah garis yang tampak lebih tebal. Ini BUKAN diagnosis — periksa ulang saat MCU.'
+      : 'Semua arah garis tampak sama.',
+  };
+}

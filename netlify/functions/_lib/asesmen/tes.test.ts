@@ -16,7 +16,7 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { TES_SAH, bacaSakelar, jenisTesSah, setAktif, simpanHasil, tipeSakelar } from './tes';
+import { TES_SAH, bacaSakelar, jenisTesSah, periksaHasil, ringkas, setAktif, simpanHasil, tipeSakelar } from './tes';
 
 /* `supabaseJson` di-stub supaya satu kasus bisa memeriksa QUERY yang dikirim,
    bukan hanya hasilnya. Tanpa ini, bug "sakelar iq menyala tetapi terbaca
@@ -163,5 +163,46 @@ describe('mode uji admin', () => {
     // Bentuk siswa tetap tanpa angka — dua tampilan dalam satu respons.
     expect(r.tampilan).not.toHaveProperty('skala');
     expect(r.tampilan).not.toHaveProperty('benar');
+  });
+});
+
+describe('hasil mata: kontras & astigmatisme (2026-11-08)', () => {
+  const ish = { skor: 10, total: 12, status: 'NORMAL', label: 'Normal' };
+
+  it('bentuk LAMA (tanpa kontras/astig) tetap sah — hasil tersimpan tidak boleh jadi tidak terbaca', () => {
+    const r = periksaHasil('mata', { ishihara: ish, visus: { kanan: 1, kiri: 0.7 } });
+    expect(r.ok).toBe(true);
+  });
+
+  it('bentuk baru diterima dan angkanya masuk ringkasan admin', () => {
+    const hasil = {
+      ishihara: ish,
+      visus: { kanan: 1, kiri: 1 },
+      kontras: { kanan: 0.12, kiri: 0.06, terendah: 0.06, label: 'Sangat peka' },
+      astig: { kanan: '90', kiri: '', indikasi: true, catatan: 'perlu cek' },
+    };
+    const r = periksaHasil('mata', hasil);
+    expect(r.ok).toBe(true);
+    const teks = ringkas('mata', hasil);
+    expect(teks).toContain('kontras 6%');
+    expect(teks).toContain('astig: perlu cek');
+  });
+
+  it('kontras di luar 0–1 ditolak', () => {
+    const r = periksaHasil('mata', {
+      ishihara: ish,
+      visus: { kanan: 1, kiri: 1 },
+      kontras: { kanan: 3, kiri: 0.1, terendah: 0.1, label: 'x' },
+    });
+    expect(r.ok).toBe(false);
+  });
+
+  it('arah astigmatisme yang bukan teks ditolak', () => {
+    const r = periksaHasil('mata', {
+      ishihara: ish,
+      visus: { kanan: 1, kiri: 1 },
+      astig: { kanan: 90, kiri: '', indikasi: true, catatan: '' },
+    });
+    expect(r.ok).toBe(false);
   });
 });
