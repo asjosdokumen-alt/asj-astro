@@ -14,6 +14,24 @@ tab Mail diberi angka per keranjang + satu kalimat penjelas.
 
 ---
 
+## 0. PRODUKSI TERTINGGAL 2 HARI (temuan 2026-11-07)
+
+| | |
+|---|---|
+| Produksi | `asj-astro-d62ea0838a8b` · dibangun **2026-11-05 17:30** · 17 halaman · 69 aset |
+| Lokal | `asj-astro-fa4cdb0c65cc` · dibangun **2026-11-07 00:17** · 19 halaman · 73 aset |
+
+Konsekuensinya: apa pun yang dikerjakan sejak 5 November **belum terlihat** di
+situs. Itu juga jawaban untuk tangkapan layar "Integrasi Database (Otomatis)"
+yang berisi input URL `script.google.com`: kartu itu **tidak ada lagi di kode**
+(diganti instruksi `npm run migrate:status/up`), dan string
+`script.google.com` tidak ditemukan di seluruh repo maupun riwayat git-nya.
+Yang tampil di layar adalah build lama.
+
+**Tindakan:** perlu push + deploy. Belum dilakukan karena aturan repo melarang
+push tanpa permintaan eksplisit pemilik.
+
+---
 ## 1. KOREKSI: push admin HIDUP, bukan mati
 
 | | |
