@@ -28,8 +28,10 @@ yang berisi input URL `script.google.com`: kartu itu **tidak ada lagi di kode**
 `script.google.com` tidak ditemukan di seluruh repo maupun riwayat git-nya.
 Yang tampil di layar adalah build lama.
 
-**Tindakan:** perlu push + deploy. Belum dilakukan karena aturan repo melarang
-push tanpa permintaan eksplisit pemilik.
+**Tindakan:** SUDAH — pemilik meminta push pada 2026-11-07. 39 commit dipush
+(`133f6a3..184b41b`), deploy terverifikasi: produksi kini
+`asj-astro-7d0629d5744e` · **2026-11-07 00:44 UTC** · 19 halaman · 73 aset, dan
+`/tes-mbti/`, `/tes-mata/`, `/admin/`, `/candidate/` semuanya 200.
 
 ---
 ## 1. KOREKSI: push admin HIDUP, bukan mati
