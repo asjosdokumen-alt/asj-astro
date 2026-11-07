@@ -60,6 +60,31 @@ describe('gallery — every tile points at a file that is really there', () => {
     expect(existsSync(toDiskPath(src)), `${src} is referenced but not in public/`).toBe(true);
   });
 
+  it('every srcset candidate exists AND declares its real width', () => {
+    // WHY THIS IS A TEST. A typo in `srcSet` is invisible: the browser falls
+    // back to `src`, the page still renders, and the only symptom is that the
+    // smaller file is never fetched — a perf change that silently does nothing.
+    // The width descriptor is checked against the file too, because `700w` on a
+    // 800-px file makes the browser choose as if it were smaller than it is.
+    const withSet = GALLERY.filter((item) => item.srcSet);
+    expect(withSet.length, 'tidak ada srcSet sama sekali — gate ini tidak mengukur apa pun')
+      .toBeGreaterThan(0);
+
+    for (const item of withSet) {
+      const parts = String(item.srcSet).split(',').map((s) => s.trim()).filter(Boolean);
+      expect(parts.length, `${item.src}: srcset butuh minimal 2 kandidat`).toBeGreaterThan(1);
+      for (const part of parts) {
+        const [url, desc] = part.split(/\s+/);
+        expect(desc, `${url}: deskriptor harus berbentuk <angka>w`).toMatch(/^\d+w$/);
+        expect(existsSync(toDiskPath(url)), `${url} ada di srcset tapi tidak di public/`).toBe(true);
+        const dims = readWebpSize(toDiskPath(url));
+        expect(dims?.width, `${url}: lebar di srcset tidak cocok dengan berkasnya`).toBe(
+          Number(desc.slice(0, -1)),
+        );
+      }
+    }
+  });
+
   it('declares the real intrinsic size of every file', () => {
     // A wrong width/height is worse than none: the browser reserves the wrong box
     // and the layout shifts anyway, but now it looks deliberate. Measured against

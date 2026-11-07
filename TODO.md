@@ -127,12 +127,19 @@
       `200 + index.html` di harness). Angka Performance **bukan angka produksi**:
       `server.cjs` tidak mengompresi sementara Netlify mengirim brotli (diukur
       lewat header live), jadi FCP/LCP di laporan ini pesimistis.
-      Dua pengungkit berikutnya, keduanya **belum** dikerjakan:
-      (a) `uses-responsive-images` 249 KiB — banner `/assets/banner-*.webp`
-      belum punya varian `1x/@2x` seperti `/assets/ilustrasi/*`;
-      (b) `admin.DgQMtOQR.css` **185 KB render-blocking di SEMUA halaman** +
-      klien Supabase 213 KB di beranda publik — perlu pemecahan bundel per
-      permukaan, dan itu perubahan arsitektural.
+      Dua pengungkit berikutnya:
+      ✅ **(a) SELESAI 2026-11-07** — gambar responsif, **diukur ulang** dan
+      hasilnya berbeda dari laporan 20 Okt: bukan 6 gambar banner, melainkan
+      galeri + logo. Beranda HP DPR 1,75: **1.178 → 918 KB (−260 KB, −22 %)**,
+      **10 dari 10 varian dipakai**; desktop DPR 2 tidak berubah (memang
+      tujuannya). Gerbang baru di `gallery.test.ts` memastikan setiap kandidat
+      `srcset` ada DAN lebarnya cocok dengan berkasnya (dibuktikan bisa merah).
+      Laporan: `deliverables/responsive-images-2026-11-07.md`.
+      (b) `admin.*.css` **207 KB render-blocking di SEMUA halaman** (naik dari
+      185 KB) — satu bundel untuk semua permukaan; memecahnya = memilah ratusan
+      aturan yang dipakai bersama, perubahan arsitektural. **Klien Supabase
+      213 KB sudah TIDAK ada lagi di beranda** (diukur 2026-11-07: `/` hanya
+      memuat 3 chunk JS total 3,5 KB — impor dinamisnya sudah bekerja).
       Sengaja TIDAK diubah: 7 KiB komentar di script inline `BaseLayout`
       (komentar itu memuat pengukuran, dan setelah brotli nilainya ~1,5 KiB).
       Laporan lengkap: `deliverables/gstack/lighthouse-2026-10-20.md`.

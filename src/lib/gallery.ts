@@ -97,6 +97,18 @@ export interface GalleryItem {
    */
   width: number;
   height: number;
+  /**
+   * Kandidat `srcset` (lebar `w`), HANYA untuk berkas yang punya varian lebih
+   * kecil di `public/assets`. `src` tetap berkas terbesar, jadi browser yang
+   * tidak mengenal `srcset` tidak kehilangan apa pun.
+   *
+   * Kenapa ada: tile digambar ~394 px (341 px di layar 390). Di layar 1x–1,75x
+   * berkas 800/1000 px itu 1,4–2x lebih lebar dari yang bisa ditampilkan —
+   * terukur 2026-11-07, `fasilitas-gedung` 104 KB turun ke 52 KB pada varian
+   * 700w. Di layar 2x ke atas browser tetap memilih berkas penuh, jadi
+   * ketajaman retina tidak berubah.
+   */
+  srcSet?: string;
 }
 
 /**
@@ -122,6 +134,7 @@ export interface GalleryItem {
 export const GALLERY: readonly GalleryItem[] = Object.freeze([
   {
     src: '/assets/fasilitas-gedung.webp',
+    srcSet: '/assets/fasilitas-gedung-700.webp 700w, /assets/fasilitas-gedung.webp 1000w',
     alt: 'Peserta dan staf berfoto bersama di depan kantor LPK Amanah Sakura Japan dengan seragam batik.',
     captionKey: 'profile.gal_gedung',
     caption: 'Kantor & peserta di Ponorogo',
@@ -138,6 +151,7 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     // and "they agreed to it" are not the same sentence, and this note is the
     // first one. The photograph still shows ~20 identifiable faces in uniform.
     src: '/assets/fasilitas-grup-staf.webp',
+    srcSet: '/assets/fasilitas-grup-staf-700.webp 700w, /assets/fasilitas-grup-staf.webp 800w',
     alt: 'Staf pengajar dan pengurus LPK Amanah Sakura Japan berfoto bersama.',
     captionKey: 'profile.gal_staf',
     caption: 'Tim pengajar dan pengurus',
@@ -146,6 +160,7 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
   },
   {
     src: '/assets/fasilitas-kelas-bahasa-2.webp',
+    srcSet: '/assets/fasilitas-kelas-bahasa-2-700.webp 700w, /assets/fasilitas-kelas-bahasa-2.webp 800w',
     alt: 'Peserta pria berbaris rapi mengenakan kemeja putih dan dasi hitam dengan nomor dada, siap sesi wawancara.',
     captionKey: 'profile.gal_kelas',
     caption: 'Persiapan wawancara kerja',
@@ -154,6 +169,7 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
   },
   {
     src: '/assets/fasilitas-ruang-tamu-1.webp',
+    srcSet: '/assets/fasilitas-ruang-tamu-1-700.webp 700w, /assets/fasilitas-ruang-tamu-1.webp 800w',
     alt: 'Empat peserta menunjukkan dokumen di depan dinding bertuliskan LPK Amanah Sakura Japan.',
     captionKey: 'profile.gal_tamu',
     caption: 'Penyerahan dokumen peserta',
@@ -166,6 +182,7 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     // and does not claim. This is the largest such group on the page: ~50
     // identifiable faces in uniform.
     src: '/assets/fasilitas-grup-siswa-1.webp',
+    srcSet: '/assets/fasilitas-grup-siswa-1-700.webp 700w, /assets/fasilitas-grup-siswa-1.webp 800w',
     alt: 'Peserta pelatihan berfoto bersama mengenakan seragam lembaga.',
     captionKey: 'profile.gal_siswa',
     caption: 'Angkatan peserta pelatihan',
@@ -227,6 +244,7 @@ export const GALLERY: readonly GalleryItem[] = Object.freeze([
     // of the owner's ruling below: a screen reader and a crawler are misled by it
     // no matter who agreed to be photographed.
     src: '/assets/fasilitas-ruang-tamu-3.webp',
+    srcSet: '/assets/fasilitas-ruang-tamu-3-700.webp 700w, /assets/fasilitas-ruang-tamu-3.webp 800w',
     alt: 'Tiga peserta berdiri memegang dokumen masing-masing di depan dinding bertuliskan LPK Amanah Sakura Japan.',
     captionKey: 'profile.gal_layanan',
     caption: 'Peserta dengan dokumen',

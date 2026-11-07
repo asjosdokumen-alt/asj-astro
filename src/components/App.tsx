@@ -325,9 +325,21 @@ export default function App(
      swap, not assumed from the name.
      `onError` was there so a failed CDN fetch would not show a broken icon; a file
      that ships with the build cannot fail that way, and silently hiding the brand
-     mark is the wrong behaviour for it. Removing it also drops one `any`. */
+     mark is the wrong behaviour for it.      Removing it also drops one `any`. */
   const brandLogo = (
-    <img id="logo-asj" src="/icons/logo-asj.webp" alt="Logo ASJ" class="w-12 h-12 md:w-16 md:h-16 shrink-0 object-contain drop-shadow-2xl" />
+    /* `srcset` 96w/256w, diukur 2026-11-07: berkas ini 29 KB (256x256) sementara
+       ia digambar 48 px (HP) / 64 px (md+) — 4x lebih lebar dari yang bisa
+       ditampilkan di layar 1x. Varian 96 px = 5 KB. `sizes` mengikuti kelas
+       Tailwind-nya (w-12 = 48px, md:w-16 = 64px), jadi layar 2x tetap memilih
+       256w dan tidak ada yang jadi buram. */
+    <img
+      id="logo-asj"
+      src="/icons/logo-asj.webp"
+      srcset="/icons/logo-asj-96.webp 96w, /icons/logo-asj.webp 256w"
+      sizes="(min-width: 768px) 64px, 48px"
+      alt="Logo ASJ"
+      class="w-12 h-12 md:w-16 md:h-16 shrink-0 object-contain drop-shadow-2xl"
+    />
   );
 
   return (

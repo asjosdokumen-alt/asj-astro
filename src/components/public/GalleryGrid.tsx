@@ -54,6 +54,11 @@ export default function GalleryGrid({ items, class: className }: Props) {
                 illustrations on `/`. */}
             <img
               src={item.src}
+              srcSet={item.srcSet}
+              /* Tile = 3 kolom di lg (32vw ≈ 410 px @1280), 2 di sm, 1 di HP.
+                 Diukur 2026-11-07: tile 383 px desktop / 331–352 px di HP —
+                 angka di bawah mengikuti itu, bukan tebakan. */
+              sizes="(min-width: 1024px) 32vw, (min-width: 640px) 48vw, 88vw"
               alt={item.alt}
               width={item.width}
               height={item.height}
