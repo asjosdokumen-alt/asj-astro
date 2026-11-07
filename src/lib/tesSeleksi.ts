@@ -461,7 +461,30 @@ export function evaluasiIshihara(jawaban: JawabanPlate[]): HasilIshihara {
  */
 export const TINGKAT_VISUS = [0.1, 0.2, 0.3, 0.5, 0.7, 1.0, 1.2] as const;
 
-export type ArahLandolt = 'ATAS' | 'BAWAH' | 'KIRI' | 'KANAN';
+/**
+ * Arah celah Landolt.
+ *
+ * DELAPAN arah, bukan empat. Cincin Landolt baku memang boleh 4 atau 8, tetapi
+ * 8 menurunkan peluang menebak benar dari 25% ke 12,5% — dan pada tes yang
+ * hanya 3 percobaan per tingkat, peluang menebak adalah sumber kesalahan
+ * terbesar. Karena itu ketajaman memakai 8 arah.
+ *
+ * Kontras tetap 4 arah: pada kontras 6% membedakan diagonal dari mendatar
+ * sudah di luar batas layar, dan memaksanya akan menurunkan skor kontras
+ * bukan karena matanya, tetapi karena tombolnya.
+ */
+export type ArahLandolt =
+  | 'ATAS'
+  | 'ATAS_KANAN'
+  | 'KANAN'
+  | 'BAWAH_KANAN'
+  | 'BAWAH'
+  | 'BAWAH_KIRI'
+  | 'KIRI'
+  | 'ATAS_KIRI';
+
+/** Empat arah yang dipakai saringan kontras. */
+export type ArahKontras = Extract<ArahLandolt, 'ATAS' | 'KANAN' | 'BAWAH' | 'KIRI'>;
 
 /**
  * Ukuran celah & diameter cincin dalam piksel.

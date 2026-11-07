@@ -262,11 +262,11 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
       </div>
 
       <div class="space-y-4">
-        {soalHalaman.map((s) => {
+        {soalHalaman.map((s, i) => {
           const dipilih = jawaban[s.id];
           return (
             <fieldset key={s.id} class="rounded-control border border-line bg-surface-sunken p-3">
-              <legend class="px-1 text-[11px] font-bold text-fg-muted">#{s.id}</legend>
+              <legend class="px-1 text-[11px] font-bold text-fg-muted">{halaman * PER_HALAMAN + i + 1} / {SOAL_MBTI.length}</legend>
               <p class="mb-3 text-[13px] font-semibold leading-snug text-fg">{s.teks}</p>
               <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-5">
                 {SKALA.map((o) => {
