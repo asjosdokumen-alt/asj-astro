@@ -2,7 +2,7 @@
  * db/schema.generated.ts — AUTO-GENERATED — DO NOT EDIT BY HAND.
  *
  * Source  : PostgREST OpenAPI document of the live database
- * Digest  : sha256:0f9f66738beecb69a574aed688f21160396123b4ab0def1893db38e2df5f3986
+ * Digest  : sha256:89291f1dc63863468aa1c12fbe572bdb1449ccf6738cbb9f5c0ef513d2a2b545
  * Tables  : 35
  *
  * Regenerate : npm run db:schema
@@ -17,7 +17,7 @@
  */
 
 /** sha256 over `table:col,col,…` for every table, sorted by table name. */
-export const SCHEMA_FINGERPRINT = 'sha256:0f9f66738beecb69a574aed688f21160396123b4ab0def1893db38e2df5f3986' as const;
+export const SCHEMA_FINGERPRINT = 'sha256:89291f1dc63863468aa1c12fbe572bdb1449ccf6738cbb9f5c0ef513d2a2b545' as const;
 
 /**
  * The contract, one line per table: `<table>:<col>,<col>,…`.
@@ -36,7 +36,7 @@ candidate_pekerjaan:id,id_kandidat,urutan,perusahaan,perusahaan_jp,jabatan,jabat
 data_archive:id,source_sheet,archived_at,row_data
 database_asj_form:id,timestamp,code_job,kategory,nama_lengkap,no_wa,gender,usia,tb,bb,pas_photo,jft,ssw,file_cv,folder_name,folder_id,folder_url,status,email,tempat_lahir,tgl_lahir,alamat_lengkap,created_at,updated_at,keterangan,ai_data_json,feedback_berkas,alasan_tolak
 database_asj_kontak:id,nama,no_wa,subjek,pesan,status,created_at
-database_candidate:id,id_kandidat,nama_lengkap,nik,gender,usia,tb,bb,pendidikan,no_wa,id_loker_pilihan,tahapan_seleksi,status_kandidat,tanggal_daftar,catatan_admin,pas_photo,folder_url,jft,ssw,file_cv,password_kandidat,no_pasport,email,tempat_lahir,tgl_lahir,alamat_lengkap,catatan_internal,catatan_external,nilai_jft_text,bidang_ssw_text,created_at,updated_at,password_diubah,status_biodata,kelas
+database_candidate:id,id_kandidat,nama_lengkap,nik,gender,usia,tb,bb,pendidikan,no_wa,id_loker_pilihan,tahapan_seleksi,status_kandidat,tanggal_daftar,catatan_admin,pas_photo,folder_url,jft,ssw,file_cv,password_kandidat,no_pasport,email,tempat_lahir,tgl_lahir,alamat_lengkap,catatan_internal,catatan_external,nilai_jft_text,bidang_ssw_text,created_at,updated_at,password_diubah,kelas
 database_schedule:id,id_jadwal,nama_agenda,id_loker_terkait,tanggal_waktu,lokasi_link,daftar_kandidat,tsk,status_jadwal,created_at,updated_at,reminder_sent,reminder_h7_sent,reminder_h1_sent
 database_tugas:id,id_tugas,nama_tugas,dibuat_oleh,waktu_dibuat,dikerjakan_oleh,status,waktu_selesai,created_at,updated_at
 dependency_calls:id,ts,dep,action,budget_ms,duration_ms,outcome,status_code,attempts,breaker_state

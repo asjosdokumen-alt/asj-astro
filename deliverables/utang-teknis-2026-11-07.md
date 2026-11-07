@@ -3,6 +3,19 @@
 Daftar ini disusun dari **pengukuran**, bukan dari ingatan. Setiap baris punya
 bukti yang bisa dicek ulang. Diurutkan menurut (dampak ÷ usaha).
 
+## Status per 2026-11-07 (sesi kedua) — 5 dari 10 butir ditutup
+
+| # | Butir | Status | Bukti |
+|---|---|---|---|
+| 4 | `legacyD.*` fallback mati | **LUNAS** (`531fcab`, sebelum sesi ini — dokumen ini yang belum ikut) | 0 rujukan tersisa; hanya komentar penjelas di `CandidateDash.tsx` |
+| 5 | `status_biodata` kolom mati | **LUNAS** — migrasi `050` | kolom + trigger + fungsi di-drop; `select status_biodata` → **400/42703** |
+| 6 | `job_database.tahapan='CANCEL'` | **LUNAS** — migrasi `050` | `CANCEL` 0 baris; `TG502ASJ` → `status=CLOSE, tahapan=NULL` |
+| 8 | Router `_lib/handlers` ~90 KB/entry | **LUNAS** | total bundle **4246,1 → 3771,8 KB (−474,3 KB)**; `notify.js` 96,8 → **65,3 KB** |
+| 10 | `ai_form_submissions` >1 baris/WA | **LUNAS** | satu fungsi `pilihSubmissionTerbaru`; 2 pemanggil `.find()` di `chat.ts` diperbaiki + 7 tes |
+
+Sisa 3 butir di bawah (3, 7, 9) — semuanya **keputusan desain atau ukur-ulang**,
+bukan pekerjaan kode yang tertinggal.
+
 ## Sudah lunas
 
 Tahap pipeline kanonik · normalisasi `status_kandidat` & `tahapan_seleksi` ·
@@ -78,29 +91,53 @@ disetujui"*. Sekarang jenis baris ditentukan oleh `code_job`, bukan status.
 | Usaha | Besar: tabel `notifikasi_admin` + migrasi + surface + UI. |
 | Catatan | Sebagian besar kejadian **sudah** punya permukaan persisten: lamaran/dokumen/biodata semuanya menulis baris Mail. Yang benar-benar hanya-push: pesan kontak. Jadi ini keputusan desain, bukan bug. |
 
-## 4. `legacyD.*` — fallback ke objek yang tidak pernah dikirim
+## 4. `legacyD.*` — fallback ke objek yang tidak pernah dikirim — **LUNAS**
 
-| | |
-|---|---|
-| Bukti | `result.kandidatData` tidak pernah dikirim backend (komentar `profileProgress` sudah mencatatnya). Tetap dipakai di 10 tempat: `legacyD.berkas`, `.riwayat`, `.job`, `.tahapan`, `.status`, `.isVIP`, `.kelas`, `.idKandidat`, `.cv*Progress`, `.jadwal`. |
-| Dampak | Membaca `CandidateDash` jadi lebih lambat dari yang perlu; orang bisa mengira jalur itu hidup. |
-| Usaha | Kecil, tapi menyentuh satu berkas besar — kerjakan bersama perubahan lain di berkas itu. |
+> **Ditutup `531fcab` (2026-11-07), sebelum sesi ini.** Dokumen ini yang belum
+> ikut diperbarui: 18 fallback dibuang, dan 4 tes yang dulu HIJAU karena
+> mengisi `kandidatData.cvMiniProgress` (jalur yang tidak ada di produksi)
+> diganti data nyata. Sisa kemunculan `legacyD` hari ini cuma satu **komentar**
+> di `CandidateDash.tsx` yang menjelaskan mengapa jalur itu dulu menyesatkan.
+> Pelajaran: daftar utang adalah klaim tentang keadaan, dan keadaan berubah
+> tanpa memberi tahu daftarnya.
+>
+> Bukti saat masih terbuka: `result.kandidatData` tidak pernah dikirim backend
+> (komentar `profileProgress` sudah mencatatnya), tapi tetap dipakai di 10
+> tempat — `legacyD.berkas`, `.riwayat`, `.job`, `.tahapan`, `.status`, `.isVIP`,
+> `.kelas`, `.idKandidat`, `.cv*Progress`, `.jadwal`.
 
-## 5. `status_biodata` — kolom mati
+## 5. `status_biodata` — kolom mati — **LUNAS (migrasi 050)**
 
-| | |
-|---|---|
-| Bukti | 261 baris, **semua** `BELUM`. Satu-satunya rujukan di kode adalah sebuah komentar. |
-| Dampak | Skema menyesatkan: kolom yang namanya menjanjikan status berkas tapi tidak pernah diisi. |
-| Usaha | Kecil: hapus kolom (migrasi) atau isi. **Butuh keputusan pemilik** — kalau dulu ada rencana memakainya, menghapusnya menutup jalan itu. |
+> **Keputusan pemilik 2026-11-07: hapus kolomnya.** Diukur sebelum menghapus:
+> 261 baris, **261** `BELUM`, nol nilai lain — dan migrasi 050 memverifikasi itu
+> ulang lewat `DO` block yang **BERHENTI** kalau ada satu baris saja berisi
+> `MENUNGGU`/`DISETUJUI`/`REVISI`. Guard-nya bukan hiasan: ia yang membedakan
+> "kolom tidak dipakai" dari "kolom dipakai lalu dilupakan".
+>
+> Yang ikut di-drop: trigger `trg_status_biodata_admin_only`, fungsi
+> `enforce_status_biodata_admin_only()`, dan CHECK constraint-nya (otomatis).
+> Membiarkan fungsi itu berarti setiap tulis ke `database_candidate` gagal
+> 42703 — lebih buruk daripada kolomnya sendiri.
+>
+> Verifikasi: `select=status_biodata` → **400 / 42703**; `schema.generated.ts`
+> ditulis ulang (35 tabel, `sha256:89291f1d…`), `verify:schema` IN SYNC.
+>
+> Bukti saat masih terbuka: 261 baris, semuanya `BELUM`; satu-satunya rujukan di
+> kode adalah sebuah komentar.
 
-## 6. `job_database.tahapan` berisi `CANCEL` (1 baris)
+## 6. `job_database.tahapan` berisi `CANCEL` (1 baris) — **LUNAS (migrasi 050)**
 
-| | |
-|---|---|
-| Bukti | `tahapan`: LIST 89 · kosong 64 · CHECK KAIWA 2 · **CANCEL 1** · LOLOS USER 1 · MENSETSU 1 · MENDAN 1 |
-| Dampak | Pola yang sama dengan `LIST`/`MCU PARPOR` di kolom status kandidat: nilai status nyasar ke kolom tahap. Satu baris, jadi tidak mendesak. |
-| Usaha | Kecil — tapi **artinya ambigu**: lowongan yang dibatalkan tidak punya tahap. Saya tidak menebak; butuh keputusan. |
+> **Keputusan pemilik 2026-11-07: kosongkan tahapnya.** Barisnya teridentifikasi
+> sebelum diubah: `code_job=TG502ASJ` · TSK KANAYAMA · Kaigo · Fukuoka ·
+> `status=CLOSE` · `kuota=0`. Faktanya sudah ada di `status`; `CANCEL` di
+> `tahapan` hanya salinan yang salah kolom.
+>
+> **NULL, bukan `''`** — dan ini terukur, bukan selera: 64 baris lain sudah
+> memakai NULL untuk "belum ada tahap", **nol** baris memakai string kosong.
+> Menulis `''` akan menciptakan konvensi kedua untuk keadaan yang sama.
+> `updated_at` sengaja tidak disentuh (perbaikan data ≠ aktivitas bisnis).
+>
+> Verifikasi: `tahapan=CANCEL` → 0 baris; tally NULL 64 → **65**.
 
 ## 7. 85 kandidat tanpa tahap
 
@@ -110,13 +147,33 @@ disetujui"*. Sekarang jenis baris ditentukan oleh `code_job`, bukan status.
 | Dampak | UI memperlakukannya sebagai awal pipeline (`LIST`). Tidak ada yang salah. |
 | Catatan | Sengaja **tidak** diisi: menulis `LIST` ke 85 baris berarti menciptakan data yang tidak pernah dicatat siapa pun. |
 
-## 8. Router ikut ke setiap entry (~90 KB)
+## 8. Router ikut ke setiap entry (~90 KB) — **LUNAS**
 
-| | |
-|---|---|
-| Bukti | `netlify-wrapper-surface.ts` mengimpor `./handlers`, yang menarik `contexts/catalog` → `identity` → `bcryptjs` (20 KB) + `demo` (7 KB) ke **setiap** entry. `notify.js` 97 KB untuk 8 action. |
-| Dampak | Cold start dan ukuran deploy. Bukan bug, tapi biaya tetap. |
-| Usaha | Besar: memisahkan dispatcher inti dari router, atau memindahkan `catalog` keluar dari `handlers.ts`. |
+> **Akar masalahnya bukan `handlers.ts` sendiri, melainkan satu baris re-export
+> di dalamnya:** `export { handleShareData, docTypeOf, … }`. Karena itu
+> `contexts/catalog` menjadi dependensi modul yang diimpor SETIAP entry, dan
+> catalog menarik `identity` (bcryptjs 19 KB) lewat `service` serta `_lib/demo`
+> lewat `repository`.
+>
+> Satu-satunya pemakai `handleShareData` dari handlers adalah `share-data.js`.
+> Ia sekarang mengimpor langsung dari `contexts/catalog/index.js`; `docTypeOf`
+> hanya dipakai tes dan ikut pindah ke sana. `GENERIC_ERROR_MESSAGE` tetap
+> di-re-export karena itu memang milik kernel.
+>
+> **Hasil terukur (`npm run bundle:size`, baseline diperbarui):**
+>
+> | Entry | Sebelum | Sesudah |
+> |---|---|---|
+> | `notify.js` | 96,8 KB | **65,3 KB** |
+> | `config.js` | 87,7 KB | **54,2 KB** |
+> | `register.js` | 87,8 KB | **54,3 KB** |
+> | `kontak.js` | 92,8 KB | **59,0 KB** |
+> | `ai-chat.js` | 243,3 KB | **224,6 KB** |
+> | **TOTAL 23 entry** | **4246,1 KB** | **3771,8 KB (−474,3 KB · −11,2 %)** |
+>
+> `ping.js` tetap **1,5 KB** — kontrol yang menunjukkan penurunan ini bukan
+> efek samping pengukuran. `share-data.js` praktis tidak berubah (68,5 → 68,9),
+> dan itu benar: ia satu-satunya entry yang memang butuh catalog.
 
 ## 9. Retensi notifikasi
 
@@ -126,10 +183,21 @@ disetujui"*. Sekarang jenis baris ditentukan oleh `code_job`, bukan status.
 | Dampak | Tidak ada. |
 | Usaha | Kecil (cron), tapi **belum layak**: belum ada satu pun pemberitahuan nyata yang tercatat. Ukur ulang setelah sebulan pemakaian. |
 
-## 10. `ai_form_submissions` bisa >1 baris per WA
+## 10. `ai_form_submissions` bisa >1 baris per WA — **LUNAS**
 
-| | |
-|---|---|
-| Bukti | Aturan yang sudah tercatat: satu WA bisa punya beberapa baris `ai_form`; penulisan harus ke yang TERBARU (`updated_at`, lalu `id`). |
-| Dampak | Kode yang memakai `.find()` pertama akan menulis ke baris yang salah. |
-| Usaha | Sedang: audit semua pembaca tabel itu. |
+> **Audit selesai, dan hasilnya sempit:** dari seluruh `netlify/` + `src/`,
+> hanya **dua** tempat yang masih memakai `.find()` pada tabel ini, keduanya di
+> `_lib/ai/chat.ts` (`handleSimpanHasilWawancara` — menulis! — dan
+> `handleGetHasilWawancara` — membaca). `cv.ts` sudah benar sejak 2026-10-30.
+>
+> Aturannya sekarang **satu implementasi**: `pilihSubmissionTerbaru(rows, wa,
+> via)` di `_lib/db/projections.ts` — urut `updated_at` → `ai_updated_at` → `id`
+> (id dibandingkan sebagai ANGKA; `10` harus menang atas `9`), dan nomor
+> dinormalkan dengan `normalizeWa` yang sama seperti saat menulis.
+>
+> 7 tes baru menutup setiap cabang, termasuk yang paling mudah salah: dua baris
+> dengan `updated_at` identik, baris warisan tanpa `updated_at`, dan `ai_form`
+> vs `interview` pada WA yang sama. Berkas tes lama `e2e/ai-cv-submit.test.ts`
+> mem-mock `projections.ts` secara TOTAL — mock-nya diubah jadi parsial supaya
+> fungsi aslinya benar-benar berjalan (kalau tidak, tes itu berhenti mengukur
+> apa pun).
