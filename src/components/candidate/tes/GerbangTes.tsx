@@ -75,9 +75,11 @@ function waAwal(): string {
     /* URL tidak terbaca: jatuh ke sesi. */
   }
   /* Panel admin menyimpan nomor uji sekali, lalu setiap tautannya membawa
-     nomor yang sama. Cadangan ini yang membuat `/tes-mbti` bisa dibuka tanpa
-     `?wa=` sama sekali. */
-  if (admin) {
+     nomor yang sama. Cadangan ini hanya berlaku DI DALAM mode uji: tanpa
+     `?uji=1`, admin yang membuka `/tes-mbti` langsung tidak boleh diam-diam
+     masuk sebagai siswa yang nomornya tersimpan — di jalur itu hasilnya
+     benar-benar ditulis. */
+  if (admin && modeUji()) {
     const u = waUjiTersimpan();
     if (u) return u;
   }

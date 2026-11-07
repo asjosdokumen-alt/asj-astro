@@ -186,4 +186,16 @@ describe('GerbangTes', () => {
     expect(screen.queryByTestId('kuis')).toBeNull();
     expect(apiClient).not.toHaveBeenCalled();
   });
+
+  it('admin TANPA ?uji=1: nomor tersimpan tidak dipakai — jalur itu MENULIS hasil', async () => {
+    /* Nomor uji adalah identitas percobaan. Kalau ia dipakai juga di luar mode
+       uji, admin yang membuka `/tes-mbti` langsung akan diam-diam menyimpan
+       hasil atas nama siswa itu — tepat hal yang mode uji ada untuk mencegah. */
+    masukSebagaiAdmin();
+    localStorage.setItem('asj_wa_uji', '6281111111111');
+    window.history.replaceState({}, '', '/tes-mbti');
+    render(<Probe />);
+    await waitFor(() => expect(document.querySelector('[aria-label="kotoba.gate_title"]')).toBeTruthy());
+    expect(apiClient).not.toHaveBeenCalled();
+  });
 });
