@@ -238,6 +238,57 @@ export function adoptAuthFromStorage(raw: string | null): void {
   authStore.set(next);
 }
 
+/* ── Mode uji admin ─────────────────────────────────────────────────────────
+ *
+ * Pemilik 2026-11-07: *"kasih jalur khusus di panel admin biar bisa kami coba
+ * … jadi admin gak perlu login logout mulu buat cobain game arcade dan fitur
+ * fitur kandidat."*
+ *
+ * BATASNYA JUJUR: `?uji=1` bukan pintu belakang. Ia hanya berlaku bila sesi
+ * yang sedang aktif memang admin (`authStore.role === 'admin'`), dan server
+ * tetap memeriksa sesi itu sendiri di setiap action (`tolakKecualiSiswa` /
+ * `requireAdmin`). Untuk kandidat, parameter ini tidak mengubah apa pun —
+ * satu-satunya hal yang ia lakukan adalah memberi tahu KLIEN bahwa ini
+ * percobaan, supaya hasil percobaan tidak ditulis ke data siswa.
+ *
+ * KENAPA DI SINI, BUKAN DI BERKAS BARU: identitas mana yang dipakai saat admin
+ * mencoba fitur kandidat adalah urusan sesi, dan berkas ini sudah memilikinya.
+ */
+export function modeUji(): boolean {
+  try {
+    if (authStore.get().role !== 'admin') return false;
+    return new URLSearchParams(window.location.search).get('uji') === '1';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Nomor WA yang dipakai panel admin untuk mode uji.
+ *
+ * Disimpan di `localStorage`, bukan di URL, supaya admin hanya mengetiknya
+ * SEKALI: setiap tautan uji di panel membawa nomor ini sebagai `?wa=`.
+ */
+export const KUNCI_WA_UJI = 'asj_wa_uji';
+
+export function waUjiTersimpan(): string {
+  try {
+    return String(localStorage.getItem(KUNCI_WA_UJI) || '').trim();
+  } catch {
+    return '';
+  }
+}
+
+export function simpanWaUji(wa: string): void {
+  try {
+    const bersih = String(wa || '').trim();
+    if (bersih) localStorage.setItem(KUNCI_WA_UJI, bersih);
+    else localStorage.removeItem(KUNCI_WA_UJI);
+  } catch {
+    /* Mode privat: nomor tidak diingat, tautan uji tetap bisa dipakai. */
+  }
+}
+
 /** Listen for cross-tab changes */
 let sessionCheckInterval: ReturnType<typeof setInterval> | null = null;
 if (typeof window !== 'undefined') {

@@ -16,6 +16,7 @@
  */
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import api from '../../lib/apiClient';
+import { simpanWaUji, waUjiTersimpan } from '../../store/authReactive';
 import { t, useLang } from '../../store/i18n';
 import Icon from '../ui/Icon';
 
@@ -42,6 +43,42 @@ const TES: { id: Jenis; judul: string; ket: string; ikon: string }[] = [
   { id: 'mata', judul: 'tes.admin_mata_judul', ket: 'tes.admin_mata_ket', ikon: 'eye' },
 ];
 
+/**
+ * Fitur kandidat yang bisa dibuka admin dari sini.
+ *
+ * KENAPA TAUTAN, BUKAN KOMPONEN TERTANAM
+ * --------------------------------------
+ * Yang perlu diperiksa admin adalah halaman yang SAMA dengan yang dipakai
+ * siswa: lebar kolom, urutan soal, dan gerbangnya. Menanam komponennya di dalam
+ * tab akan mengubah tata letak dan justru menyembunyikan hal yang diperiksa
+ * (R17: prop yang tidak pernah dikirim adalah perilaku yang tidak pernah jalan).
+ *
+ * `?uji=1` membuat halaman itu MENAMPILKAN hasil tanpa menulis apa pun; lihat
+ * `modeUji()` di `store/authReactive.ts` untuk batasnya.
+ */
+const FITUR_UJI: { jalur: string; labelKey: string; ikon: string }[] = [
+  { jalur: '/tes-mbti', labelKey: 'ui.tes_mbti', ikon: 'clipboard-check' },
+  { jalur: '/tes-mata', labelKey: 'ui.tes_mata', ikon: 'eye' },
+  { jalur: '/arcade', labelKey: 'toolbar.arcade', ikon: 'star' },
+  { jalur: '/kotoba', labelKey: 'toolbar.kotoba', ikon: 'language' },
+  { jalur: '/matematika', labelKey: 'toolbar.matematika', ikon: 'chart-bar' },
+  { jalur: '/wawancara', labelKey: 'toolbar.mensetsu', ikon: 'comment-dots' },
+];
+
+/**
+ * Tautan uji: `uji=1` selalu ada, `wa` hanya bila nomornya diisi.
+ *
+ * `URLSearchParams` dipakai supaya nomor yang diketik dengan spasi/`+` tidak
+ * merusak query — dan supaya penambahan parameter lain nanti tidak perlu
+ * menyambung string secara manual.
+ */
+function tautanUji(jalur: string, wa: string): string {
+  const q = new URLSearchParams({ uji: '1' });
+  const bersih = String(wa || '').trim();
+  if (bersih) q.set('wa', bersih);
+  return `${jalur}?${q.toString()}`;
+}
+
 export default function TabTes() {
   useLang();
   const [aktif, setAktif] = useState<Partial<Record<Jenis, boolean>> | null>(null);
@@ -50,6 +87,10 @@ export default function TabTes() {
   const [memuat, setMemuat] = useState(true);
   const [galat, setGalat] = useState('');
   const [menyimpan, setMenyimpan] = useState<Jenis | ''>('');
+  /* Nomor uji disimpan di localStorage: admin mengetiknya SEKALI, lalu semua
+     tautan di bawah membawanya. Halaman tes juga membacanya sendiri, jadi
+     `/tes-mbti` boleh dibuka tanpa `?wa=` sama sekali. */
+  const [waUji, setWaUji] = useState(waUjiTersimpan);
 
   const muat = useCallback(async () => {
     setMemuat(true);
@@ -130,6 +171,53 @@ export default function TabTes() {
           {galat}
         </p>
       )}
+
+      {/* Mode uji — jalur khusus pemilik (2026-11-07). Ditaruh DI ATAS sakelar
+          karena inilah yang dipakai sehari-hari; sakelar hanya diubah saat tes
+          dibuka/ditutup untuk siswa. */}
+      <section
+        aria-label={t('tes.uji_judul')}
+        data-testid="tes-mode-uji"
+        class="mb-5 rounded-card border border-accent-emerald/40 bg-accent-emerald/5 p-4"
+      >
+        <h3 class="flex items-center gap-1.5 text-sm font-bold text-fg">
+          <Icon name="rocket" class="text-accent-emerald" /> {t('tes.uji_judul')}
+        </h3>
+        <p class="mt-1 text-[11.5px] leading-relaxed text-fg-muted">{t('tes.uji_ket')}</p>
+
+        <label for="tes-uji-wa" class="mt-3 block text-[11px] font-bold text-fg">
+          {t('tes.uji_wa_label')}
+        </label>
+        <input
+          id="tes-uji-wa"
+          type="tel"
+          value={waUji}
+          onInput={(e) => {
+            const v = (e.currentTarget as HTMLInputElement).value;
+            setWaUji(v);
+            simpanWaUji(v);
+          }}
+          placeholder="628xxxxxxxxxx"
+          class="mt-1 w-full min-h-11 rounded-control border border-line bg-surface-sunken px-3 text-sm text-fg"
+        />
+        <p class="mt-1 text-[11px] leading-relaxed text-fg-muted">{t('tes.uji_wa_hint')}</p>
+
+        <div class="mt-3 grid gap-2 sm:grid-cols-2">
+          {FITUR_UJI.map((f) => (
+            <a
+              key={f.jalur}
+              href={tautanUji(f.jalur, waUji)}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex min-h-11 items-center gap-2 rounded-control border border-line bg-surface px-3 text-[12px] font-bold text-fg transition hover:border-accent-sky"
+            >
+              <Icon name={f.ikon} class="shrink-0 text-accent-sky" />
+              <span class="min-w-0 truncate">{t(f.labelKey)}</span>
+              <Icon name="external-link-alt" class="ml-auto shrink-0 text-fg-muted" />
+            </a>
+          ))}
+        </div>
+      </section>
 
       <div class="mb-5 grid gap-3 md:grid-cols-2">
         {TES.map((tes) => {

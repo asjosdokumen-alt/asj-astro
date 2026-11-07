@@ -25,7 +25,7 @@
 import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { Fragment } from 'preact';
 import { showToast } from '../Toast';
-import { authStore } from '../../store/authReactive';
+import { authStore, modeUji } from '../../store/authReactive';
 import { apiClient, type ApiError } from '../../lib/apiClient';
 import { validate, kandidatLoginSchema } from '../../lib/schemas';
 import { opsiUntukSoal } from '../../lib/mensetsuOpsi';
@@ -443,6 +443,11 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
   const simpanBaris = async (kode: string, senyap = false) => {
     const d = draft[kode];
     if (!d) return;
+    /* Mode uji admin: jangan menulis jawaban percobaan ke baris siswa. Tanpa
+       penjaga ini, admin yang mencoba `/wawancara?wa=<siswa>` akan menimpa
+       jawaban asli siswa itu — dan toast "tersimpan" akan membuatnya terlihat
+       seperti perilaku yang benar. */
+    if (modeUji()) return;
     /* Tidak ada yang berubah sejak simpanan terakhir ⇒ jangan menulis.
        Lihat `sidikJawaban` untuk alasannya (blur tanpa syarat × 3 kolom). */
     const sidik = sidikJawaban(d);
@@ -522,12 +527,16 @@ export default function MensetsuForm({ waTarget = '', adminMode = false }: Props
      * CV tidak ikut dikosongkan, lihat `simpanJawaban`). Kalau terjemahan
      * gagal, jawabannya tetap ada dan tinggal diisi Jepangnya nanti. */
     try {
-      await apiClient(
-        'simpanJawabanWawancara',
-        [wa, kode, { jp: '', romaji: '', arti: teks }],
-        { onSessionInvalid: 'throw' },
-      );
-      tersimpanRef.current[kode] = sidikJawaban({ jp: '', romaji: '', arti: teks });
+      /* Mode uji admin: terjemahan tetap dijalankan (itu bagian yang ingin
+         dilihat), tetapi hasilnya tidak ditulis ke baris siswa. */
+      if (!modeUji()) {
+        await apiClient(
+          'simpanJawabanWawancara',
+          [wa, kode, { jp: '', romaji: '', arti: teks }],
+          { onSessionInvalid: 'throw' },
+        );
+        tersimpanRef.current[kode] = sidikJawaban({ jp: '', romaji: '', arti: teks });
+      }
     } catch (e) {
       showToast((e as ApiError).message || t('wawancara.gagal_simpan'), 'error');
       setSibuk((s) => ({ ...s, [kode]: '' }));

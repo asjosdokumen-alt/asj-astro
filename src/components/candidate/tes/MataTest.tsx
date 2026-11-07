@@ -188,6 +188,19 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
     setMenyimpan(true);
     setGalat('');
     try {
+      /* Mode uji admin: hasil ditampilkan, TIDAK dikirim. Sama seperti MBTI —
+         satu baris per siswa, dan percobaan admin atas nama WA siswa akan
+         memakai jatah satu-satunya milik siswa itu. */
+      if (gerbang.uji) {
+        setCatatanCv(t('tes.uji_tidak_disimpan'));
+        gerbang.tandaiSelesai({
+          ringkasan: `${ish.label} · OD ${v.kanan} / OS ${v.kiri}`,
+          hasil: payload as unknown as Record<string, unknown>,
+          dibuat_pada: new Date().toISOString(),
+        });
+        setHasil(payload);
+        return;
+      }
       const d = await apiClient<{
         success?: boolean;
         sudah?: boolean;

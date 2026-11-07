@@ -20,7 +20,7 @@
  */
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
-import { authStore } from '../../../store/authReactive';
+import { authStore, modeUji, waUjiTersimpan } from '../../../store/authReactive';
 import { apiClient, type ApiError } from '../../../lib/apiClient';
 import { t } from '../../../store/i18n';
 import LoginGate from '../../ui/LoginGate';
@@ -45,6 +45,8 @@ export interface StatusTesRes {
 
 export interface Gerbang {
   wa: string;
+  /** true = sesi admin sedang mencoba lewat `?uji=1` (lihat `modeUji`). */
+  uji: boolean;
   status: StatusTesRes | null;
   memuat: boolean;
   galat: string;
@@ -60,13 +62,25 @@ export interface Gerbang {
 }
 
 function waAwal(): string {
+  const a = authStore.get();
+  const admin = a.role === 'admin';
   try {
     const q = new URLSearchParams(window.location.search).get('wa');
-    if (q) return q;
+    /* `?wa=` hanya dihormati untuk ADMIN. Kalau kandidat membuka tautan yang
+       membawa nomor orang lain, server memang menolaknya — tetapi halaman ini
+       lalu berhenti di "memuat" tanpa penjelasan, dan itu terbaca seperti fitur
+       rusak. Sesi sendiri selalu benar, jadi itulah yang dipakai. */
+    if (q && admin) return q;
   } catch {
     /* URL tidak terbaca: jatuh ke sesi. */
   }
-  const a = authStore.get();
+  /* Panel admin menyimpan nomor uji sekali, lalu setiap tautannya membawa
+     nomor yang sama. Cadangan ini yang membuat `/tes-mbti` bisa dibuka tanpa
+     `?wa=` sama sekali. */
+  if (admin) {
+    const u = waUjiTersimpan();
+    if (u) return u;
+  }
   return a.isLoggedIn && a.role === 'kandidat' ? a.wa || '' : '';
 }
 
@@ -79,12 +93,17 @@ export function useGerbangTes(jenis: JenisTes): Gerbang {
   /* Tanpa setter: WA hanya berubah lewat login, dan login melakukan reload
      ringan (`KartuGerbang`) supaya hook membaca sesi yang baru. */
   const [wa] = useState(waAwal);
+  /* Dibaca sekali saat mount: mode uji tidak berubah selama satu halaman hidup. */
+  const [uji] = useState(modeUji);
   const [status, setStatus] = useState<StatusTesRes | null>(null);
   const [memuat, setMemuat] = useState(false);
   const [galat, setGalat] = useState('');
 
   const muat = useCallback(async () => {
-    if (!wa) return;
+    /* Mode uji tanpa nomor tetap mengambil status: `getStatusTes('')` hanya
+       melaporkan sakelar, dan tanpa itu admin tidak bisa melihat apakah tes
+       sedang dibuka. */
+    if (!wa && !uji) return;
     setMemuat(true);
     setGalat('');
     try {
@@ -104,7 +123,7 @@ export function useGerbangTes(jenis: JenisTes): Gerbang {
     } finally {
       setMemuat(false);
     }
-  }, [wa]);
+  }, [wa, uji]);
 
   useEffect(() => {
     void muat();
@@ -127,6 +146,7 @@ export function useGerbangTes(jenis: JenisTes): Gerbang {
 
   return {
     wa,
+    uji,
     status,
     memuat,
     galat,
@@ -140,7 +160,10 @@ export function useGerbangTes(jenis: JenisTes): Gerbang {
 
 /** Kartu status: login → bukan siswa → belum dibuka. `null` = boleh lanjut. */
 export function KartuGerbang({ gerbang, jenis }: { gerbang: Gerbang; jenis: JenisTes }) {
-  if (!gerbang.wa) {
+  /* `uji` meloloskan formulir masuk: yang membuka halaman ini adalah admin yang
+     sudah punya sesi sendiri, dan nomor WA di sini hanya identitas percobaan —
+     tidak ada hasil yang ditulis atas namanya (lihat `MbtiTest`/`MataTest`). */
+  if (!gerbang.wa && !gerbang.uji) {
     return (
       <LoginGate
         onSuccess={(nomor) => {
@@ -234,7 +257,7 @@ export function IsiTes({
      sebagai penentu blokir (`if (kartu)`) — elemen selalu truthy. Kondisinya
      diperiksa di sini, satu tempat, lalu kartunya dirender. */
   const diblokir =
-    !gerbang.wa || !gerbang.status || gerbang.bukanSiswa || gerbang.tertutup;
+    (!gerbang.wa && !gerbang.uji) || !gerbang.status || gerbang.bukanSiswa || gerbang.tertutup;
   if (diblokir) return <KartuGerbang gerbang={gerbang} jenis={jenis} />;
   return <>{children}</>;
 }

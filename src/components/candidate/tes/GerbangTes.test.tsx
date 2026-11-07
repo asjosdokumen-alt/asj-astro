@@ -47,9 +47,26 @@ function masukSebagaiKandidat() {
   });
 }
 
+function masukSebagaiAdmin() {
+  authStore.set({
+    role: 'admin',
+    name: 'admin',
+    wa: '',
+    sessionToken: 'tok-admin',
+    refreshToken: '',
+    isLoggedIn: true,
+    lastChecked: Date.now(),
+  });
+}
+
+const AKTIF_MBTI = { success: true, aktif: { mbti: true, mata: false }, selesai: {}, hasil: {} };
+
 beforeEach(() => {
   vi.mocked(apiClient).mockReset();
   window.history.replaceState({}, '', '/tes-mbti');
+  /* Nomor uji disimpan di localStorage; tanpa pembersihan, satu kasus bisa
+     mewarisi nomor dari kasus sebelumnya dan lulus karena alasan yang salah. */
+  localStorage.removeItem('asj_wa_uji');
   authStore.set({
     role: 'guest',
     name: '',
@@ -115,5 +132,58 @@ describe('GerbangTes', () => {
     render(<Probe />);
     expect(screen.queryByTestId('kuis')).toBeNull();
     expect(screen.getByTestId('tes-memuat')).toBeTruthy();
+  });
+
+  /* ── Mode uji admin (2026-11-07) ──────────────────────────────────────────
+   * Pemilik: *"kasih jalur khusus di panel admin biar bisa kami coba … jadi
+   * admin gak perlu login logout mulu"*. Yang dijaga di sini BUKAN tampilan,
+   * melainkan dua keputusan: siapa yang boleh masuk tanpa nomor, dan nomor
+   * siapa yang dipakai saat masuk. */
+  it('admin + ?uji=1 tanpa nomor → kuis dirender, bukan formulir masuk', async () => {
+    masukSebagaiAdmin();
+    window.history.replaceState({}, '', '/tes-mbti?uji=1');
+    vi.mocked(apiClient).mockResolvedValue(AKTIF_MBTI as never);
+    render(<Probe />);
+    await waitFor(() => expect(screen.getByTestId('kuis')).toBeTruthy());
+    // Tanpa nomor, status tetap diminta: `getStatusTes('')` melaporkan sakelar.
+    expect(vi.mocked(apiClient).mock.calls[0][1]).toEqual(['']);
+  });
+
+  it('admin: ?wa= di URL dipakai sebagai identitas uji', async () => {
+    masukSebagaiAdmin();
+    window.history.replaceState({}, '', '/tes-mbti?uji=1&wa=6289999999999');
+    vi.mocked(apiClient).mockResolvedValue(AKTIF_MBTI as never);
+    render(<Probe />);
+    await waitFor(() => expect(vi.mocked(apiClient)).toHaveBeenCalled());
+    expect(vi.mocked(apiClient).mock.calls[0][1]).toEqual(['6289999999999']);
+  });
+
+  it('admin: nomor uji tersimpan dipakai saat URL tidak membawa ?wa=', async () => {
+    masukSebagaiAdmin();
+    localStorage.setItem('asj_wa_uji', '6281111111111');
+    window.history.replaceState({}, '', '/tes-mbti?uji=1');
+    vi.mocked(apiClient).mockResolvedValue(AKTIF_MBTI as never);
+    render(<Probe />);
+    await waitFor(() => expect(vi.mocked(apiClient)).toHaveBeenCalled());
+    expect(vi.mocked(apiClient).mock.calls[0][1]).toEqual(['6281111111111']);
+  });
+
+  it('kandidat: ?wa= orang lain diabaikan — yang dipakai WA sesinya sendiri', async () => {
+    masukSebagaiKandidat();
+    window.history.replaceState({}, '', '/tes-mbti?wa=6289999999999');
+    vi.mocked(apiClient).mockResolvedValue({ ...AKTIF_MBTI, isVip: true } as never);
+    render(<Probe />);
+    await waitFor(() => expect(vi.mocked(apiClient)).toHaveBeenCalled());
+    expect(vi.mocked(apiClient).mock.calls[0][1]).toEqual(['6281234567890']);
+  });
+
+  it('bukan admin: ?uji=1 TIDAK membuka gerbang — formulir masuk tetap muncul', async () => {
+    /* Kasus terkuat: tamu tanpa sesi. Kalau `modeUji()` tidak memeriksa peran,
+       siapa pun yang menambahkan `?uji=1` akan masuk ke soal tanpa login. */
+    window.history.replaceState({}, '', '/tes-mbti?uji=1');
+    render(<Probe />);
+    await waitFor(() => expect(document.querySelector('[aria-label="kotoba.gate_title"]')).toBeTruthy());
+    expect(screen.queryByTestId('kuis')).toBeNull();
+    expect(apiClient).not.toHaveBeenCalled();
   });
 });

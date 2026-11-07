@@ -190,6 +190,21 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
     setMenyimpan(true);
     setGalat('');
     try {
+      /* Mode uji admin (lihat `modeUji` di `store/authReactive`): hasilnya
+         DITAMPILKAN, tidak dikirim. Tes ini hanya boleh dikerjakan sekali per
+         siswa — `candidate_assessments_sekali` — jadi satu percobaan admin atas
+         nama WA siswa akan membakar jatah satu-satunya milik siswa itu, dan
+         sekaligus mengisi kolom CV-nya. */
+      if (gerbang.uji) {
+        setCatatanCv(t('tes.uji_tidak_disimpan'));
+        gerbang.tandaiSelesai({
+          ringkasan: h.tipe,
+          hasil: h as unknown as Record<string, unknown>,
+          dibuat_pada: new Date().toISOString(),
+        });
+        setHasil(h);
+        return;
+      }
       const d = await apiClient<{
         success?: boolean;
         sudah?: boolean;

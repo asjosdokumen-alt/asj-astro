@@ -20,7 +20,7 @@
  */
 
 import { apiClient } from './apiClient';
-import { authStore } from '../store/authReactive';
+import { authStore, modeUji } from '../store/authReactive';
 
 /**
  * Harus sama dengan `GAME_SAH` di `_lib/game/leaderboard.ts` dan CHECK
@@ -42,6 +42,13 @@ export interface BarisPapanGame {
 
 /** Nomor WA siswa yang sedang masuk, atau '' bila tidak ada. */
 export function waSiswa(): string {
+  /* Mode uji admin (`?uji=1`): papan peringkat tetap boleh DIBACA, tetapi skor
+     tidak boleh DITULIS. `kirimSkor` sudah berhenti lebih awal saat WA kosong,
+     jadi satu baris di sini mematikan penulisan skor untuk KETIGA game
+     (kotoba, arcade, matematika) tanpa menyentuh satu pun pemanggilnya.
+     Tanpa ini, admin yang mencoba game memakai WA siswa sungguhan akan
+     menanam skor palsu di papan peringkat siswa itu. */
+  if (modeUji()) return '';
   try {
     return String(authStore.get().wa || '').trim();
   } catch {
