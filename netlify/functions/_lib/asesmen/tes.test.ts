@@ -136,3 +136,32 @@ describe('penolakan sebelum DB', () => {
     expect(String(r.message)).toContain('Jenis tes');
   });
 });
+
+describe('mode uji admin', () => {
+  /* Pemilik 2026-11-07, setelah mencoba lewat panel: *"gini doang hasilnya,
+     gak ada nilai iq-nya berapa"*. Di mode uji tidak ada baris yang ditulis,
+     jadi angka penuh harus ikut di RESPONS — kalau tidak, satu-satunya orang
+     yang boleh melihatnya tidak pernah melihatnya sama sekali. */
+  it('mengembalikan angka penuh untuk admin, dan tetap memotong bentuk siswa', async () => {
+    const { nilaiIqTanpaSimpan } = await import('./tes');
+    const { pilihSoalIq } = await import('./iq-bank');
+    const wa = '6281234567890';
+    const jawaban: Record<string, number> = {};
+    for (const s of pilihSoalIq(wa)) jawaban[s.id] = s.kunci;
+
+    const r = nilaiIqTanpaSimpan(wa, jawaban, 600) as {
+      uji?: boolean;
+      admin?: { benar: number; maks: number; skala: number; rincian: Record<string, unknown> };
+      tampilan?: Record<string, unknown>;
+    };
+
+    expect(r.uji).toBe(true);
+    expect(r.admin?.benar).toBe(40);
+    expect(r.admin?.maks).toBe(40);
+    expect(r.admin?.skala).toBe(130);
+    expect(r.admin?.rincian).toBeTruthy();
+    // Bentuk siswa tetap tanpa angka — dua tampilan dalam satu respons.
+    expect(r.tampilan).not.toHaveProperty('skala');
+    expect(r.tampilan).not.toHaveProperty('benar');
+  });
+});

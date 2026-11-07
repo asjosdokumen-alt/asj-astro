@@ -35,6 +35,15 @@ interface Tampilan {
   dikerjakanPada: string;
 }
 
+/** Angka penuh — HANYA dikirim server pada jalur mode uji admin. */
+interface AdminView {
+  benar: number;
+  maks: number;
+  skala: number;
+  klasifikasi: string;
+  rincian: Record<Kategori, { benar: number; total: number; subskor: number }>;
+}
+
 const PER_HALAMAN = 5;
 const KUNCI_DRAF = 'asj_iq_draf_v1';
 const KATEGORI: Kategori[] = ['verbal', 'numerik', 'spasial', 'logika'];
@@ -59,14 +68,52 @@ function bacaDraf(wa: string): { jawaban: Record<string, number>; mulai: number 
   }
 }
 
-function KartuHasil({ tampilan }: { tampilan: Tampilan }) {
+function KartuHasil({
+  tampilan,
+  baru,
+  admin,
+}: {
+  tampilan: Tampilan;
+  baru: boolean;
+  admin: AdminView | null;
+}) {
   return (
     <div class="space-y-4">
       <section class="rounded-card border border-line bg-surface p-5">
-        <p class="mb-1 text-[11px] font-bold uppercase tracking-wide text-accent-sky">{t('tes.sudah_label')}</p>
+        <p class="mb-1 text-[11px] font-bold uppercase tracking-wide text-accent-sky">
+          {baru ? t('tes.hasil_baru') : t('tes.sudah_label')}
+        </p>
         <h2 class="text-xl font-black text-fg">{t('tes.iq_hasil')}</h2>
         <p class="mt-1 text-[12px] leading-relaxed text-fg-muted">{tampilan.catatan}</p>
       </section>
+
+      {/* Blok ini hanya muncul di mode uji admin — server tidak pernah
+          mengirim `admin` pada jalur siswa. */}
+      {admin && (
+        <section
+          data-testid="iq-admin-angka"
+          class="rounded-card border border-accent-violet/40 bg-accent-violet/10 p-4"
+        >
+          <p class="mb-1 text-[10.5px] font-bold uppercase tracking-wide text-fg-muted">
+            {t('tes.iq_admin_angka')}
+          </p>
+          <p class="text-3xl font-black tabular-nums text-fg">
+            {admin.skala}
+            <span class="ml-1 text-sm font-bold text-fg-muted">/ 130</span>
+          </p>
+          <p class="mt-0.5 text-[12px] font-bold text-fg">
+            {admin.benar}/{admin.maks} benar · {admin.klasifikasi}
+          </p>
+          <ul class="mt-2 grid gap-1 text-[11.5px] text-fg-muted sm:grid-cols-2">
+            {KATEGORI.map((k) => (
+              <li key={k} class="tabular-nums">
+                {t(`tes.iq_${k}`)}: {admin.rincian[k]?.benar ?? 0}/{admin.rincian[k]?.total ?? 0}
+              </li>
+            ))}
+          </ul>
+          <p class="mt-2 text-[11px] leading-relaxed text-fg-muted">{t('tes.uji_tidak_disimpan')}</p>
+        </section>
+      )}
 
       <section class="rounded-card border border-line bg-surface p-4">
         <h3 class="mb-3 text-sm font-bold text-fg">{t('tes.iq_subskor')}</h3>
@@ -121,6 +168,8 @@ function Isi({ gerbang }: { gerbang: Gerbang }) {
   const [mulai, setMulai] = useState(0);
   const [sisa, setSisa] = useState(0);
   const [hasil, setHasil] = useState<Tampilan | null>(null);
+  const [adminView, setAdminView] = useState<AdminView | null>(null);
+  const [baru, setBaru] = useState(false);
   const [memuat, setMemuat] = useState(true);
   const [mengirim, setMengirim] = useState(false);
   const [galat, setGalat] = useState('');
@@ -145,6 +194,7 @@ function Isi({ gerbang }: { gerbang: Gerbang }) {
       }
       if (d.sudah) {
         setHasil(d.tampilan || null);
+        setBaru(false);
         return;
       }
       const daftar = Array.isArray(d.soal) ? d.soal : [];
@@ -171,7 +221,13 @@ function Isi({ gerbang }: { gerbang: Gerbang }) {
       setGalat('');
       const durasiDetik = durasi > 0 ? Math.max(0, durasi - sisa) : 0;
       try {
-        const d = await apiClient<{ success?: boolean; sudah?: boolean; tampilan?: Tampilan | null; message?: string }>(
+        const d = await apiClient<{
+          success?: boolean;
+          sudah?: boolean;
+          tampilan?: Tampilan | null;
+          admin?: AdminView;
+          message?: string;
+        }>(
           'simpanHasilIq',
           /* `uji` dikirim hanya bila sesi memang admin; server memeriksa ulang
              dengan `requireAdmin`, jadi siswa tidak bisa memakainya untuk
@@ -188,6 +244,8 @@ function Isi({ gerbang }: { gerbang: Gerbang }) {
           return;
         }
         setHasil(d.tampilan || null);
+        setBaru(true);
+        if (d.admin) setAdminView(d.admin);
         try {
           localStorage.removeItem(kunciDraf(gerbang.wa));
         } catch {
@@ -257,7 +315,7 @@ function Isi({ gerbang }: { gerbang: Gerbang }) {
     );
   }
 
-  if (hasil) return <KartuHasil tampilan={hasil} />;
+  if (hasil) return <KartuHasil tampilan={hasil} baru={baru} admin={adminView} />;
 
   if (memuat || !soal.length) {
     return <p class="mx-auto my-8 max-w-md text-center text-sm text-fg-muted">{t('tes.memuat')}</p>;

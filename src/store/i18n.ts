@@ -2136,6 +2136,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     "tes.admin_konfirmasi_reset": "Buka ulang tes untuk {nama}? Hasil lamanya dihapus dan siswa bisa mengerjakan lagi.",
     "tes.admin_galat_reset": "Gagal membuka ulang tes siswa ini.",
     "tes.iq_hasil": "Hasil asesmen penalaran",
+    "tes.hasil_baru": "HASIL BARU",
+    "tes.iq_admin_angka": "Angka penuh — khusus admin (mode uji, tidak disimpan)",
     "tes.iq_subskor": "Subskor per bagian (1–5)",
     "tes.iq_kekuatan": "Kekuatan",
     "tes.iq_latihan": "Yang perlu dilatih",

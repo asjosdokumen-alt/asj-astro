@@ -191,5 +191,8 @@ export function tampilanIqSiswa(nilai: unknown): TampilanIqSiswa | null {
 /** Satu baris untuk daftar admin. Angka penuh boleh ada di sini — admin saja. */
 export function ringkasIq(h: HasilIqLengkap): string {
   const s = h.subskor;
-  return `${h.benar}/${h.maks} · skala ${h.skala} · V${s.verbal} N${s.numerik} S${s.spasial} L${s.logika}`;
+  /* "estimasi", bukan "IQ": angka ini pemetaan linier dari proporsi benar,
+     bukan posisi di distribusi populasi. Label yang menyebut IQ akan membuat
+     angka 112 terbaca seperti hasil alat ukur tervalidasi. */
+  return `${h.benar}/${h.maks} · estimasi ${h.skala} · V${s.verbal} N${s.numerik} S${s.spasial} L${s.logika}`;
 }

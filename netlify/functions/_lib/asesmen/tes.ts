@@ -498,5 +498,19 @@ export function nilaiIqTanpaSimpan(
 ): Record<string, unknown> {
   const wa = normalizeWa(String(waMentah ?? ''));
   const penuh = nilaiIq(wa, jawaban, durasiDetik);
-  return { success: true, uji: true, tampilan: tampilanIqSiswa(penuh) };
+  /* `admin` HANYA ada di jalur ini — jalur ini hanya bisa dicapai lewat
+     `requireAdmin`. Bentuk siswa tetap dipotong seperti biasa, jadi satu
+     respons membawa dua tampilan dan pemanggil memilih yang benar. */
+  return {
+    success: true,
+    uji: true,
+    tampilan: tampilanIqSiswa(penuh),
+    admin: {
+      benar: penuh.benar,
+      maks: penuh.maks,
+      skala: penuh.skala,
+      klasifikasi: penuh.klasifikasi,
+      rincian: penuh.rincian,
+    },
+  };
 }

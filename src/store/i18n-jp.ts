@@ -1581,6 +1581,8 @@ export const jpTranslations: Record<string, string> = {
     "tes.admin_konfirmasi_reset": "{nama} さんのテストを再受験可能にしますか？以前の結果は削除されます。",
     "tes.admin_galat_reset": "この生徒の再受験設定に失敗しました。",
     "tes.iq_hasil": "思考力テストの結果",
+    "tes.hasil_baru": "新しい結果",
+    "tes.iq_admin_angka": "詳細スコア — 管理者のみ（試用モード・保存なし）",
     "tes.iq_subskor": "分野別スコア（1〜5）",
     "tes.iq_kekuatan": "得意分野",
     "tes.iq_latihan": "伸ばしたい分野",
