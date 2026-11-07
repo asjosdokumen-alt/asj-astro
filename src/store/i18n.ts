@@ -2052,7 +2052,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "doc.title_tes_mata": "Tes Mata Pra-MCU — ASJ",
     "ui.tes_mbti": "Tes MBTI",
     "ui.tes_mata": "Tes Mata (Pra-MCU)",
-    "admin.tab_tes": "Tes Siswa",
+    "admin.tab_tes": "Tes & Uji",
     "tes.memuat": "Memuat status tes…",
     "tes.galat_muat": "Status tes gagal dimuat. Periksa koneksi lalu coba lagi.",
     "tes.coba_lagi": "Coba lagi",

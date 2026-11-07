@@ -1497,7 +1497,7 @@ export const jpTranslations: Record<string, string> = {
     "doc.title_tes_mata": "渡日前視力検査 — ASJ",
     "ui.tes_mbti": "MBTIテスト",
     "ui.tes_mata": "視力テスト（渡日前）",
-    "admin.tab_tes": "生徒テスト",
+    "admin.tab_tes": "テスト・試用",
     "tes.memuat": "テスト状況を読み込み中…",
     "tes.galat_muat": "テスト状況を読み込めませんでした。通信を確認してもう一度お試しください。",
     "tes.coba_lagi": "もう一度",
