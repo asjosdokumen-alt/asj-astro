@@ -135,11 +135,16 @@
       tujuannya). Gerbang baru di `gallery.test.ts` memastikan setiap kandidat
       `srcset` ada DAN lebarnya cocok dengan berkasnya (dibuktikan bisa merah).
       Laporan: `deliverables/responsive-images-2026-11-07.md`.
-      (b) `admin.*.css` **207 KB render-blocking di SEMUA halaman** (naik dari
-      185 KB) — satu bundel untuk semua permukaan; memecahnya = memilah ratusan
-      aturan yang dipakai bersama, perubahan arsitektural. **Klien Supabase
-      213 KB sudah TIDAK ada lagi di beranda** (diukur 2026-11-07: `/` hanya
-      memuat 3 chunk JS total 3,5 KB — impor dinamisnya sudah bekerja).
+      ✅ **(b) SELESAI 2026-11-07 — hasilnya: TIDAK dipecah, dan itu keputusan
+      berbukti.** Diukur langsung ke produksi: `admin.*.css` = **28,7 KB di
+      kabel** (brotli), bukan 185–207 KB — angka lama diambil dari harness lokal
+      yang tidak mengompresi, jadi 7x terlalu besar. Nama berkasnya pun
+      menyesatkan: itu bundel SELURUH situs (satu-satunya CSS di `dist/_astro/`),
+      bukan CSS admin. Komposisi lewat graf impor: hanya **47,4 KB (22,9 %)**
+      admin/candidate, 130 KB dipakai bersama. Memecah per permukaan ≈ 6–7 KB
+      brotli; per halaman ≈ 10 KB di beranda tapi menuntut dua build Tailwind
+      untuk 19 halaman. **Klien Supabase 213 KB sudah TIDAK ada** — `/` memuat
+      3 chunk JS total 3,5 KB. Rincian: `deliverables/css-bundle-2026-11-07.md`.
       Sengaja TIDAK diubah: 7 KiB komentar di script inline `BaseLayout`
       (komentar itu memuat pengukuran, dan setelah brotli nilainya ~1,5 KiB).
       Laporan lengkap: `deliverables/gstack/lighthouse-2026-10-20.md`.

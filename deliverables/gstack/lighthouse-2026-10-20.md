@@ -136,6 +136,29 @@ admin) meski pengunjung tidak login dan tidak pernah membuka admin. Memperbaiki
 ini berarti memecah bundel per permukaan — perubahan arsitektural, dan tidak
 boleh dicampur dengan sesi perbaikan gate. Dicatat sebagai item tersendiri.
 
+> **KOREKSI 2026-11-07 — angka di atas menyesatkan, dan dua klaimnya sudah
+> tidak benar.** Diukur ulang terhadap **produksi**, bukan harness lokal:
+>
+> | | |
+> |---|---|
+> | `admin.C7G3N6n1.css` di produksi | **28,7 KB** lewat kabel (brotli) · 32,0 KB (gzip) · 206,9 KB (identity) |
+> | Klien Supabase di `/` | **tidak ada lagi** — `/` memuat 3 chunk JS, total 3,5 KB |
+> | `i18n-jp` di `/` | tidak dimuat (impor dinamis) |
+>
+> "185 KB render-blocking" adalah ukuran **tanpa kompresi** dari `server.cjs`,
+> yang tidak mengompresi sementara Netlify mengirim brotli — jadi angkanya
+> **7x lebih besar** dari yang diterima pengunjung. Nama berkasnya juga
+> menyesatkan: `admin.*.css` adalah bundel SELURUH situs (satu-satunya berkas
+> CSS di `dist/_astro/`), bukan CSS panel admin.
+>
+> Komposisinya (diklasifikasikan lewat graf impor `admin.astro` +
+> `candidate.astro`, 125 berkas): **47,4 KB (22,9 %) hanya admin/candidate**,
+> 130,0 KB dipakai bersama, 15,4 KB tak terklasifikasi. Memecah per permukaan
+> karena itu hanya menghemat ~6–7 KB brotli. Memecah per HALAMAN (73,7 KB hanya
+> dipakai di luar beranda) menghemat ~10 KB brotli di beranda, tapi menuntut dua
+> build Tailwind untuk 19 halaman. **Diputuskan TIDAK dikerjakan** — rincian dan
+> angkanya di `deliverables/css-bundle-2026-11-07.md`.
+
 ### 3.7 `unminified-javascript` 7 KiB — **SENGAJA TIDAK**
 
 Yang dilaporkan adalah **script inline** di `BaseLayout.astro` (restore tema,
