@@ -15,7 +15,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { TABLE_COLUMNS, SCHEMA_FINGERPRINT } from './schema.generated';
-import { PROJECTIONS, type ProjectionName } from './projections';
+import { PROJECTIONS, pilihSubmissionTerbaru, type ProjectionName } from './projections';
 
 const names = Object.keys(PROJECTIONS) as ProjectionName[];
 
@@ -88,4 +88,61 @@ describe('db/projections', () => {
       expect(columns.length).toBeGreaterThan(0);
     });
   }
+});
+
+/**
+ * `ai_form_submissions` tidak unik per WA — terukur 2026-10-30 satu nomor punya
+ * dua baris `ai_form` (id 1 dan 2). Fungsi ini yang memutuskan baris mana yang
+ * ditulis; kalau ia memilih yang lama, simpan "berhasil" tapi data tidak berubah.
+ */
+describe('db/projections — pilihSubmissionTerbaru', () => {
+  const baris = (over: Record<string, unknown>) => ({
+    wa: '628111222333',
+    submitted_via: 'ai_form',
+    ...over,
+  });
+
+  it('memilih updated_at terbaru, bukan elemen pertama', () => {
+    const rows = [
+      baris({ id: 1, updated_at: '2026-10-01T00:00:00.000Z', nama_lengkap: 'LAMA' }),
+      baris({ id: 2, updated_at: '2026-10-30T00:00:00.000Z', nama_lengkap: 'BARU' }),
+    ];
+    expect(pilihSubmissionTerbaru(rows, '628111222333', 'ai_form')?.nama_lengkap).toBe('BARU');
+  });
+
+  it('jatuh ke ai_updated_at saat updated_at kosong di baris warisan', () => {
+    const rows = [
+      baris({ id: 1, updated_at: '', ai_updated_at: '2026-10-30T00:00:00.000Z' }),
+      baris({ id: 2, updated_at: '2026-10-01T00:00:00.000Z' }),
+    ];
+    expect(pilihSubmissionTerbaru(rows, '628111222333', 'ai_form')?.id).toBe(1);
+  });
+
+  it('id dibandingkan sebagai angka: 10 menang atas 9', () => {
+    const rows = [
+      baris({ id: 9, updated_at: '2026-10-30T00:00:00.000Z' }),
+      baris({ id: 10, updated_at: '2026-10-30T00:00:00.000Z' }),
+    ];
+    expect(pilihSubmissionTerbaru(rows, '628111222333', 'ai_form')?.id).toBe(10);
+  });
+
+  it('memisahkan ai_form dari interview pada WA yang sama', () => {
+    const rows = [
+      baris({ id: 1, submitted_via: 'ai_form', updated_at: '2026-10-01T00:00:00.000Z' }),
+      baris({ id: 2, submitted_via: 'interview', updated_at: '2026-10-30T00:00:00.000Z' }),
+    ];
+    expect(pilihSubmissionTerbaru(rows, '628111222333', 'ai_form')?.id).toBe(1);
+    expect(pilihSubmissionTerbaru(rows, '628111222333', 'interview')?.id).toBe(2);
+  });
+
+  it('menormalkan nomor: 0811… di baris cocok dengan 62811… yang dicari', () => {
+    const rows = [baris({ id: 7, wa: '08111222333' })];
+    expect(pilihSubmissionTerbaru(rows, '628111222333', 'ai_form')?.id).toBe(7);
+  });
+
+  it('mengembalikan null untuk masukan kosong/bukan array', () => {
+    expect(pilihSubmissionTerbaru([], '628111222333', 'ai_form')).toBeNull();
+    expect(pilihSubmissionTerbaru(null, '628111222333', 'ai_form')).toBeNull();
+    expect(pilihSubmissionTerbaru([baris({ id: 1 })], '628999999999', 'ai_form')).toBeNull();
+  });
 });

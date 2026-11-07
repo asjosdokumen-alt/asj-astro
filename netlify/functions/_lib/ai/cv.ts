@@ -1,7 +1,7 @@
 import { normalizeWa, supabaseJson, APPLY_WA_COLS } from '../db/client.ts';
 import type { FormRawRow } from '../db/row-types';
 import { candidateIdentityPatch } from '../db/identity-sync';
-import { AI_SUBMISSION_COLS, ESIGNATURE_COLS } from '../db/projections.ts';
+import { AI_SUBMISSION_COLS, ESIGNATURE_COLS, pilihSubmissionTerbaru, type SubmissionRow } from '../db/projections.ts';
 import { requireRole, isOwnerOrAdmin, verifyToken } from '../../contexts/identity';
 import { buildMasterNested, buildRiwayatSlots, masterColumnsFromAi, autoTranslateToJp, JP_TRANSLATE_MAP, patchMaster } from '../../contexts/master-data';
 import { fetchCandidatePekerjaan } from '../db/pekerjaan';
@@ -429,16 +429,9 @@ async function handleSubmitDataAsj(payload: unknown, sessionToken?: string) {
        2026-10-30: satu WA punya DUA baris `ai_form`/`AI_MASTER` (id 1 dan 2).
        `.find()` menulis ke baris pertama, sehingga baris terbaru tetap berisi
        snapshot lama selamanya — dan pembaca yang mengurutkan `updated_at`
-       melihat data basi walaupun simpan berhasil. `updated_at` bisa kosong di
-       baris lama, jadi `id` menjadi penentu kedua. */
-    const existing = (Array.isArray(existingRows) ? existingRows : [])
-      .filter((r) => normalizeWa(String(r.wa || '')) === wa && String(r.submitted_via || '') === 'ai_form')
-      .sort((a, b) => {
-        const ta = Date.parse(String(a.updated_at || a.ai_updated_at || '')) || 0;
-        const tb = Date.parse(String(b.updated_at || b.ai_updated_at || '')) || 0;
-        if (tb !== ta) return tb - ta;
-        return Number(b.id || 0) - Number(a.id || 0);
-      })[0];
+       melihat data basi walaupun simpan berhasil. Aturannya kini satu tempat:
+       `pilihSubmissionTerbaru` di db/projections.ts. */
+    const existing = pilihSubmissionTerbaru<SubmissionRow>(existingRows, wa, 'ai_form');
     if (existing && existing.id !== undefined) {
       await supabaseJson('PATCH', 'ai_form_submissions', {
         query: { id: 'eq.' + existing.id },

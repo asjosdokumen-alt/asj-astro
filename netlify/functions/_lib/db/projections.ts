@@ -36,6 +36,7 @@
  *   rest.
  */
 
+import { normalizeWa } from '../../shared/wa-rules';
 import type { TableName } from './schema.generated';
 
 /**
@@ -191,3 +192,54 @@ export const ESIGNATURE_COLS = PROJECTIONS.ESIGNATURE_COLS.columns;
 export const JOB_QUEUE_COLS = PROJECTIONS.JOB_QUEUE_COLS.columns;
 export const IDEMPOTENCY_KEY_COLS = PROJECTIONS.IDEMPOTENCY_KEY_COLS.columns;
 export const FCM_TOKEN_COLS = PROJECTIONS.FCM_TOKEN_COLS.columns;
+
+/**
+ * Satu baris `ai_form_submissions` yang boleh ditulis/dibaca untuk satu WA.
+ *
+ * WHY THIS IS NOT A `.find()`
+ *   Tabel ini TIDAK unik per WA. Terukur 2026-10-30: satu nomor punya dua baris
+ *   `ai_form`/`AI_MASTER` (id 1 dan 2). `.find()` mengambil yang pertama kali
+ *   dikembalikan PostgREST — bukan yang terbaru — sehingga PATCH menulis ke
+ *   baris lama sementara pembaca yang mengurutkan `updated_at` tetap melihat
+ *   snapshot basi. Simpan "berhasil", data tidak berubah.
+ *
+ *   `updated_at` bisa kosong di baris warisan, jadi `ai_updated_at` menjadi
+ *   cadangan pertama dan `id` penentu terakhir. `id` dibandingkan sebagai angka
+ *   supaya `10` tidak kalah dari `9` seperti pada perbandingan string.
+ *
+ *   Penyaring `wa` diulang di sini (bukan hanya di query) karena baris warisan
+ *   menyimpan nomor dalam format berbeda — `normalizeWa` yang memutuskan, sama
+ *   seperti yang dipakai saat menulis.
+ */
+export type SubmissionRow = {
+  id?: number | string;
+  wa?: string;
+  updated_at?: string;
+  ai_updated_at?: string;
+  submitted_via?: string;
+  /** Kolom yang dibaca pemanggil setelah barisnya dipilih. */
+  nama_lengkap?: string;
+  ai_data_json?: string;
+};
+
+export function pilihSubmissionTerbaru<T extends SubmissionRow>(
+  rows: unknown,
+  wa: string,
+  submittedVia: string,
+): T | null {
+  const target = normalizeWa(wa);
+  const daftar = (Array.isArray(rows) ? rows : []) as T[];
+  const cocok = daftar.filter(
+    (r) =>
+      r &&
+      normalizeWa(String(r.wa || '')) === target &&
+      String(r.submitted_via || '') === submittedVia,
+  );
+  cocok.sort((a, b) => {
+    const ta = Date.parse(String(a.updated_at || a.ai_updated_at || '')) || 0;
+    const tb = Date.parse(String(b.updated_at || b.ai_updated_at || '')) || 0;
+    if (tb !== ta) return tb - ta;
+    return Number(b.id || 0) - Number(a.id || 0);
+  });
+  return cocok[0] ?? null;
+}

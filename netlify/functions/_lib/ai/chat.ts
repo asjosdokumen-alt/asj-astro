@@ -1,5 +1,5 @@
 import { normalizeWa, supabaseJson } from '../db/client.ts';
-import { AI_SUBMISSION_COLS } from '../db/projections.ts';
+import { AI_SUBMISSION_COLS, pilihSubmissionTerbaru, type SubmissionRow } from '../db/projections.ts';
 import * as session from '../session';
 import { requireRole } from '../../contexts/identity';
 import {
@@ -1260,10 +1260,9 @@ async function handleSimpanHasilWawancara(payload: unknown[], sessionToken?: str
     });
     // Discriminator: submitted_via='interview' (mode/status tabel ini punya
     // CHECK constraint — pakai nilai yang diizinkan: AI_MASTER/MENUNGGU).
-    const existing = (Array.isArray(rows) ? rows : []).find(
-      (r) =>
-        normalizeWa(String(r.wa || '')) === wa && String(r.submitted_via || '') === 'interview',
-    );
+    // Baris TERBARU, bukan yang pertama dikembalikan — satu WA bisa punya
+    // beberapa baris (lihat `pilihSubmissionTerbaru`).
+    const existing = pilihSubmissionTerbaru<SubmissionRow>(rows, wa, 'interview');
     const bio = (hasil.biodata || {}).nama || '';
     const body = {
       wa,
@@ -1317,10 +1316,9 @@ async function handleGetHasilWawancara(payload: unknown[], sessionToken?: string
     const rows = await supabaseJson('GET', 'ai_form_submissions', {
       query: { select: AI_SUBMISSION_COLS, wa: 'eq.' + wa, submitted_via: 'eq.interview', limit: 100 },
     });
-    const row = (Array.isArray(rows) ? rows : []).find(
-      (r) =>
-        normalizeWa(String(r.wa || '')) === wa && String(r.submitted_via || '') === 'interview',
-    );
+    // Admin melihat hasil TERBARU. `.find()` di sini pernah menampilkan
+    // snapshot lama saat satu WA punya lebih dari satu baris wawancara.
+    const row = pilihSubmissionTerbaru<SubmissionRow>(rows, wa, 'interview');
     if (!row) return { success: true, hasil: null };
     let hasil: Record<string, any> = {};
     try {

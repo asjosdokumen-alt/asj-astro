@@ -54,10 +54,18 @@ vi.mock('../netlify/functions/_lib/db/client.ts', async (importOriginal) => {
   };
 });
 
-vi.mock('../netlify/functions/_lib/db/projections.ts', () => ({
-  AI_SUBMISSION_COLS: 'id,wa,submitted_via,nama_lengkap,ai_data_json',
-  ESIGNATURE_COLS: 'id',
-}));
+vi.mock('../netlify/functions/_lib/db/projections.ts', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../netlify/functions/_lib/db/projections.ts')>();
+  return {
+    ...actual,
+    // Proyeksi dipersempit supaya body tulis mudah dibaca. Fungsi pemilih baris
+    // tetap ASLI: ia yang menentukan PATCH (baris lama) vs POST (baris baru),
+    // jadi menggantinya dengan stub berarti tes ini berhenti mengukur apa pun.
+    AI_SUBMISSION_COLS: 'id,wa,submitted_via,nama_lengkap,ai_data_json',
+    ESIGNATURE_COLS: 'id',
+  };
+});
 
 vi.mock('../netlify/functions/contexts/identity', () => ({
   requireRole: vi.fn(() => ({ token: { wa: '6285700000001', role: 'admin', name: 'Admin' } })),
