@@ -30,6 +30,9 @@ interface BarisHasil {
   jenis: Jenis;
   ringkasan: string;
   dibuat_pada: string;
+  /** Hanya untuk 'mata': angka tes, dan angka yang sekarang tertulis di CV. */
+  visus?: { kanan: number; kiri: number } | null;
+  cv?: { kanan: string; kiri: string } | null;
 }
 
 interface StatusRes {
@@ -97,6 +100,9 @@ export default function TabTes() {
      kali pada dua baris sekaligus adalah cara paling mudah menghapus hasil
      siswa yang salah. */
   const [resetWa, setResetWa] = useState('');
+
+  /** WA yang sedang ditulis ke CV. Sama seperti reset: satu per satu. */
+  const [tulisWa, setTulisWa] = useState('');
 
   const muat = useCallback(async () => {
     setMemuat(true);
@@ -169,6 +175,53 @@ export default function TabTes() {
       setGalat(t('tes.admin_galat_reset'));
     } finally {
       setResetWa('');
+    }
+  };
+
+  const angkaTes = (v: unknown) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n.toFixed(1) : '<0.1';
+  };
+
+  /**
+   * Tulis hasil tes mata ke CV — per siswa, dengan konfirmasi yang MENYEBUT
+   * nilai lama dan nilai baru. Tanpa keduanya, tombol ini sama saja dengan
+   * menimpa data orang tanpa melihat apa yang ditimpa.
+   */
+  const tulisKeCv = async (r: BarisHasil) => {
+    if (tulisWa || !r.visus) return;
+    const cvSekarang = `${r.cv?.kanan || '—'} / ${r.cv?.kiri || '—'}`;
+    const cvBaru = `${angkaTes(r.visus.kanan)} / ${angkaTes(r.visus.kiri)}`;
+    const pesan = t('tes.admin_konfirmasi_cv')
+      .replace('{nama}', r.nama || r.no_wa)
+      .replace('{cv}', cvSekarang)
+      .replace('{tes}', cvBaru);
+    if (!window.confirm(pesan)) return;
+    setGalat('');
+    setTulisWa(r.no_wa);
+    try {
+      const d = (await api.secure('tulisMataKeCv', [r.no_wa], { silent: true })) as {
+        success?: boolean;
+        message?: string;
+        sesudah?: { mata_kanan: string; mata_kiri: string };
+      };
+      if (d?.success === false) {
+        setGalat(d.message || t('tes.admin_galat_cv'));
+        return;
+      }
+      if (d?.sesudah) {
+        setHasil((h) =>
+          h.map((x) =>
+            x.jenis === 'mata' && x.no_wa === r.no_wa
+              ? { ...x, cv: { kanan: d.sesudah?.mata_kanan || '', kiri: d.sesudah?.mata_kiri || '' } }
+              : x,
+          ),
+        );
+      }
+    } catch {
+      setGalat(t('tes.admin_galat_cv'));
+    } finally {
+      setTulisWa('');
     }
   };
 
@@ -334,7 +387,20 @@ export default function TabTes() {
                           ? t('tes.admin_iq_judul')
                           : t('tes.admin_mata_judul')}
                     </td>
-                    <td class="py-1.5 pr-2 text-fg">{r.ringkasan}</td>
+                    <td class="py-1.5 pr-2 text-fg">
+                      {r.ringkasan}
+                      {r.jenis === 'mata' && r.visus && (
+                        <span
+                          class={`mt-0.5 block text-[10.5px] font-bold ${
+                            r.cv && (r.cv.kanan !== angkaTes(r.visus.kanan) || r.cv.kiri !== angkaTes(r.visus.kiri))
+                              ? 'text-accent-amber'
+                              : 'text-fg-muted'
+                          }`}
+                        >
+                          {t('tes.admin_cv')}: {r.cv?.kanan || '—'} / {r.cv?.kiri || '—'}
+                        </span>
+                      )}
+                    </td>
                     <td class="py-1.5 tabular-nums text-fg-muted">
                       {r.dibuat_pada ? r.dibuat_pada.slice(0, 10).split('-').reverse().join('/') : ''}
                     </td>
@@ -348,6 +414,16 @@ export default function TabTes() {
                           class="min-h-9 rounded-control border border-line px-2 text-[11px] font-bold text-fg-muted hover:border-accent-amber hover:text-fg disabled:opacity-50"
                         >
                           {resetWa === r.no_wa ? '…' : t('tes.admin_reset')}
+                        </button>
+                      ) : r.jenis === 'mata' && r.visus ? (
+                        <button
+                          type="button"
+                          disabled={tulisWa === r.no_wa}
+                          onClick={() => void tulisKeCv(r)}
+                          title={t('tes.admin_tulis_cv_judul')}
+                          class="min-h-9 rounded-control border border-line px-2 text-[11px] font-bold text-fg-muted hover:border-accent-sky hover:text-fg disabled:opacity-50"
+                        >
+                          {tulisWa === r.no_wa ? '…' : t('tes.admin_tulis_cv')}
                         </button>
                       ) : (
                         <span class="text-[11px] text-fg-muted">—</span>

@@ -16,7 +16,7 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { TES_SAH, bacaSakelar, jenisTesSah, periksaHasil, ringkas, setAktif, simpanHasil, tipeSakelar } from './tes';
+import { TES_SAH, angkaCv, bacaSakelar, jenisTesSah, periksaHasil, ringkas, setAktif, simpanHasil, tipeSakelar } from './tes';
 
 /* `supabaseJson` di-stub supaya satu kasus bisa memeriksa QUERY yang dikirim,
    bukan hanya hasilnya. Tanpa ini, bug "sakelar iq menyala tetapi terbaca
@@ -204,5 +204,27 @@ describe('hasil mata: kontras & astigmatisme (2026-11-08)', () => {
       astig: { kanan: 90, kiri: '', indikasi: true, catatan: '' },
     });
     expect(r.ok).toBe(false);
+  });
+});
+
+describe('tulis hasil mata ke CV', () => {
+  it('angkaCv memformat visus desimal, dan 0 berarti di bawah ambang', () => {
+    expect(angkaCv(1.2)).toBe('1.2');
+    expect(angkaCv(0.7)).toBe('0.7');
+    expect(angkaCv(0)).toBe('<0.1');
+    expect(angkaCv('abc')).toBe('<0.1');
+  });
+
+  it('menolak siswa yang belum punya hasil tes mata (tidak menulis apa pun)', async () => {
+    const { tulisMataKeCv } = await import('./tes');
+    const r = await tulisMataKeCv('6281234567890');
+    expect(r.success).toBe(false);
+    expect(String(r.message)).toContain('belum punya hasil');
+  });
+
+  it('WA kosong ditolak sebelum menyentuh DB', async () => {
+    const { tulisMataKeCv } = await import('./tes');
+    const r = await tulisMataKeCv('   ');
+    expect(r).toEqual({ success: false, message: 'Nomor WA kosong.' });
   });
 });

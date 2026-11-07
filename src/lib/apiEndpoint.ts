@@ -161,6 +161,7 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   getSoalIq: '/.netlify/functions/kotoba',
   simpanHasilIq: '/.netlify/functions/kotoba',
   resetHasilIq: '/.netlify/functions/kotoba',
+  tulisMataKeCv: '/.netlify/functions/kotoba',
   /* Papan peringkat game (2026-11-04). Tanpa dua baris ini keduanya jatuh ke
      catch-all `bridge-links` dan mengulang lewat 404 — fiturnya tetap jalan,
      jadi tidak ada yang menyadari. Gerbangnya di `action-registry.test.ts`. */

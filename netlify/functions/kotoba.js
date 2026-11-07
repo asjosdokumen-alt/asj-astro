@@ -22,5 +22,5 @@ export default adapt(makeSurfaceHandler([KOTOBA_ACTIONS, TES_ACTIONS], [
   // yang tidak disebut di sini dijawab 404 oleh fungsi ini, lalu klien
   // mengulang ke catch-all — jalan, tetapi lewat dua perjalanan dan tanpa
   // seorang pun menyadarinya. Gerbangnya di `action-registry.test.ts`.
-  'getSoalIq', 'simpanHasilIq', 'resetHasilIq',
+  'getSoalIq', 'simpanHasilIq', 'resetHasilIq', 'tulisMataKeCv',
 ]));

@@ -164,6 +164,7 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   getSoalIq:                  () => import('./tes').then(m => m.TES_ACTIONS),
   simpanHasilIq:              () => import('./tes').then(m => m.TES_ACTIONS),
   resetHasilIq:               () => import('./tes').then(m => m.TES_ACTIONS),
+  tulisMataKeCv:              () => import('./tes').then(m => m.TES_ACTIONS),
   // Papan peringkat game — simpan skor (siswa) & baca papan (admin).
   simpanSkorGame:             () => import('./ai').then(m => m.AI_ACTIONS),
   getPapanSkor:               () => import('./ai').then(m => m.AI_ACTIONS),

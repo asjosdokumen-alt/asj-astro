@@ -108,6 +108,18 @@ export const TES_ACTIONS: Record<
     return resetHasilIq(String(p?.[0] ?? '').trim());
   },
 
+  /**
+   * Tulis hasil tes mata ke kolom CV. Admin saja, per siswa, dan hanya dari
+   * tombol — lihat komentar `tulisMataKeCv` untuk alasan tidak otomatis.
+   */
+  tulisMataKeCv: async (p: unknown[], s?: string) => {
+    const { requireAdmin } = await import('../contexts/identity');
+    const guard = requireAdmin(s || '');
+    if (guard.error) return guard.error;
+    const { tulisMataKeCv } = await import('../_lib/asesmen/tes');
+    return tulisMataKeCv(String(p?.[0] ?? '').trim());
+  },
+
   /** Sakelar buka/tutup satu tes. Admin saja. */
   setTesAktif: async (p: unknown[], s?: string) => {
     const { requireAdmin } = await import('../contexts/identity');

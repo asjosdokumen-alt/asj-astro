@@ -357,16 +357,119 @@ export async function simpanHasil(input: {
 export async function daftarHasil(jenis?: unknown, limit = 500): Promise<Record<string, unknown>> {
   const n = Math.min(Math.max(Number(limit) || 500, 1), 1000);
   const query: Record<string, string> = {
-    select: 'id,no_wa,nama,kelas,jenis,ringkasan,dibuat_pada',
+    select: 'id,no_wa,nama,kelas,jenis,ringkasan,dibuat_pada,hasil',
     order: 'dibuat_pada.desc',
     limit: String(n),
   };
   if (jenisTesSah(jenis)) query.jenis = `eq.${jenis}`;
   try {
     const rows = await supabaseJson('GET', 'candidate_assessments', { query });
-    return { success: true, hasil: Array.isArray(rows) ? rows : [] };
+    const hasil = (Array.isArray(rows) ? (rows as Record<string, unknown>[]) : []).map((r) => {
+      /* `hasil` diambil hanya untuk menyalin visus ke baris, lalu DIBUANG:
+         mengirim seluruh JSON tiap baris ke panel admin berarti 500 x ratusan
+         byte untuk dua angka yang dipakai. */
+      const isi = (r.hasil || {}) as Record<string, unknown>;
+      const salinan: Record<string, unknown> = { ...r };
+      delete salinan.hasil;
+      if (r.jenis === 'mata') salinan.visus = isi.visus || null;
+      return salinan;
+    });
+
+    /* Nilai CV ikut dikirim untuk baris tes mata: tanpa itu admin tidak bisa
+       melihat bahwa CV masih "1.0" padahal tesnya 0,7 — dan itulah satu-satunya
+       alasan tombol "tulis ke CV" ada. Satu query untuk semua WA di halaman ini,
+       bukan satu query per baris. */
+    const daftarWa = [...new Set(hasil.filter((r) => r.jenis === 'mata').map((r) => String(r.no_wa ?? '')))].filter(
+      Boolean,
+    );
+    if (daftarWa.length) {
+      try {
+        const cvRows = await supabaseJson('GET', 'master_database_candidate', {
+          query: { select: 'no_wa,mata_kanan,mata_kiri', no_wa: `in.(${daftarWa.join(',')})`, limit: '1000' },
+        });
+        const peta = new Map<string, { kanan: string; kiri: string }>();
+        for (const c of (Array.isArray(cvRows) ? cvRows : []) as Record<string, unknown>[]) {
+          peta.set(String(c.no_wa ?? ''), {
+            kanan: String(c.mata_kanan ?? '').trim(),
+            kiri: String(c.mata_kiri ?? '').trim(),
+          });
+        }
+        for (const r of hasil) {
+          if (r.jenis === 'mata') r.cv = peta.get(String(r.no_wa ?? '')) || { kanan: '', kiri: '' };
+        }
+      } catch {
+        /* CV tidak terbaca BUKAN alasan daftar hasil gagal tampil. */
+      }
+    }
+
+    return { success: true, hasil };
   } catch {
     return { success: false, message: 'Gagal memuat hasil tes.' };
+  }
+}
+
+/** Format angka visus untuk kolom CV. `0` berarti di bawah ambang ukur. */
+export function angkaCv(v: unknown): string {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n.toFixed(1) : '<0.1';
+}
+
+/**
+ * Tulis hasil tes mata ke kolom CV — TINDAKAN ADMIN, dan hanya dipanggil dari
+ * tombol per siswa.
+ *
+ * KENAPA TIDAK OTOMATIS
+ * ---------------------
+ * `sinkronKeCv` sengaja hanya mengisi kolom kosong: menimpa ketikan admin
+ * diam-diam adalah kehilangan pekerjaan yang tidak terlihat. Tetapi sejak tes
+ * ini ada, kolom yang berisi "1.0" seragam ternyata bukan hasil kerja — ia
+ * angka bawaan. Jadi penimpaan disediakan, dengan dua syarat: admin menekan
+ * tombolnya sendiri, dan responsnya menyebut nilai SEBELUM dan SESUDAH supaya
+ * perubahan itu terlihat, bukan tersembunyi.
+ */
+export async function tulisMataKeCv(waMentah: string): Promise<Record<string, unknown>> {
+  const wa = normalizeWa(String(waMentah ?? ''));
+  if (!wa) return { success: false, message: 'Nomor WA kosong.' };
+
+  let hasil: Record<string, unknown> | null = null;
+  try {
+    const rows = await supabaseJson('GET', 'candidate_assessments', {
+      query: { select: 'hasil', no_wa: `eq.${wa}`, jenis: 'eq.mata', order: 'dibuat_pada.desc', limit: '1' },
+    });
+    hasil = Array.isArray(rows) && rows.length ? ((rows[0] as Record<string, unknown>).hasil as Record<string, unknown>) : null;
+  } catch {
+    return { success: false, message: 'Gagal membaca hasil tes.' };
+  }
+  const visus = (hasil?.visus || {}) as Record<string, unknown>;
+  if (!hasil || visus.kanan === undefined || visus.kiri === undefined) {
+    return { success: false, message: 'Siswa ini belum punya hasil tes mata.' };
+  }
+
+  const baru = { mata_kanan: angkaCv(visus.kanan), mata_kiri: angkaCv(visus.kiri) };
+
+  let sebelum = { mata_kanan: '', mata_kiri: '' };
+  try {
+    const rows = await supabaseJson('GET', 'master_database_candidate', {
+      query: { select: 'mata_kanan,mata_kiri', no_wa: `eq.${wa}`, limit: '1' },
+    });
+    if (Array.isArray(rows) && rows.length) {
+      const r = rows[0] as Record<string, unknown>;
+      sebelum = { mata_kanan: String(r.mata_kanan ?? ''), mata_kiri: String(r.mata_kiri ?? '') };
+    }
+  } catch {
+    /* Gagal membaca nilai lama tidak menghalangi penulisan — tetapi respons
+       tetap menyebut bahwa nilai lama tidak diketahui. */
+  }
+
+  try {
+    await supabaseJson('PATCH', 'master_database_candidate', {
+      query: { no_wa: `eq.${wa}` },
+      body: baru,
+      headers: { Prefer: 'return=minimal' },
+    });
+    return { success: true, sebelum, sesudah: baru };
+  } catch {
+    return { success: false, message: 'Gagal menulis ke CV.' };
   }
 }
 
