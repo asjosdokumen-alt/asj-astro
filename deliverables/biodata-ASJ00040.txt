@@ -1,0 +1,200 @@
+BIODATA KANDIDAT
+====================================================
+
+IDENTITAS
+----------------------------------------------------
+Nama                           : AGUS KHOCI
+ID Kandidat                    : ASJ00040
+WhatsApp                       : 6282130442661
+Gender                         : LAKI-LAKI
+Usia                           : 36 Tahun
+Tempat Lahir                   : PONOROGO
+Tanggal Lahir                  : 1989-10-05
+Email                          : khoci89@gmail.com
+Alamat                         : NGUJUNGLOR RT3 RW3 GANDUKEPUH SUKOREJO PONOROGO JAWATIMUR, 63453
+
+FISIK & PENDIDIKAN
+----------------------------------------------------
+Tinggi / Berat                 : 165 / 57
+Pendidikan                     : SMP
+
+JFT / SSW
+----------------------------------------------------
+JFT / JLPT                     : JLPT N3
+SSW / Bidang                   : MANUFACTUR
+
+STATUS
+----------------------------------------------------
+Tahapan                        : LIST
+Status                         : GAGAL
+VIP                            : YA
+Siswa ASJ                      : TIDAK
+Kelas                          : -
+
+JOB YANG DILAMAR
+----------------------------------------------------
+  (belum ada lamaran)
+
+BERKAS
+----------------------------------------------------
+  (belum ada berkas)
+
+DATA MASTER (LENGKAP)
+====================================================
+
+IDENTITAS (MASTER)
+----------------------------------------------------
+Nama Lengkap                   : AGUS KHOCI
+Katakana                       : アグス・コチ
+Nama Panggilan                 : KOCHI
+Panggilan Katakana             : コチ
+Tempat Lahir                   : PONOROGO
+Tempat Lahir (Kanji)           : ポノロゴ
+Tanggal Lahir                  : 1989-10-05
+Usia                           : 36
+Gender                         : LAKI-LAKI
+Agama                          : ISLAM
+Agama (Kanji)                  : イスラム教
+Golongan Darah                 : O
+Status Pernikahan              : BELUM MENIKAH
+Jumlah Anak                    : TIDAK PUNYA
+Email                          : khoci89@gmail.com
+Alamat                         : NGUJUNGLOR RT3 RW3 GANDUKEPUH SUKOREJO PONOROGO JAWATIMUR, 63453
+Alamat (Kanji)                 : 〒63453 東ジャワ州 ポノロゴ県 スコレジョ郡 ガンドゥケプ村 ングジュンロル RT003 RW003
+No. WhatsApp                   : 6282130442661
+No. WA Darurat                 : 82130442661
+Status Paspor                  : TIDAK ADA
+SIM                            : TIDAK PUNYA
+Status SIM                     : TIDAK ADA
+Status Eks Jepang              : EKS MAGANG (元技能実習生)
+
+FISIK & UKURAN
+----------------------------------------------------
+Tinggi Badan                   : 165
+Berat Badan                    : 57
+Ukuran Topi                    : M
+Ukuran Baju                    : XL
+Ukuran Sepatu                  : 42
+Tangan Dominan                 : KANAN
+Bekerja di Cuaca Dingin        : YA
+Olahraga                       : サッカー
+
+KESEHATAN & RIWAYAT MEDIS
+----------------------------------------------------
+Mata Minus Kiri                : 1.0
+Mata Minus Kanan               : 1.0
+Kacamata                       : TIDAK
+Buta Warna                     : TIDAK
+Tato                           : TIDAK
+Tindik                         : TIDAK
+Merokok                        : YA
+Minum Alkohol                  : TIDAK
+Alergi                         : TIDAK ADA
+Alergi (Kanji)                 : なし
+Riwayat Penyakit               : TIDAK ADA
+Riwayat Penyakit (Kanji)       : なし
+Riwayat Kecelakaan             : TIDAK ADA
+Riwayat Kecelakaan (Kanji)     : なし
+
+WAWANCARA & MOTIVASI
+----------------------------------------------------
+Keinginan Pribadi              : membahagian kan orang tua dan tabungan untuk berkerluarga kelak
+Keinginan Pribadi (Kanji)      : 両親を喜ばせ、将来の家庭のために貯蓄すること
+Tujuan ke Jepang               : menimba ilmu dan tambahan modal nikah
+Tujuan ke Jepang (Kanji)       : 知識を学び、結婚のための資金を増やすこと
+Riwayat ke Jepang              : EKS MAGANG (元技能実習生)
+Promosi Diri                   : nama saya khoci ex ginou jisshu punya n3
+Promosi Diri (Kanji)           : 私はアグス・コチと申します。元技能実習生で、日本語能力試験N3を持っています。
+Kelebihan                      : Disiplin waktu selalu kakunin semua tugas
+Kelebihan (Kanji)              : 時間に厳しく、常にすべての業務の確認を行うこと
+Kekurangan                     : saya introvert tetapi selalu berusaha terbuka kepada orang orang yg di kenal atau rekan kerja
+Kekurangan (Kanji)             : 内向的な性格ですが、知人や同僚に対しては常に心を開くよう努めています
+Hobi & Keterampilan            : Membaca dan berenang
+Hobi & Keterampilan (Kanji)    : 読書と水泳
+Keahlian Khusus                : bisa gerinda
+Keahlian Khusus (Kanji)        : グラインダー作業が得意です。
+Motivasi ke Jepang             : mengetahiya secara nyata pola pikir cara kerja dan cara pandang jepang sehingga bisa jadi negara yg maju
+Motivasi ke Jepang (Kanji)     : 日本の実際の仕事に対する考え方、働き方、そしてなぜ日本が発展した国であるのかを肌で感じて学びたいからです。
+Alasan Memilih Bidang          : saya lulusan pemesinan jadi suka bidang manufaktur
+Alasan Memilih Bidang (Kanji)  : 機械加工科の出身であるため、製造業の仕事が好きです。
+Rencana Setelah Pulang         : bertani sambil menjaga orang tua saya
+Rencana Setelah Pulang (Kanji) : 帰国後は両親の世話をしながら農業を営みたいです。
+Harapan Gaji (Yen)             : 150,000円
+Harapan Tabungan               : 400万円
+Pengalaman Hidup Berkelompok   : YA
+Bisa Memasak                   : YA
+Restu Keluarga                 : YA
+Lama Kerja Diharapkan          : 10
+
+SERTIFIKASI & BAHASA
+----------------------------------------------------
+Bahasa                         : JLPT N3 | N3
+JFT / JLPT                     : JLPT N3
+SSW                            : MANUFACTUR
+Bidang                         : MANUFACTUR
+Status Belajar JP              : 修了
+Level Bahasa Inggris           : MENENGAH
+Level Bahasa Jepang            : N3合格
+
+RIWAYAT PENDIDIKAN
+----------------------------------------------------
+  1.
+  Tingkat                        : SD
+  Nama Sekolah                   : SDN BALONGSARI II
+  Nama Sekolah (Kanji)           : バルンスアリ第二小学校
+  Status Sekolah                 : NEGERI
+  Nama Sekolah (Kanji)           : バルンスアリ第二小学校
+  2.
+  Tingkat                        : SMP
+  Nama Sekolah                   : SMPN 4 MOJOKERTO
+  Nama Sekolah (Kanji)           : モジョケルト第四中学校
+  Status Sekolah                 : NEGERI
+  Nama Sekolah (Kanji)           : モジョケルト第四中学校
+  3.
+  Tingkat                        : SMA/SMK
+  Nama Sekolah                   : SMK RADEN PATAH
+  Nama Sekolah (Kanji)           : ラデン・パタ・スクール
+  Jurusan                        : TEKNIK PEMESINAN
+  Jurusan (Kanji)                : 機械加工
+  Status Sekolah                 : SWASTA
+  Nama Sekolah (Kanji)           : ラデン・パタ・スクール
+
+PENGALAMAN KERJA
+----------------------------------------------------
+  1.
+  Nama Perusahaan                : Taisei Monac
+  Nama Perusahaan (Kanji)        : タイセイモナック
+  Jabatan                        : ginou jisshu
+  Jabatan (Kanji)                : 技能実習生
+  2.
+  Nama Perusahaan                : LPK AMANAH SAKURA JAPAN
+  Nama Perusahaan (Kanji)        : エルピーケー・アマナ・サクラ・ジャパン
+  Jabatan                        : admin
+  Jabatan (Kanji)                : 管理者
+  Tahun Keluar                   : SEKARANG
+
+KELUARGA (SESUAI KK)
+----------------------------------------------------
+  1.
+  Nama                           : Suparno
+  Katakana                       : スパラノ
+  Usia                           : 70
+  Hubungan                       : AYAH
+  Hubungan (Kanji)               : 父
+  Pekerjaan                      : PETANI / PERKEBUNAN
+  Pekerjaan (Kanji)              : 農業
+  Gaji                           : 1.000.000
+  Tinggal                        : SERUMAH
+
+KENALAN DI JEPANG
+----------------------------------------------------
+Nama                           : KENJI
+Nama (Kanji)                   : ケンジ
+Hubungan                       : Teman
+Hubungan (Kanji)               : 友達
+Alamat                         : TOKYO
+Alamat (Kanji)                 : 東京
+
+DOKUMEN (MASTER)
+----------------------------------------------------
+Foto                           : https://res.cloudinary.com/ybzzbw9i/image/upload/v1793713850/DOKUMENASJ/agus_khoci_pasphoto.jpg
