@@ -2,7 +2,7 @@
 
 **Terakhir dirapikan:** 2026-10-08
 
-> ### ⏳ Sisa utang per 2026-11-07 — **3 butir** (dari 7)
+> ### ⏳ Sisa utang per 2026-11-07 — **4 butir** (dari 7)
 >
 > Daftar lengkap dengan bukti terukur: **`deliverables/utang-teknis-2026-11-07.md`**.
 > Diurutkan menurut (dampak ÷ usaha).
@@ -23,6 +23,15 @@
 > - **Retensi notifikasi** — `notifikasi_kandidat` 0 baris nyata (21 baris yang
 >   sempat dihitung ternyata artefak tes, sudah dihapus); cron penghapus belum
 >   layak. Ukur ulang setelah sebulan pemakaian.
+> - **`verify:assets` buta terhadap `srcset`** (temuan audit 2026-11-07).
+>   Gerbangnya hanya memindai 4 berkas dan mencocokkan path yang langsung
+>   diikuti tanda kutip, jadi 6 varian gambar hari ini tidak dipolisikan:
+>   `banner-{sakura,tokyo,momiji}-700`, `logo-asj-96`, `logo-apply-200`,
+>   `fasilitas-gedung-700`. **Butuh keputusan pemilik:** memperluas gerbang
+>   membuat `banner-momiji.webp` + `logo-apply.webp` masuk `published` untuk
+>   pertama kali, dan check (a) menuntut dasar publikasi untuk setiap foto —
+>   klaim tentang siapa yang ada di dalam foto, hanya pemilik yang boleh
+>   membuatnya. Varian galeri (6 berkas) sudah terjaga lewat `gallery.test.ts`.
 >
 > ### Yang ditutup pada 2026-10-08
 > - **Root cruft diarsipkan** — `HANDOFF.md`, `make-zip.cjs`, `preview-index.html`,
