@@ -153,6 +153,14 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   simpanHasilTes: '/.netlify/functions/kotoba',
   getHasilTesAdmin: '/.netlify/functions/kotoba',
   setTesAktif: '/.netlify/functions/kotoba',
+  /* Asesmen penalaran (2026-11-07). Sama seperti dua tes di atas: menumpang
+     `kotoba`. Tanpa tiga baris ini semuanya jatuh ke catch-all `bridge-links`
+     dan mengulang lewat 404 — fiturnya tetap jalan, jadi tidak ada yang
+     menyadari sampai ada yang membuka tab Network. Gerbangnya di
+     `action-registry.test.ts`. */
+  getSoalIq: '/.netlify/functions/kotoba',
+  simpanHasilIq: '/.netlify/functions/kotoba',
+  resetHasilIq: '/.netlify/functions/kotoba',
   /* Papan peringkat game (2026-11-04). Tanpa dua baris ini keduanya jatuh ke
      catch-all `bridge-links` dan mengulang lewat 404 — fiturnya tetap jalan,
      jadi tidak ada yang menyadari. Gerbangnya di `action-registry.test.ts`. */

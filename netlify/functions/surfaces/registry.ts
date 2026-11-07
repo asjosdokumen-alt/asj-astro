@@ -159,6 +159,11 @@ const ACTION_TO_SURFACE: Record<string, SurfaceLoader> = {
   simpanHasilTes:             () => import('./tes').then(m => m.TES_ACTIONS),
   getHasilTesAdmin:           () => import('./tes').then(m => m.TES_ACTIONS),
   setTesAktif:                () => import('./tes').then(m => m.TES_ACTIONS),
+  // Asesmen penalaran (2026-11-07): soal dikirim TANPA kunci, jawaban dinilai
+  // di server, dan `resetHasilIq` membuka ulang satu siswa (admin saja).
+  getSoalIq:                  () => import('./tes').then(m => m.TES_ACTIONS),
+  simpanHasilIq:              () => import('./tes').then(m => m.TES_ACTIONS),
+  resetHasilIq:               () => import('./tes').then(m => m.TES_ACTIONS),
   // Papan peringkat game — simpan skor (siswa) & baca papan (admin).
   simpanSkorGame:             () => import('./ai').then(m => m.AI_ACTIONS),
   getPapanSkor:               () => import('./ai').then(m => m.AI_ACTIONS),

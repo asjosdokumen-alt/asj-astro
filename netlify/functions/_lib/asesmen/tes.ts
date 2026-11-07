@@ -25,14 +25,17 @@
  */
 
 import { normalizeWa, supabaseJson } from '../db/client';
+import { DURASI_IQ_MENIT, VERSI_BANK_IQ, soalKlienIq } from './iq-bank';
+import { nilaiIq, ringkasIq, tampilanIqSiswa, type HasilIqLengkap } from './iq-scorer';
 
-export const TES_SAH = ['mbti', 'mata'] as const;
+export const TES_SAH = ['mbti', 'mata', 'iq'] as const;
 export type JenisTes = (typeof TES_SAH)[number];
 
 /** `sys_config.config_type` untuk tiap tes. Nilai `on` = aktif. */
 const CONFIG_TYPE: Record<JenisTes, string> = {
   mbti: 'tes_mbti',
   mata: 'tes_mata',
+  iq: 'tes_iq',
 };
 
 export function jenisTesSah(v: unknown): v is JenisTes {
@@ -47,7 +50,7 @@ export interface StatusTes {
 
 /** Baca sakelar admin. Gagal baca = nonaktif (lihat komentar di atas). */
 export async function bacaSakelar(): Promise<Record<JenisTes, boolean>> {
-  const mati = { mbti: false, mata: false };
+  const mati = { mbti: false, mata: false, iq: false };
   try {
     const rows = await supabaseJson('GET', 'sys_config', {
       query: {
@@ -95,7 +98,7 @@ export async function statusTes(waMentah: string): Promise<Record<string, unknow
   const aktif = await bacaSakelar();
   const kosong: StatusTes = {
     aktif,
-    selesai: { mbti: false, mata: false },
+    selesai: { mbti: false, mata: false, iq: false },
     hasil: {},
   };
   if (!wa) return { success: true, wa: '', ...kosong };
@@ -109,13 +112,18 @@ export async function statusTes(waMentah: string): Promise<Record<string, unknow
       },
     });
     if (!Array.isArray(rows)) return { success: true, wa, ...kosong };
-    const status: StatusTes = { aktif, selesai: { mbti: false, mata: false }, hasil: {} };
+    const status: StatusTes = { aktif, selesai: { mbti: false, mata: false, iq: false }, hasil: {} };
     for (const r of rows as { jenis?: unknown; ringkasan?: unknown; hasil?: unknown; dibuat_pada?: unknown }[]) {
       if (!jenisTesSah(r.jenis)) continue;
       status.selesai[r.jenis] = true;
       status.hasil[r.jenis] = {
-        ringkasan: String(r.ringkasan ?? ''),
-        hasil: r.hasil ?? {},
+        /* `ringkasan` untuk 'iq' memuat "34/40 · skala 121" — angka penuh yang
+           menurut keputusan pemilik 2026-11-07 hanya boleh dilihat admin. Jalur
+           ini melayani SISWA, jadi ringkasannya dikosongkan dan `hasil`-nya
+           dipotong ke bentuk siswa. Kalau tidak, angkanya tetap sampai ke HP
+           lewat tab Network meski tidak digambar di layar. */
+        ringkasan: r.jenis === 'iq' ? '' : String(r.ringkasan ?? ''),
+        hasil: r.jenis === 'iq' ? (tampilanIqSiswa(r.hasil) ?? {}) : (r.hasil ?? {}),
         dibuat_pada: String(r.dibuat_pada ?? ''),
       };
     }
@@ -349,4 +357,131 @@ export async function setAktif(jenis: unknown, aktif: unknown): Promise<Record<s
   } catch {
     return { success: false, message: 'Gagal menyimpan pengaturan tes.' };
   }
+}
+
+/* ── Asesmen penalaran ('iq') ──────────────────────────────────────────────
+ *
+ * Tiga fungsi di bawah SENGAJA terpisah dari `simpanHasil` di atas, meski
+ * tabelnya sama. Bedanya bukan gaya: MBTI dan Tes Mata tidak punya jawaban
+ * benar (klien menghitung, server memvalidasi bentuk), sedangkan tes ini punya
+ * kunci yang tidak boleh keluar dari server. Menyatukannya berarti satu fungsi
+ * dengan dua aturan kepercayaan yang berbeda — dan aturan yang bercampur adalah
+ * aturan yang cepat atau lambat dilonggarkan di jalur yang salah.
+ */
+
+/**
+ * Soal untuk satu siswa. Kalau ia sudah pernah mengerjakan, soal TIDAK
+ * dikirim — yang dikirim tampilan hasilnya, supaya "sekali seumur hidup"
+ * tidak bergantung pada tombol yang disembunyikan.
+ */
+export async function soalIqUntuk(waMentah: string): Promise<Record<string, unknown>> {
+  const wa = normalizeWa(String(waMentah ?? ''));
+  const sakelar = await bacaSakelar();
+  if (!sakelar.iq) return { success: false, nonaktif: true, message: 'Tes ini sedang ditutup admin.' };
+
+  if (wa) {
+    try {
+      const rows = await supabaseJson('GET', 'candidate_assessments', {
+        query: { select: 'hasil', no_wa: `eq.${wa}`, jenis: 'eq.iq', limit: '1' },
+      });
+      if (Array.isArray(rows) && rows.length) {
+        const isi = tampilanIqSiswa((rows[0] as { hasil?: unknown }).hasil);
+        return { success: true, sudah: true, tampilan: isi };
+      }
+    } catch {
+      /* Hasil tidak terbaca BUKAN alasan mengirim soal lagi: satu gangguan
+         database akan membakar kesempatan satu-satunya siswa. */
+      return { success: false, message: 'Gagal memeriksa status tes. Coba lagi sebentar.' };
+    }
+  }
+
+  return {
+    success: true,
+    sudah: false,
+    versi: VERSI_BANK_IQ,
+    durasiMenit: DURASI_IQ_MENIT,
+    soal: soalKlienIq(wa),
+  };
+}
+
+/**
+ * Nilai + simpan. Angka penuh masuk database, yang kembali ke klien hanya
+ * bentuk siswa (lihat `tampilanIqSiswa`).
+ */
+export async function simpanHasilIq(input: {
+  wa: string;
+  jawaban: unknown;
+  durasiDetik: unknown;
+}): Promise<Record<string, unknown>> {
+  const wa = normalizeWa(String(input.wa ?? ''));
+  if (!wa) return { success: false, message: 'Nomor WA kosong.' };
+
+  const sakelar = await bacaSakelar();
+  if (!sakelar.iq) return { success: false, nonaktif: true, message: 'Tes ini sedang ditutup admin.' };
+
+  const id = await identitasSiswa(wa);
+  if (!id) return { success: false, message: 'Kandidat tidak ditemukan.' };
+
+  /* Penilaian memakai `wa` yang SUDAH dinormalkan, bukan kiriman mentah klien:
+     seed pemilih soal harus sama dengan seed saat soal dikirim, kalau tidak
+     kunci yang dipakai menilai bukan kunci untuk soal yang dilihat siswa. */
+  const penuh: HasilIqLengkap = nilaiIq(wa, input.jawaban, input.durasiDetik);
+
+  try {
+    await supabaseJson('POST', 'candidate_assessments', {
+      body: {
+        no_wa: wa,
+        nama: id.nama,
+        kelas: id.kelas,
+        jenis: 'iq',
+        ringkasan: ringkasIq(penuh),
+        hasil: penuh,
+      },
+      headers: { Prefer: 'return=minimal' },
+    });
+  } catch (e) {
+    const pesan = String((e as { message?: unknown })?.message ?? e);
+    if (/duplicate key|23505|sudah ada/i.test(pesan)) {
+      return { success: false, sudah: true, message: 'Tes ini sudah pernah kamu kerjakan.' };
+    }
+    return { success: false, message: 'Gagal menyimpan hasil tes. Coba lagi.' };
+  }
+
+  return { success: true, jenis: 'iq', tampilan: tampilanIqSiswa(penuh) };
+}
+
+/**
+ * Buka ulang untuk SATU siswa. Tindakan admin, bukan sakelar: siswa yang HP-nya
+ * mati di tengah ujian tidak boleh kehilangan kesempatan satu-satunya, tetapi
+ * membuka untuk semua orang berarti tes ini tidak lagi mengukur apa pun.
+ */
+export async function resetHasilIq(waMentah: string): Promise<Record<string, unknown>> {
+  const wa = normalizeWa(String(waMentah ?? ''));
+  if (!wa) return { success: false, message: 'Nomor WA kosong.' };
+  try {
+    await supabaseJson('DELETE', 'candidate_assessments', {
+      query: { no_wa: `eq.${wa}`, jenis: 'eq.iq' },
+      headers: { Prefer: 'return=minimal' },
+    });
+    return { success: true, wa };
+  } catch {
+    return { success: false, message: 'Gagal membuka ulang tes siswa ini.' };
+  }
+}
+
+/**
+ * Mode uji admin: nilai SAJA, tanpa menulis.
+ *
+ * Dipisah dari `simpanHasilIq` supaya "jangan menyimpan" tidak pernah menjadi
+ * cabang di dalam jalur yang menyimpan. Pemeriksaan admin dilakukan pemanggil
+ * (`surfaces/tes.ts` → `requireAdmin`), karena hanya di sana sesi tersedia.
+ */
+export function nilaiIqTanpaSimpan(
+  waMentah: string,
+  jawaban: unknown,
+  durasiDetik: unknown,
+): Record<string, unknown> {
+  const wa = normalizeWa(String(waMentah ?? ''));
+  const penuh = nilaiIq(wa, jawaban, durasiDetik);
+  return { success: true, uji: true, tampilan: tampilanIqSiswa(penuh) };
 }

@@ -18,4 +18,9 @@ import { TES_ACTIONS } from './surfaces/tes.js';
 export default adapt(makeSurfaceHandler([KOTOBA_ACTIONS, TES_ACTIONS], [
   'getBankKotoba', 'getBankSsw', 'getBankMatematika',
   'getStatusTes', 'simpanHasilTes', 'getHasilTesAdmin', 'setTesAktif',
+  // Asesmen penalaran (2026-11-07). Daftar ini adalah gerbang entry: action
+  // yang tidak disebut di sini dijawab 404 oleh fungsi ini, lalu klien
+  // mengulang ke catch-all — jalan, tetapi lewat dua perjalanan dan tanpa
+  // seorang pun menyadarinya. Gerbangnya di `action-registry.test.ts`.
+  'getSoalIq', 'simpanHasilIq', 'resetHasilIq',
 ]));

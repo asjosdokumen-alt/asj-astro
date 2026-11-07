@@ -14,29 +14,40 @@
  *      itu tidak bisa dibatalkan.
  *   3. Penolakan di depan (WA kosong, jenis asing) terjadi SEBELUM menyentuh DB.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { TES_SAH, bacaSakelar, jenisTesSah, setAktif, simpanHasil } from './tes';
 
 describe('jenis tes', () => {
-  it('tepat dua jenis yang dipakai aplikasi', () => {
-    expect([...TES_SAH]).toEqual(['mbti', 'mata']);
+  it('tepat tiga jenis yang dipakai aplikasi', () => {
+    expect([...TES_SAH]).toEqual(['mbti', 'mata', 'iq']);
     for (const j of TES_SAH) expect(jenisTesSah(j)).toBe(true);
   });
 
   it('menolak nilai asing dan non-string', () => {
-    for (const v of ['', 'MBTI', 'eye', null, undefined, 0, {}]) {
+    for (const v of ['', 'MBTI', 'eye', 'kepribadian', null, undefined, 0, {}]) {
       expect(jenisTesSah(v)).toBe(false);
     }
   });
 });
 
 describe('CHECK constraint di migrasi cocok dengan TES_SAH', () => {
-  const berkas = readFileSync(new URL('../../../../migrations/048_asesmen_tes.sql', import.meta.url), 'utf8');
+  /* Migrasi TERAKHIR yang mendefinisikan constraint ini yang dibaca, bukan 048.
+     Nomor berkasnya bergeser setiap kali daftar jenis bertambah (051 menambah
+     'iq'), dan tes yang menunjuk satu nomor akan merah bukan karena aturannya
+     berubah — persis kegagalan yang pernah terjadi pada `claim_next_job`. */
+  const dir = new URL('../../../../migrations/', import.meta.url);
+  const berkasMigrasi = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .map((f) => ({ nama: f, isi: readFileSync(new URL(f, dir), 'utf8') }))
+    .filter((f) => /candidate_assessments_jenis_sah/i.test(f.isi));
+  const terakhir = berkasMigrasi[berkasMigrasi.length - 1];
+  const berkas = terakhir?.isi || '';
   const cocok = /CHECK\s*\(\s*jenis\s+IN\s*\(([^)]*)\)\s*\)/i.exec(berkas);
 
   it('migrasi memuat daftar jenis yang bisa dibaca', () => {
-    expect(cocok, 'pola CHECK (jenis IN (...)) tidak ditemukan di migrasi 048').toBeTruthy();
+    expect(cocok, `pola CHECK (jenis IN (...)) tidak ditemukan di ${terakhir?.nama || 'migrasi mana pun'}`).toBeTruthy();
   });
 
   it('daftar di migrasi SAMA dengan TES_SAH', () => {
@@ -58,7 +69,7 @@ describe('gagal-tertutup', () => {
      Itu justru jalur yang diuji: gangguan DB tidak boleh membuka tes. */
   it('sakelar dibaca nonaktif saat DB tidak terbaca', async () => {
     const s = await bacaSakelar();
-    expect(s).toEqual({ mbti: false, mata: false });
+    expect(s).toEqual({ mbti: false, mata: false, iq: false });
   });
 
   it('simpanHasil menolak dengan `nonaktif` saat sakelar tidak terbaca', async () => {
@@ -79,13 +90,13 @@ describe('penolakan sebelum DB', () => {
   });
 
   it('jenis asing ditolak', async () => {
-    const r = await simpanHasil({ wa: '6281234567890', jenis: 'iq', hasil: {} });
+    const r = await simpanHasil({ wa: '6281234567890', jenis: 'kepribadian', hasil: {} });
     expect(r.success).toBe(false);
     expect(String(r.message)).toContain('Jenis tes');
   });
 
   it('setAktif menolak jenis asing tanpa menyentuh DB', async () => {
-    const r = await setAktif('iq', true);
+    const r = await setAktif('kepribadian', true);
     expect(r.success).toBe(false);
     expect(String(r.message)).toContain('Jenis tes');
   });

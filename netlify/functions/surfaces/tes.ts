@@ -62,6 +62,52 @@ export const TES_ACTIONS: Record<
     return daftarHasil(p?.[0], Number(p?.[1]) || 500);
   },
 
+  /**
+   * Asesmen penalaran: soal + penilaian.
+   *
+   * Dua action terpisah dari `getStatusTes`/`simpanHasilTes` karena bentuk
+   * datanya berbeda: yang ini mengirim SOAL (tanpa kunci) dan menerima JAWABAN
+   * mentah, bukan hasil yang sudah dihitung klien.
+   */
+  getSoalIq: async (p: unknown[], s?: string) => {
+    const wa = String(p?.[0] ?? '').trim();
+    const tolak = await tolakKecualiSiswa(s, wa);
+    if (tolak) return tolak;
+    const { soalIqUntuk } = await import('../_lib/asesmen/tes');
+    return soalIqUntuk(wa);
+  },
+
+  simpanHasilIq: async (p: unknown[], s?: string) => {
+    const d = (p?.[0] || {}) as { wa?: unknown; jawaban?: unknown; durasiDetik?: unknown; uji?: unknown };
+    const wa = String(d.wa ?? '').trim();
+
+    /* Mode uji: nilai saja, JANGAN simpan. Gerbangnya `requireAdmin`, bukan
+       `tolakKecualiSiswa` — kalau tidak, siswa bisa mengirim `uji: true` untuk
+       melihat hasil tanpa memakai kesempatan satu-satunya, lalu mengulang
+       sampai puas. */
+    if (d.uji === true) {
+      const { requireAdmin } = await import('../contexts/identity');
+      const guard = requireAdmin(s || '');
+      if (guard.error) return guard.error;
+      const { nilaiIqTanpaSimpan } = await import('../_lib/asesmen/tes');
+      return nilaiIqTanpaSimpan(wa, d.jawaban, d.durasiDetik);
+    }
+
+    const tolak = await tolakKecualiSiswa(s, wa);
+    if (tolak) return tolak;
+    const { simpanHasilIq } = await import('../_lib/asesmen/tes');
+    return simpanHasilIq({ wa, jawaban: d.jawaban, durasiDetik: d.durasiDetik });
+  },
+
+  /** Buka ulang SATU siswa — admin saja, dan sengaja bukan bagian sakelar. */
+  resetHasilIq: async (p: unknown[], s?: string) => {
+    const { requireAdmin } = await import('../contexts/identity');
+    const guard = requireAdmin(s || '');
+    if (guard.error) return guard.error;
+    const { resetHasilIq } = await import('../_lib/asesmen/tes');
+    return resetHasilIq(String(p?.[0] ?? '').trim());
+  },
+
   /** Sakelar buka/tutup satu tes. Admin saja. */
   setTesAktif: async (p: unknown[], s?: string) => {
     const { requireAdmin } = await import('../contexts/identity');
