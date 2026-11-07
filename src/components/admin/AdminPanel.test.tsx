@@ -38,6 +38,16 @@ vi.mock('./MatchmakingModal', () => ({ default: () => null }));
 
 vi.mock('../Toast', () => ({ showToast: vi.fn() }));
 
+// Tab Papan Skor memuat datanya sendiri lewat `api.secure`. `AdminPanel.tsx`
+// sendiri tidak memanggil `api` sama sekali (0 rujukan), jadi mock ini tidak
+// mengubah satu pun tes di atas — ia hanya membuat pemuatan tab itu bisa
+// ditahan pada keadaan "belum selesai".
+const { mockSecure } = vi.hoisted(() => ({ mockSecure: vi.fn() }));
+vi.mock('../../lib/apiClient', () => {
+  const api = { secure: (...a: unknown[]) => mockSecure(...a) };
+  return { api, default: api };
+});
+
 // Keep the real store (AdminPanel calls useLang(), which reads it) but make t()
 // a pass-through so assertions read the key names, like MatchmakingModal.test.
 vi.mock('../../store/i18n', async () => {
@@ -180,5 +190,54 @@ describe('AdminPanel — Papan Tugas Tim', () => {
     render(<AdminPanel />);
     const nav = screen.getByRole('navigation', { name: 'Admin sidebar' });
     expect(nav.tagName.toLowerCase()).toBe('aside');
+  });
+});
+
+/**
+ * Tab Papan Skor saat MUAT PERTAMA.
+ *
+ * Bug yang dikunci di sini: `papan` masih `null` selama muat, dan setiap kartu
+ * jatuh ke cabang `baris.length === 0` — jadi keenam papan menampilkan
+ * "belum ada skor" padahal jawabannya belum diketahui. Itu bukan keadaan
+ * kosong, itu tebakan yang tampil sebagai fakta; admin bisa menyimpulkan tidak
+ * ada yang bermain sementara daftarnya sedang dalam perjalanan.
+ */
+describe('AdminPanel — Papan Skor: kerangka saat memuat, bukan "kosong"', () => {
+  beforeEach(() => {
+    mockSecure.mockReset();
+  });
+  afterEach(() => cleanup());
+
+  const openSkorTab = () =>
+    fireEvent.click(screen.getByRole('button', { name: 'admin.tab_papan_skor' }));
+
+  it('menampilkan role=status dan TIDAK mengklaim "belum ada skor" selagi memuat', async () => {
+    // Janji yang tidak pernah selesai: keadaan "belum tahu" ditahan terbuka.
+    mockSecure.mockReturnValue(new Promise(() => {}));
+
+    render(<AdminPanel />);
+    openSkorTab();
+
+    expect(await screen.findByRole('status')).toBeTruthy();
+    expect(screen.queryByText('admin.papan_skor_kosong')).toBeNull();
+  });
+
+  it('setelah data tiba, kerangka hilang dan barisnya tampil', async () => {
+    mockSecure.mockResolvedValue({
+      papan: {
+        matematika: [
+          { no_wa: '628111', nama: 'Budi', skor: 91, kelas: 'A', dibuat_pada: '2026-11-01T10:00:00Z' },
+        ],
+      },
+    });
+
+    render(<AdminPanel />);
+    openSkorTab();
+
+    expect(await screen.findByText('Budi')).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
+    // Papan yang memang kosong tetap mengatakan kosong — kerangka tidak boleh
+    // menutupi keadaan itu selamanya.
+    expect(screen.getAllByText('admin.papan_skor_kosong').length).toBe(3);
   });
 });

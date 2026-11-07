@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from 'preact/hooks';
 import api from '../../lib/apiClient';
 import { t, useLang } from '../../store/i18n';
 import Icon from '../ui/Icon';
+import { Bar, Status } from '../ui/Skeleton';
 
 interface Baris {
   no_wa: string;
@@ -100,6 +101,43 @@ export default function TabPapanSkor() {
     ),
   ).sort();
 
+  /* Muat PERTAMA saja. Saat menyegarkan, `papan` sudah berisi data lama dan
+     kerangka akan menghapus informasi yang sudah benar — jadi yang diganti
+     kerangka hanya keadaan "belum tahu", bukan "sedang memperbarui". */
+  const memuatAwal = memuat && !papan;
+
+  /* KERANGKA, BUKAN "BELUM ADA SKOR". Sebelum ini `papan` masih null selama
+     muat pertama, jadi keenam kartu menampilkan `admin.papan_skor_kosong` —
+     dan itu BUKAN keadaan kosong, itu keadaan BELUM TAHU. Admin membuka tab,
+     membaca "belum ada yang bermain", lalu daftarnya muncul sendiri. Kerangka
+     memberi tahu BENTUK yang akan datang tanpa mengklaim apa pun.
+
+     Satu `Status` untuk seluruh grid, bukan enam: enam `role="status"` berarti
+     enam pengumuman pembaca layar untuk satu kali pemuatan. */
+  const kerangka = (
+    <Status class="grid gap-4 md:grid-cols-2">
+      {PAPAN.map((g) => (
+        <section key={g.id} class="rounded-card border border-line bg-surface-raised p-3">
+          <div class="mb-2.5 flex items-center justify-between gap-2 border-b border-line pb-2">
+            <Bar class="h-4 w-32" />
+            <Bar class="h-3 w-14" />
+          </div>
+          <div class="space-y-1.5">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} class="flex items-center gap-2 rounded-control bg-surface-sunken px-2.5 py-1.5">
+                <Bar class="h-4 w-6 shrink-0" />
+                <div class="min-w-0 flex-1 space-y-1">
+                  <Bar class="h-3 w-1/2" />
+                  <Bar class="h-2 w-1/3" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
+    </Status>
+  );
+
   return (
     <div>
       <div class="flex flex-wrap justify-between items-center gap-2 border-b border-pink-900/50 pb-4 mb-4">
@@ -140,6 +178,9 @@ export default function TabPapanSkor() {
         </p>
       )}
 
+      {memuatAwal ? (
+        kerangka
+      ) : (
       <div class="grid gap-4 md:grid-cols-2">
         {PAPAN.map((g) => {
           const semuaBaris = papan?.[g.id] || [];
@@ -212,6 +253,7 @@ export default function TabPapanSkor() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

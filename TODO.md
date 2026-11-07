@@ -102,7 +102,23 @@
       `ALL_HEADING_ROUTES`, dan mutasi balik ke `h4` membuat gate gagal dengan
       pesan yang menyebut kedua heading-nya. **Pelajaran:** yang salah bukan
       aturannya, melainkan CAKUPAN daftar yang di-walk.
-- [ ] Loading skeleton di semua halaman yang memuat data
+- [x] ~~Loading skeleton di semua halaman yang memuat data~~ → **AUDIT SELESAI
+      2026-11-07.** Sebagian besar sudah ada sebelum butir ini diperiksa:
+      `ui/Skeleton.tsx` dipakai 9 tab admin, `CandidateSkeleton` untuk dasbor
+      kandidat, `LokerTable` memakai `TableRows`, `/public` memakai `Status`.
+      **Satu celah nyata ditemukan dan ditutup:** tab **Papan Skor** tidak punya
+      keadaan memuat — selama muat pertama `papan` masih `null`, jadi KEEMPAT
+      kartu menampilkan `admin.papan_skor_kosong` ("belum ada skor"), lalu
+      daftarnya muncul sendiri. Itu bukan keadaan kosong, itu tebakan yang
+      tampil sebagai fakta. Sekarang kerangka berbentuk kartu+baris, satu
+      `role="status"` untuk seluruh grid (enam akan berarti enam pengumuman
+      pembaca layar), dan keadaan "sedang menyegarkan" tetap menampilkan data
+      lama — bukan kerangka. Dua tes di `AdminPanel.test.tsx`; dibuktikan bisa
+      MERAH dengan mematikan `memuatAwal`.
+      ⚠ Yang TIDAK dikerjakan, dan alasannya: modal-modal admin
+      (`CekSiswaModal`, `EditCandidateModal`, dll.) memuat data tanpa kerangka,
+      tetapi isinya formulir yang sudah punya bentuk — kerangka di sana akan
+      menutupi field yang sudah bisa dibaca. Bukan halaman.
 
 ### Polish
 - [ ] Image optimization via Cloudinary transforms
