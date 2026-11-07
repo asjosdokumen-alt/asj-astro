@@ -20,7 +20,7 @@ import { simpanWaUji, waUjiTersimpan } from '../../store/authReactive';
 import { t, useLang } from '../../store/i18n';
 import Icon from '../ui/Icon';
 
-type Jenis = 'mbti' | 'mata';
+type Jenis = 'mbti' | 'mata' | 'iq';
 
 interface BarisHasil {
   id: number | string;
@@ -41,6 +41,7 @@ interface StatusRes {
 const TES: { id: Jenis; judul: string; ket: string; ikon: string }[] = [
   { id: 'mbti', judul: 'tes.admin_mbti_judul', ket: 'tes.admin_mbti_ket', ikon: 'clipboard-check' },
   { id: 'mata', judul: 'tes.admin_mata_judul', ket: 'tes.admin_mata_ket', ikon: 'eye' },
+  { id: 'iq', judul: 'tes.admin_iq_judul', ket: 'tes.admin_iq_ket', ikon: 'chart-bar' },
 ];
 
 /**
@@ -59,6 +60,7 @@ const TES: { id: Jenis; judul: string; ket: string; ikon: string }[] = [
 const FITUR_UJI: { jalur: string; labelKey: string; ikon: string }[] = [
   { jalur: '/tes-mbti', labelKey: 'ui.tes_mbti', ikon: 'clipboard-check' },
   { jalur: '/tes-mata', labelKey: 'ui.tes_mata', ikon: 'eye' },
+  { jalur: '/tes-iq', labelKey: 'ui.tes_iq', ikon: 'chart-bar' },
   { jalur: '/arcade', labelKey: 'toolbar.arcade', ikon: 'star' },
   { jalur: '/kotoba', labelKey: 'toolbar.kotoba', ikon: 'language' },
   { jalur: '/matematika', labelKey: 'toolbar.matematika', ikon: 'chart-bar' },
@@ -91,6 +93,10 @@ export default function TabTes() {
      tautan di bawah membawanya. Halaman tes juga membacanya sendiri, jadi
      `/tes-mbti` boleh dibuka tanpa `?wa=` sama sekali. */
   const [waUji, setWaUji] = useState(waUjiTersimpan);
+  /* WA yang sedang dibuka ulang. Satu per satu: tombol yang bisa diklik dua
+     kali pada dua baris sekaligus adalah cara paling mudah menghapus hasil
+     siswa yang salah. */
+  const [resetWa, setResetWa] = useState('');
 
   const muat = useCallback(async () => {
     setMemuat(true);
@@ -139,6 +145,33 @@ export default function TabTes() {
 
   const baris = filter ? hasil.filter((r) => r.jenis === filter) : hasil;
 
+  /**
+   * Buka ulang SATU siswa. Barisnya dihapus dari tabel HANYA setelah server
+   * menjawab `success` — kalau gagal, baris yang masih terkunci harus tetap
+   * terlihat, bukan menghilang dari layar sementara di database masih ada.
+   */
+  const bukaUlang = async (wa: string, nama: string) => {
+    if (resetWa) return;
+    if (!window.confirm(t('tes.admin_konfirmasi_reset').replace('{nama}', nama || wa))) return;
+    setGalat('');
+    setResetWa(wa);
+    try {
+      const d = (await api.secure('resetHasilIq', [wa], { silent: true })) as {
+        success?: boolean;
+        message?: string;
+      };
+      if (d?.success === false) {
+        setGalat(d.message || t('tes.admin_galat_reset'));
+        return;
+      }
+      setHasil((h) => h.filter((r) => !(r.jenis === 'iq' && r.no_wa === wa)));
+    } catch {
+      setGalat(t('tes.admin_galat_reset'));
+    } finally {
+      setResetWa('');
+    }
+  };
+
   return (
     <div>
       <div class="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-pink-900/50 pb-4">
@@ -155,6 +188,7 @@ export default function TabTes() {
             <option value="">{t('tes.admin_filter_semua')}</option>
             <option value="mbti">MBTI</option>
             <option value="mata">{t('tes.admin_mata_judul')}</option>
+            <option value="iq">{t('tes.admin_iq_judul')}</option>
           </select>
           <button
             type="button"
@@ -278,7 +312,8 @@ export default function TabTes() {
                   <th class="py-1.5 pr-2 font-bold">{t('tes.admin_kolom_nama')}</th>
                   <th class="py-1.5 pr-2 font-bold">{t('tes.admin_kolom_jenis')}</th>
                   <th class="py-1.5 pr-2 font-bold">{t('tes.admin_kolom_ringkasan')}</th>
-                  <th class="py-1.5 font-bold">{t('tes.admin_kolom_tanggal')}</th>
+                  <th class="py-1.5 pr-2 font-bold">{t('tes.admin_kolom_tanggal')}</th>
+                  <th class="py-1.5 font-bold">{t('tes.admin_kolom_aksi')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -292,10 +327,31 @@ export default function TabTes() {
                         </span>
                       )}
                     </td>
-                    <td class="py-1.5 pr-2 text-fg-muted">{r.jenis === 'mbti' ? 'MBTI' : t('tes.admin_mata_judul')}</td>
+                    <td class="py-1.5 pr-2 text-fg-muted">
+                      {r.jenis === 'mbti'
+                        ? 'MBTI'
+                        : r.jenis === 'iq'
+                          ? t('tes.admin_iq_judul')
+                          : t('tes.admin_mata_judul')}
+                    </td>
                     <td class="py-1.5 pr-2 text-fg">{r.ringkasan}</td>
                     <td class="py-1.5 tabular-nums text-fg-muted">
                       {r.dibuat_pada ? r.dibuat_pada.slice(0, 10).split('-').reverse().join('/') : ''}
+                    </td>
+                    <td class="py-1.5">
+                      {r.jenis === 'iq' ? (
+                        <button
+                          type="button"
+                          disabled={resetWa === r.no_wa}
+                          onClick={() => void bukaUlang(r.no_wa, r.nama)}
+                          title={t('tes.admin_reset_judul')}
+                          class="min-h-9 rounded-control border border-line px-2 text-[11px] font-bold text-fg-muted hover:border-accent-amber hover:text-fg disabled:opacity-50"
+                        >
+                          {resetWa === r.no_wa ? '…' : t('tes.admin_reset')}
+                        </button>
+                      ) : (
+                        <span class="text-[11px] text-fg-muted">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

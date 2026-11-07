@@ -1,0 +1,37 @@
+---
+// Asesmen Penalaran (`/tes-iq`).
+//
+// Bentuk halaman mengikuti `/tes-mbti`: satu komponen `client:only`, satu
+// pengantar singkat, satu `<noscript>`. Gerbangnya TIDAK disalin di sini —
+// ia hidup di `GerbangTes` dan, yang menentukan, di server (`getSoalIq` /
+// `simpanHasilIq` → `tolakKecualiSiswa` + `bacaSakelar`).
+import BaseLayout from '../layouts/BaseLayout.astro';
+import App from '../components/App.tsx';
+import FormToolbar from '../components/forms/FormToolbar';
+import IqTest from '../components/candidate/tes/IqTest.tsx';
+---
+
+<BaseLayout
+  title="Asesmen Penalaran — ASJ"
+  titleKey="doc.title_tes_iq"
+  description="Asesmen penalaran kerja untuk siswa ASJ: pemahaman verbal, ketelitian numerik, orientasi spasial, dan penalaran logika. Bukan tes IQ klinis."
+  noIndex
+>
+  <App showHeader={false} client:only="preact" />
+
+  <FormToolbar client:only="preact" titleKey="toolbar.tes_iq" backTo="dashboard" />
+  <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
+    <div class="max-w-2xl mx-auto px-3">
+      <section class="mb-3">
+        <h1 class="text-lg font-bold text-fg mb-1">Asesmen Penalaran</h1>
+        <p class="text-fg-muted text-[12px] leading-snug">
+          40 soal, 25 menit: pemahaman verbal, hitungan kerja, pola visual, dan penalaran logika.
+        </p>
+      </section>
+      <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
+        Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.
+      </noscript>
+      <IqTest client:only="preact" />
+    </div>
+  </main>
+</BaseLayout>

@@ -25,7 +25,7 @@ import { apiClient, type ApiError } from '../../../lib/apiClient';
 import { t } from '../../../store/i18n';
 import LoginGate from '../../ui/LoginGate';
 
-export type JenisTes = 'mbti' | 'mata';
+export type JenisTes = 'mbti' | 'mata' | 'iq';
 
 export interface HasilTersimpan {
   ringkasan: string;
@@ -235,7 +235,11 @@ export function KartuGerbang({ gerbang, jenis }: { gerbang: Gerbang; jenis: Jeni
       >
         <h2 class="mb-2 text-base font-black text-accent-amber">{t('tes.tertutup_judul')}</h2>
         <p class="text-[12.5px] leading-relaxed text-fg">
-          {jenis === 'mbti' ? t('tes.tertutup_isi_mbti') : t('tes.tertutup_isi_mata')}
+          {jenis === 'mbti'
+            ? t('tes.tertutup_isi_mbti')
+            : jenis === 'iq'
+              ? t('tes.tertutup_isi_iq')
+              : t('tes.tertutup_isi_mata')}
         </p>
         <p class="mt-3 text-[11.5px] text-fg-muted">{t('tes.tertutup_hubungi')}</p>
       </section>
