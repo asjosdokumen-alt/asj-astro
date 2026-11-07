@@ -22,6 +22,10 @@ const revoked = vi.hoisted(() => ({
   candidateMissing: new Set<string>(),
   /** Simulates an unreachable DB: every lookup answers "unknown". */
   dbDown: false,
+  /** Baris `fcm_tokens` yang dikembalikan GET (urut `last_used_at` desc). */
+  fcmRows: [] as Array<{ id: string; token: string }>,
+  /** Nilai query `id=in.(...)` dari setiap DELETE ke `fcm_tokens`. */
+  fcmDeleted: [] as string[],
 }));
 
 vi.mock('./repository', async () => {
@@ -35,7 +39,26 @@ vi.mock('./repository', async () => {
     },
     candidateExistsForRefresh: async (wa: string) =>
       revoked.dbDown ? null : !revoked.candidateMissing.has(wa),
+    /* `registerFcmToken` memakai `supabaseJson` dari modul ini. Tanpa override,
+       tesnya akan menulis ke database sungguhan — dan pagar
+       `_lib/db/test-guard.ts` memerahkannya. */
+    supabaseJson: async (method: string, table: string, opts?: { query?: Record<string, string> }) => {
+      if (table !== 'fcm_tokens') return [];
+      if (method === 'GET') return revoked.fcmRows;
+      if (method === 'DELETE') {
+        revoked.fcmDeleted.push(String(opts?.query?.id ?? ''));
+        return [];
+      }
+      return [];
+    },
   };
+});
+
+/* Probe token mati ke FCM tidak boleh jalan di tes: `registerFcmToken` memanggil
+   `pruneDeadTokens` untuk setiap token saudara. */
+vi.mock('../../_lib/fcm-helpers', async () => {
+  const actual = await vi.importActual<Record<string, unknown>>('../../_lib/fcm-helpers');
+  return { ...actual, pruneDeadTokens: async () => {} };
 });
 
 import {
@@ -265,5 +288,81 @@ describe('refresh kandidat — baris yang sudah tidak ada', () => {
   it('KONTROL: kandidat yang masih ada tetap bisa menyegarkan', async () => {
     const rt = signToken({ role: 'kandidat', wa: WA, kind: 'refresh' });
     expect((await refreshKandidatSession(rt)).success).toBe(true);
+  });
+});
+// ==========================================
+// TESTS: batas 3 perangkat per identitas (2026-11-07)
+//
+// Permintaan pemilik: "cukup 3 device aktif terakhir yang selalu disimpan".
+// Sebelum ini hanya token yang DIJAWAB mati oleh FCM yang dibuang; token yang
+// masih dianggap hidup menumpuk setiap kali login/logout bergantian.
+//
+// CATATAN: blok ini MEMASANG ULANG mock repository-nya sendiri. Tes
+// `loginKandidat` di atas memakai `vi.doMock` + `vi.doUnmock`, dan `doUnmock`
+// mencabut `vi.mock('./repository')` di puncak berkas untuk sisa berkas —
+// sehingga tanpa pemasangan ulang di sini, `registerFcmToken` memakai
+// repository SUNGGUHAN (terukur: mock tidak pernah dipanggil).
+// ==========================================
+describe('registerFcmToken — batas perangkat', () => {
+  beforeEach(() => {
+    revoked.fcmRows = [];
+    revoked.fcmDeleted = [];
+  });
+
+  /** Pasang ulang mock, lalu muat service dengan instance yang memakainya. */
+  async function muatService() {
+    vi.doMock('./repository', () => ({
+      // Satu-satunya fungsi yang dipakai `registerFcmToken`.
+      supabaseJson: async (
+        method: string,
+        table: string,
+        opts?: { query?: Record<string, string> },
+      ) => {
+        if (table !== 'fcm_tokens') return [];
+        if (method === 'GET') return revoked.fcmRows;
+        if (method === 'DELETE') {
+          revoked.fcmDeleted.push(String(opts?.query?.id ?? ''));
+          return [];
+        }
+        return [];
+      },
+    }));
+    vi.resetModules();
+    const svc = await import('./service');
+    return svc;
+  }
+
+  it('menyimpan 3 terbaru dan menghapus sisanya', async () => {
+    // Urutan GET = `last_used_at.desc`, jadi indeks 0 yang paling segar.
+    revoked.fcmRows = [
+      { id: 'aaaaaaaa-0000-0000-0000-000000000001', token: 't1' },
+      { id: 'aaaaaaaa-0000-0000-0000-000000000002', token: 't2' },
+      { id: 'aaaaaaaa-0000-0000-0000-000000000003', token: 't3' },
+      { id: 'aaaaaaaa-0000-0000-0000-000000000004', token: 't4' },
+    ];
+    const svc = await muatService();
+    const admin = signToken({ role: 'admin', name: 'KHOCI' });
+
+    const r = await svc.registerFcmToken(['KHOCI', 'token-baru', 'Windows'], admin);
+
+    expect(r.success).toBe(true);
+    expect(revoked.fcmDeleted).toHaveLength(1);
+    // Hanya yang ke-4 yang dibuang; tiga teratas dipertahankan.
+    expect(revoked.fcmDeleted[0]).toBe('in.(aaaaaaaa-0000-0000-0000-000000000004)');
+    vi.doUnmock('./repository');
+  });
+
+  it('tidak menghapus apa pun saat perangkat masih <= 3', async () => {
+    revoked.fcmRows = [
+      { id: 'aaaaaaaa-0000-0000-0000-000000000001', token: 't1' },
+      { id: 'aaaaaaaa-0000-0000-0000-000000000002', token: 't2' },
+    ];
+    const svc = await muatService();
+    const admin = signToken({ role: 'admin', name: 'KHOCI' });
+
+    await svc.registerFcmToken(['KHOCI', 'token-baru', 'Windows'], admin);
+
+    expect(revoked.fcmDeleted).toEqual([]);
+    vi.doUnmock('./repository');
   });
 });

@@ -3,42 +3,54 @@
 Daftar ini disusun dari **pengukuran**, bukan dari ingatan. Setiap baris punya
 bukti yang bisa dicek ulang. Diurutkan menurut (dampak ÷ usaha).
 
-## Sudah lunas hari ini (konteks)
+## Sudah lunas
 
 Tahap pipeline kanonik · normalisasi `status_kandidat` & `tahapan_seleksi` ·
 banner revisi hidup · teks penolakan per jenis baris · entry ZIP terpisah ·
 tree-shaking impor dinamis · kotak masuk kandidat bisa diklik & dihapus ·
 pagar yang memerahkan suite bila menulis ke DB non-lokal · `job_database.status`
-dirapikan · URL push admin diperbaiki.
+dirapikan · URL push admin diperbaiki · batas 3 perangkat per identitas ·
+tab Mail diberi angka per keranjang + satu kalimat penjelas.
 
 ---
 
-## 1. Push admin mati: 0 perangkat terdaftar
+## 1. KOREKSI: push admin HIDUP, bukan mati
 
 | | |
 |---|---|
-| Bukti | `select count(*) filter (where wa='ADMIN') from fcm_tokens` → **0** dari 18 |
-| Dampak | `notifyAdmins()` berhenti di baris pertama. Admin tidak pernah menerima push apa pun — termasuk "Lamaran Baru!". |
-| Usaha | **1 klik.** Buka **Pengaturan → Notifikasi perangkat ini → Aktifkan**. |
-| Catatan | Kartu + action `getStatusNotifikasiAdmin` sudah ada sejak 2026-11-06. URL tujuan sudah benar (`/admin#mail`). Yang kurang hanya pendaftaran perangkat. |
+| Klaim awal saya | "0 token admin" — **SALAH** |
+| Fakta | Admin mendaftar dengan handle `KHOCI`, bukan `ADMIN`. Query saya memakai `wa='ADMIN'`, jadi hasilnya 0. |
+| Terukur | 3 token `KHOCI` (salah satunya dipakai 2026-11-06) ⇒ `getAdminTokens()` mengembalikan 3 |
+| Yang benar-benar rusak | URL tujuan push: `/admin.html` — berkas legacy yang tidak ada di build Astro. **Sudah diperbaiki** ke `/admin` dan `/admin#mail`. |
 
-Ini bukan pekerjaan kode. Sampai dilakukan, satu-satunya cara admin tahu ada
-lamaran baru adalah membuka tab Mail.
+Pelajaran: handle admin bukan konstanta. `getAdminTokens()` mendefinisikannya
+sebagai "WA yang BUKAN format kandidat", jadi query manual harus memakai
+predikat yang sama — bukan menebak string `ADMIN`.
 
-## 2. Tab Mail: 7 filter untuk 2 jenis baris
+## 1b. Batas 3 perangkat per identitas (permintaan pemilik)
+
+| | |
+|---|---|
+| Masalah | Setiap login bisa menerbitkan token FCM baru; yang lama tidak selalu dinyatakan mati oleh FCM, jadi baris menumpuk. Pernah 25 baris untuk satu nama. |
+| Perbaikan | `registerFcmToken` membatasi **3 perangkat** per identitas, urut `last_used_at desc nullslast` — yang tidak pernah dipakai dibuang lebih dulu. |
+| Bukti | 2 tes: 4 baris → hapus 1 (`id=in.(…)`); 2 baris → tidak menghapus apa pun. |
+| Data sekarang | `KHOCI` tepat 3 (di batas), kandidat lain 1–2. Tidak ada yang perlu dibersihkan. |
+
+## 2. Tab Mail: 7 keranjang untuk 2 jenis baris — SEBAGIAN
 
 | | |
 |---|---|
 | Bukti | `database_asj_form` 16 baris, **semua biodata** (`code_job` kosong), nol lamaran — sementara 221 kandidat punya `id_loker_pilihan` |
 | Dampak | Keluhan asli pemilik: *"binggung banyak tap nya pipeline nya gimana"*. Filter `MENUNGGU`/`REVIEW`/`DISETUJUI`/`GAGAL` hanya berarti untuk baris **lamaran**; untuk baris **biodata** semuanya berakhir di `INFO`/`DIBACA`. |
-| Usaha | Sedang. Yang saya sarankan: satu baris ringkasan di atas daftar — "Perlu tindakan: N · Info: M · Sudah diputuskan: K" dengan satu klik filter, lalu 7 chip itu disembunyikan di balik "filter lain". |
+| Sudah dikerjakan | Angka jumlah per keranjang menempel di chip (keranjang kosong kelihatan kosong tanpa diklik), dan paragraf padat "Menunggu: 0 · Diperbarui: 0 · …" diganti satu kalimat yang menjelaskan mana yang butuh keputusan. |
+| **Sisa** | Memisahkan **dua daftar** (Lamaran vs Biodata) alih-alih satu tabel dengan tujuh chip. Itu perubahan struktur, bukan label — belum dikerjakan. |
 
 ## 3. Admin tidak punya feed notifikasi terpadu
 
 | | |
 |---|---|
 | Bukti | Tidak ada tabel/komponen notifikasi admin. `notifyAdmins()` hanya push. |
-| Dampak | Kalau push gagal (token 0, izin dicabut, iOS), info-nya **hilang**, bukan tertunda — persis masalah yang sudah diperbaiki untuk kandidat. |
+| Dampak | Kalau push gagal (izin dicabut, iOS, token mati), info-nya **hilang**, bukan tertunda — persis masalah yang sudah diperbaiki untuk kandidat. |
 | Usaha | Besar: tabel `notifikasi_admin` + migrasi + surface + UI. |
 | Catatan | Sebagian besar kejadian **sudah** punya permukaan persisten: lamaran/dokumen/biodata semuanya menulis baris Mail. Yang benar-benar hanya-push: pesan kontak. Jadi ini keputusan desain, bukan bug. |
 
@@ -72,7 +84,6 @@ lamaran baru adalah membuka tab Mail.
 |---|---|
 | Bukti | `tahapan_seleksi` kosong: 85 |
 | Dampak | UI memperlakukannya sebagai awal pipeline (`LIST`). Tidak ada yang salah. |
-| Usaha | — |
 | Catatan | Sengaja **tidak** diisi: menulis `LIST` ke 85 baris berarti menciptakan data yang tidak pernah dicatat siapa pun. |
 
 ## 8. Router ikut ke setiap entry (~90 KB)
@@ -82,7 +93,6 @@ lamaran baru adalah membuka tab Mail.
 | Bukti | `netlify-wrapper-surface.ts` mengimpor `./handlers`, yang menarik `contexts/catalog` → `identity` → `bcryptjs` (20 KB) + `demo` (7 KB) ke **setiap** entry. `notify.js` 97 KB untuk 8 action. |
 | Dampak | Cold start dan ukuran deploy. Bukan bug, tapi biaya tetap. |
 | Usaha | Besar: memisahkan dispatcher inti dari router, atau memindahkan `catalog` keluar dari `handlers.ts`. |
-| Catatan | Ini yang membuat `notify.js` 128 KB kemarin; setelah impor statis turun ke 97 KB. Sisa ~90 KB adalah lantai yang sama untuk semua entry. |
 
 ## 9. Retensi notifikasi
 

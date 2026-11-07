@@ -1094,6 +1094,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "admin.view_full": "Tampilan Lengkap",
     "admin.view_simple": "Tampilan Sederhana",
     "admin.refresh_mail": "Refresh MAIL",
+    "admin.mail_hint": "Menunggu & Diperbarui = perlu keputusan admin. Review = sedang ditinjau. Disetujui/Gagal = sudah diputuskan. Info/Dibaca = biodata & dokumen, tidak perlu tindakan.",
     "admin.input_manual": "Input Manual",
     "admin.export_csv": "Export CSV",
     "admin.export_excel": "Export Excel",

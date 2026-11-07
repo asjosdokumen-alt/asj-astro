@@ -14,6 +14,14 @@
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/preact';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import TabMail from './TabMail';
+/** Angka pada chip keranjang. Dulu baris "Diperbarui: 1" adalah paragraf
+ *  padat di bawah header; sekarang angka itu menempel di chip-nya. */
+function angkaKeranjang(kunci: string): string {
+  const btn = screen.getAllByRole('button').find((b) => (b.textContent || '').startsWith(kunci));
+  const m = (btn?.textContent || '').match(/(\d+)\s*$/);
+  return m ? m[1] : '';
+}
+
 import { mailList, mailFilterStatus } from '../../store/adminStore';
 import { invalidateAdminData } from '../../store/adminData';
 
@@ -76,7 +84,7 @@ describe('TabMail — baris UPDATE (pembaruan biodata) tidak boleh tak terlihat'
 
   it('hitungan Diperbarui muncul walau tab default (Menunggu) kosong', async () => {
     render(<TabMail />);
-    await waitFor(() => expect(screen.getByText(/Diperbarui: 1/)).toBeTruthy());
+    await waitFor(() => expect(angkaKeranjang('Diperbarui')).toBe('1'));
     // Tab default memang kosong — itu benar, barisnya bukan MENUNGGU.
     expect(screen.getByText('Tidak ada mail ditemukan.')).toBeTruthy();
     // …tapi tabel kosong tidak boleh dibiarkan tanpa jalan keluar: petunjuknya
@@ -88,9 +96,9 @@ describe('TabMail — baris UPDATE (pembaruan biodata) tidak boleh tak terlihat'
 
   it('klik tab Diperbarui → barisnya muncul lengkap dengan APA yang berubah', async () => {
     render(<TabMail />);
-    await waitFor(() => expect(screen.getByText(/Diperbarui: 1/)).toBeTruthy());
+    await waitFor(() => expect(angkaKeranjang('Diperbarui')).toBe('1'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Diperbarui' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Diperbarui/ }));
 
     await waitFor(() => expect(screen.getByText('AGUS KHOCI')).toBeTruthy());
     // Yang berubah ikut terlihat — tanpa ini admin hanya melihat status UPDATE
@@ -102,9 +110,9 @@ describe('TabMail — baris UPDATE (pembaruan biodata) tidak boleh tak terlihat'
 
   it('SEMUA tetap menampilkan semuanya (tidak ada yang hilang dari daftar)', async () => {
     render(<TabMail />);
-    await waitFor(() => expect(screen.getByText(/Diperbarui: 1/)).toBeTruthy());
+    await waitFor(() => expect(angkaKeranjang('Diperbarui')).toBe('1'));
 
-    fireEvent.click(screen.getByRole('button', { name: 'SEMUA' }));
+    fireEvent.click(screen.getByRole('button', { name: /^SEMUA/ }));
 
     await waitFor(() => expect(screen.getByText('AGUS KHOCI')).toBeTruthy());
     expect(screen.getByText('SITI AMINAH')).toBeTruthy();
@@ -125,7 +133,7 @@ describe('TabMail — baris UPDATE (pembaruan biodata) tidak boleh tak terlihat'
   // ==========================================
   it('label tombol pembaruan memakai warna teks yang punya padanan tema terang', async () => {
     const { container } = render(<TabMail />);
-    await waitFor(() => expect(screen.getByText(/Diperbarui: 1/)).toBeTruthy());
+    await waitFor(() => expect(angkaKeranjang('Diperbarui')).toBe('1'));
     const btn = [...container.querySelectorAll('button')]
       .find((b) => /pembaruan/i.test(b.textContent || ''));
     if (!btn) throw new Error('tombol "Ada N pembaruan" tidak dirender');
@@ -159,7 +167,7 @@ describe('TabMail — status REVIEW ADMIN masuk keranjang Review', () => {
 
   it('dihitung sebagai Review dan barisnya terlihat di filter Review', async () => {
     render(<TabMail />);
-    await waitFor(() => expect(screen.getByText(/Review: 1/)).toBeTruthy());
+    await waitFor(() => expect(angkaKeranjang('Review')).toBe('1'));
     expect(screen.getByText('RINA WATI')).toBeTruthy();
   });
 });
@@ -208,7 +216,7 @@ describe('TabMail — baris INFO: informasi, bukan antrean', () => {
     ] as never);
 
     render(<TabMail />);
-    await waitFor(() => expect(screen.getByText(/Info: 1/)).toBeTruthy());
+    await waitFor(() => expect(angkaKeranjang('Info')).toBe('1'));
     expect(screen.getByText('BUDI DIBACA')).toBeTruthy();
     const btn = screen.getByRole('button', { name: /Tandai dibaca/ }) as HTMLButtonElement;
     expect(btn.disabled).toBe(true);

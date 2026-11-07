@@ -31,6 +31,20 @@ import { env } from '../../_lib/env';
 const LOGIN_FAIL_MSG = 'Nomor WA atau password salah.';
 
 /**
+ * Batas KERAS jumlah perangkat (token FCM) yang disimpan per identitas.
+ *
+ * Kenapa 3: pemilik login/logout bergantian di satu browser untuk memeriksa
+ * akun, dan setiap `getToken()` bisa menerbitkan token baru tanpa yang lama
+ * dinyatakan mati oleh FCM. Tanpa batas, tabelnya tumbuh terus — terukur
+ * 2026-10-13 pernah 25 baris untuk satu nama (KHOCI).
+ *
+ * Kenapa TIDAK lebih kecil: satu orang wajar memakai ponsel + laptop + satu
+ * perangkat cadangan. Memotong ke 1 akan mematikan push di perangkat lain
+ * setiap kali ia login di tempat baru.
+ */
+const MAKS_PERANGKAT = 3;
+
+/**
  * Token sesi + token penyegar, diterbitkan BERSAMAAN di setiap login.
  *
  * Sampai 2026-10-29 server hanya menerbitkan token sesi, jadi `refreshToken`
@@ -487,6 +501,42 @@ export async function registerFcmToken(
       }
     } catch {
       /* pembersihan bersifat best-effort — pendaftaran sudah berhasil */
+    }
+
+    /* BATAS KERAS: maksimal 3 perangkat per identitas.
+       Probe FCM di atas hanya membuang token yang DIJAWAB mati. Token yang
+       masih dianggap hidup oleh FCM tetap menumpuk setiap kali pemilik
+       login/logout bergantian (satu browser bisa menerbitkan token baru tanpa
+       yang lama dinyatakan mati). Permintaan pemilik 2026-11-07: "cukup 3
+       device aktif terakhir yang selalu disimpan".
+       Urutan `last_used_at` — bukan `created_at` — karena perangkat yang masih
+       dipakai punya cap waktu segar; yang lama tidak dipakai akan tergeser.
+       `nullslast` supaya baris tanpa cap waktu (data lama) dibuang LEBIH DULU,
+       bukan malah dipertahankan. */
+    try {
+      const semua = await supabaseJson('GET', 'fcm_tokens', {
+        query: {
+          select: 'id',
+          wa: `eq.${wa}`,
+          order: 'last_used_at.desc.nullslast',
+          limit: '50',
+        },
+      });
+      const baris = Array.isArray(semua) ? semua : [];
+      if (baris.length > MAKS_PERANGKAT) {
+        const buang = baris
+          .slice(MAKS_PERANGKAT)
+          .map((r: Record<string, unknown>) => r.id)
+          .filter(Boolean);
+        if (buang.length > 0) {
+          await supabaseJson('DELETE', 'fcm_tokens', {
+            query: { id: `in.(${buang.join(',')})` },
+            headers: { Prefer: 'return=minimal' },
+          });
+        }
+      }
+    } catch {
+      /* best-effort: gagal merapikan token tidak boleh menggagalkan pendaftaran */
     }
 
     return { success: true };

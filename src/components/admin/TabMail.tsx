@@ -243,18 +243,32 @@ export default function TabMail() {
             placeholder={t("admin.search_mail")}
             class="min-h-11 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:border-sky-500 outline-none w-52" />
 
-          {/* Status filter buttons */}
-          <div class="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-            {STATUSES.map((s) => (
-              <button type="button" key={s} onClick={() => setMailFilterStatus(s)}
-                class={`min-h-11 px-3 py-2 text-xs font-bold transition ${
-                  filterStatus === s
-                    ? 'bg-sky-600 text-white'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700'
-                }`}>
-                {STATUS_LABEL_KEY[s] ? t(STATUS_LABEL_KEY[s]) : s}
-              </button>
-            ))}
+          {/* Keranjang + JUMLAHNYA.
+              Dulu hanya tujuh tombol tanpa angka, jadi admin harus membuka
+              satu per satu untuk tahu mana yang berisi pekerjaan — keluhan
+              pemilik 2026-11-07: "binggung banyak tap nya". Angka membuat
+              keranjang yang kosong kelihatan kosong tanpa diklik. */}
+          <div class="flex flex-wrap items-center gap-1.5">
+            {STATUSES.map((s) => {
+              const jumlah = s === 'SEMUA'
+                ? mail.length
+                : mail.filter((m) => bucketOf(m.status) === s).length;
+              const aktif = filterStatus === s;
+              return (
+                <button type="button" key={s} onClick={() => setMailFilterStatus(s)}
+                  aria-pressed={aktif}
+                  class={`min-h-11 px-3 py-2 rounded-lg border text-xs font-bold transition ${
+                    aktif
+                      ? 'bg-sky-600 border-sky-500 text-white'
+                      : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
+                  }`}>
+                  {STATUS_LABEL_KEY[s] ? t(STATUS_LABEL_KEY[s]) : s}
+                  <span class={`ml-1.5 tabular-nums ${aktif ? 'text-white/80' : 'text-slate-500'}`}>
+                    {jumlah}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           <button type="button" onClick={() => fetchMailFromAPI(true)}
@@ -273,13 +287,12 @@ export default function TabMail() {
         </div>
       </div>
 
-      {/* Status counts */}
-      <div class="flex items-center gap-2 mb-3">
-        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">{t('table.status')}:</span>
-        <span class="text-xs font-bold text-slate-300">
-          {t('status.waiting')}: {counts.MENUNGGU} | {t('status.updated')}: {counts.UPDATE} | {t('status.review')}: {counts.REVIEW} | {t('status.pass')}: {counts.DISETUJUI} | {t('status.fail')}: {counts.GAGAL} | {t('status.info')}: {counts.INFO} | Total: {mail.length}
-        </span>
-      </div>
+      {/* Satu kalimat yang menjelaskan keranjang mana yang butuh keputusan.
+          Baris ini dulu mengulang semua angka sebagai satu paragraf panjang
+          ("Menunggu: 0 | Diperbarui: 0 | …"), yang menambah teks tanpa
+          menjawab pertanyaan admin: "yang mana yang harus saya kerjakan?".
+          Angkanya sekarang menempel di chip di atas. */}
+      <p class="mb-3 text-[11.5px] leading-relaxed text-slate-400">{t('admin.mail_hint')}</p>
 
       {/* Table */}
       <div class="u-scroll-x rounded-xl border border-slate-800">

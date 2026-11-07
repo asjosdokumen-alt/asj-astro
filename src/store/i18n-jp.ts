@@ -2241,6 +2241,7 @@ export const jpTranslations: Record<string, string> = {
     "admin.view_full": "詳細表示",
     "admin.view_simple": "簡易表示",
     "admin.refresh_mail": "メール更新",
+    "admin.mail_hint": "「待機中」「更新」は管理者の判断が必要です。「確認中」は確認中。「承認済み」「失敗」は判断済み。「情報」「既読」はプロフィール・書類で、対応は不要です。",
     "admin.input_manual": "手動入力",
     "admin.export_csv": "CSVエクスポート",
     "admin.export_excel": "Excelエクスポート",
