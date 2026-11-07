@@ -2,6 +2,28 @@
 
 **Terakhir dirapikan:** 2026-10-08
 
+> ### ⏳ Sisa utang per 2026-11-07 — 7 butir
+>
+> Daftar lengkap dengan bukti terukur: **`deliverables/utang-teknis-2026-11-07.md`**.
+> Diurutkan menurut (dampak ÷ usaha). Tiga yang teratas sudah lunas hari itu
+> (push admin, batas 3 perangkat, tab Mail dua daftar); sisanya:
+>
+> - **`status_biodata`** — kolom mati: 261 baris, semuanya `BELUM`, hanya disebut
+>   di satu komentar. **Butuh keputusan:** hapus kolomnya (migrasi) atau isi.
+> - **`job_database.tahapan = 'CANCEL'`** (1 baris) — nilai status nyasar ke kolom
+>   tahap, pola yang sama dengan `LIST`/`MCU PARPOR` di `status_kandidat`.
+>   **Butuh keputusan:** lowongan batal memang tidak punya tahap.
+> - **85 kandidat tanpa tahap** — sengaja TIDAK diisi; menulis `LIST` ke sana
+>   berarti menciptakan data yang tidak pernah dicatat siapa pun.
+> - **Admin belum punya feed notifikasi terpadu** — push saja; Mail adalah
+>   antrean persisten. Kalau push gagal, info hilang. Keputusan desain, bukan bug.
+> - **Router `_lib/handlers` ikut ke setiap entry** (~90 KB: `bcryptjs` + `demo` +
+>   `catalog`). Biaya cold start, bukan bug.
+> - **Retensi notifikasi** — 0 baris nyata; cron penghapus belum layak. Ukur ulang
+>   setelah sebulan pemakaian.
+> - **`ai_form_submissions` bisa >1 baris per WA** — penulisan harus ke yang
+>   TERBARU (`updated_at`, lalu `id`); audit semua pembaca yang memakai `.find()`.
+>
 > ### Yang ditutup pada 2026-10-08
 > - **Root cruft diarsipkan** — `HANDOFF.md`, `make-zip.cjs`, `preview-index.html`,
 >   `test_excel_template.cjs`, `cv-selector-candidate.png` → `docs/archive/`. Ini menutup
