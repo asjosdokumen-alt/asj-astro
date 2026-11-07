@@ -1016,6 +1016,12 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
     }
   };
 
+  /* Dipakai di DUA tempat: payload simpan (kolom `bidangssw`/`bidangssw2`) dan
+     JSX (kotak bidang SSW yang menggantikan dua isian manual). Dihitung di
+     scope komponen supaya keduanya membaca nilai yang sama — dua perhitungan
+     terpisah adalah cara paling mudah membuat layar dan data berbeda. */
+  const turunanBidangSsw = deriveBidangSsw(cv.sertifikat_lain);
+
   const saveToDatabase = async () => {
     // AI2/AI3 parity (2026-09-04): legacy ai_form uploads docs to Cloudinary
     // first, then posts a flat JSON object to submitDataAsj (nested
@@ -1200,8 +1206,8 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
              terhapus (lihat `deriveSertifikasi`). */
           bahasa: turunanSertifikasi.bahasa || cv.bhs_jepang,
           jft: turunanSertifikasi.nilai || cv.nilai,
-          ssw: cv.lisensi, bidang: cv.lisensi,
-          ssw2: cv.lisensi2, no_coe: cv.no_coe,
+          ssw: turunanBidangSsw[0] || cv.lisensi, bidang: turunanBidangSsw[0] || cv.lisensi,
+          ssw2: turunanBidangSsw[1] || cv.lisensi2, no_coe: cv.no_coe,
           /* Migrasi 022: bahasa & sertifikat tambahan. */
           lama_belajar_jp: cv.lama_belajar_jp, status_belajar_jp: cv.status_belajar_jp,
           bab_belajar_jp: cv.bab_belajar_jp, level_bahasa_jepang: cv.level_jepang,
@@ -1921,6 +1927,27 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                   Yang tersisa di sini memang data LAIN: bidang 在留資格 SSW,
                   bukan ujian, jadi tidak digabung. */}
               <div class="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-800/50 rounded border border-slate-700 mb-2">
+                {/* Bidang SSW: SATU tempat mengisi kalau ujiannya sudah ada.
+                    Pemilik 2026-11-07: *"bukannya redundan ini 2x … yg bawah
+                    lengkap malah ada tgl lulus nya"*. Baris ujian "SSW
+                    LIVESTOCK" di bawah SUDAH menyebut bidangnya (plus 合格年月
+                    dan skor), jadi mengetiknya lagi di sini adalah pekerjaan
+                    ganda yang bisa berbeda hasilnya. Kotak manual tetap muncul
+                    kalau baris ujian SSW belum ada — lulusan 技能実習 dengan
+                    bidang yang sama dibebaskan dari uji keterampilan, jadi ada
+                    orang yang punya 在留資格 tanpa baris ujian. */}
+                {turunanBidangSsw.length > 0 && (
+                  <div
+                    class={`${turunanBidangSsw.length > 1 ? 'col-span-3' : 'col-span-2'} rounded border border-emerald-700/40 bg-emerald-900/20 px-2 py-1.5`}
+                  >
+                    <p class="text-[11px] font-bold text-emerald-300">
+                      Bidang SSW (在留資格): {turunanBidangSsw.join(' · ')}
+                    </p>
+                    <p class="text-[10px] text-slate-400 leading-tight">
+                      Diambil dari baris ujian SSW di bawah — tidak perlu diketik dua kali.
+                    </p>
+                  </div>
+                )}
                 {/* Lisensi SSW = daftar TERTUTUP (20 bidang resmi). Dulu ia
                     `<input list=…>` dengan `<datalist>`: di ponsel datalist
                     hanya menampilkan beberapa baris sekaligus dan tidak bisa
@@ -1928,17 +1955,24 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                     ada" padahal daftarnya ada di belakang. ComboSelect memberi
                     satu kotak yang bisa DIKETIK maupun DIPILIH, dan daftarnya
                     difilter saat mengetik — termasuk "ternak"/"畜産". */}
-                <ComboSelect label={t("cv.field_lisensi_ssw")} id="lisensi" value={cv.lisensi} pairs={SSW_BIDANG}
-                  placeholder="ketik atau pilih"
-                  onInput={(v) => handleManualEdit('lisensi', v)} onPick={(v) => handleManualEdit('lisensi', v)} />
+                {turunanBidangSsw.length < 1 && (
+                  <ComboSelect label={t("cv.field_lisensi_ssw")} id="lisensi" value={cv.lisensi} pairs={SSW_BIDANG}
+                    placeholder="ketik atau pilih"
+                    onInput={(v) => handleManualEdit('lisensi', v)} onPick={(v) => handleManualEdit('lisensi', v)} />
+                )}
                 {/* PARITAS: Form Master punya lisensi SSW KEDUA (`lisensi2`) dan
                     kolom `no_coe`. Keduanya tidak ada di sini, jadi kandidat yang
                     punya dua bidang SSW kehilangan yang kedua — dan nilai itu
                     dulu juga tidak punya kolom sama sekali (migrasi 019
                     menambahkan `bidangssw2`). */}
-                <ComboSelect label={t("form.mf_ssw2")} id="lisensi2" value={cv.lisensi2} pairs={SSW_BIDANG}
-                  placeholder="ketik atau pilih"
-                  onInput={(v) => handleManualEdit('lisensi2', v)} onPick={(v) => handleManualEdit('lisensi2', v)} />
+                {turunanBidangSsw.length < 2 && (
+                  <ComboSelect label={t("form.mf_ssw2")} id="lisensi2" value={cv.lisensi2} pairs={SSW_BIDANG}
+                    placeholder="ketik atau pilih"
+                    onInput={(v) => handleManualEdit('lisensi2', v)} onPick={(v) => handleManualEdit('lisensi2', v)} />
+                )}
+                {/* No. COE TIDAK diturunkan dari apa pun: ia nomor dokumen
+                    (在留資格認定証明書), bukan nama bidang dan bukan hasil ujian.
+                    Satu-satunya tempat mengisinya ya di sini. */}
                 <Field label={t("form.mf_no_coe")} id="no_coe" value={cv.no_coe}
                   touched={touchedFields.has('no_coe')} onInput={(v) => handleManualEdit('no_coe', v)} />
               </div>
@@ -2838,6 +2872,35 @@ function deriveSertifikasi(text: string): { bahasa: string; nilai: string } {
   const hit = rows.find((r) => bahasaSah.has(r.nama));
   if (!hit) return { bahasa: '', nilai: '' };
   return { bahasa: hit.nama.trim(), nilai: hit.nilai.trim() };
+}
+
+/**
+ * Turunkan bidang SSW (在留資格) dari baris ujian SSW.
+ *
+ * KENAPA ADA — keluhan pemilik 2026-11-07: *"bukannya redundan ini 2x … yg
+ * bawah lengkap malah ada tgl lulus nya, sedang atas cuma explicit"*. Bidang SSW
+ * memang diminta DUA kali: sebagai "Lisensi/SSW" di kotak atas, dan sebagai
+ * jenis ujian "SSW LIVESTOCK" di repeater bawah. Yang bawah lebih lengkap —
+ * ada 合格年月 dan skor — jadi yang bawah yang jadi SUMBER; kotak atas hanya
+ * muncul kalau kandidat tidak punya baris ujian SSW.
+ *
+ * KENAPA KOTAK MANUAL TIDAK DIHAPUS TOTAL: lulusan 技能実習 dengan bidang yang
+ * sama DIBEBASKAN dari uji keterampilan, jadi ada orang yang benar-benar punya
+ * 在留資格 tanpa baris ujian. Menghapus kotaknya akan membuat bidang mereka
+ * mustahil diisi, dan sel 在留資格 / 希望職種 di template tercetak kosong.
+ *
+ * Pemetaannya satu arah dan tidak menebak: nama ujian dibentuk `SSW <bidang>`
+ * oleh `UJIAN_SSW`, dan hanya nilai yang PERSIS ada di `SSW_BIDANG` yang
+ * diterima. Yang tidak dikenal diabaikan, bukan dipotong asal.
+ */
+export function deriveBidangSsw(text: string): string[] {
+  const { rows } = parseUjian(text);
+  const sah = new Set(SSW_BIDANG.map(([v]) => v));
+  return rows
+    .map((r) => r.nama.trim())
+    .filter((n) => n.startsWith('SSW '))
+    .map((n) => n.slice('SSW '.length).trim())
+    .filter((n) => sah.has(n));
 }
 
 /**

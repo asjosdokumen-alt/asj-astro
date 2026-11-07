@@ -366,6 +366,34 @@ describe('AiCvForm — status paspor/SIM (paritas ai_form.html:150-151)', () => 
     expect(identitas.sim).toBe('SIM-99');
   });
 
+  it('bidang SSW DITURUNKAN dari baris ujian — tidak diketik dua kali', async () => {
+    // Keluhan pemilik 2026-11-07: kotak "Lisensi/SSW" di atas dan baris ujian
+    // "SSW LIVESTOCK" di bawah meminta fakta yang sama, dan yang bawah lebih
+    // lengkap (ada 合格年月 + skor). Sekarang yang bawah jadi sumber.
+    await loginViaGate();
+
+    // Tanpa baris ujian SSW, kotak manual tetap ada — lulusan 技能実習 dengan
+    // bidang yang sama dibebaskan dari uji keterampilan, jadi jalur ini nyata.
+    expect(screen.getByLabelText('cv.field_lisensi_ssw')).toBeTruthy();
+
+    await fireEvent.input(screen.getByLabelText('Jenis ujian'), {
+      target: { value: 'SSW LIVESTOCK' },
+    });
+
+    // Kotak manual hilang; nilai yang akan tercetak ditampilkan sebagai teks.
+    expect(screen.queryByLabelText('cv.field_lisensi_ssw')).toBeNull();
+    expect(screen.getByText(/Bidang SSW \(在留資格\): LIVESTOCK/)).toBeTruthy();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'button.save_db' }));
+    await waitFor(() =>
+      expect(vi.mocked(apiClient).mock.calls.some((c) => c[0] === 'submitDataAsj')).toBe(true),
+    );
+
+    const p = savedPayload() as unknown as { sertifikasi: Record<string, string> };
+    expect(p.sertifikasi.ssw).toBe('LIVESTOCK');
+    expect(p.sertifikasi.bidang).toBe('LIVESTOCK');
+  });
+
   it('status belum dipilih → diturunkan dari ada/tidaknya nomor (ADA bila ada nomor, "" bila tidak)', async () => {
     await loginViaGate();
     await fireEvent.input(screen.getByPlaceholderText('form.mf_ph_no_paspor'), { target: { value: 'P777' } });
