@@ -204,16 +204,19 @@ export default function TabTes() {
 
         <div class="mt-3 grid gap-2 sm:grid-cols-2">
           {FITUR_UJI.map((f) => (
+            /* TANPA `target="_blank"`. Panel ini hidup di dalam PWA; tab baru
+               berarti keluar ke browser dan kehilangan shell aplikasinya —
+               pemilik 2026-11-07: *"kan ini pwa … kudu browser lagi, gak
+               sempurna jadinya pwa nya"*. Navigasi di jendela yang sama tetap
+               di dalam PWA, dan tombol Back browser mengembalikan ke panel. */
             <a
               key={f.jalur}
               href={tautanUji(f.jalur, waUji)}
-              target="_blank"
-              rel="noopener noreferrer"
               class="flex min-h-11 items-center gap-2 rounded-control border border-line bg-surface px-3 text-[12px] font-bold text-fg transition hover:border-accent-sky"
             >
               <Icon name={f.ikon} class="shrink-0 text-accent-sky" />
               <span class="min-w-0 truncate">{t(f.labelKey)}</span>
-              <Icon name="external-link-alt" class="ml-auto shrink-0 text-fg-muted" />
+              <Icon name="arrow-right" class="ml-auto shrink-0 text-fg-muted" />
             </a>
           ))}
         </div>
