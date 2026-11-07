@@ -5,31 +5,44 @@
  * --------------------------------------------
  * Berkas ini memuat KUNCI JAWABAN (`kunci`). Kalau ia diimpor dari kode klien,
  * Vite memasukkannya ke bundel dan kuncinya terbaca siapa pun lewat DevTools —
- * tesnya lalu mengukur kemampuan membuka tab Network, bukan penalaran. Klien
- * hanya menerima `SoalKlienIq` (tanpa `kunci`) lewat action `getSoalIq`.
+ * tesnya lalu mengukur kemampuan membuka tab Network, bukan penalaran.
  *
- * KENAPA URUTANNYA DITENTUKAN NOMOR WA, BUKAN `Math.random()`
- * ----------------------------------------------------------
+ * KENAPA 40 "SLOT" × 2 VARIAN, BUKAN 80 SOAL BEBAS
+ * ------------------------------------------------
  * Dua hal harus benar sekaligus:
- *   1. siswa yang duduk bersebelahan tidak boleh dapat paket yang sama;
- *   2. siswa yang me-refresh di tengah ujian harus melihat soal yang SAMA —
- *      kalau tidak, jawaban yang sudah diisi menunjuk nomor soal yang berbeda.
- * Karena itu pengacakannya deterministik dari nomor WA (seed), bukan acak
- * bebas. Server memakai fungsi yang sama saat menilai, jadi soal yang dinilai
- * selalu soal yang memang dikirim ke siswa itu.
+ *   1. setiap siswa mendapat komposisi kesulitan yang SAMA (kalau tidak, siswa A
+ *      kebagian 12 soal mudah dan siswa B 12 soal sulit — skornya tidak bisa
+ *      dibandingkan);
+ *   2. dua siswa bersebelahan tidak mendapat paket yang identik.
+ * Karena itu bank disusun sebagai 40 slot (12 verbal, 12 numerik, 8 spasial,
+ * 8 logika), tiap slot punya DUA varian setara, dan pemilih mengambil satu
+ * varian per slot. Komposisi tetap, isinya berbeda.
  *
- * KENAPA KOMPOSISINYA TETAP
- * -------------------------
- * 12 verbal · 12 numerik · 8 spasial · 8 logika. Kalau jumlahnya diacak bebas,
- * satu siswa bisa kebagian 12 soal mudah dan siswa lain 12 soal sulit; skornya
- * lalu tidak bisa dibandingkan sama sekali.
+ * Pemilihan deterministik dari nomor WA: refresh di tengah ujian tidak
+ * mengacak ulang, tetapi siswa lain mendapat kombinasi varian yang lain.
+ *
+ * STANDAR SOAL (2026-11-07, permintaan pemilik)
+ * ---------------------------------------------
+ * Verbal  : analogi relasi (TPA), klasifikasi konsep, pemahaman instruksi (SPI Gengo).
+ * Numerik : deret ICAR (termasuk alfanumerik), aritmetika presisi, rasio & kerja
+ *           bersama (SPI Hi-Gengo).
+ * Spasial : matriks progresif, operasi XOR, jaring kubus, rotasi/pencerminan
+ *           (Sandia Matrices, ICAR).
+ * Logika  : silogisme kuantor, modus tollens, penalaran analitis urutan,
+ *           pohon keputusan SOP.
+ * Distribusi: 11 mudah · 20 sedang · 9 sulit (≈ 27/50/23) — cukup landai untuk
+ * menyaring, cukup curam untuk membedakan di ujung atas.
  */
 
 export type KategoriIq = 'verbal' | 'numerik' | 'spasial' | 'logika';
+export type TingkatIq = 'mudah' | 'sedang' | 'sulit';
 
 export interface SoalIq {
   id: string;
+  /** Slot konsep. Satu siswa hanya menerima SATU varian per slot. */
+  slot: string;
   kategori: KategoriIq;
+  tingkat: TingkatIq;
   tanya: string;
   /** Gambar inline untuk soal spasial. Dirender dengan `dangerouslySetInnerHTML`. */
   svg?: string;
@@ -38,7 +51,6 @@ export interface SoalIq {
   kunci: 0 | 1 | 2 | 3;
 }
 
-/** Bentuk yang boleh dilihat browser siswa. */
 export type SoalKlienIq = Omit<SoalIq, 'kunci'>;
 
 export const KUOTA_IQ: Record<KategoriIq, number> = {
@@ -49,371 +61,639 @@ export const KUOTA_IQ: Record<KategoriIq, number> = {
 };
 
 export const DURASI_IQ_MENIT = 25;
+export const VERSI_BANK_IQ = 'asj-penalaran-v2';
 
-/** Versi bank. Dinaikkan bila soal berubah, supaya hasil lama tetap terbaca. */
-export const VERSI_BANK_IQ = 'asj-penalaran-v1';
+/* ── Gambar yang dipakai bersama beberapa varian ─────────────────────────── */
+
+const SVG_F =
+  '<svg viewBox="0 0 240 100"><rect width="240" height="100" rx="8" fill="#f8fafc" stroke="#cbd5e1"/><path d="M80 18 L80 82 L96 82 L96 56 L132 56 L132 42 L96 42 L96 32 L136 32 L136 18 Z" fill="#0f172a"/></svg>';
+
+const SVG_P =
+  '<svg viewBox="0 0 240 100"><rect width="240" height="100" rx="8" fill="#f8fafc" stroke="#cbd5e1"/><path d="M92 18 L92 82 L108 82 L108 58 L132 58 A20 20 0 0 0 132 18 Z" fill="#0f172a"/></svg>';
+
+const SVG_JARUM4 =
+  '<svg viewBox="0 0 240 80"><g stroke="#334155" stroke-width="1.5" fill="#fff"><rect x="12" y="18" width="40" height="40"/><rect x="66" y="18" width="40" height="40"/><rect x="120" y="18" width="40" height="40"/><rect x="174" y="18" width="40" height="40"/></g><g stroke="#0f172a" stroke-width="3" stroke-linecap="round"><line x1="32" y1="48" x2="32" y2="28"/><line x1="86" y1="48" x2="99" y2="35"/><line x1="140" y1="38" x2="160" y2="38"/><line x1="194" y1="28" x2="207" y2="41"/></g><g fill="#0f172a"><polygon points="32,22 26,32 38,32"/><polygon points="103,31 93,29 95,39"/><polygon points="166,38 156,33 156,43"/><polygon points="211,45 209,35 199,37"/></g><text x="194" y="72" text-anchor="middle" font-size="11" fill="#64748b">kotak 1 – 4</text></svg>';
+
+const SVG_MATRIKS =
+  '<svg viewBox="0 0 240 80"><g fill="#fff" stroke="#334155" stroke-width="1.5"><rect x="10" y="15" width="46" height="46"/><rect x="70" y="15" width="46" height="46"/><rect x="130" y="15" width="46" height="46"/><rect x="190" y="15" width="46" height="46" stroke-dasharray="4 2" fill="#f1f5f9"/></g><g stroke="#0f172a" stroke-width="2.5" stroke-linecap="round"><line x1="33" y1="52" x2="33" y2="28"/><line x1="93" y1="38" x2="117" y2="38"/><line x1="153" y1="24" x2="153" y2="48"/></g><g fill="#0f172a"><circle cx="17" cy="22" r="3.5"/><circle cx="77" cy="52" r="3.5"/><circle cx="163" cy="52" r="3.5"/></g><text x="213" y="43" text-anchor="middle" font-size="18" font-weight="bold" fill="#64748b">?</text></svg>';
+
+const SVG_XOR =
+  '<svg viewBox="0 0 240 90"><rect x="8" y="15" width="52" height="52" fill="#fff" stroke="#334155" stroke-width="1.5"/><line x1="16" y1="23" x2="52" y2="59" stroke="#0f172a" stroke-width="2.5"/><line x1="12" y1="41" x2="56" y2="41" stroke="#0f172a" stroke-width="2.5"/><text x="74" y="47" font-size="16" font-weight="bold">+</text><rect x="90" y="15" width="52" height="52" fill="#fff" stroke="#334155" stroke-width="1.5"/><line x1="98" y1="59" x2="134" y2="23" stroke="#0f172a" stroke-width="2.5"/><line x1="94" y1="41" x2="138" y2="41" stroke="#0f172a" stroke-width="2.5"/><text x="156" y="47" font-size="16" font-weight="bold">=</text><rect x="176" y="15" width="52" height="52" fill="#f1f5f9" stroke="#334155" stroke-width="1.5" stroke-dasharray="4 2"/><text x="202" y="50" text-anchor="middle" font-size="18" font-weight="bold" fill="#64748b">?</text></svg>';
+
+const SVG_NET =
+  '<svg viewBox="0 0 240 95"><g stroke="#0f172a" stroke-width="1.5" fill="#fff"><rect x="71" y="8" width="26" height="26"/><rect x="45" y="34" width="26" height="26"/><rect x="71" y="34" width="26" height="26"/><rect x="97" y="34" width="26" height="26"/><rect x="71" y="60" width="26" height="26"/><rect x="97" y="60" width="26" height="26"/></g><g font-size="12" font-weight="bold" text-anchor="middle" fill="#0f172a"><text x="84" y="25">1</text><text x="58" y="51">2</text><text x="84" y="51">3</text><text x="110" y="51">4</text><text x="84" y="77">5</text><text x="110" y="77">6</text></g></svg>';
+
+const SVG_DADU =
+  '<svg viewBox="0 0 240 95"><rect width="240" height="95" rx="8" fill="#f8fafc" stroke="#cbd5e1"/><g stroke="#0f172a" stroke-width="2"><polygon points="95,30 145,30 165,48 115,48" fill="#e2e8f0"/><polygon points="115,48 165,48 165,76 115,76" fill="#cbd5e1"/><polygon points="95,30 115,48 115,76 95,58" fill="#94a3b8"/></g><circle cx="130" cy="39" r="5" fill="#0f172a"/><polygon points="140,60 152,68 128,68" fill="#0f172a"/><g stroke="#0f172a" stroke-width="2.5"><line x1="122" y1="52" x2="132" y2="62"/><line x1="132" y1="52" x2="122" y2="62"/></g><text x="60" y="26" font-size="10" fill="#334155">atas</text><text x="196" y="70" font-size="10" fill="#334155">depan</text><text x="52" y="76" font-size="10" fill="#334155">kanan</text></svg>';
+
+const SVG_KUBUS3 =
+  '<svg viewBox="0 0 240 100"><rect width="240" height="100" rx="8" fill="#f8fafc" stroke="#cbd5e1"/><g stroke="#0f172a" stroke-width="1.5"><rect x="40" y="20" width="30" height="30" fill="#94a3b8"/><rect x="70" y="20" width="30" height="30" fill="#94a3b8"/><rect x="100" y="20" width="30" height="30" fill="#e2e8f0"/><rect x="40" y="50" width="30" height="30" fill="#94a3b8"/><rect x="70" y="50" width="30" height="30" fill="#e2e8f0"/><rect x="100" y="50" width="30" height="30" fill="#e2e8f0"/></g><g font-size="13" font-weight="bold" text-anchor="middle"><text x="55" y="40" fill="#fff">3</text><text x="85" y="40" fill="#fff">2</text><text x="115" y="40">1</text><text x="55" y="70" fill="#fff">2</text><text x="85" y="70">1</text><text x="115" y="70">1</text></g><text x="170" y="50" font-size="11" fill="#334155">tampak atas</text><text x="170" y="66" font-size="10" fill="#64748b">(angka = tinggi)</text></svg>';
+
+/* ── Bank soal: 40 slot × 2 varian ───────────────────────────────────────── */
 
 export const BANK_IQ: SoalIq[] = [
-  /* ── VERBAL (24) ─────────────────────────────────────────────────────── */
-  { id: 'v-001', kategori: 'verbal', tanya: 'MESIN : BENSIN = MANUSIA : ...', pilihan: ['Oksigen', 'Makanan', 'Pakaian', 'Istirahat'], kunci: 1 },
-  { id: 'v-002', kategori: 'verbal', tanya: 'PRESISI : AKURAT = KONSISTEN : ...', pilihan: ['Berubah', 'Tetap', 'Cepat', 'Rapi'], kunci: 1 },
-  { id: 'v-003', kategori: 'verbal', tanya: 'HELM : KEPALA = SARUNG TANGAN : ...', pilihan: ['Siku', 'Bahu', 'Tangan', 'Kaki'], kunci: 2 },
-  { id: 'v-004', kategori: 'verbal', tanya: 'CETAKAN : PLASTIK = LOYANG : ...', pilihan: ['Roti', 'Tepung', 'Oven', 'Koki'], kunci: 0 },
-  { id: 'v-005', kategori: 'verbal', tanya: 'INSPEKSI : CACAT = AUDIT : ...', pilihan: ['Keuntungan', 'Pajak', 'Karyawan', 'Penyimpangan'], kunci: 3 },
-  { id: 'v-006', kategori: 'verbal', tanya: 'AUS : GESEKAN = KARAT : ...', pilihan: ['Panas', 'Tekanan', 'Oksidasi', 'Getaran'], kunci: 2 },
-  { id: 'v-007', kategori: 'verbal', tanya: 'MANDOR : PEKERJA = NAKHODA : ...', pilihan: ['Awak Kapal', 'Penumpang', 'Pelabuhan', 'Kemudi'], kunci: 0 },
-  { id: 'v-008', kategori: 'verbal', tanya: 'BAHAN BAKU : PRODUK JADI = TEPUNG : ...', pilihan: ['Gandum', 'Kue', 'Air', 'Gula'], kunci: 1 },
-  { id: 'v-009', kategori: 'verbal', tanya: 'GERGAJI : KAYU = GUNTING : ...', pilihan: ['Batu', 'Besi', 'Meja', 'Kain'], kunci: 3 },
-  { id: 'v-010', kategori: 'verbal', tanya: 'STERIL : BAKTERI = KEDAP : ...', pilihan: ['Cahaya', 'Ruangan', 'Udara', 'Dinding'], kunci: 2 },
-  { id: 'v-011', kategori: 'verbal', tanya: 'Lawan kata (antonim) paling tepat dari "DARURAT" adalah ...', pilihan: ['Normal', 'Genting', 'Segera', 'Penting'], kunci: 0 },
-  { id: 'v-012', kategori: 'verbal', tanya: 'Lawan kata (antonim) paling tepat dari "EFISIEN" adalah ...', pilihan: ['Hemat', 'Tepat', 'Boros', 'Cermat'], kunci: 2 },
-  { id: 'v-013', kategori: 'verbal', tanya: 'Persamaan kata (sinonim) paling tepat untuk "KALIBRASI" adalah ...', pilihan: ['Pembersihan', 'Peneraan / penyesuaian', 'Pembongkaran', 'Pengemasan'], kunci: 1 },
-  { id: 'v-014', kategori: 'verbal', tanya: 'Manakah yang TIDAK termasuk kelompok alat ukur?', pilihan: ['Jangka sorong', 'Mikrometer', 'Penggaris baja', 'Obeng plus'], kunci: 3 },
-  { id: 'v-015', kategori: 'verbal', tanya: 'Manakah yang TIDAK termasuk logam penghantar listrik?', pilihan: ['Besi', 'Tembaga', 'Aluminium', 'Kaca'], kunci: 3 },
-  { id: 'v-016', kategori: 'verbal', tanya: 'KOMPONEN : RAKIT = HURUF : ...', pilihan: ['Kata', 'Suara', 'Pensil', 'Kertas'], kunci: 0 },
-  { id: 'v-017', kategori: 'verbal', tanya: 'REM : KECEPATAN = TERMOSTAT : ...', pilihan: ['Listrik', 'Suhu', 'Jarak', 'Waktu'], kunci: 1 },
-  { id: 'v-018', kategori: 'verbal', tanya: 'GUDANG : PENYIMPANAN = LABORATORIUM : ...', pilihan: ['Penjualan', 'Pengiriman', 'Pengujian', 'Pembelian'], kunci: 2 },
-  { id: 'v-019', kategori: 'verbal', tanya: 'PELUMAS : AUS = VAKSIN : ...', pilihan: ['Infeksi', 'Rumah sakit', 'Dokter', 'Obat'], kunci: 0 },
-  { id: 'v-020', kategori: 'verbal', tanya: 'CETAK BIRU : BANGUNAN = RESEP : ...', pilihan: ['Piring', 'Dapur', 'Bahan', 'Masakan'], kunci: 3 },
-  { id: 'v-021', kategori: 'verbal', tanya: 'Manakah yang TIDAK termasuk aktivitas kerja?', pilihan: ['Merakit', 'Memotong', 'Mengelas', 'Gudang'], kunci: 3 },
-  { id: 'v-022', kategori: 'verbal', tanya: 'MUDAH PECAH : KACA = ELASTIS : ...', pilihan: ['Kayu', 'Karet', 'Batu', 'Keramik'], kunci: 1 },
-  { id: 'v-023', kategori: 'verbal', tanya: 'SENSOR : DETEKSI = FILTER : ...', pilihan: ['Pendinginan', 'Pemanasan', 'Penyaringan', 'Pemotongan'], kunci: 2 },
-  { id: 'v-024', kategori: 'verbal', tanya: 'CACAT PRODUK : TOLAK = SESUAI STANDAR : ...', pilihan: ['Terima', 'Buang', 'Bongkar', 'Tunda'], kunci: 0 },
-
-  /* ── NUMERIK (24) ────────────────────────────────────────────────────── */
-  { id: 'n-001', kategori: 'numerik', tanya: 'Lanjutkan deret: 3, 7, 15, 31, 63, ...', pilihan: ['95', '125', '127', '129'], kunci: 2 },
-  { id: 'n-002', kategori: 'numerik', tanya: 'Satu mesin membuat 15 komponen dalam 5 menit. Berapa komponen yang dibuat 4 mesin serupa dalam 20 menit?', pilihan: ['120', '180', '240', '300'], kunci: 2 },
-  { id: 'n-003', kategori: 'numerik', tanya: 'Lanjutkan deret: 2, 6, 12, 20, 30, ...', pilihan: ['40', '42', '44', '48'], kunci: 1 },
-  { id: 'n-004', kategori: 'numerik', tanya: 'Lanjutkan deret: 100, 95, 85, 70, 50, ...', pilihan: ['25', '20', '30', '15'], kunci: 0 },
-  { id: 'n-005', kategori: 'numerik', tanya: 'Dari 400 unit yang diperiksa, 2,5% dinyatakan cacat. Berapa unit yang LULUS standar?', pilihan: ['375', '380', '385', '390'], kunci: 3 },
-  { id: 'n-006', kategori: 'numerik', tanya: 'Shift dimulai 08.15 dan berakhir 17.00, dengan istirahat total 45 menit. Berapa jam kerja efektifnya?', pilihan: ['7,5 jam', '8 jam', '8,5 jam', '9 jam'], kunci: 1 },
-  { id: 'n-007', kategori: 'numerik', tanya: 'Lanjutkan deret: 4, 5, 8, 13, 20, 29, ...', pilihan: ['36', '38', '40', '42'], kunci: 2 },
-  { id: 'n-008', kategori: 'numerik', tanya: 'Berat kotor satu kotak baut 12,5 kg. Berat kotak kosong 750 gram. Berapa berat bersih bautnya?', pilihan: ['11,75 kg', '11,25 kg', '11,50 kg', '12,25 kg'], kunci: 0 },
-  { id: 'n-009', kategori: 'numerik', tanya: 'Lanjutkan deret: 2, 4, 3, 6, 5, 10, 9, ...', pilihan: ['8', '12', '16', '18'], kunci: 3 },
-  { id: 'n-010', kategori: 'numerik', tanya: 'Rasio konsentrat : air = 1 : 4. Untuk 25 liter cairan siap pakai, berapa liter konsentrat murni?', pilihan: ['4 liter', '5 liter', '6,25 liter', '20 liter'], kunci: 1 },
-  { id: 'n-011', kategori: 'numerik', tanya: 'Pipa 240 cm dipotong menjadi ukuran 30 cm. Satu kali potong butuh 15 detik. Berapa total waktu sampai selesai?', pilihan: ['90 detik', '105 detik', '120 detik', '135 detik'], kunci: 1 },
-  { id: 'n-012', kategori: 'numerik', tanya: 'Lanjutkan deret: 81, 27, 9, 3, 1, ...', pilihan: ['0', '1/2', '1/3', '1/9'], kunci: 2 },
-  { id: 'n-013', kategori: 'numerik', tanya: 'Target harian 1.200 kotak. Hingga siang sudah selesai 45%. Berapa kotak lagi untuk sesi sore?', pilihan: ['540 kotak', '600 kotak', '660 kotak', '720 kotak'], kunci: 2 },
-  { id: 'n-014', kategori: 'numerik', tanya: 'Pekerja A merakit 12 unit/jam, B 18 unit/jam. Jika bekerja bersama, berapa jam untuk 90 unit?', pilihan: ['3 jam', '3,5 jam', '4 jam', '4,5 jam'], kunci: 0 },
-  { id: 'n-015', kategori: 'numerik', tanya: 'Lanjutkan deret: 1, 2, 3, 5, 8, 13, 21, ...', pilihan: ['29', '31', '32', '34'], kunci: 3 },
-  { id: 'n-016', kategori: 'numerik', tanya: 'Suhu ruang pendingin -4°C. Saat bongkar muat naik 7°C, lalu turun 5°C. Berapa suhunya sekarang?', pilihan: ['-4°C', '-2°C', '0°C', '2°C'], kunci: 1 },
-  { id: 'n-017', kategori: 'numerik', tanya: 'Pelat baja tebal 3,5 mm. Jika 20 lembar ditumpuk rapat, berapa tinggi tumpukan dalam cm?', pilihan: ['7 cm', '7,5 cm', '35 cm', '70 cm'], kunci: 0 },
-  { id: 'n-018', kategori: 'numerik', tanya: 'Lanjutkan deret: 10, 20, 13, 18, 16, 16, 19, ...', pilihan: ['12', '13', '14', '22'], kunci: 2 },
-  { id: 'n-019', kategori: 'numerik', tanya: 'Konveyor bergerak 0,5 meter per detik. Berapa jarak yang ditempuh komponen selama 2 menit?', pilihan: ['30 meter', '60 meter', '100 meter', '120 meter'], kunci: 1 },
-  { id: 'n-020', kategori: 'numerik', tanya: 'Harga suku cadang naik dari Rp80.000 menjadi Rp92.000. Berapa persen kenaikannya?', pilihan: ['10%', '12%', '15%', '20%'], kunci: 2 },
-  { id: 'n-021', kategori: 'numerik', tanya: 'Lanjutkan deret: 1, 4, 9, 16, 25, 36, ...', pilihan: ['42', '45', '48', '49'], kunci: 3 },
-  { id: 'n-022', kategori: 'numerik', tanya: 'Satu palet memuat 6 tumpuk. Tiap tumpuk 4 kardus, tiap kardus 15 botol. Berapa botol dalam satu palet?', pilihan: ['360 botol', '320 botol', '240 botol', '420 botol'], kunci: 0 },
-  { id: 'n-023', kategori: 'numerik', tanya: '6 pekerja menyelesaikan gudang dalam 4 jam. Berapa pekerja agar selesai dalam 1,5 jam?', pilihan: ['10 pekerja', '12 pekerja', '14 pekerja', '16 pekerja'], kunci: 3 },
-  { id: 'n-024', kategori: 'numerik', tanya: 'Lanjutkan deret: 5, 11, 23, 47, 95, ...', pilihan: ['189', '191', '193', '195'], kunci: 1 },
-
-  /* ── SPASIAL (16) ────────────────────────────────────────────────────── */
+  /* ══ VERBAL (12 slot · 4 mudah · 6 sedang · 2 sulit) ═══════════════════ */
   {
-    id: 's-001',
-    kategori: 'spasial',
-    tanya: 'Panah menunjuk UTARA. Jika diputar 135° searah jarum jam lalu dicerminkan kiri-kanan, ke arah mana panah menunjuk?',
-    svg: '<svg viewBox="0 0 240 90"><rect width="240" height="90" rx="8" fill="#f8fafc" stroke="#cbd5e1"/><circle cx="70" cy="45" r="32" fill="none" stroke="#94a3b8" stroke-dasharray="4 2"/><line x1="70" y1="68" x2="70" y2="20" stroke="#0f172a" stroke-width="3"/><polygon points="70,14 64,24 76,24" fill="#0f172a"/><text x="122" y="40" font-size="11" fill="#334155">1. Putar 135° searah</text><text x="122" y="56" font-size="11" fill="#334155">2. Cermin kiri-kanan</text></svg>',
-    pilihan: ['Tenggara (kanan-bawah)', 'Barat daya (kiri-bawah)', 'Barat laut (kiri-atas)', 'Timur laut (kanan-atas)'],
-    kunci: 1,
+    id: 'v-01a', slot: 'v-01', kategori: 'verbal', tingkat: 'mudah',
+    tanya: 'PAHAT : KAYU = GERINDA : ...',
+    pilihan: ['Kertas', 'Logam', 'Kain', 'Cairan'], kunci: 1,
   },
   {
-    id: 's-002',
-    kategori: 'spasial',
-    tanya: 'Perhatikan posisi titik hitam dari kotak ke kotak. Di mana posisinya pada kotak keempat?',
-    svg: '<svg viewBox="0 0 240 80"><rect x="12" y="15" width="44" height="44" fill="#fff" stroke="#334155" stroke-width="2"/><circle cx="22" cy="25" r="5" fill="#0f172a"/><rect x="70" y="15" width="44" height="44" fill="#fff" stroke="#334155" stroke-width="2"/><circle cx="104" cy="25" r="5" fill="#0f172a"/><rect x="128" y="15" width="44" height="44" fill="#fff" stroke="#334155" stroke-width="2"/><circle cx="162" cy="49" r="5" fill="#0f172a"/><rect x="186" y="15" width="44" height="44" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="4 2"/><text x="208" y="43" text-anchor="middle" font-size="18" font-weight="bold" fill="#64748b">?</text></svg>',
-    pilihan: ['Sudut kiri-atas', 'Sudut kanan-atas', 'Sudut kiri-bawah', 'Tengah kotak'],
-    kunci: 2,
+    id: 'v-01b', slot: 'v-01', kategori: 'verbal', tingkat: 'mudah',
+    tanya: 'OBENG : SEKRUP = PALU : ...',
+    pilihan: ['Paku', 'Kayu', 'Kaca', 'Kain'], kunci: 0,
   },
   {
-    id: 's-003',
-    kategori: 'spasial',
-    tanya: 'Perhatikan pola penambahan garis. Bagaimana isi kotak keempat?',
-    svg: '<svg viewBox="0 0 240 80"><rect x="12" y="15" width="44" height="44" fill="#fff" stroke="#334155" stroke-width="2"/><line x1="22" y1="20" x2="22" y2="54" stroke="#0f172a" stroke-width="2"/><rect x="70" y="15" width="44" height="44" fill="#fff" stroke="#334155" stroke-width="2"/><line x1="80" y1="20" x2="80" y2="54" stroke="#0f172a" stroke-width="2"/><line x1="88" y1="20" x2="88" y2="54" stroke="#0f172a" stroke-width="2"/><rect x="128" y="15" width="44" height="44" fill="#fff" stroke="#334155" stroke-width="2"/><line x1="138" y1="20" x2="138" y2="54" stroke="#0f172a" stroke-width="2"/><line x1="146" y1="20" x2="146" y2="54" stroke="#0f172a" stroke-width="2"/><line x1="154" y1="20" x2="154" y2="54" stroke="#0f172a" stroke-width="2"/><rect x="186" y="15" width="44" height="44" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="4 2"/><text x="208" y="43" text-anchor="middle" font-size="18" font-weight="bold" fill="#64748b">?</text></svg>',
-    pilihan: ['2 garis mendatar', '3 garis miring', '1 garis silang', '4 garis vertikal sejajar'],
-    kunci: 3,
+    id: 'v-02a', slot: 'v-02', kategori: 'verbal', tingkat: 'mudah',
+    tanya: 'GESEKAN : AUS = OKSIDASI : ...',
+    pilihan: ['Karat', 'Beku', 'Retak', 'Menguap'], kunci: 0,
   },
   {
-    id: 's-004',
-    kategori: 'spasial',
-    tanya: 'Perhatikan pola bentuk dan warna (hitam/putih). Bentuk apa yang mengisi tanda tanya?',
-    svg: '<svg viewBox="0 0 240 80"><circle cx="26" cy="40" r="14" fill="#0f172a"/><polygon points="70,26 56,54 84,54" fill="#fff" stroke="#0f172a" stroke-width="2"/><circle cx="114" cy="40" r="14" fill="#fff" stroke="#0f172a" stroke-width="2"/><polygon points="158,26 144,54 172,54" fill="#0f172a"/><circle cx="196" cy="40" r="14" fill="#0f172a"/><text x="226" y="46" text-anchor="middle" font-size="20" font-weight="bold" fill="#64748b">?</text></svg>',
-    pilihan: ['Segitiga putih', 'Segitiga hitam', 'Lingkaran putih', 'Persegi hitam'],
-    kunci: 0,
+    id: 'v-02b', slot: 'v-02', kategori: 'verbal', tingkat: 'mudah',
+    tanya: 'PEMANASAN : PEMUAIAN = PENDINGINAN : ...',
+    pilihan: ['Penyusutan', 'Pemuaian', 'Peleburan', 'Korosi'], kunci: 0,
   },
   {
-    id: 's-005',
-    kategori: 'spasial',
-    tanya: 'Bangun huruf "L" diputar 90° searah jarum jam. Bagaimana posisi akhirnya?',
-    svg: '<svg viewBox="0 0 240 90"><rect width="240" height="90" rx="8" fill="#f8fafc" stroke="#cbd5e1"/><path d="M 65 20 L 65 68 L 100 68" fill="none" stroke="#0f172a" stroke-width="8" stroke-linecap="square"/><text x="160" y="48" text-anchor="middle" font-size="12" fill="#334155">Putar 90° searah</text></svg>',
+    id: 'v-03a', slot: 'v-03', kategori: 'verbal', tingkat: 'mudah',
+    tanya: 'Manakah yang TIDAK termasuk kelompok bahan penghantar listrik?',
+    pilihan: ['Tembaga', 'Aluminium', 'Besi', 'Karet'], kunci: 3,
+  },
+  {
+    id: 'v-03b', slot: 'v-03', kategori: 'verbal', tingkat: 'mudah',
+    tanya: 'Manakah yang TIDAK termasuk kelompok bahan isolator?',
+    pilihan: ['Kayu kering', 'Kaca', 'Plastik', 'Besi'], kunci: 3,
+  },
+  {
+    id: 'v-04a', slot: 'v-04', kategori: 'verbal', tingkat: 'mudah',
+    tanya:
+      'Pengiriman ke Gudang Barat hanya dijadwalkan Selasa dan Jumat. Jika jatuh pada hari libur nasional, pengiriman digeser ke satu hari kerja berikutnya. Jumat minggu ini libur nasional dan Sabtu adalah hari kerja. Kesimpulan yang PASTI benar:',
     pilihan: [
-      'Garis panjang vertikal di kanan, kaki pendek di bawah',
-      'Garis panjang mendatar di atas, kaki pendek menunjuk ke bawah di sisi kiri',
-      'Garis panjang mendatar di bawah, kaki pendek menunjuk ke atas di sisi kanan',
-      'Garis panjang vertikal di kiri, kaki pendek di atas',
-    ],
-    kunci: 1,
-  },
-  {
-    id: 's-006',
-    kategori: 'spasial',
-    tanya: 'Segitiga siku-siku dicerminkan terhadap garis putus-putus vertikal. Di mana letak sudut siku-sikunya sekarang?',
-    svg: '<svg viewBox="0 0 240 90"><polygon points="50,20 50,70 100,70" fill="#cbd5e1" stroke="#0f172a" stroke-width="2"/><rect x="50" y="60" width="10" height="10" fill="none" stroke="#0f172a"/><line x1="120" y1="10" x2="120" y2="80" stroke="#ef4444" stroke-width="2" stroke-dasharray="4 3"/><text x="175" y="50" text-anchor="middle" font-size="22" font-weight="bold" fill="#64748b">?</text></svg>',
-    pilihan: ['Sudut kanan-bawah', 'Sudut kiri-bawah', 'Sudut kanan-atas', 'Sudut kiri-atas'],
-    kunci: 0,
-  },
-  {
-    id: 's-007',
-    kategori: 'spasial',
-    tanya: 'Trapesium dengan titik hitam di atas dicerminkan melewati garis merah. Bagaimana hasil bayangannya?',
-    svg: '<svg viewBox="0 0 240 95"><polygon points="95,12 145,12 165,40 75,40" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/><circle cx="120" cy="22" r="4" fill="#0f172a"/><line x1="40" y1="50" x2="200" y2="50" stroke="#ef4444" stroke-width="2" stroke-dasharray="5 3"/><text x="120" y="80" text-anchor="middle" font-size="18" font-weight="bold" fill="#64748b">?</text></svg>',
-    pilihan: [
-      'Sisi atas tetap pendek dan titik hitam tetap di atas',
-      'Sisi atas menjadi panjang dan titik hitam tetap di atas',
-      'Sisi atas menjadi panjang dan titik hitam berada di bawah',
-      'Bentuk berubah menjadi persegi panjang sempurna',
+      'Pengiriman minggu itu ditiadakan.',
+      'Pengiriman digabung ke Selasa minggu depan.',
+      'Pengiriman yang seharusnya Jumat dilakukan hari Sabtu.',
+      'Pengiriman dimajukan ke hari Kamis.',
     ],
     kunci: 2,
   },
   {
-    id: 's-008',
-    kategori: 'spasial',
-    tanya: 'Jaring-jaring kubus bernomor 1–6 dilipat menjadi kubus. Sisi mana yang BERHADAPAN dengan sisi nomor 1?',
-    svg: '<svg viewBox="0 0 240 95"><g stroke="#0f172a" stroke-width="1.5" fill="#fff"><rect x="45" y="34" width="26" height="26"/><rect x="71" y="34" width="26" height="26"/><rect x="97" y="34" width="26" height="26"/><rect x="123" y="34" width="26" height="26"/><rect x="71" y="8" width="26" height="26"/><rect x="71" y="60" width="26" height="26"/></g><g font-size="12" font-weight="bold" text-anchor="middle" fill="#0f172a"><text x="58" y="51">1</text><text x="84" y="51">2</text><text x="110" y="51">3</text><text x="136" y="51">4</text><text x="84" y="25">5</text><text x="84" y="77">6</text></g></svg>',
-    pilihan: ['Sisi nomor 2', 'Sisi nomor 3', 'Sisi nomor 4', 'Sisi nomor 6'],
+    id: 'v-04b', slot: 'v-04', kategori: 'verbal', tingkat: 'mudah',
+    tanya:
+      'Inspeksi lini hanya dijadwalkan Senin dan Kamis. Jika jatuh pada hari libur nasional, inspeksi digeser ke satu hari kerja berikutnya. Kamis minggu ini libur nasional dan Jumat adalah hari kerja. Kesimpulan yang PASTI benar:',
+    pilihan: [
+      'Inspeksi minggu itu ditiadakan.',
+      'Inspeksi yang seharusnya Kamis dilakukan hari Jumat.',
+      'Inspeksi dimajukan ke hari Rabu.',
+      'Inspeksi digabung ke Senin minggu depan.',
+    ],
     kunci: 1,
   },
   {
-    id: 's-009',
-    kategori: 'spasial',
-    tanya: 'Jika isi gambar A dan B ditumpuk pada satu lingkaran, gambar mana yang terbentuk?',
-    svg: '<svg viewBox="0 0 240 85"><circle cx="45" cy="42" r="24" fill="#fff" stroke="#0f172a" stroke-width="2"/><line x1="28" y1="25" x2="62" y2="59" stroke="#0f172a" stroke-width="2.5"/><text x="82" y="48" font-size="18" font-weight="bold">+</text><circle cx="120" cy="42" r="24" fill="#fff" stroke="#0f172a" stroke-width="2"/><line x1="103" y1="59" x2="137" y2="25" stroke="#0f172a" stroke-width="2.5"/><text x="158" y="48" font-size="18" font-weight="bold">=</text><circle cx="195" cy="42" r="24" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="4 2"/><text x="195" y="48" text-anchor="middle" font-size="18" font-weight="bold" fill="#64748b">?</text></svg>',
-    pilihan: ['Lingkaran dengan tanda tambah (+)', 'Lingkaran kosong', 'Lingkaran dengan tanda silang (X)', 'Lingkaran dengan dua garis sejajar'],
-    kunci: 2,
+    id: 'v-05a', slot: 'v-05', kategori: 'verbal', tingkat: 'sedang',
+    tanya: 'KALIBRASI : AKURASI = STERILISASI : ...',
+    pilihan: ['Kuantitas', 'Higienitas', 'Kecepatan', 'Elastisitas'], kunci: 1,
   },
   {
-    id: 's-010',
-    kategori: 'spasial',
-    tanya: 'Perhatikan urutan jumlah sisi bangun datar. Bangun apa yang mengisi urutan keempat?',
-    svg: '<svg viewBox="0 0 240 80"><polygon points="32,20 14,56 50,56" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/><rect x="72" y="20" width="36" height="36" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/><polygon points="150,18 170,33 162,56 138,56 130,33" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/><text x="208" y="46" text-anchor="middle" font-size="22" font-weight="bold" fill="#64748b">?</text></svg>',
-    pilihan: ['Lingkaran', 'Trapesium (4 sisi)', 'Segidelapan (8 sisi)', 'Segienam (6 sisi)'],
-    kunci: 3,
+    id: 'v-05b', slot: 'v-05', kategori: 'verbal', tingkat: 'sedang',
+    tanya: 'PELUMASAN : GESEKAN = PENGECATAN : ...',
+    pilihan: ['Warna', 'Karat', 'Berat', 'Harga'], kunci: 1,
   },
   {
-    id: 's-011',
-    kategori: 'spasial',
-    tanya: 'Perhatikan arah garis di dalam lingkaran. Ke arah mana garis menunjuk pada lingkaran keempat?',
-    svg: '<svg viewBox="0 0 240 80"><circle cx="32" cy="40" r="20" fill="#fff" stroke="#0f172a" stroke-width="2"/><line x1="32" y1="40" x2="32" y2="22" stroke="#0f172a" stroke-width="3"/><circle cx="88" cy="40" r="20" fill="#fff" stroke="#0f172a" stroke-width="2"/><line x1="88" y1="40" x2="106" y2="40" stroke="#0f172a" stroke-width="3"/><circle cx="144" cy="40" r="20" fill="#fff" stroke="#0f172a" stroke-width="2"/><line x1="144" y1="40" x2="144" y2="58" stroke="#0f172a" stroke-width="3"/><circle cx="200" cy="40" r="20" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="4 2"/><text x="200" y="46" text-anchor="middle" font-size="16" font-weight="bold" fill="#64748b">?</text></svg>',
-    pilihan: ['Ke kiri (jam 09.00)', 'Ke atas (jam 12.00)', 'Ke kanan (jam 03.00)', 'Ke bawah (jam 06.00)'],
-    kunci: 0,
+    id: 'v-06a', slot: 'v-06', kategori: 'verbal', tingkat: 'sedang',
+    tanya: 'KOMPONEN : MESIN = PASAL : ...',
+    pilihan: ['Pengadilan', 'Hakim', 'Undang-undang', 'Sanksi'], kunci: 2,
   },
   {
-    id: 's-012',
-    kategori: 'spasial',
-    tanya: 'Susunan balok: lapisan bawah 2 × 2 kubus penuh, ditambah 1 kubus di atas pojok kiri-belakang. Berapa total kubus satuan?',
-    svg: '<svg viewBox="0 0 240 90"><rect width="240" height="90" rx="8" fill="#f8fafc" stroke="#cbd5e1"/><g stroke="#0f172a" stroke-width="1.5"><rect x="45" y="20" width="28" height="28" fill="#94a3b8"/><rect x="73" y="20" width="28" height="28" fill="#e2e8f0"/><rect x="45" y="48" width="28" height="28" fill="#e2e8f0"/><rect x="73" y="48" width="28" height="28" fill="#e2e8f0"/></g><g font-size="12" text-anchor="middle"><text x="59" y="39" fill="#fff" font-weight="bold">2</text><text x="87" y="39">1</text><text x="59" y="67">1</text><text x="87" y="67">1</text></g><text x="168" y="44" text-anchor="middle" font-size="11" fill="#334155">Tampak atas</text><text x="168" y="60" text-anchor="middle" font-size="10" fill="#64748b">(angka = tinggi tumpukan)</text></svg>',
-    pilihan: ['4 kubus', '5 kubus', '6 kubus', '8 kubus'],
+    id: 'v-06b', slot: 'v-06', kategori: 'verbal', tingkat: 'sedang',
+    tanya: 'KATA : KALIMAT = BATA : ...',
+    pilihan: ['Semen', 'Dinding', 'Pasir', 'Atap'], kunci: 1,
+  },
+  {
+    id: 'v-07a', slot: 'v-07', kategori: 'verbal', tingkat: 'sedang',
+    tanya: 'Manakah yang TIDAK termasuk sifat mekanis material?',
+    pilihan: ['Elastis', 'Getas', 'Lentur', 'Presisi'], kunci: 3,
+  },
+  {
+    id: 'v-07b', slot: 'v-07', kategori: 'verbal', tingkat: 'sedang',
+    tanya: 'Manakah yang TIDAK termasuk sifat tampak/permukaan material?',
+    pilihan: ['Kilap', 'Warna', 'Tekstur', 'Keras'], kunci: 3,
+  },
+  {
+    id: 'v-08a', slot: 'v-08', kategori: 'verbal', tingkat: 'sedang',
+    tanya: 'Manakah yang TIDAK termasuk kegiatan pengendalian mutu (QC)?',
+    pilihan: ['Inspeksi', 'Pengujian', 'Verifikasi', 'Pemasaran'], kunci: 3,
+  },
+  {
+    id: 'v-08b', slot: 'v-08', kategori: 'verbal', tingkat: 'sedang',
+    tanya: 'Manakah yang TIDAK termasuk kegiatan pemeriksaan sebelum barang dikirim?',
+    pilihan: ['Kalibrasi alat ukur', 'Inspeksi visual', 'Uji petik', 'Pengiriman'], kunci: 3,
+  },
+  {
+    id: 'v-09a', slot: 'v-09', kategori: 'verbal', tingkat: 'sedang',
+    tanya:
+      'Mesin seri X memakai listrik 20% lebih rendah daripada seri Y, tetapi menuntut penggantian pisau dua kali lebih sering. Harga satu pisau untuk kedua seri sama persis. Pernyataan yang PASTI benar:',
+    pilihan: [
+      'Biaya total operasional X lebih mahal daripada Y.',
+      'Biaya pisau bulanan X lebih tinggi daripada Y.',
+      'Mesin Y bekerja lebih cepat daripada X.',
+      'Tagihan listrik pabrik pasti turun 20% bila memakai X.',
+    ],
     kunci: 1,
   },
   {
-    id: 's-013',
-    kategori: 'spasial',
-    tanya: 'Perhatikan pola pengurangan jumlah titik. Berapa titik pada kotak keempat?',
-    svg: '<svg viewBox="0 0 240 80"><rect x="12" y="15" width="44" height="44" fill="#fff" stroke="#0f172a" stroke-width="2"/><g fill="#0f172a"><circle cx="24" cy="25" r="3.5"/><circle cx="24" cy="37" r="3.5"/><circle cx="24" cy="49" r="3.5"/><circle cx="44" cy="25" r="3.5"/><circle cx="44" cy="37" r="3.5"/><circle cx="44" cy="49" r="3.5"/></g><rect x="70" y="15" width="44" height="44" fill="#fff" stroke="#0f172a" stroke-width="2"/><g fill="#0f172a"><circle cx="82" cy="25" r="3.5"/><circle cx="82" cy="49" r="3.5"/><circle cx="92" cy="37" r="3.5"/><circle cx="102" cy="25" r="3.5"/><circle cx="102" cy="49" r="3.5"/></g><rect x="128" y="15" width="44" height="44" fill="#fff" stroke="#0f172a" stroke-width="2"/><g fill="#0f172a"><circle cx="140" cy="25" r="3.5"/><circle cx="140" cy="49" r="3.5"/><circle cx="160" cy="25" r="3.5"/><circle cx="160" cy="49" r="3.5"/></g><rect x="186" y="15" width="44" height="44" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="4 2"/><text x="208" y="43" text-anchor="middle" font-size="18" font-weight="bold" fill="#64748b">?</text></svg>',
-    pilihan: ['1 titik', '2 titik', '3 titik', '4 titik'],
-    kunci: 2,
+    id: 'v-09b', slot: 'v-09', kategori: 'verbal', tingkat: 'sedang',
+    tanya:
+      'Mesin M 25% lebih cepat daripada mesin N, tetapi tingkat produk cacatnya dua kali lipat. Biaya perbaikan satu unit cacat sama untuk kedua mesin. Pernyataan yang PASTI benar:',
+    pilihan: [
+      'Biaya listrik M lebih murah daripada N.',
+      'Biaya perbaikan M lebih tinggi daripada N.',
+      'Mesin M lebih awet daripada N.',
+      'Total biaya M pasti lebih murah daripada N.',
+    ],
+    kunci: 1,
   },
   {
-    id: 's-014',
-    kategori: 'spasial',
-    tanya: 'Tiga roda gigi saling bersinggungan. Jika roda A diputar searah jarum jam, ke arah mana roda C berputar?',
-    svg: '<svg viewBox="0 0 240 85"><circle cx="55" cy="42" r="24" fill="#e2e8f0" stroke="#0f172a" stroke-width="3" stroke-dasharray="6 3"/><text x="55" y="47" text-anchor="middle" font-weight="bold" font-size="13">A</text><circle cx="115" cy="42" r="24" fill="#cbd5e1" stroke="#0f172a" stroke-width="3" stroke-dasharray="6 3"/><text x="115" y="47" text-anchor="middle" font-weight="bold" font-size="13">B</text><circle cx="175" cy="42" r="24" fill="#e2e8f0" stroke="#0f172a" stroke-width="3" stroke-dasharray="6 3"/><text x="175" y="47" text-anchor="middle" font-weight="bold" font-size="13">C</text></svg>',
-    pilihan: ['Searah jarum jam (sama dengan A)', 'Berlawanan arah jarum jam', 'Diam / terkunci', 'Bergantian bolak-balik'],
+    id: 'v-10a', slot: 'v-10', kategori: 'verbal', tingkat: 'sedang',
+    tanya:
+      'Setiap insiden ringan wajib dilaporkan ke Supervisor maksimal 2 jam setelah kejadian. Bila insiden membuat lini berhenti lebih dari 15 menit, laporan wajib langsung ditembuskan ke Manajer Pabrik saat itu juga. Pukul 09.00 terjadi insiden ringan yang membuat lini berhenti 10 menit. Tindakan yang sesuai aturan:',
+    pilihan: [
+      'Lapor Supervisor paling lambat pukul 11.00, tanpa tembusan langsung ke Manajer.',
+      'Wajib langsung ditembuskan ke Manajer pukul 09.00.',
+      'Tidak perlu dilaporkan karena di bawah 15 menit.',
+      'Dilaporkan ke Supervisor keesokan harinya.',
+    ],
     kunci: 0,
   },
   {
-    id: 's-015',
-    kategori: 'spasial',
-    tanya: 'Perhatikan pola pengisian bagian lingkaran. Bagaimana bentuk lingkaran keempat?',
-    svg: '<svg viewBox="0 0 240 80"><circle cx="32" cy="40" r="20" fill="#fff" stroke="#0f172a" stroke-width="2"/><path d="M32,40 L32,20 A20,20 0 0,1 52,40 Z" fill="#0f172a"/><circle cx="88" cy="40" r="20" fill="#fff" stroke="#0f172a" stroke-width="2"/><path d="M88,40 L88,20 A20,20 0 0,1 88,60 Z" fill="#0f172a"/><circle cx="144" cy="40" r="20" fill="#fff" stroke="#0f172a" stroke-width="2"/><path d="M144,40 L144,20 A20,20 0 1,1 124,40 Z" fill="#0f172a"/><circle cx="200" cy="40" r="20" fill="#f1f5f9" stroke="#334155" stroke-width="2" stroke-dasharray="4 2"/><text x="200" y="46" text-anchor="middle" font-size="16" font-weight="bold" fill="#64748b">?</text></svg>',
-    pilihan: ['Lingkaran kosong', 'Terisi seperempat kiri-atas', 'Terisi setengah atas', 'Terisi penuh (4/4)'],
-    kunci: 3,
+    id: 'v-10b', slot: 'v-10', kategori: 'verbal', tingkat: 'sedang',
+    tanya:
+      'Setiap insiden ringan wajib dilaporkan ke Supervisor maksimal 2 jam setelah kejadian. Bila insiden membuat lini berhenti lebih dari 15 menit, laporan wajib langsung ditembuskan ke Manajer Pabrik saat itu juga. Pukul 13.00 terjadi insiden ringan yang membuat lini berhenti 22 menit. Tindakan yang sesuai aturan:',
+    pilihan: [
+      'Cukup lapor Supervisor sebelum pukul 15.00.',
+      'Laporan wajib langsung ditembuskan ke Manajer Pabrik saat itu juga.',
+      'Tidak perlu dilaporkan karena insidennya ringan.',
+      'Lapor Supervisor besok pagi.',
+    ],
+    kunci: 1,
   },
   {
-    id: 's-016',
-    kategori: 'spasial',
-    tanya: 'Bangun mana yang TIDAK memiliki simetri lipat sama sekali?',
-    svg: '<svg viewBox="0 0 240 85"><polygon points="30,18 12,56 48,56" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/><text x="30" y="74" text-anchor="middle" font-size="12" font-weight="bold">A</text><polygon points="75,22 115,22 103,56 63,56" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/><text x="89" y="74" text-anchor="middle" font-size="12" font-weight="bold">B</text><rect x="130" y="24" width="40" height="30" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/><text x="150" y="74" text-anchor="middle" font-size="12" font-weight="bold">C</text><polygon points="205,18 225,38 205,58 185,38" fill="#e2e8f0" stroke="#0f172a" stroke-width="2"/><text x="205" y="74" text-anchor="middle" font-size="12" font-weight="bold">D</text></svg>',
-    pilihan: ['A (segitiga sama kaki)', 'B (jajargenjang)', 'C (persegi panjang)', 'D (belah ketupat)'],
+    id: 'v-11a', slot: 'v-11', kategori: 'verbal', tingkat: 'sulit',
+    tanya: 'PRESEDEN : KEPUTUSAN = HIPOTESIS : ...',
+    pilihan: ['Fakta', 'Eksperimen', 'Teori', 'Kesimpulan'], kunci: 1,
+  },
+  {
+    id: 'v-11b', slot: 'v-11', kategori: 'verbal', tingkat: 'sulit',
+    tanya: 'TEORI : PENGUJIAN = DESAIN : ...',
+    pilihan: ['Purwarupa', 'Produk akhir', 'Pasar', 'Biaya'], kunci: 0,
+  },
+  {
+    id: 'v-12a', slot: 'v-12', kategori: 'verbal', tingkat: 'sulit',
+    tanya:
+      'Sepanjang kuartal ketiga, setiap kenaikan produksi bulanan Pabrik A selalu diikuti kenaikan jam lembur teknisi. Namun pada September, total biaya operasional justru turun 12% meski produksi September tertinggi sepanjang kuartal. Kesimpulan yang PASTI benar:',
+    pilihan: [
+      'Jam lembur teknisi September turun.',
+      'Tarif upah lembur dipotong pada September.',
+      'Jam lembur teknisi tetap naik, dan penghematan berasal dari pos biaya lain.',
+      'Produksi Agustus lebih tinggi daripada September.',
+    ],
+    kunci: 2,
+  },
+  {
+    id: 'v-12b', slot: 'v-12', kategori: 'verbal', tingkat: 'sulit',
+    tanya:
+      'Setiap keterlambatan pasokan bahan selalu menaikkan jam lembur di lini perakitan. Pada Oktober tidak ada satu pun pasokan yang terlambat, tetapi jam lembur lini perakitan tetap naik dibanding September. Kesimpulan yang PASTI benar:',
+    pilihan: [
+      'Pasokan Oktober sebenarnya terlambat tetapi tidak tercatat.',
+      'Kenaikan lembur Oktober disebabkan hal lain selain keterlambatan pasokan.',
+      'Produksi Oktober lebih rendah daripada September.',
+      'Tarif upah lembur dipotong pada Oktober.',
+    ],
     kunci: 1,
   },
 
-  /* ── LOGIKA (16) ─────────────────────────────────────────────────────── */
+  /* ══ NUMERIK (12 slot · 3 mudah · 6 sedang · 3 sulit) ══════════════════ */
   {
-    id: 'l-001',
-    kategori: 'logika',
-    tanya: 'Semua pekerja pabrik wajib memakai sepatu safety. Sebagian orang di ruangan memakai sepatu safety. Kesimpulan yang PASTI benar:',
+    id: 'n-01a', slot: 'n-01', kategori: 'numerik', tingkat: 'mudah',
+    tanya: 'Lanjutkan deret: 4, 9, 19, 39, 79, ...',
+    pilihan: ['139', '149', '158', '159'], kunci: 3,
+  },
+  {
+    id: 'n-01b', slot: 'n-01', kategori: 'numerik', tingkat: 'mudah',
+    tanya: 'Lanjutkan deret: 3, 7, 15, 31, 63, ...',
+    pilihan: ['95', '125', '127', '129'], kunci: 2,
+  },
+  {
+    id: 'n-02a', slot: 'n-02', kategori: 'numerik', tingkat: 'mudah',
+    tanya: 'Dari 800 komponen yang diperiksa, 1,5% dinyatakan rusak. Berapa yang LULUS?',
+    pilihan: ['785 unit', '788 unit', '790 unit', '792 unit'], kunci: 1,
+  },
+  {
+    id: 'n-02b', slot: 'n-02', kategori: 'numerik', tingkat: 'mudah',
+    tanya: 'Dari 600 unit yang diperiksa, 2,5% dinyatakan cacat. Berapa yang LULUS?',
+    pilihan: ['570 unit', '585 unit', '590 unit', '595 unit'], kunci: 1,
+  },
+  {
+    id: 'n-03a', slot: 'n-03', kategori: 'numerik', tingkat: 'mudah',
+    tanya: 'Jeriken 18 liter dituang seluruhnya ke botol 450 ml. Berapa botol dibutuhkan?',
+    pilihan: ['36 botol', '40 botol', '45 botol', '50 botol'], kunci: 1,
+  },
+  {
+    id: 'n-03b', slot: 'n-03', kategori: 'numerik', tingkat: 'mudah',
+    tanya: 'Drum 24 liter dituang seluruhnya ke kaleng 300 ml. Berapa kaleng dibutuhkan?',
+    pilihan: ['60 kaleng', '72 kaleng', '80 kaleng', '90 kaleng'], kunci: 2,
+  },
+  {
+    id: 'n-04a', slot: 'n-04', kategori: 'numerik', tingkat: 'sedang',
+    tanya: 'Lanjutkan deret alfanumerik: B2, D5, G10, K17, P26, ...',
+    pilihan: ['U35', 'V37', 'V36', 'W37'], kunci: 1,
+  },
+  {
+    id: 'n-04b', slot: 'n-04', kategori: 'numerik', tingkat: 'sedang',
+    tanya: 'Lanjutkan deret alfanumerik: A2, C5, F9, J14, O20, ...',
+    pilihan: ['T26', 'U27', 'U28', 'V27'], kunci: 1,
+  },
+  {
+    id: 'n-05a', slot: 'n-05', kategori: 'numerik', tingkat: 'sedang',
+    tanya: 'Lanjutkan deret: 12, 5, 15, 10, 18, 20, 21, ...',
+    pilihan: ['24', '30', '35', '40'], kunci: 3,
+  },
+  {
+    id: 'n-05b', slot: 'n-05', kategori: 'numerik', tingkat: 'sedang',
+    tanya: 'Lanjutkan deret: 7, 4, 10, 8, 13, 16, 16, ...',
+    pilihan: ['24', '28', '32', '36'], kunci: 2,
+  },
+  {
+    id: 'n-06a', slot: 'n-06', kategori: 'numerik', tingkat: 'sedang',
+    tanya: 'Standar panjang baut 12,50 cm dengan toleransi ±0,15 cm. Ukuran mana yang TIDAK LULUS?',
+    pilihan: ['12,36 cm', '12,48 cm', '12,64 cm', '12,32 cm'], kunci: 3,
+  },
+  {
+    id: 'n-06b', slot: 'n-06', kategori: 'numerik', tingkat: 'sedang',
+    tanya: 'Standar diameter poros 8,00 mm dengan toleransi ±0,10 mm. Ukuran mana yang TIDAK LULUS?',
+    pilihan: ['7,92 mm', '7,95 mm', '8,08 mm', '7,85 mm'], kunci: 3,
+  },
+  {
+    id: 'n-07a', slot: 'n-07', kategori: 'numerik', tingkat: 'sedang',
+    tanya: 'Mesin A menyelesaikan satu kloter dalam 6 jam, mesin B dalam 3 jam. Jika keduanya menyala bersama sejak awal, berapa jam sampai selesai?',
+    pilihan: ['1,5 jam', '2 jam', '2,5 jam', '4,5 jam'], kunci: 1,
+  },
+  {
+    id: 'n-07b', slot: 'n-07', kategori: 'numerik', tingkat: 'sedang',
+    tanya: 'Pekerja A menyelesaikan satu order dalam 4 jam, pekerja B dalam 12 jam. Jika bekerja bersama sejak awal, berapa jam sampai selesai?',
+    pilihan: ['2 jam', '2,5 jam', '3 jam', '3,5 jam'], kunci: 2,
+  },
+  {
+    id: 'n-08a', slot: 'n-08', kategori: 'numerik', tingkat: 'sedang',
+    tanya: '9 teknisi menyelesaikan perombakan pipa dalam 16 hari. Agar selesai 12 hari, berapa TAMBAHAN teknisi?',
+    pilihan: ['2 orang', '3 orang', '4 orang', '12 orang'], kunci: 1,
+  },
+  {
+    id: 'n-08b', slot: 'n-08', kategori: 'numerik', tingkat: 'sedang',
+    tanya: '8 teknisi menyelesaikan pemasangan instalasi dalam 15 hari. Agar selesai 10 hari, berapa TAMBAHAN teknisi?',
+    pilihan: ['2 orang', '3 orang', '4 orang', '6 orang'], kunci: 2,
+  },
+  {
+    id: 'n-09a', slot: 'n-09', kategori: 'numerik', tingkat: 'sedang',
+    tanya: 'Cairan dibuat dari bahan A : B : air = 2 : 3 : 7. Untuk 60 liter, berapa selisih air dan bahan A?',
+    pilihan: ['15 liter', '20 liter', '25 liter', '35 liter'], kunci: 2,
+  },
+  {
+    id: 'n-09b', slot: 'n-09', kategori: 'numerik', tingkat: 'sedang',
+    tanya: 'Campuran dibuat dari bahan A : B : air = 3 : 4 : 5. Untuk 72 liter, berapa selisih air dan bahan A?',
+    pilihan: ['6 liter', '9 liter', '12 liter', '18 liter'], kunci: 2,
+  },
+  {
+    id: 'n-10a', slot: 'n-10', kategori: 'numerik', tingkat: 'sulit',
+    tanya: 'Lanjutkan deret: 3, 5, 13, 43, 177, ...',
+    pilihan: ['714', '885', '891', '1.062'], kunci: 2,
+  },
+  {
+    id: 'n-10b', slot: 'n-10', kategori: 'numerik', tingkat: 'sulit',
+    tanya: 'Lanjutkan deret: 2, 5, 16, 65, 326, ...',
+    pilihan: ['1.857', '1.957', '1.963', '2.057'], kunci: 1,
+  },
+  {
+    id: 'n-11a', slot: 'n-11', kategori: 'numerik', tingkat: 'sulit',
+    tanya: '1.000 unit diproses. Tahap 1 gagal 10% dan dibuang; tahap 2 gagal 5% dari yang lulus tahap 1. Berapa unit lulus akhir?',
+    pilihan: ['850 unit', '855 unit', '860 unit', '900 unit'], kunci: 1,
+  },
+  {
+    id: 'n-11b', slot: 'n-11', kategori: 'numerik', tingkat: 'sulit',
+    tanya: '800 unit diproses. Tahap 1 gagal 15% dan dibuang; tahap 2 gagal 10% dari yang lulus tahap 1. Berapa unit lulus akhir?',
+    pilihan: ['600 unit', '612 unit', '620 unit', '648 unit'], kunci: 1,
+  },
+  {
+    id: 'n-12a', slot: 'n-12', kategori: 'numerik', tingkat: 'sulit',
+    tanya: 'Mesin memotong 40 detik lalu wajib jeda 10 detik sebelum potongan berikutnya. Untuk memotong pipa menjadi 10 bagian, berapa total waktu dari potongan pertama hingga potongan terakhir selesai?',
+    pilihan: ['440 detik', '450 detik', '490 detik', '500 detik'], kunci: 0,
+  },
+  {
+    id: 'n-12b', slot: 'n-12', kategori: 'numerik', tingkat: 'sulit',
+    tanya: 'Mesin memotong 30 detik lalu wajib jeda 6 detik sebelum potongan berikutnya. Untuk memotong pipa menjadi 8 bagian, berapa total waktu dari potongan pertama hingga potongan terakhir selesai?',
+    pilihan: ['240 detik', '246 detik', '252 detik', '258 detik'], kunci: 1,
+  },
+
+  /* ══ SPASIAL (8 slot · 2 mudah · 4 sedang · 2 sulit) ═══════════════════ */
+  {
+    id: 's-01a', slot: 's-01', kategori: 'spasial', tingkat: 'mudah',
+    tanya: 'Huruf "F" diputar 90° searah jarum jam. Bagaimana posisi akhirnya?',
+    svg: SVG_F,
     pilihan: [
-      'Semua orang di ruangan adalah pekerja pabrik.',
-      'Sebagian orang di ruangan pasti pekerja pabrik.',
-      'Orang di ruangan yang tidak memakai sepatu safety pasti bukan pekerja pabrik.',
-      'Tidak ada pekerja pabrik di ruangan.',
+      'Tiang utama mendatar di atas, dua lengan menunjuk ke bawah',
+      'Tiang utama mendatar di bawah, dua lengan menunjuk ke atas',
+      'Tiang utama tegak di kanan, dua lengan menunjuk ke kiri',
+      'Tiang utama tegak di kiri, dua lengan menunjuk ke bawah',
     ],
-    kunci: 2,
-  },
-  {
-    id: 'l-002',
-    kategori: 'logika',
-    tanya: 'SOP: "Jika lampu indikator MERAH menyala, matikan sakelar utama sebelum memanggil teknisi." Lampu MERAH menyala. Tindakan pertama yang wajib:',
-    pilihan: ['Segera memanggil teknisi', 'Mematikan sakelar utama', 'Membongkar penutup mesin', 'Melanjutkan kerja sampai mesin berhenti'],
-    kunci: 1,
-  },
-  {
-    id: 'l-003',
-    kategori: 'logika',
-    tanya: 'Haruto tiba lebih awal daripada Kenji. Sora lebih lambat daripada Kenji, tetapi lebih awal daripada Riku. Siapa yang tiba PALING AWAL?',
-    pilihan: ['Haruto', 'Kenji', 'Sora', 'Riku'],
     kunci: 0,
   },
   {
-    id: 'l-004',
-    kategori: 'logika',
-    tanya: 'Semua produk yang lulus inspeksi akhir ditempeli stiker HIJAU. Komponen di Kotak X tidak berstiker HIJAU. Kesimpulan yang tepat:',
+    id: 's-01b', slot: 's-01', kategori: 'spasial', tingkat: 'mudah',
+    tanya: 'Huruf "F" diputar 180°. Bagaimana posisi akhirnya?',
+    svg: SVG_F,
     pilihan: [
-      'Komponen itu siap dikirim ke pelanggan.',
-      'Semua produk di pabrik tidak berstiker hijau.',
-      'Komponen di Kotak X belum atau tidak lulus inspeksi akhir.',
-      'Stiker hijau hanya untuk barang rusak.',
-    ],
-    kunci: 2,
-  },
-  {
-    id: 'l-005',
-    kategori: 'logika',
-    tanya: 'Tahapan: (1) pengemasan, (2) pemotongan bahan, (3) QC akhir, (4) perakitan, (5) kirim ke gudang. Urutan yang paling logis:',
-    pilihan: ['2 - 1 - 4 - 3 - 5', '2 - 4 - 3 - 1 - 5', '4 - 2 - 3 - 1 - 5', '2 - 4 - 1 - 5 - 3'],
-    kunci: 1,
-  },
-  {
-    id: 'l-006',
-    kategori: 'logika',
-    tanya: 'Aturan: "Cairan A tidak boleh satu rak dengan B. Cairan C harus satu rak dengan A." Rak 1 sudah berisi B. Penempatan yang aman:',
-    pilihan: [
-      'A di rak 1, C di rak 2',
-      'A, B, C bersama di rak 1',
-      'C di rak 1, A di rak 2',
-      'A dan C bersama di rak 2',
-    ],
-    kunci: 3,
-  },
-  {
-    id: 'l-007',
-    kategori: 'logika',
-    tanya: 'Hari Minggu seluruh lini produksi libur, kecuali tim Maintenance. Hari ini Minggu dan Anton bertugas di pabrik. Kesimpulan yang pasti benar:',
-    pilihan: [
-      'Anton bertugas di tim Maintenance.',
-      'Hari ini bukan hari Minggu.',
-      'Seluruh lini produksi beroperasi normal.',
-      'Anton datang pada hari Sabtu.',
+      'Tiang utama tegak di kanan, dua lengan menunjuk ke kiri',
+      'Tiang utama tegak di kiri, dua lengan menunjuk ke kanan',
+      'Tiang utama mendatar di atas, dua lengan menunjuk ke bawah',
+      'Tiang utama mendatar di bawah, dua lengan menunjuk ke atas',
     ],
     kunci: 0,
   },
   {
-    id: 'l-008',
-    kategori: 'logika',
-    tanya: 'Saat merakit, Anda menemukan baut yang ulirnya aus dan tidak ada instruksinya. Sesuai Ho-Ren-So, tindakan paling tepat:',
-    pilihan: [
-      'Memaksa memasang dengan palu agar target tercapai',
-      'Membuang komponen diam-diam',
-      'Menghentikan bagian itu dan segera melapor ke Leader',
-      'Membiarkan lubang tanpa baut',
-    ],
-    kunci: 2,
+    id: 's-02a', slot: 's-02', kategori: 'spasial', tingkat: 'mudah',
+    tanya: 'Jarum berputar 45° searah jarum jam setiap kotak. Ke arah mana jarum pada kotak ke-5?',
+    svg: SVG_JARUM4,
+    pilihan: ['Barat', 'Selatan', 'Barat daya', 'Utara'], kunci: 1,
   },
   {
-    id: 'l-009',
-    kategori: 'logika',
-    tanya: 'Prosedur: M2 dipanaskan sebelum M1 dinyalakan. M3 hanya setelah M1 beroperasi. M4 paling akhir. Urutan yang benar:',
-    pilihan: ['M1 - M2 - M3 - M4', 'M2 - M1 - M3 - M4', 'M2 - M3 - M1 - M4', 'M4 - M3 - M1 - M2'],
-    kunci: 1,
+    id: 's-02b', slot: 's-02', kategori: 'spasial', tingkat: 'mudah',
+    tanya: 'Jarum berputar 45° searah jarum jam setiap kotak. Ke arah mana jarum pada kotak ke-3?',
+    svg: SVG_JARUM4,
+    pilihan: ['Utara', 'Timur', 'Selatan', 'Barat'], kunci: 1,
   },
   {
-    id: 'l-010',
-    kategori: 'logika',
-    tanya: 'Tidak ada pekerja di area pengelasan yang boleh melepas kacamata pelindung. Riko berada di area pengelasan. Kesimpulan yang benar:',
+    id: 's-03a', slot: 's-03', kategori: 'spasial', tingkat: 'sedang',
+    tanya:
+      'Jarum berputar 90° searah jarum jam tiap kotak, sementara titik hitam berpindah sudut BERLAWANAN arah jarum jam. Bagaimana isi kotak ke-4?',
+    svg: SVG_MATRIKS,
     pilihan: [
-      'Riko wajib mengenakan kacamata pelindung.',
-      'Riko boleh melepasnya jika tidak mengelas.',
-      'Hanya pekerja baru yang wajib memakainya.',
-      'Riko bukan pekerja bagian pengelasan.',
+      'Jarum ke kiri, titik di sudut kanan-atas',
+      'Jarum ke kiri, titik di sudut kiri-atas',
+      'Jarum ke atas, titik di sudut kanan-atas',
+      'Jarum ke kanan, titik di sudut kiri-bawah',
     ],
     kunci: 0,
   },
   {
-    id: 'l-011',
-    kategori: 'logika',
-    tanya: 'Rak A di kiri Rak B. Rak C di kanan Rak B. Rak D tepat di antara A dan B. Urutan dari kiri ke kanan:',
-    pilihan: ['A - B - D - C', 'D - A - B - C', 'A - D - B - C', 'C - B - D - A'],
-    kunci: 2,
-  },
-  {
-    id: 'l-012',
-    kategori: 'logika',
-    tanya: 'Mesin berhenti darurat HANYA JIKA sensor mendeteksi tangan ATAU listrik terputus. Mesin berhenti darurat, listrik normal. Kesimpulan yang pasti:',
+    id: 's-03b', slot: 's-03', kategori: 'spasial', tingkat: 'sedang',
+    tanya:
+      'Jarum berputar 90° searah jarum jam tiap kotak, sementara titik hitam berpindah sudut BERLAWANAN arah jarum jam. Bagaimana isi kotak ke-2?',
+    svg: SVG_MATRIKS,
     pilihan: [
-      'Listrik pabrik sedang padam.',
-      'Mesin dimatikan untuk istirahat.',
-      'Sensor rusak total.',
-      'Sensor mendeteksi objek di area sensor.',
+      'Jarum ke kanan, titik di sudut kiri-bawah',
+      'Jarum ke kanan, titik di sudut kanan-atas',
+      'Jarum ke bawah, titik di sudut kiri-bawah',
+      'Jarum ke kiri, titik di sudut kanan-bawah',
     ],
-    kunci: 3,
-  },
-  {
-    id: 'l-013',
-    kategori: 'logika',
-    tanya: 'Prinsip FIFO. Kloter P masuk Senin, Q Kamis, R Selasa, S Rabu. Urutan pengeluaran yang benar:',
-    pilihan: ['P - R - S - Q', 'P - Q - R - S', 'Q - S - R - P', 'R - P - S - Q'],
     kunci: 0,
   },
   {
-    id: 'l-014',
-    kategori: 'logika',
-    tanya: 'Aturan lembur: diizinkan jika target harian tercapai DAN disetujui Supervisor. Dedi sudah mencapai target, tetapi belum disetujui. Apakah boleh lembur?',
+    id: 's-04a', slot: 's-04', kategori: 'spasial', tingkat: 'sedang',
+    tanya:
+      'Aturan: garis yang berada di posisi SAMA saling menghilangkan (XOR), garis yang berbeda posisi tetap muncul. Apa isi kotak hasil?',
+    svg: SVG_XOR,
+    pilihan: ['Tanda tambah (+)', 'Tanda silang (X) tanpa garis mendatar', 'Hanya garis mendatar', 'Kotak kosong'],
+    kunci: 1,
+  },
+  {
+    id: 's-04b', slot: 's-04', kategori: 'spasial', tingkat: 'sedang',
+    tanya:
+      'Aturan: seluruh garis dari kedua gambar DIGABUNG (garis yang sama tetap muncul satu kali). Apa isi kotak hasil?',
+    svg: SVG_XOR,
+    pilihan: ['Hanya garis mendatar', 'Tanda silang (X) saja', 'Tanda silang (X) DAN garis mendatar', 'Kotak kosong'],
+    kunci: 2,
+  },
+  {
+    id: 's-05a', slot: 's-05', kategori: 'spasial', tingkat: 'sedang',
+    tanya: 'Jaring-jaring dilipat menjadi kubus. Sisi mana yang BERHADAPAN dengan sisi nomor 3?',
+    svg: SVG_NET,
+    pilihan: ['Sisi 1', 'Sisi 4', 'Sisi 5', 'Sisi 6'], kunci: 1,
+  },
+  {
+    id: 's-05b', slot: 's-05', kategori: 'spasial', tingkat: 'sedang',
+    tanya: 'Jaring-jaring dilipat menjadi kubus. Sisi mana yang BERHADAPAN dengan sisi nomor 2?',
+    svg: SVG_NET,
+    pilihan: ['Sisi 1', 'Sisi 3', 'Sisi 5', 'Sisi 6'], kunci: 2,
+  },
+  {
+    id: 's-06a', slot: 's-06', kategori: 'spasial', tingkat: 'sedang',
+    tanya: 'Huruf "P" diputar 180° lalu dicerminkan kiri-kanan. Hasilnya menyerupai huruf kecil?',
+    svg: SVG_P,
+    pilihan: ['b', 'd', 'p', 'q'], kunci: 0,
+  },
+  {
+    id: 's-06b', slot: 's-06', kategori: 'spasial', tingkat: 'sedang',
+    tanya: 'Huruf "P" diputar 180° saja (tanpa pencerminan). Hasilnya menyerupai huruf kecil?',
+    svg: SVG_P,
+    pilihan: ['b', 'd', 'p', 'q'], kunci: 1,
+  },
+  {
+    id: 's-07a', slot: 's-07', kategori: 'spasial', tingkat: 'sulit',
+    tanya:
+      'Kubus: sisi ATAS lingkaran, DEPAN segitiga, KANAN silang. Digulingkan sekali ke KIRI, lalu diputar 90° searah jarum jam dilihat dari atas. Apa isi sisi ATAS dan DEPAN sekarang?',
+    svg: SVG_DADU,
     pilihan: [
-      'Boleh, karena target sudah tercapai.',
-      'Tidak boleh, karena syarat persetujuan belum terpenuhi.',
-      'Boleh, maksimal 2 jam.',
-      'Boleh jika mengajak rekan lain.',
+      'Atas lingkaran, depan silang',
+      'Atas silang, depan segitiga',
+      'Atas silang, depan lingkaran',
+      'Atas segitiga, depan lingkaran',
+    ],
+    kunci: 2,
+  },
+  {
+    id: 's-07b', slot: 's-07', kategori: 'spasial', tingkat: 'sulit',
+    tanya:
+      'Kubus: sisi ATAS lingkaran, DEPAN segitiga, KANAN silang. Digulingkan sekali ke DEPAN (ke arah Anda), lalu diputar 90° searah jarum jam dilihat dari atas. Apa isi sisi ATAS dan DEPAN sekarang?',
+    svg: SVG_DADU,
+    pilihan: [
+      'Atas silang, depan lingkaran',
+      'Atas lingkaran, depan silang',
+      'Atas segitiga, depan silang',
+      'Atas silang, depan segitiga',
     ],
     kunci: 1,
   },
   {
-    id: 'l-015',
-    kategori: 'logika',
-    tanya: 'Goresan > 2,0 mm masuk REJECT; ≤ 2,0 mm masuk REWORK. Ditemukan goresan 1,8 mm. Ke mana pelat itu?',
-    pilihan: ['Dikirim langsung ke pelanggan', 'Kotak REJECT', 'Kotak REWORK', 'Dibuang ke sampah logam'],
+    id: 's-08a', slot: 's-08', kategori: 'spasial', tingkat: 'sulit',
+    tanya:
+      'Susunan kubus: lapisan bawah penuh 3×3, lapisan tengah 2×2 di pojok, lapisan atas 1 kubus. Berapa kubus TAMBAHAN agar menjadi kubus utuh 3×3×3?',
+    svg: SVG_KUBUS3,
+    pilihan: ['11 kubus', '13 kubus', '14 kubus', '15 kubus'], kunci: 1,
+  },
+  {
+    id: 's-08b', slot: 's-08', kategori: 'spasial', tingkat: 'sulit',
+    tanya:
+      'Susunan kubus: lapisan bawah penuh 4×4, lapisan kedua 3×3, lapisan ketiga 2×2, lapisan atas 1 kubus. Berapa kubus TAMBAHAN agar menjadi kubus utuh 4×4×4?',
+    svg: SVG_KUBUS3,
+    pilihan: ['30 kubus', '34 kubus', '38 kubus', '44 kubus'], kunci: 1,
+  },
+
+  /* ══ LOGIKA (8 slot · 2 mudah · 4 sedang · 2 sulit) ════════════════════ */
+  {
+    id: 'l-01a', slot: 'l-01', kategori: 'logika', tingkat: 'mudah',
+    tanya:
+      'Semua mesin di Lini A memakai sensor optik. Sebagian mesin bersensor optik butuh kalibrasi mingguan. Mesin X berada di Lini A. Kesimpulan yang PASTI benar:',
+    pilihan: [
+      'Mesin X pasti butuh kalibrasi mingguan.',
+      'Mesin X tidak butuh kalibrasi mingguan.',
+      'Mesin X memakai sensor optik.',
+      'Semua mesin bersensor optik berada di Lini A.',
+    ],
     kunci: 2,
   },
   {
-    id: 'l-016',
-    kategori: 'logika',
-    tanya: 'Lulus jika kehadiran 100% DAN nilai praktik minimal 80. Bima TIDAK lulus. Kesimpulan paling tepat:',
+    id: 'l-01b', slot: 'l-01', kategori: 'logika', tingkat: 'mudah',
+    tanya:
+      'Semua teknisi bersertifikat wajib memakai helm putih. Sebagian pemakai helm putih bertugas shift malam. Budi adalah teknisi bersertifikat. Kesimpulan yang PASTI benar:',
     pilihan: [
-      'Kehadiran 100%, tetapi praktik di bawah 80.',
-      'Praktik di atas 80, tetapi kehadiran kurang.',
-      'Bima tidak pernah hadir.',
-      'Kehadiran kurang dari 100%, atau praktik di bawah 80, atau keduanya.',
+      'Budi memakai helm putih.',
+      'Budi bertugas shift malam.',
+      'Budi tidak bertugas shift malam.',
+      'Semua pemakai helm putih adalah teknisi bersertifikat.',
     ],
-    kunci: 3,
+    kunci: 0,
+  },
+  {
+    id: 'l-02a', slot: 'l-02', kategori: 'logika', tingkat: 'mudah',
+    tanya:
+      'Pekerja wajib memakai troli hidrolik jika berat barang lebih dari 20 kg ATAU kemasannya tidak simetris. Riko memindahkan kotak 14 kg dengan kemasan tidak simetris. Kesimpulan yang benar:',
+    pilihan: [
+      'Tidak perlu troli karena berat di bawah 20 kg.',
+      'Wajib troli karena salah satu syarat terpenuhi.',
+      'Wajib troli hanya jika berat 20 kg dan tidak simetris sekaligus.',
+      'Barang tidak boleh dipindahkan.',
+    ],
+    kunci: 1,
+  },
+  {
+    id: 'l-02b', slot: 'l-02', kategori: 'logika', tingkat: 'mudah',
+    tanya:
+      'Helm wajib dipakai jika ketinggian kerja lebih dari 2 meter ATAU ada kemungkinan benda jatuh dari atas. Riko bekerja pada ketinggian 1,5 meter di area yang ada kemungkinan benda jatuh. Kesimpulan yang benar:',
+    pilihan: [
+      'Tidak wajib helm karena di bawah 2 meter.',
+      'Wajib helm karena salah satu syarat terpenuhi.',
+      'Wajib helm hanya jika ketinggian lebih dari 2 meter.',
+      'Riko tidak boleh bekerja di area itu.',
+    ],
+    kunci: 1,
+  },
+  {
+    id: 'l-03a', slot: 'l-03', kategori: 'logika', tingkat: 'sedang',
+    tanya:
+      'Jika katup pengaman bocor, indikator tekanan akan turun di bawah 4 bar. Saat diperiksa, tekanan stabil di 5,5 bar. Kesimpulan yang PASTI benar:',
+    pilihan: [
+      'Katup pengaman tidak bocor.',
+      'Layar indikator rusak.',
+      'Katup bocor sedikit.',
+      'Jika katup tidak bocor, tekanan selalu 5,5 bar.',
+    ],
+    kunci: 0,
+  },
+  {
+    id: 'l-03b', slot: 'l-03', kategori: 'logika', tingkat: 'sedang',
+    tanya:
+      'Jika filter tersumbat, laju aliran cairan akan turun di bawah 10 liter/menit. Saat diukur, laju aliran tetap 14 liter/menit. Kesimpulan yang PASTI benar:',
+    pilihan: [
+      'Filter tidak tersumbat.',
+      'Alat ukur aliran rusak.',
+      'Filter tersumbat sebagian.',
+      'Jika filter tidak tersumbat, aliran selalu 14 liter/menit.',
+    ],
+    kunci: 0,
+  },
+  {
+    id: 'l-04a', slot: 'l-04', kategori: 'logika', tingkat: 'sedang',
+    tanya:
+      'Lima komponen P, Q, R, S, T dipasang berurutan tahap 1–5. Aturan: R tepat satu tahap sebelum T; P tidak di tahap 1 maupun 5; Q harus di tahap 1; S di tahap 5. Urutan yang memenuhi:',
+    pilihan: ['P - Q - R - T - S', 'Q - R - T - S - P', 'Q - P - R - T - S', 'R - T - Q - P - S'],
+    kunci: 2,
+  },
+  {
+    id: 'l-04b', slot: 'l-04', kategori: 'logika', tingkat: 'sedang',
+    tanya:
+      'Lima komponen P, Q, R, S, T dipasang berurutan tahap 1–5. Aturan: R tepat satu tahap sebelum S; P harus di tahap 5; Q dipasang sebelum R; T harus di tahap 4. Urutan yang memenuhi:',
+    pilihan: ['Q - R - S - T - P', 'Q - R - T - S - P', 'R - S - Q - T - P', 'Q - T - R - S - P'],
+    kunci: 0,
+  },
+  {
+    id: 'l-05a', slot: 'l-05', kategori: 'logika', tingkat: 'sedang',
+    tanya:
+      'Semua kandidat yang lulus seleksi akhir wajib mengikuti pelatihan bahasa. Tidak ada peserta yang terlambat mengumpulkan berkas yang lulus seleksi akhir. Rian terlambat mengumpulkan berkas. Kesimpulan yang PASTI benar:',
+    pilihan: [
+      'Rian tetap lulus dengan pengurangan nilai.',
+      'Rian dinyatakan tidak lulus seleksi akhir.',
+      'Sebagian peserta yang terlambat tetap lulus.',
+      'Semua peserta pelatihan pernah terlambat.',
+    ],
+    kunci: 1,
+  },
+  {
+    id: 'l-05b', slot: 'l-05', kategori: 'logika', tingkat: 'sedang',
+    tanya:
+      'Semua peserta ujian wajib memakai kartu identitas. Tidak ada pemakai kartu identitas yang boleh masuk laboratorium tanpa izin tertulis. Sari tidak memakai kartu identitas. Kesimpulan yang PASTI benar:',
+    pilihan: [
+      'Sari bukan peserta ujian.',
+      'Sari tidak boleh masuk laboratorium tanpa izin tertulis.',
+      'Sari boleh masuk laboratorium kapan saja.',
+      'Semua pemakai kartu adalah peserta ujian.',
+    ],
+    kunci: 1,
+  },
+  {
+    id: 'l-06a', slot: 'l-06', kategori: 'logika', tingkat: 'sedang',
+    tanya:
+      'Aturan: suhu >85°C dan getaran tinggi → ganti bearing; suhu >85°C dan getaran normal → tambah coolant; suhu ≤85°C dan getaran tinggi → kencangkan baut dudukan. Panel menunjukkan 83°C dengan getaran tinggi. Tindakan yang wajib:',
+    pilihan: ['Ganti bearing utama', 'Tambah cairan coolant', 'Kencangkan baut dudukan', 'Matikan sensor suhu'],
+    kunci: 2,
+  },
+  {
+    id: 'l-06b', slot: 'l-06', kategori: 'logika', tingkat: 'sedang',
+    tanya:
+      'Aturan: suhu >85°C dan getaran tinggi → ganti bearing; suhu >85°C dan getaran normal → tambah coolant; suhu ≤85°C dan getaran tinggi → kencangkan baut dudukan. Panel menunjukkan 91°C dengan getaran normal. Tindakan yang wajib:',
+    pilihan: ['Ganti bearing utama', 'Tambah cairan coolant', 'Kencangkan baut dudukan', 'Matikan mesin'],
+    kunci: 1,
+  },
+  {
+    id: 'l-07a', slot: 'l-07', kategori: 'logika', tingkat: 'sulit',
+    tanya:
+      'Lima teknisi piket Senin–Jumat, satu orang per hari. Aturan: Cakra piket tepat dua hari setelah Andi; Bima tidak boleh Senin maupun Selasa; Doni piket tepat satu hari sebelum Eka. Siapa yang PASTI piket hari Rabu?',
+    pilihan: ['Andi', 'Bima', 'Cakra', 'Eka'], kunci: 0,
+  },
+  {
+    id: 'l-07b', slot: 'l-07', kategori: 'logika', tingkat: 'sulit',
+    tanya:
+      'Lima teknisi piket Senin–Jumat, satu orang per hari. Aturan: Cakra piket tepat dua hari setelah Andi; Bima tidak boleh Kamis maupun Jumat; Doni piket tepat satu hari sebelum Eka. Siapa yang PASTI piket hari Kamis?',
+    pilihan: ['Doni', 'Bima', 'Cakra', 'Eka'], kunci: 0,
+  },
+  {
+    id: 'l-08a', slot: 'l-08', kategori: 'logika', tingkat: 'sulit',
+    tanya:
+      'Kesalahan pencatatan stok hanya mungkin dilakukan satu orang di antara Tono, Dani, Reza. Tono: "Bukan saya." Dani: "Reza pelakunya." Reza: "Pernyataan Dani bohong." Hanya SATU orang berkata jujur. Siapa pelakunya?',
+    pilihan: ['Tono', 'Dani', 'Reza', 'Tidak dapat ditentukan'],
+    kunci: 0,
+  },
+  {
+    id: 'l-08b', slot: 'l-08', kategori: 'logika', tingkat: 'sulit',
+    tanya:
+      'Kerusakan mesin hanya mungkin dilakukan satu orang di antara Agus, Bayu, Cepi. Agus: "Bayu pelakunya." Bayu: "Cepi pelakunya." Cepi: "Pernyataan Bayu bohong." Hanya SATU orang berkata jujur. Siapa pelakunya?',
+    pilihan: ['Agus', 'Bayu', 'Cepi', 'Tidak dapat ditentukan'],
+    kunci: 0,
   },
 ];
 
 /* ── Pemilih soal ──────────────────────────────────────────────────────── */
 
 /**
- * PRNG deterministik (Mulberry32) dari string seed.
- *
- * Dipakai HANYA untuk mengurutkan, bukan untuk keamanan. Sifat yang dibutuhkan
- * cuma satu: seed yang sama menghasilkan urutan yang sama di server dan di
- * setiap pemanggilan berikutnya.
+ * PRNG deterministik (Mulberry32) dari string seed. Bukan untuk keamanan —
+ * hanya butuh sifat "seed sama ⇒ urutan sama".
  */
 function acakDariSeed(seed: string): () => number {
   let h = 1779033703 ^ seed.length;
@@ -429,30 +709,29 @@ function acakDariSeed(seed: string): () => number {
   };
 }
 
-function kocokDenganSeed<T>(items: T[], seed: string): T[] {
-  const rnd = acakDariSeed(seed);
-  const salinan = [...items];
-  for (let i = salinan.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    [salinan[i], salinan[j]] = [salinan[j], salinan[i]];
-  }
-  return salinan;
-}
-
 const KATEGORI: KategoriIq[] = ['verbal', 'numerik', 'spasial', 'logika'];
 
 /**
- * 40 soal untuk satu siswa — URUTAN DAN ISINYA TETAP untuk nomor WA yang sama.
+ * 40 soal untuk satu siswa: satu varian per slot, deterministik dari nomor WA.
  *
- * `wa` kosong (mode uji admin tanpa nomor) tetap menghasilkan satu paket yang
- * sah: seed-nya string kosong. Itu bukan kekurangan — admin hanya butuh satu
- * paket untuk dicoba, dan hasilnya tidak disimpan.
+ * Komposisi (12/12/8/8) DIJAMIN sama untuk semua siswa karena yang dipilih
+ * adalah slotnya, bukan sekadar "12 soal acak dari 24". Variannya yang berbeda.
  */
 export function pilihSoalIq(wa: string, salt = VERSI_BANK_IQ): SoalIq[] {
   const hasil: SoalIq[] = [];
   for (const kat of KATEGORI) {
-    const pool = BANK_IQ.filter((s) => s.kategori === kat);
-    hasil.push(...kocokDenganSeed(pool, `${wa}:${salt}:${kat}`).slice(0, KUOTA_IQ[kat]));
+    const perSlot = new Map<string, SoalIq[]>();
+    for (const s of BANK_IQ) {
+      if (s.kategori !== kat) continue;
+      const isi = perSlot.get(s.slot);
+      if (isi) isi.push(s);
+      else perSlot.set(s.slot, [s]);
+    }
+    for (const [slot, varian] of perSlot) {
+      const undian = acakDariSeed(`${wa}:${salt}:${slot}`)();
+      const pilih = varian.length > 1 && undian >= 0.5 ? 1 : 0;
+      hasil.push(varian[pilih] ?? varian[0]);
+    }
   }
   return hasil;
 }
@@ -462,7 +741,7 @@ export function soalKlienIq(wa: string): SoalKlienIq[] {
   return pilihSoalIq(wa).map(({ kunci, ...sisa }) => sisa);
 }
 
-/** Peta id → kunci, untuk penilai. Hanya hidup di server. */
+/** Peta id → soal, untuk penilai. Hanya hidup di server. */
 export function kunciIq(wa: string): Map<string, SoalIq> {
   return new Map(pilihSoalIq(wa).map((s) => [s.id, s]));
 }
