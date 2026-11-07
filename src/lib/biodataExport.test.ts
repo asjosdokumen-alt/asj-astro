@@ -12,7 +12,8 @@
 // lengkap.
 // ==========================================
 import { describe, it, expect } from 'vitest';
-import { buildBiodataText, mergeAiGaps } from './biodataExport';
+import { readFileSync } from 'node:fs';
+import { buildBiodataDocx, buildBiodataDocxXml, buildBiodataText, mergeAiGaps } from './biodataExport';
 
 const BIO = { nama: 'AGUS KHOCI', wa: '628123456789' };
 
@@ -108,5 +109,61 @@ describe('biodataExport — jawaban CV AI ikut terunduh', () => {
     const before = JSON.stringify(MASTER_AI_ONLY);
     mergeAiGaps(MASTER_AI_ONLY);
     expect(JSON.stringify(MASTER_AI_ONLY)).toBe(before);
+  });
+});
+
+
+/**
+ * Ekspor WORD (.docx) — permintaan pemilik 2026-11-07.
+ *
+ * Yang dikunci di sini bukan "berkasnya bisa diunduh" (itu tombolnya), melainkan
+ * tiga hal yang kalau salah tidak bergejala: isinya benar-benar memuat data,
+ * karakter `&`/`<` tidak merusak dokumen, dan berkasnya adalah ZIP/OOXML yang
+ * sah — bukan HTML yang diberi nama `.docx`.
+ */
+describe('biodataExport — Word (.docx) KHUSUS ADMIN', () => {
+  it('memuat identitas dan seksi master, labelnya sama dengan ekspor teks', () => {
+    const xml = buildBiodataDocxXml({ bio: BIO, master: MASTER_AI_ONLY });
+
+    expect(xml).toContain('BIODATA KANDIDAT');
+    expect(xml).toContain('AGUS KHOCI');
+    // '&' WAJIB ter-escape di XML — label grup memang mengandung '&'.
+    expect(xml).toContain('WAWANCARA &amp; MOTIVASI');
+    expect(xml).toContain('Disiplin dan cepat belajar');
+  });
+
+  it('meng-escape karakter XML: nama ber-& dan < tidak merusak dokumen', () => {
+    const xml = buildBiodataDocxXml({
+      bio: { nama: 'A & B' },
+      master: { identitas: { nama_lengkap: 'A & B <C>' } },
+    });
+
+    expect(xml).toContain('A &amp; B &lt;C&gt;');
+    expect(xml).not.toContain('<C>');
+  });
+
+  it('menghasilkan ZIP/OOXML sah, bukan HTML bernama .docx', async () => {
+    const blob = await buildBiodataDocx({ bio: BIO, master: MASTER_AI_ONLY });
+    const { default: JSZip } = await import('jszip');
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+
+    for (const part of ['[Content_Types].xml', '_rels/.rels', 'word/document.xml', 'word/styles.xml']) {
+      expect(zip.file(part), `bagian ${part} hilang`).toBeTruthy();
+    }
+
+    const doc = zip.file('word/document.xml');
+    expect(doc).toBeTruthy();
+    const xml = doc ? await doc.async('string') : '';
+    expect(xml.startsWith('<?xml')).toBe(true);
+    // Keseimbangan tag: struktur rusak tidak akan terbaca Word sama sekali.
+    expect((xml.match(/<w:tbl>/g) || []).length).toBe((xml.match(/<\/w:tbl>/g) || []).length);
+    expect((xml.match(/<w:tr>/g) || []).length).toBe((xml.match(/<\/w:tr>/g) || []).length);
+  });
+
+  it('TIDAK dipasang di dasbor kandidat (permintaan pemilik 2026-11-07)', () => {
+    // Gerbang satu baris: kalau suatu saat tombolnya "dibagikan" ke dasbor
+    // siswa, tes ini yang mengingatkan bahwa itu keputusan yang pernah ditolak.
+    const dash = readFileSync('src/components/candidate/CandidateDash.tsx', 'utf8');
+    expect(dash).not.toContain('downloadBiodataDocx');
   });
 });

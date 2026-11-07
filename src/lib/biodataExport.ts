@@ -441,7 +441,17 @@ function masterFisik(master: Record<string, unknown>): string {
 }
 
 function masterRows(obj: Record<string, unknown>, group: string): string[] {
-  const out: string[] = [];
+  return masterPairs(obj, group).map(([label, value]) => row(label, value));
+}
+
+/**
+ * Pasangan label→nilai untuk satu grup master — bentuk TERSTRUKTUR dari
+ * `masterRows`. Dipisah 2026-11-07 karena ekspor Word butuh pasangan, bukan
+ * baris teks yang sudah dipadankan; menyalin logika labelnya dua kali berarti
+ * dua tempat yang bisa berbeda label untuk kolom yang sama.
+ */
+function masterPairs(obj: Record<string, unknown>, group: string): [string, string][] {
+  const out: [string, string][] = [];
   for (const [k, v] of Object.entries(obj)) {
     if (!has(v)) continue;
     const alias = MASTER_ALIAS[k];
@@ -450,7 +460,7 @@ function masterRows(obj: Record<string, unknown>, group: string): string[] {
     // `asDate` — kolom tanggal master datang sebagai cap waktu ISO; lihat
     // komentarnya. Aman untuk semua kolom lain: hanya stempel ISO persis yang
     // ditulis ulang.
-    out.push(row(label, asDate(v)));
+    out.push([label, asDate(v)]);
   }
   return out;
 }
@@ -658,6 +668,279 @@ export function downloadBiodataText(c: BiodataSource): void {
   const a = document.createElement('a');
   a.href = url;
   a.download = `biodata-${c.idKandidat || c.wa || 'kandidat'}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   EKSPOR WORD (.docx) — 2026-11-07
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Permintaan pemilik 2026-11-07: *"kalau biodata di profil siswa di download
+ * apakah bisa dijadikan model doc … tapi lebih bagus tertata rapi dan admin
+ * gampang copas. soalnya masih banyak siswa yg gaptek suruh isi di pwa."*
+ *
+ * KENAPA DOCX ASLI, BUKAN HTML BERNAMA `.doc`. Word membuka HTML ber-ekstensi
+ * `.doc`, tetapi menampilkan peringatan "format dan ekstensi tidak cocok" di
+ * setiap kali buka — untuk dokumen yang akan dipakai admin tiap hari, itu
+ * gangguan yang membuat orang berhenti memakainya. `.docx` adalah ZIP berisi
+ * OOXML; `jszip` sudah ada di dependensi, jadi berkasnya dibangun di browser
+ * tanpa menambah paket baru dan tanpa mengirim biodata (NIK, alamat, data
+ * orang tua) ke server mana pun.
+ *
+ * ISI: grup master yang sama dengan ekspor teks — `masterPairs` dipakai
+ * keduanya, jadi label tidak bisa berbeda antara `.txt` dan `.docx`.
+ *
+ * ⚠ ATURAN YANG TIDAK BERUBAH: tidak ada field sisi-admin di sini (password,
+ * catatan internal, folder pemberkasan). Alasannya sama dengan ekspor teks —
+ * berkas ini bisa berpindah tangan.
+ *
+ * 🔴 KHUSUS ADMIN — JANGAN DIPASANG DI DASBOR KANDIDAT. Permintaan pemilik
+ * 2026-11-07: *"tolong hanya ada di admin ya jgn ada di dashboard kandidat/
+ * siswa"*. Ekspor teks (`downloadBiodataText`) tetap dipakai kedua sisi; yang
+ * ini tidak. Alasannya bukan teknis: dokumen ini disiapkan untuk admin yang
+ * menyalin data ke template CV, dan ia memuat rangkuman yang tidak perlu
+ * beredar di tangan kandidat. Satu-satunya pemanggilnya
+ * `admin/CandidateProfileModal.tsx`.
+ */
+
+const DOCX_NS =
+  'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+
+/** Urutan tampil. Grup yang tidak ada isinya dilewati, bukan dicetak kosong. */
+const DOCX_GROUPS = [
+  'identitas',
+  'fisik',
+  'medis',
+  'sertifikasi',
+  'pendidikan',
+  'pekerjaan',
+  'keluarga',
+  'kenalan_jepang',
+  'wawancara',
+  'uploads',
+] as const;
+
+const CONTENT_TYPES_XML =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+  '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+  '<Default Extension="xml" ContentType="application/xml"/>' +
+  '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+  '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+  '</Types>';
+
+const ROOT_RELS_XML =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+  '</Relationships>';
+
+const DOC_RELS_XML =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+  '</Relationships>';
+
+/** Arial 10pt sebagai default dokumen — tanpa ini Word memakai Times 11pt. */
+const STYLES_XML =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+  `<w:styles ${DOCX_NS}>` +
+  '<w:docDefaults><w:rPrDefault><w:rPr>' +
+  '<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Yu Gothic" w:cs="Arial"/>' +
+  '<w:sz w:val="20"/><w:szCs w:val="20"/>' +
+  '</w:rPr></w:rPrDefault>' +
+  '<w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault>' +
+  '</w:docDefaults></w:styles>';
+
+/** Teks aman untuk XML. `&` WAJIB lebih dulu, kalau tidak `&lt;` jadi `&amp;lt;`. */
+function xmlEsc(v: unknown): string {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Satu paragraf; `\n` di dalam nilai jadi pemisah baris Word, bukan spasi. */
+function p(
+  text: string,
+  opt: { bold?: boolean; size?: number; align?: 'center'; after?: number; fill?: string; color?: string } = {},
+): string {
+  const rpr =
+    '<w:rPr>' +
+    (opt.bold ? '<w:b/>' : '') +
+    (opt.color ? `<w:color w:val="${opt.color}"/>` : '') +
+    `<w:sz w:val="${opt.size ?? 20}"/><w:szCs w:val="${opt.size ?? 20}"/>` +
+    '</w:rPr>';
+  const runs = text.split('\n').map((line, i) =>
+    `${i ? '<w:br/>' : ''}<w:t xml:space="preserve">${xmlEsc(line)}</w:t>`,
+  ).join('');
+  const ppr =
+    '<w:pPr>' +
+    /* URUTAN ELEMEN DI `w:pPr` DIATUR SKEMA OOXML, bukan selera: shd → spacing
+       → jc. Urutan lain tetap terbaca oleh pembaca yang toleran, tetapi Word
+       sendiri bisa menolak berkasnya sebagai "unreadable content" — dan itu
+       jenis kerusakan yang tidak muncul di tes mana pun sampai admin membuka
+       filenya. */
+    (opt.fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${opt.fill}"/>` : '') +
+    `<w:spacing w:after="${opt.after ?? 0}"/>` +
+    (opt.align ? `<w:jc w:val="${opt.align}"/>` : '') +
+    '</w:pPr>';
+  return `<w:p>${ppr}<w:r>${rpr}${runs}</w:r></w:p>`;
+}
+
+/** Judul seksi: teks tebal + garis bawah, dengan jarak sebelum. */
+function section(title: string): string {
+  return (
+    '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="2" w:color="94A3B8"/></w:pBdr>' +
+    '<w:spacing w:before="240" w:after="80"/>' +
+    '</w:pPr>' +
+    `<w:r><w:rPr><w:b/><w:color w:val="0F172A"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>` +
+    `<w:t xml:space="preserve">${xmlEsc(title)}</w:t></w:r></w:p>`
+  );
+}
+
+/** Tabel dua kolom label/nilai — bentuk yang paling mudah dibaca & disalin. */
+function table(pairs: [string, string][]): string {
+  const CELL_L = 3000;
+  const CELL_V = 6638;
+  const border = (side: string) =>
+    `<w:${side} w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>`;
+  const rows = pairs
+    .map(([label, value]) => {
+      const tc = (w: number, fill: string | null, text: string, bold: boolean) =>
+        '<w:tc><w:tcPr>' +
+        `<w:tcW w:w="${w}" w:type="dxa"/>` +
+        (fill ? `<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>` : '') +
+        '<w:tcMar><w:top w:w="60" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/>' +
+        '<w:left w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar>' +
+        '</w:tcPr>' +
+        p(text, { bold, size: 18 }) +
+        '</w:tc>';
+      return `<w:tr>${tc(CELL_L, 'F1F5F9', label, true)}${tc(CELL_V, null, value, false)}</w:tr>`;
+    })
+    .join('');
+  return (
+    '<w:tbl><w:tblPr><w:tblW w:w="9638" w:type="dxa"/>' +
+    '<w:tblBorders>' +
+    border('top') + border('left') + border('bottom') + border('right') +
+    border('insideH') + border('insideV') +
+    '</w:tblBorders>' +
+    '<w:tblLayout w:type="fixed"/></w:tblPr>' +
+    `<w:tblGrid><w:gridCol w:w="${CELL_L}"/><w:gridCol w:w="${CELL_V}"/></w:tblGrid>` +
+    rows +
+    '</w:tbl>'
+  );
+}
+
+/** Judul kecil untuk satu entri array (sekolah ke-2, pekerjaan ke-1, dst.). */
+function entryTitle(entry: Record<string, unknown>, i: number): string {
+  const first = ['nama_sekolah', 'nama_perusahaan', 'nama', 'tingkat']
+    .map((k) => entry[k])
+    .find((v) => has(v));
+  const label = has(first) ? String(first).trim() : '';
+  return label ? `${i + 1}. ${label}` : `${i + 1}.`;
+}
+
+/**
+ * `word/document.xml`. Diekspor supaya tes bisa memeriksa isinya tanpa
+ * membongkar ZIP — teks yang hilang karena salah label adalah kegagalan yang
+ * tidak terlihat dari nama berkas.
+ */
+export function buildBiodataDocxXml(c: BiodataSource): string {
+  const master = mergeAiGaps(c.master || {});
+  const body: string[] = [];
+
+  body.push(p('BIODATA KANDIDAT', { bold: true, size: 32, align: 'center', after: 60 }));
+  const sub = [c.nama, c.idKandidat, c.wa].filter(has).map((v) => String(v).trim()).join('  ·  ');
+  if (sub) body.push(p(sub, { size: 20, align: 'center', color: '475569', after: 40 }));
+  body.push(p(`Dicetak: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}`, {
+    size: 16, align: 'center', color: '94A3B8', after: 120,
+  }));
+
+  for (const g of DOCX_GROUPS) {
+    const value = master[g];
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      const entries = value.filter((e) => e && typeof e === 'object') as Record<string, unknown>[];
+      const blocks: string[] = [];
+      entries.forEach((e, i) => {
+        const pairs = masterPairs(e, g);
+        if (!pairs.length) return;
+        blocks.push(p(entryTitle(e, i), { bold: true, size: 19, after: 40 }));
+        blocks.push(table(pairs));
+      });
+      if (!blocks.length) continue;
+      body.push(section(MASTER_GROUP_LABEL[g] || g.toUpperCase()));
+      body.push(...blocks);
+    } else if (typeof value === 'object') {
+      const pairs = masterPairs(value as Record<string, unknown>, g);
+      if (!pairs.length) continue;
+      body.push(section(MASTER_GROUP_LABEL[g] || g.toUpperCase()));
+      body.push(table(pairs));
+    }
+  }
+
+  /* Job yang dilamar & berkas: bukan bagian `master`, datang dari baris
+     kandidat. Tanpa keduanya dokumen ini menjawab "siapa" tapi tidak
+     "melamar ke mana" — pertanyaan pertama admin saat matching. */
+  const apps = (c.applications || []).filter((a) => a && (has(a.kategori) || has(a.code)));
+  const jobs = (c.jobs || []).filter(has);
+  const jobPairs: [string, string][] = apps.length
+    ? apps.map((a, i) => [
+        `${i + 1}. ${field(a.kategori || a.code)}`,
+        [has(a.code) ? String(a.code).trim() : '', has(a.status) ? String(a.status).trim() : '']
+          .filter(Boolean).join(' — ') || '—',
+      ] as [string, string])
+    : jobs.map((j, i) => [`${i + 1}.`, String(j).trim()] as [string, string]);
+  if (jobPairs.length) {
+    body.push(section('JOB YANG DILAMAR'));
+    body.push(table(jobPairs));
+  }
+
+  const berkas = Object.entries(c.berkas || {}).filter(([, v]) => has(v));
+  if (berkas.length) {
+    body.push(section('BERKAS'));
+    body.push(table(berkas.map(([k, v]) => [labelFor(BERKAS_LABEL, k), String(v).trim()] as [string, string])));
+  }
+
+  const sect =
+    '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
+    '<w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="708" w:footer="708" w:gutter="0"/>' +
+    '</w:sectPr>';
+
+  return (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    `<w:document ${DOCX_NS}><w:body>${body.join('')}${sect}</w:body></w:document>`
+  );
+}
+
+/** `.docx` utuh sebagai Blob. JSZip dimuat dinamis: admin-only, bukan jalur awal. */
+export async function buildBiodataDocx(c: BiodataSource): Promise<Blob> {
+  const { default: JSZip } = await import('jszip');
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', CONTENT_TYPES_XML);
+  zip.folder('_rels')?.file('.rels', ROOT_RELS_XML);
+  const word = zip.folder('word');
+  word?.file('document.xml', buildBiodataDocxXml(c));
+  word?.file('styles.xml', STYLES_XML);
+  word?.folder('_rels')?.file('document.xml.rels', DOC_RELS_XML);
+  return zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    compression: 'DEFLATE',
+  });
+}
+
+/** Unduh sebagai `biodata-<id|wa>.docx`. */
+export async function downloadBiodataDocx(c: BiodataSource): Promise<void> {
+  const blob = await buildBiodataDocx(c);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `biodata-${c.idKandidat || c.wa || 'kandidat'}.docx`;
   a.click();
   URL.revokeObjectURL(url);
 }

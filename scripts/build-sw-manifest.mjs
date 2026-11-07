@@ -67,6 +67,12 @@ const LAZY_EXCLUDE = [
   /^supabase\./,
   /^i18n-jp\./,
   /^AdminPanel\./,
+  // 2026-11-07. `jszip` (96,9 KB) hanya dipakai SATU aksi admin: unduh biodata
+  // sebagai Word (.docx) di dossier kandidat. Sebelum ini ia ikut diprecache
+  // untuk setiap pengunjung — install-time download untuk fitur yang bahkan
+  // tidak bisa dibuka kandidat. Unduhan itu juga butuh jaringan untuk
+  // `getDrafCvMaster`, jadi offline tidak kehilangan apa pun.
+  /^jszip\./,
 ];
 
 /** Assets we never precache, by name pattern. */

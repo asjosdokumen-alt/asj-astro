@@ -25,6 +25,7 @@ export const jpTranslations: Record<string, string> = {
     "ui.cv_alamat": "住所",
     "ui.cv_bio_header": "基本情報",
     "ui.cv_download_biodata": "詳細バイオデータをダウンロード",
+    "ui.cv_download_biodata_word": "Word形式でダウンロード (.docx)",
     "ui.cv_eksternal": "外部",
     "ui.cv_email": "メール",
     "ui.cv_fisik": "身長／体重",

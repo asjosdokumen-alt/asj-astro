@@ -70,6 +70,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "ui.cv_alamat": "Alamat Asal",
     "ui.cv_bio_header": "Biodata",
     "ui.cv_download_biodata": "Download Full Biodata",
+    "ui.cv_download_biodata_word": "Download Word (.docx)",
     "ui.cv_eksternal": "Eksternal",
     "ui.cv_email": "Email",
     "ui.cv_fisik": "TB / BB (Fisik)",

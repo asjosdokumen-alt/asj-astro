@@ -6,7 +6,7 @@ import api, { apiClient } from '../../lib/apiClient';
 import { showToast } from '../Toast';
 import { t } from '../../store/i18n';
 import DocumentPreviewModal from '../DocumentPreviewModal';
-import { downloadBiodataText } from '../../lib/biodataExport';
+import { downloadBiodataDocx, downloadBiodataText } from '../../lib/biodataExport';
 import { normalizeMasterData } from '../../lib/cv-template-factory/data';
 import { applyFieldMap, applyRiwayatBlock, openWorkbookFromUrl, workbookToXlsxBlob } from '../../lib/cv-template-factory/loaders/tEMPLATE-loader';
 import { decodeTemplateRecord } from '../../lib/cv-template-factory/templates';
@@ -320,18 +320,43 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
        pekerjaan/keluarga, kenalan di Jepang, dan tautan dokumen. Diambil SAAT
        unduh supaya payload daftar kandidat tidak ikut membawa 169 kolom master
        per baris. Gagal ambil ⇒ berkas tetap dibuat dari data yang sudah ada. */
-    let master: Record<string, unknown> | undefined;
+    const master = await fetchMasterForExport();
+    downloadBiodataText({ ...data, master });
+  };
+
+  /**
+   * Unduh versi **Word (.docx)** dari biodata yang sama.
+   *
+   * Permintaan pemilik 2026-11-07: siswa banyak yang tidak terbiasa mengisi PWA,
+   * dan kelas A–I sudah lulus LPK — jadi datanya diambil dari DB lalu diberikan
+   * ke admin sebagai dokumen yang rapi untuk disalin ke template CV. Isinya
+   * grup master yang sama dengan ekspor teks (satu sumber label), tetapi
+   * tersusun tabel per seksi, bukan baris teks.
+   */
+  const handleDownloadBiodataWord = async () => {
+    if (!data) return;
+    const master = await fetchMasterForExport();
+    try {
+      await downloadBiodataDocx({ ...data, master });
+    } catch (e) {
+      showToast((e as Error)?.message || t('ui.load_failed'), 'error');
+    }
+  };
+
+  /** Baris master lengkap untuk ekspor. Opsional: gagal ambil ⇒ tetap unduh. */
+  async function fetchMasterForExport(): Promise<Record<string, unknown> | undefined> {
+    if (!data) return undefined;
     try {
       const m = (await api.secure('getDrafCvMaster', [data.wa], {
         onSessionInvalid: 'throw',
         silent: true,
       })) as Record<string, unknown> | null;
-      if (m && !m.error) master = m;
+      if (m && !m.error) return m;
     } catch {
       /* master opsional */
     }
-    downloadBiodataText({ ...data, master });
-  };
+    return undefined;
+  }
 
   // ── Buat CV dari template (2026-10-10) ────────────────────────────────────
   // Pengisian terjadi di BROWSER: berkas template diambil dari Storage, lalu
@@ -585,9 +610,19 @@ export default function CandidateProfileModal({ wa, nama, isOpen, onClose, candi
             {/* 5. Download Full Biodata */}
             <button type="button"
               onClick={handleDownloadBiodata}
-              class="min-h-11 w-full mb-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+              class="min-h-11 w-full mb-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
             >
               <Icon name="download" /> {t('ui.cv_download_biodata')}
+            </button>
+
+            {/* 5a. Versi Word — untuk admin yang menyalin ke template CV.
+                Siswa yang tidak terbiasa mengisi PWA tidak perlu diminta lagi;
+                datanya sudah di DB, dokumennya tinggal diunduh. */}
+            <button type="button"
+              onClick={handleDownloadBiodataWord}
+              class="min-h-11 w-full mb-4 px-4 py-2 bg-sky-700 hover:bg-sky-600 text-white rounded-lg text-sm font-bold transition flex items-center justify-center gap-2"
+            >
+              <Icon name="file-alt" /> {t('ui.cv_download_biodata_word')}
             </button>
 
             {/* 5b. Buat CV dari template (2026-10-10) */}
