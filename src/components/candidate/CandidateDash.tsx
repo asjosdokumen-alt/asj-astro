@@ -267,13 +267,17 @@ export default function CandidateDash() {
       });
       if (result.success) {
         const row: any = (Array.isArray(result.candidates) && result.candidates[0]) || null;
-        const legacyD = result.kandidatData || {};
-        const berkasMap: Record<string, string> = row?.berkas || legacyD.berkas || {};
+        /* `result.kandidatData` TIDAK PERNAH dikirim backend (dibuktikan: tidak
+           ada satu pun rujukan `kandidatData` di netlify/functions). Dulu tiap
+           field di bawah punya fallback `legacyD.*` yang karenanya selalu
+           `undefined` — 18 cabang mati yang membuat berkas ini terbaca seolah
+           ada jalur data kedua. Semuanya dihapus 2026-11-07. */
+        const berkasMap: Record<string, string> = row?.berkas || {};
         const berkasList = ALL_BERKAS.map((def) => ({
           label: def.label,
           done: hasBerkasUrl(berkasMap[def.key]),
         }));
-        const riwayat: Riwayat[] = (result.kandidatRiwayat || legacyD.riwayat || []).map((a: any) => ({
+        const riwayat: Riwayat[] = (result.kandidatRiwayat || []).map((a: any) => ({
           jobCode: a.code || a.jobCode || '-', tahapan: a.tahapan || '-',
           status: a.status || '-', tanggal: a.timestamp || a.tanggal || '',
           kategori: a.kategori || '', cv: a.cv || '',
@@ -286,8 +290,8 @@ export default function CandidateDash() {
           alasan: a.alasan || '',
         }));
         /* ── BANNER REVISI: DITURUNKAN DARI RIWAYAT, BUKAN DARI `kandidatData` ──
-           Dulu `needRevision` dibaca dari `legacyD` (`result.kandidatData`), dan
-           backend TIDAK PERNAH mengirim objek itu — jadi bannernya tidak pernah
+           Dulu `needRevision` dibaca dari `result.kandidatData`, dan backend
+           TIDAK PERNAH mengirim objek itu — jadi bannernya tidak pernah
            muncul, walau berkas kandidat ditolak. Tombol unggah di dalamnya pun
            tidak pernah bisa dijangkau.
            Sekarang diturunkan dari baris riwayat yang berstatus GAGAL. Aturannya
@@ -298,7 +302,7 @@ export default function CandidateDash() {
            — selalu relevan. Baris lamaran hanya dihitung bila lokernya loker yang
            sedang aktif, supaya penolakan lama pada loker yang sudah ditinggalkan
            tidak menghantui dasbor. */
-        const jobAktif = String(row?.idLoker || legacyD.job || '').trim();
+        const jobAktif = String(row?.idLoker || '').trim();
         const perluRevisi = riwayat.find((r) => {
           if (!/GAGAL|TOLAK|REJECT/i.test(String(r.status))) return false;
           const kode = String(r.jobCode || '').trim();
@@ -306,9 +310,9 @@ export default function CandidateDash() {
           return !jobAktif || kode === jobAktif;
         });
         setData({
-          nama: row?.nama || legacyD.nama || user.name || 'Kandidat', wa,
-          job: row?.idLoker || legacyD.job || '-', tahapan: row?.tahapan || legacyD.tahapan || '-',
-          status: row?.status || legacyD.status || '-',
+          nama: row?.nama || user.name || 'Kandidat', wa,
+          job: row?.idLoker || '-', tahapan: row?.tahapan || '-',
+          status: row?.status || '-',
           // ── Lencana "Siswa Resmi ASJ": tag `[VIP]` LITERAL saja ────────────
           // Case-SENSITIVE, sengaja, dan sudah menjadi keputusan legacy: gate
           // fitur memakai `isVipCatatan` (`[VIP]` ATAU `[KELAS xx]`, lihat
@@ -324,19 +328,17 @@ export default function CandidateDash() {
           // kandidat (lihat `toKandidatView` di `_lib/db/candidates.ts`). Server
           // memakai input yang sama (`catatan_internal || catatan_admin`), jadi
           // perilakunya identik.
-          isVIP: !!row?.isVIP || !!legacyD.isVIP,
-          isSiswaASJ: !!row?.isSiswaASJ || !!legacyD.isSiswaASJ,
-          kelas: row?.kelas || legacyD.kelas || '',
-          idKandidat: row?.idKandidat || legacyD.idKandidat || '',
+          isVIP: !!row?.isVIP,
+          isSiswaASJ: !!row?.isSiswaASJ,
+          kelas: row?.kelas || '',
+          idKandidat: row?.idKandidat || '',
           // Progres profil DIHITUNG dari data nyata baris kandidat + objek bio,
           // bukan dibaca dari `result.kandidatData` yang tidak pernah dikirim
           // backend (lihat src/lib/profileProgress.ts untuk bukti lengkap).
-          // `legacyD.cv*Progress` dipertahankan sebagai fallback HANYA untuk
-          // kompatibilitas bila suatu saat backend mengirimnya lagi.
-          cvMiniProgress: legacyD.cvMiniProgress ?? computeCvMiniProgress(row),
-          cvMasterProgress: legacyD.cvMasterProgress ?? computeCvMasterProgress(row?.bio),
+          cvMiniProgress: computeCvMiniProgress(row),
+          cvMasterProgress: computeCvMasterProgress(row?.bio),
           riwayat,
-          jadwal: (result.mySchedules || legacyD.jadwal || []).map((s: any) => ({
+          jadwal: (result.mySchedules || []).map((s: any) => ({
             id: s.id || '', nama: s.agenda || s.nama || '', waktu: s.waktu || '',
             lokasi: s.lokasi || '', link: s.link || '',
           })),
@@ -360,17 +362,17 @@ export default function CandidateDash() {
 
              Ketahuan dari probe browser yang menaruh teks bertanda di
              `catatan` dan memeriksa DOM: teks itu MUNCUL di dasbor kandidat. */
-          catatan: row?.catatanExt || legacyD.catatanExt || '',
+          catatan: row?.catatanExt || '',
           /** Nilai mentah `catatan_ext`, disimpan terpisah supaya konsumen yang
            *  butuh field aslinya tidak perlu menebak dari `catatan`. */
-          catatanExt: row?.catatanExt || legacyD.catatanExt || '',
+          catatanExt: row?.catatanExt || '',
           berkasProgress: berkasList.length
             ? Math.round((berkasList.filter((b) => b.done).length / berkasList.length) * 100)
             : 0,
           berkasTotal: berkasList.length,
           berkasList,
           berkas: berkasMap,
-          bio: row?.bio || legacyD.bio || {},
+          bio: row?.bio || {},
           // A09 CV-mini prefill — sama dgn legacy bukaModalCvMini yang membaca
           // baris kandidat sendiri (gender/usia/tb/bb/pendidikan/jftText/sswText).
           cvmini: row
@@ -407,10 +409,10 @@ export default function CandidateDash() {
           bb: String(row?.bb || ''),
           pendidikan: String(row?.pendidikan || ''),
           // Diturunkan dari `riwayat` di atas — lihat catatan panjang sebelum
-          // `setData`. `legacyD` tidak pernah berisi kedua nilai ini.
+          // `setData`. `kandidatData` tidak pernah berisi kedua nilai ini.
           needRevision: Boolean(perluRevisi),
           revisionNote: perluRevisi?.alasan || '',
-          applications: row?.applications || legacyD.applications || [],
+          applications: row?.applications || [],
         });
       }
     } catch (e) {

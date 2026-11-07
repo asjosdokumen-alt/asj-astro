@@ -67,24 +67,38 @@ const apiClientMock = vi.mocked(apiClient);
 function row(over: Record<string, unknown> = {}) {
   return {
     nama: 'Budi', idLoker: 'JOB-1', tahapan: 'MCU', status: 'PROSES',
-    idKandidat: 'ASJ-001', isVIP: false, kelas: '', cvMiniProgress: 0, cvMasterProgress: 0,
+    idKandidat: 'ASJ-001', isVIP: false, kelas: '',
     ...over,
   };
 }
 
+/* Progres profil DIHITUNG dari baris kandidat (`CV_MINI_FIELDS`) dan objek
+ * `bio` (`CV_MASTER_FIELDS`) — bukan dari `kandidatData`, yang tidak pernah
+ * dikirim backend. Fixture lama mengisi `kandidatData.cvMiniProgress: 100`
+ * dan tesnya hijau, padahal di produksi angka itu selalu 0. Sejak 2026-11-07
+ * fixture memberi DATA NYATA supaya yang diuji benar-benar jalur produksi. */
+const CV_MINI_PENUH = {
+  gender: 'LAKI-LAKI', usia: '20', pendidikan: 'SMA', jftText: 'N4',
+  sswText: 'Kaigo', tb: '170', bb: '60',
+};
+/** 4 dari 7 field = 57%. */
+const CV_MINI_SEBAGIAN = {
+  gender: 'LAKI-LAKI', usia: '20', pendidikan: 'SMA', jftText: 'N4',
+};
+const BIO_PENUH = {
+  email: 'a@b.c', tmplahir: 'Madiun', tgllahir: '2005-01-01', alamat: 'Jl. X',
+  ayah: 'Bapak', pasport: 'X1', coe: 'C1', kotapasport: 'Jakarta',
+  tglpasport: '2025-01-01', exppasport: '2030-01-01', pt: 'PT Y',
+};
+
 function mockDash(over: Record<string, unknown> = {}) {
-  // Adapter A05 membaca progres dari `kandidatData` (kontrak GAS legacy), bukan
-  // dari baris candidates[0] — jadi keduanya harus diisi.
-  const { cvMiniProgress = 0, cvMasterProgress = 0, ...rest } = over as Record<string, unknown> & {
-    cvMiniProgress?: number; cvMasterProgress?: number;
-  };
   // apiClient mengembalikan BADAN yang sudah di-parse; `fetch` mentah dulu
   // mengembalikan Response dan tes ini memanggil `.json()`. Payload-nya sama,
   // bungkusnya yang berbeda — dan itu memang inti konversinya.
   apiClientMock.mockResolvedValue({
     success: true,
-    candidates: [row(rest)],
-    kandidatData: { cvMiniProgress, cvMasterProgress },
+    candidates: [row(over)],
+    kandidatData: {},
     kandidatRiwayat: [], mySchedules: [],
   } as never);
 }
@@ -198,12 +212,12 @@ describe('CandidateDash — lencana VIP + PERFECT ASJ STUDENT (§6 gap 4/5)', ()
   });
 
   it('VIP + CV Mini 100% + CV Master 100% → "PERFECT ASJ STUDENT"', async () => {
-    await renderDash({ isVIP: true, cvMiniProgress: 100, cvMasterProgress: 100 });
+    await renderDash({ isVIP: true, ...CV_MINI_PENUH, bio: BIO_PENUH });
     expect(screen.getByText('ui.perfect_student')).toBeTruthy();
   });
 
   it('NON-VIP + keduanya 100% → bukan PERFECT (tetap pesan profil biasa)', async () => {
-    await renderDash({ isVIP: false, cvMiniProgress: 100, cvMasterProgress: 100 });
+    await renderDash({ isVIP: false, ...CV_MINI_PENUH, bio: BIO_PENUH });
     expect(screen.queryByText('ui.perfect_student')).toBeNull();
     expect(screen.getByText('ui.profile_100')).toBeTruthy();
   });
@@ -430,25 +444,26 @@ describe('CandidateDash — LevelCard benar-benar terpasang', () => {
 
   it('merender kartu level dan menandai tingkat sesuai kelengkapan', async () => {
     // mini 0 + master 0 => overall 0 => tingkat "empty" (bukan bronze).
-    await renderDash({ cvMiniProgress: 0, cvMasterProgress: 0 });
+    await renderDash();
     const card = document.querySelector('[data-level]');
     expect(card, 'LevelCard tidak dirender sama sekali').not.toBeNull();
     expect(card?.getAttribute('data-level')).toBe('empty');
   });
 
   it('naik tingkat ketika kelengkapan naik (100/100 => gold)', async () => {
-    await renderDash({ cvMiniProgress: 100, cvMasterProgress: 100 });
+    await renderDash({ ...CV_MINI_PENUH, bio: BIO_PENUH });
     const card = document.querySelector('[data-level]');
     expect(card?.getAttribute('data-level')).toBe('gold');
   });
 
-  it('50/100 => overall 75 => silver, dan meter-nya mengaku nilai yang sama', async () => {
-    // computeOverallProgress = round((mini + master) / 2) = 75.
-    await renderDash({ cvMiniProgress: 50, cvMasterProgress: 100 });
+  it('CV Mini 4/7 + CV Master penuh => overall 79 => silver, dan meter-nya jujur', async () => {
+    // Data NYATA: 4 dari 7 field CV Mini = 57%, 11 dari 11 field CV Master = 100%.
+    // computeOverallProgress = round((57 + 100) / 2) = 79.
+    await renderDash({ ...CV_MINI_SEBAGIAN, bio: BIO_PENUH });
     const card = document.querySelector('[data-level]');
     expect(card?.getAttribute('data-level')).toBe('silver');
     const bar = document.querySelector('[role="progressbar"]');
-    expect(bar?.getAttribute('aria-valuenow')).toBe('75');
+    expect(bar?.getAttribute('aria-valuenow')).toBe('79');
   });
 });
 
@@ -468,7 +483,7 @@ describe('CandidateDash — StepGuide benar-benar terpasang', () => {
   });
 
   it('merender pemandu langkah dengan ikon bagian yang ditunjuk', async () => {
-    await renderDash({ cvMiniProgress: 0, cvMasterProgress: 0 });
+    await renderDash();
     const guide = document.querySelector('[data-step-guide]');
     expect(guide, 'StepGuide tidak dirender sama sekali').not.toBeNull();
     // Ikon harus benar-benar ada — nama yang tidak ada di `sprite-map.ts`
@@ -485,14 +500,14 @@ describe('CandidateDash — StepGuide benar-benar terpasang', () => {
     // Mini dan master kosong, jadi langkahnya harus salah satu dari keduanya —
     // BUKAN 'done'. Ini yang membedakan "komponen terpasang" dari "komponen
     // membaca datanya".
-    await renderDash({ cvMiniProgress: 0, cvMasterProgress: 0 });
+    await renderDash();
     const key = document.querySelector('[data-step-guide]')?.getAttribute('data-step-guide');
     expect(['mini', 'master', 'berkas']).toContain(key);
     expect(key).not.toBe('done');
   });
 
   it('profil lengkap => pemandu berhenti meminta, dan ikonnya ikon selesai', async () => {
-    await renderDash({ cvMiniProgress: 100, cvMasterProgress: 100 });
+    await renderDash({ ...CV_MINI_PENUH, bio: BIO_PENUH });
     const guide = document.querySelector('[data-step-guide]');
     // Dengan mini & master 100, satu-satunya alasan tersisa untuk belum 'done'
     // adalah berkas yang belum lengkap — dan itu datanya nyata, bukan tebakan.
