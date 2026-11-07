@@ -18,7 +18,7 @@ import { useCallback, useEffect, useState } from 'preact/hooks';
 import api from '../../lib/apiClient';
 import { t, useLang } from '../../store/i18n';
 import Icon from '../ui/Icon';
-import { Bar, Status } from '../ui/Skeleton';
+import { Bar, LoadFailed, Status } from '../ui/Skeleton';
 
 interface Baris {
   no_wa: string;
@@ -172,13 +172,23 @@ export default function TabPapanSkor() {
 
       <p class="mb-4 text-[12px] text-fg-muted">{t('admin.papan_skor_ket')}</p>
 
-      {galat && (
+      {/* Galat saat MENYEGARKAN: data lama masih di layar, jadi peringatan
+          ditempel di atasnya. Galat saat MUAT PERTAMA ditangani `LoadFailed`
+          di bawah — di sana tidak ada data lama untuk dipertahankan. */}
+      {galat && papan && (
         <p role="alert" class="mb-4 rounded-control border border-accent-red/40 bg-accent-red/10 px-3 py-2 text-[12px] text-accent-red">
           {galat}
         </p>
       )}
 
-      {memuatAwal ? (
+      {galat && !papan ? (
+        /* GAGAL, BUKAN KOSONG. Sebelum ini kegagalan muat berakhir di cabang
+           `baris.length === 0` yang sama, jadi layar menampilkan "gagal memuat"
+           DAN empat kartu "belum ada skor" sekaligus — dua pernyataan yang
+           bertabrakan, dan yang kedua menyalahkan pemain atas kesalahan
+           jaringan. `LoadFailed` membawa tombol coba-lagi. */
+        <LoadFailed onRetry={() => void muat()} />
+      ) : memuatAwal ? (
         kerangka
       ) : (
       <div class="grid gap-4 md:grid-cols-2">

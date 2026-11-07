@@ -148,9 +148,12 @@ function isBiodataRow(r: Riwayat) {
  *
  * Karena itu teksnya menyebut objek yang disetujui: "Berkas telah disetujui
  * admin" untuk baris dokumen, "Telah disetujui admin" untuk lamaran loker.
- * Satu kolom `status_biodata` di database (migrasi 013) adalah sumber yang
- * benar; sampai kolom itu diproyeksikan ke sini, penanda baris dipakai agar
- * dashboard berhenti mengklaim hal yang belum terjadi.
+ *
+ * ⚠ TIDAK ADA KOLOM `status_biodata` LAGI. Migrasi 013 menambahkannya sebagai
+ * tempat vonis dokumen, tetapi tidak pernah ada kode yang menulisnya (261 baris,
+ * semuanya `BELUM`), jadi migrasi 050 menghapusnya. Vonis dokumen sekarang hidup
+ * di baris Mail (`feedback_berkas` + `alasan_tolak`) dan dibaca lewat penanda
+ * jenis baris — `biodata` di sini. Jangan mencari kolom itu; ia sudah tidak ada.
  */
 export function statusText(status: string, biodata = false) {
   const s = (status || '').toUpperCase();

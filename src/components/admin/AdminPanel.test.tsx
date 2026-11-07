@@ -222,6 +222,20 @@ describe('AdminPanel — Papan Skor: kerangka saat memuat, bukan "kosong"', () =
     expect(screen.queryByText('admin.papan_skor_kosong')).toBeNull();
   });
 
+  it('muat GAGAL: LoadFailed + tombol coba lagi, bukan empat kartu "belum ada skor"', async () => {
+    // Dua pernyataan yang bertabrakan di layar ("gagal memuat" DAN "belum ada
+    // skor") menyalahkan pemain atas kesalahan jaringan. Yang benar: satu
+    // keadaan gagal, dengan jalan keluar.
+    mockSecure.mockRejectedValue(new Error('jaringan putus'));
+
+    render(<AdminPanel />);
+    openSkorTab();
+
+    expect(await screen.findByText('ui.load_failed')).toBeTruthy();
+    expect(screen.queryByText('admin.papan_skor_kosong')).toBeNull();
+    expect(screen.getByRole('button', { name: 'ui.retry' })).toBeTruthy();
+  });
+
   it('setelah data tiba, kerangka hilang dan barisnya tampil', async () => {
     mockSecure.mockResolvedValue({
       papan: {
