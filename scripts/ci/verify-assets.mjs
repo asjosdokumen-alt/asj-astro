@@ -516,17 +516,17 @@ const OWNER_APPROVED = new Set([
   // (added to the scanned set), and `logo-apply` by ApplyFullForm.tsx (ditto).
   // So this records a basis that was missing, it does not publish anything new.
   //
-  //   banner-momiji.webp  900x500  autumn artwork — Mt Fuji across a lake, red
-  //                                maple framing the shot, one boat with a figure
-  //                                ~40 px tall at the far end. No readable face at
-  //                                any size the page renders it, the same reading
-  //                                recorded for banner-tokyo above.
-  //                                ⚠ It carries a small "Elysium" watermark in the
-  //                                lower-left corner. That is a LICENSING question
-  //                                (whose artwork is this?) and NOT a §11.2 consent
-  //                                question; this gate cannot answer it. Flagged to
-  //                                the owner on 2026-11-08 rather than silently
-  //                                approved.
+  //   banner-momiji.webp  900x487  autumn artwork — Mt Fuji across a lake, red
+  //                                maple framing the shot, mist on the water. No
+  //                                person anywhere in the frame.
+  //                                REPLACED 2026-11-08 at the owner's request: the
+  //                                previous file carried a small "Elysium"
+  //                                watermark in the lower-left corner, which is a
+  //                                LICENSING question (whose artwork is it?) and
+  //                                not a §11.2 consent question. The replacement is
+  //                                generated artwork with no third-party mark; the
+  //                                observation above was re-made on the new file,
+  //                                not carried over from the old one.
   //   logo-apply.webp     300x300  the ASJ emblem — torii, Mt Fuji, laurel, and the
   //                                words PT AMANAH SAKURA JAPAN. A MARK, not a
   //                                photograph: same criterion as the six mitra
