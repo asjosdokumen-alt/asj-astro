@@ -224,6 +224,40 @@ export async function hapusNotifikasi(
 }
 
 /**
+ * Hapus notifikasi yang lebih tua dari `hari` hari — RETENSI, bukan aksi admin.
+ *
+ * KEPUTUSAN PEMILIK 2026-11-08: *"notif di db ya 1 bulan 1x saja"* ⇒ simpan
+ * sebulan, bersihkan sebulan sekali (dijadwalkan di
+ * `netlify/functions/retensi-notif.ts`, tanggal 1 pukul 03:00 UTC).
+ *
+ * Kenapa dihapus dan bukan diarsipkan: kotak masuk ini hanya berisi
+ * pemberitahuan operasional (dokumen diverifikasi, tahap berubah, pesan admin).
+ * Setelah sebulan, satu-satunya hal yang bisa dilakukan kandidat adalah
+ * membukanya — dan tautannya menunjuk keadaan yang sudah berubah. Menyimpannya
+ * berarti membayar storage untuk pesan yang sudah tidak benar.
+ *
+ * ⚠ Yang dihapus HANYA `notifikasi_kandidat`. Riwayat lamaran, Mail, dan berkas
+ * TIDAK disentuh: itu catatan bisnis, bukan pemberitahuan.
+ */
+export async function hapusNotifikasiKedaluwarsa(
+  hari = 30,
+): Promise<{ dihapus: number; batas: string; error?: string }> {
+  const batas = new Date(Date.now() - Math.max(1, hari) * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const rows = await supabaseJson('DELETE', 'notifikasi_kandidat', {
+      query: { dibuat_pada: `lt.${batas}` },
+      // `representation` supaya jumlah yang benar-benar terhapus bisa
+      // dilaporkan ke log cron — DELETE tanpa itu menjawab kosong, dan "0
+      // dihapus" tidak bisa dibedakan dari "query-nya tidak mengenai apa pun".
+      headers: { Prefer: 'return=representation' },
+    });
+    return { dihapus: Array.isArray(rows) ? rows.length : 0, batas };
+  } catch (e) {
+    return { dihapus: 0, batas, error: String((e as { message?: string })?.message || e) };
+  }
+}
+
+/**
  * Tandai satu baris (atau SEMUA) sudah dibaca.
  * `id` disaring bersama `no_wa`, jadi satu siswa tidak bisa menandai baris
  * milik siswa lain walaupun tahu id-nya.
