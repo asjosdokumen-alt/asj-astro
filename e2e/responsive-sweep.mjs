@@ -481,6 +481,19 @@ const SWEEP_FN = `(opts) => {
     const nowrap = cs.whiteSpace === 'nowrap' || cs.whiteSpace === 'pre';
     if (!clipsX) continue;
     if (!ellipsis && !nowrap) continue;
+    /* .sr-only (utilitas Tailwind) LOLOS dari semua sinyal di atas dan itu
+       bukan cacat: ia 1x1 px + overflow hidden + nowrap, yaitu pola
+       visually-hidden standar — teksnya memang TIDAK untuk dibaca di layar,
+       tetapi tetap dibaca pembaca layar. Diukur 2026-11-09: legend.sr-only
+       di /admin#mail dilaporkan "teks terpotong 80px (scroll=81 client=1)" di
+       KEENAM lebar, termasuk 1440px — bentuk khas vonis palsu, sama seperti
+       wadah dekoratif di atas. Kotak 1x1 tidak bisa memuat teks terbaca pada
+       ukuran apa pun, jadi tidak ada yang hilang bagi pengguna.
+
+       Ambangnya 2px, bukan 1px: pembulatan sub-piksel bisa melaporkan 1,33px.
+       Kontrol positif probe-clipped (60px, ellipsis) tetap jauh di atas
+       ambang ini, jadi gerbang ini tetap bisa MERAH. */
+    if (el.clientWidth <= 2 && el.clientHeight <= 2) continue;
     /* MIN_CUT, bukan OVERFLOW_TOL: selisih 1-2px adalah pembulatan
        letter-spacing / sub-piksel, bukan teks yang hilang. Lihat definisi
        MIN_CUT dan angka yang melahirkan ambang itu. */
@@ -494,9 +507,31 @@ const SWEEP_FN = `(opts) => {
     }
   }
 
+  /* ── 4. TABEL STATIS LOWONGAN TAMPIL PADAHAL ISLAND HIDUP ────────────────
+     Inilah cacat yang diukur 2026-11-09: /loker CLS 0,562 dan /public 0,478.
+     LokerStaticList merender tabel ~3.300px di server, lalu tabel itu
+     disembunyikan setelah island dapat data — seluruh isi di bawahnya melompat
+     ke atas 3.185px, dan pembaca yang sudah menggulir terlempar.
+
+     Perbaikannya membalik arah: CSS menyembunyikan tabel statis sejak paint
+     pertama saat html[data-js] ada, dan island hanya MEMUNCULKANNYA kembali
+     kalau gagal (html[data-loker-failed]).
+
+     Vonis di bawah menangkap kebalikannya — tabel statis TERLIHAT padahal JS
+     hidup dan island tidak melaporkan gagal. Dua pengecualian yang sah:
+     JS mati (tidak ada data-js; justru tabel inilah isinya), dan island gagal
+     (data-loker-failed; tabel ini satu-satunya data yang tersisa). */
+  const staticEl = document.querySelector('.loker-static');
+  if (staticEl) {
+    const stCs = getComputedStyle(staticEl);
+    const stHidden = stCs.display === 'none' || stCs.visibility === 'hidden';
+    const jsOn = document.documentElement.hasAttribute('data-js');
+    const islandFailed = document.documentElement.hasAttribute('data-loker-failed');
+    if (!stHidden && jsOn && !islandFailed) out.staticFallback = describe(staticEl);
+  }
+
   return out;
 }`;
-
 async function sweep(page) {
   return page.evaluate(`(${SWEEP_FN})(${JSON.stringify({ MIN_TAP: MIN_TAP, OVERFLOW_TOL: OVERFLOW_TOL, MIN_CUT: MIN_CUT })})`);
 }
@@ -558,6 +593,12 @@ function layoutProblems(res) {
   for (const o of res.overflow) problems.push(fmtDefect(o));
   for (const o of res.tap) problems.push(fmtDefect(o));
   for (const o of res.clipped) problems.push(`TEKS TERPOTONG: ${fmtDefect(o)}`);
+  if (res.staticFallback) {
+    problems.push(
+      `TABEL STATIS LOWONGAN TAMPIL padahal island hidup: ${res.staticFallback} — ` +
+        'tabel ini akan lenyap saat datanya tiba dan menggeser seluruh halaman (CLS terukur 0,562 di /loker)',
+    );
+  }
   return problems;
 }
 

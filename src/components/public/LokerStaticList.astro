@@ -91,19 +91,32 @@ const jobs = await fetchPublicJobs(siteOrigin(), STATIC_JOB_LIMIT);
     background: color-mix(in oklab, var(--color-fg) 3%, transparent);
   }
 
-  /* The live table REPLACES this one — but only once it actually has rows.
-     `LokerTable` sets this attribute after its fetch resolves with data.
+  /* Tabel ini HIDUP hanya kalau JS tidak akan mengambil alih — atau kalau
+     island-nya gagal.
 
-     It used to be an inline script right below the markup that did
-     `el.style.display = 'none'` immediately, under a comment claiming it ran
-     "once the client island hydrates". It did not: it ran during parsing, so
-     the table was gone BEFORE the island had fetched anything. If that fetch
-     failed — offline, API down, a JS error in the island — the page kept the
-     heading, the hint and an empty gap, with the server-rendered rows sitting
-     in the DOM but hidden. The comment was the only thing that said otherwise.
-     Hiding on the island's signal means a failed island degrades to the static
-     table instead of to nothing. */
-  html[data-loker-live] .loker-static {
+     MEASURED 2026-11-09 (390px, CPU 4×, Slow 4G, lewat `deliverables/serve-gzip.mjs`
+     supaya angkanya bentuk yang DIKIRIM, bukan bentuk di disk): /loker CLS
+     **0,562** dan /public **0,478** — keduanya "buruk" (ambang Google 0,1).
+     Penyebabnya bukan font atau gambar, melainkan aturan yang dulu ada di sini:
+     `html[data-loker-live] .loker-static { display: none }`. Tabel statis
+     dirender server setinggi ~3.300px, lalu DISEMBUNYIKAN begitu island
+     mendapat data. Seluruh isi halaman di bawahnya melompat ke atas 3.185px —
+     dan pembaca yang sudah mulai menggulir terlempar ke tempat lain.
+
+     Kenapa `data-js` dan bukan `<noscript>`: `LokerTable.test.tsx` mengunci
+     janji yang lebih kuat daripada "sembunyikan kalau JS ada" — tabel statis
+     harus TETAP tampil ketika fetch island GAGAL, karena itulah satu-satunya
+     data yang tersisa bagi pembaca. `<noscript>` mematikan tabel itu justru
+     pada kasus tersebut. Jadi: sembunyikan sejak paint pertama saat JS hidup
+     (atribut dipasang di <head>, lihat BaseLayout), lalu MUNCULKAN kembali saat
+     island melaporkan kegagalan lewat `data-loker-failed`.
+
+     Atributnya dipasang sebelum paint pertama, jadi tidak ada kedipan: tata
+     letak pertama sudah tanpa tabel ini. */
+  html[data-js] .loker-static {
     display: none;
+  }
+  html[data-js][data-loker-failed] .loker-static {
+    display: block;
   }
 </style>

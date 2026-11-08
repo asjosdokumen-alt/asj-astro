@@ -279,6 +279,18 @@ const orgJsonLd = jsonLdScript(
       }
     })();
 
+    // ─── Penanda "JS hidup", SEBELUM paint pertama ───
+    // Kenapa harus di sini dan bukan di komponen yang memakainya: CSS perlu
+    // tahu apakah JS AKAN mengambil alih SEBELUM tata letak pertama, bukan
+    // sesudahnya. `LokerStaticList` memakai ini untuk menyembunyikan tabel
+    // statis miliknya saat JS ada; kalau penandanya dipasang belakangan, tabel
+    // statis sempat menempati ~3.300px lalu lenyap — persis pergeseran tata
+    // letak yang mau dihilangkan.
+    //
+    // Tanpa JS atribut ini tidak pernah ada, jadi pembaca tanpa JS tetap
+    // melihat tabel statisnya. Itu satu-satunya alasan atribut ini ada.
+    document.documentElement.setAttribute("data-js", "");
+
     // ─── Scrollbar gutter width (see styles/global.css + layout.css §3b) ───
     // `html { scrollbar-gutter: stable }` prevents a page shift when a modal
     // toggles `overflow: hidden`, but it also narrows the initial containing

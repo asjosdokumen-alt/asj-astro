@@ -113,17 +113,30 @@ export default function LokerTable() {
 
   useEffect(() => { fetchJobs(); }, []);
 
-  /* Announce "the live table has rows" so `LokerStaticList` can hide its
-     server-rendered copy. The announcement waits for DATA, not for mount:
-     hiding on mount would leave an empty gap while this island fetches, and —
-     worse — would hide the static rows for good if the fetch failed. The
-     attribute is the only channel between the two components; the CSS rule
-     lives in LokerStaticList.astro next to the markup it hides. */
+  /* Laporkan ke `LokerStaticList` kalau tabel ini TIDAK bisa mengisi dirinya
+     sendiri — fetch gagal, atau API menjawab sukses dengan nol baris.
+
+     Arah sinyalnya dibalik pada 2026-11-09. Dulu atributnya `data-loker-live`
+     ("tabel hidup sudah punya baris"), dan tabel statis tampil sampai sinyal
+     itu datang. Itu benar untuk kasus gagal, tetapi salah untuk kasus normal:
+     tabel statis ~3.300px sempat menempati halaman lalu lenyap, dan /loker
+     terukur CLS **0,562** (buruk; ambang 0,1). Sekarang CSS menyembunyikan
+     tabel statis sejak paint pertama saat JS hidup, dan atribut di sini hanya
+     MEMUNCULKANNYA kembali ketika island gagal — sehingga kasus normal tidak
+     pernah menggeser apa pun, dan kasus gagal tetap mendapat data yang sama
+     seperti sebelumnya.
+
+     `loading` sengaja ikut jadi dependensi: sebelum fetch selesai, "nol baris"
+     berarti "belum tahu", bukan "gagal". Menandai gagal saat masih memuat akan
+     memunculkan tabel statis lalu menyembunyikannya lagi — persis pergeseran
+     yang mau dihindari. */
   useEffect(() => {
-    if (jobs.length === 0) return;
-    document.documentElement.setAttribute('data-loker-live', '');
-    return () => document.documentElement.removeAttribute('data-loker-live');
-  }, [jobs.length]);
+    const root = document.documentElement;
+    const failed = !loading && jobs.length === 0;
+    if (failed) root.setAttribute('data-loker-failed', '');
+    else root.removeAttribute('data-loker-failed');
+    return () => root.removeAttribute('data-loker-failed');
+  }, [loading, jobs.length]);
 
   async function fetchJobs() {
     setError("");
