@@ -100,6 +100,13 @@ const OUR_PREFIXES = [
   // than freeze an image mid-frame while the stylesheet looks correct.
   "alive-",
   "progress-",
+  // Added 2026-11-08 with motion.css §"Umpan balik game" — the 0.3 s correct/
+  // wrong feedback on /arcade and /kotoba. They were declared and USED (four
+  // call sites in ArcadeGame.tsx, one in KotobaGame.tsx) but invisible to this
+  // gate, so a typo in `game-pop` would have been reported as "all resolve"
+  // while the animation silently never ran. That is exactly the failure the
+  // unreachable-name check below exists to prevent.
+  "game-",
   // Tailwind-generated, from the `--animate-*` tokens in theme.css. They are
   // declared by Tailwind at build time rather than by hand, but they resolve the
   // same way and a typo in `animate-slide-in` is just as silent.

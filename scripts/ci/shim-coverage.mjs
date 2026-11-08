@@ -77,7 +77,11 @@ const ALLOWED = {
   'bg-amber-500/80': { max: 9, reason: 'Typing-indicator dots, `w-2 h-2 rounded-full` — three per indicator, in three places (AdminAiCopilot.tsx x3, AiCvForm.tsx x3, SiswaBaruForm.tsx x3). No text node is ever inside a 2x2 dot.' },
   'bg-violet-400/80': { max: 3, reason: 'Typing-indicator dots, `w-2 h-2 rounded-full` (InterviewSimulatorModal.tsx:333-339). Same shape as bg-amber-500/80.' },
   'bg-emerald-500/25': { max: 1, reason: '1px vertical connector line between payment steps — `w-px flex-1` (LokerDetailModal.tsx:66). A rule is not a surface.' },
-  'bg-rose-500/10': { max: 1, reason: 'Decorative circle BEHIND an icon — `w-24 h-24 rounded-full` with <Icon> inside, no text (ShareView.tsx:251).' },
+  // `bg-rose-500/10` LEFT THIS LIST 2026-11-08: its second call site
+  // (CandidateDash.tsx:855, the rejection-reason panel) carries TEXT, so the
+  // "no text inside" reason stopped being true. It is now SHIMMED in
+  // global.css (§ rose family) and measured there: 5.26:1 for the text,
+  // 3.06:1 for the icon in ShareView.
   'bg-rose-600/10': { max: 1, reason: 'Ambient blurred blob carrying aria-hidden="true" (ShareView.tsx:184) — hidden from the accessibility tree by construction.' },
 
   /* ── deliberately paired with text that is ALSO unshimmed ── */
