@@ -22,6 +22,7 @@ import { readFileSync } from 'node:fs';
 import LoginModal from './LoginModal';
 import { showToast } from './Toast';
 import { apiClient } from '../lib/apiClient';
+import { navigateTo } from '../lib/navigate';
 
 /** Jebakan: komponen tidak boleh menyentuh `fetch` mentah lagi. */
 const mockFetch = vi.fn();
@@ -29,6 +30,9 @@ global.fetch = mockFetch;
 
 vi.mock('./Toast', () => ({ showToast: vi.fn() }));
 vi.mock('../lib/apiClient', () => ({ apiClient: vi.fn() }));
+// Jahitan redirect (src/lib/navigate.ts): jsdom tidak bisa menukar
+// `window.location`, jadi tujuan navigasi hanya bisa DIBUKTIKAN lewat mock ini.
+vi.mock('../lib/navigate', () => ({ navigateTo: vi.fn() }));
 vi.mock('../store/i18n', async () => {
   const { atom } = await import('nanostores');
   // Salinan produksi untuk key yang diperiksa isinya (bukan sekadar namanya).
@@ -218,6 +222,23 @@ describe('LoginModal (B01)', () => {
     fireEvent.click(screen.getByText('button.enter_portal'));
     await waitFor(() => expect(argsFor('checkAdminPersonal')).toBeTruthy());
     expect(argsFor('checkAdminPersonal').args).toEqual(['SACHOU', '4321']);
+  });
+
+  // Admin login dari beranda dulu DIMUAT ULANG DI BERANDA: sukses, tapi panelnya
+  // tidak pernah muncul (satu-satunya jalan masuk /admin melempar tamu ke `/`).
+  // Terukur 2026-11-08 di produksi: setelah login sukses, `location.href` tetap
+  // `/`. Tes ini mengunci TUJUANNYA, bukan sekadar "tidak reload".
+  it('admin personal sukses → diarahkan ke /admin, bukan dibiarkan di beranda', async () => {
+    render(<LoginModal mode="login" {...modeProps} />);
+    fireEvent(window, new Event('asj-admin-login'));
+    fireEvent.input(screen.getByPlaceholderText('admin.pin_master'), { target: { value: '1234' } });
+    fireEvent.click(screen.getByText('button.verify'));
+    await waitFor(() => expect(screen.getByText('SACHOU')).toBeTruthy());
+    routeApi({ checkAdminPersonal: { success: true, token: 't-1' } });
+    fireEvent.click(screen.getByText('SACHOU'));
+    fireEvent.input(screen.getByPlaceholderText('admin.pin_personal'), { target: { value: '4321' } });
+    fireEvent.click(screen.getByText('button.enter_portal'));
+    await waitFor(() => expect(vi.mocked(navigateTo)).toHaveBeenCalledWith('/admin'));
   });
 
   it('sudah login → modal ditutup via efek (bukan side-effect saat render)', async () => {

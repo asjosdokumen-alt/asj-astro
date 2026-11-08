@@ -11,6 +11,7 @@ import { showToast } from './Toast';
 import { validate, normalizeWaInput, registerSchema, kandidatLoginSchema, adminMasterPinSchema, adminPersonalPinSchema } from '../lib/schemas';
 import { t, langStore } from '../store/i18n';
 import { apiClient, type ApiError } from '../lib/apiClient';
+import { navigateTo } from '../lib/navigate';
 import Icon from './ui/Icon';
 import { useOverlay } from './ui/useOverlay';
 import { useOverlayPresence } from './ui/useOverlayPresence';
@@ -194,7 +195,18 @@ export default function LoginModal({ mode, onClose, onSwitchMode }: Props) {
         loginAsAdmin(selectedAdmin, r.token || r.sessionToken || "", r.refreshToken || "");
         showToast(t('login.selamat_datang') + selectedAdmin + "!", "success");
         onClose();
-        window.location.reload();
+        // Admin MENDARAT DI PANELNYA, bukan di halaman tempat modal dibuka.
+        //
+        // Dulu `window.location.reload()`: admin yang menekan "Admin Login" dari
+        // beranda (satu-satunya jalan masuk — /admin melempar tamu ke `/` lewat
+        // AuthGuard) login dengan sukses lalu DIMUAT ULANG DI BERANDA. Tidak ada
+        // satu pun tanda di layar bahwa ia sudah masuk; panelnya tidak pernah
+        // muncul, dan satu-satunya cara menemukannya adalah mengetik /admin.
+        // Terukur 2026-11-08: setelah login sukses, `location.href` tetap `/`.
+        //
+        // `navigateTo` (bukan `location.href` langsung) supaya redirect ini bisa
+        // DIBUKTIKAN tes — lihat header src/lib/navigate.ts.
+        navigateTo('/admin');
       } else {
         showToast(r.error || t('login.pin_salah'), "error");
       }
