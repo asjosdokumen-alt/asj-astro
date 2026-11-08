@@ -716,6 +716,17 @@ describe('CandidateDash — kartu dossier sebagai header profil', () => {
     expect(screen.queryByRole('button', { name: 'ui.cv_download_biodata' })).toBeNull();
   });
 
+  it('foto dossier diminta 256x320, bukan berkas asli', async () => {
+    // Kotak fotonya 128x160 (2x = 256x320). Tanpa transformasi, setiap kunjungan
+    // dasbor mengunduh foto pas ASLI — sumber yang sama yang dulu membuat egress
+    // pemilik tembus (lihat header src/lib/thumbUrl.ts).
+    const cloud =
+      'https://res.cloudinary.com/asj/image/upload/v1787886300/DOKUMENASJ/663_dqyhli.jpg';
+    await renderDash({ pasPhoto: cloud });
+    const img = screen.getByAltText('Budi') as HTMLImageElement;
+    expect(img.src).toContain('w_256,h_320,c_fill,q_auto,f_auto');
+  });
+
   it('TIDAK merender satu pun permukaan admin-only dari dossier legacy', async () => {
     /* KEPUTUSAN OWNER 2026-09-25: "panel admin ya tetap di admin panel … karena
        ada yg privasi khusus yg hanya boleh ada di admin".

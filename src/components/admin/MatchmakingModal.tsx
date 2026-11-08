@@ -29,6 +29,7 @@ import Icon from '../ui/Icon';
 import { useOverlay } from '../ui/useOverlay';
 import { showToast } from '../Toast';
 import api from '../../lib/apiClient';
+import { thumbUrl } from '../../lib/thumbUrl';
 import { t } from '../../store/i18n';
 
 interface Candidate {
@@ -365,7 +366,7 @@ export default function MatchmakingModal({ job, candidates, isOpen, onClose, clo
                   <div key={c.wa} class="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
                     <div class="flex items-center gap-3">
                       {c.pasPhoto && c.pasPhoto !== '-' ? (
-                        <img src={c.pasPhoto} alt={c.nama} class="w-10 h-10 rounded-full object-cover border-2 border-violet-500" />
+                        <img src={thumbUrl(c.pasPhoto, 80, 80)} alt={c.nama} class="w-10 h-10 rounded-full object-cover border-2 border-violet-500" />
                       ) : (
                         <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400 text-xs">
                           <Icon name="user" />

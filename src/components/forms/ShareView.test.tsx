@@ -105,6 +105,25 @@ describe('ShareView (B06)', () => {
     expect(img.src).toContain('ui-avatars.com');
   });
 
+  it('foto kartu diminta dalam ukuran thumbnail (84x112 → 168x224)', async () => {
+    const cloud =
+      'https://res.cloudinary.com/asj/image/upload/v1787886300/DOKUMENASJ/663_dqyhli.jpg';
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        job: API_JOB,
+        candidates: [{ ...API_CANDIDATES[0], pas_photo: cloud }],
+      }),
+    });
+    render(<ShareView />);
+    await waitFor(() => expect(screen.getByAltText('Budi Santoso')).toBeTruthy());
+    const img = screen.getByAltText('Budi Santoso') as HTMLImageElement;
+    // 2x dari kotak 84x112 — bukan berkas asli, yang bisa ratusan KB.
+    expect(img.src).toContain('w_168,h_224,c_fill,q_auto,f_auto');
+    // Berkas yang SAMA: transformasi disisipkan, path aslinya utuh.
+    expect(img.src).toContain('v1787886300/DOKUMENASJ/663_dqyhli.jpg');
+  });
+
   it('Kirim Pilihan builds the legacy WA message to the admin number', async () => {
     render(<ShareView />);
     await waitFor(() => expect(screen.getByText('Budi Santoso')).toBeTruthy());

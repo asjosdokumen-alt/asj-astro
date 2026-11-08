@@ -32,6 +32,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { langStore, t, toggleLang, useLang } from '../../store/i18n';
 import { shareDocTypeOf, shareExtraDocLabel } from '../../lib/shareDocs';
+import { thumbUrl } from '../../lib/thumbUrl';
 import DocumentPreviewModal from '../DocumentPreviewModal';
 import Icon from '../ui/Icon';
 import { useOverlayPresence } from '../ui/useOverlayPresence';
@@ -317,6 +318,11 @@ export default function ShareView() {
               const isSel = selected.has(c.id_kandidat);
               const nama = c.nama_lengkap || 'Candidate';
               const photo = c.pas_photo && c.pas_photo !== '-' ? c.pas_photo : avatarFor(nama);
+              // Thumbnail 84x112 (md) — minta UKURAN ITU, bukan foto aslinya.
+              // `photo` tetap URL asli untuk `openPreview` di bawah: memperbesar
+              // thumbnail 168 px akan jadi buram, jadi zoom sengaja memakai
+              // berkas penuh. Hanya <img> kartu yang ditransformasi.
+              const fotoKartu = thumbUrl(photo, 168, 224);
               const buttons = docButtonsFor(c);
               const gText = String(c.gender || '');
               const usia = parseInt(String(c.usia), 10) || 0;
@@ -337,7 +343,7 @@ export default function ShareView() {
                   <div class="flex gap-3 md:gap-4 mb-3 md:mb-4 relative">
                     <button type="button" class="w-[72px] h-[96px] md:w-[84px] md:h-[112px] shrink-0 rounded-xl overflow-hidden bg-slate-800 border ${isSel ? 'border-pink-400' : 'border-slate-600'} shadow-inner relative z-20 group/photo cursor-pointer p-0" title={t('ui.click_zoom')}
                       onClick={(e) => { e.stopPropagation(); openPreview(photo, 'Foto - ' + nama); }}>
-                      <img src={photo} loading="lazy" decoding="async" alt={nama} class="w-full h-full object-cover"
+                      <img src={fotoKartu} loading="lazy" decoding="async" alt={nama} class="w-full h-full object-cover"
                         onError={(e) => { (e.target as HTMLImageElement).onerror = null; (e.target as HTMLImageElement).src = avatarFor(nama); }} />
                       {photo.includes('ui-avatars') ? null : (
                         <div class="absolute inset-0 bg-black/60 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center text-white"><Icon name="camera" class="text-lg drop-shadow-md" /></div>

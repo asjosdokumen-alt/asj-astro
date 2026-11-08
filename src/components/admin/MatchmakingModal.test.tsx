@@ -176,8 +176,20 @@ describe('MatchmakingModal (A14)', () => {
     expect(first).toContain('LENGKAP');
   });
 
-  it('empty result after search → ui.no_match', async () => {
-    const cand = mkCand({ wa: '1', nama: 'LAKI', gender: 'L' });
+  // Foto kandidat dirender 40x40. Tanpa transformasi, setiap baris hasil
+  // mengunduh berkas ASLI — foto pas 3x4 dari kamera bisa ratusan KB, dan daftar
+  // hasil bisa 30 baris. `thumbUrl` meminta ukuran yang benar-benar dipakai.
+  it('foto 40x40 diminta sebagai thumbnail, bukan berkas asli', async () => {
+    const cloud =
+      'https://res.cloudinary.com/asj/image/upload/v1787886300/DOKUMENASJ/663_dqyhli.jpg';
+    renderOpen([mkCand({ wa: '1', nama: 'BERFOTO', pasPhoto: cloud })]);
+    fireEvent.click(screen.getByRole('button', { name: /ui\.start_specific_search/ }));
+    await waitFor(() => expect(screen.getByText(/ui\.found_n/)).toBeTruthy());
+    const img = screen.getByAltText('BERFOTO') as HTMLImageElement;
+    expect(img.src).toContain('w_80,h_80,c_fill,q_auto,f_auto');
+  });
+
+  it('empty result after search → ui.no_match', async () => {    const cand = mkCand({ wa: '1', nama: 'LAKI', gender: 'L' });
     renderOpen([cand]);
     // force gender mismatch by filtering Perempuan
     fireEvent.change(document.querySelectorAll('select')[0], { target: { value: 'P' } });

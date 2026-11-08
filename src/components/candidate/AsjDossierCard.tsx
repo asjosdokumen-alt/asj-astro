@@ -51,6 +51,7 @@ import type { ComponentChildren } from 'preact';
 import Icon from '../ui/Icon';
 import { t } from '../../store/i18n';
 import { ASJ_LOGO_URL } from '../../lib/vip';
+import { thumbUrl } from '../../lib/thumbUrl';
 
 export type AsjDossierCardProps = {
   nama: string;
@@ -169,7 +170,7 @@ export default function AsjDossierCard(props: AsjDossierCardProps) {
         <div class="w-full md:w-1/3 flex flex-col items-center gap-3">
           <div class="w-32 h-40 rounded-card bg-surface-sunken border border-line-strong grid place-items-center overflow-hidden shrink-0">
             {photo
-              ? <img src={photo} alt={nama} class="w-full h-full object-cover" />
+              ? <img src={thumbUrl(photo, 256, 320)} alt={nama} class="w-full h-full object-cover" />
               : <Icon name="user" class="text-5xl text-fg-subtle" />}
           </div>
           <div class="w-full flex flex-col items-center gap-2">
