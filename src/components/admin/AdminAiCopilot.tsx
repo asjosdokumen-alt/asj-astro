@@ -77,14 +77,13 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
   const [sending, setSending] = useState(false);
   const [mode, setMode] = useState<"chat" | "parse">("chat");
   const [parseStatus, setParseStatus] = useState("");
-  const [parsing, setParsing] = useState(false);
   const [parseWa, setParseWa] = useState(candidateWa || "");
   const [parseBidang, setParseBidang] = useState("");
-  // Satu penjaga kesibukan untuk SEMUA aksi AI di panel parse. Dulu hanya
-  // `parsing` (khusus parse berkas) yang ada, sehingga dua klik cepat pada
-  // "Buat Model" / "Hasil Wawancara" menembak DUA permintaan AI sekaligus —
-  // dua kali kuota provider untuk satu niat pengguna. Tombol-tombolnya kini
-  // memakai flag yang sama.
+  // Satu penjaga kesibukan untuk SEMUA aksi AI di panel parse — dulu `parsing`
+  // dan `busy` terpisah, sehingga dua klik cepat pada "Buat Model" / "Hasil
+  // Wawancara" menembak DUA permintaan AI sekaligus (dua kali kuota provider
+  // untuk satu niat pengguna). `parsing` dihapus 2026-11-08: ia tidak pernah
+  // dibaca sejak alur parse berkas dibuang.
   const [busy, setBusy] = useState(false);
   // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`. Non-null
   // shows the banner; a later successful AI call clears it.
@@ -134,10 +133,6 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     const code = e instanceof Error ? (e as Error & { code?: string }).code : undefined;
     if (code === "AI_UNAVAILABLE") setAiDown(msg);
     addMsg("⚠️ " + msg, "assistant");
-  };
-
-  const refreshCandidates = () => {
-    window.dispatchEvent(new CustomEvent("candidates-changed"));
   };
 
   const handleSend = async (text?: string) => {

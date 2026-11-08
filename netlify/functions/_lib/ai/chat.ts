@@ -1361,10 +1361,14 @@ async function handleGetHasilWawancara(payload: unknown[], sessionToken?: string
 async function handleGetJawabanWawancaraAdmin(payload: unknown[], sessionToken?: string) {
   const guard = requireRole(sessionToken as string, 'admin');
   if (guard.error) return guard.error;
-  const d = ((payload && payload[0]) || {}) as Record<string, any>;
-  // Dua bentuk diterima: `['6281…']` (yang dikirim panel) dan `[{ wa }]`
+  // `unknown`, bukan `any`: dua nilai yang dibaca di bawah sempit dan jelas
+  // (string WA, string id kandidat), jadi tidak ada alasan mematikan
+  // pemeriksaan tipe untuk seluruh objek.
+  //
+  // DUA BENTUK diterima: `['6281…']` (yang dikirim panel) dan `[{ wa }]`
   // (bentuk aksi AI lain). Tanpa ini, satu perubahan bentuk di klien membuat
   // aksi ini menjawab "WA tidak ditemukan" sambil terlihat benar.
+  const d = (payload?.[0] ?? {}) as Record<string, unknown>;
   const raw = typeof payload?.[0] === 'string' ? payload[0] : d.wa;
   let wa = normalizeWa(String(raw || ''));
   if (!wa && d.candidateId) {
