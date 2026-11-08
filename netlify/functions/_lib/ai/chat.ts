@@ -1338,6 +1338,72 @@ async function handleGetHasilWawancara(payload: unknown[], sessionToken?: string
   }
 }
 
+// ---------------------------------------------------------------------------
+// getJawabanWawancaraAdmin — admin: jawaban BANK SOAL wawancara seorang siswa.
+//
+// MENGGANTIKAN `getHasilWawancara` SEBAGAI SUMBER "Hasil Wawancara" di panel AI
+// (2026-11-08). Sistem wawancara berganti 2026-10-25 dari simulator AI menjadi
+// bank soal (`wawancara_soal` + `wawancara_jawaban`), dan tabel lama
+// `ai_form_submissions` berhenti diisi: terukur di produksi, baris terbarunya
+// semuanya `mode=AI_MASTER`, NOL baris wawancara. Jadi tombol lama selalu
+// menjawab "belum ada hasil" — bukan karena kandidatnya kosong, melainkan
+// karena sumbernya sudah mati.
+//
+// `getHasilWawancara` TIDAK dihapus: ia masih membaca baris WARISAN
+// (`submitted_via='interview'`) yang mungkin masih dimiliki kandidat lama, dan
+// menghapusnya berarti membuang satu-satunya jalan membacanya. Yang berubah
+// hanya tombol di panel, yang sekarang memakai aksi ini.
+//
+// Bentuk jawaban sengaja RINGKAS: admin hanya butuh pertanyaan + jawaban siswa.
+// Metadata pemetaan CV (`kolom_cv`, `sinkron_cv`) tidak dikirim karena tidak
+// pernah ditampilkan — dan payload yang tidak dipakai tetap dibayar di jaringan.
+// ---------------------------------------------------------------------------
+async function handleGetJawabanWawancaraAdmin(payload: unknown[], sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'admin');
+  if (guard.error) return guard.error;
+  const d = ((payload && payload[0]) || {}) as Record<string, any>;
+  // Dua bentuk diterima: `['6281…']` (yang dikirim panel) dan `[{ wa }]`
+  // (bentuk aksi AI lain). Tanpa ini, satu perubahan bentuk di klien membuat
+  // aksi ini menjawab "WA tidak ditemukan" sambil terlihat benar.
+  const raw = typeof payload?.[0] === 'string' ? payload[0] : d.wa;
+  let wa = normalizeWa(String(raw || ''));
+  if (!wa && d.candidateId) {
+    const cand = await findCandidateByIdOrNull(String(d.candidateId));
+    if (cand) wa = normalizeWa(String(cand.no_wa || ''));
+  }
+  if (!wa) {
+    return {
+      success: false,
+      error: 'Nomor WA kandidat tidak ditemukan — pilih kandidat dulu atau isi nomor WA.',
+    };
+  }
+  try {
+    const { gabungBankDanJawaban } = await import('../wawancara/bank');
+    const r = await gabungBankDanJawaban(wa);
+    const soal = r.soal.map((s) => {
+      const jawaban = String(s.jawabanku?.arti || '').trim();
+      const jawabanJp = String(s.jawabanku?.jp || '').trim();
+      return {
+        kode: s.kode,
+        tahap: s.tahap,
+        tanya: String(s.arti || s.jp || s.kode),
+        jawaban,
+        jawabanJp,
+        terisi: Boolean(jawaban || jawabanJp),
+      };
+    });
+    return {
+      success: true,
+      wa: r.wa,
+      jumlah: r.jumlah,
+      terisi: soal.filter((s) => s.terisi).length,
+      soal,
+    };
+  } catch (_e) {
+    return { success: false, error: 'Terjadi kesalahan. Silakan coba lagi.' };
+  }
+}
+
 export {
   boundTranscript,
   buildInterviewSystem,
@@ -1351,4 +1417,5 @@ export {
   handleSelesaikanWawancara,
   handleSimpanHasilWawancara,
   handleGetHasilWawancara,
+  handleGetJawabanWawancaraAdmin,
 };

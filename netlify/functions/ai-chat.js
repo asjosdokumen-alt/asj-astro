@@ -31,7 +31,7 @@ export default adapt(makeSurfaceHandler(AI_ACTIONS, [
   'processAIChat', 'processSiswaAIChat', 'processAdminAIChat',
   'processAiInterview', 'processUploadDoc',
   'generateWawancaraModel', 'simpanHasilWawancara', 'selesaikanWawancara',
-  'getHasilWawancara', 'getAdminAiContext', 'buildAdminAiCandidateSummary',
+  'getHasilWawancara', 'getJawabanWawancaraAdmin', 'getAdminAiContext', 'buildAdminAiCandidateSummary',
   'submitDataAsj', 'simpanDataTtdNaitei', 'saveSignature', 'getJobStatus',
   'getBankWawancara', 'simpanJawabanWawancara',
   'terjemahkanJawabanWawancara', 'getLinkWawancara',

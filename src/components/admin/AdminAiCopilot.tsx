@@ -61,33 +61,21 @@ export function boldHtml(text: string): string {
 }
 
 /**
- * The interview-result card state.
- *
- * This container is built by this component (see `setLastHasil` below), so its
- * shape is NOT dynamic — declaring it here is what removes the eleven
- * per-field casts that used to paper over the `Record<string, unknown>`
- * annotation. The leaf values stay `unknown` on purpose: they come from the
- * `getHasilWawancara` AI payload, so each read site narrows or stringifies
- * rather than the type inventing a shape for the AI's answer.
+ * Kartu hasil wawancara DULU ada di sini (`HasilWawancara` + `lastHasil`) dan
+ * membaca `getHasilWawancara` — payload simulator wawancara AI yang lama
+ * (`score`, `rekomendasi`, `biodata`). Sistem wawancara berganti 2026-10-25
+ * menjadi BANK SOAL (`wawancara_soal` + `wawancara_jawaban`), dan tabel lama
+ * itu berhenti diisi: terukur 2026-11-08, baris terbaru `ai_form_submissions`
+ * semuanya `mode=AI_MASTER`, nol baris wawancara. Jadi kartu itu tidak pernah
+ * punya data lagi — lihat `handleResults` di bawah, yang sekarang membaca bank.
  */
-interface HasilWawancara {
-  wa?: unknown;
-  nama?: unknown;
-  updatedAt?: unknown;
-  hasil?: {
-    score?: unknown;
-    nilai?: unknown;
-    rekomendasi?: unknown;
-    biodata?: Record<string, unknown>;
-  };
-}
 
 export default function AdminAiCopilot({ candidateId, candidateWa, onClose, closing = false }: Props) {
   const user = useStore(authStore);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [mode, setMode] = useState<"chat" | "parse" | "results">("chat");
+  const [mode, setMode] = useState<"chat" | "parse">("chat");
   const [parseStatus, setParseStatus] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parseWa, setParseWa] = useState(candidateWa || "");
@@ -98,7 +86,6 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
   // dua kali kuota provider untuk satu niat pengguna. Tombol-tombolnya kini
   // memakai flag yang sama.
   const [busy, setBusy] = useState(false);
-  const [lastHasil, setLastHasil] = useState<HasilWawancara | null>(null);
   // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`. Non-null
   // shows the banner; a later successful AI call clears it.
   const [aiDown, setAiDown] = useState<string | null>(null);
@@ -241,6 +228,23 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     }
   };
 
+  /**
+   * "Hasil Wawancara" — membaca BANK SOAL (sistem 2026-10-25), bukan simulator
+   * AI lama.
+   *
+   * KENAPA BERUBAH (2026-11-08; laporan pemilik: *"hrd ai kan ada wawancara parse
+   * padahal kan system nya sudah berubah"*). Aksi lama `getHasilWawancara`
+   * membaca `ai_form_submissions`, tabel yang berhenti diisi ketika wawancara
+   * berganti menjadi bank soal. Terukur di produksi: baris terbaru tabel itu
+   * semuanya `mode=AI_MASTER`, NOL baris wawancara — jadi tombol ini selalu
+   * menjawab "belum ada hasil" dan `Update Biodata` (yang butuh `biodata` dari
+   * payload lama) tidak akan pernah bisa jalan.
+   *
+   * Yang ditampilkan sekarang: pertanyaan + jawaban siswa dari
+   * `wawancara_jawaban`, lewat aksi admin `getJawabanWawancaraAdmin`. Kalau
+   * belum ada isian, itu dikatakan sebagai "0 dari N" — bukan "tidak ada hasil",
+   * karena dua keadaan itu berbeda.
+   */
   const handleResults = async () => {
     if (busy) return;
     if (!parseWa && !candidateId) {
@@ -250,108 +254,56 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     setBusy(true);
     setParseStatus(t("ai.status_fetching"));
     try {
-      const data = await apiCall("getHasilWawancara", [
-        { candidateId: candidateId || undefined, wa: parseWa || undefined },
+      const data = await apiCall("getJawabanWawancaraAdmin", [
+        { wa: parseWa || undefined, candidateId: candidateId || undefined },
       ]);
-      if (!data?.hasil) {
+      const soal = Array.isArray(data?.soal) ? (data.soal as Record<string, unknown>[]) : [];
+      if (!soal.length) {
         addMsg(t("ai.no_results"), "assistant");
         setParseStatus("");
         return;
       }
-      const h = (data as Record<string, unknown>).hasil as Record<string, unknown>;
-      const bio =
-        h.biodata && typeof h.biodata === "object"
-          ? (h.biodata as Record<string, unknown>)
-          : {};
-      const nama =
-        String((data as Record<string, unknown>).nama || "") ||
-        String(bio.nama || (data as Record<string, unknown>).wa || "");
-      setLastHasil({
-        wa: (data as Record<string, unknown>).wa || parseWa,
-        hasil: h,
-        nama,
-        updatedAt: (data as Record<string, unknown>).updatedAt || "",
+      const terisi = soal.filter((s) => s.terisi === true);
+      const baris = (terisi.length ? terisi : soal).slice(0, 12).map((s, i) => {
+        const tanya = String(s.tanya || s.kode || "");
+        const jawab = String(s.jawaban || "").trim();
+        return `${i + 1}. ${tanya}\n   → ${jawab || "—"}`;
       });
       addMsg(
-        "📊 **" +
+        "📋 **" +
           t("admin.ai_results_title") +
           " — " +
-          (nama || (data as Record<string, unknown>).wa) +
+          String(data?.wa || parseWa) +
           "**" +
-          (String((data as Record<string, unknown>).updatedAt || "") !== ""
-            ? "\n🗓️ " + String((data as Record<string, unknown>).updatedAt)
-            : "") +
-          "\n⭐ " +
-          t("admin.ai_score") +
-          (h.score !== undefined ? String(h.score) + "/10" : "-") +
-          (h.nilai ? " (" + String(h.nilai) + ")" : "") +
-          "\n💡 " +
-          t("admin.ai_recommendation") +
-          String(h.rekomendasi || "-") +
-          "\n🧬 " +
-          t("admin.ai_field_biodata") +
-          ": " +
-          Object.keys(bio).length,
+          "\n✅ " +
+          String(data?.terisi ?? terisi.length) +
+          "/" +
+          String(data?.jumlah ?? soal.length) +
+          "\n\n" +
+          baris.join("\n") +
+          (terisi.length > 12
+            ? "\n\n… +" + String(terisi.length - 12) + " " + t("admin.ai_field_biodata")
+            : ""),
         "assistant",
       );
-      if ((data as Record<string, unknown>).wa) {
-        setParseWa(String((data as Record<string, unknown>).wa));
-      }
       setParseStatus("");
     } catch (e) {
       reportError(e);
       setParseStatus("");
     } finally {
       setBusy(false);
+      // Hasilnya DICETAK KE PERCAKAPAN, jadi tab Chat harus dibuka — kalau
+      // tidak, admin menekan "Hasil Wawancara" di tab Alat dan melihat layar
+      // yang tidak berubah sama sekali (balasannya ada di tab lain). Ini juga
+      // yang membuat dua keadaan "bank kosong" vs "siswa belum mengisi" bisa
+      // dibaca, bukan ditebak.
+      setMode("chat");
     }
   };
 
-  const handleUpdateBio = async () => {
-    if (busy) return;
-    const h = lastHasil?.hasil;
-    const bio =
-      h && h.biodata && typeof h.biodata === "object" ? (h.biodata as Record<string, unknown>) : null;
-    if (!bio || !Object.keys(bio).length) {
-      showToast(t("ai.no_biodata"), "error");
-      return;
-    }
-    const wa = String(lastHasil?.wa || parseWa || "");
-    if (!wa) {
-      showToast(t("ai.fill_wa_first"), "error");
-      return;
-    }
-    setBusy(true);
-    setParseStatus(t("ai.status_updating"));
-    try {
-      await apiCall("submitMasterForm", [{ wa, ...bio }]);
-      const nama = String(lastHasil?.nama || wa);
-      addMsg(
-        "✅ **" +
-          nama +
-          "** — " +
-          t("ai.biodata_updated") +
-          " (" +
-          Object.keys(bio).length +
-          " " +
-          t("admin.ai_field_biodata") +
-          ")",
-        "assistant",
-      );
-      showToast(t("ai.biodata_updated"), "success");
-      refreshCandidates();
-      setParseStatus("");
-    } catch (e) {
-      reportError(e);
-      setParseStatus("");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const modes: { key: "chat" | "parse" | "results"; label: string }[] = [
+  const modes: { key: "chat" | "parse"; label: string }[] = [
     { key: "chat", label: t("admin.ai_tab_chat") },
     { key: "parse", label: t("admin.ai_tab_parse") },
-    { key: "results", label: t("admin.ai_tab_results") },
   ];
 
   return (
@@ -496,6 +448,11 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                 {t("admin.ai_btn_model")}
               </button>
             </div>
+            {/* `Update Biodata` DIHAPUS 2026-11-08: satu-satunya sumber datanya
+                adalah `biodata` dari payload simulator wawancara AI yang sudah
+                tidak ditulis lagi (lihat catatan di `handleResults`). Tombol
+                yang selalu berbunyi "belum ada data" lebih buruk daripada tidak
+                ada tombol. */}
             <div class="flex gap-2">
               <button type="button"
                 onClick={handleResults}
@@ -505,66 +462,11 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                 <Icon name="file-alt" class="mr-1 text-sky-400" />
                 {t("admin.ai_results_title")}
               </button>
-              <button type="button"
-                onClick={handleUpdateBio}
-                disabled={busy}
-                class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold rounded-lg disabled:opacity-50"
-              >
-                <Icon name="database" class="mr-1" />
-                {t("admin.ai_btn_update_bio")}
-              </button>
             </div>
             {parseStatus && (
               <div class="text-[11px] text-sky-300 bg-sky-900/30 border border-sky-700/50 rounded-lg px-3 py-2">
                 {parseStatus}
               </div>
-            )}
-          </div>
-        )}
-
-        {mode === "results" && (
-          <div class="flex-1 u-scroll-area p-4">
-            {lastHasil ? (
-              <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-4 space-y-2">
-                <h4 class="text-sm font-bold text-amber-400">{t("admin.ai_results_title")}</h4>
-                <p class="text-xs text-slate-300">
-                  {t("admin.ai_candidate_label")}
-                  <span class="text-white font-bold">
-                    {String(lastHasil.nama || lastHasil.wa || "")}
-                  </span>
-                </p>
-                {String(lastHasil.updatedAt || "") !== "" && (
-                  <p class="text-xs text-slate-300">
-                    {t("admin.ai_updated_label")}
-                    <span class="text-slate-100">{String(lastHasil.updatedAt || "")}</span>
-                  </p>
-                )}
-                <p class="text-xs text-slate-300">
-                  {t("admin.ai_score")}
-                  <span class="text-emerald-400 font-bold">
-                    {String(lastHasil.hasil?.score ?? "-")}/10
-                  </span>
-                  {lastHasil.hasil?.nilai
-                    ? " (" + String(lastHasil.hasil.nilai) + ")"
-                    : ""}
-                </p>
-                {Boolean(lastHasil.hasil?.rekomendasi) && (
-                  <p class="text-xs text-slate-300">
-                    {t("admin.ai_recommendation")}
-                    {String(lastHasil.hasil?.rekomendasi ?? "")}
-                  </p>
-                )}
-                <button type="button"
-                  onClick={handleUpdateBio}
-                  disabled={busy}
-                  class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg mt-2 disabled:opacity-50"
-                >
-                  <Icon name="database" class="mr-1" />
-                  {t("admin.ai_btn_update_bio")}
-                </button>
-              </div>
-            ) : (
-              <p class="text-xs text-slate-500 text-center py-8">{t("ai.no_results")}</p>
             )}
           </div>
         )}
