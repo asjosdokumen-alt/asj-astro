@@ -1,5 +1,14 @@
 # Sisa utang teknis — 2026-11-07
 
+> ## ✅ DAFTAR INI KOSONG per 2026-11-08
+>
+> Tiga butir terakhir ditutup dengan keputusan pemilik pada 2026-11-08:
+> **§3** feed notifikasi admin (tidak dibangun — "mail itu saja"),
+> **§7** 85 kandidat tanpa tahap (diisi `LIST`, migrasi 052),
+> **§9** retensi notifikasi (30 hari, cron tanggal 1 tiap bulan).
+> Butir **§4** (`verify:assets` × `srcset`) ditutup lebih awal hari yang sama.
+> Yang tersisa di repo adalah pekerjaan produk/fitur, bukan perbaikan tertinggal.
+
 ## Tambahan 2026-11-08 — butir ke-4 (verify:assets × srcset) DITUTUP
 
 Butir yang di `TODO.md` disebut "verify:assets buta terhadap srcset" **bukan lagi
@@ -104,14 +113,13 @@ Baris **dokumen yang ditolak** berstatus `GAGAL`, jadi ia menampilkan tombol
 Setujui/Review/Tolak — dan server menjawab *"Baris biodata/dokumen tidak perlu
 disetujui"*. Sekarang jenis baris ditentukan oleh `code_job`, bukan status.
 
-## 3. Admin tidak punya feed notifikasi terpadu
+## 3. Admin tidak punya feed notifikasi terpadu — **DITUTUP 2026-11-08 (keputusan pemilik)**
 
-| | |
-|---|---|
-| Bukti | Tidak ada tabel/komponen notifikasi admin. `notifyAdmins()` hanya push. |
-| Dampak | Kalau push gagal (izin dicabut, iOS, token mati), info-nya **hilang**, bukan tertunda — persis masalah yang sudah diperbaiki untuk kandidat. |
-| Usaha | Besar: tabel `notifikasi_admin` + migrasi + surface + UI. |
-| Catatan | Sebagian besar kejadian **sudah** punya permukaan persisten: lamaran/dokumen/biodata semuanya menulis baris Mail. Yang benar-benar hanya-push: pesan kontak. Jadi ini keputusan desain, bukan bug. |
+> Pemilik: *"ya mail itu saja gak perlu lainnya."* ⇒ **tidak dibangun.** Mail
+> (`database_asj_form`) adalah daftar kejadian yang persisten; push hanya
+> pemberitahu, bukan penyimpan. Yang dulu dikhawatirkan — "kalau push gagal,
+> info hilang" — ternyata hanya berlaku untuk **pesan kontak**, dan itu
+> diterima pemilik sebagai batas yang wajar.
 
 ## 4. `legacyD.*` — fallback ke objek yang tidak pernah dikirim — **LUNAS**
 
@@ -205,13 +213,23 @@ disetujui"*. Sekarang jenis baris ditentukan oleh `code_job`, bukan status.
 > efek samping pengukuran. `share-data.js` praktis tidak berubah (68,5 → 68,9),
 > dan itu benar: ia satu-satunya entry yang memang butuh catalog.
 
-## 9. Retensi notifikasi
+## 9. Retensi notifikasi — **LUNAS 2026-11-08**
 
-| | |
-|---|---|
-| Bukti | `notifikasi_kandidat` = **0 baris** (setelah 35 baris artefak tes dihapus) |
-| Dampak | Tidak ada. |
-| Usaha | Kecil (cron), tapi **belum layak**: belum ada satu pun pemberitahuan nyata yang tercatat. Ukur ulang setelah sebulan pemakaian. |
+> Pemilik: *"oh notif di db ya 1 bulan 1x saja."* ⇒ **simpan 30 hari, bersihkan
+> tanggal 1 tiap bulan.**
+>
+> - `hapusNotifikasiKedaluwarsa(30)` di `_lib/notifikasi/kotak-masuk.ts` — satu
+>   `DELETE` ke `notifikasi_kandidat` dengan `dibuat_pada=lt.<30 hari lalu>`,
+>   `Prefer: return=representation` supaya jumlah yang benar-benar terhapus bisa
+>   dilaporkan (tanpa itu, "0 dihapus" tidak bisa dibedakan dari "query tidak
+>   mengenai apa pun").
+> - `netlify/functions/retensi-notif.ts` — fungsi terjadwal, `schedule:
+>   '0 3 1 * *'` (tanggal 1, 03:00 UTC = 10:00 WIB), satu baris log per run.
+> - **Yang dihapus hanya `notifikasi_kandidat`.** Riwayat lamaran, Mail, dan
+>   berkas tidak disentuh: itu catatan bisnis, bukan pemberitahuan.
+>
+> 2 tes: tabel + batas ~30 hari, dan kegagalan DB dilaporkan sebagai hasil
+> (bukan dilempar). Dibuktikan MERAH saat jendelanya diubah ke 0 hari.
 
 ## 10. `ai_form_submissions` bisa >1 baris per WA — **LUNAS**
 

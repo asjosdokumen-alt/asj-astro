@@ -33,15 +33,14 @@
 >
 > **Keputusan pemilik 2026-11-08 yang menutup pekerjaan:** email **tidak**
 > dibangun, dan notifikasi WA **tidak** diotomatiskan (admin kirim manual bila
-> perlu) ⇒ `docs/BACKEND_TODO.md` #17 ditutup.
+> perlu) ⇒ `docs/BACKEND_TODO.md` #17 ditutup · **feed notifikasi admin TIDAK
+> dibangun** — *"ya mail itu saja gak perlu lainnya"* ⇒ Mail adalah daftar
+> kejadiannya, push hanya pemberitahu · **retensi notifikasi = 30 hari,
+> dibersihkan tanggal 1 tiap bulan** (`netlify/functions/retensi-notif.ts`,
+> jadwal `0 3 1 * *`) ⇒ butir terakhir di daftar utang ikut lunas.
 >
-> Sisanya — semuanya keputusan desain atau ukur-ulang, bukan kode tertinggal:
->
-> - **Admin belum punya feed notifikasi terpadu** — push saja; Mail adalah
->   antrean persisten. Kalau push gagal, info hilang. Keputusan desain, bukan bug.
-> - **Retensi notifikasi** — `notifikasi_kandidat` masih 0 baris nyata; cron
->   penghapus belum layak. Ukur ulang setelah sebulan pemakaian (paling cepat
->   2026-12-07).
+> **Utang teknis: 0 butir.** Semua yang tersisa di bawah ini adalah pekerjaan
+> produk/fitur, bukan perbaikan yang tertinggal.
 >
 > ### Yang ditutup pada 2026-10-08
 > - **Root cruft diarsipkan** — `HANDOFF.md`, `make-zip.cjs`, `preview-index.html`,
