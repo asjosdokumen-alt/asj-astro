@@ -2,17 +2,30 @@
 
 **Terakhir dirapikan:** 2026-10-08
 
-> ### ⏳ Sisa utang per 2026-11-07 — **4 butir** (dari 7)
+> ### ⏳ Sisa utang per 2026-11-08 — **3 butir** (dari 7)
 >
 > Daftar lengkap dengan bukti terukur: **`deliverables/utang-teknis-2026-11-07.md`**.
 > Diurutkan menurut (dampak ÷ usaha).
 >
-> **Lunas 2026-11-07 (sesi kedua):** `status_biodata` di-drop (migrasi 050,
-> guard menolak kalau ada isi) · `job_database.tahapan='CANCEL'` → NULL
-> (baris `TG502ASJ`) · router `_lib/handlers` dilepas dari `contexts/catalog`
-> → **total bundle 4246,1 → 3771,8 KB (−474,3 KB)** · `ai_form_submissions`
-> memakai satu pemilih baris TERBARU (7 tes) · `legacyD.*` (sudah ditutup
-> `531fcab`, dokumennya yang tertinggal).
+> **Lunas 2026-11-08:** `verify:assets` **kini melihat kandidat `srcset`**
+> (32 kandidat, **18 sebelumnya tak terlihat** — termasuk `fasilitas-gedung-700`
+> dan `logo-apply-200`). Tiga perubahan, semuanya menambah cakupan: atribut
+> `srcset` diurai sebagai atribut, `LayananSection.astro` + `ApplyFullForm.tsx`
+> masuk daftar berkas yang dipindai, dan `srcSet` di `gallery.ts` ikut dibaca.
+> Varian lebar/DPR **mewarisi dasar dari induknya** (foto yang sama diperkecil),
+> dengan dua penjaga: induk harus ada di disk DAN punya dasar sendiri. Dua berkas
+> yang baru terlihat dicatat dengan pengamatan bertanggal — `banner-momiji.webp`
+> (artwork, tanpa wajah) dan `logo-apply.webp` (lambang = merek). Dibuktikan
+> MERAH: mutasi M8 SURVIVED di gerbang lama (exit 0) dan KILLED di gerbang baru;
+> baterai **9/9 KILLED**. ⚠ `banner-momiji.webp` membawa watermark "Elysium" —
+> itu pertanyaan **lisensi**, bukan consent, dan hanya pemilik yang bisa menjawab.
+>
+> **Lunas 2026-11-08 (lanjutan):** counter indexer yang merah sejak commit IQ
+> diukur ulang dan diatribusi (`660 berkas · 35 069 simbol`, envelope 35 600) ·
+> sisa rename `.disabled` milik `dev.cmd` dipulihkan — **itu yang membuat 2 suite
+> backend merah**, bukan kode · **Asesmen Penalaran akhirnya terjangkau dari
+> dasbor siswa** (sebelumnya satu-satunya tautan ada di tab admin, jadi fitur itu
+> tidak bisa dipakai orang yang dituju).
 >
 > Sisanya — semuanya keputusan desain atau ukur-ulang, bukan kode tertinggal:
 >
@@ -22,16 +35,7 @@
 >   berarti menciptakan data yang tidak pernah dicatat siapa pun.
 > - **Retensi notifikasi** — `notifikasi_kandidat` 0 baris nyata (21 baris yang
 >   sempat dihitung ternyata artefak tes, sudah dihapus); cron penghapus belum
->   layak. Ukur ulang setelah sebulan pemakaian.
-> - **`verify:assets` buta terhadap `srcset`** (temuan audit 2026-11-07).
->   Gerbangnya hanya memindai 4 berkas dan mencocokkan path yang langsung
->   diikuti tanda kutip, jadi 6 varian gambar hari ini tidak dipolisikan:
->   `banner-{sakura,tokyo,momiji}-700`, `logo-asj-96`, `logo-apply-200`,
->   `fasilitas-gedung-700`. **Butuh keputusan pemilik:** memperluas gerbang
->   membuat `banner-momiji.webp` + `logo-apply.webp` masuk `published` untuk
->   pertama kali, dan check (a) menuntut dasar publikasi untuk setiap foto —
->   klaim tentang siapa yang ada di dalam foto, hanya pemilik yang boleh
->   membuatnya. Varian galeri (6 berkas) sudah terjaga lewat `gallery.test.ts`.
+>   layak. Ukur ulang setelah sebulan pemakaian (paling cepat 2026-12-07).
 >
 > ### Yang ditutup pada 2026-10-08
 > - **Root cruft diarsipkan** — `HANDOFF.md`, `make-zip.cjs`, `preview-index.html`,

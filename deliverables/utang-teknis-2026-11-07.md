@@ -1,5 +1,27 @@
 # Sisa utang teknis — 2026-11-07
 
+## Tambahan 2026-11-08 — butir ke-4 (verify:assets × srcset) DITUTUP
+
+Butir yang di `TODO.md` disebut "verify:assets buta terhadap srcset" **bukan lagi
+utang**. Yang dikerjakan:
+
+| | |
+|---|---|
+| Temuan terukur | probe `deliverables/probe-srcset-2026-11-08.mjs`: **32 kandidat `srcset`**, **18 tidak terlihat** gerbang — bukan 6 seperti catatan awal |
+| Sebab | `REF_RE` menuntut path langsung diikuti tanda kutip; di `srcset="A 700w, B 900w"` itu hanya benar untuk kandidat TERAKHIR |
+| Perbaikan | (1) `srcset` diurai sebagai atribut (split koma → token URL); (2) `LayananSection.astro` + `ApplyFullForm.tsx` masuk `DIRECT_REF_SOURCES`; (3) `srcSet` di `gallery.ts` ikut diurai |
+| Varian | `-700` / `@2x` / `-96` **mewarisi dasar dari induknya** — foto yang sama diperkecil, bukan pertanyaan consent baru. Dua penjaga: induk harus ADA di disk dan punya dasar sendiri ⇒ `fasilitas-ruang-tamu-3` tidak bisa menumpang `-1` |
+| Dua berkas baru | `banner-momiji.webp` (artwork musim gugur, tanpa wajah yang terbaca) + `logo-apply.webp` (lambang ASJ = merek) dicatat lewat **pengamatan bertanggal**, standar yang sama dengan `banner-sakura`/`banner-tokyo` 2026-10-19 |
+| Bukti bisa merah | mutasi **M8** (kandidat srcset pertama diarahkan ke berkas yang tidak ada): **exit 0 di gerbang lama**, **exit 1 + "PUBLISHED BUT MISSING" di gerbang baru**. M9 mengunci bahwa entri momiji benar-benar ditegakkan |
+| Baterai | **9/9 KILLED · 1 EXPECTED-PASS · restored=true** |
+
+⚠ **Temuan yang bukan urusan gerbang:** `banner-momiji.webp` membawa watermark
+"Elysium" di sudut kiri bawah. Itu pertanyaan **lisensi** (karya siapa ini), bukan
+§11.2, dan gerbang tidak bisa menjawabnya. Dilaporkan ke pemilik, tidak
+"disetujui" diam-diam.
+
+---
+
 Daftar ini disusun dari **pengukuran**, bukan dari ingatan. Setiap baris punya
 bukti yang bisa dicek ulang. Diurutkan menurut (dampak ÷ usaha).
 
