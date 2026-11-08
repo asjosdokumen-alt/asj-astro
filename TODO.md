@@ -28,17 +28,20 @@
 > sisa rename `.disabled` milik `dev.cmd` dipulihkan — **itu yang membuat 2 suite
 > backend merah**, bukan kode · **Asesmen Penalaran akhirnya terjangkau dari
 > dasbor siswa** (sebelumnya satu-satunya tautan ada di tab admin, jadi fitur itu
-> tidak bisa dipakai orang yang dituju).
+> tidak bisa dipakai orang yang dituju) · **85 kandidat tanpa tahap DIISI `LIST`**
+> (migrasi `052`, keputusan pemilik 2026-11-08 — lihat catatan di bawah).
+>
+> **Keputusan pemilik 2026-11-08 yang menutup pekerjaan:** email **tidak**
+> dibangun, dan notifikasi WA **tidak** diotomatiskan (admin kirim manual bila
+> perlu) ⇒ `docs/BACKEND_TODO.md` #17 ditutup.
 >
 > Sisanya — semuanya keputusan desain atau ukur-ulang, bukan kode tertinggal:
 >
 > - **Admin belum punya feed notifikasi terpadu** — push saja; Mail adalah
 >   antrean persisten. Kalau push gagal, info hilang. Keputusan desain, bukan bug.
-> - **85 kandidat tanpa tahap** — sengaja TIDAK diisi; menulis `LIST` ke sana
->   berarti menciptakan data yang tidak pernah dicatat siapa pun.
-> - **Retensi notifikasi** — `notifikasi_kandidat` 0 baris nyata (21 baris yang
->   sempat dihitung ternyata artefak tes, sudah dihapus); cron penghapus belum
->   layak. Ukur ulang setelah sebulan pemakaian (paling cepat 2026-12-07).
+> - **Retensi notifikasi** — `notifikasi_kandidat` masih 0 baris nyata; cron
+>   penghapus belum layak. Ukur ulang setelah sebulan pemakaian (paling cepat
+>   2026-12-07).
 >
 > ### Yang ditutup pada 2026-10-08
 > - **Root cruft diarsipkan** — `HANDOFF.md`, `make-zip.cjs`, `preview-index.html`,
@@ -262,8 +265,14 @@
 
 ## Produk (butuh keputusan, bukan kode)
 
-- [ ] Apakah email notification masih dibutuhkan? WA sudah jadi kanal utama dan **tidak ada modul email
-      sama sekali** di repo — lihat `docs/BACKEND_TODO.md` #17
+- [x] ~~Apakah email notification masih dibutuhkan?~~ → **DIPUTUSKAN 2026-11-08:
+      TIDAK.** Kata pemilik: *"untuk email skip saja gak perlu lebih cepat wa gak
+      guna email. jadi notif wa ga usah biar manual dari kami saja bila emang
+      butuh."* Dua keputusan sekaligus, keduanya menutup pekerjaan:
+      (a) **email tidak dibangun** — tidak ada modul email di repo dan tidak akan
+      ditambah; (b) **notifikasi WA TIDAK diotomatiskan** — admin mengirim sendiri
+      kalau perlu. Yang sudah ada tetap: blast/penawaran manual dari panel, dan
+      pengingat agenda lewat **push** (bukan WA). Lihat `docs/BACKEND_TODO.md` #17.
 - [ ] Prioritas antara paritas legacy yang belum dibangun (Export Excel, reject composer, Migrasi Drive)
       vs fitur baru — lihat `docs/BACKEND_TODO.md` #11–#13
 

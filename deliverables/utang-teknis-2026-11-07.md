@@ -161,13 +161,21 @@ disetujui"*. Sekarang jenis baris ditentukan oleh `code_job`, bukan status.
 >
 > Verifikasi: `tahapan=CANCEL` → 0 baris; tally NULL 64 → **65**.
 
-## 7. 85 kandidat tanpa tahap
+## 7. 85 kandidat tanpa tahap — **LUNAS 2026-11-08 (migrasi 052)**
 
-| | |
-|---|---|
-| Bukti | `tahapan_seleksi` kosong: 85 |
-| Dampak | UI memperlakukannya sebagai awal pipeline (`LIST`). Tidak ada yang salah. |
-| Catatan | Sengaja **tidak** diisi: menulis `LIST` ke 85 baris berarti menciptakan data yang tidak pernah dicatat siapa pun. |
+> **Keputusan pemilik 2026-11-08:** *"85 kandidat tanpa tahap emang belum kan
+> masih development isi saja dengan yg paling [awal] saja biar seragam."*
+>
+> Catatan lama di sini bilang sengaja TIDAK diisi karena *"menulis `LIST` ke 85
+> baris berarti menciptakan data yang tidak pernah dicatat siapa pun."* Alasan
+> itu benar tentang ASAL-USUL data dan salah tentang GUNA: kolom kosong membuat
+> dasbor memperlakukannya sebagai awal pipeline secara implisit, sehingga
+> "belum diproses" dan "tidak diketahui" tampil identik. Pemilik memilih satu
+> nilai eksplisit yang seragam.
+>
+> Terukur sebelum: 263 baris — `LIST` 177 · kosong 85 · `MCU PARPOR` 1.
+> Sesudah: **`LIST` 262 · `MCU PARPOR` 1 · kosong 0**. `updated_at` tidak
+> disentuh (perbaikan data ≠ aktivitas bisnis; preseden migrasi 050).
 
 ## 8. Router ikut ke setiap entry (~90 KB) — **LUNAS**
 
