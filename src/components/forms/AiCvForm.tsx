@@ -19,7 +19,8 @@ import AiUnavailableBanner from '../ui/AiUnavailableBanner';
 import { mapAiCvDraft } from '../../lib/aiCvDraft';
 import { uploadMany, type UploadCollectionError } from '../../lib/cloudinary';
 import { AI_FILE_COLUMNS } from '../../lib/documentColumns';
-import { AI_CV_FLAT_KEYS, applyAiCvRows, buildAiCvNested, isiYangKosongSaja, parseAiCvDraft, parseAiCvRows, type AiCvRow } from '../../lib/aiCvDraft';
+import { AI_CV_FLAT_KEYS, applyAiCvRows, buildAiCvNested, isiYangKosongSaja, parseAiCvDraft, parseAiCvRows, patchAiDenganKonflik, type AiCvRow, type KonflikKolom } from '../../lib/aiCvDraft';
+import KonflikAiPanel from '../ui/KonflikAiPanel';
 import { PAIRED_FIELDS, resolvePairEdit, jpOf, SEPATU_PAIRS, BAJU_PAIRS, TOPI_PAIRS } from '../../lib/aiCvPairs';
 import {
   PEKERJAAN, JURUSAN, HUBUNGAN_KELUARGA, GOLONGAN_DARAH,
@@ -545,6 +546,11 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
   const editFam = (fn: (prev: FamRow[]) => FamRow[]) => { famEdited.current = true; markDirty(); setFamList(fn); };
   // §6.5 row 3: set when the backend answers `code: 'AI_UNAVAILABLE'`.
   const [aiDown, setAiDown] = useState<string | null>(null);
+  /**
+   * Kolom yang SUDAH terisi dan dikirim nilai BERBEDA oleh AI pada giliran
+   * terakhir. Tidak diterapkan sampai dipilih (lihat KonflikAiPanel).
+   */
+  const [konflik, setKonflik] = useState<KonflikKolom[]>([]);
   // C03 (2026-09-05): login gate pola MasterFullForm — backend minta sesi untuk
   // chat (processAIChat H4) DAN simpan (submitDataAsj); apiClient tanpa sesi
   // redirect ke '/' → seluruh state CV hilang. Gate saat mount + guard di
@@ -847,8 +853,15 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
       // tidak dirender siapa pun, jadi tidak ada satu kolom pun yang terisi.
       const patch = data.data ? mapAiCvDraft(data.data) : {};
       if (Object.keys(patch).length > 0) {
-        setCv(prev => isiYangKosongSaja(prev, patch));
-        showToast(t('toast.saved'), 'success');
+        // Kolom kosong langsung diisi; kolom yang SUDAH berisi nilai berbeda
+        // TIDAK ditimpa dan TIDAK dibuang diam-diam — ia masuk `konflik` dan
+        // admin/kandidat memilih sendiri (keputusan pemilik 2026-11-09).
+        // Sebelum ini `isiYangKosongSaja` mengabaikannya tanpa jejak, dan
+        // keluhan yang muncul adalah "AI-nya tidak mengisi apa-apa".
+        const { hasil, konflik: bentrok } = patchAiDenganKonflik(cv, patch);
+        setCv(hasil);
+        if (bentrok.length) setKonflik(bentrok);
+        else showToast(t('toast.saved'), 'success');
       }
       // Repeater: `mapAiCvDraft` hanya memetakan kolom TUNGGAL, jadi kolom
       // Jepang milik pendidikan/pekerjaan/keluarga dibuang di situ. Tanpa
@@ -894,6 +907,36 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+
+  /**
+   * Terapkan pilihan pada kolom yang bentrok. `pilihan[key] === 'baru'` berarti
+   * pakai nilai dari chat; selain itu nilai lama dipertahankan apa adanya.
+   *
+   * Nilai `baru` diambil dari `konflik` (bukan dari patch asli) karena panel
+   * hanya menampilkan kolom yang memang bentrok — daftar itu satu-satunya
+   * sumber yang tersisa setelah `handleSend` selesai.
+   */
+  const terapkanKonflik = (pilihan: Record<string, 'lama' | 'baru'>) => {
+    const dipakai = konflik.filter((k) => pilihan[k.key] === 'baru');
+    if (dipakai.length) {
+      markDirty();
+      setCv((prev) => {
+        const next = { ...prev } as Record<string, string>;
+        for (const k of dipakai) next[k.key] = k.baru;
+        return next as CvData;
+      });
+    }
+    setKonflik([]);
+    showToast(t('toast.saved'), 'success');
+  };
+
+  /** Label manusia untuk kunci flat AI (`nama_lengkap` → "Nama Lengkap"). */
+  const labelKolom = (key: string) => {
+    const k = `cv.field_${key}`;
+    const v = t(k);
+    if (v !== k) return v;
+    return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
   const handleDocUpload = (type: string, file: File | null) => {
@@ -1519,6 +1562,17 @@ export default function AiCvForm({ waTarget, adminMode, seedEdu = true }: AiCvFo
                 {s}
               </button>
             ))}
+          </div>
+        )}
+
+        {konflik.length > 0 && (
+          <div class="p-3 bg-slate-950 border-t border-slate-800">
+            <KonflikAiPanel
+              konflik={konflik}
+              label={labelKolom}
+              onTerapkan={terapkanKonflik}
+              onBatal={() => setKonflik([])}
+            />
           </div>
         )}
 

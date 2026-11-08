@@ -18,6 +18,7 @@ import {
   mergeAiDraft,
   parseAiCvDraft,
   parseAiCvRows,
+  patchAiDenganKonflik,
 } from './aiCvDraft';
 
 describe('aiCvDraft — cakupan peta', () => {
@@ -492,5 +493,48 @@ describe('status_sekolah — tiga jalur harus sepakat', () => {
       pendidikan: [{ tingkat: 'SMA', nama_sekolah: 'SMAN 1', negeri_swasta: 'NEGERI' }],
     });
     expect(rows.pendidikan[0]?.status_sekolah).toBe('NEGERI');
+  });
+});
+
+/**
+ * `patchAiDenganKonflik` — keputusan pemilik 2026-11-09: "jangan paksa masukin,
+ * kasih pilihan admin mau masukin data yang mana".
+ *
+ * Yang dijaga: kolom KOSONG tetap terisi otomatis (tidak ada yang bisa hilang),
+ * dan kolom yang SUDAH berisi nilai BERBEDA tidak pernah ditimpa tanpa
+ * keputusan — tetapi juga tidak dibuang diam-diam seperti `isiYangKosongSaja`
+ * (yang membuat admin menyimpulkan "AI-nya rusak").
+ */
+describe('patchAiDenganKonflik', () => {
+  it('kolom kosong langsung diisi, tanpa konflik', () => {
+    const r = patchAiDenganKonflik({ nama_lengkap: '', alamat: '  ' }, {
+      nama_lengkap: 'Budi',
+      alamat: 'Jl. Merdeka 1',
+    });
+    expect(r.hasil).toEqual({ nama_lengkap: 'Budi', alamat: 'Jl. Merdeka 1' });
+    expect(r.konflik).toEqual([]);
+  });
+
+  it('nilai yang SAMA bukan konflik dan bukan perubahan', () => {
+    const r = patchAiDenganKonflik({ nama_lengkap: 'Budi' }, { nama_lengkap: '  Budi ' });
+    expect(r.hasil.nama_lengkap).toBe('Budi');
+    expect(r.konflik).toEqual([]);
+  });
+
+  it('nilai BERBEDA → masuk konflik, form TIDAK diubah', () => {
+    const r = patchAiDenganKonflik({ nama_lengkap: 'Budi Santoso', alamat: '' }, {
+      nama_lengkap: 'Budi S.',
+      alamat: 'Jl. Baru 2',
+    });
+    // Yang kosong tetap masuk; yang bentrok TIDAK.
+    expect(r.hasil.nama_lengkap).toBe('Budi Santoso');
+    expect(r.hasil.alamat).toBe('Jl. Baru 2');
+    expect(r.konflik).toEqual([{ key: 'nama_lengkap', lama: 'Budi Santoso', baru: 'Budi S.' }]);
+  });
+
+  it('nilai kosong dari AI diabaikan (tidak menghapus isi form)', () => {
+    const r = patchAiDenganKonflik({ alamat: 'Jl. Lama' }, { alamat: '', nama_lengkap: '   ' });
+    expect(r.hasil.alamat).toBe('Jl. Lama');
+    expect(r.konflik).toEqual([]);
   });
 });

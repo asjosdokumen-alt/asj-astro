@@ -505,9 +505,67 @@ export function isiYangKosongSaja<T extends object>(
   return out as T;
 }
 
+/**
+ * Hasil AI yang BENTROK dengan isi form — kolom yang sudah ada nilainya dan
+ * nilainya BERBEDA dari yang dikirim model.
+ *
+ * KENAPA BUKAN "TIMPA" DAN BUKAN "ABAIKAN" (keputusan pemilik 2026-11-09)
+ * ---------------------------------------------------------------------
+ * Dua aturan sebelumnya sama-sama salah, dan masing-masing punya keluhan:
+ *
+ *   • `{...prev, ...patch}` (sampai 2026-11-05) MENIMPA apa pun yang sudah
+ *     diketik. Kalau model salah membaca, data yang benar hilang tanpa jejak —
+ *     keluhan "sudah edit, eh datanya beda".
+ *   • `isiYangKosongSaja` (sejak 2026-11-05) mengabaikan yang sudah terisi.
+ *     Aman, tetapi DIAM: admin menempel data lengkap, layar tidak berubah, dan
+ *     satu-satunya kesimpulan yang masuk akal baginya adalah "AI-nya rusak".
+ *     Itu yang dilaporkan 2026-11-09.
+ *
+ * Jalan tengahnya: isi yang kosong langsung, dan untuk yang BENTROK minta
+ * keputusan manusia — "mau pakai data yang mana". `konflik` di bawah adalah
+ * daftar pertanyaannya; pemanggil yang menampilkannya dan memutuskan.
+ */
+export interface KonflikKolom {
+  /** Kunci flat yang dipakai state form (mis. `nama_lengkap`). */
+  key: string;
+  /** Nilai yang SUDAH ada di form. */
+  lama: string;
+  /** Nilai yang dikirim model pada giliran ini. */
+  baru: string;
+}
+
+/**
+ * Pisahkan patch AI menjadi dua: yang aman diterapkan sekarang, dan yang harus
+ * dipilih manusia.
+ *
+ * Aturan:
+ *   • kolom kosong di form  → langsung dipakai (tidak ada yang bisa hilang);
+ *   • nilai sama (setelah trim) → bukan perubahan, tidak masuk mana pun;
+ *   • nilai berbeda → masuk `konflik`, form TIDAK diubah sampai diputuskan.
+ */
+export function patchAiDenganKonflik<T extends object>(
+  sekarang: T,
+  patch: Record<string, string>,
+): { hasil: T; konflik: KonflikKolom[] } {
+  const out = { ...sekarang } as Record<string, unknown>;
+  const konflik: KonflikKolom[] = [];
+  for (const [key, v] of Object.entries(patch)) {
+    if (v === undefined || v === null) continue;
+    const baru = String(v).trim();
+    if (!baru) continue;
+    const lama = String(out[key] ?? '').trim();
+    if (!lama) {
+      out[key] = baru;
+      continue;
+    }
+    if (lama === baru) continue;
+    konflik.push({ key, lama, baru });
+  }
+  return { hasil: out as T, konflik };
+}
+
 /** Bentuk bersarang (draf master + ai_data_json) → state flat AiCvForm. */
-export function mapAiCvDraft(draft: unknown): Record<string, string> {
-  const out: Record<string, string> = {};
+export function mapAiCvDraft(draft: unknown): Record<string, string> {  const out: Record<string, string> = {};
   for (const [flat, paths] of Object.entries(AI_CV_PATHS)) {
     for (const p of paths) {
       const v = getPath(draft, p);
