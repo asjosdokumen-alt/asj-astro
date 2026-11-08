@@ -1,11 +1,11 @@
 {
-  "updatedAt": "2026-11-07T04:24:26.380Z",
-  "totalKb": 3771.8,
+  "updatedAt": "2026-11-08T14:29:13.100Z",
+  "totalKb": 3844.2,
   "count": 23,
   "entries": {
     "ai-chat.js": 224.6,
     "auth.js": 144.1,
-    "bridge-links.js": 1154.1,
+    "bridge-links.js": 1190.5,
     "candidates.js": 90.9,
     "config.js": 54.2,
     "diagnostics.js": 57.7,
@@ -16,7 +16,7 @@
     "job-docs.js": 459.4,
     "jobs.js": 77.3,
     "kontak.js": 59,
-    "kotoba.js": 466.5,
+    "kotoba.js": 502.6,
     "mail.js": 106.3,
     "master-data.js": 133,
     "notify.js": 65.3,
