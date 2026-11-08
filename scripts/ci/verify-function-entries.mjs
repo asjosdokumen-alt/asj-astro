@@ -65,6 +65,31 @@ if (rootTests.length) {
   notes.push('no .test.* at the functions root');
 }
 
+// ─── Check 1b: no `*.disabled` leftovers in the functions root ───────────────
+// `dev.cmd` renames the two SCHEDULED functions to `.ts.disabled` for the
+// duration of `netlify dev` (they would otherwise work the production queue from
+// a laptop — `.env.local` points at the production database), and renames them
+// back when the server stops. A run that is killed leaves them renamed.
+//
+// WHY THAT IS A GATE AND NOT A TIDY-UP: measured 2026-11-08, the leftover had
+// been sitting in the tree since 2026-10-27 — twelve days — and the only symptom
+// was TWO red suites (`admission.test.ts` and `service-reminder-cron.test.ts`
+// read those files) which reads like "the code regressed", not "two files are
+// missing". The rename is invisible to `git status` on the owner's machine
+// because both sides are untracked/dirty in the same breath.
+const disabledLeftovers = readdirSync(FN).filter((n) => n.endsWith('.disabled')).sort();
+if (disabledLeftovers.length) {
+  violations.push(
+    `scheduled function(s) left renamed: ${disabledLeftovers.join(', ')} — dev.cmd ` +
+      `renames these while the local server runs and restores them on exit, so this is ` +
+      `a crashed run, not a decision. Restore with ` +
+      `"git checkout -- netlify/functions/<name>.ts" and delete the .disabled copy; ` +
+      `until then the suites that read them fail for a reason unrelated to any code.`,
+  );
+} else {
+  notes.push('no *.disabled leftovers from a crashed dev.cmd run');
+}
+
 // ─── Check 2: a root test's imports must not include a devDependency ─────────
 // Belt-and-braces: if someone adds one in a subdirectory that IS scanned, we
 // still want to know. Only checks files that would actually be bundled.

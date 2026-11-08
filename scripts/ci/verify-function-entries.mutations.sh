@@ -60,8 +60,12 @@ F_DEVDEP="$FN/__lintmut-devdep.ts"
 F_SUBDIR="$MUTDIR/__lintmutdir.ts"
 F_NOHANDLER="$FN/__lintmut-nohandler.ts"
 F_VALID="$FN/__lintmut-valid.ts"
+# S5 — added 2026-11-08. `dev.cmd` renames the two scheduled functions while the
+# local server runs; a killed run leaves them renamed and the only symptom is two
+# red suites. Measured: the leftover had been in the tree for twelve days.
+F_DISABLED="$FN/__lintmut-sched.ts.disabled"
 
-ALL_MUTANTS=("$F_TEST" "$F_DEVDEP" "$F_SUBDIR" "$F_NOHANDLER" "$F_VALID")
+ALL_MUTANTS=("$F_TEST" "$F_DEVDEP" "$F_SUBDIR" "$F_NOHANDLER" "$F_VALID" "$F_DISABLED")
 
 cleanup() {
   rm_retry "${ALL_MUTANTS[@]}"
@@ -157,6 +161,15 @@ rm_retry "$MUTDIR"
 printf '// no handler export on purpose — every invocation would answer 502\nexport const notAHandler = 1;\n' > "$F_NOHANDLER"
 check "S4  root entry with no handler export" kill
 rm_retry "$F_NOHANDLER"
+
+# ── S5 · a crashed dev.cmd run leaves a scheduled function renamed ──────────
+# The file that is missing is what makes `admission.test.ts` and
+# `service-reminder-cron.test.ts` fail — a red that reads like a code regression.
+# This mutant is deliberately NOT a .ts entry: the check must fire on the
+# `.disabled` suffix alone, without the original file also being present.
+printf '// sisa rename dev.cmd yang tertinggal setelah jendela ditutup paksa\n' > "$F_DISABLED"
+check "S5  crashed dev.cmd left a *.disabled behind" kill
+rm_retry "$F_DISABLED"
 
 # ── E1 · a legitimate new entry point must be accepted ──────────────────────
 printf "export default async function handler() {\n  return new Response('ok');\n}\n" > "$F_VALID"
