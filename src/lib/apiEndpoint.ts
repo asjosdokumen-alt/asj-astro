@@ -112,6 +112,7 @@ const SURFACE_ENDPOINTS: Record<string, string> = {
   selesaikanWawancara: '/.netlify/functions/ai-chat',
   getHasilWawancara: '/.netlify/functions/ai-chat',
   getJawabanWawancaraAdmin: '/.netlify/functions/ai-chat',
+  ekstrakBiodataDariTeks: '/.netlify/functions/ai-chat',
   getAdminAiContext: '/.netlify/functions/ai-chat',
   buildAdminAiCandidateSummary: '/.netlify/functions/ai-chat',
   submitDataAsj: '/.netlify/functions/ai-chat',

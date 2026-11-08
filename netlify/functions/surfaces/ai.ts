@@ -104,6 +104,10 @@ export const AI_ACTIONS: Record<string, (payload: unknown[], sessionToken?: stri
   },
   // Bank soal wawancara (sistem 2026-10-25) — pengganti tombol "Hasil Wawancara"
   // di panel AI, yang dulu membaca simulator lama yang sudah tidak menulis.
+  ekstrakBiodataDariTeks: async (p: unknown[], s?: string) => {
+    const { handleEkstrakBiodataDariTeks } = await import('../_lib/ai/chat');
+    return handleEkstrakBiodataDariTeks(p, s);
+  },
   getJawabanWawancaraAdmin: async (p: unknown[], s?: string) => {
     const { handleGetJawabanWawancaraAdmin } = await import('../_lib/ai/chat');
     return handleGetJawabanWawancaraAdmin(p, s);

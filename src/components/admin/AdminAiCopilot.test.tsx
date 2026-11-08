@@ -63,6 +63,10 @@ function openParseTab() {
   fireEvent.click(screen.getByRole('button', { name: 'Alat' }));
 }
 
+function openIsiTab() {
+  fireEvent.click(screen.getByRole('button', { name: 'Isi Biodata' }));
+}
+
 function openChatTab() {
   fireEvent.click(screen.getByRole('button', { name: 'Chat' }));
 }
@@ -298,6 +302,53 @@ describe('AdminAiCopilot (A11)', () => {
     await waitFor(() => expect(screen.getByText(/2\/3/)).toBeTruthy());
     expect(screen.getByText(/Sebutkan kelebihan Anda/)).toBeTruthy();
     expect(screen.getByText(/Disiplin/)).toBeTruthy();
+  });
+
+  /**
+   * Mode "Isi Biodata" — permintaan pemilik 2026-11-09: tempel data, AI membagi
+   * ke kolom, dan kolom yang SUDAH berisi nilai berbeda TIDAK ditimpa tanpa
+   * keputusan ("kasih pilihan admin mau masukin data yg mana").
+   */
+  it('Isi Biodata: ekstrak → bentrok dipilih → simpan payload nested', async () => {
+    mockSecure
+      .mockResolvedValueOnce({
+        success: true,
+        data: { identitas: { nama_lengkap: 'Budi Baru', alamat: 'Jl. Baru' }, fisik: { tb: '170' } },
+      })
+      .mockResolvedValueOnce({
+        identitas: { nama_lengkap: 'Budi Lama', alamat: 'Jl. Lama' },
+        fisik: {},
+      })
+      .mockResolvedValueOnce({ success: true });
+
+    render(<AdminAiCopilot onClose={() => {}} />);
+    openIsiTab();
+    fireEvent.input(screen.getByPlaceholderText('WA kandidat'), { target: { value: '6281234567890' } });
+    fireEvent.input(screen.getByPlaceholderText(/Nama Lengkap:/), {
+      target: { value: 'Nama Lengkap: Budi Baru\nAlamat: Jl. Baru\nTinggi: 170' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Ekstrak ke kolom/ }));
+
+    // Panel pilihan muncul untuk kolom yang bentrok, dengan KEDUA nilai terlihat.
+    await waitFor(() => expect(screen.getByText('Nama Lengkap')).toBeTruthy());
+    expect(screen.getByText('Budi Lama')).toBeTruthy();
+    expect(screen.getByText('Budi Baru')).toBeTruthy();
+    // Belum ada penulisan apa pun sebelum admin memutuskan.
+    expect(mockSecure).not.toHaveBeenCalledWith('submitDataAsj', expect.anything());
+
+    // "Paksa semua dari chat" → baru boleh menyimpan.
+    fireEvent.click(screen.getByRole('button', { name: /Paksa semua dari chat/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Simpan ke biodata/ }));
+
+    await waitFor(() =>
+      expect(mockSecure).toHaveBeenCalledWith('submitDataAsj', [
+        expect.objectContaining({ context: { wa: '6281234567890' } }),
+      ]),
+    );
+    const payload = mockSecure.mock.calls.find((c) => c[0] === 'submitDataAsj')?.[1]?.[0] as Record<string, unknown>;
+    const identitas = payload.identitas as Record<string, unknown>;
+    expect(identitas.nama_lengkap).toBe('Budi Baru');
+    expect(identitas.alamat).toBe('Jl. Baru');
   });
 
   it('hasil wawancara kosong → "0 dari N", bukan "tidak ada hasil"', async () => {

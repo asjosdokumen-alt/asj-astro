@@ -28,6 +28,15 @@ import { t } from "../../store/i18n";
 import Icon from "../ui/Icon";
 import AiUnavailableBanner from "../ui/AiUnavailableBanner";
 import { api } from "../../lib/apiClient";
+import {
+  buildAiCvNested,
+  mapAiCvDraft,
+  parseAiCvRows,
+  patchAiDenganKonflik,
+  type AiCvRows,
+  type KonflikKolom,
+} from "../../lib/aiCvDraft";
+import KonflikAiPanel from "../ui/KonflikAiPanel";
 import { useOverlay } from "../ui/useOverlay";
 
 const JEKLIN_IMG = '/assets/jeklin.webp';
@@ -75,10 +84,19 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const [mode, setMode] = useState<"chat" | "parse">("chat");
+  const [mode, setMode] = useState<"chat" | "parse" | "isi">("chat");
   const [parseStatus, setParseStatus] = useState("");
   const [parseWa, setParseWa] = useState(candidateWa || "");
   const [parseBidang, setParseBidang] = useState("");
+  // ── Mode "Isi": tempel data → AI membagi ke kolom → admin memutuskan ──────
+  // Permintaan pemilik 2026-11-09: satu tempat untuk mengedit/memperbarui
+  // biodata kandidat tanpa mencari-cari di tab lain.
+  const [tempel, setTempel] = useState("");
+  const [konflik, setKonflik] = useState<KonflikKolom[]>([]);
+  /** Gabungan penuh (isi kandidat sekarang + hasil ekstraksi) — yang disimpan. */
+  const [gabung, setGabung] = useState<Record<string, string> | null>(null);
+  /** Baris riwayat dari draf, dipakai ulang saat membentuk payload simpan. */
+  const [rowsDraf, setRowsDraf] = useState<AiCvRows | null>(null);
   // Satu penjaga kesibukan untuk SEMUA aksi AI di panel parse — dulu `parsing`
   // dan `busy` terpisah, sehingga dua klik cepat pada "Buat Model" / "Hasil
   // Wawancara" menembak DUA permintaan AI sekaligus (dua kali kuota provider
@@ -115,7 +133,7 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
   };
 
   /** Authed API call. api.secure handles session/network toasts + redirects. */
-  const apiCall = async (action: string, payload: Record<string, unknown>[]) => {
+  const apiCall = async (action: string, payload: unknown[]) => {
     const data = await api.secure(action, payload);
     if (data && data.success === false) {
       const err = new Error(String(data.error || data.message || "Gagal")) as Error & { code?: string };
@@ -296,10 +314,124 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
     }
   };
 
-  const modes: { key: "chat" | "parse"; label: string }[] = [
-    { key: "chat", label: t("admin.ai_tab_chat") },
+  /** Label manusia untuk kunci flat AI (`nama_lengkap` → "Nama Lengkap"). */
+  const labelKolom = (key: string) => {
+    const k = `cv.field_${key}`;
+    const v = t(k);
+    if (v !== k) return v;
+    return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+  const modes: { key: "chat" | "parse" | "isi"; label: string }[] = [    { key: "chat", label: t("admin.ai_tab_chat") },
     { key: "parse", label: t("admin.ai_tab_parse") },
+    { key: "isi", label: t("admin.ai_tab_isi") },
   ];
+
+  /**
+   * Mode "Isi" — tempel data kandidat, AI membagi ke kolom.
+   *
+   * SATU-SATUNYA tempat di panel admin yang bisa memperbarui biodata kandidat
+   * dari teks bebas (permintaan pemilik 2026-11-09: *"1 tempat bisa edit update
+   * biodata kandidat"*).
+   *
+   * Alurnya SENGAJA tiga langkah — ekstrak, bandingkan, simpan — dan bukan
+   * "tempel lalu langsung tulis". Model bisa salah membaca satu kolom; menulis
+   * langsung berarti data yang benar hilang tanpa ada yang melihatnya. Kolom
+   * yang SUDAH berisi nilai berbeda tidak ditimpa: ia masuk `konflik` dan admin
+   * memilih sendiri (default: pertahankan yang lama).
+   */
+  const handleEkstrak = async () => {
+    if (busy) return;
+    const wa = parseWa.trim();
+    const teks = tempel.trim();
+    if (!wa) {
+      showToast(t("ai.fill_wa_first"), "error");
+      return;
+    }
+    if (teks.length < 20) {
+      showToast("Tempel data kandidat dulu — teksnya terlalu pendek.", "error");
+      return;
+    }
+    setBusy(true);
+    setParseStatus(t("ai.status_fetching"));
+    try {
+      const hasil = await apiCall("ekstrakBiodataDariTeks", [{ teks }]);
+      const patch = hasil?.data ? mapAiCvDraft(hasil.data) : {};
+      if (!Object.keys(patch).length) {
+        addMsg("⚠️ Tidak ada kolom yang bisa dibaca dari teks itu. Coba tempel ulang dengan label kolom.", "assistant");
+        setParseStatus("");
+        return;
+      }
+      // Isi kandidat SEKARANG — tanpa ini "bentrok" tidak bisa dibedakan dari
+      // "kosong", dan panel pilihan tidak akan pernah muncul.
+      const draf = await apiCall("getDrafCvMaster", [wa]);
+      if (draf?.error) {
+        addMsg(`⚠️ ${String(draf.error)}`, "assistant");
+        setParseStatus("");
+        return;
+      }
+      const sekarang = mapAiCvDraft(draf);
+      setRowsDraf(parseAiCvRows(draf));
+      const { hasil: gabungan, konflik: bentrok } = patchAiDenganKonflik(sekarang, patch);
+      setGabung(gabungan);
+      setKonflik(bentrok);
+      const siap = Object.keys(patch).length - bentrok.length;
+      addMsg(
+        `📋 **${siap} kolom siap diisi**` +
+          (bentrok.length
+            ? ` · **${bentrok.length} kolom bentrok** — pilih di tab "Isi Biodata" dulu.`
+            : '. Tekan "Simpan ke biodata" untuk menulis.'),
+        "assistant",
+      );
+      setParseStatus("");
+    } catch (e) {
+      reportError(e);
+      setParseStatus("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Terapkan pilihan pada kolom yang bentrok (default: yang lama dipertahankan). */
+  const terapkanKonflik = (pilihan: Record<string, "lama" | "baru">) => {
+    setGabung((g) => {
+      if (!g) return g;
+      const next = { ...g };
+      for (const k of konflik) if (pilihan[k.key] === "baru") next[k.key] = k.baru;
+      return next;
+    });
+    setKonflik([]);
+  };
+
+  /** Tulis hasil gabungan ke biodata kandidat (satu payload, satu permintaan). */
+  const simpanBiodata = async () => {
+    if (busy || !gabung) return;
+    const wa = parseWa.trim();
+    if (!wa) {
+      showToast(t("ai.fill_wa_first"), "error");
+      return;
+    }
+    setBusy(true);
+    setParseStatus(t("ai.status_updating"));
+    try {
+      // Bentuk NESTED yang sama dengan yang dikirim form CV AI saat menekan
+      // Simpan — jalur yang sudah terbukti di produksi. `gabung` sudah memuat
+      // isi kandidat sebelumnya, jadi tidak ada kolom yang dikosongkan.
+      const nested = buildAiCvNested(gabung, rowsDraf || undefined);
+      await apiCall("submitDataAsj", [{ context: { wa }, ...nested }]);
+      addMsg(`✅ **Biodata ${wa} tersimpan.**`, "assistant");
+      showToast(t("ai.biodata_updated"), "success");
+      setTempel("");
+      setGabung(null);
+      setKonflik([]);
+      setMode("chat");
+    } catch (e) {
+      reportError(e);
+    } finally {
+      setBusy(false);
+      setParseStatus("");
+    }
+  };
 
   return (
     <div
@@ -458,6 +590,55 @@ export default function AdminAiCopilot({ candidateId, candidateWa, onClose, clos
                 {t("admin.ai_results_title")}
               </button>
             </div>
+            {parseStatus && (
+              <div class="text-[11px] text-sky-300 bg-sky-900/30 border border-sky-700/50 rounded-lg px-3 py-2">
+                {parseStatus}
+              </div>
+            )}
+          </div>
+        )}
+        {mode === "isi" && (
+          <div class="flex-1 u-scroll-area p-4 space-y-3">
+            <p class="text-[11px] text-slate-400 leading-snug">{t("admin.ai_isi_bantuan")}</p>
+            <input
+              type="tel"
+              value={parseWa}
+              onInput={(e) => setParseWa((e.target as HTMLInputElement).value)}
+              placeholder={t("ai.placeholder_wa")}
+              class="w-full bg-slate-800 text-xs text-white px-3 py-2 rounded-lg border border-slate-700"
+            />
+            <textarea
+              value={tempel}
+              onInput={(e) => setTempel((e.target as HTMLTextAreaElement).value)}
+              placeholder={"Nama Lengkap: ...\nTempat, Tanggal Lahir: ...\nAlamat: ...\nNo HP: ...\nTinggi / Berat: ..."}
+              class="w-full h-40 bg-slate-800 text-xs text-white px-3 py-2 rounded-lg border border-slate-700 focus:outline-none focus:border-amber-500 resize-y"
+            />
+            <div class="flex gap-2">
+              <button
+                type="button"
+                onClick={handleEkstrak}
+                disabled={busy}
+                class="flex-1 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
+              >
+                <Icon name="magic" class="mr-1" /> {t("admin.ai_btn_ekstrak")}
+              </button>
+              <button
+                type="button"
+                onClick={simpanBiodata}
+                disabled={busy || !gabung}
+                class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg disabled:opacity-50"
+              >
+                <Icon name="database" class="mr-1" /> {t("admin.ai_btn_simpan_biodata")}
+              </button>
+            </div>
+            {konflik.length > 0 && (
+              <KonflikAiPanel
+                konflik={konflik}
+                label={labelKolom}
+                onTerapkan={terapkanKonflik}
+                onBatal={() => setKonflik([])}
+              />
+            )}
             {parseStatus && (
               <div class="text-[11px] text-sky-300 bg-sky-900/30 border border-sky-700/50 rounded-lg px-3 py-2">
                 {parseStatus}

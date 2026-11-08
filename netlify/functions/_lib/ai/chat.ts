@@ -12,6 +12,7 @@ import {
 import { geminiGenerate, parseJsonLoose } from './providers';
 import { isVipCatatan, unwrapPayloadArgs, lastHistory, sanitizePromptField } from './interview-shared';
 import { AppError, safeError } from '../kernel/errors';
+import { log } from '../kernel/log';
 import { adaHurufJepang } from '../jp-text';
 
 /**
@@ -1408,6 +1409,65 @@ async function handleGetJawabanWawancaraAdmin(payload: unknown[], sessionToken?:
   }
 }
 
+// ---------------------------------------------------------------------------
+// ekstrakBiodataDariTeks — admin: "tempel data kandidat, AI yang membagi ke kolom".
+//
+// PERMINTAAN PEMILIK 2026-11-09: *"saya kasih nomer wa terus saya paste copasan
+// data ... ai chat membaca dan membaginya ke kolom yg sesuai"* + *"hrd ai versi
+// shortcutnya saja ... 1 tempat bisa edit update biodata kandidat"*.
+//
+// Ini BUKAN `parseDokumenBiodata` yang dimatikan 2026-11-07 ("parse mahal"):
+// yang itu membaca BERKAS (PDF/xlsx) dengan model vision + OCR. Di sini
+// masukannya TEKS yang sudah disalin admin, satu panggilan model yang sama
+// dengan CV AI — biayanya sebanding dengan satu giliran chat biasa.
+//
+// Handler ini TIDAK menulis apa pun. Ia mengembalikan `data` bersarang; klien
+// memetakannya ke kolom flat, MEMBANDINGKAN dengan isi kandidat sekarang, dan
+// meminta admin memilih kalau ada kolom yang bentrok (lihat KonflikAiPanel).
+// Menulis langsung dari model berarti satu salah baca bisa menimpa data benar
+// tanpa ada yang melihatnya.
+// ---------------------------------------------------------------------------
+async function handleEkstrakBiodataDariTeks(payload: unknown[], sessionToken?: string) {
+  const guard = requireRole(sessionToken as string, 'admin');
+  if (guard.error) return guard.error;
+  const d = (payload?.[0] ?? {}) as Record<string, unknown>;
+  const teks = String(d.teks ?? '').trim();
+  if (teks.length < 20) {
+    return { success: false, error: 'Tempel data kandidat dulu — teksnya terlalu pendek.' };
+  }
+  // Batas atas: satu CV panjang ±6.000 karakter. 20.000 memberi ruang untuk
+  // salinan Excel/WhatsApp, tetapi menolak tempelan tak sengaja (mis. seluruh
+  // isi dokumen) yang akan membakar kuota tanpa hasil yang lebih baik.
+  if (teks.length > 20000) {
+    return { success: false, error: 'Teks terlalu panjang (maks 20.000 karakter).' };
+  }
+  const system =
+    'Kamu adalah MESIN EKSTRAKSI data, bukan chatbot. ' +
+    AI_FORM_DATA_INSTRUCTION +
+    '\nATURAN EKSTRAKSI (mengalahkan aturan percakapan di atas): SELURUH data ada di pesan pengguna. ' +
+    'JANGAN bertanya balik, JANGAN meminta data lain, JANGAN menyapa. ' +
+    'Isi SETIAP field yang bisa dibaca dari teks itu, dan balas HANYA satu objek JSON valid.';
+  try {
+    const r = await geminiGenerate(system, [{ role: 'user', content: teks }]);
+    const parsed = parseJsonLoose(String(r?.reply || ''));
+    if (!parsed || typeof parsed !== 'object') {
+      return { success: false, error: 'AI tidak mengembalikan data yang bisa dibaca. Coba lagi.' };
+    }
+    const data = (parsed as Record<string, unknown>).data;
+    if (!data || typeof data !== 'object') {
+      return { success: false, error: 'AI tidak menemukan data yang bisa dipetakan ke kolom.' };
+    }
+    return {
+      success: true,
+      data,
+      reply: String((parsed as Record<string, unknown>).reply || ''),
+    };
+  } catch (e) {
+    log.error('ai.ekstrak-biodata.failed', { err: String((e as { message?: string })?.message || e) });
+    return { success: false, ...aiFailure(e, 'Asisten AI sedang sibuk. Coba lagi beberapa saat ya!') };
+  }
+}
+
 export {
   boundTranscript,
   buildInterviewSystem,
@@ -1422,4 +1482,5 @@ export {
   handleSimpanHasilWawancara,
   handleGetHasilWawancara,
   handleGetJawabanWawancaraAdmin,
+  handleEkstrakBiodataDariTeks,
 };
