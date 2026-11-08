@@ -137,7 +137,15 @@
       menutupi field yang sudah bisa dibaca. Bukan halaman.
 
 ### Polish
-- [ ] Image optimization via Cloudinary transforms
+- [x] ~~Image optimization via Cloudinary transforms~~ → **SELESAI 2026-11-08
+      (`cafd0f3`), dan sebagian besarnya sudah sejak 2026-10-19.** Helper
+      `src/lib/thumbUrl.ts` menangani DUA penyedia (Cloudinary `w_/h_/q_auto/
+      f_auto` dan Supabase `render/image`), tapi baru dipakai tiga tempat.
+      Audit hari ini menemukan **tiga permukaan yang masih mengunduh foto
+      ASLI untuk kotak kecil**: `AsjDossierCard` (128x160 → 256x320),
+      `ShareView` (84x112 → 168x224), dan `MatchmakingModal` (40x40 → 80x80 —
+      daftar hasil bisa 30 baris). Zoom ShareView SENGAJA tetap berkas asli.
+      Tiga tes baru, semuanya terbukti MERAH saat perbaikannya dilepas.
 - [ ] Analisis bundle — kurangi JS
       ↳ **Terukur 2026-10-19. Belum ada yang dikurangi, dan itu disengaja.**
       Pertumbuhan +2,4…+6 KB per entry (total 2.743 → 2.957 KB, 19 → 20 entry)
