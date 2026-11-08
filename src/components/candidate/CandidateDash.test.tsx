@@ -152,6 +152,53 @@ describe('CandidateDash — gerbang AI CV Master (§6 gap 1)', () => {
   });
 });
 
+// ── Asesmen Penalaran (/tes-iq) harus TERJANGKAU dari dasbor ────────────────
+// Fitur `/tes-iq` dibangun 2026-11-07 lengkap dengan bank soal, penilai server,
+// dan sakelar admin — tetapi satu-satunya tautan ke halaman itu ada di tab
+// ADMIN ("Mode Uji"). Siswa tidak punya jalan masuk sama sekali: halaman yang
+// benar, gerbang yang benar, dan tidak ada tombol yang menunjuk ke sana.
+// Itu kelas cacat yang repo ini sudah catat (R17): perilaku yang tidak pernah
+// dipanggil sama saja tidak ada. Tes di bawah mengunci JALUR MASUKNYA, bukan
+// sekadar keberadaan halaman.
+describe('CandidateDash — Asesmen Penalaran terjangkau dari dasbor', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    authStore.set({ ...KANDIDAT });
+    fetchMock.mockReset();
+    apiClientMock.mockReset();
+    apiClientMock.mockResolvedValue({ success: true } as never);
+    vi.mocked(showToast).mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it('siswa VIP → tombol Asesmen Penalaran membuka /tes-iq', async () => {
+    await renderDash({ isVIP: true });
+    const tombol = screen.getByTestId('cmt-tes-iq');
+    // Labelnya key yang SAMA dengan tab admin, jadi dua permukaan tidak bisa
+    // menyebut fitur ini dengan dua nama.
+    expect(tombol.textContent).toContain('ui.tes_iq');
+    await fireEvent.click(tombol);
+    expect(navigateToMock).toHaveBeenCalledWith('/tes-iq');
+  });
+
+  it('siswa KELAS (bukan [VIP]) → tetap terbuka, sama seperti dua tes lain', async () => {
+    await renderDash({ kelas: 'G' });
+    await fireEvent.click(screen.getByTestId('cmt-tes-iq'));
+    expect(navigateToMock).toHaveBeenCalledWith('/tes-iq');
+  });
+
+  it('NON-siswa → terkunci, dan TIDAK membuka /tes-iq', async () => {
+    await renderDash({ isVIP: false });
+    await fireEvent.click(screen.getByTestId('cmt-tes-iq'));
+    expect(showToast).toHaveBeenCalledWith('ui.toast_feature_locked', 'info');
+    expect(navigateToMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('CandidateDash — lencana VIP + PERFECT ASJ STUDENT (§6 gap 4/5)', () => {
   beforeEach(() => {
     localStorage.clear();
