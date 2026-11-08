@@ -34,11 +34,14 @@ const GALLERY = 'src/lib/gallery.ts';
 const GITIGNORE = '.gitignore';
 /** Mutating the gate itself proves what it does and does not claim to check. */
 const GATE_SELF = GATE;
+/** Added 2026-11-08 for M8: the file that renders `logo-apply` from a srcset. */
+const APPLY_FORM = 'src/components/forms/ApplyFullForm.tsx';
 
 const originals = {
   [GALLERY]: readFileSync(GALLERY, 'utf8'),
   [GITIGNORE]: readFileSync(GITIGNORE, 'utf8'),
   [GATE_SELF]: readFileSync(GATE_SELF, 'utf8'),
+  [APPLY_FORM]: readFileSync(APPLY_FORM, 'utf8'),
 };
 
 /**
@@ -179,6 +182,30 @@ const MUTATIONS = [
     // gate. If this mutation ever goes green again, the history has lost its
     // guard, not its question.
     expect: 'CONSENT ANNOTATION IS MISSING',
+  },
+  {
+    name: 'M8 — the FIRST srcset candidate is renamed to a file that does not exist',
+    file: APPLY_FORM,
+    from: 'srcset="/assets/logo-apply-200.webp 200w',
+    to: 'srcset="/assets/logo-apply-999.webp 200w',
+    // THE MUTATION THAT PROVES THE 2026-11-08 SCAN. `logo-apply-200.webp` is the
+    // first candidate of a `srcset`, so `REF_RE` (which requires a quote right
+    // after the path) could not see it: before the scan was widened this mutation
+    // SURVIVED with exit 0, because the broken candidate never entered
+    // `published`. A surviving mutation is the only evidence that the coverage
+    // claim was false, so this one stays.
+    expect: 'PUBLISHED BUT MISSING',
+  },
+  {
+    name: 'M9 — the newly-visible momiji banner loses its publication basis',
+    file: GATE_SELF,
+    from: "  'banner-momiji.webp', // autumn artwork, no readable face — seen 2026-11-08\n",
+    to: '',
+    // M2 already proves check (a) can fail for a long-standing entry. This one
+    // proves the ENTRY ADDED WHEN THE SCAN WAS WIDENED is actually enforced —
+    // otherwise the record could be decorative, and `banner-momiji-700` would
+    // inherit from a file nobody ever had to justify.
+    expect: 'RENDERED AND COMMITTABLE, NO PUBLICATION BASIS ON RECORD',
   },
 ];
 

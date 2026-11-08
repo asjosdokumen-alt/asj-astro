@@ -149,8 +149,33 @@ if (galleryBlock === null || excludedBlock === null) {
   process.exit(2);
 }
 
-const srcPathsIn = (block) =>
-  [...block.matchAll(/src:\s*'(\/assets\/[^']+)'/g)].map((m) => m[1].replace('/assets/', ''));
+/**
+ * Every asset path a gallery entry renders: its `src` AND every `srcSet`
+ * candidate.
+ *
+ * `srcSet` JOINED THIS SCAN ON 2026-11-08, for the same reason it joined the
+ * direct-reference scan above. The gallery is where most of the photographs
+ * live, so a variant it renders was the most consequential thing this gate
+ * could not see: six `fasilitas-*-700.webp` files are referenced ONLY from
+ * `srcSet` in this file. Before the change, check (a) never demanded a basis for
+ * them and check (c) would not have noticed one 404ing.
+ *
+ * The `src:`-only shape is kept for the block markers' existing assertions; the
+ * added loop is additive, so a gallery entry with no `srcSet` behaves exactly as
+ * before.
+ */
+const srcPathsIn = (block) => {
+  const out = [...block.matchAll(/src:\s*'(\/assets\/[^']+)'/g)].map((m) =>
+    m[1].replace('/assets/', ''),
+  );
+  for (const m of block.matchAll(/srcSet:\s*'([^']*)'/g)) {
+    for (const cand of m[1].split(',')) {
+      const url = cand.trim().split(/\s+/)[0];
+      if (/^\/assets\/[^'"\s]+\.webp$/.test(url)) out.push(url.replace('/assets/', ''));
+    }
+  }
+  return out;
+};
 
 const galleryFiles = srcPathsIn(galleryBlock);
 const excludedFiles = srcPathsIn(excludedBlock);
@@ -183,6 +208,21 @@ const DIRECT_REF_SOURCES = [
   join(ROOT, 'src/components/App.tsx'),
   join(ROOT, 'src/lib/companyProfile.ts'),
   join(ROOT, 'src/components/Footer.astro'),
+  // ── ADDED 2026-11-08, and the reason is the same one that added the other
+  // four: this list is "the files that render assets", not a fixed historical
+  // set. Both files were rendering photographs the gate could not see.
+  //
+  //   public/LayananSection.astro  the three service banners. Their `src` values
+  //                                happened to be referenced elsewhere, so the
+  //                                BASE files were already in `published` — which
+  //                                is exactly why the hole stayed invisible: the
+  //                                gate looked right for the wrong reason.
+  //   forms/ApplyFullForm.tsx      the ASJ mark on the application form
+  //                                (`logo-apply.webp` + its 200w variant). No
+  //                                other scanned file names it, so BOTH the mark
+  //                                and its variant were outside every check.
+  join(ROOT, 'src/components/public/LayananSection.astro'),
+  join(ROOT, 'src/components/forms/ApplyFullForm.tsx'),
 ];
 
 /**
@@ -195,6 +235,41 @@ const DIRECT_REF_SOURCES = [
  * relax any existing check (every `/assets/` match behaves exactly as before).
  */
 const REF_RE = /["'`](\/(?:assets|icons)\/[^"'`\s]+\.webp)["'`]/g;
+
+/**
+ * `srcset` CANDIDATES — added 2026-11-08, and this was a real blind spot rather
+ * than a tidy-up.
+ *
+ * `REF_RE` requires the path to be followed IMMEDIATELY by a quote. In a
+ * `srcset="A 700w, B 900w"` attribute that is true only for the LAST candidate,
+ * so every first candidate was rendered, committed, and invisible to all three
+ * checks: (a) never demanded a basis for it, (c) could never report it missing,
+ * (d) could never object to it. Measured on this tree with a probe: 32 srcset
+ * candidates, **18 of them unseen**, including `fasilitas-gedung-700.webp` and
+ * `logo-apply-200.webp` — files that were added by the responsive-image work and
+ * therefore are exactly the kind of asset nobody re-reads.
+ *
+ * The fix parses the ATTRIBUTE, not the line: split its value on commas and take
+ * each candidate's URL token. That is the syntax the browser parses, so a
+ * candidate cannot be visible to the page and invisible here.
+ *
+ * `.avif` IS DELIBERATELY NOT COLLECTED. `onDisk` walks `.webp` only, so adding
+ * avif here would turn every avif candidate into "PUBLISHED BUT MISSING" — a
+ * false red for a file that is present. Widening `onDisk` is a separate decision
+ * with its own inventory; until then this scan stays inside the same extension
+ * the rest of the gate agrees on.
+ */
+const SRCSET_RE = /\bsrcset\s*=\s*["']([^"']*)["']/gi;
+function srcsetFiles(src) {
+  const out = [];
+  for (const m of src.matchAll(SRCSET_RE)) {
+    for (const cand of m[1].split(',')) {
+      const url = cand.trim().split(/\s+/)[0];
+      if (/^\/(?:assets|icons)\/[^"'`\s]+\.webp$/.test(url)) out.push(refKey(url));
+    }
+  }
+  return out;
+}
 
 /**
  * Drop comment-only lines before scanning for references.
@@ -234,9 +309,8 @@ const refKey = (p) =>
 
 const directFiles = DIRECT_REF_SOURCES.flatMap((file) => {
   if (!existsSync(file)) return [];
-  return [...stripCommentLines(readFileSync(file, 'utf8')).matchAll(REF_RE)].map((m) =>
-    refKey(m[1]),
-  );
+  const src = stripCommentLines(readFileSync(file, 'utf8'));
+  return [...src.matchAll(REF_RE)].map((m) => refKey(m[1])).concat(srcsetFiles(src));
 });
 
 /**
@@ -434,6 +508,32 @@ const OWNER_APPROVED = new Set([
   // person is depicted.
   'banner-sakura.webp', // no person in frame — seen 2026-10-19
   'banner-tokyo.webp', // distant figures only, no readable face — seen 2026-10-19
+
+  // ── THE THIRD THEME BANNER + THE APPLY MARK — recorded 2026-11-08 ─────────
+  //
+  // Both were ALREADY on the page before this date. What changed is that the gate
+  // can finally SEE them: `banner-momiji` is rendered by LayananSection.astro
+  // (added to the scanned set), and `logo-apply` by ApplyFullForm.tsx (ditto).
+  // So this records a basis that was missing, it does not publish anything new.
+  //
+  //   banner-momiji.webp  900x500  autumn artwork — Mt Fuji across a lake, red
+  //                                maple framing the shot, one boat with a figure
+  //                                ~40 px tall at the far end. No readable face at
+  //                                any size the page renders it, the same reading
+  //                                recorded for banner-tokyo above.
+  //                                ⚠ It carries a small "Elysium" watermark in the
+  //                                lower-left corner. That is a LICENSING question
+  //                                (whose artwork is this?) and NOT a §11.2 consent
+  //                                question; this gate cannot answer it. Flagged to
+  //                                the owner on 2026-11-08 rather than silently
+  //                                approved.
+  //   logo-apply.webp     300x300  the ASJ emblem — torii, Mt Fuji, laurel, and the
+  //                                words PT AMANAH SAKURA JAPAN. A MARK, not a
+  //                                photograph: same criterion as the six mitra
+  //                                marks above, a trademark has no subject who
+  //                                could consent or refuse.
+  'banner-momiji.webp', // autumn artwork, no readable face — seen 2026-11-08
+  'logo-apply.webp', // ASJ emblem/mark, no person — seen 2026-11-08
 ]);
 
 /**
@@ -660,6 +760,37 @@ if (process.argv.includes('--list')) {
 const violations = [];
 const notes = [];
 
+/**
+ * Does this file have a publication basis — its own, or its base file's?
+ *
+ * WHY INHERITANCE IS NEEDED, AND WHY IT IS NARROW. Once the scan can see
+ * `srcSet`, the responsive-image work of 2026-11-07 appears as 14 "new"
+ * published files — but they are not new photographs. `fasilitas-grup-staf-700`
+ * is the SAME photograph as `fasilitas-grup-staf`, resized; so are
+ * `banner-tokyo-700`, `logo-asj-96`, `hero-sakura@2x`. Demanding a separate
+ * consent line for each size would be asking the owner to re-answer the same
+ * question per file, and the predictable outcome is a list nobody reads.
+ *
+ * The rule therefore resolves a WIDTH/DPR VARIANT to its base: `-<digits>` or
+ * `@<digits>x` immediately before `.webp`. Two guards keep it from becoming a
+ * general "some prefix matches" hole:
+ *
+ *   1. the base must EXIST ON DISK, so `fasilitas-ruang-tamu-3.webp` cannot
+ *      inherit from `fasilitas-ruang-tamu-1.webp` (its base name is not a file);
+ *   2. the base must itself carry a basis, recursively.
+ *
+ * A file that carries its OWN basis never reaches the resolver, so this can only
+ * ADD a basis that a resize genuinely shares — it can never overwrite one.
+ */
+function basisOf(key) {
+  if (ILLUSTRATIONS.has(key) || OWNER_APPROVED.has(key) || ignored.has(key)) return key;
+  const m = /^(.*?)(?:-\d+|@\d+x)\.webp$/.exec(key);
+  if (!m) return null;
+  const base = `${m[1]}.webp`;
+  if (!onDisk.includes(base)) return null;
+  return basisOf(base);
+}
+
 // (a) THE DANGEROUS ONE — rendered on the site and committable, without an
 //     owner-approved basis on record.
 //
@@ -671,7 +802,7 @@ const notes = [];
 //     fails.
 for (const f of published) {
   if (ILLUSTRATIONS.has(f)) continue;
-  if (!OWNER_APPROVED.has(f) && !ignored.has(f)) {
+  if (!basisOf(f)) {
     violations.push(
       `RENDERED AND COMMITTABLE, NO PUBLICATION BASIS ON RECORD — ${f}\n` +
         `        the site displays it, .gitignore does not block it, and it is not in\n` +
