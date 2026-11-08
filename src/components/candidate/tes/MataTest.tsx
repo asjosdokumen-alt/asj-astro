@@ -560,7 +560,7 @@ function Isi({ gerbang }: { gerbang: ReturnType<typeof useGerbangTes> }) {
             value={lebarKtp}
             onInput={(e) => setLebarKtp(Number((e.target as HTMLInputElement).value) || 290)}
             aria-label={t('tes.mata_kalibrasi_slider')}
-            class="mt-5 w-full max-w-sm accent-sky"
+            class="mt-5 w-full max-w-sm accent-sky-500"
           />
         </div>
 
