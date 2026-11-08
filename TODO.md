@@ -18,7 +18,10 @@
 > (artwork, tanpa wajah) dan `logo-apply.webp` (lambang = merek). Dibuktikan
 > MERAH: mutasi M8 SURVIVED di gerbang lama (exit 0) dan KILLED di gerbang baru;
 > baterai **9/9 KILLED**. ⚠ `banner-momiji.webp` membawa watermark "Elysium" —
-> itu pertanyaan **lisensi**, bukan consent, dan hanya pemilik yang bisa menjawab.
+> itu pertanyaan **lisensi**, bukan consent. **Sudah diganti 2026-11-08** dengan
+> artwork tanpa merek pihak ketiga (dua ukuran tetap 900/700 px supaya `srcset`
+> cocok); sumbernya dicatat di
+> `deliverables/banner-momiji-sumber-ai-2026-11-08.png`.
 >
 > **Lunas 2026-11-08 (lanjutan):** counter indexer yang merah sejak commit IQ
 > diukur ulang dan diatribusi (`660 berkas · 35 069 simbol`, envelope 35 600) ·
