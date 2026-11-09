@@ -28,12 +28,22 @@ import MensetsuForm from '../components/candidate/MensetsuForm.tsx';
     <div class="max-w-[1400px] mx-auto px-3">
       <section class="mb-3">
         <h1 class="text-xl md:text-2xl font-bold text-fg mb-1">Latihan Wawancara Jepang (Mensetsu)</h1>
+        {/* ⚠ DIPANGKAS 2026-11-10, alasan sama seperti /kotoba: paragraf 5 baris di
+            HP menghabiskan layar pertama. Satu baris di atas, sisanya di
+            `<details>` TERTUTUP — teks tetap di HTML, jadi tetap terbaca mesin
+            pencari, tetapi tidak memakan layar. */}
         <p class="cetak-sembunyi text-fg-muted text-[12.5px] leading-relaxed">
-          Bank soal mengikuti alur wawancara sebenarnya — perkenalan, keluarga, pendidikan, pengalaman,
-          bahasa Jepang, kelebihan &amp; kekurangan, motivasi, rencana, kehidupan sehari-hari, kesehatan,
-          ibadah, kerja shift, sampai penutup. Tulis jawaban Anda dalam Bahasa Indonesia, lalu tekan
-          <b> Isi Jepang otomatis</b> untuk melengkapi huruf Jepang dan cara bacanya.
+          Bank soal mengikuti alur wawancara sebenarnya — dari perkenalan sampai penutup.
         </p>
+        <details class="cetak-sembunyi mt-1.5 text-[11px] text-fg-muted">
+          <summary class="cursor-pointer font-bold text-accent-sky">Detail latihan</summary>
+          <p class="mt-1 leading-relaxed">
+            Urutannya: perkenalan, keluarga, pendidikan, pengalaman, bahasa Jepang, kelebihan &amp;
+            kekurangan, motivasi, rencana, kehidupan sehari-hari, kesehatan, ibadah, kerja shift,
+            sampai penutup. Tombol <b>Isi Jepang otomatis</b> melengkapi huruf Jepang dan cara
+            bacanya.
+          </p>
+        </details>
       </section>
       <noscript class="block mb-3 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">
         Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.

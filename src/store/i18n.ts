@@ -2930,16 +2930,15 @@ export const translations: Record<Lang, Record<string, string>> = {
     // build — `t()` akan membakar bahasa build dan toggle JP tidak akan pernah
     // sampai ke elemen itu.
     "apply.intro_h1": "Formulir Lamaran Kerja ke Jepang",
-    "apply.intro_desc": "Isi data diri Anda dengan lengkap. Tim kami akan menghubungi dalam 1–2 hari kerja untuk proses wawancara dan verifikasi dokumen.",
+    // DIPANGKAS 2026-11-10 (keputusan pemilik): satu baris, bukan tiga. Paragraf
+    // panjang di atas form memakan layar pertama — lihat catatan di apply.astro.
+    "apply.intro_desc": "Tim kami menghubungi dalam 1–2 hari kerja.",
     // `apply.intro_step1..4` DIHAPUS 2026-11-10: daftarnya dibuang dari
     // apply.astro (keputusan pemilik). Kalau daftar itu kembali, terjemahannya
     // ada di riwayat git — jangan mengarang ulang.
     "siswa.intro_h1": "Pendaftaran Siswa Baru LPK ASJ",
-    "siswa.intro_desc": "Daftar program pelatihan bahasa Jepang intensif. Kami menyediakan kelas dari N5 hingga persiapan kerja, dengan fasilitas asrama dan bimbingan visa.",
-    "siswa.intro_step1": "Isi formulir pendaftaran & pilih program",
-    "siswa.intro_step2": "Tunggu jadwal tes masuk & wawancara",
-    "siswa.intro_step3": "Lakukan pembayaran biaya pendaftaran",
-    "siswa.intro_step4": "Mulai pelatihan sesuai jadwal kelas",
+    "siswa.intro_desc": "Kelas N5 sampai persiapan kerja, dengan asrama dan bimbingan visa.",
+    // `siswa.intro_step1..4` juga dihapus 2026-11-10, alasan sama.
     "blog.cta_title": "Siap kerja ke Jepang?",
     "blog.cta_body": "Cek lowongan terbaru atau daftar langsung melalui form online ASJ.",
     "blog.cta_jobs": "Lihat Lowongan",

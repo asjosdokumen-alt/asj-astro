@@ -11,15 +11,19 @@ import FormToolbar from "../components/forms/FormToolbar";
   <FormToolbar client:only="preact" titleKey="toolbar.siswa" asHeading={false} />
   <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
     <div class="max-w-3xl mx-auto px-4">
-      <section class="mb-8">
-        <h1 class="text-2xl font-bold text-fg mb-2" data-lang="siswa.intro_h1">Pendaftaran Siswa Baru LPK ASJ</h1>
-        <p class="text-fg-muted leading-relaxed" data-lang="siswa.intro_desc">Daftar program pelatihan bahasa Jepang intensif. Kami menyediakan kelas dari N5 hingga persiapan kerja, dengan fasilitas asrama dan bimbingan visa.</p>
-        <ol class="mt-4 space-y-2 text-sm text-fg-muted list-decimal list-inside">
-          <li data-lang="siswa.intro_step1">Isi formulir pendaftaran & pilih program</li>
-          <li data-lang="siswa.intro_step2">Tunggu jadwal tes masuk & wawancara</li>
-          <li data-lang="siswa.intro_step3">Lakukan pembayaran biaya pendaftaran</li>
-          <li data-lang="siswa.intro_step4">Mulai pelatihan sesuai jadwal kelas</li>
-        </ol>
+      {/* ⚠ PENGANTAR DIPANGKAS 2026-11-10, sama seperti /apply: h1 `text-xl` +
+          SATU baris `text-[12px]`, tanpa daftar langkah. Pemilik: "pedekin,
+          hilangin kata-kata yang tidak berguna di HP, cukup tulis yang penting
+          buat SEO, semua halaman".
+          Pola ini sudah dipakai tujuh halaman tes (/tes-iq, /kotoba,
+          /matematika, /arcade, /wawancara, /tes-mbti, /tes-mata) — jadi ini
+          menyeragamkan, bukan gaya baru.
+          h1 TIDAK boleh hilang: `FormToolbar` di sini `asHeading={false}`, jadi
+          h1 server satu-satunya ada di blok ini dan `e2e:headings` menuntut
+          tepat satu. */}
+      <section class="mb-4">
+        <h1 class="text-xl md:text-2xl font-bold text-fg mb-1" data-lang="siswa.intro_h1">Pendaftaran Siswa Baru LPK ASJ</h1>
+        <p class="text-fg-muted text-[12px] leading-snug" data-lang="siswa.intro_desc">Kelas N5 sampai persiapan kerja, dengan asrama dan bimbingan visa.</p>
       </section>
       <SiswaBaruForm client:only="preact" />
     </div>

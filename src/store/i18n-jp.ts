@@ -2571,15 +2571,13 @@ export const jpTranslations: Record<string, string> = {
     // 見えていた。HTML はビルド時に固定されるので `t()` ではなく
     // `data-lang`（translateDataLang）で切り替える。
     "apply.intro_h1": "日本就労の応募フォーム",
-    "apply.intro_desc": "必要事項をすべてご記入ください。1〜2営業日以内に面接と書類確認のためご連絡します。",
+    // DIPANGKAS 2026-11-10, seiring paragrafnya dipendekkan di i18n.ts.
+    "apply.intro_desc": "1〜2営業日以内にご連絡します。",
     // `apply.intro_step1..4` DIHAPUS 2026-11-10, seiring daftarnya dibuang dari
     // apply.astro (keputusan pemilik). Riwayat git menyimpan terjemahannya.
     "siswa.intro_h1": "ASJ日本語学校の新規入学生募集",
-    "siswa.intro_desc": "集中的な日本語研修プログラムにご登録ください。N5から就労準備まで、寮とビザ支援をご用意しています。",
-    "siswa.intro_step1": "入学申込書を記入しプログラムを選択",
-    "siswa.intro_step2": "入学試験・面接の日程をお待ちください",
-    "siswa.intro_step3": "入学金をお支払いください",
-    "siswa.intro_step4": "クラス日程に沿って研修を開始",
+    "siswa.intro_desc": "N5から就労準備までのクラス。寮とビザ支援あり。",
+    // `siswa.intro_step1..4` juga dihapus 2026-11-10.
     "blog.cta_title": "日本で働く準備はできましたか？",
     "blog.cta_body": "最新の求人を確認するか、ASJのオンラインフォームから直接ご応募ください。",
     "blog.cta_jobs": "求人を見る",
