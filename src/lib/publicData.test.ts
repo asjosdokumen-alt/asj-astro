@@ -10,8 +10,10 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  fetchPublicAnnouncement,
   fetchPublicJobs,
   getPublicData,
+  parsePublicAnnouncement,
   parsePublicJobs,
   publicDataUrl,
   publicJobsUrl,
@@ -319,5 +321,63 @@ describe('getPublicData — tidak menggantung dan tidak melempar', () => {
     const fresh = await getPublicData();
     expect(fresh.success).toBe(true);
     expect(attempt).toBe(2);
+  });
+});
+
+/**
+ * Pengumuman dibaca saat BUILD supaya pitanya sudah ada pada paint pertama.
+ * MEASURED 2026-11-09: selama pitanya baru di-unhide setelah fetch, /public
+ * menurunkan seluruh isi halaman ~66px pada ~3,8 s (CLS 0,1585).
+ *
+ * Yang diuji di sini adalah syarat supaya keputusan itu aman: teks kosong /
+ * spasi TIDAK boleh memunculkan pita, dan kegagalan apa pun harus berarti
+ * "tanpa pita" — bukan build yang gagal.
+ */
+describe('parsePublicAnnouncement', () => {
+  it('mengembalikan teks yang sudah di-trim', () => {
+    expect(parsePublicAnnouncement({ pengumuman: '  Halo dunia  ' })).toBe('Halo dunia');
+  });
+
+  it('spasi saja berarti TIDAK ADA — pita kosong setinggi 66px tidak boleh dirender', () => {
+    expect(parsePublicAnnouncement({ pengumuman: '   \n\t ' })).toBe('');
+  });
+
+  it('bukan string, atau tidak ada, berarti kosong', () => {
+    expect(parsePublicAnnouncement({})).toBe('');
+    expect(parsePublicAnnouncement(null)).toBe('');
+    expect(parsePublicAnnouncement({ pengumuman: 42 })).toBe('');
+    expect(parsePublicAnnouncement({ pengumuman: null })).toBe('');
+  });
+});
+
+describe('fetchPublicAnnouncement', () => {
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    vi.restoreAllMocks();
+  });
+
+  it('tanpa origin tidak melakukan request sama sekali', async () => {
+    const { fn } = stubResponse({ body: { pengumuman: 'Halo' } });
+    expect(await fetchPublicAnnouncement(null)).toBe('');
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('membaca pengumuman dari payload yang sama dengan tabel lowongan', async () => {
+    stubResponse({ body: { success: true, pengumuman: 'Halo', jobs: [JOB] } });
+    expect(await fetchPublicAnnouncement('https://contoh.test')).toBe('Halo');
+  });
+
+  it('200 tapi HTML TIDAK dianggap pengumuman', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    stubResponse({ contentType: 'text/html; charset=utf-8', body: { pengumuman: 'Halo' } });
+    expect(await fetchPublicAnnouncement('https://contoh.test')).toBe('');
+  });
+
+  it('gagal jaringan tidak melempar — build tetap jalan tanpa pita', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    globalThis.fetch = vi.fn(async () => {
+      throw new Error('offline');
+    }) as unknown as typeof fetch;
+    await expect(fetchPublicAnnouncement('https://contoh.test')).resolves.toBe('');
   });
 });

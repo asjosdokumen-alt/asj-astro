@@ -112,7 +112,16 @@ import {
 import { ensureServer, stopServer } from './lib/server.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4321';
-const ROWS = 'table tbody tr';
+/* `:visible` bukan hiasan. `/loker` dan `/public` memuat tabel lowongan DUA
+   kali: salinan statis (fallback tanpa JS) dan tabel hidup di dalam island.
+   Sejak 2026-11-09 salinan statis disembunyikan sejak paint pertama saat JS
+   hidup — jadi `waitForSelector('table tbody tr')` mengambil elemen PERTAMA
+   yang cocok, yaitu baris di dalam salinan statis yang display:none, lalu
+   menunggunya terlihat sampai timeout 15 detik. Terukur: suite ini MERAH
+   dengan "locator resolved to 53 elements ... Proceeding with the first one"
+   padahal tabel hidupnya sudah tampil.
+   Yang dimaksud gerbang ini adalah "baris yang bisa dilihat pengguna". */
+const ROWS = 'table tbody tr:visible';
 /** Same trigger `test-dialog.mjs` uses: the first row's first action button. */
 const DETAIL = 'tbody tr:first-child td:last-child button:first-child';
 

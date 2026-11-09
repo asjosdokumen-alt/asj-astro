@@ -192,6 +192,78 @@ export async function fetchPublicJobs(
   limit = 50,
 ): Promise<PublicJobRow[]> {
   if (!origin) return [];
+  const payload = await readPublicPayload(origin);
+  if (!payload) return [];
+  const rows = parsePublicJobs(payload, limit);
+  // A 200 with rows is not proof of a working backend. MEASURED 2026-10-24:
+  // the function's `loadPublicBase()` starts from `demoGetAppData()` and only
+  // overwrites `jobs` when it can read the table — so a backend that cannot
+  // reach its database answers 200 with the DEMO dataset, and the page looks
+  // populated while carrying no real vacancy. This warning is the only place
+  // a build can tell the difference without knowing the schema.
+  if (rows.length > 0 && rows.every((row) => /^DEMO-/i.test(row.code))) {
+    warnBuild(
+      `all ${rows.length} rows are DEMO-* placeholders — the function is serving its fallback dataset, not the database`,
+    );
+  }
+  return rows;
+}
+
+/**
+ * Payload → teks pengumuman, atau '' kalau tidak ada.
+ *
+ * Pure, seperti `parsePublicJobs`, supaya aturan bentuknya bisa diuji tanpa
+ * jaringan. `trim()` di sini bukan kosmetik: `public.astro` memakai hasilnya
+ * untuk memutuskan apakah pitanya dirender, dan spasi saja tidak boleh
+ * memunculkan pita kosong setinggi 66px.
+ */
+export function parsePublicAnnouncement(payload: unknown): string {
+  const raw = (payload as PublicAppData | null | undefined)?.pengumuman;
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+/**
+ * Pengumuman, dibaca saat BUILD untuk pita di `/public`.
+ *
+ * KENAPA DI BUILD, BUKAN HANYA DI BROWSER
+ * ---------------------------------------
+ * MEASURED 2026-11-09 (390px, CPU 4x, Slow 4G): pita itu `hidden` di HTML lalu
+ * di-unhide setelah `getPublicData()` selesai. Saat ia muncul, seluruh isi
+ * halaman di bawahnya turun ~66px — CLS **0,1585** dari total 0,190 di /public,
+ * pada ~3,8 detik, saat pembaca sudah mulai membaca atau menekan tab.
+ *
+ * Dengan teksnya ikut dirender, pita sudah ada pada paint pertama: tidak ada
+ * yang bergeser. Fetch runtime TETAP ada dan tetap memperbarui teksnya (lihat
+ * skrip di `public.astro`) — yang dihapus hanya "memunculkan elemen", bukan
+ * "memutakhirkan isi".
+ *
+ * Sisa kasus yang tidak bisa ditutup dari sini: kalau build tidak punya
+ * pengumuman tetapi runtime punya, pita tetap muncul terlambat dan menggeser
+ * sekali. Menutupnya berarti mencadangkan 66px kosong di setiap kunjungan —
+ * harga yang lebih buruk daripada pergeseran yang jarang itu.
+ */
+export async function fetchPublicAnnouncement(
+  origin: string | null | undefined,
+): Promise<string> {
+  if (!origin) return '';
+  const payload = await readPublicPayload(origin);
+  if (!payload) return '';
+  return parsePublicAnnouncement(payload);
+}
+
+/**
+ * Satu pembacaan payload publik untuk semua pemakai BUILD-TIME.
+ *
+ * Diekstrak 2026-11-09: `fetchPublicJobs` dan `fetchPublicAnnouncement` membaca
+ * endpoint yang SAMA, dan penjaganya (status, content-type, timeout) adalah
+ * penjaga yang sudah pernah menyelamatkan repo ini dari "404 halaman HTML
+ * berbentuk 200". Menyalinnya ke pemakai kedua berarti salinan itu akan
+ * menyimpang — persis pola yang modul ini dibuat untuk mengakhiri.
+ *
+ * `null` berarti "tidak ada payload yang bisa dipercaya"; setiap kegagalan
+ * sudah dilaporkan ke stderr oleh pemanggil dengan alasannya sendiri.
+ */
+async function readPublicPayload(origin: string): Promise<PublicAppData | null> {
   try {
     const res = await fetch(publicJobsUrl(origin), {
       method: 'GET',
@@ -203,28 +275,16 @@ export async function fetchPublicJobs(
     });
     if (!res.ok) {
       warnBuild(`${publicJobsUrl(origin)} → HTTP ${res.status}`);
-      return [];
+      return null;
     }
     const contentType = res.headers?.get?.('content-type') ?? '';
     if (!contentType.includes('json')) {
       warnBuild(`${publicJobsUrl(origin)} answered "${contentType}" — expected JSON`);
-      return [];
+      return null;
     }
-    const rows = parsePublicJobs(await res.json(), limit);
-    // A 200 with rows is not proof of a working backend. MEASURED 2026-10-24:
-    // the function's `loadPublicBase()` starts from `demoGetAppData()` and only
-    // overwrites `jobs` when it can read the table — so a backend that cannot
-    // reach its database answers 200 with the DEMO dataset, and the page looks
-    // populated while carrying no real vacancy. This warning is the only place
-    // a build can tell the difference without knowing the schema.
-    if (rows.length > 0 && rows.every((row) => /^DEMO-/i.test(row.code))) {
-      warnBuild(
-        `all ${rows.length} rows are DEMO-* placeholders — the function is serving its fallback dataset, not the database`,
-      );
-    }
-    return rows;
+    return (await res.json()) as PublicAppData;
   } catch (error) {
     warnBuild(`fetch failed: ${(error as Error)?.message ?? error}`);
-    return [];
+    return null;
   }
 }

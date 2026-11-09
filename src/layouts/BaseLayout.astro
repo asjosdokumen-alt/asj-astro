@@ -462,12 +462,16 @@ const orgJsonLd = jsonLdScript(
      repaints per toggle. 200ms is still smooth (the curve is out-expo,
      which lands early) and cuts the repaint work by 60%. -->
 <body id="asj-body" class="bg-canvas text-fg min-h-screen transition-colors duration-200 flow-root">
-  <div id="global-loader" style="display: none !important;">
-    <svg class="asj-icon animate-spin text-5xl text-pink-500 mb-4" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="/icons/sprite.svg#fas-spinner" /></svg>
-    <h2 class="text-xl font-bold tracking-widest text-slate-200" data-lang="ui.loader_title">MEMUAT ASJ OS V7...</h2>
-    <p id="loader-msg" class="text-sm text-slate-500 mt-2 mb-6" data-lang="ui.loader_msg">Mempersiapkan UI Modern</p>
-    <button onclick="document.getElementById(&quot;global-loader&quot;).style.display=&quot;none&quot;" class="px-6 py-2.5 bg-red-600 hover:bg-red-500 border border-red-500 rounded-full text-sm font-bold text-white transition-colors shadow-lg"><svg class="asj-icon mr-1" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false"><use href="/icons/sprite.svg#fas-times" /></svg> <span data-lang="ui.force_close_loading">Tutup Paksa Loading</span></button>
-  </div>
+  <!-- #global-loader DIHAPUS 2026-11-09. Ia `display:none !important` secara
+       inline dan TIDAK ADA satu pun kode yang menampilkannya (diperiksa:
+       hanya tombolnya sendiri yang menyembunyikan diri). Jadi ia bukan gerbang
+       apa pun — ia 1,5 KB markup mati di SETIAP halaman, plus dua <use> ke
+       sprite yang tidak pernah terlihat.
+
+       JANGAN dikembalikan tanpa alasan yang bisa diukur. Kalau nanti butuh
+       penanda "sedang memuat", pakai skeleton di tempat kontennya (pola yang
+       sudah dipakai `LokerTable`), bukan lapisan penutup layar: lapisan
+       penutup yang muncul terlambat justru menambah CLS, bukan mengurangi. -->
   <div id="sakura-particles" class="fixed inset-0 u-modal-shell overflow-hidden hidden" aria-hidden="true"></div>
   <a href="#main-content" class="skip-link"><span data-lang="ui.skip_to_content">Lewati ke konten utama</span></a>
   {scrollProgress && <div class="u-scroll-progress" aria-hidden="true" />}

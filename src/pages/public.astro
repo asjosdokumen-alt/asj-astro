@@ -8,6 +8,18 @@ import Icon from '../components/ui/Icon';
 // The WhatsApp fallback in the <noscript> below. Same constant the footer and
 // `LayananSection` already use — never a second copy of the number.
 import { CONTACT_WHATSAPP } from '../lib/companyProfile';
+import { fetchPublicAnnouncement } from '../lib/publicData';
+import { siteOrigin } from '../lib/siteMeta';
+
+/* Pita pengumuman dirender DI SINI, saat build — bukan hanya di browser.
+   MEASURED 2026-11-09 (390px, CPU 4x, Slow 4G): selama pitanya `hidden` lalu
+   di-unhide setelah fetch, seluruh isi halaman turun ~66px pada ~3,8 s —
+   CLS 0,1585 dari total 0,190 di /public. Teks yang sudah ada pada paint
+   pertama tidak bisa menggeser apa pun.
+   Fetch runtime di bawah TETAP berjalan: ia memperbarui TEKS, bukan
+   memunculkan elemen. Sumbernya sama (`fetchPublicJobs` di `LokerStaticList`),
+   dan kegagalannya tidak fatal — `''` berarti pita tidak dirender. */
+const pengumuman = await fetchPublicAnnouncement(siteOrigin());
 ---
 
 <BaseLayout title="Lowongan & Layanan — ASJ Portal" titleKey="doc.title_public" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true}>
@@ -25,8 +37,10 @@ import { CONTACT_WHATSAPP } from '../lib/companyProfile';
       <Icon name="arrow-left" /> <span data-lang="button.back_to_portal">Kembali ke Portal</span>
     </a>
 
-    <!-- Global Announcement Marquee -->
-    <div id="global-announcement" hidden>
+    <!-- Global Announcement Marquee.
+         `hidden` HANYA kalau build memang tidak punya teks. Kalau ada, pitanya
+         sudah terlihat sejak paint pertama — lihat catatan di frontmatter. -->
+    <div id="global-announcement" hidden={!pengumuman}>
        <div class="bg-rose-700 rounded-2xl p-2.5 flex items-center shadow-[0_0_20px_rgba(225,29,72,0.3)] border border-rose-500/60 relative overflow-hidden">
            <div class="absolute left-0 top-0 bottom-0 bg-red-800 w-12 flex items-center justify-center z-10 rounded-l-2xl border-r border-rose-600/60 shadow-md">
                <Icon name="bullhorn" class="text-white animate-bounce text-lg" />
@@ -36,8 +50,8 @@ import { CONTACT_WHATSAPP } from '../lib/companyProfile';
          duplicate is aria-hidden so screen readers read it once. -->
     <div class="marquee-track ml-12 mr-2">
       <div class="marquee-content text-white text-sm font-bold tracking-wide">
-        <span class="marquee-item" data-marquee></span>
-        <span class="marquee-item" data-marquee aria-hidden="true"></span>
+        <span class="marquee-item" data-marquee>{pengumuman}</span>
+        <span class="marquee-item" data-marquee aria-hidden="true">{pengumuman}</span>
       </div>
     </div>
        </div>
@@ -128,9 +142,14 @@ import { CONTACT_WHATSAPP } from '../lib/companyProfile';
        index.astro cannot drift apart again: both used to hand-roll the same
        POST to get-app-data, and the copy here had already lost the
        `success` guard's shape.
-       Kept as its own script rather than merged with the tab binder above:
-       `getPublicData` is imported (so this must be a processed script), while
-       the tab binder is a one-line call that has nothing to do with the marquee. -->
+
+       SEJAK 2026-11-09 tugasnya menyempit: teksnya sudah dirender saat build
+       (lihat frontmatter), jadi blok ini hanya MEMUTAKHIRKAN ISI. `hidden=false`
+       di bawah tinggal jaring untuk satu kasus yang tidak bisa ditutup build —
+       pengumuman yang baru dipasang setelah deploy terakhir. Itu tetap menggeser
+       halaman sekali; mencadangkan 66px kosong di setiap kunjungan lebih buruk.
+       Jangan pindahkan `hidden=false` ke sini sebagai jalur utama: itulah yang
+       dulu menghasilkan CLS 0,1585. -->
   <script>
     import { getPublicData } from '../lib/publicData';
     getPublicData().then(function (d) {

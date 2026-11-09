@@ -19,8 +19,12 @@
 const ROOT_ID = 'asj-overlay-root';
 
 /**
- * Sits above BottomNav (z-90) and all page content, but below
- * #global-loader (z-9999), which must be able to cover everything.
+ * Sits above BottomNav (z-90) and all page content, but below the print
+ * overlay and any modal that must cover everything.
+ *
+ * `#global-loader` (z-9999) used to be named here. It was removed on
+ * 2026-11-09: it was `display:none !important` with nothing that ever showed
+ * it, so it never actually covered anything — see the note in BaseLayout.astro.
  */
 const ROOT_Z_INDEX = 1000;
 

@@ -17,11 +17,25 @@
  * for that contract to drift. The tiles are large enough to read; zoom can arrive
  * later, reusing the existing modal, rather than inventing a parallel one.
  *
- * WHY `loading="lazy"` IS SET PER TILE AND NOT ON THE FIRST ONE
- * ------------------------------------------------------------
- * The first row is within a screen of the hero on a desktop viewport, so letting
- * it load eagerly gives a painted gallery instead of a pop-in. Everything after
- * the third tile is genuinely below the fold and is deferred.
+ * WHY EVERY TILE IS `loading="lazy"` (changed 2026-11-09)
+ * ------------------------------------------------------
+ * The first three tiles used to be `eager`, on the stated grounds that "the
+ * first row is within a screen of the hero on a desktop viewport". MEASURED
+ * 2026-11-09, and that premise was false at every width:
+ *
+ *   390px  → first tile at y=12.050  (14,3 layar di bawah fold)
+ *   1280px → first tile at y= 7.316  ( 8,1 layar)
+ *
+ * So three photographs (~132 KB) were fetched at ~281 ms — while the hero and
+ * the render-blocking stylesheet were still downloading on the same pipe — for
+ * a section the visitor would not reach for another eight to fourteen screens.
+ * On a 1,6 Mbps connection that is ~0,66 s of bandwidth taken from the only
+ * thing being looked at.
+ *
+ * `lazy` does not mean "pop-in on arrival": Chromium starts lazy images well
+ * before they enter the viewport (its distance threshold grows on slow
+ * connections). The tiles are still decoded before the reader gets there; they
+ * simply stop competing with the first paint.
  *
  * WHY THE ASPECT BOX IS EXPLICIT
  * ------------------------------
@@ -46,7 +60,7 @@ export default function GalleryGrid({ items, class: className }: Props) {
     // `.u-zoom`), per owner ruling that only non-photo illustrations carry
     // moving animations on the landing page.
     <ul class={grid} data-scroll-item>
-      {items.map((item, index) => (
+      {items.map((item) => (
         <li key={item.src} class="rounded-card overflow-hidden border border-line bg-surface">
           <div class="aspect-[4/3] overflow-hidden bg-surface-raised">
             {/* Real photographs stay static on purpose — continuous `.u-alive`
@@ -62,7 +76,7 @@ export default function GalleryGrid({ items, class: className }: Props) {
               alt={item.alt}
               width={item.width}
               height={item.height}
-              loading={index < 3 ? 'eager' : 'lazy'}
+              loading="lazy"
               decoding="async"
               class="h-full w-full object-cover"
             />
