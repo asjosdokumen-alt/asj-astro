@@ -77,7 +77,7 @@ for (const i of data) {
   console.log(
     `${String(i.kb ?? '?').padStart(4)}KB  ${String(i.startMs ?? '?').padStart(5)}ms  ` +
       `${i.aboveFold ? 'ATAS ' : 'bawah'}  load=${i.loading.padEnd(5)} prio=${i.priority.padEnd(7)} ` +
-      `tampil=${i.displayed.padEnd(10)} asli=${i.natural.padEnd(11)} y=${String(i.top).padStart(5)}  ${i.src.slice(0, 46)}`,
+      `tampil=${i.displayed.padEnd(10)} asli=${i.natural.padEnd(11)} y=${String(i.top).padStart(5)}  ${i.src.slice(0, 150)}`,
   );
 }
 console.log(`\nTOTAL ${total} KB`);

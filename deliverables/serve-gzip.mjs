@@ -52,6 +52,20 @@ const COMPRESSIBLE = /^(text\/|application\/(json|manifest\+json|xml)|image\/svg
 
 const gzCache = new Map();
 
+/**
+ * Kunci cache = path + mtime + ukuran.
+ *
+ * KENAPA BUKAN PATH SAJA. Diukur 2026-11-09: setelah `astro build` menulis
+ * ulang `dist/apply/index.html`, server ini tetap menyajikan HTML LAMA dari
+ * cache — dan probe berikutnya mengukur build yang sudah tidak ada. Gejalanya
+ * menipu: perbaikan yang benar terlihat "tidak berpengaruh", atau sebaliknya.
+ * mtime membuat setiap build otomatis membatalkan cache-nya sendiri.
+ */
+const cacheKey = (file) => {
+  const st = statSync(file);
+  return `${file}:${st.mtimeMs}:${st.size}`;
+};
+
 function resolveFile(urlPath) {
   const clean = normalize(decodeURIComponent(urlPath.split('?')[0])).replace(/^(\.\.[/\\])+/, '');
   const candidates = [
@@ -98,10 +112,11 @@ const server = http.createServer((req, res) => {
 
   const acceptsGzip = /\bgzip\b/.test(req.headers['accept-encoding'] || '');
   if (acceptsGzip && COMPRESSIBLE.test(type)) {
-    let buf = gzCache.get(file);
+    const key = cacheKey(file);
+    let buf = gzCache.get(key);
     if (!buf) {
       buf = gzipSync(readFileSync(file), { level: 9 });
-      gzCache.set(file, buf);
+      gzCache.set(key, buf);
     }
     headers['content-encoding'] = 'gzip';
     headers['content-length'] = buf.length;
