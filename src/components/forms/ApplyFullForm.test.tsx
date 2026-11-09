@@ -5,6 +5,8 @@
 // ==========================================
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/preact";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import ApplyFullForm from "./ApplyFullForm";
 import { showToast } from "../Toast";
 import { apiClient } from "../../lib/apiClient";
@@ -176,50 +178,42 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
 // ==========================================
 // TESTS: hero artwork — kandidat LEBAR, bukan satu berkas 1600px
 // ==========================================
-// KENAPA ADA. Diukur 2026-11-09 (390px, DPR 2, CPU 4x, Slow 4G): satu `<img>`
+// KENAPA ADA. Diukur 2026-11-09 (390px, DPR 2, CPU 4x, Slow 4G): satu gambar
 // hero mengunduh **300 KB** (1600x1068) untuk kotak 358x260, dari host pihak
 // ketiga — 95% berat gambar /apply dan 52% berat halaman itu. Tidak ada gate di
 // repo ini yang bisa melihatnya: `verify:assets` hanya memindai berkas LOKAL,
 // dan `e2e:responsive` mengukur tata letak, bukan byte.
 //
-// Yang dijaga di sini bukan "ada srcset" (itu bisa dipenuhi satu kandidat),
-// melainkan tiga sifat yang membuat pilihan browser masuk akal:
+// ⚠ SEJAK 2026-11-10 BAND INI TIDAK LAGI DI KOMPONEN INI. Ia pindah ke
+// `src/pages/apply.astro` supaya ada di HTML server: island ini `client:only`,
+// jadi apa pun di dalamnya baru ada setelah hidrasi — dan LCP /apply terukur
+// 3,1 s JUSTRU karena gambarnya baru ditemukan saat island mount (dibuktikan A/B:
+// `srcset` dicabut, angkanya tetap 3,1 s). Karena itu tes ini membaca BERKAS
+// halaman, bukan DOM hasil render: satu-satunya cara memeriksa elemen yang
+// sengaja tidak dirender komponen ini. Pola yang sama dipakai
+// `BaseLayout.sakura.test.ts`.
+//
+// Yang dijaga bukan "ada srcset" (itu bisa dipenuhi satu kandidat), melainkan
+// tiga sifat yang membuat pilihan browser masuk akal:
 //   1. ADA kandidat seukuran ponsel (390 CSS px x DPR 2 = 780 px),
 //   2. `src` — berkas yang diunduh browser TANPA dukungan srcset — bukan yang
 //      terbesar, karena itulah bentuk asli cacatnya,
 //   3. `w=` di dalam URL sama dengan deskriptor `Nw`. Kalau tidak, browser
 //      memilih seolah berkasnya lebih besar daripada isinya, dan hasilnya
 //      gambar buram yang tidak dilaporkan apa pun.
-describe("ApplyFullForm — gambar hero responsif", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    history.replaceState({}, "", "/apply?job=TG123ASJ");
-    getAppDataJobs = [{ code: "TG123ASJ", kategori: "Tukang Gypsum", dokumenShare: "CV,JFT,SSW,KTP" }];
-    fetchMock.mockReset();
-    apiClientMock.mockReset();
-    apiClientMock.mockImplementation((async (action: string) => routeApi(action)) as unknown as typeof apiClient);
-    vi.mocked(showToast).mockReset();
-    vi.stubGlobal("fetch", fetchMock);
-  });
-  afterEach(() => {
-    cleanup();
-    vi.unstubAllGlobals();
+describe("apply.astro — gambar hero responsif", () => {
+  const source = readFileSync(join(process.cwd(), "src/pages/apply.astro"), "utf8");
+
+  /** Tag pembuka gambar band. `brightness-[.35]` hanya dipakai di sini. */
+  const tag = /<img[^>]*brightness-\[\.35\][^>]*>/.exec(source)?.[0] ?? "";
+  const attr = (name: string) => new RegExp(`\\s${name}="([^"]*)"`).exec(tag)?.[1] ?? "";
+
+  it("gambar hero masih ada di HTML server (bukan di dalam island)", () => {
+    expect(tag, "gambar hero tidak ditemukan di apply.astro").not.toBe("");
   });
 
-  it("menawarkan kandidat selebar ponsel dan `src` bukan kandidat terbesar", async () => {
-    render(<ApplyFullForm />);
-    await screen.findByText("apply.cv_label");
-
-    // Hero = satu-satunya <img alt=""> di dalam band artwork; logo di sebelahnya
-    // punya alt="Logo ASJ", jadi selektor ini tidak bisa tertukar.
-    const hero = document.querySelector('.artwork-band img[alt=""]') as HTMLImageElement | null;
-    expect(hero, "gambar hero tidak dirender — gate ini tidak mengukur apa pun").toBeTruthy();
-    // Cast, bukan `hero!`: assertion non-null dilarang biome di repo ini, dan
-    // `expect(...).toBeTruthy()` di atas sudah memberi pesan yang lebih baik
-    // daripada TypeError.
-    const img = hero as HTMLImageElement;
-
-    const srcset = img.getAttribute("srcset") || "";
+  it("menawarkan kandidat selebar ponsel dan `src` bukan kandidat terbesar", () => {
+    const srcset = attr("srcset");
     const candidates = [...srcset.matchAll(/(\S+)\s+(\d+)w/g)].map((m) => ({
       url: m[1],
       width: Number(m[2]),
@@ -239,10 +233,10 @@ describe("ApplyFullForm — gambar hero responsif", () => {
       `kandidat terkecil ${Math.min(...widths)}w terlalu besar untuk ${PHONE_DPR2}px`,
     ).toBeLessThanOrEqual(960);
 
-    expect(img.getAttribute("sizes"), "sizes wajib ada supaya pilihannya deterministik").toBeTruthy();
+    expect(attr("sizes"), "sizes wajib ada supaya pilihannya deterministik").toBeTruthy();
 
     // `src` adalah jalur unduh browser tanpa srcset. Ia tidak boleh yang terbesar.
-    const srcWidth = Number(/[?&]w=(\d+)/.exec(img.getAttribute("src") || "")?.[1] || 0);
+    const srcWidth = Number(/[?&]w=(\d+)/.exec(attr("src"))?.[1] || 0);
     expect(srcWidth, "src harus menyebut lebar").toBeGreaterThan(0);
     expect(srcWidth, "src tidak boleh berkas terbesar").toBeLessThan(Math.max(...widths));
 

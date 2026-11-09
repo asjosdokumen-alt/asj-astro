@@ -38,8 +38,10 @@ for (const width of WIDTHS) {
     // Judul = elemen ber-`data-lang="header.company_name"` (span/div) di dalam band.
     const title = band.querySelector('[data-lang="header.company_name"]');
     const eyebrow = band.querySelector('[data-lang="header.tagline"]');
-    // Kartu putih = saudara band yang berikutnya, yang membawa margin negatif.
-    let card = band.nextElementSibling;
+    // Kartu = elemen ber-`mt-[-40px]`, yaitu yang menutupi tepi bawah band.
+    // BUKAN `band.nextElementSibling`: sejak 2026-11-10 band pindah ke HTML
+    // statis dan kartunya ada di island berikutnya, bukan di saudara langsung.
+    const card = document.querySelector('[class*="mt-[-40px]"]');
     const rect = (el) => {
       if (!el) return null;
       const r = el.getBoundingClientRect();

@@ -22,7 +22,86 @@ import FormToolbar from "../components/forms/FormToolbar";
         </ol>
       </section>
       <noscript data-lang="doc.needs_js" class="block mb-4 rounded-card border border-amber-400 bg-amber-100 px-4 py-3 text-sm font-bold text-amber-900">Halaman ini memerlukan JavaScript. Aktifkan JavaScript, lalu muat ulang halaman ini.</noscript>
-      <ApplyFullForm client:only="preact" />
     </div>
+
+    {/* ── BAND HERO — HTML STATIS, SENGAJA DI LUAR ISLAND ────────────────────
+        KENAPA DI SINI, BUKAN DI DALAM FORM. Band ini tidak butuh state, tidak
+        butuh localStorage, tidak butuh satu baris JavaScript pun. Sampai
+        2026-11-10 ia hidup di dalam `ApplyFullForm`, yang di-mount
+        `client:only` — jadi ia TIDAK ADA sampai hidrasi selesai.
+        MEASURED (390px, CPU 4x, Slow 4G): LCP /apply adalah GAMBAR band ini
+        pada 3,1 s, dan build A/B membuktikan `srcset` bukan penyebabnya
+        (dicabut, tetap 3,1 s). Sebabnya penemuan: gambarnya baru diminta
+        setelah island mount (~1,4 s), sehingga layar pertama hanya teks selama
+        itu. Di HTML statis, preload scanner menemukannya saat parsing.
+        Band ini juga menyumbang ~260 px dari pergeseran tata letak saat island
+        mount; sebagai HTML statis tingginya sudah ada sejak paint pertama.
+
+        ⚠ `pt-[42px]` ikut pindah ke sini: dulu itu padding-atas milik root
+        island, yaitu JARAK di atas band. Kalau dihapus, band menempel ke daftar
+        langkah di atasnya.
+        ⚠ Kartu form di bawahnya memakai `mt-[-40px]` untuk menutupi tepi bawah
+        band. Itu hanya bekerja selama band ini adalah SAUDARA SEBELUMNYA di
+        aliran yang sama — jangan pindahkan island ini ke dalam div pembungkus
+        lain tanpa mengukur ulang (deliverables/probe-hero-fit.mjs).
+        `artwork-band` adalah kelas yang memberi tahu shim mode-terang
+        (global.css §5e) bahwa pita ini gelap di KEDUA tema. */}
+    <div class="pt-[42px]">
+      <div class="max-w-3xl mx-auto px-4">
+        <div class="artwork-band relative h-[260px] overflow-hidden">
+          {/* MEASURED 2026-11-09 (390px, DPR 2): satu berkas 1600x1068 = 300 KB
+              untuk kotak 358x260, dari host pihak ketiga — 95% berat gambar
+              halaman ini. Sekarang tiga kandidat lebar; `sizes="100vw"` literal
+              karena band-nya selebar halaman. Ponsel 390 px DPR 2 meminta
+              780 px dan dapat kandidat 960w (128 KB); desktop tetap 1600w.
+              `src` sengaja kandidat 960, BUKAN yang terbesar: itu berkas yang
+              diunduh browser tanpa dukungan srcset, dan menaruh yang terbesar
+              di sana adalah cara 300 KB menjadi masalah semua orang.
+              Dijaga `ApplyFullForm.test.tsx` (tes membaca berkas ini). */}
+          <img class="absolute inset-0 w-full h-full object-cover brightness-[.35]"
+            src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=960&q=70"
+            srcset="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=480&q=70 480w, https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=960&q=70 960w, https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1600&q=70 1600w"
+            sizes="100vw"
+            decoding="async" alt="" />
+          <div class="absolute inset-0 bg-gradient-to-b from-black/25 to-[#020617]"></div>
+          {/* ⚠ `-mt-5` BUKAN KOSMETIK. Kartu di bawah menutupi 40 px bawah band
+              ini, jadi band yang TERLIHAT 220 px dan pusat optiknya 20 px di
+              atas pusat geometris. MEASURED 2026-11-09
+              (deliverables/probe-hero-fit.mjs): pada 320/360/390 px judul
+              berakhir di y=636 sementara kartu mulai di y=625 — 11 px nama
+              perusahaan tertutup, di SEMUA lebar ponsel, sementara 768/1280
+              bersih. `-mt-5` = -20 px memindahkan blok ke pusat band yang
+              terlihat.
+              `px-2` di ponsel: kotak teks 318 px pada 390 px, dan judul butuh
+              319 px pada 22px — membungkus karena SATU piksel. */}
+          <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -mt-5 text-center w-full px-2 sm:px-5 z-10">
+            <img class="w-[100px] h-[100px] rounded-full mx-auto shadow-[0_15px_35px_rgba(0,0,0,.5)] object-cover relative z-[15]"
+              src="/assets/logo-apply.webp"
+              srcset="/assets/logo-apply-200.webp 200w, /assets/logo-apply.webp 300w"
+              sizes="100px"
+              alt="Logo ASJ" />
+            {/* KENAPA DUA BARIS INI KUNCI i18n, BUKAN LITERAL. `header.tagline`
+                sudah ada di KEDUA kamus sebagai pasangan string yang dibutuhkan
+                pita ini: id "Tantangan ke Jepang" / jp "日本への挑戦". Dulu baris
+                ini hardcoded ke string JEPANG, jadi benar di halaman JP dan
+                SALAH di halaman Indonesia — kegagalan yang lebih buruk, karena
+                halaman ID adalah bawaan. `header.company_name` diikat dengan
+                alasan yang sama (itu NAMA merek, dan kunci yang sama dipakai
+                header situs, jadi keduanya tidak bisa menyimpang). */}
+            <div class="mt-[15px] tracking-[7px] text-[11px] font-bold text-[#ff6db2]" data-lang="header.tagline">日本への挑戦</div>
+            {/* ⚠ 20px, BUKAN 22px. Pada 22px teksnya 319 px di kotak 318 px dan
+                membungkus karena satu piksel; baris keduanya lalu mendarat di
+                bawah kartu. Pada 20px teksnya 292 px — muat dari 360 px ke atas.
+                Di 320 px ia tetap membungkus, karena itu `text-balance` ada:
+                "PT AMANAH / SAKURA JAPAN" terbaca sebagai merek dua baris yang
+                disengaja. Angka lengkapnya di komentar test yang menjaga
+                berkas ini. */}
+            <div class="text-[20px] sm:text-[28px] font-black mt-[5px] text-balance" data-lang="header.company_name">PT AMANAH SAKURA JAPAN</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <ApplyFullForm client:only="preact" />
   </main>
 </BaseLayout>
