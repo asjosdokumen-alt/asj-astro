@@ -667,6 +667,14 @@ for (const line of ignoreLines) {
  */
 const ILLUSTRATIONS = new Set([
   'ilustrasi/hero-sakura.webp',
+  // ADDED 2026-11-09: `hero-sakura-816` adalah CROP PORTRAIT dari artwork yang
+  // SAMA (perempuan + Fuji), dipakai khusus HP lewat `<source media>`. Ia bukan
+  // fotografi baru dan bukan subjek baru — orangnya tetap figur hasil generate,
+  // jadi dasar yang sama berlaku. Namanya mengikuti aturan varian lebar
+  // (`-<angka>`), sehingga resolver `basisOf()` pun akan menemukannya; entri
+  // eksplisit ini ada supaya fakta "ini CROP, bukan resize" tercatat di tempat
+  // keputusan itu diambil, bukan tersembunyi di pola nama.
+  'ilustrasi/hero-sakura-816.webp',
   // REMOVED 2026-10-20: 'ilustrasi/lokasi-banner.webp'. The `#lokasi` band is now
   // an interactive Google Maps embed (owner request), so the skyline illustration
   // is no longer rendered by anything and the entry would have become a dead

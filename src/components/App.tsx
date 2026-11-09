@@ -447,6 +447,46 @@ export default function App(
             first. */}
         {hero && (
           <picture class="hero-art hero-layer -z-0 pointer-events-none">
+            {/* ── VARIAN PORTRAIT UNTUK HP (ditambahkan 2026-11-09) ──────────
+                MEASURED pada 390px: kotak hero 408x1023 (rasio 0,398) sedangkan
+                artwork-nya 2,75:1. `object-cover` menutup dengan skala 2,7x lalu
+                memotong, sehingga yang terlihat hanya **14,5% lebar** di TENGAH
+                gambar — yaitu langit kosong. Fuji ada di ~35% dan perempuan di
+                ~65%, jadi di HP keduanya hilang: yang tampil hanya kabut bokeh
+                setengah blur, seharga 172 KB.
+
+                Varian ini memotong wilayah yang SAMA dengan yang ada di belakang
+                judul pada desktop — cabang sakura, langit, dan pegunungan di
+                kejauhan — bukan memotong tengah. Rasionya 0,45, sedikit lebih
+                lebar daripada kotak 0,40 supaya `cover` hanya memangkas sisi,
+                tidak pernah memotong atas/bawah.
+
+                DUA PERCOBAAN YANG DITOLAK, dan alasannya terukur:
+                · pusat gambar (keadaan sebelum ini) -> hanya langit kosong;
+                · wajah perempuan (~65% lebar) -> di 390px wajah raksasa terpotong
+                  di dahi, tepat di belakang logo dan judul. Ia BERSIANG dengan
+                  teks, bukan melatarinya.
+                Sakura + langit memberi latar yang tenang, dan itu juga yang
+                dilihat pembaca desktop di balik headline.
+
+                Hasil: 172 KB -> **44 KB**, dan yang tampil adalah bagian artwork
+                yang memang dimaksud komposisinya. Sumber tetap
+                `ChatGPT Image … 08_31_36 PM.png` (2079x756) — itu memang resolusi
+                tertinggi yang ada; tidak ada piksel tambahan yang bisa diklaim.
+
+                `media` 639px: di atas itu kotak hero melebar (0,56 di 600px,
+                0,65 di 700px) dan artwork lanskap kembali masuk akal. Di bawah
+                640 ia selalu sempit (~0,39-0,45), jadi crop portrait yang tepat. */}
+            <source
+              media="(max-width: 639px)"
+              type="image/avif"
+              srcset="/assets/ilustrasi/hero-sakura-816.avif"
+            />
+            <source
+              media="(max-width: 639px)"
+              type="image/webp"
+              srcset="/assets/ilustrasi/hero-sakura-816.webp"
+            />
             <source
               type="image/avif"
               srcset="/assets/ilustrasi/hero-sakura.avif 1x, /assets/ilustrasi/hero-sakura@2x.avif 2x"
