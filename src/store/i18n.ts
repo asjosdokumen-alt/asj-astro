@@ -2931,10 +2931,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     // sampai ke elemen itu.
     "apply.intro_h1": "Formulir Lamaran Kerja ke Jepang",
     "apply.intro_desc": "Isi data diri Anda dengan lengkap. Tim kami akan menghubungi dalam 1–2 hari kerja untuk proses wawancara dan verifikasi dokumen.",
-    "apply.intro_step1": "Isi biodata lengkap & upload dokumen",
-    "apply.intro_step2": "Tunggu konfirmasi WhatsApp dari tim ASJ",
-    "apply.intro_step3": "Ikuti wawancara & tes kesehatan",
-    "apply.intro_step4": "Tanda-tangan kontrak & proses visa",
+    // `apply.intro_step1..4` DIHAPUS 2026-11-10: daftarnya dibuang dari
+    // apply.astro (keputusan pemilik). Kalau daftar itu kembali, terjemahannya
+    // ada di riwayat git — jangan mengarang ulang.
     "siswa.intro_h1": "Pendaftaran Siswa Baru LPK ASJ",
     "siswa.intro_desc": "Daftar program pelatihan bahasa Jepang intensif. Kami menyediakan kelas dari N5 hingga persiapan kerja, dengan fasilitas asrama dan bimbingan visa.",
     "siswa.intro_step1": "Isi formulir pendaftaran & pilih program",

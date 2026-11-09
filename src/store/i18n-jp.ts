@@ -2572,10 +2572,8 @@ export const jpTranslations: Record<string, string> = {
     // `data-lang`（translateDataLang）で切り替える。
     "apply.intro_h1": "日本就労の応募フォーム",
     "apply.intro_desc": "必要事項をすべてご記入ください。1〜2営業日以内に面接と書類確認のためご連絡します。",
-    "apply.intro_step1": "プロフィールを記入し書類をアップロード",
-    "apply.intro_step2": "ASJチームからのWhatsApp連絡をお待ちください",
-    "apply.intro_step3": "面接・健康診断を受ける",
-    "apply.intro_step4": "契約署名・ビザ手続き",
+    // `apply.intro_step1..4` DIHAPUS 2026-11-10, seiring daftarnya dibuang dari
+    // apply.astro (keputusan pemilik). Riwayat git menyimpan terjemahannya.
     "siswa.intro_h1": "ASJ日本語学校の新規入学生募集",
     "siswa.intro_desc": "集中的な日本語研修プログラムにご登録ください。N5から就労準備まで、寮とビザ支援をご用意しています。",
     "siswa.intro_step1": "入学申込書を記入しプログラムを選択",
