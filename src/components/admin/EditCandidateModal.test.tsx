@@ -130,7 +130,13 @@ describe('EditCandidateModal', () => {
       // Satu panggilan saja — catatan tidak disimpan lewat action terpisah.
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(onClose).toHaveBeenCalled();
-    });
+      /* Anggaran waktu eksplisit, BUKAN pelonggaran assertion. Yang diuji
+         adalah "payload yang terkirim benar", bukan "terkirim dalam 1000 ms" —
+         1000 ms itu default `waitFor`, dan pada mesin sibuk klik -> rakit
+         payload -> apiClient bisa melewatinya. MEASURED 2026-11-09: merah 1x
+         di suite penuh (durasi 1555 ms), hijau saat diisolasi. Kalau payload-nya
+         memang salah atau tidak terkirim, tes tetap merah. */
+    }, { timeout: 5000 });
   });
 
   it('seeds VIP state from the [VIP] tag in catatan internal', () => {

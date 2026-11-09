@@ -256,7 +256,14 @@ describe('CandidateProfileModal', () => {
           signal: expect.any(AbortSignal),
         })
       );
-    });
+      /* Anggaran waktu eksplisit, BUKAN pelonggaran assertion.
+         Yang diuji adalah "pada akhirnya data server tampil", bukan "dalam
+         1000 ms". Default `waitFor` adalah 1000 ms dari testing-library, dan
+         pada mesin yang sibuk rantai microtask apiClient + render ulang bisa
+         melewatinya — MEASURED 2026-11-09: merah 1x di suite penuh, hijau
+         30/30 saat diisolasi. 5 detik memberi ruang 5x tanpa mengubah arti:
+         kalau datanya memang tidak pernah tampil, tes tetap merah. */
+    }, { timeout: 5000 });
   });
 
   it('does not render when isOpen is false', () => {
@@ -274,16 +281,31 @@ describe('CandidateProfileModal', () => {
       <CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={true} onClose={() => {}} />
     );
 
-    // Close modal before fetch completes
+    /* TUNGGU FETCH BENAR-BENAR MULAI, baru tutup.
+       Sebelum ini urutannya tidak dijaga: `rerender(isOpen=false)` bisa
+       mendahului microtask di dalam `apiClient`, sehingga `fetch` tidak pernah
+       terpanggil — lalu `waitFor` di bawah menghabiskan anggaran default
+       1000 ms dan tes merah dengan "expected 0 to be 1". Itu bukan komponennya
+       yang salah; tesnya yang menutup modal sebelum penerbangan dimulai.
+       MEASURED 2026-11-09: merah 1x saat mesin sibuk, hijau 30/30 saat
+       diisolasi — pola khas anggaran waktu, bukan logika. */
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+    const signal = (mockFetch.mock.calls[0][1] as RequestInit).signal;
+    if (!signal) throw new Error('fetch dipanggil tanpa AbortSignal — pembatalan tidak mungkin');
+    expect(signal).toBeInstanceOf(AbortSignal);
+
+    // Close modal while the request is in flight.
     rerender(<CandidateProfileModal wa="6285854256720" nama="REVIN" isOpen={false} onClose={() => {}} />);
 
-    // Resolve fetch — should not crash or set state
+    /* INI perilaku yang dinamai tes ini, dan dulu TIDAK diperiksa sama sekali:
+       komentar lamanya berbunyi "No crash = pass", jadi mencabut `abort()` di
+       cleanup tidak akan membuat tes ini merah. Sekarang ia mengatakannya. */
+    await waitFor(() => expect(signal.aborted).toBe(true));
+
+    // Resolve fetch — should not crash or set state.
     resolveFetch!({ json: () => Promise.resolve({ success: true, data: mockCandidate }) });
 
-    // No crash = pass. The AbortError is caught silently.
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-    });
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
   });
 
   it('shows fallback data on API error', async () => {
