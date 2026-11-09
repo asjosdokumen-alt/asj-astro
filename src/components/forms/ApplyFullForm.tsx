@@ -360,10 +360,42 @@ export default function ApplyFullForm() {
           light-mode shim so (global.css §5e); without it the title inherited
           the page div's `text-white`, which §5b flips to near-black. */}
       <div class="artwork-band relative h-[260px] overflow-hidden">
+        {/* MEASURED 2026-11-09 (390px, DPR 2, CPU 4x, Slow 4G): this one `<img>`
+            was **300 KB** — a single 1600x1068 Unsplash file for a box that
+            renders 358x260. At DPR 2 that box needs 716 px, so the browser was
+            downloading 2,2x the pixels it could show, from a THIRD-PARTY host
+            (extra DNS + TLS before the first byte). It was 95% of /apply's
+            image weight and 52% of the whole page.
+            Now three width candidates; `sizes="100vw"` is literal here because
+            the band is full-bleed. A 390-px phone at DPR 2 asks for 780 px and
+            gets the 960 candidate (~80 KB), while desktop still gets 1600.
+            `q=70` is safe because the artwork is darkened to 35% and covered by
+            a gradient — measured, not assumed: the file at q=70 is visually
+            indistinguishable in the band at both widths.
+            ⚠ The `src` is the 960 candidate on purpose. It is what a browser
+            without `srcset` support downloads, and pointing it at the largest
+            file is how the 300 KB became "everyone's problem" in the first
+            place. `ApplyFullForm.test.tsx` pins that. */}
         <img class="absolute inset-0 w-full h-full object-cover brightness-[.35]"
-          src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1600&q=80" alt="" />
+          src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=960&q=70"
+          srcSet="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=480&q=70 480w, https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=960&q=70 960w, https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1600&q=70 1600w"
+          sizes="100vw"
+          decoding="async" alt="" />
         <div class="absolute inset-0 bg-gradient-to-b from-black/25 to-[#020617]"></div>
-        <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-full px-5 z-10">
+        {/* ⚠ `-mt-5` IS NOT COSMETIC. The card below carries `mt-[-40px]`, so it
+            COVERS the bottom 40 px of this 260 px band — the visible band is
+            220 px tall, and its optical centre is 20 px ABOVE the geometric
+            centre. Centring the block in 260 px therefore parks 20 px of it
+            under an opaque `z-20` card. MEASURED 2026-11-09 with
+            `deliverables/probe-hero-fit.mjs`: at 320/360/390 px the title ended
+            at y=636 while the card began at 625 — 11 px of the company name was
+            behind the card, on every phone width, while 768/1280 were clean.
+            `-mt-5` = -20px moves the block to the centre of the VISIBLE band,
+            which is what the eye reads as centred anyway.
+            `px-2` on phones is the same argument from the other side: the text
+            box was 318 px at 390 px, and the title needed 319 px at 22px — it
+            wrapped by ONE pixel. */}
+        <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 -mt-5 text-center w-full px-2 sm:px-5 z-10">
           <img class="w-[100px] h-[100px] rounded-full mx-auto shadow-[0_15px_35px_rgba(0,0,0,.5)] object-cover relative z-[15]"
             src="/assets/logo-apply.webp"
             srcset="/assets/logo-apply-200.webp 200w, /assets/logo-apply.webp 300w"
@@ -379,18 +411,18 @@ export default function ApplyFullForm() {
               already used by the site header, so the two cannot drift). */}
           <div class="mt-[15px] tracking-[7px] text-[11px] font-bold text-[#ff6db2]" data-lang="header.tagline">日本への挑戦</div>
           {/* ⚠ `text-[28px]` WAS A ONE-LINE-ONLY SIZE, AND ON A PHONE IT WRAPPED
-              UNDER THE CARD. MEASURED 2026-09-25 at 390px: this hero is
-              `h-[260px]` with `overflow-hidden`, the logo is 100px and the
-              eyebrow sits above the title — so a TWO-line title pushes the block
-              to ~204px inside a 260px band, and the card below carries
-              `mt-[-40px]`, which covered the second line ("JAPAN" was half
-              hidden behind the white panel). "PT AMANAH SAKURA JAPAN" is 23
-              characters; at 28px bold that needs ~354px and the band only offers
-              ~350px, so it wrapped by a hair.
-              At 22px it needs ~278px and stays on ONE line, which is what the
-              design assumes. It returns to 28px from `sm:` up, where the band is
-              wide enough. */}
-          <div class="text-[22px] sm:text-[28px] font-black mt-[5px]" data-lang="header.company_name">PT AMANAH SAKURA JAPAN</div>
+              UNDER THE CARD. The first fix (2026-09-25) shrank it to 22px and
+              recorded that "at 22px it needs ~278px and stays on ONE line".
+              MEASURED 2026-11-09 with `deliverables/probe-title-width.mjs`: that
+              number is the width at NINETEEN px, not 22. At 22px the text is
+              319 px against a 318 px box — it wrapped by one pixel, so the
+              two-line block came back and the second line landed under the card.
+              At 20px it is 292 px, which fits 360 px and up. It still wraps at
+              320 px (box 272 px), which is why `text-balance` is here: a
+              balanced "PT AMANAH / SAKURA JAPAN" reads as a deliberate two-line
+              brand, while "PT AMANAH SAKURA / JAPAN" reads as an accident.
+              It returns to 28px from `sm:` up, where the band is wide enough. */}
+          <div class="text-[20px] sm:text-[28px] font-black mt-[5px] text-balance" data-lang="header.company_name">PT AMANAH SAKURA JAPAN</div>
         </div>
       </div>
 

@@ -174,6 +174,87 @@ describe("ApplyFullForm (C01) — A4 dokumen wajib dari server + A5 draft localS
 });
 
 // ==========================================
+// TESTS: hero artwork — kandidat LEBAR, bukan satu berkas 1600px
+// ==========================================
+// KENAPA ADA. Diukur 2026-11-09 (390px, DPR 2, CPU 4x, Slow 4G): satu `<img>`
+// hero mengunduh **300 KB** (1600x1068) untuk kotak 358x260, dari host pihak
+// ketiga — 95% berat gambar /apply dan 52% berat halaman itu. Tidak ada gate di
+// repo ini yang bisa melihatnya: `verify:assets` hanya memindai berkas LOKAL,
+// dan `e2e:responsive` mengukur tata letak, bukan byte.
+//
+// Yang dijaga di sini bukan "ada srcset" (itu bisa dipenuhi satu kandidat),
+// melainkan tiga sifat yang membuat pilihan browser masuk akal:
+//   1. ADA kandidat seukuran ponsel (390 CSS px x DPR 2 = 780 px),
+//   2. `src` — berkas yang diunduh browser TANPA dukungan srcset — bukan yang
+//      terbesar, karena itulah bentuk asli cacatnya,
+//   3. `w=` di dalam URL sama dengan deskriptor `Nw`. Kalau tidak, browser
+//      memilih seolah berkasnya lebih besar daripada isinya, dan hasilnya
+//      gambar buram yang tidak dilaporkan apa pun.
+describe("ApplyFullForm — gambar hero responsif", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    history.replaceState({}, "", "/apply?job=TG123ASJ");
+    getAppDataJobs = [{ code: "TG123ASJ", kategori: "Tukang Gypsum", dokumenShare: "CV,JFT,SSW,KTP" }];
+    fetchMock.mockReset();
+    apiClientMock.mockReset();
+    apiClientMock.mockImplementation((async (action: string) => routeApi(action)) as unknown as typeof apiClient);
+    vi.mocked(showToast).mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("menawarkan kandidat selebar ponsel dan `src` bukan kandidat terbesar", async () => {
+    render(<ApplyFullForm />);
+    await screen.findByText("apply.cv_label");
+
+    // Hero = satu-satunya <img alt=""> di dalam band artwork; logo di sebelahnya
+    // punya alt="Logo ASJ", jadi selektor ini tidak bisa tertukar.
+    const hero = document.querySelector('.artwork-band img[alt=""]') as HTMLImageElement | null;
+    expect(hero, "gambar hero tidak dirender — gate ini tidak mengukur apa pun").toBeTruthy();
+    // Cast, bukan `hero!`: assertion non-null dilarang biome di repo ini, dan
+    // `expect(...).toBeTruthy()` di atas sudah memberi pesan yang lebih baik
+    // daripada TypeError.
+    const img = hero as HTMLImageElement;
+
+    const srcset = img.getAttribute("srcset") || "";
+    const candidates = [...srcset.matchAll(/(\S+)\s+(\d+)w/g)].map((m) => ({
+      url: m[1],
+      width: Number(m[2]),
+    }));
+
+    // Satu kandidat = srcset yang tidak mengubah apa pun. Itu bentuk aslinya.
+    expect(candidates.length, "srcset harus punya >= 2 kandidat").toBeGreaterThanOrEqual(2);
+
+    const widths = candidates.map((c) => c.width);
+    expect([...widths].sort((a, b) => a - b), "deskriptor lebar harus menaik").toEqual(widths);
+
+    // 390 CSS px x DPR 2 = 780 px. Tanpa kandidat di bawah ~960, berkas terkecil
+    // yang ditawarkan KE PONSEL adalah berkas desktop — persis cacat 300 KB itu.
+    const PHONE_DPR2 = 390 * 2;
+    expect(
+      Math.min(...widths),
+      `kandidat terkecil ${Math.min(...widths)}w terlalu besar untuk ${PHONE_DPR2}px`,
+    ).toBeLessThanOrEqual(960);
+
+    expect(img.getAttribute("sizes"), "sizes wajib ada supaya pilihannya deterministik").toBeTruthy();
+
+    // `src` adalah jalur unduh browser tanpa srcset. Ia tidak boleh yang terbesar.
+    const srcWidth = Number(/[?&]w=(\d+)/.exec(img.getAttribute("src") || "")?.[1] || 0);
+    expect(srcWidth, "src harus menyebut lebar").toBeGreaterThan(0);
+    expect(srcWidth, "src tidak boleh berkas terbesar").toBeLessThan(Math.max(...widths));
+
+    // `w=` di URL harus sama dengan deskriptornya.
+    for (const c of candidates) {
+      const urlWidth = Number(/[?&]w=(\d+)/.exec(c.url)?.[1] || 0);
+      expect(urlWidth, `kandidat ${c.width}w meminta w=${urlWidth} di URL`).toBe(c.width);
+    }
+  });
+});
+
+// ==========================================
 // TESTS: gerbang pre-check Magang (item 11 / B3) — UX sebelum round-trip.
 // Job kategori "Magang" hanya untuk siswa VIP; server tetap otoritatif
 // (handleSubmitApply), form hanya memberi tahu lebih awal.

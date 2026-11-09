@@ -13,7 +13,12 @@
  *      terlalu kecil untuk disentuh — di halaman mana pun, lebar mana pun?"
  *
  * Empat cacat itu semua SENYAP: tidak ada error, tidak ada tes merah, hanya
- * halaman yang tampak rusak bagi pengguna.
+ * halaman yang tampak rusak bagi pengguna. Yang diperiksa, berurutan:
+ * (1) luberan horizontal, (2) sasaran sentuh di bawah 44px, (3) teks terpotong
+ * oleh overflow-nya sendiri, (4) teks TERTIMPA elemen opaque yang sengaja
+ * ditumpuk di atasnya (ditambahkan 2026-11-09 — kata "MENUMPUK" di atas sudah
+ * lama dijanjikan, pemeriksaannya baru ada sekarang), dan (5) tabel statis
+ * lowongan yang tampil padahal island hidup (akar CLS 0,562 di /loker).
  *
  * ATURAN YANG DIPAKAI (dan kenapa)
  * --------------------------------
@@ -507,7 +512,98 @@ const SWEEP_FN = `(opts) => {
     }
   }
 
-  /* ── 4. TABEL STATIS LOWONGAN TAMPIL PADAHAL ISLAND HIDUP ────────────────
+  /* ── 4. TEKS TERTIMPA ELEMEN OPAQUE (bukan terpotong) ────────────────────
+     Ini BUKAN check 3. Di check 3 teksnya dipotong oleh overflow miliknya
+     sendiri; di sini teksnya utuh di DOM, tidak dipotong apa pun, tetapi
+     TERTIMPA elemen lain yang dicat di atasnya.
+
+     KENAPA CHECK INI ADA. Diukur 2026-11-09 di /apply: judul band hero berakhir
+     di y=636 sementara kartu putih (mt-[-40px], z-20) mulai di y=625 — 11 px
+     nama perusahaan ("JAPAN") tidak terlihat, di 320/360/390 px, sementara
+     768/1280 bersih. Tidak ada gate lain di repo ini yang bisa melihatnya:
+     check 3 menuntut overflow:hidden pada elemen teks itu sendiri, dan
+     e2e:headings membaca TEKS, bukan piksel. Komentar kepala berkas ini sudah
+     lama menjanjikan "saling MENUMPUK", dan out.textOverlap sudah ada sebagai
+     kunci kosong sejak 4fc7d4d — pemeriksaannya sendiri belum pernah ditulis.
+
+     TIGA PENYARING, masing-masing lahir dari vonis palsu yang BENAR-BENAR
+     diukur (probe deliverables/probe-covered-text.mjs, 14 rute x 5 lebar):
+     (a) lapisan fixed/sticky — BottomNav, modal, toast. Tumpang tindihnya
+         disengaja; tanpa penyaring ini setiap rute melaporkan bottom bar.
+     (b) penimpa yang TIDAK punya leluhur ber-z-index >= 1. Ini yang
+         memisahkan "kartu memang sengaja di atas band" (z-20 di atas z-10) dari
+         tumpang tindih tak sengaja karena aliran dokumen: /matematika, /kotoba,
+         /wawancara dan /tes-* merender gerbang login DI DALAM aliran dan
+         melaporkan 11-15 "temuan" tanpa penyaring ini — semuanya z-index auto.
+     (c) latar penimpa harus opaque (alpha > 0,5) atau bergambar; teks di bawah
+         lapisan transparan masih terbaca.
+
+     Sampel 3 titik (tengah, 2 px dari atas, 2 px dari bawah) — cukup untuk teks
+     satu maupun dua baris, dan tidak membaca piksel.
+
+     ⚠ TANPA backtick di dalam blok ini: SWEEP_FN adalah TEMPLATE STRING, jadi
+     satu backtick di komentar menutupnya dan berkasnya gagal di-parse dengan
+     "SyntaxError: Unexpected identifier" yang menunjuk ke baris komentar. */
+  const inFixedLayer = (el) => {
+    for (let p = el; p && p !== document.body; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (cs.position === 'fixed' || cs.position === 'sticky') return true;
+    }
+    return false;
+  };
+  const stackedAbove = (hit, textEl) => {
+    for (let p = hit; p && p !== document.body; p = p.parentElement) {
+      if (p === textEl || p.contains(textEl)) return false;
+      const z = getComputedStyle(p).zIndex;
+      if (z !== 'auto' && Number(z) >= 1) return true;
+    }
+    return false;
+  };
+  const opaqueBg = (el) => {
+    const cs = getComputedStyle(el);
+    if (cs.backgroundImage && cs.backgroundImage !== 'none') return true;
+    /* Dibaca dengan slice, BUKAN regex: blok ini hidup di dalam template
+       string, dan regex yang meng-escape tanda kurung membuat biome melaporkan
+       lint/suspicious/noUselessEscapeInString (escape itu memang tidak perlu
+       DI DALAM STRING, meski perlu di dalam regex literal). */
+    const bg = cs.backgroundColor || '';
+    if (bg.indexOf('rgb') !== 0) return false;
+    const open = bg.indexOf('(');
+    const close = bg.indexOf(')');
+    if (open < 0 || close < open) return false;
+    const parts = bg.slice(open + 1, close).split(',');
+    const a = parts.length > 3 ? parseFloat(parts[3]) : 1;
+    return a > 0.5;
+  };
+  for (const el of all) {
+    const r = el.getBoundingClientRect();
+    if (!visible(el, r)) continue;
+    if (!hasOwnText(el)) continue;
+    if (r.height < 4 || r.width < 4) continue;
+    const cx = Math.round(r.left + r.width / 2);
+    const pts = [
+      [cx, Math.round(r.top + r.height / 2)],
+      [cx, Math.round(r.bottom - 2)],
+      [cx, Math.round(r.top + 2)],
+    ];
+    for (const pt of pts) {
+      if (pt[1] < 1 || pt[1] > vh - 1 || pt[0] < 1 || pt[0] > vw - 1) continue;
+      const hit = document.elementFromPoint(pt[0], pt[1]);
+      if (!hit || hit === el || el.contains(hit) || hit.contains(el)) continue;
+      if (inFixedLayer(hit)) continue;
+      if (!opaqueBg(hit)) continue;
+      if (!stackedAbove(hit, el)) continue;
+      out.textOverlap.push({
+        el: describe(el),
+        by: describe(hit),
+        top: Math.round(r.top),
+        at: pt[0] + ',' + pt[1],
+      });
+      break;
+    }
+  }
+
+  /* ── 5. TABEL STATIS LOWONGAN TAMPIL PADAHAL ISLAND HIDUP ────────────────
      Inilah cacat yang diukur 2026-11-09: /loker CLS 0,562 dan /public 0,478.
      LokerStaticList merender tabel ~3.300px di server, lalu tabel itu
      disembunyikan setelah island dapat data — seluruh isi di bawahnya melompat
@@ -565,6 +661,14 @@ async function plantAndDetect(page) {
     // Teks terpotong: kontainer 60px dengan teks panjang tanpa wrap + ellipsis
     mk('probe-clipped', 'width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;z-index:99998',
       'TEKS PANJANG YANG JELAS MELEBIHI ENAM PULUH PIKSEL');
+    /* Teks TERTIMPA: dua kotak bertumpuk, yang atas opaque dan ber-z-index —
+       bentuk yang sama dengan kartu /apply. Keduanya absolute supaya tidak
+       menggeser halaman yang sedang diukur, dan z-index tinggi supaya berada
+       di atas isi halaman. */
+    mk('probe-covered-text', 'position:absolute;top:120px;left:0;width:220px;height:40px;z-index:99996',
+      'TEKS YANG TERTIMPA KARTU');
+    mk('probe-covered-cover', 'position:absolute;top:130px;left:0;width:220px;height:40px;background:#fff;z-index:99997',
+      '');
   });
 
   const res = await sweep(page);
@@ -572,9 +676,18 @@ async function plantAndDetect(page) {
     overflow: res.overflow.some((o) => o.el.includes('probe-overflow')),
     tap: res.tap.some((o) => o.el.includes('probe-small')),
     clipped: res.clipped.some((o) => o.el.includes('probe-clipped')),
+    textOverlap: res.textOverlap.some((o) => o.el.includes('probe-covered-text')),
   };
   await page.evaluate(() => {
-    for (const id of ['probe-overflow', 'probe-small', 'probe-clipped']) document.getElementById(id)?.remove();
+    for (const id of [
+      'probe-overflow',
+      'probe-small',
+      'probe-clipped',
+      'probe-covered-text',
+      'probe-covered-cover',
+    ]) {
+      document.getElementById(id)?.remove();
+    }
   });
   return found;
 }
@@ -584,6 +697,7 @@ function fmtDefect(d) {
   if (d.over !== undefined) return `${d.el} — melewati tepi kanan ${d.over}px (right=${d.right})`;
   if (d.w !== undefined) return `${d.el} — sasaran sentuh ${d.w}×${d.h}px (lantai ${MIN_TAP})`;
   if (d.cut !== undefined) return `${d.el} — teks terpotong ${d.cut}px (scroll=${d.scrollW} client=${d.clientW})`;
+  if (d.by !== undefined) return `${d.el} — TERTIMPA ${d.by} (teks mulai y=${d.top}, titik ${d.at})`;
   return JSON.stringify(d);
 }
 
@@ -593,6 +707,7 @@ function layoutProblems(res) {
   for (const o of res.overflow) problems.push(fmtDefect(o));
   for (const o of res.tap) problems.push(fmtDefect(o));
   for (const o of res.clipped) problems.push(`TEKS TERPOTONG: ${fmtDefect(o)}`);
+  for (const o of res.textOverlap) problems.push(`TEKS TERTIMPA: ${fmtDefect(o)}`);
   if (res.staticFallback) {
     problems.push(
       `TABEL STATIS LOWONGAN TAMPIL padahal island hidup: ${res.staticFallback} — ` +
