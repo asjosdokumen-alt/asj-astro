@@ -324,6 +324,30 @@ export default function App(
   useLayoutEffect(() => {
     const el = drawerRef.current;
     if (el) el.inert = !menuOpen;
+    /* BACKGROUND SCROLL LOCK, and it matters more now than it used to.
+       ---------------------------------------------------------------------
+       The menu can be opened from ANY scroll position since 2026-11-10 (it
+       follows the page), so a swipe that lands on the scrim no longer just
+       nudges a page the user is looking at from the top — it can leave them
+       thousands of pixels away from where they opened the drawer, with no
+       visual trace of what moved.
+
+       On `<html>`, not `<body>`: `overflow: hidden` on body alone does not stop
+       the viewport from scrolling when `html` is the scrolling element, which is
+       the case here. `scrollbar-gutter: stable` (layout.css) is what makes this
+       free — the gutter is already reserved, so removing the scrollbar does not
+       shift the layout by 15px.
+
+       Restored from the PREVIOUS inline value rather than cleared to '', so a
+       value set by something else (a modal that locks too) is not clobbered. */
+    if (menuOpen) {
+      const html = document.documentElement;
+      const previous = html.style.overflow;
+      html.style.overflow = 'hidden';
+      return () => {
+        html.style.overflow = previous;
+      };
+    }
   }, [menuOpen]);
 
   useEffect(() => {

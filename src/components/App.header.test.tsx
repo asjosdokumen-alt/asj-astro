@@ -220,3 +220,35 @@ describe('menu mengikuti scroll', () => {
     }
   });
 });
+
+/**
+ * Latar tidak boleh ikut bergulir saat drawer terbuka.
+ *
+ * WHY THIS BECAME LOAD-BEARING ON 2026-11-10: the menu now follows the scroll,
+ * so it can be opened from ANY position. A swipe that lands on the scrim used to
+ * nudge a page the user was reading from the top; now it can carry them thousands
+ * of pixels away from where they opened the drawer.
+ *
+ * The lock lives on `<html>` — `overflow: hidden` on `body` alone does not stop
+ * the viewport when `html` is the scrolling element. Asserting the element (not
+ * just "some lock exists") is the point of the test: a refactor that moves it to
+ * body would pass a naive check and do nothing in the browser.
+ */
+describe('drawer mengunci scroll latar', () => {
+  it('html overflow hidden selama terbuka, dikembalikan saat ditutup', async () => {
+    render(<App />);
+    const burger = document.querySelector<HTMLElement>('button[aria-label="Toggle Menu"]');
+    if (!burger) throw new Error('hamburger not rendered');
+    expect(document.documentElement.style.overflow).toBe('');
+
+    await act(async () => {
+      burger.click();
+    });
+    expect(document.documentElement.style.overflow).toBe('hidden');
+
+    await act(async () => {
+      burger.click();
+    });
+    expect(document.documentElement.style.overflow).toBe('');
+  });
+});

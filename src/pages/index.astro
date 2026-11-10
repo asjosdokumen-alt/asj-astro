@@ -1044,7 +1044,20 @@ import { GALLERY } from '../lib/gallery';
            what scanning it does rather than `alt=""`. The links open in a new
            tab and use `rel="noopener noreferrer"`, matching the footer's social
            links. */}
-      <div class="mt-6 grid grid-cols-3 gap-3 sm:gap-4">
+      {/* `pr-14 md:pr-0` IS A SAFE AREA (2026-11-10), not spacing.
+          The site menu follows the scroll (`App.tsx`) and floats 44px wide in
+          the lane 12..56px from the viewport edge. MEASURED on this grid at
+          360-414px: the third card (TikTok) had **10-13% of its area** — its
+          top-right corner — under the menu at one scroll position, so a tap
+          meant for the card could open the menu. 56px of right padding moves
+          the grid's edge out of that lane.
+          COST, measured rather than assumed: the cards go 112 -> 91px wide and
+          the QR goes ~88 -> ~67px. That is still scannable, and the cards are
+          also plain links (tap opens the app), so the QR is the secondary path.
+          `md:pr-0` because from 768px up the grid sits inside a centred
+          container and the overlap falls to 1-3% — a corner the size of a
+          thumbnail, not worth narrowing the cards for. */}
+      <div class="mt-6 grid grid-cols-3 gap-3 sm:gap-4 pr-14 md:pr-0">
         <a
           href={`https://wa.me/${CONTACT_WHATSAPP}`}
           target="_blank"
