@@ -339,13 +339,12 @@ export default function LokerTable() {
                     menu covered **39-53% of the row's action button**, which turns a
                     tap on "Detail" into a tap on the menu. 56px of right padding is
                     exactly that lane, so the controls stop before it.
-                    `md:` and not unconditional, deliberately: below 768px the card
-                    layout (`layout.css`, `td.rt-full { padding: … !important }`)
-                    zeroes this padding anyway, so claiming it there would be a
-                    comment that lies. On phones the menu can still overlap the LAST
-                    action chip by ~30%; the alternative is wrapping the three
-                    buttons onto two lines, which makes every job card taller — a
-                    worse trade for a list people scroll. Recorded, not hidden. */}
+                    `md:` because this cell only exists as a table cell from 768px up;
+                    below that the card layout takes over and reserves the same lane
+                    on the row itself (`layout.css`, `td.rt-full:last-child > div`),
+                    because THIS padding is zeroed there by an `!important` rule in
+                    that same media query — measured, not assumed. Both halves are
+                    needed; neither one alone clears every width. */}
                 <td data-label={t("table.action")} class="rt-full p-1 md:pr-14 align-top w-20">
                   <div class="flex flex-row gap-1 items-center justify-center">
                     {/* ⚠ `text-slate-950` HERE WAS A WCAG FAILURE, AND IT WAS THE TEXT
