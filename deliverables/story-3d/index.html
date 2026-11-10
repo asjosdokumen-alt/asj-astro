@@ -46,7 +46,7 @@
   .photo{position:absolute;top:-10vh;height:120vh;aspect-ratio:1024/1536;will-change:transform}
   /* radius ellipse HARUS 50% (tepi elemen = ujung gradient). Kalau 64%,
      tepi gambar masih ~35% opaque dan muncul garis vertikal keras. */
-  .photo img{
+  .photo img,.photo video{
     width:100%;height:100%;object-fit:cover;display:block;
     filter:brightness(.94) contrast(1.04) saturate(.96);
     -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 46%,#000 38%,rgba(0,0,0,.92) 60%,rgba(0,0,0,.45) 82%,transparent 100%);
@@ -186,7 +186,7 @@
 (() => {
   /* ── data: satu babak = satu gambar ── */
   const CH = [
-    { img:'assets/00-hero.webp', lab:'00 — 00', coord:'PONOROGO · 7.86°S 111.46°E',
+    { img:'assets/00-hero.webp', vid:'assets/clips/00-hero.mp4', lab:'00 — 00', coord:'PONOROGO · 7.86°S 111.46°E',
       kick:'Satu jalan · enam langkah',
       title:'Dua tahun dari sekarang,<br>kamu <em>berdiri di sini.</em>',
       sub:'Bukan karena keberuntungan. Karena urutan langkah yang benar.', cls:'', side:'right' },
@@ -196,7 +196,7 @@
       title:'Semua dimulai<br>dari <em>satu formulir.</em>',
       sub:'Pemeriksaan kesehatan, kelengkapan dokumen, dan satu keputusan yang kamu tunda setahun.', cls:'', side:'right' },
 
-    { img:'assets/02-latihan.webp', lab:'02 — 06', coord:'PONOROGO · 7.86°S 111.46°E',
+    { img:'assets/02-latihan.webp', vid:'assets/clips/02-latihan.mp4', lab:'02 — 06', coord:'PONOROGO · 7.86°S 111.46°E',
       kick:'Langkah 02 — Pelatihan',
       title:'Bulan pertama<br>bukan soal Jepang.',
       sub:'Hiragana, budaya kerja, dan berani salah di depan kelas — sampai jadi kebiasaan.', cls:'right', side:'left' },
@@ -216,7 +216,7 @@
       title:'Satu pesawat.<br><em>Satu arah.</em>',
       sub:'Dari Ponorogo ke prefektur tempat kamu ditempatkan.', cls:'', side:'left' },
 
-    { img:'assets/06-tiba.webp', lab:'06 — 06', coord:'JEPANG · 35.68°N 139.69°E',
+    { img:'assets/06-tiba.webp', vid:'assets/clips/06-tiba.mp4', lab:'06 — 06', coord:'JEPANG · 35.68°N 139.69°E',
       kick:'Langkah 06 — Tiba',
       title:'Koper dua puluh kilo,<br>dan satu orang <em>yang melambai.</em>',
       sub:'Gajimu datang tiap bulan. Dan kamu yang dulu ragu — sekarang yang menjelaskan.',
@@ -235,9 +235,15 @@
     const place = side === 'right' ? 'right:3vw'
                 : side === 'left'  ? 'left:3vw'
                 : 'left:calc(50% - 40vh)';
+    // Babak dengan klip: poster tetap gambar diam, video baru diunduh saat
+    // babaknya jadi aktif (preload="none") — 3 klip x ~450 KB tidak boleh
+    // ikut di muat pertama.
+    const plate = c.vid
+      ? '<video src="' + c.vid + '" poster="' + c.img + '" muted loop playsinline preload="none" aria-hidden="true"></video>'
+      : '<img src="' + c.img + '" alt="">';
     s.innerHTML =
       '<div class="bg" style="background-image:url(' + c.img.replace('assets/', 'assets/blur/') + ')"></div>' +
-      '<div class="photo" style="' + place + '"><img src="' + c.img + '" alt=""></div>' +
+      '<div class="photo" style="' + place + '">' + plate + '</div>' +
       '<div class="sweep"></div>' +
       '<div class="veil"></div>';
     scenesEl.appendChild(s);
@@ -261,6 +267,7 @@
     railEl.appendChild(b);
 
     c._s = s; c._t = t; c._b = b;
+    c._v = s.querySelector('video');
     c._bg = s.querySelector('.bg');
     c._ph = s.querySelector('.photo');
     c._sw = s.querySelector('.sweep');
@@ -401,7 +408,15 @@
       const c = CH[best];
       coordEl.textContent = c.coord;
       counterEl.textContent = c.lab;
-      CH.forEach((x, i) => x._b.classList.toggle('on', i === best));
+      CH.forEach((x, i) => {
+        x._b.classList.toggle('on', i === best);
+        // hanya babak yang terlihat yang memutar klip; sisanya dihentikan
+        // supaya 3 decoder tidak jalan bersamaan.
+        if (x._v) {
+          if (i === best) { x._v.play().catch(() => {}); }
+          else if (!x._v.paused) { x._v.pause(); }
+        }
+      });
     }
     hintEl.style.opacity = p < .012 ? '1' : '0';
     drawDust(t); drawGrain();

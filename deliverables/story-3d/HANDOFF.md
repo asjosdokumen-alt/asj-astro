@@ -12,7 +12,7 @@ owner habis, pindah email. Sisa pekerjaan yang butuh kredit dicatat di §5.
 | Bentuk | **video** 80 detik (16:9) | **website scroll** 7 babak |
 | Berkas | `index.html` (animatic), `out/*.mp4`, `out/loop-hero.gif` | `index.html`, `assets/*.webp` |
 | Aset | ilustrasi lama situs | **render baru**, wajah diambil dari hero ASJ |
-| Status | selesai, ter-commit | jalan, tinggal diisi klip video |
+| Status | selesai, ter-commit | jalan, **seragam + 3 klip sudah masuk** (2026-11-11) |
 
 Buka `deliverables/story-3d/index.html` di browser — scroll dari atas.
 `#3` di URL untuk lompat ke babak 4. `space` tidak dipakai di sini.
@@ -71,12 +71,9 @@ keduanya harus sama).
 
 ## 5. Yang belum — urut prioritas
 
-1. **3 klip video** (hero, latihan, tiba) untuk menghidupkan wajah: kedip, napas,
-   rambut. Biaya 50–100 kredit/klip 5 s. Owner memilih ini sebelum kredit habis.
-   Sumber: `assets/00-hero.png`, `02-latihan.png`, `06-tiba.png` (master PNG,
-   ada di disk, **tidak** di-track git).
-   Setelah jadi: ganti `.photo img` jadi `<video muted loop playsinline>` dan
-   putar hanya babak yang terlihat.
+1. ~~**3 klip video** (hero, latihan, tiba)~~ **SELESAI 2026-11-11** — lihat §9.
+   Catatan lama: biaya 50–100 kredit/klip 5 s. Sumber: `assets/00-hero.png`,
+   `02-latihan.png`, `06-tiba.png`.
 2. **Potongan 9:16** untuk Reels/TikTok: 60 s, buang shot 01, teks naik ke
    sepertiga atas (UI Reels menutup bawah).
 3. **Suara** — referensi senyap; kalau mau VO Bahasa Indonesia, seluruh ritme
@@ -124,3 +121,59 @@ Offset `1.25` **diukur** dengan `signalstats` (hero mulai detik 7,25), bukan dit
 Mulai dari sini: buka `deliverables/story-3d/index.html`, scroll penuh sekali,
 lalu baca §5. Yang paling menentukan hasil akhir adalah **klip video 3 babak** —
 tanpa itu, gambarnya tetap still yang digerakkan kamera, bukan wajah yang hidup.
+
+---
+
+## 9. Sesi 2026-11-11 — seragam per tahap + 3 klip
+
+**Permintaan owner:** jaket beige yang dipakai di semua render itu "random" — model
+harus pakai baju LPK Amanah, dan bajunya ikut tahap. **Tanpa hijab**, mengikuti
+model hero aslinya.
+
+| Babak | Pakaian | Alasan |
+|---|---|---|
+| 00 hero | polo Amanah | titik mulai = peserta baru |
+| 01 daftar | polo Amanah | formulir = hari pertama |
+| 02 latihan | polo Amanah | masih di kelas |
+| 03 wawancara | kemeja putih + blazer hitam | "putih hitam" dari owner |
+| 04 dokumen | lengan polo + manset magenta | tangan saja, seragam tetap terbaca |
+| 05 terbang | jaket beige (bebas) + badge Amanah | "bebas tapi ada Amanah-nya" |
+| 06 tiba | kimono ivory + obi merah | "jepang pakai kimono" |
+
+Seragamnya: polo hitam arang, trim magenta di kerah/placket/ujung lengan, lengan
+panjang hitam di dalam, celana hitam. **Badge dada = logo PWA**
+(`public/icons/icon-512.png`): cincin merah, laurel emas, torii + Fuji.
+
+### Tiga jebakan yang sudah dibayar
+
+1. **Watermark beda tempat per modality.** Gambar: kanan-bawah ("AI生成 WORKBUDDY").
+   Video: **kiri-atas**, pil kecil. Keduanya dipotong dengan `crop` — gambar
+   `1024x1536 -> 1024x1464` (buang 72 px bawah), video `800x1148 -> 800x1076`
+   (buang 72 px atas). Tanpa ini, aset tidak layak tayang.
+2. **Image-to-video MENULIS ULANG teks di latar.** Klip latihan pertama: hiragana
+   di papan berubah tiap frame (あかかあ → あただた → …). Prompt "jangan ubah" saja
+   tidak cukup; yang berhasil adalah **"foto diam dengan orang hidup di dalamnya"**
+   + kamera nyaris tanpa geser. Klip pertama ditolak.
+3. **Kimono indigo hilang di babak 06.** Mask radial + veil bawah memudar di bawah
+   frame, jadi kain gelap jadi silhouette. Diganti kimono ivory + obi merah supaya
+   terbaca. Pelajaran: warna pakaian harus lebih terang dari latar, karena tepi
+   bawah plate selalu dipudarkan.
+
+### Cara memasang klip
+
+`.photo img` → `.photo img,.photo video` (mask/filter sama). Tiap babak yang punya
+klip diberi `vid:` di `CH`; elemennya `<video muted loop playsinline preload="none"
+poster="…webp">`. Di `render()`, saat `best !== active`: klip babak aktif `play()`,
+sisanya `pause()`. Terukur: hanya 1 decoder jalan, dan klip yang belum disentuh
+tetap `readyState 0` (tidak ikut diunduh).
+
+| Klip | Ukuran | Durasi |
+|---|---|---|
+| `assets/clips/00-hero.mp4` | 440 KB | 5,04 s |
+| `assets/clips/02-latihan.mp4` | 302 KB | 5,04 s |
+| `assets/clips/06-tiba.mp4` | 425 KB | 5,04 s |
+
+Semua 800×1076, 24 fps, tanpa audio, CRF 26.
+
+**Yang belum:** babak 01/03/04/05 masih still, potongan 9:16, VO, CTA masih `<b>`.
+Animatic di `story-video/` masih memakai ilustrasi lama — belum disamakan.
