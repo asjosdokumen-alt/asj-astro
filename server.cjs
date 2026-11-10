@@ -75,6 +75,13 @@ const MIME = {
   // jadi cacatnya tidak terlihat di produksi dan nyata di setiap tempat yang
   // mengukur. `application/xml` adalah tipe yang diterima Google untuk sitemap.
   '.xml': 'application/xml; charset=utf-8',
+  // `.mp4` — kelas cacat yang SAMA untuk keempat kalinya (2026-11-11). Band
+  // "Satu Jalan" di `#alur` memutar dua klip di `public/assets/story/`, jadi
+  // dist/ pertama kali berisi `.mp4`. Tanpa entri ini harness lokal menyajikan
+  // video sebagai `application/octet-stream`: Chromium masih memutarnya, tetapi
+  // `Range`/prefetch tidak, dan setiap pengukuran lokal jadi berbeda dari
+  // Netlify yang menyajikannya benar.
+  '.mp4': 'video/mp4',
 };
 
 /** Check if a port is available */

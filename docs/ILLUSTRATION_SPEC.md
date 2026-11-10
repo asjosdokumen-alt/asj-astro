@@ -209,6 +209,38 @@ menggantikan foto yang tidak punya basis consent. Ketika galeri itu dikerjakan,
 nama berkasnya kemungkinan tetap seperti di arsip — tetapi **jangan** anggap tabel
 arsip itu sebagai keadaan sekarang.
 
+### 3.4 Band "Satu Jalan" di `#alur` — 2026-11-11
+
+`#alur` **tidak lagi merender `StepList`** (enam kartu lanskap 7:5). Yang tampil
+sekarang band scroll berpanggung `sticky`: enam plate **potret**, satu per langkah,
+plus dua klip 5 detik. Semuanya di `public/assets/story/`.
+
+| Slot | Berkas | Ukuran | Isi |
+|---|---|---|---|
+| 01 | `01-daftar.webp` | 1024×1464 | mengisi formulir, polo Amanah |
+| 02 | `02-latihan.webp` + `.mp4` | 1024×1464 · 800×1076 | mengajar di papan tulis, polo Amanah |
+| 03 | `03-wawancara.webp` | 1024×1464 | kemeja putih + blazer hitam |
+| 04 | `04-dokumen.webp` | 1024×1464 | tangan menandatangani, lengan polo + manset |
+| 05 | `05-terbang.webp` | 1024×1464 | jaket bebas + badge Amanah di bandara |
+| 06 | `06-tiba.webp` + `.mp4` | 1024×1464 · 800×1076 | kimono ivory + obi merah |
+
+**Kenapa potret, padahal kartu lama lanskap.** Plate-nya render setengah badan;
+memaksanya ke 7:5 memotong kepala. Jadi `.story-media` memakai
+`aspect-ratio: 1024/1464` dengan tinggi `min(78svh, 100%)` — rasio mengikuti
+artwork, aturan yang sama dengan §3 saat kartu program berubah 4:3 → 3:2.
+
+**Model dan pakaiannya.** Satu model di keenam plate, **tanpa hijab**, mengikuti
+model hero. Pakaiannya ikut tahap (tabel di atas); badge dadanya logo PWA
+(`public/icons/icon-512.png`), bukan emblem karangan. Ini keputusan owner
+2026-11-11, dan `scripts/ci/verify-assets.mjs` mencatatnya di set `ILLUSTRATIONS`.
+
+**Yang TIDAK berubah.** Teks tetap teks: judul dan badan tiap langkah masih
+`data-lang` dari `FLOW_STEPS`, jadi toggle ID/EN/JP menjangkaunya dan tidak ada
+kunci baru. `StepList.tsx` masih ada dan masih diekspor — ia hanya tidak dipanggil
+lagi. Enam berkas `ilustrasi/langkah-*.webp` **tetap di disk dan tetap disetujui
+gate**: mencabut entri selama referensinya masih ada adalah cara gambar rusak
+lolos tanpa suara.
+
 ---
 
 ## 4. Setelah gambar ada: yang harus dilakukan

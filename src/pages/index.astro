@@ -15,7 +15,6 @@ import HistoryTimeline from '../components/public/HistoryTimeline.tsx';
 import ContactForm from '../components/public/ContactForm.tsx';
 import GalleryGrid from '../components/public/GalleryGrid.tsx';
 import FactList from '../components/public/FactList.tsx';
-import StepList from '../components/public/StepList.tsx';
 import CheckList from '../components/public/CheckList.tsx';
 import Icon from '../components/ui/Icon';
 import {
@@ -53,6 +52,52 @@ import {
 import { REVIEWS, REVIEW_SOURCE } from '../lib/testimonials';
 import { FAQ } from '../lib/faq';
 import { GALLERY } from '../lib/gallery';
+
+/* ── MEDIA UNTUK BAND "SATU JALAN" DI §ALUR ──────────────────────────────────
+   Enam plate potret (1024x1464) + dua klip 5 detik, semuanya hasil generate
+   dengan satu model yang sama dan pakaian yang ikut tahap (polo Amanah di
+   pendaftaran/pelatihan, putih-hitam di wawancara, polo lagi di dokumen, jaket
+   bebas berbadge di keberangkatan, kimono di Jepang).
+
+   KENAPA PATH DITULIS LITERAL, BUKAN DIBENTUK DARI `step.image.name`.
+   `scripts/ci/verify-assets.mjs` membaca referensi `/assets/…webp` yang literal;
+   path yang dirakit (`/assets/story/${…}`) tidak terlihat olehnya, jadi keenam
+   berkas akan tampil sebagai "ada di disk, tidak dipublikasi" dan gate kehilangan
+   objek yang seharusnya ia jaga. Nama berkasnya sengaja TIDAK mengikuti
+   `langkah-N` supaya artinya terbaca tanpa membuka gambarnya — karena itu
+   pemetaannya ditulis di sini, satu baris per langkah, bukan diturunkan. */
+const STORY_MEDIA = [
+  {
+    webp: '/assets/story/01-daftar.webp',
+    mp4: null,
+    alt: 'Ilustrasi peserta mengisi formulir pendaftaran dengan pulpen di atas meja, memakai polo LPK Amanah.',
+  },
+  {
+    webp: '/assets/story/02-latihan.webp',
+    mp4: '/assets/story/02-latihan.mp4',
+    alt: 'Ilustrasi pengajar di depan papan tulis berisi hiragana, memakai polo LPK Amanah, dengan peserta duduk di depan kelas.',
+  },
+  {
+    webp: '/assets/story/03-wawancara.webp',
+    mp4: null,
+    alt: 'Ilustrasi wawancara kerja: peserta berkemeja putih dan blazer hitam berhadapan dengan pewawancara.',
+  },
+  {
+    webp: '/assets/story/04-dokumen.webp',
+    mp4: null,
+    alt: 'Ilustrasi tangan menandatangani berkas kepengurusan dengan paspor di atas meja, lengan polo LPK Amanah.',
+  },
+  {
+    webp: '/assets/story/05-terbang.webp',
+    mp4: null,
+    alt: 'Ilustrasi peserta berjaket bebas dengan badge Amanah, memegang paspor dan koper di bandara saat matahari terbenam.',
+  },
+  {
+    webp: '/assets/story/06-tiba.webp',
+    mp4: '/assets/story/06-tiba.mp4',
+    alt: 'Ilustrasi peserta tiba di Jepang dengan kimono dan koper, berlatar Gunung Fuji dan gerbang torii.',
+  },
+] as const;
 
 /* WHY THE SECTIONS ARE COMPOSED HERE AND NOT EACH IN THEIR OWN FILE.
    Six of the blocks below are the same three elements — a Section, a SectionTitle
@@ -263,7 +308,12 @@ import { GALLERY } from '../lib/gallery';
       </div>
     </Section>
 
-    <!-- Section: Alur & Persyaratan (pages 3 and 4) -->
+    <!-- Section: Alur & Persyaratan (pages 3 and 4).
+         `enter` tetap seperti band lain: drift scroll-linked-nya hanya 6 px
+         (`motion.css` §9f, `[data-scroll="curtain"]{--scroll-drift:6px}`), jadi
+         panggung sticky di dalamnya ikut bergeser 6 px — tidak terlihat, dan
+         jauh lebih murah daripada mencabut satu baris dari tabel oracle
+         `sectionMotion.ts` yang dijaga `e2e/test-landing.mjs`. -->
     <Section id="alur" labelledBy="alur-title" class="section-alt border border-line/30 rounded-panel" enter="curtain">
       <SectionTitle
         titleKey="profile.step_title"
@@ -273,8 +323,65 @@ import { GALLERY } from '../lib/gallery';
         accent="exam"
         headingId="alur-title"
       />
-      <div class="mt-8">
-        <StepList steps={FLOW_STEPS} />
+      {/* ── Band "Satu Jalan" ───────────────────────────────────────────────
+           Menggantikan grid enam kartu StepList. Isi teksnya TIDAK berubah dan
+           TIDAK diduplikasi: judul/badan tiap langkah tetap `data-lang` dari
+           FLOW_STEPS, jadi toggle ID/EN/JP tetap menjangkaunya tanpa kunci baru.
+
+           Cara kerjanya: `.story-track` setinggi 6 x 62svh + 100svh, dan
+           `.story-stage` menempel (`sticky`) di dalamnya. Progres scroll di
+           dalam track memilih babak; hanya satu babak yang `opacity:1`.
+
+           KENAPA PANGGUNG INI AMAN DI DALAM Section YANG BER-`enter`.
+           `enter` menaruh animasi `transform` pada pembungkus, dan transform
+           pada leluhur memang menggeser hasil lukis anak yang sticky. Di sini
+           geseran itu 6 px (`--scroll-drift`, motion.css §9f) — terukur, bukan
+           diasumsikan — jadi panggung tetap terbaca menempel. Kalau nilainya
+           suatu saat dinaikkan, band ini yang pertama terlihat rusak. */}
+      <div class="story" data-story>
+        <div class="story-track" data-story-track>
+          <div class="story-stage">
+            {FLOW_STEPS.map((step, i) => (
+              <article class={`story-ch${i === 0 ? ' is-on' : ''}`} data-story-ch>
+                <div class="story-media">
+                  <img
+                    src={STORY_MEDIA[i].webp}
+                    alt={STORY_MEDIA[i].alt}
+                    width="1024"
+                    height="1464"
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
+                    class="story-img"
+                  />
+                  {STORY_MEDIA[i].mp4 ? (
+                    <video
+                      class="story-vid"
+                      src={STORY_MEDIA[i].mp4}
+                      poster={STORY_MEDIA[i].webp}
+                      muted
+                      loop
+                      playsinline
+                      preload="none"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                </div>
+                <div class="story-copy">
+                  <span class="story-n">
+                    {String(i + 1).padStart(2, '0')} <i>/ 06</i>
+                  </span>
+                  <h3 data-lang={step.title.key}>{step.title.text}</h3>
+                  <p data-lang={step.body.key}>{step.body.text}</p>
+                </div>
+              </article>
+            ))}
+            <div class="story-dots" aria-hidden="true">
+              {FLOW_STEPS.map((_, i) => (
+                <span class={`story-dot${i === 0 ? ' is-on' : ''}`} data-story-dot />
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="mt-12">
@@ -1290,6 +1397,243 @@ import { GALLERY } from '../lib/gallery';
   <div class="max-w-7xl mx-auto px-4 my-8">
     <div class="accent-line w-full rounded-full"></div>
   </div>
+
+  <style>
+    /* ── Band "Satu Jalan" (§alur) ─────────────────────────────────────────
+       Warna ditulis literal, BUKAN token tema. Band ini memang selalu gelap —
+       plate-nya adalah potret malam — dan token seperti `--fg` dibalik oleh
+       tema terang, sehingga teks putih di atas panggung hitam akan jadi hitam
+       di tema terang. Satu-satunya nilai yang aman di kedua tema adalah nilai
+       yang tidak ikut bertema. */
+    .story {
+      position: relative;
+      margin-top: 2.5rem;
+    }
+    .story-track {
+      position: relative;
+      height: calc(6 * 62svh + 100svh);
+    }
+    .story-stage {
+      position: sticky;
+      top: 0;
+      height: 100svh;
+      background: #05070c;
+      border-radius: 24px;
+      overflow: hidden;
+    }
+
+    .story-ch {
+      position: absolute;
+      inset: 0;
+      max-width: 74rem;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+      align-items: center;
+      gap: 2.5rem;
+      padding: 4svh 3rem;
+      opacity: 0;
+      transform: translateY(14px);
+      transition:
+        opacity 0.55s ease,
+        transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
+      pointer-events: none;
+    }
+    .story-ch.is-on {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+
+    .story-media {
+      position: relative;
+      height: min(78svh, 100%);
+      aspect-ratio: 1024 / 1464;
+      justify-self: end;
+    }
+    .story-img,
+    .story-vid {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 20px;
+      /* Radius mask 60%/64% — dengan 84%/92% tepi gambar masih ~100% opaque
+         (46% tinggi dari pusat hanya 50% radius), jadi plate-nya terbaca sebagai
+         kotak keras yang ditempel. Di bawah 60% potretnya larut ke panggung,
+         sama seperti di halaman story-3d. */
+      -webkit-mask-image: radial-gradient(
+        ellipse 60% 64% at 50% 48%,
+        #000 46%,
+        rgb(0 0 0 / 0.92) 66%,
+        transparent 100%
+      );
+      mask-image: radial-gradient(
+        ellipse 60% 64% at 50% 48%,
+        #000 46%,
+        rgb(0 0 0 / 0.92) 66%,
+        transparent 100%
+      );
+    }
+    .story-vid {
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .story-ch.is-on .story-vid {
+      opacity: 1;
+    }
+
+    .story-copy {
+      max-width: 30rem;
+      color: #f4f6f8;
+    }
+    .story-n {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.32em;
+      color: #f9a8d4;
+    }
+    .story-n i {
+      font-style: normal;
+      letter-spacing: 0.18em;
+      /* 0,62 bukan 0,45: pada 0,45 di atas #05070c hasil ukurnya 4,23:1 —
+         di bawah lantai 4,5 dan `e2e:contrast` menolaknya. */
+      color: rgb(244 246 248 / 0.62);
+    }
+    .story-copy h3 {
+      margin-top: 1rem;
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: clamp(28px, 3.4vw, 46px);
+      line-height: 1.06;
+      letter-spacing: -0.01em;
+      color: #fff;
+    }
+    .story-copy p {
+      margin-top: 1rem;
+      font-size: clamp(14px, 1.05vw, 16px);
+      line-height: 1.7;
+      color: rgb(244 246 248 / 0.72);
+    }
+
+    .story-dots {
+      position: absolute;
+      top: 50%;
+      right: 1.25rem;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .story-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: rgb(255 255 255 / 0.22);
+      transition:
+        background 0.3s ease,
+        transform 0.3s ease;
+    }
+    .story-dot.is-on {
+      background: #f9a8d4;
+      transform: scale(1.6);
+    }
+
+    /* Ponsel DAN reduced-motion memakai bentuk yang sama: daftar bertumpuk,
+       tanpa sticky dan tanpa babak tersembunyi. Kalau salah satu tetap memakai
+       panggung, isi band menjadi tidak terjangkau di perangkat itu. */
+    @media (max-width: 860px), (prefers-reduced-motion: reduce) {
+      .story-track {
+        height: auto;
+      }
+      .story-stage {
+        position: static;
+        height: auto;
+        padding: 1.5rem 0;
+      }
+      .story-ch {
+        position: relative;
+        inset: auto;
+        display: block;
+        opacity: 1;
+        transform: none;
+        pointer-events: auto;
+        padding: 1.25rem 1.25rem 2rem;
+      }
+      .story-media {
+        height: auto;
+        width: 100%;
+        max-width: 20rem;
+        margin: 0 auto;
+      }
+      .story-copy {
+        max-width: none;
+        margin: 1.25rem auto 0;
+      }
+      .story-dots {
+        display: none;
+      }
+    }
+  </style>
+
+  <script is:inline>
+    /* Penggerak band "Satu Jalan". Ditulis inline supaya tidak menambah satu
+       entry bundle lagi — halaman ini sudah punya anggaran bundle sendiri, dan
+       tiga puluh baris di sini tidak sepadan dengan satu chunk baru. */
+    (() => {
+      const band = document.querySelector('[data-story]');
+      if (!band) return;
+      const track = band.querySelector('[data-story-track]');
+      const chs = [...band.querySelectorAll('[data-story-ch]')];
+      const dots = [...band.querySelectorAll('[data-story-dot]')];
+      const vids = chs.map((c) => c.querySelector('video'));
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+      let cur = 0;
+      let raf = 0;
+
+      function show(i) {
+        if (i === cur) return;
+        cur = i;
+        chs.forEach((c, k) => c.classList.toggle('is-on', k === i));
+        dots.forEach((d, k) => d.classList.toggle('is-on', k === i));
+        vids.forEach((v, k) => {
+          if (!v) return;
+          if (k === i) v.play().catch(() => {});
+          else v.pause();
+        });
+      }
+
+      function tick() {
+        raf = 0;
+        if (reduce.matches || window.innerWidth <= 860) {
+          chs.forEach((c) => c.classList.add('is-on'));
+          return;
+        }
+        const box = track.getBoundingClientRect();
+        // Band yang sudah lewat di atas layar tidak boleh terus memutar klip.
+        if (box.bottom < 0 || box.top > window.innerHeight) {
+          vids.forEach((v) => v && v.pause());
+          return;
+        }
+        const span = track.offsetHeight - window.innerHeight;
+        if (span <= 0) return;
+        const p = Math.min(1, Math.max(0, -box.top / span));
+        show(Math.min(chs.length - 1, Math.floor(p * chs.length)));
+      }
+
+      const kick = () => {
+        if (!raf) raf = window.requestAnimationFrame(tick);
+      };
+      window.addEventListener('scroll', kick, { passive: true });
+      window.addEventListener('resize', kick, { passive: true });
+      reduce.addEventListener('change', kick);
+      tick();
+    })();
+  </script>
 
   <ClosingBand />
 </BaseLayout>

@@ -738,6 +738,26 @@ const ILLUSTRATIONS = new Set([
   'ilustrasi/langkah-4.webp',
   'ilustrasi/langkah-5.webp',
   'ilustrasi/langkah-6.webp',
+  // ADDED 2026-11-11 — the six portrait plates of the "Satu Jalan" band in
+  // `#alur` (src/pages/index.astro). They are what the page renders now; the six
+  // `langkah-*` entries above STAY, because those files are still on disk and
+  // still referenced by `FLOW_STEPS.image`, and an approval withdrawn while the
+  // reference stands is exactly how a broken image ships unnoticed.
+  //
+  // Same criterion as the rest of this set: generated drawings, one model across
+  // all six, no person whose likeness it is — so §11.2 has no subject to attach
+  // to. THE OUTFIT IS THE POINT of this set and is recorded here rather than
+  // left to the pixels: the model wears the LPK Amanah polo (charcoal, magenta
+  // trim, PWA badge on the chest) for registration, training and documents;
+  // white-and-black for the interview; the owner's own jacket plus the badge for
+  // departure; and a kimono on arrival. The badge is `icons/icon-512.png`, the
+  // same mark the PWA installs — not an invented emblem.
+  'story/01-daftar.webp',
+  'story/02-latihan.webp',
+  'story/03-wawancara.webp',
+  'story/04-dokumen.webp',
+  'story/05-terbang.webp',
+  'story/06-tiba.webp',
   // The footer emblem, localised off Supabase on 2026-09-24. A logo is a mark,
   // not a person, so the same criterion applies. It is the only member of this
   // set that lives outside `public/assets/` (under `public/icons/`); the gate
