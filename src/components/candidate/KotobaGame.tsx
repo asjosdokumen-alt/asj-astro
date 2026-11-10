@@ -1429,11 +1429,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           dipaksa 2 kolom di semua lebar — dengan 3 kolom, dropdown keempat
           jatuh sendirian di baris kedua dan menyisakan dua sel kosong (terukur
           di 1180 px: tiga select di y=382, satu di y=434). */}
-      <div
-        class={`grid grid-cols-2 ${
-          sumber === 'ssw' ? '' : 'sm:grid-cols-3'
-        } gap-2 mb-2`}
-      >
+      {/* Baris filter. `col-span-2` untuk tiga kontrol yang butuh lebar penuh:
+          rentang bab (dua select + tanda pisah) dan dua kelompok chip. Tanpa
+          itu, chip "Semua/Lemah/Jatuh tempo" berbagi sel dengan dua select dan
+          saling menimpa — terukur di 390 px pada halaman asli, bukan mockup. */}
+      <div class="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
         {sumber === 'ssw' ? (
           <select
             aria-label={t('kotoba.filter_bidang')}
@@ -1452,7 +1452,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
              setiap kali jumlah bab berubah. `aria-label` menyebut perannya
              (dari/sampai), bukan sekadar "filter bab", karena dua kotak dengan
              label sama tidak bisa dibedakan pembaca layar. */
-          <div class="flex items-center gap-1">
+          <div class="col-span-2 flex items-center gap-1">
             <select
               aria-label={`${t('kotoba.filter_bab')} — ${t('kotoba.bab_dari')}`}
               value={babDari}
@@ -1485,7 +1485,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
         {/* Fokus lingkup. Tiga pilihan, bukan dua tombol terpisah: "lemah" dan
             "jatuh tempo" saling meniadakan, jadi dua toggle independen akan
             membingungkan (dua-duanya menyala = irisan yang hampir selalu kosong). */}
-        <fieldset class="flex items-center gap-1 border-0 p-0 m-0">
+        <fieldset class="col-span-2 flex flex-wrap items-center gap-1 border-0 p-0 m-0">
           <legend class="sr-only">{t('kotoba.fokus_label')}</legend>
           {([
             ['semua', t('kotoba.fokus_semua')],
@@ -1505,7 +1505,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
         </fieldset>
         {/* Tingkat kesulitan: satu kontrol, tiga keadaan. Menggantikan sakelar
             "Kilat" yang biner — lihat catatan di `useState(tingkat)`. */}
-        <fieldset class="flex items-center gap-1 border-0 p-0 m-0">
+        <fieldset class="col-span-2 flex flex-wrap items-center gap-1 border-0 p-0 m-0">
           <legend class="sr-only">{t('kotoba.tingkat')}</legend>
           {([
             ['santai', t('kotoba.tk_santai')],

@@ -958,7 +958,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
 
           <div class="arc-order arc-order--violet">
             <div class="arc-order-head">
-              <span class="arc-kicker">{soalAktif.tag}</span>
+              <span class="arc-tag">{soalAktif.tag}</span>
               {soalAktif.kraepelin && (
                 <span class="arc-order-badge">{t('matematika.petunjuk_kraepelin')}</span>
               )}

@@ -244,12 +244,20 @@
   padding: 1px 6px;
   border-radius: 5px;
   background: var(--arc-cenbung);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   color: var(--arc-muted);
+}
+
+/* Label jenis soal. BUKAN `.arc-kicker`: kicker memakai huruf kapital + renggang
+   0,2em, dan tag seperti "Kraepelin 1 digit" pecah jadi "KRAEPELI / N 1 DIGIT"
+   di 390 px (terukur di halaman asli). */
+.arc-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--arc-cyan);
 }
 
 .arc-order-jp {
@@ -860,6 +868,7 @@
 
 .arc select,
 .arc input[type="text"] {
+  width: 100%;
   border: 0;
   border-radius: 10px;
   background-color: var(--arc-cenbung);
@@ -926,8 +935,12 @@
    berbingkai. Keadaan terpilih dibaca dari `aria-pressed` — satu sumber untuk
    mata dan pembaca layar. */
 .arc-tab {
-  display: flex;
-  flex-wrap: wrap;
+  /* GRID 3 kolom, bukan flex: dengan flex lima tab menyusut sampai 65 px dan
+     "Flashcard" pecah jadi "Flashcar|d" (terukur di 390 px). Grid memberi tiap
+     tombol sepertiga lebar, jadi label terpanjang pun utuh; baris terakhir boleh
+     menyisakan satu sel kosong — itu jauh lebih baik daripada kata terbelah. */
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
   margin-bottom: 8px;
   padding: 4px;
@@ -937,12 +950,6 @@
 }
 
 .arc-tab button {
-  /* `1 1 0` + `min-width: 0`, bukan `1 1 30%`: dengan 30% lima tab pecah
-     3+2 dan menyisakan celah lebar di baris kedua (terukur di 390 px). Dengan
-     basis 0 kelimanya berbagi satu baris; label panjang membungkus DI DALAM
-     tombolnya, dan tinggi baris tetap seragam. */
-  flex: 1 1 0;
-  min-width: 0;
   min-height: 40px;
   border: 0;
   border-radius: 9px;
