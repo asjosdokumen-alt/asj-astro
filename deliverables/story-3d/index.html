@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ASJ · Satu Jalan — scroll story 3D</title>
+<style>
+  @font-face{font-family:"Instrument Serif";src:url("../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+  @font-face{font-family:"Inter";src:url("../../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2") format("woff2");font-weight:400;font-display:swap}
+  @font-face{font-family:"Inter";src:url("../../node_modules/@fontsource/inter/files/inter-latin-700-normal.woff2") format("woff2");font-weight:700;font-display:swap}
+
+  :root{
+    --ink:#04060a;
+    --fg:#f4f6f8;
+    --dim:#8b93a1;
+    --pink:#f9a8d4;
+    --pink-deep:#db2777;
+    --serif:"Instrument Serif",Georgia,serif;
+    --sans:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:auto}
+  body{
+    background:var(--ink);color:var(--fg);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+
+  /* ── panggung tetap; yang bergerak adalah kamera ── */
+  #stage{
+    position:fixed;inset:0;overflow:hidden;
+    perspective:1200px;perspective-origin:50% 50%;
+    background:var(--ink);
+  }
+
+  .scene,.type{position:absolute;inset:0;will-change:opacity,transform}
+  .scene{z-index:1;transform-style:preserve-3d}
+  .bg,.photo{position:absolute;will-change:transform}
+  .bg{inset:-6%}
+  /* potret 2:3 TIDAK dipaksa full-bleed: kalau di-cover, yang terlihat cuma
+     wajah. Jadi gambar ditampilkan utuh sebagai "plate" di atas panggung gelap,
+     latar diisi versi buramnya. */
+  /* potret 2:3 TIDAK dipaksa full-bleed: kalau di-cover, yang terlihat cuma
+     wajah. Jadi gambar ditampilkan utuh sebagai "plate" di atas panggung gelap,
+     latar diisi versi buramnya. Plate dibuat seukuran gambar (aspect-ratio),
+     supaya mask-nya jatuh di tepi gambar — bukan di tepi layar. */
+  .photo{position:absolute;top:-10vh;height:120vh;aspect-ratio:1024/1536;will-change:transform}
+  /* radius ellipse HARUS 50% (tepi elemen = ujung gradient). Kalau 64%,
+     tepi gambar masih ~35% opaque dan muncul garis vertikal keras. */
+  .photo img{
+    width:100%;height:100%;object-fit:cover;display:block;
+    filter:brightness(.94) contrast(1.04) saturate(.96);
+    -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 46%,#000 38%,rgba(0,0,0,.92) 60%,rgba(0,0,0,.45) 82%,transparent 100%);
+    mask-image:radial-gradient(ellipse 50% 50% at 50% 46%,#000 38%,rgba(0,0,0,.92) 60%,rgba(0,0,0,.45) 82%,transparent 100%);
+  }
+  /* latar = versi buram gambar, TAPI digelapkan. Tanpa brightness turun,
+     gambar terang (bandara, sunrise) memutihkan seluruh panggung. */
+  .bg{filter:blur(46px) saturate(.85) brightness(.45);opacity:.62}
+  .bg img{transform:scale(1.25)}
+
+  /* tepi gambar larut ke hitam → terbaca sebagai objek, bukan foto ditempel */
+  .photo{
+    -webkit-mask-image:radial-gradient(ellipse 76% 82% at 50% 48%,#000 42%,rgba(0,0,0,.82) 68%,transparent 100%);
+    mask-image:radial-gradient(ellipse 76% 82% at 50% 48%,#000 42%,rgba(0,0,0,.82) 68%,transparent 100%);
+  }
+  .veil{position:absolute;inset:0;z-index:2;pointer-events:none;
+    background:
+      linear-gradient(to top,rgba(4,6,10,.96) 0%,rgba(4,6,10,.82) 26%,rgba(4,6,10,.34) 52%,rgba(4,6,10,0) 74%),
+      radial-gradient(120% 90% at 50% 45%,transparent 40%,rgba(4,6,10,.62) 100%);}
+  .sub{text-shadow:0 1px 18px rgba(4,6,10,.9)}
+
+  #dust{position:absolute;inset:0;z-index:3;pointer-events:none}
+  /* WAJIB ber-position + z-index: kalau tidak, .scene (z-index:1) melukis
+     DI ATAS teks dan seluruh narasi jadi nyaris tak terlihat. */
+  .types{position:absolute;inset:0;z-index:4;pointer-events:none}
+  .cta{pointer-events:auto}
+
+  /* ── tipografi ── */
+  .type{display:flex;flex-direction:column;justify-content:flex-end;padding:0 7vw 9vh}
+  .type.right{align-items:flex-end;text-align:right}
+  .type.center{justify-content:center;align-items:center;text-align:center}
+  .type.top{justify-content:flex-start;padding-top:14vh}
+  .kick{
+    font-size:12px;font-weight:700;letter-spacing:.34em;text-transform:uppercase;
+    color:var(--pink);margin-bottom:22px;display:flex;align-items:center;gap:14px;
+  }
+  .type.right .kick{flex-direction:row-reverse}
+  .kick::before{content:"";width:34px;height:1px;background:currentColor;opacity:.7}
+  h1,h2{
+    font-family:var(--serif);font-weight:400;letter-spacing:-.01em;color:#fff;
+    text-shadow:0 2px 50px rgba(0,0,0,.65);
+  }
+  h1{font-size:clamp(44px,7.2vw,104px);line-height:1.03;max-width:15ch}
+  h2{font-size:clamp(34px,4.6vw,68px);line-height:1.06;max-width:16ch}
+  h1 em,h2 em{font-style:normal;color:var(--pink)}
+  .sub{
+    margin-top:22px;font-size:clamp(14px,1.15vw,17px);line-height:1.7;
+    color:#cfd8e3;max-width:46ch;font-weight:400;
+  }
+  .sub b{color:#fff;font-weight:700}
+
+  /* ── chrome ── */
+  .rail{
+    position:fixed;right:26px;top:50%;transform:translateY(-50%);z-index:6;
+    display:flex;flex-direction:column;gap:14px;align-items:flex-end;
+  }
+  .rail button{
+    display:flex;align-items:center;gap:10px;background:none;border:0;cursor:pointer;
+    color:rgba(255,255,255,.35);font:inherit;padding:0;
+  }
+  .rail button span{
+    font-size:10px;letter-spacing:.2em;text-transform:uppercase;opacity:0;
+    transition:opacity .25s ease,color .25s ease;white-space:nowrap;
+  }
+  .rail button i{
+    display:block;width:6px;height:6px;border-radius:50%;
+    background:rgba(255,255,255,.28);transition:all .3s ease;
+  }
+  .rail button:hover span{opacity:1}
+  .rail button.on i{background:var(--pink);box-shadow:0 0 0 4px rgba(249,168,212,.18)}
+  /* label hanya saat hover — kalau selalu tampil, ia mengulang kicker di layar */
+  .rail button.on span{color:var(--pink)}
+
+  .corner{
+    position:fixed;z-index:6;font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+    color:rgba(255,255,255,.4);font-variant-numeric:tabular-nums;
+  }
+  .corner.tl{left:26px;top:24px}
+  .corner.tr{right:26px;top:24px}
+  .corner.bl{left:26px;bottom:22px}
+
+  .hint{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;
+    font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.5);
+    display:flex;flex-direction:column;align-items:center;gap:10px;
+    transition:opacity .4s ease;
+  }
+  .hint i{display:block;width:1px;height:34px;background:linear-gradient(to bottom,var(--pink),transparent);
+    animation:drop 2.2s ease-in-out infinite}
+  @keyframes drop{0%,100%{transform:scaleY(.4);transform-origin:top;opacity:.4}50%{transform:scaleY(1);opacity:1}}
+
+  .cta{display:flex;gap:14px;margin-top:36px;flex-wrap:wrap}
+  .type.right .cta{justify-content:flex-end}
+  .type.center .cta{justify-content:center}
+  .cta b{
+    display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:15px;
+    padding:16px 26px;border-radius:10px;
+  }
+  .cta b.p{background:var(--pink);color:#1a0b14}
+  .cta b.s{background:rgba(255,255,255,.07);color:#fff;border:1px solid rgba(255,255,255,.24)}
+
+  #scrollspace{height:700vh}
+
+  @media (max-width:720px){
+    .type{padding:0 7vw 14vh}
+    .rail{right:12px}
+    .rail button span{display:none}
+    h1{font-size:clamp(34px,9vw,52px)}
+    h2{font-size:clamp(26px,7.4vw,40px)}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div class="scenes" id="scenes"></div>
+  <canvas id="dust"></canvas>
+  <div class="types" id="types"></div>
+</div>
+
+<div class="rail" id="rail"></div>
+<div class="corner tl">ASJ · Satu Jalan</div>
+<div class="corner tr" id="coord">PONOROGO · 7.86°S 111.46°E</div>
+<div class="corner bl" id="counter">00 / 06</div>
+<div class="hint" id="hint"><i></i>gulir</div>
+
+<div id="scrollspace"></div>
+
+<script>
+(() => {
+  /* ── data: satu babak = satu gambar ── */
+  const CH = [
+    { img:'assets/00-hero.webp', lab:'00 — 00', coord:'PONOROGO · 7.86°S 111.46°E',
+      kick:'Satu jalan · enam langkah',
+      title:'Dua tahun dari sekarang,<br>kamu <em>berdiri di sini.</em>',
+      sub:'Bukan karena keberuntungan. Karena urutan langkah yang benar.', cls:'', side:'right' },
+
+    { img:'assets/01-daftar.webp', lab:'01 — 06', coord:'PONOROGO · 7.86°S 111.46°E',
+      kick:'Langkah 01 — Pendaftaran',
+      title:'Semua dimulai<br>dari <em>satu formulir.</em>',
+      sub:'Pemeriksaan kesehatan, kelengkapan dokumen, dan satu keputusan yang kamu tunda setahun.', cls:'', side:'right' },
+
+    { img:'assets/02-latihan.webp', lab:'02 — 06', coord:'PONOROGO · 7.86°S 111.46°E',
+      kick:'Langkah 02 — Pelatihan',
+      title:'Bulan pertama<br>bukan soal Jepang.',
+      sub:'Hiragana, budaya kerja, dan berani salah di depan kelas — sampai jadi kebiasaan.', cls:'right', side:'left' },
+
+    { img:'assets/03-wawancara.webp', lab:'03 — 06', coord:'PONOROGO · 7.86°S 111.46°E',
+      kick:'Langkah 03 — Wawancara',
+      title:'Satu ruangan.<br>Bahasa yang <em>masih patah.</em>',
+      sub:'Yang dicari bukan yang sempurna. Yang dicari yang siap belajar.', cls:'', side:'right' },
+
+    { img:'assets/04-dokumen.webp', lab:'04 — 06', coord:'PONOROGO · 7.86°S 111.46°E',
+      kick:'Langkah 04 — Dokumen',
+      title:'Paspor. Kontrak.<br><em>COE.</em>',
+      sub:'Di titik ini perjalanan bisa berhenti — atau lanjut. Semua ditentukan kelengkapan berkas.', cls:'right', side:'left' },
+
+    { img:'assets/05-terbang.webp', lab:'05 — 06', coord:'JEPANG · 35.68°N 139.69°E',
+      kick:'Langkah 05 — Keberangkatan',
+      title:'Satu pesawat.<br><em>Satu arah.</em>',
+      sub:'Dari Ponorogo ke prefektur tempat kamu ditempatkan.', cls:'', side:'left' },
+
+    { img:'assets/06-tiba.webp', lab:'06 — 06', coord:'JEPANG · 35.68°N 139.69°E',
+      kick:'Langkah 06 — Tiba',
+      title:'Koper dua puluh kilo,<br>dan satu orang <em>yang melambai.</em>',
+      sub:'Gajimu datang tiap bulan. Dan kamu yang dulu ragu — sekarang yang menjelaskan.',
+      cta:true, cls:'top', side:'center' },
+  ];
+
+  const N = CH.length;
+  const scenesEl = document.getElementById('scenes');
+  const typesEl = document.getElementById('types');
+  const railEl = document.getElementById('rail');
+
+  CH.forEach((c, i) => {
+    const s = document.createElement('div');
+    s.className = 'scene';
+    const side = c.side || 'right';
+    const place = side === 'right' ? 'right:3vw'
+                : side === 'left'  ? 'left:3vw'
+                : 'left:calc(50% - 40vh)';
+    s.innerHTML =
+      '<div class="bg"><img src="' + c.img + '" alt=""></div>' +
+      '<div class="photo" style="' + place + '"><img src="' + c.img + '" alt=""></div>' +
+      '<div class="veil"></div>';
+    scenesEl.appendChild(s);
+
+    const t = document.createElement('div');
+    t.className = 'type ' + (c.cls || '');
+    t.innerHTML =
+      '<div class="kick">' + c.kick + '</div>' +
+      (i === 0 ? '<h1>' + c.title + '</h1>' : '<h2>' + c.title + '</h2>') +
+      '<p class="sub">' + c.sub + '</p>' +
+      (c.cta
+        ? '<div class="cta"><b class="p">Daftar sebagai Pelamar →</b><b class="s">Konsultasi via WhatsApp</b></div>'
+        : '');
+    typesEl.appendChild(t);
+
+    const b = document.createElement('button');
+    b.innerHTML = '<span>' + c.kick + '</span><i></i>';
+    b.addEventListener('click', () => {
+      window.scrollTo({ top: (i / N) * maxScroll + 4, behavior: 'smooth' });
+    });
+    railEl.appendChild(b);
+
+    c._s = s; c._t = t; c._b = b;
+    c._bg = s.querySelector('.bg');
+    c._ph = s.querySelector('.photo');
+  });
+
+  /* ── debu: satu lapisan yang bertahan melewati semua babak ── */
+  const cvs = document.getElementById('dust');
+  const ctx = cvs.getContext('2d');
+  let W = 0, H = 0, DPR = Math.min(2, devicePixelRatio || 1);
+  function sizeCanvas() {
+    W = innerWidth; H = innerHeight;
+    cvs.width = W * DPR; cvs.height = H * DPR;
+    cvs.style.width = W + 'px'; cvs.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  sizeCanvas();
+  addEventListener('resize', sizeCanvas);
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const motes = Array.from({ length: 90 }, () => ({
+    x: rnd(0, 1), y: rnd(0, 1), r: rnd(.5, 2), vy: rnd(-.012, -.003),
+    vx: rnd(-.006, .006), a: rnd(.12, .5), ph: rnd(0, 6.28), warm: Math.random() < .25
+  }));
+  const bokeh = Array.from({ length: 7 }, () => ({
+    x: rnd(0, 1), y: rnd(0, 1), r: rnd(.05, .16), a: rnd(.02, .06), sp: rnd(.05, .14), ph: rnd(0, 6.28)
+  }));
+
+  function drawDust(t) {
+    ctx.clearRect(0, 0, W, H);
+    for (const b of bokeh) {
+      const x = (b.x + Math.sin(t * b.sp + b.ph) * .03) * W;
+      const y = (b.y + Math.cos(t * b.sp * .8 + b.ph) * .02) * H;
+      const r = b.r * Math.min(W, H);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(249,168,212,' + b.a + ')');
+      g.addColorStop(1, 'rgba(249,168,212,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+    }
+    for (const m of motes) {
+      const y = ((m.y + m.vy * t) % 1 + 1) % 1;
+      const x = ((m.x + m.vx * t) % 1 + 1) % 1;
+      ctx.beginPath();
+      ctx.fillStyle = m.warm ? 'rgba(232,195,122,' + m.a + ')' : 'rgba(255,255,255,' + m.a + ')';
+      ctx.arc(x * W + Math.sin(t * .5 + m.ph) * 10, y * H, m.r, 0, 6.2832);
+      ctx.fill();
+    }
+  }
+
+  /* ── kamera ── */
+  const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+  const easeInOut = p => (p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
+  const easeOut = p => (p >= 1 ? 1 : 1 - Math.pow(2, -9 * p));
+
+  let target = 0, smooth = 0, active = -1;
+  const coordEl = document.getElementById('coord');
+  const counterEl = document.getElementById('counter');
+  const hintEl = document.getElementById('hint');
+
+  // Tinggi dokumen BERUBAH setelah font & gambar masuk. Kalau `max` diukur
+  // sekali di awal, target scroll tidak pernah sampai dan semua teks tertangkap
+  // di tengah fade-in (tampak abu-abu). Jadi ukur ulang, lalu hitung tiap frame.
+  let maxScroll = 1;
+  function measure() {
+    maxScroll = Math.max(1, document.documentElement.scrollHeight - innerHeight);
+  }
+  addEventListener('resize', measure);
+  addEventListener('load', measure);
+  setTimeout(measure, 400);
+  setTimeout(measure, 1200);
+  measure();
+
+  function render(p, t) {
+    const seg = 1 / N;
+    let best = 0, bestD = 9;
+
+    for (let i = 0; i < N; i++) {
+      const local = (p - i * seg) / seg;
+      const c = CH[i];
+      const vis = local > -.2 && local < 1.2;
+
+      if (!vis) { c._s.style.opacity = 0; c._t.style.opacity = 0; continue; }
+
+      const l = clamp(local);
+      // masuk: kamera mundur sedikit (1.12 -> 1), lalu dorong pelan, lalu terbang lewat
+      const entry = easeOut(clamp(l / .38));
+      const z = -150 + 190 * l + (1 - entry) * -90;
+      const sc = 1.06 + .05 * l;
+      const driftX = (i % 2 ? -1 : 1) * (1 - entry) * 26;
+
+      c._ph.style.transform = 'translate3d(' + driftX.toFixed(2) + 'px,0,' + z.toFixed(1) + 'px) scale(' + sc.toFixed(4) + ')';
+      c._bg.style.transform = 'translate3d(0,0,' + (z * .45 - 380).toFixed(1) + 'px) scale(' + (sc * 1.1).toFixed(3) + ')';
+
+      // dissolve tanpa lubang: babak berikutnya menutup DI ATAS yang sekarang
+      // (kalau dua-duanya 0 di batas, layar sempat hitam), lalu yang lama
+      // baru disembunyikan setelah yang baru penuh.
+      const fin = i === 0 ? 1 : clamp((local + .10) / .20);
+      const fout = clamp((1.12 - local) / .02);
+      c._s.style.opacity = Math.min(fin, fout).toFixed(3);
+
+      // teks punya ritme sendiri. Babak pertama langsung terbaca (jangan
+      // menunggu scroll), babak terakhir tidak boleh pudar (CTA harus kelihatan).
+      const ti = i === 0 ? 1 : clamp((local - .10) / .16);
+      const to = i === N - 1 ? 0 : clamp((local - .74) / .14);
+      c._t.style.opacity = (Math.min(ti, 1 - to)).toFixed(3);
+      c._t.style.transform = 'translate3d(0,' + ((1 - easeOut(ti)) * 34 + to * -22).toFixed(1) + 'px,' + (40 + 60 * easeOut(ti)).toFixed(0) + 'px)';
+
+      const d = Math.abs(local - .5);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+
+    if (best !== active) {
+      active = best;
+      const c = CH[best];
+      coordEl.textContent = c.coord;
+      counterEl.textContent = c.lab;
+      CH.forEach((x, i) => x._b.classList.toggle('on', i === best));
+    }
+    hintEl.style.opacity = p < .012 ? '1' : '0';
+    drawDust(t);
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    target = clamp(scrollY / maxScroll);
+    smooth += (target - smooth) * .10;
+    if (Math.abs(target - smooth) < 1e-4) smooth = target;
+    render(smooth, now / 1000);
+    last = now;
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  /* lompat ke babak lewat hash: #3 */
+  const h = parseInt((location.hash || '').replace('#', ''), 10);
+  if (h >= 0 && h < N) {
+    requestAnimationFrame(() => {
+      window.scrollTo(0, (h / N) * maxScroll + 4);
+      readScroll(); smooth = target;
+    });
+  }
+
+  window.__go = i => { window.scrollTo(0, (i / N) * maxScroll + 4); };
+  window.__p = () => smooth;
+})();
+</script>
+</body>
+</html>

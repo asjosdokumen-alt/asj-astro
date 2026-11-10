@@ -223,3 +223,7 @@ deliverables/db-neon-migration/ENV-BARU-NEON.env
 # Yang di-track adalah sumbernya (index.html), bukan hasil rendernya.
 deliverables/story-video/out/*.mp4
 deliverables/story-video/out/*.webm
+
+# Master PNG hasil generate (13 MB) — yang dipakai halaman adalah .webp (840 KB).
+# PNG tetap ada di disk untuk bahan render video; tidak perlu masuk riwayat.
+deliverables/story-3d/assets/*.png
