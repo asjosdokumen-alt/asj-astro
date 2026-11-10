@@ -217,3 +217,9 @@ env-kunci/
 # Pola `deliverables/**` sengaja TIDAK di-ignore (banyak laporan hidup di sana);
 # yang di-ignore adalah berkas env-nya saja.
 deliverables/db-neon-migration/ENV-BARU-NEON.env
+
+# Render video dari animatic: 12,5 MB, dan bisa dibuat ulang dalam ~3 menit
+# (`node deliverables/story-video/_record.mjs` + ffmpeg, lihat DESIGN-STUDY.md §5).
+# Yang di-track adalah sumbernya (index.html), bukan hasil rendernya.
+deliverables/story-video/out/*.mp4
+deliverables/story-video/out/*.webm
