@@ -756,8 +756,24 @@ const ILLUSTRATIONS = new Set([
   'story/02-latihan.webp',
   'story/03-wawancara.webp',
   'story/04-dokumen.webp',
-  'story/05-terbang.webp',
+  'story/05-mcu.webp',
   'story/06-tiba.webp',
+  // ADDED 2026-11-11 — the same six scenes re-framed 3:2 for the full-bleed
+  // desktop band. They are NOT a resize of the plates above and must not inherit
+  // their basis: a 2:3 portrait cannot be cropped to 3:2 without cutting the
+  // subject, so each one was re-composed with the model on the right third and
+  // the left two thirds left dark for the copy. Same criterion as their parents
+  // — generated drawings, one model, no person whose likeness it is — and the
+  // same recorded outfit sequence (Amanah polo for registration/training/
+  // documents, white-and-black for the interview, the owner's jacket plus badge
+  // for departure, kimono on arrival). Portrait plates stay because the stacked
+  // mobile layout still renders them.
+  'story/wide/01-daftar.webp',
+  'story/wide/02-latihan.webp',
+  'story/wide/03-wawancara.webp',
+  'story/wide/04-dokumen.webp',
+  'story/wide/05-mcu.webp',
+  'story/wide/06-tiba.webp',
   // The footer emblem, localised off Supabase on 2026-09-24. A logo is a mark,
   // not a person, so the same criterion applies. It is the only member of this
   // set that lives outside `public/assets/` (under `public/icons/`); the gate

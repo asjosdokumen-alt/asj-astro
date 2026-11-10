@@ -227,3 +227,7 @@ deliverables/story-video/out/*.webm
 # Master PNG hasil generate (13 MB) — yang dipakai halaman adalah .webp (840 KB).
 # PNG tetap ada di disk untuk bahan render video; tidak perlu masuk riwayat.
 deliverables/story-3d/assets/*.png
+# The 3:2 plates (2026-11-11) are master renders like the portrait ones: 13 MB
+# of PNG that the committed `.webp` beside them fully replaces. Same reason, one
+# directory deeper — `assets/*.png` does not match a nested path.
+deliverables/story-3d/assets/wide/*.png
