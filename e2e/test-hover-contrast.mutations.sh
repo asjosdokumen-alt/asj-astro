@@ -77,8 +77,8 @@ export BASE_URL
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-LOG="F:/tmp/hover-mut"
-LOCK="F:/tmp/hover-mutations.lock"
+LOG="${TMP_ROOT:-${TMPDIR:-/tmp}}/hover-mut"
+LOCK="${TMP_ROOT:-${TMPDIR:-/tmp}}/hover-mutations.lock"
 RUNLOG="$LOG-run.log"
 
 # Every run's output is ALSO appended to a file. MEASURED 2026-09-29: a harness

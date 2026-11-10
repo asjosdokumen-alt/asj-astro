@@ -301,12 +301,54 @@ async function probeElement({ page, cdp, handle, selector, cdpNodeId, force = ['
   let pixelBg = null;
   let pixelSamples = 0;
   let inkShare = null;
+  let occludedBy = null;
   await handle.scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {});
   await page.waitForTimeout(60);
   const box = await handle.boundingBox().catch(() => null);
   if (box && box.width >= 8 && box.height >= 8) {
     const vw = viewport?.width ?? 1280;
     const vh = viewport?.height ?? 900;
+    /* OCCLUSION CHECK — a screenshot only shows what is ON TOP.
+       ------------------------------------------------------------------
+       MEASURED 2026-11-10: `/apply`'s sticky bottom CTA is `fixed bottom-0
+       z-50` and covers the last ~60px of the viewport. A label scrolled to
+       `y=817` of 900 is therefore UNDER it, and the clip below photographed
+       the BAR: the sample came back `rgb(14,18,34)` with `inkShare: 0` for a
+       label whose computed colour is `rgb(74,70,66)` on a near-white card.
+       The gate then reported `computed=7.88 pixel=1.99` as a "modelling
+       disagreement" — a fabricated failure, on an element that is perfectly
+       readable when the page is scrolled.
+
+       `elementFromPoint` is the same mechanism the browser uses to decide
+       what a click lands on, so it answers exactly the question the pixel
+       sample needs: is the thing I am photographing this element? If the
+       topmost node is neither the element nor one of its descendants, the
+       pixel is evidence about SOMETHING ELSE and must not be used. The
+       element is then reported as unmeasurable-by-occlusion rather than
+       silently dropped or, worse, counted as a miss.
+
+       This does NOT weaken the gate: a computed miss on an occluded element
+       still has `pixelRatio === null`, so it still cannot be CONFIRMED, and
+       the disagreement branch below still fails the run. */
+    const sampleX = Math.floor(box.x) + Math.floor(box.width / 2);
+    const sampleY = Math.floor(box.y) + Math.floor(box.height / 2);
+    const occluder = await page
+      .evaluate(
+        ([node, cx, cy]) => {
+          const hit = document.elementFromPoint(cx, cy);
+          if (!hit) return null;
+          if (hit === node || node.contains(hit)) return null; // the element itself
+          if (hit.contains(node)) return null; // an ancestor: not on top of it
+          const cs = getComputedStyle(hit);
+          return `${hit.tagName.toLowerCase()}.${String(hit.className || '').split(/\s+/).filter(Boolean).slice(0, 2).join('.')} (position:${cs.position} z:${cs.zIndex})`;
+        },
+        [await handle.evaluateHandle((n) => n), sampleX, sampleY],
+      )
+      .catch(() => null);
+    if (occluder) {
+      occludedBy = occluder;
+      return { reading, pixelRatio: null, pixelBg: null, pixelSamples: 0, inkShare: null, occludedBy };
+    }
     // INSET past the element's own border — trap 5.
     const INSET = 3;
     const x = Math.max(0, Math.min(Math.floor(box.x) + INSET, vw - 2));
@@ -363,7 +405,7 @@ async function probeElement({ page, cdp, handle, selector, cdpNodeId, force = ['
       }
     }
   }
-  return { reading, pixelRatio, pixelBg, pixelSamples, inkShare };
+  return { reading, pixelRatio, pixelBg, pixelSamples, inkShare, occludedBy };
 }
 
 /* Server DIJAMIN hidup sebelum satu pun navigasi — lihat e2e/lib/server.mjs
@@ -383,6 +425,7 @@ const disagreements = [];
 let probed = 0;
 let gradientRows = 0;
 let unmeasurable = 0;
+let occludedRows = 0;
 
 for (const theme of THEMES) {
   for (const width of WIDTHS) {
@@ -507,6 +550,10 @@ for (const theme of THEMES) {
 
           const computedMiss = reading.computedRatio !== null && reading.computedRatio + 1e-9 < reading.need;
           const pixelMiss = r.pixelRatio !== null && r.pixelRatio + 1e-9 < reading.need;
+          /* Occluded by a sticky/fixed layer: the pixel is about the OVERLAY,
+             not this element. Counted and printed as unmeasurable, never as a
+             pass and never as a miss. See the occlusion check's header. */
+          if (r.occludedBy) occludedRows++;
           const row = {
             where,
             selector: cand.selector,
@@ -520,6 +567,7 @@ for (const theme of THEMES) {
             pixelBg: r.pixelBg,
             inkShare: r.inkShare,
             hasImageBackdrop: reading.hasImageBackdrop,
+            occludedBy: r.occludedBy,
           };
           rows.push(row);
 
@@ -812,6 +860,7 @@ console.log('──────────────────────�
 console.log(`elements probed                 : ${probed}`);
 console.log(`  over a gradient/image (pixel-only): ${gradientRows}`);
 console.log(`  unmeasurable (skipped, NOT a pass): ${unmeasurable}`);
+console.log(`  occluded by a sticky/fixed layer  : ${occludedRows} (pixel not used — see header)`);
 console.log(`confirmed AA misses             : ${misses.length}`);
 console.log(`modelling disagreements         : ${disagreements.length}`);
 if (lowest.length) {
