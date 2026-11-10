@@ -1915,6 +1915,14 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.streak_hari": "hari berturut-turut",
     "kotoba.misi_harian": "Misi hari ini · 20 kata benar",
     "kotoba.kilat": "Kilat",
+    /* Tingkat kesulitan menggantikan sakelar "Kilat" (2026-11-10). Pemilik:
+       "kotoba sih gak perlu cepat kan fungsinya melatih bener, ada game bikin
+       saja di kesulitannya kan bisa milih sendiri". Satu kontrol, tiga keadaan:
+       Santai = tanpa batas waktu, Normal = 9 detik, Ketat = 4 detik. */
+    "kotoba.tingkat": "Kesulitan",
+    "kotoba.tk_santai": "Santai",
+    "kotoba.tk_normal": "Normal",
+    "kotoba.tk_ketat": "Ketat",
     "kotoba.mode_bom": "Bom Sakura",
     "kotoba.detik": "d",
     "doc.title_arcade": "Arcade Latihan Jepang — ASJ",

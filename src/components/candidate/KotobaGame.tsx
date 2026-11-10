@@ -126,7 +126,7 @@ type Arah = 'jp-id' | 'id-jp';
 const NYAWA_AWAL = 3;
 /** Batas waktu satu soal kuis. Mode ketik sengaja TANPA batas waktu. */
 const DURASI_SOAL_MS = 9000;
-/** Batas waktu mode kilat: 4 detik — cukup untuk mengingat, tidak untuk menebak. */
+/** Batas waktu tingkat Ketat: 4 detik — cukup untuk mengingat, tidak untuk menebak. */
 const DURASI_KILAT_MS = 4000;
 /** Panjang satu ronde Bom Sakura. */
 const DURASI_BOM_DETIK = 60;
@@ -511,16 +511,21 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   faseRef.current = fase;
   const [sisaWaktu, setSisaWaktu] = useState(100);
   /**
-   * Mode KILAT: tiap soal punya batas waktu, habis = dihitung salah.
+   * TINGKAT KESULITAN — tiga keadaan, satu kontrol.
    *
-   * KENAPA: bar waktu (`sisaWaktu`) sudah ada di layar sejak dulu tetapi TIDAK
-   * PERNAH bergerak — hanya direset 100 di setiap soal. Jadi selama ini ia
-   * menggambar sesuatu yang tidak benar. Daripada dihapus, ia dijadikan mode:
-   * tekanan waktu yang ringan membuat latihan terasa seperti permainan, dan
-   * memaksa RETRIEVAL CEPAT — bukan mengenali jawaban sambil melihat pilihan
-   * selama sepuluh detik.
+   * KENAPA menggantikan sakelar "Kilat": pemilik 2026-11-10 — *"kotoba sih gak
+   * perlu cepat kan fungsinya melatih bener, ada game bikin saja di
+   * kesulitannya kan bisa milih sendiri"*. Sakelar biner memaksa pilihan
+   * "tekanan waktu atau tidak"; tiga tingkat memberi pilihan tengah yang
+   * sebenarnya dipakai kebanyakan siswa.
+   *
+   *   santai  tanpa batas waktu — bar waktu TIDAK digambar, bukan digambar
+   *           penuh: bar yang diam terbaca sebagai "waktumu tidak habis",
+   *           padahal yang benar adalah "tidak ada waktu".
+   *   normal  9 detik per soal, tanpa bonus kecepatan.
+   *   ketat   4 detik per soal + bonus kecepatan (dulu bernama "Kilat").
    */
-  const [kilat, setKilat] = useState(false);
+  const [tingkat, setTingkat] = useState<'santai' | 'normal' | 'ketat'>('normal');
   /**
    * BOM SAKURA — satu ronde 60 detik, bukan per soal.
    *
@@ -956,9 +961,9 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   const terapkan = (tepat: boolean) => {
     if (!item || benar !== null) return;
     const hpBaru = tepat ? hp : hp - 1;
-    /* Bonus kecepatan hanya di mode kilat: menjawab cepat saat waktunya tak
-       terbatas tidak layak diberi nilai lebih. */
-    const bonus = tepat && kilat ? Math.round(sisaWaktu / 10) : 0;
+    /* Bonus kecepatan hanya di tingkat Ketat: menjawab cepat saat waktunya tak
+       terbatas (Santai) tidak layak diberi nilai lebih. */
+    const bonus = tepat && tingkat === 'ketat' ? Math.round(sisaWaktu / 10) : 0;
     const poin = (mode === 'ketik' ? 15 : 10) + kombo * 2 + bonus + (tepat && kombo >= 5 ? 5 : 0);
     bunyi(tepat);
     if (tepat) setKomboMaks((m) => Math.max(m, kombo + 1));
@@ -993,14 +998,16 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
   // Batas waktu — hanya mode kuis. Mode ketik sengaja tanpa batas: yang dilatih
   // di sana adalah mengingat ejaan, dan stopwatch membuat orang menebak.
   //
-  // KILAT memperpendek batas ini (9 s -> 4 s). Percobaan pertama saya menambah
+  // TINGKAT mengatur durasinya, dan `santai` mematikan efek ini sepenuhnya —
+  // bukan memberi durasi sangat panjang. Percobaan pertama saya menambah
   // interval KEDUA untuk mode ini, padahal efek ini sudah menghitung mundur —
   // dua interval menulis `sisaWaktu` yang sama dan angkanya jadi tidak masuk
   // akal (terukur 87 alih-alih 100 atau 52). Yang benar: SATU timer, durasinya
   // yang berbeda.
   useEffect(() => {
     if (mode !== 'kuis' || fase !== 'tanya' || benar !== null || !item) return;
-    const durasi = kilat ? DURASI_KILAT_MS : DURASI_SOAL_MS;
+    if (tingkat === 'santai') return;
+    const durasi = tingkat === 'ketat' ? DURASI_KILAT_MS : DURASI_SOAL_MS;
     const mulai = Date.now();
     const id = window.setInterval(() => {
       const lewat = Date.now() - mulai;
@@ -1012,7 +1019,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       }
     }, 100);
     return () => window.clearInterval(id);
-  }, [mode, fase, benar, item, kilat]);
+  }, [mode, fase, benar, item, tingkat]);
 
   /* Sumbu Bom Sakura: satu hitungan untuk SELURUH ronde. Berbeda dari batas
      waktu per soal di atas — di sini yang dikejar adalah berapa banyak kata
@@ -1515,17 +1522,28 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
             </button>
           ))}
         </fieldset>
-        {/* Mode kilat: batas waktu per soal. */}
-        <button
-          type="button"
-          onClick={() => setKilat((x) => !x)}
-          aria-pressed={kilat}
-          class={`min-h-11 rounded-control border px-3 text-[12px] font-bold ${
-            kilat ? 'border-accent-amber bg-accent-amber/10 text-accent-amber' : 'border-line bg-surface-raised text-fg-muted'
-          }`}
-        >
-          ⚡ {t('kotoba.kilat')}
-        </button>
+        {/* Tingkat kesulitan: satu kontrol, tiga keadaan. Menggantikan sakelar
+            "Kilat" yang biner — lihat catatan di `useState(tingkat)`. */}
+        <fieldset class="flex items-center gap-1 border-0 p-0 m-0">
+          <legend class="sr-only">{t('kotoba.tingkat')}</legend>
+          {([
+            ['santai', t('kotoba.tk_santai')],
+            ['normal', t('kotoba.tk_normal')],
+            ['ketat', t('kotoba.tk_ketat')],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTingkat(id)}
+              aria-pressed={tingkat === id}
+              class={`min-h-11 rounded-control border px-3 text-[12px] font-bold ${
+                tingkat === id ? 'border-accent-amber bg-accent-amber/10 text-accent-amber' : 'border-line bg-surface-raised text-fg-muted'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </fieldset>
         {sumber === 'ssw' && (
           <select
             aria-label={t('kotoba.filter_kategori')}
@@ -1740,8 +1758,10 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                   />
                 </div>
               )}
-              {/* Batas waktu — hanya kuis */}
-              {mode === 'kuis' && (
+              {/* Batas waktu — hanya kuis, dan TIDAK digambar pada tingkat
+                  Santai: bar yang diam terbaca sebagai "waktumu tidak habis",
+                  padahal yang benar "tidak ada waktu". */}
+              {mode === 'kuis' && tingkat !== 'santai' && (
                 <div
                   class="h-1.5 w-full rounded-pill bg-surface-sunken overflow-hidden mb-3"
                   role="progressbar"

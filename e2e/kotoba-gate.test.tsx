@@ -181,6 +181,32 @@ describe('/kotoba — siswa ASJ saja', () => {
     await waitFor(() => expect(screen.getByTestId('kotoba-hasil')).toBeTruthy());
   }, 30000);
 
+  /* Tingkat kesulitan (2026-11-10). Pemilik: "kotoba sih gak perlu cepat kan
+     fungsinya melatih bener, ada game bikin saja di kesulitannya kan bisa milih
+     sendiri". Tiga keadaan menggantikan sakelar "Kilat" yang biner.
+
+     Yang diuji BUKAN label tombolnya, melainkan akibatnya pada layar: pada
+     Santai bar waktu TIDAK digambar. Bar yang diam terbaca "waktumu tidak
+     habis" — padahal yang benar "tidak ada waktu", dan itu dua hal berbeda. */
+  it('tingkat Santai menghapus batas waktu; Normal menggambarnya', async () => {
+    loginSebagai('kandidat');
+    render(<KotobaGame />);
+    await waitFor(() => expect(screen.getByTestId('kotoba-soal')).toBeTruthy());
+
+    expect(document.querySelectorAll('[role="progressbar"]')).toHaveLength(1);
+
+    const santai = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === 'Santai');
+    expect(santai, 'tombol Santai tidak ada').toBeTruthy();
+    santai?.click();
+
+    await waitFor(() => expect(document.querySelectorAll('[role="progressbar"]')).toHaveLength(0));
+    expect(santai?.getAttribute('aria-pressed')).toBe('true');
+
+    const normal = [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === 'Normal');
+    normal?.click();
+    await waitFor(() => expect(document.querySelectorAll('[role="progressbar"]')).toHaveLength(1));
+  }, 15000);
+
   /* Mode kilat: waktu habis = salah.
      Bar `sisaWaktu` sudah ada di layar sejak dulu tetapi TIDAK PERNAH bergerak —
      ia hanya direset 100 di setiap soal, jadi menggambar sesuatu yang tidak
@@ -220,16 +246,19 @@ describe('/kotoba — siswa ASJ saja', () => {
     expect(bacaSumbu(), 'sumbu tidak berkurang').toBeLessThan(awal);
   }, 30000);
 
-  it('mode kilat memperpendek batas waktu (4 s), bukan menambah timer kedua', async () => {
+  it('tingkat Ketat memperpendek batas waktu (4 s), bukan menambah timer kedua', async () => {
     loginSebagai('kandidat');
     render(<KotobaGame />);
     await waitFor(() => expect(screen.getByTestId('kotoba-soal')).toBeTruthy());
 
+    /* Dulu tombolnya bernama "Kilat" (sakelar biner). Sejak 2026-11-10 ia
+       menjadi tingkat "Ketat" — perilaku yang diukur tetap sama. */
     const cariTombol = () =>
-      [...document.querySelectorAll('button')].find((b) => (b.textContent || '').includes('Kilat'));
+      [...document.querySelectorAll('button')].find((b) => (b.textContent || '').trim() === 'Ketat');
     const nilaiBar = () => Number(document.querySelector('[aria-valuenow]')?.getAttribute('aria-valuenow'));
 
-    /* UKUR LAJU, bukan sekadar "ada yang berubah". Timer bawaan 9 detik; kilat
+    /* UKUR LAJU, bukan sekadar "ada yang berubah". Timer bawaan 9 detik; ketat
+       4 detik. Setelah 1,2 detik: normal ~87, ketat ~70. Ambang 80 memisahkan
        4 detik. Setelah 1,2 detik: normal ~87, kilat ~70. Ambang 80 memisahkan
        keduanya dengan jarak yang cukup jauh sehingga tidak flaky.
        Percobaan pertama saya hanya menunggu layar hasil muncul — tes itu LOLOS
@@ -245,7 +274,7 @@ describe('/kotoba — siswa ASJ saja', () => {
 
     await new Promise((r) => setTimeout(r, 1200));
     const sesudah = nilaiBar();
-    expect(sesudah, `bar ${sebelum} -> ${sesudah}; kilat tidak memperpendek waktu`).toBeLessThan(80);
+    expect(sesudah, `bar ${sebelum} -> ${sesudah}; tingkat Ketat tidak memperpendek waktu`).toBeLessThan(80);
   }, 30000);
 });
 
