@@ -224,3 +224,74 @@ export function bunyi(ok: boolean): void {
     /* Tanpa audio tetap bisa bermain. */
   }
 }
+
+/**
+ * Satu nada pendek dengan dua titik frekuensi.
+ *
+ * Bahan bersama untuk efek game di bawah. Dipisah dari `bunyi()` supaya
+ * `bunyi()` tetap persis seperti yang sudah dipakai `/kotoba` dan `/matematika`
+ * — mengubah nada jawaban benar di satu tempat berarti mengubah dua game lain
+ * yang tidak sedang disentuh.
+ */
+function nada(a: number, b: number, durasi: number, tipe: string, volume: number): void {
+  if (typeof window === 'undefined') return;
+  siapkanAudio();
+  const ctx = audioCtx;
+  if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    const now = ctx.currentTime;
+    osc.type = tipe;
+    osc.frequency.setValueAtTime(a, now);
+    osc.frequency.setValueAtTime(b, now + durasi * 0.55);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + durasi);
+    osc.start(now);
+    osc.stop(now + durasi);
+  } catch {
+    /* Tanpa audio tetap bisa bermain. */
+  }
+}
+
+/**
+ * Nada jawaban benar yang NAIK mengikuti kombo.
+ *
+ * Inilah yang membuat kombo terasa seperti kombo, bukan seperti angka: telinga
+ * mendengar tangga nadanya memanjat, sedangkan mata hanya melihat angka
+ * berubah. Tangga pentatonik (do–re–mi–sol–la) dipilih supaya nada ke berapa
+ * pun tidak pernah disonan dengan nada sebelumnya, dan puncaknya satu oktaf —
+ * setelah itu nadanya berhenti naik, jadi kombo ke-40 tidak memekakan telinga.
+ */
+export function bunyiKombo(n: number): void {
+  const tangga = [523.25, 587.33, 659.25, 783.99, 880, 1046.5];
+  const dasar = tangga[Math.min(Math.max(n - 1, 0), tangga.length - 1)] ?? 523.25;
+  nada(dasar, dasar * 1.5, 0.16, 'triangle', 0.09);
+}
+
+/** Mulai shift: tiga nada naik cepat, tanda "pintu gudang dibuka". */
+export function bunyiMulai(): void {
+  if (typeof window === 'undefined') return;
+  nada(392, 523.25, 0.12, 'square', 0.05);
+  window.setTimeout(() => nada(523.25, 659.25, 0.14, 'square', 0.05), 110);
+  window.setTimeout(() => nada(659.25, 783.99, 0.18, 'square', 0.05), 220);
+}
+
+/**
+ * Akhir shift. Menang memakai tiga nada naik (arpeggio), kalah memakai dua
+ * nada turun yang lebih panjang — perbedaan durasi ikut membedakannya, jadi
+ * pemain yang mematikan suara tetap bisa membedakan lewat haptik dan layar.
+ */
+export function bunyiHasil(menang: boolean): void {
+  if (typeof window === 'undefined') return;
+  if (menang) {
+    nada(523.25, 659.25, 0.18, 'triangle', 0.08);
+    window.setTimeout(() => nada(659.25, 783.99, 0.18, 'triangle', 0.08), 150);
+    window.setTimeout(() => nada(783.99, 1046.5, 0.34, 'triangle', 0.08), 300);
+    return;
+  }
+  nada(311.13, 233.08, 0.3, 'sawtooth', 0.06);
+  window.setTimeout(() => nada(233.08, 155.56, 0.5, 'sawtooth', 0.06), 240);
+}

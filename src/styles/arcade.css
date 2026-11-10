@@ -1,0 +1,726 @@
+/* ============================================================
+   arcade.css — lapisan visual untuk game di /arcade
+   ============================================================
+   KENAPA BERKAS SENDIRI
+   ---------------------
+   Game butuh bahasa visual yang berbeda dari formulir: permukaan gelap
+   seperti layar kabinet, angka monospace besar, garis tebal, dan gerak
+   yang terasa "kena". Menaruhnya di `global.css` berarti token formulir
+   dan token game bercampur di satu berkas yang sudah 2.000 baris.
+
+   KENAPA WARNA TETAP (hex), BUKAN TOKEN TEMA
+   ------------------------------------------
+   Arena ini adalah LAYAR, bukan panel halaman. Layar tidak ikut memutih
+   saat tema terang. Karena itu seluruh warnanya hex tetap dan teksnya
+   terang — satu-satunya kombinasi yang aman di kedua tema.
+
+   Ini juga menutup jebakan yang sudah terukur di repo ini: `global.css`
+   membalik `.text-white` menjadi `#1f1d1c` di tema terang, sehingga teks
+   putih di atas permukaan gelap berubah menjadi teks gelap di atas gelap.
+   Di dalam `.arc` TIDAK ADA satu pun utilitas `text-*` yang dipakai;
+   warnanya datang dari aturan di bawah.
+
+   KENAPA TANPA @layer
+   -------------------
+   `global.css`, `layout.css`, dan `motion.css` semuanya tanpa `@layer`,
+   jadi aturan di sini mengalahkan utilitas Tailwind tanpa perlu
+   `!important`. Itu memang yang diinginkan: `.arc-shelf` harus menang
+   atas `border-line`. `!important` justru dihitung sebagai utang baru
+   oleh `lint-ratchet` (lihat R13 3j).
+
+   Kontras terukur (teks terhadap latarnya sendiri, ambang 4,5:1):
+     #eef2f8 pada #0b1016  ~15,9:1
+     #a6b6c8 pada #121820  ~8,2:1
+     #ffc247 pada #0b1016  ~11,1:1
+     #4ade80 pada #0b1016  ~9,2:1
+     #ff6b6b pada #0b1016  ~6,6:1
+   ============================================================ */
+
+.arc {
+  --arc-bg: #0b1016;
+  --arc-panel: #121820;
+  --arc-panel-2: #1a222c;
+  --arc-line: #2b3745;
+  --arc-line-2: #3d4d5f;
+  --arc-fg: #eef2f8;
+  --arc-muted: #a6b6c8;
+  --arc-amber: #ffc247;
+  --arc-emerald: #4ade80;
+  --arc-red: #ff6b6b;
+  --arc-cyan: #67e8f9;
+
+  position: relative;
+  /* `z-index: 1` bukan hiasan. `#sakura-particles` di BaseLayout adalah
+     `position: fixed` tanpa z-index, jadi ia dicat di lapisan "positioned"
+     — DI ATAS blok biasa. Di halaman terang kelopaknya pink di atas putih dan
+     tidak terlihat; di atas arena gelap ia terbaca sebagai bercak kotor yang
+     menutupi teks perintah. Satu tingkat di atas `auto` sudah cukup, dan tetap
+     di bawah header sticky (50) serta modal (100). */
+  z-index: 1;
+  overflow: hidden;
+  border: 2px solid var(--arc-line);
+  border-radius: 18px;
+  background: var(--arc-bg);
+  color: var(--arc-fg);
+  padding: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── HUD ─────────────────────────────────────────────────────── */
+
+.arc-top {
+  border: 1px solid var(--arc-line);
+  border-radius: 12px;
+  background: var(--arc-panel);
+  padding: 9px 11px;
+}
+
+.arc-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.arc-kicker {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--arc-muted);
+}
+
+.arc-skor {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--arc-fg);
+}
+
+.arc-lives {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.arc-life {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--arc-line-2);
+  border-radius: 7px;
+  background: var(--arc-panel-2);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.arc-order-count {
+  font-size: 11px;
+  color: var(--arc-muted);
+}
+
+.arc-order-count b {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  color: var(--arc-fg);
+}
+
+.arc-combo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  border: 1px solid var(--arc-line-2);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--arc-muted);
+}
+
+.arc-combo--hot {
+  border-color: var(--arc-amber);
+  background: #3a2a08;
+  color: var(--arc-amber);
+}
+
+/* ── Sumbu waktu ─────────────────────────────────────────────── */
+
+.arc-meter {
+  position: relative;
+  overflow: hidden;
+  height: 10px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: var(--arc-panel-2);
+}
+
+.arc-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--arc-amber);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+.arc-meter-fill--hot {
+  background: var(--arc-red);
+  animation: arc-denyut 0.55s ease-in-out infinite alternate;
+}
+
+/* ── Kartu perintah ──────────────────────────────────────────── */
+
+.arc-order {
+  position: relative;
+  overflow: hidden;
+  margin-top: 8px;
+  border: 1px solid var(--arc-line);
+  border-left: 4px solid var(--arc-amber);
+  border-radius: 12px;
+  background: var(--arc-panel);
+  padding: 10px 12px;
+  animation: arc-slam 0.24s cubic-bezier(0.2, 1.35, 0.4, 1);
+  transition: transform 0.16s ease, border-left-color 0.16s ease;
+}
+
+.arc-order-head {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.arc-order-head .arc-kicker {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.arc-order-badge {
+  display: inline-block;
+  margin-left: 4px;
+  border: 1px solid var(--arc-line-2);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--arc-muted);
+}
+
+.arc-order-jp {
+  margin: 6px 0 0;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--arc-fg);
+  overflow-wrap: anywhere;
+}
+
+.arc-order-romaji {
+  margin: 2px 0 0;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--arc-muted);
+  overflow-wrap: anywhere;
+}
+
+.arc-order--hit {
+  border-left-color: var(--arc-emerald);
+  transform: scale(1.012);
+}
+
+/* Getaran dipasang di AKAR arena, bukan di kartu perintah. Kartu itu punya
+   `animation: arc-slam`; menukar nama animasinya ke `arc-getar` lalu
+   mengembalikannya akan MEMULAI ULANG slam setiap kali jawaban diproses —
+   kartu terlihat melompat masuk lagi padahal perintahnya tidak berganti. */
+.arc--miss {
+  animation: arc-getar 0.34s ease-in-out;
+}
+
+/* ── Bagian (judul kecil + isi) ──────────────────────────────── */
+
+.arc-section {
+  margin-top: 8px;
+}
+
+.arc-hint {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 11px;
+  color: var(--arc-muted);
+}
+
+.arc-hint b {
+  color: var(--arc-amber);
+}
+
+/* ── Peti barang di meja kerja ───────────────────────────────── */
+
+.arc-tray {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  border: 1px solid var(--arc-line);
+  border-radius: 12px;
+  background: var(--arc-panel);
+  padding: 6px;
+}
+
+.arc-crate {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  overflow: hidden;
+  min-height: 68px;
+  border: 2px solid var(--arc-line);
+  border-radius: 9px;
+  background: var(--arc-panel-2);
+  padding: 0 2px 4px;
+  color: var(--arc-fg);
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.arc-crate:active {
+  transform: scale(0.96);
+}
+
+.arc-crate-band {
+  display: block;
+  width: calc(100% + 4px);
+  height: 9px;
+  margin: 0 -2px 4px;
+  /* Cincin dalam, bukan border: pita くろい memakai latar hampir sehitam petinya,
+     dan tanpa tepi ia menghilang — peti hitam jadi terbaca "tanpa warna". */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.arc-crate-jp {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--arc-fg);
+  overflow-wrap: anywhere;
+}
+
+.arc-crate--picked {
+  /* Tepi putih + halo amber, bukan amber saja: peti きいろい berpita amber, dan
+     tepi amber di atas pita amber membuat "terpilih" tidak terbaca pada warna
+     itu — satu-satunya warna yang tabrakan dengan aksen. */
+  border-color: var(--arc-fg);
+  background: #221a08;
+  box-shadow: 0 0 0 2px var(--arc-amber);
+  transform: translateY(-3px);
+}
+
+/* ── Rak tujuan ──────────────────────────────────────────────── */
+
+.arc-shelves {
+  display: grid;
+  gap: 6px;
+}
+
+.arc-shelves--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.arc-shelves--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.arc-shelves--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.arc-shelf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 58px;
+  border: 2px dashed var(--arc-line-2);
+  border-radius: 10px;
+  background: var(--arc-panel);
+  padding: 6px 7px;
+  text-align: left;
+  color: var(--arc-fg);
+  transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.arc-shelf:active {
+  transform: scale(0.97);
+}
+
+.arc-shelf--rapat {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  text-align: center;
+}
+
+.arc-shelf--target {
+  border-style: solid;
+  border-color: var(--arc-emerald);
+  background: #0e2418;
+}
+
+.arc-shelf--wrong {
+  border-style: solid;
+  border-color: var(--arc-red);
+  background: #2a1012;
+}
+
+.arc-shelf-jp {
+  display: block;
+  font-size: 10px;
+  color: var(--arc-muted);
+  overflow-wrap: anywhere;
+}
+
+.arc-shelf-id {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--arc-fg);
+}
+
+.arc-shelf--rapat .arc-shelf-id {
+  font-size: 10px;
+}
+
+.arc-ikon {
+  flex-shrink: 0;
+  color: var(--arc-cyan);
+}
+
+/* ── Ledakan partikel ────────────────────────────────────────── */
+
+.arc-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.arc-partikel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--c, var(--arc-amber));
+  animation: arc-burst 0.32s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
+
+/* ── Hasil shift ─────────────────────────────────────────────── */
+
+.arc-result {
+  margin-top: 8px;
+  border: 1px solid var(--arc-line);
+  border-radius: 12px;
+  background: var(--arc-panel);
+  padding: 14px 12px;
+  text-align: center;
+  animation: arc-slam 0.28s cubic-bezier(0.2, 1.35, 0.4, 1);
+}
+
+.arc-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 92px;
+  height: 92px;
+  margin: 6px auto;
+  border: 3px solid var(--arc-amber);
+  border-radius: 999px;
+  background: var(--arc-panel-2);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 46px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--arc-amber);
+  animation: arc-rank 0.42s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.arc-rank--s {
+  border-color: var(--arc-amber);
+  color: var(--arc-amber);
+}
+
+.arc-rank--a {
+  border-color: var(--arc-emerald);
+  color: var(--arc-emerald);
+}
+
+.arc-rank--b {
+  border-color: var(--arc-cyan);
+  color: var(--arc-cyan);
+}
+
+.arc-rank--c {
+  border-color: var(--arc-line-2);
+  color: var(--arc-muted);
+}
+
+.arc-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+  text-align: left;
+}
+
+.arc-stat {
+  border: 1px solid var(--arc-line);
+  border-radius: 9px;
+  background: var(--arc-panel-2);
+  padding: 6px 8px;
+}
+
+.arc-stat span {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--arc-muted);
+}
+
+.arc-stat strong {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 15px;
+  color: var(--arc-fg);
+}
+
+/* ── Tombol ──────────────────────────────────────────────────── */
+
+.arc-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  width: 100%;
+  border: 2px solid var(--arc-line-2);
+  border-radius: 10px;
+  background: var(--arc-panel-2);
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--arc-fg);
+  transition: transform 0.1s ease, border-color 0.12s ease;
+}
+
+.arc-btn:active {
+  transform: scale(0.97);
+}
+
+.arc-btn--primary {
+  border-color: var(--arc-amber);
+  background: var(--arc-amber);
+  color: #1a1204;
+}
+
+.arc-btn--ghost {
+  border-color: var(--arc-line-2);
+  color: var(--arc-muted);
+}
+
+.arc-btn--small {
+  width: auto;
+  min-height: 34px;
+  font-size: 11px;
+  padding: 0 9px;
+}
+
+.arc-btn--on {
+  border-color: var(--arc-amber);
+  background: #221a08;
+  color: var(--arc-amber);
+}
+
+.arc-stars {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--arc-amber);
+}
+
+.arc-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--arc-muted);
+}
+
+.arc-note {
+  margin-top: 8px;
+  border: 1px solid var(--arc-cyan);
+  border-radius: 10px;
+  background: #0a2027;
+  padding: 9px 11px;
+}
+
+.arc-note-title {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--arc-cyan);
+}
+
+.arc-note-list {
+  margin: 4px 0 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--arc-muted);
+}
+
+.arc-msg {
+  margin: 6px 0 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--arc-red);
+}
+
+.arc-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.arc-result-sub {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--arc-muted);
+}
+
+.arc-result-title {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--arc-fg);
+}
+
+.arc-sep {
+  height: 1px;
+  margin: 8px 0;
+  background: var(--arc-line);
+}
+
+/* ── Gerak ───────────────────────────────────────────────────── */
+
+@keyframes arc-slam {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes arc-hit {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.025);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes arc-getar {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  45% {
+    transform: translateX(4px);
+  }
+  70% {
+    transform: translateX(-2px);
+  }
+}
+
+@keyframes arc-denyut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.45;
+  }
+}
+
+@keyframes arc-burst {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(var(--dx, 0), var(--dy, 0), 0) scale(0.2) rotate(200deg);
+  }
+}
+
+@keyframes arc-rank {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* Tanpa `!important`: aturan ini berada SESUDAH aturan dasar dengan
+   spesifisitas yang sama, jadi ia menang tanpa memaksa — pola yang sama
+   dengan blok reduced-motion di `motion.css` §11. Partikel dimatikan
+   sepenuhnya, bukan hanya animasinya: `animation: none` akan
+   meninggalkan dua belas kotak menumpuk di tengah kartu. */
+@media (prefers-reduced-motion: reduce) {
+  .arc-order,
+  .arc--miss,
+  .arc-result,
+  .arc-rank,
+  .arc-meter-fill--hot {
+    animation: none;
+  }
+
+  .arc-burst {
+    display: none;
+  }
+
+  .arc-crate,
+  .arc-shelf,
+  .arc-btn,
+  .arc-order {
+    transition: none;
+  }
+}

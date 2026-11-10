@@ -42,7 +42,7 @@ import { authStore } from '../../store/authReactive';
 import { ambilPapanGame, bolehKirim, kirimSkor, waSiswa, type BarisPapanGame } from '../../lib/skorGame';
 import ArcadeIkon from '../ui/ArcadeIkon';
 import LoginGate from '../ui/LoginGate';
-import { bunyi, ucap } from '../../lib/tts';
+import { bunyi, bunyiHasil, bunyiKombo, bunyiMulai, ucap } from '../../lib/tts';
 import {
   COMBO_SOAL,
   KOMBO_MAKS,
@@ -80,6 +80,51 @@ const KUNCI_REKOR_COMBO = 'asj_arcade_rekor_combo';
 const KUNCI_BINTANG = 'asj_arcade_bintang';
 const KUNCI_TUTORIAL = 'asj_arcade_tutorial';
 const TINGKAT: readonly TingkatGenba[] = ['magang', 'reguler', 'veteran'];
+
+/**
+ * Dua belas partikel untuk ledakan jawaban benar.
+ *
+ * Arah dan warnanya TETAP, bukan acak: `Math.random()` di dalam render berarti
+ * setiap render ulang (dan setiap perubahan `sisa`) memindahkan partikelnya.
+ * Nilainya adalah `[dx, dy, warna]` dalam piksel, disebar merata ke 360°.
+ */
+const PARTIKEL: readonly (readonly [number, number, string])[] = [
+  [-52, -26, '#ffc247'],
+  [-30, -46, '#4ade80'],
+  [0, -54, '#67e8f9'],
+  [30, -46, '#ffc247'],
+  [52, -26, '#4ade80'],
+  [58, 4, '#67e8f9'],
+  [44, 30, '#ffc247'],
+  [16, 46, '#4ade80'],
+  [-16, 46, '#67e8f9'],
+  [-44, 30, '#ffc247'],
+  [-58, 4, '#4ade80'],
+  [-8, -12, '#eef2f8'],
+];
+
+/**
+ * Warna pita peti, hex TETAP per id warna.
+ *
+ * KENAPA BUKAN `warna.kelas`
+ * --------------------------
+ * `GENBA_WARNA` menyimpan kelas Tailwind (`bg-slate-900` untuk くろい), dan
+ * `global.css` memetakan ulang kelas palet itu untuk tema terang. Terukur di
+ * tema terang 2026-11-10: pita くろい computed `rgba(255, 255, 255, 0.92)` —
+ * peti HITAM dengan pita PUTIH. Selama kelas itu dipakai sebagai latar seluruh
+ * kartu, kesalahannya tersamar oleh teks; sebagai pita ia menjadi satu-satunya
+ * penanda warna, jadi ia harus kebal tema.
+ *
+ * Arena ini permukaan bertema-tetap, jadi warnanya juga harus tetap.
+ */
+const WARNA_PITA: Readonly<Record<string, string>> = {
+  akai: '#dc2626',
+  aoi: '#2563eb',
+  kiiroi: '#f59e0b',
+  shiroi: '#e2e8f0',
+  kuroi: '#1e293b',
+  midori: '#059669',
+};
 
 interface CatatanLemah {
   judul: string;
@@ -401,6 +446,7 @@ export default function ArcadeGame() {
     setPoinTerbang(null);
     setFase('main');
     pasang(modeNow, 0, 0);
+    bunyiMulai();
   };
 
   /* `gagal` dibuat ulang tiap render; efek timer menyimpannya di ref supaya
@@ -445,6 +491,7 @@ export default function ArcadeGame() {
     });
     setSkor(skorFinal);
     setFase('selesai');
+    bunyiHasil(menang);
   };
 
   /** Satu kali salah: nyawa berkurang, catatan disimpan, perintah berganti. */
@@ -492,11 +539,13 @@ export default function ArcadeGame() {
     if (!perintah || !dipilih || fase !== 'main' || menunggu) return;
     const modeNow = mode;
     if (cekGenba(perintah, dipilih, zonaId)) {
-      bunyi(true);
-      getar(12);
-      setAnimasi('benar');
-      window.setTimeout(() => setAnimasi(''), 350);
+      /* Nada DAN haptik naik mengikuti kombo. `komboBaru` dihitung lebih dulu
+         supaya keduanya memakai nilai yang sama dengan yang akan ditampilkan —
+         versi sebelumnya membunyikan nada yang sama untuk kombo ke-1 dan ke-12,
+         jadi pemain tidak punya cara MENDENGAR bahwa ia sedang panas. */
       const komboBaru = komboGenba + 1;
+      bunyiKombo(komboBaru);
+      getar(komboBaru >= 5 ? [10, 26, 10] : 12);
       const { tambah } = poinGenba(sisa, komboBaru);
       const skorBaru = skor + tambah;
       const benarBaru = pesananSelesai + 1;
@@ -514,6 +563,15 @@ export default function ArcadeGame() {
       } else {
         setSkor(skorBaru);
         pasang(modeNow, benarBaru, komboBaru);
+        /* SESUDAH `pasang`, bukan sebelum. `pasang()` mengosongkan `animasi`
+           (baris `setAnimasi('')` di dalamnya), dan kedua panggilan berada di
+           satu batch — jadi menyetelnya lebih dulu berarti nilai terakhir yang
+           menang adalah string kosong. Akibatnya animasi jawaban benar TIDAK
+           PERNAH tampil sejak ia ditulis; yang salah tetap bergetar karena
+           `gagal()` memanggil `pasang` lewat setTimeout 1,1 detik. Ketahuan
+           ketika partikel mulai bergantung pada nilai yang sama. */
+        setAnimasi('benar');
+        window.setTimeout(() => setAnimasi(''), 350);
       }
     } else {
       gagal(
@@ -772,12 +830,12 @@ export default function ArcadeGame() {
   const rapatZona = kolomZona === 4;
   const warnaNilai =
     hasil?.nilai === 'S'
-      ? 'border-accent-amber text-accent-amber'
+      ? 'arc-rank--s'
       : hasil?.nilai === 'A'
-        ? 'border-accent-emerald text-accent-emerald'
+        ? 'arc-rank--a'
         : hasil?.nilai === 'B'
-          ? 'border-accent-sky text-accent-sky'
-          : 'border-line-strong text-fg-muted';
+          ? 'arc-rank--b'
+          : 'arc-rank--c';
 
   return (
     <div class="max-w-md mx-auto">
@@ -799,55 +857,47 @@ export default function ArcadeGame() {
       </div>
 
       {tab === 'genba' ? (
-        <section aria-label={t('arcade.tab_genba')}>
+        <section aria-label={t('arcade.tab_genba')} class={`arc ${animasi === 'salah' ? 'arc--miss' : ''}`}>
           {/* ── Hub: tingkat, tutorial, mulai ─────────────────────────────
               Playfield hanya dirender saat bermain. Dulu rak dan meja sudah
               tampil sebelum mulai — siswa mengetuknya dan tidak terjadi apa-apa,
               yang terbaca sebagai game rusak, bukan sebagai "belum mulai". */}
           {fase !== 'main' && (
             <>
-              <div class="mb-2">
-                <p class="mb-1 text-[10px] font-bold uppercase tracking-wide text-fg-muted">{t('arcade.tingkat')}</p>
-                <div class="grid grid-cols-3 gap-1.5">
+              <div>
+                <p class="arc-kicker">{t('arcade.tingkat')}</p>
+                <div class="mt-1.5 grid grid-cols-3 gap-1.5">
                   {TINGKAT.map((id) => (
                     <button
                       key={id}
                       type="button"
                       onClick={() => setTingkat(id)}
                       aria-pressed={tingkat === id}
-                      class={`min-h-12 rounded-control border px-1.5 py-1 ${
-                        tingkat === id
-                          ? 'border-accent-violet bg-accent-violet/10 text-accent-violet'
-                          : 'border-line bg-surface-raised text-fg-muted'
-                      }`}
+                      class={`arc-btn flex-col gap-0.5 px-1.5 ${tingkat === id ? 'arc-btn--on' : 'arc-btn--ghost'}`}
                     >
                       <span class="block text-[11px] font-bold leading-tight">{labelTingkat(id)}</span>
-                      <span class="block text-[10px] leading-tight tracking-widest text-accent-amber">
+                      <span class="arc-stars">
                         {'★'.repeat(bintang[id])}
                         {'☆'.repeat(3 - bintang[id])}
                       </span>
                     </button>
                   ))}
                 </div>
-                <label class="mt-1.5 flex items-center gap-1.5 text-[11px] text-fg-muted">
+                <label class="arc-check">
                   <input type="checkbox" checked={choukai} onChange={(e) => setChoukai((e.target as HTMLInputElement).checked)} />
                   <span class="break-words">{t('arcade.choukai')}</span>
                 </label>
               </div>
 
               {tutorial && (
-                <div class="mb-2 rounded-card border border-accent-sky bg-accent-sky/10 p-3">
-                  <p class="text-[11px] font-black text-accent-sky">{t('arcade.tutor_judul')}</p>
-                  <ol class="mt-1 space-y-0.5 text-[11px] leading-snug text-fg-muted">
+                <div class="arc-note">
+                  <p class="arc-note-title">{t('arcade.tutor_judul')}</p>
+                  <ol class="arc-note-list">
                     <li>{t('arcade.tutor_1')}</li>
                     <li>{t('arcade.tutor_2')}</li>
                     <li>{t('arcade.tutor_3')}</li>
                   </ol>
-                  <button
-                    type="button"
-                    onClick={tutupTutorial}
-                    class="mt-2 min-h-9 w-full rounded-control border border-accent-sky px-2 text-[11px] font-bold text-accent-sky"
-                  >
+                  <button type="button" onClick={tutupTutorial} class="arc-btn arc-btn--small mt-2 w-full">
                     {t('arcade.mengerti')}
                   </button>
                 </div>
@@ -857,70 +907,62 @@ export default function ArcadeGame() {
 
           {/* ── Hasil shift ─────────────────────────────────────────────── */}
           {fase === 'selesai' && hasil ? (
-            <div class="animasi-pop mb-2 rounded-card border-2 border-accent-violet bg-surface-raised p-4 text-center">
-              <p class="text-[10px] font-bold uppercase tracking-[0.2em] text-fg-muted">
+            <div class="arc-result">
+              <p class="arc-kicker">
                 {hasil.drill ? t('arcade.latih_salah') : t('arcade.nilai')}
               </p>
-              {!hasil.drill && (
-                <div class={`mx-auto my-1.5 flex h-20 w-20 items-center justify-center rounded-full border-4 ${warnaNilai}`}>
-                  <span class="text-4xl font-black leading-none">{hasil.nilai}</span>
-                </div>
-              )}
-              <p class="text-xs font-bold text-fg">
+              {!hasil.drill && <div class={`arc-rank ${warnaNilai}`}>{hasil.nilai}</div>}
+              <p class="arc-result-title">
                 {hasil.menang ? `🏁 ${t('arcade.shift_selesai')}` : `💀 ${t('arcade.nyawa_habis')}`}
               </p>
-              <p class="mt-0.5 text-[11px] text-fg-muted">
+              <p class="arc-result-sub">
                 {pesananSelesai}/{target} {t('arcade.pesanan')} · {t('arcade.akurasi')} {Math.round(hasil.akurasi * 100)}%
               </p>
-              <div class="mt-2 grid grid-cols-2 gap-1.5 text-[10px]">
-                <div class="rounded-control bg-surface-sunken p-1.5">
-                  <span class="block text-fg-muted">{t('arcade.skor_akhir')}</span>
-                  <strong class="block font-mono text-[13px] text-fg">¥ {skor}</strong>
+              <div class="arc-stats">
+                <div class="arc-stat">
+                  <span>{t('arcade.skor_akhir')}</span>
+                  <strong>¥ {skor}</strong>
                 </div>
-                <div class="rounded-control bg-surface-sunken p-1.5">
-                  <span class="block text-fg-muted">{t('arcade.kombo_terbaik')}</span>
-                  <strong class="block text-[13px] text-accent-amber">{hasil.komboMaks}</strong>
+                <div class="arc-stat">
+                  <span>{t('arcade.kombo_terbaik')}</span>
+                  <strong>{hasil.komboMaks}</strong>
                 </div>
-                <div class="rounded-control bg-surface-sunken p-1.5">
-                  <span class="block text-fg-muted">{t('arcade.bonus_shift')}</span>
-                  <strong class="block font-mono text-[13px] text-accent-emerald">+{hasil.bonus}</strong>
+                <div class="arc-stat">
+                  <span>{t('arcade.bonus_shift')}</span>
+                  <strong>+{hasil.bonus}</strong>
                 </div>
                 {/* Sisa waktu ditampilkan karena NILAI bergantung padanya: pemain
                     yang 100% benar tapi lambat mendapat B, dan tanpa angka ini
                     nilai itu terbaca seperti kesalahan. */}
-                <div class="rounded-control bg-surface-sunken p-1.5">
-                  <span class="block text-fg-muted">{t('arcade.sisa_waktu')}</span>
-                  <strong class="block text-[13px] text-fg">{Math.round(hasil.sisaRata)}%</strong>
+                <div class="arc-stat">
+                  <span>{t('arcade.sisa_waktu')}</span>
+                  <strong>{Math.round(hasil.sisaRata)}%</strong>
                 </div>
               </div>
               {!hasil.drill && (
                 <p class="mt-2 text-[11px]">
-                  <span class="tracking-widest text-accent-amber">
+                  <span class="arc-stars">
                     {'★'.repeat(hasil.bintang)}
                     {'☆'.repeat(3 - hasil.bintang)}
                   </span>
-                  {hasil.bintangNaik && <span class="ml-1.5 font-bold text-accent-emerald">{t('arcade.rekor_baru')}</span>}
+                  {hasil.bintangNaik && <span class="ml-1.5 font-bold text-[#4ade80]">{t('arcade.rekor_baru')}</span>}
                 </p>
               )}
-              <p class="mt-0.5 text-[10px] text-fg-muted">
+              <p class="arc-result-sub">
                 {hasil.rekorBaru
                   ? `🏆 ${t('arcade.rekor')} ¥ ${skor}`
                   : `${t('arcade.rekor')} ¥ ${bacaRekorTingkat(hasil.tingkat)}`}
                 {hasil.deltaRekor > 0 && !hasil.rekorBaru ? ` · +${hasil.deltaRekor}` : ''}
               </p>
-              <div class="mt-3 grid grid-cols-2 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => mulai('shift')}
-                  class="min-h-11 rounded-control bg-accent-violet px-2 text-[12px] font-bold text-white"
-                >
+              <div class="arc-actions">
+                <button type="button" onClick={() => mulai('shift')} class="arc-btn arc-btn--primary">
                   ▶️ {t('arcade.cobagi')}
                 </button>
                 <button
                   type="button"
                   onClick={() => mulai('drill')}
                   disabled={jumlahDrill === 0}
-                  class="min-h-11 rounded-control border border-accent-amber px-2 text-[12px] font-bold text-accent-amber disabled:opacity-40"
+                  class="arc-btn arc-btn--ghost disabled:opacity-40"
                 >
                   🎯 {t('arcade.latih_salah')}
                 </button>
@@ -929,200 +971,207 @@ export default function ArcadeGame() {
           ) : fase === 'main' ? (
             <>
               {/* ── HUD ─────────────────────────────────────────────────── */}
-              <div class="mb-2 rounded-card border border-line bg-surface-raised px-3 py-2">
-                <div class="flex items-start justify-between gap-2">
+              <div class="arc-top">
+                <div class="arc-top-row">
                   <div class="min-w-0">
-                    <p class="text-[9px] font-bold uppercase tracking-wide text-fg-muted">
+                    <span class="arc-kicker">
                       {mode === 'drill' ? t('arcade.latih_salah') : t('arcade.pendapatan')}
-                    </p>
-                    <p class="flex items-baseline gap-1.5">
-                      <strong class="font-mono text-xl leading-none text-fg" data-testid="arcade-skor">
-                        ¥ {skor}
-                      </strong>
-                      {poinTerbang && (
-                        <span key={poinTerbang.id} class="animasi-pop text-[11px] font-black text-accent-emerald">
-                          +{poinTerbang.nilai}
-                        </span>
-                      )}
-                      {komboGenba >= 2 && (
-                        <span class="rounded-pill bg-accent-amber/15 px-1.5 py-0.5 text-[10px] font-bold text-accent-amber">
-                          🔥 {komboGenba}
-                          {komboGenba >= 10 ? ' MAX' : ''}
-                        </span>
-                      )}
-                    </p>
+                    </span>
+                    <span class="arc-skor" data-testid="arcade-skor">
+                      ¥ {skor}
+                    </span>
+                    {poinTerbang && (
+                      <span key={poinTerbang.id} class="animasi-pop text-[11px] font-black text-[#4ade80]">
+                        +{poinTerbang.nilai}
+                      </span>
+                    )}
                   </div>
                   <div class="shrink-0 text-right">
-                    <p class="text-[10px] text-fg-muted">
-                      {t('arcade.pesanan')} <b class="text-fg">{pesananSelesai}/{target}</b>
+                    <p class="arc-order-count">
+                      {t('arcade.pesanan')} <b>{pesananSelesai}/{target}</b>
                     </p>
-                    <p role="img" aria-label={`${t('arcade.nyawa')}: ${Math.max(0, nyawa)}`} class="text-sm leading-tight tracking-tight">
-                      {'⛑️'.repeat(Math.max(0, nyawa)) || '💀'}
+                    {/* Nyawa tetap dirender sebagai ⛑️ per nyawa, bukan angka:
+                        `e2e/arcade.test.tsx` menghitung kemunculannya di
+                        textContent untuk membuktikan satu kesalahan hanya
+                        memakan SATU nyawa. Bingkainya yang membuatnya terbaca
+                        sebagai token, bukan emoji yang mengambang. */}
+                    <p role="img" aria-label={`${t('arcade.nyawa')}: ${Math.max(0, nyawa)}`} class="arc-lives mt-1">
+                      {Array.from({ length: Math.max(0, nyawa) }, (_, i) => (
+                        <span key={i} class="arc-life">
+                          ⛑️
+                        </span>
+                      ))}
+                      {nyawa <= 0 && <span class="arc-life">💀</span>}
                     </p>
                   </div>
                 </div>
-                <div class="mt-1.5 h-1 w-full overflow-hidden rounded-pill bg-surface-sunken">
-                  <div class="h-full rounded-pill bg-accent-violet" style={`width:${progresShift}%`} />
+                {komboGenba >= 2 && (
+                  <p class="mt-1">
+                    <span class={`arc-combo ${komboGenba >= 5 ? 'arc-combo--hot' : ''}`}>
+                      🔥 {komboGenba}
+                      {komboGenba >= 10 ? ' MAX' : ''}
+                    </span>
+                  </p>
+                )}
+                <div class="arc-meter">
+                  <div class="arc-meter-fill" style={`transform:scaleX(${progresShift / 100})`} />
                 </div>
               </div>
 
               {/* ── Perintah ────────────────────────────────────────────── */}
               <div
-                class={`mb-2 rounded-card border-2 bg-surface-sunken p-3 ${
-                  komboGenba >= 5 ? 'border-accent-amber' : 'border-line'
-                } ${animasi === 'salah' ? 'animasi-getar' : animasi === 'benar' ? 'animasi-pop' : ''}`}
+                key={`o${pesananSelesai}-${salahGenba}`}
+                class={`arc-order ${animasi === 'benar' ? 'arc-order--hit' : ''}`}
               >
-                <div class="mb-1 flex items-center justify-between gap-2">
-                  <span class="min-w-0 text-[11px] font-bold text-fg-muted">
+                <div class="arc-order-head">
+                  <span class="arc-kicker min-w-0">
                     {t('arcade.perintah_senpai')} · #{pesananSelesai + salahGenba + 1}
-                    <span class="ml-1 rounded-pill bg-surface-raised px-1.5 py-0.5 text-[9px] font-normal">
+                    <span class="arc-order-badge">
                       {t('arcade.gelombang')} {gelombang}
                     </span>
                   </span>
                   <button
                     type="button"
                     onClick={() => perintah && ucap(perintah.jp, 0.9 + 0.06 * (gelombang - 1))}
-                    class="min-h-9 shrink-0 rounded-control border border-line px-2 text-[11px] font-bold text-fg"
+                    class="arc-btn arc-btn--small arc-btn--ghost"
                   >
                     🔊 {t('arcade.ulangi')}
                   </button>
                 </div>
-                {/* `break-words`: perintah bisa panjang (`しろい はこ を ひだり の はこ に
-                    おいてください`) dan pada layar 320 px teks ini pernah melebar
-                    keluar kartu, bukan membungkus. */}
-                <p class="text-base font-bold text-fg break-words" data-testid="arcade-perintah">
+                {/* `overflow-wrap:anywhere`: perintah bisa panjang (`しろい はこ を
+                    ひだり の はこ に おいてください`) dan pada layar 320 px teks ini
+                    pernah melebar keluar kartu, bukan membungkus. */}
+                <p class="arc-order-jp" data-testid="arcade-perintah">
                   {perintah ? (choukai ? '🔊 ？？？' : perintah.jp) : t('arcade.mulai_hint')}
                 </p>
-                {perintah && !choukai && <p class="mt-0.5 text-[11px] italic text-fg-muted">{perintah.romaji}</p>}
+                {perintah && !choukai && <p class="arc-order-romaji">{perintah.romaji}</p>}
                 {pesan && (
-                  <p role="status" class="mt-1 text-[11px] font-bold text-accent-red">
+                  <p role="status" class="arc-msg">
                     {pesan}
                   </p>
                 )}
+                {animasi === 'benar' && (
+                  <span class="arc-burst" aria-hidden="true">
+                    {PARTIKEL.map((p, i) => (
+                      <span key={i} class="arc-partikel" style={`--dx:${p[0]}px;--dy:${p[1]}px;--c:${p[2]}`} />
+                    ))}
+                  </span>
+                )}
                 <div
-                  class="mt-2 h-1.5 w-full overflow-hidden rounded-pill bg-surface-raised"
+                  class="arc-meter"
                   role="progressbar"
                   aria-valuenow={Math.round(sisa)}
                   aria-valuemin={0}
                   aria-valuemax={100}
                 >
                   <div
-                    class={`h-full ${sisa > 50 ? 'bg-emerald-400' : sisa > 25 ? 'bg-amber-400' : 'bg-rose-500'}`}
-                    style={`transform:scaleX(${sisa / 100});transform-origin:left`}
+                    class={`arc-meter-fill ${sisa <= 25 ? 'arc-meter-fill--hot' : ''}`}
+                    style={`transform:scaleX(${sisa / 100})`}
                   />
                 </div>
               </div>
 
-              <p class="mb-1.5 text-center text-[11px] text-fg-muted">
+              <p class="arc-hint">
                 {dipilih ? t('arcade.ketuk_rak') : t('arcade.pilih_barang')}
               </p>
 
-              {/* ── Rak ─────────────────────────────────────────────────── */}
-              <p class="mb-1 text-[9px] font-bold uppercase tracking-wide text-fg-muted">
-                {t('arcade.rak')} · {zona.length}
-              </p>
-              <div
-                class={`mb-2 grid gap-1.5 ${
-                  kolomZona === 4 ? 'grid-cols-4' : kolomZona === 3 ? 'grid-cols-3' : 'grid-cols-2'
-                }`}
-              >
-                {/* Satu array, bukan dua yang dipasangkan lewat INDEKS.
-                    Versi sebelumnya memetakan `['ue','shita','hidari','migi']` lalu
-                    mengambil label dari array terpisah dengan `[i]` — mengurutkan
-                    ulang salah satunya membuat tombol "Rak Atas" menaruh barang ke
-                    みぎ tanpa satu pun error. Ditemukan saat review UI 2026-11-04. */}
-                {zona.map((z) => {
-                  const kunci = perintah ? perintah.zona.id === z.id : false;
-                  const sorotSalah = rakSalah === z.id;
-                  return (
+              {/* ── Meja kerja ──────────────────────────────────────────── */}
+              <div class="arc-section">
+                <p class="arc-kicker">{t('arcade.meja')}</p>
+                <div class="arc-tray mt-1.5">
+                  {pilihan.map((p) => (
                     <button
-                      key={z.id}
+                      key={p.kunci}
                       type="button"
-                      data-zona={z.id}
-                      onClick={() => taruh(z.id)}
-                      class={`group flex min-h-[54px] rounded-card border-2 border-dashed transition active:scale-[0.97] motion-reduce:transition-none ${
-                        rapatZona
-                          ? 'flex-col items-center justify-center gap-0.5 px-1 py-1 text-center'
-                          : 'items-center gap-2 px-2 py-1.5 text-left'
-                      } ${
-                        kunci && menunggu
-                          ? 'border-accent-emerald bg-accent-emerald/10'
-                          : sorotSalah
-                            ? 'border-accent-red bg-accent-red/10'
-                            : 'border-line bg-surface-sunken'
-                      }`}
+                      onClick={() => {
+                        setDipilih(p.kunci);
+                        ucap(`${p.warna.jp} ${p.barang.jp}`, 1);
+                      }}
+                      aria-pressed={dipilih === p.kunci}
+                      /* Warna barang menjadi PITA di kepala peti, bukan latar
+                         seluruh kartu. Versi lama memakai `warna.kelas` sebagai
+                         latar, dan dua entri di `GENBA_WARNA` membawa
+                         `text-white`/`text-slate-900` yang DIBALIK oleh shim tema
+                         terang — teks bisa berakhir gelap di atas gelap. Dengan
+                         pita, label selalu terang di atas peti gelap. */
+                      class={`arc-crate ${dipilih === p.kunci ? 'arc-crate--picked' : ''}`}
                     >
-                      {/* Ikon arah/lokasi menggantikan emoji: bentuknya sama di
-                          semua perangkat dan warnanya ikut teks. */}
-                      <ArcadeIkon
-                        jenis="zona"
-                        nama={z.id}
-                        ukuran={rapatZona ? 18 : 22}
-                        kelas="shrink-0 text-accent-violet"
+                      <span
+                        class="arc-crate-band"
+                        aria-hidden="true"
+                        style={`background:${WARNA_PITA[p.warna.id] ?? '#64748b'}`}
                       />
-                      <span class="min-w-0">
-                        {/* Pada 4 kolom, label Jepang disembunyikan: 85 px tidak
-                            cukup untuk dua baris teks, dan perintahnya sendiri
-                            sudah Jepang — yang diuji di sini adalah memilih rak,
-                            bukan membaca ulang namanya. */}
-                        {!rapatZona && <span class="block text-[10px] text-fg-muted break-words">{z.jp}</span>}
-                        <span class={`block font-bold leading-tight text-fg ${rapatZona ? 'text-[10px]' : 'text-[13px]'}`}>
-                          {z.id_}
-                        </span>
+                      <ArcadeIkon jenis="barang" nama={p.barang.id} ukuran={26} kelas="arc-ikon" />
+                      <span class="arc-crate-jp">
+                        {p.warna.jp}
+                        {p.barang.jp}
                       </span>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
 
-              {/* ── Meja kerja ──────────────────────────────────────────── */}
-              <p class="mb-1 text-[9px] font-bold uppercase tracking-wide text-fg-muted">{t('arcade.meja')}</p>
-              <div class="grid grid-cols-3 gap-1.5 rounded-card border border-line bg-surface-sunken p-1.5">
-                {pilihan.map((p) => (
-                  <button
-                    key={p.kunci}
-                    type="button"
-                    onClick={() => {
-                      setDipilih(p.kunci);
-                      ucap(`${p.warna.jp} ${p.barang.jp}`, 1);
-                    }}
-                    aria-pressed={dipilih === p.kunci}
-                    /* Barang terpilih DIANGKAT (naik 2 px + bayangan + cincin),
-                       bukan hanya diberi garis: di layar HP 320 px, garis 4 px di
-                       tepi kartu berwarna nyaris tak terlihat, sedangkan bayangan
-                       dan perubahan tinggi langsung terbaca. */
-                    class={`flex min-h-[56px] flex-col items-center justify-center gap-0.5 rounded-control border-2 px-1 py-1 text-center shadow-sm transition duration-150 motion-reduce:transition-none ${
-                      p.warna.kelas
-                    } ${dipilih === p.kunci ? '-translate-y-0.5 shadow-lg ring-4 ring-white' : 'active:scale-[0.96]'}`}
-                  >
-                    <ArcadeIkon jenis="barang" nama={p.barang.id} ukuran={26} kelas="shrink-0" />
-                    <span class="block text-[11px] font-bold leading-tight">
-                      {p.warna.jp}
-                      {p.barang.jp}
-                    </span>
-                  </button>
-                ))}
+              {/* ── Rak ─────────────────────────────────────────────────── */}
+              <div class="arc-section">
+                <p class="arc-kicker">
+                  {t('arcade.rak')} · {zona.length}
+                </p>
+                <div
+                  class={`arc-shelves mt-1.5 ${
+                    kolomZona === 4 ? 'arc-shelves--4' : kolomZona === 3 ? 'arc-shelves--3' : 'arc-shelves--2'
+                  }`}
+                >
+                  {/* Satu array, bukan dua yang dipasangkan lewat INDEKS.
+                      Versi sebelumnya memetakan `['ue','shita','hidari','migi']` lalu
+                      mengambil label dari array terpisah dengan `[i]` — mengurutkan
+                      ulang salah satunya membuat tombol "Rak Atas" menaruh barang ke
+                      みぎ tanpa satu pun error. Ditemukan saat review UI 2026-11-04. */}
+                  {zona.map((z) => {
+                    const kunci = perintah ? perintah.zona.id === z.id : false;
+                    const sorotSalah = rakSalah === z.id;
+                    return (
+                      <button
+                        key={z.id}
+                        type="button"
+                        data-zona={z.id}
+                        /* Penanda tujuan yang benar. Atribut ini yang dibaca
+                           `e2e/arcade.test.tsx`; sebelumnya tes itu membaca nama
+                           kelas `border-accent-emerald`, yang mengikat perilaku
+                           ke satu rona palet — rona yang memang sedang diganti. */
+                        data-target={kunci && menunggu ? 'true' : undefined}
+                        onClick={() => taruh(z.id)}
+                        class={`arc-shelf ${rapatZona ? 'arc-shelf--rapat' : ''} ${
+                          kunci && menunggu ? 'arc-shelf--target' : sorotSalah ? 'arc-shelf--wrong' : ''
+                        }`}
+                      >
+                        {/* Ikon arah/lokasi menggantikan emoji: bentuknya sama di
+                            semua perangkat dan warnanya ikut teks. */}
+                        <ArcadeIkon jenis="zona" nama={z.id} ukuran={rapatZona ? 18 : 22} kelas="arc-ikon" />
+                        <span class="min-w-0">
+                          {/* Pada 4 kolom, label Jepang disembunyikan: 85 px tidak
+                              cukup untuk dua baris teks, dan perintahnya sendiri
+                              sudah Jepang — yang diuji di sini adalah memilih rak,
+                              bukan membaca ulang namanya. */}
+                          {!rapatZona && <span class="arc-shelf-jp">{z.jp}</span>}
+                          <span class="arc-shelf-id">{z.id_}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </>
           ) : (
             <>
               {/* ── Idle: CTA ───────────────────────────────────────────── */}
-              <p class="mb-2 text-center text-[11px] leading-relaxed text-fg-muted">
+              <p class="arc-hint mt-2">
                 {t('arcade.mulai_hint')}
               </p>
-              <button
-                type="button"
-                onClick={() => mulai('shift')}
-                class="mb-2 min-h-12 w-full rounded-control bg-accent-violet px-4 text-sm font-bold text-white"
-              >
+              <button type="button" onClick={() => mulai('shift')} class="arc-btn arc-btn--primary mt-2">
                 ▶️ {t('arcade.mulai')} · {aturan.pesanan} {t('arcade.pesanan')}
               </button>
               {jumlahDrill > 0 && (
-                <button
-                  type="button"
-                  onClick={() => mulai('drill')}
-                  class="mb-2 min-h-11 w-full rounded-control border border-accent-amber px-4 text-[12px] font-bold text-accent-amber"
-                >
+                <button type="button" onClick={() => mulai('drill')} class="arc-btn arc-btn--ghost mt-1.5">
                   🎯 {t('arcade.latih_salah')} ({jumlahDrill})
                 </button>
               )}

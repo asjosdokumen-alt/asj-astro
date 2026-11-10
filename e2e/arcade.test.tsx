@@ -272,7 +272,32 @@ describe('arcade — Genba Order Rush', () => {
     cariTombol(labelSalah ?? 'Rak Atas')?.click();
 
     const rakBenar = cariTombol(GENBA_ZONA.find((z) => z.id === idBenar)?.id_ ?? 'Rak Atas');
-    await waitFor(() => expect(rakBenar?.className).toContain('border-accent-emerald'));
+    /* Sejak 2026-11-10 penandanya `data-target`, bukan nama kelas
+       `border-accent-emerald`. Kelas itu mengikat PERILAKU (rak tujuan
+       disorot) ke satu rona palet — dan rona itulah yang diganti. Atribut
+       tetap membuktikan hal yang sama dan tidak bisa lolos karena kebetulan
+       rona lain muncul di class list. */
+    await waitFor(() => expect(rakBenar?.getAttribute('data-target')).toBe('true'));
+  }, 15000);
+
+  /* Fitur 2026-11-10: jawaban benar memicu ledakan dua belas partikel di kartu
+     perintah. Diuji karena ini satu-satunya bagian "juice" yang punya bentuk
+     DOM — kalau kelasnya hilang atau partikelnya tidak dirender, tidak ada
+     gerbang lain di repo ini yang akan melihatnya (kanvas tidak akan terlihat
+     sama sekali). */
+  it('jawaban benar memunculkan ledakan partikel', async () => {
+    render(<ArcadeGame />);
+    cariTombol('Mulai Shift')?.click();
+    await waitFor(() => expect(perintahTeks()).toContain('おいてください'));
+
+    const m = perintahTeks().match(/^(\S+) (\S+) を (.+?) に おいてください$/);
+    expect(m).toBeTruthy();
+    const [, warna, barang, zona] = m as RegExpMatchArray;
+    cariTombol(`${warna}${barang}`)?.click();
+    await waitFor(() => expect(cariTombol(`${warna}${barang}`)?.getAttribute('aria-pressed')).toBe('true'));
+    rakId(GENBA_ZONA.find((z) => z.jp === zona)?.id ?? '')?.click();
+
+    await waitFor(() => expect(document.querySelectorAll('.arc-partikel')).toHaveLength(12));
   }, 15000);
 
   /* Keluhan pemilik 2026-11-05: "cuma 4 pilihan tempat, bukannya jadi gampang?"
