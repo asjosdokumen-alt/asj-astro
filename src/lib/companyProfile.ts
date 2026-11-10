@@ -514,10 +514,29 @@ export const FACILITIES: Tile[] = [
      PLACEMENT_COVERAGE — all fields, all 47 prefectures. The answer a partner
                           is looking for ("do you place in my field / my
                           prefecture?").
-     PLACEMENTS         — the three sectors with dated mensetsu banners behind
-                          them. Still TRUE and still worth showing; what was
-                          wrong was presenting them as the total. They are
-                          proof of activity, not a boundary.
+     PLACEMENTS         — the placements the register actually records. Still
+                          TRUE and still worth showing; what was wrong was
+                          presenting the old four prefectures as the total.
+                          They are proof of activity, not a boundary.
+
+   REFRESHED 2026-11-10 — the evidence now comes from the placement register
+   (`JOB MACHING.xlsx`, 381 named candidates), not from the dated mensetsu
+   banners. The banner list named three sectors and four prefectures; the
+   register records six sectors across 26 prefectures, so the rows below are
+   the register's own footprint, ordered north to south.
+
+   WHY NORTH TO SOUTH AND NOT BY VOLUME. Ordering by how many people went
+   somewhere would print the internal ranking in the order of the list, which
+   is the disclosure the owner forbids by a different route. Geography is
+   stable, it survives a register update, and it reads as a map rather than
+   as a leaderboard.
+
+   WHAT IS DELIBERATELY NOT HERE: how many candidates, how many per
+   prefecture, how many partners. Owner's rule — those are internal figures.
+   A list of NAMES is evidence; a count is a disclosure. The register also
+   carries cleaning, driving and hotel rows, but none of them has a named
+   candidate yet, and a sector whose only backing is a job code is a claim
+   with nothing behind it — so those wait in the register, not on this page.
 
    They are two exports rather than one list with a divider row because the
    previous single-list version DID read as a contradiction when rendered
@@ -552,35 +571,99 @@ export const PLACEMENT_COVERAGE: Fact[] = [
 export const PLACEMENTS: Fact[] = [
   {
     label: { key: 'profile.place_food', text: 'Pengolahan Makanan' },
-    value: { key: 'profile.place_food_area', text: 'Miyazaki · Okayama' },
+    value: {
+      key: 'profile.place_food_area',
+      text: 'Hokkaido · Ibaraki · Tochigi · Saitama · Chiba · Tokyo · Kanagawa · Niigata · Kyoto · Aichi · Ehime · Fukuoka · Nagasaki · Kumamoto · Oita · Miyazaki · Kagoshima',
+    },
   },
   {
     label: { key: 'profile.place_farm', text: 'Pertanian' },
-    value: { key: 'profile.place_farm_area', text: 'Miyazaki · Nagano' },
+    value: {
+      key: 'profile.place_farm_area',
+      text: 'Ibaraki · Gunma · Nagano · Fukuoka · Nagasaki · Kumamoto · Kagoshima · Okinawa',
+    },
   },
   {
     label: { key: 'profile.place_livestock', text: 'Peternakan' },
-    value: { key: 'profile.place_livestock_area', text: 'Kagoshima' },
+    value: {
+      key: 'profile.place_livestock_area',
+      text: 'Hokkaido · Tochigi · Chiba · Niigata · Fukuoka · Oita · Kagoshima · Okinawa',
+    },
+  },
+  {
+    label: { key: 'profile.place_care', text: 'Kaigo (perawatan lansia)' },
+    value: {
+      key: 'profile.place_care_area',
+      text: 'Hokkaido · Fukushima · Ibaraki · Saitama · Tokyo · Kanagawa · Shizuoka · Aichi · Osaka · Hyogo · Hiroshima · Nagasaki · Oita',
+    },
+  },
+  {
+    label: { key: 'profile.place_foodservice', text: 'Restoran & jasa boga' },
+    value: {
+      key: 'profile.place_foodservice_area',
+      text: 'Tokyo · Okayama · Hiroshima · Nagasaki · Oita · Miyazaki · Okinawa',
+    },
+  },
+  {
+    label: { key: 'profile.place_construction', text: 'Konstruksi & manufaktur (magang)' },
+    value: { key: 'profile.place_construction_area', text: 'Chiba · Nagasaki' },
   },
 ];
 
 /**
- * The four prefectures the DOCUMENTED placements name — the evidence list.
+ * The 26 prefectures the placement REGISTER names — the evidence ledger.
  *
  * WAS THE HERO STAT'S SOURCE UNTIL 2026-10-30. The hero now prints
  * `PREFECTURES_IN_JAPAN` (47) because the owner corrected the coverage: the
- * company places to every prefecture through partner LPKs, and these four were
- * only the ones with dated interview banners. Keeping this array as the
- * "counted" source of a 47 claim would have been a category error — the list
- * answers "where is there proof", not "where do we place".
+ * company places to every prefecture through partner LPKs, and this array was
+ * only ever the ones with proof behind them. Keeping it as the "counted"
+ * source of a 47 claim would have been a category error — the list answers
+ * "where is there proof", not "where do we place".
  *
- * It is still the counting source for its own set, and the test uses it to
- * assert every named prefecture appears in a rendered row. Kept in the
- * ROMANISED form on purpose: it is compared against `PLACEMENTS` values, while
- * the localised display strings live in the dictionary under
+ * REFRESHED 2026-11-10 from `JOB MACHING.xlsx` (381 named candidates). It used
+ * to hold the four prefectures with dated mensetsu banners; the register names
+ * 26, so it holds 26.
+ *
+ * WHY IT IS STILL A SECOND COPY OF NAMES THAT ALSO APPEAR IN THE VALUES. This
+ * array is the LEDGER; the `PLACEMENTS` rows are the DISPLAY. They are written
+ * twice on purpose and compared by the test, which is the only thing that
+ * catches a row edited in one place and not the other. What it is NOT allowed
+ * to become is a "nice round number": 26 is the register's own count, not a
+ * target, and it must fall to 25 the moment the register no longer supports
+ * one of them.
+ *
+ * Kept in the ROMANISED form on purpose: it is compared against `PLACEMENTS`
+ * values, while the localised display strings live in the dictionary under
  * `profile.place_*_area`.
  */
-export const PLACEMENT_PREFECTURES = ['Miyazaki', 'Okayama', 'Nagano', 'Kagoshima'] as const;
+export const PLACEMENT_PREFECTURES = [
+  'Hokkaido',
+  'Fukushima',
+  'Ibaraki',
+  'Tochigi',
+  'Gunma',
+  'Saitama',
+  'Chiba',
+  'Tokyo',
+  'Kanagawa',
+  'Niigata',
+  'Nagano',
+  'Shizuoka',
+  'Aichi',
+  'Kyoto',
+  'Osaka',
+  'Hyogo',
+  'Okayama',
+  'Hiroshima',
+  'Ehime',
+  'Fukuoka',
+  'Nagasaki',
+  'Kumamoto',
+  'Oita',
+  'Miyazaki',
+  'Kagoshima',
+  'Okinawa',
+] as const;
 
 /* ── About (page 2) ─────────────────────────────────────────────────────────
    Three paragraphs. The first is the profile's own welcome, reproduced

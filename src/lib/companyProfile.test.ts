@@ -291,17 +291,34 @@ describe('companyProfile — counts that must match the document', () => {
     expect(joined).toContain('Seluruh bidang');
     expect(joined).toContain('Seluruh 47 prefektur');
 
-    // 2. EVIDENCE. The four areas with dated mensetsu banners stay, and each is
-    //    still named — they were never wrong, only presented as the total.
-    expect(PLACEMENT_PREFECTURES).toHaveLength(4);
+    // 2. EVIDENCE. Every prefecture the placement register names is still
+    //    rendered. The ledger is `PLACEMENT_PREFECTURES`, the rows are the
+    //    display; they are two copies on purpose, and the set comparison below
+    //    is what catches a row edited in one place and not the other.
+    //
+    //    REFRESHED 2026-11-10: 4 → 26 names and 3 → 6 rows, both read off
+    //    `JOB MACHING.xlsx` (381 named candidates). Both numbers are the
+    //    REGISTER's, so they are meant to move when it moves — if the register
+    //    stops supporting a prefecture, this test goes red until the ledger and
+    //    the row drop it too. Do not "round" either one.
+    expect(PLACEMENT_PREFECTURES).toHaveLength(26);
     for (const pref of PLACEMENT_PREFECTURES) expect(joined).toContain(pref);
+
+    // 2a. NO GHOST, NO ORPHAN. The union of the rendered values must equal the
+    //     ledger exactly: a name in a row but not in the ledger is a prefecture
+    //     with no evidence behind it, and a name in the ledger but in no row is
+    //     evidence the page dropped.
+    const rendered = new Set(
+      PLACEMENTS.flatMap((p) => (typeof p.value === 'string' ? p.value : p.value.text).split(' · ')),
+    );
+    expect([...rendered].sort()).toEqual([...PLACEMENT_PREFECTURES].sort());
 
     // 2b. THE SPLIT IS THE FIX, so it is asserted: coverage and evidence are two
     //     separate lists, and neither is empty. A future "tidy-up" that merges
     //     them back into one `dl` reintroduces the contradiction the owner
     //     reported (measured on screen 2026-10-30).
     expect(PLACEMENT_COVERAGE).toHaveLength(2);
-    expect(PLACEMENTS).toHaveLength(3);
+    expect(PLACEMENTS).toHaveLength(6);
 
     // 3. EVERY COPY OF THE NUMERAL AGREES. It is typed in four places — the
     //    coverage row's literal, its ID and JP dictionary entries, and the hero

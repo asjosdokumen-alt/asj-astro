@@ -976,11 +976,19 @@ export const jpTranslations: Record<string, string> = {
   "profile.place_food": "食品加工",
   "profile.place_farm": "農業",
   "profile.place_livestock": "畜産",
+  "profile.place_care": "介護",
+  "profile.place_foodservice": "外食・給食",
+  "profile.place_construction": "建設・製造（実習）",
   // 配置先の県名。ローマ字表記のままだと日本語話者には読めないため、
   // 漢字表記に切り替える（中間のドットは両言語で同じ字形）。
-  "profile.place_food_area": "宮崎・岡山",
-  "profile.place_farm_area": "宮崎・長野",
-  "profile.place_livestock_area": "鹿児島",
+  // 2026-11-10：配属実績（JOB MACHING.xlsx）に合わせて更新。3分野4県から
+  // 6分野26県になった。並びは北から南へ（人数順ではない）。
+  "profile.place_food_area": "北海道・茨城・栃木・埼玉・千葉・東京・神奈川・新潟・京都・愛知・愛媛・福岡・長崎・熊本・大分・宮崎・鹿児島",
+  "profile.place_farm_area": "茨城・群馬・長野・福岡・長崎・熊本・鹿児島・沖縄",
+  "profile.place_livestock_area": "北海道・栃木・千葉・新潟・福岡・大分・鹿児島・沖縄",
+  "profile.place_care_area": "北海道・福島・茨城・埼玉・東京・神奈川・静岡・愛知・大阪・兵庫・広島・長崎・大分",
+  "profile.place_foodservice_area": "東京・岡山・広島・長崎・大分・宮崎・沖縄",
+  "profile.place_construction_area": "千葉・長崎",
   // 金額は「識別子」ではなく「数量」なので訳す。日本語の万進法に合わせ、
   // 通貨もカタカナで示す（単語ごとの置換ではない）。
   "profile.prog_price": "600万ルピア",

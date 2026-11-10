@@ -1395,18 +1395,30 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.place_food": "Pengolahan Makanan",
   "profile.place_farm": "Pertanian",
   "profile.place_livestock": "Peternakan",
+  "profile.place_care": "Kaigo (perawatan lansia)",
+  "profile.place_foodservice": "Restoran & jasa boga",
+  "profile.place_construction": "Konstruksi & manufaktur (magang)",
   // The VALUES of the placement rows. These were hardcoded romanised strings
   // until 2026-09-27 — see the `Fact.value` note in companyProfile.ts. A
   // prefecture is a name, so it localises; the middle dot separates two
   // prefectures and is the same glyph in both languages.
   //
-  // 2026-10-30: these three rows are now EVIDENCE, not the whole list — the
-  // section opens with the coverage rows above. The comment that used to sit
-  // here said the list was "what the profile contains", which was the framing
-  // the owner corrected.
-  "profile.place_food_area": "Miyazaki · Okayama",
-  "profile.place_farm_area": "Miyazaki · Nagano",
-  "profile.place_livestock_area": "Kagoshima",
+  // 2026-10-30: these rows are EVIDENCE, not the whole list — the section
+  // opens with the coverage rows above. The comment that used to sit here said
+  // the list was "what the profile contains", which was the framing the owner
+  // corrected.
+  //
+  // 2026-11-10: refreshed from the placement register (`JOB MACHING.xlsx`),
+  // which is why three rows became six and four prefectures became 26. The
+  // order is north to south, NOT by volume — see the note in companyProfile.ts.
+  // Every name here is also in `PLACEMENT_PREFECTURES`, and the test compares
+  // the two.
+  "profile.place_food_area": "Hokkaido · Ibaraki · Tochigi · Saitama · Chiba · Tokyo · Kanagawa · Niigata · Kyoto · Aichi · Ehime · Fukuoka · Nagasaki · Kumamoto · Oita · Miyazaki · Kagoshima",
+  "profile.place_farm_area": "Ibaraki · Gunma · Nagano · Fukuoka · Nagasaki · Kumamoto · Kagoshima · Okinawa",
+  "profile.place_livestock_area": "Hokkaido · Tochigi · Chiba · Niigata · Fukuoka · Oita · Kagoshima · Okinawa",
+  "profile.place_care_area": "Hokkaido · Fukushima · Ibaraki · Saitama · Tokyo · Kanagawa · Shizuoka · Aichi · Osaka · Hyogo · Hiroshima · Nagasaki · Oita",
+  "profile.place_foodservice_area": "Tokyo · Okayama · Hiroshima · Nagasaki · Oita · Miyazaki · Okinawa",
+  "profile.place_construction_area": "Chiba · Nagasaki",
   // The price. `juta` is a word and the reader may not parse it, so only the
   // LABEL being translated (as it was) left the number unreadable.
   "profile.prog_price": "6 JUTA",
