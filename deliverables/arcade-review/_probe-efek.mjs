@@ -49,7 +49,16 @@ console.log('salah', JSON.stringify(keadaanSalah));
 /* Tunggu perintah berikutnya, lalu jawab BENAR dan potret ledakan. */
 await page.waitForTimeout(1400);
 await page.waitForSelector('[data-testid="arcade-perintah"]');
-await page.locator('.arc-crate').first().click();
+/* Peti yang benar = `warna.jp + barang.jp` tanpa spasi, dibaca dari perintah —
+   BUKAN `.arc-crate` pertama. Versi pertama probe ini mengetuk peti pertama dan
+   kebetulan cocok; begitu undiannya lain, jawabannya salah dan ledakan partikel
+   yang dicari tidak pernah muncul (terukur: 0 partikel, skor 0). */
+const peti = await page.evaluate(() => {
+  const teks = document.querySelector('[data-testid="arcade-perintah"]')?.textContent?.trim() ?? '';
+  const m = teks.match(/^(\S+) (\S+) を /);
+  return m ? `${m[1]}${m[2]}` : '';
+});
+await page.locator('.arc-crate', { hasText: peti }).first().click();
 await page.waitForTimeout(150);
 const benar = await page.evaluate(() => {
   const teks = document.querySelector('[data-testid="arcade-perintah"]')?.textContent?.trim() ?? '';

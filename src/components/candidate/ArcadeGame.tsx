@@ -104,26 +104,33 @@ const PARTIKEL: readonly (readonly [number, number, string])[] = [
 ];
 
 /**
- * Warna pita peti, hex TETAP per id warna.
+ * Warna peti: latar DAN teks, hex tetap per id warna.
  *
  * KENAPA BUKAN `warna.kelas`
  * --------------------------
  * `GENBA_WARNA` menyimpan kelas Tailwind (`bg-slate-900` untuk くろい), dan
  * `global.css` memetakan ulang kelas palet itu untuk tema terang. Terukur di
- * tema terang 2026-11-10: pita くろい computed `rgba(255, 255, 255, 0.92)` —
- * peti HITAM dengan pita PUTIH. Selama kelas itu dipakai sebagai latar seluruh
- * kartu, kesalahannya tersamar oleh teks; sebagai pita ia menjadi satu-satunya
- * penanda warna, jadi ia harus kebal tema.
+ * tema terang 2026-11-10: latar くろい computed `rgba(255, 255, 255, 0.92)` —
+ * peti HITAM menjadi PUTIH. Arena ini permukaan bertema-tetap, jadi warnanya
+ * juga harus tetap.
  *
- * Arena ini permukaan bertema-tetap, jadi warnanya juga harus tetap.
+ * Pasangan latar/teks dipilih supaya tiap peti lolos ambang 4,5:1 terhadap
+ * latarnya SENDIRI — peti adalah satu-satunya elemen yang latarnya berubah
+ * menurut isi, jadi kontrasnya tidak bisa diwarisi dari tema. Terukur:
+ * akai 5,30 · aoi 5,49 · kiiroi 8,97 · shiroi 12,02 · kuroi 11,86 · midori 6,78.
+ *
+ * Dua warna TERANG (きいろい, しろい) memakai teks gelap, bukan teks terang yang
+ * digelapkan latarnya: versi pertama memakai #78350f untuk きいろい dan di layar
+ * peti "kuning" terbaca COKELAT. Warna adalah INFORMASI di game ini — peti
+ * kuning harus terlihat kuning, bukan cokelat tua.
  */
-const WARNA_PITA: Readonly<Record<string, string>> = {
-  akai: '#dc2626',
-  aoi: '#2563eb',
-  kiiroi: '#f59e0b',
-  shiroi: '#e2e8f0',
-  kuroi: '#1e293b',
-  midori: '#059669',
+const WARNA_PETI: Readonly<Record<string, { bg: string; fg: string }>> = {
+  akai: { bg: '#b91c1c', fg: '#fee2e2' },
+  aoi: { bg: '#1d4ed8', fg: '#dbeafe' },
+  kiiroi: { bg: '#fbbf24', fg: '#451a03' },
+  shiroi: { bg: '#cbd5e1', fg: '#0f172a' },
+  kuroi: { bg: '#1f2937', fg: '#e5e7eb' },
+  midori: { bg: '#065f46', fg: '#d1fae5' },
 };
 
 interface CatatanLemah {
@@ -828,6 +835,8 @@ export default function ArcadeGame() {
      baris, sehingga tinggi area main tidak bertambah saat rak bertambah. */
   const kolomZona = zona.length >= 7 ? 4 : zona.length >= 5 ? 3 : 2;
   const rapatZona = kolomZona === 4;
+  /** Jumlah slot nyawa yang DIGAMBAR. Latihan selalu memakai aturan magang. */
+  const nyawaMaks = mode === 'drill' ? SHIFT_GENBA.magang.nyawa : aturan.nyawa;
   const warnaNilai =
     hasil?.nilai === 'S'
       ? 'arc-rank--s'
@@ -838,7 +847,12 @@ export default function ArcadeGame() {
           : 'arc-rank--c';
 
   return (
-    <div class="max-w-md mx-auto">
+    /* Batas lebar dipegang HALAMAN (`arcade.astro`), bukan komponen: di HP
+       kolomnya `max-w-md` dan arena menempel ke tepi layar, di desktop kolomnya
+       `lg:max-w-xl`. Kalau komponen ikut memasang `max-w-md` — seperti
+       sebelumnya — batas halaman tidak pernah berlaku dan arena tetap 424 px di
+       tengah layar 1280 px. */
+    <div class="mx-auto w-full max-w-md lg:max-w-none">
       {/* Tab */}
       <div class="mb-3 grid grid-cols-2 gap-2">
         {(['genba', 'combo'] as const).map((id) => (
@@ -897,7 +911,7 @@ export default function ArcadeGame() {
                     <li>{t('arcade.tutor_2')}</li>
                     <li>{t('arcade.tutor_3')}</li>
                   </ol>
-                  <button type="button" onClick={tutupTutorial} class="arc-btn arc-btn--small mt-2 w-full">
+                  <button type="button" onClick={tutupTutorial} class="arc-btn mt-2">
                     {t('arcade.mengerti')}
                   </button>
                 </div>
@@ -971,37 +985,43 @@ export default function ArcadeGame() {
           ) : fase === 'main' ? (
             <>
               {/* ── HUD ─────────────────────────────────────────────────── */}
-              <div class="arc-top">
-                <div class="arc-top-row">
+              <div class="arc-hud">
+                <div class="arc-hud-row">
                   <div class="min-w-0">
                     <span class="arc-kicker">
                       {mode === 'drill' ? t('arcade.latih_salah') : t('arcade.pendapatan')}
                     </span>
-                    <span class="arc-skor" data-testid="arcade-skor">
-                      ¥ {skor}
-                    </span>
-                    {poinTerbang && (
-                      <span key={poinTerbang.id} class="animasi-pop text-[11px] font-black text-[#4ade80]">
-                        +{poinTerbang.nilai}
+                    <span class="arc-skor-baris">
+                      <span class="arc-skor" data-testid="arcade-skor">
+                        ¥ {skor}
                       </span>
-                    )}
+                      {poinTerbang && (
+                        <span key={poinTerbang.id} class="arc-poin">
+                          +{poinTerbang.nilai}
+                        </span>
+                      )}
+                    </span>
                   </div>
                   <div class="shrink-0 text-right">
                     <p class="arc-order-count">
                       {t('arcade.pesanan')} <b>{pesananSelesai}/{target}</b>
                     </p>
-                    {/* Nyawa tetap dirender sebagai ⛑️ per nyawa, bukan angka:
-                        `e2e/arcade.test.tsx` menghitung kemunculannya di
-                        textContent untuk membuktikan satu kesalahan hanya
-                        memakan SATU nyawa. Bingkainya yang membuatnya terbaca
-                        sebagai token, bukan emoji yang mengambang. */}
+                    {/* Nyawa dirender sebagai ⛑️ SATU PER SATU, bukan satu string
+                        berulang: `e2e/arcade.test.tsx` menghitung kemunculan
+                        ⛑️ di textContent untuk membuktikan satu kesalahan hanya
+                        memakan SATU nyawa. Slot yang sudah hilang memakai ✕,
+                        jadi jumlahnya tetap terbaca sebagai "3 slot". */}
                     <p role="img" aria-label={`${t('arcade.nyawa')}: ${Math.max(0, nyawa)}`} class="arc-lives mt-1">
                       {Array.from({ length: Math.max(0, nyawa) }, (_, i) => (
                         <span key={i} class="arc-life">
                           ⛑️
                         </span>
                       ))}
-                      {nyawa <= 0 && <span class="arc-life">💀</span>}
+                      {Array.from({ length: Math.max(0, nyawaMaks - nyawa) }, (_, i) => (
+                        <span key={`h${i}`} class="arc-life arc-life--hilang">
+                          ✕
+                        </span>
+                      ))}
                     </p>
                   </div>
                 </div>
@@ -1078,36 +1098,33 @@ export default function ArcadeGame() {
               {/* ── Meja kerja ──────────────────────────────────────────── */}
               <div class="arc-section">
                 <p class="arc-kicker">{t('arcade.meja')}</p>
-                <div class="arc-tray mt-1.5">
-                  {pilihan.map((p) => (
-                    <button
-                      key={p.kunci}
-                      type="button"
-                      onClick={() => {
-                        setDipilih(p.kunci);
-                        ucap(`${p.warna.jp} ${p.barang.jp}`, 1);
-                      }}
-                      aria-pressed={dipilih === p.kunci}
-                      /* Warna barang menjadi PITA di kepala peti, bukan latar
-                         seluruh kartu. Versi lama memakai `warna.kelas` sebagai
-                         latar, dan dua entri di `GENBA_WARNA` membawa
-                         `text-white`/`text-slate-900` yang DIBALIK oleh shim tema
-                         terang — teks bisa berakhir gelap di atas gelap. Dengan
-                         pita, label selalu terang di atas peti gelap. */
-                      class={`arc-crate ${dipilih === p.kunci ? 'arc-crate--picked' : ''}`}
-                    >
-                      <span
-                        class="arc-crate-band"
-                        aria-hidden="true"
-                        style={`background:${WARNA_PITA[p.warna.id] ?? '#64748b'}`}
-                      />
-                      <ArcadeIkon jenis="barang" nama={p.barang.id} ukuran={26} kelas="arc-ikon" />
-                      <span class="arc-crate-jp">
-                        {p.warna.jp}
-                        {p.barang.jp}
-                      </span>
-                    </button>
-                  ))}
+                <div class="arc-tray">
+                  {pilihan.map((p) => {
+                    const peti = WARNA_PETI[p.warna.id] ?? { bg: '#334155', fg: '#f2f6fb' };
+                    return (
+                      <button
+                        key={p.kunci}
+                        type="button"
+                        onClick={() => {
+                          setDipilih(p.kunci);
+                          ucap(`${p.warna.jp} ${p.barang.jp}`, 1);
+                        }}
+                        aria-pressed={dipilih === p.kunci}
+                        /* Latar peti = warna barangnya, dari hex tetap. Versi
+                           sebelumnya memakai `warna.kelas` (kelas Tailwind) dan
+                           shim tema terang memetakan `bg-slate-900` menjadi
+                           putih — peti くろい berubah putih di tema terang. */
+                        class={`arc-crate ${dipilih === p.kunci ? 'arc-crate--picked' : ''}`}
+                        style={`background:${peti.bg};color:${peti.fg}`}
+                      >
+                        <ArcadeIkon jenis="barang" nama={p.barang.id} ukuran={26} kelas="arc-ikon" />
+                        <span class="arc-crate-jp">
+                          {p.warna.jp}
+                          {p.barang.jp}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

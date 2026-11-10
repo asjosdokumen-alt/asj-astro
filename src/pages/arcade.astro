@@ -23,12 +23,18 @@ import ArcadeGame from '../components/candidate/ArcadeGame.tsx';
 
   <FormToolbar client:only="preact" titleKey="toolbar.arcade" backTo="dashboard" />
   <main id="main-content" class="w-full min-h-[50vh] pb-16 pt-[var(--u-toolbar-h)]">
-    <div class="max-w-md mx-auto px-3">
+    <div class="max-w-md lg:max-w-xl mx-auto px-3">
       {/* Kolom halaman disamakan dengan lebar permainan (max-w-md), dan paragraf
           pengantar dipersingkat. Terukur 2026-11-05 di 390×844: pengantar lama
           enam baris + h1 mendorong meja kerja ke BAWAH LIPATAN, sehingga pemain
           harus menggulir di tengah ronde yang waktunya 8 detik. Teks lengkapnya
-          tetap ada, di dalam <details>. */}
+          tetap ada, di dalam <details>.
+
+          SEJAK 2026-11-10 kolomnya melebar di desktop (`lg:max-w-xl`, 576 px).
+          Terukur di 1280×900: arena 424 px di tengah halaman 1080 px terbaca
+          seperti game HP yang ditempel, bukan layar yang dipasang. `xl` dipilih
+          supaya peti tetap ~168 px — pada 672 px peti menjadi 200 px dan
+          terbaca sebagai pita, bukan kotak. Di HP tetap selebar layar. */}
       <section class="mb-3">
         <h1 class="text-lg font-bold text-fg mb-1">Arcade Latihan Jepang</h1>
         <p class="cetak-sembunyi text-fg-muted text-[12px] leading-snug">
