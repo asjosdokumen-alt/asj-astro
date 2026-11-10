@@ -1453,7 +1453,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       <details
         class="arc-lipat mb-2"
         open={filterBuka}
-        onToggle={(e) => setFilterBuka((e.target as HTMLDetailsElement).open)}
+        onToggle={(e) => setFilterBuka(e.currentTarget.open)}
       >
         <summary class="arc-lipat-kepala">{t('kotoba.filter')}</summary>
         <div class="mt-2 grid grid-cols-2 gap-2">

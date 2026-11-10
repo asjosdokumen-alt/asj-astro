@@ -16,6 +16,7 @@ import ContactForm from '../components/public/ContactForm.tsx';
 import GalleryGrid from '../components/public/GalleryGrid.tsx';
 import FactList from '../components/public/FactList.tsx';
 import CheckList from '../components/public/CheckList.tsx';
+import StoryFilm from '../components/public/StoryFilm.tsx';
 import Icon from '../components/ui/Icon';
 import {
   ABOUT_PARAGRAPHS,
@@ -52,52 +53,6 @@ import {
 import { REVIEWS, REVIEW_SOURCE } from '../lib/testimonials';
 import { FAQ } from '../lib/faq';
 import { GALLERY } from '../lib/gallery';
-
-/* ── MEDIA UNTUK BAND "SATU JALAN" DI §ALUR ──────────────────────────────────
-   Enam plate potret (1024x1464) + dua klip 5 detik, semuanya hasil generate
-   dengan satu model yang sama dan pakaian yang ikut tahap (polo Amanah di
-   pendaftaran/pelatihan, putih-hitam di wawancara, polo lagi di dokumen, jaket
-   bebas berbadge di keberangkatan, kimono di Jepang).
-
-   KENAPA PATH DITULIS LITERAL, BUKAN DIBENTUK DARI `step.image.name`.
-   `scripts/ci/verify-assets.mjs` membaca referensi `/assets/…webp` yang literal;
-   path yang dirakit (`/assets/story/${…}`) tidak terlihat olehnya, jadi keenam
-   berkas akan tampil sebagai "ada di disk, tidak dipublikasi" dan gate kehilangan
-   objek yang seharusnya ia jaga. Nama berkasnya sengaja TIDAK mengikuti
-   `langkah-N` supaya artinya terbaca tanpa membuka gambarnya — karena itu
-   pemetaannya ditulis di sini, satu baris per langkah, bukan diturunkan. */
-const STORY_MEDIA = [
-  {
-    webp: '/assets/story/01-daftar.webp',
-    mp4: null,
-    alt: 'Ilustrasi peserta mengisi formulir pendaftaran dengan pulpen di atas meja, memakai polo LPK Amanah.',
-  },
-  {
-    webp: '/assets/story/02-latihan.webp',
-    mp4: '/assets/story/02-latihan.mp4',
-    alt: 'Ilustrasi pengajar di depan papan tulis berisi hiragana, memakai polo LPK Amanah, dengan peserta duduk di depan kelas.',
-  },
-  {
-    webp: '/assets/story/03-wawancara.webp',
-    mp4: null,
-    alt: 'Ilustrasi wawancara kerja: peserta berkemeja putih dan blazer hitam berhadapan dengan pewawancara.',
-  },
-  {
-    webp: '/assets/story/04-dokumen.webp',
-    mp4: null,
-    alt: 'Ilustrasi tangan menandatangani berkas kepengurusan dengan paspor di atas meja, lengan polo LPK Amanah.',
-  },
-  {
-    webp: '/assets/story/05-terbang.webp',
-    mp4: null,
-    alt: 'Ilustrasi peserta berjaket bebas dengan badge Amanah, memegang paspor dan koper di bandara saat matahari terbenam.',
-  },
-  {
-    webp: '/assets/story/06-tiba.webp',
-    mp4: '/assets/story/06-tiba.mp4',
-    alt: 'Ilustrasi peserta tiba di Jepang dengan kimono dan koper, berlatar Gunung Fuji dan gerbang torii.',
-  },
-] as const;
 
 /* WHY THE SECTIONS ARE COMPOSED HERE AND NOT EACH IN THEIR OWN FILE.
    Six of the blocks below are the same three elements — a Section, a SectionTitle
@@ -309,96 +264,66 @@ const STORY_MEDIA = [
     </Section>
 
     <!-- Section: Alur & Persyaratan (pages 3 and 4).
-         `enter` tetap seperti band lain: drift scroll-linked-nya hanya 6 px
-         (`motion.css` §9f, `[data-scroll="curtain"]{--scroll-drift:6px}`), jadi
-         panggung sticky di dalamnya ikut bergeser 6 px — tidak terlihat, dan
-         jauh lebih murah daripada mencabut satu baris dari tabel oracle
-         `sectionMotion.ts` yang dijaga `e2e/test-landing.mjs`. -->
-    <Section id="alur" labelledBy="alur-title" class="section-alt border border-line/30 rounded-panel" enter="curtain">
-      <SectionTitle
-        titleKey="profile.step_title"
-        title="Bagaimana Prosesnya?"
-        descKey="profile.step_desc"
-        desc="Enam langkah dari pendaftaran sampai berangkat."
-        accent="exam"
-        headingId="alur-title"
-      />
+         `drift={false}`: panggung film di dalam band ini menutup SELURUH lebar
+         layar, dan §9f's `scroll-drift-y` men-scale pembungkusnya 0,982 -> 1,008.
+         Terukur di 1440 px: skala itu menyisakan celah terang 13 px di tepi kiri
+         plat. Jadi band ini mengambil `data-enter` saja (wipe `curtain` tetap
+         jalan, oracle `sectionMotion.ts` tetap cocok) tanpa `data-scroll`.
+         `enter` sendiri TIDAK boleh dicabut: `e2e/test-landing.mjs:1708` mencocokkan
+         setiap baris tabel dengan elemen ber-`data-enter` di halaman. -->
+    <Section id="alur" bleed drift={false} labelledBy="alur-title" class="section-alt" enter="curtain">
+      <div class="mx-auto w-full max-w-7xl px-4 md:px-6">
+        <SectionTitle
+          titleKey="profile.step_title"
+          title="Bagaimana Prosesnya?"
+          descKey="profile.step_desc"
+          desc="Enam langkah dari pendaftaran sampai berangkat."
+          accent="exam"
+          headingId="alur-title"
+        />
+      </div>
       {/* ── Band "Satu Jalan" ───────────────────────────────────────────────
            Menggantikan grid enam kartu StepList. Isi teksnya TIDAK berubah dan
            TIDAK diduplikasi: judul/badan tiap langkah tetap `data-lang` dari
            FLOW_STEPS, jadi toggle ID/EN/JP tetap menjangkaunya tanpa kunci baru.
 
-           Cara kerjanya: `.story-track` setinggi 6 x 62svh + 100svh, dan
-           `.story-stage` menempel (`sticky`) di dalamnya. Progres scroll di
-           dalam track memilih babak; hanya satu babak yang `opacity:1`.
+           Bentuknya sekarang FRAME FILM, bukan dua kolom: plat 3:2 menutup
+           seluruh panggung (full-bleed), teks duduk di atas scrim dari kiri, dan
+           chrome alat ukur (braket sudut, garis progres, rel babak, koordinat)
+           mengapitnya. Itu bahasa yang dibaca dari referensi 58 detik
+           `Pioneer corn revolutionized` — lihat deliverables/story-video/DESIGN-STUDY.md.
 
-           KENAPA PANGGUNG INI AMAN DI DALAM Section YANG BER-`enter`.
-           `enter` menaruh animasi `transform` pada pembungkus, dan transform
-           pada leluhur memang menggeser hasil lukis anak yang sticky. Di sini
-           geseran itu 6 px (`--scroll-drift`, motion.css §9f) — terukur, bukan
-           diasumsikan — jadi panggung tetap terbaca menempel. Kalau nilainya
-           suatu saat dinaikkan, band ini yang pertama terlihat rusak. */}
-      <div class="story" data-story>
-        <div class="story-track" data-story-track>
-          <div class="story-stage">
-            {FLOW_STEPS.map((step, i) => (
-              <article class={`story-ch${i === 0 ? ' is-on' : ''}`} data-story-ch>
-                <div class="story-media">
-                  <img
-                    src={STORY_MEDIA[i].webp}
-                    alt={STORY_MEDIA[i].alt}
-                    width="1024"
-                    height="1464"
-                    loading={i === 0 ? 'eager' : 'lazy'}
-                    decoding="async"
-                    class="story-img"
-                  />
-                  {STORY_MEDIA[i].mp4 ? (
-                    <video
-                      class="story-vid"
-                      src={STORY_MEDIA[i].mp4}
-                      poster={STORY_MEDIA[i].webp}
-                      muted
-                      loop
-                      playsinline
-                      preload="none"
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                </div>
-                <div class="story-copy">
-                  <span class="story-n">
-                    {String(i + 1).padStart(2, '0')} <i>/ 06</i>
-                  </span>
-                  <h3 data-lang={step.title.key}>{step.title.text}</h3>
-                  <p data-lang={step.body.key}>{step.body.text}</p>
-                </div>
-              </article>
-            ))}
-            <div class="story-dots" aria-hidden="true">
-              {FLOW_STEPS.map((_, i) => (
-                <span class={`story-dot${i === 0 ? ' is-on' : ''}`} data-story-dot />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+           CARA KERJANYA: `.film-track` setinggi 6 x 72svh + 100svh, dan
+           `.film-stage` menempel (`sticky`) di dalamnya. Progres scroll memilih
+           babak; babak berikutnya MENUTUP babak sebelumnya (dissolve tanpa
+           lubang), dan teksnya punya dua ketukan — judul dulu, badan menyusul di
+           38% babak. Itu aturan #4 dari studi: teks berganti DI DALAM shot, bukan
+           shot berganti untuk teks.
 
-      <div class="mt-12">
+           KENAPA BAND INI TIDAK IKUT DRIFT SCROLL (§9f).
+           `enter` menaruh animasi `transform` pada pembungkus, dan transform pada
+           leluhur menggeser hasil lukis anak yang sticky — tidak masalah selama
+           geserannya nol. §9f men-scale 0,982 -> 1,008, dan pada band full-bleed
+           skala itu terbaca sebagai celah terang 13 px di tepi kiri plat.
+           Karena itu Section-nya memakai `drift={false}`: wipe `curtain` tetap
+           ada, drift-nya yang dilepas. */}
+      <StoryFilm steps={FLOW_STEPS} />
+
+      <div class="mx-auto mt-12 w-full max-w-7xl px-4 md:px-6">
         <h3 data-lang="profile.req_title" class="text-card-title font-bold text-fg">
           Persyaratan &amp; Dokumen
         </h3>
         <p data-lang="profile.req_desc" class="mt-1 text-body-sm text-fg-muted">
           Pastikan semuanya siap sebelum mendaftar.
         </p>
-      </div>
-      <div class="mt-5 grid gap-6 lg:grid-cols-2">
-        <CheckList items={REQUIREMENTS} accent="exam" />
-        <div>
-          <h4 data-lang="profile.req_docs_title" class="text-caption uppercase font-bold text-accent-amber mb-3">
-            Berkas yang disiapkan
-          </h4>
-          <CheckList items={REQUIREMENT_DOCS} icon="file-alt" accent="exam" />
+        <div class="mt-5 grid gap-6 lg:grid-cols-2">
+          <CheckList items={REQUIREMENTS} accent="exam" />
+          <div>
+            <h4 data-lang="profile.req_docs_title" class="text-caption uppercase font-bold text-accent-amber mb-3">
+              Berkas yang disiapkan
+            </h4>
+            <CheckList items={REQUIREMENT_DOCS} icon="file-alt" accent="exam" />
+          </div>
         </div>
       </div>
     </Section>
@@ -1398,183 +1323,358 @@ const STORY_MEDIA = [
     <div class="accent-line w-full rounded-full"></div>
   </div>
 
-  <style>
-    /* ── Band "Satu Jalan" (§alur) ─────────────────────────────────────────
+  <style is:global>
+    /* ── Band "Satu Jalan" (§alur) — FRAME FILM ────────────────────────────
        Warna ditulis literal, BUKAN token tema. Band ini memang selalu gelap —
-       plate-nya adalah potret malam — dan token seperti `--fg` dibalik oleh
-       tema terang, sehingga teks putih di atas panggung hitam akan jadi hitam
-       di tema terang. Satu-satunya nilai yang aman di kedua tema adalah nilai
-       yang tidak ikut bertema. */
-    .story {
+       platnya adalah potret malam — dan token seperti `--fg` dibalik oleh tema
+       terang, sehingga teks putih di atas panggung hitam akan jadi hitam di
+       tema terang. Satu-satunya nilai yang aman di kedua tema adalah nilai yang
+       tidak ikut bertema.
+
+       Bentuknya dibaca dari referensi 58 detik "Pioneer corn revolutionized":
+       satu subjek menutup frame, teks kecil di kiri di atas scrim, chrome alat
+       ukur di tepi, dan teks berganti DI DALAM shot. Yang sengaja TIDAK dipakai
+       dari referensi: judul serif dan angka raksasa — dua-duanya bahasa
+       editorial, bukan bahasa film. */
+    .film {
       position: relative;
       margin-top: 2.5rem;
     }
-    .story-track {
+    .film-track {
       position: relative;
-      height: calc(6 * 62svh + 100svh);
+      height: calc(6 * 72svh + 100svh);
     }
-    .story-stage {
+    .film-stage {
       position: sticky;
       top: 0;
       height: 100svh;
-      background: #05070c;
-      border-radius: 24px;
       overflow: hidden;
+      background: #04060a;
+      isolation: isolate;
     }
 
-    .story-ch {
+    .film-ch {
       position: absolute;
       inset: 0;
-      max-width: 74rem;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
-      align-items: center;
-      gap: 2.5rem;
-      padding: 4svh 3rem;
       opacity: 0;
-      transform: translateY(14px);
-      transition:
-        opacity 0.55s ease,
-        transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
-      pointer-events: none;
+      will-change: opacity;
     }
-    .story-ch.is-on {
+    .film-ch.is-on {
       opacity: 1;
-      transform: none;
-      pointer-events: auto;
     }
 
-    .story-media {
-      position: relative;
-      height: min(78svh, 100%);
-      aspect-ratio: 1024 / 1464;
-      justify-self: end;
+    .film-plate {
+      position: absolute;
+      inset: 0;
+      will-change: transform;
     }
-    .story-img,
-    .story-vid {
+    .film-img,
+    .film-vid {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
-      border-radius: 20px;
-      /* Radius mask 60%/64% — dengan 84%/92% tepi gambar masih ~100% opaque
-         (46% tinggi dari pusat hanya 50% radius), jadi plate-nya terbaca sebagai
-         kotak keras yang ditempel. Di bawah 60% potretnya larut ke panggung,
-         sama seperti di halaman story-3d. */
-      -webkit-mask-image: radial-gradient(
-        ellipse 60% 64% at 50% 48%,
-        #000 46%,
-        rgb(0 0 0 / 0.92) 66%,
-        transparent 100%
-      );
-      mask-image: radial-gradient(
-        ellipse 60% 64% at 50% 48%,
-        #000 46%,
-        rgb(0 0 0 / 0.92) 66%,
-        transparent 100%
-      );
+      display: block;
+      filter: saturate(0.92) contrast(1.06) brightness(0.9);
     }
-    .story-vid {
+    /* Klipnya 2:3 potret. Di frame 16:9 yang full-bleed, `cover` membuang 54%
+       tingginya dan wajahnya jadi terlalu besar — jadi di desktop yang dipakai
+       plat 3:2 diam, dan klip hanya hidup di tata letak bertumpuk (ponsel),
+       tempat bingkainya memang potret. */
+    .film-vidwrap {
+      position: absolute;
+      inset: 0;
+    }
+    .film-vid {
+      display: none;
       opacity: 0;
-      transition: opacity 0.4s ease;
-    }
-    .story-ch.is-on .story-vid {
-      opacity: 1;
+      transition: opacity 0.5s ease;
     }
 
-    .story-copy {
-      max-width: 30rem;
-      color: #f4f6f8;
+    /* Scrim: satu arah, selalu dari KIRI. Di referensi pun teksnya selalu di
+       kiri, dan konsistensi sisi itulah yang membuat enam plat terbaca sebagai
+       satu film, bukan enam poster. */
+    .film-scrim {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(
+          90deg,
+          rgb(4 6 10 / 0.95) 0%,
+          rgb(4 6 10 / 0.88) 24%,
+          rgb(4 6 10 / 0.5) 50%,
+          rgb(4 6 10 / 0) 74%
+        ),
+        linear-gradient(to top, rgb(4 6 10 / 0.88) 0%, rgb(4 6 10 / 0) 36%),
+        radial-gradient(125% 105% at 50% 48%, transparent 44%, rgb(4 6 10 / 0.6) 100%);
     }
-    .story-n {
+
+    .film-copy {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: min(52rem, 55%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-left: max(1.5rem, 6vw);
+      color: #f4f6f8;
+      text-shadow: 0 2px 34px rgb(4 6 10 / 0.72);
+    }
+    .film-n {
       display: inline-flex;
       align-items: baseline;
-      gap: 0.5rem;
-      font-size: 12px;
+      gap: 0.55rem;
+      font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.32em;
+      letter-spacing: 0.34em;
       color: #f9a8d4;
+      font-variant-numeric: tabular-nums;
     }
-    .story-n i {
+    .film-n i {
       font-style: normal;
-      letter-spacing: 0.18em;
+      letter-spacing: 0.2em;
       /* 0,62 bukan 0,45: pada 0,45 di atas #05070c hasil ukurnya 4,23:1 —
          di bawah lantai 4,5 dan `e2e:contrast` menolaknya. */
       color: rgb(244 246 248 / 0.62);
     }
-    .story-copy h3 {
-      margin-top: 1rem;
-      font-family: var(--font-display);
-      font-weight: 400;
-      font-size: clamp(28px, 3.4vw, 46px);
-      line-height: 1.06;
-      letter-spacing: -0.01em;
+    .film-copy h3 {
+      margin-top: 1.1rem;
+      font-family: var(--font-sans);
+      font-weight: 900;
+      font-size: clamp(2.1rem, 4.9vw, 4.2rem);
+      line-height: 0.94;
+      letter-spacing: -0.025em;
+      text-transform: uppercase;
       color: #fff;
+      text-wrap: balance;
+      transition: transform 0.7s cubic-bezier(0.22, 0.61, 0.36, 1);
     }
-    .story-copy p {
-      margin-top: 1rem;
-      font-size: clamp(14px, 1.05vw, 16px);
-      line-height: 1.7;
-      color: rgb(244 246 248 / 0.72);
+    .film-body {
+      margin-top: 1.6rem;
+      padding-top: 1.15rem;
+      border-top: 1px solid rgb(255 255 255 / 0.22);
+      max-width: 34ch;
+      font-size: clamp(0.9rem, 1.05vw, 1rem);
+      line-height: 1.75;
+      color: rgb(244 246 248 / 0.8);
+      opacity: 0;
+      transform: translateY(12px);
+      transition:
+        opacity 0.65s ease,
+        transform 0.65s cubic-bezier(0.22, 0.61, 0.36, 1);
+    }
+    /* Ketukan kedua: badan menyusul di 38% babak, judulnya bergeser 4 px.
+       Gerak sekecil itu yang membuat teksnya terasa "berganti di dalam shot",
+       bukan muncul sebagai satu blok. */
+    .film-ch.beat .film-body {
+      opacity: 1;
+      transform: none;
+    }
+    .film-ch.beat .film-copy h3 {
+      transform: translateY(-4px);
     }
 
-    .story-dots {
+    .film-hud {
       position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .film-x {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      opacity: 0.52;
+    }
+    .film-x::before,
+    .film-x::after {
+      content: "";
+      position: absolute;
+      background: #fff;
+    }
+    .film-x::before {
+      width: 100%;
+      height: 1px;
       top: 50%;
-      right: 1.25rem;
+      left: 0;
+    }
+    .film-x::after {
+      width: 1px;
+      height: 100%;
+      left: 50%;
+      top: 0;
+    }
+    .film-x.tl {
+      left: 22px;
+      top: 22px;
+    }
+    .film-x.tr {
+      right: 22px;
+      top: 22px;
+    }
+    .film-x.bl {
+      left: 22px;
+      bottom: 56px;
+    }
+    .film-x.br {
+      right: 22px;
+      bottom: 56px;
+    }
+
+    .film-rail {
+      position: absolute;
+      right: 26px;
+      top: 50%;
       transform: translateY(-50%);
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 9px;
+      align-items: flex-end;
+      pointer-events: none;
     }
-    .story-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: rgb(255 255 255 / 0.22);
+    .film-dot {
+      display: block;
+      width: 16px;
+      height: 1px;
+      background: rgb(255 255 255 / 0.55);
+      box-shadow: 0 0 6px rgb(4 6 10 / 0.75);
       transition:
-        background 0.3s ease,
-        transform 0.3s ease;
+        width 0.35s ease,
+        background 0.35s ease;
     }
-    .story-dot.is-on {
+    .film-dot.is-on {
+      width: 30px;
       background: #f9a8d4;
-      transform: scale(1.6);
+    }
+
+    .film-foot {
+      position: absolute;
+      left: max(1.5rem, 6vw);
+      right: 26px;
+      bottom: 26px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+      font-size: 10px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: rgb(244 246 248 / 0.66);
+      font-variant-numeric: tabular-nums;
+      pointer-events: none;
+    }
+
+    .film-brand {
+      letter-spacing: 0.3em;
+      color: rgb(244 246 248 / 0.8);
+    }
+
+    .film-progress {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 2px;
+      background: rgb(255 255 255 / 0.1);
+      pointer-events: none;
+    }
+    .film-progress i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, #f9a8d4, #f472b6);
     }
 
     /* Ponsel DAN reduced-motion memakai bentuk yang sama: daftar bertumpuk,
        tanpa sticky dan tanpa babak tersembunyi. Kalau salah satu tetap memakai
        panggung, isi band menjadi tidak terjangkau di perangkat itu. */
     @media (max-width: 860px), (prefers-reduced-motion: reduce) {
-      .story-track {
+      .film-track {
         height: auto;
       }
-      .story-stage {
+      .film-stage {
         position: static;
         height: auto;
-        padding: 1.5rem 0;
+        display: flex;
+        flex-direction: column;
+        padding: 0.5rem 0 1.25rem;
       }
-      .story-ch {
+      .film-ch {
         position: relative;
         inset: auto;
-        display: block;
         opacity: 1;
-        transform: none;
-        pointer-events: auto;
-        padding: 1.25rem 1.25rem 2rem;
+        display: grid;
+        gap: 1.1rem;
+        padding: 1.25rem 1.25rem 2.25rem;
       }
-      .story-media {
-        height: auto;
+      .film-plate {
+        position: relative;
+        inset: auto;
+        aspect-ratio: 1024 / 1464;
         width: 100%;
-        max-width: 20rem;
+        max-width: min(26rem, 78vw);
         margin: 0 auto;
       }
-      .story-copy {
-        max-width: none;
-        margin: 1.25rem auto 0;
+      .film-img,
+      .film-vid {
+        border-radius: 18px;
+        /* Radius HARUS 50%: tepi elemen jatuh tepat di ujung gradien. Dengan
+           62%/66% tepi atas gambar masih ~20% opaque dan terbaca sebagai garis
+           lurus keras — jebakan yang sama dengan versi story-3d. */
+        -webkit-mask-image: radial-gradient(
+          ellipse 50% 50% at 50% 46%,
+          #000 32%,
+          rgb(0 0 0 / 0.9) 54%,
+          rgb(0 0 0 / 0.42) 72%,
+          transparent 90%
+        );
+        mask-image: radial-gradient(
+          ellipse 50% 50% at 50% 46%,
+          #000 32%,
+          rgb(0 0 0 / 0.9) 54%,
+          rgb(0 0 0 / 0.42) 72%,
+          transparent 90%
+        );
       }
-      .story-dots {
+      .film-vid {
+        display: block;
+      }
+      .film-ch.is-on .film-vid {
+        opacity: 1;
+      }
+      .film-scrim {
+        display: none;
+      }
+      .film-copy {
+        position: relative;
+        inset: auto;
+        width: auto;
+        height: auto;
+        max-width: min(30rem, 90vw);
+        margin: 0 auto;
+        padding: 0;
+      }
+      .film-copy h3 {
+        font-size: clamp(1.9rem, 8.2vw, 2.6rem);
+        text-shadow: none;
+      }
+      .film-body {
+        opacity: 1;
+        transform: none;
+        border-top-color: rgb(255 255 255 / 0.16);
+      }
+      .film-hud,
+      .film-rail,
+      .film-foot,
+      .film-brand {
+      letter-spacing: 0.3em;
+      color: rgb(244 246 248 / 0.8);
+    }
+
+    .film-progress {
         display: none;
       }
     }
@@ -1583,55 +1683,186 @@ const STORY_MEDIA = [
   <script is:inline>
     /* Penggerak band "Satu Jalan". Ditulis inline supaya tidak menambah satu
        entry bundle lagi — halaman ini sudah punya anggaran bundle sendiri, dan
-       tiga puluh baris di sini tidak sepadan dengan satu chunk baru. */
-    (() => {
-      const band = document.querySelector('[data-story]');
-      if (!band) return;
-      const track = band.querySelector('[data-story-track]');
-      const chs = [...band.querySelectorAll('[data-story-ch]')];
-      const dots = [...band.querySelectorAll('[data-story-dot]')];
-      const vids = chs.map((c) => c.querySelector('video'));
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-      let cur = 0;
-      let raf = 0;
+       empat puluh baris di sini tidak sepadan dengan satu chunk baru.
 
-      function show(i) {
-        if (i === cur) return;
-        cur = i;
-        chs.forEach((c, k) => c.classList.toggle('is-on', k === i));
-        dots.forEach((d, k) => d.classList.toggle('is-on', k === i));
-        vids.forEach((v, k) => {
-          if (!v) return;
-          if (k === i) v.play().catch(() => {});
-          else v.pause();
-        });
+       Tiga hal yang dijaga di sini, semuanya pernah salah di versi sebelumnya:
+       1. `maxScroll` TIDAK diukur sekali di awal. Tinggi dokumen berubah setelah
+          font dan gambar masuk, dan target yang tidak pernah sampai membuat
+          semua teks tertangkap di tengah fade-in (tampak abu-abu).
+       2. Loop berhenti saat band keluar layar. Tanpa itu, enam belas write
+          transform per frame terus jalan di seluruh halaman.
+       3. Tata letak bertumpuk (ponsel / reduced-motion) membersihkan SEMUA gaya
+          inline. Kalau tidak, `opacity:0` dari desktop tertinggal dan babak yang
+          seharusnya terlihat jadi hilang setelah rotasi layar. */
+    (() => {
+      const band = document.querySelector('[data-film]');
+      if (!band) return;
+      const track = band.querySelector('[data-film-track]');
+      const chs = [...band.querySelectorAll('[data-film-ch]')];
+      const dots = [...band.querySelectorAll('[data-film-dot]')];
+      const vids = chs.map((c) => c.querySelector('video'));
+      const plates = chs.map((c) => c.querySelector('.film-plate'));
+      const bar = band.querySelector('[data-film-progress]');
+      const coord = band.querySelector('[data-film-coord]');
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const N = chs.length;
+      /* Empat babak pertama masih di Ponorogo; keberangkatan dan kedatangan
+         memakai label perjalanan, bukan koordinat karangan. */
+      const COORD = [
+        'PONOROGO · 7.86°S 111.46°E',
+        'PONOROGO · 7.86°S 111.46°E',
+        'PONOROGO · 7.86°S 111.46°E',
+        'PONOROGO · 7.86°S 111.46°E',
+        'PONOROGO → JEPANG',
+        'JEPANG · 35.68°N 139.69°E',
+      ];
+
+      let raf = 0;
+      let active = -1;
+      let inView = false;
+      let stacked = false;
+
+      const clamp = (v) => Math.min(1, Math.max(0, v));
+
+      function stackedNow() {
+        return reduce.matches || window.innerWidth <= 860;
       }
 
-      function tick() {
+      /* Tata letak bertumpuk: semua babak terlihat, tanpa transform sisa. */
+      function flatten() {
+        chs.forEach((c) => {
+          c.classList.add('is-on');
+          c.classList.add('beat');
+          c.style.opacity = '';
+        });
+        plates.forEach((p) => {
+          p.style.transform = '';
+        });
+        if (bar) bar.style.width = '0';
+      }
+
+      function paint(p) {
+        const seg = 1 / N;
+        let best = 0;
+        let bestD = 9;
+
+        for (let i = 0; i < N; i++) {
+          const local = (p - i * seg) / seg;
+          const ch = chs[i];
+          /* Babak i terlihat penuh dari local 0 sampai 1; babak i+1 menutupnya
+             lewat fade 12% pertama. Jadi tidak ada lubang hitam di batas —
+             kesalahan yang membuat versi pertama berkedip. */
+          const op = local <= -0.02 || local >= 1.14 ? 0 : i === 0 ? 1 : clamp(local / 0.12);
+          ch.style.opacity = op.toFixed(3);
+
+          if (op > 0) {
+            /* Kamera tidak pernah diam: dorong 6% + geser 2,4% sepanjang babak.
+               Ini yang membuatnya terasa rekaman, bukan foto yang di-slide. */
+            const l = clamp(local);
+            plates[i].style.transform =
+              'translate3d(' +
+              (-1.2 + 2.4 * l).toFixed(2) +
+              '%,' +
+              (1.4 - 2.8 * l).toFixed(2) +
+              '%,0) scale(' +
+              (1.06 + 0.07 * l).toFixed(4) +
+              ')';
+          }
+
+          /* Ketukan kedua: badan menyusul di 38% babak. */
+          const beat = local > 0.38;
+          if (ch.classList.contains('beat') !== beat) ch.classList.toggle('beat', beat);
+
+          const d = Math.abs(local - 0.5);
+          if (d < bestD) {
+            bestD = d;
+            best = i;
+          }
+        }
+
+        if (bar) bar.style.width = (p * 100).toFixed(2) + '%';
+
+        if (best !== active) {
+          active = best;
+          dots.forEach((d, k) => d.classList.toggle('is-on', k === best));
+          if (coord) coord.textContent = COORD[best];
+          chs.forEach((c, k) => c.classList.toggle('is-on', k === best));
+          /* Hanya klip babak aktif yang diputar — 3 decoder serentak tidak
+             pernah menjadi anggaran halaman ini. */
+          vids.forEach((v, k) => {
+            if (!v) return;
+            if (k === best && inView) v.play().catch(() => {});
+            else if (!v.paused) v.pause();
+          });
+        }
+      }
+
+      function frame() {
         raf = 0;
-        if (reduce.matches || window.innerWidth <= 860) {
-          chs.forEach((c) => c.classList.add('is-on'));
-          return;
-        }
+        if (stacked) return;
         const box = track.getBoundingClientRect();
-        // Band yang sudah lewat di atas layar tidak boleh terus memutar klip.
-        if (box.bottom < 0 || box.top > window.innerHeight) {
-          vids.forEach((v) => v && v.pause());
-          return;
-        }
         const span = track.offsetHeight - window.innerHeight;
         if (span <= 0) return;
-        const p = Math.min(1, Math.max(0, -box.top / span));
-        show(Math.min(chs.length - 1, Math.floor(p * chs.length)));
+        paint(clamp(-box.top / span));
       }
 
-      const kick = () => {
-        if (!raf) raf = window.requestAnimationFrame(tick);
-      };
+      function kick() {
+        if (!raf) raf = window.requestAnimationFrame(frame);
+      }
+
+      function sync() {
+        stacked = stackedNow();
+        if (stacked) {
+          if (raf) {
+            window.cancelAnimationFrame(raf);
+            raf = 0;
+          }
+          flatten();
+          vids.forEach((v) => v && v.pause());
+        } else {
+          chs.forEach((c) => c.classList.remove('is-on', 'beat'));
+          kick();
+        }
+      }
+
+      if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver(
+          (entries) => {
+            inView = entries[0].isIntersecting;
+            if (inView) kick();
+            else vids.forEach((v) => v && v.pause());
+          },
+          { rootMargin: '25% 0px' }
+        );
+        io.observe(track);
+      } else {
+        inView = true;
+      }
+
+      /* Di tata letak bertumpuk, tiap babak terlihat berurutan, jadi "babak
+         aktif" tidak ada. Klipnya diputar per-babak saat babaknya masuk layar —
+         tanpa ini ketiga mp4 hanya menjadi poster yang tidak pernah bergerak,
+         karena `paint()` tidak dipanggil sama sekali di mode bertumpuk. */
+      if ('IntersectionObserver' in window) {
+        const vio = new IntersectionObserver(
+          (entries) => {
+            if (!stacked || reduce.matches) return;
+            entries.forEach((e) => {
+              const v = e.target.querySelector('video');
+              if (!v) return;
+              if (e.intersectionRatio > 0.4) v.play().catch(() => {});
+              else if (!v.paused) v.pause();
+            });
+          },
+          { threshold: [0, 0.4, 1] }
+        );
+        chs.forEach((c) => c.querySelector('video') && vio.observe(c));
+      }
+
       window.addEventListener('scroll', kick, { passive: true });
-      window.addEventListener('resize', kick, { passive: true });
-      reduce.addEventListener('change', kick);
-      tick();
+      window.addEventListener('resize', sync, { passive: true });
+      reduce.addEventListener('change', sync);
+      sync();
     })();
   </script>
 

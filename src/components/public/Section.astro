@@ -103,6 +103,24 @@ export interface Props {
    * and the hover on the card is what lets both exist. See §9f.
    */
   enter?: string;
+  /**
+   * ── OPT OUT OF THE SCROLL-LINKED DRIFT (`data-scroll`) ────────────────────
+   *
+   * `enter` normally emits BOTH attributes, and §9f's `scroll-drift-y` ends its
+   * range at `scale(1.008)` and starts at `scale(0.982)`. On an ordinary band
+   * that is invisible. On a band that contains a FULL-BLEED, PINNED stage it is
+   * not: the scale is applied to this wrapper, so the stage is inset by ~13 px
+   * at the start of its range and overflows by ~6 px at the end — measured on
+   * `#alur` at 1440 px, where the film band showed a 13 px light gutter down
+   * its left edge.
+   *
+   * A band that paints edge to edge therefore asks for the ENTRANCE ONLY:
+   * `data-enter` stays (so §9b's one-shot wipe still runs and the oracle in
+   * `sectionMotion.ts` still matches), `data-scroll` is dropped. §9f's second
+   * selector, `[data-scroll]:not([data-enter])`, cannot fire because the
+   * attribute is absent entirely.
+   */
+  drift?: boolean;
 }
 
 const {
@@ -112,6 +130,7 @@ const {
   as = 'section',
   labelledBy,
   enter,
+  drift = true,
 } = Astro.props;
 
 // Branches are written out rather than assembled with a variable, so Tailwind
@@ -127,7 +146,7 @@ const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(
       aria-labelledby={labelledBy}
       class={classes}
       data-enter={enter}
-      data-scroll={enter}
+      data-scroll={drift ? enter : undefined}
     >
       <slot />
     </aside>
@@ -137,7 +156,7 @@ const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(
       aria-labelledby={labelledBy}
       class={classes}
       data-enter={enter}
-      data-scroll={enter}
+      data-scroll={drift ? enter : undefined}
     >
       <slot />
     </div>
@@ -147,7 +166,7 @@ const classes = ['py-14 md:py-20', shell, className ?? ''].filter(Boolean).join(
       aria-labelledby={labelledBy}
       class={classes}
       data-enter={enter}
-      data-scroll={enter}
+      data-scroll={drift ? enter : undefined}
     >
       <slot />
     </section>
