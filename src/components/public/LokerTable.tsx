@@ -332,7 +332,21 @@ export default function LokerTable() {
                     <div class="mt-2 pt-2 border-t border-slate-700/50 text-[11px] text-amber-300/90 leading-relaxed"><Icon name="info-circle" class="mr-1" /> {job.keterangan}</div>
                   )}
                 </td>
-                <td data-label={t("table.action")} class="rt-full p-1 align-top w-20">
+                {/* `md:pr-14` IS A SAFE AREA, NOT SPACING (2026-11-10).
+                    The site menu now follows the scroll (`App.tsx`), so it floats
+                    44px wide at `top-3 right-3` — it occupies the lane 12..56px from
+                    the content edge. MEASURED here at 768/1024/1280px: the floating
+                    menu covered **39-53% of the row's action button**, which turns a
+                    tap on "Detail" into a tap on the menu. 56px of right padding is
+                    exactly that lane, so the controls stop before it.
+                    `md:` and not unconditional, deliberately: below 768px the card
+                    layout (`layout.css`, `td.rt-full { padding: … !important }`)
+                    zeroes this padding anyway, so claiming it there would be a
+                    comment that lies. On phones the menu can still overlap the LAST
+                    action chip by ~30%; the alternative is wrapping the three
+                    buttons onto two lines, which makes every job card taller — a
+                    worse trade for a list people scroll. Recorded, not hidden. */}
+                <td data-label={t("table.action")} class="rt-full p-1 md:pr-14 align-top w-20">
                   <div class="flex flex-row gap-1 items-center justify-center">
                     {/* ⚠ `text-slate-950` HERE WAS A WCAG FAILURE, AND IT WAS THE TEXT
                         COLOUR'S FAULT, NOT THE AMBER'S.

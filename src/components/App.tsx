@@ -145,6 +145,10 @@ export default function App(
   }, [banner]);
   const [modalMode, setModalMode] = useState<ModalMode>('closed');
   const [menuOpen, setMenuOpen] = useState(false);
+  /* Nav that follows the page — see the effect below for the measurement that
+     decides when it detaches from the band. */
+  const headerRef = useRef<HTMLElement | null>(null);
+  const [navFixed, setNavFixed] = useState(false);
   const [showAiCopilot, setShowAiCopilot] = useState(false);
   const [showCekSiswa, setShowCekSiswa] = useState(false);
   /* Exit window (2026-09-28) — see `useOverlayPresence`. LoginModal is NOT
@@ -256,6 +260,61 @@ export default function App(
      rather than taken silently (see docs/UI_DESIGN_REVIEW.md). */
   const drawerRef = useRef<HTMLElement>(null);
   const hamburgerRef = useRef<HTMLButtonElement>(null);
+
+  /* THE MENU MUST NOT SCROLL AWAY (owner, 2026-11-10: "sudah sampai scroll bawah
+     harus kudu scroll atas lagi … menunya pojok kanan atas gak ikut").
+     ---------------------------------------------------------------------------
+     The hamburger lives INSIDE the header band, which is an ordinary block, so
+     it leaves the viewport the moment the band does — and on `/loker` and
+     `/public` that band is 224px tall, i.e. the menu is gone after one swipe.
+
+     WHY A STATE FLIP AND NOT `position: sticky`: `sticky` is bounded by its
+     parent's box, so a sticky child of a 224px band stops moving at 224px and
+     scrolls away with it. `fixed` is the only value that is relative to the
+     viewport — and the band does not create a containing block for it (no
+     `transform`, `filter` or `backdrop-filter` anywhere in the chain; `overflow:
+     clip` on `.hero-band` does not clip a fixed descendant, whose containing
+     block is the viewport).
+
+     WHY ONE BUTTON AND NOT A SECOND FLOATING COPY: a duplicate would be a second
+     tab stop, a second `aria-expanded`, and two nodes that can disagree about
+     whether the drawer is open. The single node moves; the drawer state stays
+     exactly where it was.
+
+     THE THRESHOLD IS THE HEADER'S OWN BOTTOM, not a magic scroll number: the
+     button must detach BEFORE it slides under the top edge, which is when the
+     band's bottom passes the button's own resting slot (12px + 44px = 56px).
+     Measuring the element instead of assuming 224px is what keeps this correct
+     on `/` (full-height hero), on `/loker`/`/public` (14rem band), and at 320px
+     where the band is taller.
+
+     `requestAnimationFrame` coalescing: scroll fires far more often than the
+     answer can change, and this runs on the landing page — the one route where
+     main-thread time is already the Lighthouse lever. `setNavFixed` with the
+     same value bails out without a render. */
+  useEffect(() => {
+    let raf = 0;
+    const measure = () => {
+      const band = headerRef.current;
+      if (!band) return;
+      setNavFixed(band.getBoundingClientRect().bottom < 56);
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        measure();
+      });
+    };
+    measure();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   /* `inert` in a LAYOUT effect, not a deferred one: under useEffect the
      attribute lands a frame after paint, which leaves a window where the
@@ -400,7 +459,7 @@ export default function App(
               `vh`, because on a phone `vh` is measured against the LARGEST
               viewport and the band would be taller than the screen, parking
               the CTA under the address bar. */}
-      {showHeader && <header id={hero ? "atas" : "asj-header"} class={hero ? "hero-band scroll-mt-24 hero-gradient relative text-white flex items-end p-6 md:p-10" : "hero-gradient max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl flex items-end rounded-band overflow-hidden transition-colors duration-200 h-auto min-h-[14rem] md:h-56 p-6 md:p-8"}>
+      {showHeader && <header ref={headerRef} id={hero ? "atas" : "asj-header"} class={hero ? "hero-band scroll-mt-24 hero-gradient relative text-white flex items-end p-6 md:p-10" : "hero-gradient max-w-7xl mx-auto px-4 mt-6 relative text-white border border-white/10 shadow-2xl flex items-end rounded-band overflow-hidden transition-colors duration-200 h-auto min-h-[14rem] md:h-56 p-6 md:p-8"}>
         {/* The overlay that darkens the hero artwork for the copy's contrast
              sits BELOW the illustration, on purpose: it must paint over the
              artwork, not under it. See the `header-overlay` div after the
@@ -752,8 +811,26 @@ export default function App(
              would let the circle stay 40px tall while only the tap box grew,
              which reads as a misaligned control. `gap-2` is unchanged, so the
              two still sit on the same baseline. */}
-        <div class="absolute top-4 right-4 z-30 flex items-center gap-2">
-          <button type="button" ref={hamburgerRef} onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center bg-black/70 hover:bg-zinc-800 text-white rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
+        {/* `fixed` once the band's bottom passes this button's resting slot —
+            see the effect above. Same node, same state, only the containing
+            block changes. `z-40` sits above page content (the old `z-30`) and
+            still below the scrim (95) / drawer (100), so the layering against
+            the open menu is exactly what it was. */}
+        <div class={`${navFixed ? "fixed top-3 right-3 z-40" : "absolute top-4 right-4 z-30"} flex items-center gap-2`}>
+          {/* ⚠ NO `text-white` HERE, AND THAT IS THE FIX (2026-11-10).
+              `.hamburger-btn` already owns this chip's colours in both themes
+              (`global.css` §hamburger: black 70% + white icon on the dark
+              themes, frosted white + `#1f1d1c` icon in light). The `text-white`
+              utility silently overrode the light half: the shim's
+              `:where([data-theme="light"]) :where(.hero-gradient…) .text-white`
+              is specificity 0,2,0 and beats the `.hamburger-btn` colour (0,1,0),
+              and it keeps matching after the button goes `fixed` because CSS
+              follows the DOM, not the box. MEASURED light theme: chip
+              `rgba(255,255,255,0.65)` with icon `rgb(255,255,255)` — a white
+              hamburger on a white chip. No gate could see it: `e2e:contrast`
+              measures TEXT, and this control's label is an SVG glyph. Removing
+              the utility lets `.hamburger-btn` do the job it was written for. */}
+          <button type="button" ref={hamburgerRef} onClick={toggleMenu} class="w-11 h-11 flex items-center justify-center bg-black/70 hover:bg-zinc-800 rounded-full border border-white/60 transition shadow-lg hamburger-btn" aria-label="Toggle Menu" aria-expanded={menuOpen}>
             <Icon name={menuOpen ? "times" : "bars"} class="text-lg" />
           </button>
         </div>

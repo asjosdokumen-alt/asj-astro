@@ -28,7 +28,7 @@
  * breaks if their public surface changes. Only modules with network access or
  * browser globals are stubbed.
  */
-import { cleanup, render } from '@testing-library/preact';
+import { act, cleanup, render } from '@testing-library/preact';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../lib/apiClient', () => ({
@@ -158,5 +158,65 @@ describe('bahasa — toggle HANYA di dalam drawer, bukan di header', () => {
     expect(drawer).not.toBeNull();
     const langBtn = drawer?.querySelector('button[aria-label="Toggle language"]');
     expect(langBtn).not.toBeNull();
+  });
+});
+
+/**
+ * Menu yang mengikuti scroll (owner, 2026-11-10).
+ *
+ * The control lives inside the header band, so it used to leave the viewport
+ * with the band — on `/loker` and `/public` that is one swipe, and the owner
+ * had to scroll all the way back up to reach it.
+ *
+ * WHAT IS TESTABLE HERE, AND WHAT IS NOT. jsdom has no layout engine, so
+ * "does it follow the scroll" cannot be observed directly. What can be tested
+ * is the CONTRACT the effect implements: while the band's bottom is still below
+ * the button's resting slot the container is `absolute` (inside the band); once
+ * the band's bottom rises above it the container becomes `fixed` (viewport-
+ * relative). `getBoundingClientRect` is the only thing stubbed — the decision
+ * under test is the comparison against it, not the geometry.
+ *
+ * The scroll threshold itself (56px = 12px offset + 44px button) is verified
+ * against a real browser in the commit that added it; this suite guards that
+ * the two states exist and that the listener is wired, so a refactor that drops
+ * the effect fails here instead of silently reverting the feature.
+ */
+describe('menu mengikuti scroll', () => {
+  function headerBar(): HTMLElement {
+    const hamburger = document.querySelector<HTMLElement>('button[aria-label="Toggle Menu"]');
+    if (!hamburger?.parentElement) throw new Error('header bar not rendered');
+    return hamburger.parentElement;
+  }
+
+  it('absolute selama band masih di layar, fixed setelah band lewat', async () => {
+    let bandBottom = 300;
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      if (this.tagName === 'HEADER') {
+        return { bottom: bandBottom, top: bandBottom - 200, height: 200, width: 0, left: 0, right: 0, x: 0, y: bandBottom - 200, toJSON: () => ({}) } as DOMRect;
+      }
+      return original.call(this);
+    };
+    try {
+      render(<App />);
+      expect(headerBar().className).toContain('absolute');
+
+      bandBottom = 10; // the band has scrolled past the button's slot
+      await act(async () => {
+        window.dispatchEvent(new Event('scroll'));
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      });
+      expect(headerBar().className).toContain('fixed');
+      expect(headerBar().className).not.toContain('absolute');
+
+      bandBottom = 300; // scrolling back up re-attaches it to the band
+      await act(async () => {
+        window.dispatchEvent(new Event('scroll'));
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      });
+      expect(headerBar().className).toContain('absolute');
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = original;
+    }
   });
 });
