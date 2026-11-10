@@ -618,6 +618,21 @@
     flex-wrap: wrap;
     justify-content: stretch !important;
     gap: 0.5rem !important;
+    /* SAFE AREA FOR THE FLOATING SITE MENU (2026-11-10).
+       The menu follows the scroll and sits 44px wide in the lane 12..56px from
+       the content edge. MEASURED before this: the row ended at x=360 of 390 and
+       the menu covered **30% of the last chip** — a tap meant for "Lamar" could
+       open the menu instead. The same 56px here moves the row's right edge to
+       x=304, clear of the lane.
+       WHY HERE AND NOT ON THE CELL: `td.rt-full` above is forced to
+       `padding: … !important` by this same media query, so a `pr-*` utility on
+       the cell is silently zeroed — measured, not assumed.
+       WHY NOT `flex-wrap` ALONE: the row already wraps, and wrapping was the
+       obvious fix, but it makes every job card taller. MEASURED both ways: with
+       padding the row keeps its height (284px) and the three chips shrink from
+       109/116/89 to 90/98/70 — still far above the 44px target because the
+       height, not the width, carries the target. */
+    padding-right: 3.5rem;
   }
   table:has(.rt-row) td.rt-full:last-child > div > * {
     flex: 1 1 auto;
