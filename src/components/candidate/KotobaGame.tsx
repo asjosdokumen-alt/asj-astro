@@ -1399,19 +1399,9 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       </div>
 
       {/* ── Tab mode ── */}
-      <div class="flex gap-1.5 p-1 rounded-control bg-surface-sunken border border-line mb-3">
+      <div class="arc-tab">
         {modeTab.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => setMode(m.id)}
-            aria-pressed={mode === m.id}
-            class={`flex-1 min-w-[30%] min-h-11 px-2 py-1 rounded-[0.6rem] text-[11px] leading-tight font-bold whitespace-normal break-words transition-colors motion-reduce:transition-none ${
-              mode === m.id
-                ? 'bg-accent-violet text-canvas'
-                : 'text-fg-muted hover:text-fg hover:bg-surface-raised'
-            }`}
-          >
+          <button key={m.id} type="button" onClick={() => setMode(m.id)} aria-pressed={mode === m.id}>
             {m.label}
           </button>
         ))}
@@ -1425,20 +1415,10 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           "Bidang Kerja (SSW)" tidak lagi muat sepertiga lebar layar 320 px —
           tanpa pembungkusan ia meluber keluar tombol. Ditemukan saat review UI
           2026-11-04. */}
-      <fieldset class="flex flex-wrap gap-1.5 p-1 rounded-control bg-surface-sunken border border-line mb-2">
+      <fieldset class="arc-tab" data-aksen="hijau">
         <legend class="sr-only">{t('kotoba.sumber_label')}</legend>
         {(['minna', 'ssw', 'n5'] as Sumber[]).map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setSumber(s)}
-            aria-pressed={sumber === s}
-            class={`flex-1 min-h-11 px-2 rounded-[0.6rem] text-[12px] font-bold transition-colors motion-reduce:transition-none ${
-              sumber === s
-                ? 'bg-accent-emerald text-canvas'
-                : 'text-fg-muted hover:text-fg hover:bg-surface-raised'
-            }`}
-          >
+          <button key={s} type="button" onClick={() => setSumber(s)} aria-pressed={sumber === s}>
             {s === 'minna' ? t('kotoba.sumber_minna') : s === 'ssw' ? t('kotoba.sumber_ssw') : t('kotoba.sumber_n5')}
           </button>
         ))}
@@ -1517,9 +1497,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
               type="button"
               onClick={() => setFokus(id)}
               aria-pressed={fokus === id}
-              class={`min-h-11 rounded-control border px-3 text-[12px] font-bold ${
-                fokus === id ? 'border-accent-violet bg-accent-violet/10 text-accent-violet' : 'border-line bg-surface-raised text-fg-muted'
-              }`}
+              class="arc-chip"
             >
               {label}
             </button>
@@ -1539,9 +1517,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
               type="button"
               onClick={() => setTingkat(id)}
               aria-pressed={tingkat === id}
-              class={`min-h-11 rounded-control border px-3 text-[12px] font-bold ${
-                tingkat === id ? 'border-accent-amber bg-accent-amber/10 text-accent-amber' : 'border-line bg-surface-raised text-fg-muted'
-              }`}
+              class="arc-chip"
             >
               {label}
             </button>

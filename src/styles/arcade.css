@@ -922,6 +922,73 @@
   color: var(--arc-red);
 }
 
+/* Tab dan filter /kotoba: rel cekung berisi tombol, bukan deretan tombol
+   berbingkai. Keadaan terpilih dibaca dari `aria-pressed` — satu sumber untuk
+   mata dan pembaca layar. */
+.arc-tab {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 4px;
+  border-radius: 13px;
+  background: var(--arc-cekung);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.arc-tab button {
+  /* `1 1 0` + `min-width: 0`, bukan `1 1 30%`: dengan 30% lima tab pecah
+     3+2 dan menyisakan celah lebar di baris kedua (terukur di 390 px). Dengan
+     basis 0 kelimanya berbagi satu baris; label panjang membungkus DI DALAM
+     tombolnya, dan tinggi baris tetap seragam. */
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  padding: 4px 6px;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--arc-muted);
+}
+
+.arc-tab button[aria-pressed="true"] {
+  background: #7c3aed;
+  color: #f5f3ff;
+  box-shadow: 0 2px 0 #3b1d78;
+}
+
+/* Varian aksen lewat atribut, bukan kelas tambahan: `.arc-tab--hijau` sebagai
+   kelas KOSONG tidak menghasilkan aturan, dan `verify:classes` menolaknya
+   dengan benar (kelas tanpa aturan = elemen tanpa gaya). */
+.arc-tab[data-aksen="hijau"] button[aria-pressed="true"] {
+  background: #065f46;
+  color: #d1fae5;
+  box-shadow: 0 2px 0 #03372a;
+}
+
+.arc-chip {
+  min-height: 38px;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 11px;
+  background: var(--arc-cenbung);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--arc-muted);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+
+.arc-chip[aria-pressed="true"] {
+  background: #2a1f08;
+  box-shadow:
+    inset 0 0 0 2px var(--arc-amber),
+    0 2px 0 rgba(0, 0, 0, 0.5);
+  color: var(--arc-amber);
+}
+
 /* ── Ledakan partikel ────────────────────────────────────────── */
 
 .arc-burst {
