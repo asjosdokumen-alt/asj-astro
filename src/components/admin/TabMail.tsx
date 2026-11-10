@@ -346,7 +346,14 @@ export default function TabMail() {
                       : 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
                   }`}>
                   {STATUS_LABEL_KEY[s] ? t(STATUS_LABEL_KEY[s]) : s}
-                  <span class={`ml-1.5 tabular-nums ${aktif ? 'text-white/80' : 'text-slate-500'}`}>
+                  {/* `text-white`, not `text-white/80`. The active pill is
+                      `bg-sky-600`, which the light-theme shim repaints to
+                      `#0369a1` (global.css:1750) precisely so WHITE text on it
+                      reaches 5.86:1. An 80% white composites to rgb(205,225,236)
+                      and lands at **4.4:1** — below the 4.5 floor, measured and
+                      pixel-confirmed on both themes and both widths by
+                      `e2e:contrast`. A dimmed count is not worth a WCAG miss. */}
+                  <span class={`ml-1.5 tabular-nums ${aktif ? 'text-white' : 'text-slate-500'}`}>
                     {jumlah}
                   </span>
                 </button>

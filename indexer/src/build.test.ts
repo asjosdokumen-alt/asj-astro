@@ -1124,7 +1124,18 @@ describe('full build', () => {
     // two files this session adds produce zero unresolved refs (probe-measured;
     // the new .mjs imports nothing and the new .ts imports only `vitest` plus
     // that .mjs). All other 32 rows are unchanged from the recorded set.
-    expect(r.unresolvedRefs.length).toBe(33); // bound-tier unresolveds, probe-measured
+    // 33 -> 34 (2026-11-10, R1a correction of a STALE baseline): +1 bound-tier
+    // unresolved — `src/components/admin/CandidateProfileModal.test.tsx:293
+    // RequestInit`, added by `8f77339` (2026-11-09, "tes menutup modal sebelum
+    // fetch mulai": `const signal = (mockFetch.mock.calls[0][1] as RequestInit).signal`).
+    // MEASURED BOTH WAYS, not derived: a detached worktree at HEAD (`de599f6`)
+    // with `node_modules` junctioned reports **34**, and this working tree reports
+    // **34** — identical, so the drift is HEAD's own and this session did not
+    // move it. Same documented family as the rows above: `RequestInit` is one of
+    // the `global-unknown` gaps, and every one of the 34 is in a `.test.ts(x)`
+    // file (histogram: MasterFullForm 10, metrics-sink 6, button 3, …), which is
+    // why the strict `prodGenuine` assertion above stays satisfied at 0.
+    expect(r.unresolvedRefs.length).toBe(34); // bound-tier unresolveds, probe-measured
     expect(r.graph.unresolved.length).toBe(2); // the two remote firebase URLs in fcm.ts, and nothing else
     expect(r.stats.stageMs.discover).toBeGreaterThan(0);
     expect(r.stats.stageMs.parse).toBeGreaterThan(0);

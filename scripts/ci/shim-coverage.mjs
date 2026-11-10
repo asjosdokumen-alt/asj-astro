@@ -69,8 +69,17 @@ const LIST = process.argv.includes('--list');
  */
 const ALLOWED = {
   /* ── measured to pass in light theme, so no shim entry is warranted ── */
-  'bg-amber-500/10': { max: 1, reason: 'Jadwal panel, /candidate (CandidateDash.tsx:607). MEASURED 2026-10-03 light 4.61:1, dark 9.69:1 — a 10% tint sits within ~2% of the page colour, so leaving it unshimmed is correct, not an oversight.' },
+  'bg-amber-500/10': { max: 2, reason: 'Two text surfaces. (a) Jadwal panel, /candidate (CandidateDash.tsx:607). MEASURED 2026-10-03 light 4.61:1, dark 9.69:1. (b) KonflikAiPanel.tsx:48 — the "AI mengirim nilai berbeda" chooser, reached from AiCvForm and AdminAiCopilot. SECOND CALL SITE 2026-11-10, and this gate was right to stop it: with `text-amber-700` it measured **4.41:1** in light theme (below the 4.5 floor) on the pale amber tint, so the heading was darkened to `text-amber-900` and re-measured **7.94:1 light / 8.59:1 dark** through the browser canvas (oklch resolved by the engine, tint composited over the card). A 10% tint still sits within ~2% of the page colour, so leaving the SURFACE unshimmed remains correct — what needed fixing was the text, not the tint.' },
   'bg-sky-500/10': { max: 1, reason: 'Status-Lamaran panel, /candidate (CandidateDash.tsx:641). MEASURED 2026-10-03 light 5.35:1, dark 7.72:1.' },
+  /* KonflikAiPanel's two CHOICE chips (2026-11-10). Both are a 15% tint with
+     `text-fg` on top — the highest-contrast text/surface pair the palette has,
+     which is why the tint does not need a shim. MEASURED through the browser
+     canvas (oklch resolved by the engine, tint composited over the card) on the
+     exact markup, both themes: lama chip 15.13 light / 10.49 dark; baru chip
+     15.25 light / 10.41 dark. The `border-*-500` next to them is a 1px rule,
+     not a text surface. */
+  'bg-sky-500/15': { max: 1, reason: 'KonflikAiPanel.tsx:64 — selected "sekarang" chip, `text-fg` on a 15% sky tint. MEASURED 2026-11-10 light 15.13:1, dark 10.49:1.' },
+  'bg-emerald-500/15': { max: 1, reason: 'KonflikAiPanel.tsx:78 — selected "dari chat" chip, `text-fg` on a 15% emerald tint. MEASURED 2026-11-10 light 15.25:1, dark 10.41:1.' },
   'bg-rose-950/30': { max: 1, reason: '"Upload locked" block, PemberkasanModal.tsx:530, reached by a candidate whose tahapan matches neither RE_T1 nor RE_T2. MEASURED 2026-10-03 light 5.75:1, dark 10.95:1. Arithmetic said 2.87 — the palette is authored in oklab and a naive sRGB blend misreads it, which is why this entry cites a measurement.' },
 
   /* ── not a text surface at all, so contrast is not a property it can fail ── */

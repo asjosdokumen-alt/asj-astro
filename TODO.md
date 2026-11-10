@@ -120,6 +120,36 @@
       `ALL_HEADING_ROUTES`, dan mutasi balik ke `h4` membuat gate gagal dengan
       pesan yang menyebut kedua heading-nya. **Pelajaran:** yang salah bukan
       aturannya, melainkan CAKUPAN daftar yang di-walk.
+      ✅ **PANEL ADMIN kini DISAPU juga (2026-11-10)** — lubang terakhir di butir
+      ini tertutup. `e2e:contrast` mengukur **12 tab admin** × 2 tema × 2 lebar
+      (dibaca lewat HASH, setiap panggilan `/.netlify/functions/**` dijawab
+      fixture lokal), dan pada run PERTAMA ia menemukan satu kegagalan nyata:
+      angka keranjang AKTIF di tab Mail **4,4:1** — `text-white/80` menjadi
+      rgb(205,225,236) di atas `#0369a1` (shim `global.css:1750` yang justru ada
+      supaya teks PUTIH mencapai 5,86:1), 0,1 di bawah lantai, di tab yang dipakai
+      admin menyaring setiap lamaran.
+      ⚠ **"Perbaikan" pertama SALAH, dan gerbang yang membuktikannya.** Mengganti
+      `/80` menjadi `text-white` **menurunkan** rasio ke **2,83:1** (terukur, dua
+      lebar): §5b `global.css:462` membalik `.text-white` menjadi `#1f1d1c` di
+      tema terang, sedangkan aturan pemulih di `global.css:1782` hanya berlaku
+      bila latar DAN `text-white` ada di elemen yang SAMA — di sini teksnya ada di
+      `<span>` ANAK, jadi tidak ada yang memulihkannya. Angka 4,4 lalu 2,83 itu
+      bukan kontradiksi: keduanya nyata, pada dua keadaan kode yang berbeda.
+      Perbaikan yang benar ada di **`global.css:1793`** — aturan pemulih diperluas
+      ke `[class*="text-white"]` sebagai **turunannya**, jadi kelas bug ini (teks
+      putih dipecah ke span di dalam tombol yang di-shim) tertutup untuk SELURUH
+      keluarga warna, bukan hanya tombol Mail. Sesudahnya **0 temuan di 72
+      permukaan** (3340 elemen tak terukur, dilaporkan bukan disembunyikan).
+      Setiap permukaan admin juga punya **lantai cakupan** (`MIN_ADMIN_ELEMENTS`
+      = 8, di bawah permukaan tertipis yang terukur = 14) dan menegaskan penanda
+      `[data-tab]`, jadi hash yang diabaikan — satu tab dirender dua belas kali —
+      tidak bisa terbaca sebagai dua belas baris hijau.
+      ⚠ Batas yang jujur dan TERUKUR: panel admin hanya **sebagian** terukur di
+      tema TERANG (492 elemen terukur / 841 dilewati; tema gelap 1135 / 198)
+      karena `body` membawa pola titik `background-image` dan kartu admin tembus
+      pandang, sehingga penelusuran leluhur berhenti di `body`. Itu sifat METODE,
+      dicetak setiap run, bukan lulus. Modal admin tetap belum tercakup.
+      Bukti: `deliverables/gstack/admin-contrast-2026-11-10.md`.
 - [x] ~~Loading skeleton di semua halaman yang memuat data~~ → **AUDIT SELESAI
       2026-11-07.** Sebagian besar sudah ada sebelum butir ini diperiksa:
       `ui/Skeleton.tsx` dipakai 9 tab admin, `CandidateSkeleton` untuk dasbor

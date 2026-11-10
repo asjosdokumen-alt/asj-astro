@@ -29,7 +29,7 @@
     "e2e:drawer": "node scripts/ci/with-timeout.mjs 3 -- node e2e/test-drawer.mjs",
     "e2e:labels": "node scripts/ci/with-timeout.mjs 3 -- node e2e/test-labels.mjs",
     "e2e:landing": "node scripts/ci/with-timeout.mjs 5 -- node e2e/test-landing.mjs",
-    "e2e:contrast": "node scripts/ci/with-timeout.mjs 3 -- node e2e/test-contrast.mjs",
+    "e2e:contrast": "node scripts/ci/with-timeout.mjs 12 -- node e2e/test-contrast.mjs",
     "e2e:aria-names": "node scripts/ci/with-timeout.mjs 5 -- node e2e/test-aria-names.mjs",
     "e2e:test-candidate-modals": "node scripts/ci/with-timeout.mjs 5 -- node e2e/test-candidate-modals.mjs",
     "e2e:print": "node scripts/ci/with-timeout.mjs 5 -- node e2e/test-print-mensetsu.mjs",

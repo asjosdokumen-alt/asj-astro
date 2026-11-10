@@ -1,0 +1,1627 @@
+{
+  "rows": [
+    {
+      "where": "/admin#config light 1280px",
+      "elements": 21,
+      "computed": 0,
+      "confirmed": 0,
+      "unmeasurable": 105
+    },
+    {
+      "where": "/admin#config light 390px",
+      "elements": 19,
+      "computed": 0,
+      "confirmed": 0,
+      "unmeasurable": 106
+    },
+    {
+      "where": "/admin#config dark 1280px",
+      "elements": 117,
+      "computed": 0,
+      "confirmed": 0,
+      "unmeasurable": 9
+    },
+    {
+      "where": "/admin#config dark 390px",
+      "elements": 118,
+      "computed": 0,
+      "confirmed": 0,
+      "unmeasurable": 7
+    }
+  ],
+  "findings": [],
+  "unmeasurableByReason": {
+    "text over background-image (gradient / image)": 227
+  },
+  "allUnmeasurable": [
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Menu",
+      "tag": "span",
+      "selector": "span.text-xs.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Install App",
+      "tag": "button",
+      "selector": "button.w-full.py-3",
+      "reason": "text over background-image (linear-gradient(to right, oklch(…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Menu",
+      "tag": "span",
+      "selector": "span.text-xs.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Lowongan Publik",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "DB Job Internal",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Tambah Job",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Biodata",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Jadwal Agenda",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Mail",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "WA Pintar",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Agenda",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Papan Tugas",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Papan Skor Game",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Tes & Uji",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Pengaturan Sistem (Dropdown)",
+      "tag": "h2",
+      "selector": "h2.text-white.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Kelola pilihan dropdown yang akan muncul",
+      "tag": "p",
+      "selector": "p.text-sm.text-slate-300",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Notifikasi perangkat ini",
+      "tag": "h3",
+      "selector": "h3.mb-2.flex",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Aktifkan agar panel ini menerima pemberi",
+      "tag": "p",
+      "selector": "p.mb-3.text-xs",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Belum ada perangkat admin yang terdaftar",
+      "tag": "span",
+      "selector": "span.text-amber-400",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Notifikasi diblokir untuk situs ini. Buk",
+      "tag": "p",
+      "selector": "p.text-xs.text-slate-400",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Migrasi Database (Otomatis)",
+      "tag": "h3",
+      "selector": "h3.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Pembaruan struktur database dijalankan d",
+      "tag": "p",
+      "selector": "p.text-xs.text-slate-300",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "TSK / Pengurus",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "3 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "TSK-001",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "TSK-002",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "TSK-003",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Tahapan Internal DB",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "5 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Persiapan",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Dokumen",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "MCU",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Wawancara",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Keberangkatan",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Bidang Pekerjaan",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "8 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Manufaktur",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Pertanian",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Perikanan",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Konstruksi",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Perawatan Lansia",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "+3 lainnya",
+      "tag": "span",
+      "selector": "span.text-[11px].text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Lokasi Penempatan",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "7 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Tokyo",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Osaka",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Nagoya",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Fukuoka",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Sapporo",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "+2 lainnya",
+      "tag": "span",
+      "selector": "span.text-[11px].text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Pendidikan",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "10 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "SD",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "SMP",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "SMA",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "SMK",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "MA",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "+5 lainnya",
+      "tag": "span",
+      "selector": "span.text-[11px].text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Status Lamaran",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "5 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Baru",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Review",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Diterima",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Ditolak",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "On Hold",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Tahapan Progres",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "6 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Pendaftaran",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Seleksi",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Dokumen",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "MCU",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Wawancara",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "+1 lainnya",
+      "tag": "span",
+      "selector": "span.text-[11px].text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Gender",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "2 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Laki-laki",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Perempuan",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Jenjang Pendidikan",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "10 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "SD",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "SMP",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "SMA",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "SMK",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "MA",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "+5 lainnya",
+      "tag": "span",
+      "selector": "span.text-[11px].text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Pengumuman Berjalan (Live)",
+      "tag": "h3",
+      "selector": "h3.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Teks ini akan muncul berjalan (Marquee) ",
+      "tag": "p",
+      "selector": "p.text-xs.text-slate-300",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Kosongkan lalu Simpan untuk menghapus pe",
+      "tag": "span",
+      "selector": "span.text-rose-300",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Template CV",
+      "tag": "h3",
+      "selector": "h3.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Isi template .xlsx dengan data SATU kand",
+      "tag": "p",
+      "selector": "p.text-xs.text-slate-300",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Template tersimpan (0)",
+      "tag": "h4",
+      "selector": "h4.text-xs.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Belum ada.",
+      "tag": "p",
+      "selector": "p.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Versi",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "c10affa84bdf",
+      "tag": "code",
+      "selector": "code#asj-version.font-mono",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "·",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 1280px",
+      "text": "Periksa pembaruan",
+      "tag": "button",
+      "selector": "button#asj-check-update.min-h-11.px-1",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Menu",
+      "tag": "span",
+      "selector": "span.text-xs.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Install App",
+      "tag": "button",
+      "selector": "button.w-full.py-3",
+      "reason": "text over background-image (linear-gradient(to right, oklch(…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Menu",
+      "tag": "button",
+      "selector": "button.min-h-11.sticky",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Menu",
+      "tag": "span",
+      "selector": "span.text-xs.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Lowongan Publik",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "DB Job Internal",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Tambah Job",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Biodata",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Jadwal Agenda",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Mail",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "WA Pintar",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Agenda",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Papan Tugas",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Papan Skor Game",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Tes & Uji",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Pengaturan Sistem (Dropdown)",
+      "tag": "h2",
+      "selector": "h2.text-white.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Kelola pilihan dropdown yang akan muncul",
+      "tag": "p",
+      "selector": "p.text-sm.text-slate-300",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Notifikasi perangkat ini",
+      "tag": "h3",
+      "selector": "h3.mb-2.flex",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Aktifkan agar panel ini menerima pemberi",
+      "tag": "p",
+      "selector": "p.mb-3.text-xs",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Belum ada perangkat admin yang terdaftar",
+      "tag": "span",
+      "selector": "span.text-amber-400",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Notifikasi diblokir untuk situs ini. Buk",
+      "tag": "p",
+      "selector": "p.text-xs.text-slate-400",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Migrasi Database (Otomatis)",
+      "tag": "h3",
+      "selector": "h3.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Pembaruan struktur database dijalankan d",
+      "tag": "p",
+      "selector": "p.text-xs.text-slate-300",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "TSK / Pengurus",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "3 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "TSK-001",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "TSK-002",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "TSK-003",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Tahapan Internal DB",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "5 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Persiapan",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Dokumen",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "MCU",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Wawancara",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Keberangkatan",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Bidang Pekerjaan",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "8 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Manufaktur",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Pertanian",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Perikanan",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Konstruksi",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Perawatan Lansia",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "+3 lainnya",
+      "tag": "span",
+      "selector": "span.text-[11px].text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Lokasi Penempatan",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "7 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Tokyo",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Osaka",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Nagoya",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Fukuoka",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Sapporo",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "+2 lainnya",
+      "tag": "span",
+      "selector": "span.text-[11px].text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Pendidikan",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "10 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "SD",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "SMP",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "SMA",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "SMK",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "MA",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "+5 lainnya",
+      "tag": "span",
+      "selector": "span.text-[11px].text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Status Lamaran",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "5 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Baru",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Review",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Diterima",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Ditolak",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "On Hold",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Tahapan Progres",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "6 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Pendaftaran",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Seleksi",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Dokumen",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "MCU",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Wawancara",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "+1 lainnya",
+      "tag": "span",
+      "selector": "span.text-[11px].text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Gender",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "2 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Laki-laki",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Perempuan",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Jenjang Pendidikan",
+      "tag": "h4",
+      "selector": "h4.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "10 pilihan",
+      "tag": "div",
+      "selector": "div.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "SD",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "SMP",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "SMA",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "SMK",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "MA",
+      "tag": "span",
+      "selector": "span.px-2.py-0.5",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "+5 lainnya",
+      "tag": "span",
+      "selector": "span.text-[11px].text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Edit",
+      "tag": "button",
+      "selector": "button.min-h-11.w-full",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Pengumuman Berjalan (Live)",
+      "tag": "h3",
+      "selector": "h3.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Teks ini akan muncul berjalan (Marquee) ",
+      "tag": "p",
+      "selector": "p.text-xs.text-slate-300",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Kosongkan lalu Simpan untuk menghapus pe",
+      "tag": "span",
+      "selector": "span.text-rose-300",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Template CV",
+      "tag": "h3",
+      "selector": "h3.text-sm.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Isi template .xlsx dengan data SATU kand",
+      "tag": "p",
+      "selector": "p.text-xs.text-slate-300",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Template tersimpan (0)",
+      "tag": "h4",
+      "selector": "h4.text-xs.font-bold",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Belum ada.",
+      "tag": "p",
+      "selector": "p.text-xs.text-slate-500",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Versi",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "c10affa84bdf",
+      "tag": "code",
+      "selector": "code#asj-version.font-mono",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "·",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config light 390px",
+      "text": "Periksa pembaruan",
+      "tag": "button",
+      "selector": "button#asj-check-update.min-h-11.px-1",
+      "reason": "text over background-image (radial-gradient(circle, rgba(190…)"
+    },
+    {
+      "where": "/admin#config dark 1280px",
+      "text": "Install App",
+      "tag": "button",
+      "selector": "button.w-full.py-3",
+      "reason": "text over background-image (linear-gradient(to right, oklch(…)"
+    },
+    {
+      "where": "/admin#config dark 1280px",
+      "text": "Portal",
+      "tag": "span",
+      "selector": "span.hidden.min-[360px]:inline",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 1280px",
+      "text": "Panel Admin",
+      "tag": "h1",
+      "selector": "h1.min-w-0.flex-1",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 1280px",
+      "text": "Gelap",
+      "tag": "span",
+      "selector": "span.hidden.sm:inline",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 1280px",
+      "text": "ID",
+      "tag": "span",
+      "selector": "span.hidden.sm:inline",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 1280px",
+      "text": "Versi",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 1280px",
+      "text": "c10affa84bdf",
+      "tag": "code",
+      "selector": "code#asj-version.font-mono",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 1280px",
+      "text": "·",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 1280px",
+      "text": "Periksa pembaruan",
+      "tag": "button",
+      "selector": "button#asj-check-update.min-h-11.px-1",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 390px",
+      "text": "Install App",
+      "tag": "button",
+      "selector": "button.w-full.py-3",
+      "reason": "text over background-image (linear-gradient(to right, oklch(…)"
+    },
+    {
+      "where": "/admin#config dark 390px",
+      "text": "Portal",
+      "tag": "span",
+      "selector": "span.hidden.min-[360px]:inline",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 390px",
+      "text": "Panel Admin",
+      "tag": "h1",
+      "selector": "h1.min-w-0.flex-1",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 390px",
+      "text": "Versi",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 390px",
+      "text": "c10affa84bdf",
+      "tag": "code",
+      "selector": "code#asj-version.font-mono",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 390px",
+      "text": "·",
+      "tag": "span",
+      "selector": "span",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    },
+    {
+      "where": "/admin#config dark 390px",
+      "text": "Periksa pembaruan",
+      "tag": "button",
+      "selector": "button#asj-check-update.min-h-11.px-1",
+      "reason": "text over background-image (radial-gradient(circle, rgba(148…)"
+    }
+  ]
+}

@@ -2,11 +2,17 @@
  * test-contrast.mjs — WCAG 2.1 AA text-contrast GATE (not an evidence tool).
  *
  * WHAT IT ASSERTS
- *   Every visible text element on six routes, in BOTH themes, meets the WCAG AA
- *   floor: 4.5:1 for normal text, 3.0:1 for large text (>= 24px, or >= 18.66px
- *   and bold). It exits non-zero when a MEASURED element misses, and prints the
- *   route, theme, ratio, floor, selector and text so a red is actionable rather
- *   than a number.
+ *   Every visible text element on six public/candidate routes AND all twelve
+ *   admin tabs, in BOTH themes, meets the WCAG AA floor: 4.5:1 for normal text,
+ *   3.0:1 for large text (>= 24px, or >= 18.66px and bold). It exits non-zero
+ *   when a MEASURED element misses, and prints the route, theme, ratio, floor,
+ *   selector and text so a red is actionable rather than a number.
+ *
+ *   The admin panel was the last named hole in the a11y item ("Panel admin juga
+ *   belum tercakup"), and it was a real hole rather than a formality: the first
+ *   run of the admin sweep found `TabMail`'s ACTIVE bucket count at **4.4:1** —
+ *   `text-white/80` on the shimmed `#0369a1` (`global.css:1750`), 0.1 below the
+ *   floor, on the tab an admin uses to triage every incoming application.
  *
  * WHY IT EXISTS
  *   The audit that preceded this gate found real misses (a rose marquee at
@@ -66,8 +72,22 @@
  *      from its composite rather than from its blurred backdrop, and the pixel
  *      confirmation is what keeps that honest.
  *   3. Hover / focus / disabled states are NOT measured. Only the resting state.
- *   4. Only these six routes. The admin modals are not covered.
- *   5. THE DATA-DRIVEN PARTS RUN ON A FIXTURE, NOT THE REAL BACKEND. The job
+ *      (`e2e/test-hover-contrast.mjs` covers hover. `:disabled` is EXEMPT from
+ *      AA 1.4.3 — "inactive user interface components" — so probing it would
+ *      manufacture findings, not fix them. `:active` cannot be held still long
+ *      enough to screenshot.)
+ *   4. The admin MODALS are not covered — only the twelve tab bodies. A modal is
+ *      a different surface with its own colours, and opening all of them from a
+ *      gate is a click-walk that `test-headings.mjs` already records as
+ *      non-deterministic.
+ *   5. THE ADMIN PANEL IS ONLY PARTLY MEASURABLE IN LIGHT THEME, and that is a
+ *      property of the METHOD, not of the panel: `body` carries the dot-grid
+ *      `background-image` (global.css:81) and the admin cards are translucent,
+ *      so the ancestor walk reaches `body` and bails on rule 1. Measured
+ *      2026-11-10: light theme 492 elements measured / 841 skipped, dark theme
+ *      1135 / 198. The gate therefore asserts a COVERAGE FLOOR per admin surface
+ *      (MIN_ADMIN_ELEMENTS) so a tab that renders nothing cannot read as clean.
+ *   6. THE DATA-DRIVEN PARTS RUN ON A FIXTURE, NOT THE REAL BACKEND. The job
  *      rows (and therefore the amber action button) and the marquee both come
  *      from ONE POST to `/.netlify/functions/get-app-data`; the gate serves that
  *      call from a synthetic payload (`PUBLIC_DATA_FIXTURE`), so the data-driven
@@ -140,6 +160,57 @@ const ROUTES = [
  */
 const WIDTHS = [1280, 390];
 const THEMES = ['light', 'dark'];
+
+/**
+ * The admin panel's twelve tabs, read by HASH rather than by clicking.
+ *
+ * `AdminPanel` renders ONE tab at a time and the tab is hash-routable
+ * (`tabFromHash()`), so `/admin#wa` mounts that tab directly — no click, no
+ * responsive sidebar. `test-headings.mjs` records that a CLICK-walk was written
+ * and removed because it was not deterministic: a tab calling `api.secure(...)`
+ * had its rejection routed through `apiClient`, which logs the session out and
+ * redirects to `/`, and two runs ten minutes apart disagreed about which tabs
+ * bounced.
+ *
+ * `test-aria-names.mjs` attacks that from the other side and this gate copies it:
+ * EVERY `/.netlify/functions/**` call is fulfilled locally with a benign payload,
+ * so nothing is ever rejected and nothing logs out.
+ *
+ * The list is HAND-WRITTEN on purpose, and that is a cost: a new tab is not
+ * measured until it is added here. The alternative — importing `TABS` from the
+ * component — is not available to an `.mjs` gate, and `data-tab` (see
+ * AdminPanel's `TabContent`) makes the omission LOUD instead of silent: a tab
+ * named here but absent from the DOM fails with a coverage gap, and the sidebar
+ * count is asserted below so a tab that exists but was never listed is visible
+ * in the report.
+ */
+const ADMIN_TABS = [
+  'kelola', 'dbjob', 'tambah', 'pelamar', 'jadwal', 'mail',
+  'wa', 'agenda', 'tugas', 'skor', 'tes', 'config',
+];
+
+/**
+ * The thinnest admin surface measured 2026-11-10 found **14** elements (agenda,
+ * light, 390px). The floor is deliberately BELOW that: it is not a target, it is
+ * a tripwire for "the tab rendered nothing and the gate would call that clean".
+ * It is per-surface, not aggregate, because an aggregate floor is satisfied by
+ * whichever tab still renders.
+ */
+const MIN_ADMIN_ELEMENTS = 8;
+
+const SURFACES = [
+  ...ROUTES.map((r) => ({ ...r, kind: 'route' })),
+  ...ADMIN_TABS.map((tab) => ({
+    path: `/admin#${tab}`,
+    session: 'admin',
+    kind: 'admin',
+    tab,
+    /* The tab's own marker (AdminPanel's `TabContent`), so "the hash was
+       ignored and the same tab rendered twelve times" cannot pass as twelve
+       green rows. */
+    waitFor: `[data-tab="${tab}"]`,
+  })),
+];
 
 /** Fabricated session — these routes gate on the STORE, not the backend. */
 function authFor(role) {
@@ -394,6 +465,305 @@ const unmeasurable = [];
 const coverageGaps = [];
 const lines = [];
 
+/**
+ * The admin panel's fixture. PER-ENDPOINT, not one blob — `TabPelamar` reads
+ * `/.netlify/functions/candidates` while `TabWA` reads `waTemplates` off
+ * `get-app-data`, and one empty `{success:true}` for both renders the tabs with
+ * EMPTY TABLES. The row-level controls are then absent from the DOM, which reads
+ * as "clean" — the vacuity this repo's guards keep re-learning.
+ *
+ * The shape is copied from `e2e/test-aria-names.mjs`, which measured all eight
+ * tabs rendering 17-49 controls each with it.
+ */
+const ADMIN_CANDIDATE = {
+  nama: 'Aria Uji',
+  wa: '081234567890',
+  idLoker: 'TG591ASJ',
+  idKandidat: 'ASJ-001',
+  tahapan: 'PEMBERKASAN',
+  status: 'LULUS',
+  kategori: 'NOUGYOU SAYURAN',
+  berkas: {},
+  bio: {},
+};
+
+function fulfillAdmin(route) {
+  const url = route.request().url();
+  let body = { success: true, sessionInvalid: false };
+  if (url.includes('/candidates')) {
+    body = { success: true, total: 1, candidates: [ADMIN_CANDIDATE] };
+  } else if (url.includes('get-app-data')) {
+    body = {
+      success: true,
+      sessionInvalid: false,
+      activeTheme: 'dark',
+      candidates: [ADMIN_CANDIDATE],
+      schedules: [],
+      messages: [],
+      waTemplates: [{ id: 'tpl-1', nama: 'Template Uji', isi: 'Halo {nama}, ini pesan uji.' }],
+    };
+  }
+  return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+}
+
+/**
+ * The one backend call the PUBLIC routes depend on — see PUBLIC_DATA_FIXTURE.
+ * Only `getAppData` is served from the fixture; any other action to the same
+ * endpoint falls through, so this cannot silently reshape a different route.
+ */
+function fulfillPublic(route) {
+  let action = '';
+  try {
+    action = route.request().postDataJSON()?.action || '';
+  } catch {
+    /* not JSON — fall through */
+  }
+  if (action === 'getAppData') {
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(PUBLIC_DATA_FIXTURE),
+    });
+  }
+  return route.continue();
+}
+
+/**
+ * ONE SURFACE, ONE PAGE.
+ *
+ * The page used to be shared across all six routes, which worked but hid two
+ * pieces of state: `addInitScript` ACCUMULATES (so a session added for `/ai-cv`
+ * was still installed for `/apply`), and `page.route` handlers accumulate too.
+ * Adding a second family of surfaces with a DIFFERENT fixture makes both of
+ * those live hazards, so each surface now gets a page of its own. The cost is
+ * ~150ms per surface.
+ */
+async function measureSurface(ctx, surface, theme, width) {
+  const { path, session, waitFor, alsoWaitFor, kind, tab } = surface;
+  const page = await ctx.newPage();
+  await page.addInitScript(installScanner);
+  if (session) {
+    await page.addInitScript((v) => {
+      try {
+        localStorage.setItem('asj_auth', v);
+      } catch {}
+    }, authFor(session));
+  }
+  if (kind === 'admin') await page.route('**/.netlify/functions/**', fulfillAdmin);
+  else await page.route('**/.netlify/functions/get-app-data', fulfillPublic);
+
+  const where = `${path} ${theme} ${width}px`;
+  const T0 = Date.now();
+  const dbg = (m) => process.env.CONTRAST_DEBUG && process.stderr.write(`DBG +${Date.now() - T0}ms ${m} ${where}\n`);
+
+  try {
+    dbg('nav');
+    let res;
+    try {
+      res = await page.goto(BASE + path, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    } catch (e) {
+      lines.push(`  ERROR  ${where}  navigation failed: ${e.message}`);
+      failures.push({ route: where, text: '(navigation)', selector: '-', ratio: 0, need: 0, reason: e.message });
+      return;
+    }
+    if (res && res.status() !== 200) {
+      lines.push(`  ERROR  ${where}  HTTP ${res.status()} — refusing to measure an error page`);
+      failures.push({ route: where, text: '(http)', selector: '-', ratio: 0, need: 0, reason: `HTTP ${res.status()}` });
+      return;
+    }
+    // Let hydration + the async data settle.
+    // BOUNDED font wait. `document.fonts.ready` resolves only once every
+    // @font-face has settled, and this page pulls fonts from a CDN — measured
+    // 2026-09-27: awaiting it unbounded added 32.6s to the `/` route alone
+    // (the other five routes took ~2.1s each), which blew the 3-minute budget.
+    // Nothing here depends on font METRICS: the gate reads computed colours
+    // and the computed font-size, both of which come from CSS.
+    await page
+      .evaluate(() =>
+        Promise.race([
+          document.fonts ? document.fonts.ready : Promise.resolve(),
+          new Promise((r) => setTimeout(r, 1200)),
+        ]),
+      )
+      .catch(() => {});
+    dbg('fonts done');
+    await page.waitForTimeout(1200);
+    dbg('settle1200 done');
+    for (const sel of [waitFor, alsoWaitFor]) {
+      if (!sel) continue;
+      const found = await page
+        .waitForSelector(sel, { timeout: 8000, state: 'attached' })
+        .then(() => true)
+        .catch(() => false);
+      dbg(`waitFor ${sel} -> ${found}`);
+      if (!found) {
+        // A FAILURE, not a note. The data is synthetic (PUBLIC_DATA_FIXTURE /
+        // the admin fixture), so this cannot be a backend hiccup — it means the
+        // fixture stopped matching the page (the fetch URL moved, the island
+        // stopped fetching) and the gate can no longer measure the elements it
+        // exists for. Reporting a clean pass here would be the vacuity this
+        // repo's guards keep re-learning.
+        //
+        // For an admin surface the selector is `[data-tab="<id>"]`, so this is
+        // ALSO the assertion that the hash routed to the tab we asked for: a
+        // hash that is ignored would render the same tab twelve times, and
+        // every one of those twelve rows would be green.
+        coverageGaps.push(`${where}  "${sel}" never rendered`);
+        failures.push({
+          route: where,
+          text: '(coverage)',
+          selector: sel,
+          ratio: 0,
+          need: 0,
+          reason: `"${sel}" never rendered — the fixture no longer matches, so this route is not covered`,
+        });
+        lines.push(`  FAIL  ${where}  "${sel}" never rendered — coverage lost, refusing to pass`);
+      }
+    }
+    // ── Row-count STABILISATION ──────────────────────────────────────────
+    // `state: 'attached'` fires on the FIRST row, and the table renders a
+    // `keterangan` note row and repaints as the island hydrates — so measuring
+    // the moment one row exists can count a different number of elements run to
+    // run. Poll until the count holds still across two reads. Bounded, so a
+    // table that genuinely keeps growing cannot hang the gate.
+    if (waitFor === ROWS || alsoWaitFor === ROWS) {
+      let prev = -1;
+      for (let i = 0; i < 20; i++) {
+        const n = await page.locator(ROWS).count();
+        if (n > 0 && n === prev) break;
+        prev = n;
+        await page.waitForTimeout(100);
+      }
+      dbg(`rows stabilised at ${prev}`);
+    }
+    await page.waitForTimeout(600);
+    // Let FINITE animations finish before measuring. The forms run
+    // `animate-[fadeIn_0.4s_…]` and the landing page has reveal entrances; a
+    // scan taken mid-fade sees a fractional ancestor `opacity` (0.94, 0.95 …)
+    // and skips those elements, which would make the gate's COVERAGE — not
+    // just its verdict — depend on timing. INFINITE animations are exempt: the
+    // marquee never stops by design, and it must still be measured.
+    // ⚠ `waitForFunction(fn, arg, options)` — the options object is the THIRD
+    // parameter. Passing `{ timeout }` second makes it the `arg`, the default
+    // 30 s timeout applies, and `/` (whose 36 animations never all settle)
+    // costs 30 s per load: measured, that alone took the whole gate from ~1 min
+    // to 4 m 56 s. `polling: 100` rather than the default `raf`, so a page
+    // doing heavy animation work cannot starve the poll.
+    await page
+      .waitForFunction(
+        () =>
+          document.getAnimations().every((a) => {
+            if (a.playState !== 'running') return true;
+            const t = a.effect?.getTiming?.();
+            return t ? t.iterations === Infinity : false;
+          }),
+        undefined,
+        { timeout: 1500, polling: 100 },
+      )
+      .catch(() => {});
+    await page.waitForTimeout(150);
+    dbg('anim settle done');
+
+    const scan = await page.evaluate(() => window.__scan());
+    dbg(`scanned (${scan.elements} els, ${scan.failures.length} miss, ${scan.unmeasurable.length} unmeas)`);
+    for (const u of scan.unmeasurable) unmeasurable.push({ route: where, ...u });
+
+    // ── COVERAGE FLOOR, admin only ────────────────────────────────────────
+    // A tab that rendered nothing would report `0 measured, 0 below the floor`
+    // and read as a clean pass. The floor is per-surface and measured BELOW the
+    // thinnest real surface (14), so it cannot be satisfied by another tab.
+    if (kind === 'admin' && scan.elements < MIN_ADMIN_ELEMENTS) {
+      const why = `${where}  only ${scan.elements} text element(s) measured (< ${MIN_ADMIN_ELEMENTS}) — the tab rendered nothing measurable, so this is NOT a pass`;
+      coverageGaps.push(why);
+      failures.push({ route: where, text: '(coverage)', selector: tab ? `[data-tab="${tab}"]` : '-', ratio: 0, need: 0, reason: why });
+      lines.push(`  FAIL  ${why}`);
+    }
+
+    // ── pixel confirmation for every computed miss ────────────────────────
+    const viewport = page.viewportSize();
+    for (const f of scan.failures) {
+      const row = { route: where, ...f };
+      try {
+        const handle = page.locator(`[data-contrast-probe="${f.probe}"]`).first();
+        // An ANIMATING element (the marquee) never reaches a stable position,
+        // so `scrollIntoViewIfNeeded` always times out on it. That is expected
+        // and must not lose the reading: swallow it and sample where the
+        // element currently is, which for a uniform band is the same pixel.
+        await handle.scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {});
+        const box = await handle.boundingBox();
+        // Clamp to the viewport: a marquee item mid-scroll has a NEGATIVE x,
+        // and an unclamped clip either throws or captures off-screen.
+        const x = box ? Math.max(0, Math.floor(box.x)) : 0;
+        const y = box ? Math.max(0, Math.floor(box.y)) : 0;
+        const w = box ? Math.min(Math.ceil(box.width), (viewport?.width ?? 1280) - x, 400) : 0;
+        const h = box ? Math.min(Math.ceil(box.height), (viewport?.height ?? 900) - y, 80) : 0;
+        if (w >= 1 && h >= 1) {
+          await handle.evaluate((el) => {
+            el.style.visibility = 'hidden';
+          });
+          await page.waitForTimeout(40);
+          const shot = await page.screenshot({ clip: { x, y, width: w, height: h } });
+          await handle.evaluate((el) => {
+            el.style.visibility = '';
+          });
+          const px = await page.evaluate(async (b64) => {
+            const img = new Image();
+            img.src = `data:image/png;base64,${b64}`;
+            await img.decode();
+            const c = document.createElement('canvas');
+            c.width = img.width;
+            c.height = img.height;
+            const x2 = c.getContext('2d');
+            x2.drawImage(img, 0, 0);
+            const d = x2.getImageData(Math.floor(img.width / 2), Math.floor(img.height / 2), 1, 1).data;
+            return [d[0], d[1], d[2]];
+          }, shot.toString('base64'));
+          const chan = (v) => {
+            const s = v / 255;
+            return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+          };
+          const lum = (p) => 0.2126 * chan(p[0]) + 0.7152 * chan(p[1]) + 0.0722 * chan(p[2]);
+          const fgPx = f.fg.match(/\d+/g).map(Number);
+          const a = lum(fgPx);
+          const b = lum(px);
+          const pixelRatio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+          row.pixel = +pixelRatio.toFixed(2);
+          row.pixelBg = `rgb(${px.join(',')})`;
+          row.confirmed = pixelRatio + 1e-9 < f.need;
+        } else {
+          row.confirmed = false;
+          row.pixel = null;
+          row.note = 'no on-screen box to sample';
+        }
+      } catch (e) {
+        row.confirmed = false;
+        row.pixel = null;
+        row.note = `pixel probe failed: ${e.message.slice(0, 60)}`;
+      }
+      if (row.confirmed) {
+        failures.push(row);
+        lines.push(
+          `  FAIL  ${where}  ${row.ratio}:1 (need ${row.need})  ${row.selector}  "${row.text}"  ` +
+            `fg=${row.fg} bg=${row.bg} pixel=${row.pixelBg}`,
+        );
+      } else {
+        lines.push(
+          `  UNCONFIRMED  ${where}  computed ${row.ratio}:1 but pixel ${row.pixel ?? `n/a (${row.note || ''})`}:1 — ` +
+            `${row.selector} "${row.text}" (model of the surface is wrong; NOT counted)`,
+        );
+      }
+    }
+
+    const fails = scan.failures.length;
+    lines.push(
+      `  ${fails ? '  ' : 'OK'}  ${where}  ${scan.elements} text element(s) measured, ` +
+        `${fails} below the floor, ${scan.unmeasurable.length} unmeasurable`,
+    );
+  } finally {
+    await page.close();
+  }
+}
+
 for (const theme of THEMES) {
   for (const width of WIDTHS) {
     const ctx = await browser.newContext({
@@ -407,231 +777,8 @@ for (const theme of THEMES) {
         /* storage disabled */
       }
     }, theme);
-    const page = await ctx.newPage();
-    await page.addInitScript(installScanner);
-
-    // The one backend call this gate depends on — see PUBLIC_DATA_FIXTURE.
-    // Only `getAppData` is served from the fixture; any other action to the same
-    // endpoint falls through, so this cannot silently reshape a different route.
-    await page.route('**/.netlify/functions/get-app-data', (route) => {
-      let action = '';
-      try {
-        action = route.request().postDataJSON()?.action || '';
-      } catch {
-        /* not JSON — fall through */
-      }
-      if (action === 'getAppData') {
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(PUBLIC_DATA_FIXTURE),
-        });
-      }
-      return route.continue();
-    });
-
-    for (const { path, session, waitFor, alsoWaitFor } of ROUTES) {
-      if (session) {
-        await page.addInitScript((v) => {
-          try {
-            localStorage.setItem('asj_auth', v);
-          } catch {}
-        }, authFor(session));
-      }
-      const where = `${path} ${theme} ${width}px`;
-      const T0 = Date.now();
-      const dbg = (m) => process.env.CONTRAST_DEBUG && process.stderr.write(`DBG +${Date.now() - T0}ms ${m} ${where}\n`);
-      dbg('nav');
-      let res;
-      try {
-        res = await page.goto(BASE + path, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-      } catch (e) {
-        lines.push(`  ERROR  ${where}  navigation failed: ${e.message}`);
-        failures.push({ route: where, text: '(navigation)', selector: '-', ratio: 0, need: 0, reason: e.message });
-        continue;
-      }
-      if (res && res.status() !== 200) {
-        lines.push(`  ERROR  ${where}  HTTP ${res.status()} — refusing to measure an error page`);
-        failures.push({ route: where, text: '(http)', selector: '-', ratio: 0, need: 0, reason: `HTTP ${res.status()}` });
-        continue;
-      }
-      // Let hydration + the async data settle.
-      // BOUNDED font wait. `document.fonts.ready` resolves only once every
-      // @font-face has settled, and this page pulls fonts from a CDN — measured
-      // 2026-09-27: awaiting it unbounded added 32.6s to the `/` route alone
-      // (the other five routes took ~2.1s each), which blew the 3-minute budget.
-      // Nothing here depends on font METRICS: the gate reads computed colours
-      // and the computed font-size, both of which come from CSS.
-      await page
-        .evaluate(() =>
-          Promise.race([
-            document.fonts ? document.fonts.ready : Promise.resolve(),
-            new Promise((r) => setTimeout(r, 1200)),
-          ]),
-        )
-        .catch(() => {});
-      dbg('fonts done');
-      await page.waitForTimeout(1200);
-      dbg('settle1200 done');
-      for (const sel of [waitFor, alsoWaitFor]) {
-        if (!sel) continue;
-        const found = await page
-          .waitForSelector(sel, { timeout: 8000, state: 'attached' })
-          .then(() => true)
-          .catch(() => false);
-        dbg(`waitFor ${sel} -> ${found}`);
-        if (!found) {
-          // A FAILURE, not a note. The data is synthetic (PUBLIC_DATA_FIXTURE),
-          // so this cannot be a backend hiccup — it means the fixture stopped
-          // matching the page (the fetch URL moved, the island stopped
-          // fetching) and the gate can no longer measure the elements it exists
-          // for. Reporting a clean pass here would be the vacuity this repo's
-          // guards keep re-learning.
-          coverageGaps.push(`${where}  "${sel}" never rendered`);
-          failures.push({
-            route: where,
-            text: '(coverage)',
-            selector: sel,
-            ratio: 0,
-            need: 0,
-            reason: `"${sel}" never rendered — the fixture no longer matches, so this route is not covered`,
-          });
-          lines.push(`  FAIL  ${where}  "${sel}" never rendered — coverage lost, refusing to pass`);
-        }
-      }
-      // ── Row-count STABILISATION ──────────────────────────────────────────
-      // `state: 'attached'` fires on the FIRST row, and the table renders a
-      // `keterangan` note row and repaints as the island hydrates — so measuring
-      // the moment one row exists can count a different number of elements run to
-      // run. Poll until the count holds still across two reads. Bounded, so a
-      // table that genuinely keeps growing cannot hang the gate.
-      if (waitFor === ROWS || alsoWaitFor === ROWS) {
-        let prev = -1;
-        for (let i = 0; i < 20; i++) {
-          const n = await page.locator(ROWS).count();
-          if (n > 0 && n === prev) break;
-          prev = n;
-          await page.waitForTimeout(100);
-        }
-        dbg(`rows stabilised at ${prev}`);
-      }
-      await page.waitForTimeout(600);
-      // Let FINITE animations finish before measuring. The forms run
-      // `animate-[fadeIn_0.4s_…]` and the landing page has reveal entrances; a
-      // scan taken mid-fade sees a fractional ancestor `opacity` (0.94, 0.95 …)
-      // and skips those elements, which would make the gate's COVERAGE — not
-      // just its verdict — depend on timing. INFINITE animations are exempt: the
-      // marquee never stops by design, and it must still be measured.
-      // ⚠ `waitForFunction(fn, arg, options)` — the options object is the THIRD
-      // parameter. Passing `{ timeout }` second makes it the `arg`, the default
-      // 30 s timeout applies, and `/` (whose 36 animations never all settle)
-      // costs 30 s per load: measured, that alone took the whole gate from ~1 min
-      // to 4 m 56 s. `polling: 100` rather than the default `raf`, so a page
-      // doing heavy animation work cannot starve the poll.
-      await page
-        .waitForFunction(
-          () =>
-            document.getAnimations().every((a) => {
-              if (a.playState !== 'running') return true;
-              const t = a.effect?.getTiming?.();
-              return t ? t.iterations === Infinity : false;
-            }),
-          undefined,
-          { timeout: 1500, polling: 100 },
-        )
-        .catch(() => {});
-      await page.waitForTimeout(150);
-      dbg('anim settle done');
-
-      const scan = await page.evaluate(() => window.__scan());
-      dbg(`scanned (${scan.elements} els, ${scan.failures.length} miss, ${scan.unmeasurable.length} unmeas)`);
-      for (const u of scan.unmeasurable) unmeasurable.push({ route: where, ...u });
-
-      // ── pixel confirmation for every computed miss ────────────────────────
-      const viewport = page.viewportSize();
-      for (const f of scan.failures) {
-        const row = { route: where, ...f };
-        try {
-          const handle = page.locator(`[data-contrast-probe="${f.probe}"]`).first();
-          // An ANIMATING element (the marquee) never reaches a stable position,
-          // so `scrollIntoViewIfNeeded` always times out on it. That is expected
-          // and must not lose the reading: swallow it and sample where the
-          // element currently is, which for a uniform band is the same pixel.
-          await handle.scrollIntoViewIfNeeded({ timeout: 1500 }).catch(() => {});
-          const box = await handle.boundingBox();
-          // Clamp to the viewport: a marquee item mid-scroll has a NEGATIVE x,
-          // and an unclamped clip either throws or captures off-screen.
-          const x = box ? Math.max(0, Math.floor(box.x)) : 0;
-          const y = box ? Math.max(0, Math.floor(box.y)) : 0;
-          const w = box ? Math.min(Math.ceil(box.width), (viewport?.width ?? 1280) - x, 400) : 0;
-          const h = box ? Math.min(Math.ceil(box.height), (viewport?.height ?? 900) - y, 80) : 0;
-          if (w >= 1 && h >= 1) {
-            await handle.evaluate((el) => {
-              el.style.visibility = 'hidden';
-            });
-            await page.waitForTimeout(40);
-            const shot = await page.screenshot({ clip: { x, y, width: w, height: h } });
-            await handle.evaluate((el) => {
-              el.style.visibility = '';
-            });
-            const px = await page.evaluate(async (b64) => {
-              const img = new Image();
-              img.src = `data:image/png;base64,${b64}`;
-              await img.decode();
-              const c = document.createElement('canvas');
-              c.width = img.width;
-              c.height = img.height;
-              const x2 = c.getContext('2d');
-              x2.drawImage(img, 0, 0);
-              const d = x2.getImageData(Math.floor(img.width / 2), Math.floor(img.height / 2), 1, 1).data;
-              return [d[0], d[1], d[2]];
-            }, shot.toString('base64'));
-            const chan = (v) => {
-              const s = v / 255;
-              return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-            };
-            const lum = (p) => 0.2126 * chan(p[0]) + 0.7152 * chan(p[1]) + 0.0722 * chan(p[2]);
-            const fgPx = f.fg.match(/\d+/g).map(Number);
-            const a = lum(fgPx);
-            const b = lum(px);
-            const pixelRatio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-            row.pixel = +pixelRatio.toFixed(2);
-            row.pixelBg = `rgb(${px.join(',')})`;
-            row.confirmed = pixelRatio + 1e-9 < f.need;
-          } else {
-            row.confirmed = false;
-            row.pixel = null;
-            row.note = 'no on-screen box to sample';
-          }
-        } catch (e) {
-          row.confirmed = false;
-          row.pixel = null;
-          row.note = `pixel probe failed: ${e.message.slice(0, 60)}`;
-        }
-        if (row.confirmed) {
-          failures.push(row);
-          lines.push(
-            `  FAIL  ${where}  ${row.ratio}:1 (need ${row.need})  ${row.selector}  "${row.text}"  ` +
-              `fg=${row.fg} bg=${row.bg} pixel=${row.pixelBg}`,
-          );
-        } else {
-          lines.push(
-            `  UNCONFIRMED  ${where}  computed ${row.ratio}:1 but pixel ${row.pixel ?? `n/a (${row.note || ''})`}:1 — ` +
-              `${row.selector} "${row.text}" (model of the surface is wrong; NOT counted)`,
-          );
-        }
-      }
-
-      const fails = scan.failures.length;
-      lines.push(
-        `  ${fails ? '  ' : 'OK'}  ${where}  ${scan.elements} text element(s) measured, ` +
-          `${fails} below the floor, ${scan.unmeasurable.length} unmeasurable`,
-      );
-      await page.evaluate(() => {
-        for (const el of document.querySelectorAll('[data-contrast-probe]')) {
-          el.removeAttribute('data-contrast-probe');
-        }
-      });
+    for (const surface of SURFACES) {
+      await measureSurface(ctx, surface, theme, width);
     }
     await ctx.close();
   }

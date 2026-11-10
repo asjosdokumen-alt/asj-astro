@@ -318,5 +318,20 @@ const TAB_VIEWS: Record<Tab, FunctionComponent> = {
 
 function TabContent({ tab }: { tab: Tab }) {
   const View = TAB_VIEWS[tab];
-  return <View />;
+  /* `data-tab` + `contents` — the tab's identity, with NO layout box.
+     -----------------------------------------------------------------
+     `e2e/test-contrast.mjs` measures every tab by hash, and without a marker
+     there is no way to tell "the tab I asked for mounted" from "the hash was
+     ignored and the same tab rendered twelve times". That is not hypothetical:
+     the 2026-09-27 WCAG audit reported six routes as identical because Git-Bash
+     rewrote a path argument, and every number it printed was about `/`.
+
+     `contents` (`display: contents`) keeps this element out of layout entirely,
+     so the wrapper cannot change spacing, flex participation or the contrast
+     scan's ancestor walk — the children are laid out exactly as before. */
+  return (
+    <div data-tab={tab} class="contents">
+      <View />
+    </div>
+  );
 }

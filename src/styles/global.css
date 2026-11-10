@@ -1790,6 +1790,42 @@ textarea:focus-visible,
   .bg-green-600, .bg-green-500
 ):is([class*="text-white"]) { color: #ffffff; }
 
+/* …AND NEITHER MAY THE *CHILDREN* OF THOSE SURFACES.
+   ---------------------------------------------------------------------------
+   The rule above restores white text only when the SAME element carries both
+   the darkened background and `text-white`. That is the common shape
+   (`<button class="bg-sky-600 text-white">`), and it is not the only one: a
+   label split into spans —
+
+     <button class="bg-sky-600 … text-white">
+       MENUNGGU <span class="ml-1.5 tabular-nums text-white/80">12</span>
+     </button>
+
+   — leaves the count on a CHILD, which §5b still flips to `#1f1d1c` because
+   nothing above reached it. MEASURED 2026-11-10 on the admin Mail tab: the
+   ACTIVE bucket count rendered `rgb(31,29,28)` on the shimmed `#0369a1`
+   = **2.83:1**, on the tab an admin triages every application from. It was
+   not visible before this session because `e2e:contrast` never measured the
+   admin panel; it surfaced the first time the gate looked, which is the whole
+   argument for extending a gate's COVERAGE rather than its rules.
+
+   `[class*="text-white"]` (not `.text-white`) is deliberate: the broken span
+   was spelled `text-white/80`, and Tailwind emits that as a SEPARATE class
+   (`text-white\/80`), so a `.text-white` descendant selector would have
+   matched the button and missed the count. Opacity is not a defence here —
+   80 % white on #0369a1 composites to 4.4:1, still below the 4.5 floor.
+   Specificity 0,2,0 beats §5b's 0,1,0. */
+:where([data-theme="light"]) :is(
+  .bg-amber-600, .bg-amber-500,
+  .bg-emerald-600, .bg-emerald-500,
+  .bg-sky-600, .bg-sky-500,
+  .bg-sky-700,
+  .bg-teal-600, .bg-teal-500,
+  .bg-cyan-600, .bg-cyan-500,
+  .bg-orange-600, .bg-orange-500,
+  .bg-green-600, .bg-green-500
+) [class*="text-white"] { color: #ffffff; }
+
 /* `sky-700` is the one SOLID accent that needs the white-text rule without the
    darkening above: it is already #0369a1 (5.86:1 with white), so only the text
    side was wrong. Defect (b), measured:

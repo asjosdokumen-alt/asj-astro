@@ -46,7 +46,7 @@ export default function KonflikAiPanel({ konflik, label, onTerapkan, onBatal }: 
 
   return (
     <div class="rounded-control border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
-      <p class="text-[11px] font-bold text-amber-700 dark:text-amber-300">
+      <p class="text-[11px] font-bold text-amber-900 dark:text-amber-300">
         {t('ai.konflik_judul').replace('{n}', String(konflik.length))}
       </p>
       <div class="max-h-56 overflow-y-auto space-y-2 pr-1">
