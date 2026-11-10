@@ -177,3 +177,76 @@ Semua 800×1076, 24 fps, tanpa audio, CRF 26.
 
 **Yang belum:** babak 01/03/04/05 masih still, potongan 9:16, VO, CTA masih `<b>`.
 Animatic di `story-video/` masih memakai ilustrasi lama — belum disamakan.
+
+---
+
+## 10. Sesi 2026-11-11 (lanjutan) — band `#alur` jadi FRAME FILM
+
+**Permintaan owner:** "lanjut dan sempurnakan, bikin mirip dengan web video contoh
+[Pioneer corn revolutionized], tapi dengan model company profil kita … jadi PWA
+kita mantul."
+
+Versi sebelumnya masih bahasa **editorial**: dua kolom, plat potret 2:3 sebagai
+kartu, judul serif huruf kecil, 60% frame kosong. Yang dibaca dari referensi dan
+sekarang dipakai di situs:
+
+| # | Aturan referensi | Terjemahan di `#alur` |
+|---|---|---|
+| 1 | satu subjek menutup frame | plat 3:2 `object-fit:cover` selebar layar, tanpa bingkai |
+| 2 | teks kecil di kiri, selalu di sisi yang sama | scrim satu arah dari kiri + copy rata kiri |
+| 3 | tipografi kapital, bukan baliho serif | Inter 900 uppercase, `line-height .94`, tracking −0,025em |
+| 4 | teks berganti DI DALAM shot | ketukan 1 = judul; ketukan 2 (38% babak) = badan + garis |
+| 5 | kamera tidak pernah diam | dorong 6% + geser 2,4% per babak |
+| 6 | chrome alat ukur | braket sudut, rel babak, garis progres 2 px, koordinat |
+| 7 | potongan tidak metronomis | babak berikutnya MENUTUP yang sekarang (dissolve 12%) |
+
+### Aset baru — 6 plat 3:2 + 1
+
+`assets/wide/{01-daftar,02-latihan,03-wawancara,04-dokumen,05-mcu,06-tiba}.webp`
+— 48–69 KB masing-masing, total ±395 KB. Semua di-outpaint dari potret yang sudah
+ada (`input_fidelity: high`), watermark dipotong `crop=1536:904:0:0` (buang 120 px
+bawah). Sumber PNG 13 MB TIDAK di-track (`.gitignore` baris baru).
+
+`00-hero.webp` dan `05-terbang.webp` disimpan di sini sebagai **spare**, tidak
+dipakai situs: hero untuk closing band, keberangkatan untuk langkah yang belum ada.
+
+### Satu koreksi konten, bukan kosmetik
+
+Langkah 05 berjudul **"Document Preparing"** (MCU, tanda tangan kontrak, COE)
+tetapi platnya adegan bandara — warisan pemetaan lama. Sekarang langkah 05 memakai
+plat baru: tangan menandatangani formulir dengan stetoskop. Adegan bandara tidak
+punya langkah yang cocok di daftar pemilik (langkah 06 = paspor/visa/EKTLN, masih
+di Indonesia), jadi ia dikeluarkan dari band.
+
+### Tiga jebakan yang dibayar di sesi ini
+
+1. **§9f men-scale pembungkus 0,982 → 1,008.** Pada band full-bleed skala itu
+   terbaca sebagai celah terang **13 px** di tepi kiri plat. `Section` sekarang
+   punya prop `drift={false}`: `data-enter` tetap (wipe `curtain` jalan, oracle
+   `sectionMotion.ts` cocok), `data-scroll` dilepas.
+2. **`.map()` di template `.astro` = unresolved global.** Indexer hanya me-resolve
+   identifier template terhadap scope frontmatter, jadi parameter callback
+   dilaporkan sebagai `i`/`step` (13 entri) dan `build.test.ts` merah. Markupnya
+   pindah ke `src/components/public/StoryFilm.tsx`; CSS-nya tetap di
+   `index.astro` sebagai `<style is:global>` karena style scoped Astro memakai
+   `[data-astro-cid-…]` yang tidak dimiliki elemen dari berkas lain.
+3. **Mask radial harus radius 50%.** Dengan 62%/66% tepi atas plat potret masih
+   ~20% opaque dan terbaca sebagai garis lurus keras di tata letak bertumpuk.
+
+### Angka yang bergerak (terukur, bukan diturunkan)
+
+`files.length` 662 → **663** · `tsx` 133 → **134** · `fileCount` 662 → **663** ·
+`imports` 23 → **23** (22 terukur di HEAD; +1 `StoryFilm` = 23) · `symbols` 53 →
+**53** (tetap: 3 konstanta media pindah ke `.tsx`) · `unresolvedRefs` 34 → **38**
+(basi basi: 38 terukur di HEAD juga, histogram `cli.js unresolved` — enam bucket,
+semuanya di berkas tes yang tidak disentuh sesi ini).
+
+### Verifikasi
+
+`vitest run` 286/286 berkas · `lint-ratchet` PASS · `e2e:landing` 17 seksi × 2
+lebar PASS · `e2e:contrast` 0 di bawah lantai · `e2e:headings` PASS ·
+`verify:assets` PASS · `verify:md` 77 berkas PASS.
+
+**Yang belum:** `deliverables/story-3d/index.html` (berdiri sendiri) MASIH memakai
+plat potret + judul serif — ia tidak ikut diubah, jadi sekarang ia versi lama dari
+bahasa yang sama. Potongan 9:16, VO, dan klip untuk babak 01/03/04/05 juga belum.
