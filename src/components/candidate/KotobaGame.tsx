@@ -1375,6 +1375,9 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
         </button>
       </header>
 
+      {/* Seluruh area permainan ada di dalam arena gelap. Kamus sengaja DI LUAR
+          (lihat komentar di `arcade.css`): ia lembar hafalan yang dicetak. */}
+      <div class="arc">
       {/* ── Misi harian ──
           Streak menjawab "sudah berapa hari"; misi ini menjawab "hari ini sudah
           berapa". Tanpa angka harian, latihan terasa tanpa ujung: skor bisa
@@ -1699,39 +1702,30 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       {pool.length > 0 && (mode === 'kuis' || mode === 'ketik' || mode === 'bom') && (
         <section
           data-testid="kotoba-kartu"
-          class={`rounded-card border bg-surface p-4 md:p-5 ${
-            kombo >= 5 ? 'border-accent-amber' : 'border-line'
-          } ${benar === true ? 'animasi-pop' : benar === false ? 'animasi-getar' : ''}`}
+          class={benar === true ? 'animasi-pop' : benar === false ? 'animasi-getar' : ''}
         >
           {fase === 'tanya' && item ? (
             <>
               {/* HUD */}
-              <div class="flex items-center justify-between gap-2 text-[11px] text-fg-muted mb-2">
+              <div class="arc-hud flex items-center justify-between gap-2">
                 {/* Hati hanya bisa dibaca sebagai gambar: tanpa `role="img"`
                     + nama, pembaca layar menerima karakter ❤/♡ mentah dan
                     `aria-label` pada <span> biasa diabaikan (biome:
-                    useAriaPropsSupportedByRole). Warnanya accent-red, bukan
-                    warna teks: `❤` tanpa VS16 digambar sebagai GLIF TEKS,
-                    jadi di tema terang ia jadi abu-abu gelap di atas kertas
-                    putih — nyawa terlihat seperti coretan. */}
-                <span
-                  role="img"
-                  aria-label={`${t('kotoba.nyawa')}: ${hp}/${NYAWA_AWAL}`}
-                  class="text-accent-red"
-                >
+                    useAriaPropsSupportedByRole). Warnanya `.arc-merah`, bukan
+                    `text-accent-red`: arena ini tidak ikut tema, sedangkan
+                    token aksen berubah bersama tema. */}
+                <span role="img" aria-label={`${t('kotoba.nyawa')}: ${hp}/${NYAWA_AWAL}`} class="arc-merah">
                   {Array.from({ length: NYAWA_AWAL }, (_, i) => (i < hp ? '❤' : '♡')).join(' ')}
                 </span>
                 <span>
-                  {t('kotoba.skor')} <strong class="text-fg">{skor}</strong>
+                  {t('kotoba.skor')} <strong>{skor}</strong>
                   {kombo >= 2 && (
-                    <span class="text-accent-amber font-bold">
+                    <span class="arc-amber font-bold">
                       {' '}· {kombo}×{kombo >= 5 ? ` 🔥 ${t('kotoba.fever')}` : ''}
                     </span>
                   )}
                 </span>
-                <span>
-                  {soalKe}
-                </span>
+                <span>{soalKe}</span>
               </div>
 
               {/* Sumbu Bom Sakura — satu hitungan untuk seluruh ronde. Angkanya
@@ -1739,9 +1733,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                   siswa merasakan desakan tanpa harus membaca bar tipis. */}
               {mode === 'bom' && (
                 <div
-                  class={`mb-3 flex items-center justify-between rounded-control px-3 py-2 font-bold ${
-                    sisaBom <= 10 ? 'bg-accent-red/15 text-accent-red' : 'bg-surface-sunken text-fg'
-                  }`}
+                  class={`arc-bom ${sisaBom <= 10 ? 'arc-bom--bahaya' : ''}`}
                   role="timer"
                   aria-live="off"
                   aria-label={`${t('kotoba.mode_bom')} — ${sisaBom} ${t('kotoba.detik')}`}
@@ -1751,9 +1743,9 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 </div>
               )}
               {mode === 'bom' && (
-                <div class="h-1.5 w-full rounded-pill bg-surface-sunken overflow-hidden mb-3">
+                <div class="arc-meter">
                   <div
-                    class={`h-full origin-left ${sisaBom <= 10 ? 'bg-accent-red' : 'bg-accent-amber'}`}
+                    class={`arc-meter-fill ${sisaBom <= 10 ? 'arc-meter-fill--hot' : ''}`}
                     style={`transform:scaleX(${sisaBom / DURASI_BOM_DETIK})`}
                   />
                 </div>
@@ -1763,7 +1755,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                   padahal yang benar "tidak ada waktu". */}
               {mode === 'kuis' && tingkat !== 'santai' && (
                 <div
-                  class="h-1.5 w-full rounded-pill bg-surface-sunken overflow-hidden mb-3"
+                  class="arc-meter"
                   role="progressbar"
                   aria-label={t('kotoba.sisa_waktu')}
                   aria-valuenow={Math.round(sisaWaktu)}
@@ -1771,29 +1763,22 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                   aria-valuemax={100}
                 >
                   <div
-                    class="h-full bg-accent-sky origin-left"
+                    class={`arc-meter-fill ${sisaWaktu <= 25 ? 'arc-meter-fill--hot' : ''}`}
                     style={`transform:scaleX(${sisaWaktu / 100})`}
                   />
                 </div>
               )}
 
               {/* Soal */}
-              <div class="text-center py-5">
-                <div class="flex justify-center gap-1.5 mb-2">
-                  <span class="px-2 py-0.5 rounded-pill bg-accent-sky/15 text-accent-sky text-[10px] font-bold">
-                    {labelAsal(item)}
-                  </span>
-                  <span class="px-2 py-0.5 rounded-pill bg-accent-amber/15 text-accent-amber text-[10px] font-bold">
-                    {labelPos[item.pos]}
-                  </span>
+              <div class="mt-3 text-center">
+                <div class="mb-2 flex justify-center gap-1.5">
+                  <span class="arc-cyan text-[10px] font-bold">{labelAsal(item)}</span>
+                  <span class="arc-amber text-[10px] font-bold">· {labelPos[item.pos]}</span>
                 </div>
-                <p
-                  data-testid="kotoba-soal"
-                  class="text-3xl md:text-4xl font-black text-fg leading-tight break-words"
-                >
+                <p data-testid="kotoba-soal" class="arc-tanya">
                   {mode === 'ketik' ? item.k : arah === 'jp-id' ? item.k : item.id}
                 </p>
-                <p class="text-[13px] text-fg-muted mt-1">
+                <p class="mt-1 text-[13px]">
                   {mode === 'ketik'
                     ? item.id
                     : arah === 'jp-id'
@@ -1803,7 +1788,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 <button
                   type="button"
                   onClick={() => ucapkan(item.h)}
-                  class="mt-2 min-h-11 min-w-11 inline-flex items-center justify-center rounded-pill border border-line text-fg-muted hover:text-fg hover:border-accent-sky transition-colors motion-reduce:transition-none"
+                  class="arc-btn arc-btn--small arc-btn--ghost mx-auto mt-2"
                   aria-label={t('kotoba.dengarkan')}
                 >
                   🔊
@@ -1812,34 +1797,33 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
 
               {/* Jawaban */}
               {mode === 'kuis' || mode === 'bom' ? (
-                <div class="grid gap-2">
+                <div class="mt-3 grid gap-2">
                   {pilihan.map((opsi, i) => {
                     const sudah = benar !== null;
                     const iniBenar = opsi === teksBenar;
                     const iniDipilih = opsi === dijawab;
-                    let gaya = 'bg-surface-raised border-line hover:border-accent-sky';
-                    if (sudah && iniBenar) gaya = 'bg-accent-emerald/15 border-accent-emerald text-accent-emerald';
-                    else if (sudah && iniDipilih) gaya = 'bg-accent-red/15 border-accent-red text-accent-red';
-                    else if (sudah) gaya = 'bg-surface-raised border-line opacity-60';
+                    let gaya = '';
+                    if (sudah && iniBenar) gaya = 'arc-opsi--benar';
+                    else if (sudah && iniDipilih) gaya = 'arc-opsi--salah';
+                    else if (sudah) gaya = 'arc-opsi--redup';
                     return (
                       <button
                         key={opsi}
                         type="button"
+                        data-opsi={i + 1}
                         disabled={sudah}
                         onClick={() => jawabSoal(opsi)}
-                        class={`w-full min-h-11 flex items-center justify-between gap-2 px-4 py-3 rounded-control border text-left text-sm font-medium text-fg transition-colors motion-reduce:transition-none ${gaya}`}
+                        class={`arc-opsi arc-opsi--teks ${gaya}`}
                       >
                         <span class="break-words">{opsi}</span>
-                        <span class="shrink-0 text-[10px] text-fg-muted border border-line rounded px-1.5">
-                          {i + 1}
-                        </span>
+                        <span class="arc-opsi--kunci">{i + 1}</span>
                       </button>
                     );
                   })}
                 </div>
               ) : (
-                <div>
-                  <label for="kotoba-ketik" class="block text-[11px] font-bold text-fg mb-1">
+                <div class="mt-3">
+                  <label for="kotoba-ketik" class="mb-1 block text-[11px] font-bold">
                     {t('kotoba.ketik_label')}
                   </label>
                   <div class="flex gap-2">
@@ -1856,13 +1840,13 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                         if ((e as KeyboardEvent).key === 'Enter') cekKetikan();
                       }}
                       placeholder="romaji"
-                      class="flex-1 min-h-11 rounded-control bg-surface-sunken border border-line px-3 text-sm text-fg"
+                      class="min-h-11 flex-1 text-sm"
                     />
                     <button
                       type="button"
                       onClick={cekKetikan}
                       disabled={benar !== null}
-                      class="min-h-11 px-4 rounded-control bg-accent-violet text-canvas text-sm font-bold"
+                      class="arc-btn arc-btn--violet arc-btn--small"
                     >
                       {t('kotoba.periksa')}
                     </button>
@@ -2024,6 +2008,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           </div>
         </section>
       )}
+      </div>
 
       {/* ── KAMUS ── */}
       {pool.length > 0 && mode === 'kamus' && (

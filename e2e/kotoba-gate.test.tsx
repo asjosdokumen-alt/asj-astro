@@ -119,7 +119,7 @@ describe('/kotoba — siswa ASJ saja', () => {
        bisa berarti cangkang kosong yang tidak bisa dimainkan. */
     await waitFor(() => {
       const opsi = [...document.querySelectorAll('button')].filter((b) =>
-        b.className.includes('rounded-control border text-left'),
+        b.hasAttribute('data-opsi'),
       );
       expect(opsi.length).toBe(4);
     });
@@ -151,7 +151,7 @@ describe('/kotoba — siswa ASJ saja', () => {
       const arti = ARTI[kana];
       expect(arti, `soal tak dikenal: ${kana}`).toBeTruthy();
       const tombol = [...document.querySelectorAll('button')]
-        .filter((b) => b.className.includes('rounded-control border text-left'))
+        .filter((b) => b.hasAttribute('data-opsi'))
         .find((b) => b.querySelector('span')?.textContent === arti);
       expect(tombol, `opsi "${arti}" tidak ada`).toBeTruthy();
       tombol?.click();
@@ -172,7 +172,7 @@ describe('/kotoba — siswa ASJ saja', () => {
       const kana = screen.getByTestId('kotoba-soal').textContent || '';
       const arti = ARTI[kana];
       const salah = [...document.querySelectorAll('button')]
-        .filter((b) => b.className.includes('rounded-control border text-left'))
+        .filter((b) => b.hasAttribute('data-opsi'))
         .find((b) => b.querySelector('span')?.textContent !== arti);
       salah?.click();
       await new Promise((r) => setTimeout(r, 1600));
@@ -235,7 +235,7 @@ describe('/kotoba — siswa ASJ saja', () => {
     await waitFor(() => expect(Number.isNaN(bacaSumbu())).toBe(false));
     /* REGRESI: Bom Sakura harus merender 4 tombol pilihan ganda, BUKAN input ketik romaji. */
     const opsi = [...document.querySelectorAll('button')].filter((b) =>
-      b.className.includes('rounded-control border text-left'),
+      b.hasAttribute('data-opsi'),
     );
     expect(opsi.length).toBe(4);
     expect(document.querySelector('#kotoba-ketik')).toBeNull();

@@ -807,6 +807,121 @@
   color: var(--arc-emerald);
 }
 
+.arc-amber {
+  color: var(--arc-amber);
+}
+
+.arc-cyan {
+  color: var(--arc-cyan);
+}
+
+.arc-violet {
+  color: #a78bfa;
+}
+
+/* ── /kotoba: arena belajar ─────────────────────────────────────
+   Halaman ini paling tua dan paling besar (2.100 baris, lima mode), jadi ia
+   TIDAK ditulis ulang seluruhnya. Yang dilakukan:
+
+     1. Seluruh area permainan dibungkus `.arc`.
+     2. Markup yang sudah ada di dalamnya memakai token tema (`text-fg`,
+        `bg-surface`, `border-line`). Token itu MENGIKUTI TEMA, jadi di tema
+        terang ia akan menaruh teks gelap di atas arena gelap. Blok "jembatan"
+        di bawah MEMETAKAN ULANG token itu di dalam `.arc` — satu tempat, bukan
+        penulisan ulang 2.100 baris.
+     3. Layar yang paling sering dilihat (kartu soal + empat pilihan) ditulis
+        ulang memakai kosakata arena yang sebenarnya.
+
+   Kamus SENGAJA di luar `.arc`: ia lembar hafalan yang dicetak, dan tabel
+   hitam-putih di atas kertas putih bukan "modern", itu cuma salah cetak. */
+
+.arc .text-fg {
+  color: var(--arc-fg);
+}
+
+.arc .text-fg-muted,
+.arc .text-fg-subtle {
+  color: var(--arc-muted);
+}
+
+.arc .bg-surface,
+.arc .bg-surface-raised {
+  background-color: var(--arc-cenbung);
+}
+
+.arc .bg-surface-sunken {
+  background-color: var(--arc-cekung);
+}
+
+.arc .border-line,
+.arc .border-line-strong {
+  border-color: var(--arc-garis);
+}
+
+.arc select,
+.arc input[type="text"] {
+  border: 0;
+  border-radius: 10px;
+  background-color: var(--arc-cenbung);
+  padding: 8px 10px;
+  color: var(--arc-fg);
+}
+
+.arc option {
+  background-color: var(--arc-cenbung);
+  color: var(--arc-fg);
+}
+
+.arc-tanya {
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.arc-opsi--benar {
+  background: #0b2a1c;
+  box-shadow: inset 0 0 0 2px var(--arc-emerald);
+}
+
+.arc-opsi--salah {
+  background: #2a1012;
+  box-shadow: inset 0 0 0 2px var(--arc-red);
+}
+
+.arc-opsi--redup {
+  opacity: 0.45;
+}
+
+.arc-opsi--kunci {
+  flex-shrink: 0;
+  margin-left: auto;
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--arc-muted);
+  box-shadow: inset 0 0 0 1px var(--arc-garis);
+}
+
+.arc-bom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--arc-cekung);
+  font-weight: 800;
+  color: var(--arc-fg);
+}
+
+.arc-bom--bahaya {
+  background: #2a1012;
+  color: var(--arc-red);
+}
+
 /* ── Ledakan partikel ────────────────────────────────────────── */
 
 .arc-burst {
