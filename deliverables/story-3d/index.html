@@ -35,7 +35,7 @@
   .scene,.type{position:absolute;inset:0;will-change:opacity,transform}
   .scene{z-index:1;transform-style:preserve-3d}
   .bg,.photo{position:absolute;will-change:transform}
-  .bg{inset:-6%}
+  .bg{inset:-6%;background-size:cover;background-position:center}
   /* potret 2:3 TIDAK dipaksa full-bleed: kalau di-cover, yang terlihat cuma
      wajah. Jadi gambar ditampilkan utuh sebagai "plate" di atas panggung gelap,
      latar diisi versi buramnya. */
@@ -54,8 +54,7 @@
   }
   /* latar = versi buram gambar, TAPI digelapkan. Tanpa brightness turun,
      gambar terang (bandara, sunrise) memutihkan seluruh panggung. */
-  .bg{filter:blur(46px) saturate(.85) brightness(.45);opacity:.62}
-  .bg img{transform:scale(1.25)}
+  .bg{opacity:.62;filter:brightness(.45) saturate(.85)}
 
   /* tepi gambar larut ke hitam → terbaca sebagai objek, bukan foto ditempel */
   .photo{
@@ -69,6 +68,13 @@
   .sub{text-shadow:0 1px 18px rgba(4,6,10,.9)}
 
   #dust{position:absolute;inset:0;z-index:3;pointer-events:none}
+  /* grain yang bergetar tiap frame — isyarat "ini rekaman", bukan foto */
+  #grain{position:absolute;inset:0;z-index:7;pointer-events:none;opacity:.055;
+    mix-blend-mode:overlay;image-rendering:pixelated}
+  /* sapuan cahaya pelan di dalam gambar */
+  .sweep{position:absolute;inset:-25%;z-index:2;pointer-events:none;mix-blend-mode:screen;
+    background:radial-gradient(38% 52% at 50% 50%,rgba(255,242,250,.10),rgba(255,242,250,0) 70%);
+    will-change:transform}
   /* WAJIB ber-position + z-index: kalau tidak, .scene (z-index:1) melukis
      DI ATAS teks dan seluruh narasi jadi nyaris tak terlihat. */
   .types{position:absolute;inset:0;z-index:4;pointer-events:none}
@@ -164,6 +170,7 @@
 <div id="stage">
   <div class="scenes" id="scenes"></div>
   <canvas id="dust"></canvas>
+  <canvas id="grain"></canvas>
   <div class="types" id="types"></div>
 </div>
 
@@ -229,8 +236,9 @@
                 : side === 'left'  ? 'left:3vw'
                 : 'left:calc(50% - 40vh)';
     s.innerHTML =
-      '<div class="bg"><img src="' + c.img + '" alt=""></div>' +
+      '<div class="bg" style="background-image:url(' + c.img.replace('assets/', 'assets/blur/') + ')"></div>' +
       '<div class="photo" style="' + place + '"><img src="' + c.img + '" alt=""></div>' +
+      '<div class="sweep"></div>' +
       '<div class="veil"></div>';
     scenesEl.appendChild(s);
 
@@ -255,6 +263,7 @@
     c._s = s; c._t = t; c._b = b;
     c._bg = s.querySelector('.bg');
     c._ph = s.querySelector('.photo');
+    c._sw = s.querySelector('.sweep');
   });
 
   /* ── debu: satu lapisan yang bertahan melewati semua babak ── */
@@ -300,6 +309,23 @@
     }
   }
 
+  /* ── grain hidup: noise kecil diperbesar, diganti tiap 2 frame ── */
+  const gcv = document.getElementById('grain');
+  const gctx = gcv.getContext('2d');
+  const GW = 160, GH = 90;
+  gcv.width = GW; gcv.height = GH;
+  const gimg = gctx.createImageData(GW, GH);
+  let gframe = 0;
+  function drawGrain() {
+    if (gframe++ % 3) return;
+    const d = gimg.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const v = 110 + (Math.random() * 90 | 0);
+      d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+    }
+    gctx.putImageData(gimg, 0, 0);
+  }
+
   /* ── kamera ── */
   const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
   const easeInOut = p => (p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
@@ -337,12 +363,20 @@
       const l = clamp(local);
       // masuk: kamera mundur sedikit (1.12 -> 1), lalu dorong pelan, lalu terbang lewat
       const entry = easeOut(clamp(l / .38));
-      const z = -150 + 190 * l + (1 - entry) * -90;
-      const sc = 1.06 + .05 * l;
-      const driftX = (i % 2 ? -1 : 1) * (1 - entry) * 26;
+      const z = -250 + 320 * l + (1 - entry) * -120;
+      const sc = 1.10 + .10 * l;
+      const dir = i % 2 ? 1 : -1;
+      const driftX = dir * (1 - entry) * 30;
+      const driftY = (1 - entry) * 16;
+      const rot = dir * (0.7 - 1.3 * l);
 
-      c._ph.style.transform = 'translate3d(' + driftX.toFixed(2) + 'px,0,' + z.toFixed(1) + 'px) scale(' + sc.toFixed(4) + ')';
-      c._bg.style.transform = 'translate3d(0,0,' + (z * .45 - 380).toFixed(1) + 'px) scale(' + (sc * 1.1).toFixed(3) + ')';
+      c._ph.style.transform =
+        'translate3d(' + driftX.toFixed(2) + 'px,' + driftY.toFixed(2) + 'px,' + z.toFixed(1) + 'px) ' +
+        'rotate(' + rot.toFixed(3) + 'deg) scale(' + sc.toFixed(4) + ')';
+      c._bg.style.transform =
+        'translate3d(' + (driftX * -.4).toFixed(1) + 'px,0,' + (z * .45 - 380).toFixed(1) + 'px) scale(' + (sc * 1.1).toFixed(3) + ')';
+      if (c._sw) c._sw.style.transform =
+        'translate3d(' + (Math.sin(l * 3.1 + i) * 130).toFixed(1) + 'px,' + (Math.cos(l * 2.4 + i) * 90).toFixed(1) + 'px,0)';
 
       // dissolve tanpa lubang: babak berikutnya menutup DI ATAS yang sekarang
       // (kalau dua-duanya 0 di batas, layar sempat hitam), lalu yang lama
@@ -370,13 +404,15 @@
       CH.forEach((x, i) => x._b.classList.toggle('on', i === best));
     }
     hintEl.style.opacity = p < .012 ? '1' : '0';
-    drawDust(t);
+    drawDust(t); drawGrain();
   }
 
   let last = performance.now();
   function loop(now) {
     target = clamp(scrollY / maxScroll);
-    smooth += (target - smooth) * .10;
+    const dtl = Math.min(.1, Math.max(.001, (now - last) / 1000));
+    smooth += (target - smooth) * (1 - Math.exp(-dtl * 9));
+    if (Math.abs(target - smooth) < .0004) smooth = target;
     if (Math.abs(target - smooth) < 1e-4) smooth = target;
     render(smooth, now / 1000);
     last = now;
