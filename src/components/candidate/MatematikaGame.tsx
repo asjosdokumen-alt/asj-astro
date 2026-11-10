@@ -735,11 +735,14 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
   const kecepatan = tampilAngka(Math.round((detikTerpakai / Math.max(1, riwayat.length)) * 10) / 10);
   const gradeAkhir =
     akurasiAkhir >= AMBANG.s ? 's' : akurasiAkhir >= AMBANG.a ? 'a' : akurasiAkhir >= AMBANG.b ? 'b' : 'c';
+  /* Warna lencana grade. Nilainya kelas `.arc-rank--*` (hex tetap), bukan
+     utilitas palet: arena ini tidak ikut tema terang, dan `text-accent-*` akan
+     berubah warna bersama tema. */
   const warnaGrade: Record<string, string> = {
-    s: 'border-accent-emerald bg-accent-emerald/10 text-accent-emerald',
-    a: 'border-accent-sky bg-accent-sky/10 text-accent-sky',
-    b: 'border-accent-amber bg-accent-amber/10 text-accent-amber',
-    c: 'border-accent-red bg-accent-red/10 text-accent-red',
+    s: 'arc-rank--hijau',
+    a: 'arc-rank--biru',
+    b: 'arc-rank--amber',
+    c: 'arc-rank--merah',
   };
 
   /* Metadata untuk kategori yang tidak dikirim bank (baru, atau belum ada di
@@ -810,25 +813,30 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
     <div ref={rootRef} class="max-w-2xl mx-auto scroll-mt-[var(--u-toolbar-h)]">
       <canvas ref={canvasRef} class="fixed inset-0 pointer-events-none z-50 w-full h-full" />
 
+      {/* Kanvas konfeti sengaja DI LUAR `.arc`: `.arc` adalah stacking context
+          (`z-index: 1`) dan memotong apa pun yang dicat di dalamnya, sedangkan
+          konfeti harus menutupi seluruh layar. */}
+      <div class="arc">
+
       {/* ── LOBI ── */}
       {layar === 'lobby' && (
-        <div class="space-y-4">
-          <div class="flex flex-wrap items-center justify-between gap-2 rounded-card border border-line bg-surface p-3.5">
-            <div>
-              <span class="block text-[10px] font-extrabold uppercase tracking-wider text-fg-muted">{t('matematika.rekor')}</span>
-              <div class="flex items-baseline gap-2">
-                <span class="text-2xl font-black text-accent-amber">{rekor.skor}</span>
-                <span class="text-xs font-semibold text-fg-muted">({rekor.grade || t('matematika.belum_ada')})</span>
+        <div>
+          <div class="arc-hud">
+            <div class="arc-hud-row">
+              <div class="min-w-0">
+                <span class="arc-kicker">{t('matematika.rekor')}</span>
+                <span class="arc-skor">{rekor.skor}</span>
+              </div>
+              <div class="shrink-0 text-right">
+                <span class="arc-kicker">{rekor.grade || t('matematika.belum_ada')}</span>
+                <span class="arc-combo">{t('matematika.target')}</span>
               </div>
             </div>
-            <span class="text-[11px] font-bold text-accent-emerald bg-accent-emerald/10 border border-accent-emerald/30 px-2 py-1 rounded-full">
-              {t('matematika.target')}
-            </span>
           </div>
 
-          <div>
-            <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('matematika.pilih_modul')}</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="arc-section">
+            <p class="arc-kicker">{t('matematika.pilih_modul')}</p>
+            <div class="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
               {kartuKategori.map((k) => {
                 const meta =
                   (kategoriBank ?? []).find((m) => m.id === k.id) ??
@@ -840,28 +848,24 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                     type="button"
                     onClick={() => setKategori(k.id)}
                     aria-pressed={aktif}
-                    class={`min-h-11 text-left p-3 rounded-card border transition-colors motion-reduce:transition-none ${
-                      aktif ? 'border-accent-red bg-accent-red/10' : 'border-line bg-surface-raised hover:border-line-strong'
-                    }`}
+                    class="arc-pilih"
                   >
                     <div class="flex items-center justify-between gap-2">
-                      <span class="text-[11px] font-bold text-accent-sky">
-                        {k.id === 'campur' ? t('matematika.kat_campur_jp') : (meta?.jp ?? '')}
-                      </span>
+                      <span class="arc-jp">{k.id === 'campur' ? t('matematika.kat_campur_jp') : (meta?.jp ?? '')}</span>
                       {k.id === 'campur' ? (
-                        <span class="text-[10px] font-semibold text-fg-muted">
+                        <span class="arc-mini">
                           20 {t('matematika.soal')} · 300 {t('matematika.detik')}
                         </span>
                       ) : (
                         meta && (
-                          <span class="text-[10px] font-semibold text-fg-muted">
+                          <span class="arc-mini">
                             {meta.soal} {t('matematika.soal')} · {meta.detik} {t('matematika.detik')}
                           </span>
                         )
                       )}
                     </div>
-                    <div class="mt-1 text-[13px] font-extrabold text-fg">{k.label}</div>
-                    <p class="mt-0.5 text-[11px] leading-snug text-fg-muted">{k.ket}</p>
+                    <span class="arc-judul-kartu">{k.label}</span>
+                    <span class="arc-kecil">{k.ket}</span>
                   </button>
                 );
               })}
@@ -872,20 +876,16 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
               jadi pemilih kesulitan DISEMBUNYIKAN — menampilkannya berarti
               menawarkan tombol yang tidak mengubah apa pun. */}
           {!campur && (
-            <div>
-              <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('matematika.pilih_kesulitan')}</p>
-              <div class="grid grid-cols-4 gap-1.5">
+            <div class="arc-section">
+              <p class="arc-kicker">{t('matematika.pilih_kesulitan')}</p>
+              <div class="mt-1.5 grid grid-cols-4 gap-1.5">
                 {daftarKesulitan.map((d) => (
                   <button
                     key={d.id}
                     type="button"
                     onClick={() => setKesulitan(d.id)}
                     aria-pressed={kesulitan === d.id}
-                    class={`min-h-11 rounded-control border text-[11px] font-bold transition-colors motion-reduce:transition-none ${
-                      kesulitan === d.id
-                        ? 'border-accent-emerald bg-accent-emerald/10 text-accent-emerald'
-                        : 'border-line bg-surface-raised text-fg-muted'
-                    }`}
+                    class="arc-pilih arc-pilih--kecil"
                   >
                     {d.label}
                   </button>
@@ -894,9 +894,9 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
             </div>
           )}
 
-          <div>
-            <p class="mb-1.5 text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('matematika.pilih_format')}</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="arc-section">
+            <p class="arc-kicker">{t('matematika.pilih_format')}</p>
+            <div class="mt-1.5 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
               {(
                 [
                   { id: 'ujian' as Format, judul: t('matematika.format_ujian'), ket: t('matematika.format_ujian_ket') },
@@ -908,22 +908,16 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                   type="button"
                   onClick={() => setFormat(f.id)}
                   aria-pressed={format === f.id}
-                  class={`min-h-11 text-left p-2.5 rounded-control border transition-colors motion-reduce:transition-none ${
-                    format === f.id ? 'border-accent-red bg-accent-red/10' : 'border-line bg-surface-raised'
-                  }`}
+                  class="arc-pilih"
                 >
-                  <div class="text-[12px] font-bold text-fg">{f.judul}</div>
-                  <div class="text-[10px] text-fg-muted">{f.ket}</div>
+                  <span class="arc-judul-kartu">{f.judul}</span>
+                  <span class="arc-mini">{f.ket}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={mulai}
-            class="w-full min-h-12 rounded-control bg-gradient-to-r from-accent-red to-accent-violet text-canvas font-extrabold text-sm"
-          >
+          <button type="button" onClick={mulai} class="arc-btn arc-btn--violet mt-3">
             {t('matematika.mulai')}
           </button>
         </div>
@@ -931,49 +925,46 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
 
       {/* ── PERMAINAN ── */}
       {layar === 'main' && soalAktif && (
-        <div class="space-y-3">
-          <div class="flex items-center justify-between gap-2 rounded-card border border-line bg-surface p-3">
-            <div>
-              <span class="block text-[10px] font-bold uppercase tracking-wider text-fg-muted">{t('matematika.nomor')}</span>
-              <div class="flex items-baseline gap-1">
-                <span class="text-lg font-black text-fg">{String(idx + 1).padStart(2, '0')}</span>
-                <span class="text-xs font-semibold text-fg-muted">/ {ronde.length}</span>
+        <div>
+          <div class="arc-hud">
+            <div class="arc-hud-row">
+              <div class="min-w-0">
+                <span class="arc-kicker">{t('matematika.nomor')}</span>
+                <span class="arc-skor-baris">
+                  <span class="arc-skor">{String(idx + 1).padStart(2, '0')}</span>
+                  <span class="arc-mini">/ {ronde.length}</span>
+                </span>
+              </div>
+              <div class="shrink-0 text-center">
+                <span class="arc-kicker">{t('matematika.akurasi')}</span>
+                <span class="arc-skor arc-skor--kecil">{akurasiBerjalan}%</span>
+              </div>
+              <div class="shrink-0 text-right">
+                <span class="arc-kicker">
+                  {format === 'ujian' ? t('matematika.sisa_waktu') : t('matematika.mode')}
+                </span>
+                <span class={`arc-skor arc-skor--kecil ${format === 'ujian' && sisaWaktu <= 15 ? 'arc-skor--bahaya' : ''}`}>
+                  {format === 'ujian' ? fmtWaktu(sisaWaktu) : t('matematika.santai')}
+                </span>
               </div>
             </div>
-            <div class="text-center">
-              <span class="block text-[10px] font-bold uppercase tracking-wider text-fg-muted">{t('matematika.akurasi')}</span>
-              <span class="text-lg font-black text-accent-emerald">{akurasiBerjalan}%</span>
-            </div>
-            <div class="text-right">
-              <span class="block text-[10px] font-bold uppercase tracking-wider text-fg-muted">
-                {format === 'ujian' ? t('matematika.sisa_waktu') : t('matematika.mode')}
-              </span>
-              <span class={`text-lg font-black ${format === 'ujian' && sisaWaktu <= 15 ? 'text-accent-red' : 'text-accent-red'}`}>
-                {format === 'ujian' ? fmtWaktu(sisaWaktu) : t('matematika.santai')}
-              </span>
+            <div class="arc-meter">
+              <div
+                class="arc-meter-fill arc-meter-fill--violet"
+                style={`transform:scaleX(${idx / Math.max(1, ronde.length)})`}
+              />
             </div>
           </div>
 
-          <div class="h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
-            <div
-              class="h-full bg-gradient-to-r from-accent-red to-accent-violet transition-[width] duration-300 motion-reduce:transition-none"
-              style={{ width: `${(idx / Math.max(1, ronde.length)) * 100}%` }}
-            />
-          </div>
-
-          <div class="rounded-card border border-line bg-surface p-4 text-center">
-            <div class="mb-2 flex flex-wrap items-center justify-center gap-1.5">
-              <span class="rounded-full border border-accent-sky/40 bg-accent-sky/10 px-2.5 py-0.5 text-[10px] font-bold text-accent-sky">
-                {soalAktif.tag}
-              </span>
+          <div class="arc-order arc-order--violet">
+            <div class="arc-order-head">
+              <span class="arc-kicker">{soalAktif.tag}</span>
               {soalAktif.kraepelin && (
-                <span class="rounded-full border border-accent-amber/40 bg-accent-amber/10 px-2 py-0.5 text-[10px] font-bold text-accent-amber">
-                  {t('matematika.petunjuk_kraepelin')}
-                </span>
+                <span class="arc-order-badge">{t('matematika.petunjuk_kraepelin')}</span>
               )}
             </div>
             {soalAktif.gambar && (
-              <div class="mb-3 flex justify-center rounded-card border border-line bg-surface-sunken p-2 text-fg">
+              <div class="arc-figur mt-2">
                 <FigurSvg
                   gambar={soalAktif.gambar}
                   sel={soalAktif.gambarSel ?? 1}
@@ -981,11 +972,11 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                 />
               </div>
             )}
-            <div class="overflow-x-auto whitespace-pre-line p-1 text-xl font-extrabold leading-snug text-fg sm:text-2xl">{soalAktif.tanya}</div>
+            <div class="arc-order-jp arc-soal mt-1">{soalAktif.tanya}</div>
             {terakhirBenar !== null && (
-              <div class={`mt-2 text-xs font-black ${terakhirBenar ? 'text-accent-emerald' : 'text-accent-red'}`}>
+              <p class={`arc-msg ${terakhirBenar ? 'arc-msg--benar' : ''}`}>
                 {terakhirBenar ? t('matematika.benar') : t('matematika.salah')}
-              </div>
+              </p>
             )}
           </div>
 
@@ -1003,7 +994,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                     aria-label={`Opsi ${i + 1}`}
                     disabled={terjawab}
                     onClick={() => jawab(String(i + 1))}
-                    class="flex min-h-24 items-center justify-center rounded-control border-2 border-line bg-surface-raised p-2 text-fg hover:border-accent-sky disabled:opacity-60"
+                    class="arc-opsi arc-opsi--gambar"
                   >
                     <FigurSvg gambar={g} ukuran={76} />
                   </button>
@@ -1021,9 +1012,9 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                     data-opsi={i + 1}
                     disabled={terjawab}
                     onClick={() => jawab(String(i + 1))}
-                    class="min-h-12 rounded-control border-2 border-line bg-surface-raised px-3 py-2 text-left text-[12px] font-semibold leading-snug text-fg hover:border-accent-sky disabled:opacity-60"
+                    class="arc-opsi arc-opsi--teks"
                   >
-                    <span class="mr-1.5 font-black text-accent-sky">{i + 1}.</span>
+                    <span class="arc-nomor">{i + 1}.</span>
                     {teks}
                   </button>
                 ))}
@@ -1037,7 +1028,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                     data-opsi={p}
                     disabled={terjawab}
                     onClick={() => jawab(String(p))}
-                    class="min-h-12 rounded-control border-2 border-line bg-surface-raised px-3 text-sm font-extrabold text-fg hover:border-accent-sky disabled:opacity-60"
+                    class="arc-opsi"
                   >
                     {tampilAngka(p)} {soalAktif.satuan}
                   </button>
@@ -1045,20 +1036,14 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
               </div>
             )
           ) : (
-            <div class="space-y-2">
-              <div class="flex items-center justify-between rounded-card border border-line bg-surface px-4 py-2.5">
-                <span class="text-[11px] font-bold text-fg-muted">{t('matematika.jawaban_anda')}</span>
-                <span class="text-xl font-black text-accent-red">{masukan || '?'}</span>
+            <div>
+              <div class="arc-opsi arc-opsi--jawab">
+                <span class="arc-kicker">{t('matematika.jawaban_anda')}</span>
+                <span class="arc-skor arc-skor--kecil">{masukan || '?'}</span>
               </div>
-              <div class="grid grid-cols-3 gap-1.5">
+              <div class="arc-numpad mt-1.5">
                 {['7', '8', '9', '4', '5', '6', '1', '2', '3'].map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    disabled={terjawab}
-                    onClick={() => tekanNumpad(k)}
-                    class="min-h-11 rounded-control border border-line bg-surface-raised text-lg font-black text-fg disabled:opacity-60"
-                  >
+                  <button key={k} type="button" disabled={terjawab} onClick={() => tekanNumpad(k)}>
                     {k}
                   </button>
                 ))}
@@ -1066,23 +1051,18 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                   type="button"
                   disabled={terjawab}
                   onClick={() => tekanNumpad('min')}
-                  class="min-h-11 rounded-control border border-line bg-surface-sunken text-[12px] font-bold text-fg-muted disabled:opacity-60"
+                  class="arc-numpad--sempit"
                 >
                   {t('matematika.min')}
                 </button>
-                <button
-                  type="button"
-                  disabled={terjawab}
-                  onClick={() => tekanNumpad('0')}
-                  class="min-h-11 rounded-control border border-line bg-surface-raised text-lg font-black text-fg disabled:opacity-60"
-                >
+                <button type="button" disabled={terjawab} onClick={() => tekanNumpad('0')}>
                   0
                 </button>
                 <button
                   type="button"
                   disabled={terjawab}
                   onClick={() => tekanNumpad('titik')}
-                  class="min-h-11 rounded-control border border-line bg-surface-sunken text-lg font-black text-fg-muted disabled:opacity-60"
+                  class="arc-numpad--sempit"
                 >
                   ,
                 </button>
@@ -1090,7 +1070,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                   type="button"
                   disabled={terjawab}
                   onClick={() => tekanNumpad('back')}
-                  class="col-span-3 min-h-11 rounded-control border border-line bg-surface-sunken text-[12px] font-bold text-accent-red disabled:opacity-60"
+                  class="arc-numpad--sempit arc-numpad--lebar"
                 >
                   {t('matematika.hapus')}
                 </button>
@@ -1099,7 +1079,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                 type="button"
                 disabled={terjawab || !masukan}
                 onClick={() => jawab(masukan)}
-                class="w-full min-h-12 rounded-control bg-accent-violet text-canvas text-sm font-extrabold disabled:opacity-50"
+                class="arc-btn arc-btn--violet mt-1.5 disabled:opacity-50"
               >
                 {t('matematika.kirim')}
               </button>
@@ -1107,20 +1087,20 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
           )}
 
           {pembahasanTampil && (
-            <div class="rounded-card border border-accent-amber/40 bg-accent-amber/10 p-3.5 text-[12px] text-fg">
-              <div class="mb-1 font-extrabold">{t('matematika.pembahasan')}</div>
-              <p class="leading-relaxed text-fg-muted">{soalAktif.pembahasan}</p>
+            <div class="arc-note mt-2">
+              <div class="arc-note-title">{t('matematika.pembahasan')}</div>
+              <p class="arc-kecil">{soalAktif.pembahasan}</p>
               <button
                 type="button"
                 onClick={lanjut}
-                class="mt-2.5 w-full min-h-11 rounded-control bg-accent-amber text-canvas text-xs font-black"
+                class="arc-btn arc-btn--primary mt-2"
               >
                 {t('matematika.lanjut')}
               </button>
             </div>
           )}
 
-          <div class="flex items-center justify-between text-[11px] text-fg-muted">
+          <div class="arc-hint flex items-center justify-between">
             <button
               type="button"
               onClick={() => {
@@ -1128,7 +1108,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                 setRonde([]);
                 setRiwayat([]);
               }}
-              class="min-h-11 font-semibold"
+              class="font-bold"
             >
               {t('matematika.batalkan')}
             </button>
@@ -1139,78 +1119,77 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
 
       {/* ── HASIL ── */}
       {layar === 'hasil' && (
-        <div class="space-y-3">
-          <div class="rounded-card border border-line bg-surface p-4 text-center">
-            <div class={`mb-2 inline-block rounded-control border-2 px-4 py-1 text-2xl font-black ${warnaGrade[gradeAkhir] ?? ''}`}>
-              {gradeAkhir.toUpperCase()}
-            </div>
-            <h2 class="text-lg font-black text-fg">{t(`matematika.hasil_${gradeAkhir}`)}</h2>
-            <p class="mx-auto mt-1 max-w-md text-[12px] leading-relaxed text-fg-muted">{t(`matematika.komentar_${gradeAkhir}`)}</p>
+        <div>
+          <div class="arc-result">
+            <p class="arc-kicker">{t('matematika.skor')}</p>
+            <div class={`arc-rank ${warnaGrade[gradeAkhir] ?? 'arc-rank--c'}`}>{gradeAkhir.toUpperCase()}</div>
+            <h2 class="arc-result-title">{t(`matematika.hasil_${gradeAkhir}`)}</h2>
+            <p class="arc-result-sub">{t(`matematika.komentar_${gradeAkhir}`)}</p>
           </div>
 
-          <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div class="rounded-card border border-line bg-surface p-3 text-center">
-              <span class="block text-[10px] font-bold uppercase text-fg-muted">{t('matematika.skor')}</span>
-              <span class="text-xl font-black text-accent-red">{totalBenar * 50}</span>
+          <div class="arc-stats">
+            <div class="arc-stat">
+              <span>{t('matematika.skor')}</span>
+              <strong>{totalBenar * 50}</strong>
             </div>
-            <div class="rounded-card border border-line bg-surface p-3 text-center">
-              <span class="block text-[10px] font-bold uppercase text-fg-muted">{t('matematika.akurasi')}</span>
-              <span class="text-xl font-black text-accent-emerald">{akurasiAkhir}%</span>
+            <div class="arc-stat">
+              <span>{t('matematika.akurasi')}</span>
+              <strong>{akurasiAkhir}%</strong>
             </div>
-            <div class="rounded-card border border-line bg-surface p-3 text-center">
-              <span class="block text-[10px] font-bold uppercase text-fg-muted">{t('matematika.benar_total')}</span>
-              <span class="text-xl font-black text-accent-sky">
+            <div class="arc-stat">
+              <span>{t('matematika.benar_total')}</span>
+              <strong>
                 {totalBenar} / {riwayat.length}
-              </span>
+              </strong>
             </div>
-            <div class="rounded-card border border-line bg-surface p-3 text-center">
-              <span class="block text-[10px] font-bold uppercase text-fg-muted">{t('matematika.kecepatan')}</span>
-              <span class="text-xl font-black text-accent-amber">
+            <div class="arc-stat">
+              <span>{t('matematika.kecepatan')}</span>
+              <strong>
                 {kecepatan} {t('matematika.detik_soal')}
-              </span>
+              </strong>
             </div>
           </div>
 
           {rekapDimensi.length > 1 && (
-            <div class="rounded-card border border-line bg-surface p-3.5">
+            <div class="arc-panel">
               <div class="mb-2 flex flex-wrap items-center justify-between gap-1">
-                <h3 class="text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">
-                  {t('matematika.profil_psiko')}
-                </h3>
-                <span class="text-[10px] text-fg-subtle">{t('matematika.profil_ket')}</span>
+                <h3 class="arc-kicker">{t('matematika.profil_psiko')}</h3>
+                <span class="arc-mini">{t('matematika.profil_ket')}</span>
               </div>
               <ul class="space-y-2">
                 {rekapDimensi.map((d) => {
                   const persen = Math.round((d.benar / d.total) * 100);
                   const warna =
-                    persen >= 80 ? 'bg-accent-emerald' : persen >= 50 ? 'bg-accent-amber' : 'bg-accent-red';
+                    persen >= 80
+                      ? 'arc-bar-isi--hijau'
+                      : persen >= 50
+                        ? 'arc-bar-isi--amber'
+                        : 'arc-bar-isi--merah';
                   return (
                     <li key={d.dimensi}>
-                      <div class="mb-0.5 flex items-baseline justify-between gap-2 text-[11px]">
-                        <span class="font-bold text-fg">{labelDimensi(d.dimensi)}</span>
-                        <span class="font-mono text-fg-muted">
+                      <div class="arc-baris">
+                        <span class="font-bold">{labelDimensi(d.dimensi)}</span>
+                        <span class="arc-mini">
                           {d.benar}/{d.total} · {persen}%
                         </span>
                       </div>
-                      <span class="block h-2 w-full overflow-hidden rounded-pill bg-surface-sunken">
-                        <span class={`block h-full rounded-pill ${warna}`} style={`width:${persen}%`} />
+                      <span class="arc-bar">
+                        <span class={`arc-bar-isi ${warna}`} style={`width:${persen}%`} />
                       </span>
                     </li>
                   );
                 })}
               </ul>
               {rekapKategori.length > 1 && (
-                <details class="mt-2.5 border-t border-line pt-2">
-                  <summary class="cursor-pointer text-[11px] font-bold text-accent-sky">
-                    {t('matematika.rekap_kategori')}
-                  </summary>
+                <details class="mt-2.5">
+                  <summary class="arc-jp cursor-pointer">{t('matematika.rekap_kategori')}</summary>
                   <ul class="mt-1.5 space-y-1">
                     {rekapKategori.map((r) => {
                       const persen = Math.round((r.benar / r.total) * 100);
                       return (
-                        <li key={r.kategori} class="flex items-center justify-between gap-2 text-[11px]">
-                          <span class="min-w-0 truncate text-fg-muted">{r.label}</span>
-                          <span class="shrink-0 font-mono text-fg">
+                        <li key={r.kategori} class="arc-baris">
+                          <span class="arc-kecil min-w-0 truncate">{r.label}</span>
+                          <span class="arc-mini shrink-0">
                             {r.benar}/{r.total} · {persen}%
                           </span>
                         </li>
@@ -1222,53 +1201,46 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
             </div>
           )}
 
-          <div class="rounded-card border border-line bg-surface p-3.5">
+          <div class="arc-panel">
             <div class="mb-2 flex items-center justify-between">
-              <h3 class="text-[11px] font-extrabold uppercase tracking-wider text-fg-muted">{t('matematika.evaluasi')}</h3>
-              <span class="rounded-full bg-surface-sunken px-2 py-0.5 text-[10px] font-bold text-fg-muted">
+              <h3 class="arc-kicker">{t('matematika.evaluasi')}</h3>
+              <span class="arc-combo">
                 {riwayat.filter((r) => !r.benar).length} {t('matematika.perlu_evaluasi')}
               </span>
             </div>
             <div class="max-h-56 space-y-2 overflow-y-auto pr-1">
               {riwayat.filter((r) => !r.benar).length === 0 && (
-                <p class="py-4 text-center text-[12px] text-fg-muted">{t('matematika.sempurna')}</p>
+                <p class="arc-kecil py-4 text-center">{t('matematika.sempurna')}</p>
               )}
               {riwayat
                 .filter((r) => !r.benar)
                 .map((r, i) => (
-                  <div key={`${r.soal.id}-${i}`} class="rounded-control border border-line bg-surface-sunken p-3 text-[11px]">
+                  <div key={`${r.soal.id}-${i}`} class="arc-panel">
                     <div class="mb-1 flex items-center justify-between font-bold">
-                      <span class="text-[10px] uppercase text-accent-red">{r.soal.tag}</span>
-                      <span class="text-accent-red">{t('matematika.salah')}</span>
+                      <span class="arc-mini">{r.soal.tag}</span>
+                      <span class="arc-mini arc-merah">{t('matematika.salah')}</span>
                     </div>
-                    <div class="whitespace-pre-line text-[12px] font-bold text-fg">{r.soal.tanya}</div>
+                    <div class="arc-kecil font-bold">{r.soal.tanya}</div>
                     <div class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
-                      <span class="text-fg-muted">
-                        {t('matematika.jawaban_anda')}:{' '}
-                        <strong class="text-accent-red">{labelJawaban(r.soal, r.jawabUser)}</strong>
+                      <span class="arc-mini">
+                        {t('matematika.jawaban_anda')}: <strong class="arc-merah">{labelJawaban(r.soal, r.jawabUser)}</strong>
                       </span>
-                      <span class="text-accent-emerald">
+                      <span class="arc-mini">
                         {t('matematika.kunci')}:{' '}
-                        <strong>
+                        <strong class="arc-hijau">
                           {labelJawaban(r.soal, r.soal.jawab)}
                           {r.soal.opsiTeks ? '' : ` ${r.soal.satuan}`}
                         </strong>
                       </span>
                     </div>
-                    <p class="mt-1 rounded-control border border-line bg-surface p-2 text-[11px] leading-relaxed text-fg-muted">
-                      {r.soal.pembahasan}
-                    </p>
+                    <p class="arc-kecil mt-1">{r.soal.pembahasan}</p>
                   </div>
                 ))}
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={mulai}
-              class="min-h-12 rounded-control bg-accent-red text-canvas text-xs font-extrabold"
-            >
+          <div class="arc-actions">
+            <button type="button" onClick={mulai} class="arc-btn arc-btn--violet">
               {t('matematika.ulangi')}
             </button>
             <button
@@ -1278,7 +1250,7 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
                 setRonde([]);
                 setRiwayat([]);
               }}
-              class="min-h-12 rounded-control border border-line bg-surface-raised text-xs font-extrabold text-fg"
+              class="arc-btn arc-btn--ghost"
             >
               {t('matematika.ganti_modul')}
             </button>
@@ -1287,16 +1259,17 @@ export default function MatematikaGame({ waTarget = '', adminMode = false }: Pro
       )}
 
       {/* Tombol suara — di luar ketiga layar supaya tetap terjangkau. */}
-      <div class="mt-4 flex justify-end">
+      <div class="mt-3 flex justify-end">
         <button
           type="button"
           onClick={alihSuara}
           aria-pressed={suara}
-          class="min-h-11 inline-flex items-center gap-1.5 rounded-control border border-line bg-surface-raised px-3 text-[11px] font-bold text-fg-muted"
+          class="arc-btn arc-btn--small arc-btn--ghost"
         >
           <span aria-hidden="true">{suara ? '🔊' : '🔇'}</span>
           {t('matematika.suara')}
         </button>
+      </div>
       </div>
     </div>
   );

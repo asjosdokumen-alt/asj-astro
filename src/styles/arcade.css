@@ -547,6 +547,266 @@
   box-shadow: 0 4px 0 #102a6b;
 }
 
+/* ── /matematika: kartu pilihan dan tombol opsi ──────────────────
+   Halaman itu simulator tes, bukan arena rush: aksennya violet (bukan amber),
+   dan tidak ada partikel. Bentuknya tetap sama — tanpa border, cembung untuk
+   yang bisa ditekan, cekung untuk wadah. */
+
+.arc-pilih {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  /* Lebih terang dari `--arc-cenbung`: di atas arena hampir hitam (#080c11),
+     bayangan padat hitam TIDAK terlihat — yang memisahkan kartu dari lantai
+     adalah nada permukaannya, bukan bayangannya. Terukur di mockup 2026-11-10:
+     dengan #17202b kartu terbaca sebagai teks yang mengambang. */
+  background: #1b2530;
+  text-align: left;
+  color: var(--arc-fg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 3px 0 rgba(0, 0, 0, 0.55);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.arc-pilih:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Keadaan terpilih dibaca dari `aria-pressed` yang SUDAH ada di markup — bukan
+   kelas tambahan. Satu sumber kebenaran untuk pembaca layar dan untuk mata. */
+.arc-pilih[aria-pressed="true"] {
+  background: #1b1733;
+  box-shadow:
+    inset 0 0 0 2px #a78bfa,
+    0 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+.arc-opsi {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  border: 0;
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: var(--arc-cenbung);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--arc-fg);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.arc-opsi:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+.arc-opsi:disabled {
+  opacity: 0.55;
+}
+
+.arc-opsi--teks {
+  justify-content: flex-start;
+  min-height: 48px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.arc-opsi--gambar {
+  min-height: 96px;
+}
+
+.arc-figur {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--arc-cekung);
+  box-shadow: inset 0 3px 7px rgba(0, 0, 0, 0.6);
+  color: var(--arc-fg);
+}
+
+.arc-numpad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.arc-numpad button {
+  min-height: 46px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--arc-cenbung);
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--arc-fg);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+.arc-numpad button:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.arc-numpad button:disabled {
+  opacity: 0.55;
+}
+
+.arc-numpad .arc-numpad--sempit {
+  background: var(--arc-cekung);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--arc-muted);
+}
+
+/* Teks kecil di dalam kartu pilihan. Kelas sendiri, bukan `text-[11px]` +
+   `text-fg-muted`: utilitas palet itu dipetakan ulang tema terang, dan arena
+   ini tidak ikut tema. */
+.arc-kecil {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--arc-muted);
+}
+
+.arc-mini {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--arc-muted);
+}
+
+.arc-jp {
+  font-size: 11px;
+  font-weight: 700;
+  color: #c4b5fd;
+}
+
+.arc-judul-kartu {
+  display: block;
+  margin-top: 3px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--arc-fg);
+}
+
+.arc-pilih--kecil {
+  min-height: 44px;
+  padding: 8px 6px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.arc-skor--kecil {
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.arc-skor--bahaya {
+  color: var(--arc-red);
+}
+
+.arc-meter-fill--violet {
+  background: #a78bfa;
+}
+
+.arc-order--violet {
+  border-left-color: #a78bfa;
+}
+
+/* Soal matematika: 20 px, bukan 25 px seperti perintah Genba — soalnya bisa
+   dua baris angka + satuan, dan `text-wrap: balance` pada teks sepanjang itu
+   memecahnya di tempat yang salah. `pre-line` menjaga baris yang sudah ditulis
+   penulis soal. */
+.arc-soal {
+  font-size: 20px;
+  line-height: 1.4;
+  white-space: pre-line;
+  text-align: left;
+  text-wrap: wrap;
+}
+
+.arc-msg--benar {
+  color: var(--arc-emerald);
+}
+
+.arc-opsi--jawab {
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 8px 14px;
+  background: var(--arc-cekung);
+  box-shadow: inset 0 3px 7px rgba(0, 0, 0, 0.6);
+}
+
+.arc-nomor {
+  margin-right: 6px;
+  font-weight: 800;
+  color: #a78bfa;
+}
+
+.arc-numpad .arc-numpad--lebar {
+  grid-column: span 3;
+}
+
+.arc-panel {
+  margin-top: 10px;
+  padding: 12px 13px;
+  border-radius: 14px;
+  background: var(--arc-cenbung);
+}
+
+.arc-bar {
+  display: block;
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--arc-cekung);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.arc-bar-isi {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--arc-amber);
+}
+
+.arc-bar-isi--hijau {
+  background: var(--arc-emerald);
+}
+
+.arc-bar-isi--amber {
+  background: var(--arc-amber);
+}
+
+.arc-bar-isi--merah {
+  background: var(--arc-red);
+}
+
+.arc-baris {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.arc-merah {
+  color: var(--arc-red);
+}
+
+.arc-hijau {
+  color: var(--arc-emerald);
+}
+
 /* ── Ledakan partikel ────────────────────────────────────────── */
 
 .arc-burst {
@@ -611,6 +871,22 @@
 
 .arc-rank--c {
   color: var(--arc-muted);
+}
+
+.arc-rank--hijau {
+  color: var(--arc-emerald);
+}
+
+.arc-rank--biru {
+  color: var(--arc-cyan);
+}
+
+.arc-rank--amber {
+  color: var(--arc-amber);
+}
+
+.arc-rank--merah {
+  color: var(--arc-red);
 }
 
 .arc-stats {
@@ -709,6 +985,16 @@
     inset 0 0 0 2px var(--arc-amber),
     0 4px 0 rgba(0, 0, 0, 0.5);
   color: var(--arc-amber);
+}
+
+/* Aksen /matematika. WAJIB berada SESUDAH `.arc-btn`: `.arc-btn` menulis
+   `background: var(--arc-cenbung)` dengan spesifisitas yang sama, jadi aturan
+   yang ditulis lebih awal akan kalah — terukur di mockup 2026-11-10, tombol
+   "Mulai tes" tampil abu-abu meski `background:#7c3aed` ada di bundel. */
+.arc-btn--violet {
+  background: #7c3aed;
+  color: #f5f3ff;
+  box-shadow: 0 4px 0 #3b1d78;
 }
 
 .arc-stars {
