@@ -500,13 +500,16 @@ describe('arcade — Kotoba Combo Builder', () => {
     const kartuPartikel = () =>
       tombol().find((b) => (b.textContent || '').trim() === 'で' || (b.textContent || '').trim() === 'を');
     expect(kartuPartikel(), 'kartu partikel tidak ada').toBeTruthy();
-    expect(kartuPartikel()?.className, 'normal seharusnya berwarna').toContain('amber');
+    /* Sejak 2026-11-10 warnanya bukan utilitas `amber` melainkan kelas sendiri
+       (`.arc-kartu--partikel`, hex tetap — arena tidak ikut tema). Yang diuji
+       tetap hal yang sama: pada level Normal kartu BERWARNA menurut jenis kata. */
+    expect(kartuPartikel()?.className, 'normal seharusnya berwarna').toContain('arc-kartu--partikel');
 
     const toggle = tombol().find((b) => (b.textContent || '').trim() === 'Normal');
     expect(toggle, 'tombol level tidak ada').toBeTruthy();
     toggle?.click();
 
-    await waitFor(() => expect(kartuPartikel()?.className).not.toContain('amber'));
+    await waitFor(() => expect(kartuPartikel()?.className).not.toContain('arc-kartu--partikel'));
   });
 
   /* Level Hell memakai kalimat PANJANG (dua klausa) yang terpisah dari daftar

@@ -1196,122 +1196,122 @@ export default function ArcadeGame() {
           )}
         </section>
       ) : (
-        <section aria-label={t('arcade.tab_combo')}>
+        <section aria-label={t('arcade.tab_combo')} class="arc">
           {/* PENTING: Jangan menaruh string berpola `x<angka>` sebelum `🔥 x{kombo}`
               karena `e2e/arcade.test.tsx` membaca kombo dari kecocokan pertama `/x(\d+)/`. */}
-          <div class="mb-2 flex flex-wrap items-center justify-between gap-1.5 text-[12px]">
-            <span
-              class={`rounded-control border px-2 py-1 font-bold ${
-                kombo >= 5 ? 'border-accent-amber bg-accent-amber/15 text-accent-amber' : 'border-line bg-surface-raised text-fg-muted'
-              }`}
-            >
-              🔥 x{kombo}
-              {kombo >= KOMBO_MAKS ? ' · MAX' : kombo >= 5 ? ` · ${t('arcade.fever')}` : ''}
-            </span>
-            <span class="rounded-control border border-line bg-surface-sunken px-2 py-1 text-fg-muted">{soal.bab}</span>
-            <button
-              type="button"
-              onClick={() => setLevel((l) => (l === 'normal' ? 'sulit' : l === 'sulit' ? 'hell' : 'normal'))}
-              aria-pressed={level !== 'normal'}
-              class={`min-h-9 rounded-control border px-2 py-1 font-bold ${
-                level !== 'normal' ? 'border-accent-red bg-accent-red/10 text-accent-red' : 'border-line bg-surface-raised text-fg-muted'
-              }`}
-            >
-              {level === 'hell' ? t('arcade.level_hell') : level === 'sulit' ? t('arcade.level_sulit') : t('arcade.level_normal')}
-            </button>
-            <span class="font-bold text-fg">¥ {skorCombo}</span>
+          <div class="arc-hud">
+            <div class="arc-hud-row">
+              <div class="min-w-0">
+                <span class="arc-kicker">{t('arcade.tab_combo')}</span>
+                <span class={`arc-combo ${kombo >= 5 ? 'arc-combo--hot' : ''}`}>
+                  🔥 x{kombo}
+                  {kombo >= KOMBO_MAKS ? ' · MAX' : kombo >= 5 ? ` · ${t('arcade.fever')}` : ''}
+                </span>
+              </div>
+              <div class="shrink-0 text-right">
+                <span class="arc-kicker">{t('arcade.pendapatan')}</span>
+                <span class="arc-skor">¥ {skorCombo}</span>
+              </div>
+            </div>
+            <div class="mt-2 flex items-center justify-between gap-2">
+              <span class="arc-kicker">{soal.bab}</span>
+              <button
+                type="button"
+                onClick={() => setLevel((l) => (l === 'normal' ? 'sulit' : l === 'sulit' ? 'hell' : 'normal'))}
+                aria-pressed={level !== 'normal'}
+                class={`arc-btn arc-btn--small ${level !== 'normal' ? 'arc-btn--on' : 'arc-btn--ghost'}`}
+              >
+                {level === 'hell' ? t('arcade.level_hell') : level === 'sulit' ? t('arcade.level_sulit') : t('arcade.level_normal')}
+              </button>
+            </div>
           </div>
 
-          <div class="mb-2 rounded-card border border-line bg-surface-sunken p-3 text-center">
-            <div class="mb-1 flex items-center justify-between text-[11px] text-fg-muted">
-              <span class="font-bold">{t('arcade.susun')}</span>
-              <span>
+          <div class="arc-order arc-order--cyan">
+            <div class="arc-order-head">
+              <span class="arc-kicker">{t('arcade.susun')}</span>
+              <span class="arc-order-badge">
                 {t('arcade.langkah')} {langkah}/{soal.urutan.length}
                 {kalimatSelesai > 0 ? ` · ✓ ${kalimatSelesai}` : ''}
                 {kalimatGagal > 0 ? ` · ✗ ${kalimatGagal}` : ''}
               </span>
             </div>
-            <p class="text-sm font-bold text-fg" data-testid="arcade-target">
+            <p class="arc-order-jp arc-target" data-testid="arcade-target">
               “{soal.indo}”
             </p>
-            {balas && <p class="mt-1 text-[11px] font-bold text-accent-amber">{balas}</p>}
+            {balas && <p class="arc-msg">{balas}</p>}
             {bonusTerakhir !== null && (
-              <p class="animasi-pop mt-1 text-[11px] font-black text-accent-emerald">
+              <p class="arc-poin">
                 +{bonusTerakhir} {t('arcade.bonus_kalimat')}
               </p>
             )}
             {kalimatAktif && (
               <div
-                class="mt-2 h-1.5 w-full overflow-hidden rounded-pill bg-surface-raised"
+                class="arc-meter"
                 role="progressbar"
                 aria-valuenow={Math.round(sisaKalimat)}
                 aria-valuemin={0}
                 aria-valuemax={100}
               >
                 <div
-                  class={`h-full ${sisaKalimat > 50 ? 'bg-emerald-400' : sisaKalimat > 25 ? 'bg-amber-400' : 'bg-rose-500'}`}
-                  style={`transform:scaleX(${sisaKalimat / 100});transform-origin:left`}
+                  class={`arc-meter-fill ${sisaKalimat <= 25 ? 'arc-meter-fill--hot' : ''}`}
+                  style={`transform:scaleX(${sisaKalimat / 100})`}
                 />
               </div>
             )}
           </div>
 
-          <div class="mb-2 flex min-h-16 flex-wrap items-center justify-center gap-1.5 rounded-card border-2 border-dashed border-line p-2">
+          <div class="arc-rel">
             {tray.length === 0 ? (
-              <span class="text-[11px] text-fg-muted">{t('arcade.ketuk_berurutan')}</span>
+              <span class="arc-rel-kosong">{t('arcade.ketuk_berurutan')}</span>
             ) : (
               tray.map((w, i) => (
-                <span key={i} class="rounded-control border border-line bg-surface-raised px-2 py-1 text-sm font-bold text-fg">
+                <span key={i} class="arc-rel-kata">
                   {w}
                 </span>
               ))
             )}
           </div>
 
-          {/* Kontrol bantu Combo: Batal 1 kartu & Soal Lain */}
-          <div class="mb-2 flex items-center justify-between gap-2 text-[11px]">
-            <button
-              type="button"
-              onClick={batalSatu}
-              disabled={langkah <= 0 || langkah >= soal.urutan.length}
-              class="min-h-9 flex-1 rounded-control border border-line bg-surface-raised px-2 py-1 font-bold text-fg-muted disabled:opacity-40"
-            >
-              ↩️ {t('arcade.batal_satu')}
-            </button>
-            {rekorCombo > 0 && (
-              <span class="shrink-0 text-fg-muted">
-                🏆 <b class="text-fg">¥ {rekorCombo}</b>
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={berikutCombo}
-              class="min-h-9 flex-1 rounded-control border border-line bg-surface-raised px-2 py-1 font-bold text-fg-muted"
-            >
-              🔀 {t('arcade.soal_lain')}
-            </button>
-          </div>
-
-          <div class="grid grid-cols-3 gap-2 rounded-card border border-line bg-surface-sunken p-2">
+          <div class="arc-kartu-grid">
             {kartu.map((k, i) => (
               <button
                 key={`${k.jp}-${i}`}
                 type="button"
                 onClick={() => ketuk(k, i)}
-                class={`min-h-12 rounded-control border-2 px-1 text-sm font-bold break-words ${
+                class={`arc-kartu ${
                   level !== 'normal'
-                    ? 'border-line bg-surface-raised text-fg'
+                    ? ''
                     : k.jenis === 'particle'
-                      ? 'border-amber-300 bg-amber-400 text-slate-900'
+                      ? 'arc-kartu--partikel'
                       : k.jenis === 'verb'
-                        ? 'border-rose-400 bg-rose-600 text-white'
-                        : 'border-blue-400 bg-blue-600 text-white'
+                        ? 'arc-kartu--kerja'
+                        : 'arc-kartu--benda'
                 }`}
               >
                 {k.jp}
               </button>
             ))}
           </div>
+
+          {/* Kontrol bantu Combo: Batal 1 kartu & Soal Lain */}
+          <div class="arc-actions">
+            <button
+              type="button"
+              onClick={batalSatu}
+              disabled={langkah <= 0 || langkah >= soal.urutan.length}
+              class="arc-btn arc-btn--ghost arc-btn--small disabled:opacity-40"
+            >
+              ↩️ {t('arcade.batal_satu')}
+            </button>
+            <button type="button" onClick={berikutCombo} class="arc-btn arc-btn--ghost arc-btn--small">
+              🔀 {t('arcade.soal_lain')}
+            </button>
+          </div>
+          {rekorCombo > 0 && (
+            <p class="arc-hint">
+              🏆 <b>¥ {rekorCombo}</b>
+            </p>
+          )}
         </section>
       )}
 

@@ -447,6 +447,106 @@
   opacity: 0.92;
 }
 
+/* ── Combo Kalimat: kalimat sasaran, rel, dan kartu kata ─────── */
+
+/* Dua game memakai bentuk yang sama tetapi aksen berbeda: Genba = amber
+   (gudang, lampu sorot), Combo = cyan (menyusun, seperti papan tulis). */
+.arc-order--cyan {
+  border-left-color: var(--arc-cyan);
+}
+
+/* Kalimat sasaran berbahasa Indonesia, bukan Jepang: 21 px, bukan 25 px.
+   Pada 25 px kalimat 6 kata memakan empat baris dan mendorong kartu kata
+   keluar layar — yang disusun pemain adalah kartunya, bukan teks ini. */
+.arc-target {
+  font-size: 21px;
+  line-height: 1.35;
+}
+
+/* Rel = tempat kata yang sudah diketuk. CEKUNG, sama seperti rak: ini wadah. */
+.arc-rel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 58px;
+  margin-top: 12px;
+  padding: 8px;
+  border-radius: 13px;
+  background: var(--arc-cekung);
+  box-shadow:
+    inset 0 3px 7px rgba(0, 0, 0, 0.65),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.arc-rel-kata {
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: var(--arc-cenbung);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--arc-fg);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
+}
+
+.arc-rel-kosong {
+  font-size: 11px;
+  color: var(--arc-muted);
+}
+
+.arc-kartu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.arc-kartu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  border: 0;
+  border-radius: 11px;
+  padding: 4px 5px;
+  background: var(--arc-cenbung);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--arc-fg);
+  overflow-wrap: anywhere;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.45);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.arc-kartu:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+
+/* Warna jenis kata HANYA pada level Normal — dan warna itulah yang dulu
+   memberi jawaban: kartu partikel kuning membuat siswa memilih "kuning
+   berikutnya" tanpa tahu partikel mana yang benar. Level Sulit/Hell tidak
+   memasang kelas ini sama sekali, jadi kartunya seragam. */
+.arc-kartu--partikel {
+  background: #fbbf24;
+  color: #451a03;
+  box-shadow: 0 4px 0 #8a5f00;
+}
+
+.arc-kartu--kerja {
+  background: #b91c1c;
+  color: #fee2e2;
+  box-shadow: 0 4px 0 #5f0d0d;
+}
+
+.arc-kartu--benda {
+  background: #1d4ed8;
+  color: #dbeafe;
+  box-shadow: 0 4px 0 #102a6b;
+}
+
 /* ── Ledakan partikel ────────────────────────────────────────── */
 
 .arc-burst {
@@ -586,10 +686,13 @@
   box-shadow: 0 4px 0 #8a5f00;
 }
 
+/* "Ghost" di sini BUKAN transparan. Di UI game tidak ada tombol tanpa badan —
+   tombol tanpa latar terbaca sebagai teks biasa, dan pemain tidak tahu apa yang
+   bisa ditekan. Yang membedakannya dari `--primary` hanya nada dan warna huruf. */
 .arc-btn--ghost {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--arc-garis);
+  background: var(--arc-cenbung);
   color: var(--arc-muted);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
 }
 
 .arc-btn--small {
