@@ -13,7 +13,7 @@
  * Pakai:
  *   BASE_URL=http://localhost:4400 node deliverables/probe-hero-fit.mjs
  */
-import { chromium } from 'file:///F:/astro/node_modules/playwright/index.mjs';
+import { chromium } from '../node_modules/playwright/index.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4400';
 const ROUTE = `/${(process.env.ROUTE || 'apply').replace(/^\/+/, '')}`;

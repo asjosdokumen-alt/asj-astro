@@ -30,7 +30,7 @@
  *   node deliverables/probe-mobile-perf.mjs
  *   BASE_URL=http://localhost:4322 node deliverables/probe-mobile-perf.mjs
  */
-import { chromium } from 'file:///F:/astro/node_modules/playwright/index.mjs';
+import { chromium } from '../node_modules/playwright/index.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4321';
 const ROUTES = (process.env.ROUTES || '/,/loker,/public').split(',').map((r) => {

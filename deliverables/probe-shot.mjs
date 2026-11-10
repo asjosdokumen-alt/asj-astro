@@ -11,7 +11,7 @@
  * Pakai:
  *   ROUTE=apply OUT=deliverables/shot-apply-390.png node deliverables/probe-shot.mjs
  */
-import { chromium } from 'file:///F:/astro/node_modules/playwright/index.mjs';
+import { chromium } from '../node_modules/playwright/index.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4400';
 const ROUTE = `/${(process.env.ROUTE || '').replace(/^\/+/, '')}`;

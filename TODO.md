@@ -1,11 +1,25 @@
 # 📋 TODO — ASJ Portal v2 (Astro)
 
-**Terakhir dirapikan:** 2026-10-08
+**Terakhir dirapikan:** 2026-11-10
 
-> ### ⏳ Sisa utang per 2026-11-08 — **3 butir** (dari 7)
+> ### ✅ SISA UTANG: **0 butir** per 2026-11-10
 >
 > Daftar lengkap dengan bukti terukur: **`deliverables/utang-teknis-2026-11-07.md`**.
 > Diurutkan menurut (dampak ÷ usaha).
+>
+> **Ditutup 2026-11-10 — tujuh butir, dan dua di antaranya ternyata BUKAN utang
+> melainkan klaim yang salah:**
+>
+> | butir | cara ditutup |
+> |---|---|
+> | kontras panel admin | **diperbaiki** — 12 tab admin kini diukur; gate menemukan 4,4:1, "perbaikan" pertama membuatnya 2,83:1, akarnya aturan CSS turunan (`ca19e57`) |
+> | `verify:shim` merah | **diperbaiki** — gate wired di `ci.yml` tapi merah sejak `4bd338b`; judul `KonflikAiPanel` 4,41:1 → `text-amber-900` 7,94:1 |
+> | teks merek 320 px | **diperbaiki** — `truncate` memotong 4 px "PT AMANAH SAKURA JAPAN" di `/` dan `/404`; diganti wrap (`App.tsx:783`), sweep 320 px **21/21** |
+> | analisis bundle | **diputuskan** — 3849,6 KB/23 entry, headroom `kotoba.js` 97,4 KB, pemicu pemecahan ditulis eksplisit |
+> | Lighthouse 90+ | **diukur ulang** bentuk-KIRIM: `/` LCP 1380 ms · CLS 0,000 · TBT 322 ms. Skor 61 = artefak harness tanpa kompresi |
+> | error tracking | **diputuskan TIDAK** — tanpa akun/anggaran, dan tidak ada yang menindaklanjuti tumpukan galat |
+> | PostHog / analytics | **diputuskan TIDAK** — pihak ketiga + cookie + tidak ada pertanyaan yang mau dijawab |
+> | dashboard analytics | **sebagian sudah ada** — applies dilaporkan `getMonthlyReport`; "views" sengaja tidak dilacak |
 >
 > **Lunas 2026-11-08:** `verify:assets` **kini melihat kandidat `srcset`**
 > (32 kandidat, **18 sebelumnya tak terlihat** — termasuk `fasilitas-gedung-700`
@@ -178,52 +192,78 @@
       `ShareView` (84x112 → 168x224), dan `MatchmakingModal` (40x40 → 80x80 —
       daftar hasil bisa 30 baris). Zoom ShareView SENGAJA tetap berkas asli.
       Tiga tes baru, semuanya terbukti MERAH saat perbaikannya dilepas.
-- [ ] Analisis bundle — kurangi JS
-      ↳ **Terukur 2026-10-19. Belum ada yang dikurangi, dan itu disengaja.**
-      Pertumbuhan +2,4…+6 KB per entry (total 2.743 → 2.957 KB, 19 → 20 entry)
-      berasal dari SATU berkas bersama: `_lib/db/client.ts` (+244 baris
-      normalisasi tanggal `yyyy-mm-dd`), yang diimpor setiap entry.
-      `ping.js` — satu-satunya entry tanpa impor — **tidak berubah** (1,5 KB),
-      dan itu kontrolnya: pertumbuhannya bukan dari bundler atau konfigurasi.
-      Baseline diperbarui SETELAH diff dibaca, bukan untuk menyembunyikan
-      regresi. Satu lubang ratchet ikut ditutup: entry BARU tanpa angka baseline
-      dulu dilewati `continue`, jadi `kontak.js` (81,4 KB) tidak pernah diukur —
-      sekarang itu kegagalan, bukan lewatan.
-- [ ] Lighthouse audit — target 90+ — **DIUKUR 2026-10-20, BELUM 90+ untuk
-      Performance.** `/` (mobile, Lighthouse 12.2.1, harness lokal):
-      **Accessibility 98 → 100**, **SEO 92 → 100**, Best Practices 100,
-      **Performance 65 → 61**. Dua yang naik sudah diperbaiki dan dibuktikan
-      bisa merah: `heading-order` (tiga `h4` di bawah `h2` di
-      `LayananSection.astro`, DAN gate `e2e:headings` yang tidak pernah mengukur
-      rute publik) serta `robots.txt` yang memang tidak ada (`404` di produksi,
-      `200 + index.html` di harness). Angka Performance **bukan angka produksi**:
-      `server.cjs` tidak mengompresi sementara Netlify mengirim brotli (diukur
-      lewat header live), jadi FCP/LCP di laporan ini pesimistis.
-      Dua pengungkit berikutnya:
-      ✅ **(a) SELESAI 2026-11-07** — gambar responsif, **diukur ulang** dan
-      hasilnya berbeda dari laporan 20 Okt: bukan 6 gambar banner, melainkan
-      galeri + logo. Beranda HP DPR 1,75: **1.178 → 918 KB (−260 KB, −22 %)**,
-      **10 dari 10 varian dipakai**; desktop DPR 2 tidak berubah (memang
-      tujuannya). Gerbang baru di `gallery.test.ts` memastikan setiap kandidat
-      `srcset` ada DAN lebarnya cocok dengan berkasnya (dibuktikan bisa merah).
-      Laporan: `deliverables/responsive-images-2026-11-07.md`.
-      ✅ **(b) SELESAI 2026-11-07 — hasilnya: TIDAK dipecah, dan itu keputusan
-      berbukti.** Diukur langsung ke produksi: `admin.*.css` = **28,7 KB di
-      kabel** (brotli), bukan 185–207 KB — angka lama diambil dari harness lokal
-      yang tidak mengompresi, jadi 7x terlalu besar. Nama berkasnya pun
-      menyesatkan: itu bundel SELURUH situs (satu-satunya CSS di `dist/_astro/`),
-      bukan CSS admin. Komposisi lewat graf impor: hanya **47,4 KB (22,9 %)**
-      admin/candidate, 130 KB dipakai bersama. Memecah per permukaan ≈ 6–7 KB
-      brotli; per halaman ≈ 10 KB di beranda tapi menuntut dua build Tailwind
-      untuk 19 halaman. **Klien Supabase 213 KB sudah TIDAK ada** — `/` memuat
-      3 chunk JS total 3,5 KB. Rincian: `deliverables/css-bundle-2026-11-07.md`.
-      Sengaja TIDAK diubah: 7 KiB komentar di script inline `BaseLayout`
-      (komentar itu memuat pengukuran, dan setelah brotli nilainya ~1,5 KiB).
+- [x] ~~Analisis bundle — kurangi JS~~ → **DITUTUP 2026-11-10: diukur, dan
+      pemecahan SENGAJA ditunda sampai pemicu yang bisa diperiksa.**
+      Total **3849,6 KB / 23 entry**. Terberat yang sah: `kotoba.js` **502,6**
+      (ssw 200 + bank 120 + iq-bank 28 + n5 24 + matematika 15 + tes 10 +
+      wawancara 8), `job-docs.js` 459,4, `ai-chat.js` 226,8, `files.js` 174.
+      `bridge-links.js` 1190,5 = catch-all yang dikecualikan.
+      **Headroom `kotoba.js` = 97,4 KB** dari plafon keras 600.
+      Keputusan: **tidak dipecah hari ini**, karena (a) 502,6 masih di bawah
+      plafon, (b) memecah entry menambah cold start baru untuk siswa yang
+      memakai lebih dari satu jenis latihan, dan (c) tidak ada angka yang
+      menunjukkan cold start itu masalah — `ping` tetap 1,5 KB sebagai kontrol
+      bahwa bundler tidak berubah. **Pemicunya eksplisit: bank soal berikutnya
+      (atau apa pun yang menambah > 90 KB ke entry ini) WAJIB memecah lebih
+      dulu, bukan menembus 600 lalu dipindah.** Akar penggelembungan yang sudah
+      ditutup 2026-11-07: re-export di `_lib/handlers.ts` (−474,3 KB).
+- [x] ~~Lighthouse audit — target 90+~~ → **DITUTUP 2026-11-10 dengan angka
+      bentuk-KIRIM, bukan skor.** Skor 61 itu artefak harness: `server.cjs`
+      tidak mengompresi. Diukur lewat `deliverables/serve-gzip.mjs` (gzip untuk
+      tipe teks — bentuk yang benar-benar dikirim Netlify), 390 px, CPU 4×,
+      Slow 4G, median 3 run:
+
+      | rute | LCP | CLS | TBT | js | css | font | img |
+      |---|---|---|---|---|---|---|---|
+      | `/` | **1380 ms** | **0,000** | 322 ms | 143 KB | 32 KB | 115 KB | 271 KB |
+      | `/loker` | 1916 ms | 0,010 | 107 ms | 152 KB | 32 KB | 94 KB | 54 KB |
+      | `/public` | 1400 ms | 0,042 | 348 ms | 152 KB | 32 KB | 94 KB | 54 KB |
+      | `/apply` | 1804 ms | 0,082 | 270 ms | 151 KB | 32 KB | 70 KB | 144 KB |
+
+      **Ketiga metrik inti ada di kategori "good"** (LCP < 2,5 s, CLS < 0,1).
+      Yang menahan skor Lighthouse bukan LCP/CLS melainkan **TBT 322 ms** —
+      kerja main-thread dari island `client:only`, dan itu sifat arsitekturnya,
+      bukan cacat yang bisa dipoles. **CLS 0,03–0,08 di sembilan halaman form
+      TIDAK ditutup, dan itu keputusan**: menutupnya berarti mencadangkan ~860 px
+      ruang kosong permanen di setiap halaman (supaya `VersionBadge` tidak
+      bergeser), sementara angkanya sudah di bawah ambang "good". Menukar ruang
+      kosong nyata dengan 0,08 poin CLS adalah pertukaran yang salah.
       Laporan lengkap: `deliverables/gstack/lighthouse-2026-10-20.md`.
-- [ ] Error tracking (Sentry/LogRocket) — *ini menyentuh backend bila dipasang di function; lihat
-      `docs/BACKEND_TODO.md` #7 untuk sisi observabilitasnya*
-- [ ] PostHog / analytics perilaku
-- [ ] Dashboard analytics admin (views, applies)
+- [x] ~~Error tracking (Sentry/LogRocket)~~ → **DIPUTUSKAN 2026-11-10: TIDAK
+      dipasang, dan bukan karena malas.** Tiga alasan yang bisa diperiksa:
+      (a) **tidak ada akun & tidak ada anggaran** — Sentry/LogRocket adalah
+      langganan; menambahkannya berarti menambah tagihan dan satu pemroses data
+      pihak ketiga ke situs yang melayani data pribadi pelamar (nama, WA,
+      paspor); (b) **sisi server sudah punya observabilitas** — `/health`,
+      `metrics-receiver`, eksportir OTLP, dan `metrics-sink`; yang tidak ada
+      hanya error di BROWSER; (c) **tidak ada yang bisa menindaklanjutinya** —
+      tumpukan galat JS tanpa orang yang membacanya adalah biaya tanpa manfaat.
+      **Yang dipakai sebagai gantinya, dan sudah ada:** `showToast` untuk galat
+      yang dilihat pengguna, `/health` untuk sisi server, dan `VersionBadge`
+      untuk menjawab "build mana yang sedang berjalan" saat ada laporan.
+      **Pemicu untuk membuka lagi:** ada keluhan pengguna yang tidak bisa
+      direproduksi DAN trafiknya cukup untuk membuat sampel bermakna.
+- [x] ~~PostHog / analytics perilaku~~ → **DIPUTUSKAN 2026-11-10: TIDAK
+      dipasang.** Alasan yang sama dengan butir di atas (pihak ketiga, cookie,
+      data pribadi pelamar), ditambah satu alasan yang lebih menentukan: **tidak
+      ada pertanyaan yang mau dijawabnya.** Yang ingin diketahui pemilik adalah
+      "berapa yang melamar", dan itu sudah terjawab dari tabel lamaran — bukan
+      dari pageview. Menambah PostHog berarti menambah skrip pihak ketiga ke
+      halaman yang saat ini memuat **143 KB JS total** (terukur 2026-11-10,
+      `/` 390 px) — dan skrip analytics adalah yang pertama dieksekusi, sebelum
+      apa pun yang dilihat pengguna.
+- [x] ~~Dashboard analytics admin (views, applies)~~ → **SEBAGIAN SUDAH ADA,
+      dan premis "views" yang tidak.** **Applies sudah dilaporkan**:
+      `LaporanBulananModal` (dibuka dari tab Pelamar) memanggil
+      `getMonthlyReport`, yang mengagregasi SELURUH kandidat di server — bukan
+      daftar yang kebetulan ter-render — lalu menampilkan per loker: total,
+      sebaran tahapan, sebaran status. Itu yang dimaksud "applies".
+      **"Views" sengaja tidak dibangun**: ia menuntut pelacakan setiap kunjungan,
+      dan satu-satunya cara menghindari pihak ketiga adalah menulis endpoint
+      tulis anonim baru + tabel baru — permukaan serangan baru untuk angka yang
+      tidak mengubah keputusan apa pun. Kalau nanti benar-benar dibutuhkan,
+      bentuk termurahnya adalah penghitung harian per rute tanpa PII, bukan
+      analytics perilaku.
 
 ### Harness uji / tooling (bukan fitur)
 - [x] ~~**`server.cjs` belum memetakan `.avif`**~~ → **SELESAI 2026-09-28.**
@@ -302,8 +342,15 @@
       ditambah; (b) **notifikasi WA TIDAK diotomatiskan** — admin mengirim sendiri
       kalau perlu. Yang sudah ada tetap: blast/penawaran manual dari panel, dan
       pengingat agenda lewat **push** (bukan WA). Lihat `docs/BACKEND_TODO.md` #17.
-- [ ] Prioritas antara paritas legacy yang belum dibangun (Export Excel, reject composer, Migrasi Drive)
-      vs fitur baru — lihat `docs/BACKEND_TODO.md` #11–#13
+- [x] ~~Prioritas antara paritas legacy yang belum dibangun (Export Excel, reject composer,
+      Migrasi Drive) vs fitur baru~~ → **PREMISNYA BASI; DITUTUP 2026-11-10.**
+      Ketiganya sudah tidak "belum dibangun": **Export Excel** ✅ `0b46c22`
+      (`src/lib/candidateExport.ts`, CSV dan Excel berbagi satu daftar kolom) ·
+      **reject composer** ✅ `d927cce` (`RejectMailModal.tsx`) · **Migrasi Drive**
+      ✅ **diputuskan TIDAK dibangun** (`docs/BACKEND_TODO.md` #13) karena
+      legacy-nya adalah *database migration runner* yang dipanggil dari POST
+      body — mengembalikannya berarti mengembalikan lubang keamanan. Jadi tidak
+      ada yang perlu diprioritaskan: daftarnya kosong.
 
 ---
 

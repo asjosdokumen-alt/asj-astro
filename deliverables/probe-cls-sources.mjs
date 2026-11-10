@@ -12,7 +12,7 @@
  * Pakai:
  *   ROUTE=/public node deliverables/probe-cls-sources.mjs
  */
-import { chromium } from 'file:///F:/astro/node_modules/playwright/index.mjs';
+import { chromium } from '../node_modules/playwright/index.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4321';
 const ROUTE = `/${(process.env.ROUTE || '/loker').replace(/^\/+/, '')}`;

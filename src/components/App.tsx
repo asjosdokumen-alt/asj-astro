@@ -780,7 +780,17 @@ export default function App(
             <div class="lg:col-span-7 min-w-0">
               <div class="flex items-center gap-3 min-w-0">
                 {brandLogo}
-                <span class="text-pink-300 text-eyebrow font-bold uppercase truncate" data-lang="profile.hero_eyebrow">{t("profile.hero_eyebrow")}</span>
+                {/* `truncate` DIGANTI `min-w-0` + wrap (2026-11-10).
+                    MEASURED `e2e:responsive` 320px: the brand line clipped by
+                    4px (scrollWidth 201 vs clientWidth 197) on `/` and `/404`.
+                    The available width here is `container − logo − gap`, so it
+                    moves with whatever the logo renders as — a clipped-by-4px
+                    budget is not a budget, it is a race. `truncate` hid the
+                    overflow behind an ellipsis instead of preventing it, and
+                    "PT AMANAH SAKURA…" is the company's own name.
+                    Wrapping cannot overflow at any width and needs no magic
+                    number. */}
+                <span class="text-pink-300 text-eyebrow font-bold uppercase min-w-0 leading-tight" data-lang="profile.hero_eyebrow">{t("profile.hero_eyebrow")}</span>
               </div>
               <p class="text-pink-300 text-eyebrow font-bold uppercase mt-5" data-lang="profile.hero_tagline">{t("profile.hero_tagline")}</p>
               {/* `text-white` IS EXPLICIT HERE, and that is load-bearing — do not

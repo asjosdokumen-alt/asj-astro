@@ -28,7 +28,7 @@
  * Pakai:
  *   BASE_URL=http://localhost:4400 ROUTES=/,/apply node deliverables/probe-covered-text.mjs
  */
-import { chromium } from 'file:///F:/astro/node_modules/playwright/index.mjs';
+import { chromium } from '../node_modules/playwright/index.mjs';
 
 const BASE = process.env.BASE_URL || 'http://localhost:4400';
 const ROUTES = (process.env.ROUTES || '/,/loker,/public,/apply,/siswa-baru,/ai-cv,/kotoba,/matematika,/tes-iq,/tes-mbti,/tes-mata,/arcade,/wawancara,/blog/cara-daftar-kerja-ke-jepang-2026')
