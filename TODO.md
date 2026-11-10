@@ -18,6 +18,8 @@
 > | kontras panel admin | **diperbaiki** — 12 tab admin kini diukur; gate menemukan 4,4:1, "perbaikan" pertama membuatnya 2,83:1, akarnya aturan CSS turunan (`ca19e57`) |
 > | `verify:shim` merah | **diperbaiki** — gate wired di `ci.yml` tapi merah sejak `4bd338b`; judul `KonflikAiPanel` 4,41:1 → `text-amber-900` 7,94:1 |
 > | teks merek 320 px | **diperbaiki** — `truncate` memotong 4 px "PT AMANAH SAKURA JAPAN" di `/` dan `/404`; diganti wrap (`App.tsx:783`), sweep 320 px **21/21** |
+> | `e2e:hover-contrast` merah | **diperbaiki** — gate MENGARANG kegagalan: 4 elemen `/apply` tertutup bar CTA sticky, pikselnya membaca bar. Ditambah pemeriksaan okulasi (`elementFromPoint`). Baterai mutasi **7 killed / 0 survived / 1 ok-green** |
+> | `verify:db` selalu merah | **diperbaiki** — kontrak masih menuntut `status_biodata` yang dihapus migrasi 050, DAN gate tidak bisa melihat di Neon (`GET /rest/v1/` → 400, 0 path). Kini membaca katalog langsung; `14 tabel · 5 rpc · 0 missing · 0 unverified`, dan mutasi kontrak palsu **exit 1** |
 > | analisis bundle | **diputuskan** — 3849,6 KB/23 entry, headroom `kotoba.js` 97,4 KB, pemicu pemecahan ditulis eksplisit |
 > | Lighthouse 90+ | **diukur ulang** bentuk-KIRIM: `/` LCP 1380 ms · CLS 0,000 · TBT 322 ms. Skor 61 = artefak harness tanpa kompresi |
 > | error tracking | **diputuskan TIDAK** — tanpa akun/anggaran, dan tidak ada yang menindaklanjuti tumpukan galat |
