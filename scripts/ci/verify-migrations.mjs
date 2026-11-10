@@ -163,6 +163,77 @@ async function fetchOpenApiPaths(base, key, args) {
 }
 
 /**
+ * Read the live catalog over the DIRECT connection — the fallback that makes this
+ * gate work on a backend whose PostgREST publishes no OpenAPI document.
+ *
+ * WHY THE CATALOG IS NOT A WEAKER SOURCE
+ *   PostgREST's OpenAPI document is GENERATED from this catalog, so for "does
+ *   this table exist", "does it have this column" and "does this function exist"
+ *   the catalog is the authority and the document is the copy. What the document
+ *   adds is EXPOSURE (a table can exist in the schema and be hidden from the
+ *   API), which is why it is still tried first.
+ *
+ * WHAT IT CANNOT ANSWER, STATED RATHER THAN IMPLIED
+ *   `pg_proc` proves a function exists with the given name, not that PostgREST
+ *   will route to it. A function with the wrong signature, or one in a schema
+ *   outside the exposed list, would pass here and fail at request time. That
+ *   residual gap is printed in the method line rather than hidden, and it is
+ *   strictly smaller than the previous state, where NOTHING was checked and the
+ *   gate simply failed.
+ *
+ * @returns {Promise<{tables:Set<string>, columns:Map<string,Set<string>>, rpcs:Set<string>}|null>}
+ *   null when no direct connection is configured or it cannot be opened — the
+ *   caller then falls back to the degraded probe, exactly as before.
+ */
+async function readCatalog() {
+  let client;
+  try {
+    const { default: pg } = await import('pg');
+    const { initDbEnv } = await import('../lib/load-env.mjs');
+    const dbEnv = initDbEnv();
+    if (!dbEnv.url) return null;
+    client = new pg.Client({
+      connectionString: dbEnv.url,
+      ssl: { rejectUnauthorized: false },
+      statement_timeout: 15_000,
+      connectionTimeoutMillis: 15_000,
+    });
+    await client.connect();
+  } catch {
+    return null;
+  }
+  try {
+    const tables = new Set();
+    const columns = new Map();
+    const t = await client.query(
+      `SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type IN ('BASE TABLE','VIEW')`,
+    );
+    for (const row of t.rows) tables.add(row.table_name);
+    const c = await client.query(
+      `SELECT table_name, column_name FROM information_schema.columns
+        WHERE table_schema = 'public'`,
+    );
+    for (const row of c.rows) {
+      const name = row.table_name;
+      if (!columns.has(name)) columns.set(name, new Set());
+      columns.get(name).add(String(row.column_name).toLowerCase());
+    }
+    const f = await client.query(
+      `SELECT DISTINCT p.proname FROM pg_proc p
+         JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public'`,
+    );
+    const rpcs = new Set(f.rows.map((row) => row.proname));
+    return { tables, columns, rpcs };
+  } catch {
+    return null;
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+/**
  * Read the LIVE column set of one table, out of the definitive document.
  *
  * WHY THIS IS READ FROM THE DEFINITIVE DOCUMENT ONLY
@@ -275,9 +346,35 @@ Requires SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY for full verification.`);
 
   const openapi = await fetchOpenApiPaths(base, key, args);
   const definitive = openapi.paths instanceof Set;
-  console.log(
-    `  method : ${definitive ? `OpenAPI document (${openapi.info.detail})` : `degraded — ${openapi.info.detail}`}`
-  );
+  /* DIRECT-CATALOG FALLBACK (2026-11-10).
+     ------------------------------------------------------------------------
+     `definitive` used to mean "PostgREST published an OpenAPI document". On the
+     Neon backend this repo now runs against, it never does — MEASURED today:
+     `GET /rest/v1/` answers **400** and lists **0** paths, so every table, every
+     column and every RPC came back `unverified`, and the gate exited 1 on EVERY
+     run. `deploy-production.yml` runs this gate on every tag and release, so the
+     official pipeline was blocked by a check that could not see — not by a
+     database that was wrong.
+
+     "A check that cannot see must not look green" is right, and it stays. But
+     there is a second, better way to see: the same direct connection
+     `verify:schema` already uses (`Direct_Connection_DB`). The catalog is the
+     AUTHORITY the OpenAPI document is derived from, so reading it is not a
+     weaker check — it is the stronger one, and it works on both backends.
+
+     Order is deliberate: OpenAPI first (it proves the table is actually EXPOSED
+     to PostgREST, which the catalog cannot), catalog second, degraded probe
+     last. Nothing about the OpenAPI path changed. */
+  let catalog = null;
+  if (!definitive) {
+    catalog = await readCatalog();
+  }
+  const method = definitive
+    ? `OpenAPI document (${openapi.info.detail})`
+    : catalog
+      ? `direct catalog (information_schema + pg_proc over Direct_Connection_DB)`
+      : `degraded — ${openapi.info.detail}`;
+  console.log(`  method : ${method}`);
   console.log('-'.repeat(56));
 
   const results = [];
@@ -289,6 +386,10 @@ Requires SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY for full verification.`);
       const present = openapi.paths.has(`/${name}`);
       state = present ? 'present' : 'missing';
       detail = present ? 'exposed' : 'absent from OpenAPI paths';
+    } else if (catalog) {
+      const present = catalog.tables.has(name);
+      state = present ? 'present' : 'missing';
+      detail = present ? 'present in the database catalog' : 'absent from the database catalog';
     } else {
       const p = await probeTable(base, key, name, args);
       state = p.state;
@@ -315,14 +416,16 @@ Requires SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY for full verification.`);
     // reported, and two violations for one cause is noise, not rigor.
     const columns = Array.isArray(meta.columns) ? meta.columns : [];
     if (columns.length && state === 'present') {
-      const live = readColumns(openapi.doc, name);
+      const live = definitive ? readColumns(openapi.doc, name) : catalog ? catalog.columns.get(name) || null : null;
       if (!live) {
         results.push({
           kind: 'column',
           name: `${name}(${columns.join(',')})`,
           severity: meta.severity || 'required',
           state: 'unknown',
-          detail: 'unverified — the OpenAPI document published no column definition for this table',
+          detail: definitive
+            ? 'unverified — the OpenAPI document published no column definition for this table'
+            : 'unverified — the database catalog returned no column for this table',
         });
       } else {
         const absent = columns.filter((c) => !live.has(String(c).toLowerCase()));
@@ -340,14 +443,27 @@ Requires SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY for full verification.`);
   }
 
   for (const [name, meta] of Object.entries(rpcs)) {
-    // Without OpenAPI there is no safe way to confirm a volatile function exists,
-    // so we report unverified rather than guessing "present".
-    const state = definitive ? (openapi.paths.has(`/rpc/${name}`) ? 'present' : 'missing') : 'unknown';
+    // Three sources, in order of strength: the OpenAPI document (existence AND
+    // routing), the database catalog (existence), and a probe that cannot see at
+    // all. The catalog case is labelled for what it proves.
+    const state = definitive
+      ? openapi.paths.has(`/rpc/${name}`)
+        ? 'present'
+        : 'missing'
+      : catalog
+        ? catalog.rpcs.has(name)
+          ? 'present'
+          : 'missing'
+        : 'unknown';
     const detail = definitive
       ? state === 'present'
         ? 'exposed'
         : 'absent from OpenAPI paths'
-      : 'unverified — needs SUPABASE_SERVICE_ROLE_KEY';
+      : catalog
+        ? state === 'present'
+          ? 'present in pg_proc (routing not proven by this source)'
+          : 'absent from pg_proc'
+        : 'unverified — needs SUPABASE_SERVICE_ROLE_KEY';
     results.push({
       kind: 'rpc',
       name,

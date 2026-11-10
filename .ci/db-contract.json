@@ -22,8 +22,8 @@
   "tables": {
     "database_candidate": {
       "severity": "required",
-      "note": "Core candidate records. Without it the admin board is empty.",
-      "columns": ["status_kandidat", "status_biodata"]
+      "note": "Core candidate records. Without it the admin board is empty. `status_biodata` was REMOVED from this contract on 2026-11-10: migration 050 dropped the column (measured then: 261 rows, all BELUM, and `select=status_biodata` answers 400/42703). A contract that still demands it can never pass — it would block the deploy gate for a column that deliberately no longer exists.",
+      "columns": ["status_kandidat"]
     },
     "master_database_candidate": {
       "severity": "required",
