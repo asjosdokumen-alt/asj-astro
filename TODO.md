@@ -2,6 +2,9 @@
 
 **Terakhir dirapikan:** 2026-11-10
 
+> 📄 **Laporan sesi + dampak terukur: `deliverables/laporan-2026-11-10.md`**
+> (untuk pemilik: apa yang berubah, efeknya, keputusan, dan apa yang menunggu push)
+
 > ### ✅ SISA UTANG: **0 butir** per 2026-11-10
 >
 > Daftar lengkap dengan bukti terukur: **`deliverables/utang-teknis-2026-11-07.md`**.
