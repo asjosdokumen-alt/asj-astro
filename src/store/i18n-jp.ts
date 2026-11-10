@@ -1354,6 +1354,7 @@ export const jpTranslations: Record<string, string> = {
     "kotoba.streak_hari": "日連続",
     "kotoba.misi_harian": "今日のミッション · 20語正解",
     "kotoba.kilat": "スピード",
+    "kotoba.filter": "絞り込み",
     "kotoba.tingkat": "難易度",
     "kotoba.tk_santai": "ゆっくり",
     "kotoba.tk_normal": "普通",

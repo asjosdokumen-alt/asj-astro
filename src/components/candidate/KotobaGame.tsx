@@ -465,6 +465,23 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
    * daftarnya menyusut dan bisa habis.
    */
   const [fokus, setFokus] = useState<'semua' | 'lemah' | 'tempo'>('semua');
+  /**
+   * Filter dilipat di layar sempit.
+   *
+   * Terukur di halaman ASLI 390×900: kartu soal mulai di y=789 — praktis di
+   * bawah lipatan, sehingga mengetuk "Flashcard" hanya memperlihatkan filter.
+   * Blok filternya sendiri setinggi ~330 px, dan itu kontrol yang disetel sekali
+   * per sesi. Di desktop dibiarkan terbuka karena ruangnya memang ada.
+   */
+  const [filterBuka, setFilterBuka] = useState(true);
+  useEffect(() => {
+    /* `matchMedia` TIDAK ada di jsdom — tanpa penjaga ini seluruh suite /kotoba
+       gagal dengan "window.matchMedia is not a function". Di lingkungan tanpa
+       matchMedia filternya dibiarkan terbuka, dan itu tidak memengaruhi apa pun
+       yang diuji. */
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    if (window.matchMedia('(max-width: 639px)').matches) setFilterBuka(false);
+  }, []);
   const [arah, setArah] = useState<Arah>('jp-id');
 
   /* ── sumber: buku atau bidang kerja ─────────────────────────────────────── */
@@ -1399,7 +1416,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
       </div>
 
       {/* ── Tab mode ── */}
-      <div class="arc-tab">
+      <div class="arc-tab arc-tab--5">
         {modeTab.map((m) => (
           <button key={m.id} type="button" onClick={() => setMode(m.id)} aria-pressed={mode === m.id}>
             {m.label}
@@ -1433,7 +1450,13 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           rentang bab (dua select + tanda pisah) dan dua kelompok chip. Tanpa
           itu, chip "Semua/Lemah/Jatuh tempo" berbagi sel dengan dua select dan
           saling menimpa — terukur di 390 px pada halaman asli, bukan mockup. */}
-      <div class="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <details
+        class="arc-lipat mb-2"
+        open={filterBuka}
+        onToggle={(e) => setFilterBuka((e.target as HTMLDetailsElement).open)}
+      >
+        <summary class="arc-lipat-kepala">{t('kotoba.filter')}</summary>
+        <div class="mt-2 grid grid-cols-2 gap-2">
         {sumber === 'ssw' ? (
           <select
             aria-label={t('kotoba.filter_bidang')}
@@ -1554,16 +1577,16 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
           aria-label={t('kotoba.filter_arah')}
           value={arah}
           onChange={(e) => setArah((e.target as HTMLSelectElement).value as Arah)}
-          /* Di mode SSW ada EMPAT dropdown; `col-span-2` yang dipakai mode buku
-             akan menyisakan lubang satu sel di baris kedua pada layar ponsel. */
-          class={`${
-            sumber === 'ssw' ? '' : 'col-span-2 sm:col-span-1'
-          } min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg`}
+          /* Tanpa `col-span-2`: pada mode buku, `jenis` dan `arah` berbagi satu
+             baris. Dengan span penuh, `jenis` duduk sendirian di setengah sel
+             dan menyisakan lubang — terukur di 390 px. */
+          class="min-h-11 rounded-control bg-surface-sunken border border-line px-2 text-[12px] text-fg"
         >
           <option value="jp-id">{t('kotoba.arah_jp_id')}</option>
           <option value="id-jp">{t('kotoba.arah_id_jp')}</option>
         </select>
-      </div>
+        </div>
+      </details>
 
       {/* Keterangan bidang: nama resmi Jepang + satu kalimat isi pekerjaan.
           Tanpa ini, "Pengolahan Makanan" dan "Restoran" terlihat sama saja
@@ -1931,11 +1954,11 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
 
       {/* ── FLASHCARD ── */}
       {pool.length > 0 && mode === 'flashcard' && kartu && (
-        <section class="rounded-card border border-line bg-surface p-4">
+        <section>
           <button
             type="button"
             onClick={() => setBalik((b) => !b)}
-            class="w-full min-h-56 rounded-card bg-surface-raised border border-line px-4 py-8 text-center"
+            class="arc-kartu-flash w-full"
           >
             <span class="flex justify-center gap-1.5 mb-3">
               <span class="px-2 py-0.5 rounded-pill bg-accent-sky/15 text-accent-sky text-[10px] font-bold">
@@ -1945,10 +1968,10 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 {labelPos[kartu.pos]}
               </span>
             </span>
-            <span class="block text-3xl md:text-4xl font-black text-fg break-words">
+            <span class="arc-tanya">
               {balik ? kartu.id : kartu.k}
             </span>
-            <span class="block text-[13px] text-fg-muted mt-2">
+            <span class="arc-kecil mt-2 text-center">
               {balik ? `${kartu.k} 【${kartu.h}】 (${kartu.r})` : `${kartu.h} · ${t('kotoba.balik_petunjuk')}`}
             </span>
           </button>
@@ -1959,7 +1982,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 setKartuIdx((i) => (i - 1 + pool.length) % pool.length);
                 setBalik(false);
               }}
-              class="flex-1 min-h-11 rounded-control border border-line bg-surface-raised text-fg text-[13px] font-bold"
+              class="arc-btn arc-btn--ghost flex-1"
             >
               {t('kotoba.sebelumnya')}
             </button>
@@ -1967,7 +1990,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
               type="button"
               onClick={() => ucapkan(kartu.h)}
               aria-label={t('kotoba.dengarkan')}
-              class="min-h-11 min-w-11 rounded-control border border-line bg-surface-raised text-fg-muted"
+              class="arc-btn arc-btn--small arc-btn--ghost"
             >
               🔊
             </button>
@@ -1977,7 +2000,7 @@ export default function KotobaGame({ waTarget = '', adminMode = false }: Props) 
                 setKartuIdx((i) => (i + 1) % pool.length);
                 setBalik(false);
               }}
-              class="flex-1 min-h-11 rounded-control border border-line bg-surface-raised text-fg text-[13px] font-bold"
+              class="arc-btn arc-btn--ghost flex-1"
             >
               {t('kotoba.berikutnya')}
             </button>

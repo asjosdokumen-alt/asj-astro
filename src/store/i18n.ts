@@ -1915,6 +1915,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "kotoba.streak_hari": "hari berturut-turut",
     "kotoba.misi_harian": "Misi hari ini · 20 kata benar",
     "kotoba.kilat": "Kilat",
+    "kotoba.filter": "Filter",
     /* Tingkat kesulitan menggantikan sakelar "Kilat" (2026-11-10). Pemilik:
        "kotoba sih gak perlu cepat kan fungsinya melatih bener, ada game bikin
        saja di kesulitannya kan bisa milih sendiri". Satu kontrol, tiga keadaan:

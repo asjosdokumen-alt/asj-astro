@@ -961,6 +961,19 @@
   color: var(--arc-muted);
 }
 
+/* Lima tab mode dalam SATU baris. Grid 3 kolom membuat baris kedua setinggi
+   48 px hanya untuk dua tab — dan itu 48 px yang mendorong kartu soal makin
+   jauh ke bawah lipatan. Font 10 px membuat "Flashcard" (≈56 px) dan
+   "Bom Sakura" (≈65 px) tetap utuh di lebar 68 px. */
+.arc-tab--5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.arc-tab--5 button {
+  font-size: 10px;
+  padding: 4px 2px;
+}
+
 .arc-tab button[aria-pressed="true"] {
   background: #7c3aed;
   color: #f5f3ff;
@@ -994,6 +1007,71 @@
     inset 0 0 0 2px var(--arc-amber),
     0 2px 0 rgba(0, 0, 0, 0.5);
   color: var(--arc-amber);
+}
+
+/* Filter yang bisa dilipat. Di 390 px blok filter setinggi ~330 px dan
+   mendorong kartu soal ke bawah lipatan; di desktop ia terbuka. */
+.arc-lipat {
+  border-radius: 12px;
+  background: var(--arc-cenbung);
+}
+
+.arc-lipat-kepala {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--arc-muted);
+  list-style: none;
+}
+
+.arc-lipat-kepala::-webkit-details-marker {
+  display: none;
+}
+
+.arc-lipat-kepala::after {
+  content: "▾";
+  margin-left: auto;
+}
+
+.arc-lipat[open] .arc-lipat-kepala {
+  border-bottom: 1px solid var(--arc-garis);
+}
+
+.arc-lipat[open] .arc-lipat-kepala::after {
+  content: "▴";
+}
+
+.arc-lipat > div {
+  padding: 0 8px 8px;
+}
+
+/* Kartu hafalan: satu benda besar yang bisa dibalik, bukan kartu di dalam
+   kartu. Cembung + bayangan padat, sama seperti peti di Genba. */
+.arc-kartu-flash {
+  display: block;
+  min-height: 224px;
+  border: 0;
+  border-radius: 18px;
+  padding: 28px 16px;
+  background: var(--arc-cenbung);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 6px 0 rgba(0, 0, 0, 0.5);
+  text-align: center;
+  color: var(--arc-fg);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.arc-kartu-flash:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
 }
 
 /* ── Ledakan partikel ────────────────────────────────────────── */
