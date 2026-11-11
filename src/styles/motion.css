@@ -1289,6 +1289,58 @@ html.js-reveal [data-enter="focus"].is-entered        { animation-name: enter-fo
   height: 116%;
 }
 
+/* ── THE HERO CLIP (2026-11-11) ─────────────────────────────────────────────
+   A 5 s loop generated from the same artwork, sitting exactly on top of it —
+   same `.hero-art` geometry and the same `.hero-layer` drift, so the two never
+   separate while the page scrolls.
+
+   ⚠ THE WRAPPER CARRIES THE DRIFT, NOT THE VIDEO. `hero-drift` animates
+   `opacity` (1 → 0.5 as the band leaves). An animation beats an inline style,
+   so a video that carried `hero-layer` itself could never hold the 0.6 the
+   still has — measured on 2026-11-11: the clip's opacity followed the scroll
+   curve (0.75 mid-band) instead of the 0.6 the class asked for. Wrapper drifts
+   and fades; the video inside owns its own opacity.
+
+   `opacity: 0` until the element fires `playing` (the handler in App.tsx adds
+   `.is-live` and hides the <picture>). Two reasons: a clip that fades in on its
+   first decoded frame cannot flash a black or half-decoded frame over the LCP
+   element; and the poster <picture> stays the thing that paints first, so the
+   largest contentful paint is still an image and not 530 KB of video.
+
+   HIDDEN on phones and under `prefers-reduced-motion`. Phones get the portrait
+   still (`hero-sakura-816`) because this clip is 16:9 — the same reason that
+   crop exists at all. Reduced-motion gets the still because a moving hero is
+   exactly the motion the preference asks us not to play. */
+.hero-vidwrap {
+  overflow: hidden;
+}
+
+.hero-vid {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* 18%, bukan 50%: kotak hero jauh lebih tinggi daripada klip 16:9 (terukur
+     1489x1091 = 1,36:1), jadi `cover` memotong ~30% lebar klip. Di 50% yang
+     terpotong justru Fuji di kiri — terukur, gunungnya hilang dan yang tersisa
+     hanya langit gelap di bawah scrim. 18% menggeser jendela ke kiri sampai
+     Fuji masuk, sementara wajah dan emblem tetap di kanan. */
+  object-position: 18% 50%;
+  opacity: 0;
+  transition: opacity 900ms ease;
+}
+
+.hero-vid.is-live {
+  opacity: 0.6;
+}
+
+@media (max-width: 639px), (prefers-reduced-motion: reduce) {
+  .hero-vidwrap {
+    display: none;
+  }
+}
+
 .hero-haze {
   position: absolute;
   left: -8%;

@@ -148,6 +148,30 @@ export default function App(
   /* Nav that follows the page — see the effect below for the measurement that
      decides when it detaches from the band. */
   const headerRef = useRef<HTMLElement | null>(null);
+  /**
+   * ── THE HERO CLIP'S OWN REF (2026-11-11) ────────────────────────────────
+   * The clip autoplays, which means it starts BEFORE hydration — so a
+   * `playing` listener attached during render never sees the first event.
+   * Measured on the dev server: the clip was at t=3,76 s, `paused=false`, and
+   * still `opacity: 0`, because `is-live` was never added. The effect below
+   * therefore checks the ALREADY-PLAYING case first and only then subscribes.
+   */
+  const heroVidRef = useRef<HTMLVideoElement | null>(null);
+  useEffect(() => {
+    const v = heroVidRef.current;
+    if (!v) return;
+    const go = () => {
+      v.classList.add('is-live');
+      /* `display: none`, not `opacity: 0`: `.hero-art` carries the `hero-drift`
+         animation, and an animation beats an inline style. Two layers at 60%
+         would also add up to a brighter band than the still alone. */
+      const pic = v.closest('.hero-vidwrap')?.previousElementSibling;
+      if (pic instanceof HTMLElement) pic.style.display = 'none';
+    };
+    if (!v.paused && v.readyState >= 2) go();
+    v.addEventListener('playing', go);
+    return () => v.removeEventListener('playing', go);
+  }, []);
   const [navFixed, setNavFixed] = useState(false);
   const [showAiCopilot, setShowAiCopilot] = useState(false);
   const [showCekSiswa, setShowCekSiswa] = useState(false);
@@ -529,6 +553,7 @@ export default function App(
             here would delay the largest paint on the page the visitor sees
             first. */}
         {hero && (
+          <>
           <picture class="hero-art hero-layer -z-0 pointer-events-none">
             {/* ── VARIAN PORTRAIT UNTUK HP (ditambahkan 2026-11-09) ──────────
                 MEASURED pada 390px: kotak hero 408x1023 (rasio 0,398) sedangkan
@@ -590,6 +615,38 @@ export default function App(
               style="--alive-dur:13s;--alive-scale-from:1.03;--alive-scale:1.1;--alive-x0:-1.1%;--alive-y0:0.7%;--alive-x:1.2%;--alive-y:-0.9%"
             />
           </picture>
+          {/* ── KLIP HERO (2026-11-11) ─────────────────────────────────────
+              Owner minta hero-nya "video gerak tipis". Klip 5 detik ini
+              di-generate dari potongan 16:9 artwork yang SAMA (model video
+              menolak rasio 2,75:1 — dua percobaan gagal), lalu dipotong 60 px
+              di atas untuk membuang watermark "AI 生成" milik model.
+
+              PEMBUNGKUS, bukan video telanjang. `.hero-art` + `.hero-layer`
+              membawa geometri parallax DAN animasi `hero-drift`, yang antara
+              lain menganimasikan `opacity` (1 → 0,5 saat band keluar layar).
+              Animasi mengalahkan inline style, jadi menaruh `is-live` langsung
+              di elemen ber-animasi itu mustahil: terukur, opasitas klip
+              mengikuti kurva scroll (0,75) bukan 0,6 yang diminta. Pembungkus
+              yang hanyut, video di dalamnya yang punya opasitas sendiri.
+
+              `<picture>` di atasnya di-`display:none`-kan (bukan opacity 0,
+              karena alasan yang sama) begitu klip hidup — dua lapis 60% akan
+              saling menambah terang. */}
+          <div class="hero-art hero-layer hero-vidwrap pointer-events-none" aria-hidden="true">
+            <video
+              ref={heroVidRef}
+              class="hero-vid"
+              src="/assets/ilustrasi/hero-sakura-asj-loop.mp4"
+              poster="/assets/ilustrasi/hero-sakura-asj.webp"
+              muted
+              loop
+              playsInline
+              autoplay
+              preload="none"
+              tabIndex={-1}
+            />
+          </div>
+          </>
         )}
 
         {/* ─── The NEAR parallax plane (motion.css §9e) ──────────────────
