@@ -50,9 +50,32 @@ import type { Tile } from '../../lib/companyProfile';
 
 export interface Props {
   tiles: Tile[];
-  /** Columns at `lg` and up. */
+  /** Columns at `lg` and up. Ignored by `presentation="sheet"` — see below. */
   columns?: 2 | 3;
   class?: string;
+  /**
+   * ── TWO PRESENTATIONS, ONE DATA SOURCE ────────────────────────────────────
+   *
+   * `bento` (default) is the card grid described above: padding, radius, border,
+   * icon above the title. Every existing caller gets it unchanged.
+   *
+   * `sheet` is a CONTACT SHEET: the illustration leads, the caption sits under a
+   * hairline, and there is no card chrome at all — no padding, no radius, no
+   * border, no icon. It exists because `#program` is now a film chapter rather
+   * than a bento section (owner picked "perluas film ke beberapa seksi"), and a
+   * card inside a chapter reads as a brochure pasted onto a still.
+   *
+   * WHY A VARIANT AND NOT A NEW COMPONENT: a new file under `src/` moves FOUR
+   * frozen indexer counters (see R15), and this is the same data rendered with a
+   * different shell. The data contract — `Tile`, `h3`, `data-lang` on both text
+   * nodes — is identical, which is exactly what a variant should mean.
+   *
+   * The hairline BETWEEN cells comes from `gap-px` + `bg-line` on the grid and
+   * an opaque `bg-canvas` on each cell, not from per-cell borders: that way the
+   * divider is correct at one column as well (a horizontal rule between stacked
+   * panels) without a second media query.
+   */
+  presentation?: 'bento' | 'sheet';
 }
 
 const LADDER = {
@@ -75,8 +98,16 @@ const ALIVE_VECTORS = [
   '--alive-delay:-7.8s;--alive-dur:9.8s;--alive-scale-from:1.035;--alive-scale:1.105;--alive-x0:-0.9%;--alive-y0:-0.8%;--alive-x:1.1%;--alive-y:0.9%',
 ] as const;
 
-export default function IconTileGrid({ tiles, columns = 3, class: className }: Props) {
-  const grid = ['grid gap-4 md:gap-6', LADDER[columns], className ?? ''].filter(Boolean).join(' ');
+export default function IconTileGrid({
+  tiles,
+  columns = 3,
+  class: className,
+  presentation = 'bento',
+}: Props) {
+  const sheet = presentation === 'sheet';
+  const grid = sheet
+    ? ['grid gap-px bg-line grid-cols-1 md:grid-cols-3', className ?? ''].filter(Boolean).join(' ')
+    : ['grid gap-4 md:gap-6', LADDER[columns], className ?? ''].filter(Boolean).join(' ');
 
   return (
     // `data-reveal-stagger` is what lets motion.css index the children with
@@ -100,7 +131,11 @@ export default function IconTileGrid({ tiles, columns = 3, class: className }: P
           <li
             key={tile.title.key}
             data-reveal
-            class="min-w-0 group flex flex-col gap-2 rounded-card bg-surface border border-line p-5 md:p-6 overflow-hidden"
+            class={
+              sheet
+                ? 'min-w-0 group flex flex-col bg-canvas overflow-hidden'
+                : 'min-w-0 group flex flex-col gap-2 rounded-card bg-surface border border-line p-5 md:p-6 overflow-hidden'
+            }
           >
             {/* The illustration, when the tile carries one, sits ABOVE the icon
                 and bleeds to the card's own padding edge via a negative margin —
@@ -118,7 +153,13 @@ export default function IconTileGrid({ tiles, columns = 3, class: className }: P
                 two moved together rather than leaving `object-cover` to crop
                 14% of every card's width. */}
             {tile.image ? (
-              <div class="u-illus-frame -mx-5 -mt-5 md:-mx-6 md:-mt-6 mb-1">
+              <div
+                class={
+                  sheet
+                    ? 'u-illus-frame'
+                    : 'u-illus-frame -mx-5 -mt-5 md:-mx-6 md:-mt-6 mb-1'
+                }
+              >
                 <picture class="block">
                   <source
                     type="image/avif"
@@ -215,13 +256,41 @@ export default function IconTileGrid({ tiles, columns = 3, class: className }: P
                 would promise a response that never comes (§9c). The illustration
                 can still come alive under the pointer without that implication,
                 and the `li`'s own `overflow-hidden` is what clips the scale. */}
-            <Icon name={tile.icon} class={`text-xl ${ACCENT_TEXT[tile.accent as AccentRole]}`} />
-            <h3 data-lang={tile.title.key} class="text-card-title font-bold text-fg">
-              {tile.title.text}
-            </h3>
-            <p data-lang={tile.body.key} class="text-body-sm text-fg-muted line-clamp-2">
-              {tile.body.text}
-            </p>
+            {sheet ? (
+              /* Contact-sheet caption: a numeral, the name in the film's
+                 uppercase, then one line. The numeral is the chapter number of
+                 this panel and is derived from the order, so it cannot drift
+                 from the data. No `line-clamp` here — that clamp exists to keep
+                 bento cards equal height, and a sheet has no row to equalise. */
+              <div class="px-4 pt-4 pb-6 md:px-5 md:pt-5">
+                <div class="flex items-baseline gap-3">
+                  <span
+                    class={`text-caption font-bold tabular-nums ${ACCENT_TEXT[tile.accent as AccentRole]}`}
+                  >
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <h3
+                    data-lang={tile.title.key}
+                    class="text-card-title font-bold uppercase tracking-tight text-fg"
+                  >
+                    {tile.title.text}
+                  </h3>
+                </div>
+                <p data-lang={tile.body.key} class="mt-2 text-body-sm text-fg-muted">
+                  {tile.body.text}
+                </p>
+              </div>
+            ) : (
+              <>
+                <Icon name={tile.icon} class={`text-xl ${ACCENT_TEXT[tile.accent as AccentRole]}`} />
+                <h3 data-lang={tile.title.key} class="text-card-title font-bold text-fg">
+                  {tile.title.text}
+                </h3>
+                <p data-lang={tile.body.key} class="text-body-sm text-fg-muted line-clamp-2">
+                  {tile.body.text}
+                </p>
+              </>
+            )}
           </li>
         );
       })}

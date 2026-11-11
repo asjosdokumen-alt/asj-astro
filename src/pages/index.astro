@@ -346,7 +346,21 @@ import { GALLERY } from '../lib/gallery';
 
     <!-- Section: Program ASJ (pages 3 and 4). The price and its four inclusions
          ship together on purpose: a price without its inclusions is what makes a
-         candidate assume there are hidden costs. -->
+         candidate assume there are hidden costs.
+
+         CONTACT SHEET, BUKAN TIGA KARTU (2026-11-11). Arah B: seksi ini jadi
+         babak kedua yang punya gambar sendiri. Yang berubah cuma pembungkusnya —
+         data, kunci i18n, dan `alt` tetap milik `PROGRAMS` — karena tiga kartu
+         berbingkai di tengah rangkaian film terbaca sebagai brosur yang ditempel.
+         Tiga plat berjajar, garis rambut di antaranya, keterangan di bawah tiap
+         plat, lalu satu baris credit untuk harga dan isi program.
+
+         RESOLUSI: draf sesi sebelumnya mencatat plate program hanya 600x400 dan
+         meminta tinggi strip dibatasi supaya tidak upscale 1,6x. Premis itu tidak
+         lengkap — varian `@2x` ADA dan berukuran 1200x800 (diukur 2026-11-11),
+         jadi tiga kolom pada 1440 px (459 px CSS) tetap tajam di layar 2x dan
+         tidak perlu kompromi tinggi. `srcset` 1x/2x yang sudah dipakai komponen
+         ini yang membuatnya benar. -->
     <Section id="program" labelledBy="program-title" enter="grow">
       <SectionTitle
         titleKey="profile.prog_title"
@@ -357,24 +371,38 @@ import { GALLERY } from '../lib/gallery';
         headingId="program-title"
       />
       <div class="mt-8">
-        <IconTileGrid tiles={PROGRAMS} />
+        <IconTileGrid tiles={PROGRAMS} presentation="sheet" />
       </div>
-      <div class="mt-6 grid gap-4 md:grid-cols-2 md:gap-6">
-        <Card class="flex flex-col gap-2">
-          <span data-lang="profile.prog_price_label" class="text-caption uppercase font-bold text-accent-emerald">
+      {/* Baris credit, bukan dua kartu. Garis rambut di atas memisahkannya dari
+          contact sheet; label kecil ber-tracking, angka besar, lalu isi program
+          sebagai daftar bertanda. Bentuk yang sama dengan `.dossier-*` di
+          penutup film, tanpa bingkai. */}
+      <div class="mt-10 grid gap-8 border-t border-line pt-8 md:grid-cols-2 md:gap-12">
+        <div>
+          <span
+            data-lang="profile.prog_price_label"
+            class="text-caption uppercase font-bold tracking-widest text-accent-emerald"
+          >
             Biaya program
           </span>
-          <span data-lang={PROGRAM_PRICE.key} class="text-section font-black text-fg">{PROGRAM_PRICE.text}</span>
-          <span data-lang="profile.prog_payment" class="text-body-sm text-fg-muted">
+          <p data-lang={PROGRAM_PRICE.key} class="mt-2 text-section font-black text-fg">
+            {PROGRAM_PRICE.text}
+          </p>
+          <p data-lang="profile.prog_payment" class="mt-2 max-w-[46ch] text-body-sm text-fg-muted">
             {PROGRAM_PAYMENT.text}
-          </span>
-        </Card>
-        <Card class="flex flex-col gap-3">
-          <span data-lang="profile.prog_includes_title" class="text-caption uppercase font-bold text-accent-emerald">
+          </p>
+        </div>
+        <div>
+          <span
+            data-lang="profile.prog_includes_title"
+            class="text-caption uppercase font-bold tracking-widest text-accent-emerald"
+          >
             Sudah termasuk
           </span>
-          <CheckList items={PROGRAM_INCLUDES} accent="program" />
-        </Card>
+          <div class="mt-3">
+            <CheckList items={PROGRAM_INCLUDES} accent="program" />
+          </div>
+        </div>
       </div>
     </Section>
 
