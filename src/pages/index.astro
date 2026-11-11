@@ -618,6 +618,22 @@ import { GALLERY } from '../lib/gallery';
         </div>
       </div>
 
+      {/* ── DAFTAR YANG SELALU TERBACA (2026-11-11) ─────────────────────────
+          Panel peta hanya menampilkan SATU wilayah pada satu waktu, dan butir
+          wilayah lain dirender `hidden`. Teks yang disembunyikan tidak dihitung
+          mesin pencari — jadi 26 nama prefektur yang dulu terlihat sebagai tabel
+          akan hilang dari halaman ini tanpa baris ini. `<details>` dipilih, bukan
+          daftar terbuka: isinya tetap ada di DOM dan terbaca crawler, tapi tidak
+          memenuhi layar bagi pembaca yang sudah memakai peta.
+
+          Disalin dari PLACEMENTS; sumber kebenarannya tetap companyProfile.ts. */}
+      <details class="pm-all">
+        <summary data-lang="profile.place_all_title">26 prefektur tercatat</summary>
+        <p>
+          Hokkaido · Ibaraki · Tochigi · Saitama · Chiba · Tokyo · Kanagawa · Niigata · Kyoto · Aichi · Ehime · Fukuoka · Nagasaki · Kumamoto · Oita · Miyazaki · Kagoshima · Gunma · Nagano · Okinawa · Fukushima · Shizuoka · Osaka · Hyogo · Hiroshima · Okayama
+        </p>
+      </details>
+
       <p data-lang="profile.place_note" class="mt-6 max-w-[70ch] text-body-sm text-fg-muted">
         Nama prefektur ditulis dalam huruf Latin, sesuai dokumen resmi.
       </p>
@@ -2131,6 +2147,31 @@ import { GALLERY } from '../lib/gallery';
       font-weight: 700;
       letter-spacing: 0.2em;
       text-transform: uppercase;
+      color: var(--color-fg-muted);
+    }
+
+    /* Daftar lengkap yang selalu ada di DOM (lihat catatan di markup). */
+    .pm-all {
+      margin-top: 1.25rem;
+      border-top: 1px solid var(--color-line);
+      padding-top: 0.9rem;
+    }
+    .pm-all summary {
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-fg-muted);
+    }
+    .pm-all summary:hover {
+      color: var(--color-fg);
+    }
+    .pm-all p {
+      margin: 0.75rem 0 0;
+      max-width: 90ch;
+      font-size: 0.8125rem;
+      line-height: 1.8;
       color: var(--color-fg-muted);
     }
 

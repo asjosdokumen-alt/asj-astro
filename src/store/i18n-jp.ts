@@ -1009,6 +1009,7 @@ export const jpTranslations: Record<string, string> = {
   "profile.place_desc": "提携LPKを通じて全分野・日本全国47都道府県に対応しています。",
   "profile.place_evidence_title": "記録に残る配属実績",
   "profile.place_note": "都道府県名は公式資料に合わせてラテン文字で表記しています。",
+  "profile.place_all_title": "記録のある26都道府県",
   "profile.place_stat_pref": "都道府県",
   "profile.place_stat_field": "分野",
   "profile.place_empty": "この地域の配属記録はまだありません。提携先を通じた対応範囲は全47都道府県に及びます。",
