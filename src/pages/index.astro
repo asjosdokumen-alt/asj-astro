@@ -2055,6 +2055,23 @@ import { GALLERY } from '../lib/gallery';
     .still-map {
       margin: 0;
     }
+    /* ── PETA DI BAWAH 64rem: DIAGRAM, BUKAN PANORAMA (2026-11-11) ────────
+       Owner: "atau gimana biar lebih hemat scroll ke bawah?". Diukur sebelum
+       aturan ini ada — peta memakan tinggi yang tidak sepadan dengan isinya:
+
+         768 px : peta 705x529  (4:3 selebar kolom) = 1/3 tinggi badan seksi
+         390 px : peta 343x258
+
+       Di >=64rem peta memang kolom kanan 20rem — di sana ia sebanding dengan
+       daftar di sebelahnya. Di bawah itu ia bukan lagi pendamping, ia blok
+       tersendiri; 14rem cukup untuk membaca "ada 47 prefektur" tanpa menjadi
+       gambar utama seksi yang isinya daftar. */
+    @media (max-width: 63.99rem) {
+      .still-map {
+        max-width: 14rem;
+        margin-inline: auto;
+      }
+    }
     .still-map img {
       display: block;
       width: 100%;
@@ -2079,7 +2096,13 @@ import { GALLERY } from '../lib/gallery';
       }
       .still-plate {
         position: relative;
-        aspect-ratio: 4 / 5;
+        /* 16:10, bukan 4:5 (2026-11-11). Dua alasan, keduanya terukur:
+           1. HEMAT SCROLL — owner minta lebih pendek. 4:5 membuat plat 469 px
+              di 390 px dan 920 px di 768 px; 16:10 memotongnya jadi 234/460.
+           2. PLATNYA MEMANG LANSKAP. Sumbernya 1536x904 (1,7:1); di kotak 4:5
+              `object-cover` membuang ~53% lebar gambar, di 16:10 hampir tidak
+              ada yang terbuang — jadi komposisinya justru lebih utuh. */
+        aspect-ratio: 16 / 10;
       }
       .still-scrim {
         display: none;
