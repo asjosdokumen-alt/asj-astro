@@ -124,6 +124,57 @@ const { padBottom = false } = Astro.props;
     paintVersion();
     phase = compareVersion(running, latest);
     paintStatus();
+    maybeAutoReload();
+  }
+
+  /* ── PEMBARUAN YANG MENYEMBUHKAN DIRI SENDIRI (2026-11-11) ───────────────
+     Owner: "harusnya ketika check pembaharuan refresh semua kan ya… kalau gini
+     kan susah untuk PWA, di HP gimana hard reset-nya".
+
+     Sebelum blok ini, tab yang basi hanya menampilkan tombol "Muat ulang" di
+     footer — pengguna harus tahu ada tombol di sana. Di PWA standalone tidak ada
+     address bar, tidak ada Ctrl+F5, dan tidak ada tombol reload browser: kalau
+     halaman tidak menyembuhkan diri, satu-satunya jalan keluar adalah menutup
+     app dari app-switcher dan berharap.
+
+     Empat aturan, semuanya untuk mencegah obatnya lebih buruk dari penyakitnya:
+       1. hanya saat status STALE — `unknown` (tanpa service worker) tidak
+          pernah memicu reload;
+       2. sekali per versi yang terdeteksi (`sessionStorage`) — reload loop jauh
+          lebih buruk daripada halaman yang basi;
+       3. tidak pernah saat ada kolom isian yang sedang difokus — menarik
+          halaman di tengah pengetikan membuang yang sudah ditulis kandidat;
+       4. pemeriksaan diulang saat app kembali ke depan dan tiap 15 menit, jadi
+          HP yang ditinggal semalaman tidak perlu di-reload manual. */
+  const AUTORELOAD_KEY = 'asj-autoreload';
+
+  function busyTyping() {
+    const el = document.activeElement;
+    if (!el) return false;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable === true;
+  }
+
+  function maybeAutoReload() {
+    if (phase !== 'stale' || !latest) return;
+    if (busyTyping()) return;
+    try {
+      if (sessionStorage.getItem(AUTORELOAD_KEY) === latest) return;
+      sessionStorage.setItem(AUTORELOAD_KEY, latest);
+    } catch {
+      /* mode privat: sessionStorage melempar; reload sekali, best effort */
+    }
+    window.location.reload();
+  }
+
+  async function refreshWorkerThenCheck() {
+    try {
+      const reg = await navigator.serviceWorker?.getRegistration?.();
+      await reg?.update?.();
+    } catch {
+      /* offline: pemeriksaan di bawah tetap dijalankan */
+    }
+    await check(false);
   }
 
   checkBtn?.addEventListener('click', () => {
@@ -163,6 +214,13 @@ const { padBottom = false } = Astro.props;
     // Tanpa pengumuman: pemeriksaan latar saat halaman dibuka tidak boleh
     // berkedip "Memeriksa…" di setiap navigasi.
     void check(false);
+    // App kembali ke depan (PWA di HP, tab yang lama di latar) → periksa lagi.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') void refreshWorkerThenCheck();
+    });
+    window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshWorkerThenCheck();
+    }, 15 * 60 * 1000);
   } else {
     paintVersion();
   }
