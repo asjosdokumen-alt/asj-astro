@@ -224,7 +224,7 @@ export const PROGRAMS: Tile[] = [
     },
     image: {
       name: 'program-magang',
-      alt: 'Ilustrasi peserta magang di depan gedung pelatihan, berlatar Gunung Fuji.',
+      alt: 'Dua peserta LPK Amanah Sakura Japan memakai polo lembaga, berdiri di depan gedung pelatihan saat senja.',
       w: 600,
       h: 400,
     },
@@ -239,7 +239,7 @@ export const PROGRAMS: Tile[] = [
     },
     image: {
       name: 'program-ssw',
-      alt: 'Ilustrasi dua pekerja terampil berlatar cakrawala kota Tokyo saat senja.',
+      alt: 'Dua peserta memakai celemek kerja di Jepang — perawatan lansia dan pelayanan makanan — berdiri di koridor tempat kerja.',
       w: 600,
       h: 400,
     },
@@ -254,7 +254,7 @@ export const PROGRAMS: Tile[] = [
     },
     image: {
       name: 'program-bahasa',
-      alt: 'Ilustrasi peserta menulis aksara Jepang dengan buku teks dan latar Gunung Fuji.',
+      alt: 'Pengajar menulis hiragana di papan tulis kelas LPK, seorang peserta duduk menyimak di depannya.',
       w: 600,
       h: 400,
     },

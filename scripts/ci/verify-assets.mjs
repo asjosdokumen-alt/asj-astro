@@ -693,6 +693,18 @@ const ILLUSTRATIONS = new Set([
   // criterion is "is there a subject who could consent or refuse", NOT "is it a
   // drawing" — if a REAL photograph is ever dropped at one of these paths, this
   // entry must be re-examined rather than inherited.
+  // REPLACED 2026-11-11 (owner): the three program tiles were anime-style
+  // drawings that read as a different site next to the film plates. They are now
+  // PHOTOGRAPHIC renders of the same two models who appear in the film — the
+  // woman from the hero, plus one male participant — wearing the identical
+  // charcoal Amanah polo with magenta trim and the crest badge, so the program
+  // grid and the film share one cast and one grade.
+  //
+  // The set's criterion still holds, and for the same reason as the film plates:
+  // these are GENERATED people, not photographs of anyone, so §11.2 has no
+  // subject who could consent or refuse. The filenames are unchanged on purpose —
+  // `companyProfile.ts` builds the path from `image.name`, and a rename would
+  // have moved four frozen counters for no gain.
   'ilustrasi/program-bahasa.webp',
   'ilustrasi/program-magang.webp',
   'ilustrasi/program-ssw.webp',
