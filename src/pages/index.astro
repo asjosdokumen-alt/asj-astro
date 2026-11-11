@@ -229,8 +229,10 @@ import { GALLERY } from '../lib/gallery';
            mengapitnya. Itu bahasa yang dibaca dari referensi 58 detik
            `Pioneer corn revolutionized` — lihat deliverables/story-video/DESIGN-STUDY.md.
 
-           CARA KERJANYA: `.film-track` setinggi 6 x 72svh + 100svh, dan
-           `.film-stage` menempel (`sticky`) di dalamnya. Progres scroll memilih
+           CARA KERJANYA: `.film-track` setinggi 7 x 72svh + 100svh, dan
+           `.film-stage` menempel (`sticky`) di dalamnya. Tujuh, bukan enam:
+           babak terakhir adalah CODA yang mengembalikan frame pertama — di
+           referensi, filmnya berakhir dengan loop ke awal. Progres scroll memilih
            babak; babak berikutnya MENUTUP babak sebelumnya (dissolve tanpa
            lubang), dan teksnya punya dua ketukan — judul dulu, badan menyusul di
            38% babak. Itu aturan #4 dari studi: teks berganti DI DALAM shot, bukan
@@ -1422,7 +1424,7 @@ import { GALLERY } from '../lib/gallery';
     }
     .film-track {
       position: relative;
-      height: calc(6 * 72svh + 100svh);
+      height: calc(7 * 72svh + 100svh);
     }
     .film-stage {
       position: sticky;
@@ -1561,6 +1563,69 @@ import { GALLERY } from '../lib/gallery';
       transform: translateY(-4px);
     }
 
+    /* ── CODA: frame penutup, BUKAN langkah ketujuh ────────────────────────
+       Referensi 58 detik itu berakhir dengan kembali ke frame pertama —
+       siklus benih -> panen -> benih. Band ini sebelumnya berhenti begitu
+       saja setelah "GO TO JAPAN", jadi enam langkah terbaca sebagai daftar
+       yang habis, bukan sebagai siklus yang berulang.
+
+       Coda ini sengaja MELANGGAR tata bahasa band, dan pelanggarannya yang
+       membuatnya terbaca sebagai penutup dan bukan sebagai babak yang lupa
+       diberi nomor: teks di TENGAH (selama enam babak selalu di kiri),
+       scrim penuh (selama enam babak satu arah dari kiri), dan platnya
+       didinginkan sampai jadi memori — frame yang sama dengan langkah 01,
+       tapi bukan adegan baru.
+
+       Ia ikut dihitung sebagai frame di `paint()` supaya matematika progres
+       tidak bercabang; yang TIDAK ia dapat adalah nomor babak dan titik di
+       rel. */
+    .film-coda .film-img {
+      filter: saturate(0.3) contrast(1.04) brightness(0.4);
+    }
+    .film-scrim-coda {
+      background: radial-gradient(
+        118% 100% at 50% 50%,
+        rgb(4 6 10 / 0.58) 0%,
+        rgb(4 6 10 / 0.88) 58%,
+        rgb(4 6 10 / 0.97) 100%
+      );
+    }
+    .film-copy-coda {
+      left: 50%;
+      width: min(38rem, 86%);
+      transform: translateX(-50%);
+      align-items: center;
+      text-align: center;
+      padding-left: 0;
+      padding-right: 0;
+    }
+    .film-loop {
+      font-size: 1.5rem;
+      line-height: 1;
+      letter-spacing: 0;
+      color: #f9a8d4;
+    }
+    .film-coda-t {
+      margin-top: 1.15rem;
+      font-size: clamp(1.5rem, 3vw, 2.5rem);
+      font-weight: 700;
+      line-height: 1.06;
+      letter-spacing: -0.02em;
+      color: #fff;
+      text-wrap: balance;
+    }
+    /* Badan coda memakai kelas `.film-body` supaya ikut ketukan kedua di 38%
+       — aturan "teks berganti di dalam shot" berlaku sampai frame terakhir.
+       Yang dilepas hanya garis atas dan batas 34ch, karena di tengah garis
+       itu terbaca sebagai kotak. */
+    .film-coda-b {
+      margin-top: 1.3rem;
+      padding-top: 0;
+      border-top: 0;
+      max-width: 32ch;
+      color: rgb(244 246 248 / 0.8);
+    }
+
     .film-hud {
       position: absolute;
       inset: 0;
@@ -1654,6 +1719,12 @@ import { GALLERY } from '../lib/gallery';
       letter-spacing: 0.3em;
       color: rgb(244 246 248 / 0.8);
     }
+    /* Koordinat berganti tiap babak (PONOROGO -> JEPANG -> PONOROGO). Angka
+       tabular menjaga pembacaan itu tidak menggeser lebar teks di kaki film —
+       tanpa ini setiap pergantian babak membuat barisnya bergetar. */
+    .film-coord {
+      font-variant-numeric: tabular-nums;
+    }
 
     .film-progress {
       position: absolute;
@@ -1740,6 +1811,22 @@ import { GALLERY } from '../lib/gallery';
         margin: 0 auto;
         padding: 0;
       }
+      /* Coda memakai `translateX(-50%)` untuk memusatkan dirinya di panggung.
+         Di tata letak bertumpuk ia sudah dipusatkan oleh `margin: 0 auto`, jadi
+         transform itu HARUS dilepas — kalau tidak, teksnya bergeser setengah
+         lebar keluar layar. */
+      .film-copy-coda {
+        left: auto;
+        transform: none;
+        width: auto;
+        max-width: min(30rem, 90vw);
+      }
+      .film-coda-t {
+        font-size: clamp(1.5rem, 6.4vw, 2.1rem);
+      }
+      .film-coda-b {
+        max-width: 30ch;
+      }
       .film-copy h3 {
         font-size: clamp(1.9rem, 8.2vw, 2.6rem);
         text-shadow: none;
@@ -1749,15 +1836,15 @@ import { GALLERY } from '../lib/gallery';
         transform: none;
         border-top-color: rgb(255 255 255 / 0.16);
       }
+      /* Chrome panggung tidak punya arti di daftar bertumpuk: braket, rel,
+         kaki, dan garis progres semuanya mengukur sesuatu yang tidak ada.
+         Sebelum perbaikan ini aturannya rusak (deklarasinya `letter-spacing`
+         milik `.film-brand`, bukan `display: none`), jadi di ponsel keempatnya
+         tetap tergambar menumpuk di atas daftar. */
       .film-hud,
       .film-rail,
       .film-foot,
-      .film-brand {
-      letter-spacing: 0.3em;
-      color: rgb(244 246 248 / 0.8);
-    }
-
-    .film-progress {
+      .film-progress {
         display: none;
       }
     }
@@ -1790,7 +1877,10 @@ import { GALLERY } from '../lib/gallery';
       const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
       const N = chs.length;
       /* Empat babak pertama masih di Ponorogo; keberangkatan dan kedatangan
-         memakai label perjalanan, bukan koordinat karangan. */
+         memakai label perjalanan, bukan koordinat karangan. Entri KETUJUH milik
+         coda: koordinatnya kembali ke titik awal, karena itulah yang dikatakan
+         frame penutupnya — peserta berikutnya mulai dari Ponorogo lagi. Chrome
+         ikut bercerita, bukan cuma menghias. */
       const COORD = [
         'PONOROGO · 7.86°S 111.46°E',
         'PONOROGO · 7.86°S 111.46°E',
@@ -1798,6 +1888,7 @@ import { GALLERY } from '../lib/gallery';
         'PONOROGO · 7.86°S 111.46°E',
         'PONOROGO → JEPANG',
         'JEPANG · 35.68°N 139.69°E',
+        'PONOROGO · 7.86°S 111.46°E',
       ];
 
       let raf = 0;
@@ -1840,15 +1931,23 @@ import { GALLERY } from '../lib/gallery';
 
           if (op > 0) {
             /* Kamera tidak pernah diam: dorong 6% + geser 2,4% sepanjang babak.
-               Ini yang membuatnya terasa rekaman, bukan foto yang di-slide. */
+               Ini yang membuatnya terasa rekaman, bukan foto yang di-slide.
+
+               Arahnya BERGANTIAN per babak — ganjil mendorong masuk, genap
+               menarik keluar. Dua shot berurutan yang mendorong ke arah sama
+               terbaca sebagai satu gerakan yang tersendat; bergantian membuat
+               tiap potongan terasa keputusan. Skala tidak pernah turun di bawah
+               1,06, jadi tepi plat tidak pernah terbuka. */
             const l = clamp(local);
+            const dir = i % 2 === 0 ? 1 : -1;
+            const sc = dir > 0 ? 1.06 + 0.07 * l : 1.13 - 0.07 * l;
             plates[i].style.transform =
               'translate3d(' +
-              (-1.2 + 2.4 * l).toFixed(2) +
+              ((-1.2 + 2.4 * l) * dir).toFixed(2) +
               '%,' +
-              (1.4 - 2.8 * l).toFixed(2) +
+              ((1.4 - 2.8 * l) * dir).toFixed(2) +
               '%,0) scale(' +
-              (1.06 + 0.07 * l).toFixed(4) +
+              sc.toFixed(4) +
               ')';
           }
 
@@ -1863,11 +1962,25 @@ import { GALLERY } from '../lib/gallery';
           }
         }
 
-        if (bar) bar.style.width = (p * 100).toFixed(2) + '%';
+        if (bar) {
+          /* Progres mencapai 100% tepat di akhir babak 06, lalu MENGOSONGKAN
+             DIRI selama coda. Ini satu-satunya tempat di halaman ini di mana
+             bar bergerak mundur, dan itu memang maksudnya: siklusnya kembali ke
+             awal. Bar yang berhenti penuh di ujung akan mengatakan "selesai",
+             padahal frame terakhirnya mengatakan "dimulai lagi". */
+          const chaptersEnd = (N - 1) / N;
+          const w =
+            p <= chaptersEnd
+              ? (p / chaptersEnd) * 100
+              : (1 - (p - chaptersEnd) / (1 - chaptersEnd)) * 100;
+          bar.style.width = Math.max(0, Math.min(100, w)).toFixed(2) + '%';
+        }
 
         if (best !== active) {
           active = best;
-          dots.forEach((d, k) => d.classList.toggle('is-on', k === best));
+          /* Rel hanya punya titik untuk enam babak — coda bukan langkah, jadi
+             titik terakhir tetap menyala saat frame penutup tampil. */
+          dots.forEach((d, k) => d.classList.toggle('is-on', k === Math.min(best, dots.length - 1)));
           if (coord) coord.textContent = COORD[best];
           chs.forEach((c, k) => c.classList.toggle('is-on', k === best));
           /* Hanya klip babak aktif yang diputar — 3 decoder serentak tidak

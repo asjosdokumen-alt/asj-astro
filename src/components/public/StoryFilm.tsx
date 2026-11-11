@@ -100,6 +100,29 @@ const MEDIA = [
   },
 ] as const;
 
+/**
+ * ── CODA ──────────────────────────────────────────────────────────────────────
+ *
+ * Frame penutup, BUKAN langkah ketujuh. Ia memakai plat langkah 01 lagi — bukan
+ * karena asetnya kurang, tapi karena itulah argumennya: di referensi 58 detik,
+ * filmnya berakhir dengan kembali ke frame pertama (siklus benih -> panen ->
+ * benih). Tanpa frame ini, band berhenti setelah "GO TO JAPAN" dan enam langkah
+ * terbaca sebagai daftar yang habis.
+ *
+ * Path-nya ditulis literal dan sengaja SAMA dengan entri pertama `MEDIA`:
+ * `verify-assets` membaca string `/assets/...webp`, bukan identitas objek, jadi
+ * berbagi konstanta tidak menghemat apa pun dan hanya menyembunyikan fakta
+ * bahwa frame yang sama dipakai dua kali.
+ *
+ * Tidak punya nomor dan tidak punya titik di rel — keduanya milik enam langkah.
+ */
+const CODA = {
+  portrait: '/assets/story/01-daftar.webp',
+  wide: '/assets/story/wide/01-daftar.webp',
+  focus: '62% 50%',
+  alt: 'Ilustrasi peserta mengisi formulir pendaftaran — frame yang sama dengan langkah pertama, diredupkan sebagai penutup siklus.',
+} as const;
+
 export interface Props {
   /** The six flow steps, straight from `FLOW_STEPS`. */
   steps: FilmStep[];
@@ -164,6 +187,42 @@ export default function StoryFilm({ steps }: Props) {
               </article>
             );
           })}
+
+          {/* CODA — lihat catatan di `CODA` di atas. `data-film-ch` sengaja
+              dipasang supaya frame ini ikut matematika progres yang sama di
+              `paint()`; yang tidak ia dapat hanyalah nomor babak dan titik rel.
+              Badan teksnya memakai `.film-body` supaya tetap sampai pada ketukan
+              kedua (38%), bukan muncul serentak dengan judulnya. */}
+          <article class="film-ch film-coda" data-film-ch>
+            <div class="film-plate">
+              <picture>
+                <source media="(min-width: 861px)" srcset={CODA.wide} width="1536" height="904" />
+                <img
+                  src={CODA.portrait}
+                  alt={CODA.alt}
+                  width="1024"
+                  height="1464"
+                  loading="lazy"
+                  decoding="async"
+                  class="film-img"
+                  style={`object-position:${CODA.focus}`}
+                />
+              </picture>
+            </div>
+            <div class="film-scrim film-scrim-coda" aria-hidden="true" />
+            <div class="film-copy film-copy-coda">
+              <span class="film-n film-loop" aria-hidden="true">
+                ↺
+              </span>
+              <p class="film-coda-t" data-lang="profile.loop_title">
+                Dan peserta berikutnya mulai dari sini.
+              </p>
+              <p class="film-body film-coda-b" data-lang="profile.loop_body">
+                Enam langkah yang sama, untuk setiap orang: dari formulir di Ponorogo sampai
+                tiba di Jepang, lalu kembali ke awal.
+              </p>
+            </div>
+          </article>
 
           <div class="film-hud" aria-hidden="true">
             <i class="film-x tl" />

@@ -1318,6 +1318,10 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.step_prep_body": "Pemeriksaan kesehatan (MCU) dan tanda tangan kontrak kerja, lalu kepengurusan berkas imigrasi Jepang (COE).",
   "profile.step_go_title": "GO TO JAPAN",
   "profile.step_go_body": "Pengurusan paspor, visa, dan EKTLN di Indonesia.",
+  // Coda band "Satu Jalan" (StoryFilm.tsx). Bukan langkah ketujuh: ia menutup
+  // film dengan mengembalikan frame pertama, seperti siklus di referensi.
+  "profile.loop_title": "Dan peserta berikutnya mulai dari sini.",
+  "profile.loop_body": "Enam langkah yang sama, untuk setiap orang: dari formulir di Ponorogo sampai tiba di Jepang, lalu kembali ke awal.",
   "profile.req_title": "Persyaratan & Dokumen",
   "profile.req_desc": "Pastikan semuanya siap sebelum mendaftar.",
   "profile.req_age": "Pria/wanita, umur 18–28 tahun",

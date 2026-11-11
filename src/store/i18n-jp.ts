@@ -904,6 +904,8 @@ export const jpTranslations: Record<string, string> = {
   "profile.step_prep_body": "健康診断（MCU）と雇用契約の署名、その後、日本入管への書類手続き（COE）。",
   "profile.step_go_title": "日本へ出発",
   "profile.step_go_body": "パスポート、ビザ、EKTLNの手続き。",
+  "profile.loop_title": "そして、次の人がここから始まる。",
+  "profile.loop_body": "同じ六つのステップを、一人ひとりに。ポノロゴの申込み用紙から日本到着まで、そしてまた最初へ。",
   "profile.req_title": "応募条件と必要書類",
   "profile.req_desc": "お申込み前にご確認ください。",
   "profile.req_age": "男女とも18〜28歳",
