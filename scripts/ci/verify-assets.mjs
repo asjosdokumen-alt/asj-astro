@@ -790,6 +790,14 @@ const ILLUSTRATIONS = new Set([
   // neighbours — generated drawing, no person whose likeness it is, charcoal
   // Amanah sleeve with the magenta cuff.
   'story/04-paspor.webp',
+  // ADDED 2026-11-11 — a 480x640 DETAIL crop of the same passport render, used
+  // by the "dossier" block that closes the `#alur` section. Not a new
+  // generation: it is `extract()`ed from the master PNG the plate above came
+  // from, so it inherits that plate's basis rather than claiming its own. The
+  // crop exists because the 3:2 plate at 240 px wide shows a passport at
+  // roughly one third of the frame with desk filling the rest — legible as a
+  // chapter, useless as an illustration of the document list beside it.
+  'story/04-paspor-detail.webp',
   'story/05-mcu.webp',
   'story/06-tiba.webp',
   // ADDED 2026-11-11 — the same six scenes re-framed 3:2 for the full-bleed

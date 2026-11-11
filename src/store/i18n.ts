@@ -1324,6 +1324,7 @@ export const translations: Record<Lang, Record<string, string>> = {
   "profile.loop_body": "Enam langkah yang sama, untuk setiap orang: dari formulir di Ponorogo sampai tiba di Jepang, lalu kembali ke awal.",
   "profile.req_title": "Persyaratan & Dokumen",
   "profile.req_desc": "Pastikan semuanya siap sebelum mendaftar.",
+  "profile.req_general_title": "Syarat umum",
   "profile.req_age": "Pria/wanita, umur 18–28 tahun",
   "profile.req_edu": "Pendidikan minimal SMA/SMK sederajat",
   "profile.req_marital": "Belum atau sudah menikah",

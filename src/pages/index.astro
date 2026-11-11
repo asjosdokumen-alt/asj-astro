@@ -247,20 +247,64 @@ import { GALLERY } from '../lib/gallery';
            ada, drift-nya yang dilepas. */}
       <StoryFilm steps={FLOW_STEPS} />
 
-      <div class="mx-auto mt-12 w-full max-w-7xl px-4 md:px-6">
-        <h3 data-lang="profile.req_title" class="text-card-title font-bold text-fg">
-          Persyaratan &amp; Dokumen
-        </h3>
-        <p data-lang="profile.req_desc" class="mt-1 text-body-sm text-fg-muted">
-          Pastikan semuanya siap sebelum mendaftar.
-        </p>
-        <div class="mt-5 grid gap-6 lg:grid-cols-2">
-          <CheckList items={REQUIREMENTS} accent="exam" />
-          <div>
-            <h4 data-lang="profile.req_docs_title" class="text-caption uppercase font-bold text-accent-amber mb-3">
-              Berkas yang disiapkan
-            </h4>
-            <CheckList items={REQUIREMENT_DOCS} icon="file-alt" accent="exam" />
+      {/* ── DOSSIER: syarat & berkas sebagai PLAT PENUTUP film ────────────────
+           Sebelum ini blok-nya dua daftar telanjang: judul kecil, tujuh centang
+           kiri, tujuh centang kanan, tanpa satu pun properti film. Akibatnya
+           transisi dari babak coda ke profil isinya terasa seperti pindah situs:
+           panggung penuh-bleed berhenti, lalu tiba-tiba bahasa editorial.
+
+           Yang dipakai dari `scroll-cinema` di sini BUKAN panggung kedua —
+           band tetap satu-satunya panggung di halaman ini (hukum 1: satu seam;
+           dua band berdekatan membuat keduanya berhenti terasa film). Yang
+           dipinjam adalah TATA BAHASANYA di skala seksi:
+             · tipografi judul sama dengan `.film-copy h3` — kapital, 700,
+               line-height .98, tracking -0,02em (bukan baliho serif);
+             · garis rambut sebagai pemisah, seperti `.film-body`;
+             · angka `tabular-nums` di penanda babak;
+             · satu still 4:5 dari plat babak 04 (paspor) sebagai PROP, bukan
+               pengulangan adegan: bingkainya sempit, crop-nya vertikal, dan
+               nomornya menempel di sudut — pembaca melihat detail, bukan babak
+               yang diputar ulang.
+
+           Kenapa di sini, bukan di tempat lain: daftar ini yang menyebut KTP,
+           akta, KK, ijazah — dan paspor adalah dokumen yang paling sering
+           ditanya. Still-nya menjelaskan daftarnya, bukan menghiasinya.
+
+           Gambarnya `loading="lazy"`: ia berada di bawah panggung 7x72svh, jadi
+           tidak pernah berada di viewport pertama. */}
+      <div class="dossier">
+        <div class="dossier-inner">
+          <h3 data-lang="profile.req_title" class="dossier-title">
+            Persyaratan &amp; Dokumen
+          </h3>
+          <p data-lang="profile.req_desc" class="dossier-lead">
+            Pastikan semuanya siap sebelum mendaftar.
+          </p>
+
+          <div class="dossier-grid">
+            <div class="dossier-col">
+              <h4 data-lang="profile.req_general_title" class="dossier-label">Syarat umum</h4>
+              <CheckList items={REQUIREMENTS} accent="exam" />
+            </div>
+            <div class="dossier-col">
+              <h4 data-lang="profile.req_docs_title" class="dossier-label">Berkas yang disiapkan</h4>
+              <CheckList items={REQUIREMENT_DOCS} icon="file-alt" accent="exam" />
+            </div>
+
+            <figure class="dossier-still">
+              <div class="dossier-frame">
+                <img
+                  class="dossier-still-img"
+                  src="/assets/story/04-paspor-detail.webp"
+                  alt="Detail sampul paspor Republik Indonesia: hijau tua, lambang Garuda emas, tulisan REPUBLIK INDONESIA dan PASPOR, dipegang tangan peserta."
+                  width="480"
+                  height="640"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="dossier-num" aria-hidden="true">04</span>
+              </div>
+            </figure>
           </div>
         </div>
       </div>
@@ -1745,6 +1789,121 @@ import { GALLERY } from '../lib/gallery';
       height: 100%;
       width: 0;
       background: linear-gradient(90deg, #f9a8d4, #f472b6);
+    }
+
+    /* ── DOSSIER: syarat & berkas, plat penutup film ───────────────────────
+       Blok ini duduk tepat setelah panggung 7x72svh, jadi ia yang menentukan
+       apakah transisi film -> profil terasa satu halaman atau dua situs.
+       Yang dipinjam dari band hanya TIPOGRAFI dan GARIS RAMBUT; tidak ada
+       panggung, tidak ada scrim, tidak ada braket sudut — perangkat itu milik
+       band, dan memakainya dua kali membuat keduanya berhenti berarti.
+
+       Still 4:5 sengaja menyempit (maks 21rem) dan crop-nya vertikal: pada
+       lebar itu plat 1536x904 dipakai 1:1 di layar 2x, jadi tidak ada upscale
+       — pelajaran dari plat 05 yang di-upscale dan hanya menambah byte. */
+    .dossier {
+      margin-top: clamp(3rem, 6vw, 5rem);
+      border-top: 1px solid var(--color-line);
+    }
+    .dossier-inner {
+      width: 100%;
+      max-width: 80rem;
+      margin-inline: auto;
+      padding: clamp(2rem, 4vw, 3.25rem) 1rem 0;
+    }
+    @media (min-width: 48rem) {
+      .dossier-inner {
+        padding-inline: 1.5rem;
+      }
+    }
+    .dossier-title {
+      font-family: var(--font-sans);
+      font-weight: 700;
+      font-size: clamp(1.5rem, 2.6vw, 2.35rem);
+      line-height: 0.98;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      color: var(--color-fg);
+      text-wrap: balance;
+    }
+    .dossier-lead {
+      margin-top: 0.7rem;
+      max-width: 46ch;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: var(--color-fg-muted);
+    }
+    .dossier-grid {
+      display: grid;
+      gap: clamp(1.75rem, 3vw, 3rem);
+      margin-top: clamp(1.75rem, 3vw, 2.5rem);
+    }
+    @media (min-width: 64rem) {
+      .dossier-grid {
+        /* Kolom ketiga milik still-nya, bukan baris judul. Kalau still masuk
+           baris judul, tinggi baris itu ikut 320 px dan menyisakan lubang
+           kosong di bawah judul — terukur pada percobaan pertama. */
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 15rem;
+      }
+    }
+    .dossier-col {
+      min-width: 0;
+    }
+    .dossier-label {
+      margin-bottom: 0.85rem;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--color-accent-amber);
+    }
+    .dossier-still {
+      margin: 0;
+      width: 15rem;
+      max-width: 100%;
+    }
+    /* Di bawah 64rem kolomnya cuma satu, jadi still-nya naik ke ATAS daftar:
+       ia memperkenalkan dokumennya sebelum orang membaca tujuh butirnya.
+       Dua perlakuan, karena satu lebar tidak berlaku untuk keduanya:
+         · ponsel (<=47,99rem): di TENGAH. Pada 390 px, 240 px menyisakan 120 px
+           kosong di kanan yang terbaca sebagai gambar yang lupa dirapikan.
+         · tablet (48-63,99rem): RATA KIRI dan sedikit lebih besar. Di tengah
+           pada 900 px, 240 px cuma 28% kolom — ia kehilangan bobot dan
+           memutus garis baca yang semua elemen lain mulai dari kiri. */
+    @media (max-width: 47.99rem) {
+      .dossier-still {
+        order: -1;
+        margin-inline: auto;
+      }
+    }
+    @media (min-width: 48rem) and (max-width: 63.99rem) {
+      .dossier-still {
+        order: -1;
+        width: 18rem;
+      }
+    }
+    .dossier-frame {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--color-line);
+      background: var(--color-surface-sunken);
+    }
+    .dossier-still-img {
+      display: block;
+      width: 100%;
+      height: auto;
+      filter: saturate(0.94) contrast(1.05) brightness(0.95);
+    }
+    .dossier-num {
+      position: absolute;
+      top: 0.55rem;
+      left: 0.7rem;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.3em;
+      color: rgb(255 255 255 / 0.86);
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 1px 12px rgb(4 6 10 / 0.9);
     }
 
     /* Ponsel DAN reduced-motion memakai bentuk yang sama: daftar bertumpuk,

@@ -908,6 +908,7 @@ export const jpTranslations: Record<string, string> = {
   "profile.loop_body": "同じ六つのステップを、一人ひとりに。ポノロゴの申込み用紙から日本到着まで、そしてまた最初へ。",
   "profile.req_title": "応募条件と必要書類",
   "profile.req_desc": "お申込み前にご確認ください。",
+  "profile.req_general_title": "応募資格",
   "profile.req_age": "男女とも18〜28歳",
   "profile.req_edu": "最終学歴が高校・専門学校卒以上",
   "profile.req_marital": "未婚・既婚いずれも可",
