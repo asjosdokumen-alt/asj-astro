@@ -103,9 +103,13 @@ function Stars({ rating, class: className }: { rating: number | null; class?: st
 }
 
 export default function ReviewGrid({ reviews, class: className }: Props) {
-  const grid = ['grid gap-4 sm:grid-cols-2 lg:grid-cols-3', className ?? '']
-    .filter(Boolean)
-    .join(' ');
+  // ── TWO COLUMNS, NOT THREE (2026-11-11) ─────────────────────────────────
+  // The grid was `sm:2 lg:3` while every slot was a placeholder of identical
+  // height. With four real quotes the third column leaves the fourth card
+  // ALONE on its own row, and because it is the longest quote it is also the
+  // tallest — measured at 1440px: three cards at 285px, then one at 374px under
+  // them. Four reviews are a 2×2, not a 3+1.
+  const grid = ['grid gap-4 sm:grid-cols-2', className ?? ''].filter(Boolean).join(' ');
 
   return (
     <ul class={grid} data-scroll-item>

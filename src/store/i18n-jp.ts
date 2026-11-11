@@ -1028,6 +1028,18 @@ export const jpTranslations: Record<string, string> = {
   "profile.review_cta_desc": "当校で学んだ経験や渡航経験のある方は、下のお問い合わせよりお聞かせください。",
   "profile.review_slot_pending": "口コミ未掲載",
   "profile.review_pending_author": "口コミ待ち",
+  // 2026-11-11 — 自社リスティングのGoogle口コミ4件。本文は英語のまま。
+  // これはGoogleによる自動翻訳で、原文はインドネシア語。引用は書き換えない
+  // （だから id 側と同じ英文）。名前は固有名詞なので両辞書で同一。
+  "profile.review_1_quote": "Looking at the map review? Don't hesitate. I've been to Japan through this LPK. The LPK near my house rejected me outright because I had a broken bone. The Amanah Sakura LPK accepted me and thank God.. I'm now here.. in Japan..",
+  "profile.review_1_name": "EL GASING",
+  "profile.review_2_quote": "Alhamdulillah, this LPK carries out its function as its name suggests, I am the first batch to study at this LPK, far from Padang, God willing, nothing is impossible, my age when I entered this LPK was quite old, namely 27, God willing, through this LPK I finally flew and worked in the land of the rising sun,",
+  "profile.review_2_name": "Feri Wahyudi",
+  "profile.review_3_quote": "LPK GACOR Se PONOROGO, There are lots of jobs, guaranteed to leave quickly, just wait for COE 3-4 months. Standard fees. Admin and sensei are very nice if you don't know, they explain until you understand. Thank you sensei 🥰🥰🥰 ...",
+  "profile.review_3_name": "Anggi ekadamayanti",
+  "profile.review_4_quote": "Konnichiwa, Sensei, and all the administrators of LPK AMANAH SAKURA JAPAN. I would like to express my deepest gratitude for all the help, guidance, and valuable opportunities given to me. Through this LPK, thank God, I was able to pass the interview and get a job in Japan, finally reaching this point of departure. Thank you for the hard work of Sensei and the staff in accompanying me from the beginning of the process. I apologize for any mistakes, and please pray for my smooth work there.",
+  "profile.review_4_name": "Angelina Julia Putri",
+  "profile.review_translated_note": "引用はGoogleの口コミからそのまま転記しています。表示文はGoogleによる自動翻訳で、原文はインドネシア語です。",
 
   // ── FAQ（#faq） — 2026-09-29 追加 ─────────────────────────────────────
   // 回答はすべて docs/COMPANY_PROFILE_DATA.md（会社の公式印刷プロフィール）から

@@ -4,16 +4,16 @@
  * ── WHY THIS FILE EXISTS, AND WHAT IT IS NOT ────────────────────────────────
  * The owner asked (2026-09-29) for a testimonial section, to be filled first from
  * the Google Maps reviews of our own listing, and upgraded later. This file is
- * the MODEL ONLY: the place is built, the reviews are deliberately EMPTY.
+ * the MODEL: the place is built, and since 2026-11-11 four real quotes fill it.
  *
  * ⚠ DO NOT WRITE A REVIEW HERE. `COMPANY_PROFILE_DATA.md` §8 records the standing
  * rule: an invented testimonial is banned — a quoted sentence attributed to a
  * named person who never said it is a fabricated claim about a third party, the
- * same class of error as inventing a partner (see partners.ts). The section
- * therefore ships with an explicit "review belum tayang" state, exactly as the
- * Mitra grid shipped with empty slots on 2026-09-27 and was filled two days
- * later. The empty state is a first-class rendering, not a placeholder to be
- * quietly swapped for filler.
+ * same class of error as inventing a partner (see partners.ts). Every quote below
+ * was transcribed from a screenshot of our own listing. The section shipped with
+ * an explicit "review belum tayang" state for six weeks precisely so that this
+ * file would stay empty until real words arrived — the empty state was a
+ * first-class rendering, not a placeholder to be quietly swapped for filler.
  *
  * ── WHAT IS REAL HERE, AND WHY THAT MATTERS ─────────────────────────────────
  * `REVIEW_SOURCE` carries facts that DO exist and are checkable — the Google
@@ -87,18 +87,81 @@ export interface Review {
 /**
  * The reviews.
  *
- * ALL SIX ARE EMPTY TODAY — this is the shipped state, not unfinished business.
- * The grid renders six honest pending cards, and each becomes a real quote the
- * moment the owner supplies one. The count six matches the Mitra grid so the two
- * social-proof sections read as a pair.
+ * ── FILLED 2026-11-11, FROM THE OWNER'S OWN LISTING ────────────────────────
+ * Four real Google Maps reviews, supplied by the owner as screenshots of the
+ * listing on 2026-11-11. Everything below is copied from those screenshots:
+ * the name exactly as Google shows it (including `Anggi ekadamayanti`, whose
+ * capitalisation is theirs, not a typo), the star row, and the text.
+ *
+ * ⚠ THE TEXT IS THE LISTING'S ENGLISH TRANSLATION, NOT THE REVIEWER'S ORIGINAL
+ * WORDS. Google served these with "Translated by Google · See original
+ * (Indonesian)" underneath, and the originals are in Indonesian. Publishing the
+ * translation as if it were the original would be a quiet rewrite of somebody
+ * else's sentence, so the section says out loud that it is a translation
+ * (`profile.review_translated_note`). The alternative — translating the English
+ * back into Indonesian ourselves — is worse: it is a translation of a
+ * translation, attributed verbatim to a named person.
+ *
+ * That is also why the `jp` dictionary carries the SAME English text: a quote is
+ * reproduced or noted, never silently rewritten. `profile.review_N_name` is
+ * invariant in both dictionaries for the same reason a licence number is.
+ *
+ * ── WHY FOUR SLOTS AND NOT SIX ─────────────────────────────────────────────
+ * The grid shipped with six, matching the Mitra grid, because six empty slots
+ * were the honest shape while nothing was quoted. With four real reviews in
+ * hand, two cards saying "Review belum tayang" would be a claim about our own
+ * incompleteness sitting next to the proof that it is not true. The count
+ * follows the evidence, not the other grid.
+ *
+ * The pending state still exists and is still first-class (see the header): a
+ * slot goes back to `quote: null` the moment its quote is withdrawn, and
+ * `ReviewGrid` renders it exactly as before.
  */
 export const REVIEWS: Review[] = [
-  { slot: 1, quote: null, author: null, rating: null, source: 'Google Maps', avatar: null },
-  { slot: 2, quote: null, author: null, rating: null, source: 'Google Maps', avatar: null },
-  { slot: 3, quote: null, author: null, rating: null, source: 'Google Maps', avatar: null },
-  { slot: 4, quote: null, author: null, rating: null, source: 'Google Maps', avatar: null },
-  { slot: 5, quote: null, author: null, rating: null, source: 'Instagram', avatar: null },
-  { slot: 6, quote: null, author: null, rating: null, source: 'TikTok', avatar: null },
+  {
+    slot: 1,
+    quote: {
+      key: 'profile.review_1_quote',
+      text: "Looking at the map review? Don't hesitate. I've been to Japan through this LPK. The LPK near my house rejected me outright because I had a broken bone. The Amanah Sakura LPK accepted me and thank God.. I'm now here.. in Japan..",
+    },
+    author: { key: 'profile.review_1_name', text: 'EL GASING' },
+    rating: 5,
+    source: 'Google Maps',
+    avatar: null,
+  },
+  {
+    slot: 2,
+    quote: {
+      key: 'profile.review_2_quote',
+      text: 'Alhamdulillah, this LPK carries out its function as its name suggests, I am the first batch to study at this LPK, far from Padang, God willing, nothing is impossible, my age when I entered this LPK was quite old, namely 27, God willing, through this LPK I finally flew and worked in the land of the rising sun,',
+    },
+    author: { key: 'profile.review_2_name', text: 'Feri Wahyudi' },
+    rating: 5,
+    source: 'Google Maps',
+    avatar: null,
+  },
+  {
+    slot: 3,
+    quote: {
+      key: 'profile.review_3_quote',
+      text: "LPK GACOR Se PONOROGO, There are lots of jobs, guaranteed to leave quickly, just wait for COE 3-4 months. Standard fees. Admin and sensei are very nice if you don't know, they explain until you understand. Thank you sensei 🥰🥰🥰 ...",
+    },
+    author: { key: 'profile.review_3_name', text: 'Anggi ekadamayanti' },
+    rating: 5,
+    source: 'Google Maps',
+    avatar: null,
+  },
+  {
+    slot: 4,
+    quote: {
+      key: 'profile.review_4_quote',
+      text: 'Konnichiwa, Sensei, and all the administrators of LPK AMANAH SAKURA JAPAN. I would like to express my deepest gratitude for all the help, guidance, and valuable opportunities given to me. Through this LPK, thank God, I was able to pass the interview and get a job in Japan, finally reaching this point of departure. Thank you for the hard work of Sensei and the staff in accompanying me from the beginning of the process. I apologize for any mistakes, and please pray for my smooth work there.',
+    },
+    author: { key: 'profile.review_4_name', text: 'Angelina Julia Putri' },
+    rating: 5,
+    source: 'Google Maps',
+    avatar: null,
+  },
 ];
 
 /** How many reviews are filled — derived, so it cannot drift from REVIEWS. */

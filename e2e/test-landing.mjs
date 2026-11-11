@@ -1292,6 +1292,48 @@ async function run() {
             `pending copy).`,
         );
       }
+
+      // ── EVERY QUOTED REVIEW MUST ACTUALLY REACH THE PAGE ─────────────────
+      // ADDED 2026-11-11, the day the first four real quotes arrived. The note
+      // above this test said "WHEN THE OWNER FILLS REVIEWS, THIS CHECK MUST BE
+      // STRENGTHENED" — while the set was empty, a per-quote loop would have
+      // been the vacuous pass R25 warns about. The set is no longer empty, so
+      // the loop is here, in the same anti-tautology shape as the partner gate:
+      // the expected string is read from the SOURCE FILE and compared against
+      // the RENDERED text, never against another copy of itself.
+      //
+      // ⚠ THE APOSTROPHE IS THE TRAP. These quotes are verbatim and contain
+      // `Don't` / `I've` / `don't`, so a single-quote-only pattern stops at the
+      // first apostrophe and compares a truncated prefix — which still passes
+      // for any quote whose opening words happen to render. The pattern below
+      // accepts both quote styles and closes on the one it opened with.
+      //
+      // ⚠ AND THE TRAILING COMMA IS THE SECOND TRAP, found by killing this check
+      // on purpose: `text: '…',` puts a comma between the closing quote and the
+      // `}`, so a pattern that demands `quote\s*}` right after the text does not
+      // fail loudly — it silently backtracks, swallows the NEXT entries and
+      // reports 2 quotes out of 4. `,?` is what keeps each match inside its own
+      // entry; the count guard below is what caught it.
+      const quoteRe = /quote:\s*\{\s*key:\s*'([^']+)',\s*text:\s*(['"])([\s\S]*?)\2\s*,?\s*\}/g;
+      const quoted = [...block.matchAll(quoteRe)].map((m) => ({ key: m[1], text: m[3] }));
+      if (quoted.length !== rows.length - unfilled) {
+        throw new Error(
+          `parsed ${quoted.length} quote(s) out of ${rows.length - unfilled} filled slot(s) — ` +
+            'the parse is broken, so this check would pass vacuously. Fix the parse; do not ' +
+            'weaken this guard.',
+        );
+      }
+      const flat = d.reviewText ?? '';
+      for (const q of quoted) {
+        const wanted = q.text.replace(/\s+/g, ' ').trim();
+        if (!flat.includes(wanted)) {
+          throw new Error(
+            `${q.key} is in the data but its text does not appear in #testimoni. A quote the ` +
+              `page does not print is a review the visitor cannot read. Looked for: ` +
+              `"${wanted.slice(0, 80)}…"`,
+          );
+        }
+      }
     });
 
     // ── FAQ: one row per question in the data ──────────────────────────────

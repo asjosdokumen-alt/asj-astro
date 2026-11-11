@@ -978,6 +978,18 @@ import { GALLERY } from '../lib/gallery';
       <div class="mt-6">
         <ReviewGrid reviews={REVIEWS} />
       </div>
+      {/* Catatan kejujuran, bukan hiasan: keempat kutipan itu SALINAN dari
+          listing, dan yang tampil di listing adalah terjemahan otomatis Google
+          dari ulasan berbahasa Indonesia. Menampilkannya tanpa catatan berarti
+          pembaca mengira itu kalimat asli penulisnya. Ditaruh SETELAH grid
+          supaya terbaca sebagai keterangan atas kutipan, bukan sebagai
+          peringatan sebelum membacanya. */}
+      <p
+        data-lang="profile.review_translated_note"
+        class="mt-4 max-w-[70ch] text-caption text-fg-muted"
+      >
+        Kutipan disalin apa adanya dari ulasan Google. Teks yang tampil adalah terjemahan otomatis Google; ulasan aslinya berbahasa Indonesia.
+      </p>
       <p
         data-lang="profile.review_cta_desc"
         class="mt-6 max-w-[70ch] text-body-sm text-fg-muted"
