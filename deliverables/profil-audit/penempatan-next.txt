@@ -1,0 +1,281 @@
+    <!-- Section: Penempatan Kami (R4, pages 13 and 14).
+         WHY THIS REPLACES TESTIMONIALS. The mockup put quotes in this slot; the
+         company profile contains none. It does contain something more useful —
+         dated interview banners — so the slot shows provable evidence instead of
+         invented praise.
+
+         CORRECTED 2026-10-30. This section used to present the document's four
+         prefectures as the company's COVERAGE. The owner corrected that: five
+         sectors was the founding footprint, and placement now reaches every
+         field and all 47 prefectures through partner LPKs. The section therefore
+         renders TWO lists — PLACEMENT_COVERAGE, then PLACEMENTS under the heading
+         `profile.place_evidence_title` — because a single list put "Seluruh 47
+         prefektur" directly above "Kagoshima" and read as a contradiction.
+
+         BENTUKNYA: BABAK STILL, BUKAN KARTU (2026-11-11). Owner memilih arah
+         "perluas film ke beberapa seksi". Seksi ini yang paling jelas: isinya
+         tentang BERANGKAT, dan kita sudah punya plat keberangkatan
+         (`05-terbang.webp`, 1536x904) yang selama ini menganggur sebagai spare.
+         Jadi banner peta kartun — bahasa gambar yang berbeda dari plat film —
+         turun pangkat jadi DIAGRAM KECIL di sebelah kanan daftar, bukan lagi
+         gambar utama.
+
+         Yang dipakai dari tata bahasa film: plat penuh tanpa bingkai, scrim satu
+         arah dari kiri, judul kapital 700, garis rambut di atas badan teks, dan
+         daftar yang dibaca sebagai CREDIT (baris + garis), bukan kartu. Tidak ada
+         panggung sticky di sini: halaman ini tetap punya SATU panggung (#alur) —
+         hukum "satu seam" di skill `scroll-cinema`. -->
+    <Section id="penempatan" bleed drift={false} labelledBy="penempatan-title" enter="curtain">
+      <div class="still">
+        <div class="still-plate">
+          <img
+            class="still-img"
+            src="/assets/story/wide/05-terbang.webp"
+            alt="Peserta menunggu keberangkatan di ruang tunggu bandara; pesawat terlihat di luar jendela saat matahari terbenam."
+            width="1536"
+            height="904"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+        <div class="still-scrim" aria-hidden="true"></div>
+        <div class="still-copy">
+          <h2 id="penempatan-title" data-lang="profile.place_title" class="still-title">
+            Penempatan Kami
+          </h2>
+          <p data-lang="profile.place_desc" class="still-lead">
+            Melalui jejaring mitra LPK, kami menempatkan ke seluruh bidang dan seluruh 47 prefektur di Jepang.
+          </p>
+        </div>
+      </div>
+
+      <div class="still-body">
+        <div class="still-credits">
+          {/* Two lists, not one. The first answers "do you place in my field and
+              my prefecture"; the second is evidence with dates behind it. They
+              were a single `dl` for part of 2026-10-30 and it read as a
+              contradiction on screen ("Seluruh 47 prefektur" immediately above
+              "Kagoshima"), so the heading between them is load-bearing. */}
+          <FactList facts={PLACEMENT_COVERAGE} accent="identity" />
+          <h3 data-lang="profile.place_evidence_title" class="still-sub">
+            Jejak penempatan tercatat
+          </h3>
+          <FactList facts={PLACEMENTS} accent="identity" />
+          <p data-lang="profile.place_note" class="still-note">
+            Nama prefektur ditulis dalam huruf Latin, sesuai dokumen resmi.
+          </p>
+        </div>
+
+        {/* Peta turun pangkat, bukan dibuang: ia satu-satunya gambar yang
+            mengatakan "47 prefektur" secara visual. Sebagai diagram kecil ia
+            terbaca sebagai keterangan, bukan sebagai pemandangan — dan itu
+            memang perannya sekarang. */}
+        <figure class="still-map">
+          <picture>
+            <source
+              type="image/avif"
+              srcset="/assets/ilustrasi/penempatan-banner.avif 1x, /assets/ilustrasi/penempatan-banner@2x.avif 2x"
+            />
+            <source
+              type="image/webp"
+              srcset="/assets/ilustrasi/penempatan-banner.webp 1x, /assets/ilustrasi/penempatan-banner@2x.webp 2x"
+            />
+            <img
+              src="/assets/ilustrasi/penempatan-banner.webp"
+              alt="Peta Jepang bergaya ilustrasi dengan penanda wilayah Kyushu, Shikoku, Honshu, Tokyo, dan Okinawa."
+              width="1200"
+              height="900"
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
+        </figure>
+      </div>
+    </Section>
+
+/* ════════════════════════════════════════════════════════════════════════════
+   CSS YANG HARUS DITAMBAHKAN — di src/pages/index.astro, blok <style is:global>,
+   tepat SEBELUM komentar "Ponsel DAN reduced-motion memakai bentuk yang sama"
+   (sesudah aturan `.dossier-num`).
+   ════════════════════════════════════════════════════════════════════════════ */
+
+    /* ── BABAK STILL: seksi yang punya plat sendiri, tanpa panggung ────────
+       Bedanya dengan #alur: di sini TIDAK ada track/scroll progress. Halaman
+       ini tetap punya SATU panggung (hukum "satu seam"); babak still hanya
+       meminjam tata bahasanya — plat penuh, scrim satu arah, judul kapital,
+       garis rambut, dan daftar yang dibaca sebagai credit.
+
+       Tinggi `min(88svh, 52rem)` dan bukan 100svh: 100svh membuat tiap babak
+       terasa seperti halaman baru, dan itu yang bikin rangkaiannya kembali
+       terbaca sebagai tumpukan section. */
+    .still {
+      position: relative;
+      height: min(88svh, 52rem);
+      min-height: 30rem;
+      overflow: hidden;
+      background: #05070c;
+    }
+    .still-plate {
+      position: absolute;
+      inset: 0;
+    }
+    .still-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      /* 62%: subjek plat keberangkatan ada di kanan-tengah; 50% memotong
+         wajahnya di tepi kanan pada layar sempit. */
+      object-position: 62% 50%;
+      filter: saturate(0.94) contrast(1.06) brightness(0.92);
+    }
+    .still-scrim {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(
+          90deg,
+          rgb(4 6 10 / 0.94) 0%,
+          rgb(4 6 10 / 0.86) 26%,
+          rgb(4 6 10 / 0.45) 52%,
+          rgb(4 6 10 / 0) 76%
+        ),
+        linear-gradient(to top, rgb(4 6 10 / 0.78) 0%, rgb(4 6 10 / 0) 34%);
+    }
+    .still-copy {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: min(46rem, 54%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-left: max(1.5rem, 6vw);
+      color: #f4f6f8;
+      text-shadow: 0 2px 30px rgb(4 6 10 / 0.7);
+    }
+    .still-title {
+      font-family: var(--font-sans);
+      font-weight: 700;
+      font-size: clamp(1.9rem, 4.2vw, 3.4rem);
+      line-height: 0.98;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      color: #fff;
+      text-wrap: balance;
+    }
+    .still-lead {
+      margin-top: 1.5rem;
+      padding-top: 1.15rem;
+      border-top: 1px solid rgb(255 255 255 / 0.22);
+      max-width: 40ch;
+      font-size: clamp(0.9rem, 1.05vw, 1rem);
+      line-height: 1.75;
+      color: rgb(244 246 248 / 0.82);
+    }
+
+    /* Bagian bawah: daftar dibaca sebagai CREDIT — baris dan garis, tanpa
+       kartu. `dl` dari FactList kehilangan bingkai/bg/radius di sini; garis
+       antar-barisnya sudah ada (`divide-y divide-line`). */
+    .still-body {
+      display: grid;
+      gap: clamp(2rem, 4vw, 3.5rem);
+      width: 100%;
+      max-width: 80rem;
+      margin-inline: auto;
+      padding: clamp(2.5rem, 5vw, 4rem) 1rem clamp(2rem, 4vw, 3rem);
+    }
+    @media (min-width: 48rem) {
+      .still-body {
+        padding-inline: 1.5rem;
+      }
+    }
+    @media (min-width: 64rem) {
+      .still-body {
+        grid-template-columns: minmax(0, 1fr) 20rem;
+        align-items: start;
+      }
+    }
+    .still-credits dl {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .still-sub {
+      margin: 2rem 0 0.9rem;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: var(--color-fg);
+    }
+    .still-note {
+      margin-top: 1.4rem;
+      max-width: 70ch;
+      font-size: 0.875rem;
+      line-height: 1.7;
+      color: var(--color-fg-muted);
+    }
+    .still-map {
+      margin: 0;
+    }
+    .still-map img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--color-line);
+    }
+
+    /* Di bawah 861px tidak ada ruang untuk teks DI ATAS gambar: judul 2 baris
+       + lead menutupi subjeknya. Jadi platnya jadi gambar biasa dan teksnya
+       turun ke bawah, di atas latar halaman — bentuk yang sama dengan
+       `.dossier` di ponsel. */
+    @media (max-width: 860px) {
+      .still {
+        height: auto;
+        min-height: 0;
+      }
+      .still-plate {
+        position: relative;
+        aspect-ratio: 4 / 5;
+      }
+      .still-scrim {
+        display: none;
+      }
+      .still-copy {
+        position: static;
+        width: auto;
+        height: auto;
+        padding: 1.75rem 1rem 0;
+        color: var(--color-fg);
+        text-shadow: none;
+      }
+      .still-title {
+        color: var(--color-fg);
+      }
+      .still-lead {
+        color: var(--color-fg-muted);
+        border-top-color: var(--color-line);
+      }
+    }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   LANGKAH PEMASANGAN (urutan penting)
+   ════════════════════════════════════════════════════════════════════════════
+   1. Salin plat: deliverables/story-3d/assets/wide/05-terbang.webp
+      -> public/assets/story/wide/05-terbang.webp
+      Nama TIDAK boleh sama dengan yang sudah ada; `/assets/*` immutable setahun.
+   2. Daftarkan di scripts/ci/verify-assets.mjs, set ILLUSTRATIONS, sesudah
+      'story/wide/04-paspor.webp':  'story/wide/05-terbang.webp'
+      + catatan basis (render generated, tanpa orang yang bisa dikenali).
+   3. Ganti blok <Section id="penempatan" ...> ... </Section> di
+      src/pages/index.astro (baris 501-609 pada commit 9194e29) dengan isi
+      berkas ini sampai penanda CSS di atas.
+   4. Tambahkan CSS-nya sebelum komentar "Ponsel DAN reduced-motion ...".
+   5. Hapus `#penempatan` dari daftar yang masih memakai bingkai kartu bila ada.
+   6. Gate: verify:assets · verify:classes · typecheck · vitest frontend ·
+      e2e:landing · e2e:headings · e2e:contrast (0 di bawah lantai).
+   7. Ukur: `HTTP_PROXY= NO_PROXY=localhost,127.0.0.1 node
+      deliverables/profil-audit/probe-dual.mjs` lalu lihat dual-light-*.
+   ════════════════════════════════════════════════════════════════════════════ */
