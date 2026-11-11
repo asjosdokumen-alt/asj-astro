@@ -1336,6 +1336,73 @@ async function run() {
       }
     });
 
+    // ── THE FILM'S CLIPS MUST BE VISIBLE, NOT MERELY PLAYING ───────────────
+    // ADDED 2026-11-11, the day the owner asked "kemana semua video yg di
+    // generated tadi kok cuma gambar sama motion saja". Nothing was missing:
+    // every clip was in `public/`, every `<video>` was playing, and the probe
+    // that "proved" it measured `currentTime` — which advances whether or not
+    // anybody can see the frame. The one rule that raises the clip's opacity
+    // (`.film-ch.is-on .film-vid`) lived INSIDE the `max-width: 860px` media
+    // query, so on every desktop the clip ran behind an `opacity: 0` layer and
+    // the poster's pan/zoom was all a visitor ever saw. **Playing ≠ visible**,
+    // and this is the check that says so.
+    //
+    // Desktop only: below 861px the film is the stacked layout, whose clips are
+    // revealed by the same rule inside that media query and played by a second
+    // observer — different machinery, and the band is not sticky there.
+    if (width >= 1024) {
+      await test(`${width}px /: the film band shows a running clip, not just a poster`, async () => {
+        const ctx = await browser.newContext({
+          viewport: { width, height: 900 },
+          deviceScaleFactor: 1,
+        });
+        const page = await ctx.newPage();
+        try {
+          await page.goto(`${BASE}/`, { waitUntil: 'networkidle', timeout: 45000 });
+          const top = await page.evaluate(() => {
+            const t = document.querySelector('[data-film-track]');
+            return t ? t.getBoundingClientRect().top + window.scrollY : null;
+          });
+          if (top === null) throw new Error('no [data-film-track] — the film band is gone');
+          // Park INSIDE the first chapter. The band is sticky, so the stage is
+          // on screen from here until the track runs out.
+          await page.evaluate((y) => window.scrollTo(0, y), top + 40);
+          await page.waitForTimeout(2200);
+          const st = await page.evaluate(() => {
+            const ch = document.querySelector('[data-film-ch].is-on');
+            if (!ch) return { why: 'no chapter carries `is-on` — the driver is not running' };
+            const v = [...ch.querySelectorAll('video')].find(
+              (el) => getComputedStyle(el).display !== 'none',
+            );
+            if (!v) return { why: 'the active chapter has no clip at all' };
+            return {
+              src: (v.currentSrc || '').split('/').pop(),
+              op: parseFloat(getComputedStyle(v).opacity),
+              paused: v.paused,
+              t: v.currentTime,
+            };
+          });
+          if (st.why) throw new Error(st.why);
+          if (st.op < 0.9) {
+            throw new Error(
+              `the clip is at opacity ${st.op} — it plays BEHIND an invisible layer, so the ` +
+                `visitor sees only the poster's pan/zoom. That is exactly the bug measured on ` +
+                `2026-11-11: the reveal rule sat inside the mobile media query.`,
+            );
+          }
+          if (st.paused || !(st.t > 0)) {
+            throw new Error(
+              `the clip is not running (paused=${st.paused}, currentTime=${st.t}) — ` +
+                `${st.src || 'no src'}. A paused clip under a visible layer is a still image ` +
+                `with extra bytes.`,
+            );
+          }
+        } finally {
+          await ctx.close();
+        }
+      });
+    }
+
     // ── FAQ: one row per question in the data ──────────────────────────────
     // ADDED 2026-09-29 with the #faq section. Mirrors the testimonial gate's
     // shape deliberately, including its two anti-vacuity guards, because the

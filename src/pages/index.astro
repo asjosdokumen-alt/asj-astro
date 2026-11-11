@@ -1512,6 +1512,22 @@ import { GALLERY } from '../lib/gallery';
       opacity: 0;
       transition: opacity 0.5s ease;
     }
+    /* ── KENAPA BARIS INI DI LUAR MEDIA QUERY (2026-11-11) ──────────────────
+       Sampai hari ini satu-satunya aturan yang menyalakan klip ada DI DALAM
+       blok `@media (max-width: 860px), (prefers-reduced-motion: reduce)`.
+       Akibatnya di desktop `.film-vid` tetap `opacity: 0` selamanya: klipnya
+       benar-benar diputar (decoder jalan, `currentTime` maju) tetapi
+       transparan, dan yang terlihat hanya poster `.film-img` dengan pan/zoom
+       `.u-alive` — persis keluhan owner "cuma gambar sama motion saja".
+
+       ⚠ Ini kelas kegagalan yang lolos dari gate mana pun: probe lama
+       membuktikan "desktop 1440 memutar wide/02-latihan.mp4 (1 decoder)" dan
+       itu BENAR — yang tidak diukur adalah apakah hasilnya TERLIHAT. Putar ≠
+       tampil. Kalau mengukur klip lagi, ukur `opacity` elemen yang menang, atau
+       ambil piksel. */
+    .film-ch.is-on .film-vid {
+      opacity: 1;
+    }
     .film-vid--p {
       display: none;
     }
