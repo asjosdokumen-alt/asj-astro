@@ -202,10 +202,16 @@ sekarang dipakai di situs:
 
 ### Aset baru — 6 plat 3:2 + 1
 
-`assets/wide/{01-daftar,02-latihan,03-wawancara,04-dokumen,05-mcu,06-tiba}.webp`
+`assets/wide/{01-daftar,02-latihan,03-wawancara,04-paspor,05-mcu,06-tiba}.webp`
 — 48–69 KB masing-masing, total ±395 KB. Semua di-outpaint dari potret yang sudah
 ada (`input_fidelity: high`), watermark dipotong `crop=1536:904:0:0` (buang 120 px
 bawah). Sumber PNG 13 MB TIDAK di-track (`.gitignore` baris baru).
+
+> **04 berganti nama 2026-11-11.** Semula `04-dokumen`; plate 3:2-nya keluar sebagai
+> booklet burgundy **kosong** (tanpa lambang, tanpa huruf) sehingga terbaca sebagai
+> kotak coklat di band full-bleed. Kedua plate digenerate ulang: paspor RI sampul
+> hijau tua, Garuda emas, `REPUBLIK INDONESIA` / `PASPOR`. Nama ikut berganti karena
+> `/assets/*` di-cache `immutable` setahun.
 
 `00-hero.webp` dan `05-terbang.webp` disimpan di sini sebagai **spare**, tidak
 dipakai situs: hero untuk closing band, keberangkatan untuk langkah yang belum ada.

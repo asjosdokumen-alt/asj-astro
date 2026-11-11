@@ -220,9 +220,18 @@ plus dua klip 5 detik. Semuanya di `public/assets/story/`.
 | 01 | `01-daftar.webp` | 1024×1464 | mengisi formulir, polo Amanah |
 | 02 | `02-latihan.webp` + `.mp4` | 1024×1464 · 800×1076 | mengajar di papan tulis, polo Amanah |
 | 03 | `03-wawancara.webp` | 1024×1464 | kemeja putih + blazer hitam |
-| 04 | `04-dokumen.webp` | 1024×1464 | tangan menandatangani, lengan polo + manset |
-| 05 | `05-terbang.webp` | 1024×1464 | jaket bebas + badge Amanah di bandara |
+| 04 | `04-paspor.webp` | 1024×1464 | mengangkat paspor RI (sampul hijau, Garuda emas), lengan polo + manset |
+| 05 | `05-mcu.webp` + `.mp4` | 1024×1464 · 800×1076 | menandatangani formulir MCU, stetoskop, polo Amanah |
 | 06 | `06-tiba.webp` + `.mp4` | 1024×1464 · 800×1076 | kimono ivory + obi merah |
+
+**Koreksi 2026-11-11 — slot 04.** Berkasnya semula `04-dokumen.webp`. Di plate 3:2,
+paspor hasil outpaint keluar sebagai **booklet burgundy kosong**: tanpa lambang,
+tanpa huruf, sehingga di band full-bleed ia terbaca sebagai kotak coklat — bukan
+dokumen. Kedua plate (potret + 3:2) digenerate ulang dengan satu subjek yang jelas:
+paspor RI **sampul hijau tua, Garuda Pancasila emas, tulisan `REPUBLIK INDONESIA`
+dan `PASPOR`**. Namanya ikut berubah (`04-paspor.webp`) karena `/assets/*` disajikan
+`immutable` setahun — mengganti isi di nama lama berarti pengunjung lama tetap
+melihat booklet kosong sampai cache-nya kedaluwarsa.
 
 **Kenapa potret, padahal kartu lama lanskap.** Plate-nya render setengah badan;
 memaksanya ke 7:5 memotong kepala. Jadi `.story-media` memakai

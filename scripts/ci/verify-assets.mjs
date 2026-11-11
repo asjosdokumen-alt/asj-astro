@@ -223,6 +223,17 @@ const DIRECT_REF_SOURCES = [
   //                                and its variant were outside every check.
   join(ROOT, 'src/components/public/LayananSection.astro'),
   join(ROOT, 'src/components/forms/ApplyFullForm.tsx'),
+  // ── ADDED 2026-11-11, same reason again: this file renders twelve assets and
+  // the gate could not see one of them.
+  //
+  // `StoryFilm.tsx` holds the six portrait plates and six 3:2 plates of the
+  // `#alur` band. Until it was listed here every one of those twelve files
+  // reported "ILLUSTRATION LISTED BUT NOT RENDERED" — a warning that reads like
+  // stale bookkeeping and is actually the gate saying it cannot see the band at
+  // all. The consequence was measured, not theoretical: the 3:2 passport plate
+  // shipped as a blank booklet and no gate had an opinion, because the reference
+  // was outside the scan. A path typo here would 404 the band silently.
+  join(ROOT, 'src/components/public/StoryFilm.tsx'),
 ];
 
 /**
@@ -767,7 +778,18 @@ const ILLUSTRATIONS = new Set([
   'story/01-daftar.webp',
   'story/02-latihan.webp',
   'story/03-wawancara.webp',
-  'story/04-dokumen.webp',
+  // RENAMED 2026-11-11, `04-dokumen` -> `04-paspor`. The old 3:2 plate had
+  // outpainted the passport into a BLANK burgundy booklet — no emblem, no
+  // lettering — so at full-bleed the step read as "brown rectangle", which is
+  // what the owner reported. Both plates were regenerated around one subject:
+  // a closed Indonesian passport, dark green cover, gold Garuda Pancasila and
+  // gold `REPUBLIK INDONESIA` / `PASPOR`. The rename is not cosmetic:
+  // `netlify.toml` serves `/assets/*` as `immutable` for a year, so replacing
+  // the bytes under the old name would have left returning visitors looking at
+  // the blank booklet until 2027. Same criterion and same outfit as its
+  // neighbours — generated drawing, no person whose likeness it is, charcoal
+  // Amanah sleeve with the magenta cuff.
+  'story/04-paspor.webp',
   'story/05-mcu.webp',
   'story/06-tiba.webp',
   // ADDED 2026-11-11 — the same six scenes re-framed 3:2 for the full-bleed
@@ -783,7 +805,7 @@ const ILLUSTRATIONS = new Set([
   'story/wide/01-daftar.webp',
   'story/wide/02-latihan.webp',
   'story/wide/03-wawancara.webp',
-  'story/wide/04-dokumen.webp',
+  'story/wide/04-paspor.webp',
   'story/wide/05-mcu.webp',
   'story/wide/06-tiba.webp',
   // The footer emblem, localised off Supabase on 2026-09-24. A logo is a mark,

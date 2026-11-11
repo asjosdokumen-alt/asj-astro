@@ -81,12 +81,12 @@ const MEDIA = [
     alt: 'Ilustrasi wawancara kerja: peserta berkemeja putih dan blazer hitam berhadapan dengan pewawancara.',
   },
   {
-    portrait: '/assets/story/04-dokumen.webp',
-    wide: '/assets/story/wide/04-dokumen.webp',
+    portrait: '/assets/story/04-paspor.webp',
+    wide: '/assets/story/wide/04-paspor.webp',
     mp4: null,
     mp4w: null,
     focus: '58% 52%',
-    alt: 'Ilustrasi tangan memegang paspor di atas meja dengan berkas dan pena, lengan polo LPK Amanah.',
+    alt: 'Ilustrasi tangan mengangkat paspor Republik Indonesia bersampul hijau dengan lambang Garuda emas, di atas meja berisi berkas dan pena, lengan polo LPK Amanah.',
   },
   {
     portrait: '/assets/story/05-mcu.webp',
