@@ -507,7 +507,21 @@ const orgJsonLd = jsonLdScript(
     // ─── Auth managed by Nanostores (authReactive.ts) ───
     // ─── Fase 5: Service Worker + Auto-Reload ───
     if ('serviceWorker' in navigator) {
-      if (location.hostname.includes('localhost') || location.hostname.includes('127.0.0.1')) {
+      // ── WHY LOCALHOST UNREGISTERS, AND THE ONE ESCAPE HATCH ─────────────
+      // A dev server that keeps a service worker serves yesterday's bundle
+      // forever — that is why this branch exists at all.
+      //
+      // ⚠ BUT THE SW IS ALSO AN INSTALL CRITERION. Chrome only offers "Install
+      // app" (and only fires `beforeinstallprompt`) when a service worker with
+      // a fetch handler controls the page. So on localhost the PWA is NOT
+      // installable by construction, which is exactly what the owner hit on
+      // 2026-11-11: the button could only show instructions because the browser
+      // never offered anything. `?pwa=1` opts this tab into the real thing —
+      // opt-in, so ordinary development stays cache-free.
+      const isLocal =
+        location.hostname.includes('localhost') || location.hostname.includes('127.0.0.1');
+      const wantsPwa = new URLSearchParams(location.search).get('pwa') === '1';
+      if (isLocal && !wantsPwa) {
         navigator.serviceWorker.getRegistrations().then(function(regs) {
           regs.forEach(function(r) { r.unregister(); });
           caches.keys().then(function(ks) { ks.forEach(function(k) { caches.delete(k); }); });

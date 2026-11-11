@@ -258,7 +258,66 @@ export default function App(
     return () => window.removeEventListener("asj-kandidat-login", handler);
   }, []);
 
-  function installApp() { showToast("Install: Chrome > Menu > Home Screen", "info"); setMenuOpen(false); }
+  /**
+   * ── PWA INSTALL: THE REAL PROMPT, NOT A TOAST (2026-11-11) ───────────────
+   * Owner: "perasaan dulu bisa langsung install pwa nya kenapa sekarang cuma
+   * petunjuk untuk instal".
+   *
+   * The button never had a prompt behind it — it always showed a toast, and the
+   * only way to install was Chrome's own address-bar affordance, which appears
+   * only when the app is installable. So there was nothing to regress: the
+   * feature the owner remembers was never wired to this button.
+   *
+   * `beforeinstallprompt` fires once, after Chrome has decided the app is
+   * installable, and it is the ONLY way to open the native sheet from our own
+   * UI. It must be `preventDefault()`ed (otherwise Chrome shows its own
+   * mini-infobar and the event is spent) and the event kept until the user asks.
+   * iOS never fires it — Safari has no programmatic install — so the fallback
+   * stays, but it now names the iOS steps instead of telling an iPhone to open
+   * Chrome's menu.
+   */
+  const [installEvt, setInstallEvt] = useState<Event | null>(null);
+  const [installed, setInstalled] = useState(false);
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallEvt(e);
+    };
+    const onInstalled = () => {
+      setInstalled(true);
+      setInstallEvt(null);
+    };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    try {
+      if (window.matchMedia('(display-mode: standalone)').matches) setInstalled(true);
+    } catch {
+      /* matchMedia is absent in some test environments; the listener still works */
+    }
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+
+  async function installApp() {
+    setMenuOpen(false);
+    const evt = installEvt as unknown as
+      | { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
+      | null;
+    if (evt) {
+      await evt.prompt();
+      const choice = await evt.userChoice;
+      if (choice.outcome === 'accepted') showToast('ui.install_started', 'success');
+      setInstallEvt(null);
+      return;
+    }
+    const ua = navigator.userAgent;
+    const isIos =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    showToast(isIos ? 'ui.install_how_ios' : 'ui.install_how_android', 'info');
+  }
 
   /* ─── Drawer keyboard contract ────────────────────────────────────────
      MEASURED 2026-09-16 on the built artifact at 390x844, BEFORE this block
@@ -1191,7 +1250,7 @@ export default function App(
                 state on the page (2.54:1) — lightening a gradient always cuts
                 white-text contrast, so the hover must darken instead. Measured
                 on the built 404 page, which uses the same pair: 3.71:1 before. */}
-            <button type="button" onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>
+            {!installed && (<button type="button" onClick={installApp} class="w-full py-3 bg-gradient-to-r from-emerald-700 to-sky-700 hover:from-emerald-800 hover:to-sky-800 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center"><Icon name="mobile-alt" class="mr-2" /> {t("ui.install_app")}</button>)}
             <button type="button" onClick={toggleLang} aria-label="Toggle language" class="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm transition flex items-center justify-center gap-2"><Icon name="language" /> {t("ui.language")} <span>{lang === "id" ? "ID" : "JP"}</span></button>
           </div>
           {hydrated && !u.isLoggedIn && (<div class="space-y-3">
