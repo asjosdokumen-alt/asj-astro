@@ -1447,6 +1447,9 @@ export const translations: Record<Lang, Record<string, string>> = {
   // not the boundary of what the company can do.
   "profile.place_evidence_title": "Jejak penempatan tercatat",
   "profile.place_note": "Nama prefektur ditulis dalam huruf Latin, sesuai dokumen resmi.",
+  "profile.place_stat_pref": "Prefektur",
+  "profile.place_stat_field": "Bidang",
+  "profile.place_empty": "Belum ada catatan penempatan di wilayah ini; jangkauan mitra tetap mencakup seluruh prefektur.",
 
   // ── Mitra Kami (slot mitra MoU — model sponsor) ───────────────────────
   // Owner's request 2026-09-27. ASJ is a small LPK without SO status, so the

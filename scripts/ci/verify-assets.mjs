@@ -677,6 +677,13 @@ for (const line of ignoreLines) {
  * re-examined rather than inherited.
  */
 const ILLUSTRATIONS = new Set([
+  // ADDED 2026-11-11 — the base layer of the interactive placement map. NASA
+  // Blue Marble (Shaded Relief + Bathymetry) served by GIBS for the exact Web
+  // Mercator box the SVG is projected into, so the prefecture paths land on the
+  // coastline instead of near it. Public domain, and there is no subject who
+  // could consent or refuse — §11.2 has nothing to attach to, the same basis as
+  // the rest of this set.
+  'ilustrasi/japan-satelit.jpg',
   // RENAMED 2026-11-11, `hero-sakura` -> `hero-sakura-asj`. The owner asked for
   // the invented "ASJ PORTAL" wordmark printed on the jacket to become the real
   // ASJ emblem, and nothing else in the artwork to change. That is a pixel edit,
