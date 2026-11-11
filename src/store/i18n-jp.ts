@@ -2571,7 +2571,7 @@ export const jpTranslations: Record<string, string> = {
     // previews cannot run JS); BaseLayout assigns document.title from these
     // keys after hydration and on every toggle. The company's legal name stays
     // as-is in both languages, which is why every entry keeps it verbatim.
-    "doc.title_home": "PT Amanah Sakura Japan — 求人ポータル",
+    "doc.title_home": "PT Amanah Sakura Japan — 日本語研修・就職支援",
     "doc.needs_js": "このページには JavaScript が必要です。JavaScript を有効にして再読み込みしてください。",
     "doc.title_loker": "求人情報 — PT Amanah Sakura Japan",
     "doc.title_public": "求人・サービス — ASJポータル",

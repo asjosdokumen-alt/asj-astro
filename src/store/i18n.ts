@@ -2927,7 +2927,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // <title>, but another gate matches `/<title>([\s\S]*?)<\/title>/`, and
     // adding an attribute to that tag would break it. Same reasoning the skill
     // for this defect class records.
-    "doc.title_home": "PT Amanah Sakura Japan — Job Portal",
+    "doc.title_home": "LPK Amanah Sakura Japan — Pelatihan & Penempatan ke Jepang",
     // Ditampilkan oleh `<noscript>` di BaseLayout untuk rute `client:only`
     // (lihat Props.requiresJs). Nilai JP-nya TIDAK TERJANGKAU saat runtime —
     // `<noscript>` hanya dirender ketika skrip mati, jadi `translateDataLang()`

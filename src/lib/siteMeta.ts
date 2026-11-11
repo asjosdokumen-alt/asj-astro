@@ -153,7 +153,10 @@ export function hreflangAlternates(
   const id = absoluteUrl(paths.id, origin);
   const jp = absoluteUrl(paths.jp, origin);
   if (id) entries.push({ hreflang: 'id', href: id });
-  if (jp) entries.push({ hreflang: 'jp', href: jp });
+  // 'ja', BUKAN 'jp': kode bahasa Jepang adalah ISO 639-1 `ja`. `hreflang="jp"
+  // ` adalah kode NEGARA, bukan bahasa, dan Google MENGABAIKANNYA — artinya versi
+  // Jepang halaman ini tidak pernah terdeklarasi sampai 2026-11-11.
+  if (jp) entries.push({ hreflang: 'ja', href: jp });
   // `x-default` points at the Indonesian page: it is the server-rendered default
   // (BaseLayout's `<title>` and every page's static copy are Indonesian), so the
   // declared default matches what a crawler actually receives.
