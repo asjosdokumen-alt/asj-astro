@@ -572,14 +572,14 @@ export default function App(
             />
             <source
               type="image/avif"
-              srcset="/assets/ilustrasi/hero-sakura.avif 1x, /assets/ilustrasi/hero-sakura@2x.avif 2x"
+              srcset="/assets/ilustrasi/hero-sakura-asj.avif 1x, /assets/ilustrasi/hero-sakura-asj@2x.avif 2x"
             />
             <source
               type="image/webp"
-              srcset="/assets/ilustrasi/hero-sakura.webp 1x, /assets/ilustrasi/hero-sakura@2x.webp 2x"
+              srcset="/assets/ilustrasi/hero-sakura-asj.webp 1x, /assets/ilustrasi/hero-sakura-asj@2x.webp 2x"
             />
             <img
-              src="/assets/ilustrasi/hero-sakura.webp"
+              src="/assets/ilustrasi/hero-sakura-asj.webp"
               alt=""
               aria-hidden="true"
               width={1600}

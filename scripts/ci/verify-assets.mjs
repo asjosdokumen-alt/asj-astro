@@ -677,7 +677,17 @@ for (const line of ignoreLines) {
  * re-examined rather than inherited.
  */
 const ILLUSTRATIONS = new Set([
-  'ilustrasi/hero-sakura.webp',
+  // RENAMED 2026-11-11, `hero-sakura` -> `hero-sakura-asj`. The owner asked for
+  // the invented "ASJ PORTAL" wordmark printed on the jacket to become the real
+  // ASJ emblem, and nothing else in the artwork to change. That is a pixel edit,
+  // not a re-generation: the emblem is composited from `icons/logo-asj.webp`
+  // over the same master, and the print it replaces was erased with fabric
+  // sampled from the rows directly above and below it. Basis unchanged — the
+  // figure is still generated artwork, so §11.2 has no subject to attach to.
+  // New name because `/assets/*` is `immutable` for a year (see netlify.toml):
+  // replacing the bytes under the old name would leave returning visitors
+  // looking at the old wordmark until 2027.
+  'ilustrasi/hero-sakura-asj.webp',
   // ADDED 2026-11-09: `hero-sakura-816` adalah CROP PORTRAIT dari artwork yang
   // SAMA (perempuan + Fuji), dipakai khusus HP lewat `<source media>`. Ia bukan
   // fotografi baru dan bukan subjek baru — orangnya tetap figur hasil generate,
