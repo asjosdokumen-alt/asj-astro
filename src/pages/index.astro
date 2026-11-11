@@ -2113,10 +2113,100 @@ import { GALLERY } from '../lib/gallery';
       transition: opacity 0.7s ease;
     }
 
-    /* Ponsel DAN reduced-motion memakai bentuk yang sama: daftar bertumpuk,
-       tanpa sticky dan tanpa babak tersembunyi. Kalau salah satu tetap memakai
-       panggung, isi band menjadi tidak terjangkau di perangkat itu. */
-    @media (max-width: 860px), (prefers-reduced-motion: reduce) {
+    /* ── PONSEL: PANGGUNG YANG SAMA, BUKAN TUMPUKAN (2026-11-11) ───────────
+       Owner: "scrollnya di bikin tumpuk ke bawah gini? gak jadi 1 gitu".
+       Sebelum ini, di <=860 px band film DIBONGKAR menjadi daftar tujuh babak:
+       track setinggi 7,1 layar, tiap babak plat 26rem berbingkai oval + judul +
+       badan, lalu babak berikutnya. Terukur di 390 px: `#alur` = 5.986 px
+       (7,1 layar) dan halaman 30.331 px. Itu bukan film, itu daftar.
+
+       Sekarang STRUKTUR desktop dipakai apa adanya di ponsel — track 7 x 72svh
+       + 100svh, panggung sticky, babak absolut yang saling menutup — dan yang
+       disesuaikan hanya hal-hal yang memang soal layar potret:
+         · plat penuh (bukan kotak 26rem) dan `object-position` dinaikkan supaya
+           kepala tidak terpotong di frame 2:3;
+         · scrim dibalik jadi DARI BAWAH, karena teksnya pindah ke bawah;
+         · teks menempel bawah, satu kolom;
+         · klip POTRET yang dipakai (`--p`), bukan yang lanskap.
+
+       ⚠ `prefers-reduced-motion` TIDAK ikut aturan ini. Di blok berikutnya ia
+       tetap membongkar band menjadi daftar: pengguna yang meminta gerak
+       dikurangi tidak boleh mendapat tujuh babak yang menutupi satu sama lain
+       tanpa cara mencapainya. Dua audiens, dua tata letak — bukan satu kompromi
+       untuk keduanya. */
+    @media (max-width: 860px) {
+      .film-img,
+      .film-vid {
+        /* 42%, bukan 50%: subjek plat potret duduk di sepertiga atas; di 50%
+           dagunya terpotong oleh bilah teks bawah. */
+        object-position: 50% 42%;
+      }
+      .film-vid--p {
+        display: block;
+      }
+      .film-vid--w {
+        display: none;
+      }
+      .film-scrim {
+        background:
+          linear-gradient(
+            to top,
+            rgb(4 6 10 / 0.94) 0%,
+            rgb(4 6 10 / 0.72) 28%,
+            rgb(4 6 10 / 0.18) 58%,
+            rgb(4 6 10 / 0) 78%
+          ),
+          radial-gradient(130% 100% at 50% 38%, transparent 52%, rgb(4 6 10 / 0.55) 100%);
+      }
+      .film-copy {
+        left: 0;
+        right: 0;
+        top: auto;
+        bottom: 0;
+        height: auto;
+        width: auto;
+        justify-content: flex-end;
+        padding: 0 1.25rem 2.4rem;
+        text-shadow: 0 2px 26px rgb(4 6 10 / 0.85);
+      }
+      .film-copy h3 {
+        font-size: clamp(1.9rem, 8.2vw, 2.6rem);
+      }
+      .film-body {
+        max-width: 34ch;
+      }
+      /* Coda dipusatkan lewat `translateX(-50%)` di desktop; di sini kolomnya
+         sudah selebar layar, jadi transform itu harus dilepas atau teksnya
+         keluar setengah lebar. */
+      .film-copy-coda {
+        left: 0;
+        right: 0;
+        transform: none;
+        width: auto;
+        max-width: none;
+        padding: 0 1.25rem 2.4rem;
+      }
+      .film-coda-t {
+        font-size: clamp(1.5rem, 6.4vw, 2.1rem);
+      }
+      .film-coda-b {
+        max-width: 30ch;
+      }
+      /* Chrome panggung (braket, rel, kaki, progres) mengukur sesuatu yang di
+         390 px tidak ada ruangnya. */
+      .film-hud,
+      .film-rail,
+      .film-foot,
+      .film-progress {
+        display: none;
+      }
+    }
+
+    /* Ponsel-lama DAN reduced-motion dulu memakai bentuk yang sama. Sejak
+       2026-11-11 hanya reduced-motion: daftar bertumpuk, tanpa sticky dan tanpa
+       babak tersembunyi. Kalau pengguna ini tetap diberi panggung, isi band
+       menjadi tidak terjangkau. */
+    @media (prefers-reduced-motion: reduce) {
       .film-track {
         height: auto;
       }
@@ -2276,11 +2366,22 @@ import { GALLERY } from '../lib/gallery';
       let active = -1;
       let inView = false;
       let stacked = false;
+      /* Varian klip yang sedang TAMPIL, dibaca dari CSS — bukan dari lebar
+         jendela. Sejak 2026-11-11 ponsel memakai penggerak scroll yang sama
+         dengan desktop, jadi `stacked` tidak lagi menandakan tata letak, dan
+         memilih klip dari flag itu berarti memutar elemen `display:none`:
+         terukur di 390 px sesudah perubahan pertama — klip potret berhenti di
+         t=0 sementara klip lanskap yang tak terlihat "diputar". */
+      let portrait = false;
 
       const clamp = (v) => Math.min(1, Math.max(0, v));
 
       function stackedNow() {
-        return reduce.matches || window.innerWidth <= 860;
+        /* HANYA reduced-motion sejak 2026-11-11. Ponsel tidak lagi membongkar
+           band menjadi daftar (lihat blok `@media (max-width: 860px)` di atas),
+           jadi ia memakai penggerak scroll yang sama dengan desktop — termasuk
+           pemilihan varian klip, yang ditentukan oleh `display` di CSS. */
+        return reduce.matches;
       }
 
       /* Tata letak bertumpuk: semua babak terlihat, tanpa transform sisa. */
@@ -2370,8 +2471,8 @@ import { GALLERY } from '../lib/gallery';
              bertumpuk. Varian satunya dipause, bukan dibiarkan jalan diam-diam
              (elemen `display:none` tetap men-decode kalau tidak dipause). */
           vids.forEach((set, k) => {
-            const on = stacked ? set.p : set.w;
-            const off = stacked ? set.w : set.p;
+            const on = portrait ? set.p : set.w;
+            const off = portrait ? set.w : set.p;
             if (off && !off.paused) off.pause();
             if (!on) return;
             if (k === best && inView) on.play().catch(() => {});
@@ -2402,6 +2503,10 @@ import { GALLERY } from '../lib/gallery';
 
       function sync() {
         stacked = stackedNow();
+        /* Sumber kebenaran varian klip adalah CSS yang menyembunyikan salah
+           satunya, bukan angka 860 yang ditulis dua kali di dua bahasa. */
+        const probe = vids.find((v) => v.p)?.p;
+        portrait = probe ? getComputedStyle(probe).display !== 'none' : false;
         if (stacked) {
           if (raf) {
             window.cancelAnimationFrame(raf);
