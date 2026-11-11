@@ -104,6 +104,14 @@ export function applyTheme(mode: ThemeMode) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
 
+  /* A route may PIN the theme (BaseLayout's `themeLock`). The landing page is
+     one: it is a dark film stage and has no light variant. The store still
+     keeps the preference — so other routes and the next visit still honour the
+     toggle — but it must not repaint a page that has no other version. Without
+     this guard the pre-paint lock is overwritten the moment the store boots,
+     and the page flashes light for one frame. */
+  if (root.dataset.themeLock) return;
+
   root.setAttribute('data-theme', mode);
 }
 

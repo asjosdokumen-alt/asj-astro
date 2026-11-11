@@ -102,10 +102,15 @@ export interface SectionMotion {
  * one of them.
  */
 export const SECTION_MOTION: readonly SectionMotion[] = [
+  // `alur` PINDAH KE DEPAN (2026-11-11). Film "Satu Jalan" sekarang membuka
+  // halaman tepat di bawah hero, bukan duduk di tengah profil — lihat catatan di
+  // `index.astro`. Urutan tabel ini mengikuti urutan DOKUMEN, dan
+  // `e2e/test-landing.mjs` memeriksa keduanya. `curtain` tetap miliknya; aturan
+  // "tidak boleh sama dengan tetangga" tetap terpenuhi (curtain -> slide-left).
+  { id: 'alur', label: 'Alur', enter: 'curtain' },
   { id: 'kenapa-jepang', label: 'Kenapa Jepang', enter: 'slide-left' },
   { id: 'layanan', label: 'Layanan', enter: 'slide-right' },
   { id: 'program', label: 'Program', enter: 'grow' },
-  { id: 'alur', label: 'Alur', enter: 'curtain' },
   { id: 'visi-misi', label: 'Visi & Misi', enter: 'drop' },
   { id: 'legalitas', label: 'Legalitas', enter: 'focus' },
   { id: 'fasilitas', label: 'Fasilitas', enter: 'slide-left' },

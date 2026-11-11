@@ -108,7 +108,7 @@ export interface Props {
   jsonLd?: string;
 }
 
-const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false, titleKey, ogImage, noIndex, scrollProgress = false, jsonLd } = Astro.props;
+const { title, description = 'PT Amanah Sakura Japan — Job Portal', lang = 'id', showFooter = false, showBottomNav = false, titleKey, ogImage, noIndex, scrollProgress = false, themeLock, jsonLd } = Astro.props;
 
 // ─── Discovery metadata (JSON-LD + hreflang) ─────────────────────────────────
 // ADDED 2026-09-29. MEASURED that day: this site emitted 0 JSON-LD and 0
@@ -152,7 +152,7 @@ const orgJsonLd = jsonLdScript(
 );
 ---
 <!DOCTYPE html>
-<html lang={lang} data-title-key={titleKey}>
+<html lang={lang} data-title-key={titleKey} data-theme={themeLock} data-theme-lock={themeLock}>
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -271,6 +271,13 @@ const orgJsonLd = jsonLdScript(
     // src/store/theme.ts by necessity. Change both together or the page flashes
     // the wrong theme on every load.
     (function(){
+      // `THEME_LOCK` is the landing page's film stage: it has no light variant,
+      // so it wins over whatever is stored. See the `themeLock` prop.
+      var THEME_LOCK = "dark";
+      if (THEME_LOCK) {
+        document.documentElement.setAttribute("data-theme", THEME_LOCK);
+        return;
+      }
       try {
         var t = localStorage.getItem("asjTheme");
         document.documentElement.setAttribute("data-theme", t === "dark" ? "dark" : "light");
@@ -461,7 +468,7 @@ const orgJsonLd = jsonLdScript(
      on <body> is a full-viewport paint, so that was ~30 full-screen
      repaints per toggle. 200ms is still smooth (the curve is out-expo,
      which lands early) and cuts the repaint work by 60%. -->
-<body id="asj-body" class="bg-canvas text-fg min-h-screen transition-colors duration-200 flow-root">
+<body id="asj-body" class="bg-canvas text-fg min-h-screen transition-colors duration-200 flow-root" data-theme-lock={themeLock}>
   <!-- #global-loader DIHAPUS 2026-11-09. Ia `display:none !important` secara
        inline dan TIDAK ADA satu pun kode yang menampilkannya (diperiksa:
        hanya tombolnya sendiri yang menyembunyikan diri). Jadi ia bukan gerbang
@@ -631,6 +638,14 @@ const orgJsonLd = jsonLdScript(
        single source of truth for dark/light (see src/store/theme.ts); the
        banner's SAKURA/TOKYO artwork is a SEPARATE store that the user can
        override independently, so it is deliberately not consulted here. */
+    /* A LOCKED route wins over the store, exactly like `applyTheme`. Without
+       this line the landing page renders dark while the stored preference is
+       still "light", so the sakura layer stays visible — 30 pink petals over a
+       near-black film stage, which is the one thing that broke the frame. */
+    if (document.documentElement.dataset.themeLock) {
+      host.classList.add('hidden');
+      return;
+    }
     if (mode === 'light') {
       makePetals();
       host.classList.remove('hidden');

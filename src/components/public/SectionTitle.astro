@@ -79,7 +79,7 @@ const accentClass = ACCENT_TEXT[accent];
 // drift the type scale exists to remove.
 const headingClass =
   level === 3 ? 'text-card-title font-bold text-fg' : 'text-section font-bold text-fg';
-const wrapper = ['flex flex-col gap-3', className ?? ''].filter(Boolean).join(' ');
+const wrapper = ['section-title flex flex-col gap-3', className ?? ''].filter(Boolean).join(' ');
 ---
 
 <div class={wrapper}>

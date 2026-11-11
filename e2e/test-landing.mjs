@@ -132,6 +132,9 @@ const SECTIONS = [
   // entry because the order check below is what proves it sits above everything
   // else — a hero that drifted below the fold would still pass a presence check.
   { id: 'atas', phase: 'L8', visible: true },
+  // `alur` PINDAH KE SINI (2026-11-11, owner): film "Satu Jalan" membuka halaman
+  // tepat di bawah hero. Urutan array ini adalah oracle urutan dokumen.
+  { id: 'alur', phase: 'L4', visible: true },
   { id: 'kenapa-jepang', phase: 'L4', visible: true },
   // `loker` IS DELIBERATELY ABSENT, and it is not an omission — see
   // LOKER_ROUTE below, which asserts the lowongan surface still exists.
@@ -142,7 +145,6 @@ const SECTIONS = [
   // tall at 1280px, and `[data-public-tab]` matches ZERO elements.
   { id: 'layanan', phase: 'L3', visible: true },
   { id: 'program', phase: 'L4', visible: true },
-  { id: 'alur', phase: 'L4', visible: true },
   { id: 'visi-misi', phase: 'L4', visible: true },
   { id: 'legalitas', phase: 'L4', visible: true },
   { id: 'fasilitas', phase: 'L4', visible: true },

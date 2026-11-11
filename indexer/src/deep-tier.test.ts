@@ -426,7 +426,12 @@ const show = true;
     // default in the destructuring is a binding, not a read, so it does not
     // appear a second time. The array below is the indexer's own output for
     // this file, sorted — not a hand-edit of the previous one.
-    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'canonical', 'canonical', 'description', 'description', 'description', 'inter400Woff2', 'inter700Woff2', 'jsonLd', 'jsonLd', 'lang', 'lang', 'noIndex', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'orgJsonLd', 'orgJsonLd', 'scrollProgress', 'showBottomNav', 'showBottomNav', 'showFooter', 'title', 'title', 'title', 'titleKey']);
+    //
+    // +3 `themeLock` (2026-11-11, MEASURED from the failure message): the
+    // landing page pins its theme, so the prop is read three times in the
+    // template — `<html data-theme>` , `<html data-theme-lock>` and
+    // `<body data-theme-lock>`. One read per attribute, no more.
+    expect(occs.map((o) => o.name).sort()).toEqual(['alternates', 'canonical', 'canonical', 'canonical', 'canonical', 'description', 'description', 'description', 'inter400Woff2', 'inter700Woff2', 'jsonLd', 'jsonLd', 'lang', 'lang', 'noIndex', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'ogImageAbsolute', 'orgJsonLd', 'orgJsonLd', 'scrollProgress', 'showBottomNav', 'showBottomNav', 'showFooter', 'themeLock', 'themeLock', 'themeLock', 'title', 'title', 'title', 'titleKey']);
     for (const o of occs) {
       const ref = r.refs.find((z) => z.fileIdx === fi && z.range.start === o.range.start);
       expect(ref).toBeDefined();

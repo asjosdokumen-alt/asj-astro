@@ -75,7 +75,7 @@ import { GALLERY } from '../lib/gallery';
 <!-- `scrollProgress` renders the thin gradient reading-progress bar at the
      top edge (motion.css §9i, driven by the document scroll timeline) —
      the landing page is the one route long enough for it to mean anything. -->
-<BaseLayout title="PT Amanah Sakura Japan — Job Portal" titleKey="doc.title_home" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true} scrollProgress={true}>
+<BaseLayout title="PT Amanah Sakura Japan — Job Portal" titleKey="doc.title_home" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true} scrollProgress={true} themeLock="dark">
   <!-- `hero` turns the header band into the landing page's hero. It also moves
        the page's single h1 into the hero, so the company name in the header
        steps down to a div — see the note in App.tsx. Every OTHER route mounts
@@ -195,6 +195,75 @@ import { GALLERY } from '../lib/gallery';
        the bands slide in from the edge instead of pushing the whole page
        sideways, which is what the motion was for. -->
   <main id="main-content" class="w-full max-w-[100rem] mx-auto pb-16 min-h-[50vh] overflow-x-clip">
+    <!-- Section: Alur & Persyaratan (pages 3 and 4) — BAND PERTAMA SETELAH HERO.
+         Owner 2026-11-11: film ini harus membuka halaman, bukan duduk di tengah
+         profil. "kalau taruh bawah gini gak sama kek yg web corn video kan ya" —
+         di referensi, filmnya ADALAH halamannya. Jadi section ini pindah ke posisi
+         pertama, tepat di bawah hero yang sudah berupa frame film dengan model
+         yang sama, dan `#alur { padding-top: 0 }` membuat panggungnya menyambung
+         dari tepi bawah hero tanpa pita terang di antaranya.
+
+         JUDUL SEKSI JADI `sr-only`. Judul "Bagaimana Prosesnya?" yang terlihat
+         akan menjadi pita terang di antara hero dan film — persis yang membuat
+         versi sebelumnya terbaca sebagai "section", bukan sebagai film. Teksnya
+         tetap ada di HTML (h2, `alur-title`, dipakai `aria-labelledby`) jadi
+         outline dan nama region tidak hilang.
+
+         `drift={false}`: §9f's `scroll-drift-y` men-scale pembungkusnya
+         0,982 -> 1,008. Terukur di 1440 px: skala itu menyisakan celah terang
+         13 px di tepi kiri plat. Jadi band ini mengambil `data-enter` saja (wipe
+         `curtain` tetap jalan, oracle `sectionMotion.ts` tetap cocok) tanpa
+         `data-scroll`. `enter` sendiri TIDAK boleh dicabut:
+         `e2e/test-landing.mjs:1708` mencocokkan setiap baris tabel dengan elemen
+         ber-`data-enter` di halaman. -->
+    <Section id="alur" bleed drift={false} labelledBy="alur-title" class="section-alt" enter="curtain">
+      <h2 id="alur-title" class="sr-only">Bagaimana Prosesnya?</h2>
+      {/* ── Band "Satu Jalan" ───────────────────────────────────────────────
+           Menggantikan grid enam kartu StepList. Isi teksnya TIDAK berubah dan
+           TIDAK diduplikasi: judul/badan tiap langkah tetap `data-lang` dari
+           FLOW_STEPS, jadi toggle ID/EN/JP tetap menjangkaunya tanpa kunci baru.
+
+           Bentuknya sekarang FRAME FILM, bukan dua kolom: plat 3:2 menutup
+           seluruh panggung (full-bleed), teks duduk di atas scrim dari kiri, dan
+           chrome alat ukur (braket sudut, garis progres, rel babak, koordinat)
+           mengapitnya. Itu bahasa yang dibaca dari referensi 58 detik
+           `Pioneer corn revolutionized` — lihat deliverables/story-video/DESIGN-STUDY.md.
+
+           CARA KERJANYA: `.film-track` setinggi 6 x 72svh + 100svh, dan
+           `.film-stage` menempel (`sticky`) di dalamnya. Progres scroll memilih
+           babak; babak berikutnya MENUTUP babak sebelumnya (dissolve tanpa
+           lubang), dan teksnya punya dua ketukan — judul dulu, badan menyusul di
+           38% babak. Itu aturan #4 dari studi: teks berganti DI DALAM shot, bukan
+           shot berganti untuk teks.
+
+           KENAPA BAND INI TIDAK IKUT DRIFT SCROLL (§9f).
+           `enter` menaruh animasi `transform` pada pembungkus, dan transform pada
+           leluhur menggeser hasil lukis anak yang sticky — tidak masalah selama
+           geserannya nol. §9f men-scale 0,982 -> 1,008, dan pada band full-bleed
+           skala itu terbaca sebagai celah terang 13 px di tepi kiri plat.
+           Karena itu Section-nya memakai `drift={false}`: wipe `curtain` tetap
+           ada, drift-nya yang dilepas. */}
+      <StoryFilm steps={FLOW_STEPS} />
+
+      <div class="mx-auto mt-12 w-full max-w-7xl px-4 md:px-6">
+        <h3 data-lang="profile.req_title" class="text-card-title font-bold text-fg">
+          Persyaratan &amp; Dokumen
+        </h3>
+        <p data-lang="profile.req_desc" class="mt-1 text-body-sm text-fg-muted">
+          Pastikan semuanya siap sebelum mendaftar.
+        </p>
+        <div class="mt-5 grid gap-6 lg:grid-cols-2">
+          <CheckList items={REQUIREMENTS} accent="exam" />
+          <div>
+            <h4 data-lang="profile.req_docs_title" class="text-caption uppercase font-bold text-accent-amber mb-3">
+              Berkas yang disiapkan
+            </h4>
+            <CheckList items={REQUIREMENT_DOCS} icon="file-alt" accent="exam" />
+          </div>
+        </div>
+      </div>
+    </Section>
+
     <!-- Section: Kenapa Jepang? (page 2 of the company profile) -->
     <Section id="kenapa-jepang" labelledBy="kenapa-jepang-title" enter="slide-left">
       <SectionTitle
@@ -263,70 +332,6 @@ import { GALLERY } from '../lib/gallery';
       </div>
     </Section>
 
-    <!-- Section: Alur & Persyaratan (pages 3 and 4).
-         `drift={false}`: panggung film di dalam band ini menutup SELURUH lebar
-         layar, dan §9f's `scroll-drift-y` men-scale pembungkusnya 0,982 -> 1,008.
-         Terukur di 1440 px: skala itu menyisakan celah terang 13 px di tepi kiri
-         plat. Jadi band ini mengambil `data-enter` saja (wipe `curtain` tetap
-         jalan, oracle `sectionMotion.ts` tetap cocok) tanpa `data-scroll`.
-         `enter` sendiri TIDAK boleh dicabut: `e2e/test-landing.mjs:1708` mencocokkan
-         setiap baris tabel dengan elemen ber-`data-enter` di halaman. -->
-    <Section id="alur" bleed drift={false} labelledBy="alur-title" class="section-alt" enter="curtain">
-      <div class="mx-auto w-full max-w-7xl px-4 md:px-6">
-        <SectionTitle
-          titleKey="profile.step_title"
-          title="Bagaimana Prosesnya?"
-          descKey="profile.step_desc"
-          desc="Enam langkah dari pendaftaran sampai berangkat."
-          accent="exam"
-          headingId="alur-title"
-        />
-      </div>
-      {/* ── Band "Satu Jalan" ───────────────────────────────────────────────
-           Menggantikan grid enam kartu StepList. Isi teksnya TIDAK berubah dan
-           TIDAK diduplikasi: judul/badan tiap langkah tetap `data-lang` dari
-           FLOW_STEPS, jadi toggle ID/EN/JP tetap menjangkaunya tanpa kunci baru.
-
-           Bentuknya sekarang FRAME FILM, bukan dua kolom: plat 3:2 menutup
-           seluruh panggung (full-bleed), teks duduk di atas scrim dari kiri, dan
-           chrome alat ukur (braket sudut, garis progres, rel babak, koordinat)
-           mengapitnya. Itu bahasa yang dibaca dari referensi 58 detik
-           `Pioneer corn revolutionized` — lihat deliverables/story-video/DESIGN-STUDY.md.
-
-           CARA KERJANYA: `.film-track` setinggi 6 x 72svh + 100svh, dan
-           `.film-stage` menempel (`sticky`) di dalamnya. Progres scroll memilih
-           babak; babak berikutnya MENUTUP babak sebelumnya (dissolve tanpa
-           lubang), dan teksnya punya dua ketukan — judul dulu, badan menyusul di
-           38% babak. Itu aturan #4 dari studi: teks berganti DI DALAM shot, bukan
-           shot berganti untuk teks.
-
-           KENAPA BAND INI TIDAK IKUT DRIFT SCROLL (§9f).
-           `enter` menaruh animasi `transform` pada pembungkus, dan transform pada
-           leluhur menggeser hasil lukis anak yang sticky — tidak masalah selama
-           geserannya nol. §9f men-scale 0,982 -> 1,008, dan pada band full-bleed
-           skala itu terbaca sebagai celah terang 13 px di tepi kiri plat.
-           Karena itu Section-nya memakai `drift={false}`: wipe `curtain` tetap
-           ada, drift-nya yang dilepas. */}
-      <StoryFilm steps={FLOW_STEPS} />
-
-      <div class="mx-auto mt-12 w-full max-w-7xl px-4 md:px-6">
-        <h3 data-lang="profile.req_title" class="text-card-title font-bold text-fg">
-          Persyaratan &amp; Dokumen
-        </h3>
-        <p data-lang="profile.req_desc" class="mt-1 text-body-sm text-fg-muted">
-          Pastikan semuanya siap sebelum mendaftar.
-        </p>
-        <div class="mt-5 grid gap-6 lg:grid-cols-2">
-          <CheckList items={REQUIREMENTS} accent="exam" />
-          <div>
-            <h4 data-lang="profile.req_docs_title" class="text-caption uppercase font-bold text-accent-amber mb-3">
-              Berkas yang disiapkan
-            </h4>
-            <CheckList items={REQUIREMENT_DOCS} icon="file-alt" accent="exam" />
-          </div>
-        </div>
-      </div>
-    </Section>
 
     <!-- Section: Visi & Misi (pages 2 and 5). Editorial, not bento: a vision is one
          long sentence and a mission is four short points, so they are not two
@@ -1336,9 +1341,84 @@ import { GALLERY } from '../lib/gallery';
        ukur di tepi, dan teks berganti DI DALAM shot. Yang sengaja TIDAK dipakai
        dari referensi: judul serif dan angka raksasa — dua-duanya bahasa
        editorial, bukan bahasa film. */
+    /* ══ PALET FILM UNTUK SELURUH HALAMAN PROFIL ═══════════════════════════
+       Owner 2026-11-11: "ubah desain company profilnya kayak yg di video itu".
+       Referensinya hitam pekat, garis rambut, dan huruf kapital kecil — bukan
+       kanvas navy dengan kartu.
+
+       Caranya BUKAN menulis ulang lima belas section: seluruh komponen di
+       halaman ini sudah membaca token tema (`bg-canvas`, `text-fg`,
+       `border-line`). Jadi paletnya diganti sekali di `body`, dan setiap
+       komponen ikut. `themeLock="dark"` di BaseLayout yang memastikan atribut
+       ini selalu ada — halaman ini tidak punya versi terang.
+
+       Nilainya sengaja lebih gelap dan lebih netral dari tema gelap biasa
+       (`#020617` navy -> `#05070c`), supaya panggung film di atas dan section
+       di bawahnya terbaca sebagai SATU bingkai, bukan dua halaman. */
+    body[data-theme-lock='dark'] {
+      --color-canvas: #05070c;
+      --color-surface: #0a0d13;
+      --color-surface-raised: #10141c;
+      --color-surface-sunken: #04060a;
+      --color-fg: #f4f6f8;
+      --color-fg-muted: #a3acb9;
+      --color-fg-subtle: #8b93a1;
+      --color-line: #1b2230;
+      --color-line-strong: #2a3342;
+      --color-accent: #f9a8d4;
+      --color-accent-emerald: #6ee7b7;
+      --color-accent-sky: #7dd3fc;
+      --color-accent-amber: #fcd34d;
+      --color-accent-violet: #c4b5fd;
+      --color-accent-red: #fca5a5;
+    }
+
+    /* Judul section: huruf kapital, kecil, rapat — bahasa yang sama dengan
+       judul babak di film. Garis rambut di bawahnya menggantikan kartu. */
+    body[data-theme-lock='dark'] .section-title {
+      gap: 0.85rem;
+      padding-bottom: 1.35rem;
+      border-bottom: 1px solid var(--color-line);
+    }
+    body[data-theme-lock='dark'] .section-title h2 {
+      text-transform: uppercase;
+      font-weight: 700;
+      font-size: clamp(1.45rem, 2.5vw, 2.05rem);
+      line-height: 1.04;
+      letter-spacing: -0.015em;
+    }
+    body[data-theme-lock='dark'] .section-title > span[data-lang] {
+      letter-spacing: 0.3em;
+    }
+    body[data-theme-lock='dark'] .section-title p {
+      font-size: 0.8125rem;
+      line-height: 1.65;
+      max-width: 56ch;
+    }
+    /* Gambar konten ikut di-grade. Ilustrasi program di halaman ini masih
+       gaya anime pastel; di sebelah plat film yang gelap dan desaturated, tanpa
+       ini ia terbaca sebagai gambar dari situs lain. Satu filter untuk semua —
+       QR dikecualikan karena kontrasnya harus utuh supaya tetap bisa dipindai. */
+    body[data-theme-lock='dark'] main img:not([src*='qr']) {
+      filter: saturate(0.72) contrast(1.05) brightness(0.86);
+    }
+
+    /* Sudut kartu nyaris siku: di film tidak ada satu pun sudut membulat. */
+    body[data-theme-lock='dark'] .rounded-card,
+    body[data-theme-lock='dark'] .rounded-panel,
+    body[data-theme-lock='dark'] .rounded-band {
+      border-radius: 3px;
+    }
+
+    /* Band ini sekarang band PERTAMA halaman: padding atas section dan jarak
+       atas band sama-sama nol supaya panggungnya menyambung langsung dari tepi
+       bawah hero, tanpa pita `section-alt` di antaranya. */
+    #alur {
+      padding-top: 0;
+    }
     .film {
       position: relative;
-      margin-top: 2.5rem;
+      margin-top: 0;
     }
     .film-track {
       position: relative;
@@ -1444,10 +1524,13 @@ import { GALLERY } from '../lib/gallery';
     .film-copy h3 {
       margin-top: 1.1rem;
       font-family: var(--font-sans);
-      font-weight: 900;
-      font-size: clamp(2.1rem, 4.9vw, 4.2rem);
-      line-height: 0.94;
-      letter-spacing: -0.025em;
+      /* 700, bukan 900: judul di referensi adalah grotesque yang tenang —
+         satu baris, tebal sedang — bukan baliho. 58 px di 1440 px, kira-kira
+         skala yang sama dengan "WE TAKE IT TO THE FIELD." di 1280x720. */
+      font-weight: 700;
+      font-size: clamp(1.9rem, 4.2vw, 3.6rem);
+      line-height: 0.98;
+      letter-spacing: -0.02em;
       text-transform: uppercase;
       color: #fff;
       text-wrap: balance;
