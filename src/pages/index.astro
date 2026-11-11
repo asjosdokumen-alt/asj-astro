@@ -1460,18 +1460,23 @@ import { GALLERY } from '../lib/gallery';
       display: block;
       filter: saturate(0.92) contrast(1.06) brightness(0.9);
     }
-    /* Klipnya 2:3 potret. Di frame 16:9 yang full-bleed, `cover` membuang 54%
-       tingginya dan wajahnya jadi terlalu besar — jadi di desktop yang dipakai
-       plat 3:2 diam, dan klip hanya hidup di tata letak bertumpuk (ponsel),
-       tempat bingkainya memang potret. */
+    /* DUA KLIP PER BABAK, satu per tata letak.
+       Klip potret 2:3 tidak bisa mengisi frame 16:9 tanpa membuang ~58%
+       tingginya; terukur di 1440x900, wajah memenuhi layar dan kepala terpotong
+       di tepi bawah (babak 06) — jadi desktop memakai render LANSKAP dari plat
+       `wide/` yang sama, dan klip potret hanya hidup di tata letak bertumpuk.
+       Hanya satu yang `display` pada satu waktu; penggerak memilih lewat
+       `data-vid`, sehingga tetap satu decoder yang berjalan. */
     .film-vidwrap {
       position: absolute;
       inset: 0;
     }
     .film-vid {
-      display: none;
       opacity: 0;
       transition: opacity 0.5s ease;
+    }
+    .film-vid--p {
+      display: none;
     }
 
     /* Scrim: satu arah, selalu dari KIRI. Di referensi pun teksnya selalu di
@@ -1793,8 +1798,11 @@ import { GALLERY } from '../lib/gallery';
           transparent 90%
         );
       }
-      .film-vid {
+      .film-vid--p {
         display: block;
+      }
+      .film-vid--w {
+        display: none;
       }
       .film-ch.is-on .film-vid {
         opacity: 1;
@@ -1870,7 +1878,14 @@ import { GALLERY } from '../lib/gallery';
       const track = band.querySelector('[data-film-track]');
       const chs = [...band.querySelectorAll('[data-film-ch]')];
       const dots = [...band.querySelectorAll('[data-film-dot]')];
-      const vids = chs.map((c) => c.querySelector('video'));
+      /* Dua elemen video per babak (lanskap untuk desktop, potret untuk tata
+         letak bertumpuk). Keduanya `preload="none"`, jadi yang tidak dipakai
+         tidak pernah mengunduh satu byte pun — dan hanya satu yang `display`,
+         sehingga tetap satu decoder yang berjalan. */
+      const vids = chs.map((c) => ({
+        p: c.querySelector('video[data-vid="p"]'),
+        w: c.querySelector('video[data-vid="w"]'),
+      }));
       const plates = chs.map((c) => c.querySelector('.film-plate'));
       const bar = band.querySelector('[data-film-progress]');
       const coord = band.querySelector('[data-film-coord]');
@@ -1886,7 +1901,7 @@ import { GALLERY } from '../lib/gallery';
         'PONOROGO · 7.86°S 111.46°E',
         'PONOROGO · 7.86°S 111.46°E',
         'PONOROGO · 7.86°S 111.46°E',
-        'PONOROGO → JEPANG',
+        'PONOROGO · 7.86°S 111.46°E',
         'JEPANG · 35.68°N 139.69°E',
         'PONOROGO · 7.86°S 111.46°E',
       ];
@@ -1984,11 +1999,17 @@ import { GALLERY } from '../lib/gallery';
           if (coord) coord.textContent = COORD[best];
           chs.forEach((c, k) => c.classList.toggle('is-on', k === best));
           /* Hanya klip babak aktif yang diputar — 3 decoder serentak tidak
-             pernah menjadi anggaran halaman ini. */
-          vids.forEach((v, k) => {
-            if (!v) return;
-            if (k === best && inView) v.play().catch(() => {});
-            else if (!v.paused) v.pause();
+             pernah menjadi anggaran halaman ini. Yang diputar adalah varian
+             yang sedang `display`: lanskap di desktop, potret di tata letak
+             bertumpuk. Varian satunya dipause, bukan dibiarkan jalan diam-diam
+             (elemen `display:none` tetap men-decode kalau tidak dipause). */
+          vids.forEach((set, k) => {
+            const on = stacked ? set.p : set.w;
+            const off = stacked ? set.w : set.p;
+            if (off && !off.paused) off.pause();
+            if (!on) return;
+            if (k === best && inView) on.play().catch(() => {});
+            else if (!on.paused) on.pause();
           });
         }
       }
@@ -2006,6 +2027,13 @@ import { GALLERY } from '../lib/gallery';
         if (!raf) raf = window.requestAnimationFrame(frame);
       }
 
+      const pauseAll = () => {
+        vids.forEach((s) => {
+          if (s.p && !s.p.paused) s.p.pause();
+          if (s.w && !s.w.paused) s.w.pause();
+        });
+      };
+
       function sync() {
         stacked = stackedNow();
         if (stacked) {
@@ -2014,9 +2042,14 @@ import { GALLERY } from '../lib/gallery';
             raf = 0;
           }
           flatten();
-          vids.forEach((v) => v && v.pause());
+          pauseAll();
         } else {
           chs.forEach((c) => c.classList.remove('is-on', 'beat'));
+          /* `active` direset supaya `paint()` berikutnya menilai ulang babak
+             dan menyalakan varian video yang sekarang `display`. Tanpa ini,
+             berpindah 860 px ke atas meninggalkan panggung tanpa klip sampai
+             babak berganti. */
+          active = -1;
           kick();
         }
       }
@@ -2024,9 +2057,17 @@ import { GALLERY } from '../lib/gallery';
       if ('IntersectionObserver' in window) {
         const io = new IntersectionObserver(
           (entries) => {
+            const was = inView;
             inView = entries[0].isIntersecting;
-            if (inView) kick();
-            else vids.forEach((v) => v && v.pause());
+            if (inView) {
+              /* `active` direset HANYA saat status berubah masuk. Tanpa ini,
+                 klip tidak pernah mulai kalau panggung masuk viewport SETELAH
+                 babak aktifnya ditetapkan: keputusan play() digantung pada
+                 `best !== active`, dan `active` sudah sama. Terukur: delapan
+                 video, satu sudah `readyState 4`, nol yang berjalan. */
+              if (!was) active = -1;
+              kick();
+            } else pauseAll();
           },
           { rootMargin: '25% 0px' }
         );
@@ -2037,14 +2078,20 @@ import { GALLERY } from '../lib/gallery';
 
       /* Di tata letak bertumpuk, tiap babak terlihat berurutan, jadi "babak
          aktif" tidak ada. Klipnya diputar per-babak saat babaknya masuk layar —
-         tanpa ini ketiga mp4 hanya menjadi poster yang tidak pernah bergerak,
-         karena `paint()` tidak dipanggil sama sekali di mode bertumpuk. */
+         tanpa ini mp4 hanya menjadi poster yang tidak pernah bergerak, karena
+         `paint()` tidak dipanggil sama sekali di mode bertumpuk.
+
+         Yang diputar adalah varian POTRET (`data-vid="p"`), bukan
+         `querySelector('video')`: sejak tiap babak punya dua elemen video,
+         `querySelector` mengembalikan yang LANSKAP — yang di sini `display:none`
+         — dan hasil terukurnya "ponsel memutar klip desktop" sementara klip
+         potret tidak pernah jalan. */
       if ('IntersectionObserver' in window) {
         const vio = new IntersectionObserver(
           (entries) => {
             if (!stacked || reduce.matches) return;
             entries.forEach((e) => {
-              const v = e.target.querySelector('video');
+              const v = e.target.querySelector('video[data-vid="p"]');
               if (!v) return;
               if (e.intersectionRatio > 0.4) v.play().catch(() => {});
               else if (!v.paused) v.pause();
@@ -2052,7 +2099,7 @@ import { GALLERY } from '../lib/gallery';
           },
           { threshold: [0, 0.4, 1] }
         );
-        chs.forEach((c) => c.querySelector('video') && vio.observe(c));
+        chs.forEach((c) => c.querySelector('video[data-vid="p"]') && vio.observe(c));
       }
 
       window.addEventListener('scroll', kick, { passive: true });

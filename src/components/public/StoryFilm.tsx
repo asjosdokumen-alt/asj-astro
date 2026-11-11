@@ -59,7 +59,8 @@ const MEDIA = [
   {
     portrait: '/assets/story/01-daftar.webp',
     wide: '/assets/story/wide/01-daftar.webp',
-    mp4: null,
+    mp4: '/assets/story/01-daftar.mp4',
+    mp4w: '/assets/story/wide/01-daftar.mp4',
     focus: '64% 50%',
     alt: 'Ilustrasi peserta mengisi formulir pendaftaran dengan pulpen di atas meja, memakai polo LPK Amanah.',
   },
@@ -67,6 +68,7 @@ const MEDIA = [
     portrait: '/assets/story/02-latihan.webp',
     wide: '/assets/story/wide/02-latihan.webp',
     mp4: '/assets/story/02-latihan.mp4',
+    mp4w: '/assets/story/wide/02-latihan.mp4',
     focus: '60% 46%',
     alt: 'Ilustrasi pengajar di depan papan tulis berisi hiragana, memakai polo LPK Amanah, dengan peserta duduk di depan kelas.',
   },
@@ -74,6 +76,7 @@ const MEDIA = [
     portrait: '/assets/story/03-wawancara.webp',
     wide: '/assets/story/wide/03-wawancara.webp',
     mp4: null,
+    mp4w: null,
     focus: '62% 50%',
     alt: 'Ilustrasi wawancara kerja: peserta berkemeja putih dan blazer hitam berhadapan dengan pewawancara.',
   },
@@ -81,13 +84,15 @@ const MEDIA = [
     portrait: '/assets/story/04-dokumen.webp',
     wide: '/assets/story/wide/04-dokumen.webp',
     mp4: null,
+    mp4w: null,
     focus: '58% 52%',
     alt: 'Ilustrasi tangan memegang paspor di atas meja dengan berkas dan pena, lengan polo LPK Amanah.',
   },
   {
     portrait: '/assets/story/05-mcu.webp',
     wide: '/assets/story/wide/05-mcu.webp',
-    mp4: null,
+    mp4: '/assets/story/05-mcu.mp4',
+    mp4w: '/assets/story/wide/05-mcu.mp4',
     focus: '58% 52%',
     alt: 'Ilustrasi tangan menandatangani formulir pemeriksaan kesehatan di atas clipboard, dengan stetoskop dan pena di meja, lengan polo LPK Amanah.',
   },
@@ -95,6 +100,7 @@ const MEDIA = [
     portrait: '/assets/story/06-tiba.webp',
     wide: '/assets/story/wide/06-tiba.webp',
     mp4: '/assets/story/06-tiba.mp4',
+    mp4w: '/assets/story/wide/06-tiba.mp4',
     focus: '62% 46%',
     alt: 'Ilustrasi peserta tiba di Jepang dengan kimono dan koper, berlatar Gunung Fuji dan lentera jalan.',
   },
@@ -159,18 +165,42 @@ export default function StoryFilm({ steps }: Props) {
                       focusable and rejects the attribute on it, and swapping in
                       `role="presentation"` trips the opposite rule
                       (`noInteractiveElementToNoninteractiveRole`). A plain div is
-                      neither, and the attribute inherits to the video. */}
-                  {m.mp4 ? (
+                      neither, and the attribute inherits to the video.
+
+                      DUA SUMBER, satu per tata letak. Klip potret tidak bisa
+                      mengisi frame 16:9 tanpa membuang ~58% tingginya — terukur:
+                      wajah memenuhi layar dan kepala terpotong di tepi bawah.
+                      Jadi desktop memakai render lanskap dari plat `wide/` yang
+                      sama, dan ponsel memakai render potret. Keduanya mulai dari
+                      frame yang identik dengan poster masing-masing, jadi tidak
+                      ada lompatan saat video mulai. Hanya SATU yang `display`
+                      pada satu waktu; penggerak memilih lewat `data-vid`. */}
+                  {m.mp4 || m.mp4w ? (
                     <div class="film-vidwrap" aria-hidden="true">
-                      <video
-                        class="film-vid"
-                        src={m.mp4}
-                        poster={m.portrait}
-                        muted
-                        loop
-                        playsInline
-                        preload="none"
-                      />
+                      {m.mp4w ? (
+                        <video
+                          class="film-vid film-vid--w"
+                          data-vid="w"
+                          src={m.mp4w}
+                          poster={m.wide}
+                          muted
+                          loop
+                          playsInline
+                          preload="none"
+                        />
+                      ) : null}
+                      {m.mp4 ? (
+                        <video
+                          class="film-vid film-vid--p"
+                          data-vid="p"
+                          src={m.mp4}
+                          poster={m.portrait}
+                          muted
+                          loop
+                          playsInline
+                          preload="none"
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
