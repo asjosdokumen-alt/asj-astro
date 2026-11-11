@@ -75,7 +75,7 @@ import { GALLERY } from '../lib/gallery';
 <!-- `scrollProgress` renders the thin gradient reading-progress bar at the
      top edge (motion.css §9i, driven by the document scroll timeline) —
      the landing page is the one route long enough for it to mean anything. -->
-<BaseLayout title="PT Amanah Sakura Japan — Job Portal" titleKey="doc.title_home" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true} scrollProgress={true} themeLock="dark">
+<BaseLayout title="PT Amanah Sakura Japan — Job Portal" titleKey="doc.title_home" description="Lowongan kerja Jepang, penerimaan siswa baru, pengurusan visa, pendaftaran ujian JFT & SSW" showFooter={true} scrollProgress={true}>
   <!-- `hero` turns the header band into the landing page's hero. It also moves
        the page's single h1 into the hero, so the company name in the header
        steps down to a div — see the note in App.tsx. Every OTHER route mounts
@@ -1387,72 +1387,54 @@ import { GALLERY } from '../lib/gallery';
        ukur di tepi, dan teks berganti DI DALAM shot. Yang sengaja TIDAK dipakai
        dari referensi: judul serif dan angka raksasa — dua-duanya bahasa
        editorial, bukan bahasa film. */
-    /* ══ PALET FILM UNTUK SELURUH HALAMAN PROFIL ═══════════════════════════
-       Owner 2026-11-11: "ubah desain company profilnya kayak yg di video itu".
-       Referensinya hitam pekat, garis rambut, dan huruf kapital kecil — bukan
-       kanvas navy dengan kartu.
+    /* ══ PALET: IKUT TEMA, BUKAN DIKUNCI ═══════════════════════════════════
+       Sesi sebelumnya menimpa token warna di `body` DAN mengunci halaman ini
+       dengan `themeLock="dark"`. Akibatnya company profile kehilangan tema
+       terang yang justru jadi identitas situs: /loker, /apply, /siswa-baru
+       semuanya kanvas terang, dan hanya beranda yang hitam.
 
-       Caranya BUKAN menulis ulang lima belas section: seluruh komponen di
-       halaman ini sudah membaca token tema (`bg-canvas`, `text-fg`,
-       `border-line`). Jadi paletnya diganti sekali di `body`, dan setiap
-       komponen ikut. `themeLock="dark"` di BaseLayout yang memastikan atribut
-       ini selalu ada — halaman ini tidak punya versi terang.
+       Yang dipertahankan dari percobaan itu BUKAN paletnya, melainkan tata
+       bahasanya: judul kapital rapat, garis rambut sebagai pemisah, sudut
+       nyaris siku. Itu bahasa film, dan ia bekerja di kedua tema — jadi
+       selektornya sekarang `main`, bukan `body[data-theme-lock='dark']`.
 
-       Nilainya sengaja lebih gelap dan lebih netral dari tema gelap biasa
-       (`#020617` navy -> `#05070c`), supaya panggung film di atas dan section
-       di bawahnya terbaca sebagai SATU bingkai, bukan dua halaman. */
-    body[data-theme-lock='dark'] {
-      --color-canvas: #05070c;
-      --color-surface: #0a0d13;
-      --color-surface-raised: #10141c;
-      --color-surface-sunken: #04060a;
-      --color-fg: #f4f6f8;
-      --color-fg-muted: #a3acb9;
-      --color-fg-subtle: #8b93a1;
-      --color-line: #1b2230;
-      --color-line-strong: #2a3342;
-      --color-accent: #f9a8d4;
-      --color-accent-emerald: #6ee7b7;
-      --color-accent-sky: #7dd3fc;
-      --color-accent-amber: #fcd34d;
-      --color-accent-violet: #c4b5fd;
-      --color-accent-red: #fca5a5;
-    }
-
-    /* Judul section: huruf kapital, kecil, rapat — bahasa yang sama dengan
-       judul babak di film. Garis rambut di bawahnya menggantikan kartu. */
-    body[data-theme-lock='dark'] .section-title {
+       Panggung filmnya sendiri tetap gelap di tema apa pun: ia gambar, dan
+       semua teks di atasnya memakai nilai yang tidak ikut bertema. Jadi
+       halaman terang dengan satu panggung gelap adalah komposisi yang sah —
+       bioskop di dalam gedung terang, bukan gedung yang dicat hitam. */
+    main .section-title {
       gap: 0.85rem;
       padding-bottom: 1.35rem;
       border-bottom: 1px solid var(--color-line);
     }
-    body[data-theme-lock='dark'] .section-title h2 {
+    main .section-title h2 {
       text-transform: uppercase;
       font-weight: 700;
       font-size: clamp(1.45rem, 2.5vw, 2.05rem);
       line-height: 1.04;
       letter-spacing: -0.015em;
     }
-    body[data-theme-lock='dark'] .section-title > span[data-lang] {
+    main .section-title > span[data-lang] {
       letter-spacing: 0.3em;
     }
-    body[data-theme-lock='dark'] .section-title p {
+    main .section-title p {
       font-size: 0.8125rem;
       line-height: 1.65;
       max-width: 56ch;
     }
-    /* Gambar konten ikut di-grade. Ilustrasi program di halaman ini masih
-       gaya anime pastel; di sebelah plat film yang gelap dan desaturated, tanpa
-       ini ia terbaca sebagai gambar dari situs lain. Satu filter untuk semua —
-       QR dikecualikan karena kontrasnya harus utuh supaya tetap bisa dipindai. */
-    body[data-theme-lock='dark'] main img:not([src*='qr']) {
+    /* Gambar konten di-grade HANYA di tema gelap. Ilustrasi program masih gaya
+       anime pastel; di sebelah plat film yang gelap ia terbaca sebagai gambar
+       dari situs lain. Di tema terang grade itu justru mengotori kertas putih,
+       jadi ia tidak ikut. QR dikecualikan karena kontrasnya harus utuh supaya
+       tetap bisa dipindai. */
+    [data-theme='dark'] main img:not([src*='qr']) {
       filter: saturate(0.72) contrast(1.05) brightness(0.86);
     }
 
     /* Sudut kartu nyaris siku: di film tidak ada satu pun sudut membulat. */
-    body[data-theme-lock='dark'] .rounded-card,
-    body[data-theme-lock='dark'] .rounded-panel,
-    body[data-theme-lock='dark'] .rounded-band {
+    main .rounded-card,
+    main .rounded-panel,
+    main .rounded-band {
       border-radius: 3px;
     }
 
@@ -1898,12 +1880,31 @@ import { GALLERY } from '../lib/gallery';
       position: absolute;
       top: 0.55rem;
       left: 0.7rem;
+      /* Chip gelap, bukan angka telanjang. Dua alasan, satu desain: angka putih
+         tanpa latar hanya "kebetulan" terbaca di atas fotonya, dan `e2e:contrast`
+         mengukurnya terhadap latar HALAMAN — terukur 1,08:1 di tema terang,
+         merah. Chip ini membuat kontrasnya benar-benar milik elemen, sekaligus
+         menyamakannya dengan chrome film (kotak kecil di atas gambar). */
+      padding: 0.16rem 0.42rem;
+      border-radius: 2px;
+      background: rgb(4 6 10 / 0.72);
       font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.3em;
-      color: rgb(255 255 255 / 0.86);
+      color: #fff;
       font-variant-numeric: tabular-nums;
-      text-shadow: 0 1px 12px rgb(4 6 10 / 0.9);
+    }
+
+    /* ── LAMPU STUDIO: kelopak sakura padam selama film diputar ────────────
+       `#sakura-particles` (BaseLayout) adalah lapisan `position: fixed` yang
+       hanya hidup di tema terang. Di atas panggung gelap kelopak itu terbaca
+       sebagai debu di lensa — terukur pada tangkapan 1440x900: titik pink
+       melayang di atas plat paspor. Yang diubah di sini hanya opasitas, bukan
+       `display`, supaya animasi 30 kelopak tidak dibuat ulang tiap kali
+       panggung keluar-masuk viewport. Statusnya ditulis oleh
+       IntersectionObserver band (lihat `petals` di skrip `#alur`). */
+    #sakura-particles {
+      transition: opacity 0.7s ease;
     }
 
     /* Ponsel DAN reduced-motion memakai bentuk yang sama: daftar bertumpuk,
@@ -2218,6 +2219,19 @@ import { GALLERY } from '../lib/gallery';
           (entries) => {
             const was = inView;
             inView = entries[0].isIntersecting;
+            /* ── LAMPU STUDIO PADAM saat film mulai ──────────────────────────
+               `#sakura-particles` (BaseLayout) adalah lapisan kelopak yang
+               `position: fixed` dan hanya hidup di tema terang. Begitu halaman
+               punya tema terang lagi, kelopak itu terbang DI ATAS panggung
+               gelap — terukur pada tangkapan 1440x900: titik pink melayang di
+               atas plat paspor. Di tema gelap tidak pernah terlihat karena
+               lapisannya memang disembunyikan.
+
+               Yang benar bukan mematikan kelopaknya, tapi memadamkannya selama
+               film diputar: halaman terang = ruangan, panggung film = layar.
+               Transisinya di CSS (`#sakura-particles`), di sini cuma status. */
+            const petals = document.getElementById('sakura-particles');
+            if (petals) petals.style.opacity = inView ? '0' : '';
             if (inView) {
               /* `active` direset HANYA saat status berubah masuk. Tanpa ini,
                  klip tidak pernah mulai kalau panggung masuk viewport SETELAH

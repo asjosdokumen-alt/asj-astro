@@ -4,6 +4,7 @@ const BASE = await ensureServer();
 const browser = await chromium.launch({ headless: true, args: ['--no-proxy-server'] });
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await page.addInitScript((t)=>{try{localStorage.setItem('asjTheme',t)}catch{}},'light');
   await page.goto(`${BASE}/`, { waitUntil: 'networkidle', timeout: 60000 });
   const out = await page.evaluate(() => {
     const parse = (c) => (c.match(/[\d.]+/g) || []).map(Number);
