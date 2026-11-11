@@ -489,123 +489,94 @@ import { GALLERY } from '../lib/gallery';
          The list comes from PLACEMENT_COVERAGE / PLACEMENTS, and the UI does
          not restate the prefecture NAMES anywhere: it renders the `value`
          columns as written, so adding a placement is a one-line edit to
-         companyProfile.ts and there is no second copy of the list to forget. -->
-    <!-- Section: Lowongan Ringkas (R2) WAS HERE and is deliberately gone.
-         Owner ruling 2026-09-24: `/` is a company profile for MoU/business
-         partners, not a job board, so a vacancy teaser does not belong on it.
-         The vacancy list is still reachable from the section nav; the page
-         keeps exactly ONE link to it. Do not restore this section — the
-         supporting data (`profile.mini_*` keys, `JobMiniList.tsx`) was removed
-         with it. -->
+         companyProfile.ts and there is no second copy of the list to forget.
 
-    <Section id="penempatan" labelledBy="penempatan-title" class="section-alt border border-line/30 rounded-panel" enter="slide-right">
-      <SectionTitle
-        titleKey="profile.place_title"
-        title="Penempatan Kami"
-        descKey="profile.place_desc"
-        desc="Melalui jejaring mitra LPK, kami menempatkan ke seluruh bidang dan seluruh 47 prefektur di Jepang."
-        accent="identity"
-        headingId="penempatan-title"
-      />
-      {/* Placement scenery band — the section had only a FactList and no image.
-          It copies the `#lokasi` banner's shape exactly (picture + avif/webp
-          sources + a 1x/2x srcset), for the same reason: the ratio is reserved
-          before load so the section does not jump, and the rounding lives on the
-          wrapper so the corners clip the image.
+         BENTUKNYA: BABAK STILL, BUKAN KARTU (2026-11-11). Owner memilih arah
+         "perluas film ke beberapa seksi", dan seksi ini yang paling jelas: isinya
+         tentang BERANGKAT, dan plat keberangkatan (`wide/05-terbang.webp`) sudah
+         ada sejak sesi film sebagai spare yang tidak pernah dipakai. Jadi banner
+         peta kartun — bahasa gambar yang berbeda dari plat film — turun pangkat
+         jadi DIAGRAM KECIL di sebelah kanan daftar, bukan lagi gambar utama.
 
-          DECORATIVE, so `alt=""` + `aria-hidden`. The section already names the
-          coverage and the evidence rows in its FactList and states what it is in
-          its h2; the band carries no information those two do not, which is the
-          same test the `#lokasi` note applies to its own skyline. (Since
-          2026-10-30 the artwork is a map of Japan, which is now the more
-          accurate illustration of the claim: all 47 prefectures, not four.)
+         Yang dipinjam dari tata bahasa film: plat penuh tanpa bingkai, scrim satu
+         arah dari kiri, judul kapital 700, garis rambut di atas badan teks, dan
+         daftar yang dibaca sebagai CREDIT (baris + garis), bukan kartu. Yang TIDAK
+         dipinjam: track dan scroll progress. Halaman ini tetap punya SATU panggung
+         (`#alur`) — hukum "satu seam" di skill `scroll-cinema`. Dua band sticky
+         berdekatan membuat keduanya berhenti terasa film.
 
-          ARTWORK REPLACED 2026-09-28. This slot used to hold a photograph of Mt
-          Fuji across a lake, chosen because it was exactly 3:2 and contained no
-          people. The owner supplied a generated map of Japan instead and asked
-          for it here, so both of those properties moved, and neither move is
-          cosmetic:
-
-            - the ratio is now 4:3, the source's own shape. It is read from the
-              file rather than kept at 3:2, because a 3:2 box over a 4:3 picture
-              makes `object-cover` discard a quarter of the map's height — and
-              on a map the missing band is Kyushu or Hokkaido;
-            - it is an ILLUSTRATION, not a photograph, so it sits in the asset
-              gate's ILLUSTRATIONS set for the stronger of that set's two
-              reasons: there is no subject who could consent or refuse, so
-              §11.2's consent requirement has nothing to attach to.
-
-          The declared 1200x900 is the real size of the 1x file. */}
-      <div class="u-drift-frame mt-6 aspect-[4/3] rounded-panel border border-line/30">
-        <picture class="u-drift-media u-drift block">
-        <source
-          type="image/avif"
-          srcset="/assets/ilustrasi/penempatan-banner.avif 1x, /assets/ilustrasi/penempatan-banner@2x.avif 2x"
-        />
-        <source
-          type="image/webp"
-          srcset="/assets/ilustrasi/penempatan-banner.webp 1x, /assets/ilustrasi/penempatan-banner@2x.webp 2x"
-        />
-        <img
-          src="/assets/ilustrasi/penempatan-banner.webp"
-          alt=""
-          aria-hidden="true"
-          width="1200"
-          height="900"
-          loading="lazy"
-          decoding="async"
-          class="w-full h-full object-cover u-alive"
-          style="--alive-dur:12.5s;--alive-scale-from:1.03;--alive-scale:1.085;--alive-x0:-0.8%;--alive-y0:0.6%;--alive-x:0.9%;--alive-y:-0.7%"
-        />
-        </picture>
-        <div class="u-illus-fx" aria-hidden="true">
-          <div class="u-sheen-bar" style="--fx-dur:9.6s;--fx-delay:-2.2s;--fx-sheen:rgb(255 255 255 / 0.22)"></div>
-          <svg class="w-full h-full" viewBox="0 0 1200 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
-            <!-- Drifting sakura petals from the top-left cherry blossom branch -->
-            <ellipse class="u-fx-petal" cx="145" cy="245" rx="11" ry="6" fill="#fb7185" style="--fx-dur:7.2s;--fx-delay:-0.8s;--fx-mid-x:85px;--fx-mid-y:155px;--fx-end-x:185px;--fx-end-y:335px;--fx-alpha:0.88" />
-            <ellipse class="u-fx-petal" cx="220" cy="215" rx="9.5" ry="5.2" fill="#fda4af" style="--fx-dur:8.1s;--fx-delay:-3.5s;--fx-mid-x:95px;--fx-mid-y:170px;--fx-end-x:210px;--fx-end-y:360px;--fx-alpha:0.82" />
-            <ellipse class="u-fx-petal" cx="95" cy="340" rx="10" ry="5.5" fill="#fecdd3" style="--fx-dur:7.6s;--fx-delay:-5.4s;--fx-mid-x:75px;--fx-mid-y:145px;--fx-end-x:160px;--fx-end-y:310px;--fx-alpha:0.85" />
-            <!-- Pulsing placement beacons aligned to the Japan archipelago regions -->
-            <circle class="u-fx-pulse" cx="800" cy="172" r="18" fill="none" stroke="#ec4899" stroke-width="3" style="--fx-dur:2.8s;--fx-delay:-0.2s" />
-            <circle cx="800" cy="172" r="6" fill="#ec4899" />
-            <circle class="u-fx-pulse" cx="805" cy="345" r="16" fill="none" stroke="#0ea5e9" stroke-width="2.8" style="--fx-dur:3.1s;--fx-delay:-1.1s" />
-            <circle cx="805" cy="345" r="5.5" fill="#0ea5e9" />
-            <circle class="u-fx-pulse" cx="728" cy="434" r="17" fill="none" stroke="#10b981" stroke-width="2.8" style="--fx-dur:2.9s;--fx-delay:-1.9s" />
-            <circle cx="728" cy="434" r="5.5" fill="#10b981" />
-            <circle class="u-fx-pulse" cx="798" cy="535" r="22" fill="none" stroke="#f43f5e" stroke-width="3.2" style="--fx-dur:2.5s;--fx-delay:-0.6s" />
-            <circle class="u-fx-pulse" cx="798" cy="535" r="22" fill="none" stroke="#fb7185" stroke-width="2.2" style="--fx-dur:2.5s;--fx-delay:-1.85s" />
-            <circle cx="798" cy="535" r="7" fill="#f43f5e" />
-            <circle class="u-fx-pulse" cx="565" cy="595" r="17" fill="none" stroke="#0ea5e9" stroke-width="2.8" style="--fx-dur:3.0s;--fx-delay:-2.3s" />
-            <circle cx="565" cy="595" r="5.5" fill="#0ea5e9" />
-            <circle class="u-fx-pulse" cx="474" cy="682" r="16" fill="none" stroke="#f59e0b" stroke-width="2.8" style="--fx-dur:3.2s;--fx-delay:-1.5s" />
-            <circle cx="474" cy="682" r="5.5" fill="#f59e0b" />
-            <circle class="u-fx-pulse" cx="280" cy="710" r="19" fill="none" stroke="#ec4899" stroke-width="3" style="--fx-dur:2.7s;--fx-delay:-0.9s" />
-            <circle cx="280" cy="710" r="6.5" fill="#ec4899" />
-            <circle class="u-fx-pulse" cx="72" cy="850" r="15" fill="none" stroke="#10b981" stroke-width="2.6" style="--fx-dur:3.3s;--fx-delay:-2.1s" />
-            <circle cx="72" cy="850" r="5" fill="#10b981" />
-            <!-- Travelling placement route signals gliding along the archipelago & flight path -->
-            <circle class="u-fx-travel" cx="280" cy="710" r="5.5" fill="#f43f5e" style="--fx-dur:4.2s;--fx-delay:-0.5s;--fx-tx:285px;--fx-ty:-115px" />
-            <circle class="u-fx-travel" cx="565" cy="595" r="5.5" fill="#0ea5e9" style="--fx-dur:3.8s;--fx-delay:-1.9s;--fx-tx:233px;--fx-ty:-60px" />
-            <circle class="u-fx-travel" cx="798" cy="535" r="5.5" fill="#10b981" style="--fx-dur:4.4s;--fx-delay:-2.8s;--fx-tx:2px;--fx-ty:-363px" />
-            <circle class="u-fx-travel" cx="950" cy="505" r="5" fill="#ffffff" style="--fx-dur:3.6s;--fx-delay:-1.2s;--fx-tx:175px;--fx-ty:-105px" />
-          </svg>
+         `drift={false}` for the same reason `#alur` sets it: §9f's scroll drift
+         scales this wrapper, and a scale on a full-bleed plate shows as a gutter
+         at the start of its range. The ENTRANCE stays (`slide-right`, pinned by
+         SECTION_MOTION — not `curtain`, which is `tentang`'s kind directly below). -->
+    <Section id="penempatan" bleed drift={false} labelledBy="penempatan-title" enter="slide-right">
+      <div class="still">
+        <div class="still-plate">
+          <img
+            class="still-img"
+            src="/assets/story/wide/05-terbang.webp"
+            alt="Peserta menunggu keberangkatan di ruang tunggu bandara; pesawat terlihat di luar jendela saat matahari terbenam."
+            width="1536"
+            height="904"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+        <div class="still-scrim" aria-hidden="true"></div>
+        <div class="still-copy">
+          <h2 id="penempatan-title" data-lang="profile.place_title" class="still-title">
+            Penempatan Kami
+          </h2>
+          <p data-lang="profile.place_desc" class="still-lead">
+            Melalui jejaring mitra LPK, kami menempatkan ke seluruh bidang dan seluruh 47 prefektur di Jepang.
+          </p>
         </div>
       </div>
-      <div class="mt-8">
-        {/* Two lists, not one. The first answers "do you place in my field and
-            my prefecture"; the second is evidence with dates behind it. They
-            were a single `dl` for part of 2026-10-30 and it read as a
-            contradiction on screen ("Seluruh 47 prefektur" immediately above
-            "Kagoshima"), so the heading between them is load-bearing. */}
-        <FactList facts={PLACEMENT_COVERAGE} accent="identity" />
-        <h3 data-lang="profile.place_evidence_title" class="mt-8 mb-3 text-body-sm font-bold text-fg">
-          Jejak penempatan tercatat
-        </h3>
-        <FactList facts={PLACEMENTS} accent="identity" />
+
+      <div class="still-body">
+        <div class="still-credits">
+          {/* Two lists, not one. The first answers "do you place in my field and
+              my prefecture"; the second is evidence with dates behind it. They
+              were a single `dl` for part of 2026-10-30 and it read as a
+              contradiction on screen ("Seluruh 47 prefektur" immediately above
+              "Kagoshima"), so the heading between them is load-bearing. */}
+          <FactList facts={PLACEMENT_COVERAGE} accent="identity" />
+          <h3 data-lang="profile.place_evidence_title" class="still-sub">
+            Jejak penempatan tercatat
+          </h3>
+          <FactList facts={PLACEMENTS} accent="identity" />
+          <p data-lang="profile.place_note" class="still-note">
+            Nama prefektur ditulis dalam huruf Latin, sesuai dokumen resmi.
+          </p>
+        </div>
+
+        {/* Peta turun pangkat, bukan dibuang: ia satu-satunya gambar yang
+            mengatakan "47 prefektur" secara visual. Sebagai diagram kecil ia
+            terbaca sebagai keterangan, bukan sebagai pemandangan — dan itu
+            memang perannya sekarang. `alt` is no longer empty because the map is
+            no longer decoration: at 20rem it is the only thing in the band that
+            shows the archipelago. */}
+        <figure class="still-map">
+          <picture>
+            <source
+              type="image/avif"
+              srcset="/assets/ilustrasi/penempatan-banner.avif 1x, /assets/ilustrasi/penempatan-banner@2x.avif 2x"
+            />
+            <source
+              type="image/webp"
+              srcset="/assets/ilustrasi/penempatan-banner.webp 1x, /assets/ilustrasi/penempatan-banner@2x.webp 2x"
+            />
+            <img
+              src="/assets/ilustrasi/penempatan-banner.webp"
+              alt="Peta Jepang bergaya ilustrasi dengan penanda wilayah Kyushu, Shikoku, Honshu, Tokyo, dan Okinawa."
+              width="1200"
+              height="900"
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
+        </figure>
       </div>
-      <p data-lang="profile.place_note" class="mt-6 max-w-[70ch] text-body-sm text-fg-muted">
-        Nama prefektur ditulis dalam huruf Latin, sesuai dokumen resmi.
-      </p>
     </Section>
 
     <!-- Section: Tentang Kami (S7, page 2).
@@ -1895,6 +1866,185 @@ import { GALLERY } from '../lib/gallery';
       font-variant-numeric: tabular-nums;
     }
 
+    /* ── BABAK STILL: seksi yang punya plat sendiri, tanpa panggung ────────
+       Bedanya dengan #alur: di sini TIDAK ada track/scroll progress. Halaman
+       ini tetap punya SATU panggung (hukum "satu seam"); babak still hanya
+       meminjam tata bahasanya — plat penuh, scrim satu arah, judul kapital,
+       garis rambut, dan daftar yang dibaca sebagai credit.
+
+       `padding-block: 0` karena `Section` membawa `py-14 md:py-20` untuk semua
+       band, dan padding itu akan memotong plat penuh menjadi kotak dengan
+       kertas kosong di atas-bawahnya. Aturan ini tidak berlapis (unlayered),
+       jadi ia menang atas utility Tailwind-nya — lihat R20 di skill sesi. */
+    #penempatan {
+      padding-block: 0;
+    }
+
+    /* Tinggi `min(88svh, 52rem)` dan bukan 100svh: 100svh membuat tiap babak
+       terasa seperti halaman baru, dan itu yang bikin rangkaiannya kembali
+       terbaca sebagai tumpukan section. */
+    .still {
+      position: relative;
+      height: min(88svh, 52rem);
+      min-height: 30rem;
+      overflow: hidden;
+      background: #05070c;
+    }
+    .still-plate {
+      position: absolute;
+      inset: 0;
+    }
+    .still-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      /* 62%: subjek plat keberangkatan ada di kanan-tengah; 50% memotong
+         wajahnya di tepi kanan pada layar sempit. */
+      object-position: 62% 50%;
+      filter: saturate(0.94) contrast(1.06) brightness(0.92);
+    }
+    .still-scrim {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(
+          90deg,
+          rgb(4 6 10 / 0.94) 0%,
+          rgb(4 6 10 / 0.86) 26%,
+          rgb(4 6 10 / 0.45) 52%,
+          rgb(4 6 10 / 0) 76%
+        ),
+        linear-gradient(to top, rgb(4 6 10 / 0.78) 0%, rgb(4 6 10 / 0) 34%);
+    }
+    /* Latar `.still` di atas SOLID dan gelap dengan sengaja: `e2e:contrast`
+       menelusuri latar leluhur, bukan leluhur-tetangga, jadi scrim (saudara)
+       tidak pernah terlihat oleh gate. Yang membuat teks ini terukur adalah
+       `background` si band itu sendiri — bukan gradasinya. */
+    .still-copy {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: min(46rem, 54%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-left: max(1.5rem, 6vw);
+      color: #f4f6f8;
+      text-shadow: 0 2px 30px rgb(4 6 10 / 0.7);
+    }
+    .still-title {
+      font-family: var(--font-sans);
+      font-weight: 700;
+      font-size: clamp(1.9rem, 4.2vw, 3.4rem);
+      line-height: 0.98;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      color: #fff;
+      text-wrap: balance;
+    }
+    .still-lead {
+      margin-top: 1.5rem;
+      padding-top: 1.15rem;
+      border-top: 1px solid rgb(255 255 255 / 0.22);
+      max-width: 40ch;
+      font-size: clamp(0.9rem, 1.05vw, 1rem);
+      line-height: 1.75;
+      color: rgb(244 246 248 / 0.82);
+    }
+
+    /* Bagian bawah: daftar dibaca sebagai CREDIT — baris dan garis, tanpa
+       kartu. `dl` dari FactList kehilangan bingkai/bg/radius di sini; garis
+       antar-barisnya sudah ada (`divide-y divide-line`). */
+    .still-body {
+      display: grid;
+      gap: clamp(2rem, 4vw, 3.5rem);
+      width: 100%;
+      max-width: 80rem;
+      margin-inline: auto;
+      padding: clamp(2.5rem, 5vw, 4rem) 1rem clamp(2rem, 4vw, 3rem);
+    }
+    @media (min-width: 48rem) {
+      .still-body {
+        padding-inline: 1.5rem;
+      }
+    }
+    @media (min-width: 64rem) {
+      .still-body {
+        grid-template-columns: minmax(0, 1fr) 20rem;
+        align-items: start;
+      }
+    }
+    .still-credits dl {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .still-sub {
+      margin: 2rem 0 0.9rem;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: var(--color-fg);
+    }
+    .still-note {
+      margin-top: 1.4rem;
+      max-width: 70ch;
+      font-size: 0.875rem;
+      line-height: 1.7;
+      color: var(--color-fg-muted);
+    }
+    .still-map {
+      margin: 0;
+    }
+    .still-map img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--color-line);
+    }
+
+    /* Di bawah 861px tidak ada ruang untuk teks DI ATAS gambar: judul 2 baris
+       + lead menutupi subjeknya. Jadi platnya jadi gambar biasa dan teksnya
+       turun ke bawah, di atas latar halaman — bentuk yang sama dengan
+       `.dossier` di ponsel. */
+    @media (max-width: 860px) {
+      .still {
+        height: auto;
+        min-height: 0;
+        /* WAJIB transparan, bukan #05070c. Di ponsel teks turun ke BAWAH plat
+           dan memakai token tema (`--color-fg`), jadi latar gelap band membuat
+           teks tema-terang jatuh di atas hitam — terukur 2,38:1 oleh
+           `e2e:contrast` pada `/ light 390px` sebelum baris ini ada. Latar
+           gelap hanya milik plat, dan plat sudah punya latarnya sendiri. */
+        background: transparent;
+      }
+      .still-plate {
+        position: relative;
+        aspect-ratio: 4 / 5;
+      }
+      .still-scrim {
+        display: none;
+      }
+      .still-copy {
+        position: static;
+        width: auto;
+        height: auto;
+        padding: 1.75rem 1rem 0;
+        color: var(--color-fg);
+        text-shadow: none;
+      }
+      .still-title {
+        color: var(--color-fg);
+      }
+      .still-lead {
+        color: var(--color-fg-muted);
+        border-top-color: var(--color-line);
+      }
+    }
+
     /* ── LAMPU STUDIO: kelopak sakura padam selama film diputar ────────────
        `#sakura-particles` (BaseLayout) adalah lapisan `position: fixed` yang
        hanya hidup di tema terang. Di atas panggung gelap kelopak itu terbaca
@@ -2229,9 +2379,14 @@ import { GALLERY } from '../lib/gallery';
 
                Yang benar bukan mematikan kelopaknya, tapi memadamkannya selama
                film diputar: halaman terang = ruangan, panggung film = layar.
-               Transisinya di CSS (`#sakura-particles`), di sini cuma status. */
-            const petals = document.getElementById('sakura-particles');
-            if (petals) petals.style.opacity = inView ? '0' : '';
+               Transisinya di CSS (`#sakura-particles`), di sini cuma status.
+
+               STATUS KELOPAK PINDAH KE SATU PEMILIK (2026-11-11). Dulu blok ini
+               satu-satunya penulis `opacity`. Sejak `#penempatan` juga jadi band
+               gelap, dua penulis akan saling menimpa: film keluar viewport
+               menulis `''` sementara babak still masih di layar. Sekarang satu
+               observer di akhir berkas yang memiliki status itu untuk SEMUA
+               panggung gelap; blok ini tidak lagi menulisnya. */
             if (inView) {
               /* `active` direset HANYA saat status berubah masuk. Tanpa ini,
                  klip tidak pernah mulai kalau panggung masuk viewport SETELAH
@@ -2279,6 +2434,42 @@ import { GALLERY } from '../lib/gallery';
       window.addEventListener('resize', sync, { passive: true });
       reduce.addEventListener('change', sync);
       sync();
+    })();
+  </script>
+
+  <script is:inline>
+    /* ── LAMPU STUDIO: satu pemilik status kelopak untuk semua band gelap ───
+       `#sakura-particles` (BaseLayout) adalah lapisan `position: fixed` yang
+       hanya hidup di tema terang. Di atas plat gelap ia terbaca sebagai debu di
+       lensa — terukur pada tangkapan 1440x900 sebagai titik pink yang melayang
+       di atas paspor, dan lagi di atas plat keberangkatan `#penempatan`.
+
+       Dua penulis status adalah bug yang menunggu giliran: begitu satu band
+       keluar viewport ia menulis `opacity: ''` tanpa tahu band lain masih di
+       layar. Jadi di sini satu observer menghitung berapa panggung gelap yang
+       SEDANG terlihat, dan hanya nol yang menyalakan kelopak lagi.
+
+       Yang diubah opasitasnya, bukan `display`: 30 kelopak beranimasi tidak
+       dibuat ulang setiap kali panggung masuk-keluar viewport. */
+    (() => {
+      const stages = [...document.querySelectorAll('[data-film], .still')];
+      if (!stages.length || !('IntersectionObserver' in window)) return;
+      const live = new Set();
+      const paint = () => {
+        const petals = document.getElementById('sakura-particles');
+        if (petals) petals.style.opacity = live.size ? '0' : '';
+      };
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) live.add(e.target);
+            else live.delete(e.target);
+          });
+          paint();
+        },
+        { threshold: 0 }
+      );
+      stages.forEach((s) => io.observe(s));
     })();
   </script>
 

@@ -814,6 +814,17 @@ const ILLUSTRATIONS = new Set([
   'story/wide/02-latihan.webp',
   'story/wide/03-wawancara.webp',
   'story/wide/04-paspor.webp',
+  // ADDED 2026-11-11 — the DEPARTURE plate, and it is NOT a seventh chapter of
+  // the band: `StoryFilm.tsx` never renders it. It was generated with the same
+  // six scenes as a spare, and it now carries `#penempatan`, whose whole subject
+  // is leaving. Registering it here is what lets the gate tell "rendered on
+  // purpose" from "published but unaccounted for"; the basis is the set's own —
+  // generated drawing, one model, no person whose likeness it is.
+  //
+  // It is a WIDE plate only. The section stacks on mobile but keeps the 3:2
+  // frame there too (a 2:3 crop of this composition cuts the aircraft), so no
+  // portrait sibling exists and none should be invented.
+  'story/wide/05-terbang.webp',
   'story/wide/05-mcu.webp',
   'story/wide/06-tiba.webp',
   // The footer emblem, localised off Supabase on 2026-09-24. A logo is a mark,
