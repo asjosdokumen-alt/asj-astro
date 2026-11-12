@@ -464,9 +464,9 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
     expect(c.R42).toBe('menengah');
     expect(c.U42).toBe('Mandarin dasar');
     expect(c.R46).toBe('85');
-    expect(c.Y42).toBe('2か月');
+    expect(c.Y42).toBe('2ヶ月'); // ヶ月, sama dengan 学習期間
     expect(c.Y46).toBe('3');
-    expect(c.Y48).toBe('5 tahun');
+    expect(c.Y48).toBe('5年間'); // teks Indonesia -> bentuk Jepang
     expect(c.AC52).toBe('30');
     expect(c.AC53).toBe('40');
   });

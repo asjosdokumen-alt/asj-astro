@@ -210,6 +210,25 @@ function ym(v: unknown): string {
  * Tahun saja tetap `2019年` — menambahkan bulan Januari berarti mengarang bulan,
  * dan itu kesalahan yang lebih besar daripada sel kosong.
  */
+/**
+ * 就業希望年数 (Y48): teks bebas Indonesia → bentuk Jepang.
+ *
+ * Terukur pada BUDI (ASJ00188): kolomnya berisi "Jangka Panjang" dan
+ * renderer lama menyalinnya apa adanya, sehingga form klien Jepang mencetak
+ * bahasa Indonesia. Pemetaan ini sengaja KONSERVATIF: teks yang tidak
+ * dikenali dikembalikan apa adanya, bukan dikarang.
+ */
+function masaKerjaJp(v: unknown): string {
+  const raw = s(v).trim();
+  if (!raw) return '';
+  const t = raw.toLowerCase();
+  if (/jangka panjang|long ?term|selamanya|permanen/.test(t)) return '５年間以上';
+  if (/jangka pendek|short ?term/.test(t)) return '１～３年';
+  const th = /(\d+)\s*(tahun|thn|year)/.exec(t);
+  if (th) return `${Number(th[1])}年間`;
+  if (/^\d+$/.test(raw)) return `${raw}年間`;
+  return raw;
+}
 function ymd(v: unknown): string {
   const raw = s(v).trim();
   if (/^\d{4}$/.test(raw)) return `${raw}年`;
@@ -409,9 +428,9 @@ function masaTinggal(v: unknown): string {
   if (n >= 12) {
     const th = Math.floor(n / 12);
     const sisa = n % 12;
-    return sisa ? `${th}年${sisa}か月` : `${th}年`;
+    return sisa ? `${th}年${sisa}ヶ月` : `${th}年`;
   }
-  return `${n}か月`;
+  return `${n}ヶ月`;
 }
 
 /**
@@ -653,6 +672,14 @@ export function buildValues(data: CandidateData): Record<string, string> {
   cells.U39 = lulusJp(data.sertifikasi.jft ?? id.jft);
   cells.R44 = cells.N4 === 'あり' ? '' : 'なし';
   const ken = data.kenalan_jepang;
+  /* 緊急連絡先 (Y37) — nama/hubungan di Y38, telepon di AA38.
+     Sebelum ini ketiganya tidak pernah ditulis, sehingga baris 緊急連絡先 di
+     form resmi selalu kosong walau kolom `kontak_darurat_*` ada isinya.
+     Hubungan (AYAH/IBU/…) diterjemahkan; kalau kosong, nama dipakai apa adanya. */
+  const daruratNama = bersih(data.identitas.kontak_darurat_nama);
+  const daruratHub = bersih(data.identitas.kontak_darurat_hubungan);
+  cells.Y38 = hubunganJp(daruratHub) || daruratNama;
+  cells.AA38 = hpLokal(data.identitas.hp_darurat);
   cells.Y40 = isGood(bersih(ken.nama_jp) || bersih(ken.nama_id))
     ? bersih(ken.nama_jp) || bersih(ken.nama_id)
     : '無し';
@@ -680,7 +707,10 @@ export function buildValues(data: CandidateData): Record<string, string> {
   cells.R42 = bersih(data.sertifikasi.level_bahasa_inggris) || '無';
   cells.U42 = bersih(data.sertifikasi.bahasa_lain) || '無';
   cells.Y42 = masaTinggal(data.fisik.tinggal_kursus_tahun);
-  cells.Y48 = bersih(data.wawancara.lamakerja_diharapkan);
+  /* 就業希望年数 — kolomnya berisi TEKS BEBAS berbahasa Indonesia
+     ("Jangka Panjang", "5 tahun"). Menyalinnya apa adanya mencetak bahasa
+     Indonesia di form Jepang (terukur pada BUDI: "Jangka Panjang"). */
+  cells.Y48 = masaKerjaJp(data.wawancara.lamakerja_diharapkan);
   cells.AC52 = angka(data.fisik.tes_pushup);
   cells.AC53 = angka(data.fisik.tes_squat);
 
