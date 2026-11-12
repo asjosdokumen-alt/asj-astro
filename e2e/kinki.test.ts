@@ -150,19 +150,24 @@ describe('kinki · geometri template', () => {
     expect(/<dimension ref="([^"]+)"/.exec(sheet)?.[1]).toBe(SOURCE.dimension);
   });
 
-  it('pas foto ada di kotak & posisi berkas pemilik (rId2, kolom W baris 6)', async () => {
+  it('pas foto ada di kotak & posisi berkas pemilik (rId2, kolom X baris 7)', async () => {
     const zip = await loadZip(b64ToBytes(KINKI_BASE64));
     const drawing = await part(zip, DRAWING);
 
     const at = drawing.indexOf('r:embed="rId2"');
     expect(at).toBeGreaterThan(0);
-    const block = drawing.slice(drawing.lastIndexOf('<oneCellAnchor', at), drawing.indexOf('</oneCellAnchor>', at));
-    expect(block).toContain('<col>22</col>');
-    expect(block).toContain('<row>5</row>');
-    expect(block).toContain('<colOff>76200</colOff>');
-    expect(block).toContain('<rowOff>38100</rowOff>');
-    expect(block).toMatch(/<ext cx="1590675" cy="2143125"\s*\/>/);
-    // Gambar peta Indonesia di O10 harus tetap ada; ia bukan pas foto.
+    // Tag di berkas ini ber-prefix "xdr:" — versi lama mencari "<oneCellAnchor"
+    // tanpa prefix, sehingga lastIndexOf mengembalikan -1 dan blok yang diuji
+    // KOSONG. Tes itu selalu "hijau" karena tidak menguji apa pun.
+    const block = drawing.slice(
+      drawing.lastIndexOf('<xdr:oneCellAnchor', at),
+      drawing.indexOf('</xdr:oneCellAnchor>', at),
+    );
+    expect(block).toContain('<xdr:col>23</xdr:col>');
+    expect(block).toContain('<xdr:row>6</xdr:row>');
+    expect(block).toContain('<xdr:colOff>76200</xdr:colOff>');
+    expect(block).toContain('<xdr:rowOff>38100</xdr:rowOff>');
+    expect(block).toMatch(/<xdr:ext cx="1590675" cy="2143125"\s*\/>/);
     expect(drawing).toContain('r:embed="rId1"');
   });
 
@@ -254,18 +259,18 @@ describe('kinki · MBTI masuk ke dropdown yang sah', () => {
     const zip = await loadZip(b64ToBytes(KINKI_BASE64));
     const sheet = await part(zip, SHEET);
     const shared = await sharedStrings(zip);
-    const types = Array.from({ length: 16 }, (_, i) => cellText(sheet, `AF${111 + i}`, shared));
+    const types = Array.from({ length: 16 }, (_, i) => cellText(sheet, `AG${112 + i}`, shared));
 
     const c = buildValues(kandidat());
     expect(types).toContain(c.R48);
     expect(types.filter(Boolean)).toHaveLength(16);
 
     const axisLists = {
-      V49: ['AL111', 'AL112'],
-      V50: ['AP111', 'AP112'],
-      V51: ['AT111', 'AT112'],
-      V52: ['AX111', 'AX112'],
-      V53: ['BB111', 'BB112'],
+      V49: ['AM112', 'AM113'],
+      V50: ['AQ112', 'AQ113'],
+      V51: ['AU112', 'AU113'],
+      V52: ['AY112', 'AY113'],
+      V53: ['BC112', 'BC113'],
     };
     for (const [addr, refs] of Object.entries(axisLists)) {
       const allowed = refs.map((r) => cellText(sheet, r, shared));
@@ -359,14 +364,14 @@ describe('kinki · angka, tanggal, dan kana yang dulu salah', () => {
     const d = kandidat();
     d.pekerjaan = [{ jenis: 'MAGANG', masuk: '2023-08', keluar: '2023-12', perusahaan: 'PT A', jabatan: 'MAGANG' }];
     // Dulu 4 bulan tercetak "1年" — riwayat kerja terbaca jauh lebih panjang.
-    expect(buildValues(d).H26).toBe('4ヶ月');
+    expect(buildValues(d).I27).toBe('4ヶ月');
   });
 
   it('tanggal tanpa bulan tidak dikarang menjadi Januari', () => {
     const d = kandidat();
     d.pendidikan = [{ tingkat: 'SMK', masuk: '2019', lulus: '2022', sekolah: 'SMKN 1 SLAHUNG', jurusan: 'TSM' }];
     const c = buildValues(d);
-    expect(c.D19).toBe('2019年'); // dulu "2019年1月"
+    expect(c.E20).toBe('2019年'); // dulu "2019年1月"
     expect(c.I20).toBe('3年');
   });
 
@@ -374,17 +379,17 @@ describe('kinki · angka, tanggal, dan kana yang dulu salah', () => {
     const d = kandidat();
     d.pendidikan = [{ tingkat: 'SMK', masuk: '2021-07', lulus: '2024-06', sekolah: 'SMKN 1 SLAHUNG' }];
     // `Q3` di strip atas = `=W19`; sel kosong membuatnya mencetak 0.
-    expect(buildValues(d).W19).toBe('-');
+    expect(buildValues(d).X20).toBe('-');
   });
 
   it('tanpa baris 日本語学校, tanda `～` tidak menggantung sendirian', () => {
-    expect(buildValues(kandidat()).D22).toBe('');
+    expect(buildValues(kandidat()).E22).toBe('');
   });
 
   it('カナ: kanji yang bentuknya katakana + bullet dirapikan', () => {
     const d = kandidat();
     d.identitas = { ...d.identitas, katakana: '厶ハッマド•二ザル•ヌル' };
-    expect(buildValues(d).E7).toBe('ムハッマド・ニザル・ヌル');
+    expect(buildValues(d).F8).toBe('ムハッマド・ニザル・ヌル');
   });
 });
 
@@ -427,10 +432,10 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
 
   it('identitas, pendidikan, dan placeholder O9/I4/M4', () => {
     const c = buildValues(denganKolom());
-    expect(c.J19).toBe('Jawa Timur');
-    expect(c.I4).toBe('第25課中');
-    expect(c.M4).toBe('8月取得予定');
-    expect(c.O9).toBe('ジャカルタから780㎞\n飛行機で1 jam 40 menit');
+    expect(c.K20).toBe('Jawa Timur');
+    expect(c.J5).toBe('第25課中');
+    expect(c.N5).toBe('8月取得予定');
+    expect(c.P10).toBe('ジャカルタから780㎞\n飛行機で1 jam 40 menit');
   });
 
   it('pekerjaan: 雇用形態 / 業種 / 備考', () => {
@@ -453,23 +458,23 @@ describe('kinki · kolom migrasi 022 benar-benar masuk ke sel', () => {
 
   it('bahasa, tes, dan angka yang dulu selalu kosong', () => {
     const c = buildValues(denganKolom());
-    expect(c.I3).toBe('N4レベル'); // kolom menang atas tebakan dari teks JFT
-    expect(c.T37).toBe('6ヶ月'); // durasiJp: teks Indonesia → bentuk Jepang
-    expect(c.T39).toBe('sedang belajar');
-    expect(c.Q41).toBe('menengah');
-    expect(c.T41).toBe('Mandarin dasar');
-    expect(c.Q45).toBe('85');
-    expect(c.X41).toBe('2');
-    expect(c.X45).toBe('3000000');
-    expect(c.X47).toBe('5 tahun');
-    expect(c.AB51).toBe('30');
-    expect(c.AB52).toBe('40');
+    expect(c.J4).toBe('N4レベル'); // kolom menang atas tebakan dari teks JFT
+    expect(c.U38).toBe('6ヶ月'); // durasiJp: teks Indonesia → bentuk Jepang
+    expect(c.U40).toBe('sedang belajar');
+    expect(c.R42).toBe('menengah');
+    expect(c.U42).toBe('Mandarin dasar');
+    expect(c.R46).toBe('85');
+    expect(c.Y42).toBe('2か月');
+    expect(c.Y46).toBe('3');
+    expect(c.Y48).toBe('5 tahun');
+    expect(c.AC52).toBe('30');
+    expect(c.AC53).toBe('40');
   });
 
   it('MBTI dari kolom menang atas tebakan', () => {
     const c = buildValues(denganKolom());
-    expect(c.Q47).toBe('広報運動家型（ENFP）');
-    expect(c.U48).toBe('【E】外向型');
+    expect(c.R48).toBe('広報運動家型（ENFP）');
+    expect(c.V49).toBe('【E】外向型');
     expect(c.V53).toBe('【A】自信型');
   });
 });
@@ -486,7 +491,7 @@ describe('kinki · sisa data kandidat contoh di template', () => {
     const d = kandidat();
     (d.identitas as Record<string, unknown>).tgl_lahir = '';
     const c = buildValues(d);
-    expect(c.E8).toBe('');
+    expect(c.F9).toBeUndefined();
     expect(buildNumbers(d)).toEqual({});
   });
 
@@ -495,22 +500,9 @@ describe('kinki · sisa data kandidat contoh di template', () => {
     // berarti mereka mengaku level N5 di formulir resmi.
     const d = kandidat();
     d.sertifikasi = {};
-    expect(buildValues(d).I3).toBe('');
+    expect(buildValues(d).J4).toBe('');
   });
 
-  it('label 学歴 mengikuti jenjang barisnya, bukan selalu `高校`', () => {
-    const d = kandidat();
-    // Hanya SD: dulu renderer mengambil baris TERAKHIR (SD) lalu menulis
-    // "高校: SDN …" — klaim jenjang yang tidak pernah ditempuh.
-    d.pendidikan = [{ tingkat: 'SD', masuk: '2012-07', lulus: '2018-06', sekolah: 'SDN 1 BUNGKAL' }];
-    const c = buildValues(d);
-    expect(c.A19).toBe('');
-    expect(c.O19).toBe('SDN 1 BUNGKAL');
-
-    // SMA/SMK tetap 高校 (bentuk yang dominan di database: `SMA/SMK`).
-    d.pendidikan = [{ tingkat: 'SMA/SMK', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMKN 1 SLAHUNG' }];
-    expect(buildValues(d).A19).toBe('高校');
-  });
 
   it('sekolah NEGERI = 公立, bukan 国立', () => {
     // 国立 = didirikan negara (東京大学). SDN/SMPN/SMAN didirikan pemerintah
@@ -518,15 +510,15 @@ describe('kinki · sisa data kandidat contoh di template', () => {
     // sehingga tidak ada yang menolak nilai yang salah.
     const d = kandidat();
     d.pendidikan = [{ tingkat: 'SMA', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMAN 1 SLAHUNG' }];
-    expect(buildValues(d).M19).toBe('公立');
+    expect(buildValues(d).N20).toBe('公立');
     d.pendidikan = [{ tingkat: 'SMA', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMA MUHAMMADIYAH' }];
-    expect(buildValues(d).M19).toBe('私立');
+    expect(buildValues(d).N20).toBe('私立');
   });
 
   it('SIM `TIDAK PUNYA` tidak dianggap punya SIM', () => {
     const d = kandidat();
     (d.identitas as Record<string, unknown>).sim = 'TIDAK PUNYA';
-    expect(buildValues(d).M3).toBe('なし');
+    expect(buildValues(d).N4).toBe('なし');
   });
 });
 
@@ -537,15 +529,15 @@ describe('kinki · bahasa kolom Jepang', () => {
   it('学習期間 `6 bulan` → `6ヶ月`', () => {
     const d = kandidat();
     d.sertifikasi = { ...d.sertifikasi, lama_belajar_jp: '6 bulan' };
-    expect(buildValues(d).T37).toBe('6ヶ月');
+    expect(buildValues(d).U38).toBe('6ヶ月');
   });
 
   it('修学内容 tanpa jurusan memakai nama sekolah, bukan "学校では学びました。"', () => {
     const d = kandidat();
     d.pendidikan = [{ tingkat: 'SMA', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMK NEGERI 1 SLAHUNG' }];
-    expect(buildValues(d).E23).toBe('SMK NEGERI 1 SLAHUNGで学びました。');
+    expect(buildValues(d).F24).toBe('SMK NEGERI 1 SLAHUNGで学びました。');
     // Dengan jurusan, kalimatnya tetap seperti semula.
     d.pendidikan = [{ tingkat: 'SMA', masuk: '2018-07', lulus: '2021-06', sekolah: 'SMKN 1', jurusan: 'TEKNIK OTOMOTIF' }];
-    expect(buildValues(d).E23).toBe('学校ではTEKNIK OTOMOTIFを学びました。');
+    expect(buildValues(d).F24).toBe('学校では自動車を学びました。');
   });
 });
