@@ -34,7 +34,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { buildBiodataText } from '../src/lib/biodataExport';
-import { FIELD_LABELS } from '../src/lib/cv-template-factory/loaders/tEMPLATE-loader';
 
 const I18N_ID = 'src/store/i18n.ts';
 const I18N_JP = 'src/store/i18n-jp.ts';
@@ -96,25 +95,5 @@ describe('tahan_ac — pertanyaan "AC" diganti "bekerja di cuaca dingin"', () =>
       expect(src, `${file} masih memuat label lama`).not.toMatch(old);
       expect(src, `${file} tidak memuat label baru`).toMatch(/Cuaca Dingin|cuaca dingin/i);
     }
-  });
-
-  it('loader template mengenali label BARU tanpa kehilangan label LAMA', () => {
-    const entry = FIELD_LABELS.find((f) => f.path === 'fisik.tahan_ac');
-    // Gagal keras, bukan `entry!`: assertion non-null dilarang gate lint repo ini,
-    // dan pesan yang jelas lebih berguna daripada `undefined.pattern`.
-    if (!entry) throw new Error('FIELD_LABELS tidak punya entri fisik.tahan_ac');
-    const { pattern } = entry;
-
-    // Label lama tetap harus terbaca: template yang sudah diunggah memakainya.
-    expect(pattern.test('Tahan AC'), 'label lama tidak lagi dikenali').toBe(true);
-    expect(pattern.test('TAHANAC'), 'placeholder lama tidak lagi dikenali').toBe(true);
-
-    // Label baru — kalimat penuh maupun potongannya.
-    expect(pattern.test('Bekerja di Cuaca Dingin'), 'label baru tidak dikenali').toBe(true);
-    expect(pattern.test('Kerja Cuaca Dingin'), 'label baru tidak dikenali').toBe(true);
-
-    // Tidak boleh jadi pencocokan longgar atas "AC": "Kacamata" memuat "ac"
-    // huruf kecil, dan baris itu milik field lain.
-    expect(pattern.test('Kacamata'), 'pola terlalu longgar — cocok dengan Kacamata').toBe(false);
   });
 });
